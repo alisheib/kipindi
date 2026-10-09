@@ -17,6 +17,11 @@
  * AppShell's fallback: the markup a classic visitor is served keeps its elements and its boundary markers; the head
  * gains the preloads, and the inline RSC data names this module's exports. Turning the server render off would also
  * take the journey header out of the server's HTML. Only WHEN a part's code downloads changes.
+ * ⭐ THE JOURNEY'S HEADER AND TABS SIT IN NO BOUNDARY (2026-10-09, the visual pass round 4, R4-J; E36). In one, React
+ * 19.2's server renderer drew the boundary's fallback in the page's first HTML and moved the part in later, by an inline
+ * script, so a slow phone painted an empty header band and no rail (AppShell's note at their mount has the mechanism and
+ * the tiles). Bare, they are drawn by the first paint; their chunks are still their own, and still only a journey page
+ * asks for them.
  * ⚠️ `qa:classic-shell-parity` compares the shell's regions (header, rail, footer, email bar) and its on-screen
  * overlays; these parts' boundaries sit beside those regions, so it cannot see them. `test:journey-shell`
  * 12.shell.wrapped holds the boundaries, and the served-HTML drive of VODACOM-PLAN §0i (WP6c) compares the bytes.

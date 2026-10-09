@@ -36,18 +36,23 @@ import { useT } from "@/lib/i18n";
 import { JOURNEY_TABS, activeTabFor, tabAriaCurrent, tabLabel } from "@/lib/nav/active-tab";
 import { pollersAt, useLgUp } from "@/lib/journey/one-poller";
 import { useUnreadCount } from "@/lib/journey/use-unread-count";
+import { useNotFoundShown } from "@/lib/not-found-mark";
 
 /** One slot class for a tab link and for a guest's tab button alike: the two must read as the same kind of thing. */
 const RAIL_ITEM = "kp-rail__item min-w-0";
 
 /** `userId` is the viewer's id, or null for a guest: the dot's counter is keyed by it (WP3). */
 export function JourneyTabs({ userId }: { userId: string | null }) {
-  const pathname = usePathname();
+  const route = usePathname();
   const { t } = useT();
   const pollers = pollersAt(useLgUp());
+  // ⭐ R4-J (2026-10-09) · A NOT-FOUND PAGE IS NO PAGE OF OURS, whatever its address says (`lib/not-found-mark.ts`): the
+  // rail reads no path there — no tab lit (the market not-found lit Maswali) — and mounts no unread dot.
+  const notFoundShown = useNotFoundShown();
+  const pathname = notFoundShown ? null : route;
   const [sheetOpen, setSheetOpen] = useState(false);
   // The rail outlives the page: a sheet left open would wait over the page the reader went to.
-  useEffect(() => { setSheetOpen(false); }, [pathname]);
+  useEffect(() => { setSheetOpen(false); }, [route]);
   const active = activeTabFor(pathname);
 
   return (
@@ -74,7 +79,7 @@ export function JourneyTabs({ userId }: { userId: string | null }) {
                 )}
               </>
             );
-            const content = d.key === "account" && userId !== null && pollers.dot
+            const content = d.key === "account" && userId !== null && pollers.dot && !notFoundShown
               ? <TabUnread userId={userId}>{body}</TabUnread>
               : body(null);
             return (

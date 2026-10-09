@@ -6917,6 +6917,13 @@ html[lang="zh"] .kp-udrule { word-break: keep-all; }
 .kp-jnav__link:not([aria-current]):not([data-on]):hover::after { transform: scaleX(1); }
 .kp-jnav__link:is([aria-current], [data-on]) { color: var(--text); }
 .kp-jnav__link:is([aria-current], [data-on])::after { transform: scaleX(1); background: var(--brand-500); box-shadow: 0 0 8px color-mix(in oklab, var(--brand-500) 50%, transparent); }
+/* ⭐ ONE DESTINATION IS CURRENT IN EVERY FRAME (2026-10-09, the visual pass round 4, R4-J; E37/E41, tiles 292 315 338 at
+   1280). The current mark moves when the router commits the new page, and with the transitions above the old link's
+   underline shrank over --t-base (220ms) while the new one stood full: two underlines, and two links in the current ink,
+   for most of a quarter second. So the mark changes at once, everywhere but on the way IN to a hover: a transition plays
+   by the rules of the state it goes to, and the hovered state is the only one that keeps them, so a hover still draws
+   its preview underline in, and every other change (the current mark arriving or leaving, a hover ending) is a cut. */
+.kp-jnav__link:not(:hover), .kp-jnav__link:not(:hover)::after { transition: none; }
 
 /* ⭐ THE JOURNEY RAIL — four equal tabs (SJ-16) on the classic rail's own surface, slot, pip and label, worn unchanged.
    ⛔ `.kp-rail` itself is not edited: the admin pending-changes bar wears it too. The grid goes on the LIST (A18): on
@@ -6940,6 +6947,24 @@ html[lang="zh"] .kp-udrule { word-break: keep-all; }
    returns. `.kp-rail__item` itself is not edited. */
 .kp-rail--journey .kp-rail__item { justify-content: flex-start; }
 @media (min-width: 360px) { .kp-rail--journey .kp-rail__item { justify-content: center; } }
+/* ⭐ ONE TAB IS LIT IN EVERY FRAME (2026-10-09, the visual pass round 4, R4-J; E37/E41, tiles 301 306 333). The classic
+   slot fades its ink and its pip over --t-quick (`.kp-rail__item`, `.kp-rail__pip`), so for 140ms after the router
+   commits the new page the pill is half on the tab being left and half on the new one, beside the new label already bold
+   (the weight does not transition). On the journey's rail the lit state changes at once, ink, pip and weight together.
+   ⛔ The classic rules are not edited: the classic rail and the admin pending-changes bar keep their fades. */
+.kp-rail--journey .kp-rail__item, .kp-rail--journey .kp-rail__pip { transition: none; }
+/* ⭐ A NOT-FOUND PAGE LIGHTS NO DESTINATION, FROM ITS FIRST PAINT (2026-10-09, the visual pass round 4, R4-J; tiles
+   372–398). The journey's chrome reads the not-found mark once it hydrates (`lib/not-found-mark.ts`) and then lights
+   nothing; but the server draws the chrome BEFORE the page finds out it is a not-found, so the first HTML lit the tab its
+   address names (Maswali on a missing question, Juu/Chini on a missing round). The mark is in that same HTML, so until
+   the scripts run it unlights the lit tab here: each lit value put back to the slot's own (`test:visual-pass-r4j` §5
+   holds them equal to the base rules). ⛔ Journey classes only: the classic rail's rules, which the journey rail wears,
+   are not edited, and a classic page carries no journey rail. */
+:root:has(#kp-not-found) .kp-rail--journey .kp-rail__item[data-on] { color: var(--text-subtle); }
+:root:has(#kp-not-found) .kp-rail--journey .kp-rail__item[data-on] .kp-rail__pip { background: none; box-shadow: none; }
+:root:has(#kp-not-found) .kp-rail--journey .kp-rail__item[data-on] .kp-rail__label { font-weight: 600; }
+:root:has(#kp-not-found) .kp-jnav__link:is([aria-current], [data-on]) { color: var(--text-muted); }
+:root:has(#kp-not-found) .kp-jnav__link:is([aria-current], [data-on])::after { transform: scaleX(0); }
 /* The guest Tiketi sheet's title: the display face, kept clear of the close button the Modal pins top-right.
    ⭐ Balanced (2026-10-08, the visual pass, tile 116): at en 320 its 232px measure holds "Sign in to see your" (188px)
    and left "tickets" alone on line 2; balanced, it reads "Sign in to see / your tickets". A title that fits on one
@@ -7100,6 +7125,40 @@ html[lang="zh"] .kp-udrule { word-break: keep-all; }
 .kp-rail__item--coin[data-on] .kp-rail__label {
   color: var(--text);
 }
+
+/* =====================================================================
+   THE JOURNEY'S LOADING GHOSTS (2026-10-09, the Vodacom visual pass round 4, R4-J; E38)
+   =====================================================================
+   Worn only by `components/journey/route-ghost.tsx`, which the root loading file draws for a journey reader alone, page
+   by page; no classic element wears one of these classes. Every box is the page's own (the `.kp-hero*` and `.kp-hub*`
+   rules above): these rules only hide the words and paint the bars, so a ghost is the page's layout, not a copy of it. */
+/* `/`. ⛔ The hero's entrance (`kp-rise`, ENTRY MOTION below) is the PAGE's: the ghost does not play it, so the page's
+   blocks rise in once, over still bars. (0,3,0) outranks the entrance's (0,2,0) wherever this block stands. */
+.kp-hero__inner.kp-hghost > *:nth-child(n) { animation: none; }
+/* The words are set, so every line breaks where the page's will, and not shown: a bar takes each block's place. */
+.kp-hghost .kp-hero__intro, .kp-hghost .kp-hero__intro * { color: transparent; }
+.kp-hghost .kp-hero__intro :is(svg, .kp-hero__claim-rule) { visibility: hidden; }
+.kp-hghost :is(.kp-hero__claim-text, .kp-hero__lede-l, .kp-hero__trust > li > span:last-child) { border-radius: var(--r-sm); background: var(--bg-elevated); }
+/* As wide as the words, never wider: `fit-content` keeps every line's break, so no height moves. */
+.kp-hghost :is(.kp-hero__lede-l, .kp-hero__trust > li > span:last-child) { width: fit-content; }
+.kp-hghost .kp-rg__18 { border-color: transparent; background: var(--bg-elevated); }
+/* The h1's bar is drawn under it, not on it: its box must keep the page's width, which is what breaks its lines. */
+.kp-hghost .kp-hero__headline { position: relative; }
+.kp-hghost .kp-hero__headline::before { content: ""; position: absolute; inset: 0.08em 25% 0.08em 0; border-radius: var(--r-md); background: var(--bg-elevated); }
+.kp-hghost__card { height: var(--mcard-h); border: 1px solid var(--border); border-radius: var(--r-lg); background: var(--bg-elevated); }
+.kp-hghost__act { width: min(100%, 320px); height: var(--h-control-xl); border-radius: var(--r-pill); background: var(--bg-elevated); }
+/* `/account`. The identity card and every row are the hub's own boxes (the 52px ring, the 56px row), their words bars.
+   A guest is drawn the prompt and a guest's cards, chosen by what the header shows: its sign-in pills
+   (`a.kp-jhdr__auth`, `journeyHeaderState`) are a guest's alone, and the header is in the page's first HTML. A browser
+   without `:has()` draws the member's. */
+.kp-hubghost--guest { display: none; }
+:root:has(.kp-jhdr__auth) .kp-hubghost--member { display: none; }
+:root:has(.kp-jhdr__auth) p.kp-hubghost--guest { display: block; }
+:root:has(.kp-jhdr__auth) .kp-hub__grid.kp-hubghost--guest { display: grid; }
+.kp-hubghost__name { width: 144px; max-width: 100%; height: calc(var(--type-h4) * 1.25); border-radius: var(--r-sm); background: var(--bg-overlay); }
+.kp-hubghost__phone { width: 112px; height: calc(var(--type-small) * 1.5); border-radius: var(--r-sm); background: var(--bg-overlay); }
+.kp-hubghost__glyph { flex-shrink: 0; width: 20px; height: 20px; border-radius: var(--r-sm); background: var(--bg-overlay); }
+.kp-hubghost__label { width: 40%; height: calc(var(--type-body) * 1.3); border-radius: var(--r-sm); background: var(--bg-overlay); }
 
 /* =====================================================================
    ENTRY MOTION — kit MOTION.md + README §Interactions (batch 3)

@@ -77,7 +77,7 @@ function srcFiles(): Map<string, string> {
 type World = {
   dict: Record<Locale, Flat>;
   src: Map<string, string>;
-  hero: string;               // decommented landing-hero.tsx
+  hero: string;               // decommented hero-intro.tsx, then landing-hero.tsx (`heroOf`)
   css: string;                // globals.css, line endings normalised — §2c reads the headline's set-back rules
   page: string;               // decommented app/page.tsx
   evidence: Evidence;
@@ -90,6 +90,12 @@ type World = {
 };
 
 const HERO = "src/components/home/landing-hero.tsx";
+/** The hero's static intro — the claim, the h1 and the trust rows — moved verbatim out of HERO on 2026-10-09 (R4-J) so the
+ *  journey's loading ghost for `/` can draw it without loading the hero's market card. The two files are one hero here. */
+const INTRO = "src/components/home/hero-intro.tsx";
+/** Between the two files in `World.hero`: a line neither file can hold, so a plant on the joined text splits back cleanly. */
+const JOIN = "\n/* ══ hero-copy: landing-hero.tsx follows ══ */\n";
+const heroOf = (src: Map<string, string>) => (src.get(INTRO) ?? "") + JOIN + (src.get(HERO) ?? "");
 const DICT = "src/lib/i18n-dict.ts";
 
 function load(): World {
@@ -101,7 +107,7 @@ function load(): World {
   return {
     dict: { en: flatten(dict.en as never), sw: flatten(dict.sw as never), zh: flatten(dict.zh as never) },
     src,
-    hero: src.get(HERO) ?? "",
+    hero: heroOf(src),
     css: read("src/app/globals.css"),
     page: src.get("src/app/page.tsx") ?? "",
     evidence: FIRST_LICENSED_EVIDENCE(),
@@ -161,13 +167,13 @@ function firstScreen(hero: string): string {
 
 const CHECKS: Check[] = [
   /* §1 · "first" is gated */
-  { id: "1a", label: "`heroClaimFirst` is read in ONE place in src/, inside the FIRST_LICENSED_EVIDENCE() branch", run: (w) => {
+  { id: "1a", label: "`heroClaimFirst` is read in ONE place in src/, the hero's claim (hero-intro.tsx), inside the FIRST_LICENSED_EVIDENCE() branch", run: (w) => {
     const d: string[] = [];
     let reads = 0;
     for (const [f, s] of w.src) {
       if (f === DICT) continue;
       const n = (s.match(/heroClaimFirst/g) ?? []).length;
-      if (n && f !== HERO) d.push(`${f} reads heroClaimFirst ×${n}`);
+      if (n && f !== INTRO) d.push(`${f} reads heroClaimFirst ×${n}`);
       reads += n;
     }
     if (reads !== 1) d.push(`heroClaimFirst is read ${reads} time(s) in src/, not once`);
@@ -367,7 +373,15 @@ const CHECKS: Check[] = [
 /* ── §6 · the plants — one per check, each on a COPY of the world ─────────────────────────── */
 const cloneDict = (w: World) => ({ en: new Map(w.dict.en), sw: new Map(w.dict.sw), zh: new Map(w.dict.zh) });
 const withDict = (w: World, loc: Locale, k: string, v: string): World => { const dd = cloneDict(w); dd[loc].set(k, v); return { ...w, dict: dd }; };
-const withHero = (w: World, hero: string): World => { const src = new Map(w.src); src.set(HERO, hero); return { ...w, hero, src }; };
+/** A plant on the joined hero text, written back to the two files it came from (`heroOf`'s JOIN splits it again). */
+const withHero = (w: World, hero: string): World => {
+  const src = new Map(w.src);
+  const at = hero.indexOf(JOIN);
+  if (at < 0) throw new Error("hero-copy: a plant removed the line between hero-intro.tsx and landing-hero.tsx");
+  src.set(INTRO, hero.slice(0, at));
+  src.set(HERO, hero.slice(at + JOIN.length));
+  return { ...w, hero, src };
+};
 const inTrust = (w: World, jsx: string) => withHero(w, w.hero.replace('<ul className="kp-hero__trust" role="list">', `<ul className="kp-hero__trust" role="list">${jsx}`));
 
 const PLANTS: Record<string, { note: string; plant: (w: World) => World }[]> = {

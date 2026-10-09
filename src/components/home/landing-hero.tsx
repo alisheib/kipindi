@@ -30,9 +30,11 @@
  *
  * ⚠️ SPACES. Every space between two elements is an explicit `{" "}` or sits inside a dict string:
  * SWC has dropped the whitespace around JSX expressions on production before.
- * ⚠️ `brand.tsx` is a "use client" module. `FiftyWordmark` and `FiftyMark` are rendered here as JSX
- * only — calling a helper exported by a client module from this server component once took every
- * page down while the typecheck and the build stayed green.
+ * ⚠️ `brand.tsx` is a "use client" module. `FiftyMark` (here) and `FiftyWordmark` (the claim, in
+ * `hero-intro.tsx`) are rendered as JSX only — calling a helper exported by a client module from this
+ * server component once took every page down while the typecheck and the build stayed green.
+ * ⭐ THE CLAIM, THE H1 AND THE TRUST ROWS LIVE IN `hero-intro.tsx` (2026-10-09, R4-J), moved verbatim
+ * so the journey's loading ghost for `/` draws the same intro without loading this file.
  *
  * ⭐ ONE DOM, PLACED BY GRID AREAS — never a second copy. Below 1024 the three blocks stack in
  * source order (intro → card → act); from 1024 the intro and the act share the left column and the
@@ -61,13 +63,14 @@ import { MarketCard } from "@/components/markets/market-card";
 // bespoke toggle, and this file is declared to `test:filter-language` because of it — §3.1/§3.2 assert
 // that every declared surface imports the primitive and renders it IN ITS OWN SOURCE.
 import { FilterPill } from "@/components/ui/filter-pill";
-import { FiftyMark, FiftyWordmark, TippingBar } from "@/components/brand";
+import { FiftyMark, TippingBar } from "@/components/brand";
+// The claim, the h1 and the trust rows: the hero's static intro, a module of its own so the loading ghost for `/` can draw
+// it too without loading this file's market card (R4-J, 2026-10-09; `hero-intro.tsx` says why).
+import { Ask, Claim, TrustLines } from "./hero-intro";
 import { fill, formatNumber, formatTzs, formatTzsCompact } from "@/lib/utils";
 import { pickLocalized } from "@/lib/localized";
 import { timeLeftLabel } from "@/lib/markets/time-left";
 import { formatEatDate } from "@/lib/eat-day";
-import { FIRST_LICENSED_EVIDENCE } from "@/lib/support-config";
-import { railListParts } from "@/lib/rail-list";
 import type { Dict, Locale } from "@/lib/i18n-dict";
 import { boardLenses, QUESTION_BOARD_SIZE } from "@/lib/markets/hero";
 import type { BoardLens, HeroFigures, HeroRow } from "@/lib/markets/hero";
@@ -138,127 +141,6 @@ function Inked({ text, yes, no }: { text: string; yes: string; no: string }) {
         ),
       )}
     </>
-  );
-}
-
-/**
- * The claim — "50pick │ Tanzania's first licensed prediction market" (spec §4; R9).
- *
- * ⭐ A CLASS OF ITS OWN, NOT THE SHARED EYEBROW: `.kp-hero__eyebrow` also styles the section labels
- * further down the page, and the claim is the brightest small text on the first screen (`--text`,
- * mono 600), where those are quiet labels. Its tracking joins the one 0.14em list in globals.css.
- * ⭐ THE WORDMARK IS THE LOGO USED AS A LOGO — below 1280 the header shows only the mark, so the name
- * "50pick" reaches the first screen here. From 1280 the header carries the wordmark and this one is
- * hidden (CSS), with its rule.
- * ⛔ "FIRST" IS READ ONLY INSIDE THE EVIDENCE BRANCH BELOW. `test:hero-copy` §1 fails if
- * `heroClaimFirst` is read anywhere else, or if any other string claims a first.
- * The text is stored in sentence case; CSS does the capitals.
- */
-function Claim({ t }: { t: Dict }) {
-  return (
-    <p className="kp-hero__claim">
-      <span className="kp-hero__claim-mark"><FiftyWordmark size={15} tz={false} /></span>{" "}
-      <span className="kp-hero__claim-rule" aria-hidden />{" "}
-      <span className="kp-hero__claim-text">{FIRST_LICENSED_EVIDENCE() ? t.home.heroClaimFirst : t.home.heroClaim}</span>
-    </p>
-  );
-}
-
-/**
- * The h1 — the question in the reader's language: "NDIO au HAPANA?" · "YES or NO?" · "是还是否？"
- * (INHERIT-MANIFEST R7(3)).
- *
- * ⭐ THE SIDE WORDS ARE THE BUTTONS' OWN WORDS BY CONSTRUCTION: `sideWord(t, …, "MARKET")` fills them,
- * so the headline cannot say "NDIYO" while the buttons say "NDIO". Each wears its outcome ink (§B2);
- * the connective ("au" / "or" / "还是") is the quiet word, one weight of the same face.
- * ⭐ TWO GROUPS THAT DO NOT BREAK INSIDE: "NDIO au" and "HAPANA?". The only break is the dict string's
- * own space after the connective (none in zh, which fits one line), so a narrow screen reads two
- * designed lines, never "NDIO" alone over "au HAPANA?".
- * ⛔ No `lang` attribute: since R7(3) the h1 IS in the page's language.
- * ⭐ A LINE THAT OPENS ON A STRAIGHT STEM IS SET BACK BY ITS SIDE BEARING (round 3, 2026-10-08): "NDIO" and "HAPANA"
- * began 3–5px right of the page's edge (0.07em of Sora 800, measured — `.kp-hero__grp[data-stem]` in globals.css), where
- * "YES" and 是 sit on it. Decided from the SIDE WORDS, so it follows the buttons' words and never a locale: a group
- * that can open a line and starts on a measured stem takes `data-stem`, and the group before a set-back one takes
- * `data-stem-next`, which gives the width back at its end — so on one line nothing between the groups moves.
- * `test:hero-copy` §2 pins `{yes}` before `{no}`, each exactly once, in every locale, and §2c the set-back; the
- * fallback below only keeps a malformed string readable.
- */
-/** Capitals whose left edge is a straight stem with the bearing measured on the tiles. ⛔ Measure before adding one. */
-const STEM_START = /^[HN]/u;
-
-function Ask({ t }: { t: Dict }) {
-  const yes = sideWord(t, "YES", "MARKET");
-  const no = sideWord(t, "NO", "MARKET");
-  const s = t.home.heroAsk;
-  const a = s.indexOf("{yes}");
-  const b = s.indexOf("{no}");
-  if (a < 0 || b < a) return <h1 className="kp-hero__headline">{fill(s, { yes, no })}</h1>;
-  const between = s.slice(a + "{yes}".length, b);
-  const conn = between.trimEnd();
-  const gap = between.slice(conn.length);
-  // The first group opens the h1's first line only when nothing is written before it; the second opens a line
-  // whenever the h1 wraps at its gap, so it is set back whenever its word starts on a stem.
-  const lead = s.slice(0, a).trim() === "" && STEM_START.test(yes);
-  const next = STEM_START.test(no);
-  return (
-    <h1 className="kp-hero__headline">
-      {s.slice(0, a)}
-      <span className="kp-hero__grp" data-stem={lead ? "" : undefined} data-stem-next={next ? "" : undefined}>
-        <span className="kp-hero__side" data-side="yes">{yes}</span>
-        <span className="kp-hero__conn">{conn}</span>
-      </span>
-      {gap}
-      <span className="kp-hero__grp" data-stem={next ? "" : undefined}>
-        <span className="kp-hero__side" data-side="no">{no}</span>
-        <span className="kp-hero__q">{s.slice(b + "{no}".length)}</span>
-      </span>
-    </h1>
-  );
-}
-
-/**
- * The trust rows — ONE list, the same for a visitor and a player, above the featured card.
- *
- *   row 1 · 18+ · "Licensed by the Gaming Board of Tanzania."
- *   row 2 · "Deposit and withdraw with M-Pesa, Airtel Money, HaloPesa or Mixx by Yas."
- *
- * ⭐ ROW 1 IS THE FOOTER'S OWN WORDS. `footer.eighteenPlus` and `footer.licensedByGbt` are assessed
- * keys, reused verbatim. ⛔ No helpline (the owner's ruling of 2026-10-06). The gambling-warning
- * SENTENCE is not here (R7(2)): the footer keeps it on every page. The licence NUMBER stays in the
- * footer too (K39).
- * ⭐ ROW 2 NAMES ONLY WALLETS THAT PAY OUT (R8(6)). `rails` is computed on the server from the money
- * path's own definitions (`server/payout-rails.ts`) and joined by `Intl.ListFormat` in the reader's
- * language (`rail-list.ts`): the names are never typed into the dictionary, and a rail an officer has
- * paused is not named while it is paused. No rails → no row, never "Deposit and withdraw with ."
- * ⭐ WHY ABOVE THE CARD: on a phone the rows after the card and the CTAs began below the first screen,
- * so 18+ and the licence never reached it (K29, P15). In the SOURCE, not by CSS
- * `order` — keyboard and screen-reader order must match the screen (WCAG 1.3.2).
- * ⛔ No `aria-label` on the roundel: "18+" is its text, and ARIA prohibits a label on a generic span.
- * `role="list"`: WebKit drops the list role from a `ul` styled `list-style: none` (VoiceOver on iPhone).
- * ⚠️ `ul.kp-hero__trust` is read by the landing gate (V8's text map, V21) and by capture.mjs.
- */
-function TrustLines({ t, locale, rails }: { t: Dict; locale: Locale; rails: readonly string[] }) {
-  const parts = railListParts(locale, rails);
-  const at = t.home.heroRails.indexOf("{rails}");
-  const before = at < 0 ? t.home.heroRails : t.home.heroRails.slice(0, at);
-  const after = at < 0 ? "" : t.home.heroRails.slice(at + "{rails}".length);
-  return (
-    <ul className="kp-hero__trust" role="list">
-      <li>
-        <span className="kp-rg__18">{t.footer.eighteenPlus}</span>
-        <span>{t.footer.licensedByGbt}</span>
-      </li>
-      {parts.length > 0 && (
-        <li>
-          <span className="kp-hero__trust-glyph" aria-hidden><I.mobileMoney s={16} /></span>
-          <span>
-            {before}
-            {parts.map((p, i) => (p.rail ? <span key={i} className="kp-hero__rail">{p.text}</span> : p.text))}
-            {after}
-          </span>
-        </li>
-      )}
-    </ul>
   );
 }
 

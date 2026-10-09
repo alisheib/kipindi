@@ -7,10 +7,12 @@ import { SUPPORT_EMAIL, SUPPORT_PHONE, SUPPORT_PHONE_TEL } from "@/lib/server/su
 // tabs) come from ONE client module, `./shell-lazy`, which declares each with `next/dynamic` (the Vodacom plan S6,
 // WP6c; VODACOM-PLAN §0h point 20). They are rendered below under the names they always had, where they always were,
 // with the same props, each in the Suspense boundary it always had, which is now that part's only one (next/dynamic
-// adds none): keep every part the one child of its own. A part whose code never arrives is left out rather than taking
-// the page down (`nothingIfLost`, there). ⛔ NEVER A REACT LAZY HERE: this is a SERVER component, and its own
-// `React.lazy` bindings kept nothing out of the first load (production and a local build, 2026-10-03): every module
-// they named rode in the scripts every page loads first, for every visitor. `test:journey-shell` §12 holds this.
+// adds none): keep every part the one child of its own — save the journey's header and tabs, which stand in none, so
+// that the page's first HTML draws them (R4-J, 2026-10-09; the note at their mount). A part whose code never arrives is
+// left out rather than taking the page down (`nothingIfLost`, there). ⛔ NEVER A REACT LAZY HERE: this is a SERVER
+// component, and its own `React.lazy` bindings kept nothing out of the first load (production and a local build,
+// 2026-10-03): every module they named rode in the scripts every page loads first, for every visitor.
+// `test:journey-shell` §12 holds this.
 import {
   LazyPullToRefresh, LazyNotifyPoller, LazyEventStream, LazyInstallInvite, LazyConsentPrompt, LazyChannelsPanel,
   LazyJourneyFlag, LazyWinCelebration, LazySellResultHost, LazyJourneyTopBar, LazyJourneyTabs,
@@ -379,13 +381,33 @@ export async function AppShell({ children }: { children: React.ReactNode }) {
       <Suspense fallback={null}><NavProgress /></Suspense>
       {/* ⭐ THE JOURNEY'S HEADER AND TABS (Vodacom plan S6, WP6b), for a request the resolver shows the journey to and
           for no other: every other request gets today's bar and rail with today's props, in the two else arms. Each
-          journey arm is lazy, a `next/dynamic` part of `./shell-lazy` (WP6c; see the note at its import), and the
-          server still renders it into the page, so a fallback shows only while its code is on the way — a beat of a
-          streamed page, or a switch into the journey mid-visit
-          (a preview pass turned on). The header's fallback is therefore the bar's own empty box, with its height, its
-          panel and its border, so nothing below it moves; the tabs need none, because the rail is anchored to the
-          viewport and takes no room in the page. */}
-      {journeyShown ? <Suspense fallback={<div aria-hidden="true" className="kp-jhdr" />}><LazyJourneyTopBar user={journeyUser} onBreak={promoSuppressed} proposalsState={proposalsState} inviteVisible={inviteVisible} invitePaid={invitePaid} /></Suspense> : <TopAppBar user={topUser} proposalsState={proposalsState} inviteVisible={inviteVisible} invitePaid={invitePaid} />}
+          journey arm is lazy, a `next/dynamic` part of `./shell-lazy` (WP6c; see the note at its import): its CODE is a
+          chunk of its own, so a classic visitor never downloads it, and the server renders its MARKUP into the page.
+          ⛔ AND THAT MARKUP IS PART OF THE PAGE'S FIRST HTML, IN NO SUSPENSE BOUNDARY (2026-10-09, the visual pass round 4,
+          R4-J; E36). Each arm was the one child of its own boundary, the header's over the bar's empty box. React 19.2's
+          server renderer OUTLINES a finished boundary of more than 500 bytes once the shell it stands in passes 12,800
+          (`flushedByteSize = request.byteSize`, then `flushedByteSize + boundary.byteSize > progressiveChunkSize` and
+          `isEligibleForOutlining`, react-dom-server, in node_modules/next/dist/compiled): the fallback goes into the HTML
+          where the part stands, and the part itself goes after the rest of the shell, in a hidden div that only React's
+          inline `$RC` script moves into place, on an animation frame and at most every 300ms (`$RC`/`$RV` in the same
+          file). The count is the WHOLE shell's, wherever the boundary stands in it, so on all 16 Slow 3G mid-load tiles
+          (277–342) the header band was the empty box, one colour (5,2,79) from y0 to y53, and the rail was not drawn at
+          all (the page colour, 8,0,41, over y716–779), while the probe found both in the document; and with scripting
+          off they never appear. Rendered bare, both are drawn where they stand by the first paint
+          (`test:visual-pass-r4j` §1 proves the outlining on React's own server renderer).
+          ⭐ What the boundaries kept back, and what keeps it now: the capsule's FIGURE for a reader who hid balances (a
+          choice in the browser's storage the server cannot read) — the journey capsule is drawn masked until it is read
+          (`WalletBalanceCaptioned`); and the bell, mounted only once the browser says where it shows — its still twin
+          holds the slot (`BellStill`, journey-top-bar.tsx). The empty box's other job, holding the bar's height while
+          its code arrived, has nothing left to do: a document's first HTML holds the bar itself, and a switch into the
+          journey mid-visit is a router transition, which keeps the bar it had until the new one is ready.
+          ⚠️ What the boundaries also did, and what that costs now: a part with no boundary of its own hydrates with the
+          page, so the page's hydration also waits for the header's and the rail's chunks — each a few kilobytes, named
+          in the page's head (next/dynamic's PreloadChunks) and fetched beside the page's own scripts. And a chunk that
+          never arrives leaves its part out (`nothingIfLost`) as before, but the server's markup then has no client
+          twin, so React renders the whole page again in the browser, without that part, instead of that part alone.
+          Classic visitors are untouched: these two arms are the journey's. */}
+      {journeyShown ? <LazyJourneyTopBar user={journeyUser} onBreak={promoSuppressed} proposalsState={proposalsState} inviteVisible={inviteVisible} invitePaid={invitePaid} /> : <TopAppBar user={topUser} proposalsState={proposalsState} inviteVisible={inviteVisible} invitePaid={invitePaid} />}
       {/* ⭐ THE PREVIEW MARKER — first under the bar, so whoever holds this browser knows at once that they are
           looking at pages players do not see yet, and has the way out on the same line. */}
       {journeyPreview && <PreviewMarker label={t.journey.previewMarker} exit={t.journey.previewExit} />}
@@ -483,7 +505,7 @@ export async function AppShell({ children }: { children: React.ReactNode }) {
           the centre slot is a money-in control and `/wallet/deposit` REFUSES a held wallet, so
           that slot becomes the Wallet door instead. Same input, same rule, two surfaces — read
           from the one place the wallet's status is resolved (`topUser` above). */}
-      {journeyShown ? <Suspense fallback={null}><LazyJourneyTabs userId={session?.userId ?? null} /></Suspense> : <BottomNav isAuthed={!!session} proposalsState={proposalsState} inviteVisible={inviteVisible} walletHeld={!!topUser.walletHeld} />}
+      {journeyShown ? <LazyJourneyTabs userId={session?.userId ?? null} /> : <BottomNav isAuthed={!!session} proposalsState={proposalsState} inviteVisible={inviteVisible} walletHeld={!!topUser.walletHeld} />}
       <RealityCheckHost enabled={!!session} intervalMin={realityCheckMin} userId={session?.userId ?? null} />
       {/* 🔴 SESSION-GATED, like its neighbours on the lines above and below (audit F-08).
           It was the only one of the three that was not, and the omission had no upper bound.

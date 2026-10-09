@@ -53,6 +53,7 @@ import { SOCIAL, SOCIAL_LIVE } from "@/lib/social";
 import { SOCIAL_MARK } from "@/components/ui/social-marks";
 import { isCommitSurface, isJourneySurface } from "@/lib/surfaces";
 import { useJourneyOn } from "@/lib/journey/journey-on";
+import { useNotFoundShown } from "@/lib/not-found-mark";
 import { useInvitationSlot } from "@/lib/invitation-slot";
 import { useExitPhase } from "@/components/ui/modal";
 import { useT } from "@/lib/i18n";
@@ -195,7 +196,9 @@ export function ChannelsPanel({ promoSuppressed }: { promoSuppressed: boolean })
      below, like the route rule beside it; the visit timer never reads the path. For every other viewer `journeyOn`
      is false, so both read exactly as they did. */
   const journeyOn = useJourneyOn();
-  const journeyHidden = journeyOn && isJourneySurface(pathname);
+  // ⭐ R4-J (2026-10-09) · a not-found page is no journey page, whatever its path (`lib/not-found-mark.ts`).
+  const notFoundShown = useNotFoundShown();
+  const journeyHidden = journeyOn && isJourneySurface(pathname) && !notFoundShown;
   const [open, setOpen] = useState(false);
   const [topPx, setTopPx] = useState(TOP_FALLBACK);
   const panelRef = useRef<HTMLDivElement>(null);

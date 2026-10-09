@@ -1,0 +1,180 @@
+/**
+ * THE JOURNEY'S LOADING STATE, PAGE BY PAGE (2026-10-09, the Vodacom visual pass round 4, R4-J; E38) — what the ROOT
+ * loading file draws for a journey reader: the ghost of the page being opened, in that page's own column, so the page
+ * lands where its ghost stood.
+ *
+ * ⭐ WHY THE ROOT'S LOADING STATE IS THE ONE THAT SHOWS. The root loading file wraps every page below the root layout,
+ * and it is the one a reader meets first: on a document load (React 19.2 sends a finished page AFTER the shell, so the
+ * shell's fallback is what paints first; AppShell's note at the journey header has the mechanism), and on every move to
+ * a page whose loading state the browser does not hold yet — always on a dev server, and on production until the link's
+ * prefetch has landed. It was the generic SectionLoader for everybody: a 360px box with the logo, measured on the Slow
+ * 3G tiles at y253–612 on a phone (277 280) and x32–1247 × y209–568 at 1280 (290 293 296) — where /positions and
+ * /account land their h1 at y206–228 on a phone (278 281) and their column at x132–1147, h1 y162, at 1280 (294 297).
+ * And /positions never showed the Tiketi zangu ghost its own loading file draws: the root's box stood in front of it.
+ *
+ * ⭐ WHAT EACH PAGE GETS, picked in the browser by the path (`RoutePick`: the root's loading element is drawn once, with
+ * the document, and kept), every node drawn here on the server:
+ *   /           the hero's own band and grid, its claim, h1, lede and trust rows set in the page's own words (from
+ *               `hero-intro.tsx`, the very components the page renders) but not shown — each line a bar — so every
+ *               block stands where the page puts it in every language; the featured card and the act as blocks.
+ *               ⛔ Not shown, because the hero's blocks rise in as they arrive (`kp-rise`): readable words in the
+ *               ghost would vanish and fade back in, identical, the moment the page lands.
+ *   /updown     Juu/Chini's ghost, `updown/loading.tsx` itself (one drawing for both shells, and the tab's page), so a
+ *               tap on the tab shows the board it opens, not a box.
+ *   /positions  Tiketi zangu's ghost, the one `positions/loading.tsx` draws for a journey reader, so the two are one.
+ *   /account    the hub's column, h1 and identity card (a guest's prompt instead, chosen by the header's own sign-in
+ *               pills), and its cards cut into the page's two columns by the page's own rule (`hubColumnCut`), for the
+ *               rows a plain signed-in player is shown (a guest's, for a guest).
+ *   the journey's other pages — the ones `surfaces.ts` lists as the journey's own (`JOURNEY_ROUTE`): a question
+ *               (`/markets/<id>`, the one pattern), Tiketi zangu's Up & Down list, the deposit screen and the provider's
+ *               return — each its own loading file itself, which already draws a journey reader's ghost where it differs
+ *               (the Up & Down list's), so the root's state and the page's are one drawing.
+ *   any other   the brand's spinner in a block as tall as the classic box, and no frame: a framed box promises a
+ *               column, and the pages behind this branch use several; each page's own loading file (if it has one)
+ *               draws its column as soon as the page starts to arrive.
+ * ⚠️ THE COST: every node is drawn into this element's data, which a journey document carries whichever page it opens —
+ * a few kilobytes before compression, so the set stays the four tabs and the journey's own pages.
+ * ⛔ A JOURNEY READER ONLY. `app/loading.tsx` returns this from its journey arm, which asks the shell's own two answers
+ * (the console and the opt-out page are never the journey; the per-request resolver); everybody else is served the
+ * classic SectionLoader, byte for byte. `/account` keeps no loading file of its own (A3): its ghost is here, behind the
+ * same answer, so nothing streams to a classic visitor before the hub's gate.
+ * `test:visual-pass-r4j` §3 holds every part of this file to the page it stands for.
+ */
+import type { ReactNode } from "react";
+import { BrandSpinner } from "@/components/brand";
+import { PageContainer } from "@/components/layout/page-container";
+import { RoutePick } from "@/components/ui/route-pick";
+import { TicketsGhost } from "@/components/journey/tickets/tickets-ghost";
+import UpDownLoading from "@/app/updown/loading";
+import UpDownHistoryLoading from "@/app/updown/history/loading";
+import MarketDetailLoading from "@/app/markets/[id]/loading";
+import DepositLoading from "@/app/wallet/deposit/loading";
+import DepositReturnLoading from "@/app/wallet/deposit/return/loading";
+import { Ask, Claim, TrustLines } from "@/components/home/hero-intro";
+import { hubColumnCut, hubRowsFor, wideRowCount, type HubGroup, type HubMember, type HubRow } from "@/components/journey/account/hub-rows";
+import { heroRailNames } from "@/lib/server/payout-rails";
+import type { Dict, Locale } from "@/lib/i18n-dict";
+
+export function JourneyRouteGhost({ t, locale }: { t: Dict; locale: Locale }) {
+  return (
+    <RoutePick
+      routes={{
+        "/": <HomeGhost t={t} locale={locale} />,
+        "/updown": <UpDownLoading />,
+        "/positions": <TicketsGhost t={t} />,
+        "/account": <AccountGhost t={t} />,
+        "/updown/history": <UpDownHistoryLoading />,
+        "/wallet/deposit": <DepositLoading />,
+        "/wallet/deposit/return": <DepositReturnLoading />,
+      }}
+      patterns={[["^/markets/[^/]+$", <MarketDetailLoading />]]}
+      other={<AnyPageGhost />}
+    />
+  );
+}
+
+/**
+ * `/` — LandingHero's band, grid and intro (`landing-hero.tsx`), the words set but not shown. The lede is the page's two
+ * spans as the page writes them; the trust rows name every rail that pays out (the page drops a paused one: a row a word
+ * shorter, below the h1). The featured card is the live card's height (`--mcard-h`) and the act one control tall — enough
+ * that from 1024 the left column stays the taller one, as on the page, so the intro sits on the band's padding there too.
+ */
+function HomeGhost({ t, locale }: { t: Dict; locale: Locale }) {
+  return (
+    <section className="kp-hero" aria-hidden="true">
+      <div className="kp-hero__inner kp-hghost">
+        <div className="kp-hero__intro">
+          <hgroup className="kp-hero__lockup">
+            <Claim t={t} />
+            <Ask t={t} />
+          </hgroup>
+          <p className="kp-hero__lede">
+            <span className="kp-hero__lede-l">{t.home.heroLedeAct}</span>{" "}
+            <span className="kp-hero__lede-l kp-hero__lede-l--pay">{t.home.heroLedePay}</span>
+          </p>
+          <TrustLines t={t} locale={locale} rails={heroRailNames(null)} />
+        </div>
+        <div className="kp-hero__card">
+          <div className="kp-hghost__card kp-shimmer-track" />
+        </div>
+        <div className="kp-hero__act">
+          <div className="kp-hghost__act kp-shimmer-track" />
+        </div>
+      </div>
+    </section>
+  );
+}
+
+/**
+ * The rows a plain signed-in player is shown (tiles 281 297: the wallet and withdraw, play, the three safety rows, invite
+ * and propose, profile and fairness, help and notifications, the settings, the agent door). Only the SHAPE is read from
+ * it — which cards, how many rows, which rows hide at which width — never a name, a figure or a door.
+ */
+const A_PLAYER: HubMember = {
+  signedIn: true, userId: "", name: "", initials: "", phone: "", balance: null, walletHeld: false, kycOffered: false,
+  agentInStanding: false, proposalsState: "COMING_SOON",
+  doors: { inviteVisible: true, invitePaid: false, agentDoorVisible: true, proposalsVisible: true, staffConsole: false },
+};
+
+/** `/account` — `app/account/page.tsx`'s column, hub, h1 and cards, each card cut where the page cuts it. */
+function AccountGhost({ t }: { t: Dict }) {
+  return (
+    <PageContainer tier="reading">
+      <div className="kp-hub">
+        <h1 className="font-display text-title-lg font-bold leading-tight text-text">{t.journey.tabAccount}</h1>
+        <div className="kp-hub__id kp-hubghost--member" aria-hidden="true">
+          <span className="kp-hub__initials kp-shimmer-track" />
+          <span className="kp-hub__who">
+            <span className="kp-hubghost__name" />
+            <span className="kp-hubghost__phone" />
+          </span>
+        </div>
+        <p className="kp-hub__prompt kp-hubghost--guest">{t.journey.hubGuestPrompt}</p>
+        <HubGhostCards groups={hubRowsFor(A_PLAYER)} who="member" />
+        <HubGhostCards groups={hubRowsFor({ signedIn: false })} who="guest" />
+      </div>
+    </PageContainer>
+  );
+}
+
+/** The hub's grid for one kind of reader: the page's two columns, cut by `hubColumnCut` over `wideRowCount`. */
+function HubGhostCards({ groups, who }: { groups: HubGroup[]; who: "member" | "guest" }) {
+  const cut = hubColumnCut(groups.map((g) => wideRowCount(g.rows)));
+  const card = (g: HubGroup) => (
+    <ul key={g.key} className="kp-hub__card">
+      {g.rows.map((row) => <HubGhostRow key={row.id} row={row} />)}
+    </ul>
+  );
+  return (
+    <div className={`kp-hub__grid kp-hubghost--${who}`} aria-hidden="true">
+      <div className="kp-hub__col">{groups.slice(0, cut).map(card)}</div>
+      <div className="kp-hub__col">{groups.slice(cut).map(card)}</div>
+    </div>
+  );
+}
+
+/** A row as the page draws it: the hub row's own box (the 56px rung), a glyph's place and a label's; the language row
+ *  hidden from 1024 and the card-size row from 640, as their own `<li>`s hide (`language-row.tsx`, `card-size-row.tsx`).
+ *  The bars sit straight in the row (no glyph or text wrapper): the row's height is its rung's, whatever is in it. */
+function HubGhostRow({ row }: { row: HubRow }) {
+  const hide = row.kind === "language" ? "lg:hidden" : row.kind === "cardSize" ? "sm:hidden" : undefined;
+  return (
+    <li className={hide}>
+      <div className="kp-hub__row">
+        <span className="kp-hubghost__glyph" />
+        <span className="kp-hubghost__label" />
+      </div>
+    </li>
+  );
+}
+
+/** Any other page: the classic loader's spinner in a box as tall as the classic one, without the box's frame. */
+function AnyPageGhost(): ReactNode {
+  return (
+    <PageContainer tier="board">
+      <div className="grid h-[360px] place-items-center">
+        <BrandSpinner size={56} />
+      </div>
+    </PageContainer>
+  );
+}

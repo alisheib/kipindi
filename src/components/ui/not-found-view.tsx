@@ -4,6 +4,8 @@ import { FiftyMark } from "@/components/brand";
 import { BrandTopo } from "@/components/brand-topo";
 import { hangCjkMarks } from "@/lib/cjk-marks";
 import type { Locale } from "@/lib/i18n-dict";
+// ⭐ R4-J (2026-10-09): every not-found answer says so to what stands outside the page (`lib/not-found-mark.ts`).
+import { NotFoundMark } from "@/components/ui/not-found-mark";
 
 /**
  * ⭐ ONE NOT-FOUND, EVERYWHERE IN THE APP (2026-10-09, the visual pass's round 4, E42–E47 E51; tiles 345–398).
@@ -87,6 +89,10 @@ export function NotFoundView({
     // A 404 is "not found", not an error — so the badge is royal/info (not the RouteError rose alert tint), and there is
     // no gold here (404 isn't earned money).
     <div className="kp-shortpage relative mx-auto flex min-h-[80svh] max-w-form flex-col items-center justify-center overflow-hidden px-3 py-10 text-center">
+      {/* ⭐ THE NOT-FOUND MARK (R4-J, 2026-10-09): an empty, hidden span and its announcement — the Needle, the chat
+          bubble and the channels panel stop standing down for a question page that is not there, the journey's chrome
+          lights no tab and stops its unread polls (a Server Action posted to a not-found address is answered 404). */}
+      <NotFoundMark />
       <div aria-hidden className="kp-nf-topo">
         <div className="kp-nf-topo__x">
           <BrandTopo id="notfound-topo" opacity={0.09} />

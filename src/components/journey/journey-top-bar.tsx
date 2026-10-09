@@ -37,7 +37,8 @@
  * ── ⛔ ONE UNREAD POLLER PER WIDTH ───────────────────────────────────────────────────────────────────────────────
  * The bell polls on its own every 30 s, and so does the Akaunti tab's dot. The bell shows from 1024 and the rail
  * below it, so the bell is MOUNTED only where it shows (`pollersAt`), never merely hidden: a hidden bell still asks.
- * Its slot keeps its width, so the cluster does not move when the bell arrives just after hydration.
+ * Its slot keeps its width, so the cluster does not move when the bell arrives just after hydration — and since R4-J
+ * (2026-10-09, E36) the slot is not empty until then: the server draws the bell's still twin there (`BellStill`).
  *
  * ── THE DESTINATIONS FROM 1024 ───────────────────────────────────────────────────────────────────────────────────
  * The kit's section language, not the canvas's pills (§0h point 7): an underline says "you are here" on a
@@ -60,10 +61,39 @@ import { useT } from "@/lib/i18n";
 import { JOURNEY_TABS, activeTabFor, tabAriaCurrent, tabLabel } from "@/lib/nav/active-tab";
 import { journeyHeaderState } from "@/lib/journey/header-state";
 import { pollersAt, useLgUp } from "@/lib/journey/one-poller";
+import { useNotFoundShown } from "@/lib/not-found-mark";
 import type { ProposalsState } from "@/lib/server/proposals-config";
 
 /** One class for every destination, link or button: a guest's Tiketi zangu must not read as another kind of thing. */
 const JNAV = "kp-jnav__link";
+
+/**
+ * ⭐ THE BELL BEFORE IT RINGS (2026-10-09, the visual pass round 4, R4-J; E36). The live bell (`NotificationsPanel`) is
+ * mounted only where it shows and only once the browser has said so (`pollersAt`: a mounted bell polls), so the
+ * server's HTML held an EMPTY slot at 1280 — the header painted without its bell until the page's scripts ran, on a
+ * slow network for seconds. This is the bell's own box and glyph — the same wrapper, the same 40px round control, the
+ * same 20px glyph in the same span — drawn by the server, as a plain link to the notifications page: before the
+ * scripts arrive it works the way the page's other links do, and the live bell takes its place, pixel for pixel, the
+ * moment it may mount. It is also what a not-found page shows (no poll there: `lib/not-found-mark.ts`), where the
+ * live bell's Server Action could only be answered 404.
+ * ⚠️ `h-[40px] w-[40px]` is the live bell's `h-7 w-7` written as what it renders (the spacing scale is overridden in
+ * tailwind.config.ts: `7` IS 40px), so `test:ui-consistency`'s numeric-size rule has nothing new to baseline.
+ */
+function BellStill({ label }: { label: string }) {
+  return (
+    <div className="relative z-10">
+      <Link
+        href="/notifications"
+        aria-label={label}
+        className="relative inline-flex h-[40px] w-[40px] items-center justify-center rounded-full transition-colors text-text-subtle hover:text-text hover:bg-bg-overlay/40"
+      >
+        <span aria-hidden className="inline-flex">
+          <I.bell s={20} />
+        </span>
+      </Link>
+    </div>
+  );
+}
 
 export function JourneyTopBar({
   user,
@@ -81,14 +111,18 @@ export function JourneyTopBar({
   inviteVisible?: boolean;
   invitePaid?: boolean;
 }) {
-  const pathname = usePathname();
+  const route = usePathname();
   const { t } = useT();
   // The live figure, as the classic bar feeds its capsule: a deposit landing over SSE moves it with no navigation.
   const liveBalance = useLiveBalance(user.balance ?? 0);
   const pollers = pollersAt(useLgUp());
+  // ⭐ R4-J (2026-10-09) · A NOT-FOUND PAGE IS NO PAGE OF OURS, whatever its address says (`lib/not-found-mark.ts`): the
+  // bar reads no path there — no destination lit (the market not-found lit Maswali) — and mounts no bell.
+  const notFoundShown = useNotFoundShown();
+  const pathname = notFoundShown ? null : route;
   const [sheetOpen, setSheetOpen] = useState(false);
   // The bar outlives the page: a sheet left open would wait over the page the reader went to.
-  useEffect(() => { setSheetOpen(false); }, [pathname]);
+  useEffect(() => { setSheetOpen(false); }, [route]);
   const state = journeyHeaderState({
     isAuthed: user.isAuthed,
     balance: user.balance,
@@ -170,7 +204,7 @@ export function JourneyTopBar({
           <span className="hidden lg:inline-flex"><LanguageMenu /></span>
           {user.isAuthed && (
             <>
-              <span className="hidden lg:inline-flex kp-jhdr__bell">{pollers.bell && <NotificationsPanel />}</span>
+              <span className="hidden lg:inline-flex kp-jhdr__bell">{pollers.bell && !notFoundShown ? <NotificationsPanel /> : <BellStill label={t.common.notifications} />}</span>
               <span className="hidden lg:inline-flex">
                 <AvatarMenu
                   initials={user.initials}

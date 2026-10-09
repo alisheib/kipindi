@@ -28,6 +28,7 @@ import { usePathname } from "next/navigation";
 import { getPrefs, type NeedleTheme } from "@/lib/haptics";
 import { isMoneySurface, isJourneySurface } from "@/lib/surfaces";
 import { useJourneyOn } from "@/lib/journey/journey-on";
+import { useNotFoundShown } from "@/lib/not-found-mark";
 import { PEPSI_PATHS, PEPSI_TRANSFORM } from "@/lib/needle-art";
 import {
   bubbleInk, censusPad, decideRest, glideFrame, glowReach, hugs, newGlideClock, paintsNothing, railRange, reseat, restReach,
@@ -1007,6 +1008,9 @@ export function Needle() {
   const pathname = usePathname();
   // ⭐ S6 WP7 · the shell's answer, through the flag it raises: false for everybody else, and on the server.
   const journeyOn = useJourneyOn();
+  // ⭐ R4-J (2026-10-09) · a not-found page is no journey page, whatever its path (`lib/not-found-mark.ts`): the market
+  // not-found answers on a question's path and has no bet panel to stand down for (R4-K's ruling).
+  const notFoundShown = useNotFoundShown();
   const [hiddenPref, setHiddenPref] = useState(false);
   /* ⭐ SSR renders the HOUSE disc, always — never the persisted value, which lives in
      localStorage and is unreadable on the server. Reading it after mount is what keeps
@@ -1049,12 +1053,12 @@ export function Needle() {
   // journey's own pages (S6 WP7: the extra term is false for everybody else, so their gate is today's).
   // Written to a ref so the engine picks it up even if it finishes mounting after this runs.
   useEffect(() => {
-    const suppressed = hiddenPref || isMoneySurface(pathname) || (journeyOn && isJourneySurface(pathname));
+    const suppressed = hiddenPref || isMoneySurface(pathname) || (journeyOn && isJourneySurface(pathname) && !notFoundShown);
     wantSuppressed.current = suppressed;
     apiRef.current?.setSuppressed(suppressed);
     // A new page is new content under the rail (E-400 ①).
     apiRef.current?.recheckRest();
-  }, [hiddenPref, pathname, journeyOn]);
+  }, [hiddenPref, pathname, journeyOn, notFoundShown]);
 
   return <div id="needle-root" ref={hostRef} data-needle-theme={theme} />;
 }

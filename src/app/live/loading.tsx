@@ -1,5 +1,6 @@
 import { getServerT } from "@/lib/i18n-server";
 import { PageContainer } from "@/components/layout/page-container";
+import { QUERY_SEARCH_BAND_CLASS } from "@/components/ui/query-bar";
 
 /**
  * `/live` loading skeleton — the ghost a player sees after tapping "Mubashara".
@@ -90,10 +91,15 @@ export default async function LiveLoading() {
         </header>
       </div>
 
-      {/* Search — the real box and its echo row, by class rather than by measurement. */}
-      <div aria-hidden className="search-box-wrap">
-        <div className="kp-shimmer-track h-[calc(var(--h-input)+2px)] rounded-lg border border-border bg-bg-inset" />
-        <p className="mt-1.5 min-h-[17px]" />
+      {/* Search — the real box and its echo row, by class rather than by measurement.
+          ⭐ IN THE PAGE'S SEARCH BAND (2026-10-09, the visual pass round 4, R4-J at R4-H's request): the page wraps its
+          box in `QUERY_SEARCH_BAND_CLASS` (pulse-grid.tsx) — 10px over the box, and the echo row lying 15px into the gap
+          below it — so the ghost wears the same band, imported, never retyped: the wall lands where the ghost's stood. */}
+      <div className={QUERY_SEARCH_BAND_CLASS} aria-hidden>
+        <div className="search-box-wrap">
+          <div className="kp-shimmer-track h-[calc(var(--h-input)+2px)] rounded-lg border border-border bg-bg-inset" />
+          <p className="mt-1.5 min-h-[17px]" />
+        </div>
       </div>
 
       {/* The wall. 180px is the PulseCard, measured at 178–183 on production across four widths

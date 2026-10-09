@@ -467,7 +467,18 @@ export function WalletBalanceCaptioned({ balance, held = false, onBreak = false 
   const [open, setOpen] = useState(false);
   const capsuleRef = useRef<HTMLButtonElement>(null);
   const { display, flashing, delta } = useBalanceRoll(balance);
-  const hidden = useCashHidden();
+  /* ⭐ MASKED UNTIL THE READER'S CHOICE IS READ (2026-10-09, the visual pass round 4, R4-J; E36). "Hide balances" lives
+     in the browser's storage (`useCashHidden`), so the server cannot know it, and since R4-J the journey header is in the
+     page's FIRST HTML — painted before any script runs, on a slow network for seconds. Drawn from the server's answer
+     alone, the capsule would show the real figure to a reader who hid it, for as long as the page's scripts take. So the
+     server's render, and the hydration that matches it, draw the mask; the figure arrives with the first render after
+     hydration, in the same render as the stored choice (both are set by this component's effects, in one batch). The
+     box is the wider of figure and mask (D31), so nothing moves when it does. ⛔ Journey only: the classic pill and every
+     `Cash` keep their own reading of the choice. */
+  const chosen = useCashHidden();
+  const [choiceRead, setChoiceRead] = useState(false);
+  useEffect(() => { setChoiceRead(true); }, []);
+  const hidden = chosen || !choiceRead;
   // A frozen wallet keeps its capsule and says so in the caption ("Salio · limegandishwa"), beside a lock.
   const caption = held ? t.common.balanceFrozen : t.journey.balanceCaption;
   // The TARGET, not the rolling value: the reserved box and the name are final from the first frame.

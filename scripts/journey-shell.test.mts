@@ -67,8 +67,8 @@
  *      script never passes) and inside `red:all` (which marks its harnesses with KP_RED_ALL); and the stylesheet holds
  *      no red-run witness, so a mutation a hard kill left behind fails here, by name.
  *   §11 THE OVERLAYS (WP7) — what the flag is for. On the pages the journey re-draws a journey viewer meets no Needle,
- *      no channels panel and no chat bubble: each stand-down is ONE term, `journeyOn && isJourneySurface(pathname)`,
- *      joined to the rule the overlay already had (today's half verbatim, so with the flag down the rule IS today's) or
+ *      no channels panel and no chat bubble: each stand-down is ONE term, `journeyOn && isJourneySurface(pathname)`
+ *      (`&& !notFoundShown` since R4-J: a not-found page on a question's path is no journey page), joined to the rule the overlay already had (today's half verbatim, so with the flag down the rule IS today's) or
  *      a guard straight after the pinned line it follows; each overlay reads the flag once and asks the one list (§2)
  *      once; the chat keeps its conversation; the HIDE_ON patterns other gates pin are unchanged; the analytics consent
  *      prompt is still asked of everybody; the email-verify bar — gated on the same per-request answer (VODACOM-PLAN
@@ -77,7 +77,9 @@
  *   §12 THE SHELL'S DEFERRED PARTS (WP6c, VODACOM-PLAN §0h point 20) — AppShell is a server component, and its own
  *      `React.lazy` split nothing: every module it named rode in every page's first load. So every lazily loaded part
  *      AppShell renders comes from ONE client module, `shell-lazy.tsx`, under the name it always had, each the one child
- *      of the Suspense boundary it always had; AppShell imports none of the parts' own modules and no React `lazy`, and
+ *      of the Suspense boundary it always had — save the journey's header and tabs, which since R4-J (2026-10-09, E36)
+ *      stand in none, so the page's first HTML draws them (12.shell.bare); AppShell imports none of the parts' own
+ *      modules and no React `lazy`, and
  *      imports the offline banner statically (its job is a connection that fails); that module is "use client", imports
  *      nothing statically but `next/dynamic`, declares exactly the parts table (each part one line, server render on, no
  *      option object, its loader ending in the lost-chunk guard, which takes a ChunkLoadError alone) and only AppShell
@@ -251,6 +253,14 @@ const SHELL_PARTS: ReadonlyArray<readonly [string, string, string]> = [
   ["LazyJourneyTopBar", "@/components/journey/journey-top-bar", "JourneyTopBar"],
   ["LazyJourneyTabs", "@/components/journey/journey-tabs", "JourneyTabs"],
 ];
+/**
+ * The parts AppShell renders in NO Suspense boundary of their own: the journey's header and tabs (2026-10-09, the visual
+ * pass round 4, R4-J; E36). In a boundary React 19.2 outlined them — their fallback in the page's first HTML (the bar's
+ * empty box; nothing for the rail) and the part itself after the shell, moved in by an inline script — so on all 16
+ * Slow 3G mid-load tiles the header band was empty and the rail missing. Bare, they are drawn by the first paint; what
+ * that costs (the page's hydration waits for their chunks too) is written at their mount in AppShell.
+ */
+const BARE_PARTS: readonly string[] = ["LazyJourneyTopBar", "LazyJourneyTabs"];
 /** A part's one line in the shell's lazy module, exactly as it is written there. */
 const partLine = ([binding, spec, symbol]: readonly [string, string, string]) =>
   `export const ${binding} = dynamic(() => import("${spec}").then((m) => m.${symbol}).catch(nothingIfLost));`;
@@ -843,7 +853,8 @@ function g5Flag(I: Impl, W: World, G: Graph, ok: Ok) {
 /*
  * What the flag of §5 is for. On the pages the journey re-draws (`isJourneySurface`, §2), a reader the shell put in the
  * journey meets no Needle, no channels panel and no chat bubble; everywhere else, and for every other reader, each
- * overlay is what it was. So each stand-down is ONE term, `journeyOn && isJourneySurface(pathname)`, joined to the rule
+ * overlay is what it was. So each stand-down is ONE term, `journeyOn && isJourneySurface(pathname)` — never on a not-found
+ * page (`&& !notFoundShown`, R4-J, 2026-10-09: `lib/not-found-mark.ts`) — joined to the rule
  * the overlay already had — `useJourneyOn` answers false without the flag and on the server (§5), which leaves today's
  * rule exactly — or a guard straight after the pinned line it follows. Read here with comments stripped: each join as
  * written beside today's half; each overlay reading the flag once and the one journey list once; the chat keeping its
@@ -857,8 +868,9 @@ const OVERLAY_CHANNELS = "src/components/social/channels-panel.tsx";
 const OVERLAY_CHAT = "src/components/chat/ChatRoot.tsx";
 /** How each overlay reads the flag: the shell's answer, through `useJourneyOn`, once. */
 const OVERLAY_READS_FLAG = "const journeyOn = useJourneyOn();";
-/** The one stand-down term. */
-const OVERLAY_TERM = "journeyOn && isJourneySurface(pathname)";
+/** The one stand-down term — and since R4-J (2026-10-09) never on a not-found page: the market not-found answers on a
+ *  question's path, and has no bet panel to stand down for (R4-K's ruling; `lib/not-found-mark.ts`). */
+const OVERLAY_TERM = "journeyOn && isJourneySurface(pathname) && !notFoundShown";
 /**
  * A term JOINED to what an overlay already had: the file holds `today + join + end`, and `today + end` no longer — so
  * with the term false, the expression is today's.
@@ -867,7 +879,7 @@ const OVERLAY_JOINS: ReadonlyArray<{ id: string; file: string; says: string; tod
   { id: "needle", file: OVERLAY_NEEDLE, says: "the Needle hides where it hid, and for a journey viewer on a journey page",
     today: "const suppressed = hiddenPref || isMoneySurface(pathname)", join: ` || (${OVERLAY_TERM})`, end: ";" },
   { id: "needle.deps", file: OVERLAY_NEEDLE, says: "its gate runs again when the flag goes up or down",
-    today: "}, [hiddenPref, pathname", join: ", journeyOn", end: "]);" },
+    today: "}, [hiddenPref, pathname", join: ", journeyOn, notFoundShown", end: "]);" },
   { id: "channels.eligible", file: OVERLAY_CHANNELS, says: "the channels panel is eligible where it was, and never on a journey page for a journey viewer",
     today: "const eligible = open && !promoSuppressed && !suppressedRoute(pathname)", join: " && !journeyHidden", end: ";" },
 ];
@@ -1655,9 +1667,9 @@ function g8Tabs(I: Impl, W: World, G: Graph, ok: Ok) {
     ok("8.poll.media · a phone reads false and a desktop true, a change is heard once, and letting go stops listening",
       phone === false && desk === true && told === 1 && media.listening() === 0, show({ phone, desk, told, listening: media.listening() }));
   });
-  ok("8.poll.bar · the header MOUNTS the bell only from 1024 — never merely hidden — in a slot that keeps its width",
+  ok("8.poll.bar · the header MOUNTS the bell only from 1024 — never merely hidden — and on no not-found page, in a slot that keeps its width and holds the bell's still twin until then (R4-J, E36)",
     bar.includes("const pollers = pollersAt(useLgUp());") && count(bar, "<NotificationsPanel") === 1
-      && bar.includes(`<span className="hidden lg:inline-flex kp-jhdr__bell">{pollers.bell && <NotificationsPanel />}</span>`)
+      && bar.includes(`<span className="hidden lg:inline-flex kp-jhdr__bell">{pollers.bell && !notFoundShown ? <NotificationsPanel /> : <BellStill label={t.common.notifications} />}</span>`)
       && baseRule(css, ".kp-jhdr__bell").includes("min-width: var(--h-control-sm)"));
   ok("8.poll.rail · the rail mounts the dot's counter only below 1024, for a signed-in viewer — the counter lives in the one component that guard renders",
     rail.includes("const pollers = pollersAt(useLgUp());") && count(rail, "<TabUnread") === 1
@@ -1861,12 +1873,15 @@ const WALLET_SHEET_DOORS: readonly ChromeDoor[] = [
   { href: "/profile/responsible-gambling", file: WALLET_SHEET_FILE, gate: MEMBER },
   { href: "/wallet", file: WALLET_SHEET_FILE, gate: MEMBER },
 ];
-/** The journey header's own links on a phone, and which of `journeyHeaderState`'s answers shows each. */
-const JOURNEY_HEADER_DOORS: ReadonlyArray<{ href: string; when: "always" | "pill" | "authPills" }> = [
+/** The journey header's own links on a phone, and which of `journeyHeaderState`'s answers shows each — and its one link
+ *  that shows from 1024 only ("desktop"), which no phone root counts: the bell's still twin (R4-J, 2026-10-09, E36), a
+ *  signed-in reader's plain link to the notifications page until the live bell may mount, and on a not-found page. */
+const JOURNEY_HEADER_DOORS: ReadonlyArray<{ href: string; when: "always" | "pill" | "authPills" | "desktop" }> = [
   { href: "/", when: "always" },
   { href: "/wallet/deposit", when: "pill" },
   { href: "/auth/login", when: "authPills" },
   { href: "/auth/register", when: "authPills" },
+  { href: "/notifications", when: "desktop" },
 ];
 /** What a guest's Tiketi zangu opens: the guest sheet's two doors, each returning to the tickets. */
 const GUEST_SHEET_DOORS: readonly string[] = ["/auth/register?next=%2Fpositions", "/auth/login?next=%2Fpositions"];
@@ -2258,7 +2273,9 @@ function g10Terms(I: Impl, W: World, ok: Ok) {
  *   (b) every lazily loaded part it renders is a binding it imports from that module under the table's name, rendered
  *       once, as the one child of its own Suspense boundary: next/dynamic adds none of its own, so that boundary is the
  *       part's only one (without it the part's boundary markers leave the HTML, and its chunk holds up the hydration of
- *       the whole page); AppShell imports none of the parts' own modules, by any import; nothing else imports the
+ *       the whole page) — save the journey's header and tabs (BARE_PARTS, R4-J), which stand in none, so that React
+ *       19.2 draws them in the page's first HTML (12.shell.bare); AppShell imports none of the parts' own modules, by
+ *       any import; nothing else imports the
  *       module; and the offline banner is NOT a part: AppShell imports it statically, as its code always came, because
  *       its one job is a connection that fails;
  *   (c) the module is "use client", its one static import is `next/dynamic`, and it declares exactly the table, each
@@ -2325,9 +2342,13 @@ function g12ShellParts(W: World, G: Graph, ok: Ok) {
     show([...imported].sort()) === show([...table].sort()) && notOnce.length === 0 && stray.length === 0 && !ownBinding,
     show({ imported, notOnce, stray, ownBinding }));
   const flat = squash(shell);
-  const unwrapped = table.filter((b) => [...flat.matchAll(wrappedPart(b))].length !== 1);
-  ok(`12.shell.wrapped · every part is the one child of its own Suspense boundary in AppShell, as before WP6c: next/dynamic adds none, so without it the part's boundary markers leave the HTML and its chunk holds up the whole page's hydration (${table.length})`,
-    unwrapped.length === 0, show({ unwrapped }));
+  const unwrapped = table.filter((b) => !BARE_PARTS.includes(b) && [...flat.matchAll(wrappedPart(b))].length !== 1);
+  ok(`12.shell.wrapped · every part but the journey's header and tabs is the one child of its own Suspense boundary in AppShell, as before WP6c: next/dynamic adds none, so without it the part's boundary markers leave the HTML and its chunk holds up the whole page's hydration (${table.length - BARE_PARTS.length})`,
+    unwrapped.length === 0 && BARE_PARTS.every((b) => table.includes(b)), show({ unwrapped }));
+  const chrome = BARE_PARTS.map((b) => ({ b, arm: count(flat, `{journeyShown ? <${b} `), boxed: [...flat.matchAll(wrappedPart(b))].length }));
+  const emptyBox = count(flat, `className="kp-jhdr"`);
+  ok("12.shell.bare · the journey's header and tabs stand in NO Suspense boundary: each is the journeyShown arm itself, so React 19.2 draws them in the page's first HTML instead of outlining them after the shell behind an empty box (R4-J, E36); and AppShell draws no empty header box",
+    chrome.every((r) => r.arm === 1 && r.boxed === 0) && emptyBox === 0, show({ chrome, emptyBox }));
   const offline = {
     imported: importedNames(W, SHELL, OFFLINE_BANNER), mounted: count(flat, OFFLINE_MOUNT), tags: count(shell, "<OfflineBanner"),
     deferred: (G.out.get(SHELL_LAZY) ?? []).includes(OFFLINE_BANNER), loaders: [...(G.into.get(OFFLINE_BANNER) ?? [])].sort(),
@@ -2547,7 +2568,7 @@ if (!PROVE_RED) {
     // a HIDE_ON pattern moved; the consent prompt gated; the email bar back for a journey viewer; the flag loaded eagerly.
     const flagForEveryone = withFile(WORLD, SHELL, (s) => s.replace("{journeyShown && <Suspense fallback={null}><LazyJourneyFlag /></Suspense>}", "<Suspense fallback={null}><LazyJourneyFlag /></Suspense>"));
     const needleForAll = withFile(WORLD, OVERLAY_NEEDLE, (s) => s.replace(`(${OVERLAY_TERM})`, "isJourneySurface(pathname)"));
-    const needleDepsStale = withFile(WORLD, OVERLAY_NEEDLE, (s) => s.replace("}, [hiddenPref, pathname, journeyOn]);", "}, [hiddenPref, pathname]);"));
+    const needleDepsStale = withFile(WORLD, OVERLAY_NEEDLE, (s) => s.replace("}, [hiddenPref, pathname, journeyOn, notFoundShown]);", "}, [hiddenPref, pathname]);"));
     const panelEligibleAnyway = withFile(WORLD, OVERLAY_CHANNELS, (s) => s.replace(" && !journeyHidden;", ";"));
     const panelRendersAnyway = withFile(WORLD, OVERLAY_CHANNELS, (s) => s.replace(`${LF}  if (journeyHidden) return null;`, ""));
     const panelHiddenEverywhere = withFile(WORLD, OVERLAY_CHANNELS, (s) => s.replace(`const journeyHidden = ${OVERLAY_TERM};`, `const journeyHidden = journeyOn && (pathname ?? "").startsWith("/");`));
@@ -2771,7 +2792,7 @@ ${s}`);
     const sectionSaysPage = withFile(WORLD, JHDR, (s) => s.replace("aria-current={tabAriaCurrent(pathname, d.key)}", `aria-current={active === d.key ? "page" : undefined}`));
     const languageOnPhones = withFile(WORLD, JHDR, (s) => s.replace(`<span className="hidden lg:inline-flex"><LanguageMenu /></span>`, "<LanguageMenu />"));
     const inlineHeight = withFile(WORLD, JHDR, (s) => s.replace(`data-testid="journey-top-bar"`, `data-testid="journey-top-bar" style={{ height: 64 }}`));
-    const bellEverywhere = withFile(WORLD, JHDR, (s) => s.replace("{pollers.bell && <NotificationsPanel />}", "<NotificationsPanel />"));
+    const bellEverywhere = withFile(WORLD, JHDR, (s) => s.replace("{pollers.bell && !notFoundShown ? <NotificationsPanel /> : <BellStill label={t.common.notifications} />}", "<NotificationsPanel />"));
     // 7.bell's plants (2026-10-09): the slot loses its 4px, the pip hangs by its right edge again, the override loses
     // the `!important` an inline style needs, and the two premises move under it — the avatar's gap and the classic pip.
     const bellOffCentre = withCss(inRule(".kp-jhdr__bell", " margin-left: var(--sp-1);", ""));
@@ -2871,6 +2892,13 @@ ${s}`);
       new RegExp(`<Suspense fallback=[{]null[}]>[ ${LF}]*<LazyPullToRefresh />[ ${LF}]*</Suspense>`), "<LazyPullToRefresh />"));
     const winTwice = withFile(WORLD, SHELL, (s) => s.replace("<Suspense fallback={null}><LazyWinCelebration /></Suspense>",
       "<Suspense fallback={null}><LazyWinCelebration /></Suspense><Suspense fallback={null}><LazyWinCelebration /></Suspense>"));
+    // R4-J (E36): the journey's chrome put back in the boundaries React 19.2 outlines. (Anchored before the `user` prop,
+    // whichever value it is handed.)
+    const headerBoxed = withFile(WORLD, SHELL, (s) => s.replace("{journeyShown ? <LazyJourneyTopBar user=",
+      `{journeyShown ? <Suspense fallback={<div aria-hidden="true" className="kp-jhdr" />}><LazyJourneyTopBar user=`)
+      .replace("invitePaid={invitePaid} /> : <TopAppBar", "invitePaid={invitePaid} /></Suspense> : <TopAppBar"));
+    const tabsBoxed = withFile(WORLD, SHELL, (s) => s.replace("{journeyShown ? <LazyJourneyTabs userId={session?.userId ?? null} /> :",
+      "{journeyShown ? <Suspense fallback={null}><LazyJourneyTabs userId={session?.userId ?? null} /></Suspense> :"));
     const offlineDeferred = withFile(
       withFile(WORLD, SHELL_LAZY, (s) => `${s}${LF}export const LazyOfflineBanner = dynamic(() => `
         + `import("@/components/ui/offline-banner").then((m) => m.OfflineBanner).catch(nothingIfLost));${LF}`),
@@ -3295,6 +3323,10 @@ ${s}`);
         world: pullUnwrapped, landed: changed(pullUnwrapped, SHELL), landedAs: "the same, for a mount written over three lines" },
       { name: "AppShell renders a part twice", expect: at("12.shell.parts ·"),
         world: winTwice, landed: changed(winTwice, SHELL), landedAs: "two celebration hosts: one win, two seals" },
+      { name: "the journey header back in a Suspense boundary over the bar's empty box (R4-J, E36)", expect: at("12.shell.bare ·"),
+        world: headerBoxed, landed: changed(headerBoxed, SHELL), landedAs: "an empty header band on every slow first paint, the header moved in after the shell" },
+      { name: "the journey tabs back in a Suspense boundary (R4-J, E36)", expect: at("12.shell.bare ·"),
+        world: tabsBoxed, landed: changed(tabsBoxed, SHELL), landedAs: "no rail on a slow first paint" },
       { name: "the offline banner deferred like the parts", expect: at("12.shell.offline ·"),
         world: offlineDeferred, landed: changed(offlineDeferred, SHELL) && changed(offlineDeferred, SHELL_LAZY), landedAs: "the banner's code behind a fetch the dropped connection it reports on can stop" },
       { name: "the shell's lazy module declares a part outside the table", expect: at("12.module.dynamic ·"),

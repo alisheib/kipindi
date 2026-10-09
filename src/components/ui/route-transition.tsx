@@ -2,6 +2,7 @@
 
 import { usePathname } from "next/navigation";
 import { useRef, useEffect, useState } from "react";
+import { journeyFlagSnapshot } from "@/lib/journey/journey-on";
 
 /**
  * The two CLAMP gates, read live (§M6). A View Transition is started from JS, so
@@ -56,6 +57,20 @@ function motionOff(): boolean {
  * `[data-motion="minimal"] *`) cannot reach it. Gate 2 — the player's own in-app
  * "Reduce motion" switch — therefore had no effect on route cross-fades at all,
  * on every navigation. JS is the only place that hole can be closed.
+ *
+ * ⛔ A JOURNEY PAGE NEVER CROSS-FADES THE DOCUMENT (2026-10-09, the Vodacom visual pass round 4, R4-J; E37 and E41,
+ * the Slow 3G tap tiles 292 301 306 315 333 338 and the blank 328). The cross-fade is of the ROOT, so it took the
+ * header, the preview strip and the rail with it: two snapshots `vt-fade-out`/`vt-fade-in` move 4px apart (−2 and +2 at
+ * the midpoint), measured as the capsule figure's "T" spread from 10 rows (y29–38, tile 300) to 15 (y27–41, tile 301)
+ * and its gold dimmed from 243,203,122 to 184,152,100. Both snapshots are of the NEW page: the `[pathname]` effect below
+ * runs after the router has committed the target, so the "old" image is the new skeleton too, and the transition
+ * cross-faded the page with itself. What the old image did keep was the rail's pip mid-way through its own transition,
+ * frozen lit on the tab being left while the new tab's label was already bold: two tabs lit at once. And a frame taken
+ * while the browser held rendering between the two captures came back as the bare page colour, 280,800 px of 8,0,41
+ * (328). The journey's chrome must hold still while a page changes under it, so for a journey reader (the shell's mark,
+ * `journeyFlagSnapshot`, read at the moment of the change) the arrival is the CSS entrance on this wrapper alone — the
+ * one every other engine already gets — and the header and the rail, outside it, do not move. A classic page is
+ * unchanged: it keeps the native cross-fade.
  */
 export function RouteTransition({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
@@ -84,7 +99,7 @@ export function RouteTransition({ children }: { children: React.ReactNode }) {
         startViewTransition?: (cb: () => void) => { finished: Promise<void> };
       };
 
-      if (doc.startViewTransition && !motionOff()) {
+      if (doc.startViewTransition && !motionOff() && !journeyFlagSnapshot()) {
         // Use the View Transitions API — the browser handles the cross-fade, and
         // it is then the ONLY entrance this arrival gets.
         viaViewTransitionRef.current = true;

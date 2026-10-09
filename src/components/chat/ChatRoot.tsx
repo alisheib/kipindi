@@ -27,6 +27,7 @@ import { chatWithClaude } from "@/app/_actions/chat";
 import { useT } from "@/lib/i18n";
 import { isJourneySurface } from "@/lib/surfaces";
 import { useJourneyOn } from "@/lib/journey/journey-on";
+import { useNotFoundShown } from "@/lib/not-found-mark";
 
 // `s` = the marketing opt-out page (D6) — no chat bubble on the way out; `test:marketing-optout` pins it.
 const HIDE_ON = /^\/(auth|admin|s)(\/|$)/;
@@ -93,6 +94,8 @@ export function ChatRoot({ supportEmail }: { supportEmail: string }) {
   const [lang, setLang] = useState<"en" | "sw">("en");
   // ⭐ S6 WP7 · whether the shell put this page in the new journey (false for everybody else, and on the server).
   const journeyOn = useJourneyOn();
+  // ⭐ R4-J (2026-10-09) · a not-found page is no journey page, whatever its path (`lib/not-found-mark.ts`).
+  const notFoundShown = useNotFoundShown();
 
   // Hydrate from sessionStorage on mount so a returning player sees
   // their prior turn. Server-render starts empty — that's correct,
@@ -253,7 +256,7 @@ export function ChatRoot({ supportEmail }: { supportEmail: string }) {
   /* ⭐ S6 WP7 · NOT ON THE NEW JOURNEY'S PAGES, FOR A JOURNEY VIEWER — the bubble stands down there and nowhere else.
      Unlike HIDE_ON (left as it is) this neither closes the panel nor clears the history: the conversation is where
      the player left it on the next page that shows the bubble. */
-  if (journeyOn && isJourneySurface(pathname)) return null;
+  if (journeyOn && isJourneySurface(pathname) && !notFoundShown) return null;
   // Not drawn until the viewport is known, so it never flashes at the desktop offset over the rail.
   if (isMobile === null) return null;
 
