@@ -2,10 +2,11 @@
  * WHERE A DOOR SENDS SOMEONE - one rule per question (route audit 2026-10-06, cluster B).
  * landingAfterAuth: after a sign-in or sign-up. accountRefusalPath: an account refusal's panel on the login page.
  * authDoorHrefs: the guest header's Sign in / Sign up. Pure and client-safe: it imports only safe-next.ts,
- * referral-code.ts and a type. S9/S10 reuse these instead of writing second copies.
+ * referral-code.ts, break-end.ts (pure) and a type. S9/S10 reuse these instead of writing second copies.
  */
 import { boundedNext, isAdminPath, isAuthPath, pathWithQuery, sanitizeNext, withWelcome } from "@/lib/safe-next";
 import { normalizeReferralCode } from "@/lib/referral-code";
+import { breakEndParam } from "@/lib/break-end";
 import type { FailureDetail } from "@/lib/failure-reasons";
 
 /** Staff (any role but PLAYER/AGENT): an /admin next, else /admin. A player or agent: the safe next (never an /admin one) or
@@ -18,14 +19,15 @@ export function landingAfterAuth(opts: { role: string | null | undefined; next: 
   return withWelcome(next || "/", opts.kind);
 }
 
-/** The login page's panel for an account refusal: closed=1, the three exclusion standings (serving carries its date), else
- *  error=blocked; a safe next kept. */
+/** The login page's panel for an account refusal: closed=1, the three exclusion standings (serving carries its END — the
+ *  instant, `breakEndParam`, never its UTC day: R4-I, 2026-10-09), else error=blocked; a safe next kept. */
 export function accountRefusalPath(detail: FailureDetail | undefined, next: string): string {
   const qs = new URLSearchParams();
   if (detail?.accountClosed) qs.set("closed", "1");
   else if (detail?.standing && detail.standing !== "diverged") {
     qs.set("excluded", detail.standing);
-    if (detail.standing === "serving" && detail.until) qs.set("until", detail.until.slice(0, 10));
+    const end = detail.standing === "serving" ? breakEndParam(detail.until) : null;
+    if (end) qs.set("until", end);
   } else qs.set("error", "blocked");
   const safe = sanitizeNext(next);
   if (safe) qs.set("next", safe);

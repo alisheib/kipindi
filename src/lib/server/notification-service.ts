@@ -38,6 +38,8 @@ import type { NotificationFilter, NotificationSort } from "@/lib/notification-fi
 // officer's reason never ends on "..". The rules live in one plain module the readers share (notification-text.ts).
 import { endClause, roundTicketHref, ticketHref } from "@/lib/notification-text";
 import { EDITABLE_ROLES, domainForPath, isOwnerOnlyPath } from "./roles";
+// R4-I (2026-10-09): a break's or an exclusion's end, said the one way every screen says it (see `breakEndIn` below).
+import { formatBreakEnd } from "@/lib/break-end";
 
 export type NotifyInput = Omit<StoredNotification, "id" | "userId" | "readAt" | "dismissedAt" | "createdAt"> & {
   userId: string;
@@ -1573,32 +1575,59 @@ export function notifyPasswordChanged(userId: string) {
   });
 }
 
+/**
+ * ⭐ A BREAK'S OR AN EXCLUSION'S END, IN EACH READER'S OWN WORDS (the visual pass, round 4, R4-I, 2026-10-09). The two
+ * notices below printed `until.slice(0, 10)` — the UTC calendar day, with no time — so a one-hour break read "hadi
+ * 2026-10-09", and an end between 00:00 and 03:00 EAT named the day before. They now carry the end the way every screen
+ * states it (`formatBreakEnd`: the East Africa clock, date AND time, the reader's month words — "9 Okt, 06:02",
+ * "9 Oct, 06:02", "2026年10月9日 06:02"). The sentences are unchanged; only the value they carry. The month words are the
+ * dictionary's own (the same lazy read `sideWords` makes); a value that does not parse keeps the old day.
+ */
+async function breakEndIn(untilIso: string): Promise<LocalizedText> {
+  const day = untilIso.slice(0, 10);
+  const at = Date.parse(untilIso);
+  if (!Number.isFinite(at)) return { en: day, sw: day, zh: day };
+  try {
+    const { dict } = await import("@/lib/i18n-dict");
+    const now = Date.now();
+    return {
+      en: formatBreakEnd(at, now, dict.en.common.monthsShort, "en"),
+      sw: formatBreakEnd(at, now, dict.sw.common.monthsShort, "sw"),
+      zh: formatBreakEnd(at, now, dict.zh.common.monthsShort, "zh"),
+    };
+  } catch {
+    return { en: day, sw: day, zh: day };
+  }
+}
+
 /** Confirmation that self-exclusion is active. Email is the durable record; this
  *  in-app copy ensures the player sees it even with no email on file. */
-export function notifySelfExclusion(userId: string, opts: { until: string }) {
+export async function notifySelfExclusion(userId: string, opts: { until: string }) {
+  const end = await breakEndIn(opts.until);
   return notify({
     userId,
     kind: "RG",
     titleEn: "Self-exclusion active",
     titleSw: "Kujizuia kumeanza",
     titleZh: "自我限制已生效",
-    bodyEn: `Your account is closed to betting and deposits until ${opts.until.slice(0, 10)}.`,
-    bodySw: `Akaunti yako imefungwa kuweka dau na amana hadi ${opts.until.slice(0, 10)}.`,
-    bodyZh: `您的账户已停止投注与充值，直至 ${opts.until.slice(0, 10)}。`,
+    bodyEn: `Your account is closed to betting and deposits until ${end.en}.`,
+    bodySw: `Akaunti yako imefungwa kuweka dau na amana hadi ${end.sw}.`,
+    bodyZh: `您的账户已停止投注与充值，直至 ${end.zh}。`,
     href: "/profile/responsible-gambling",
   });
 }
 
-export function notifyCoolOff(userId: string, opts: { until: string }) {
+export async function notifyCoolOff(userId: string, opts: { until: string }) {
+  const end = await breakEndIn(opts.until);
   return notify({
     userId,
     kind: "RG",
     titleEn: "Cool-off break active",
     titleSw: "Mapumziko yameanza",
     titleZh: "冷静期已开始",
-    bodyEn: `Betting and deposits are paused until ${opts.until.slice(0, 10)}.`,
-    bodySw: `Kuweka dau na amana kumesimamishwa hadi ${opts.until.slice(0, 10)}.`,
-    bodyZh: `投注与充值已暂停，直至 ${opts.until.slice(0, 10)}。`,
+    bodyEn: `Betting and deposits are paused until ${end.en}.`,
+    bodySw: `Kuweka dau na amana kumesimamishwa hadi ${end.sw}.`,
+    bodyZh: `投注与充值已暂停，直至 ${end.zh}。`,
     href: "/profile/responsible-gambling",
   });
 }

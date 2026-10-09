@@ -54,6 +54,7 @@ import { LanguageMenu } from "@/components/ui/language-menu";
 import { NotificationsPanel } from "@/components/layout/notifications-panel";
 import { AvatarMenu } from "@/components/layout/avatar-menu";
 import { WalletBalanceCaptioned, useLiveBalance } from "@/components/layout/wallet-balance-pill";
+import type { BreakState } from "@/lib/break-end";
 import type { TopAppBarUser } from "@/components/layout/top-app-bar";
 import { TicketsGuestSheet } from "@/components/journey/tickets-guest-sheet";
 import { I } from "@/components/ui/glyphs";
@@ -98,6 +99,7 @@ function BellStill({ label }: { label: string }) {
 export function JourneyTopBar({
   user,
   onBreak,
+  breakEnd = null,
   proposalsState,
   inviteVisible = false,
   invitePaid = false,
@@ -107,6 +109,9 @@ export function JourneyTopBar({
   /** The reader is on a self-imposed break (AppShell's `promoSuppressed`): no "+ Weka pesa" (S4), and no Deposit in the
    *  Wallet the capsule opens (2026-10-08, `wallet-sheet.tsx`). */
   onBreak: boolean;
+  /** R4-I · the reader's break and its end (AppShell, from the settings row it holds), so the Wallet says why it offers no
+   *  Deposit. Null when no break runs or the read failed. */
+  breakEnd?: BreakState | null;
   proposalsState: ProposalsState;
   inviteVisible?: boolean;
   invitePaid?: boolean;
@@ -176,7 +181,7 @@ export function JourneyTopBar({
             while the row's groups take the row's. */}
         <div className="kp-jhdr__cluster">
           {state.capsule !== "none" && (
-            <WalletBalanceCaptioned balance={liveBalance} held={state.capsule === "held"} onBreak={onBreak} />
+            <WalletBalanceCaptioned balance={liveBalance} held={state.capsule === "held"} onBreak={onBreak} breakEnd={breakEnd} />
           )}
           {state.pill && (
             <Link

@@ -19,6 +19,7 @@
  */
 import type { ViewerDoors } from "@/lib/journey/viewer-doors";
 import type { ProposalsState } from "@/lib/server/proposals-config";
+import type { BreakState } from "@/lib/break-end";
 
 /** A signed-in reader, as `loadHubViewer` (`src/lib/server/hub-viewer.ts`) composes one. */
 export type HubMember = {
@@ -32,6 +33,9 @@ export type HubMember = {
   balance: number | null;
   /** A frozen or closed wallet: Pochi says so, and no money door is offered — the wallet sheet's own rule. */
   walletHeld: boolean;
+  /** R4-I · the reader's running break or exclusion and its end — Pumzika states it (`hub-row.tsx`); null when none runs
+   *  or the read failed (optional: a reader composed without it shows no status). */
+  breakEnd?: BreakState | null;
   /** "Verify ID" is offered: the KYC row was read, and it is neither approved nor a final refusal. */
   kycOffered: boolean;
   /** An approved agent in good standing, whose invite door is their commission dashboard. */

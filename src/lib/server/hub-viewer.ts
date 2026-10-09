@@ -28,6 +28,8 @@ import { viewerDoorsFor } from "@/lib/journey/viewer-doors";
 import { displayInitials, displayLabel } from "@/lib/display-label";
 import { maskPhone } from "@/lib/phone-normalize";
 import { isFinalRefusal } from "@/lib/kyc-refusal";
+import { isLockedOut } from "@/lib/server/responsible-gambling";
+import { breakStateOf } from "@/lib/break-end";
 import type { HubViewer } from "@/components/journey/account/hub-rows";
 
 /** Every read the hub makes — passed in, so the suite can stand in either store and fail any one of them. */
@@ -39,6 +41,8 @@ export type HubViewerDeps = {
   invitePayable: () => Promise<boolean>;
   agentEnabled: () => boolean;
   proposalsState: () => ProposalsState;
+  /** R4-I · the reader's break or exclusion (`isLockedOut`). Optional, so a stand-in without it reads none. */
+  lockout?: (userId: string) => Promise<{ locked: boolean; until: string | null; reason: string | null }>;
 };
 
 /** The shipped reads. `inviteViewerFor` and the invite switch already fail closed; the catch here is the belt. */
@@ -50,6 +54,7 @@ export const HUB_VIEWER_DEPS: HubViewerDeps = {
   invitePayable: () => invitePaysPlayersNow().catch(() => false),
   agentEnabled: () => getAgentConfig().enabled,
   proposalsState: () => getProposalsConfig().state,
+  lockout: (userId) => isLockedOut(userId),
 };
 
 /** A read that throws before it hands back a promise still settles as a failure — never as an escape from the batch. */
@@ -64,12 +69,14 @@ function attempt<T>(read: () => Promise<T>): Promise<T> {
 /** The hub's reader: a guest for no user id, else the signed-in reader with every door composed. Never throws. */
 export async function loadHubViewer(userId: string | null, deps: HubViewerDeps = HUB_VIEWER_DEPS): Promise<HubViewer> {
   if (!userId) return { signedIn: false };
-  const [u, w, k, iv, paid] = await Promise.allSettled([
+  const [u, w, k, iv, paid, lock] = await Promise.allSettled([
     attempt(() => deps.user(userId)),
     attempt(() => deps.wallet(userId)),
     attempt(() => deps.kyc(userId)),
     attempt(() => deps.inviteViewer(userId)),
     attempt(() => deps.invitePayable()),
+    // R4-I · in the same batch. It feeds a STATUS line, never a door: a failed read (or no reader) shows none.
+    attempt(() => (deps.lockout ? deps.lockout(userId) : Promise.resolve(null))),
   ]);
   const user = u.status === "fulfilled" ? u.value : null;
   const wallet = w.status === "fulfilled" ? w.value : null;
@@ -90,6 +97,7 @@ export async function loadHubViewer(userId: string | null, deps: HubViewerDeps =
     phone: maskPhone(user?.phoneE164),
     balance: wallet ? wallet.balance : null,
     walletHeld: !!wallet && wallet.status !== "ACTIVE",
+    breakEnd: lock.status === "fulfilled" && lock.value ? breakStateOf(lock.value) : null,
     kycOffered,
     agentInStanding: inviteViewer.agentInGoodStanding === true,
     proposalsState,

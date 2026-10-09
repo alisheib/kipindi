@@ -81,8 +81,9 @@ export default async function ForgotPasswordPage({ searchParams }: { searchParam
               {t.common.enterPhoneOrEmail}
             </div>
           )}
+          {/* R4-I (2026-10-09, R4-K's gold audit): the sentence in the muted ink, not gold — a wait earns nothing (F3, §M3). */}
           {sp.error === "rate_limited" && (
-            <div role="alert" className="rounded-md border border-warning-border bg-warning-bg px-3.5 py-3 text-[13px] text-gold-300">
+            <div role="alert" className="rounded-md border border-warning-border bg-warning-bg px-3.5 py-3 text-[13px] text-text-muted">
               {retrySec > 0 ? <RateLimitBanner seconds={retrySec} clearHref={clearHref} /> : t.common.tooManyAttempts}
             </div>
           )}
@@ -167,7 +168,7 @@ export default async function ForgotPasswordPage({ searchParams }: { searchParam
                 href={`tel:${SUPPORT_PHONE_TEL()}`}
                 className="flex items-center gap-2.5 rounded-md border border-border bg-bg-elevated px-3 py-2.5 hover:border-brand-400 transition-colors"
               >
-                <I.phone s={14} className="text-gold-300 shrink-0" />
+                <I.phone s={14} className="text-brand-300 shrink-0" />
                 <div className="min-w-0">
                   <p className="font-mono text-[11px] font-bold text-text"><span className="underline underline-offset-2">{SUPPORT_PHONE()}</span></p>
                   <p className="text-[10px] text-text-subtle">{t.common.businessHours}</p>
@@ -177,7 +178,7 @@ export default async function ForgotPasswordPage({ searchParams }: { searchParam
                 href={`mailto:${SUPPORT_EMAIL()}?subject=Password%20reset%20request`}
                 className="flex items-center gap-2.5 rounded-md border border-border bg-bg-elevated px-3 py-2.5 hover:border-brand-400 transition-colors"
               >
-                <I.mail s={14} className="text-gold-300 shrink-0" />
+                <I.mail s={14} className="text-brand-300 shrink-0" />
                 <div className="min-w-0">
                   {/* `break-all`, not `truncate` — the same string, on the same product, already
                       renders this way at src/app/help/page.tsx:180, so the two pages are one

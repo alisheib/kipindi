@@ -25,8 +25,9 @@
  * rule the journey header (no "+ Weka pesa", S4) and `/wallet` (`depositOpen`, 2026-10-06) already keep, because
  * `/wallet/deposit` refuses one during a break. Withdraw stays, alone and full width: a break does not stop
  * withdrawals. The flag is AppShell's `promoSuppressed`, which gates an OFFER and fails OPEN (`feature-state.ts` LAW 1)
- * — after a failed read the Deposit shows and the deposit screen still refuses. No sentence is added: the shell hands
- * the browser one boolean and never the break's date (app-shell.tsx), and the header drops its pill without one too.
+ * — after a failed read the Deposit shows and the deposit screen still refuses. ⭐ R4-I (2026-10-09): it now says why —
+ * the shell hands the journey's Wallet the break's end too (`breakEnd`, app-shell.tsx), and the sheet shows the deposit
+ * page's own notice for it ("Deposits paused" over `rg.breakActive`). The header still drops its pill without a word.
  */
 
 import * as React from "react";
@@ -36,8 +37,10 @@ import { Button } from "@/components/ui/button";
 import { Cash, CashEye, useCashHidden } from "@/components/ui/cash";
 import { I } from "@/components/ui/glyphs";
 import { useT } from "@/lib/i18n";
-import { formatTzs } from "@/lib/utils";
+import { fill, formatTzs } from "@/lib/utils";
 import { keepLastWords } from "@/components/ui/keep-words";
+import { keepText } from "@/components/ui/keep-run";
+import { formatBreakEnd, type BreakState } from "@/lib/break-end";
 
 export function WalletSheet({
   open,
@@ -47,6 +50,7 @@ export function WalletSheet({
   anchorRef,
   journey = false,
   onBreak = false,
+  breakEnd = null,
 }: {
   open: boolean;
   onClose: () => void;
@@ -59,8 +63,21 @@ export function WalletSheet({
   /** S6 · the reader is on a self-imposed break (AppShell's `promoSuppressed`): no Deposit, Withdraw alone. The journey
    *  capsule passes it; omitted, both doors as today. */
   onBreak?: boolean;
+  /** R4-I · the break and its end (the journey capsule passes it): the sheet says why it offers no Deposit. */
+  breakEnd?: BreakState | null;
 }) {
-  const { t } = useT();
+  const { t, locale } = useT();
+  /* ⭐ R4-I (2026-10-09; edges E58, tiles 014 017 020 047 050 053 080 083 086) · A WITHHELD DOOR SAYS WHY. During a break the
+     Wallet dropped "Weka pesa" and left Withdraw alone with no word about it. It now says what /wallet/deposit says for the
+     same break: "Deposits paused" over the break's own sentence and its end (`rg.breakActive`; an exclusion
+     `rg.exclusionActive`), in the held notice's box, the end one run (`keepText`). Drawn only when the Deposit is withheld
+     for a break and the end is known; a held wallet keeps its own notice. */
+  const breakText = !held && onBreak && breakEnd
+    ? (() => {
+        const date = formatBreakEnd(Date.parse(breakEnd.until), Date.now(), t.common.monthsShort, locale);
+        return keepText(fill(breakEnd.exclusion ? t.rg.exclusionActive : t.rg.breakActive, { date }), [date]);
+      })()
+    : null;
   const depVia = React.useId();
   const wdVia = React.useId();
   const hidden = useCashHidden();
@@ -94,6 +111,13 @@ export function WalletSheet({
           <CashEye size={16} />
         </div>
       </div>
+
+      {breakText && (
+        <div className="kp-wsheet__held" role="status" data-testid="wallet-sheet-break">
+          <p className="kp-wsheet__held-t">{t.wallet.depositPausedTitle}</p>
+          <p className="kp-wsheet__held-b">{breakText}</p>
+        </div>
+      )}
 
       {held ? (
         <div className="kp-wsheet__held" role="status">

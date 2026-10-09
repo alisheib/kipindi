@@ -22,7 +22,7 @@
  * email (no ZH variant exists there by decision). Those pass through unchanged.
  */
 import type { Dict } from "@/lib/i18n-dict";
-import { hasReason, renderFailure, type FailureReason, type FailureDetail } from "@/lib/failure-reasons";
+import { hasReason, renderFailure, type FailureReason, type FailureDetail, type WhenFormat } from "@/lib/failure-reasons";
 import { formatTzs } from "@/lib/utils";
 
 export type ActionFailure = {
@@ -35,7 +35,9 @@ export type ActionFailure = {
   detail?: FailureDetail;
 };
 
-export function errorCopy(t: Dict, r: ActionFailure): string {
+/** `when` (R4-I, 2026-10-09): the caller's formatter for an instant, so a break's end reads in the reader's own words —
+ *  `renderFailure`'s last argument. A caller without a locale omits it and the end prints as the server wrote it. */
+export function errorCopy(t: Dict, r: ActionFailure, when?: WhenFormat): string {
   // ⭐ THE REGISTRY FIRST, AND THIS IS WHAT LETS A PHRASE TEST BE DELETED RATHER THAN LEFT
   // BESIDE ITS REPLACEMENT. Once a service says WHY in a machine token, nothing below needs to
   // guess it back out of English prose — same row, same copy, same figures as `renderFailure`
@@ -46,6 +48,7 @@ export function errorCopy(t: Dict, r: ActionFailure): string {
       t.error as unknown as Record<string, string>,
       t.error.somethingDidntWork,
       formatTzs,
+      when,
     ).body;
   }
   const err = r.error ?? "";

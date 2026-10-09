@@ -23,6 +23,7 @@ import { cn, formatTzs, formatBalancePill, formatNumber } from "@/lib/utils";
 import { CashEye, useCashHidden } from "@/components/ui/cash";
 import { I } from "@/components/ui/glyphs";
 import { WalletSheet } from "@/components/layout/wallet-sheet";
+import type { BreakState } from "@/lib/break-end";
 
 /**
  * 🔴 THE MASK IS A LAYOUT INPUT, NOT DECORATION — which is why it has a name now.
@@ -462,7 +463,7 @@ export function WalletBalancePill({ balance, held = false }: { balance: number; 
  * ⚠️ All paint is in globals.css (the kp-jbal rules), on tokens. The flash is a data attribute the stylesheet
  * answers, not an inline style, so the classic capsule's inline border stays the only one in this file.
  */
-export function WalletBalanceCaptioned({ balance, held = false, onBreak = false }: { balance: number; held?: boolean; onBreak?: boolean }) {
+export function WalletBalanceCaptioned({ balance, held = false, onBreak = false, breakEnd = null }: { balance: number; held?: boolean; onBreak?: boolean; breakEnd?: BreakState | null }) {
   const { t } = useT();
   const [open, setOpen] = useState(false);
   const capsuleRef = useRef<HTMLButtonElement>(null);
@@ -515,7 +516,7 @@ export function WalletBalanceCaptioned({ balance, held = false, onBreak = false 
           )}
         </span>
       </button>
-      <WalletSheet open={open} onClose={() => setOpen(false)} balance={balance} held={held} anchorRef={capsuleRef} journey onBreak={onBreak} />
+      <WalletSheet open={open} onClose={() => setOpen(false)} balance={balance} held={held} anchorRef={capsuleRef} journey onBreak={onBreak} breakEnd={breakEnd} />
     </>
   );
 }

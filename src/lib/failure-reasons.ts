@@ -541,8 +541,19 @@ export interface FailureDetail {
   balance?: number;
   needed?: number;
   retryAfterSec?: number;
-  /** ISO instant a self-exclusion or break ends. */
+  /**
+   * When a self-exclusion or break ends. ⚠️ The betting and deposit gates have always written it already FORMATTED, by the
+   * server's English formatter ("9 Oct 2026, 06:02"), and a renderer handed no `when` still prints it that way.
+   */
   until?: string;
+  /**
+   * ⭐ R4-I (2026-10-09, edges E17 E52, tiles 036 040 044 102 106 110) · THE SAME END AS AN ISO INSTANT, for the reader's
+   * own formatter. `until` above reached a Swahili and a Chinese refusal as "hadi 9 Oct 2026, 06:02" — an English month,
+   * and a format unlike the deposit page's "9 Okt, 06:02". A surface that knows its reader's language passes `when`
+   * (`renderFailure`'s last argument, `formatBreakEnd` in practice), and the end then reads like every other break end.
+   * Additive: `until` stays for every renderer that has no locale, and for the audit's English sentence.
+   */
+  untilAt?: string;
   /** TZS still to be wagered before a bonus can be withdrawn. */
   remaining?: number;
   /** What would actually land after the withdrawal fee — the NET, beside the minimum. */
@@ -618,6 +629,19 @@ export interface RenderedFailure {
 
 /** The formatter a surface hands in — its own locale-aware TZS formatter. */
 export type MoneyFormat = (tzs: number) => string;
+/** R4-I · the formatter a surface hands in for an instant — its reader's own (`formatBreakEnd`). */
+export type WhenFormat = (atMs: number) => string;
+
+/**
+ * R4-I · THE END A REFUSAL NAMES, as its reader reads it: `detail.untilAt` through the surface's own `when` when both are
+ * there and the instant parses, else `detail.until` as the server wrote it, else "—". Exported so a surface can keep the
+ * very text it put into the sentence as one unbreakable run (`keepText`).
+ */
+export function failureUntil(detail: FailureDetail | undefined, when?: WhenFormat): string {
+  const at = detail?.untilAt ? Date.parse(detail.untilAt) : Number.NaN;
+  if (when && Number.isFinite(at)) return when(at);
+  return detail?.until ?? "—";
+}
 
 /**
  * ONE renderer. Given a refusal and the dictionary, produce the sentence, the severity and
@@ -628,12 +652,15 @@ export type MoneyFormat = (tzs: number) => string;
  * has no business being a headline in front of a Swahili or Chinese player.
  *
  * @param fallback the caller's generic localized sentence, used when no reason is present.
+ * @param when     R4-I · optional: the caller's formatter for an instant, used for `{until}` when the refusal carries
+ *                 `detail.untilAt` (see `failureUntil`). Without it `{until}` is printed as before.
  */
 export function renderFailure(
   r: ReasonedFailure | null | undefined,
   dict: Record<string, string>,
   fallback: string,
   money: MoneyFormat,
+  when?: WhenFormat,
 ): RenderedFailure {
   // ⭐ C2 SECOND TRANCHE · fall back to the CODE before falling back to nothing. Most of the
   // wallet / KYC / auth / proposals refusals already carry a distinct machine code; until
@@ -658,7 +685,7 @@ export function renderFailure(
     remaining: d.remaining != null ? money(d.remaining) : "—",
     net: d.net != null ? money(d.net) : "—",
     sec: String(Math.max(1, Math.ceil((r as ReasonedFailure).retryAfterSec ?? d.retryAfterSec ?? 60))),
-    until: d.until ?? "—",
+    until: failureUntil(d, when),
     // ⚠️ Passed through as a STRING with no formatting at all. Every other value here goes
     // through `money()` or `String(Math…)`; a phone suffix is neither a quantity nor a
     // currency, and `"0044"` — a real suffix on production — must survive as `0044`.

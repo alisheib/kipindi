@@ -62,6 +62,7 @@ import { LICENCE_NUMBER } from "@/lib/support-config";
 import { isOptOutPath } from "@/lib/marketing/optout";
 import type { Dict } from "@/lib/i18n-server";
 import { isSafePath } from "@/lib/safe-next";
+import { breakStateFromTimers, type BreakState } from "@/lib/break-end";
 
 export async function AppShell({ children }: { children: React.ReactNode }) {
   const { t, locale } = await getServerT();
@@ -158,6 +159,8 @@ export async function AppShell({ children }: { children: React.ReactNode }) {
    * OFFER, never a refusal (`feature-state.ts` LAW 1), so failing open is the correct direction.
    */
   let promoSuppressed = false;
+  /** R4-I · the journey Wallet's one consumer of the break's END (see the note at `promoSuppressed` below). */
+  let journeyBreak: BreakState | null = null;
   /**
    * ⛔ THE INSTALL INVITATION IS WITHDRAWN (2026-09-13) — Ali: "keep only the socials popup … hide the
    * install for now, later we activate". Resolved HERE, on the server, from the one feature table; the
@@ -258,6 +261,12 @@ export async function AppShell({ children }: { children: React.ReactNode }) {
     const until = (iso: string | null | undefined) => (iso ? Date.parse(iso) : 0);
     promoSuppressed =
       until(rg?.selfExclusionUntil) > now || until(rg?.coolingOffUntil) > now;
+    /* ⭐ R4-I (2026-10-09; edges E58, tiles 014 017 020 047 050 053 080 083 086) · THE BREAK'S END NOW HAS A CONSUMER — the
+       player's own, on the player's own screen. The journey's Wallet drops "Weka pesa" during a break, and it did so
+       without a word; it now says why, in the sentence /wallet/deposit prints for the same break (`rg.breakActive` and its
+       end), so the Wallet the capsule opens is handed the end. Only the JOURNEY bar receives it (the classic bar's props
+       are untouched), it is derived from the same row (no query), and every OFFER still reads the one boolean above. */
+    journeyBreak = breakStateFromTimers(rg?.selfExclusionUntil, rg?.coolingOffUntil, now);
   }
 
   // The live ticker's REAL settlements. Batched with the config read rather than awaited at its
@@ -407,7 +416,7 @@ export async function AppShell({ children }: { children: React.ReactNode }) {
           never arrives leaves its part out (`nothingIfLost`) as before, but the server's markup then has no client
           twin, so React renders the whole page again in the browser, without that part, instead of that part alone.
           Classic visitors are untouched: these two arms are the journey's. */}
-      {journeyShown ? <LazyJourneyTopBar user={journeyUser} onBreak={promoSuppressed} proposalsState={proposalsState} inviteVisible={inviteVisible} invitePaid={invitePaid} /> : <TopAppBar user={topUser} proposalsState={proposalsState} inviteVisible={inviteVisible} invitePaid={invitePaid} />}
+      {journeyShown ? <LazyJourneyTopBar user={journeyUser} onBreak={promoSuppressed} breakEnd={journeyBreak} proposalsState={proposalsState} inviteVisible={inviteVisible} invitePaid={invitePaid} /> : <TopAppBar user={topUser} proposalsState={proposalsState} inviteVisible={inviteVisible} invitePaid={invitePaid} />}
       {/* ⭐ THE PREVIEW MARKER — first under the bar, so whoever holds this browser knows at once that they are
           looking at pages players do not see yet, and has the way out on the same line. */}
       {journeyPreview && <PreviewMarker label={t.journey.previewMarker} exit={t.journey.previewExit} />}

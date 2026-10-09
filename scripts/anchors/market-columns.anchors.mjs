@@ -101,8 +101,9 @@ export const MUTATIONS = [
     why: "the close time leaves the `sm-plain` rung, so its figures no longer stand on the line the strip's 18px figures stand on",
     file: PAGE,
     suite: "market-columns",
-    from: `<Stat size="sm-plain" labelStyle="widest" boxed="card" label={t.market.resolves}`,
-    to: `<Stat size="xs" labelStyle="widest" boxed="card" label={t.market.resolves}`,
+    // R4-I (2026-10-09): the tile's label is `common.resolves` (Swahili "Inaisha", "it ends", read as the end of picking).
+    from: `<Stat size="sm-plain" labelStyle="widest" boxed="card" label={t.common.resolves}`,
+    to: `<Stat size="xs" labelStyle="widest" boxed="card" label={t.common.resolves}`,
     expect: "6: …and the close time is a kit Stat on the sm-plain rung, with its glyph",
   },
   {

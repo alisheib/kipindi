@@ -75,7 +75,9 @@ const MUTATIONS = [
          "choice, with no route to the RG page and an invitation to come back. §9d must catch it: " +
          "the row keeps its copy in three languages and loses the only thing that reaches it.",
     file: MARKET,
-    from: `    return { ok: false, error: \`Self-exclusion until \${until}.\`, code: "SUSPENDED", reason: "self_excluded", detail: { until } };`,
+    // R4-I (2026-10-09): the refusal's detail carries the instant too (`untilAt`, for the reader's own formatter —
+    // failure-reasons.ts `FailureDetail.untilAt`), so the anchor reads the line as it now stands; the plant is unchanged.
+    from: `    return { ok: false, error: \`Self-exclusion until \${until}.\`, code: "SUSPENDED", reason: "self_excluded", detail: { until, untilAt: lockout.until! } };`,
     to: `    return { ok: false, error: \`Self-exclusion until \${until}.\`, code: "SUSPENDED" };`,
   },
   {

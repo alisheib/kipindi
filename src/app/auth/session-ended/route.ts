@@ -26,6 +26,7 @@ import { verifySession } from "@/lib/server/crypto";
 import { db } from "@/lib/server/store";
 import { selfExclusionStanding } from "@/lib/server/responsible-gambling";
 import { sanitizeNext } from "@/lib/safe-next";
+import { breakEndParam } from "@/lib/break-end";
 
 export const dynamic = "force-dynamic";
 
@@ -74,7 +75,10 @@ export async function GET(req: NextRequest) {
       const standing = await selfExclusionStanding(user.id).catch(() => null);
       if (standing?.state === "serving") {
         params.set("excluded", standing.permanent ? "permanent" : "serving");
-        if (!standing.permanent) params.set("until", standing.until.slice(0, 10));
+        // The END, the instant — not its UTC day (R4-I, 2026-10-09): the sign-in panel says it with its time, on the East
+        // Africa clock, as every other door to that panel now carries it (`breakEndParam`; test:visual-pass-r4i 1.4).
+        const end = standing.permanent ? null : breakEndParam(standing.until);
+        if (end) params.set("until", end);
       } else if (standing?.state === "minimum_served") {
         params.set("excluded", "minimum_served");
       } else {

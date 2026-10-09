@@ -126,7 +126,10 @@ ok("1: the platform zone resolves to a real IANA zone", /^[A-Za-z]+\/[A-Za-z_]+$
   // reader's month words and locale as its last two arguments — `t.common.monthsShort, locale` — never an English helper.
   // `eatCalls` lists each call with its arguments as written; it balances (), [] and {}, so `Date.parse(x)` and an
   // inline list are one argument each. Patterns are spelt with character classes, so no escape is typed in them.
-  const eatCalls = (src: string) => [...src.matchAll(/(?<![A-Za-z0-9_$.])formatEat(DateTime|Date)[(]/g)].map((m) => {
+  // ⭐ R4-I (2026-10-09): `formatBreakEnd` (src/lib/break-end.ts) is `formatEatDateTime` for a break's or an exclusion's end —
+  // the same four arguments, the reader's month words — so a file that dates a break through it is held like one that calls
+  // `formatEatDateTime` itself (the deposit page's notice moved to it).
+  const eatCalls = (src: string) => [...src.matchAll(/(?<![A-Za-z0-9_$.])(formatEat(?:DateTime|Date)|formatBreakEnd)[(]/g)].map((m) => {
     const args: string[] = [];
     let depth = 1, start = (m.index ?? 0) + m[0].length, i = start;
     for (; i < src.length && depth > 0; i++) {
@@ -135,7 +138,7 @@ ok("1: the platform zone resolves to a real IANA zone", /^[A-Za-z]+\/[A-Za-z_]+$
       else if (c === ")" || c === "]" || c === "}") { depth--; if (depth === 0) args.push(src.slice(start, i).trim()); }
       else if (c === "," && depth === 1) { args.push(src.slice(start, i).trim()); start = i + 1; }
     }
-    return { fn: `formatEat${m[1]}`, args };
+    return { fn: m[1], args };
   });
   const inReaderWords = (c: { args: string[] }) => c.args.length === 4 && c.args[2] === "t.common.monthsShort" && c.args[3] === "locale";
   const showCalls = (cs: { fn: string; args: string[] }[]) => cs.map((c) => `${c.fn}(${c.args.join(", ")})`).join(" | ");

@@ -58,6 +58,7 @@
  */
 import Link from "next/link";
 import { I } from "@/components/ui/glyphs";
+import { keepText } from "@/components/ui/keep-run";
 import { MarketCard } from "@/components/markets/market-card";
 // ⭐ THE ONE FILTER CONTROL LANGUAGE (WP9 · R16). The board's ordering rail is `FilterPill`, not a
 // bespoke toggle, and this file is declared to `test:filter-language` because of it — §3.1/§3.2 assert
@@ -85,7 +86,13 @@ import type { LandingPicks } from "@/lib/server/landing-picks";
  * What the signed-in hero knows about the player (landing v3 · WP14 part 2). Each part is null when
  * its read FAILED — and a null part renders nothing, never a zero (B-1).
  */
-export type LandingMine = { picks: LandingPicks | null; balance: number | null; held: boolean };
+export type LandingMine = {
+  picks: LandingPicks | null; balance: number | null; held: boolean;
+  /** R4-I · the reader's own break or exclusion, its end already said by the page in the reader's words (`formatBreakEnd`);
+   *  null when none runs or the read failed (it fails open). Optional, so a caller that does not know draws the block as
+   *  before. */
+  breakEnd?: { exclusion: boolean; date: string } | null;
+};
 
 export type HeroCardData = {
   charts: Map<string, { spark?: number[]; move24h?: number }>;
@@ -403,17 +410,26 @@ function SignedInAct({ t, mine, journey }: { t: Dict; mine: LandingMine | null; 
   const picks = mine?.picks ?? null;
   const balance = mine?.balance ?? null;
   const held = !!mine?.held;
+  // R4-I · the reader's break, its end already in the reader's words (the page says it, `formatBreakEnd`).
+  const breakEnd = mine?.breakEnd ?? null;
+  const onBreak = !!breakEnd;
   const noPicks = !!picks && picks.open === 0 && picks.awaiting === 0 && picks.paidThisWeekTzs === 0;
   // At zero the empty-balance prompt already says what to do next; the no-picks sentence beside it said it twice.
-  const emptyWallet = !held && balance !== null && balance <= 0;
+  // ⛔ R4-I · not during a break either: "Add funds … to make your next pick" invites both things a break pauses.
+  const emptyWallet = !held && !onBreak && balance !== null && balance <= 0;
   // ⛔ AND A FROZEN WALLET IS NOT INVITED TO PICK (round 3's tiles 090 091 095 096 099 100, 2026-10-08): "Choose a side
   // on a market to make your first" stood directly above "Your wallet is frozen" — an invitation the platform refuses.
   // The held notice speaks alone, as the Wallet and the journey header withhold their money invitations for a held
   // wallet (`wallet-sheet.tsx`, `header-state.ts`). No new words: the sentence is simply not shown.
+  // ⛔ …AND NEITHER IS A PLAYER ON A BREAK (R4-I, 2026-10-09; edges E19, tiles 013 016 019 046 049 052 079 082 085): "Bado
+  // huna chaguo. Chagua upande…" asked a player who had just paused their own betting to bet now. The break gets the held
+  // wallet's whole treatment: the invitation is not shown, and the break's own notice speaks in its place — the title the
+  // sign-in page gives it (`auth.coolingOff`) over the sentence /wallet/deposit and the limits page give it
+  // (`rg.breakActive`, with its end); an exclusion its own pair. No new words.
   return (
     <div className="kp-mine" data-testid="landing-mine">
       {picks && (noPicks ? (
-        held || emptyWallet ? null : <p className="kp-mine__lead">{t.home.picksNone}</p>
+        held || emptyWallet || onBreak ? null : <p className="kp-mine__lead">{t.home.picksNone}</p>
       ) : (
         <div>
           <p className="kp-mine__eyebrow">{t.home.yourPicks}</p>
@@ -443,6 +459,11 @@ function SignedInAct({ t, mine, journey }: { t: Dict; mine: LandingMine | null; 
         <div className="kp-mine__held" role="status">
           <p className="kp-mine__held-t">{t.kycGate.frozenTitle}</p>
           <p className="kp-mine__held-b">{t.kycGate.frozenBody}</p>
+        </div>
+      ) : breakEnd ? (
+        <div className="kp-mine__held" role="status" data-testid="landing-mine-break">
+          <p className="kp-mine__held-t">{breakEnd.exclusion ? t.auth.selfExclusionActive : t.auth.coolingOff}</p>
+          <p className="kp-mine__held-b">{keepText(fill(breakEnd.exclusion ? t.rg.exclusionActive : t.rg.breakActive, { date: breakEnd.date }), [breakEnd.date])}</p>
         </div>
       ) : emptyWallet ? (
         <p className="kp-mine__lead">{t.home.emptyBalance}</p>

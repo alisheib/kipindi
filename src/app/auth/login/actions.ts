@@ -9,6 +9,7 @@ import { verifyPlayer2faChallenge } from "@/lib/server/player-2fa";
 // The same-origin rule for `next`, shared with the journey's pending-bet link (Vodacom plan S3).
 import { isAdminPath, isAuthPath, isSafePath, sanitizeNext } from "@/lib/safe-next";
 import { accountRefusalPath, landingAfterAuth } from "@/lib/auth-landing";
+import { breakEndParam } from "@/lib/break-end";
 import { normalizeReferralCode } from "@/lib/referral-code";
 import { phoneCodeSignInEnabled } from "@/lib/server/otp-door";
 
@@ -79,8 +80,9 @@ export async function startLoginAction(formData: FormData) {
     if (result.code === "SUSPENDED" && result.detail?.accountClosed) redirect(accountRefusalPath(result.detail, safeNext) as never);
     const standing = result.detail?.standing;
     if (result.code === "SUSPENDED" && standing && standing !== "diverged") {
-      const until = standing === "serving" && result.detail?.until
-        ? `&until=${encodeURIComponent(result.detail.until.slice(0, 10))}` : "";
+      // The instant, not its UTC day (R4-I, 2026-10-09): the panel says the end with its time, on the East Africa clock.
+      const endParam = standing === "serving" ? breakEndParam(result.detail?.until) : null;
+      const until = endParam ? `&until=${encodeURIComponent(endParam)}` : "";
       redirect(`/auth/login?excluded=${standing}${until}${safeNext ? `&next=${encodeURIComponent(safeNext)}` : ""}`);
     }
     const isLockout = result.code === "RATE_LIMITED" && /locked/i.test(result.error);
@@ -217,8 +219,9 @@ export async function verifyLoginOtpAction(formData: FormData) {
       if (result.detail?.accountClosed) redirect(accountRefusalPath(result.detail, safeNext) as never);
       const standing = result.detail?.standing;
       if (standing && standing !== "diverged") {
-        const until = standing === "serving" && result.detail?.until
-          ? `&until=${encodeURIComponent(result.detail.until.slice(0, 10))}` : "";
+        // The instant, not its UTC day (R4-I, 2026-10-09) — as the password door above.
+        const endParam = standing === "serving" ? breakEndParam(result.detail?.until) : null;
+        const until = endParam ? `&until=${encodeURIComponent(endParam)}` : "";
         redirect(`/auth/login?excluded=${standing}${until}${safeNext ? `&next=${encodeURIComponent(safeNext)}` : ""}`);
       }
       redirect(`/auth/login?error=blocked${safeNext ? `&next=${encodeURIComponent(safeNext)}` : ""}`);

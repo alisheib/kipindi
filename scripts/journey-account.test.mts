@@ -478,6 +478,9 @@ function g3Rows(I: Impl, W: World, ok: Ok) {
 function wordAt(t: unknown, path: string): string {
   let v: unknown = t;
   for (const part of path.split(".")) v = v !== null && typeof v === "object" ? (v as Record<string, unknown>)[part] : undefined;
+  // R4-I (2026-10-09): a path whose value is a LIST of words (the month names `common.monthsShort`, read by Pumzika's status
+  // line) resolves when every entry is a word; anything else that is not a string does not.
+  if (Array.isArray(v)) return v.length > 0 && v.every((x) => typeof x === "string" && x.trim() !== "") ? v.join(" ") : "";
   return typeof v === "string" ? v : "";
 }
 /**

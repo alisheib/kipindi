@@ -47,7 +47,7 @@
  * payment apps use because corner toasts get missed.
  */
 
-import { useCallback, useEffect, useRef } from "react";
+import { useCallback, useEffect, useId, useRef, type ReactNode } from "react";
 import { Modal } from "@/components/ui/modal";
 import { I } from "@/components/ui/glyphs";
 import { useT } from "@/lib/i18n";
@@ -62,12 +62,15 @@ export type OperationDetail = { label: string; sw?: string; value: string; tone?
 type Props = {
   open: boolean;
   variant: OperationVariant;
-  /** Big eyebrow line — e.g. "Bet placed · Dau lipo". */
-  eyebrow: string;
+  /** Big eyebrow line — e.g. "Bet placed · Dau lipo". R4-I (2026-10-09): optional — a caller whose heading already says
+   *  what the eyebrow would ("无法下注" over "无法下注") passes none, and no empty line is drawn. */
+  eyebrow?: string;
   /** Hero headline — e.g. "Position open" or "Withdrawal failed". */
   title: string;
-  /** Bilingual subhead, optional — e.g. "Inakaguliwa · Ufanye baadaye". */
-  subtitle?: string;
+  /** Bilingual subhead, optional — e.g. "Inakaguliwa · Ufanye baadaye". R4-I: a node, so a sentence can keep a run whole
+   *  (a break's end, `keepText`). It is also the dialog's DESCRIPTION (`aria-describedby`), so a screen reader reads the
+   *  reason with the heading when the dialog opens — a refusal used to announce "Could not place" and stop there. */
+  subtitle?: ReactNode;
   /** Optional summary rows shown in a kit-styled grid. */
   details?: OperationDetail[];
   /** Optional micro-copy at the bottom (e.g. "We notified you in the bell"). */
@@ -177,6 +180,7 @@ export function OperationResultModal({
   const { t } = useT();
   const closeRef = useRef(onClose);
   const primaryRef = useRef<HTMLButtonElement>(null);
+  const subtitleId = useId();
   useEffect(() => { closeRef.current = onClose; }, [onClose]);
 
   // ⭐ §F1 · THE SECONDARY STANDS DOWN WHILE THE PRIMARY IS UP (Ali, 2026-08-15).
@@ -389,6 +393,7 @@ export function OperationResultModal({
       onClose={onClose}
       role={variant === "danger" ? "alertdialog" : "dialog"}
       ariaLabel={title}
+      describedBy={subtitle ? subtitleId : undefined}
       maxWidth={460}
       initialFocus={primaryRef}
       panelClassName="overflow-hidden !p-0"
@@ -415,8 +420,11 @@ export function OperationResultModal({
           receipt lives inside it — so `onFocusCapture` sees them all without adding a node
           to the focus trap's `querySelectorAll`. Non-success variants never auto-close, so
           the handlers no-op there (`pauseAutoClose` returns on a null target). */}
+      {/* R4-I (2026-10-09) · `[&>div+h2]:mt-4`: a result drawn without an eyebrow (`eyebrow` is optional) puts its heading
+          where the eyebrow stood, the crest's 20px (`mt-4`) under it rather than the heading's own 4px — the heading
+          follows the crest directly only then. Its own class stays one literal string, which the dialog models read. */}
       <div
-        className="p-6 lg:p-7 text-center"
+        className="p-6 lg:p-7 text-center [&>div+h2]:mt-4"
         onPointerMove={onPointerMoveHold}
         onPointerLeave={onPointerLeaveHold}
         onFocusCapture={onFocusIn}
@@ -452,17 +460,19 @@ export function OperationResultModal({
           <CrestIcon variant={variant} color={tone.fg} />
         </div>
 
-        <p
-          className="mt-4 font-mono text-micro uppercase eyebrow font-bold"
-          style={{ color: tone.fg }}
-        >
-          {eyebrow}
-        </p>
+        {eyebrow && (
+          <p
+            className="mt-4 font-mono text-micro uppercase eyebrow font-bold"
+            style={{ color: tone.fg }}
+          >
+            {eyebrow}
+          </p>
+        )}
         <h2 className="mt-1 font-display text-[22px] font-bold text-text leading-tight tracking-[-0.018em]">
           {wholeFigures ? withWholeFigures(title) : title}
         </h2>
         {subtitle && (
-          <p className="mt-1.5 text-[13px] text-text-muted leading-snug">
+          <p id={subtitleId} className="mt-1.5 text-[13px] text-text-muted leading-snug">
             {subtitle}
           </p>
         )}

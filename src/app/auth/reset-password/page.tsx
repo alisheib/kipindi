@@ -120,7 +120,9 @@ export default async function ResetPasswordPage({ searchParams }: { searchParams
             title={t.common.setNewPassword}
             subtitle={t.common.strongPassword}
           >
-            <p className="mt-1.5 flex items-center gap-1.5 text-body-sm text-gold-300">
+            {/* R4-I (2026-10-09, R4-K's gold audit applied to the last gold text on the auth pages): the link's lifetime in
+                the muted ink, not gold — a time limit has earned nothing (DESIGN_AUTHORITY Q5, §M3, F3). */}
+            <p className="mt-1.5 flex items-center gap-1.5 text-body-sm text-text-muted">
               <I.clock s={12} />
               {t.common.thisLinkExpires}
             </p>

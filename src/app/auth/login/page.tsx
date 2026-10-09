@@ -16,6 +16,9 @@ import { sessionEndedThisRequest } from "@/lib/server/session";
 import { cookies } from "next/headers";
 import { isSafePath, sanitizeNext } from "@/lib/safe-next";
 import { normalizeReferralCode } from "@/lib/referral-code";
+import { fill } from "@/lib/utils";
+import { formatBreakEnd, readBreakEndParam } from "@/lib/break-end";
+import { keepText } from "@/components/ui/keep-run";
 
 export async function generateMetadata() {
   const { t } = await getServerT();
@@ -35,8 +38,14 @@ export default async function LoginPage({
   // See `bounce-authed.ts` — it also records why moving this to the middleware would have
   // shipped an infinite redirect loop against B-13's revoked-device flow.
   await bounceIfAuthed();
-  const { t } = await getServerT();
+  const { t, locale } = await getServerT();
   const sp = await searchParams;
+  /* ⭐ THE END OF THE PLAYER'S OWN BREAK OR EXCLUSION, AS THE REDIRECT CARRIED IT (R4-I, 2026-10-09; edges E9 E16 E55).
+     `?until=` is the instant the server wrote (`breakEndParam`), or a bare day from an older link; anything else reads
+     as no date at all. It is PRINTED, never believed: no gate reads it. One formatter says it (`formatBreakEnd` — the
+     East Africa clock, the reader's month words, date and time), and the sentence keeps it one run (`keepText`). */
+  const breakEnd = readBreakEndParam(sp.until);
+  const breakEndText = breakEnd ? formatBreakEnd(breakEnd, Date.now(), t.common.monthsShort, locale) : null;
   // 🔴 E-381 · WHY THE LAST SESSION ENDED, AND ONLY WHAT IS TRUE OF IT.
   //  · `?revoked=1` — `/auth/session-ended` found a NEWER session in the registry: the one cause
   //    "signed in on another device" is true for.
@@ -115,34 +124,44 @@ export default async function LoginPage({
     if (sp.excluded === "minimum_served") return {
       tone: "danger" as const,
       title: t.auth.selfExclusionEnded,
-      body: t.auth.selfExclusionEndedBody,
+      body: keepText(t.auth.selfExclusionEndedBody),
       cta: null,
       contact: true,
     };
     if (sp.excluded === "permanent") return {
       tone: "danger" as const,
       title: t.auth.selfExclusionActive,
-      body: t.auth.selfExclusionPermanentBody,
+      body: keepText(t.auth.selfExclusionPermanentBody),
       cta: null,
       contact: true,
     };
     // ⛔ `until` IS PRINTED INSIDE A DANGER PANEL ON THE REAL DOMAIN, so only what the server writes is printed (review of the
-    // route audit, 2026-10-07): the sign-in action and `accountRefusalPath` both send a bare `YYYY-MM-DD`. Any other text —
-    // "7 Oct. To reopen today pay TZS 10,000 to …" — falls back to the sentence with no date. A replacer function, so a
-    // `$&` in a date could never be expanded either.
+    // route audit, 2026-10-07): the sign-in action, `accountRefusalPath` and the exclusion's own action send the instant
+    // (`breakEndParam`), and an older link a bare `YYYY-MM-DD` — `readBreakEndParam` accepts those two shapes and nothing
+    // else. Any other text — "7 Oct. To reopen today pay TZS 10,000 to …" — falls back to the sentence with no date. `fill`
+    // substitutes through a replacer, so a `$&` could never be expanded either.
+    // ⭐ (R4-I, 2026-10-09, tiles 113–130) It used to print the raw value — "hadi 2026-10-10", a date with no time, so a
+    // 24-hour exclusion taken at 05:05 read as ending at midnight — and the value broke across lines ("2026-" / "10-10").
     if (sp.excluded === "serving" || sp.excluded === "1") return {
       tone: "danger" as const,
       title: t.auth.selfExclusionActive,
-      body: sp.until && /^\d{4}-\d{2}-\d{2}$/.test(sp.until) && Number.isFinite(Date.parse(`${sp.until}T00:00:00Z`))
-        ? t.auth.selfExclusionUntilBody.replace("{date}", () => sp.until!)
-        : t.auth.selfExclusionBody,
+      body: breakEndText
+        ? keepText(fill(t.auth.selfExclusionUntilBody, { date: breakEndText }), [breakEndText])
+        : keepText(t.auth.selfExclusionBody),
       cta: null,
       contact: true,
     };
+    // ⭐ THE BREAK, WITH ITS END (R4-I, 2026-10-09, tiles 003–011). `coolOffAction` now carries the end here as the exclusion
+    // carries its own, and the panel says it in the break's own approved sentence — `rg.breakActive`, the sentence
+    // /wallet/deposit and the limits page show for the same break: until when, that it cannot be shortened, that sign-in and
+    // withdrawals go on. Without a readable end (an older link) it keeps `auth.coolingOffBody`, which said only "when the
+    // break ends".
     if (sp.cooled === "1") return {
       tone: "warning" as const,
       title: t.auth.coolingOff,
-      body: t.auth.coolingOffBody,
+      body: breakEndText
+        ? keepText(fill(t.rg.breakActive, { date: breakEndText }), [breakEndText])
+        : keepText(t.auth.coolingOffBody),
       cta: null,
     };
     switch (sp.error) {
@@ -251,7 +270,12 @@ export default async function LoginPage({
                     : "border-warning-border bg-warning-bg")
               }
             >
-              <span className={"mt-0.5 shrink-0 " + (errorPanel.tone === "success" ? "text-success-fg" : errorPanel.tone === "danger" ? "text-danger-fg" : "text-gold-300")}>
+              {/* ⭐ THE GLYPH ON THE TITLE'S INK, NOT 2PX UNDER IT (R4-I, 2026-10-09, tiles 128–130 · 122–127). The title is
+                  13px Sora in a 17.9px line: its capitals centre 8.6px down the line, and a Chinese title's ink (the CJK
+                  fallback face) 8.0px down. The 16px glyph centred 10px down (`mt-0.5`), 2px under the Chinese title and
+                  1.5px under the Swahili and English ones. With no margin it centres 8px down: on the Chinese ink, and 0.6px
+                  over the capitals. Twin of auth/register/register-form.tsx — keep the two in step. */}
+              <span className={"shrink-0 " + (errorPanel.tone === "success" ? "text-success-fg" : errorPanel.tone === "danger" ? "text-danger-fg" : "text-text-muted")}>
                 <I.alertCircle s={16} />
               </span>
               <div className="text-body-sm leading-snug">
@@ -296,8 +320,10 @@ export default async function LoginPage({
                     href={errorPanel.cta.href as never}
                     /* ⚠️ LITERAL, not `h-9` — spacing is overridden (tailwind.config.ts:200-215),
                        so `h-9` was a 64px capsule around 12.5px type. 40px = --tap-min.
-                       Twin of auth/register/register-form.tsx — keep the two in step. */
-                    className="mt-2 inline-flex h-[40px] items-center px-3.5 rounded-pill border border-gold-700 bg-gold-500/10 font-display font-bold text-[12.5px] text-gold-300 hover:bg-gold-500/20 transition-colors"
+                       Twin of auth/register/register-form.tsx — keep the two in step.
+                       ⭐ R4-I (2026-10-09, R4-K's gold audit): the brand's ink, not gold — "Create one", "Reset password"
+                       earn nothing (Q5, §M3); the warning glyph above is the muted ink for the same reason (F3). */
+                    className="mt-2 inline-flex h-[40px] items-center px-3.5 rounded-pill border border-brand-500/60 bg-brand-500/10 font-display font-bold text-[12.5px] text-brand-300 hover:bg-brand-500/20 transition-colors"
                   >
                     {errorPanel.cta.label} →
                   </Link>
@@ -342,10 +368,16 @@ export default async function LoginPage({
               )}
             </Field>
 
+            {/* ⭐ THE WAY BACK INTO AN ACCOUNT IS READ, AND PRESSED, LIKE A LINK (R4-I, 2026-10-09; edges E12, tiles 003–011
+                · 113–130). It was a 10px mono microlabel in the subtle ink — capitals 8px tall (9px in Chinese), under the
+                12.5px reading floor — on the one control a locked-out player needs. It now wears the page's other link,
+                "Create one" below: 13px (`text-body-sm`), the brand ink, semibold, and a 40px (`--tap-min`) tap height —
+                whose extra 22px its own margins absorb (`-my-[11px]`: 40 less the 18px line, halved), as side-picker's
+                "change side" absorbs its 44px, so the row is still one line and the button below does not move down. */}
             <div className="flex items-center justify-end -mt-2">
               <Link
                 href={forgotHref as never}
-                className="font-mono text-micro uppercase tracking-[0.14em] text-text-subtle hover:text-text"
+                className="-my-[11px] inline-flex min-h-[var(--tap-min)] items-center text-body-sm font-semibold text-brand-300 hover:text-brand-200 underline-offset-2 hover:underline"
               >
                 {t.auth.forgotPassword}
               </Link>

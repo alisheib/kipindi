@@ -13,6 +13,7 @@ import { DEPOSIT_MIN_TZS, DEPOSIT_MAX_TZS, type DepositInput } from "@/lib/serve
 import type { CardCheckoutContext } from "@/lib/server/payments";
 import { getServerT } from "@/lib/i18n-server";
 import { errorCopy } from "@/lib/error-copy";
+import { formatBreakEnd } from "@/lib/break-end";
 
 /** Absolute base for the URLs we hand Selcom to send the buyer back to. Must be
  *  the real public host — a relative path is meaningless to the gateway. */
@@ -24,7 +25,7 @@ export async function depositAction(formData: FormData) {
 
   // B-7 — every refusal this action redirects with is rendered verbatim by the
   // deposit page, so it must be minted in the player's own language, here.
-  const { t } = await getServerT();
+  const { t, locale } = await getServerT();
 
   const amount = parseInt(String(formData.get("amount") ?? "0"), 10);
   // Pass the chosen provider through (don't coerce to MPESA) — the schema validates it.
@@ -141,7 +142,8 @@ export async function depositAction(formData: FormData) {
     // action, where the confirmed email is now asked (`wallet/withdraw/actions.ts`).
     // B-7 — the service's English string is audit truth; the player reads the
     // dictionary line for its code (bilingual gateway reasons pass through).
-    return fail(errorCopy(t, result));
+    // A break's end in the reader's words (R4-I, 2026-10-09): `formatBreakEnd`, as the deposit page's own notice says it.
+    return fail(errorCopy(t, result, (at) => formatBreakEnd(at, Date.now(), t.common.monthsShort, locale)));
   }
   const data = result.data!;
 

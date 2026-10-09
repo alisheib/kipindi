@@ -34,14 +34,17 @@
 import { Callout } from "@/components/ui/callout";
 import type { LeanLevel } from "@/lib/payout";
 import { useT } from "@/lib/i18n";
+import { keepText } from "@/components/ui/keep-run";
 
 export function HouseLeanWarning({ level }: { level: LeanLevel }) {
   const { t } = useT();
   if (level === "fair") return null;
 
   return (
-    <Callout tone="warning" className="mt-3" title={t.market.crowdedWarning}>
-      <p className="mt-1 text-body-sm leading-snug text-text-muted">{t.market.thinUpsideNote}</p>
+    /* R4-I (2026-10-09, tiles 035 039 068 072 076) · neither line ends on one word ("mdogo.", "small.") and no line opens
+       on the title's dash (`keepText`); the words are unchanged. */
+    <Callout tone="warning" className="mt-3" title={keepText(t.market.crowdedWarning)}>
+      <p className="mt-1 text-body-sm leading-snug text-text-muted">{keepText(t.market.thinUpsideNote)}</p>
     </Callout>
   );
 }

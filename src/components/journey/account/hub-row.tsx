@@ -13,14 +13,16 @@ import { Cash } from "@/components/ui/cash";
 import { DotSeq } from "@/components/ui/dot-seq";
 import { ProposalsStateBadge } from "@/components/ui/proposals-state-badge";
 import { NeedleControlsDrawer } from "@/components/layout/needle-drawer";
-import { formatTzs } from "@/lib/utils";
-import type { Dict } from "@/lib/i18n-dict";
+import { formatTzs, fill } from "@/lib/utils";
+import { firstDateSentence, formatBreakEnd } from "@/lib/break-end";
+import { keepText } from "@/components/ui/keep-run";
+import type { Dict, Locale } from "@/lib/i18n-dict";
 import { hubWord, type HubRow, type HubViewer } from "@/components/journey/account/hub-rows";
 import { UnreadRow } from "@/components/journey/account/unread-row";
 import { LanguageRow } from "@/components/journey/account/language-row";
 import { CardSizeRow } from "@/components/journey/account/card-size-row";
 
-export function HubRowItem({ row, t, viewer }: { row: HubRow; t: Dict; viewer: HubViewer }) {
+export function HubRowItem({ row, t, viewer, locale }: { row: HubRow; t: Dict; viewer: HubViewer; locale?: Locale }) {
   if (row.kind === "language") return <LanguageRow />;
   if (row.kind === "cardSize") return <CardSizeRow />;
   if (row.kind === "needle") {
@@ -36,6 +38,17 @@ export function HubRowItem({ row, t, viewer }: { row: HubRow; t: Dict; viewer: H
   }
   const Glyph = I[row.glyph];
   const label = <span className="kp-hub__label">{hubWord(t, row.label)}</span>;
+  /* ⭐ R4-I (2026-10-09; edges E58, tile 092 · 026 059) · A RUNNING BREAK IS STATED ON ITS OWN ROW. "Pumzika" was offered
+     during an active break with no word that one was running, or until when. Its second line is now the first sentence of
+     the break's own approved paragraph, `rg.breakActive` — "Mapumziko yanaendelea hadi 9 Okt, 06:02." — its end said by
+     the one formatter and kept one run; an exclusion states `rg.exclusionActive`'s on its own row. The row still lands on
+     the break section, which carries the whole paragraph. */
+  const running = viewer.signedIn && viewer.breakEnd && locale
+    && ((row.id === "break" && !viewer.breakEnd.exclusion) || (row.id === "exclude" && viewer.breakEnd.exclusion))
+    ? viewer.breakEnd : null;
+  const statusTemplate = running ? firstDateSentence(running.exclusion ? t.rg.exclusionActive : t.rg.breakActive) : null;
+  const statusDate = running && statusTemplate && locale ? formatBreakEnd(Date.parse(running.until), Date.now(), t.common.monthsShort, locale) : null;
+  const status = statusTemplate && statusDate ? keepText(fill(statusTemplate, { date: statusDate }), [statusDate]) : null;
   return (
     <li>
       <Link href={row.href as never} className="kp-hub__row">
@@ -51,6 +64,7 @@ export function HubRowItem({ row, t, viewer }: { row: HubRow; t: Dict; viewer: H
             </span>
           ) : label}
           {row.sub && <HubSub text={hubWord(t, row.sub)} />}
+          {status && <span className="kp-hub__sub" data-testid={`hub-status-${row.id}`}>{status}</span>}
         </span>
         {row.extra === "balance" && viewer.signedIn && viewer.balance !== null && (
           <Cash className="kp-hub__money">{formatTzs(viewer.balance)}</Cash>

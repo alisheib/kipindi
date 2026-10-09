@@ -221,8 +221,10 @@ const REAL: Impl = { payout: PAYOUT.ticketPayout };
 const ASK = "const { journey } = await resolveSimpleJourney();";
 const CLASSIC_RETURN = `<PageContainer tier="reading" className="space-y-6">`;
 /** The view as the page hands it over: what the page read and priced, by name, and nothing read for it alone. */
+// R4-I (2026-10-09): `breakBody` — the reader's break, worded once by the page for BOTH views (the classic empty state reads
+// it too), so the first-ticket call to bet is not shown during a break. Not a read made for the view alone.
 const VIEW_ELEMENT = ["<TicketsView", "rows={rows}", "positions={byId}", "markets={marketMap}", "prices={pricedById}",
-  "lens={state.tab}", "page={pageNum}", "serverNow={serverNow}", "locale={locale}", "t={t}", "/>"].join("");
+  "lens={state.tab}", "page={pageNum}", "serverNow={serverNow}", "locale={locale}", "t={t}", "breakBody={breakBody}", "/>"].join("");
 /** The history page's header: two sibling ternaries, each where its element stood — the tickets' head for a journey request, today's back link and header for everybody else. */
 const HISTORY_HEAD_OPEN = "{journey ? <TicketsHead";
 const HISTORY_HEAD = [`{journey ? <TicketsHead current="updown" t={t} /> : <BackLink fallbackHref="/updown" label={t.market.udBackToBoard} />}`,

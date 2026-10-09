@@ -351,7 +351,8 @@ const { dict } = await import("../src/lib/i18n-dict.ts");
      count(cap, "<button") === 1 && cap.includes('aria-haspopup="dialog"') && cap.includes("aria-expanded={open}")
      && cap.includes("onClick={() => setOpen(true)}") && cap.includes("ref={capsuleRef}"));
   ok("8.3 the Wallet it opens is anchored to it and speaks the journey's words — the classic capsule's Wallet does not",
-     cap.includes("<WalletSheet open={open} onClose={() => setOpen(false)} balance={balance} held={held} anchorRef={capsuleRef} journey onBreak={onBreak} />")
+     // R4-I (2026-10-09): the journey's Wallet is also handed the break's end (`breakEnd`), for its notice.
+     cap.includes("<WalletSheet open={open} onClose={() => setOpen(false)} balance={balance} held={held} anchorRef={capsuleRef} journey onBreak={onBreak} breakEnd={breakEnd} />")
      && pill.includes("<WalletSheet open={open} onClose={() => setOpen(false)} balance={effectiveBalance} held={held} anchorRef={capsuleRef} />"));
   ok("8.4 no eye and no caret in the capsule ⛔ — hiding balances lives in the Wallet it opens (SJ-15)",
      !cap.includes("<CashEye") && !cap.includes("chevronDown"));
@@ -457,9 +458,11 @@ const { dict } = await import("../src/lib/i18n-dict.ts");
      && jbar.includes("const liveBalance = useLiveBalance(user.balance ?? 0);"),
      capsule === "" ? "the capsule's guard was not found as written" : capsule.slice(0, 140));
   ok("8c.1b ⛔ the break reaches the Wallet — the bar hands its onBreak to the capsule, and the capsule to the journey's Wallet (§7: no Deposit during a break); the classic Wallet is never told",
-     jbar.includes('<WalletBalanceCaptioned balance={liveBalance} held={state.capsule === "held"} onBreak={onBreak} />')
-     && pill.includes("export function WalletBalanceCaptioned({ balance, held = false, onBreak = false }: { balance: number; held?: boolean; onBreak?: boolean }) {")
-     && pill.includes("anchorRef={capsuleRef} journey onBreak={onBreak} />")
+     // R4-I (2026-10-09): the break's END rides beside the flag (`breakEnd`) — the bar to the capsule, the capsule to the
+     // journey's Wallet, which states it; the classic Wallet is still told neither.
+     jbar.includes('<WalletBalanceCaptioned balance={liveBalance} held={state.capsule === "held"} onBreak={onBreak} breakEnd={breakEnd} />')
+     && pill.includes("export function WalletBalanceCaptioned({ balance, held = false, onBreak = false, breakEnd = null }: { balance: number; held?: boolean; onBreak?: boolean; breakEnd?: BreakState | null }) {")
+     && pill.includes("anchorRef={capsuleRef} journey onBreak={onBreak} breakEnd={breakEnd} />")
      && pill.includes("<WalletSheet open={open} onClose={() => setOpen(false)} balance={effectiveBalance} held={held} anchorRef={capsuleRef} />"));
   const pillBlock = span("{state.pill && (", "</Link>");
   ok("8c.2 + Weka pesa shows at EVERY width — the classic pill's yield below 1024 is the coin's, and this rail has none",

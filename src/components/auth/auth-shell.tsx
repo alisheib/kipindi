@@ -21,7 +21,17 @@ export async function AuthShell({ children }: { children: React.ReactNode }) {
   const { t } = await getServerT();
   return (
     <div className="relative min-h-[calc(100vh-44px)] overflow-hidden">
-      <div className="mx-auto grid min-h-[calc(100vh-44px)] w-full max-w-6xl grid-cols-1 lg:grid-cols-2">
+      {/* ⭐ THE RAIL STANDS ON THE HEADER'S EDGES, AND THE WORDMARK IS SHOWN ONCE (R4-I, 2026-10-09; edges E14, tiles 005 008
+          011 · 115 118 121 · 124 127 130). The grid was `max-w-6xl` (1152px) centred, so at 1280 the brand rail ran x64–640
+          and the form column ended at x1216, while the header above — the journey bar's `.kp-jhdr__row`, `max-width:
+          var(--w-board)` with 32px sides from 1024 — holds its content to x32–1248: two edges 32px apart on one screen. From
+          1024 the grid now takes the header's own box (`max-w-board`, 32px sides), so the rail starts on the header's left
+          edge and the form column ends on its right one at every width. (The classic bar pads 24px, so for a classic
+          reader the rail now stands 8px inside the bar's edge, where it stood 40px inside it.)
+          And from 1280, where the header draws the full lockup (`hidden xl:inline-flex`, the journey and the classic bar
+          alike), the rail's own lockup is not drawn: the wordmark appeared twice on one screen. Below 1280 the header shows
+          the mark alone and the rail keeps the wordmark; its empty slot keeps the rail's three-part rhythm. */}
+      <div className="mx-auto grid min-h-[calc(100vh-44px)] w-full max-w-6xl grid-cols-1 lg:max-w-board lg:grid-cols-2 lg:px-6">
         {/* Brand side-rail — lg+ only. */}
         <aside
           className="relative hidden overflow-hidden px-10 py-12 lg:flex lg:flex-col lg:justify-between"
@@ -29,7 +39,7 @@ export async function AuthShell({ children }: { children: React.ReactNode }) {
         >
           <BrandTopo id="auth-rail-topo" opacity={0.09} />
           <div className="relative">
-            <Link href="/" aria-label={t.auth.brandHomeAria} className="inline-block transition-opacity hover:opacity-90">
+            <Link href="/" aria-label={t.auth.brandHomeAria} className="inline-block transition-opacity hover:opacity-90 xl:hidden">
               <FiftyLockup size={26} />
             </Link>
           </div>

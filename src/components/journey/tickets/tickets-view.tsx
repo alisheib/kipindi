@@ -48,7 +48,7 @@ import type { Dict, Locale } from "@/lib/i18n-dict";
 /** Every ticket matches: the view has no search box, so no text narrows it. */
 const ANY_TEXT = () => true;
 
-export function TicketsView({ rows, positions, markets, prices, lens, page, serverNow, locale, t }: {
+export function TicketsView({ rows, positions, markets, prices, lens, page, serverNow, locale, t, breakBody = null }: {
   /** The decorated rows the page built (a position whose market is missing is already dropped). */
   rows: readonly PortfolioRow[];
   positions: ReadonlyMap<string, TicketPosition>;
@@ -60,6 +60,9 @@ export function TicketsView({ rows, positions, markets, prices, lens, page, serv
   serverNow: number;
   locale: Locale;
   t: Dict;
+  /** R4-I · the reader's break, as the page words it (`rg.breakActive` with its end), or null: the first-ticket empty state
+   *  then says it instead of "pick a question…", and offers no way to bet. The page reads it; this view only draws. */
+  breakBody?: string | null;
 }) {
   const state: PortfolioState = { ...PORTFOLIO_DEFAULT_STATE, tab: lens };
   const shown = sortPortfolio(filterPortfolio(rows, state, serverNow, ANY_TEXT), state);
@@ -79,7 +82,11 @@ export function TicketsView({ rows, positions, markets, prices, lens, page, serv
     cashed: t.journey.ticketsEmptyCashed,
   };
   const emptyTitle = firstTicket ? t.journey.ticketsEmptyOpenTitle : (LENS_EMPTY[lens] ?? t.journey.ticketsEmptyLens);
-  const emptyBody = firstTicket
+  // ⛔ R4-I · during a break the first-ticket call ("Chagua swali, bonyeza NDIO au HAPANA…") and its "Tazama maswali"
+  // button go; the break's own sentence speaks (tiles 021–023 · 054–056 · 087–089).
+  const breakNow = firstTicket && !!breakBody;
+  const emptyBody = breakNow && breakBody ? breakBody
+    : firstTicket
     ? t.journey.ticketsEmptyOpenBody.replace("{yes}", sideWord(t, "YES", "MARKET")).replace("{no}", sideWord(t, "NO", "MARKET"))
     : t.positions.emptyLensBody;
 
@@ -95,7 +102,7 @@ export function TicketsView({ rows, positions, markets, prices, lens, page, serv
           kind="positions"
           title={emptyTitle}
           body={emptyBody}
-          action={firstTicket ? (
+          action={breakNow ? null : firstTicket ? (
             // btn-md: the 44px the canvas draws and the Juu/Chini tab's empty state beside it uses (2026-10-08, G3's
             // tiles 233–248: one switch, two empty states, a 40px and a 44px call to action).
             <Link href={"/" as never} className="btn btn-primary btn-md">{t.journey.ticketsBrowse}</Link>

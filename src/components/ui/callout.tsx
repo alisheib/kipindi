@@ -179,6 +179,7 @@ export function Callout({
   action,
   role,
   titleAs: TitleTag = "p",
+  bodyWidth = "measure",
 }: {
   tone?: CalloutTone;
   /** Optional bold lead line. */
@@ -212,6 +213,13 @@ export function Callout({
   badge?: React.ReactNode;
   /** `stack` only — the way forward. A notice that is a dead end is a defect. */
   action?: React.ReactNode;
+  /**
+   * `stack` only — the body's measure. `measure` (default) holds it to 42ch, the reading measure of a short notice;
+   * `full` lets it take the card's own width. ⭐ R4-I (2026-10-09, tiles 093–095): the deposit page's break notice is one
+   * long sentence in a 575px card at 1280, and 42ch (with its balanced lines) held it to ~234px in four lines; a notice
+   * that IS the page takes the page's column.
+   */
+  bodyWidth?: "measure" | "full";
   /**
    * Announce as `note` (default), `status` (a passive state change), or `alert`.
    * Overrides whatever `live` would have chosen; `live` is kept for the callers
@@ -274,7 +282,7 @@ export function Callout({
           <TitleTag className="mt-3 font-display text-[18px] font-bold leading-snug text-text">{title}</TitleTag>
         ) : null}
         {children ? (
-          <div className="mx-auto mt-2 max-w-[42ch] text-[13px] leading-relaxed text-text-muted">{children}</div>
+          <div className={cn("mx-auto mt-2 text-[13px] leading-relaxed text-text-muted", bodyWidth === "measure" && "max-w-[42ch]")}>{children}</div>
         ) : null}
         {metaLine}
         {action ? <div className="mt-5">{action}</div> : null}

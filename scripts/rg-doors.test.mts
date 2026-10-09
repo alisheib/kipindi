@@ -384,8 +384,10 @@ console.log("\n§6 · the screen shows the refusal the server computed (E-240, m
   // flattened EVERY refusal — an exclusion with its date included — to error=blocked and dropped `next`. Each door now
   // hands the refusal's machine tokens to ONE function, `accountRefusalPath` (src/lib/auth-landing.ts).
   {
+    // ⭐ R4-I (2026-10-09): serving carries its END, the instant — no longer its UTC day ("until=2026-12-01" read as
+    // midnight on the sign-in page, and an end before 03:00 EAT named the day before). The page formats it.
     const rows: Array<[Parameters<typeof accountRefusalPath>[0], string, string]> = [
-      [{ standing: "serving", until: "2026-12-01T09:00:00.000Z" }, "", "/auth/login?excluded=serving&until=2026-12-01"],
+      [{ standing: "serving", until: "2026-12-01T09:00:00.000Z" }, "", "/auth/login?excluded=serving&until=2026-12-01T09%3A00%3A00.000Z"],
       [{ standing: "permanent" }, "", "/auth/login?excluded=permanent"],
       [{ standing: "minimum_served", until: "2026-01-01T00:00:00.000Z" }, "", "/auth/login?excluded=minimum_served"],
       [{ standing: "diverged" }, "", "/auth/login?error=blocked"],

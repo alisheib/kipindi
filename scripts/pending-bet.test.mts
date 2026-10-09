@@ -198,7 +198,8 @@ function run(impl: Impl, log: (l: string) => void): string[] {
 
   table<[Parameters<Impl["refusal"]>[0], string]>("7.refusal · a CLOSED account gets the closed=1 panel; the three exclusion standings their own (serving carries its date); anything else error=blocked; only a safe next is kept",
     [[[{ accountClosed: true }, "/markets/mkt_a1"], "/auth/login?closed=1&next=%2Fmarkets%2Fmkt_a1"],
-      [[{ standing: "serving", until: "2026-12-01T09:00:00.000Z" }, ""], "/auth/login?excluded=serving&until=2026-12-01"],
+      // R4-I (2026-10-09): serving carries its end as the instant, not its UTC day (test:rg-doors 6.10 says why).
+      [[{ standing: "serving", until: "2026-12-01T09:00:00.000Z" }, ""], "/auth/login?excluded=serving&until=2026-12-01T09%3A00%3A00.000Z"],
       [[{ standing: "minimum_served", until: "2026-01-01T00:00:00.000Z" }, ""], "/auth/login?excluded=minimum_served"],
       [[{ standing: "permanent" }, ""], "/auth/login?excluded=permanent"],
       [[{ standing: "diverged" }, ""], "/auth/login?error=blocked"],

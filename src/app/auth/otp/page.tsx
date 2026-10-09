@@ -12,6 +12,7 @@ import { OtpExpiryCountdown } from "@/components/auth/otp-expiry-countdown";
 import { getServerT } from "@/lib/i18n-server";
 import { sanitizeNext } from "@/lib/safe-next";
 import { phoneCodeSignInEnabled } from "@/lib/server/otp-door";
+import { maskPhone } from "@/lib/phone-normalize";
 
 export async function generateMetadata() {
   const { t } = await getServerT();
@@ -36,7 +37,9 @@ export default async function OtpPage({ searchParams }: { searchParams: Promise<
   // expiry (`?exp=` from the issue/resend hop). undefined → component's TTL default.
   const expTs = sp.exp ? Date.parse(sp.exp) : NaN;
   const otpRemainingSec = Number.isFinite(expTs) ? Math.max(0, (expTs - Date.now()) / 1000) : undefined;
-  const masked = phone ? phone.slice(0, 4) + "*****" + phone.slice(-2) : "+255*****";
+  // R4-I (2026-10-09, R4-H's E32): the platform's one mask (`maskPhone`, "+255••••84" — the hub's and the hero's), not a
+  // hand-rolled "+255*****84": one phone reads one way everywhere.
+  const masked = phone ? maskPhone(phone) : "+255••••";
   const errorMsg: Record<string, string> = {
     wrong_code: t.auth.wrongCode,
     expired: t.auth.codeExpired,

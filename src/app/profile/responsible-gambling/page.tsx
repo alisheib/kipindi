@@ -19,6 +19,9 @@ import { SubmitButton } from "@/components/ui/submit-button";
 import { FeedbackSettings } from "@/components/settings/feedback-settings";
 import { formatTzs, fill } from "@/lib/utils";
 import { formatEatDateTime } from "@/lib/eat-day";
+import { formatBreakEnd } from "@/lib/break-end";
+import { keepText } from "@/components/ui/keep-run";
+import { rgPeriodFieldPx } from "@/components/rg/rg-period-width";
 import { getServerT } from "@/lib/i18n-server";
 import { bannerFor } from "@/lib/failure-banner";
 import { PageContainer } from "@/components/layout/page-container";
@@ -47,6 +50,15 @@ export default async function ResponsibleGamblingPage({ searchParams }: { search
     { id: "24h", label: t.rg.dur24h },
     { id: "1w",  label: t.rg.dur1week },
   ];
+  // ⭐ ONE WIDTH FOR BOTH PERIOD FIELDS (R4-I, 2026-10-09, tile 001): the break's button stood at x186 and the
+  // exclusion's at x201, because each field took its own legend's width. `rg-period-width.ts` says how it is measured.
+  // And one width for both BUTTONS (each reserves the other's label, `widthOf`), so the two forms — field, gap, button —
+  // are one width and wrap at one screen width: with two button widths, one fell under its field while the other stood
+  // beside it (Swahili 337–354px).
+  const periodFieldPx = rgPeriodFieldPx(
+    [t.rg.breakLength, t.rg.exclusionPeriod],
+    [...COOLING_OFF_OPTIONS, ...SELF_EXCLUSION_OPTIONS].map((o) => o.label),
+  );
   const session = await currentSession();
   if (!session) redirect("/auth/login?next=/profile/responsible-gambling");
   // B-1 — no swallow: the fallback object fabricated "no limits, no exclusion,
@@ -82,6 +94,11 @@ export default async function ResponsibleGamblingPage({ searchParams }: { search
 
   const sp = await searchParams;
   const banner = bannerFor(sp.reason, t.error as unknown as Record<string, string>);
+  /** R4-I · an approved break/exclusion sentence with its end, said by the one formatter and kept one run. */
+  const endSentence = (template: string, iso: string) => {
+    const date = formatBreakEnd(Date.parse(iso), Date.now(), t.common.monthsShort, locale);
+    return keepText(fill(template, { date }), [date]);
+  };
 
   return (
     <PageContainer tier="reading" className="space-y-5">
@@ -106,11 +123,19 @@ export default async function ResponsibleGamblingPage({ searchParams }: { search
           ⭐ The date carries its time (2026-10-06), as /wallet/deposit and the server's own refusal do: a
           one-hour break that ends today read "until 6 Oct 2026", which says nothing about when. And it is in the
           reader's month words on the East Africa clock (`formatEatDateTime`, §L4) — `formatDateTime` printed English
-          months in every locale. */}
+          months in every locale.
+          ⭐ AT READING SIZE, AND WHOLE (R4-I, 2026-10-09, tiles 030–032 · 063–065 · 096–098). The kit's `sm` Callout set
+          this sentence — the page's key statement about a running break — in `text-caption`, 11px (capitals 8px), under
+          the 12.5px reading floor (`test:type-scale` §3). It takes the kit's `md` rung, the standing page-level notice:
+          `text-body-sm`, 13px, in the same box family. The end is said by the one formatter (`formatBreakEnd`) and kept one
+          run, and the Chinese sentence no longer leaves "现。" alone on its last line (`keepText`).
+          ⭐ NEUTRAL, NOT WARNING (R4-K's gold audit, the same day): the warning tone is struck in gilt (`--warning-fg` IS
+          `--gilt`, DESIGN_AUTHORITY F3) and a running break has earned nothing — the neutral box, each with its own
+          section's glyph (the break's pause, the exclusion's lock). */}
       {rg.selfExclusionUntil && Date.parse(rg.selfExclusionUntil) > Date.now() ? (
-        <Callout tone="warning">{fill(t.rg.exclusionActive, { date: formatEatDateTime(Date.parse(rg.selfExclusionUntil), Date.now(), t.common.monthsShort, locale) })}</Callout>
+        <Callout tone="neutral" size="md" glyph="lock">{endSentence(t.rg.exclusionActive, rg.selfExclusionUntil)}</Callout>
       ) : rg.coolingOffUntil && Date.parse(rg.coolingOffUntil) > Date.now() ? (
-        <Callout tone="warning">{fill(t.rg.breakActive, { date: formatEatDateTime(Date.parse(rg.coolingOffUntil), Date.now(), t.common.monthsShort, locale) })}</Callout>
+        <Callout tone="neutral" size="md" glyph="pause">{endSentence(t.rg.breakActive, rg.coolingOffUntil)}</Callout>
       ) : null}
 
       <PageHero glow="yes">
@@ -224,7 +249,9 @@ export default async function ResponsibleGamblingPage({ searchParams }: { search
           {t.rg.breakDescription}
         </p>
         <form action={coolOffAction} className="flex flex-wrap items-end gap-2">
-          <div>
+          {/* R4-I · the one width both period fields take (`periodFieldPx`), and one button width (`widthOf`), so this
+              button and Jizuie's stand in line at every screen width. */}
+          <div style={{ width: periodFieldPx }}>
             <FieldLegend className="block mb-1.5">{t.rg.breakLength}</FieldLegend>
             <Select
               name="period"
@@ -232,7 +259,10 @@ export default async function ResponsibleGamblingPage({ searchParams }: { search
               options={COOLING_OFF_OPTIONS.map((o) => ({ value: o.id, label: o.label }))}
             />
           </div>
-          <RgConfirmSubmit label={t.common.startABreak} body={t.rg.breakDescription} icon={<I.pause s={13} />} buttonClass="btn btn-ghost btn-md" />
+          <RgConfirmSubmit label={t.common.startABreak} body={t.rg.breakDescription} icon={<I.pause s={13} />} buttonClass="btn btn-ghost btn-md"
+            choice={{ field: "period", label: t.rg.breakLength, options: COOLING_OFF_OPTIONS.map((o) => ({ value: o.id, label: o.label })) }}
+            widthOf={t.common.selfExclude}
+          />
         </form>
       </section>
 
@@ -252,7 +282,7 @@ export default async function ResponsibleGamblingPage({ searchParams }: { search
           {t.rg.selfExcludeDescription}
         </p>
         <form action={selfExcludeAction} className="flex flex-wrap items-end gap-2">
-          <div>
+          <div style={{ width: periodFieldPx }}>
             <FieldLegend className="block mb-1.5">{t.rg.exclusionPeriod}</FieldLegend>
             <Select
               name="period"
@@ -260,7 +290,10 @@ export default async function ResponsibleGamblingPage({ searchParams }: { search
               options={SELF_EXCLUSION_OPTIONS.map((o) => ({ value: o.id, label: o.label }))}
             />
           </div>
-          <RgConfirmSubmit label={t.common.selfExclude} body={t.rg.selfExcludeDescription} icon={<I.lock s={13} />} buttonClass="btn btn-claret btn-md" />
+          <RgConfirmSubmit label={t.common.selfExclude} body={t.rg.selfExcludeDescription} icon={<I.lock s={13} />} buttonClass="btn btn-claret btn-md"
+            choice={{ field: "period", label: t.rg.exclusionPeriod, options: SELF_EXCLUSION_OPTIONS.map((o) => ({ value: o.id, label: o.label })) }}
+            widthOf={t.common.startABreak}
+          />
         </form>
       </section>
     </PageContainer>

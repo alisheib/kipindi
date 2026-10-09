@@ -162,8 +162,9 @@ export const MUTATIONS = [
     why: "the captioned capsule opens the Wallet WITHOUT the journey flag: the sheet says the classic Amana where the journey header says Weka pesa, two words for one action one tap apart",
     file: PILL,
     suite: "wallet-reach",
-    from: `anchorRef={capsuleRef} journey onBreak={onBreak} />`,
-    to: `anchorRef={capsuleRef} onBreak={onBreak} />`,
+    // R4-I (2026-10-09): the captioned capsule also hands the sheet the break's end (`breakEnd`), so the line grew.
+    from: `anchorRef={capsuleRef} journey onBreak={onBreak} breakEnd={breakEnd} />`,
+    to: `anchorRef={capsuleRef} onBreak={onBreak} breakEnd={breakEnd} />`,
     expect: "8.3 the Wallet it opens is anchored to it",
   },
   {
@@ -299,8 +300,9 @@ export const MUTATIONS = [
     why: "the bar stops handing its onBreak to the capsule: the sheet's guard reads clean and is never told, so the break's reader gets the Deposit again",
     file: JBAR,
     suite: "wallet-reach",
-    from: `held={state.capsule === "held"} onBreak={onBreak} />`,
-    to: `held={state.capsule === "held"} />`,
+    // R4-I (2026-10-09): the bar hands the capsule the break's end too; the plant still drops the flag.
+    from: `held={state.capsule === "held"} onBreak={onBreak} breakEnd={breakEnd} />`,
+    to: `held={state.capsule === "held"} breakEnd={breakEnd} />`,
     expect: "8c.1b ⛔ the break reaches the Wallet",
   },
   {
@@ -308,8 +310,9 @@ export const MUTATIONS = [
     why: "the capsule takes the flag and does not pass it on: the bar and the sheet both read clean, and the Wallet between them offers the Deposit",
     file: PILL,
     suite: "wallet-reach",
-    from: `anchorRef={capsuleRef} journey onBreak={onBreak} />`,
-    to: `anchorRef={capsuleRef} journey />`,
+    // R4-I (2026-10-09): as above, the line carries `breakEnd` too; the plant still drops the flag.
+    from: `anchorRef={capsuleRef} journey onBreak={onBreak} breakEnd={breakEnd} />`,
+    to: `anchorRef={capsuleRef} journey breakEnd={breakEnd} />`,
     expect: "8c.1b ⛔ the break reaches the Wallet",
   },
 ];

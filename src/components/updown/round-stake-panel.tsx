@@ -18,6 +18,7 @@ import { Input } from "@/components/ui/input";
 import { Spinner } from "@/components/ui/spinner";
 import { cn, formatNumber, formatTzs } from "@/lib/utils";
 import { useT } from "@/lib/i18n";
+import { formatBreakEnd } from "@/lib/break-end";
 import { useUpDownQuickBet, usePlacePulse } from "./use-quick-bet";
 import { UpDownStakeControls, EstimateNote } from "./updown-stake-controls";
 import { UpDownBetBlockedModal } from "./updown-bet-blocked-modal";
@@ -51,7 +52,7 @@ export function RoundStakePanel(props: {
   /** UD-22 · the round's frozen receipt facts, for the bet-confirmation modal. */
   receipt?: UpDownReceiptInfo;
 }) {
-  const { t } = useT();
+  const { t, locale } = useT();
   const { marketId, isAuthed, minStake, maxStake, myUpStake, myDownStake, pricing, assetName, signInHref, lockedSide } = props;
   const bet = useUpDownQuickBet({
     marketId, minStake, maxStake, myUpStake, myDownStake,
@@ -62,6 +63,8 @@ export function RoundStakePanel(props: {
     },
     errCopy: t.market,
     reasonCopy: t.error as unknown as Record<string, string>,
+    // R4-I · a break's end in the reader's words, the formatter every break end uses.
+    when: (at) => formatBreakEnd(at, Date.now(), t.common.monthsShort, locale),
   });
   const pulse = usePlacePulse(bet.justPlaced?.nonce);
 

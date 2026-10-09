@@ -36,6 +36,8 @@ import { pickLocalized } from "@/lib/localized";
 import { PageContainer } from "@/components/layout/page-container";
 import { resolveSimpleJourney } from "@/lib/server/journey-preview";
 import { TicketsView } from "@/components/journey/tickets/tickets-view";
+import { isLockedOut } from "@/lib/server/responsible-gambling";
+import { breakSentenceText, breakStateOf } from "@/lib/break-end";
 
 export async function generateMetadata() {
   const { t } = await getServerT();
@@ -259,8 +261,21 @@ export default async function PositionsPage({ searchParams }: { searchParams: Pr
      filter miss and the wrong one for a SEARCH miss — there is nothing to widen, only words to
      change — which is exactly the "never one generic message" rule applied one level down from
      the title. Caught by reading the rendered empty state rather than by any assertion. */
+  /* ⭐ R4-I (2026-10-09; edges E19, tiles 021–023 · 054–056 · 087–089) · DURING A BREAK THE EMPTY LIST DOES NOT SAY "BET".
+     A player with no ticket was told to pick a market and commit a prediction ("Chagua swali, bonyeza NDIO au HAPANA…" in
+     the journey, "Pick a market and drag the conviction dial…" here), with a button to the board, while betting is paused.
+     For a reader on a break the empty list says the break's own sentence with its end — the one /wallet/deposit and the
+     limits page show — and offers no way to bet. The read fails OPEN (it gates an invitation, `feature-state.ts` LAW 1):
+     a failed read keeps today's empty state, and the bet path still refuses. */
+  const breakEnd = await Promise.resolve().then(() => isLockedOut(session.userId))
+    .then(breakStateOf)
+    .catch(() => null);
+  const breakBody = breakEnd
+    ? breakSentenceText(breakEnd.exclusion ? t.rg.exclusionActive : t.rg.breakActive, breakEnd.until, serverNow, t.common.monthsShort, locale)
+    : null;
   const emptyBody =
-    cause === "no-rows" ? t.positions.noOpenBody
+    cause === "no-rows" && breakBody ? breakBody
+    : cause === "no-rows" ? t.positions.noOpenBody
     : cause === "lens-empty" ? t.positions.emptyLensBody
     : cause === "search-miss" ? t.positions.emptySearchBody
     : cause === "window-miss" ? t.positions.emptyWindowBody
@@ -284,6 +299,7 @@ export default async function PositionsPage({ searchParams }: { searchParams: Pr
         serverNow={serverNow}
         locale={locale}
         t={t}
+        breakBody={breakBody}
       />
     );
   }
@@ -374,7 +390,7 @@ export default async function PositionsPage({ searchParams }: { searchParams: Pr
           kind="positions"
           title={emptyTitle}
           body={emptyBody}
-          browseLabel={cause === "no-rows" ? t.positions.browseMarkets : undefined}
+          browseLabel={cause === "no-rows" && !breakBody ? t.positions.browseMarkets : undefined}
           exits={exits.map((e) => ({
             id: e.id,
             // ⛔ The count is REAL and cross-filtered — `portfolioExits` never offers an exit whose

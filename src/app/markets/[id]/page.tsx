@@ -48,6 +48,9 @@ import { formatTzsCompact, formatTzs, fill } from "@/lib/utils";
 // Every date this page prints is in the reader's month words on the East Africa clock (§L4): `formatDateTime` and
 // `formatDeadline` printed English months in every locale.
 import { formatEatDateTime } from "@/lib/eat-day";
+import { breakStateOf, formatBreakEnd } from "@/lib/break-end";
+import { keepText } from "@/components/ui/keep-run";
+import { isLockedOut } from "@/lib/server/responsible-gambling";
 import { appUrl } from "@/lib/app-url";
 import { getServerT } from "@/lib/i18n-server";
 import { sideWord, outcomeWord } from "@/lib/side-label";
@@ -217,6 +220,17 @@ export default async function MarketDetail({
   // B-1: a swallowed positions read rendered "You haven't bet yet" to a player
   // whose stake is IN this market. Fail loudly to markets/error.tsx instead.
   const myPositions = session ? (await listPositionsForUser(session.userId)).filter((p) => p.marketId === m!.id) : [];
+  /* ⭐ R4-I (2026-10-09; edges E19, tiles 033 037 041 066 070 074 099 103 107) · THE READER'S OWN BREAK, so the page stops
+     telling a player who has paused their betting to bet: "Tumia kidhibiti kuanza" ("Use the dial to get started") under
+     Your positions, and "Live now — place another prediction without going back" over Similar markets. It gates two
+     INVITATIONS, so it fails OPEN (a failed read is "not on a break", `feature-state.ts` LAW 1); the bet itself is refused
+     by the server either way. */
+  const breakEnd = session
+    ? await Promise.resolve().then(() => isLockedOut(session.userId))
+        .then(breakStateOf)
+        .catch(() => null)
+    : null;
+  const breakDate = breakEnd ? formatBreakEnd(Date.parse(breakEnd.until), Date.now(), t.common.monthsShort, locale) : null;
   /**
    * 🔴 THE SHARE BUTTON USED TO MINT A REFERRAL CODE FOR EVERY SIGNED-IN PLAYER, and the
    * binding it produced is PERMANENT — `bindRecruit` writes `recruitedBy` once and never
@@ -865,10 +879,16 @@ export default async function MarketDetail({
                 asked for (13px mono, regular, its rung's own 18px line), which puts its figures' tops within half a pixel
                 of the 18px ones: a timestamp stays quieter than the two figures, on their line. It keeps 13px because
                 18px does not fit its column: the Chinese date carries its year ("2026年10月9日 00:53", ~194px at 18px)
-                in a 145–163px tile from 1024. "No pool yet" is words, so it keeps the display face. */}
-            <Stat size="xl" labelStyle="widest" boxed="card" label={t.market.volume} font={freshMarket ? undefined : "mono"} value={freshMarket ? t.market.noPoolYet : <span className="amount">{formatTzsCompact(m.yesPool + m.noPool)}</span>} icon={<I.chart s={14} />} />
+                in a 145–163px tile from 1024. "No pool yet" is words, so it keeps the display face.
+                ⭐ R4-I (2026-10-09; edges E23, tiles 041 042 074 075 107 108) · THE LABEL SAYS WHAT THE TIME IS. The value is the
+                RESULT time (`resolutionAt`) — picks close before it, as the countdown below states — and English
+                and Chinese label it so ("Resolves", "结算时间"), but Swahili read "INAISHA", "it ends", which a player takes
+                for the end of picking. The tile now wears the word the proposal page puts before the same date,
+                `common.resolves` — "INATATULIWA" / "RESOLVES" / "结算于" (the Stat sets it in capitals). No new words.
+                R4-I · and "Hakuna bwawa bado" no longer leaves "bado" alone in its tile at 390 (tile 037): `keepText`. */}
+            <Stat size="xl" labelStyle="widest" boxed="card" label={t.market.volume} font={freshMarket ? undefined : "mono"} value={freshMarket ? keepText(t.market.noPoolYet) : <span className="amount">{formatTzsCompact(m.yesPool + m.noPool)}</span>} icon={<I.chart s={14} />} />
             <Stat size="xl" labelStyle="widest" boxed="card" label={t.market.predictors} font="mono" value={String(m.predictorCount)} icon={<I.users s={14} />} />
-            <Stat size="sm-plain" labelStyle="widest" boxed="card" label={t.market.resolves} value={formatEatDateTime(Date.parse(m.resolutionAt), Date.now(), t.common.monthsShort, locale)} icon={<I.calendarClock s={14} />} className="col-span-2 sm:col-span-1" />
+            <Stat size="sm-plain" labelStyle="widest" boxed="card" label={t.common.resolves} value={formatEatDateTime(Date.parse(m.resolutionAt), Date.now(), t.common.monthsShort, locale)} icon={<I.calendarClock s={14} />} className="col-span-2 sm:col-span-1" />
           </div>
 
           {/* 2b. Resolution panel — outcome, attestation, pool + fee (resolved only) */}
@@ -916,11 +936,17 @@ export default async function MarketDetail({
                 <I.portfolio s={15} />
                 {t.market.yourPositions}
               </h2>
-              {myPositions.length === 0 && (
+              {/* R4-I · during a break the empty list says the break, with its end (the sentence /wallet/deposit and the
+                  limits page show), in place of the invitation to use the dial. */}
+              {myPositions.length === 0 && (breakEnd && breakDate ? (
+                <p className="text-body-sm text-text-subtle italic" data-testid="market-break">
+                  {keepText(fill(breakEnd.exclusion ? t.rg.exclusionActive : t.rg.breakActive, { date: breakDate }), [breakDate])}
+                </p>
+              ) : (
                 <p className="text-body-sm text-text-subtle italic">
                   {t.market.noBetYet}
                 </p>
-              )}
+              ))}
               {myPositions.map((p) => {
                 const liveValue = positionCashOutValues.get(p.id) ?? null;
                 const sellShut = p.status === "OPEN" && (isSelectionClosed(m) || positionSellable.get(p.id) === false);
@@ -1118,7 +1144,8 @@ export default async function MarketDetail({
                 {t.market.similarMarkets}
               </h2>
             </div>
-            <p className="mb-4 text-body-sm text-text-muted">{t.market.similarMarketsBody}</p>
+            {/* R4-I · the line that says "place another prediction" is not said to a reader on a break; the markets stay. */}
+            {!breakEnd && <p className="mb-4 text-body-sm text-text-muted">{t.market.similarMarketsBody}</p>}
             {/* The shared board grid at EVERY width now. It used to be forced to
                 `lg:!grid-cols-1` because this block lived inside the 360px rail, which is
                 also why the titles truncated mid-word. Full width, each card gets ~470px. */}

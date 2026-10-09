@@ -155,7 +155,8 @@ export function RegisterForm({
               : "border-warning-border bg-warning-bg")
           }
         >
-          <span className={"mt-0.5 shrink-0 " + (errorPanel.tone === "danger" ? "text-danger-fg" : "text-gold-300")}>
+          {/* The glyph centres on the title's ink (R4-I, 2026-10-09) — twin of auth/login/page.tsx, which says why. */}
+          <span className={"shrink-0 " + (errorPanel.tone === "danger" ? "text-danger-fg" : "text-text-muted")}>
             <I.alertCircle s={16} />
           </span>
           <div className="text-body-sm leading-snug">
@@ -166,7 +167,8 @@ export function RegisterForm({
                 href={errorPanel.cta.href as never}
                 /* ⚠️ LITERAL, not `h-9` — spacing is overridden (tailwind.config.ts:200-215),
                    so `h-9` was a 64px capsule around 12.5px type. 40px = --tap-min. */
-                className="mt-2 inline-flex h-[40px] items-center px-3.5 rounded-pill border border-gold-700 bg-gold-500/10 font-display font-bold text-[12.5px] text-gold-300 hover:bg-gold-500/20 transition-colors"
+                /* R4-I · the brand's ink, not gold — twin of auth/login/page.tsx, which says why. */
+                className="mt-2 inline-flex h-[40px] items-center px-3.5 rounded-pill border border-brand-500/60 bg-brand-500/10 font-display font-bold text-[12.5px] text-brand-300 hover:bg-brand-500/20 transition-colors"
               >
                 {errorPanel.cta.label} →
               </Link>

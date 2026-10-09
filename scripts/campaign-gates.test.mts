@@ -1878,8 +1878,10 @@ async function runAssertions(impl: Impl): Promise<void> {
         && card.includes("const r = await runAdminAction(() => confirmCampaignAction(fd)).finally(() => setPosting(false));")
         && confirmAt >= 0 && card.indexOf("setPosting(true);", confirmAt) > confirmAt
         && card.indexOf("setPosting(true);", confirmAt) < card.indexOf("startConfirming(async () => {", confirmAt),
+      // R4-I (2026-10-09): ConfirmModal draws its ✕ in its header row (on the medallion's centre, edges E22), withdrawn while
+      // a request is in flight exactly as Modal's corner ✕ was (`showClose={!loading}`) — so the ✕ half reads that form.
       kitHeld: m.includes("disabled={!armed || loading || confirmHeld}") && m.includes("disabled={loading} onClick={onClose}")
-        && m.includes("closeOnScrim={!loading}") && m.includes("showClose={!loading}") && m.includes("onClose={loading ? () => {} : onClose}"),
+        && m.includes("closeOnScrim={!loading}") && m.includes("{!loading && <CloseX onClick={onClose}") && m.includes("onClose={loading ? () => {} : onClose}"),
     };
     const answers = `fence ${fe.ok ? "counted" : SPLIT.isAudienceSlotBusy(fe.e) ? "busy" : "threw"} at ${fe.at} ms · read ${rd.ok ? rd.v.read : "threw"} at ${rd.at} · run ${rn.ok ? (rn.v.ok ? "confirmed" : rn.v.reason) : "threw"} at ${rn.at} · split ${sp.ok ? "walked" : SPLIT.isAudienceSlotBusy(sp.e) ? "busy" : "threw"} at ${sp.at} (bound ${bound} ms)`;
     return [Object.values(busy).every(Boolean) && Object.values(said).every(Boolean) && Object.values(wired).every(Boolean),

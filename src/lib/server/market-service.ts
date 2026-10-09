@@ -1124,9 +1124,9 @@ async function buyPositionInner(userId: string, opts: BuyOpts, ctx: BetContext):
     // token a refactor drops silently — and a ternary hides it from that pin. Measured:
     // `red:failure-reasons` reported this very mutation as NOT CAUGHT while the ternary stood.
     if (lockout.reason === "cooling_off") {
-      return { ok: false, error: `Cooling-off until ${until}.`, code: "SUSPENDED", reason: "cooling_off", detail: { until } };
+      return { ok: false, error: `Cooling-off until ${until}.`, code: "SUSPENDED", reason: "cooling_off", detail: { until, untilAt: lockout.until! } };
     }
-    return { ok: false, error: `Self-exclusion until ${until}.`, code: "SUSPENDED", reason: "self_excluded", detail: { until } };
+    return { ok: false, error: `Self-exclusion until ${until}.`, code: "SUSPENDED", reason: "self_excluded", detail: { until, untilAt: lockout.until! } };
   }
 
   // 🔴 E-235 · THE PLAYER'S OWN SESSION TIME LIMIT, ENFORCED — IT NEVER WAS BEFORE.

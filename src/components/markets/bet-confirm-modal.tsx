@@ -32,6 +32,7 @@ import { useT } from "@/lib/i18n";
 import { sideWord } from "@/lib/side-label";
 import { DEFAULT_CASHOUT_FEE_RATE, DEFAULT_FREE_EXIT_GRACE_MINUTES, DEFAULT_PAID_EXIT_WINDOW_MINUTES, type LeanLevel, type PollRates } from "@/lib/payout";
 import { formatTzs, formatNumber } from "@/lib/utils";
+import { keepText } from "@/components/ui/keep-run";
 
 const QUOTE_HOLD_MS = 10_000;
 /** How long a bet may wait before we explain the wait. Short enough that the
@@ -88,6 +89,9 @@ export function BetConfirmModal({
   // while the sentence under it interpolated the poll's own frozen window — so any
   // poll with a different grace contradicted itself inside a single disclosure.
   const exitLabel = t.dialog.freeExitLabel.replace(/\{mins\}/g, String(graceMins));
+  // R4-I · the free window's number keeps the words either side of it ("Sell within 5 / minutes" split it at en 360,
+  // tile 068; Swahili writes the unit first, "dakika 5").
+  const exitMinsRun = new RegExp(`\\S+\\s+${graceMins}\\s+\\S+`).exec(freeExitBody)?.[0];
   const [remainingMs, setRemainingMs] = useState(QUOTE_HOLD_MS);
   const startedAtRef = useRef<number>(0);
   const rafRef = useRef<number | null>(null);
@@ -223,7 +227,14 @@ export function BetConfirmModal({
       showClose={false}
       initialFocus={confirmRef}
       safeFocus={cancelRef}
-      panelClassName="overflow-hidden !p-0"
+      /* ⭐ THE DIALOG FITS THE SCREEN, AND ITS ANSWERS ARE ALWAYS ON IT (R4-I, 2026-10-09; edges E18, tiles 035 039 043
+         068 072 076 101 105 109). The panel grew with its disclosures — taller than a 360×780 phone (Confirm on the fold;
+         Ghairi, the footnote and the panel's own bottom edge under it), 825px of a 900px screen at 1280 — so a phone player
+         had to scroll the page behind the scrim to find the way out. The panel is now at most the screen less Modal's
+         wrapper padding above and below (`py-4`, 20px each: `100dvh − 40px`), a column of two parts: the disclosures scroll
+         inside it, and the quote clock, the two buttons and the footnote stand under them, always in view. Nothing is
+         hidden or shortened; a dialog that fits draws as before but for the hairline over its footer. */
+      panelClassName="overflow-hidden !p-0 flex flex-col max-h-[calc(100dvh-40px)]"
     >
       {/* Quote-hold progress strip — driven directly via stripRef from the RAF
           loop (no CSS transition, no stair-step). The panel's `overflow-hidden`
@@ -241,7 +252,7 @@ export function BetConfirmModal({
         />
       </div>
 
-      <div className="p-5 lg:p-6 pb-[calc(env(safe-area-inset-bottom,0px)+20px)]">
+      <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-5 pt-5 pb-4 lg:px-6 lg:pt-6" data-testid="bet-confirm-body">
         <div className="flex items-start justify-between gap-3 mb-4">
           <div className="min-w-0">
             <p className="font-mono text-micro uppercase eyebrow font-bold text-text-subtle">
@@ -261,15 +272,21 @@ export function BetConfirmModal({
                  fixed height. A taller title grows the panel and the container scrolls; it does
                  not push the confirm button out of reach. */
               <p className="mt-1 font-display text-[15px] font-semibold text-text leading-snug">
-                {marketTitle}
+                {/* R4-I · never one word alone on its last line ("2026-27" stood alone at 1280, tile 076). */}
+                {keepText(marketTitle)}
               </p>
             )}
           </div>
+          {/* ⭐ ON THE TITLE'S CAPITALS (R4-I, 2026-10-09; edges E54, tiles 068 072 076 101 109): the 48px box sat on the
+              row's top, so the ✕ centred 24px down while the title's first line — under the 14px eyebrow line and 4px —
+              centres its capitals 18 + 0.6625 × 15 = 27.9px down (Sora: caps 0.2975–1.0275em in a 1.375 line). Measured on
+              068: ✕ ink y64–73, the title's first line y66–78 — 3.5px above. `mt-1` lowers it 4px: 28 against 27.9; `-mb-1`
+              gives the 4px back, so the box still takes 48px of the row and a one-line title's row does not grow. */}
           <button
             type="button"
             onClick={onCancel}
             aria-label={t.common.cancel}
-            className="shrink-0 inline-flex h-8 w-8 items-center justify-center rounded-md text-text-subtle hover:bg-bg-overlay hover:text-text transition-colors"
+            className="mt-1 -mb-1 shrink-0 inline-flex h-8 w-8 items-center justify-center rounded-md text-text-subtle hover:bg-bg-overlay hover:text-text transition-colors"
           >
             <I.x s={16} />
           </button>
@@ -308,11 +325,13 @@ export function BetConfirmModal({
             <p className="font-mono text-micro uppercase eyebrow text-text-subtle mb-1">
               {t.dialog.estimatedWinningsLabel}
             </p>
-            <p className="text-[18px] font-bold tabular-nums text-text leading-none">
+            {/* R4-I · a money figure is an amount (`.amount`: mono, tabular, never split) — the stake above it is mono,
+                and this one was set in the sentence face (tiles 068 072 076). */}
+            <p className="amount text-[18px] font-bold tabular-nums text-text leading-none">
               TZS {formatNumber(Math.round(stake * (1 + (rates?.estimatedWinningsRate ?? 0))))}
             </p>
             <p className="mt-1.5 text-body-sm leading-relaxed text-text-muted">
-              {t.dialog.estimateDisclaimer}
+              {keepText(t.dialog.estimateDisclaimer)}
             </p>
           </div>
         ) : (
@@ -327,7 +346,7 @@ export function BetConfirmModal({
               {t.dialog.poolShareIfWins.replace("{side}", sideWord(t, side, "MARKET"))}
             </p>
             <p className="mt-1 text-body-sm leading-relaxed text-text-muted">
-              {t.dialog.payoutCalcBody}
+              {keepText(t.dialog.payoutCalcBody)}
             </p>
           </div>
         )}
@@ -345,16 +364,19 @@ export function BetConfirmModal({
             <span className={`font-semibold ${hasExitRunway ? "text-brand-300" : "text-text-subtle"}`}>
               {hasExitRunway ? exitLabel : t.dialog.noExitWindowLabel} ·{" "}
             </span>
-            {hasExitRunway ? freeExitBody : t.dialog.noExitWindowBody}
+            {hasExitRunway ? keepText(freeExitBody, exitMinsRun ? [exitMinsRun] : []) : keepText(t.dialog.noExitWindowBody)}
           </p>
         </div>
 
         {/* D3: Lean warning (qualitative, no payout figure).
             Suppressed when one-sided — settlement issues a full refund. */}
         {lean !== "fair" && !isOneSided && <HouseLeanWarning level={lean} />}
+      </div>
 
+      {/* The footer — what the player answers with, always on the screen (see `panelClassName` above). */}
+      <div className="shrink-0 border-t border-border px-5 pt-3 lg:px-6 pb-[calc(env(safe-area-inset-bottom,0px)+20px)]" data-testid="bet-confirm-actions">
         {/* Quote-hold caption */}
-        <div className="mt-4 flex items-center gap-2 text-[12px] text-text-subtle">
+        <div className="flex items-center gap-2 text-[12px] text-text-subtle">
           <I.shieldcheck s={14} />
           <span>
             {t.dialog.quoteHeldFor} <strong className="font-mono text-brand-300">{seconds}s</strong> · {t.dialog.thenReaim}
@@ -404,7 +426,8 @@ export function BetConfirmModal({
           </button>
         </div>
         <p className="mt-2.5 text-center text-body-sm text-text-subtle">
-          {t.dialog.poolSharePayout}
+          {/* R4-I · "closes." stood alone on its last line at 1280 (tile 076). */}
+          {keepText(t.dialog.poolSharePayout)}
         </p>
       </div>
     </Modal>

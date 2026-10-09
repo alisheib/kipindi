@@ -6,6 +6,7 @@ import { currentSession } from "@/lib/server/auth-service";
 import { signInPathForAction } from "@/lib/server/sign-in-path";
 import { setLimits, selfExclude, coolOff, selfExclusionStandingOf, SELF_EXCLUSION_PERIODS_SEC, COOLING_OFF_PERIODS_SEC } from "@/lib/server/responsible-gambling";
 import { destroySession } from "@/lib/server/session";
+import { breakEndParam } from "@/lib/break-end";
 
 function n(s: FormDataEntryValue | null): number | null {
   if (s === null) return null;
@@ -58,7 +59,12 @@ export async function selfExcludeAction(formData: FormData) {
   const untilIso = res?.data?.until ?? null;
   const standing = untilIso ? selfExclusionStandingOf(untilIso) : null;
   if (standing?.state === "serving" && standing.permanent) redirect("/auth/login?excluded=permanent");
-  const until = untilIso ? `&until=${encodeURIComponent(untilIso.slice(0, 10))}` : "";
+  // ⭐ THE INSTANT, NOT THE DAY (R4-I, 2026-10-09, tiles 113–130). This sent `untilIso.slice(0, 10)` — the UTC calendar
+  // day — so a 24-hour exclusion taken at 05:05 EAT read "until 2026-10-10" with no time, as if it ended at midnight (and an
+  // end between 00:00 and 03:00 EAT named the day before). `breakEndParam` carries the instant; the page says it on the
+  // East Africa clock in the reader's words (`formatBreakEnd`).
+  const endParam = breakEndParam(untilIso);
+  const until = endParam ? `&until=${encodeURIComponent(endParam)}` : "";
   redirect(`/auth/login?excluded=serving${until}`);
 }
 
@@ -69,7 +75,11 @@ export async function coolOffAction(formData: FormData) {
   if (!(period in COOLING_OFF_PERIODS_SEC)) {
     redirect(`/profile/responsible-gambling?reason=rg_period_invalid`);
   }
-  await coolOff(session.userId, period as keyof typeof COOLING_OFF_PERIODS_SEC);
+  const res = await coolOff(session.userId, period as keyof typeof COOLING_OFF_PERIODS_SEC);
   await destroySession();
-  redirect("/auth/login?cooled=1");
+  // ⭐ THE BREAK'S END TRAVELS WITH IT (R4-I, 2026-10-09, tiles 003–011), as the exclusion's does above: the landing panel
+  // said only "when the break ends". `coolOff` returns the end it wrote (the furthest of the old and the new one); the page
+  // prints it, and decides nothing on it.
+  const endParam = breakEndParam(res?.data?.until ?? null);
+  redirect(`/auth/login?cooled=1${endParam ? `&until=${encodeURIComponent(endParam)}` : ""}`);
 }

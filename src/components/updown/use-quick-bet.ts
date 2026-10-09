@@ -118,8 +118,10 @@ export function useUpDownQuickBet(opts: {
    *  Separate from `errCopy` (`t.market`) because the two live in different dictionary
    *  sections and merging them would put money-refusal copy in the market namespace. */
   reasonCopy: Record<string, string>;
+  /** R4-I · the caller's formatter for a break's end, in its reader's words — passed on to `udBetErrorCopy`. */
+  when?: (atMs: number) => string;
 }) {
-  const { marketId, myUpStake = 0, myDownStake = 0, copy, errCopy, reasonCopy } = opts;
+  const { marketId, myUpStake = 0, myDownStake = 0, copy, errCopy, reasonCopy, when } = opts;
   const min = opts.minStake ?? 1_000;
   const max = opts.maxStake ?? 1_000_000;
   const stakes = useMemo(() => quickStakes(min, max), [min, max]);
@@ -417,7 +419,7 @@ export function useUpDownQuickBet(opts: {
           // what lets a 999 stake be refused with a sentence NAMING the minimum on THIS
           // surface — it mapped every INVALID to one generic line and discarded the server
           // string by design, so docs/RULES.md §2.3 was unmet here (FAILURE-INVENTORY §3.4).
-          const fail = udBetErrorCopy(code, serverError, errCopy, r as never, reasonCopy, formatTzs);
+          const fail = udBetErrorCopy(code, serverError, errCopy, r as never, reasonCopy, formatTzs, when);
           if (fail.kind === "blocked") {
             setBlocked(fail);
           } else {

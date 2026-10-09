@@ -1,6 +1,7 @@
 import * as React from "react";
 import type { ReactNode } from "react";
 import { cn } from "@/lib/utils";
+import { keepText } from "@/components/ui/keep-run";
 
 /**
  * AuthPanel + AuthHeader — THE one glass card and THE one header stack for the
@@ -34,16 +35,17 @@ import { cn } from "@/lib/utils";
  * subtitle treatment wins — that decision belongs to whoever owns
  * `src/components/ui/`, and this note is the request.
  *
- * Colour discipline is inherited from <AuthShell>: gold here is the EYEBROW of a
- * sign-in/sign-up screen (chrome), never a figure — nothing is earned on the
- * auth surface.
+ * Colour discipline is inherited from <AuthShell>: NO gold — nothing is earned on the auth surface.
+ * ⭐ R4-I (2026-10-09), on R4-K's gold audit (DESIGN_AUTHORITY Q5 "gold is money, and nothing else", §M3 "struck
+ * gold appears only where money was earned"): the eyebrow (INGIA / SIGN IN / FUNGUA AKAUNTI) was gold by DEFAULT, the
+ * one gold on a screen where nothing is earned. Its default is now `brand`, the tone /auth/2fa and /auth/verify-email
+ * already pass, and `gold` is out of the map, so no call site can ask for it again.
  */
 
 /** Eyebrow colours actually in use across /auth/*. Add to the map, not at a call site. */
-export type AuthEyebrowTone = "gold" | "brand" | "no" | "yes";
+export type AuthEyebrowTone = "brand" | "no" | "yes";
 
 const EYEBROW_TONE: Record<AuthEyebrowTone, string> = {
-  gold: "text-gold-300",
   brand: "text-brand-300",
   no: "text-no-300",
   yes: "text-yes-300",
@@ -64,7 +66,7 @@ export function AuthPanel({
 
 export function AuthHeader({
   eyebrow,
-  tone = "gold",
+  tone = "brand",
   icon,
   title,
   subtitle,
@@ -104,8 +106,12 @@ export function AuthHeader({
         {icon}
         {eyebrow}
       </p>
+      {/* ⭐ NEVER ONE WORD ALONE (R4-I, 2026-10-09; edges E11): "Karibu kwenye / 50pick" and "Welcome to / 50pick" (sw
+          360/390, en 360) left the brand alone on its line, and "…on your / account." the subtitle's last word. A string
+          heading and subtitle keep their last two words together (`keepText`: "kwenye 50pick", "your account."); the words
+          are unchanged, and a heading of two words or fewer is drawn as given. */}
       <h1 className="mt-1.5 font-display text-title-lg font-bold leading-tight text-text tracking-[-0.02em]">
-        {title}
+        {typeof title === "string" ? keepText(title) : title}
       </h1>
       {subtitle != null && (
         <p
@@ -115,7 +121,7 @@ export function AuthHeader({
               : "mt-1.5 text-[13.5px] text-text-muted"
           }
         >
-          {subtitle}
+          {typeof subtitle === "string" ? keepText(subtitle) : subtitle}
         </p>
       )}
       {children}

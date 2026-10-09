@@ -31,7 +31,10 @@ import { maxMultiplierFor, stakeFromPosition } from "@/lib/dial-stake";
 import { haptics, motionReduced } from "@/lib/haptics";
 import { formatTzs, formatNumber, fill, fmtRate, pctNum } from "@/lib/utils";
 import { errorCopy } from "@/lib/error-copy";
-import { renderFailure, hasReason, type FailureDetail } from "@/lib/failure-reasons";
+import { renderFailure, hasReason, failureUntil, type FailureDetail } from "@/lib/failure-reasons";
+import { formatBreakEnd } from "@/lib/break-end";
+import { dialScale } from "./dial-scale";
+import { keepText } from "@/components/ui/keep-run";
 
 type Side = "YES" | "NO" | "NEUTRAL";
 
@@ -259,6 +262,8 @@ export function ConvictionDial({ marketId, yesPool, noPool, baseStake = 1_000, m
     /** BUSY only — the platform was saturated, nothing was debited, and the
      *  SAME idempotency key can be safely resubmitted. */
     retryable?: boolean;
+    /** R4-I · the text the refusal put into its sentence that must stay one run (a break's end). */
+    keep?: string[];
   } | null>(null);
   const [pending, startTransition] = useTransition();
   const trackRef = useRef<HTMLDivElement>(null);
@@ -266,7 +271,7 @@ export function ConvictionDial({ marketId, yesPool, noPool, baseStake = 1_000, m
   // B-16 — success toasts ride the transition's falling edge (when the refresh
   // has committed), the admin idiom; error toasts stay immediate.
   const { toast, deferToast } = useDeferredToast(pending);
-  const { t } = useT();
+  const { t, locale } = useT();
 
   const distFromCenter = Math.abs(pos - 0.5) * 2;
   const conviction = distFromCenter * distFromCenter; // ease-in
@@ -841,7 +846,7 @@ export function ConvictionDial({ marketId, yesPool, noPool, baseStake = 1_000, m
     code: string | undefined,
     err: string,
     r?: { reason?: string; detail?: FailureDetail; retryAfterSec?: number },
-  ): { title: string; body: string; variant: "danger" | "warning" | "factual"; retryable?: boolean } => {
+  ): { title: string; body: string; variant: "danger" | "warning" | "factual"; retryable?: boolean; keep?: string[] } => {
     // ── C3 · THE REASON WINS, WHEN THERE IS ONE ────────────────────────────────
     //
     // ⭐ THIS IS WHAT CLOSES docs/RULES.md §2.3. The server has always named both stake
@@ -858,8 +863,15 @@ export function ConvictionDial({ marketId, yesPool, noPool, baseStake = 1_000, m
     // converted yet (docs/FAILURE-INVENTORY.md §2.3), so a refusal from one of those still
     // arrives with a code and no reason and must keep rendering exactly as it did.
     if (hasReason(r)) {
-      const f = renderFailure(r as never, t.error as unknown as Record<string, string>, t.common.couldNotPlace, (n) => formatTzs(n));
+      /* ⭐ R4-I (2026-10-09, tiles 036 040 044 102 106 110) · A BREAK'S END IN THE READER'S WORDS, ONE RUN. The refusal read
+         "hadi 9 Oct 2026, 06:02" — the server's English formatter in every language — and the date broke across lines
+         ("9 / Oct 2026,"). `when` formats the refusal's instant (`detail.untilAt`) as every break end is formatted
+         (`formatBreakEnd`: "9 Okt, 06:02", "2026年10月9日 06:02"), and `keep` hands that text to the dialog as one run. */
+      const when = (at: number) => formatBreakEnd(at, Date.now(), t.common.monthsShort, locale);
+      const f = renderFailure(r as never, t.error as unknown as Record<string, string>, t.common.couldNotPlace, (n) => formatTzs(n), when);
+      const end = r.detail?.untilAt ? failureUntil(r.detail, when) : null;
       return {
+        keep: end && end !== "—" ? [end] : undefined,
         title: f.severity === "error" ? t.common.couldNotPlace : t.common.checkThis,
         body: f.body,
         variant: f.severity === "error" ? "danger" : "factual",
@@ -1004,7 +1016,7 @@ export function ConvictionDial({ marketId, yesPool, noPool, baseStake = 1_000, m
         toast({ title: mapped.title, description: mapped.body, variant: mapped.variant });
         setResultData({
           variant: "danger", side: q.side, stake: q.stake, payoutIfWin: 0,
-          error: mapped.body, title: mapped.title, retryable: mapped.retryable,
+          error: mapped.body, title: mapped.title, retryable: mapped.retryable, keep: mapped.keep,
         });
         setResultOpen(true);
         // Wipe the dial only on a TERMINAL failure. BUSY is the platform asking
@@ -1094,6 +1106,9 @@ export function ConvictionDial({ marketId, yesPool, noPool, baseStake = 1_000, m
   };
 
   const ariaValue = Math.round(pos * 100);
+  /** R4-I · a refusal whose heading is "Could not place" — the eyebrow "COULD NOT PLACE BET" would say it twice. */
+  const refusalRepeatsEyebrow = !!resultData && resultData.variant !== "success"
+    && (resultData.title ?? resultData.error ?? t.error.tryAgain) === t.common.couldNotPlace;
 
   return (
     <div className="relative rounded-xl border border-border bg-bg-elevated p-5 lg:p-6 select-none">
@@ -1125,7 +1140,13 @@ export function ConvictionDial({ marketId, yesPool, noPool, baseStake = 1_000, m
            glows in its colour, the other sits greyed with a padlock so the
            player can see exactly which way they're committed. */
         <div className="mb-4">
-          <p className="mb-2 text-center font-mono text-micro uppercase eyebrow font-bold text-text-subtle">
+          {/* ⭐ ON THE PILL'S LINE, NOT UNDER THE PILL (R4-I, 2026-10-09; edges E18, tile 042). The label stood centred at
+              the top of the content while the Lock / Use-dial pill is pinned 16px under the panel's top edge at the right
+              (`absolute right-3 top-3`, 44px tall): on a 294px panel at 1280 "TUMIA KIDHIBITI" covered "UAMUZI WAKO".
+              The label now opens the pill's own 44px line — risen to the panel's 16px (`-mt-1.5` from the phone's 24px
+              padding, `lg:-mt-3` from 32) and centred on it — at the left, where the pill never reaches: the widest pair,
+              "UAMUZI WAKO" (81px) and "TUMIA KIDHIBITI" (162px), leaves 2.6px between them at 320 (`test:visual-pass-r4i`). */}
+          <p className="-mt-1.5 mb-2 flex min-h-[44px] items-center font-mono text-micro uppercase eyebrow font-bold text-text-subtle lg:-mt-3">
             {t.common.yourPick}
           </p>
           {/* §L2 — `lock` is the STORED token, and it was going straight into a translated
@@ -1313,20 +1334,15 @@ export function ConvictionDial({ marketId, yesPool, noPool, baseStake = 1_000, m
 
           {/* Tachymeter detents — derived from the LIVE [baseStake, maxStake] (admin-
               tunable), never hardcoded, so the scale always spans the configured range
-              (e.g. up to 1,000,000) and stays correct if the min/max change. */}
+              (e.g. up to 1,000,000) and stays correct if the min/max change.
+              ⭐ R4-I (2026-10-09, tiles 034 038 042 067 071 075) · WHICH FIGURES, AND HOW BIG, IS `dialScale`'s
+              (dial-scale.ts): 10px RENDERED (the SVG draws its viewBox into the track's width, so 7.5 units read 5.8px),
+              in the subtle ink at full strength, and only where a figure clears the resting thumb and its neighbour —
+              "100K" and "50K" overlapped each other under the thumb. Every detent keeps its tick. */}
           {(() => {
-            const nice = [1, 2, 5, 10, 25, 50, 100, 250, 500, 1000, 2500, 5000, 10000];
-            const set = nice.map((k) => k * baseStake).filter((t) => t >= baseStake && t <= baseStake * maxMultiplier);
-            // Guarantee the max edge is present as the final detent.
-            const edge = Math.round(baseStake * maxMultiplier);
-            if (!set.includes(edge)) set.push(edge);
-            return set;
-          })().flatMap((tzs) => {
-            const m = tzs / baseStake;
-            const dist = Math.sqrt(Math.max(0, (m - 1) / (maxMultiplier - 1)));
-            const isEdge = tzs === Math.round(baseStake * maxMultiplier);
-            return ["YES", "NO"].map((s) => {
-              const px = s === "YES" ? (0.5 - 0.5 * dist) * width : (0.5 + 0.5 * dist) * width;
+            const scaleMarks = dialScale({ width, pad: PAD, knobR, baseStake, maxMultiplier });
+            return scaleMarks.ticks.map(({ tzs, side: s, x: px, isEdge, label }) => {
+              const m = tzs / baseStake;
               return (
                 <g key={`${s}-${m}`} aria-hidden>
                   <line
@@ -1336,15 +1352,14 @@ export function ConvictionDial({ marketId, yesPool, noPool, baseStake = 1_000, m
                     strokeWidth={isEdge ? 1 : 0.75}
                     opacity={isEdge ? 0.55 : 0.32}
                   />
-                  {!isEdge && (
+                  {label && (
                     <text
                       x={px} y={trackY - 8}
                       textAnchor="middle"
                       fontFamily="JetBrains Mono, monospace"
                       fontWeight="500"
-                      fontSize="7.5"
-                      fill="var(--text-muted)"
-                      opacity={0.55}
+                      fontSize={scaleMarks.fontSize}
+                      fill="var(--text-subtle)"
                       letterSpacing="0.04em"
                     >
                       {/* ⛔ %-EXACT, AND UPPERCASE K (S-14, scan #1, 2026-08-28). The K branch
@@ -1358,18 +1373,14 @@ export function ConvictionDial({ marketId, yesPool, noPool, baseStake = 1_000, m
                           shared formatter rounds — it would print a 2,500 detent as "3K" and
                           label a tick with a stake nobody can pick. Same %-exact grammar as
                           `stakeChipLabel`, which answers the same question for the quick-bet
-                          chips. */}
-                      {tzs >= 1_000_000
-                        ? `${tzs % 1_000_000 === 0 ? tzs / 1_000_000 : (tzs / 1_000_000).toFixed(1)}M`
-                        : tzs >= 1_000
-                          ? `${tzs % 1_000 === 0 ? tzs / 1_000 : (tzs / 1_000).toFixed(1)}K`
-                          : String(tzs)}
+                          chips. The grammar now lives in `dialTickLabel` (dial-scale.ts), unchanged. */}
+                      {label}
                     </text>
                   )}
                 </g>
               );
             });
-          })}
+          })()}
 
           {/* Side fills from center — YES fills LEFT (from pos*width back to centre),
               NO fills RIGHT (from centre forward). */}
@@ -1450,13 +1461,19 @@ export function ConvictionDial({ marketId, yesPool, noPool, baseStake = 1_000, m
           into a fixed 50% column where "TZS 25,000" gets clipped.
           Text scales down on narrow viewports so "drag the dial" /
           "TZS 25,000" don't collide at < 360 px container widths. */}
-      <div className="grid grid-cols-[1fr_auto] gap-2 sm:gap-3 mt-5 items-center">
+      {/* ⭐ R4-I (2026-10-09; edges E53, tiles 067 071 075 104 108) · "YOU ARE / PICKING" BROKE IN TWO: the left column is
+          what the 172px stake box leaves — 94px at 360, 104px at 1280 — and the eyebrow is 111px. The column now starts at
+          the row's top (`items-start`), so its eyebrow stands on the stake label's line, one line (`whitespace-nowrap`),
+          reaching into the right column's empty left half (its "Stake ⓘ" is right-aligned, ≥ 67px clear at 320); and the
+          side word fills a 44px box under it, 8px down like the stake box under its label — so the word is centred on the
+          box, where it was centred on the box, its label and its range line together. */}
+      <div className="grid grid-cols-[1fr_auto] gap-2 sm:gap-3 mt-5 items-start">
         <div className="min-w-0">
-          <p className="font-mono text-micro uppercase eyebrow text-text-subtle mb-1">
+          <p className="font-mono text-micro uppercase eyebrow text-text-subtle mb-1.5 whitespace-nowrap">
             {effectiveSide === "NEUTRAL" ? t.common.noConviction : t.common.youArePicking}
           </p>
           <p
-            className="font-display font-bold text-[15px] sm:text-[22px] leading-[1.05] break-words"
+            className="flex min-h-[44px] items-center font-display font-bold text-[15px] sm:text-[22px] leading-[1.05] break-words"
             style={{ color: sideText, letterSpacing: "-0.025em" }}
           >
             {effectiveSide === "NEUTRAL" ? t.common.pickSide : sideLabel}
@@ -1554,8 +1571,10 @@ export function ConvictionDial({ marketId, yesPool, noPool, baseStake = 1_000, m
           + stake both move in lock-step. Mutually exclusive with
           the stake-text lock above. Same kit Input atom for visual
           consistency. */}
-      <div className="mt-3 grid grid-cols-[1fr_auto] gap-2 sm:gap-3 items-center">
-        <p className="font-mono text-micro uppercase eyebrow text-text-subtle">
+      {/* R4-I (2026-10-09; edges E53, tiles 067 071 075 100) · the label centred on its 44px box, not on the box AND the
+          range line under it — it stood ~11px under the box's centre (067: label y369, box centre y358). */}
+      <div className="mt-3 grid grid-cols-[1fr_auto] gap-2 sm:gap-3 items-start">
+        <p className="flex min-h-[44px] items-center font-mono text-micro uppercase eyebrow text-text-subtle">
           <InfoHint panelId={hintId("mult")} open={openHint === "mult"} onToggle={() => toggleHint("mult")} size={10}>
             {t.common.multiplier}
           </InfoHint>
@@ -1638,11 +1657,12 @@ export function ConvictionDial({ marketId, yesPool, noPool, baseStake = 1_000, m
             </InfoHintPanel>
             {showEstimate ? (
               <>
-                <p className="text-[18px] font-bold tabular-nums text-text leading-none">
+                {/* R4-I · an amount (`.amount`: mono, tabular, never split), as the stake box beside it is (tiles 067 071 075). */}
+                <p className="amount text-[18px] font-bold tabular-nums text-text leading-none">
                   TZS {formatNumber(estimate)}
                 </p>
                 <p className="mt-1 text-body-sm leading-relaxed text-text-subtle">
-                  {t.dialog.estimateDisclaimer}
+                  {keepText(t.dialog.estimateDisclaimer)}
                 </p>
               </>
             ) : (
@@ -1677,8 +1697,14 @@ export function ConvictionDial({ marketId, yesPool, noPool, baseStake = 1_000, m
 
       {/* Compact place-bet pill — opens the confirm modal. Sits inline with
           a hint instead of taking the full width with a giant gold slab. */}
-      <div className="mt-4 flex items-center gap-3">
-        <p className="flex-1 min-w-0 text-body-sm text-text-subtle leading-snug">
+      {/* ⭐ THE CAPTION TAKES A LINE OF ITS OWN WHEN IT CANNOT HAVE 12REM BESIDE THE BUTTON (R4-I, 2026-10-09; edges E18,
+          tiles 034 038 042 067 071 075). It shared the row with the place button and got what the button left — 41–99px —
+          so "Mgao wa bwawa. Thibitisha kwenye popup." stood one word a line (six lines at sw 360; zh split 赔付 and 弹窗).
+          It now asks for 12rem (192px) or a line of its own (`flex-wrap`, `flex-[1_1_12rem]`); the button keeps its compact
+          size and its place at the right (`ml-auto`). On every phone and at 1280 the panel is too narrow for both, so the
+          caption reads on one or two whole lines above the button. */}
+      <div className="mt-4 flex flex-wrap items-center gap-3">
+        <p className="min-w-0 flex-[1_1_12rem] text-body-sm text-text-subtle leading-snug">
           {closedNow
             ? t.common.marketClosed
             : effectiveSide === "NEUTRAL"
@@ -1696,7 +1722,7 @@ export function ConvictionDial({ marketId, yesPool, noPool, baseStake = 1_000, m
             : effectiveSide === "NEUTRAL" ? t.common.dragTheDial
             : `${t.common.place} ${sideLabel} ${formatTzs(stake)}`
           }
-          className={`${closedNow ? "btn btn-ghost btn-md" : (effectiveSide === "NEUTRAL" ? "btn btn-ghost btn-md" : effectiveSide === "YES" ? "btn btn-yes btn-md" : "btn btn-no btn-md")} whitespace-normal`}
+          className={`${closedNow ? "btn btn-ghost btn-md" : (effectiveSide === "NEUTRAL" ? "btn btn-ghost btn-md" : effectiveSide === "YES" ? "btn btn-yes btn-md" : "btn btn-no btn-md")} ml-auto whitespace-normal`}
           // T3: drop pill radius — buttons use kit r-sm (8px).
           // The height comes from `.btn-md` (--h-control-md = 44px, globals.css),
           // which now clears the WCAG 2.5.5 / DA §A2 tap floor on its own — the
@@ -1759,13 +1785,18 @@ export function ConvictionDial({ marketId, yesPool, noPool, baseStake = 1_000, m
         <OperationResultModal
           open={resultOpen}
           variant={resultData.variant}
-          eyebrow={resultData.variant === "success" ? t.common.betPlacedEyebrow : t.common.couldNotPlaceBet}
+          /* ⭐ ONE OF THE TWO, NOT BOTH (R4-I, 2026-10-09, tiles 036 040 044 102 106 110). A refusal titled "Could not place"
+             wore the eyebrow "COULD NOT PLACE BET" over it — "无法下注" over "无法下注" in Chinese, where the two keys are one
+             phrase. That refusal now has no eyebrow and takes the fuller of the two existing phrases as its heading
+             ("Haikuwekwa dau", "Could not place bet"); a refusal with its own heading ("Check this", "Busy right now")
+             keeps the eyebrow, which then says something the heading does not. */
+          eyebrow={resultData.variant === "success" ? t.common.betPlacedEyebrow : refusalRepeatsEyebrow ? undefined : t.common.couldNotPlaceBet}
           /* 🔴 D39 · THE STORED TOKEN WAS THE HEADLINE OF A MONEY CONFIRMATION. This read
              `${resultData.side}`, so the modal that confirms a placed bet said "YES · TZS 5,000"
              to a Swahili player. ⛔ The toast sibling at :1002 was fixed for exactly this and the
              modal was left; :549-555 states the rule for this whole file — never write the stored
              side into copy, reach for `sideWord`. */
-          title={resultData.variant === "success" ? `${sideWord(t, resultData.side, "MARKET")} · ${formatTzs(resultData.stake)}` : (resultData.title ?? resultData.error ?? t.error.tryAgain)}
+          title={resultData.variant === "success" ? `${sideWord(t, resultData.side, "MARKET")} · ${formatTzs(resultData.stake)}` : refusalRepeatsEyebrow ? t.common.couldNotPlaceBet : (resultData.title ?? resultData.error ?? t.error.tryAgain)}
           subtitle={
             resultData.variant === "success"
               ? (marketTitle ?? t.common.positionOpenNotify)
@@ -1785,7 +1816,9 @@ export function ConvictionDial({ marketId, yesPool, noPool, baseStake = 1_000, m
               // §C4 says so in as many words about `system_error`: *"telling that player 'we're
               // busy, your stake hasn't moved' is a claim we cannot support."* It stays only as
               // the fallback for a failure that arrived with no reason at all.
-              : (resultData.error ?? t.common.stakeHasntMoved)
+              // ⭐ R4-I · the sentence kept whole where it must be: a break's end one run, no line opening on a dash, no
+              // last word alone ("kufanya.", tile 040) — `keepText`; the words are unchanged.
+              : keepText(resultData.error ?? t.common.stakeHasntMoved, resultData.keep)
           }
           details={resultData.variant === "success" ? [
             ...(resultData.positionId ? [{ label: t.common.ticket, value: resultData.positionId }] : []),

@@ -48,7 +48,7 @@ export async function generateMetadata(): Promise<Metadata> {
 export default async function AccountHubPage() {
   const { journey } = await resolveSimpleJourney();
   if (!journey) notFound();
-  const [{ t }, session] = await Promise.all([getServerT(), currentSession()]);
+  const [{ t, locale }, session] = await Promise.all([getServerT(), currentSession()]);
   const viewer = await loadHubViewer(session?.userId ?? null);
   const groups = hubRowsFor(viewer);
   // ⭐ Two columns from 1024 that stack on their own (WP12's tiles, 2026-10-08): the cards in their one order, cut
@@ -59,7 +59,7 @@ export default async function AccountHubPage() {
   const cut = hubColumnCut(weights);
   const card = (g: HubGroup) => (
     <ul key={g.key} className="kp-hub__card" aria-label={hubWord(t, g.label)}>
-      {g.rows.map((row) => <HubRowItem key={row.id} row={row} t={t} viewer={viewer} />)}
+      {g.rows.map((row) => <HubRowItem key={row.id} row={row} t={t} viewer={viewer} locale={locale} />)}
     </ul>
   );
 

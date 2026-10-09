@@ -28,7 +28,9 @@ import { PageContainer } from "@/components/layout/page-container";
 import { DEPOSIT_QUICK_AMOUNTS } from "@/lib/journey/shortfall";
 import { isLockedOut } from "@/lib/server/responsible-gambling";
 import { fill } from "@/lib/utils";
-import { formatEatDateTime } from "@/lib/eat-day";
+import { formatBreakEnd } from "@/lib/break-end";
+import { keepText } from "@/components/ui/keep-run";
+import { resolveSimpleJourney } from "@/lib/server/journey-preview";
 import { readFlash } from "@/lib/server/flash-message";
 import { pathWithQuery } from "@/lib/safe-next";
 
@@ -123,6 +125,9 @@ export default async function DepositPage({ searchParams }: { searchParams: Prom
   // ⭐ THE ONE ANSWER for everything on this page that would invite money in: the cash back promo, the trust strip, and
   // which payout notice is drawn (a paused wallet is never told "you can still add funds" under "Deposits paused").
   const moneyInPaused = !!breakUntil || walletHeld;
+  // R4-I · the break's end, said once by the one formatter; and which shell's words the notice's Withdraw door wears.
+  const breakEndText = breakUntil ? formatBreakEnd(Date.parse(breakUntil), Date.now(), t.common.monthsShort, locale) : null;
+  const { journey } = await resolveSimpleJourney();
   const adminTest = !!user && ADMIN_TEST_ROLES.has(user.role) && process.env.NODE_ENV !== "production" && process.env.ADMIN_TEST_DEPOSITS !== "false";
   const maxAmount = adminTest ? 1_000_000_000 : DEPOSIT_MAX_TZS;
   const quickAmounts = adminTest ? [100_000, 1_000_000, 5_000_000, 20_000_000, 100_000_000] : QUICK_AMOUNTS;
@@ -196,18 +201,41 @@ export default async function DepositPage({ searchParams }: { searchParams: Prom
           held wallet first; both refuse). Its sentence is the RG page's: `rg.breakActive` for a cooling-off (the end date,
           that it cannot be shortened, that withdrawals are not stopped), `rg.exclusionActive` for a self-exclusion, which
           promises neither sign-in nor withdrawals. The date carries its time, as the server's refusal does, in the reader's
-          month words on the East Africa clock (`formatEatDateTime`, §L4; `formatDateTime` printed English months). No button:
-          there is nothing to do here until the date, and nothing on this page may invite a deposit before it. */}
+          month words on the East Africa clock (`formatBreakEnd` — `formatEatDateTime`, §L4; `formatDateTime` printed English
+          months). Nothing on this page may invite a deposit before the date.
+          ⭐ …BUT A BREAK IS NOT A DEAD END (R4-I, 2026-10-09, tiles 093–095 · 027–029 · 060–062). The sentence says
+          withdrawals go on, and the notice gave no way to them: a cooling-off now carries the Withdraw door, in the words
+          the shell's own Wallet uses (the journey's "Toa pesa", else the classic "Toa"). A self-exclusion promises no
+          withdrawal, so it gets none. The notice's body takes the card's width (it was held to 42ch, ~234px of a 575px card
+          at 1280, in four balanced lines), and the button's edge closes the card as the plate opens it: 32px of padding
+          above and below on a phone, 48px from 640 (the text's line box left 38/53px under its ink). The sentence keeps the
+          end one run, no line opens on a dash ("——您仍可登录" in Chinese), and no last word stands alone (`keepText`). */}
       {breakUntil ? (
         <div data-testid="deposit-break">
-          <Callout tone="warning" layout="stack" glyph="lock" role="status" titleAs="h2" title={t.wallet.depositPausedTitle}>
-            <p className="text-balance break-keep [overflow-wrap:anywhere]">{fill(breakIsExclusion ? t.rg.exclusionActive : t.rg.breakActive, { date: formatEatDateTime(Date.parse(breakUntil), Date.now(), t.common.monthsShort, locale) })}</p>
+          {/* R4-I (2026-10-09, R4-K's gold audit): `neutral`, not `warning` — the warning tone is struck in gilt
+              (`--warning-fg` IS `--gilt`, DESIGN_AUTHORITY F3), and a paused deposit has earned nothing. The lock stays. */}
+          <Callout
+            tone="neutral"
+            layout="stack"
+            glyph="lock"
+            role="status"
+            titleAs="h2"
+            title={t.wallet.depositPausedTitle}
+            bodyWidth="full"
+            action={breakIsExclusion ? undefined : (
+              <Link href="/wallet/withdraw" className="btn btn-ghost btn-md btn-pill inline-flex items-center gap-1.5" data-testid="deposit-break-withdraw">
+                <I.arrowUpFromLine s={14} />
+                {journey ? t.journey.withdrawAction : t.common.withdraw}
+              </Link>
+            )}
+          >
+            <p className="text-balance break-keep [overflow-wrap:anywhere]">{keepText(fill(breakIsExclusion ? t.rg.exclusionActive : t.rg.breakActive, { date: breakEndText ?? "" }), breakEndText ? [breakEndText] : [])}</p>
           </Callout>
         </div>
       ) : walletHeld ? (
         <div data-testid="deposit-paused">
           <Callout
-            tone="warning"
+            tone="neutral"
             layout="stack"
             glyph="lock"
             role="status"

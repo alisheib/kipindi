@@ -170,6 +170,23 @@ export function useExitPhase(open: boolean, beat: ExitBeat = "--t-quick"): { pre
   return { present: open || leaving, exiting: leaving };
 }
 
+/**
+ * The dialog's ✕ — ONE definition (R4-I, 2026-10-09). Modal pins it to the panel's corner; ConfirmModal draws it in its
+ * header row, on the medallion's centre (see there). A 48px box (`h-8 w-8` on this repo's overridden scale), a 16px glyph.
+ */
+function CloseX({ onClick, label, className }: { onClick: () => void; label: string; className: string }) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      aria-label={label}
+      className={`${className} inline-flex h-8 w-8 items-center justify-center rounded-md text-text-subtle hover:bg-bg-overlay hover:text-text transition-colors`}
+    >
+      <I.x s={16} />
+    </button>
+  );
+}
+
 export type ModalProps = {
   open: boolean;
   onClose: () => void;
@@ -180,6 +197,9 @@ export type ModalProps = {
   labelledBy?: string;
   /** "alertdialog" for irreversible confirmations, else "dialog". */
   role?: "dialog" | "alertdialog";
+  /** id of the element that DESCRIBES the dialog (`aria-describedby`) — an alertdialog's message (WAI-ARIA APG), read
+   *  with its name when focus moves in. R4-I (2026-10-09): the bet refusal names its reason here. */
+  describedBy?: string;
   /** Panel max width in px (default 360 — the kit confirm width). */
   maxWidth?: number;
   /** Show the top-right ✕ close button (default true). */
@@ -250,6 +270,7 @@ export function Modal({
   ariaLabel,
   labelledBy,
   role = "dialog",
+  describedBy,
   maxWidth = 360,
   showClose = true,
   closeOnScrim = true,
@@ -469,6 +490,7 @@ export function Modal({
       aria-busy={exiting ? undefined : ariaBusy}
       aria-label={labelledBy ? undefined : ariaLabel}
       aria-labelledby={labelledBy}
+      aria-describedby={exiting ? undefined : describedBy}
       className={`fixed inset-0 flex justify-center overflow-y-auto overscroll-contain ${
         tall ? "items-end lg:items-center px-0 lg:px-3 py-0 lg:py-4"
           : sheet ? "items-end sm:items-center px-0 sm:px-3 py-0 sm:py-4" : "px-3 py-4"
@@ -527,16 +549,7 @@ export function Modal({
             : null),
         }}
       >
-        {showClose && (
-          <button
-            type="button"
-            onClick={onClose}
-            aria-label={t.common.close}
-            className="absolute right-3 top-3 inline-flex h-8 w-8 items-center justify-center rounded-md text-text-subtle hover:bg-bg-overlay hover:text-text transition-colors"
-          >
-            <I.x s={16} />
-          </button>
-        )}
+        {showClose && <CloseX onClick={onClose} label={t.common.close} className="absolute right-3 top-3" />}
         {children}
       </div>
       {/* The sheet variant docks to the bottom edge only below `sm` (see the wrapper's
@@ -804,13 +817,23 @@ export function ConfirmModal({
       /* ⭐ U40b · held (`confirmHeld`): busy, but every way out stays open — only a request in flight (`loading`) holds it. */
       ariaBusy={loading || confirmHeld}
       closeOnScrim={!loading}
-      showClose={!loading}
+      /* ⭐ THE ✕ STANDS IN THE HEADER ROW, ON THE MEDALLION'S CENTRE (R4-I, 2026-10-09; edges E22 · E54, tiles 002 and
+         112). Modal's own ✕ is pinned 16px under the panel's top edge in a 48px box, so it centres 40px down, while this
+         dialog's header — the 36px medallion (2px down) beside the eyebrow and title — centres 24 + 20 = 44px down on a
+         phone (measured on 002: ✕ ink y270–279, medallion y261–296, 4px apart) and 32 + 20 = 52px from 1024, 12px
+         apart. The ✕ is drawn here instead, the header's last item: its 48px box rises 4px (`-mt-1`) so its centre is the
+         medallion's (row top + 20) at every padding, and steps out 8px / 16px (`-mr-1.5 lg:-mr-3`) so it stays 16px
+         from the panel's right edge, where Modal draws every other dialog's. Its bottom gives back 8px (`-mb-1.5`), so it
+         occupies 48 − 4 − 8 = 36px of the row, under the medallion's 38: the row is exactly as tall as it was, and stays
+         so when the ✕ is withdrawn — the body below never moves. A long title now wraps before the ✕ instead of running
+         under it. While a request is in flight it is not drawn, as Modal's was not (`showClose={!loading}`). */
+      showClose={false}
     >
       <div className="mb-3 flex items-start gap-3">
         {/* 36px tone medallion — ARBITRARY LITERAL. The spacing scale is OVERRIDDEN
             (tailwind.config.ts:200-215), so `h-9 w-9` was a 64px disc beside a 15px
             headline. ⛔ Never a scale token here. (Distinct from the 48px close ✕
-            above, which is deliberately 48 and must not be shrunk to match this.) */}
+            below, which is deliberately 48 and must not be shrunk to match this.) */}
         <span
           className="mt-0.5 shrink-0 inline-flex h-[36px] w-[36px] items-center justify-center rounded-full"
           style={{
@@ -821,7 +844,7 @@ export function ConfirmModal({
         >
           {icon ?? <I.warning s={18} />}
         </span>
-        <div>
+        <div className="min-w-0 flex-1">
           <p className="font-mono text-micro uppercase eyebrow font-bold text-text-subtle">
             {effectiveEyebrow}
           </p>
@@ -829,6 +852,7 @@ export function ConfirmModal({
             {title}
           </h2>
         </div>
+        {!loading && <CloseX onClick={onClose} label={t.common.close} className="-mt-1 -mb-1.5 -mr-1.5 lg:-mr-3 shrink-0" />}
       </div>
 
       <div className="text-[13.5px] text-text-muted leading-relaxed mb-4">

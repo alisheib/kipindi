@@ -25,7 +25,7 @@
  * refusal's SEVERITY, and `error` covers both "we have blocked you" and "the limit you set
  * yourself has been reached". Those are opposite statements about someone's account.
  */
-import { renderFailure, hasReason, type FailureDetail, type FailureReason } from "@/lib/failure-reasons";
+import { renderFailure, hasReason, type FailureDetail, type FailureReason, type WhenFormat } from "@/lib/failure-reasons";
 
 /**
  * Which heading a `modal`-channel refusal gets — keyed on the REASON, never on the severity.
@@ -139,6 +139,9 @@ export function udBetErrorCopy(
   /** The `t.error` dictionary and a TZS formatter, for the reason-driven copy. */
   reasonDict?: Record<string, string>,
   money?: (n: number) => string,
+  /** R4-I (2026-10-09) · the reader's formatter for a break's end (`renderFailure`'s `when`): "9 Okt, 06:02", never the
+   *  server's English "9 Oct 2026, 06:02". Omitted, the end prints as the server wrote it. */
+  when?: WhenFormat,
 ): UdBetFailure {
   // ── C3 · THE REASON WINS, WHEN THERE IS ONE ────────────────────────────────
   //
@@ -154,7 +157,7 @@ export function udBetErrorCopy(
   // has not been converted (docs/FAILURE-INVENTORY.md §2.3). ⛔ It no longer carries a phrase
   // test of any kind — see the header.
   if (r?.reason && reasonDict && money && hasReason(r)) {
-    const f = renderFailure(r as never, reasonDict, m.udErrInvalid, money);
+    const f = renderFailure(r as never, reasonDict, m.udErrInvalid, money, when);
     // ⛔ THE CHANNEL DECIDES THE SHAPE, and `modal` is reserved for what must be
     // acknowledged: the RG daily-loss cap (LCCP informed consent) and hard account blocks.
     // Everything a player can fix stays a sticky toast — a money refusal stays until read,

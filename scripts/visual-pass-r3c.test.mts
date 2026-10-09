@@ -316,7 +316,10 @@ section("6 · the guest tickets sheet's title stands on the ×'s line (tiles 113
   const modal = read("src/components/ui/modal.tsx");
   const tw = read("tailwind.config.ts");
   const step = (k: string) => Number(new RegExp(`"${k.replace(".", "\\.")}":\\s*"([0-9.]+)px"`).exec(tw)?.[1] ?? NaN);
-  const close = /className="absolute right-3 top-3 inline-flex h-8 w-8 items-center justify-center/.test(modal);
+  // R4-I (2026-10-09): the ✕ is one component, `CloseX` (48px box), which Modal pins `absolute right-3 top-3`.
+  const close = /className="absolute right-3 top-3 inline-flex h-8 w-8 items-center justify-center/.test(modal)
+    || (/<CloseX onClick=\{onClose\} label=\{t\.common\.close\} className="absolute right-3 top-3" \/>/.test(modal)
+      && /className=\{`\$\{className\} inline-flex h-8 w-8 items-center justify-center/.test(modal));
   const xCentre = step("3") + step("8") / 2; // top-3 + half of h-8
   ok("6.locate · the Modal's × is `absolute top-3 h-8` — 16px down, a 48px box — centred 40px under the padding edge", close && xCentre === 40, String(xCentre));
   const title = rule(css, ".kp-jsheet__title");

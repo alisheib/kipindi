@@ -171,9 +171,9 @@ export async function deposit(
     const until = formatDateTime(lockout.until!);
     // Two branches for the same reason as the betting gate — see the note there.
     if (lockout.reason === "cooling_off") {
-      return { ok: false, error: `You are in a cooling-off period until ${until}.`, code: "SUSPENDED", reason: "cooling_off", detail: { until } };
+      return { ok: false, error: `You are in a cooling-off period until ${until}.`, code: "SUSPENDED", reason: "cooling_off", detail: { until, untilAt: lockout.until! } };
     }
-    return { ok: false, error: `You are in a self-exclusion period until ${until}.`, code: "SUSPENDED", reason: "self_excluded", detail: { until } };
+    return { ok: false, error: `You are in a self-exclusion period until ${until}.`, code: "SUSPENDED", reason: "self_excluded", detail: { until, untilAt: lockout.until! } };
   }
 
   // ── Atomic reservation: RG deposit-cap + SOF gate + PROCESSING row (audit C4) ──

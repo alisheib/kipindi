@@ -28,6 +28,8 @@ import { getGlobalConfig } from "@/lib/server/market-config";
 import { ratesFrom } from "@/app/legal/rules/_shared";
 import { landingPicks, paidOutBehind } from "@/lib/server/landing-picks";
 import { db } from "@/lib/server/store";
+import { isLockedOut } from "@/lib/server/responsible-gambling";
+import { breakStateOf, formatBreakEnd } from "@/lib/break-end";
 import { getKillSwitches } from "@/lib/server/payment-ops";
 import { heroRailNames, heroRails } from "@/lib/server/payout-rails";
 import type { LandingMine } from "@/components/home/landing-hero";
@@ -251,14 +253,22 @@ export default async function LandingPage({ searchParams }: {
   // ⭐ WP14 part 2 · the signed-in hero's own reads, in parallel. Each fails to NULL on its own, and a
   // null part renders nothing (B-1: a failed read is not a zero). The wallet row is the same one the
   // header reads (app-shell), so the hero's balance and the chip cannot disagree.
+  // ⭐ R4-I (2026-10-09; edges E19, tiles 013 016 019 046 049 052 079 082 085) · AND WHETHER THE READER IS ON A BREAK, in
+  // the same batch. It gates an INVITATION ("choose a side…"), so it fails OPEN: a failed read is "not on a break", the
+  // shell's `promoSuppressed` rule (feature-state.ts LAW 1), and the bet path still refuses during a break. Its end is
+  // said here, once, the way every break end is said (`formatBreakEnd`), and handed to the hero as words.
   const mine: LandingMine | null = session
     ? await Promise.all([
         landingPicks(session.userId, nowMs).catch(() => null),
         Promise.resolve().then(() => db.wallet.findByUserId(session.userId)).catch(() => undefined),
-      ]).then(([picks, wallet]) => ({
+        Promise.resolve().then(() => isLockedOut(session.userId))
+          .then(breakStateOf)
+          .catch(() => null),
+      ]).then(([picks, wallet, breakEnd]) => ({
         picks,
         balance: wallet === undefined ? null : (wallet?.balance ?? 0),
         held: !!wallet && wallet.status !== "ACTIVE",
+        breakEnd: breakEnd ? { exclusion: breakEnd.exclusion, date: formatBreakEnd(Date.parse(breakEnd.until), nowMs, t.common.monthsShort, locale) } : null,
       }))
     : null;
   // ⛔ ONE SCREEN, NOT TWO TRUTHS ABOUT ONE LEDGER (round 3, 2026-10-08). The proof band's "paid out to players" is

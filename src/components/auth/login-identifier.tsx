@@ -24,6 +24,7 @@ import { I } from "@/components/ui/glyphs";
 import { FieldLegend } from "@/components/ui/field-legend";
 import { useT } from "@/lib/i18n";
 import { cn } from "@/lib/utils";
+import { digitChoice, keepText } from "@/components/ui/keep-run";
 
 type Method = "phone" | "email";
 
@@ -134,8 +135,10 @@ export function LoginIdentifier({
           />
         )}
 
+        {/* R4-I (2026-10-09; edges E11, en 390): "…starting with 6 / or 7" split the two digits a number may start with.
+            The pair is one run ("6 or 7", "6 au 7", "6 或 7"), and the hint's last two words keep together (`keepText`). */}
         <p className="mt-1.5 text-body-sm text-text-subtle">
-          {method === "phone" ? t.common.phoneInputTitle : t.auth.emailSignInHint}
+          {method === "phone" ? keepText(t.common.phoneInputTitle, digitChoice(t.common.phoneInputTitle)) : keepText(t.auth.emailSignInHint)}
         </p>
       </div>
     </div>

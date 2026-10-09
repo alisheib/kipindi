@@ -38,6 +38,7 @@ import { fillNodes } from "@/lib/fill-nodes";
 // ⭐ R5(c) · F1 — the figure's ink is the round's TARGETS, the rule the round page and the landing band read.
 import { valueTone, READ_TONE_TOKEN } from "@/lib/updown-match";
 import { useT } from "@/lib/i18n";
+import { formatBreakEnd } from "@/lib/break-end";
 import { useUpDownQuickBet, usePlacePulse } from "./use-quick-bet";
 import { UpDownStakeControls, GLYPH_NO_SHRINK, EstimateNote } from "./updown-stake-controls";
 import { AssetMark } from "./asset-mark";
@@ -426,7 +427,7 @@ export function UpDownCard(props: UpDownCardProps) {
     marketId, isAuthed, minStake, maxStake, walletBalance, myUpStake = 0, myDownStake = 0,
     expectedResultAtMs = null, resolvedAtMs = null, successor, receipt,
   } = props;
-  const { t } = useT();
+  const { t, locale } = useT();
   const router = useRouter();
 
   // ── TWO DEADLINES, ONE SET OF DIGITS (E-72) ───────────────────────────────
@@ -683,6 +684,8 @@ export function UpDownCard(props: UpDownCardProps) {
     },
     errCopy: t.market,
     reasonCopy: t.error as unknown as Record<string, string>,
+    // R4-I · a break's end in the reader's words, the formatter every break end uses.
+    when: (at) => formatBreakEnd(at, Date.now(), t.common.monthsShort, locale),
   });
   // A placed bet pulses the whole card (non-intrusive confirmation, reduced-motion aware).
   const cardPulse = usePlacePulse(bet.justPlaced?.nonce);

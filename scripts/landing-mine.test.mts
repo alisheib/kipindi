@@ -94,11 +94,13 @@ const { tallyPicks, eatWeekStartMs, paidOutBehind } = await import("../src/lib/s
   ok("3: ⛔ a failed picks read renders nothing — the figures are gated on `picks`, not defaulted",
      /\{picks && \(noPicks \?/.test(act));
   ok("3: no picks at all is ONE sentence, not three zeros", /<p className="kp-mine__lead">\{t\.home\.picksNone\}<\/p>/.test(act));
+  // ⚠️ R4-I (2026-10-09, edges E19): a player on a BREAK gets the held wallet's treatment — no "choose a side" lead and no
+  // "add funds" prompt, the break's own notice instead (visual-pass-r4i §9 holds it) — so both lines carry `onBreak` too.
   ok("3: …and at zero balance the empty-balance prompt says it alone (the two sentences said it twice)",
-     /emptyWallet \? null : <p className="kp-mine__lead">\{t\.home\.picksNone\}/.test(act) && /const emptyWallet = !held && balance !== null && balance <= 0/.test(act));
+     /emptyWallet \|\| onBreak \? null : <p className="kp-mine__lead">\{t\.home\.picksNone\}/.test(act) && /const emptyWallet = !held && !onBreak && balance !== null && balance <= 0/.test(act));
   // ⛔ Round 3 (2026-10-08, tiles 090 091 095 096 099 100): "Choose a side on a market to make your first" stood directly
   // above "Your wallet is frozen". A held wallet is not invited to pick — the notice speaks alone, no new words.
-  const HELD_QUIET = /held \|\| emptyWallet \? null : <p className="kp-mine__lead">\{t\.home\.picksNone\}<\/p>/;
+  const HELD_QUIET = /held \|\| emptyWallet(?: \|\| onBreak)? \? null : <p className="kp-mine__lead">\{t\.home\.picksNone\}<\/p>/;
   ok("3: ⛔ a frozen wallet is not invited to pick — the no-picks sentence is withheld when held, as at zero",
      HELD_QUIET.test(act));
   ok("3-control: …and the pre-fix line (the invitation over the frozen notice) IS caught by that matcher",

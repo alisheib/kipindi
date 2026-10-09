@@ -125,7 +125,8 @@ const page = decomment(readFileSync(join(ROOT, "src/app/markets/[id]/page.tsx"),
      strip.includes(`font={freshMarket ? undefined : "mono"}`) && strip.includes(`<span className="amount">{formatTzsCompact(m.yesPool + m.noPool)}</span>`));
   ok("6: …the predictor count is mono", /label=\{t\.market\.predictors\} font="mono"/.test(strip));
   ok("6: …and the close time is a kit Stat on the sm-plain rung, with its glyph",
-     /<Stat size="sm-plain" labelStyle="widest" boxed="card" label=\{t\.market\.resolves\}/.test(strip)
+     // R4-I (2026-10-09): labelled `common.resolves` — Swahili `market.resolves` read "Inaisha", "it ends".
+     /<Stat size="sm-plain" labelStyle="widest" boxed="card" label=\{t\.common\.resolves\}/.test(strip)
        && strip.includes("icon={<I.calendarClock s={14} />}"));
   ok("6: ⛔ the local KPI fork is gone", !/function KPI\(/.test(page) && !/<KPI /.test(page));
 }

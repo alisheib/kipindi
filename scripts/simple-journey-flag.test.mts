@@ -696,7 +696,9 @@ function g10Wiring(W: World) {
   // ⚠️ `user={journeyUser}` since round 4 of the visual pass (2026-10-09, edges E32): the journey's header is handed
   // `topUser` with its phone masked by `maskPhone`, the one mask the hub and the profile hero use; the classic arm is
   // still `topUser`, today's props, character for character (visual-pass-r4h §7 holds the spread).
-  const SWAP_HEADER = "{journeyShown ? <LazyJourneyTopBar user={journeyUser} onBreak={promoSuppressed} proposalsState={proposalsState} inviteVisible={inviteVisible} invitePaid={invitePaid} /> : <TopAppBar user={topUser} proposalsState={proposalsState} inviteVisible={inviteVisible} invitePaid={invitePaid} />}";
+  // R4-I (2026-10-09): the journey bar is also handed the break's end (`breakEnd={journeyBreak}`, for its Wallet's notice); the
+  // classic arm is unchanged.
+  const SWAP_HEADER = "{journeyShown ? <LazyJourneyTopBar user={journeyUser} onBreak={promoSuppressed} breakEnd={journeyBreak} proposalsState={proposalsState} inviteVisible={inviteVisible} invitePaid={invitePaid} /> : <TopAppBar user={topUser} proposalsState={proposalsState} inviteVisible={inviteVisible} invitePaid={invitePaid} />}";
   const SWAP_RAIL = "{journeyShown ? <LazyJourneyTabs userId={session?.userId ?? null} /> : <BottomNav isAuthed={!!session} proposalsState={proposalsState} inviteVisible={inviteVisible} walletHeld={!!topUser.walletHeld} />}";
   const SHELL_LAZY = "src/components/layout/shell-lazy.tsx";
   /** The two journey arms' lines in the shell's one lazy module (S6 WP6c): `next/dynamic`, server render on, no option object, the lost-chunk guard last. */
