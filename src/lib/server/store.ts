@@ -1367,8 +1367,9 @@ export type ContactImportCommitUpdate = {
 export type ContactImportCommitOutcome = { ordinal: number; outcome: ImportOutcome; reason: string | null };
 /** S15-8 · the sentence a failed row keeps once its cells are blanked — written into `problems` BEFORE the blanking. */
 export type ContactImportFailSentence = { ordinal: number; sentence: string };
-/** ⭐ C8c · #13 · a settled row whose file tags were NOT all added (the contact already holds the most tags a contact can
- *  have — `mergeTags`' `notAdded`): the tags left out, which the row keeps after the blanking so the result can list it. */
+/** ⭐ C8c · #13 · a settled row whose file tags were NOT all added (the contact reached the most tags a contact can have —
+ *  `mergeTags` adds what fits, up to the limit, and its `notAdded` are the rest): the tags left out, which the row keeps
+ *  after the blanking so the result can list it. */
 export type ContactImportTagsLeft = { ordinal: number; tags: string[] };
 /**
  * ⭐ X3 · ONE STEP OF THE COMMIT, AS ONE WRITE: the cursor moves `fromCursor` → `toCursor` by compare-and-set while the
@@ -4474,7 +4475,7 @@ const memoryDb = {
         .map((row) => ({ ...row, tags: [...row.tags], problems: row.problems.map((p) => ({ ...p })) }));
       return { rows: page, total: failed.length };
     },
-    /** §29 · ⭐ C8c · #13 · the run's settled rows whose file tags were NOT all added (a contact already full of tags): the
+    /** §29 · ⭐ C8c · #13 · the run's settled rows whose file tags were NOT all added (the contact reached its most tags): the
      *  kept or updated rows still holding tags after the blanking — after `q.afterLine`, ascending by line, at most `q.limit`
      *  (clamped to `CONTACT_IMPORT_FAILED_PAGE_MAX`), and the run's total of them counted separately. The failures page's
      *  own shape. */

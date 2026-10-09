@@ -207,7 +207,7 @@ export function ImportDonePanel({
         </div>
       )}
 
-      {/* ⭐ C8c · #13 · the contacts imported WITHOUT all their new tags (each already full of tags) — a reader's list. */}
+      {/* ⭐ C8c · #13 · the contacts imported WITHOUT all their new tags (each reached its most tags) — a reader's list. */}
       {tagsCount > 0 && (
         <div className="space-y-1.5" data-import-tags-not-added={tagsCount}>
           <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1">

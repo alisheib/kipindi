@@ -43,7 +43,7 @@
  *   4 · writes: creates through THE ONE CREATE BUILDER (`newContactRow`, X6 — source IMPORT, `sourceRef` and `importId`
  *       the run), updates conditional on the book row's `updatedAt` and on it not being the erased tombstone, keeps with
  *       decide()'s SHOWN reason (⛔ X22: the word `erased` never lands in a stored row), the blanking — ⭐ C8c · #13 · a row
- *       whose file tags were not all added (the contact already full of tags) keeps exactly those tags, so the result lists
+ *       whose file tags were not all added (the contact reached its most tags) keeps exactly those tags, so the result lists
  *       it (`tagsLeft`, read back by `contactImportRow.tagsLeftPage`) — the list memberships;
  *   5 · on a `conflict` — a contact changed since it was read, or a staged row erasure deleted since (R9) — reads its
  *       range AGAIN and decides ONCE more from fresh facts (a row that is gone is not imported, so an erased number is

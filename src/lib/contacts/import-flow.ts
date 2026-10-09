@@ -202,9 +202,9 @@ export type PreflightView = {
   /**
    * ⭐ C8c · #13 · how many in-book rows the changes pages LIST — every first-occurrence row in the book that some choice
    * would update, AND (the decide() header's promise: tags that do not fit are listed, never silently dropped) every one
-   * whose new tags some choice could not add because the contact already holds the most tags a contact can have (it reads
-   * "nothing to change" otherwise). At least `changing` under every choice; ZERO for a viewer who may not update the book
-   * (S15-10: no per-row changes at all).
+   * whose new tags some choice could not ALL add because the contact reaches the most tags a contact can have (`mergeTags`
+   * adds what fits up to the limit; a contact already at it takes none, and reads "nothing to change" otherwise). At least
+   * `changing` under every choice; ZERO for a viewer who may not update the book (S15-10: no per-row changes at all).
    */
   listed: number;
   /**
@@ -361,8 +361,9 @@ export type ImportResultView = {
    *  the basis is recorded again on the Lists card. */
   list: { id: string; name: string; covered: boolean } | null;
   /**
-   * ⭐ C8c · #13 · how many rows the import settled WITHOUT all their new tags (the contact already held the most tags a
-   * contact can have) — listed a page at a time through the failures action with `list: "tags_not_added"`. ⛔ A reader's
+   * ⭐ C8c · #13 · how many rows the import settled WITHOUT all their new tags (the contact reached the most tags a contact
+   * can have — `mergeTags` adds what fits, up to the limit, and leaves the rest) — listed a page at a time through the
+   * failures action with `list: "tags_not_added"`. ⛔ A reader's
    * alone: null for a viewer who may not read numbers (S15-10 — no per-row changes at all; such a viewer imports with KEEP,
    * which adds no tag anyway).
    */

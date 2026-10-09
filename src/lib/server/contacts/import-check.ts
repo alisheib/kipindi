@@ -686,8 +686,9 @@ export async function checkContactImport(officerId: string, runId: unknown, deps
 /**
  * ⭐ C8c · #13 · THE ONE RULE FOR A CHANGES-PAGE ROW — the check's `listed` count and the pages themselves ask it, so the
  * total the panel shows is the list it reads: a row in the book that some choice would UPDATE, or whose new tags some
- * choice could not add (the contact already holds the most tags a contact can have — decide() keeps it `no_change` and
- * lists the tags, `tagsNotAdded`, as its header promises: "listed, never silently dropped").
+ * choice could not ALL add (the contact reaches the most tags a contact can have — `mergeTags` adds what fits, up to the
+ * limit; a contact whose only difference is tags that cannot fit stays `no_change`) — decide() lists the tags left out,
+ * `tagsNotAdded`, as its header promises: "listed, never silently dropped".
  */
 export function listedInChanges(p: DecisionPreview): boolean {
   return p.kind === "inBook" && IMPORT_CHOICES.some((ch) => p.byChoice[ch].kind === "update" || p.byChoice[ch].tagsNotAdded.length > 0);
