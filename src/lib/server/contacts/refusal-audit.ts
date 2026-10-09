@@ -17,11 +17,11 @@
  *     reason and (the review's n4) the payload's `step` when it has one — a start and a commit step refused for one
  *     reason are two things that happened. ⭐ A ROW THE AUDIT DID NOT RECORD NEVER SILENCES THE MINUTE (n4): `audit()`
  *     never rejects, it resolves `recorded: false`; the writer then takes the admission back (`undo`), so the next
- *     refusal writes and counts the unrecorded one among its `repeats`. ⭐ THE OFFICER IS IN THE KEY on purpose — the
- *     brief's "per run per reason" would let one officer's row silence ANOTHER officer's refusal on the same run in the
- *     same minute (a `not_yours` from someone poking at another officer's import), and an audit trail must never lose WHO
- *     tried. Each officer is still held to one row a minute per run, reason and step, so the flood above becomes one row
- *     a minute;
+ *     refusal writes and counts the unrecorded one — and every one kept while it was failing — among its `repeats`.
+ *     ⭐ THE OFFICER IS IN THE KEY on purpose — the brief's "per run per reason" would let one officer's row silence
+ *     ANOTHER officer's refusal on the same run in the same minute (a `not_yours` from someone poking at another
+ *     officer's import), and an audit trail must never lose WHO tried. Each officer is still held to one row a minute per
+ *     run, reason and step, so the flood above becomes one row a minute;
  *   · ⭐ the refusals a row did not write are COUNTED, and the next row written for that key carries them as `repeats`
  *     (only when there were any — every payload shape is unchanged otherwise): a flood shows as one row a minute saying how
  *     many attempts it stands for, never as a quiet trickle. A flood that stops leaves its last minute's count unwritten —
@@ -58,7 +58,8 @@ export type RefusalAuditAsk = {
 
 /** Write a row or not — and, when writing, how many refusals of the same key the gate kept out since the last row.
  *  ⭐ n4 · `undo`: the write was not recorded (the audit resolved `recorded: false`, or threw) — the admission is taken
- *  back, so the minute stays open and the next refusal writes, counting this one among its `repeats`. */
+ *  back, so the minute stays open and the next refusal writes, counting this one, and every refusal of the key kept
+ *  while the write was failing, among its `repeats`. */
 export type RefusalAuditVerdict = { readonly write: boolean; readonly repeats: number; readonly undo: () => void };
 
 export type RefusalAuditGate = {
@@ -94,9 +95,10 @@ export function refusalAuditGate(
     }
     const kept = held === undefined ? 0 : held.kept;
     seen.set(key, { at: t, kept: 0 });
-    // ⭐ n4 · an unrecorded write opens the minute again: the key is due at once, this refusal counted as kept.
+    // ⭐ n4 · an unrecorded write opens the minute again: the key is due at once, this refusal counted as kept — and (the
+    // re-review's NIT) so is every refusal of the key kept WHILE that write was failing, never lost with it.
     const undo = (): void => {
-      seen.set(key, { at: Number.NEGATIVE_INFINITY, kept: kept + 1 });
+      seen.set(key, { at: Number.NEGATIVE_INFINITY, kept: kept + 1 + (seen.get(key)?.kept ?? 0) });
     };
     return { write: true, repeats: kept, undo };
   };

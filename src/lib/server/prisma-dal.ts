@@ -4638,7 +4638,8 @@ export const prismaDb = {
     /** The list holding this name in ANY case — the unique key's own reading, `lower("name") = lower($1)` (the index's own
      *  expression, so the index answers it), the oldest were a legacy pair to exist. ⛔ The review's m8 · never Prisma's
      *  `mode: "insensitive"`, which Postgres may run as ILIKE: a "_", a "%" or a backslash in a name would match as a
-     *  wildcard, and oldest-first would then hand back ANOTHER list ("Race_1" answered by "RaceX1"). */
+     *  wildcard, and oldest-first would then hand back ANOTHER list ("Race_1" answered by "RaceX1").
+     *  ⚠️ TEST-ONLY (the re-review's NIT): no production code calls it — see the memory twin's note (store.ts). */
     findByName: async (name: string): Promise<StoredContactList | null> => {
       const rows = await pc().$queryRaw<ContactListRow[]>`
         select "id", "name", "description", "createdAt", "createdBy", "updatedAt", "updatedBy"

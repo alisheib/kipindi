@@ -135,9 +135,9 @@ export const L = {
   M24: "M24 · ⭐ R11 · a deadlock (P2034) inside a step answers busy, retryAfterSec 5, with the run's view and one audit row naming the error's code — never server_error, never a throw — the cursor unmoved; the next step lands",
   M25: "M25 · ⛔ C8a · the commit reads the check's OWN fact, fresh at its step: an erasure that came to stand on a number with no book row AFTER the check and the start — its marker written since, alone or under an opt-out tap — keeps that row (nothing created; the row kept as the contact it reads as, chosen_keep), while the marker under a GIVEN written since still creates, and the run's other rows import",
   // ── C8c (2026-10-09) · the live importer's robustness round ──
-  M26: "M26 · ⭐ C8c · N3 · the start's NEW list meets the case-insensitive refusal in its own words: a list another officer names in ANOTHER CASE between the start's check and its freeze → the start is refused list_name_taken with LIST_MADE_MEANWHILE_SENTENCE (never the pre-check's sentence; n2 · n3 · its words name no officer and never send the officer back to Import — 'Choose it from your lists'), the run still STAGED with no decision and no target, ONE list of that name (the other officer's) and none of this start's; the lists read again hold it, and a start naming it as an existing list freezes onto it",
+  M26: "M26 · ⭐ C8c · N3 · the start's NEW list meets the case-insensitive refusal in its own words: a list another officer names in ANOTHER CASE between the start's check and its freeze → the start is refused list_name_taken with LIST_MADE_MEANWHILE_SENTENCE (never the pre-check's sentence; n2 · n3 · its words name no officer and never send the officer back to Import — 'Choose it from your lists'; the re-review's NIT · never 'a moment ago', which n2's old list makes untrue, and the other way on in the pre-check's own words, 'type another name'), the run still STAGED with no decision and no target, ONE list of that name (the other officer's) and none of this start's; the lists read again hold it, and a start naming it as an existing list freezes onto it",
   M27: "M27 · ⛔ C8c · #14a · a flood of refusals writes ONE row a minute per officer, run and reason: 200 steps with a bad cursor → one bad_request row; 50 steps on a STAGED run → one check_again row for that officer, and another officer's refusal on the same run its own row; a minute later the next bad cursor writes again, carrying repeats 199 (the refusals kept out), the first row no repeats key; the run unchanged",
-  M27c: "M27c · ⛔ C8c · the review's n4 · the refusal gate's key holds the payload's STEP (a start and a commit step refused for one reason in one minute are two rows; the same step again is kept), and a row the audit did NOT record (recorded: false — audit() never rejects) never silences the minute: the next refusal writes at once, its repeats counting the unrecorded one",
+  M27c: "M27c · ⛔ C8c · the review's n4 · the refusal gate's key holds the payload's STEP (a start and a commit step refused for one reason in one minute are two rows; the same step again is kept), and a row the audit did NOT record (recorded: false — audit() never rejects) never silences the minute: the next refusal writes at once, its repeats counting the unrecorded one — and (the re-review's NIT) the two refusals kept WHILE that write was failing (repeats 3, never 1)",
   M27b: "M27b · ⛔ C8c · #14a · a moved is NEVER written: a cancel that finds the run moved on (resumed between its pause and its cancel) is answered moved with NO refusal row at all, and the gate keeps every moved out",
   M28: "M28 · ⛔ C8c · #15 · a resume of a STAGED run is REFUSED check_again — its view STAGED, the run still STAGED with no frozen decision and no pause stamp, and a step on it refused check_again with nothing settled — while a PAUSED run's resume still carries on (COMMITTING)",
   M29: "M29 · ⭐ C8c · #14b · a persistent database fault ENDS, it does not loop: a P2028 on every step is answered busy in the DATABASE's own sentence (never the bet queue's 'bets come first'), retryAfterSec 5, four times over 35 s; the fifth, 65 s after the first, PAUSES the run (paused by NOBODY — m2: no 'Paused by you' above the database's sentence, the run's and the view's pausedBy null; one contacts.import.paused row, its actor the officer, why database, faults 5) and answers db_paused 'The database is busy — the import has paused. Resume it in a few minutes.'; five quick faults within a minute on another run do NOT pause it; a step that lands ends a streak (four faults, a landed step, a fault 70 s after the first: busy, not paused); resumed, the paused run imports to done",
@@ -721,10 +721,12 @@ async function run({ impl, ok, log }: Ctx): Promise<void> {
     const frozen = await runOf(runId);
     // ⛔ the review's n2 · n3 · the words never say who made the list (the same officer in another tab makes it too) and
     // never send the officer back to Import (a second start could meet the same index) — they say to CHOOSE that list.
-    const words = LIST_MADE_MEANWHILE_SENTENCE;
+    const words = raced.ok ? "" : raced.message;
     ok(L.M26, !raced.ok && raced.reason === "list_name_taken" && raced.message === LIST_MADE_MEANWHILE_SENTENCE
       && raced.message !== IMPORT_REFUSAL_SENTENCES.list_name_taken
       && !words.includes("officer") && !words.includes("press Import") && words.includes("Choose it from your lists")
+      && !words.includes("a moment ago") && words.includes("type another name")
+      && IMPORT_REFUSAL_SENTENCES.list_name_taken.includes("type another name")
       && afterRace.status === "STAGED" && afterRace.decisionChoice === null && afterRace.targetListId === null
       && ofThatName.length === 1 && ofThatName[0].id === "cl_other_officer"
       && theirs !== undefined && onto !== null && onto.ok && frozen.status === "COMMITTING" && frozen.targetListId === "cl_other_officer",
@@ -787,16 +789,19 @@ async function run({ impl, ok, log }: Ctx): Promise<void> {
     const gate = impl.gate(() => NOW.getTime());
     const rows: Array<Record<string, unknown>> = [];
     let recordNext = true;
+    const IMPORT_ID = "ci_probe_gate_n4";
     const audit = (async (entry: unknown) => {
       if (!recordNext) {
         recordNext = true;
+        // ⭐ the re-review's NIT · two more refusals of the same key arrive WHILE this write is failing: the gate keeps them.
+        for (let k = 0; k < 2; k++) gate.admit({ action: "contacts.import.commit_refused", officerId: OFFICER, importId: IMPORT_ID, reason: "busy", step: "tags_not_added" });
         return { recorded: false, unrecorded: "PERSIST_FAILED" };
       }
       rows.push(entry as Record<string, unknown>);
       return { recorded: true };
     }) as unknown as ImportCommitDeps["audit"];
     const refuse = (step: string) =>
-      checkModule.auditImportRefusal({ audit, refusalAudit: gate }, "contacts.import.commit_refused", OFFICER, "ci_probe_gate_n4", "busy", { step });
+      checkModule.auditImportRefusal({ audit, refusalAudit: gate }, "contacts.import.commit_refused", OFFICER, IMPORT_ID, "busy", { step });
     await refuse("start");
     await refuse("commit");
     await refuse("commit");
@@ -806,8 +811,8 @@ async function run({ impl, ok, log }: Ctx): Promise<void> {
     await refuse("tags_not_added");
     const tagRows = rows.filter((r) => (r.payload as { step?: unknown }).step === "tags_not_added");
     const repeats = tagRows.length === 1 ? (tagRows[0].payload as { repeats?: unknown }).repeats : null;
-    ok(L.M27c, twoSteps === 2 && tagRows.length === 1 && repeats === 1,
-      `a start and a commit step refused for one reason in one minute: ${twoSteps} row(s) · after an unrecorded row: ${tagRows.length} row(s), repeats ${String(repeats)}`);
+    ok(L.M27c, twoSteps === 2 && tagRows.length === 1 && repeats === 3,
+      `a start and a commit step refused for one reason in one minute: ${twoSteps} row(s) · after an unrecorded row (two more kept while it failed): ${tagRows.length} row(s), repeats ${String(repeats)}`);
   }
 
   // ── M28 · C8c · #15 · a resume of a STAGED run is refused ──
@@ -1401,6 +1406,30 @@ const plants: readonly RedPlant<CommitImpl>[] = [
       gate: (now, windowMs, maxKeys) => {
         const inner = refusalAuditModule.refusalAuditGate(now, windowMs, maxKeys);
         return { admit: (ask) => ({ ...inner.admit(ask), undo: () => undefined }), reset: inner.reset };
+      },
+    }),
+  },
+  {
+    // 🔴 the re-review's NIT · the undo as first shipped: the refusals of the key kept WHILE the failed write was in flight
+    // are lost with it — the next row's repeats counts the unrecorded one alone.
+    name: "P27e · C8c · n4 · an unrecorded write's undo forgets the refusals kept while it was failing",
+    expect: L.M27c,
+    impl: () => ({
+      ...real(),
+      gate: (now, windowMs, maxKeys) => {
+        const inner = refusalAuditModule.refusalAuditGate(now, windowMs, maxKeys);
+        const writing = new Set<string>();
+        return {
+          admit: (ask) => {
+            const key = refusalAuditModule.refusalAuditKey(ask);
+            if (writing.has(key)) return { write: false, repeats: 0, undo: () => undefined };
+            const verdict = inner.admit(ask);
+            if (!verdict.write) return verdict;
+            writing.add(key);
+            return { ...verdict, undo: () => { writing.delete(key); verdict.undo(); } };
+          },
+          reset: inner.reset,
+        };
       },
     }),
   },

@@ -402,7 +402,7 @@ export const IMPORT_REFUSAL_SENTENCES: Readonly<Record<Exclude<ImportRefusalReas
   bad_choice: "Choose what to do with numbers already in the book.",
   bad_exceptions: "Some row choices don't match this file any more. Check the file again.",
   bad_list: "Choose a list, or choose not to add these contacts to one.",
-  list_name_taken: "A list with this name already exists. Choose it from your lists, or pick another name.",
+  list_name_taken: "A list with this name already exists. Choose it from your lists, or type another name.",
   list_gone: "The list you chose no longer exists. Choose another list.",
   already_started: "This import has already started. Its progress is shown here.",
   check_again: "The contact book changed since this file was checked. Look at the new numbers, then import.",
@@ -443,7 +443,7 @@ export const STEP_CONFLICT_SENTENCE =
   "Some of these contacts were being changed at the same moment, so this part of the file was not written. Nothing was lost — press Resume in a minute to carry on.";
 
 /**
- * ⭐ C8c · N3 · THE START'S NEW LIST, MADE MEANWHILE. The start asks `listNameKey` over every list first
+ * ⭐ C8c · N3 · THE START'S NEW LIST, REFUSED BY THE INDEX. The start asks `listNameKey` over every list first
  * (`list_name_taken`, the table's sentence); a list created — in ANY case — between that read and the freeze is refused
  * by the store's unique index on `lower("name")` inside the freeze's own transaction, which rolls back whole: the run
  * stays STAGED and no list of this start exists. The reason stays `list_name_taken` (the dialog reads the lists again on
@@ -452,8 +452,11 @@ export const STEP_CONFLICT_SENTENCE =
  *   · ⛔ the review's n2 · never "press Import": Postgres's lower() follows the database's character type, and for a
  *     letter outside ASCII it may fold where JavaScript's toLowerCase (`listNameKey`) does not — then the panel never
  *     turns the typed name into that list, a second Import would meet the same index, and the officer would loop. So the
- *     sentence says to CHOOSE the list from the lists read again — an existing list, which the start never creates.
+ *     sentence says to CHOOSE the list from the lists read again — an existing list, which the start never creates;
+ *   · ⛔ the re-review's NIT · never "a moment ago": in n2's case that list may be years old (the name is "made
+ *     meanwhile" only for the race) — it ALREADY EXISTS, which is true of both; and the other way on is said in the
+ *     table's own words, "type another name".
  * ⛔ No list name, no number.
  */
 export const LIST_MADE_MEANWHILE_SENTENCE =
-  "A list with this name was made a moment ago, so nothing was imported yet. Choose it from your lists to add these contacts to it, or type another name.";
+  "A list with this name already exists, so nothing was imported yet. Choose it from your lists to add these contacts to it, or type another name.";

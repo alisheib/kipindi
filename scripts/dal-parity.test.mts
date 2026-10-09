@@ -1642,7 +1642,7 @@ const HOUSE_TS_KEYS = new Set(["dueAt", "staleAt", "deadlineAt", "claimedUntil",
     `folders ${listMigDirs19.length} · ${listMigCode19.slice(0, 140)}`);
   ok("19.listci.schema · schema.prisma is UNCHANGED for the list name - the model keeps its exact-case @unique (an expression index cannot be declared there, and a generated migration will always list this one as drift: test:migration-ownership stops it being dropped)",
     schemaModel(prismaSchemaSrc, "ContactList").split(NL19).some((l) => l.trim().split(" ").filter(Boolean).join(" ") === "name String @unique"));
-  ok("19.c8 · CONTROL · the old exact-case comparison, a findUnique lookup, an ILIKE lookup (mode: insensitive), an index on the bare column, a migration that also drops, a check without its lock and an exact-case freeze are each reported by 19.listci.*",
+  ok("19.c8 · CONTROL · the old exact-case comparison, a findUnique lookup, an ILIKE lookup (mode: insensitive), an index on the bare column, a migration that also drops, a check without its lock, a build whose unique_violation is not caught and an exact-case freeze are each reported by 19.listci.*",
     !"for (const l of store.contactLists.values()) if (l.name === row.name) return null;".includes(listCompare19)
       && "const row = await pc().contactList.findUnique({ where: { name } });".includes("findUnique")
       && !'where: { name: { equals: name, mode: "insensitive" } },'.includes(LOOKUP_SQL19)
@@ -1650,6 +1650,8 @@ const HOUSE_TS_KEYS = new Set(["dueAt", "staleAt", "deadlineAt", "claimedUntil",
       && listMigBad19(sqlCode19(['DROP INDEX "ContactList_name_key";', LIST_INDEX_SQL19].join(NL19)))
       && !listMigBad19(sqlCode19(["-- a comment that says DROP and CONCURRENTLY", LIST_INDEX_SQL19].join(NL19)))
       && !sqlCode19([LIST_GUARD_SQL19, LIST_INDEX_SQL19].join(NL19)).includes(LIST_LOCK_SQL19)
+      // the re-review's NIT · a block that locks and checks but lets the build's unique_violation escape is caught too
+      && !sqlCode19([LIST_LOCK_SQL19, LIST_GUARD_SQL19, "ELSE", LIST_INDEX_SQL19, "END IF;"].join(NL19)).includes(LIST_CAUGHT_SQL19)
       && !"if (held.name === newList.name || held.id === newList.id) {".includes(FREEZE_COMPARE19));
 
   // ── RE-ADDING A MEMBER KEEPS THE ORIGINAL addedAt ───────────────────────────────────

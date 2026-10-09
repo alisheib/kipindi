@@ -28,7 +28,7 @@
 -- release would stop on a migration. They cannot be merged or renamed by a migration (a list may carry a basis that is
 -- evidence, and memberships are history), so the file creates nothing in that case and says so in a NOTICE: the pre-check
 -- still refuses the second spelling one officer at a time, nothing is worse than before, and the index is created by hand
--- once an officer has renamed one of the pair (`lower("name")`, unique, the same name). ⭐ The review's n1 · NO WINDOW:
+-- once one of the pair is renamed - by hand too: the app has no rename (the checklist below). ⭐ The review's n1 · NO WINDOW:
 -- the block first takes a SHARE lock on the table - every writer of a list waits (reads go on) until the block ends - so no
 -- list can land between the duplicate check and the index; and should the build still meet a duplicate, its
 -- unique_violation is caught and said in the same NOTICE, never thrown. The table holds a handful of rows: the lock lasts
@@ -37,11 +37,14 @@
 -- ⭐ THE PUSH CHECKLIST (the review's m9 - the index is skipped SILENTLY when two names already differ by case):
 --   BEFORE the deploy, read-only, on the production database:
 --     SELECT lower("name") AS name_key, count(*) FROM "ContactList" GROUP BY 1 HAVING count(*) > 1;
---   expect NO row. A row is a pair an officer must rename first (their choice which) - or the index will not be built.
+--   expect NO row. A row is a pair one of which must be renamed first - or the index will not be built. The app has NO
+--   rename, so it is done by hand: read the pair, an officer chooses which one and its new name, then ONE update:
+--     SELECT "id", "name", "createdAt" FROM "ContactList" WHERE lower("name") = '<name_key from the row above>';
+--     UPDATE "ContactList" SET "name" = '<the new name>', "updatedAt" = now() WHERE "id" = '<the id chosen>';
 --   AFTER the deploy:
 --     SELECT indexname, indexdef FROM pg_indexes WHERE tablename = 'ContactList' AND indexname = 'ContactList_name_lower_key';
---   expect ONE row, its definition a UNIQUE index on lower(name). No row: the NOTICE branch ran - rename one of the pair,
---   then create the index by hand, the block's own statement run on its own:
+--   expect ONE row, its definition a UNIQUE index on lower(name). No row: the NOTICE branch ran - rename one of the pair
+--   as above, then create the index by hand, the block's own statement run on its own:
 --     CREATE UNIQUE INDEX IF NOT EXISTS "ContactList_name_lower_key" ON "ContactList" (lower("name"));
 -- The table was created empty with the book (U18), and lists are made only through the bulk bar and the importer's start.
 --

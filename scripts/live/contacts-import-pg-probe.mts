@@ -32,6 +32,7 @@
  *         later opt-out tap or lapse never lifts it, a GIVEN does, a marker after a GIVEN stands again, a tie inside one
  *         millisecond breaks on the id) — eleven hand-written histories, each number equal to the rule over its own single
  *         read, §25's bound, and the importer's facts loader and the Add form's lookup reading it from this Postgres;
+ *      8  is s14-c8b's (C8b), not on this branch — C8c's sections are numbered 9 and 10 so the two merge side by side;
  *      9  C8c · #5 · the start's NEW-LIST branch: the list inserted only after the run is won (the census hears the run's
  *         compare-and-set, then the insert, then the target); a name another list holds — exactly (9.2) or, N3, in another
  *         case (9.3, the lower(name) index) — is a P2002 that rolls the whole freeze back, the run byte-identical; a start

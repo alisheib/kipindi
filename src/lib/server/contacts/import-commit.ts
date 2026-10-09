@@ -14,7 +14,8 @@
  * review round's R12), so a start that loses the run, or throws, leaves no list behind and its name stays free. ⭐ C8c · N3:
  * a list made meanwhile under the same name IN ANY CASE — by another officer, or the same one in another tab — is refused
  * there by the store's unique index on `lower("name")` (both twins), the freeze rolled back, and the start says so in its
- * own words (`LIST_MADE_MEANWHILE_SENTENCE`: choose it from the lists, read again, or type another name).
+ * own words (`LIST_MADE_MEANWHILE_SENTENCE`: the list already exists — choose it from the lists, read again, or type
+ * another name).
  * ⛔ S15-10: a viewer who may not read numbers starts with KEEP alone — another choice, or any exception, is refused
  * `update_needs_reader`. ⭐ S15-1: NO CONSENT STEP — the import writes no consent and asks for no basis; a list's licence
  * basis lives on the Lists card.
@@ -154,9 +155,12 @@ export type DbFaultStreak = { readonly count: number; readonly since: number };
 export type DbFaultStreaks = {
   /** One more fault on this run, at `atMs`: the streak as it stands now. */
   readonly record: (runId: string, atMs: number) => DbFaultStreak;
-  /** The DATABASE answered a step of this run (it settled rows, or found them settled), or its faults just paused the run:
-   *  the streak is over. ⛔ The review's n5 · an answer the database never gave — a bet-queue `busy`, a moved or paused
-   *  cursor, a refusal before the step's transaction, a fault that is not retryable — neither ends nor extends it. */
+  /** The DATABASE answered a step of this run — the step's own reads and write came back with no retryable fault: the
+   *  write landed (`advanced`, `done`) or was refused (the cursor moved under it: `moved`; rows that kept moving:
+   *  `server_error` in `STEP_CONFLICT_SENTENCE`), or the step's first lines would not hold (`server_error`) — or its
+   *  faults just paused the run: the streak is over. ⛔ The review's n5, as the re-review read it: an answer given BEFORE
+   *  the step itself runs — a bet-queue `busy`, a `moved` or paused cursor read off the run, a refusal of the cursor, the
+   *  run or its decision — and a fault that is not retryable (the action's catch) neither end nor extend it. */
   readonly clear: (runId: string) => void;
 };
 
@@ -495,10 +499,11 @@ export async function startContactImport(officerId: string, input: unknown, deps
     frozen = await deps.freeze({ importId: run.id, choice, overrides, targetListId, newList, by: officerId, at });
   } catch (err) {
     const code = dbCode(err);
-    // ⭐ C8c · N3 · a unique index took the name — in ANY case (the lower(name) index) — between the check above and the
-    // freeze: that list was made a moment ago (another officer, or this one in another tab). The freeze rolled back whole
-    // (the run is still STAGED, no list of this start exists), and the start says so in its own words; the dialog reads the
-    // lists again, and the officer chooses that list there (n2: never "press Import" — see the sentence's doc).
+    // ⭐ C8c · N3 · a unique index took the name — in ANY case (the lower(name) index): a list made between the check above
+    // and the freeze (another officer, or this one in another tab), or (n2) an older one whose name the database's lower()
+    // folds where `listNameKey` does not. The freeze rolled back whole (the run is still STAGED, no list of this start
+    // exists), and the start says so in its own words — that the list ALREADY EXISTS, never when it was made; the dialog
+    // reads the lists again, and the officer chooses that list there (n2: never "press Import" — see the sentence's doc).
     if (code === "P2002" && newList !== null) return refuse("list_name_taken", LIST_MADE_MEANWHILE_SENTENCE, { why: "raced" });
     // The foreign key found the list gone.
     if (code === "P2003" && list.kind === "existing") return refuse("list_gone");

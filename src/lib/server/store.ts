@@ -4010,7 +4010,11 @@ const memoryDb = {
       return row;
     },
     find: (id: string): StoredContactList | null => store.contactLists.get(id) ?? null,
-    /** The list holding this name in ANY case — the unique key's own reading (the oldest, were a legacy pair to exist). */
+    /** The list holding this name in ANY case — the unique key's own reading (the oldest, were a legacy pair to exist).
+     *  ⚠️ TEST-ONLY (the re-review's NIT, 2026-10-09): NO production code calls it — the bulk bar and the importer's start
+     *  ask `listNameKey` over `listAll()`, and the index refuses a second spelling. It is kept as the suites' and the
+     *  probe's reader of the case-insensitive key (`test:dal-parity` 19.listci.find, `test:contacts-bulk` B7b, the
+     *  audience probe's 7.4); a production caller must first be proved there. */
     findByName: (name: string): StoredContactList | null => {
       const key = name.toLowerCase();
       let found: StoredContactList | null = null;
