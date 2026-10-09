@@ -1,0 +1,43 @@
+Visual pass round 5 (R5-L): every loading drawing opens on its page's own bands — the agent pages, /leaderboard, /results, /markets, /live and the sixteen generic loaders; the in-page Suspense skeletons are their loading files' drawings
+
+Round 5's follow-up (the last ghost sweep). Each item measured against its page (calibrated on edge tiles), each drawing
+rebuilt from the page's own parts — "after" is 0 by construction for the case drawn.
+- /agent: 96px tiles where the page's Stat tiles are 120.75, four generic 126px panels for panels of 193–352px, a 326px
+  waterfall for 647 — the terms link landed 879px below its promise at 1280 (1,888 at 390 sw). Now the page's Stat tiles with
+  its props, its sections' classes, the waterfall at today's default rates, the 48px CTA, the words set and not shown.
+- /agent/apply, /agent/status, /agent/invite/[token]: the rail and step panel, the reference and next-steps panels, the
+  invitation's header, panel, note and actions (the shared stand-in `loading-shared.tsx` removed).
+- /leaderboard: a 193px spinner box and eight headless rows where the page has its ribbon, lens, sort, podium and table — the
+  first row landed 313–397px off; now the page's bands, the table with its head and twelve rows, no spinner.
+- /results: one drawing (`ResultsGhostBands`) for the loading file and the in-page fallback (whose old skeleton sent 9,023 B
+  of Flight on every refresh; now a 51 B reference): the carousel at its measured height (it was 67.5–117.5px too tall), row 2
+  on the bar kit (four lines at 1024 where the old ghost drew one), titles at the board's p75 line count.
+- /markets: `MarketsBoardGhost` is the loading drawing's board and the fallback (13,079 B of Flight → 19 B); row 2 two lines.
+- /live: the hero's CTA row (a 150px box that fit one line only from 392px), the pulse cards at each language's own height.
+- The sixteen generic loaders: ONE rule, written in page-loader.tsx — a loader opens on its page's own opening band (the
+  back link's box, the PageHeader inside PageHero where the page has one, the hero's sentence), in the page's rhythm (new
+  `rhythm` prop); the spinner stands where the page's data begins (it stood first, 257px, on 16 routes). /proposals/[id]
+  opens on its data and keeps its spinner first.
+- One ghost kit: R5-K's `ghost-text.tsx` (GhostText, ghostShape, ChipGhost) gains `ButtonGhost`; the query bar's pill,
+  group, sort, menu, Filters and count ghosts live in `components/ui/query-bar-ghost.tsx`, read by the money bar's ghost and
+  /positions'. qa:ghost-landing's §E (ONLY=E) drives these routes, signing in only through a local demo door.
+
+Guards: test:visual-pass-r5l (47 checks with controls and plants: the generic census and its one rule run in sw/en/zh, each
+rebuilt page's bands in order, the Flight weight of the two fallbacks). Mutation proof: 38 planted, 38 caught on the named
+check, all restored byte-identical. Re-pins (each with its reason): r5h 4.4, 5.1–5.4 and their plants, r4c 1.6, r5b 9.4,
+eyebrow-roles (two entries), the notifications-page anchor; spacing-scale CEILING 422 (R5-K's −22 and R5-L's −9 from 453).
+Merged onto R5-K, the route entrance, R5-J (2026-10-09): one ghost helper (R5-K's), the count ghost's one home; r5g 4.12
+classifies the agent ghost's GBT row (the waterfall's own classes), r5j 1.1 the apply ghost's one-digit placeholders and the
+shared bar ghost's count phrase. On the merged tree: 107 suites (test:backup — the shared Prisma client's — and test:orphans
+— two landing-v3 panels — as on the tip), 14 red twins, and seven proofs — R5-L 38, R5-K 29, R5-H 41, R5-B 36, R5-J 26,
+R5-D 27, R5-G 30 planted defects caught, every file restored byte-identical (R5-H's five plants and R5-B's one re-aimed at
+R5-L's code, the invitation's back-link plant importing what it draws; R5-J's and R5-G's re-run after their census entries).
+
+Owner item: where the product's rules decide the data, the ghosts draw a live product (an archive of 8+ results with three
+notables, two-digit counts, six contested markets, a full leaderboard page); today's QA board is smaller (/results lands
+106–162px higher than drawn). Keep the live-product case (recommended) or draw today's board? S12: none.
+
+Classic viewers: the same rebuilt drawings (they serve both shells); on a document load /results and /markets draw their bar
+while the board streams in; no chrome changed, no RG wording touched, no gold added.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>

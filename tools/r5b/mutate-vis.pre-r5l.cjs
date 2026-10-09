@@ -81,7 +81,7 @@ const M = [
     "flex-wrap justify-end gap-y-1.5 -mb-1 lg:mb-0 lg:flex-nowrap`;", "flex-wrap justify-end gap-y-1 -mb-1 lg:mb-0 lg:flex-nowrap`;", "9.1"],
   ["F14 the receipts ghost retyping the old wrap", "src/app/wallet/money-bar-ghost.tsx", // R5-H: one bar ghost for both books
     "<div className={QUERY_BAR_ROW1_WRAP_CLASS}>", "<div className={`${QUERY_BAR_ROW1_WRAP_CLASS} gap-y-1 lg:flex-nowrap`}>", "9.3"],
-  ["F14 the ghost's count back on its 12px bar", "src/components/ui/query-bar-ghost.tsx", // R5-H: the count in its own type; R5-L: the kit's
+  ["F14 the ghost's count back on its 12px bar", "src/app/wallet/money-bar-ghost.tsx", // R5-H: the count in its own type
     '<p className="shrink-0 font-mono text-[11.5px] tabular-nums text-transparent"><span className="rounded bg-bg-overlay">{count}</span></p>',
     '<div className="h-3 w-[80px] shrink-0 rounded bg-bg-overlay" />', "9.4"],
   // §10 /notifications

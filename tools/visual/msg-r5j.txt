@@ -29,6 +29,11 @@ on the named check, all restored byte-identical. Re-pins (each with its reason):
 re-aimed, one added; red 156/156), r4d 7.3b, r5e 6.5/6.5′, eyebrow-roles (four signatures), journey-tickets
 SELL_RESULT_MARKUP, outcome-display D42, updown-history-pnl §3e and its red twin's M5 anchor.
 
+Merged onto R5-G, R5-K and the route entrance (6f5b24c0): r5j's count census classifies R5-K's positions-ghost "00" slot
+(a ghost shape, as its siblings). On the merged tree: 189 suites (the reds main's own, the shared Prisma client's, and
+red:labels' stale plant — re-aimed by R6-B, next), the red twins, and six proofs — R5-J 26 (re-run after the census
+entry), R5-E 27, R5-I 58, R5-A 41, R5-C 59, R5-K 29 planted defects caught, every file restored byte-identical.
+
 Owner items: the filter sheet's topic grid at sw 360/390; the classic bell's count when the freeze lifts; kept refusal
 sentences' figures; the objection counter's reserved width. S12: "3 Hai / 3 Open", "W · L · C", "{wins}/{decided}
 decided", word pairs for the Up & Down player count and the comment count, capitalised sw result phrases, cash.tsx's

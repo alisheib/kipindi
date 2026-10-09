@@ -21,3 +21,9 @@ written `S` in every brief and script). Scripts that name that path must have it
   the edge drive `edges/qa-journey-edges.mjs` with `r4j/r4j-verdict.mjs`; `r5h/probe-route-blink.mjs` and
   `r5h/route-transition.r5h.patch`; `r5h/probe-refresh-bytes.mjs`.
 - Not here: the round tiles (PNG, ~400 MB — the drives regenerate them), logs, big JSON captures, repo snapshots.
+
+- Added 2026-10-10 ~00:20 EAT (the R5-L and R6 merges): `merge-check-range.sh` (as `merge-check.sh`, the suites chosen from
+  `git diff $BASE HEAD` for merges already committed), every round's proof as a `*-vis.*` script (ROOT `F:/kipindi-vis`) and a `*-wip.*` copy
+  (ROOT `F:/kipindi-wip`, an identical checkout so the proofs run beside the suites), `reaim-*.cjs` (each plant moved to
+  the code a later round changed, with the reason), `fix-*.cjs` and `r5l/fix-r5l-census.cjs` (the merges' re-pins and
+  ghost fixes), `runs/merge-r5l*.txt`, `runs/merge-r6*.txt`, `runs/wip-proofs-r6*.log` (the merged-tree results).

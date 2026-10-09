@@ -4,7 +4,7 @@
 import { readFileSync, writeFileSync, existsSync } from "node:fs";
 import { createHash } from "node:crypto";
 import { spawnSync } from "node:child_process";
-const ROOT = "F:/kipindi-vis/";
+const ROOT = "F:/kipindi-wip/";
 // R5-G (merging beside this work) moves the withdraw drawing into withdraw-ghost.tsx; plant wherever it lives.
 const WITHDRAW = existsSync(ROOT + "src/app/wallet/withdraw/withdraw-ghost.tsx") ? "src/app/wallet/withdraw/withdraw-ghost.tsx" : "src/app/wallet/withdraw/loading.tsx";
 const sha = (b) => createHash("sha256").update(b).digest("hex");

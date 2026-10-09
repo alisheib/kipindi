@@ -5,7 +5,7 @@
 const fs = require("fs");
 const crypto = require("crypto");
 const { spawnSync } = require("child_process");
-const ROOT = "F:/kipindi-vis/";
+const ROOT = "F:/kipindi-wip/";
 const sha = (b) => crypto.createHash("sha256").update(b).digest("hex");
 const J = ":root:has(#kp-journey-shell)";
 

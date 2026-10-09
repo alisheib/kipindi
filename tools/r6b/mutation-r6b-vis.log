@@ -1,0 +1,31 @@
+# R6-B mutation proof · 2026-10-09T20:30:22.091Z · 28 plants
+CAUGHT  A4a · the favicons back to an unescaped, unanchored prefix (/favicon.icon, /favicon.ico/x skip the proxy) — proxy-scope.test.mts 1.2: FAIL ✓ · proxy-scope.test.mts 3.5: FAIL ✓ · restored 2e7fe73df841 ✓
+CAUGHT  A4b · next.config's /:path* security rule taken out (a page the proxy skips is frameable again) — static-cache-scope.test.mts 5.1: FAIL ✓ · static-cache-scope.test.mts 5.3: FAIL ✓ · restored b76fec5f718e ✓
+CAUGHT  A4c · a CSP put into the every-response rule (it must stay the proxy's, per request) — static-cache-scope.test.mts 5.2: FAIL ✓ · restored b76fec5f718e ✓
+CAUGHT  A4d · HSTS sent in development too — static-cache-scope.test.mts 5.1: FAIL ✓ · restored b76fec5f718e ✓
+CAUGHT  A4e · the proxy defines its own header list again (two senders that can drift) — static-cache-scope.test.mts 5.4: FAIL ✓ · restored 2e7fe73df841 ✓
+CAUGHT  B1a · round 5's trap: with nothing focusable, Tab is the browser's own (it leaves the dialog) — visual-pass-r6b.test.mts 1.3: FAIL ✓ · restored af97116a1fb7 ✓
+CAUGHT  B1b · the panel takes no script focus (focusIn's and the trap's fallback dead again) — visual-pass-r6b.test.mts 1.8: FAIL ✓ · restored af97116a1fb7 ✓
+CAUGHT  B1c · focus on the panel treated as inside (Shift+Tab from it walks out behind the scrim) — visual-pass-r6b.test.mts 1.5: FAIL ✓ · restored af97116a1fb7 ✓
+CAUGHT  B1d · round 5's `safe`: focus handed to a disabled Cancel (nowhere) — visual-pass-r6b.test.mts 1.10: FAIL ✓ · enter-where-pressed.test.mts 5.8: FAIL ✓ · restored af97116a1fb7 ✓
+CAUGHT  B2a · round 5's poll, awaiting each request (requests at 0, 30, 160, 290s against a stall) — visual-pass-r6b.test.mts 2.1: FAIL ✓ · restored 03bd83820d2a ✓
+CAUGHT  B2b · an answer's start no longer marked (a slow body is replaced at the next poll and never draws) — visual-pass-r6b.test.mts 2.5: FAIL ✓ · restored 03bd83820d2a ✓
+CAUGHT  B2c · a new request no longer aborts the one before it (hung requests pile up) — visual-pass-r6b.test.mts 2.1: FAIL ✓ · restored 03bd83820d2a ✓
+CAUGHT  B2d · a request no longer chained to the effect's abort (a closed chart's request runs on) — visual-pass-r6b.test.mts 2.6: FAIL ✓ · restored 03bd83820d2a ✓
+CAUGHT  B2e · the deadline no longer marks its request overdue (the poll waits the stall out) — visual-pass-r6b.test.mts 2.1: FAIL ✓ · visual-pass-r5a.test.mts 11.3: FAIL ✓ · restored 03bd83820d2a ✓
+CAUGHT  B3a · moneySentence back on the quadratic pattern — visual-pass-r6b.test.mts 3.4: FAIL ✓ · restored 7e1890793f4c ✓
+CAUGHT  B3b · KeepHyphenated back on the quadratic split — visual-pass-r6b.test.mts 3.4: FAIL ✓ · visual-pass-r4h.test.mts 4.6: FAIL ✓ · restored b15eeedd9400 ✓
+CAUGHT  B3c · endClause back on the quadratic pattern — visual-pass-r6b.test.mts 3.4: FAIL ✓ · restored e493e8429456 ✓
+CAUGHT  B3d · lastTwoWordsAt stops after the space (one word short of the pattern's answer) — visual-pass-r6b.test.mts 3.1: FAIL ✓ · restored 7e1890793f4c ✓
+CAUGHT  B3e · hyphenParts no longer runs a token on past its core ("month-end?" cut to "h-e") — visual-pass-r6b.test.mts 3.1: FAIL ✓ · visual-pass-r6b.test.mts 3.5: FAIL ✓ · restored b15eeedd9400 ✓
+CAUGHT  B4a · the editor re-derives the cut in the browser (round 5's keepNameEnd) — visual-pass-r6b.test.mts 4.5: FAIL ✓ · visual-pass-r6b.test.mts 4.7: FAIL ✓ · visual-pass-r5e.test.mts 4.4: FAIL ✓ · visual-pass-r4h.test.mts 2.1: FAIL ✓ · restored 3fe46be27399 ✓
+CAUGHT  B4b · the server page no longer hands its cut down — visual-pass-r6b.test.mts 4.5: FAIL ✓ · restored 51e2634c7e46 ✓
+CAUGHT  B4c · nameWithEnd draws at a cut that cuts nothing — visual-pass-r6b.test.mts 4.2: FAIL ✓ · restored dbce55041bc2 ✓
+CAUGHT  A5a · round 5's mend (".." anywhere: "range 1..2" → "range 1.2") — visual-pass-r6b.test.mts 5.2: FAIL ✓ · visual-pass-r6b.test.mts 5.4: FAIL ✓ · restored e493e8429456 ✓
+CAUGHT  A6a · the round page's <title> back on the stored English title — visual-pass-r6b.test.mts 6.5: FAIL ✓ · restored ead479a6aac0 ✓
+CAUGHT  A6b · /positions/performance's rows back on the stored title — visual-pass-r6b.test.mts 6.6: FAIL ✓ · restored aa6e877ad739 ✓
+CAUGHT  A6c · the stored Swahili title read with the page's words (no stored round reads back) — visual-pass-r6b.test.mts 6.1: FAIL ✓ · restored 1cd295337e5b ✓
+CAUGHT  A7a · the win's Swahili quotes its market whole again (round 5) — visual-pass-r6b.test.mts 7.1: FAIL ✓ · restored 36ba7f924557 ✓
+CAUGHT  A7b · the win's Swahili room split from its family (50 where the loss and the refund cut at 70) — visual-pass-r6b.test.mts 7.1: FAIL ✓ · visual-pass-r6b.test.mts 7.2: FAIL ✓ · restored 36ba7f924557 ✓
+
+MUTATION — 28/28 caught, 0 missed; every file restored byte for byte (sha-256).

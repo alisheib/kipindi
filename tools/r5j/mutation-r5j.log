@@ -1,0 +1,53 @@
+mutation-r5j · 2026-10-09T20:46:12.763Z · 26 plants over 24 files
+CAUGHT  the filter pill prints its count bare again ("Zote 12479")  [visual-pass-r5j 1.1 ✗ · visual-pass-r5j 2.1 ✗]  restored byte-identical
+CAUGHT  /results' bar fills its phrase with String(resultCount)  [visual-pass-r5j 1.1 ✗ · visual-pass-r5j 1.3 ✗ · visual-pass-r5j 2.3 ✗]  restored byte-identical
+CAUGHT  the pager's total back on the runtime's locale  [visual-pass-r5j 1.1 ✗ · visual-pass-r5j 2.2 ✗]  restored byte-identical
+CAUGHT  the Up & Down card's private device-locale formatter back  [visual-pass-r5j 1.1 ✗ · visual-pass-r5j 2.4 ✗]  restored byte-identical
+CAUGHT  /proposals' tally on toLocaleString() again  [visual-pass-r5j 1.1 ✗ · visual-pass-r5j 2.7 ✗]  restored byte-identical
+CAUGHT  /live's count line bare again  [visual-pass-r5j 1.1 ✗]  restored byte-identical
+CAUGHT  /positions' win-rate hint's count bare in its template  [visual-pass-r5j 1.1 ✗ · visual-pass-r4d 7.3b ✗]  restored byte-identical
+CAUGHT  the home's "browse all" slot handed the bare count  [visual-pass-r5j 1.1 ✗]  restored byte-identical
+CAUGHT  the card's comment count bare again  [visual-pass-r5j 1.1 ✗]  restored byte-identical
+CAUGHT  the leaderboard's hot streak bare again  [visual-pass-r5j 1.1 ✗ · visual-pass-r5j 2.7 ✗]  restored byte-identical
+CAUGHT  the deposit refusal's bounds on toLocaleString("en-US") again  [visual-pass-r5j 1.1 ✗ · visual-pass-r5j 2.6 ✗]  restored byte-identical
+CAUGHT  the away bar's `n` back to a bare String  [visual-pass-r5j 1.5 ✗]  restored byte-identical
+CAUGHT  a classified site goes away (its exemption would be stale)  [visual-pass-r5j 1.2 ✗]  restored byte-identical
+CAUGHT  the journey bell's count bare too  [visual-pass-r5j 1.5 ✗ · visual-pass-r5j 6.1 ✗]  restored byte-identical
+CAUGHT  a caller lifts the badge's cap (a four-digit pip)  [visual-pass-r5j 6.2 ✗]  restored byte-identical
+CAUGHT  the result draws its title as given (no reader)  [visual-pass-r5j 3.1 ✗ · visual-pass-r5j 3.2 ✗ · sell-grace-truth 6.result ✗]  restored byte-identical
+CAUGHT  the result's private matcher back (split on its own FIGURE)  [visual-pass-r5j 3.1 ✗ · visual-pass-r5j 3.2 ✗ · visual-pass-r5j 4.1 ✗]  restored byte-identical
+CAUGHT  a refusal's subtitle no longer read for figures  [visual-pass-r5j 3.1 ✗ · visual-pass-r5j 3.3 ✗]  restored byte-identical
+CAUGHT  the sale asks for whole figures again (a stale opt-in prop)  [visual-pass-r5j 3.1 ✗ · visual-pass-r5j 3.5 ✗]  restored byte-identical
+CAUGHT  the shared reader forgets a compact figure ("TZS 1.2M" read as "TZS 1")  [visual-pass-r5j 3.2 ✗ · sell-grace-truth 6.result ✗]  restored byte-identical
+CAUGHT  the share card's private grouping regex back  [visual-pass-r5j 4.1 ✗ · visual-pass-r5j 4.3 ✗]  restored byte-identical
+CAUGHT  the empty-slot rule deleted from globals.css  [visual-pass-r5j 5.1 ✗]  restored byte-identical
+CAUGHT  the analytics choice types its no-break space again  [visual-pass-r5j 5.2 ✗ · visual-pass-r5j 5.3 ✗ · visual-pass-r5e 6.5′ ✗]  restored byte-identical
+CAUGHT  the settled row's empty cell types its no-break space again  [visual-pass-r5j 5.2 ✗ · visual-pass-r5e 6.5′ ✗]  restored byte-identical
+CAUGHT  the time field's preview types its no-break space again  [visual-pass-r5j 5.2 ✗ · visual-pass-r5j 5.4 ✗]  restored byte-identical
+CAUGHT  the round-5 sweep excuses a slot again  [visual-pass-r5j 5.7 ✗]  restored byte-identical
+
+26/26 caught on their named checks; every file restored byte-identical: yes
+  e1869eb7cf52ca6e  src/components/ui/filter-pill.tsx
+  de1b83a0d3922b4d  src/app/results/results-bar.tsx
+  f888c636b2087c60  src/components/ui/pagination.tsx
+  529d0dcfb8ba016e  src/components/updown/updown-card.tsx
+  f78f891c11438178  src/app/proposals/page.tsx
+  18f7be1e490c95d1  src/app/live/page.tsx
+  ccf85610f62dfb63  src/app/positions/page.tsx
+  18c7a1d12e3bc528  src/components/home/landing-hero.tsx
+  104a2bb9504b0c8c  src/components/markets/market-card.tsx
+  485f163e2246a8ad  src/app/leaderboard/page.tsx
+  7c46f72c0a329684  src/app/wallet/deposit/actions.ts
+  2f248a987541743a  src/components/layout/away-summary-bar.tsx
+  2705f2b4730b7f8f  src/app/updown/page.tsx
+  f9321b5a3428b0b3  src/components/layout/notifications-panel.tsx
+  b1695b48e1dae693  src/components/chat/ChatBubble.tsx
+  aabc4c3cf1558031  src/components/markets/operation-result-modal.tsx
+  c011f6753ddf9b59  src/components/markets/sell-result.tsx
+  7e1890793f4cf894  src/lib/fill-nodes.tsx
+  b4cb071a1763b69c  src/app/api/og/market/[id]/route.tsx
+  66eb1e45091fc99d  src/app/globals.css
+  3b02b673478762f7  src/components/analytics/analytics-choice.tsx
+  9ca825efafee92ef  src/components/home/trust-band.tsx
+  8cc83f8d182e2f15  src/components/ui/time-select.tsx
+  90054379e9060921  scripts/visual-pass-r5e.test.mts

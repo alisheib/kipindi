@@ -1,0 +1,10 @@
+Merge origin/main into vodacom-visual: S14's STEP 57/58 (marketing and contacts), the two round-6 hotfixes (731e58f0, 2cd2239e) and the docs, before the final proof
+
+A merge, not a rebase: one conflict, and no force-push of the shared branch.
+- src/lib/server/email.ts — main's hotfix 2cd2239e (the break and exclusion emails' end in EAT) and R6-A's copy of it
+  are the same change; the branch's file is main's plus R5-B's F9 (`agentRevokedHtml` states its day in each line's own
+  month words, `formatEatDate`), so the branch's side is kept whole.
+Everything else merged cleanly (package.json's suite lines, campaign-gates, comms-email-truth, privacy-notice,
+market-service, VODACOM-PLAN).
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>

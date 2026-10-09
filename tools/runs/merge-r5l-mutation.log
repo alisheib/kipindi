@@ -1,0 +1,318 @@
+CAUGHT 1.1  src/app/profile/security/loading.tsx — a generic loader without its page's back link (the 257px spinner box first again)  [red: 1.1]
+CAUGHT 1.1  src/app/notifications/loading.tsx — a loader's header with the page's icon a size smaller (its eyebrow row 15px, not 22)  [red: 1.1]
+CAUGHT 1.1  src/app/proposals/loading.tsx — a loader on another page's rung  [red: 1.1]
+CAUGHT 1.2  src/components/ui/page-loader.tsx — PageLoader drawing its spinner first and the page's bands nowhere  [red: 1.2 1.3]
+CAUGHT 1.3  src/components/ui/page-loader.tsx — PageLoader ignoring the page's rhythm  [red: 1.3]
+CAUGHT 2.1  src/app/markets/page.tsx — /markets' fallback a skeleton of its own again (GridSkeleton's shape)  [red: 2.1]
+CAUGHT 2.2  src/app/results/page.tsx — /results' fallback not handed what the page knows (a search's page draws a carousel)  [red: 2.2]
+CAUGHT 2.3  src/app/results/loading.tsx — the grid's count typed again (six cards under the carousel)  [red: 2.3]
+CAUGHT 2.4  src/app/markets/loading.tsx — the board's grid back on GridSkeleton's mt-3  [red: 2.4]
+CAUGHT 3.1  src/app/agent/loading.tsx — the documents' grid a step closer than the page's  [red: 3.1]
+CAUGHT 3.2  src/app/agent/loading.tsx — a tile off the page's props (another label rung)  [red: 3.2]
+CAUGHT 3.3  src/app/agent/loading.tsx — the waterfall's rows on another padding  [red: 3.3]
+CAUGHT 3.4  src/app/agent/loading.tsx — a step's sentence printed instead of set and not shown  [red: 3.4]
+CAUGHT 3.5  src/app/agent/loading.tsx — a term the programme does not have drawn (a cap)  [red: 3.4 3.5]
+CAUGHT 4.1  src/app/agent/apply/loading.tsx — the step buttons apart by another gap  [red: 4.1 4.2]
+CAUGHT 4.2  src/app/agent/apply/loading.tsx — a second generic panel back under the step panel  [red: 4.2]
+CAUGHT 4.3  src/app/agent/status/loading.tsx — the status header a 32px bar again  [red: 4.2 4.3 4.4]
+CAUGHT 4.4  src/app/agent/apply/loading.tsx — the step labels printed  [red: 4.4]
+CAUGHT 5.1  src/app/leaderboard/loading.tsx — the podium on another padding  [red: 5.1]
+CAUGHT 5.2  src/app/leaderboard/loading.tsx — a spinner's caption back among the bands  [red: 5.2]
+CAUGHT 5.3  src/app/leaderboard/loading.tsx — eight rows again (a page is twelve)  [red: 5.3]
+CAUGHT 5.4  src/app/leaderboard/loading.tsx — the lens a pill short  [red: 5.4]
+CAUGHT 8.4  src/app/live/loading.tsx — the hero's question stack back on three lines from lg (30px over today's board at 1280)  [red: 8.4]
+CAUGHT 8.4  src/app/live/loading.tsx — the Swahili phone's question stack back on six lines  [red: 8.4]
+CAUGHT 5.5  src/app/leaderboard/loading.tsx — the leader on a streak too (the podium 8px taller than the measured board's)  [red: 5.5]
+CAUGHT 6.1  src/app/results/loading.tsx — the notable card 16px short from 1024 (its lg padding gone)  [red: 6.1]
+CAUGHT 6.2  src/app/results/loading.tsx — the title's judgement a phone's at every width  [red: 6.2]
+CAUGHT 6.3  src/app/results/loading.tsx — row 2's groups out of the page's order  [red: 6.3 6.4]
+CAUGHT 6.4  src/app/results/loading.tsx — a pill with another word  [red: 6.4]
+CAUGHT 7.1  src/app/markets/loading.tsx — the topic menu without the page's divider (the row's 29px gap)  [red: 7.1]
+CAUGHT 7.2  src/app/markets/loading.tsx — a pool floor in the old words, not the money formatter's  [red: 7.2]
+CAUGHT 7.3  src/app/markets/loading.tsx — row 1's per-status widths dropped  [red: 7.3]
+CAUGHT 8.1  src/app/live/loading.tsx — a card on another padding  [red: 8.1]
+CAUGHT 8.2  src/app/live/loading.tsx — the CTA back to a 150px box (two lines at 390)  [red: 8.2]
+CAUGHT 8.3  src/app/live/loading.tsx — every language's card at Swahili's height  [red: 8.3]
+CAUGHT 9.1  src/components/ui/query-bar-ghost.tsx — the sort ghost's phone padding off QuerySort's  [red: 9.1]
+CAUGHT 9.1  src/components/ui/ghost-text.tsx — the helper's word bar on the first line only (no box-decoration-clone)  [red: 9.1]
+CAUGHT 9.2  src/app/wallet/money-bar-ghost.tsx — a second pill ghost  [red: 9.2]
+
+mutation-r5l: 38 planted, 38 caught on the named check; 16 files restored byte-identical: yes
+  cf165a11e7de  src/app/profile/security/loading.tsx
+  70f58f6489d9  src/app/notifications/loading.tsx
+  e2ccc8ba2f26  src/app/proposals/loading.tsx
+  b5ba54cec7a2  src/components/ui/page-loader.tsx
+  69a471f68cbc  src/app/markets/page.tsx
+  fab504e95ace  src/app/results/page.tsx
+  780b56c8c6a4  src/app/results/loading.tsx
+  0c25a59269b5  src/app/markets/loading.tsx
+  1dbf802a2caf  src/app/agent/loading.tsx
+  84f619f68a91  src/app/agent/apply/loading.tsx
+  9508717ef32f  src/app/agent/status/loading.tsx
+  13050a2d5dc1  src/app/leaderboard/loading.tsx
+  92c9e54a4712  src/app/live/loading.tsx
+  9a5b97b0f1c5  src/components/ui/query-bar-ghost.tsx
+  c27ca3836a04  src/components/ui/ghost-text.tsx
+  c8a0283a6b27  src/app/wallet/money-bar-ghost.tsx
+R5L=0
+ok   0.1 · a bar on the first line only → CAUGHT on 0.1 (failing: 0.1; exit 1; 2s) · restored byte-identical: yes
+ok   0.3 · the ghost chip on the taller status row → CAUGHT on 0.3 (failing: 0.3, 0.3′; exit 1; 2s) · restored byte-identical: yes
+ok   0.4 · a drawing reading the server again → CAUGHT on 0.4 (failing: 0.4; exit 1; 2s) · restored byte-identical: yes
+ok   1.1 · the receipt's footnote left out → CAUGHT on 1.1 (failing: 1.1; exit 1; 2s) · restored byte-identical: yes
+ok   1.3 · a row short (seven for eight) → CAUGHT on 1.3 (failing: 1.3, 1.4′; exit 1; 2s) · restored byte-identical: yes
+ok   1.4 · an id shape shorter than a real id → CAUGHT on 1.4 (failing: 1.4, 1.4′; exit 1; 2s) · restored byte-identical: yes
+ok   2.1 · the trust strip off its own classes → CAUGHT on 2.1 (failing: 2.1; exit 1; 2s) · restored byte-identical: yes
+ok   2.2 · tiles 8px short (98.25 for 106.25) → CAUGHT on 2.2 (failing: 2.2; exit 1; 2s) · restored byte-identical: yes
+ok   2.3 · three quick-amount pills (one row on a phone) → CAUGHT on 2.3 (failing: 2.3; exit 1; 2s) · restored byte-identical: yes
+ok   2.4 · the phone hint left out → CAUGHT on 2.4 (failing: 2.1, 2.4; exit 1; 2s) · restored byte-identical: yes
+ok   3.1 · the return's buttons 12px apart (the page's are 10) → CAUGHT on 3.1 (failing: 3.1; exit 1; 2s) · restored byte-identical: yes
+ok   3.3 · the outcome's heading SHOWN → CAUGHT on 3.3 (failing: 3.3; exit 1; 2s) · restored byte-identical: yes
+ok   4.1 · the withdraw hero's old row class → CAUGHT on 4.1 (failing: 4.1; exit 1; 2s) · restored byte-identical: yes
+ok   4.2 · a notice row off the page's NoticeRow → CAUGHT on 4.2 (failing: 4.2; exit 1; 2s) · restored byte-identical: yes
+ok   4.3 · the fee's rate drawn as one digit (the first draft) → CAUGHT on 4.3 (failing: 4.3; exit 1; 2s) · restored byte-identical: yes
+ok   5.1 · the 64px avatar back → CAUGHT on 5.1 (failing: 5.1; exit 1; 2s) · restored byte-identical: yes
+ok   5.2 · the email pill out of its tap-floor link → CAUGHT on 5.2 (failing: 5.2; exit 1; 2s) · restored byte-identical: yes
+ok   5.3 · the balance cell one column on a phone → CAUGHT on 5.3 (failing: 5.3; exit 1; 2s) · restored byte-identical: yes
+ok   5.4 · a badge short → CAUGHT on 5.4 (failing: 5.4; exit 1; 2s) · restored byte-identical: yes
+ok   5.5 · a settings row short → CAUGHT on 5.5 (failing: 5.5; exit 1; 2s) · restored byte-identical: yes
+ok   5.6 · the sign-out title off its face → CAUGHT on 5.6 (failing: 5.6; exit 1; 2s) · restored byte-identical: yes
+ok   6.1 · the head's button words tracked (a narrower box) → CAUGHT on 6.1 (failing: 6.1; exit 1; 2s) · restored byte-identical: yes
+ok   6.2 · the strip back on a fixed two-column grid → CAUGHT on 6.2 (failing: 6.2; exit 1; 2s) · restored byte-identical: yes
+ok   6.3 · the exposure keys off their 14px line → CAUGHT on 6.3 (failing: 6.3; exit 1; 2s) · restored byte-identical: yes
+ok   6.4 · the topic group left out → CAUGHT on 6.4 (failing: 6.4, 6.5; exit 1; 2s) · restored byte-identical: yes
+ok   6.5 · a narrower window group (row 2 a line short) → CAUGHT on 6.5 (failing: 6.4, 6.5; exit 1; 2s) · restored byte-identical: yes
+ok   7.1 · the highlights off the page's grid → CAUGHT on 7.1 (failing: 7.1; exit 1; 2s) · restored byte-identical: yes
+ok   7.2 · the 200px chart box back → CAUGHT on 7.2 (failing: 7.2, 7.2′; exit 1; 2s) · restored byte-identical: yes
+ok   7.3 · a stake tile in the display face → CAUGHT on 7.3 (failing: 7.3; exit 1; 2s) · restored byte-identical: yes
+
+mutation-r5k: 29 planted, 29 caught on the named check; every file restored byte-identical at the end: yes
+  sha-256 c27ca3836a046bdc… src/components/ui/ghost-text.tsx
+  sha-256 1c01065457d3586e… src/app/profile/loading.tsx
+  sha-256 acb7a85dae278dc6… src/app/wallet/receipt/[id]/loading.tsx
+  sha-256 f81237084b32a4fe… src/app/wallet/receipt-ghost.tsx
+  sha-256 e5aadca9b348ee71… src/app/wallet/money-form-ghost.tsx
+  sha-256 ef5db5cc056de064… src/app/wallet/deposit/return/loading.tsx
+  sha-256 8c0f067d6382e29b… src/app/wallet/withdraw/withdraw-ghost.tsx
+  sha-256 29ea39c92188b308… src/app/positions/positions-ghost.tsx
+  sha-256 9b25dca68a314d75… src/app/positions/performance/loading.tsx
+(node:13948) [DEP0190] DeprecationWarning: Passing args to a child process with shell option true can lead to security vulnerabilities, as the arguments are not escaped, only concatenated.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+R5K=0
+baseline: exit 0 — visual-pass-r5h: 56 passed, 0 failed
+CAUGHT  1.2 · the results ghost drawn by a server component again (its tree in every refresh) — src/app/results/loading.tsx
+CAUGHT  1.2 · a question's skeleton drawn on the server again (every 15 s) — src/app/markets/[id]/loading.tsx
+CAUGHT  1.2 · the kit's loader a server component again (16 routes) — src/components/ui/page-loader.tsx
+CAUGHT  1.3 · today's /positions picture reading the words on the server — src/app/positions/positions-ghost.tsx
+CAUGHT  1.3 · the history loading file reading the words again — src/app/updown/history/loading.tsx
+CAUGHT  1.3 · a server loading file importing a server component (a tree in the payload) — src/app/updown/loading.tsx
+CAUGHT  1.4 · the bonus answer not asked (a live programme's second card never ghosted) — src/app/wallet/loading.tsx
+CAUGHT  1.4 · the drawing ignoring the bonus answer — src/app/wallet/wallet-ghost.tsx
+CAUGHT  2.1 · a journey reader's /positions pinned to the round history's picture — src/app/positions/loading.tsx
+CAUGHT  2.1 · the classic history drawing handed a prop it does not need — src/app/updown/history/loading.tsx
+CAUGHT  2.2′  the pin ignored (the spinner over /positions/performance) — src/components/journey/route-ghost.tsx
+CAUGHT  2.3 · the history drawing loading the journey's head (its code to every classic reader) — src/app/updown/history/history-ghost.tsx
+CAUGHT  3.2 · the flag raised in a passive effect again — src/components/journey/journey-flag.tsx
+CAUGHT  3.2 · the flag back in a boundary of its own — src/components/layout/app-shell.tsx
+CAUGHT  3.3 · the lowering announced only while the mark is still in — src/lib/journey/journey-on.ts
+CAUGHT  3.2 · the not-found mark's going announced in its layout cleanup (reads the old path) — src/components/ui/not-found-mark.tsx
+CAUGHT  3.4 · the after-commit announcement made at once — src/lib/not-found-mark.ts
+CAUGHT  3.6 · the strip's edges marked after the paint again — src/components/ui/strip-autoscroll.tsx
+CAUGHT  3.5 · a new, unclassified writer of a DOM mark — src/components/ui/toast.tsx
+CAUGHT  4.1 · R5-B's finding back: /wallet's ghost with no bar — src/app/wallet/wallet-ghost.tsx
+CAUGHT  4.1 · the door off the bar's rhythm — src/app/wallet/wallet-ghost.tsx
+CAUGHT  4.1 · the spark and the list two blocks on the 32px rung again — src/app/wallet/wallet-ghost.tsx
+NOT LANDED (0 matches) · src/app/wallet/money-bar-ghost.tsx · a pill narrower than the kit's
+CAUGHT  4.3 · a state word that is not the bar's — src/app/wallet/money-bar-ghost.tsx
+CAUGHT  4.3 · the receipts ghost a lens short — src/app/wallet/receipts/loading.tsx
+CAUGHT  4.7 · the groups drawn without their divider (a different wrap) — src/app/wallet/money-bar-ghost.tsx
+NOT LANDED (0 matches) · src/app/wallet/money-bar-ghost.tsx · the ghost publishing a result count
+CAUGHT  5.1 · the deposit ghost's back link a 20px bar again — src/app/wallet/deposit/deposit-ghost.tsx
+NOT LANDED (0 matches) · src/app/agent/invite/[token]/loading.tsx · the invitation's ghost drawing a back link its page does not have
+CAUGHT  5.1 · the back link's ghost box 20px instead of the link's 44 — src/components/ui/back-link.tsx
+CAUGHT  5.2 · /results' carousel and grid back in a flex column (48px between them) — src/app/results/loading.tsx
+NOT LANDED (0 matches) · src/app/markets/loading.tsx · /markets' Filters pill drawn at 1280 again
+NOT LANDED (0 matches) · src/app/live/loading.tsx · /live's hero 16px short from 1024 again
+CAUGHT  5.5 · the receipts row's chip line 22px again — src/app/wallet/receipts/loading.tsx
+CAUGHT  5.6 · /profile's grid on 12px again — src/app/profile/loading.tsx
+CAUGHT  5.7 · /agent's header without the page's subtitle — src/app/agent/loading.tsx
+CAUGHT  5.8 · /updown's phone trigger gone (both pill rows on a phone again) — src/app/updown/updown-ghost.tsx
+CAUGHT  5.9 · the round's two columns from xl again — src/app/updown/[roundId]/loading.tsx
+CAUGHT  5.10 · the question's chips row back to its chips' height — src/app/markets/[id]/loading.tsx
+CAUGHT  5.11 · Tiketi zangu's rail ghost without R5-B's hook — src/components/journey/tickets/tickets-ghost.tsx
+CAUGHT  5.12 · the round history's search band gone — src/app/updown/history/history-ghost.tsx
+
+36/41 caught on the named check · 36/41 restored byte-identical · 30/30 files match their sha-256 from before · the suite after: exit 0
+R5H=1
+CAUGHT 1.1   F3 the journey's foot rule dropped (the rule back on Funga's border, 8px) — exit 1, failed [1.1], restored byte-identical
+CAUGHT 2.1   F6 the rail no longer reaches into the gutter — exit 1, failed [2.1 2.2], restored byte-identical
+CAUGHT 2.1   F6 the options back on the kit's 20px — exit 1, failed [2.1 2.3], restored byte-identical
+CAUGHT 2.1   F6 the rule's line drawn from the rail's own left (12px into the gutter) — exit 1, failed [2.1], restored byte-identical
+CAUGHT 2.4   F6 /wallet's ghost back on 14px with the display face — exit 1, failed [2.4], restored byte-identical
+CAUGHT 3.1   F7 Modal's panel without its dock mark — exit 1, failed [3.1], restored byte-identical
+CAUGHT 3.2   F7 a small sheet left ON the screen's last row — exit 1, failed [3.2], restored byte-identical
+CAUGHT 3.4   F7 the Wallet's dock padding out of step with its own — exit 1, failed [3.4], restored byte-identical
+CAUGHT 3.5   F7 the Needle's drawer unmarked — exit 1, failed [3.5], restored byte-identical
+CAUGHT 3.5   F7 the primer docking on Modal's 24 — exit 1, failed [3.5], restored byte-identical
+CAUGHT 3.6   F7 the chat sheet keeping its bottom border — exit 1, failed [3.6], restored byte-identical
+CAUGHT 4.1   F8 the dark drop back on the journey's pip — exit 1, failed [4.1], restored byte-identical
+CAUGHT 5.2   F9 the formatter swapped (a day for a moment) on the re-apply notice — exit 1, failed [5.1′ 5.2 5.5], restored byte-identical
+CAUGHT 5.3   F9 the caller formats the payout time in English again — exit 1, failed [5.3], restored byte-identical
+CAUGHT 5.4   F9 the Swahili verdict body printing the English date — exit 1, failed [5.4], restored byte-identical
+CAUGHT 5.5   F9 the revoked agent's notice: the English day in the Swahili body — exit 1, failed [5.5], restored byte-identical
+CAUGHT 5.6   F9 the revoked agent's letter: the English day in the Swahili line — exit 1, failed [5.6], restored byte-identical
+CAUGHT 6.1   F10 the cut never steps back to a word — exit 1, failed [6.1 6.3 6.4], restored byte-identical
+CAUGHT 6.4   F10 a Chinese opening bracket allowed to end a cut — exit 1, failed [6.4], restored byte-identical
+CAUGHT 6.6   F10 one notice back on .slice(0, 70) — exit 1, failed [6.6], restored byte-identical
+CAUGHT 6.7   F10 an email subject back on .slice(0, 50) — exit 1, failed [6.7], restored byte-identical
+CAUGHT 7.1   F11 the header's Deposit back on common.deposit — exit 1, failed [7.1], restored byte-identical
+CAUGHT 7.1   F11 the balance card not told — exit 1, failed [7.1], restored byte-identical
+CAUGHT 7.2   F11 the page not asking the resolver — exit 1, failed [7.2], restored byte-identical
+CAUGHT 7.2   F11 the receipts' Deposit back on common.depositCta — exit 1, failed [7.2], restored byte-identical
+CAUGHT 8.1   F13 the door back on the page's rung — exit 1, failed [8.1], restored byte-identical
+CAUGHT 8.2   F13 the door without its hook — exit 1, failed [8.2], restored byte-identical
+CAUGHT 9.1   F14 the wrapped row back on a 4px gap — exit 1, failed [9.1.locate 9.1], restored byte-identical
+CAUGHT 9.3   F14 the receipts ghost retyping the old wrap — exit 1, failed [9.3], restored byte-identical
+ANCHOR 9.4   F14 the ghost's count back on its 12px bar: 0 matches
+CAUGHT 10.1  §A5 the cleared rows forgotten — exit 1, failed [10.1], restored byte-identical
+CAUGHT 10.1  §A5 the bar drawn over an empty inbox again — exit 1, failed [10.1], restored byte-identical
+CAUGHT 10.1  §A5 the search band drawn over an empty inbox again — exit 1, failed [10.1], restored byte-identical
+CAUGHT 11.1  CHECK the lead printed bare again — exit 1, failed [11.1], restored byte-identical
+CAUGHT 11.2  CHECK the method's run never found — exit 1, failed [11.2], restored byte-identical
+CAUGHT 11.5  CHECK the deposit pip back 8px in — exit 1, failed [11.5], restored byte-identical
+
+mutations: 36 planted · 35 caught on the named check · 1 missed · restored byte-identical: 35/36
+R5B=1
+CAUGHT  the filter pill prints its count bare again ("Zote 12479")  [visual-pass-r5j 1.1 ✗ · visual-pass-r5j 2.1 ✗]  restored byte-identical
+CAUGHT  /results' bar fills its phrase with String(resultCount)  [visual-pass-r5j 1.1 ✗ · visual-pass-r5j 1.3 ✗ · visual-pass-r5j 2.3 ✗]  restored byte-identical
+CAUGHT  the pager's total back on the runtime's locale  [visual-pass-r5j 1.1 ✗ · visual-pass-r5j 2.2 ✗]  restored byte-identical
+CAUGHT  the Up & Down card's private device-locale formatter back  [visual-pass-r5j 1.1 ✗ · visual-pass-r5j 2.4 ✗]  restored byte-identical
+CAUGHT  /proposals' tally on toLocaleString() again  [visual-pass-r5j 1.1 ✗ · visual-pass-r5j 2.7 ✗]  restored byte-identical
+CAUGHT  /live's count line bare again  [visual-pass-r5j 1.1 ✗]  restored byte-identical
+CAUGHT  /positions' win-rate hint's count bare in its template  [visual-pass-r5j 1.1 ✗ · visual-pass-r4d 7.3b ✗]  restored byte-identical
+CAUGHT  the home's "browse all" slot handed the bare count  [visual-pass-r5j 1.1 ✗]  restored byte-identical
+CAUGHT  the card's comment count bare again  [visual-pass-r5j 1.1 ✗]  restored byte-identical
+CAUGHT  the leaderboard's hot streak bare again  [visual-pass-r5j 1.1 ✗ · visual-pass-r5j 2.7 ✗]  restored byte-identical
+CAUGHT  the deposit refusal's bounds on toLocaleString("en-US") again  [visual-pass-r5j 1.1 ✗ · visual-pass-r5j 2.6 ✗]  restored byte-identical
+CAUGHT  the away bar's `n` back to a bare String  [visual-pass-r5j 1.5 ✗]  restored byte-identical
+CAUGHT  a classified site goes away (its exemption would be stale)  [visual-pass-r5j 1.2 ✗]  restored byte-identical
+CAUGHT  the journey bell's count bare too  [visual-pass-r5j 1.5 ✗ · visual-pass-r5j 6.1 ✗]  restored byte-identical
+CAUGHT  a caller lifts the badge's cap (a four-digit pip)  [visual-pass-r5j 6.2 ✗]  restored byte-identical
+CAUGHT  the result draws its title as given (no reader)  [visual-pass-r5j 3.1 ✗ · visual-pass-r5j 3.2 ✗ · sell-grace-truth 6.result ✗]  restored byte-identical
+CAUGHT  the result's private matcher back (split on its own FIGURE)  [visual-pass-r5j 3.1 ✗ · visual-pass-r5j 3.2 ✗ · visual-pass-r5j 4.1 ✗]  restored byte-identical
+CAUGHT  a refusal's subtitle no longer read for figures  [visual-pass-r5j 3.1 ✗ · visual-pass-r5j 3.3 ✗]  restored byte-identical
+CAUGHT  the sale asks for whole figures again (a stale opt-in prop)  [visual-pass-r5j 3.1 ✗ · visual-pass-r5j 3.5 ✗]  restored byte-identical
+CAUGHT  the shared reader forgets a compact figure ("TZS 1.2M" read as "TZS 1")  [visual-pass-r5j 3.2 ✗ · sell-grace-truth 6.result ✗]  restored byte-identical
+CAUGHT  the share card's private grouping regex back  [visual-pass-r5j 4.1 ✗ · visual-pass-r5j 4.3 ✗]  restored byte-identical
+CAUGHT  the empty-slot rule deleted from globals.css  [visual-pass-r5j 5.1 ✗]  restored byte-identical
+CAUGHT  the analytics choice types its no-break space again  [visual-pass-r5j 5.2 ✗ · visual-pass-r5j 5.3 ✗ · visual-pass-r5e 6.5′ ✗]  restored byte-identical
+CAUGHT  the settled row's empty cell types its no-break space again  [visual-pass-r5j 5.2 ✗ · visual-pass-r5e 6.5′ ✗]  restored byte-identical
+CAUGHT  the time field's preview types its no-break space again  [visual-pass-r5j 5.2 ✗ · visual-pass-r5j 5.4 ✗]  restored byte-identical
+CAUGHT  the round-5 sweep excuses a slot again  [visual-pass-r5j 5.7 ✗]  restored byte-identical
+
+26/26 caught on their named checks; every file restored byte-identical: yes
+  e1869eb7cf52ca6e  src/components/ui/filter-pill.tsx
+  de1b83a0d3922b4d  src/app/results/results-bar.tsx
+  f888c636b2087c60  src/components/ui/pagination.tsx
+  56422c019bde61ec  src/components/updown/updown-card.tsx
+  f78f891c11438178  src/app/proposals/page.tsx
+  18f7be1e490c95d1  src/app/live/page.tsx
+  ccf85610f62dfb63  src/app/positions/page.tsx
+  18c7a1d12e3bc528  src/components/home/landing-hero.tsx
+  940cc502e0a26fe9  src/components/markets/market-card.tsx
+  79450a0bbe1f3e57  src/app/leaderboard/page.tsx
+  7c46f72c0a329684  src/app/wallet/deposit/actions.ts
+  2f248a987541743a  src/components/layout/away-summary-bar.tsx
+  ac4ac51e1a1e39a2  src/app/updown/page.tsx
+  f58125d875df78bf  src/components/layout/notifications-panel.tsx
+  b1695b48e1dae693  src/components/chat/ChatBubble.tsx
+  a7a8db613ac3d5bb  src/components/markets/operation-result-modal.tsx
+  c011f6753ddf9b59  src/components/markets/sell-result.tsx
+  6494497dbed789ee  src/lib/fill-nodes.tsx
+  b4cb071a1763b69c  src/app/api/og/market/[id]/route.tsx
+  9e8b1de9f7207dfc  src/app/globals.css
+  3b02b673478762f7  src/components/analytics/analytics-choice.tsx
+  9ca825efafee92ef  src/components/home/trust-band.tsx
+  8cc83f8d182e2f15  src/components/ui/time-select.tsx
+  17e8099574e2a0de  scripts/visual-pass-r5e.test.mts
+R5J=0
+CAUGHT  F1 · the market's metadata swallows a failed read and calls notFound() (round 4's body)  [r5d, exit 1]  → 1.1
+CAUGHT  F1 · a failed round read titled in English again ("Up & Down")  [r5d, exit 1]  → 1.1
+CAUGHT  F1 · a failed proposal read titled in English again ("Proposal")  [r5d, exit 1]  → 1.1
+CAUGHT  F1 · the round's read taken out of its try (a failed read throws beside the page)  [r5d, exit 1]  → 1.4″
+CAUGHT  F1 · the body's note calls the metadata's catch "title garnish" again  [r5d, exit 1]  → 1.5
+CAUGHT  F1 · the market's not-found keeps its stale note (the metadata "calls notFound()")  [r5d, exit 1]  → 1.5
+CAUGHT  F2 · a navigation to an image-like address handed to the static rule again  [offline, exit 1]  → 11.offline
+CAUGHT  F2 · the static rule keeps any ok answer again (a page, the router's data)  [offline, exit 1]  → 11.rsc, 11.html
+CAUGHT  F2 · the cache name kept at v5 (a name whose rule could keep a page)  [offline, exit 1]  → 2.name
+CAUGHT  F3 · a page the network answered no longer refreshes the offline document (install only)  [offline, exit 1]  → 12.retry, 12.stale, 12.undated
+CAUGHT  F3 · the refresh sends the session cookie  [offline, exit 1]  → 12.retry
+CAUGHT  F3 · every page refetches it (no one look per worker wake)  [offline, exit 1]  → 12.wake
+CAUGHT  F4 · the hook back to the span's presence ("not found" for the next page while the old span is up)  [r4j, exit 1]  → 5.1
+CAUGHT  F4 · the one decision answers presence  [r4j, exit 1]  → 5.15
+CAUGHT  F4 · arrival announced by a passive effect (a transition paints the not-found page with a tab lit first)  [r4j, exit 1]  → 5.2
+CAUGHT  F4 · the mark names no path  [r4j, exit 1]  → 5.2
+CAUGHT  F5 · the rule reads the mark alone again (a missing question's first paint keeps its tab lit)  [r4j, exit 1]  → 5.12
+CAUGHT  G1 · the ghosts drawn by a server component again (no directive)  [r5d, exit 1]  → 2.1
+CAUGHT  G1 · the lazy binding turns the server render off (ssr: false — the ghost leaves the first HTML)  [r5d, exit 1]  → 2.3
+CAUGHT  G1 · the lost-chunk guard takes every error  [r5d, exit 1]  → 2.4
+CAUGHT  G1 · the root loading file hands the ghost the whole dictionary (every payload carries it)  [r5d, exit 1]  → 2.5, 2.6
+CAUGHT  G1 · a second drawing of the deposit's ghost in the root ghost (not the one its loading file renders)  [r5d, exit 1]  → 2.10
+CAUGHT  G1′ · the not-found view drawn on the server again (no directive: ~6 KB in every payload)  [r5d, exit 1]  → 4.1, 4.2
+CAUGHT  G1′ · the root not-found reads its words and title out of the client view (a reference on the server)  [r5d, exit 1]  → 4.3
+CAUGHT  G2 · the shell's note on the uncontained render error removed  [r5d, exit 1]  → 3.2
+CAUGHT  F4′ · a new store reader of a DOM mark, unclassified  [r5d, exit 1]  → 5.1
+CAUGHT  F4′ · cacheComponents turned on (left pages kept in a hidden <Activity>)  [r5d, exit 1]  → 5.2
+
+MUTATION PROOF r5d — 27/27 plants caught on their named check · 16/16 files byte-identical after (sha-256)
+  ede3e4f52b709a25…  ==  src/app/markets/[id]/page.tsx
+  6b4916814e061598…  ==  src/app/updown/[roundId]/page.tsx
+  1913d9d8523e5cf7…  ==  src/app/proposals/[id]/page.tsx
+  e9b6f93ae21c9bb5…  ==  src/app/markets/[id]/not-found.tsx
+  a13cc6f6683fee53…  ==  public/sw.js
+  03cd1fcf38f7794a…  ==  src/lib/not-found-mark.ts
+  907680064eb7354a…  ==  src/components/ui/not-found-mark.tsx
+  9e8b1de9f7207dfc…  ==  src/app/globals.css
+  00f3b34bad0eb391…  ==  src/components/journey/route-ghost.tsx
+  884638d4132fc222…  ==  src/components/journey/route-ghost-lazy.tsx
+  1fd7b99393db3fbc…  ==  src/app/loading.tsx
+  73e512705ad1008d…  ==  src/components/ui/not-found-view.tsx
+  5b8b488ab6d4e726…  ==  src/app/not-found.tsx
+  47147bb6a2f15f4a…  ==  src/components/layout/app-shell.tsx
+  5b6645e76d0d9829…  ==  src/lib/journey/header-state.ts
+  badd4a1b3b2a99b4…  ==  next.config.ts
+R5D=0
+P1 CAUGHT on 1.1, 1.2 · restored byte-identical · the journey's deposit eyebrow back to "WEKA PESA" (repeats the h1 in Swahili)
+P2 CAUGHT on 1.1 · restored byte-identical · the journey's withdraw heading back to "Toa fedha"
+P3 CAUGHT on 1.3′, 2.1 · restored byte-identical · the deposit page's tab back to "Amana" for everybody
+P4 CAUGHT on 1.3 · restored byte-identical · the deposit page's h1 back to `common.deposit`
+P5 CAUGHT on 1.5 · restored byte-identical · the deposit commit back to "Amana" for everybody
+P6 CAUGHT on 1.4′ · restored byte-identical · the deposit loading file without the journey answer
+P7 CAUGHT on 1.4′ · restored byte-identical · the root ghost drawing the classic deposit head
+P8 CAUGHT on 1.6′ · restored byte-identical · the withdraw page's tab back to "Toa" for everybody
+P9 CAUGHT on 1.6″ · restored byte-identical · the withdraw ghost's eyebrow back to "TOA"
+P10 CAUGHT on 1.7 · restored byte-identical · the provider's return's eyebrow back to "AMANA" for everybody
+P11 CAUGHT on 1.8 · restored byte-identical · the capture harness expecting "Amana" again
+P12 CAUGHT on 3.1 · restored byte-identical · /updown/history's tab back to "Juu na Chini zako" for a journey reader
+P13 CAUGHT on 3.2 · restored byte-identical · the Up & Down board's history pill back to "Juu na Chini zako" in the journey
+P14 CAUGHT on 3.3, 2.4 · restored byte-identical · /profile's help row back to "Help & support"
+P15 CAUGHT on 3.4 · restored byte-identical · the agent's top-up back to "Ongeza fedha kwenye pochi yangu" in the journey
+P16 CAUGHT on 3.5 · restored byte-identical · an agent's invite tab back to "Alika na upate zawadi"
+P17 CAUGHT on 2.4 · restored byte-identical · the hub's withdraw row back to "Toa" (a door drifting from its page)
+P18 CAUGHT on 2.7 · restored byte-identical · a new door to the deposit screen, its words unruled (on the receipt page)
+P19 CAUGHT on 4.4 · restored byte-identical · the opt-out footer's licence line without `flex-1` (a size container would collapse)
+P20 CAUGHT on 4.4 · restored byte-identical · the opt-out footer's licence sentence printed plain
+P21 CAUGHT on 4.8 · restored byte-identical · the offline document's Swahili threshold under the name (240px)
+P22 CAUGHT on 4.7 · restored byte-identical · the offline document's licence sentence without the name span
+P23 CAUGHT on 4.8 · restored byte-identical · the offline document's licence line not a size container
+P24 CAUGHT on 4.10 · restored byte-identical · global-error's licence line printed plain
+P25 CAUGHT on 4.3 · restored byte-identical · global-error's copy of the pattern drifted (the zh break hint no longer allowed)
+P26 CAUGHT on 4.4 · restored byte-identical · `keepRegulator` keeping nothing
+P27 CAUGHT on 4.1 · restored byte-identical · the pattern losing the Swahili name
+P28 CAUGHT on 4.12 · restored byte-identical · a new line printing the regulator's name, unclassified (on the agent page)
+P29 CAUGHT on 4.14 · restored byte-identical · legal prose wrapped (a keep span in the terms page)
+P30 CAUGHT on 2.2 · restored byte-identical · the avatar menu's journey leaderboard row back to its classic words
+
+MUTATION PROOF r5g — 30/30 caught on their named check, 0 missed, 0 not applied; 30/30 files restored byte-identical (sha-256)
+(node:22928) [DEP0190] DeprecationWarning: Passing args to a child process with shell option true can lead to security vulnerabilities, as the arguments are not escaped, only concatenated.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+R5G=0

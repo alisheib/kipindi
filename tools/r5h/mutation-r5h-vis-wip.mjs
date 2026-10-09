@@ -5,7 +5,7 @@ import { readFileSync, writeFileSync } from "node:fs";
 import { createHash } from "node:crypto";
 import { execFileSync } from "node:child_process";
 
-const ROOT = "F:/kipindi-vis/";
+const ROOT = "F:/kipindi-wip/";
 const sha = (b) => createHash("sha256").update(b).digest("hex");
 const crlf = (s) => s.replace(/\r?\n/g, "\r\n");
 /** [file, from (LF text), to (LF text), the check that must fail] */

@@ -1,0 +1,631 @@
+=== R6A 23:28:59
+A1-1 UTC day back in the letters' end :: src/lib/server/email.ts :: CAUGHT exit=1 named=[1.1,5.5] red-named=[1.1,5.5] all-red=[1.1,1.3,1.5,2.1,2.2,5.5] restored=byte-identical sha=e77244513dca
+A1-2 English months in the Swahili line :: src/lib/server/email.ts :: CAUGHT exit=1 named=[1.2,5.5] red-named=[1.2,5.5] all-red=[1.2,1.5,2.1,2.2,5.5] restored=byte-identical sha=e77244513dca
+A1-3 a permanent exclusion dated again :: src/lib/server/email.ts :: CAUGHT exit=1 named=[2.4,5.7] red-named=[2.4,5.7] all-red=[2.4,5.7] restored=byte-identical sha=e77244513dca
+A1-4 the period's own label, not the dictionary's word :: src/lib/server/email.ts :: CAUGHT exit=1 named=[2.4,5.7] red-named=[2.4,5.7] all-red=[2.4,5.7] restored=byte-identical sha=e77244513dca
+A1-5 an unreadable end printed (the guard gone) :: src/lib/server/email.ts :: CAUGHT exit=1 named=[3.1,5.5] red-named=[3.1,5.5] all-red=[3.1,5.5] restored=byte-identical sha=e77244513dca
+A1-6 the receipt's Resolves row back to the UTC day :: src/lib/server/email.ts :: CAUGHT exit=1 named=[4.1] red-named=[4.1] all-red=[4.1,4.3] restored=byte-identical sha=e77244513dca
+A1-7 the receipt's Resolves row unguarded :: src/lib/server/email.ts :: CAUGHT exit=1 named=[4.3] red-named=[4.3] all-red=[4.3] restored=byte-identical sha=e77244513dca
+A1-8 permanence read from the period's name :: src/lib/server/responsible-gambling.ts :: CAUGHT exit=1 named=[5.2] red-named=[5.2] all-red=[5.2] restored=byte-identical sha=f816478eb357
+A1-9 the break's letter handed a UTC day :: src/lib/server/responsible-gambling.ts :: CAUGHT exit=1 named=[5.1,5.3] red-named=[5.1,5.3] all-red=[5.1,5.3] restored=byte-identical sha=f816478eb357
+A1-10 market-service hands the UTC day again :: src/lib/server/market-service.ts :: CAUGHT exit=1 named=[5.4] red-named=[5.4] all-red=[5.4] restored=byte-identical sha=8a1929ef240f
+A1-11 the zone-less fmtDate back in the RG service :: src/lib/server/responsible-gambling.ts :: CAUGHT exit=1 named=[5.1] red-named=[5.1] all-red=[5.1] restored=byte-identical sha=f816478eb357
+A1-12 the break's clause printed with no end :: src/lib/server/email.ts :: CAUGHT exit=1 named=[3.1] red-named=[3.1] all-red=[3.1] restored=byte-identical sha=e77244513dca
+R6-1 the market page's break branch switched off :: src/app/markets/[id]/page.tsx :: CAUGHT exit=1 named=[2.1] red-named=[2.1] all-red=[2.1] restored=byte-identical sha=6a1f3c7c6d0a
+R6-2 the market page's read without its catch :: src/app/markets/[id]/page.tsx :: CAUGHT exit=1 named=[2.2] red-named=[2.2] all-red=[2.2] restored=byte-identical sha=6a1f3c7c6d0a
+R6-3 the notice in the warning box :: src/components/rg/bet-break-notice.tsx :: CAUGHT exit=1 named=[1.1] red-named=[1.1] all-red=[1.1] restored=byte-identical sha=a9bd1c2f10ed
+R6-4 the notice with the break's pause glyph :: src/components/rg/bet-break-notice.tsx :: CAUGHT exit=1 named=[1.1] red-named=[1.1] all-red=[1.1] restored=byte-identical sha=a9bd1c2f10ed
+R6-5 the notice as a note, not a status :: src/components/rg/bet-break-notice.tsx :: CAUGHT exit=1 named=[1.1] red-named=[1.1] all-red=[1.1] restored=byte-identical sha=a9bd1c2f10ed
+R6-6 the notice's end not kept whole :: src/components/rg/bet-break-notice.tsx :: CAUGHT exit=1 named=[1.1] red-named=[1.1] all-red=[1.1] restored=byte-identical sha=a9bd1c2f10ed
+R6-7 the card's break gate switched off :: src/components/updown/updown-card.tsx :: CAUGHT exit=1 named=[3.2,3.3] red-named=[3.2,3.3] all-red=[3.2,3.3] restored=byte-identical sha=529d0dcfb8ba
+R6-8 the board hands its cards no break :: src/app/updown/page.tsx :: CAUGHT exit=1 named=[3.1] red-named=[3.1] all-red=[3.1] restored=byte-identical sha=2705f2b4730b
+R6-9 the round panel's break gate switched off :: src/components/updown/round-action-panel.tsx :: CAUGHT exit=1 named=[4.2,4.3] red-named=[4.2,4.3] all-red=[4.2,4.3] restored=byte-identical sha=eb2151917875
+R6-10 the round page hands its panel no break :: src/app/updown/[roundId]/page.tsx :: CAUGHT exit=1 named=[4.1] red-named=[4.1] all-red=[4.1] restored=byte-identical sha=ead479a6aac0
+R6-11 Tiketi zangu's Juu/Chini door kept during a break :: src/app/updown/history/page.tsx :: CAUGHT exit=1 named=[6.1] red-named=[6.1] all-red=[6.1] restored=byte-identical sha=3bd7e63aad29
+R6-12 performance's invitation kept during a break :: src/app/positions/performance/page.tsx :: CAUGHT exit=1 named=[6.2,6.6] red-named=[6.2,6.6] all-red=[6.2,6.6] restored=byte-identical sha=aa6e877ad739
+R6-13 the empty leaderboard's door kept during a break :: src/app/leaderboard/page.tsx :: CAUGHT exit=1 named=[6.3] red-named=[6.3] all-red=[6.3] restored=byte-identical sha=485f163e2246
+R6-14 the activity page never reads the break :: src/app/profile/activity/page.tsx :: CAUGHT exit=1 named=[6.4] red-named=[6.4] all-red=[6.4] restored=byte-identical sha=61682ea5cab0
+R6-15 the bell dates a permanent exclusion again :: src/lib/server/notification-service.ts :: CAUGHT exit=1 named=[7.1,7.2] red-named=[7.1,7.2] all-red=[7.1,7.2] restored=byte-identical sha=36ba7f924557
+R6-16 a new, unclassified in-place stake site :: src/app/watchlist/page.tsx :: CAUGHT exit=1 named=[5.1] red-named=[5.1] all-red=[5.1,5.2] restored=byte-identical sha=9cae9fd677ee
+R6-17 a side-carrying door to somewhere ungated :: src/components/markets/watch-star.tsx :: CAUGHT exit=1 named=[5.3] red-named=[5.3] all-red=[5.3] restored=byte-identical sha=c9542d1b4d4c
+R6-19 the one-sided note dropped from the break arm (test:one-sided 8.5's re-pin) :: src/app/markets/[id]/page.tsx :: CAUGHT exit=1 named=[8.5] red-named=[8.5] all-red=[8.5] restored=byte-identical sha=6a1f3c7c6d0a
+R6-18 a first-bet invitation drawn outside any gate :: src/app/watchlist/page.tsx :: CAUGHT exit=1 named=[6.6] red-named=[6.6] all-red=[6.6] restored=byte-identical sha=9cae9fd677ee
+TOTAL 31 planted, 31 caught on their named check, 31 restored byte-identical
+R6A=0
+=== R6B 23:30:22
+CAUGHT  A4a · the favicons back to an unescaped, unanchored prefix (/favicon.icon, /favicon.ico/x skip the proxy) — proxy-scope.test.mts 1.2: FAIL ✓ · proxy-scope.test.mts 3.5: FAIL ✓ · restored 2e7fe73df841 ✓
+CAUGHT  A4b · next.config's /:path* security rule taken out (a page the proxy skips is frameable again) — static-cache-scope.test.mts 5.1: FAIL ✓ · static-cache-scope.test.mts 5.3: FAIL ✓ · restored b76fec5f718e ✓
+CAUGHT  A4c · a CSP put into the every-response rule (it must stay the proxy's, per request) — static-cache-scope.test.mts 5.2: FAIL ✓ · restored b76fec5f718e ✓
+CAUGHT  A4d · HSTS sent in development too — static-cache-scope.test.mts 5.1: FAIL ✓ · restored b76fec5f718e ✓
+CAUGHT  A4e · the proxy defines its own header list again (two senders that can drift) — static-cache-scope.test.mts 5.4: FAIL ✓ · restored 2e7fe73df841 ✓
+CAUGHT  B1a · round 5's trap: with nothing focusable, Tab is the browser's own (it leaves the dialog) — visual-pass-r6b.test.mts 1.3: FAIL ✓ · restored af97116a1fb7 ✓
+CAUGHT  B1b · the panel takes no script focus (focusIn's and the trap's fallback dead again) — visual-pass-r6b.test.mts 1.8: FAIL ✓ · restored af97116a1fb7 ✓
+CAUGHT  B1c · focus on the panel treated as inside (Shift+Tab from it walks out behind the scrim) — visual-pass-r6b.test.mts 1.5: FAIL ✓ · restored af97116a1fb7 ✓
+CAUGHT  B1d · round 5's `safe`: focus handed to a disabled Cancel (nowhere) — visual-pass-r6b.test.mts 1.10: FAIL ✓ · enter-where-pressed.test.mts 5.8: FAIL ✓ · restored af97116a1fb7 ✓
+CAUGHT  B2a · round 5's poll, awaiting each request (requests at 0, 30, 160, 290s against a stall) — visual-pass-r6b.test.mts 2.1: FAIL ✓ · restored 03bd83820d2a ✓
+CAUGHT  B2b · an answer's start no longer marked (a slow body is replaced at the next poll and never draws) — visual-pass-r6b.test.mts 2.5: FAIL ✓ · restored 03bd83820d2a ✓
+CAUGHT  B2c · a new request no longer aborts the one before it (hung requests pile up) — visual-pass-r6b.test.mts 2.1: FAIL ✓ · restored 03bd83820d2a ✓
+CAUGHT  B2d · a request no longer chained to the effect's abort (a closed chart's request runs on) — visual-pass-r6b.test.mts 2.6: FAIL ✓ · restored 03bd83820d2a ✓
+CAUGHT  B2e · the deadline no longer marks its request overdue (the poll waits the stall out) — visual-pass-r6b.test.mts 2.1: FAIL ✓ · visual-pass-r5a.test.mts 11.3: FAIL ✓ · restored 03bd83820d2a ✓
+CAUGHT  B3a · moneySentence back on the quadratic pattern — visual-pass-r6b.test.mts 3.4: FAIL ✓ · restored 7e1890793f4c ✓
+CAUGHT  B3b · KeepHyphenated back on the quadratic split — visual-pass-r6b.test.mts 3.4: FAIL ✓ · visual-pass-r4h.test.mts 4.6: FAIL ✓ · restored b15eeedd9400 ✓
+CAUGHT  B3c · endClause back on the quadratic pattern — visual-pass-r6b.test.mts 3.4: FAIL ✓ · restored e493e8429456 ✓
+CAUGHT  B3d · lastTwoWordsAt stops after the space (one word short of the pattern's answer) — visual-pass-r6b.test.mts 3.1: FAIL ✓ · restored 7e1890793f4c ✓
+CAUGHT  B3e · hyphenParts no longer runs a token on past its core ("month-end?" cut to "h-e") — visual-pass-r6b.test.mts 3.1: FAIL ✓ · visual-pass-r6b.test.mts 3.5: FAIL ✓ · restored b15eeedd9400 ✓
+CAUGHT  B4a · the editor re-derives the cut in the browser (round 5's keepNameEnd) — visual-pass-r6b.test.mts 4.5: FAIL ✓ · visual-pass-r6b.test.mts 4.7: FAIL ✓ · visual-pass-r5e.test.mts 4.4: FAIL ✓ · visual-pass-r4h.test.mts 2.1: FAIL ✓ · restored 3fe46be27399 ✓
+CAUGHT  B4b · the server page no longer hands its cut down — visual-pass-r6b.test.mts 4.5: FAIL ✓ · restored 51e2634c7e46 ✓
+CAUGHT  B4c · nameWithEnd draws at a cut that cuts nothing — visual-pass-r6b.test.mts 4.2: FAIL ✓ · restored dbce55041bc2 ✓
+CAUGHT  A5a · round 5's mend (".." anywhere: "range 1..2" → "range 1.2") — visual-pass-r6b.test.mts 5.2: FAIL ✓ · visual-pass-r6b.test.mts 5.4: FAIL ✓ · restored e493e8429456 ✓
+CAUGHT  A6a · the round page's <title> back on the stored English title — visual-pass-r6b.test.mts 6.5: FAIL ✓ · restored ead479a6aac0 ✓
+CAUGHT  A6b · /positions/performance's rows back on the stored title — visual-pass-r6b.test.mts 6.6: FAIL ✓ · restored aa6e877ad739 ✓
+CAUGHT  A6c · the stored Swahili title read with the page's words (no stored round reads back) — visual-pass-r6b.test.mts 6.1: FAIL ✓ · restored 1cd295337e5b ✓
+CAUGHT  A7a · the win's Swahili quotes its market whole again (round 5) — visual-pass-r6b.test.mts 7.1: FAIL ✓ · restored 36ba7f924557 ✓
+CAUGHT  A7b · the win's Swahili room split from its family (50 where the loss and the refund cut at 70) — visual-pass-r6b.test.mts 7.1: FAIL ✓ · visual-pass-r6b.test.mts 7.2: FAIL ✓ · restored 36ba7f924557 ✓
+
+MUTATION — 28/28 caught, 0 missed; every file restored byte for byte (sha-256).
+R6B=0
+=== R6C 23:32:00
+P1 CAUGHT on 1.1 · restored byte-identical · the bet stake mono but not `.amount` again (it splits "TZS" / "1,000")
+P2 CAUGHT on 1.2 · restored byte-identical · the bet confirm's side | stake row that cannot wrap
+P3 CAUGHT on 1.3 · restored byte-identical · the side word without its 16px (the two values may touch)
+P4 CAUGHT on 2.1 · restored byte-identical · the board card's range line one whole `.amount` again
+P5 CAUGHT on 2.1′ · restored byte-identical · the round page's range line one whole `.amount` again
+P6 CAUGHT on 2.3 · restored byte-identical · a new sentence in an `.amount` (the signed-out range line)
+P7 CAUGHT on 3.1, 3.2 · restored byte-identical · the Up & Down board's 300px track floor unguarded again
+P8 CAUGHT on 3.1 · restored byte-identical · the round history's 320px track floor unguarded again
+P9 CAUGHT on 4.5 · restored byte-identical · the journey menu's KYC row offered to every reader again
+P10 CAUGHT on 4.6 · restored byte-identical · the journey menu's KYC row back on the h1's words
+P11 CAUGHT on 4.3 · restored byte-identical · the shell reading the KYC row for every reader (a query on every classic page)
+P12 CAUGHT on 4.2 · restored byte-identical · the hub's reader spelling its own KYC predicate (a verified-only copy)
+P13 CAUGHT on 4.1 · restored byte-identical · the one KYC question forgetting a final refusal
+P14 CAUGHT on 5.4 · restored byte-identical · the hub's invite row back to "never a paid word"
+P15 CAUGHT on 5.4 · restored byte-identical · the journey footer's invite link back to "Alika marafiki" for everybody
+P16 CAUGHT on 5.4 · restored byte-identical · the journey menu's invite row back to the classic literal ("Invite & Earn" for an agent)
+P17 CAUGHT on 5.2 · restored byte-identical · the invite page's tab without the agent's name
+P18 CAUGHT on 5.1 · restored byte-identical · the one rule forgetting the paid page
+P19 CAUGHT on 5.5 · restored byte-identical · /profile's invite row back to "Alika marafiki" for a paid player
+P20 CAUGHT on 6.1, 6.6 · restored byte-identical · the dial's result door back to "Tazama nafasi" in the journey
+P21 CAUGHT on 6.3, 6.6 · restored byte-identical · the performance ghost's eyebrow back to "NAFASI" for a journey reader
+P22 CAUGHT on 6.4, 6.6 · restored byte-identical · /help's card back to "Madau yangu" in the journey
+P23 CAUGHT on 7.1, 7.2 · restored byte-identical · the KYC page's back link back to "‹ WASIFU" in the journey
+P24 CAUGHT on 8.1 · restored byte-identical · the sign-in break panel amber again
+P25 CAUGHT on 9.1 · restored byte-identical · the Needle drawer's ✕ not risen to the capitals
+P26 CAUGHT on 9.2 · restored byte-identical · the chat panel's ✕ centred on the header again
+P27 CAUGHT on 10.1 · restored byte-identical · a titled dialog's title off the corner ✕ (the share dialog)
+P28 CAUGHT on 10.1 · restored byte-identical · the crest-first result dialog losing the corner ✕ it keeps
+P29 CAUGHT on 11.1 · restored byte-identical · the gold census back to `--warning-fg` alone
+P30 CAUGHT on 12.1 · restored byte-identical · the journey bell's title cut to one plain line again
+P31 CAUGHT on 13.1 · restored byte-identical · the bet confirm's STAKE label keeping its trailing tracking
+P32 CAUGHT on 13.2 · restored byte-identical · the 0.08em label taking back 0.14em
+P33 CAUGHT on 14.1 · restored byte-identical · the board card's signal pill back at the default size
+P34 CAUGHT on 14.3 · restored byte-identical · the classic held question clamped at two lines again
+P35 CAUGHT on 14.6, 14.7 · restored byte-identical · the win seal's market name clamped at two lines again
+P36 CAUGHT on 14.4 · restored byte-identical · the tickets ghost's first pill 24px again
+P37 CAUGHT on 16.1, 16.2 · restored byte-identical · the deposit return's pair 10px apart again (`gap-2.5`)
+P38 NOT APPLIED (0 matches) · the deposit return's ghost drawing its pair on the old 10px (`gap-2.5`, a rebuild on the old gap) · src/app/wallet/deposit/return/loading.tsx
+P39 CAUGHT on 16.1 · restored byte-identical · the market page's two sides 10px apart again
+P40 CAUGHT on 15.1 · restored byte-identical · a dictionary word changed
+
+MUTATION PROOF r6c — 39/40 caught on their named check, 0 missed, 1 not applied; 39/39 files restored byte-identical (sha-256)
+R6C=1
+=== R5L 23:33:53
+CAUGHT 1.1  src/app/profile/security/loading.tsx — a generic loader without its page's back link (the 257px spinner box first again)  [red: 1.1]
+CAUGHT 1.1  src/app/notifications/loading.tsx — a loader's header with the page's icon a size smaller (its eyebrow row 15px, not 22)  [red: 1.1]
+CAUGHT 1.1  src/app/proposals/loading.tsx — a loader on another page's rung  [red: 1.1]
+CAUGHT 1.2  src/components/ui/page-loader.tsx — PageLoader drawing its spinner first and the page's bands nowhere  [red: 1.2 1.3 1.4]
+CAUGHT 1.3  src/components/ui/page-loader.tsx — PageLoader ignoring the page's rhythm  [red: 1.3]
+CAUGHT 2.1  src/app/markets/page.tsx — /markets' fallback a skeleton of its own again (GridSkeleton's shape)  [red: 2.1]
+CAUGHT 2.2  src/app/results/page.tsx — /results' fallback not handed what the page knows (a search's page draws a carousel)  [red: 2.2]
+CAUGHT 2.3  src/app/results/loading.tsx — the grid's count typed again (six cards under the carousel)  [red: 2.3]
+CAUGHT 2.4  src/app/markets/loading.tsx — the board's grid back on GridSkeleton's mt-3  [red: 2.4]
+CAUGHT 3.1  src/app/agent/loading.tsx — the documents' grid a step closer than the page's  [red: 3.1]
+CAUGHT 3.2  src/app/agent/loading.tsx — a tile off the page's props (another label rung)  [red: 3.2]
+CAUGHT 3.3  src/app/agent/loading.tsx — the waterfall's rows on another padding  [red: 3.3]
+CAUGHT 3.4  src/app/agent/loading.tsx — a step's sentence printed instead of set and not shown  [red: 3.4]
+CAUGHT 3.5  src/app/agent/loading.tsx — a term the programme does not have drawn (a cap)  [red: 3.4 3.5]
+CAUGHT 4.1  src/app/agent/apply/loading.tsx — the step buttons apart by another gap  [red: 4.1 4.2]
+CAUGHT 4.2  src/app/agent/apply/loading.tsx — a second generic panel back under the step panel  [red: 4.2]
+CAUGHT 4.3  src/app/agent/status/loading.tsx — the status header a 32px bar again  [red: 4.2 4.3 4.4]
+CAUGHT 4.4  src/app/agent/apply/loading.tsx — the step labels printed  [red: 4.4]
+CAUGHT 5.1  src/app/leaderboard/loading.tsx — the podium on another padding  [red: 5.1]
+CAUGHT 5.2  src/app/leaderboard/loading.tsx — a spinner's caption back among the bands  [red: 5.2]
+CAUGHT 5.3  src/app/leaderboard/loading.tsx — eight rows again (a page is twelve)  [red: 5.3]
+CAUGHT 5.4  src/app/leaderboard/loading.tsx — the lens a pill short  [red: 5.4]
+CAUGHT 8.4  src/app/live/loading.tsx — the hero's question stack back on three lines from lg (30px over today's board at 1280)  [red: 8.4]
+CAUGHT 8.4  src/app/live/loading.tsx — the Swahili phone's question stack back on six lines  [red: 8.4]
+CAUGHT 5.5  src/app/leaderboard/loading.tsx — the leader on a streak too (the podium 8px taller than the measured board's)  [red: 5.5]
+CAUGHT 6.1  src/app/results/loading.tsx — the notable card 16px short from 1024 (its lg padding gone)  [red: 6.1]
+CAUGHT 6.2  src/app/results/loading.tsx — the title's judgement a phone's at every width  [red: 6.2]
+CAUGHT 6.3  src/app/results/loading.tsx — row 2's groups out of the page's order  [red: 6.3 6.4]
+CAUGHT 6.4  src/app/results/loading.tsx — a pill with another word  [red: 6.4]
+CAUGHT 7.1  src/app/markets/loading.tsx — the topic menu without the page's divider (the row's 29px gap)  [red: 7.1]
+CAUGHT 7.2  src/app/markets/loading.tsx — a pool floor in the old words, not the money formatter's  [red: 7.2]
+CAUGHT 7.3  src/app/markets/loading.tsx — row 1's per-status widths dropped  [red: 7.3]
+CAUGHT 8.1  src/app/live/loading.tsx — a card on another padding  [red: 8.1]
+CAUGHT 8.2  src/app/live/loading.tsx — the CTA back to a 150px box (two lines at 390)  [red: 8.2]
+CAUGHT 8.3  src/app/live/loading.tsx — every language's card at Swahili's height  [red: 8.3]
+CAUGHT 9.1  src/components/ui/query-bar-ghost.tsx — the sort ghost's phone padding off QuerySort's  [red: 9.1]
+CAUGHT 9.1  src/components/ui/ghost-text.tsx — the helper's word bar on the first line only (no box-decoration-clone)  [red: 9.1]
+CAUGHT 9.2  src/app/wallet/money-bar-ghost.tsx — a second pill ghost  [red: 9.2]
+
+mutation-r5l: 38 planted, 38 caught on the named check; 16 files restored byte-identical: yes
+  cf165a11e7de  src/app/profile/security/loading.tsx
+  70f58f6489d9  src/app/notifications/loading.tsx
+  e2ccc8ba2f26  src/app/proposals/loading.tsx
+  b5ba54cec7a2  src/components/ui/page-loader.tsx
+  69a471f68cbc  src/app/markets/page.tsx
+  fab504e95ace  src/app/results/page.tsx
+  780b56c8c6a4  src/app/results/loading.tsx
+  0c25a59269b5  src/app/markets/loading.tsx
+  1dbf802a2caf  src/app/agent/loading.tsx
+  84f619f68a91  src/app/agent/apply/loading.tsx
+  9508717ef32f  src/app/agent/status/loading.tsx
+  13050a2d5dc1  src/app/leaderboard/loading.tsx
+  92c9e54a4712  src/app/live/loading.tsx
+  9a5b97b0f1c5  src/components/ui/query-bar-ghost.tsx
+  c27ca3836a04  src/components/ui/ghost-text.tsx
+  c8a0283a6b27  src/app/wallet/money-bar-ghost.tsx
+R5L=0
+=== R5K 23:35:28
+ok   0.1 · a bar on the first line only → CAUGHT on 0.1 (failing: 0.1; exit 1; 2s) · restored byte-identical: yes
+ok   0.3 · the ghost chip on the taller status row → CAUGHT on 0.3 (failing: 0.3, 0.3′; exit 1; 2s) · restored byte-identical: yes
+ok   0.4 · a drawing reading the server again → CAUGHT on 0.4 (failing: 0.4; exit 1; 2s) · restored byte-identical: yes
+ok   1.1 · the receipt's footnote left out → CAUGHT on 1.1 (failing: 1.1; exit 1; 2s) · restored byte-identical: yes
+ok   1.3 · a row short (seven for eight) → CAUGHT on 1.3 (failing: 1.3, 1.4′; exit 1; 2s) · restored byte-identical: yes
+ok   1.4 · an id shape shorter than a real id → CAUGHT on 1.4 (failing: 1.4, 1.4′; exit 1; 2s) · restored byte-identical: yes
+ok   2.1 · the trust strip off its own classes → CAUGHT on 2.1 (failing: 2.1; exit 1; 2s) · restored byte-identical: yes
+ok   2.2 · tiles 8px short (98.25 for 106.25) → CAUGHT on 2.2 (failing: 2.2; exit 1; 2s) · restored byte-identical: yes
+ok   2.3 · three quick-amount pills (one row on a phone) → CAUGHT on 2.3 (failing: 2.3; exit 1; 2s) · restored byte-identical: yes
+ok   2.4 · the phone hint left out → CAUGHT on 2.4 (failing: 2.1, 2.4; exit 1; 2s) · restored byte-identical: yes
+ok   3.3 · the outcome's heading SHOWN → CAUGHT on 3.3 (failing: 3.3; exit 1; 2s) · restored byte-identical: yes
+ok   4.1 · the withdraw hero's old row class → CAUGHT on 4.1 (failing: 4.1; exit 1; 2s) · restored byte-identical: yes
+ok   4.2 · a notice row off the page's NoticeRow → CAUGHT on 4.2 (failing: 4.2; exit 1; 2s) · restored byte-identical: yes
+ok   4.3 · the fee's rate drawn as one digit (the first draft) → CAUGHT on 4.3 (failing: 4.3; exit 1; 2s) · restored byte-identical: yes
+ok   5.1 · the 64px avatar back → CAUGHT on 5.1 (failing: 5.1; exit 1; 2s) · restored byte-identical: yes
+ok   5.2 · the email pill out of its tap-floor link → CAUGHT on 5.2 (failing: 5.2; exit 1; 2s) · restored byte-identical: yes
+ok   5.3 · the balance cell one column on a phone → CAUGHT on 5.3 (failing: 5.3; exit 1; 2s) · restored byte-identical: yes
+ok   5.4 · a badge short → CAUGHT on 5.4 (failing: 5.4; exit 1; 2s) · restored byte-identical: yes
+ok   5.6 · the sign-out title off its face → CAUGHT on 5.6 (failing: 5.6; exit 1; 2s) · restored byte-identical: yes
+ok   6.1 · the head's button words tracked (a narrower box) → CAUGHT on 6.1 (failing: 6.1; exit 1; 2s) · restored byte-identical: yes
+ok   6.2 · the strip back on a fixed two-column grid → CAUGHT on 6.2 (failing: 6.2; exit 1; 2s) · restored byte-identical: yes
+ok   6.3 · the exposure keys off their 14px line → CAUGHT on 6.3 (failing: 6.3; exit 1; 2s) · restored byte-identical: yes
+ok   6.4 · the topic group left out → CAUGHT on 6.4 (failing: 6.4, 6.5; exit 1; 2s) · restored byte-identical: yes
+ok   6.5 · a narrower window group (row 2 a line short) → CAUGHT on 6.5 (failing: 6.4, 6.5; exit 1; 2s) · restored byte-identical: yes
+
+mutation-r5k: 29 planted, 24 caught on the named check; every file restored byte-identical at the end: yes
+  sha-256 c27ca3836a046bdc… src/components/ui/ghost-text.tsx
+  sha-256 318ebb47ee457138… src/app/profile/loading.tsx
+  sha-256 acb7a85dae278dc6… src/app/wallet/receipt/[id]/loading.tsx
+  sha-256 f81237084b32a4fe… src/app/wallet/receipt-ghost.tsx
+  sha-256 a2ba90f4f35f7519… src/app/wallet/money-form-ghost.tsx
+  sha-256 855f1ca368c70868… src/app/wallet/deposit/return/loading.tsx
+  sha-256 8c0f067d6382e29b… src/app/wallet/withdraw/withdraw-ghost.tsx
+  sha-256 29ea39c92188b308… src/app/positions/positions-ghost.tsx
+  sha-256 07e83831fbfc990f… src/app/positions/performance/loading.tsx
+R5K=1
+=== R5A 23:36:15
+baseline: exit 0, 0 FAIL line(s)
+  ✓ F2 · the card centred on the column again → FAIL 1.1 (failed: 1.1) · restored 66eb1e45091f
+  ✓ F2 · the unhinted 4px → FAIL 1.2 (failed: 1.2, 1.3) · restored 66eb1e45091f
+  ✓ F12 · the spotlight's capitalised label back → FAIL 2.1 (failed: 2.1, 2.6) · restored fab504e95ace
+  ✓ F12 · the card's runtime toLocaleString back → FAIL 2.3 (failed: 2.3) · restored 104a2bb9504b
+  ✓ F12 · the leaderboard lower-cases a label again → FAIL 2.4 (failed: 2.4) · restored 485f163e2246
+  ✓ F16 · the legal header passes the bare title → FAIL 3.2 (failed: 3.2) · restored 3b97ad8e5fec
+  ✓ F16 · the pair cap lifted ("ya NDIO/HAPANA" bound) → FAIL 3.3 (failed: 3.3, 3.4) · restored 3b97ad8e5fec
+  ✓ F15 · the dictionary's chip back → FAIL 4.1 (failed: 4.1) · restored d13ba7d73cdc
+  ✗ F17 · the KYC row's old key: the anchor occurs 0 times in src/components/journey/account/hub-rows.ts
+  ✗ F17 · the journey menu's page names dropped: the anchor occurs 0 times in src/components/layout/avatar-menu.tsx
+  ✓ F17 · the journey footer's proposals words back → FAIL 5.4 (failed: 5.4) · restored 82cfb71ed8d1
+  ✓ F17 · /live's eyebrow back to "Hai" → FAIL 5.5 (failed: 5.5) · restored 18f7be1e490c
+  ✓ F18 · a threshold under the English name → FAIL 6.2 (failed: 6.2, 6.3) · restored 66eb1e45091f
+  ✓ F18 · the journey footer's sentence plain → FAIL 6.4 (failed: 6.4) · restored 82cfb71ed8d1
+  ✓ F18 · the hero's trust row plain → FAIL 6.5 (failed: 6.5) · restored c7316af84be5
+  ✓ F19 · the price caption's take-back dropped → FAIL 7.1 (failed: 7.1) · restored 66eb1e45091f
+  ✓ F19 · the spotlight flag's text span dropped → FAIL 7.2 (failed: 7.2) · restored fab504e95ace
+  ✓ F20 · .kp-modal-title on the wrong point (0.5em) → FAIL 8.2 (failed: 8.2) · restored 66eb1e45091f
+  ✓ F20 · ConfirmModal's ✕ back on the medallion → FAIL 8.3 (failed: 8.3) · restored af97116a1fb7
+  ✓ F20 · the sell confirm's ✕ back in the corner → FAIL 8.4 (failed: 8.4, 8.13) · restored d35fe27ce284
+  ✓ F20 · the bet confirm's ✕ 24px in again → FAIL 8.5 (failed: 8.5) · restored 5e6efb2854f3
+  ✓ F20 · the filter sheet's ✕ back at -mt-1 → FAIL 8.6 (failed: 8.6) · restored 8bc8e528711c
+  ✓ F20+ · the bet confirm's hand-drawn ✕ back ("Ghairi", straight to onCancel) → FAIL 8.10 (failed: 8.5, 8.5‴, 8.5⁗, 8.10, 8.10′) · restored 5e6efb2854f3
+  ✓ F20+ · a ✕ drawn by hand in the share dialog → FAIL 8.10 (failed: 8.10, 8.10′) · restored c185874a53eb
+  ✓ F20+ · the filter sheet's ✕ back at the screen's edge (-mr-3) → FAIL 8.6″ (failed: 8.6″) · restored 8bc8e528711c
+  ✓ F20+ · CloseX withheld still drawn → FAIL 8.12 (failed: 8.12) · restored af97116a1fb7
+  ✓ F20+ · the sell confirm's ✕ drawn but dead while selling → FAIL 8.13 (failed: 8.4, 8.13, 8.13″) · restored d35fe27ce284
+  ✓ F20+ · ConfirmModal's ✕ taken out of its row while loading → FAIL 8.13 (failed: 8.3, 8.13, 8.13′, 8.13″) · restored af97116a1fb7
+  ✓ F20+ · the objection dialog's corner ✕ drawn while filing → FAIL 8.13 (failed: 8.13, 8.13″) · restored f6d833a74588
+  ✓ F20+ · the hold dialog's corner ✕ drawn while holding (admin) → FAIL 8.13 (failed: 8.13) · restored 5dd334b3dba3
+  ✓ F20+ · the arm confirm open across its request without `loading` (admin) → FAIL 8.13 (failed: 8.13, 8.13″) · restored 82a498a3d760
+  ✓ F20 · the channels title centred on the box → FAIL 8.7 (failed: 8.7) · restored 8f26af6ad041
+  ✓ F20 · the install card's ✕ on the row's top → FAIL 8.8 (failed: 8.8) · restored 8e566ea31daf
+  ✓ F20 · the reality check's row at the padding → FAIL 8.9 (failed: 8.9) · restored 4d973daaf8ca
+  ✓ F20 · the toast's ✕ 8px down again → FAIL 8.11 (failed: 8.11) · restored 3214b0b6e5d2
+  ✓ F5 · a shot without the park → FAIL 9.1 (failed: 9.1, 9.2) · restored 4fc0dea6b6bf
+  ✓ §A5 · /results' bar over an empty archive → FAIL 10.1 (failed: 10.1) · restored fab504e95ace
+  ✓ CHECK · /markets' wrapper gives nothing back → FAIL 11.1 (failed: 11.1) · restored 66eb1e45091f
+  ✓ CHECK · Matokeo under the circled check again → FAIL 11.2 (failed: 11.2) · restored 19e58484ae90
+  ✓ CHECK · the chart's deadline never cleared → FAIL 11.3 (failed: 11.3) · restored 03bd83820d2a
+  ✓ CHECK · the grid card's pool word dropped → FAIL 11.4 (failed: 11.4) · restored 104a2bb9504b
+
+39/41 plants caught on their named check, every file restored byte-identical; final run exit 0
+R5A=1
+=== R5C 23:37:25
+CAUGHT 1.1   CENSUS a gold ink on an unregistered file (the reality check's clock) — visual-pass-r5c.test.mts exit 1, failed [1.1 2.12], restored byte-identical
+CAUGHT 1.2   CENSUS one more gold use in a registered file (the market page's CLOSED word) — visual-pass-r5c.test.mts exit 1, failed [1.2 3], restored byte-identical
+CAUGHT 1.2   CENSUS gold by another spelling (global-error's link hand-typed at hue 82) — visual-pass-r5c.test.mts exit 1, failed [1.2], restored byte-identical
+CAUGHT 1.2   CENSUS a gold component back at its call site (a GiltCorner on the agent's share card) — visual-pass-r5c.test.mts exit 1, failed [1.2 4.5], restored byte-identical
+CAUGHT 1.1   CENSUS a gold tone by name on an unregistered file (the bulk bar's dot) — visual-pass-r5c.test.mts exit 1, failed [1.1 2.1], restored byte-identical
+CAUGHT 2.1   2.1 the notifications page's unread dot back to gold — visual-pass-r5c.test.mts exit 1, failed [1.1 2.1], restored byte-identical
+CAUGHT 2.2   2.2 one of the agent's three facts back in gold — visual-pass-r5c.test.mts exit 1, failed [1.2 2.2 2.2′], restored byte-identical
+CAUGHT 2.2   2.2 the agent's three facts back in two faces — visual-pass-r5c.test.mts exit 1, failed [2.2], restored byte-identical
+CAUGHT 2.2′  2.2′ a paused agent back in the warning tone — visual-pass-r5c.test.mts exit 1, failed [1.2 2.2′], restored byte-identical
+CAUGHT 2.2′  2.2′ the fee box back in gold — visual-pass-r5c.test.mts exit 1, failed [1.2 2.2′], restored byte-identical
+CAUGHT 2.3   2.3 the page eyebrow offering gold again — visual-pass-r5c.test.mts exit 1, failed [1.1 2.3], restored byte-identical
+CAUGHT 2.3″  2.3″ /proposals' Create back in gold — visual-pass-r5c.test.mts exit 1, failed [1.2 2.3″], restored byte-identical
+CAUGHT 2.4   2.4 the notable card's crown back in gold — visual-pass-r5c.test.mts exit 1, failed [1.2 2.4], restored byte-identical
+CAUGHT 2.4′  2.4′ the /results glyph back in gold — visual-pass-r5c.test.mts exit 1, failed [1.2 2.4′], restored byte-identical
+CAUGHT 2.5   2.5 the fairness chain's highlight back in gilt — visual-pass-r5c.test.mts exit 1, failed [1.1 2.5], restored byte-identical
+CAUGHT 2.5′  2.5′ the fairness numerals back in gold — visual-pass-r5c.test.mts exit 1, failed [1.2 2.5′], restored byte-identical
+CAUGHT 2.5′  2.5′ the fairness numerals tabular again (R4-E's measured ink alignment spread) — visual-pass-r5c.test.mts exit 1, failed [2.5′], restored byte-identical
+CAUGHT 2.6   2.6 the badge's progress ring back to gilt — visual-pass-r5c.test.mts exit 1, failed [1.2 2.6], restored byte-identical
+CAUGHT 2.7   2.7 the KYC rail's current step back in gold — visual-pass-r5c.test.mts exit 1, failed [1.2 2.7], restored byte-identical
+CAUGHT 2.8   2.8 the bar's needle quietly re-inked (a sanctioned gold removed) — visual-pass-r5c.test.mts exit 1, failed [2.8], restored byte-identical
+CAUGHT 2.9   2.9 a second gold accent in one illustration (the briefcase) — visual-pass-r5c.test.mts exit 1, failed [2.9], restored byte-identical
+CAUGHT 2.11  2.11 the RG pending box back to the warning tone — visual-pass-r5c.test.mts exit 1, failed [1.1 2.11 2.11′], restored byte-identical
+CAUGHT 2.11  2.11 the RG pending box back to the sm rung (11px) — visual-pass-r5c.test.mts exit 1, failed [2.11], restored byte-identical
+CAUGHT 2.12  2.12 the reality check's minutes back in gold — visual-pass-r5c.test.mts exit 1, failed [1.1 2.12], restored byte-identical
+CAUGHT 3     3 the /live pip back to aqua (two carousels, two answers) — visual-pass-r5c.test.mts exit 1, failed [3], restored byte-identical
+CAUGHT 3     3 the journey bell's unread dot back to gold — visual-pass-r5c.test.mts exit 1, failed [3], restored byte-identical
+CAUGHT 3′    3′ the landing eyebrow tick back to gilt — visual-pass-r5c.test.mts exit 1, failed [1.2 3′], restored byte-identical
+CAUGHT 3‴    3‴ the Callout's promise box back to gilt — visual-pass-r5c.test.mts exit 1, failed [1.2 3‴], restored byte-identical
+CAUGHT 4.1   4.1 "Confirm deposit" back in gold — visual-pass-r5c.test.mts exit 1, failed [1.1 4.1], restored byte-identical
+CAUGHT 4.1′  4.1′ "you receive" back in gold — visual-pass-r5c.test.mts exit 1, failed [1.2 4.1′], restored byte-identical
+CAUGHT 4.1″  4.1″ the Lipa amount back in gold — visual-pass-r5c.test.mts exit 1, failed [1.1 4.1″], restored byte-identical
+CAUGHT 4.2   4.2 the cashback inducement's CTA back in gold — visual-pass-r5c.test.mts exit 1, failed [1.1 4.2], restored byte-identical
+CAUGHT 4.2   4.2 the bonus card's unlock fill back to gold → yes — visual-pass-r5c.test.mts exit 1, failed [1.2 4.2], restored byte-identical
+CAUGHT 4.3   4.3 the exact payout-if-win back in gold — visual-pass-r5c.test.mts exit 1, failed [1.2 4.3], restored byte-identical
+CAUGHT 4.4   4.4 a zero net back in gilt — visual-pass-r5c.test.mts exit 1, failed [4.4], restored byte-identical
+CAUGHT 4.4′  4.4′ the gilt corner on a best-win card with no win — visual-pass-r5c.test.mts exit 1, failed [4.4′], restored byte-identical
+CAUGHT 4.4′  4.4′ the invite dial gold before a shilling is earned — visual-pass-r5c.test.mts exit 1, failed [4.4′], restored byte-identical
+CAUGHT 4.5   4.5 the invite share button gold again — visual-pass-r5c.test.mts exit 1, failed [1.1 4.5], restored byte-identical
+CAUGHT 4.5′  4.5′ a paying friend's chip back on the resolved seal — visual-pass-r5c.test.mts exit 1, failed [1.2 4.5′], restored byte-identical
+CAUGHT 4.6   4.6 "Verified agent" back in gold — visual-pass-r5c.test.mts exit 1, failed [1.1 4.6 4.6′], restored byte-identical
+CAUGHT 4.7   4.7 the proposal's market button gold once resolved — visual-pass-r5c.test.mts exit 1, failed [1.2 4.7], restored byte-identical
+CAUGHT 4.8   4.8 SubmitButton offering gold again — visual-pass-r5c.test.mts exit 1, failed [1.1 4.8], restored byte-identical
+CAUGHT 5.1   5.1 a fixable slip back in the gold-struck warning toast — visual-pass-r5c.test.mts exit 1, failed [1.1 5.1], restored byte-identical
+CAUGHT 5.2   5.2 a moving payment back in the warning result — visual-pass-r5c.test.mts exit 1, failed [1.1 5.2], restored byte-identical
+CAUGHT 5.2   5.2 a reversed payment back in the error treatment — visual-pass-r5c.test.mts exit 1, failed [5.2], restored byte-identical
+CAUGHT 5.2″  5.2″ "under review" back in amber — visual-pass-r5c.test.mts exit 1, failed [1.2 5.2″], restored byte-identical
+CAUGHT 5.3   5.3 the OTP's last minute back in gold — visual-pass-r5c.test.mts exit 1, failed [1.1 5.3], restored byte-identical
+CAUGHT 5.3′  5.3′ the position ring's last hour back in gold — visual-pass-r5c.test.mts exit 1, failed [1.1 5.3 5.3′], restored byte-identical
+CAUGHT 5.4   5.4 the activity meter back on a ramp of its own — visual-pass-r5c.test.mts exit 1, failed [5.4], restored byte-identical
+CAUGHT 6.2   6.2 the bet commit taken off gold — visual-pass-r5c.test.mts exit 1, failed [1.0 6.2], restored byte-identical
+CAUGHT 6.4   6.4 the live balance taken off gold — visual-pass-r5c.test.mts exit 1, failed [6.4], restored byte-identical
+CAUGHT 7.1   7.1 the warning token re-hued without the owner — visual-pass-r5c.test.mts exit 1, failed [7.1], restored byte-identical
+CAUGHT 7.2   7.2 the classic rail dot re-inked without the owner — visual-pass-r5c.test.mts exit 1, failed [7.2], restored byte-identical
+CAUGHT 7.6   7.6 the legal frame's corners back to gilt — visual-pass-r5c.test.mts exit 1, failed [7.6], restored byte-identical
+CAUGHT 7.7   7.7 the coming-soon tag de-golded in the frozen classic chrome too (the scoped override made global) — visual-pass-r5c.test.mts exit 1, failed [7.7], restored byte-identical
+CAUGHT 7.7   7.7 the page bodies' coming-soon tag back in gold (the override dropped) — visual-pass-r5c.test.mts exit 1, failed [7.7], restored byte-identical
+CAUGHT 1b    GIM the leaderboard's streak chip back in the money ink — gold-is-money.test.mts exit 1, failed [1b], restored byte-identical
+CAUGHT 1     GIM an achievement icon's accent back to --gold-400 — gold-is-money.test.mts exit 1, failed [1], restored byte-identical
+CAUGHT 2b    GIM the coin's rim back on an alias of the money ink — gold-is-money.test.mts exit 1, failed [2b 2b.control], restored byte-identical
+
+mutations: 59 planted, 59 caught, 0 missed · restored byte-identical: 59/59
+R5C=0
+=== R5E 23:39:28
+CAUGHT M1 · H1 · the Chinese unit back to "any one or two ideographs" (7月降雨量 keeps 降, 15万美元 cuts 美元) — visual-pass-r5e.test.mts 1.1 — src/components/ui/keep-words.tsx restored dbce55041bc2
+CAUGHT M2 · H1 · the currency code left out again when a unit follows ("TZS" alone before "1 bilioni") — visual-pass-r5e.test.mts 1.2 — src/components/ui/keep-words.tsx restored dbce55041bc2
+CAUGHT M3 · a month holds any number again ("December 2026", 225px, wider than the h1's line at 320) — visual-pass-r5e.test.mts 1.3″; visual-pass-r5e.test.mts 9.1′ — src/components/ui/keep-words.tsx restored dbce55041bc2
+CAUGHT M4 · H3 · a name's character back to a code point (the cut inside the technologist emoji) — visual-pass-r5e.test.mts 4.1; visual-pass-r5e.test.mts 4.3 — src/components/ui/keep-words.tsx restored dbce55041bc2
+CAUGHT M4b · H3 · `characterSpans` back to code points (the pattern ICU is held against) — visual-pass-r5e.test.mts 4.2 — src/components/ui/keep-words.tsx restored dbce55041bc2
+CAUGHT M5 · H2 · the name's gap unbounded again (37 ideographic spaces in one unbreakable run) — visual-pass-r5e.test.mts 4.1 — src/components/ui/keep-words.tsx restored dbce55041bc2
+CAUGHT M6 · H3 · the joiners and vowels that are not marks dropped (Thai AM, ZWNJ, a trailing ZWJ cut off) — visual-pass-r5e.test.mts 4.1; visual-pass-r5e.test.mts 4.2 — src/components/ui/keep-words.tsx restored dbce55041bc2
+CAUGHT M7 · H2's rule dropped from every keep helper (KEPT_SPACE back to \s+) — visual-pass-r5e.test.mts 5.3 — src/components/ui/keep-words.tsx restored dbce55041bc2
+CAUGHT M8 · H2's rule dropped from the dash alone — visual-pass-r5e.test.mts 5.1; visual-pass-r5e.test.mts 5.3 — src/components/ui/keep-run.tsx restored 6eb824489f29
+CAUGHT M24 · keepLastWords back to the "word, space, word, end" pattern (quadratic on a long word) — visual-pass-r5e.test.mts 5.5; visual-pass-r5e.test.mts 5.1 — src/components/ui/keep-words.tsx restored dbce55041bc2
+CAUGHT M25 · keepYears tries a space at every place again (quadratic on a long run of spaces) — visual-pass-r5e.test.mts 5.5; visual-pass-r5e.test.mts 5.1 — src/components/ui/keep-words.tsx restored dbce55041bc2
+CAUGHT M26 · digitChoice tried at every digit again (quadratic on a long run of digits) — visual-pass-r5e.test.mts 5.5; visual-pass-r5e.test.mts 5.1 — src/components/ui/keep-run.tsx restored 6eb824489f29
+CAUGHT M23 · the dash rule back to a "unit, then a dash" pattern (quadratic: '。' × 10,000 in half a second) — visual-pass-r5e.test.mts 6.9 — src/components/ui/keep-run.tsx restored 6eb824489f29
+CAUGHT M9 · H4 · the empty state's body inserts a no-break space before its dash again — visual-pass-r5e.test.mts 6.1; visual-pass-r5e.test.mts 6.5′ — src/components/ui/empty-state-text.ts restored ea14a866bdb3
+CAUGHT M10 · F1 · the featured question back on text-wrap: pretty ("…降雨超 / 过200毫米") — visual-pass-r5e.test.mts 2.1; visual-pass-r5e.test.mts 2.2 — src/app/globals.css restored 66eb1e45091f
+CAUGHT M11 · F1 · the board's rows back on text-wrap: pretty — visual-pass-r5e.test.mts 2.1; visual-pass-r5e.test.mts 2.2 — src/app/globals.css restored 66eb1e45091f
+CAUGHT M12 · F4 · /live's carousel greedy again — visual-pass-r5e.test.mts 2.1 — src/app/live/featured-contest.tsx restored d4479418f18b
+CAUGHT M13 · H1's sibling · /results' notable title without keepFigures — visual-pass-r5e.test.mts 2.1 — src/app/results/page.tsx restored fab504e95ace
+CAUGHT M14 · H1's sibling · the bet dialog's title without its figure runs — visual-pass-r5e.test.mts 2.1; visual-pass-r4i.test.mts 5.5 — src/components/markets/bet-confirm-modal.tsx restored 5e6efb2854f3
+CAUGHT M15 · H1's sibling · the classic ticket's title without keepFigures — visual-pass-r5e.test.mts 2.1 — src/components/markets/position-card.tsx restored 6def3e9634aa
+CAUGHT M16 · H1's sibling · the bet result's subtitle without keepFigures — visual-pass-r5e.test.mts 2.6 — src/components/markets/conviction-dial.tsx restored e96091026432
+CAUGHT M17 · doubt · the CJK gap's real space back in the text (find-in-page for "，点击" misses) — visual-pass-r5e.test.mts 6.8 — src/lib/cjk-marks.tsx restored 03def5abf31c
+CAUGHT M18 · doubt · moneyRuns no longer reads formatTzs' negative ("TZS −4,200") — visual-pass-r5e.test.mts 7.1 — src/lib/fill-nodes.tsx restored 7e1890793f4c
+CAUGHT M19 · H4's sweep · the toaster draws its title raw ("Bet placed · YES TZS 1,000" not mono, splittable) — visual-pass-r5e.test.mts 6.6 — src/components/ui/toast.tsx restored 3214b0b6e5d2
+CAUGHT M20 · H4's sweep · the refused sale's sentence joined with a no-break space again — visual-pass-r5e.test.mts 6.6; visual-pass-r5e.test.mts 6.5′; sell-price-guard.test.mts 7.whole — src/components/markets/sell-button.tsx restored 9093ce196f46
+CAUGHT M21 · H4's sweep · the Up & Down stamp in no-break spaces again — visual-pass-r5e.test.mts 6.7; visual-pass-r5e.test.mts 6.5′ — src/app/updown/[roundId]/page.tsx restored ead479a6aac0
+CAUGHT M22 · H5 · keep-units.tsx back, imported by a card — visual-pass-r5e.test.mts 8.1 — src/components/ui/keep-units.tsx removed, src/components/markets/position-card.tsx restored 6def3e9634aa
+
+mutation-r5e: 27/27 plants caught, every file restored byte-identical (sha-256)
+R5E=0
+=== R5G 23:44:58
+P1 CAUGHT on 1.1, 1.2 · restored byte-identical · the journey's deposit eyebrow back to "WEKA PESA" (repeats the h1 in Swahili)
+P2 CAUGHT on 1.1 · restored byte-identical · the journey's withdraw heading back to "Toa fedha"
+P3 CAUGHT on 1.3′, 2.1 · restored byte-identical · the deposit page's tab back to "Amana" for everybody
+P4 CAUGHT on 1.3 · restored byte-identical · the deposit page's h1 back to `common.deposit`
+P5 CAUGHT on 1.5 · restored byte-identical · the deposit commit back to "Amana" for everybody
+P6 CAUGHT on 1.4′ · restored byte-identical · the deposit loading file without the journey answer
+P7 CAUGHT on 1.4′ · restored byte-identical · the root ghost drawing the classic deposit head
+P8 CAUGHT on 1.6′ · restored byte-identical · the withdraw page's tab back to "Toa" for everybody
+P9 CAUGHT on 1.6″ · restored byte-identical · the withdraw ghost's eyebrow back to "TOA"
+P10 CAUGHT on 1.7 · restored byte-identical · the provider's return's eyebrow back to "AMANA" for everybody
+P11 CAUGHT on 1.8 · restored byte-identical · the capture harness expecting "Amana" again
+P12 CAUGHT on 3.1 · restored byte-identical · /updown/history's tab back to "Juu na Chini zako" for a journey reader
+P13 CAUGHT on 3.2 · restored byte-identical · the Up & Down board's history pill back to "Juu na Chini zako" in the journey
+P14 CAUGHT on 3.3, 2.4 · restored byte-identical · /profile's help row back to "Help & support"
+P15 CAUGHT on 3.4 · restored byte-identical · the agent's top-up back to "Ongeza fedha kwenye pochi yangu" in the journey
+P16 NOT APPLIED (0 matches) · an agent's invite tab back to "Alika na upate zawadi" · src/app/profile/invite/page.tsx
+P17 CAUGHT on 2.4 · restored byte-identical · the hub's withdraw row back to "Toa" (a door drifting from its page)
+P18 CAUGHT on 2.7 · restored byte-identical · a new door to the deposit screen, its words unruled (on the receipt page)
+P19 CAUGHT on 4.4 · restored byte-identical · the opt-out footer's licence line without `flex-1` (a size container would collapse)
+P20 CAUGHT on 4.4 · restored byte-identical · the opt-out footer's licence sentence printed plain
+P21 CAUGHT on 4.8 · restored byte-identical · the offline document's Swahili threshold under the name (240px)
+P22 CAUGHT on 4.7 · restored byte-identical · the offline document's licence sentence without the name span
+P23 CAUGHT on 4.8 · restored byte-identical · the offline document's licence line not a size container
+P24 CAUGHT on 4.10 · restored byte-identical · global-error's licence line printed plain
+P25 CAUGHT on 4.3 · restored byte-identical · global-error's copy of the pattern drifted (the zh break hint no longer allowed)
+P26 CAUGHT on 4.4 · restored byte-identical · `keepRegulator` keeping nothing
+P27 CAUGHT on 4.1 · restored byte-identical · the pattern losing the Swahili name
+P28 CAUGHT on 4.12 · restored byte-identical · a new line printing the regulator's name, unclassified (on the agent page)
+P29 CAUGHT on 4.14 · restored byte-identical · legal prose wrapped (a keep span in the terms page)
+P30 NOT APPLIED (0 matches) · the avatar menu's journey leaderboard row back to its classic words · src/components/layout/avatar-menu.tsx
+
+MUTATION PROOF r5g — 28/30 caught on their named check, 0 missed, 2 not applied; 28/28 files restored byte-identical (sha-256)
+(node:23164) [DEP0190] DeprecationWarning: Passing args to a child process with shell option true can lead to security vulnerabilities, as the arguments are not escaped, only concatenated.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+R5G=1
+=== R5J 23:46:12
+CAUGHT  the filter pill prints its count bare again ("Zote 12479")  [visual-pass-r5j 1.1 ✗ · visual-pass-r5j 2.1 ✗]  restored byte-identical
+CAUGHT  /results' bar fills its phrase with String(resultCount)  [visual-pass-r5j 1.1 ✗ · visual-pass-r5j 1.3 ✗ · visual-pass-r5j 2.3 ✗]  restored byte-identical
+CAUGHT  the pager's total back on the runtime's locale  [visual-pass-r5j 1.1 ✗ · visual-pass-r5j 2.2 ✗]  restored byte-identical
+CAUGHT  the Up & Down card's private device-locale formatter back  [visual-pass-r5j 1.1 ✗ · visual-pass-r5j 2.4 ✗]  restored byte-identical
+CAUGHT  /proposals' tally on toLocaleString() again  [visual-pass-r5j 1.1 ✗ · visual-pass-r5j 2.7 ✗]  restored byte-identical
+CAUGHT  /live's count line bare again  [visual-pass-r5j 1.1 ✗]  restored byte-identical
+CAUGHT  /positions' win-rate hint's count bare in its template  [visual-pass-r5j 1.1 ✗ · visual-pass-r4d 7.3b ✗]  restored byte-identical
+CAUGHT  the home's "browse all" slot handed the bare count  [visual-pass-r5j 1.1 ✗]  restored byte-identical
+CAUGHT  the card's comment count bare again  [visual-pass-r5j 1.1 ✗]  restored byte-identical
+CAUGHT  the leaderboard's hot streak bare again  [visual-pass-r5j 1.1 ✗ · visual-pass-r5j 2.7 ✗]  restored byte-identical
+CAUGHT  the deposit refusal's bounds on toLocaleString("en-US") again  [visual-pass-r5j 1.1 ✗ · visual-pass-r5j 2.6 ✗]  restored byte-identical
+CAUGHT  the away bar's `n` back to a bare String  [visual-pass-r5j 1.5 ✗]  restored byte-identical
+CAUGHT  a classified site goes away (its exemption would be stale)  [visual-pass-r5j 1.2 ✗]  restored byte-identical
+CAUGHT  the journey bell's count bare too  [visual-pass-r5j 1.5 ✗ · visual-pass-r5j 6.1 ✗]  restored byte-identical
+CAUGHT  a caller lifts the badge's cap (a four-digit pip)  [visual-pass-r5j 6.2 ✗]  restored byte-identical
+CAUGHT  the result draws its title as given (no reader)  [visual-pass-r5j 3.1 ✗ · visual-pass-r5j 3.2 ✗ · sell-grace-truth 6.result ✗]  restored byte-identical
+CAUGHT  the result's private matcher back (split on its own FIGURE)  [visual-pass-r5j 3.1 ✗ · visual-pass-r5j 3.2 ✗ · visual-pass-r5j 4.1 ✗]  restored byte-identical
+CAUGHT  a refusal's subtitle no longer read for figures  [visual-pass-r5j 3.1 ✗ · visual-pass-r5j 3.3 ✗]  restored byte-identical
+CAUGHT  the sale asks for whole figures again (a stale opt-in prop)  [visual-pass-r5j 3.1 ✗ · visual-pass-r5j 3.5 ✗]  restored byte-identical
+CAUGHT  the shared reader forgets a compact figure ("TZS 1.2M" read as "TZS 1")  [visual-pass-r5j 3.2 ✗ · sell-grace-truth 6.result ✗]  restored byte-identical
+CAUGHT  the share card's private grouping regex back  [visual-pass-r5j 4.1 ✗ · visual-pass-r5j 4.3 ✗]  restored byte-identical
+CAUGHT  the empty-slot rule deleted from globals.css  [visual-pass-r5j 5.1 ✗]  restored byte-identical
+CAUGHT  the analytics choice types its no-break space again  [visual-pass-r5j 5.2 ✗ · visual-pass-r5j 5.3 ✗ · visual-pass-r5e 6.5′ ✗]  restored byte-identical
+CAUGHT  the settled row's empty cell types its no-break space again  [visual-pass-r5j 5.2 ✗ · visual-pass-r5e 6.5′ ✗]  restored byte-identical
+CAUGHT  the time field's preview types its no-break space again  [visual-pass-r5j 5.2 ✗ · visual-pass-r5j 5.4 ✗]  restored byte-identical
+CAUGHT  the round-5 sweep excuses a slot again  [visual-pass-r5j 5.7 ✗]  restored byte-identical
+
+26/26 caught on their named checks; every file restored byte-identical: yes
+  e1869eb7cf52ca6e  src/components/ui/filter-pill.tsx
+  de1b83a0d3922b4d  src/app/results/results-bar.tsx
+  f888c636b2087c60  src/components/ui/pagination.tsx
+  529d0dcfb8ba016e  src/components/updown/updown-card.tsx
+  f78f891c11438178  src/app/proposals/page.tsx
+  18f7be1e490c95d1  src/app/live/page.tsx
+  ccf85610f62dfb63  src/app/positions/page.tsx
+  18c7a1d12e3bc528  src/components/home/landing-hero.tsx
+  104a2bb9504b0c8c  src/components/markets/market-card.tsx
+  485f163e2246a8ad  src/app/leaderboard/page.tsx
+  7c46f72c0a329684  src/app/wallet/deposit/actions.ts
+  2f248a987541743a  src/components/layout/away-summary-bar.tsx
+  2705f2b4730b7f8f  src/app/updown/page.tsx
+  f9321b5a3428b0b3  src/components/layout/notifications-panel.tsx
+  b1695b48e1dae693  src/components/chat/ChatBubble.tsx
+  aabc4c3cf1558031  src/components/markets/operation-result-modal.tsx
+  c011f6753ddf9b59  src/components/markets/sell-result.tsx
+  7e1890793f4cf894  src/lib/fill-nodes.tsx
+  b4cb071a1763b69c  src/app/api/og/market/[id]/route.tsx
+  66eb1e45091fc99d  src/app/globals.css
+  3b02b673478762f7  src/components/analytics/analytics-choice.tsx
+  9ca825efafee92ef  src/components/home/trust-band.tsx
+  8cc83f8d182e2f15  src/components/ui/time-select.tsx
+  90054379e9060921  scripts/visual-pass-r5e.test.mts
+R5J=0
+=== R5D 23:48:28
+CAUGHT  F1 · the market's metadata swallows a failed read and calls notFound() (round 4's body)  [r5d, exit 1]  → 1.1
+CAUGHT  F1 · a failed round read titled in English again ("Up & Down")  [r5d, exit 1]  → 1.1
+CAUGHT  F1 · a failed proposal read titled in English again ("Proposal")  [r5d, exit 1]  → 1.1
+CAUGHT  F1 · the round's read taken out of its try (a failed read throws beside the page)  [r5d, exit 1]  → 1.4″
+CAUGHT  F1 · the body's note calls the metadata's catch "title garnish" again  [r5d, exit 1]  → 1.5
+CAUGHT  F1 · the market's not-found keeps its stale note (the metadata "calls notFound()")  [r5d, exit 1]  → 1.5
+CAUGHT  F2 · a navigation to an image-like address handed to the static rule again  [offline, exit 1]  → 11.offline
+CAUGHT  F2 · the static rule keeps any ok answer again (a page, the router's data)  [offline, exit 1]  → 11.rsc, 11.html
+CAUGHT  F2 · the cache name kept at v5 (a name whose rule could keep a page)  [offline, exit 1]  → 2.name
+CAUGHT  F3 · a page the network answered no longer refreshes the offline document (install only)  [offline, exit 1]  → 12.retry, 12.stale, 12.undated
+CAUGHT  F3 · the refresh sends the session cookie  [offline, exit 1]  → 12.retry
+CAUGHT  F3 · every page refetches it (no one look per worker wake)  [offline, exit 1]  → 12.wake
+CAUGHT  F4 · the hook back to the span's presence ("not found" for the next page while the old span is up)  [r4j, exit 1]  → 5.1
+CAUGHT  F4 · the one decision answers presence  [r4j, exit 1]  → 5.15
+CAUGHT  F4 · arrival announced by a passive effect (a transition paints the not-found page with a tab lit first)  [r4j, exit 1]  → 5.2
+CAUGHT  F4 · the mark names no path  [r4j, exit 1]  → 5.2
+CAUGHT  F5 · the rule reads the mark alone again (a missing question's first paint keeps its tab lit)  [r4j, exit 1]  → 5.12
+CAUGHT  G1 · the ghosts drawn by a server component again (no directive)  [r5d, exit 1]  → 2.1
+CAUGHT  G1 · the lazy binding turns the server render off (ssr: false — the ghost leaves the first HTML)  [r5d, exit 1]  → 2.3
+CAUGHT  G1 · the lost-chunk guard takes every error  [r5d, exit 1]  → 2.4
+CAUGHT  G1 · the root loading file hands the ghost the whole dictionary (every payload carries it)  [r5d, exit 1]  → 2.5, 2.6
+CAUGHT  G1 · a second drawing of the deposit's ghost in the root ghost (not the one its loading file renders)  [r5d, exit 1]  → 2.10
+CAUGHT  G1′ · the not-found view drawn on the server again (no directive: ~6 KB in every payload)  [r5d, exit 1]  → 4.1, 4.2
+CAUGHT  G1′ · the root not-found reads its words and title out of the client view (a reference on the server)  [r5d, exit 1]  → 4.3
+CAUGHT  G2 · the shell's note on the uncontained render error removed  [r5d, exit 1]  → 3.2
+CAUGHT  F4′ · a new store reader of a DOM mark, unclassified  [r5d, exit 1]  → 5.1
+CAUGHT  F4′ · cacheComponents turned on (left pages kept in a hidden <Activity>)  [r5d, exit 1]  → 5.2
+
+MUTATION PROOF r5d — 27/27 plants caught on their named check · 16/16 files byte-identical after (sha-256)
+  6a1f3c7c6d0a2aa4…  ==  src/app/markets/[id]/page.tsx
+  ead479a6aac05342…  ==  src/app/updown/[roundId]/page.tsx
+  1913d9d8523e5cf7…  ==  src/app/proposals/[id]/page.tsx
+  e9b6f93ae21c9bb5…  ==  src/app/markets/[id]/not-found.tsx
+  a13cc6f6683fee53…  ==  public/sw.js
+  03cd1fcf38f7794a…  ==  src/lib/not-found-mark.ts
+  907680064eb7354a…  ==  src/components/ui/not-found-mark.tsx
+  66eb1e45091fc99d…  ==  src/app/globals.css
+  00f3b34bad0eb391…  ==  src/components/journey/route-ghost.tsx
+  884638d4132fc222…  ==  src/components/journey/route-ghost-lazy.tsx
+  1fd7b99393db3fbc…  ==  src/app/loading.tsx
+  73e512705ad1008d…  ==  src/components/ui/not-found-view.tsx
+  5b8b488ab6d4e726…  ==  src/app/not-found.tsx
+  431ee956169475e5…  ==  src/components/layout/app-shell.tsx
+  5b6645e76d0d9829…  ==  src/lib/journey/header-state.ts
+  b76fec5f718ead13…  ==  next.config.ts
+R5D=0
+=== R5H 23:50:52
+baseline: exit 0 — visual-pass-r5h: 56 passed, 0 failed
+CAUGHT  1.2 · the results ghost drawn by a server component again (its tree in every refresh) — src/app/results/loading.tsx
+CAUGHT  1.2 · a question's skeleton drawn on the server again (every 15 s) — src/app/markets/[id]/loading.tsx
+CAUGHT  1.2 · the kit's loader a server component again (16 routes) — src/components/ui/page-loader.tsx
+CAUGHT  1.3 · today's /positions picture reading the words on the server — src/app/positions/positions-ghost.tsx
+CAUGHT  1.3 · the history loading file reading the words again — src/app/updown/history/loading.tsx
+CAUGHT  1.3 · a server loading file importing a server component (a tree in the payload) — src/app/updown/loading.tsx
+CAUGHT  1.4 · the bonus answer not asked (a live programme's second card never ghosted) — src/app/wallet/loading.tsx
+CAUGHT  1.4 · the drawing ignoring the bonus answer — src/app/wallet/wallet-ghost.tsx
+CAUGHT  2.1 · a journey reader's /positions pinned to the round history's picture — src/app/positions/loading.tsx
+CAUGHT  2.1 · the classic history drawing handed a prop it does not need — src/app/updown/history/loading.tsx
+CAUGHT  2.2′  the pin ignored (the spinner over /positions/performance) — src/components/journey/route-ghost.tsx
+CAUGHT  2.3 · the history drawing loading the journey's head (its code to every classic reader) — src/app/updown/history/history-ghost.tsx
+CAUGHT  3.2 · the flag raised in a passive effect again — src/components/journey/journey-flag.tsx
+CAUGHT  3.2 · the flag back in a boundary of its own — src/components/layout/app-shell.tsx
+CAUGHT  3.3 · the lowering announced only while the mark is still in — src/lib/journey/journey-on.ts
+CAUGHT  3.2 · the not-found mark's going announced in its layout cleanup (reads the old path) — src/components/ui/not-found-mark.tsx
+CAUGHT  3.4 · the after-commit announcement made at once — src/lib/not-found-mark.ts
+CAUGHT  3.6 · the strip's edges marked after the paint again — src/components/ui/strip-autoscroll.tsx
+CAUGHT  3.5 · a new, unclassified writer of a DOM mark — src/components/ui/toast.tsx
+CAUGHT  4.1 · R5-B's finding back: /wallet's ghost with no bar — src/app/wallet/wallet-ghost.tsx
+CAUGHT  4.1 · the door off the bar's rhythm — src/app/wallet/wallet-ghost.tsx
+CAUGHT  4.1 · the spark and the list two blocks on the 32px rung again — src/app/wallet/wallet-ghost.tsx
+CAUGHT  4.4 · a pill narrower than the kit's — src/components/ui/query-bar-ghost.tsx
+CAUGHT  4.3 · a state word that is not the bar's — src/app/wallet/money-bar-ghost.tsx
+CAUGHT  4.3 · the receipts ghost a lens short — src/app/wallet/receipts/loading.tsx
+CAUGHT  4.7 · the groups drawn without their divider (a different wrap) — src/app/wallet/money-bar-ghost.tsx
+CAUGHT  4.5 · the ghost publishing a result count — src/components/ui/query-bar-ghost.tsx
+CAUGHT  5.1 · the deposit ghost's back link a 20px bar again — src/app/wallet/deposit/deposit-ghost.tsx
+CAUGHT  5.1 · the invitation's ghost drawing a back link its page does not have — src/app/agent/invite/[token]/loading.tsx
+CAUGHT  5.1 · the back link's ghost box 20px instead of the link's 44 — src/components/ui/back-link.tsx
+CAUGHT  5.2 · /results' carousel and grid back in a flex column (48px between them) — src/app/results/loading.tsx
+CAUGHT  5.3 · /markets' Filters pill drawn at 1280 again — src/app/markets/loading.tsx
+CAUGHT  5.4 · /live's hero 16px short from 1024 again — src/app/live/loading.tsx
+CAUGHT  5.5 · the receipts row's chip line 22px again — src/app/wallet/receipts/loading.tsx
+CAUGHT  5.6 · /profile's grid on 12px again — src/app/profile/loading.tsx
+CAUGHT  5.7 · /agent's header without the page's subtitle — src/app/agent/loading.tsx
+CAUGHT  5.8 · /updown's phone trigger gone (both pill rows on a phone again) — src/app/updown/updown-ghost.tsx
+CAUGHT  5.9 · the round's two columns from xl again — src/app/updown/[roundId]/loading.tsx
+CAUGHT  5.10 · the question's chips row back to its chips' height — src/app/markets/[id]/loading.tsx
+CAUGHT  5.11 · Tiketi zangu's rail ghost without R5-B's hook — src/components/journey/tickets/tickets-ghost.tsx
+CAUGHT  5.12 · the round history's search band gone — src/app/updown/history/history-ghost.tsx
+
+41/41 caught on the named check · 41/41 restored byte-identical · 31/31 files match their sha-256 from before · the suite after: exit 0
+R5H=0
+=== R5B 23:55:49
+CAUGHT 1.1   F3 the journey's foot rule dropped (the rule back on Funga's border, 8px) — exit 1, failed [1.1], restored byte-identical
+CAUGHT 2.1   F6 the rail no longer reaches into the gutter — exit 1, failed [2.1 2.2], restored byte-identical
+CAUGHT 2.1   F6 the options back on the kit's 20px — exit 1, failed [2.1 2.3], restored byte-identical
+CAUGHT 2.1   F6 the rule's line drawn from the rail's own left (12px into the gutter) — exit 1, failed [2.1], restored byte-identical
+CAUGHT 2.4   F6 /wallet's ghost back on 14px with the display face — exit 1, failed [2.4], restored byte-identical
+CAUGHT 3.1   F7 Modal's panel without its dock mark — exit 1, failed [3.1], restored byte-identical
+CAUGHT 3.2   F7 a small sheet left ON the screen's last row — exit 1, failed [3.2], restored byte-identical
+CAUGHT 3.4   F7 the Wallet's dock padding out of step with its own — exit 1, failed [3.4], restored byte-identical
+CAUGHT 3.5   F7 the Needle's drawer unmarked — exit 1, failed [3.5], restored byte-identical
+CAUGHT 3.5   F7 the primer docking on Modal's 24 — exit 1, failed [3.5], restored byte-identical
+CAUGHT 3.6   F7 the chat sheet keeping its bottom border — exit 1, failed [3.6], restored byte-identical
+CAUGHT 4.1   F8 the dark drop back on the journey's pip — exit 1, failed [4.1], restored byte-identical
+CAUGHT 5.2   F9 the formatter swapped (a day for a moment) on the re-apply notice — exit 1, failed [5.1′ 5.2 5.5], restored byte-identical
+CAUGHT 5.3   F9 the caller formats the payout time in English again — exit 1, failed [5.3], restored byte-identical
+CAUGHT 5.4   F9 the Swahili verdict body printing the English date — exit 1, failed [5.4], restored byte-identical
+CAUGHT 5.5   F9 the revoked agent's notice: the English day in the Swahili body — exit 1, failed [5.5], restored byte-identical
+CAUGHT 5.6   F9 the revoked agent's letter: the English day in the Swahili line — exit 1, failed [5.6], restored byte-identical
+CAUGHT 6.1   F10 the cut never steps back to a word — exit 1, failed [6.1 6.3 6.4], restored byte-identical
+CAUGHT 6.4   F10 a Chinese opening bracket allowed to end a cut — exit 1, failed [6.4], restored byte-identical
+CAUGHT 6.6   F10 one notice back on .slice(0, 70) — exit 1, failed [6.6], restored byte-identical
+CAUGHT 6.7   F10 an email subject back on .slice(0, 50) — exit 1, failed [6.7], restored byte-identical
+CAUGHT 7.1   F11 the header's Deposit back on common.deposit — exit 1, failed [7.1], restored byte-identical
+CAUGHT 7.1   F11 the balance card not told — exit 1, failed [7.1], restored byte-identical
+CAUGHT 7.2   F11 the page not asking the resolver — exit 1, failed [7.2], restored byte-identical
+CAUGHT 7.2   F11 the receipts' Deposit back on common.depositCta — exit 1, failed [7.2], restored byte-identical
+CAUGHT 8.1   F13 the door back on the page's rung — exit 1, failed [8.1], restored byte-identical
+CAUGHT 8.2   F13 the door without its hook — exit 1, failed [8.2], restored byte-identical
+CAUGHT 9.1   F14 the wrapped row back on a 4px gap — exit 1, failed [9.1.locate 9.1], restored byte-identical
+CAUGHT 9.3   F14 the receipts ghost retyping the old wrap — exit 1, failed [9.3], restored byte-identical
+CAUGHT 9.4   F14 the ghost's count back on its 12px bar — exit 1, failed [9.4], restored byte-identical
+CAUGHT 10.1  §A5 the cleared rows forgotten — exit 1, failed [10.1], restored byte-identical
+CAUGHT 10.1  §A5 the bar drawn over an empty inbox again — exit 1, failed [10.1], restored byte-identical
+CAUGHT 10.1  §A5 the search band drawn over an empty inbox again — exit 1, failed [10.1], restored byte-identical
+CAUGHT 11.1  CHECK the lead printed bare again — exit 1, failed [11.1], restored byte-identical
+CAUGHT 11.2  CHECK the method's run never found — exit 1, failed [11.2], restored byte-identical
+CAUGHT 11.5  CHECK the deposit pip back 8px in — exit 1, failed [11.5], restored byte-identical
+
+mutations: 36 planted · 36 caught on the named check · 0 missed · restored byte-identical: 36/36
+R5B=0
+=== R5I 23:57:36
+CAUGHT 1.1   CENSUS the pair on an unregistered file (the sessions page's Sign out back in the NO rose) — visual-pass-r5i.test.mts exit 1, failed [1.1 2.3 2.3′], restored byte-identical
+CAUGHT 1.2   CENSUS one more use in a registered file (the result's success crest back to the YES ramp) — visual-pass-r5i.test.mts exit 1, failed [1.2 2.1], restored byte-identical
+CAUGHT 1.1   CENSUS the pair by NAME on an unregistered file (the RG hero's glow back to `yes`) — visual-pass-r5i.test.mts exit 1, failed [1.1 2.7], restored byte-identical
+CAUGHT 1.1   CENSUS the pair by another spelling (a language glyph hand-typed at hue 22) — visual-pass-r5i.test.mts exit 1, failed [1.1 2.15‴], restored byte-identical
+CAUGHT 2.1   2.1 the result's success crest back in the YES green — visual-pass-r5i.test.mts exit 1, failed [1.2 2.1], restored byte-identical
+CAUGHT 2.1′  2.1′ a refusal's way out back on the NO side's stake button — visual-pass-r5i.test.mts exit 1, failed [1.2 2.1′], restored byte-identical
+CAUGHT 2.2   2.2 the crash page's mark back in the NO rose — visual-pass-r5i.test.mts exit 1, failed [1.2 2.2], restored byte-identical
+CAUGHT 2.3   2.3 the avatar's clear hover back in the NO rose — visual-pass-r5i.test.mts exit 1, failed [1.1 2.3 2.3′], restored byte-identical
+CAUGHT 2.3   2.3 a notification's dismiss hover back in the NO rose — visual-pass-r5i.test.mts exit 1, failed [1.1 2.3 2.3′], restored byte-identical
+CAUGHT 2.3   2.3 /profile's Sign out plate back in the NO rose — visual-pass-r5i.test.mts exit 1, failed [1.1 2.3 2.3′], restored byte-identical
+CAUGHT 2.4   2.4 the dial's stake range chip back in the NO rose — visual-pass-r5i.test.mts exit 1, failed [1.2 2.4 3.3‴], restored byte-identical
+CAUGHT 2.4′  2.4′ Up & Down's out-of-range amount back in the Down side's rose — visual-pass-r5i.test.mts exit 1, failed [1.2 2.4′], restored byte-identical
+CAUGHT 2.4′  2.4′ a proposal's bad source link back in the NO rose — visual-pass-r5i.test.mts exit 1, failed [1.1 2.4′], restored byte-identical
+CAUGHT 2.4′  2.4′ "passwords match" back in the YES green — visual-pass-r5i.test.mts exit 1, failed [1.1 2.4′], restored byte-identical
+CAUGHT 2.5   2.5 2FA's on-plate back in the YES green — visual-pass-r5i.test.mts exit 1, failed [1.1 2.5 2.5′], restored byte-identical
+CAUGHT 2.5   2.5 the paid-out tick back in the YES green — visual-pass-r5i.test.mts exit 1, failed [1.1 2.5 2.5′], restored byte-identical
+CAUGHT 2.5   2.5 the free window's "No fee" back in the YES green — visual-pass-r5i.test.mts exit 1, failed [1.1 2.5 2.5′], restored byte-identical
+CAUGHT 2.5   2.5 an agent's uploaded slot back in the YES green — visual-pass-r5i.test.mts exit 1, failed [1.1 2.5 2.5′], restored byte-identical
+CAUGHT 2.6   2.6 the auth eyebrow offering YES/NO again — visual-pass-r5i.test.mts exit 1, failed [1.1 2.6], restored byte-identical
+CAUGHT 2.7‴  2.7‴ the RG art's accent back in the YES green — visual-pass-r5i.test.mts exit 1, failed [1.1 2.7‴], restored byte-identical
+CAUGHT 2.8   2.8 /profile's emerald → rose tilt back — visual-pass-r5i.test.mts exit 1, failed [1.1 2.8], restored byte-identical
+CAUGHT 2.8′  2.8′ the open count's glyph back in the YES green — visual-pass-r5i.test.mts exit 1, failed [1.1 2.8′], restored byte-identical
+CAUGHT 2.9   2.9 the activity page's Won label tinted again — visual-pass-r5i.test.mts exit 1, failed [1.1 2.9], restored byte-identical
+CAUGHT 2.10  2.10 the journey bell's count back in the NO rose — visual-pass-r5i.test.mts exit 1, failed [2.10 6.5], restored byte-identical
+CAUGHT 2.11  2.11 a positive Up & Down net back in the YES green — visual-pass-r5i.test.mts exit 1, failed [1.2 2.11], restored byte-identical
+CAUGHT 2.12  2.12 the /wallet row's settled-credit plate back in the YES green — visual-pass-r5i.test.mts exit 1, failed [1.1 2.12], restored byte-identical
+CAUGHT 2.12″ 2.12″ the self-exclusion doors' hover back on the NO rose — visual-pass-r5i.test.mts exit 1, failed [1.1 2.12 2.12″], restored byte-identical
+CAUGHT 2.13  2.13 the leaderboard's rate back in the YES/NO inks — visual-pass-r5i.test.mts exit 1, failed [1.1 2.13], restored byte-identical
+CAUGHT 2.14  2.14 the payout notice's edge back on the NO rose — visual-pass-r5i.test.mts exit 1, failed [1.1 2.14], restored byte-identical
+CAUGHT 2.15  2.15 the stale receipt back in the NO rose — visual-pass-r5i.test.mts exit 1, failed [1.2 2.15], restored byte-identical
+CAUGHT 2.15′ 2.15′ the placed pulse back in the YES green — visual-pass-r5i.test.mts exit 1, failed [1.2 2.15′], restored byte-identical
+CAUGHT 2.15″ 2.15″ the balance's up-move back in the YES green — visual-pass-r5i.test.mts exit 1, failed [1.2 2.15″], restored byte-identical
+CAUGHT 3.3‴  3.3‴ the dial's short balance back in the NO rose — visual-pass-r5i.test.mts exit 1, failed [1.2 3.3‴], restored byte-identical
+CAUGHT 3.4   3.4 the data export's refusal back to the alarm for every reason — visual-pass-r5i.test.mts exit 1, failed [3.4], restored byte-identical
+CAUGHT 3.4   3.4 a comment's report refusal back to the alarm for every reason — visual-pass-r5i.test.mts exit 1, failed [3.4], restored byte-identical
+CAUGHT 3.5   3.5 a refused copy (Lipa) alarms again — visual-pass-r5i.test.mts exit 1, failed [3.5], restored byte-identical
+CAUGHT 3.7   3.7 an agent's referee field alarms again — visual-pass-r5i.test.mts exit 1, failed [3.7], restored byte-identical
+CAUGHT 4.1   4.1 a queued grant back in amber — visual-pass-r5i.test.mts exit 1, failed [4.1 4.1′ 4.1″], restored byte-identical
+CAUGHT 4.1′  4.1′ an unlocked grant struck in gilt — visual-pass-r5i.test.mts exit 1, failed [4.1 4.1′ 4.1″], restored byte-identical
+CAUGHT 4.2   4.2 the grant word back on the hand-rolled warning pill — visual-pass-r5i.test.mts exit 1, failed [4.2], restored byte-identical
+CAUGHT 4.3   4.3 a declaration under review back in amber on /profile — visual-pass-r5i.test.mts exit 1, failed [4.3], restored byte-identical
+CAUGHT 4.3′  4.3′ a declaration under review back in the success box — visual-pass-r5i.test.mts exit 1, failed [4.3′], restored byte-identical
+CAUGHT 5‴    5‴ the brand pip back on `--brand-500` (3.48:1 digits) — visual-pass-r5i.test.mts exit 1, failed [2.10′ 5‴], restored byte-identical
+CAUGHT 6.1   6.1 a side button losing the betting pair — visual-pass-r5i.test.mts exit 1, failed [1.0 6.1], restored byte-identical
+CAUGHT 6.8   6.8 an RG notice's tone swept up — visual-pass-r5i.test.mts exit 1, failed [6.8], restored byte-identical
+CAUGHT 11.0  FL 11.0 the rank inverted for warnings (a fixable slip reads `danger`) — feedback-law.test.mts exit 1, failed [11.0 11.2], restored byte-identical
+CAUGHT 11.1  FL 11.1 the dial opens the ✗ result over every refusal again — feedback-law.test.mts exit 1, failed [11.1 11.1b], restored byte-identical
+CAUGHT 11.1  FL 11.1 a dial arm toasts the gold `warning` again (BUSY) — feedback-law.test.mts exit 1, failed [11.1 11.1b], restored byte-identical
+CAUGHT 11.1  FL 11.1 the dial's short balance back to `danger` — feedback-law.test.mts exit 1, failed [11.1 11.1b], restored byte-identical
+CAUGHT 11.2  FL 11.2 Up & Down's legacy BUSY back to `danger` — feedback-law.test.mts exit 1, failed [11.2], restored byte-identical
+CAUGHT 11.2c FL 11.2c the quick bet toasts every refusal `danger` again — feedback-law.test.mts exit 1, failed [11.2c], restored byte-identical
+CAUGHT 11.4  FL 11.4 an empty name alarms again — feedback-law.test.mts exit 1, failed [11.4], restored byte-identical
+CAUGHT 11.5  FL 11.5 the browser's English error message back in a toast — feedback-law.test.mts exit 1, failed [11.5], restored byte-identical
+CAUGHT §7a   BI §7a a sideless surface wears the NO rose (the sessions page's Sign out) — betting-ink.test.mts exit 1, failed [§7a], restored byte-identical
+CAUGHT §7b   BI §7b the result's failure crest back in the NO rose — betting-ink.test.mts exit 1, failed [§7b §7c], restored byte-identical
+CAUGHT §7b   BI §7b the balance's ±delta back in the betting pair — betting-ink.test.mts exit 1, failed [§7b §7c], restored byte-identical
+CAUGHT §7b   BI §7b the dial's multiplier chip back in the NO rose — betting-ink.test.mts exit 1, failed [§7b], restored byte-identical
+CAUGHT 1.2   R5C 1.2 a zero net on /updown/history struck in gilt (beyond the registered two) — visual-pass-r5c.test.mts exit 1, failed [1.2], restored byte-identical
+
+mutations: 58 planted, 58 caught, 0 missed · restored byte-identical: 58/58
+R5I=0
+ALL PROOFS DONE 23:59:32

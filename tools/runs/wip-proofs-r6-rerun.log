@@ -1,0 +1,170 @@
+=== R6C 23:59:44
+P1 CAUGHT on 1.1 · restored byte-identical · the bet stake mono but not `.amount` again (it splits "TZS" / "1,000")
+P2 CAUGHT on 1.2 · restored byte-identical · the bet confirm's side | stake row that cannot wrap
+P3 CAUGHT on 1.3 · restored byte-identical · the side word without its 16px (the two values may touch)
+P4 CAUGHT on 2.1 · restored byte-identical · the board card's range line one whole `.amount` again
+P5 CAUGHT on 2.1′ · restored byte-identical · the round page's range line one whole `.amount` again
+P6 CAUGHT on 2.3 · restored byte-identical · a new sentence in an `.amount` (the signed-out range line)
+P7 CAUGHT on 3.1, 3.2 · restored byte-identical · the Up & Down board's 300px track floor unguarded again
+P8 CAUGHT on 3.1 · restored byte-identical · the round history's 320px track floor unguarded again
+P9 CAUGHT on 4.5 · restored byte-identical · the journey menu's KYC row offered to every reader again
+P10 CAUGHT on 4.6 · restored byte-identical · the journey menu's KYC row back on the h1's words
+P11 CAUGHT on 4.3 · restored byte-identical · the shell reading the KYC row for every reader (a query on every classic page)
+P12 CAUGHT on 4.2 · restored byte-identical · the hub's reader spelling its own KYC predicate (a verified-only copy)
+P13 CAUGHT on 4.1 · restored byte-identical · the one KYC question forgetting a final refusal
+P14 CAUGHT on 5.4 · restored byte-identical · the hub's invite row back to "never a paid word"
+P15 CAUGHT on 5.4 · restored byte-identical · the journey footer's invite link back to "Alika marafiki" for everybody
+P16 CAUGHT on 5.4 · restored byte-identical · the journey menu's invite row back to the classic literal ("Invite & Earn" for an agent)
+P17 CAUGHT on 5.2 · restored byte-identical · the invite page's tab without the agent's name
+P18 CAUGHT on 5.1 · restored byte-identical · the one rule forgetting the paid page
+P19 CAUGHT on 5.5 · restored byte-identical · /profile's invite row back to "Alika marafiki" for a paid player
+P20 CAUGHT on 6.1, 6.6 · restored byte-identical · the dial's result door back to "Tazama nafasi" in the journey
+P21 CAUGHT on 6.3, 6.6 · restored byte-identical · the performance ghost's eyebrow back to "NAFASI" for a journey reader
+P22 CAUGHT on 6.4, 6.6 · restored byte-identical · /help's card back to "Madau yangu" in the journey
+P23 CAUGHT on 7.1, 7.2 · restored byte-identical · the KYC page's back link back to "‹ WASIFU" in the journey
+P24 CAUGHT on 8.1 · restored byte-identical · the sign-in break panel amber again
+P25 CAUGHT on 9.1 · restored byte-identical · the Needle drawer's ✕ not risen to the capitals
+P26 CAUGHT on 9.2 · restored byte-identical · the chat panel's ✕ centred on the header again
+P27 CAUGHT on 10.1 · restored byte-identical · a titled dialog's title off the corner ✕ (the share dialog)
+P28 CAUGHT on 10.1 · restored byte-identical · the crest-first result dialog losing the corner ✕ it keeps
+P29 CAUGHT on 11.1 · restored byte-identical · the gold census back to `--warning-fg` alone
+P30 CAUGHT on 12.1 · restored byte-identical · the journey bell's title cut to one plain line again
+P31 CAUGHT on 13.1 · restored byte-identical · the bet confirm's STAKE label keeping its trailing tracking
+P32 CAUGHT on 13.2 · restored byte-identical · the 0.08em label taking back 0.14em
+P33 CAUGHT on 14.1 · restored byte-identical · the board card's signal pill back at the default size
+P34 CAUGHT on 14.3 · restored byte-identical · the classic held question clamped at two lines again
+P35 CAUGHT on 14.6, 14.7 · restored byte-identical · the win seal's market name clamped at two lines again
+P36 CAUGHT on 14.4 · restored byte-identical · the tickets ghost's first pill 24px again
+P37 CAUGHT on 16.1, 16.2 · restored byte-identical · the deposit return's pair 10px apart again (`gap-2.5`)
+P38 CAUGHT on 16.4 · restored byte-identical · the deposit return's ghost drawing its pair on the old 10px (`gap-2.5`, a rebuild on the old gap)
+P39 CAUGHT on 16.1 · restored byte-identical · the market page's two sides 10px apart again
+P40 CAUGHT on 15.1 · restored byte-identical · a dictionary word changed
+
+MUTATION PROOF r6c — 40/40 caught on their named check, 0 missed, 0 not applied; 40/40 files restored byte-identical (sha-256)
+R6C=0
+=== R5K 00:01:38
+ok   0.1 · a bar on the first line only → CAUGHT on 0.1 (failing: 0.1; exit 1; 2s) · restored byte-identical: yes
+ok   0.3 · the ghost chip on the taller status row → CAUGHT on 0.3 (failing: 0.3, 0.3′; exit 1; 2s) · restored byte-identical: yes
+ok   0.4 · a drawing reading the server again → CAUGHT on 0.4 (failing: 0.4; exit 1; 2s) · restored byte-identical: yes
+ok   1.1 · the receipt's footnote left out → CAUGHT on 1.1 (failing: 1.1; exit 1; 2s) · restored byte-identical: yes
+ok   1.3 · a row short (seven for eight) → CAUGHT on 1.3 (failing: 1.3, 1.4′; exit 1; 2s) · restored byte-identical: yes
+ok   1.4 · an id shape shorter than a real id → CAUGHT on 1.4 (failing: 1.4, 1.4′; exit 1; 2s) · restored byte-identical: yes
+ok   2.1 · the trust strip off its own classes → CAUGHT on 2.1 (failing: 2.1; exit 1; 2s) · restored byte-identical: yes
+ok   2.2 · tiles 8px short (98.25 for 106.25) → CAUGHT on 2.2 (failing: 2.2; exit 1; 2s) · restored byte-identical: yes
+ok   2.3 · three quick-amount pills (one row on a phone) → CAUGHT on 2.3 (failing: 2.3; exit 1; 2s) · restored byte-identical: yes
+ok   2.4 · the phone hint left out → CAUGHT on 2.4 (failing: 2.1, 2.4; exit 1; 2s) · restored byte-identical: yes
+ok   3.1 · the return's buttons 10px apart (the page's are 12 since R6-C) → CAUGHT on 3.1 (failing: 3.1; exit 1; 2s) · restored byte-identical: yes
+ok   3.3 · the outcome's heading SHOWN → CAUGHT on 3.3 (failing: 3.3; exit 1; 2s) · restored byte-identical: yes
+ok   4.1 · the withdraw hero's old row class → CAUGHT on 4.1 (failing: 4.1; exit 1; 2s) · restored byte-identical: yes
+ok   4.2 · a notice row off the page's NoticeRow → CAUGHT on 4.2 (failing: 4.2; exit 1; 2s) · restored byte-identical: yes
+ok   4.3 · the fee's rate drawn as one digit (the first draft) → CAUGHT on 4.3 (failing: 4.3; exit 1; 2s) · restored byte-identical: yes
+ok   5.1 · the 64px avatar back → CAUGHT on 5.1 (failing: 5.1; exit 1; 2s) · restored byte-identical: yes
+ok   5.2 · the email pill out of its tap-floor link → CAUGHT on 5.2 (failing: 5.2; exit 1; 2s) · restored byte-identical: yes
+ok   5.3 · the balance cell one column on a phone → CAUGHT on 5.3 (failing: 5.3; exit 1; 2s) · restored byte-identical: yes
+ok   5.4 · a badge short → CAUGHT on 5.4 (failing: 5.4; exit 1; 2s) · restored byte-identical: yes
+ok   5.5 · a settings row short → CAUGHT on 5.5 (failing: 5.5; exit 1; 2s) · restored byte-identical: yes
+ok   5.6 · the sign-out title off its face → CAUGHT on 5.6 (failing: 5.6; exit 1; 2s) · restored byte-identical: yes
+ok   6.1 · the head's button words tracked (a narrower box) → CAUGHT on 6.1 (failing: 6.1; exit 1; 2s) · restored byte-identical: yes
+ok   6.2 · the strip back on a fixed two-column grid → CAUGHT on 6.2 (failing: 6.2; exit 1; 2s) · restored byte-identical: yes
+ok   6.3 · the exposure keys off their 14px line → CAUGHT on 6.3 (failing: 6.3; exit 1; 2s) · restored byte-identical: yes
+ok   6.4 · the topic group left out → CAUGHT on 6.4 (failing: 6.4, 6.5; exit 1; 2s) · restored byte-identical: yes
+ok   6.5 · a narrower window group (row 2 a line short) → CAUGHT on 6.5 (failing: 6.4, 6.5; exit 1; 2s) · restored byte-identical: yes
+ok   7.1 · the highlights off the page's grid → CAUGHT on 7.1 (failing: 7.1; exit 1; 2s) · restored byte-identical: yes
+ok   7.2 · the 200px chart box back → CAUGHT on 7.2 (failing: 7.2, 7.2′; exit 1; 2s) · restored byte-identical: yes
+ok   7.3 · a stake tile in the display face → CAUGHT on 7.3 (failing: 7.3; exit 1; 2s) · restored byte-identical: yes
+
+mutation-r5k: 29 planted, 29 caught on the named check; every file restored byte-identical at the end: yes
+  sha-256 c27ca3836a046bdc… src/components/ui/ghost-text.tsx
+  sha-256 318ebb47ee457138… src/app/profile/loading.tsx
+  sha-256 acb7a85dae278dc6… src/app/wallet/receipt/[id]/loading.tsx
+  sha-256 f81237084b32a4fe… src/app/wallet/receipt-ghost.tsx
+  sha-256 a2ba90f4f35f7519… src/app/wallet/money-form-ghost.tsx
+  sha-256 855f1ca368c70868… src/app/wallet/deposit/return/loading.tsx
+  sha-256 8c0f067d6382e29b… src/app/wallet/withdraw/withdraw-ghost.tsx
+  sha-256 29ea39c92188b308… src/app/positions/positions-ghost.tsx
+  sha-256 2ac24184ed26214f… src/app/positions/performance/performance-ghost.tsx
+(node:4928) [DEP0190] DeprecationWarning: Passing args to a child process with shell option true can lead to security vulnerabilities, as the arguments are not escaped, only concatenated.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+R5K=0
+=== R5A 00:02:35
+baseline: exit 0, 0 FAIL line(s)
+  ✓ F2 · the card centred on the column again → FAIL 1.1 (failed: 1.1) · restored 66eb1e45091f
+  ✓ F2 · the unhinted 4px → FAIL 1.2 (failed: 1.2, 1.3) · restored 66eb1e45091f
+  ✓ F12 · the spotlight's capitalised label back → FAIL 2.1 (failed: 2.1, 2.6) · restored fab504e95ace
+  ✓ F12 · the card's runtime toLocaleString back → FAIL 2.3 (failed: 2.3) · restored 104a2bb9504b
+  ✓ F12 · the leaderboard lower-cases a label again → FAIL 2.4 (failed: 2.4) · restored 485f163e2246
+  ✓ F16 · the legal header passes the bare title → FAIL 3.2 (failed: 3.2) · restored 3b97ad8e5fec
+  ✓ F16 · the pair cap lifted ("ya NDIO/HAPANA" bound) → FAIL 3.3 (failed: 3.3, 3.4) · restored 3b97ad8e5fec
+  ✓ F15 · the dictionary's chip back → FAIL 4.1 (failed: 4.1) · restored d13ba7d73cdc
+  ✓ F17 · the KYC row's old key → FAIL 5.1 (failed: 5.1) · restored 19e58484ae90
+  ✓ F17 · the journey menu's page names dropped → FAIL 5.3 (failed: 5.3) · restored fdee36da79cb
+  ✓ F17 · the journey footer's proposals words back → FAIL 5.4 (failed: 5.4) · restored 82cfb71ed8d1
+  ✓ F17 · /live's eyebrow back to "Hai" → FAIL 5.5 (failed: 5.5) · restored 18f7be1e490c
+  ✓ F18 · a threshold under the English name → FAIL 6.2 (failed: 6.2, 6.3) · restored 66eb1e45091f
+  ✓ F18 · the journey footer's sentence plain → FAIL 6.4 (failed: 6.4) · restored 82cfb71ed8d1
+  ✓ F18 · the hero's trust row plain → FAIL 6.5 (failed: 6.5) · restored c7316af84be5
+  ✓ F19 · the price caption's take-back dropped → FAIL 7.1 (failed: 7.1) · restored 66eb1e45091f
+  ✓ F19 · the spotlight flag's text span dropped → FAIL 7.2 (failed: 7.2) · restored fab504e95ace
+  ✓ F20 · .kp-modal-title on the wrong point (0.5em) → FAIL 8.2 (failed: 8.2) · restored 66eb1e45091f
+  ✓ F20 · ConfirmModal's ✕ back on the medallion → FAIL 8.3 (failed: 8.3) · restored af97116a1fb7
+  ✓ F20 · the sell confirm's ✕ back in the corner → FAIL 8.4 (failed: 8.4, 8.13) · restored d35fe27ce284
+  ✓ F20 · the bet confirm's ✕ 24px in again → FAIL 8.5 (failed: 8.5) · restored 5e6efb2854f3
+  ✓ F20 · the filter sheet's ✕ back at -mt-1 → FAIL 8.6 (failed: 8.6) · restored 8bc8e528711c
+  ✓ F20+ · the bet confirm's hand-drawn ✕ back ("Ghairi", straight to onCancel) → FAIL 8.10 (failed: 8.5, 8.5‴, 8.5⁗, 8.10, 8.10′) · restored 5e6efb2854f3
+  ✓ F20+ · a ✕ drawn by hand in the share dialog → FAIL 8.10 (failed: 8.10, 8.10′) · restored c185874a53eb
+  ✓ F20+ · the filter sheet's ✕ back at the screen's edge (-mr-3) → FAIL 8.6″ (failed: 8.6″) · restored 8bc8e528711c
+  ✓ F20+ · CloseX withheld still drawn → FAIL 8.12 (failed: 8.12) · restored af97116a1fb7
+  ✓ F20+ · the sell confirm's ✕ drawn but dead while selling → FAIL 8.13 (failed: 8.4, 8.13, 8.13″) · restored d35fe27ce284
+  ✓ F20+ · ConfirmModal's ✕ taken out of its row while loading → FAIL 8.13 (failed: 8.3, 8.13, 8.13′, 8.13″) · restored af97116a1fb7
+  ✓ F20+ · the objection dialog's corner ✕ drawn while filing → FAIL 8.13 (failed: 8.13, 8.13″) · restored f6d833a74588
+  ✓ F20+ · the hold dialog's corner ✕ drawn while holding (admin) → FAIL 8.13 (failed: 8.13) · restored 5dd334b3dba3
+  ✓ F20+ · the arm confirm open across its request without `loading` (admin) → FAIL 8.13 (failed: 8.13, 8.13″) · restored 82a498a3d760
+  ✓ F20 · the channels title centred on the box → FAIL 8.7 (failed: 8.7) · restored 8f26af6ad041
+  ✓ F20 · the install card's ✕ on the row's top → FAIL 8.8 (failed: 8.8) · restored 8e566ea31daf
+  ✓ F20 · the reality check's row at the padding → FAIL 8.9 (failed: 8.9) · restored 4d973daaf8ca
+  ✓ F20 · the toast's ✕ 8px down again → FAIL 8.11 (failed: 8.11) · restored 3214b0b6e5d2
+  ✓ F5 · a shot without the park → FAIL 9.1 (failed: 9.1, 9.2) · restored 4fc0dea6b6bf
+  ✓ §A5 · /results' bar over an empty archive → FAIL 10.1 (failed: 10.1) · restored fab504e95ace
+  ✓ CHECK · /markets' wrapper gives nothing back → FAIL 11.1 (failed: 11.1) · restored 66eb1e45091f
+  ✓ CHECK · Matokeo under the circled check again → FAIL 11.2 (failed: 11.2) · restored 19e58484ae90
+  ✓ CHECK · the chart's deadline never cleared → FAIL 11.3 (failed: 11.3) · restored 03bd83820d2a
+  ✓ CHECK · the grid card's pool word dropped → FAIL 11.4 (failed: 11.4) · restored 104a2bb9504b
+
+41/41 plants caught on their named check, every file restored byte-identical; final run exit 0
+R5A=0
+=== R5G 00:03:47
+P1 CAUGHT on 1.1, 1.2 · restored byte-identical · the journey's deposit eyebrow back to "WEKA PESA" (repeats the h1 in Swahili)
+P2 CAUGHT on 1.1 · restored byte-identical · the journey's withdraw heading back to "Toa fedha"
+P3 CAUGHT on 1.3′, 2.1 · restored byte-identical · the deposit page's tab back to "Amana" for everybody
+P4 CAUGHT on 1.3 · restored byte-identical · the deposit page's h1 back to `common.deposit`
+P5 CAUGHT on 1.5 · restored byte-identical · the deposit commit back to "Amana" for everybody
+P6 CAUGHT on 1.4′ · restored byte-identical · the deposit loading file without the journey answer
+P7 CAUGHT on 1.4′ · restored byte-identical · the root ghost drawing the classic deposit head
+P8 CAUGHT on 1.6′ · restored byte-identical · the withdraw page's tab back to "Toa" for everybody
+P9 CAUGHT on 1.6″ · restored byte-identical · the withdraw ghost's eyebrow back to "TOA"
+P10 CAUGHT on 1.7 · restored byte-identical · the provider's return's eyebrow back to "AMANA" for everybody
+P11 CAUGHT on 1.8 · restored byte-identical · the capture harness expecting "Amana" again
+P12 CAUGHT on 3.1 · restored byte-identical · /updown/history's tab back to "Juu na Chini zako" for a journey reader
+P13 CAUGHT on 3.2 · restored byte-identical · the Up & Down board's history pill back to "Juu na Chini zako" in the journey
+P14 CAUGHT on 3.3, 2.4 · restored byte-identical · /profile's help row back to "Help & support"
+P15 CAUGHT on 3.4 · restored byte-identical · the agent's top-up back to "Ongeza fedha kwenye pochi yangu" in the journey
+P16 CAUGHT on 3.5 · restored byte-identical · an agent's invite tab back to "Alika na upate zawadi"
+P17 CAUGHT on 2.4 · restored byte-identical · the hub's withdraw row back to "Toa" (a door drifting from its page)
+P18 CAUGHT on 2.7 · restored byte-identical · a new door to the deposit screen, its words unruled (on the receipt page)
+P19 CAUGHT on 4.4 · restored byte-identical · the opt-out footer's licence line without `flex-1` (a size container would collapse)
+P20 CAUGHT on 4.4 · restored byte-identical · the opt-out footer's licence sentence printed plain
+P21 CAUGHT on 4.8 · restored byte-identical · the offline document's Swahili threshold under the name (240px)
+P22 CAUGHT on 4.7 · restored byte-identical · the offline document's licence sentence without the name span
+P23 CAUGHT on 4.8 · restored byte-identical · the offline document's licence line not a size container
+P24 CAUGHT on 4.10 · restored byte-identical · global-error's licence line printed plain
+P25 CAUGHT on 4.3 · restored byte-identical · global-error's copy of the pattern drifted (the zh break hint no longer allowed)
+P26 CAUGHT on 4.4 · restored byte-identical · `keepRegulator` keeping nothing
+P27 CAUGHT on 4.1 · restored byte-identical · the pattern losing the Swahili name
+P28 CAUGHT on 4.12 · restored byte-identical · a new line printing the regulator's name, unclassified (on the agent page)
+P29 CAUGHT on 4.14 · restored byte-identical · legal prose wrapped (a keep span in the terms page)
+P30 CAUGHT on 2.2 · restored byte-identical · the avatar menu's journey leaderboard row back to its classic words
+
+MUTATION PROOF r5g — 30/30 caught on their named check, 0 missed, 0 not applied; 30/30 files restored byte-identical (sha-256)
+(node:19472) [DEP0190] DeprecationWarning: Passing args to a child process with shell option true can lead to security vulnerabilities, as the arguments are not escaped, only concatenated.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+R5G=0

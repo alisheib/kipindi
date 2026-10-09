@@ -1,0 +1,6 @@
+docs(vodacom): IN FLIGHT ~23:55 EAT - every round of the S6 visual pass merged on origin/vodacom-visual (422832b1): R5-J, R5-L, R6-A, R6-B, R6-C and the state titles; the R6 combined check running; main to be merged in (one conflict, email.ts)
+
+The handover (S6-VISUAL-PASS-STATE.md) says what is merged, how each merge was proved, what was still running on
+OMEGA-COMPILE01, and how it goes live. Docs only.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>

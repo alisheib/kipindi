@@ -1,0 +1,18 @@
+Visual pass (after round 6): a loading drawing never states a reader's state it cannot know — /profile/kyc's and /profile/invite's titles set and not shown
+
+Found merging R6-C (C1, C13) onto R5-L. R5-L's generic loaders open on their page's own header with its words, drawing
+the most common reader's case; two of those headers state the reader's state:
+- /profile/kyc's h1 is the reader's verification ("Verify your identity", "Your identity is verified", "We couldn't verify
+  you"): a verified player read "Verify your identity" until the page arrived — the defect C13 removed from the doors.
+- /profile/invite's title is the reader's programme (`invite-name.ts`, R6-C's C1: an agent's dashboard, "Invite & Earn"
+  while invites pay, otherwise "Invite friends"): an agent read "Invite friends" over their dashboard's load.
+Both titles are set and not shown now (`GhostText`, R5-K's rule for what a drawing cannot know): each keeps the case
+drawn's width, so nothing moves when the page lands; the KYC eyebrow (the page's name in every state) stays shown. The
+other fourteen generic loaders' headers are fixed words (census by each page's PageHeader).
+
+Guards: test:visual-pass-r5l 1.4 (rendered in sw, en and zh, each title inside a word bar; the pages' state arms still
+there) and 1.4′ (plant); the old drawing of each, planted by hand, fails 1.4. R5-L's 1.1 case for the KYC title re-pinned.
+
+Classic viewers: the same (shared drawings).
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>

@@ -1,0 +1,32 @@
+Round 6 (R6-A, responsible gambling): during a break no bet panel is offered and no empty state invites a first bet; the bell's permanent exclusion names no date; the break emails' end in EAT (the email part is on main as 2cd2239e)
+
+From the round-6 independent review (reviewer A, A1–A3, all HIGH; pre-existing code, live before this). No RG
+sentence, notice, helpline or limit control reworded or removed — every change adds a gate or corrects a date's
+formatting, with the dictionary's own words.
+- A2: during a break the market page still offered the full bet panel (`bettingOpen` had no break term; the SidePicker
+  rendered under `bettingOpen && session`) and Up & Down its one-tap stakes and round stake card — the server refused only
+  at confirm. Now, when the page's lockout read says a break or exclusion is active (a failed read stays fail-open, as
+  before), the bet column shows the break's notice (src/components/rg/bet-break-notice.tsx: the kit Callout, neutral,
+  lock glyph, role=status, breakSentence's own words kept whole) instead of the picker — the column heading and the
+  one-sided note kept — and the same in the Up & Down card and the round panel (whose section#stake keeps its label and
+  focus target, so the home band's #stake landing still works). A census of every place a stake can be started fails on
+  a new one; the doors that lead into these pages are gated by the page they open.
+- A3: Tiketi zangu's Juu/Chini tab and /positions/performance said "place your first…" with a primary bet button
+  during a break; now the break sentence and no bet button (R4-I's TicketsView rule). The sweep found two more and
+  fixed them: the empty leaderboard ("Place a prediction to get on the board") and /profile/activity. A census of the
+  eight first-bet keys checks each sits behind its gate.
+- A1: the break and self-exclusion emails state the end in EAT with its time and the permanent exclusion no date (the
+  same change shipped to main as 2cd2239e); here also the bell's permanent-exclusion notice drops its "until 2126" clause
+  (permanence read lazily; a failed read keeps the dated sentence, so the notice is never lost).
+Guards: test:visual-pass-r6a (42 checks: the notice rendered in 3 languages × break/exclusion, the market page, the card
+and round panel with controls for no break/locked/guest, the stake census, the empty states, the bell), test:rg-email-end
+(28). Mutation proof: 31 planted, 31 caught on the named check, all restored byte-identical. Re-pin: test:one-sided 8.5
+(the bet column's three mutually exclusive branches).
+
+Owner items: the break sentence twice on a market page with no position; a shorter break inside a longer one's email
+wording; the exclusion email's "until/Unlocks" (an exclusion never reopens by itself); a title for the bet-column notice;
+"Sept" in email rows. S12: "for permanent" in the permanent-exclusion email; the bell's permanent wording.
+
+Classic viewers: the same notice and empty states (shared bodies); classic chrome untouched.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>

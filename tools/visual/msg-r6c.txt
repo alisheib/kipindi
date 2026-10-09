@@ -1,0 +1,55 @@
+Round 6 (R6-C): one name per page for every door, the stake whole in the bet confirm, the Up & Down range never clipped, right-aligned labels on their edge, one pill size on board cards, one 12px gap for a pair of large buttons
+
+From the round-6 independent review (reviewer C, C1–C18; C5 and C15 were fixed by R5-G, C6 is R6-B's) and the
+coordinator's pair-gap item. No dictionary word changed; classic chrome byte-identical.
+- C12 (MEDIUM): the bet confirm's stake split "TZS" / "1,000" over two lines in 28 of 64 phone cases (320–412 × sw/en ×
+  side × stake). The row takes the sell confirm's A8f shape (wrap, `grow text-right`, the stake an `.amount`, `pr-3` on the
+  side word): the stake never splits — when it does not fit beside the side it moves under it, right-aligned.
+- C7 (MEDIUM): Up & Down's invalid-stake line was one nowrap `.amount` (sw ≈348px in a 256px box at 320): only the range is
+  an amount now, in the card and the round panel; the words wrap.
+- C13 (MEDIUM): the journey's avatar menu offered "verify your identity" to verified players. One predicate
+  (`kycDoorOffered`, kyc-refusal.ts) for /profile, the Akaunti hub and the menu; the shell reads it for a journey reader only,
+  inside its existing batch (no extra round trip; a failed read offers no door). Every KYC door says the page's tab and
+  eyebrow, "Uthibitisho wa kitambulisho / Identity verification / 身份验证".
+- C1 (MEDIUM): /profile/invite had three names. One pure module (src/lib/journey/invite-name.ts): an agent's dashboard,
+  "Alika na upate zawadi" while invites pay, otherwise "Alika marafiki" — asked by the hub, the journey menu and footer, the
+  page's <title>, h1 and hero line, and /profile's row (which now reads the switch; a failed read is "not paid").
+- C14 (MEDIUM): a journey reader one tap from Tiketi zangu read "nafasi/positions": the dial's door after a bet, the
+  performance page's back link, eyebrow and empty title, /help's card, the round page's door — the journey's words now
+  (tabTickets, ticketsEmptySettled). The performance loading file is a server file that asks the journey answer and hands
+  it to `performance-ghost.tsx` (R5-H's convention).
+- C8: Up & Down's board and history grids were wider than a 320 phone (`minmax(min(300px, 100%), 1fr)`, 320 for history).
+- C4: the sign-in break notice is neutral, as the same break is everywhere else (tone only; the exclusion panels stay danger).
+- C2: the Needle drawer's and the chat's ✕ are the kit CloseX, centred on their titles' capitals, 16px inside; `.cm-close`
+  removed. C9: the crest-first dialogs (result, win) keep Modal's corner ✕ — the one written exception, ruled in place.
+- C3: the gold census counts the warning family (61 paints in 23 files were uncounted; 4 files registered; no paint changed).
+- C10: the journey bell's title whole (`DotSeq` + `moneyRuns`) and its body through `moneySentence`; classic bell unchanged.
+- C11: ten right-aligned tracked labels take back their trailing tracking (`kp-track-end`; a 0.08em step for /positions/
+  performance's status words): bet and sell confirm, withdraw balance, Wallet history status, Up & Down round labels.
+- C16: board cards' signal pill is the status pill's size (`xs`, `metrics="status"`). C17: the classic position card and
+  the win seal show the whole question (the seal's clip had no tap behind it). C18: the tickets ghost's pills 18px.
+- Back links: the journey's notifications, invite, agent dashboard, KYC and limits pages say "‹ AKAUNTI" → /account.
+- Pair gap: every pair of large buttons stands 12px apart (`gap-2`): the deposit return, the market's YES/NO,
+  reset-password, verify-email (10px on the stock `gap-2.5` before).
+
+Merged onto R5-J, R6-B and R6-A (2026-10-09): performance/page.tsx keeps R6-A's break gate with R6-C's journey words;
+R5-K's rebuilt performance drawing moves into performance-ghost.tsx with the journey eyebrow; the ghosts R5-K rebuilt follow
+these pages — the deposit return's pair on `gap-2`, the withdraw balance label's take-back, /profile's identity row's name;
+R5-K's suite re-pinned (0.5 render of the named export, 3.1, 4.1, 5.5 the invite row's call, 7.1 the section's words).
+spacing-scale CEILING 427 (measured on the merged tree); ui-consistency baseline reductions only (134 → 120).
+Guards: test:visual-pass-r6c (87 checks; renders Chip, TicketsGhost, PerformanceGhost, PublicFooter, CloseX; measures with
+the repo's fonts). Mutation proof: 40 planted, 40 caught on the named check, all restored byte-identical. Re-pins (each with
+its reason): r5a (F17, the ✕ census), r5c (C3), r5g (invite readers, menu doors, /profile rows), r3c 9.4, r5e 2.1,
+popup-fit, simple-journey-flag, journey-shell, journey-account, qa-journey-shell, withdrawn-features anchors, eyebrow-roles,
+glitch-hunter.
+
+Owner items: item 53 ("earn" on every door while invites pay); the frozen classic menu, top bar, More rail and footer still
+name the invite page differently and offer "Verify ID" to verified readers; the back link's "‹ AKAUNTI" or "‹ RUDI"; KYC
+doors in the tab's noun; the crest-first ✕ exception. S12: "Tiketi zako" on the market and round pages; "{n} tickets" on the
+performance bar; zh help's 持仓中 line; the dial's unreachable fallback subtitle.
+
+Classic viewers: the bet confirm's stake, the range lines, the 320 grids, the neutral break notice, the drawer and chat ✕,
+ten labels 1.4px nearer their edge, the signal pills, whole questions, /profile's KYC row name and a paid player's invite
+row, 12px pairs; classic chrome unchanged.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>

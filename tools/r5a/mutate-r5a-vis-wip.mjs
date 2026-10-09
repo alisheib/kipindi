@@ -4,7 +4,7 @@ import { readFileSync, writeFileSync } from "node:fs";
 import { createHash } from "node:crypto";
 import { spawnSync } from "node:child_process";
 
-const ROOT = "F:/kipindi-vis";
+const ROOT = "F:/kipindi-wip";
 process.chdir(ROOT);
 const sha = (b) => createHash("sha256").update(b).digest("hex");
 const TSX = "node_modules/tsx/dist/cli.mjs";

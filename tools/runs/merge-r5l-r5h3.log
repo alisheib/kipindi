@@ -1,0 +1,44 @@
+baseline: exit 0 — visual-pass-r5h: 56 passed, 0 failed
+CAUGHT  1.2 · the results ghost drawn by a server component again (its tree in every refresh) — src/app/results/loading.tsx
+CAUGHT  1.2 · a question's skeleton drawn on the server again (every 15 s) — src/app/markets/[id]/loading.tsx
+CAUGHT  1.2 · the kit's loader a server component again (16 routes) — src/components/ui/page-loader.tsx
+CAUGHT  1.3 · today's /positions picture reading the words on the server — src/app/positions/positions-ghost.tsx
+CAUGHT  1.3 · the history loading file reading the words again — src/app/updown/history/loading.tsx
+CAUGHT  1.3 · a server loading file importing a server component (a tree in the payload) — src/app/updown/loading.tsx
+CAUGHT  1.4 · the bonus answer not asked (a live programme's second card never ghosted) — src/app/wallet/loading.tsx
+CAUGHT  1.4 · the drawing ignoring the bonus answer — src/app/wallet/wallet-ghost.tsx
+CAUGHT  2.1 · a journey reader's /positions pinned to the round history's picture — src/app/positions/loading.tsx
+CAUGHT  2.1 · the classic history drawing handed a prop it does not need — src/app/updown/history/loading.tsx
+CAUGHT  2.2′  the pin ignored (the spinner over /positions/performance) — src/components/journey/route-ghost.tsx
+CAUGHT  2.3 · the history drawing loading the journey's head (its code to every classic reader) — src/app/updown/history/history-ghost.tsx
+CAUGHT  3.2 · the flag raised in a passive effect again — src/components/journey/journey-flag.tsx
+CAUGHT  3.2 · the flag back in a boundary of its own — src/components/layout/app-shell.tsx
+CAUGHT  3.3 · the lowering announced only while the mark is still in — src/lib/journey/journey-on.ts
+CAUGHT  3.2 · the not-found mark's going announced in its layout cleanup (reads the old path) — src/components/ui/not-found-mark.tsx
+CAUGHT  3.4 · the after-commit announcement made at once — src/lib/not-found-mark.ts
+CAUGHT  3.6 · the strip's edges marked after the paint again — src/components/ui/strip-autoscroll.tsx
+CAUGHT  3.5 · a new, unclassified writer of a DOM mark — src/components/ui/toast.tsx
+CAUGHT  4.1 · R5-B's finding back: /wallet's ghost with no bar — src/app/wallet/wallet-ghost.tsx
+CAUGHT  4.1 · the door off the bar's rhythm — src/app/wallet/wallet-ghost.tsx
+CAUGHT  4.1 · the spark and the list two blocks on the 32px rung again — src/app/wallet/wallet-ghost.tsx
+CAUGHT  4.4 · a pill narrower than the kit's — src/components/ui/query-bar-ghost.tsx
+CAUGHT  4.3 · a state word that is not the bar's — src/app/wallet/money-bar-ghost.tsx
+CAUGHT  4.3 · the receipts ghost a lens short — src/app/wallet/receipts/loading.tsx
+CAUGHT  4.7 · the groups drawn without their divider (a different wrap) — src/app/wallet/money-bar-ghost.tsx
+CAUGHT  4.5 · the ghost publishing a result count — src/components/ui/query-bar-ghost.tsx
+CAUGHT  5.1 · the deposit ghost's back link a 20px bar again — src/app/wallet/deposit/deposit-ghost.tsx
+MISSED  5.1 · the invitation's ghost drawing a back link its page does not have — src/app/agent/invite/[token]/loading.tsx (failed instead: 1.6 ·; exit 1)
+CAUGHT  5.1 · the back link's ghost box 20px instead of the link's 44 — src/components/ui/back-link.tsx
+CAUGHT  5.2 · /results' carousel and grid back in a flex column (48px between them) — src/app/results/loading.tsx
+CAUGHT  5.3 · /markets' Filters pill drawn at 1280 again — src/app/markets/loading.tsx
+CAUGHT  5.4 · /live's hero 16px short from 1024 again — src/app/live/loading.tsx
+CAUGHT  5.5 · the receipts row's chip line 22px again — src/app/wallet/receipts/loading.tsx
+CAUGHT  5.6 · /profile's grid on 12px again — src/app/profile/loading.tsx
+CAUGHT  5.7 · /agent's header without the page's subtitle — src/app/agent/loading.tsx
+CAUGHT  5.8 · /updown's phone trigger gone (both pill rows on a phone again) — src/app/updown/updown-ghost.tsx
+CAUGHT  5.9 · the round's two columns from xl again — src/app/updown/[roundId]/loading.tsx
+CAUGHT  5.10 · the question's chips row back to its chips' height — src/app/markets/[id]/loading.tsx
+CAUGHT  5.11 · Tiketi zangu's rail ghost without R5-B's hook — src/components/journey/tickets/tickets-ghost.tsx
+CAUGHT  5.12 · the round history's search band gone — src/app/updown/history/history-ghost.tsx
+
+40/41 caught on the named check · 41/41 restored byte-identical · 31/31 files match their sha-256 from before · the suite after: exit 0

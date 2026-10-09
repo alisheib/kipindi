@@ -1,0 +1,31 @@
+Round 6 (R6-B): the independent review's runtime findings — keyboard focus kept inside a busy dialog, the chart's retry never stuck behind a hung request, linear text helpers, a name's cut decided on the server, free text left as written, the round page titled in the reader's words, the win notice clipped
+
+From the round-6 independent review (reviewer B: B-1..B-4; reviewer A: A5..A7; A4 shipped to main as 731e58f0).
+- B-1 (MEDIUM): while a bet, sale or confirm request was in flight every control in the panel is disabled (R5-A's
+  in-flight rule), the focus trap's list was empty and Tab left the aria-modal dialog for the page behind the scrim
+  (rendered: 0 focusables in flight at the tip, 1 at 118fc75c). modal.tsx: the panel takes tabIndex -1; with nothing to
+  focus, Tab is prevented and the panel takes focus; Tab/Shift+Tab from the panel go to the first/last control; the safe
+  fallback is the panel when the way out is disabled. All 27 Modal dialogs and 4 ConfirmModals share the one trap.
+- B-2: the chart's polls were serial behind a hung request (0, 30, 160, 290 s against a 100 s stall). Each request has its
+  own controller chained to the effect's; the poll never waits — requests every 30 s, never two at once; a late answer
+  still draws, a drawn chart is never replaced, a verified empty answer says "no reads".
+- B-3: three quadratic text helpers made linear (moneySentence's last two words, KeepHyphenated's split, endClause): 0
+  differences against the old patterns over 200,000 random strings.
+- B-4: /profile's name editor re-derived the name's cut in the browser (Unicode tables differ by engine — a hydration
+  mismatch on an older browser): the server decides it (nameEndAt) and the editor draws it (nameWithEnd).
+- A5: readableNotificationBody mended ".." in every body ("range 1..2" → "range 1.2"); only the old template's shape now.
+- A6: /updown/[roundId]'s <title> was the stored English title in every language; now the h1's words ("Bitcoin Juu na
+  Chini · 15 dakika"), and /positions/performance's rows read the same (src/lib/updown-round-name.ts).
+- A7: notifyWin quoted the whole title; clipQuote at its family's lengths.
+- red:labels and red:updown-push re-anchored (R5-B's clipQuote sweep had broken their plants: 12/12, 5/5).
+Guards: test:visual-pass-r6b (56 checks with controls and plants). Mutation proof: 28 planted, 28 caught on the named
+check, all restored byte-identical. Re-pins (each with its reason): enter-where-pressed 5.8 and two plant anchors, r5a
+11.3, r5e 4.4, r4h 2.1/4.6, r5d 1.1, cert-c3 (two notifyWin fixtures passed a bare string), privacy-notice §3b.
+Merged onto R5-J and R5-K: name-editor keeps R5-K's shared face (PROFILE_NAME_FACE) and takes R6-B's server cut.
+
+Owner items: the Swahili selection-closed and cash-out notices name no market; notice clip lengths by family; "Juu au
+Chini" on /live, /results, /fairness and new notices; /live's hyphenated parts from the server.
+
+Classic viewers: the same in every case (shared bodies; no visual change to dialogs; Tab stays in a busy dialog).
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
