@@ -116,8 +116,12 @@ export const CONSENT_BASES: readonly PinnedConsentBasis[] = [
     // ⛔ NOT CONSENT (OD57 · OD58). The person has NOT agreed, and the default says so in those words — the card refuses
     // any save of this basis that does not (`test:marketing-wordings` W5). Recorded per LIST (U33b-L), never on an
     // import run: the import door refuses it.
+    // ⭐ 2026-10-09 (the owner's ruling that a marketing SMS is sent exactly as the officer wrote it): "every message
+    // carries a stop link" was false from that day, so the suggestion says how a stop is honoured instead. The words
+    // approved on 2026-10-07 stay in `docs/marketing-approvals/2026-10-07/approval-G4.json`; these are filed for his
+    // approval in `docs/marketing-approvals/2026-10-09/approval-G4.json` (`test:marketing-owner-save` O19).
     key: "LICENCE_OUTREACH", since: UNSHIPPED, firstParty: false, licence: true, label: "Outreach under our licence",
-    defaultWording: "50pick may send this person offers and news by SMS as outreach under its Gaming Board of Tanzania licence. The person has not agreed to receive them; every message carries a stop link, and a stop is kept for good.",
+    defaultWording: "50pick may send this person offers and news by SMS as outreach under its Gaming Board of Tanzania licence. The person has not agreed to receive them; if they ask us to stop, the stop is kept for good.",
   },
 ];
 

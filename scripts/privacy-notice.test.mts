@@ -889,9 +889,10 @@ console.log(String.fromCharCode(10) + "§4i · U33r · §9's promise to referees
  * And the record they state is held to the code: erasure's ONE write to a recipient row clears the account link
  * (U16a's `unlinkUser`, through `erase.ts`), no code deletes a recipient row, and DATA-RETENTION keeps the campaign and
  * opt-out-link rows at 7 years. ⛔ BLOCK-SCOPED: nothing here is a module-level name another section could collide with.
- * ⚠️ §9's second paragraph ends with the stop sentence, which is true only while every offer carries its stop link: when
- * U43b makes the link ONE setting and the link goes (management's item 7), the sentence goes with it, these three §9
- * pins move with the words, and §4k's tie is re-tied to that setting.
+ * ⭐ v2026-10-09 (the owner's ruling that a marketing SMS is sent exactly as the officer wrote it): no offer carries a stop
+ * link, so §9's stop sentence went (§4k's tie keeps it gone) and §5's record bullet no longer names "the stop link it
+ * carried" — those pins moved with the page — and the note under "Erase my data" (en/sw/zh) and the data-rights erasure
+ * sentence no longer name it either: "(the number, the message and what happened to it)"; those four pins moved too.
  * ══════════════════════════════════════════════════════════════════════════ */
 console.log("\n§4j · what erasure keeps: §5, §6, §9, the erasure note and the data-rights file, pinned whole, and the record held to the code");
 {
@@ -949,8 +950,8 @@ console.log("\n§4j · what erasure keeps: §5, §6, §9, the erasure note and t
     "en §6 Erasure": "d92355281cf7", "sw §6 Erasure": "89c0ca55cb2b", "zh §6 Erasure": "ef70992f350e",
     "en §9 first paragraph": "85aa1bcc73a0", "sw §9 first paragraph": "3ec321fcfaf5", "zh §9 first paragraph": "877ece96400b",
     "en §9 second paragraph": "130847f5f7ea", "sw §9 second paragraph": "1c44564e0b3a", "zh §9 second paragraph": "0ec28565a93c",
-    'en the note under "Erase my data"': "4c0b74e089f4", 'sw the note under "Erase my data"': "88d387d24b5b", 'zh the note under "Erase my data"': "d5d322ec1b8b",
-    "en the data-rights erasure sentence": "63c74d586aa8",
+    'en the note under "Erase my data"': "9ceccaaa37ba", 'sw the note under "Erase my data"': "0d3679b468dc", 'zh the note under "Erase my data"': "100e9ed7190a",
+    "en the data-rights erasure sentence": "b4408276a7a8",
   };
   /** What the data-rights file (English only) must say, and must no longer say — read in words, beside its pin. */
   const DSAR_RECORD = [
@@ -989,8 +990,17 @@ console.log("\n§4j · what erasure keeps: §5, §6, §9, the erasure note and t
   const plantDsarOnly = dsarSentence.replace("We also keep your phone number in our record", "We keep your phone number only in our record");
   const plantEraseDelete = eraseSrc.replace("db.smsCampaignRecipient.unlinkUser(", "db.smsCampaignRecipient.deleteForUser(");
   const plantDeleter = { path: join(ROOT, "src/lib/server/marketing/planted.ts"), src: "export const p = (db: any, id: string) => db.smsCampaignRecipient.deleteMany({ where: { userId: id } });\n" };
+  // 2026-10-09 · the record as said since the owner's ruling, and the stop link it no longer names — put back.
+  const RECORD_NOW = "(the number, the message and what happened to it)";
+  const plantNoteLinkEn = { ...erasureNotes, en: erasureNotes.en.replace(RECORD_NOW, "(the number, the message, what happened to it and its stop link)") };
+  const plantDsarLink = dsarSentence.replace(RECORD_NOW, "(the number, the message, what happened to it and the stop link it carried)");
   ok("§4j control · planted copies found their targets",
-    [plantP2Sw !== pageSrc, plantNoteZh.zh !== erasureNotes.zh, plantS6Sw !== pageSrc, plantRefereesZh !== pageSrc, plantDsarOnly !== dsarSentence, plantEraseDelete !== eraseSrc].every(Boolean));
+    [plantP2Sw !== pageSrc, plantNoteZh.zh !== erasureNotes.zh, plantS6Sw !== pageSrc, plantRefereesZh !== pageSrc, plantDsarOnly !== dsarSentence, plantEraseDelete !== eraseSrc,
+      plantNoteLinkEn.en !== erasureNotes.en, plantDsarLink !== dsarSentence].every(Boolean));
+  ok("§4j control · the stop link put back into the English note under \"Erase my data\" (no message carries one since 2026-10-09) is reported by its pin",
+    campaignRecordDefects(pageSrc, eraseSrc, dsarSentence, plantNoteLinkEn, retentionDoc, srcFiles).some((x) => x.startsWith('en the note under "Erase my data" reads')));
+  ok("§4j control · the stop link put back into the data-rights erasure sentence is reported by its pin",
+    campaignRecordDefects(pageSrc, eraseSrc, plantDsarLink, erasureNotes, retentionDoc, srcFiles).some((x) => x.startsWith("en the data-rights erasure sentence reads")));
   ok("§4j control · ONE word changed in the Swahili §9 second paragraph is reported by its pin",
     campaignRecordDefects(plantP2Sw, eraseSrc, dsarSentence, erasureNotes, retentionDoc, srcFiles).some((x) => x.startsWith("sw §9 second paragraph reads")));
   ok("§4j control · the Chinese erasure note telling the old story (erased when the period ends) is reported by its pin",

@@ -35,8 +35,9 @@
  * the officer's live counter and every recipient's message. 🔴 `{jina}` is 8 septets as typed (two extension braces),
  * so a counter that sized the template as typed under-reserved every name over 8 letters and made an at-budget message
  * TWO segments for exactly those recipients; §15 sizes the worst-case name instead and proves the bound over a corpus
- * of real and hostile names, prices the source phrase (DECISIONS M5 — reserving the longest one while it is blank),
- * refuses a number that is not the person's own while the campaign has no source line, re-runs the stored template's
+ * of real and hostile names, holds that the source phrase is neither printed, priced nor required since the owner's
+ * ruling of 2026-10-09 (until then DECISIONS M5 priced it — reserving the longest one while it was blank — and a number
+ * that was not the person's own was refused while the campaign had none), re-runs the stored template's
  * WHOLE verdict for every recipient — one campaign, one verdict (§15.13) — and holds the name rules (folded, never cut,
  * a book contact never greeted by a stored name). §16 holds that nothing else in `src/` calls `composeMarketing`.
  *
@@ -373,17 +374,17 @@ function checkEnvelope(compose: Composer, log: (l: string) => void): string[] {
       compose(over, TOKEN).problems.some((p) => p.includes(String(operatorBudget("SW")))), compose(over, TOKEN).problems.join(" | "));
   }
 
-  /* ── §12 · ONE helpline — OQ4 answered ─────────────────────────────────── */
-  // ⭐ Until 2026-09-26 this section asserted the footer DIFFERED from the published helpline, because
-  // OQ4 (ours, or the Gaming Board Code's 0800110051?) was Ali's to answer. He answered: "the right
-  // helpline is ours." — read as: the number 50pick already publishes (labelled on the site as the
-  // national helpline), not a line 50pick runs. The section now pins the answer the other way round.
-  log("\n§12 · ONE HELPLINE — the footer carries the number support-config publishes (OQ4, answered 2026-09-26)");
+  /* ── §12 · NO HELPLINE IN A MESSAGE — the owner's ruling of 2026-10-09 ──────────── */
+  // ⭐ Until 2026-09-26 this section asserted the footer DIFFERED from the published helpline, because OQ4 (ours, or the
+  // Gaming Board Code's 0800110051?) was Ali's to answer; from his answer that day ("the right helpline is ours") until
+  // 2026-10-09 it pinned the footer to the number support-config publishes. Since the owner's ruling of 2026-10-09 nothing
+  // is appended to a marketing SMS, so it pins that NEITHER number reaches a message — the published one or the Board's.
+  log("\n§12 · NO HELPLINE IN A MESSAGE — neither the number support-config publishes nor the Gaming Board Code's (2026-10-09)");
   {
     const support = readFileSync(new URL("../src/lib/support-config.ts", import.meta.url), "utf8");
     const published = (support.match(/nationalHelpline:\s*"([^"]+)"/) || [])[1] ?? "";
     ok("§12 control · support-config's published helpline was actually read", published.length > 5, `read "${published}"`);
-    checkHelpline(published, statutorySmsHelpline(), marketingFooter, ok);
+    checkHelpline(published, marketingFooter, (body) => compose(body, TOKEN).text, ok);
   }
 
   /* ── §13 · ONE cap, and the budget in the message's own encoding (2026-09-26) ── */
@@ -411,22 +412,26 @@ function checkEnvelope(compose: Composer, log: (l: string) => void): string[] {
 }
 
 /**
- * §12's two assertions as a function of the VALUES, so `--prove-red` can hand it the Board's number
- * back in the footer (docs-prompt-17, 2026-09-26: §12 had no plant, so "a test fails if the Board's
- * number gets back in" had never been shown able to fail — §5.11).
- * ⚠️ "The published one" is the number 50pick already publishes, which every public surface labels
- * the national helpline — not a line 50pick operates (OQ4 as clarified 2026-09-26).
+ * §12's two assertions as a function of the VALUES, so `--prove-red` can hand it a footer that prints a helpline again
+ * (docs-prompt-17, 2026-09-26: §12 had no plant, so "a test fails if the Board's number gets back in" had never been
+ * shown able to fail — §5.11). ⭐ Since the owner's ruling of 2026-10-09 the claim is the other way round from OQ4's: NO
+ * number is printed — neither the one 50pick publishes (which every public surface once labelled the national helpline)
+ * nor the Gaming Board Code's 0800110051 — in a footer or a composed message, in either language. Spaces are ignored, so
+ * "0800 11 0011" is found however a footer would space it.
  */
 function checkHelpline(
   published: string,
-  helpline: string,
   footer: (token: string, locale: "SW" | "EN") => string,
+  composed: (body: string) => string,
   ok: (label: string, cond: boolean, extra?: string) => void,
 ): void {
-  ok("§12 ⭐ the marketing footer's helpline IS the published one — one number, not a second",
-    published.replace(/\s/g, "") === helpline, `footer "${helpline}" · published "${published}"`);
-  ok("§12 …and the Gaming Board Code's 0800110051 appears nowhere in a composed footer",
-    !footer("a1b2c3d4", "SW").includes("0800110051") && !footer("a1b2c3d4", "EN").includes("0800110051"));
+  const unspaced = (t: string): string => t.split(" ").join("");
+  const texts = [footer("a1b2c3d4", "SW"), footer("a1b2c3d4", "EN"), composed("50pick: soka leo. Weka dau sasa.")];
+  const dial = unspaced(published);
+  ok("§12 ⭐ the published helpline is printed in no footer and no composed message — nothing is appended (2026-10-09)",
+    dial.length > 5 && texts.every((t) => !unspaced(t).includes(dial)), `published "${published}" · ${JSON.stringify(texts)}`);
+  ok("§12 …and the Gaming Board Code's 0800110051 appears nowhere either",
+    texts.every((t) => !unspaced(t).includes("0800110051")), JSON.stringify(texts));
 }
 
 /* ══ §14 — THE FOLD (the Vodacom plan S2, 2026-09-30) ═══════════════════════
@@ -607,7 +612,7 @@ function checkTemplate(impl: TemplateImpl, log: (l: string) => void): string[] {
 
   /* ── §15.1 · {jina} reserves the longest name, not its own 8 septets ── */
   {
-    // The room with no source line yet: the cap less the footer and the longest phrase's room, which the counter keeps (M5, §15.9).
+    // The room whatever the source line: the whole message's — nothing is appended, and no phrase is priced (2026-10-09, §15.9).
     const budget = operatorBudget("SW", RESERVE);
     const atBudget = fillTo(HEAD, budget);
     const c1 = impl.counterFor(atBudget, "SW", FB, "");
@@ -628,8 +633,8 @@ function checkTemplate(impl: TemplateImpl, log: (l: string) => void): string[] {
     const W12 = "W".repeat(JINA_MAX_CHARS);
     const templates: Array<{ label: string; t: CampaignTemplate; origins: RecipientOrigin[]; tight?: true }> = [
       {
-        // ⛔ No source line yet (owner gate G5): only an account recipient can be sent — a book contact is REFUSED (§15.9).
-        label: "no source line yet", origins: ["account"],
+        // ⭐ No source line: a book contact is sent as an account recipient is — none is required since 2026-10-09 (§15.9).
+        label: "no source line", origins: ["account", "book"],
         t: tpl({ bodySw: fillTo(HEAD, operatorBudget("SW", RESERVE)), bodyEn: fillTo(HEAD_EN, operatorBudget("EN", RESERVE)) }),
       },
       {
@@ -675,9 +680,9 @@ function checkTemplate(impl: TemplateImpl, log: (l: string) => void): string[] {
       atCap.length === 0, atCap.join(" | "));
     ok("§15.2 control · …and the bound is REACHED: on the longest phrase and fallback, every book contact's message is its counter, unit for unit",
       reached === NAMES.length * 2, `${reached} of ${NAMES.length * 2}`);
-    // 10 renders a name: 2 languages × 1 origin with no source line yet (a book contact is refused there), × 2 for the two with one.
+    // 12 renders a name: 2 languages × 2 origins × 3 templates — a book contact is sent on every one, with a line or without.
     ok(`§15.2 ⭐ BOUND PROPERTY · over ${cases} renders, every real message is within the counter's units, its encoding (GSM-7) and its segments, and sendable`,
-      violations.length === 0 && cases === NAMES.length * 10, `${violations.length} over: ${violations.slice(0, 3).join(" | ")}`);
+      violations.length === 0 && cases === NAMES.length * 12, `${violations.length} over: ${violations.slice(0, 3).join(" | ")}`);
   }
 
   /* ── §15.3 · the name: folded, first word, letters, never cut ── */
@@ -738,7 +743,7 @@ function checkTemplate(impl: TemplateImpl, log: (l: string) => void): string[] {
 
   /* ── §15.6 · the counter is the WHOLE message ── */
   {
-    // ⭐ A book contact on a 12-letter fallback IS the worst case: the longest name, the phrase, the footer.
+    // ⭐ A book contact on a 12-letter fallback IS the worst case: the longest name — and nothing else, since 2026-10-09.
     const t6 = tpl({ nameFallbackSw: worstCaseJina(), sourcePhrase: PHRASE });
     const c6 = impl.counterFor(t6.bodySw, "SW", t6.nameFallbackSw, t6.sourcePhrase);
     const r6 = impl.renderForRecipient(t6, { variant: "SW", name: null, token: TT, origin: "book" });
@@ -746,7 +751,7 @@ function checkTemplate(impl: TemplateImpl, log: (l: string) => void): string[] {
     const t6a = tpl({ bodyEn: EN_BODY, nameFallbackEn: worstCaseJina(), sourcePhrase: PHRASE });
     const c6a = impl.counterFor(t6a.bodyEn, "EN", t6a.nameFallbackEn, t6a.sourcePhrase);
     const r6a = impl.renderForRecipient(t6a, { variant: "EN", name: null, token: TT, origin: "book" });
-    ok("§15.6 ⭐ THE COUNTER IS THE WHOLE MESSAGE — its units are the rendered worst case's (a book contact on a 12-letter fallback: body, source phrase, footer) in both languages, and an account recipient's is exactly the phrase's room less",
+    ok("§15.6 ⭐ THE COUNTER IS THE WHOLE MESSAGE — its units are the rendered worst case's (a book contact on a 12-letter fallback: the body alone, no phrase and no footer appended since 2026-10-09) in both languages, its parts add up, and an account recipient on a 12-letter name is the same size",
       c6.units === sizeSms(r6.text).units && c6a.units === sizeSms(r6a.text).units
         && c6.units === c6.bodyUnits + c6.sourceUnits + c6.footerUnits && sizeSms(a6.text).units === c6.units - c6.sourceUnits,
       `book ${c6.units} vs ${sizeSms(r6.text).units} · EN book ${c6a.units} vs ${sizeSms(r6a.text).units} · account ${sizeSms(a6.text).units} · parts ${c6.bodyUnits}+${c6.sourceUnits}+${c6.footerUnits}`);
@@ -787,7 +792,7 @@ function checkTemplate(impl: TemplateImpl, log: (l: string) => void): string[] {
     ok("§15.8 ⛔ ZH, SW, null and undefined all get Swahili", others.every((l) => impl.variantFor(withEn, l) === "SW"),
       others.map((l) => impl.variantFor(withEn, l)).join(","));
     const enBlank = impl.renderForRecipient(tpl({ bodyEn: "" }), { variant: "EN", name: null, token: TT, origin: "account" });
-    ok("§15.8 an EN recipient of a campaign with no English body is sent the SWAHILI message, fallback and footer",
+    ok("§15.8 an EN recipient of a campaign with no English body is sent the SWAHILI message and its fallback (nothing appended, 2026-10-09)",
       enBlank.ok && enBlank.text.startsWith(`50pick: Habari ${FB},`) && enBlank.text.endsWith(marketingFooter(TT, "SW")),
       JSON.stringify(enBlank.text));
   }
@@ -1211,11 +1216,32 @@ function checkComposerScreen(src: ScreenSources, log: (l: string) => void): stri
     // the choice is still while a test is in flight
     still: testCard.includes("disabled={!typedView.allowed || c.testing !== null}") && testCard.includes("disabled={t.ownNumberMasked === null || c.testing !== null}"),
     // a refusal that means "this page is out of date" re-reads the page
-    reread: client.includes('const PAGE_STALE_REASONS = ["attestation_stale", "typed_outreach_closed", "typed_no_attestation_wording", "typed_needs_source_line"];')
+    reread: client.includes('const PAGE_STALE_REASONS = ["attestation_stale", "typed_outreach_closed", "typed_no_attestation_wording"];')
       && sendBlock.includes('r.outcome === "refused" && PAGE_STALE_REASONS.includes(r.reason)) router.refresh();'),
   };
-  ok("§16.20 ⭐ U37c-2 · THE CARD SAYS THE TRUE REASON AND KEEPS IN STEP — a typed test refused up front says so before \"updating\"; a disabled \"Another number\" always has its reason (save first, or updating just after a save); the choice is still while a test is in flight; and a refusal that means the page is out of date (the 18+ words, the record, the line) re-reads it",
+  ok("§16.20 ⭐ U37c-2 · THE CARD SAYS THE TRUE REASON AND KEEPS IN STEP — a typed test refused up front says so before \"updating\"; a disabled \"Another number\" always has its reason (save first, or updating just after a save); the choice is still while a test is in flight; and a refusal that means the page is out of date (the 18+ words, the record) re-reads it — no source line is one of them since 2026-10-09",
     Object.values(inStep).every(Boolean), JSON.stringify(inStep));
+
+  /* §16.22 · the owner's ruling of 2026-10-09 — nothing is appended to a test, so the Test card names no stop link. Read on
+     the decommented sources: a comment may say what was removed; a sentence on the card may not. (§16.21 is the typed-test
+     role rule's, 2026-10-09.) */
+  const loader21 = src.files.get(`${SCREEN_DIR}composer-loader.ts`) ?? "";
+  const STOP_WORDS21 = /stop link|xxxxxxxx/i;
+  const naming21 = [...src.files].filter(([, text]) => STOP_WORDS21.test(text)).map(([rel]) => rel.slice(SCREEN_DIR.length));
+  const typedNote21 = /export const COMPOSE_TEST_TYPED_NOTE = `([^`]+)`;/.exec(copy)?.[1] ?? "";
+  const ownToken21 = /export const TEST_TOKEN_UNAVAILABLE = "([^"]+)";/.exec(src.testService)?.[1] ?? "";
+  const typedToken21 = /export const TEST_TYPED_TOKEN_UNAVAILABLE = "([^"]+)";/.exec(src.testService)?.[1] ?? "";
+  const noLink21 = {
+    composer: naming21.length === 0,
+    testSend: !STOP_WORDS21.test(src.testService),
+    noTokenNote: !copy.includes("COMPOSE_TEST_TOKEN_NOTE") && !client.includes("COMPOSE_TEST_TOKEN_NOTE"),
+    noTokenReady: !loader21.includes("tokenReady") && !client.includes("tokenReady"),
+    typedNote: typedNote21 === "The name is your word for ${JINA}, never the person's own.",
+    prepared: ownToken21 === "Your test couldn't be prepared, so nothing was sent — try again."
+      && typedToken21 === "The test for this number couldn't be prepared, so nothing was sent — try again.",
+  };
+  ok("§16.22 ⛔ THE TEST CARD NAMES NO STOP LINK (the owner's ruling of 2026-10-09) — no composer file and no test-send sentence says 'stop link' or shows the xxxxxxxx placeholder; there is no token note and no tokenReady; the typed note is the name's sentence alone; and a token that could not be made says the test couldn't be prepared",
+    Object.values(noLink21).every(Boolean), `${JSON.stringify(noLink21)} · naming [${naming21.join(", ")}]`);
 
   /* §16.5 · OD24 — no money */
   const money = [...src.files].filter(([, text]) => /TZS|formatTzs/.test(text)).map(([rel]) => rel.slice(SCREEN_DIR.length));
@@ -2472,7 +2498,7 @@ async function checkTestSend(impl: ComposeImpl, log: (l: string) => void): Promi
       `${reasonOf(r)} · token ${token.length ? "made" : "none"} · shown is the measurement render ${r.ok && shown !== null && shown.ok ? r.text === shown.text : false}`];
   });
 
-  await claim("§18.22 ⭐ U37c · THE TYPED PREVIEW IS THE SAME FOR EVERY NUMBER — the loader's typed view renders the saved draft as a CONTACT-BOOK recipient with the measurement token, takes no number (draft and facts only), labels the tick with the saved adult.test version, and says why a typed test can't be offered in the test send's own order and words: licence outreach closed, then the 18+ wording unsaved, then no source line on the draft (its preview is shown — the line itself is never printed), and a saved text that cannot render for a book recipient is refused in the render's own words, never offered", async () => {
+  await claim("§18.22 ⭐ U37c · THE TYPED PREVIEW IS THE SAME FOR EVERY NUMBER — the loader's typed view renders the saved draft as a CONTACT-BOOK recipient, takes no number (draft and facts only), labels the tick with the saved adult.test version, and says why a typed test can't be offered in the test send's own order and words: licence outreach closed, then the 18+ wording unsaved; a draft with NO source line is offered with its preview (none is needed since the owner's ruling of 2026-10-09); and a saved text that cannot render for a book recipient is refused in the render's own words, never offered", async () => {
     const id = await phrasedDraft();
     const blankId = await u37bDraft();
     const row = await db.smsCampaign.find(id);
@@ -2506,10 +2532,13 @@ async function checkTestSend(impl: ComposeImpl, log: (l: string) => void): Promi
       }
     }
     const takesNoNumber = paramNames.join(",") === "draft,facts" && LOADER.composeTypedView.length === 2;
+    // ⭐ 2026-10-09 · no source line is needed: the blank draft is offered, previewed as a book recipient gets it.
+    const blankExpected = renderForRecipient(u37bTemplate(blank), { variant: "SW", name: null, token: footerMeasurementToken(), origin: "book" });
+    const lineFree = noLine.allowed && noLine.why === null && blankExpected.ok && noLine.preview?.SW === blankExpected.text;
     return [ready.allowed && ready.why === null && expected.ok && ready.preview?.SW === expected.text && ready.attestation?.version === 3
       && !closed.allowed && closed.why === TEST.TEST_TYPED_OUTREACH_CLOSED && !unsaved.allowed && unsaved.why === TEST.TEST_TYPED_NO_ATTESTATION_WORDING
-      && !noLine.allowed && noLine.why === TEST.TEST_TYPED_NEEDS_SOURCE_LINE && noLine.preview !== null && takesNoNumber && refusedInItsWords,
-      JSON.stringify({ ready: { allowed: ready.allowed, why: ready.why, same: ready.preview?.SW === (expected.ok ? expected.text : null) }, closed: closed.why, unsaved: unsaved.why, noLine: noLine.why, takesNoNumber, unrenderable: unrenderable.why })];
+      && lineFree && takesNoNumber && refusedInItsWords,
+      JSON.stringify({ ready: { allowed: ready.allowed, why: ready.why, same: ready.preview?.SW === (expected.ok ? expected.text : null) }, closed: closed.why, unsaved: unsaved.why, noLine: { allowed: noLine.allowed, why: noLine.why, previewed: noLine.preview !== null }, takesNoNumber, unrenderable: unrenderable.why })];
   });
 
   await claim("§18.23 ⛔ U37c · S24 · THE TYPED BUDGETS — five typed tests to one number from three officers pass and the sixth is refused typed_rate_limited with the recipient's sentence, while another number is still allowed and the bucket key holds no digit run of the number; one officer's eleventh typed test to eleven numbers is refused typed_rate_limited with the officer's sentence while their own-number test still passes; and a refusal before the gate spends neither budget", async () => {
@@ -2548,7 +2577,7 @@ async function checkTestSend(impl: ComposeImpl, log: (l: string) => void): Promi
       `${reasonOf(r)}${r.ok ? ` · ${r.target} · ${JSON.stringify(r.text.slice(0, 24))}` : `: ${r.error}`}`];
   });
 
-  await claim("§18.25 ⛔ U37c · TYPED TESTS ARE REFUSED UP FRONT — the same answer for a player's number and a stranger's, with ZERO gate calls: licence outreach closed (typed_outreach_closed), the 18+ wording unsaved (typed_no_attestation_wording), and a draft with no source line (typed_needs_source_line)", async () => {
+  await claim("§18.25 ⛔ U37c · TYPED TESTS ARE REFUSED UP FRONT — the same answer for a player's number and a stranger's, with ZERO gate calls: licence outreach closed (typed_outreach_closed) and the 18+ wording unsaved (typed_no_attestation_wording); and a draft with NO source line is no refusal since the owner's ruling of 2026-10-09 — a typed test on it reaches the gate and is handed over", async () => {
     const id = await phrasedDraft();
     const blankId = await u37bDraft();
     const player = await officer();
@@ -2558,7 +2587,6 @@ async function checkTestSend(impl: ComposeImpl, log: (l: string) => void): Promi
     const cases: { want: string; campaign: string; over: Partial<TestDeps> }[] = [
       { want: "typed_outreach_closed", campaign: id, over: { gateReads: DB_GATE_READS } },
       { want: "typed_no_attestation_wording", campaign: id, over: { adultTestWording: () => null } },
-      { want: "typed_needs_source_line", campaign: blankId, over: {} },
     ];
     const got: string[] = [];
     let same = true;
@@ -2568,7 +2596,13 @@ async function checkTestSend(impl: ComposeImpl, log: (l: string) => void): Promi
       got.push(`${reasonOf(a)} | ${reasonOf(b)}`);
       if (reasonOf(a) !== c.want || reasonOf(b) !== c.want || a.ok || b.ok || a.error !== b.error) same = false;
     }
-    return [same && gates === 0, `${got.join(" · ")} · gate calls ${gates}`];
+    // ⭐ 2026-10-09 · the line is never printed, so a draft without one is tested like any other: up front it is refused
+    // nothing, and the gate decides it.
+    const upFrontGates = gates;
+    const { send: lineSpy } = u37bSpy();
+    const lineFree = await sendTyped(blankId, `+${u37bKey()}`, o.id, { over: { gate: spyGate, send: lineSpy } });
+    return [same && upFrontGates === 0 && lineFree.ok && gates > upFrontGates,
+      `${got.join(" · ")} · gate calls up front ${upFrontGates} · the draft with no line ${reasonOf(lineFree)}`];
   });
 
   await claim("§18.26 ⛔ U37c · A REFUSED TYPED NUMBER GETS NO TOKEN — the pre-check refuses before a stop link is minted: a withdrawn number has no token row after its refused test", async () => {
@@ -3115,25 +3149,33 @@ if (!PROVE_RED) {
       failures.length === 0 ? "NOTHING failed — the guard cannot see this defect" : `failed instead: ${failures.slice(0, 2).join(" | ")}`);
   }
 
-  /* ── §12's plant: the Gaming Board Code's number back in the footer (OQ4) ── */
-  // ⭐ The real published number and the real footer, with ONLY the helpline swapped — so the two §12
-  // assertions are the ones that must fire, and nothing else about the footer is under test here.
+  /* ── §12's plants: a helpline printed again — the Board's number, or the published one (2026-10-09) ── */
+  // ⭐ The real published number and the real (empty) footer, with ONE line put back on it — so the §12 assertion that
+  // names that number is the one that must fire, and nothing else about the footer is under test here.
   {
     const support = readFileSync(new URL("../src/lib/support-config.ts", import.meta.url), "utf8");
     const published = (support.match(/nationalHelpline:\s*"([^"]+)"/) || [])[1] ?? "";
     const BOARD = "0800110051";
-    const planted = (token: string, locale: "SW" | "EN") => marketingFooter(token, locale).replace(statutorySmsHelpline(), BOARD);
-    ok("PLANT LANDED · the Board's 0800110051 back in the footer in place of the published helpline",
-      planted("a1b2c3d4", "SW").includes(BOARD) && planted("a1b2c3d4", "EN").includes(BOARD) && !planted("a1b2c3d4", "SW").includes(statutorySmsHelpline()),
-      JSON.stringify(planted("a1b2c3d4", "SW")));
-    const failures: string[] = [];
-    checkHelpline(published, BOARD, planted, (label, cond) => { if (!cond) failures.push(label); });
-    for (const expect of [/^§12 ⭐ the marketing footer's helpline IS the published one/, /^§12 …and the Gaming Board Code's 0800110051 appears nowhere/]) {
-      ok(`  └─ fires: ${expect.source.slice(0, 56)}`, failures.some((f) => expect.test(f)),
+    const composed12 = (body: string) => composeMarketing(body, "a1b2c3d4").text;
+    /** A footer with the old envelope's line back on it, carrying `number` — what a revert of the ruling would print. */
+    const footerWith = (number: string) => (token: string, locale: "SW" | "EN") => `${marketingFooter(token, locale)}${NL15}50pick 18+ ${number}`;
+    const cases12 = [
+      { name: "the Board's 0800110051 back in the footer (the number OQ4 ruled out, on a message the owner ruled bare)", number: BOARD,
+        expect: /^§12 …and the Gaming Board Code's 0800110051 appears nowhere/ },
+      { name: "the published helpline back in the footer (the statutory envelope as it stood until 2026-10-09)", number: statutorySmsHelpline(),
+        expect: /^§12 ⭐ the published helpline is printed in no footer/ },
+    ];
+    for (const c of cases12) {
+      const planted = footerWith(c.number);
+      ok(`PLANT LANDED · ${c.name}`, planted("a1b2c3d4", "SW").includes(c.number) && planted("a1b2c3d4", "EN").includes(c.number),
+        JSON.stringify(planted("a1b2c3d4", "SW")));
+      const failures: string[] = [];
+      checkHelpline(published, planted, composed12, (label, cond) => { if (!cond) failures.push(label); });
+      ok(`  └─ fires: ${c.expect.source.slice(0, 56)}`, failures.some((f) => c.expect.test(f)),
         failures.length === 0 ? "NOTHING failed — the guard cannot see this defect" : `failed instead: ${failures.join(" | ")}`);
     }
     const control: string[] = [];
-    checkHelpline(published, statutorySmsHelpline(), marketingFooter, (label, cond) => { if (!cond) control.push(label); });
+    checkHelpline(published, marketingFooter, composed12, (label, cond) => { if (!cond) control.push(label); });
     ok("  └─ control: the same two assertions pass on the shipped footer", control.length === 0, control.join(" | "));
   }
 
@@ -3208,10 +3250,12 @@ if (!PROVE_RED) {
     const book = (name: string | null = null) => ({ variant: "SW" as CampaignVariant, name, token: TT, origin: "book" as RecipientOrigin });
     const acct = (name: string | null) => ({ variant: "SW" as CampaignVariant, name, token: TT, origin: "account" as RecipientOrigin });
 
-    /** P1 · the body sized BEFORE the footer and the phrase are appended (the U4 defect, one layer up). */
-    const bodyFirst: typeof counterFor = (body, variant, fallback, phrase) => {
-      const s = sizeSms(renderBody(body, worstCaseJina()).trim());
-      return { ...counterFor(body, variant, fallback, phrase), units: s.units, segments: s.segments };
+    /** P1 · the counter sizing something other than the message sent — the old 49-septet footer still priced on top of a
+     *  message that carries none since the owner's ruling of 2026-10-09. (Until then P1 was the U4 defect one layer up — the
+     *  body sized BEFORE the footer was appended — which cannot exist now: the body IS the message.) */
+    const footerStillPriced: typeof counterFor = (body, variant, fallback, phrase) => {
+      const real = counterFor(body, variant, fallback, phrase);
+      return { ...real, units: real.units + 49 };
     };
     /** P2 · the template sized AS TYPED — `{jina}` counted as its own 8 septets (the phrase, or its reserve, still priced). */
     const asTyped: typeof counterFor = (body, variant, fallback, phrase) => {
@@ -3252,25 +3296,23 @@ if (!PROVE_RED) {
     const enFromBlank: typeof renderForRecipient = (t, r) => (r.variant === "EN"
       ? composeMarketing(renderBody(t.bodyEn, jinaFor(r.name, t.nameFallbackEn)), r.token, "EN", r.origin === "account" ? "" : t.sourcePhrase)
       : renderForRecipient(t, r));
-    /** M5 · the counter prices NO source phrase — neither the stored one nor, while it is blank, the reserve. */
-    const counterNoPhrase: typeof counterFor = (body, variant, fallback, phrase) => {
+    /** M5 undone · the counter prices the stored source phrase again — the room less the phrase and its space, for a line
+     *  no message prints since the owner's ruling of 2026-10-09. (Until then the plant was the opposite defect, a counter
+     *  that priced no phrase; the real counter now prices none, so that one could no longer be told apart.) */
+    const phrasePriced: typeof counterFor = (body, variant, fallback, phrase) => {
       const real = counterFor(body, variant, fallback, phrase);
-      const c = composeMarketing(renderBody(body, worstCaseJina()), footerMeasurementToken(), variant, "");
-      return {
-        ...real, units: c.size.units, segments: c.size.segments, budget: c.budget, left: c.budget - real.bodyUnits, sourceUnits: 0,
-        problems: c.problems, ok: c.ok && real.fallbackProblems.length === 0,
-      };
+      const p = (phrase ?? "").trim();
+      if (p === "") return real;
+      const cost = unitsIn(`${p} `, real.encoding);
+      return { ...real, units: real.units + cost, budget: real.budget - cost, left: real.left - cost, sourceUnits: cost, ok: real.ok && real.left - cost >= 0 };
     };
-    /** M5 · the stored phrase priced, but NOTHING reserved while it is blank — the draft that breaks when G5 lands. */
-    const counterNoReserve: typeof counterFor = (body, variant, fallback, phrase) =>
-      ((phrase ?? "").trim() ? counterFor(body, variant, fallback, phrase) : counterNoPhrase(body, variant, fallback, phrase));
-    /** M5 · the renderer drops the stored phrase from a book contact's message — and still calls it sendable. */
-    const renderNoPhrase: typeof renderForRecipient = (t, r) => {
-      const real = renderForRecipient(t, r);
-      const phrase = t.sourcePhrase.trim();
-      const text = phrase ? real.text.replace(`${NL15}${phrase} `, NL15) : real.text;
-      return { ...real, text, size: sizeSms(text) };
-    };
+    /** M5 undone · the longest phrase reserved again while the line is blank — the room cut for a line nobody prints. (Until
+     *  2026-10-09 the plant was the opposite: nothing reserved while the phrase was blank.) */
+    const reserveBack: typeof counterFor = (body, variant, fallback, phrase) =>
+      ((phrase ?? "").trim() ? counterFor(body, variant, fallback, phrase) : phrasePriced(body, variant, fallback, RESERVE));
+    /* (M5's "the renderer drops the stored phrase from a book contact's message" plant is GONE: no message prints the
+       phrase since the owner's ruling of 2026-10-09, so there is nothing to drop — printing it again is planted below, in
+       front of the body (§15.9) and on its own line (§15.13).) */
     /** M5 · the phrase put FIRST — `composeMarketing`'s placement before U37a — so the message no longer begins with 50pick. */
     const phraseFirst: typeof renderForRecipient = (t, r) => {
       const real = renderForRecipient(t, r);
@@ -3280,19 +3322,17 @@ if (!PROVE_RED) {
       const problems = text.startsWith(SENDER_IDENTITY) ? real.problems : [...real.problems, "The message must begin with 50pick."];
       return { ...real, text, size: sizeSms(text), problems, ok: problems.length === 0 };
     };
-    /** OQ3 · the phrase at the END of the officer's line, before the footer's newline (U37a's first placement) — same size, not in the footer. */
-    const phraseOnBodyLine: typeof renderForRecipient = (t, r) => {
+    /* (OQ3's "the phrase at the END of the officer's line, before the footer's newline" plant is GONE: since the owner's
+       ruling of 2026-10-09 there is no footer line and no phrase to place on either line.) */
+    /** M5 undone · the blank-phrase refusal BACK — a book contact (or any origin but an account) refused while the campaign
+     *  has no source line, in the renderer's old words. (Until 2026-10-09 the plant was that refusal removed.) */
+    const NO_SOURCE_LINE_WAS = "This number did not come from the person's own account, so the law requires the message to say where it came "
+      + "from — and this campaign has no source line yet (OQ3, owner gate G5), so it cannot be sent.";
+    const blankRefusalBack: typeof renderForRecipient = (t, r) => {
       const real = renderForRecipient(t, r);
-      const phrase = r.origin === "account" ? "" : t.sourcePhrase.trim();
-      if (!phrase) return real;
-      const text = real.text.replace(`${NL15}${phrase} `, ` ${phrase}${NL15}`);
-      return { ...real, text, size: sizeSms(text) };
-    };
-    /** M5 · the blank-phrase refusal removed — a book contact is sent no source line while G5 is open. */
-    const noSourceRefusal: typeof renderForRecipient = (t, r) => {
-      const real = renderForRecipient(t, r);
-      const problems = real.problems.filter((p) => !p.includes("no source line"));
-      return { ...real, problems, ok: problems.length === 0 };
+      if (r?.origin === "account" || (t.sourcePhrase ?? "").trim() !== "") return real;
+      const problems = [...real.problems, NO_SOURCE_LINE_WAS];
+      return { ...real, problems, ok: false };
     };
     /** The recycled number · a book contact greeted by the name a caller handed in. */
     const bookName: typeof renderForRecipient = (t, r) => renderForRecipient(t, { ...r, origin: "account" });
@@ -3423,11 +3463,11 @@ if (!PROVE_RED) {
     type TemplatePlant = { name: string; expect: RegExp[]; impl: TemplateImpl; landed: () => boolean; landedAs: string };
     const templatePlants: TemplatePlant[] = [
       {
-        name: "P1 · the counter sizes the body BEFORE the footer is appended",
-        expect: [/^§15\.6 ⭐/],
-        impl: { ...R, counterFor: bodyFirst },
-        landed: () => counterFor(atP, "SW", FB, PHRASE).units - bodyFirst(atP, "SW", FB, PHRASE).units === 49 + unitsIn(`${PHRASE} `, "GSM7"),
-        landedAs: "the at-budget body alone is short of the message as sent by the footer's 49 septets and the phrase's",
+        name: "P1 · the counter sizes something other than the message sent — the old 49-septet footer still priced on top",
+        expect: [/^§15[.]6 ⭐/],
+        impl: { ...R, counterFor: footerStillPriced },
+        landed: () => footerStillPriced(atP, "SW", FB, PHRASE).units - counterFor(atP, "SW", FB, PHRASE).units === 49 && marketingFooter(TT, "SW") === "",
+        landedAs: "the counter quotes 49 septets more than the message, which carries nothing on top",
       },
       {
         name: "P2 · the counter sizes {jina} as typed (8 septets), not the longest name (12)",
@@ -3486,28 +3526,18 @@ if (!PROVE_RED) {
         landedAs: "the blank English body composes as an empty, refused message",
       },
       {
-        name: "M5 · the counter prices no source phrase — neither the stored one nor the reserve",
-        expect: [/^§15\.9 ⭐ M5 · the counter PRICES/, /^§15\.9 ⭐ M5 · PRICED IN/],
-        impl: { ...R, counterFor: counterNoPhrase },
-        landed: () => !counterFor(atNone, "SW", FB, PHRASE).ok && counterNoPhrase(atNone, "SW", FB, PHRASE).ok,
-        landedAs: "a body at the no-phrase room is over the cap with the phrase and passes without it",
+        name: "M5 undone · the counter prices the stored source phrase again — a line no message prints",
+        expect: [/^§15[.]9 ⭐ the counter does NOT price/],
+        impl: { ...R, counterFor: phrasePriced },
+        landed: () => counterFor(atNone, "SW", FB, PHRASE).ok && !phrasePriced(atNone, "SW", FB, PHRASE).ok,
+        landedAs: "a body at the whole message's room passes, and is refused once the phrase is priced",
       },
       {
-        name: "M5 · nothing reserved while the phrase is blank — the draft that breaks when G5 supplies the wording",
-        expect: [/^§15\.9 ⭐ M5 · PRICED IN/],
-        impl: { ...R, counterFor: counterNoReserve },
-        landed: () => counterFor(atNone, "SW", FB, "").segments === 2 && counterNoReserve(atNone, "SW", FB, "").ok,
-        landedAs: "a body at the no-phrase room passes on a blank phrase, and is two messages once any wording is priced",
-      },
-      {
-        name: "M5 · the renderer drops the source phrase for a book contact",
-        expect: [/^§15\.9 ⭐ a book/],
-        impl: { ...R, renderForRecipient: renderNoPhrase },
-        landed: () => {
-          const r = renderNoPhrase(tpl({ sourcePhrase: PHRASE }), book());
-          return r.ok && !r.text.includes(PHRASE);
-        },
-        landedAs: "a book contact's message goes out with no source, and is still called sendable",
+        name: "M5 undone · the longest phrase reserved again while the line is blank",
+        expect: [/^§15[.]9 ⭐ the counter does NOT price/],
+        impl: { ...R, counterFor: reserveBack },
+        landed: () => counterFor(atNone, "SW", FB, "").ok && !reserveBack(atNone, "SW", FB, "").ok,
+        landedAs: "a body at the whole message's room passes on a blank line, and is refused once the reserve is kept",
       },
       {
         name: "M5 · the source phrase placed BEFORE the body (composeMarketing before U37a)",
@@ -3517,18 +3547,11 @@ if (!PROVE_RED) {
         landedAs: "the message begins with the phrase, not with 50pick",
       },
       {
-        name: "OQ3 · the source phrase on the officer's line, before the footer's newline (U37a's first placement)",
-        expect: [/^§15\.9 ⭐ a book/],
-        impl: { ...R, renderForRecipient: phraseOnBodyLine },
-        landed: () => phraseOnBodyLine(tpl({ sourcePhrase: PHRASE }), book()).text.includes(` ${PHRASE}${NL15}`),
-        landedAs: "the phrase ends the officer's line instead of beginning the footer's — the same size, not the safe default",
-      },
-      {
-        name: "M5 · the blank-phrase refusal removed — a book contact sent no source line while G5 is open",
-        expect: [/^§15\.9 ⛔ M5 · NO SOURCE LINE/],
-        impl: { ...R, renderForRecipient: noSourceRefusal },
-        landed: () => has(renderForRecipient(tpl(), book()).problems, "no source line") && noSourceRefusal(tpl(), book()).ok,
-        landedAs: "the real renderer refuses a book contact on a blank phrase; the plant sends it",
+        name: "M5 undone · the blank-phrase refusal back — a book contact refused while the campaign has no source line",
+        expect: [/^§15[.]9 ⛔ no source line is required/],
+        impl: { ...R, renderForRecipient: blankRefusalBack },
+        landed: () => renderForRecipient(tpl(), book()).ok && !blankRefusalBack(tpl(), book()).ok,
+        landedAs: "the real renderer sends a book contact with no line; the plant refuses it, in the old words",
       },
       {
         name: "the recycled number · a book contact greeted by a stored name",
@@ -3747,8 +3770,10 @@ if (!PROVE_RED) {
     const STILL = "disabled={!typedView.allowed || c.testing !== null}";
     const restless = swapOnce(CLIENT, STILL, "disabled={!typedView.allowed}");
     /** U37c-2 · a rewording refused, and the page left showing the old words. */
-    const STALE_LIST = '["attestation_stale", "typed_outreach_closed", "typed_no_attestation_wording", "typed_needs_source_line"]';
-    const noReread = swapOnce(CLIENT, STALE_LIST, '["typed_outreach_closed", "typed_no_attestation_wording", "typed_needs_source_line"]');
+    const STALE_LIST = '["attestation_stale", "typed_outreach_closed", "typed_no_attestation_wording"]';
+    const noReread = swapOnce(CLIENT, STALE_LIST, '["typed_outreach_closed", "typed_no_attestation_wording"]');
+    /** 2026-10-09 · the source line put back among the reasons the page is out of date — a reason no door can answer now. */
+    const lineReread = swapOnce(CLIENT, STALE_LIST, '["attestation_stale", "typed_outreach_closed", "typed_no_attestation_wording", "typed_needs_source_line"]');
     /** U37c-2 · Send no longer spends the tick. */
     const SPEND = "    const r = recipient();\n    setTickedFor(null);\n    c.sendTest(v, r);";
     const tickNeverSpent = swapOnce(CLIENT, SPEND, "    const r = recipient();\n    c.sendTest(v, r);");
@@ -3758,6 +3783,17 @@ if (!PROVE_RED) {
     /** U37c-2 · the typed number logged from the provider's send. */
     const SEND_OPEN = "    setTesting(variant);\n    setTest({ kind: \"idle\" });";
     const numberLogged = swapOnce(CLIENT, SEND_OPEN, `${SEND_OPEN}\n    console.info("test to", recipient);`);
+    /** §16.22 · the owner's ruling of 2026-10-09 undone on the card — the token note exported again. */
+    const tokenNoteBack = withFile(COPY, (t) => `${t}${NL15}export const COMPOSE_TEST_TOKEN_NOTE = "Your stop link is made the first time you send a test; until then it shows as xxxxxxxx.";`);
+    /** §16.22 · the typed note promising the person's own stop link again. */
+    const TYPED_NOTE22 = "export const COMPOSE_TEST_TYPED_NOTE = `The name is your word for ${JINA}, never the person's own.`;";
+    const typedNoteLink = swapOnce(COPY, TYPED_NOTE22,
+      "export const COMPOSE_TEST_TYPED_NOTE = `The name is your word for ${JINA}, never the person's own, and their stop link is made for them and isn't shown here.`;");
+    /** §16.22 · the test send's token sentence naming the stop link again. */
+    const OWN_TOKEN22 = `export const TEST_TOKEN_UNAVAILABLE = "Your test couldn't be prepared, so nothing was sent — try again.";`;
+    const tokenSentenceLink: ScreenSources = {
+      ...S, testService: S.testService.replace(OWN_TOKEN22, `export const TEST_TOKEN_UNAVAILABLE = "Your stop link couldn't be made, so nothing was sent — try again.";`),
+    };
     const SAVE_ROLE = `"marketing.campaign.save", COMPOSE_ROLE_REFUSAL);${NL15}  if (!g.ok) return { ok: false, reason: "role", error: g.error };`;
     const NAME_ONCHANGE = 'onChange={(e) => c.setField("name", e.target.value)}';
     const ASK_FIRST = "onClick={() => c.askDiscard(true)}";
@@ -3894,10 +3930,34 @@ if (!PROVE_RED) {
         landedAs: "attestation_stale is no longer a page-stale reason",
       },
       {
+        name: "2026-10-09 · the source line put back among the page-stale reasons (typed_needs_source_line)",
+        expect: /^§16\.20 ⭐/, sources: lineReread,
+        landed: () => once(CLIENT, STALE_LIST) && (lineReread.files.get(CLIENT) ?? "").includes('"typed_needs_source_line"]'),
+        landedAs: "the client re-reads the page on a refusal the test send no longer makes",
+      },
+      {
         name: "U37c-2 · the number's problem said twice — under the field and again beside Send",
         expect: /^§16\.18 ⭐/, sources: saidTwice,
         landed: () => once(CLIENT, BACK_LABEL) && !(saidTwice.files.get(CLIENT) ?? "").includes(BACK_LABEL),
         landedAs: "the button beside Send prints {reason} — the plan's sentence — instead of the way back",
+      },
+      {
+        name: "§16.22 · the token note back on the Test card — 'Your stop link is made the first time you send a test'",
+        expect: /^§16[.]22 ⛔/, sources: tokenNoteBack,
+        landed: () => !(S.files.get(COPY) ?? "").includes("COMPOSE_TEST_TOKEN_NOTE") && (tokenNoteBack.files.get(COPY) ?? "").includes("COMPOSE_TEST_TOKEN_NOTE"),
+        landedAs: "the copy exports the token note again",
+      },
+      {
+        name: "§16.22 · the typed note promising the person's own stop link again",
+        expect: /^§16[.]22 ⛔/, sources: typedNoteLink,
+        landed: () => once(COPY, TYPED_NOTE22) && (typedNoteLink.files.get(COPY) ?? "").includes("their stop link is made for them"),
+        landedAs: "the typed note ends with the stop-link clause",
+      },
+      {
+        name: "§16.22 · the test send's token sentence naming the stop link again",
+        expect: /^§16[.]22 ⛔/, sources: tokenSentenceLink,
+        landed: () => S.testService.includes(OWN_TOKEN22) && tokenSentenceLink.testService.includes("Your stop link couldn't be made"),
+        landedAs: "TEST_TOKEN_UNAVAILABLE says 'Your stop link couldn't be made' again",
       },
       {
         name: "P10′ · the test action takes a bare number — sendCampaignTestAction(campaignId, variant, to: string)",
@@ -4552,7 +4612,8 @@ if (!PROVE_RED) {
         },
       },
     });
-    /** The test rendered as a CONTACT-BOOK recipient — false for the officer's own number, and refused while there is no source line. */
+    /** The test rendered as a CONTACT-BOOK recipient — false for the officer's own number: they are greeted by the `{jina}`
+     *  fallback, never their own first name. (Until 2026-10-09 it was also refused while there was no source line.) */
     const asBook: typeof realTest = (input, officerId, deps = TEST.CAMPAIGN_TEST_DEPS) =>
       realTest(input, officerId, { ...deps, render: (t, r) => renderForRecipient(t, { ...r, origin: "book" }) });
     /** The account name printed RAW on the wire — no fold, no first word, no letters rule — around the one renderer. */
@@ -4604,9 +4665,14 @@ if (!PROVE_RED) {
       const forced = r && r.kind === "typed" ? { ...input, recipient: { ...r, attestedVersion: v } } : input;
       return realTest(forced as TestInput, officerId, deps, options);
     };
-    /** A.4 · a typed number rendered as an ACCOUNT recipient — no source line, and a holder's own name could print. */
-    const typedAsAccount: typeof realTest = (input, officerId, deps = TEST.CAMPAIGN_TEST_DEPS, options) =>
-      realTest(input, officerId, { ...deps, render: (t, r) => renderForRecipient(t, { ...r, origin: "account" }) }, options);
+    /** A.4 · a typed number rendered as an ACCOUNT recipient — the account path's name printed where the `{jina}` fallback
+     *  belongs (here the officer's own first name): a stranger greeted by somebody else's name. (Until 2026-10-09 the plant
+     *  only switched the origin, which also dropped the source line; with nothing appended that alone shows nothing.) */
+    const typedAsAccount: typeof realTest = async (input, officerId, deps = TEST.CAMPAIGN_TEST_DEPS, options) => {
+      const officerRow = await deps.users.findById(officerId);
+      const name = firstNameFor({ userDisplayName: officerRow?.displayName ?? null });
+      return realTest(input, officerId, { ...deps, render: (t, r) => renderForRecipient(t, { ...r, origin: "account", name: r.name ?? name }) }, options);
+    };
     /** A.8 · the confirmation honoured for a player — the gate's player branch skipped on a typed test. */
     const playerSkipped: typeof realTest = (input, officerId, deps = TEST.CAMPAIGN_TEST_DEPS, options) =>
       realTest(input, officerId, { ...deps, gateReads: { ...deps.gateReads, userByPhone: () => null } }, options);
@@ -4615,11 +4681,14 @@ if (!PROVE_RED) {
       realTest(input, officerId, { ...deps, gateReads: { ...deps.gateReads, refereeHeld: () => false } }, options);
     /** A.8 · a typed refusal itemised for a masked viewer. */
     const itemised: typeof realTest = (input, officerId, deps) => realTest(input, officerId, deps, { viewerReads: true });
-    /** A.8 · the real token returned to the screen. */
+    /** A.8 · the real token returned to the screen — the number's own stop-page token printed in the text the officer is
+     *  shown. (Until 2026-10-09 the plant returned the wire's text, whose stop link carried the token; nothing is appended
+     *  since, so the wire carries none and the plant prints the token the render was handed.) */
     const realTokenShown: typeof realTest = async (input, officerId, deps = TEST.CAMPAIGN_TEST_DEPS, options) => {
-      let wire = "";
-      const r = await realTest(input, officerId, { ...deps, dispatch: (rows, d) => { wire = rows[0]?.body ?? ""; return deps.dispatch(rows, d); } }, options);
-      return r.ok && r.target === "typed" && wire !== "" ? { ...r, text: wire } : r;
+      let token = "";
+      const measured = footerMeasurementToken();
+      const r = await realTest(input, officerId, { ...deps, render: (t, rc) => { if (rc.token !== measured) token = rc.token; return deps.render(t, rc); } }, options);
+      return r.ok && r.target === "typed" && token !== "" ? { ...r, text: `${r.text} ${shortDomain()}/s/${token}` } : r;
     };
     /** A.8 · no per-recipient budget. */
     const noRecipientBudget: typeof realTest = (input, officerId, deps = TEST.CAMPAIGN_TEST_DEPS, options) => realTest(input, officerId, { ...deps, rateTo: ALLOW }, options);
@@ -4677,8 +4746,25 @@ if (!PROVE_RED) {
     /** U37c-2 · "allowed" without a preview — a text that cannot render for a book recipient offered anyway. */
     const renderIgnored: typeof LOADER.composeTypedView = (draft, facts) => {
       const v = LOADER.composeTypedView(draft, facts);
-      const upFront: Array<string | null> = [TEST.TEST_TYPED_OUTREACH_CLOSED, TEST.TEST_TYPED_NO_ATTESTATION_WORDING, TEST.TEST_TYPED_NEEDS_SOURCE_LINE];
+      const upFront: Array<string | null> = [TEST.TEST_TYPED_OUTREACH_CLOSED, TEST.TEST_TYPED_NO_ATTESTATION_WORDING];
       return draft !== null && !v.allowed && v.why !== null && !upFront.includes(v.why) ? { ...v, allowed: true, why: null } : v;
+    };
+    /** The refusal the owner's ruling of 2026-10-09 took away, in its old words — what the two plants below put back. */
+    const NEEDS_LINE_WAS = "A test to another number needs the campaign's source line, and this draft has none — it is added when the draft is "
+      + "saved after the owner sets it (gate G5). Send yourself a test for now.";
+    /** 2026-10-09 undone · the typed test's source-line gate back at the door — a draft with no line refused up front. */
+    const lineGateBackTest: typeof realTest = async (input, officerId, deps = TEST.CAMPAIGN_TEST_DEPS, options) => {
+      const rec = recipientOf(input);
+      const c = await deps.campaigns.find(String((input as unknown as { campaignId?: unknown })?.campaignId ?? ""));
+      if (rec !== null && rec.kind === "typed" && c !== null && (c.sourcePhrase ?? "").trim() === "") {
+        return { ok: false, outcome: "refused", reason: "typed_needs_source_line" as never, error: NEEDS_LINE_WAS, target: "typed" };
+      }
+      return realTest(input, officerId, deps, options);
+    };
+    /** 2026-10-09 undone · the loader's typed view refusing a draft with no line again. */
+    const lineGateBackView: typeof LOADER.composeTypedView = (draft, facts) => {
+      const v = LOADER.composeTypedView(draft, facts);
+      return draft !== null && v.allowed && (draft.sourcePhrase ?? "").trim() === "" ? { ...v, allowed: false, why: NEEDS_LINE_WAS } : v;
     };
     /** Review · a 41-character number let through — the cap gone, the extra text trimmed off before the re-typing. */
     const uncappedNumber: typeof realTest = (input, officerId, deps, options) => {
@@ -4984,9 +5070,9 @@ if (!PROVE_RED) {
           const { send } = u37bSpy();
           const real = await realTest({ campaignId: id, variant: "SW" }, o.id, landedDeps({ send }));
           const planted = await asBook({ campaignId: id, variant: "SW" }, o.id, landedDeps({ send }));
-          return real.ok && !planted.ok;
+          return real.ok && planted.ok && real.text.startsWith("50pick: Habari Asha,") && planted.text.startsWith(`50pick: Habari ${FB},`);
         },
-        landedAs: "with no source line, the real test is sent and the book-origin one refused",
+        landedAs: "the real own test greets the officer by their first name; the book-origin one greets them with the fallback",
       },
       /* ── U37c ── */
       {
@@ -5022,9 +5108,9 @@ if (!PROVE_RED) {
           const id = await phrased();
           const real = await realTest(typedInput(id, `+${u37bKey()}`), o.id, typedLanded({ send: u37bSpy().send }));
           const planted = await typedAsAccount(typedInput(id, `+${u37bKey()}`), o.id, typedLanded({ send: u37bSpy().send }));
-          return real.ok && real.text.includes(PHRASE) && planted.ok && !planted.text.includes(PHRASE);
+          return real.ok && real.text.includes(`Habari ${FB},`) && planted.ok && !planted.text.includes(`Habari ${FB},`);
         },
-        landedAs: "the real typed test carries the source line; the plant's carries none",
+        landedAs: "the real typed test greets the stranger with the fallback; the plant's greets them by the officer's own name",
       },
       {
         name: "U37c · the confirmation honoured for a player — the gate's player branch skipped on a typed test",
@@ -5091,6 +5177,28 @@ if (!PROVE_RED) {
           return !LOADER.composeTypedView(broken, facts).allowed && renderIgnored(broken, facts).allowed;
         },
         landedAs: "the real view refuses the unrenderable text; the plant offers it",
+      },
+      {
+        // The plant refuses before anything about the officer is read, so its landing needs no role that may type a number.
+        name: "2026-10-09 undone · the typed test's source-line gate back at the door — a draft with no line refused up front",
+        expect: [/^§18[.]25 ⛔/], impl: { ...R, test: lineGateBackTest },
+        landed: async () => {
+          const id = await u37bDraft();
+          const planted = await lineGateBackTest(typedInput(id, `+${u37bKey()}`), "usr_u37c_plant", typedLanded({ send: u37bSpy().send }));
+          return !planted.ok && planted.outcome === "refused" && planted.reason === "typed_needs_source_line" && planted.error === NEEDS_LINE_WAS;
+        },
+        landedAs: "a typed test on a draft with no line is refused typed_needs_source_line, in the old words",
+      },
+      {
+        name: "2026-10-09 undone · the typed view refusing a draft with no source line again",
+        expect: [/^§18[.]22 ⭐/], impl: { ...R, typedView: lineGateBackView },
+        landed: async () => {
+          const row = await db.smsCampaign.find(await u37bDraft());
+          if (row === null) return false;
+          const facts = { outreachOpen: true, adult: P_ADULT };
+          return LOADER.composeTypedView(row, facts).allowed && !lineGateBackView(row, facts).allowed;
+        },
+        landedAs: "the real view offers the draft with no line; the plant refuses it, in the old words",
       },
       {
         name: "U37c · the typed preview built for a number",

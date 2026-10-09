@@ -14,13 +14,14 @@
  * of birth on their own account, exactly as any recipient does, and the screen names the remedy.
  *
  * ⭐ U37c · A TYPED NUMBER IS A CONTACT-BOOK RECIPIENT, AND THE CONFIRMATION IS NEVER A BYPASS. It renders as a book
- * recipient — the `{jina}` fallback, never the holder's own first name, and the campaign's stored source line — and the
- * gate decides it exactly as it decides a campaign's: a number an account holds is governed by THAT account (its consent
- * or the licence, its stop, its RG standing, its age, its status), and the officer's 18+ confirmation counts only for a
- * number no account holds, only for this one call (`TestAttestation`), only while licence outreach is open (Q11), and
- * never over a stop, a withdrawal or an erased record. Typed tests are refused UP FRONT — before anything that depends on
- * who holds the number — while licence outreach is closed, while `adult.test` is unsaved, or while the campaign has no
- * source line, so the answer is the same for a player's number and a stranger's. The officer's own number typed in
+ * recipient — the `{jina}` fallback, never the holder's own first name (and, since the owner's ruling of 2026-10-09,
+ * nothing appended: no source line) — and the gate decides it exactly as it decides a campaign's: a number an account
+ * holds is governed by THAT account (its consent or the licence, its stop, its RG standing, its age, its status), and the
+ * officer's 18+ confirmation counts only for a number no account holds, only for this one call (`TestAttestation`), only
+ * while licence outreach is open (Q11), and never over a stop, a withdrawal or an erased record. Typed tests are refused
+ * UP FRONT — before anything that depends on who holds the number — while licence outreach is closed or while
+ * `adult.test` is unsaved (a draft with no source line is no refusal since 2026-10-09: no line is printed), so the
+ * answer is the same for a player's number and a stranger's. The officer's own number typed in
  * another spelling IS their own number: the own path, no confirmation.
  *
  * ⛔ 2026-10-09 · A TEST TO A TYPED NUMBER IS FOR ADMIN AND COMPLIANCE ONLY — the owner's ruling (COMPLIANCE-DECISIONS §
@@ -41,8 +42,8 @@
  * gate refusal of a typed number (`typed_refused`); a reader gets the reason, with the protected reasons collapsed
  * (`protected`). The result never carries a basis. Every typed outcome decided at the gate or after it returns no sooner
  * than `TYPED_TEST_MIN_MS` after the request began, so the player branch's longer reads (the identity check, the harm
- * scan) cannot time out as a player signal. The returned text of a typed test carries the measurement token: the stop
- * link made for that number is never shown to the officer.
+ * scan) cannot time out as a player signal. The returned text of a typed test is its dry render: the token made for that
+ * number is never shown to the officer (and since the owner's ruling of 2026-10-09 no message carries one).
  *
  * ⛔ S24 · TWO MORE BUDGETS FOR TYPED TESTS, spent only after the number-independent checks (so a closed record drains
  * neither): per officer (`marketing.testSendTyped`) and per recipient (`marketing.testSendTo`, keyed by a hash of the
@@ -56,8 +57,8 @@
  * one per 10 minutes).
  *
  * THE ORIGIN IS CHOSEN, NOT DEFAULTED (U37a, OD49): the officer's own number renders as an ACCOUNT recipient — their own
- * first name may print and no source line is added — and a typed number as a BOOK recipient, as above. A book origin on
- * the officer's own number would print a source sentence that is false for it.
+ * first name may print — and a typed number as a BOOK recipient, as above: the `{jina}` fallback. (Until the owner's
+ * ruling of 2026-10-09 the origin also decided the source line, which a book recipient's message carried.)
  *
  * WHAT IS WRITTEN: one masked `marketing.campaign_test` audit row for every attempt that passes the budget (an attempt
  * the budget refuses writes none — a button held down must not fill an unprunable chain) — with the target, the basis
@@ -171,7 +172,7 @@ export type CampaignTestRefusalReason =
   /* U37c · a typed test's own refusals */
   | "typed_role" /* 2026-10-09 · the officer's stored role may not type a number (`mayTestTypedNumber`) */
   | "bad_recipient" | "bad_number" | "attestation_missing" | "typed_outreach_closed" | "typed_no_attestation_wording"
-  | "typed_needs_source_line" | "typed_rate_limited" | "typed_refused" | "protected" | "attestation_stale";
+  | "typed_rate_limited" | "typed_refused" | "protected" | "attestation_stale";
 
 /** `handed_over` is the gateway TAKING it — never "delivered" (OD41); only a receipt is delivery. ⛔ No result carries a
  *  basis (S7, A32): what made a typed number reachable is never told to the screen. */
@@ -194,9 +195,11 @@ export const TEST_OWN_NUMBER_UNUSABLE =
   "Your account's phone number is not a Tanzanian mobile number an SMS can reach, so no test can be sent. " +
   "An account's number can't be changed — ask the owner, who manages staff access in Staff & roles (/admin/staff).";
 export const TEST_RAIL_DEAD = "No SMS can leave this server right now — the sender line above says why.";
-export const TEST_TOKEN_UNAVAILABLE = "Your stop link couldn't be made, so nothing was sent — try again.";
-/** U37c · the same, for a typed number — the link is that person's, never "yours". */
-export const TEST_TYPED_TOKEN_UNAVAILABLE = "The stop link for this number couldn't be made, so nothing was sent — try again.";
+/** Step 10's opt-out token (kept for the stop page) could not be made. ⛔ It names no stop link: nothing is appended to a
+ *  test since the owner's ruling of 2026-10-09 (`test:campaign-compose` §16.22). */
+export const TEST_TOKEN_UNAVAILABLE = "Your test couldn't be prepared, so nothing was sent — try again.";
+/** U37c · the same, for a typed number — about that number, never "yours". */
+export const TEST_TYPED_TOKEN_UNAVAILABLE = "The test for this number couldn't be prepared, so nothing was sent — try again.";
 export const TEST_TEMPLATE_INVALID = "The saved message no longer passes its own check — correct it and save again.";
 export const TEST_UNCONFIRMED = "No answer from the network — don't resend straight away; check your phone first.";
 export const TEST_GATE_UNANSWERED = "The consent check couldn't answer, so nothing was sent — try again shortly.";
@@ -227,10 +230,8 @@ export const TEST_TYPED_OUTREACH_CLOSED =
   "Tests to another number open once licence outreach is switched on (Admin → System → Licence outreach). Send yourself a test for now.";
 export const TEST_TYPED_NO_ATTESTATION_WORDING =
   "Tests to another number need the 18+ confirmation wording saved first (Admin → System → Marketing wordings).";
-/** ⭐ U37s · the line is stamped when a draft is SAVED, so a draft saved before the owner set it carries none: the sentence
- *  names both halves of the remedy rather than "isn't set yet", which is false once the owner has set it. */
-export const TEST_TYPED_NEEDS_SOURCE_LINE =
-  "A test to another number needs the campaign's source line, and this draft has none — it is added when the draft is saved after the owner sets it (gate G5). Send yourself a test for now.";
+/* (`typed_needs_source_line` is gone since the owner's ruling of 2026-10-09: no message prints a source line, so a typed
+   test needs none — `test:campaign-compose` §18.22 · §18.25.) */
 export const TEST_TYPED_UNCONFIRMED =
   "No answer from the network — don't resend straight away; ask the person to check their phone first.";
 
@@ -262,7 +263,9 @@ function failedSentence(code: string, target: CampaignTestTarget): string {
 /** The gate's refusal of the officer's OWN number, with the remedy. ⛔ One sentence for every responsible-gambling reason. */
 const GATE_SENTENCE: Readonly<Record<MarketingSkipReason, string>> = {
   bad_msisdn: TEST_OWN_NUMBER_UNUSABLE,
-  suppressed: "Your number is on the stop list, so no marketing SMS can reach it — start them again from your own SMS link or your profile first.",
+  /* ⭐ The profile is the way back the card links to (`COMPOSE_TEST_CONSENT_LINK`); no SMS carries a stop link since the
+     owner's ruling of 2026-10-09, so none is named as one. */
+  suppressed: "Your number is on the stop list, so no marketing SMS can reach it — start them again from your profile first.",
   no_consent: "Your number has no SMS offers consent on record — turn on SMS offers on your own profile, then test again.",
   /* U33a-G · forced by the compiler and UNREACHABLE for the officer's own number, which always belongs to an account —
      so it takes the player branch, which never answers `no_basis`. Written plainly anyway rather than left to a cast:
@@ -589,7 +592,7 @@ export async function sendCampaignTest(
     return refuse("held", heldSentence(why, sendWindow));
   }
 
-  // ── 6 · U37c · a TYPED test's four checks that do not depend on who holds the number — the same answer for a player's
+  // ── 6 · U37c · a TYPED test's checks that do not depend on who holds the number — the same answer for a player's
   //    number and a stranger's, before any read about the number (§18.25) ──
   let adultWording: WordingVersion | null = null;
   if (target === "typed") {
@@ -598,7 +601,6 @@ export async function sendCampaignTest(
     if (outreach === null || outreach.state !== "open") return refuse("typed_outreach_closed", TEST_TYPED_OUTREACH_CLOSED);
     adultWording = deps.adultTestWording();
     if (adultWording === null) return refuse("typed_no_attestation_wording", TEST_TYPED_NO_ATTESTATION_WORDING);
-    if (template.sourcePhrase.trim() === "") return refuse("typed_needs_source_line", TEST_TYPED_NEEDS_SOURCE_LINE);
     // ⛔ §18.32 · the tick counts only for the words it was given for — the same answer for any number, before any read
     // about it (§18.25). A rewording since the page opened, or no version posted at all, is asked again.
     if (recipient.kind !== "typed" || recipient.attestedVersion !== adultWording.v) {
@@ -661,7 +663,8 @@ export async function sendCampaignTest(
     );
     const out = outcomes[0];
     const at = deps.now().toISOString();
-    // ⛔ A typed test shows the officer the measurement token — the stop link made for that number is never shown.
+    // ⛔ A typed test shows the officer its dry render, never the message rendered with that number's own token. Since the
+    // owner's ruling of 2026-10-09 nothing is appended, so the two texts are the same; the token stays unshown either way.
     const shown = target === "typed" ? dry.text : message.text;
     if (out?.outcome === "handed_over") {
       await floor();

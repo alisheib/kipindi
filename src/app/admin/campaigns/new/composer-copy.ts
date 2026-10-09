@@ -174,7 +174,6 @@ export const COMPOSE_AUDIENCE_CLEAR = "Remove the filter";
 export const COMPOSE_TEST_SAVE_FIRST = "Save first — the test sends the saved text.";
 export const COMPOSE_TEST_UPDATING = "Updating to the saved text…";
 export const COMPOSE_TEST_NOT_DRAFT = "Only a draft can be tested.";
-export const COMPOSE_TEST_TOKEN_NOTE = "Your stop link is made the first time you send a test; until then it shows as xxxxxxxx.";
 export const COMPOSE_TEST_BUDGET = "Up to 3 tests at once, then one every 10 minutes.";
 export const COMPOSE_TEST_SEND = { SW: "Send the Swahili test", EN: "Send the English test" } as const;
 export const COMPOSE_TEST_PREVIEW = { SW: "Swahili, as it will be sent to you", EN: "English, as it will be sent to you" } as const;
@@ -216,8 +215,9 @@ export const COMPOSE_TEST_TYPED_PREVIEW = {
   SW: "Swahili, as it will be sent to that number",
   EN: "English, as it will be sent to that number",
 } as const;
-export const COMPOSE_TEST_TYPED_NOTE =
-  `The name is your word for ${JINA}, never the person's own, and their stop link is made for them and isn't shown here.`;
+/** Under the typed preview: the greeting is the officer's `{jina}` word. ⛔ It names no stop link — nothing is appended to
+ *  a test or a campaign since the owner's ruling of 2026-10-09 (`test:campaign-compose` §16.22). */
+export const COMPOSE_TEST_TYPED_NOTE = `The name is your word for ${JINA}, never the person's own.`;
 /** Send's reason while no whole number has been typed. */
 export const COMPOSE_TEST_NEED_NUMBER = "Type the number to test on.";
 /** Send's reason while the typed number is one the plan refuses — the plan's own sentence is already under the field, so
@@ -279,7 +279,7 @@ export function composeConfirmReadRateLimited(retryAfterSec: number): string {
   const seconds = Math.max(1, Math.ceil(retryAfterSec));
   return `That is a lot of counts in a row — nothing was counted. Try again in ${seconds} s.`;
 }
-/** A blocked answer can be asked for again (the owner has set the source line, the audience has changed): the same read. */
+/** A blocked answer can be asked for again (the audience has changed, the owner has raised the limit): the same read. */
 export const COMPOSE_CONFIRM_CHECK_AGAIN = "Check again";
 /** The draft was saved elsewhere after this form was loaded: what a confirmation would freeze is not the text on screen. */
 export const COMPOSE_CONFIRM_STALE = "This draft was saved elsewhere after this page loaded — reload the page to see it, then confirm.";
