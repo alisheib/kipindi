@@ -11,6 +11,7 @@ import { getKycStatus } from "@/lib/server/kyc-service";
 import { db } from "@/lib/server/store";
 import { kycGateState } from "@/lib/kyc-gate-state";
 import { MAX_DOC_BYTES } from "@/lib/id-documents";
+import { resolveSimpleJourney } from "@/lib/server/journey-preview";
 import { ApplyClient } from "./apply-client";
 
 export async function generateMetadata() {
@@ -55,6 +56,9 @@ export default async function AgentApplyPage() {
   // render the gate AND the action that clears it, rather than refusing after a click.
   const payer = await db.user.findById(session.userId);
   const wallet = await db.wallet.findByUserId(session.userId);
+  // The shortfall's door to the deposit screen says the journey's word for a journey reader (R5-G, G-1's sweep): the
+  // shell's own cached answer for this request, one boolean across the boundary.
+  const { journey } = await resolveSimpleJourney();
   return (
     <PageContainer tier="form" className="space-y-5">
       <BackLink fallbackHref="/agent" label={t.agent.title} />
@@ -111,6 +115,7 @@ export default async function AgentApplyPage() {
            into the flight payload of a withdrawn programme. `null` while the gate is shut. */
         lipa={LIPA_QR_RELEASED ? lipaDisplay() : null}
         limits={{ maxMb: Math.round(MAX_DOC_BYTES / (1024 * 1024)), refereeHoldDays: AGENT_REFEREE_DOC_HOLD_DAYS, reviewSlaDays: cfg.reviewSlaDays }}
+        journey={journey}
       />
     </PageContainer>
   );

@@ -72,6 +72,26 @@ const MINI_DICT = {
 } as const;
 
 /**
+ * ⭐ THE REGULATOR'S NAME IS ONE NAME HERE TOO (R5-G, 2026-10-09, G-5 — R5-A's F18 rule, as the journey's footer and the
+ * opt-out shell's footer keep it). On a phone (320–393px in Inter's widths; the device's face moves the edge a little)
+ * the Swahili licence line read "18+ · Imepewa leseni na Bodi ya Michezo ya" / "Kubahatisha Tanzania"; it now reads
+ * "18+ · Imepewa leseni na" / "Bodi ya Michezo ya Kubahatisha Tanzania".
+ * This boundary ships no stylesheet, may import nothing but React, and sets its words in the device's own face (no
+ * next/font here), so it cannot wear `.kp-gbt` and its Inter widths: the name is an inline-block instead — the browser's
+ * own measure, in whatever face it has, of whether the line can hold it. A line that can holds the name whole; a line
+ * narrower than the name wraps inside it, so it never overflows. Nothing follows the name in en or sw, and zh may break
+ * after it anyway, so no mark is left alone on a line. The pattern is `lib/regulator-name.ts`'s, copied with this file's
+ * escapes for the Chinese (`test:visual-pass-r5g` §4 holds the two equal).
+ */
+const REGULATOR_NAME = /Gaming Board of Tanzania|Bodi ya Michezo ya Kubahatisha Tanzania|\u5766\u6851\u5c3c\u4e9a\p{Cf}?\u535a\u5f69\u59d4\u5458\u4f1a/u;
+
+function keepRegulatorName(text: string) {
+  const m = REGULATOR_NAME.exec(text);
+  if (!m) return text;
+  return <>{text.slice(0, m.index)}<span style={{ display: "inline-block" }}>{m[0]}</span>{text.slice(m.index + m[0].length)}</>;
+}
+
+/**
  * The visitor's chosen language, else Swahili — the platform default (`localeOrDefault` in `i18n-dict.ts`, copied here
  * because this boundary may import nothing but React). Keep the two in step.
  */
@@ -331,7 +351,7 @@ export default function GlobalError({
                 {t.rg}
               </a>
             </span>
-            <span>{t.gbt}</span>
+            <span>{keepRegulatorName(t.gbt)}</span>
           </div>
         </main>
       </body>

@@ -255,10 +255,13 @@ section("3 · E38 · the journey's loading ghosts (tiles 277 280 290 293 296: on
   // the loading file itself where it reads nothing (a question's, the provider's return), else the drawing the loading
   // file hands its words to (Juu/Chini's, the round history's, the deposit's) — and each loading file renders that same
   // drawing: one drawing, never redrawn. [the ghost's use, its import, the page's loading file, what that file renders]
+  // ⚠️ MOVED IN ROUND 5 (R5-G, G-1): the deposit drawing takes the journey answer, as the round history's does — its head is
+  // the page's own for either reader (`money-names.ts`): the root ghost (a journey reader's alone) hands it `journey`, the
+  // loading file the per-request answer.
   const own: Array<[string, string, string, string]> = [
     ['"/updown": <UpDownGhost t={t} />', 'import { UpDownGhost } from "@/app/updown/updown-ghost";', "src/app/updown/loading.tsx", "return <UpDownGhost t={t} />;"],
     ['"/updown/history": <UpDownHistoryGhost t={t} journey />', 'import { UpDownHistoryGhost } from "@/app/updown/history/history-ghost";', "src/app/updown/history/loading.tsx", "return <UpDownHistoryGhost t={t} journey={journey} />;"],
-    ['"/wallet/deposit": <DepositGhost t={t} />', 'import { DepositGhost } from "@/app/wallet/deposit/deposit-ghost";', "src/app/wallet/deposit/loading.tsx", "return <DepositGhost t={t} />;"],
+    ['"/wallet/deposit": <DepositGhost t={t} journey />', 'import { DepositGhost } from "@/app/wallet/deposit/deposit-ghost";', "src/app/wallet/deposit/loading.tsx", "return <DepositGhost t={t} journey={journey} />;"],
     ['"/wallet/deposit/return": <DepositReturnLoading />', 'import DepositReturnLoading from "@/app/wallet/deposit/return/loading";', "src/app/wallet/deposit/return/loading.tsx", "export default function DepositReturnLoading() {"],
     ['["^/markets/[^/]+$", <MarketDetailLoading />]', 'import MarketDetailLoading from "@/app/markets/[id]/loading";', "src/app/markets/[id]/loading.tsx", "export default function MarketDetailLoading() {"],
   ];

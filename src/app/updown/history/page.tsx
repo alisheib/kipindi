@@ -43,9 +43,12 @@ import {
 
 export const dynamic = "force-dynamic";
 
+// ⭐ THE TAB TITLE FOLLOWS THE PAGE (R5-G, 2026-10-09, G-1's sweep — `positions/page.tsx`'s rule, S6 WP9): for a journey
+// request this page is Tiketi zangu's Up & Down kind and its h1 says "Tiketi zangu" (`TicketsHead`, below), so its tab
+// does, as /positions' does; everybody else's says "Juu na Chini zako" as before. The same cached answer as the body's.
 export async function generateMetadata() {
-  const { t } = await getServerT();
-  return { title: t.market.udHistoryTitle };
+  const [{ t }, { journey }] = await Promise.all([getServerT(), resolveSimpleJourney()]);
+  return { title: journey ? t.journey.tabTickets : t.market.udHistoryTitle };
 }
 
 // UD-19 · EAST AFRICA TIME, stated — the settlement proof on the round page speaks

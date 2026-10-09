@@ -33,10 +33,15 @@ import { KycGatePanel } from "@/components/kyc/kyc-gate-panel";
 import { kycGateState, type KycPanelState } from "@/lib/kyc-gate-state";
 import { getKycStatus } from "@/lib/server/kyc-service";
 import { PageContainer } from "@/components/layout/page-container";
+import { resolveSimpleJourney } from "@/lib/server/journey-preview";
+import { withdrawNames } from "@/lib/journey/money-names";
 
+// ⭐ THE TAB TITLE FOLLOWS THE PAGE (R5-G, 2026-10-09, G-1 — the precedent is `positions/page.tsx`): a journey reader's
+// screen is "Toa pesa", the word on every journey door that opens it (the hub's row, the Wallet sheet, /wallet's button,
+// the deposit's break notice), and the tab says so; everybody else's says "Toa" as before (`money-names.ts`).
 export async function generateMetadata() {
-  const { t } = await getServerT();
-  return { title: t.wallet.withdrawTitle };
+  const [{ t }, { journey }] = await Promise.all([getServerT(), resolveSimpleJourney()]);
+  return { title: withdrawNames(t, journey).title };
 }
 
 // Mobile-money payout rails only (Selcom Wallet Cashin). Bank transfer is a
@@ -59,6 +64,10 @@ export default async function WithdrawPage({ searchParams }: { searchParams: Pro
   const withdrawMin = withdrawMinFor(wcfg.withdrawalFeeRate);
   const session = await currentSession();
   if (!session) redirect(`/auth/login?next=${encodeURIComponent(pathWithQuery("/wallet/withdraw", await searchParams))}`);
+  // ⭐ ONE PAGE, ONE NAME (R5-G, G-1): the shell's own cached answer for this request. A journey reader's screen is "Toa
+  // pesa" under the Wallet's eyebrow, as its doors say; a classic reader's keeps "Toa fedha" under "TOA" (`money-names.ts`).
+  const { journey } = await resolveSimpleJourney();
+  const names = withdrawNames(t, journey);
 
   const sp = await searchParams;
   // ⛔ Only a sentence the withdraw action signed (`flash-message.ts`) — never raw text from the address bar (2026-10-06).
@@ -166,8 +175,8 @@ export default async function WithdrawPage({ searchParams }: { searchParams: Pro
       <PageHero contentClassName="relative z-10 p-5 lg:p-6 flex flex-col items-start gap-2 sm:flex-row sm:items-end sm:justify-between sm:gap-4">
           <PageHeader
             icon={<I.arrowUpFromLine s={14} className="text-text-subtle" />}
-            eyebrow={t.wallet.withdrawTitle}
-            title={t.wallet.moveFundsOut}
+            eyebrow={names.eyebrow}
+            title={names.heading}
             subtitle={t.wallet.mobileMoneyOnly}
           />
           <div className="sm:text-right shrink-0">

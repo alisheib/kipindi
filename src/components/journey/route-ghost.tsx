@@ -89,7 +89,7 @@ export function JourneyRouteGhost({ rails }: { rails: readonly string[] }) {
         "/positions": <TicketsGhost t={t} />,
         "/account": <AccountGhost t={t} />,
         "/updown/history": <UpDownHistoryGhost t={t} journey />,
-        "/wallet/deposit": <DepositGhost t={t} />,
+        "/wallet/deposit": <DepositGhost t={t} journey />,
         "/wallet/deposit/return": <DepositReturnLoading />,
       }}
       patterns={[["^/markets/[^/]+$", <MarketDetailLoading />]]}

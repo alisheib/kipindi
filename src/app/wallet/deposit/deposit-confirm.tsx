@@ -15,6 +15,7 @@ import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { ReceiptBox, ReceiptRow } from "@/components/ui/receipt-row";
 import { useToast } from "@/components/ui/toast";
 import { formatNumber, formatTzs } from "@/lib/utils";
+import { depositNames } from "@/lib/journey/money-names";
 import { DEPOSIT_MIN_TZS, DEPOSIT_MAX_TZS } from "@/lib/server/validators";
 
 /**
@@ -44,7 +45,12 @@ const PROVIDER_NAMES: Record<string, string> = {
  *  verbatim rather than blanking the row, so what was submitted stays visible. */
 const providerLabel = (id: string): string => PROVIDER_NAMES[id] ?? id;
 
-export function DepositConfirm() {
+/**
+ * `journey` — the page's own answer (`resolveSimpleJourney`, `page.tsx`), so the button that sends the money says the
+ * screen's name (R5-G, 2026-10-09, G-1): "Weka pesa" for a journey reader, as the h1 above it and every journey door to
+ * this screen do; "Amana" for everybody else, as before (`money-names.ts`).
+ */
+export function DepositConfirm({ journey }: { journey: boolean }) {
   const buttonRef = useRef<HTMLButtonElement>(null);
   const { t } = useT();
   const { toast } = useToast();
@@ -142,7 +148,7 @@ export function DepositConfirm() {
           <p className="text-body-sm text-text-muted">{t.common.depositSendBody}</p>
         </>
       }
-      confirmLabel={t.common.deposit}
+      confirmLabel={depositNames(t, journey).commit}
       cancelLabel={t.common.cancel}
       onConfirm={submitForm}
       onOpen={openConfirm}

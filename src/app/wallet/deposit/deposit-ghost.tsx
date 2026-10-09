@@ -2,6 +2,7 @@ import { PageContainer } from "@/components/layout/page-container";
 import { PageHeader } from "@/components/ui/page-header";
 import { PageHero } from "@/components/ui/page-hero";
 import { I } from "@/components/ui/glyphs";
+import { depositNames } from "@/lib/journey/money-names";
 import type { Dict } from "@/lib/i18n-dict";
 
 /**
@@ -11,8 +12,13 @@ import type { Dict } from "@/lib/i18n-dict";
  * ⭐ ONE DRAWING, TWO READERS (2026-10-09, the visual pass round 5, review G1): `loading.tsx` (this folder) draws it
  * with the words it reads on the server, and the journey's root loading state (`components/journey/route-ghost.tsx`)
  * draws it in the browser on a move to /wallet/deposit. So it reads nothing itself, and its module may load there.
+ * ⭐ AND ITS HEAD IS THE PAGE'S FOR EITHER READER (R5-G, 2026-10-09, G-1): `journey` — the answer `loading.tsx` asks on the
+ * server, and `true` from the root ghost, which only a journey reader is drawn — picks the page's own names
+ * (`money-names.ts`): "Weka pesa" under the Wallet for a journey reader, today's "Amana" under "WEKA PESA" for everybody
+ * else. The function that names the page names its ghost, so the ghost's words land where the page's do.
  */
-export function DepositGhost({ t }: { t: Dict }) {
+export function DepositGhost({ t, journey }: { t: Dict; journey: boolean }) {
+  const names = depositNames(t, journey);
   /* ⭐ DG-P-04 · §S1 — THE RHYTHM IS DECLARED ON THE CONTAINER, NOT SPRINKLED PER ELEMENT.
      This read `<PageContainer tier="form">` + `<header className="mb-6">`, i.e. a 32px gap
      typed onto one child, while the page it stands in for (`page.tsx`, same directory)
@@ -42,8 +48,8 @@ export function DepositGhost({ t }: { t: Dict }) {
       <PageHero>
         <PageHeader
           icon={<I.arrowDownToLine s={14} className="text-text-subtle" />}
-          eyebrow={t.common.addFunds}
-          title={t.common.deposit}
+          eyebrow={names.eyebrow}
+          title={names.heading}
           subtitle={t.wallet.mobileMoney}
         />
       </PageHero>

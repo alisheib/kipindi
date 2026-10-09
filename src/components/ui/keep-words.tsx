@@ -18,6 +18,7 @@
  * ⛔ Deterministic, one regular expression, so the server and the browser agree and hydration cannot mismatch.
  */
 import type { ReactNode } from "react";
+import { regulatorSplit } from "@/lib/regulator-name";
 
 const IDEOGRAPH = /[㐀-䶿一-鿿豈-﫿]/;
 /**
@@ -306,13 +307,12 @@ export function keepIdRuns(id: string): ReactNode {
  * the name in its language (globals.css): a column narrower than the name lets it wrap as before, so it can never
  * overflow. The text is unchanged (the zh name keeps its zero-width break hint, which `nowrap` simply does not take).
  * A sentence without the name is returned untouched.
+ * ⭐ The name's pattern has one home since R5-G (G-5, 2026-10-09), `lib/regulator-name.ts`, which the offline document —
+ * a string that may import no component — reads too; the zh name's zero-width break hint is matched there as any format
+ * character (`\p{Cf}`), so no source names an invisible character (test:visual-pass-r5e §6.5, round 5's census).
  */
-// The zh name carries the dictionary's zero-width break hint between its two words; it is matched as any format
-// character (`\p{Cf}`), so the source names no invisible character (test:visual-pass-r5e §6.5, round 5's census).
-const REGULATOR = /Gaming Board of Tanzania|Bodi ya Michezo ya Kubahatisha Tanzania|坦桑尼亚\p{Cf}?博彩委员会/u;
-
 export function keepRegulator(text: string): ReactNode {
-  const m = REGULATOR.exec(text);
-  if (!m) return text;
-  return [text.slice(0, m.index), <span key="gbt" className="kp-gbt-name">{m[0]}</span>, text.slice(m.index + m[0].length)];
+  const cut = regulatorSplit(text);
+  if (!cut) return text;
+  return [cut[0], <span key="gbt" className="kp-gbt-name">{cut[1]}</span>, cut[2]];
 }

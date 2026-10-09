@@ -4,9 +4,15 @@ import { PageContainer } from "@/components/layout/page-container";
 import { PageHeader } from "@/components/ui/page-header";
 import { PageHero } from "@/components/ui/page-hero";
 import { I } from "@/components/ui/glyphs";
+import { resolveSimpleJourney } from "@/lib/server/journey-preview";
+import { withdrawNames } from "@/lib/journey/money-names";
 
 export default async function WithdrawLoading() {
-  const { t } = await getServerT();
+  /* ⭐ THE PAGE'S OWN HEAD FOR EITHER READER (R5-G, 2026-10-09, G-1): the one answer the page's head turns on, asked beside
+     the words as `deposit/loading.tsx` asks it — "Toa pesa" under the Wallet for a journey reader, "Toa fedha" under "TOA"
+     for everybody else — from the function that names the page (`money-names.ts`), so the words land where the page's do. */
+  const [{ t }, { journey }] = await Promise.all([getServerT(), resolveSimpleJourney()]);
+  const names = withdrawNames(t, journey);
   /* ⭐ DG-P-04 · §S1 — see the note on `wallet/deposit/loading.tsx`. Same defect, same 8px:
      `mb-6` (32) typed onto one child against `page.tsx`'s container `space-y-5` (24). */
   return (
@@ -31,8 +37,8 @@ export default async function WithdrawLoading() {
       <PageHero contentClassName="relative z-10 p-5 lg:p-6 flex items-end justify-between gap-4">
         <PageHeader
           icon={<I.arrowUpFromLine s={14} className="text-text-subtle" />}
-          eyebrow={t.wallet.withdrawTitle}
-          title={t.wallet.moveFundsOut}
+          eyebrow={names.eyebrow}
+          title={names.heading}
           subtitle={t.wallet.mobileMoneyOnly}
         />
       </PageHero>

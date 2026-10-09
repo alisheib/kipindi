@@ -373,7 +373,10 @@ export default async function ProfilePage() {
           )}
           <SettingRow icon={I.fileSignature}   title={t.profile.sourceOfFunds}       subtitle={t.profile.sourceOfFundsSub}                      href="/profile/source-of-funds" />
           <SettingRow icon={I.device}          title={t.profile.activeSessions}      subtitle={t.profile.activeSessionsSub}        href="/profile/sessions" />
-          <SettingRow icon={I.heartPulse}      title={t.profile.helpSupport}         subtitle={t.profile.helpSupportSub}               href="/help" />
+          {/* R5-G (2026-10-09, G-1's sweep — R5-A's F17 rule, as the KYC row above): the help page's own name, its <title> and
+              eyebrow ("Msaada / Help / 帮助", `common.help`), as the hub's row and the journey's footer say it — the row said
+              "Help & support / 帮助与支持" in English and Chinese (Swahili's words coincide, "Msaada"). */}
+          <SettingRow icon={I.heartPulse}      title={t.common.help}                 subtitle={t.profile.helpSupportSub}               href="/help" />
         </div>
       </section>
 

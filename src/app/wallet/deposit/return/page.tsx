@@ -49,12 +49,17 @@ import { KycFirstDepositNotice } from "@/components/wallet/kyc-first-deposit-not
 import { cookies } from "next/headers";
 import { firstDepositNotice, kycNoticeDismissValue } from "@/lib/server/kyc-notice";
 import { KYC_NOTICE_COOKIE } from "@/lib/kyc-notice";
+import { resolveSimpleJourney } from "@/lib/server/journey-preview";
+import { depositNames } from "@/lib/journey/money-names";
 
 // Localised tab title (POLISH-BACKLOG §1.7) — was the hard-coded English
 // "Deposit result", which a Swahili player saw in their browser tab and history.
+// ⭐ THE DEPOSIT'S OWN NAME, AS THE DEPOSIT SCREEN'S TAB SAYS IT (R5-G, 2026-10-09, G-1): this is the same action's last page
+// — the player left "Weka pesa" for the provider's page and comes back here — so a journey reader's tab and eyebrow say
+// "Weka pesa" as the screen did, and everybody else's "Amana" as before (`money-names.ts`, `depositNames(…).title`).
 export async function generateMetadata() {
-  const { t } = await getServerT();
-  return { title: t.common.deposit };
+  const [{ t }, { journey }] = await Promise.all([getServerT(), resolveSimpleJourney()]);
+  return { title: depositNames(t, journey).title };
 }
 export const dynamic = "force-dynamic";
 
@@ -67,6 +72,8 @@ export default async function DepositReturnPage({
   // Back to THIS return, `order_id` and all, after signing in — the wallet alone could not say what happened (2026-10-06).
   if (!session) redirect(`/auth/login?next=${encodeURIComponent(pathWithQuery("/wallet/deposit/return", await searchParams))}`);
   const { t, locale } = await getServerT();
+  // The deposit's name for this reader (R5-G, G-1): the shell's own cached answer for this request.
+  const { journey } = await resolveSimpleJourney();
   const sp = await searchParams;
 
   // The ONLY thing we take from the URL: which order to ask Selcom about (trimmed, capped, and cut at a stray `?`).
@@ -120,7 +127,7 @@ export default async function DepositReturnPage({
             outcome.state === "REVERSED" ? <I.rotateCcw s={14} className="text-text-muted" /> :
             <I.clock s={14} className="text-brand-300" />
           }
-          eyebrow={t.common.deposit}
+          eyebrow={depositNames(t, journey).title}
           title={heading}
           subtitle={body}
         />

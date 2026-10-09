@@ -5,7 +5,7 @@ import { IconPlate } from "@/components/ui/icon-plate";
 import { BackLink } from "@/components/ui/back-link";
 import { currentSession } from "@/lib/server/auth-service";
 import { db } from "@/lib/server/store";
-import { getPlayerReferralSummary, inviteViewerFor, getAgentDashboard, referralRewardDestination } from "@/lib/server/affiliate-service";
+import { getPlayerReferralSummary, inviteViewerFor, getAgentDashboard, isApprovedAgent, referralRewardDestination } from "@/lib/server/affiliate-service";
 import { AgentDashboard } from "./agent-dashboard";
 import QRCode from "qrcode";
 import { FiftyMark } from "@/components/brand";
@@ -43,12 +43,19 @@ export async function generateMetadata() {
   // rather than after it. "Make payable → Nothing yet" titles the tab "Invite friends" (review P8).
   // ⛔ It fails CLOSED: no session, a failed read, or anyone not in agent standing gets the
   // unpaid words, never the promise — and so does a switch that is Not payable or unreadable.
+  // ⭐ …AND AN AGENT'S TAB IS THE DASHBOARD'S OWN NAME (R5-G, 2026-10-09, G-1's sweep: one page, one name). The agent's
+  // tab said "Alika na upate zawadi / Invite & Earn" over a body whose h1 is "Dashibodi ya wakala / Agent dashboard"
+  // (`agent-dashboard.tsx`) — the words the hub's and /profile's rows say for an agent in standing. It now asks the body's
+  // own question, `isApprovedAgent` on the affiliate row (what `getAgentDashboard` asks before it draws the dashboard), so
+  // a deactivated agent's read-only dashboard is titled as itself too. Not a promise either way; a failed read answers
+  // "not an agent", and the player half below is unchanged.
   const session = await currentSession();
-  const [payable, agent] = await Promise.all([
+  const [payable, dashboard] = await Promise.all([
     invitePaysPlayersNow(),
-    session ? inviteViewerFor(session.userId).then((v) => v.agentInGoodStanding) : Promise.resolve(false),
+    session ? db.affiliate.findByUserId(session.userId).then(isApprovedAgent, () => false) : Promise.resolve(false),
   ]);
-  return { title: (payable || agent) ? t.profile.inviteEarn : t.profile.inviteFriends };
+  if (dashboard) return { title: t.agent.dashTitle };
+  return { title: payable ? t.profile.inviteEarn : t.profile.inviteFriends };
 }
 export const dynamic = "force-dynamic";
 
