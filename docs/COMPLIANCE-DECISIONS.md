@@ -528,6 +528,12 @@ page prints none) and §10 (our own desk as the helpline, a short-code support p
 ACCEPTED); `test:journey-account` 4.helpline; `test:cert-c1` (no email carries a helpline); `test:rg-policy` (a helpline
 promise put back on the policy has no control behind it, and is refused).
 
+**2026-10-09 · the last trace goes.** Since the owner's plain-SMS ruling of 2026-10-09 the marketing footer is empty, so
+nothing read the helpline any more (item 2's reason for keeping it no longer holds; the admin card still edits and saves it
+as owner data). Its readers `HELPLINE()` / `HELPLINE_TEL()` and the `data-kp-helpline` / `data-kp-helpline-tel` attributes
+that put its number into every page's `<html>` were removed (`73dc697e`, merged `7b04b0a0`; S14's STEP 58): only the
+licence is published. `test:support-contact` §15.8–§15.9 hold the number off every page's `<html>`.
+
 **Supersedes** the 2026-10-03 entry's E-328 refusal ("a save whose helpline dials the same number as the Support phone is
 refused") and every rule that published the helpline to players: RG Policy v2026-09-26's footer bullet, the 2026-09-27 hero
 trust row's helpline, and the 2026-10-01 account hub's helpline row.

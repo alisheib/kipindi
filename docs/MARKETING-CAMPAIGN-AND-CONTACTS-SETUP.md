@@ -102,7 +102,7 @@ Next: the first real campaign — it waits only on Ali's words, audience and swi
   ✅ THE ADMIN GUIDE — docs/guides/50pick-admin-guide-contacts-and-sms-campaigns.pdf, a copy on Ali's Desktop for
   management: the whole flow — the contact book and its import, the switch and the settings, writing, confirming,
   starting, watching, the results, the first tests and the safety rules — every picture re-captured from the live code
-  at S14's close (STEP 58, {{PDF_PAGES}} pages).
+  at S14's close (STEP 58, 21 pages).
   ✅ What licence outreach waited for is done: STEP 53 shipped U33r, the agent-referee exclusion (Q8 — honoured for
   every referee already told, re-worded for new ones), the sign-up box REMOVED (Q2), OD61's feed restriction and the
   Lists card's 18+ words posted with the version on screen; production's referee keys were recorded (STEP 53b,
@@ -121,7 +121,7 @@ WHERE THE PROGRAMME STANDS (the board, §1, is the authority): 19/52 units ✅ �
   live switch is closed (closed now; it was opened only for U52a's drives — A to C at 16:32–16:49 EAT, and D, the new
   sender's proof, at 19:44). The first real campaign waits only on Ali: its words, its audience and the switch.
 
-✔ LAST SESSION: S14 — 2026-10-07 ~10:00 EAT → 2026-10-09 ~{{CLOSE_TIME}} EAT, CLOSED. OMEGA-COMPILE01 (`F:\kipindi-m14`,
+✔ LAST SESSION: S14 — 2026-10-07 ~10:00 EAT → 2026-10-09 ~21:07 EAT, CLOSED. OMEGA-COMPILE01 (`F:\kipindi-m14`,
   branch `marketing-s14` cut from `origin/main` at `9352de7c`; this closing docs commit from `F:\kipindi-m14d`, branch
   `s14-close-docs`), continuing S13's handover (Ali, to this PC: "please proceed with the sms campaign plan … another
   machine was working earlier today"); from 2026-10-09 ~10:00 EAT it carried S15's contacts leftovers too (S15 had left
@@ -154,15 +154,18 @@ WHERE THE PROGRAMME STANDS (the board, §1, is the authority): 19/52 units ✅ �
   PRODUCTION, THE SMS SENDER ID, THE ADMIN GUIDE RE-CAPTURED — 2026-10-09, this commit (the closing commit; its served
   id is read back in the session's report): ① STEP 57 LIVE: `f33909983` pushed 15:37:02Z, served on www and the apex
   from 15:41:10Z (18:41 EAT), /api/health ok, the database reachable and migrated. ② The post-push checks on the live
-  tree, under the lock: {{POSTPUSH_RESULTS}}. ③ What they found was in the TEST TOOLS only — no product code — fixed on
-  `marketing-s14` (`666833efb`, `5d08bb3af`, `514609e6f`, `0e8fada09`, `60d59df5b`, {{GUIDE_TABLES_COMMIT}}): the
+  tree, under the lock: typecheck 0 and next build ok; the live campaign page 522/0 and the wordings 43/0; U20 503/0 (the eye's audited reveal at both widths); the visual sweep 192/192 (six widths, three languages); the importer drive 1050/1052 in both calm runs — its two misses are the drive's own waits, not a product failure shown (◐ 13); the big imports and the round trip PASS; the scratch-PostgreSQL probes — list basis 23/0, audience 44/0, registration contact 14/0, staging 3/0, import 63/0, U52a 38/0 — and red:dal-parity's 233 plants caught; house-bot reports 3/0; the engine's dry-fire on PostgreSQL, all seven scenarios on every invariant (6,980 people: no double send, every row terminal, nobody protected sent, the counts adding up); the live switch's ops door read without the proxy workaround (status OFF); red:marketing-setup-plan 28/28 and the doc guards green. The first attempts had failed for no product reason: OMEGA's memory ran out, and the parallel runs' path-matched kill scripts stopped each other's dev servers (now by port). ③ What they found was in the TEST TOOLS only — no product code — fixed on
+  `marketing-s14` (`666833efb`, `5d08bb3af`, `514609e6f`, `0e8fada09`, `60d59df5b`, `0d2a04687`, `31ea947d8`): the
   visual sweep (`scripts/live/s14-visual-sweep.mjs`) still expected two sentences C8b reworded (the masked whole-number
   answer now says a stop or a withdrawal can still be recorded; the import result counts the contacts that joined the
-  list) and a column header without its sort arrow ("Added↓"); the staging Postgres probe's B.9/B.10 predated S15-12's
+  list) and a column header without its sort arrow ("Added↓"), and at phone widths it scrolled only the table, which scrolls
+  sideways, so the presence line stayed below the screen (the window now takes the rest); the staging Postgres probe's B.9/B.10 predated S15-12's
   second sweep rule (a COMMITTING or PAUSED run idle 14 days is CANCELLED, its settled rows kept) — it now mirrors the
   in-memory P3 on Postgres; the import Postgres probe's §9.6 drove the REAL check with a malformed run id (the app
   rightly answers `not_found` for an id not shaped `ci_` + 20 letters); the U20 drive's round-trip waits are SLOW
-  (120 s) — its first audited reveal had passed 15 s twice on a fresh dev server; and the admin guide's capture waits
+  (120 s) — its first audited reveal had passed 15 s twice on a fresh dev server — and the three contacts drives (U20,
+  the importer, the big files) wait for the page's load before their first click (on a fresh dev server a click before
+  hydration was lost); and the admin guide's capture waits
   for the Add form's number check before its picture, every wait one constant, SLOW (120 s), its message tables
   continuing across a page (the header row repeated, headings kept with their first rows, groups of up to 8 rows never
   split) — two near-empty pages gone. ④ B8 APPLIED on production with Ali's approval (~19:05 EAT): the 54 back-filled
@@ -179,8 +182,16 @@ WHERE THE PROGRAMME STANDS (the board, §1, is the authority): 19/52 units ✅ �
   opened for 30 minutes through the ops door and closed after (read back OFF) — delivered 19:44:47 EAT (receipt
   DELIVRD), its stored SmsMessage row carrying the sender `50pick.tz` where A's and C's carry `50pick`; every evidence
   check clear (SENT AS WRITTEN, DRIVE'S MESSAGE, TO THE TEST NUMBER, NO OTHER MARKETING SMS); U52a's ledger at 3 of 6.
-  ⑥ THE ADMIN GUIDE PDF re-captured from the live code — every picture — {{PDF_PAGES}} pages, in
+  ⑥ THE ADMIN GUIDE PDF re-captured from the live code — every picture — 21 pages, in
   `docs/guides/` and copied to Ali's Desktop.
+  ⑦ THE FINAL TOUCHES' LAST TWO COMMITS, made after their branch landed in STEP 57, merged (`7b04b0a0c`) and proven under
+  the lock: `51f475874` (test only — R16 declared on R-R13c, so `red:campaign-visuals` can hold 223/223) and `73dc697ec`
+  (the helpline's readers `HELPLINE()`/`HELPLINE_TEL()` and its `data-kp-helpline`/`-tel` attributes on every page's
+  `<html>` removed — the number sat in every page's HTML for no reader; only the licence is published; the admin card
+  still saves the helpline): tsc 0, next build ok, test:support-contact 79/0, privacy-notice 100/0, campaign-compose,
+  campaign-visuals 63/0, cert-c1 1237/0, rg-policy 23/0, red-anchors 5019/0, guards-exist 9/0, client-graph-safe 5/0,
+  admin-charts 68/0, marketing-settings 21/0, red:support-contact 10/10 and red:campaign-compose 368/368 (test:orphans
+  names only the landing-v3 pair it has named since 2026-09-28).
 
 ◐ HALF-DONE — owed at S14's close, each checked open:
   1. Ali demotes Claude's two QA logins to Player on /admin/staff — "QA Growth (Claude)" (`usr_ad90e82c52580e31ba36f50f`)
@@ -217,6 +228,27 @@ WHERE THE PROGRAMME STANDS (the board, §1, is the authority): 19/52 units ✅ �
      avoids it with radios).
  10. Carried from S7c, needing a person: Ali to compare Admin → System's SMS credit with the Blackball portal; where
      Blackball stores SMS data (BLACKBALL-SMS.md §8).
+ 11. ⭐ A VISUAL FIND, owed first: the composer's audience card at 360 px cuts the protected reason's label short
+     ("Protected (responsible gambling, age, accoun…") — the results card wraps it since STEP 57 (`AdminBarList`'s
+     `wrapLabels`, `5a0dfd347`); `src/app/admin/campaigns/new/audience-split-card.tsx` needs the same, and its loading
+     ghost must reserve the wrapped line first (draw the five real labels transparently with `wrapLabels`) or the sample
+     list below shifts when the card swaps in. Then the visual sweep's composer tiles at 320–390 re-taken and checked,
+     and a `campaign-visuals` claim with plants, as R16 has for the results card. Not changed at S14's close: a product
+     edit that late would have shipped without its independent review.
+ 12. `qa:marketing-e2e-capture`'s new FAQ 5 lookup (by its own question in sw/en/zh, `7a1e40862`) has not run since the
+     change — one local run.
+ 13. `qa:contacts-import` read 1050/1052 in BOTH calm post-push runs, the same two misses each time, neither shown to be
+     the product's: (i) at 360 one "Discard from the check" per run — a different file each time, of 26 — did not reach
+     the entrance within the drive's 30 s (the dialog's own path after a failed call is its "try again" state; the
+     server log has a dropped connection, `ECONNRESET`); (ii) the close-during-commit check gives the dialog 60 s after
+     a HELD step's late answer — the dialog then closes on the loop's recovery path, and the outcome checked right after
+     holds (paused by the officer, resumed, every row counted once). Owed: capture the dialog's words at the discard
+     wait's timeout and give the stop check the loop's recovery time, then ONE clean run.
+ 14. FOUND FOR ANOTHER LANE (the player UI's; the Vodacom session told 2026-10-09): `src/components/ui/route-transition.tsx`
+     :105 scrolls the window to the top on the FIRST mount too (its `[key]` effect runs once after hydration), so on a slow
+     phone a reader who scrolled while the page hydrated is thrown back to the top — seen as an intermittent visual-sweep
+     tile on /legal/privacy. Unchanged since `b14c749f` (2026-08-21); not this lane's to change — the Vodacom lane's
+     R5-H patch fixes it (the mount run skipped, the route-change effect in the layout phase) and ships with its visual pass.
 
 ⭐ THE RULES IN FORCE are one page, each line with its source: docs/MARKETING-RULES.md — Ali's FINAL rule of 2026-10-07
   (anyone with a Tanzanian mobile, under the licence, while licence outreach is open; consent recorded, never a

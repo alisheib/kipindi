@@ -16,15 +16,16 @@
      big workbook read in the officer's browser, with the server's and the browser's guards against a forged file —
      merges, number formats, nesting, sheet fan-out) and the lane's clean-up (docs/MARKETING-RULES.md; the five builder
      briefs marked done). Every branch independently reviewed TWICE and fixed. Under the lock on the merged tree:
-     typecheck 0 and next build ok on the merged tree; every light suite green (contacts-import 382/0, dal-parity 2245/0, red-anchors 5019/0, the contacts, campaign and privacy suites); the browser drives, the visual sweep, the big and round-trip imports and the scratch-PostgreSQL probes ran right after this push, on Ali's word (the tracker's STEP 58): {{POSTPUSH_RESULTS}}.
+     typecheck 0 and next build ok on the merged tree; every light suite green (contacts-import 382/0, dal-parity 2245/0, red-anchors 5019/0, the contacts, campaign and privacy suites); the browser drives, the visual sweep, the big and round-trip imports and the scratch-PostgreSQL probes ran right after this push, on Ali's word (the tracker's STEP 58): typecheck 0 and next build ok; the live campaign page 522/0 and the wordings 43/0; U20 503/0 (the eye's audited reveal at both widths); the visual sweep 192/192 (six widths, three languages); the importer drive 1050/1052 in both calm runs — its two misses are the drive's own waits, not a product failure shown (the marketing tracker's ◐ HALF-DONE 13); the big imports and the round trip PASS; the scratch-PostgreSQL probes — list basis 23/0, audience 44/0, registration contact 14/0, staging 3/0, import 63/0, U52a 38/0 — and red:dal-parity's 233 plants caught; house-bot reports 3/0; the engine's dry-fire on PostgreSQL, all seven scenarios on every invariant (6,980 people: no double send, every row terminal, nobody protected sent, the counts adding up); the live switch's ops door read without the proxy workaround (status OFF); red:marketing-setup-plan 28/28 and the doc guards green. The first attempts had failed for no product reason: OMEGA's memory ran out, and the parallel runs' path-matched kill scripts stopped each other's dev servers (now by port).
      What they found was in the TEST TOOLS only — no product code — fixed on `marketing-s14` (`666833efb`, `5d08bb3af`,
-     `514609e6f`, `0e8fada09`, `60d59df5b`): the visual sweep still expected two sentences C8b reworded (the masked
+     `514609e6f`, `0e8fada09`, `60d59df5b`, `0d2a04687`, `31ea947d8`): the visual sweep still expected two sentences C8b reworded (the masked
      whole-number answer now says a stop or a withdrawal can still be recorded; the import result counts the contacts
      that joined the list) and a column header without its sort arrow ("Added↓"); the staging Postgres probe's B.9/B.10
      predated S15-12's second sweep rule (a COMMITTING or PAUSED run idle 14 days is CANCELLED, its settled rows kept) —
      it now mirrors the in-memory P3 on Postgres; the import Postgres probe's §9.6 drove the REAL check with a malformed
      run id (the app rightly answers `not_found` for an id not shaped `ci_` + 20 letters); the U20 drive's round-trip
-     waits and every wait of the admin guide's capture are one constant, SLOW (120 s). STEP 58 lists every fix.
+     waits and every wait of the admin guide's capture are one constant, SLOW (120 s); the contacts drives wait for the
+     page's load before their first click. STEP 58 lists every fix.
   ✅ S15's NEVER-RUN checks (next build, qa:contacts-import, -big, -roundtrip, test:contacts-import-db, the admin gates)
      have run on the merged state: next build before the push (STEP 57), the rest in the post-push checks (STEP 58, the
      line above).
@@ -413,7 +414,7 @@ for answer 3.
 - **2026-10-09 ~18:41 EAT · C8b, C8c and C3c LIVE `f3390998`, then S14's close (the marketing tracker's STEPS 57–58)** —
   S15 had left Ali-Blade15 and Ali gave its leftovers to S14 (~10:00 EAT), which built, reviewed twice and pushed them
   with the lane's clean-up: `f33909983` pushed 15:37:02Z, served on www and the apex from 15:41:10Z, /api/health ok, the
-  database reachable and migrated. The post-push checks: {{POSTPUSH_RESULTS}} — their finds were in the test tools only,
+  database reachable and migrated. The post-push checks: typecheck 0 and next build ok; the live campaign page 522/0 and the wordings 43/0; U20 503/0 (the eye's audited reveal at both widths); the visual sweep 192/192 (six widths, three languages); the importer drive 1050/1052 in both calm runs — its two misses are the drive's own waits, not a product failure shown (the marketing tracker's ◐ HALF-DONE 13); the big imports and the round trip PASS; the scratch-PostgreSQL probes — list basis 23/0, audience 44/0, registration contact 14/0, staging 3/0, import 63/0, U52a 38/0 — and red:dal-parity's 233 plants caught; house-bot reports 3/0; the engine's dry-fire on PostgreSQL, all seven scenarios on every invariant (6,980 people: no double send, every row terminal, nobody protected sent, the counts adding up); the live switch's ops door read without the proxy workaround (status OFF); red:marketing-setup-plan 28/28 and the doc guards green. The first attempts had failed for no product reason: OMEGA's memory ran out, and the parallel runs' path-matched kill scripts stopped each other's dev servers (now by port) — their finds were in the test tools only,
   fixed (§0). B8 applied on production ~19:05 EAT with Ali's approval (§0). Open: C3e.
 - **2026-10-09 ~07:45 EAT · C8a LIVE** — an erasure stands until a new consent (the §1 row C8 has the proof). Ali: "push
   all live, we will lose access to this machine soon". C3b + C3b-fix: the fix builder finished every decision D1–D10 and
