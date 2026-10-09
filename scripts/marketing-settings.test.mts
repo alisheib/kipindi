@@ -41,8 +41,10 @@
  *       cannot be read in full, what only the form prints handed with the form only, no number named as who switched it
  *       on, driven through `marketing-sms-view.ts`; the loader itself (`loadSmsMoneyForViewerAs`, its reads injected)
  *       failing closed and walking for the owner's form only; and the page asks only `loadSmsMoneyForViewer`;
- *   S12 the ops door (the public proxy; its clock checked against the database's for an open, a close only warned — the
- *       rule itself run); S13 wiring;
+ *   S12 the ops door (⛔ the public proxy FIRST, then the switch's module by ONE dynamic import, and nothing named statically
+ *       — 2026-10-09: a static import built the client on Railway's private host before the rewrite ran; its clock checked
+ *       against the database's for an open, a close only warned — the rule itself run; an unreadable database clock is the
+ *       database out of reach, never "sync this PC"); S13 wiring;
  *   S14 (U49s-2) ⭐ the card's words (`marketing-sms-words.ts`) true for EVERY path the real writers take in memory —
  *       "weren't switched on" only where no write was attempted and the switch was read; "off" never unread.
  *
@@ -98,7 +100,7 @@ const L = {
   s9: "S9 · the store — a partial post, an unknown key and a blank officer are refused with nothing written; a good save writes exactly the record and its ADMIN row; a stale page is refused; a no-change save writes nothing; a row it cannot read in full (a bad field, another shape, a window under 2 h) reads defaults where it failed — the window as a pair — answers readable:false and refuses every save",
   s9r: "S9r · ⛔ U13 · R1 · A PUBLISHED PROMISE HOLDS THE HOURS — new send hours are refused (published_hours, naming the time, nothing written) while a public policy line names a time they would drop: 09:00–18:00 or 08:00–21:00 under a line naming 08:00 and 20:00, and any new hours under a line naming 9 o'clock; hours that keep every named time save; a change that leaves the hours as they are is never held; lines that cannot be read refuse new hours (published_unread) but no other change",
   s10: "S10 · ONE PRICE SOURCE — nothing in src/ reads SMS_PRICE_PER_SEGMENT_TZS (decommented); the estimate RE-READS the record for every estimate and gives no price for a read that failed or a row it cannot read in full; .env.example sets no price",
-  s12: "S12 · the ops door imports the two writers (and hasDatabase) and nothing that writes SystemConfig itself, rewrites Railway's private database host to the public proxy before its first read, refuses without a database, outside production's own Railway environment (with its audit secret) and — for an OPEN only — from a PC whose clock is over 20 s off the database's (the fourth review's m4; a close only warns, the fifth's F5) before any write, with that clock rule itself run (the round trip's midpoint, the 20 s edge, the direction named), and calls the writers as via ops with no actor",
+  s12: "S12 · the ops door rewrites Railway's private database host to the public proxy FIRST and only then loads the switch's module — by ONE dynamic import, the only module it loads, naming nothing statically (no import from, bare import or export from: a static import runs before the file's first line, and the module builds the database client as it loads — 2026-10-09's off-Railway run) — and nothing that writes SystemConfig itself; it refuses without a database before it loads that module, outside production's own Railway environment (with its audit secret) and — for an OPEN only — on a database clock it cannot read (the database out of reach, never 'sync this PC') or from a PC whose clock is over 20 s off the database's (the fourth review's m4; a close only warns, the fifth's F5) before any write, with that clock rule itself run (the round trip's midpoint, the 20 s edge, the direction named), and calls the writers as via ops with no actor",
   s11: "S11 · a viewer who may not read money figures is handed NO money — the card's props and the tab's props hold no TZS, no price, credit kept for codes or campaign limit, no platform floor, no measured price and no fingerprint spelling them, for a non-owner AND for an owner whose own money.figures cell hides money (who gets text, never a form); a record that cannot be read in full shows no value to anyone; a money viewer is handed the line in money ('TZS 6 per SMS · …', each TZS bound to its amount), and only the owner's form its fingerprint, the floor, the measured price and whether a save was ever made; who switched it on is never a number — in any grouping or separator, a foreign one included, the ops door's `by` too — and a name still shows; a role that could not be read is neither the owner nor shown money, and is said as such, never as 'not the owner'; the loader, driven with its reads injected, answers the owner and the money from ONE role read, fails closed (no role, a role read that failed, a no, a decider that throws) and walks the send history for the owner's form only (a history that cannot be read said so); and the page asks nothing itself — loadSmsMoneyForViewer answers, for both views, and nothing in src/app calls its role-taking twin",
   s13: "S13 · the wiring — test:/red:marketing-settings, ops:marketing-live-switch, db:probe-marketing-settings and qa:marketing-settings resolve, predeploy runs the suite after test:marketing-wordings, and client-graph-safe pins the pure settings module",
   s14: "S14 · ⭐ THE CARD'S WORDS ARE TRUE FOR EVERY PATH THE WRITER CAN TAKE (marketing-sms-words.ts, run against the real writers in memory) — a refused switch-on says 'weren't switched on' ONLY where this click attempted no write and the switch was read; a switch-on that wrote and was taken back (proven off) 'didn't complete'; a failed read or a lost race 'couldn't confirm'; one that may be on, or another's that stands, says so; already_open is worded from the read AFTER it (an opening stamped ahead of this clock is cleared first, one that no longer reads as an opening is a change, never 'already on'); a switch-off's refusals never say off; a switch-off that removed nothing says 'It was already off.' only when the read after it finds nothing stored; and no title repeats the sentence beneath it",
@@ -369,6 +371,27 @@ const LIVE_SRC = "src/lib/server/marketing/live-switch.ts";
 const SETTINGS_SRC = "src/lib/server/marketing/sms-settings.ts";
 const ACTIONS_SRC = "src/app/admin/system/actions.ts";
 const OPS_SRC = "scripts/ops/marketing-live-switch.mts";
+/** S12 · the ops door's ONE load of the switch's module, its no-database refusal, and its refusal of an unreadable clock. */
+const OPS_LOAD = 'await import("../../src/lib/server/marketing/live-switch.ts")';
+const OPS_DB_REFUSAL = "if (!process.env.DATABASE_URL) {";
+const OPS_UNREADABLE_CLOCK = 'if (dbMs === null && command === "open") {';
+/**
+ * S12 · every statement in a (decommented) source that loads a module STATICALLY — an `import … from "…"` (a type import
+ * too), a bare `import "…"`, an `export … from "…"` — at a line's start or after a `;` or a `}`. A dynamic `import(…)` and
+ * `import.meta` are not one. Each is named by its first 60 characters.
+ */
+function staticLoads(source: string): string[] {
+  const out: string[] = [];
+  for (const m of source.matchAll(/(?:^|[;}])\s*(import|export)(?![\w$])/gm)) {
+    const at = (m.index ?? 0) + m[0].length;
+    const end = source.indexOf(";", at);
+    const rest = source.slice(at, end < 0 ? source.length : end);
+    if (m[1] === "import" && /^\s*[(.]/.test(rest)) continue;
+    if (m[1] === "export" && !/(?<![\w$])from\s*["']/.test(rest)) continue;
+    out.push(`${m[1]}${rest}`.replace(/\s+/g, " ").slice(0, 60));
+  }
+  return out;
+}
 const PROBE_SRC = "scripts/live/marketing-settings-pg-probe.mts";
 const DRIVE_SRC = "scripts/live/marketing-u49s-settings-drive.mjs";
 /** U52a's read-only tools (the STEP 54 merge): they NAME the switch's and the settings' keys in their SELECTs — by exact path,
@@ -1033,11 +1056,21 @@ async function runAssertions(impl: Impl, tag: string): Promise<void> {
   /* ── S12 · the ops door ── */
   {
     const ops = impl.sources.get(OPS_SRC) ?? "";
-    const imports = [...ops.matchAll(/^\s*import[\s\S]*?from\s*["']([^"']+)["']/gm)].map((m) => m[1]);
-    const onlyTwo = imports.length === 2 && imports.includes("../../src/lib/server/prisma.ts") && imports.includes("../../src/lib/server/marketing/live-switch.ts");
+    // ⛔ 2026-10-09 · THE PROXY FIRST, THEN THE IMPORT. A static import runs before the file's first line, and the switch's
+    // module builds the database client as it loads (`outreach-record.ts`'s defineConfig record reads its row at import) — so
+    // a door that named src statically had its client on Railway's private host before its rewrite ran, and an off-Railway
+    // run could not reach the database. The door names NOTHING statically; it loads ONE module by ONE dynamic import (no
+    // `require`), inside main, after the rewrite and after its no-database refusal.
+    const statics = staticLoads(ops);
+    const loadAt = ops.indexOf(OPS_LOAD);
+    const oneLoad = ops.split("import(").length === 2 && loadAt > 0 && !/require\s*\(|createRequire/.test(ops);
+    const mainAt = ops.indexOf("async function main(");
+    const hostRule = ops.includes('const PRIVATE_DB_HOST = new RegExp("@postgres[.]railway[.]internal(?::[0-9]+)?");');
+    const proxyAt = ops.indexOf('.replace(PRIVATE_DB_HOST, "@turntable.proxy.rlwy.net:40357")');
     const noWriter = !/config-store|saveConfig|deleteConfig|takeConfig|createConfig|replaceConfig|PrismaClient|prisma\(\)|systemConfig/.test(ops);
     const firstWrite = Math.min(...["openMarketingLiveSwitch({", "closeMarketingLiveSwitch({"].map((x) => { const i = ops.indexOf(x); return i < 0 ? Infinity : i; }));
-    const dbAt = ops.indexOf("if (!hasDatabase())");
+    const dbAt = ops.indexOf(OPS_DB_REFUSAL);
+    const proxyFirst = hostRule && proxyAt > 0 && proxyAt < mainAt && mainAt < dbAt && dbAt < loadAt && loadAt < firstWrite;
     const envAt = ops.indexOf('process.env.RAILWAY_ENVIRONMENT_NAME === "production" && process.env.RAILWAY_SERVICE_NAME === "50pick"');
     const secretAt = ops.indexOf("process.env.AUDIT_CHAIN_SECRET");
     const sessionCompared = /auditKey === \(process\.env\.SESSION_SECRET \?\? ""\)/.test(ops);
@@ -1056,12 +1089,16 @@ async function runAssertions(impl: Impl, tag: string): Promise<void> {
     const clockRule = cp(T0, T0 - 100, T0 + 100) === null && cp(T0 + 20_000, T0, T0) === null
       && (cp(T0 + 21_000, T0, T0) ?? "").includes("21 s behind") && (cp(T0 - 21_000, T0, T0) ?? "").includes("21 s ahead of")
       && cp(T0 + 1_000, T0 - 30_000, T0 + 30_000) === null && (cp(null, T0, T0) ?? "").includes("couldn't be read");
-    // ⛔ The public proxy before the first read: `railway run` injects a host that resolves only inside Railway.
-    const proxyAt = ops.indexOf('.replace(/@postgres\\.railway\\.internal(:\\d+)?/, "@turntable.proxy.rlwy.net:40357")');
-    const firstRead = ops.indexOf("async function main(");
-    ok(p(L.s12), ops.length > 500 && onlyTwo && noWriter && dbAt > 0 && dbAt < firstWrite && envAt > 0 && envAt < firstWrite && secretAt > 0 && secretAt < firstWrite && sessionCompared && asOps
-        && clockGates && clockRule && proxyAt > 0 && proxyAt < firstRead,
-      `imports [${imports.join(", ")}] · no writer ${noWriter} · db refusal at ${dbAt} · environment check at ${envAt} · secret at ${secretAt} · clock gates the open only ${clockGates} (rule run ${clockRule}) · proxy rewrite at ${proxyAt} (main at ${firstRead}) · first write at ${firstWrite} · as ops ${asOps}`);
+    // ⛔ A database clock that could not be READ is the database out of reach (the owner-save door's rule): an OPEN refuses,
+    // saying so — never "sync this PC" — after the clock read and before the clock rule; a close still tries.
+    const dbReadAt = ops.indexOf("const dbMs = await readDatabaseClockMs();");
+    const unreadAt = ops.indexOf(OPS_UNREADABLE_CLOCK);
+    const unreadBlock = unreadAt < 0 || clockAt < unreadAt ? "" : ops.slice(unreadAt, clockAt);
+    const unreadableSaid = unreadAt > envAt && dbReadAt > envAt && dbReadAt < unreadAt && unreadAt < clockAt && unreadBlock.includes("return 2;")
+      && unreadBlock.includes("the database could not be reached, so nothing was read or written") && !unreadBlock.includes("Sync now");
+    ok(p(L.s12), ops.length > 500 && statics.length === 0 && oneLoad && proxyFirst && noWriter && dbAt > 0 && envAt > 0 && envAt < firstWrite && secretAt > 0 && secretAt < firstWrite && sessionCompared && asOps
+        && clockGates && clockRule && unreadableSaid,
+      `static loads [${statics.join(" | ")}] · one dynamic load ${oneLoad} (at ${loadAt}) · proxy first ${proxyFirst} (host rule ${hostRule}, rewrite at ${proxyAt}, main at ${mainAt}, db refusal at ${dbAt}, load at ${loadAt}) · no writer ${noWriter} · environment check at ${envAt} · secret at ${secretAt} · clock gates the open only ${clockGates} (rule run ${clockRule}) · an unreadable clock said as the database ${unreadableSaid} · first write at ${firstWrite} · as ops ${asOps}`);
   }
 
   /* ── S13 · the wiring ── */
@@ -1541,6 +1578,15 @@ if (!PROVE_RED) {
     m.set(rel, edit(m.get(rel) ?? ""));
     return m;
   };
+  /** R-S12k · the ops door with its ONE load (the whole `const { … } = await import(…);`) moved above its no-database refusal —
+   *  still one load, still after the rewrite. */
+  const loadBeforeRefusal = (t: string): string => {
+    const at = t.indexOf(OPS_LOAD);
+    const start = at < 0 ? -1 : t.lastIndexOf("const {", at);
+    const end = at < 0 ? -1 : t.indexOf(";", at) + 1;
+    if (start < 0 || end <= 0) return t;
+    return (t.slice(0, start) + t.slice(end)).replace(OPS_DB_REFUSAL, `${t.slice(start, end)}\n  ${OPS_DB_REFUSAL}`);
+  };
 
   type Plant = { name: string; expect: RegExp; impl: Impl; landed: () => Promise<boolean> | boolean; landedAs: string };
   const plants: Plant[] = [
@@ -1777,8 +1823,29 @@ if (!PROVE_RED) {
       impl: { ...REAL, sources: withSource(OPS_SRC, (t) => t.replace("if (clockProblem !== null) console.log(`WARNING:", "if (clockProblem !== null) { console.log(\"REFUSING\"); return 2; } console.log(`WARNING:")) },
       landed: () => (SOURCES.get(OPS_SRC) ?? "").includes("if (clockProblem !== null) console.log(`WARNING:"), landedAs: "a close refuses on the clock" },
     { name: "R-S12d · the ops door left on Railway's private database host (unreachable from a PC)", expect: /^S12 ·/,
-      impl: { ...REAL, sources: withSource(OPS_SRC, (t) => t.replace('"@turntable.proxy.rlwy.net:40357"', '"@postgres.railway.internal"').replace(".replace(/@postgres", ".replace(/@nowhere")) },
-      landed: () => (SOURCES.get(OPS_SRC) ?? "").includes('"@turntable.proxy.rlwy.net:40357"'), landedAs: "the private host is no longer rewritten" },
+      impl: { ...REAL, sources: withSource(OPS_SRC, (t) => t.replace('.replace(PRIVATE_DB_HOST, "@turntable.proxy.rlwy.net:40357")', '.replace(PRIVATE_DB_HOST, "@postgres.railway.internal")')) },
+      landed: () => (SOURCES.get(OPS_SRC) ?? "").includes('.replace(PRIVATE_DB_HOST, "@turntable.proxy.rlwy.net:40357")'), landedAs: "the private host is no longer rewritten" },
+    // ⛔ 2026-10-09 · the door as it was: the switch's module imported STATICALLY — evaluated before the rewrite, so its client
+    // was built on the private host and an off-Railway run could not reach the database.
+    { name: "R-S12g · 2026-10-09: the switch's module imported statically (loaded before the proxy rewrite)", expect: /^S12 ·/,
+      impl: { ...REAL, sources: withSource(OPS_SRC, (t) => `import { readMarketingLiveSwitch } from "../../src/lib/server/marketing/live-switch.ts";\n${t}`) },
+      landed: () => (SOURCES.get(OPS_SRC) ?? "").includes(OPS_LOAD), landedAs: "the door has no dynamic load to sit beside" },
+    { name: "R-S12h · a bare static import of src (a side-effect load before the rewrite)", expect: /^S12 ·/,
+      impl: { ...REAL, sources: withSource(OPS_SRC, (t) => `import "../../src/lib/server/marketing/outreach-record.ts";\n${t}`) },
+      landed: () => (SOURCES.get(OPS_SRC) ?? "").length > 500, landedAs: "the door is not there to plant in" },
+    { name: "R-S12i · a static export from the switch's module (a re-export loads it too)", expect: /^S12 ·/,
+      impl: { ...REAL, sources: withSource(OPS_SRC, (t) => `${t}\nexport { readMarketingLiveSwitch } from "../../src/lib/server/marketing/live-switch.ts";\n`) },
+      landed: () => (SOURCES.get(OPS_SRC) ?? "").length > 500, landedAs: "the door is not there to plant in" },
+    { name: "R-S12j · the switch's module loaded ABOVE the proxy rewrite (a dynamic import before it)", expect: /^S12 ·/,
+      impl: { ...REAL, sources: withSource(OPS_SRC, (t) => t.replace("const PRIVATE_DB_HOST", `${OPS_LOAD};\nconst PRIVATE_DB_HOST`)) },
+      landed: () => (SOURCES.get(OPS_SRC) ?? "").includes("const PRIVATE_DB_HOST"), landedAs: "the rewrite's host rule is not where it was" },
+    { name: "R-S12k · the switch's module loaded before the no-database refusal", expect: /^S12 ·/,
+      impl: { ...REAL, sources: withSource(OPS_SRC, loadBeforeRefusal) },
+      landed: () => { const t = loadBeforeRefusal(SOURCES.get(OPS_SRC) ?? ""); return t.indexOf(OPS_LOAD) > 0 && t.indexOf(OPS_LOAD) < t.indexOf(OPS_DB_REFUSAL); },
+      landedAs: "the load did not move above the refusal" },
+    { name: "R-S12l · the review's NIT, from the owner-save door: an unreadable database clock sent to sync this PC", expect: /^S12 ·/,
+      impl: { ...REAL, sources: withSource(OPS_SRC, (t) => t.replace(OPS_UNREADABLE_CLOCK, "if (false) {")) },
+      landed: () => (SOURCES.get(OPS_SRC) ?? "").includes(OPS_UNREADABLE_CLOCK), landedAs: "an unreadable clock is no longer refused as the database" },
   ];
 
   console.log("RED CONTROL — each defect planted in memory must fire its own claim\n");

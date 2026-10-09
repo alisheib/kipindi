@@ -19,30 +19,33 @@
  * `railway run` runs this on the operator's PC, and the writers stamp and judge the switch by this process's clock — a
  * clock a minute behind would read the owner's fresh opening as malformed, a minute ahead would stamp an opening the
  * servers read as malformed while this door printed ON. ⭐ A CLOSE ONLY WARNS (the fifth review's F5): its delete needs no
- * clock, and a stop that waits on one is not a stop.
+ * clock, and a stop that waits on one is not a stop. ⛔ A database clock that cannot be READ is no PC clock to sync (the
+ * owner-save door's rule): the database is out of reach, and an open refuses saying so — never "sync this PC"; a close
+ * still tries, and says what it found.
  *
- * Run it through Railway so production's audit secret signs the row (STEP 23's precedent). `railway run` hands this PC the
- * app's PRIVATE database host, which resolves only inside Railway: this door rewrites it to the public proxy, as every ops
- * script in this repo does (the URL is never printed):
+ * ⛔ THE PUBLIC PROXY FIRST, THEN THE IMPORT (the owner-save door's order). `railway run` hands this PC the app's PRIVATE
+ * database host, which resolves only inside Railway. The switch's module builds the database client AS IT LOADS — it
+ * imports `outreach-record.ts`, whose licence-outreach record (`defineConfig`) reads its row at import, and that builds the
+ * Prisma client with whatever URL is set then — so the URL is rewritten BEFORE the module is loaded, and the module is
+ * loaded with a dynamic `import()`. A static import runs before this file's first line: until 2026-10-09 this door had
+ * one, its rewrite came too late, and an off-Railway run could not reach the database (worked around that day by
+ * exporting the rewritten URL before node started). The door names no module statically. (The URL is never printed.)
+ *
+ * Run it through Railway so production's audit secret signs the row (STEP 23's precedent):
  *   railway run --service 50pick npm run ops:marketing-live-switch -- status
  *   railway run --service 50pick npm run ops:marketing-live-switch -- open --minutes 120 --by "Claude for Ali (G1)" --reason "U52a live drive"
  *   railway run --service 50pick npm run ops:marketing-live-switch -- close --by "Claude for Ali (G1)" --reason "drive done"
  *
  * Exit: 0 done · 1 refused, not confirmed or needing attention (the reason is printed in the card's words), or a status
- * that could not be read · 2 not run (usage, no database, no production audit secret, or — for an open — this PC's clock
- * off the database's).
+ * that could not be read · 2 not run (usage, no database, no production audit secret, or — for an open — the database's
+ * clock unreadable or this PC's clock off it).
  */
-import { hasDatabase } from "../../src/lib/server/prisma.ts";
-import {
-  closeMarketingLiveSwitch, openMarketingLiveSwitch, opsClockProblem, readDatabaseClockMs, readMarketingLiveSwitch,
-  LIVE_SWITCH_MAX_OPEN_MS, LIVE_SWITCH_MIN_OPEN_MS,
-} from "../../src/lib/server/marketing/live-switch.ts";
 
-/** ⛔ The public proxy, before anything reads the database (the client reads the URL when it is first used): `railway run`
- *  injects `postgres.railway.internal`, which does not resolve off Railway — without this every read here is unreadable
- *  and every write is refused `cannot_read`. */
+/** ⛔ The public proxy, BEFORE the switch's module loads (see the header): `railway run` injects `postgres.railway.internal`,
+ *  which does not resolve off Railway — without this every read here is unreadable and every write is refused `cannot_read`. */
+const PRIVATE_DB_HOST = new RegExp("@postgres[.]railway[.]internal(?::[0-9]+)?");
 if (process.env.DATABASE_URL) {
-  process.env.DATABASE_URL = process.env.DATABASE_URL.replace(/@postgres\.railway\.internal(:\d+)?/, "@turntable.proxy.rlwy.net:40357");
+  process.env.DATABASE_URL = process.env.DATABASE_URL.replace(PRIVATE_DB_HOST, "@turntable.proxy.rlwy.net:40357");
 }
 
 const USAGE = [
@@ -57,22 +60,26 @@ function flag(name: string): string | undefined {
   return at >= 0 && at + 1 < args.length ? args[at + 1] : undefined;
 }
 
-function describe(s: Awaited<ReturnType<typeof readMarketingLiveSwitch>>): string {
-  if (s.state === "open") return `ON — opened at ${s.enabledAt} by ${s.enabledBy}; it switches itself off at ${s.closesAt}`;
-  if (s.why === "expired") return `OFF — it switched itself off at ${s.closedAt ?? "its closing time"}`;
-  return `OFF (${s.why})`;
-}
-
 async function main(): Promise<number> {
   const command = process.argv[2];
   if (command !== "status" && command !== "open" && command !== "close") {
     console.log(USAGE);
     return 2;
   }
-  if (!hasDatabase()) {
+  if (!process.env.DATABASE_URL) {
     console.log("REFUSING: no DATABASE_URL — the switch cannot be stored without the database. Run it through the runner (see the header).");
     return 2;
   }
+  // ⛔ ONLY NOW — after the rewrite above — the switch's module: it builds the database client as it loads.
+  const {
+    closeMarketingLiveSwitch, openMarketingLiveSwitch, opsClockProblem, readDatabaseClockMs, readMarketingLiveSwitch,
+    LIVE_SWITCH_MAX_OPEN_MS, LIVE_SWITCH_MIN_OPEN_MS,
+  } = await import("../../src/lib/server/marketing/live-switch.ts");
+  const describe = (s: Awaited<ReturnType<typeof readMarketingLiveSwitch>>): string => {
+    if (s.state === "open") return `ON — opened at ${s.enabledAt} by ${s.enabledBy}; it switches itself off at ${s.closesAt}`;
+    if (s.why === "expired") return `OFF — it switched itself off at ${s.closedAt ?? "its closing time"}`;
+    return `OFF (${s.why})`;
+  };
   if (command === "status") {
     const s = await readMarketingLiveSwitch();
     console.log(describe(s));
@@ -87,6 +94,12 @@ async function main(): Promise<number> {
   // This PC's clock against the database's, measured across one round trip: it gates an OPEN; a close only warns.
   const askedAt = Date.now();
   const dbMs = await readDatabaseClockMs();
+  // ⛔ A clock that could not be READ is the database out of reach — no clock of this PC's to sync: an open refuses, saying
+  // so. A close still tries (a stop never waits on a clock), and its own answer says what it found.
+  if (dbMs === null && command === "open") {
+    console.log("REFUSING: the database's clock couldn't be read — the database could not be reached, so nothing was read or written. Run it again.");
+    return 2;
+  }
   const clockProblem = opsClockProblem(dbMs, askedAt, Date.now());
   const by = flag("by");
   const reason = flag("reason");
