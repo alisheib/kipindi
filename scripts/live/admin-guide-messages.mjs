@@ -142,7 +142,7 @@ export const SECTIONS = [
         where: "Growth → SMS campaigns → New SMS campaign",
         do: [
           "Name the campaign — only staff see the name.",
-          "Write the Swahili message; it must begin with 50pick. {jina} prints the person's first name — then give the word printed when a name can't be used (for example rafiki).",
+          "Write the Swahili message; it must begin with 50pick. {jina} prints the person's first name — then give the word printed when a name can't be used (for example Rafiki).",
           "English is optional: players whose account language is English get it, everyone else gets Swahili.",
           "The message must fit in ONE SMS, and it is sent exactly as you write it — nothing is added. The counter shows the room left (12 characters are kept for {jina}).",
         ],
