@@ -246,8 +246,9 @@ const W = {
   guestPrompt: { sw: 'Ingia au jisajili ili uone pochi na tiketi zako.', en: 'Sign in or sign up to see your wallet and tickets.', zh: '登录或注册以查看您的钱包和注单。' },
   /** common.staffConsole */
   staffConsole: { sw: 'Konsoli ya wafanyakazi', en: 'Staff console', zh: '员工控制台' },
-  /** profile.verifyIdentity: the Profile card’s door to /profile/kyc — the KYC page’s own h1 since round 5 (F17) */
-  verifyId: { sw: 'Thibitisha kitambulisho', en: 'Verify your identity', zh: '验证您的身份' },
+  /** profile.kycIdentityVerification: the Profile card’s door to /profile/kyc — the KYC page’s tab and eyebrow since round 6
+   *  (review C13: the name every state of the page carries; round 5 had the h1, a headline that changes with the state) */
+  verifyId: { sw: 'Uthibitisho wa kitambulisho', en: 'Identity verification', zh: '身份验证' },
   /** notif.unreadOne and notif.unreadN: the dot’s count in words (journey-tabs.tsx, `TabUnread`’s sr-only span) */
   unreadOne: { sw: '1 haijasomwa', en: '1 unread', zh: '1 条未读' },
   unreadN: { sw: '{n} hazijasomwa', en: '{n} unread', zh: '{n} 条未读' },

@@ -421,8 +421,14 @@ function g3Rows(I: Impl, W: World, ok: Ok) {
   ok("3.player · a player: money, play, play safe, invite, profile, help, settings — the canvas's cards in A17's order",
     layout(I.rows(player)) === want(), layout(I.rows(player)));
   const pInvite = rowOf(I.rows(player), "invite");
-  ok("3.invite.label · a player's invite door is the page's own name (Alika marafiki), never a paid word",
+  // Round 6 (2026-10-09, review C1): the door says the page's own name for its reader (`invite-name.ts`) — while invites pay
+  // nothing (this fixture, the shipped default) that is "Alika marafiki", never a paid word; while they pay, the page's own
+  // "Alika na upate zawadi" (its tab and h1), as every other door to it says.
+  ok("3.invite.label · a player's invite door is the page's own name (Alika marafiki while invites pay nothing), never a paid word",
     player.doors.inviteVisible ? pInvite?.kind === "link" && pInvite.label === "profile.inviteFriends" : pInvite === undefined, show(pInvite));
+  const paidInvite = rowOf(I.rows({ ...player, doors: { ...player.doors, invitePaid: true } }), "invite");
+  ok("3.invite.label.paid · while invites pay, the door is the paid page's own name (Alika na upate zawadi) — the page's tab and h1 say the same",
+    player.doors.inviteVisible ? paidInvite?.kind === "link" && paidInvite.label === "profile.inviteEarn" : paidInvite === undefined, show(paidInvite));
   const held = I.rows(member({ held: true }));
   const wallet = rowOf(held, "wallet");
   ok("3.held · a held wallet: Pochi says it is frozen, and no money door is offered (the wallet sheet's rule)",

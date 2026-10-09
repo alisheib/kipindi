@@ -171,7 +171,9 @@ export function PriceHero({
           {copy.aboveBelow && <p className="ud-cap-first mt-1.5 mb-0 text-body-sm text-text-muted">{copy.aboveBelow}</p>}
         </div>
         <div className="ud-hero-stats text-right">
-          <p className="m-0 font-mono text-micro font-semibold uppercase eyebrow text-text-faint">{copy.openLabel}</p>
+          {/* Right-aligned over the open price, it ends on the figure's edge (F19, round 6 · C11); under 400px the column
+              reads left-aligned (`.ud-hero-stats`), where the take-back moves nothing. */}
+          <p className="m-0 font-mono text-micro font-semibold uppercase eyebrow text-text-faint kp-track-end">{copy.openLabel}</p>
           <p className="mt-[5px] mb-0 font-mono text-[13px] font-bold tabular-nums text-text-muted">{usd(openPrice)}</p>
           {/* ⭐ E-198 · THE TWO NUMBERS THAT DECIDE THE BET, IN TEXT, WHILE THEY STILL MATTER.
               🔴 They were rendered in ONE place on a live round — inside the chart below, in

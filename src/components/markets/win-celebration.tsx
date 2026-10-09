@@ -38,6 +38,7 @@ import { DWELL_CELEBRATION_MS } from "@/lib/feedback-timing";
 import { useResultModalPresence } from "@/lib/result-modal-presence";
 import { useT } from "@/lib/i18n";
 import { formatNumber, formatTzs } from "@/lib/utils";
+import { keepFigures } from "@/components/ui/keep-words";
 
 const EVENT_NAME = "50pick:celebrate";
 
@@ -282,6 +283,9 @@ export function WinCelebrationHost() {
   // eyebrow, Sora headline, struck mono amount — three treatments, down from five.
   const heading = t.market.wonHeading;
 
+  /* ⭐ The ✕ stays in Modal's corner, the one ruled exception to F20 (round 6, 2026-10-09, review C9): this dialog opens on
+     its seal (80px of air, then the seal), with no title in the band beside the ✕ — `operation-result-modal.tsx` says why
+     a crest-first dialog keeps the corner, and `test:visual-pass-r6c` holds the rule. */
   return (
     <Modal
       open={open}
@@ -331,12 +335,16 @@ export function WinCelebrationHost() {
           </p>
         )}
 
+        {/* The market's name WHOLE, balanced, its figures kept (round 6, 2026-10-09 — review C17's sibling). It was clamped
+            at two lines, so a long question lost its end on the one screen that says what the player just won: the clamp
+            G3 took off the ticket card and C17 off the classic position card — a clamp is for BROWSING cards (Q6), never
+            for the player's own money. Set as every market title is (R5-E, F1 F4); the seal's column grows a line. */}
         {payload.label && (
           <p
-            className="g-settle mt-2.5 text-[13px] text-text-subtle line-clamp-2"
+            className="g-settle mt-2.5 text-[13px] text-text-subtle text-balance"
             style={{ "--i": 4 } as CSSProperties}
           >
-            {payload.label}
+            {keepFigures(payload.label)}
           </p>
         )}
 

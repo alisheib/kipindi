@@ -5208,6 +5208,12 @@ html[data-sheet-open] .route-enter { animation: none; }
 .tipbar-labels .tb-no { --track-end: 0.05em; }
 .kp-track-end--16 { --track-end: 0.16em; }
 .kp-track-end--10 { --track-end: 0.10em; }
+/* Round 6 (2026-10-09, review C11): the ten right-aligned tracked labels F19 had not reached — the bet confirm's stake
+   and the sell confirm's fee, the withdraw screen's balance, the Wallet history's status word, an Up & Down round's net,
+   pick, players, open price and clock, and /positions/performance's status words (tracked 0.08em, below) — end on their
+   figures' edge the same way. A label that ends on a glyph (the dial's stake hint, the Up & Down card's DOWN target)
+   ends on the glyph's edge already, and keeps its tracking. */
+.kp-track-end--08 { --track-end: 0.08em; }
 .mcardp-spark { line-height: 0; margin-top: 2px; }
 .mcardp-traders { display:flex; align-items:center; gap:7px; }
 .av-stack { display:flex; }

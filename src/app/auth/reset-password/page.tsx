@@ -81,7 +81,9 @@ export default async function ResetPasswordPage({ searchParams }: { searchParams
               subtitleLead="relaxed"
             />
 
-            <div className="flex flex-col gap-2.5">
+            {/* One gap for a pair of large buttons (round 6, 2026-10-09): 12px, the scale's `gap-2`, as every other pair —
+                the stock `gap-2.5` stood them 10px apart. */}
+            <div className="flex flex-col gap-2">
               <Link href={forgotHref as never} className="btn btn-primary btn-lg btn-pill w-full">
                 {t.common.requestNewLink}
               </Link>

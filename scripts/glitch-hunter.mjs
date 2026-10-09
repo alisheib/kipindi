@@ -212,14 +212,15 @@ if (firstMarket) {
     await bubble.click();
     await page.waitForTimeout(500);
     await checkHoverGlitch({ name: "chat" }, ".cm-empty-starter", "chip-starter");
-    await checkHoverGlitch({ name: "chat" }, ".cm-close", "chat-close");
+    // The chat's ✕ is the kit's CloseX since round 6 (review C2), the header's one button — `.cm-close` is gone.
+    await checkHoverGlitch({ name: "chat" }, ".cm-header > button", "chat-close");
     await checkHoverGlitch({ name: "chat" }, ".cm-send", "chat-send");
     // Send a question to surface a citation chip
     await page.locator(".cm-composer textarea").fill("How do I deposit?");
     await page.keyboard.press("Enter");
     await page.waitForTimeout(1200);
     await checkHoverGlitch({ name: "chat" }, ".cm-cite", "chat-citation");
-    await page.locator(".cm-close").click().catch(() => {});
+    await page.locator(".cm-header > button").click().catch(() => {});
     await page.waitForTimeout(400);
   }
 }

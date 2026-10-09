@@ -24,6 +24,8 @@ import { getServerT } from "@/lib/i18n-server";
 import { PageContainer } from "@/components/layout/page-container";
 import { inviteIsLiveFor } from "@/lib/feature-state";
 import { invitePaysPlayersNow } from "@/lib/server/invite-rewards-switch";
+import { inviteLine, inviteName } from "@/lib/journey/invite-name";
+import { resolveSimpleJourney } from "@/lib/server/journey-preview";
 
 // Localised tab title (POLISH-BACKLOG §1.7) — was the hard-coded English
 // "Invite & Earn", which a Swahili player saw in their browser tab and history.
@@ -49,13 +51,15 @@ export async function generateMetadata() {
   // own question, `isApprovedAgent` on the affiliate row (what `getAgentDashboard` asks before it draws the dashboard), so
   // a deactivated agent's read-only dashboard is titled as itself too. Not a promise either way; a failed read answers
   // "not an agent", and the player half below is unchanged.
+  // ⭐ ONE RULE FOR THE NAME, ROUND 6 (2026-10-09, review C1): `invite-name.ts` names the page for its reader, and every door
+  // to it (the hub, the journey's avatar menu and footer, /profile's row) asks the same function — so the tab, the h1 and
+  // the doors cannot say three things again.
   const session = await currentSession();
   const [payable, dashboard] = await Promise.all([
     invitePaysPlayersNow(),
     session ? db.affiliate.findByUserId(session.userId).then(isApprovedAgent, () => false) : Promise.resolve(false),
   ]);
-  if (dashboard) return { title: t.agent.dashTitle };
-  return { title: payable ? t.profile.inviteEarn : t.profile.inviteFriends };
+  return { title: inviteName(t, { agent: dashboard, paid: payable }) };
 }
 export const dynamic = "force-dynamic";
 
@@ -199,7 +203,12 @@ export default async function InvitePage({
    * state. The filter rail stays on the agent dashboard because that is still where this route's
    * long list lives — a player's list is their own friends, and it does not need one.
    */
-  if (agentDash) return <AgentDashboard dash={agentDash} sp={sp} />;
+  // ⭐ BACK, IN THE JOURNEY, TO THE SECTION THAT HOLDS THE DOOR (round 6, 2026-10-09, the review's back-link finding): the
+  // Akaunti hub opens this page (both bodies) and lights its tab here, while the back link said "‹ WASIFU" and, with no
+  // history, went to /profile. A journey reader's link names the hub ("‹ AKAUNTI") and falls back to it; everybody else's
+  // is today's. The shell's own cached answer (`resolveSimpleJourney`), asked once for both bodies.
+  const { journey } = await resolveSimpleJourney();
+  if (agentDash) return <AgentDashboard dash={agentDash} sp={sp} journey={journey} />;
   if (!inviteIsLiveFor(inviteViewer)) notFound();
   // B-1 — no swallow: the fallback fabricated "0 recruits · TZS 0 earned ·
   // program off" to a player with real referral earnings. Throw to
@@ -266,16 +275,18 @@ export default async function InvitePage({
     } catch { /* graceful — card renders without the QR */ }
   }
 
+  // The page's one name for this reader, its tab's too (`invite-name.ts`; round 6, review C1).
+  const name = inviteName(t, { agent: false, paid });
   return (
     <PageContainer tier="form" className="space-y-5">
-      <BackLink fallbackHref="/profile" label={t.common.profile} />
-      <h1 className="sr-only">{paid ? t.profile.inviteEarn : t.profile.inviteFriends}</h1>
+      <BackLink fallbackHref={journey ? "/account" : "/profile"} label={journey ? t.journey.tabAccount : t.common.profile} />
+      <h1 className="sr-only">{name}</h1>
 
       {/* Title row */}
       <div className="flex items-center justify-between">
         <div>
           <p className="font-display text-[19px] font-bold leading-none">
-            {paid ? t.profile.inviteEarn : t.profile.inviteFriends}
+            {name}
           </p>
         </div>
         {/* ⛔ THE CHIP IS THE PAID PROGRAMME'S STATUS AND IT IS HIDDEN WHEN THERE IS NO PROGRAMME.
@@ -316,7 +327,7 @@ export default async function InvitePage({
               {paid ? t.profile.inviteEarn : t.profile.friendsJoined}
             </Cap>
             <p className="col-span-2 font-display text-[19px] font-bold leading-tight text-balance">
-              <DotSeq text={paid ? t.profile.inviteEarnSub : t.profile.inviteFriendsSub} />
+              <DotSeq text={inviteLine(t, { agent: false, paid })} />
             </p>
           </div>
         </div>

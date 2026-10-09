@@ -233,7 +233,8 @@ section("2 · F1 F4 + H1's siblings: every market title is balanced and keeps it
     { name: "a proposal's page", file: "src/app/proposals/[id]/page.tsx", draws: [`text-balance">{keepFigures(pickLocalized(locale, p.titleEn, p.titleSw, p.titleZh))}</h1>`],
       balanced: (s) => cls(s, `tracking-[-0.02em] text-balance">{keepFigures(`) },
     { name: "the classic ticket (PositionCard)", file: "src/components/markets/position-card.tsx", draws: [`{keepFigures(marketTitle)}`],
-      balanced: (s) => cls(s, `tracking-[-0.005em] text-text line-clamp-2 text-balance">`) },
+      // Round 6 (R6-C, review C17) moved this pin: the held question lost its two-line clamp (whole, as the ticket card's).
+      balanced: (s) => cls(s, `tracking-[-0.005em] text-text text-balance">`) },
     { name: "/fairness' resolved table", file: "src/app/fairness/page.tsx", draws: [`{keepFigures(titleOf(m))}</Link>`],
       balanced: (s) => cls(s, `line-clamp-2 text-balance">{keepFigures(titleOf(m))}</Link>`) },
     { name: "the bet dialog's title", file: "src/components/markets/bet-confirm-modal.tsx", draws: [`{keepText(marketTitle, figureRuns(marketTitle))}`],

@@ -33,6 +33,7 @@ import { bannerFor } from "@/lib/failure-banner";
 import { PageContainer } from "@/components/layout/page-container";
 import { isSafePath } from "@/lib/safe-next";
 import { EmailResendInline } from "@/components/profile/email-resend-inline";
+import { resolveSimpleJourney } from "@/lib/server/journey-preview";
 
 // Localised tab title (POLISH-BACKLOG §1.7) — was the hard-coded English
 // "Verify identity", which a Swahili player saw in their browser tab and history.
@@ -155,9 +156,12 @@ export default async function KycPage({ searchParams }: { searchParams?: Promise
     } catch { /* B-1 — deliberate degrade: an unreadable wallet is not evidence of a hold */ }
   }
 
+  // ⭐ In the journey the Akaunti hub opens this page and lights its tab here: the back link names the hub and falls back
+  // to it (round 6, 2026-10-09, the review's back-link finding — it said "‹ WASIFU", and with no history went to /profile).
+  const { journey } = await resolveSimpleJourney();
   return (
     <PageContainer tier="form" className="space-y-5">
-      <BackLink fallbackHref="/profile" label={t.common.profile} />
+      <BackLink fallbackHref={journey ? "/account" : "/profile"} label={journey ? t.journey.tabAccount : t.common.profile} />
 
       {banner && (
         <div role="alert" className="rounded-xl border border-danger-border bg-danger-bg px-4 py-3 text-[13px] text-danger-fg">

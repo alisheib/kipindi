@@ -54,8 +54,8 @@ export function UpDownGhost() {
         </div>
         <div className="mt-2 h-[18px] w-[240px] max-w-full rounded-sm bg-bg-inset kp-shimmer-track" />
       </div>
-      {/* card grid — same shape as the live grid so nothing shifts */}
-      <div className="mt-4 grid items-stretch gap-4" style={{ gridTemplateColumns: "repeat(auto-fill, minmax(300px, 1fr))" }} aria-hidden>
+      {/* card grid — same shape as the live grid so nothing shifts (its track never wider than the column — round 6, C8) */}
+      <div className="mt-4 grid items-stretch gap-4" style={{ gridTemplateColumns: "repeat(auto-fill, minmax(min(300px, 100%), 1fr))" }} aria-hidden>
         {Array.from({ length: 3 }).map((_, i) => (
           <div key={i} className="rounded-xl border border-border bg-bg-elevated kp-shimmer-track" style={{ height: 360 }} />
         ))}

@@ -189,7 +189,10 @@ export default async function DepositReturnPage({
 
       {/* Link-as-button uses the kit's `btn` classes (the canonical pattern for
           navigation actions); <Button> is reserved for real form/submit buttons. */}
-      <div className="flex flex-col sm:flex-row gap-2.5">
+      {/* ⭐ ONE GAP FOR A PAIR OF LARGE BUTTONS (round 6, 2026-10-09): 12px, the override scale's `gap-2` — the receipt's
+          own pair (the page this one opens), the agent pages' pairs and Up & Down's UP/DOWN. This pair stood 10px apart on
+          the stock `gap-2.5`, a key outside the product's spacing scale; stacked on a phone the second button sits 2px lower. */}
+      <div className="flex flex-col sm:flex-row gap-2">
         <Link
           href="/wallet"
           className={`btn ${outcome.state === "PAID" ? "btn-primary" : "btn-ghost"} btn-lg btn-pill w-full inline-flex items-center justify-center gap-1.5`}
