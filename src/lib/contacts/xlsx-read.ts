@@ -1565,6 +1565,10 @@ function mergesOverlap(merges: readonly MergeRange[]): boolean {
  * covered by a merge blank, a hyperlinked formula unflagged, the trailing empty cells trimmed, a blank row skipped but
  * still counted by its number. With `caps` the server's two caps apply as it applies them, row by row (a non-blank row
  * past `maxRows`; the grid past `maxGridCells`); with `limit` the walk stops at that many non-blank rows (a sample).
+ * ⛔ A SAMPLE (`caps` off — the rows `chooseSheet` reads) IS NEVER LAID OUT DENSELY: each of its rows is its non-empty
+ * texts in column order, exactly as the server's sampler hands them over (`sheetSample`, import-xlsx.ts) — the choice
+ * counts cells, never places (sheet-choice.ts) — so a forged sheet whose rows each end in column XFD costs its cells,
+ * never 16,384 slots a row on every visible sheet before any guard could see them. Its merge note is never built.
  */
 function layOut(sheet: SheetRead, rules: XlsxBrowserRules, opts: { readonly caps: boolean; readonly limit: number }): Laid {
   const numbers = [...sheet.rows.keys()];
@@ -1632,13 +1636,13 @@ function layOut(sheet: SheetRead, rules: XlsxBrowserRules, opts: { readonly caps
       if (line > rules.maxRows) throw refuseWith("too_many_rows", "row_number");
       grid += lastColumn;
       if (grid > rules.maxGridCells) throw refuseWith("too_big_inflated", "grid");
-    }
-    const cells = new Array<string>(lastColumn).fill("");
-    for (const [col, text] of found) cells[col - 1] = text;
-    rows.push({ line, cells });
+      const cells = new Array<string>(lastColumn).fill("");
+      for (const [col, text] of found) cells[col - 1] = text;
+      rows.push({ line, cells });
+    } else rows.push({ line, cells: found.map(([, text]) => text) }); // a sample: the non-empty texts alone
     if (rows.length >= opts.limit) break;
   }
-  flagged.merged = mergedRows(sheet.merges);
+  if (opts.caps) flagged.merged = mergedRows(sheet.merges);
   return { rows, flagged };
 }
 
