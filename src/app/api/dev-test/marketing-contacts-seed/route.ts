@@ -23,6 +23,9 @@
  *   POST ?u23grant=view-only|reset — U23's act-gate state: the AUDITOR role given Growth VIEW without ACT (no default role
  *                        holds that pair, `roles.ts`), so the drive can photograph every bulk action disabled with its
  *                        reason; `reset` takes the view away again
+ *   POST ?u37compliance=growth|masked|reset — U37c's typed world (the composer drive's PASS=typed): the COMPLIANCE role given
+ *                        Growth VIEW and ACT (no default role holds that pair for it, `roles.ts`), its `identity.contact`
+ *                        cell read (`growth`) or masked (`masked`, the Owner's edit at /admin/roles); `reset` takes both back
  *   POST ?u23moved=1   — U23's moved audience: ONE more contact (tag "moved", on 0769 000 0NN, which nothing else uses),
  *                        added between the bulk bar's preview and its confirmation so the server's recount refuses it
  *   POST ?u34=1        — U34a's export fixture, idempotent: four live contacts tagged "export" (on 0764 000 0NN, which
@@ -49,7 +52,7 @@ import { ledgerStamp } from "@/lib/server/marketing/ledger-stamp";
 import { mirrorContactCache } from "@/lib/server/marketing/contact-cache";
 import { newContactRow } from "@/lib/server/contacts/contact-write";
 import { ERASURE_EVIDENCE } from "@/lib/marketing/erasure-mark";
-import { setRoleGrant } from "@/lib/server/rbac";
+import { setRoleGrant, setRoleReadGrant } from "@/lib/server/rbac";
 import { ensureRegistrationContact } from "@/lib/server/marketing/registration-contact";
 import { WHOLE_BOOK, contactAudienceWrites } from "@/lib/server/marketing/audience";
 
@@ -320,6 +323,18 @@ export async function POST(req: Request) {
     // ⛔ DEV ONLY (the 404 above): Growth VIEW without ACT for the AUDITOR role, or that view taken away again.
     await setRoleGrant("AUDITOR", "growth", grant === "view-only", false, "dev-seed");
     return NextResponse.json({ ok: true, grant: grant === "view-only" ? "view-only" : "reset" });
+  }
+  const typedWorld = url.searchParams.get("u37compliance");
+  if (typedWorld !== null) {
+    // ⛔ DEV ONLY (the 404 above), through the platform's own two writers: Growth VIEW and ACT for COMPLIANCE, and its
+    // `identity.contact` cell — or both taken back to the defaults' effect.
+    if (typedWorld !== "growth" && typedWorld !== "masked" && typedWorld !== "reset") {
+      return NextResponse.json({ ok: false, error: "u37compliance is growth, masked or reset" }, { status: 400 });
+    }
+    const on = typedWorld !== "reset";
+    await setRoleGrant("COMPLIANCE", "growth", on, on, "dev-seed");
+    await setRoleReadGrant("COMPLIANCE", "identity.contact", typedWorld === "masked" ? "masked" : "read", "dev-seed");
+    return NextResponse.json({ ok: true, compliance: typedWorld });
   }
   if (url.searchParams.get("u23moved") !== null) {
     return NextResponse.json({ ok: true, ...(await seedU23Moved()) });

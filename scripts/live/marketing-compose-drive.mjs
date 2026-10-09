@@ -11,7 +11,7 @@
  *     under it and no source-line line, "No English text", the sender line the server's (the console stub, said honestly),
  *     nobody yet chosen as the audience (U38b — its rail and counts are `qa:marketing-audience`'s), the test card naming the
  *     officer's own number masked and "Save first", and ⛔ NO "Another number" for this GROWTH officer (a typed test is for
- *     ADMIN and COMPLIANCE only); ⛔ no tel input, no number, sender or money control, no TZS; the reason is a button that
+ *     the Owner and Compliance only); ⛔ no tel input, no number, sender or money control, no TZS; the reason is a button that
  *     puts focus in Campaign name, and a click inside the Audience card with nothing wrong never focuses the card;
  *   · REFUSED — no Swahili message; a message not starting "50pick"; a placeholder that is not {jina} — each said beside
  *     Save (and on its field), with Save off;
@@ -48,21 +48,27 @@
  *   PASS=dead-rail (SMS_PROVIDER=blackball and NO keys):
  *   · the sender line speaks Admin → System's dead-rail words with both Railway names; a draft still saves, its saved line
  *     inviting no test; a test is refused rail_dead, pointing at that line.
- *   PASS=typed (U37c-2 · its OWN fresh console server — it opens the server's licence-outreach record and saves
- *   wordings and policy lines through /api/dev-test/marketing-typed-test-seed, the platform's own writers):
- *   · spec Appendix A §A.9's Test-card states, as ADMIN and as COMPLIANCE (both may read a number — a test to a TYPED number
- *     is for those two roles only, Ali's answer of 2026-10-09), at 1280 and 360 — own by default, "Another number" disabled
- *     while outreach is closed / adult.test unsaved, the empty field, a landline refused in the parser's words, unticked, ready
- *     (the contact-book preview: the fallback word, nothing appended), handed over to the stub (exactly that text), refused
- *     (the reason, said to a reader), the number's budget, and own refused with the consent link (while outreach is closed —
- *     once it opens, U33a-G's licence basis hands the same test over) beside a typed refusal with none; and the 18+ tick BOUND
- *     (§16.19): an edited number unticks it (8b), every Send spends it, and words reworded while the page is open are
- *     refused and re-read (14, §18.32). ⭐ ONE GROWTH officer in the world where the other two are offered a typed test: "My
- *     own number" alone, no "Another number", no number field.
- *   · ⛔ THE SOURCE LINE HAS NO JOB since the owner's ruling of 2026-10-09: nothing seeds one, a draft saved before any line
- *     existed is offered "Another number" as soon as adult.test is saved (the old state 3 is gone), and no draft says its
- *     line is stale (U37s's note is gone). The masked refusal (state 10) needs a role that may type a number but not read one,
- *     and there is none any more: `test:campaign-compose` holds its sentence.
+ *   PASS=typed (U37c-2 · its OWN fresh console server — it opens the server's licence-outreach record, saves wordings and
+ *   policy lines through /api/dev-test/marketing-typed-test-seed and moves COMPLIANCE's grants through
+ *   /api/dev-test/marketing-contacts-seed?u37compliance — each the platform's own writer):
+ *   · ⛔ FIRST, the default: a Compliance officer is REFUSED the composer — "SMS campaigns", Restricted, "Growth & marketing
+ *     access" — because no default grant gives COMPLIANCE the growth domain (`roles.ts`); THEN the Owner's edit is made
+ *     (Growth view and act for COMPLIANCE, `setRoleGrant`), as it must be on a platform where Compliance tests to a number.
+ *   · spec Appendix A §A.9's Test-card states, as the Owner (ADMIN) and as Compliance (a test to a TYPED number is for the
+ *     Owner and Compliance only, Ali's answer of 2026-10-09; both read numbers by default), at 1280 and 360 — own by default,
+ *     "Another number" disabled while outreach is closed / adult.test unsaved, the empty field, a landline refused in the
+ *     parser's words, unticked, ready (the contact-book preview: the fallback word, nothing appended), handed over to the stub
+ *     (exactly that text), refused (the reason, said to a reader), the number's budget, and own refused with the consent link
+ *     (while outreach is closed — once it opens, U33a-G's licence basis hands the same test over) beside a typed refusal with
+ *     none; and the 18+ tick BOUND (§16.19): an edited number unticks it (8b), every Send spends it, and words reworded while
+ *     the page is open are refused and re-read (14, §18.32). ⭐ ONE GROWTH officer in the world where the other two are offered
+ *     a typed test: "My own number" alone, no "Another number", no number field. ⭐ STATE 10 — the ONE neutral sentence of a
+ *     masked officer — as a Compliance officer whose `identity.contact` cell the Owner masked (`setRoleReadGrant`): a role may
+ *     type a number without reading one only that way, since no role is masked AND may type by default.
+ *   · ⛔ THE SOURCE LINE HAS NO JOB since the owner's ruling of 2026-10-09: no line exists when the drafts are saved, and one
+ *     is saved only AFTER them (`?source=1`), to prove it changes nothing — a draft saved before any line existed is offered
+ *     "Another number" as soon as adult.test is saved (the old state 3 is gone); with the line saved, no draft says its line
+ *     is stale and Save stays quiet (U37s's note is gone); and no preview or handed-over text carries the line.
  *   PASS=window-closed (U13 · the console boot — a draft saves and the test reaches the window, the stub passing the switch):
  *   · the send window's clock pinned at 03:00 EAT through /api/dev-test/marketing-send-window (dev only, 404 in production;
  *     it moves nothing but that clock): the Test card says UP FRONT that it is outside the send window, with its hours and
@@ -75,8 +81,9 @@
  *   recorded switch could reach; `test:campaign-compose` §18.11 and §18.5's control hold it.
  *
  * The read-only campaign and the read fault come from U36's `/api/dev-test/marketing-campaigns-seed` (`?set=base`,
- * `?fault=1|0`); every officer is a fresh GROWTH account (`seed-admin`, a date of birth on file, NO SMS consent — the
- * remedy step gives it the way a person does). Officer numbers are unique per run, so a re-run needs no new boot —
+ * `?fault=1|0`); every officer of the console, live-closed, dead-rail and window-closed passes is a fresh GROWTH account (FINANCE
+ * for the refused panel) and PASS=typed's are the Owner (ADMIN), Compliance and one GROWTH officer (`seed-admin`, a date of birth
+ * on file, NO SMS consent — the remedy step gives it the way a person does). Officer numbers are unique per run, so a re-run needs no new boot —
  * but run U36's drive on its OWN fresh server: this one seeds campaigns, and U36's EMPTY state needs none.
  *
  * Run (four boots, one per pass, each in-memory, zero prod risk; stop the last server and remove .next before each —
@@ -525,7 +532,7 @@ async function consolePass() {
         && (await attr(page, "[data-test-card]", "data-test-card")) === "blocked" && (await isDisabled(page, '[data-test-send="SW"]')) === true
         && !(await has(page, "[data-test-live-note]")),
       `${await textOf(page, '[data-test-choice="own"]')} · ${await textOf(page, "[data-test-blocked]")}`);
-    ok(`${vp.name} · BLANK · ⛔ no number field and NO "Another number" for this GROWTH officer (a test to a typed number is for ADMIN and COMPLIANCE only — Ali, 2026-10-09) — no tel input, nothing named phone, msisdn, number or to — and ⛔ OD24 no TZS on the page`,
+    ok(`${vp.name} · BLANK · ⛔ no number field and NO "Another number" for this GROWTH officer (a test to a typed number is for the Owner and Compliance only — Ali, 2026-10-09) — no tel input, nothing named phone, msisdn, number or to — and ⛔ OD24 no TZS on the page`,
       (await page.locator('main#main-content input[type="tel"], main#main-content [inputmode="tel"], main#main-content input[name="phone"], main#main-content input[name="msisdn"], main#main-content input[name="number"], main#main-content input[name="to"]').count()) === 0
         && !(await has(page, '[data-test-choice="typed"]')) && !(await has(page, '[data-test-choice-why="typed"]'))
         && (await attr(page, "[data-test-card]", "data-test-typed-offered")) === "no"
@@ -1064,14 +1071,15 @@ async function windowClosedPass() {
 }
 
 /* ═══ PASS · typed — U37c-2: the Test card's test to ANOTHER number, spec Appendix A §A.9 ═════════════════════════════════
- * A FRESH console server (the console pass's boot line) — this pass moves the server's ONE licence-outreach record and
- * saves wordings and policy lines, which no other pass may meet. The world is stepped forward only through
- * /api/dev-test/marketing-typed-test-seed, which calls the platform's own writers. Four seats — ADMIN and COMPLIANCE (a test
- * to a typed number is for those two roles only, Ali's answer of 2026-10-09; both may read a number), each at 1280 and 360 —
- * walk the states in the order the world allows: closed → lines saved and outreach opened → `adult.test` saved. ⛔ Nothing
- * seeds a source line: since the owner's ruling of 2026-10-09 a test needs none, so `adult.test` saved is the last step, and
- * ONE GROWTH officer is asked, in that open world, whether it is offered a typed number at all (it is not). Every capture
- * asserts its sentence first (`stateShot`). */
+ * A FRESH console server (the console pass's boot line) — this pass moves the server's ONE licence-outreach record, saves
+ * wordings and policy lines and moves COMPLIANCE's grants, which no other pass may meet. The world is stepped forward only
+ * through /api/dev-test/marketing-typed-test-seed and /api/dev-test/marketing-contacts-seed?u37compliance, which call the
+ * platform's own writers. Four seats — the Owner (ADMIN) and Compliance (a test to a typed number is for the Owner and
+ * Compliance only, Ali's answer of 2026-10-09; both read numbers by default), each at 1280 and 360 — walk the states in the
+ * order the world allows: Compliance refused the composer by default, then granted Growth → closed → lines saved and outreach
+ * opened → `adult.test` saved → the source line saved (only to prove it changes nothing). ONE GROWTH officer is asked, in that
+ * open world, whether it is offered a typed number at all (it is not), and Compliance is masked last for state 10. Every
+ * capture asserts its sentence first (`stateShot`). */
 const TYPED = {
   legend: "Send the test to",
   closed: "Tests to another number open once licence outreach is switched on (Admin → System → Licence outreach). Send yourself a test for now.",
@@ -1084,6 +1092,8 @@ const TYPED = {
   reworded: "The 18+ confirmation was reworded while this page was open — read the new words and tick the box again.",
   adultReworded: "I confirm that the person who uses this number is aged 18 or older.",
   refusedReader: "No test was sent: this number is on the stop list, and a stop is kept for good.",
+  /** §7.1 · D19 — the ONE sentence a viewer who may not read numbers gets for every gate refusal of a typed number. */
+  refusedMasked: "No test was sent: this number can't receive this campaign's messages. Choose another number, or test on your own.",
   rateTo: /^That number has had as many tests as it may for now — choose another, or try again in [0-9]+ min\.$/,
   handedStub: /^Handed to this server's console stub at [0-9]{2}:[0-9]{2} — it went to the server log, not to a phone\.$/,
   previewHead: "Swahili, as it will be sent to that number",
@@ -1093,9 +1103,11 @@ const TYPED = {
   oldNoteTail: "their stop link is made for them",
   oldStale: "This draft's source line isn't the one saved now on Admin → System → Marketing wordings — save the draft to bring it up to date.",
   adultLabel: "I confirm that the person who uses this number is 18 or older.",
-  /** G5's source line (the typed seed's `?source=1`): nothing seeds it now, and no text may carry it. */
+  /** G5's source line (the typed seed's `?source=1`): saved only after the drafts, and no text may carry it. */
   oldSource: "Namba yako ipo orodhani kwetu.",
 };
+/** The section gate's panel for a role without the growth domain — the FINANCE check's words (`AdminSectionGate`). */
+const RESTRICTED = { heading: "SMS campaigns", word: "Restricted", domain: "Growth & marketing access" };
 const T = {
   choice: "[data-test-to-choice]",
   own: '[data-test-choice="own"] input',
@@ -1113,6 +1125,13 @@ const outcomeAnchor = (key) => (key.startsWith("360") ? T.send : SEL.test);
 const typedSeed = async (page, query) => {
   const r = await page.request.post(`${BASE}/api/dev-test/marketing-typed-test-seed?${query}`);
   if (!r.ok()) throw new Error(`typed seed ${query} failed: ${r.status()} ${await r.text()}`);
+  return r.json();
+};
+/** COMPLIANCE's grants, through the platform's own writers (`setRoleGrant`, `setRoleReadGrant`): Growth view and act with its
+ *  `identity.contact` cell read (`growth`) or masked (`masked`), or both taken back (`reset`). */
+const complianceWorld = async (page, mode) => {
+  const r = await page.request.post(`${BASE}/api/dev-test/marketing-contacts-seed?u37compliance=${mode}`);
+  if (!r.ok()) throw new Error(`u37compliance=${mode} failed: ${r.status()} ${await r.text()}`);
   return r.json();
 };
 /** ⚖️ Every attempt — own or typed — first spends the officer's general test budget (`marketing.testSend`: 3, then one
@@ -1153,8 +1172,8 @@ async function sendTypedOne(page) {
 }
 
 async function typedPass() {
-  // ⛔ A test to a TYPED number is for ADMIN and COMPLIANCE only (Ali, 2026-10-09) — the two roles that already read numbers.
-  const roles = [{ role: "ADMIN", tag: "admin", reads: true }, { role: "COMPLIANCE", tag: "compliance", reads: true }];
+  // ⛔ A test to a TYPED number is for the Owner and Compliance only (Ali, 2026-10-09) — the two roles that read numbers by default.
+  const roles = [{ role: "ADMIN", tag: "admin" }, { role: "COMPLIANCE", tag: "compliance" }];
   const seats = [];
   for (const [i, vp] of VIEWPORTS.entries()) {
     for (const [j, r] of roles.entries()) {
@@ -1163,8 +1182,9 @@ async function typedPass() {
       seats.push({ vp, r, phone, ctx, page, draft: "", key: `${vp.name}-${r.tag}`, slot: 20 * (i * 2 + j) });
     }
   }
-  // ⭐ STATE 12's helper — another officer who may type a number (COMPLIANCE). The number's budget (`marketing.testSendTo`, 5)
-  // is the recipient's, whoever sends: three tests by this officer and two by the seat spend it, and the seat's sixth is refused.
+  // ⭐ STATE 12's helper — another officer who may type a number (a Compliance officer; masked last, for state 10). The number's
+  // budget (`marketing.testSendTo`, 5) is the recipient's, whoever sends: three tests by this officer and two by the seat spend
+  // it, and the seat's sixth is refused.
   const helper = { ...(await staffCtx("COMPLIANCE", phoneFor(78), { width: 1280, height: 800 }, "no-preference", "Neema Kweka")), draft: "" };
   // ⭐ THE ONE GROWTH CHECK — a GROWTH officer in the very world where the seats are offered a typed number.
   const growthPhone = phoneFor(79);
@@ -1175,6 +1195,20 @@ async function typedPass() {
       ok("PASS=typed needs a FRESH console server — licence outreach must start CLOSED", false, JSON.stringify(start));
       return;
     }
+
+    // ── PHASE 0 · ⛔ THE DEFAULT FIRST: no default grant gives COMPLIANCE the growth domain (`roles.ts` DEFAULT_GRANTS), so a
+    //    Compliance officer is REFUSED the composer — the section gate's Restricted panel. THEN the Owner's edit, through the
+    //    platform's own writer: Growth view and act for COMPLIANCE (`setRoleGrant`), its identity.contact cell read. ──
+    const firstCompliance = seats.find((s) => s.r.role === "COMPLIANCE");
+    await openComposer(firstCompliance.page, "", "any");
+    const refusedText = await mainText(firstCompliance.page);
+    ok(`${firstCompliance.key} · DEFAULT · a Compliance officer is REFUSED the composer — "${RESTRICTED.heading}", ${RESTRICTED.word}, "${RESTRICTED.domain}", no form — no default grant gives COMPLIANCE the growth domain`,
+      (await heading(firstCompliance.page)) === RESTRICTED.heading && refusedText.includes(RESTRICTED.word) && refusedText.includes(RESTRICTED.domain)
+        && !(await has(firstCompliance.page, SEL.form)), refusedText.slice(0, 200));
+    await stateShot(firstCompliance.page, firstCompliance.key, "typed-00-compliance-refused-by-default", RESTRICTED.domain, null, RESTRICTED.heading);
+    const granted = await complianceWorld(seats[0].page, "growth");
+    ok("THE WORLD · the Owner's edit: Growth view and act for COMPLIANCE, its identity.contact cell read — through setRoleGrant and setRoleReadGrant",
+      granted.ok === true && granted.compliance === "growth", JSON.stringify(granted).slice(0, 200));
 
     // ── PHASE A · the record CLOSED and nothing saved: each officer saves a draft (no source line exists, and none is needed) ──
     for (const s of seats) {
@@ -1225,9 +1259,9 @@ async function typedPass() {
       await stateShot(s.page, s.key, "typed-04-no-adult-wording", TYPED.noAdult, SEL.test);
     }
 
-    // ── PHASE C · `adult.test` saved — and NO source line, ever (the owner's ruling of 2026-10-09: a test needs none) ──
+    // ── PHASE C · `adult.test` saved — and still NO source line (the owner's ruling of 2026-10-09: a test needs none) ──
     const adult = await typedSeed(seats[0].page, "adult=1");
-    ok("THE WORLD · adult.test saved through the shipped wordings writer — and nothing seeds a source line", adult.adult?.ok === true && adult.source === undefined, JSON.stringify(adult).slice(0, 200));
+    ok("THE WORLD · adult.test saved through the shipped wordings writer — and no source line with it", adult.adult?.ok === true && adult.source === undefined, JSON.stringify(adult).slice(0, 200));
     for (const s of seats) {
       await openComposer(s.page, `?draft=${s.draft}`);
       await waitReady(s.page);
@@ -1240,14 +1274,20 @@ async function typedPass() {
       await stateShot(s.page, s.key, "typed-03-offered-without-source-line", TYPED.legend, SEL.test);
     }
 
-    // ── PHASE D · a stopped number for the refusals (and still no source line) ──
+    // ── PHASE D · ⭐ the source line SAVED NOW — after every seat's draft, which was saved while none existed — only to prove it
+    //    changes nothing: until the ruling such a draft said "This draft's source line isn't the one saved now…" (U37s) and its
+    //    Save woke; now no draft says a word about it, Save stays quiet, and no text carries the line. And a stopped number for
+    //    the refusals. ──
+    const source = await typedSeed(seats[0].page, "source=1");
+    ok("THE WORLD · the source line saved through the shipped wordings writer — AFTER the seats' drafts, only to prove it changes nothing",
+      source.source?.ok === true, JSON.stringify(source).slice(0, 200));
     for (const s of seats) {
       s.stopped = typedDigits(s.slot + 1);
       const stop = await typedSeed(s.page, `stop=0${s.stopped}`);
       if (stop.stop?.ok !== true) ok(`${s.key} · fixture · a real stop on the refusal number`, false, JSON.stringify(stop));
     }
-    // ⭐ THE ONE GROWTH CHECK — the world where ADMIN and COMPLIANCE are offered a typed number: GROWTH is offered "My own number"
-    // alone — no "Another number" at all, no number field — on its own saved draft.
+    // ⭐ THE ONE GROWTH CHECK — the world where the Owner and Compliance are offered a typed number: GROWTH is offered "My own
+    // number" alone — no "Another number" at all, no number field — on its own saved draft.
     await openComposer(growth.page);
     await growth.page.locator(SEL.name).fill(`${NAME} growth`);
     await growth.page.locator(SEL.bodySw).fill(BODY_JINA);
@@ -1256,14 +1296,15 @@ async function typedPass() {
     await wait(250);
     await save(growth.page);
     await waitReady(growth.page);
-    ok("1280-growth · ⛔ a test to a typed number is for ADMIN and COMPLIANCE only (Ali, 2026-10-09) — with licence outreach open and adult.test saved, GROWTH is offered \"My own number\" alone: no \"Another number\", no number field",
+    ok("1280-growth · ⛔ a test to a typed number is for the Owner and Compliance only (Ali, 2026-10-09) — with licence outreach open and adult.test saved, GROWTH is offered \"My own number\" alone: no \"Another number\", no number field",
       (await textOf(growth.page, '[data-test-choice="own"]')) === `My own number — ${maskedFor(growthPhone)}` && !(await has(growth.page, T.typed))
         && !(await has(growth.page, '[data-test-choice="typed"]')) && !(await has(growth.page, T.number)) && !(await textOf(growth.page, SEL.test)).includes("Another number")
         && (await attr(growth.page, "[data-test-card]", "data-test-typed-offered")) === "no" && (await attr(growth.page, "[data-test-card]", "data-test-target")) === "own",
       await textOf(growth.page, SEL.test));
     await fitCheck(growth.page, "1280-growth", "typed-growth-own-only");
     await stateShot(growth.page, "1280-growth", "typed-growth-own-only", `My own number — ${maskedFor(growthPhone)}`, SEL.test);
-    // The helper's draft: "Another number" is offered at once, and no draft says anything about a source line.
+    // The helper's draft, saved with the line now saved: "Another number" is offered at once, no draft says anything about a
+    // source line, and its typed preview prints none (no line is stamped or printed since the ruling).
     await openComposer(helper.page);
     await helper.page.locator(SEL.name).fill(`${NAME} helper`);
     await helper.page.locator(SEL.bodySw).fill(BODY_JINA);
@@ -1272,18 +1313,23 @@ async function typedPass() {
     await wait(250);
     await save(helper.page);
     await waitReady(helper.page);
+    helper.draft = new URL(helper.page.url()).searchParams.get("draft") ?? "";
     await helper.page.locator(T.typed).first().check();
     await wait(400);
-    ok("helper · a COMPLIANCE officer's draft offers \"Another number\" at once, with no stale-line note",
-      !(await has(helper.page, T.stale)) && (await has(helper.page, T.number)));
+    const helperPreview = await previewOf(helper.page, "SW");
+    ok("helper · a Compliance officer's draft, saved while a source line is saved, offers \"Another number\" at once, with no stale-line note — and its typed preview is EXACTLY the contact-book message, the line nowhere in it",
+      /^cmp_/.test(helper.draft) && !(await has(helper.page, T.stale)) && (await has(helper.page, T.number))
+        && helperPreview === asSent(BODY_JINA, FALLBACK_SW) && !helperPreview.includes(TYPED.oldSource) && noFooter(helperPreview),
+      helperPreview.slice(0, 200));
     for (const s of seats) {
       const { page, key } = s;
-      console.log(`${NL}[u37c] typed · ${key} · licence outreach open, adult.test saved`);
+      console.log(`${NL}[u37c] typed · ${key} · licence outreach open, adult.test and the source line saved`);
       await openComposer(page, `?draft=${s.draft}`);
       await waitReady(page);
-      // ⛔ U37s's NOTE IS GONE: a draft saved before any source line existed says nothing about one, and Save stays quiet —
-      // there is nothing to bring up to date.
-      ok(`${key} · U37s (gone since 2026-10-09) · a draft saved before any source line existed says NOTHING about one — no stale-line note — and Save is quiet ("Nothing to save")`,
+      // ⛔ U37s's NOTE IS GONE: this draft was saved while no line existed and a line is saved NOW — the very state that said
+      // "This draft's source line isn't the one saved now…" and woke Save until the ruling. Now: not a word, Save quiet, and
+      // "Another number" still offered.
+      ok(`${key} · U37s (gone since 2026-10-09) · a draft saved before the source line now saved says NOTHING about it — no stale-line note — Save is quiet ("Nothing to save"), and "Another number" is still offered`,
         !(await has(page, T.stale)) && !(await textOf(page, SEL.message)).includes(TYPED.oldStale)
           && (await isDisabled(page, SEL.save)) === true && (await attr(page, SEL.save, "title")) === NO_CHANGES && (await isDisabled(page, T.typed)) === false,
         `stale note ${await has(page, T.stale)} · save title "${await attr(page, SEL.save, "title")}"`);
@@ -1367,9 +1413,9 @@ async function typedPass() {
       await fitCheck(page, key, "typed-09-handed-over");
       await stateShot(page, key, "typed-09-handed-over", "it went to the server log, not to a phone.", outcomeAnchor(key));
 
-      // STATE 11 · refused at the gate: a stopped number — the reason, said to a reader. (⛔ State 10, the ONE neutral sentence for a
-      // masked officer, needs a role that may type a number but not read one: since Ali's answer of 2026-10-09 there is none —
-      // ADMIN and COMPLIANCE both read numbers — so `test:campaign-compose` holds that sentence, not this drive.)
+      // STATE 11 · refused at the gate: a stopped number — the reason, said to a reader. (State 10, the ONE neutral sentence for a
+      // masked officer, needs a role that may type a number but not read one — none by default, since the Owner and Compliance
+      // both read numbers: phase F makes one, a Compliance officer whose identity.contact cell the Owner masked.)
       await typeNumber(page, s.stopped);
       const refused = await sendTypedOne(page);
       ok(`${key} · STATE 11 · a stopped number refused — a reader is told the reason — and no consent link`,
@@ -1411,8 +1457,9 @@ async function typedPass() {
       await stateShot(page, key, "typed-12-rate-limited", "That number has had as many tests as it may for now", outcomeAnchor(key));
     }
 
-    // ── PHASE E · the 18+ words REWORDED while two pages are open (§18.32) — 1280 GROWTH and 360 ADMIN each tick under the
-    //    old words; the owner's save lands; each Send is refused, the page re-reads, and the box shows the new words, unticked ──
+    // ── PHASE E · the 18+ words REWORDED while two pages are open (§18.32) — the 1280 Owner and the 360 Compliance officer each
+    //    tick under the old words; the owner's save lands; each Send is refused, the page re-reads, and the box shows the new
+    //    words, unticked ──
     const late = [seats[0], seats[seats.length - 1]];
     await resetBudgets(late[0].page);
     for (const s of late) {
@@ -1435,6 +1482,30 @@ async function typedPass() {
       await fitCheck(s.page, s.key, "typed-14-reworded");
       await stateShot(s.page, s.key, "typed-14-reworded", TYPED.reworded, outcomeAnchor(s.key));
     }
+
+    // ── PHASE F · STATE 10 — the ONE neutral sentence of a MASKED officer (D19). No role may type a number without reading one
+    //    by default, so the Owner masks COMPLIANCE's identity.contact cell (`setRoleReadGrant`, the edit /admin/roles makes): the
+    //    Compliance helper may still type a number (the rule is the ROLE), but is told nothing about why a stopped number is
+    //    refused. Last, because the cell is the whole role's; it is read again after. ──
+    const masked = await complianceWorld(helper.page, "masked");
+    ok("THE WORLD · the Owner masks COMPLIANCE's identity.contact cell — through setRoleReadGrant", masked.ok === true && masked.compliance === "masked", JSON.stringify(masked).slice(0, 200));
+    await resetBudgets(helper.page);
+    const maskedStop = typedDigits(90);
+    const stop10 = await typedSeed(helper.page, `stop=0${maskedStop}`);
+    if (stop10.stop?.ok !== true) ok("1280-compliance-masked · fixture · a real stop on state 10's number", false, JSON.stringify(stop10));
+    await openComposer(helper.page, `?draft=${helper.draft}`);
+    await waitReady(helper.page);
+    await helper.page.locator(T.typed).first().check();
+    await wait(400);
+    await typeNumber(helper.page, maskedStop);
+    const refused10 = await sendTypedOne(helper.page);
+    ok("1280-compliance-masked · STATE 10 · a Compliance officer whose identity.contact cell the Owner masked is still offered \"Another number\", and a stopped number is refused in ONE neutral sentence — no reason, and no consent link",
+      refused10?.outcome === "refused" && refused10.reason === "typed_refused" && refused10.sentence === TYPED.refusedMasked && refused10.target === "typed"
+        && refused10.consentLink === null, JSON.stringify(refused10).slice(0, 300));
+    await fitCheck(helper.page, "1280-compliance-masked", "typed-10-refused");
+    await stateShot(helper.page, "1280-compliance-masked", "typed-10-refused-masked", TYPED.refusedMasked, SEL.test);
+    const readAgain = await complianceWorld(helper.page, "growth");
+    ok("THE WORLD · COMPLIANCE's identity.contact cell read again", readAgain.ok === true && readAgain.compliance === "growth", JSON.stringify(readAgain).slice(0, 200));
   } finally {
     for (const s of seats) await s.ctx.close().catch(() => {});
     await helper.ctx.close().catch(() => {});
@@ -1451,6 +1522,10 @@ try {
   else if (PASS === "typed") await typedPass();
   else if (PASS === "window-closed") await windowClosedPass();
   else await deadRailPass();
+} catch (err) {
+  // ⛔ A pass that THROWS (a selector that never came, a seed refused) is a FAIL with a count, never silence: the line names
+  // where it stopped, and the totals below still print — every check after the throw was NOT made.
+  ok(`PASS=${PASS} ran to its end — it threw instead (every check after this point was not made)`, false, String(err?.message ?? err).slice(0, 300));
 } finally {
   await pinWindow("now").catch(() => {});
   await browser.close();
