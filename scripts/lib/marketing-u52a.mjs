@@ -18,8 +18,9 @@
  *     in `unjudged` - see `REFEREE_UNJUDGED`);
  *   · the ledger (decision 6): every chargeable send counted, and a refusal to count beyond the cap of six - written through a
  *     temporary file and a rename that waits out a file Windows holds for a moment (`renameWithRetry`);
- *   · ⭐ THE DRIVE'S MESSAGE (`DRIVE_MESSAGE`, the owner's words of 2026-10-09, kept in `marketing-u52a-message.mjs`) and the
- *     lengths it can have on the wire (`driveLengthWindows`) — what the evidence's SENT AS WRITTEN check holds every message to;
+ *   · ⭐ THE DRIVE'S MESSAGE (`DRIVE_MESSAGE`, the owner's words of 2026-10-09, kept in `marketing-u52a-message.mjs`) — what the
+ *     evidence's DRIVE'S MESSAGE check holds a campaign's stored words to — and the lengths it can have on the wire
+ *     (`driveLengthWindows`), what its SENT AS WRITTEN check holds every message to;
  *   · the private-host guard and the one-word database class, defined with the boot module and re-exported here, and `isCampaignId`.
  *
  * ⛔ NOTHING HERE WRITES TO A DATABASE, SENDS AN SMS OR READS A SECRET. The only file it writes is the gitignored ledger.
@@ -64,9 +65,11 @@ export { DRIVE_MESSAGE, DRIVE_CAMPAIGN_NAMES };
  * own — or the draft's word for a contact-book number), and NOTHING after it. Per language: `{ min, max, fallback }`, `fallback`
  * the length a contact-book number is sent. Until the owner's ruling of 2026-10-09 the engine appended 49 characters or more
  * (the stop link, "18+", the helpline; with a source line, more), which no length in these windows can hold.
- * ⚠️ What a length cannot prove: OTHER words of a length inside a window would pass. The length proves nothing was ADDED; the
- * composer test's own card ("The exact text sent:", run sheet step 2) shows the words. `JINA` and `JINA_MAX_CHARS` are the
- * renderer's own (`campaign-template.ts`), imported, so the windows cannot drift from what it prints.
+ * ⚠️ What a length cannot prove: a SHORT addition, or other words of a length inside a window, pass it — the length shows only that
+ * no footer like the old one (49 characters or more) went out. The words are held elsewhere: the evidence's DRIVE'S MESSAGE compares
+ * the campaign's stored fields with `DRIVE_MESSAGE` in SQL, `test:campaign-compose` proves the renderer appends nothing, and the run
+ * sheet reads the Test card's previews before step 3. `JINA` and `JINA_MAX_CHARS` are the renderer's own (`campaign-template.ts`),
+ * imported, so the windows cannot drift from what it prints.
  */
 export function driveLengthWindows(message = DRIVE_MESSAGE) {
   const windowOf = (body, fallback) => {

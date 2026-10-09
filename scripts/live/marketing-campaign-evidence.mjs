@@ -24,7 +24,8 @@
  *     delivered the row is DELIVERED (a receipt moved it)
  *     skipped   the row is SKIPPED `suppressed` — a refusal by the stop, with NO message on the wire (`skipped=<reason>` names
  *               another reason; a refusal for the wrong reason proves nothing about the stop)
- *     stopped   their stop link's page was used after this campaign's message (E30): an active stop, from the link
+ *     stopped   the drive's stop step: an active stop made on the stop link's page after this campaign's message — link-only on
+ *               purpose (a stop made another way is not that step); not E30, whose figure counts every way (re-ruled 2026-10-09)
  *     resumed   their stop was lifted from the link ("Start them again"): the ledger's newest row is theirs, GIVEN
  *   (⛔ No SMS carries the link since the owner's ruling of 2026-10-09: the drive opens `/s/<token>` from the test number's
  *   recipient row, which `--show-stop-link` prints.)
@@ -34,9 +35,10 @@
  * THAN ONE chargeable message (the engine sends one per row; a first attempt the gateway refused, which never left, is not one); a
  * message to any number that is not the test number (the composer's tests included — the SQL selects only whether each one went to
  * the test number, never the number); ⭐ ANY MARKETING message created in the last day to a number but the test number, of ANY
- * campaign (counted in SQL: nothing else can be sending while the switch is open); ⭐ and a message that is not SENT AS WRITTEN —
- * whose length is not the drive's message with its name filled in (`driveLengthWindows`: no body is stored, and since the owner's
- * ruling of 2026-10-09 nothing may be appended to it).
+ * campaign (counted in SQL: nothing else can be sending while the switch is open); ⭐ a message of a length the drive's message
+ * cannot have with a name filled in (SENT AS WRITTEN — no body is stored: it catches a footer like the old one, never the words);
+ * ⭐ and a campaign whose four stored message fields are not the drive's, character for character (DRIVE'S MESSAGE — compared in
+ * SQL with the owner's words of 2026-10-09 bound as values; no body is selected).
  * ⭐ `--expect-audience=<n>` judges the campaign's CONFIRMED count (the people the confirmation fixed): before a Start it reads 1, or the
  * Start is not pressed. ⭐ `--expect-audit=marketing.campaign_paused` proves the OFFICER's Pause - a row with an actor and the reason
  * `officer_paused` - not the engine's own pause, which is the same action.
@@ -73,6 +75,9 @@ if (AS_MAIN) {
 const LIB = await import("../lib/marketing-u52a.mjs");
 
 const { EXIT, SEND_CAP } = LIB;
+/** The drive's message (the owner's words of 2026-10-09) — BOUND as values in the campaign read, which compares the stored
+ *  fields with it and selects only the yes/no (DRIVE'S MESSAGE); its words are never selected or printed. */
+const DRIVE = LIB.DRIVE_MESSAGE;
 
 const USAGE = [
   "usage: railway run --service 50pick npm run -s ops:marketing-campaign-evidence -- <campaignId> --test=+255… [--control=+255…] --expect=<outcome>:<who>[,…]",
@@ -195,7 +200,9 @@ export function parseEvidenceArgs(argv, lib = LIB) {
  * What the evidence reads, and nothing else (no name of anyone or anything, no e-mail, no address, no message body, no `ip`, no
  * `userAgent`, no hash):
  *   now()                    the database's own clock (the report's time and the ledger's stamp are its, not this machine's)
- *   SmsCampaign              the campaign's status, stop reason, confirmation figures, officer ids and stamps (not its name)
+ *   SmsCampaign              the campaign's status, stop reason, confirmation figures, officer ids and stamps (not its name); and
+ *                            whether each of its four stored message fields EQUALS the drive's message — a yes/no computed in SQL,
+ *                            the drive's words bound as values (DRIVE'S MESSAGE): the fields themselves are never selected
  *   SmsCampaignRecipient     this campaign's rows: status, skip reason and detail, failure class and error, attempts, reference,
  *                            whether an opt-out token exists (the token itself ONLY under --show-stop-link, for the test number),
  *                            segments, length, cost, the claim's token (to group slices, never shown), stamps, the gate trail
@@ -212,7 +219,7 @@ export async function readEvidenceFacts(tx, { campaignId, testKey, controlKey, w
   const clock = await tx.$queryRaw`/* u52a:now */ SELECT now() AS now`;
   // With no --test there is no test number to compare a message's recipient with: the comparison is against nothing, and the report skips it.
   const probeKey = testKey ?? "";
-  const camp = await tx.$queryRaw`/* u52a:campaign */ SELECT "id", "status"::text AS status, "stopReason" AS stop_reason, "audienceCount" AS audience_count, "confirmTier" AS confirm_tier, "estimateSegments" AS estimate_segments, "estimateTzs"::text AS estimate_tzs, "budgetTzs"::text AS budget_tzs, "segmentsSw" AS segments_sw, "segmentsEn" AS segments_en, ("enqueueCursor" = 'done') AS enqueued, "createdBy" AS created_by, "confirmedBy" AS confirmed_by, "confirmedAt" AS confirmed_at, "enqueuedAt" AS enqueued_at, "startedAt" AS started_at, "pausedAt" AS paused_at, "finishedAt" AS finished_at, "createdAt" AS created_at FROM "SmsCampaign" WHERE "id" = ${campaignId}`;
+  const camp = await tx.$queryRaw`/* u52a:campaign */ SELECT "id", "status"::text AS status, "stopReason" AS stop_reason, "audienceCount" AS audience_count, "confirmTier" AS confirm_tier, "estimateSegments" AS estimate_segments, "estimateTzs"::text AS estimate_tzs, "budgetTzs"::text AS budget_tzs, "segmentsSw" AS segments_sw, "segmentsEn" AS segments_en, ("enqueueCursor" = 'done') AS enqueued, "createdBy" AS created_by, "confirmedBy" AS confirmed_by, "confirmedAt" AS confirmed_at, "enqueuedAt" AS enqueued_at, "startedAt" AS started_at, "pausedAt" AS paused_at, "finishedAt" AS finished_at, "createdAt" AS created_at, COALESCE("bodySw" = ${DRIVE.bodySw}, false) AS drive_body_sw, COALESCE("bodyEn" = ${DRIVE.bodyEn}, false) AS drive_body_en, COALESCE("nameFallbackSw" = ${DRIVE.nameFallbackSw}, false) AS drive_fallback_sw, COALESCE("nameFallbackEn" = ${DRIVE.nameFallbackEn}, false) AS drive_fallback_en FROM "SmsCampaign" WHERE "id" = ${campaignId}`;
   const facts = { now: clock[0] ? clock[0].now : null, campaign: camp[0] ?? null };
   if (!facts.campaign) return facts;
 
@@ -367,7 +374,9 @@ export function judgeExpectation(e, person, lib = LIB) {
     return { label, holds: false, why: `the ${e.who} row is ${outcomeOf(r)} — NOT refused${(r.status === "SENT" || r.status === "DELIVERED") ? ": the gate let a stopped number through" : ""}` };
   }
   if (e.outcome === "stopped") {
-    // E30 · a stop AFTER this campaign's message, from the link: an active stop, and the ledger's newest row is that withdrawal.
+    // The drive's stop step: a stop AFTER this campaign's message, made on the stop link's page — an active stop from the link, and
+    // the ledger's newest row that withdrawal. ⛔ Link-only on purpose: the step is made on that page, so a stop made another way
+    // (an officer's, the profile switch) is not its proof. (Not E30: E30's figure, re-ruled 2026-10-09, counts every way.)
     const sentAt = r ? wireAtOf(r, person.messages) : Number.NaN;
     const active = stopsActive.find((s) => s.reason === "WITHDRAWN" && s.via_link === true);
     const lastWord = newest && newest.status === "WITHDRAWN" && newest.via_link === true ? newest : null;
@@ -457,6 +466,12 @@ export function auditChecks(facts, args) {
   });
 }
 
+/** The campaign read's four comparisons (output names) and the composer's names for the fields they compare (DRIVE'S MESSAGE). */
+const DRIVE_FIELDS = Object.freeze([
+  ["drive_body_sw", "Swahili message"], ["drive_body_en", "English message"],
+  ["drive_fallback_sw", "Swahili word for {jina}"], ["drive_fallback_en", "English word for {jina}"],
+]);
+
 /**
  * ⭐ THE STANDING CHECKS — true of every campaign of this drive whatever was asked, and a violation by themselves (a look's exit
  * turns non-zero too):
@@ -468,10 +483,15 @@ export function auditChecks(facts, args) {
  *   · ⭐ NOTHING ELSE IS SENDING: with `--test` given, not one MARKETING message created in the last day went to any other number, of ANY
  *     campaign (one COUNT in SQL). A count that was not read is a violation too: the check never passes by default.
  *   · ⭐ SENT AS WRITTEN (the owner's ruling of 2026-10-09, and his words for the drive — `DRIVE_MESSAGE`): every message of the campaign
- *     and every composer test is as long as the drive's message with its name filled in, and no longer — in its row's language window
- *     when the row says one, else in either (`driveLengthWindows`). No body is stored, so the length is what the database can say: an
- *     appended footer (49 characters and more, until the ruling) or other words of another length make it a violation. Asked or not,
- *     with `--test` or without: it needs no number.
+ *     and every composer test has a length the drive's message can have with a name filled in — in its row's language window when the
+ *     row says one, else in either (`driveLengthWindows`). No body is stored, so the length is what the database can say of the WIRE: a
+ *     footer like the old one (49 characters and more) or words of another length make it a violation. ⚠️ A length cannot show the
+ *     words: a short addition, or other words of a length inside the window, pass it — DRIVE'S MESSAGE holds the words.
+ *   · ⭐ DRIVE'S MESSAGE: the campaign's four stored fields — the Swahili and English messages and both words for {jina} — EQUAL the
+ *     drive's message, character for character: four yes/no computed in SQL with the drive's words bound as values (as `to_test` is
+ *     computed), never a body selected. A field that is not the drive's, or one the read could not compare, is a violation by itself.
+ *     With the renderer's own proof (`test:campaign-compose`: nothing is appended) and the length above, it says what reached the wire.
+ *     Asked or not, with `--test` or without.
  */
 export function standingFindings(facts, args, lib = LIB) {
   const out = [];
@@ -495,6 +515,12 @@ export function standingFindings(facts, args, lib = LIB) {
   const unwrittenTests = (facts.testMessages ?? []).filter((m) => !lib.isDriveLength(m.body_len, null, windows)).length;
   if (unwritten > 0) out.push({ kind: "as_written", where: "campaign", n: unwritten });
   if (unwrittenTests > 0) out.push({ kind: "as_written", where: "composer test", n: unwrittenTests });
+  // DRIVE'S MESSAGE · the four stored fields, each compared in SQL (true only when it equals the drive's words — never a null)
+  const c = facts.campaign;
+  if (c) {
+    const notDrive = DRIVE_FIELDS.filter(([col]) => c[col] !== true).map(([, label]) => label);
+    if (notDrive.length > 0) out.push({ kind: "not_drive_message", fields: notDrive });
+  }
   if (args.test) {
     const stray = (rows) => (rows ?? []).filter((m) => m.to_test === false).length;
     const campaign = stray(facts.messages);
@@ -621,11 +647,14 @@ export function renderEvidence(facts, verdict, args, ctx, lib = LIB) {
   // ⭐ the standing checks: true of every campaign of this drive, asked or not
   const doubles = verdict.standing.filter((s) => s.kind === "double_send");
   L.push(`  ONE MESSAGE PER ROW   ${doubles.length === 0 ? "clear — no recipient row has more than one chargeable message" : doubles.map((s) => `VIOLATION — the ${s.who} row has ${s.n} chargeable messages (the engine sends one message per row; a first attempt the gateway refused, which never left, is not counted)`).join(" · ")}`);
-  // ⭐ SENT AS WRITTEN — the drive's message and nothing after it, by its length (no body is stored): the windows are said, so a lead can read them
+  // ⭐ SENT AS WRITTEN — the wire's LENGTH (no body is stored): the windows are said, so a lead can read them; it shows no old footer, not the words
   const unwritten = verdict.standing.filter((s) => s.kind === "as_written");
   const win = lib.driveLengthWindows();
   const span = `Swahili ${win.SW.min} to ${win.SW.max} characters, English ${win.EN.min} to ${win.EN.max}`;
-  L.push(`  SENT AS WRITTEN       ${unwritten.length === 0 ? `clear — every message on the wire is as long as the drive's message with its name filled in (${span}), nothing after it` : unwritten.map((s) => `VIOLATION — ${s.n} ${s.where} message${s.n === 1 ? " is" : "s are"} not as long as the drive's message with its name filled in (${span}): something was added to it, or other words were sent`).join(" · ")}`);
+  L.push(`  SENT AS WRITTEN       ${unwritten.length === 0 ? `clear — every message on the wire has a length the drive's message can have with a name filled in (${span}): no footer like the old one (49 characters or more) went with any — a length cannot show the words, DRIVE'S MESSAGE below holds them` : unwritten.map((s) => `VIOLATION — ${s.n} ${s.where} message${s.n === 1 ? " is" : "s are"} not as long as the drive's message with its name filled in (${span}): something was added to it, or other words were sent`).join(" · ")}`);
+  // ⭐ DRIVE'S MESSAGE — the campaign's four stored fields against the drive's words, compared in SQL (yes/no; no body is read)
+  const notDrive = verdict.standing.filter((s) => s.kind === "not_drive_message");
+  L.push(`  DRIVE'S MESSAGE       ${notDrive.length === 0 ? "clear — the campaign's stored Swahili and English messages and both words for {jina} are the drive's (DRIVE_MESSAGE), character for character: compared in SQL, no body read" : notDrive.map((s) => `VIOLATION — the campaign's stored ${s.fields.join(", ")} ${s.fields.length === 1 ? "is" : "are"} not the drive's (DRIVE_MESSAGE), character for character: other words were saved for this campaign`).join(" · ")}`);
   if (args.test) {
     const strays = verdict.standing.filter((s) => s.kind === "other_number");
     L.push(`  TO THE TEST NUMBER    ${strays.length === 0 ? "clear — every message of the campaign and every composer test went to the test number" : strays.map((s) => `VIOLATION — ${s.n} ${s.where} message${s.n === 1 ? "" : "s"} went to a number that is NOT the test number`).join(" · ")}`);
@@ -776,13 +805,13 @@ export async function runEvidence(argv, deps = realDeps()) {
 
   if (args.look) {
     // ⭐ A look asks for no verdict, but what it finds wrong is not something to look past: a VIOLATION (a stop broken, a double send, a
-    // message to another number, a message not sent as written, marketing going to anyone else) or an audience that is not the one
-    // expected - the exit is 1 and the line says so.
+    // message to another number, a message not sent as written, other words saved for the campaign, marketing going to anyone else) or an
+    // audience that is not the one expected - the exit is 1 and the line says so.
     const violated = verdict.violations.length + verdict.standing.length;
     const wrongAudience = verdict.audience !== null && verdict.audience.holds === false;
     if (d.parts.lookViolations(verdict) > 0) {
       const said = [];
-      if (violated > 0) said.push(`${violated} VIOLATION${violated === 1 ? "" : "S"} above (a message after a stop, a double send, a message to a number that is not the test number, a message not sent as written, or marketing going to another number)`);
+      if (violated > 0) said.push(`${violated} VIOLATION${violated === 1 ? "" : "S"} above (a message after a stop, a double send, a message to a number that is not the test number, a message not sent as written, a campaign whose stored message is not the drive's, or marketing going to another number)`);
       if (wrongAudience) said.push(`the campaign is not confirmed for the ${verdict.audience.expected} ${verdict.audience.expected === 1 ? "person" : "people"} expected - DO NOT PRESS START`);
       io.line(`RESULT: LOOK ONLY — no verdict was asked, BUT ${said.join(" and ") || "something above is wrong"}: the exit is 1 - STOP THE DRIVE and tell Ali${ledgerOk ? "" : "; the ledger problem above stops it too"}`);
       return EXIT.fail;

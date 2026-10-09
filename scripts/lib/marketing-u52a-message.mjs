@@ -6,8 +6,9 @@
  * ⭐ WHO READS IT, and why nothing else may hold a copy:
  *   · the RUN SHEET (`docs/marketing-specs/ENGINE-SPEC.md` §4.18, "AS BUILT — the run sheet") quotes both bodies, both words and
  *     the campaign names, and `test:marketing-preflight` P9 holds every quote to these strings, character for character;
- *   · the shared core (`marketing-u52a.mjs`) re-exports it, and the evidence's standing check SENT AS WRITTEN holds every message
- *     the drive put on the wire to the lengths these bodies can have (`driveLengthWindows`);
+ *   · the shared core (`marketing-u52a.mjs`) re-exports it; the evidence's standing check DRIVE'S MESSAGE holds every campaign's four
+ *     stored fields to these words (compared in SQL, the words bound as values), and SENT AS WRITTEN holds every message the drive
+ *     put on the wire to the lengths these bodies can have (`driveLengthWindows`);
  *   · the stand-in world (`marketing-u52a-world.mts`) and the scratch-Postgres probe (`marketing-u52a-pg-probe.mts`) build their
  *     campaign and message rows from it;
  *   · the admin guide (`scripts/live/admin-guide.mjs`): its main example campaign IS this message, so the guide's pictures show

@@ -204,7 +204,9 @@ export function checkBinds(calls: Call[], c: BindCtx): string[] {
       case "basis": if (!(values.length === 1 && c.listIds.includes(String(values[0])))) bad.push(`basis was bound to ${show(values)}, wanted one of the member lists' ids`); break;
       case "suppression": case "person-suppression": case "person-ledger": if (!(values.length === 1 && people.includes(String(values[0])))) bad.push(`${tag} was bound to ${show(values)}, wanted the test or the control number`); break;
       case "user": wants(tag, values, [`+${c.testKey}`]); break;
-      case "campaign": case "recipients": case "recipient-counts": case "message-counts": case "test-message-counts": case "audit": wants(tag, values, [c.campaignId]); break;
+      // ⭐ the campaign read: the drive's four words (DRIVE'S MESSAGE compares the stored fields with them, in this order), then the id
+      case "campaign": wants(tag, values, [DRIVE_MESSAGE.bodySw, DRIVE_MESSAGE.bodyEn, DRIVE_MESSAGE.nameFallbackSw, DRIVE_MESSAGE.nameFallbackEn, c.campaignId]); break;
+      case "recipients": case "recipient-counts": case "message-counts": case "test-message-counts": case "audit": wants(tag, values, [c.campaignId]); break;
       case "recipient-named": if (!(values.length === 2 && values[0] === c.campaignId && people.includes(String(values[1])))) bad.push(`recipient-named was bound to ${show(values)}, wanted the campaign and a named number`); break;
       case "messages": case "test-messages": wants(tag, values, [c.testKey ?? "", c.campaignId]); break;
       case "token": wants(tag, values, [c.campaignId, c.testKey]); break;
@@ -395,6 +397,8 @@ export function baseEvWorld(): EvWorld {
       id: CAMPAIGN, status: "DONE", stop_reason: null, audience_count: 1, confirm_tier: "ENUMERATE", estimate_segments: 1, estimate_tzs: "6.00",
       budget_tzs: "10000.00", segments_sw: 1, segments_en: null, enqueued: true, created_by: "usr_qa_growth_0001", confirmed_by: "usr_qa_growth_0001",
       confirmed_at: d(T0 - 60_000), enqueued_at: d(T0 + 1_000), started_at: d(T0), paused_at: null, finished_at: d(T0 + 10_000), created_at: d(T0 - 600_000),
+      // DRIVE'S MESSAGE · the four stored fields compared in SQL with the drive's words: a campaign of the drive carries them all
+      drive_body_sw: true, drive_body_en: true, drive_fallback_sw: true, drive_fallback_en: true,
     },
     recipients: [], messages: [], testMessages: [],
     audit: [
@@ -479,7 +483,8 @@ export function evHandlers(w: EvWorld): Record<string, (values: unknown[]) => un
   };
   return {
     now: () => [{ now: new Date(w.now) }],
-    campaign: (v) => (w.campaign && v[0] === w.campaign.id ? [w.campaign] : []),
+    // the campaign read binds the drive's four words FIRST (its comparisons) and the id LAST
+    campaign: (v) => (w.campaign && v[v.length - 1] === w.campaign.id ? [w.campaign] : []),
     recipients: () => w.recipients.slice(0, 41),
     "recipient-named": (v) => w.recipients.filter((r) => r.msisdn === v[1]).slice(0, 1),
     "recipient-counts": recipientCounts,

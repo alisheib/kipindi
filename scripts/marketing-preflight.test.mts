@@ -54,7 +54,10 @@
  *   drive's ONE message (`DRIVE_MESSAGE`, `scripts/lib/marketing-u52a-message.mjs`) is exactly his, passes the composer's own
  *   verdict and renderer, one GSM-7 SMS each, and its length windows are the renderer's; E10 ⭐ the evidence's standing SENT AS
  *   WRITTEN check — no body is stored, so every message on the wire is held to those windows, and the old footer's 49 characters
- *   appended again are a violation by themselves; the stand-in world's rows are built at the drive's own length.
+ *   appended again are a violation by themselves (a length cannot show the words); E11 ⭐ DRIVE'S MESSAGE — the campaign's four
+ *   stored fields held to DRIVE_MESSAGE by four yes/no computed in SQL, the words bound as values (P7 pins the comparisons and the
+ *   bound values; E7 admits a message column in exactly that form and no other); the stand-in world's rows are built at the drive's
+ *   own length.
  *
  * ⛔ IN-PROCESS BY CONSTRUCTION (§5.11). `--prove-red` FIRST PROVES THE BASELINE GREEN, then plants each defect IN MEMORY (a
  * function of the shared core, the judge, the verdict parts, the transaction helper, a source text, or the TEXT of a tool or of the
@@ -137,10 +140,11 @@ const L = {
   e4: "E4 · what counts as a chargeable send — every message row except a FAILED one with no receipt (QUEUED, UNKNOWN, ACCEPTED, DELIVERED and a receipt-failed row count); the campaign's and the composer test's are counted apart and together",
   e5: "E5 · the slice timings — per claim: people, claim → hand-over, the gap to the previous claim, nothing handed over for a refused slice; and the evidence says in so many words that the engine RECORDS NO gate or send milliseconds; the claim's token is never printed",
   e6: "E6 · ⛔ THE STOP LINK ONLY UNDER ITS FLAG — without --show-stop-link no line holds the token or /s/ and no statement selects it; with it exactly one /s/<token> line for the test number, with its warning; the flag needs --test",
-  e7: "E7 · ⛔ THE AUDIT ROWS THROUGH AN ALLOW-LIST — the officer's id shown, a name or free text hidden; and no statement of either tool selects ip, userAgent, a name, an e-mail, a hash, a message body or a note",
+  e7: "E7 · ⛔ THE AUDIT ROWS THROUGH AN ALLOW-LIST — the officer's id shown, a name or free text hidden; and no statement of either tool selects ip, userAgent, a name, an e-mail, a hash, a message body or a note — the campaign read only COMPARES its four stored message fields with bound values (DRIVE'S MESSAGE) and selects the yes/no",
   e8: "E8 · ⛔ THE STANDING CHECKS, asked or not — a recipient row with more than one message is a double send, and with --test given a message of the campaign or a composer test to a number that is NOT the test number is a violation (the SQL computes a yes/no, never the number): each is printed as VIOLATION, fails the proof and turns a look's exit to 1; a clean campaign prints both checks as clear",
   d1: "D1 · ⭐ THE DRIVE'S MESSAGE IS THE OWNER'S, AND THE COMPOSER'S — DRIVE_MESSAGE holds exactly the owner's two bodies and two words of 2026-10-09 (an independent copy is written here) and four campaign names; the composer's own verdict passes the draft with no problem; each body is plain ASCII (no curly quote, no dash, no emoji), begins with 50pick, carries {jina} once and is ONE GSM-7 SMS with the name's 12-character reserve; the renderer sends a contact-book number exactly the body with the word for {jina} and nothing after it, and an account its own first name; and driveLengthWindows is exactly the renderer's lengths — a 1-letter and a 12-letter name at its edges, the word at `fallback` — each window narrower than the old footer's 49 characters",
   e10: "E10 · ⭐ SENT AS WRITTEN, ASKED OR NOT (the owner's ruling of 2026-10-09) — a campaign message and a composer test as long as the drive's message with its name are clear, at both edges of the window, and the line says so with the windows; a campaign message 49 characters longer (the old footer appended), one a character past or short of its window, a composer test 49 longer, and a Swahili row's message of the longest English length are each a VIOLATION by themselves: the verdict is NOT PROVEN and a look exits 1, with --test or without; an English row is judged in the English window",
+  e11: "E11 · ⭐ THE DRIVE'S MESSAGE, STORED, ASKED OR NOT (the owner's words of 2026-10-09) — a campaign whose four stored fields equal DRIVE_MESSAGE (four yes/no computed in SQL, the words bound as values, no body read) is clear and the line says so; any ONE field not the drive's, or one the read could not compare (null), is a VIOLATION by itself naming it — the verdict NOT PROVEN — two are named together, and a look exits 1 on it, with --test and without",
   e9: "E9 · ⭐ THE LAST CHECKS BEFORE A START — `--look --expect-audience=<n>` judges the campaign's CONFIRMED count: the one expected is exit 0 and says so, another number (or a campaign never confirmed) is exit 1 with 'DO NOT PRESS START', on a look and on a verdict alike; `--expect-audit=marketing.campaign_paused` proves the OFFICER's pause - a row with an actor and the reason officer_paused - not the engine's own pause (the same action, a SYSTEM row with another reason, or no actor), which is named but not counted; the gate's `agent_referee` is a skip reason the evidence can be asked for (`skipped=agent_referee:test`) and explains when a row is skipped for it",
   l1: "L1 · ⭐ THE LEDGER — the cap is six; a seventh is REFUSED: the ledger is not updated, the evidence says LEDGER REFUSES and exits 1; a re-run of the same campaign counts nothing twice and a lower later count never shrinks the entry; a ledger file that is not JSON, names another cap or holds a bad entry stops the run (exit 2) and is never reset; the file is written atomically at the gitignored path",
   l2: "L2 · the pre-send check — the pre-flight's ledger row refuses a step whose sends would pass the cap (--sends, default 1) and --ledger [--sends=n] prints the table and exits 1 when they would not fit; it needs no database; the pre-flight only READS the ledger — not one write in any of its runs",
@@ -1236,7 +1240,11 @@ async function runAssertions(impl: Impl): Promise<void> {
       ledger: { each: [consent("testKey", "1")] },
       user: { each: [`FROM "User" WHERE "phoneE164" = ${ph(`${BT_}+${ph("testKey")}${BT_}`)}`] },
       holds: { each: [`FROM "SmsCampaignRecipient" WHERE "msisdn" = ${ph("testKey")} ORDER BY "createdAt" LIMIT 20`] },
-      campaign: { each: [`FROM "SmsCampaign" WHERE "id" = ${ph("campaignId")}`] },
+      // ⭐ DRIVE'S MESSAGE · each stored field EQUAL to the drive's word for it (an `=`, against the constant's own field), then the id
+      campaign: { each: [
+        `COALESCE("bodySw" = ${ph("DRIVE.bodySw")}, false) AS drive_body_sw`, `COALESCE("bodyEn" = ${ph("DRIVE.bodyEn")}, false) AS drive_body_en`,
+        `COALESCE("nameFallbackSw" = ${ph("DRIVE.nameFallbackSw")}, false) AS drive_fallback_sw`, `COALESCE("nameFallbackEn" = ${ph("DRIVE.nameFallbackEn")}, false) AS drive_fallback_en`,
+        `FROM "SmsCampaign" WHERE "id" = ${ph("campaignId")}`] },
       recipients: { each: [`FROM "SmsCampaignRecipient" WHERE "campaignId" = ${ph("campaignId")} ORDER BY "id" LIMIT 41`] },
       "recipient-named": { each: [`FROM "SmsCampaignRecipient" WHERE "campaignId" = ${ph("campaignId")} AND "msisdn" = ${ph("key")}`] },
       "recipient-counts": { each: [`FROM "SmsCampaignRecipient" WHERE "campaignId" = ${ph("campaignId")} GROUP BY 1, 2, 3 ORDER BY 1, 2, 3`] },
@@ -1290,7 +1298,9 @@ async function runAssertions(impl: Impl): Promise<void> {
       holds: [`"campaignId" AS campaign_id`, `"status"::text AS status`],
       "in-flight": [`"id"`, `"status"::text AS status`],
       elsewhere: [`count(*)::int AS n`],
-      campaign: [`"id"`, `"status"::text AS status`, `"stopReason" AS stop_reason`, `"audienceCount" AS audience_count`, `"confirmTier" AS confirm_tier`, `"estimateSegments" AS estimate_segments`, `"estimateTzs"::text AS estimate_tzs`, `"budgetTzs"::text AS budget_tzs`, `"segmentsSw" AS segments_sw`, `"segmentsEn" AS segments_en`, `("enqueueCursor" = 'done') AS enqueued`, `"createdBy" AS created_by`, `"confirmedBy" AS confirmed_by`, `"confirmedAt" AS confirmed_at`, `"enqueuedAt" AS enqueued_at`, `"startedAt" AS started_at`, `"pausedAt" AS paused_at`, `"finishedAt" AS finished_at`, `"createdAt" AS created_at`],
+      campaign: [`"id"`, `"status"::text AS status`, `"stopReason" AS stop_reason`, `"audienceCount" AS audience_count`, `"confirmTier" AS confirm_tier`, `"estimateSegments" AS estimate_segments`, `"estimateTzs"::text AS estimate_tzs`, `"budgetTzs"::text AS budget_tzs`, `"segmentsSw" AS segments_sw`, `"segmentsEn" AS segments_en`, `("enqueueCursor" = 'done') AS enqueued`, `"createdBy" AS created_by`, `"confirmedBy" AS confirmed_by`, `"confirmedAt" AS confirmed_at`, `"enqueuedAt" AS enqueued_at`, `"startedAt" AS started_at`, `"pausedAt" AS paused_at`, `"finishedAt" AS finished_at`, `"createdAt" AS created_at`,
+        `COALESCE("bodySw" = ${ph("DRIVE.bodySw")}, false) AS drive_body_sw`, `COALESCE("bodyEn" = ${ph("DRIVE.bodyEn")}, false) AS drive_body_en`,
+        `COALESCE("nameFallbackSw" = ${ph("DRIVE.nameFallbackSw")}, false) AS drive_fallback_sw`, `COALESCE("nameFallbackEn" = ${ph("DRIVE.nameFallbackEn")}, false) AS drive_fallback_en`],
       recipients: RECIPIENT_COLUMNS,
       "recipient-named": RECIPIENT_COLUMNS,
       "recipient-counts": [`"status"::text AS status`, `"skipReason" AS skip_reason`, `"failureClass" AS failure_class`, `count(*)::int AS n`],
@@ -1918,6 +1928,37 @@ async function runAssertions(impl: Impl): Promise<void> {
     return [wrong.length === 0, `wrong [${wrong.join("; ")}]`];
   });
 
+  /* ── E11 · DRIVE'S MESSAGE ── */
+  await claim(L.e11, async () => {
+    const wrong: string[] = [];
+    const base = [`--test=${W.TEST.raw}`, "--expect=delivered:test"];
+    const clean = await ev(impl, W.evA(), W.evArgv(W.CAMPAIGN, base));
+    if (clean.code !== 0 || !has(clean.lines, "DRIVE'S MESSAGE       clear") || has(clean.lines, "VIOLATION — ")) wrong.push(`a campaign carrying the drive's message: exit ${clean.code}`);
+    const fields: Array<[string, string]> = [["drive_body_sw", "Swahili message"], ["drive_body_en", "English message"], ["drive_fallback_sw", "Swahili word for {jina}"], ["drive_fallback_en", "English word for {jina}"]];
+    const off = (col: string, value: unknown): ReturnType<typeof W.evA> => {
+      const w = W.evA();
+      (w.campaign as Record<string, unknown>)[col] = value;
+      return w;
+    };
+    // ⭐ each field alone, not the drive's (false) or not compared at all (null): a violation by itself, naming the field
+    for (const [col, label] of fields) {
+      for (const value of [false, null]) {
+        const r = await ev(impl, off(col, value), W.evArgv(W.CAMPAIGN, base));
+        if (r.code !== 1 || !has(r.lines, `VIOLATION — the campaign's stored ${label} is not the drive's`) || !has(r.lines, "RESULT: NOT PROVEN")) wrong.push(`${label} ${value === null ? "not compared" : "not the drive's"}: exit ${r.code}`);
+      }
+    }
+    // two at once are named together; a look exits 1 on it, with --test and without (the check needs no number)
+    const two = off("drive_body_sw", false);
+    (two.campaign as Record<string, unknown>).drive_fallback_en = false;
+    const rTwo = await ev(impl, two, W.evArgv(W.CAMPAIGN, base));
+    if (!has(rTwo.lines, "VIOLATION — the campaign's stored Swahili message, English word for {jina} are not the drive's")) wrong.push("two fields not the drive's are not named together");
+    const lookTest = await ev(impl, two, W.evArgv(W.CAMPAIGN, [`--test=${W.TEST.raw}`, "--look"]));
+    if (lookTest.code !== 1 || !has(lookTest.lines, "BUT 1 VIOLATION") || !has(lookTest.lines, "a campaign whose stored message is not the drive's")) wrong.push(`a look with --test at another message: exit ${lookTest.code}`);
+    const lookBare = await ev(impl, two, W.evArgv(W.CAMPAIGN, ["--look"]));
+    if (lookBare.code !== 1 || !has(lookBare.lines, "BUT 1 VIOLATION")) wrong.push(`a look without --test at another message: exit ${lookBare.code}`);
+    return [wrong.length === 0, `wrong [${wrong.join("; ")}]`];
+  });
+
   /* ── E10 · SENT AS WRITTEN ── */
   await claim(L.e10, async () => {
     const wrong: string[] = [];
@@ -2082,9 +2123,17 @@ async function runAssertions(impl: Impl): Promise<void> {
     if (shown.includes("Jay") || shown.includes("free text")) wrong.push("safePayload printed free text");
     // every statement the two tools ran, for the columns that must never be read
     const forbidden = ["ip", "userAgent", "email", "displayName", "rawInput", "notes", "bodySw", "bodyEn", "nameFallbackSw", "nameFallbackEn", "sourcePhrase", PW_COLUMN, "entryHash", "prevHash", "hash", "tags", "wording"];
+    // ⭐ DRIVE'S MESSAGE · the ONE allowed mention of a message column: the campaign read COMPARES each stored field with a BOUND value
+    // and selects only the yes/no — in exactly this form, as recorded (a bound value reads "?"). Any other mention — the field
+    // selected, or compared with a literal — is a body read, and the scan below sees it.
+    const COMPARED = [["bodySw", "drive_body_sw"], ["bodyEn", "drive_body_en"], ["nameFallbackSw", "drive_fallback_sw"], ["nameFallbackEn", "drive_fallback_en"]]
+      .map(([col, as]) => `COALESCE("${col}" = ?, false) AS ${as}`);
+    const campaignRead = STATEMENTS.get("campaign") ?? "";
+    if (!COMPARED.every((form) => campaignRead.includes(form))) wrong.push("the campaign read does not compare its four stored message fields with bound values (DRIVE'S MESSAGE)");
     for (const [tag, text] of STATEMENTS) {
+      const scanned = tag === "campaign" ? COMPARED.reduce((t, form) => t.split(form).join("«compared»"), text) : text;
       for (const col of forbidden) {
-        if (text.includes(`"${col}"`) && !(col === "wording" && tag === "ledger")) wrong.push(`${tag} reads "${col}"`);
+        if (scanned.includes(`"${col}"`) && !(col === "wording" && tag === "ledger")) wrong.push(`${tag} reads "${col}"`);
       }
       if (tag !== "lists" && tag.length && text.includes('"name"')) wrong.push(`${tag} reads "name"`);
     }
@@ -2924,6 +2973,18 @@ if (!PROVE_RED) {
       impl: withLib({ driveLengthWindows: (m?: unknown) => { const w = (LIB.driveLengthWindows as (x?: unknown) => Record<"SW" | "EN", { min: number; max: number; fallback: number }>)(m); return { SW: { ...w.SW, max: w.SW.max + 49 }, EN: { ...w.EN, max: w.EN.max + 49 } }; } }) },
     { name: "R-AW3 · a campaign message is judged in either window, whatever its row's language (a Swahili row may carry the English length)", expect: [L.e10],
       impl: withLib({ isDriveLength: (n: unknown, _locale: unknown, w?: unknown) => (LIB.isDriveLength as (a: unknown, b: unknown, c?: unknown) => boolean)(n, null, w) }) },
+    { name: "R-AW4 · the DRIVE'S MESSAGE check finds nothing (a campaign saved with other words goes by unseen)", expect: [L.e11],
+      impl: { parts: { ...EV.PARTS, standingFindings: (f: unknown, a: unknown, l: unknown) => (EV.PARTS.standingFindings as (x: unknown, y: unknown, z: unknown) => Array<{ kind: string }>)(f, a, l).filter((s) => s.kind !== "not_drive_message") } } },
+    { name: "R-AW5 · a stored field the read could not compare (null) counts as the drive's", expect: [L.e11],
+      impl: { parts: { ...EV.PARTS, standingFindings: (f: { campaign?: Record<string, unknown> | null }, a: unknown, l: unknown) => {
+        const c = f.campaign;
+        const filled = c ? { ...f, campaign: Object.fromEntries(Object.entries(c).map(([k, v]) => [k, k.startsWith("drive_") && v === null ? true : v])) } : f;
+        return (EV.PARTS.standingFindings as (x: unknown, y: unknown, z: unknown) => unknown)(filled, a, l);
+      } } } },
+    { name: "R-AW6 · the campaign read SELECTS the stored Swahili message itself (a body read) instead of comparing it", expect: [L.e7, L.p7],
+      impl: () => withEvText('COALESCE("bodySw" = ${DRIVE.bodySw}, false) AS drive_body_sw', '"bodySw" AS drive_body_sw') },
+    { name: "R-AW7 · the campaign read is BOUND to other words (the stand-in answers anyway; only the bound values show it)", expect: [L.p7],
+      impl: { rebind: (tag: string, values: unknown[]) => (tag === "campaign" ? ["50pick: other words", ...values.slice(1)] : values) } },
     { name: "R-DM1 · the drive's Swahili body loses two words (the constant no longer holds the owner's words, nor the words the run sheet quotes)", expect: [L.d1, L.p9],
       impl: withLib({ DRIVE_MESSAGE: { ...(LIB.DRIVE_MESSAGE as unknown as Record<string, string>), bodySw: (LIB.DRIVE_MESSAGE as unknown as Record<string, string>).bodySw.split(" hivi karibuni").join("") } }) },
     { name: "R-DM2 · the drive's campaigns lose their names (they could only be told apart by their words)", expect: [L.d1],
