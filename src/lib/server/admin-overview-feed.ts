@@ -11,11 +11,20 @@
  * TYPED test from writing such a line; the send loop still writes one per refusal, which is why the feed is restricted.)
  * An identity row is the same kind of reading: `kyc.rejected · User#…`, `kyc.id.duplicate_blocked · User#…` name a
  * player's identity check and its verdict, and the KYC pages are the compliance domain's.
+ * 🔴 C8b (B6, 2026-10-09) · AND THE CONTACT BOOK'S SIGN-UP ROWS. `registration-contact.ts` writes a SYSTEM row each time a
+ * sign-up's number joins the book — `contacts.contact.registered · MarketingContact#…` (a new row),
+ * `contacts.contact.linked · MarketingContact#…` (an officer's or an import's row, now a client's) and, since B1,
+ * `contacts.contact.revived · MarketingContact#…` (an erased number's emptied row, now a new client's). The contact id is
+ * the very id each row's edit link carries on /admin/contacts, so every staff role watching the feed read off it which book
+ * rows are players, live and free — the D19 fact a masked officer is never given anywhere else (the survey's surface 10,
+ * docs/CONTACTS-SCREEN-PLAN.md §4.7). Those three actions are compliance-only rows too (`COMPLIANCE_ONLY_ACTIONS`), under
+ * the SAME rule as every other: whoever may view the compliance domain sees them, nobody else does.
  *
  * ⭐ THE RULE. A viewer whose STORED role may view the compliance domain — `canView(role, "compliance")`: the Owner, and by
  * default COMPLIANCE and AUDITOR, or any role the Owner grants it on /admin/roles — sees the feed as it always was. Every
- * other viewer is shown no COMPLIANCE row, no KYC row and no row of the `kyc.*` family whatever category wrote it (a few
- * identity refusals are SECURITY rows) — the newest rows of everything else, and as many of them: the page reads the
+ * other viewer is shown no COMPLIANCE row, no KYC row, no row of the `kyc.*` family whatever category wrote it (a few
+ * identity refusals are SECURITY rows) and no contact sign-up row (B6) — the newest rows of everything else, and as many
+ * of them: the page reads the
  * whole in-memory ring (`OVERVIEW_FEED_SCAN`), so a burst of hidden rows never thins anybody's feed, and the gap where a
  * hidden row was can never be counted. ⛔ FAILS CLOSED: no viewer, an unreadable row, a non-staff role or a failed grant
  * read is a viewer who may not.
@@ -45,15 +54,24 @@ export const COMPLIANCE_ONLY_CATEGORIES: readonly string[] = Object.freeze(["COM
 /** …and the identity family by its action, whatever category wrote it (`kyc.id.duplicate_blocked` is a SECURITY row). */
 export const COMPLIANCE_ONLY_ACTION_PREFIX = "kyc.";
 
+/** ⛔ C8b (B6) · …and the contact book's sign-up rows, by their exact actions — the SYSTEM rows `registration-contact.ts`
+ *  writes when a sign-up's number joins the book (created, linked, or an erased number's emptied row revived). Each names
+ *  the book row a client holds; `test:admin-overview-feed` holds this list to the writer's own actions. */
+export const COMPLIANCE_ONLY_ACTIONS: readonly string[] = Object.freeze([
+  "contacts.contact.registered", "contacts.contact.linked", "contacts.contact.revived",
+]);
+
 /** ⛔ Is this row one only a viewer who may read compliance is shown? */
 export function isComplianceOnlyRow(e: Pick<AuditEntry, "category" | "action">): boolean {
   return COMPLIANCE_ONLY_CATEGORIES.includes(e.category)
-    || (typeof e.action === "string" && e.action.startsWith(COMPLIANCE_ONLY_ACTION_PREFIX));
+    || (typeof e.action === "string"
+      && (e.action.startsWith(COMPLIANCE_ONLY_ACTION_PREFIX) || COMPLIANCE_ONLY_ACTIONS.includes(e.action)));
 }
 
 /**
- * ⭐ THE RULE, PURE: the rows a viewer's feed shows, from the newest rows read (newest first) — compliance and identity
- * rows only when the viewer may read compliance, and always the newest `OVERVIEW_FEED_ROWS` of what they may read.
+ * ⭐ THE RULE, PURE: the rows a viewer's feed shows, from the newest rows read (newest first) — compliance, identity and
+ * contact sign-up rows only when the viewer may read compliance, and always the newest `OVERVIEW_FEED_ROWS` of what they
+ * may read.
  * ⛔ The filter runs BEFORE the cut: cutting first would show a non-reader fewer rows exactly where hidden rows were.
  */
 export function overviewFeedRows<T extends Pick<AuditEntry, "category" | "action">>(
