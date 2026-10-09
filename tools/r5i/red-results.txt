@@ -1,0 +1,30 @@
+red:contrast exit=0 43s —          → FAIL gilt-metal label (gold-fg on the struck ramp, worst stop) → 1.24
+red:css-vars-defined exit=1 25s — 
+red:density-contract exit=0 2s —   PASS 4q · the filter row's kp- hook is its own — globals.css styles it only through the divider's :has rule, and no other component wea
+red:enter-where-pressed exit=0 14s — PROVED   an unreadable React key prop on the Sell confirm's buttons (it passed as text with no Enter in it)
+red:failure-reasons exit=0 94s —   ✓ RED  a-fixable-problem-becomes-an-error — ⚠️ THE OPPOSITE FAILURE — a stake below the minimum is rendered as a red ERROR. The 
+red:feedback-law exit=0 46s —      · 3.7 · the bare-word `failed:` title key is deleted, not merely unused — a title that says only that something failed is §F's own
+red:filter-language exit=0 109s — red:filter-language OK — the gate refuses every defect it names.
+red:hero-copy exit=0 3s — 
+red:implicit-submit exit=1 5s — RED CONTROL — 59/61 caught · 1/1 green held · 2 FAILED
+red:journey-account exit=0 2s —   ok   PLANT LANDED · a failed programme read is taken as open
+red:journey-funnel exit=0 157s — 
+red:journey-shell exit=0 27s —   ok   PLANT LANDED · a failed read is retried sooner than the cadence allows
+red:journey-tickets exit=0 2s — 
+red:keyframes exit=0 20s —       → FAIL 3.3 ⭐ shimmer-gilt writes a background-position PER LAYER (one value would slide the metal off the button)
+red:m1-light exit=0 31s —          → FAIL 1.1 ⭐ no one-sided inner light outside the law exception and the pending list
+red:market-result-announce exit=0 6s — 14 passed, 0 failed
+red:offline-neutral exit=0 2s — PROVED   a refresh tried when the network failed too — caught by 12.offline
+red:position-permalink exit=0 13s —      FAIL 5.6 ⭐ the journey's ticket card carries its own id as an anchor, ringed and offset under the header — no id={p.id} on the jour
+red:reduce-motion exit=0 46s —       → FAIL 2.3 the KEPT list holds no stale entries (it may only SHRINK)
+red:sell-grace-truth exit=0 53s — PROVED                               the free strip no longer wraps between its parts (the browser shrinks its Swahili parts in the holder b
+red:sell-price-guard exit=0 4s — 
+red:unwrappable-id exit=0 5s — 
+red:updown-bet-feedback exit=0 9s —      FAIL 1.3 · …and it is the SUCCESS variant, not danger/default — no variant at all
+red:updown-digest exit=0 11s —          updown-digest (E-37 + E-43): 72 passed, 1 failed — new: one validated day drives the filter, the chip AND the empty state
+red:updown-history-pnl exit=0 9s — RED control PASSED — every mutation turned the named assertion red, and the tree is clean.
+red:updown-positions-visible exit=0 8s — red:updown-positions-visible: OK — every pre-fix defect is seen, and the tree is restored
+red:updown-pricing exit=0 15s —      FAIL 0.5 the panel's code survives comment-stripping — 0 chars
+red:visual-pass-r4k exit=0 13s — visual-pass-r4k: 77 passed, 0 failed
+red:simple-journey-flag exit=0 9s — PROVED                               a failed read keeps the ceiling (fails OPEN)
+ALL DONE

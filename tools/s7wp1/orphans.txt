@@ -1,0 +1,18 @@
+──────────────────────────────────────────────────────────────────────
+ORPHAN SCRIPTS — every file in scripts/ must be run, or declared unrun
+──────────────────────────────────────────────────────────────────────
+  files            1468
+  git-ignored      0   (not the product — excluded from the population)
+  reachable        1238   (7 only through a load/launch chain past hop 1)
+  orphaned         230
+  declared         228   (allowlist recorded 2026-07-30)
+
+🔴 2 UNDECLARED orphan(s) — nothing runs these and nothing admits it:
+
+     ✗ scripts/qa/landing-v3/panels/band-panel.js
+     ✗ scripts/qa/landing-v3/panels/hero-panel.js
+
+   Either wire it into package.json (preferred — that is what it was written for),
+   delete it, or add it to scripts/orphan-allowlist.json with a reason.
+
+──────────────────────────────────────────────────────────────────────

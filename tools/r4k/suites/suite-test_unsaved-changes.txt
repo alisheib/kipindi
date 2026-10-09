@@ -1,0 +1,145 @@
+──────────────────────────────────────────────────────────────────────
+§K rule 7d · UNSAVED CHANGES — a form that can lose work guards its exits
+──────────────────────────────────────────────────────────────────────
+
+§1 · the primitive still does what its call sites believe
+  PASS 1.1 the primitive exists
+  PASS 1.2 exit ① · it installs a beforeunload listener
+  PASS 1.3 exit ① · …and sets returnValue, which legacy engines require
+  PASS 1.4 exit ② · it intercepts clicks in the CAPTURE phase
+  PASS 1.5 exit ② · …and it can actually stop one
+  PASS 1.6 the prompt is the kit ConfirmModal, never window.confirm
+
+§2 · every admin form that can lose work reaches the guard
+  population 80 (floor 40) · guarded 45 · exempt 35
+  PASS 2.0 the population is at least 40
+  PASS 2.x app/admin/2fa/setup/setup-client.tsx exempt · ④ a TOTP code, read off the authenticator app
+  PASS 2.x app/admin/affiliate/affiliate-admin-client.tsx — guarded, and not also claimed exempt
+  PASS 2.x app/admin/affiliate/payable-switch.tsx exempt · ① the reason, the typed words and the choice open inside <Modal>, with scrim-close and Escape disabled once anything is entered; Cancel and ✕ are the deliberate exits
+  PASS 2.x app/admin/agents/agents-client.tsx — guarded, and not also claimed exempt
+  PASS 2.x app/admin/agents/page.tsx exempt · ② application + roster search, submitted as searchParams
+  PASS 2.x app/admin/agents/[id]/decision-rail.tsx — guarded, and not also claimed exempt
+  PASS 2.x app/admin/ai-polls/poll-actions.tsx — guarded, and not also claimed exempt
+  PASS 2.x app/admin/ai-polls/short-title-drafts.tsx — guarded, and not also claimed exempt
+  PASS 2.x app/admin/ai-usage/ai-ops-controls.tsx — guarded, and not also claimed exempt
+  PASS 2.x app/admin/ai-usage/credit-controls.tsx — guarded, and not also claimed exempt
+  PASS 2.x app/admin/ai-usage/cycle-controls.tsx — guarded, and not also claimed exempt
+  PASS 2.x app/admin/ai-usage/page.tsx exempt · ② range filter, submitted as searchParams
+  PASS 2.x app/admin/aml/aml-actions-client.tsx exempt · ① fields open inside <Modal>
+  PASS 2.x app/admin/approvals/sof-review-client.tsx exempt · ① fields open inside <Modal>
+  PASS 2.x app/admin/bonuses/bonus-admin-client.tsx — guarded, and not also claimed exempt
+  PASS 2.x app/admin/campaigns/new/composer-client.tsx — guarded, and not also claimed exempt
+  PASS 2.x app/admin/candidates/candidate-actions.tsx — guarded, and not also claimed exempt
+  PASS 2.x app/admin/config/config-form.tsx — guarded, and not also claimed exempt
+  PASS 2.x app/admin/config/fee-simulator.tsx exempt · ⑤ a calculator — it calls no server action at all
+  PASS 2.x app/admin/contacts/contact-form.tsx — guarded, and not also claimed exempt
+  PASS 2.x app/admin/contacts/contacts-bulk-bar.tsx — guarded, and not also claimed exempt
+  PASS 2.x app/admin/contacts/import/import-decision-panel.tsx — guarded, and not also claimed exempt
+  PASS 2.x app/admin/contacts/import/import-entrance.tsx — guarded, and not also claimed exempt
+  PASS 2.x app/admin/contacts/import/import-mapping-panel.tsx — guarded, and not also claimed exempt
+  PASS 2.x app/admin/contacts/lists-card.tsx — guarded, and not also claimed exempt
+  PASS 2.x app/admin/desk/limits-form.tsx — guarded, and not also claimed exempt
+  PASS 2.x app/admin/desk/new/designate-wizard.tsx — guarded, and not also claimed exempt
+  PASS 2.x app/admin/desk/stop-queued.tsx — guarded, and not also claimed exempt
+  PASS 2.x app/admin/desk/switch-ceremony.tsx exempt · ① the reason and the typed word open inside <Modal>, with scrim-close disabled once anything is typed
+  PASS 2.x app/admin/desk/[id]/account-actions.tsx exempt · ① the reason, the holder's password and the typed word open inside <Modal>, with scrim-close disabled once anything is typed
+  PASS 2.x app/admin/desk/[id]/rules-form.tsx — guarded, and not also claimed exempt
+  PASS 2.x app/admin/events/events-client.tsx — guarded, and not also claimed exempt
+  PASS 2.x app/admin/invites/invite-admin-client.tsx — guarded, and not also claimed exempt
+  PASS 2.x app/admin/journey/page.tsx exempt · nothing can be typed: its only <input>s are type=hidden fields of the two native POST forms to /preview (intent, back)
+  PASS 2.x app/admin/journey/preview-links.tsx exempt · ① the label and reason (create) and the reason (revoke) open only inside <Modal>, with scrim-close and Escape disabled once anything is typed; Cancel and ✕ are the deliberate exits
+  PASS 2.x app/admin/journey/rollout-control.tsx exempt · ① the reason opens inside <Modal role=alertdialog>, with scrim-close and Escape disabled once anything is typed; Cancel and ✕ are the deliberate exits
+  PASS 2.x app/admin/kyc/[id]/kyc-decision-rail.tsx — guarded, and not also claimed exempt
+  PASS 2.x app/admin/kyc/[id]/refused-funds-panel.tsx — guarded, and not also claimed exempt
+  PASS 2.x app/admin/kyc/[id]/reopen-refusal-control.tsx exempt · ① fields open inside <Modal> (the reason for re-opening a final refusal)
+  PASS 2.x app/admin/markets/emergency-void-control.tsx exempt · ① fields open inside <Modal>
+  PASS 2.x app/admin/markets/new/wizard.tsx — guarded, and not also claimed exempt
+  PASS 2.x app/admin/markets/page.tsx exempt · ② status/category filter, submitted as searchParams
+  PASS 2.x app/admin/markets/recategorise-control.tsx exempt · ③ a <Select> that commits on change
+  PASS 2.x app/admin/markets/short-title-control.tsx — guarded, and not also claimed exempt
+  PASS 2.x app/admin/markets/[id]/page.tsx exempt · ② side/status filter, submitted as searchParams
+  PASS 2.x app/admin/objections/objection-decision.tsx exempt · ① fields open inside <Modal>
+  PASS 2.x app/admin/payments/kill-switch-toggle.tsx exempt · ④ types PAUSE to arm — an arming word, not work
+  PASS 2.x app/admin/payments/payout-status-control.tsx — guarded, and not also claimed exempt
+  PASS 2.x app/admin/payments/reconcile-controls.tsx exempt · ① fields open inside <Modal>
+  PASS 2.x app/admin/payments/stuck-payout-controls.tsx exempt · ① fields open inside <Modal>
+  PASS 2.x app/admin/players/page.tsx exempt · ② player search + filter, submitted as searchParams
+  PASS 2.x app/admin/players/[id]/balance-adjust-controls.tsx exempt · ① fields open inside <Modal>
+  PASS 2.x app/admin/players/[id]/force-reverify-controls.tsx exempt · ① fields open inside <Modal>
+  PASS 2.x app/admin/players/[id]/set-email-form.tsx — guarded, and not also claimed exempt
+  PASS 2.x app/admin/players/[id]/suspend-controls.tsx exempt · ① fields open inside <Modal>
+  PASS 2.x app/admin/players/[id]/wallet-freeze-controls.tsx exempt · ① fields open inside <Modal> (the reason for a freeze, an unfreeze or a stale identity-hold lift)
+  PASS 2.x app/admin/privacy/dsar-controls.tsx exempt · ① the ERASURE/CORRECTION radio is in a <ConfirmDialog> body
+  PASS 2.x app/admin/proposals/admin-proposals-client.tsx — guarded, and not also claimed exempt
+  PASS 2.x app/admin/reports/report-pack-controls.tsx — guarded, and not also claimed exempt
+  PASS 2.x app/admin/resolver/[id]/resolution-ceremony.tsx — guarded, and not also claimed exempt
+  PASS 2.x app/admin/resolver-queue/bulk-resolve-bar.tsx — guarded, and not also claimed exempt
+  PASS 2.x app/admin/resolver-queue/page.tsx exempt · ② window/category filter, submitted as searchParams
+  PASS 2.x app/admin/retention/purge-chain-card.tsx — guarded, and not also claimed exempt
+  PASS 2.x app/admin/roles/read-tiers-matrix.tsx exempt · ③ a tier matrix that commits per cell
+  PASS 2.x app/admin/settlement/hold-button.tsx exempt · ① fields open inside <Modal>, scrim-close disabled, and the note survives Cancel
+  PASS 2.x app/admin/sources/source-controls.tsx — guarded, and not also claimed exempt
+  PASS 2.x app/admin/staff/staff-forms.tsx — guarded, and not also claimed exempt
+  PASS 2.x app/admin/system/marketing-sms-card.tsx exempt · ① the duration radios exist only inside the switch-on <ConfirmModal> — a pick of six durations, nothing typed, reset to 2 hours every time it opens; Cancel, ✕, Escape or a scrim click loses nothing
+  PASS 2.x app/admin/system/marketing-sms-form.tsx — guarded, and not also claimed exempt
+  PASS 2.x app/admin/system/marketing-wordings-form.tsx — guarded, and not also claimed exempt
+  PASS 2.x app/admin/system/policy-lines-form.tsx — guarded, and not also claimed exempt
+  PASS 2.x app/admin/system/system-client.tsx — guarded, and not also claimed exempt
+  PASS 2.x app/admin/tax/lock-panel.tsx — guarded, and not also claimed exempt
+  PASS 2.x app/admin/tax/period-jump.tsx exempt · ② the period picker navigates — the period is in the URL (month on selection, day or window on Go/Apply)
+  PASS 2.x app/admin/tax/rates-form.tsx — guarded, and not also claimed exempt
+  PASS 2.x app/admin/totp-verify/verify-form.tsx exempt · ④ a TOTP code, read off the authenticator app
+  PASS 2.x app/admin/transactions/page.tsx exempt · ② range/from/to filter, submitted as searchParams
+  PASS 2.x app/admin/updown/proposals/proposal-actions.tsx — guarded, and not also claimed exempt
+  PASS 2.x app/admin/updown/rounds/void-round-control.tsx exempt · ① fields open inside <Modal>
+  PASS 2.x app/admin/updown/updown-controls.tsx — guarded, and not also claimed exempt
+  PASS 2.e EXEMPT "app/admin/aml/aml-actions-client.tsx" still names a file in the population
+  PASS 2.e EXEMPT "app/admin/approvals/sof-review-client.tsx" still names a file in the population
+  PASS 2.e EXEMPT "app/admin/markets/emergency-void-control.tsx" still names a file in the population
+  PASS 2.e EXEMPT "app/admin/settlement/hold-button.tsx" still names a file in the population
+  PASS 2.e EXEMPT "app/admin/objections/objection-decision.tsx" still names a file in the population
+  PASS 2.e EXEMPT "app/admin/desk/switch-ceremony.tsx" still names a file in the population
+  PASS 2.e EXEMPT "app/admin/desk/[id]/account-actions.tsx" still names a file in the population
+  PASS 2.e EXEMPT "app/admin/affiliate/payable-switch.tsx" still names a file in the population
+  PASS 2.e EXEMPT "app/admin/journey/rollout-control.tsx" still names a file in the population
+  PASS 2.e EXEMPT "app/admin/journey/preview-links.tsx" still names a file in the population
+  PASS 2.e EXEMPT "app/admin/journey/page.tsx" still names a file in the population
+  PASS 2.e EXEMPT "app/admin/payments/reconcile-controls.tsx" still names a file in the population
+  PASS 2.e EXEMPT "app/admin/payments/stuck-payout-controls.tsx" still names a file in the population
+  PASS 2.e EXEMPT "app/admin/players/[id]/balance-adjust-controls.tsx" still names a file in the population
+  PASS 2.e EXEMPT "app/admin/players/[id]/force-reverify-controls.tsx" still names a file in the population
+  PASS 2.e EXEMPT "app/admin/players/[id]/wallet-freeze-controls.tsx" still names a file in the population
+  PASS 2.e EXEMPT "app/admin/kyc/[id]/reopen-refusal-control.tsx" still names a file in the population
+  PASS 2.e EXEMPT "app/admin/players/[id]/suspend-controls.tsx" still names a file in the population
+  PASS 2.e EXEMPT "app/admin/updown/rounds/void-round-control.tsx" still names a file in the population
+  PASS 2.e EXEMPT "app/admin/privacy/dsar-controls.tsx" still names a file in the population
+  PASS 2.e EXEMPT "app/admin/system/marketing-sms-card.tsx" still names a file in the population
+  PASS 2.e EXEMPT "app/admin/ai-usage/page.tsx" still names a file in the population
+  PASS 2.e EXEMPT "app/admin/markets/page.tsx" still names a file in the population
+  PASS 2.e EXEMPT "app/admin/markets/[id]/page.tsx" still names a file in the population
+  PASS 2.e EXEMPT "app/admin/players/page.tsx" still names a file in the population
+  PASS 2.e EXEMPT "app/admin/agents/page.tsx" still names a file in the population
+  PASS 2.e EXEMPT "app/admin/resolver-queue/page.tsx" still names a file in the population
+  PASS 2.e EXEMPT "app/admin/transactions/page.tsx" still names a file in the population
+  PASS 2.e EXEMPT "app/admin/tax/period-jump.tsx" still names a file in the population
+  PASS 2.e EXEMPT "app/admin/markets/recategorise-control.tsx" still names a file in the population
+  PASS 2.e EXEMPT "app/admin/roles/read-tiers-matrix.tsx" still names a file in the population
+  PASS 2.e EXEMPT "app/admin/payments/kill-switch-toggle.tsx" still names a file in the population
+  PASS 2.e EXEMPT "app/admin/2fa/setup/setup-client.tsx" still names a file in the population
+  PASS 2.e EXEMPT "app/admin/totp-verify/verify-form.tsx" still names a file in the population
+  PASS 2.e EXEMPT "app/admin/config/fee-simulator.tsx" still names a file in the population
+  → ZERO unguarded, zero unexplained
+
+§3 · a draft carries every typed control, and restores into a React-controlled field (vb6)
+  PASS 3.1 a draft carries named inputs, textareas and single selects — never a password, a file, a radio, a multi-select or a nameless control
+  PASS 3.2 ⭐ a textarea's draft restores INTO A CONTROLLED FIELD — its onChange receives the draft, so the next render keeps it
+  PASS 3.3 a select's draft is written and raises `change` — the event React's onChange for a select listens to
+  PASS 3.0b the in-memory copy of the draft helpers with NOTHING planted passes 3.1–3.3 — so a red plant below is the plant
+  PASS 3.1c CONTROL · a copy whose draft skips the textarea (the pre-fix inputs-only draft) fails 3.1
+  PASS 3.2c CONTROL · a copy that restores through the element (`.value =`, the pre-fix restore) leaves the controlled field on its old text — 3.2 refuses it
+  PASS 3.3c CONTROL · a copy that never tells a select `change` fails 3.3
+  PASS 3.4 useFormDraft writes its draft with draftValuesOf(form.elements) and restores it with restoreDraftInto(form.elements, …)
+  PASS 3.4c CONTROL · a hook that no longer restores through restoreDraftInto is reported
+
+✅ every admin form that can lose work guards all three exits
+

@@ -1,0 +1,124 @@
+﻿
+house-page — the rules no other guard can see
+
+§1 · the population is real
+  ok   1.x · src/app/admin/house/page.tsx exists
+  ok   1.x · src/app/admin/house/[marketId]/page.tsx exists
+  ok   1.x · src/lib/server/market-dal.ts exists
+  ok   1.x · src/app/admin/house/loading.tsx exists
+  ok   1.x · src/app/admin/house/[marketId]/loading.tsx exists
+  ok   1.control · the stripped pages are still real code
+
+§2 · ⭐ the book is read from the LEDGER, never from a product-filtered market list
+  ok   2.1 · src/app/admin/house/page.tsx imports listMarkets ZERO times
+  ok   2.2 · src/app/admin/house/page.tsx joins through bookByIds — the ledger is the left side
+  ok   2.1 · src/app/admin/house/[marketId]/page.tsx imports listMarkets ZERO times
+  ok   2.2 · src/app/admin/house/[marketId]/page.tsx joins through bookByIds — the ledger is the left side
+  ok   2.3 · ⭐ `bookByIds` takes ids and NOTHING else — no productLine parameter exists
+  ok   2.4 · …and neither implementation smuggles a productLine FILTER into its query
+  ok   2.control · the DAL really does define bookByIds (2.3 is not vacuous)
+
+§3 · ⛔ `?? 0` is banned here — a failed read may not become a zero
+  ok   3.1 · src/app/admin/house/page.tsx has no money-fabricating `?? 0`
+  ok   3.2 · src/app/admin/house/page.tsx renders the explicit unavailable state instead
+  ok   3.1 · src/app/admin/house/[marketId]/page.tsx has no money-fabricating `?? 0`
+  ok   3.2 · src/app/admin/house/[marketId]/page.tsx renders the explicit unavailable state instead
+  ok   3.3 · ⭐ the position is computed only when EVERY input arrived
+  ok   3.control · the page really does contain `??` at all (3.1 is not vacuous)
+
+§4 · ⛔ the owner's own book cannot be blurred by a player-app toggle
+  ok   4.1 · src/app/admin/house/page.tsx imports neither Cash nor Stat
+  ok   4.2 · src/app/admin/house/page.tsx marks money with the `amount` class instead
+  ok   4.3 · src/app/admin/house/page.tsx imports no read-tier decider
+  ok   4.1 · src/app/admin/house/[marketId]/page.tsx imports neither Cash nor Stat
+  ok   4.2 · src/app/admin/house/[marketId]/page.tsx marks money with the `amount` class instead
+  ok   4.3 · src/app/admin/house/[marketId]/page.tsx imports no read-tier decider
+
+§5 · ⭐ a moderator cannot reach the owner's money
+  ok   5.1 · src/app/admin/house/page.tsx refuses BEFORE the first money read
+  ok   5.2 · src/app/admin/house/page.tsx asks the accounting domain, exactly as /admin/finance does
+  ok   5.1 · src/app/admin/house/[marketId]/page.tsx refuses BEFORE the first money read
+  ok   5.2 · src/app/admin/house/[marketId]/page.tsx asks the accounting domain, exactly as /admin/finance does
+
+§6 · ⭐ the check may not invent the thing it is checking for
+  ok   6.1 · ⛔ the outcome is narrowed to a WINNING SIDE before the fee is recomputed, through settlement's own branches
+  ok   6.2 · ⛔ the reconciliation uses the SETTLEMENT slice, not the whole fee
+  ok   6.3 · …and the early-exit fee is still SHOWN, beside the check
+  ok   6.4 · ⛔ no tolerance is applied to the variance
+  ok   6.control · the drill-down really does call chargedFee (6.1 is not vacuous)
+
+§7 · ⭐ 'legacy' is two facts, and only one of them is legacy
+  ok   7.1 · src/app/admin/house/page.tsx never compares stampedAt to "legacy", in either direction
+  ok   7.2 · src/app/admin/house/page.tsx asks hasOwnSnapshot instead
+  ok   7.1 · src/app/admin/house/[marketId]/page.tsx never compares stampedAt to "legacy", in either direction
+  ok   7.2 · src/app/admin/house/[marketId]/page.tsx asks hasOwnSnapshot instead
+  ok   7.3 · ⭐ `snapshotOrLegacy` CALLS `hasOwnSnapshot`, so the two cannot drift apart
+  ok   7.4 · …and the predicate is the real one, not a loosened restatement
+
+§8 · ⛔ a caption beside a number must come from the same rates as the number
+  ok   8.1 · src/app/admin/house/page.tsx builds its caption with describeFeeModel
+  ok   8.2 · src/app/admin/house/page.tsx writes no fee-model caption by hand
+  ok   8.1 · src/app/admin/house/[marketId]/page.tsx builds its caption with describeFeeModel
+  ok   8.2 · src/app/admin/house/[marketId]/page.tsx writes no fee-model caption by hand
+  ok   8.3 · the legacy marker is its OWN element, not appended to the caption
+
+§9 · ⭐ money whose game is gone is still money
+  ok   9.1 · the join never filters the ledger rows by whether a market matched
+  ok   9.2 · an unmatched row renders its raw id and says so
+  ok   9.3 · the drill-down renders the book rather than 404ing on a missing row
+
+§10 · ⭐ a tab may hide a detail, never a state
+  ok   10.1 · both free-cash tiles are rendered ABOVE the rail, and not inside a tab
+  ok   10.2 · ⛔ …and NEITHER is conditional on the other — both always render
+  ok   10.3 · the out-of-balance banner is above the rail too
+  ok   10.4 · the strict line is toned danger when it is negative
+  ok   10.control · the rail exists at all (10.1 is not vacuous)
+
+§11 · ⭐ the two columns can never match, and the page says why
+  ok   11.1 · ⛔ the reconciliation note is the FIRST card on BY GAME, before any total
+  ok   11.2 · it ends in a variance that must be zero
+  ok   11.3 · the unattributed fees are read, not assumed
+  ok   11.4 · ⚠️ the tab is labelled by ENTRY time, not settlement time
+  ok   11.5 · the per-product subtotals are taken over the UNFILTERED set
+
+§12 · ⛔ the Selcom float is not custodial cash and is never summed with it
+  ok   12.1 · the float is minted through railFloat — the only source of `source: "rail"`
+  ok   12.2 · ⛔ on failure it prints the REASON, never a zero and never a ledger figure
+  ok   12.3 · no arithmetic joins the float to a ledger total
+
+§13 · ⛔ Up & Down stores YES and a reader must see Up
+  ok   13.1 · src/app/admin/house/page.tsx spells an outcome through the lexicon
+  ok   13.2 · src/app/admin/house/page.tsx passes the product line, because this is a mixed book
+  ok   13.3 · src/app/admin/house/page.tsx prints no outcome enum as display text
+  ok   13.1 · src/app/admin/house/[marketId]/page.tsx spells an outcome through the lexicon
+  ok   13.2 · src/app/admin/house/[marketId]/page.tsx passes the product line, because this is a mixed book
+  ok   13.3 · src/app/admin/house/[marketId]/page.tsx prints no outcome enum as display text
+
+§14 · ⭐ who can open the owner's book — asked of the real decider
+  ok   14.1 · ⭐ a MODERATOR is REFUSED — the role that reaches the console but not the money
+  ok   14.2 · …and so is SUPPORT
+  ok   14.2 · …and so is GROWTH
+  ok   14.3 · ⭐ CONTROL — the roles that SHOULD read it, do
+  ok   14.4 · the page asks for `accounting`, which is the domain the route is registered under
+  ok   14.5 · ⛔ …and the ROUTE is registered, so it does not fall closed to `ops` (Owner-only)
+
+§15 · ⭐ with no database, every reader returns null — not 0, not []
+  ok   15.control · this suite really is running WITHOUT a database (else §15 proves nothing)
+  ok   15.x · readHouseAccounts() is null with no database
+  ok   15.x · readCustodialCash() is null with no database
+  ok   15.x · readPlayerLiability() is null with no database
+  ok   15.x · readAdjustmentBackedLiability() is null with no database
+  ok   15.x · readWaterfall() is null with no database
+  ok   15.x · readGameRows() is null with no database
+  ok   15.x · readUnattributedFees() is null with no database
+  ok   15.x · readFeeBySource() is null with no database
+  ok   15.x · readGameTotals() is null with no database
+  ok   15.x · readGameEntries() is null with no database
+  ok   15.x · countGameEntryLines() is null with no database
+  ok   15.x · readRateChangesBefore() is null with no database
+  ok   15.1 · ⭐ …so the page's composition yields NO position at all
+  ok   16.505 · every declared house-page mutation names a SECTION this run actually printed — an expect whose token no label carries can only ever report a MISS
+  ok   16.505 · CONTROL · the roll-call reads this run's own section tokens, so a real declaration is found and an invented one is never found
+
+house-page: 89 passed, 0 failed  (of 89)
+house-page: OK — the ledger is the left side, nothing fabricates a zero, and the solvency line cannot hide.

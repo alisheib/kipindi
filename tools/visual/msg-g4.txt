@@ -1,0 +1,28 @@
+Visual pass G4: the money forms' top gap, the legal nav's active edge, the journey sheet's held figure, the chat bubble on a notched phone
+
+The owner's rule (2026-10-08): only perfect visual and logical results. Each item was measured on the tiles with
+pixel scans.
+
+- Deposit and withdraw forms opened with ~24px too much space (tiles 068, 173, 174: 51px above the first line
+  against 24 at the sides). Each form's first child is the idempotency key's <input type="hidden">. Without the
+  hidden ATTRIBUTE it counts as a sibling for space-y's `> :not([hidden]) ~ :not([hidden])`, so the fieldset got the
+  gap. The key input (IdempotencyKeyField, both forms) and the deposit page's low-balance origin input now carry
+  `hidden`; a hidden input is still submitted. These page bodies are shared, so classic readers get the fix too.
+- Legal nav: the active label sat 2px right of the others (tile 206: x=33 against 31), because its border-l-2 sat
+  outside the px-3.5. The active row pads 12px left (2 + 12 = 14).
+- Journey Wallet sheet: a held wallet's figure was gold (#F3CB7A, tile 092) while the capsule was plain. That breaks
+  DESIGN_AUTHORITY rule 8a (gold on a live balance only). WalletSheet sets data-held / data-masked on the figure
+  when `journey` is set, and those read in plain ink. The classic sheet is unchanged.
+- Chat bubble: on a notched iPhone (viewport-fit=cover) its lower ~19px sat on the rail's last tab, because the rail
+  adds env(safe-area-inset-bottom) and the bubble did not. .cm-fab now takes the inset as margin-bottom. Where the
+  inset is 0 (every tile, every desktop) nothing moves.
+
+One pin updated: test:journey-funnel 9.form spells the origin input with `hidden`.
+
+Reported, not changed: the header gutter at 320 (since amended by its own commit, the page's edge at every width);
+the classic capsule's missing "TZS" below 640 (classic chrome, frozen for S6/S7); and the focus-scroll reserve that
+lets the bubble cover up to 36 of 44px of a right-edge control (AA holds, AAA does not; an owner call).
+
+On the G4 tree, under the shared lock: tsc exit 0, 60 static suites green. Browser proof on the combined branch.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>

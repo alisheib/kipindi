@@ -1,0 +1,81 @@
+You are one of several strict tile readers for 50pick's visual pass for Vodacom, reading the journey's EDGE SCENARIOS
+(a player on a break, a self-excluded player, the longest name and title, Slow 3G loading, not-found pages, odd
+viewports, enlarged text, offline, an empty wallet). The owner's rule: only perfect visual AND logical results are
+accepted; nothing is deferred as "small".
+
+Read this file first, completely, with the Read tool — it is your instructions, and it points you to two more you must
+read: C:/Users/asheib/AppData/Local/Temp/claude/C--Users-asheib/0e745525-51fe-4451-ace7-c9987576fc15/scratchpad/edges/read-brief-edges.md
+
+S = C:/Users/asheib/AppData/Local/Temp/claude/C--Users-asheib/0e745525-51fe-4451-ace7-c9987576fc15/scratchpad
+TILES = C:/Users/asheib/AppData/Local/Temp/claude/C--Users-asheib/0e745525-51fe-4451-ace7-c9987576fc15/scratchpad/edges/tiles  (the PNGs, plus qa-journey-edges.json — the log, one entry per tile, matched by `file`)
+
+Your tiles (64 of them). Open EVERY one, in this order, and read its log entry before judging it:
+065--s1-break--profile-responsible-gambling--player-on-break--en--1280.png
+066--s1-break--market--player-on-break--en--360.png
+067--s1-break--market-yes--player-on-break--en--360.png
+068--s1-break--market-bet-confirm--player-on-break--en--360.png
+069--s1-break--market-bet-attempt--player-on-break--en--360.png
+070--s1-break--market--player-on-break--en--390.png
+071--s1-break--market-yes--player-on-break--en--390.png
+072--s1-break--market-bet-confirm--player-on-break--en--390.png
+073--s1-break--market-bet-attempt--player-on-break--en--390.png
+074--s1-break--market--player-on-break--en--1280.png
+075--s1-break--market-yes--player-on-break--en--1280.png
+076--s1-break--market-bet-confirm--player-on-break--en--1280.png
+077--s1-break--market-bet-attempt--player-on-break--en--1280.png
+078--s1-break--root-header--player-on-break--zh--360.png
+079--s1-break--root--player-on-break--zh--360.png
+080--s1-break--root-wallet-sheet--player-on-break--zh--360.png
+081--s1-break--root-header--player-on-break--zh--390.png
+082--s1-break--root--player-on-break--zh--390.png
+083--s1-break--root-wallet-sheet--player-on-break--zh--390.png
+084--s1-break--root-header--player-on-break--zh--1280.png
+085--s1-break--root--player-on-break--zh--1280.png
+086--s1-break--root-wallet-sheet--player-on-break--zh--1280.png
+087--s1-break--positions--player-on-break--zh--360.png
+088--s1-break--positions--player-on-break--zh--390.png
+089--s1-break--positions--player-on-break--zh--1280.png
+090--s1-break--account--player-on-break--zh--360.png
+091--s1-break--account--player-on-break--zh--390.png
+092--s1-break--account--player-on-break--zh--1280.png
+093--s1-break--wallet-deposit--player-on-break--zh--360.png
+094--s1-break--wallet-deposit--player-on-break--zh--390.png
+095--s1-break--wallet-deposit--player-on-break--zh--1280.png
+096--s1-break--profile-responsible-gambling--player-on-break--zh--360.png
+097--s1-break--profile-responsible-gambling--player-on-break--zh--390.png
+098--s1-break--profile-responsible-gambling--player-on-break--zh--1280.png
+099--s1-break--market--player-on-break--zh--360.png
+100--s1-break--market-yes--player-on-break--zh--360.png
+101--s1-break--market-bet-confirm--player-on-break--zh--360.png
+102--s1-break--market-bet-attempt--player-on-break--zh--360.png
+103--s1-break--market--player-on-break--zh--390.png
+104--s1-break--market-yes--player-on-break--zh--390.png
+105--s1-break--market-bet-confirm--player-on-break--zh--390.png
+106--s1-break--market-bet-attempt--player-on-break--zh--390.png
+107--s1-break--market--player-on-break--zh--1280.png
+108--s1-break--market-yes--player-on-break--zh--1280.png
+109--s1-break--market-bet-confirm--player-on-break--zh--1280.png
+110--s1-break--market-bet-attempt--player-on-break--zh--1280.png
+111--s2-selfexclude--rg-before--player--sw--390.png
+112--s2-selfexclude--rg-confirm--player--sw--390.png
+113--s2-selfexclude--auth-login-excluded--excluded--sw--360.png
+114--s2-selfexclude--auth-login-excluded--excluded--sw--390.png
+115--s2-selfexclude--auth-login-excluded--excluded--sw--1280.png
+116--s2-selfexclude--auth-login-excluded--excluded--en--360.png
+117--s2-selfexclude--auth-login-excluded--excluded--en--390.png
+118--s2-selfexclude--auth-login-excluded--excluded--en--1280.png
+119--s2-selfexclude--auth-login-excluded--excluded--zh--360.png
+120--s2-selfexclude--auth-login-excluded--excluded--zh--390.png
+121--s2-selfexclude--auth-login-excluded--excluded--zh--1280.png
+122--s2-selfexclude--auth-login-signin-refused--excluded--sw--360.png
+123--s2-selfexclude--auth-login-signin-refused--excluded--sw--390.png
+124--s2-selfexclude--auth-login-signin-refused--excluded--sw--1280.png
+125--s2-selfexclude--auth-login-signin-refused--excluded--en--360.png
+126--s2-selfexclude--auth-login-signin-refused--excluded--en--390.png
+127--s2-selfexclude--auth-login-signin-refused--excluded--en--1280.png
+128--s2-selfexclude--auth-login-signin-refused--excluded--zh--360.png
+
+Measure with PowerShell System.Drawing as the brief says (never estimate a position you can measure). Do not edit any
+file; do not run npm, servers or browsers. Your final message is the report the brief asks for — (1) tiles opened (must
+be 64) and the BLOCKED entries in your range, (2) FINDINGS (most visible first; LOGIC findings marked), (3) DOUBTS.
+Nothing else.

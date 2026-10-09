@@ -1,0 +1,20 @@
+fix(red:updown-digest): both day-filter plants re-anchored after 4f9abedc, every case scored against an unplanted baseline, and the suite's stale day assertion re-pinned - test:updown-digest was red on main since 2026-09-08
+
+4f9abedc (PLAYER QUERY 4.1) moved the day validation into parseUdParams (`day: isValidDay(rawDay) ? rawDay : ""`,
+the page supplying `(d) => !!d && !!eatDayWindow(d)`) and cut rounds through one `inDay` closure. So:
+- page-reimplements-the-offset now plants its decoy offset beside the shared isInEatDay call in `inDay`;
+- raw-param-filter now plants the same defect where it can happen today: the page hands the parser a validator
+  that lets `lol` through, so state.day is the raw param and the page empties with no way back;
+- the suite's assertion "one validated day drives the filter, the chip AND the empty state" still pattern-matched
+  the deleted `const dayKey = dayWindow ? rawDay : null`, so it failed on every tree, fixed or not. It now reads
+  today's rule: the validator handed to parseUdParams rejects what eatDayWindow rejects, and dayKey comes from
+  state.day. (The product was right: ?day=lol already falls back to no day.)
+- the harness ran the suite and counted any non-zero exit as a catch, so with the suite red it printed a tick for
+  every plant, including one the suite could no longer see. It now runs the suite unplanted first, scores each case
+  as a NEW failing assertion (by name where a case says `expect`), requires each anchor exactly once, and exits 1
+  on a red baseline.
+
+Proof on OMEGA-COMPILE01 (2026-10-08, main f89dcdb9): test:updown-digest 73/0 (72/1 before); red:updown-digest
+7/7 caught against a green baseline, exit 0; each repaired case fails exactly its named assertion.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>

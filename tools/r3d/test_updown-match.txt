@@ -1,0 +1,149 @@
+﻿
+§1 · a read's side is decideOutcomeByTargets, at both boundaries and between
+PASS 1.1 the browser's copy (`sideByTargets`) equals settlement on 1,224 prices incl. both exact targets
+PASS 1.1 the browser's copy (`sideByTargets`) equals settlement on 1,224 prices incl. both exact targets · CONTROL bites — planted caught: price 85000.02 (up 85000.02, down 84999.98): LEVEL, settlement says UP
+PASS 1.2 the SERVER's reads take settlement's side: exactly at upTarget is UP
+PASS 1.3 …exactly at downTarget is DOWN
+PASS 1.4 …one tick off the open is LEVEL (VOID → LEVEL)
+
+§2 · the timeline's x-domain is fixed at [open, close]
+PASS 2.1 the lock post: 83.33% for 5/10/15/30/60, 75% for 3; open 0, close 100, clamped
+PASS 2.1 the lock post: 83.33% for 5/10/15/30/60, 75% for 3; open 0, close 100, clamped · CONTROL bites — planted caught: 3-minute round: the lock at 100%, want 75%
+PASS 2.2 the geometry's gate IS matchX(betsClose) — 83.33
+PASS 2.3 S1's stems stand at their reads' own instants (25% and 50% of a 12-minute span) — [25,50]
+
+§3 · a read at the open, or after the server's now, is not a stem
+PASS 3.1 opensAt < ms ≤ serverNow
+PASS 3.1 opensAt < ms ≤ serverNow · CONTROL bites — planted caught: the OPENING read was drawn as a stem
+PASS 3.2 hasPostOpenRead: false with only the opening read
+PASS 3.3 hasPostOpenRead: true with a read after it
+PASS 3.4 hasPostOpenRead: false when that read is after the server's now
+PASS 3.5 targets unknown ⇒ reads [] (awaiting), never a side guessed from the open
+PASS 3.6 a failed read stays null
+
+§4 · D = max(1.1 × max|dev|, 5 × margin, 5 bps of the open); stems in [10, 40]%
+PASS 4.1 each of the three floors binds where it should
+PASS 4.1 each of the three floors binds where it should · CONTROL bites — planted caught: a +$500 read: D 625, want the 1.1 × reach 550
+PASS 4.2 S1: +$18.52 draws 17.43% up (tip 32.57), −$6.20 takes the 10% floor (tip 60) — [{"x":25,"tip":60,"side":"down","latest":false},{"x":50,"tip":32.57,"side":"up","latest":true}]
+PASS 4.3 the tallest stem keeps its headroom: +$500 draws 40/1.1 = 36.36% — 13.64
+PASS 4.4 every stem of 400 generated rounds stays within [10, 40]%
+PASS 4.5 every tip clears the void band's edge
+PASS 4.6 only the NEWEST read is the latest stem and carries the bead
+PASS 4.7 a LEVEL newest read is a tie tick; no bead, and the earlier UP stem is not lit as latest
+
+§5 · the void band: never on BTC, a faint band on gold
+PASS 5.1 BTC ±$0.02 at $85k: no void band
+PASS 5.2 gold ±$0.40: a void band ≥ 2.8% (16% here, centred on the rail) — {"y":42,"h":16}
+
+§6 · quoteStaleAtMs is exactly the terminal's old strict `>`
+PASS 6.1 the first stale instant matches the old rule to the millisecond (odd cadences included)
+PASS 6.1 the first stale instant matches the old rule to the millisecond (odd cadences included) · CONTROL bites — planted caught: cadence 180001: the boundary is 450004 ms, the old rule's is not
+PASS 6.1b CONTROL · a bare 5-minute floor (cadence ignored) is also caught
+PASS 6.2 no cadence ⇒ the 5-minute floor
+PASS 6.3 BTC's ~3-minute grid: a read is current for 7.5 minutes
+PASS 6.4 isQuoteStale ⟺ the old rule around the boundary
+PASS 6.5 medianCadenceMs: null below two deltas, the median otherwise
+PASS 6.6 the terminal no longer holds a private copy of the rule
+
+§7 · the verdict ages at min(stale, close)
+PASS 7.1 a 14:23 read ages 7.5 minutes later, at 14:30:30 — before the 14:32 close
+PASS 7.1b S1's 14:26 read would go stale at 14:33:30, so S1 ages at the 14:32 close
+PASS 7.2 a read too late to go stale before the close ages AT the close
+PASS 7.3 kick-off ages from the OPEN
+PASS 7.4 no open price ⇒ nothing can age
+
+§8 · matchLead covers all five
+PASS 8.1 up · down · level · kickoff · awaiting — up,down,level,kickoff,awaiting
+PASS 8.2 a FAILED read is awaiting — never the kick-off's 'no new price since the open'
+PASS 8.3 no open or no targets is awaiting
+
+§9 · ≥ 2 min left · seasoned first · shortest duration · most time left · three · stop at the young
+PASS 9.1 the order and the three
+PASS 9.1 the order and the three · CONTROL bites — planted caught: picked A-3m,D-5m-young,B-10m-5left
+PASS 9.2 under 2 minutes of betting is never shown
+PASS 9.3 seasoned = 3 minutes old
+PASS 9.4 the walk: first with a read wins; kick-off fallback; stops at the young; skips failures
+PASS 9.4 the walk: first with a read wins; kick-off fallback; stops at the young; skips failures · CONTROL bites — planted caught: returned Y2-read, want the seasoned kick-off fallback
+
+§10 · UpdownBandRound carries no money field (law 40)
+PASS 10.1 no pool / rate / volume / player / payout / price key but openPrice
+PASS 10.1 no pool / rate / volume / player / payout / price key but openPrice · CONTROL bites — planted caught: money key "poolTzs"
+PASS 10.2 the parsed type IS the object the server builds (so 10.1 read the real shape) — type [roundId,assetName,assetKey,iconKey,durationMinutes,decimals,openPrice,upTarget,downTarget,opensAtMs,betsCloseAtMs,closesAtMs,serverNowMs,reads,staleAtMs,readCadenceMs] · object [roundId,assetName,assetKey,iconKey,durationMinutes,decimals,openPrice,upTarget,downTarget,opensAtMs,betsCloseAtMs,closesAtMs,serverNowMs,reads,staleAtMs,readCadenceMs]
+
+§11 · R5(a) · a refresh folds in only a genuinely new confirmed read
+PASS 11.1 new → appended with settlement's side and re-aged; same, older, deciding, malformed → nothing
+PASS 11.1 new → appended with settlement's side and re-aged; same, older, deciding, malformed → nothing · CONTROL bites — planted caught: the new read did not re-age the verdict
+PASS 11.2 the same-read window is 30 s (reads are grid boundaries ≥ a minute apart)
+PASS 11.3 it reads the PUBLIC history feed (no new route) once a minute, only while visible, and stops at the close
+
+§11b · F1 — the card's figure and the terminal's live line wear settlement's side, never the open's
+PASS 11b.1 the card's tone (`valueTone`) IS settlement's on 1,224 prices, both exact targets included
+PASS 11b.1 the card's tone (`valueTone`) IS settlement's on 1,224 prices, both exact targets included · CONTROL bites — planted caught: price 85000.01 (open 85000, up 85000.02, down 84999.98): up, settlement says level
+PASS 11b.2 the terminal's live line (`liveLineToken`) wears settlement's side on the same prices
+PASS 11b.2 the terminal's live line (`liveLineToken`) wears settlement's side on the same prices · CONTROL bites — planted caught: price 85000.01 (open 85000, up 85000.02, down 84999.98): up, settlement says level
+PASS 11b.2b · CONTROL bites: the pre-F1 terminal (a gilt line whatever the round) fails the same check
+PASS 11b.3 no price, or a missing or non-numeric target ⇒ no targets tone
+PASS 11b.4 the open decides ONLY a round with no targets (legacy) — never inside a frozen band
+PASS 11b.5 the terminal's line is the gilt reference with no round in play, no targets, or no price
+PASS 11b.6 one ink per tone: the card and the terminal paint exactly the round page's three (`price-hero.tsx`) — tone === "level" ? "var(--text-muted)" : tone === "up" ? "var(--yes-300)" : "var(--no-300)"
+PASS 11b.7 the card's figure, move and arrow are wired to `valueTone`
+PASS 11b.7 the card's figure, move and arrow are wired to `valueTone` · CONTROL bites — planted caught: the card does not take its tone from `valueTone` over the targets
+PASS 11b.8 the terminal's live line and its name are wired to `liveLineToken`
+PASS 11b.8 the terminal's live line and its name are wired to `liveLineToken` · CONTROL bites — planted caught: the drawn line's ink is not `liveLineToken`
+PASS 11b.9 the board hands the terminal its IN-PLAY round's targets (first unsettled round that has them) and the label
+PASS 11b.10 the card RENDERED, en/sw/zh × up, down, exactly at the UP target, level, exactly level, closed level, closed up, awaiting: tone, ink, arrow, label ("Confirmed price" / "Close"), the band's level words
+PASS 11b.10 the card RENDERED, en/sw/zh × up, down, exactly at the UP target, level, exactly level, closed level, closed up, awaiting: tone, ink, arrow, label ("Confirmed price" / "Close"), the band's level words · CONTROL bites — planted caught: sw/level: ink --yes-300
+PASS 11b.11 the sw level words are the band's own, with their spaces (no eaten space around the amount) — Tofauti na ufunguzi $0.01 tu — haitoshi kuamua
+PASS 11b.12 the trust line is 13px with its seconds and every figure whole; the win-target heading never truncates its price; every sentence under the action row is 13px, signed in and out (en/sw/zh)
+PASS 11b.12 the trust line is 13px with its seconds and every figure whole; the win-target heading never truncates its price; every sentence under the action row is 13px, signed in and out (en/sw/zh) · CONTROL bites — planted caught: the trust line is not on the kit's 13px
+PASS 11b.12b · CONTROL bites: a heading that truncates the open price — the win-target heading truncates; the heading's open price is not held whole
+PASS 11b.12c · CONTROL bites: the quick-bet sentences back at 10px — a sentence under the action row is still 10px; only 0 sentence(s) at 13px under the action row, expected 3 — nothing was measured
+
+§12 · the words, in all three languages, and no eaten space
+PASS 12.S1.en Up leads
+PASS 12.S1.sw Juu inaongoza
+PASS 12.S1.zh 涨方领先
+PASS 12.S2.en Down leads
+PASS 12.S2.sw Chini inaongoza
+PASS 12.S2.zh 跌方领先
+PASS 12.S3.en Nobody leads
+PASS 12.S3.sw Hakuna anayeongoza
+PASS 12.S3.zh 暂无领先方
+PASS 12.S4.en Kick-off · Pick a side
+PASS 12.S4.sw Mwanzo · Chagua upande
+PASS 12.S4.zh 开局 · 选择一方
+PASS 12.S6 awaiting: 'Awaiting price', no second line, no guessed side
+PASS 12.asym uneven targets state both prices, the side words named — The price at 14:32 decides. Up at $85,000.05 or higher, Down at $84,999.98 or lower — in between, every stake comes back.
+PASS 12.html no eaten space in the markup or its text (kwa<span · ·Juu · inaamua.Tofauti · 14:26· · upandeBado)
+PASS 12.chunks the detail is two no-break clauses and a separator span — 'saa 14:26' | ' · ' | 'Juu ya ufunguzi kwa $18.52' — <span class="kp-udbug__chunk">saa <span class="mono kp-udnum">14:26</span></span><span class="kp-udbug__sep"> · </span><span class="kp-udbug__chunk">Juu ya ufunguzi kwa <span class="amount">$18.52</span></span>
+PASS 12.chunks the level line: head | ' — ' (the tail's separator) | the tail, which gives way below 640 — <span class="kp-udbug__chunk">saa <span class="mono kp-udnum">14:26</span></span><span class="kp-udbug__sep"> · </span><span class="kp-udbug__chunk">Tofauti na ufunguzi <span class="amount">$0.20</span> tu</span><span class="kp-udbug__sep kp-udbug__sep--tail"> — </span><span class="kp-udbug__chunk kp-udbug__chunk--tail">haitoshi kuamua</span>
+PASS 12.decided the verdict carries the awaiting-result headline for the deciding instant — <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" class="kp-udbug__arrow"><path d="M12 19V5M6 11l6-6 6 6"></path></svg><span class="kp-udbug__now">Juu inaongoza</span><span class="kp-udbug__was">Juu iliongoza</span><span class="kp-udbug__decided">Inasubiri matokeo</span>
+PASS 12.decided …and none while awaiting a price (that verdict is already 'Inasubiri bei')
+PASS 12.decided.en past the deciding instant the rule reads "The price at 14:32 decided." — The price at 14:32 decided. Under $0.02 from the open, every stake comes back.
+PASS 12.decided.sw past the deciding instant the rule reads "Bei ya saa 14:32 iliamua." — Bei ya saa 14:32 iliamua. Tofauti na ufunguzi isipofika $0.02, kila dau linarudi.
+PASS 12.decided.zh past the deciding instant the rule reads "已以 14:32 的价格判定。" — 已以 14:32 的价格判定。与开盘价相差不足 $0.02，所有投注均退还。
+PASS 12.aged note for a lead, none for kick-off or awaiting
+PASS 12.html …and the spaces are really there — saa 14:26 · Juu ya ufunguzi kwa $18.52
+Mwanzo · Chagua upandeInasubiri matokeo
+Bado hakuna bei mpya tangu ufunguzi saa 14:20Ilifunguliwa saa 14:20
+ ‖ Bei ya saa 14:32 inaamua. Tofauti na ufunguzi isipofika $0.02, kila dau linarudi.
+PASS 12.html · CONTROL bites: the rule's two sentences run together when the space is lost
+PASS 12.zh two Chinese sentences join with no space after the full stop
+PASS 12.aria the timeline in words, with EAT and every read — Round timeline (EAT): open 14:20, betting close 14:30, deciding price 14:32. Confirmed prices since the open: 14:23: Below open by $6.20; 14:26: Above open by $18.52.
+PASS 12.nbsp the rule's margin is held to its phrase by a no-break space (en, sw, zh)
+PASS 12.aria no reads ⇒ 'none yet'
+PASS 12.law no absolute price, no 'live', no pool on the band's words
+
+§13 · the band, rendered on the server (sw)
+PASS 13.1 S8 is today's band: solo, the live count, the one primary Play link
+PASS 13.2 a round: no live count beside it (I-12)
+PASS 13.3 DOM order: verdict, then the Up link, then the Down link
+PASS 13.4 the picks go into THIS round with the side kept
+PASS 13.5 the lead is stamped for the ink, and the leader is never lit (both picks solid)
+PASS 13.6 the digits are SEEDED: real mm:ss at render, never --:--, as one timer — role="timer" aria-label="Dau linafungwa baada ya dakika 2 na sekunde 0">02:00<
+PASS 13.7 the track is one image named in words, with EAT
+PASS 13.8 fresh at render ⇒ no data-aged; the S1 detail and rule are there
+PASS 13.9 a round already aged at render is past tense on the SERVER (data-aged, no :has())
+PASS 13.10 nothing on the band is gold
+
+ALL PASS — 116 passed, 0 failed

@@ -1,0 +1,106 @@
+[audit] SYSTEM affiliate.account.created jah_agent AffiliateAccount#jah_agent
+journey-account — the Akaunti hub (Vodacom plan S6, WP5)
+
+§1 · the gate — the resolver first, notFound() before any read, no loading file, no rule re-spelt
+PASS 1.gate · the page's first two statements ask the one resolver and call notFound() for every request the journey is not shown to
+PASS 1.gate.order · nothing is read above the gate — not the session, not the words, not the reader
+PASS 1.gate.c · CONTROL · the page does read below the gate (the words, the session, the reader and its rows), so 1.gate.order is not vacuous
+PASS 1.dynamic · rendered per request
+PASS 1.loading · no loading file of /account's own (A3) — a skeleton would stream to every classic visitor before the gate
+PASS 1.doors · the page reads no store and spells no product rule: its reader comes from loadHubViewer, its rows from hubRowsFor
+PASS 1.doors.viewer · loadHubViewer composes the doors through viewerDoorsFor, once, and re-spells none of its formulas
+
+§2 · the title — the resolver first, the not-found metadata and noindex for everybody else
+PASS 2.meta · the tab title asks the resolver FIRST, and everybody the journey is not shown to gets the not-found page's metadata with noindex (A2)
+PASS 2.meta.words · a journey word is read only after that answer
+PASS 2.meta.source · the not-found answer is the not-found page's own — imported, never retyped — and that page still exports it
+
+§3 · the rows — hubRowsFor for every kind of reader, A17's order and the two play-safe rows
+PASS 3.guest · signed out: the canvas's four cards — play (with the language), fairness and help, play safe, the legal pages — and no wallet, ticket or account door
+PASS 3.player · a player: money, play, play safe, invite, profile, help, settings — the canvas's cards in A17's order
+PASS 3.invite.label · a player's invite door is the page's own name (Alika marafiki), never a paid word
+PASS 3.held · a held wallet: Pochi says it is frozen, and no money door is offered (the wallet sheet's rule)
+PASS 3.agent · an agent in standing: the invite door is their dashboard, and Kuwa wakala stays with the programme closed
+PASS 3.agent.door · Kuwa wakala follows the footer's rule exactly: there when the programme is open, absent for a player when it is closed
+PASS 3.staff.SUPPORT · SUPPORT: the same rows as a player — the console is the page's plain link, never data
+PASS 3.staff.ADMIN · ADMIN: the same rows as a player — the console is the page's plain link, never data
+PASS 3.closed · invite closed to this reader (a closed, suspended or self-excluded account): no Alika, and Pendekeza stays
+PASS 3.proposals · proposals DISABLED: no Pendekeza
+PASS 3.invite.empty · both closed: the invite card is not drawn at all
+PASS 3.kyc · Verify ID not offered (approved, or refused for good — decided by loadHubViewer, §6): no Thibitisha ID row
+PASS 3.order · the play-safe card sits above invite and rewards (A17)
+PASS 3.rg · signed in: Weka mipaka, Pumzika and Jizuie are three rows — the limits page, its #break and its #exclude (A17)
+PASS 3.rg.guest · signed out: all three land on the public policy page (the limits page is behind a sign-in)
+PASS 3.rg.sub · Weka mipaka says what it holds — Mipaka · Pumzika · Jizuie
+PASS 3.anchor · the limits page carries both sections the rows land on, once each (id "break", id "exclude")
+PASS 3.routes · every door the hub draws, for every kind of reader, names a route on disk
+PASS 3.unique · no reader is offered the same row twice
+
+§4 · the words — three languages, no number under Msaada, no helpline row
+PASS 4.words · every word in the rows data resolves in en, sw and zh
+PASS 4.words.direct · every word the page and its islands read by path, outside the rows data, resolves in en, sw and zh
+PASS 4.nonumber · Msaada's second line names no number in any language (§0h point 10)
+PASS 4.helpline · the hub carries no helpline row and reads no helpline (the owner's ruling, 2026-10-06)
+PASS 4.literal · no phone number is typed into any hub file
+PASS 4.literal.c · CONTROL · the detector sees the helpline's own shape and passes a stake and a size
+
+§5 · the console — never data, one plain link behind the staff door
+PASS 5.rows · the rows data carries no console href — a row renders as a soft link, and a soft link into the console is E-70
+PASS 5.page · the page draws exactly one console link, and it is a plain document link
+PASS 5.page.gate · …drawn only behind the staff door (viewerDoorsFor's rule: every staff role, SJ-23)
+
+§6 · the reader, in memory — a guest read nothing, every failure closed, the doors viewerDoorsFor's
+PASS 6.guest · a guest is read nothing at all — not a row, not a switch, not a config
+PASS 6.player · a player: the name and its initials, the shared phone mask, the balance, nothing held, Verify ID offered (no KYC row yet), no console
+PASS 6.held · a frozen wallet is held
+PASS 6.agent · an approved agent in standing: the standing is read, the agent door stays open with the programme closed, and the invite is theirs
+PASS 6.console.jah_support · the staff console for a staff role (SUPPORT included, SJ-23)
+PASS 6.console.jah_admin · the staff console for a staff role (SUPPORT included, SJ-23)
+PASS 6.console.jah_player · the staff console for nobody but staff
+PASS 6.console.jah_agent · the staff console for nobody but staff
+PASS 6.suspended · a suspended account holds no invite link
+PASS 6.kyc.jah_player · Verify ID offered — /profile's own predicate (approved, or refused for good, is never asked again)
+PASS 6.kyc.jah_kyc_ok · Verify ID not offered — /profile's own predicate (approved, or refused for good, is never asked again)
+PASS 6.kyc.jah_kyc_final · Verify ID not offered — /profile's own predicate (approved, or refused for good, is never asked again)
+PASS 6.kyc.jah_kyc_retry · Verify ID offered — /profile's own predicate (approved, or refused for good, is never asked again)
+PASS 6.doors.jah_player · the doors are exactly viewerDoorsFor's answer for this reader's stored facts
+PASS 6.doors.jah_held · the doors are exactly viewerDoorsFor's answer for this reader's stored facts
+PASS 6.doors.jah_agent · the doors are exactly viewerDoorsFor's answer for this reader's stored facts
+PASS 6.doors.jah_support · the doors are exactly viewerDoorsFor's answer for this reader's stored facts
+PASS 6.doors.jah_admin · the doors are exactly viewerDoorsFor's answer for this reader's stored facts
+PASS 6.doors.jah_suspended · the doors are exactly viewerDoorsFor's answer for this reader's stored facts
+PASS 6.doors.jah_kyc_ok · the doors are exactly viewerDoorsFor's answer for this reader's stored facts
+PASS 6.doors.jah_kyc_final · the doors are exactly viewerDoorsFor's answer for this reader's stored facts
+PASS 6.doors.jah_kyc_retry · the doors are exactly viewerDoorsFor's answer for this reader's stored facts
+PASS 6.fail.user · a failed user read: the generic name, no phone, and NO console — even for an admin (a failure never opens a door)
+PASS 6.fail.wallet · a failed wallet read: no figure, and not called held
+PASS 6.fail.kyc · a failed KYC read: Verify ID is NOT offered — nobody is told to verify on the strength of a failed query
+PASS 6.fail.invite · a failed invite read: no invite door, no standing, nothing paid
+PASS 6.fail.switch · a failed switch read: not paid
+PASS 6.fail.agent · a failed programme read: no agent door for a player
+PASS 6.fail.agent.c · CONTROL · with the programme open the same player IS offered the agent door — the read is asked, so a closed door after a failed read is the failure's doing
+PASS 6.fail.proposals · a failed proposals read: no proposals door
+
+§8 · the islands — Arifa once, one list of languages, sign-out confirmed, the dialog reviewed
+PASS 8.unread · the Arifa row is a client island that reads the count ONCE (A1) and speaks it inside the row's own name
+PASS 8.language · the language row is a client disclosure that takes the header menu's own list and calls the same setLocale
+PASS 8.signout · sign-out asks first — the kit ConfirmDialog, claret, the profile.signOutConfirm words — and then POSTs to /auth/logout
+PASS 8.signout.page · the page offers sign-out to a signed-in reader only
+PASS 8.popup · test:popup-fit has reviewed the sign-out row by name — a dialog is a popup, and its words may not leave their box
+
+§7 · the reader on the Prisma twin — its own process, a fake client
+PASS 7.player · on the twin: the name and its initials, the shared phone mask, the balance, nothing held, Verify ID offered (no KYC row), no console
+PASS 7.held · a frozen wallet row is held, its balance still read
+PASS 7.agent · an approved, active agent: in standing, the agent door open with the programme closed, the invite theirs
+PASS 7.console · SUPPORT gets the staff console (every staff role, SJ-23)
+PASS 7.kyc.db_kyc_ok · Verify ID not offered (approved, or refused for good)
+PASS 7.kyc.db_kyc_final · Verify ID not offered (approved, or refused for good)
+PASS 7.kyc.db_kyc_retry · Verify ID offered (a refusal that can be retried)
+PASS 7.fail.user · the user row's read fails: the generic name, no phone, no console for an ADMIN row, no invite (its own read failed too)
+PASS 7.fail.kyc · the KYC read fails: Verify ID is not offered
+PASS 7.fail.wallet · the wallet read fails: no figure, not held
+PASS 7.defaults · the shipped reads answer on the twin — the invite switch, the agent programme and proposals through their own caches, none throws
+PASS 7.ran · the database-mode process ran its checks and exited clean
+
+JOURNEY ACCOUNT — all 85 checks passed
+

@@ -1,0 +1,13 @@
+Vodacom S6 WP12: qa:classic-shell-parity's 2.9 follows the owner's ruling of 2026-10-07 - once the email bar is deleted, no viewer may see one
+
+The ruling's last owed item in this lane ("qa:classic-shell-parity 2.9 once money doors' Phase B removes the email bar").
+The tree the server runs says which world a capture is in: with src/components/layout/email-verify-banner.tsx present
+(every tree before that change, the pre-S6 v2 baseline's included) 2.9 holds the old rule - the unconfirmed email sees
+the bar on /, the player does not; with it gone, 2.9 holds that no viewer sees an email bar in any cell. --prove-red's
+synthetic capture and its two 2.9 plants follow the same world. A compare across the change reports the unconfirmed
+email's cells losing their bar as a difference named by its commit (another lane's), not one of S6's EXPECTED_DIFFS.
+Until the bar's component is deleted, nothing this harness does changes.
+
+Proof on OMEGA-COMPILE01: the harness parses; the bar's component exists at 7c859cdf. {PROOF}
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>

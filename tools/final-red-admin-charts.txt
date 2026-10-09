@@ -1,0 +1,29 @@
+
+red:admin-charts — the guard must FAIL when a chart invents a mark
+
+  ok   CONTROL — the guard is GREEN on the unmodified tree
+  ok   plant located: A4 — the y-axis drops its tick step and rounds every label to an integer
+  ok   RED: A4 — the y-axis drops its tick step and rounds every label to an integer → guard exits non-zero
+  ok   restored byte-identical after: A4 — the y-axis drops its tick step and rounds every label to an integer
+  ok   plant located: A5 — a zero stacked segment paints 0.5px again
+  ok   RED: A5 — a zero stacked segment paints 0.5px again → guard exits non-zero
+  ok   restored byte-identical after: A5 — a zero stacked segment paints 0.5px again
+  ok   plant located: A5 — a zero bar-list row paints 2% again
+  ok   RED: A5 — a zero bar-list row paints 2% again → guard exits non-zero
+  ok   restored byte-identical after: A5 — a zero bar-list row paints 2% again
+  ok   plant located: S-04 — the stacked bar paints bands over an empty window again
+  ok   RED: S-04 — the stacked bar paints bands over an empty window again → guard exits non-zero
+  ok   restored byte-identical after: S-04 — the stacked bar paints bands over an empty window again
+  ok   plant located: S-04 — a tiny non-zero segment loses its visibility floor
+  ok   RED: S-04 — a tiny non-zero segment loses its visibility floor → guard exits non-zero
+  ok   restored byte-identical after: S-04 — a tiny non-zero segment loses its visibility floor
+  ok   plant located: S-03 — a ramp band takes ink that cannot be read on it
+  ok   RED: S-03 — a ramp band takes ink that cannot be read on it → guard exits non-zero
+  ok   restored byte-identical after: S-03 — a ramp band takes ink that cannot be read on it
+  ok   plant located: S-12 — the ramp borrows aqua for provider identity again
+  ok   RED: S-12 — the ramp borrows aqua for provider identity again → guard exits non-zero
+  ok   restored byte-identical after: S-12 — the ramp borrows aqua for provider identity again
+  ok   CONTROL — the guard is GREEN again after every restore
+
+23 passed, 0 failed
+

@@ -1,0 +1,108 @@
+
+── 1 · the gold census — every gold paint in the player's code is ruled and registered ─────────────────
+  ok   1.0 · CONTROL · the scanner reads the celebration's struck gold, the bet commit's gold, the capsule's gold and the mark's
+  ok   1.1 · no file paints gold unruled — every one is in the registry with its ruling
+  ok   1.2 · no registered file gained a gold use (a new one must be RULED, then registered with its reason)
+  ok   1.3 · the registry's every entry carries its ruling
+  ok   1.4′ PLANT · a Tailwind gold ink on a non-money file is seen
+  ok   1.4″ PLANT · a gold tone asked for by name is seen (`<Dot tone="gold" />`, `tone={x ? "gold" : "brand"}`)
+  ok   1.4‴ PLANT · the money aliases and the gilt material are seen (`var(--gilt)`, `var(--glow-gold)`, `gilt-metal`, `btn-gold`)
+  ok   1.4⁗ PLANT · `--warning-fg` (= `--gilt`, F3) and `text-warning-fg` are seen
+  ok   1.5′ PLANT · gold by another spelling is seen — a hand-typed oklch at hue 84 and the trademark hex
+  ok   1.5″ PLANT · a gold component drawn at its call site is seen (`<GiltCorner`, a `<RewardBurst` that defaults to gold, the resolved seal, struck type)
+  ok   1.6 · CONTROL · decoys are NOT gold: a comment naming `text-gold-300`, a near-neutral warm white, a blue hex, `goldfish`
+
+── 2 · the items — notifications, the agent page, proposals, /results, fairness, badges, KYC, the bar, the art, WIN, RG 
+  ok   2.1 · the notifications page's unread dot is the rail's own: `Dot tone="brand"` in both (§8b), never gold
+  ok   2.1′ EXECUTED · the brand Dot paints `--brand-400` (108,162,255 — the periwinkle the rail shows)
+  ok   2.2 · the three facts are ONE treatment — `size="xl" boxed="glass" labelStyle="strong" font="mono"`, no tone (was gold sentence · gold amount · white display)
+  ok   2.2′ · the fee box, the fee figure, the step numerals and every notice but 'one more thing' carry no gold and no warning
+  ok   2.2″ · the fee where it is PAID (/agent/apply) and REFUNDED (/agent/status) is not gold either (§M3a D1; §C4 refunded is NEUTRAL)
+  ok   2.3 · the page eyebrow and hero have no gold to ask for (out of their maps, as AuthHeader's gold went in R4-I)
+  ok   2.3′ EXECUTED · the default eyebrow is the subtle ink every player eyebrow wears
+  ok   2.3″ · /proposals and /proposals/new: no gold hero, eyebrow or Create; 'coming soon' is the royal box (waiting, §B11)
+  ok   2.4 · the notable card is the product's featured card (royal edge and wash), its crown and label the brand ink
+  ok   2.4′ · the page's glyph rides in its eyebrow's ink
+  ok   2.4″ · CONTROL · the resolved pill keeps the seal (§M3 'resolved seal'; §B11 RESOLVED = struck gilt)
+  ok   2.5 · the fairness chain's highlighted node is the brand ring the KYC rail's current step wears — not gilt
+  ok   2.5′ · the numerals are the list's own ink — never gold — in R4-E's measured proportional Inter Bold (not tabular, §7 of r4e)
+  ok   2.6 · the progress ring is `--brand-500` and its count `--brand-300`; the coin is `--metal-gold` (gold-is-money §2b holds the coin)
+  ok   2.7 · the KYC rail's current step is the brand ring and label, its fill the brand line — no gold on the page
+  ok   2.8 · CONTROL · the bar's marker is the brand needle (`--bar-needle: var(--gilt)`, §B1a 'the same object as TippingBar') — allowed, kept
+  ok   2.9 · every illustration carries exactly ONE gold accent (§C7) — the compass needle, the briefcase clasp…
+  ok   2.9′ PLANT · a second gold accent in one scene is reported
+  ok   2.10 · CONTROL · WIN is struck gilt in the dictionary and gold in the notification tints (allowed: money earned)
+  ok   2.11 · the pending limit change is R4-I's RG notice: the kit Callout, neutral, md (13px), the clock — no warning box, no triangle
+  ok   2.11′ · …and the page carries no warning tone and no gold anywhere (the break and the exclusion are neutral too)
+  ok   2.11″ EXECUTED · the neutral md notice: dashed edge, the subtle glyph, the 13px body
+  ok   2.12 · the reality check carries no gold: the sheet's own edge, the clock in the subtle ink, the minutes in the heading's
+
+── 3 · the one non-money accent — the brand family, wherever a highlight was gold (or aqua) ────────────
+  ok   3 · the /results carousel's current pip — the brand family
+  ok   3 · the /live carousel's current pip (its twin was aqua) — the brand family
+  ok   3 · the carousels' arrows — the brand family
+  ok   3 · the proposal timeline's current step — the brand family
+  ok   3 · /profile's set-apart row (the agent dashboard) — the brand family
+  ok   3 · the journey's staff row — the brand family
+  ok   3 · the journey's current-language tick — the brand family
+  ok   3 · the journey bell's unread dot and wash — the brand family
+  ok   3 · the primer's instruction and its 'share' hinge — the brand family
+  ok   3 · the primer's progress strip, step bars and pager — the brand family
+  ok   3 · the consent and install cards' glyph — the brand family
+  ok   3 · the KYC upload tile's hover and working state — the brand family
+  ok   3 · the avatar camera's hover edge — the brand family
+  ok   3 · the invite plate on each promise — the brand family
+  ok   3 · the propose promo's plate and hover — the brand family
+  ok   3 · the market page's CLOSED words (the dictionary's royal ink, `TONE_INK.royal`) — the brand family
+  ok   3′ · the CSS accents: the landing eyebrow tick, the trust facts' glyphs, a selection, the nav bar's glow
+  ok   3″ · TONE_INK.royal IS the brand ink (the dictionary's royal word ink the CLOSED words read)
+  ok   3‴ EXECUTED · the Callout's `brand` (a promise) is the royal `info` box with the shield — there is no gilt box
+
+── 4 · money that was not EARNED is not gold — D1 commits, D5 inducements, §B12 projections, zero, approvals 
+  ok   4.1 · D1: 'Confirm deposit' and 'Confirm withdrawal' are brand — the commit's first press, like the dialog's own button
+  ok   4.1′ · D1: the withdrawal's 'you receive' is the text's ink — no confirm box carries gold
+  ok   4.1″ · the Lipa panel's number (an identifier) and amount (a fee PAID) are the text's ink
+  ok   4.2 · D5: the cashback inducement and the dormant bonus card carry no gold words, and 'Deposit now' there is primary
+  ok   4.2′ · CONTROL · the wallet's own gold stays where it is money: the live balance card's edge and the zero-balance Add funds door
+  ok   4.3 · §B12: an exact payout-if-win at betting-close is not gold ('a gold data line would claim earnings the round has not decided')
+  ok   4.4 · zero is not gold: the net P&L, its rows, the settled strip (> 0 only)
+  ok   4.4′ · zero is not gold: the best-win crest only with a win; the invite dial and Earned only once earned; the agent's commission only > 0
+  ok   4.5 · a promise is not money: the invite share buttons are primary in every state, the share cards royal, the rate box royal
+  ok   4.5′ · a label is not money: a paying friend's chip is success (the '+X' beside it is the gold), not the resolved seal
+  ok   4.6 · an approval is permission, not money (§B11): 'Verified agent' is success, the KYC crest is success, 'Approved' on a proposal's timeline is success
+  ok   4.6′ EXECUTED · the badge renders the success chip; the success crest's ring is `--success` (no gold in either)
+  ok   4.7 · a link to a market is a control, not its seal: the proposal page's market button is ghost in both states
+  ok   4.8 · SubmitButton, Toggle, PageHeader, PageHero and the Callout offer no `gold` to ask for (zero money callers)
+
+── 5 · the warning family keeps its one meaning — F3 toasts, §B11 words, RG notices, clocks, one limit ramp 
+  ok   5.1 · F3: no player toast is the gold-struck `warning` — a fixable slip is `factual`
+  ok   5.1′ PLANT · a `toast({ title: err, variant: "warning" })` is reported
+  ok   5.1″ · CONTROL · the premise holds: the warning toast IS gold (feedback-law §2 pins it too)
+  ok   5.2 · the wallet's result: moving and in-review are ROYAL (`info`), Completed success, Failed danger, Reversed/Cancelled SLATE (§B11 item 5, §C4)
+  ok   5.2′ · the result modal has a slate `neutral` (the subtle ring, no auto-close)
+  ok   5.2″ · 'under review' (source of funds) is royal, a hidden comment slate, a paused agent slate, a running break neutral
+  ok   5.2‴ · 'more information needed' and the KYC gate's 'your move' are AMBER — the warning family, never the gold ramp (§B11)
+  ok   5.3 · clocks keep their ink: the OTP's last minute, the position ring's last hour, the countdown pill's figure, the closing-soon pill
+  ok   5.3′ EXECUTED · a position ring in its last half hour draws the running arc's ink, not `--gold-400`
+  ok   5.4 · /profile/activity reads the RG kit's ramp itself (`limitUsageFill`) — one meter for every limit, never gilt or the betting pair
+  ok   5.4′ EXECUTED · the ramp: royal under 75%, the warning step to 90%, the app-state danger from 90% or at the cap
+
+── 6 · the sanctioned gold that must STAY — so the census cannot pass because gold was deleted ─────────
+  ok   6.1 · the celebration strikes its amount (`.gilt-ink`) and its button is gilt-metal (§M3)
+  ok   6.2 · the bet and sell commits keep gold (D1)
+  ok   6.3 · the deposit doors keep gilt-metal (the header pill, the journey pill, the Wallet sheet — §M3a)
+  ok   6.4 · the live balance is gold (§8a) and the resolved seal is struck gilt (§B11)
+  ok   6.5 · the proposal bonus medallion defaults to gold (money earned), the chart reference lines are gilt (§B12)
+  ok   6.6 · the gilt material still exists for money (`.gilt-metal`, `.gilt-ink`)
+
+── 7 · the owner's items, pinned as they stand — classic chrome (frozen), the token, the hashed legal texts 
+  ok   7.1 · OWNER · `--warning-fg: var(--gilt)` — the token stays until the owner re-hues the warning family (F3)
+  ok   7.2 · OWNER · the classic '• Juu na Chini' dots are gilt (nav + rail) — the change: `var(--brand-400)` in both
+  ok   7.3 · OWNER · the classic bell, language tick and staff row keep gold; the journey's are brand (the same component, a `journey` prop)
+  ok   7.4 · OWNER · the session-ended notice is the warning family (the player must sign in again — §B11), its gilt the token's
+  ok   7.5 · OWNER · the legal RG links are gold and HASHED (RG_EN_SHA, TERMS_TEXT_SHA): the recolour ships with a new version
+  ok   7.6 · the regulator-letter frame's corners are claret (§B4), not gilt
+  ok   7.7 · OWNER · the classic chrome's 'coming soon' tag keeps its gold tint; page bodies (#main-content) and the journey wear the neutral tag
+
+visual-pass-r5c: 91 passed, 0 failed
+

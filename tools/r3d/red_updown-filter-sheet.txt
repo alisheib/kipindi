@@ -1,0 +1,31 @@
+﻿precondition: gate is GREEN on the untouched tree
+
+  1. caught      trigger-says-filters  →  2: ⭐ the trigger label is composed from the active ASSET and the active DURATION
+  2. caught      duration-dropped-from-trigger  →  2: ⭐ the trigger label is composed from the active ASSET and the active DURATION
+  3. caught      optimism-outlives-the-transition  →  9: 🔴 the optimistic on-state is scoped to `isPending`, so it cannot outlive the navigation
+  4. caught      duration-falls-to-none-while-pending  →  9: ⛔ …and a pending href with no `d` falls through to the real active duration
+  5. caught      sheet-vanishes-instead-of-leaving  →  10: CONTROL: all four animation names were located — a reader that finds nothing passes everything
+  6. caught      exit-reuses-the-entrance-name  →  10: 🔴 the panel's EXIT keyframe NAME differs from its ENTRANCE's — or the animation never restarts
+  7. caught      exit-beat-hardcoded  →  10: ⛔ the exit beat comes from the shared `exitBeatMs`, not a literal
+  8. caught      filter-becomes-a-navigation  →  11: 🔴 the transition REPLACES rather than pushes, and does not scroll
+  9. caught      split-at-lg  →  1: …inside a wrapper that hides it from `sm` up
+  10. caught      chips-deleted-not-disclosed  →  1: the asset rail still exists and is shown from `sm` up
+  11. caught      second-drawer  →  4: ⛔ no locally-declared sheet/drawer component
+  12. caught      aria-loses-the-selection  →  2: the accessible name interpolates both axes too
+  13. caught      sheet-back-under-the-nav  →  6: 🔴 the sheet lifts ITSELF, so any host inherits the fix
+  14. caught      bar-lift-deleted  →  6: ⚠️ …and the discovery-bar lift is still there, because it solves the other half
+  15. caught      copy-not-from-the-dictionary  →  5: the page passes the sheet's copy from the dictionary
+  16. caught      pills-leave-the-heading-row  →  12: ⭐ the board hands its pills to PageHeader as `actions`
+  17. caught      subtitle-squeezed-beside-the-pills  →  12: PageHeader's actions row holds the eyebrow and the title only
+
+17/17 caught · files restored: all · green after restore: true
+RED PROOF COMPLETE
+node.exe : (node:12416) [DEP0190] DeprecationWarning: Passing args to a child process with shell option true can lead 
+to security vulnerabilities, as the arguments are not escaped, only concatenated.
+At line:1 char:1
++ & "C:\Program Files\nodejs/node.exe" "C:\Program Files\nodejs/node_mo ...
++ ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: ((node:12416) [D...y concatenated.:String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+ 
+(Use `node --trace-deprecation ...` to show where the warning was created)

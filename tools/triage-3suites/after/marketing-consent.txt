@@ -1,0 +1,200 @@
+
+> fiftypick@0.1.0 test:marketing-consent
+> tsx scripts/marketing-consent.test.mts
+
+PASS 1 · a consenting player is ALLOWED — got ALLOWED
+PASS 2 · ⛔ a SUPPRESSED number is refused even though its consent is valid — suppression is asked FIRST (OD11) — got suppressed — suppressed withdrawn on 2026-01-01T00:00:00.000Z
+PASS 3 · a stranger with no ledger row is refused — silence is never permission (OD7) — got no_consent — no consent has ever been recorded for this number
+PASS 4 · a player serving a self-exclusion is refused — got rg_self_excluded — self-exclusion serving until 2026-11-07T12:44:46.696Z
+PASS 5 · a contact who consented is refused ONLY on age — no 18+ attestation exists until U33 (OD14), and none is inferred — got age_unknown — no 18+ confirmation is on record for this number — no covering list basis, no import attestation, no test attestation
+PASS 6 · a contact who withdrew is refused, and the reason says so — got consent_withdrawn — consent withdrawn on 2026-02-01T00:00:00.000Z
+PASS 7 · ⭐ a 24-hour self-exclusion that ELAPSED A YEAR AGO is still refused (D9 — the period ending is not the person asking) — got rg_self_excluded — minimum served on 2025-10-08T12:44:46.696Z, and no officer restore on record after it
+PASS 8 · a player whose own toggle is off is refused — got no_consent — the player's own marketing toggle is off
+PASS 9 · a CLOSED account is refused on status even though its toggle is on — got account_status — account is CLOSED
+PASS 10 · ⛔ an imported GIVEN row can NEVER speak over a player's own no (OD10) — got no_consent — the player's own marketing toggle is off
+PASS 11 · an unusable number is refused before it can become a billed send — got bad_msisdn — not a sendable Tanzanian mobile number (too_short): A Tanzanian number has nine digits after +255; this one has 3. Check whether some digits were cut off.
+PASS 12 · ⭐ the BARE marketing key finds no user — the trap is real, not hypothetical — looked up 255710000001
+PASS 12b · ⭐ …and the bridged key finds the player — looked up +255710000001
+PASS 13 · ACCEPT · four MUTUALLY EXCLUSIVE outcomes in one run — neither an always-open nor an always-closed gate can pass this — saw ALLOWED, no_consent, rg_self_excluded, suppressed
+PASS 14 · 🔴 the gate created NO ResponsibleGambling row — deciding must not write (150k recipients = 150k rows) — a row here means the gate writes once per recipient
+PASS 15 · a player ON a break is refused with its own reason, not as `account_status` — got rg_cooling_off — on a break until 2026-10-10T12:44:46.696Z
+PASS 16 · ⭐ a break that ENDED does not reopen marketing by itself — the consent on file predates it (D9, breaks) — got rg_cooling_off — break ended on 2026-10-07T12:44:46.696Z, and no consent given since
+PASS 17 · ⭐ a break that ended, then a consent AFTER it: ALLOWED — the COOLED_OFF status nothing ever clears is admitted only then — got ALLOWED
+PASS 18 · 🔴 a row whose pending limit rise has COME DUE is not rewritten by the gate — the write U7's fix missed — verdict ALLOWED · pending=5000 daily=1000
+PASS 19 · §5.6 ORDER — a self-excluded player whose toggle is off is refused on CONSENT, which is asked first (the costly RG step never runs) — got no_consent — the player's own marketing toggle is off
+PASS 20 · a consenting player aged 16 is refused as a minor — got age_minor — the account holder is under 18
+PASS 21 · ⭐ a consenting player with NO date of birth is refused as age_unknown — never treated as adult — got age_unknown — the account has no readable date of birth
+PASS 22 · ACCEPT (U11) · adult, minor and unknown give THREE different outcomes in one run — saw ALLOWED, age_minor, age_unknown
+PASS 23 · ⭐ aged 20 with a break on record is refused even after re-consenting — U10's lift does not reach the under-25 promise — got rg_under25_history — under 25 with a self-exclusion or a break on record
+PASS 24 · ⚠️ CONTROL — the SAME history at 30 is allowed: the rule is the age band, not the history — got ALLOWED
+PASS 25 · ⚠️ CONTROL — aged 20 with NO history is allowed: the promise is 'under 25 in a segment', not 'under 25' — got ALLOWED
+PASS 26 · ⭐ OQ11 · toggle ON under the OLD wording ('Nipe matangazo') is refused as no_consent — it never named SMS — got no_consent — consent predates the SMS wording
+PASS 26b · …and the record says why, in the words D3 chose — consent predates the SMS wording
+PASS 27 · ⭐ OQ11 · toggle ON with NO ledger row (a pre-U6 opt-in) is refused — the toggle alone is no longer consent — got no_consent — no consent row in the ledger — the consent predates the SMS wording
+PASS 28 · toggle ON but the ledger's latest word is a WITHDRAWAL — refused as consent_withdrawn — got consent_withdrawn — consent withdrawn on 2026-02-01T00:00:00.000Z
+PASS 29 · 🔴 D5 · an adult account date of birth, but KYC refused the document as UNDERAGE — age_minor — got age_minor — the identity check refused the account as under 18 (UNDERAGE)
+PASS 30 · D5 · a final SANCTIONED refusal refuses on account status, whatever User.status reads — got account_status — identity refused (SANCTIONED)
+PASS 31 · D5 · a final DUPLICATE_IDENTITY refusal refuses on account status — got account_status — identity refused (DUPLICATE_IDENTITY)
+PASS 32 · ⚠️ CONTROL — a RECOVERABLE refusal (a blurry photo) is not a refusal of the person: ALLOWED — got ALLOWED
+PASS 33 · ⚠️ CONTROL — a final refusal an officer RE-OPENED is marketable again: ALLOWED — got ALLOWED
+PASS 34 · ⭐ D5 · the account says 36, the identity document says 17 — the YOUNGER age governs: age_minor — got age_minor — the identity document's date of birth is under 18
+PASS 35 · D5 · the under-25 promise reads the document too — account 30, document 20, a break on record — got rg_under25_history — under 25 with a self-exclusion or a break on record
+PASS 36 · ⚠️ CONTROL — an OLDER document never rescues a minor account: age_minor — got age_minor — the account holder is under 18
+PASS 37 · ⭐ 17 years 364 days (20:59Z, 23:59 EAT) is a minor — got age_minor — the account holder is under 18
+PASS 37b · ⭐ …and one minute later it is the 18th birthday IN TANZANIA (21:00Z): ALLOWED — got ALLOWED
+PASS 38 · ⭐ 24 years 364 days with a break on record is still under 25 (20:59Z) — got rg_under25_history — under 25 with a self-exclusion or a break on record
+PASS 38b · ⭐ …and at 00:00 EAT on the 25th birthday the promise ends: ALLOWED — got ALLOWED
+PASS 39 · '+255 712 345 678' with spaces reaches the SAME consenting player: ALLOWED — got ALLOWED
+PASS 39b · '00255…' (the international prefix) reaches the SAME consenting player: ALLOWED — got ALLOWED
+PASS 39c · bare '255…' reaches the SAME consenting player: ALLOWED — got ALLOWED
+PASS 39d · nine national digits reaches the SAME consenting player: ALLOWED — got ALLOWED
+PASS 40 · ⛔ a Kenyan +254… is refused before it can be billed — got bad_msisdn — not a sendable Tanzanian mobile number (foreign): This is an international number outside Tanzania (country code +254…). 50pick sends only to Tanzanian mobile numbers. Ask for their Tanzanian mobile number instead.
+PASS 40b · ⭐ vb3 · '+255 0712…' — the trunk zero written after the country code — reaches the SAME consenting player: ALLOWED, under the right 255… key — got ALLOWED
+PASS 40b2 · ⛔ vb3 · …and the same spelling of a SUPPRESSED number is refused as suppressed — its stop is read under the right key, never a wrong one — got suppressed — suppressed withdrawn on 2026-01-01T00:00:00.000Z
+PASS 40c · ⛔ a Dar es Salaam landline is refused — it cannot receive an SMS — got bad_msisdn — not a sendable Tanzanian mobile number (landline): This is a landline in Dar es Salaam. A landline cannot receive an SMS. Ask for their mobile number instead.
+PASS 40d · ⭐ a CONSENTING PLAYER on NDC 064 is refused — tzPhone accepts it, but it has no live network (billed, never delivered) — got bad_msisdn — not a sendable Tanzanian mobile number (unallocated_prefix): 064 is allocated to Telxer Enterprise Limited but has no live network: TCRA marks it not operational, it has had no entry in libphonenumber's carrier map since 2022-09-08, and Telxer does not appear in TCRA's own quarterly subscriber table. Sending to it is billed and never arrives. Ask for their mobile number instead.
+
+── U9 · the loop contract (dispatchSlice, two slices, three minds changed between them)
+
+[audit] COMPLIANCE privacy.marketing_consent.withdrawn system User#loop300-3
+[audit] COMPLIANCE wallet.freeze_added loop300-4 User#loop300-4
+[audit] COMPLIANCE rg.self_exclusion.activated loop300-4 User#loop300-4
+[audit] COMPLIANCE rg.cooling_off.activated loop300-5 User#loop300-5
+[email] sendEmailToUser skipped — no email for user loop300-4… (user.email=null, phone=+25571…)
+[email] sendEmailToUser skipped — no email for user loop300-5… (user.email=null, phone=+25571…)
+[audit] COMPLIANCE push.suppressed.rg_lockout loop300-4 User#loop300-4
+[audit] COMPLIANCE marketing.suppressed.rg system User#loop300-4
+[audit] COMPLIANCE push.suppressed.rg_lockout loop300-5 User#loop300-5
+[audit] COMPLIANCE marketing.suppressed.rg system User#loop300-5
+PASS U9.0 · ⚠️ CONTROL — the opt-out token was minted, so the opt-out between slices is real
+PASS U9.1 · ⭐ a number that OPTED OUT between slice one and slice two never reaches the wire — skipped as suppressed — {"ref":"rX","outcome":"skipped","skipReason":"suppressed","detail":"suppressed withdrawn on 2026-10-08T12:44:46.716Z"}
+PASS U9.2 · a player who SELF-EXCLUDED between slices never reaches the wire — skipped rg_self_excluded — {"ref":"rY","outcome":"skipped","skipReason":"rg_self_excluded","detail":"account is SELF_EXCLUDED (standing: serving)"}
+PASS U9.2b · …and the RG refusal left ONE COMPLIANCE audit line against the ACCOUNT, with no phone number in it (§5.14) — 1 row(s) {"reason":"rg_self_excluded","detail":"account is SELF_EXCLUDED (standing: serving)"}
+PASS U9.3 · a player who took a BREAK between slices never reaches the wire — skipped rg_cooling_off — {"ref":"rZ","outcome":"skipped","skipReason":"rg_cooling_off","detail":"on a break until 2026-10-08T13:44:47.667Z"}
+PASS U9.4 · ⚠️ CONTROL — the loop DOES send: slice one's and slice two's eligible players were handed over (an always-closed gate fails here) — {"ref":"rA","outcome":"handed_over","reference":"ref_rA"} {"ref":"rB","outcome":"handed_over","reference":"ref_rB"}
+PASS U9.5 · ⛔ every refusal is `skipped`, never `failed` — the only failure is the one the WIRE refused — rA:handed_over rH:handed_over rX:skipped rY:skipped rZ:skipped rB:handed_over rF:failed
+PASS U9.6 · ⛔ settled by KEY, never by position — with the wire answering in reverse, each row got its OWN reference — {"ref":"rA","outcome":"handed_over","reference":"ref_rA"} {"ref":"rB","outcome":"handed_over","reference":"ref_rB"}
+PASS U9.7 · a message the wire refused is `failed` with the wire's code — not skipped, not handed over — {"ref":"rF","outcome":"failed","code":"BAD_MSISDN","error":"refused at the wire"}
+PASS U9.8 · ONE send per slice — two slices, two calls to the wire — 2 call(s)
+PASS U9.13 · ⭐ vb3 · a consenting player whose row is written '+255 0712…' is handed over under the GATE'S key — the wire is given 255712…, never the row's own spelling (sendBatch would rewrite that to 2550712… and refuse it BAD_MSISDN) — {"ref":"rH","outcome":"handed_over","reference":"ref_rH"} · on the wire as [255710030008]
+PASS U9.9 · a SHOP-WIDE refusal (balance floor) holds the row — not failed, not skipped: nothing about this person was decided — {"ref":"rG","outcome":"held","reason":"BALANCE_FLOOR"}
+PASS U9.10 · ⛔ a gate that cannot ANSWER holds the row and sends NOTHING — never a send on an unanswered question — {"ref":"rG","outcome":"held","reason":"gate_unanswered"} · sent 0
+PASS U9.11 · a send that THROWS leaves the row `unconfirmed` — the gateway may have taken it, so it is never retried by itself (OD23) — {"ref":"rG","outcome":"unconfirmed"}
+PASS U9.14 · ⭐ U13 · OUTSIDE THE SEND WINDOW the slice is held WHOLE — every row held quiet_hours, the gate asked ZERO times, the wire never called, the window read ONCE — qA:held:quiet_hours qB:held:quiet_hours rG:held:quiet_hours · gate asked 0 · wire calls 0 · window read 1
+PASS U9.12 · ⚠️ CONTROL — dispatch.ts was found and its three landmarks located — loop@3722 ask@3821 send@4960
+PASS U9.12a · ⭐ the gate is asked INSIDE the per-recipient loop and BEFORE the send — the order §5.6 requires
+PASS U9.12b · ⛔ `send` has no default and `sendBatch` is not imported — no production path to the wire until U35 gives it a purpose
+
+── D4 · the profile switch (recordPlayerMarketingChoice, judged by the gate)
+
+[audit] COMPLIANCE privacy.marketing_consent.withdrawn system User#tg500-1
+PASS T1 · ⚠️ CONTROL — after an SMS-link stop the gate refuses on the suppression — suppressed
+PASS T1b · …and the switch shows OFF
+PASS T1c · ⭐ D4 · the player's own ON lifts the stop THEY made — the gate ALLOWS, not 'suppressed' for ever — ALLOWED · {"ok":true,"on":true,"changed":true,"liftedStop":true}
+PASS T1d · ⭐ D2 · …recorded as a PROFILE GIVEN row in the language SHOWN (EN), in the toggle's own sentence — {"status":"GIVEN","source":"PROFILE","locale":"EN","wording":"Offers and news by SMS — Occas"}
+PASS T1e · ⛔ the stop was LIFTED, never deleted — the row and its date survive, lifted by 'profile' — {"id":"ca6eef29-e100-4d4d-9c29-b76f172be1b1","channel":"SMS","identifier":"255710050001","category":"MARKETING","reason":"WITHDRAWN","evidence":"optout:2U******","recordedBy":null,"createdAt":"2026-10-08T12:44:47.707Z","liftedAt":"2026-10-08T12:44:47.722Z","liftedReason":"profile"}
+PASS T1f · …and the switch reads ON
+PASS T2 · an OPERATOR suppression does not turn the switch off — it is not the player's consent
+PASS T2b · ⛔ …and the player's OFF→ON never lifts it — still refused on the suppression, the OPERATOR row still refusing — suppressed · {"id":"tgs500-2","channel":"SMS","identifier":"255710050002","category":"MARKETING","reason":"OPERATOR","evidence":"fixture","recordedBy":"officer","createdAt":"2026-01-01T00:00:00.000Z","liftedAt":null,"liftedReason":null}
+PASS T2c · ⚠️ CONTROL — the STORE refuses as well: `suppression.lift` on the OPERATOR row lifts nothing, and it still refuses — null
+PASS T3 · ⚠️ CONTROL — the break ended yesterday and the consent predates it: the gate refuses — rg_cooling_off
+PASS T3b · ⭐ D4 · …and the switch shows OFF, marked paused — not the ON the boolean still reads — {"on":false,"paused":true,"held":false,"heldUntil":null,"outreach":false}
+PASS T3c · ⭐ ONE tap ON is the 'opt in again after it ends' RG §4 promises — the gate ALLOWS — ALLOWED
+PASS T3d · …and the switch reads ON, no longer paused — {"on":true,"paused":false,"held":false,"heldUntil":null,"outreach":false}
+PASS T4 · a 'yes' under the old non-SMS wording shows OFF (OQ11), and is not marked paused — {"on":false,"paused":false,"held":false,"heldUntil":null,"outreach":false}
+PASS T4b · one ON records the SMS sentence, and the gate ALLOWS — ALLOWED
+PASS T5 · ⚠️ CONTROL — a consenting player's switch reads ON, and the gate ALLOWS — ALLOWED
+PASS T5b · OFF writes marketingOptIn=false AND a WITHDRAWN row, and the gate refuses — false · WITHDRAWN · no_consent
+PASS T6 · an explicit OFF is still recorded when the boolean reads true under the old wording — a 'no' is never dropped — false · WITHDRAWN
+PASS T7 · the profile switch and the /s/ resume agree on which stops a person may lift (only WITHDRAWN) — WITHDRAWN:true/true COMPLAINT:false/false OPERATOR:false/false SELF_EXCLUSION:false/false
+PASS T8 · ⚠️ CONTROL — on a break with a consent on file, the gate refuses rg_cooling_off — rg_cooling_off
+PASS T8a · ⭐ D4b · during the break the switch reads OFF and HELD, with the break's end date — never ON — {"on":false,"paused":false,"held":true,"heldUntil":"2026-10-10T12:44:47.731Z","outreach":false}
+PASS T8b · ⛔ D4b · an ON tapped during the break writes NOTHING and answers held — no GIVEN row certain to lapse — {"ok":false,"on":false,"changed":false,"liftedStop":false,"held":true} · rows 1 → 1
+PASS T8c · …and on a clock after the break ends the SAME record reads paused (lapsed), no longer held — {"on":false,"paused":true,"held":false,"heldUntil":null,"outreach":false}
+PASS T8d · an OFF during the break is still recorded — a no is never refused — false · WITHDRAWN
+PASS T8e · a player with NO consent on a break is held too — the ON is void whoever taps it, and nothing is written — {"on":false,"paused":false,"held":true,"heldUntil":"2026-10-10T12:44:47.732Z","outreach":false} · {"ok":false,"on":false,"changed":false,"liftedStop":false,"held":true}
+PASS T8f · a self-exclusion in force reads held, until its end date — {"on":false,"paused":false,"held":true,"heldUntil":"2026-11-07T12:44:47.732Z","outreach":false}
+PASS T8g · a PERMANENT self-exclusion is held with NO date — never a date a century away — {"on":false,"paused":false,"held":true,"heldUntil":null,"outreach":false}
+[marketing-consent] profile choice failed: fixture: a read failed after the writes landed
+PASS T9 · ⚠️ CONTROL — the fault fired once, after the OFF's writes had landed (marketingOptIn=false, a WITHDRAWN row) — thrown 1 · WITHDRAWN
+PASS T9a · ⭐ …and the answer is the RE-READ state, OFF as stored — not the guess !want (ON) that snapped the switch back — {"ok":true,"on":false,"changed":true,"liftedStop":false}
+[marketing-consent] profile choice failed: fixture: a read failed after the writes landed
+PASS T9b · when the fresh read fails too the answer is UNKNOWN (null) — still never a guess — thrown 2 · {"ok":false,"on":null,"changed":true,"liftedStop":false}
+PASS T-O1 · ⭐ U33a-P · a never-asked player reads OFF while the record is CLOSED, and ON with outreach:true once it is OPEN — the switch follows the basis that actually reaches them — closed {"on":false,"paused":false,"held":false,"heldUntil":null,"outreach":false} · open {"on":true,"paused":false,"held":false,"heldUntil":null,"outreach":true}
+PASS T-O2 · ⛔ ANY active stop reads OFF here, an OPERATOR stop included — stricter than the consent path on purpose: nobody said yes, so the switch must never read ON while the gate refuses — {"on":false,"paused":false,"held":false,"heldUntil":null,"outreach":false}
+PASS T-O3 · ⭐ an OFF tapped from an outreach ON records the person's stop — a WITHDRAWN PROFILE row in the sentence shown — and the switch reads OFF after — before true · row WITHDRAWN/PROFILE · after false
+PASS T-O4 · ⛔ an ON tapped while the switch ALREADY reads ON (outreach) writes NOTHING — a consent is never invented out of a tap that changed nothing — before true · row null · changed false
+PASS T-O5 · a never-asked player whose break ENDED with no yes since reads PAUSED, not ON — the one refusal their own tap can lift, said in the same word as on the consent path — {"on":false,"paused":true,"held":false,"heldUntil":null,"outreach":false}
+PASS T-O6 · ⚠️ CONTROL — the CONSENT path is unchanged: an OPERATOR stop leaves a consenting player's switch ON, exactly as before U33a-P (the platform's decision is not the player's consent) — {"on":true,"paused":false,"held":false,"heldUntil":null,"outreach":false}
+
+── the consent card (what a failed save, a failed read and a running break look like)
+
+PASS C0 · ⚠️ CONTROL — the card, its action and its page were read, and the nine RG lines exist — 4940/1546/5712 chars · 9 lines
+PASS C1 · ⭐ the consent sentence is ALWAYS on screen — a failure never replaces it (the retry is tapped beside the sentence the ledger records as shown)
+PASS C2 · a failure answers on the push switch's channel — a factual toast with its next step (§F2, §F4)
+PASS C3 · ⭐ a lapsed session is `signed_out` before anything is written — the card says sign in again and links to it
+PASS C4 · D4b · the switch is locked while a break or self-exclusion is in force, and the card says until when
+PASS C5 · ⭐ after a failure the switch shows what the server READ — the pre-tap guess only when nothing was read, and then the page is re-read
+PASS C6 · ⭐ a failed read renders the card WITHOUT a switch and with our desk — never nothing
+PASS C7 · the title keeps its last two words together ('by SMS', 'kwa SMS') — no lone channel word at 360
+PASS C8 · ⛔ the lapse and hold lines STATE the mechanism in all three languages — no call to switch gambling offers back on, no 'paused'
+PASS C9 · ⭐ consent-01 · the end date is written in the PAGE'S language (formatHeldUntil), never formatDate's en-GB, and kept on one line
+PASS C10 · consent-02 · the held and paused notes, the unreadable line and the watchlist hint are break-keep — and the PINNED consent sentence is not (it cannot carry break hints)
+PASS C11 · consent-02 · every zh line rendered break-keep carries its phrase breaks — no unbreakable run over 7 glyphs (the 360 column holds ~13) — 5:自我排除期 · 6:自我排除期内 · 6:自我排除期内 · 6:停止接收优惠 · 4:您关注的
+
+── consent-01 · the held date, in the page's language (formatHeldUntil, fixed clock)
+
+PASS H1 · ⭐ each language writes its OWN month — '2 Dec' · '2 Des' · '2026年12月2日', never an English month inside sw or zh — {"en":"2 Dec","sw":"2 Des","zh":"2026年12月2日"}
+PASS H2 · a self-exclusion that ends NEXT year says so — '10 Mar 2027' · '10 Mac 2027' · '2027年3月10日' — {"en":"10 Mar 2027","sw":"10 Mac 2027","zh":"2027年3月10日"}
+PASS H3 · the day is TANZANIA'S — 21:30Z on 30 Sep is 00:30 on 1 Oct in Dar es Salaam — 1 Oct
+PASS H4 · an end less than a day away says the EAT clock, 24-hour, rounded UP — a one-hour break never reads 'until <today>' — {"en":"27 Sep, 13:01","sw":"27 Sep, 13:01","zh":"2026年9月27日 13:01"}
+PASS H5 · an unreadable date gives null, so the card shows the line without a date
+
+── U33a · the consent-basis catalogue (pure; its wordings are suggestions, and no basis writer records one an admin never saved)
+
+PASS U33.pin · ⛔ APPEND-ONLY — the catalogue's entries (key|since|firstParty|defaultWording) and the 18+ sentence are byte-identical to the pin — sha f9d9ac400b285144 · 5 entries
+PASS U33.keys · every key is distinct and found exactly as spelled — a case-folded, padded or prototype key finds NOTHING (C2: refused, never guessed) — strays=[]
+PASS U33.cat1 · ⭐ exactly TWO bases are not consent — THIRD_PARTY and (OD57 · OD58) LICENCE_OUTREACH — and neither composes a wording (neither records a ledger row) — not consent: [THIRD_PARTY,LICENCE_OUTREACH]
+PASS U33.cat2 · every first-party basis composes ONE wording: its sentence, then the 18+ sentence — naming 50pick, offers, news, SMS and 18 — thin: []
+PASS U33.cat3 · ⛔ the import wordings and the player's SMS sentences are DISJOINT — an import row never passes the player check, no SMS sentence reads as an attestation — 0 shared · 0 SMS sentence(s) attested
+PASS U33.notice · the bought-list notice's default says the numbers are stored WITHOUT consent and reach a campaign only once they are on a list recorded under the licence outreach basis, with its 18+ confirmation — and no longer promises they are 'never sent' (OD57 made that false) — These numbers will be stored without consent. They receive marketing SMS only after you put them on a list and record the licence outreach basis for it, with its 18+ confirmation.
+PASS U33.att1 · ⭐ every composed wording is attested against the saved versions — and nothing else is: not a basis sentence without its 18+, not the 18+ alone, not a bought list or the licence basis with one glued on, not a near copy — 0 look-alike(s) attested: 
+PASS U33.att2 · ⭐ an import attestation is GIVEN, from IMPORT, recorded BY an officer, under a wording composed from SAVED versions — drop any one and it is not one — counted: []
+PASS U33.in1 · an unknown basis key is refused as unknown_basis — never guessed, never defaulted — unknown_basis,unknown_basis,unknown_basis,unknown_basis
+PASS U33.in2 · a proof note under 10 characters, counted AFTER trimming and collapsing whitespace, is note_too_short — exactly 10 passes — note_too_short,note_too_short,note_too_short · ten=ok
+PASS U33.in3 · 501 characters is note_too_long — exactly 500 passes — 501=note_too_long · 500=ok
+PASS U33.in4 · ⛔ §5.14 · a note holding a phone number — spaced, +255 with brackets, zero-width joined, full-width, en-dashed, dotted, joined by low lines (vb5: the ONE phone-run rule) — is note_has_phone; eight digits are not one, and (vb5 review m3) neither is a photo's name nor nine digits no operator holds — note_has_phone,note_has_phone,note_has_phone,note_has_phone,note_has_phone,note_has_phone,note_has_phone · ok,ok,ok,ok
+PASS U33.in5 · ⭐ first-party without the 18+ box is adult_not_attested (only the boolean true attests); a bought list never asks — it passes unticked, and a stale tick is NOT carried onto it — adult_not_attested,adult_not_attested,ok,ok
+PASS U33.in6 · a complete first-party input passes — the basis by its key with its first-party flag and NEVER the catalogue entry (M3: nothing in the answer can reach a default), the composed SAVED wording, the note collapsed but in the officer's OWN characters ('№4' stays '№4'), the 18+ recorded — fields adultAttested,basisKey,firstParty,ok,proofNote,wording · note "Agent Juma's roster №4, Mwanza region" · 18+ true
+PASS U33.in7 · every refusal answers in its OWN sentence — six refusals, six sentences; the phone one tells the officer to remove the number, and an unsaved basis says where an admin saves it — Choose how these people gave you their numbers. | This basis's words or its 18+ sentence haven't been saved yet — an admin saves them in Admin → System → Marketing wordings. | Write at least 10 characters saying where these numbers came from. | Keep the proof 
+PASS U33.in8 · ⛔ the server door is TOTAL over a hostile request — no body, a number for a key, no note or a numeric note is a refusal, never a throw — unknown_basis,unknown_basis,unknown_basis,unknown_basis,note_too_short,note_too_short
+PASS U33.ev · the evidence names the run, the basis and the officer's note on one line — `import:<run> basis:<KEY> note:<note>`, whitespace collapsed — and composes NOTHING for a note holding a phone number, a run id that is not one token, or a key outside the catalogue — "import:imp_t1 basis:OWN_FORM note:Kariakoo roadshow stand 4" · composed anyway: []
+PASS U33.draft1 · ⭐ a DEFAULT carries no ship date (every since is 'unshipped'), and a SAVED version carries its own savedAt — appending a version never restamps the ones before it — since: unshipped · savedAt: 2026-10-04T08:00:00.000Z,2026-10-05T09:30:00.000Z
+PASS U33.draft2 · ⛔ W1 · NO BASIS WRITER NAMES A DEFAULT — over the real src tree, no module that writes a ledger row (any receiver; create, createMany, createManyAndReturn, upsert or raw SQL), a list basis or a test attestation names the card's suggestions, the default 18+ sentence or the default notice, reads a catalogue entry's defaultWording, or reaches one through a barrel or a helper — walked 1361 src files · 1361 judged · 7188 import edges · 9 basis writer(s) · 2 default reader(s) outside the homes [src/app/admin/system/marketing-wordings-form.tsx, src/app/api/dev-test/marketing-typed-test-seed/route.ts]
+PASS U33.draft3 · ⚠️ CONTROL — the W1 detector on a fixed population: it finds a writer reading CONSENT_BASES[..].defaultWording, one reading WORDING_DEFAULTS, one through a barrel, one through a helper (a relative .js import), one chained off consentBasisFor, one through a variable, one off the door's answer, one after a non-null assertion and one by raw SQL — seeing pc().messagingConsent, createManyAndReturn and upsert as writes — and lets the card's prefill, the pin, the catalogue, a writer taking the catalogue's labels and a writer that reads currentWording through — missed: [] · flagged wrongly: []
+PASS U33.sav1 · ⛔ W1 at the catalogue · with NOTHING saved no first-party basis composes a wording, no composed default is attested or makes a row an attestation, and the door refuses wording_unsaved — so too with the basis saved but not its 18+ sentence — 0 composed · 0 attested · 0 row(s) · door: wording_unsaved,wording_unsaved
+PASS U33.lic1 · ⭐ LICENCE_OUTREACH is appended BELOW the pin: not first-party, the ONE licence basis, composing no wording — and its default says the person has not agreed, and names 50pick, the licence and the stop — LICENCE_OUTREACH at 4 · firstParty false
+PASS U33.lic2 · ⛔ the import door refuses LICENCE_OUTREACH as unknown_basis and no evidence is composed under it — a licence basis is recorded on a list (U33b-L), never on an import run — while the catalogue lookup still finds it — door unknown_basis · evidence null
+
+── U33a-G · the licence decision table (§3.2), executed with the record CLOSED and OPEN
+
+PASS G1 · a player who was never asked — no ledger row, toggle off — is refused `no_consent` while the record is closed, and ALLOWED on LICENCE_PLAYER when it is open, with the record's own instant as the ref — closed no_consent · open LICENCE_PLAYER/outreach:2026-10-05T09:00:00.000Z
+PASS G2 · a player whose only GIVEN is under words that never named SMS is refused while closed, and ALLOWED on LICENCE_PLAYER while open — the licence reaches somebody who was never properly asked — closed no_consent · open LICENCE_PLAYER/outreach:2026-10-05T09:00:00.000Z
+PASS G3 · ⛔ a WITHDRAWN latest row is refused `consent_withdrawn` in BOTH states — the licence basis never overrides a stop, and says so — closed consent_withdrawn · open consent_withdrawn · names the rule true
+PASS G4 · ⛔ a toggle switched off after a GIVEN with no withdrawal (the lapse) is refused `no_consent` in both states — a person who turned it off is nearer a stop than to never having been asked — closed no_consent · open no_consent
+PASS G5 · ⛔ a player serving a self-exclusion is refused `rg_self_excluded` in both states — a licence basis never counts as opting in again (S11) — closed no_consent · open rg_self_excluded
+PASS G6 · ⛔ a player under 18 is refused `age_minor` in both states, whatever the basis — closed no_consent · open age_minor
+PASS G7 · ⛔ a CLOSED account is refused `account_status` in both states — closed no_consent · open account_status
+PASS G8 · a contact on a list whose unrevoked basis covers them is refused while closed and ALLOWED on LICENCE_LIST while open, with the basis id as the ref and the 18+ taken from the cover — closed no_consent · open LICENCE_LIST/list-basis:lb_abcdefghijklmnopqrst
+PASS G9 · a contact on no list, or whose cover was revoked or post-dates them, is refused `no_consent` while closed and `no_basis` while open — its own reason, never folded into no_consent — closed no_consent · open no_basis
+PASS G10 · ⛔ an ERASED book record is refused `no_basis` while open — only a new consent reaches it again, and no list basis and no attestation override it — open no_basis · with an attestation no_basis
+PASS G11 · ⛔ a WITHDRAWN contact ON a covering list is refused `consent_withdrawn` in both states — the list never outranks the person's own stop — closed consent_withdrawn · open consent_withdrawn
+PASS G12 · ⛔ a suppressed number is refused `suppressed` in both states, asked FIRST, before any basis is considered — closed suppressed · open suppressed
+PASS G13 · a contact consented under a pinned SMS sentence with no 18+ evidence is refused `age_unknown` in both states — consent to be messaged is not a statement of age (OD14) — closed age_unknown · open age_unknown
+PASS G14 · a contact consented under a pinned sentence AND covered by a list is ALLOWED on CONSENT in both states — consent is asked first and wins wherever it exists, and the 18+ comes from the cover — closed CONSENT/ledger:lc15 · open CONSENT/ledger:lc15
+PASS G15 · the typed test's attestation: a non-member is ALLOWED on LICENCE_TEST while open; it is ignored while the record is closed, ignored when stale, and never overrides an erased record — open LICENCE_TEST/test:att_abcdefgh · closed no_consent · stale no_basis · malformed no_basis
+PASS G16 · ⛔ asking changes nothing — no consent row, suppression, user or RG row is written by any call in this table — before {"consents":null,"stop":null,"optIn":false} · after {"consents":null,"stop":null,"optIn":false}
+PASS G17 · every ALLOWED names a basis whose ref has that kind's shape, and no ref that can reach an audit payload carries a run of nine digits — shaped true · auditable 3 · clean true
+
+marketing-consent: 162 passed, 0 failed
+exit=0

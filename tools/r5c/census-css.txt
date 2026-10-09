@@ -1,0 +1,180 @@
+### src/app/globals.css
+   98 [oklch] oklch(98% 0.030 84) :: --gold-50:  oklch(98% 0.030 84);
+   99 [oklch] oklch(94% 0.058 84) :: --gold-100: oklch(94% 0.058 84);
+  100 [oklch] oklch(90% 0.095 84) :: --gold-200: oklch(90% 0.095 84);
+  101 [oklch] oklch(86% 0.110 84) :: --gold-300: oklch(86% 0.110 84);
+  102 [oklch] oklch(80% 0.1141 84) :: --gold-400: oklch(80% 0.1141 84);
+  103 [oklch] oklch(72% 0.114 84) :: --gold-500: oklch(72% 0.114 84);
+  104 [oklch] oklch(64% 0.102 84) :: --gold-600: oklch(64% 0.102 84);
+  105 [oklch] oklch(56% 0.092 84) :: --gold-700: oklch(56% 0.092 84);
+  106 [oklch] oklch(46% 0.078 84) :: --gold-800: oklch(46% 0.078 84);
+  107 [oklch] oklch(36% 0.062 84) :: --gold-900: oklch(36% 0.062 84);
+  108 [oklch] oklch(26% 0.046 84) :: --gold-950: oklch(26% 0.046 84);
+  196 [oklch] oklch(78% 0.13 86) :: --warning-500: oklch(78% 0.13 86);
+  428 [oklch] oklch(78% 0.115 84) :: --border-gold:   oklch(78% 0.115 84);
+  448 [var] var(--gold-300) :: --gilt:          var(--gold-300);
+  458 [var] var(--gold-400) :: --gilt-strong:   var(--gold-400);
+  489 [oklch] oklch(91% 0.090 84) :: oklch(91% 0.090 84) 0%, oklch(79% 0.114 84) 48%,
+  489 [oklch] oklch(79% 0.114 84) :: oklch(91% 0.090 84) 0%, oklch(79% 0.114 84) 48%,
+  490 [oklch] oklch(72% 0.114 84) :: oklch(72% 0.114 84) 100%);
+  492 [oklch] oklch(95% 0.054 84 / 0.35) :: --gilt-metal-edge: inset 0 0 0 1px oklch(95% 0.054 84 / 0.35);
+  498 [oklch] oklch(99% 0.02 95 / 0.22) :: --gilt-sheen: linear-gradient(104deg, transparent 40%, oklch(99% 0.02 95 / 0.22) 50%, transparent 60%);
+  502 [oklch] oklch(91% 0.090 84) :: oklch(91% 0.090 84) 0%, oklch(84% 0.114 84) 50%,
+  502 [oklch] oklch(84% 0.114 84) :: oklch(91% 0.090 84) 0%, oklch(84% 0.114 84) 50%,
+  503 [oklch] oklch(77% 0.120 84) :: oklch(77% 0.120 84) 100%);
+  508 [oklch] oklch(79% 0.114 84) :: oklch(79% 0.114 84) 0deg 2.5deg, oklch(65% 0.102 84) 2.5deg 5deg);
+  508 [oklch] oklch(65% 0.102 84) :: oklch(79% 0.114 84) 0deg 2.5deg, oklch(65% 0.102 84) 2.5deg 5deg);
+  544 [var] var(--gold-500) :: --gold:               var(--gold-500);
+  545 [var] var(--gold-400) :: --gold-hover:         var(--gold-400);
+  546 [var] var(--gold-600) :: --gold-active:        var(--gold-600);
+  547 [oklch] oklch(20% 0.05 84) :: --gold-fg:            oklch(20% 0.05 84);
+  548 [var] var(--gold-500) :: --gold-subtle:        color-mix(in oklab, var(--gold-500) 18%, transparent);
+  549 [var] var(--gold-500) :: --gold-subtle-hover:  color-mix(in oklab, var(--gold-500) 30%, transparent);
+  566 [var] var(--warning-500) :: --warning:        var(--warning-500);
+  567 [var] var(--warning-500) :: --warning-bg:     color-mix(in oklab, var(--warning-500) 18%, transparent);
+  568 [var] var(--warning-500) :: --warning-border: color-mix(in oklab, var(--warning-500) 36%, transparent);
+  569 [var] var(--gilt) :: --warning-fg:     var(--gilt);
+  592 [var] var(--gold-500) :: --bet-jackpot: var(--gold-500);
+  593 [var] var(--gold-400) :: --bet-streak: var(--gold-400);
+  670 [var] var(--gold-500) :: --glow-gold:    0 0 24px -4px color-mix(in oklab, var(--gold-500) 60%, transparent);
+  673 [var] var(--gold-400) :: --glow-jackpot: 0 0 60px -8px color-mix(in oklab, var(--gold-400) 70%, transparent);
+  798 [var] var(--gold-300) :: --g-gold:     linear-gradient(180deg, var(--gold-300), var(--gold-600));
+  798 [var] var(--gold-600) :: --g-gold:     linear-gradient(180deg, var(--gold-300), var(--gold-600));
+  799 [var] var(--gold-300) :: --g-jackpot:  radial-gradient(circle at 30% 20%, var(--gold-300), var(--gold-700));
+  799 [var] var(--gold-700) :: --g-jackpot:  radial-gradient(circle at 30% 20%, var(--gold-300), var(--gold-700));
+  800 [var] var(--gold-700) :: --g-aurora:   linear-gradient(135deg, var(--royal-700), var(--royal-500), var(--gold-700));
+  832 [var] var(--gilt) :: --bar-needle:           var(--gilt);
+  833 [var] var(--gilt) :: --bar-needle-glow:      color-mix(in oklab, var(--gilt) 55%, transparent);
+  839 [oklch] oklch(75% 0.110 84 / 0.5) :: --bar-shimmer:          linear-gradient(90deg, transparent 0%, oklch(75% 0.110 84 / 0.5) 50%, transparent 100%);
+  840 [oklch] oklch(78% 0.115 84 / 0) :: --bar-sweep:            linear-gradient(90deg, transparent 0%, oklch(78% 0.115 84 / 0) 20%, oklch(78% 0.115 84 / 0.90) 50%, oklch(78% 0.115 84 / 0) 80
+  840 [oklch] oklch(78% 0.115 84 / 0.90) :: --bar-sweep:            linear-gradient(90deg, transparent 0%, oklch(78% 0.115 84 / 0) 20%, oklch(78% 0.115 84 / 0.90) 50%, oklch(78% 0.115 84 / 0) 80
+  840 [oklch] oklch(78% 0.115 84 / 0) :: --bar-sweep:            linear-gradient(90deg, transparent 0%, oklch(78% 0.115 84 / 0) 20%, oklch(78% 0.115 84 / 0.90) 50%, oklch(78% 0.115 84 / 0) 80
+ 1112 [var] var(--gilt) :: .gilt        { color: var(--gilt); }
+ 1112 [cls] gilt :: .gilt        { color: var(--gilt); }
+ 1116 [var] var(--gilt) :: background: linear-gradient(90deg, transparent, var(--gilt) 8%, var(--gilt) 92%, transparent);
+ 1116 [var] var(--gilt) :: background: linear-gradient(90deg, transparent, var(--gilt) 8%, var(--gilt) 92%, transparent);
+ 1123 [var] var(--gilt) :: background: linear-gradient(90deg, transparent, var(--claret-400) 18%, var(--gilt) 50%, var(--claret-400) 82%, transparent);
+ 1131 [var] var(--gilt) :: radial-gradient(circle at 20% 30%, color-mix(in oklab, var(--gilt) 6%, transparent) 0, transparent 28%),
+ 1143 [var] var(--gilt) :: color: var(--gilt);
+ 1348 [cls] btn-gold :: .btn-gold {
+ 1349 [var] var(--gold-500) :: background: var(--gold-500);
+ 1350 [var] var(--gold-fg) :: color: var(--gold-fg);
+ 1353 [oklch] oklch(95% 0.054 84 / 0.55) :: box-shadow: inset 0 0 0 1px oklch(95% 0.054 84 / 0.55), 0 1px 2px oklch(10% 0.05 262 / 0.35);
+ 1357 [cls] btn-gold :: .btn-gold:hover:not(:disabled) { filter: brightness(var(--btn-hover-gain)); box-shadow: inset 0 0 0 1px oklch(95% 0.054 84 / 0.55), 0 5px 16px oklch(8
+ 1357 [oklch] oklch(95% 0.054 84 / 0.55) :: .btn-gold:hover:not(:disabled) { filter: brightness(var(--btn-hover-gain)); box-shadow: inset 0 0 0 1px oklch(95% 0.054 84 / 0.55), 0 5px 16px oklch(8
+ 1357 [oklch] oklch(80% 0.114 84 / 0.5) :: .btn-gold:hover:not(:disabled) { filter: brightness(var(--btn-hover-gain)); box-shadow: inset 0 0 0 1px oklch(95% 0.054 84 / 0.55), 0 5px 16px oklch(8
+ 1763 [var] var(--gold-500) :: background: color-mix(in oklab, var(--gold-500) 9%, var(--bg-inset));
+ 1764 [var] var(--gold-500) :: border: 1px solid color-mix(in oklab, var(--gold-500) 22%, var(--border));
+ 2217 [var] var(--gilt) :: 18%  { box-shadow: inset 0 0 0 2px var(--gilt), 0 0 18px 1px oklch(78% 0.13 86 / 0.4); background-color: color-mix(in oklab, var(--gilt) 9%, transpare
+ 2217 [var] var(--gilt) :: 18%  { box-shadow: inset 0 0 0 2px var(--gilt), 0 0 18px 1px oklch(78% 0.13 86 / 0.4); background-color: color-mix(in oklab, var(--gilt) 9%, transpare
+ 2217 [oklch] oklch(78% 0.13 86 / 0.4) :: 18%  { box-shadow: inset 0 0 0 2px var(--gilt), 0 0 18px 1px oklch(78% 0.13 86 / 0.4); background-color: color-mix(in oklab, var(--gilt) 9%, transpare
+ 2307 [oklch] oklch(40% 0.060 70) :: .tier-bronze  { background: oklch(40% 0.060 70);  color: oklch(90% 0.060 78);   border-color: oklch(58% 0.090 70); }
+ 2307 [oklch] oklch(90% 0.060 78) :: .tier-bronze  { background: oklch(40% 0.060 70);  color: oklch(90% 0.060 78);   border-color: oklch(58% 0.090 70); }
+ 2307 [oklch] oklch(58% 0.090 70) :: .tier-bronze  { background: oklch(40% 0.060 70);  color: oklch(90% 0.060 78);   border-color: oklch(58% 0.090 70); }
+ 2324 [oklch] oklch(38% 0.045 88) :: .tier-gold    { background: oklch(38% 0.045 88);  color: oklch(94% 0.030 88);   border-color: oklch(76% 0.068 88); }
+ 2324 [oklch] oklch(94% 0.030 88) :: .tier-gold    { background: oklch(38% 0.045 88);  color: oklch(94% 0.030 88);   border-color: oklch(76% 0.068 88); }
+ 2324 [oklch] oklch(76% 0.068 88) :: .tier-gold    { background: oklch(38% 0.045 88);  color: oklch(94% 0.030 88);   border-color: oklch(76% 0.068 88); }
+ 2456 [var] var(--gilt) :: ::selection { background: color-mix(in oklab, var(--gilt) 35%, transparent); color: oklch(15% 0.06 268); }
+ 2597 [var] var(--gold-300) :: 0%   { color: var(--gold-300); text-shadow: 0 0 18px color-mix(in oklab, var(--gold-300) 60%, transparent); }
+ 2597 [var] var(--gold-300) :: 0%   { color: var(--gold-300); text-shadow: 0 0 18px color-mix(in oklab, var(--gold-300) 60%, transparent); }
+ 2608 [cls] seal-impress :: @keyframes seal-impress { 0% { transform: scale(2.2); opacity: 0; filter: blur(6px); } 100% { transform: scale(1); opacity: 1; filter: blur(0); } }
+ 2615 [cls] seal-recoil :: @keyframes seal-recoil { from { translate: 0 2px; } to { translate: 0 0; } }
+ 2632 [cls] seal-rim :: .seal-rim {
+ 2634 [var] var(--gilt-reeding) :: background: var(--gilt-reeding);
+ 2635 [var] var(--gilt-metal-edge) :: box-shadow: var(--gilt-metal-edge),
+ 2637 [var] var(--gold-500) :: 0 0 30px -6px color-mix(in oklab, var(--gold-500) 32%, transparent);
+ 2640 [cls] seal-spec :: .seal-spec {
+ 2642 [oklch] oklch(99% 0.02 95 / 0.18) :: background: radial-gradient(circle at 42% 20%, oklch(99% 0.02 95 / 0.18), transparent 62%);
+ 2647 [cls] seal-enamel :: .seal-enamel {
+ 2652 [var] var(--gilt) :: inset 0 0 0 1.5px color-mix(in oklab, var(--gilt) 50%, transparent),
+ 2655 [cls] seal-enamel :: .seal-enamel::before {
+ 2662 [cls] seal-band :: .seal-band {
+ 2665 [oklch] oklch(99% 0.02 95 / 0.15) :: oklch(99% 0.02 95 / 0.15) 26deg, transparent 56deg);
+ 2773 [cls] seal-place :: @keyframes seal-place {
+ 2967 [var] var(--gilt) :: color: var(--gilt);
+ 2970 [var] var(--border-gold) :: border: 1.5px solid var(--border-gold);
+ 2972 [var] var(--gilt) :: 0 0 0 1px color-mix(in oklab, var(--gilt) 26%, transparent) inset,
+ 2982 [var] var(--gilt) :: border: 0.5px solid color-mix(in oklab, var(--gilt) 40%, transparent);
+ 2993 [var] var(--gilt) :: .badge--unlocked { box-shadow: 0 0 0 1px color-mix(in oklab, var(--gilt) 30%, transparent) inset, var(--shadow-3), var(--glow-gold); }
+ 2993 [var] var(--glow-gold) :: .badge--unlocked { box-shadow: 0 0 0 1px color-mix(in oklab, var(--gilt) 30%, transparent) inset, var(--shadow-3), var(--glow-gold); }
+ 3017 [var] var(--gilt) :: stroke: var(--gilt);
+ 3023 [var] var(--gilt) :: filter: drop-shadow(0 0 3px color-mix(in oklab, var(--gilt) 45%, transparent));
+ 3033 [var] var(--gilt) :: color: var(--gilt);
+ 3050 [var] var(--gilt) :: border: 1px solid var(--gilt);
+ 3056 [cls] seal-impress :: .badge-unlock-coin { animation: seal-impress var(--dur-glide) var(--ease-celebrate) both; }
+ 3121 [cls] seal-impress :: @keyframes seal-impress  { from { opacity: 0; } to { opacity: 1; transform: none; filter: none; } }
+ 4479 [var] var(--gilt) :: background: var(--gilt);
+ 4721 [var] var(--gold-300) :: .fairness-steps > li::before { content: counter(fairness-step) "."; position: absolute; top: 0; left: 0; font-weight: 700; color: var(--gold-300); }
+ 5923 [var] var(--gilt) :: color: var(--gilt);
+ 6265 [var] var(--gold-300) :: .kp-wsheet__amt { font-family: var(--font-mono); font-weight: 700; font-size: var(--type-h1); line-height: 1.1; font-variant-numeric: tabular-nums; co
+ 6317 [var] var(--gold-300) :: .kp-jbal { display: inline-flex; flex-shrink: 0; align-items: center; gap: var(--sp-2); height: var(--h-control-md); padding: 0 10px; border-radius: v
+ 6318 [var] var(--gold-300) :: .kp-jbal[data-flash] { box-shadow: 0 0 0 3px color-mix(in oklab, var(--gold-300) 22%, transparent), inset 0 0 0 1px var(--gold-300); }
+ 6318 [var] var(--gold-300) :: .kp-jbal[data-flash] { box-shadow: 0 0 0 3px color-mix(in oklab, var(--gold-300) 22%, transparent), inset 0 0 0 1px var(--gold-300); }
+ 6329 [var] var(--gold-300) :: .kp-jbal__fig { display: inline-grid; justify-items: center; font-weight: 700; font-size: 12px; line-height: 1.1; color: var(--gold-300); transition: 
+ 6333 [var] var(--gold-200) :: .kp-jbal:hover .kp-jbal__fig { color: var(--gold-200); }
+ 6470 [var] var(--gold-300) :: .kp-mine__n--gold { color: var(--gold-300); }
+ 6537 [var] var(--gilt) :: .kp-trust__glyph { display: flex; color: var(--gilt); }
+ 6646 [var] var(--gilt) :: color: var(--gilt);
+ 6820 [var] var(--gilt) :: background: var(--gilt);
+ 7089 [var] var(--gilt-sheen) :: background-image: var(--gilt-sheen), var(--gilt-metal);
+ 7089 [var] var(--gilt-metal) :: background-image: var(--gilt-sheen), var(--gilt-metal);
+ 7092 [var] var(--gilt-metal-edge) :: box-shadow: var(--gilt-metal-edge), inset 0 -3px 0 oklch(6% 0.06 268 / 0.18);
+ 7093 [var] var(--gold-fg) :: color: var(--gold-fg);
+ 7123 [var] var(--gilt) :: color: var(--gilt);
+### src/app/motion.css
+  236 [var] var(--gilt) :: background: linear-gradient(90deg, transparent, color-mix(in oklab, var(--gilt) 22%, transparent), transparent);
+  437 [var] var(--warning-500) :: .mat-tint-warn { --mat-tint: inset 0 0 0 1px color-mix(in oklab, var(--warning-500) 32%, transparent); }
+  437 [cls] mat-tint-warn :: .mat-tint-warn { --mat-tint: inset 0 0 0 1px color-mix(in oklab, var(--warning-500) 32%, transparent); }
+  439 [var] var(--gilt) :: .mat-tint-gilt { --mat-tint: inset 0 0 0 1px color-mix(in oklab, var(--gilt) 40%, transparent); }
+  446 [cls] gilt-metal :: .gilt-metal {
+  447 [var] var(--gilt-sheen) :: background-image: var(--gilt-sheen), var(--gilt-metal);
+  447 [var] var(--gilt-metal) :: background-image: var(--gilt-sheen), var(--gilt-metal);
+  450 [var] var(--gold-fg) :: color: var(--gold-fg);
+  451 [var] var(--gilt-metal-edge) :: box-shadow: var(--gilt-metal-edge), 0 1px 2px oklch(6% 0.06 268 / 0.55),
+  452 [var] var(--gold-500) :: 0 6px 18px -6px color-mix(in oklab, var(--gold-500) 28%, transparent);
+  456 [cls] gilt-metal :: .gilt-metal:hover {
+  458 [var] var(--gilt-metal-edge) :: box-shadow: var(--gilt-metal-edge), 0 2px 4px oklch(6% 0.06 268 / 0.55),
+  459 [var] var(--gold-500) :: 0 10px 24px -6px color-mix(in oklab, var(--gold-500) 38%, transparent);
+  467 [cls] gilt-metal :: .gilt-metal:active { transform: translateY(0) scale(var(--m-press)); filter: brightness(0.94); transition-duration: var(--t-flick); }
+  475 [cls] gilt-metal :: .gilt-metal:focus-visible {
+  478 [var] var(--gilt-metal-edge) :: box-shadow: var(--gilt-metal-edge), 0 0 0 4px oklch(63% 0.18 262 / 0.25);
+  480 [var] var(--gilt-metal-edge) :: .gilt-metal:disabled { filter: grayscale(0.45) brightness(0.8); opacity: 0.6; box-shadow: var(--gilt-metal-edge); }
+  480 [cls] gilt-metal :: .gilt-metal:disabled { filter: grayscale(0.45) brightness(0.8); opacity: 0.6; box-shadow: var(--gilt-metal-edge); }
+  490 [cls] gilt-ink :: .gilt-ink {
+  491 [var] var(--gilt-ink) :: background: var(--gilt-ink);
+  497 [oklch] oklch(80% 0.114 84 / 0.16) :: filter: drop-shadow(0 0 16px oklch(80% 0.114 84 / 0.16));
+  515 [cls] seal-arrive :: .seal-arrive { animation: seal-impress var(--t-max) var(--m-settle) both,
+  515 [cls] seal-impress :: .seal-arrive { animation: seal-impress var(--t-max) var(--m-settle) both,
+  516 [cls] seal-recoil :: seal-recoil var(--t-flick) linear var(--t-max); }
+  517 [cls] seal-sheen :: .seal-sheen  { animation: badge-seal-rays var(--t-max) var(--m-glide)
+  520 [cls] seal-commit :: .seal-commit { animation: seal-place var(--t-stage) var(--m-settle) both; }
+  520 [cls] seal-place :: .seal-commit { animation: seal-place var(--t-stage) var(--m-settle) both; }
+  533 [cls] seal-cascade :: .seal-cascade > .g-settle { animation-delay: calc(var(--t-stage) + min(var(--i, 0), 4) * var(--m-stagger)); }
+  534 [cls] seal-mark-flip :: .seal-mark-flip { animation: mark-flip var(--t-move) var(--m-settle) calc(var(--t-max) + var(--t-stage)) 1 both; }
+  588 [cls] seal-arrive :: .crest-arrive, .crest-ring-reveal, .seal-arrive, .seal-commit, .mark-flip,
+  588 [cls] seal-commit :: .crest-arrive, .crest-ring-reveal, .seal-arrive, .seal-commit, .mark-flip,
+  589 [cls] seal-mark-flip :: .seal-mark-flip, .needle-sweep, .needle-settle-loss, .mark-pending
+  592 [cls] gilt-metal :: .gilt-metal:hover  { animation: none !important; }
+  595 [cls] seal-sheen :: .seal-sheen        { animation: none !important; opacity: 0; }
+  601 [cls] seal-arrive :: html.kp-reduce-motion .seal-arrive, html.kp-reduce-motion .seal-commit,
+  601 [cls] seal-commit :: html.kp-reduce-motion .seal-arrive, html.kp-reduce-motion .seal-commit,
+  603 [cls] seal-mark-flip :: html.kp-reduce-motion .seal-mark-flip,
+  605 [cls] gilt-metal :: html.kp-reduce-motion .mark-pending, html.kp-reduce-motion .gilt-metal:hover
+  607 [cls] seal-sheen :: html.kp-reduce-motion .seal-sheen { animation: none !important; opacity: 0; }
+### src/app/state-tokens.css
+  102 [var] var(--gold-600) :: color-mix(in oklab, var(--gold-600) 40%, transparent) 12%,
+  103 [var] var(--gold-600) :: color-mix(in oklab, var(--gold-600) 40%, transparent) 88%,
+  115 [var] var(--gold-300) :: .closing-pill { color: var(--gold-300);
+  116 [var] var(--gold-500) :: border-color: color-mix(in oklab, var(--gold-500) 55%, transparent);
+  117 [var] var(--gold-500) :: background: color-mix(in oklab, var(--gold-500) 15%, transparent);
+  123 [var] var(--gold-300) :: 50%      { color: var(--gold-300);
+  124 [var] var(--gold-500) :: border-color: color-mix(in oklab, var(--gold-500) 55%, transparent);
+  125 [var] var(--gold-500) :: background: color-mix(in oklab, var(--gold-500) 16%, transparent); }
+### src/components/layout/needle.css
+   73 [hex] #E3BC66 :: --ndl-rim-warm: #E3BC66;
+   80 [var] var(--gilt) :: --ndl-aura:   var(--gilt);
+   81 [var] var(--gold-300) :: --ndl-aura-2: var(--gold-300);
+### src/styles/chat/chat-tokens.css
+   49 [var] var(--gilt) :: --gilt-edge:      color-mix(in oklab, var(--gilt) 55%, transparent);
+   50 [var] var(--gilt) :: --gilt-edge-hover: color-mix(in oklab, var(--gilt) 75%, transparent);
+   51 [oklch] oklch(60% 0.12 82) :: --gilt-deep:      oklch(60% 0.12 82);

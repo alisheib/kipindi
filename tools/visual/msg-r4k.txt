@@ -1,0 +1,26 @@
+Visual pass round 4 (R4-K): one not-found design without gold, its titles and noindex right, a faded wave and the house edge; Chinese centred lines on their ink; the market title clear of its watermark; three gold-is-money defects fixed
+
+From the edge scenarios' read (M9). Every finding was re-measured first and every "after" computed.
+
+- Not-found:
+  - The root page (also /updown/[roundId]'s) and the market and proposal not-founds were two designs: a gold "404" and gold link, cards in another order, no wave. All three now render one shared view, src/components/ui/not-found-view.tsx: Home · Markets · Help, one brand-300 link, no gold. Proposals keeps its own way out.
+  - Headings and hints are balanced, with keep-all + break-word for zh. "Hatukupata / ukurasa huo"; the zh hint is two lines at 320–1280.
+  - The 1280 wave fades its edges over 64px (it was a hard 640px box).
+  - The phone edge is 16px (px-3), not 24.
+  - Titles: a market's generateMetadata calls notFound(), so Next read the deepest not-found's metadata, which had none, and the title fell back to the root's English default. The market and proposal not-founds now export the root's metadata, which also sets robots noindex, nofollow. /updown and /proposals return it when the read succeeded and found nothing.
+  - HTTP 200 with a streamed noindex is the framework's: the loading.tsx shell flushes the status before notFound() (app-render.js 1894–1897). It is documented, not changed.
+- The "Failed to load resource: 404" on not-found pages is not a missing file. Every referenced asset exists. The journey's unread dot and the bell poll through server actions, and those POST to the current URL, so on an unmatched path Next answers 404. The client still accepts the reply.
+- Chinese centred lines ending in 。 or ？ sat 4–4.5px left of centre: YaHei's advance leaves the mark's right part empty. hangCjkMarks() (src/lib/cjk-marks.tsx) pulls each mark back 0.65em (？ 0.5em) and pays it back with a measured space when text follows, so a line-end mark stops at its ink (predicted ≤0.2px). Latin is returned unchanged (5,310 sw/en strings checked). It is on the empty state, the side picker's question and the not-found hint.
+- Market page at zh 768: the title ran 22px over the category watermark. The h1 reserves the mark's 2em box + 12px (8px of air at every width). R4-D's first-line indent is kept.
+- Gold is money (Q5, M3, F3):
+  - The countdown labels move from gilt (text-warning-fg) to text-subtle.
+  - The not-found gold is gone.
+  - The market page's guest eyebrow "登录以预测" moves to text-subtle.
+  - Rulings handed on: the auth eyebrows (auth-panel tone gold → brand) and the deposit-paused / RG callouts (warning → neutral) → R4-I; the avatar menu's Propose & earn sparkle → R4-H; the token itself (`--warning-fg: var(--gilt)`) → owner.
+- Not fixed: the zh empty-state title rendering in SimSun with synthetic bold. The served stack already lists YaHei, so Chromium-on-Windows fallback picks the face; a CDP font probe runs in the next lock turn. The market not-found also hides the chat bubble and the Needle (surfaces.ts treats /markets/<id> as the redrawn question page); the fix needs the overlay files and follows.
+
+Guards: test:visual-pass-r4k (77 checks); red:visual-pass-r4k, 17/17 plants caught with 9 files restored byte-identical (its mutations are in scripts/anchors, audited by red-anchors). Re-pinned: visual-pass-r3c 2.4, measure-system, the ui-consistency baseline, eyebrow-roles.
+
+On the merged tip: 34 suites exit 0, including r4k 77, red:r4k 17/17, r3c, r4c, r4d, r4e, offline-neutral, eyebrow-roles, journey-shell, gold-is-money, contrast, type-scale, route-census and red-anchors 5026.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>

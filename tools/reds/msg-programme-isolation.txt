@@ -1,0 +1,21 @@
+test(programme-isolation): the agent arm runs with the money switched on, as its player control does - it ran with the invite-rewards switch off, so "the agent was paid nothing" held whatever the agent branch did
+
+red:programme-isolation read STILL GREEN: with flatRewards: true planted on the AGENT policy the suite passed. Not
+defence in depth - a vacuous scenario. §1 (an agent referrer on every hook) ran at the shipped state (the invite
+rewards ceiling OWNER, no stored Payable record), so payPrize returns at its first gate, refreshInvitePayable(),
+silently and for anyone, and an agent reaches it (the switch is asked only on the PLAYER branch of
+accrualContextFor). §2's control forces FEATURE_INVITEREWARDS and FEATURE_INVITE to ACTIVE; §1 did not. With the
+switch on, the planted agent is paid TZS 10,000 per recruit (up to 20): had the flag shipped, the leak would have
+started the day the Owner pressed Make payable. §1 now sets both overrides and clears them in its finally; the
+agent's own checks do not depend on the switch (AGENT commission never asks it).
+
+Two more plants declared for the same suite, both holes the old §1 could not see:
+- onRecruitBet stops branching on the policy (`if (!policy.flatRewards) {` -> `if (false) {`) -> 1.noprize;
+- the bind's SIGNUP bonus stops asking which programme recruited -> 1.nosignup.
+
+Proof on OMEGA-COMPILE01 (2026-10-08, main bd7147eb): test:programme-isolation 17/0 on the untouched tree;
+red:programme-isolation 3/3 proven RED, each on its named check (0/1 before); test:red-anchors §3 resolves both new
+anchors exactly once. Not changed (src, another lane's): an agent's silent exit at payPrize writes no audit row while
+the switch is off, where a player's is audited as player_rewards_withdrawn.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>

@@ -1,0 +1,640 @@
+﻿=== 65 065--s1-break--profile-responsible-gambling--player-on-break--en--1280.png
+EXPECT: The limits page during the break: the warning callout rg.breakActive with the end date and time (East Africa time) at the top, saying it cannot be shortened; the break form still offered below.
+shot=viewport req=/profile/responsible-gambling url=/profile/responsible-gambling status=200 redirects= last={"kind":"server-action","url":"/profile/responsible-gambling","status":200} hydrated=True vp=1280x900 lang=en
+title=Player protection · 50pick | h1=Responsible gambling
+header: capsule={"label":"Balance TZS 50,000","held":false,"masked":false,"text":"BalanceTZS 50,000TZS •••••TZS 50,000"} gold=False signIn=0 rail=False desk=True lit=/account=true,/account=true sessEnded=False dialogs=0 rootFont=16px
+live: {"role":"status","text":"Preview — you are seeing the new journey before it launches.Exit preview"}
+nextError: {"dialog":false,"sign":null} pageErr:  console:  devOnly: 
+overflow: ok=True docOver=0 offenders= controlsPast= clipped=0 offFixed=0
+probe: 
+note:  flags: 
+=== 66 066--s1-break--market--player-on-break--en--360.png
+EXPECT: A seeded question’s page with its bet panel in view: the YES/NO side picker as for any player (the market page reads no break).
+shot=viewport req=/markets/mkt_4113370aada2377a92cd url=/markets/mkt_4113370aada2377a92cd status=200 redirects= last={"kind":"server-action","url":"/markets/mkt_4113370aada2377a92cd","status":200} hydrated=True vp=360x780 lang=en
+title=Simba SC wins the NBC Premier League 2026-27 · 50pick | h1=Simba SC wins the NBC Premier League 2026-27
+header: capsule={"label":"Balance TZS 50,000","held":false,"masked":false,"text":"BalanceTZS 50,000TZS •••••TZS 50,000"} gold=False signIn=0 rail=True desk=False lit=/=true,/=true sessEnded=False dialogs=0 rootFont=16px
+live: {"role":"status","text":"Preview — you are seeing the new journey before it launches.Exit preview"}
+nextError: {"dialog":false,"sign":null} pageErr:  console:  devOnly: 
+overflow: ok=True docOver=0 offenders= controlsPast= clipped=0 offFixed=0
+probe: {"question":"Simba SC wins the NBC Premier League 2026-27","betPanel":{"panel":true,"sidePicker":["Back YES","Back NO"],"dial":false,"links":[]}}
+note:  flags: 
+=== 67 067--s1-break--market-yes--player-on-break--en--360.png
+EXPECT: YES tapped: the conviction dial on YES, the stake within the TZS 50,000 balance, the place button.
+shot=viewport req=/markets/mkt_4113370aada2377a92cd → the side picker's first button (Back YES) url=/markets/mkt_4113370aada2377a92cd status=200 redirects= last={"kind":"server-action","url":"/markets/mkt_4113370aada2377a92cd","status":200} hydrated=True vp=360x780 lang=en
+title=Simba SC wins the NBC Premier League 2026-27 · 50pick | h1=Simba SC wins the NBC Premier League 2026-27
+header: capsule={"label":"Balance TZS 50,000","held":false,"masked":false,"text":"BalanceTZS 50,000TZS •••••TZS 50,000"} gold=False signIn=0 rail=True desk=False lit=/=true,/=true sessEnded=False dialogs=0 rootFont=16px
+live: {"role":"status","text":"Preview — you are seeing the new journey before it launches.Exit preview"}
+nextError: {"dialog":false,"sign":null} pageErr:  console:  devOnly: 
+overflow: ok=True docOver=0 offenders= controlsPast= clipped=0 offFixed=0
+probe: {"ok":true,"control":"the side picker\u0027s first button (Back YES)","dial":true,"betPanel":{"panel":true,"sidePicker":["Change side","Unlock the stake dial to adjust","StakeInfo","MultiplierInfo","Possible winningsInfo","Place YES TZS 1,000"],"dial":true,"links":[]}}
+note:  flags: 
+=== 68 068--s1-break--market-bet-confirm--player-on-break--en--360.png
+EXPECT: The bet confirmation (BetConfirmModal): the side, the stake, Confirm · TZS … and Cancel.
+shot=viewport req=/markets/mkt_4113370aada2377a92cd → the side picker's first button (Back YES) url=/markets/mkt_4113370aada2377a92cd status=200 redirects= last={"kind":"server-action","url":"/markets/mkt_4113370aada2377a92cd","status":200} hydrated=True vp=360x780 lang=en
+title=Simba SC wins the NBC Premier League 2026-27 · 50pick | h1=Simba SC wins the NBC Premier League 2026-27
+header: capsule={"label":"Balance TZS 50,000","held":false,"masked":false,"text":"BalanceTZS 50,000TZS •••••TZS 50,000"} gold=False signIn=0 rail=True desk=False lit=/=true,/=true sessEnded=False dialogs=1 rootFont=16px
+live: {"role":"status","text":"Preview — you are seeing the new journey before it launches.Exit preview"}
+nextError: {"dialog":false,"sign":null} pageErr:  console:  devOnly: 
+overflow: ok=True docOver=0 offenders= controlsPast= clipped=0 offFixed=0
+probe: {"ok":true,"place":"Place YES TZS 1,000","moved":"not needed"}
+note:  flags: 
+=== 69 069--s1-break--market-bet-attempt--player-on-break--en--360.png
+EXPECT: What the player sees after confirming a bet during the break: a refusal (market-service refuses a cooled-off player) in the reader’s language, never "Bet placed" and no ticket.
+shot=viewport req=/markets/mkt_4113370aada2377a92cd → a bet confirmed during the break url=/markets/mkt_4113370aada2377a92cd status=200 redirects= last={"kind":"server-action","url":"/markets/mkt_4113370aada2377a92cd","status":200} hydrated=True vp=360x780 lang=en
+title=Simba SC wins the NBC Premier League 2026-27 · 50pick | h1=Simba SC wins the NBC Premier League 2026-27
+header: capsule={"label":"Balance TZS 50,000","held":false,"masked":false,"text":"BalanceTZS 50,000TZS •••••TZS 50,000"} gold=False signIn=0 rail=True desk=False lit=/=true,/=true sessEnded=False dialogs=1 rootFont=16px
+live: {"role":"status","text":"Preview — you are seeing the new journey before it launches.Exit preview"}
+nextError: {"dialog":false,"sign":null} pageErr:  console:  devOnly: 
+overflow: ok=True docOver=0 offenders= controlsPast= clipped=0 offFixed=0
+probe: {"lastResponse":{"kind":"server-action","url":"/markets/mkt_4113370aada2377a92cd","status":200},"live":[{"role":"status","text":"Preview — you are seeing the new journey before it launches.Exit preview"}]}
+note:  flags: 
+=== 70 070--s1-break--market--player-on-break--en--390.png
+EXPECT: A seeded question’s page with its bet panel in view: the YES/NO side picker as for any player (the market page reads no break).
+shot=viewport req=/markets/mkt_4113370aada2377a92cd url=/markets/mkt_4113370aada2377a92cd status=200 redirects= last={"kind":"document","url":"/markets/mkt_4113370aada2377a92cd","status":200} hydrated=True vp=390x780 lang=en
+title=Simba SC wins the NBC Premier League 2026-27 · 50pick | h1=Simba SC wins the NBC Premier League 2026-27
+header: capsule={"label":"Balance TZS 50,000","held":false,"masked":false,"text":"BalanceTZS 50,000TZS •••••TZS 50,000"} gold=False signIn=0 rail=True desk=False lit=/=true,/=true sessEnded=False dialogs=0 rootFont=16px
+live: {"role":"status","text":"Preview — you are seeing the new journey before it launches.Exit preview"}
+nextError: {"dialog":false,"sign":null} pageErr:  console:  devOnly: 
+overflow: ok=True docOver=0 offenders= controlsPast= clipped=0 offFixed=0
+probe: {"question":"Simba SC wins the NBC Premier League 2026-27","betPanel":{"panel":true,"sidePicker":["Back YES","Back NO"],"dial":false,"links":[]}}
+note:  flags: 
+=== 71 071--s1-break--market-yes--player-on-break--en--390.png
+EXPECT: YES tapped: the conviction dial on YES, the stake within the TZS 50,000 balance, the place button.
+shot=viewport req=/markets/mkt_4113370aada2377a92cd → the side picker's first button (Back YES) url=/markets/mkt_4113370aada2377a92cd status=200 redirects= last={"kind":"document","url":"/markets/mkt_4113370aada2377a92cd","status":200} hydrated=True vp=390x780 lang=en
+title=Simba SC wins the NBC Premier League 2026-27 · 50pick | h1=Simba SC wins the NBC Premier League 2026-27
+header: capsule={"label":"Balance TZS 50,000","held":false,"masked":false,"text":"BalanceTZS 50,000TZS •••••TZS 50,000"} gold=False signIn=0 rail=True desk=False lit=/=true,/=true sessEnded=False dialogs=0 rootFont=16px
+live: {"role":"status","text":"Preview — you are seeing the new journey before it launches.Exit preview"}
+nextError: {"dialog":false,"sign":null} pageErr:  console:  devOnly: 
+overflow: ok=True docOver=0 offenders= controlsPast= clipped=0 offFixed=0
+probe: {"ok":true,"control":"the side picker\u0027s first button (Back YES)","dial":true,"betPanel":{"panel":true,"sidePicker":["Change side","Unlock the stake dial to adjust","StakeInfo","MultiplierInfo","Possible winningsInfo","Place YES TZS 1,000"],"dial":true,"links":[]}}
+note:  flags: 
+=== 72 072--s1-break--market-bet-confirm--player-on-break--en--390.png
+EXPECT: The bet confirmation (BetConfirmModal): the side, the stake, Confirm · TZS … and Cancel.
+shot=viewport req=/markets/mkt_4113370aada2377a92cd → the side picker's first button (Back YES) url=/markets/mkt_4113370aada2377a92cd status=200 redirects= last={"kind":"document","url":"/markets/mkt_4113370aada2377a92cd","status":200} hydrated=True vp=390x780 lang=en
+title=Simba SC wins the NBC Premier League 2026-27 · 50pick | h1=Simba SC wins the NBC Premier League 2026-27
+header: capsule={"label":"Balance TZS 50,000","held":false,"masked":false,"text":"BalanceTZS 50,000TZS •••••TZS 50,000"} gold=False signIn=0 rail=True desk=False lit=/=true,/=true sessEnded=False dialogs=1 rootFont=16px
+live: {"role":"status","text":"Preview — you are seeing the new journey before it launches.Exit preview"}
+nextError: {"dialog":false,"sign":null} pageErr:  console:  devOnly: 
+overflow: ok=True docOver=0 offenders= controlsPast= clipped=0 offFixed=0
+probe: {"ok":true,"place":"Place YES TZS 1,000","moved":"not needed"}
+note:  flags: 
+=== 73 073--s1-break--market-bet-attempt--player-on-break--en--390.png
+EXPECT: What the player sees after confirming a bet during the break: a refusal (market-service refuses a cooled-off player) in the reader’s language, never "Bet placed" and no ticket.
+shot=viewport req=/markets/mkt_4113370aada2377a92cd → a bet confirmed during the break url=/markets/mkt_4113370aada2377a92cd status=200 redirects= last={"kind":"server-action","url":"/markets/mkt_4113370aada2377a92cd","status":200} hydrated=True vp=390x780 lang=en
+title=Simba SC wins the NBC Premier League 2026-27 · 50pick | h1=Simba SC wins the NBC Premier League 2026-27
+header: capsule={"label":"Balance TZS 50,000","held":false,"masked":false,"text":"BalanceTZS 50,000TZS •••••TZS 50,000"} gold=False signIn=0 rail=True desk=False lit=/=true,/=true sessEnded=False dialogs=1 rootFont=16px
+live: {"role":"status","text":"Preview — you are seeing the new journey before it launches.Exit preview"}
+nextError: {"dialog":false,"sign":null} pageErr:  console:  devOnly: 
+overflow: ok=True docOver=0 offenders= controlsPast= clipped=0 offFixed=0
+probe: {"lastResponse":{"kind":"server-action","url":"/markets/mkt_4113370aada2377a92cd","status":200},"live":[{"role":"status","text":"Preview — you are seeing the new journey before it launches.Exit preview"}]}
+note:  flags: 
+=== 74 074--s1-break--market--player-on-break--en--1280.png
+EXPECT: A seeded question’s page with its bet panel in view: the YES/NO side picker as for any player (the market page reads no break).
+shot=viewport req=/markets/mkt_4113370aada2377a92cd url=/markets/mkt_4113370aada2377a92cd status=200 redirects= last={"kind":"document","url":"/markets/mkt_4113370aada2377a92cd","status":200} hydrated=True vp=1280x900 lang=en
+title=Simba SC wins the NBC Premier League 2026-27 · 50pick | h1=Simba SC wins the NBC Premier League 2026-27
+header: capsule={"label":"Balance TZS 50,000","held":false,"masked":false,"text":"BalanceTZS 50,000TZS •••••TZS 50,000"} gold=False signIn=0 rail=False desk=True lit=/=true,/=true sessEnded=False dialogs=0 rootFont=16px
+live: {"role":"status","text":"Preview — you are seeing the new journey before it launches.Exit preview"}
+nextError: {"dialog":false,"sign":null} pageErr:  console:  devOnly: 
+overflow: ok=True docOver=0 offenders= controlsPast= clipped=0 offFixed=0
+probe: {"question":"Simba SC wins the NBC Premier League 2026-27","betPanel":{"panel":true,"sidePicker":["Back YES","Back NO"],"dial":false,"links":[]}}
+note:  flags: 
+=== 75 075--s1-break--market-yes--player-on-break--en--1280.png
+EXPECT: YES tapped: the conviction dial on YES, the stake within the TZS 50,000 balance, the place button.
+shot=viewport req=/markets/mkt_4113370aada2377a92cd → the side picker's first button (Back YES) url=/markets/mkt_4113370aada2377a92cd status=200 redirects= last={"kind":"document","url":"/markets/mkt_4113370aada2377a92cd","status":200} hydrated=True vp=1280x900 lang=en
+title=Simba SC wins the NBC Premier League 2026-27 · 50pick | h1=Simba SC wins the NBC Premier League 2026-27
+header: capsule={"label":"Balance TZS 50,000","held":false,"masked":false,"text":"BalanceTZS 50,000TZS •••••TZS 50,000"} gold=False signIn=0 rail=False desk=True lit=/=true,/=true sessEnded=False dialogs=0 rootFont=16px
+live: {"role":"status","text":"Preview — you are seeing the new journey before it launches.Exit preview"}
+nextError: {"dialog":false,"sign":null} pageErr:  console:  devOnly: 
+overflow: ok=True docOver=0 offenders= controlsPast= clipped=0 offFixed=0
+probe: {"ok":true,"control":"the side picker\u0027s first button (Back YES)","dial":true,"betPanel":{"panel":true,"sidePicker":["Change side","Unlock the stake dial to adjust","StakeInfo","MultiplierInfo","Possible winningsInfo","Place YES TZS 1,000"],"dial":true,"links":[]}}
+note:  flags: 
+=== 76 076--s1-break--market-bet-confirm--player-on-break--en--1280.png
+EXPECT: The bet confirmation (BetConfirmModal): the side, the stake, Confirm · TZS … and Cancel.
+shot=viewport req=/markets/mkt_4113370aada2377a92cd → the side picker's first button (Back YES) url=/markets/mkt_4113370aada2377a92cd status=200 redirects= last={"kind":"server-action","url":"/markets/mkt_4113370aada2377a92cd","status":200} hydrated=True vp=1280x900 lang=en
+title=Simba SC wins the NBC Premier League 2026-27 · 50pick | h1=Simba SC wins the NBC Premier League 2026-27
+header: capsule={"label":"Balance TZS 50,000","held":false,"masked":false,"text":"BalanceTZS 50,000TZS •••••TZS 50,000"} gold=False signIn=0 rail=False desk=True lit=/=true,/=true sessEnded=False dialogs=1 rootFont=16px
+live: {"role":"status","text":"Preview — you are seeing the new journey before it launches.Exit preview"}
+nextError: {"dialog":false,"sign":null} pageErr:  console:  devOnly: 
+overflow: ok=True docOver=0 offenders= controlsPast= clipped=0 offFixed=0
+probe: {"ok":true,"place":"Place YES TZS 1,000","moved":"not needed"}
+note:  flags: 
+=== 77 077--s1-break--market-bet-attempt--player-on-break--en--1280.png
+EXPECT: What the player sees after confirming a bet during the break: a refusal (market-service refuses a cooled-off player) in the reader’s language, never "Bet placed" and no ticket.
+shot=viewport req=/markets/mkt_4113370aada2377a92cd → a bet confirmed during the break url=/markets/mkt_4113370aada2377a92cd status=200 redirects= last={"kind":"server-action","url":"/markets/mkt_4113370aada2377a92cd","status":200} hydrated=True vp=1280x900 lang=en
+title=Simba SC wins the NBC Premier League 2026-27 · 50pick | h1=Simba SC wins the NBC Premier League 2026-27
+header: capsule={"label":"Balance TZS 50,000","held":false,"masked":false,"text":"BalanceTZS 50,000TZS •••••TZS 50,000"} gold=False signIn=0 rail=False desk=True lit=/=true,/=true sessEnded=False dialogs=1 rootFont=16px
+live: {"role":"status","text":"Preview — you are seeing the new journey before it launches.Exit preview"}
+nextError: {"dialog":false,"sign":null} pageErr:  console:  devOnly: 
+overflow: ok=True docOver=0 offenders= controlsPast= clipped=0 offFixed=0
+probe: {"lastResponse":{"kind":"server-action","url":"/markets/mkt_4113370aada2377a92cd","status":200},"live":[{"role":"status","text":"Preview — you are seeing the new journey before it launches.Exit preview"}]}
+note:  flags: 
+=== 78 078--s1-break--root-header--player-on-break--zh--360.png
+EXPECT: Signed back in mid-break: the capsule with the balance (TZS 50,000, not held) and NO gold + Weka pesa (journeyHeaderState: pill is false while onBreak); below 1024 nothing else on the row but the mark and 18+; from 1024 the four links, language, bell and avatar.
+shot=viewport top band 360x167 req=/ url=/ status=200 redirects= last={"kind":"server-action","url":"/","status":200} hydrated=True vp=360x780 lang=zh
+title=50pick — Predict events. Not chance. | h1=是还是否？
+header: capsule={"label":"余额 TZS 50,000","held":false,"masked":false,"text":"余额TZS 50,000TZS •••••TZS 50,000"} gold=False signIn=0 rail=True desk=False lit=/=page,/=page sessEnded=False dialogs=0 rootFont=16px
+live: {"role":"status","text":"预览 — 您正在查看尚未上线的新流程。退出预览"}
+nextError: {"dialog":false,"sign":null} pageErr:  console:  devOnly: 
+overflow: ok=True docOver=0 offenders= controlsPast= clipped=0 offFixed=0
+probe: 
+note:  flags: 
+=== 79 079--s1-break--root--player-on-break--zh--360.png
+EXPECT: Home for a player on a break: no deposit pill in the header. The board’s YES/NO still render (nothing on / reads the break) — judge whether that is right for a player who asked for a break.
+shot=viewport req=/ url=/ status=200 redirects= last={"kind":"server-action","url":"/","status":200} hydrated=True vp=360x780 lang=zh
+title=50pick — Predict events. Not chance. | h1=是还是否？
+header: capsule={"label":"余额 TZS 50,000","held":false,"masked":false,"text":"余额TZS 50,000TZS •••••TZS 50,000"} gold=False signIn=0 rail=True desk=False lit=/=page,/=page sessEnded=False dialogs=0 rootFont=16px
+live: {"role":"status","text":"预览 — 您正在查看尚未上线的新流程。退出预览"}
+nextError: {"dialog":false,"sign":null} pageErr:  console:  devOnly: 
+overflow: ok=True docOver=0 offenders= controlsPast= clipped=0 offFixed=0
+probe: 
+note:  flags: 
+=== 80 080--s1-break--root-wallet-sheet--player-on-break--zh--360.png
+EXPECT: The Wallet from the capsule (Pochi / Wallet / 钱包): Available and the balance, Toa pesa only, Weka mipaka. During a break (b88d1a75) there is NO Weka pesa: Toa pesa stands alone at the sheet’s full width, the label and figure above it as usual. Any Weka pesa here is a defect.
+shot=viewport req=/ url=/ status=200 redirects= last={"kind":"server-action","url":"/","status":200} hydrated=True vp=360x780 lang=zh
+title=50pick — Predict events. Not chance. | h1=是还是否？
+header: capsule={"label":"余额 TZS 50,000","held":false,"masked":false,"text":"余额TZS 50,000TZS •••••TZS 50,000"} gold=False signIn=0 rail=True desk=False lit=/=page,/=page sessEnded=False dialogs=1 rootFont=16px
+live: {"role":"status","text":"预览 — 您正在查看尚未上线的新流程。退出预览"}
+nextError: {"dialog":false,"sign":null} pageErr:  console:  devOnly: 
+overflow: ok=True docOver=0 offenders= controlsPast= clipped=0 offFixed=0
+probe: {"wallet":{"label":"钱包","figure":"可用余额TZS 50,000","deposit":null,"withdraw":{"href":"/wallet/withdraw","text":"提现"},"held":null}}
+note:  flags: 
+=== 81 081--s1-break--root-header--player-on-break--zh--390.png
+EXPECT: Signed back in mid-break: the capsule with the balance (TZS 50,000, not held) and NO gold + Weka pesa (journeyHeaderState: pill is false while onBreak); below 1024 nothing else on the row but the mark and 18+; from 1024 the four links, language, bell and avatar.
+shot=viewport top band 390x167 req=/ url=/ status=200 redirects= last={"kind":"server-action","url":"/","status":200} hydrated=True vp=390x780 lang=zh
+title=50pick — Predict events. Not chance. | h1=是还是否？
+header: capsule={"label":"余额 TZS 50,000","held":false,"masked":false,"text":"余额TZS 50,000TZS •••••TZS 50,000"} gold=False signIn=0 rail=True desk=False lit=/=page,/=page sessEnded=False dialogs=0 rootFont=16px
+live: {"role":"status","text":"预览 — 您正在查看尚未上线的新流程。退出预览"}
+nextError: {"dialog":false,"sign":null} pageErr:  console:  devOnly: 
+overflow: ok=True docOver=0 offenders= controlsPast= clipped=0 offFixed=0
+probe: 
+note:  flags: 
+=== 82 082--s1-break--root--player-on-break--zh--390.png
+EXPECT: Home for a player on a break: no deposit pill in the header. The board’s YES/NO still render (nothing on / reads the break) — judge whether that is right for a player who asked for a break.
+shot=viewport req=/ url=/ status=200 redirects= last={"kind":"server-action","url":"/","status":200} hydrated=True vp=390x780 lang=zh
+title=50pick — Predict events. Not chance. | h1=是还是否？
+header: capsule={"label":"余额 TZS 50,000","held":false,"masked":false,"text":"余额TZS 50,000TZS •••••TZS 50,000"} gold=False signIn=0 rail=True desk=False lit=/=page,/=page sessEnded=False dialogs=0 rootFont=16px
+live: {"role":"status","text":"预览 — 您正在查看尚未上线的新流程。退出预览"}
+nextError: {"dialog":false,"sign":null} pageErr:  console:  devOnly: 
+overflow: ok=True docOver=0 offenders= controlsPast= clipped=0 offFixed=0
+probe: 
+note:  flags: 
+=== 83 083--s1-break--root-wallet-sheet--player-on-break--zh--390.png
+EXPECT: The Wallet from the capsule (Pochi / Wallet / 钱包): Available and the balance, Toa pesa only, Weka mipaka. During a break (b88d1a75) there is NO Weka pesa: Toa pesa stands alone at the sheet’s full width, the label and figure above it as usual. Any Weka pesa here is a defect.
+shot=viewport req=/ url=/ status=200 redirects= last={"kind":"server-action","url":"/","status":200} hydrated=True vp=390x780 lang=zh
+title=50pick — Predict events. Not chance. | h1=是还是否？
+header: capsule={"label":"余额 TZS 50,000","held":false,"masked":false,"text":"余额TZS 50,000TZS •••••TZS 50,000"} gold=False signIn=0 rail=True desk=False lit=/=page,/=page sessEnded=False dialogs=1 rootFont=16px
+live: {"role":"status","text":"预览 — 您正在查看尚未上线的新流程。退出预览"}
+nextError: {"dialog":false,"sign":null} pageErr:  console:  devOnly: 
+overflow: ok=True docOver=0 offenders= controlsPast= clipped=0 offFixed=0
+probe: {"wallet":{"label":"钱包","figure":"可用余额TZS 50,000","deposit":null,"withdraw":{"href":"/wallet/withdraw","text":"提现"},"held":null}}
+note:  flags: 
+=== 84 084--s1-break--root-header--player-on-break--zh--1280.png
+EXPECT: Signed back in mid-break: the capsule with the balance (TZS 50,000, not held) and NO gold + Weka pesa (journeyHeaderState: pill is false while onBreak); below 1024 nothing else on the row but the mark and 18+; from 1024 the four links, language, bell and avatar.
+shot=viewport top band 1280x141 req=/ url=/ status=200 redirects= last={"kind":"server-action","url":"/","status":200} hydrated=True vp=1280x900 lang=zh
+title=50pick — Predict events. Not chance. | h1=是还是否？
+header: capsule={"label":"余额 TZS 50,000","held":false,"masked":false,"text":"余额TZS 50,000TZS •••••TZS 50,000"} gold=False signIn=0 rail=False desk=True lit=/=page,/=page sessEnded=False dialogs=0 rootFont=16px
+live: {"role":"status","text":"预览 — 您正在查看尚未上线的新流程。退出预览"}
+nextError: {"dialog":false,"sign":null} pageErr:  console:  devOnly: 
+overflow: ok=True docOver=0 offenders= controlsPast= clipped=0 offFixed=0
+probe: 
+note:  flags: 
+=== 85 085--s1-break--root--player-on-break--zh--1280.png
+EXPECT: Home for a player on a break: no deposit pill in the header. The board’s YES/NO still render (nothing on / reads the break) — judge whether that is right for a player who asked for a break.
+shot=viewport req=/ url=/ status=200 redirects= last={"kind":"server-action","url":"/","status":200} hydrated=True vp=1280x900 lang=zh
+title=50pick — Predict events. Not chance. | h1=是还是否？
+header: capsule={"label":"余额 TZS 50,000","held":false,"masked":false,"text":"余额TZS 50,000TZS •••••TZS 50,000"} gold=False signIn=0 rail=False desk=True lit=/=page,/=page sessEnded=False dialogs=0 rootFont=16px
+live: {"role":"status","text":"预览 — 您正在查看尚未上线的新流程。退出预览"}
+nextError: {"dialog":false,"sign":null} pageErr:  console:  devOnly: 
+overflow: ok=True docOver=0 offenders= controlsPast= clipped=0 offFixed=0
+probe: 
+note:  flags: 
+=== 86 086--s1-break--root-wallet-sheet--player-on-break--zh--1280.png
+EXPECT: The Wallet from the capsule (Pochi / Wallet / 钱包): Available and the balance, Toa pesa only, Weka mipaka. During a break (b88d1a75) there is NO Weka pesa: Toa pesa stands alone at the sheet’s full width, the label and figure above it as usual. Any Weka pesa here is a defect.
+shot=viewport req=/ url=/ status=200 redirects= last={"kind":"server-action","url":"/","status":200} hydrated=True vp=1280x900 lang=zh
+title=50pick — Predict events. Not chance. | h1=是还是否？
+header: capsule={"label":"余额 TZS 50,000","held":false,"masked":false,"text":"余额TZS 50,000TZS •••••TZS 50,000"} gold=False signIn=0 rail=False desk=True lit=/=page,/=page sessEnded=False dialogs=1 rootFont=16px
+live: {"role":"status","text":"预览 — 您正在查看尚未上线的新流程。退出预览"}
+nextError: {"dialog":false,"sign":null} pageErr:  console:  devOnly: 
+overflow: ok=True docOver=0 offenders= controlsPast= clipped=0 offFixed=0
+probe: {"wallet":{"label":"钱包","figure":"可用余额TZS 50,000","deposit":null,"withdraw":{"href":"/wallet/withdraw","text":"提现"},"held":null}}
+note:  flags: 
+=== 87 087--s1-break--positions--player-on-break--zh--360.png
+EXPECT: Tiketi zangu for the break player (no tickets: the empty state with its way to the questions); header without the pill; Tiketi lit.
+shot=viewport req=/positions url=/positions status=200 redirects= last={"kind":"server-action","url":"/positions","status":200} hydrated=True vp=360x780 lang=zh
+title=我的注单 · 50pick | h1=我的注单
+header: capsule={"label":"余额 TZS 50,000","held":false,"masked":false,"text":"余额TZS 50,000TZS •••••TZS 50,000"} gold=False signIn=0 rail=True desk=False lit=/positions=page,/positions=page sessEnded=False dialogs=0 rootFont=16px
+live: {"role":"status","text":"预览 — 您正在查看尚未上线的新流程。退出预览"}
+nextError: {"dialog":false,"sign":null} pageErr:  console:  devOnly: 
+overflow: ok=True docOver=0 offenders= controlsPast= clipped=0 offFixed=0
+probe: 
+note:  flags: 
+=== 88 088--s1-break--positions--player-on-break--zh--390.png
+EXPECT: Tiketi zangu for the break player (no tickets: the empty state with its way to the questions); header without the pill; Tiketi lit.
+shot=viewport req=/positions url=/positions status=200 redirects= last={"kind":"server-action","url":"/positions","status":200} hydrated=True vp=390x780 lang=zh
+title=我的注单 · 50pick | h1=我的注单
+header: capsule={"label":"余额 TZS 50,000","held":false,"masked":false,"text":"余额TZS 50,000TZS •••••TZS 50,000"} gold=False signIn=0 rail=True desk=False lit=/positions=page,/positions=page sessEnded=False dialogs=0 rootFont=16px
+live: {"role":"status","text":"预览 — 您正在查看尚未上线的新流程。退出预览"}
+nextError: {"dialog":false,"sign":null} pageErr:  console:  devOnly: 
+overflow: ok=True docOver=0 offenders= controlsPast= clipped=0 offFixed=0
+probe: 
+note:  flags: 
+=== 89 089--s1-break--positions--player-on-break--zh--1280.png
+EXPECT: Tiketi zangu for the break player (no tickets: the empty state with its way to the questions); header without the pill; Tiketi lit.
+shot=viewport req=/positions url=/positions status=200 redirects= last={"kind":"server-action","url":"/positions","status":200} hydrated=True vp=1280x900 lang=zh
+title=我的注单 · 50pick | h1=我的注单
+header: capsule={"label":"余额 TZS 50,000","held":false,"masked":false,"text":"余额TZS 50,000TZS •••••TZS 50,000"} gold=False signIn=0 rail=False desk=True lit=/positions=page,/positions=page sessEnded=False dialogs=0 rootFont=16px
+live: {"role":"status","text":"预览 — 您正在查看尚未上线的新流程。退出预览"}
+nextError: {"dialog":false,"sign":null} pageErr:  console:  devOnly: 
+overflow: ok=True docOver=0 offenders= controlsPast= clipped=0 offFixed=0
+probe: 
+note:  flags: 
+=== 90 090--s1-break--account--player-on-break--zh--360.png
+EXPECT: The Akaunti hub: identity card (Edge Break, the phone), the rows, the sign-out row; header without the pill; Akaunti lit.
+shot=viewport req=/account url=/account status=200 redirects= last={"kind":"server-action","url":"/account","status":200} hydrated=True vp=360x780 lang=zh
+title=账户 · 50pick | h1=账户
+header: capsule={"label":"余额 TZS 50,000","held":false,"masked":false,"text":"余额TZS 50,000TZS •••••TZS 50,000"} gold=False signIn=0 rail=True desk=False lit=/account=page,/account=page sessEnded=False dialogs=0 rootFont=16px
+live: {"role":"status","text":"预览 — 您正在查看尚未上线的新流程。退出预览"}
+nextError: {"dialog":false,"sign":null} pageErr:  console:  devOnly: 
+overflow: ok=True docOver=0 offenders= controlsPast= clipped=0 offFixed=0
+probe: 
+note:  flags: 
+=== 91 091--s1-break--account--player-on-break--zh--390.png
+EXPECT: The Akaunti hub: identity card (Edge Break, the phone), the rows, the sign-out row; header without the pill; Akaunti lit.
+shot=viewport req=/account url=/account status=200 redirects= last={"kind":"server-action","url":"/account","status":200} hydrated=True vp=390x780 lang=zh
+title=账户 · 50pick | h1=账户
+header: capsule={"label":"余额 TZS 50,000","held":false,"masked":false,"text":"余额TZS 50,000TZS •••••TZS 50,000"} gold=False signIn=0 rail=True desk=False lit=/account=page,/account=page sessEnded=False dialogs=0 rootFont=16px
+live: {"role":"status","text":"预览 — 您正在查看尚未上线的新流程。退出预览"}
+nextError: {"dialog":false,"sign":null} pageErr:  console:  devOnly: 
+overflow: ok=True docOver=0 offenders= controlsPast= clipped=0 offFixed=0
+probe: 
+note:  flags: 
+=== 92 092--s1-break--account--player-on-break--zh--1280.png
+EXPECT: The Akaunti hub: identity card (Edge Break, the phone), the rows, the sign-out row; header without the pill; Akaunti lit.
+shot=viewport req=/account url=/account status=200 redirects= last={"kind":"server-action","url":"/account","status":200} hydrated=True vp=1280x900 lang=zh
+title=账户 · 50pick | h1=账户
+header: capsule={"label":"余额 TZS 50,000","held":false,"masked":false,"text":"余额TZS 50,000TZS •••••TZS 50,000"} gold=False signIn=0 rail=False desk=True lit=/account=page,/account=page sessEnded=False dialogs=0 rootFont=16px
+live: {"role":"status","text":"预览 — 您正在查看尚未上线的新流程。退出预览"}
+nextError: {"dialog":false,"sign":null} pageErr:  console:  devOnly: 
+overflow: ok=True docOver=0 offenders= controlsPast= clipped=0 offFixed=0
+probe: 
+note:  flags: 
+=== 93 093--s1-break--wallet-deposit--player-on-break--zh--360.png
+EXPECT: /wallet/deposit during the break: the break’s own sentence with its end date and time stands in place of the form (deposit/page.tsx, breakUntil), no amount field; the capsule stays, no pill on this screen.
+shot=viewport req=/wallet/deposit url=/wallet/deposit status=200 redirects= last={"kind":"server-action","url":"/wallet/deposit","status":200} hydrated=True vp=360x780 lang=zh
+title=充值 · 50pick | h1=充值
+header: capsule={"label":"余额 TZS 50,000","held":false,"masked":false,"text":"余额TZS 50,000TZS •••••TZS 50,000"} gold=False signIn=0 rail=True desk=False lit=/account=true,/account=true sessEnded=False dialogs=0 rootFont=16px
+live: [{"role":"status","text":"预览 — 您正在查看尚未上线的新流程。退出预览"},{"role":"status","text":"充值已暂停休息期至 2026年10月9日 06:02 结束。在此之前投注与充值已暂停，且无法缩短——您仍可登录，暂停也不影响提现。"}]
+nextError: {"dialog":false,"sign":null} pageErr:  console:  devOnly: 
+overflow: ok=True docOver=0 offenders= controlsPast= clipped=1 offFixed=0
+probe: 
+note:  flags: 
+=== 94 094--s1-break--wallet-deposit--player-on-break--zh--390.png
+EXPECT: /wallet/deposit during the break: the break’s own sentence with its end date and time stands in place of the form (deposit/page.tsx, breakUntil), no amount field; the capsule stays, no pill on this screen.
+shot=viewport req=/wallet/deposit url=/wallet/deposit status=200 redirects= last={"kind":"server-action","url":"/wallet/deposit","status":200} hydrated=True vp=390x780 lang=zh
+title=充值 · 50pick | h1=充值
+header: capsule={"label":"余额 TZS 50,000","held":false,"masked":false,"text":"余额TZS 50,000TZS •••••TZS 50,000"} gold=False signIn=0 rail=True desk=False lit=/account=true,/account=true sessEnded=False dialogs=0 rootFont=16px
+live: [{"role":"status","text":"预览 — 您正在查看尚未上线的新流程。退出预览"},{"role":"status","text":"充值已暂停休息期至 2026年10月9日 06:02 结束。在此之前投注与充值已暂停，且无法缩短——您仍可登录，暂停也不影响提现。"}]
+nextError: {"dialog":false,"sign":null} pageErr:  console:  devOnly: 
+overflow: ok=True docOver=0 offenders= controlsPast= clipped=1 offFixed=0
+probe: 
+note:  flags: 
+=== 95 095--s1-break--wallet-deposit--player-on-break--zh--1280.png
+EXPECT: /wallet/deposit during the break: the break’s own sentence with its end date and time stands in place of the form (deposit/page.tsx, breakUntil), no amount field; the capsule stays, no pill on this screen.
+shot=viewport req=/wallet/deposit url=/wallet/deposit status=200 redirects= last={"kind":"server-action","url":"/wallet/deposit","status":200} hydrated=True vp=1280x900 lang=zh
+title=充值 · 50pick | h1=充值
+header: capsule={"label":"余额 TZS 50,000","held":false,"masked":false,"text":"余额TZS 50,000TZS •••••TZS 50,000"} gold=False signIn=0 rail=False desk=True lit=/account=true,/account=true sessEnded=False dialogs=0 rootFont=16px
+live: [{"role":"status","text":"预览 — 您正在查看尚未上线的新流程。退出预览"},{"role":"status","text":"充值已暂停休息期至 2026年10月9日 06:02 结束。在此之前投注与充值已暂停，且无法缩短——您仍可登录，暂停也不影响提现。"}]
+nextError: {"dialog":false,"sign":null} pageErr:  console:  devOnly: 
+overflow: ok=True docOver=0 offenders= controlsPast= clipped=0 offFixed=0
+probe: 
+note:  flags: 
+=== 96 096--s1-break--profile-responsible-gambling--player-on-break--zh--360.png
+EXPECT: The limits page during the break: the warning callout rg.breakActive with the end date and time (East Africa time) at the top, saying it cannot be shortened; the break form still offered below.
+shot=viewport req=/profile/responsible-gambling url=/profile/responsible-gambling status=200 redirects= last={"kind":"server-action","url":"/profile/responsible-gambling","status":200} hydrated=True vp=360x780 lang=zh
+title=玩家保护 · 50pick | h1=负责任博彩
+header: capsule={"label":"余额 TZS 50,000","held":false,"masked":false,"text":"余额TZS 50,000TZS •••••TZS 50,000"} gold=False signIn=0 rail=True desk=False lit=/account=true,/account=true sessEnded=False dialogs=0 rootFont=16px
+live: {"role":"status","text":"预览 — 您正在查看尚未上线的新流程。退出预览"}
+nextError: {"dialog":false,"sign":null} pageErr:  console:  devOnly: 
+overflow: ok=True docOver=0 offenders= controlsPast= clipped=1 offFixed=0
+probe: 
+note:  flags: 
+=== 97 097--s1-break--profile-responsible-gambling--player-on-break--zh--390.png
+EXPECT: The limits page during the break: the warning callout rg.breakActive with the end date and time (East Africa time) at the top, saying it cannot be shortened; the break form still offered below.
+shot=viewport req=/profile/responsible-gambling url=/profile/responsible-gambling status=200 redirects= last={"kind":"server-action","url":"/profile/responsible-gambling","status":200} hydrated=True vp=390x780 lang=zh
+title=玩家保护 · 50pick | h1=负责任博彩
+header: capsule={"label":"余额 TZS 50,000","held":false,"masked":false,"text":"余额TZS 50,000TZS •••••TZS 50,000"} gold=False signIn=0 rail=True desk=False lit=/account=true,/account=true sessEnded=False dialogs=0 rootFont=16px
+live: {"role":"status","text":"预览 — 您正在查看尚未上线的新流程。退出预览"}
+nextError: {"dialog":false,"sign":null} pageErr:  console:  devOnly: 
+overflow: ok=True docOver=0 offenders= controlsPast= clipped=1 offFixed=0
+probe: 
+note:  flags: 
+=== 98 098--s1-break--profile-responsible-gambling--player-on-break--zh--1280.png
+EXPECT: The limits page during the break: the warning callout rg.breakActive with the end date and time (East Africa time) at the top, saying it cannot be shortened; the break form still offered below.
+shot=viewport req=/profile/responsible-gambling url=/profile/responsible-gambling status=200 redirects= last={"kind":"server-action","url":"/profile/responsible-gambling","status":200} hydrated=True vp=1280x900 lang=zh
+title=玩家保护 · 50pick | h1=负责任博彩
+header: capsule={"label":"余额 TZS 50,000","held":false,"masked":false,"text":"余额TZS 50,000TZS •••••TZS 50,000"} gold=False signIn=0 rail=False desk=True lit=/account=true,/account=true sessEnded=False dialogs=0 rootFont=16px
+live: {"role":"status","text":"预览 — 您正在查看尚未上线的新流程。退出预览"}
+nextError: {"dialog":false,"sign":null} pageErr:  console:  devOnly: 
+overflow: ok=True docOver=0 offenders= controlsPast= clipped=0 offFixed=0
+probe: 
+note:  flags: 
+=== 99 099--s1-break--market--player-on-break--zh--360.png
+EXPECT: A seeded question’s page with its bet panel in view: the YES/NO side picker as for any player (the market page reads no break).
+shot=viewport req=/markets/mkt_4113370aada2377a92cd url=/markets/mkt_4113370aada2377a92cd status=200 redirects= last={"kind":"server-action","url":"/markets/mkt_4113370aada2377a92cd","status":200} hydrated=True vp=360x780 lang=zh
+title=辛巴俱乐部赢得2026-27赛季NBC超级联赛 · 50pick | h1=辛巴俱乐部赢得2026-27赛季NBC超级联赛
+header: capsule={"label":"余额 TZS 50,000","held":false,"masked":false,"text":"余额TZS 50,000TZS •••••TZS 50,000"} gold=False signIn=0 rail=True desk=False lit=/=true,/=true sessEnded=False dialogs=0 rootFont=16px
+live: {"role":"status","text":"预览 — 您正在查看尚未上线的新流程。退出预览"}
+nextError: {"dialog":false,"sign":null} pageErr:  console:  devOnly: 
+overflow: ok=True docOver=0 offenders= controlsPast= clipped=0 offFixed=0
+probe: {"question":"Simba SC wins the NBC Premier League 2026-27","betPanel":{"panel":true,"sidePicker":["押注「是」","押注「否」"],"dial":false,"links":[]}}
+note:  flags: 
+=== 100 100--s1-break--market-yes--player-on-break--zh--360.png
+EXPECT: YES tapped: the conviction dial on YES, the stake within the TZS 50,000 balance, the place button.
+shot=viewport req=/markets/mkt_4113370aada2377a92cd → the side picker's first button (押注「是」) url=/markets/mkt_4113370aada2377a92cd status=200 redirects= last={"kind":"server-action","url":"/markets/mkt_4113370aada2377a92cd","status":200} hydrated=True vp=360x780 lang=zh
+title=辛巴俱乐部赢得2026-27赛季NBC超级联赛 · 50pick | h1=辛巴俱乐部赢得2026-27赛季NBC超级联赛
+header: capsule={"label":"余额 TZS 50,000","held":false,"masked":false,"text":"余额TZS 50,000TZS •••••TZS 50,000"} gold=False signIn=0 rail=True desk=False lit=/=true,/=true sessEnded=False dialogs=0 rootFont=16px
+live: {"role":"status","text":"预览 — 您正在查看尚未上线的新流程。退出预览"}
+nextError: {"dialog":false,"sign":null} pageErr:  console:  devOnly: 
+overflow: ok=True docOver=0 offenders= controlsPast= clipped=0 offFixed=0
+probe: {"ok":true,"control":"the side picker\u0027s first button (押注「是」)","dial":true,"betPanel":{"panel":true,"sidePicker":["更换方向","解锁下注拨盘以调整","投注额信息","倍数信息","可能的赢额信息","下注 是 TZS 1,000"],"dial":true,"links":[]}}
+note:  flags: 
+=== 101 101--s1-break--market-bet-confirm--player-on-break--zh--360.png
+EXPECT: The bet confirmation (BetConfirmModal): the side, the stake, Confirm · TZS … and Cancel.
+shot=viewport req=/markets/mkt_4113370aada2377a92cd → the side picker's first button (押注「是」) url=/markets/mkt_4113370aada2377a92cd status=200 redirects= last={"kind":"server-action","url":"/markets/mkt_4113370aada2377a92cd","status":200} hydrated=True vp=360x780 lang=zh
+title=辛巴俱乐部赢得2026-27赛季NBC超级联赛 · 50pick | h1=辛巴俱乐部赢得2026-27赛季NBC超级联赛
+header: capsule={"label":"余额 TZS 50,000","held":false,"masked":false,"text":"余额TZS 50,000TZS •••••TZS 50,000"} gold=False signIn=0 rail=True desk=False lit=/=true,/=true sessEnded=False dialogs=1 rootFont=16px
+live: {"role":"status","text":"预览 — 您正在查看尚未上线的新流程。退出预览"}
+nextError: {"dialog":false,"sign":null} pageErr:  console:  devOnly: 
+overflow: ok=True docOver=0 offenders= controlsPast= clipped=0 offFixed=0
+probe: {"ok":true,"place":"下注 是 TZS 1,000","moved":"not needed"}
+note:  flags: 
+=== 102 102--s1-break--market-bet-attempt--player-on-break--zh--360.png
+EXPECT: What the player sees after confirming a bet during the break: a refusal (market-service refuses a cooled-off player) in the reader’s language, never "Bet placed" and no ticket.
+shot=viewport req=/markets/mkt_4113370aada2377a92cd → a bet confirmed during the break url=/markets/mkt_4113370aada2377a92cd status=200 redirects= last={"kind":"server-action","url":"/markets/mkt_4113370aada2377a92cd","status":200} hydrated=True vp=360x780 lang=zh
+title=辛巴俱乐部赢得2026-27赛季NBC超级联赛 · 50pick | h1=辛巴俱乐部赢得2026-27赛季NBC超级联赛
+header: capsule={"label":"余额 TZS 50,000","held":false,"masked":false,"text":"余额TZS 50,000TZS •••••TZS 50,000"} gold=False signIn=0 rail=True desk=False lit=/=true,/=true sessEnded=False dialogs=1 rootFont=16px
+live: {"role":"status","text":"预览 — 您正在查看尚未上线的新流程。退出预览"}
+nextError: {"dialog":false,"sign":null} pageErr:  console:  devOnly: 
+overflow: ok=True docOver=0 offenders= controlsPast= clipped=0 offFixed=0
+probe: {"lastResponse":{"kind":"server-action","url":"/markets/mkt_4113370aada2377a92cd","status":200},"live":[{"role":"status","text":"预览 — 您正在查看尚未上线的新流程。退出预览"}]}
+note:  flags: 
+=== 103 103--s1-break--market--player-on-break--zh--390.png
+EXPECT: A seeded question’s page with its bet panel in view: the YES/NO side picker as for any player (the market page reads no break).
+shot=viewport req=/markets/mkt_4113370aada2377a92cd url=/markets/mkt_4113370aada2377a92cd status=200 redirects= last={"kind":"server-action","url":"/markets/mkt_4113370aada2377a92cd","status":200} hydrated=True vp=390x780 lang=zh
+title=辛巴俱乐部赢得2026-27赛季NBC超级联赛 · 50pick | h1=辛巴俱乐部赢得2026-27赛季NBC超级联赛
+header: capsule={"label":"余额 TZS 50,000","held":false,"masked":false,"text":"余额TZS 50,000TZS •••••TZS 50,000"} gold=False signIn=0 rail=True desk=False lit=/=true,/=true sessEnded=False dialogs=0 rootFont=16px
+live: {"role":"status","text":"预览 — 您正在查看尚未上线的新流程。退出预览"}
+nextError: {"dialog":false,"sign":null} pageErr:  console:  devOnly: 
+overflow: ok=True docOver=0 offenders= controlsPast= clipped=0 offFixed=0
+probe: {"question":"Simba SC wins the NBC Premier League 2026-27","betPanel":{"panel":true,"sidePicker":["押注「是」","押注「否」"],"dial":false,"links":[]}}
+note:  flags: 
+=== 104 104--s1-break--market-yes--player-on-break--zh--390.png
+EXPECT: YES tapped: the conviction dial on YES, the stake within the TZS 50,000 balance, the place button.
+shot=viewport req=/markets/mkt_4113370aada2377a92cd → the side picker's first button (押注「是」) url=/markets/mkt_4113370aada2377a92cd status=200 redirects= last={"kind":"server-action","url":"/markets/mkt_4113370aada2377a92cd","status":200} hydrated=True vp=390x780 lang=zh
+title=辛巴俱乐部赢得2026-27赛季NBC超级联赛 · 50pick | h1=辛巴俱乐部赢得2026-27赛季NBC超级联赛
+header: capsule={"label":"余额 TZS 50,000","held":false,"masked":false,"text":"余额TZS 50,000TZS •••••TZS 50,000"} gold=False signIn=0 rail=True desk=False lit=/=true,/=true sessEnded=False dialogs=0 rootFont=16px
+live: {"role":"status","text":"预览 — 您正在查看尚未上线的新流程。退出预览"}
+nextError: {"dialog":false,"sign":null} pageErr:  console:  devOnly: 
+overflow: ok=True docOver=0 offenders= controlsPast= clipped=0 offFixed=0
+probe: {"ok":true,"control":"the side picker\u0027s first button (押注「是」)","dial":true,"betPanel":{"panel":true,"sidePicker":["更换方向","解锁下注拨盘以调整","投注额信息","倍数信息","可能的赢额信息","下注 是 TZS 1,000"],"dial":true,"links":[]}}
+note:  flags: 
+=== 105 105--s1-break--market-bet-confirm--player-on-break--zh--390.png
+EXPECT: The bet confirmation (BetConfirmModal): the side, the stake, Confirm · TZS … and Cancel.
+shot=viewport req=/markets/mkt_4113370aada2377a92cd → the side picker's first button (押注「是」) url=/markets/mkt_4113370aada2377a92cd status=200 redirects= last={"kind":"server-action","url":"/markets/mkt_4113370aada2377a92cd","status":200} hydrated=True vp=390x780 lang=zh
+title=辛巴俱乐部赢得2026-27赛季NBC超级联赛 · 50pick | h1=辛巴俱乐部赢得2026-27赛季NBC超级联赛
+header: capsule={"label":"余额 TZS 50,000","held":false,"masked":false,"text":"余额TZS 50,000TZS •••••TZS 50,000"} gold=False signIn=0 rail=True desk=False lit=/=true,/=true sessEnded=False dialogs=1 rootFont=16px
+live: {"role":"status","text":"预览 — 您正在查看尚未上线的新流程。退出预览"}
+nextError: {"dialog":false,"sign":null} pageErr:  console:  devOnly: 
+overflow: ok=True docOver=0 offenders= controlsPast= clipped=0 offFixed=0
+probe: {"ok":true,"place":"下注 是 TZS 1,000","moved":"not needed"}
+note:  flags: 
+=== 106 106--s1-break--market-bet-attempt--player-on-break--zh--390.png
+EXPECT: What the player sees after confirming a bet during the break: a refusal (market-service refuses a cooled-off player) in the reader’s language, never "Bet placed" and no ticket.
+shot=viewport req=/markets/mkt_4113370aada2377a92cd → a bet confirmed during the break url=/markets/mkt_4113370aada2377a92cd status=200 redirects= last={"kind":"server-action","url":"/markets/mkt_4113370aada2377a92cd","status":200} hydrated=True vp=390x780 lang=zh
+title=辛巴俱乐部赢得2026-27赛季NBC超级联赛 · 50pick | h1=辛巴俱乐部赢得2026-27赛季NBC超级联赛
+header: capsule={"label":"余额 TZS 50,000","held":false,"masked":false,"text":"余额TZS 50,000TZS •••••TZS 50,000"} gold=False signIn=0 rail=True desk=False lit=/=true,/=true sessEnded=False dialogs=1 rootFont=16px
+live: {"role":"status","text":"预览 — 您正在查看尚未上线的新流程。退出预览"}
+nextError: {"dialog":false,"sign":null} pageErr:  console:  devOnly: 
+overflow: ok=True docOver=0 offenders= controlsPast= clipped=0 offFixed=0
+probe: {"lastResponse":{"kind":"server-action","url":"/markets/mkt_4113370aada2377a92cd","status":200},"live":[{"role":"status","text":"预览 — 您正在查看尚未上线的新流程。退出预览"}]}
+note:  flags: 
+=== 107 107--s1-break--market--player-on-break--zh--1280.png
+EXPECT: A seeded question’s page with its bet panel in view: the YES/NO side picker as for any player (the market page reads no break).
+shot=viewport req=/markets/mkt_4113370aada2377a92cd url=/markets/mkt_4113370aada2377a92cd status=200 redirects= last={"kind":"server-action","url":"/markets/mkt_4113370aada2377a92cd","status":200} hydrated=True vp=1280x900 lang=zh
+title=辛巴俱乐部赢得2026-27赛季NBC超级联赛 · 50pick | h1=辛巴俱乐部赢得2026-27赛季NBC超级联赛
+header: capsule={"label":"余额 TZS 50,000","held":false,"masked":false,"text":"余额TZS 50,000TZS •••••TZS 50,000"} gold=False signIn=0 rail=False desk=True lit=/=true,/=true sessEnded=False dialogs=0 rootFont=16px
+live: {"role":"status","text":"预览 — 您正在查看尚未上线的新流程。退出预览"}
+nextError: {"dialog":false,"sign":null} pageErr:  console:  devOnly: 
+overflow: ok=True docOver=0 offenders= controlsPast= clipped=0 offFixed=0
+probe: {"question":"Simba SC wins the NBC Premier League 2026-27","betPanel":{"panel":true,"sidePicker":["押注「是」","押注「否」"],"dial":false,"links":[]}}
+note:  flags: 
+=== 108 108--s1-break--market-yes--player-on-break--zh--1280.png
+EXPECT: YES tapped: the conviction dial on YES, the stake within the TZS 50,000 balance, the place button.
+shot=viewport req=/markets/mkt_4113370aada2377a92cd → the side picker's first button (押注「是」) url=/markets/mkt_4113370aada2377a92cd status=200 redirects= last={"kind":"server-action","url":"/markets/mkt_4113370aada2377a92cd","status":200} hydrated=True vp=1280x900 lang=zh
+title=辛巴俱乐部赢得2026-27赛季NBC超级联赛 · 50pick | h1=辛巴俱乐部赢得2026-27赛季NBC超级联赛
+header: capsule={"label":"余额 TZS 50,000","held":false,"masked":false,"text":"余额TZS 50,000TZS •••••TZS 50,000"} gold=False signIn=0 rail=False desk=True lit=/=true,/=true sessEnded=False dialogs=0 rootFont=16px
+live: {"role":"status","text":"预览 — 您正在查看尚未上线的新流程。退出预览"}
+nextError: {"dialog":false,"sign":null} pageErr:  console:  devOnly: 
+overflow: ok=True docOver=0 offenders= controlsPast= clipped=0 offFixed=0
+probe: {"ok":true,"control":"the side picker\u0027s first button (押注「是」)","dial":true,"betPanel":{"panel":true,"sidePicker":["更换方向","解锁下注拨盘以调整","投注额信息","倍数信息","可能的赢额信息","下注 是 TZS 1,000"],"dial":true,"links":[]}}
+note:  flags: 
+=== 109 109--s1-break--market-bet-confirm--player-on-break--zh--1280.png
+EXPECT: The bet confirmation (BetConfirmModal): the side, the stake, Confirm · TZS … and Cancel.
+shot=viewport req=/markets/mkt_4113370aada2377a92cd → the side picker's first button (押注「是」) url=/markets/mkt_4113370aada2377a92cd status=200 redirects= last={"kind":"server-action","url":"/markets/mkt_4113370aada2377a92cd","status":200} hydrated=True vp=1280x900 lang=zh
+title=辛巴俱乐部赢得2026-27赛季NBC超级联赛 · 50pick | h1=辛巴俱乐部赢得2026-27赛季NBC超级联赛
+header: capsule={"label":"余额 TZS 50,000","held":false,"masked":false,"text":"余额TZS 50,000TZS •••••TZS 50,000"} gold=False signIn=0 rail=False desk=True lit=/=true,/=true sessEnded=False dialogs=1 rootFont=16px
+live: {"role":"status","text":"预览 — 您正在查看尚未上线的新流程。退出预览"}
+nextError: {"dialog":false,"sign":null} pageErr:  console:  devOnly: 
+overflow: ok=True docOver=0 offenders= controlsPast= clipped=0 offFixed=0
+probe: {"ok":true,"place":"下注 是 TZS 1,000","moved":"not needed"}
+note:  flags: 
+=== 110 110--s1-break--market-bet-attempt--player-on-break--zh--1280.png
+EXPECT: What the player sees after confirming a bet during the break: a refusal (market-service refuses a cooled-off player) in the reader’s language, never "Bet placed" and no ticket.
+shot=viewport req=/markets/mkt_4113370aada2377a92cd → a bet confirmed during the break url=/markets/mkt_4113370aada2377a92cd status=200 redirects= last={"kind":"server-action","url":"/markets/mkt_4113370aada2377a92cd","status":200} hydrated=True vp=1280x900 lang=zh
+title=辛巴俱乐部赢得2026-27赛季NBC超级联赛 · 50pick | h1=辛巴俱乐部赢得2026-27赛季NBC超级联赛
+header: capsule={"label":"余额 TZS 50,000","held":false,"masked":false,"text":"余额TZS 50,000TZS •••••TZS 50,000"} gold=False signIn=0 rail=False desk=True lit=/=true,/=true sessEnded=False dialogs=1 rootFont=16px
+live: {"role":"status","text":"预览 — 您正在查看尚未上线的新流程。退出预览"}
+nextError: {"dialog":false,"sign":null} pageErr:  console:  devOnly: 
+overflow: ok=True docOver=0 offenders= controlsPast= clipped=0 offFixed=0
+probe: {"lastResponse":{"kind":"server-action","url":"/markets/mkt_4113370aada2377a92cd","status":200},"live":[{"role":"status","text":"预览 — 您正在查看尚未上线的新流程。退出预览"}]}
+note:  flags: 
+=== 111 111--s2-selfexclude--rg-before--player--sw--390.png
+EXPECT: The limits page (sw 390) scrolled to Jizuie (#exclude): the danger panel, the minimum-period chip, the period select (24 hours, the default) and the claret Jizuie button.
+shot=viewport req=/profile/responsible-gambling url=/profile/responsible-gambling status=200 redirects= last={"kind":"server-action","url":"/profile/responsible-gambling","status":200} hydrated=True vp=390x780 lang=sw
+title=Ulinzi wa mchezaji · 50pick | h1=Vikomo
+header: capsule={"label":"Salio TZS 50,000","held":false,"masked":false,"text":"SalioTZS 50,000TZS •••••TZS 50,000"} gold=True signIn=0 rail=True desk=False lit=/account=true,/account=true sessEnded=False dialogs=0 rootFont=16px
+live: {"role":"status","text":"Onyesho la awali — unaona safari mpya kabla haijazinduliwa.Toka kwenye onyesho"}
+nextError: {"dialog":false,"sign":null} pageErr:  console:  devOnly: 
+overflow: ok=True docOver=0 offenders= controlsPast= clipped=1 offFixed=0
+probe: {"section":"#exclude"}
+note:  flags: 
+=== 112 112--s2-selfexclude--rg-confirm--player--sw--390.png
+EXPECT: The claret two-step confirm for self-exclusion: Jizuie as title and confirm, the exclusion description as body, Cancel focused first.
+shot=viewport req=/profile/responsible-gambling url=/profile/responsible-gambling status=200 redirects= last={"kind":"server-action","url":"/profile/responsible-gambling","status":200} hydrated=True vp=390x780 lang=sw
+title=Ulinzi wa mchezaji · 50pick | h1=Vikomo
+header: capsule={"label":"Salio TZS 50,000","held":false,"masked":false,"text":"SalioTZS 50,000TZS •••••TZS 50,000"} gold=True signIn=0 rail=True desk=False lit=/account=true,/account=true sessEnded=False dialogs=1 rootFont=16px
+live: {"role":"status","text":"Onyesho la awali — unaona safari mpya kabla haijazinduliwa.Toka kwenye onyesho"}
+nextError: {"dialog":false,"sign":null} pageErr:  console:  devOnly: 
+overflow: ok=True docOver=0 offenders= controlsPast= clipped=1 offFixed=0
+probe: {"dialog":{"role":"alertdialog","label":"Jizuie","focused":"Ghairi"}}
+note:  flags: 
+=== 113 113--s2-selfexclude--auth-login-excluded--excluded--sw--360.png
+EXPECT: Where selfExcludeAction lands, /auth/login?excluded=serving&until=YYYY-MM-DD: signed out; the danger panel auth.selfExclusionActive with the until date, and the support contact row.
+shot=viewport req=the exclude confirm's redirect url=/auth/login?excluded=serving&until=2026-10-10 status=200 redirects= last={"kind":"server-action","url":"/auth/login?excluded=serving\u0026until=2026-10-10","status":200} hydrated=True vp=360x780 lang=sw
+title=Ingia · 50pick | h1=Karibu tena
+header: capsule= gold=False signIn=2 rail=True desk=False lit= sessEnded=False dialogs=0 rootFont=16px
+live: [{"role":"status","text":"Onyesho la awali — unaona safari mpya kabla haijazinduliwa.Toka kwenye onyesho"},{"role":"alert","text":"UmejitengaKujitenga kwako kunaendelea hadi 2026-10-10. Hutaweza kuingia kabla ya hapo, na akaunti haifunguki yenyewe — itabidi utuombe.0769777877msaada@50pick.tz"}]
+nextError: {"dialog":false,"sign":null} pageErr:  console:  devOnly: 
+overflow: ok=True docOver=0 offenders= controlsPast= clipped=0 offFixed=0
+probe: 
+note:  flags: 
+=== 114 114--s2-selfexclude--auth-login-excluded--excluded--sw--390.png
+EXPECT: Where selfExcludeAction lands, /auth/login?excluded=serving&until=YYYY-MM-DD: signed out; the danger panel auth.selfExclusionActive with the until date, and the support contact row.
+shot=viewport req=the exclude confirm's redirect url=/auth/login?excluded=serving&until=2026-10-10 status=200 redirects= last={"kind":"server-action","url":"/auth/login?excluded=serving\u0026until=2026-10-10","status":200} hydrated=True vp=390x780 lang=sw
+title=Ingia · 50pick | h1=Karibu tena
+header: capsule= gold=False signIn=2 rail=True desk=False lit= sessEnded=False dialogs=0 rootFont=16px
+live: [{"role":"status","text":"Onyesho la awali — unaona safari mpya kabla haijazinduliwa.Toka kwenye onyesho"},{"role":"alert","text":"UmejitengaKujitenga kwako kunaendelea hadi 2026-10-10. Hutaweza kuingia kabla ya hapo, na akaunti haifunguki yenyewe — itabidi utuombe.0769777877msaada@50pick.tz"}]
+nextError: {"dialog":false,"sign":null} pageErr:  console:  devOnly: 
+overflow: ok=True docOver=0 offenders= controlsPast= clipped=0 offFixed=0
+probe: 
+note:  flags: 
+=== 115 115--s2-selfexclude--auth-login-excluded--excluded--sw--1280.png
+EXPECT: Where selfExcludeAction lands, /auth/login?excluded=serving&until=YYYY-MM-DD: signed out; the danger panel auth.selfExclusionActive with the until date, and the support contact row.
+shot=viewport req=the exclude confirm's redirect url=/auth/login?excluded=serving&until=2026-10-10 status=200 redirects= last={"kind":"server-action","url":"/auth/login?excluded=serving\u0026until=2026-10-10","status":200} hydrated=True vp=1280x900 lang=sw
+title=Ingia · 50pick | h1=Karibu tena
+header: capsule= gold=False signIn=2 rail=False desk=True lit= sessEnded=False dialogs=0 rootFont=16px
+live: [{"role":"status","text":"Onyesho la awali — unaona safari mpya kabla haijazinduliwa.Toka kwenye onyesho"},{"role":"alert","text":"UmejitengaKujitenga kwako kunaendelea hadi 2026-10-10. Hutaweza kuingia kabla ya hapo, na akaunti haifunguki yenyewe — itabidi utuombe.0769777877msaada@50pick.tz"}]
+nextError: {"dialog":false,"sign":null} pageErr:  console:  devOnly: 
+overflow: ok=True docOver=0 offenders= controlsPast= clipped=0 offFixed=0
+probe: 
+note:  flags: 
+=== 116 116--s2-selfexclude--auth-login-excluded--excluded--en--360.png
+EXPECT: Where selfExcludeAction lands, /auth/login?excluded=serving&until=YYYY-MM-DD: signed out; the danger panel auth.selfExclusionActive with the until date, and the support contact row.
+shot=viewport req=/auth/login?excluded=serving&until=2026-10-10 url=/auth/login?excluded=serving&until=2026-10-10 status=200 redirects= last={"kind":"document","url":"/auth/login?excluded=serving\u0026until=2026-10-10","status":200} hydrated=True vp=360x780 lang=en
+title=Sign in · 50pick | h1=Welcome back
+header: capsule= gold=False signIn=2 rail=True desk=False lit= sessEnded=False dialogs=0 rootFont=16px
+live: [{"role":"status","text":"Preview — you are seeing the new journey before it launches.Exit preview"},{"role":"alert","text":"Self-exclusion activeYour self-exclusion runs until 2026-10-10. You will not be able to sign in before then, and the account does not reopen by itself — you will need to ask us.0769777877msaada@50pick.tz"}]
+nextError: {"dialog":false,"sign":null} pageErr:  console:  devOnly: 
+overflow: ok=True docOver=0 offenders= controlsPast= clipped=0 offFixed=0
+probe: 
+note:  flags: 
+=== 117 117--s2-selfexclude--auth-login-excluded--excluded--en--390.png
+EXPECT: Where selfExcludeAction lands, /auth/login?excluded=serving&until=YYYY-MM-DD: signed out; the danger panel auth.selfExclusionActive with the until date, and the support contact row.
+shot=viewport req=/auth/login?excluded=serving&until=2026-10-10 url=/auth/login?excluded=serving&until=2026-10-10 status=200 redirects= last={"kind":"document","url":"/auth/login?excluded=serving\u0026until=2026-10-10","status":200} hydrated=True vp=390x780 lang=en
+title=Sign in · 50pick | h1=Welcome back
+header: capsule= gold=False signIn=2 rail=True desk=False lit= sessEnded=False dialogs=0 rootFont=16px
+live: [{"role":"status","text":"Preview — you are seeing the new journey before it launches.Exit preview"},{"role":"alert","text":"Self-exclusion activeYour self-exclusion runs until 2026-10-10. You will not be able to sign in before then, and the account does not reopen by itself — you will need to ask us.0769777877msaada@50pick.tz"}]
+nextError: {"dialog":false,"sign":null} pageErr:  console:  devOnly: 
+overflow: ok=True docOver=0 offenders= controlsPast= clipped=0 offFixed=0
+probe: 
+note:  flags: 
+=== 118 118--s2-selfexclude--auth-login-excluded--excluded--en--1280.png
+EXPECT: Where selfExcludeAction lands, /auth/login?excluded=serving&until=YYYY-MM-DD: signed out; the danger panel auth.selfExclusionActive with the until date, and the support contact row.
+shot=viewport req=/auth/login?excluded=serving&until=2026-10-10 url=/auth/login?excluded=serving&until=2026-10-10 status=200 redirects= last={"kind":"document","url":"/auth/login?excluded=serving\u0026until=2026-10-10","status":200} hydrated=True vp=1280x900 lang=en
+title=Sign in · 50pick | h1=Welcome back
+header: capsule= gold=False signIn=2 rail=False desk=True lit= sessEnded=False dialogs=0 rootFont=16px
+live: [{"role":"status","text":"Preview — you are seeing the new journey before it launches.Exit preview"},{"role":"alert","text":"Self-exclusion activeYour self-exclusion runs until 2026-10-10. You will not be able to sign in before then, and the account does not reopen by itself — you will need to ask us.0769777877msaada@50pick.tz"}]
+nextError: {"dialog":false,"sign":null} pageErr:  console:  devOnly: 
+overflow: ok=True docOver=0 offenders= controlsPast= clipped=0 offFixed=0
+probe: 
+note:  flags: 
+=== 119 119--s2-selfexclude--auth-login-excluded--excluded--zh--360.png
+EXPECT: Where selfExcludeAction lands, /auth/login?excluded=serving&until=YYYY-MM-DD: signed out; the danger panel auth.selfExclusionActive with the until date, and the support contact row.
+shot=viewport req=/auth/login?excluded=serving&until=2026-10-10 url=/auth/login?excluded=serving&until=2026-10-10 status=200 redirects= last={"kind":"document","url":"/auth/login?excluded=serving\u0026until=2026-10-10","status":200} hydrated=True vp=360x780 lang=zh
+title=登录 · 50pick | h1=欢迎回来
+header: capsule= gold=False signIn=2 rail=True desk=False lit= sessEnded=False dialogs=0 rootFont=16px
+live: [{"role":"status","text":"预览 — 您正在查看尚未上线的新流程。退出预览"},{"role":"alert","text":"自我排除已激活您的自我排除期至 2026-10-10。在此之前您无法登录，且账户不会自动恢复，需要您联系我们提出申请。0769777877msaada@50pick.tz"}]
+nextError: {"dialog":false,"sign":null} pageErr:  console:  devOnly: 
+overflow: ok=True docOver=0 offenders= controlsPast= clipped=0 offFixed=0
+probe: 
+note:  flags: 
+=== 120 120--s2-selfexclude--auth-login-excluded--excluded--zh--390.png
+EXPECT: Where selfExcludeAction lands, /auth/login?excluded=serving&until=YYYY-MM-DD: signed out; the danger panel auth.selfExclusionActive with the until date, and the support contact row.
+shot=viewport req=/auth/login?excluded=serving&until=2026-10-10 url=/auth/login?excluded=serving&until=2026-10-10 status=200 redirects= last={"kind":"document","url":"/auth/login?excluded=serving\u0026until=2026-10-10","status":200} hydrated=True vp=390x780 lang=zh
+title=登录 · 50pick | h1=欢迎回来
+header: capsule= gold=False signIn=2 rail=True desk=False lit= sessEnded=False dialogs=0 rootFont=16px
+live: [{"role":"status","text":"预览 — 您正在查看尚未上线的新流程。退出预览"},{"role":"alert","text":"自我排除已激活您的自我排除期至 2026-10-10。在此之前您无法登录，且账户不会自动恢复，需要您联系我们提出申请。0769777877msaada@50pick.tz"}]
+nextError: {"dialog":false,"sign":null} pageErr:  console:  devOnly: 
+overflow: ok=True docOver=0 offenders= controlsPast= clipped=0 offFixed=0
+probe: 
+note:  flags: 
+=== 121 121--s2-selfexclude--auth-login-excluded--excluded--zh--1280.png
+EXPECT: Where selfExcludeAction lands, /auth/login?excluded=serving&until=YYYY-MM-DD: signed out; the danger panel auth.selfExclusionActive with the until date, and the support contact row.
+shot=viewport req=/auth/login?excluded=serving&until=2026-10-10 url=/auth/login?excluded=serving&until=2026-10-10 status=200 redirects= last={"kind":"document","url":"/auth/login?excluded=serving\u0026until=2026-10-10","status":200} hydrated=True vp=1280x900 lang=zh
+title=登录 · 50pick | h1=欢迎回来
+header: capsule= gold=False signIn=2 rail=False desk=True lit= sessEnded=False dialogs=0 rootFont=16px
+live: [{"role":"status","text":"预览 — 您正在查看尚未上线的新流程。退出预览"},{"role":"alert","text":"自我排除已激活您的自我排除期至 2026-10-10。在此之前您无法登录，且账户不会自动恢复，需要您联系我们提出申请。0769777877msaada@50pick.tz"}]
+nextError: {"dialog":false,"sign":null} pageErr:  console:  devOnly: 
+overflow: ok=True docOver=0 offenders= controlsPast= clipped=0 offFixed=0
+probe: 
+note:  flags: 
+=== 122 122--s2-selfexclude--auth-login-signin-refused--excluded--sw--360.png
+EXPECT: A sign-in attempt through the real form with the right password, in this language: refused at the gate, back on /auth/login with the exclusion panel and its date; still signed out (no capsule).
+shot=viewport req=the sign-in form (sw) url=/auth/login?excluded=serving&until=2026-10-10 status=303 redirects= last={"kind":"server-action","url":"/auth/login","status":303} hydrated=True vp=360x780 lang=sw
+title=Ingia · 50pick | h1=Karibu tena
+header: capsule= gold=False signIn=2 rail=True desk=False lit= sessEnded=False dialogs=0 rootFont=16px
+live: [{"role":"status","text":"Onyesho la awali — unaona safari mpya kabla haijazinduliwa.Toka kwenye onyesho"},{"role":"alert","text":"UmejitengaKujitenga kwako kunaendelea hadi 2026-10-10. Hutaweza kuingia kabla ya hapo, na akaunti haifunguki yenyewe — itabidi utuombe.0769777877msaada@50pick.tz"}]
+nextError: {"dialog":false,"sign":null} pageErr:  console:  devOnly: 
+overflow: ok=True docOver=0 offenders= controlsPast= clipped=0 offFixed=0
+probe: {"ok":true,"where":"/auth/login?excluded=serving\u0026until=2026-10-10","signedIn":false}
+note:  flags: 
+=== 123 123--s2-selfexclude--auth-login-signin-refused--excluded--sw--390.png
+EXPECT: A sign-in attempt through the real form with the right password, in this language: refused at the gate, back on /auth/login with the exclusion panel and its date; still signed out (no capsule).
+shot=viewport req=the sign-in form (sw) url=/auth/login?excluded=serving&until=2026-10-10 status=303 redirects= last={"kind":"server-action","url":"/auth/login","status":303} hydrated=True vp=390x780 lang=sw
+title=Ingia · 50pick | h1=Karibu tena
+header: capsule= gold=False signIn=2 rail=True desk=False lit= sessEnded=False dialogs=0 rootFont=16px
+live: [{"role":"status","text":"Onyesho la awali — unaona safari mpya kabla haijazinduliwa.Toka kwenye onyesho"},{"role":"alert","text":"UmejitengaKujitenga kwako kunaendelea hadi 2026-10-10. Hutaweza kuingia kabla ya hapo, na akaunti haifunguki yenyewe — itabidi utuombe.0769777877msaada@50pick.tz"}]
+nextError: {"dialog":false,"sign":null} pageErr:  console:  devOnly: 
+overflow: ok=True docOver=0 offenders= controlsPast= clipped=0 offFixed=0
+probe: {"ok":true,"where":"/auth/login?excluded=serving\u0026until=2026-10-10","signedIn":false}
+note:  flags: 
+=== 124 124--s2-selfexclude--auth-login-signin-refused--excluded--sw--1280.png
+EXPECT: A sign-in attempt through the real form with the right password, in this language: refused at the gate, back on /auth/login with the exclusion panel and its date; still signed out (no capsule).
+shot=viewport req=the sign-in form (sw) url=/auth/login?excluded=serving&until=2026-10-10 status=303 redirects= last={"kind":"server-action","url":"/auth/login","status":303} hydrated=True vp=1280x900 lang=sw
+title=Ingia · 50pick | h1=Karibu tena
+header: capsule= gold=False signIn=2 rail=False desk=True lit= sessEnded=False dialogs=0 rootFont=16px
+live: [{"role":"status","text":"Onyesho la awali — unaona safari mpya kabla haijazinduliwa.Toka kwenye onyesho"},{"role":"alert","text":"UmejitengaKujitenga kwako kunaendelea hadi 2026-10-10. Hutaweza kuingia kabla ya hapo, na akaunti haifunguki yenyewe — itabidi utuombe.0769777877msaada@50pick.tz"}]
+nextError: {"dialog":false,"sign":null} pageErr:  console:  devOnly: 
+overflow: ok=True docOver=0 offenders= controlsPast= clipped=0 offFixed=0
+probe: {"ok":true,"where":"/auth/login?excluded=serving\u0026until=2026-10-10","signedIn":false}
+note:  flags: 
+=== 125 125--s2-selfexclude--auth-login-signin-refused--excluded--en--360.png
+EXPECT: A sign-in attempt through the real form with the right password, in this language: refused at the gate, back on /auth/login with the exclusion panel and its date; still signed out (no capsule).
+shot=viewport req=the sign-in form (en) url=/auth/login?excluded=serving&until=2026-10-10 status=303 redirects= last={"kind":"server-action","url":"/auth/login","status":303} hydrated=True vp=360x780 lang=en
+title=Sign in · 50pick | h1=Welcome back
+header: capsule= gold=False signIn=2 rail=True desk=False lit= sessEnded=False dialogs=0 rootFont=16px
+live: [{"role":"status","text":"Preview — you are seeing the new journey before it launches.Exit preview"},{"role":"alert","text":"Self-exclusion activeYour self-exclusion runs until 2026-10-10. You will not be able to sign in before then, and the account does not reopen by itself — you will need to ask us.0769777877msaada@50pick.tz"}]
+nextError: {"dialog":false,"sign":null} pageErr:  console:  devOnly: 
+overflow: ok=True docOver=0 offenders= controlsPast= clipped=0 offFixed=0
+probe: {"ok":true,"where":"/auth/login?excluded=serving\u0026until=2026-10-10","signedIn":false}
+note:  flags: 
+=== 126 126--s2-selfexclude--auth-login-signin-refused--excluded--en--390.png
+EXPECT: A sign-in attempt through the real form with the right password, in this language: refused at the gate, back on /auth/login with the exclusion panel and its date; still signed out (no capsule).
+shot=viewport req=the sign-in form (en) url=/auth/login?excluded=serving&until=2026-10-10 status=303 redirects= last={"kind":"server-action","url":"/auth/login","status":303} hydrated=True vp=390x780 lang=en
+title=Sign in · 50pick | h1=Welcome back
+header: capsule= gold=False signIn=2 rail=True desk=False lit= sessEnded=False dialogs=0 rootFont=16px
+live: [{"role":"status","text":"Preview — you are seeing the new journey before it launches.Exit preview"},{"role":"alert","text":"Self-exclusion activeYour self-exclusion runs until 2026-10-10. You will not be able to sign in before then, and the account does not reopen by itself — you will need to ask us.0769777877msaada@50pick.tz"}]
+nextError: {"dialog":false,"sign":null} pageErr:  console:  devOnly: 
+overflow: ok=True docOver=0 offenders= controlsPast= clipped=0 offFixed=0
+probe: {"ok":true,"where":"/auth/login?excluded=serving\u0026until=2026-10-10","signedIn":false}
+note:  flags: 
+=== 127 127--s2-selfexclude--auth-login-signin-refused--excluded--en--1280.png
+EXPECT: A sign-in attempt through the real form with the right password, in this language: refused at the gate, back on /auth/login with the exclusion panel and its date; still signed out (no capsule).
+shot=viewport req=the sign-in form (en) url=/auth/login?excluded=serving&until=2026-10-10 status=303 redirects= last={"kind":"server-action","url":"/auth/login","status":303} hydrated=True vp=1280x900 lang=en
+title=Sign in · 50pick | h1=Welcome back
+header: capsule= gold=False signIn=2 rail=False desk=True lit= sessEnded=False dialogs=0 rootFont=16px
+live: [{"role":"status","text":"Preview — you are seeing the new journey before it launches.Exit preview"},{"role":"alert","text":"Self-exclusion activeYour self-exclusion runs until 2026-10-10. You will not be able to sign in before then, and the account does not reopen by itself — you will need to ask us.0769777877msaada@50pick.tz"}]
+nextError: {"dialog":false,"sign":null} pageErr:  console:  devOnly: 
+overflow: ok=True docOver=0 offenders= controlsPast= clipped=0 offFixed=0
+probe: {"ok":true,"where":"/auth/login?excluded=serving\u0026until=2026-10-10","signedIn":false}
+note:  flags: 
+=== 128 128--s2-selfexclude--auth-login-signin-refused--excluded--zh--360.png
+EXPECT: A sign-in attempt through the real form with the right password, in this language: refused at the gate, back on /auth/login with the exclusion panel and its date; still signed out (no capsule).
+shot=viewport req=the sign-in form (zh) url=/auth/login?excluded=serving&until=2026-10-10 status=303 redirects= last={"kind":"server-action","url":"/auth/login","status":303} hydrated=True vp=360x780 lang=zh
+title=登录 · 50pick | h1=欢迎回来
+header: capsule= gold=False signIn=2 rail=True desk=False lit= sessEnded=False dialogs=0 rootFont=16px
+live: [{"role":"status","text":"预览 — 您正在查看尚未上线的新流程。退出预览"},{"role":"alert","text":"自我排除已激活您的自我排除期至 2026-10-10。在此之前您无法登录，且账户不会自动恢复，需要您联系我们提出申请。0769777877msaada@50pick.tz"}]
+nextError: {"dialog":false,"sign":null} pageErr:  console:  devOnly: 
+overflow: ok=True docOver=0 offenders= controlsPast= clipped=0 offFixed=0
+probe: {"ok":true,"where":"/auth/login?excluded=serving\u0026until=2026-10-10","signedIn":false}
+note:  flags: 

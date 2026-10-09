@@ -1,0 +1,3 @@
+docs(vodacom): IN FLIGHT ~05:50 EAT - round 4 fixed and merged (R4-A..F), vodacom-visual rebased on main a6331ca1, the parity baseline re-captured at the new base (A18), the edge scenarios' live offline-page defect under fix, main's dead-css red noted for S15
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>

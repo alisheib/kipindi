@@ -1,0 +1,3 @@
+docs(vodacom): the owner ruling of 2026-10-07 in this plan - S9 email code superseded (3.6, R2), the TZS 1,000 minimum on its four 500 lines, SHELVED and the copy audit; frames, emailCodeFirst and parity 2.9 still owed
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>

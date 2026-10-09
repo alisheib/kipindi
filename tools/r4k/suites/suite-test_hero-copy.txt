@@ -1,0 +1,23 @@
+hero-copy — the hero says only what is true
+
+PASS §1a `heroClaimFirst` is read in ONE place in src/, inside the FIRST_LICENSED_EVIDENCE() branch
+PASS §1b no other string — dict or source, any language — claims a first
+PASS §1c both claim states say "licensed" in every language; only state P says "first"
+PASS §1d the evidence is set → COMPLIANCE-DECISIONS has a dated entry citing it
+PASS §2a heroAsk: {yes} then {no}, each exactly once, nothing else to fill — in every language
+PASS §2b the h1 is filled by sideWord(…, "MARKET") and carries no lang of its own
+PASS §2c a headline line that opens on a straight stem (H, N) is set back by the measured bearing — from the side words, never the locale — and a one-line headline keeps its gap
+PASS §3a the payout-capable rails agree with the withdraw page, the withdraw action and the payout ladder
+PASS §3b "{rails}" renders exactly, in all three languages
+PASS §3c a rail paused for withdrawals OR deposits is not named; an unreadable switch names the static list
+PASS §3d no wallet name is typed into the dict's hero sentence; the page passes heroRailNames and the hero joins with railListParts
+PASS §3e the trust band's wallet marks come from the same heroRails list as the hero's names (a paused rail leaves both)
+PASS §4a the hero does not read footer.stopGambling (the footer keeps it, R7(2))
+PASS §4b the only lang in the hero is lang="en" on the sign-off
+PASS §5a no string on the hero's first screen says official / machine / crowd / chance, in any language
+PASS §5b the three landing ordering-eyebrow keys are retired in all three locales, and nothing reads them
+PASS §5b-control CONTROL: the same two walks DO find a key that is still alive and still read
+
+state: claim P ("first", evidence 2026-09-27 · INHERIT-MANIFEST R9) · rails [M-Pesa, Airtel Money, HaloPesa, Mixx by Yas]
+hero-copy: 17 passed, 0 failed
+

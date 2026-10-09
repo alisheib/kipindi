@@ -1,0 +1,27 @@
+Journey Wallet: no Deposit for a reader on a break — Withdraw alone, full width
+
+Found while planning the edge-scenario capture (a player on a cooling-off break). The journey header withholds
+"+ Weka pesa" during a break (S4), and /wallet stops inviting a deposit (depositOpen, 2026-10-06), because
+/wallet/deposit refuses one and shows the break's sentence. But the Wallet the balance capsule opens still offered
+Weka pesa beside Toa pesa: a door to an action the next screen refuses.
+
+- wallet-sheet.tsx: a new onBreak prop. When it is set, the Deposit column is not rendered and the pair becomes one
+  column (.kp-wsheet__pair--one), so Withdraw stands alone at the full width. A break does not stop withdrawals.
+- The flag is AppShell's promoSuppressed, carried by the journey bar (onBreak) through WalletBalanceCaptioned to its
+  sheet. It gates an OFFER and fails OPEN (feature-state.ts LAW 1): after a failed read the Deposit shows and the
+  deposit screen still refuses. No sentence is added. The shell hands the browser one boolean and never the
+  break's date, and the header drops its pill without one too.
+- The classic capsule's Wallet is never told (classic chrome is frozen for S6/S7); its bar has no break rule either.
+
+Guards: test:wallet-reach §7 "a reader on a BREAK gets no Deposit" (the column inside {!onBreak && (…)},
+Withdraw outside it, the one-column rule) and 8c.1b "the break reaches the Wallet" (bar → capsule → journey sheet;
+the classic sheet unchanged). 8.3's and 8c.1's pins follow the new line. red:wallet-reach has 3 new mutations: the
+column leaves its guard, the bar stops passing the flag, the capsule drops it. One anchor moves with the line it
+mutates.
+
+wallet-reach 84/84; red:wallet-reach 27/27 caught, files restored, green after. Also green: red-anchors (4883),
+journey-shell (431), popup-fit, layout-staleness, landing-mine, gold-is-money, dead-css, design-frozen, stacking,
+density-contract, ui-consistency, css-vars-defined, tap-target, hooks-order. Browser proof: the edge capture's
+break scenario (its Wallet-sheet tiles) on this branch, under the shared lock.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>

@@ -1,0 +1,53 @@
+Visual pass round 5 (R5-H): every loading ghost a client reference, not a drawn tree in every refresh; the ghosts' bands the pages' bands; the journey flag and the not-found mark in the first paint they belong to
+
+From the code review's G1/G2 (R5-D's technique, extended) and R5-B's and R5-D's follow-ups G-2, G-2b and G-3.
+
+G-2 · every player loading.tsx was a server component, so Next put its whole drawn tree into every payload that
+renders the segment — the document, every move into it, and every router.refresh() (which renders from the root).
+Measured per segment (sw): wallet/receipts 9,556 B, results 8,217, positions 5,125 (journey) / 8,065 (classic), wallet
+6,826, agent 4,875, markets 4,721 … — 92,274 B over all player segments. One convention now, written once in
+src/components/ui/page-loader.tsx: the drawing is client code and reads its own words with useT() (the root layout
+gives the provider the language from the kp-locale cookie, the same expression getServerT uses — the server's HTML is
+unchanged); a loading file that needs no server answer IS the drawing ("use client"); one that needs an answer stays a
+server file and hands the drawing only that answer (the journey answer, `bonusLive`). The journey's pictures ride R5-D's
+lazy binding, pinned to the page (`<LazyJourneyRouteGhost rails at="/positions" />`), so no server file imports one.
+After: 19–100 B per segment element, 3,298 B over all of them; per refresh /wallet/receipts 16,868 → 541 B (67.5 → 2.2
+KB a minute), /markets/[id] 8,579 → 933, /updown/[roundId] while awaiting a result 3,793 → 524 every 5 s. The drawn
+markup is byte-identical (react-dom/server, 39 files × 3 languages × 2 shells: 222/234 identical, the other 12 the G-2b
+bands below). Admin's 61 loading files (staff-only, English-pinned, never polled) and /s/[token] are left as they are.
+
+G-2b · /wallet's ghost drew no bar, no door spacing and two blocks where the page has one section: its list landed
+133px low on a phone, up to 216px at lg in Swahili. One bar ghost for both money books (money-bar-ghost.tsx, /wallet and
+/wallet/receipts), its pills the kit pill's box with the page's own words set but not shown (the page's groups wrap at
+1024/1280 in sw and en; R5-B's fixed boxes drew one line and the receipts list landed 56px low on desktop). The sweep's
+exact band fixes: a shared BackLinkGhost (the 44px BackLink box) on deposit, withdraw, performance, round, question,
+history, agent/apply and agent/status (added on the receipt, removed from the agent invite); /results 24px between the
+carousel and the grid; /markets' count line 17.25px; /live's hero padding; /wallet/receipts' 79px rows; /profile's
+16px grid gap; /agent's own PageHeader; /updown (the real header and tagline, one 48px phone trigger, 44px durations,
+the BoardViz band, the price tape); /updown/[roundId] two columns from lg with the action panel first; /markets/[id]'s
+header bands; the tickets rail ghost's `data-rail-ghost`; /updown/history's search band and bar and its 89.5px tiles.
+Ghosts that need a rebuild are listed for the next helpers.
+
+G-3 · journey-flag.tsx raised `data-journey` in a passive effect inside its own Suspense, and journey-on's cleanup
+announced the change while the shell's mark was still in the DOM — since React 19.2 (as Next ships it) a transition's
+passive effects run after the paint, so one painted frame showed the old answer in both directions. The flag is raised
+in a layout effect from a bare mount beside the journey header and tabs (the commit that first paints them); lowered at
+once and announced again in a microtask after the commit (a deleted component's layout cleanup runs before its host
+nodes go). Siblings: the not-found mark's departure; strip-autoscroll's `data-edges` (no faded end on the first frame
+after a move). The route entrance (route-transition.tsx) is proposed as a patch and proved in a browser separately.
+
+Guards: test:visual-pass-r5h (52 checks with controls and plants: G-2's transport, the journey pictures, G-3's phases
+and the census of every DOM-mark writer, G-2b, the sweep's plant matrix). Mutation proof: 41 planted, 41 caught on the
+named check, all restored byte-identical. Re-pins (each with its reason): r5d 2.1/2.6′/2.10/2.10″ and READERS, r4j
+3.4/3.4′/5.2/5.2′, journey-tickets §10, journey-shell 5.component/5.mount/12.shell.wrapped (+12.shell.flag), r4c 1.6,
+r5b 2.4/9.3/9.4, withdrawn-features §5f, design-frozen, the measure anchor `loading-tier-drifts`; test:measure compares
+38 tier pairs again (35 since R5-D).
+
+Merged onto R5-A..F + R5-I (rebased on main 118fc75c) with no conflict. Pushed when Ali asked that nothing stay on one
+machine (2026-10-09 ~19:10 EAT) while its merged-tree proof was still running (181 suites, 29+ red twins, all seven
+round-5 mutation proofs) — anything it finds is fixed forward in a later commit.
+
+Classic viewers: the transport moves no pixel; the ghost band fixes apply to both shells; strips' first frame after a
+move is right; the flag change is journey-only.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>

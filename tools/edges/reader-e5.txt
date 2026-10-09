@@ -1,0 +1,81 @@
+You are one of several strict tile readers for 50pick's visual pass for Vodacom, reading the journey's EDGE SCENARIOS
+(a player on a break, a self-excluded player, the longest name and title, Slow 3G loading, not-found pages, odd
+viewports, enlarged text, offline, an empty wallet). The owner's rule: only perfect visual AND logical results are
+accepted; nothing is deferred as "small".
+
+Read this file first, completely, with the Read tool — it is your instructions, and it points you to two more you must
+read: C:/Users/asheib/AppData/Local/Temp/claude/C--Users-asheib/0e745525-51fe-4451-ace7-c9987576fc15/scratchpad/edges/read-brief-edges.md
+
+S = C:/Users/asheib/AppData/Local/Temp/claude/C--Users-asheib/0e745525-51fe-4451-ace7-c9987576fc15/scratchpad
+TILES = C:/Users/asheib/AppData/Local/Temp/claude/C--Users-asheib/0e745525-51fe-4451-ace7-c9987576fc15/scratchpad/edges/tiles  (the PNGs, plus qa-journey-edges.json — the log, one entry per tile, matched by `file`)
+
+Your tiles (64 of them). Open EVERY one, in this order, and read its log entry before judging it:
+257--s4-longtitle--root-card-longest-shown--player--en--360.png
+258--s4-longtitle--root-card-longest-shown--player--en--390.png
+259--s4-longtitle--root-card-longest-shown--player--en--1280.png
+260--s4-longtitle--markets-card--player--en--360.png
+261--s4-longtitle--markets-card--player--en--390.png
+262--s4-longtitle--markets-card--player--en--1280.png
+263--s4-longtitle--market--player--en--360.png
+264--s4-longtitle--market--player--en--390.png
+265--s4-longtitle--market--player--en--1280.png
+266--s4-longtitle--root-card-longest-shown--player--zh--360.png
+267--s4-longtitle--root-card-longest-shown--player--zh--390.png
+268--s4-longtitle--root-card-longest-shown--player--zh--1280.png
+269--s4-longtitle--markets-card--player--zh--360.png
+270--s4-longtitle--markets-card--player--zh--390.png
+271--s4-longtitle--markets-card--player--zh--1280.png
+272--s4-longtitle--market--player--zh--360.png
+273--s4-longtitle--market--player--zh--390.png
+274--s4-longtitle--market--player--zh--1280.png
+275--s5-slow3g--root-loaded--player--sw--360.png
+276--s5-slow3g--root-tap-mid--player--sw--360.png
+277--s5-slow3g--positions-mid-load--player--sw--360.png
+278--s5-slow3g--positions-loaded--player--sw--360.png
+279--s5-slow3g--positions-tap-mid--player--sw--360.png
+280--s5-slow3g--account-mid-load--player--sw--360.png
+281--s5-slow3g--account-loaded--player--sw--360.png
+282--s5-slow3g--account-tap-mid--player--sw--360.png
+283--s5-slow3g--root-loaded--player--sw--390.png
+284--s5-slow3g--root-tap-mid--player--sw--390.png
+285--s5-slow3g--positions-loaded--player--sw--390.png
+286--s5-slow3g--positions-tap-mid--player--sw--390.png
+287--s5-slow3g--account-mid-load--player--sw--390.png
+288--s5-slow3g--account-loaded--player--sw--390.png
+289--s5-slow3g--account-tap-mid--player--sw--390.png
+290--s5-slow3g--root-mid-load--player--sw--1280.png
+291--s5-slow3g--root-loaded--player--sw--1280.png
+292--s5-slow3g--root-tap-mid--player--sw--1280.png
+293--s5-slow3g--positions-mid-load--player--sw--1280.png
+294--s5-slow3g--positions-loaded--player--sw--1280.png
+295--s5-slow3g--positions-tap-mid--player--sw--1280.png
+296--s5-slow3g--account-mid-load--player--sw--1280.png
+297--s5-slow3g--account-loaded--player--sw--1280.png
+298--s5-slow3g--account-tap-mid--player--sw--1280.png
+299--s5-slow3g--root-mid-load--player--en--360.png
+300--s5-slow3g--root-loaded--player--en--360.png
+301--s5-slow3g--root-tap-mid--player--en--360.png
+302--s5-slow3g--positions-loaded--player--en--360.png
+303--s5-slow3g--positions-tap-mid--player--en--360.png
+304--s5-slow3g--account-mid-load--player--en--360.png
+305--s5-slow3g--account-loaded--player--en--360.png
+306--s5-slow3g--account-tap-mid--player--en--360.png
+307--s5-slow3g--root-loaded--player--en--390.png
+308--s5-slow3g--root-tap-mid--player--en--390.png
+309--s5-slow3g--positions-loaded--player--en--390.png
+310--s5-slow3g--positions-tap-mid--player--en--390.png
+311--s5-slow3g--account-mid-load--player--en--390.png
+312--s5-slow3g--account-loaded--player--en--390.png
+313--s5-slow3g--account-tap-mid--player--en--390.png
+314--s5-slow3g--root-loaded--player--en--1280.png
+315--s5-slow3g--root-tap-mid--player--en--1280.png
+316--s5-slow3g--positions-loaded--player--en--1280.png
+317--s5-slow3g--positions-tap-mid--player--en--1280.png
+318--s5-slow3g--account-mid-load--player--en--1280.png
+319--s5-slow3g--account-loaded--player--en--1280.png
+320--s5-slow3g--account-tap-mid--player--en--1280.png
+
+Measure with PowerShell System.Drawing as the brief says (never estimate a position you can measure). Do not edit any
+file; do not run npm, servers or browsers. Your final message is the report the brief asks for — (1) tiles opened (must
+be 64) and the BLOCKED entries in your range, (2) FINDINGS (most visible first; LOGIC findings marked), (3) DOUBTS.
+Nothing else.

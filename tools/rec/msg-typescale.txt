@@ -1,0 +1,22 @@
+scripts: test:type-scale green again - its two ratchets re-baselined in writing, each new member read and listed
+
+test:type-scale had been red on main: §3 (reading copy below the 12.5px floor) read 750 against 744, and §6 (hand-typed
+tracking-[...]) 238 against 235. Its protocol is to READ each new member, then fix it or raise the ceiling in writing.
+A per-site census that reproduces the suite exactly (750/238 now, 744/235 at 5f007dee where the ceilings were set)
+found every member:
+
+- §3, +6 net: 28 new sites against 22 lifted or deleted since 5f007dee. All 28 are real §T4 deviations - the house-bots
+  desk's phone stack (15), the marketing Lists card (4), three caption sentences (licence outreach, the finance and
+  reports unreadable-window twins), three reports captions, the players page's identity line split, and two inline
+  links on profile/kyc - and each lift is a size change (10-11px to 13px) that wants a measured visual pass, so the
+  ceiling records them with file, line, commit and reason, as a work order. Cheapest first: the Lists card and the three
+  sentences (a text-caption to text-body-sm swap; the twin notices' status dot moves mt-1 to mt-1.5 with it).
+- §6, +3 net: four finance microlabels at tracking-[0.10em] (already declared role OTHER in eyebrow-roles, a value 68
+  sites spell, in KNOWN_TRACKING), less the OTP page's resend link d6f8260a deleted. Legitimate by the suite's own sets.
+
+Proof, on 318b8881: test:type-scale exit 0 (§3 750 and §6 238, at the ratchets); with one new caption sentence planted
+in a temporary file it reads 751 against 750 and exits 1 (the file removed after); test:measure, test:design-frozen,
+test:tokens, test:eyebrow-roles, test:ui-consistency, test:source-bytes, test:guards-exist green; test:decomment's
+verdicts identical before and after (red on main at 21 vs 20 for another file).
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>

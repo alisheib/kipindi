@@ -1,0 +1,2 @@
+﻿ticker-honesty: 117 assertions passed
+all green

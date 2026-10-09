@@ -1,0 +1,48 @@
+﻿PASS A · src/lib/server/analytics.ts still calls listMarkets — found 1, expected >= 1
+PASS A · src/lib/server/analytics.ts passes productLine "ALL" on every call
+PASS A · src/lib/server/platform-stats.ts still calls listMarkets — found 1, expected >= 1
+PASS A · src/lib/server/platform-stats.ts passes productLine "ALL" on every call
+PASS A · src/lib/server/reports/catalogue.ts still calls listMarkets — found 1, expected >= 1
+PASS A · src/lib/server/reports/catalogue.ts passes productLine "ALL" on every call
+PASS A · src/app/api/health/route.ts still calls listMarkets — found 2, expected >= 2
+PASS A · src/app/api/health/route.ts passes productLine "ALL" on every call
+PASS A · src/app/admin/system/page.tsx still calls listMarkets — found 2, expected >= 2
+PASS A · src/app/admin/system/page.tsx passes productLine "ALL" on every call
+PASS A · src/app/live/page.tsx still calls listMarkets — found 1, expected >= 1
+PASS A · src/app/live/page.tsx passes productLine "ALL" on every call
+PASS A · src/lib/server/report-money.ts reads markets through the unfiltered attribution projection — marketStore.attribution() is gone — if the money read moved again, assert the new one here
+PASS A · src/lib/server/report-money.ts has no market read on the single-product default
+PASS A · src/app/results/page.tsx reads BOTH product lines (Board instruction #10) — 0 of 1 listMarkets call(s) still on the MARKET default
+PASS A · src/app/results/page.tsx's parser DEFAULTS to one product, so the archive cannot flood — parseArchiveParams({}).product === "MARKET" — 99.4% of settled rows are Up & Down, so an "all" default buries every long-form result
+PASS A · src/app/results/page.tsx reaches that default through the shared contract — the page no longer parses through `parseArchiveParams`, so the default above is not the one it uses
+PASS A · src/app/markets/page.tsx stays on the MARKET default
+PASS A · src/app/fairness/page.tsx stays on the MARKET default
+PASS A · src/app/api/fairness/recent/route.ts stays on the MARKET default
+PASS B1 · listMarkets() defaults to long-form polls only — got [pl_poll_a,pl_poll_b]
+PASS B2 · listMarkets({productLine:'ALL'}) sees BOTH products — got [pl_round_a,pl_poll_a,pl_round_b,pl_poll_b]
+PASS B3 · listMarkets({productLine:'UPDOWN'}) returns only rounds — got [pl_round_a,pl_round_b]
+PASS B4 · ordering stays resolutionAt ASC across products — got [pl_round_a,pl_poll_a,pl_round_b,pl_poll_b]
+PASS B5 · status filter composes with the MARKET default — got [pl_poll_res]
+PASS B5 · status filter composes with ALL — got [pl_poll_res,pl_round_res]
+PASS B6 · marketStore.pending() excludes UPDOWN (per-market scheduler skips rounds) — got [pl_poll_b,pl_poll_a]
+PASS B6 · marketStore.pending('ALL') includes UPDOWN (settlement ops must see unsettled money) — got [pl_poll_b,pl_round_a,pl_poll_a,pl_round_b]
+PASS B7 · round reads back as UPDOWN — got UPDOWN
+PASS B7 · located the Prisma update block
+PASS B7 · Prisma `set` update block never writes productLine (immutable after creation)
+PASS B7 · unrelated fields still update — got 7
+PASS B8 · a row with no productLine reads as MARKET — got undefined
+PASS B8 · and it appears on the default (long-form) board — got [pl_round_a,pl_poll_res,pl_legacy,pl_poll_a,pl_poll_b]
+PASS B9 · marketStore.attribution() returns long-form polls — got MARKET
+PASS B9 · …and Up & Down rounds — an attribution read that could drop them is the whole defect — got UPDOWN
+PASS B9 · …and it carries titleEn, which is what makes the demo exclusion possible at all — got Demo · seeded poll
+PASS B9 · loadMoneyAttribution().plByMarket sees BOTH product lines — market=MARKET round=UPDOWN
+PASS B9 · a DEMO poll is in the game map (moneyByGame never filtered them) — demo row missing from plByMarket — moneyByGame's population changed
+PASS B9 · …and is NOT in the category map (categoryBreakdown read through listMarkets, which filtered them) — a demo poll entered the revenue breakdown — that moves a reported figure
+PASS B9 · CONTROL · the two non-demo rows ARE in the category map, so the check above is not passing over an empty map — market=sports round=crypto
+PASS 8.4a CONTROL · a REAL opted-in call is still seen after the comment strip
+PASS 8.4b CONTROL · the same call inside a BLOCK comment is not
+PASS 8.4c CONTROL · the same call inside a LINE comment is not
+PASS 8.4d CONTROL · a call sharing a line with a `//` inside a string URL still counts
+
+product-line: 48 passed, 0 failed
+product-line: OK — money reads see both products; player boards see long-form polls only

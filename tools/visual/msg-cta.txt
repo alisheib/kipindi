@@ -1,0 +1,10 @@
+Tiketi zangu: the Maswali empty state's call to action at 44px, like the Juu/Chini tab beside it and the canvas
+
+G3 (tiles 233–248) measured the two tabs' empty states: the Juu/Chini call to action is btn-md (44px), the Maswali
+one btn-sm (40px). The canvas draws 44px. The two now match, so the switch leads to one empty state with one button
+height. Only the first-ticket call to action changes; the ghost lens-exit buttons stay btn-sm, as on both tabs.
+
+journey-tickets 50/50, tap-target, ui-consistency, hooks-order, journey-shell 431/431. Verified in the next tile round
+(the lock turns running now test the branch at 8a2d9d26).
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>

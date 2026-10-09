@@ -1,0 +1,108 @@
+﻿
+presence-class — the ceremony belongs to the moment, not to the backlog
+
+§0 · the slices resolve, so every scoped check below can actually fail
+  ok   0.1 · slice resolves: present() in toast.tsx
+  ok   0.1 · slice resolves: tick() in notify-poller.tsx
+  ok   0.1 · slice resolves: handleVisibility() in presence-window.ts
+  ok   0.1 · slice resolves: summarise() in away-ledger.ts
+  ok   0.2 · the stripped poller is still real code (else every absence below proves nothing)
+  ok   0.3 · the stripped toast is still real code
+
+§1 · every uncertainty routes AWAY from ceremony (the function is CALLED)
+  ok   1.1 · a hidden tab never celebrates — a seal shown to an empty chair is a seal spent
+  ok   1.2 · an UNKNOWN settle instant is never LIVE — null AND undefined, all three outcomes
+  ok   1.2b · a NaN settle instant — a `number` that is not a time — never reaches the seal
+  ok   1.3 · an unestablished presence clock routes to the ledger, not optimistically to the seal
+  ok   1.4a · one millisecond BEFORE this sitting began is RETURNING
+  ok   1.4b · …and exactly AT the boundary is LIVE (the comparison is not inverted)
+  ok   1.5 · the freshness cap holds even INSIDE the presence window
+  ok   1.6 · a LIVE loss and a LIVE refund are BOTH toasts, in DIFFERENT groups
+  ok   1.7 · ⭐ across all 90 combinations, exactly one reaches CEREMONY
+  ok   1.control · a case that DOES celebrate exists (so 1.1–1.5's absences are not vacuous)
+  ok   1.8 · the policy module stays pure — no DOM, no client directive
+
+§2 · deltas in device time, instants in server time — never mixed
+  ok   2.1 · exactly ONE offset capture in the presence module
+  ok   2.2 · the hidden-duration is a DEVICE delta — two readings of the same clock
+  ok   2.3 · the window start is stored in SERVER time
+  ok   2.4 · the boundary is the platform's ONE definition, imported, not a second literal
+  ok   2.5 · and it is declared exactly once across src/
+
+§3 · nothing may claim delivery it did not perform
+  ok   3.control · the tick slice contains BOTH an announcement and the marker
+  ok   3.1 · ⭐ the announced-marker is written AFTER the announcement, not before it
+  ok   3.2 · the watch-list prune also follows the announcement
+  ok   3.3 · the announced-set survives blocked storage (E-268)
+
+§4 · overflow is held like §F1's hold — nothing is dropped
+  ok   4.1 · ⭐ `present()` no longer slices toasts out of the stack
+  ok   4.2 · …and the window is applied by the VIEWPORT instead
+  ok   4.3 · a toast is punctuated when PAINTED, not when it arrives
+  ok   4.4 · the haptic ladder still refuses `factual` and still alarms on `danger`
+  ok   4.5 · the seal registers as a result popup, so §F1 stands the toasts down (E-267)
+  ok   4.6 · ⛔ and the fix touches NO z-index
+
+§5 · a summary carries a figure only when every entry shares one outcome
+  ok   5.1 · ⭐ a MIXED set states NO figure
+  ok   5.2 · three losses state the STAKE that went
+  ok   5.3 · two wins state the PAYOUT that landed
+  ok   5.4 · two refunds state what came BACK
+  ok   5.5 · a win beside a refund is still MIXED — 'paid' and 'returned' are different columns
+  ok   5.6 · the empty set states nothing at all
+  ok   5.control · a homogeneous set DOES produce a figure (5.1/5.5 are not vacuous)
+
+§6 · §F5 — nothing answers an action the player did not take
+  ok   6.1 · away-summary-bar.tsx fires no haptic (mentions=0, statements=0)
+  ok   6.2 · away-summary-bar.tsx — no haptic behind a falsy short-circuit
+  ok   6.1 · presence-window.ts fires no haptic (mentions=0, statements=0)
+  ok   6.2 · presence-window.ts — no haptic behind a falsy short-circuit
+  ok   6.1 · away-ledger.ts fires no haptic (mentions=0, statements=0)
+  ok   6.2 · away-ledger.ts — no haptic behind a falsy short-circuit
+  ok   6.3 · the bar is a NoticeBar — it blocks nothing and takes no focus
+  ok   6.4.control · the tap handler's body is locatable
+  ok   6.4 · ⛔ the seal clears ONLY the wins it celebrated — never the whole ledger
+  ok   6.5 · ⛔ …and nothing is cleared unless the seal was actually delivered
+  ok   6.8.control · the lens list, the parser's keys and the bar's /positions links are all locatable
+  ok   6.8 · ⛔ every /positions link in the bar uses only keys parsePortfolioParams reads, with a real lens
+  ok   6.9 · the away link opens the SETTLED lens
+  ok   6.6 · ⛔ the attention window re-seeds when the PLAYER changes, not once per page-load
+
+§7 · E-269 — the calm state withdraws a false claim about time
+  ok   7.1 · the countdown is a CLASS, so a stylesheet can reach it
+  ok   7.2 · …and toast.tsx declares neither the curve nor the duration (§E rule 9)
+  ok   7.3 · both hard clamps get a calm branch, and the rail stays FULL
+  ok   7.4 · ⛔ and it is NOT in the throttle tier's infinite-loop list
+
+§8 · every new token exists in all three locales and none is the English
+  ok   8.1 · awayTitle is defined three times
+  ok   8.2 · awayTitle is not three copies of the English
+  ok   8.1 · awayWon is defined three times
+  ok   8.2 · awayWon is not three copies of the English
+  ok   8.1 · awayLost is defined three times
+  ok   8.2 · awayLost is not three copies of the English
+  ok   8.1 · awayReturned is defined three times
+  ok   8.2 · awayReturned is not three copies of the English
+  ok   8.1 · awayMixed is defined three times
+  ok   8.2 · awayMixed is not three copies of the English
+  ok   8.1 · awayView is defined three times
+  ok   8.2 · awayView is not three copies of the English
+  ok   8.3 · awayWon keeps its {n} placeholder in every locale
+  ok   8.3 · awayLost keeps its {n} placeholder in every locale
+  ok   8.3 · awayReturned keeps its {n} placeholder in every locale
+  ok   8.3 · awayMixed keeps its {n} placeholder in every locale
+
+§9 · a burst coalesces into one — but a refusal never joins a group
+  ok   9.1 · ⛔ a `danger` toast is NEVER grouped, whatever key it carries
+  ok   9.2 · ⛔ a STICKY toast (durationMs 0) is never grouped either
+  ok   9.3 · …and a negative duration cannot sneak past the sticky rule
+  ok   9.4 · a toast with no key stands alone (grouping is opt-in, never inferred)
+  ok   9.control · an ordinary `factual` result IS groupable (9.1–9.4 are not vacuous)
+  ok   9.5 · ⭐ across all 12 variant × duration cells, only the safe ones group
+  ok   9.6 · the fold sums the group's figure
+  ok   9.7 · ⛔ a member with NO figure raises the count and leaves the total intact
+  ok   9.8 · …and a NaN figure is refused the same way
+  ok   9.9 · the provider defers to that rule rather than re-deciding it
+
+presence-class: 83 passed, 0 failed  (of 83)
+presence-class: OK — the seal is for a win the player watched land, and nothing is marked delivered undelivered.

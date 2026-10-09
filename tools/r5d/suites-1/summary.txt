@@ -1,0 +1,86 @@
+0	10s	test:visual-pass-r5d	visual-pass-r5d: 43 passed, 0 failed
+0	1s	test:offline-neutral	OFFLINE NEUTRAL — all checks passed
+0	3s	test:visual-pass-r4j	visual-pass-r4j: 79 passed, 0 failed
+0	1s	test:visual-pass-r4k	visual-pass-r4k: 77 passed, 0 failed
+0	1s	test:journey-tickets	JOURNEY TICKETS — all 51 checks passed
+0	3s	test:red-anchors	red-anchors: 5026 passed, 0 failed
+0	3s	test:decomment	ALL PASS — 22 passed, 0 failed
+0	1s	test:hooks-order	hooks-order: 7 passed, 0 failed
+0	2s	test:ui-consistency	  ALL PASS — no new UI-consistency drift beyond the tracked baseline.
+0	1s	test:i18n	ALL PASS — en=2628 sw=2628 zh=2628 keys
+0	2s	test:journey-shell	JOURNEY SHELL — all 433 checks passed
+0	6s	test:simple-journey-flag	135 passed, 0 failed
+0	2s	test:eyebrow-roles	
+0	2s	test:type-scale	ALL PASS — 1415 source files, 189 money elements.
+0	2s	test:spacing-scale	spacing-scale: 10 passed, 0 failed · 455 inverted usages in 165 files
+0	1s	test:design-frozen	PASS — design primitives are frozen
+0	1s	test:css-vars-defined	PASS every var() reference resolves to a definition
+0	2s	test:stacking	137 passed, 0 failed
+0	1s	test:measure	ALL PASS — 727 tsx files
+0	2s	test:admin-charts	68 passed, 0 failed
+0	2s	test:betting-ink	ALL PASS — 27 passed, 0 failed
+0	6s	test:bridge	PASS — 727 tsx files, 20 colour families, 17 shadow rungs, 155 alpha classes probed
+0	1s	test:card-share	card-share: 31 passed, 0 failed
+0	2s	test:chart-one-home	ALL PASS — 30 passed, 0 failed (14 chart-shaped files · 12 members in the home · 9 named exemptions)
+0	1s	test:chat-focus-ring	16 passed, 0 failed
+0	1s	test:chip-contract	19 passed, 0 failed
+0	2s	test:criterion-i18n	criterion-i18n: 99 passed, 0 failed
+0	2s	test:density-contract	ALL PASS — 36 passed, 0 failed
+0	1s	test:enter-where-pressed	ENTER WHERE PRESSED — all checks passed
+0	4s	test:erasure	ALL PASS — 351 passed, 0 failed
+0	5s	test:failure-reasons	failure-reasons (with §8 + §9 + §10): 376 passed, 0 failed
+0	2s	test:featured-card	ALL PASS — featured-card: 82 passed, 0 failed
+0	3s	test:filter-language	filter-language: 303 assertions passed · 17 player + 16 admin rails · 27 discovered
+0	1s	test:gold-is-money	gold-is-money: 23 passed, 0 failed
+0	2s	test:hero-copy	hero-copy: 17 passed, 0 failed
+0	19s	test:house-bot-surfaces	ALL PASS — house-bot-surfaces: 74 passed, 0 failed
+0	1s	test:install-invite	install-invite: 51 passed, 0 failed
+0	4s	test:integrity	
+0	3s	test:journey-account	JOURNEY ACCOUNT — all 85 checks passed
+0	8s	test:journey-funnel	JOURNEY FUNNEL — all checks passed
+0	2s	test:landing-mine	landing-mine: 37 passed, 0 failed
+0	1s	test:layout-staleness	layout-staleness: 75 passed, 0 failed
+0	5s	test:lipa-qr	ALL PASS — OCEAN ENTERTAINMENT LIMITED · Lipa 7006 3747 · selcom-lipa-qr.d997c1d2.svg
+0	2s	test:m1-light	M1 — all checks passed
+0	1s	test:market-columns	market-columns: 25 passed, 0 failed
+0	2s	test:marketing-optout	marketing-optout: 121 passed, 0 failed
+0	2s	test:motion-ladder	12 passed, 0 failed
+0	2s	test:needle-host	[needle-host] 94 passed, 0 failed
+0	2s	test:one-sided	ALL PASS — one-sided markets
+0	1s	test:override-scope	market-override-scope: 20 passed, 0 failed
+0	0s	test:position-permalink	31 passed, 0 failed
+0	1s	test:presence-class	presence-class: 83 passed, 0 failed  (of 83)
+0	2s	test:privacy-notice	ALL PASS — 96 passed, 0 failed
+0	1s	test:proof-privacy	12 passed, 0 failed
+0	1s	test:refresh-cadence	34 passed, 0 failed
+0	2s	test:rule-honesty	PASS — 22 passed, 0 failed
+0	4s	test:sell-grace-truth	sell-grace-truth: 49 passed, 0 failed
+0	3s	test:sell-price-guard	SELL PRICE GUARD — all 54 checks passed
+0	1s	test:share-link-readable	19 passed, 0 failed
+0	1s	test:share-preview	ALL PASS — share preview
+0	1s	test:shell-boundary	shell-boundary: 15 passed, 0 failed
+0	1s	test:signoff	signoff: 25 passed, 0 failed
+0	1s	test:social-panel	ALL PASS — 53 passed, 0 failed
+0	2s	test:tap-target	30 passed, 0 failed
+0	1s	test:ticker-honesty	ticker-honesty: 117 assertions passed
+0	1s	test:timer-date	timer-date: 77 passed, 0 failed
+0	1s	test:updown-clock-guard	ALL PASS — 62 passed, 0 failed
+0	1s	test:updown-filter-sheet	updown-filter-sheet: 55 passed, 0 failed
+0	1s	test:updown-handover	ALL PASS — 117 passed, 0 failed
+0	1s	test:updown-positions-visible	updown-positions-visible: 29 passed, 0 failed
+0	2s	test:updown-pricing	✓ the multiplier a player is shown is the one the money path would pay.
+0	1s	test:updown-push	E-57 · Up & Down push — 34 passed, 0 failed
+0	1s	test:updown-result-announce	updown-result-announce: 39 passed, 0 failed
+0	1s	test:updown-result-clock	29 passed, 0 failed
+0	1s	test:updown-source-class	E-53 · updown source class — 40 passed, 0 failed
+0	2s	test:updown-void-copy	✅ updown-void-copy: 49 passed, 0 failed
+0	2s	test:updown-window	✅ updown-window: 49 passed, 0 failed
+0	1s	test:visual-pass-r3c	visual-pass-r3c: 70 passed, 0 failed
+0	1s	test:visual-pass-r4c	visual-pass-r4c: 38 passed, 0 failed
+0	3s	test:visual-pass-r4d	visual-pass-r4d: 63 passed, 0 failed
+0	2s	test:visual-pass-r4e	visual-pass-r4e: 68 passed, 0 failed
+0	1s	test:visual-pass-r4h	visual-pass-r4h: 81 passed, 0 failed
+0	3s	test:visual-pass-r4i	visual-pass-r4i: 128 passed, 0 failed
+0	6s	test:wallet-freeze	wallet-freeze: 73 passed, 0 failed
+0	1s	test:wallet-reach	wallet-reach: 84 passed, 0 failed
+DONE

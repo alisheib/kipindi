@@ -1,0 +1,31 @@
+The Needle (R3-B follow-up): the host's rest glide advances whole engine steps per frame — no judder at top speed
+
+Lock turn M7 ran test:needle-rest in a browser on the merged tip: 49/50. §1 "no teleport (change of step between
+frames ≤ 6 px)" measured 6.50, on a 158px glide that otherwise passed (settles in 800ms, overshoot 0, max step 10.03).
+
+- Cause, worked out on the vendored engine, not guessed. The engine moves the disc in fixed 8.33ms steps and carries
+  leftover time between frames, and the host fed it each frame's real interval. When the leftover sits on a step
+  boundary, frames a few tenths of a millisecond long or short alternate three steps then one: 3.3 → 10.0px at peak,
+  a change of up to 6.72. Replayed over 2,520 jittered runs, the old host went over 6px in 355 of them (worst 6.72,
+  worst step 10.03 — M7's figures). The spring's own motion at an even 60fps changes by at most 2.96. A dropped frame
+  looks different (a ~33ms interval, velocity unchanged). It surfaced now because R3-B's clearance lengthened the
+  glide: the artefact passes 6px from about 142px.
+- needle-rest.ts (newGlideClock, glideFrame) and needle.tsx's tick, for the host's own rest glide only (a player's
+  throw keeps real-time stepping). The first frame sets the time base with the leftover centred. After that the
+  engine advances round(min(this interval, the previous one) / 8.33) whole steps: 2 per frame at 60Hz, 1 at 120Hz,
+  whatever the jitter. A single dropped frame lengthens the glide by a frame instead of jumping.
+- Also fixed: grabbing the disc mid-glide (pointer, bounce tap, Escape, Space/Enter, arrows) left the glide flag set,
+  so the player's throw then landed with no haptic and no rest check. Each grab now calls endGlide().
+- needle-rest §1's failure detail prints the two steps and their two frame intervals, so the next failure says which
+  kind it is. The 6px limit is unchanged.
+
+Replayed with the fix, 2,520 runs each, at 60Hz, 16.54ms, 16.80ms, 90, 120, 144 and 50Hz with ±0.3/1/2ms jitter: 158px
+worst change 3.66, 0 over 6px; 246px (full reach) worst 5.71, 0 over 6px; durations ≤ 1.11s, overshoot 0, landing on
+target; one dropped frame anywhere ≤ 3.14 (old host 10.79). Guard: test:needle-host §5 (68/68) — the old host's
+judder as a plant, the fixed host across rates and jitter, a dropped frame, and pins for the tick's condition and the
+grab handlers.
+
+On the tip: needle-host 68, journey-shell 435, stacking 139, hooks-order, decomment 22, design-frozen, red-anchors
+4925; needle-rest syntax ok. The browser re-run of needle-rest is queued under the lock.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>

@@ -1,0 +1,56 @@
+Measure-system guard (DESIGN_AUTHORITY B7)
+  root: F:/kipindi-r4k/
+
+  PASS --w-console defined exactly once
+  PASS --w-console = 1600px
+  PASS --w-board defined exactly once
+  PASS --w-board = 1280px
+  PASS --w-reading defined exactly once
+  PASS --w-reading = 1080px
+  PASS --w-form defined exactly once
+  PASS --w-form = 640px
+  PASS --w-receipt defined exactly once
+  PASS --w-receipt = 560px
+  PASS --w-auth defined exactly once
+  PASS --w-auth = 1152px
+  PASS --w-field defined exactly once
+  PASS --w-field = 460px
+  PASS --field-max defaults to none
+  PASS .field-measure reads --field-max
+  PASS no NEW hand-typed page width (>=500px) outside the ratchet list
+  (ratchet holds 5 file(s) — the list may only shrink)
+  PASS src/app/updown/page.tsx still states a page wrapper this guard can read
+  PASS src/app/updown/page.tsx wrapper max-w-board uses the house gutter, not a flat px-4
+  PASS src/app/updown/page.tsx wrapper max-w-board uses the house gutter, not a flat px-4
+  PASS src/app/updown/loading.tsx still states a page wrapper this guard can read
+  PASS src/app/updown/loading.tsx wrapper max-w-board uses the house gutter, not a flat px-4
+  PASS src/app/updown/history/page.tsx still states a page wrapper this guard can read
+  PASS src/app/updown/history/page.tsx wrapper max-w-reading uses the house gutter, not a flat px-4
+  PASS src/app/updown/history/loading.tsx still states a page wrapper this guard can read
+  PASS src/app/updown/history/loading.tsx wrapper max-w-reading uses the house gutter, not a flat px-4
+  PASS every page and its loading.tsx state the same tier
+  (tier parity compared 38 page/loading pair(s); 2 unverifiable outside /admin: /fairness (page=— loading=reading), / (page=— loading=—))
+  PASS admin/layout.tsx caps the content column
+  PASS input.tsx carries .field-measure
+  PASS select.tsx carries .field-measure
+  PASS textarea.tsx carries .field-measure
+  PASS date-select.tsx carries .field-measure
+  PASS duration-input.tsx carries .field-measure
+  PASS password-input.tsx carries .field-measure
+  PASS otp-input.tsx stays exempt from .field-measure
+  PASS datetime-range-filter.tsx stays exempt from .field-measure
+  PASS time-select.tsx stays exempt from .field-measure
+  PASS no padding/width on a <PageContainer> call site
+  PASS no page renders its own <main> — the shell owns that landmark
+  PASS the shell still renders the skip-link target
+  PASS the ADMIN shell renders the landmark too — the console does not use AppShell
+  PASS …and the admin shell carries its own skip-to-content link
+  PASS 8. the hero still pads its words p-5 lg:p-6 — the edge the cards under it take
+  PASS 8. /help: the contact cards and the quick links pad on the hero's edge, as the FAQ does
+  PASS 8. /fairness: How it works pads on the hero's edge
+  PASS 8. /agent: the three fact tiles pad as the sections under them do (p-4 over the glass box's 14px)
+  PASS 8. the back link's chevron hands back its side bearing, so its tip sits on the edge the link heads
+  PASS 8. ⭐ CONTROL — the bearing derivation reads the glyph (a 3px bearing for the point at x9)
+
+ALL PASS — 719 tsx files
+

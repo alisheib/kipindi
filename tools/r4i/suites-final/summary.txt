@@ -1,0 +1,104 @@
+# 2026-10-09T08:11:03.312Z · 102 scripts
+test:visual-pass-r4i exit=0 2s :: visual-pass-r4i: 128 passed, 0 failed
+test:campaign-gates exit=1 5s :: campaign-gates: 64 passed, 1 failed
+test:landing-mine exit=0 2s :: landing-mine: 37 passed, 0 failed
+test:route-census exit=0 1s :: route-census: OK — every client-facing route has a ruling, and every ruling has a route
+test:sell-grace-truth exit=0 5s :: sell-grace-truth: 49 passed, 0 failed
+test:cert-c3 exit=0 1s :: cert-c3 (notification truth): 1529 passed, 0 failed
+test:kyc-copy-truth exit=0 1s :: kyc-copy-truth: 431 passed, 0 failed
+test:implicit-submit exit=0 3s :: IMPLICIT SUBMIT — all checks passed
+test:enter-where-pressed exit=0 1s :: ENTER WHERE PRESSED — all checks passed
+test:popup-fit exit=0 1s :: popup-fit: OK — 78 popups walked, 6 carry a clip and every one of those carries a reason
+test:timer-date exit=0 1s :: timer-date: 77 passed, 0 failed
+test:type-scale exit=0 3s :: ALL PASS — 1402 source files, 189 money elements.
+test:ui-consistency exit=0 2s ::   ALL PASS — no new UI-consistency drift beyond the tracked baseline.
+test:red-anchors exit=0 3s :: red-anchors: 4989 passed, 0 failed
+test:decomment exit=0 4s :: ALL PASS — 22 passed, 0 failed
+test:hooks-order exit=0 1s :: all green
+test:i18n exit=0 1s :: ALL PASS — en=2628 sw=2628 zh=2628 keys
+test:journey-shell exit=0 3s :: JOURNEY SHELL — all 435 checks passed
+test:journey-account exit=0 3s :: JOURNEY ACCOUNT — all 85 checks passed
+test:journey-tickets exit=0 2s :: JOURNEY TICKETS — all 51 checks passed
+test:simple-journey-flag exit=0 6s :: 135 passed, 0 failed
+test:money-format exit=0 2s :: money-format: 69 passed, 0 failed
+test:tap-target exit=0 2s :: 30 passed, 0 failed
+test:eyebrow-roles exit=0 1s :: ✅ 644 sites, every one accounted for.
+test:visual-pass-r3c exit=0 2s :: visual-pass-r3c: 70 passed, 0 failed
+test:visual-pass-r4c exit=0 1s :: visual-pass-r4c: 38 passed, 0 failed
+test:visual-pass-r4d exit=0 2s :: visual-pass-r4d: 63 passed, 0 failed
+test:visual-pass-r4e exit=0 2s :: visual-pass-r4e: 68 passed, 0 failed
+test:rg-doors exit=0 2s :: rg-doors: 113 passed, 0 failed
+test:rg-policy exit=0 1s :: rg-policy: 23 passed, 0 failed
+test:rg-race exit=0 4s :: rg-limit-race: 12 passed, 0 failed
+test:rg-limit-change exit=0 2s :: ALL PASS — 24 passed, 0 failed
+test:rg-cash-incentive exit=0 1s :: [email] sendEmailToUser withheld — money mail to an unconfirmed address for user prop_locked… (user.email=p***@t.tz)
+test:failure-reasons exit=0 6s :: [email] sendEmailToUser skipped — no email for user fr_player… (user.email=null, phone=+25579…)
+test:labels exit=0 5s :: ALL PASS — 3 locales × 2 products, 1404 files scanned, 11/11 private maps
+test:notifications-page exit=0 1s :: notifications page (the door the bell cannot be) — 49 passed, 0 failed
+test:one-sided exit=0 2s :: ALL PASS — one-sided markets
+test:hero-copy exit=0 2s :: hero-copy: 17 passed, 0 failed
+test:hero-contract exit=0 1s :: PASS — the hero states nothing it cannot prove
+test:discovery-contract exit=0 1s :: ✅ discovery contract: all assertions passed
+test:featured-card exit=0 2s :: ALL PASS — featured-card: 82 passed, 0 failed
+test:design-frozen exit=0 1s :: PASS — design primitives are frozen
+test:motion-ladder exit=0 2s :: 12 passed, 0 failed
+test:reduce-motion exit=0 2s :: M6 — all checks passed
+test:keyframes exit=0 1s :: KEYFRAME REGISTRY — all checks passed
+test:stacking exit=0 2s :: 139 passed, 0 failed
+test:needle-host exit=0 2s :: [needle-host] 94 passed, 0 failed
+test:position-permalink exit=0 1s :: 31 passed, 0 failed
+test:withdrawn-features exit=0 3s :: [house-bot] the feature is WITHDRAWN — the engine is not started and no timer is armed (04 F2)
+test:updown-bell exit=0 1s :: Up & Down bell rows (owner decision 2026-08-22) — 105 passed, 0 failed
+test:updown-push exit=0 1s :: E-57 · Up & Down push — 34 passed, 0 failed
+test:sms-cost-guard exit=0 4s :: sms-cost-guard: 111 passed, 0 failed
+test:watchlist exit=0 2s :: [email] sendEmailToUser skipped — no email for user wl_c… (user.email=null, phone=+25594…)
+test:selection-closed exit=0 2s :: [email] sendEmailToUser withheld — money mail to an unconfirmed address for user usr_sc_carol… (user.email=c***@test.tz)
+test:markets exit=0 2s :: [email] sendEmailToUser skipped — no email for user usr_mkt_comp1… (user.email=null, phone=+25571…)
+test:mixed-flow exit=0 2s :: [email] sendEmailToUser withheld — money mail to an unconfirmed address for user usr_mf_player… (user.email=m***@test.tz)
+test:scenario-coverage exit=0 3s :: scenario-coverage: 19 passed, 0 failed
+test:redis-failopen exit=0 6s :: [email] sendEmailToUser skipped — no email for user rf_bet_19… (user.email=null, phone=+25588…)
+test:emergency exit=0 2s :: [email] sendEmailToUser skipped — no email for user ev_mod… (user.email=null, phone=+25595…)
+test:erasure exit=0 4s :: ALL PASS — 351 passed, 0 failed
+test:dsar-secrets exit=0 2s :: ────────────────────────────────────────────────────────────────
+test:kyc exit=0 21s :: ALL KYC-SECURITY SCENARIOS PASS — 44 passed, 0 failed
+test:kyc-approved-copy exit=0 1s :: ALL PASS — 87 passed, 0 failed
+test:kyc-at-withdrawal exit=0 14s :: [email] sendEmailToUser withheld — money mail to an unconfirmed address for user usr_da5c87c5e3… (user.email=l***@t.tz)
+test:house-bot-seam exit=0 2s :: [email] sendEmailToUser skipped — no email for user usr_hb_20724_5… (user.email=null, phone=+25579…)
+test:house-bot-surfaces exit=0 20s :: ALL PASS — house-bot-surfaces: 74 passed, 0 failed
+test:house-bot-holder-lifecycle exit=0 3s :: ALL PASS — house-bot-holder-lifecycle: 16 passed, 0 failed
+test:lifecycle-e2e exit=0 2s :: [email] sendEmailToUser withheld — money mail to an unconfirmed address for user usr_e2e_player… (user.email=p***@test.tz)
+test:operator-error exit=0 2s :: 92 passed · 0 failed
+test:journey-funnel exit=0 7s :: JOURNEY FUNNEL — all checks passed
+test:betting-ink exit=0 1s :: ALL PASS — 27 passed, 0 failed
+test:filter-language exit=0 2s :: all green
+test:feedback-law exit=0 1s :: feedback-law: OK — one answer per class of action, and every refusal names its way out.
+test:audit-gap exit=0 1s :: ──────────────────────────────────────────────────────────────────────────────
+test:client-graph-safe exit=0 1s :: ALL PASS — client-graph-safe: 5 passed, 0 failed
+test:dead-css exit=1 4s :: DEAD CSS — 1 check(s) FAILED
+test:css-vars-defined exit=0 2s :: css-vars-defined: 299 references checked, 0 undefined.
+test:contrast exit=0 2s :: contrast-audit: 118 checks · 0 gate failure(s) (decorative dividers are WCAG 1.4.11-exempt)
+test:gold-is-money exit=0 1s :: gold-is-money: OK — identity is metallic, money is gold, and the two do not overlap.
+test:density-contract exit=0 2s :: ALL PASS — 36 passed, 0 failed
+test:measure exit=0 1s :: ALL PASS — 718 tsx files
+test:spacing-scale exit=0 1s :: spacing-scale: 10 passed, 0 failed · 457 inverted usages in 165 files
+test:tokens exit=0 1s :: ALL PASS — 6 css files, 48 guarded tokens
+test:orphans exit=1 11s :: ──────────────────────────────────────────────────────────────────────
+test:house-bot-disclosure exit=4 57s :: !! FLOOR — test:house-bot-disclosure ran 116 assertion(s), fewer than the 118 a green run printed. Cases that stop running are not cases that pass.
+red:campaign-gates exit=1 4s ::   UI.3 · THE KIT'S ADDITIONS ARE ADDITIVE — the hard arm keeps `{ tier: 'hard'; typedWord: string }` and gains only an optional `typedInputMode?: 'numeric'`; th
+red:implicit-submit exit=0 6s :: RED CONTROL — 61/61 caught · 1/1 green held
+red:sell-grace-truth exit=0 55s :: 155/155 caught
+red:one-sided exit=0 98s :: (Use `node --trace-deprecation ...` to show where the warning was created)
+red:motion-ladder exit=0 29s :: 6/6 mutations caught
+red:hero-copy exit=0 3s :: red:hero-copy: 27 caught, MISSED = 0
+red:journey-account exit=0 2s :: RED CONTROL — 48/48 caught · all 97 proofs held
+red:updown-bell exit=0 13s :: tree restored + verified byte-identical · 7/7 defects caught
+red:updown-push exit=0 7s :: tree restored · 5/5 defects caught
+red:labels exit=0 72s :: 12/12 mutations caught — every file restored byte-for-byte.
+red:failure-reasons exit=1 148s ::   ✗ rg-lockout-loses-its-reason — HARNESS ERROR: anchor not found
+red:enter-where-pressed exit=0 15s :: RED CONTROL — 103/103 caught
+red:position-permalink exit=0 13s :: 11/11 mutations caught — every file restored byte-for-byte.
+red:journey-funnel exit=0 157s :: RED CONTROL — 26/26 caught
+red:simple-journey-flag exit=0 9s :: 40/40 caught
+red:sms-cost-guard exit=0 343s :: red:sms-cost-guard — 62/62 defects caught on their own assertion
+red:route-census exit=0 6s :: (Use `node --trace-deprecation ...` to show where the warning was created)
+DONE

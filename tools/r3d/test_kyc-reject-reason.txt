@@ -1,0 +1,72 @@
+﻿PASS prisma schema still declares enum KycRejectReason
+PASS the enum has members
+PASS humanizeRejectReason still exists
+PASS humanizeRejectReason returns null (not the raw enum) for anything unmapped
+PASS BLURRY_DOC is mapped to a dictionary key
+PASS DETAILS_MISMATCH is mapped to a dictionary key
+PASS EXPIRED_ID is mapped to a dictionary key
+PASS UNDERAGE is mapped to a dictionary key
+PASS SANCTIONED is mapped to a dictionary key
+PASS DUPLICATE_IDENTITY is mapped to a dictionary key
+PASS OTHER has NO label — the officer's note is the message
+PASS labels reference at least 5 dictionary keys
+PASS en.profile.rejectBlurry is a non-empty string
+PASS en.profile.rejectNidaMismatch is a non-empty string
+PASS en.profile.rejectExpired is a non-empty string
+PASS en.profile.rejectUnderage is a non-empty string
+PASS en.profile.rejectDuplicate is a non-empty string
+PASS en.profile.rejectSanctioned is a non-empty string
+PASS sw.profile.rejectBlurry is a non-empty string
+PASS sw.profile.rejectNidaMismatch is a non-empty string
+PASS sw.profile.rejectExpired is a non-empty string
+PASS sw.profile.rejectUnderage is a non-empty string
+PASS sw.profile.rejectDuplicate is a non-empty string
+PASS sw.profile.rejectSanctioned is a non-empty string
+PASS zh.profile.rejectBlurry is a non-empty string
+PASS zh.profile.rejectNidaMismatch is a non-empty string
+PASS zh.profile.rejectExpired is a non-empty string
+PASS zh.profile.rejectUnderage is a non-empty string
+PASS zh.profile.rejectDuplicate is a non-empty string
+PASS zh.profile.rejectSanctioned is a non-empty string
+PASS dictionary key profile.rejectNidaMismatch is actually reachable from humanizeRejectReason
+PASS dictionary key profile.rejectBlurry is actually reachable from humanizeRejectReason
+PASS dictionary key profile.rejectExpired is actually reachable from humanizeRejectReason
+PASS dictionary key profile.rejectDuplicate is actually reachable from humanizeRejectReason
+PASS dictionary key profile.rejectUnderage is actually reachable from humanizeRejectReason
+PASS dictionary key profile.rejectSanctioned is actually reachable from humanizeRejectReason
+PASS reviewKyc accepts a rejectCode
+PASS reviewKyc stores the passed code, not a literal OTHER
+PASS the workstation reject action passes rejectCode through
+PASS the audit payload records the category that was stored
+PASS the rail's reason codes carry enum members
+PASS officer code -> BLURRY_DOC is a real KycRejectReason member
+PASS officer code -> DETAILS_MISMATCH is a real KycRejectReason member
+PASS officer code -> EXPIRED_ID is a real KycRejectReason member
+PASS officer code -> OTHER is a real KycRejectReason member
+PASS officer code -> OTHER is a real KycRejectReason member
+PASS officer code -> UNDERAGE is a real KycRejectReason member
+PASS officer code -> SANCTIONED is a real KycRejectReason member
+PASS officer code -> DUPLICATE_IDENTITY is a real KycRejectReason member
+PASS suspected_fraud stays OTHER — never tell a suspected fraudster what we suspect
+PASS every rail code parses as { text, code }
+PASS document_unreadable (BLURRY_DOC) carries no English sentence — the category speaks
+PASS mismatch (DETAILS_MISMATCH) carries no English sentence — the category speaks
+PASS expired (EXPIRED_ID) carries no English sentence — the category speaks
+PASS underage (UNDERAGE) carries no English sentence — the category speaks
+PASS sanctioned (SANCTIONED) carries no English sentence — the category speaks
+PASS duplicate_identity (DUPLICATE_IDENTITY) carries no English sentence — the category speaks
+PASS a categorised rejection no longer demands free text
+PASS an UNCATEGORISED rejection still has to carry words
+PASS rejectNote is stored NULL rather than an empty string
+PASS the automatic NIDA rejection only stores its English text for OTHER
+PASS the rejection email falls back to an English category, never a blank line
+PASS REJECT_EMAIL_TEXT covers BLURRY_DOC
+PASS REJECT_EMAIL_TEXT covers DETAILS_MISMATCH
+PASS REJECT_EMAIL_TEXT covers EXPIRED_ID
+PASS REJECT_EMAIL_TEXT covers UNDERAGE
+PASS REJECT_EMAIL_TEXT covers SANCTIONED
+PASS REJECT_EMAIL_TEXT covers DUPLICATE_IDENTITY
+PASS REJECT_EMAIL_TEXT covers OTHER
+PASS the sanctions email copy still names no list
+
+ALL PASSED — 70 passed, 0 failed

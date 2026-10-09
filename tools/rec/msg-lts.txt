@@ -1,0 +1,23 @@
+scripts: nine scripts stop defaulting to production - test:live-target-safe green again
+
+test:live-target-safe has been red on main since 317656ff (2026-09-23). Its ratchet pinned at five
+the standalone scripts that fall back to a production URL when no target is named, and eight more
+were added in that shape, to thirteen. Three of them sign in: detail-order-and-hints and
+qa/landing-ten as the QA player mobile01, so a bare run of either signed in on production without
+anyone choosing it - the incident the test exists for; pager-wallet-shots as a QA-fleet player
+through the shared harness, which already defaulted to loopback, so it disagreed with itself.
+
+- cls-budget, detail-order-and-hints, fairness-phone, focus-and-fit, ghost-landing, signup-funnel,
+  pager-wallet-shots, qa/landing-ten and qa/landing-v3/og-prod: the default target is now
+  http://localhost:3001 (the shared harness's own, and the test's safe line); production is
+  reached by naming it. Every shell caller already names BASE; the package.json entries are bare.
+- The four left are read-only probes of the live site whose own headers say so: bundle-css-probe
+  (production only under --live), outcome-parity, perf-smoke and timer-date-shots (two live market
+  ids). The ceiling goes from 5 to 4 in the same change, the ratchet's own rule.
+- docs/LANDING-TEN.md: its "the whole matrix, against production" line now names BASE.
+
+Proof, on 75487060: test:live-target-safe 8/8, exit 0; with one production default put back it
+reads 5 against 4 and exits 1 (the file restored byte for byte after); test:featured-card (reads
+landing-ten's source) 72/72; landing-ten --compile exits 0; node --check on all nine scripts.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>

@@ -1,0 +1,27 @@
+    [500, …], "the code comes first").
+64. **WP12's 333 tiles, read one by one — what they found and what was done (S6 WP12, for every player).** Eight
+    readers opened every tile; each finding was checked against the code, and against the pixels where a reader had
+    estimated a position. Fixed, LIVE `{FIXES}`: (a) `/profile/responsible-gambling` failed to hydrate on every load, in
+    English and Swahili, in all three engines — the kit Field read its bounds from a child that the server's Flight
+    client handed over inside a lazy wrapper, so the server's HTML had no "Min 5 · Max 120" where the browser's did (in
+    a real browser, on the parent 4 of 4 loads failed; on the fix 4 of 4 clean); (b) dates in English month words for
+    Swahili and Chinese readers on 17 player surfaces — 26 calls onto eat-day's localized formatters, which now read
+    "—" for a missing instant instead of throwing the page. It ships now, not with S12: it shows the dictionary's own
+    month words (point 3 holds back corrections to written words); (c) six visual items — the frozen-wallet notice drew
+    no box, the rail's edge tab lost its focus ring off-screen (and `qa:journey-shell` §6 now requires every ring on the
+    screen: it had read PASS over this one), the hub card clipped its first row's ring at the corners, the Needle row
+    sat a size small, wallet names broke across lines, and the withdraw balance was set in the display face (§M4).
+    Held for S12 under point 3: Swahili "masaa 1 yamebaki" → "saa 1 imebaki" (S4-COPY-AUDIT; branch
+    `vodacom-s12-timeleft`). Checked and not bugs: a held capsule "at the edge" (measured at x=373, as every capsule),
+    a player's empty Matokeo (the archive's designed five-minute cache), the Needle's places and stand-downs. **Everything
+    else the readers found is being fixed, not deferred** — the owner's rule of 2026-10-08: *"only perfect visual and
+    logical results are accepted … visual perfection is above anything"*: the featured card's top row in Swahili, the
+    hub's INAKUJA row and the guest Msaada line, the two-column hub's bands, the channels panel's ×, the ticket payout
+    cell, empty-state and title orphans, CJK breaks, clipped filter rows, the header's gutter at 320, the money pages'
+    blank space, the chat bubble's reach, and the rest (four groups, one branch each), then re-tiled and read again
+    until a read finds nothing. One more real bug the drives found: the kit Modal's opening took focus back from a
+    field already chosen in the dialog (qa:journey-preview §5, 2 of 3 runs) — fixed on `vodacom-modal-focus`. S6
+    closes after the pass.
+
+
+## §0g · S4 (2026-10-01)

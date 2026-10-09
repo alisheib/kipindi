@@ -1,0 +1,354 @@
+﻿RED CONTROL — journey-shell's defects, planted in memory
+
+  ok   baseline · the shipped modules and source pass all 432 checks before anything is planted
+  ok   PLANT LANDED · /updown/history maps to Juu/Chini — its row moved below /updown
+  ok     └─ fires: ^1\.route\.\/updown\/history ·
+  ok   PLANT LANDED · /account is left unmapped
+  ok     └─ fires: ^1\.roundtrip\.account ·
+  ok   PLANT LANDED · a hub route returns null
+  ok     └─ fires: ^1\.route\.\/results ·
+  ok   PLANT LANDED · the opt-out row matched as a bare prefix (A18: /settings is claimed)
+  ok     └─ fires: ^1\.segment\.\/settings ·
+  ok   PLANT LANDED · aria-current page for section membership (A12)
+  ok     └─ fires: ^1\.aria\.
+  ok   PLANT LANDED · a second resolver, written beside the classic rail
+  ok     └─ fires: ^1\.one\.definer ·
+  ok   PLANT LANDED · a new route ships with no tab decision
+  ok     └─ fires: ^1\.census ·
+  ok   PLANT LANDED · the /account page is on disk and an AHEAD_OF_DISK exemption for it stays
+  ok     └─ fires: ^1\.census\.ahead ·
+  ok   PLANT LANDED · the tabs leave the deck's order
+  ok     └─ fires: ^1\.tabs ·
+  ok   PLANT LANDED · a tab names a glyph the set does not define
+  ok     └─ fires: ^1\.glyphs ·
+  ok   PLANT LANDED · the exported guard ignores the dictionaries
+  ok     └─ fires: ^1\.guard\.c ·
+  ok   PLANT LANDED · isJourneySurface prefix-matches /markets
+  ok     └─ fires: ^2\.deny\.\/markets ·
+  ok   PLANT LANDED · isJourneySurface drops /
+  ok     └─ fires: ^2\.allow\.\/ ·
+  ok   PLANT LANDED · the commit gate forgets Up & Down rounds
+  ok     └─ fires: ^2\.golden\.\/updown\/udr_1 ·
+  ok   PLANT LANDED · surfaces.ts gains an import
+  ok     └─ fires: ^2\.pure\.src\/lib\/surfaces\.ts ·
+  ok   PLANT LANDED · active-tab.ts gains a client directive
+  ok     └─ fires: ^2\.pure\.src\/lib\/nav\/active-tab\.ts ·
+  ok   PLANT LANDED · viewer-doors.ts reads the proposals config itself
+  ok     └─ fires: ^2\.pure\.src\/lib\/journey\/viewer-doors\.ts ·
+  ok   PLANT LANDED · isMoneySurface loses its export (the red:install-invite anchor)
+  ok     └─ fires: ^2\.anchor ·
+  ok   PLANT LANDED · the pill shows during a break
+  ok     └─ fires: ^3\.break ·
+  ok   PLANT LANDED · the pill shows for a held wallet
+  ok     └─ fires: ^3\.held ·
+  ok   PLANT LANDED · the capsule hides at zero
+  ok     └─ fires: ^3\.zero ·
+  ok   PLANT LANDED · the pill shows on the deposit screen
+  ok     └─ fires: ^3\.deposit ·
+  ok   PLANT LANDED · the agent door loses its standing clause
+  ok     └─ fires: ^4\.agent\.standing ·
+  ok   PLANT LANDED · staffConsole uses ADMIN_CONSOLE_ROLES
+  ok     └─ fires: ^4\.staff\.SUPPORT ·
+  ok   PLANT LANDED · app-shell's invite door drifts from the shared formula
+  ok     └─ fires: ^4\.shell\.invite ·
+  ok   PLANT LANDED · app-shell's paid half drifts from the shared formula
+  ok     └─ fires: ^4\.shell\.paid ·
+  ok   PLANT LANDED · app-shell's agent door drifts from the shared formula
+  ok     └─ fires: ^4\.shell\.agent ·
+  ok   PLANT LANDED · the classic chrome's proposals rule drifts
+  ok     └─ fires: ^4\.shell\.proposals ·
+  ok   PLANT LANDED · a client file imports viewer-doors.ts
+  ok     └─ fires: ^4\.server\.only ·
+  ok   PLANT LANDED · a client file reaches viewer-doors.ts two hops away
+  ok     └─ fires: ^4\.server\.only ·
+  ok   PLANT LANDED · a server file imports journey-on.ts
+  ok     └─ fires: ^5\.importers ·
+  ok   PLANT LANDED · a server file loads journey-on.ts two hops away
+  ok     └─ fires: ^5\.importers ·
+  ok   PLANT LANDED · the server snapshot answers true
+  ok     └─ fires: ^5\.server ·
+  ok   PLANT LANDED · the flag stays up after its cleanup
+  ok     └─ fires: ^5\.cleanup ·
+  ok   PLANT LANDED · journey-on.ts gains a client directive
+  ok     └─ fires: ^5\.nodirective ·
+  ok   PLANT LANDED · JourneyFlag's effect loses its cleanup
+  ok     └─ fires: ^5\.component ·
+  ok   PLANT LANDED · JourneyFlag mounted for everyone
+  ok     └─ fires: ^5\.mount ·
+  ok   PLANT LANDED · the snapshot ignores the shell's mark
+  ok     └─ fires: ^5\.mark ·
+  ok   PLANT LANDED · the shell's mark written for every request
+  ok     └─ fires: ^5\.mark\.mount ·
+  ok   PLANT LANDED · shell-mark.ts gains a client directive
+  ok     └─ fires: ^5\.mark\.pure ·
+  ok   PLANT LANDED · the journey flag mounted for every request (WP7)
+  ok     └─ fires: ^5\.mount ·
+  ok   PLANT LANDED · the Needle stands down on a journey page for every reader
+  ok     └─ fires: ^11\.needle ·
+  ok   PLANT LANDED · the Needle's gate forgets the flag in its dependencies
+  ok     └─ fires: ^11\.needle\.deps ·
+  ok   PLANT LANDED · the channels panel's eligibility drops the journey term
+  ok     └─ fires: ^11\.channels\.eligible ·
+  ok   PLANT LANDED · the channels panel's render guard drops the journey term
+  ok     └─ fires: ^11\.channels\.render ·
+  ok   PLANT LANDED · the channels panel's term covers every page
+  ok     └─ fires: ^11\.channels\.term ·
+  ok   PLANT LANDED · the channels panel reads the flag's attribute during render
+  ok     └─ fires: ^11\.reads\.channels ·
+  ok   PLANT LANDED · the chat bubble stands down on a journey page for every reader
+  ok     └─ fires: ^11\.chat ·
+  ok   PLANT LANDED · the chat clears the conversation on a journey page
+  ok     └─ fires: ^11\.chat\.history ·
+  ok   PLANT LANDED · the chat's HIDE_ON widened
+  ok     └─ fires: ^11\.hideon\.chat ·
+  ok   PLANT LANDED · the channels panel's HIDE_ON widened
+  ok     └─ fires: ^11\.hideon\.channels ·
+  ok   PLANT LANDED · the analytics consent prompt withheld from journey viewers
+  ok     └─ fires: ^11\.consent ·
+  ok   PLANT LANDED · the email-verify bar mounted again
+  ok     └─ fires: ^11\.emailbar ·
+  ok   PLANT LANDED · AppShell imports the flag eagerly
+  ok     └─ fires: ^11\.flag\.lazy ·
+  ok   PLANT LANDED · a classic layout component loads the flag
+  ok     └─ fires: ^11\.flag\.lazy ·
+  ok   PLANT LANDED · a store that keeps the last viewer's count across a sign-in (critic G1)
+  ok     └─ fires: ^6\.viewer\.
+  ok   PLANT LANDED · the switch never stops the last viewer's poll
+  ok     └─ fires: ^6\.viewer\.
+  ok   PLANT LANDED · the gate shows whatever was read last, to whoever asks
+  ok     └─ fires: ^6\.gate ·
+  ok   PLANT LANDED · an interval in the hub's mode
+  ok     └─ fires: ^6\.once\.nointerval ·
+  ok   PLANT LANDED · the hub's row reads on every pushed arrival (A1: an inbox change only)
+  ok     └─ fires: ^6\.once\.arrived ·
+  ok   PLANT LANDED · a guest polls
+  ok     └─ fires: ^6\.guest\.
+  ok   PLANT LANDED · the counter polls a hidden tab
+  ok     └─ fires: ^6\.poll\.hidden ·
+  ok   PLANT LANDED · the jitter is dropped
+  ok     └─ fires: ^6\.poll\.jitter ·
+  ok   PLANT LANDED · a failed read is retried sooner than the cadence allows
+  ok     └─ fires: ^6\.poll\.fail ·
+  ok   PLANT LANDED · the hook keeps its first viewer for life
+  ok     └─ fires: ^6\.hook\.viewer ·
+  ok   PLANT LANDED · the hook counts the capped list, not the server's total
+  ok     └─ fires: ^6\.hook\.read ·
+  ok   PLANT LANDED · the hook loses its client directive
+  ok     └─ fires: ^6\.hook\.client ·
+  ok   PLANT LANDED · an interval in the hook
+  ok     └─ fires: ^6\.nointerval ·
+  ok   PLANT LANDED · the counter loads a module
+  ok     └─ fires: ^2\.pure\.src\/lib\/journey\/unread-count\.ts ·
+  ok   PLANT LANDED · a server file loads the hook
+  ok     └─ fires: ^6\.mount ·
+  ok   PLANT LANDED · the classic bell loads the journey's hook
+  ok     └─ fires: ^6\.bell\.apart ·
+  ok   PLANT LANDED · the bell's cadence moves and the counter keeps the old one
+  ok     └─ fires: ^6\.cadence ·
+  ok   PLANT LANDED · the bell renames its arrival broadcast and the counter keeps the old name
+  ok     └─ fires: ^6\.events ·
+  ok   PLANT LANDED · the + shows below 360
+  ok     └─ fires: ^7\.plus ·
+  ok   PLANT LANDED · the old 12px gutter returns
+  ok     └─ fires: ^7\.gutter ·
+  ok   PLANT LANDED · the classic bar's 24px gutter returns from 640
+  ok     └─ fires: ^7\.gutter ·
+  ok   PLANT LANDED · the page's 32px step from 1024 is lost
+  ok     └─ fires: ^7\.gutter ·
+  ok   PLANT LANDED · a 360 step comes back to the row
+  ok     └─ fires: ^7\.gutter ·
+  ok   PLANT LANDED · the pages move their edge and the header keeps the old one
+  ok     └─ fires: ^7\.gutter ·
+  ok   PLANT LANDED · the journey's home steps to the classic 24 at 768
+  ok     └─ fires: ^7\.landing-edge ·
+  ok   PLANT LANDED · the journey's home loses its 32px step from 1024
+  ok     └─ fires: ^7\.landing-edge ·
+  ok   PLANT LANDED · the home's edge rule loses its journey scope
+  ok     └─ fires: ^7\.landing-edge ·
+  ok   PLANT LANDED · the shell's mark is renamed under the rule that reads it
+  ok     └─ fires: ^7\.landing-edge ·
+  ok   PLANT LANDED · a 14px figure below 360
+  ok     └─ fires: ^7\.figure ·
+  ok   PLANT LANDED · the gap becomes 8px
+  ok     └─ fires: ^7\.gap ·
+  ok   PLANT LANDED · the cluster's gap becomes 4px
+  ok     └─ fires: ^7\.gap ·
+  ok   PLANT LANDED · the row keeps its phone gap from 640
+  ok     └─ fires: ^7\.steps ·
+  ok   PLANT LANDED · the classic bar moves its gap and the journey keeps the old one
+  ok     └─ fires: ^7\.steps ·
+  ok   PLANT LANDED · the home link loses its negative margin
+  ok     └─ fires: ^7\.home ·
+  ok   PLANT LANDED · the guest pills pad 20px
+  ok     └─ fires: ^7\.auth ·
+  ok   PLANT LANDED · the pill keeps the kit button's 16px padding below 360
+  ok     └─ fires: ^7\.pill ·
+  ok   PLANT LANDED · the lockup returns at 1024
+  ok     └─ fires: ^7\.brand ·
+  ok   PLANT LANDED · the journey header is not sticky (A13)
+  ok     └─ fires: ^7\.stack ·
+  ok   PLANT LANDED · a desktop destination says page for its whole section (A12)
+  ok     └─ fires: ^7\.desktop ·
+  ok   PLANT LANDED · the language menu shows on a phone
+  ok     └─ fires: ^7\.cluster ·
+  ok   PLANT LANDED · a phone-only max-width rule in the shell
+  ok     └─ fires: ^7\.first ·
+  ok   PLANT LANDED · a phone-only max-width rule in the shell, written across lines
+  ok     └─ fires: ^7\.first ·
+  ok   PLANT LANDED · the pill follows the session, not the header state
+  ok     └─ fires: ^7\.state ·
+  ok   PLANT LANDED · the desktop destinations wear the filter pill's fill
+  ok     └─ fires: ^7\.underline ·
+  ok   PLANT LANDED · an inline height on the header
+  ok     └─ fires: ^7\.frame ·
+  ok   PLANT LANDED · the bell's slot loses its 4px
+  ok     └─ fires: ^7\.bell ·
+  ok   PLANT LANDED · the count badge hangs by its right edge again
+  ok     └─ fires: ^7\.bell ·
+  ok   PLANT LANDED · the badge override loses its !important
+  ok     └─ fires: ^7\.bell ·
+  ok   PLANT LANDED · the avatar drops the 4px the bell's slot answers
+  ok     └─ fires: ^7\.bell ·
+  ok   PLANT LANDED · the classic bell moves its badge under the override
+  ok     └─ fires: ^7\.bell ·
+  ok   PLANT LANDED · the journey tabs at z-30 (A13)
+  ok     └─ fires: ^8\.stack ·
+  ok   PLANT LANDED · More comes back to the rail
+  ok     └─ fires: ^8\.tabs ·
+  ok   PLANT LANDED · the grid goes on the nav, not the list (A18)
+  ok     └─ fires: ^8\.grid ·
+  ok   PLANT LANDED · a tab says page for its whole section (A12)
+  ok     └─ fires: ^8\.aria ·
+  ok   PLANT LANDED · a tab link gets an aria-label
+  ok     └─ fires: ^8\.name ·
+  ok   PLANT LANDED · a guest's Tiketi zangu is a link whose navigation is cancelled
+  ok     └─ fires: ^8\.guest ·
+  ok   PLANT LANDED · Tiketi zangu ellipsises at 320 (A17)
+  ok     └─ fires: ^8\.label ·
+  ok   PLANT LANDED · the unread dot loses its cut-out
+  ok     └─ fires: ^8\.badge ·
+  ok   PLANT LANDED · the journey's slots centre below 360
+  ok     └─ fires: ^8\.align ·
+  ok   PLANT LANDED · the unread dot shows at a count of zero
+  ok     └─ fires: ^8\.dot ·
+  ok   PLANT LANDED · two unread pollers on a desktop
+  ok     └─ fires: ^8\.poll ·
+  ok   PLANT LANDED · the server claims a desktop
+  ok     └─ fires: ^8\.poll\.hook ·
+  ok   PLANT LANDED · the width store never lets go
+  ok     └─ fires: ^8\.poll\.media ·
+  ok   PLANT LANDED · a server file loads the width hook
+  ok     └─ fires: ^8\.poll\.loaders ·
+  ok   PLANT LANDED · a server file loads the width hook through a helper
+  ok     └─ fires: ^8\.poll\.loaders ·
+  ok   PLANT LANDED · the bell is mounted at every width, merely hidden on a phone
+  ok     └─ fires: ^8\.poll\.bar ·
+  ok   PLANT LANDED · the dot's counter is mounted at every width
+  ok     └─ fires: ^8\.poll\.rail ·
+  ok   PLANT LANDED · the guest sheet hand-rolled, unportaled (A13)
+  ok     └─ fires: ^8\.sheet\.portal ·
+  ok   PLANT LANDED · the guest sheet's Jisajili forgets Tiketi zangu
+  ok     └─ fires: ^8\.sheet ·
+  ok   PLANT LANDED · the guest sheet leaves popup-fit's review record
+  ok     └─ fires: ^8\.popup ·
+  ok   PLANT LANDED · the hub's sign-out row leaves popup-fit's review record (A13)
+  ok     └─ fires: ^8\.popup ·
+  ok   PLANT LANDED · a classic component mounts the journey rail
+  ok     └─ fires: ^8\.mount ·
+  ok   PLANT LANDED · two pages that link only each other — an orphan cycle (A9)
+  ok     └─ fires: ^9\.entrance\.\/zz-orphan-a ·
+  ok   PLANT LANDED · the agent terms' doors survive only inside comments (A9)
+  ok     └─ fires: ^9\.entrance\.\/legal\/agent-terms ·
+  ok   PLANT LANDED · the agent terms lose their door (A9)
+  ok     └─ fires: ^9\.entrance\.\/legal\/agent-terms ·
+  ok   PLANT LANDED · a page joins the population that nothing links
+  ok     └─ fires: ^9\.entrance\.\/zz-lonely ·
+  ok   PLANT LANDED · the Akaunti tab is removed
+  ok     └─ fires: ^9\.entrance\.\/account ·
+  ok   PLANT LANDED · the hub loses its Arifa row
+  ok     └─ fires: ^9\.subset\.player ·
+  ok   PLANT LANDED · the hub loses its language control
+  ok     └─ fires: ^9\.controls\.
+  ok   PLANT LANDED · the reset link's generator no longer names its page
+  ok     └─ fires: ^9\.external\.\/auth\/reset-password ·
+  ok   PLANT LANDED · a page links an external entrance, and its exemption stays
+  ok     └─ fires: ^9\.external\.\/auth\/verify-email ·
+  ok   PLANT LANDED · the classic bar gains a door the census does not hold
+  ok     └─ fires: ^9\.chrome\.src\/components\/layout\/top-app-bar\.tsx ·
+  ok   PLANT LANDED · the avatar menu loses a door the census still holds
+  ok     └─ fires: ^9\.chrome\.src\/components\/layout\/avatar-menu\.tsx ·
+  ok   PLANT LANDED · the board's history link is removed — A15's classic door
+  ok     └─ fires: ^9\.pinned\.\/updown\/history · src\/app\/updown\/page\.tsx
+  ok   PLANT LANDED · the classic Tiketi page's performance link is removed — A15's classic door
+  ok     └─ fires: ^9\.pinned\.\/positions\/performance · src\/app\/positions\/page\.tsx
+  ok   PLANT LANDED · the Tiketi switch loses its Juu/Chini door — A15's journey door (WP9)
+  ok     └─ fires: ^9\.pinned\.\/updown\/history · src\/components\/journey\/tickets\/ticket-switch\.tsx
+  ok   PLANT LANDED · the journey Tiketi view loses its Utendaji link — A15's journey door (WP9)
+  ok     └─ fires: ^9\.pinned\.\/positions\/performance · src\/components\/journey\/tickets\/tickets-view\.tsx
+  ok   PLANT LANDED · a page loads the journey header itself
+  ok     └─ fires: ^8\.mount ·
+  ok   PLANT LANDED · AppShell imports the journey tabs statically
+  ok     └─ fires: ^8\.mount\.lazy ·
+  ok   PLANT LANDED · a React lazy binding put back in AppShell
+  ok     └─ fires: ^12\.shell\.nolazy ·
+  ok   PLANT LANDED · a part loads with ssr: false
+  ok     └─ fires: ^12\.module\.dynamic ·
+  ok   PLANT LANDED · AppShell imports a part straight from its own file
+  ok     └─ fires: ^12\.shell\.only ·
+  ok   PLANT LANDED · the shell's lazy module loses its client directive
+  ok     └─ fires: ^12\.module\.client ·
+  ok   PLANT LANDED · a part passes a loading option
+  ok     └─ fires: ^12\.module\.dynamic ·
+  ok   PLANT LANDED · a part's own module loses its client directive
+  ok     └─ fires: ^12\.parts\.client ·
+  ok   PLANT LANDED · a server page loads a client part with React lazy
+  ok     └─ fires: ^12\.nolazy\.platform ·
+  ok   PLANT LANDED · a part's binding loads another module
+  ok     └─ fires: ^12\.parts\.table ·
+  ok   PLANT LANDED · a second file imports the shell's lazy module
+  ok     └─ fires: ^12\.module\.home ·
+  ok   PLANT LANDED · the shell's lazy module imports a part statically
+  ok     └─ fires: ^12\.module\.dynamic ·
+  ok   PLANT LANDED · AppShell renders a lazy part the module does not declare
+  ok     └─ fires: ^12\.shell\.parts ·
+  ok   PLANT LANDED · AppShell imports React lazy under another name
+  ok     └─ fires: ^12\.shell\.nolazy ·
+  ok   PLANT LANDED · AppShell defers a client module with next/dynamic itself
+  ok     └─ fires: ^12\.nodefer\.platform ·
+  ok   PLANT LANDED · the root layout defers a client module with next/dynamic
+  ok     └─ fires: ^12\.nodefer\.platform ·
+  ok   PLANT LANDED · a server page imports React lazy without calling it
+  ok     └─ fires: ^12\.nolazy\.platform ·
+  ok   PLANT LANDED · AppShell renders the channels panel outside its Suspense boundary
+  ok     └─ fires: ^12\.shell\.wrapped ·
+  ok   PLANT LANDED · AppShell renders the win celebration outside its Suspense boundary
+  ok     └─ fires: ^12\.shell\.wrapped ·
+  ok   PLANT LANDED · AppShell drops pull-to-refresh's three-line Suspense boundary
+  ok     └─ fires: ^12\.shell\.wrapped ·
+  ok   PLANT LANDED · AppShell renders a part twice
+  ok     └─ fires: ^12\.shell\.parts ·
+  ok   PLANT LANDED · the offline banner deferred like the parts
+  ok     └─ fires: ^12\.shell\.offline ·
+  ok   PLANT LANDED · the shell's lazy module declares a part outside the table
+  ok     └─ fires: ^12\.module\.dynamic ·
+  ok   PLANT LANDED · a classic file imports a part's module statically
+  ok     └─ fires: ^12\.parts\.home ·
+  ok   PLANT LANDED · the lost-chunk guard takes every error
+  ok     └─ fires: ^12\.module\.lost ·
+  ok   PLANT LANDED · a part's loader drops the lost-chunk guard
+  ok     └─ fires: ^12\.parts\.table ·
+  ok   PLANT LANDED · the header draws the pill on the deposit screen while the drives skip it there
+  ok     └─ fires: ^10\.rules\.pill ·
+  ok   PLANT LANDED · the header-fit red twin starts without --alone
+  ok     └─ fires: ^10\.leash\.alone ·
+  ok   PLANT LANDED · the header-fit package script passes --alone itself
+  ok     └─ fires: ^10\.leash\.alone ·
+  ok   PLANT LANDED · red:all stops marking the harnesses it starts
+  ok     └─ fires: ^10\.leash\.red-all ·
+  ok   PLANT LANDED · the header-fit red twin ignores red:all's mark
+  ok     └─ fires: ^10\.leash\.red-all ·
+  ok   PLANT LANDED · a red run's witness is left in the stylesheet (a hard kill)
+  ok     └─ fires: ^10\.leash\.witness ·
+
+RED CONTROL — 174/174 caught · all 349 proofs held
+

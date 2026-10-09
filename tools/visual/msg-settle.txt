@@ -1,0 +1,16 @@
+qa:journey-preview: a control is driven only once React owns the page
+
+A precondition for the drive, not a fix for what stopped it. WP12's turn C stopped once in §5 on a "Create the link"
+button that stayed disabled. The cause was the Modal taking focus back 30 ms after it opened, fixed in e16f9353. The
+recorder caught focus snapping back at +28 ms with both fields filled.
+
+This closes a second race the same drive could meet: settle() waited for <main> and 900 ms, and on a slow first
+compile the server's HTML can be up before React attaches, so a click could land on markup with no handler. settle()
+now also waits for a React fiber on <main>, the test qa:journey-shell's HYDRATED holds its header to. A page that
+never hydrates fails at the 120 s timeout instead of being driven.
+
+An earlier copy of this commit (e1da6165) claimed it explained the §5 stop. It did not, and it was not pushed.
+
+Proof: qa:journey-preview runs on this branch in the visual pass's lock turn.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>

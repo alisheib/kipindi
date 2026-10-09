@@ -1,0 +1,24 @@
+Money forms: the first line sits at the card's padding — the form's rhythm moves onto a wrapper React's injected input stays out of
+
+Round 3 read the deposit form's first line still 51px below the card's border at 320/390 and 59px at 1280 (tiles
+067–069). Tile 068 was pixel-identical to round 2, so G4's fix had not reached the browser. The cause G4 did not see:
+React's server renderer writes <input type="hidden" name="$ACTION_ID_…"> straight after the <form> tag of every
+server-action form (react-dom-server, pushAdditionalFormField, startHiddenInputChunk = '<input type="hidden"' — no
+hidden attribute). Tailwind 3's space-y-5 on the form counted it as a sibling and put the 24px gap above the first
+visible block. G4's hidden attribute on our own two inputs was right but not enough.
+
+- deposit/page.tsx and withdraw/page.tsx: space-y-5 moves off the <form> onto one inner <div>, so the first child has no
+  sibling before it whatever React adds to the form. The body is re-indented under the wrapper; git diff -w is +22/−3.
+  The form keeps its classes (group/deposit, glass-panel, p-5 lg:p-6, withdraw's opacity-60).
+- IdempotencyKeyField's note says what its hidden attribute still does (inside the wrapper) and what it could not do.
+
+Predicted: the first line ("CHAGUA NJIA YA KULIPA", "MAHALI") sits at the card's padding plus the legend's own
+leading, about 27px below the border under 1024 and 35px from 1024 — the hero card's distances above it. Verified in
+the next tile round.
+
+Suites that read these pages, all exit 0: agent-fee-wallet-path 61, cashback-hidden 15, implicit-submit,
+journey-funnel, kyc-approved-copy 87, kyc-at-withdrawal 154, msisdn-prefill 24, payments, payout-destination 36,
+cert-f1, route-census, timer-date 77, wallet-freeze 73, ui-consistency, tap-target, hooks-order, density-contract,
+layout-staleness, money-format 51.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>

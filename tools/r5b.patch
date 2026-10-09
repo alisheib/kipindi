@@ -1,0 +1,1947 @@
+diff --git a/package.json b/package.json
+index fc48503a4..c45f503fd 100644
+--- a/package.json
++++ b/package.json
+@@ -659,6 +659,7 @@
+     "test:visual-pass-r4k": "tsx scripts/visual-pass-r4k.test.mts",
+     "red:visual-pass-r4k": "tsx scripts/visual-pass-r4k.test.mts --prove",
+     "test:visual-pass-r4h": "tsx scripts/visual-pass-r4h.test.mts",
++    "test:visual-pass-r5b": "tsx scripts/visual-pass-r5b.test.mts",
+     "red:journey-tickets": "tsx scripts/journey-tickets.test.mts --prove-red",
+     "test:signoff": "tsx scripts/signoff.test.mts",
+     "test:proposal-evidence-age": "tsx scripts/proposal-evidence-age.test.mts",
+diff --git a/scripts/comms-notification-truth.test.mts b/scripts/comms-notification-truth.test.mts
+index 56841b21a..69978a2a6 100644
+--- a/scripts/comms-notification-truth.test.mts
++++ b/scripts/comms-notification-truth.test.mts
+@@ -123,11 +123,12 @@ const EMITTED: { fn: string; row: StoredNotification | null }[] = [
+   { fn: "notifyObjectionDecided",    row: await N.notifyObjectionDecided(U, { upheld: true, marketId: "mkt_10", note: "Result corrected" }) },
+   // The seal-time notice (management ruling ①, 2026-09-05). Driven in BOTH shapes it can take:
+   // a first verdict and a corrected one, because the two say different words in three languages
+-  // and §6's money-copy rules must hold for each. `paysFrom` is a formatted instant, never a
++  // and §6's money-copy rules must hold for each. `paysAt` is the market's own instant, never a
+   // number of hours — that is the whole reason this message can be sent about a market sealed
+-  // under the old window as well as the new one.
+-  { fn: "notifyVerdictRecorded",     row: await N.notifyVerdictRecorded(U, { marketTitle: { en: "Sealed poll", sw: "Kura iliyofungwa", zh: "已封存的投票" }, marketId: "mkt_12", outcome: "YES", paysFrom: "5 Sep 2026, 14:32" }) },
+-  { fn: "notifyVerdictRecorded",     row: await N.notifyVerdictRecorded(U, { marketTitle: { en: "Sealed poll", sw: "Kura iliyofungwa", zh: "已封存的投票" }, marketId: "mkt_12", outcome: "NO", paysFrom: "5 Sep 2026, 15:47", reversed: true }) },
++  // under the old window as well as the new one. (R5-B, 2026-10-09: it was a pre-formatted English
++  // string, "5 Sep 2026, 14:32", printed in all three bodies; each body now says the instant itself.)
++  { fn: "notifyVerdictRecorded",     row: await N.notifyVerdictRecorded(U, { marketTitle: { en: "Sealed poll", sw: "Kura iliyofungwa", zh: "已封存的投票" }, marketId: "mkt_12", outcome: "YES", paysAt: "2026-09-05T11:32:00.000Z" }) },
++  { fn: "notifyVerdictRecorded",     row: await N.notifyVerdictRecorded(U, { marketTitle: { en: "Sealed poll", sw: "Kura iliyofungwa", zh: "已封存的投票" }, marketId: "mkt_12", outcome: "NO", paysAt: "2026-09-05T12:47:00.000Z", reversed: true }) },
+   { fn: "notifyAdminKycReview",      row: await N.notifyAdminKycReview("c3_officer", { playerLabel: "Asha M.", userId: U }) },
+   // ── Agent affiliate programme ─────────────────────────────────────────────
+   { fn: "notifyAgentApplicationSubmitted", row: await N.notifyAgentApplicationSubmitted(U, { applicationId: "agp_c3" }) },
+diff --git a/scripts/journey-shell.test.mts b/scripts/journey-shell.test.mts
+index 2ec08d1bf..06d0aaeab 100644
+--- a/scripts/journey-shell.test.mts
++++ b/scripts/journey-shell.test.mts
+@@ -1511,7 +1511,10 @@ function g7Header(W: World, ok: Ok) {
+     avatarApart: text(W, AVATAR).includes(`<div ref={ref} className="relative sm:ml-1">`) && W.tailwind.includes(`"1": "4px"`),
+     pip: pip.includes("top: -3px !important") && pip.includes("right: auto !important") && pip.includes("left: 21px !important")
+       // round 4: no rose glow in the journey's slot (the lift's glow dyed the dome) — the dark drop only.
+-      && pip.includes("box-shadow: 0 2px 4px color-mix(in oklab, var(--royal-950) 40%, transparent);") && !/box-shadow:[^;]*8px/.test(pip),
++      // ⭐ round 5 (R5-B, 2026-10-09, F8, tile 225): no drop either — it darkened the dome's right shoulder by up to ~16 a
++      // channel ((1175,23) 426 against its mirror's 475) and shaded the opaque bar under the pip (68–75 against 86). The
++      // pip's own 2px ring of the bar's ground separates it; the classic pip keeps its glow and its drop.
++      && pip.includes("box-shadow: none;") && !/box-shadow:[^;]*8px/.test(pip),
+     controls: tokenValue(css, "h-control-sm") === "40px" && tokenValue(css, "h-control-md") === "44px",
+     classic: classicBell.includes(`"relative inline-flex h-7 w-7 items-center justify-center rounded-full transition-colors"`)
+       && classicBell.includes("<I.bell s={20} />") && classicBell.includes(`size="md"`)
+@@ -2798,7 +2801,9 @@ ${s}`);
+     const bellOffCentre = withCss(inRule(".kp-jhdr__bell", " margin-left: var(--sp-1);", ""));
+     const pipOverDome = withCss(inRule(".kp-jhdr__bell .count-badge", "right: auto !important; left: 21px !important;", "right: 1px !important;"));
+     const pipInlineWins = withCss(inRule(".kp-jhdr__bell .count-badge", "top: -3px !important;", "top: -3px;"));
+-    const pipGlowBack = withCss(inRule(".kp-jhdr__bell .count-badge", "box-shadow: 0 2px 4px color-mix(in oklab, var(--royal-950) 40%, transparent);", "box-shadow: 0 0 8px var(--no-500), 0 2px 4px color-mix(in oklab, var(--royal-950) 40%, transparent);"));
++    const pipGlowBack = withCss(inRule(".kp-jhdr__bell .count-badge", "box-shadow: none;", "box-shadow: 0 0 8px var(--no-500), 0 2px 4px color-mix(in oklab, var(--royal-950) 40%, transparent);"));
++    // R5-B (round 5, F8): the dark drop alone comes back — round 4's state, which shaded the dome's shoulder.
++    const pipDropBack = withCss(inRule(".kp-jhdr__bell .count-badge", "box-shadow: none;", "box-shadow: 0 2px 4px color-mix(in oklab, var(--royal-950) 40%, transparent);"));
+     const avatarFlush = withFile(WORLD, "src/components/layout/avatar-menu.tsx", (s) => s.replace(`className="relative sm:ml-1"`, `className="relative"`));
+     const classicPipMoves = withFile(WORLD, BELL, (s) => s.replace("top: 3,", "top: 1,"));
+     const tabsAt30 = withFile(WORLD, JTABS, (s) => s.replace("bottom-0 z-40 kp-rail kp-rail--journey", "bottom-0 z-30 kp-rail kp-rail--journey"));
+@@ -3186,6 +3191,8 @@ ${s}`);
+         world: pipInlineWins, landed: cssChanged(pipInlineWins), landedAs: "the classic inline position wins and the override paints nothing" },
+       { name: "the rose glow comes back to the journey bell's pip", expect: at("7.bell ·"),
+         world: pipGlowBack, landed: cssChanged(pipGlowBack), landedAs: "the 8px rose halo dyes the dome's shoulder again (round 4, tiles 268–278)" },
++      { name: "the dark drop comes back to the journey bell's pip", expect: at("7.bell ·"),
++        world: pipDropBack, landed: cssChanged(pipDropBack), landedAs: "the drop darkens the dome's right shoulder and the bar under the pip again (round 5, tile 225)" },
+       { name: "the avatar drops the 4px the bell's slot answers", expect: at("7.bell ·"),
+         world: avatarFlush, landed: changed(avatarFlush, "src/components/layout/avatar-menu.tsx"), landedAs: "the bell 4px off-centre the other way" },
+       { name: "the classic bell moves its badge under the override", expect: at("7.bell ·"),
+diff --git a/scripts/landing-mine.test.mts b/scripts/landing-mine.test.mts
+index ed5200e47..b53b98bd4 100644
+--- a/scripts/landing-mine.test.mts
++++ b/scripts/landing-mine.test.mts
+@@ -168,8 +168,10 @@ const { tallyPicks, eatWeekStartMs, paidOutBehind } = await import("../src/lib/s
+   ok("3: ⛔ a frozen wallet still SAYS so, and is decided before the empty-balance prompt",
+      act.indexOf("{held ? (") > 0 && act.indexOf("{held ? (") < act.indexOf("t.home.emptyBalance")
+      && /kycGate\.frozenTitle/.test(act));
++  // R5-B (round 5 of the visual pass, 2026-10-09, tiles 079 083): the same one sentence, its method's name kept whole —
++  // "pesa ya simu" / "mobile money" one run (`keepText`, found by the Wallet's own label for it, `methodRunIn`).
+   ok("3: at zero the empty-balance prompt is ONE sentence, and it names a METHOD rather than a location",
+-     /emptyWallet \? \(/.test(act) && /<p className="kp-mine__lead">\{t\.home\.emptyBalance\}<\/p>/.test(act));
++     /emptyWallet \? \(/.test(act) && /<p className="kp-mine__lead">\{keepText\(t\.home\.emptyBalance, methodRunIn\(t\.home\.emptyBalance, t\.wallet\.mobileMoneyOnly\)\)\}<\/p>/.test(act));
+   ok("3: the money figure obeys the eye (<Cash>) — ONE figure now, the week's payout",
+      (act.match(/<Cash>/g) ?? []).length === 1);
+   ok("3: the block's two doors are the player's own positions and the RG limits — neither is money",
+diff --git a/scripts/lib/house-bot-reports-cases.mts b/scripts/lib/house-bot-reports-cases.mts
+index 59c2495a3..136f998cd 100644
+--- a/scripts/lib/house-bot-reports-cases.mts
++++ b/scripts/lib/house-bot-reports-cases.mts
+@@ -2046,11 +2046,19 @@ export const PLAYER_NOTIFIER_HASHES: Readonly<Record<string, string>> = {
+   // measure): an officer's reason that already ends in "." no longer gets a second one (`endClause`), the " · pos_…"
+   // suffix left the words for the link (`ticketHref`, the refunded ticket, falling back to /wallet). No house reader, no
+   // house word, the same three sentences otherwise — the four other notifiers' hashes are unchanged.
+-  notifyMarketCancelled: "303f06a9fa810c98f8e5864a2977161c8b9f8097f93d77c7ba7e843d3e0539f9",
+-  notifyObjectionDecided: "72d9f9fe6b0a919bde881b47fc2f7863b54d55b1f9c38a2239fd23c2e219e6a2",
+-  notifyVerdictRecorded: "42c58491831e558eb3e63b2c2bb1a17ad7637cf41a0bcb1c9b342f28a1c0b222",
++  // ⭐ RE-MEASURED AGAIN 2026-10-09, THE CHANGE REVIEWED AS ONE (the visual pass's round 5, R5-B, F9 + F10; the same measure
++  // reproduces the four hashes below it at 1699302a before the change): a quoted title or reason is cut at a word with "…"
++  // (`clipQuote`, notification-text.ts) where `.slice(0, n)` cut it mid-word with no mark — all four bodies; and the
++  // verdict's payout time is the market's own instant (`paysAt`), said in each language's month words on the East Africa
++  // clock (`instantIn` + `formatEatDateTime`), where one English string (`formatDateTime`) stood in all three bodies. No
++  // house reader, no house word, no new sentence; `marketCancelledRefundHtml` is untouched and keeps its hash.
++  //   was · notifyMarketCancelled 303f06a9… · notifyObjectionDecided 72d9f9fe… · notifyVerdictRecorded 42c58491… ·
++  //         notifyVerdictRecordedForMarket e9589970…
++  notifyMarketCancelled: "2a1da0938e5fce9b1cc3636e4f4e69e0fb0bb1a512513b175312375f0d37c1b9",
++  notifyObjectionDecided: "715f4026aa917afa661c735fc0129d51eef99666ce8a843bbe7dec2751f3c9d9",
++  notifyVerdictRecorded: "cb4d94a7fcd3d2743bd46624e338bf872b1dcde0cc113d4008c78a4c3fc69e93",
+   marketCancelledRefundHtml: "9459244bfe07cd3e2166c2c9d56efb330290f00b133ac4a052e0d3159c8a1c9b",
+-  notifyVerdictRecordedForMarket: "e9589970eac191406dcd3963c0742e795e3374c11d3f1936c8808b3ad63596a8",
++  notifyVerdictRecordedForMarket: "84c86d46f3c30c4c21f122d9db260311b4987032983285a17623b890b5d9e2c2",
+ };
+ /** One function declaration's own text (the fnBody of seam 6.h1b, cut by the syntax tree at its closing brace), or "". */
+ export function functionDeclarationText(file: string, code: string, name: string): string {
+diff --git a/scripts/spacing-scale.test.mts b/scripts/spacing-scale.test.mts
+index e03bc1075..a67c7fa7a 100644
+--- a/scripts/spacing-scale.test.mts
++++ b/scripts/spacing-scale.test.mts
+@@ -111,7 +111,7 @@ for (const f of walk(SRC)) {
+  * ⚠️ Set from the measured tree, comments stripped. If it drops, lower it in the same commit —
+  * a ceiling above the real count stops being a ratchet.
+  */
+-const CEILING = 455;   // -2, 2026-10-09 (round 4 of the visual pass, R4-K c15b3b61): the market and proposal not-found pages' hand-rolled cards (`p-3.5`) left for the one shared NotFoundView (src/components/ui/not-found-view.tsx) — measured 455 across 165 files on the merged tip; the ceiling follows in the next commit after it (R4-K's merge check did not run this suite). // -3, 2026-10-09 (round 4 of the visual pass): the `py-2.5` bands round the search on /results, /watchlist and /proposals became `QUERY_SEARCH_BAND_CLASS` (query-bar.tsx), whose 10px is the literal `pt-[10px]` — a rendered change on purpose (the band's bottom 10px left with its echo row's gap, test:visual-pass-r4c §1), and no new inverted key: the new row-1-alone class takes `pb-[10px]` too. // -3, 2026-10-07 (money doors): the deposit email door and the app-wide email bar were DELETED (owner ruling — a deposit asks no email) and took their `px-3.5`/`gap-2.5` with them; the receipt page's button row moved `gap-2.5` → `gap-2` (12px on this scale) with its new second button. // -1, 2026-10-03 (marketing validation batch 6): the player balance adjustment's hand-rolled amount box (balance-adjust-controls.tsx, the "9,500.00" -> 950,000 defect) left for the kit Field + Input, taking its `px-2.5` with it. // -9, 2026-09-30 (the Vodacom plan S1 session): THE RATCHET ARRIVED RED, 488 against 473 — fifteen inverted keys added since 2026-09-23 by other lanes (the finance and admin skeletons, the invite switch dialog, two Up & Down panels, one shell row), holding predeploy red on main. ALL 24 inverted usages in those eight files moved to SAME-PIXEL literals (w-14 -> w-[56px], w-16 -> w-[64px], w-20 -> w-[80px], w-28 -> w-[112px], gap-2.5/py-2.5/mt-2.5 -> [10px], mt-3.5 -> [14px], scroll-mt-24 -> [96px]; the root is 16px, so rem == px): ZERO rendered change, 488 -> 464. Literals, not override keys, per the per-prefix rule below (ui-consistency condemns 7-12 on w/h). // -2, 2026-09-23: PRE-EXISTING RED, and not this session's work — the same shape as the 2026-09-05 HOUSE-3 entry below. The ratchet arrived at HEAD failing check 2 at 473 against 475: two usages had been removed by earlier work that did not lower the constant. Re-measured here rather than copied — 473 across 171 files — and confirmed to predate today: `git diff 7747dffa..HEAD -- src/` adds and removes ZERO inverted keys, so nothing in this session's window moved it. ⛔ Check 2 is an EQUALITY on purpose: a ceiling above the real count has stopped being a ratchet and silently re-admits two usages. // -1, 2026-09-13 (withdrawal review removed): the admin approvals page lost its Co-sign chip and its px-2.5. // -2, 2026-09-13 (the visual pass): p-3.5 → p-[14px] on the KYC upload card and space-y-2.5 → gap-[10px] on the register consents, both same-pixel. // -75, 2026-09-10: THE RATCHET WAS RED — 561 against a ceiling of 553, eight usages added by work that landed after 2026-09-05, and it had been holding `predeploy` red. ⭐ CLEARED BY MOVING 83 USAGES OFF THE STOCK SCALE WITH ZERO RENDERED CHANGE, which is possible for exactly FOUR of the eight inverted keys: the override is all px and the stock keys leak rem, and for these four the two scales land on the SAME pixel — proven from COMPILED CSS, not assumed: `16 → 4rem → 64px == 9 → 64px`, `20 → 5rem → 80px == 10`, `24 → 6rem → 96px == 11`, `32 → 8rem → 128px == 12`. The root really is 16px (globals.css sets no html font-size; production reports 16px), which is the premise that makes rem==px here. ⛔ `2.5` (10px), `3.5` (14px), `14` (56px) and `28` (112px) have NO override equivalent — moving those is a real ±2px rendered change and NONE were touched, which is why 478 is not lower. ⚠️ SCOPED TO `loading.tsx` SKELETONS, 31 files: placeholder boxes with no text to reflow, no interactive control to displace and nothing measuring them. **The same four keys appear 35 more times in files carrying real content and were deliberately LEFT** — this file's own note warns against a sweep that spreads a problem while tidying one. 🔴 **AND THE FIRST ATTEMPT AT THE FIX TRADED THIS FAILURE FOR ANOTHER ONE, WHICH IS THE PART WORTH READING.** Swapping `w-16 → w-9` satisfies THIS guard and violates `ui-consistency`'s `numeric-size-utility`, which condemns keys 7–12 on `h`/`w`/`min-*`/`max-*` precisely BECAUSE they read from the overridden scale — 30 new findings, in the same edit that made this one green. ⭐ **Both guards are right, so the remedy is PER-PREFIX**, and the other rule's own description names it (*"use an explicit literal (h-[32px])"*): width/height/size take `w-[64px]`, while padding·margin·gap·inset take the override key. 89 of the 90 sites here were width/height, so they are literals. ⭐ HOW THE "no rendered change" CLAIM WAS CHECKED rather than asserted: the whole diff was re-derived by applying the per-prefix map to every removed line and compared to the added line — all 88 changed lines differ ONLY by that swap, and the checker carries a non-empty control because its first version passed an EMPTY diff (0 >= 0). // -1, 2026-09-05, HOUSE-3: PRE-EXISTING RED, not this session's work. The ratchet arrived at HEAD failing check 2 at 553 against a ceiling of 554 — a parallel session removed an inverted key and did not lower the constant, and check 2 is an EQUALITY on purpose: a ceiling above the real count has stopped being a ratchet and silently re-admits one usage. Re-measured here, not copied: 553 across 185 files. // -7, 2026-09-03: `layout/needle-drawer.tsx` — the Needle's theme menu shipped ELEVEN inverted keys (3× `gap-2.5`, 3× `py-2.5`, `px-2.5`, 2× `pt-3.5`, `py-3.5`, `mt-3.5`), which is what took this ratchet 561 → 565 and held `test:all` red on `main`. All eleven moved onto the scale: 2.5 (Tailwind STOCK 10px) → 2 (this product's OVERRIDDEN 12px) and 3.5 (stock 14px) → 3 (override 16px). ⚠️ EVERY MOVE IS +2px AND IS A RENDERED CHANGE, said plainly rather than folded in — a drawer menu's gaps and paddings each grow 2px, verified at 320/390 not to overflow or clip. ⭐ AND NOTE WHICH DIRECTION THE DEFECT RAN: `gap-2.5` painted 10px where `gap-2` paints 12, so the file's author had written the LARGER-looking key for the SMALLER box, four times, without any way to notice. That inversion is derived from the two scales by §0, not typed in — which is why this guard could name it. ⛔ The file belongs to a parallel session; the change is 2px of air on the product's own scale, and the eleven sites are listed here so its owner can see exactly what moved.   // -1, 2026-08-31, DG-S-03: `/admin/roles`'s hand-rolled section rail declared its height as `py-2.5` — 10px on a scale where `py-2` is 12 — and it went with the rail when the page adopted the kit `<Tabs variant="line">`, whose 44px is a declared height rather than padding. ⭐ Worth reading twice, because it is the same defect in two guards at once: `tap-target` §3 reads a DECLARED height and is structurally blind to one made of padding, so `/admin/players/[id]`'s 52px `py-3` rail has never been visible to it either. A control that states its height as padding is invisible to the tap gate AND, at a `.5` step, counted by this one.   // -59, 2026-08-30, session 82 -- the largest fall this ratchet has taken, and it is a SIDE EFFECT: DG-A-08 replaced ~24 hand-rolled admin controls with kit `<Button>`s, and every one of them took its hand-typed `px-2.5 py-1.5` inverted-key padding with it. ⛔ The matcher was NOT touched this session (`git status` on this file: clean), which is the check that separates a cleanup from a collapse -- and §3 still sees 566 usages across 188 files. # 2026-08-30: -3 (DG-A-06). `px-2.5` left three hand-rolled selection capsules as they converted to FilterPill — CardSortControl's two byte-identical copies and /admin/proposals' queue rail. ⭐ The primitive's dense rank writes `px-2.5` too, so the win is real but SMALLER than the conversion looks: the inverted key moved from three call sites into ONE definition site, which is the shape this ratchet wants. Before that — 2026-08-29: -3, AdminKpi x2 + its skeleton left p-3.5 (14px) for p-2 (12px) — DG-A-16. Then -1 on 2026-08-30 (DG-P-03): the BackLink ghost's `w-16`. ⚠️ AND THIS GUARD EARNED ITS KEEP THE SAME DAY — adopting `PageHeader` in the deposit and withdraw skeletons meant COPYING that ghost into two more files, and this suite caught it at 631 before it shipped. A ratchet's job is not only to shrink a backlog; it is to stop a sweep from spreading one while it tidies something else.
++const CEILING = 454;   // -1, 2026-10-09 (round 5 of the visual pass, R5-B, F6): /wallet's loading rail took the kit option's own box — `px-4` (20px), the label in the body face, its underline 12px in, as `Tabs variant="line"` draws them — where it typed `px-3.5` (stock 14px) in the display face under a box-wide underline: a rendered change on purpose, so the ghost's words land where the rail's do (wallet/loading.tsx); measured 454 across 165 files. // -2, 2026-10-09 (round 4 of the visual pass, R4-K c15b3b61): the market and proposal not-found pages' hand-rolled cards (`p-3.5`) left for the one shared NotFoundView (src/components/ui/not-found-view.tsx) — measured 455 across 165 files on the merged tip; the ceiling follows in the next commit after it (R4-K's merge check did not run this suite). // -3, 2026-10-09 (round 4 of the visual pass): the `py-2.5` bands round the search on /results, /watchlist and /proposals became `QUERY_SEARCH_BAND_CLASS` (query-bar.tsx), whose 10px is the literal `pt-[10px]` — a rendered change on purpose (the band's bottom 10px left with its echo row's gap, test:visual-pass-r4c §1), and no new inverted key: the new row-1-alone class takes `pb-[10px]` too. // -3, 2026-10-07 (money doors): the deposit email door and the app-wide email bar were DELETED (owner ruling — a deposit asks no email) and took their `px-3.5`/`gap-2.5` with them; the receipt page's button row moved `gap-2.5` → `gap-2` (12px on this scale) with its new second button. // -1, 2026-10-03 (marketing validation batch 6): the player balance adjustment's hand-rolled amount box (balance-adjust-controls.tsx, the "9,500.00" -> 950,000 defect) left for the kit Field + Input, taking its `px-2.5` with it. // -9, 2026-09-30 (the Vodacom plan S1 session): THE RATCHET ARRIVED RED, 488 against 473 — fifteen inverted keys added since 2026-09-23 by other lanes (the finance and admin skeletons, the invite switch dialog, two Up & Down panels, one shell row), holding predeploy red on main. ALL 24 inverted usages in those eight files moved to SAME-PIXEL literals (w-14 -> w-[56px], w-16 -> w-[64px], w-20 -> w-[80px], w-28 -> w-[112px], gap-2.5/py-2.5/mt-2.5 -> [10px], mt-3.5 -> [14px], scroll-mt-24 -> [96px]; the root is 16px, so rem == px): ZERO rendered change, 488 -> 464. Literals, not override keys, per the per-prefix rule below (ui-consistency condemns 7-12 on w/h). // -2, 2026-09-23: PRE-EXISTING RED, and not this session's work — the same shape as the 2026-09-05 HOUSE-3 entry below. The ratchet arrived at HEAD failing check 2 at 473 against 475: two usages had been removed by earlier work that did not lower the constant. Re-measured here rather than copied — 473 across 171 files — and confirmed to predate today: `git diff 7747dffa..HEAD -- src/` adds and removes ZERO inverted keys, so nothing in this session's window moved it. ⛔ Check 2 is an EQUALITY on purpose: a ceiling above the real count has stopped being a ratchet and silently re-admits two usages. // -1, 2026-09-13 (withdrawal review removed): the admin approvals page lost its Co-sign chip and its px-2.5. // -2, 2026-09-13 (the visual pass): p-3.5 → p-[14px] on the KYC upload card and space-y-2.5 → gap-[10px] on the register consents, both same-pixel. // -75, 2026-09-10: THE RATCHET WAS RED — 561 against a ceiling of 553, eight usages added by work that landed after 2026-09-05, and it had been holding `predeploy` red. ⭐ CLEARED BY MOVING 83 USAGES OFF THE STOCK SCALE WITH ZERO RENDERED CHANGE, which is possible for exactly FOUR of the eight inverted keys: the override is all px and the stock keys leak rem, and for these four the two scales land on the SAME pixel — proven from COMPILED CSS, not assumed: `16 → 4rem → 64px == 9 → 64px`, `20 → 5rem → 80px == 10`, `24 → 6rem → 96px == 11`, `32 → 8rem → 128px == 12`. The root really is 16px (globals.css sets no html font-size; production reports 16px), which is the premise that makes rem==px here. ⛔ `2.5` (10px), `3.5` (14px), `14` (56px) and `28` (112px) have NO override equivalent — moving those is a real ±2px rendered change and NONE were touched, which is why 478 is not lower. ⚠️ SCOPED TO `loading.tsx` SKELETONS, 31 files: placeholder boxes with no text to reflow, no interactive control to displace and nothing measuring them. **The same four keys appear 35 more times in files carrying real content and were deliberately LEFT** — this file's own note warns against a sweep that spreads a problem while tidying one. 🔴 **AND THE FIRST ATTEMPT AT THE FIX TRADED THIS FAILURE FOR ANOTHER ONE, WHICH IS THE PART WORTH READING.** Swapping `w-16 → w-9` satisfies THIS guard and violates `ui-consistency`'s `numeric-size-utility`, which condemns keys 7–12 on `h`/`w`/`min-*`/`max-*` precisely BECAUSE they read from the overridden scale — 30 new findings, in the same edit that made this one green. ⭐ **Both guards are right, so the remedy is PER-PREFIX**, and the other rule's own description names it (*"use an explicit literal (h-[32px])"*): width/height/size take `w-[64px]`, while padding·margin·gap·inset take the override key. 89 of the 90 sites here were width/height, so they are literals. ⭐ HOW THE "no rendered change" CLAIM WAS CHECKED rather than asserted: the whole diff was re-derived by applying the per-prefix map to every removed line and compared to the added line — all 88 changed lines differ ONLY by that swap, and the checker carries a non-empty control because its first version passed an EMPTY diff (0 >= 0). // -1, 2026-09-05, HOUSE-3: PRE-EXISTING RED, not this session's work. The ratchet arrived at HEAD failing check 2 at 553 against a ceiling of 554 — a parallel session removed an inverted key and did not lower the constant, and check 2 is an EQUALITY on purpose: a ceiling above the real count has stopped being a ratchet and silently re-admits one usage. Re-measured here, not copied: 553 across 185 files. // -7, 2026-09-03: `layout/needle-drawer.tsx` — the Needle's theme menu shipped ELEVEN inverted keys (3× `gap-2.5`, 3× `py-2.5`, `px-2.5`, 2× `pt-3.5`, `py-3.5`, `mt-3.5`), which is what took this ratchet 561 → 565 and held `test:all` red on `main`. All eleven moved onto the scale: 2.5 (Tailwind STOCK 10px) → 2 (this product's OVERRIDDEN 12px) and 3.5 (stock 14px) → 3 (override 16px). ⚠️ EVERY MOVE IS +2px AND IS A RENDERED CHANGE, said plainly rather than folded in — a drawer menu's gaps and paddings each grow 2px, verified at 320/390 not to overflow or clip. ⭐ AND NOTE WHICH DIRECTION THE DEFECT RAN: `gap-2.5` painted 10px where `gap-2` paints 12, so the file's author had written the LARGER-looking key for the SMALLER box, four times, without any way to notice. That inversion is derived from the two scales by §0, not typed in — which is why this guard could name it. ⛔ The file belongs to a parallel session; the change is 2px of air on the product's own scale, and the eleven sites are listed here so its owner can see exactly what moved.   // -1, 2026-08-31, DG-S-03: `/admin/roles`'s hand-rolled section rail declared its height as `py-2.5` — 10px on a scale where `py-2` is 12 — and it went with the rail when the page adopted the kit `<Tabs variant="line">`, whose 44px is a declared height rather than padding. ⭐ Worth reading twice, because it is the same defect in two guards at once: `tap-target` §3 reads a DECLARED height and is structurally blind to one made of padding, so `/admin/players/[id]`'s 52px `py-3` rail has never been visible to it either. A control that states its height as padding is invisible to the tap gate AND, at a `.5` step, counted by this one.   // -59, 2026-08-30, session 82 -- the largest fall this ratchet has taken, and it is a SIDE EFFECT: DG-A-08 replaced ~24 hand-rolled admin controls with kit `<Button>`s, and every one of them took its hand-typed `px-2.5 py-1.5` inverted-key padding with it. ⛔ The matcher was NOT touched this session (`git status` on this file: clean), which is the check that separates a cleanup from a collapse -- and §3 still sees 566 usages across 188 files. # 2026-08-30: -3 (DG-A-06). `px-2.5` left three hand-rolled selection capsules as they converted to FilterPill — CardSortControl's two byte-identical copies and /admin/proposals' queue rail. ⭐ The primitive's dense rank writes `px-2.5` too, so the win is real but SMALLER than the conversion looks: the inverted key moved from three call sites into ONE definition site, which is the shape this ratchet wants. Before that — 2026-08-29: -3, AdminKpi x2 + its skeleton left p-3.5 (14px) for p-2 (12px) — DG-A-16. Then -1 on 2026-08-30 (DG-P-03): the BackLink ghost's `w-16`. ⚠️ AND THIS GUARD EARNED ITS KEEP THE SAME DAY — adopting `PageHeader` in the deposit and withdraw skeletons meant COPYING that ghost into two more files, and this suite caught it at 631 before it shipped. A ratchet's job is not only to shrink a backlog; it is to stop a sweep from spreading one while it tidies something else.
+ 
+ ok(`1: 🔴 inverted spacing usages may only shrink (${total}, ceiling ${CEILING})`,
+   total <= CEILING,
+diff --git a/scripts/visual-pass-r3c.test.mts b/scripts/visual-pass-r3c.test.mts
+index 6ca2289f5..0db597de8 100644
+--- a/scripts/visual-pass-r3c.test.mts
++++ b/scripts/visual-pass-r3c.test.mts
+@@ -369,7 +369,9 @@ section("8 · notifications: never \"..\", and no raw position id in a sentence
+     roundTicketHref("/updown/udr_1", "pos_b") === "/updown/udr_1#pos_b" && roundTicketHref("/updown/udr_1", undefined) === "/updown/udr_1");
+   const ns = code(read("src/lib/server/notification-service.ts"));
+   ok("8.7 · no notice writes a position id into its words any more", !/\$\{ref\}/.test(ns) && !/` · \$\{opts\.positionId\}`/.test(ns));
+-  const reasons = [...ns.matchAll(/\$\{(?:endClause\()?opts\.reason[^}]*\}[.。]?/g)].map((m) => m[0]);
++  // R5-B (round 5, 2026-10-09, F10): a reason may be cut first — `endClause(clipQuote(opts.reason, 120), ".")`, a cut at a word
++  // with "…" where `.slice(0, 120)` cut mid-word — and it still ends through `endClause` (which keeps a cut's "…").
++  const reasons = [...ns.matchAll(/\$\{(?:endClause\()?(?:clipQuote\()?opts\.reason[^}]*\}[.。]?/g)].map((m) => m[0]);
+   const raw = reasons.filter((r) => !r.startsWith("${endClause(") && /[.。]$/.test(r));
+   ok("8.8 · every officer reason that a template ends with a stop goes through endClause (cancelled and declined, three languages each)",
+     raw.length === 0 && reasons.filter((r) => r.startsWith("${endClause(")).length >= 6, `raw: ${raw.join(" ")}`);
+diff --git a/scripts/visual-pass-r5b.test.mts b/scripts/visual-pass-r5b.test.mts
+new file mode 100644
+index 000000000..5d1bed71c
+--- /dev/null
++++ b/scripts/visual-pass-r5b.test.mts
+@@ -0,0 +1,473 @@
++/**
++ * ROUND 5 OF THE VISUAL PASS, HELPER B (2026-10-09) — the Wallet and its sheets, the notices, Tiketi zangu, the bell: every
++ * fix a later edit could silently undo, held, each beside a CONTROL or a PLANT that proves the check can fail.
++ *
++ *   npx tsx scripts/visual-pass-r5b.test.mts        (npm run test:visual-pass-r5b)
++ *
++ * The owner's rule (Ali, 2026-10-08/09): only perfect visual and logical results, and consistency in every move — so each
++ * section holds the fix AND the siblings it was brought in line with. Findings and tiles: S/visual/triage-r5.md.
++ *   §1  F3   the Wallet's hairline stands in the middle of its gap (16 | 16); the filter sheet and the bet confirm already do
++ *   §2  F6   the journey's section rails start on the column edge, their rule too; /wallet's ghost draws the same rail
++ *   §3  F7   a sheet docked to the screen's bottom draws no bottom edge — every docked sheet the journey can open
++ *   §4  F8   the journey's bell pip casts no shadow; the classic pip keeps its glow and its drop
++ *   §5  F9   every moment a notice states is said in each reader's words — the bell, its push, the revoked agent's letter
++ *   §6  F10  a title quoted in a notice is cut at a word, with "…" — the bodies and the email subjects
++ *   §7  F11  the journey's money doors say the journey's words
++ *   §8  F13  /wallet's receipts door stands in the bar's rhythm (42 · 42)
++ *   §9  F14  a count line under a bar has 12px of air on both sides — /wallet, /wallet/receipts and its ghost
++ *   §10 §A5  /notifications withholds its search band and its bar on a genuinely empty inbox, as seven pages already do
++ *   §11 CHECKS the zero-balance lead keeps the payment method's name whole; the deposit pip clears the logo it marks
++ */
++process.env.SESSION_SECRET ??= "test-only-session-secret-32chars-aaaa";
++process.env.OTP_PEPPER ??= "test-only-otp-pepper-16chars";
++
++import { readFileSync } from "node:fs";
++import { createRequire } from "node:module";
++import { renderToStaticMarkup } from "react-dom/server";
++import { createElement as h } from "react";
++import { decomment, decommentCss } from "./lib/decomment.mts";
++import { dict as DICTS } from "../src/lib/i18n-dict.ts";
++import { clipQuote } from "../src/lib/notification-text.ts";
++import { formatEatDate, formatEatDateTime } from "../src/lib/eat-day.ts";
++import { keepText } from "../src/components/ui/keep-run.tsx";
++import { methodRunIn } from "../src/components/home/landing-hero.tsx";
++import { QUERY_BAR_ROW1_CLASS, QUERY_BAR_ROW1_WRAP_CLASS, QUERY_BAR_ROW2_CLASS } from "../src/components/ui/query-bar.tsx";
++import { db, type StoredWallet } from "../src/lib/server/store.ts";
++
++let pass = 0;
++const fails: string[] = [];
++const ok = (name: string, cond: boolean, detail = "") => {
++  if (cond) { pass++; console.log(`  ok   ${name}`); }
++  else { fails.push(`${name}${detail ? ` — ${detail}` : ""}`); console.log(`  FAIL ${name}${detail ? ` — ${detail}` : ""}`); }
++};
++const section = (s: string) => console.log(`\n── ${s} ${"─".repeat(Math.max(0, 100 - s.length))}`);
++const raw = (p: string) => readFileSync(p, "utf8").replace(/\r\n/g, "\n");
++/** Source with its comments out (the shared scanner), so a rule quoted in a note is never mistaken for the rule. */
++const read = (p: string) => decomment(raw(p));
++const CSS = decommentCss(raw("src/app/globals.css"));
++const html = (el: Parameters<typeof renderToStaticMarkup>[0]) => renderToStaticMarkup(el);
++const esc = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
++const count = (s: string, needle: string) => s.split(needle).length - 1;
++
++/** One rule's declarations, by its exact selector (or one member of a selector list) at the start of a line. */
++function rule(src: string, selector: string): string {
++  const m = new RegExp(`(?:^|\\n)\\s*(?:[^{}\\n]*,\\s*)?${esc(selector)}(?![\\w-])\\s*(?:,[^{}\\n]*)?\\{([^}]*)\\}`).exec(src);
++  return m ? m[1] : "";
++}
++/** The body of the first `@media (<query>) { … }` block holding `needle`. */
++function mediaBlock(src: string, query: string, needle: string): string {
++  const opener = `@media (${query}) {`;
++  let at = src.indexOf(opener);
++  while (at >= 0) {
++    let depth = 0, i = at + opener.length - 1;
++    for (; i < src.length; i++) { if (src[i] === "{") depth++; else if (src[i] === "}" && --depth === 0) break; }
++    const body = src.slice(at + opener.length, i);
++    if (body.includes(needle)) return body;
++    at = src.indexOf(opener, i);
++  }
++  return "";
++}
++/** :root's px custom properties. */
++const ROOT_PX: Record<string, number> = {};
++for (const m of raw("src/app/globals.css").matchAll(/(--(?:sp|type|h-control|r)-[a-z0-9-]+):\s*([0-9.]+)px/g)) ROOT_PX[m[1]] ??= Number(m[2]);
++const px = (v: string) => ROOT_PX[v] ?? NaN;
++const tw = raw("tailwind.config.ts");
++/** The repo's OVERRIDDEN spacing scale (tailwind.config.ts), with Tailwind's own default for a key it does not override. */
++const twStep = (k: string) => Number(new RegExp(`"${esc(k)}":\\s*"([0-9.]+)px"`).exec(tw)?.[1] ?? ({ "2.5": 10, "3.5": 14 } as Record<string, number>)[k] ?? NaN);
++
++// Font metrics: Next's capsize table (the faces the app ships), and the repo's own Inter for advances (r3c/r4e's model).
++const METRICS = JSON.parse(readFileSync("node_modules/next/dist/server/capsize-font-metrics.json", "utf8")) as Record<string, { ascent: number; descent: number; capHeight: number; unitsPerEm: number }>;
++/** Where a line's capitals start and its baseline sits, measured from the top of its line box. */
++function lineGeom(face: "inter" | "jetBrainsMono", size: number, lineHeight: number) {
++  const m = METRICS[face];
++  const content = (m.ascent - m.descent) / m.unitsPerEm * size;
++  const half = (lineHeight - content) / 2;
++  const baseline = half + m.ascent / m.unitsPerEm * size;
++  return { capTop: baseline - m.capHeight / m.unitsPerEm * size, baseline, belowBaseline: lineHeight - baseline };
++}
++const fontkit = createRequire(import.meta.url)("fontkit") as {
++  openSync: (p: string) => { layout: (s: string) => { positions: { xAdvance: number }[] }; unitsPerEm: number };
++};
++const inter = fontkit.openSync("src/lib/server/reports/fonts/Inter-Regular.ttf");
++const widthOf = (s: string, size: number) => inter.layout(s).positions.reduce((a, p) => a + p.xAdvance, 0) / inter.unitsPerEm * size;
++
++const sw = DICTS.sw, en = DICTS.en, zh = DICTS.zh;
++const JOURNEY = ":root:has(#kp-journey-shell)";
++
++/* ══ §1 · F3 · THE WALLET'S HAIRLINE ══════════════════════════════════════════════════════════════════════════════ */
++section("1 · F3 the Wallet's hairline stands in the middle of its gap (tiles 092 132–137 151–154)");
++{
++  const sheet = rule(CSS, ".kp-wsheet"), foot = rule(CSS, ".kp-wsheet__foot");
++  const jfoot = rule(CSS, `${JOURNEY} .kp-wsheet__foot`);
++  const gapAbove = px(/gap:\s*var\((--sp-\d+)\)/.exec(sheet)?.[1] ?? "");
++  const below = (src: string) => px(/padding-top:\s*var\((--sp-\d+)\)/.exec(src)?.[1] ?? "");
++  ok("1.1 · in the journey the rule stands 16 under the content (the sheet's gap) and 16 over the row (the foot's padding)",
++    gapAbove === 16 && below(jfoot) === 16 && /border-top:\s*1px solid var\(--border\)/.test(foot), `${gapAbove} | ${below(jfoot)}`);
++  ok("1.1′ CONTROL · the base rule is the classic capsule's, untouched (8 under the rule): the measured 16 | 8 of tile 132",
++    below(foot) === 8 && gapAbove !== below(foot));
++  const planted = CSS.replace(`${JOURNEY} .kp-wsheet__foot { padding-top: var(--sp-4); }`, "");
++  ok("1.1″ PLANT · the journey's rule dropped leaves 16 | 8, and is reported", below(rule(planted, `${JOURNEY} .kp-wsheet__foot`)) !== 16);
++  // Its siblings, measured to what the eye sees on each side of the rule.
++  const fs = rule(CSS, ".kp-fsheet-foot");
++  ok("1.2 · the filter sheet's footer: 16 above the rule (margin) and 16 below (padding) — the convention's reference",
++    /margin-top:\s*var\(--sp-4\)/.test(fs) && /padding-top:\s*var\(--sp-4\)/.test(fs) && px("--sp-4") === 16);
++  const bcm = read("src/components/markets/bet-confirm-modal.tsx");
++  const bodyPb = twStep(/data-testid="bet-confirm-body"/.test(bcm) ? (/overflow-y-auto overscroll-contain px-5 pt-5 pb-(\d(?:\.\d)?) /.exec(bcm)?.[1] ?? "") : "");
++  const footPt = twStep(/border-t border-border px-5 pt-(\d(?:\.\d)?) /.exec(bcm)?.[1] ?? "");
++  const caption = /<div className="flex items-center gap-2 text-\[12px\] text-text-subtle">/.test(bcm);
++  const capBelow = footPt + lineGeom("inter", 12, 12 * 1.5).capTop;
++  ok("1.3 · the bet confirm's: its last box 20 over the rule, its quote caption's capitals 20.6 under it (within 1px)",
++    caption && bodyPb === 20 && Math.abs(capBelow - bodyPb) < 1, `${bodyPb} | ${capBelow.toFixed(2)}`);
++}
++
++/* ══ §2 · F6 · THE JOURNEY'S SECTION RAILS ═══════════════════════════════════════════════════════════════════════ */
++section("2 · F6 the journey's section rails start on the column edge (tiles 165–168 171 172)");
++{
++  const sel = `${JOURNEY} :is([data-section-rail], [data-rail-ghost])`;
++  const rail = rule(CSS, sel), opt = rule(CSS, `${sel} > *`);
++  const bleed = /margin-inline-start:\s*calc\(-1 \* var\((--sp-\d+)\)\)/.exec(rail)?.[1];
++  const bg = /background:\s*linear-gradient\(var\(--border\), var\(--border\)\) var\((--sp-\d+)\) 100% \/ calc\(100% - var\((--sp-\d+)\)\) 1px no-repeat border-box/.exec(rail);
++  const pad = /padding-inline:\s*var\((--sp-\d+)\)/.exec(opt)?.[1];
++  const tabs = read("src/components/ui/tabs.tsx");
++  const kitPad = twStep(/"group relative h-\[44px\] px-(\d) rounded-md/.exec(tabs)?.[1] ?? "");
++  const inset = twStep(/"m-indicator absolute left-(\d) right-\1 bottom-0 h-\[2px\] rounded-pill"/.exec(tabs)?.[1] ?? "");
++  ok("2.1.locate · the kit's option: a 20px-padded box, its underline 12px in; the rail's rule is its border; a link rail wears `data-section-rail`",
++    kitPad === 20 && inset === 12 && /"scrollx flex items-end gap-1 border-b border-border overflow-x-auto"/.test(tabs) && /data-section-rail=""/.test(tabs), `${kitPad} ${inset}`);
++  // Positions against the column edge (0): the rail reaches `bleed` into the gutter, the option pads `pad`, the underline is
++  // `inset` into the option, the rule's line starts `bg` into the rail.
++  const geom = (b: number, p: number, i: number, r: number) => ({ label: -b + p, underline: -b + i, underlineOverhang: i - p, rule: -b + r });
++  const jr = geom(px(bleed ?? ""), px(pad ?? ""), inset, px(bg?.[1] ?? ""));
++  ok("2.1 · journey: the first label, its underline and the rule all start ON the column edge, the underline exactly the label's width",
++    jr.label === 0 && jr.underline === 0 && jr.underlineOverhang === 0 && jr.rule === 0 && bg?.[1] === bg?.[2] && /border-bottom-color:\s*transparent/.test(rail), JSON.stringify(jr));
++  const classic = geom(0, kitPad, inset, 0);
++  ok("2.1′ CONTROL · the same model without the journey rule is the tile: label 20 in, underline 12 in (390: x36 / x28 against x16)",
++    classic.label === 20 && classic.underline === 12 && 16 + classic.label === 36 && 16 + classic.underline === 28);
++  ok("2.1″ PLANT · a rail that does not bleed puts the label 12px in again, and is reported",
++    geom(0, px(pad ?? ""), inset, px(bg?.[1] ?? "")).label !== 0);
++  ok("2.2 · the bleed is drawn on screen: 12px into the 16px phone gutter (PageContainer `px-3`)", px(bleed ?? "") <= twStep("3") && twStep("3") === 16);
++  const jnav = rule(CSS, ".kp-jnav__link"), jafter = rule(CSS, ".kp-jnav__link::after");
++  ok("2.3 · it is the journey header's own line-tab geometry: `.kp-jnav__link` pads 12 a side and its underline is 12 in",
++    /padding:\s*0 var\(--sp-3\)/.test(jnav) && /left:\s*var\(--sp-3\); right:\s*var\(--sp-3\)/.test(jafter) && pad === "--sp-3");
++  const ghost = read("src/app/wallet/loading.tsx");
++  const ghostShape = (s: string) => [
++    !/<nav className="flex items-end gap-1 border-b border-border" data-rail-ghost="" aria-hidden>/.test(s) && "the ghost rail is not the rail's box with its hook",
++    !/className="relative inline-flex h-\[44px\] items-center whitespace-nowrap px-4 text-body-sm font-semibold text-text-subtle"/.test(s) && "the ghost option is not the kit's option",
++    !/\{i === 0 && <span className="absolute bottom-0 left-2 right-2 h-\[2px\] rounded-pill bg-brand-500" \/>\}/.test(s) && "the first ghost option has no inset underline",
++    /font-display text-\[13px\]|px-3\.5|border-b-2 border-brand-500/.test(s) && "the old ghost (display face, 14px in, box-wide underline) is back",
++  ].filter(Boolean) as string[];
++  ok("2.4 · /wallet's ghost draws the rail's own geometry (both shells), and the journey's rule draws it as it draws the rail", ghostShape(ghost).length === 0, ghostShape(ghost).join(" · "));
++  ok("2.4′ PLANT · the ghost back on `px-3.5` with a box-wide underline is reported",
++    ghostShape(ghost.replace("whitespace-nowrap px-4 text-body-sm", "whitespace-nowrap px-3.5 text-body-sm")).length > 0);
++  const rails = [read("src/components/journey/tickets/ticket-switch-rail.tsx"), read("src/app/wallet/wallet-client.tsx")];
++  ok("2.5 · the journey's line-tab strips are the kit's link rails — Tiketi zangu's (both kinds) and /wallet's — so the one rule reaches both",
++    /<Tabs variant="line" ariaLabel=\{ariaLabel\} value=\{value\} tabs=\{tabs\} \/>/.test(rails[0]) && /<Tabs\s+variant="line"\s+tabs=\{tabs\}/.test(rails[1])
++      && /href: sectionHrefs\.activity/.test(rails[1]) && /href: "\/positions"/.test(read("src/components/journey/tickets/ticket-switch.tsx")));
++}
++
++/* ══ §3 · F7 · DOCKED SHEETS ═════════════════════════════════════════════════════════════════════════════════════ */
++section("3 · F7 a sheet docked to the screen's bottom draws no bottom edge (tiles 132 134 136 151 152)");
++{
++  const modal = read("src/components/ui/modal.tsx");
++  const wrapMark = /data-dock-wrap=\{tall \? "lg" : sheet \? "sm" : undefined\}\s*className=\{`fixed inset-0 flex justify-center/.test(modal);
++  const panelMark = /data-rung="modal"\s*data-dock=\{tall \? "lg" : sheet \? "sm" : undefined\}/.test(modal);
++  ok("3.1 · Modal marks the box that runs past the screen (its wrapper) and the sheet (its panel), by the width below which it docks",
++    wrapMark && panelMark && /const tall = sheet && sheetUntil === "lg";/.test(modal));
++  const lgBlock = mediaBlock(CSS, "max-width: 1023.98px", "data-dock-wrap"), smBlock = mediaBlock(CSS, "max-width: 639.98px", "data-dock-wrap");
++  const dockRules = (b: string, size: "lg" | "sm", extra: string) => [
++    new RegExp(`${esc(JOURNEY)} :is\\(\\[data-dock-wrap="${size}"\\]${extra}\\) \\{ bottom: -1px; \\}|${esc(JOURNEY)} \\[data-dock-wrap="${size}"\\] \\{ bottom: -1px; \\}`).test(b),
++    new RegExp(`${esc(JOURNEY)} (?::is\\(\\[data-dock="${size}"\\]${extra}\\)|\\[data-dock="${size}"\\]) \\{ border-bottom-width: 0; padding-bottom: calc\\(var\\(--dock-pb, var\\(--sp-6\\)\\) \\+ 1px\\) !important; \\}`).test(b),
++  ];
++  const lg = dockRules(lgBlock, "lg", ", \\.kp-fsheet-panel"), sm = dockRules(smBlock, "sm", "");
++  ok("3.2 · in the journey, below each width, the box runs 1px past the last row and the sheet drops its bottom border, its padding +1px",
++    lg.every(Boolean) && sm.every(Boolean), JSON.stringify({ lg, sm }));
++  ok("3.2′ PLANT · the box left on the screen's edge (`bottom: 0`) is reported",
++    !dockRules(lgBlock.replace(/bottom: -1px/g, "bottom: 0"), "lg", ", \\.kp-fsheet-panel").every(Boolean));
++  ok("3.3 · the default `--dock-pb` (24) is Modal's own `p-5` (24 on this scale), so a plain docked sheet keeps its air",
++    px("--sp-6") === twStep("5") && /mat-modal relative w-full p-5 lg:p-6/.test(modal));
++  const padBottom = (decl: string) => /padding:\s*\S+(?:\s+\S+)?\s+(calc\([^)]*\)[^;]*\))/.exec(decl)?.[1]?.replace(/\s+/g, " ").trim() ?? "";
++  const wsDock = /--dock-pb:\s*([^;]+);/.exec(rule(CSS.slice(CSS.indexOf(".kp-wsheet { --dock-pb")), ".kp-wsheet"))?.[1]?.trim();
++  const fsDock = /--dock-pb:\s*([^;]+);/.exec(rule(CSS.slice(CSS.indexOf(".kp-fsheet-panel { --dock-pb")), ".kp-fsheet-panel"))?.[1]?.trim();
++  const fsPadding = /padding:\s*var\(--sp-3\) var\(--sp-5\) (calc\(env\(safe-area-inset-bottom, 0px\) \+ var\(--sp-4\)\))/.exec(rule(CSS, ".kp-fsheet-panel"))?.[1];
++  ok("3.4 · each sheet's `--dock-pb` IS its own bottom padding — the Wallet's 20 + inset, the filter sheet's inset + 16",
++    wsDock === padBottom(rule(CSS, ".kp-wsheet")) && wsDock === "calc(var(--sp-5) + env(safe-area-inset-bottom, 0px))" && fsDock === fsPadding, `${wsDock} | ${fsDock}`);
++  const primer = read("src/components/onboarding/first-visit-primer.tsx");
++  const needle = read("src/components/layout/needle-drawer.tsx");
++  const needlePb = /"pb-\[(calc\(16px\+env\(safe-area-inset-bottom\)\))\] \[--dock-pb:(calc\(16px\+env\(safe-area-inset-bottom\)\))\]"/.exec(needle);
++  ok("3.5 · the primer (`!p-0`) docks on 0, and the Needle's drawer — a sheet of its own below `sm` — carries both marks and its own padding",
++    /panelClassName="!p-0 \[--dock-pb:0px\] /.test(primer) && /data-dock="sm"\s*data-dock-wrap="sm"/.test(needle) && !!needlePb && needlePb[1] === needlePb[2]
++      && /"left-0 right-0 bottom-0 rounded-t-modal px-4 pt-4"/.test(needle));
++  const skewed = /"pb-\[(calc\([^\]]*\))\] \[--dock-pb:(calc\([^\]]*\))\]"/.exec(needle.replace("[--dock-pb:calc(16px", "[--dock-pb:calc(20px"));
++  ok("3.5′ PLANT · the drawer's dock padding out of step with its own is reported", !!skewed && skewed[1] !== skewed[2]);
++  ok("3.6 · the chat's sheet drops its border alone below 1024: its composer paints over the light's row with an opaque fill",
++    new RegExp(`${esc(JOURNEY)} \\.cm-panel-sheet \\{ border-bottom-width: 0; \\}`).test(lgBlock)
++      && /--chat-canvas:\s*oklch\(15% 0\.130 268\);/.test(raw("src/styles/chat/chat-tokens.css"))
++      && /background:\s*linear-gradient\(180deg, oklch\(17% 0\.120 268\) 0%, var\(--chat-canvas\) 100%\)/.test(raw("src/styles/chat/chat-styles.css")));
++  // The census: every Modal sheet in the player's tree is one of the docked sheets the rule names.
++  const sheets = ["src/components/layout/wallet-sheet.tsx", "src/components/journey/tickets-guest-sheet.tsx", "src/components/onboarding/first-visit-primer.tsx", "src/components/rg/reality-check.tsx"]
++    .map((f) => [f, /<Modal[\s\S]{0,200}?\n\s+sheet\n/.test(raw(f))] as const);
++  ok("3.7 · the docked Modal sheets a journey reader can open: the Wallet and the guest sheet (lg), the primer and the reality check (sm)",
++    sheets.every(([, s]) => s) && /sheetUntil="lg"/.test(raw(sheets[0][0])) && /sheetUntil="lg"/.test(raw(sheets[1][0])), sheets.filter(([, s]) => !s).map(([f]) => f).join(", "));
++}
++
++/* ══ §4 · F8 · THE JOURNEY'S BELL PIP ════════════════════════════════════════════════════════════════════════════ */
++section("4 · F8 the journey's bell pip casts no shadow (tile 225)");
++{
++  const j = rule(CSS, ".kp-jhdr__bell .count-badge"), rose = rule(CSS, '.count-badge[data-lift="rose"]');
++  const jAt = CSS.indexOf(".kp-jhdr__bell .count-badge {"), roseAt = CSS.indexOf('.count-badge[data-lift="rose"] {');
++  ok("4.1 · the journey's pip: `box-shadow: none`, after the lift's rule at the same (0,2,0), so it wins on order",
++    /box-shadow:\s*none/.test(j) && jAt > roseAt && roseAt > 0, `${roseAt} < ${jAt}`);
++  ok("4.1′ CONTROL · the classic pip keeps its rose glow AND its dark drop (frozen chrome)",
++    /0 0 8px var\(--no-500\), 0 2px 4px color-mix\(in oklab, var\(--royal-950\) 40%, transparent\)/.test(rose));
++  ok("4.1″ PLANT · the drop put back on the journey's pip is reported",
++    !/box-shadow:\s*none/.test(rule(CSS.replace(/(\.kp-jhdr__bell \.count-badge \{[^}]*)box-shadow: none;/, "$1box-shadow: 0 2px 4px color-mix(in oklab, var(--royal-950) 40%, transparent);"), ".kp-jhdr__bell .count-badge")));
++  ok("4.2 · the pip's separation is its own 2px ring of the bar's ground — a BORDER, which `box-shadow: none` leaves alone",
++    /\.\.\.\(ring \? \{ border: `2px solid \$\{ring\}` \} : null\)/.test(read("src/components/ui/count-badge.tsx")));
++}
++
++/* ══ §5 · F9 · A NOTICE'S MOMENTS IN THE READER'S WORDS ══════════════════════════════════════════════════════════ */
++section("5 · F9 every moment a notice states is said in each reader's words (tile 192)");
++// A month word that differs between English and Swahili, seen in a Swahili sentence, is an English date there.
++const EN_ONLY_MONTH = /\b(Mar|May|Aug|Oct|Dec)\b/;
++{
++  const ns = read("src/lib/server/notification-service.ts");
++  ok("5.1 · the notifier formats no date the English way: no formatDateShort / formatDateTime / toLocale*String",
++    !/\bformatDateShort\(|\bformatDateTime\(|\.toLocale(?:Date|Time)?String\(/.test(ns));
++  ok("5.1′ PLANT · the old `formatDateShort(opts.reapplyAt)` put back is reported",
++    /\bformatDateShort\(/.test(ns.replace("await instantIn(opts.reapplyAt, formatEatDate, \"\")", "formatDateShort(opts.reapplyAt)")));
++  ok("5.2 · one path: the verdict, the re-apply day and a break's end all go through `instantIn` with eat-day's formatters",
++    /instantIn\(opts\.paysAt, formatEatDateTime, "—"\)/.test(ns) && /instantIn\(opts\.reapplyAt, formatEatDate, ""\)/.test(ns)
++      && /return instantIn\(untilIso, formatBreakEnd, untilIso\.slice\(0, 10\)\);/.test(ns)
++      && /en: say\(at, now, dict\.en\.common\.monthsShort, "en"\),\s*sw: say\(at, now, dict\.sw\.common\.monthsShort, "sw"\),\s*zh: say\(at, now, dict\.zh\.common\.monthsShort, "zh"\),/.test(ns));
++  const ms = read("src/lib/server/market-service.ts");
++  const fan = /export async function notifyVerdictRecordedForMarket\([\s\S]*?\n\}\n/.exec(ms)?.[0] ?? "";
++  ok("5.3 · the verdict's caller hands the market's own instant, not a formatted English string",
++    /const paysAt = m\.objectionsClosedAt;/.test(fan) && /\bpaysAt,/.test(fan) && !/formatDateTime\(/.test(fan));
++
++  // Driven: the rows a player's bell, /notifications and the push read.
++  const N = await import("../src/lib/server/notification-service.ts");
++  const E = await import("../src/lib/server/email.ts");
++  const nowIso = new Date().toISOString();
++  await db.user.create({ id: "r5b_player", phoneE164: "+255789000501", email: "r5b@test.tz", passwordHash: null, passwordSalt: null, failedLoginCount: 0,
++    lockedUntil: null, role: "PLAYER", status: "ACTIVE", locale: "SW", displayName: null, dob: null, region: null, acceptedTermsVersion: null,
++    acceptedTermsAt: null, marketingOptIn: false, twoFactorEnabled: false, avatarDataUrl: null, createdAt: nowIso, updatedAt: nowIso, lastLoginAt: null, closedAt: null } as never);
++  await db.wallet.create({ id: "wal_r5b_player", userId: "r5b_player", balance: 0, pending: 0, hold: 0, bonusBalance: 0, currency: "TZS", status: "ACTIVE", createdAt: nowIso, updatedAt: nowIso } as StoredWallet);
++  const at = "2026-10-09T08:53:00.000Z", atMs = Date.parse(at);
++  const v = await N.notifyVerdictRecorded("r5b_player", { marketTitle: { en: "Sealed poll", sw: "Kura iliyofungwa", zh: "已封存的投票" }, marketId: "mkt_r5b_1", outcome: "YES", paysAt: at });
++  const say = (l: "en" | "sw" | "zh") => formatEatDateTime(atMs, Date.now(), DICTS[l].common.monthsShort, l);
++  ok("5.4 · the verdict notice: \"Payout from 9 Oct, 11:53\" · \"Malipo kuanzia 9 Okt, 11:53\" · \"赔付不早于 2026年10月9日 11:53\" (EAT)",
++    !!v && v.bodyEn.includes(`Payout from ${say("en")}`) && v.bodySw.includes(`Malipo kuanzia ${say("sw")}`) && (v.bodyZh ?? "").includes(`赔付不早于 ${say("zh")}`)
++      && say("sw").startsWith("9 Okt") && !EN_ONLY_MONTH.test(v.bodySw), v ? `${v.bodySw} | ${v.bodyZh}` : "no row");
++  ok("5.4′ PLANT · the old body — one English string in the Swahili sentence — is reported", EN_ONLY_MONTH.test("Hakuna fedha iliyohamishwa bado. Malipo kuanzia 9 Oct 2026, 11:53"));
++  const reapply = "2026-12-06T10:00:00.000Z";
++  const r = await N.notifyAgentRevoked("r5b_player", { reapplyAt: reapply });
++  const day = (l: "en" | "sw" | "zh") => formatEatDate(Date.parse(reapply), Date.now(), DICTS[l].common.monthsShort, l);
++  ok("5.5 · the revoked agent's notice: \"from 6 Dec\" · \"kuanzia 6 Des\" · \"您可从 2026年12月6日 起\"",
++    !!r && r.bodyEn.includes(`You may apply again from ${day("en")}.`) && r.bodySw.includes(`kuanzia ${day("sw")}.`) && (r.bodyZh ?? "").includes(`您可从 ${day("zh")} 起`)
++      && day("sw").startsWith("6 Des") && !EN_ONLY_MONTH.test(r.bodySw), r ? r.bodySw : "no row");
++  const letter = E.agentRevokedHtml({ reapplyAt: reapply }), none = E.agentRevokedHtml({ reapplyAt: null });
++  ok("5.6 · …and its letter: the English line says \"from 6 Dec\", the Swahili line \"kuanzia 6 Des\" (it printed \"kuanzia 06 Dec\")",
++    letter.includes(`You may apply again from ${day("en")}.`) && letter.includes(`Unaweza kuomba tena kuanzia ${day("sw")}.`) && !/kuanzia 0?6 Dec/.test(letter)
++      && !none.includes("kuanzia") && !none.includes("apply again"));
++}
++
++/* ══ §6 · F10 · A QUOTED TITLE, CUT AT A WORD ════════════════════════════════════════════════════════════════════ */
++section("6 · F10 a title quoted in a notice is cut at a word, with \"…\" (tile 192)");
++{
++  const JUNK = /[\s,;:.·\-–—(\[{“‘«「『（【〈《〔…、，：；。]$/u;
++  // ⚠️ Chosen so that BOTH the old cut (60) and a cut that never steps back (59, the room) land inside a word ("Tanzania"):
++  // a title whose 59th character is a space would let a missing step-back pass unseen (the mutation proof found one).
++  const swTitle = "Je, Simba SC watashinda mechi zote tano za Ligi Kuu ya Tanzania Bara msimu huu?";
++  const c = clipQuote(swTitle, 60), head = c.slice(0, -1);
++  ok("6.1 · a long Swahili title ends at a word, on \"…\", within 60 code points, the words before it unchanged",
++    c.endsWith("…") && Array.from(c).length <= 60 && swTitle.startsWith(head) && swTitle[head.length] === " " && !JUNK.test(head), c);
++  ok("6.1′ CONTROL · `.slice(0, 60)` — the old cut — ends inside a word (\"…Ligi Kuu ya Tanza\"), and so would a cut at the room (59)",
++    /\S$/.test(swTitle.slice(0, 60)) && swTitle[60] !== " " && /\S$/.test(swTitle.slice(0, 59)) && swTitle[59] !== " ");
++  ok("6.2 · a text that fits is returned exactly as given", clipQuote("Sealed poll", 60) === "Sealed poll" && clipQuote(swTitle, 200) === swTitle);
++  const zhTitle = "达累斯萨拉姆七月降雨超过200毫米吗NBC联赛2026-27赛季的最终排名";
++  const LATIN = /[A-Za-z0-9-]/;
++  const zc = Array.from({ length: 20 }, (_, i) => clipQuote(zhTitle, 12 + i));
++  const insideRun = (s: string) => { const head = s.slice(0, -1); return LATIN.test(head.slice(-1)) && LATIN.test(zhTitle.slice(head.length, head.length + 1)); };
++  ok("6.3 · Chinese breaks between ideographs but never inside a Latin word or a figure (\"200\", \"NBC\", \"2026-27\") — at any room 12…31",
++    zc.every((s) => s.endsWith("…") && zhTitle.startsWith(s.slice(0, -1)) && !insideRun(s)), zc.filter(insideRun).join(" | "));
++  ok("6.3′ CONTROL · `.slice` would have cut inside them (at 14, 20, 26: \"…20\", \"…NB\", \"…202\")",
++    [14, 20, 26].every((n) => { const s = `${zhTitle.slice(0, n)}…`; return insideRun(s); }));
++  ok("6.4 · a lone word longer than the room is cut at a character; a cut never ends on junk (\"「\", \", \", \"...\")",
++    clipQuote("Supercalifragilisticexpialidocious", 10) === "Supercali…" && clipQuote("选「是」还是「否」——一个非常长的问题", 3) === "选…"
++      && clipQuote("Hello, world and more", 9) === "Hello…" && clipQuote("Wait... what is it all about", 9) === "Wait…");
++  const emoji = clipQuote("😀😀😀😀😀😀", 4);
++  const loneHalf = [...emoji].some((ch) => ch.length === 1 && ch.charCodeAt(0) >= 0xd800 && ch.charCodeAt(0) <= 0xdfff);
++  ok("6.5 · counted in code points: a pair of surrogates is never split", Array.from(emoji).length === 4 && !loneHalf && emoji === "😀😀😀…");
++  const ns = read("src/lib/server/notification-service.ts");
++  const CUT = /\b(?:marketTitle(?:\.(?:en|sw|zh))?|title(?:\.(?:en|sw|zh))?|titleEn|note|reason|playerLabel)\.slice\(0, \d+\)/;
++  ok("6.6 · no notice cuts what it quotes with `.slice(0, n)` any more — every cut is `clipQuote` (82 of them)", !CUT.test(ns) && count(ns, "clipQuote(") >= 80, String(count(ns, "clipQuote(")));
++  ok("6.6′ PLANT · one `.slice(0, 70)` put back is reported", CUT.test(ns.replace("${clipQuote(opts.marketTitle.en, 70)} · your side didn't win.", "${opts.marketTitle.en.slice(0, 70)} · your side didn't win.")));
++  const ms = read("src/lib/server/market-service.ts");
++  const subjects = [...ms.matchAll(/subject: `[^`\n]*`/g)].map((m) => m[0]);
++  ok("6.7 · the email subjects that quote a title cut it the same way (bet placed, betting closed, awaiting resolution, cancelled)",
++    subjects.filter((s) => /clipQuote\((?:market|m)\.titleEn, \d+\)/.test(s)).length === 4 && !subjects.some((s) => /titleEn\.slice\(0, \d+\)/.test(s))
++      && /bodySw: `\$\{clipQuote\(market\.titleSw, 60\)\} — uko kwenye raundi hii\.`/.test(ms), subjects.filter((s) => /titleEn/.test(s)).join(" | "));
++  ok("6.7′ CONTROL · the ledger's own descriptions keep their pinned shape (`red:updown-void-copy`): money records, not notices",
++    ms.includes('description: `${refundDescription ?? "Refund"} · "${m.titleEn.slice(0, 60)}"${refundDescription ? "" : " voided"}`,'));
++}
++
++/* ══ §7 · F11 · THE JOURNEY'S MONEY DOORS ════════════════════════════════════════════════════════════════════════ */
++section("7 · F11 the journey's money doors say the journey's words (tiles 171 172)");
++{
++  const wc = read("src/app/wallet/wallet-client.tsx");
++  const doors = (s: string) => [
++    !/<I\.arrowDown s=\{14\} \/>\s*\{journey \? t\.journey\.depositAction : t\.common\.deposit\}/.test(s) && "the header's Deposit",
++    !/<I\.arrowUp s=\{14\} \/>\s*\{journey \? t\.journey\.withdrawAction : t\.common\.withdraw\}/.test(s) && "the header's Withdraw",
++    !/<I\.plus s=\{12\} \/>\s*\{journey \? t\.journey\.depositAction : t\.common\.addFunds\}/.test(s) && "the balance card's Add funds",
++    !/\{journey \? t\.journey\.depositAction : t\.common\.depositCta\}/.test(s) && "the empty account's Deposit",
++    !/<BalanceCard [^>]*journey=\{journey\} \/>/.test(s) && "the card is not told",
++    !/kycFirstDepositNotice = null,\s*journey = false,/.test(s) && "the page's default is not the classic words",
++  ].filter(Boolean) as string[];
++  ok("7.1 · /wallet: the header's two doors, the balance card's link and the empty account's Deposit take the journey's pair", doors(wc).length === 0, doors(wc).join(" · "));
++  ok("7.1′ PLANT · the header's Deposit back on `common.deposit` is reported",
++    doors(wc.replace("{journey ? t.journey.depositAction : t.common.deposit}", "{t.common.deposit}")).length > 0);
++  ok("7.2 · the page asks the one per-request resolver (after its session gate); the receipts page does too",
++    /journey=\{\(await resolveSimpleJourney\(\)\)\.journey\}/.test(read("src/app/wallet/page.tsx"))
++      && /const \{ journey \} = await resolveSimpleJourney\(\);/.test(read("src/app/wallet/receipts/page.tsx"))
++      && /\{journey \? t\.journey\.depositAction : t\.common\.depositCta\}/.test(read("src/app/wallet/receipts/page.tsx")));
++  ok("7.3 · the pair is the journey's own (sw \"Weka pesa\" / \"Toa pesa\"; en Deposit / Withdraw; zh 充值 / 提现) — and it is not the classic sw pair",
++    sw.journey.depositAction === "Weka pesa" && sw.journey.withdrawAction === "Toa pesa" && en.journey.depositAction === "Deposit" && zh.journey.withdrawAction === "提现"
++      && sw.common.deposit === "Amana" && sw.common.withdraw === "Toa");
++  const sheet = read("src/components/layout/wallet-sheet.tsx"), bar = read("src/components/journey/journey-top-bar.tsx");
++  ok("7.4 · every other door the journey shows already says it: the header pill, the Wallet's two doors, the hub's Withdraw, the deposit page's Withdraw",
++    /t\.journey\.depositAction/.test(bar) && /\{journey \? t\.journey\.depositAction : t\.common\.deposit\}/.test(sheet) && /\{journey \? t\.journey\.withdrawAction : t\.common\.withdraw\}/.test(sheet)
++      && /label: "journey\.withdrawAction"/.test(read("src/components/journey/account/hub-rows.ts"))
++      && /\{journey \? t\.journey\.withdrawAction : t\.common\.withdraw\}/.test(read("src/app/wallet/deposit/page.tsx")));
++}
++
++/* ══ §8 · F13 · THE RECEIPTS DOOR IN THE BAR'S RHYTHM ═══════════════════════════════════════════════════════════ */
++section("8 · F13 /wallet's receipts door stands in the bar's rhythm (tile 172)");
++{
++  const door = rule(CSS, ".kp-discovery-bar + .kp-wallet-door.kp-wallet-door");
++  const mt = Number(/margin-top:\s*(-?\d+)px/.exec(door)?.[1] ?? NaN), mb = Number(/margin-bottom:\s*(-?\d+)px/.exec(door)?.[1] ?? NaN);
++  const wc = read("src/app/wallet/wallet-client.tsx");
++  const rung = twStep(/<PageContainer tier="reading" className="space-y-(\d)">/.exec(wc)?.[1] ?? "");
++  const barPb = twStep(/\bpb-(\d(?:\.\d)?)\b/.exec(QUERY_BAR_ROW2_CLASS)?.[1] ?? "");
++  // The link: `inline-flex min-h-[44px] items-center … text-body-sm` (13px on an 18px line), centred in its 44px box.
++  const link = /className="inline-flex min-h-\[44px\] items-center gap-1\.5 text-body-sm font-semibold text-brand-300/.test(wc);
++  const g = lineGeom("inter", 13, 18), top = (44 - 18) / 2;
++  const capIn = top + g.capTop, underBase = 44 - (top + g.baseline);
++  const above = barPb + mt + capIn, below = underBase + rung + mb;
++  ok("8.1.locate · the page's rung is 32 (`space-y-6`), the bar ends 10 under its pills (row 2's `pb-2.5`), the door is a 13px line in a 44px box",
++    rung === 32 && barPb === 10 && link && Math.abs(capIn - 17.27) < 0.01 && Math.abs(underBase - 17.27) < 0.01, `${rung} ${barPb} ${capIn.toFixed(2)}`);
++  ok("8.1 · the words stand rung + 10 = 42 under the last pills and their baseline 42 over what follows (42.27 · 42.27)",
++    Math.abs(above - (rung + barPb)) <= 0.5 && Math.abs(below - (rung + barPb)) <= 0.5, `${above.toFixed(2)} · ${below.toFixed(2)}`);
++  ok("8.1′ CONTROL · without the rule the door stands on the rung both sides: 59.27 · 49.27 — the measured 59 · 49 of tile 172",
++    Math.abs(barPb + rung + capIn - 59.27) < 0.01 && Math.abs(underBase + rung - 49.27) < 0.01);
++  ok("8.1″ PLANT · a door left on the page's 32 over it is reported", Math.abs(barPb + 32 + capIn - (rung + barPb)) > 0.5);
++  ok("8.2 · the door row wears the hook, right after the bar it follows; the selector ties `space-y-*` at (0,3,0)",
++    /\{emptyCause !== "no-rows" && activityBar\}\s*(?:\{\s*\}\s*)*\{emptyCause !== "no-rows" && \(\s*<div className="kp-wallet-door flex justify-end">/.test(wc)
++      && (".kp-discovery-bar + .kp-wallet-door.kp-wallet-door".match(/\.[\w-]+/g) ?? []).length === 3);
++}
++
++/* ══ §9 · F14 · THE COUNT LINE'S AIR ════════════════════════════════════════════════════════════════════════════ */
++section("9 · F14 a count line under a bar has 12px of air on both sides (tile 171)");
++{
++  ok("9.1.locate · the wrapped row is row 1 plus the wrap, an 8px row gap, a 4px reach into row 2, one line from lg",
++    QUERY_BAR_ROW1_WRAP_CLASS === `${QUERY_BAR_ROW1_CLASS} flex-wrap justify-end gap-y-1.5 -mb-1 lg:mb-0 lg:flex-nowrap` && twStep("1.5") === 8 && twStep("1") === 4);
++  // The count: `font-mono text-[11.5px]` on the body's 1.5 line.
++  const qb = read("src/components/ui/query-bar.tsx");
++  const g = lineGeom("jetBrainsMono", 11.5, 11.5 * 1.5);
++  const row2Pt = twStep(/\bpt-(\d)\b/.exec(QUERY_BAR_ROW2_CLASS)?.[1] ?? "");
++  const capAir = (gap: number) => gap + g.capTop, baseAir = (reach: number) => g.belowBaseline + row2Pt - reach;
++  const gapY = twStep(/\bgap-y-(\d(?:\.\d)?)\b/.exec(QUERY_BAR_ROW1_WRAP_CLASS)?.[1] ?? ""), reach = twStep(/(?:^|\s)-mb-(\d(?:\.\d)?)\b/.exec(QUERY_BAR_ROW1_WRAP_CLASS)?.[1] ?? "");
++  ok("9.1 · its capitals 12 under the pills (8 + 4.37) and its baseline 12 over row 2's control (4.49 + 12 − 4)",
++    /className="shrink-0 font-mono text-\[11\.5px\] tabular-nums text-text-subtle"/.test(qb) && Math.abs(capAir(gapY) - 12) < 0.5 && Math.abs(baseAir(reach) - 12) < 0.5,
++    `${capAir(gapY).toFixed(2)} | ${baseAir(reach).toFixed(2)}`);
++  ok("9.1′ CONTROL · the old `gap-y-1` put the capitals 8.37 under the pills — tile 171's measured 8 (y697 → y706)", Math.abs(capAir(4) - 8.37) < 0.01);
++  const mk = mediaBlock(CSS, "max-width: 639.98px", "grid-template-columns: minmax(160px, 1fr) auto auto");
++  ok("9.2 · the /markets phone bar's count line takes the same 8px each way (R4-D)", /row-gap:\s*var\(--sp-2\);/.test(mk) && px("--sp-2") === 8);
++  const users = ["src/app/wallet/wallet-bar.tsx", "src/app/wallet/receipts/receipts-bar.tsx", "src/app/wallet/receipts/loading.tsx"].map((f) => [f, read(f)] as const);
++  ok("9.3 · both money bars and the receipts ghost take the one constant; nobody retypes the wrap",
++    users.every(([, s]) => /<div className=\{QUERY_BAR_ROW1_WRAP_CLASS\}>/.test(s) && !/gap-y-1 lg:flex-nowrap/.test(s)), users.filter(([, s]) => !/QUERY_BAR_ROW1_WRAP_CLASS/.test(s)).map(([f]) => f).join(", "));
++  ok("9.3′ PLANT · a bar back on its own `gap-y-1` recipe is reported",
++    /gap-y-1 lg:flex-nowrap/.test(users[0][1].replace("<div className={QUERY_BAR_ROW1_WRAP_CLASS}>", '<div className={cn(QUERY_BAR_ROW1_CLASS, "flex-wrap justify-end gap-y-1 lg:flex-nowrap")}>')));
++  ok("9.4 · the ghost's count is as tall as the count's line (17.25), so row 2 lands where the page puts it",
++    /<div className="flex h-\[17\.25px\] shrink-0 items-center"><div className="h-3 w-\[80px\] rounded bg-bg-overlay" \/><\/div>/.test(users[2][1]) && 11.5 * 1.5 === 17.25);
++}
++
++/* ══ §10 · §A5 · /notifications ON AN EMPTY INBOX ═══════════════════════════════════════════════════════════════ */
++section("10 · §A5 /notifications withholds its band and its bar on a genuinely empty inbox");
++{
++  const page = read("src/app/notifications/page.tsx");
++  const shape = (s: string) => [
++    !/const inboxEmpty = !q && counts\.all === 0 && counts\.cleared === 0;/.test(s) && "\"genuinely empty\" is not: no search, none live, none cleared",
++    !/\{!inboxEmpty && \(\s*<Suspense>\s*<SearchBox/.test(s) && "the search band is not withheld with it",
++    !/\{!inboxEmpty && \(\s*<NotificationsBar/.test(s) && "the bar is not withheld",
++    !/const empty = inboxEmpty \? EMPTY\.all : EMPTY\[filter\];/.test(s) && "an empty inbox under a lens does not read the inbox's sentence",
++    !/title=\{q \? `\$\{t\.results\.noResultsMatch\} "\$\{q\}"` : empty\.title\}/.test(s) && "the empty state does not read it",
++    count(s, "<NotificationsBar") !== 1 && "the bar is rendered more than once",
++  ].filter(Boolean) as string[];
++  ok("10.1 · the band and the bar stand only over something to filter; a search keeps them (its miss is the way out)", shape(page).length === 0, shape(page).join(" · "));
++  ok("10.1′ PLANT · the cleared rows forgotten (a player who cleared everything would lose the Cleared lens) is reported",
++    shape(page.replace(" && counts.cleared === 0;", ";")).length > 0);
++  ok("10.1″ PLANT · the bar drawn unconditionally again is reported", shape(page.replace("{!inboxEmpty && (\n        <NotificationsBar", "{(\n        <NotificationsBar")).length > 0);
++  // The counts the rule reads, driven on the store a player's inbox lives in.
++  const pageOf = () => db.notification.page({ userId: "r5b_inbox", filter: "all", sort: "newest", page: 1, perPage: 20, q: "" }) as unknown as { counts: { all: number; cleared: number } };
++  const empty0 = pageOf().counts;
++  const N = await import("../src/lib/server/notification-service.ts");
++  const row = await N.notifyPasswordChanged("r5b_inbox");
++  const one = pageOf().counts;
++  if (row) await db.notification.dismiss(row.id, "r5b_inbox");
++  const cleared = pageOf().counts;
++  const isEmpty = (c: { all: number; cleared: number }) => c.all === 0 && c.cleared === 0;
++  ok("10.2 · driven: a new player's inbox is empty (the band and bar withheld); one notice keeps them; that notice cleared still keeps them",
++    isEmpty(empty0) && !isEmpty(one) && one.all === 1 && !isEmpty(cleared) && cleared.cleared === 1, JSON.stringify({ empty0, one, cleared }));
++  const siblings: Array<[string, RegExp]> = [
++    ["src/app/positions/page.tsx", /\{positions\.length > 0 && \(\s*<>\s*(?:\{\s*\}\s*)*<SearchBox/],
++    ["src/app/wallet/wallet-client.tsx", /\{emptyCause !== "no-rows" && activityBar\}/],
++    ["src/app/updown/history/page.tsx", /\{allRows\.length > 0 && \(/],
++    ["src/app/proposals/page.tsx", /\{rows\.length > 0 && \(/],
++    ["src/app/watchlist/page.tsx", /\{rows\.length > 0 && \(/],
++    ["src/app/fairness/page.tsx", /\{rows\.length > 0 && \(/],
++    ["src/app/positions/performance/page.tsx", /\{settledAll\.length > 0 && lenses\.length > 2 && \(/],
++    ["src/app/wallet/receipts/page.tsx", /\{cause !== "no-rows" && <ReceiptsBar/],
++  ];
++  const missing = siblings.filter(([f, re]) => !re.test(read(f))).map(([f]) => f);
++  ok("10.3 · the rule /notifications joins: every one of its siblings withholds its controls on an empty book", missing.length === 0, missing.join(", "));
++}
++
++/* ══ §11 · CHECKS ══════════════════════════════════════════════════════════════════════════════════════════════ */
++section("11 · CHECKS the zero-balance lead keeps the method's name whole (079 083); the deposit pip clears the logo (067)");
++{
++  const hero = read("src/components/home/landing-hero.tsx");
++  ok("11.1 · the lead is kept by the method's own label, found in the sentence (no new words)",
++    /<p className="kp-mine__lead">\{keepText\(t\.home\.emptyBalance, methodRunIn\(t\.home\.emptyBalance, t\.wallet\.mobileMoneyOnly\)\)\}<\/p>/.test(hero));
++  const kept = (d: typeof sw) => html(h("p", null, keepText(d.home.emptyBalance, methodRunIn(d.home.emptyBalance, d.wallet.mobileMoneyOnly))));
++  ok("11.2 · rendered: \"pesa ya simu\" and \"mobile money\" are each one unbreakable run; the sentence itself is unchanged",
++    kept(sw).includes('<span class="whitespace-nowrap">pesa ya simu</span>') && kept(en).includes('<span class="whitespace-nowrap">mobile money</span>')
++      && kept(sw).replace(/<[^>]+>/g, "") === sw.home.emptyBalance && kept(en).replace(/<[^>]+>/g, "") === en.home.emptyBalance, `${kept(sw)}`);
++  ok("11.2′ CONTROL · Chinese names it 手机钱包, not the Wallet's 移动支付: no run — `keep-all` (`.kp-mine__lead:lang(zh)`) already keeps it",
++    methodRunIn(zh.home.emptyBalance, zh.wallet.mobileMoneyOnly).length === 0 && /\.kp-mine__lead:lang\(zh\)\s*\{\s*word-break:\s*keep-all;/.test(CSS));
++  const runW = Math.max(widthOf("pesa ya simu", 17), widthOf("mobile money", 17));
++  ok("11.3 · the run fits the narrowest line it can meet (288px at 320): a kept run never overflows", runW < 288, runW.toFixed(1));
++  // `text-wrap: balance` modelled as Chrome does it: the narrowest width that keeps the greedy line count, then greedy.
++  const greedy = (toks: string[], w: number) => { const out: string[] = []; let cur = ""; for (const t of toks) { const n = cur ? `${cur} ${t}` : t; if (widthOf(n, 17) <= w || !cur) cur = n; else { out.push(cur); cur = t; } } if (cur) out.push(cur); return out; };
++  const balanced = (toks: string[], w: number) => { const n = greedy(toks, w).length; let lo = 0, hi = w; for (let i = 0; i < 40; i++) { const m = (lo + hi) / 2; if (greedy(toks, m).length > n) lo = m; else hi = m; } return greedy(toks, hi); };
++  const toks = (text: string, keep: string | null) => { const words = text.split(" "); if (!keep) return words; const k = keep.split(" ").length, out: string[] = []; for (let i = 0; i < words.length; i++) { const j = words.slice(i, i + k).join(" "); if (j.toLowerCase() === keep.toLowerCase()) { out.push(j); i += k - 1; } else out.push(words[i]); } return out; };
++  const measure = Number(/--mine-measure:\s*calc\((\d+) \* var\(--type-h4\)\)/.exec(rule(CSS, ".kp-mine"))?.[1] ?? NaN) * px("--type-h4");
++  const before = { sw: balanced(toks(sw.home.emptyBalance, null), measure), en: balanced(toks(en.home.emptyBalance, null), measure) };
++  const after = { sw: balanced(toks(sw.home.emptyBalance, "pesa ya simu"), measure), en: balanced(toks(en.home.emptyBalance, "mobile money"), measure) };
++  ok("11.4 · at 1024–1280 (578px) the lead was split inside the name (\"…pesa ya\" / \"simu…\", \"…mobile\" / \"money…\") and is not now",
++    before.sw[0].endsWith("pesa ya") && before.en[0].endsWith("mobile") && after.sw.length === 2 && after.en.length === 2
++      && after.sw.every((l) => !/pesa ya$|pesa$/.test(l)) && after.sw[0].endsWith("pesa ya simu") && after.en[0].endsWith("Add funds by"),
++    JSON.stringify({ before, after }));
++  const grid = read("src/components/wallet/provider-radio-grid.tsx");
++  const pip = /className="absolute right-(\d(?:\.\d)?) top-\1 inline-flex h-(\d) w-\2 items-center justify-center rounded-full bg-brand-500/.exec(grid);
++  const tile320 = 113, logo = 48, border = 1;
++  const air = (inset: number, size: number) => tile320 / 2 - logo / 2 - border - inset - size;
++  ok("11.5 · the deposit pip stands 4px into the tile's corner: 7.5px clear of the logo at sw 320 (a 113px tile, a 48px plate)",
++    !!pip && twStep(pip[1]) === 4 && twStep(pip[2]) === 20 && air(twStep(pip[1]), twStep(pip[2])) >= 7, pip ? `${air(twStep(pip[1]), twStep(pip[2]))}` : "no pip");
++  ok("11.5′ CONTROL · at 8px in (`1.5`) it was 3.5 — tile 067's 3 clear columns (plate to x121, pip from x125)", air(twStep("1.5"), 20) === 3.5);
++}
++
++console.log(`\n${pass} passed, ${fails.length} failed`);
++if (fails.length) {
++  console.log(fails.map((f) => `  · ${f}`).join("\n"));
++  process.exit(1);
++}
++process.exit(0);
+diff --git a/src/app/globals.css b/src/app/globals.css
+index 4a390f22d..3642088a2 100644
+--- a/src/app/globals.css
++++ b/src/app/globals.css
+@@ -2542,6 +2542,28 @@ textarea::placeholder { color: var(--text-subtle); }
+    `outline-offset: -2px`, i.e. INSIDE the item, so nothing about it depends on this axis. */
+ [data-section-rail] { overflow-y: hidden; }
+ 
++/* ⭐ THE JOURNEY'S SECTION RAILS START ON THE COLUMN'S EDGE (round 5 of the visual pass, 2026-10-09, F6, tiles 165–168
++   171 172). The kit's option is a 20px-padded box with its underline 12px in, so the first option's underline began 12px
++   and its label 20px inside the column — Tiketi zangu's "Maswali" at x28 / x36 (390) and x144 / x152 (1280), /wallet's
++   "Shughuli" the same — while the heading, the rail's rule, the chips and the cards all stand at x16 / x132 (R4-E's one
++   content edge per column). In the journey a section rail now speaks the journey header's own line-tab geometry
++   (`.kp-jnav__link`: 12px a side, the underline exactly under the label) and the rail reaches 12px into the gutter, so:
++     · the first label AND its underline start on the column edge (x16 / x132), every underline is its label's width;
++     · the first option's hover fill and focus ring keep their 12px of air, drawn in the gutter (from x4 at 390 — the
++       gutter is 16 — and x120 at 1280), inside the rail's own box, so its overflow clip never cuts them;
++     · the RULE still starts on the column edge: the rail's border is transparent and the line is its background, 1px
++       on the border row from 12px in (a background is fixed to a scroll box, so it does not travel when the rail
++       scrolls). Its right end is the column's, as before.
++   The option's 44px height, its 4px gap, its pending mark (`--lp-inset: 12px`, the underline's inset) are unchanged.
++   `[data-rail-ghost]` is /wallet's loading rail, drawn to the same geometry so the page lands where its ghost stood.
++   ⚠️ Journey-only: in the classic shell the same rails keep the kit's geometry (one rule per shell). */
++:root:has(#kp-journey-shell) :is([data-section-rail], [data-rail-ghost]) {
++  margin-inline-start: calc(-1 * var(--sp-3));
++  border-bottom-color: transparent;
++  background: linear-gradient(var(--border), var(--border)) var(--sp-3) 100% / calc(100% - var(--sp-3)) 1px no-repeat border-box;
++}
++:root:has(#kp-journey-shell) :is([data-section-rail], [data-rail-ghost]) > * { padding-inline: var(--sp-3); }
++
+ /* ===========================================================================
+    Motion polish layer — ⚠️ DEPRECATED ALIASES (2026-07-28)
+    ---------------------------------------------------------------------------
+@@ -3726,6 +3748,16 @@ th .link-pending { --lp-inset: 0px; --lp-bottom: 8px; }
+    (/results) the negative margin simply subtracts from the gap. */
+ .kp-search-band.kp-search-band:has(+ .kp-discovery-bar) { margin-bottom: -25px; }
+ .kp-search-band.kp-search-band:not(:has(+ .kp-discovery-bar)) { margin-bottom: -15px; }
++/* ⭐ R5-B (2026-10-09, F13, tile 172) · …AND A DOOR UNDER A BAR STANDS IN THE BAND'S RHYTHM — /wallet's "Risiti zote"
++   (`wallet-client.tsx`), a 44px link row between the bar and the list. Its 13px words on an 18px line, centred, keep
++   17.27px of the box above their capitals and as much below their baseline (Inter: capitals 1490 of 2048, ascent 1984),
++   and the page's 32px rung stood on both sides, so the words were 10 + 32 + 17.27 = 59px under the last pills and 49 over
++   the chart card (measured 59 · 49 at 1280) — a band twice the bar's own. Every bar has its rung + 10 (the bar's bottom
++   padding) to what follows, 42 on this page, so the box lies 17px into each gap: 15px over it (32 − 17, the words 42.3
++   under the pills) and −7px under it (it collapses with the next block's 32: 25 + 17.27, the baseline 42.3 over the
++   chart, the capped notice or the empty state). The tap box stays 44px; the list moves up 24px.
++   ⛔ DOUBLED and after a bar, as above: (0,3,0) ties `space-y-*`'s own margins and wins on source order. */
++.kp-discovery-bar + .kp-wallet-door.kp-wallet-door { margin-top: 15px; margin-bottom: -7px; }
+ 
+ /* The sort/topic menus are <details>, so they open with no JavaScript. The native marker is
+    replaced by the caret glyph inside the summary.
+@@ -6298,6 +6330,56 @@ html[lang="zh"] .kp-udrule { word-break: keep-all; }
+    13px at en 320 the same way). ⚠️ Journey-only: the classic capsule opens this same sheet (frozen until S15). */
+ :root:has(#kp-journey-shell) .kp-wsheet__act { padding-inline: var(--sp-3); }
+ :root:has(#kp-journey-shell) .kp-wsheet__act > svg { flex-shrink: 0; }
++/* ⭐ THE HAIRLINE OVER THE WALLET'S BOTTOM ROW STANDS IN THE MIDDLE OF ITS GAP (round 5 of the visual pass, 2026-10-09, F3,
++   tiles 092 132–137 151–154). The sheet's 16px gap put the rule 16px under the content above it (17–18px under the
++   captions' ink) and the row's own 8px padding put the row 8px under the rule — Funga's border 8px off the line, the links'
++   words 25px — so the rule read as a lid on the row rather than a division between two parts. It now keeps the filter
++   sheet's footer rhythm (`.kp-fsheet-foot`: 16 above the rule, 16 below): the content, 16, the rule, 16, the row's 44px
++   boxes, every control centred on that one row. Every state ends 16 above it — the held notice, a break's notice, the
++   doors' captions. Phone sheet and desktop panel alike, the rule → Funga's border goes 8 → 16: at 390 the docked sheet
++   grows 8px upward (the rule y706 → y698, Funga's border stays at y715), at 1280 the popover 8px downward (Funga's
++   border y266 → y274 under the rule at y257).
++   ⭐ ONE CONVENTION FOR A HAIRLINE OVER A SURFACE'S ACTIONS: it stands in the middle of its gap, measured to what the eye
++   sees on each side (a box's edge, else a line's ink). The filter sheet's footer (16 | 16) and the bet confirm's (the
++   last box 20 over the rule, the quote caption's capitals 20.6 under it) already did; a BAND is not this family — the
++   bell's footer tray and the date picker's bars carry their own padding and their rule is their own edge.
++   ⚠️ Journey-only, like the rules above: the classic capsule's Wallet is frozen until S15. */
++:root:has(#kp-journey-shell) .kp-wsheet__foot { padding-top: var(--sp-4); }
++
++/* ⭐ A SHEET DOCKED TO THE SCREEN'S BOTTOM EDGE HAS NO BOTTOM EDGE OF ITS OWN (round 5 of the visual pass, 2026-10-09, F7,
++   tiles 132 134 136 151 152 and the Tiketi zangu guest sheet). Docked, a sheet drew its material's whole frame — the 1px
++   --border-strong and, inside it, the even inner light (`--edge-lit-strong`) — so the screen's last two rows were a line
++   and a fainter line (y779 and y778 of 780) meeting the sides at square corners: a box set down ON the bottom edge, not a
++   sheet rising from under it. A docked sheet now draws no bottom border, and it runs 1px past the screen's last row, so
++   the inner light's bottom row — an inset ring is drawn on all four sides or on none — lies below the screen; its bottom
++   padding takes that 1px back, so the air under its content is exactly its padding, to the screen's edge. The top and the
++   sides keep their border and light: the sides continue the top corners' curve.
++   · EVERY DOCKED SHEET THE JOURNEY CAN OPEN: Modal's sheets — the Wallet and Tiketi zangu's guest sheet ("lg", docked to
++     1023px), the first-visit primer and the reality check ("sm", docked to 639px) — the phone filter sheet
++     (`.kp-fsheet-panel`, docked wherever it shows: `lg:hidden`), the Needle's drawer ("sm") and the help chat's sheet
++     (`.cm-panel-sheet`, to 1023px). A centred dialog is never docked and carries no mark.
++   · `data-dock="lg"|"sm"` marks a sheet and the width below which it is docked; `data-dock-wrap` the box that runs past
++     the screen — Modal's wrapper, or a fixed sheet itself; `--dock-pb` is the sheet's own bottom padding (default: Modal's
++     `p-5`, 24px; the Wallet's 20, the filter sheet's 16, the Needle's 16, the primer's 0 — each with the safe-area inset
++     it already had).
++   · `!important` on the padding, and earned: the first-visit primer's panel is `!p-0`, an important utility, and the dock
++     must still add its 1px there.
++   · The chat panel (`.cm-panel-sheet`) is the one docked sheet whose last child — the composer, with its own opaque fill —
++     already paints over the light's bottom row: it drops the border alone.
++   ⚠️ Journey-only: the classic capsule's Wallet is frozen chrome until S15, so every classic sheet keeps its frame (one
++   rule per shell, never two inside one). */
++.kp-wsheet { --dock-pb: calc(var(--sp-5) + env(safe-area-inset-bottom, 0px)); }
++.kp-fsheet-panel { --dock-pb: calc(env(safe-area-inset-bottom, 0px) + var(--sp-4)); }
++@media (max-width: 1023.98px) {
++  :root:has(#kp-journey-shell) :is([data-dock-wrap="lg"], .kp-fsheet-panel) { bottom: -1px; }
++  :root:has(#kp-journey-shell) :is([data-dock="lg"], .kp-fsheet-panel) { border-bottom-width: 0; padding-bottom: calc(var(--dock-pb, var(--sp-6)) + 1px) !important; }
++  :root:has(#kp-journey-shell) .cm-panel-sheet { border-bottom-width: 0; }
++}
++@media (max-width: 639.98px) {
++  /* density: general — a docked sheet's own bottom edge (R5-B, F7), not the board; both card-spacing settings. */
++  :root:has(#kp-journey-shell) [data-dock-wrap="sm"] { bottom: -1px; }
++  :root:has(#kp-journey-shell) [data-dock="sm"] { border-bottom-width: 0; padding-bottom: calc(var(--dock-pb, var(--sp-6)) + 1px) !important; }
++}
+ 
+ /* ── S6 · THE CAPTIONED BALANCE (SJ-15) — the journey header's wallet door ──────────────────────────────────
+    "Salio" over "TZS 2,000": one 44px button that opens the Wallet above. Only the journey header renders it
+@@ -6896,8 +6978,13 @@ html[lang="zh"] .kp-udrule { word-break: keep-all; }
+    pip rises 1px (−3), which opens a 1px gap between its ring and the dome. It cannot move right: "99+" at the pulse's
+    peak already ends 1px from the avatar. In this slot it also drops the glow and keeps the lift's dark drop: the glow is
+    there because the classic bar is GLASS, where a flat drop disappears (the lift's own note), and the journey's bar
+-   is an opaque panel (7.frame). Classic pips keep both. */
+-.kp-jhdr__bell .count-badge { top: -3px !important; right: auto !important; left: 21px !important; box-shadow: 0 2px 4px color-mix(in oklab, var(--royal-950) 40%, transparent); }
++   is an opaque panel (7.frame). Classic pips keep both.
++   ⭐ …AND NO DROP EITHER (round 5, 2026-10-09, F8, tile 225 at 1280). The dark drop the glow left behind (0 2px 4px,
++   --royal-950 at 40%) fell on the dome's right shoulder and darkened it by up to ~16 a channel — (1175,23) summed 426
++   against its mirror (1168,23) at 475 — and shaded the bar under the pip (68–75 against the bar's 86). The pip needs no
++   shadow to stand off this bar: its own 2px ring of the bar's ground (`ring="var(--bg-base)"`) already separates it, and
++   the bar is opaque. So the journey's pip casts nothing; the classic pip keeps its glow and its drop (frozen chrome). */
++.kp-jhdr__bell .count-badge { top: -3px !important; right: auto !important; left: 21px !important; box-shadow: none; }
+ @media (min-width: 360px) { .kp-jhdr__plus { display: inline-flex; } }
+ @media (min-width: 360px) { .kp-jhdr__pill { padding: 0 12px 0 10px; } }
+ @media (min-width: 640px) { .kp-jhdr__row { gap: var(--sp-5); } }
+diff --git a/src/app/notifications/page.tsx b/src/app/notifications/page.tsx
+index 866913419..7587278d7 100644
+--- a/src/app/notifications/page.tsx
++++ b/src/app/notifications/page.tsx
+@@ -156,6 +156,19 @@ export default async function NotificationsPage({
+     account: { title: t.notif.emptyAccount },
+     cleared: { title: t.notif.emptyCleared, body: t.notif.clearedHint },
+   };
++  /**
++   * ⛔ THE CONTROLS ARE WITHHELD ON A GENUINELY EMPTY INBOX, and only then (round 5 of the visual pass, R5-B, 2026-10-09)
++   * — §A5's rule, which /positions, /wallet, /updown/history, /proposals, /watchlist, /fairness and the performance page
++   * already keep: a search box and five lens pills all reading 0 above "No notifications yet" are six controls that
++   * cannot act, and a brand-new player met them first. Every other empty state keeps the band and the bar, because there
++   * they are the way OUT of the empty state.
++   * "Genuinely empty" is read off the counts with no search folded in: none live (`all`, every live row whatever its
++   * kind) and none cleared — a player who cleared everything still has the Cleared lens, the way back to their receipts.
++   * A `?q=` keeps the band and the bar whatever the counts (they are folded WITH the search, so a miss reads 0 too, and
++   * the search box holds the way out). A lens on an empty inbox reads the inbox's own sentence: there is no lens to name.
++   */
++  const inboxEmpty = !q && counts.all === 0 && counts.cleared === 0;
++  const empty = inboxEmpty ? EMPTY.all : EMPTY[filter];
+ 
+   return (
+     <PageContainer tier="reading" className="space-y-5">
+@@ -171,15 +184,18 @@ export default async function NotificationsPage({
+           this is where a player comes to find ONE receipt among a year of round results.
+           ⭐ ONE BAND WITH THE BAR (round 4, 2026-10-09, tiles 193 194): the empty echo row and the page's 24px stood
+           between the box and the lens pills — 59–60px, against 34 under the bar. In the band the box sits 34 under the
+-          header and the pills 34 under the box (`QUERY_SEARCH_BAND_CLASS`). */}
+-      <Suspense>
+-        <SearchBox
+-          placeholder={t.notif.searchNotifications}
+-          ariaLabel={t.notif.searchNotifications}
+-          helpFields={fieldNames(NOTIFICATION_SEARCH)}
+-          className={QUERY_SEARCH_BAND_CLASS}
+-        />
+-      </Suspense>
++          header and the pills 34 under the box (`QUERY_SEARCH_BAND_CLASS`). ⛔ Withheld with the bar on a genuinely
++          empty inbox (`inboxEmpty`, §A5). */}
++      {!inboxEmpty && (
++        <Suspense>
++          <SearchBox
++            placeholder={t.notif.searchNotifications}
++            ariaLabel={t.notif.searchNotifications}
++            helpFields={fieldNames(NOTIFICATION_SEARCH)}
++            className={QUERY_SEARCH_BAND_CLASS}
++          />
++        </Suspense>
++      )}
+ 
+       {/* 🔴 THE RAIL CARRIES `data-filter-rail` NOW, AND IT NEVER HAS. §6 of the campaign names
+           this page as one of two that render a real `FilterPill` rail while being invisible to
+@@ -188,15 +204,18 @@ export default async function NotificationsPage({
+           ⭐ THE LENSES ARE UNCHANGED, DELIBERATELY. Their counts were already real and already
+           cross-filtered, and the wrap-not-scroll ruling below is preserved by `QueryStrip`, which
+           wraps above `lg` and scrolls below it. What moved is the SORT: it was a second rail of
+-          pills, identical in shape to the lens rail, ORDERING rather than filtering. */}
+-      <NotificationsBar
+-        filter={filter}
+-        sort={sort}
+-        counts={counts}
+-        resultCount={total}
+-        hrefWith={hrefWith}
+-        t={t}
+-      />
++          pills, identical in shape to the lens rail, ORDERING rather than filtering.
++          ⛔ Withheld on a genuinely empty inbox (`inboxEmpty`, §A5): five pills reading 0 above "No notifications yet". */}
++      {!inboxEmpty && (
++        <NotificationsBar
++          filter={filter}
++          sort={sort}
++          counts={counts}
++          resultCount={total}
++          hrefWith={hrefWith}
++          t={t}
++        />
++      )}
+ 
+       {/* ⛔ Says out loud that clearing HIDES rather than deletes. Without this sentence a
+           player reads "Clear all" as destructive and never taps it — or taps it and believes
+@@ -226,8 +245,8 @@ export default async function NotificationsPage({
+          * every other setting and drops only `q`.
+          */
+         <EmptyState
+-          title={q ? `${t.results.noResultsMatch} "${q}"` : EMPTY[filter].title}
+-          body={q ? t.results.tryDifferentKeywords : EMPTY[filter].body}
++          title={q ? `${t.results.noResultsMatch} "${q}"` : empty.title}
++          body={q ? t.results.tryDifferentKeywords : empty.body}
+           illustration={<I.bellRing s={30} />}
+           action={
+             q ? (
+diff --git a/src/app/wallet/loading.tsx b/src/app/wallet/loading.tsx
+index 903ff48f1..18894e6f3 100644
+--- a/src/app/wallet/loading.tsx
++++ b/src/app/wallet/loading.tsx
+@@ -93,8 +93,13 @@ export default async function WalletLoading() {
+         )}
+       </div>
+ 
+-      {/* Tab skeleton */}
+-      <nav className="flex items-center gap-1 border-b border-border" aria-hidden>
++      {/* Tab skeleton — ⭐ THE RAIL'S OWN GEOMETRY (round 5 of the visual pass, R5-B, 2026-10-09, F6): the option box,
++          its label and its underline as `Tabs variant="line"` draws them (tabs.tsx: `items-end gap-1`, a 44px box with
++          `px-4`, the label `text-body-sm font-semibold` centred, the underline 2px at the box's foot 12px in), where the
++          skeleton set the words in the display face on the box's first line, 14px in, under a box-wide underline — so the
++          first word moved 6px right and about 10px down (baseline ~16.7 → 26.7 in the box) when the page landed. `data-rail-ghost` lets the journey's rail rule (globals.css,
++          `[data-section-rail]`) draw this ghost exactly as it draws the rail: the first word on the column's edge. */}
++      <nav className="flex items-end gap-1 border-b border-border" data-rail-ghost="" aria-hidden>
+         {[t.common.activity, t.common.methods, t.common.limits].map((tab, i) => (
+           /* ⚠️ LITERAL, not `h-9` — spacing is overridden (tailwind.config.ts:200-215) so this
+              drew 64px for a tab row that renders at 44px (`Tabs variant="line"`, tabs.tsx),
+@@ -104,8 +109,9 @@ export default async function WalletLoading() {
+              in its own comment: section tabs are NAVIGATION, not earned money (§M3). The
+              skeleton was drawing a gold underline that repainted brand a beat later — the
+              one place on this page where the ghost disagreed with the page. */
+-          <div key={tab} className={`h-[44px] px-3.5 ${i === 0 ? "border-b-2 border-brand-500" : ""}`}>
+-            <span className="font-display text-[13px] text-text-subtle">{tab}</span>
++          <div key={tab} className="relative inline-flex h-[44px] items-center whitespace-nowrap px-4 text-body-sm font-semibold text-text-subtle">
++            {tab}
++            {i === 0 && <span className="absolute bottom-0 left-2 right-2 h-[2px] rounded-pill bg-brand-500" />}
+           </div>
+         ))}
+       </nav>
+diff --git a/src/app/wallet/page.tsx b/src/app/wallet/page.tsx
+index 0c66df302..912b86302 100644
+--- a/src/app/wallet/page.tsx
++++ b/src/app/wallet/page.tsx
+@@ -37,6 +37,8 @@ import { KYC_NOTICE_COOKIE } from "@/lib/kyc-notice";
+ import { KycNoticeDismissScope } from "@/components/wallet/kyc-first-deposit-notice";
+ import { isLockedOut } from "@/lib/server/responsible-gambling";
+ import { hasReceipt, presentedStatus } from "@/lib/wallet/receipts";
++// R5-B (2026-10-09, F11): the journey's own words on this page's money doors, from the one per-request resolver.
++import { resolveSimpleJourney } from "@/lib/server/journey-preview";
+ 
+ export async function generateMetadata() {
+   const { t } = await getServerT();
+@@ -462,6 +464,7 @@ export default async function WalletPage({ searchParams }: { searchParams: Promi
+         }}
+         isAuthed={true}
+         kycFirstDepositNotice={kycFirstDepositNotice}
++        journey={(await resolveSimpleJourney()).journey}
+       />
+       </KycNoticeDismissScope>
+     </>
+diff --git a/src/app/wallet/receipts/loading.tsx b/src/app/wallet/receipts/loading.tsx
+index 95b205a82..8c06dbe84 100644
+--- a/src/app/wallet/receipts/loading.tsx
++++ b/src/app/wallet/receipts/loading.tsx
+@@ -2,7 +2,7 @@ import { getServerT } from "@/lib/i18n-server";
+ import { PageContainer } from "@/components/layout/page-container";
+ import { PageHeader } from "@/components/ui/page-header";
+ import { I } from "@/components/ui/glyphs";
+-import { QUERY_BAR_CLASS, QUERY_BAR_ROW1_CLASS, QUERY_BAR_ROW2_CLASS } from "@/components/ui/query-bar";
++import { QUERY_BAR_CLASS, QUERY_BAR_ROW1_WRAP_CLASS, QUERY_BAR_ROW2_CLASS } from "@/components/ui/query-bar";
+ 
+ /**
+  * The Receipts page while it loads (2026-10-07). ⭐ THE SAME TIER AND THE SAME SHAPE as the page (B7 rule 3 — the page and
+@@ -19,14 +19,16 @@ export default async function ReceiptsLoading() {
+       <div className="h-[44px] w-[120px] rounded-control bg-bg-overlay kp-shimmer-track" aria-hidden />
+       <PageHeader tone="info" icon={<I.receipt s={22} />} eyebrow={t.wallet.title} title={t.receipts.title} subtitle={t.receipts.subtitle} />
+       <div className={QUERY_BAR_CLASS} aria-hidden>
+-        {/* Row 1 — the three lenses (their own line below lg), then the result count. */}
+-        <div className={`${QUERY_BAR_ROW1_CLASS} flex-wrap justify-end gap-y-1 lg:flex-nowrap`}>
++        {/* Row 1 — the three lenses (their own line below lg), then the result count: the bar's own wrapped row
++            (`QUERY_BAR_ROW1_WRAP_CLASS`, R5-B 2026-10-09 — it was retyped here), and the count as tall as its line
++            (11.5px mono × 1.5 = 17.25px, its bar centred in it), so row 2 lands where the page puts it. */}
++        <div className={QUERY_BAR_ROW1_WRAP_CLASS}>
+           <div className="flex basis-full items-center gap-1 lg:flex-1">
+             {[56, 92, 112].map((w, i) => (
+               <div key={i} className="h-[44px] shrink-0 rounded-pill bg-bg-overlay kp-shimmer-track" style={{ width: w }} />
+             ))}
+           </div>
+-          <div className="h-3 w-[80px] shrink-0 rounded bg-bg-overlay" />
++          <div className="flex h-[17.25px] shrink-0 items-center"><div className="h-3 w-[80px] rounded bg-bg-overlay" /></div>
+         </div>
+         {/* Row 2 — one Filters button on a phone; the status and date groups along the bar from lg. */}
+         <div className={QUERY_BAR_ROW2_CLASS}>
+diff --git a/src/app/wallet/receipts/page.tsx b/src/app/wallet/receipts/page.tsx
+index 05825455f..79760e62f 100644
+--- a/src/app/wallet/receipts/page.tsx
++++ b/src/app/wallet/receipts/page.tsx
+@@ -30,6 +30,8 @@ import { currentSession } from "@/lib/server/auth-service";
+ import { db, type StoredTxn } from "@/lib/server/store";
+ import { isLockedOut } from "@/lib/server/responsible-gambling";
+ import { getServerT } from "@/lib/i18n-server";
++// R5-B (2026-10-09, F11): the empty book's Deposit takes the journey's door word for a journey reader.
++import { resolveSimpleJourney } from "@/lib/server/journey-preview";
+ import { pathWithQuery } from "@/lib/safe-next";
+ import { formatNumber, formatTzs } from "@/lib/utils";
+ import { formatEatDateTime } from "@/lib/eat-day";
+@@ -99,6 +101,9 @@ export default async function ReceiptsPage({ searchParams }: { searchParams: Pro
+     try { onBreak = (await isLockedOut(session.userId)).locked; } catch { /* fails open — /wallet/deposit still refuses */ }
+     depositOpen = !(w && w.status !== "ACTIVE") && !onBreak;
+   }
++  /* ⭐ R5-B (2026-10-09, F11) · one action, one name in the journey: its doors say "Weka pesa" (header pill, Wallet sheet,
++     /wallet), so this one does too (`journey.depositAction`); a classic reader keeps `common.depositCta`. */
++  const { journey } = await resolveSimpleJourney();
+ 
+   const EXIT_LABEL: Record<string, string> = { state: t.wallet.exitState, when: t.wallet.exitWhen, type: t.receipts.allReceipts };
+   const emptyTitle =
+@@ -179,7 +184,7 @@ export default async function ReceiptsPage({ searchParams }: { searchParams: Pro
+             cause === "no-rows" ? (
+               depositOpen ? (
+                 <Link href="/wallet/deposit" className="btn btn-primary btn-md">
+-                  {t.common.depositCta}
++                  {journey ? t.journey.depositAction : t.common.depositCta}
+                 </Link>
+               ) : undefined
+             ) : exits.length > 0 ? (
+diff --git a/src/app/wallet/receipts/receipts-bar.tsx b/src/app/wallet/receipts/receipts-bar.tsx
+index 6d0a6b5f9..f2488006a 100644
+--- a/src/app/wallet/receipts/receipts-bar.tsx
++++ b/src/app/wallet/receipts/receipts-bar.tsx
+@@ -15,7 +15,7 @@ import { FilterPill, FilterGroupKey } from "@/components/ui/filter-pill";
+ import { FilterSheet, FilterSheetGroup } from "@/components/markets/filter-sheet";
+ import {
+   QUERY_BAR_CLASS,
+-  QUERY_BAR_ROW1_CLASS,
++  QUERY_BAR_ROW1_WRAP_CLASS,
+   QUERY_BAR_ROW2_CLASS,
+   QUERY_GROUP_CLASS,
+   QueryClear,
+@@ -24,7 +24,6 @@ import {
+   QueryStrip,
+ } from "@/components/ui/query-bar";
+ import type { Dict } from "@/lib/i18n-dict";
+-import { cn } from "@/lib/utils";
+ import type { LedgerState } from "@/lib/wallet/ledger";
+ import {
+   RECEIPT_DEFAULT_STATE,
+@@ -94,7 +93,7 @@ export function ReceiptsBar({
+     <div data-filter-rail className={QUERY_BAR_CLASS}>
+       {/* The wallet bar's own arrangement: below lg the count takes its own line under the strip, so a clipped pill
+           never sits against it; from lg up the row is one line. */}
+-      <div className={cn(QUERY_BAR_ROW1_CLASS, "flex-wrap justify-end gap-y-1 lg:flex-nowrap")}>
++      <div className={QUERY_BAR_ROW1_WRAP_CLASS}>
+         <QueryStrip ariaLabel={t.receipts.filterAria} className="basis-full lg:flex-1">
+           {RECEIPT_LENSES.map((l) => (
+             <Chip key={l} href={href({ type: l })} label={receiptLensLabel(t, l)} count={counts.type[l]}
+diff --git a/src/app/wallet/wallet-bar.tsx b/src/app/wallet/wallet-bar.tsx
+index 47e881246..9f56d3f43 100644
+--- a/src/app/wallet/wallet-bar.tsx
++++ b/src/app/wallet/wallet-bar.tsx
+@@ -21,7 +21,7 @@ import { FilterPill, FilterGroupKey } from "@/components/ui/filter-pill";
+ import { FilterSheet, FilterSheetGroup } from "@/components/markets/filter-sheet";
+ import {
+   QUERY_BAR_CLASS,
+-  QUERY_BAR_ROW1_CLASS,
++  QUERY_BAR_ROW1_WRAP_CLASS,
+   QUERY_BAR_ROW2_CLASS,
+   QUERY_GROUP_CLASS,
+   QueryClear,
+@@ -30,7 +30,6 @@ import {
+   QueryStrip,
+ } from "@/components/ui/query-bar";
+ import type { Dict } from "@/lib/i18n-dict";
+-import { cn } from "@/lib/utils";
+ import {
+   LEDGER_STATES,
+   LEDGER_WHEN_IDS,
+@@ -127,7 +126,7 @@ export function WalletBar({
+           (its scroll and fade untouched) so the row wraps and the count drops below it.
+           lg is the strip's own scroll-to-wrap switch, so from lg up the row is the original
+           single line, sized exactly as before (flex-1 restores the strip's basis). */}
+-      <div className={cn(QUERY_BAR_ROW1_CLASS, "flex-wrap justify-end gap-y-1 lg:flex-nowrap")}>
++      <div className={QUERY_BAR_ROW1_WRAP_CLASS}>
+         <QueryStrip ariaLabel={t.wallet.filterAria} className="basis-full lg:flex-1">
+           {lenses.map((l) => (
+             <Chip
+diff --git a/src/app/wallet/wallet-client.tsx b/src/app/wallet/wallet-client.tsx
+index c10dd4713..8f6a302eb 100644
+--- a/src/app/wallet/wallet-client.tsx
++++ b/src/app/wallet/wallet-client.tsx
+@@ -41,12 +41,14 @@ function BalanceSpark({ series, label }: { series: number[]; label: string }) {
+ }
+ 
+ function BalanceCard({
+-  balance, pending, hold, currency, held = false, canDeposit = true,
++  balance, pending, hold, currency, held = false, canDeposit = true, journey = false,
+ }: {
+   balance: number; pending: number; hold: number; currency: string; held?: boolean;
+   /** Whether this wallet may be invited to deposit — `depositOpen` from the page (wallet ACTIVE, no break). `held`
+    *  still names the balance; this only decides the Add funds link. */
+   canDeposit?: boolean;
++  /** R5-B · a journey reader's page: the link takes the journey's door word (`WalletPageClient`'s `journey`). */
++  journey?: boolean;
+ }) {
+   const { t } = useT();
+   return (
+@@ -102,7 +104,7 @@ function BalanceCard({
+             className="mt-3 inline-flex items-center gap-1.5 font-mono text-caption uppercase tracking-[0.14em] text-gold-300 hover:text-gold-200 transition-colors"
+           >
+             <I.plus s={12} />
+-            {t.common.addFunds}
++            {journey ? t.journey.depositAction : t.common.addFunds}
+           </Link>
+         )}
+         {/* ⭐ Stage 9b — the local `SubStat` is DELETED; this is the kit `<Stat>`.
+@@ -638,6 +640,7 @@ export function WalletPageClient({
+   limits,
+   isAuthed,
+   kycFirstDepositNotice = null,
++  journey = false,
+ }: {
+   balance: number; pending: number; hold: number; currency: string;
+   /** The wallet is not ACTIVE (an officer's freeze, a final refusal) — decided on the server from the wallet row. */
+@@ -683,6 +686,16 @@ export function WalletPageClient({
+   /** Whether the first-deposit identity notice is DUE — decided on the server (`wallet/page.tsx`).
+    *  The notice itself only remembers a dismissal; it never re-derives who should see it. */
+   kycFirstDepositNotice?: FirstDepositNotice | null;
++  /**
++   * ⭐ R5-B (2026-10-09, F11, tiles 171 172) · THE JOURNEY'S DOORS SAY THE JOURNEY'S WORDS. The page's money doors read
++   * "Amana" / "Toa" (`common.deposit` / `common.withdraw`) under a header pill that says "Weka pesa", beside the Wallet
++   * sheet's "Weka pesa" / "Toa pesa" — one action, two names, one screen. For a reader the per-request resolver puts in the
++   * journey (`resolveSimpleJourney`, wallet/page.tsx) every door here takes the journey's pair, `journey.depositAction` /
++   * `journey.withdrawAction` (sw "Weka pesa" / "Toa pesa", en "Deposit" / "Withdraw", zh "充值" / "提现"): the two header
++   * buttons, the balance card's Add funds link and the empty account's Deposit. No new words; omitted, a classic reader's
++   * page keeps today's.
++   */
++  journey?: boolean;
+ }) {
+   const { t } = useT();
+   /** ⛔ THE GRID AND THE CARD MUST AGREE — see `bonusCardHasContent`. Derived once, here, and
+@@ -730,12 +743,12 @@ export function WalletPageClient({
+             {depositOpen && (
+             <Link href="/wallet/deposit" className="btn btn-primary btn-md btn-pill inline-flex">
+               <I.arrowDown s={14} />
+-              {t.common.deposit}
++              {journey ? t.journey.depositAction : t.common.deposit}
+             </Link>
+             )}
+             <Link href="/wallet/withdraw" className="btn btn-ghost btn-md btn-pill inline-flex">
+               <I.arrowUp s={14} />
+-              {t.common.withdraw}
++              {journey ? t.journey.withdrawAction : t.common.withdraw}
+             </Link>
+           </div>
+         )}
+@@ -751,7 +764,7 @@ export function WalletPageClient({
+           one child) and nothing is orphaned. A lonely card in a multi-column grid is its own
+           defect class, and `qa:withdrawal-visual` now measures it by name. */}
+       <div className={cn("grid grid-cols-1 gap-4 items-stretch", bonusCardVisible && "lg:grid-cols-2")}>
+-        <BalanceCard balance={balance} pending={pending} hold={hold} currency={currency} held={walletHeld} canDeposit={depositOpen} />
++        <BalanceCard balance={balance} pending={pending} hold={hold} currency={currency} held={walletHeld} canDeposit={depositOpen} journey={journey} />
+         <BonusWalletCard bonusBalance={bonusBalance} activeCount={bonusActiveCount} grants={bonusGrants} currency={currency} featureLive={bonusFeatureLive} showAllGrants={showAllGrants} grantsToggleHref={grantsToggleHref} />
+       </div>
+       {bonusWagerRemaining > 0 && (
+@@ -788,9 +801,13 @@ export function WalletPageClient({
+               profile holds the other door. Under the bar and over the list it belongs to — never under the chart, where
+               it read as the chart's caption — and OUTSIDE the bar (the bar's geometry and tap census are measured). It
+               stays when a filter empties the list (design review): the receipts did not go anywhere. Withheld only when
+-              the account has no rows at all. 44px tap floor; brand ink: a way through, not money. */}
++              the account has no rows at all. 44px tap floor; brand ink: a way through, not money.
++              ⭐ IN THE BAR'S RHYTHM (round 5 of the visual pass, R5-B, 2026-10-09, F13, tile 172): its 44px box holds 17px of
++              air above its capitals and below its baseline, and stood on the page's 32px rung on both sides — the words
++              59px under the last chips and 49 over the chart card, where every bar has its rung + 10 (42 here) to what
++              follows. `.kp-wallet-door` (globals.css) lays that air inside the gaps, R4-C's search-band rule: 42 · 42. */}
+           {emptyCause !== "no-rows" && (
+-            <div className="flex justify-end">
++            <div className="kp-wallet-door flex justify-end">
+               <Link
+                 href="/wallet/receipts"
+                 data-testid="wallet-all-receipts"
+@@ -851,7 +868,7 @@ export function WalletPageClient({
+                 emptyCause === "no-rows" ? (
+                   isAuthed && depositOpen ? (
+                     <Link href="/wallet/deposit" className="btn btn-primary btn-md">
+-                      {t.common.depositCta}
++                      {journey ? t.journey.depositAction : t.common.depositCta}
+                     </Link>
+                   ) : undefined
+                 ) : emptyExits.length > 0 ? (
+diff --git a/src/components/home/landing-hero.tsx b/src/components/home/landing-hero.tsx
+index 7bd20a905..9ae8cfc9f 100644
+--- a/src/components/home/landing-hero.tsx
++++ b/src/components/home/landing-hero.tsx
+@@ -374,6 +374,16 @@ export function LandingHero({ figures, t, locale, isAuthed, nowMs, cards, mine,
+   );
+ }
+ 
++/**
++ * The payment method's name as `sentence` spells it — "pesa ya simu", "mobile money" — found by the Wallet's own label for
++ * it (`wallet.mobileMoneyOnly`, in any case), as the one run `keepText` keeps whole; none when the sentence names it
++ * otherwise (R5-B, 2026-10-09). No new words: both strings are the dictionary's.
++ */
++export function methodRunIn(sentence: string, method: string): string[] {
++  const at = sentence.toLowerCase().indexOf(method.toLowerCase());
++  return at < 0 || method.length === 0 ? [] : [sentence.slice(at, at + method.length)];
++}
++
+ /**
+  * THE SIGNED-IN HERO (landing v3 · WP14 part 2 — the delivery's wallet scenario §4a and §4c).
+  *
+@@ -466,7 +476,13 @@ function SignedInAct({ t, mine, journey }: { t: Dict; mine: LandingMine | null;
+           <p className="kp-mine__held-b">{keepText(fill(breakEnd.exclusion ? t.rg.exclusionActive : t.rg.breakActive, { date: breakEnd.date }), [breakEnd.date])}</p>
+         </div>
+       ) : emptyWallet ? (
+-        <p className="kp-mine__lead">{t.home.emptyBalance}</p>
++        /* ⭐ THE PAYMENT METHOD'S NAME STAYS WHOLE (round 5 of the visual pass, R5-B, 2026-10-09, tiles 079 083): balanced
++           at 1024–1280 the lead broke inside it — "…kwa pesa ya" / "simu au kadi…", "…by mobile" / "money or card…" — the
++           way the trust line above never breaks a rail's name (`.kp-hero__rail`). It is one run now (`keepText`), found by
++           the Wallet's own label for it (`methodRunIn`); the lines become "…kwa pesa ya simu" / "au kadi…" (382 | 282px)
++           and "…Add funds by" / "mobile money or card…" (295 | 367). At 390 the run cannot end the first line, so the lead
++           takes three lines there, as it already does at 320. Chinese names it 手机钱包, which `keep-all` keeps. */
++        <p className="kp-mine__lead">{keepText(t.home.emptyBalance, methodRunIn(t.home.emptyBalance, t.wallet.mobileMoneyOnly))}</p>
+       ) : null}
+       {/* The block's two doors, and neither is money: the player's own positions — which is what the
+           figures above are ABOUT — and the RG limits, one tap from the first screen (K37). */}
+diff --git a/src/components/layout/needle-drawer.tsx b/src/components/layout/needle-drawer.tsx
+index d920e253c..0f5072ede 100644
+--- a/src/components/layout/needle-drawer.tsx
++++ b/src/components/layout/needle-drawer.tsx
+@@ -218,6 +218,10 @@ export function NeedleControlsDrawer({ variant = "menu-row" }: { variant?: "menu
+                is not. */
+             aria-modal={exiting ? undefined : "true"}
+             aria-label={t("The Needle controls", "Vidhibiti vya Sindano", "指针玩具控制")}
++            /* ⭐ R5-B (2026-10-09, F7): a bottom sheet below `sm`, so in the journey it draws no bottom edge and runs 1px past
++               the screen's last row, its padding (`--dock-pb`, the `pb-` below) taking that 1px back (`[data-dock]`). */
++            data-dock="sm"
++            data-dock-wrap="sm"
+             className={cn(
+               "fixed z-[71] border border-border-strong bg-bg-elevated/95 backdrop-blur-xl",
+               // Bottom sheet on mobile, so the cast goes UP; at sm: it becomes a
+@@ -225,7 +229,7 @@ export function NeedleControlsDrawer({ variant = "menu-row" }: { variant?: "menu
+               "shadow-overlay-up sm:shadow-modal",
+               // mobile: bottom sheet · desktop: small centred panel
+               "left-0 right-0 bottom-0 rounded-t-modal px-4 pt-4",
+-              "pb-[calc(16px+env(safe-area-inset-bottom))]",
++              "pb-[calc(16px+env(safe-area-inset-bottom))] [--dock-pb:calc(16px+env(safe-area-inset-bottom))]",
+               "sm:left-1/2 sm:right-auto sm:bottom-auto sm:top-1/2 sm:w-[360px] sm:max-w-[calc(100vw-24px)]",
+               "sm:-translate-x-1/2 sm:-translate-y-1/2 sm:rounded-modal sm:p-5 sm:pb-5",
+               exiting ? "needle-sheet-out pointer-events-none" : "needle-sheet",
+diff --git a/src/components/onboarding/first-visit-primer.tsx b/src/components/onboarding/first-visit-primer.tsx
+index edf1c7bd7..c9763b991 100644
+--- a/src/components/onboarding/first-visit-primer.tsx
++++ b/src/components/onboarding/first-visit-primer.tsx
+@@ -386,8 +386,10 @@ export function FirstVisitPrimer() {
+          at 640, so the 789px card still scrolls and stays reachable. Caught by an audit of this
+          session’s own commits, measuring both phone sizes rather than the one the fix was aimed at.
+          `overflow-x` stays hidden, which is what the previous
+-         `overflow-hidden` was really buying: the gilt corners clipped to the rounded edge. */
+-      panelClassName="!p-0 max-h-[calc(100dvh-48px)] overflow-y-auto overflow-x-hidden"
++         `overflow-hidden` was really buying: the gilt corners clipped to the rounded edge.
++         ⭐ R5-B (2026-10-09, F7): docked in the journey the sheet draws no bottom edge and runs 1px past the screen's last
++         row (`[data-dock]`, globals.css), its padding taking that 1px back — from the 0 this panel has (`--dock-pb`). */
++      panelClassName="!p-0 [--dock-pb:0px] max-h-[calc(100dvh-48px)] overflow-y-auto overflow-x-hidden"
+     >
+         {/* Gilt corners — heraldic framing from the brand kit */}
+         <div className="pointer-events-none absolute top-0 left-0" aria-hidden>
+diff --git a/src/components/ui/modal.tsx b/src/components/ui/modal.tsx
+index 25e36af11..bb8481721 100644
+--- a/src/components/ui/modal.tsx
++++ b/src/components/ui/modal.tsx
+@@ -491,6 +491,10 @@ export function Modal({
+       aria-label={labelledBy ? undefined : ariaLabel}
+       aria-labelledby={labelledBy}
+       aria-describedby={exiting ? undefined : describedBy}
++      /* ⭐ R5-B (2026-10-09, F7) · THE BOX A DOCKED SHEET RUNS PAST THE SCREEN'S LAST ROW IN, and the width below which it is
++         docked: "lg" for a sheet kept to 1023px (the Wallet), "sm" for every other sheet, nothing for a centred dialog. The
++         journey's rule in globals.css (`[data-dock-wrap]`) moves it 1px down, so a docked sheet draws no bottom edge. */
++      data-dock-wrap={tall ? "lg" : sheet ? "sm" : undefined}
+       className={`fixed inset-0 flex justify-center overflow-y-auto overscroll-contain ${
+         tall ? "items-end lg:items-center px-0 lg:px-3 py-0 lg:py-4"
+           : sheet ? "items-end sm:items-center px-0 sm:px-3 py-0 sm:py-4" : "px-3 py-4"
+@@ -535,6 +539,10 @@ export function Modal({
+            `data-unread` on the bell and `data-stagger` on a cascade are both selected
+            by drivers precisely because a `data-` attribute survives restyling. */
+         data-rung="modal"
++        /* ⭐ R5-B (2026-10-09, F7) · the sheet itself, docked below the same width: no bottom border there, and its bottom
++           padding takes back the 1px its box runs past the screen (`[data-dock]` in globals.css; `--dock-pb` is the
++           padding it would have had, Modal's 24px unless the panel says otherwise). */
++        data-dock={tall ? "lg" : sheet ? "sm" : undefined}
+         /* §M2: modal → `.m-dialog-in` or `.m-sheet-in` on the way in, `.m-out` on
+            the way out. The sheet's ≥sm keyframe swap goes with the entrance only —
+            `.m-out` is one exit for both variants, which is what the law names. */
+diff --git a/src/components/ui/query-bar.tsx b/src/components/ui/query-bar.tsx
+index c704b8228..030a5728c 100644
+--- a/src/components/ui/query-bar.tsx
++++ b/src/components/ui/query-bar.tsx
+@@ -89,6 +89,18 @@ export const QUERY_BAR_ROW1_CLASS = "flex items-center gap-x-3 pt-2.5";
+  * (`test:spacing-scale`), and the literal is the same pixel.
+  */
+ export const QUERY_BAR_ROW1_ALONE_CLASS = `${QUERY_BAR_ROW1_CLASS} pb-[10px]`;
++/**
++ * Row 1 WHEN THE COUNT TAKES ITS OWN LINE below `lg` — the money books (/wallet, /wallet/receipts), whose strip goes full
++ * width (`basis-full lg:flex-1` on the strip) so a clipped pill never sits against the count; from `lg` it is one line.
++ * ⭐ THE COUNT LINE HAS 12px OF AIR ON BOTH SIDES, THE /markets PHONE BAR'S RHYTHM (round 5 of the visual pass, R5-B,
++ * 2026-10-09, F14, tile 171). `gap-y-1` (4px) set "Miamala 19"'s capitals 8px under the pills (y697 → y706 at sw 390)
++ * where R4-D made /markets' count line 12 (`globals.css`, "THE COUNT LINE HAS AIR ON BOTH SIDES": `--sp-2` each way,
++ * 4.4px of the line's 17.25 above its capitals). The row gap is that 8px now (`gap-y-1.5`: 1.5 is 8px on this scale, not
++ * an inverted key), so the capitals stand 12 under the pills (y706 → y710); and the row reaches 4px into row 2's 12px
++ * top padding (`-mb-1`), so the baseline stands 12 over the next row's control (it was 16.45). From `lg` the row is one
++ * line and nothing moves (`lg:mb-0`).
++ */
++export const QUERY_BAR_ROW1_WRAP_CLASS = `${QUERY_BAR_ROW1_CLASS} flex-wrap justify-end gap-y-1.5 -mb-1 lg:mb-0 lg:flex-nowrap`;
+ /**
+  * 🔴 PLAYER-FILTERS 2026-09-09 · `gap-x-2` BECAME `gap-2`, BECAUSE THIS ROW WRAPS AND HAD NO
+  * ROW GAP AT ALL.
+diff --git a/src/components/wallet/provider-radio-grid.tsx b/src/components/wallet/provider-radio-grid.tsx
+index 9e0ca96a9..45dc58623 100644
+--- a/src/components/wallet/provider-radio-grid.tsx
++++ b/src/components/wallet/provider-radio-grid.tsx
+@@ -85,10 +85,14 @@ export function ProviderRadioGrid({
+               aria-hidden
+               className="pointer-events-none absolute inset-0 rounded-md ring-2 ring-brand-500 opacity-0 scale-95 transition duration-[var(--t-flick)] ease-out motion-reduce:transition-none group-has-[:checked]/tile:opacity-100 group-has-[:checked]/tile:scale-100"
+             />
+-            {/* Check pip — top-right. */}
++            {/* Check pip — top-right, 4px into the corner (`right-1 top-1`; round 5 of the visual pass, R5-B, 2026-10-09, tile
++                067). At 8px in (`1.5` is 8 on this scale) the 20px pip stood 3px from the 48px logo plate in a 113px tile at
++                sw 320 (pip x125–144, plate to x121) — a mark crowding the logo it marks. 4px in leaves 7px there and more at
++                every wider tile; the pip stays inside the tile's 8px corner curve and over its ring's corner, where it reads
++                as the tile's. Deposit and withdraw share this grid, so both pickers move together. */}
+             <span
+               aria-hidden
+-              className="absolute right-1.5 top-1.5 inline-flex h-4 w-4 items-center justify-center rounded-full bg-brand-500 text-white opacity-0 scale-75 transition duration-[var(--t-flick)] ease-out motion-reduce:transition-none group-has-[:checked]/tile:opacity-100 group-has-[:checked]/tile:scale-100"
++              className="absolute right-1 top-1 inline-flex h-4 w-4 items-center justify-center rounded-full bg-brand-500 text-white opacity-0 scale-75 transition duration-[var(--t-flick)] ease-out motion-reduce:transition-none group-has-[:checked]/tile:opacity-100 group-has-[:checked]/tile:scale-100"
+             >
+               <I.check s={11} />
+             </span>
+diff --git a/src/lib/notification-text.ts b/src/lib/notification-text.ts
+index 19663499b..5fa315206 100644
+--- a/src/lib/notification-text.ts
++++ b/src/lib/notification-text.ts
+@@ -28,6 +28,43 @@ export function endClause(text: string, stop: "." | "。"): string {
+   return `${t.replace(/[.。]+$/, "")}${stop}`;
+ }
+ 
++/**
++ * ⭐ A TITLE OR A REASON QUOTED INSIDE A NOTICE, CUT TO ITS ROOM (the visual pass, round 5, R5-B, 2026-10-09; F10, tile 192).
++ * 🔴 Every emitter cut what it quoted with `.slice(0, n)` — at 60 characters (sw/en) or 45 (zh) on the verdict notice, 50 to
++ * 120 elsewhere — with no mark, so a long market name ended mid-word ("…watakuwa juu ya jedwali la NBC ifikapo raun") and
++ * read as a typo, not as a cut. The bell and /notifications print the body WHOLE (no clamp: the bell truncates only its
++ * one-line title), but the same body is the web push, whose lock screen shows its first lines only — so the quote stays
++ * cut, to keep the sentence that matters ("No money has moved yet…") in view, and the cut now says so:
++ *   · a text that fits is returned exactly as given;
++ *   · a cut ends on "…" and is at most `max` characters with it, counted in code points, so a surrogate pair is never split;
++ *   · it ends at a space, never inside a word — Swahili and English — and a word is everything between two spaces, so a
++ *     figure ("2026-27", "$80/bbl") or a name ("S&P") is never split either;
++ *   · Chinese breaks between characters, so it may end at any ideograph — but never inside a Latin word or a figure the
++ *     title carries ("NBC", "2026-27"): the cut steps back to that run's start;
++ *   · a lone word longer than the room is cut at a character (there is no better place);
++ *   · it never ends on a space, a comma, a colon, a semicolon, a full stop, a dash, a middle dot, an ellipsis of its own or
++ *     an opening bracket or quote — Latin or Chinese (「『（【〈《〔) — before the "…" (a closing quote stays: it
++ *     belongs to the words before it).
++ * Pure, so a writer (`notification-service.ts`) and a suite can run the same rule.
++ * ⚠️ Rows already written keep their text: a notice is a record of what was said, and nothing rewrites it.
++ */
++const CJK = /[⺀-鿿豈-﫿　-〿＀-￯]/;
++const SPACE = /\s/;
++const TRAILING_JUNK = /[\s,;:.·\-–—(\[{“‘«「『（【〈《〔…、，：；。]+$/u;
++export function clipQuote(text: string, max: number): string {
++  const chars = Array.from(text);
++  if (chars.length <= max) return text;
++  const room = Math.max(1, max - 1); // one for the "…"
++  // A line may end between i−1 and i where either side is a space or an ideograph; anywhere else is inside a word.
++  const boundary = (i: number) => SPACE.test(chars[i - 1]) || SPACE.test(chars[i]) || CJK.test(chars[i - 1]) || CJK.test(chars[i]);
++  let cut = room;
++  while (cut > 0 && !boundary(cut)) cut--;
++  // A lone word longer than the room has no better place: it is cut where the room ends.
++  if (cut === 0) cut = room;
++  const head = chars.slice(0, cut).join("").replace(TRAILING_JUNK, "");
++  return `${head.length > 0 ? head : chars.slice(0, room).join("")}…`;
++}
++
+ /**
+  * Where a notice about ONE position leads: that ticket. On a long-form market it is the market's page at the ticket's
+  * anchor; with no market id (an orphaned position) it is the permalink, which finds the ticket's home itself. Without a
+diff --git a/src/lib/server/email.ts b/src/lib/server/email.ts
+index 8e7d71e85..0f57cb1eb 100644
+--- a/src/lib/server/email.ts
++++ b/src/lib/server/email.ts
+@@ -22,7 +22,10 @@ import { LinkTrackingOptions } from "postmark/dist/client/models/message/Support
+ import { resolvePhoneEmail } from "./email-map";
+ import { isSuppressed } from "./email-suppression";
+ import { appUrl } from "@/lib/app-url";
+-import { formatTzs, formatDateShort } from "@/lib/utils";
++import { formatTzs } from "@/lib/utils";
++// R5-B (2026-10-09, F9): a day a letter states, in each of its lines' own words (`agentRevokedHtml`) — the notice's rule.
++import { formatEatDate } from "@/lib/eat-day";
++import { dict } from "@/lib/i18n-dict";
+ import { AGENT_REJECT_REASON } from "@/lib/admin-status-lexicon";
+ // E-101 · an email that quotes a Reference must link to THAT reference, not to a list.
+ import { positionPermalinkHref } from "@/lib/position-permalink";
+@@ -2180,12 +2183,21 @@ export function agentDeactivatedHtml(): string {
+ 
+ /** The partnership has ENDED. ⛔ No product link — support is the route (NO_PRODUCT_LINK). */
+ export function agentRevokedHtml({ reapplyAt }: { reapplyAt: string | null }): string {
+-  const when = reapplyAt ? formatDateShort(reapplyAt) : null;
++  /* ⭐ R5-B (2026-10-09, F9) · THE DATE IN EACH LINE'S OWN WORDS. `formatDateShort` made one English date ("06 Dec") and the
++     Swahili line printed it too ("…kuanzia 06 Dec"). It is a DAY, so each line takes `formatEatDate` in its own month words
++     on the East Africa clock — "6 Dec" / "6 Des" (the year added when it is not this one) — exactly as the bell's notice
++     (`notifyAgentRevoked`) says it. A value that does not parse states no date, as a missing one did.
++     ⚠️ Only the month WORDS come from the dictionary (`common.monthsShort`, the one list every date on the platform reads,
++     as `updown-digest.ts` does); the letter's sentences stay its own English and Swahili (the note on `SOCIAL_EMAIL_LABEL`). */
++  const at = reapplyAt ? Date.parse(reapplyAt) : Number.NaN;
++  const now = Date.now();
++  const whenEn = Number.isFinite(at) ? formatEatDate(at, now, dict.en.common.monthsShort, "en") : null;
++  const whenSw = Number.isFinite(at) ? formatEatDate(at, now, dict.sw.common.monthsShort, "sw") : null;
+   return wrap(`
+     ${eyebrow("Agent programme", "Mpango wa mawakala")}
+     ${heading("Your agent partnership has ended")}
+-    ${subtitle(`A compliance officer has ended your agent partnership. Your code no longer recruits and no new commission accrues. Commission already paid stays in your wallet.${when ? ` You may apply again from ${when}.` : ""}`)}
+-    ${subtitleSw(`Afisa wa uzingatiaji amekomesha ushirikiano wako wa uwakala. Msimbo wako hauandikishi tena na hakuna kamisheni mpya. Kamisheni iliyokwisha lipwa inabaki kwenye pochi yako.${when ? ` Unaweza kuomba tena kuanzia ${when}.` : ""}`)}
++    ${subtitle(`A compliance officer has ended your agent partnership. Your code no longer recruits and no new commission accrues. Commission already paid stays in your wallet.${whenEn ? ` You may apply again from ${whenEn}.` : ""}`)}
++    ${subtitleSw(`Afisa wa uzingatiaji amekomesha ushirikiano wako wa uwakala. Msimbo wako hauandikishi tena na hakuna kamisheni mpya. Kamisheni iliyokwisha lipwa inabaki kwenye pochi yako.${whenSw ? ` Unaweza kuomba tena kuanzia ${whenSw}.` : ""}`)}
+     <p style="margin:14px 0 0;font-family:'Inter',Helvetica,Arial,sans-serif;font-size:11px;color:${TEXT_SUBTLE}">Support: <a href="mailto:${REPLY_TO()}" style="color:${BRAND_LINK};text-decoration:none">${REPLY_TO()}</a></p>
+   `);
+ }
+diff --git a/src/lib/server/market-service.ts b/src/lib/server/market-service.ts
+index 93a5a564f..a54de9903 100644
+--- a/src/lib/server/market-service.ts
++++ b/src/lib/server/market-service.ts
+@@ -57,6 +57,10 @@ import { notifyBetPlaced, notifyWin, notifyLoss, notifyRefund, notifyCashout, no
+   notifyVerdictRecorded } from "./notification-service";
+ import { sendEmailToUser, betPlacedHtml, winNotificationHtml, lossNotificationHtml, cashOutReceiptHtml, oneSidedRefundHtml, marketResolutionAdminHtml, marketCancelledRefundHtml, marketCancelledAdminHtml, bonusFulfilledHtml, selectionClosedHtml } from "./email";
+ import { onRecruitBet, onRecruitSettlement, clawbackMarketCommission } from "./affiliate-service";
++// R5-B (2026-10-09, F10): a market's name quoted in a notice — the bell, its push, an email's subject line — is cut at a word
++// boundary, with "…" (notification-text.ts). The ledger's own descriptions ("… on \"<title>\"") are money records, pinned
++// by `red:updown-void-copy`, and are not touched here.
++import { clipQuote } from "@/lib/notification-text";
+ import { postLedgerEntries, stakeEntries, settlementPayoutEntries, refundEntries, cashoutEntries, withMoneyTx } from "./ledger";
+ import type { ServiceResult } from "./auth-service";
+ import { marketStore, positionStore } from "./market-dal";
+@@ -1834,7 +1838,7 @@ async function buyPositionInner(userId: string, opts: BuyOpts, ctx: BetContext):
+     // pools freeze, where it is a fact rather than a moving projection.
+     sendEmailToUser(userId, (email) => ({
+       to: email,
+-      subject: `Bet placed · ${opts.side} on "${market.titleEn.slice(0, 40)}"`,
++      subject: `Bet placed · ${opts.side} on "${clipQuote(market.titleEn, 40)}"`,
+       html: betPlacedHtml({
+         reference: c.positionId, side: opts.side, stake: opts.stake,
+         marketTitle: market.titleEn, placedAt: c.placedAt, resolutionDate: market.resolutionAt.slice(0, 10),
+@@ -1860,9 +1864,9 @@ async function buyPositionInner(userId: string, opts: BuyOpts, ctx: BetContext):
+         titleEn: `Bet placed · ${sideWordIn("en", opts.side, "UPDOWN")} ${formatTzs(opts.stake)}`,
+         titleSw: `Dau limewekwa · ${sideWordIn("sw", opts.side, "UPDOWN")} ${formatTzs(opts.stake)}`,
+         titleZh: `已下注 · ${sideWordIn("zh", opts.side, "UPDOWN")} ${formatTzs(opts.stake)}`,
+-        bodyEn: `${market.titleEn.slice(0, 60)} — you're in this round.`,
+-        bodySw: `${market.titleSw.slice(0, 60)} — uko kwenye raundi hii.`,
+-        bodyZh: `${(market.titleZh ?? market.titleEn).slice(0, 40)} — 您已参与本回合。`,
++        bodyEn: `${clipQuote(market.titleEn, 60)} — you're in this round.`,
++        bodySw: `${clipQuote(market.titleSw, 60)} — uko kwenye raundi hii.`,
++        bodyZh: `${clipQuote(market.titleZh ?? market.titleEn, 40)} — 您已参与本回合。`,
+         url: "/updown",
+         // ⭐ BETS COALESCE WITH EACH OTHER; OUTCOMES DO NOT. A stake notice is only
+         // interesting until the next one, so every bet shares one tag and the newest
+@@ -2135,7 +2139,7 @@ export async function notifySelectionClosedForMarket(marketId: string): Promise<
+     if (mine.every((p) => p.houseBotId != null)) continue;
+     sendEmailToUser(userId, (email) => ({
+       to: email,
+-      subject: `Betting closed — if you're right you receive ${formatTzs(Math.max(ifYes, ifNo))} · ${m.titleEn.slice(0, 40)}`,
++      subject: `Betting closed — if you're right you receive ${formatTzs(Math.max(ifYes, ifNo))} · ${clipQuote(m.titleEn, 40)}`,
+       html: selectionClosedHtml({
+         marketTitle: m.titleEn, closedAt: m.selectionClosedAt ?? m.resolutionAt, resolvesAt: m.resolutionAt, marketId: m.id,
+         payoutIfYes: mine.some((p) => p.side === "YES") ? ifYes : null,
+@@ -2277,7 +2281,9 @@ export async function notifyVerdictRecordedForMarket(
+    * balance — the one thing this notice exists to prevent.
+    */
+   if (m.settledAt) return { bettors: 0 };
+-  const paysFrom = formatDateTime(m.objectionsClosedAt);
++  // ⭐ The INSTANT, not a string: each language's body says it in its own words (R5-B, 2026-10-09 — `formatDateTime` made
++  // one English string, so the Swahili and Chinese bodies read "kuanzia 9 Oct 2026, 11:53").
++  const paysAt = m.objectionsClosedAt;
+ 
+   const everyPosition = await listPositionsForMarket(marketId);
+   const open = everyPosition.filter((p) => p.status === "OPEN");
+@@ -2289,7 +2295,7 @@ export async function notifyVerdictRecordedForMarket(
+       marketTitle: localizedText(m.titleEn, m.titleSw, m.titleZh),
+       marketId: m.id,
+       outcome,
+-      paysFrom,
++      paysAt,
+       reversed: opts?.reversed === true,
+       // SEAM:verdictStanding — a player whose every position here is house-marked is not invited to object,
+       // by the SAME predicate `objectionEligibility` refuses with (all positions, any status). Ruling 145.
+@@ -2350,7 +2356,7 @@ async function alertOfficersMarketDue(m: StoredMarket): Promise<void> {
+     notifyAdminMarketResolution(o.id, { title: m.titleEn, marketId: m.id }).catch(() => {});
+     sendEmailToUser(o.id, (email) => ({
+       to: email,
+-      subject: `Market awaiting resolution · ${m.titleEn.slice(0, 60)}`,
++      subject: `Market awaiting resolution · ${clipQuote(m.titleEn, 60)}`,
+       html: marketResolutionAdminHtml({ title: m.titleEn, closedAt: m.resolutionAt, reviewUrl: "/admin/resolver-queue" }),
+       tag: "market-resolve-admin",
+       trackLinks: false,
+@@ -4785,7 +4791,7 @@ export async function emergencyVoidMarket(opts: { marketId: string; officerId: s
+       notifyAdminMarketCancelled(o.id, { title: m.titleEn, reason, refundedCount, refundedTzs }).catch(() => {});
+       sendEmailToUser(o.id, (email) => ({
+         to: email,
+-        subject: `Market cancelled · ${m.titleEn.slice(0, 50)}`,
++        subject: `Market cancelled · ${clipQuote(m.titleEn, 50)}`,
+         html: marketCancelledAdminHtml({ title: m.titleEn, reason, refundedCount, refundedTzs }),
+         tag: "market-cancelled-admin",
+         trackLinks: false,
+diff --git a/src/lib/server/notification-service.ts b/src/lib/server/notification-service.ts
+index 2908edcc5..5d65cdbee 100644
+--- a/src/lib/server/notification-service.ts
++++ b/src/lib/server/notification-service.ts
+@@ -23,7 +23,7 @@ import { db } from "./store";
+ import { randomId } from "./crypto";
+ import { emit } from "./event-bus";
+ import type { StoredNotification } from "./store";
+-import { formatTzs, formatDateShort } from "@/lib/utils";
++import { formatTzs } from "@/lib/utils";
+ // 2026-09-13 · the one review-wait number every surface quotes (the submitted notice and the officer's
+ // overdue-review alert), and the label that alert names a player by.
+ import { KYC_REVIEW_SLA_HOURS } from "@/lib/kyc-sla";
+@@ -36,10 +36,12 @@ import { sideWordIn, outcomeWordIn, type StoredSide, type StoredOutcome } from "
+ import type { NotificationFilter, NotificationSort } from "@/lib/notification-filters";
+ // Round 3 of the visual pass (2026-10-09): a position's notice opens its ticket instead of printing its id, and an
+ // officer's reason never ends on "..". The rules live in one plain module the readers share (notification-text.ts).
+-import { endClause, roundTicketHref, ticketHref } from "@/lib/notification-text";
++import { clipQuote, endClause, roundTicketHref, ticketHref } from "@/lib/notification-text";
+ import { EDITABLE_ROLES, domainForPath, isOwnerOnlyPath } from "./roles";
+ // R4-I (2026-10-09): a break's or an exclusion's end, said the one way every screen says it (see `breakEndIn` below).
+ import { formatBreakEnd } from "@/lib/break-end";
++// R5-B (2026-10-09): every other moment a notice states, in the reader's month words on the East Africa clock (`instantIn`).
++import { formatEatDate, formatEatDateTime } from "@/lib/eat-day";
+ 
+ export type NotifyInput = Omit<StoredNotification, "id" | "userId" | "readAt" | "dismissedAt" | "createdAt"> & {
+   userId: string;
+@@ -328,14 +330,14 @@ export function notifyBetPlaced(userId: string, opts: {
+   const paid = opts.paidExitWindowMinutes ?? 0;
+   // Default policy: no paid tail — after the free window it locks to settlement.
+   const bodyEn = paid > 0
+-    ? `${opts.marketTitle.en.slice(0, 70)} · free exit within ${mins} min, then a ${pct}% fee applies.`
+-    : `${opts.marketTitle.en.slice(0, 70)} · free exit within ${mins} min, then it locks to settlement.`;
++    ? `${clipQuote(opts.marketTitle.en, 70)} · free exit within ${mins} min, then a ${pct}% fee applies.`
++    : `${clipQuote(opts.marketTitle.en, 70)} · free exit within ${mins} min, then it locks to settlement.`;
+   const bodySw = paid > 0
+-    ? `${opts.marketTitle.sw.slice(0, 50)} · toka bila gharama ndani ya dakika ${mins}, baadaye ada ya ${pct}% itatumika.`
+-    : `${opts.marketTitle.sw.slice(0, 50)} · toka bila gharama ndani ya dakika ${mins}, kisha linafungwa hadi malipo.`;
++    ? `${clipQuote(opts.marketTitle.sw, 50)} · toka bila gharama ndani ya dakika ${mins}, baadaye ada ya ${pct}% itatumika.`
++    : `${clipQuote(opts.marketTitle.sw, 50)} · toka bila gharama ndani ya dakika ${mins}, kisha linafungwa hadi malipo.`;
+   const bodyZh = paid > 0
+-    ? `${opts.marketTitle.zh.slice(0, 50)} · ${mins} 分钟内可免费退出，之后按 ${pct}% 收取手续费。`
+-    : `${opts.marketTitle.zh.slice(0, 50)} · ${mins} 分钟内可免费退出，之后将锁定至结算。`;
++    ? `${clipQuote(opts.marketTitle.zh, 50)} · ${mins} 分钟内可免费退出，之后按 ${pct}% 收取手续费。`
++    : `${clipQuote(opts.marketTitle.zh, 50)} · ${mins} 分钟内可免费退出，之后将锁定至结算。`;
+   return notify({
+     userId,
+     kind: "BET_PLACED",
+@@ -399,12 +401,12 @@ export function notifyLoss(userId: string, opts: { stake: number; marketTitle: L
+     // moment it had been placed and lost. `投注未中` is the idiomatic "the bet did not
+     // win" and cannot be read as a placement failure.
+     titleZh: `投注未中 · ${formatTzs(opts.stake)}`,
+-    bodyEn: `${opts.marketTitle.en.slice(0, 70)} · your side didn't win.`,
++    bodyEn: `${clipQuote(opts.marketTitle.en, 70)} · your side didn't win.`,
+     // ⚠️ Carries the market title, like EN and ZH. Without it a Swahili player with
+     // several open positions got "your side didn't win" with nothing saying WHICH
+     // market — the one thing the receipt exists to identify.
+-    bodySw: `${opts.marketTitle.sw.slice(0, 70)} · Upande wako haukushinda.`,
+-    bodyZh: `${opts.marketTitle.zh.slice(0, 50)} · 您所选的一方未获胜。`,
++    bodySw: `${clipQuote(opts.marketTitle.sw, 70)} · Upande wako haukushinda.`,
++    bodyZh: `${clipQuote(opts.marketTitle.zh, 50)} · 您所选的一方未获胜。`,
+     // The ticket, not a position id in the sentence (round 3, 2026-10-09; notification-text.ts).
+     href: ticketHref(opts.marketId, opts.positionId, `/markets/${opts.marketId}`),
+   });
+@@ -495,9 +497,9 @@ export function notifyUpDownWin(userId: string, opts: UpDownResultOpts & { payou
+     titleEn: `You won ${formatTzs(opts.payout)}`,
+     titleSw: `Umeshinda ${formatTzs(opts.payout)}`,
+     titleZh: `您赢得 ${formatTzs(opts.payout)}`,
+-    bodyEn: `${opts.marketTitle.en.slice(0, 70)} · paid to your wallet.`,
+-    bodySw: `${opts.marketTitle.sw.slice(0, 50)} · imelipwa kwenye pochi yako.`,
+-    bodyZh: `${opts.marketTitle.zh.slice(0, 50)} · 已支付至您的钱包。`,
++    bodyEn: `${clipQuote(opts.marketTitle.en, 70)} · paid to your wallet.`,
++    bodySw: `${clipQuote(opts.marketTitle.sw, 50)} · imelipwa kwenye pochi yako.`,
++    bodyZh: `${clipQuote(opts.marketTitle.zh, 50)} · 已支付至您的钱包。`,
+   });
+ }
+ 
+@@ -511,9 +513,9 @@ export function notifyUpDownLoss(userId: string, opts: UpDownResultOpts) {
+     titleEn: `Bet lost · ${formatTzs(opts.stake)}`,
+     titleSw: `Dau limepotea · ${formatTzs(opts.stake)}`,
+     titleZh: `投注未中 · ${formatTzs(opts.stake)}`,
+-    bodyEn: `${opts.marketTitle.en.slice(0, 70)} · your side didn't win.`,
+-    bodySw: `${opts.marketTitle.sw.slice(0, 50)} · upande wako haukushinda.`,
+-    bodyZh: `${opts.marketTitle.zh.slice(0, 50)} · 您所选的一方未获胜。`,
++    bodyEn: `${clipQuote(opts.marketTitle.en, 70)} · your side didn't win.`,
++    bodySw: `${clipQuote(opts.marketTitle.sw, 50)} · upande wako haukushinda.`,
++    bodyZh: `${clipQuote(opts.marketTitle.zh, 50)} · 您所选的一方未获胜。`,
+   });
+ }
+ 
+@@ -530,9 +532,9 @@ export function notifyUpDownRefund(userId: string, opts: UpDownResultOpts) {
+     titleEn: `Refunded · ${formatTzs(opts.stake)}`,
+     titleSw: `Umerudishiwa · ${formatTzs(opts.stake)}`,
+     titleZh: `已退款 · ${formatTzs(opts.stake)}`,
+-    bodyEn: `${opts.marketTitle.en.slice(0, 70)} · the round was voided and your stake came back in full.`,
+-    bodySw: `${opts.marketTitle.sw.slice(0, 50)} · raundi ilibatilishwa na dau lako limerudi lote.`,
+-    bodyZh: `${opts.marketTitle.zh.slice(0, 50)} · 本回合已作废，您的本金已全额退回。`,
++    bodyEn: `${clipQuote(opts.marketTitle.en, 70)} · the round was voided and your stake came back in full.`,
++    bodySw: `${clipQuote(opts.marketTitle.sw, 50)} · raundi ilibatilishwa na dau lako limerudi lote.`,
++    bodyZh: `${clipQuote(opts.marketTitle.zh, 50)} · 本回合已作废，您的本金已全额退回。`,
+   });
+ }
+ 
+@@ -542,9 +544,9 @@ export function notifyUpDownOneSidedRefund(userId: string, opts: UpDownResultOpt
+     titleEn: `Refunded · ${formatTzs(opts.stake)}`,
+     titleSw: `Umerudishiwa · ${formatTzs(opts.stake)}`,
+     titleZh: `已退款 · ${formatTzs(opts.stake)}`,
+-    bodyEn: `${opts.marketTitle.en.slice(0, 70)} · only one side had bets, so your stake came back in full.`,
+-    bodySw: `${opts.marketTitle.sw.slice(0, 50)} · upande mmoja tu ulikuwa na dau, hivyo dau lako limerudi lote.`,
+-    bodyZh: `${opts.marketTitle.zh.slice(0, 50)} · 仅一方有投注，您的本金已全额退回。`,
++    bodyEn: `${clipQuote(opts.marketTitle.en, 70)} · only one side had bets, so your stake came back in full.`,
++    bodySw: `${clipQuote(opts.marketTitle.sw, 50)} · upande mmoja tu ulikuwa na dau, hivyo dau lako limerudi lote.`,
++    bodyZh: `${clipQuote(opts.marketTitle.zh, 50)} · 仅一方有投注，您的本金已全额退回。`,
+   });
+ }
+ 
+@@ -596,9 +598,9 @@ export function notifyWatchedClosingSoon(userId: string, opts: { marketTitle: Lo
+     titleEn: "A market you follow closes soon",
+     titleSw: "Soko unalofuatilia linafunga karibuni",
+     titleZh: "您关注的市场即将关闭",
+-    bodyEn: `${opts.marketTitle.en.slice(0, 70)} · selections close in about ${opts.minutes} minutes.`,
+-    bodySw: `${opts.marketTitle.sw.slice(0, 50)} · uchaguzi unafunga baada ya takriban dakika ${opts.minutes}.`,
+-    bodyZh: `${opts.marketTitle.zh.slice(0, 50)} · 选择将在约 ${opts.minutes} 分钟后关闭。`,
++    bodyEn: `${clipQuote(opts.marketTitle.en, 70)} · selections close in about ${opts.minutes} minutes.`,
++    bodySw: `${clipQuote(opts.marketTitle.sw, 50)} · uchaguzi unafunga baada ya takriban dakika ${opts.minutes}.`,
++    bodyZh: `${clipQuote(opts.marketTitle.zh, 50)} · 选择将在约 ${opts.minutes} 分钟后关闭。`,
+     href: `/markets/${opts.marketId}`,
+   });
+ }
+@@ -620,9 +622,9 @@ export function notifyWatchedSettled(userId: string, opts: { marketTitle: Locali
+     titleEn: "A market you follow has settled",
+     titleSw: "Soko unalofuatilia limetatuliwa",
+     titleZh: "您关注的市场已结算",
+-    bodyEn: `${opts.marketTitle.en.slice(0, 70)} · resolved ${outcomeWordIn("en", opts.outcome, "MARKET")}.`,
+-    bodySw: `${opts.marketTitle.sw.slice(0, 50)} · matokeo: ${outcomeWordIn("sw", opts.outcome, "MARKET")}.`,
+-    bodyZh: `${opts.marketTitle.zh.slice(0, 50)} · 结果：${outcomeWordIn("zh", opts.outcome, "MARKET")}。`,
++    bodyEn: `${clipQuote(opts.marketTitle.en, 70)} · resolved ${outcomeWordIn("en", opts.outcome, "MARKET")}.`,
++    bodySw: `${clipQuote(opts.marketTitle.sw, 50)} · matokeo: ${outcomeWordIn("sw", opts.outcome, "MARKET")}.`,
++    bodyZh: `${clipQuote(opts.marketTitle.zh, 50)} · 结果：${outcomeWordIn("zh", opts.outcome, "MARKET")}。`,
+     href: `/markets/${opts.marketId}`,
+   });
+ }
+@@ -660,8 +662,8 @@ export function notifySelectionClosed(userId: string, opts: {
+   const oneW = { en: sideWordIn("en", side, "MARKET"), sw: sideWordIn("sw", side, "MARKET"), zh: sideWordIn("zh", side, "MARKET") };
+ 
+   const bodyEn = both
+-    ? `${opts.marketTitle.en.slice(0, 60)} · Betting is closed. If ${yesW.en} wins you receive ${formatTzs(opts.payoutIfYes)}; if ${noW.en} wins you receive ${formatTzs(opts.payoutIfNo)}.`
+-    : `${opts.marketTitle.en.slice(0, 60)} · Betting is closed. If ${oneW.en} wins you receive ${formatTzs(only)}.`;
++    ? `${clipQuote(opts.marketTitle.en, 60)} · Betting is closed. If ${yesW.en} wins you receive ${formatTzs(opts.payoutIfYes)}; if ${noW.en} wins you receive ${formatTzs(opts.payoutIfNo)}.`
++    : `${clipQuote(opts.marketTitle.en, 60)} · Betting is closed. If ${oneW.en} wins you receive ${formatTzs(only)}.`;
+   const bodySw = both
+     ? `Kuweka dau kumefungwa. ${yesW.sw} ikishinda utapata ${formatTzs(opts.payoutIfYes)}; ${noW.sw} ikishinda utapata ${formatTzs(opts.payoutIfNo)}.`
+     : `Kuweka dau kumefungwa. ${oneW.sw} ikishinda utapata ${formatTzs(only)}.`;
+@@ -670,8 +672,8 @@ export function notifySelectionClosed(userId: string, opts: {
+   // side — the player loses which side it was. 「」 marks it as the option's NAME. The same
+   // reasoning bracketed `backYesAria` and `probOverTime` in the dictionary.
+   const bodyZh = both
+-    ? `${opts.marketTitle.zh.slice(0, 50)} · 投注已截止。若「${yesW.zh}」获胜您将获得 ${formatTzs(opts.payoutIfYes)}；若「${noW.zh}」获胜您将获得 ${formatTzs(opts.payoutIfNo)}。`
+-    : `${opts.marketTitle.zh.slice(0, 50)} · 投注已截止。若「${oneW.zh}」获胜您将获得 ${formatTzs(only)}。`;
++    ? `${clipQuote(opts.marketTitle.zh, 50)} · 投注已截止。若「${yesW.zh}」获胜您将获得 ${formatTzs(opts.payoutIfYes)}；若「${noW.zh}」获胜您将获得 ${formatTzs(opts.payoutIfNo)}。`
++    : `${clipQuote(opts.marketTitle.zh, 50)} · 投注已截止。若「${oneW.zh}」获胜您将获得 ${formatTzs(only)}。`;
+ 
+   return notify({
+     userId,
+@@ -970,9 +972,9 @@ export function notifyProposalUnderReview(userId: string, opts: { titleEn: strin
+     titleEn: "Your proposal is under review",
+     titleSw: "Pendekezo lako linakaguliwa",
+     titleZh: "您的提案正在审核中",
+-    bodyEn: `"${opts.titleEn.slice(0, 60)}" — the 50pick team is reviewing it. We'll notify you ASAP.`,
++    bodyEn: `"${clipQuote(opts.titleEn, 60)}" — the 50pick team is reviewing it. We'll notify you ASAP.`,
+     bodySw: "Timu ya 50pick inalikagua. Tutakujulisha haraka iwezekanavyo.",
+-    bodyZh: `"${opts.titleEn.slice(0, 60)}" — 50pick 团队正在审核。我们会尽快通知您。`,
++    bodyZh: `"${clipQuote(opts.titleEn, 60)}" — 50pick 团队正在审核。我们会尽快通知您。`,
+     href: "/proposals",
+   });
+ }
+@@ -994,9 +996,9 @@ export async function notifyAdminObjectionFiled(objectionId: string, marketTitle
+       titleEn: "Objection filed · settlement frozen",
+       titleSw: "Pingamizi limewasilishwa · malipo yamesimamishwa",
+       titleZh: "已提出异议 · 结算已冻结",
+-      bodyEn: `A player disputes the result of "${marketTitle.slice(0, 55)}". No money moves until you rule.`,
++      bodyEn: `A player disputes the result of "${clipQuote(marketTitle, 55)}". No money moves until you rule.`,
+       bodySw: `Mchezaji anapinga matokeo ya soko hili. Hakuna malipo hadi utakapoamua.`,
+-      bodyZh: `有玩家对 "${marketTitle.slice(0, 55)}" 的结果提出异议。在您裁定前不会有任何资金变动。`,
++      bodyZh: `有玩家对 "${clipQuote(marketTitle, 55)}" 的结果提出异议。在您裁定前不会有任何资金变动。`,
+       href: "/admin/objections",
+     });
+   }
+@@ -1010,14 +1012,14 @@ export function notifyObjectionDecided(userId: string, opts: { upheld: boolean;
+     titleSw: opts.upheld ? "Pingamizi lako limekubaliwa" : "Pingamizi lako limekaguliwa",
+     titleZh: opts.upheld ? "您的异议已获支持" : "您的异议已审核",
+     bodyEn: opts.upheld
+-      ? `An officer agreed with you and corrected the result before any payout. ${opts.note.slice(0, 120)}`
+-      : `An officer reviewed your objection and the result stands. ${opts.note.slice(0, 120)}`,
++      ? `An officer agreed with you and corrected the result before any payout. ${clipQuote(opts.note, 120)}`
++      : `An officer reviewed your objection and the result stands. ${clipQuote(opts.note, 120)}`,
+     bodySw: opts.upheld
+       ? "Afisa amekubaliana nawe na amerekebisha matokeo kabla ya malipo yoyote."
+       : "Afisa amekagua pingamizi lako na matokeo yamebaki vilevile.",
+     bodyZh: opts.upheld
+-      ? `审核人员认同您的意见，并已在赔付前更正结果。${opts.note.slice(0, 120)}`
+-      : `审核人员已审核您的异议，原结果维持不变。${opts.note.slice(0, 120)}`,
++      ? `审核人员认同您的意见，并已在赔付前更正结果。${clipQuote(opts.note, 120)}`
++      : `审核人员已审核您的异议，原结果维持不变。${clipQuote(opts.note, 120)}`,
+     href: `/markets/${opts.marketId}`,
+   });
+ }
+@@ -1041,7 +1043,8 @@ export function notifyObjectionDecided(userId: string, opts: { upheld: boolean;
+  * a control on paper. This notice is what keeps that description true at one hour.
+  *
+  * ⛔ IT STATES A TIME, NEVER A NUMBER OF HOURS. The caller passes the market's own
+- * `objectionsClosedAt`, already formatted. A "you have 1 hour" phrasing would be a second
++ * `objectionsClosedAt`, the instant, and each language says it in its own words (`instantIn`, R5-B 2026-10-09: it was one
++ * English string in all three bodies — "Malipo kuanzia 9 Oct 2026, 11:53"). A "you have 1 hour" phrasing would be a second
+  * definition of `objectionWindowHours` living in a notification — the defect RULES.md §5 and
+  * `test:rate-copy` exist to prevent — and it would be wrong for any market sealed before the
+  * window changed, which keeps its original deadline.
+@@ -1060,8 +1063,8 @@ export function notifyVerdictRecorded(userId: string, opts: {
+   marketTitle: LocalizedText;
+   marketId: string;
+   outcome: StoredOutcome;
+-  /** The market's own `objectionsClosedAt`, pre-formatted by the caller. */
+-  paysFrom: string;
++  /** The market's own `objectionsClosedAt` — the instant (ISO-8601); each body says it in its own language. */
++  paysAt: string;
+   /** True when this verdict REPLACED an earlier one (an upheld objection, remedy REVERSE). */
+   reversed?: boolean;
+   /** Every position the player has on this market is house-marked, so they have no standing to object (ruling 145). */
+@@ -1086,7 +1089,8 @@ export function notifyVerdictRecorded(userId: string, opts: {
+     : opts.reversed ? `结果已更正：${word.zh}` : `结果已记录：${word.zh}`;
+ 
+   const title = opts.marketTitle;
+-  return notify({
++  // The payout time in each reader's words, East Africa's clock — never the platform's one English string (R5-B).
++  return instantIn(opts.paysAt, formatEatDateTime, "—").then((paysFrom) => notify({
+     userId,
+     kind: "VERDICT",
+     titleEn,
+@@ -1094,11 +1098,11 @@ export function notifyVerdictRecorded(userId: string, opts: {
+     titleZh,
+     // ⛔ A player whose ONLY positions here are house-marked has no standing to object (`objectionEligibility`), so
+     // their notice never invites an objection the platform would refuse. It names nothing (D19c, ruling 145).
+-    bodyEn: `${title.en.slice(0, 60)} · No money has moved yet. Payout from ${opts.paysFrom}${opts.houseOnly ? "." : " — if you think this result is wrong, object before then."}`,
+-    bodySw: `${title.sw.slice(0, 60)} · Hakuna fedha iliyohamishwa bado. Malipo kuanzia ${opts.paysFrom}${opts.houseOnly ? "." : " — kama unaamini matokeo haya si sahihi, pinga kabla ya muda huo."}`,
+-    bodyZh: `${title.zh.slice(0, 45)} · 尚未有任何资金转移。赔付不早于 ${opts.paysFrom}${opts.houseOnly ? "。" : " — 若您认为该结果有误，请在此之前提出异议。"}`,
++    bodyEn: `${clipQuote(title.en, 60)} · No money has moved yet. Payout from ${paysFrom.en}${opts.houseOnly ? "." : " — if you think this result is wrong, object before then."}`,
++    bodySw: `${clipQuote(title.sw, 60)} · Hakuna fedha iliyohamishwa bado. Malipo kuanzia ${paysFrom.sw}${opts.houseOnly ? "." : " — kama unaamini matokeo haya si sahihi, pinga kabla ya muda huo."}`,
++    bodyZh: `${clipQuote(title.zh, 45)} · 尚未有任何资金转移。赔付不早于 ${paysFrom.zh}${opts.houseOnly ? "。" : " — 若您认为该结果有误，请在此之前提出异议。"}`,
+     href: `/markets/${opts.marketId}`,
+-  });
++  }));
+ }
+ 
+ /** In-app alert to an officer that a NEW proposal is awaiting review. Lands in
+@@ -1109,9 +1113,9 @@ export function notifyAdminProposalReview(adminUserId: string, opts: { proposerL
+     titleEn: "New proposal to review",
+     titleSw: "Pendekezo jipya la kukagua",
+     titleZh: "有新提案待审核",
+-    bodyEn: `${opts.proposerLabel} proposed "${opts.titleEn.slice(0, 60)}" — tap to review.`,
++    bodyEn: `${opts.proposerLabel} proposed "${clipQuote(opts.titleEn, 60)}" — tap to review.`,
+     bodySw: `${opts.proposerLabel} amependekeza soko jipya — bonyeza kukagua.`,
+-    bodyZh: `${opts.proposerLabel} 提交了 "${opts.titleEn.slice(0, 60)}" — 点击审核。`,
++    bodyZh: `${opts.proposerLabel} 提交了 "${clipQuote(opts.titleEn, 60)}" — 点击审核。`,
+     href: "/admin/proposals",
+   });
+ }
+@@ -1144,9 +1148,9 @@ export function notifyProposalApproved(userId: string, opts: { titleEn: string;
+         titleEn: `Proposal approved · ${amount} credited`,
+         titleSw: `Pendekezo limekubaliwa · ${amount} imewekwa`,
+         titleZh: `提案已通过 · ${amount} 已到账`,
+-        bodyEn: `"${opts.titleEn.slice(0, 55)}" was approved. ${amount} was added to your balance — it is yours to withdraw.`,
++        bodyEn: `"${clipQuote(opts.titleEn, 55)}" was approved. ${amount} was added to your balance — it is yours to withdraw.`,
+         bodySw: `Pendekezo lako limekubaliwa. ${amount} imewekwa kwenye salio lako — unaweza kuitoa.`,
+-        bodyZh: `"${opts.titleEn.slice(0, 55)}" 已通过审核。${amount} 已计入您的余额，可随时提现。`,
++        bodyZh: `"${clipQuote(opts.titleEn, 55)}" 已通过审核。${amount} 已计入您的余额，可随时提现。`,
+         href: "/wallet",
+       });
+     }
+@@ -1156,9 +1160,9 @@ export function notifyProposalApproved(userId: string, opts: { titleEn: string;
+         titleEn: `Proposal approved · bonus ${amount} reserved`,
+         titleSw: `Pendekezo limekubaliwa · bonasi ${amount} imehifadhiwa`,
+         titleZh: `提案已通过 · 已预留 ${amount} 奖金`,
+-        bodyEn: `"${opts.titleEn.slice(0, 55)}" was approved. Your ${amount} bonus activates automatically once your current bonus completes.`,
++        bodyEn: `"${clipQuote(opts.titleEn, 55)}" was approved. Your ${amount} bonus activates automatically once your current bonus completes.`,
+         bodySw: `Pendekezo lako limekubaliwa. Bonasi ya ${amount} itaanza mara bonasi yako ya sasa itakapokamilika.`,
+-        bodyZh: `"${opts.titleEn.slice(0, 55)}" 已通过审核。您的 ${amount} 奖金将在当前奖金完成后自动激活。`,
++        bodyZh: `"${clipQuote(opts.titleEn, 55)}" 已通过审核。您的 ${amount} 奖金将在当前奖金完成后自动激活。`,
+         href: "/wallet",
+       });
+     }
+@@ -1167,9 +1171,9 @@ export function notifyProposalApproved(userId: string, opts: { titleEn: string;
+       titleEn: `Proposal approved · bonus ${amount} credited`,
+       titleSw: `Pendekezo limekubaliwa · bonasi ${amount}`,
+       titleZh: `提案已通过 · ${amount} 奖金已到账`,
+-      bodyEn: `"${opts.titleEn.slice(0, 55)}" was approved. ${amount} is in your bonus wallet.`,
++      bodyEn: `"${clipQuote(opts.titleEn, 55)}" was approved. ${amount} is in your bonus wallet.`,
+       bodySw: `Pendekezo lako limekubaliwa. ${amount} ipo kwenye pochi yako ya bonasi.`,
+-      bodyZh: `"${opts.titleEn.slice(0, 55)}" 已通过审核。${amount} 已存入您的奖金钱包。`,
++      bodyZh: `"${clipQuote(opts.titleEn, 55)}" 已通过审核。${amount} 已存入您的奖金钱包。`,
+       href: "/wallet",
+     });
+   }
+@@ -1178,9 +1182,9 @@ export function notifyProposalApproved(userId: string, opts: { titleEn: string;
+     titleEn: "Your proposal was approved",
+     titleSw: "Pendekezo lako limekubaliwa",
+     titleZh: "您的提案已通过",
+-    bodyEn: `"${opts.titleEn.slice(0, 60)}" was approved by the 50pick team.`,
++    bodyEn: `"${clipQuote(opts.titleEn, 60)}" was approved by the 50pick team.`,
+     bodySw: "Pendekezo lako limekubaliwa na timu ya 50pick.",
+-    bodyZh: `"${opts.titleEn.slice(0, 60)}" 已获 50pick 团队通过。`,
++    bodyZh: `"${clipQuote(opts.titleEn, 60)}" 已获 50pick 团队通过。`,
+     href: "/proposals",
+   });
+ }
+@@ -1191,9 +1195,9 @@ export function notifyProposalListed(userId: string, opts: { titleEn: string; ma
+     titleEn: "Your proposal is now live",
+     titleSw: "Pendekezo lako sasa ni soko",
+     titleZh: "您的提案已上线",
+-    bodyEn: `"${opts.titleEn.slice(0, 60)}" is a market now — share it.`,
++    bodyEn: `"${clipQuote(opts.titleEn, 60)}" is a market now — share it.`,
+     bodySw: "Sasa ni soko — lishiriki.",
+-    bodyZh: `"${opts.titleEn.slice(0, 60)}" 现已成为市场 — 分享出去吧。`,
++    bodyZh: `"${clipQuote(opts.titleEn, 60)}" 现已成为市场 — 分享出去吧。`,
+     href: `/markets/${opts.marketId}`,
+   });
+ }
+@@ -1204,9 +1208,9 @@ export function notifyProposalChanges(userId: string, opts: { titleEn: string; n
+     titleEn: "Changes requested on your proposal",
+     titleSw: "Mabadiliko yanahitajika",
+     titleZh: "您的提案需要修改",
+-    bodyEn: opts.note ? `Officer note: ${opts.note.slice(0, 80)}` : `"${opts.titleEn.slice(0, 60)}" needs a tweak before listing.`,
++    bodyEn: opts.note ? `Officer note: ${clipQuote(opts.note, 80)}` : `"${clipQuote(opts.titleEn, 60)}" needs a tweak before listing.`,
+     bodySw: "Rekebisha kabla ya kuorodheshwa.",
+-    bodyZh: opts.note ? `审核意见：${opts.note.slice(0, 80)}` : `"${opts.titleEn.slice(0, 60)}" 上架前需要做一处调整。`,
++    bodyZh: opts.note ? `审核意见：${clipQuote(opts.note, 80)}` : `"${clipQuote(opts.titleEn, 60)}" 上架前需要做一处调整。`,
+     href: "/proposals",
+   });
+ }
+@@ -1218,9 +1222,9 @@ export function notifyProposalDeclined(userId: string, opts: { titleEn: string;
+     titleSw: "Pendekezo limekataliwa",
+     titleZh: "您的提案未被采纳",
+     // `endClause`: the reason's own closing stop gives way to the template's, so it never reads ".." (round 3).
+-    bodyEn: `"${opts.titleEn.slice(0, 50)}" — reason: ${endClause(opts.reason, ".")}`,
++    bodyEn: `"${clipQuote(opts.titleEn, 50)}" — reason: ${endClause(opts.reason, ".")}`,
+     bodySw: `Sababu: ${endClause(opts.reason, ".")}`,
+-    bodyZh: `"${opts.titleEn.slice(0, 50)}" — 原因：${endClause(opts.reason, "。")}`,
++    bodyZh: `"${clipQuote(opts.titleEn, 50)}" — 原因：${endClause(opts.reason, "。")}`,
+     href: "/proposals",
+   });
+ }
+@@ -1242,9 +1246,9 @@ export function notifyRefund(userId: string, opts: { stake: number; marketTitle:
+     titleEn: `Refund · ${formatTzs(opts.stake)} returned`,
+     titleSw: `Kurudishiwa · ${formatTzs(opts.stake)}`,
+     titleZh: `退款 · 已退回 ${formatTzs(opts.stake)}`,
+-    bodyEn: `${opts.marketTitle.en.slice(0, 70)} was voided. Your stake has been returned.`,
+-    bodySw: `${opts.marketTitle.sw.slice(0, 70)} limebatilishwa. Dau lako limerudishwa.`,
+-    bodyZh: `${opts.marketTitle.zh.slice(0, 50)} 已作废。您的本金已全额退回。`,
++    bodyEn: `${clipQuote(opts.marketTitle.en, 70)} was voided. Your stake has been returned.`,
++    bodySw: `${clipQuote(opts.marketTitle.sw, 70)} limebatilishwa. Dau lako limerudishwa.`,
++    bodyZh: `${clipQuote(opts.marketTitle.zh, 50)} 已作废。您的本金已全额退回。`,
+     href: ticketHref(opts.marketId, opts.positionId, `/markets/${opts.marketId}`),
+   });
+ }
+@@ -1263,9 +1267,9 @@ export function notifyMarketCancelled(userId: string, opts: { stake: number; mar
+     titleEn: `Market cancelled · ${formatTzs(opts.stake)} refunded`,
+     titleSw: `Soko limefutwa · ${formatTzs(opts.stake)} imerejeshwa`,
+     titleZh: `市场已取消 · 已退款 ${formatTzs(opts.stake)}`,
+-    bodyEn: `"${opts.marketTitle.en.slice(0, 60)}" was cancelled: ${endClause(opts.reason.slice(0, 120), ".")} Your full stake has been returned to your wallet.`,
+-    bodySw: `"${opts.marketTitle.sw.slice(0, 60)}" limefutwa: ${endClause(opts.reason.slice(0, 120), ".")} Dau lako lote limerejeshwa kwenye pochi yako.`,
+-    bodyZh: `"${opts.marketTitle.zh.slice(0, 60)}" 已取消：${endClause(opts.reason.slice(0, 120), "。")}您的本金已全额退回钱包。`,
++    bodyEn: `"${clipQuote(opts.marketTitle.en, 60)}" was cancelled: ${endClause(clipQuote(opts.reason, 120), ".")} Your full stake has been returned to your wallet.`,
++    bodySw: `"${clipQuote(opts.marketTitle.sw, 60)}" limefutwa: ${endClause(clipQuote(opts.reason, 120), ".")} Dau lako lote limerejeshwa kwenye pochi yako.`,
++    bodyZh: `"${clipQuote(opts.marketTitle.zh, 60)}" 已取消：${endClause(clipQuote(opts.reason, 120), "。")}您的本金已全额退回钱包。`,
+     href: ticketHref(opts.marketId, opts.positionId, "/wallet"),
+   });
+ }
+@@ -1278,9 +1282,9 @@ export function notifyAdminMarketCancelled(adminUserId: string, opts: { title: s
+     titleEn: `Market cancelled · ${opts.refundedCount} refunded`,
+     titleSw: `Soko limefutwa · ${opts.refundedCount} wamerejeshewa`,
+     titleZh: `市场已取消 · ${opts.refundedCount} 人已退款`,
+-    bodyEn: `"${opts.title.slice(0, 60)}" was emergency-voided — ${formatTzs(opts.refundedTzs)} refunded to ${opts.refundedCount} ${opts.refundedCount === 1 ? "player" : "players"}. Reason: ${opts.reason.slice(0, 100)}`,
++    bodyEn: `"${clipQuote(opts.title, 60)}" was emergency-voided — ${formatTzs(opts.refundedTzs)} refunded to ${opts.refundedCount} ${opts.refundedCount === 1 ? "player" : "players"}. Reason: ${clipQuote(opts.reason, 100)}`,
+     bodySw: `Soko limefutwa kwa dharura. ${formatTzs(opts.refundedTzs)} imerejeshwa.`,
+-    bodyZh: `"${opts.title.slice(0, 60)}" 已紧急作废 — 已向 ${opts.refundedCount} 位玩家退款 ${formatTzs(opts.refundedTzs)}。原因：${opts.reason.slice(0, 100)}`,
++    bodyZh: `"${clipQuote(opts.title, 60)}" 已紧急作废 — 已向 ${opts.refundedCount} 位玩家退款 ${formatTzs(opts.refundedTzs)}。原因：${clipQuote(opts.reason, 100)}`,
+     href: "/admin/markets",
+   });
+ }
+@@ -1310,13 +1314,13 @@ export function notifyCashout(userId: string, opts: {
+     titleZh: `${opts.inGracePeriod ? "免费退出" : "已套现"} · ${formatTzs(opts.amount)}`,
+     bodyEn: opts.inGracePeriod
+       ? `Full stake returned — sold within the ${mins}-min grace window, no fee.`
+-      : `Early exit from ${opts.marketTitle.en.slice(0, 60)}. Funds in wallet.`,
++      : `Early exit from ${clipQuote(opts.marketTitle.en, 60)}. Funds in wallet.`,
+     bodySw: opts.inGracePeriod
+       ? `Pesa yote imerudishwa — umetoka ndani ya dakika ${mins}.`
+       : `Umetoka mapema. Pesa imo kwenye pochi yako.`,
+     bodyZh: opts.inGracePeriod
+       ? `本金已全额退回 — 在 ${mins} 分钟免费窗口内卖出，不收取手续费。`
+-      : `已从 ${opts.marketTitle.zh.slice(0, 50)} 提前退出。款项已存入钱包。`,
++      : `已从 ${clipQuote(opts.marketTitle.zh, 50)} 提前退出。款项已存入钱包。`,
+     href: ticketHref(opts.marketId, opts.positionId, `/markets/${opts.marketId}`),
+   });
+ }
+@@ -1330,9 +1334,9 @@ export function notifyOneSidedRefund(userId: string, opts: { stake: number; mark
+     titleEn: `Full refund · ${formatTzs(opts.stake)}`,
+     titleSw: `Pesa imerudishwa · ${formatTzs(opts.stake)}`,
+     titleZh: `全额退款 · ${formatTzs(opts.stake)}`,
+-    bodyEn: `${opts.marketTitle.en.slice(0, 60)} — all bets were on one side. Full stake returned, no fee.`,
+-    bodySw: `${opts.marketTitle.sw.slice(0, 60)} — wote walibetia upande mmoja. Dau lako lote limerudishwa bila gharama.`,
+-    bodyZh: `${opts.marketTitle.zh.slice(0, 50)} — 所有投注都在同一方。本金全额退回，不收取手续费。`,
++    bodyEn: `${clipQuote(opts.marketTitle.en, 60)} — all bets were on one side. Full stake returned, no fee.`,
++    bodySw: `${clipQuote(opts.marketTitle.sw, 60)} — wote walibetia upande mmoja. Dau lako lote limerudishwa bila gharama.`,
++    bodyZh: `${clipQuote(opts.marketTitle.zh, 50)} — 所有投注都在同一方。本金全额退回，不收取手续费。`,
+     href: ticketHref(opts.marketId, opts.positionId, `/markets/${opts.marketId}`),
+   });
+ }
+@@ -1368,9 +1372,9 @@ export function notifyAdminMarketResolution(adminUserId: string, opts: { title:
+     titleEn: "Market awaiting resolution",
+     titleSw: "Soko linasubiri uamuzi",
+     titleZh: "市场等待裁定",
+-    bodyEn: `"${opts.title.slice(0, 70)}" has closed — resolve the outcome.`,
+-    bodySw: `"${opts.title.slice(0, 50)}" limefungwa — tatua matokeo.`,
+-    bodyZh: `"${opts.title.slice(0, 50)}" 已关闭 — 请裁定结果。`,
++    bodyEn: `"${clipQuote(opts.title, 70)}" has closed — resolve the outcome.`,
++    bodySw: `"${clipQuote(opts.title, 50)}" limefungwa — tatua matokeo.`,
++    bodyZh: `"${clipQuote(opts.title, 50)}" 已关闭 — 请裁定结果。`,
+     href: "/admin/resolver-queue",
+   });
+ }
+@@ -1584,19 +1588,37 @@ export function notifyPasswordChanged(userId: string) {
+  * dictionary's own (the same lazy read `sideWords` makes); a value that does not parse keeps the old day.
+  */
+ async function breakEndIn(untilIso: string): Promise<LocalizedText> {
+-  const day = untilIso.slice(0, 10);
+-  const at = Date.parse(untilIso);
+-  if (!Number.isFinite(at)) return { en: day, sw: day, zh: day };
++  return instantIn(untilIso, formatBreakEnd, untilIso.slice(0, 10));
++}
++
++/**
++ * ⭐ ONE INSTANT, EACH READER'S WORDS — the path every date or time a notice carries takes (the visual pass, round 5, R5-B,
++ * 2026-10-09; F9, tile 192). 🔴 A Swahili verdict notice read "…Malipo kuanzia 9 Oct 2026, 11:53…": the caller formatted
++ * the payout time ONCE, with the platform's English formatter, and the one string went into the Swahili, English and
++ * Chinese bodies alike. A row stores all three bodies at once, so each is now said in its own language at writing time:
++ * `say` is one of eat-day's localized formatters (`formatEatDateTime` for a moment, `formatEatDate` for a day,
++ * `formatBreakEnd` for a break's end), the month words are the dictionary's own, the clock is East Africa's (fixed UTC+3,
++ * the platform's day). R4-I's `breakEndIn` is this path with its own formatter. A value that does not parse, or a
++ * dictionary that fails to load, gives every language `fallback`.
++ * ⚠️ Rows already written keep their text: a notice is a record of what was said, and nothing rewrites it.
++ */
++async function instantIn(
++  iso: string,
++  say: (atMs: number, nowMs: number, monthsShort: readonly string[], locale: "en" | "sw" | "zh") => string,
++  fallback: string,
++): Promise<LocalizedText> {
++  const at = Date.parse(iso);
++  if (!Number.isFinite(at)) return { en: fallback, sw: fallback, zh: fallback };
+   try {
+     const { dict } = await import("@/lib/i18n-dict");
+     const now = Date.now();
+     return {
+-      en: formatBreakEnd(at, now, dict.en.common.monthsShort, "en"),
+-      sw: formatBreakEnd(at, now, dict.sw.common.monthsShort, "sw"),
+-      zh: formatBreakEnd(at, now, dict.zh.common.monthsShort, "zh"),
++      en: say(at, now, dict.en.common.monthsShort, "en"),
++      sw: say(at, now, dict.sw.common.monthsShort, "sw"),
++      zh: say(at, now, dict.zh.common.monthsShort, "zh"),
+     };
+   } catch {
+-    return { en: day, sw: day, zh: day };
++    return { en: fallback, sw: fallback, zh: fallback };
+   }
+ }
+ 
+@@ -2033,18 +2055,22 @@ export function notifyAgentDeactivated(userId: string) {
+ /**
+  * The partnership has ENDED — distinct from a pause. The person is a player again and the agent
+  * dashboard is gone, so the honest door is the status page, which carries the re-apply date.
++ * ⭐ The date is said in each reader's words (R5-B, 2026-10-09): it was `formatDateShort`, English month names in the
++ * Swahili and Chinese bodies too ("…kuanzia 06 Dec"). It is a DAY, so `formatEatDate` (the year added when it is not
++ * this one), through the one path every notice's date takes (`instantIn`).
+  */
+-export function notifyAgentRevoked(userId: string, opts: { reapplyAt: string | null }) {
+-  const when = opts.reapplyAt ? formatDateShort(opts.reapplyAt) : null;
++export async function notifyAgentRevoked(userId: string, opts: { reapplyAt: string | null }) {
++  const when = opts.reapplyAt ? await instantIn(opts.reapplyAt, formatEatDate, "") : null;
++  const has = !!when && when.en !== "";
+   return notify({
+     userId,
+     kind: "KYC",
+     titleEn: "Your agent partnership has ended",
+     titleSw: "Ushirikiano wako wa uwakala umekwisha",
+     titleZh: "您的代理合作已结束",
+-    bodyEn: `Your code no longer recruits and no new commission accrues. Commission already paid stays in your wallet.${when ? ` You may apply again from ${when}.` : ""}`,
+-    bodySw: `Msimbo wako hauandikishi tena na hakuna kamisheni mpya. Kamisheni iliyokwisha lipwa inabaki kwenye pochi yako.${when ? ` Unaweza kuomba tena kuanzia ${when}.` : ""}`,
+-    bodyZh: `您的代理码不再招募，也不再累积新佣金。已支付的佣金仍在您的钱包中。${when ? `您可从 ${when} 起重新申请。` : ""}`,
++    bodyEn: `Your code no longer recruits and no new commission accrues. Commission already paid stays in your wallet.${has ? ` You may apply again from ${when!.en}.` : ""}`,
++    bodySw: `Msimbo wako hauandikishi tena na hakuna kamisheni mpya. Kamisheni iliyokwisha lipwa inabaki kwenye pochi yako.${has ? ` Unaweza kuomba tena kuanzia ${when!.sw}.` : ""}`,
++    bodyZh: `您的代理码不再招募，也不再累积新佣金。已支付的佣金仍在您的钱包中。${has ? `您可从 ${when!.zh} 起重新申请。` : ""}`,
+     href: "/agent/status",
+   });
+ }
+@@ -2150,7 +2176,7 @@ export async function notifyAdminsKycReviewOverdue(opts: {
+   kycId: string; userId: string; playerLabel: string; submittedAt: string; hoursWaiting: number;
+ }): Promise<void> {
+   const officers = await db.user.listByRoles(["ADMIN", "COMPLIANCE", "MODERATOR"]);
+-  const label = opts.playerLabel.slice(0, 60);
++  const label = clipQuote(opts.playerLabel, 60);
+   for (const o of officers) {
+     await notify({
+       userId: o.id,

@@ -1,0 +1,24 @@
+﻿
+ALI'S RULE · no text leaves its box in any popup or warning
+
+§1 · the population — every popup under src, walked from source
+  ok   1.1 ⛔ RATCHET · 77 popup/warning components found, and the reviewed count is 77
+  ok   1.2 ⭐ POSITIVE CONTROL · the walk really found the kit's own popup primitives and the ones this session touched
+  ok   1.3 …and the detector can say NO — an ordinary non-popup file is not in the population
+
+§2 · truncate and line-clamp are how text leaves its box
+  ok   2.1 ⛔ RATCHET · src/app/admin/ai-polls/poll-actions.tsx clips text in a popup and carries a written reason
+  ok   2.1 ⛔ RATCHET · src/app/admin/markets/emergency-void-control.tsx clips text in a popup and carries a written reason
+  ok   2.1 ⛔ RATCHET · src/app/admin/proposals/admin-proposals-client.tsx clips text in a popup and carries a written reason
+  ok   2.1 ⛔ RATCHET · src/components/layout/avatar-menu.tsx clips text in a popup and carries a written reason
+  ok   2.1 ⛔ RATCHET · src/components/layout/notifications-panel.tsx clips text in a popup and carries a written reason
+  ok   2.1 ⛔ RATCHET · src/components/markets/win-celebration.tsx clips text in a popup and carries a written reason
+  ok   2.2 ⛔ the debt list may only SHRINK — every entry still clips something
+  ok   2.3 ⭐ POSITIVE CONTROL · the clip detector still matches real source
+
+§3 · the highest-stakes popup in the product
+  ok   3.1 the confirm dialog still renders the market title (this check is not blind)
+  ok   3.2 ★★ and it is NOT clamped — a player must be able to read the whole thing before committing money
+
+popup-fit: 13 passed, 0 failed
+popup-fit: OK — 77 popups walked, 6 carry a clip and every one of those carries a reason

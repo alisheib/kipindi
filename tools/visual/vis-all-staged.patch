@@ -1,0 +1,1247 @@
+diff --git a/docs/VODACOM-PLAN.md b/docs/VODACOM-PLAN.md
+index 07d97c51..4a1644d8 100644
+--- a/docs/VODACOM-PLAN.md
++++ b/docs/VODACOM-PLAN.md
+@@ -476,10 +476,15 @@ WP6b the swap + census + header-fit → WP7 overlays → WP8 short titles on pos
+   at 360, so 360 is tighter than 320's 18.7px); en 39.6px, zh 63.6px there. TZS 9.9M and TZS 0 leave the same room
+   (sw 33px at 320), by design: the capsule reserves the hidden-balance mask's width, so a short figure never narrows
+   it and hiding balances never moves the header. From 768 nothing is near the edge (≥ 96px at 1024, the tightest
+-  desktop width). The rail: sw "Tiketi zangu" takes two lines at 320 and one from 360, en and zh one everywhere, none
+-  cut — §0h point 18's model, confirmed. The first runs found three faults in the PROBES, none in the header (a shown
++  desktop width). ⚠️ **2026-10-08, the owner's rule: the header's edge is the page's edge at every width** — the row's
++  gutter is now the page's, 16px below 1024 and 32px from it (§0g design call 10), so these slacks are the old
++  gutters' (12 / 16 / 24): 320 loses 8px (sw TZS 999,999 and hidden balances ≈ 10.7px, now the least; sw TZS 9.9M and
++  TZS 0 ≈ 25; en ≈ 33, zh ≈ 57 at TZS 999,999; a guest ≥ 60 — read off the G5 tiles, ±0.5px), 360–639 is unchanged,
++  640–1023 gains 16px and from 1024 loses 16px (≥ 80px at 1024). The rule probe now asks 16px / 32px, and the twin's
++  gutter mutations plant the old values (ten mutations, from nine). The rail: sw "Tiketi zangu" takes two lines at 320
++  and one from 360, en and zh one everywhere, none cut — §0h point 18's model, confirmed. The first runs found three faults in the PROBES, none in the header (a shown
+   span and the "+" compute `flex`, not `inline-flex`: a flex item's display is blockified; the slack had been the
+-  always-zero gap after the pushed cluster; the verdict cut its list at six), each fixed in the drive itself. Its red twin makes nine single-line `globals.css` mutations, each
++  always-zero gap after the pushed cluster; the verdict cut its list at six), each fixed in the drive itself. Its red twin makes nine (ten from 2026-10-08) single-line `globals.css` mutations, each
+   one rule the RULE probe must break in some cell, and a CSS witness makes an unserved mutation read BROKEN. ⛔ It runs
+   only as `npm run red:journey-header-fit -- --alone`: without `--alone`, or inside `red:all` (which now marks every
+   harness it starts with KP_RED_ALL), it refuses with exit 2 before writing anything. `test:journey-shell` §10 holds
+@@ -2082,9 +2087,16 @@ shares it). ⭐ The canvas is the source of truth for S4's frames — no copy li
+     - **Rule from 360 up:** the product's own 26-px mark, its link still 44 px tall and widened to 44 px by a −9-px
+       margin into the gutter; 6-px gaps; 10-px balance-pill padding; 12/10-px padding on "+ Weka pesa". This fits
+       every case from 360 up.
+-    - **Rule below 360:** 12-px side gutter, "Weka pesa" without the "+" glyph, and a 12-px balance figure. This fits
+-      every case at 320, Swahili at TZS 10,000,000 included (exactly 320). The 390 frames now use the 360-up rule.
+-    - S6's header-fit gate asserts both rules.
++    - **Rule below 360:** "Weka pesa" without the "+" glyph, and a 12-px balance figure. As measured here it also took
++      a 12-px side gutter, and fitted every case at 320, Swahili at TZS 10,000,000 included (exactly 320). The 390
++      frames now use the 360-up rule.
++    - **2026-10-08, the owner's rule: the header's edge is the page's edge at every width.** The side gutter is no longer
++      a fit rule: it is the page's own (PageContainer's and the footer's `px-3 lg:px-6`), 16 px below 1024 and 32 px
++      from it, at 320 too. The 12-px gutter (and the classic bar's 24 px from 640) put the header 4 px outside the
++      content at 320 and 8 px off it from 640 (the G5 tiles). 320 pays 8 px for it: the least slack there goes from
++      18.7 to about 10.7 px (Swahili, TZS 999,999 or hidden balances — the widest a wallet now shows, since
++      `formatBalancePill` compacts from TZS 1,000,000); every other cell keeps more. The "+" and the 12-px figure stay.
++    - S6's header-fit gate asserts both rules, and the gutter as the page's edge.
+ 11. **Card buttons (brief item 3), measured the same way.** Labels were checked at 320/360/390/412 in sw/en/zh.
+     - The second line may wrap to two lines. Both buttons then grow together, from 64 to 74 px.
+     - At 320, even "Shinda ≈2.8× dau" wraps (so does the English). "Shinda zaidi ya 100× dau" wraps at every width.
+diff --git a/docs/design-system/v5-2026-09-29-simplified-journey/S6-PLAN.md b/docs/design-system/v5-2026-09-29-simplified-journey/S6-PLAN.md
+index c7507c9c..055345a7 100644
+--- a/docs/design-system/v5-2026-09-29-simplified-journey/S6-PLAN.md
++++ b/docs/design-system/v5-2026-09-29-simplified-journey/S6-PLAN.md
+@@ -410,7 +410,7 @@ Names marked "new" below are proposals. Their package.json keys do not exist yet
+ **Steps.**
+ 1. **journey-top-bar.tsx** ('use client').
+    - Root: `<header className='sticky top-0 z-30 app-topbar kp-jhdr' data-testid='journey-top-bar'>`. It is 56px tall with --panel and a --border bottom, as in globals.css, never inline (decision 1). HeaderScrollCast keeps working.
+-   - Row `.kp-jhdr__row`, mobile-first: padding-inline var(--sp-3) and gap 6px; var(--sp-4) from min-width 360px; the classic sm/lg/xl values from 640.
++   - Row `.kp-jhdr__row`, mobile-first: padding-inline var(--sp-3) and gap 6px; var(--sp-4) from min-width 360px; the classic sm/lg/xl values from 640. (2026-10-08, the owner's rule: the header's edge is the page's edge at every width — the gutter is now var(--sp-4) at every width and var(--sp-8) from 1024, PageContainer's edge; the gaps keep the classic values. A5's amendment.)
+    - A 44px home link `.kp-jhdr__home`: margin-inline −9px, padding-inline 9px. It holds FiftyMark 26 below xl and FiftyLockup 22 from xl, with the classic span classes. brand.tsx is untouched.
+    - `<span className='kp-rg__18'>{t.footer.eighteenPlus}</span>`, with no aria-label (the app-shell.tsx:601 rule).
+ 2. **Desktop nav** (`hidden lg:flex`, aria-label t.nav.primary). It maps JOURNEY_TABS to `<Link className='kp-navlink kp-jnav__link' aria-current={activeTabFor(pathname) === key ? 'page' : undefined}>`.
+@@ -445,7 +445,7 @@ Names marked "new" below are proposals. Their package.json keys do not exist yet
+ **Flag gating.** Three new files that nothing imports yet. globals.css only gains class names no classic element carries. Classic files and served output are unchanged.
+ 
+ **Tests.**
+-- test:journey-shell §7 (new): the two S4 rules, read from globals.css — base gutter --sp-3 then --sp-4 at min-width 360px; '+' hidden at base and shown from 360; figure text-label then xs:text-body; gap 6px; home link −9px; guest pills btn-md. Plus one plant per rule.
++- test:journey-shell §7 (new): the two S4 rules, read from globals.css — base gutter --sp-3 then --sp-4 at min-width 360px; '+' hidden at base and shown from 360; figure text-label then xs:text-body; gap 6px; home link −9px; guest pills btn-md. Plus one plant per rule. (2026-10-08, the owner's rule: the header's edge is the page's edge at every width — 7.gutter now reads --sp-4 then --sp-8 at min-width 1024px against PageContainer's spelling, and its plants put the old 12px and 24px back. A5's amendment.)
+ - test:journey-shell §8 (new): exactly the four JOURNEY_TABS hrefs; no NavMore, coin or dot in journey-tabs.tsx; the guest Tiketi is a `<button>`; the Akaunti link has no aria-label. Plus plants.
+ - test:stacking: new ROOT_SURFACES rows
+ - 'journey-top-bar' (`/"sticky top-0 z-(/d+) app-topbar kp-jhdr"/`, z 30);
+@@ -547,7 +547,7 @@ Names marked "new" below are proposals. Their package.json keys do not exist yet
+    - **Cells:** 320/360/390/768/1024/1150/1279 × sw/en/zh × {pass guest, pass player at TZS 999,999 — the widest real string, since formatBalancePill compacts at ≥1M}, plus held, masked and zero at 320 and 1024.
+    - **Per cell:** CLIP_PROBE, plus a new GUTTER_PROBE: rightmost visible header control ≤ vw − the row's computed padding-right, and header scrollWidth ≤ clientWidth.
+    - **Witness:** `.kp-jhdr__row` scrollWidth.
+-   - **Mutations** (single-line, unique): plus-shows-below-360, gutter-16-below-360, figure-14-below-360, gap-6-becomes-8, home-link-loses-negative-margin, guest-pills-pad-20, lockup-from-lg (xl:hidden→2xl:hidden in journey-top-bar.tsx).
++   - **Mutations** (single-line, unique): plus-shows-below-360, gutter-16-below-360, figure-14-below-360, gap-6-becomes-8, home-link-loses-negative-margin, guest-pills-pad-20, lockup-from-lg (xl:hidden→2xl:hidden in journey-top-bar.tsx). (2026-10-08, the owner's rule: the header's edge is the page's edge at every width — gutter-16-below-360 planted what is now the rule; it is gutter-12-returns, beside gutter-24-from-640-returns and edge-32-from-1024-lost. A5's amendment.)
+    - Each must sever ≥1 cell. Restore, then check the tree is byte-identical.
+    - A MISSED mutation means the rule has slack with real balances. Record the measured slack in §0i; never shrink the matrix.
+ 7. **qa-journey-preview.mjs**: widen the 1.3/3.3 trace regex to journey-top-bar|journey-tabs. Add pass-holder tiles at 390 and 1280: 4 tabs, the captioned header, no classic rail.
+@@ -1569,7 +1569,9 @@ the served-byte changes S6 makes for classic viewers, all listed.
+ reason in the test comment, then `test:red-anchors`.
+ 
+ **A5 · G5 — header-fit is two probes.** (1) A RULE probe per cell reading computed values against fixed tokens: row
+-padding-inline 12px below 360 and 16px from 360; the "+" glyph `display:none` below 360; figure 12px then 14px; gap 6px;
++padding-inline 16px below 1024 and 32px from 1024, the page's own edge (2026-10-08, the owner's rule: the header's edge
++is the page's edge at every width; it was 12px below 360 and 16px from 360); the "+" glyph `display:none` below 360;
++figure 12px then 14px; gap 6px;
+ home-link margin −9px. Each mutation must fail the rule probe in ≥1 cell — deterministic, and the red criterion. (2) A
+ CLIP probe (clip + scrollWidth) on the clean tree only, for "fits". Cells include the widest compact balance strings
+ `TZS 999,999` and `TZS 1.25M` (`formatBalancePill` compacts at ≥ 1,000,000); per-cell slack is measured and recorded.
+@@ -1580,6 +1582,19 @@ takes the classic bar's own steps (WP6a step 1): `.kp-jhdr__row` padding-inline
+ rule probe reads those at its 768–1279 cells. `test:journey-shell` 7.steps holds them against the classic bar's own
+ spellings, so the two bars cannot drift apart silently.
+ 
++*Amended 2026-10-08, the owner's rule: the header's edge is the page's edge at every width (G5 of the visual pass).*
++Measured on the header tiles (`wp12/tiles-h`), the 12 / 16 / 24px gutter put the header 4px outside the content at
++320, 8px inside it from 640 to 1023 and 8px outside it from 1024, where every page (PageContainer, `px-3 lg:px-6`) and
++the footer stand at 16px below 1024 and 32px from it. The row's gutter is now that edge: `padding-inline: var(--sp-4)`
++at every width and `var(--sp-8)` from 1024, in one step (no 360 or 640 step). The gaps keep the classic bar's steps
++(20 / 12 / 20 and the cluster's 12). `test:journey-shell` 7.gutter holds the row to PageContainer's spelling and the
++scale's 16 / 32 / 1024; 7.steps holds only the gaps against the classic bar, class by class (its gutter is no longer
++the journey's). The rule probe asks 16px below 1024 and 32px from it; the twin's gutter mutations are
++`gutter-12-returns`, `gutter-24-from-640-returns` and `edge-32-from-1024-lost` (ten in all). 320 pays 8px of its row:
++the least slack there goes from 18.7 to about 10.7px (sw, TZS 999,999 or hidden balances), still a fit. ⚠️ The
++landing's own bands (its hero and the sections under it) pad 24px from 768 and are not PageContainer, so on `/` alone
++the edge still differs by 8px from 768 — owed, a decision about the landing's composition.
++
+ **A6 · G6 — never `red:all` against a dev server.** Always `red:all -- --skip results-filter,header-fit`, then
+ `red:header-fit` and `red:journey-header-fit` standalone, detached, under the lock, then `git diff --exit-code`. The new
+ harness restores every mutated file on SIGINT/SIGTERM/exit and self-limits its runtime, printing INCONCLUSIVE rather
+@@ -1588,7 +1603,8 @@ than being killed.
+ *As built (WP6b, 2026-10-02; A5 and A6, with the WP6b review's corrections):* the rules, the matrix and the probes are
+ written once, in `scripts/live/journey-header-fit.mjs`, and both `qa:journey-header-fit` (the clean matrix: the RULE
+ probe, the clip, the overflow, each cell's slack — the row's free space — and below 1024 the rail labels A17 owes) and
+-`red:journey-header-fit` import them. The red criterion is the RULE probe alone, and each of the nine mutations
++`red:journey-header-fit` import them. The red criterion is the RULE probe alone, and each of the nine mutations (ten
++from 2026-10-08, A5's amendment above)
+ (`scripts/anchors/journey-header-fit.anchors.mjs`) names the rule that must break. A rule is asked only where its
+ element is drawn: a KP_ROUTE on the deposit screen or its return skips the pill's rules there, by the header's own
+ rule, whose copy in the drives `test:journey-shell` §10 holds to `journeyHeaderState`; the twin refuses such a route,
+diff --git a/scripts/anchors/journey-header-fit.anchors.mjs b/scripts/anchors/journey-header-fit.anchors.mjs
+index 96934fe4..3ef24c1b 100644
+--- a/scripts/anchors/journey-header-fit.anchors.mjs
++++ b/scripts/anchors/journey-header-fit.anchors.mjs
+@@ -9,8 +9,9 @@
+  *
+  * ── WHAT THESE MUTATIONS ARE ─────────────────────────────────────────────────────────────────────────────────────
+  * Each puts ONE S4 fit rule of the journey header's stylesheet (VODACOM-PLAN §0g design call 10; from 640 the classic
+- * bar's own steps) back to a value the S4 measurement refused, and names in `expect` the rule of the RULE probe
+- * (`live/journey-header-fit.mjs`, RULES) that must break in at least one cell. Each is a single line.
++ * bar's own gaps; the gutter, the page's own edge — 2026-10-08, the owner's rule: the header's edge is the page's edge
++ * at every width) back to a value the S4 measurement or that rule refused, and names in `expect` the rule of the RULE
++ * probe (`live/journey-header-fit.mjs`, RULES) that must break in at least one cell. Each is a single line.
+  * ⭐ RULES, NOT CLIPPING (A5). The real balances leave slack — TZS 999,999 is the widest figure a wallet shows, and the
+  * S4 measurement was made with TZS 10,000,000 — so a proof that waited for a control to clip would miss most of these.
+  * A rule read as a computed value against its fixed token cannot.
+@@ -42,14 +43,17 @@ export const MUTATIONS = [
+     from: ".kp-jhdr__plus { display: none; }",
+     to: `.kp-jhdr__plus { display: inline-flex; ${witness("plus-shows-below-360")} }`,
+   },
++  // 2026-10-08, the owner's rule: the header's edge is the page's edge at every width. The gutter is now the page's
++  // (16px below 1024, 32px from it), so the three gutter mutations plant what it was: the S4 12px (it was
++  // `gutter-16-below-360`, which planted today's value), the classic bar's 24px from 640, and the 1024 step lost.
+   {
+-    name: "gutter-16-below-360",
+-    why: "the row's gutter is 16px below 360 — 8px of the 320 row's room given to its edges",
++    name: "gutter-12-returns",
++    why: "the row's old 12px gutter comes back (S4's rule below 360) — the header 4px outside the page's 16px edge",
+     expect: "gutter",
+     file: CSS,
+     suite: "journey-header-fit",
+-    from: ".kp-jhdr__row { display: flex; align-items: center; gap: 6px; height: 100%; max-width: var(--w-board); margin-inline: auto; padding-inline: var(--sp-3); }",
+-    to: `.kp-jhdr__row { display: flex; align-items: center; gap: 6px; height: 100%; max-width: var(--w-board); margin-inline: auto; padding-inline: var(--sp-4); ${witness("gutter-16-below-360")} }`,
++    from: ".kp-jhdr__row { display: flex; align-items: center; gap: 6px; height: 100%; max-width: var(--w-board); margin-inline: auto; padding-inline: var(--sp-4); }",
++    to: `.kp-jhdr__row { display: flex; align-items: center; gap: 6px; height: 100%; max-width: var(--w-board); margin-inline: auto; padding-inline: var(--sp-3); ${witness("gutter-12-returns")} }`,
+   },
+   {
+     name: "figure-14-below-360",
+@@ -106,12 +110,21 @@ export const MUTATIONS = [
+     to: `.kp-jhdr__pill { flex-shrink: 0; padding: 0 16px; ${witness("pill-pads-16-below-360")} }`,
+   },
+   {
+-    name: "steps-from-640-lost",
+-    why: "from 640 the row keeps the phone's 16px gutter instead of the classic bar's 24px (A5's as-built note)",
++    name: "gutter-24-from-640-returns",
++    why: "from 640 the row takes the classic bar's 24px gutter again — the header 8px inside the page's 16px edge to 1024",
+     expect: "gutter",
+     file: CSS,
+     suite: "journey-header-fit",
+-    from: "@media (min-width: 640px) { .kp-jhdr__row { gap: var(--sp-5); padding-inline: var(--sp-6); } }",
+-    to: `@media (min-width: 640px) { .kp-jhdr__row { gap: var(--sp-5); ${witness("steps-from-640-lost")} } }`,
++    from: "@media (min-width: 640px) { .kp-jhdr__row { gap: var(--sp-5); } }",
++    to: `@media (min-width: 640px) { .kp-jhdr__row { gap: var(--sp-5); padding-inline: var(--sp-6); ${witness("gutter-24-from-640-returns")} } }`,
++  },
++  {
++    name: "edge-32-from-1024-lost",
++    why: "from 1024 the row keeps the phone's 16px gutter — the header 16px outside the page's 32px edge (it was steps-from-640-lost)",
++    expect: "gutter",
++    file: CSS,
++    suite: "journey-header-fit",
++    from: "@media (min-width: 1024px) { .kp-jhdr__row { gap: var(--sp-3); padding-inline: var(--sp-8); } }",
++    to: `@media (min-width: 1024px) { .kp-jhdr__row { gap: var(--sp-3); ${witness("edge-32-from-1024-lost")} } }`,
+   },
+ ];
+diff --git a/scripts/journey-funnel.test.mts b/scripts/journey-funnel.test.mts
+index 3163fb0b..03efafe1 100644
+--- a/scripts/journey-funnel.test.mts
++++ b/scripts/journey-funnel.test.mts
+@@ -276,7 +276,8 @@ async function run(impl: Impl, log: (l: string) => void, tag: string): Promise<s
+     /if \(outcome\.credited && outcome\.txn\) \{[\s\S]*?runOutsideLock\(\(\) => \{\s*void import\("\.\/journey-funnel"\)\.then\(\(m\) => m\.countDepositFunnel\(t\)\)/.test(wallet)
+       && /origin: \(parse\.data as \{ origin\?: "low_balance" \}\)\.origin \?\? null,/.test(wallet));
+   ok("9.form · the deposit page adds the origin only for from=low-balance; the action accepts only low_balance and carries it through a failure",
+-    impl.depPage.includes('{sp.from === "low-balance" && <input type="hidden" name="origin" value="low_balance" />}')
++    // 2026-10-08: the input carries `hidden` so the form's space-y-5 does not count it (WP12 tile 068); the pin is the same field.
++    impl.depPage.includes('{sp.from === "low-balance" && <input type="hidden" hidden name="origin" value="low_balance" />}')
+       && impl.depAction.includes('const origin = formData.get("origin") === "low_balance" ? ("low_balance" as const) : undefined;')
+       && impl.depAction.includes('if (origin) carry.set("from", "low-balance");'));
+   ok("9.create-only · the origin is written on create and skipped by BOTH update paths; its migration adds one nullable column under the lock-retry block",
+diff --git a/scripts/journey-shell.test.mts b/scripts/journey-shell.test.mts
+index 8a57d59f..77f604e5 100644
+--- a/scripts/journey-shell.test.mts
++++ b/scripts/journey-shell.test.mts
+@@ -36,9 +36,11 @@
+  *      second poller — and a count is shown only to the viewer it was read for (critic G1). Only the journey's client
+  *      components load the hook, and the classic bell loads neither file.
+  *   §7 THE HEADER (WP6a) — the S4 fit rules read from `globals.css` as written, at the exact values WP6b's rule probe
+- *      reads as computed (A5): a 12px gutter below 360 and 16px from it, 6px gaps, the 44px home link borrowing 9px on
++ *      reads as computed (A5): the page's own gutter, 16px below 1024 and 32px from it, held against PageContainer's
++ *      spelling (2026-10-08, the owner's rule: the header's edge is the page's edge at every width; it was 12px below
++ *      360 and 16px from it), 6px gaps, the 44px home link borrowing 9px on
+  *      each side, the "+" hidden below 360, the pill's 12 and 12/10, the capsule's 10 and its 12px/14px figure, the
+- *      guest pills' 14px at 13px type; from 640 the classic bar's own steps, held against the classic bar's spellings;
++ *      guest pills' 14px at 13px type; from 640 the classic bar's own gaps, held against the classic bar's spellings;
+  *      the right-hand controls one cluster; no width-capping query anywhere in the shell's rules; the bar renders
+  *      `journeyHeaderState`'s answers with no inline style; the destinations from 1024 take aria-current from
+  *      `tabAriaCurrent` and speak the kit's underline language; and test:stacking's journey rows hold, judged by the
+@@ -1315,37 +1317,57 @@ function g7Header(W: World, ok: Ok) {
+     frame === "" ? "no .kp-jhdr rule" : frame);
+   const row = baseRule(css, ".kp-jhdr__row");
+   const row360 = minWidthRule(css, 360, ".kp-jhdr__row");
+-  ok("7.gutter · the row's gutter is 12px below 360 and 16px from 360 to 640 (A5) — the spacing tokens, at those values",
+-    row.includes("padding-inline: var(--sp-3)") && row360.includes("padding-inline: var(--sp-4)")
+-      && tokenValue(css, "sp-3") === "12px" && tokenValue(css, "sp-4") === "16px",
+-    show({ row, row360, sp3: tokenValue(css, "sp-3"), sp4: tokenValue(css, "sp-4") }));
++  // 2026-10-08, the owner's rule: the header's edge is the page's edge at every width. The row pads exactly as every
++  // page (PageContainer) does — `px-3 lg:px-6`, 16px below 1024 and 32px from it on this repo's scale — in ONE step,
++  // at the page's own breakpoint. It was 12px below 360 (S4), 16px to 640 and the classic bar's 24px from 640, which
++  // the G5 tiles measured 4px outside the content at 320 and 8px off it from 640.
++  const PAGE = "src/components/layout/page-container.tsx";
++  const edge = {
++    row640: minWidthRule(css, 640, ".kp-jhdr__row"),
++    row1024: minWidthRule(css, 1024, ".kp-jhdr__row"),
++    row1280: minWidthRule(css, 1280, ".kp-jhdr__row"),
++    page: text(W, PAGE).includes(`pad === "page" && "px-3 lg:px-6 py-6",`),
++    scale: W.tailwind.includes(`"3": "16px"`) && W.tailwind.includes(`"6": "32px"`) && W.tailwind.includes(`lg: "1024px"`),
++  };
++  ok("7.gutter · the row's gutter is the page's edge at every width: 16px below 1024 and 32px from it, one step and no other, the spacing tokens at those values and PageContainer still padding px-3 lg:px-6 on that scale (the owner's rule, 2026-10-08)",
++    row.includes("padding-inline: var(--sp-4)") && row360 === ""
++      && !edge.row640.includes("padding") && edge.row1024.includes("padding-inline: var(--sp-8)") && !edge.row1280.includes("padding")
++      && count(css, ".kp-jhdr__row {") === 4
++      && tokenValue(css, "sp-4") === "16px" && tokenValue(css, "sp-8") === "32px" && edge.page && edge.scale,
++    show({ row, row360, ...edge, sp4: tokenValue(css, "sp-4"), sp8: tokenValue(css, "sp-8") }));
+   const cluster = baseRule(css, ".kp-jhdr__cluster");
+-  ok("7.gap · 6px between the row's controls below 640 (A5), in the row and inside its cluster alike — the 360 step moves only the gutter",
++  ok("7.gap · 6px between the row's controls below 640 (A5), in the row and inside its cluster alike — no step on the row moves them before 640",
+     row.includes("gap: 6px;") && row.includes("display: flex") && !row360.includes("gap")
+       && cluster.includes("gap: 6px;") && cluster.includes("display: flex") && cluster.includes("flex-shrink: 0"),
+     show({ row, row360, cluster }));
+-  // From 640, the classic bar's own steps (WP6a step 1) — held against the classic bar's spellings, so the two move together.
++  // From 640, the classic bar's own GAPS (WP6a step 1) — held against the classic bar's spellings, so the two move
++  // together. Its gutter is no longer the journey's (7.gutter, 2026-10-08), so the classic row is read class by class:
++  // exactly its four gap classes, whatever its padding says.
+   const classic = text(W, "src/components/layout/top-app-bar.tsx");
+   const steps = {
+-    row640: minWidthRule(css, 640, ".kp-jhdr__row"),
+-    row1024: minWidthRule(css, 1024, ".kp-jhdr__row"),
+-    row1280: minWidthRule(css, 1280, ".kp-jhdr__row"),
++    row640: edge.row640,
++    row1024: edge.row1024,
++    row1280: edge.row1280,
+     cluster640: minWidthRule(css, 640, ".kp-jhdr__cluster"),
+   };
++  const CLASSIC_ROW = `"mx-auto max-w-board flex items-center h-full `;
++  const classicRowAt = classic.indexOf(CLASSIC_ROW);
++  const classicRow = classicRowAt < 0 ? [] : classic.slice(classicRowAt + 1, classic.indexOf(`"`, classicRowAt + 1)).split(" ");
++  const classicGaps = classicRow.filter((c) => /(^|:)gap-/.test(c));
+   const classicSpells = {
+-    row: classic.includes(`"mx-auto max-w-board flex items-center h-full gap-2 px-2 sm:gap-4 sm:px-5 lg:gap-2 xl:gap-4"`),
++    row: count(classic, CLASSIC_ROW) === 1 && show(classicGaps) === show(["gap-2", "sm:gap-4", "lg:gap-2", "xl:gap-4"]),
+     cluster: classic.includes(`"shrink-0 flex items-center gap-1 sm:gap-2"`),
+-    scale: W.tailwind.includes(`"2": "12px"`) && W.tailwind.includes(`"4": "20px"`) && W.tailwind.includes(`"5": "24px"`),
++    scale: W.tailwind.includes(`"2": "12px"`) && W.tailwind.includes(`"4": "20px"`),
+   };
+-  ok("7.steps · from 640 the classic bar's own steps: a 24px gutter, the row's gaps 20 / 12 / 20 at 640 / 1024 / 1280 and the cluster's 12 — the classic row and cluster still spelling those values",
+-    steps.row640.includes("padding-inline: var(--sp-6)") && steps.row640.includes("gap: var(--sp-5)")
+-      && steps.row1024.includes("gap: var(--sp-3)") && !steps.row1024.includes("padding")
+-      && steps.row1280.includes("gap: var(--sp-5)") && !steps.row1280.includes("padding")
++  ok("7.steps · from 640 the classic bar's own gaps: the row's 20 / 12 / 20 at 640 / 1024 / 1280 and the cluster's 12 — the classic row and cluster still spelling those values",
++    steps.row640.includes("gap: var(--sp-5)")
++      && steps.row1024.includes("gap: var(--sp-3)")
++      && steps.row1280.includes("gap: var(--sp-5)")
+       && steps.cluster640.includes("gap: var(--sp-3)")
+-      && count(css, ".kp-jhdr__row {") === 5 && count(css, ".kp-jhdr__cluster {") === 2
+-      && tokenValue(css, "sp-5") === "20px" && tokenValue(css, "sp-6") === "24px"
++      && count(css, ".kp-jhdr__cluster {") === 2
++      && tokenValue(css, "sp-5") === "20px" && tokenValue(css, "sp-3") === "12px"
+       && classicSpells.row && classicSpells.cluster && classicSpells.scale,
+-    show({ ...steps, classicSpells }));
++    show({ ...steps, classicGaps, classicSpells }));
+   const home = baseRule(css, ".kp-jhdr__home");
+   ok("7.home · the home link stays 44px tall and borrows 9px of gutter on each side (A5) — the bar's home link wears the rule",
+     home.includes("min-height: var(--h-control-md)") && home.includes("margin-inline: -9px") && home.includes("padding-inline: 9px")
+@@ -2598,7 +2620,16 @@ ${s}`);
+       return at < 0 || end < 0 ? css : css.slice(0, at) + css.slice(at, end).replace(from, to) + css.slice(end);
+     };
+     const plusAt320 = withCss(inRule(".kp-jhdr__plus", "display: none", "display: inline-flex"));
+-    const gutter16 = withCss(inRule(".kp-jhdr__row", "padding-inline: var(--sp-3)", "padding-inline: var(--sp-4)"));
++    // 2026-10-08, the owner's rule: the header's edge is the page's edge at every width. The gutter plants put back
++    // what the row padded before (the S4 12px, the classic bar's 24px from 640), lose the page's 1024 step, bring a
++    // 360 step back, and move the page's own padding under a header that keeps the old one.
++    const gutter12 = withCss(inRule(".kp-jhdr__row", "padding-inline: var(--sp-4)", "padding-inline: var(--sp-3)"));
++    const gutter24From640 = withCss(inMedia(640, ".kp-jhdr__row", "gap: var(--sp-5);", "gap: var(--sp-5); padding-inline: var(--sp-6);"));
++    const edgeLostFrom1024 = withCss(inMedia(1024, ".kp-jhdr__row", " padding-inline: var(--sp-8);", ""));
++    const step360Returns = withCss((s) => s.replace("@media (min-width: 360px) { .kp-jhdr__plus {",
++      `@media (min-width: 360px) { .kp-jhdr__row { padding-inline: var(--sp-3); } }${LF}@media (min-width: 360px) { .kp-jhdr__plus {`));
++    const PAGE_CONTAINER = "src/components/layout/page-container.tsx";
++    const pageGutterMoves = withFile(WORLD, PAGE_CONTAINER, (s) => s.replace(`"px-3 lg:px-6 py-6"`, `"px-3 lg:px-5 py-6"`));
+     const figure14 = withCss(inRule(".kp-jbal__fig", "font-size: 12px", "font-size: 14px"));
+     const gap8 = withCss(inRule(".kp-jhdr__row", "gap: 6px;", "gap: 8px;"));
+     const homeFlush = withCss(inRule(".kp-jhdr__home", "margin-inline: -9px", "margin-inline: 0"));
+@@ -2609,7 +2640,7 @@ ${s}`);
+     const clusterGap4 = withCss(inRule(".kp-jhdr__cluster", "gap: 6px;", "gap: 4px;"));
+     const flatFrom640 = withCss(inMedia(640, ".kp-jhdr__row", "gap: var(--sp-5); ", ""));
+     const CLASSIC_BAR = "src/components/layout/top-app-bar.tsx";
+-    const classicGutterMoves = withFile(WORLD, CLASSIC_BAR, (s) => s.replace("sm:gap-4 sm:px-5 lg:gap-2", "sm:gap-4 sm:px-6 lg:gap-2"));
++    const classicGapMoves = withFile(WORLD, CLASSIC_BAR, (s) => s.replace("sm:gap-4 sm:px-5 lg:gap-2", "sm:gap-5 sm:px-5 lg:gap-2"));
+     const pillForAnyPlayer = withFile(WORLD, JHDR, (s) => s.replace("{state.pill && (", "{user.isAuthed && ("));
+     const pipsLifted = withCss(inRule(".kp-rail--journey .kp-rail__item", "justify-content: flex-start", "justify-content: center"));
+     const dotAlways = withFile(WORLD, JTABS, (s) => s.replace(
+@@ -2927,8 +2958,18 @@ ${s}`);
+       // §7 — the header (WP6a): one plant per S4 rule, then the bar's markup
+       { name: "the + shows below 360", expect: at("7.plus ·"),
+         world: plusAt320, landed: cssChanged(plusAt320), landedAs: "the 320 row carries the glyph S4 measured it could not afford" },
+-      { name: "a 16px gutter below 360", expect: at("7.gutter ·"),
+-        world: gutter16, landed: cssChanged(gutter16), landedAs: "8px of the 320 row's slack gone to its edges" },
++      // 2026-10-08, the owner's rule: the header's edge is the page's edge at every width. This was "a 16px gutter
++      // below 360", which planted today's value; the old 12px is the defect now.
++      { name: "the old 12px gutter returns", expect: at("7.gutter ·"),
++        world: gutter12, landed: cssChanged(gutter12), landedAs: "the header 4px outside the page's 16px edge" },
++      { name: "the classic bar's 24px gutter returns from 640", expect: at("7.gutter ·"),
++        world: gutter24From640, landed: cssChanged(gutter24From640), landedAs: "the header 8px inside the page's edge from 640 to 1023" },
++      { name: "the page's 32px step from 1024 is lost", expect: at("7.gutter ·"),
++        world: edgeLostFrom1024, landed: cssChanged(edgeLostFrom1024), landedAs: "the header 16px outside the page's 32px edge on a desktop" },
++      { name: "a 360 step comes back to the row", expect: at("7.gutter ·"),
++        world: step360Returns, landed: cssChanged(step360Returns), landedAs: "two gutters below 1024, where the page has one" },
++      { name: "the pages move their edge and the header keeps the old one", expect: at("7.gutter ·"),
++        world: pageGutterMoves, landed: changed(pageGutterMoves, PAGE_CONTAINER), landedAs: "one screen, two edges" },
+       { name: "a 14px figure below 360", expect: at("7.figure ·"),
+         world: figure14, landed: cssChanged(figure14), landedAs: "TZS 999,999 two characters wider at 320" },
+       { name: "the gap becomes 8px", expect: at("7.gap ·"),
+@@ -2937,8 +2978,10 @@ ${s}`);
+         world: clusterGap4, landed: cssChanged(clusterGap4), landedAs: "the capsule and the pill closer than the row was measured with" },
+       { name: "the row keeps its phone gap from 640", expect: at("7.steps ·"),
+         world: flatFrom640, landed: cssChanged(flatFrom640), landedAs: "a desktop header 6px between groups the classic bar spaces 20px apart" },
+-      { name: "the classic bar moves its gutter and the journey keeps the old one", expect: at("7.steps ·"),
+-        world: classicGutterMoves, landed: changed(classicGutterMoves, CLASSIC_BAR), landedAs: "two bars, one product, two gutters" },
++      // 2026-10-08: the classic bar's GUTTER is no longer the journey's (the page's is, 7.gutter), so this plant moves a
++      // gap instead — the coupling 7.steps still holds.
++      { name: "the classic bar moves its gap and the journey keeps the old one", expect: at("7.steps ·"),
++        world: classicGapMoves, landed: changed(classicGapMoves, CLASSIC_BAR), landedAs: "two bars, one product, two spacings" },
+       { name: "the home link loses its negative margin", expect: at("7.home ·"),
+         world: homeFlush, landed: cssChanged(homeFlush), landedAs: "the 44px link takes 18px of the row it was lent" },
+       { name: "the guest pills pad 20px", expect: at("7.auth ·"),
+diff --git a/scripts/journey-tickets.test.mts b/scripts/journey-tickets.test.mts
+index 92c0c0ca..5cc9c845 100644
+--- a/scripts/journey-tickets.test.mts
++++ b/scripts/journey-tickets.test.mts
+@@ -273,8 +273,9 @@ const RULE_CALL = "const payout = ticketPayout(p);";
+ const FIGURE_LEAKS = ["potentialPayout", "selectionClosedNotifiedAt", "payoutIfWin", "payoutExactNote", `"exact"`];
+ const CHIP_RULE = `status === "LOSS" ? "no" : (playerStatusChip(status) ?? "warning")`;
+ const TITLE_LINK = "<Link href={" + BT + "/markets/${p.marketId}" + BT + " as never}";
+-/** The question's words: the short title, or the full one held to two lines by a clamp on the words themselves. */
+-const TITLE_WORDS = `<span className={title.short ? undefined : "line-clamp-2"}>{title.text}</span>`;
++/** The question's words: the short title, or the full one held to two lines by a clamp on the words themselves.
++ *  `keepUnits` (2026-10-08 · G1): the same words, with a number and its Chinese unit ("200毫米") kept on one line. */
++const TITLE_WORDS = `<span className={title.short ? undefined : "line-clamp-2"}>{keepUnits(title.text)}</span>`;
+ /** The heading the question sits in: one 20px line per line of words (16px type, leading 1.25). */
+ const TITLE_HEADING = `<h2 className="mt-3 font-display text-body-lg font-semibold leading-tight text-text">`;
+ /** The link's reach: the scale's step 2 of padding above and below, taken back by the same step as negative margin. */
+diff --git a/scripts/live/journey-header-fit.mjs b/scripts/live/journey-header-fit.mjs
+index 9388e3bd..0e304f1e 100644
+--- a/scripts/live/journey-header-fit.mjs
++++ b/scripts/live/journey-header-fit.mjs
+@@ -61,7 +61,10 @@ export const STATES = [
+  */
+ export const RULES = [
+   { id: "bar-height", sel: "", props: ["height"], want: () => "56px", when: "all" },
+-  { id: "gutter", sel: ".kp-jhdr__row", props: ["padding-left", "padding-right"], want: (w) => (w < 360 ? "12px" : w < 640 ? "16px" : "24px"), when: "all" },
++  // 2026-10-08, the owner's rule: the header's edge is the page's edge at every width. The gutter is PageContainer's
++  // and the footer's (`px-3 lg:px-6`): 16px below 1024, 32px from it. It was 12 / 16 / 24 from 0 / 360 / 640 (S4 and
++  // the classic bar's step), which put the header 4px outside the content at 320 and 8px off it from 640.
++  { id: "gutter", sel: ".kp-jhdr__row", props: ["padding-left", "padding-right"], want: (w) => (w < 1024 ? "16px" : "32px"), when: "all" },
+   { id: "row-gap", sel: ".kp-jhdr__row", props: ["column-gap"], want: (w) => (w < 640 ? "6px" : w < 1024 ? "20px" : w < 1280 ? "12px" : "20px"), when: "all" },
+   { id: "cluster-gap", sel: ".kp-jhdr__cluster", props: ["column-gap"], want: (w) => (w < 640 ? "6px" : "12px"), when: "all" },
+   { id: "home-borrow", sel: ".kp-jhdr__home", props: ["margin-left", "margin-right"], want: () => "-9px", when: "all" },
+diff --git a/scripts/needle-rest.test.mjs b/scripts/needle-rest.test.mjs
+index 0f22c102..b383de40 100644
+--- a/scripts/needle-rest.test.mjs
++++ b/scripts/needle-rest.test.mjs
+@@ -58,9 +58,30 @@ const HELPERS = () => {
+   const controls = () => [...document.querySelectorAll(INTERACTIVE)].filter((n) => !root.contains(n)).map((n) => ({ n, r: n.getBoundingClientRect(), cs: getComputedStyle(n) }))
+     .filter(({ r, cs }) => r.width >= 1 && r.height >= 1 && cs.visibility !== "hidden" && cs.pointerEvents !== "none" && r.bottom > 0 && r.top < innerHeight);
+   const hitsFp = (x, f) => x.width > 0 && x.left < f.right && x.right > f.left && x.top < f.bottom && x.bottom > f.top;
++  // 2026-10-08 · G1 [193] · the host's SECOND rule, restated the same way: visible text outside any control (the
++  // /markets stat line the disc rested on) is under it too, measured with the host's own 4px clearance. The host
++  // prunes its walk for speed; this walks every text node, so it can only find MORE than the host does.
++  const textCovered = () => {
++    const f = fp(); const C = 4; const out = [];
++    const w = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT);
++    const range = document.createRange();
++    for (let t = w.nextNode(); t; t = w.nextNode()) {
++      const p = t.parentElement;
++      if (!p || !(t.textContent || "").trim() || root.contains(p) || p.closest(`svg,script,style,noscript,template,${INTERACTIVE}`)) continue;
++      range.selectNodeContents(t);
++      const rects = [...range.getClientRects()].filter((x) => x.width > 1 && x.height > 1
++        && x.left < f.right + C && x.right > f.left - C && x.top < f.bottom + C && x.bottom > f.top - C);
++      const seen = p.checkVisibility
++        ? p.checkVisibility({ opacityProperty: true, visibilityProperty: true, checkOpacity: true, checkVisibilityCSS: true })
++        : getComputedStyle(p).visibility === "visible";
++      if (rects.length && seen) out.push(t.textContent.trim().slice(0, 30));
++    }
++    return out;
++  };
+   window.__nr = {
+     fp,
+     covered: () => { const f = fp(); return controls().filter(({ n }) => contentRects(n).some((x) => hitsFp(x, f))).map(({ n }) => (n.textContent || n.getAttribute("aria-label") || n.tagName).trim().slice(0, 30)); },
++    textCovered,
+     /** Content of a control reaching the strip the parked disc occupies, away from the top and bottom bars. */
+     rightControl: () => {
+       const f = fp();
+@@ -155,7 +176,8 @@ console.log("\n[needle-rest] §1 the glide, frame by frame (360×740)");
+   for (let cy = 140; cy < 600; cy += 20) {
+     await page.evaluate((c) => window.__nr.placeAt(c), cy);
+     await page.evaluate(() => window.__nr.record(40));
+-    if ((await page.evaluate(() => window.__nr.covered())).length === 0) { clearY = cy; break; }
++    // Clear by BOTH of the host's rules (2026-10-08): a rest with text under it is one the host now moves.
++    if ((await page.evaluate(() => window.__nr.covered().length + window.__nr.textCovered().length)) === 0) { clearY = cy; break; }
+   }
+   ok("precondition · a clear rest position exists at the top of /markets", clearY !== null);
+   if (clearY !== null) {
+diff --git a/src/app/globals.css b/src/app/globals.css
+index ee2deb45..7126273f 100644
+--- a/src/app/globals.css
++++ b/src/app/globals.css
+@@ -1579,6 +1579,13 @@ html[data-fab-idle] .cm-fab:not(.cm-fab--open):not(:focus-within) {
+ 
+ .cm-fab {
+   transition: opacity var(--t-quick) var(--m-glide), transform var(--t-quick) var(--m-glide);
++  /* 2026-10-08 (WP12 item 4) · THE BUBBLE CLEARS THE HOME INDICATOR, AS THE RAIL UNDER IT DOES. ChatRoot places it with
++     an inline `bottom` (80 over a phone rail, 16 without one — test:stacking's locator pins that line), and the rail
++     grows by `env(safe-area-inset-bottom)` (`.kp-rail`; layout.tsx sets viewport-fit=cover). On a notched iPhone
++     (inset ≈34px) the rail's top sits about 99px up while the bubble's foot sat at 80: its lower 19px lay on the
++     rail's last tab for the 3s D75 leaves it up. A margin on a fixed box lifts it off its `bottom` by the same inset
++     the rail adds. ⚠️ Inert wherever the inset is 0 — Android, desktop and every Playwright frame. */
++  margin-bottom: env(safe-area-inset-bottom, 0px);
+ }
+ @media (prefers-reduced-motion: reduce) {
+   html[data-scrolling] .cm-fab:not(.cm-fab--open):not(:focus-within),
+@@ -3486,10 +3493,40 @@ th .link-pending { --lp-inset: 0px; --lp-bottom: 8px; }
+    ⛔ AND THIS IS THE SECOND REASON THE MENUS LIVE OUTSIDE THE CHIP STRIP: a mask clips an
+    absolutely-positioned panel exactly as an overflow does. Putting a `<details>` menu back inside
+    a faded strip would re-create the 4px-tall listbox this replaced. */
++/* ⭐ 2026-10-08 · G1 [220 221 223 224 226 227 249 250 · 193 191] · BOTH EDGES, AND ONLY WHERE SOMETHING IS
++   HIDDEN. The fade was one static 24px mask on the trailing edge, so: (1) a strip `StripAutoScroll` had
++   scrolled to frame the pressed chip cut the chips it pushed off the LEADING edge mid-letter — "te" of "Zote"
++   hard against the left of Tiketi zangu at 320 — with no cue at all; (2) the trailing ramp ran out exactly at
++   the strip's edge, so the dimmed chip ended against whatever stood next: on /markets at 390 the faded
++   "Zinafunga le" stopped 6px (the grid's column gap — measured, the strip does NOT run under the pill) from
++   the PANGA sort pill and read as sliced by it, and on /notifications "Pesa" read as jammed into the result
++   count "Arifa 25" 16px away. Now `StripAutoScroll` publishes `data-edges` and the mask follows it:
++     · the leading edge fades over 32px only once the strip is scrolled off its start;
++     · the trailing ramp is 32px and ends 8px INSIDE the strip, so the next control always has a clear
++       margin beside a chip that is visibly fading rather than cut; a strip scrolled to its end, or one with
++       nothing hidden, is not masked at all (it used to dim its last chip for no reason).
++   ⛔ The bare class (no attribute: before hydration, and the skeletons) is the "end" state, so the server's
++   first paint and the hydrated strip at scroll 0 are the same picture — nothing changes when the script lands.
++   ⭐ `scroll-padding-inline` keeps a chip that keyboard focus scrolls into view clear of both fades, so its
++   ring (D63, below) is never drawn dimmed. Mobile only, as before: from `lg` the strip wraps. */
+ @media (max-width: 1023.98px) {
+-  .kp-strip-fade {
+-    -webkit-mask-image: linear-gradient(to right, #000 calc(100% - 24px), transparent 100%);
+-    mask-image: linear-gradient(to right, #000 calc(100% - 24px), transparent 100%);
++  .kp-strip-fade,
++  .kp-strip-fade[data-edges="end"] {
++    -webkit-mask-image: linear-gradient(to right, #000 calc(100% - 40px), transparent calc(100% - 8px));
++    mask-image: linear-gradient(to right, #000 calc(100% - 40px), transparent calc(100% - 8px));
++    scroll-padding-inline: 32px 40px;
++  }
++  .kp-strip-fade[data-edges="start"] {
++    -webkit-mask-image: linear-gradient(to right, transparent, #000 32px);
++    mask-image: linear-gradient(to right, transparent, #000 32px);
++  }
++  .kp-strip-fade[data-edges="both"] {
++    -webkit-mask-image: linear-gradient(to right, transparent, #000 32px, #000 calc(100% - 40px), transparent calc(100% - 8px));
++    mask-image: linear-gradient(to right, transparent, #000 32px, #000 calc(100% - 40px), transparent calc(100% - 8px));
++  }
++  .kp-strip-fade[data-edges="none"] {
++    -webkit-mask-image: none;
++    mask-image: none;
+   }
+ }
+ /* 🔴 D63 · THE CHIPS' FOCUS RING WAS BEING EATEN BY THE STRIP THAT HOLDS THEM.
+@@ -3505,6 +3542,36 @@ th .link-pending { --lp-inset: 0px; --lp-bottom: 8px; }
+   .kp-strip-fade :where(a, button):focus-visible { outline-offset: -2px; }
+ }
+ 
++/* 🔴 2026-10-08 · G1 [170 194] · THE GROUP DIVIDER NEVER ENDS A LINE.
++   `QueryGroupDivider` was a 5px flex item of row 2 (a 1×24px rule — `h-5` is 24px on this repo's scale —
++   2px each side, then the row's 12px gap each way; measured 1px × 24 rows in both tiles). Row 2 wraps, and a 5px item fits at the end of a line where the group after it does not, so the
++   group dropped to the next line and its rule stayed behind with nothing after it: /results at 1280 sw
++   (x≈1241, after "Muda wote") and /markets at 1280 sw (x≈886, after "Nafasi ndogo").
++   ⭐ The span (`.kp-qdiv`) is now a MARKER and draws nothing; the rule is the `::before` of the element
++   after it — the group it introduces — at the same place it stood: the row's column gap becomes the old
++   12 + 5 + 12 = 29px and the rule sits 14px into it, so a bar that does not wrap is drawn to the pixel as
++   before. A rule that belongs to its group moves with it, so it cannot end a line; when its group STARTS a
++   line the rule lands 15px left of the row, and the row clips everything more than 12px to its left —
++   wider than any focus ring (4px) or a selected pill's halo (≤11px), so nothing else is touched. Only rows
++   that hold a divider change (`:has`), so the skeletons, which draw none, keep their spacing.
++   ⛔ A browser without `:has()` keeps the old in-flow rule, stray and all — the fallback is today's bar. */
++.kp-qdiv { display: none; }
++@media (min-width: 1024px) {
++  .kp-qdiv { display: block; flex-shrink: 0; width: 1px; height: 24px; margin: 0 2px; background: var(--border); }
++}
++@supports selector(:has(a)) {
++  @media (min-width: 1024px) {
++    .kp-qdiv { display: none; }
++    .kp-qrow:has(.kp-qdiv) { column-gap: 29px; clip-path: inset(-100vmax -100vmax -100vmax -12px); }
++    .kp-qdiv + * { position: relative; }
++    .kp-qdiv + *::before {
++      content: ""; position: absolute; top: 50%; left: -15px;
++      width: 1px; height: 24px; margin-top: -12px;
++      background: var(--border); pointer-events: none;
++    }
++  }
++}
++
+ /* The sort/topic menus are <details>, so they open with no JavaScript. The native marker is
+    replaced by the caret glyph inside the summary.
+    ⚠️ DESKTOP ONLY since batch 6 — the phone layout is `.kp-fsheet` below. */
+@@ -4739,9 +4806,24 @@ html[data-sheet-open] .route-enter { animation: none; }
+ /* Category glyph — BARE neutral glyph (no box), identical to the /live dense
+    card's category treatment so the cards read as one system. Never gold. */
+ /* margin-left was an inline `style={{ marginLeft: 2 }}` — a 2px nudge that
+-   separates the glyph from whichever signal chip precedes it. Kept exactly. */
+-.mcardp-catico { display:inline-flex; align-items:center; justify-content:center; color: var(--text-subtle); flex-shrink:0; margin-left: 2px; }
++   separates the glyph from whichever signal chip precedes it. Kept exactly — and since 2026-10-08 it is
++   the right margin of that chip (`.mcardp-top > :has(+ .mcardp-tail)`, below), not the glyph's own. */
++.mcardp-catico { display:inline-flex; align-items:center; justify-content:center; color: var(--text-subtle); flex-shrink:0; }
+ .mcardp-catico svg { width: 13px; height: 13px; }
++/* 2026-10-08 · G1 [013 014 015 016 037 043–046 070 076 077 088 089 101 102] · THE TAIL OF THE ROW MOVES AS
++   ONE PIECE. The glyph, the category word and the featured card's time left were three items of this
++   wrapping row, so Swahili tore it wherever it ran out: at 320 the glyph ended line 1 and its word began
++   line 2; at 360–412 the time left stood alone on a right-aligned line. `.mcardp-catgrp` binds the glyph
++   to its word (they never part); `.mcardp-tail` carries that pair and the time, so the tail either fits on
++   the chips' line or drops to the next one WHOLE — category left, time right (`margin-left: auto` below).
++   The gaps are the row's own 5px, so a row that fitted before (English, Chinese, every width ≥ 768) still
++   fits, at the same widths, to the pixel. The tail wraps inside itself only if it cannot fit a line on its
++   own (large Android text, D65): then the category keeps its line and the time takes the next.
++   ⭐ The glyph's 2px nudge is now the margin of whatever precedes the tail: it separates the glyph from the
++   chip before it exactly as before, and it no longer indents the glyph when the tail starts a line. */
++.mcardp-tail { display: flex; flex-wrap: wrap; align-items: center; gap: 5px; flex: 1 1 auto; min-width: 0; }
++.mcardp-catgrp { display: flex; align-items: center; gap: 5px; min-width: 0; }
++.mcardp-top > :has(+ .mcardp-tail) { margin-right: 2px; }
+ /* §T3 0.14em, was 0.12 — tracking in the shared eyebrow rule beside `.amount`. */
+ .mcardp-cat { font-family: var(--font-mono); font-size: 10px; text-transform: uppercase; color: var(--text-subtle); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
+ .mcardp-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 14px; flex: 1 1 auto; }
+@@ -4989,7 +5071,8 @@ html[data-sheet-open] .route-enter { animation: none; }
+ }
+ /* The time left, top-right: the meta row's rung, in `--text` (the tracker's ink; a countdown never takes
+    the betting pair, `test:betting-ink`). `margin-left: auto` keeps it right-aligned on whichever line it
+-   lands when the chip row wraps (D65: chips wrap, never cut). */
++   lands when the chip row wraps (D65: chips wrap, never cut) — inside `.mcardp-tail` since 2026-10-08, so
++   that line always carries the category with it. */
+ .mcardp-closes {
+   margin-left: auto;
+   font-family: var(--font-mono);
+@@ -5896,6 +5979,10 @@ html[lang="zh"] .kp-udrule { word-break: keep-all; }
+ .kp-wsheet__label { font-family: var(--font-mono); font-weight: 700; font-size: var(--type-micro); text-transform: uppercase; color: var(--text-subtle); }
+ .kp-wsheet__bal { display: flex; align-items: center; justify-content: space-between; gap: var(--sp-2); margin-top: var(--sp-1); }
+ .kp-wsheet__amt { font-family: var(--font-mono); font-weight: 700; font-size: var(--type-h1); line-height: 1.1; font-variant-numeric: tabular-nums; color: var(--gold-300); overflow-wrap: anywhere; }
++/* 2026-10-08 (WP12 tiles 088–092) · the journey capsule's Wallet, held or masked, reads its figure in plain ink, as the
++   capsule that opened it does (`.kp-jbal:is([data-held], [data-masked])` below; DESIGN_AUTHORITY rule 8a). Only the
++   journey's Wallet sets these attributes (wallet-sheet.tsx), so the classic Wallet keeps its gold. */
++.kp-wsheet__amt:is([data-held], [data-masked]) { color: var(--text); }
+ .kp-wsheet__pair { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--sp-3); }
+ .kp-wsheet__col { display: flex; flex-direction: column; align-items: stretch; gap: var(--sp-2); min-width: 0; }
+ /* 56 on the sheet (thumb reach, the delivery's 54 rounded UP to the --h-control-xl rung), 48 in the panel. */
+@@ -6370,21 +6457,30 @@ html[lang="zh"] .kp-udrule { word-break: keep-all; }
+ 
+    ⭐ THE S4 FIT RULES, WRITTEN AS MEASURED (VODACOM-PLAN.md §0g design call 10, Chromium with the real fonts).
+    On a phone: 6px gaps, the 26px mark in a 44px home link that borrows 9px of gutter on each side, 10px capsule
+-   padding (the capsule's own rule, `.kp-jbal`), 12/10 on the pill and a 16px gutter. Below 360: a 12px gutter, no
+-   "+", an even 12px on the pill and a 12px figure (`.kp-jbal__fig`). Each number below is the exact value WP6b's
+-   header-fit rule probe compares against (A5), and `test:journey-shell` §7 reads them as written: do not move one
+-   without re-measuring the matrix.
+-   ⭐ FROM 640, THE CLASSIC BAR'S OWN STEPS (S6-PLAN WP6a step 1; the kit wins where the canvas drifts, §0h point 7).
+-   The S4 numbers are a phone's. From 640 the row takes the classic bar's gutter (24px) and its gaps between groups
+-   (20px, 12px from 1024 where the destinations take the room, 20px again from 1280), and the right-hand cluster its
+-   own 12px. The values are the spacing tokens at the pixels the classic bar's utilities paint, and §7 also reads the
+-   classic bar's spellings, so the two bars cannot drift apart silently.
++   padding (the capsule's own rule, `.kp-jbal`) and 12/10 on the pill. Below 360: no "+", an even 12px on the pill
++   and a 12px figure (`.kp-jbal__fig`). Each number below is the exact value WP6b's header-fit rule probe compares
++   against (A5), and `test:journey-shell` §7 reads them as written: do not move one without re-measuring the matrix.
++   ⭐ THE ROW'S EDGE IS THE PAGE'S EDGE (2026-10-08, the owner's rule: the header's edge is the page's edge at every
++   width). The gutter is the one every page and the footer pad with — PageContainer's `px-3 lg:px-6`, 16px below 1024
++   and 32px from it on this repo's scale — so the mark and the last control stand on the lines the cards and headings
++   stand on. It was 12px below 360 (S4), 16px to 640 and the classic bar's 24px from 640, which the G5 tiles measured
++   4px outside the content at 320, 8px inside it from 640 to 1023 and 8px outside it from 1024 (wp12/tiles-h: 043 at
++   320 against cards at 16; 257 at 1024, 194 and 176 at 1280 against cards at 32; 640–1023 read from PageContainer's
++   code, no tile there). 320 pays 8px of the row's room: its least slack goes from 18.7px to about 10.7px (sw,
++   TZS 999,999 or hidden balances). §7 holds the page's own spelling (7.gutter), so the two cannot drift apart.
++   ⚠️ The landing's own bands (its hero and the sections under it) pad 24px from 768 and are not PageContainer: on
++   `/` alone the edge still differs by 8px from 768 (G5; tiles 017 to 020 measure them at 24).
++   ⭐ FROM 640, THE CLASSIC BAR'S OWN GAPS (S6-PLAN WP6a step 1; the kit wins where the canvas drifts, §0h point 7).
++   The S4 numbers are a phone's. From 640 the row takes the classic bar's gaps between groups (20px, 12px from 1024
++   where the destinations take the room, 20px again from 1280), and the right-hand cluster its own 12px. The values
++   are the spacing tokens at the pixels the classic bar's utilities paint, and §7 also reads the classic bar's
++   spellings, so the two bars' gaps cannot drift apart silently. Its gutter is no longer the journey's (above).
+    ⭐ MOBILE-FIRST, `min-width` ONLY: a phone-only rule would be a rule the density contract has to fence.
+    ⛔ NOTHING HERE SETS `display` ON AN ELEMENT THAT ALSO WEARS A WIDTH UTILITY. These rules come after the utilities,
+    so at equal specificity they win and the utility is ignored — the classic bar's `.btn` lesson, measured at 360.
+    The nav and the desktop-only wrappers take their display from their utilities and nothing else. */
+ .kp-jhdr { height: 56px; background: var(--panel); border-bottom: 1px solid var(--border); }
+-.kp-jhdr__row { display: flex; align-items: center; gap: 6px; height: 100%; max-width: var(--w-board); margin-inline: auto; padding-inline: var(--sp-3); }
++.kp-jhdr__row { display: flex; align-items: center; gap: 6px; height: 100%; max-width: var(--w-board); margin-inline: auto; padding-inline: var(--sp-4); }
+ /* The right-hand controls, grouped as the classic bar groups them: one gap on a phone, the cluster's own from 640. */
+ .kp-jhdr__cluster { display: flex; flex-shrink: 0; align-items: center; gap: 6px; }
+ .kp-jhdr__home { display: inline-flex; flex-shrink: 0; align-items: center; justify-content: center; min-height: var(--h-control-md); margin-inline: -9px; padding-inline: 9px; transition: opacity var(--t-quick) ease-out; }
+@@ -6395,12 +6491,11 @@ html[lang="zh"] .kp-udrule { word-break: keep-all; }
+ /* The bell's slot keeps the bell's 40px box while the bell itself waits for the width to be known, so the cluster
+    does not move when it arrives (`one-poller.ts`). */
+ .kp-jhdr__bell { justify-content: center; min-width: var(--h-control-sm); }
+-@media (min-width: 360px) { .kp-jhdr__row { padding-inline: var(--sp-4); } }
+ @media (min-width: 360px) { .kp-jhdr__plus { display: inline-flex; } }
+ @media (min-width: 360px) { .kp-jhdr__pill { padding: 0 12px 0 10px; } }
+-@media (min-width: 640px) { .kp-jhdr__row { gap: var(--sp-5); padding-inline: var(--sp-6); } }
++@media (min-width: 640px) { .kp-jhdr__row { gap: var(--sp-5); } }
+ @media (min-width: 640px) { .kp-jhdr__cluster { gap: var(--sp-3); } }
+-@media (min-width: 1024px) { .kp-jhdr__row { gap: var(--sp-3); } }
++@media (min-width: 1024px) { .kp-jhdr__row { gap: var(--sp-3); padding-inline: var(--sp-8); } }
+ @media (min-width: 1280px) { .kp-jhdr__row { gap: var(--sp-5); } }
+ 
+ /* ⭐ THE DESTINATIONS FROM 1024 — the kit's SECTION language (§0h point 7; DESIGN_AUTHORITY §K rule 7c, "the underline
+diff --git a/src/app/legal/legal-nav.tsx b/src/app/legal/legal-nav.tsx
+index 2fa3cbf0..e46d3931 100644
+--- a/src/app/legal/legal-nav.tsx
++++ b/src/app/legal/legal-nav.tsx
+@@ -102,6 +102,11 @@ export function LegalNav({ items, ariaLabel }: { items: LegalNavItem[]; ariaLabe
+            ⚠️ `px-3.5` (14px) is the SAME off-scale key on the horizontal axis and is left
+            alone deliberately: this row is the tap floor, and a width change is a different
+            decision with a different blast radius. Reported, not smuggled. */
++        /* ⭐ 2026-10-08 · THE ACTIVE ROW'S LABEL STAYS ON ITS SIBLINGS' LINE (WP12 tiles 206–210). The left rule above is
++           a real 2px border, and a border sits OUTSIDE the padding, so the active label started 2px right of the others
++           (measured at 390: x 33 against 31). The active row gives those 2px back from its left padding — 2 + 12 = the
++           14px of `px-3.5` — so every label starts on one edge and the rule stays the row's non-colour signal (§A4).
++           `pl-[12px]` is a literal because `pl-2` is 12px only on this repo's overridden scale; the literal reads true. */
+         return (
+           <Link
+             key={n.href}
+@@ -109,7 +114,7 @@ export function LegalNav({ items, ariaLabel }: { items: LegalNavItem[]; ariaLabe
+             aria-current={active ? "page" : undefined}
+             style={active ? { background: "var(--pill-active)" } : undefined}
+             className={`block px-3.5 py-3 transition-colors ${i > 0 ? "border-t border-border" : ""} ${
+-              active ? "border-l-2 border-l-brand-500" : "hover:bg-bg-overlay"
++              active ? "border-l-2 border-l-brand-500 pl-[12px]" : "hover:bg-bg-overlay"
+             }`}
+           >
+             {/* ⭐ DG-P-11 — THE ACTIVE INK WAS `--brand-300`, WHICH NAVIGATION ALREADY SPENT ON
+diff --git a/src/app/live/featured-contest.tsx b/src/app/live/featured-contest.tsx
+index 1552e77d..1d925bb3 100644
+--- a/src/app/live/featured-contest.tsx
++++ b/src/app/live/featured-contest.tsx
+@@ -15,6 +15,8 @@ import type { Route } from "next";
+ import { leanWords, sideWord } from "@/lib/side-label";
+ import { TippingBar } from "@/components/brand";
+ import { I } from "@/components/ui/glyphs";
++// 2026-10-08 · G1: a Chinese "200毫米" in a slide's question never breaks between the number and its unit.
++import { keepUnits } from "@/components/ui/keep-units";
+ import { useT } from "@/lib/i18n";
+ 
+ // ⛔ `productLine` is REQUIRED, not optional. /live carries both products (see `pulse-grid`),
+@@ -96,10 +98,18 @@ export function FeaturedContest({
+       onTouchEnd={multi ? onTouchEnd : undefined}
+     >
+       {/* Eyebrow + arrow controls */}
+-      <div className="mb-2 flex items-center justify-between gap-3">
+-        {/* min-w-0 + truncate lets the eyebrow yield at the smallest widths (≤320) so the
+-            44px arrow controls are never pushed off the panel edge; shrink-0 pins them. */}
+-        <p className="min-w-0 truncate font-mono text-micro uppercase eyebrow font-bold text-aqua-300">{eyebrow}</p>
++      <div className="mb-2 flex items-center justify-between gap-2">
++        {/* min-w-0 lets the eyebrow yield so the 44px arrow controls are never pushed off the panel
++            edge; shrink-0 pins them.
++            2026-10-08 · G1 [175 202] · IT YIELDS BY WRAPPING, NOT BY AN ELLIPSIS. It was `truncate`, meant
++            for "the smallest widths (≤320)", and it cut the Swahili caption at 390 too: measured, the
++            caption is 154px (whole at 1280, [176]) and the row left it 148, so it read "LILILO NA SHAKA
++            ZAI…". The caption names what the carousel IS, so it is never cut: it breaks onto a second,
++            balanced line ("LILILO NA" / "SHAKA ZAIDI") inside the arrows' 44px row, which is taller than
++            two lines of this type (2 × 14px), so the row — and the hero under it — does not move.
++            ⚠️ The gap is 12px (`gap-2`, this repo's scale), was 16: at 320 the longer half, "SHAKA ZAIDI"
++            (≈81px with its tracking), had 80px and would have taken a third line; with 84 it keeps two. */}
++        <p className="min-w-0 text-balance break-words font-mono text-micro uppercase eyebrow font-bold text-aqua-300">{eyebrow}</p>
+         {multi && (
+           <div className="flex shrink-0 items-center gap-2">
+             <Arrow dir="prev" onClick={() => go(-1)} />
+@@ -153,7 +163,7 @@ export function FeaturedContest({
+                 data-slide-active={i === idx ? "" : undefined}
+                 className="font-display text-[19px] lg:text-[24px] font-semibold leading-tight text-text group-hover:text-aqua-100"
+               >
+-                {mm.title}
++                {keepUnits(mm.title)}
+               </h2>
+             ))}
+           </div>
+diff --git a/src/app/wallet/deposit/page.tsx b/src/app/wallet/deposit/page.tsx
+index 8d97a164..a47a85d4 100644
+--- a/src/app/wallet/deposit/page.tsx
++++ b/src/app/wallet/deposit/page.tsx
+@@ -232,8 +232,10 @@ export default async function DepositPage({ searchParams }: { searchParams: Prom
+             synchronous FAILED came back as ok and no new attempt was made. Keyed on the signed refusal, each refusal is
+             a new key; a double tap or a lost response on the SAME screen still dedupes. */}
+         <IdempotencyKeyField key={sp.error ?? ""} />
+-        {/* The journey funnel (Vodacom plan S3b): a deposit started from a not-enough-money state says so. */}
+-        {sp.from === "low-balance" && <input type="hidden" name="origin" value="low_balance" />}
++        {/* The journey funnel (Vodacom plan S3b): a deposit started from a not-enough-money state says so.
++            `hidden` keeps it out of the form's `space-y-5` sibling count, as on the key above (2026-10-08, WP12 tile 068):
++            without it a low-balance deposit put the 24px gap back above the method chooser. */}
++        {sp.from === "low-balance" && <input type="hidden" hidden name="origin" value="low_balance" />}
+         <fieldset>
+           <FieldLegend as="legend" className="mb-2">
+             {t.wallet.choosePaymentMethod}
+diff --git a/src/components/chat/ChatRoot.tsx b/src/components/chat/ChatRoot.tsx
+index b11fcbfc..dea1360f 100644
+--- a/src/components/chat/ChatRoot.tsx
++++ b/src/components/chat/ChatRoot.tsx
+@@ -334,7 +334,8 @@ function ChatRootInner({
+         style={{
+           position: "fixed",
+           right: 16,
+-          // 80 clears the phone rail, whose reserve is `--rail-h` (globals.css): move this with that token.
++          // 80 clears the phone rail, whose reserve is `--rail-h` (globals.css): move this with that token. The
++          // home-indicator inset the rail adds on top is added to the bubble by `.cm-fab`'s margin (globals.css).
+           bottom: isMobile ? 80 : 16,
+           zIndex: 60,
+         }}
+diff --git a/src/components/journey/journey-top-bar.tsx b/src/components/journey/journey-top-bar.tsx
+index 21ea0af6..d4794b62 100644
+--- a/src/components/journey/journey-top-bar.tsx
++++ b/src/components/journey/journey-top-bar.tsx
+@@ -17,10 +17,11 @@
+  * ── ⭐ THE S4 FIT RULES ARE STYLESHEET RULES, NOT NUMBERS HERE ──────────────────────────────────────────────────
+  * The phone row was measured in Chromium with the real fonts (`VODACOM-PLAN.md` §0g design call 10): 6px gaps, the
+  * 26px mark in a 44px link that borrows 9px of gutter each side, 10px capsule padding, 12/10 on the pill; below 360
+- * a 12px gutter, no "+" glyph and a 12px figure. From 640 the row takes the classic bar's own steps (WP6a step 1): its
+- * gutter and gaps, and its right-hand controls grouped as one cluster with the cluster's own spacing, which is why
+- * they sit in one wrapper here. Each is a rule in `globals.css` (the journey header's family and the capsule's), so
+- * `test:journey-shell` §7 reads them as written and WP6b's header-fit gate reads them as computed (A5).
++ * no "+" glyph and a 12px figure. The row's gutter is the page's own, 16px below 1024 and 32px from it (2026-10-08,
++ * the owner's rule: the header's edge is the page's edge at every width). From 640 the row takes the classic bar's
++ * own gaps (WP6a step 1), and its right-hand controls grouped as one cluster with the cluster's own spacing, which is
++ * why they sit in one wrapper here. Each is a rule in `globals.css` (the journey header's family and the capsule's),
++ * so `test:journey-shell` §7 reads them as written and WP6b's header-fit gate reads them as computed (A5).
+  * ⛔ No inline style here: an inline number is one a probe cannot tell from a decision.
+  *
+  * ── ⭐ THE "+" IS ITS OWN SPAN ───────────────────────────────────────────────────────────────────────────────────
+diff --git a/src/components/journey/tickets/ticket-card.tsx b/src/components/journey/tickets/ticket-card.tsx
+index 5b660f5b..6c079ed2 100644
+--- a/src/components/journey/tickets/ticket-card.tsx
++++ b/src/components/journey/tickets/ticket-card.tsx
+@@ -37,6 +37,7 @@
+  */
+ import Link from "next/link";
+ import { Chip } from "@/components/ui/chip";
++import { keepUnits } from "@/components/ui/keep-units";
+ import { Stat } from "@/components/ui/stat";
+ import { I } from "@/components/ui/glyphs";
+ import { SellButton } from "@/components/markets/sell-button";
+@@ -87,11 +88,14 @@ export function TicketCard({ p, m, price, t, locale, serverNow }: {
+     >
+       <div className="flex flex-wrap items-center justify-between gap-2">
+         <Chip size="sm" variant={p.side === "YES" ? "yes" : "no"}>{sideWord(t, p.side, "MARKET")}</Chip>
+-        <Chip size="sm" variant={positionStatusChip(p.status)}>{positionStatusWord(t, p.status, "MARKET")}</Chip>
++        {/* `metrics="base"` (2026-10-08 · G1 [167 168]): every state the side pill's 18px, 9.5px size — an
++            open or refunded ticket's royal pill took the taller status metrics, and its card sat 2px low. */}
++        <Chip size="sm" metrics="base" variant={positionStatusChip(p.status)}>{positionStatusWord(t, p.status, "MARKET")}</Chip>
+       </div>
+       <h2 className="mt-3 font-display text-body-lg font-semibold leading-tight text-text">
+         <Link href={`/markets/${p.marketId}` as never} className="-my-2 block py-2 hover:underline">
+-          <span className={title.short ? undefined : "line-clamp-2"}>{title.text}</span>
++          {/* `keepUnits` (2026-10-08 · G1): a Chinese "200毫米" never breaks between the number and its unit. */}
++          <span className={title.short ? undefined : "line-clamp-2"}>{keepUnits(title.text)}</span>
+         </Link>
+       </h2>
+       <div className="mt-3 grid grid-cols-2 gap-3">
+diff --git a/src/components/layout/bottom-nav.tsx b/src/components/layout/bottom-nav.tsx
+index b4d7533b..4ba0253e 100644
+--- a/src/components/layout/bottom-nav.tsx
++++ b/src/components/layout/bottom-nav.tsx
+@@ -54,7 +54,9 @@ import type { ProposalsState } from "@/lib/server/proposals-config";
+  * ⭐ AND IT NO LONGER COLLIDES WITH THE NEEDLE. The fidget's badge overlapped the rail's FIRST
+  * SLOT at 360 in the batch-2 baseline frames, and its `#hit` area is `pointer-events: auto` — so a
+  * tap meant for Markets could grab the toy instead. The physics is vendored and do-not-edit; its
+- * RESTING POSITION is not. See `needle-rest.css`, loaded beside this component's own layer.
++ * RESTING POSITION is not. ⚠️ (2026-10-08) There is no `needle-rest.css` — this line used to cite one and
++ * no commit ever added it. The rest position is host logic in `needle.tsx` (side rails only, `nearestEdge`;
++ * E-413's clear-rest glide), and the rail's centre coin is a `data-needle-keepout` below.
+  */
+ export function BottomNav({ isAuthed = false, proposalsState, inviteVisible = false, walletHeld = false }: { isAuthed?: boolean; proposalsState: ProposalsState; inviteVisible?: boolean; walletHeld?: boolean }) {
+   const pathname = usePathname();
+diff --git a/src/components/layout/needle.tsx b/src/components/layout/needle.tsx
+index 75dac82a..ac23ef62 100644
+--- a/src/components/layout/needle.tsx
++++ b/src/components/layout/needle.tsx
+@@ -404,29 +404,100 @@ function mountNeedle(
+     }
+     return out;
+   }
++  /* ⭐ 2026-10-08 · G1 [193] · READABLE TEXT IS SOMETHING UNDER IT TOO. The census above counts CONTROLS only
++     (the session-96 cases), so the disc rested on the /markets stat line at 390 in Swahili — "● 40 hai · TZS 49K
++     katika mchezo" cut at "mche", the board's own money figure line, which is text and not a control. ⛔ The page
++     reserves no room for the rest position, and never did: the `needle-rest.css` that `bottom-nav.tsx` cites was
++     never written (no commit ever added it) — the rest position is this host logic, and it had a blind spot.
++     So the visible text in the band is read as well: a TreeWalker over the page that skips the Needle, controls
++     (counted above, by their own rule), svg and script, and every subtree whose box neither reaches the band nor
++     overflows — so on a phone it reads the few elements at the right edge, not the page. Text that is not seen
++     (`visibility: hidden` slides, an `opacity: 0` ancestor, a 1px screen-reader-only box) is not counted. */
++  const TEXT_SKIP = new Set(["SCRIPT", "STYLE", "NOSCRIPT", "TEMPLATE", "svg", "IFRAME", "CANVAS", "VIDEO", "IMG", "SELECT", "TEXTAREA"]);
++  // Both spellings of the options: Chromium 105–120 read `checkOpacity`/`checkVisibilityCSS`, later engines the
++  // `…Property` names; an engine ignores the pair it does not know.
++  type CheckVisibility = (o?: { opacityProperty?: boolean; visibilityProperty?: boolean; checkOpacity?: boolean; checkVisibilityCSS?: boolean }) => boolean;
++  function seen(el: Element) {
++    const check = (el as Element & { checkVisibility?: CheckVisibility }).checkVisibility;
++    return check
++      ? check.call(el, { opacityProperty: true, visibilityProperty: true, checkOpacity: true, checkVisibilityCSS: true })
++      : getComputedStyle(el).visibility === "visible";
++  }
++  function textInBand(fp: { left: number; right: number }, rows: { top: number; bottom: number }) {
++    const out: Array<{ left: number; right: number; top: number; bottom: number }> = [];
++    const inBand = (x: { left: number; right: number }) => x.right >= fp.left - CLEARANCE && x.left <= fp.right + CLEARANCE;
++    const walker = document.createTreeWalker(document.body, NodeFilter.SHOW_ELEMENT | NodeFilter.SHOW_TEXT, {
++      acceptNode(n) {
++        if (n.nodeType === Node.TEXT_NODE) return (n.textContent || "").trim() ? NodeFilter.FILTER_ACCEPT : NodeFilter.FILTER_REJECT;
++        const el = n as Element;
++        if (el === root || TEXT_SKIP.has(el.tagName) || el.matches(INTERACTIVE)) return NodeFilter.FILTER_REJECT;
++        const r = el.getBoundingClientRect();
++        // `display: contents` reports an empty box and still holds laid-out text; any other empty box holds none.
++        if (r.width === 0 && r.height === 0) return getComputedStyle(el).display === "contents" ? NodeFilter.FILTER_SKIP : NodeFilter.FILTER_REJECT;
++        // Only the rows a rest within reach can occupy (the caller's window), so a long page costs nothing extra.
++        const near = inBand(r) && r.bottom >= rows.top && r.top <= rows.bottom;
++        const overflows = el.scrollWidth > el.clientWidth + 1 || el.scrollHeight > el.clientHeight + 1;
++        return near || overflows ? NodeFilter.FILTER_SKIP : NodeFilter.FILTER_REJECT;
++      },
++    });
++    const range = document.createRange();
++    for (let node = walker.nextNode(); node; node = walker.nextNode()) {
++      const parent = node.parentElement;
++      if (!parent) continue;
++      range.selectNodeContents(node);
++      let visible: boolean | null = null;
++      for (const t of range.getClientRects()) {
++        if (t.width <= 1 || t.height <= 1 || !inBand(t)) continue;
++        visible ??= seen(parent);
++        if (!visible) break;
++        out.push({ left: t.left, right: t.right, top: t.top, bottom: t.bottom });
++      }
++    }
++    return out;
++  }
++  /* A rest taken KNOWING text was under it (no gap in the text within reach): it is not re-decided until the page
++     moves under it. Without this, a rest chosen by the control-only floor below could, on the next scroll-idle,
++     find a text-clear spot within reach of its NEW height and glide again — a chain, which E-413 forbids
++     (`test:needle-rest` §1). Compared with 2px of slack: the park spring lands within a pixel of its target. */
++  let textAccepted: { y: number; sx: number; sy: number } | null = null;
++  const acceptText = (y: number) => { textAccepted = { y, sx: window.scrollX, sy: window.scrollY }; };
+   /** The y to rest at: `null` = already clear (or not applicable), `undefined` = nothing clear within reach. */
+   function clearRestY(): number | null | undefined {
+     if (!body.parked || body.held || body.parking || isSuppressed()) return null;
+     if (body.edge !== "left" && body.edge !== "right") return null;
+     const fp = footprint();
+-    const rects = controlsInBand(fp);
+-    const covers = (dy: number) => rects.some((r) =>
++    const under = (rects: Array<{ left: number; right: number; top: number; bottom: number }>) => (dy: number) => rects.some((r) =>
+       r.left < fp.right + CLEARANCE && r.right > fp.left - CLEARANCE
+       && r.top < fp.bottom + dy + CLEARANCE && r.bottom > fp.top + dy - CLEARANCE);
+-    if (!covers(0)) return null;
++    const reach = viewport().h / 3;
++    const onControl = under(controlsInBand(fp));
++    const settled = textAccepted !== null && Math.abs(textAccepted.y - body.y) < 2
++      && textAccepted.sx === window.scrollX && textAccepted.sy === window.scrollY;
++    const onText: (dy: number) => boolean = settled ? () => false : under(textInBand(fp, { top: fp.top - reach - CLEARANCE, bottom: fp.bottom + reach + CLEARANCE }));
++    if (!onControl(0) && !onText(0)) return null;
+     const L = body.limits();
+     const m = 14;
+     const minY = L.minY + m;
+     const maxY = Math.max(minY, L.maxY - m);
+-    const reach = viewport().h / 3;
+-    for (let d = 2; d <= reach; d += 2) {
+-      for (const sign of [-1, 1]) {
+-        const y = body.y + sign * d;
+-        if (y < minY || y > maxY) continue;
+-        if (!covers(y - body.y)) return y;
++    const nearest = (clear: (dy: number) => boolean) => {
++      for (let d = 2; d <= reach; d += 2) {
++        for (const sign of [-1, 1]) {
++          const y = body.y + sign * d;
++          if (y < minY || y > maxY) continue;
++          if (clear(y - body.y)) return y;
++        }
+       }
+-    }
+-    return undefined;
++      return undefined;
++    };
++    // First choice: the nearest rest with neither a control nor a line of text under it.
++    const clearOfAll = nearest((dy) => !onControl(dy) && !onText(dy));
++    if (clearOfAll !== undefined) { textAccepted = null; return clearOfAll; }
++    // ⛔ E-413's guarantee is the floor and text never weakens it: off a CONTROL even where no gap in the
++    // text is within reach (a dense page). Text alone with nowhere clear to go stays put, as before.
++    if (!onControl(0)) { acceptText(body.y); return undefined; }
++    const offControl = nearest((dy) => !onControl(dy));
++    if (offControl !== undefined) acceptText(offControl);
++    return offControl;
+   }
+   function settleClear() {
+     clearTimer = null;
+diff --git a/src/components/layout/wallet-sheet.tsx b/src/components/layout/wallet-sheet.tsx
+index 86d95183..acc89609 100644
+--- a/src/components/layout/wallet-sheet.tsx
++++ b/src/components/layout/wallet-sheet.tsx
+@@ -27,7 +27,7 @@ import * as React from "react";
+ import Link from "next/link";
+ import { Modal } from "@/components/ui/modal";
+ import { Button } from "@/components/ui/button";
+-import { Cash, CashEye } from "@/components/ui/cash";
++import { Cash, CashEye, useCashHidden } from "@/components/ui/cash";
+ import { I } from "@/components/ui/glyphs";
+ import { useT } from "@/lib/i18n";
+ import { formatTzs } from "@/lib/utils";
+@@ -45,12 +45,23 @@ export function WalletSheet({
+   balance: number;
+   held: boolean;
+   anchorRef: React.RefObject<HTMLElement | null>;
+-  /** S6 · the journey capsule's Wallet: its two doors read "Weka pesa" and "Toa pesa". Omitted, today's words. */
++  /** S6 · the journey capsule's Wallet: its two doors read "Weka pesa" and "Toa pesa", and its figure takes the capsule's
++   *  ink (gold on a live balance only). Omitted, today's words and today's ink. */
+   journey?: boolean;
+ }) {
+   const { t } = useT();
+   const depVia = React.useId();
+   const wdVia = React.useId();
++  const hidden = useCashHidden();
++  /* ⭐ 2026-10-08 · THE JOURNEY'S WALLET READS ITS FIGURE IN THE CAPSULE'S INK (WP12 tiles 088–092). DESIGN_AUTHORITY
++     rule 8a: the captioned balance is gold on a live balance only, plain ink when held or masked (its rule in
++     globals.css: gold marks money you can use). A frozen wallet's capsule read "TZS 100,000" in plain ink and the Wallet it opened read the same figure in
++     gold (measured: #F5F8FF against #F3CB7A), so one balance spoke two inks a tap apart. The figure now answers the
++     same two states the capsule's rule names (`.kp-wsheet__amt` in globals.css).
++     ⛔ The journey's Wallet only: the classic capsule's figure is gold in every state and its Wallet matches it, and
++     classic readers' pages do not change during S6/S7. */
++  const plainHeld = journey && held;
++  const plainMasked = journey && hidden;
+ 
+   return (
+     <Modal
+@@ -68,7 +79,7 @@ export function WalletSheet({
+       <div data-testid="wallet-sheet">
+         <p className="kp-wsheet__label">{held ? t.common.balanceFrozen : t.wallet.available}</p>
+         <div className="kp-wsheet__bal">
+-          <p className="kp-wsheet__amt"><Cash>{formatTzs(balance)}</Cash></p>
++          <p className="kp-wsheet__amt" data-held={plainHeld ? "" : undefined} data-masked={plainMasked ? "" : undefined}><Cash>{formatTzs(balance)}</Cash></p>
+           <CashEye size={16} />
+         </div>
+       </div>
+diff --git a/src/components/markets/market-card.tsx b/src/components/markets/market-card.tsx
+index 604c416d..5e2357e2 100644
+--- a/src/components/markets/market-card.tsx
++++ b/src/components/markets/market-card.tsx
+@@ -9,6 +9,7 @@ import { Avatar } from "@/components/ui/avatar";
+ import { Modal } from "@/components/ui/modal";
+ import { ShareButton } from "@/components/markets/share-button";
+ import { Chip } from "@/components/ui/chip";
++import { keepUnits } from "@/components/ui/keep-units";
+ import { STATUS_TONE, TONE_CHIP } from "@/lib/status-tone";
+ import { cn, fill, formatTzs } from "@/lib/utils";
+ import { useT } from "@/lib/i18n";
+@@ -472,19 +473,33 @@ export function MarketCard({
+             {signal.label}
+           </Chip>
+         )}
+-        <span className="mcardp-catico"><CatIco /></span>
+-        <span className="mcardp-cat">{catLabel}</span>
+-        {/* ⭐ WP3 · the featured card's time left, top-right (the delivery's placement), in the neutral ink:
+-            time is not a side (§B2a, `test:betting-ink`). It keeps to the right on whichever line it lands
+-            when the chips wrap (D65 — chips wrap, never cut). */}
+-        {featured && <span className="mcardp-closes" data-market-part="time">{timeLeft}</span>}
++        {/* 2026-10-08 · G1 [013 043 070 076 088 101 · 014 015 016 037 044 045 046 077 089 102] · THE ROW'S
++            TAIL WRAPS AS ONE PIECE. The glyph, its word and (featured) the time left were separate items of a
++            wrapping row, so in Swahili the row tore where it ran out: at 320 the glyph ended line 1 and
++            "HALI YA HEWA" began line 2; at 360–412 "masaa 1 yamebaki" fell onto a line of its own. Now the
++            glyph and its word are one unit that never parts (`.mcardp-catgrp`), and that unit plus the time
++            are the tail (`.mcardp-tail`): it stays on the chips' line while it fits and otherwise moves down
++            WHOLE, the category on the left and the time on the right — the row's own design on its own line.
++            DOM order (status, signal, category, time) is unchanged. */}
++        <span className="mcardp-tail">
++          <span className="mcardp-catgrp">
++            <span className="mcardp-catico"><CatIco /></span>
++            <span className="mcardp-cat">{catLabel}</span>
++          </span>
++          {/* ⭐ WP3 · the featured card's time left, top-right (the delivery's placement), in the neutral ink:
++              time is not a side (§B2a, `test:betting-ink`). It keeps to the right of its line (D65 — chips
++              wrap, never cut), and it never stands alone on one: it moves with the category beside it. */}
++          {featured && <span className="mcardp-closes" data-market-part="time">{timeLeft}</span>}
++        </span>
+       </div>
+ 
+       <div className="mcardp-head">
+         <div className="mcardp-qwrap">
+           {/* The featured card is only ever the landing hero's, where it follows the page's h1
+               directly — so its question is the h2, and the heading order has no gap (WP17). */}
+-          {featured ? <h2 className="mcardp-q">{title}</h2> : <h3 className="mcardp-q">{title}</h3>}
++          {/* `keepUnits` (2026-10-08 · G1 [029 059 074 084 097 109]): "200毫米" never breaks between the
++              number and its unit; a Swahili or English title is returned untouched. */}
++          {featured ? <h2 className="mcardp-q">{keepUnits(title)}</h2> : <h3 className="mcardp-q">{keepUnits(title)}</h3>}
+           {/* A grid card's source line lives in the question column, so it stays with its question when
+               the grid stretches the card (the head grows, the column does not move). */}
+           {!featured && metaLine && <p className="mcardp-src">{metaLine}</p>}
+diff --git a/src/components/markets/position-card.tsx b/src/components/markets/position-card.tsx
+index cd177911..86360449 100644
+--- a/src/components/markets/position-card.tsx
++++ b/src/components/markets/position-card.tsx
+@@ -117,8 +117,13 @@ export function PositionCard({ marketId, marketTitle, side, productLine, stake,
+             * fallback is unreachable from this card today. It stays because that totality is a property
+             * of the dictionary, not of this file, and a status column can hold a word the dictionary has
+             * no player opinion about.
++            *
++            * ⭐ `metrics="base"` (2026-10-08 · G1 [167 168], the journey card's twin defect): an open or
++            * refunded position's royal pill took the taller STATUS metrics (20px, 10px type) beside the
++            * 18px side pill, so its card's content sat 2px below a settled neighbour's. Every state now
++            * takes the side pill's size; the colour rule above is untouched.
+             */}
+-          <Chip size="sm" variant={positionStatusChip(status)}>{statusLabel}</Chip>
++          <Chip size="sm" metrics="base" variant={positionStatusChip(status)}>{statusLabel}</Chip>
+         </div>
+         <span className="font-mono text-[14px] font-bold tabular-nums text-text">
+           <Cash>{formatTzs(stake)}</Cash>
+diff --git a/src/components/ui/chip.tsx b/src/components/ui/chip.tsx
+index 33c5e04d..f65c3285 100644
+--- a/src/components/ui/chip.tsx
++++ b/src/components/ui/chip.tsx
+@@ -183,6 +183,7 @@ const sizeStyles: Record<Size, {
+ export function Chip({
+   variant = "neutral",
+   size = "md",
++  metrics,
+   selected,
+   dot,
+   className,
+@@ -192,11 +193,21 @@ export function Chip({
+ }: React.HTMLAttributes<HTMLSpanElement> & {
+   variant?: Variant;
+   size?: Size;
++  /**
++   * Which row of the size table the pill takes. Omitted, the VARIANT decides (`isStatus`): the kit's
++   * slightly taller status pill. ⭐ 2026-10-08 · G1 [167 168] — a row whose pills must match states it:
++   * a ticket's state pill is `pending` (royal, status metrics) when it is open or refunded and `gold`,
++   * `no` or `neutral` (base metrics) otherwise, so on the same card row it was 20px with 10px type beside
++   * an 18px, 9.5px side pill, and its card's question sat 2px below its neighbour's. Its height followed
++   * its COLOUR. `metrics="base"` gives every state the side pill's size; the colour is untouched.
++   */
++  metrics?: "status" | "base";
+   selected?: boolean;
+   dot?: boolean;
+ }) {
+   const sz = sizeStyles[size];
+-  const { height, ...szRest } = isStatus(variant) ? sz.status : sz.base;
++  const tall = metrics ? metrics === "status" : isStatus(variant);
++  const { height, ...szRest } = tall ? sz.status : sz.base;
+   return (
+     <span
+       /**
+diff --git a/src/components/ui/keep-units.tsx b/src/components/ui/keep-units.tsx
+new file mode 100644
+index 00000000..d5bc608b
+--- /dev/null
++++ b/src/components/ui/keep-units.tsx
+@@ -0,0 +1,49 @@
++/**
++ * A NUMBER AND ITS UNIT NEVER PART AT A LINE END — "200毫米", never "200" / "毫米".
++ *
++ * 2026-10-08 · G1 [029 059 074 084 097 109]. At 320 the landing's featured question in Chinese read
++ * "达累斯萨拉姆七月降雨超过200" / "毫米": the unit alone on line 2. Unicode line breaking (UAX #14) allows a
++ * break between a digit and a following ideograph (NU ÷ ID), and every engine — Chromium and WebKit through
++ * ICU, Firefox through its own segmenter — takes it.
++ *
++ * ⛔ WHY THIS IS NOT A CSS-ONLY ANSWER — researched before choosing, because titles are data:
++ *   · `word-break: keep-all` removes the break between the number and the unit, and with it EVERY break
++ *     between two ideographs: a Chinese title has no spaces, so it becomes one unbreakable word that then
++ *     overflows or is cut wherever `overflow-wrap` forces it — worse everywhere else.
++ *   · `word-break: auto-phrase` (BudouX) is Chromium-only and Japanese-only; Chinese is not supported.
++ *   · `line-break: strict|loose|anywhere` governs small kana and punctuation, not NU ÷ ID.
++ *   · `text-wrap: balance|pretty` choose WHICH break to take, not WHICH breaks exist: they can still pick
++ *     this one, and Firefox does not ship `pretty`.
++ *   · U+2060 WORD JOINER would work in Chromium and WebKit, but Firefox has a history of ignoring it
++ *     (bugzilla 1125644), it travels into copy and paste and find-in-page, and `short-title.ts` already
++ *     strips it from stored titles as an invisible character.
++ * ⭐ What every engine honours is `white-space: nowrap` on an inline box. So the title is rendered with the
++ * number and the one or two ideographs that follow it inside a nowrap span; the text itself — the h2's
++ * accessible name, a search hit, a copied title — is unchanged, and every other break is left alone.
++ *
++ * ⚠️ One or two ideographs, because a unit is one ("米", "月", "场") or two ("毫米", "公里", "分钟"); where
++ * the second one is not part of the unit ("7月降雨" keeps "7月降" together) the break simply lands one
++ * character later, which costs nothing in Chinese. A number followed by Latin letters ("200mm") is already
++ * unbreakable under UAX #14 (NU × AL), and Swahili and English titles carry no ideographs, so for them this
++ * returns the string untouched — byte-identical markup.
++ * ⛔ Deterministic (one regular expression, no `Intl.Segmenter`), so the server and the browser cannot
++ * disagree about where the spans go and hydration cannot mismatch.
++ */
++import type { ReactNode } from "react";
++
++const NUMBER_UNIT = /\d+(?:[.,]\d+)*\s?[㐀-䶿一-鿿豈-﫿]{1,2}/g;
++
++export function keepUnits(text: string): ReactNode {
++  if (!/\d/.test(text)) return text;
++  const out: ReactNode[] = [];
++  let last = 0;
++  for (const m of text.matchAll(NUMBER_UNIT)) {
++    const at = m.index ?? 0;
++    if (at > last) out.push(text.slice(last, at));
++    out.push(<span key={at} className="whitespace-nowrap">{m[0]}</span>);
++    last = at + m[0].length;
++  }
++  if (out.length === 0) return text;
++  if (last < text.length) out.push(text.slice(last));
++  return out;
++}
+diff --git a/src/components/ui/query-bar.tsx b/src/components/ui/query-bar.tsx
+index 700a67a0..4822f8b7 100644
+--- a/src/components/ui/query-bar.tsx
++++ b/src/components/ui/query-bar.tsx
+@@ -99,7 +99,7 @@ export const QUERY_BAR_ROW1_CLASS = "flex items-center gap-x-3 pt-2.5";
+  * ⛔ Guarded by `qa:tap-truth`'s DISJOINT/ATREST arms, which measure rendered boxes rather than
+  * class strings — the reason this survived every source-scanning gate the repo already had.
+  */
+-export const QUERY_BAR_ROW2_CLASS = "flex flex-wrap items-center gap-2 pb-2.5 pt-1.5";
++export const QUERY_BAR_ROW2_CLASS = "kp-qrow flex flex-wrap items-center gap-2 pb-2.5 pt-1.5";
+ 
+ /**
+  * The LENS strip — rank-primary pills, scrolling below `lg`, wrapping above it.
+@@ -438,9 +438,18 @@ export function QueryClear({
+  *
+  * ⚠️ Desktop only. Below `lg` those groups are inside the sheet, where a divider would separate
+  * nothing — the sheet already gives each group a titled section.
++ *
++ * 🔴 2026-10-08 · G1 [170 194] · IT WAS ITS OWN FLEX ITEM, SO A WRAP LEFT IT STRANDED. Row 2 wraps, and
++ * a 5px divider fits at the end of a line where the 300px group after it does not: the group dropped to
++ * the next line and the rule stayed behind with nothing after it — /results at 1280 (x≈1241) and
++ * /markets at 1280 (x≈886), both in Swahili. ⭐ So this span no longer draws anything: it MARKS the
++ * element after it, and `globals.css` (`.kp-qdiv`) draws the rule as that element's own `::before`, in
++ * the same place it stood (the 29px between the two, 14px in). A rule that belongs to the group after it
++ * travels with that group, so it can never end a line; when the group STARTS a line its rule falls
++ * outside the row's left edge, where the row clips it. Same markup at every call site.
+  */
+ export function QueryGroupDivider() {
+-  return <span aria-hidden className="mx-0.5 hidden h-5 w-px shrink-0 bg-border lg:block" />;
++  return <span aria-hidden className="kp-qdiv" />;
+ }
+ 
+ /**
+diff --git a/src/components/ui/strip-autoscroll.tsx b/src/components/ui/strip-autoscroll.tsx
+index 5813dd0e..b91ce1ec 100644
+--- a/src/components/ui/strip-autoscroll.tsx
++++ b/src/components/ui/strip-autoscroll.tsx
+@@ -28,6 +28,31 @@
+ import { useEffect, useRef } from "react";
+ import { centredScrollLeft } from "@/lib/strip-scroll";
+ 
++/**
++ * ⭐ WHICH EDGES HAVE MORE CHIPS BEYOND THEM — 2026-10-08 · G1 [220 221 223 224 226 227 249 250 · 193 191].
++ *
++ * The strip's fade (`.kp-strip-fade`) was ONE static mask on the trailing edge. So a strip this leaf had
++ * scrolled to frame the pressed chip showed the chips it had pushed off the LEADING edge cut mid-letter —
++ * "te" of "Zote" at the left of Tiketi zangu at 320, with nothing to say more lay that way — while a strip
++ * scrolled to its end, or one with nothing hidden at all, still dimmed its last chip on the right.
++ * `data-edges` says which edges hide something ("start", "end", "both" or "none"), and the CSS fades exactly
++ * those. ⛔ No attribute (no JavaScript yet, or a skeleton) reads as "end" — the trailing fade alone, which
++ * is what a strip at scroll 0 with more to its right needs — so nothing changes when the script lands.
++ * ⚠️ 1px of slack each way: `scrollLeft` is fractional on a high-density screen and a strip scrolled to its
++ * end can stop half a pixel short of `scrollWidth - clientWidth`.
++ */
++function markEdges(rail: HTMLElement) {
++  const max = rail.scrollWidth - rail.clientWidth;
++  const before = max > 1 && rail.scrollLeft > 1;
++  const after = max > 1 && rail.scrollLeft < max - 1;
++  const edges = before && after ? "both" : before ? "start" : after ? "end" : "none";
++  if (rail.getAttribute("data-edges") !== edges) rail.setAttribute("data-edges", edges);
++}
++
++/** Rails that already carry a scroll listener — a fact about the ELEMENT, so it lives and dies with it. ⛔ Not
++ *  the per-lens framing memory below, which must stay per-board and so stays a ref. */
++const watched = new WeakSet<HTMLElement>();
++
+ export function StripAutoScroll() {
+   /**
+    * 🔴 WHICH LENS EACH RAIL HAS ALREADY BEEN FRAMED FOR — added 2026-09-06 after an adversarial
+@@ -52,6 +77,13 @@ export function StripAutoScroll() {
+ 
+   useEffect(() => {
+     for (const rail of Array.from(document.querySelectorAll<HTMLElement>("[data-strip-autoscroll]"))) {
++      // The edge fades follow the reader's own scrolling from here on (one listener per rail, ever),
++      // and are set now, so a strip that needs no framing is right on this render too.
++      if (!watched.has(rail)) {
++        watched.add(rail);
++        rail.addEventListener("scroll", () => markEdges(rail), { passive: true });
++      }
++      markEdges(rail);
+       // Nothing to correct when everything already fits — and this is also what makes the
+       // component inert at `lg`+, where the strip wraps instead of scrolling.
+       if (rail.scrollWidth <= rail.clientWidth) continue;
+@@ -71,7 +103,23 @@ export function StripAutoScroll() {
+         itemLeft: itemBox.left,
+         itemWidth: itemBox.width,
+       });
++      // The frame just moved the strip: its edges are read again in the same task, so the frame that
++      // first shows the new scroll position shows its fades too.
++      markEdges(rail);
+     }
+   });
++
++  /* The edges also change when nothing scrolls: the viewport turns or resizes (the strip's own width), and the
++     web fonts land (every chip's width). Each re-reads every rail; reading is idempotent, so two strips on one
++     page each doing it costs nothing. */
++  useEffect(() => {
++    const all = () => {
++      for (const rail of Array.from(document.querySelectorAll<HTMLElement>("[data-strip-autoscroll]"))) markEdges(rail);
++    };
++    window.addEventListener("resize", all);
++    let live = true;
++    document.fonts?.ready.then(() => { if (live) all(); }).catch(() => {});
++    return () => { live = false; window.removeEventListener("resize", all); };
++  }, []);
+   return null;
+ }
+diff --git a/src/components/wallet/idempotency-key-field.tsx b/src/components/wallet/idempotency-key-field.tsx
+index 83be1527..01c944a9 100644
+--- a/src/components/wallet/idempotency-key-field.tsx
++++ b/src/components/wallet/idempotency-key-field.tsx
+@@ -13,8 +13,16 @@ import { useRef } from "react";
+  * client `useRef` persists across the server re-render, so retrying the same
+  * form re-submits the SAME key and the server dedupes it. Mirrors the bet
+  * path's per-intent `useRef` key.
++ *
++ * ⭐ THE `hidden` ATTRIBUTE IS LAYOUT, NOT A REPEAT OF `type="hidden"` (2026-10-08, WP12 tiles 067/068/173/174).
++ * Tailwind 3's `space-y-*` gives a margin to every child that FOLLOWS a sibling not carrying `[hidden]`, and an
++ * `<input type="hidden">` paints nothing but is still such a sibling. As the first child of the deposit and withdraw
++ * forms it handed the first visible child — the method chooser's fieldset — the form's 24px gap ABOVE it: 24px of blank
++ * at the top of the card (measured 50px above "CHAGUA NJIA YA KULIPA" / "MAHALI" against 27px above the hero's eyebrow
++ * and 24px at the card's sides). With `hidden` the selector skips it, so the card's padding is the only space above
++ * its first line. A `hidden` input is still submitted with its form; nothing else about it changes.
+  */
+ export function IdempotencyKeyField({ name = "idempotencyKey" }: { name?: string }) {
+   const key = useRef<string>(crypto.randomUUID());
+-  return <input type="hidden" name={name} value={key.current} />;
++  return <input type="hidden" hidden name={name} value={key.current} />;
+ }

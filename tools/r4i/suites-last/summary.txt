@@ -1,0 +1,15 @@
+# 2026-10-09T08:38:41.704Z · 13 scripts
+test:visual-pass-r4i exit=0 2s :: visual-pass-r4i: 128 passed, 0 failed
+test:landing-mine exit=0 2s :: landing-mine: 37 passed, 0 failed
+test:hero-copy exit=0 2s :: hero-copy: 17 passed, 0 failed
+test:hero-contract exit=0 1s :: PASS — the hero states nothing it cannot prove
+test:one-sided exit=0 2s :: ALL PASS — one-sided markets
+test:featured-card exit=0 2s :: ALL PASS — featured-card: 82 passed, 0 failed
+test:filter-language exit=0 2s :: all green
+test:orphans exit=1 11s :: ──────────────────────────────────────────────────────────────────────
+test:route-census exit=0 1s :: route-census: OK — every client-facing route has a ruling, and every ruling has a route
+test:landing-contract exit=0 1s :: all green
+test:i18n exit=0 1s :: ALL PASS — en=2628 sw=2628 zh=2628 keys
+test:decomment exit=0 4s :: ALL PASS — 22 passed, 0 failed
+test:red-anchors exit=0 2s :: red-anchors: 4989 passed, 0 failed
+DONE

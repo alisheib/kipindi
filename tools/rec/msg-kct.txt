@@ -1,0 +1,18 @@
+scripts: test:kyc-copy-truth green again - the Swahili privacy notice's journey counts sentence read in full and allowed by its hash
+
+test:kyc-copy-truth §2 rule 2 ("no unit binds identity to the entrance") had been red on main since Vodacom S3b
+(74e69b15) added the journey counts to the privacy notice. The Swahili unit says the server counts a few steps of using
+50pick - opening the bet slip, the short-balance message, placing a bet, a confirmed deposit - and that the totals carry
+"hakuna kidakuzi, kitambulisho wala chochote kinachoweza kukutambulisha" (no cookie, no identifier, nothing that can
+identify you). Rule 2's Swahili patterns read "kitambulisho" as identity documents, "kuweka dau" as the entrance and
+"kufungua" as a requirement; here they are a technical identifier the sentence DENIES keeping, and steps being counted.
+The English twin says "identifier", which the English pattern does not take; the Chinese one trips nothing.
+
+The guard's own mechanism takes it: the allow-set (a TRUE unit a rule still matches, pinned by the hash of its exact
+text, its reason written), ALLOW_SIZE 1 to 2. The player copy is not reworded - not this guard's to edit.
+
+Proof, on a042dc65: test:kyc-copy-truth 431/431 (was 429 + 1 failed); with one word added to that sentence the
+allowance no longer applies - rule 2 fires again and §5 reports the unused entry (exit 1) - and the page was restored
+byte for byte after.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>

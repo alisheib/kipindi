@@ -1,0 +1,12 @@
+﻿PASS 0: the override block was parsed — 14 keys
+PASS 0: the stock scale was resolved from tailwindcss — 35 keys
+PASS 0: ⭐ the inverted keys were DERIVED from the two scales, not typed in — 14=56px < 9=64px · 16=64px < 9=64px · 20=80px < 10=80px · 24=96px < 11=96px · 28=112px < 12=128px · 32=128px < 12=128px · 2.5=10px < 2=12px · 3.5=14px < 3=16px
+PASS 0: …and it contains 2.5, which the scan measured by hand
+PASS 0: …and it contains 3.5, which the scan measured by hand
+PASS 0: …and it contains 14, which the scan measured by hand
+PASS 1: 🔴 inverted spacing usages may only shrink (460, ceiling 460)
+PASS 2: ⛔ …and if it drops, LOWER THE CEILING in the same commit — 460 vs 460 — a ceiling above the real count stops being a ratchet
+PASS 3: ⛔ the scanner can still SEE the backlog it is ratcheting — 460 usages across 166 files — a collapse here is the matcher, not a cleanup
+PASS 4: 🔴 the proposals row no longer tightens at the sm breakpoint — sm:gap-3.5 is 14px against a base gap-3 of 16px — wider layout, tighter gutter
+
+spacing-scale: 10 passed, 0 failed · 460 inverted usages in 166 files

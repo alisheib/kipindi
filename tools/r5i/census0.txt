@@ -1,0 +1,449 @@
+
+src/app/agent/apply/apply-client.tsx  (4)
+    527 [tw] border-yes-700  ::  : done ? "border-yes-700 bg-yes-500/[0.07] cursor-pointer hover:border-yes-500"
+    527 [tw] bg-yes-500/[0.07]  ::  : done ? "border-yes-700 bg-yes-500/[0.07] cursor-pointer hover:border-yes-500"
+    527 [tw] hover:border-yes-500  ::  : done ? "border-yes-700 bg-yes-500/[0.07] cursor-pointer hover:border-yes-500"
+    541 [tw] text-yes-300  ::  <span className={`mt-0.5 block font-mono text-body-sm ${rejected ? "text-warning-500" : done ? "text-yes-300" : "text-text-subtle"}`}>{stateLabel}</span>
+
+src/app/global-error.tsx  (5)
+    141 [oklch] oklch(44% 0.17 22  ::  const NO_BORDER = "oklch(44% 0.17 22)";
+    142 [oklch] oklch(80% 0.14 22  ::  const NO_TEXT = "oklch(80% 0.14 22)";
+    182 [oklch] oklch(58% 0.16 152  ::  <path d="M 30.65 -27.62 A 50 50 0 0 0 69.35 127.62 L 30.65 -27.62 Z" fill="oklch(58% 0.16 152)" />
+    183 [oklch] oklch(60% 0.18 22  ::  <path d="M 30.65 -27.62 A 50 50 0 0 1 69.35 127.62 L 30.65 -27.62 Z" fill="oklch(60% 0.18 22)" />
+    211 [oklch] oklch(40% 0.13 22  ::  background: "oklch(40% 0.13 22 / 0.15)",
+
+src/app/globals.css  (81)
+     72 [oklch] oklch(96% 0.04 152  ::  --yes-50:  oklch(96% 0.04 152);
+     73 [oklch] oklch(92% 0.07 152  ::  --yes-100: oklch(92% 0.07 152);
+     74 [oklch] oklch(86% 0.11 152  ::  --yes-200: oklch(86% 0.11 152);
+     75 [oklch] oklch(80% 0.14 152  ::  --yes-300: oklch(80% 0.14 152);
+     76 [oklch] oklch(72% 0.16 152  ::  --yes-400: oklch(72% 0.16 152);
+     77 [oklch] oklch(62% 0.17 152  ::  --yes-500: oklch(62% 0.17 152);
+     78 [oklch] oklch(52% 0.16 152  ::  --yes-600: oklch(52% 0.16 152);
+     79 [oklch] oklch(44% 0.14 152  ::  --yes-700: oklch(44% 0.14 152);
+     80 [oklch] oklch(34% 0.11 152  ::  --yes-800: oklch(34% 0.11 152);
+     81 [oklch] oklch(26% 0.08 152  ::  --yes-900: oklch(26% 0.08 152);
+     82 [oklch] oklch(18% 0.05 152  ::  --yes-950: oklch(18% 0.05 152);
+     86 [oklch] oklch(92% 0.06 22  ::  --no-100: oklch(92% 0.06 22);
+     87 [oklch] oklch(86% 0.10 22  ::  --no-200: oklch(86% 0.10 22);
+     88 [oklch] oklch(80% 0.14 22  ::  --no-300: oklch(80% 0.14 22);
+     89 [oklch] oklch(72% 0.18 22  ::  --no-400: oklch(72% 0.18 22);
+     90 [oklch] oklch(62% 0.20 22  ::  --no-500: oklch(62% 0.20 22);
+     91 [oklch] oklch(52% 0.19 22  ::  --no-600: oklch(52% 0.19 22);
+     92 [oklch] oklch(44% 0.17 22  ::  --no-700: oklch(44% 0.17 22);
+     93 [oklch] oklch(34% 0.13 22  ::  --no-800: oklch(34% 0.13 22);
+     94 [oklch] oklch(26% 0.09 22  ::  --no-900: oklch(26% 0.09 22);
+     95 [oklch] oklch(18% 0.06 22  ::  --no-950: oklch(18% 0.06 22);
+    121 [oklch] oklch(90% 0.060 15  ::  --claret-100: oklch(90% 0.060 15);
+    122 [oklch] oklch(82% 0.100 15  ::  --claret-200: oklch(82% 0.100 15);
+    123 [oklch] oklch(72% 0.140 15  ::  --claret-300: oklch(72% 0.140 15);
+    124 [oklch] oklch(60% 0.160 15  ::  --claret-400: oklch(60% 0.160 15);
+    125 [oklch] oklch(48% 0.160 15  ::  --claret-500: oklch(48% 0.160 15);
+    126 [oklch] oklch(38% 0.140 15  ::  --claret-600: oklch(38% 0.140 15);
+    127 [oklch] oklch(30% 0.110 15  ::  --claret-700: oklch(30% 0.110 15);
+    128 [oklch] oklch(23% 0.085 15  ::  --claret-800: oklch(23% 0.085 15);
+    129 [oklch] oklch(17% 0.060 15  ::  --claret-900: oklch(17% 0.060 15);
+    130 [oklch] oklch(12% 0.040 15  ::  --claret-950: oklch(12% 0.040 15);
+    594 [var] var(--yes-500)  ::  --bet-win:    var(--yes-500);
+    595 [var] var(--no-500)  ::  --bet-lose:   var(--no-500);
+    601 [var] var(--no-400)  ::  --bet-hot:    var(--no-400);
+    679 [var] var(--yes-400)  ::  --glow-win:     0 0 32px -4px color-mix(in oklab, var(--yes-400) 60%, transparent);
+    826 [var] var(--yes-400)  ::  --hero-yes-accent:   var(--yes-400);
+    827 [var] var(--no-400)  ::  --hero-no-accent:    var(--no-400);
+    828 [var] var(--yes-300)  ::  --hero-tag-yes:      var(--yes-300);
+    841 [oklch] oklch(50% 0.14 152  ::  --bar-fill-yes:         linear-gradient(90deg, oklch(50% 0.14 152) 0%, oklch(58% 0.16 152) 100%);
+    841 [oklch] oklch(58% 0.16 152  ::  --bar-fill-yes:         linear-gradient(90deg, oklch(50% 0.14 152) 0%, oklch(58% 0.16 152) 100%);
+    842 [oklch] oklch(52% 0.16 22  ::  --bar-fill-no:          linear-gradient(270deg, oklch(52% 0.16 22) 0%, oklch(60% 0.18 22) 100%);
+    842 [oklch] oklch(60% 0.18 22  ::  --bar-fill-no:          linear-gradient(270deg, oklch(52% 0.16 22) 0%, oklch(60% 0.18 22) 100%);
+    843 [oklch] oklch(58% 0.16 152  ::  --bar-glow-yes:         0 0 18px oklch(58% 0.16 152 / 0.35);
+    844 [oklch] oklch(60% 0.18 22  ::  --bar-glow-no:          0 0 18px oklch(60% 0.18 22 / 0.35);
+    851 [oklch] oklch(94% 0.10 152  ::  --bar-label-yes:        oklch(94% 0.10 152);
+    852 [var] var(--yes-200)  ::  --bar-label-yes-strong: var(--yes-200);
+    853 [oklch] oklch(94% 0.08 22  ::  --bar-label-no:         oklch(94% 0.08 22);
+    854 [var] var(--no-200)  ::  --bar-label-no-strong:  var(--no-200);
+   1315 [cls] btn-yes  ::  .btn-yes {
+   1316 [oklch] oklch(53% 0.155 150  ::  background: oklch(53% 0.155 150);
+   1321 [oklch] oklch(80% 0.14 152  ::  box-shadow: inset 0 0 0 1px oklch(80% 0.14 152 / 0.4), 0 1px 2px oklch(10% 0.05 264 / 0.35);
+   1325 [cls] btn-yes  ::  .btn-yes:hover:not(:disabled) { filter: brightness(var(--btn-hover-gain)); box-shadow: inset 0 0 0 1px oklch(80% 0.14 152 / 0.4), 0 5px 16px oklch(60% 0.16 150 / 0.5); }
+   1325 [oklch] oklch(80% 0.14 152  ::  .btn-yes:hover:not(:disabled) { filter: brightness(var(--btn-hover-gain)); box-shadow: inset 0 0 0 1px oklch(80% 0.14 152 / 0.4), 0 5px 16px oklch(60% 0.16 150 / 0.5); }
+   1325 [oklch] oklch(60% 0.16 150  ::  .btn-yes:hover:not(:disabled) { filter: brightness(var(--btn-hover-gain)); box-shadow: inset 0 0 0 1px oklch(80% 0.14 152 / 0.4), 0 5px 16px oklch(60% 0.16 150 / 0.5); }
+   1328 [cls] btn-no  ::  .btn-no {
+   1338 [cls] btn-no  ::  .btn-no:hover:not(:disabled) { filter: brightness(var(--btn-hover-gain)); box-shadow: inset 0 0 0 1px oklch(80% 0.15 25 / 0.4), 0 5px 16px oklch(57% 0.20 25 / 0.5); }
+   1384 [oklch] oklch(38% 0.14 15  ::  0 10px 28px -10px oklch(38% 0.14 15 / 0.55);
+   1385 [oklch] oklch(15% 0.06 15  ::  text-shadow: 0 1px 0 oklch(15% 0.06 15 / 0.45);
+   1459 [var] var(--no-500)  ::  box-shadow: 0 0 8px var(--no-500), 0 2px 4px color-mix(in oklab, var(--royal-950) 40%, transparent);
+   1857 [alias] var(--bar-glow-yes)  ::  box-shadow: var(--bar-glow-yes);
+   1863 [alias] var(--bar-glow-no)  ::  box-shadow: var(--bar-glow-no);
+   2727 [var] var(--yes-500)  ::  0%   { box-shadow: 0 0 0 0 color-mix(in oklab, var(--yes-500) 55%, transparent); }
+   2728 [var] var(--yes-500)  ::  100% { box-shadow: 0 0 0 8px color-mix(in oklab, var(--yes-500) 0%, transparent); }
+   4925 [var] var(--yes-300)  ::  .kp-qrow[data-price="priced"] .kp-qrow__unit { color: var(--yes-300); }
+   5129 [var] var(--yes-400)  ::  .mcardp-pct { font-family: var(--font-mono); font-weight: 700; font-size: 28px; line-height: 1; letter-spacing: -0.02em; color: var(--yes-400); font-variant-numeric: tabular-nums; }
+   5132 [var] var(--yes-400)  ::  .mcardp-pctcap { font-family: var(--font-mono); font-size: 9.5px; font-weight: 600; text-transform: uppercase; color: var(--yes-400); }
+   5303 [var] var(--no-400)  ::  .mcardp-pct--no { color: var(--no-400); }
+   6216 [var] var(--yes-300)  ::  .kp-udbug[data-lead="up"] .kp-udbug__verdict { color: var(--yes-300); }
+   6217 [var] var(--no-300)  ::  .kp-udbug[data-lead="down"] .kp-udbug__verdict { color: var(--no-300); }
+   6284 [var] var(--yes-400)  ::  .kp-udtrack__stem--up { stroke: color-mix(in oklab, var(--yes-400) 70%, transparent); }
+   6285 [var] var(--no-400)  ::  .kp-udtrack__stem--down { stroke: color-mix(in oklab, var(--no-400) 70%, transparent); }
+   6287 [var] var(--yes-400)  ::  .kp-udtrack__stem--latest.kp-udtrack__stem--up { stroke: var(--yes-400); }
+   6288 [var] var(--no-400)  ::  .kp-udtrack__stem--latest.kp-udtrack__stem--down { stroke: var(--no-400); }
+   6289 [var] var(--yes-300)  ::  .kp-udtrack__bead--up { fill: var(--yes-300); transform: translateY(-4px); }
+   6290 [var] var(--no-300)  ::  .kp-udtrack__bead--down { fill: var(--no-300); transform: translateY(4px); }
+   6293 [var] var(--yes-400)  ::  .kp-updown:is([data-aged], [data-closed]) .kp-udtrack__stem--latest.kp-udtrack__stem--up { stroke: color-mix(in oklab, var(--yes-400) 70%, transparent); }
+   6294 [var] var(--no-400)  ::  .kp-updown:is([data-aged], [data-closed]) .kp-udtrack__stem--latest.kp-udtrack__stem--down { stroke: color-mix(in oklab, var(--no-400) 70%, transparent); }
+   6295 [var] var(--yes-300)  ::  .kp-updown:is([data-aged], [data-closed]) .kp-udtrack__bead--up { fill: color-mix(in oklab, var(--yes-300) 70%, transparent); }
+   6296 [var] var(--no-300)  ::  .kp-updown:is([data-aged], [data-closed]) .kp-udtrack__bead--down { fill: color-mix(in oklab, var(--no-300) 70%, transparent); }
+   6473 [var] var(--yes-300)  ::  .kp-jbal__delta[data-sign="up"] { color: var(--yes-300); }
+   6474 [var] var(--no-300)  ::  .kp-jbal__delta[data-sign="down"] { color: var(--no-300); }
+
+src/app/leaderboard/page.tsx  (4)
+    484 [tw] text-yes-300  ::  r.roi >= 0 ? "text-yes-300" : "text-no-300"
+    484 [tw] text-no-300  ::  r.roi >= 0 ? "text-yes-300" : "text-no-300"
+    629 [tw] text-yes-300  ::  <span className={`mt-0.5 font-mono text-[13px] font-bold tabular-nums ${r.roi >= 0 ? "text-yes-300" : "text-no-300"}`}>
+    629 [tw] text-no-300  ::  <span className={`mt-0.5 font-mono text-[13px] font-bold tabular-nums ${r.roi >= 0 ? "text-yes-300" : "text-no-300"}`}>
+
+src/app/live/pulse-grid.tsx  (2)
+    266 [tw] text-yes-300  ::  <span className="font-bold text-yes-300">{sideWord(t, "YES", productLine)} <span className="opacity-75">@ {price.yesPct}%</span></span>
+    267 [tw] text-no-300  ::  <span className="font-bold text-no-300">{sideWord(t, "NO", productLine)} <span className="opacity-75">@ {100 - price.yesPct}%</span></span>
+
+src/app/markets/[id]/page.tsx  (3)
+    994 [tw] text-yes-300  ::  <span className={`font-bold ${p.side === "YES" ? "text-yes-300" : "text-no-300"}`}>{sideWord(t, p.side, "MARKET")}</span>
+    994 [tw] text-no-300  ::  <span className={`font-bold ${p.side === "YES" ? "text-yes-300" : "text-no-300"}`}>{sideWord(t, p.side, "MARKET")}</span>
+    996 [tw] text-no-300  ::  p.status === "OPEN" ? "text-info-fg" : p.status === "WIN" ? "text-gold-300" : p.status === "LOSS" ? "text-no-300" : "text-text-subtle"
+
+src/app/notifications/row-actions.tsx  (1)
+     96 [tw] hover:text-no-300  ::  className="inline-flex items-center justify-center min-h-[44px] min-w-[44px] rounded-md text-text-subtle hover:text-no-300 hover:bg-bg-overlay transition-colors disabled:opacity-50"
+
+src/app/positions/page.tsx  (4)
+    361 [tw] text-yes-300  ::  <span className="font-bold text-yes-300">{t.common.yes} · {formatTzsCompact(openYesStake)}</span>
+    363 [tw] text-no-300  ::  <span className="font-bold text-no-300">{t.common.no} · {formatTzsCompact(openNoStake)}</span>
+    366 [var] var(--yes-500)  ::  {openYesStake > 0 && <div style={{ width: `${(openYesStake / openStake) * 100}%`, background: "var(--yes-500)" }} />}
+    367 [var] var(--no-500)  ::  {openNoStake > 0 && <div style={{ width: `${(openNoStake / openStake) * 100}%`, background: "var(--no-500)" }} />}
+
+src/app/positions/performance/page.tsx  (2)
+    248 [tw] text-no-300  ::  className={`amount text-[34px] font-bold leading-none ${netPnl > 0 ? "text-[var(--gilt)]" : netPnl < 0 ? "text-no-300" : "text-text"}`}
+    393 [tw] text-no-300  ::  <p className={`text-body-sm font-bold amount ${r.pnl > 0 ? "text-[var(--gilt)]" : r.pnl < 0 ? "text-no-300" : "text-text"}`}>{formatTzsSigned(r.pnl)}</p>
+
+src/app/profile/page.tsx  (7)
+    156 [oklch] oklch(40% 0.10 152  ::  "radial-gradient(1200px 360px at 0% 0%, oklch(40% 0.10 152 / 0.30), transparent 60%), " +
+    157 [oklch] oklch(45% 0.13 22  ::  "radial-gradient(900px 320px at 100% 100%, oklch(45% 0.13 22 / 0.25), transparent 60%), " +
+    268 [tw] text-yes-300  ::  icon={<I.sparkle s={14} className="text-yes-300" />}
+    382 [tw] hover:border-no-700  ::  className="group inline-flex w-full items-center justify-between gap-3 rounded-xl glass-panel px-4 py-3.5 hover:border-no-700 transition-colors"
+    387 [tw] bg-no-500/10  ::  <span className="inline-flex h-[36px] w-[36px] items-center justify-center rounded-md bg-no-500/10 text-no-300 group-hover:bg-no-500/20 transition-colors">
+    387 [tw] text-no-300  ::  <span className="inline-flex h-[36px] w-[36px] items-center justify-center rounded-md bg-no-500/10 text-no-300 group-hover:bg-no-500/20 transition-colors">
+    387 [tw] group-hover:bg-no-500/20  ::  <span className="inline-flex h-[36px] w-[36px] items-center justify-center rounded-md bg-no-500/10 text-no-300 group-hover:bg-no-500/20 transition-colors">
+
+src/app/profile/security/security-client.tsx  (2)
+    183 [tw] bg-yes-500/10  ::  <span className={`inline-flex h-[40px] w-[40px] shrink-0 items-center justify-center rounded-md ${enabled ? "bg-yes-500/10 text-yes-300" : "bg-brand-500/10 text-brand-300"}`}>
+    183 [tw] text-yes-300  ::  <span className={`inline-flex h-[40px] w-[40px] shrink-0 items-center justify-center rounded-md ${enabled ? "bg-yes-500/10 text-yes-300" : "bg-brand-500/10 text-brand-300"}`}>
+
+src/app/profile/sessions/page.tsx  (1)
+    121 [var] var(--no-300)  ::  style={{ color: "var(--no-300)" }}
+
+src/app/proposals/new/create-form.tsx  (3)
+    104 [tw] text-no-300  ::  <span className={titleEn.length > 120 ? "text-no-300" : undefined}>{titleEn.length}/120</span>
+    133 [tw] text-no-300  ::  <p className="mt-1 text-body-sm leading-snug text-no-300">{t.proposals.sourceLinkInvalid}</p>
+    194 [tw] text-no-300  ::  <p className="mt-1 text-body-sm leading-snug text-no-300">{t.common.selectionCloseError}</p>
+
+src/app/results/page.tsx  (4)
+    367 [tw] text-yes-300  ::  <span className="whitespace-nowrap text-yes-300">{sideWord(t, "YES", line)} {winsIn(line, "YES")}</span>
+    369 [tw] text-no-300  ::  <span className="whitespace-nowrap text-no-300">{sideWord(t, "NO", line)} {winsIn(line, "NO")}</span>
+    576 [var] var(--yes-400)  ::  { frac: yes / total, stroke: "var(--yes-400)" },
+    577 [var] var(--no-400)  ::  { frac: no / total, stroke: "var(--no-400)" },
+
+src/app/state-tokens.css  (2)
+     54 [var] var(--no-400,  ::  .countdown--critical { color: var(--no-400, #E6424C); animation: cd-pulse 60s steps(1) infinite, live-pulse 1.2s var(--m-breathe) 1; }
+     54 [hex] #E6424C  ::  .countdown--critical { color: var(--no-400, #E6424C); animation: cd-pulse 60s steps(1) infinite, live-pulse 1.2s var(--m-breathe) 1; }
+
+src/app/updown/[roundId]/page.tsx  (8)
+    322 [var] var(--yes-300)  ::  const outcomeInk = round.outcome === "UP" ? "var(--yes-300)" : round.outcome === "DOWN" ? "var(--no-300)" : "var(--text-muted)";
+    322 [var] var(--no-300)  ::  const outcomeInk = round.outcome === "UP" ? "var(--yes-300)" : round.outcome === "DOWN" ? "var(--no-300)" : "var(--text-muted)";
+    395 [var] var(--yes-300)  ::  color: fromRound.outcome === "UP" ? "var(--yes-300)"
+    396 [var] var(--no-300)  ::  : fromRound.outcome === "DOWN" ? "var(--no-300)" : "var(--text-muted)",
+    750 [var] var(--yes-300)  ::  <span style={{ color: "var(--yes-300)" }}>{t.market.udUp} {upPct}%</span>
+    751 [var] var(--no-300)  ::  <span style={{ color: "var(--no-300)" }}>{downPct}% {t.market.udDown}</span>
+    821 [var] var(--yes-300)  ::  <dd className="m-0 tabular-nums" style={{ color: "var(--yes-300)" }}>≥ {usd(round.upTarget, dec)}</dd>
+    823 [var] var(--no-300)  ::  <dd className="m-0 tabular-nums" style={{ color: "var(--no-300)" }}>≤ {usd(round.downTarget, dec)}</dd>
+
+src/app/updown/history/page.tsx  (4)
+    411 [var] var(--yes-300)  ::  style={{ color: net > 0 ? "var(--yes-300)" : net < 0 ? "var(--no-300)" : "var(--text)" }}>
+    411 [var] var(--no-300)  ::  style={{ color: net > 0 ? "var(--yes-300)" : net < 0 ? "var(--no-300)" : "var(--text)" }}>
+    543 [var] var(--yes-300)  ::  style={{ color: g.anyOpen ? "var(--text-subtle)" : net > 0 ? "var(--yes-300)" : net < 0 ? "var(--no-300)" : "var(--text)" }}>
+    543 [var] var(--no-300)  ::  style={{ color: g.anyOpen ? "var(--text-subtle)" : net > 0 ? "var(--yes-300)" : net < 0 ? "var(--no-300)" : "var(--text)" }}>
+
+src/app/wallet/wallet-client.tsx  (6)
+    491 [tw] bg-yes-500/10  ::  settledCredit ? "bg-yes-500/10 text-yes-300"
+    491 [tw] text-yes-300  ::  settledCredit ? "bg-yes-500/10 text-yes-300"
+    493 [tw] bg-no-500/10  ::  : "bg-no-500/10 text-no-300";
+    493 [tw] text-no-300  ::  : "bg-no-500/10 text-no-300";
+    545 [tw] text-yes-300  ::  <p className={`font-mono text-[14px] font-bold tabular-nums ${settledCredit ? "text-yes-300" : movedNothing ? "text-text-muted" : "text-text"}`}>
+    959 [tw] hover:border-no-700  ::  className="inline-flex min-h-[40px] items-center px-3 rounded-pill border border-border bg-bg-overlay font-mono text-[11.5px] font-semibold text-text-muted hover:text-text hover:border-no-700 transition-colors"
+
+src/components/auth/auth-panel.tsx  (2)
+     50 [tw] text-no-300  ::  no: "text-no-300",
+     51 [tw] text-yes-300  ::  yes: "text-yes-300",
+
+src/components/auth/auth-shell.tsx  (2)
+     53 [tw] text-yes-300  ::  <span className="text-yes-300">{t.common.yes} 64%</span>
+     54 [tw] text-no-300  ::  <span className="text-no-300">36% {t.common.no}</span>
+
+src/components/auth/password-pair.tsx  (2)
+     54 [tw] text-yes-300  ::  ? <span className="text-yes-300">{t.common.passwordsMatch}</span>
+     55 [tw] text-no-300  ::  : <span className="text-no-300">{t.toast.passwordsDontMatch}</span>
+
+src/components/brand.tsx  (4)
+    425 [oklch] oklch(50% 0.14 152  ::  <path d={`M ${top.x} ${top.y} A ${r} ${r} 0 0 0 ${bot.x} ${bot.y} L ${top.x} ${top.y} Z`} fill="oklch(50% 0.14 152)" opacity={0.92} />
+    426 [oklch] oklch(52% 0.16 22  ::  <path d={`M ${top.x} ${top.y} A ${r} ${r} 0 0 1 ${bot.x} ${bot.y} L ${top.x} ${top.y} Z`} fill="oklch(52% 0.16 22)" opacity={0.92} />
+    543 [oklch] oklch(58% 0.16 152  ::  color = "oklch(58% 0.16 152)",
+    602 [oklch] oklch(58% 0.16 152  ::  <PulseRing size={size + 16} color="oklch(58% 0.16 152)">
+
+src/components/charts/outcome-cubes.tsx  (6)
+     19 [var] var(--yes-500)  ::  background: "color-mix(in oklab, var(--yes-500) 22%, transparent)",
+     20 [var] var(--yes-400)  ::  border: "1px solid color-mix(in oklab, var(--yes-400) 50%, transparent)",
+     21 [var] var(--yes-300)  ::  color: "var(--yes-300)",
+     24 [var] var(--no-500)  ::  background: "color-mix(in oklab, var(--no-500) 22%, transparent)",
+     25 [var] var(--no-400)  ::  border: "1px solid color-mix(in oklab, var(--no-400) 50%, transparent)",
+     26 [var] var(--no-300)  ::  color: "var(--no-300)",
+
+src/components/charts/terminal-chart.tsx  (3)
+    483 [var] var(--yes-300)  ::  ? (legend.c > legend.o ? "var(--yes-300)" : legend.c < legend.o ? "var(--no-300)" : "var(--text-muted)")
+    483 [var] var(--no-300)  ::  ? (legend.c > legend.o ? "var(--yes-300)" : legend.c < legend.o ? "var(--no-300)" : "var(--text-muted)")
+    513 [var] var(--no-300)  ::  <p className="mt-1 mb-0 flex flex-wrap items-baseline justify-end gap-x-3 gap-y-0.5 text-right font-mono text-body-sm" style={{ color: feed.liveStale ? "var(--no-300)" : "var(--text-faint)" }}>
+
+src/components/home/landing-hero.tsx  (2)
+    259 [cls] btn-yes  ::  <Link href={`/markets/${row.id}?side=YES&from=home` as never} prefetch={false} className="btn btn-yes btn-md kp-qrow__btn" aria-label={yesAria}>
+    262 [cls] btn-no  ::  <Link href={`/markets/${row.id}?side=NO&from=home` as never} prefetch={false} className="btn btn-no btn-md kp-qrow__btn" aria-label={noAria}>
+
+src/components/home/updown-band.tsx  (2)
+    150 [cls] btn-yes  ::  <Link href={`${roundHref}?side=UP#stake` as never} className="btn btn-yes btn-lg kp-udbug__pick kp-udbug__pick--up">
+    154 [cls] btn-no  ::  <Link href={`${roundHref}?side=DOWN#stake` as never} className="btn btn-no btn-lg kp-udbug__pick kp-udbug__pick--down">
+
+src/components/layout/live-ticker.tsx  (2)
+     79 [tw] text-yes-400  ::  <span className={`font-bold ${ev.side === "YES" ? "text-yes-400" : "text-no-400"}`}>{ev.side === "YES" ? sides.YES : sides.NO}</span>
+     79 [tw] text-no-400  ::  <span className={`font-bold ${ev.side === "YES" ? "text-yes-400" : "text-no-400"}`}>{ev.side === "YES" ? sides.YES : sides.NO}</span>
+
+src/components/layout/needle.css  (5)
+     65 [hex] #A83A43  ::  --ndl-face-b-hi: #A83A43;  --ndl-face-b-lo: #822A33;
+     65 [hex] #822A33  ::  --ndl-face-b-hi: #A83A43;  --ndl-face-b-lo: #822A33;
+     66 [hex] #54EDA6  ::  --ndl-inlay-a:   #54EDA6;  --ndl-inlay-b:   #FF7B82;
+     66 [hex] #FF7B82  ::  --ndl-inlay-a:   #54EDA6;  --ndl-inlay-b:   #FF7B82;
+     79 [hex] #822A33  ::  --ndl-blend-a: #146F4C;  --ndl-blend-b: #822A33;
+
+src/components/layout/notifications-panel.tsx  (1)
+    596 [tw] hover:text-no-300  ::  className="h-7 px-1.5 rounded-md font-mono text-micro font-bold uppercase tracking-[0.10em] text-text-subtle hover:text-no-300 hover:bg-bg-overlay transition-colors whitespace-nowrap"
+
+src/components/layout/page-ribbon.tsx  (2)
+     61 [tw] text-yes-300  ::  s.accent === "yes" && "text-yes-300",
+     62 [tw] text-no-300  ::  s.accent === "no" && "text-no-300",
+
+src/components/layout/wallet-balance-pill.tsx  (2)
+    349 [var] var(--yes-300)  ::  style={{ color: delta > 0 ? "var(--yes-300)" : "var(--no-300)" }}
+    349 [var] var(--no-300)  ::  style={{ color: delta > 0 ? "var(--yes-300)" : "var(--no-300)" }}
+
+src/components/markets/bet-confirm-modal.tsx  (6)
+    215 [var] var(--yes-300)  ::  ? { fg: "var(--yes-300)", bg: "color-mix(in oklab, var(--yes-500) 18%, transparent)", brd: "color-mix(in oklab, var(--yes-500) 62%, transparent)" }
+    215 [var] var(--yes-500)  ::  ? { fg: "var(--yes-300)", bg: "color-mix(in oklab, var(--yes-500) 18%, transparent)", brd: "color-mix(in oklab, var(--yes-500) 62%, transparent)" }
+    215 [var] var(--yes-500)  ::  ? { fg: "var(--yes-300)", bg: "color-mix(in oklab, var(--yes-500) 18%, transparent)", brd: "color-mix(in oklab, var(--yes-500) 62%, transparent)" }
+    216 [var] var(--no-300)  ::  : { fg: "var(--no-300)",  bg: "color-mix(in oklab, var(--no-500) 18%, transparent)",  brd: "color-mix(in oklab, var(--no-500) 62%, transparent)" };
+    216 [var] var(--no-500)  ::  : { fg: "var(--no-300)",  bg: "color-mix(in oklab, var(--no-500) 18%, transparent)",  brd: "color-mix(in oklab, var(--no-500) 62%, transparent)" };
+    216 [var] var(--no-500)  ::  : { fg: "var(--no-300)",  bg: "color-mix(in oklab, var(--no-500) 18%, transparent)",  brd: "color-mix(in oklab, var(--no-500) 62%, transparent)" };
+
+src/components/markets/conviction-dial.tsx  (23)
+    556 [oklch] oklch(58% 0.16 152  ::  : effectiveSide === "YES" ? "oklch(58% 0.16 152)" : "oklch(60% 0.18 22)";
+    556 [oklch] oklch(60% 0.18 22  ::  : effectiveSide === "YES" ? "oklch(58% 0.16 152)" : "oklch(60% 0.18 22)";
+    558 [var] var(--yes-300)  ::  const sideText = effectiveSide === "YES" ? "var(--yes-300)" : effectiveSide === "NO" ? "var(--no-300)" : "var(--text-subtle)";
+    558 [var] var(--no-300)  ::  const sideText = effectiveSide === "YES" ? "var(--yes-300)" : effectiveSide === "NO" ? "var(--no-300)" : "var(--text-subtle)";
+   1204 [oklch] oklch(75% 0.13 152  ::  style={{ color: effectiveSide === "YES" ? "oklch(75% 0.13 152)" : "var(--text-subtle)", fontWeight: effectiveSide === "YES" ? 700 : 400 }}
+   1211 [oklch] oklch(75% 0.16 22  ::  style={{ color: effectiveSide === "NO" ? "oklch(75% 0.16 22)" : "var(--text-subtle)", fontWeight: effectiveSide === "NO" ? 700 : 400 }}
+   1269 [oklch] oklch(40% 0.10 152  ::  <stop offset="0%"  stopColor="oklch(40% 0.10 152)" stopOpacity={0.35} />
+   1270 [oklch] oklch(58% 0.16 152  ::  <stop offset="100%" stopColor="oklch(58% 0.16 152)" />
+   1274 [oklch] oklch(40% 0.13 22  ::  <stop offset="0%"  stopColor="oklch(40% 0.13 22)" stopOpacity={0.35} />
+   1275 [oklch] oklch(60% 0.18 22  ::  <stop offset="100%" stopColor="oklch(60% 0.18 22)" />
+   1305 [oklch] oklch(58% 0.16 152  ::  fill="oklch(58% 0.16 152)" opacity={lock === "YES" ? 0.16 : 0.10} />
+   1309 [oklch] oklch(60% 0.18 22  ::  fill="oklch(60% 0.18 22)" opacity={lock === "NO" ? 0.16 : 0.10} />
+   1550 [tw] border-no-700  ::  <span className="mt-1 inline-flex items-center gap-1 rounded-pill border border-no-700 bg-no-500/15 px-1.5 py-0.5 font-mono text-[9.5px] font-bold text-no-300 whitespace-nowrap">
+   1550 [tw] bg-no-500/15  ::  <span className="mt-1 inline-flex items-center gap-1 rounded-pill border border-no-700 bg-no-500/15 px-1.5 py-0.5 font-mono text-[9.5px] font-bold text-no-300 whitespace-nowrap">
+   1550 [tw] text-no-300  ::  <span className="mt-1 inline-flex items-center gap-1 rounded-pill border border-no-700 bg-no-500/15 px-1.5 py-0.5 font-mono text-[9.5px] font-bold text-no-300 whitespace-nowrap">
+   1617 [tw] border-no-700  ::  <span className="mt-1 inline-flex items-center gap-1 rounded-pill border border-no-700 bg-no-500/15 px-1.5 py-0.5 font-mono text-[9.5px] font-bold text-no-300 whitespace-nowrap">
+   1617 [tw] bg-no-500/15  ::  <span className="mt-1 inline-flex items-center gap-1 rounded-pill border border-no-700 bg-no-500/15 px-1.5 py-0.5 font-mono text-[9.5px] font-bold text-no-300 whitespace-nowrap">
+   1617 [tw] text-no-300  ::  <span className="mt-1 inline-flex items-center gap-1 rounded-pill border border-no-700 bg-no-500/15 px-1.5 py-0.5 font-mono text-[9.5px] font-bold text-no-300 whitespace-nowrap">
+   1691 [tw] border-no-700  ::  <div className="mt-3 rounded-md border border-no-700 bg-no-500/10 px-3 py-2">
+   1691 [tw] bg-no-500/10  ::  <div className="mt-3 rounded-md border border-no-700 bg-no-500/10 px-3 py-2">
+   1692 [tw] text-no-300  ::  <p className="text-body-sm font-medium text-no-300">
+   1728 [cls] btn-yes  ::  className={`${closedNow ? "btn btn-ghost btn-md" : (effectiveSide === "NEUTRAL" ? "btn btn-ghost btn-md" : effectiveSide === "YES" ? "btn btn-yes btn-md" : "btn btn-no btn-md")} ml-auto whitespace-normal`}
+   1728 [cls] btn-no  ::  className={`${closedNow ? "btn btn-ghost btn-md" : (effectiveSide === "NEUTRAL" ? "btn btn-ghost btn-md" : effectiveSide === "YES" ? "btn btn-yes btn-md" : "btn btn-no btn-md")} ml-auto whitespace-normal`}
+
+src/components/markets/market-card.tsx  (2)
+    656 [cls] btn-yes  ::  <button type="button" aria-label={(showPrice ? t.market.backSideAria.replace("{pct}", String(yesPct)) : t.market.backSideAriaNoPrice).replace("{side}", sideWord(t, "YES", productLine))} onClick={go("YES")} className="btn
+    659 [cls] btn-no  ::  <button type="button" aria-label={(showPrice ? t.market.backSideAria.replace("{pct}", String(100 - yesPct)) : t.market.backSideAriaNoPrice).replace("{side}", sideWord(t, "NO", productLine))} onClick={go("NO")} className=
+
+src/components/markets/operation-result-modal.tsx  (13)
+    130 [var] var(--yes-400)  ::  ...crest("var(--yes-400)", "var(--yes-300)"),
+    130 [var] var(--yes-300)  ::  ...crest("var(--yes-400)", "var(--yes-300)"),
+    138 [var] var(--no-400)  ::  ...crest("var(--no-400)", "var(--no-300)"),
+    138 [var] var(--no-300)  ::  ...crest("var(--no-400)", "var(--no-300)"),
+    139 [cls] btn-no  ::  primaryBtn: "btn-no",
+    175 [var] var(--yes-700)  ::  yes:   "linear-gradient(90deg, var(--yes-700), var(--yes-400))",
+    175 [var] var(--yes-400)  ::  yes:   "linear-gradient(90deg, var(--yes-700), var(--yes-400))",
+    176 [var] var(--no-700)  ::  no:    "linear-gradient(90deg, var(--no-700), var(--no-400))",
+    176 [var] var(--no-400)  ::  no:    "linear-gradient(90deg, var(--no-700), var(--no-400))",
+    401 [cls] btn-yes  ::  ? (stripTone === "gold" ? "btn-gold" : stripTone === "yes" ? "btn-yes" : stripTone === "no" ? "btn-no" : "btn-primary")
+    401 [cls] btn-no  ::  ? (stripTone === "gold" ? "btn-gold" : stripTone === "yes" ? "btn-yes" : stripTone === "no" ? "btn-no" : "btn-primary")
+    525 [var] var(--yes-300)  ::  d.tone === "good" ? "var(--yes-300)" :
+    526 [var] var(--no-300)  ::  d.tone === "bad"  ? "var(--no-300)"  :
+
+src/components/markets/resolution-panel.tsx  (3)
+    158 [tw] text-yes-300  ::  <I.sealCheck s={14} className="mt-[1px] shrink-0 text-yes-300" />
+    163 [tw] text-yes-300  ::  <I.sealCheck s={14} className="mt-[1px] shrink-0 text-yes-300" />
+    224 [tw] text-yes-300  ::  <I.check s={13} className="text-yes-300" />
+
+src/components/markets/sell-confirm-modal.tsx  (3)
+    121 [var] var(--yes-500)  ::  borderColor: isFree ? "color-mix(in oklab, var(--yes-500) 62%, transparent)" : "color-mix(in oklab, var(--royal-500) 62%, transparent)",
+    122 [var] var(--yes-500)  ::  background:  isFree ? "color-mix(in oklab, var(--yes-500) 18%, transparent)" : "color-mix(in oklab, var(--royal-500) 16%, transparent)",
+    140 [var] var(--yes-300)  ::  style={{ color: isFree ? "var(--yes-300)" : "var(--text)" }}
+
+src/components/markets/side-picker.tsx  (2)
+    146 [cls] btn-yes  ::  className="btn btn-yes btn-lg"
+    161 [cls] btn-no  ::  className="btn btn-no btn-lg"
+
+src/components/onboarding/first-visit-primer.tsx  (20)
+    105 [oklch] oklch(58% 0.16 152  ::  style={{ background: "oklch(58% 0.16 152)", boxShadow: "0 0 8px oklch(58% 0.16 152 / 0.6)" }}
+    105 [oklch] oklch(58% 0.16 152  ::  style={{ background: "oklch(58% 0.16 152)", boxShadow: "0 0 8px oklch(58% 0.16 152 / 0.6)" }}
+    107 [oklch] oklch(80% 0.14 152  ::  <span style={{ color: "oklch(80% 0.14 152)" }}>{yes}</span>
+    111 [oklch] oklch(80% 0.16 22  ::  <span style={{ color: "oklch(80% 0.16 22)" }}>{no}</span>
+    114 [oklch] oklch(60% 0.18 22  ::  style={{ background: "oklch(60% 0.18 22)", boxShadow: "0 0 8px oklch(60% 0.18 22 / 0.6)" }}
+    114 [oklch] oklch(60% 0.18 22  ::  style={{ background: "oklch(60% 0.18 22)", boxShadow: "0 0 8px oklch(60% 0.18 22 / 0.6)" }}
+    147 [oklch] oklch(58% 0.16 152  ::  <rect x="0" y="20" width="140" height="12" rx="6" fill="oklch(58% 0.16 152)" opacity="0.10" />
+    148 [oklch] oklch(60% 0.18 22  ::  <rect x="140" y="20" width="140" height="12" rx="6" fill="oklch(60% 0.18 22)" opacity="0.10" />
+    152 [oklch] oklch(40% 0.13 22  ::  <stop offset="0%" stopColor="oklch(40% 0.13 22)" stopOpacity="0.35" />
+    153 [oklch] oklch(60% 0.18 22  ::  <stop offset="100%" stopColor="oklch(60% 0.18 22)" />
+    162 [oklch] oklch(60% 0.18 22  ::  fill="oklch(28% 0.110 268)" stroke="oklch(60% 0.18 22)" strokeWidth="1.5" />
+    164 [oklch] oklch(80% 0.16 22  ::  <text x="0" y="11.5" textAnchor="middle" fontFamily="JetBrains Mono, monospace" fontWeight="500" fontSize="8.5" fill="oklch(80% 0.16 22)" letterSpacing="0.08em">{no}</text>
+    168 [oklch] oklch(70% 0.12 152  ::  <text x="6" y="50" fontFamily="JetBrains Mono, monospace" fontWeight="600" fontSize="8.5" fill="oklch(70% 0.12 152)" letterSpacing="0.08em">{yes}</text>
+    169 [oklch] oklch(70% 0.14 22  ::  <text x="274" y="50" textAnchor="end" fontFamily="JetBrains Mono, monospace" fontWeight="600" fontSize="8.5" fill="oklch(70% 0.14 22)" letterSpacing="0.08em">{no}</text>
+    217 [tw] border-yes-700/40  ::  <div className="rounded-lg border border-yes-700/40 bg-yes-500/[0.08] px-3 py-2 text-center">
+    217 [tw] bg-yes-500/[0.08]  ::  <div className="rounded-lg border border-yes-700/40 bg-yes-500/[0.08] px-3 py-2 text-center">
+    218 [oklch] oklch(70% 0.12 152  ::  <p className="font-mono text-micro uppercase eyebrow font-bold" style={{ color: "oklch(70% 0.12 152)" }}>{poolYes}</p>
+    228 [tw] border-no-700/40  ::  <div className="rounded-lg border border-no-700/40 bg-no-500/[0.08] px-3 py-2 text-center">
+    228 [tw] bg-no-500/[0.08]  ::  <div className="rounded-lg border border-no-700/40 bg-no-500/[0.08] px-3 py-2 text-center">
+    229 [oklch] oklch(70% 0.14 22  ::  <p className="font-mono text-micro uppercase eyebrow font-bold" style={{ color: "oklch(70% 0.14 22)" }}>{poolNo}</p>
+
+src/components/positions/pnl-summary-strip.tsx  (1)
+     75 [tw] text-no-300  ::  valueClass={settledNet > 0 ? "text-[var(--gilt)]" : settledNet < 0 ? "text-no-300" : "text-text"}
+
+src/components/profile/avatar-uploader.tsx  (2)
+    170 [tw] group-hover:border-no-700  ::  <span className="inline-flex h-[32px] w-[32px] items-center justify-center rounded-pill border border-border bg-bg-elevated text-text-subtle shadow-e2 transition-colors group-hover:border-no-700 group-hover:text-no-300">
+    170 [tw] group-hover:text-no-300  ::  <span className="inline-flex h-[32px] w-[32px] items-center justify-center rounded-pill border border-border bg-bg-elevated text-text-subtle shadow-e2 transition-colors group-hover:border-no-700 group-hover:text-no-300">
+
+src/components/rg/self-care-art.tsx  (1)
+     28 [var] var(--yes-300)  ::  <circle cx="28" cy="40" r="2.4" fill="var(--yes-300)" stroke="none" />
+
+src/components/ui/button.tsx  (2)
+     46 [cls] btn-yes  ::  yes:          "btn-yes",
+     47 [cls] btn-no  ::  no:           "btn-no",
+
+src/components/ui/chip.tsx  (4)
+     72 [var] var(--yes-300)  ::  const GREEN: React.CSSProperties = { background: "oklch(52% 0.15 150 / 0.22)", color: "var(--yes-300)",    borderColor: "oklch(61% 0.16 150 / 0.5)" };
+     72 [oklch] oklch(52% 0.15 150  ::  const GREEN: React.CSSProperties = { background: "oklch(52% 0.15 150 / 0.22)", color: "var(--yes-300)",    borderColor: "oklch(61% 0.16 150 / 0.5)" };
+     72 [oklch] oklch(61% 0.16 150  ::  const GREEN: React.CSSProperties = { background: "oklch(52% 0.15 150 / 0.22)", color: "var(--yes-300)",    borderColor: "oklch(61% 0.16 150 / 0.5)" };
+     89 [var] var(--no-300)  ::  const ROSE:  React.CSSProperties = { background: "oklch(50% 0.19 25 / 0.22)",  color: "var(--no-300)",     borderColor: "oklch(58% 0.2 25 / 0.5)" };
+
+src/components/ui/count-badge.tsx  (2)
+     35 [var] var(--no-400)  ::  rose:  { background: "linear-gradient(180deg, var(--no-400), var(--no-600))", color: "var(--pearl-50)" },
+     35 [var] var(--no-600)  ::  rose:  { background: "linear-gradient(180deg, var(--no-400), var(--no-600))", color: "var(--pearl-50)" },
+
+src/components/ui/dot.tsx  (2)
+     34 [var] var(--yes-400)  ::  yes:     "var(--yes-400)",
+     35 [var] var(--no-400)  ::  no:      "var(--no-400)",
+
+src/components/ui/identity-avatar.tsx  (2)
+     93 [oklch] oklch(50% 0.10 152  ::  <path d={`M ${top.x} ${top.y} A ${r} ${r} 0 0 0 ${bot.x} ${bot.y} L ${top.x} ${top.y} Z`} fill="oklch(50% 0.10 152)" />
+     94 [oklch] oklch(52% 0.11 22  ::  <path d={`M ${top.x} ${top.y} A ${r} ${r} 0 0 1 ${bot.x} ${bot.y} L ${top.x} ${top.y} Z`} fill="oklch(52% 0.11 22)" />
+
+src/components/ui/page-header.tsx  (1)
+     21 [tw] text-yes-300  ::  yes: "text-yes-300",
+
+src/components/ui/page-hero.tsx  (2)
+     20 [oklch] oklch(45% 0.10 152  ::  yes: "oklch(45% 0.10 152 / 0.18)",
+     21 [oklch] oklch(45% 0.13 22  ::  rose: "oklch(45% 0.13 22 / 0.18)",
+
+src/components/ui/receipt-row.tsx  (2)
+     89 [tw] text-no-300  ::  tone === "warning" ? "text-warning-fg" : tone === "no" ? "text-no-300" : tone === "yes" ? "text-yes-300" : null;
+     89 [tw] text-yes-300  ::  tone === "warning" ? "text-warning-fg" : tone === "no" ? "text-no-300" : tone === "yes" ? "text-yes-300" : null;
+
+src/components/ui/social-marks.tsx  (2)
+    104 [hex] #FE2C55  ::  <use href={`#${TT_NOTE_ID}`} fill="#FE2C55" transform="translate(0.9 -0.4)" />
+    113 [hex] #25D366  ::  <path fill="#25D366" d={WHATSAPP_BUBBLE_D} />
+
+src/components/ui/stat.tsx  (6)
+     56 [tw] text-yes-300  ::  yes: "text-yes-300",
+     57 [tw] text-no-300  ::  no: "text-no-300",
+    223 [tw] text-yes-300  ::  labelTone === "yes" ? "text-yes-300" : labelTone === "no" ? "text-no-300" : null,
+    223 [tw] text-no-300  ::  labelTone === "yes" ? "text-yes-300" : labelTone === "no" ? "text-no-300" : null,
+    238 [tw] text-yes-300  ::  labelTone === "yes" ? "text-yes-300" : labelTone === "no" ? "text-no-300" : "text-text-subtle",
+    238 [tw] text-no-300  ::  labelTone === "yes" ? "text-yes-300" : labelTone === "no" ? "text-no-300" : "text-text-subtle",
+
+src/components/updown/price-hero.tsx  (14)
+    100 [var] var(--yes-300)  ::  ? (tone === "level" ? "var(--text-muted)" : tone === "up" ? "var(--yes-300)" : "var(--no-300)")
+    100 [var] var(--no-300)  ::  ? (tone === "level" ? "var(--text-muted)" : tone === "up" ? "var(--yes-300)" : "var(--no-300)")
+    101 [var] var(--yes-300)  ::  : flat ? "var(--text-muted)" : isUp ? "var(--yes-300)" : "var(--no-300)";
+    101 [var] var(--no-300)  ::  : flat ? "var(--text-muted)" : isUp ? "var(--yes-300)" : "var(--no-300)";
+    196 [var] var(--yes-300)  ::  <span style={{ color: "var(--yes-300)" }}>{(copy.upLabel ?? "UP").toUpperCase()} ≥ {usd(upTarget)}</span>
+    198 [var] var(--no-300)  ::  <span style={{ color: "var(--no-300)" }}>{(copy.downLabel ?? "DOWN").toUpperCase()} ≤ {usd(downTarget)}</span>
+    208 [var] var(--yes-400)  ::  <stop offset="0%" stopColor="var(--yes-400)" stopOpacity="0.26" />
+    209 [var] var(--yes-400)  ::  <stop offset="100%" stopColor="var(--yes-400)" stopOpacity="0.02" />
+    212 [var] var(--no-400)  ::  <stop offset="0%" stopColor="var(--no-400)" stopOpacity="0.02" />
+    213 [var] var(--no-400)  ::  <stop offset="100%" stopColor="var(--no-400)" stopOpacity="0.26" />
+    243 [var] var(--yes-400)  ::  <line x1="0" y1={upY} x2="606" y2={upY} stroke="var(--yes-400)" strokeWidth="1" strokeDasharray="2 5" opacity="0.6" />
+    244 [var] var(--yes-300)  ::  <text className="ud-svg-label" x="606" y={(parseFloat(upY) - 4).toFixed(1)} textAnchor="end" fill="var(--yes-300)" fontFamily="var(--font-mono)" fontSize="8.5" fontWeight="600" letterSpacing="0.10em" opacity="0.9">
+    251 [var] var(--no-400)  ::  <line x1="0" y1={downY} x2="606" y2={downY} stroke="var(--no-400)" strokeWidth="1" strokeDasharray="2 5" opacity="0.6" />
+    252 [var] var(--no-300)  ::  <text className="ud-svg-label" x="606" y={(parseFloat(downY) + 11).toFixed(1)} textAnchor="end" fill="var(--no-300)" fontFamily="var(--font-mono)" fontSize="8.5" fontWeight="600" letterSpacing="0.10em" opacity="0.9">
+
+src/components/updown/round-action-panel.tsx  (2)
+    169 [var] var(--yes-300)  ::  <span className="amount text-body font-bold" style={{ color: "var(--yes-300)" }}>
+    175 [var] var(--no-300)  ::  <span className="amount text-body font-bold" style={{ color: "var(--no-300)" }}>
+
+src/components/updown/round-stake-panel.tsx  (1)
+    252 [tw] text-no-300  ::  <p className={cn("mt-1 text-micro amount", customInvalid ? "text-no-300" : "text-text-subtle")}>
+
+src/components/updown/updown-card.tsx  (16)
+    893 [var] var(--yes-300)  ::  <span style={{ color: "var(--yes-300)" }}>{t.market.udUp} {upPct}%</span>
+    894 [var] var(--no-300)  ::  <span style={{ color: "var(--no-300)" }}>{downPct}% {t.market.udDown}</span>
+    960 [var] var(--yes-500)  ::  style={{ background: "color-mix(in oklab, var(--yes-500) 10%, transparent)", border: "1px solid color-mix(in oklab, var(--yes-500) 24%, transparent)" }}>
+    960 [var] var(--yes-500)  ::  style={{ background: "color-mix(in oklab, var(--yes-500) 10%, transparent)", border: "1px solid color-mix(in oklab, var(--yes-500) 24%, transparent)" }}>
+    961 [var] var(--yes-300)  ::  <div className="flex items-center gap-1 font-mono text-micro font-bold uppercase eyebrow" style={{ color: "var(--yes-300)" }}>
+    964 [var] var(--yes-300)  ::  <div className="mt-0.5 font-mono text-[12.5px] font-bold tabular-nums leading-tight" style={{ color: "var(--yes-300)" }}>
+    969 [var] var(--no-500)  ::  style={{ background: "color-mix(in oklab, var(--no-500) 10%, transparent)", border: "1px solid color-mix(in oklab, var(--no-500) 24%, transparent)" }}>
+    969 [var] var(--no-500)  ::  style={{ background: "color-mix(in oklab, var(--no-500) 10%, transparent)", border: "1px solid color-mix(in oklab, var(--no-500) 24%, transparent)" }}>
+    970 [var] var(--no-300)  ::  <div className="flex items-center justify-end gap-1 font-mono text-micro font-bold uppercase eyebrow" style={{ color: "var(--no-300)" }}>
+    973 [var] var(--no-300)  ::  <div className="mt-0.5 font-mono text-[12.5px] font-bold tabular-nums leading-tight" style={{ color: "var(--no-300)" }}>
+   1028 [cls] btn-yes  ::  <button type="button" onClick={go("UP")} className="btn btn-yes btn-lg"
+   1033 [cls] btn-no  ::  <button type="button" onClick={go("DOWN")} className="btn btn-no btn-lg"
+   1097 [var] var(--yes-300)  ::  <span className="amount text-body-sm font-bold" style={{ color: "var(--yes-300)" }}>
+   1103 [var] var(--no-300)  ::  <span className="amount text-body-sm font-bold" style={{ color: "var(--no-300)" }}>
+   1144 [var] var(--yes-300)  ::  style={{ color: outcome === "UP" ? "var(--yes-300)" : "var(--no-300)" }}>
+   1144 [var] var(--no-300)  ::  style={{ color: outcome === "UP" ? "var(--yes-300)" : "var(--no-300)" }}>
+
+src/components/updown/updown-stake-controls.tsx  (3)
+    263 [tw] text-no-300  ::  <p className={cn("mt-1 text-micro amount", customInvalid ? "text-no-300" : "text-text-subtle")}>
+    278 [cls] btn-yes  ::  className={cn("btn btn-yes btn-lg", !compact && "justify-center", flash && flashSide === "UP" && "ud-side-flash")}
+    289 [cls] btn-no  ::  className={cn("btn btn-no btn-lg", !compact && "justify-center", flash && flashSide === "DOWN" && "ud-side-flash")}
+
+src/components/wallet/payout-status-notice.tsx  (1)
+     84 [tw] border-no-700/60  ::  className={unavailable ? "border-no-700/60" : undefined}
+
+src/lib/brand-mark.ts  (2)
+     17 [hex] #1EA362  ::  green: "#1EA362",
+     18 [hex] #B03A3E  ::  red: "#B03A3E",
+
+src/lib/i18n.tsx  (6)
+    168 [oklch] oklch(78% 0.16 152  ::  { char: "Hi",  color: "oklch(78% 0.16 152)" },
+    169 [oklch] oklch(78% 0.16 22  ::  { char: "\u8BED", color: "oklch(78% 0.16 22)" },
+    170 [oklch] oklch(78% 0.16 152  ::  { char: "Ha",  color: "oklch(78% 0.16 152)" },
+    171 [oklch] oklch(78% 0.16 22  ::  { char: "\u597D", color: "oklch(78% 0.16 22)" },
+    172 [oklch] oklch(78% 0.16 152  ::  { char: "Sw",  color: "oklch(78% 0.16 152)" },
+    173 [oklch] oklch(78% 0.16 22  ::  { char: "En",  color: "oklch(78% 0.16 22)" },
+
+src/lib/offline-document.ts  (1)
+     78 [oklch] oklch(60% 0.160 15  ::  "--claret-400": "oklch(60% 0.160 15)",
+
+TOTAL 325 hits in 61 files

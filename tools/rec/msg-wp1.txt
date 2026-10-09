@@ -1,0 +1,35 @@
+Vodacom S7 WP1: qa:classic-shell-parity v3 - a classic visitor's page bodies on every S7 route - and A9's three served-bytes tools
+
+S7's binding promise is that a classic visitor sees nothing change. v2 captured only the shell's regions and the
+signed-in /positions body, and never visited /live, /results or /watchlist. v3 makes the promise provable; it lands only
+now that section 0i records S6's last two v2 compares (S7-PLAN A2 item 3).
+
+- scripts/qa-classic-shell-parity.mjs, VERSION 3 (a v2 file is refused): a BOOK phase after the matrix and the Sell
+  capture, seeded only through existing dev-test doors (seed-markets, seed-player-portfolio { markets: 12 },
+  seed-watchlist, in A8's order and judged), drawing every classic card state S7 touches - priced, one-sided, empty
+  pool, selection closed, resolved YES and NO, void (B.7); per cell (guest and player; en and sw; 360 and 1280): the
+  normalised <main> of /, /markets, /live and /results, /watchlist for the player, the similar rail of one seeded
+  question, the LIVE strip on the four lobby routes, and /'s head from the bytes (canonical, every og:*). Normalisers
+  (market ids, time-left labels, EAT dates, relative times, avatar ids, chunk hashes, chart paths) exist one by one,
+  OFF unless calibration proves two fresh servers of one tree disagree on them; a baseline records its set and a
+  compare under another set is refused. --prove-red is taught the bodies: a card class changed in one route's body is
+  reported in that body only, a dropped og:url in the head, a journey-* id in a classic body as a trace.
+- scripts/qa-served-skeleton.mjs (qa:served-skeleton): capture each cell's warm response from one local server
+  (refusing any BASE that is not loopback, a server with a database, or an ACTIVE rollout) and compare two captures
+  offline - head, preloads, body, and under --main the main and streamed segments; client-rendered boundaries
+  (<!--$!-->, BAILOUT templates, $RX) are COUNTED and a compare fails when a count grows; --self-test (75 plants)
+  runs before any verdict. Built from A9's text: shell-skeleton.py was never on this PC.
+- scripts/qa-first-load.mjs (qa:first-load): one local production build tied to HEAD (it refuses a dirty tree or a
+  junctioned node_modules), then per route the entry files and each next/dynamic part's chunks with its verdict and
+  where each marker sits; a marker table that fails on any marker not unique in src/, with S7's rows PENDING until
+  their files land; controls on a fixture build and on the real one. Ported from wp6c/first-load(-parts).py.
+- scripts/qa-chunks-prod.mjs (qa:chunks-prod): an origin read as a guest, GETs only; journey markers absent from the
+  initial scripts (the two by-design exceptions reported), no journey markup, A9's boundary rule (one primer
+  boundary, plus one when the chat is on). ⚠️ It takes NO default origin, against A9's "production by default":
+  test:live-target-safe forbids a standalone script that falls back to production, so the origin is named.
+  Ported from prod/chunks-check.sh.
+- package.json: qa:served-skeleton, qa:first-load, qa:chunks-prod (none a test:* key, Correction 12).
+
+{PROOF}
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>

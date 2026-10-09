@@ -1,0 +1,39 @@
+scripts/anchors/board-discovery.anchors.mjs [—] <- src/app/markets/loading.tsx
+scripts/anchors/install-invite.anchors.mjs [—] <- src/components/layout/app-shell.tsx
+scripts/anchors/measure.anchors.mjs [—] <- src/app/wallet/loading.tsx, src/components/layout/app-shell.tsx, src/components/ui/back-link.tsx
+scripts/anchors/ticker-honesty.anchors.mjs [—] <- src/components/layout/app-shell.tsx
+scripts/bell-untouched.mjs [—] <- src/components/layout/app-shell.tsx
+scripts/board-discovery.test.mts [test:board-discovery] <- src/app/markets/loading.tsx
+scripts/client-graph-safe.test.mjs [test:client-graph-safe] <- src/lib/journey/journey-on.ts
+scripts/design-frozen.test.mts [test:design-frozen] <- src/app/wallet/wallet-ghost.tsx
+scripts/design-gate/eyebrow-roles.mjs [—] <- src/app/leaderboard/loading.tsx, src/components/ui/back-link.tsx, src/components/ui/page-loader.tsx
+scripts/enter-where-pressed.test.mts [test:enter-where-pressed red:enter-where-pressed] <- src/components/layout/app-shell.tsx
+scripts/erasure.test.mts [test:erasure] <- src/components/layout/app-shell.tsx
+scripts/install-invite.test.mts [test:install-invite] <- src/components/layout/app-shell.tsx
+scripts/journey-funnel.test.mts [test:journey-funnel red:journey-funnel] <- src/components/layout/app-shell.tsx
+scripts/journey-shell.test.mts [test:journey-shell red:journey-shell] <- src/components/journey/journey-flag.tsx, src/components/layout/app-shell.tsx, src/lib/journey/journey-on.ts, src/lib/not-found-mark.ts
+scripts/journey-tickets.test.mts [test:journey-tickets red:journey-tickets] <- src/app/positions/loading.tsx, src/app/updown/history/history-ghost.tsx, src/app/updown/history/loading.tsx, src/components/journey/route-ghost.tsx, src/components/journey/tickets/tickets-ghost.tsx, src/app/positions/positions-ghost.tsx
+scripts/layout-staleness.test.mts [test:layout-staleness] <- src/components/layout/app-shell.tsx
+scripts/marketing-optout.test.mts [test:marketing-optout red:marketing-optout] <- src/components/layout/app-shell.tsx
+scripts/measure-system.test.mts [test:measure] <- src/app/updown/history/history-ghost.tsx, src/app/updown/updown-ghost.tsx, src/components/layout/app-shell.tsx, src/components/ui/back-link.tsx
+scripts/offline-neutral.test.mts [test:offline-neutral red:offline-neutral] <- src/components/layout/app-shell.tsx
+scripts/privacy-notice.test.mts [test:privacy-notice] <- src/components/layout/app-shell.tsx
+scripts/sell-price-guard.test.mts [test:sell-price-guard red:sell-price-guard] <- src/components/layout/app-shell.tsx
+scripts/shell-boundary.test.mts [test:shell-boundary] <- src/components/layout/app-shell.tsx
+scripts/simple-journey-flag.test.mts [test:simple-journey-flag red:simple-journey-flag] <- src/components/layout/app-shell.tsx
+scripts/social-panel.test.mts [test:social-panel red:social-panel] <- src/components/layout/app-shell.tsx
+scripts/stacking-contract.test.mts [test:stacking] <- src/components/layout/app-shell.tsx
+scripts/ticker-honesty.test.mts [test:ticker-honesty] <- src/components/layout/app-shell.tsx
+scripts/visual-pass-r3c.test.mts [test:visual-pass-r3c] <- src/components/layout/app-shell.tsx
+scripts/visual-pass-r4c.test.mts [test:visual-pass-r4c] <- src/app/markets/loading.tsx, src/app/results/loading.tsx, src/components/journey/tickets/tickets-ghost.tsx, src/app/positions/positions-ghost.tsx
+scripts/visual-pass-r4h.test.mts [test:visual-pass-r4h] <- src/components/layout/app-shell.tsx
+scripts/visual-pass-r4i.test.mts [test:visual-pass-r4i] <- src/components/layout/app-shell.tsx
+scripts/visual-pass-r4j.test.mts [test:visual-pass-r4j] <- src/app/live/loading.tsx, src/app/markets/[id]/loading.tsx, src/app/positions/loading.tsx, src/app/updown/history/history-ghost.tsx, src/app/updown/history/loading.tsx, src/app/updown/loading.tsx, src/app/updown/updown-ghost.tsx, src/app/wallet/deposit/deposit-ghost.tsx, src/app/wallet/deposit/loading.tsx, src/app/wallet/deposit/return/loading.tsx, src/components/journey/route-ghost.tsx, src/components/journey/tickets/tickets-ghost.tsx, src/components/layout/app-shell.tsx, src/components/ui/not-found-mark.tsx, src/lib/not-found-mark.ts
+scripts/visual-pass-r4k.test.mts [test:visual-pass-r4k red:visual-pass-r4k] <- src/app/markets/[id]/loading.tsx, src/app/updown/[roundId]/loading.tsx
+scripts/visual-pass-r5b.test.mts [test:visual-pass-r5b] <- src/app/wallet/money-bar-ghost.tsx, src/app/wallet/wallet-ghost.tsx
+scripts/visual-pass-r5c.test.mts [test:visual-pass-r5c] <- src/app/wallet/deposit/loading.tsx, src/components/layout/app-shell.tsx
+scripts/visual-pass-r5d.test.mts [test:visual-pass-r5d] <- src/app/markets/[id]/loading.tsx, src/app/positions/loading.tsx, src/app/updown/history/history-ghost.tsx, src/app/updown/history/loading.tsx, src/app/updown/loading.tsx, src/app/updown/updown-ghost.tsx, src/app/wallet/deposit/deposit-ghost.tsx, src/app/wallet/deposit/loading.tsx, src/app/wallet/deposit/return/loading.tsx, src/components/journey/route-ghost.tsx, src/components/journey/tickets/tickets-ghost.tsx, src/components/layout/app-shell.tsx, src/lib/journey/journey-on.ts, src/lib/not-found-mark.ts
+scripts/wallet-freeze.test.mts [test:wallet-freeze] <- src/components/layout/app-shell.tsx
+scripts/withdrawn-features.test.mts [test:withdrawn-features] <- src/app/wallet/loading.tsx, src/app/wallet/wallet-ghost.tsx
+
+NPM: red:enter-where-pressed red:journey-funnel red:journey-shell red:journey-tickets red:marketing-optout red:offline-neutral red:sell-price-guard red:simple-journey-flag red:social-panel red:visual-pass-r4k test:board-discovery test:client-graph-safe test:design-frozen test:enter-where-pressed test:erasure test:install-invite test:journey-funnel test:journey-shell test:journey-tickets test:layout-staleness test:marketing-optout test:measure test:offline-neutral test:privacy-notice test:sell-price-guard test:shell-boundary test:simple-journey-flag test:social-panel test:stacking test:ticker-honesty test:visual-pass-r3c test:visual-pass-r4c test:visual-pass-r4h test:visual-pass-r4i test:visual-pass-r4j test:visual-pass-r4k test:visual-pass-r5b test:visual-pass-r5c test:visual-pass-r5d test:wallet-freeze test:withdrawn-features

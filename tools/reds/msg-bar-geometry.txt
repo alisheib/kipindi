@@ -1,0 +1,13 @@
+fix(red:bar-geometry): sort-summary-unbound re-anchored after be4fb670 - the tap floor turned the element's min-w-0 into min-w-[var(--tap-min)], so the declared anchor resolved nowhere and test:red-anchors §3 failed on main
+
+The mutation is unchanged in what it plants: `w-full` dropped from the query bar's sort summary, so the summary is no
+longer bound to its column (the 44px OVERLAP the driver measured at /markets, 360 sw). be4fb670 ("mobile: D79's floor,
+third placement") replaced `min-w-0` with `min-w-[var(--tap-min)]` on that element; the new anchor is that string,
+once in src/components/ui/query-bar.tsx. A dated note in the declaration says so.
+
+Proof on OMEGA-COMPILE01 (2026-10-08, on main f89dcdb9): test:red-anchors §3 sort-summary-unbound resolves exactly
+once (it failed before). Owed: red:bar-geometry itself needs a server, and on main it first refuses on
+qa:bar-geometry's own red at /proposals (an untouched tree) - whether the dropped w-full still overlaps with the tap
+floor in place is measured when that is cleared.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>

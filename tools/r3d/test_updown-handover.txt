@@ -1,0 +1,139 @@
+﻿
+── 1 · an UNSETTLED round has no handover at all ──
+  ok   1.open a open round reports phase "none"
+  ok   1.openb …and offers nothing to count or navigate to
+  ok   1.locked a locked round reports phase "none"
+  ok   1.lockedb …and offers nothing to count or navigate to
+  ok   1.closing a closing round reports phase "none"
+  ok   1.closingb …and offers nothing to count or navigate to
+  ok   1.confirming a confirming round reports phase "none"
+  ok   1.confirmingb …and offers nothing to count or navigate to
+  ok   1.5 ⭐ …while the same inputs on a RESOLVED round are not idle
+  ok   1.6 ⭐ VOID hands over exactly like a decision does — a refund is not a dead end (rule 7)
+
+── 2 · the HOLD: the result is held before the handover speaks ──
+  ok   2.1 ⭐ one millisecond after the result, the phase is `hold`
+  ok   2.2 …and the pod is given nothing to show, so the result stands alone
+  ok   2.3 the hold runs to its last millisecond
+  ok   2.4 ⭐ and ENDS exactly at settle + HANDOVER_HOLD_MS, to the millisecond
+  ok   2.5 ⭐ the hold FOLLOWS `settledAtMs` — an older settle is already past it at the same `now`
+  ok   2.6 ⛔ a legacy row with no settle instant skips the hold rather than holding for ever
+  ok   2.7 the hold is a real, sane, named constant — and it lives with the other dwell times
+  ok   2.8 ⭐ `holdMs` overrides it — the hold is a parameter, not a hardcode
+
+── 3 · NO SUCCESSOR IS POSSIBLE — say so, never invent a clock ──
+  ok   3.1 ⭐ a stopped chain reports `unavailable`
+  ok   3.2 ⛔ with NO target and NO countdown — a paused chain must not promise a next match
+  ok   3.3 ⛔ and it is never `ready`, so nothing navigates into a chain that is not running
+  ok   3.4 ⭐ `chainRunning:false` WINS over a successor that exists and is open
+  ok   3.5 …while the identical call on a RUNNING chain is not unavailable
+
+── 4 · COUNTING — the successor's open is genuinely still ahead (1.3% of settles) ──
+  ok   4.1 ⭐ phase is `counting`
+  ok   4.2 ⭐ and the target is the OPEN INSTANT, to the millisecond
+  ok   4.3 the digits tick
+  ok   4.4 ⛔ but it is NOT ready — nothing may navigate to a round that has not opened
+  ok   4.5 ⛔ the target FOLLOWS the instant — a 72-minute gap counts 72 minutes
+  ok   4.6 ⭐ SLIP · a boundary that moves later re-targets exactly, with no accumulation
+  ok   4.7 ⭐ a PRE-CREATED successor still counts to its open and is NOT ready
+  ok   4.8 ⛔ a counting target is never at or before `now` (E-99 rule 3)
+
+── 5 · WAITING — a boundary has passed and no round is there yet ──
+  ok   5.1 ⭐ phase is `waiting` — the instant passed but no round exists
+  ok   5.2 ⛔ `—:—`, never a dead 0:00: no target and not counting
+  ok   5.3 ⛔ AND NOT READY. This is the whole reason `ready` is not `now >= opensAt` — a boundary can arrive minutes before the round that starts there, and navigating then is a navigation to nothing
+  ok   5.4 no instant at all is also `waiting`, not a fabricated countdown
+  ok   5.5 …while the identical call with a real successor row is not waiting
+
+── 6 · LIVE — the successor is ALREADY OPEN. 98.6% of real settles ──
+  ok   6.1 ⭐ THE COMMON CASE · phase is `live`, not a negative countdown
+  ok   6.2 ⭐ and it IS ready — the surface may hand the screen over now
+  ok   6.3 ⛔ PROOF A NAIVE COUNTDOWN WOULD BE NEGATIVE — the open is behind us
+  ok   6.4 ⭐ nothing is counted — the next match's clock belongs to the next match
+  ok   6.5 ⛔ …and `live` is unreachable without a real successor row
+  ok   6.6 ⭐ the phase does not depend on how far in the past the open is — a 306s-old successor (the measured minimum) hands over exactly like a 76s-old one
+
+── 7 · `ready` is the ONE gate on navigation, and it is strict ──
+  ok   7.x not ready · unsettled
+  ok   7.x not ready · inside the hold
+  ok   7.x not ready · chain stopped
+  ok   7.x not ready · counting to a future open
+  ok   7.x not ready · pre-created but not open
+  ok   7.x not ready · boundary passed, no row
+  ok   7.x not ready · no instant at all
+  ok   7.8 ⭐ …and the ONE shape that IS ready is a real, open successor on a running chain
+  ok   7.9 ⭐ over 60 input combinations: `ready` implies an existing, open successor on a running chain, and `counting` implies a target strictly in the future
+  ok   7.10 …and the sweep actually REACHED the ready state, so 7.9 is not vacuous
+
+── 8 · the surfaces are WIRED to it (asserting the call, never the symbol) ──
+  ok   8.1 ⭐ the board card calls the rule
+  ok   8.2 ⭐ the round-page pod calls the rule
+  ok   8.3 ⭐ the auto-advance calls the rule — not a fourth copy of the decision
+  ok   8.4a ⭐ the board card feeds the rule its hold anchor…
+  ok   8.4a2 ⭐ …which is `useHoldAnchor` over the server's `resolvedAtMs` prop
+  ok   8.4b ⭐ …which the board page fills from the server payload
+  ok   8.4c ⭐ the pod feeds the rule its hold anchor…
+  ok   8.4c2 ⭐ …over the server's `handover.settledAtMs`
+  ok   8.4c3 ⭐ and the auto-advance shares the SAME anchor — a hold that ended here before it ended in the pod would navigate while the ticker was still counting
+  ok   8.4c4 ⛔ every anchor is fed a ticking server-anchored clock, never the render-time prop
+  ok   8.4d ⭐ all THREE round-page consumers read `round.resolvedAtMs` — the poll bound, the pod and the auto-advance
+  ok   8.4d-control · a consumer reading a DIFFERENT field is detected
+  ok   8.4e ⛔ and NO surface reaches for the device clock to decide a handover phase
+  ok   8.5 ⛔ and no surface re-derives the successor's instants — they come from the payload
+  ok   8.6 ⭐ the server resolves a successor and sends it
+  ok   8.7 ⭐ the ROUND DETAIL path resolves one too — the surface that would have shipped broken
+  ok   8.8 ⛔ the successor is matched on the INSTANT, not on `roundNumber + 1` — a skipped boundary makes the numbers lie about adjacency
+  ok   8.9 ⛔ and when no row matches, the instant is the chain's own persisted boundary
+  ok   8.4d1 ⭐ the anchor SEEDS on first sight and only stamps on an observed transition — otherwise opening an already-settled round would hold a result nobody watched arrive
+  ok   8.4d2 ⛔ …and stamps at most ONCE per round, so a poll cannot restart the hold
+  ok   8.4d3 ⭐ the stamp is taken DURING RENDER, so the hold governs the very render it is for
+  ok   8.4d4 ⛔ an UNOBSERVED settle falls back to the server instant, so a stale round is not held at all
+  ok   8.4e1 ⭐ the clock SUBSCRIBES to `visibilitychange`, so a tab that was hidden lands on the right phase on its first frame back
+  ok   8.4e2 ⛔ …by RE-READING the instant, never by counting missed ticks (no accumulation)
+  ok   8.4e3 ⛔ and it is paired with exactly one removal, so a remount cannot stack listeners
+  ok   8.4f1 ⭐ the board card's `now` is the ticking server clock…
+  ok   8.4f2 ⛔ …and is NEVER re-derived from the clamped countdown again
+  ok   8.10 ⛔ no surface hardcodes the hold — it is the named constant or nothing
+  ok   8.10b ⭐ the hold is defined beside the other dwell times, not in the rule that uses it
+  ok   8.10c ⛔ …and it is the SHORTEST of them — the successor is already ~91s old, so a generous hold is betting time taken from the player, not generosity
+  ok   8.11 ⭐ the win celebration renders in the kit <Modal>…
+  ok   8.11b ⭐ …which takes `useModalLock`…
+  ok   8.11c ⭐ …which is exactly the lock the auto-advance defers to, so a 7s celebration is never cut short by a 2.5s hold
+  ok   8.11 ⭐ the auto-advance uses router.replace
+  ok   8.12 ⛔ …and never router.push
+  ok   8.13 ⭐ the new URL carries `?from=` so the last round's result travels with the player
+  ok   8.14 ⭐ and the strip's outcome is read from the DATABASE, never from that query string
+  ok   8.15 ⛔ the strip only renders for a GENUINE predecessor — same chain, and it closed exactly where this round opened
+  ok   8.16 ⭐ an open overlay defers the redirect — read from the lock `useModalLock` sets
+  ok   8.17 ⭐ an in-flight bet defers it too
+  ok   8.17b ⭐ and so does having scrolled into the detail
+  ok   8.17c ⛔ …by a NAMED threshold, never a number typed into the condition
+  ok   8.18 ⛔ …and the bet hook actually PUBLISHES that flag while a place is pending
+  ok   8.19 ⛔ reference-counted, so one card settling cannot clear another's in-flight bet
+  ok   8.20 ⭐ the round-page pod no longer falls through to a literal 00:00
+  ok   8.21 ⭐ nor does the board card
+  ok   8.22 ⭐ the card's header word comes from the round's state, not from `!bettable`
+
+── 9 · the copy exists in all three languages, and stays on one line ──
+  ok   9.udNextMatchIn present in EN + SW + ZH
+  ok   9.udNextMatchLive present in EN + SW + ZH
+  ok   9.udNextMatchSoon present in EN + SW + ZH
+  ok   9.udNextMatchNone present in EN + SW + ZH
+  ok   9.udNextMatchLiveBody present in EN + SW + ZH
+  ok   9.udNextMatchCountingBody present in EN + SW + ZH
+  ok   9.udNextMatchSoonBody present in EN + SW + ZH
+  ok   9.udNextMatchNoneBody present in EN + SW + ZH
+  ok   9.udNextMatchGo present in EN + SW + ZH
+  ok   9.udLastRound present in EN + SW + ZH
+  ok   9.udLastRoundView present in EN + SW + ZH
+  ok   9.len ⭐ every pod caption is ≤26 chars in every locale, so the pod cannot reflow
+  ok   9.closed ⛔ no handover string calls a finished round `closed`
+
+── 10 · the board no longer lands on a chain that is not running ──
+  ok   10.1 ⭐ the default duration prefers a RUNNING chain
+  ok   10.2 ⭐ …and so does the default asset
+  ok   10.3 ⛔ an EXPLICIT ?d= still wins, so a player who asked for a stopped length is told it is idle rather than silently moved
+  ok   10.4 ⛔ and the fallback survives an all-stopped platform rather than going dark
+  ok   10.5 ⛔ the TABS still offer every length — a chain's state says whether MORE rounds will appear, not whether the ones there can be played (E-67)
+
+ALL PASS — 117 passed, 0 failed

@@ -1,0 +1,93 @@
+PASS 1: the card renders a share control
+PASS 1: …in its COMPACT variant
+PASS 1: …carrying the market it shares
+PASS 1: it sits in the footer row with Details, right-aligned
+PASS 2: the card imports the SHARED control, not a local copy
+PASS 2: the market-share dialog lives in share-button.tsx — /src/components/markets/position-share.tsx, /src/components/markets/share-button.tsx
+PASS 2: ⭐ the CARD builds no share link, no clipboard write and no native sheet — it delegates
+PASS 3: the compact trigger takes the `.mcardp-share` class
+PASS 3: ⛔ the compact variant renders no text label
+PASS 3: the glyph is 13px, which fits the row as it is
+PASS 3: ⛔ `.mcardp-share` sets no height that could raise the row — .mcardp-share {
+  
+
+
+
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  
+
+
+
+
+
+
+
+
+
+
+
+  align-self: stretch
+PASS 4: the reach is an OUT-OF-FLOW pseudo-element — the target grows, the box does not — .mcardp-share::after {
+  content: "";
+  position: absolute;
+  
+
+
+
+
+
+
+
+  left: -24px;
+  right: -4px;
+  top: -9px;
+
+PASS 4: …reaching above and below the row
+PASS 4: 🔴 `.mcardp-details` declares its own positioning context — .mcardp-details { position:relative; display:inline-flex; align-items:center; justify-content:flex-end; gap:4px; font-fa
+PASS 4: 🔴 …and so does `.mcardp-share`
+PASS 4: ⛔ it does not span the row and swallow Details' clicks — .mcardp-share::after {
+  content: "";
+  position: absolute;
+  
+
+
+
+
+
+
+
+  left: -24px;
+  right: -4px;
+  top: -9px;
+  bottom: -14px;
+}
+
+
+
+
+
+
+
+
+.ud-pod 
+PASS 5: the trigger is named from the dict
+PASS 5: …and announces that it opens a dialog
+PASS 5: 🔴 the trigger stops the card's own click
+PASS 6: both colours were found in the stylesheet — details=oklch(72% 0.110 195) shareHover=oklch(98% 0.012 268)
+PASS 6: 🔴 share's HOVER colour is not Details' colour — details=oklch(72% 0.110 195) · share:hover=oklch(98% 0.012 268)
+PASS 6: ⭐ …and it is the control's own hover language (`--text`)
+PASS 6: share still has a distinct hover at all (it is not simply unstyled)
+PASS 6: the glow is paint-only — a filter, never a box that could raise the 17px row
+PASS 6: ⛔ …and it introduces no height, margin or padding on hover
+PASS 6: ⚠️ `.mcardp-share` still declares its own positioning context
+PASS 7: ⛔ no <Link> wraps the card body
+PASS 7: the card returns ONE <article> for every phase
+PASS 7: exactly one stretched link opens the market
+PASS 7: Details is a real link in every phase, never an aria-hidden span
+PASS 7: control · the old closed-card root IS detected
+
+card-share: 31 passed, 0 failed
+

@@ -1,0 +1,22 @@
+PASS 1: ⛔ the referral link is a <textarea>, not a single-line <input>
+PASS 1: …read-only, so it is a value to copy and never a field to edit
+PASS 1: ⛔ …and it breaks a URL, which has no spaces to wrap at
+PASS 1: …it keeps the accessible name that matches the visible caption
+PASS 1: ⭐ POSITIVE CONTROL — the control is fed the real link
+PASS 1: ⛔ the single-line Input is no longer used for the link
+PASS 2: the field starts at one row and grows from content
+PASS 2: …re-measuring on every width change, not once on mount
+PASS 2: ⛔ …and it collapses BEFORE measuring, or the field can only ever grow — collapse@605 measure@840
+PASS 2: ⛔ …and it adds the borders back, because height sets the BORDER box
+PASS 2: …with its own scrollbar suppressed, since the box always fits the text
+PASS 3: ⛔ the dialog's link line no longer truncates
+PASS 3: …it wraps instead
+PASS 3: ⚠️ the text column may shrink below its content (min-w-0)
+PASS 3: ⚠️ …and the 36px plate beside it may not (shrink-0)
+PASS 3: ⭐ POSITIVE CONTROL — the wrapping line is the one that renders the market URL
+PASS 4: ⭐ the field is a block on text-body-sm's own line, 12px padding and a 1px border — no leading of its own — block w-full resize-none overflow-hidden rounded-lg border border-border bg-bg-inset px-3 py-2 font-mono text-body-sm font-medium text-text break-all brand-focus hover:border-border-strong transition-colors
+PASS 4: …and that one line is the copy button's height: line + 2 × padding + 2 × border = the btn-md control — 18 + 2×12 + 2 = 44 vs --h-control-md 44
+PASS 4: ⭐ CONTROL — the field as it shipped (inline, leading-[1.5]) is refused
+
+19 passed, 0 failed
+

@@ -1,0 +1,4 @@
+qa:classic-shell-parity — compare — http://localhost:3041
+  tree F:\kipindi-s7wp1\ @ c37b5e47 (clean) · forks from origin/main at 48842adb · rollout OFF
+  the book's normalisers ON: none (this file's switches) · candidates: market-ids, time-left, eat-dates, relative-times, chart-paths, avatar-ids, chunk-hashes
+REFUSED — C:/Users/asheib/AppData/Local/Temp/claude/C--Users-asheib/0e745525-51fe-4451-ace7-c9987576fc15/scratchpad/s7wp1/stub-v2.json is not a v3 kp-classic-shell-parity capture of this matrix (kind=kp-classic-shell-parity, version=2, captured at c37b5e47). Capture a v3 baseline into a NEW file at the base VODACOM-PLAN names for it (v3: §0j, S7-PLAN WP1 step 6; v2: §0i, S6 A8 and A18).

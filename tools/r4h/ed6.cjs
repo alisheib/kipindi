@@ -1,0 +1,12 @@
+const fs = require('fs');
+const p = 'F:/kipindi-r4h/src/app/page.tsx';
+let s = fs.readFileSync(p, 'utf8');
+const a = s.indexOf('  return {\r\n  // ⭐ THE TAB SPEAKS');
+const b = s.indexOf('  openGraph: { ...ROOT_OPEN_GRAPH, url: "/" },\r\n  };\r\n}');
+if (a < 0 || b < 0) throw new Error('anchors');
+const head = s.slice(0, a + '  return {\r\n'.length);
+const mid = s.slice(a + '  return {\r\n'.length, b + '  openGraph: { ...ROOT_OPEN_GRAPH, url: "/" },\r\n'.length);
+const tail = s.slice(b + '  openGraph: { ...ROOT_OPEN_GRAPH, url: "/" },\r\n'.length);
+const mid2 = mid.split('\r\n').map((l) => (l ? '  ' + l : l)).join('\r\n');
+fs.writeFileSync(p, head + mid2 + tail);
+console.log('reindented');

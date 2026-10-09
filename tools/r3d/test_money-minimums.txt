@@ -1,0 +1,60 @@
+﻿[audit] WALLET payments.control.updated test PaymentControlPlane#global
+
+── §1 · the deposit minimum is enforced
+PASS 1.0 the rule's one home says 1,000 (and the stake floor agrees)
+PASS 1.1 ★ TZS 999 is refused, and leaves no row
+[audit] WALLET deposit.initiated mm_dep Transaction#txn_bff8ce9689169e05967a8289
+[audit] WALLET deposit.dispatch mm_dep User#mm_dep
+[audit] WALLET deposit.confirmed mm_dep Transaction#txn_bff8ce9689169e05967a8289
+node.exe : [email] sendEmailToUser skipped — no email for user mm_dep… (user.email=null, phone=+25574…)
+At line:1 char:1
++ & "C:\Program Files\nodejs/node.exe" "C:\Program Files\nodejs/node_mo ...
++ ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: ([email] sendEma... phone=+25574…):String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+ 
+PASS 1.2 ★ TZS 1,000 exactly is accepted
+PASS 1.3 the old minimum, TZS 500, is refused
+PASS 1.4 the officer's manual deposit holds the same floor, and says so
+
+── §2 · every sentence that teaches the minimum is filled from the constant
+PASS 2.1.en · the deposit and withdraw hints are {min}/{max} templates — no minimum typed into the dictionary
+PASS 2.2.en · filled, the deposit hint states 1,000 and leaves no brace
+PASS 2.1.sw · the deposit and withdraw hints are {min}/{max} templates — no minimum typed into the dictionary
+PASS 2.2.sw · filled, the deposit hint states 1,000 and leaves no brace
+PASS 2.1.zh · the deposit and withdraw hints are {min}/{max} templates — no minimum typed into the dictionary
+PASS 2.2.zh · filled, the deposit hint states 1,000 and leaves no brace
+PASS 2.3 ★ the assistant's prompt states the SAME bounds the form enforces
+PASS 2.4 the deposit field fills its hint from the constants and passes the minimum to the input
+
+── §3 · a stored 500 cannot reach any reader
+[audit] ADMIN market.created test Market#mkt_ebf7aa6232a6618fb97b
+PASS 3.0 control · the planted values really are stored (the raw reader sees 500)
+PASS 3.1 ★ the global read floors to 1,000
+PASS 3.2 ★ a per-market override of 500 reads 1,000
+PASS 3.3 ★ the Up & Down product default reads 1,000
+PASS 3.4 ★ a chain stored at 500 resolves to 1,000
+PASS 3.5 the one resolver the board, the house engine and the money path read says 1,000
+PASS 3.6 ★ the money path refuses a 999 stake on that market
+[audit] BET market.position.opened mm_bet Position#pos_99814602ec70abdfbbfe
+PASS 3.7 …and takes 1,000
+PASS 3.8 the floor lifts the max to at least the min, and a sane pair passes through
+PASS 3.9 the Up & Down rulebook quotes Up & Down's own (floored) bounds
+
+── §4 · the withdrawal minimum is derived, and stated truly
+PASS 4.1 ★ TZS 1,015 at the live 1.5% fee — the smallest amount whose net still clears TZS 1,000 (the fee rounds: 1,015 − 15)
+PASS 4.2 …1,000 with no fee, and it follows the fee (1,111 at 10%)
+PASS 4.3 it is the payout floor's own arithmetic, never a second copy
+PASS 4.4 the withdraw screen's hint and input take the derived figure
+PASS 4.5 the server's refusal states the same figure
+PASS 4.6 the confirm step checks the same figure before it opens
+PASS 4.7 the wallet's Limits tab states it too
+PASS 4.8.en · filled, the withdraw hint says 1,015 and leaves no brace
+PASS 4.8.sw · filled, the withdraw hint says 1,015 and leaves no brace
+PASS 4.8.zh · filled, the withdraw hint says 1,015 and leaves no brace
+
+── §5 · the other doors that name a minimum
+PASS 5.1 an invite programme's minimum bet: 0 (none) or a real stake — never a figure under the minimum
+PASS 5.2 the dev stress harness clamps at the platform minimum
+
+money-minimums: 35 passed, 0 failed

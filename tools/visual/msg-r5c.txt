@@ -1,0 +1,70 @@
+Visual pass round 5 (R5-C): the second gold audit — gold only where money was earned, every other highlight in the brand's own blue, identity in metal, and a census that fails on any new gold use until it is ruled
+
+From round 5's read of 88ee1a42 (tiles 281–333's gold list and the earlier audit's leftovers). One rule, written into
+the suite and applied file by file (88 files, 431 gold sites, each ruled in the suite's REGISTRY):
+- Money earned is gold: payout, celebration, resolved seal, WIN, a granted bonus, commission above 0 — and, by D1,
+  §8a and §M3a, the bet/sell commits, the live balance and the deposit door.
+- A highlight that is not money takes the BRAND family (--brand-300 ink 10.0:1, --brand-400 marks 7.0:1, --brand-500
+  rings and fills 5.0:1) — already the product's "this one": the active pill, the selected glow, the rail's unread dot,
+  the focus ring, the link ink.
+- Identity (tier, rank, streak, achievement, assets) is metal (--metal-gold, 8.4:1), never the money ink.
+- Words keep their §B11 tone; amber only where somebody must act (its gilt paint is the owner's token, F3).
+
+Fixed, with their siblings:
+- The notifications page's unread dot (gold → brand, as the rail's); the journey bell's dot and wash.
+- /agent: one tile treatment for its three facts, the fee box in text ink, step 5 a royal disc, six notices neutral
+  (only "an officer asked for one more thing" stays amber); /agent/apply, /agent/status, the agent dashboard (gold only
+  when commission > 0), the Lipa panel's number and fee.
+- /proposals: eyebrow subtle, hero info, coming-soon box royal, Create primary; the proposal page's "view resolved
+  market" a ghost button.
+- /results: the notable card's crown and "MATOKEO MASHUHURI" brand on a royal edge; the page glyph subtle. The resolved
+  pill keeps the seal (allowed, guarded).
+- /fairness: the numerals take the list's ink in R4-E's face (R4-E's measured alignment kept); step 4 a brand ring.
+- Badges: the ring brand-500, the count brand-300, the coin metal. The KYC stepper's current step brand.
+- The RG pending-increase box: the kit Callout (neutral, clock glyph, 13px — R4-I's RG notice size), words unchanged;
+  the reality check without gold (rail, clock, minutes); the account's COOLED_OFF chip neutral.
+- The onboarding primer: no gilt corners; progress strip, step bars and pager dot brand; eyebrow subtle; "drag" and
+  "share" brand.
+- The password section: key and eyebrow subtle, the kit primary + ghost Save pair, two toasts factual.
+- Uploads, consent and install glyphs brand; leaderboard podium #1, hot-streak chip and the performance streak chain
+  metal; the performance best-win crest gold only with a win.
+- Wallet: balance eyebrow subtle; the dormant bonus card neutral with brand progress (D5); the dormant cashback promo's
+  tag neutral and its CTA primary. D1: "Confirm deposit" / "Confirm withdrawal" primary, the deposit loading ghost's
+  confirm brand (in the shared DepositGhost since R5-D), "you receive" in text ink, four validation toasts factual.
+- The wallet result modal: pending/in review royal info; reversed, cancelled and held a new slate neutral variant;
+  failed danger. The exact "payout if win" on an unsettled position in text ink (§B12).
+- Invite and agent share buttons primary; Earned figure and dial gold only once earned; a paying friend's chip success.
+- The resolution panel and round page: heading and evidence glyphs subtle, the quote rule the market page's border; the
+  seal keeps its gilt. The classic dial's range connectors neutral. global-error: "Try again" primary, the RG link
+  brand (the mark's needle keeps its gilt). The landing's eyebrow tick brand. Comments: report toast factual, "hidden"
+  neutral. Source of funds: "under review" royal pending.
+- Kit: Callout's gilt boxes → info; PageHeader, PageHero, Toggle and SubmitButton lose `gold`; `.gilt-eyebrow` the
+  eyebrow ink, `.gilt-rule` a border line; ::selection and the nav-progress glow brand; the closing-soon pill and the
+  hero hairline neutral; carousels' pips and arrows brand; CLOSED words the royal word ink; GiltCorner takes an `ink`
+  (the legal header's corners claret, §B4).
+- The "INAKUJA" tag is neutral in page bodies and the journey; classic chrome keeps its tint (frozen; owner item).
+
+Allowed and pinned (REFUTED as defects): the resolved seal, TippingBar's gilt needle (§B1a), the empty states' single
+gold accent (§C7), WIN pills.
+
+Guards: test:visual-pass-r5c (91 checks) — §1 a census ratchet (a new gold use anywhere in player code fails until
+ruled and registered), §2–§7 the items, the one accent, unearned money, the warning family, sanctioned gold that must
+stay, the owner pins; test:gold-is-money extended (45: the leaderboard and badge icons join the identity list, the
+money aliases join its token pattern, §2b the coin's rules are metal). Mutation proof: 59 planted, 59 caught on the
+named check, 59/59 restored byte-identical. Re-pins (each with its reason): design-frozen, spacing-scale (−1: the RG
+box's hand-rolled `gap-2.5` left for the kit Callout; with R5-B's −1, 453), eyebrow-roles (8 keys re-signed, roles
+unchanged), the measure anchor agent-fact-tile-pads-14, journey-shell 7.cluster and 8.poll.bar, r4j 1.4/1.4′/5.7, r4e
+7.2, and two e2e drives that now find the deposit button by its words.
+
+Merged onto R5-B + R5-D: the deposit ghost's confirm moved with R5-D's DepositGhost (its stale "gold confirm" comment
+too); the primer keeps R5-B's dock padding and both notes; the spacing ratchet carries both removals.
+
+Owner items (not changed): the warning token's paint (an amber off gold's hue proposed), classic chrome's remaining gold
+(rail/header dots, bell, language tick, avatar menu, ticker separator, INAKUJA), the claret rule's gold midpoint, the
+legal RG links (ship with the next policy version), and four questions (landing totals, §C7's accent, the crest's
+chroma, §C5's flames).
+
+Classic viewers see the page-body changes above; the frozen chrome (header nav, rail, bell, language tick, avatar
+menu, ticker, capsule, footer) is unchanged.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>

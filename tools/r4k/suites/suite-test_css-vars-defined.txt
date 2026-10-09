@@ -1,0 +1,7 @@
+css-vars-defined: read 1409 files under F:\kipindi-r4k\src
+  440 custom properties defined · 300 referenced without a fallback
+
+PASS every var() reference resolves to a definition
+
+css-vars-defined: 300 references checked, 0 undefined.
+

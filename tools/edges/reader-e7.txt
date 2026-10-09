@@ -1,0 +1,81 @@
+You are one of several strict tile readers for 50pick's visual pass for Vodacom, reading the journey's EDGE SCENARIOS
+(a player on a break, a self-excluded player, the longest name and title, Slow 3G loading, not-found pages, odd
+viewports, enlarged text, offline, an empty wallet). The owner's rule: only perfect visual AND logical results are
+accepted; nothing is deferred as "small".
+
+Read this file first, completely, with the Read tool — it is your instructions, and it points you to two more you must
+read: C:/Users/asheib/AppData/Local/Temp/claude/C--Users-asheib/0e745525-51fe-4451-ace7-c9987576fc15/scratchpad/edges/read-brief-edges.md
+
+S = C:/Users/asheib/AppData/Local/Temp/claude/C--Users-asheib/0e745525-51fe-4451-ace7-c9987576fc15/scratchpad
+TILES = C:/Users/asheib/AppData/Local/Temp/claude/C--Users-asheib/0e745525-51fe-4451-ace7-c9987576fc15/scratchpad/edges/tiles  (the PNGs, plus qa-journey-edges.json — the log, one entry per tile, matched by `file`)
+
+Your tiles (64 of them). Open EVERY one, in this order, and read its log entry before judging it:
+385--s6-notfound--updown-udr_doesnotexist--player--en--390.png
+386--s6-notfound--updown-udr_doesnotexist--player--en--1280.png
+387--s6-notfound--does-not-exist--player--en--360.png
+388--s6-notfound--does-not-exist--player--en--390.png
+389--s6-notfound--does-not-exist--player--en--1280.png
+390--s6-notfound--markets-mkt_doesnotexist--player--zh--360.png
+391--s6-notfound--markets-mkt_doesnotexist--player--zh--390.png
+392--s6-notfound--markets-mkt_doesnotexist--player--zh--1280.png
+393--s6-notfound--updown-udr_doesnotexist--player--zh--360.png
+394--s6-notfound--updown-udr_doesnotexist--player--zh--390.png
+395--s6-notfound--updown-udr_doesnotexist--player--zh--1280.png
+396--s6-notfound--does-not-exist--player--zh--360.png
+397--s6-notfound--does-not-exist--player--zh--390.png
+398--s6-notfound--does-not-exist--player--zh--1280.png
+399--s7-viewports--root--player--sw--740x360.png
+400--s7-viewports--root--player--sw--768x1024.png
+401--s7-viewports--root--player--sw--1024x768.png
+402--s7-viewports--positions--player--sw--740x360.png
+403--s7-viewports--positions--player--sw--768x1024.png
+404--s7-viewports--positions--player--sw--1024x768.png
+405--s7-viewports--account--player--sw--740x360.png
+406--s7-viewports--account--player--sw--768x1024.png
+407--s7-viewports--account--player--sw--1024x768.png
+408--s7-viewports--market--player--sw--740x360.png
+409--s7-viewports--market--player--sw--768x1024.png
+410--s7-viewports--market--player--sw--1024x768.png
+411--s7-viewports--root--player--en--740x360.png
+412--s7-viewports--root--player--en--768x1024.png
+413--s7-viewports--root--player--en--1024x768.png
+414--s7-viewports--positions--player--en--740x360.png
+415--s7-viewports--positions--player--en--768x1024.png
+416--s7-viewports--positions--player--en--1024x768.png
+417--s7-viewports--account--player--en--740x360.png
+418--s7-viewports--account--player--en--768x1024.png
+419--s7-viewports--account--player--en--1024x768.png
+420--s7-viewports--market--player--en--740x360.png
+421--s7-viewports--market--player--en--768x1024.png
+422--s7-viewports--market--player--en--1024x768.png
+423--s7-viewports--root--player--zh--740x360.png
+424--s7-viewports--root--player--zh--768x1024.png
+425--s7-viewports--root--player--zh--1024x768.png
+426--s7-viewports--positions--player--zh--740x360.png
+427--s7-viewports--positions--player--zh--768x1024.png
+428--s7-viewports--positions--player--zh--1024x768.png
+429--s7-viewports--account--player--zh--740x360.png
+430--s7-viewports--account--player--zh--768x1024.png
+431--s7-viewports--account--player--zh--1024x768.png
+432--s7-viewports--market--player--zh--740x360.png
+433--s7-viewports--market--player--zh--768x1024.png
+434--s7-viewports--market--player--zh--1024x768.png
+435--s8-text130--root-text130--player--sw--360.png
+436--s8-text130--root-text130--player--sw--390.png
+437--s8-text130--positions-text130--player--sw--360.png
+438--s8-text130--positions-text130--player--sw--390.png
+439--s8-text130--account-text130--player--sw--360.png
+440--s8-text130--account-text130--player--sw--390.png
+441--s8-text130--root-text130--player--en--360.png
+442--s8-text130--root-text130--player--en--390.png
+443--s8-text130--positions-text130--player--en--360.png
+444--s8-text130--positions-text130--player--en--390.png
+445--s8-text130--account-text130--player--en--360.png
+446--s8-text130--account-text130--player--en--390.png
+447--s8-text130--root-text130--player--zh--360.png
+448--s8-text130--root-text130--player--zh--390.png
+
+Measure with PowerShell System.Drawing as the brief says (never estimate a position you can measure). Do not edit any
+file; do not run npm, servers or browsers. Your final message is the report the brief asks for — (1) tiles opened (must
+be 64) and the BLOCKED entries in your range, (2) FINDINGS (most visible first; LOGIC findings marked), (3) DOUBTS.
+Nothing else.

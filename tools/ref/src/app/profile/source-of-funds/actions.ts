@@ -1,0 +1,102 @@
+"use server";
+
+import { redirect } from "next/navigation";
+import { revalidatePath } from "next/cache";
+import { currentSession } from "@/lib/server/auth-service";
+import { signInPathForAction } from "@/lib/server/sign-in-path";
+import { db } from "@/lib/server/store";
+import { audit } from "@/lib/server/audit";
+import { notify } from "@/lib/server/notification-service";
+import { sendEmailToUser, sofSubmittedHtml } from "@/lib/server/email";
+import type { StoredSourceOfFunds } from "@/lib/server/store";
+
+export async function submitSourceOfFundsAction(formData: FormData) {
+  const session = await currentSession();
+  if (!session) redirect((await signInPathForAction()) as never);
+
+  const declaredSource = String(formData.get("declaredSource") ?? "") as StoredSourceOfFunds["declaredSource"];
+  const declaredOccupation = String(formData.get("declaredOccupation") ?? "").trim().slice(0, 200);
+  const declaredEmployer = String(formData.get("declaredEmployer") ?? "").trim().slice(0, 200) || null;
+  const declaredAnnualIncomeBand = String(formData.get("declaredAnnualIncomeBand") ?? "") as StoredSourceOfFunds["declaredAnnualIncomeBand"];
+  const declaredOther = String(formData.get("declaredOther") ?? "").trim().slice(0, 500) || null;
+
+  const validSources: StoredSourceOfFunds["declaredSource"][] = ["salary", "business", "savings", "investments", "inheritance", "other"];
+  const validBands: StoredSourceOfFunds["declaredAnnualIncomeBand"][] = ["under-12m", "12m-50m", "50m-200m", "over-200m"];
+
+  // Carry form values through error redirects so the player doesn't re-enter everything
+  const carry = `&src=${encodeURIComponent(declaredSource)}&occ=${encodeURIComponent(declaredOccupation)}&band=${encodeURIComponent(declaredAnnualIncomeBand)}${declaredEmployer ? `&emp=${encodeURIComponent(declaredEmployer)}` : ""}${declaredOther ? `&other=${encodeURIComponent(declaredOther)}` : ""}`;
+  // ⛔ THE KEY, NOT THE PROSE. `fail` used to put its English argument straight onto the query
+  // string, and the page rendered it verbatim — so every line below was read in English by a
+  // Swahili or Chinese player. The four field checks share one reason because they share one
+  // next step: complete the form.
+  const fail = (reason: string) => redirect(`/profile/source-of-funds?reason=${reason}${carry}`);
+  if (!validSources.includes(declaredSource)) fail("sof_incomplete");
+  if (!validBands.includes(declaredAnnualIncomeBand)) fail("sof_incomplete");
+  if (declaredOccupation.length < 2) fail("sof_incomplete");
+  if (declaredSource === "other" && (!declaredOther || declaredOther.length < 10)) {
+    fail("sof_incomplete");
+  }
+
+  // 🔴 An ACCEPTED declaration is EVIDENCE an officer acted on, and it gates
+  // deposits at TZS 1M / 5M-per-30-days. There is no history table, so an
+  // unconditional upsert let a player silently replace the accepted declaration
+  // with a different story — destroying what was accepted, nulling reviewerId and
+  // reviewedAt, and leaving the audit row referring to a record that no longer
+  // exists. PENDING (including after an officer asks for more info) and REJECTED
+  // stay freely editable, because the player must be able to correct and resubmit.
+  const existing = await db.sourceOfFunds.get(session.userId);
+  if (existing?.reviewStatus === "ACCEPTED") {
+    audit({
+      category: "COMPLIANCE",
+      action: "sof.overwrite_blocked",
+      actorId: session.userId,
+      targetType: "User",
+      targetId: session.userId,
+      payload: { attemptedSource: declaredSource, attemptedBand: declaredAnnualIncomeBand },
+    });
+    fail("sof_locked");
+  }
+
+  const record: StoredSourceOfFunds = {
+    userId: session.userId,
+    declaredSource,
+    declaredOccupation,
+    declaredEmployer,
+    declaredAnnualIncomeBand,
+    declaredOther,
+    reviewStatus: "PENDING",
+    reviewerId: null,
+    reviewedAt: null,
+    submittedAt: new Date().toISOString(),
+  };
+  await db.sourceOfFunds.upsert(record);
+
+  audit({
+    category: "COMPLIANCE",
+    action: "sof.submitted",
+    actorId: session.userId,
+    targetType: "User",
+    targetId: session.userId,
+    payload: { declaredSource, declaredAnnualIncomeBand },
+  });
+
+  // Dual-channel: in-app inbox + email — parity with KYC-submitted flow.
+  await notify({
+    userId: session.userId,
+    kind: "KYC",
+    titleEn: "Source of funds received",
+    titleSw: "Chanzo cha fedha kimepokelewa",
+    bodyEn: "Thanks — your source-of-funds declaration is under review. We'll let you know once it's cleared.",
+    bodySw: "Asante — taarifa yako inakaguliwa. Tutakujulisha ikikamilika.",
+    href: "/profile/source-of-funds",
+  });
+  sendEmailToUser(session.userId, (email) => ({
+    to: email,
+    subject: "Source of funds received · Chanzo cha fedha kimepokelewa",
+    html: sofSubmittedHtml(),
+    tag: "compliance",
+  })).catch(() => {});
+
+  revalidatePath("/profile/source-of-funds");
+  redirect("/profile/source-of-funds?saved=1");
+}

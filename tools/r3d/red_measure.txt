@@ -1,0 +1,28 @@
+﻿RED harness — npm run test:measure (B7 measure + landmark)
+
+  CAUGHT           1. page-renders-its-own-main
+        a page renders its own <main> inside the shell's — invalid HTML, two landmarks, and the skip-link resolves to the outer one
+        → FAIL no page renders its own <main> — the shell owns that landmark — src/app/positions/page.tsx
+  CAUGHT           2. shell-main-demoted
+        the shell's own <main id=main-content> becomes a div, so every route loses its landmark and the skip-link dangles
+        → FAIL the shell still renders the skip-link target
+  CAUGHT           3. width-hand-typed-again
+        a migrated page hand-types a page width again; the ratchet must fail on an addition, not just hold a list
+        → FAIL no NEW hand-typed page width (>=500px) outside the ratchet list — src/app/results/page.tsx (max-w-[1280px])
+  CAUGHT           4. loading-tier-drifts
+        a page and its loading.tsx state different tiers — the 152px jump on every load that no test could see (B7 rule 3)
+        → FAIL every page and its loading.tsx state the same tier — /wallet (page=reading loading=form)
+  PROVEN BLIND     5. stripper-order-restored (+1 paired)
+        the SHARED decomment strips block comments FIRST again, so a /* inside a // comment swallows 7,581 characters across five files and the gate goes blind
+        gate reported ALL PASS with an allowlist entry deleted — it could not see the file
+  CAUGHT           6. help-contact-cards-pad-20
+        the /help contact cards go back to p-4: their icon and number stand at x153 under the hero's and the FAQ's words at x165 on a desktop, and x37 under x41 on a phone
+        → FAIL 8. /help: the contact cards and the quick links pad on the hero's edge, as the FAQ does
+  CAUGHT           7. agent-fact-tile-pads-14
+        an /agent fact tile drops back to the glass box's 14px, its words at x147 over the sections' x153
+        → FAIL 8. /agent: the three fact tiles pad as the sections under them do (p-4 over the glass box's 14px) — 2 tiles · 3 sec
+  CAUGHT           8. back-link-chevron-inset
+        the back link's chevron keeps its glyph's 3px side bearing, so its tip stands 3px inside the edge of the card it heads (x19 against 16)
+        → FAIL 8. the back link's chevron hands back its side bearing, so its tip sits on the edge the link heads — bearing 3px (t
+
+8/8 proven · 0 missed · 0 broken harness

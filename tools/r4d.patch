@@ -1,0 +1,784 @@
+diff --git a/package.json b/package.json
+index bd92616b7..2e4eca6ed 100644
+--- a/package.json
++++ b/package.json
+@@ -641,6 +641,7 @@
+     "red:journey-account": "tsx scripts/journey-account.test.mts --prove-red",
+     "test:journey-tickets": "tsx scripts/journey-tickets.test.mts",
+     "test:visual-pass-r3c": "tsx scripts/visual-pass-r3c.test.mts",
++    "test:visual-pass-r4d": "tsx scripts/visual-pass-r4d.test.mts",
+     "red:journey-tickets": "tsx scripts/journey-tickets.test.mts --prove-red",
+     "test:signoff": "tsx scripts/signoff.test.mts",
+     "test:proposal-evidence-age": "tsx scripts/proposal-evidence-age.test.mts",
+diff --git a/scripts/visual-pass-r4d.test.mts b/scripts/visual-pass-r4d.test.mts
+new file mode 100644
+index 000000000..97df7afaf
+--- /dev/null
++++ b/scripts/visual-pass-r4d.test.mts
+@@ -0,0 +1,312 @@
++/**
++ * ROUND 4 OF THE VISUAL PASS, HELPER D (2026-10-09) — every fix a later edit could silently undo, held, each beside a
++ * control or a plant that proves the check can fail.
++ *
++ *   npx tsx scripts/visual-pass-r4d.test.mts        (npm run test:visual-pass-r4d)
++ *
++ * The owner's rule (Ali, 2026-10-08): only perfect visual and logical results. Each section names the round-4 tiles the
++ * defect was measured on (S/visual/tiles-r4) and the file that fixes it; the measurements are in those files' notes.
++ *   §1 the Up & Down chart's price scale speaks the page's price ("$2,896.04", `usd()`)
++ *   §2 the chart's controls keep one 12px rhythm on a phone, measured to the key's ink
++ *   §3 the round page's panel: the stake is money, the × note hangs like the ⓘ note, the quote stamp opens on a capital
++ *   §4 /live: a card's top row is 20px in either state; the market grid's gutter is a rung of the space scale
++ *   §5 the probability bar's caption centres on the bar
++ *   §6 the market page: the star midway between its neighbours' ink; the question opens on the page's edge
++ *   §7 /results: the tally reads in one case
++ *   §8 /markets on a phone: the count line has air on both sides
++ *   §9 the lean word is upright
++ */
++import { readFileSync } from "node:fs";
++import { createRequire } from "node:module";
++import { createElement as h } from "react";
++import { renderToStaticMarkup } from "react-dom/server";
++import { decomment, decommentCss } from "./lib/decomment.mts";
++import { dict as DICTS } from "../src/lib/i18n-dict.ts";
++import { usd } from "../src/lib/usd-price.ts";
++import { EstimateNote } from "../src/components/updown/updown-stake-controls.tsx";
++import twConfigModule from "../tailwind.config.ts";
++
++let pass = 0;
++const fails: string[] = [];
++const ok = (name: string, cond: boolean, detail = "") => {
++  if (cond) { pass++; console.log(`  ok   ${name}`); }
++  else { fails.push(`${name}${detail ? ` — ${detail}` : ""}`); console.log(`  FAIL ${name}${detail ? ` — ${detail}` : ""}`); }
++};
++const section = (s: string) => console.log(`\n── ${s} ${"─".repeat(Math.max(0, 100 - s.length))}`);
++const read = (p: string) => readFileSync(p, "utf8").replace(/\r\n/g, "\n");
++// Source and the stylesheet are read through the shared scanners (scripts/lib/decomment.mts) — test:decomment's
++// private-stripper ratchet; decommentCss for CSS, whose strings and urls a JS scanner must not judge.
++const code = (p: string) => decomment(read(p));
++const css = decommentCss(read("src/app/globals.css"));
++const html = (el: Parameters<typeof renderToStaticMarkup>[0]) => renderToStaticMarkup(el);
++
++/** One rule's declarations, by its exact selector at the start of a line (comments already out); the first match. */
++function rule(src: string, selector: string): string {
++  const esc = selector.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
++  const m = new RegExp(`(?:^|\\n)\\s*${esc}\\s*\\{([^}]*)\\}`).exec(src);
++  return m ? m[1] : "";
++}
++/** The CSS custom properties of :root that are px. */
++const ROOT_PX: Record<string, number> = {};
++for (const m of read("src/app/globals.css").matchAll(/(--sp-[0-9]+):\s*([0-9.]+)px/g)) ROOT_PX[m[1]] ??= Number(m[2]);
++// tsx hands a .ts default export through CommonJS interop, so it may arrive one level down.
++const twConfig = ((twConfigModule as unknown as { default?: typeof twConfigModule }).default ?? twConfigModule);
++/** The OVERRIDDEN Tailwind spacing scale (tailwind.config.ts) — `gap-2` is 12px here, never 8. */
++const SPACE = (twConfig.theme?.extend?.spacing ?? {}) as Record<string, string>;
++const tw = (key: string) => parseFloat(SPACE[key] ?? "NaN");
++const MICRO = (twConfig.theme?.extend?.fontSize as Record<string, [string, { lineHeight: string }]>).micro;
++
++// The repo's own JetBrains Mono (src/lib/server/reports/fonts) — the face `--font-mono` loads, read for its metrics.
++const fontkit = createRequire(import.meta.url)("fontkit") as {
++  openSync: (p: string) => { unitsPerEm: number; hhea: { ascent: number; descent: number; lineGap: number }; "OS/2": { capHeight: number } };
++};
++const jbm = fontkit.openSync("src/lib/server/reports/fonts/JetBrainsMono-Regular.ttf");
++const ASC = jbm.hhea.ascent / jbm.unitsPerEm, DESC = -jbm.hhea.descent / jbm.unitsPerEm, CAP = jbm["OS/2"].capHeight / jbm.unitsPerEm;
++/** Where a JetBrains Mono line's ink sits in its line box: caps from the top, baseline from the bottom. */
++const monoInsets = (size: number, lineHeight: number) => {
++  const half = (lineHeight - (ASC + DESC) * size) / 2;
++  return { capTop: half + (ASC - CAP) * size, baseBottom: half + DESC * size };
++};
++
++/** An SVG path's x extent from its segment end points (enough for the kit's glyphs: straight runs and corner arcs). */
++function pathXs(d: string): { min: number; max: number } {
++  let at = 0, cmd = "", x = 0, y = 0, sx = 0, sy = 0;
++  const xs: number[] = [];
++  const skip = () => { while (at < d.length && /[\s,]/.test(d[at])) at++; };
++  const num = () => { skip(); const m = /^-?(?:\d+\.?\d*|\.\d+)/.exec(d.slice(at)); if (!m) throw new Error(`pathXs: no number at ${at} in ${d}`); at += m[0].length; return Number(m[0]); };
++  // An arc's two flags are single digits and may be written run together ("a2 2 0 002 2" is flags 0, 0 then x = 2).
++  const flag = () => { skip(); const c = d[at++]; if (c !== "0" && c !== "1") throw new Error(`pathXs: bad arc flag at ${at - 1}`); return Number(c); };
++  for (skip(); at < d.length; skip()) {
++    if (/[a-zA-Z]/.test(d[at])) cmd = d[at++];
++    const rel = cmd === cmd.toLowerCase();
++    switch (cmd.toUpperCase()) {
++      case "M": case "L": { const nx = num(), ny = num(); x = rel ? x + nx : nx; y = rel ? y + ny : ny; if (cmd.toUpperCase() === "M") { sx = x; sy = y; cmd = rel ? "l" : "L"; } break; }
++      case "H": { const nx = num(); x = rel ? x + nx : nx; break; }
++      case "V": { const ny = num(); y = rel ? y + ny : ny; break; }
++      case "A": { num(); num(); num(); flag(); flag(); const nx = num(), ny = num(); x = rel ? x + nx : nx; y = rel ? y + ny : ny; break; }
++      case "Z": { x = sx; y = sy; break; }
++      default: throw new Error(`pathXs: unhandled command ${cmd}`);
++    }
++    xs.push(x);
++  }
++  return { min: Math.min(...xs), max: Math.max(...xs) };
++}
++
++/* ══ §1 · THE CHART'S PRICE SCALE ════════════════════════════════════════════════════════════════════════════════════ */
++section("1 · the Up & Down chart's price scale speaks the page's price (tiles 164 202)");
++{
++  const term = code("src/components/charts/terminal-chart.tsx");
++  const SHIPPED = /const priceFormat = \{ type: "custom" as const, minMove: 1 \/ 10 \*\* data\.decimals, formatter: \(p: number\) => usd\(p, data\.decimals\) \};/;
++  ok("1.1 · every series is formatted by the ONE usd spelling — scale, live-line tag and crosshair label", SHIPPED.test(term));
++  ok("1.2 · ⛔ …and the engine's own grouping-free \"price\" format is gone", !/type: "price" as const/.test(term));
++  ok("1.3 · that spelling is the band's: 2896.04 → \"$2,896.04\", 2895.95 → \"$2,895.95\"",
++    usd(2896.04, 2) === "$2,896.04" && usd(2895.95, 2) === "$2,895.95", `${usd(2896.04, 2)} ${usd(2895.95, 2)}`);
++  ok("1.4 · the scale's ink stays --text-subtle (6.3:1 measured on tile 202; tile 164's 1.44:1 was the canvas caught mid-fade)",
++    term.includes(`textColor: ink("--text-subtle"),`));
++  ok("1.1′ PLANT · the format as it shipped is reported",
++    !SHIPPED.test(`const priceFormat = { type: "price" as const, precision: data.decimals, minMove: 1 / 10 ** data.decimals };`));
++}
++
++/* ══ §2 · THE CHART'S CONTROLS ═══════════════════════════════════════════════════════════════════════════════════════ */
++section("2 · the chart's controls keep one 12px rhythm on a phone (tile 202)");
++{
++  const lab = code("src/components/charts/updown-chart-lab.tsx");
++  const KEY_WRAP = `<span aria-hidden="true" className="flex mb-[calc(var(--sp-3)_-_3.4px)] sm:mb-0">`;
++  ok("2.1 · the rails wrap 12px apart (`gap-y-2`) and the block stands 12px over the chart card (`mb-2`)",
++    lab.includes(`<div className="mb-2 flex flex-wrap items-center justify-between gap-x-3 gap-y-2">`) && tw("2") === 12);
++  ok("2.2 · the key's wrapper is a flex box — its height is the key's 14px line, not the page's 22.4px strut",
++    lab.includes(KEY_WRAP) && lab.includes(`<div className="flex min-w-0 flex-col sm:flex-row sm:items-center sm:gap-1.5">`));
++  // The 3.4px is the font's, not a guess: the micro line's baseline above its foot.
++  const size = parseFloat(MICRO[0]), lh = parseFloat(MICRO[1].lineHeight);
++  const { baseBottom, capTop } = monoInsets(size, lh);
++  ok("2.3 · ⭐ 3.4px is JetBrains Mono's baseline-to-foot in the 10/14 micro line (descender 0.300em + half-leading)",
++    Math.abs(baseBottom - 3.4) < 0.005, `${baseBottom.toFixed(3)}px (asc ${ASC}, desc ${DESC}, ${size}/${lh})`);
++  ok("2.4 · so the key's INK stands --sp-3 (12px) over the rail's border, the same 12 as rail → rail and rail → card",
++    Math.abs((ROOT_PX["--sp-3"] - 3.4) + baseBottom - 12) < 0.005 && ROOT_PX["--sp-3"] === tw("2"),
++    `${ROOT_PX["--sp-3"]} − 3.4 + ${baseBottom.toFixed(2)}`);
++  ok("2.5 · on desktop the key's 14px line centres beside the rail, its caps level with the rail's labels (cap top inset ≈ foot inset)",
++    Math.abs(capTop - baseBottom) < 0.2, `cap top ${capTop.toFixed(2)} · foot ${baseBottom.toFixed(2)}`);
++  ok("2.2′ PLANT · the shape as it shipped (a bare span on the strut, a 4px gap, 8px between the rails) is reported",
++    !`<div className="flex min-w-0 flex-col gap-1 sm:flex-row sm:items-center sm:gap-1.5">\n          <span aria-hidden="true">`.includes(KEY_WRAP)
++      && !/gap-y-2">/.test(`<div className="mb-2 flex flex-wrap items-center justify-between gap-x-3 gap-y-1.5">`));
++}
++
++/* ══ §3 · THE ROUND PAGE'S PANEL ═════════════════════════════════════════════════════════════════════════════════════ */
++section("3 · the round page: the stake is money, the × note hangs, the quote stamp opens on a capital (tiles 165 166)");
++{
++  const ctl = code("src/components/updown/updown-stake-controls.tsx");
++  ok("3.1 · \"Gusa Juu au Chini kuweka dau · TZS 1,000\": the stake is an .amount, inside ONE flex item",
++    ctl.includes(`<span>{t.market.udTapToBet} · <span className="amount">{formatTzs(bet.stake)}</span></span>`));
++  ok("3.2 · …and so is the stake on the line that streams a bet", ctl.includes(`<span><span className="amount">{formatTzs(bet.stake)}</span> · {t.market.udStreaming}</span>`));
++  ok("3.1′ PLANT · the line as it shipped — the figure in the sentence's face — is reported",
++    !`<>{t.market.udTapToBet} · {formatTzs(bet.stake)}</>`.includes(`<span className="amount">{formatTzs(bet.stake)}</span>`));
++
++  // The × note: the sign takes the ⓘ glyph's column in every language.
++  const COLUMN = `<span class="w-[11px] shrink-0 text-center">×</span>`;
++  for (const loc of ["sw", "en", "zh"] as const) {
++    const s = DICTS[loc].market.udEstimateNote;
++    const out = html(h(EstimateNote, { text: s }));
++    ok(`3.3.${loc} · the "×" sits in an 11px column and the sentence hangs beside it, every word as written`,
++      out.includes(COLUMN) && out.replace(/<[^>]+>/g, "") === s.replace(/^×\s+/u, "×") && /^<p class="flex items-start gap-1 /.test(out), out.slice(0, 160));
++  }
++  ok("3.4 · the column is the ⓘ glyph's own width — the sibling notes draw `I.info s={11}`",
++    ctl.includes(`<I.info s={11} className="mt-[2px] shrink-0" />`));
++  const plain = html(h(EstimateNote, { text: "hubadilika kwa kila dau jipya" }));
++  ok("3.5 CONTROL · a sentence that does not open on the sign renders whole, no column",
++    !plain.includes("w-[11px]") && plain.replace(/<[^>]+>/g, "") === "hubadilika kwa kila dau jipya", plain);
++  const sites = [
++    ["the two-way panel", "src/components/updown/updown-stake-controls.tsx", `<EstimateNote className="mt-1" text={t.market.udEstimateNote} />`],
++    ["the board card", "src/components/updown/updown-card.tsx", `<EstimateNote className="mt-1" text={t.market.udEstimateNote} />`],
++    ["the locked-side panel (was 10px)", "src/components/updown/round-stake-panel.tsx", `<EstimateNote className="mt-2" text={t.market.udEstimateNote} />`],
++  ] as const;
++  for (const [what, file, call] of sites) ok(`3.6 · ${what} sets the note through EstimateNote`, code(file).includes(call), file);
++  const FLUSH = /<p className="[^"]*">\{t\.market\.udEstimateNote\}<\/p>/;
++  ok("3.7 · ⛔ no flush <p> of the note is left in the three panels", !sites.some(([, f]) => FLUSH.test(code(f))));
++  ok("3.7′ PLANT · the flush shape as it shipped is what 3.7 reads",
++    FLUSH.test(`<p className="mt-1 text-body-sm leading-[1.45] text-text-faint break-keep [overflow-wrap:anywhere]">{t.market.udEstimateNote}</p>`));
++
++  // The quote stamp: a mid-sentence word ("imenukuliwa", "quoted") that opens a line when there is no move before it.
++  ok("3.8 CONTROL · the premise: the stamp's word is written in lower case in sw and en (it follows \"… · \")",
++    /^[a-z]/.test(DICTS.sw.market.udQuoted) && /^[a-z]/.test(DICTS.en.market.udQuoted));
++  const page = code("src/app/updown/[roundId]/page.tsx");
++  ok("3.9 · the round page still composes the stamp from that word", page.includes("const stamp = quotedAt ? `${t.market.udQuoted}"));
++  const hero = code("src/components/updown/price-hero.tsx");
++  ok("3.10 · the hero's detail line carries `ud-cap-first`", hero.includes(`<p className="ud-cap-first mt-1.5 mb-0 text-body-sm text-text-muted">{copy.aboveBelow}</p>`));
++  ok("3.11 · …whose first letter is set as a capital, and below 400 each stacked clause's is too",
++    /text-transform:\s*uppercase/.test(rule(css, ".ud-cap-first::first-letter")) && /\.ud-hero-chunk::first-letter\s*\{\s*text-transform:\s*uppercase;/.test(css));
++  ok("3.12 · the settlement proof's label of the same word opens on a capital beside \"Chanzo\" and \"Ilionekana\"",
++    page.includes(`<dt className="ud-cap-first text-text-faint">{t.market.udQuoted}</dt>`));
++  ok("3.13 · ⛔ by the class, never Tailwind's `first-letter:uppercase` — one capital is not an all-caps site (test:eyebrow-roles)",
++    ![page, hero].some((s) => /first-letter:uppercase/.test(s)));
++  ok("3.10′ PLANT · the detail line as it shipped is reported", !`<p className="mt-1.5 mb-0 text-body-sm text-text-muted">`.includes("ud-cap-first"));
++}
++
++/* ══ §4 · /live's CARDS AND THE MARKET GRID ══════════════════════════════════════════════════════════════════════════ */
++section("4 · /live: one top-row height for both tags; the grid's gutter on the space scale (tiles 178 196)");
++{
++  const grid = code("src/app/live/pulse-grid.tsx");
++  ok("4.1 · one vertical box for the tag, written once", grid.includes(`const TAG_BOX_Y = "py-0.5 border-y";`));
++  ok("4.2 · the Up & Down chip wears it (with its 1px rule all round)",
++    grid.includes("className={`inline-flex items-center gap-1 rounded-sm px-1.5 ${TAG_BOX_Y} font-bold tracking-[0.10em]`}")
++      && grid.includes(`border: "1px solid var(--brand-500)"`));
++  ok("4.3 · …and so does the bare category label, its rule clear", grid.includes("<span className={`inline-flex items-center gap-1.5 ${TAG_BOX_Y} border-transparent`}>"));
++  const lh = parseFloat(MICRO[1].lineHeight);
++  ok("4.4 · both boxes are 20px: the micro line 14 + 2×2 padding + 2×1 rule (the chip measured y690–709 on tile 178)",
++    lh + 2 * tw("0.5") + 2 === 20, `${lh} + 2×${tw("0.5")} + 2`);
++  ok("4.3′ PLANT · the bare label as it shipped (14px, no box) is reported",
++    !"<><Cat s={13} />{marketCategoryLabel(t, market.category)}</>".includes("${TAG_BOX_Y}"));
++
++  const g = rule(css, ".market-grid");
++  ok("4.5 · the market grid's gutter is --sp-4 — 16px, Tiketi zangu's `gap-3` and the hub's --sp-4",
++    /gap:\s*var\(--sp-4\)/.test(g) && ROOT_PX["--sp-4"] === 16 && tw("3") === 16
++      && /className="kp-tickets grid grid-cols-1 gap-3 md:grid-cols-2"/.test(code("src/components/journey/tickets/tickets-view.tsx"))
++      && /gap:\s*var\(--sp-4\)/.test(rule(css, ".kp-hub__grid")), g.trim());
++  ok("4.5′ PLANT · the bare 14px is reported", !/gap:\s*var\(--sp-4\)/.test("display: grid; gap: 14px;"));
++}
++
++/* ══ §5 · THE BAR'S CAPTION ══════════════════════════════════════════════════════════════════════════════════════════ */
++section("5 · the probability bar's caption centres on the bar (tiles 162 177 178)");
++{
++  const labels = rule(css, ".tipbar-labels");
++  const CENTRED = (r: string) => /display:\s*grid/.test(r) && /grid-template-columns:\s*1fr auto 1fr/.test(r) && !/space-between/.test(r);
++  ok("5.1 · two equal tracks around the caption: `1fr auto 1fr`", CENTRED(labels), labels.trim());
++  const yes = rule(css, ".tipbar-labels .tb-yes"), no = rule(css, ".tipbar-labels .tb-no");
++  ok("5.2 · each side keeps its edge and never wraps — a figure and its side are one reading",
++    /justify-self:\s*start/.test(yes) && /white-space:\s*nowrap/.test(yes) && /justify-self:\s*end/.test(no) && /white-space:\s*nowrap/.test(no));
++  ok("5.2b · when the row is tight the CAPTION gives way: it may wrap, centred in its track, and --sp-1 keeps the three from touching",
++    /column-gap:\s*var\(--sp-1\)/.test(labels) && /text-align:\s*center/.test(rule(css, ".tipbar-lean"))
++      && !/white-space:\s*nowrap/.test(rule(css, ".tipbar-lean")) && !/\.tipbar-labels > \*\s*\{[^}]*nowrap/.test(css));
++  const bar = code("src/components/brand.tsx");
++  ok("5.3 · the bar still renders three children in that order: yes · lean · no",
++    /<div className="tipbar-labels">\s*<span className="tb-yes">[\s\S]*?<span className="tipbar-lean">[\s\S]*?<span className="tb-no">/.test(bar));
++  ok("5.1′ PLANT · the rule as it shipped (`flex` + `space-between`) is reported",
++    !CENTRED("display: flex; justify-content: space-between; margin-top: 8px;"));
++}
++
++/* ══ §6 · THE MARKET PAGE ════════════════════════════════════════════════════════════════════════════════════════════ */
++section("6 · the market page: the star midway between its neighbours' ink; the question on the page's edge (tiles 161 162)");
++{
++  const glyphs = read("src/components/ui/glyphs.tsx");
++  const d = (name: string) => new RegExp(`\\b${name}: \\(p: GlyphProps\\) => <G \\{\\.\\.\\.p\\}><path d="([^"]+)"`).exec(glyphs)?.[1] ?? "";
++  const STROKE = Number(/const G = [\s\S]*?strokeWidth="([0-9.]+)"/.exec(glyphs)?.[1]);
++  const ext = pathXs(d("ext")), star = pathXs(d("star"));
++  const extRight = (24 - (ext.max + STROKE / 2)) / 24 * 12; // the 12px source glyph's right side bearing
++  const starSide = (star.min - STROKE / 2) / 24 * 16 + (40 - 16) / 2; // the 16px star's bearing inside its 40px box
++  ok("6.locate · the glyphs are the ones the arithmetic reads: ext ends at x19, the star spans x3–21 (centred), stroke 1.9",
++    ext.max === 19 && star.min === 3 && star.max === 21 && STROKE === 1.9, `ext ${ext.min}–${ext.max} · star ${star.min}–${star.max}`);
++  const page = code("src/app/markets/[id]/page.tsx");
++  const link = /<a\s+href=\{m\.sourceUrl\}[\s\S]*?className="([^"]+)"/.exec(page)?.[1] ?? "";
++  const mr = /-mr-\[(\d+)px\]/.exec(link);
++  const GAP = tw("2"); // the group's gap-2
++  const before = extRight + GAP + starSide, after = starSide + GAP;
++  ok("6.1 · the source link gives its glyph's 2px bearing back, so star ↔ Chanzo and star ↔ SHIRIKI are one ink gap",
++    !!mr && Math.abs(before - Number(mr[1]) - after) < 0.1 && /<div className="ml-auto flex items-center gap-2">/.test(page),
++    `${before.toFixed(2)} − ${mr?.[1]} vs ${after.toFixed(2)}`);
++  ok("6.1′ PLANT · without it the gaps differ by the bearing — the 27 | 25 the tiles measured", before - after > 1.9, `${(before - after).toFixed(2)}px`);
++
++  ok("6.2 · the question's stem letters are the ones measured: B D E F H I K L M N P R (Sora 700: 0.082em outline, 0.075em ink)",
++    page.includes("const QUESTION_STEM = /^[BDEFHIKLMNPR]/u;"));
++  ok("6.3 · the h1 is set back on its FIRST line only, by the letter it opens on — never by the locale",
++    page.includes("<h1 data-stem={QUESTION_STEM.test(pickLocalized(locale, m.titleEn, m.titleSw, m.titleZh)) ? \"\" : undefined}")
++      && page.includes("data-[stem]:indent-[-0.075em]") && !/data-stem=\{[^}]*locale ===/.test(page));
++  const STEM = /^[BDEFHIKLMNPR]/u;
++  ok("6.4 CONTROL · \"Mvua Dar es Salaam…\" and \"NBC…\" are set back; \"Je, …\", \"Yanga…\" and 是否 are not",
++    STEM.test("Mvua Dar es Salaam yazidi 200mm Julai") && STEM.test("NBC Premier League") && !STEM.test("Je, Simba SC")
++      && !STEM.test("Yanga SC") && !STEM.test("是否"));
++  ok("6.3′ PLANT · an h1 with no set-back is reported", !`<h1 className="font-display text-title-lg md:text-display-3">`.includes("data-[stem]:indent-"));
++}
++
++/* ══ §7 · /results' TALLY ════════════════════════════════════════════════════════════════════════════════════════════ */
++section("7 · /results: the tally reads in one case (tile 172)");
++{
++  const res = code("src/app/results/page.tsx");
++  ok("7.1 · \"0 imetatuliwa · TZS 0 imekamilika\" — the figure's sentence word, not the tab's label",
++    res.includes("{totalCount} {t.results.resolved} · {formatTzsCompact(totalVolume)} {t.market.tickerSettled}"));
++  ok("7.2 · …and each result card's \"TZS 6K imekamilika\" beside \"2 watabiri\"",
++    res.includes("{formatTzsCompact(m.yesPool + m.noPool)} {t.market.tickerSettled}"));
++  ok("7.3 · ⛔ the tab label is no longer read for a sentence on this page", !res.includes("{t.common.settled}"));
++  ok("7.3b · …nor for the classic Tiketi zangu's win-rate hint, which said \"3 Imekamilika\" by the same composition",
++    code("src/app/positions/page.tsx").includes("ofSettled: `${settled.length} ${t.market.tickerSettled}`,")
++      && !code("src/app/positions/page.tsx").includes("${t.common.settled}"));
++  ok("7.4 CONTROL · the premise in the dictionary: the label is capitalised, the sentence word is not — in sw and en",
++    /^[A-Z]/.test(DICTS.sw.common.settled) && /^[a-z]/.test(DICTS.sw.market.tickerSettled)
++      && /^[A-Z]/.test(DICTS.en.common.settled) && /^[a-z]/.test(DICTS.en.market.tickerSettled)
++      && /^[a-z]/.test(DICTS.sw.results.resolved), `${DICTS.sw.common.settled} / ${DICTS.sw.market.tickerSettled}`);
++  ok("7.1′ PLANT · the tally as it shipped is reported",
++    !"{totalCount} {t.results.resolved} · {formatTzsCompact(totalVolume)} {t.common.settled}".includes("{t.market.tickerSettled}"));
++}
++
++/* ══ §8 · /markets' COUNT LINE ON A PHONE ════════════════════════════════════════════════════════════════════════════ */
++section("8 · /markets on a phone: the count line has air on both sides (tile 195)");
++{
++  const bar = rule(css, `html:not([data-density="comfortable"]) .kp-discovery-bar:has(> [data-bar-row])`);
++  const AIRED = (r: string) => /row-gap:\s*var\(--sp-2\)/.test(r) && /padding-bottom:\s*var\(--sp-2\)/.test(r);
++  ok("8.1 · the Compact bar's rows stand --sp-2 apart and its foot pads --sp-2", AIRED(bar) && /display:\s*grid/.test(bar), bar.slice(0, 200));
++  // The count line: 11.5px JetBrains Mono on the page's 1.5 line.
++  const { capTop, baseBottom } = monoInsets(11.5, 11.5 * 1.5);
++  ok("8.2 · its caps stand 12px under the sort pill and its baseline 12px over the hairline (was 6 and 10)",
++    Math.round(ROOT_PX["--sp-2"] + capTop) === 12 && Math.round(ROOT_PX["--sp-2"] + baseBottom) === 12
++      && Math.round(2 + capTop) === 6 && Math.round(6 + baseBottom) === 10,
++    `cap ${capTop.toFixed(2)} · base ${baseBottom.toFixed(2)}`);
++  const qb = code("src/components/ui/query-bar.tsx");
++  ok("8.locate · the count line is still 11.5px mono", /className="shrink-0 font-mono text-\[11\.5px\] tabular-nums text-text-subtle"/.test(qb));
++  ok("8.1′ PLANT · the rule as it shipped is reported", !AIRED("display: grid; row-gap: 2px; padding-top: 6px; padding-bottom: 6px;"));
++}
++
++/* ══ §9 · THE LEAN WORD ══════════════════════════════════════════════════════════════════════════════════════════════ */
++section("9 · the lean word is upright (tiles 177 178 205)");
++{
++  const lean = rule(css, ".tipbar-lean");
++  ok("9.1 · `.tipbar-lean` sets no italic", lean.length > 0 && !/font-style:\s*italic/.test(lean), lean.trim());
++  const layout = code("src/app/layout.tsx");
++  const jbmDecl = /const jbm = JetBrains_Mono\(\{([\s\S]*?)\}\);/.exec(layout)?.[1] ?? "";
++  ok("9.2 CONTROL · the premise: JetBrains Mono is loaded upright only — an italic there could only be sheared",
++    jbmDecl.length > 0 && !/style:/.test(jbmDecl), jbmDecl.trim());
++  ok("9.1′ PLANT · the rule as it shipped is reported", /font-style:\s*italic/.test("color: var(--bar-label-tipping); font-style: italic;"));
++}
++
++console.log(`\nvisual-pass-r4d: ${pass} passed, ${fails.length} failed\n`);
++if (fails.length) {
++  for (const f of fails) console.error(`  · ${f}`);
++  process.exit(1);
++}
+diff --git a/src/app/globals.css b/src/app/globals.css
+index bc73799e6..eb1da968f 100644
+--- a/src/app/globals.css
++++ b/src/app/globals.css
+@@ -1864,14 +1864,25 @@ html.kp-reduce-motion .ticker-pause,
+   box-shadow: inset 0 0 0 1px var(--border);
+   opacity: 0.55;
+ }
++/* ⭐ THE CAPTION CENTRES ON THE BAR, NOT BETWEEN ITS NEIGHBOURS (2026-10-09, the visual pass's round 4, tiles 162, 177,
++   178). `space-between` put the lean word midway between the two side labels, and those are never one width
++   ("NDIO 33%" against "67% HAPANA"), so it sat 7–7.5px left of the bar's centre (162: caption centre x436, bar x443.5).
++   Two equal tracks around it put it on the bar's own centre whatever the sides say; each side keeps its edge.
++   ⚠️ WHEN THE ROW IS TIGHT, THE CAPTION GIVES WAY, NEVER THE FIGURES. A side never wraps — a figure and its side are one
++   reading — so a side wider than its track widens it and the caption moves off-centre by the difference; past that the
++   caption, centred in its own track, wraps onto a second line. `--sp-1` keeps the three apart, so they never touch
++   (the old row's free space could fall to 0 between them) and nothing ever overflows the bar's width. */
+ .tipbar-labels {
+-  display: flex;
+-  justify-content: space-between;
++  display: grid;
++  grid-template-columns: 1fr auto 1fr;
++  column-gap: var(--sp-1);
+   margin-top: 8px;
+   font-family: var(--font-mono);
+   font-size: 11px;
+   letter-spacing: 0.05em;
+ }
++.tipbar-labels .tb-yes { justify-self: start; white-space: nowrap; }
++.tipbar-labels .tb-no  { justify-self: end; white-space: nowrap; }
+ .tipbar-labels .tb-yes { color: var(--bar-label-yes); }
+ .tipbar-labels .tb-no  { color: var(--bar-label-no); }
+ .tipbar-labels .tb-yes strong { color: var(--bar-label-yes-strong); font-variant-numeric: tabular-nums; }
+@@ -1879,10 +1890,14 @@ html.kp-reduce-motion .ticker-pause,
+ .tipbar-labels strong { font-weight: 500; }
+ .tipbar-labels strong[data-lead] { font-weight: 700; }
+ /* Was 9px italic — illegible on mobile. 10.5px + 500 + 0.10em reads cleanly
+-   without overpowering the YES/NO percentages either side of it. */
++   without overpowering the YES/NO percentages either side of it.
++   ⛔ AND IT IS UPRIGHT (round 4, 2026-10-09, tiles 177, 178, 205). The app loads JetBrains Mono in its upright face only
++   (layout.tsx: weights 400–600, no italic style), so `italic` here was an oblique the browser SHEARED out of the upright
++   glyphs — the one slanted readout in a mono row whose figures beside it stand straight. The word is set apart by its
++   ink, size, weight and opacity, all kept. */
+ .tipbar-lean {
+   color: var(--bar-label-tipping);
+-  font-style: italic;
++  text-align: center;
+   text-transform: uppercase;
+   font-size: 10.5px;
+   font-weight: 500;
+@@ -3484,10 +3499,14 @@ th .link-pending { --lp-inset: 0px; --lp-bottom: 8px; }
+    count. Every card is the same size everywhere (markets, live, home); the grid
+    simply fits as many columns as the available width allows. This is what makes
+    the card SHAPE identical across pages even though /markets has a filter rail
+-   and /live does not. min(...,100%) guards against overflow on tiny screens. */
++   and /live does not. min(...,100%) guards against overflow on tiny screens.
++   ⭐ THE GUTTER IS A RUNG OF THE SPACE SCALE (2026-10-09, the visual pass's round 4, tiles 178 and 196). It was a bare
++   14px — on no ladder (DESIGN_AUTHORITY §S1: layout space is `--sp-*`, applied as `gap`) and written nowhere as a
++   choice, only described after the fact — while Tiketi zangu's cards and the hub's sit 16px apart. `--sp-4` is that
++   16. The phone's Compact rung (10px, at the end of this file) is the ruled card spacing of U3 and is unchanged. */
+ .market-grid {
+   display: grid;
+-  gap: 14px;
++  gap: var(--sp-4);
+   grid-template-columns: repeat(auto-fill, minmax(min(300px, 100%), 1fr));
+ }
+ 
+@@ -7201,12 +7220,22 @@ html[lang="zh"] .kp-udrule { word-break: keep-all; }
+ /* The round page's open + targets: beside the confirmed price where there is room; below 400 they wrap under it
+    and read as a left-aligned list, not a column floating at the right (frame panel, 2026-09-27). */
+ .ud-hero-chunk { white-space: nowrap; }
++/* ⭐ A LINE THAT OPENS ON THE QUOTE STAMP OPENS ON A CAPITAL (round 4, 2026-10-09, tiles 165 166). The stamp is the
++   dictionary's mid-sentence word — "imenukuliwa" / "quoted", written to follow "… · " — and with no move to follow
++   (an open round still at its open price) it stood alone, the one line under the price to start in lower case. The words
++   stay as written; the line's first letter is set as a capital, so the clause reads "Imenukuliwa 04:01:21 EAT" alone
++   and "… · imenukuliwa …" inside the sentence. Chinese has no case, so 报价时间 is unchanged. The settlement proof's
++   label of the same word wears it too. ⛔ A class, not Tailwind's `first-letter:uppercase`: this sets ONE capital, and
++   `test:eyebrow-roles` rightly reads every `uppercase` in a component as an all-caps site to be classified. */
++.ud-cap-first::first-letter { text-transform: uppercase; }
+ @media (max-width: 399px) {
+   /* density: general — the round page's figures wrapping under the price, not card spacing; both settings. */
+   .ud-hero-stats { flex-basis: 100%; text-align: left; }
+-  /* The move and its quote stamp stack, the "·" between them hidden — the band's own rule (round 3). */
++  /* The move and its quote stamp stack, the "·" between them hidden — the band's own rule (round 3) — so the stamp
++     opens its own line here, and opens it on a capital like the line above. */
+   .ud-hero-sep { display: none; }
+   .ud-hero-chunk { display: block; }
++  .ud-hero-chunk::first-letter { text-transform: uppercase; }
+ }
+ 
+ /* ── THE ASSET MARK (`asset-mark.tsx`, hoisted from the card 2026-09-27 · landing v3, R5) ─────────
+@@ -7315,9 +7344,14 @@ html[lang="zh"] .kp-udrule { word-break: keep-all; }
+        ⭐ It also closes D18 at these widths as a side effect: the label goes from 12/61 to 47/61 at 277. */
+     align-items: center;
+     column-gap: 6px;
+-    row-gap: 2px;
++    /* ⭐ THE COUNT LINE HAS AIR ON BOTH SIDES (round 4, 2026-10-09, tile 195 at sw 390). At 2px and 6px the caption
++       "masoko 40 · Pesa nyingi" sat 6px under the sort pill's border and 8px over the bar's hairline — pressed against
++       both, like a footnote to the control rather than a line of its own. `--sp-2` each way puts its cap height 12px
++       under the pill (4.4px of its 17.25px line sit above the caps) and its baseline 12px over the hairline (a
++       descender's tail, 10px). The bar grows 8px. */
++    row-gap: var(--sp-2);
+     padding-top: 6px;
+-    padding-bottom: 6px;
++    padding-bottom: var(--sp-2);
+   }
+ 
+   /* ⛔ THIS OVERRIDE MUST COME AFTER THE RULE ABOVE, AND THE FIRST ATTEMPT DID NOT — D58, 2026-09-23.
+diff --git a/src/app/live/pulse-grid.tsx b/src/app/live/pulse-grid.tsx
+index 2fe6954fe..232a3ece0 100644
+--- a/src/app/live/pulse-grid.tsx
++++ b/src/app/live/pulse-grid.tsx
+@@ -152,6 +152,15 @@ export function KeepHyphenated({ text }: { text: string }) {
+   return <>{parts.map((part, i) => (i % 2 === 1 ? <span key={i} className="whitespace-nowrap">{part}</span> : part))}</>;
+ }
+ 
++/**
++ * ⭐ ONE TOP ROW IN EITHER STATE (2026-10-09, the visual pass's round 4, tile 178 at 1280). The Up & Down tag is a boxed
++ * chip — 2px of padding and a 1px rule above and below its 14px line, 20px — and a market's category was the bare 14px
++ * line, so a grid row holding both set its titles 724 against 719, its bars 797 against 792 and its captions 816 against
++ * 811. The bare label now takes the chip's vertical box with a clear rule, so the row is 20px either way and every row
++ * under it levels across the wall. One constant, so the two can never disagree again.
++ */
++const TAG_BOX_Y = "py-0.5 border-y";
++
+ /**
+  * C1e — the DENSE TippingBar-wall card that gives /live its own identity (so it
+  * stops being /markets with a different URL): category + time · title · the bar ·
+@@ -184,13 +193,15 @@ function PulseCard({ market, index }: { market: Market; index: number }) {
+         <span className="inline-flex items-center gap-1.5 font-mono text-micro uppercase eyebrow text-text-subtle">
+           {isUpDown ? (
+             // The game tag — so a mixed wall reads as two games at a glance.
+-            <span className="inline-flex items-center gap-1 rounded-sm px-1.5 py-0.5 font-bold tracking-[0.10em]"
++            <span className={`inline-flex items-center gap-1 rounded-sm px-1.5 ${TAG_BOX_Y} font-bold tracking-[0.10em]`}
+                   style={{ background: "var(--pill-active)", border: "1px solid var(--brand-500)", color: "var(--brand-200)" }}>
+               <I.trendingUp s={11} /> {t.market.udTitle}
+             </span>
+           ) : (
+             // The translated category, never the stored id (that printed CRYPTO / SPORTS on sw and zh pages).
+-            <><Cat s={13} />{marketCategoryLabel(t, market.category)}</>
++            <span className={`inline-flex items-center gap-1.5 ${TAG_BOX_Y} border-transparent`}>
++              <Cat s={13} />{marketCategoryLabel(t, market.category)}
++            </span>
+           )}
+         </span>
+         <span className={`inline-flex items-center gap-1 font-mono text-[10px] tabular-nums ${market.selectionClosed ? "text-gold-300" : "text-text-subtle"}`}>
+diff --git a/src/app/markets/[id]/page.tsx b/src/app/markets/[id]/page.tsx
+index 82075d4d7..086ac88e6 100644
+--- a/src/app/markets/[id]/page.tsx
++++ b/src/app/markets/[id]/page.tsx
+@@ -115,6 +115,17 @@ export async function generateMetadata(
+   };
+ }
+ 
++/**
++ * ⭐ THE QUESTION OPENS ON THE PAGE'S EDGE (2026-10-09, the visual pass's round 4, tiles 161 and 162). Sora draws a
++ * straight-stem capital with a side bearing, so "Mvua …" began 2px inside the edge the back link, the chips and the
++ * hairline keep (M's ink from x18 at 390, x134.6 at 1280, against 16 and 132): 2.17px of 28 and 2.68px of 36, i.e.
++ * 0.0775 and 0.0744em — 0.075em, within 0.1px of each. The font's own outline agrees on the letters: at weight 700 every
++ * straight-stem capital below starts at 0.082em of the em (the rendered ink runs ~0.2px proud of the outline, as R3-A
++ * found for the headline's 800), I at 0.084. Only the h1's FIRST line is set back (`text-indent`), and only when the
++ * question starts on one of these — the letter decides, never the locale. ⛔ Measure a letter before adding it.
++ */
++const QUESTION_STEM = /^[BDEFHIKLMNPR]/u;
++
+ export default async function MarketDetail({
+   params,
+   searchParams,
+@@ -526,13 +537,18 @@ export default async function MarketDetail({
+               alone, so at 390 the row broke between them: "Chanzo" stayed up with the chips and the star and SHIRIKI
+               opened line 2 at the left — the star's glyph, with no visible box of its own, floating at x29–42 against
+               the chips' edge at 16 and SHIRIKI's at 68. Grouped, they share the right edge on whichever line they land:
+-              beside the chips at 1280 exactly as before, and together under them on a phone. */}
++              beside the chips at 1280 exactly as before, and together under them on a phone.
++              ⭐ AND THE STAR STANDS MIDWAY BETWEEN ITS NEIGHBOURS' INK (round 4, 2026-10-09, tiles 161 162). The boxes
++              were 12px apart both sides, but the `ext` glyph's ink stops short of its 12px box — its path's right edge is
++              x19 + the 0.95 half-stroke of 24, so 2.03px of air — while the star's sits centred in its 40px box. Ink to
++              ink that read 27 | 25 (x964→992, x1005→1031 at 1280). `-mr-[2px]` gives the link's box back that bearing:
++              25 | 25. The tap box is unchanged; only the gap after it closes. */}
+           <div className="ml-auto flex items-center gap-2">
+             <a
+               href={m.sourceUrl}
+               target="_blank"
+               rel="noopener noreferrer"
+-              className="inline-flex items-center gap-1 min-h-[var(--tap-min)] -my-[11px] py-[11px] text-[12px] font-mono text-text-muted hover:text-text"
++              className="inline-flex items-center gap-1 -mr-[2px] min-h-[var(--tap-min)] -my-[11px] py-[11px] text-[12px] font-mono text-text-muted hover:text-text"
+             >
+               {t.common.source}
+               <I.ext s={12} />
+@@ -577,7 +593,9 @@ export default async function MarketDetail({
+               </span>
+             );
+           })()}
+-          <h1 className="font-display text-title-lg md:text-display-3 font-bold leading-tight tracking-[-0.02em] text-text text-balance">{pickLocalized(locale, m.titleEn, m.titleSw, m.titleZh)}</h1>
++          <h1 data-stem={QUESTION_STEM.test(pickLocalized(locale, m.titleEn, m.titleSw, m.titleZh)) ? "" : undefined}
++            className="font-display text-title-lg md:text-display-3 font-bold leading-tight tracking-[-0.02em] text-text text-balance data-[stem]:indent-[-0.075em]"
++          >{pickLocalized(locale, m.titleEn, m.titleSw, m.titleZh)}</h1>
+         </div>
+       </header>
+ 
+diff --git a/src/app/markets/loading.tsx b/src/app/markets/loading.tsx
+index 74cf899dd..d1ddb2daf 100644
+--- a/src/app/markets/loading.tsx
++++ b/src/app/markets/loading.tsx
+@@ -83,7 +83,8 @@ export default async function MarketsLoading() {
+           it at y=318 — the grid jumped **239px upward** as the content arrived. CLS scored that
+           0.0000, because layout-shift only counts nodes present BEFORE and AFTER and the ghost
+           nodes are removed rather than moved. The metric is blind here; the eye is not. */}
+-      {/* 🔴 THE FOUR HOOKS BELOW ARE LOAD-BEARING AND THEY ARE WHY THIS BAR IS 76px AND NOT 172.
++      {/* 🔴 THE FOUR HOOKS BELOW ARE LOAD-BEARING AND THEY ARE WHY THIS BAR IS 76px AND NOT 172 (84px since round 4
++          gave the count line its 12px of air, 2026-10-09 — the ghost follows by the same construction).
+           Under 640px in Compact, `globals.css` re-lays THIS bar as a GRID — strip | sort | filters
+           on one line, with the result count spanning a second — and it gates that on
+           `.kp-discovery-bar:has(> [data-bar-row])`, placing each cell by `[data-strip-autoscroll]`,
+diff --git a/src/app/positions/page.tsx b/src/app/positions/page.tsx
+index d73ce66b2..22e49ed6b 100644
+--- a/src/app/positions/page.tsx
++++ b/src/app/positions/page.tsx
+@@ -330,7 +330,8 @@ export default async function PositionsPage({ searchParams }: { searchParams: Pr
+             unrealised: t.positions.unrealised,
+             settledPnl: t.positions.settledPnl,
+             winRate: t.positions.winRate,
+-            ofSettled: `${settled.length} ${t.common.settled}`,
++            // The count's sentence word, not the tab label ("3 imekamilika", never "3 Imekamilika") — /results' tally rule (round 4).
++            ofSettled: `${settled.length} ${t.market.tickerSettled}`,
+           }}
+         />
+       )}
+diff --git a/src/app/results/page.tsx b/src/app/results/page.tsx
+index b5c87b892..6a7f44075 100644
+--- a/src/app/results/page.tsx
++++ b/src/app/results/page.tsx
+@@ -402,9 +402,13 @@ async function ResultsContent({
+               choice between `text-micro` (10) and `text-caption` (11) is decided by what sits
+               beside it in this very flex row: the YES/NO tally at L289 is 10px and the page
+               title at L279 is `text-caption`. Taking 10 puts this line level with the tally it
+-              is read against, and keeps the title a step above both. */}
++              is read against, and keeps the title a step above both.
++              ⭐ ONE LINE, ONE CASE (round 4, 2026-10-09, tile 172): it read "0 imetatuliwa · TZS 0 Imekamilika" — the
++              second clause borrowed `common.settled`, the capitalised STATUS LABEL ("Settled", a tab's name), for a
++              sentence's word. The dictionary already has that word in its sentence form, the one the live ticker writes
++              after a figure ("TZS 6K imekamilika …"): `market.tickerSettled` — "settled" / "imekamilika" / "已结算". */}
+           <p data-result-count={totalCount} className="hidden sm:block amount text-micro text-text-subtle whitespace-nowrap">
+-            {totalCount} {t.results.resolved} · {formatTzsCompact(totalVolume)} {t.common.settled}
++            {totalCount} {t.results.resolved} · {formatTzsCompact(totalVolume)} {t.market.tickerSettled}
+           </p>
+         </div>
+       </div>
+@@ -622,7 +626,8 @@ function FeaturedResult({ m, t, locale }: { m: Awaited<ReturnType<typeof listMar
+         </>
+       )}
+       <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-1 font-mono text-[11px] tabular-nums text-text-muted">
+-        <span>{formatTzsCompact(m.yesPool + m.noPool)} {t.common.settled}</span>
++        {/* The figure's sentence word, not the tab label — the tally's rule above (round 4): "TZS 6K imekamilika". */}
++        <span>{formatTzsCompact(m.yesPool + m.noPool)} {t.market.tickerSettled}</span>
+         <span className="flex items-center gap-1"><I.users s={11} /> {m.predictorCount} {t.market.predictors}</span>
+       </div>
+     </Link>
+diff --git a/src/app/updown/[roundId]/page.tsx b/src/app/updown/[roundId]/page.tsx
+index 79d2c9c2c..3cd07a64c 100644
+--- a/src/app/updown/[roundId]/page.tsx
++++ b/src/app/updown/[roundId]/page.tsx
+@@ -777,7 +777,9 @@ export default async function UpDownRoundPage({
+                   <dl className="mt-[11px] grid grid-cols-[auto_1fr] gap-x-2.5 gap-y-[5px] font-mono text-[10.5px]">
+                     <dt className="text-text-faint">{t.market.udSource}</dt>
+                     <dd className="m-0 text-text-muted">{t.market[SOURCE_CLASS_KEY[asset.sourceClass]]}</dd>
+-                    <dt className="text-text-faint">{t.market.udQuoted}</dt>
++                    {/* The stamp's mid-sentence word used as a label opens on a capital, like "Chanzo" and "Ilionekana"
++                        around it — the hero's rule (`.ud-cap-first`, round 4); the word itself is unchanged. */}
++                    <dt className="ud-cap-first text-text-faint">{t.market.udQuoted}</dt>
+                     <dd className="m-0 tabular-nums text-text-muted">{fmtEAT(quotedAt) ?? "—"}</dd>
+                     <dt className="text-text-faint">{t.market.udObserved}</dt>
+                     <dd className="m-0 tabular-nums text-text-muted">{fmtEAT(observedAt) ?? "—"}</dd>
+diff --git a/src/components/charts/terminal-chart.tsx b/src/components/charts/terminal-chart.tsx
+index ba42cd6c8..f30dc2163 100644
+--- a/src/components/charts/terminal-chart.tsx
++++ b/src/components/charts/terminal-chart.tsx
+@@ -299,7 +299,11 @@ export function TerminalChart({
+     const ink = makeInkResolver();
+     const yes = ink("--yes-400");
+     const no = ink("--no-400");
+-    const priceFormat = { type: "price" as const, precision: data.decimals, minMove: 1 / 10 ** data.decimals };
++    /* ⭐ THE AXIS SPEAKS THE PAGE'S PRICE (2026-10-09, the visual pass's round 4, tiles 164 and 202). The engine's own
++       "price" format printed the scale as "2896.04" — no grouping, no currency — beside the band's "$2,896.00" and the
++       line's own name below the pane, which `usd()` spells. One spelling (`@/lib/usd-price`), so the scale, the live
++       line's tag and the crosshair's label read as the page does: "$2,896.04". */
++    const priceFormat = { type: "custom" as const, minMove: 1 / 10 ** data.decimals, formatter: (p: number) => usd(p, data.decimals) };
+     // The library renders raw UTC; shift to the device wall clock (F21).
+     const tzShift = -new Date().getTimezoneOffset() * 60;
+     // Pane-space discipline: the volume band exists only in candle mode — the
+diff --git a/src/components/charts/updown-chart-lab.tsx b/src/components/charts/updown-chart-lab.tsx
+index 3202bdae9..b3362ec4c 100644
+--- a/src/components/charts/updown-chart-lab.tsx
++++ b/src/components/charts/updown-chart-lab.tsx
+@@ -94,7 +94,11 @@ export function UpDownChartLab({
+ 
+   return (
+     <div>
+-      <div className="mb-2 flex flex-wrap items-center justify-between gap-x-3 gap-y-1.5">
++      {/* ⭐ ONE RHYTHM DOWN THE CHART'S CONTROLS (2026-10-09, the visual pass's round 4, tile 202 at sw 390). Stacked on a
++          phone they read key → range rail 10px, rail → style rail 8, style rail → chart card 12 — three gaps for one
++          block. Now each is 12 (the card's own `mb-2`): the rails wrap with `gap-y-2`, and the key carries its own
++          ink-true gap below (its wrapper's note). */}
++      <div className="mb-2 flex flex-wrap items-center justify-between gap-x-3 gap-y-2">
+         {/* 🔴 PLAYER-FILTERS 2026-09-09 · THIS RAIL NOW SAYS WHICH AXIS IT IS, AND THAT IS THE
+             POINT OF THE WHOLE CHANGE.
+             ⛔ THE COLLISION, IN THE PRODUCT'S OWN WORDS: the board's duration filter offers
+@@ -124,8 +128,15 @@ export function UpDownChartLab({
+             whose options are off-screen "reads as the control having done nothing" (§3 rule 9).
+             Stacking the key returns the full 320px to the rail, so all seven stay visible AND
+             every target keeps its 44px. */}
+-        <div className="flex min-w-0 flex-col gap-1 sm:flex-row sm:items-center sm:gap-1.5">
+-          <span aria-hidden="true">
++        {/* ⚠️ THE KEY'S BOX IS ITS OWN LINE, AND ITS GAP IS MEASURED TO ITS INK. As a bare `<span>` the wrapper was laid
++            out on the page's 22.4px strut, so the 10px key sat on a line 8px taller than itself and hung low: 24px under
++            the eyebrow above it, 10px over the rail, and 1px under the rail's own labels on desktop (tile 164: key ink
++            y484–491, "15M" y483–490). `flex` makes the key's 14px micro line the wrapper's whole height. That line holds
++            JetBrains Mono's baseline 3.4px above its foot — the 3.0px descender (0.300em of 10px) plus the (14 − 13.2)/2
++            half-leading, from the font's own metrics — so the box gap that leaves the block's 12px between the key's
++            ink and the rail's border is 12 − 3.4 = 8.6px. Phones only: from `sm` the key stands beside the rail. */}
++        <div className="flex min-w-0 flex-col sm:flex-row sm:items-center sm:gap-1.5">
++          <span aria-hidden="true" className="flex mb-[calc(var(--sp-3)_-_3.4px)] sm:mb-0">
+             <FilterGroupKey>{labels.railAria}</FilterGroupKey>
+           </span>
+           <div className="pchart-ranges" role="group" aria-label={labels.railAria}>
+diff --git a/src/components/updown/price-hero.tsx b/src/components/updown/price-hero.tsx
+index 382ba4ceb..3fcf938f2 100644
+--- a/src/components/updown/price-hero.tsx
++++ b/src/components/updown/price-hero.tsx
+@@ -166,8 +166,9 @@ export function PriceHero({
+           </div>
+           {/* The band's detail, continued: "Juu ya ufunguzi kwa $18.52 · imenukuliwa 18:55:02 EAT" sits under the
+               figure it dates, at the sentence floor — it was a 9.5px footnote under the chart, so the landing's
+-              answer arrived here as small print (frame panel, 2026-09-27). */}
+-          {copy.aboveBelow && <p className="mt-1.5 mb-0 text-body-sm text-text-muted">{copy.aboveBelow}</p>}
++              answer arrived here as small print (frame panel, 2026-09-27). `ud-cap-first`: a line the quote stamp
++              opens, it opens on a capital (globals.css, round 4) — the stamp alone reads "Imenukuliwa 04:01:21 EAT". */}
++          {copy.aboveBelow && <p className="ud-cap-first mt-1.5 mb-0 text-body-sm text-text-muted">{copy.aboveBelow}</p>}
+         </div>
+         <div className="ud-hero-stats text-right">
+           <p className="m-0 font-mono text-micro font-semibold uppercase eyebrow text-text-faint">{copy.openLabel}</p>
+diff --git a/src/components/updown/round-stake-panel.tsx b/src/components/updown/round-stake-panel.tsx
+index 6db1c237d..42ed94718 100644
+--- a/src/components/updown/round-stake-panel.tsx
++++ b/src/components/updown/round-stake-panel.tsx
+@@ -19,7 +19,7 @@ import { Spinner } from "@/components/ui/spinner";
+ import { cn, formatNumber, formatTzs } from "@/lib/utils";
+ import { useT } from "@/lib/i18n";
+ import { useUpDownQuickBet, usePlacePulse } from "./use-quick-bet";
+-import { UpDownStakeControls } from "./updown-stake-controls";
++import { UpDownStakeControls, EstimateNote } from "./updown-stake-controls";
+ import { UpDownBetBlockedModal } from "./updown-bet-blocked-modal";
+ import { stakeChipLabel } from "./stake-math";
+ import { I } from "@/components/ui/glyphs";
+@@ -300,7 +300,9 @@ export function RoundStakePanel(props: {
+           <span>{warnCopy}</span>
+         </p>
+       )}
+-      <p className="mt-2 text-[10px] leading-[1.45] text-text-faint">{t.market.udEstimateNote}</p>
++      {/* The × note at the ⓘ notes' size and indent (round 4): it was 10px here, under §T4's 12.5px reading floor,
++          while the same sentence reads at 13px on the card and the two-way panel. */}
++      <EstimateNote className="mt-2" text={t.market.udEstimateNote} />
+ 
+       <span aria-live="polite" className="sr-only">{bet.liveMessage}</span>
+ 
+diff --git a/src/components/updown/updown-card.tsx b/src/components/updown/updown-card.tsx
+index 2ab57a842..8bfc5ff6b 100644
+--- a/src/components/updown/updown-card.tsx
++++ b/src/components/updown/updown-card.tsx
+@@ -39,7 +39,7 @@ import { fillNodes } from "@/lib/fill-nodes";
+ import { valueTone, READ_TONE_TOKEN } from "@/lib/updown-match";
+ import { useT } from "@/lib/i18n";
+ import { useUpDownQuickBet, usePlacePulse } from "./use-quick-bet";
+-import { UpDownStakeControls, GLYPH_NO_SHRINK } from "./updown-stake-controls";
++import { UpDownStakeControls, GLYPH_NO_SHRINK, EstimateNote } from "./updown-stake-controls";
+ import { AssetMark } from "./asset-mark";
+ import { Button } from "@/components/ui/button";
+ // ⭐ The kit's ONE pool-split bar, and the home of the cold-start rail (§B9). See the pool-split
+@@ -1045,9 +1045,8 @@ export function UpDownCard(props: UpDownCardProps) {
+                   <span>{outEmptyCopy}</span>
+                 </p>
+               )}
+-              {(outMultUp != null || outMultDown != null) && (
+-                <p className="mt-1 text-body-sm leading-[1.45] text-text-faint break-keep [overflow-wrap:anywhere]">{t.market.udEstimateNote}</p>
+-              )}
++              {/* The × note hangs like the ⓘ note above it — `EstimateNote` (round 4, tile 166). */}
++              {(outMultUp != null || outMultDown != null) && <EstimateNote className="mt-1" text={t.market.udEstimateNote} />}
+             </>
+           )
+         ) : locked ? (
+diff --git a/src/components/updown/updown-stake-controls.tsx b/src/components/updown/updown-stake-controls.tsx
+index 50e72a7a7..f6a607fbe 100644
+--- a/src/components/updown/updown-stake-controls.tsx
++++ b/src/components/updown/updown-stake-controls.tsx
+@@ -85,6 +85,32 @@ type Bet = ReturnType<typeof useUpDownQuickBet>;
+  */
+ export const GLYPH_NO_SHRINK = "shrink-0";
+ 
++/**
++ * ⭐ THE × NOTE HANGS LIKE ITS ⓘ SIBLINGS (2026-10-09, the visual pass's round 4, tile 166). Under the bet buttons the
++ * empty-side note sets its `info` glyph in an 11px column with the sentence beside it, so its second line hangs at the
++ * text (x811); the multiplier note ran its "×" inline and wrapped flush under it (x796) — two indent rules, one stack.
++ * The sentence opens on the multiplier's own sign in every language ("× moves with every bet…", "× hubadilika…",
++ * "× 会随…"), so that sign takes the glyph's column and the words hang beside it: one rule for every note here, on the
++ * card, the round page and the locked-side panel. ⛔ Nothing is re-worded: the sign is read off the sentence, never
++ * typed here, and a sentence that ever stops opening on it renders whole, as before.
++ */
++const LEAD_SIGN = /^×\s+/u;
++export function EstimateNote({ text, className }: { text: string; className?: string }) {
++  const lead = LEAD_SIGN.exec(text);
++  return (
++    <p className={cn("flex items-start gap-1 text-body-sm leading-[1.45] text-text-faint break-keep [overflow-wrap:anywhere]", className)}>
++      {lead ? (
++        <>
++          <span className="w-[11px] shrink-0 text-center">×</span>
++          <span>{text.slice(lead[0].length)}</span>
++        </>
++      ) : (
++        <span>{text}</span>
++      )}
++    </p>
++  );
++}
++
+ export function UpDownStakeControls({
+   bet,
+   pricing,
+@@ -298,11 +324,14 @@ export function UpDownStakeControls({
+             // and the UI must never read as failed while the request is alive.
+             ? bet.pendingSlow
+               ? <><span className="live-dot" /> {t.market.udStillPlacing}</>
+-              : <><span className="live-dot" /> {formatTzs(bet.stake)} · {t.market.udStreaming}</>
++              // ⭐ The stake is MONEY in a sentence (§M4; round 4, tile 166: "TZS 1,000" was in the body face, its "1"
++              // 4px wide against the "0"'s 7). `.amount` sets it mono and whole, and the sentence stays ONE flex item, so
++              // the row's gap never stands in for the space beside the figure.
++              : <><span className="live-dot" /> <span><span className="amount">{formatTzs(bet.stake)}</span> · {t.market.udStreaming}</span></>
+             : bet.locallyLocked
+               ? <>{t.market.udErrSelectionClosed}</>
+               : bet.stakeReady
+-                ? <>{t.market.udTapToBet} · {formatTzs(bet.stake)}</>
++                ? <span>{t.market.udTapToBet} · <span className="amount">{formatTzs(bet.stake)}</span></span>
+                 : <>{t.market.udEnterStake}</>}
+         </p>
+       )}
+@@ -323,9 +352,7 @@ export function UpDownStakeControls({
+           the surface a quick-bet is actually placed from — carried a bare "× 1.5 est." with
+           nothing saying what the figure was. Now that the number moves with every later bet
+           (G3), the sentence that says so has to travel with it. */}
+-      {(multUp != null || multDown != null) && (
+-        <p className="mt-1 text-body-sm leading-[1.45] text-text-faint break-keep [overflow-wrap:anywhere]">{t.market.udEstimateNote}</p>
+-      )}
++      {(multUp != null || multDown != null) && <EstimateNote className="mt-1" text={t.market.udEstimateNote} />}
+ 
+       {/* Screen-reader confirmation. ⛔ NOT a replacement for the toast — both, always: a
+           toast is a transient region a screen reader may never voice, and this is the

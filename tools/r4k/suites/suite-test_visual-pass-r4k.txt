@@ -1,0 +1,98 @@
+
+── 1 · one not-found everywhere — one view, one order, one link colour, no gold (E43 E44; tiles 345–398) 
+  ok   1.1 · root renders the one view (src/app/not-found.tsx)
+  ok   1.1 · market renders the one view (src/app/markets/[id]/not-found.tsx)
+  ok   1.1 · proposal renders the one view (src/app/proposals/[id]/not-found.tsx)
+  ok   1.2 · sw: the kicker, the heading and the three cards in ONE order — Home · Markets · Help — then the one way out
+  ok   1.3 · sw: one link colour (brand-300), and no gold anywhere on the page
+  ok   1.2 · en: the kicker, the heading and the three cards in ONE order — Home · Markets · Help — then the one way out
+  ok   1.3 · en: one link colour (brand-300), and no gold anywhere on the page
+  ok   1.2 · zh: the kicker, the heading and the three cards in ONE order — Home · Markets · Help — then the one way out
+  ok   1.3 · zh: one link colour (brand-300), and no gold anywhere on the page
+  ok   1.4 · the proposal not-found is the same page with its own way out: the same three cards, then ‘Rudi kwenye mapendekezo’
+  ok   1.4b · …and its route passes exactly that
+  ok   1.5 · E44: the English heading types a typographic apostrophe — ‘couldn’t’ — and no word on the page a straight one
+  ok   1.6 · sw and zh: every word is the dictionary's own (error.*, common.home/markets/help)
+  ok   1.6b · en: the same, but for the dictionary's straight apostrophe in error.notFoundBody (S12)
+  ok   1.1′ PLANT · the shipped market page's own markup (a gold 404, Masoko first) is reported by 1.1's test
+
+── 2 · the not-found's title in the page's language, noindex in the head (E47; tiles 345–398) ──────────
+  ok   2.1 · the root not-found's metadata: its own title key in the visitor's language, and noindex/nofollow
+  ok   2.2 · the title reads ‘Hakuna ukurasa · 404’ / ‘Page not found · 404’ / ‘页面未找到 · 404’
+  ok   2.3 · src/app/markets/[id]/not-found.tsx exports the root's metadata — the not-found convention reads the DEEPEST not-found's, and these had none
+  ok   2.3 · src/app/proposals/[id]/not-found.tsx exports the root's metadata — the not-found convention reads the DEEPEST not-found's, and these had none
+  ok   2.4 · the market page's metadata still calls notFound() for a missing market — that is what sends Next to the not-found's
+  ok   2.5 · /updown/[roundId]: a round the read did not find is titled by the not-found; a FAILED read keeps ‘Up & Down’
+  ok   2.6 · /proposals/[id]: the same — the not-found's title for a proposal that does not exist (unless proposals are DISABLED, when the page redirects)
+  ok   2.5′ PLANT · the shipped updown metadata (‘Up & Down’ for a missing round) is reported
+  ok   2.7 · Next reads the deepest not-found's metadata under the error convention (resolve-metadata.js:373)
+  ok   2.8 · a notFound() in generateMetadata is caught and the not-found's metadata resolved instead (metadata.js:77)
+  ok   2.9 · the 404 status is set only where the error escaped the shell — the render's catch (app-render.js:1895)
+  ok   2.10 · a notFound() inside a Suspense boundary is captured (create-error-handler.js:107) and streams a robots noindex (make-get-server-inserted-html.js:32)
+  ok   2.11 · …and the two routes that answer 200 have a loading.tsx — the boundary that commits the status first (⛔ kept: every async route keeps one)
+
+── 3 · the heading and the hint break whole (E42; tiles 345 354 355 364 390 396 398) ───────────────────
+  ok   3.1 · the heading is balanced — ‘Hatukupata / ukurasa huo’, ‘We couldn’t / find that page’ — never one word alone
+  ok   3.2 · the hint is balanced, and Chinese breaks only after its marks (keep-all, break-word the floor)
+  ok   3.3.locate · the hint is those four clauses, in that order
+  ok   3.3 · zh hint at 320 (288px): two lines, ‘…已结算，’ / ‘或URL…继续。’ — 选择 whole, 继续。 not alone, each line ending on a hung mark
+  ok   3.3 · zh hint at 360 (328px): two lines, ‘…已结算，’ / ‘或URL…继续。’ — 选择 whole, 继续。 not alone, each line ending on a hung mark
+  ok   3.3 · zh hint at 390 (358px): two lines, ‘…已结算，’ / ‘或URL…继续。’ — 选择 whole, 继续。 not alone, each line ending on a hung mark
+  ok   3.3 · zh hint at 1280 (420px): two lines, ‘…已结算，’ / ‘或URL…继续。’ — 选择 whole, 继续。 not alone, each line ending on a hung mark
+  ok   3.3′ CONTROL · the old fill reproduces the tiles: ‘…请选 / 择…’ at 390 and ‘继续。’ alone at 1280
+
+── 4 · a Chinese mark that ends a centred line hangs its empty part (E50; tiles 390 396 398 427 428 433 434) 
+  ok   4.1 · every sw and en dictionary string with no Chinese in it (5310 of 5312) comes back as itself — no change for Latin text
+  ok   4.2 · a line-final 。 is set back and nothing follows it
+  ok   4.3 · a mid-text ， is set back AND followed by the gap that pays it back
+  ok   4.4 · ？ takes its own, smaller trim
+  ok   4.5 · two marks in a row: only the last hangs (no mid-line compression)
+  ok   4.5b · a mark before a closing quote is left whole — no gap, so no line can start on the ”
+  ok   4.6.locate · the mono face's space is 0.6em, regular and bold
+  ok   4.6 · the trims are the helper's (0.65em, ？ 0.5em) and each gap is exactly its trim: 0.6 + 0.05 = 0.65, 0.6 − 0.1 = 0.5
+  ok   4.7 · the gap cannot grow the line or be copied: mono face, line-height 0, letter-spacing 0, user-select none
+  ok   4.8 · no trim cuts into the ink: every mark's YaHei empty part ≥ its trim
+  ok   4.9 · the not-found hint / the empty state's body · 。 13px: ink centre -4.39px → -0.16px (tiles: -4.5)
+  ok   4.9 · the hint's first line · ， 13px: ink centre -4.42px → -0.19px
+  ok   4.9 · the side picker's question · ？ 17px: ink centre -4.38px → -0.13px (tiles: -4)
+  ok   4.9 · the side picker's sub-line · 。 13px: ink centre -4.39px → -0.16px (tiles: -4)
+  ok   4.10 · applied where the lines are centred: the empty state's title and body, the side picker's question and sub-line, the not-found hint
+  ok   4.6′ PLANT · a gap with no word-spacing would leave a mid-line mark 0.05em short
+  ok   4.9′ PLANT · untrimmed, the 。 line is 4.4px off centre — the defect the tiles measured
+
+── 5 · the wave fades out (E46; tile 380: a hard-edged box x320–959, y169–823) ─────────────────────────
+  ok   5.1 · the view nests the wave in its two masks: .kp-nf-topo › .kp-nf-topo__x › BrandTopo
+  ok   5.2 · top and bottom fade over --sp-16 (64px), both spellings
+  ok   5.3 · the sides fade over --kp-nf-side, both spellings
+  ok   5.4 · the side fade is 0 where the column is the screen and 64px past it: 360→0, 640→0, 768→64, 1280→64
+  ok   5.5 · both layers fill the column and take no pointer
+  ok   5.1′ PLANT · the shipped root page (BrandTopo straight in the column) is reported
+
+── 6 · the content edge is the house gutter (E51; tiles 345 351: cards x24–336 at 360) ─────────────────
+  ok   6.1 · the column's gutter is px-3 = 16px, the house gutter (PageContainer px-3 = 16px) — the cards stand at x16 on a phone
+  ok   6.2 · the column is the 640px tier token, not a hand-typed width
+  ok   6.1′ PLANT · the old px-5 is 24px — the 8px the tiles measured
+
+── 7 · the market question's column ends before the watermark (E49; tile 433: 赛's ink to x701 over the mark at x680–741) 
+  ok   7.locate · the watermark is a 2em box at right-N, on the same type rungs as the h1
+  ok   7.1 · at 390 (28px): the question's column ends at x306, 8px before the mark's box at x314
+  ok   7.1 · at 768 (36px): the question's column ends at x668, 8px before the mark's box at x676
+  ok   7.1 · at 1280 (36px): the question's column ends at x1064, 8px before the mark's box at x1072
+  ok   7.2 · R4-D's first-line indent is kept
+  ok   7.1′ PLANT · without the padding the column runs under the mark (tile 433: ink to x701 > the mark's box at x676)
+
+── 8 · gold is money, and nothing else — the clock's labels, the market panel's eyebrow, the not-found (the gold audit) 
+  ok   8.locate · gold-is-money's MONEY_CLASS was read, and --warning-fg is --gilt
+  ok   8.1 · the clock's label (‘Uchaguzi unafungwa baada ya’ / ‘Matokeo baada ya’) is the page's label ink, not --warning-fg (= --gilt)
+  ok   8.2 · the market panel's ‘Ingia ili kutabiri’ / 登录以预测 eyebrow is the eyebrow ink the side picker uses in the same slot
+  ok   8.3 · the not-found view and its three routes carry no money ink
+  ok   8.1′ PLANT · the shipped label (text-warning-fg) and the shipped not-found link (text-gold-300) are caught
+
+── 9 · E48 — the 404 a player's not-found page logs is its own Server Action, answered with the page's status 
+  ok   9.1 · an unmatched path renders /_not-found with 404 — for a POST too (base-server.js:1795, render404 sets res.statusCode = 404)
+  ok   9.2 · the client takes the action's answer by its RSC content type, whatever the status — the action works; only the browser logs the 404
+  ok   9.3 · the journey's unread dot asks that Server Action from every signed-in page (guests ask nothing: their 404s log only the document)
+  ok   9.4 · every icon, manifest, image and screenshot the layout and manifest name is in public/ (16 checked)
+
+visual-pass-r4k: 77 passed, 0 failed
+

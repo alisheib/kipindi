@@ -1,0 +1,21 @@
+Five things WP12's tiles showed wrong, in CSS: the frozen notice's box, the rail's edge ring, the hub card's corner ring, the Needle row's size, and wallet names broken across lines
+
+WP12's turn C took 333 tiles of the journey shell and each was read; these five held up when checked against the code
+(and, where a reader estimated a position, against the pixels):
+
+- The frozen-wallet notice on the signed-in home hero had no box: the hero's ground (--bg-overlay) is the very colour of
+  --bg-inset, the box's own ground, so only its padding showed - two lines indented 16px from everything around them,
+  reading as stray text (en, sw, zh, every width). It now has the card edge every other box has.
+- The journey rail's rightmost tab (Akaunti) lost its focus ring's right and bottom sides off-screen at 390: the
+  catch-all ring is drawn 2px OUTSIDE, and the rail's end slots touch the screen's edges. The ring now sits inside the
+  slot (-2px), as [data-section-rail]'s already does; the classic coin keeps its own ring.
+- The hub card clips its rows to its rounded corners, so the first row's square ring broke open at both top corners
+  ("Pochi", 390). The first and last rows take the card's inner curve, and an outline follows it.
+- The hub's Needle row read a size smaller than its siblings: the shared menu row is body-sm, as every row of the
+  account menu is; in the hub it takes the hub's body size.
+- "Airtel Money" and "Mixx by Yas" broke across lines in the hero's wallet list (320-1024, all three languages); a
+  wallet's name now never breaks inside, and the joiners between names still let the list wrap.
+
+{PROOF}
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>

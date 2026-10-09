@@ -1,0 +1,567 @@
+diff --git a/scripts/needle-host.test.mts b/scripts/needle-host.test.mts
+index 69dc532b6..7bb1807d3 100644
+--- a/scripts/needle-host.test.mts
++++ b/scripts/needle-host.test.mts
+@@ -16,6 +16,9 @@
+  *   §4 the host wires the rules in (source, comments stripped): the census, the triggers, the probe.
+  *   §5 M7 · A REST GLIDE'S FRAMES — `test:needle-rest` §1's change-of-step measure, replayed on the engine under real
+  *      frame timing (50–144 Hz, jitter, a dropped frame): the host before M7 is the plant.
++ *   §6 R4-B ④ THE CHAT BUBBLE IS A KEEP-OUT AT EVERY TIER, SHOWN OR FADED — tile 313 (the bubble drawn over the disc),
++ *      314 and 315 (rests that cleared its box, not its ring): the tiles' own rests replayed, the bubble dropped from
++ *      the obstacle set as the plant, and the host's census of it read from source.
+  */
+ import { readFileSync } from "node:fs";
+ import { join } from "node:path";
+@@ -23,7 +26,8 @@ import { decomment } from "./lib/decomment.mts";
+ import { NeedleBody, CONST } from "../src/lib/needle-physics.js";
+ import {
+   EDGE_MARGIN, ENGINE_MAX_SUBSTEPS, ENGINE_SUBSTEP, HALO_BREATHE, GLOW_GAP, RIM_CLEARANCE, FLOOR_CLEARANCE, REST_TIERS,
+-  censusPad, decideRest, glideFrame, glowReach, hugs, newGlideClock, paintsNothing, railRange, reseat,
++  BUBBLE_RING_BREATHE, BUBBLE_RING_OUTSET,
++  abovePad, bubbleInk, censusPad, decideRest, glideFrame, glowReach, hugs, newGlideClock, paintsNothing, railRange, reseat, restReach,
+   type Box, type Geometry, type RestInput, type RestTier,
+ } from "../src/lib/needle-rest.ts";
+ 
+@@ -265,7 +269,7 @@ console.log("\n§3 · ② the clearance tiers and ③ open surfaces, on the boxe
+   const fpAt = (y: number): Box => ({ left: 390 - SIZE / 2, right: 390, top: y, bottom: y + SIZE });
+   const { minY, maxY } = railRange({ minX: 0, maxX: 390 - SIZE, minY: 0, maxY: 780 - SIZE, size: SIZE });
+   const q = (y: number, controls: Box[], text: Box[], accepted: number | null = null, frames: Box[] = []): RestInput =>
+-    ({ fp: fpAt(y), controls, frames, text, glow: GLOW, reach: 780 / 3, minY, maxY, y, accepted });
++    ({ fp: fpAt(y), controls, frames, text, above: [], glow: GLOW, reach: 780 / 3, minY, maxY, y, accepted });
+   /** The gap from the disc's box at `y` to a box, along the axis that separates them (negative = they overlap). */
+   const gap = (y: number, r: Box) => {
+     const f = fpAt(y);
+@@ -493,5 +497,172 @@ console.log("\n§5 · M7 · a rest glide's frames, on the engine, under real fra
+     !/if \(gliding && glideClock && body\.parking && !body\.held\) \{/.test(widened));
+ }
+ 
++// ── §6 · ④ the chat bubble ─────────────────────────────────────────────────────────────────────────────────────────────
++console.log("\n§6 · ④ R4-B · the chat bubble is a keep-out at every tier, shown or faded (tiles 313 314 315 305)");
++{
++  // 6.1 · the restated numbers agree with the files they come from.
++  const chatCss = rd("src/styles/chat/chat-styles.css");
++  const ringInset = /\.cm-bubble::after \{[^}]*\binset: -([\d.]+)px;/.exec(chatCss);
++  const ringPeak = /@keyframes cm-bubble-ring \{[\s\S]*?50%[^}]*scale\(([\d.]+)\)/.exec(chatCss);
++  ok("6.1 BUBBLE_RING_OUTSET and BUBBLE_RING_BREATHE are chat-styles.css's (`.cm-bubble::after` inset, `cm-bubble-ring` at 50%)",
++    !!ringInset && Number(ringInset[1]) === BUBBLE_RING_OUTSET && !!ringPeak && Number(ringPeak[1]) === BUBBLE_RING_BREATHE,
++    `css ${ringInset?.[1]} / ${ringPeak?.[1]} vs ${BUBBLE_RING_OUTSET} / ${BUBBLE_RING_BREATHE}`);
++  const phoneSide = /\.cm-bubble\.cm-bubble-mobile \{ width: (\d+)px; height: (\d+)px; \}/.exec(chatCss);
++  const deskSide = /\.cm-bubble \{[^}]*?width: (\d+)px;\s*height: (\d+)px;/.exec(chatCss);
++  const chatRoot = code(rd("src/components/chat/ChatRoot.tsx"));
++  ok("6.1b the bubble's box restated below is the house's: 44px on a phone, 56 on a desktop (chat-styles.css), 16px from the right, 80 above the phone rail below 1024 and 16 from 1024 (ChatRoot)",
++    phoneSide?.[1] === "44" && phoneSide?.[2] === "44" && deskSide?.[1] === "56" && deskSide?.[2] === "56"
++    && /right: 16,/.test(chatRoot) && /bottom: isMobile \? 80 : 16,/.test(chatRoot) && /const MOBILE_BREAKPOINT = 1024;/.test(chatRoot));
++  const bubbleBox = (w: number, h: number): Box => {
++    const side = w < 1024 ? 44 : 56, lift = w < 1024 ? 80 : 16;
++    return { left: w - 16 - side, right: w - 16, top: h - lift - side, bottom: h - lift };
++  };
++  const ink320 = bubbleInk(bubbleBox(320, 780));
++  // Tile 305 (en 320, the disc 50px away): the ring's ink x256–307 × y652–703 (edges 256 / 308 / 652 / 704).
++  ok("6.2 the bubble's ink is its box grown by the ring at its widest — 5px round the 44px phone bubble — and holds the ring tile 305 measured (x256–307 × y652–703), within 1.5px of it",
++    ink320.left <= 256 && ink320.right >= 308 && ink320.top <= 652 && ink320.bottom >= 704
++    && ink320.left >= 254.5 && ink320.right <= 309.5 && ink320.top >= 650.5 && ink320.bottom <= 705.5
++    && Math.abs(bubbleInk(bubbleBox(1280, 900)).left - (1280 - 72 - 5.48)) < 0.01,
++    JSON.stringify(ink320));
++  ok("6.2b every tier keeps the glow and its 4px from the bubble, and the census reaches that far",
++    abovePad(10) === 10 + GLOW_GAP && censusPad(25, REST_TIERS.slice(2)) === 25 + GLOW_GAP);
++
++  /** The right rail at `w × h` (or the left, for 6.9), the disc's box at `y`, the gap to a box, the bubble there. */
++  const cell = (w: number, h: number) => {
++    const size = diameter(w, h);
++    const glow = glowReach(size, haloFraction(w, h));
++    const { minY, maxY } = railRange({ minX: 0, maxX: w - size, minY: 0, maxY: h - size, size });
++    const fpAt = (y: number, edge: "left" | "right" = "right"): Box =>
++      (edge === "right" ? { left: w - size / 2, right: w, top: y, bottom: y + size } : { left: 0, right: size / 2, top: y, bottom: y + size });
++    const gap = (y: number, r: Box, edge: "left" | "right" = "right") => {
++      const f = fpAt(y, edge);
++      return Math.max(r.left - f.right, f.left - r.right, r.top - f.bottom, f.top - r.bottom);
++    };
++    const box = bubbleBox(w, h), ink = bubbleInk(box);
++    const q = (y: number, o: { controls?: Box[]; text?: Box[]; above?: Box[]; reach?: number; edge?: "left" | "right" } = {}): RestInput => ({
++      fp: fpAt(y, o.edge), controls: o.controls ?? [], frames: [], text: o.text ?? [], above: o.above ?? [ink],
++      glow, reach: o.reach ?? h / 3, minY, maxY, y, accepted: null,
++    });
++    return { size, glow, pad: abovePad(glow), minY, maxY, fpAt, gap, box, ink, q };
++  };
++  /** The phone rail's last tab under the rail at 320–390 (80px wide, 64 tall: a small control, counted whole). */
++  const tab = (w: number): Box => ({ left: w - 80, right: w, top: 716, bottom: 780 });
++
++  // 6.3 · tile 313 (zh 320): the disc restored at y634 (the box the previous locale's 1280 walk saved), nothing else in
++  // the band — the Chinese licence line ends at x188, the band starts at 278 — and the bubble below-left of it.
++  const c320 = cell(320, 780);
++  const r313 = decideRest(c320.q(634, { controls: [tab(320)] }));
++  ok(`6.3 313 · the disc at y634 under the bubble moves, at tier 0, to the nearest height clear of its ink by the glow's ${c320.pad.toFixed(2)}px — y580`,
++    r313.y === 580 && r313.tier === 0 && c320.gap(580, c320.ink) >= c320.pad,
++    `${JSON.stringify(r313)}, gap to the ink ${r313.y === null ? "-" : c320.gap(r313.y, c320.ink).toFixed(2)}`);
++  const old313 = decideRest(c320.q(634, { controls: [tab(320)], above: [] }));
++  const over = c320.fpAt(634);
++  ok("6.3 PLANT · the bubble dropped from the obstacle set (the host before R4-B, the bubble faded when the check ran): it stays at y634, the bubble's ink over its box by 17 × 39px — the tile's 136 px of hidden ink, x293–303 y659–682",
++    old313.y === null && old313.tier === 0
++    && Math.abs(Math.min(over.right, c320.ink.right) - Math.max(over.left, c320.ink.left) - 17) < 0.01
++    && Math.abs(Math.min(over.bottom, c320.ink.bottom) - Math.max(over.top, c320.ink.top) - 39) < 0.01,
++    JSON.stringify(old313));
++  const r313b = decideRest(c320.q(580, { controls: [tab(320)] }));
++  ok("6.3 …and it stays at y580 on the next check (no chain)", r313b.y === null && r313b.tier === 0, JSON.stringify(r313b));
++
++  // 6.4 · tile 314 (zh 360): the same y634 through 320 → 360 (56px both). Shown at that check, the bubble counted as an
++  // ordinary control — its 44px box, no ring — and the tile's rest is exactly that rule's: y586.
++  const c360 = cell(360, 780);
++  const boxOnly360 = decideRest(c360.q(634, { controls: [tab(360), c360.box], above: [] }));
++  ok("6.4 PLANT · 314 · the bubble as an ordinary control (its box at the tier's pad) gives y586, the tile's rest — and its ring 9px from the disc's box, inside the 14px",
++    boxOnly360.y === 586 && Math.abs(c360.gap(586, c360.ink) - 9) < 0.01 && c360.gap(586, c360.ink) < c360.pad,
++    `${JSON.stringify(boxOnly360)}, ring gap ${boxOnly360.y === null ? "-" : c360.gap(boxOnly360.y, c360.ink).toFixed(2)}`);
++  const r314 = decideRest(c360.q(634, { controls: [tab(360), c360.box] }));
++  ok("6.4 314 · with the bubble's ink in, y580 — the ring clear by the glow's 14px", r314.y === 580 && c360.gap(580, c360.ink) >= c360.pad, JSON.stringify(r314));
++
++  // 6.5 · tile 315 (zh 390): 360's y586 re-centred on the 60px disc is y584; the box-only rule gives the tile's y580.
++  const c390 = cell(390, 780);
++  const boxOnly390 = decideRest(c390.q(584, { controls: [tab(390), c390.box], above: [] }));
++  ok("6.5 PLANT · 315–317 · the box-only rule at 390 gives y580, the tiles' rest — its ring 11px from the disc's box, inside the 15.4px",
++    boxOnly390.y === 580 && Math.abs(c390.gap(580, c390.ink) - 11) < 0.01 && c390.gap(580, c390.ink) < c390.pad,
++    `${JSON.stringify(boxOnly390)}, ring gap ${boxOnly390.y === null ? "-" : c390.gap(boxOnly390.y, c390.ink).toFixed(2)}`);
++  const r315 = decideRest(c390.q(584, { controls: [tab(390), c390.box] }));
++  ok(`6.5 315 · with the ink in, y574 — the ring clear by ${c390.pad.toFixed(2)}px`, r315.y === 574 && c390.gap(574, c390.ink) >= c390.pad, JSON.stringify(r315));
++
++  // 6.6 · CONTROL · tile 305 (en 320), from the same y634: the English licence line runs to x280, inside the band, and
++  // binds first. Its rest is the tile's y546 with the bubble in or out — the en/zh difference is the text, not the rule.
++  const licence: Box = { left: 16, right: 280, top: 617, bottom: 637 };
++  const en = decideRest(c320.q(634, { controls: [tab(320)], text: [licence] }));
++  const enOld = decideRest(c320.q(634, { controls: [tab(320)], text: [licence], above: [] }));
++  ok("6.6 CONTROL · 305 · the English licence line moves the disc to y546 (the tile's rest), with the bubble in the set or out of it",
++    en.y === 546 && enOld.y === 546 && en.tier === 0 && c320.gap(546, licence) >= c320.pad && c320.gap(546, c320.ink) >= c320.pad,
++    `${JSON.stringify(en)} / without the bubble ${JSON.stringify(enOld)}`);
++
++  // 6.7 · every tier: a page too dense for any text tier (a line every 30px down the band) still keeps the glow's
++  // clearance from the bubble at the floor tier, where the box-only rule rests 4px from the box, on the ring.
++  const lines = Array.from({ length: 14 }, (_, i) => ({ left: 200, right: 300, top: 290 + 30 * i, bottom: 304 + 30 * i }));
++  const dense = decideRest(c320.q(634, { controls: [tab(320)], text: lines }));
++  ok("6.7 a page too dense for the text tiers rests at tier 4 (text accepted) and STILL keeps the bubble's ink the glow's 14px away — y580",
++    dense.y === 580 && dense.tier === 4 && c320.gap(580, c320.ink) >= c320.pad, JSON.stringify(dense));
++  const denseOld = decideRest(c320.q(634, { controls: [tab(320), c320.box], text: lines, above: [] }));
++  ok("6.7 PLANT · the box-only rule at tier 4 rests 4px from the bubble's box — y596, the rim 1px into its ring",
++    denseOld.y === 596 && denseOld.tier === 4 && c320.gap(596, c320.ink) < 0, `${JSON.stringify(denseOld)}, ring gap ${denseOld.y === null ? "-" : c320.gap(denseOld.y, c320.ink).toFixed(2)}`);
++
++  // 6.8 · the reach: a phone on its side, 740 × 360. The bubble's ink is y231–285; a disc at its lowest rest is under it.
++  const land = cell(740, 360);
++  const low = land.maxY;
++  const reachLow = restReach({ fp: land.fpAt(low), y: low, minY: land.minY, maxY: land.maxY, above: [land.ink], glow: land.glow }, 360 / 3);
++  const rLand = decideRest(land.q(low, { reach: reachLow }));
++  ok("6.8 740 × 360 · a disc at its lowest rest (y290) under the bubble reaches past the third (120) to the nearest height clear of it: reach 130, rest y160",
++    low === 290 && reachLow === 130 && rLand.y === 160 && land.gap(160, land.ink) >= land.pad, `reach ${reachLow}, ${JSON.stringify(rLand)}`);
++  ok("6.8 PLANT · held to the third, nothing within reach clears it and it stays under the bubble",
++    decideRest(land.q(low, { reach: 360 / 3 })).y === null);
++  ok("6.8 CONTROL · a disc clear of the bubble keeps the third (y100), and so does one with no bubble at all",
++    restReach({ fp: land.fpAt(100), y: 100, minY: land.minY, maxY: land.maxY, above: [land.ink], glow: land.glow }, 120) === 120
++    && restReach({ fp: land.fpAt(low), y: low, minY: land.minY, maxY: land.maxY, above: [], glow: land.glow }, 120) === 120);
++
++  // 6.9 · CONTROL · the bubble is an obstacle where it is: the left rail at 313's height is far from it.
++  const left = decideRest(c320.q(634, { edge: "left" }));
++  ok("6.9 CONTROL · on the LEFT rail at y634 the right-hand bubble is nothing to the disc: it stays", left.y === null && left.tier === 0, JSON.stringify(left));
++
++  // 6.10 · the host wires it in (source, comments stripped).
++  const host = code(rd("src/components/layout/needle.tsx"));
++  const between = (src: string, from: string, to: string) => { const i = src.indexOf(from); const j = i < 0 ? -1 : src.indexOf(to, i + from.length); return i < 0 || j < 0 ? "" : src.slice(i, j); };
++  const restOf = (src: string) => between(src, "function clearRestY(): number | null {", "function settleClear() {");
++  const bubblesOf = (src: string) => between(src, "function bubblesInBand(band: Band) {", "const TEXT_SKIP = ");
++  const wired = (rest: string) =>
++    /const above = bubblesInBand\(band\);\s*const reach = restReach\(\{ fp, y: body\.y, minY, maxY, above, glow: g \}, viewport\(\)\.h \/ 3\);/.test(rest)
++    && /text: textInBand\(band, \{ top: fp\.top - reach - pad, bottom: fp\.bottom \+ reach \+ pad \}\),\s*above,\s*glow: g, reach,/.test(rest)
++    && !/viewport\(\)\.h \/ 3;/.test(rest);
++  const reads = (b: string) =>
++    /for \(const fab of document\.querySelectorAll<HTMLElement>\(BUBBLE\)\) \{/.test(b)
++    && /const n = fab\.querySelector<HTMLElement>\("\.cm-bubble"\) \?\? fab;/.test(b)
++    && /getComputedStyle\(n\)\.visibility === "hidden"/.test(b)
++    && /const t = getComputedStyle\(fab\)\.transform;/.test(b) && /new DOMMatrixReadOnly\(t\)/.test(b)
++    && /bubbleInk\(\{ left: r\.left - dx, right: r\.right - dx, top: r\.top - dy, bottom: r\.bottom - dy \}\)/.test(b)
++    && !/pointerEvents|pointer-events|opacity|seen\(/.test(b);
++  const rest = restOf(host), bubbles = bubblesOf(host);
++  ok("6.10 CONTROL · the two bodies this reads were found", rest.length > 40 && bubbles.length > 40);
++  ok("6.10 clearRestY hands the bubble in (`above`), takes its reach from `restReach`, and reads the page's text over that reach",
++    wired(rest));
++  ok("6.11 the bubble's census reads it SHOWN OR FADED: every `.cm-fab`, at its `.cm-bubble`, skipped only when `visibility: hidden`, its fade's translate taken back off, grown by its ring — never a pointer-events, opacity or `seen` test",
++    host.includes('const BUBBLE = ".cm-fab";') && reads(bubbles));
++  ok("6.12 the bubble's arrival or going asks for a check (ChatRoot is a lazy overlay that can land after the first one)",
++    host.includes("const LOOK_AGAIN = `${SURFACES},${BUBBLE}`;") && /if \(e\.matches\(LOOK_AGAIN\) \|\| e\.querySelector\(LOOK_AGAIN\)\) \{ scheduleClear\(SURFACE_SETTLE\); return; \}/.test(host));
++  // The names the census reads are the bubble's own, and its fades are the ones that blinded the control census.
++  const bubbleTsx = code(rd("src/components/chat/ChatBubble.tsx"));
++  const globals = rd("src/app/globals.css");
++  const fades = ["html[data-scrolling] .cm-fab:not(.cm-fab--open):not(:focus-within) {", "html[data-fab-idle] .cm-fab:not(.cm-fab--open):not(:focus-within) {"]
++    .map((sel) => { const i = globals.indexOf(sel); return i < 0 ? "" : globals.slice(i, globals.indexOf("}", i)); });
++  ok("6.13 `.cm-fab` and `.cm-bubble` are ChatRoot's wrapper and ChatBubble's button, and both of globals.css's fades set `pointer-events: none` on the wrapper (why the control census, which skips that, could not hold it)",
++    chatRoot.includes('className={open ? "cm-fab cm-fab--open" : "cm-fab"}') && /className=\{`cm-bubble /.test(bubbleTsx)
++    && fades.every((f) => /pointer-events: none;/.test(f) && /transform: translateY\(8px\);/.test(f)) && /if \(cs\.visibility === "hidden" \|\| cs\.pointerEvents === "none"\) continue;/.test(host));
++  // PLANTS: the bubble dropped from the call; the control census's filter planted into the bubble's.
++  const dropped = host.replace("const above = bubblesInBand(band);", "const above: Box[] = [];");
++  ok("6.10 PLANT · the bubble dropped from clearRestY's obstacle set is not read as wired", dropped !== host && !wired(restOf(dropped)));
++  const blind = host.replace('if (r.width < 1 || r.height < 1 || getComputedStyle(n).visibility === "hidden") continue;',
++    'const cs = getComputedStyle(n);\n      if (r.width < 1 || r.height < 1 || cs.visibility === "hidden" || cs.pointerEvents === "none") continue;');
++  ok("6.11 PLANT · the control census's `pointer-events: none` skip planted into the bubble's census (a faded bubble invisible again) is not read as the rule",
++    blind !== host && !reads(bubblesOf(blind)));
++  const thirdOnly = host.replace("const reach = restReach({ fp, y: body.y, minY, maxY, above, glow: g }, viewport().h / 3);", "const reach = viewport().h / 3;");
++  ok("6.10 PLANT · the reach held to a third (no way out from under the bubble on a short screen) is not read as wired",
++    thirdOnly !== host && !wired(restOf(thirdOnly)));
++}
++
+ console.log(`\n[needle-host] ${pass} passed, ${failures.length} failed`);
+ if (failures.length) { console.log("\nFAILURES:"); for (const f of failures) console.log("  · " + f); process.exit(1); }
+diff --git a/scripts/needle-rest.test.mjs b/scripts/needle-rest.test.mjs
+index 917394d5f..e8fd95415 100644
+--- a/scripts/needle-rest.test.mjs
++++ b/scripts/needle-rest.test.mjs
+@@ -32,6 +32,15 @@
+  *   §8 A SCROLL MID-GLIDE — the page moves under a glide so that its target is no longer clear: the landing re-checks
+  *      and the disc ends clear (257 265 273); then no further glide. `window.needle.resting()` is false while the
+  *      glide is in flight and true once it has landed.
++ *   ⭐ 2026-10-09 · R4-B (round 4, tile 313: the chat bubble drawn over the parked disc's lower-left). At 320 × 780,
++ *   390 × 780 and 1024 × 900, the clean room with the chat bubble let back in (ChatRoot's own; a stand-in with its
++ *   markup and box where the chatbot is off):
++ *   §9 THE CHAT BUBBLE — a disc parked 17px into the bubble's ink (313's overlap) moves to a rest clear of the bubble's
++ *      ink — its box where it stands SHOWN, grown by the pulse ring at its widest — by the glow's 4px, with the bubble
++ *      SHOWN, FADED AT REST (D75, `data-fab-idle`) and FADED MID-SCROLL (D3, `data-scrolling`): both fades are
++ *      `pointer-events: none`, which the control census skips, and a faded bubble returns on any touch. Then no further
++ *      glide. A bubble ARRIVING over a parked disc moves it with no scroll at all (ChatRoot is a lazy overlay).
++ *      CONTROLS: a disc clear of the ink by the clearance and 2px stays; a disc on the LEFT rail at the same height stays.
+  *
+  * Local only (drives /auth/demo).   BASE=http://localhost:3009 node scripts/needle-rest.test.mjs
+  */
+@@ -151,6 +160,8 @@ const HELPERS = () => {
+       return gapOf(el.getBoundingClientRect());
+     },
+     textRight: (sel) => { const rg = document.createRange(); rg.selectNodeContents(document.querySelector(sel)); return rg.getBoundingClientRect().right; },
++    /** The gap from the footprint to a box handed in (R4-B: the bubble's ink where it stands shown). */
++    gapBox: (r) => gapOf(r),
+     storedEdge: () => { try { return JSON.parse(localStorage.getItem("50pick.needle.pos") || "null")?.edge ?? null; } catch { return null; } },
+   };
+   let vib = 0; const orig = navigator.vibrate?.bind(navigator);
+@@ -430,6 +441,98 @@ console.log("\n[needle-rest] §8 the page moves under a glide: the landing re-ch
+   await ctx.close();
+ }
+ 
++// ── §9 THE CHAT BUBBLE ───────────────────────────────────────────────────────────────────────────────
++console.log("\n[needle-rest] §9 the chat bubble is cleared by the glow's 4px, shown or faded (clean room, the bubble let back in)");
++for (const [W, H] of [[320, 780], [390, 780], [1024, 900]]) {
++  const { ctx, page } = await cleanRoom(W, H);
++  const pad = (await page.evaluate(() => window.__nr.glow())) + 4;
++  const size = await page.evaluate(() => window.__needle.size);
++  // D75's own nap (3s untouched) must have come first: from then on nothing here rouses the bubble (a synthetic scroll
++  // on `document` never reaches scroll-cast's window listeners), so the states set below are the only ones in play.
++  const napped = await page.waitForFunction(() => document.documentElement.hasAttribute("data-fab-idle"), null, { timeout: 6000, polling: 100 }).then(() => true, () => false);
++  ok(`§9 ${W} · precondition · D75's fade came on its own after 3s untouched, so its timer is spent`, napped);
++  const setFades = (attrs) => page.evaluate(async (a) => {
++    const html = document.documentElement;
++    for (const k of ["data-fab-idle", "data-scrolling"]) html.toggleAttribute(k, a.includes(k));
++    await new Promise((r) => setTimeout(r, 400));   // past the fade's --t-quick transition
++    const fab = document.querySelector(".cm-fab");
++    if (!fab) return null;
++    const s = getComputedStyle(fab);
++    return { opacity: s.opacity, pointerEvents: s.pointerEvents };
++  }, attrs);
++  await setFades([]);
++  // Where the bubble stands SHOWN — ChatRoot's own, measured with neither fade on <html>; or, where the chatbot is off,
++  // ChatRoot's numbers (16px from the right, 80 above a phone's rail / 16 on a desktop; 44px / 56px) for a stand-in.
++  const house = await page.evaluate(() => !!document.querySelector(".cm-fab .cm-bubble"));
++  const side = W < 1024 ? 44 : 56, lift = W < 1024 ? 80 : 16;
++  const box = house
++    ? await page.evaluate(() => document.querySelector(".cm-fab .cm-bubble").getBoundingClientRect().toJSON())
++    : { left: W - 16 - side, right: W - 16, top: H - lift - side, bottom: H - lift };
++  // Its ink, restated here (a guard must not import what it checks): the pulse ring (chat-styles.css, `.cm-bubble::after`,
++  // inset −3px) at the peak of `cm-bubble-ring` (scale 1.08) — 5px round the 44px bubble, 5.5 round the 56px one.
++  const past = (s) => (s / 2 + 3) * 1.08 - s / 2;
++  const ink = { left: box.left - past(box.right - box.left), right: box.right + past(box.right - box.left), top: box.top - past(box.bottom - box.top), bottom: box.bottom + past(box.bottom - box.top) };
++  console.log(`  · ${W}×${H}: ${house ? "ChatRoot's bubble" : "a stand-in for the bubble (the chatbot is off here)"} at x${box.left}–${box.right} y${box.top}–${box.bottom}, its ink from y${ink.top.toFixed(1)}; the clearance is ${pad.toFixed(1)}px`);
++  const standIn = `<div class="cm-fab"><button type="button" class="cm-bubble${W < 1024 ? " cm-bubble-mobile" : ""}" aria-label="Help"></button></div>`;
++  const standInCss = { right: "16px", bottom: `${lift}px`, zIndex: "60" };
++  // 313's overlap: the disc's box from 17px above the ink's top edge, 39px into it at 320.
++  const under = ink.top - 17 + size / 2;
++
++  // A BUBBLE ARRIVING over a parked disc (the clean room still hides ChatRoot's, so the census sees none until it lands).
++  {
++    const f = await place(page, under);
++    await wait(1200);
++    const y0 = await page.evaluate(() => window.__needle.y);
++    ok(`§9 ${W} · precondition · with no bubble to see, the disc stays where it was put, 17px above the ink's top edge`, Math.abs(y0 - f.top) < 0.5, JSON.stringify({ placed: f.top, y0 }));
++    await page.evaluate(([h, c]) => window.__nr.plant(h, c), [standIn, standInCss]);
++    await wait(120);
++    const rested = await waitRest(page, 4000);
++    const end = await page.evaluate((b) => ({ y: window.__needle.y, gap: window.__nr.gapBox(b) }), ink);
++    ok(`§9 ${W} · a bubble ARRIVING over the parked disc moves it — no scroll dispatched — clear of its ink by ≥ ${pad.toFixed(1)}px`,
++      rested && Math.abs(end.y - y0) > 1 && end.gap >= pad - 0.5, JSON.stringify({ y0, ...end }));
++    await page.evaluate(() => window.__nr.unplant());
++    await wait(600);
++  }
++
++  // The bubble in view for the rest of the section: ChatRoot's let back in, or the stand-in kept.
++  if (house) await page.evaluate(() => { const s = document.createElement("style"); s.id = "nr-bubble-in"; s.textContent = ".cm-fab, .cm-fab * { visibility: visible !important; }"; document.head.appendChild(s); });
++  else await page.evaluate(([h, c]) => window.__nr.plant(h, c), [standIn, standInCss]);
++
++  for (const [label, attrs] of [["SHOWN", []], ["FADED AT REST (D75, data-fab-idle)", ["data-fab-idle"]], ["FADED MID-SCROLL (D3, data-scrolling)", ["data-scrolling"]]]) {
++    const look = await setFades(attrs);
++    const faded = attrs.length > 0;
++    ok(`§9 ${W} · precondition · the bubble is ${label}`,
++      !!look && (faded ? look.opacity === "0" && look.pointerEvents === "none" : look.opacity === "1" && look.pointerEvents !== "none"), JSON.stringify(look));
++    const f = await place(page, under);
++    await wait(80);
++    const y0 = await page.evaluate(() => window.__needle.y);
++    const rested = await kick(page);
++    const end = await page.evaluate((b) => ({ y: window.__needle.y, parked: window.__needle.parked, gap: window.__nr.gapBox(b) }), ink);
++    ok(`§9 ${W} · ${label} · a disc 17px above the bubble's ink edge, overlapping it (313), moves to a rest clear of the ink where it stands shown by ≥ ${pad.toFixed(1)}px`,
++      rested && end.parked && Math.abs(end.y - y0) > 1 && end.gap >= pad - 0.5, JSON.stringify({ placed: f.top, y0, ...end }));
++    await page.evaluate(() => document.dispatchEvent(new Event("scroll")));
++    const again = await page.evaluate(() => window.__nr.record(900));
++    ok(`§9 ${W} · ${label} · …and the next scroll-idle does not move it again (no chain)`, again.every((fr) => Math.abs(fr.y - end.y) < 0.5 && !fr.parking));
++  }
++
++  await setFades([]);
++  {
++    const f = await place(page, ink.top - pad - 2 - size / 2);
++    const y0 = await page.evaluate(() => window.__needle.y);
++    const rested = await kick(page);
++    const end = await page.evaluate((b) => ({ y: window.__needle.y, gap: window.__nr.gapBox(b) }), ink);
++    ok(`§9 ${W} · CONTROL · a disc clear of the bubble's ink by ${(pad + 2).toFixed(1)}px stays where it is`, rested && Math.abs(end.y - y0) <= 1, JSON.stringify({ placed: f.top, y0, ...end }));
++  }
++  {
++    await place(page, under, "left");
++    const y0 = await page.evaluate(() => window.__needle.y);
++    const rested = await kick(page);
++    const y1 = await page.evaluate(() => window.__needle.y);
++    ok(`§9 ${W} · CONTROL · on the LEFT rail at the same height the bubble is nothing to the disc: it stays`, rested && Math.abs(y1 - y0) <= 1, `${y0} → ${y1}`);
++  }
++  await ctx.close();
++}
++
+ await browser.close();
+ console.log(`\n[needle-rest] ${pass} passed, ${failures.length} failed`);
+ if (failures.length) { console.log("\nFAILURES:"); for (const f of failures) console.log("  · " + f); process.exit(1); }
+diff --git a/src/components/layout/needle.tsx b/src/components/layout/needle.tsx
+index 1e7ab8150..8fc302274 100644
+--- a/src/components/layout/needle.tsx
++++ b/src/components/layout/needle.tsx
+@@ -30,7 +30,7 @@ import { isMoneySurface, isJourneySurface } from "@/lib/surfaces";
+ import { useJourneyOn } from "@/lib/journey/journey-on";
+ import { PEPSI_PATHS, PEPSI_TRANSFORM } from "@/lib/needle-art";
+ import {
+-  censusPad, decideRest, glideFrame, glowReach, hugs, newGlideClock, paintsNothing, railRange, reseat,
++  bubbleInk, censusPad, decideRest, glideFrame, glowReach, hugs, newGlideClock, paintsNothing, railRange, reseat, restReach,
+   type Box, type Geometry, type GlideClock,
+ } from "@/lib/needle-rest";
+ import type { NeedleOptions } from "@/lib/needle-physics";
+@@ -371,7 +371,9 @@ function mountNeedle(
+      then off every control), the reseat on a viewport change and the record that stops a chained glide are
+      documented there, once, and `test:needle-host` proves them on the
+      vendored engine without a browser. Three triggers were added here: a check asked for mid-glide runs when the glide
+-     lands, an open surface mounting or going asks for one, and a viewport change re-seats a disc on its way to a rest. */
++     lands, an open surface mounting or going asks for one, and a viewport change re-seats a disc on its way to a rest.
++     ⭐ R4-B ④ · the chat bubble goes in on its own (`bubblesInBand`), shown or faded, kept the glow's clearance away at
++     every tier; its arrival asks for a check too. */
+   const INTERACTIVE = 'a[href],button,input:not([type="hidden"]),select,textarea,summary,[role="button"],[role="link"],[role="tab"],[role="switch"],[role="checkbox"],[role="menuitem"],[tabindex]:not([tabindex="-1"])';
+   /* ⭐ R3-B ③ · THE OPEN FLOATING SURFACES A PARKED DISC MUST NEVER COVER (tile 321: the disc on the open channels
+      panel, hiding its right border). The house's two markers — `data-needle-keepout` (the rails, the rail's coin, the
+@@ -462,6 +464,33 @@ function mountNeedle(
+     }
+     return out;
+   }
++  /* ⭐ R4-B ④ · THE CHAT BUBBLE, SHOWN OR FADED (tile 313: drawn over the disc's lower-left, 136 px of its ink hidden).
++     ChatRoot's bubble is fixed bottom-right ABOVE the Needle (z 60 over 45), so a disc under it is covered, and the
++     control census above could not hold it: it skips a control with `pointer-events: none`, which is exactly what both
++     of the bubble's fades set (globals.css: D3 while the page moves and for 250ms after, D75 after 3s untouched) — and
++     a check runs 180ms after a scroll — while a shown bubble counted as its box alone, without the pulse ring that
++     paints 5px outside it. A faded bubble is not gone: any touch brings it back, over whatever rests under it. So it is
++     read here on its own terms. Every `.cm-fab` the page lays out, measured at its painted `.cm-bubble`, unless
++     `visibility: hidden` (the house never hides it that way — globals.css rules visibility out for both fades — so only
++     a harness's clean room does), at the place it stands when SHOWN: the fade's own translate on the wrapper (8px down,
++     or the part of it a transition has reached) is taken back off. Then grown by its ring, `bubbleInk`. Opacity and
++     pointer-events are deliberately not read. */
++  const BUBBLE = ".cm-fab";
++  function bubblesInBand(band: Band) {
++    const out: Box[] = [];
++    for (const fab of document.querySelectorAll<HTMLElement>(BUBBLE)) {
++      const n = fab.querySelector<HTMLElement>(".cm-bubble") ?? fab;
++      const r = n.getBoundingClientRect();
++      if (r.width < 1 || r.height < 1 || getComputedStyle(n).visibility === "hidden") continue;
++      const t = getComputedStyle(fab).transform;
++      const m = t && t !== "none" ? new DOMMatrixReadOnly(t) : null;
++      const dx = m ? m.e : 0, dy = m ? m.f : 0;
++      const ink = bubbleInk({ left: r.left - dx, right: r.right - dx, top: r.top - dy, bottom: r.bottom - dy });
++      if (ink.right < band.left || ink.left > band.right) continue;
++      out.push(ink);
++    }
++    return out;
++  }
+   /* ⭐ 2026-10-08 · G1 [193] · READABLE TEXT IS SOMETHING UNDER IT TOO. The census above counts CONTROLS only
+      (the session-96 cases), so the disc rested on the /markets stat line at 390 in Swahili — "● 40 hai · TZS 49K
+      katika mchezo" cut at "mche", the board's own money figure line, which is text and not a control. ⛔ The page
+@@ -549,9 +578,11 @@ function mountNeedle(
+     const g = glowPx();
+     const pad = censusPad(g);
+     const band = { left: fp.left - pad, right: fp.right + pad };
+-    const reach = viewport().h / 3;
+     const L = body.limits();
+     const { minY, maxY } = railRange({ minX: L.minX, maxX: L.maxX, minY: L.minY, maxY: L.maxY, size: body.size });
++    const above = bubblesInBand(band);
++    // A third of the viewport — or, for a disc under the bubble, as far as the nearest height clear of it (④).
++    const reach = restReach({ fp, y: body.y, minY, maxY, above, glow: g }, viewport().h / 3);
+     const here = accepted !== null && Math.abs(accepted.y - body.y) < 2
+       && accepted.sx === window.scrollX && accepted.sy === window.scrollY;
+     const census = controlsInBand(band);
+@@ -560,6 +591,7 @@ function mountNeedle(
+       controls: [...census.content, ...surfacesInBand(band)],
+       frames: census.frames,
+       text: textInBand(band, { top: fp.top - reach - pad, bottom: fp.bottom + reach + pad }),
++      above,
+       glow: g, reach, minY, maxY, y: body.y,
+       accepted: here && accepted ? accepted.tier : null,
+     });
+@@ -865,8 +897,12 @@ function mountNeedle(
+      only triggers, and a panel opens with none of them — the channels panel, 45 s into a visit (321). A floating
+      surface mounting, unmounting, or gaining or losing its marker or role asks for a check once its entrance has
+      played (`.m-float-in` is --t-quick, 140ms). Filtered to those surfaces: a live ticker's re-render costs one
+-     `matches` per added element. */
++     `matches` per added element.
++     ⭐ R4-B ④ · …and the chat bubble arriving or going. ChatRoot is a lazy overlay that draws nothing until it has
++     measured the viewport, so on a fresh page it can land after the Needle's first check, over a disc that check left
++     where it was — with nothing else to look again until the reader scrolls. */
+   const SURFACE_SETTLE = 200;
++  const LOOK_AGAIN = `${SURFACES},${BUBBLE}`;
+   const POPUP_ROLE = /^(dialog|alertdialog|menu|listbox)$/;
+   const surfaceObserver = new MutationObserver((records) => {
+     for (const r of records) {
+@@ -881,7 +917,7 @@ function mountNeedle(
+         for (const n of list) {
+           if (n.nodeType !== Node.ELEMENT_NODE) continue;
+           const e = n as Element;
+-          if (e.matches(SURFACES) || e.querySelector(SURFACES)) { scheduleClear(SURFACE_SETTLE); return; }
++          if (e.matches(LOOK_AGAIN) || e.querySelector(LOOK_AGAIN)) { scheduleClear(SURFACE_SETTLE); return; }
+         }
+       }
+     }
+diff --git a/src/lib/needle-rest.ts b/src/lib/needle-rest.ts
+index 99b53fe6a..96656e4c0 100644
+--- a/src/lib/needle-rest.ts
++++ b/src/lib/needle-rest.ts
+@@ -22,6 +22,23 @@
+  *     (296: borders at x373), which E-400 accepts only when no rest over nothing at all is within reach.
+  *   ③ A PANEL WAS NOT A KEEP-OUT AT REST. An open floating surface (the channels panel, 321) was an obstacle to a
+  *     thrown disc and nothing to a parked one. The host now hands open surfaces in with the controls, whole.
++ *
++ * ⭐ 2026-10-09 · R4-B (round 4, tile 313: the staff hub at 320 in Chinese). ④ THE CHAT BUBBLE WAS NOT AN OBSTACLE AT
++ * REST. The bubble (ChatRoot's `.cm-fab`, fixed bottom-right at z 60, over the Needle's 45 — test:stacking's "a fidget
++ * must never cover a control") was drawn over the parked disc's lower-left: 136 of the disc's 994 px of ink hidden
++ * (x293–303, y659–682, against the same disc unobstructed on tile 305), its box 39px into the bubble's ink. Two holes:
++ *   · the host's census drops a control that takes no taps (`pointer-events: none`), and BOTH of the bubble's fades set
++ *     exactly that (globals.css: D3 while the page moves and for 250ms after it stops, D75 after 3s untouched). The rest
++ *     check runs 180ms after a scroll, inside D3's 250: the drive scrolled the staff card into view, the check ran with
++ *     the bubble faded, found nothing near the disc, and left it where the last page had put it (y634, the box the
++ *     previous locale's 1280 walk saved). No earlier check on that page had counted it either (ChatRoot is a lazy
++ *     overlay that draws nothing until it has measured the viewport): had one, the disc would have left 634 for 586.
++ *   · when the bubble WAS shown at check time it counted as an ordinary control — its 44px box, at the tier's pad. That
++ *     is how the next two cells came to rest exactly the tier-0 pad above the BOX (314: 586 from 634 at 360; 315: 580
++ *     from 584 at 390), with the pulse ring, which paints 5px outside the box, inside the disc's glow.
++ * So the bubble goes in on its own (`above`): where it stands when shown, grown by its ring at its widest, kept the
++ * glow's clearance away at EVERY tier, shown or faded — a faded bubble comes back on any touch, over a disc parked
++ * under it — and a disc under it may glide past the third of the viewport to get out (`restReach`).
+  */
+ 
+ /** A box in viewport px (the DOMRect fields the rules read). */
+@@ -67,7 +84,8 @@ export const FLOOR_CLEARANCE = 4;
+  * `pad` is measured from the disc's box (= the rim's ink to 1.2px), in px, on all four sides. Always counted: a
+  * control's content (its text, icon or field), a small control (≤ 64px either way) whole, and an open floating
+  * surface whole. `frames` adds a big control's WHOLE box (a full-width card's border and padding); `text` adds visible
+- * text (a painted badge's whole box) and small media.
++ * text (a painted badge's whole box) and small media. And at EVERY tier, whatever its pad, the chat bubble's ink is kept
++ * `abovePad` (the glow and GLOW_GAP) away: ④ above, `RestInput.above`.
+  *   0 · NOTHING under the glow, not even a card's frame, and GLOW_GAP of air beyond it  — the rest the design means
+  *   1 · every control's content and every line of text clear of the glow by GLOW_GAP     — E-400's card rule: the
+  *       tucked half (28–30px visible at 360–390, past a 16px page gutter) may lie over a big card's frame and padding
+@@ -84,8 +102,31 @@ export const REST_TIERS: readonly RestTier[] = [
+   { name: "4px clear of all content", frames: false, text: true, pad: () => FLOOR_CLEARANCE },
+   { name: "off every control", frames: false, text: false, pad: () => FLOOR_CLEARANCE },
+ ];
+-/** The widest pad any tier asks for — how far the host's census must reach past the disc. */
+-export const censusPad = (glow: number, tiers: readonly RestTier[] = REST_TIERS) => Math.max(...tiers.map((t) => t.pad(glow)));
++/** ④ What every tier keeps between the disc's box and the chat bubble's ink: the glow, and GLOW_GAP of air past it.
++ *  No tier can accept less — the bubble paints OVER the disc, so whatever of the disc lies under it is simply hidden. */
++export const abovePad = (glow: number) => glow + GLOW_GAP;
++/** The widest pad any tier (or the bubble) asks for — how far the host's census must reach past the disc. */
++export const censusPad = (glow: number, tiers: readonly RestTier[] = REST_TIERS) => Math.max(abovePad(glow), ...tiers.map((t) => t.pad(glow)));
++
++/** ④ The chat bubble's pulse ring (`styles/chat/chat-styles.css`, `.cm-bubble::after`): `inset: -3px` round the bubble,
++ *  breathing to `scale(1.08)` (`@keyframes cm-bubble-ring`, 50%). `test:needle-host` reads both out of that file. */
++export const BUBBLE_RING_OUTSET = 3;
++export const BUBBLE_RING_BREATHE = 1.08;
++/** The chat bubble's ink, from its box: the ring at its widest, `(½·side + 3)·1.08 − ½·side` past each edge — 5px
++ *  round the 44px phone bubble, 5.5 round the 56px desktop one. Measured on tile 305 (en 320, the disc far away): the
++ *  ring's ink x256–307 × y652–703 round the box x260–304 × y656–700, 4px out at that moment of its breathe. */
++export function bubbleInk(b: Box): Box {
++  const past = (side: number) => (side / 2 + BUBBLE_RING_OUTSET) * BUBBLE_RING_BREATHE - side / 2;
++  const x = past(b.right - b.left), y = past(b.bottom - b.top);
++  return { left: b.left - x, right: b.right + x, top: b.top - y, bottom: b.bottom + y };
++}
++
++/** Whether any of `rects` comes within `pad` of the disc's box `fp` moved down by `dy`. */
++function within(rects: readonly Box[], fp: Box, pad: number, dy: number): boolean {
++  return rects.some((r) =>
++    r.left < fp.right + pad && r.right > fp.left - pad
++    && r.top < fp.bottom + dy + pad && r.bottom > fp.top + dy - pad);
++}
+ 
+ export type RestInput = {
+   /** The disc's box now, clipped to the viewport. */
+@@ -96,8 +137,12 @@ export type RestInput = {
+   frames: readonly Box[];
+   /** Visible text (a painted badge's whole box) and small media. */
+   text: readonly Box[];
++  /** ④ The chat bubble: a control painted ABOVE the disc that fades and comes back — its ink (`bubbleInk`) where it
++   *  stands when shown, whether it is shown or faded now. Every tier keeps `abovePad` from it. */
++  above: readonly Box[];
+   glow: number;
+-  /** How far a rest may be from where it is, in px (the host: a third of the viewport). */
++  /** How far a rest may be from where it is, in px (the host: `restReach` — a third of the viewport, or as far as the
++   *  nearest height clear of the bubble for a disc under it). */
+   reach: number;
+   /** The `y` range a rest may take on the rail. */
+   minY: number;
+@@ -113,13 +158,12 @@ export type RestOutput = { y: number | null; tier: number };
+ 
+ /** `tiers` is a seam for `test:needle-host`, which plants the old rules in memory to show they read a touch as clear. */
+ export function decideRest(q: RestInput, tiers: readonly RestTier[] = REST_TIERS): RestOutput {
+-  const hits = (rects: readonly Box[], pad: number, dy: number) => rects.some((r) =>
+-    r.left < q.fp.right + pad && r.right > q.fp.left - pad
+-    && r.top < q.fp.bottom + dy + pad && r.bottom > q.fp.top + dy - pad);
++  const hits = (rects: readonly Box[], pad: number, dy: number) => within(rects, q.fp, pad, dy);
+   const holds = (t: number, dy: number) => {
+     const tier = tiers[t];
+     const pad = tier.pad(q.glow);
+-    return !hits(q.controls, pad, dy) && !(tier.text && hits(q.text, pad, dy)) && !(tier.frames && hits(q.frames, pad, dy));
++    return !hits(q.above, abovePad(q.glow), dy)
++      && !hits(q.controls, pad, dy) && !(tier.text && hits(q.text, pad, dy)) && !(tier.frames && hits(q.frames, pad, dy));
+   };
+   let now = tiers.length;
+   for (let t = 0; t < tiers.length; t++) if (holds(t, 0)) { now = t; break; }
+@@ -138,6 +182,27 @@ export function decideRest(q: RestInput, tiers: readonly RestTier[] = REST_TIERS
+   return { y: null, tier: now };
+ }
+ 
++/**
++ * ④ HOW FAR A REST MAY BE FROM WHERE IT IS. E-400 ①'s third of the viewport (`third`) — but a disc under the bubble's
++ * clearance is not waiting for the page to move: the bubble is fixed, and no scroll will ever take it off. So for that
++ * disc the reach is at least the distance to the nearest height on the rail clear of the bubble. On a short screen the
++ * third falls short of it: a phone on its side, 740 × 360, puts the bubble's ink at y231–285, and a disc at its lowest
++ * rest (y290) must rise 129px to clear it by the glow's 14 — a third of 360 is 120. Otherwise it is the third, unchanged.
++ * The host collects the page's text over this reach, so every height the search can reach is one it has read.
++ */
++export function restReach(q: { fp: Box; y: number; minY: number; maxY: number; above: readonly Box[]; glow: number }, third: number): number {
++  const pad = abovePad(q.glow);
++  if (!within(q.above, q.fp, pad, 0)) return third;
++  const span = Math.max(q.y - q.minY, q.maxY - q.y);
++  for (let d = 2; d <= span; d += 2) {
++    for (const sign of [-1, 1]) {
++      const y = q.y + sign * d;
++      if (y >= q.minY && y <= q.maxY && !within(q.above, q.fp, pad, y - q.y)) return Math.max(third, d);
++    }
++  }
++  return third;
++}
++
+ /** A computed colour that paints nothing: `transparent`, `rgba(…, 0)`, or any colour function whose `/ alpha` is 0.
+  *  ⚠️ A trailing 0 alone is not enough: `rgb(0, 0, 0)` is black. */
+ export function paintsNothing(c: string): boolean {

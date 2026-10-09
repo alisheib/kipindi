@@ -1,0 +1,16 @@
+
+[live-target-safe] §1 no script takes a production URL as its DEFAULT target
+  ✓ §1 ratchet · 1400 scripts scanned 1400
+  ✓ §1 CONTROL · the live-campaign entry points ARE exempted, and there are some 197 files whose own name declares a live target
+  ✓ §1a a SHARED module never defaults to a production origin
+  ✓ §1b RATCHET · standalone entry points defaulting to production may only SHRINK (ceiling 4) 4: scripts/bundle-css-probe.mjs -> "https://50pick.tz" | scripts/outcome-parity.mjs -> "https://50pick.tz" | scripts/perf-smoke.mjs -> "https://kipindi-production.up.railway.app" | scripts/timer-date-shots.mjs -> "https://50pick.tz"
+
+[live-target-safe] §2 the shared harness names its target on every run
+  ✓ §2 the harness defaults to loopback
+  ✓ §2 and it PRINTS the resolved target, so a wrong one is visible immediately
+
+[live-target-safe] §3 CONTROL · the detector catches the shape that shipped, and only that shape
+  ✓ §3 the exact line that shipped is caught
+  ✓ §3 CONTROL · the safe line is NOT caught, so §1 is not merely rejecting everything
+
+ALL PASS — live-target-safe: 8 passed, 0 failed

@@ -1,0 +1,78 @@
+You are one of several strict tile readers in round 5 of 50pick's visual pass for Vodacom. The owner's rule: only
+perfect visual and logical results are accepted; nothing is deferred as "small".
+
+Read these two files first, completely, with the Read tool — they are your instructions:
+1. C:/Users/asheib/AppData/Local/Temp/claude/C--Users-asheib/0e745525-51fe-4451-ace7-c9987576fc15/scratchpad/visual/read-brief-r2.md — how to read, what counts, what is known and by design, how to report.
+2. C:/Users/asheib/AppData/Local/Temp/claude/C--Users-asheib/0e745525-51fe-4451-ace7-c9987576fc15/scratchpad/visual/read-brief-r5-fixes.md — what round 4 fixed and what each fix must now look like. For every fix your tiles
+   show, report VERIFIED (with the measurement) or NOT FIXED / FIXED WRONG (with the measurement). Its last section lists
+   what was fixed AFTER these tiles — note those as "seen, already fixed after r5", not as findings.
+Also read C:/Users/asheib/AppData/Local/Temp/claude/C--Users-asheib/0e745525-51fe-4451-ace7-c9987576fc15/scratchpad/visual/owner-items.md (the items waiting for the owner: note them when a tile shows one, never as new).
+
+Your tiles (56 of them) are in C:/Users/asheib/AppData/Local/Temp/claude/C--Users-asheib/0e745525-51fe-4451-ace7-c9987576fc15/scratchpad/visual/tiles-r5. Open EVERY one, in this order:
+057--header--root--player--999999--en--1150.png
+058--header--root--player--999999--en--1280.png
+059--header--root--player--999999--zh--320.png
+060--header--root--player--999999--zh--360.png
+061--header--root--player--999999--zh--390.png
+062--header--root--player--999999--zh--412.png
+063--header--root--player--999999--zh--768.png
+064--header--root--player--999999--zh--1024.png
+065--header--root--player--999999--zh--1150.png
+066--header--root--player--999999--zh--1280.png
+067--header--wallet-deposit--player--999999-deposit-screen--sw--320.png
+068--header--wallet-deposit--player--999999-deposit-screen--sw--390.png
+069--header--wallet-deposit--player--999999-deposit-screen--sw--1280.png
+070--header--root--player--compact--sw--320.png
+071--header--root--player--compact--sw--1024.png
+072--header--root--player--compact--en--320.png
+073--header--root--player--compact--en--1024.png
+074--header--root--player--compact--zh--320.png
+075--header--root--player--compact--zh--1024.png
+076--header--root--player--zero--sw--320.png
+077--header--root--player--zero--sw--390.png
+078--header--root--player--zero--sw--1024.png
+079--header--root--player--zero--sw--1280.png
+080--header--root--player--zero--en--320.png
+081--header--root--player--zero--en--390.png
+082--header--root--player--zero--en--1024.png
+083--header--root--player--zero--en--1280.png
+084--header--root--player--zero--zh--320.png
+085--header--root--player--zero--zh--390.png
+086--header--root--player--zero--zh--1024.png
+087--header--root--player--zero--zh--1280.png
+088--header--root--player--held--sw--320.png
+089--header--root--player--held--sw--390.png
+090--header--root--player--held--sw--1024.png
+091--header--root--player--held--sw--1280.png
+092--header--root--player--held-wallet--sw--390.png
+093--header--root--player--held--en--320.png
+094--header--root--player--held--en--390.png
+095--header--root--player--held--en--1024.png
+096--header--root--player--held--en--1280.png
+097--header--root--player--held--zh--320.png
+098--header--root--player--held--zh--390.png
+099--header--root--player--held--zh--1024.png
+100--header--root--player--held--zh--1280.png
+101--header--root--player--masked--sw--320.png
+102--header--root--player--masked--sw--390.png
+103--header--root--player--masked--sw--1024.png
+104--header--root--player--masked--sw--1280.png
+105--header--root--player--masked--en--320.png
+106--header--root--player--masked--en--390.png
+107--header--root--player--masked--en--1024.png
+108--header--root--player--masked--en--1280.png
+109--header--root--player--masked--zh--320.png
+110--header--root--player--masked--zh--390.png
+111--header--root--player--masked--zh--1024.png
+112--header--root--player--masked--zh--1280.png
+
+Each tile also has a diff overlay against round 4's capture of the same cell, in C:/Users/asheib/AppData/Local/Temp/claude/C--Users-asheib/0e745525-51fe-4451-ace7-c9987576fc15/scratchpad/visual/diff-r5, named <tile>--diff.png: the new
+tile dimmed, every changed pixel red. Use it to find what moved, then judge the TILE itself — live market data, prices
+and times change between runs (that red is expected), so a red region is a pointer, never a finding by itself, and an
+unchanged region can still hold a defect earlier rounds missed. The overlay list with each tile's changed regions is
+C:/Users/asheib/AppData/Local/Temp/claude/C--Users-asheib/0e745525-51fe-4451-ace7-c9987576fc15/scratchpad/visual/diff-r5/diff.json.
+
+Measure with PowerShell System.Drawing as the brief says (no Python on this PC). Do not edit any file; do not run npm,
+servers or browsers. Your final message is the report the brief asks for — (1) tiles opened (must be 56), (2) FINDINGS
+(most visible first: tile · what · where · how measured · which rule), (3) the VERIFIED / NOT FIXED list for round 4's
+fixes, (4) "seen, already fixed after r5", (5) DOUBTS. Nothing else.

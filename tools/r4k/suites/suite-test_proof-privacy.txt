@@ -1,0 +1,19 @@
+
+settlement proof — evidence excerpt is staff only
+
+  ok   the page imports the canonical staff predicate
+  ok   it computes a server-side `viewerIsStaff` from the session
+  ok   the evidence excerpt renders ONLY when `evidence && viewerIsStaff`
+  ok   there is no ungated `{evidence && (` render left
+  ok   the excerpt is NOT merely hidden with CSS (that still ships the bytes)
+  ok   the player still sees `udOpen`
+  ok   the player still sees `udClose`
+  ok   the player still sees `udRuleTextBanded`
+  ok   the player still sees `udProofClosingNote`
+  ok   self-test: the gate check fails on an ungated page
+  ok   self-test: the ungated check fails on an ungated page
+  ok   self-test: the viewerIsStaff check fails when it is removed
+
+12 passed, 0 failed
+
+

@@ -1,0 +1,46 @@
+
+§0 · the reader, proved on the three inputs that defeat a regex
+PASS 0.1 an arrow-function handler does not end the open tag early — the `>` in `=>` is inside a brace scope
+PASS 0.2 a template literal with nested `${}` strings does not run away — `${` pushes an expression scope, so an inner backtick cannot close the outer template
+PASS 0.3 a comment with an unbalanced quote inside the tag does not run away — comments are blanked before the lexer ever sees them
+PASS 0.4 the naive `<button\b([^>]*)>` really does fail on (a) — naive captured only " onClick={() ="
+
+§1 · the control-height ladder in globals.css — the VALUES
+PASS 1.1 --tap-min is 40 (Law 9 / DESIGN_AUTHORITY §A2) — 40px
+PASS 1.2 --h-control-xs is 32 (the dense MOUSE-ONLY admin rung) — 32px
+PASS 1.3 --h-control-sm is exactly --tap-min — both 40px
+PASS 1.4 --h-control-md is the preferred 44 — 44px
+PASS 1.5 --h-input equals --h-control-md, so an input and a button beside it line up — both 44px
+PASS 1.6 the ladder is monotonic (xs < sm ≤ md ≤ lg ≤ xl) — 32/40/44/48/56
+PASS 1.7 every rung except the admin xs one clears --tap-min
+PASS 1.8 every .btn-<size> still resolves through a --h-control-* token — xs 32 · sm 40 · md 44 · lg 48 · xl 56
+PASS 1.9 the overridden spacing scale parsed (h-N does NOT mean N×4px here) — h-7 = 40px · h-8 = 48px · h-10 = 80px
+
+§2 · EXCEPTION 1, as law — the 32px rung is ADMIN and MOUSE-ONLY
+PASS 2.1 the 32px rung appears on NO player surface — checked 408 player files
+PASS 2.2 the exception is actually used by admin (so it is a rule, not dead config) — 23 admin files
+
+§3 · the gate — a player control may not DECLARE a height under the floor
+PASS 3.1 every interactive open tag on a player surface was read to its end — 505 tags read
+PASS 3.2 no player control declares a height below 44px (the one legal step down is --tap-min 40px) — 6 sub-floor controls, all ratcheted; 505 tags read across 402 player files
+
+§4 · the ratchet may only shrink
+PASS 4.x ratchet src/components/ui/toggle.tsx:button@26 is still a real finding — the kit Switch TRACK is 44×26 and stays that way by design — but since DG-A-02 (2026-08-29) its REACH is 40px via `.toggle-switch::after` (globals.css), so this row is now about PAINT, not about tap. ⛔ Do not read it as 'sub-floor' any more, and do not 'fix' it by raising the inline height: that would fail §4.x here (this key would stop matching) and change the geometry of ~100 controls. This scan is static and can only ever see the declared 26; the reach is proven where it actually lives, by `npm run qa:toggle-hit` against production with elementFromPoint — a bounding box cannot see that fix.
+PASS 4.x ratchet src/components/proposals/vote-control.tsx:button@34 is still a real finding — the proposal up/down vote buttons are 36×34 inside a 3px-padded capsule (≈40 outer). Genuinely close, and genuinely not 44.
+PASS 4.x ratchet src/components/profile/password-section.tsx:button@30 is still a real finding — the `Change / Set password` button in the account panel — 30px, the smallest declared player control in the tree, on a security action.
+PASS 4.x ratchet src/components/ui/tabs.tsx:button@36 is still a real finding — 36px segment inside the `p-1` (4px) capsule ⇒ a 46px capsule. The SEGMENT is under the floor even though the control group is not; documented at the call site.
+PASS 4.x ratchet src/components/ui/date-select.tsx:button@36 is still a real finding — calendar day cell. Documented at the call site: `h-9` is 64px on this repo's scale, which made six rows 384px of grid inside a 320px popover.
+PASS 4.x ratchet src/components/ui/date-select.tsx:button@32 is still a real finding — calendar year cell, same reason — `h-8` is 48px here, which showed 4.5 rows in a 240px scroller instead of 7.
+PASS 4.z the ratchet is keyed by height, so a control cannot shrink inside its own row — every row is keyed file:tag@px
+
+§5 · DG-A-08 — THE ADMIN SURFACE, WHICH §3 EXCLUDES BY CONSTRUCTION
+PASS 5.1 no admin control declares a height under --tap-min (40px) except by NAMING the --h-control-xs rung — 220 admin controls declare a height across 299 files; every sub-floor one names the 32px rung
+PASS 5.2 an admin control drawn as a BOX (it declares its own padding) goes through a recipe or states the floor — 47 padded admin controls, all accounted for
+PASS 5.3 CONTROL — the admin population is non-empty, so 0 findings means 0 defects and not 0 reach — 299 admin files · 220 declaring a height · 47 drawn as a box
+
+§6 · THE NAMED CONTROLS §3/§5's TAG SCAN CANNOT SEE (PV-13a/PV-13b, 2026-09-03)
+PASS 6.1 every named control was FOUND (the gate did not lose its subject) — 3 named controls checked: wallet-balance-pill.tsx → <CashEye> (the balance-hide eye toggle) · .kp-jbal (the journey header's captioned balance, S6) · .mcardp-info ("How it works", every market card)
+PASS 6.2 no named control hand-types a pixel height OR WIDTH at its call site — each defers to a rung in BOTH axes — wallet-balance-pill.tsx's CashEye takes h-full (the capsule's own --h-control-md) and w-[var(--tap-min)]; .mcardp-info takes var(--h-control-md) in both axes; .kp-jbal takes var(--h-control-md) for its height
+PASS 6.3 the captioned balance (.kp-jbal) takes its height from a --h-control-* rung, by name — .kp-jbal declares height: var(--h-control-md), the 44px rung
+
+30 passed, 0 failed

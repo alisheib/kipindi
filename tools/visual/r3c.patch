@@ -1,0 +1,1732 @@
+diff --git a/package.json b/package.json
+index c68635474..8c6026a1c 100644
+--- a/package.json
++++ b/package.json
+@@ -639,6 +639,7 @@
+     "test:journey-account": "tsx scripts/journey-account.test.mts",
+     "red:journey-account": "tsx scripts/journey-account.test.mts --prove-red",
+     "test:journey-tickets": "tsx scripts/journey-tickets.test.mts",
++    "test:visual-pass-r3c": "tsx scripts/visual-pass-r3c.test.mts",
+     "red:journey-tickets": "tsx scripts/journey-tickets.test.mts --prove-red",
+     "test:signoff": "tsx scripts/signoff.test.mts",
+     "test:proposal-evidence-age": "tsx scripts/proposal-evidence-age.test.mts",
+diff --git a/scripts/anchors/house-bot-money.anchors.mjs b/scripts/anchors/house-bot-money.anchors.mjs
+index 8bcdf61d8..fb8dd94fa 100644
+--- a/scripts/anchors/house-bot-money.anchors.mjs
++++ b/scripts/anchors/house-bot-money.anchors.mjs
+@@ -321,8 +321,10 @@ export const MUTATIONS = [
+   {
+     name: "D19-1 · a holder's WIN notice names the house stake again",
+     file: SVC,
+-    from: "m.titleZh ? `${m.titleZh} · ${p.id}` : null), positionPermalinkHref(p.id));",
+-    to: "m.titleZh ? `${m.titleZh} · ${p.id}` : null), positionPermalinkHref(p.id) + (p.houseBotId != null ? \"#50pick-liquidity-stake\" : \"\"));",
++    // 2026-10-09 (round 3 of the visual pass): the win's label is the market's name alone — the " · ${p.id}" it carried
++    // was a raw id in the sentence — so the anchor is the new call's tail; the defect put back is the same one.
++    from: "localizedText(m.titleEn, m.titleSw, m.titleZh), positionPermalinkHref(p.id));",
++    to: "localizedText(m.titleEn, m.titleSw, m.titleZh), positionPermalinkHref(p.id) + (p.houseBotId != null ? \"#50pick-liquidity-stake\" : \"\"));",
+     expect: "8.2 · …and its English body is the plain template",
+     suite: "money-mem",
+   },
+diff --git a/scripts/gold-is-money.test.mts b/scripts/gold-is-money.test.mts
+index d3387c2ac..94a3c597b 100644
+--- a/scripts/gold-is-money.test.mts
++++ b/scripts/gold-is-money.test.mts
+@@ -27,6 +27,9 @@ import { readFileSync } from "node:fs";
+ const IDENTITY_SURFACES = [
+   "src/components/ui/identity-avatar.tsx",
+   "src/components/updown/updown-card.tsx",
++  // 2026-10-09 (round 3, tiles 177 178 203): the leaderboard's ribbon struck its top TIER in `text-gold-300` — "Fedha",
++  // silver, in the money ink. The ribbon states ranks, counts and rates; its gold accent is gone, and this keeps it gone.
++  "src/components/layout/page-ribbon.tsx",
+ ];
+ 
+ /** The tokens the money surfaces own. Matching `--gold-N` covers the aliases' targets too. */
+diff --git a/scripts/lib/house-bot-money-cases.mts b/scripts/lib/house-bot-money-cases.mts
+index c0b1aca00..ef7784cf3 100644
+--- a/scripts/lib/house-bot-money-cases.mts
++++ b/scripts/lib/house-bot-money-cases.mts
+@@ -574,13 +574,17 @@ section("§8 · no house wording on outcome notices, in any language");
+   await w.svc.settleMarket(market.id, { force: true });
+   await sleep(500);
+   const m1 = await w.svc.getMarket(market.id);
+-  const win = (await rows(b.userId, "WIN")).find((n) => n.bodyEn.includes(r.data.positionId));
++  // ⭐ Found by its LINK, this position's own permalink: since round 3 of the visual pass (2026-10-09) the position id is
++  // not written into the sentence any more (" · pos_…" was a raw id in prose; notification-text.ts), and the permalink is
++  // what keeps two wins on one market two notices.
++  const win = (await rows(b.userId, "WIN")).find((n) => n.href === `/positions/${r.data.positionId}`);
+   ok("8.1 · the holder's WIN notice for a house stake exists and carries no house word in any language", !!win && leaks(win).length === 0, j(leaks(win)));
+   // The LINK is as visible as the words (a mutation that labelled only the href passed a body-only check — measured).
+   ok("8.2 · …and its English body is the plain template, byte for byte, and its link is the plain permalink",
+-    !!win && win.bodyEn === `${m1.titleEn} · ${r.data.positionId} paid out. Tap to view.` && win.href === `/positions/${r.data.positionId}`, `${win?.bodyEn ?? "no WIN row"} · ${win?.href}`);
+-  ok("8.3 · …and its Swahili and Chinese bodies end exactly as any player's do",
+-    !!win && win.bodySw.endsWith(`· ${r.data.positionId} kimelipa. Bonyeza kuona.`) && win.bodyZh.endsWith(`· ${r.data.positionId} 已赔付。点击查看。`), `${win?.bodySw} | ${win?.bodyZh}`);
++    !!win && win.bodyEn === `${m1.titleEn} paid out. Tap to view.` && win.href === `/positions/${r.data.positionId}`, `${win?.bodyEn ?? "no WIN row"} · ${win?.href}`);
++  ok("8.3 · …and its Swahili and Chinese bodies end exactly as any player's do, with no position id in the words",
++    !!win && win.bodySw.endsWith(" kimelipa. Bonyeza kuona.") && win.bodyZh.endsWith(" 已赔付。点击查看。")
++      && ![win.bodyEn, win.bodySw, win.bodyZh].some((s: string) => s.includes(r.data.positionId)), `${win?.bodySw} | ${win?.bodyZh}`);
+   const loss = (await rows(player, "LOSS"))[0];
+   ok("8.4 · CONTROL · the player's LOSS notice on the same market exists and carries no house word", !!loss && leaks(loss).length === 0, loss?.bodyEn ?? "no LOSS row");
+ 
+@@ -669,8 +673,10 @@ section("§8 · no house wording on outcome notices, in any language");
+     const pcPos = await w.svc.buyPosition(pc, { marketId: mc.id, side: "YES", stake: STAKE, idempotencyKey: crypto.randomUUID() });
+     const voided = await w.svc.emergencyVoidMarket({ marketId: mc.id, officerId: OFFICER, reason: "HB-LC-11 fixture" });
+     await sleep(500);
+-    const hcRow = (await rows(hc.userId, "DEPOSIT")).find((n: Any) => n.bodyEn.includes(rc.data.positionId));
+-    const pcRow = (await rows(pc, "DEPOSIT")).find((n: Any) => n.bodyEn.includes(pcPos.data.positionId));
++    // Each row is found by its LINK, which opens its own ticket (`#<position id>`) — since round 3 of the visual pass
++    // (2026-10-09) the id rides the link and not the sentence (notification-text.ts).
++    const hcRow = (await rows(hc.userId, "DEPOSIT")).find((n: Any) => String(n.href ?? "").includes(rc.data.positionId));
++    const pcRow = (await rows(pc, "DEPOSIT")).find((n: Any) => String(n.href ?? "").includes(pcPos.data.positionId));
+     ok("8.14 · HB-LC-11 fixture · the cancelled market really refunded both, and BOTH notices EXIST — the rows are asserted PRESENT before anything is asserted absent from them",
+       voided.ok === true && !!hcRow && !!pcRow, j({ voided: show(voided), holder: !!hcRow, player: !!pcRow }));
+     ok("8.15 · HB-LC-11 · the holder's MARKET CANCELLED notice carries no house word in any of the three languages, link included",
+@@ -688,8 +694,8 @@ section("§8 · no house wording on outcome notices, in any language");
+     await w.svc.resolveMarket({ marketId: mo.id, outcome: "YES", officerId: OFFICER });
+     await w.svc.settleMarket(mo.id, { force: true });
+     await sleep(500);
+-    const hoRow = (await rows(ho.userId, "WIN")).find((n: Any) => n.bodyEn.includes(ro2.data.positionId));
+-    const poRow = (await rows(po, "WIN")).find((n: Any) => n.bodyEn.includes(poPos.data.positionId));
++    const hoRow = (await rows(ho.userId, "WIN")).find((n: Any) => String(n.href ?? "").includes(ro2.data.positionId));
++    const poRow = (await rows(po, "WIN")).find((n: Any) => String(n.href ?? "").includes(poPos.data.positionId));
+     ok("8.17 · HB-LC-11 fixture · with every stake on ONE side both readers got the full-refund notice — asserted PRESENT first, because an absence proved over a missing row proves nothing",
+       !!hoRow && !!poRow && hoRow.titleEn.startsWith("Full refund") && poRow.titleEn.startsWith("Full refund"),
+       j({ holder: hoRow?.titleEn, player: poRow?.titleEn }));
+diff --git a/scripts/qa-journey-shell.mjs b/scripts/qa-journey-shell.mjs
+index bd220a3f0..3e9d46f69 100644
+--- a/scripts/qa-journey-shell.mjs
++++ b/scripts/qa-journey-shell.mjs
+@@ -1318,6 +1318,37 @@ async function arifaTile(page, locale, width) {
+   return row;
+ }
+ 
++/**
++ * ⭐ THE UNREAD SIGN A SIGNED-IN PLAYER'S TILE OWES, AWAITED BEFORE IT IS SHOT (round 3, 2026-10-09). The round-3 tiles
++ * showed no Akaunti dot on 157 173 179, no bell "25" on 158 174 180, the hub's Arifa "25" beside a bare bell on 266, and
++ * no sign at all on the en hub (260–265) — none of it a regression (no file on the unread path changed on the branch).
++ * Each counter makes its own read when it mounts (`unread-count.ts`, `notifications-panel.tsx`); the dot mounts below
++ * 1024 and the bell from 1024 (`one-poller.ts`), so a resize to 1280 mounts a bell with no count yet; Server Actions run
++ * one at a time per tab, so a slow first read holds the next one; a failed read waits 21–39 s before it tries again; and
++ * the hub's Arifa row reads ONCE (A1) and is refreshed only by `50pick:refresh-notifications`. The tiles were shot
++ * 0.5–1 s after the resize or the load. So for the demo player, who always has unread notices, the shot now waits for
++ * the counter mounted at its width (the dot below 1024, the bell from 1024 — `DOT_SHOWN`, `BELL_AT_LEAST`, the unread
++ * section's own probes) for up to 45 s, one failed read's retry included; and, asked for, for the Arifa row's badge,
++ * asking the row once to read again (the event it listens for) if its one read did not land. A sign still missing is
++ * SAID, never failed: the unread section (§3) is where the counts are judged.
++ */
++const UNREAD_WAIT_MS = 45_000;
++async function unreadLanded(page, width, { arifa = false } = {}) {
++  const lgUp = width >= 1024;
++  const seen = (fn, arg, timeout) => page.waitForFunction(fn, arg, { timeout }).then(() => true).catch(() => false);
++  const sign = lgUp ? await seen(BELL_AT_LEAST, 1, UNREAD_WAIT_MS) : await seen(DOT_SHOWN, null, UNREAD_WAIT_MS);
++  let row = true;
++  if (arifa && (await page.evaluate((sel) => !!document.querySelector(sel), ARIFA))) {
++    const badge = (sel) => !!document.querySelector(`${sel} .count-badge`);
++    row = await seen(badge, ARIFA, 15_000);
++    if (!row) {
++      await page.evaluate(() => window.dispatchEvent(new Event('50pick:refresh-notifications')));
++      row = await seen(badge, ARIFA, 15_000);
++    }
++  }
++  if (!sign || !row) say(`  · after the wait at ${width}: the ${lgUp ? 'bell' : 'dot'} ${sign ? 'shows its count' : 'shows NO count'}${arifa ? `, the Arifa row ${row ? 'shows its badge' : 'shows NO badge'}` : ''}`);
++}
++
+ /** The hub, screen by screen: its top, then each card (or the sign-out row) the last screen did not show whole. */
+ async function hubWalk(page, base) {
+   await toTop(page);
+@@ -1449,6 +1480,8 @@ async function tabTour(v, viewer, widths, list) {
+     for (const width of widths) {
+       await resize(page, width);
+       await toTop(page);
++      // The demo player always has unread notices: the dot (or, from 1024, the bell) is part of this tile (round 3).
++      if (viewer === 'player') await unreadLanded(page, width);
+       const cell = { section: 'tabs', route: c.route, pathname, viewer, state: 'active-tab', locale: 'sw', width };
+       await checkShell(page, cell, { journey: true });
+       await shoot(page, cell, heading);
+@@ -1892,6 +1925,8 @@ async function hubSection() {
+           JSON.stringify(h ? { id: h.id, exit: h.exit, prompt: h.prompt && fold(h.prompt), staff: h.staff && fold(h.staff), rows: h.rows.length } : null));
+         for (const width of HUB_WIDTHS) {
+           await resize(v.page, width);
++          // The demo player's hub owes its unread signs — the dot or the bell, and the Arifa row's badge (round 3).
++          if (vw.id === 'player') await unreadLanded(v.page, width, { arifa: true });
+           const base = { section: 'hub', route: 'account', pathname: '/account', viewer: vw.id, state: 'hub', locale, width };
+           if (HUB_WALK.includes(width)) {
+             await hubWalk(v.page, base);
+@@ -2018,6 +2053,9 @@ async function viewerSection() {
+     await page.locator(`${HUB} a.kp-hub__row[href='/results']`).first().click({ timeout: 15_000 });
+     await page.waitForFunction(() => location.pathname === '/results', null, { timeout: 60_000 });
+     await page.waitForSelector('#main-content h1', { state: 'attached', timeout: 60_000 });
++    // ⛔ The pointer leaves the row it pressed (round 3, 2026-10-09, tile 326): it stayed at the hub row's centre, where
++    // /results draws its outcome pills, so "HAPANA 2" was shot in its HOVER fill (#03002D, x188–280) beside a bare "NDIO 3".
++    await page.mouse.move(2, Math.round(viewport(390).height / 2)).catch(() => {});
+     await settle(page, 600);
+     // 3 · A’s session ends: the same account signs in elsewhere (one session per account).
+     await demo('', null, 'a second sign-in of the demo account, which ends A’s session');
+diff --git a/scripts/visual-pass-r3c.test.mts b/scripts/visual-pass-r3c.test.mts
+new file mode 100644
+index 000000000..f863436f1
+--- /dev/null
++++ b/scripts/visual-pass-r3c.test.mts
+@@ -0,0 +1,405 @@
++/**
++ * ROUND 3 OF THE VISUAL PASS, HELPER C (2026-10-09) — every fix a later edit could silently undo, held, each beside a
++ * control or a plant that proves the check can fail.
++ *
++ *   npx tsx scripts/visual-pass-r3c.test.mts        (npm run test:visual-pass-r3c)
++ *
++ * The owner's rule (Ali, 2026-10-08): only perfect visual and logical results. Each section names the tiles the defect
++ * was measured on (S/visual/tiles-m) and the file that fixes it; the measurements themselves are in those files' notes.
++ *   §1 widows: the last two words break together (`keepLastWords`), the card-size hint under the whole row, balanced leads
++ *   §2 the empty state: a YES/NO pair on one line; each drawing's box starts at its ink (centred content)
++ *   §3 a filter strip has room for a selected pill's halo
++ *   §4 /leaderboard: the tier is not gold; the sort row keeps the page's 32px rhythm; right-aligned heads end on the column
++ *   §5 the hub's Needle row is one of the hub's rows
++ *   §6 the guest tickets sheet's title stands on the ×'s line
++ *   §7 Chinese is never slanted
++ *   §8 notifications: no "..", no raw position id in a sentence — the id rides the link to the ticket
++ *   §9 a "A · B" line breaks between its parts and its dot never ends a line (`DotSeq`)
++ *   §10 the capture waits for the unread sign it shoots, and its pointer leaves what it pressed
++ */
++import { readFileSync } from "node:fs";
++import { createElement as h } from "react";
++import { renderToStaticMarkup } from "react-dom/server";
++import { keepLastWords } from "../src/components/ui/keep-words.tsx";
++import { DotSeq } from "../src/components/ui/dot-seq.tsx";
++import { dashOnItsWord, emptyStateBody, pairOnOneLine } from "../src/components/ui/empty-state-text.ts";
++import { endClause, readableNotificationBody, roundTicketHref, ticketHref } from "../src/lib/notification-text.ts";
++import { QUERY_BAR_ROW2_CLASS } from "../src/components/ui/query-bar.tsx";
++import { cn } from "../src/lib/utils.ts";
++import { dict as DICTS } from "../src/lib/i18n-dict.ts";
++import { createRequire } from "node:module";
++
++let pass = 0;
++const fails: string[] = [];
++const ok = (name: string, cond: boolean, detail = "") => {
++  if (cond) { pass++; console.log(`  ok   ${name}`); }
++  else { fails.push(`${name}${detail ? ` — ${detail}` : ""}`); console.log(`  FAIL ${name}${detail ? ` — ${detail}` : ""}`); }
++};
++const section = (s: string) => console.log(`\n── ${s} ${"─".repeat(Math.max(0, 100 - s.length))}`);
++const read = (p: string) => readFileSync(p, "utf8").replace(/\r\n/g, "\n");
++/** Comments out, so a rule quoted in a note is never mistaken for the rule. */
++const code = (s: string) => s.replace(/\/\*[\s\S]*?\*\//g, " ").replace(/^\s*\/\/.*$/gm, "");
++const css = code(read("src/app/globals.css"));
++const html = (el: Parameters<typeof renderToStaticMarkup>[0]) => renderToStaticMarkup(el);
++const NBSP = String.fromCharCode(0x00a0);
++
++/** One rule's declarations, by its exact selector at the start of a line (comments already out). */
++function rule(src: string, selector: string): string {
++  const esc = selector.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
++  const m = new RegExp(`(?:^|\\n)\\s*${esc}\\s*\\{([^}]*)\\}`).exec(src);
++  return m ? m[1] : "";
++}
++/** The CSS custom properties of :root, resolved to px where they are px. */
++const ROOT_PX: Record<string, number> = {};
++for (const m of read("src/app/globals.css").matchAll(/(--(?:sp|type)-[a-z0-9-]+):\s*([0-9.]+)px/g)) ROOT_PX[m[1]] ??= Number(m[2]);
++const px = (v: string) => (ROOT_PX[v] ?? NaN);
++
++/* ══ §1 · WIDOWS ═════════════════════════════════════════════════════════════════════════════════════════════════════ */
++section("1 · a short sentence never ends on one word alone");
++{
++  const sw = DICTS.sw, en = DICTS.en, zh = DICTS.zh;
++  const hint = html(h("p", null, keepLastWords(sw.nav.cardSpacingHint)));
++  ok("1.1 · keepLastWords holds the last two words in one nowrap span: \"Kwa simu tu. <Hakuna kinachofichwa.>\"",
++    hint === `<p>Kwa simu tu. <span class="whitespace-nowrap">Hakuna kinachofichwa.</span></p>`, hint);
++  ok("1.2 · …and leaves Chinese, and a text of two words or fewer, exactly as written",
++    keepLastWords(zh.nav.cardSpacingHint) === zh.nav.cardSpacingHint && keepLastWords("Wafanyakazi tu") === "Wafanyakazi tu" && keepLastWords("x") === "x");
++  ok("1.2′ CONTROL · the text itself is unchanged — the span only removes the one break before the last word",
++    html(h("p", null, keepLastWords(sw.kycGate.frozenBody))).replace(/<[^>]+>/g, "") === sw.kycGate.frozenBody);
++
++  // Call sites: each widow the tiles found is now held.
++  const cardRow = read("src/components/journey/account/card-size-row.tsx");
++  const wallet = read("src/components/layout/wallet-sheet.tsx");
++  const fair = read("src/app/fairness/page.tsx");
++  ok("1.3 · the hub's card-size hint (tiles 124 127 256 264 294 295 298 302 306 331) is kept and sits under the whole row",
++    cardRow.includes("{keepLastWords(t.nav.cardSpacingHint)}") && /className="kp-hub__sub kp-hub__row-hint"/.test(cardRow)
++      && /className="kp-hub__row kp-hub__row--switch"/.test(cardRow));
++  ok("1.4 · the held Wallet's notice (tile 092) keeps its last two words together", wallet.includes("{keepLastWords(t.kycGate.frozenBody)}"));
++  ok("1.5 · the fairness lead (tiles 187 204) keeps its last two words together", /\{keepLastWords\(fill\(t\.common\.fairnessIntro/.test(fair));
++
++  // The row's grid: the hint spans the label's column to the row's end, on the second line.
++  const sw2 = rule(css, ".kp-hub__row--switch");
++  const hintRule = rule(css, ".kp-hub__row--switch > .kp-hub__row-hint");
++  const glyphRule = rule(css, ".kp-hub__row--switch > .kp-hub__glyph");
++  ok("1.6 · .kp-hub__row--switch is a 4-column grid, the hint on row 2 from the label's column to the end, the glyph over both rows",
++    /display:\s*grid/.test(sw2) && /grid-template-columns:\s*auto minmax\(0, 1fr\) auto auto/.test(sw2)
++      && /grid-column:\s*2 \/ -1/.test(hintRule) && /grid-row:\s*2/.test(hintRule) && /grid-row:\s*1 \/ span 2/.test(glyphRule),
++    `${sw2} | ${hintRule} | ${glyphRule}`);
++  const plantGrid = hintRule.replace("grid-column: 2 / -1", "grid-column: 2 / 3");
++  ok("1.6′ PLANT · a hint held to the label's column (back beside the value and the switch) is reported", !/grid-column:\s*2 \/ -1/.test(plantGrid));
++
++  // ⭐ THE WIDTH MODEL — the repo's own Inter (src/lib/server/reports/fonts), advances with kerning, as G3 measured (within
++  // ~1% of the tiles). The hint's line under the row: viewport − 2×16 gutter − 2×1 card border − 2×16 row padding − 20
++  // glyph − 12 gap = viewport − 98: 222 at 320, 262 at 360, 292 at 390.
++  const fontkit = createRequire(import.meta.url)("fontkit") as { openSync: (p: string) => { layout: (s: string) => { positions: { xAdvance: number }[] }; unitsPerEm: number } };
++  const inter = fontkit.openSync("src/lib/server/reports/fonts/Inter-Regular.ttf");
++  const width = (s: string, size: number) => inter.layout(s).positions.reduce((a, p) => a + p.xAdvance, 0) / inter.unitsPerEm * size;
++  const rowPad = rule(css, ".kp-hub__row");
++  ok("1.7.locate · the hub row's padding and gap are the ones the model assumes (8/16px, 12px gap) and the sub-line is 13px",
++    /padding:\s*var\(--sp-2\) var\(--sp-4\)/.test(rowPad) && /gap:\s*var\(--sp-3\)/.test(rowPad) && px("--type-small") === 13, rowPad);
++  const line = (vw: number) => vw - 98;
++  ok("1.7 · from 360 the hint is ONE line in sw and en (≤ 262px) and in zh (14 ideographs at 1em)",
++    width(sw.nav.cardSpacingHint, 13) <= line(360) && width(en.nav.cardSpacingHint, 13) <= line(360) && [...zh.nav.cardSpacingHint].length * 13 <= line(360),
++    `sw ${width(sw.nav.cardSpacingHint, 13).toFixed(1)} en ${width(en.nav.cardSpacingHint, 13).toFixed(1)} vs ${line(360)}`);
++  const pair = sw.nav.cardSpacingHint.slice(sw.nav.cardSpacingHint.search(/\S+\s+\S+\s*$/));
++  ok("1.8 · at 320 the kept pair fits its 222px line, so sw breaks between its sentences: \"Kwa simu tu.\" / \"Hakuna kinachofichwa.\"",
++    width(pair, 13) <= line(320) && width(sw.nav.cardSpacingHint, 13) > line(320), `pair ${width(pair, 13).toFixed(1)} · whole ${width(sw.nav.cardSpacingHint, 13).toFixed(1)} vs ${line(320)}`);
++  ok("1.8′ CONTROL · beside the value and the switch (the old 113px at 320, 183 at 390) the same hint could not hold \"Hakuna kinachofichwa.\" on a line at 320",
++    width("Hakuna kinachofichwa.", 13) > 113);
++
++  // The two leads on /profile/responsible-gambling (tile 179) are balanced.
++  const rg = read("src/app/profile/responsible-gambling/page.tsx");
++  ok("1.9 · the RG lead and the support line are text-balance (\"…pumzika au\" / \"jizuie.\" and \"…kupitia\" / \"begambleaware.org.\")",
++    /max-w-prose text-balance">\s*\{t\.rg\.pageDescription\}/.test(rg) && /text-body-sm text-text-muted leading-snug text-balance">[\s\S]{0,200}\{t\.rg\.intlSupport\}/.test(rg));
++}
++
++/* ══ §2 · THE EMPTY STATE ════════════════════════════════════════════════════════════════════════════════════════════ */
++section("2 · the empty state: a YES/NO pair on one line, and content centred in its box");
++{
++  // Every dictionary sentence that writes an all-caps pair joined by au/or is bound — found, not listed.
++  const PAIR = /\b([A-Z]{2,}) (au|or) ([A-Z]{2,})\b/;
++  const found: string[] = [];
++  const walk = (v: unknown) => {
++    if (typeof v === "string") { if (PAIR.test(v)) found.push(v); }
++    else if (v && typeof v === "object") for (const x of Object.values(v)) walk(x);
++  };
++  walk(DICTS.sw); walk(DICTS.en);
++  ok("2.locate · the dictionary has YES/NO pairs to hold (the Tiketi zangu empty body among them)",
++    found.some((s) => s.includes("NDIO au HAPANA")) && found.some((s) => s.includes("YES or NO")), `${found.length} found`);
++  const unbound = found.filter((s) => !/[A-Z]{2,} (au|or) [A-Z]{2,}/.test(emptyStateBody(s)));
++  ok("2.1 · emptyStateBody binds every pair with no-break spaces (\"NDIO au HAPANA\", \"YES or NO\")", unbound.length === 0, unbound.join(" | "));
++  ok("2.2 · …and keeps G3's dash rule: the space before the dash is a no-break space too",
++    emptyStateBody("Chagua swali, bonyeza NDIO au HAPANA — tiketi").includes(`NDIO${NBSP}au${NBSP}HAPANA${NBSP}—`));
++  ok("2.3 CONTROL · lower-case \"au\"/\"or\" and Chinese are left to break as before",
++    pairOnOneLine("Juu au Chini, ndio au hapana") === "Juu au Chini, ndio au hapana" && pairOnOneLine("按 是 或 否") === "按 是 或 否");
++  ok("2.3′ PLANT · the dash rule alone does not hold the pair — the pair rule is what does",
++    !dashOnItsWord("bonyeza NDIO au HAPANA — tiketi").includes(`NDIO${NBSP}au`));
++  const es = read("src/components/ui/empty-state.tsx");
++  ok("2.4 · EmptyState renders its body through emptyStateBody", es.includes("{emptyStateBody(body)}") && !/function dashOnItsWord/.test(es));
++
++  // ⭐ EACH DRAWING'S INK TOP, COMPUTED FROM ITS OWN GEOMETRY, IS ITS ROW IN INK_TOP (floor), AND EACH SVG USES ITS ROW.
++  const inkTop = INK_TOP_OF(es);
++  const table = Object.fromEntries([...(/const INK_TOP[^=]*=\s*\{([\s\S]*?)\};/.exec(code(es))?.[1] ?? "").matchAll(/(\w+):\s*(\d+)/g)].map((m) => [m[1], Number(m[2])]));
++  const kinds = Object.keys(inkTop);
++  ok("2.5.locate · twelve drawings were read and measured", kinds.length === 12, kinds.join(","));
++  const wrong = kinds.filter((k) => table[k] !== Math.floor(inkTop[k] + 1e-9)).map((k) => `${k}: table ${table[k]} vs ink ${inkTop[k].toFixed(2)}`);
++  ok("2.5 · every INK_TOP row is its drawing's first ink row (the topmost stroke, less half the 1.5px stroke, rounded down)", wrong.length === 0, wrong.join(" · "));
++  const framed = kinds.filter((k) => !new RegExp(`case "${k}":[\\s\\S]{0,40}<svg \\{\\.\\.\\.frame\\(INK_TOP\\.${k}\\)\\}`).test(es) && !(k === "default" && /default:[\s\S]{0,40}<svg \{\.\.\.frame\(INK_TOP\.default\)\}/.test(es)));
++  ok("2.6 · every drawing's svg takes its frame from its own row, and none is a full 56px square any more",
++    framed.length === 0 && !/viewBox="0 0 56 56"/.test(es), framed.join(","));
++  ok("2.7 · frame() starts the viewBox at the row, keeps the 56-unit width, and shortens the svg by the same amount",
++    /viewBox:\s*`0 \$\{top\} 56 \$\{56 - top\}`, width: 56, height: 56 - top/.test(es));
++  const plant = es.replace("audit: 7,", "audit: 8,");
++  const plantTable = Object.fromEntries([...(/const INK_TOP[^=]*=\s*\{([\s\S]*?)\};/.exec(code(plant))?.[1] ?? "").matchAll(/(\w+):\s*(\d+)/g)].map((m) => [m[1], Number(m[2])]));
++  ok("2.5′ PLANT · a row one unit too deep (audit 8, which would clip its top stroke) is reported", plantTable.audit !== Math.floor(inkTop.audit));
++  // The box itself: 48px each side, which is what makes "ink 48px under the border" the centre.
++  const box = read("src/components/ui/empty-state-classes.ts");
++  ok("2.8 · the box's padding is still 48px top and bottom (py-8 on the overridden scale), the button's 48px under its ink",
++    /EMPTY_STATE_BOX =\s*\n?\s*"[^"]*\bpy-8\b/.test(box) && /"8":\s*"48px"/.test(read("tailwind.config.ts")));
++}
++
++/** Each DefaultIllustration case's ink top, in svg units, from its lines, rects, circles, ellipses and paths. */
++function INK_TOP_OF(src: string): Record<string, number> {
++  const body = src.slice(src.indexOf("function DefaultIllustration"), src.indexOf("function ErrorMark"));
++  const parts = body.split(/\n\s*(?=case "\w+":|default:)/).slice(1);
++  const out: Record<string, number> = {};
++  const num = (s: string, a: string) => Number(new RegExp(`\\b${a}="([-0-9.]+)"`).exec(s)?.[1] ?? NaN);
++  for (const part of parts) {
++    const kind = /^case "(\w+)":/.exec(part)?.[1] ?? (part.startsWith("default:") ? "default" : "");
++    if (!kind) continue;
++    let top = Infinity;
++    for (const el of part.matchAll(/<(line|rect|circle|ellipse|path)\b([^>]*?)\/?>/g)) {
++      const [, tag, a] = el;
++      const half = /stroke="none"/.test(a) ? 0 : 0.75;
++      if (tag === "line") top = Math.min(top, Math.min(num(a, "y1"), num(a, "y2")) - half);
++      if (tag === "rect") top = Math.min(top, num(a, "y") - half);
++      if (tag === "circle") top = Math.min(top, num(a, "cy") - num(a, "r") - half);
++      if (tag === "ellipse") top = Math.min(top, num(a, "cy") - num(a, "ry") - half);
++      if (tag === "path") top = Math.min(top, pathTop(/\bd="([^"]+)"/.exec(a)?.[1] ?? "") - half);
++    }
++    out[kind] = top;
++  }
++  return out;
++}
++/** The smallest y a path reaches: vertices, quadratic extremes and sampled arcs (M L H V Q A, absolute or relative, Z). */
++function pathTop(d: string): number {
++  const toks = d.match(/[a-zA-Z]|-?[0-9]*\.?[0-9]+/g) ?? [];
++  let i = 0, x = 0, y = 0, sx = 0, sy = 0, cmd = "", top = Infinity;
++  const n = () => Number(toks[i++]);
++  const see = (yy: number) => { top = Math.min(top, yy); };
++  while (i < toks.length) {
++    if (/[a-zA-Z]/.test(toks[i])) cmd = toks[i++];
++    const rel = cmd === cmd.toLowerCase();
++    const C = cmd.toUpperCase();
++    if (C === "Z") { x = sx; y = sy; continue; }
++    if (C === "M" || C === "L") { const nx = n() + (rel ? x : 0), ny = n() + (rel ? y : 0); x = nx; y = ny; if (C === "M") { sx = x; sy = y; } see(y); continue; }
++    if (C === "H") { x = n() + (rel ? x : 0); see(y); continue; }
++    if (C === "V") { y = n() + (rel ? y : 0); see(y); continue; }
++    if (C === "Q") {
++      const cx = n() + (rel ? x : 0), cy = n() + (rel ? y : 0), ex = n() + (rel ? x : 0), ey = n() + (rel ? y : 0);
++      const den = y - 2 * cy + ey, t = den === 0 ? -1 : (y - cy) / den;
++      if (t > 0 && t < 1) see((1 - t) * (1 - t) * y + 2 * (1 - t) * t * cy + t * t * ey);
++      see(ey); x = ex; y = ey; continue;
++    }
++    if (C === "A") {
++      let rx = Math.abs(n()), ry = Math.abs(n()); const phi = (n() * Math.PI) / 180; const large = n(), sweep = n();
++      const ex = n() + (rel ? x : 0), ey = n() + (rel ? y : 0);
++      // SVG's endpoint-to-centre conversion (implementation notes F.6.5), then sampled.
++      const dx2 = (x - ex) / 2, dy2 = (y - ey) / 2;
++      const x1 = Math.cos(phi) * dx2 + Math.sin(phi) * dy2, y1 = -Math.sin(phi) * dx2 + Math.cos(phi) * dy2;
++      const lam = (x1 * x1) / (rx * rx) + (y1 * y1) / (ry * ry);
++      if (lam > 1) { rx *= Math.sqrt(lam); ry *= Math.sqrt(lam); }
++      const sign = large === sweep ? -1 : 1;
++      const co = sign * Math.sqrt(Math.max(0, (rx * rx * ry * ry - rx * rx * y1 * y1 - ry * ry * x1 * x1) / (rx * rx * y1 * y1 + ry * ry * x1 * x1)));
++      const cxp = (co * rx * y1) / ry, cyp = (-co * ry * x1) / rx;
++      const cx = Math.cos(phi) * cxp - Math.sin(phi) * cyp + (x + ex) / 2, cy = Math.sin(phi) * cxp + Math.cos(phi) * cyp + (y + ey) / 2;
++      const ang = (ux: number, uy: number, vx: number, vy: number) => Math.atan2(ux * vy - uy * vx, ux * vx + uy * vy);
++      const t1 = ang(1, 0, (x1 - cxp) / rx, (y1 - cyp) / ry);
++      let dt = ang((x1 - cxp) / rx, (y1 - cyp) / ry, (-x1 - cxp) / rx, (-y1 - cyp) / ry);
++      if (!sweep && dt > 0) dt -= 2 * Math.PI; else if (sweep && dt < 0) dt += 2 * Math.PI;
++      for (let k = 0; k <= 64; k++) {
++        const t = t1 + (dt * k) / 64;
++        see(Math.sin(phi) * rx * Math.cos(t) + Math.cos(phi) * ry * Math.sin(t) + cy);
++      }
++      x = ex; y = ey; continue;
++    }
++    i++; // an unknown token is skipped rather than looped on
++  }
++  return top;
++}
++
++/* ══ §3 · THE STRIP'S HALO ═══════════════════════════════════════════════════════════════════════════════════════════ */
++section("3 · a filter strip has room for the selected pill's halo (tile 319)");
++{
++  const block = /@media \(max-width: 1023\.98px\)\s*\{\s*\.kp-strip-fade\s*\{([^}]*)\}/.exec(css)?.[1] ?? "";
++  const pad = (prop: string) => new RegExp(`${prop}:\\s*var\\((--sp-\\d+)\\)`).exec(block)?.[1];
++  const neg = (prop: string) => new RegExp(`${prop}:\\s*calc\\(-1 \\* var\\((--sp-\\d+)\\)\\)`).exec(block)?.[1];
++  ok("3.1 · below 1024 the strip pads above, below and before its pills and takes the same back as negative margin",
++    !!pad("padding-block") && pad("padding-block") === neg("margin-block") && !!pad("padding-left") && pad("padding-left") === neg("margin-left"), block.trim());
++  const glow = /--glow-selected:\s*0 0 ([0-9.]+)px (-?[0-9.]+)px/.exec(read("src/app/globals.css"));
++  const reach = glow ? Number(glow[1]) + Number(glow[2]) : NaN;
++  const room = px(pad("padding-block") ?? "") ;
++  ok("3.2 · the room (12px) is at least the halo's reach (blur + spread = 11px), above, below and before",
++    reach <= room && reach <= px(pad("padding-left") ?? ""), `reach ${reach} room ${room}`);
++  ok("3.2′ PLANT · a halo grown to 16px of blur would outreach the room and is reported", 16 + Number(glow?.[2] ?? 0) > room);
++  ok("3.3 · the trailing side keeps its own room: the strip's pr-2 (12px), and no margin is taken back there",
++    /\bpr-2\b/.test(read("src/components/ui/query-bar.tsx")) && !/margin-right/.test(block));
++  const start = /\.kp-strip-fade\[data-edges="start"\]\s*\{[^}]*mask-image:\s*linear-gradient\(to right, transparent 12px, #000 44px\)/.test(css);
++  const both = /\.kp-strip-fade\[data-edges="both"\]\s*\{[^}]*mask-image:\s*linear-gradient\(to right, transparent 12px, #000 44px,/.test(css);
++  ok("3.4 · the leading fade moved in by the same 12px (transparent to 12, opaque from 44): a chip scrolled off the start fades from the content edge, as before",
++    start && both && /scroll-padding-inline:\s*44px 40px/.test(css));
++}
++
++/* ══ §4 · /leaderboard ═══════════════════════════════════════════════════════════════════════════════════════════════ */
++section("4 · /leaderboard: the tier is not gold, the sort keeps the page's rhythm, a right-aligned head ends on its column");
++{
++  const lb = read("src/app/leaderboard/page.tsx");
++  const ribbon = read("src/components/layout/page-ribbon.tsx");
++  ok("4.1 · the top tier stat has no accent (it was \"gold\": \"Fedha\" — silver — in the money ink)",
++    /\{ label: t\.leaderboard\.topTier, value: tierDisplayName\([^)]*\) \}/.test(lb) && !/accent:\s*"gold"/.test(code(lb)));
++  ok("4.2 · …and the ribbon offers no gold accent to reach for (`test:gold-is-money` holds the file)",
++    !/"gold"/.test(code(ribbon)) && !/text-gold/.test(code(ribbon)) && /page-ribbon\.tsx/.test(read("scripts/gold-is-money.test.mts")));
++  const row = cn(QUERY_BAR_ROW2_CLASS, "py-0");
++  ok("4.3 · the sort row is the bar's row with its padding handed back (py-0): 32px above and below, like every gap on the page",
++    lb.includes(`<div className={cn(QUERY_BAR_ROW2_CLASS, "py-0")}>`) && /\bpy-0\b/.test(row) && !/\bp[tb]-/.test(row), row);
++  ok("4.3′ CONTROL · the bar's own row carries 8px over and 10px under (pt-1.5, pb-2.5) — the 40/42px gaps this removes",
++    /\bpt-1\.5\b/.test(QUERY_BAR_ROW2_CLASS) && /\bpb-2\.5\b/.test(QUERY_BAR_ROW2_CLASS));
++  const after = rule(css, ".admin-tbl thead th.text-right::after");
++  const track = /\.mcardp-pctcap\s*\{\s*letter-spacing:\s*([0-9.]+)em/.exec(css)?.[1];
++  const back = /margin-right:\s*-([0-9.]+)em/.exec(after)?.[1];
++  ok("4.4 · a right-aligned head takes back the letter-space the eyebrow rule puts after its last letter",
++    /content:\s*""/.test(after) && !!track && back === track, `track ${track} back ${back}`);
++  ok("4.4.locate · the eyebrow rule's selector list still covers `.admin-tbl thead`", /\.admin-tbl thead,[\s\S]{0,600}?letter-spacing:\s*0\.14em/.test(css));
++  ok("4.4′ PLANT · a head tracked 0.12em while the rule takes 0.14 back is reported", "0.12" !== back);
++}
++
++/* ══ §5 · THE HUB'S NEEDLE ROW ═══════════════════════════════════════════════════════════════════════════════════════ */
++section("5 · the hub's Needle row is one of the hub's rows (tiles 122–130 158 264–275 294 295)");
++{
++  const hub = read("src/components/journey/account/hub-row.tsx");
++  const drawer = read("src/components/layout/needle-drawer.tsx");
++  ok("5.1 · the hub asks the drawer for its hub row, in a plain list item", /<li>\s*<NeedleControlsDrawer variant="hub-row" \/>\s*<\/li>/.test(hub));
++  const branch = /variant === "hub-row" \? \(([\s\S]*?)\) : \(/.exec(drawer)?.[1] ?? "";
++  const ordinary = /<Link href=\{row\.href as never\} className="kp-hub__row">([\s\S]*?)<\/Link>/.exec(hub)?.[1] ?? "";
++  const parts = (s: string) => ({
++    row: /className="kp-hub__row"/.test(s) || /className="kp-hub__row">/.test(s),
++    glyph: /className="kp-hub__glyph" aria-hidden><[A-Za-z.]+ (?:s|size)=\{20\}/.test(s),
++    label: /className="kp-hub__label"/.test(s),
++    chev: /<I\.chevronRight s=\{18\} className="kp-hub__chev"/.test(s),
++  });
++  const a = parts(branch), b = parts(`className="kp-hub__row">${ordinary}`);
++  ok("5.2 · its row, its 20px glyph slot, its label and its 18px chevron are the ordinary row's", a.row && a.glyph && a.label && a.chev && b.glyph && b.chev, JSON.stringify({ needle: a, ordinary: b }));
++  ok("5.3 · its value is the hub's value (not the menu's mono capitals)", /<span className="kp-hub__value">\{shownLabel\}<\/span>/.test(branch));
++  ok("5.4 · the padded item and its rules are gone", !/\.kp-hub__needle\b/.test(css) && !/kp-hub__needle/.test(hub));
++  ok("5.4′ CONTROL · the account menu keeps its own row (variant menu-row is untouched)", /variant === "menu-row" \?/.test(drawer));
++}
++
++/* ══ §6 · THE GUEST SHEET'S TITLE ON THE ×'S LINE ════════════════════════════════════════════════════════════════════ */
++section("6 · the guest tickets sheet's title stands on the ×'s line (tiles 113–121 156)");
++{
++  const modal = read("src/components/ui/modal.tsx");
++  const tw = read("tailwind.config.ts");
++  const step = (k: string) => Number(new RegExp(`"${k.replace(".", "\\.")}":\\s*"([0-9.]+)px"`).exec(tw)?.[1] ?? NaN);
++  const close = /className="absolute right-3 top-3 inline-flex h-8 w-8 items-center justify-center/.test(modal);
++  const xCentre = step("3") + step("8") / 2; // top-3 + half of h-8
++  ok("6.locate · the Modal's × is `absolute top-3 h-8` — 16px down, a 48px box — centred 40px under the padding edge", close && xCentre === 40, String(xCentre));
++  const title = rule(css, ".kp-jsheet__title");
++  const sheet = rule(css, ".kp-wsheet");
++  const grab = rule(css, ".kp-wsheet__grab");
++  const mt = /margin:\s*calc\(var\((--sp-\d+)\) - var\((--sp-\d+)\) - var\((--type-h3)\) \* 1\.25 \/ 2\) 0 0/.exec(title);
++  const margin = mt ? px(mt[1]) - px(mt[2]) - px(mt[3]) * 1.25 / 2 : NaN;
++  const lh = /line-height:\s*1\.25/.test(title) ? px("--type-h3") * 1.25 : NaN;
++  const below1024 = px(/padding:\s*var\((--sp-\d+)\)/.exec(sheet)?.[1] ?? "") + Number(/height:\s*([0-9]+)px/.exec(grab)?.[1]) + px(/gap:\s*var\((--sp-\d+)\)/.exec(sheet)?.[1] ?? "");
++  const from1024 = step("6"); // the panel's lg:p-6, the grab hidden
++  const centre = (top: number) => top + margin + lh / 2;
++  ok("6.1 · below 1024 (12 + 4 + 16 = 32px down) and from 1024 (32px of padding) the title's first line is centred on the ×'s 40px",
++    Math.abs(centre(below1024) - xCentre) < 0.01 && Math.abs(centre(from1024) - xCentre) < 0.01 && /p-5 lg:p-6/.test(modal),
++    `margin ${margin} · below ${centre(below1024)} · from ${centre(from1024)}`);
++  ok("6.1′ PLANT · with no margin the line is centred 44.5px down, 4.5px under the × — reported", Math.abs(below1024 + lh / 2 - xCentre) > 4);
++}
++
++/* ══ §7 · CHINESE IS NEVER SLANTED ═══════════════════════════════════════════════════════════════════════════════════ */
++section("7 · Chinese is never slanted (tile 275)");
++{
++  ok("7.1 · a zh page draws no synthesized oblique", /html:lang\(zh\)\s*\{\s*font-synthesis-style:\s*none;\s*\}/.test(css));
++  ok("7.1′ CONTROL · the rule has something to do: the footer's stop-gambling line still wears italic",
++    /className="italic[^"]*">\{t\.footer\.stopGambling\}/.test(read("src/components/layout/app-shell.tsx")));
++  ok("7.2 · the app loads no italic face of its own (so an upright zh page loses nothing)", !/style:\s*\[?"italic"/.test(read("src/app/layout.tsx")));
++}
++
++/* ══ §8 · NOTIFICATIONS ══════════════════════════════════════════════════════════════════════════════════════════════ */
++section("8 · notifications: never \"..\", and no raw position id in a sentence (tile 192)");
++{
++  ok("8.1 · endClause ends an officer's reason once: \"settlement.\" + \".\" is one stop; Chinese takes 。; ? and ! keep their mark",
++    endClause("before settlement.", ".") === "before settlement." && endClause("before settlement", ".") === "before settlement."
++      && endClause("before settlement.", "。") === "before settlement。" && endClause("Why?", ".") === "Why?" && endClause("x.  ", ".") === "x.");
++  const tile = "\"Je, S&P 500 itafungwa juu wiki hii?\" limefutwa: Dev fixture — source withdrawn before settlement.. Dau lako lote limerejeshwa kwenye pochi yako. · pos_34d10350dfa7510cfad5";
++  const fixed = readableNotificationBody(tile);
++  ok("8.2 · a row written before the fix reads without its \"..\" and its \" · pos_…\" (the tile-192 sentence)",
++    fixed === "\"Je, S&P 500 itafungwa juu wiki hii?\" limefutwa: Dev fixture — source withdrawn before settlement. Dau lako lote limerejeshwa kwenye pochi yako.", fixed);
++  ok("8.3 · …and a win's old label (\"<title> · pos_… kimelipa.\") loses its id too", readableNotificationBody("Je mvua · pos_ab12 kimelipa. Bonyeza kuona.") === "Je mvua kimelipa. Bonyeza kuona.");
++  ok("8.4 CONTROL · an ellipsis, a labelled reference and a sentence written today pass through unchanged",
++    readableNotificationBody("Subiri...") === "Subiri..." && readableNotificationBody("Reference txn_12.") === "Reference txn_12."
++      && readableNotificationBody("Kura batili limebatilishwa. Dau lako limerudishwa.") === "Kura batili limebatilishwa. Dau lako limerudishwa." && readableNotificationBody("已取消：x.。y") === "已取消：x。y");
++  ok("8.5 · a position's notice opens its ticket: the market's page at the position's anchor; an orphan, its permalink; none, the given link",
++    ticketHref("mkt_1", "pos_a", "/x") === "/markets/mkt_1#pos_a" && ticketHref("", "pos_a", "/x") === "/positions/pos_a" && ticketHref("mkt_1", undefined, "/wallet") === "/wallet");
++  ok("8.6 · an Up & Down result opens the round's page at the ticket (where /positions/<id> resolves it)",
++    roundTicketHref("/updown/udr_1", "pos_b") === "/updown/udr_1#pos_b" && roundTicketHref("/updown/udr_1", undefined) === "/updown/udr_1");
++  const ns = code(read("src/lib/server/notification-service.ts"));
++  ok("8.7 · no notice writes a position id into its words any more", !/\$\{ref\}/.test(ns) && !/` · \$\{opts\.positionId\}`/.test(ns));
++  const reasons = [...ns.matchAll(/\$\{(?:endClause\()?opts\.reason[^}]*\}[.。]?/g)].map((m) => m[0]);
++  const raw = reasons.filter((r) => !r.startsWith("${endClause(") && /[.。]$/.test(r));
++  ok("8.8 · every officer reason that a template ends with a stop goes through endClause (cancelled and declined, three languages each)",
++    raw.length === 0 && reasons.filter((r) => r.startsWith("${endClause(")).length >= 6, `raw: ${raw.join(" ")}`);
++  const ms = code(read("src/lib/server/market-service.ts"));
++  ok("8.9 · a win's label is the market's name alone (its link is the position's permalink)",
++    /notifyWin\(p\.userId, payout, localizedText\(m\.titleEn, m\.titleSw, m\.titleZh\), positionPermalinkHref\(p\.id\)\)/.test(ms) && !/· \$\{p\.id\}/.test(ms));
++  const panel = read("src/components/layout/notifications-panel.tsx");
++  const page = read("src/app/notifications/page.tsx");
++  ok("8.10 · the bell and /notifications read every body through readableNotificationBody",
++    (panel.match(/readableNotificationBody\(/g) ?? []).length >= 3 && /readableNotificationBody\(locale === "sw"/.test(page));
++  ok("8.7′ PLANT · the old composition is what 8.7 reports", /\$\{ref\}/.test("bodyEn: `x.${ref}`"));
++}
++
++/* ══ §9 · DotSeq ═════════════════════════════════════════════════════════════════════════════════════════════════════ */
++section("9 · a line written \"A · B\" breaks only between its parts, and its dot never ends a line (tiles 181 207)");
++{
++  const two = html(h(DotSeq, { text: "Toleo 2026-10-07 · Imeoanishwa na Tanzania", mono: true }));
++  ok("9.1 · two parts, two items, the second carrying its dot hidden from assistive tech, the mono gap asked for",
++    two === `<span class="kp-seq kp-seq--mono"><span class="kp-seq__item">Toleo 2026-10-07</span><span class="kp-seq__item"><span class="kp-seq__dot" aria-hidden="true">·</span>Imeoanishwa na Tanzania</span></span>`, two);
++  ok("9.2 CONTROL · a line with no \" · \" is one plain span, byte for byte", html(h(DotSeq, { text: "Wafanyakazi tu", className: "kp-hub__sub" })) === `<span class="kp-hub__sub">Wafanyakazi tu</span>`);
++  ok("9.3 · the dot hangs in the gap before its part and the box clips its left edge, so a dot that would open a line is not drawn",
++    /position:\s*absolute;\s*top:\s*0;\s*right:\s*100%/.test(rule(css, ".kp-seq__dot")) && /clip-path:\s*inset\(-100vmax -100vmax -100vmax 0\)/.test(rule(css, ".kp-seq"))
++      && /--seq-gap:\s*3ch/.test(rule(css, ".kp-seq--mono")) && !/kp-hub__seq/.test(css));
++  ok("9.4 · the hub's second lines, the legal header's version line and the invite page's call all draw it",
++    /<DotSeq text=\{text\} className="kp-hub__sub" \/>/.test(read("src/components/journey/account/hub-row.tsx"))
++      && /<DotSeq text=\{meta\} mono \/>/.test(read("src/app/legal/_components.tsx"))
++      && /<DotSeq text=\{paid \? t\.profile\.inviteEarnSub : t\.profile\.inviteFriendsSub\} \/>/.test(read("src/app/profile/invite/page.tsx")));
++  const inv = read("src/app/profile/invite/page.tsx");
++  ok("9.5 · on a phone the invite's call takes the card's width under the dial and its caption; from sm the row is as it was",
++    /grid grid-cols-\[auto_minmax\(0,1fr\)\] items-center gap-x-4 gap-y-3 sm:flex/.test(inv) && /className="contents sm:block sm:min-w-0 sm:flex-1"/.test(inv)
++      && /className="col-span-2 font-display text-\[19px\] font-bold leading-tight text-balance"/.test(inv));
++  const sw = DICTS.sw.profile;
++  ok("9.5.locate · every invite call is written as two parts, so each reads as two lines at most on a phone",
++    [sw.inviteFriendsSub, sw.inviteEarnSub, DICTS.en.profile.inviteFriendsSub, DICTS.zh.profile.inviteFriendsSub].every((s) => s.split(" · ").length === 2));
++}
++
++/* ══ §10 · THE CAPTURE ═══════════════════════════════════════════════════════════════════════════════════════════════ */
++section("10 · the capture waits for the unread sign it shoots, and its pointer leaves what it pressed");
++{
++  const drive = read("scripts/qa-journey-shell.mjs");
++  ok("10.1 · the demo player's tab and hub tiles wait for the counter mounted at their width (dot below 1024, bell from 1024)",
++    /async function unreadLanded\(page, width/.test(drive) && /if \(viewer === 'player'\) await unreadLanded\(page, width\);/.test(drive)
++      && /if \(vw\.id === 'player'\) await unreadLanded\(v\.page, width, \{ arifa: true \}\);/.test(drive)
++      && /lgUp \? await seen\(BELL_AT_LEAST, 1, UNREAD_WAIT_MS\) : await seen\(DOT_SHOWN, null, UNREAD_WAIT_MS\)/.test(drive));
++  ok("10.2 · the wait outlasts one failed read's retry (21–39 s) and asks the once-reading Arifa row to read again",
++    /UNREAD_WAIT_MS = 45_000/.test(drive) && /new Event\('50pick:refresh-notifications'\)/.test(drive)
++      && /INBOX_CHANGED = "50pick:refresh-notifications"/.test(read("src/lib/journey/unread-count.ts")));
++  ok("10.3 · after pressing the hub's Matokeo row the pointer moves off the page's controls (the HAPANA hover fill on tile 326)",
++    /a\.kp-hub__row\[href='\/results'\]`\)\.first\(\)\.click[\s\S]{0,600}?page\.mouse\.move\(2,/.test(drive));
++}
++
++console.log(`\nvisual-pass-r3c: ${pass} passed, ${fails.length} failed\n`);
++if (fails.length) {
++  for (const f of fails) console.error(`  · ${f}`);
++  process.exit(1);
++}
+diff --git a/src/app/fairness/page.tsx b/src/app/fairness/page.tsx
+index f35e86c94..e937d4828 100644
+--- a/src/app/fairness/page.tsx
++++ b/src/app/fairness/page.tsx
+@@ -36,6 +36,7 @@ import { formatEatDateTime } from "@/lib/eat-day";
+ import { getGlobalConfig } from "@/lib/server/market-config";
+ import { durationHours } from "@/lib/duration-phrase";
+ import { EmptyState } from "@/components/ui/empty-state";
++import { keepLastWords } from "@/components/ui/keep-words";
+ import { getServerT } from "@/lib/i18n-server";
+ import { outcomeWord } from "@/lib/side-label";
+ import { pickLocalized } from "@/lib/localized";
+@@ -183,8 +184,11 @@ export default async function FairnessPage({ searchParams }: { searchParams: Pro
+         <PageHero glow="info">
+           <PageHeader eyebrow={t.common.resolutionAttestation} title={t.common.howAMarketResolves} tone="info" icon={<I.shieldcheck s={18} />} />
+         </PageHero>
++        {/* Its last two words break together (round 3, 2026-10-09, tiles 187 204): at 390 the lead's eighth line was
++            "lifungwe." alone. Measured with the repo's Inter at 15px in its 358px measure, it now ends "…inayohamishwa" /
++            "hadi lifungwe."; the en close is "every flag.", and zh keeps its own rules. */}
+         <p className="text-[15px] leading-relaxed text-text-muted max-w-[68ch]">
+-          {fill(t.common.fairnessIntro, { hours: durationHours(locale, objectionWindowHours) })}
++          {keepLastWords(fill(t.common.fairnessIntro, { hours: durationHours(locale, objectionWindowHours) }))}
+         </p>
+       </header>
+ 
+diff --git a/src/app/globals.css b/src/app/globals.css
+index 93896224b..64f3003c8 100644
+--- a/src/app/globals.css
++++ b/src/app/globals.css
+@@ -952,6 +952,13 @@ html {
+   scroll-padding-bottom: calc(var(--rail-h) + env(safe-area-inset-bottom, 0px));
+ }
+ 
++/* ⛔ CHINESE IS NEVER SLANTED (round 3, 2026-10-09, tile 275). No Chinese face has an italic, so an `italic` over Chinese
++   is the browser shearing the glyphs itself: the footer's 如果博彩不再有趣，请停止。 leaned on every zh page, and so did the
++   page subtitles and the Needle drawer's note, which wear `italic` in every language. A zh page draws no synthesized
++   oblique at all — the italic stays a property, and the glyphs stand upright (Chromium 97, Firefox 111, Safari 16.4;
++   an older engine shears as before). The app loads no italic face of its own, so nothing real is lost. */
++html:lang(zh) { font-synthesis-style: none; }
++
+ * { box-sizing: border-box; }
+ 
+ body {
+@@ -3510,20 +3517,35 @@ th .link-pending { --lp-inset: 0px; --lp-bottom: 8px; }
+    first paint and the hydrated strip at scroll 0 are the same picture — nothing changes when the script lands.
+    ⭐ `scroll-padding-inline` keeps a chip that keyboard focus scrolls into view clear of both fades, so its
+    ring (D63, below) is never drawn dimmed. Mobile only, as before: from `lg` the strip wraps. */
++/* ⭐ 2026-10-09 · round 3 [319] · …AND THE STRIP HAS ROOM FOR WHAT A SELECTED PILL DRAWS AROUND ITSELF. A box that scrolls
++   on one axis clips on both, and the strip was exactly as tall as its pills and began exactly at the content edge, so the
++   pressed pill's halo (`--glow-selected`: 12px of blur, 1px of spread in, so it reaches 11px out) was cut flat at x16, y343
++   and y386 on Tiketi zangu at 390 — a round pill in a square glow. The strip now carries 12px of padding above, below and
++   before its pills and takes the same 12px back as negative margin, so every pill sits on the pixel it sat on and the
++   row is as tall as it was, while the halo is drawn whole inside the strip's own box. (The trailing side already had its
++   12px: `pr-2`.) The leading fade moves in by the same 12px — it starts at the strip's first pill, not in the gutter, so
++   a chip scrolled off the start still fades from the content edge exactly as before — and so does the scroll padding
++   that keeps a focused chip clear of it. */
+ @media (max-width: 1023.98px) {
++  .kp-strip-fade {
++    padding-block: var(--sp-3);
++    margin-block: calc(-1 * var(--sp-3));
++    padding-left: var(--sp-3);
++    margin-left: calc(-1 * var(--sp-3));
++  }
+   .kp-strip-fade,
+   .kp-strip-fade[data-edges="end"] {
+     -webkit-mask-image: linear-gradient(to right, #000 calc(100% - 40px), transparent calc(100% - 8px));
+     mask-image: linear-gradient(to right, #000 calc(100% - 40px), transparent calc(100% - 8px));
+-    scroll-padding-inline: 32px 40px;
++    scroll-padding-inline: 44px 40px;
+   }
+   .kp-strip-fade[data-edges="start"] {
+-    -webkit-mask-image: linear-gradient(to right, transparent, #000 32px);
+-    mask-image: linear-gradient(to right, transparent, #000 32px);
++    -webkit-mask-image: linear-gradient(to right, transparent 12px, #000 44px);
++    mask-image: linear-gradient(to right, transparent 12px, #000 44px);
+   }
+   .kp-strip-fade[data-edges="both"] {
+-    -webkit-mask-image: linear-gradient(to right, transparent, #000 32px, #000 calc(100% - 40px), transparent calc(100% - 8px));
+-    mask-image: linear-gradient(to right, transparent, #000 32px, #000 calc(100% - 40px), transparent calc(100% - 8px));
++    -webkit-mask-image: linear-gradient(to right, transparent 12px, #000 44px, #000 calc(100% - 40px), transparent calc(100% - 8px));
++    mask-image: linear-gradient(to right, transparent 12px, #000 44px, #000 calc(100% - 40px), transparent calc(100% - 8px));
+   }
+   .kp-strip-fade[data-edges="none"] {
+     -webkit-mask-image: none;
+@@ -5222,6 +5244,13 @@ html[data-sheet-open] .route-enter { animation: none; }
+ /* letter-spacing: §T3's 0.14em — in the shared eyebrow rule beside `.amount`. */
+ .admin-tbl thead { font-family: var(--font-mono); font-size: var(--type-label); text-transform: uppercase; color: var(--text-subtle); background: var(--bg-overlay); border-bottom: 1px solid var(--border); }
+ .admin-tbl th { padding: 10px 16px; font-weight: 500; white-space: nowrap; }
++/* ⭐ A RIGHT-ALIGNED HEADING ENDS WHERE ITS FIGURES END (2026-10-09, round 3, tiles 177 178). The head is tracked 0.14em (the
++   eyebrow rule above), and a browser adds that spacing after the LAST letter too, so a right-aligned heading stopped one
++   letter-space short of its column: on /leaderboard "ROI" ended at x528 over figures ending at x530, "MFULULIZO" at 959
++   over 961–962, "IMETATULIWA" at 1124 over 1126. An empty inline after the heading takes the trailing space back, so its
++   last letter's advance meets the cell's content edge, where the figures' advances meet it. What remains (about 1px) is
++   the letters' own side bearings inside their monospace cells, not spacing. Left-aligned and centred heads are untouched. */
++.admin-tbl thead th.text-right::after { content: ""; display: inline-block; margin-right: -0.14em; }
+ .admin-tbl td { padding: 12px 16px; vertical-align: middle; }
+ /* A cell, or a row, that asks to align its contents to the top GETS it. The rule above is unlayered and outranked the
+    utility, so a figure sat level with the middle of a tall wrapped label instead of on its line (measured on
+@@ -6097,6 +6126,14 @@ html[lang="zh"] .kp-udrule { word-break: keep-all; }
+ .kp-hub__card :where(a, button, summary):focus-visible { outline-offset: -2px; }
+ .kp-hub__row { display: flex; align-items: center; gap: var(--sp-3); width: 100%; min-height: var(--h-control-xl); padding: var(--sp-2) var(--sp-4); border: 0; background: transparent; color: var(--text); font: inherit; text-align: left; text-decoration: none; cursor: pointer; }
+ .kp-hub__row:hover { background: var(--bg-overlay); }
++/* The card-size switch row (`card-size-row.tsx`, round 3, 2026-10-09) is laid out as the rail menu's row it copies: glyph,
++   label, value and switch on the first line, the hint under the last three. The hint shared the first line with the value
++   and the switch and had 113–183px, so it left a word alone at every phone width; under them it has the row's width less
++   the glyph slot — 222px at 320, 292 at 390 — and reads on one line from 360 in every language. The glyph spans both
++   lines, centred on the row as every two-line row's glyph is. */
++.kp-hub__row--switch { display: grid; grid-template-columns: auto minmax(0, 1fr) auto auto; align-items: center; column-gap: var(--sp-3); row-gap: 2px; }
++.kp-hub__row--switch > .kp-hub__glyph { grid-row: 1 / span 2; }
++.kp-hub__row--switch > .kp-hub__row-hint { grid-column: 2 / -1; grid-row: 2; }
+ /* The card clips its rows to its rounded corners, so a square ring on the first or last row lost its corners there
+    (WP12's tiles, 2026-10-08: the "Pochi" row's ring broke open at both top corners). An outline follows the element's
+    radius, so the end rows take the card's inner curve and the ring stays whole. */
+@@ -6110,15 +6147,18 @@ html[lang="zh"] .kp-udrule { word-break: keep-all; }
+    2026-10-08: 仅限手机，不会隐藏任何内 / 容。). keep-all breaks a Chinese line at its punctuation instead
+    (仅限手机， / 不会隐藏任何内容。); a run longer than its line still breaks rather than overflow. */
+ .kp-hub__sub:lang(zh) { word-break: keep-all; overflow-wrap: anywhere; }
+-/* A second line that names several things breaks only BETWEEN them (WP12's tiles 276, 277, 2026-10-08): at 320
++/* A line that names several things breaks only BETWEEN them (WP12's tiles 276, 277, 2026-10-08): at 320
+    "Maswali ya kawaida · Simu ·" ended its first line on a dangling dot, and at 360 "Barua pepe" left "pepe" alone.
+-   Each thing is one flex item (`HubSub`, hub-row.tsx) and the dot before it hangs in the gap to its left, so a thing
+-   that opens a line carries its dot outside the box, where the clip hides it: one line reads as before, two read
+-   "Maswali ya kawaida · Simu" over "Barua pepe". The clip cuts the LEFT edge only, so a word wider than its line
+-   still shows whole on the right, as the plain line always did. */
+-.kp-hub__seq { display: flex; flex-wrap: wrap; column-gap: var(--sp-3); clip-path: inset(-100vmax -100vmax -100vmax 0); }
+-.kp-hub__seq-item { position: relative; min-width: 0; }
+-.kp-hub__seq-dot { position: absolute; top: 0; right: 100%; width: var(--sp-3); text-align: center; }
++   Each thing is one flex item (`DotSeq`, dot-seq.tsx — the hub's `HubSub` until round 3 gave the legal header's version
++   line and the invite page's call the same defect, 2026-10-09) and the dot before it hangs in the gap to its left, so a
++   thing that opens a line carries its dot outside the box, where the clip hides it: one line reads as before, two read
++   "Maswali ya kawaida · Simu" over "Barua pepe". The clip cuts the LEFT edge only, so a word wider than its line still
++   shows whole on the right, as the plain line always did. The gap is the dot's room: 12px for Inter and Sora (a spaced
++   dot measures 11–13px there), 3ch in a monospace face (`--mono`), which is exactly " · " in it. */
++.kp-seq { display: flex; flex-wrap: wrap; column-gap: var(--seq-gap, var(--sp-3)); clip-path: inset(-100vmax -100vmax -100vmax 0); }
++.kp-seq--mono { --seq-gap: 3ch; }
++.kp-seq__item { position: relative; min-width: 0; }
++.kp-seq__dot { position: absolute; top: 0; right: 100%; width: var(--seq-gap, var(--sp-3)); text-align: center; }
+ /* The proposals row's flag rides its label (WP12's tiles 124, 255, 297, 2026-10-08). In the row's trailing slot it took
+    84px from the label, and "Pendekeza na upate zawadi" folded in two at 390 though the label alone fits. Now the two
+    share one wrapping line: side by side, the flag at the row's end as before, where both fit (English and Chinese at
+@@ -6140,11 +6180,8 @@ html[lang="zh"] .kp-udrule { word-break: keep-all; }
+ .kp-hub__opt:hover { background: var(--bg-overlay); }
+ .kp-hub__opt[aria-selected="true"] { background: var(--pill-active); color: var(--text); font-weight: 600; }
+ .kp-hub__tick { flex-shrink: 0; display: inline-flex; width: 16px; color: var(--brand-300); }
+-/* The Needle's own menu row, given the hub's height. */
+-.kp-hub__needle { display: flex; align-items: center; min-height: var(--h-control-xl); padding: var(--sp-1) var(--sp-2); }
+-/* …and the hub's type: the shared menu row is set at body-sm for the account menu, where every row is; among the
+-   hub's body-size labels it read a size smaller than its siblings (WP12's tiles, 2026-10-08). */
+-.kp-hub__needle > button { min-height: var(--h-control-md); font-size: var(--type-body); }
++/* The Needle's row is the hub's own row (`NeedleControlsDrawer variant="hub-row"`, round 3, 2026-10-09): it wore the
++   account menu's row inside a padded item, sized up here, and stood 2px off every column of the card. No rule of its own. */
+ /* Sign-out stands alone under the cards, as the canvas draws it: an act, not a door. */
+ .kp-hub__exit { display: flex; align-items: center; gap: var(--sp-3); width: 100%; min-height: var(--h-control-xl); padding: 0 var(--sp-4); border: 1px solid var(--border); border-radius: var(--r-lg); background: transparent; color: var(--text); font: inherit; text-align: left; cursor: pointer; }
+ .kp-hub__exit:hover { background: var(--bg-overlay); }
+@@ -6591,7 +6628,14 @@ html[lang="zh"] .kp-udrule { word-break: keep-all; }
+    ⭐ Balanced (2026-10-08, the visual pass, tile 116): at en 320 its 232px measure holds "Sign in to see your" (188px)
+    and left "tickets" alone on line 2; balanced, it reads "Sign in to see / your tickets". A title that fits on one
+    line (sw "Ingia uone tiketi zako", 219px, tile 113; zh, tile 119; every language from 360) is unchanged. */
+-.kp-jsheet__title { margin: 0; padding-right: var(--sp-12); font-family: var(--font-display); font-weight: 700; font-size: var(--type-h3); line-height: 1.25; color: var(--text); text-wrap: balance; }
++/* ⭐ …AND ITS FIRST LINE STANDS ON THE ×'S LINE (round 3, 2026-10-09, tiles 113–121 and 156). The Modal pins its close
++   control 16px under the panel's padding edge in a 48px box (`absolute right-3 top-3 h-8 w-8` on this repo's scale), so
++   the × is centred 40px down; the title starts 32px down (12 + the 4px grab + the 16px gap below 1024; 32px of padding,
++   grab hidden, from 1024) and its 25px line is centred 44.5px down — the × stood 4–4.5px above the title's line at every
++   width and in every language (1280: × ink y409–418, title cap y410–424). The title rises by the difference — the top
++   margin below, -4.5px — the channels panel's fix (G2: its title centred on its close control's box): the first line's
++   centre meets the ×'s centre, and a title that wraps keeps its first line there. Everything under it moves up with it. */
++.kp-jsheet__title { margin: calc(var(--sp-10) - var(--sp-8) - var(--type-h3) * 1.25 / 2) 0 0; padding-right: var(--sp-12); font-family: var(--font-display); font-weight: 700; font-size: var(--type-h3); line-height: 1.25; color: var(--text); text-wrap: balance; }
+ 
+ /* ── THE CENTRE COIN — UPDATE-2026-09-28 §2 ───────────────────────────────────────
+    The rail's middle slot is the wallet's door, and the coin is the 50pick mark AS a control: the
+diff --git a/src/app/leaderboard/page.tsx b/src/app/leaderboard/page.tsx
+index 05e5e64db..321a66f65 100644
+--- a/src/app/leaderboard/page.tsx
++++ b/src/app/leaderboard/page.tsx
+@@ -7,7 +7,7 @@
+  * sample data is generated for the empty demo store in non-production only.
+  */
+ import { ROOT_OPEN_GRAPH } from "../layout";
+-import { fill } from "@/lib/utils";
++import { cn, fill } from "@/lib/utils";
+ import { db } from "@/lib/server/store";
+ import Link from "next/link";
+ import { I } from "@/components/ui/glyphs";
+@@ -325,7 +325,11 @@ export default async function LeaderboardPage({ searchParams }: { searchParams:
+         <>
+       <PageRibbon
+         stats={[
+-          { label: t.leaderboard.topTier, value: tierDisplayName(rows[0]?.tier ?? "bronze"), accent: "gold" },
++          /* ⛔ PLAIN INK, NEVER GOLD (2026-10-09, round 3, tiles 177 178 203). The top tier was struck in the money ink
++             (`text-gold-300`, measured 243,203,122), so the word "Fedha" — SILVER — stood in gold: the word and its colour
++             disagreed, and gold marks money that was earned and nothing else (DESIGN_AUTHORITY Q5, `test:gold-is-money`,
++             which now holds `page-ribbon.tsx` among the identity surfaces). A rank is identity; the metal is the badge's. */
++          { label: t.leaderboard.topTier, value: tierDisplayName(rows[0]?.tier ?? "bronze") },
+           { label: t.leaderboard.bestRoi, value: `${rows[0]?.roi.toFixed(1) ?? "0"}%`, accent: "yes" },
+           /**
+            * 🔴 THIS PRINTED THE BOARD SIZE UNDER THE LABEL "PREDICTORS". `rows` is the ranking,
+@@ -397,7 +401,12 @@ export default async function LeaderboardPage({ searchParams }: { searchParams:
+         * identically here — same fused direction button, same tri-state, same reset-to-natural on
+         * choosing a new key.
+         */}
+-      <div className={QUERY_BAR_ROW2_CLASS}>
++      {/* ⭐ THE PAGE'S RHYTHM, NOT THE BAR'S (2026-10-09, round 3, tiles 177 178). The row class carries the sticky bar's
++          own padding (8px over, 10px under), which is right between a bar's two rows and wrong here, where the sort is a
++          block of the page's 32px stack: the pills stood 40px over the sort and the sort 42px over the podium (48px over it,
++          and a rule 16px under it, in the round-3 tiles, taken while the landing board's `.kp-qrow` padding and border still
++          reached this row). `py-0` hands the spacing back to the stack — 32 above and 32 below, like every other gap here. */}
++      <div className={cn(QUERY_BAR_ROW2_CLASS, "py-0")}>
+         <QuerySort
+           label={t.common.sort}
+           value={sortLabel(state.sort)}
+diff --git a/src/app/legal/_components.tsx b/src/app/legal/_components.tsx
+index 3cb771170..af974ae78 100644
+--- a/src/app/legal/_components.tsx
++++ b/src/app/legal/_components.tsx
+@@ -10,6 +10,7 @@ import { type ReactNode } from "react";
+ import { I } from "@/components/ui/glyphs";
+ import { GiltCorner } from "@/components/brand";
+ import { PageHeader } from "@/components/ui/page-header";
++import { DotSeq } from "@/components/ui/dot-seq";
+ import { type Locale } from "@/lib/i18n-server";
+ 
+ /**
+@@ -86,7 +87,11 @@ export function LegalHeader({
+           {meta && (
+             // 2026-09-13: balanced so the zh line does not strand "布。" on its own row.
+             // 2026-09-27: 13px, not 11px. The version line is a sentence a reader reads, so it sits on the reading floor (§T4).
+-            <p className="font-mono text-body-sm tabular-nums text-text-subtle text-balance">{meta}</p>
++            // 2026-10-09 (round 3, tile 207): its two parts — the version and what the document is aligned with — are drawn
++            // as `DotSeq` parts, so a line breaks between them and never on the "·": at 390 the privacy line read
++            // "Toleo 2026-10-07 ·" over "Imeoanishwa na…". It now reads "Toleo 2026-10-07" over the rest, balanced, and on
++            // a line wide enough for both it is the same text, the dot in a 3ch gap ( " · " in the mono face).
++            <p className="font-mono text-body-sm tabular-nums text-text-subtle text-balance"><DotSeq text={meta} mono /></p>
+           )}
+         </div>
+       </div>
+diff --git a/src/app/notifications/page.tsx b/src/app/notifications/page.tsx
+index ceefe1d3e..48f14953e 100644
+--- a/src/app/notifications/page.tsx
++++ b/src/app/notifications/page.tsx
+@@ -48,6 +48,7 @@ import { pageForUser } from "@/lib/server/notification-service";
+ import { getServerT } from "@/lib/i18n-server";
+ import { cn } from "@/lib/utils";
+ import { iconFor, tintFor } from "@/lib/notification-appearance";
++import { readableNotificationBody } from "@/lib/notification-text";
+ import {
+   parseFilter, parseSort,
+   type NotificationFilter, type NotificationSort,
+@@ -109,8 +110,10 @@ export default async function NotificationsPage({
+ 
+   const pickTitle = (n: (typeof items)[number]) =>
+     locale === "sw" ? (n.titleSw || n.titleEn) : locale === "zh" ? (n.titleZh || n.titleEn) : n.titleEn;
++  /* Read through `readableNotificationBody` (round 3, 2026-10-09, tile 192): a row written before it still carries a raw
++     " · pos_…" and the old template's doubled full stop, and is shown without them (notification-text.ts). */
+   const pickBody = (n: (typeof items)[number]) =>
+-    locale === "sw" ? (n.bodySw || n.bodyEn) : locale === "zh" ? (n.bodyZh || n.bodyEn) : n.bodyEn;
++    readableNotificationBody(locale === "sw" ? (n.bodySw || n.bodyEn) : locale === "zh" ? (n.bodyZh || n.bodyEn) : n.bodyEn);
+ 
+   /* ⛔ `FILTER_LABEL` / `SORT_LABEL` MOVED TO `notifications-bar.tsx` RATHER THAN BEING COPIED
+      THERE. Both were declared here and consumed only by the two pill rails the bar replaced;
+diff --git a/src/app/profile/invite/page.tsx b/src/app/profile/invite/page.tsx
+index 51d5bffd7..f866ff973 100644
+--- a/src/app/profile/invite/page.tsx
++++ b/src/app/profile/invite/page.tsx
+@@ -10,6 +10,7 @@ import { AgentDashboard } from "./agent-dashboard";
+ import QRCode from "qrcode";
+ import { FiftyMark, GiltCorner } from "@/components/brand";
+ import { Chip } from "@/components/ui/chip";
++import { DotSeq } from "@/components/ui/dot-seq";
+ import { Avatar } from "@/components/ui/avatar";
+ import { Button } from "@/components/ui/button";
+ import { EmptyState } from "@/components/ui/empty-state";
+@@ -288,14 +289,21 @@ export default async function InvitePage({
+           className="pointer-events-none absolute inset-0"
+           style={{ background: `radial-gradient(120% 90% at 100% 0%, color-mix(in oklab, var(--${paid ? "gold" : "royal"}-500) 12%, transparent), transparent 60%)` }}
+         />
+-        <div className="relative flex items-center gap-4">
++        {/* ⭐ THE CALL HAS THE CARD'S WIDTH ON A PHONE (round 3, 2026-10-09, tile 181). Beside the 96px dial the 19px call
++            had 191px at 390 (121 at 320), so "Shiriki kiungo chako · uone wanaojiunga" broke as "Shiriki kiungo" / "chako ·
++            uone" / "wanaojiunga" — its two phrases mixed on one line and its last word alone — and at 320 its longest word
++            was wider than the column. Below `sm` the dial keeps its caption beside it (the caption names what the dial
++            counts) and the call takes the row under both, at the card's full width (308px at 390, 238 at 320), drawn as
++            its two phrases (`DotSeq`): "Shiriki kiungo chako" over "uone wanaojiunga" at every phone width, and on one
++            line, as before, wherever both fit. From `sm` the row is the one it was: dial, then caption over call. */}
++        <div className="relative grid grid-cols-[auto_minmax(0,1fr)] items-center gap-x-4 gap-y-3 sm:flex">
+           <EarningsRing value={ringValue} label={ringLabel} tone={paid ? "gold" : "royal"} />
+-          <div className="min-w-0 flex-1">
+-            <Cap className={`mb-1.5 ${paid ? "!text-gold-300" : "!text-royal-300"}`}>
++          <div className="contents sm:block sm:min-w-0 sm:flex-1">
++            <Cap className={`sm:mb-1.5 ${paid ? "!text-gold-300" : "!text-royal-300"}`}>
+               {paid ? t.profile.inviteEarn : t.profile.friendsJoined}
+             </Cap>
+-            <p className="font-display text-[19px] font-bold leading-tight">
+-              {paid ? t.profile.inviteEarnSub : t.profile.inviteFriendsSub}
++            <p className="col-span-2 font-display text-[19px] font-bold leading-tight text-balance">
++              <DotSeq text={paid ? t.profile.inviteEarnSub : t.profile.inviteFriendsSub} />
+             </p>
+           </div>
+         </div>
+diff --git a/src/app/profile/responsible-gambling/page.tsx b/src/app/profile/responsible-gambling/page.tsx
+index 0de3e6322..94b75893f 100644
+--- a/src/app/profile/responsible-gambling/page.tsx
++++ b/src/app/profile/responsible-gambling/page.tsx
+@@ -120,7 +120,11 @@ export default async function ResponsibleGamblingPage({ searchParams }: { search
+           eyebrow={t.rg.playerProtection}
+           title={t.profile.responsibleGambling}
+         />
+-        <p className="mt-2 text-[13px] text-text-muted leading-snug max-w-prose">
++        {/* text-balance (round 3, 2026-10-09, tile 179): "Weka mipaka ya amana na muda, pumzika au" / "jizuie." left the
++            last word alone at 390. Balanced, the two lines read "Weka mipaka ya amana na" / "muda, pumzika au jizuie."
++            (164 and 152px of 308 — measured with the repo's Inter); en "Set deposit and time limits," / "take a break,
++            or self-exclude.". */}
++        <p className="mt-2 text-[13px] text-text-muted leading-snug max-w-prose text-balance">
+           {t.rg.pageDescription}
+         </p>
+       </PageHero>
+@@ -131,7 +135,10 @@ export default async function ResponsibleGamblingPage({ searchParams }: { search
+         <RgSunriseArt size={44} className="shrink-0 text-success-fg" />
+         <div className="min-w-0">
+           <p className="font-display text-[14px] font-semibold text-success-fg">{t.rg.supportAvailable}</p>
+-          <p className="mt-1 text-body-sm text-text-muted leading-snug">
++          {/* text-balance (round 3, 2026-10-09, tile 179): the link stood alone on line 2, "Msaada wa kimataifa kupitia" /
++              "begambleaware.org.". Balanced it reads "Msaada wa kimataifa" / "kupitia begambleaware.org." (en
++              "International support" / "at begambleaware.org."). Only the wrap changes; the words and the link do not. */}
++          <p className="mt-1 text-body-sm text-text-muted leading-snug text-balance">
+             {/* ⛔ No helpline line since the owner's ruling of 2026-10-06 (docs/COMPLIANCE-DECISIONS.md). */}
+             {t.rg.intlSupport}{" "}<a href="https://www.begambleaware.org" target="_blank" rel="noopener noreferrer" className="text-success-fg underline underline-offset-2">begambleaware.org</a>.
+           </p>
+diff --git a/src/components/journey/account/card-size-row.tsx b/src/components/journey/account/card-size-row.tsx
+index b50eabb69..217d37fc5 100644
+--- a/src/components/journey/account/card-size-row.tsx
++++ b/src/components/journey/account/card-size-row.tsx
+@@ -15,6 +15,7 @@
+ import { useId, useSyncExternalStore } from "react";
+ import { I } from "@/components/ui/glyphs";
+ import { Toggle } from "@/components/ui/toggle";
++import { keepLastWords } from "@/components/ui/keep-words";
+ import { useT } from "@/lib/i18n";
+ import { applyCardSpacing, currentCardSpacing, subscribeCardSpacing } from "@/lib/card-spacing";
+ 
+@@ -35,15 +36,20 @@ export function CardSizeRow() {
+         aria-label={`${t.journey.hubCardSize}: ${t.nav.densityCompact}`}
+         aria-describedby={hintId}
+         onClick={() => applyCardSpacing(compact ? "comfortable" : "compact")}
+-        className="kp-hub__row"
++        className="kp-hub__row kp-hub__row--switch"
+       >
++        {/* ⭐ THE RAIL ROW'S LAYOUT, AS ITS HEADER PROMISES (round 3, 2026-10-09, tiles 124 127 256 264 294 295 298 302 306
++            331): label and value beside the switch, the hint under all three. The hint used to share its line with the
++            value and the switch, so it had 183px at 390 and 113px at 320 and left a word alone at every phone width —
++            "Kwa simu tu. Hakuna" / "kinachofichwa.", "Phones only. Nothing is" / "hidden.", and three lines at 320. Under
++            the whole row it has 222px at 320 and 292px at 390 (the hub's row less its glyph slot): one line at 360 and up
++            in every language, and at sw 320 "Kwa simu tu." / "Hakuna kinachofichwa." — the last two words kept together
++            (`keepLastWords`), so it breaks between its sentences and not before its last word. */}
+         <span className="kp-hub__glyph" aria-hidden><I.layoutGrid s={20} /></span>
+-        <span className="kp-hub__text">
+-          <span className="kp-hub__label">{t.journey.hubCardSize}</span>
+-          <span id={hintId} className="kp-hub__sub">{t.nav.cardSpacingHint}</span>
+-        </span>
++        <span className="kp-hub__label">{t.journey.hubCardSize}</span>
+         <span className="kp-hub__value">{compact ? t.nav.densityCompact : t.nav.densityComfortable}</span>
+         <Toggle on={compact} decorative />
++        <span id={hintId} className="kp-hub__sub kp-hub__row-hint">{keepLastWords(t.nav.cardSpacingHint)}</span>
+       </button>
+     </li>
+   );
+diff --git a/src/components/journey/account/hub-row.tsx b/src/components/journey/account/hub-row.tsx
+index 959856c4d..3a767ff2e 100644
+--- a/src/components/journey/account/hub-row.tsx
++++ b/src/components/journey/account/hub-row.tsx
+@@ -10,6 +10,7 @@
+ import Link from "next/link";
+ import { I } from "@/components/ui/glyphs";
+ import { Cash } from "@/components/ui/cash";
++import { DotSeq } from "@/components/ui/dot-seq";
+ import { ProposalsStateBadge } from "@/components/ui/proposals-state-badge";
+ import { NeedleControlsDrawer } from "@/components/layout/needle-drawer";
+ import { formatTzs } from "@/lib/utils";
+@@ -23,9 +24,10 @@ export function HubRowItem({ row, t, viewer }: { row: HubRow; t: Dict; viewer: H
+   if (row.kind === "language") return <LanguageRow />;
+   if (row.kind === "cardSize") return <CardSizeRow />;
+   if (row.kind === "needle") {
++    // The hub's own row (the drawer's `hub-row` trigger), not the account menu's in a padded item (round 3, 2026-10-09).
+     return (
+-      <li className="kp-hub__needle">
+-        <NeedleControlsDrawer variant="menu-row" />
++      <li>
++        <NeedleControlsDrawer variant="hub-row" />
+       </li>
+     );
+   }
+@@ -61,20 +63,10 @@ export function HubRowItem({ row, t, viewer }: { row: HubRow; t: Dict; viewer: H
+ 
+ /**
+  * A row's second line. One that names several things — "Maswali ya kawaida · Simu · Barua pepe" — is drawn as those
+- * things, so it breaks only BETWEEN them and never on a dangling "·" (WP12's tiles 276, 277, 2026-10-08;
+- * `.kp-hub__seq`). The words are the dictionary's own, split at its own " · "; the dots are drawn, not read.
++ * things, so it breaks only BETWEEN them and never on a dangling "·" (WP12's tiles 276, 277, 2026-10-08). The mechanism
++ * is `DotSeq` (dot-seq.tsx) since round 3 (2026-10-09), when the legal header and the invite page needed it too. The
++ * words are the dictionary's own, split at its own " · "; the dots are drawn, not read.
+  */
+ function HubSub({ text }: { text: string }) {
+-  const parts = text.split(" · ");
+-  if (parts.length < 2) return <span className="kp-hub__sub">{text}</span>;
+-  return (
+-    <span className="kp-hub__sub kp-hub__seq">
+-      {parts.map((part, i) => (
+-        <span key={i} className="kp-hub__seq-item">
+-          {i > 0 && <span className="kp-hub__seq-dot" aria-hidden>·</span>}
+-          {part}
+-        </span>
+-      ))}
+-    </span>
+-  );
++  return <DotSeq text={text} className="kp-hub__sub" />;
+ }
+diff --git a/src/components/layout/needle-drawer.tsx b/src/components/layout/needle-drawer.tsx
+index 710f9a286..484573538 100644
+--- a/src/components/layout/needle-drawer.tsx
++++ b/src/components/layout/needle-drawer.tsx
+@@ -16,6 +16,7 @@
+ import { useEffect, useState } from "react";
+ import { createPortal } from "react-dom";
+ import { Toggle } from "@/components/ui/toggle";
++import { I } from "@/components/ui/glyphs";
+ import { useExitPhase } from "@/components/ui/modal";
+ import { useT } from "@/lib/i18n";
+ import { cn } from "@/lib/utils";
+@@ -68,7 +69,7 @@ function NeedleMark({ size = 16, className }: { size?: number; className?: strin
+   );
+ }
+ 
+-export function NeedleControlsDrawer({ variant = "menu-row" }: { variant?: "menu-row" | "settings" }) {
++export function NeedleControlsDrawer({ variant = "menu-row" }: { variant?: "menu-row" | "hub-row" | "settings" }) {
+   const { locale } = useT();
+   const [open, setOpen] = useState(false);
+   const [hidden, setHidden] = useState(false);
+@@ -130,6 +131,20 @@ export function NeedleControlsDrawer({ variant = "menu-row" }: { variant?: "menu
+         <span className="font-mono text-micro uppercase tracking-[0.12em] text-text-subtle">{shownLabel}</span>
+         <svg width="14" height="14" viewBox="0 0 24 24" aria-hidden="true" className="text-text-subtle"><path d="M9 6l6 6-6 6" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" /></svg>
+       </button>
++    ) : variant === "hub-row" ? (
++      /* ⭐ ONE OF THE AKAUNTI HUB'S ROWS (2026-10-09, round 3, tiles 122–130 158 264–275 294 295). The hub drew the account
++         menu's row inside a padded list item, so it was built unlike every row around it: its chevron 2px left and 8–10px
++         tall against the hub's 11–12, its mark 2px right, its value in mono capitals 2px short of the column, the row 55px
++         against 56. It now wears the hub's own row, word for word: the 56px rung, the 20px glyph slot in the glyph ink, the
++         body label, the value in the value's type, the hub's 18px chevron. The mark at 20px strokes 1.6px, as the hub's
++         glyphs do (1.9 on 24); its state is the value's word, as the language row's is. `.kp-hub__*` are the hub's classes
++         (globals.css), and this branch is the only place outside the hub's own files that wears them. */
++      <button type="button" onClick={() => setOpen(true)} aria-haspopup="dialog" className="kp-hub__row">
++        <span className="kp-hub__glyph" aria-hidden><NeedleMark size={20} /></span>
++        <span className="kp-hub__text"><span className="kp-hub__label">{t("The Needle", "Sindano", "指针玩具")}</span></span>
++        <span className="kp-hub__value">{shownLabel}</span>
++        <I.chevronRight s={18} className="kp-hub__chev" aria-hidden />
++      </button>
+     ) : (
+       <button
+         type="button"
+diff --git a/src/components/layout/notifications-panel.tsx b/src/components/layout/notifications-panel.tsx
+index cbeb4408f..5b9388a07 100644
+--- a/src/components/layout/notifications-panel.tsx
++++ b/src/components/layout/notifications-panel.tsx
+@@ -17,6 +17,7 @@ import { useModalLock } from "@/lib/use-modal-lock";
+ // ⛔ ONE HOME for how a kind looks (§0a). The page renders the same rows; a second map here
+ // would let a win be gold in the bell and grey on the page, and nothing would say so.
+ import { iconFor, tintFor } from "@/lib/notification-appearance";
++import { readableNotificationBody } from "@/lib/notification-text";
+ 
+ /** The SAME list `<Modal>` (ui/modal.tsx) and `<FilterSheet>` (markets/filter-sheet.tsx)
+  *  trap against — copied verbatim so the product's three focus traps cannot drift apart. */
+@@ -56,10 +57,12 @@ function pickTitle(n: StoredNotification, locale: string): string {
+   if (locale === "zh") return n.titleZh || n.titleEn;
+   return n.titleEn;
+ }
++/** …read through `readableNotificationBody`: a row written before round 3 (2026-10-09) still carries a raw " · pos_…"
++ *  and a doubled full stop, and is shown without them (notification-text.ts). */
+ function pickBody(n: StoredNotification, locale: string): string {
+-  if (locale === "sw") return n.bodySw || n.bodyEn;
+-  if (locale === "zh") return n.bodyZh || n.bodyEn;
+-  return n.bodyEn;
++  if (locale === "sw") return readableNotificationBody(n.bodySw || n.bodyEn);
++  if (locale === "zh") return readableNotificationBody(n.bodyZh || n.bodyEn);
++  return readableNotificationBody(n.bodyEn);
+ }
+ 
+ export function NotificationsPanel() {
+diff --git a/src/components/layout/page-ribbon.tsx b/src/components/layout/page-ribbon.tsx
+index 751c29f34..704e849ea 100644
+--- a/src/components/layout/page-ribbon.tsx
++++ b/src/components/layout/page-ribbon.tsx
+@@ -11,8 +11,12 @@
+  * defect class as a doc citing a deleted file.
+  *
+  * Stats render as a horizontal row of slim "pill" capsules, mono
+- * numerals, gilt accents on the most important number. Wraps on
+- * narrow viewports.
++ * numerals. Wraps on narrow viewports.
++ *
++ * ⛔ NO GOLD ACCENT (2026-10-09, round 3, tiles 177 178 203). It had one, and its one use was the leaderboard's top tier:
++ * "Fedha" — silver — struck in the money ink. Gold marks money that was earned and nothing else (DESIGN_AUTHORITY Q5);
++ * a ribbon that states ranks, counts and rates has nothing gold to say, so the option is gone rather than left to be
++ * reached for. `test:gold-is-money` holds this file among the identity surfaces.
+  */
+ 
+ import { cn } from "@/lib/utils";
+@@ -21,7 +25,7 @@ export type RibbonStat = {
+   label: string;
+   sw?: string;
+   value: string;
+-  accent?: "gold" | "yes" | "no" | "default";
++  accent?: "yes" | "no" | "default";
+ };
+ 
+ export function PageRibbon({
+@@ -54,7 +58,6 @@ export function PageRibbon({
+           <p
+             className={cn(
+               "font-mono text-body-lg font-bold tabular-nums whitespace-nowrap leading-none",
+-              s.accent === "gold" && "text-gold-300",
+               s.accent === "yes" && "text-yes-300",
+               s.accent === "no" && "text-no-300",
+               (!s.accent || s.accent === "default") && "text-text",
+diff --git a/src/components/layout/wallet-sheet.tsx b/src/components/layout/wallet-sheet.tsx
+index e1660c499..444d95358 100644
+--- a/src/components/layout/wallet-sheet.tsx
++++ b/src/components/layout/wallet-sheet.tsx
+@@ -37,6 +37,7 @@ import { Cash, CashEye, useCashHidden } from "@/components/ui/cash";
+ import { I } from "@/components/ui/glyphs";
+ import { useT } from "@/lib/i18n";
+ import { formatTzs } from "@/lib/utils";
++import { keepLastWords } from "@/components/ui/keep-words";
+ 
+ export function WalletSheet({
+   open,
+@@ -97,7 +98,10 @@ export function WalletSheet({
+       {held ? (
+         <div className="kp-wsheet__held" role="status">
+           <p className="kp-wsheet__held-t">{t.kycGate.frozenTitle}</p>
+-          <p className="kp-wsheet__held-b">{t.kycGate.frozenBody}</p>
++          {/* Its last two words break together (round 3, 2026-10-09, tile 092): "…itakueleza" / "kinachofuata." left the
++              last word alone at 390. The notice's line is 248px at 320 and the pair at most 150 ("itakueleza
++              kinachofuata."), so it always fits. */}
++          <p className="kp-wsheet__held-b">{keepLastWords(t.kycGate.frozenBody)}</p>
+         </div>
+       ) : (
+         <div className={onBreak ? "kp-wsheet__pair kp-wsheet__pair--one" : "kp-wsheet__pair"}>
+diff --git a/src/components/ui/dot-seq.tsx b/src/components/ui/dot-seq.tsx
+new file mode 100644
+index 000000000..afc68531a
+--- /dev/null
++++ b/src/components/ui/dot-seq.tsx
+@@ -0,0 +1,34 @@
++/**
++ * A LINE THAT NAMES SEVERAL THINGS, WRITTEN "A · B · C", BREAKS ONLY BETWEEN THEM — and its dot never ends or opens a line.
++ *
++ * Born as the Akaunti hub's `HubSub` (WP12's tiles 276, 277, 2026-10-08: at 320 "Maswali ya kawaida · Simu ·" ended a line
++ * on a dangling dot, and at 360 "Barua pepe" left "pepe" alone). Round 3 of the visual pass (2026-10-09) found the same
++ * dot at a line's end on two more surfaces — the privacy policy's version line, "Toleo 2026-10-07 ·" / "Imeoanishwa na…"
++ * (tile 207), and the invite page's call, "Shiriki kiungo" / "chako · uone" / "wanaojiunga" (tile 181) — so the one
++ * mechanism moved here, and the hub, the legal header and the invite page all draw it.
++ *
++ * ⭐ HOW: the dictionary's own words, split at its own " · ", each thing one flex item (`.kp-seq__item`), so a line breaks
++ * between things and a thing too long for a line wraps inside itself. The dot before a thing hangs in the gap to its left
++ * (`.kp-seq__dot`), so a thing that opens a line carries its dot outside the box, where the box's left-edge clip hides it:
++ * on one line it reads exactly as the plain text did; on two, the dot is simply not there. The dots are drawn, not read.
++ * ⚠️ The gap is the dot's room, and it is the width a spaced dot has in the text's own face: 12px (`--sp-3`) for Inter
++ * and Sora, where " · " measures 11.1px at 13px and about 12.7px at Sora's 19px bold; `mono` sets it to 3ch, which IS
++ * " · " in a monospace face, so a mono line that fits reads pixel for pixel as it did.
++ * A string with no " · " renders as one plain span — byte-identical to the text it replaces.
++ */
++import { cn } from "@/lib/utils";
++
++export function DotSeq({ text, className, mono = false }: { text: string; className?: string; mono?: boolean }) {
++  const parts = text.split(" · ");
++  if (parts.length < 2) return <span className={className}>{text}</span>;
++  return (
++    <span className={cn("kp-seq", mono && "kp-seq--mono", className)}>
++      {parts.map((part, i) => (
++        <span key={i} className="kp-seq__item">
++          {i > 0 && <span className="kp-seq__dot" aria-hidden>·</span>}
++          {part}
++        </span>
++      ))}
++    </span>
++  );
++}
+diff --git a/src/components/ui/empty-state-text.ts b/src/components/ui/empty-state-text.ts
+new file mode 100644
+index 000000000..576246f05
+--- /dev/null
++++ b/src/components/ui/empty-state-text.ts
+@@ -0,0 +1,41 @@
++/**
++ * The empty state's TEXT rules, in one plain module — beside `empty-state-classes.ts`, and for the same reason: a plain
++ * module can be read by a server component and driven by a test without a browser, where an export of the `"use client"`
++ * `empty-state.tsx` could be neither. `EmptyState` passes its body through `emptyStateBody`; the words stay the
++ * dictionary's own, and only where a line may break changes.
++ */
++
++/**
++ * ⭐ A DASH NEVER OPENS A LINE (2026-10-08, the visual pass, tiles 241 and 243). "Chagua swali, bonyeza NDIO au HAPANA
++ * — tiketi yako itaonekana hapa." broke at the space BEFORE its dash, so line 2 began "— tiketi yako…" (en: "— your
++ * ticket shows up here."). The words are the dictionary's and stay so; only the break before the dash is taken away:
++ *   · a spaced dash (sw, en) — the space before it becomes a no-break space, so the dash ends its line with its word;
++ *   · an unspaced dash (zh "否——您") — a word joiner (U+2060, zero-width) holds it to the character before.
++ * A break AFTER the dash is untouched, and an unspaced en dash ("1–5", a range) is left alone.
++ */
++const NO_BREAK_SPACE = String.fromCharCode(0x00a0);
++const WORD_JOINER = String.fromCharCode(0x2060);
++export function dashOnItsWord(text: string): string {
++  return text.replace(/[ \t]+(?=[—–])/g, NO_BREAK_SPACE).replace(/([^\s—])(?=—)/g, `$1${WORD_JOINER}`);
++}
++
++/**
++ * ⭐ A YES/NO PAIR IS ONE PHRASE (2026-10-09, round 3, tiles 241 and 244). Balanced, "Chagua swali, bonyeza NDIO au HAPANA
++ * — tiketi yako itaonekana hapa." still broke INSIDE the pair at 390 — "…bonyeza NDIO au" / "HAPANA — tiketi…" (en "…press
++ * YES or" / "NO — your…") — so the two answers a reader chooses between stood on two lines. Two capitalised words joined
++ * by "au" or "or" are held on one line by no-break spaces, the dash rule's method: built with `String.fromCharCode`, so the
++ * source holds no invisible character, and the dictionary's words are untouched. Measured with the repo's Inter at 13px
++ * in the 260px measure: sw takes three balanced lines ("Chagua swali, bonyeza" / "NDIO au HAPANA — tiketi" / "yako
++ * itaonekana hapa."), the shape it already had at 320; en keeps two ("Pick a question, press YES or NO —" / "your ticket
++ * shows up here.").
++ * ⚠️ Only an all-capitals word of two or more letters on each side: an ordinary "au"/"or" between lower-case words is left
++ * to break as before, and zh, which writes neither, is unchanged.
++ */
++export function pairOnOneLine(text: string): string {
++  return text.replace(/\b([A-Z]{2,})[ \t]+(au|or)[ \t]+(?=[A-Z]{2,}\b)/g, `$1${NO_BREAK_SPACE}$2${NO_BREAK_SPACE}`);
++}
++
++/** The body's one text helper: the pair first (its spaces become no-break spaces), then the dash. */
++export function emptyStateBody(text: string): string {
++  return dashOnItsWord(pairOnOneLine(text));
++}
+diff --git a/src/components/ui/empty-state.tsx b/src/components/ui/empty-state.tsx
+index 8955df8ea..134444a82 100644
+--- a/src/components/ui/empty-state.tsx
++++ b/src/components/ui/empty-state.tsx
+@@ -17,6 +17,7 @@ import type { ReactNode } from "react";
+ import { cn } from "@/lib/utils";
+ import { useT } from "@/lib/i18n";
+ import { EMPTY_STATE_BOX, EMPTY_STATE_TITLE, EMPTY_STATE_BODY } from "./empty-state-classes";
++import { emptyStateBody } from "./empty-state-text";
+ 
+ type Kind =
+   | "markets" | "positions" | "leaderboard" | "notifications" | "audit" | "sources"
+@@ -78,26 +79,12 @@ export function EmptyState({
+         {illustration ?? <DefaultIllustration kind={kind} />}
+       </div>
+       <p className={cn(EMPTY_STATE_TITLE, "text-text")}>{title}</p>
+-      {body && <p className={cn(EMPTY_STATE_BODY, "text-text-subtle")}>{dashOnItsWord(body)}</p>}
++      {body && <p className={cn(EMPTY_STATE_BODY, "text-text-subtle")}>{emptyStateBody(body)}</p>}
+       {action && <div className="mt-4">{action}</div>}
+     </div>
+   );
+ }
+ 
+-/**
+- * ⭐ A DASH NEVER OPENS A LINE (2026-10-08, the visual pass, tiles 241 and 243). "Chagua swali, bonyeza NDIO au HAPANA
+- * — tiketi yako itaonekana hapa." broke at the space BEFORE its dash, so line 2 began "— tiketi yako…" (en: "— your
+- * ticket shows up here."). The words are the dictionary's and stay so; only the break before the dash is taken away:
+- *   · a spaced dash (sw, en) — the space before it becomes a no-break space, so the dash ends its line with its word;
+- *   · an unspaced dash (zh "否——您") — a word joiner (U+2060, zero-width) holds it to the character before.
+- * A break AFTER the dash is untouched, and an unspaced en dash ("1–5", a range) is left alone.
+- */
+-const NO_BREAK_SPACE = String.fromCharCode(0x00a0);
+-const WORD_JOINER = String.fromCharCode(0x2060);
+-function dashOnItsWord(text: string): string {
+-  return text.replace(/[ \t]+(?=[—–])/g, NO_BREAK_SPACE).replace(/([^\s—])(?=—)/g, `$1${WORD_JOINER}`);
+-}
+-
+ /** Compact error-state — same chrome, no-rose accent. */
+ export function ErrorState({
+   title,
+@@ -133,6 +120,27 @@ export function ErrorState({
+   );
+ }
+ 
++/**
++ * ⭐ EACH DRAWING'S BOX STARTS WHERE ITS INK STARTS (2026-10-09, round 3, tiles 165 166 241). Every drawing is a 56px square,
++ * but its ink does not reach the square's top: the compass begins 8.25px down, the briefcase 14.25px. The box's padding is
++ * 48px on both sides, so with a call to action under the body (whose ink ends where its box ends) the content stood 56 and
++ * 62px under the dashed top against 48px over its bottom — 4px and 7px below the box's centre, measured on Juu/Chini's
++ * history (box y333–647, ink y390–598) and on Tiketi zangu's (ink y396–594 in y333–643). So each viewBox starts at its
++ * drawing's first ink row (the topmost stroke, less half the 1.5px stroke, rounded down) and the svg is that much shorter:
++ * the ink now opens 48px under the border, as the button closes 48px above it. The scale is unchanged (one unit, one
++ * pixel), the width stays 56, and nothing below the ink moves, so each drawing keeps its gap to the title.
++ * ⚠️ A NEW DRAWING NEEDS ITS ROW HERE — `test:visual-pass-r3c` §2 reads each case's topmost coordinate and fails on a
++ * number that is not its ink top. An `illustration` handed in by a caller is drawn as it comes.
++ */
++const INK_TOP: Record<Kind, number> = {
++  markets: 14, positions: 14, leaderboard: 12, notifications: 13, audit: 7, sources: 10,
++  proposals: 8, kyc: 12, fairness: 14, rg: 12, admin: 8, default: 8,
++};
++/** The svg's frame for a drawing whose ink starts `top` units down its 56-unit square. */
++function frame(top: number) {
++  return { viewBox: `0 ${top} 56 ${56 - top}`, width: 56, height: 56 - top };
++}
++
+ /** Line-art illustrations — gilt-line etching on dark glass; one gold accent per scene. */
+ function DefaultIllustration({ kind }: { kind: Kind }) {
+   const s = { fill: "none", stroke: "currentColor", strokeWidth: 1.5, strokeLinecap: "round" as const, strokeLinejoin: "round" as const };
+@@ -140,7 +148,7 @@ function DefaultIllustration({ kind }: { kind: Kind }) {
+   switch (kind) {
+     case "markets":
+       return (
+-        <svg viewBox="0 0 56 56" {...s} width="56" height="56">
++        <svg {...frame(INK_TOP.markets)} {...s}>
+           {/* Tilted scales weighing a YES/NO pip pair — the tipping metaphor;
+               gilt pivot diamond. Left pan holds a filled YES pip, right pan a
+               hollow NO ring, so the pair reads without relying on colour. */}
+@@ -162,7 +170,7 @@ function DefaultIllustration({ kind }: { kind: Kind }) {
+       );
+     case "positions":
+       return (
+-        <svg viewBox="0 0 56 56" {...s} width="56" height="56">
++        <svg {...frame(INK_TOP.positions)} {...s}>
+           {/* Closed briefcase, gilt latch. */}
+           <rect x="10" y="21" width="36" height="25" rx="3" />
+           <path d="M22 21 V17.5 Q22 15 24.5 15 H31.5 Q34 15 34 17.5 V21" />
+@@ -173,7 +181,7 @@ function DefaultIllustration({ kind }: { kind: Kind }) {
+       );
+     case "leaderboard":
+       return (
+-        <svg viewBox="0 0 56 56" {...s} width="56" height="56">
++        <svg {...frame(INK_TOP.leaderboard)} {...s}>
+           {/* Empty podium, gilt spark above first place. */}
+           <rect x="21" y="26" width="14" height="20" />
+           <rect x="7" y="33" width="14" height="13" />
+@@ -184,7 +192,7 @@ function DefaultIllustration({ kind }: { kind: Kind }) {
+       );
+     case "notifications":
+       return (
+-        <svg viewBox="0 0 56 56" {...s} width="56" height="56">
++        <svg {...frame(INK_TOP.notifications)} {...s}>
+           {/* Bell at rest — gilt clapper; ground line. */}
+           <path d="M19 36 V27 A9 9 0 0 1 37 27 V36 L40.5 41 H15.5 L19 36 Z" />
+           <path d="M26 16 a2 2 0 0 1 4 0" />
+@@ -194,7 +202,7 @@ function DefaultIllustration({ kind }: { kind: Kind }) {
+       );
+     case "audit":
+       return (
+-        <svg viewBox="0 0 56 56" {...s} width="56" height="56">
++        <svg {...frame(INK_TOP.audit)} {...s}>
+           {/* Document under a lens, gilt glint. */}
+           <path d="M14 8 H32 L38 14 V38 H14 Z" />
+           <path d="M32 8 V14 H38" />
+@@ -207,7 +215,7 @@ function DefaultIllustration({ kind }: { kind: Kind }) {
+       );
+     case "sources":
+       return (
+-        <svg viewBox="0 0 56 56" {...s} width="56" height="56">
++        <svg {...frame(INK_TOP.sources)} {...s}>
+           {/* Globe with meridians — gilt dot on Tanzania. */}
+           <circle cx="28" cy="28" r="17" />
+           <ellipse cx="28" cy="28" rx="7.5" ry="17" />
+@@ -219,7 +227,7 @@ function DefaultIllustration({ kind }: { kind: Kind }) {
+       );
+     case "proposals":
+       return (
+-        <svg viewBox="0 0 56 56" {...s} width="56" height="56">
++        <svg {...frame(INK_TOP.proposals)} {...s}>
+           {/* Ballot box receiving a folded paper + quill — "propose & earn";
+               gilt nib. */}
+           <path d="M11 30 L15 24 H41 L45 30" />
+@@ -234,7 +242,7 @@ function DefaultIllustration({ kind }: { kind: Kind }) {
+       );
+     case "kyc":
+       return (
+-        <svg viewBox="0 0 56 56" {...s} width="56" height="56">
++        <svg {...frame(INK_TOP.kyc)} {...s}>
+           {/* ID card above a progress rail — two steps done, one live (gilt),
+               one to go. */}
+           <rect x="13" y="13" width="30" height="19" rx="3" />
+@@ -251,7 +259,7 @@ function DefaultIllustration({ kind }: { kind: Kind }) {
+       );
+     case "fairness":
+       return (
+-        <svg viewBox="0 0 56 56" {...s} width="56" height="56">
++        <svg {...frame(INK_TOP.fairness)} {...s}>
+           {/* Provably-fair chain: commit → reveal → attest (gilt node + check). */}
+           <circle cx="15" cy="30" r="7" />
+           <circle cx="28" cy="30" r="7" />
+@@ -265,7 +273,7 @@ function DefaultIllustration({ kind }: { kind: Kind }) {
+       );
+     case "rg":
+       return (
+-        <svg viewBox="0 0 56 56" {...s} width="56" height="56">
++        <svg {...frame(INK_TOP.rg)} {...s}>
+           {/* Calm sunrise over a horizon — self-care, never gambling imagery;
+               gilt sun core. */}
+           <line x1="10" y1="40" x2="46" y2="40" />
+@@ -280,7 +288,7 @@ function DefaultIllustration({ kind }: { kind: Kind }) {
+       );
+     case "admin":
+       return (
+-        <svg viewBox="0 0 56 56" {...s} width="56" height="56">
++        <svg {...frame(INK_TOP.admin)} {...s}>
+           {/* Clipboard under a lens — a generic admin console at rest;
+               gilt glint. */}
+           <rect x="14" y="12" width="24" height="32" rx="3" />
+@@ -295,7 +303,7 @@ function DefaultIllustration({ kind }: { kind: Kind }) {
+       );
+     default:
+       return (
+-        <svg viewBox="0 0 56 56" {...s} width="56" height="56">
++        <svg {...frame(INK_TOP.default)} {...s}>
+           {/* Compass rose, gilt north point. */}
+           <circle cx="28" cy="28" r="19" />
+           <path d="M28 9 L31 25 L47 28 L31 31 L28 47 L25 31 L9 28 L25 25 Z" />
+diff --git a/src/components/ui/keep-words.tsx b/src/components/ui/keep-words.tsx
+new file mode 100644
+index 000000000..84cee46ed
+--- /dev/null
++++ b/src/components/ui/keep-words.tsx
+@@ -0,0 +1,32 @@
++/**
++ * A SENTENCE NEVER ENDS ON ONE WORD ALONE — its last two words break together (round 3 of the visual pass, 2026-10-09).
++ *
++ * The tiles found the same defect on five surfaces: a short sentence wrapped one word short and left that word on a line
++ * of its own — "…itakueleza" / "kinachofuata." (the held Wallet, 092), "Kwa simu tu. Hakuna" / "kinachofichwa." (the hub's
++ * card-size hint, 124 294 295), "…hadi" / "lifungwe." (the fairness lead, 187 204).
++ *
++ * ⛔ WHY NOT `text-wrap: pretty` ALONE: it chooses WHICH break to take, by a heuristic each engine sets for itself, and
++ * Firefox does not ship it; a guard cannot prove what it will pick. ⛔ AND WHY NOT A NO-BREAK SPACE: it travels into the
++ * copied text and the find-in-page match. ⭐ So, as `keepUnits` does for a number and its unit, the last two words go in
++ * a `white-space: nowrap` span — what every engine honours — and the text itself (the accessible name, a copy, a search
++ * hit) is unchanged. Every other break is left alone, so a sentence that fits on its lines wraps exactly as it did.
++ *
++ * ⚠️ Only for SHORT closing words, on surfaces whose line is always wider than them (each call site says why): the pair
++ * cannot break, so on a line narrower than it would overflow. ⚠️ Text with an ideograph is returned untouched — Chinese
++ * breaks between characters, and its own rules (`keep-all` at punctuation, `text-pretty`) govern it — and so is text of
++ * fewer than three words, which has no word to strand.
++ * ⛔ Deterministic, one regular expression, so the server and the browser agree and hydration cannot mismatch.
++ */
++import type { ReactNode } from "react";
++
++const IDEOGRAPH = /[㐀-䶿一-鿿豈-﫿]/;
++/** The last two whitespace-separated words, with any trailing space. */
++const LAST_TWO = /\S+\s+\S+\s*$/;
++
++export function keepLastWords(text: string): ReactNode {
++  if (IDEOGRAPH.test(text)) return text;
++  const at = text.search(LAST_TWO);
++  // ⛔ `at <= 0`: the whole text is two words or fewer (or one word), so nothing can be stranded.
++  if (at <= 0) return text;
++  return [text.slice(0, at), <span key="last-words" className="whitespace-nowrap">{text.slice(at)}</span>];
++}
+diff --git a/src/lib/notification-text.ts b/src/lib/notification-text.ts
+new file mode 100644
+index 000000000..19663499b
+--- /dev/null
++++ b/src/lib/notification-text.ts
+@@ -0,0 +1,59 @@
++/**
++ * HOW A NOTIFICATION'S SENTENCE IS PUT TOGETHER, AND HOW AN OLD ONE IS READ — one plain module, imported by the writer
++ * (`notification-service.ts`) and by both readers (the bell, `notifications-panel.tsx`, and `/notifications`), so the rule
++ * that writes a sentence and the rule that repairs an old one cannot drift apart. Pure: `test:visual-pass-r3c` drives it.
++ *
++ * 🔴 ROUND 3 OF THE VISUAL PASS, 2026-10-09, tile 192 (/notifications, sw 1280). One row read
++ *     "…limefutwa: Dev fixture — source withdrawn before settlement.. Dau lako lote limerejeshwa kwenye pochi yako.
++ *      · pos_34d10350dfa7510cfad5"
++ * — two defects of composition, not of words:
++ *   · a DOUBLE FULL STOP: the template ends the officer's reason with its own ".", and the reason already had one;
++ *   · a RAW POSITION ID IN PROSE: " · pos_…" was appended to every notice about one position. It is there for
++ *     `notify()`'s 90-second de-duplication, which compares the message and the link — two refunds of the same stake on
++ *     the same market must stay two notices — and it told the reader nothing they could use.
++ * ⭐ The id's job moves to the LINK: a notice about one position now opens THAT ticket — the market's page (or the Up &
++ * Down round's) at the position's own anchor, the very place `/positions/<id>` resolves to (`position-permalink.ts`,
++ * E-101) — so the link is unique per position, the de-duplication stays honest, and the sentence carries no id.
++ */
++import { positionAnchorId, positionPermalinkHref } from "@/lib/position-permalink";
++
++/**
++ * A clause handed in from outside (an officer's reason) ends where the template ends it: its own closing full stop is
++ * dropped before the template's is added, so the sentence never reads "..". A clause that ends in "?" or "!" keeps its
++ * mark and takes none. `stop` is the language's own: "." for Swahili and English, "。" for Chinese.
++ */
++export function endClause(text: string, stop: "." | "。"): string {
++  const t = text.trimEnd();
++  if (/[!?！？…]$/.test(t)) return t;
++  return `${t.replace(/[.。]+$/, "")}${stop}`;
++}
++
++/**
++ * Where a notice about ONE position leads: that ticket. On a long-form market it is the market's page at the ticket's
++ * anchor; with no market id (an orphaned position) it is the permalink, which finds the ticket's home itself. Without a
++ * position the notice keeps the link it was given.
++ */
++export function ticketHref(marketId: string, positionId: string | undefined, fallback: string): string {
++  if (!positionId) return fallback;
++  return marketId ? `/markets/${marketId}#${positionAnchorId(positionId)}` : positionPermalinkHref(positionId);
++}
++
++/** The Up & Down round's page at the ticket's anchor — what the permalink resolves an Up & Down position to. */
++export function roundTicketHref(roundHref: string, positionId: string | undefined): string {
++  if (!positionId) return roundHref;
++  return `${roundHref.split("#")[0]}#${positionAnchorId(positionId)}`;
++}
++
++/**
++ * A STORED sentence, as the reader sees it. Rows written before round 3 still carry the old composition, and an inbox
++ * keeps them: so the readers drop a raw position reference (" · pos_…", appended to the body or to a win's market name)
++ * and mend the doubled full stop the old template made (".." → ".", ".。" → "。"). A sentence written today has neither,
++ * so it passes through unchanged. ⚠️ Only those two shapes: an ellipsis ("...") is not touched, and an id the reader
++ * should see is never written this way — a receipt states its "Reference" in words.
++ */
++export function readableNotificationBody(body: string): string {
++  return body
++    .replace(/ · pos_[A-Za-z0-9_]+(?=$|[\s.,;:!?。，])/g, "")
++    .replace(/(^|[^.])\.\.(?!\.)/g, "$1.")
++    .replace(/\.。/g, "。");
++}
+diff --git a/src/lib/server/market-service.ts b/src/lib/server/market-service.ts
+index 3186d33de..fc6877908 100644
+--- a/src/lib/server/market-service.ts
++++ b/src/lib/server/market-service.ts
+@@ -4136,7 +4136,11 @@ export async function settleMarket(
+           // E-101 · the bell entry opens THIS ticket. It used to open `/positions`, which is
+           // the long-form list — right product here by luck (this branch is suppressed for
+           // Up & Down), wrong row always.
+-          notifyWin(p.userId, payout, localizedText(`${m.titleEn} · ${p.id}`, m.titleSw ? `${m.titleSw} · ${p.id}` : null, m.titleZh ? `${m.titleZh} · ${p.id}` : null), positionPermalinkHref(p.id));
++          notifyWin(p.userId, payout, localizedText(m.titleEn, m.titleSw, m.titleZh), positionPermalinkHref(p.id));
++          // ⭐ ↑ The market's name alone (round 3 of the visual pass, 2026-10-09): " · pos_…" was appended to it, a raw id
++          // in the sentence ("<title> · pos_… kimelipa."). The link is this position's own permalink, so two wins on one
++          // market already stay two notices. (Written UNDER the call: `test:updown-digest` §5 looks 400 characters back
++          // from it for the `perEventNotificationsSuppressed` gate, and a note above would push the gate out of reach.)
+           // SEAM:emailWin — no per-stake email for a house-marked position (04 F6); the bell is any player's (ruling 143).
+           if (p.houseBotId == null) sendEmailToUser(p.userId, (email) => ({
+             to: email,
+diff --git a/src/lib/server/notification-service.ts b/src/lib/server/notification-service.ts
+index 05b427e33..70cf9d235 100644
+--- a/src/lib/server/notification-service.ts
++++ b/src/lib/server/notification-service.ts
+@@ -34,6 +34,9 @@ import {
+ import type { LocalizedText } from "@/lib/localized";
+ import { sideWordIn, outcomeWordIn, type StoredSide, type StoredOutcome } from "@/lib/side-label";
+ import type { NotificationFilter, NotificationSort } from "@/lib/notification-filters";
++// Round 3 of the visual pass (2026-10-09): a position's notice opens its ticket instead of printing its id, and an
++// officer's reason never ends on "..". The rules live in one plain module the readers share (notification-text.ts).
++import { endClause, roundTicketHref, ticketHref } from "@/lib/notification-text";
+ import { EDITABLE_ROLES, domainForPath, isOwnerOnlyPath } from "./roles";
+ 
+ export type NotifyInput = Omit<StoredNotification, "id" | "userId" | "readAt" | "dismissedAt" | "createdAt"> & {
+@@ -313,23 +316,24 @@ export function notifyBetPlaced(userId: string, opts: {
+   /** The poll's OWN rates. Hardcoding these numbers is how the copy came to lie. */
+   cashOutFeeRate: number; freeExitGraceMinutes: number; paidExitWindowMinutes?: number;
+ }) {
+-  const ref = opts.positionId ? ` · ${opts.positionId}` : "";
+   // These were hardcoded "free exit within 5 min, then 9% fee applies" (and the
+   // Swahili silently omitted the fee entirely). Both numbers now come from the
+   // poll's frozen snapshot, so they cannot drift from what we actually charge.
++  // ⭐ No position id in the sentence (round 3, 2026-10-09): the notice opens the ticket, so the LINK is what keeps two
++  // bets on one market two notices (`ticketHref`, notification-text.ts).
+   const mins = opts.freeExitGraceMinutes;
+   const pct = +(opts.cashOutFeeRate * 100).toFixed(1);
+   const paid = opts.paidExitWindowMinutes ?? 0;
+   // Default policy: no paid tail — after the free window it locks to settlement.
+   const bodyEn = paid > 0
+-    ? `${opts.marketTitle.en.slice(0, 70)} · free exit within ${mins} min, then a ${pct}% fee applies.${ref}`
+-    : `${opts.marketTitle.en.slice(0, 70)} · free exit within ${mins} min, then it locks to settlement.${ref}`;
++    ? `${opts.marketTitle.en.slice(0, 70)} · free exit within ${mins} min, then a ${pct}% fee applies.`
++    : `${opts.marketTitle.en.slice(0, 70)} · free exit within ${mins} min, then it locks to settlement.`;
+   const bodySw = paid > 0
+-    ? `${opts.marketTitle.sw.slice(0, 50)} · toka bila gharama ndani ya dakika ${mins}, baadaye ada ya ${pct}% itatumika.${ref}`
+-    : `${opts.marketTitle.sw.slice(0, 50)} · toka bila gharama ndani ya dakika ${mins}, kisha linafungwa hadi malipo.${ref}`;
++    ? `${opts.marketTitle.sw.slice(0, 50)} · toka bila gharama ndani ya dakika ${mins}, baadaye ada ya ${pct}% itatumika.`
++    : `${opts.marketTitle.sw.slice(0, 50)} · toka bila gharama ndani ya dakika ${mins}, kisha linafungwa hadi malipo.`;
+   const bodyZh = paid > 0
+-    ? `${opts.marketTitle.zh.slice(0, 50)} · ${mins} 分钟内可免费退出，之后按 ${pct}% 收取手续费。${ref}`
+-    : `${opts.marketTitle.zh.slice(0, 50)} · ${mins} 分钟内可免费退出，之后将锁定至结算。${ref}`;
++    ? `${opts.marketTitle.zh.slice(0, 50)} · ${mins} 分钟内可免费退出，之后按 ${pct}% 收取手续费。`
++    : `${opts.marketTitle.zh.slice(0, 50)} · ${mins} 分钟内可免费退出，之后将锁定至结算。`;
+   return notify({
+     userId,
+     kind: "BET_PLACED",
+@@ -344,7 +348,7 @@ export function notifyBetPlaced(userId: string, opts: {
+     bodyEn,
+     bodySw,
+     bodyZh,
+-    href: `/markets/${opts.marketId}`,
++    href: ticketHref(opts.marketId, opts.positionId, `/markets/${opts.marketId}`),
+   });
+ }
+ 
+@@ -378,7 +382,6 @@ export function notifyWin(userId: string, amount: number, label: LocalizedText,
+  * delay the player's awareness of their loss (LCCP harm-prevention).
+  */
+ export function notifyLoss(userId: string, opts: { stake: number; marketTitle: LocalizedText; marketId: string; positionId?: string }) {
+-  const ref = opts.positionId ? ` · ${opts.positionId}` : "";
+   return notify({
+     userId,
+     kind: "LOSS",
+@@ -394,13 +397,14 @@ export function notifyLoss(userId: string, opts: { stake: number; marketTitle: L
+     // moment it had been placed and lost. `投注未中` is the idiomatic "the bet did not
+     // win" and cannot be read as a placement failure.
+     titleZh: `投注未中 · ${formatTzs(opts.stake)}`,
+-    bodyEn: `${opts.marketTitle.en.slice(0, 70)} · your side didn't win.${ref}`,
++    bodyEn: `${opts.marketTitle.en.slice(0, 70)} · your side didn't win.`,
+     // ⚠️ Carries the market title, like EN and ZH. Without it a Swahili player with
+     // several open positions got "your side didn't win" with nothing saying WHICH
+     // market — the one thing the receipt exists to identify.
+-    bodySw: `${opts.marketTitle.sw.slice(0, 70)} · Upande wako haukushinda.${ref}`,
+-    bodyZh: `${opts.marketTitle.zh.slice(0, 50)} · 您所选的一方未获胜。${ref}`,
+-    href: `/markets/${opts.marketId}`,
++    bodySw: `${opts.marketTitle.sw.slice(0, 70)} · Upande wako haukushinda.`,
++    bodyZh: `${opts.marketTitle.zh.slice(0, 50)} · 您所选的一方未获胜。`,
++    // The ticket, not a position id in the sentence (round 3, 2026-10-09; notification-text.ts).
++    href: ticketHref(opts.marketId, opts.positionId, `/markets/${opts.marketId}`),
+   });
+ }
+ 
+@@ -466,17 +470,19 @@ function notifyUpDownResult(
+   opts: UpDownResultOpts,
+   copy: { titleEn: string; titleSw: string; titleZh: string; bodyEn: string; bodySw: string; bodyZh: string },
+ ) {
+-  // The position id makes two rounds' rows textually distinct even when stake and
+-  // outcome match — belt and braces beside the per-round href, because the 90-second
+-  // dedupe compares the rendered message AND the link.
+-  const ref = opts.positionId ? ` · ${opts.positionId}` : "";
++  // The position id keeps two positions' rows apart even when round, stake and outcome match — the 90-second dedupe
++  // compares the rendered message AND the link. ⭐ It rides the LINK, not the sentence (round 3, 2026-10-09: " · pos_…"
++  // was appended to the words): the round's page at the ticket's anchor, where `/positions/<id>` resolves to.
++  // ⚠️ `opts` is re-pointed rather than the `href:` line edited: `red:updown-bell` anchors its href mutations on that
++  // line, byte for byte (scripts/anchors/updown-bell.anchors.mjs), and they still mean what they say.
++  opts = { ...opts, roundHref: roundTicketHref(opts.roundHref, opts.positionId) };
+   return notify({
+     userId,
+     kind,
+     titleEn: copy.titleEn, titleSw: copy.titleSw, titleZh: copy.titleZh,
+-    bodyEn: `${copy.bodyEn}${ref}`,
+-    bodySw: `${copy.bodySw}${ref}`,
+-    bodyZh: `${copy.bodyZh}${ref}`,
++    bodyEn: copy.bodyEn,
++    bodySw: copy.bodySw,
++    bodyZh: copy.bodyZh,
+     href: opts.roundHref,
+   }, { pushTag: opts.pushTag });
+ }
+@@ -1209,9 +1215,10 @@ export function notifyProposalDeclined(userId: string, opts: { titleEn: string;
+     titleEn: "Your proposal was declined",
+     titleSw: "Pendekezo limekataliwa",
+     titleZh: "您的提案未被采纳",
+-    bodyEn: `"${opts.titleEn.slice(0, 50)}" — reason: ${opts.reason}.`,
+-    bodySw: `Sababu: ${opts.reason}.`,
+-    bodyZh: `"${opts.titleEn.slice(0, 50)}" — 原因：${opts.reason}。`,
++    // `endClause`: the reason's own closing stop gives way to the template's, so it never reads ".." (round 3).
++    bodyEn: `"${opts.titleEn.slice(0, 50)}" — reason: ${endClause(opts.reason, ".")}`,
++    bodySw: `Sababu: ${endClause(opts.reason, ".")}`,
++    bodyZh: `"${opts.titleEn.slice(0, 50)}" — 原因：${endClause(opts.reason, "。")}`,
+     href: "/proposals",
+   });
+ }
+@@ -1223,36 +1230,41 @@ export function notifyProposalDeclined(userId: string, opts: { titleEn: string;
+  *  ONE notice — and a player holding two positions saw a single receipt for money that
+  *  came back twice. That is the ordinary case on a voided market, not a corner: the
+  *  platform allows repeat bets by design. `notifyCashout` and `notifyOneSidedRefund`
+- *  already carry the reference for exactly this reason; these two did not. */
++ *  already carry the reference for exactly this reason; these two did not.
++ *  ⭐ Since round 3 of the visual pass (2026-10-09) the reference rides the LINK — the notice opens that ticket
++ *  (`ticketHref`, notification-text.ts) — and never the sentence, where " · pos_…" told the reader nothing. */
+ export function notifyRefund(userId: string, opts: { stake: number; marketTitle: LocalizedText; marketId: string; positionId?: string }) {
+-  const ref = opts.positionId ? ` · ${opts.positionId}` : "";
+   return notify({
+     userId,
+     kind: "DEPOSIT",
+     titleEn: `Refund · ${formatTzs(opts.stake)} returned`,
+     titleSw: `Kurudishiwa · ${formatTzs(opts.stake)}`,
+     titleZh: `退款 · 已退回 ${formatTzs(opts.stake)}`,
+-    bodyEn: `${opts.marketTitle.en.slice(0, 70)} was voided. Your stake has been returned.${ref}`,
+-    bodySw: `${opts.marketTitle.sw.slice(0, 70)} limebatilishwa. Dau lako limerudishwa.${ref}`,
+-    bodyZh: `${opts.marketTitle.zh.slice(0, 50)} 已作废。您的本金已全额退回。${ref}`,
+-    href: `/markets/${opts.marketId}`,
++    bodyEn: `${opts.marketTitle.en.slice(0, 70)} was voided. Your stake has been returned.`,
++    bodySw: `${opts.marketTitle.sw.slice(0, 70)} limebatilishwa. Dau lako limerudishwa.`,
++    bodyZh: `${opts.marketTitle.zh.slice(0, 50)} 已作废。您的本金已全额退回。`,
++    href: ticketHref(opts.marketId, opts.positionId, `/markets/${opts.marketId}`),
+   });
+ }
+ 
+ /** Player notice: a market they had a stake in was cancelled (emergency void).
+- *  Carries the admin's reason and confirms the full refund. */
++ *  Carries the admin's reason and confirms the full refund.
++ *  🔴 ROUND 3 (2026-10-09, tile 192): it read "…before settlement.. Dau lako lote limerejeshwa kwenye pochi yako.
++ *  · pos_34d10350dfa7510cfad5" — the officer's reason kept its own full stop under the template's, and the position
++ *  id was appended to the sentence. `endClause` ends the reason once, in the reader's own stop; the id rides the
++ *  link, which opens the refunded ticket on its market's page (it opened /wallet, and one link for every refund of a
++ *  market is why the id had to be in the words). The wallet is still where the sentence says the money went. */
+ export function notifyMarketCancelled(userId: string, opts: { stake: number; marketTitle: LocalizedText; marketId: string; reason: string; positionId?: string }) {
+-  const ref = opts.positionId ? ` · ${opts.positionId}` : "";
+   return notify({
+     userId,
+     kind: "DEPOSIT", // money returned to the wallet
+     titleEn: `Market cancelled · ${formatTzs(opts.stake)} refunded`,
+     titleSw: `Soko limefutwa · ${formatTzs(opts.stake)} imerejeshwa`,
+     titleZh: `市场已取消 · 已退款 ${formatTzs(opts.stake)}`,
+-    bodyEn: `"${opts.marketTitle.en.slice(0, 60)}" was cancelled: ${opts.reason.slice(0, 120)}. Your full stake has been returned to your wallet.${ref}`,
+-    bodySw: `"${opts.marketTitle.sw.slice(0, 60)}" limefutwa: ${opts.reason.slice(0, 120)}. Dau lako lote limerejeshwa kwenye pochi yako.${ref}`,
+-    bodyZh: `"${opts.marketTitle.zh.slice(0, 60)}" 已取消：${opts.reason.slice(0, 120)}。您的本金已全额退回钱包。${ref}`,
+-    href: "/wallet",
++    bodyEn: `"${opts.marketTitle.en.slice(0, 60)}" was cancelled: ${endClause(opts.reason.slice(0, 120), ".")} Your full stake has been returned to your wallet.`,
++    bodySw: `"${opts.marketTitle.sw.slice(0, 60)}" limefutwa: ${endClause(opts.reason.slice(0, 120), ".")} Dau lako lote limerejeshwa kwenye pochi yako.`,
++    bodyZh: `"${opts.marketTitle.zh.slice(0, 60)}" 已取消：${endClause(opts.reason.slice(0, 120), "。")}您的本金已全额退回钱包。`,
++    href: ticketHref(opts.marketId, opts.positionId, "/wallet"),
+   });
+ }
+ 
+@@ -1286,7 +1298,7 @@ export function notifyCashout(userId: string, opts: {
+   /** The poll's OWN frozen free-exit window. Never hardcode it here. */
+   freeExitGraceMinutes: number;
+ }) {
+-  const ref = opts.positionId ? ` · ${opts.positionId}` : "";
++  // The position rides the link, not the sentence (round 3, 2026-10-09; `ticketHref`, notification-text.ts).
+   const mins = opts.freeExitGraceMinutes;
+   return notify({
+     userId,
+@@ -1295,31 +1307,31 @@ export function notifyCashout(userId: string, opts: {
+     titleSw: `${opts.inGracePeriod ? "Toka bila gharama" : "Umetoa"} · ${formatTzs(opts.amount)}`,
+     titleZh: `${opts.inGracePeriod ? "免费退出" : "已套现"} · ${formatTzs(opts.amount)}`,
+     bodyEn: opts.inGracePeriod
+-      ? `Full stake returned — sold within the ${mins}-min grace window, no fee.${ref}`
+-      : `Early exit from ${opts.marketTitle.en.slice(0, 60)}. Funds in wallet.${ref}`,
++      ? `Full stake returned — sold within the ${mins}-min grace window, no fee.`
++      : `Early exit from ${opts.marketTitle.en.slice(0, 60)}. Funds in wallet.`,
+     bodySw: opts.inGracePeriod
+-      ? `Pesa yote imerudishwa — umetoka ndani ya dakika ${mins}.${ref}`
+-      : `Umetoka mapema. Pesa imo kwenye pochi yako.${ref}`,
++      ? `Pesa yote imerudishwa — umetoka ndani ya dakika ${mins}.`
++      : `Umetoka mapema. Pesa imo kwenye pochi yako.`,
+     bodyZh: opts.inGracePeriod
+-      ? `本金已全额退回 — 在 ${mins} 分钟免费窗口内卖出，不收取手续费。${ref}`
+-      : `已从 ${opts.marketTitle.zh.slice(0, 50)} 提前退出。款项已存入钱包。${ref}`,
+-    href: `/markets/${opts.marketId}`,
++      ? `本金已全额退回 — 在 ${mins} 分钟免费窗口内卖出，不收取手续费。`
++      : `已从 ${opts.marketTitle.zh.slice(0, 50)} 提前退出。款项已存入钱包。`,
++    href: ticketHref(opts.marketId, opts.positionId, `/markets/${opts.marketId}`),
+   });
+ }
+ 
+ /** One-sided refund — all bets were on the same side so everyone gets their stake back at 0% fee. */
+ export function notifyOneSidedRefund(userId: string, opts: { stake: number; marketTitle: LocalizedText; marketId: string; positionId?: string }) {
+-  const ref = opts.positionId ? ` · ${opts.positionId}` : "";
++  // The position rides the link, not the sentence (round 3, 2026-10-09; `ticketHref`, notification-text.ts).
+   return notify({
+     userId,
+     kind: "WIN",
+     titleEn: `Full refund · ${formatTzs(opts.stake)}`,
+     titleSw: `Pesa imerudishwa · ${formatTzs(opts.stake)}`,
+     titleZh: `全额退款 · ${formatTzs(opts.stake)}`,
+-    bodyEn: `${opts.marketTitle.en.slice(0, 60)} — all bets were on one side. Full stake returned, no fee.${ref}`,
+-    bodySw: `${opts.marketTitle.sw.slice(0, 60)} — wote walibetia upande mmoja. Dau lako lote limerudishwa bila gharama.${ref}`,
+-    bodyZh: `${opts.marketTitle.zh.slice(0, 50)} — 所有投注都在同一方。本金全额退回，不收取手续费。${ref}`,
+-    href: `/markets/${opts.marketId}`,
++    bodyEn: `${opts.marketTitle.en.slice(0, 60)} — all bets were on one side. Full stake returned, no fee.`,
++    bodySw: `${opts.marketTitle.sw.slice(0, 60)} — wote walibetia upande mmoja. Dau lako lote limerudishwa bila gharama.`,
++    bodyZh: `${opts.marketTitle.zh.slice(0, 50)} — 所有投注都在同一方。本金全额退回，不收取手续费。`,
++    href: ticketHref(opts.marketId, opts.positionId, `/markets/${opts.marketId}`),
+   });
+ }
+ 

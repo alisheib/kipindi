@@ -1,0 +1,61 @@
+Visual pass round 5 (R5-I): every state in its own ink — the betting YES/NO colours only for a bet's two sides, app state in the success and danger families, a refusal the player can fix said calmly, grant states in their own tones
+
+The follow-up to R5-C's gold audit, for the state inks (§B2a: the betting pair is for the two sides of a bet, never for
+"error" or "danger"). Measured by a census over player code: 390 uses of the betting pair in 72 files, now 283 in 49,
+each ruled in a REGISTRY (a side, its price, an outcome, a position's side; the owner's LOSS ruling; §B12.2 charts;
+§B1a's mark; kit tones no screen calls; owner/frozen; dead).
+
+I-1 · the pair used for app state, moved to the app-state families:
+- The result dialogs' success/failure circles and the failure dialog's main button (`btn-no` → `btn-primary`); detail
+  rows in app-state inks; a placed bet's strip keeps its side colour. Bet, Up & Down receipt and refusal, deposit and
+  withdraw, sale.
+- global-error's error box and "CRITICAL ERROR" eyebrow (danger values written out — that page loads no stylesheet).
+- Destructive controls in the danger ink (clear photo, dismiss a notice, Sign out on /profile and /profile/sessions),
+  as Sign out in the avatar menu and Delete on a comment already were; form errors at the field (the dial's two
+  out-of-range chips, Up & Down's custom amount, proposals/new, the password pair).
+- Things that went well in the success family (2FA on, attestation seals and the paid-out tick, the sell confirm's free
+  window and "No fee", an uploaded agent-application slot). Auth eyebrows success/danger as their icons.
+- The RG page hero: `info`, as /profile/account, /kyc, /sessions and /source-of-funds (words unchanged; the `yes` and
+  `rose` hero options removed). /profile's hero and open count as the other /profile pages.
+- /profile/activity's Won/Net labels one neutral ink; /updown/history's net: gilt > 0, rose < 0, text at 0 (the rule of
+  /positions/performance and the P&L strip; registered in R5-C's census); the /wallet history row on the Receipts row's
+  plates; the leaderboard's rate of return in text ink with its sign; the payout notice's edge the danger border; the
+  stale chart line danger; the language loader brand; Up & Down's placed pulse success (it was green on a DOWN bet);
+  the journey balance ±delta text; the journey bell's count the brand pip and "Clear all" the danger hover (classic
+  bell frozen).
+- The count badge's fill `--brand-600`: pearl digits 3.48:1 → 5.04:1 (the journey Arifa count and admin counters too).
+
+I-2 · fixable refusals said calmly: the old dial opened the ✗ result pop-up over every refusal (a short balance
+included) and struck its toasts in gold. One helper ranks every refusal by the failure registry (`refusalReason` /
+`refusalVariant`, the rule the Sell button already followed): a refusal the player can fix, or a plain fact, is a calm
+`factual` toast that stays until read; a hard block or fault is `danger` with the pop-up (Retry where the outcome is
+unknown). The short-balance line is Up & Down's faint info line at 13px (words unchanged). Siblings: Up & Down's quick
+bet ranked; the uploaders', name editor's, invite, Lipa, share and agent-application slips factual (three printed the
+browser's English error — now `t.toast.pickJpgPng`); server refusals across export, privacy request, proposals,
+comments, objections, avatar, votes, KYC and the agent application ranked by the registry. Password, 2FA and email stay
+`danger` (feedback-law's pins; an owner question).
+
+I-3 · grant states: every non-running grant word was a hand-made 8px warning pill. Now `grantStatusChip`: queued and
+historic pending-KYC royal, unlocked success, expired/cancelled/forfeited slate, on the standard 18px chip. The
+source-of-funds banner is royal while under review (amber only for "resubmit"); a pending declaration's box follows
+its status.
+
+Guards: test:visual-pass-r5i (112 checks: the census ratchet and REGISTRY, the I-1 sites rendered, the toast sweep,
+the grant tones executed, 21 new colour pairs each ≥ 4.5:1, what must stay); test:feedback-law §11 (+10, executed),
+red:feedback-law +3 (29/29); test:betting-ink §7 (+8). Mutation proof: 58 planted, 58 caught on the named check, all
+restored byte-identical. Re-pins (each with its reason): r5c's registry, design-frozen, eyebrow-roles, type-scale
+(−2/−2), r4i 7.5, updown-bet-feedback 3.4.
+
+Merged onto R5-A..F (rebased on main 118fc75c), no conflict beyond the suite list. On the merged tree: 218 suites (the reds main's
+own or the shared Prisma client's), 29 red twins (red:css-vars-defined and red:implicit-submit red before this merge —
+fixed in the next commit), and four rounds' mutation proofs (R5-I 58, R5-A 41, R5-C 59, R5-E 27) re-run clean.
+
+Owner items: the classic bell's rose badge (2.64:1) and NO-rose hover; the classic capsule's ±delta; the board's "hot"
+chip in the NO rose; the crest's YES/NO split; password/2FA/email refusals still red; "Unlocked" success or gold; one
+tone for a rejected source-of-funds declaration; payout credits neutral or gold; the dial's session-limit refusal now a
+sticky calm message (words unchanged, as Up & Down); a neutral rate of return. S12: "Couldn't copy" has no next step;
+the agent application's pop-up prints the server's English error.
+
+Classic viewers see the shared-body changes above; the classic chrome (bell, capsule) is unchanged.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>

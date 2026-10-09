@@ -1,0 +1,131 @@
+qa:classic-shell-parity — baseline — http://localhost:3041
+  tree F:\kipindi-s7wp1\ @ c37b5e47 (clean) · forks from origin/main at 48842adb · rollout OFF
+  the book's normalisers ON: none (this file's switches) · candidates: market-ids, time-left, eat-dates, relative-times, chart-paths, avatar-ids, chunk-hashes
+  Chromium stub-0
+
+§1 · a guest
+  ✗ guest|en|360|/ — stub browser: no server, no browser in this run
+  ✗ guest|en|360|/markets — stub browser: no server, no browser in this run
+  ✗ guest|en|360|/positions — stub browser: no server, no browser in this run
+  ✗ guest|en|360|/wallet — stub browser: no server, no browser in this run
+  ✗ guest|en|360|/profile — stub browser: no server, no browser in this run
+  ✗ guest|en|360|/account — stub browser: no server, no browser in this run
+  ✗ guest|en|360|/kp-parity-no-such-page — stub browser: no server, no browser in this run
+  ✗ guest|en|768|/ — stub browser: no server, no browser in this run
+  ✗ guest|en|768|/markets — stub browser: no server, no browser in this run
+  ✗ guest|en|768|/positions — stub browser: no server, no browser in this run
+  ✗ guest|en|768|/wallet — stub browser: no server, no browser in this run
+  ✗ guest|en|768|/profile — stub browser: no server, no browser in this run
+  ✗ guest|en|768|/account — stub browser: no server, no browser in this run
+  ✗ guest|en|768|/kp-parity-no-such-page — stub browser: no server, no browser in this run
+  ✗ guest|en|1024|/ — stub browser: no server, no browser in this run
+  ✗ guest|en|1024|/markets — stub browser: no server, no browser in this run
+  ✗ guest|en|1024|/positions — stub browser: no server, no browser in this run
+  ✗ guest|en|1024|/wallet — stub browser: no server, no browser in this run
+  ✗ guest|en|1024|/profile — stub browser: no server, no browser in this run
+  ✗ guest|en|1024|/account — stub browser: no server, no browser in this run
+  ✗ guest|en|1024|/kp-parity-no-such-page — stub browser: no server, no browser in this run
+  ✗ guest|en|1280|/ — stub browser: no server, no browser in this run
+  ✗ guest|en|1280|/markets — stub browser: no server, no browser in this run
+  ✗ guest|en|1280|/positions — stub browser: no server, no browser in this run
+  ✗ guest|en|1280|/wallet — stub browser: no server, no browser in this run
+  ✗ guest|en|1280|/profile — stub browser: no server, no browser in this run
+  ✗ guest|en|1280|/account — stub browser: no server, no browser in this run
+  ✗ guest|en|1280|/kp-parity-no-such-page — stub browser: no server, no browser in this run
+  guest · en · 28 cells · 0s
+  ✗ guest|sw|360|/ — stub browser: no server, no browser in this run
+  ✗ guest|sw|360|/markets — stub browser: no server, no browser in this run
+  ✗ guest|sw|360|/positions — stub browser: no server, no browser in this run
+  ✗ guest|sw|360|/wallet — stub browser: no server, no browser in this run
+  ✗ guest|sw|360|/profile — stub browser: no server, no browser in this run
+  ✗ guest|sw|360|/account — stub browser: no server, no browser in this run
+  ✗ guest|sw|360|/kp-parity-no-such-page — stub browser: no server, no browser in this run
+  ✗ guest|sw|768|/ — stub browser: no server, no browser in this run
+  ✗ guest|sw|768|/markets — stub browser: no server, no browser in this run
+  ✗ guest|sw|768|/positions — stub browser: no server, no browser in this run
+  ✗ guest|sw|768|/wallet — stub browser: no server, no browser in this run
+  ✗ guest|sw|768|/profile — stub browser: no server, no browser in this run
+  ✗ guest|sw|768|/account — stub browser: no server, no browser in this run
+  ✗ guest|sw|768|/kp-parity-no-such-page — stub browser: no server, no browser in this run
+  ✗ guest|sw|1024|/ — stub browser: no server, no browser in this run
+  ✗ guest|sw|1024|/markets — stub browser: no server, no browser in this run
+  ✗ guest|sw|1024|/positions — stub browser: no server, no browser in this run
+  ✗ guest|sw|1024|/wallet — stub browser: no server, no browser in this run
+  ✗ guest|sw|1024|/profile — stub browser: no server, no browser in this run
+  ✗ guest|sw|1024|/account — stub browser: no server, no browser in this run
+  ✗ guest|sw|1024|/kp-parity-no-such-page — stub browser: no server, no browser in this run
+  ✗ guest|sw|1280|/ — stub browser: no server, no browser in this run
+  ✗ guest|sw|1280|/markets — stub browser: no server, no browser in this run
+  ✗ guest|sw|1280|/positions — stub browser: no server, no browser in this run
+  ✗ guest|sw|1280|/wallet — stub browser: no server, no browser in this run
+  ✗ guest|sw|1280|/profile — stub browser: no server, no browser in this run
+  ✗ guest|sw|1280|/account — stub browser: no server, no browser in this run
+  ✗ guest|sw|1280|/kp-parity-no-such-page — stub browser: no server, no browser in this run
+  guest · sw · 28 cells · 0s
+
+§1 · the demo player
+  FAIL 1.player the demo player is signed in — stub browser: no server, no browser in this run
+
+§1 · the demo player under an officer's hold
+  FAIL 1.held the demo player under an officer's hold is signed in — stub browser: no server, no browser in this run
+
+§1 · the demo player with an unconfirmed email
+  FAIL 1.unverified the demo player with an unconfirmed email is signed in — stub browser: no server, no browser in this run
+
+§1s · the Sell button a classic holder is served (WP10): the demo player's open ticket, at 360/1280 × en/sw, and the classic confirm at 360 in the holder block
+  FAIL 1.player the demo player is signed in — stub browser: no server, no browser in this run
+
+§1b · a classic reader's page bodies (S7 WP1, A8): the book, seeded through existing dev-test doors, then / · /markets · /live · /results · /watchlist · /markets/:similar at 360/1280 × en/sw for guest and player (/watchlist: the player only)
+  FAIL 1.player the demo player is signed in — stub browser: no server, no browser in this run
+  ✗ not captured: the demo player could not be signed in
+
+§2 · the population is what it claims
+  FAIL 2.0 every cell was captured (224) — 224: guest|en|360|/ (stub browser: no server, no browser in this run) · guest|en|360|/markets (stub browser: no server, no browser in this run) · guest|en|360|/positions (stub browser: no server, no browser in this run) · guest|en|360|/wallet (stub browser: no server, no browser in this run) · guest|en|360|/profile (stub browser: no server, no browser in this run) · guest|en|360|/account (stub browser: no server, no browser in this run) …
+  PASS 2.1 every cell rendered the shell — one header, one rail, one footer
+  PASS 2.2 every cell settled — two snapshots 700 ms apart agreed
+  PASS 2.3 no viewer carries a preview pass
+  PASS 2.4 no journey test id, flag or class anywhere in the page
+  PASS 2.5 the raw HTML was read, is the shell's, and carries no journey trace
+  PASS 2.6 the guest is a guest — /positions, /wallet and /profile land on the sign-in page
+  PASS 2.7 the signed-in viewers are signed in — none of those three lands anywhere else
+  FAIL 2.8 the held viewer is held — no header deposit control at 1280, where the player has one — 2: held|en|1280|/ has no header · player|en|1280|/ has none
+  PASS 2.9 no viewer sees an email bar, in any cell — the bar is deleted (the owner's ruling of 2026-10-07), the unconfirmed email included
+  PASS 2.10 below 1024 the rail is among the fixed overlays — the census sees what is there
+  PASS 2.11 the signed-in viewers' /positions captured its page body
+  PASS 2.13 only React's DEV performance-track sentence is ever filed as DEV-only — every other page error is compared
+  PASS 2.12 the served files held still for the whole capture (checked after every viewer and language)
+
+§3 · /account, for a viewer the journey is not shown to, is the not-found page (A3 — every run)
+  FAIL 3.0 the control path is a true 404 with a not-found body (0 of 32 pairs) — 1: 32 pair(s) not captured
+  PASS 3.1 /account shows the not-found body (its main text is the control's)
+  PASS 3.2 …under the not-found title
+  PASS 3.3 …marked noindex
+  PASS 3.4 …with no journey test id, flag or class in the page
+  PASS 3.5 …and none in the bytes the server sent, where a streamed fallback would still be (G3)
+  PASS 3.6 no loading file of /account's own in the tree the server runs — the root loader is generic (A3)
+
+§S · the Sell button a classic holder is served (WP10 — every run that captures)
+  FAIL S.0 the demo player was given an open ticket through the real money paths, and every Sell cell was captured (8) — 9: the seed: not run · sell|en|360|/positions (the viewer could not be signed in) · sell|en|360|/markets/:held (the viewer could not be signed in) · sell|en|1280|/positions (the viewer could not be signed in) · sell|en|1280|/markets/:held (the viewer could not be signed in) · sell|sw|360|/positions (the viewer could not be signed in) …
+  PASS S.1 every Sell cell settled, answered 200 and stayed where it was sent: the holder is signed in
+  PASS S.2 every Sell cell was captured INSIDE the free window — one strip, its countdown read as m:ss, and one button — and each confirm cell holds one classic confirm, captured inside its quote hold (and no other cell holds one)
+  PASS S.3 no journey test id, flag or class in a Sell cell, in the page or in the bytes the server sent
+  PASS S.4 every Sell cell's first paint was captured in a page whose scripts were all held — nothing hydrated — and it holds the page's Sell button (S6 A8e)
+
+§B · a classic reader's page bodies, the LIVE strip, the similar rail and /'s head, over the seeded book (S7 WP1, A8 — every run that captures)
+  the book: seed-markets named 0 LIVE non-demo question(s) (of ? LIVE) · placed ? · byStatus null · byLens null · REFUSED: the demo player could not be signed in
+  card states drawn across the book's cells: live priced 0 · one-sided 0 · empty pool 0 · selection closed 0 · resolved YES 0 · resolved NO 0 · void 0 · other 0
+  FAIL B.0 the book was seeded through dev-test doors that already exist — seed-markets, seed-player-portfolio { markets: 12 }, seed-watchlist — and every reply holds what A8 item 1 asks; every book cell was captured (44) — 45: the demo player could not be signed in · book-guest|en|360|/ (not captured: the demo player could not be signed in) · book-guest|en|360|/markets (not captured: the demo player could not be signed in) · book-guest|en|360|/live (not captured: the demo player could not be signed in) · book-guest|en|360|/results (not captured: the demo player could not be signed in) · book-guest|en|360|/markets/:similar (not captured: the demo player could not be signed in) …
+  PASS B.1 every book cell settled, answered 200 and stayed where it was sent: the player is signed in, and the question page is the book's first question
+  FAIL B.2 before any book cell, /results showed the voided question's card (marketIds[11]), drawn void, and settled YES and NO cards (A8 item 2) — 1: /results was not read
+  FAIL B.3 before any book cell, /watchlist showed a void card, a done card and a selection-closed card (A8 item 2) — 1: /watchlist was not read
+  PASS B.4 every book cell captured its body — <main> on /, /markets, /live, /results, /watchlist and the similar rail on /markets/:similar — and every / cell its head from the bytes: the canonical link and og:url
+  PASS B.5 every lobby cell (/, /markets, /live, /results) captured one LIVE strip — the book's settlements, waited for before the first cell
+  PASS B.6 no journey test id, flag or class (S7's kp-jcard, kp-jhome, kp-jhowto and kp-howto included) in a book cell, in the page or in the bytes the server sent
+  FAIL B.7 the book drew every classic card state S7 touches — live priced, one-sided, empty pool, selection closed, resolved YES, resolved NO, void — 7: no live priced card in any book cell · no one-sided card in any book cell · no empty pool card in any book cell · no selection closed card in any book cell · no resolved YES card in any book cell · no resolved NO card in any book cell …
+  PASS B.8 only React's DEV performance-track sentence is ever filed as DEV-only in a book cell — every other page error is compared
+
+§R · report only — the classic signed-in header at 320 (DESIGN_AUTHORITY files it as 21px over)
+
+⛔ baseline NOT written — a check above failed, and a baseline is only as good as its population. The capture is in C:/Users/asheib/AppData/Local/Temp/claude/C--Users-asheib/0e745525-51fe-4451-ace7-c9987576fc15/scratchpad/s7wp1/stub-base.json.rejected.json for reading; --compare refuses it.
+
+27/40 passed — baseline · tree c37b5e47 · 1s

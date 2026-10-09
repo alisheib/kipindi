@@ -1,0 +1,55 @@
+Visual pass round 3 (R3-D): the journey bell clear of its badge and centred, money in the mono face, the market page's columns, watermark and star, level ticket rows, one content edge per column, readable captions
+
+Round 3's readers measured these; each was re-measured on the tiles first. Every "after" is computed — the next tile
+round reads them (the ticket subgrid most of all).
+
+- Journey header bell (1024/1280): the "25" badge (anchored by its right edge in the classic bell's inline style,
+  notifications-panel.tsx, which S6 must not touch) filled the dome. In the journey only, it is re-anchored from the
+  left (top −2, left 21; !important beats the inline style, as E-101c does), so the dome is clear at rest and at the
+  pulse's peak, "99+" included; the badge's own 8px glow still tints the dome's corner. The bell sat 25 / 29 between
+  the locale box and the avatar (the avatar's sm:ml-1). The bell's slot takes the same 4px, giving 29 / 29. That slot
+  only shows from 1024, so the 10.7px slack at 320 is untouched.
+- Money: the limits line "TZS 1,015 · … TZS 5,000,000" was in sans. moneyRuns() (lib/fill-nodes.tsx) wraps each
+  whole "TZS + figure" of a dictionary sentence in .amount. The amount placeholder reads formatNumber(10_000), i.e.
+  "10,000". The market page's KIASI and WATABIRI values are mono. INAISHA is the kit's <Stat> (a new sm-plain size,
+  13px mono) with its calendar-clock icon; the page's private KPI component is gone. The date stays at 13px: zh's
+  date with its year does not fit the tile at 18px.
+- Market page:
+  - The right column started 16px low, because space-y counted the hidden heading. It is now flex with a gap, and
+    the heading stays first for screen readers.
+  - The category watermark climbed into the gold rule and under SHIRIKI. It now sits on the question's own box,
+    centred, at twice the title size.
+  - Chanzo, the star and SHIRIKI are one right-aligned group, so the star no longer floats alone at x29.
+- Tickets:
+  - The ticket-number line takes the clock line's flex shape and gap (2px → 4px). The "pos_…" line itself is by
+    design (A19: what a player quotes to support).
+  - From 768, behind @supports, cards in a row share their rows by subgrid, so the DAU labels and detail lines are
+    level. Each card now always renders its fifth (Sell) row, empty when nothing can be sold. Phones and engines
+    without subgrid keep today's layout.
+- Up & Down: the subtitle broke 92 / 164px because the whole PageHeader sat beside the pills. PageHeader gains an
+  optional actions slot; without it, it renders exactly as before.
+- One content edge per column: fairness' "Inavyofanya kazi" card and help's contact and quick-link cards pad like
+  their heroes (p-5 lg:p-6); agent stat tiles take p-4.
+- Readable text: every <Stat> hint is text-body-sm (the 10px captions were sentences; §T4's 12.5 floor). zh stat
+  labels are 11px untracked (§T3's sub-micro tier is for UPPERCASE microlabels only, and Chinese has no case).
+- /profile/invite: the link field (46px, inline-block with a descender gap) and the Nakili button (44px) now share
+  one 44px box.
+- KYC: the "VYA KUAMBATANISHA" label was redundant under the legend, and untrue (nothing is attached at that step).
+  It is removed.
+- Back links: the chevron's point is drawn 3.7px inside its box. -ml-[3px], derived from the glyph's path, puts its
+  tip on the card's edge.
+
+Guards: journey-shell 7.bell + 5 plants; money-format §6 + 3 mutations; market-columns §5–§7 + 6; journey-tickets
+2.rows + 4; updown-filter-sheet §12 + 2; measure §8 + 3; type-scale §8 with a control (its ratchets lowered by these
+changes only); share-link-readable §4 + 2; id-documents + 1.
+
+On the merged tree (with R3-A and R3-B): journey-shell 435, red:journey-shell 180/180 (361 proofs), journey-tickets
+51, red:journey-tickets 107/107, red-anchors 4925, stacking 139, ui-consistency, density-contract 36, type-scale,
+money-format 69, measure, market-columns 25, design-frozen, dead-css, css-vars-defined, hooks-order, landing-mine
+37, featured-card 76, hero-copy 17, needle-host 57, updown-filter-sheet 55, share-link-readable 19, id-documents,
+filter-language, tap-target, gold-is-money, contrast. On the R3-D tree: ~70 more suites and 8 red twins, all 0.
+tsc and the browser proof run in the next lock turn.
+
+S12: profile.idDocsNeeded is now unused (en/sw/zh); delete it the next time the dictionary is opened.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>

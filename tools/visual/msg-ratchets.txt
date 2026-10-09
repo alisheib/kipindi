@@ -1,0 +1,17 @@
+Round 3's two ratchet slips: the market watermark keeps the frozen glyph size, and the new suites read source through the shared scanner
+
+Lock turn M6's battery on 17087f07 found both (static; fixed without the lock):
+
+- test:icon-sizes (DG-A-19): R3-D's watermark wrote <Cat s={56}>, a value outside the frozen glyph set, and the old 96
+  was left unused. The watermark's size is its box's h-[2em] w-[2em]; `s` is only the svg's own width and height
+  before the stylesheet (the stroke is in the glyph's own units). So it keeps the frozen 96 it always drew at, with a
+  note saying so. Nothing renders differently.
+- test:decomment 2.1 (the private-stripper population may only shrink, ceiling 20 → 21): R3-B's needle-host and
+  R3-C's visual-pass-r3c each carried a private comment stripper. Both now read source through
+  scripts/lib/decomment.mts, and r3c's stylesheet through decommentCss. As test:decomment asks of any conversion,
+  each suite's full output was captured before and after: IDENTICAL for both.
+
+icon-sizes: 19 frozen sizes, no drift, no slack. decomment 22/22. needle-host 57/57 and visual-pass-r3c 70/70, with
+their output unchanged.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>

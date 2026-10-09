@@ -1,0 +1,186 @@
+  /** A JSX opening tag from `at` to its closing `>`, braces and strings respected. */
+  const openingTag = (src: string, at: number) => {
+    let depth = 0, i = at, q = "";
+    for (; i < src.length; i++) {
+      const c = src[i];
+      if (q) { if (c === "\\") i++; else if (c === q) q = ""; continue; }
+      if (c === '"' || (depth > 0 && (c === "'" || c === "`"))) { q = c; continue; }
+      if (c === "{") depth++; else if (c === "}") depth--; else if (c === ">" && depth === 0) break;
+    }
+    return src.slice(at, i + 1);
+  };
+  /** One prop's value as written (`{…}` or `"…"`), or null. */
+  const propOf = (tag: string, name: string) => {
+    const m = new RegExp(`\\s${name}=`).exec(tag);
+    if (!m) return null;
+    const i = m.index + m[0].length;
+    if (tag[i] === '"') return tag.slice(i, tag.indexOf('"', i + 1) + 1);
+    let depth = 0, j = i;
+    for (; j < tag.length; j++) { if (tag[j] === "{") depth++; else if (tag[j] === "}" && --depth === 0) break; }
+    return tag.slice(i, j + 1);
+  };
+  /** Every `.tsx` under src, its comments out. */
+  const SRC: Array<[string, string]> = [];
+  const walkAll = (dir: string) => { for (const f of readdirSync(dir)) { const p = join(dir, f); if (statSync(p).isDirectory()) walkAll(p); else if (/\.tsx$/.test(f)) SRC.push([p.replace(/\\/g, "/"), read(p)]); } };
+  walkAll("src");
+  // THE CENSUS (round 5, widened by the integrator's review): every ✕ glyph in src — admin too — SITE BY SITE, and what it
+  // is. "CloseX" is the one ✕ (modal.tsx); "hand ✕" closes the surface it stands on but is drawn by hand, each with why;
+  // "row ✕" dismisses a row or clears a field — no surface's close; "glyph" is an ✕ that closes nothing. A new ✕ anywhere
+  // fails until it is classified, and a ✕ drawn by hand in a file that hosts a dialog CloseX serves fails outright.
+  type Kind = "CloseX" | "hand ✕" | "row ✕" | "glyph";
+  const C = (kind: Kind, why: string) => ({ kind, why });
+  const CENSUS: Record<string, Array<{ kind: Kind; why: string }>> = {
+    "src/components/ui/modal.tsx": [C("CloseX", "the one ✕: Modal's corner, ConfirmModal's, the sell and bet confirms' and the filter sheet's (8.1–8.6)")],
+    "src/components/ui/toast.tsx": [C("hand ✕", "a toast's dismiss, no dialog: a 14px glyph and the stack's `data-toast-dismiss` hook; on its title's capitals (8.11)")],
+    "src/components/ui/notice-bar.tsx": [C("hand ✕", "a bar's dismiss, no dialog: a 40px box reaching into its 32px row, on its one line")],
+    "src/components/wallet/kyc-first-deposit-notice.tsx": [C("hand ✕", "a notice's dismiss, no dialog: centred on the notice (R5-B's wallet; named)")],
+    "src/components/social/channels-panel.tsx": [C("hand ✕", "a non-modal card's close, no scrim: its 44px box sets the card's row; on its title's capitals (8.7)")],
+    "src/components/pwa/install-invite.tsx": [C("hand ✕", "a non-modal card's close, the channels card's twin: 44px; on its title's capitals (8.8)")],
+    "src/components/onboarding/first-visit-primer.tsx": [C("hand ✕", "the primer's SKIP, a 40px box in its step-dots row — no title beside it to stand on")],
+    "src/components/layout/notifications-panel.tsx": [C("hand ✕", "the bell panel's close — R5-B's lane (the bell, notifications); named, not changed"), C("row ✕", "a notification row's dismiss")],
+    "src/components/admin/admin-mobile-nav.tsx": [C("hand ✕", "the admin drawer's close — admin chrome, a 44px box")],
+    "src/app/notifications/row-actions.tsx": [C("row ✕", "a notification row's delete")],
+    "src/components/ui/search-box.tsx": [C("row ✕", "clears the field")],
+    "src/components/ui/query-bar.tsx": [C("row ✕", "clears the query")],
+    "src/components/ui/date-select.tsx": [C("row ✕", "back to the calendar")],
+    "src/app/admin/invites/invite-admin-client.tsx": [C("row ✕", "removes a staged row")],
+    "src/components/admin/kyc-review-controls.tsx": [C("row ✕", "removes a document request"), C("glyph", "the rejecting state of a button"), C("glyph", "Reject…")],
+    "src/app/admin/approvals/sof-review-client.tsx": [C("glyph", "Reject")],
+    "src/app/admin/ai-polls/poll-actions.tsx": [C("glyph", "a refused medallion"), C("glyph", "an error mark")],
+    "src/app/admin/aml/aml-actions-client.tsx": [C("glyph", "Reject")],
+    "src/app/admin/agents/[id]/doc-grid.tsx": [C("glyph", "a missing document")],
+    "src/app/admin/kyc/[id]/kyc-decision-rail.tsx": [C("glyph", "a failed check"), C("glyph", "Reject")],
+    "src/app/admin/payments/reconcile-controls.tsx": [C("glyph", "Write off")],
+    "src/app/admin/payments/retry-controls.tsx": [C("glyph", "Cancel the payout")],
+    "src/app/admin/payments/stuck-payout-controls.tsx": [C("glyph", "Return to player")],
+    "src/app/admin/players/[id]/page.tsx": [C("glyph", "a missing document"), C("glyph", "a missing requested document")],
+  };
+  /** Each ✕ site of a source: what holds it (an open button, a Button's `leading`, or neither) and the holder's aria-label. */
+  const xSites = (src: string) => [...src.matchAll(/<I\.x\b/g)].map((m) => {
+    const before = src.slice(0, m.index);
+    if (/leading=\{\s*$/.test(before)) return { holder: "leading", label: "" };
+    const open = Math.max(before.lastIndexOf("<button"), before.lastIndexOf("<Button"));
+    const shut = Math.max(before.lastIndexOf("</button>"), before.lastIndexOf("</Button>"));
+    if (open < 0 || open < shut || openingTag(src, open).endsWith("/>")) return { holder: "none", label: "" };
+    return { holder: "button", label: propOf(openingTag(src, open), "aria-label") ?? "" };
+  });
+  const DIALOG_HOST = /<(?:Modal|ConfirmModal)[\s>]|role="(?:alert)?dialog"/;
+  // The closes drawn by hand that a dialog file may keep, each named in the census with why.
+  const NAMED_HAND = ["src/components/onboarding/first-visit-primer.tsx", "src/components/layout/notifications-panel.tsx", "src/components/admin/admin-mobile-nav.tsx",
+    "src/components/social/channels-panel.tsx", "src/components/pwa/install-invite.tsx"];
+  const census = (files: Array<[string, string]>) => {
+    const found: Record<string, ReturnType<typeof xSites>> = {};
+    for (const [f, s] of files) { const sites = xSites(s); if (sites.length) found[f] = sites; }
+    const problems: string[] = [];
+    for (const [f, sites] of Object.entries(found)) {
+      const kinds = CENSUS[f];
+      if (!kinds) { problems.push(`${f}: ${sites.length} ✕ unclassified`); continue; }
+      if (kinds.length !== sites.length) { problems.push(`${f}: ${sites.length} ✕ drawn, ${kinds.length} classified`); continue; }
+      sites.forEach((site, i) => {
+        const k = kinds[i].kind;
+        // A close or a dismiss is never filed as a mere glyph; a hand-drawn or row ✕ is a button that says what it does.
+        if (k === "glyph" && site.holder === "button" && /close|dismiss|skip|Close/.test(site.label)) problems.push(`${f} #${i + 1}: a ${site.label} filed as a glyph`);
+        if ((k === "hand ✕" || k === "row ✕") && (site.holder !== "button" || !site.label)) problems.push(`${f} #${i + 1}: a ${k} that is no labelled button`);
+        if (k === "CloseX" && f !== "src/components/ui/modal.tsx") problems.push(`${f} #${i + 1}: a second CloseX`);
+      });
+    }
+    for (const f of Object.keys(CENSUS)) if (!found[f]) problems.push(`${f}: classified, but draws no ✕`);
+    // ⛔ No ✕ drawn by hand where CloseX serves: a file that hosts a Modal, a ConfirmModal or a dialog closes with CloseX.
+    for (const [f, s] of files) {
+      if (!DIALOG_HOST.test(s) || NAMED_HAND.includes(f)) continue;
+      const hand = (found[f] ?? []).filter((site, i) => site.holder === "button" && (CENSUS[f]?.[i]?.kind ?? "hand ✕") === "hand ✕");
+      if (hand.length) problems.push(`${f}: a dialog's ✕ drawn by hand (${hand.map((x) => x.label || "no label").join(", ")})`);
+    }
+    return { found, problems };
+  };
+  const cz = census(SRC);
+  const siteCount = Object.values(cz.found).reduce((n, s) => n + s.length, 0);
+  ok(`8.10 · the census: ${siteCount} ✕ drawn in ${Object.keys(cz.found).length} files of src, admin too, each SITE classified — one CloseX; ${Object.values(CENSUS).flat().filter((c) => c.kind === "hand ✕").length} closes drawn by hand, each named with why; no dialog's ✕ drawn by hand`,
+    cz.problems.length === 0, cz.problems.join(" | "));
+  const swapIn = (file: string, from: string | RegExp, to: string) => SRC.map(([f, s]): [string, string] => [f, f.endsWith(file) ? s.replace(from, to) : s]);
+  const plantBet = swapIn("bet-confirm-modal.tsx", GUARDED_X, '<button type="button" onClick={onCancel} aria-label={t.common.cancel} className="mt-1 -mb-1 -mr-1.5 lg:-mr-3 shrink-0 inline-flex h-8 w-8"><I.x s={16} /></button>');
+  const plantToast = swapIn("ui/toast.tsx", "<I.x s={14} />", '<I.x s={14} /></button><button type="button" aria-label={t.common.close} onClick={onDismiss}><I.x s={16} />');
+  ok("8.10′ PLANT · round 4's hand-drawn ✕ back in the bet confirm (a dialog CloseX serves), and a second ✕ drawn in the toast, are each reported; the census unplanted is clean",
+    census(plantBet).problems.some((p) => p.includes("bet-confirm-modal.tsx")) && census(plantToast).problems.some((p) => p.includes("toast.tsx")) && cz.problems.length === 0,
+    show({ bet: census(plantBet).problems, toast: census(plantToast).problems }));
+  const misfiled = (() => { const keep = CENSUS["src/components/ui/toast.tsx"]; CENSUS["src/components/ui/toast.tsx"] = [C("glyph", "planted")]; const p = census(SRC).problems; CENSUS["src/components/ui/toast.tsx"] = keep; return p; })();
+  ok("8.10″ PLANT · a toast's dismiss filed as a mere glyph is reported", misfiled.some((p) => p.includes("filed as a glyph")), misfiled.join(" | "));
+  // ⭐ ONE RULE WHILE A REQUEST IS IN FLIGHT (the integrator's review): the ✕ is there exactly when the dialog's own way out
+  // is. While a request the dialog sent is in flight (its close guarded on the flag), the ✕ is withheld: a corner ✕ is not
+  // drawn (`showClose={!flag}`); a header-row ✕ is `CloseX withheld` — not drawn, not pressable, its box kept, so nothing
+  // moves. ConfirmModal withholds on `loading` alone; `confirmHeld` (busy, the way out open) keeps it live.
+  const xMarkup = (withheld: boolean) => html(h(CloseX, { onClick: () => {}, label: "Funga", className: "mt-1 -mb-1", withheld }));
+  const shown = xMarkup(false), held = xMarkup(true);
+  const boxOf = (m: string) => (/class="([^"]*)"/.exec(m)?.[1] ?? "").replace(/\s*\binvisible\b/, "");
+  ok("8.12 · CloseX withheld is not drawn (`invisible`) and not pressable (`disabled`, which the focus trap skips), in the very box it has when drawn — so the row and the title never move",
+    /\bdisabled=""/.test(held) && /\binvisible\b/.test(held) && !/disabled/.test(shown) && !/\binvisible\b/.test(shown) && boxOf(held) === boxOf(shown)
+      && /\bh-8 w-8\b/.test(boxOf(held)) && /aria-label="Funga"/.test(held), show({ shown, held }));
+  /** A named handler's text (`const close = () => { … }`, or `=> expr` to the line's end), for a prop that passes it by name. */
+  const handlerOf = (src: string, value: string | null) => {
+    const name = /^\{(\w+)\}$/.exec(value ?? "")?.[1];
+    if (!name) return value ?? "";
+    const at = new RegExp(`const ${name} = (?:async )?\\([^)]*\\) => `).exec(src);
+    if (!at) return "";
+    const i = at.index + at[0].length;
+    if (src[i] !== "{") return src.slice(i, src.indexOf("\n", i));
+    let depth = 0, j = i;
+    for (; j < src.length; j++) { if (src[j] === "{") depth++; else if (src[j] === "}" && --depth === 0) break; }
+    return src.slice(i, j + 1);
+  };
+  const IN_FLIGHT = /^(?:pending|loading|inFlight|busy|awaiting|posting|submitting|running|saving)$/;
+  const flagsIn = (text: string) => [...new Set([...text.matchAll(/!\s*(\w+)\b|\b(\w+)\s*\?\s*\(/g)].map((m) => m[1] ?? m[2]).filter((f) => IN_FLIGHT.test(f)))];
+  const inFlightRule = (files: Array<[string, string]>) => {
+    const problems: string[] = [];
+    let modals = 0, confirms = 0;
+    for (const [f, s] of files) {
+      // A header-row ✕ keeps its box: never `{!flag && <CloseX …>}` nor `{flag ? null : <CloseX …>}`.
+      if (/\{\s*!\s*\w+\s*&&\s*<CloseX\b|\?\s*null\s*:\s*<CloseX\b/.test(s)) problems.push(`${f}: a ✕ taken out of its row while in flight`);
+      for (const m of s.matchAll(/<(Modal|ConfirmModal)(?=[\s>])/g)) {
+        const tag = openingTag(s, m.index ?? 0);
+        const flags = flagsIn([propOf(tag, "onClose"), propOf(tag, "closeOnScrim"), propOf(tag, "closeOnEsc")].map((v) => handlerOf(s, v)).join(" "));
+        const line = s.slice(0, m.index).split("\n").length;
+        if (m[1] === "Modal") {
+          if (!flags.length) continue;
+          modals++;
+          const sc = propOf(tag, "showClose");
+          if (sc === "{false}") {
+            // The dialog draws its own ✕, in a header row: withheld on the same flag.
+            for (const x of s.matchAll(/<CloseX\b/g)) {
+              const xt = openingTag(s, x.index ?? 0);
+              if (/className="absolute /.test(xt)) continue;
+              const w = propOf(xt, "withheld") ?? "";
+              if (!flags.some((fl) => new RegExp(`\\b${fl}\\b`).test(w))) problems.push(`${f}:${line} its header ✕ is not withheld on ${flags.join("/")}`);
+            }
+          } else if (!sc || !flags.some((fl) => new RegExp(`^\\{!${fl}\\b`).test(sc))) problems.push(`${f}:${line} its ✕ is drawn while ${flags.join("/")} (showClose=${sc})`);
+        } else {
+          // A ConfirmModal kept open across its own request — its close guarded on a flag, or its setter called only after
+          // the answer comes back — wears `loading`, which withholds its ✕ (and holds Cancel, the scrim and Esc).
+          const confirmBody = handlerOf(s, propOf(tag, "onConfirm"));
+          const setter = /^\{\(\) => (set\w+)\((?:false|null)\)\}$/.exec(propOf(tag, "onClose") ?? "")?.[1];
+          const awaitAt = confirmBody.search(/\bawait\b/);
+          const closesAfter = !!setter && awaitAt >= 0 && confirmBody.indexOf(`${setter}(`, awaitAt) > awaitAt && !confirmBody.slice(0, awaitAt).includes(`${setter}(`);
+          if (!flags.length && !closesAfter) continue;
+          confirms++;
+          const loading = propOf(tag, "loading") ?? "";
+          const want = flags.length ? flags : ["pending", "loading", "busy", "posting", "awaiting"];
+          if (!want.some((fl) => new RegExp(`\\b${fl}\\b`).test(loading))) problems.push(`${f}:${line} a ConfirmModal open across its request, its ✕ not withheld (loading=${loading || "none"})`);
+        }
+      }
+    }
+    return { problems, modals, confirms };
+  };
+  const rule8 = inFlightRule(SRC);
+  ok(`8.13 · the one in-flight rule, held everywhere: ${rule8.modals} dialogs whose close waits on a request withhold their ✕ (in the corner, or in the header with its box kept), and ${rule8.confirms} confirms kept open across their request wear \`loading\``,
+    rule8.problems.length === 0 && rule8.modals >= MODALS_FLOOR && rule8.confirms >= CONFIRMS_FLOOR, rule8.problems.join(" | "));
+  ok("8.13′ · ConfirmModal withholds its ✕ on `loading` alone — a held confirm (`confirmHeld`: busy, every way out open) keeps it drawn and live",
+    /<CloseX withheld=\{loading\} onClick=\{onClose\}/.test(conf) && /closeOnScrim=\{!loading\}/.test(conf) && /onClose=\{loading \? \(\) => \{\} : onClose\}/.test(conf) && !/withheld=\{[^}]*confirmHeld/.test(conf));
+  const plants: Array<[string, Array<[string, string]>]> = [
+    ["the sell confirm's ✕ drawn but dead again", swapIn("sell-confirm-modal.tsx", "<CloseX withheld={pending} ", "<CloseX ")],
+    ["ConfirmModal's ✕ taken out of its row again", swapIn("ui/modal.tsx", /<CloseX withheld=\{loading\} (onClick=\{onClose\}[^\n]*\/>)/, "{!loading && <CloseX $1}")],
+    ["the objection dialog's corner ✕ drawn while filing", swapIn("objection-dialog.tsx", "showClose={!pending}", "")],
+    ["the settle dialog's corner ✕ drawn while settling", swapIn("settlement/settle-button.tsx", "showClose={!pending}", "")],
+    ["the arm confirm open across its request without `loading`", swapIn("proposal-actions.tsx", /(onConfirm=\{arm\})\s*loading=\{pending\}/, "$1")],
+  ];
+  const planted = plants.map(([what, files]) => [what, inFlightRule(files).problems.length, files.some(([f, s]) => SRC.find(([g]) => g === f)?.[1] !== s)] as const);
+  ok(`8.13″ PLANT · each is reported: ${planted.map(([w, n]) => `${w} (${n})`).join("; ")}`,
+    planted.every(([, n, moved]) => n > 0 && moved), show(planted));

@@ -1,0 +1,30 @@
+──────────────────────────────────────────────────────────────────────
+red:tap-floor — the control for test:tap-target §5 (DG-A-08)
+──────────────────────────────────────────────────────────────────────
+  HEAD   exit 0 · 299 admin files · 220 declaring · 47 padded
+
+  ✅ the 22px bare-text Reject lever comes back to the proposals row
+     exit 1 · failed {5.2} · expected §5.2
+     population 299/220/48 vs expected 299/220/48  (as declared)
+
+  ✅ the row's way out stops being .row-link and goes back to a hand-rolled 22px link
+     exit 1 · failed {5.2} · expected §5.2
+     population 299/220/48 vs expected 299/220/48  (as declared)
+
+  ✅ an admin search input hand-types the 32px rung's VALUE instead of naming it
+     exit 1 · failed {5.1} · expected §5.1
+     population 299/220/47 vs expected 299/220/47  (as declared)
+
+  ✅ an admin control declares a height nobody decided (30px), under the floor and off the rung
+     exit 1 · failed {5.1, 5.2} · expected §5.1
+     population 299/220/47 vs expected 299/220/47  (as declared)
+
+  ✅ a player filter bar renders the shared date rail at the admin's 32px dense rank
+     exit 1 · failed {2.1} · expected §2.1
+     population 299/220/47 vs expected 299/220/47  (as declared)
+
+  ✅ VACUITY — the admin surface is deleted; 0 findings must NOT read as a pass
+     exit 1 · failed {5.3} · expected §5.3
+     population null/null/null
+
+✅ every case makes §5 fail on its own assertion.

@@ -1,0 +1,12 @@
+WIP Vodacom S6 A8i-2: the three reviews' confirmed findings applied (branch only - drives and battery next)
+
+An uncovered money confirm lands on its way out (safeFocus: Ghairi, Hifadhi nafasi, Cancel), never its money button;
+dialogs join the stack in a layout effect; leaving moved into modal-stack (leaveLayer, on a Page Modal hands in); one
+Escape closes one dialog; Space on the bet dial is a press; a seal opened with focus on the page arms nothing; Modal's
+dead held-key line and the refuted quote-clock reset dropped. The suite now BUILDS the key guard and leaveLayer from
+their text and runs them (4.4, 5.9), names every money confirm's way out (5.10), counts every key event named in src/
+(2.8), and fails closed on inline handlers, namespace imports and parameter names: green, red twin 103/103.
+The drive: each Sell case gets its own ticket, BLOCKED is not FAIL, passive request counting with positive controls,
+F waits out the beat, SQ (two queued seals), ENGINE=webkit|firefox.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>

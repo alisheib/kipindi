@@ -1,0 +1,78 @@
+You are one of several strict tile readers for 50pick's visual pass for Vodacom, reading the journey's EDGE SCENARIOS
+(a player on a break, a self-excluded player, the longest name and title, Slow 3G loading, not-found pages, odd
+viewports, enlarged text, offline, an empty wallet). The owner's rule: only perfect visual AND logical results are
+accepted; nothing is deferred as "small".
+
+Read this file first, completely, with the Read tool — it is your instructions, and it points you to two more you must
+read: C:/Users/asheib/AppData/Local/Temp/claude/C--Users-asheib/0e745525-51fe-4451-ace7-c9987576fc15/scratchpad/edges/read-brief-edges.md
+
+S = C:/Users/asheib/AppData/Local/Temp/claude/C--Users-asheib/0e745525-51fe-4451-ace7-c9987576fc15/scratchpad
+TILES = C:/Users/asheib/AppData/Local/Temp/claude/C--Users-asheib/0e745525-51fe-4451-ace7-c9987576fc15/scratchpad/edges/tiles  (the PNGs, plus qa-journey-edges.json — the log, one entry per tile, matched by `file`)
+
+Your tiles (61 of them). Open EVERY one, in this order, and read its log entry before judging it:
+449--s8-text130--positions-text130--player--zh--360.png
+450--s8-text130--positions-text130--player--zh--390.png
+451--s8-text130--account-text130--player--zh--360.png
+452--s8-text130--account-text130--player--zh--390.png
+453--s9-offline--root-offline--player--sw--360.png
+454--s9-offline--root-offline-tap--player--sw--360.png
+455--s9-offline--root-back-online--player--sw--360.png
+456--s9-offline--root-offline-reload--player--sw--360.png
+457--s9-offline--root-offline--player--sw--390.png
+458--s9-offline--root-offline-tap--player--sw--390.png
+459--s9-offline--root-back-online--player--sw--390.png
+460--s9-offline--root-offline-reload--player--sw--390.png
+461--s9-offline--root-offline--player--sw--1280.png
+462--s9-offline--root-back-online--player--sw--1280.png
+463--s9-offline--root-offline-reload--player--sw--1280.png
+464--s9-offline--root-offline--player--en--360.png
+465--s9-offline--root-offline-tap--player--en--360.png
+466--s9-offline--root-back-online--player--en--360.png
+467--s9-offline--root-offline-reload--player--en--360.png
+468--s9-offline--root-offline--player--en--390.png
+469--s9-offline--root-offline-tap--player--en--390.png
+470--s9-offline--root-back-online--player--en--390.png
+471--s9-offline--root-offline-reload--player--en--390.png
+472--s9-offline--root-offline--player--en--1280.png
+473--s9-offline--root-back-online--player--en--1280.png
+474--s9-offline--root-offline-reload--player--en--1280.png
+475--s9-offline--root-offline--player--zh--360.png
+476--s9-offline--root-offline-tap--player--zh--360.png
+477--s9-offline--root-back-online--player--zh--360.png
+478--s9-offline--root-offline-reload--player--zh--360.png
+479--s9-offline--root-offline--player--zh--390.png
+480--s9-offline--root-offline-tap--player--zh--390.png
+481--s9-offline--root-back-online--player--zh--390.png
+482--s9-offline--root-offline-reload--player--zh--390.png
+483--s9-offline--root-offline--player--zh--1280.png
+484--s9-offline--root-back-online--player--zh--1280.png
+485--s9-offline--root-offline-reload--player--zh--1280.png
+486--s10-tzs0--root-header--player-tzs0--sw--320.png
+487--s10-tzs0--root--player-tzs0--sw--320.png
+488--s10-tzs0--root-wallet-sheet--player-tzs0--sw--320.png
+489--s10-tzs0--root-header--player-tzs0--sw--360.png
+490--s10-tzs0--root--player-tzs0--sw--360.png
+491--s10-tzs0--root-wallet-sheet--player-tzs0--sw--360.png
+492--s10-tzs0--wallet-deposit--player-tzs0--sw--320.png
+493--s10-tzs0--wallet-deposit--player-tzs0--sw--360.png
+494--s10-tzs0--root-header--player-tzs0--en--320.png
+495--s10-tzs0--root--player-tzs0--en--320.png
+496--s10-tzs0--root-wallet-sheet--player-tzs0--en--320.png
+497--s10-tzs0--root-header--player-tzs0--en--360.png
+498--s10-tzs0--root--player-tzs0--en--360.png
+499--s10-tzs0--root-wallet-sheet--player-tzs0--en--360.png
+500--s10-tzs0--wallet-deposit--player-tzs0--en--320.png
+501--s10-tzs0--wallet-deposit--player-tzs0--en--360.png
+502--s10-tzs0--root-header--player-tzs0--zh--320.png
+503--s10-tzs0--root--player-tzs0--zh--320.png
+504--s10-tzs0--root-wallet-sheet--player-tzs0--zh--320.png
+505--s10-tzs0--root-header--player-tzs0--zh--360.png
+506--s10-tzs0--root--player-tzs0--zh--360.png
+507--s10-tzs0--root-wallet-sheet--player-tzs0--zh--360.png
+508--s10-tzs0--wallet-deposit--player-tzs0--zh--320.png
+509--s10-tzs0--wallet-deposit--player-tzs0--zh--360.png
+
+Measure with PowerShell System.Drawing as the brief says (never estimate a position you can measure). Do not edit any
+file; do not run npm, servers or browsers. Your final message is the report the brief asks for — (1) tiles opened (must
+be 61) and the BLOCKED entries in your range, (2) FINDINGS (most visible first; LOGIC findings marked), (3) DOUBTS.
+Nothing else.

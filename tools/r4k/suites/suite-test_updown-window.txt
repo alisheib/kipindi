@@ -1,0 +1,71 @@
+PASS 1.1 · a 5-minute round locks for the last 60s (20%) — 60
+PASS 1.2 · a 3-minute round locks for 36s — 36
+PASS 1.3 · a 15-minute round locks for 180s — 180
+PASS 1.4 · an hour-long round locks for 12 minutes — 720
+PASS 1.5 · ⭐ the lead SCALES with the round — a 60m round locks 20x longer than a 3m one — 720 vs 36
+PASS 1.6 · ⭐ every allowed duration locks for at least the floor — none is left unprotected — 3m=36s 5m=60s 10m=120s 15m=180s 30m=360s 60m=720s
+PASS 1.7 · the floor wins on a very short round — 20% of 60s would be 12s — 30
+PASS 1.8 · the lead can never exceed the round itself — 60
+PASS 1.9 · a zero/negative duration cannot produce a negative lead
+PASS 1.10 · the shipped fraction is 20% and the floor 30s
+PASS 1.11 · selectionClosesAt is the close minus the lead — 2026-08-04T12:04:00.000Z
+PASS 1.12 · an unparseable close yields null rather than an Invalid Date
+PASS 1.13 · ⭐ a lead that swallows the whole round yields null, never a locked-at-birth round
+PASS 2.1 · before the lock the round is OPEN
+PASS 2.2 · ⭐ at the lock it becomes LOCKED — a distinct state, because the player can now do a distinct thing (nothing)
+PASS 2.3 · past the close it is CONFIRMING, not locked
+PASS 2.4 · ⭐ a LEGACY round with no lock instant stays OPEN — the card must not invent a lock the server does not enforce
+PASS 2.5 · a decided round is never shown as locked
+[audit] ADMIN source.added system TrustedSource#src_d4139039a1c95c16
+[audit] ADMIN updown.asset.created usr_officer UpDownAsset#uda_6302f246a9378a46
+[audit] ADMIN updown.asset.enabled usr_officer UpDownAsset#uda_6302f246a9378a46
+[audit] ADMIN updown.chain.created usr_officer UpDownChain#udc_00aa71c50819686f
+[audit] ADMIN updown.chain.started usr_officer UpDownChain#udc_00aa71c50819686f
+[audit] ADMIN updown.config.updated usr_officer UpDownConfig#global
+[audit] SYSTEM updown.observation.confirmed system_updown_oracle UpDownObservation#udo_uda_6302f246a9378a46@2026-10-09T04:19:00.000Z
+[audit] SYSTEM updown.round.opened system_updown UpDownRound#udr_318e073badef87e26cd9
+PASS 3.1 · ⭐ the round is born with a lock instant — this was `selectionClosedAt: null` — 2026-10-09T04:34:00.000Z
+PASS 3.2 · and it is BEFORE the close, by the round's own proportion — 2026-10-09T04:34:00.000Z vs close 2026-10-09T04:37:00.000Z
+[audit] BET market.position.opened win_alpha Position#pos_c3cb262d6d0eaf81dc6f
+PASS 3.3 · a bet is accepted while the window is open
+[audit] SYSTEM updown.observation.confirmed system_updown_oracle UpDownObservation#udo_uda_6302f246a9378a46@2026-10-09T04:39:00.000Z
+[audit] SYSTEM updown.round.opened system_updown UpDownRound#udr_0cca2075c48c69f4df71
+PASS 4.1 · the round is still LIVE and its close is still ahead
+PASS 4.2 · isSelectionClosed agrees the window has shut
+PASS 4.3 · ⭐ THE SERVER REFUSES THE BET — a fast device clock cannot buy a known outcome — SELECTION_CLOSED
+PASS 4.4 · and it says so in English AND Swahili — Selections are closed — waiting for results. · Uchaguzi umefungwa — tunasubiri matokeo.
+PASS 5.3 · a 3m round is bettable for 144s of 180s, and locked for the last 36s — lead=36 bettable=144
+PASS 5.5 · a 5m round is bettable for 240s of 300s, and locked for the last 60s — lead=60 bettable=240
+PASS 5.10 · a 10m round is bettable for 480s of 600s, and locked for the last 120s — lead=120 bettable=480
+PASS 5.15 · a 15m round is bettable for 720s of 900s, and locked for the last 180s — lead=180 bettable=720
+PASS 5.30 · a 30m round is bettable for 1440s of 1800s, and locked for the last 360s — lead=360 bettable=1440
+PASS 5.60 · a 60m round is bettable for 2880s of 3600s, and locked for the last 720s — lead=720 bettable=2880
+[audit] SYSTEM updown.observation.confirmed system_updown_oracle UpDownObservation#udo_uda_6302f246a9378a46@2026-10-09T04:59:00.000Z
+[audit] SYSTEM updown.round.opened system_updown UpDownRound#udr_6d64fc2544555d67d074
+[audit] BET market.position.opened win_alpha Position#pos_81acbc112b55747c16f3
+PASS 6.1 · the first side is accepted
+[audit] WALLET bonus.wagering_skipped_opposite_side win_alpha Position#pos_f0e23e84c9a8b827ee79
+[audit] BET market.position.opened win_alpha Position#pos_f0e23e84c9a8b827ee79
+PASS 6.2 · ⭐ the SAME account may now take the OPPOSITE side — the guard is gone
+PASS 6.3 · ⭐ both positions exist, one per side, both OPEN — YES:OPEN:1000 NO:OPEN:1000
+PASS 6.4 · …and the pools carry both stakes — yes 1000 no 1000
+[audit] WALLET bonus.wagering_skipped_opposite_side win_alpha Position#pos_4a311424bd328342985f
+[audit] BET market.position.opened win_alpha Position#pos_4a311424bd328342985f
+PASS 6.5 · ⭐ and MORE on a side already held is still fine — no per-market cap
+[audit] BET market.position.opened win_echo Position#pos_79d8d730a1994007fe88
+PASS 6.6 · ⭐ a DIFFERENT account takes the other side freely — that is the market working
+PASS 7.1 · during betting the round is not locked, and is bettable
+PASS 7.2 · ⭐ the instant the lock passes the round reads LOCKED — even though the server prop still says 'open' — this is the stale-prop defect: it stayed 'open' and showed a dead 00:00
+PASS 7.3 · …and stays locked right through the result phase
+PASS 7.4 · ⛔ …and the buttons do NOT come back during it — a control offering what buyPosition refuses
+PASS 7.5 · at the close it is no longer 'result in' — the countdown has genuinely run out
+PASS 7.6 · a settled round is never 'locked', whatever the clock says
+PASS 7.7 · the SERVER's verdict still wins when it says locked
+PASS 7.8 · a legacy round with no lock instant is bettable to its close, not locked early
+PASS 7b.1 · ⭐ the round page's action slot is the instant-driven RoundActionPanel, not a raw isOpen branch — the stake panel must be reached only through the phase-deriving wrapper
+PASS 7b.2 · RoundActionPanel derives its branch from roundPhase off the server-anchored clock — a phase decided by a prop cannot change without a round trip
+PASS 7b.3 · ⛔ the hook refuses place() past the lock instant — no optimistic bump, no request — the guard must run BEFORE the optimistic apply
+PASS 7b.4 · the board card threads its lock instant into the hook (belt-and-braces on every surface)
+
+✅ updown-window: 49 passed, 0 failed
+

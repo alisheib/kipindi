@@ -1,0 +1,1434 @@
+diff --git a/scripts/anchors/id-documents.anchors.mjs b/scripts/anchors/id-documents.anchors.mjs
+index 5265361d8..42cafa6d3 100644
+--- a/scripts/anchors/id-documents.anchors.mjs
++++ b/scripts/anchors/id-documents.anchors.mjs
+@@ -331,6 +331,17 @@ export const CASES = [
+       to: `    findByNida: (n: string): StoredKyc | null => null,\n    findActiveByIdNumber: (`,
+     }],
+   },
++  {
++    // 2026-10-09, the visual pass's round 3 (tiles 332, 333): the second, wrong label over the chooser comes back.
++    name: "a group key reading 'What to attach' returns over the ID chooser",
++    gate: GATE_ID,
++    expect: "the chooser is named ONCE",
++    edits: [{
++      file: PAGE,
++      from: `                {ID_DOC_TYPES.map((ty) => (`,
++      to: `                <FilterGroupKey className="basis-full">{t.profile.idDocsNeeded}</FilterGroupKey>\n                {ID_DOC_TYPES.map((ty) => (`,
++    }],
++  },
+ ];
+ 
+ /**
+diff --git a/scripts/anchors/market-columns.anchors.mjs b/scripts/anchors/market-columns.anchors.mjs
+index cfe1198e7..e7f3aea6c 100644
+--- a/scripts/anchors/market-columns.anchors.mjs
++++ b/scripts/anchors/market-columns.anchors.mjs
+@@ -59,4 +59,59 @@ export const MUTATIONS = [
+     to: `            <div className="market-grid lg:!grid-cols-1">`,
+     expect: "3: ⛔ …with no forced single column left over from the rail",
+   },
++  // ── 2026-10-09, the visual pass's round 3 (tiles 161, 162, 199): §5–§7's defects, each as it shipped ──
++  {
++    name: "bet-column-back-on-space-y",
++    why: "the bet column spaces its cards with `space-y-3` again, which counts the out-of-flow D40 heading as a sibling: the first card a player sees starts 16px below the probability bar beside it (y370 against y354 at 1280)",
++    file: PAGE,
++    suite: "market-columns",
++    from: `        <aside className="flex flex-col gap-3 lg:sticky lg:top-[72px] lg:z-10" aria-labelledby={BET_PANEL_HEADING}>`,
++    to: `        <aside className="space-y-3 lg:sticky lg:top-[72px] lg:z-10" aria-labelledby={BET_PANEL_HEADING}>`,
++    expect: "5: ⭐ the bet column spaces its cards with a flex gap, which an out-of-flow heading cannot take a rung of",
++  },
++  {
++    name: "watermark-hangs-from-the-header-again",
++    why: "the category watermark hangs from the bottom of its box instead of centring on the question, so a glyph twice the question's height climbs over the gilt hairline and under SHARE — the collision the tiles measured",
++    file: PAGE,
++    suite: "market-columns",
++    from: `              <span aria-hidden className="pointer-events-none absolute right-1 top-1/2 -z-10 flex -translate-y-1/2 text-text opacity-[0.07] text-title-lg md:text-display-3">`,
++    to: `              <span aria-hidden className="pointer-events-none absolute right-1 bottom-0 -z-10 flex text-text opacity-[0.07] text-title-lg md:text-display-3">`,
++    expect: "5: the category watermark is drawn on the question's own box — centred on it, two of its ems, behind it",
++  },
++  {
++    name: "actions-wrap-one-by-one",
++    why: "the source link, the star and SHARE stop being one group, so a phone's row breaks between them and the star's bare glyph opens line 2 at the left edge (x29–42 against the chips at 16)",
++    file: PAGE,
++    suite: "market-columns",
++    from: `          <div className="ml-auto flex items-center gap-2">`,
++    to: `          <div className="contents">`,
++    expect: "5: the source link, the star and SHARE are ONE right-aligned group, so they wrap together",
++  },
++  {
++    name: "pool-figure-in-the-display-face",
++    why: "§M4: the pool figure \"TZS 5K\" goes back to the display face beside a mono close time — money that does not look like money",
++    file: PAGE,
++    suite: "market-columns",
++    from: `label={t.market.volume} font={freshMarket ? undefined : "mono"} value=`,
++    to: `label={t.market.volume} value=`,
++    expect: "6: ⭐ the pool figure is an .amount on the mono face (words only when there is no pool yet)",
++  },
++  {
++    name: "close-time-off-the-plain-rung",
++    why: "the close time leaves the `sm-plain` rung, so its figures no longer stand on the line the strip's 18px figures stand on",
++    file: PAGE,
++    suite: "market-columns",
++    from: `<Stat size="sm-plain" labelStyle="widest" boxed="card" label={t.market.resolves}`,
++    to: `<Stat size="xs" labelStyle="widest" boxed="card" label={t.market.resolves}`,
++    expect: "6: …and the close time is a kit Stat on the sm-plain rung, with its glyph",
++  },
++  {
++    name: "ticket-glyph-inline-again",
++    why: "the ticket glyph goes back inline with a 2px margin, its ink 2px from \"pos_…\" while the clock's stands 5px from its words on the same row",
++    file: PAGE,
++    suite: "market-columns",
++    from: `                        <I.ticket s={10} className="shrink-0 opacity-60" />`,
++    to: `                        <I.ticket s={10} className="inline -mt-px mr-0.5 opacity-60" />`,
++    expect: "7: the question page's ticket line is the clock line's flex shape (4px)",
++  },
+ ];
+diff --git a/scripts/anchors/measure.anchors.mjs b/scripts/anchors/measure.anchors.mjs
+index 3615d18b9..2ba413f23 100644
+--- a/scripts/anchors/measure.anchors.mjs
++++ b/scripts/anchors/measure.anchors.mjs
+@@ -118,4 +118,32 @@ export const MUTATIONS = [
+     from: '  "src/app/proposals/page.tsx",           // py-12, on the DISABLED state only —',
+     to: "  // DELETED BY THE RED HARNESS — a blind gate cannot notice this is missing:",
+   },
++  // §8, 2026-10-09 (the visual pass's round 3): one column, one content edge.
++  {
++    name: "help-contact-cards-pad-20",
++    why: "the /help contact cards go back to p-4: their icon and number stand at x153 under the hero's and the FAQ's words at x165 on a desktop, and x37 under x41 on a phone",
++    file: "src/app/help/page.tsx",
++    suite: "measure",
++    check: "8. /help: the contact cards and the quick links pad on the hero's edge",
++    from: `    <div className="rounded-xl glass-panel p-5 lg:p-6 space-y-2 hover:border-brand-400 transition-colors h-full">`,
++    to: `    <div className="rounded-xl glass-panel p-4 space-y-2 hover:border-brand-400 transition-colors h-full">`,
++  },
++  {
++    name: "agent-fact-tile-pads-14",
++    why: "an /agent fact tile drops back to the glass box's 14px, its words at x147 over the sections' x153",
++    file: "src/app/agent/page.tsx",
++    suite: "measure",
++    check: "8. /agent: the three fact tiles pad as the sections under them do",
++    from: `        <Stat size="xl" boxed="glass" labelStyle="strong" className="p-4"`,
++    to: `        <Stat size="xl" boxed="glass" labelStyle="strong"`,
++  },
++  {
++    name: "back-link-chevron-inset",
++    why: "the back link's chevron keeps its glyph's 3px side bearing, so its tip stands 3px inside the edge of the card it heads (x19 against 16)",
++    file: "src/components/ui/back-link.tsx",
++    suite: "measure",
++    check: "8. the back link's chevron hands back its side bearing",
++    from: `      <I.chevronLeft s={11} className="-ml-[3px]" />`,
++    to: `      <I.chevronLeft s={11} />`,
++  },
+ ];
+diff --git a/scripts/anchors/money-format.anchors.mjs b/scripts/anchors/money-format.anchors.mjs
+index ca187758c..d42408668 100644
+--- a/scripts/anchors/money-format.anchors.mjs
++++ b/scripts/anchors/money-format.anchors.mjs
+@@ -88,4 +88,32 @@ export const MUTATIONS = [
+     to: `    const decimals = 0;`,
+     expect: `4: sub-1 ticks keep enough decimals`,
+   },
++  // ── §6, 2026-10-09 (the visual pass's round 3, tiles 069 and 174): money in a finished sentence ──
++  {
++    name: "the-limits-line-in-the-body-face-again",
++    why: "The deposit and withdraw limits line renders as one string again: \"TZS 1,015 … TZS 5,000,000\" in the paragraph's body face, the only amounts on either money form not in mono (§M4)",
++    file: "src/components/wallet/amount-field.tsx",
++    suite: "money-format",
++    from: `break-keep [overflow-wrap:anywhere]">{moneyRuns(hint)}</p>}`,
++    to: `break-keep [overflow-wrap:anywhere]">{hint}</p>}`,
++    expect: `6: AmountField's hint goes through moneyRuns`,
++  },
++  {
++    name: "the-example-loses-its-separator",
++    why: "The amount box's example goes back to \"10000\", the one figure on the platform written without its thousands separator",
++    file: "src/components/wallet/amount-field.tsx",
++    suite: "money-format",
++    from: `        placeholder={AMOUNT_EXAMPLE}`,
++    to: `        placeholder="10000"`,
++    expect: `6: …and its example is written as the platform writes a figure`,
++  },
++  {
++    name: "a-figure-swallows-the-sentence-comma",
++    why: "The figure matcher reads digits and commas greedily, so \"…to TZS 5,000,000, needs…\" sets the sentence's own comma in mono as part of the money",
++    file: "src/lib/fill-nodes.tsx",
++    suite: "money-format",
++    from: `const MONEY_RUN = /TZS[\\u00a0 ]\\d+(?:,\\d{3})*(?:\\.\\d+)?[KMB]?/g;`,
++    to: `const MONEY_RUN = /TZS[\\u00a0 ]\\d[\\d,]*(?:\\.\\d+)?[KMB]?/g;`,
++    expect: `6: ⭐ …and a sentence's own comma after a figure stays in the sentence`,
++  },
+ ];
+diff --git a/scripts/anchors/share-link-readable.anchors.mjs b/scripts/anchors/share-link-readable.anchors.mjs
+index 0075d30c5..ffaab9090 100644
+--- a/scripts/anchors/share-link-readable.anchors.mjs
++++ b/scripts/anchors/share-link-readable.anchors.mjs
+@@ -118,4 +118,23 @@ export const MUTATIONS = [
+     to: `<LinkField value="" label={t.profile.yourReferralLink} />`,
+     expect: "1: ⭐ POSITIVE CONTROL — the control is fed the real link",
+   },
++  // §4, 2026-10-09 (the visual pass's round 3, tile 182): the field and its copy button share one top and one bottom.
++  {
++    name: "the-field-inline-again",
++    why: "the textarea goes back to the inline-block it is by default, so its wrapper's line box hangs the strut's descent under it and the row centres \"Nakili\" on a box taller than the field: tops 4px apart, bottoms 2px",
++    file: INVITE,
++    suite: "share-link-readable",
++    from: `className="field-measure block w-full`,
++    to: `className="field-measure w-full`,
++    expect: "4: ⭐ the field is a block on text-body-sm's own line",
++  },
++  {
++    name: "the-field-takes-its-own-leading",
++    why: "`leading-[1.5]` returns, so one line is 19.5px and the self-sized field 45.5px beside a 44px button",
++    file: INVITE,
++    suite: "share-link-readable",
++    from: `font-mono text-body-sm font-medium text-text`,
++    to: `font-mono text-body-sm font-medium leading-[1.5] text-text`,
++    expect: "4: ⭐ the field is a block on text-body-sm's own line",
++  },
+ ];
+diff --git a/scripts/anchors/updown-filter-sheet.anchors.mjs b/scripts/anchors/updown-filter-sheet.anchors.mjs
+index f7cc8b986..ec2d7e721 100644
+--- a/scripts/anchors/updown-filter-sheet.anchors.mjs
++++ b/scripts/anchors/updown-filter-sheet.anchors.mjs
+@@ -174,4 +174,23 @@ export const MUTATIONS = [
+     to: '        sheetTitle={"Filter the board"}',
+     expect: "5: the page passes the sheet's copy from the dictionary",
+   },
++  // §12, 2026-10-09 (the visual pass's round 3, tile 200): the board's head.
++  {
++    name: "pills-leave-the-heading-row",
++    why: "the board stops handing its pills to PageHeader as `actions`, the shape that set the whole header beside them and squeezed the tagline into two uneven lines",
++    file: PAGE,
++    suite: "updown-filter-sheet",
++    from: "        actions={",
++    to: "        data-actions={",
++    expect: "12: ⭐ the board hands its pills to PageHeader as `actions`",
++  },
++  {
++    name: "subtitle-squeezed-beside-the-pills",
++    why: "PageHeader renders the subtitle inside the narrowed column beside the actions, so a tagline that fits the page's width breaks against the pills again",
++    file: "src/components/ui/page-header.tsx",
++    suite: "updown-filter-sheet",
++    from: "          <div>{head}</div>",
++    to: "          <div>{head}{subtitle}</div>",
++    expect: "12: PageHeader's actions row holds the eyebrow and the title only",
++  },
+ ];
+diff --git a/scripts/filter-language.test.mts b/scripts/filter-language.test.mts
+index 2ada8d1b4..f6180ab5a 100644
+--- a/scripts/filter-language.test.mts
++++ b/scripts/filter-language.test.mts
+@@ -476,7 +476,9 @@ const NON_FILTER_PILL_RAILS: Array<{ file: string; why: string }> = [
+  * ⭐ `<FilterGroupKey>` IS THE DISCRIMINATOR, and it is a fact about the design rather than a
+  * heuristic: it is the primitive that gives a group of pills its NAME, so a file rendering it is
+  * declaring "these pills are one axis". Re-derived across the six false positives — none renders
+- * it; the KYC chooser renders exactly one.
++ * it; the KYC chooser rendered exactly one until 2026-10-09, when the visual pass removed it as a
++ * second, wrong label over a chooser its legend already names (that page's note) — its entry in
++ * NON_FILTER_PILL_RAILS below still states what the rail is, for the day a key comes back.
+  *
+  * ⚠️ AND IT IS THE TAG, NOT THE IMPORT. `results/page.tsx` imports `FilterGroupKey` and never
+  * renders it, so keying on the identifier would have kept one of the six false positives. ⚠️ On
+diff --git a/scripts/id-documents.test.mts b/scripts/id-documents.test.mts
+index e5677100e..91d3fde72 100644
+--- a/scripts/id-documents.test.mts
++++ b/scripts/id-documents.test.mts
+@@ -515,6 +515,17 @@ section("11 · the surfaces read the catalogue rather than re-writing it");
+     "DESIGN_AUTHORITY: hand-rolling a second control language is a documented refusal.");
+   ok("🔴 the chooser puts the type in the URL, so a refused submit round-trips",
+     /href=\{`\/profile\/kyc\?idType=\$\{ty\}`\}/.test(PAGE));
++  // 2026-10-09, the visual pass's round 3 (tiles 332, 333): a FilterGroupKey reading "What to attach" sat between the
++  // help line and the pills — a second label for a group its legend names (and its aria-label repeats), and a wrong one:
++  // these pills choose the document held; nothing is attached until step 2.
++  {
++    const at = PAGE.indexOf(`role="group" aria-label={t.profile.chooseIdType}`);
++    const group = at < 0 ? "" : PAGE.slice(at, PAGE.indexOf("</div>", at));
++    ok("the chooser is named ONCE — its legend, which the group's aria-label repeats — with no group key inside it",
++      group.length > 0 && /<FieldLegend as="p" className="block mb-1\.5">\{t\.profile\.chooseIdType\}<\/FieldLegend>/.test(PAGE)
++        && !/<FilterGroupKey/.test(group) && !/idDocsNeeded/.test(PAGE),
++      "A second label over the same pills, saying \"What to attach\" where nothing is attached.");
++  }
+   ok("🔴 …and the FORM carries its own copy, so a stale link cannot pick the rule",
+     /<input type="hidden" name="idType" value=\{chosenType\} \/>/.test(PAGE),
+     "Validating against a query string lets a hand-edited `?idType=` check a passport\n" +
+diff --git a/scripts/journey-shell.test.mts b/scripts/journey-shell.test.mts
+index 174400fe9..e5741d150 100644
+--- a/scripts/journey-shell.test.mts
++++ b/scripts/journey-shell.test.mts
+@@ -1442,6 +1442,29 @@ function g7Header(W: World, ok: Ok) {
+       && flat.includes(`</span></>)}</div></div>{!user.isAuthed && <TicketsGuestSheet`)
+       && count(bar, "<LanguageMenu") === 1 && bar.includes(`<span className="hidden lg:inline-flex"><LanguageMenu /></span>`)
+       && count(bar, "<AvatarMenu") === 1 && flat.includes(`<span className="hidden lg:inline-flex"><AvatarMenu`));
++  // 2026-10-09 (the visual pass's round 3, tiles 038, 048 and 162): the bell stands centred between the language box
++  // and the avatar — the avatar's own `sm:ml-1` set it 4px further off, so the bell's ink stood 25px from one and 29px
++  // from the other, and the slot now takes the same 4px on its near side — and its count badge hangs by its LEFT edge,
++  // 1px past the glyph's centre line, its top on the 44px controls' line, so "25" no longer fills over the dome. The
++  // override is written against the classic bell's own inline position (S6 does not touch that file: A1), so the
++  // numbers it answers are held here too: a 40px button, a 20px glyph, an 18px pip with a 2px ring at top 3 / right 1.
++  const AVATAR = "src/components/layout/avatar-menu.tsx";
++  const bellSlot = baseRule(css, ".kp-jhdr__bell");
++  const pip = baseRule(css, ".kp-jhdr__bell .count-badge");
++  const classicBell = text(W, BELL);
++  const bellFacts = {
++    slot: bellSlot.includes("margin-left: var(--sp-1)") && tokenValue(css, "sp-1") === "4px",
++    avatarApart: text(W, AVATAR).includes(`<div ref={ref} className="relative sm:ml-1">`) && W.tailwind.includes(`"1": "4px"`),
++    pip: pip.includes("top: -2px !important") && pip.includes("right: auto !important") && pip.includes("left: 21px !important"),
++    controls: tokenValue(css, "h-control-sm") === "40px" && tokenValue(css, "h-control-md") === "44px",
++    classic: classicBell.includes(`"relative inline-flex h-7 w-7 items-center justify-center rounded-full transition-colors"`)
++      && classicBell.includes("<I.bell s={20} />") && classicBell.includes(`size="md"`)
++      && classicBell.includes("top: 3,") && classicBell.includes("right: 1,"),
++    pipBox: text(W, "src/components/ui/count-badge.tsx").includes(`md: { box: { minWidth: 18, height: 18, padding: "0 4px" }, font: 10 },`),
++  };
++  ok("7.bell · the bell stands centred between the language box and the avatar (the slot's 4px answers the avatar's sm:ml-1), and its count badge hangs by its left edge 1px past the glyph's centre line, its top on the 44px controls' line, over the classic bell's inline 40px / 20px / 18px geometry it was measured against",
++    Object.values(bellFacts).every(Boolean),
++    show({ bellFacts, bellSlot, pip }));
+   const blocks = mediaBlocks(css);
+   const phoneOnly = blocks.filter((b) => CAPS_WIDTH.test(b.cond) && SHELL_CLASS.test(b.body)).map((b) => `@media ${b.cond}`);
+   ok("7.first · every rule of the journey shell is mobile-first: no width-capping query holds one, however its block is written (nothing for the density contract to fence)",
+@@ -2688,6 +2711,13 @@ ${s}`);
+     const languageOnPhones = withFile(WORLD, JHDR, (s) => s.replace(`<span className="hidden lg:inline-flex"><LanguageMenu /></span>`, "<LanguageMenu />"));
+     const inlineHeight = withFile(WORLD, JHDR, (s) => s.replace(`data-testid="journey-top-bar"`, `data-testid="journey-top-bar" style={{ height: 64 }}`));
+     const bellEverywhere = withFile(WORLD, JHDR, (s) => s.replace("{pollers.bell && <NotificationsPanel />}", "<NotificationsPanel />"));
++    // 7.bell's plants (2026-10-09): the slot loses its 4px, the pip hangs by its right edge again, the override loses
++    // the `!important` an inline style needs, and the two premises move under it — the avatar's gap and the classic pip.
++    const bellOffCentre = withCss(inRule(".kp-jhdr__bell", " margin-left: var(--sp-1);", ""));
++    const pipOverDome = withCss(inRule(".kp-jhdr__bell .count-badge", "right: auto !important; left: 21px !important;", "right: 1px !important;"));
++    const pipInlineWins = withCss(inRule(".kp-jhdr__bell .count-badge", "top: -2px !important;", "top: -2px;"));
++    const avatarFlush = withFile(WORLD, "src/components/layout/avatar-menu.tsx", (s) => s.replace(`className="relative sm:ml-1"`, `className="relative"`));
++    const classicPipMoves = withFile(WORLD, BELL, (s) => s.replace("top: 3,", "top: 1,"));
+     const tabsAt30 = withFile(WORLD, JTABS, (s) => s.replace("bottom-0 z-40 kp-rail kp-rail--journey", "bottom-0 z-30 kp-rail kp-rail--journey"));
+     const moreReturns = withFile(WORLD, JTABS, (s) => s.replace("</ul>", `</ul><NavMore items={[]} label="" variant="rail" />`));
+     const railSaysPage = withFile(WORLD, JTABS, (s) => s.replace("aria-current={tabAriaCurrent(pathname, d.key)}", `aria-current={on ? "page" : undefined}`));
+@@ -3042,6 +3072,16 @@ ${s}`);
+         world: pillFill, landed: cssChanged(pillFill), landedAs: "the capsule language on a section link (§0h point 7)" },
+       { name: "an inline height on the header", expect: at("7.frame ·"),
+         world: inlineHeight, landed: changed(inlineHeight, JHDR), landedAs: "the canvas's 64px, typed where no probe can tell it from a decision" },
++      { name: "the bell's slot loses its 4px", expect: at("7.bell ·"),
++        world: bellOffCentre, landed: cssChanged(bellOffCentre), landedAs: "the bell 25px from the language box and 29px from the avatar again" },
++      { name: "the count badge hangs by its right edge again", expect: at("7.bell ·"),
++        world: pipOverDome, landed: cssChanged(pipOverDome), landedAs: "\"25\" filled over the bell's dome, only the rim and clapper showing" },
++      { name: "the badge override loses its !important", expect: at("7.bell ·"),
++        world: pipInlineWins, landed: cssChanged(pipInlineWins), landedAs: "the classic inline position wins and the override paints nothing" },
++      { name: "the avatar drops the 4px the bell's slot answers", expect: at("7.bell ·"),
++        world: avatarFlush, landed: changed(avatarFlush, "src/components/layout/avatar-menu.tsx"), landedAs: "the bell 4px off-centre the other way" },
++      { name: "the classic bell moves its badge under the override", expect: at("7.bell ·"),
++        world: classicPipMoves, landed: changed(classicPipMoves, BELL), landedAs: "an override measured against a position that no longer exists" },
+       // §8 — the tabs, the pollers, the guest sheet (WP6a; A13's four named plants among them)
+       { name: "the journey tabs at z-30 (A13)", expect: at("8.stack ·"),
+         world: tabsAt30, landed: changed(tabsAt30, JTABS), landedAs: "the rail level with its own header" },
+diff --git a/scripts/journey-tickets.test.mts b/scripts/journey-tickets.test.mts
+index 9c886dfe0..54e49f3c4 100644
+--- a/scripts/journey-tickets.test.mts
++++ b/scripts/journey-tickets.test.mts
+@@ -129,8 +129,11 @@ type World = {
+   scripts: Readonly<Record<string, string>>;
+   dicts: Readonly<Record<string, unknown>>;
+ };
++/** The stylesheet, as written (2.rows reads the cards' shared rows there). Kept out of `SOURCES`: `decomment` is a
++ *  TypeScript reader, and a stylesheet is held here exactly as it is on disk. */
++const TICKETS_CSS = "src/app/globals.css";
+ const WORLD: World = {
+-  files: Object.fromEntries(SOURCES.map((rel) => [rel, decomment(read(rel))])),
++  files: { ...Object.fromEntries(SOURCES.map((rel) => [rel, decomment(read(rel))])), [TICKETS_CSS]: read(TICKETS_CSS) },
+   scripts: (JSON.parse(read("package.json")) as { scripts: Record<string, string> }).scripts,
+   dicts: { en: dict.en, sw: dict.sw, zh: dict.zh },
+ };
+@@ -330,6 +333,26 @@ function g2Card(I: Impl, W: World, ok: Ok) {
+       && [card, classic].every((s) => !s.includes(`"LOSS" ? "no"`) && !s.includes(`?? "warning"`)),
+     show({ tone: tone.length, card: count(card, "positionStatusChip("), classic: count(classic, "positionStatusChip(") }));
+   ok("2.ticket · the ticket number stays (A19), on a line that may break so a narrow card never clips it", card.includes(TICKET_NUMBER));
++  // 2026-10-09, the visual pass's round 3 (tile 168 at 1280): a pair of cards shares its ROWS, not only its height, so a
++  // two-line question no longer puts its card's stake row 20px below its neighbour's (DAU at y714 against y694). From
++  // 768, behind `@supports`, each card's rows are the list's own tracks (subgrid): the span must be the card's row count,
++  // the list's 16px gap moves onto the cards from the second row, and the fifth row is always drawn so the card's bottom
++  // padding has a row to ride on.
++  const css = text(W, TICKETS_CSS);
++  const articleAt = card.indexOf("<article");
++  const article = articleAt < 0 ? "" : card.slice(articleAt, card.indexOf("</article>", articleAt));
++  const rows = (article.match(/^ {6}<(?:div|h2|p|section)\b/gm) ?? []).length;
++  const span = Number(/\.kp-ticket \{ display: grid; grid-row: span (\d+); grid-template-rows: subgrid; \}/.exec(css)?.[1] ?? NaN);
++  const subgrid = {
++    fenced: css.includes("@supports (grid-template-rows: subgrid) {") && css.includes("  @media (min-width: 768px) {"),
++    list: css.includes(".kp-tickets { row-gap: 0; }") && text(W, VIEW).includes(`className="kp-tickets grid grid-cols-1 gap-3 md:grid-cols-2"`),
++    gapBack: css.includes(".kp-ticket:nth-child(n + 3) { margin-top: var(--sp-4); }") && /--sp-4:\s*16px/.test(css) && text(W, TW_CONFIG).includes(`"3": "16px"`),
++    card: card.includes(`className="kp-ticket ticket-target `),
++    span: span === rows && rows === 5,
++    fifthRow: card.includes(`<div className={sellRow ? "mt-3 border-t border-border/60 pt-3" : undefined}>`) && !card.includes("{open && (liveValue !== null || sellShut) && ("),
++  };
++  ok("2.rows · from 768 a pair of tickets shares its rows (subgrid, fenced by @supports): the list's gap moves onto the cards, the span is the card's own five rows, and the fifth — the Sell row — is always drawn",
++    Object.values(subgrid).every(Boolean), show({ ...subgrid, rows, span }));
+   const journeyBar = fnBody(text(W, BAR), BAR_JOURNEY);
+   const scanned: Array<[string, string]> = [...[VIEW, CARD, SWITCH, RAIL, GHOST].map((f): [string, string] => [f, text(W, f)]),
+     [`${BAR} (journey variant)`, journeyBar]];
+@@ -1002,6 +1025,12 @@ const titleClamped = swap(CARD, "{keepUnits(title.text)}</Link>", `<span classNa
+ const chipCopied = swap(CARD, "variant={positionStatusChip(p.status)}", `variant={p.status === "LOSS" ? "no" : "warning"}`);
+ const classicChipBack = swap(CLASSIC_CARD, "variant={positionStatusChip(status)}", `variant={status === "LOSS" ? "no" : "warning"}`);
+ const numberGone = swap(CARD, "{p.id}</p>", "</p>");
++// 2.rows's plants (2026-10-09): the shared rows dropped, a sixth row under a span of five, the Sell row conditional again,
++// and the list's gap left inside every card.
++const rowsOwnAgain = swap(TICKETS_CSS, ".kp-ticket { display: grid; grid-row: span 5; grid-template-rows: subgrid; }", "");
++const sixthRow = swap(CARD, "      <div className={sellRow ?", `      <div className="mt-3" />${LF}      <div className={sellRow ?`);
++const sellRowConditional = swap(CARD, `<div className={sellRow ? "mt-3 border-t border-border/60 pt-3" : undefined}>`, `<div className="mt-3 border-t border-border/60 pt-3">`);
++const listGapInside = swap(TICKETS_CSS, ".kp-tickets { row-gap: 0; }", "");
+ const shareBack = withFile(CARD, (s) => `${s}${LF}const share = <PositionShare />;${LF}`);
+ const row2Back = withFile(BAR, inFn(BAR_JOURNEY, (b) => b.replace("</QueryStrip>", "</QueryStrip><QuerySort />")));
+ const headerBack = swap(SWITCH, "<PageHeader title={t.journey.tabTickets} />",
+@@ -1128,6 +1157,10 @@ const plants: Plant[] = [
+   { name: "the journey card spells the colour rule itself", expect: ["2.chip"], world: chipCopied, landed: changed(chipCopied, CARD) },
+   { name: "the classic card goes back to its own ternary", expect: ["2.chip"], world: classicChipBack, landed: changed(classicChipBack, CLASSIC_CARD) },
+   { name: "the ticket number is dropped", expect: ["2.ticket"], world: numberGone, landed: changed(numberGone, CARD) },
++  { name: "the cards stop sharing their rows (each lays its own out again: DAU 20px apart beside a two-line question)", expect: ["2.rows"], world: rowsOwnAgain, landed: changed(rowsOwnAgain, TICKETS_CSS) },
++  { name: "a sixth row joins the card under a span of five (its last row spills into the next pair's first)", expect: ["2.rows"], world: sixthRow, landed: changed(sixthRow, CARD) },
++  { name: "the Sell row is drawn only when there is something to sell (a settled card's bottom padding has no row to ride on)", expect: ["2.rows"], world: sellRowConditional, landed: changed(sellRowConditional, CARD) },
++  { name: "the list keeps its row gap (it opens inside every card's rows)", expect: ["2.rows"], world: listGapInside, landed: changed(listGapInside, TICKETS_CSS) },
+   { name: "the share button comes back to the journey card", expect: ["2.shelved"], world: shareBack, landed: changed(shareBack, CARD) },
+   { name: "the bar's journey variant grows row 2's sort again", expect: ["2.shelved"], world: row2Back, landed: changed(row2Back, BAR) },
+   { name: "the classic header's words (its eyebrow says “Nafasi”) come back to the journey head", expect: ["2.shelved"], world: headerBack, landed: changed(headerBack, SWITCH) },
+diff --git a/scripts/market-columns.test.mts b/scripts/market-columns.test.mts
+index feccd8cd0..6c94e8b35 100644
+--- a/scripts/market-columns.test.mts
++++ b/scripts/market-columns.test.mts
+@@ -86,5 +86,64 @@ const page = decomment(readFileSync(join(ROOT, "src/app/markets/[id]/page.tsx"),
+   ok("4: …and the content column still follows it", /order-2 lg:order-1/.test(page));
+ }
+ 
++// ── 5 · THE TWO COLUMNS START ON ONE LINE, AND THE HEADER'S PARTS KEEP TO THEIR OWN ROWS ──────────────────
++// 2026-10-09, the visual pass's round 3 (tiles 161, 162, 199). The bet column opened on the D40 heading, which is
++// `sr-only`, and `space-y-3` counts it, so the first card a player sees began 16px below the probability bar (y370
++// against y354). The category watermark hung from the whole header at 96px and climbed into the chips row: the gilt
++// hairline ran through it and its top sat under SHIRIKI. And the three actions wrapped one by one, leaving the star's
++// glyph at the left edge of line 2 on a phone.
++{
++  const asideAt = page.indexOf("<aside ");
++  const aside = asideAt < 0 ? "" : page.slice(asideAt, page.indexOf(">", asideAt));
++  ok("5: ⭐ the bet column spaces its cards with a flex gap, which an out-of-flow heading cannot take a rung of",
++     /className="flex flex-col gap-3 lg:sticky/.test(aside) && !/space-y-/.test(aside), aside.slice(0, 90));
++  // The heading the fix is about must still be there, first in its branch — or the check above guards nothing.
++  ok("5: ⭐ …and the signed-in branch still opens on the D40 sr-only heading (the premise)",
++     /<h2 id=\{BET_PANEL_HEADING\} className="sr-only">/.test(page));
++  const h1At = page.indexOf("<h1 ");
++  const boxAt = h1At < 0 ? -1 : page.lastIndexOf(`<div className="relative isolate">`, h1At);
++  const box = boxAt < 0 ? "" : page.slice(boxAt, h1At);
++  ok("5: the category watermark is drawn on the question's own box — centred on it, two of its ems, behind it",
++     box.length > 0 && /absolute right-1 top-1\/2 -z-10 flex -translate-y-1\/2/.test(box)
++       && /text-title-lg md:text-display-3/.test(box) && /className="h-\[2em\] w-\[2em\]"/.test(box), `${box.length} chars between the box and the <h1>`);
++  ok("5: ⛔ …and never again from the whole header's bottom edge",
++     !/absolute right-1 bottom-0 -z-10/.test(page) && /<header className="mt-3 mb-5">/.test(page));
++  const groupAt = page.indexOf(`<div className="ml-auto flex items-center gap-2">`);
++  const group = groupAt < 0 ? "" : page.slice(groupAt, page.indexOf("</div>", groupAt));
++  ok("5: the source link, the star and SHARE are ONE right-aligned group, so they wrap together",
++     group.includes("{t.common.source}") && group.includes("<WatchStar") && group.includes("<ShareButton")
++       && !/ml-auto min-h-\[var\(--tap-min\)\]/.test(page), groupAt < 0 ? "no group" : "");
++}
++
++// ── 6 · THE KPI STRIP IS THE KIT'S, AND EVERY FIGURE IN IT IS MONO ─────────────────────────────────────────
++// Tile 162: the pool figure "TZS 5K" and the predictor count were set in the display face (§M4, §T5), and the close
++// time sat on a local fork with no glyph, its value 2px above its neighbours'.
++{
++  const stripAt = page.indexOf("label={t.market.volume}");
++  const strip = stripAt < 0 ? "" : page.slice(page.lastIndexOf("<Stat", stripAt), page.indexOf("</div>", stripAt));
++  ok("6: ⭐ the pool figure is an .amount on the mono face (words only when there is no pool yet)",
++     strip.includes(`font={freshMarket ? undefined : "mono"}`) && strip.includes(`<span className="amount">{formatTzsCompact(m.yesPool + m.noPool)}</span>`));
++  ok("6: …the predictor count is mono", /label=\{t\.market\.predictors\} font="mono"/.test(strip));
++  ok("6: …and the close time is a kit Stat on the sm-plain rung, with its glyph",
++     /<Stat size="sm-plain" labelStyle="widest" boxed="card" label=\{t\.market\.resolves\}/.test(strip)
++       && strip.includes("icon={<I.calendarClock s={14} />}"));
++  ok("6: ⛔ the local KPI fork is gone", !/function KPI\(/.test(page) && !/<KPI /.test(page));
++}
++
++// ── 7 · A TICKET NUMBER STANDS OFF ITS GLYPH AS THE CLOCK LINE'S WORDS DO ─────────────────────────────────
++// Tile 162: the ticket glyph sat inline with a 2px margin (ink x174–183, "pos_…" from 186) while the clock line's glyph
++// stood in a flex row with `gap-1` (ink x361–369, words from 375). One shape, here and on the classic position card.
++{
++  const card = decomment(readFileSync(join(ROOT, "src/components/markets/position-card.tsx"), "utf8"));
++  const SHAPE = /<p className="flex min-w-0 items-center gap-1 [^"]*">\s*<I\.ticket s=\{10\} className="shrink-0 opacity-60" \/>/;
++  ok("7: the question page's ticket line is the clock line's flex shape (4px)", SHAPE.test(page));
++  ok("7: …and so is the classic position card's", SHAPE.test(card));
++  ok("7: ⛔ no ticket glyph is set inline with a margin any more",
++     ![page, card].some((s) => /<I\.ticket s=\{10\} className="inline/.test(s)));
++  ok("7: ⭐ CONTROL — the shape matcher still reads the shape it is written for",
++     SHAPE.test(`<p className="flex min-w-0 items-center gap-1 font-mono">\n  <I.ticket s={10} className="shrink-0 opacity-60" />`)
++       && !SHAPE.test(`<p className="font-mono">\n  <I.ticket s={10} className="inline -mt-px mr-0.5 opacity-60" />`));
++}
++
+ console.log(`\nmarket-columns: ${pass} passed, ${fail} failed`);
+ if (fail > 0) process.exit(1);
+diff --git a/scripts/measure-system.test.mts b/scripts/measure-system.test.mts
+index bf8205fe2..f7480746f 100644
+--- a/scripts/measure-system.test.mts
++++ b/scripts/measure-system.test.mts
+@@ -346,5 +346,41 @@ check("the ADMIN shell renders the landmark too — the console does not use App
+ check("…and the admin shell carries its own skip-to-content link",
+   /href="#main-content"/.test(adminShell));
+ 
++// ── 8. One column, one content edge (2026-10-09, the visual pass's round 3) ─────
++// Tiles 188, 190, 189/205, 195/196 and 332/333: cards stacked in one column started their words at different x —
++// /fairness's "How it works" at 158 under the hero's 165 (24px against 32), /help's contact cards at 153 under 165
++// (and 37 under 41 on a phone), /agent's fact tiles at 147 over the sections' 153 — and the back link's chevron stood
++// 3px inside the edge it heads (its glyph's own side bearing). Each now takes its column's edge.
++{
++  const src = (p: string) => decomment(readFileSync(join(SRC, ...p.split("/")), "utf8"));
++  const hero = src("components/ui/page-hero.tsx");
++  check("8. the hero still pads its words p-5 lg:p-6 — the edge the cards under it take",
++    hero.includes(`contentClassName = "relative z-10 p-5 lg:p-6"`));
++  const help = src("app/help/page.tsx");
++  check("8. /help: the contact cards and the quick links pad on the hero's edge, as the FAQ does",
++    help.includes(`"rounded-xl glass-panel p-5 lg:p-6 space-y-2 hover:border-brand-400`)
++      && help.includes(`"flex items-center gap-3 rounded-xl glass-panel p-5 lg:p-6 hover:border-brand-400`)
++      && help.includes(`<section className="rounded-xl glass-panel p-5 lg:p-6 space-y-2">`) && !/glass-panel p-4\b/.test(help));
++  const fair = src("app/fairness/page.tsx");
++  check("8. /fairness: How it works pads on the hero's edge",
++    fair.includes(`<section className="glass-panel p-5 lg:p-6 space-y-4">`) && fair.includes("<PageHero"));
++  const agent = src("app/agent/page.tsx");
++  const tiles = (agent.match(/<Stat size="xl" boxed="glass" [^\n]*className="p-4"/g) ?? []).length;
++  const sections = (agent.match(/<section className="rounded-xl glass-panel p-4/g) ?? []).length;
++  check("8. /agent: the three fact tiles pad as the sections under them do (p-4 over the glass box's 14px)",
++    tiles === 3 && sections >= 3, `${tiles} tiles · ${sections} sections`);
++  // The chevron's side bearing, DERIVED from its path rather than remembered: its point sits at the path's least x,
++  // the 1.9 stroke reaches half its width past it, and the glyph is drawn at 11px of a 24-unit box.
++  const glyphs = readFileSync(join(SRC, "components", "ui", "glyphs.tsx"), "utf8");
++  const chevron = /chevronLeft: \(p: GlyphProps\) => <G \{\.\.\.p\}><path d="M(\d+) (\d+)l(-?\d+) (-?\d+) (-?\d+) (-?\d+)" \/><\/G>/.exec(glyphs);
++  const tipX = chevron ? Number(chevron[1]) + Number(chevron[3]) : NaN;
++  const bearing = Math.floor(((tipX - 1.9 / 2) / 24) * 11);
++  const back = src("components/ui/back-link.tsx");
++  check("8. the back link's chevron hands back its side bearing, so its tip sits on the edge the link heads",
++    back.includes(`<I.chevronLeft s={11} className="-ml-[${bearing}px]" />`), `bearing ${bearing}px (tip x${tipX} of 24 at 11px)`);
++  check("8. ⭐ CONTROL — the bearing derivation reads the glyph (a 3px bearing for the point at x9)", bearing === 3 && tipX === 9,
++    `tip x${tipX}, bearing ${bearing}`);
++}
++
+ log(`\n${fail === 0 ? "ALL PASS" : `${fail} FAILURE(S)`} — ${tsx.length} tsx files`);
+ process.exit(fail ? 1 : 0);
+diff --git a/scripts/money-format.test.mts b/scripts/money-format.test.mts
+index 98c435d32..e70876ba2 100644
+--- a/scripts/money-format.test.mts
++++ b/scripts/money-format.test.mts
+@@ -290,5 +290,71 @@ console.log("Money compaction grammar\n");
+   ok("5: …and the DELIBERATE bare strip is not caught by it", bareStrips >= 1, `${bareStrips} bare strip(s)`);
+ }
+ 
++// ── 6 · A FIGURE IN A FINISHED SENTENCE IS STILL MONEY (2026-10-09, the visual pass's round 3) ──
++/**
++ * Tiles 069 and 174: the deposit and withdraw limits line — "Kiwango cha chini TZS 1,015 · Kiwango cha juu
++ * TZS 5,000,000 kwa kila kutoa." — was set in the body face, the only amounts on either form not in mono (§M4), and
++ * the amount box's example read "10000", the one figure on the platform without its thousands separator. The sentence
++ * types its own "TZS" (the dictionary is `TZS\u00a0{min}`), and the deposit one states two thresholds as literal
++ * figures, so `fillNodes` cannot dress them: `moneyRuns` reads each "TZS" + figure WHOLE out of the finished sentence.
++ * This drives it over the real dictionary sentences in all three languages, and holds `AmountField` to calling it and
++ * to writing its example with `formatNumber`.
++ */
++{
++  const { readFileSync: rf } = await import("node:fs");
++  const { isValidElement } = await import("react");
++  const { moneyRuns } = await import("../src/lib/fill-nodes.tsx");
++  const { dict } = await import("../src/lib/i18n-dict.ts");
++  const { fill, formatNumber } = await import("../src/lib/utils.ts");
++  const ROOT = new URL("..", import.meta.url).pathname.replace(/^\/([A-Za-z]:)/, "$1");
++  const FIGURE = /TZS[\u00a0 ]\d/g;
++  type Run = { amounts: string[]; words: string[]; whole: string };
++  const read = (nodes: unknown[]): Run => {
++    const amounts: string[] = [];
++    const words: string[] = [];
++    let whole = "";
++    for (const n of nodes) {
++      if (isValidElement(n)) {
++        const p = n.props as { className?: string; children?: unknown };
++        if (p.className === "amount" && typeof p.children === "string") amounts.push(p.children);
++        else words.push(`<?${String(p.className)}>`);
++        whole += String(p.children ?? "");
++      } else {
++        words.push(String(n));
++        whole += String(n);
++      }
++    }
++    return { amounts, words, whole };
++  };
++  const bounds = { min: formatNumber(1_015), max: formatNumber(5_000_000) };
++  for (const loc of ["sw", "en", "zh"] as const) {
++    const t = dict[loc];
++    for (const [key, sentence, figures] of [
++      ["wallet.amountHint", fill(t.wallet.amountHint, bounds), 2],
++      ["common.depositAmountHint", fill(t.common.depositAmountHint, bounds), 4],
++    ] as const) {
++      const run = read(moneyRuns(sentence));
++      const stray = run.words.filter((w) => new RegExp(FIGURE.source).test(w));
++      ok(`6: ${loc} ${key} — every figure is one .amount, "TZS" and digits together (${figures})`,
++        run.amounts.length === figures && run.amounts.every((a) => /^TZS[\u00a0 ]\d+(?:,\d{3})*$/.test(a)),
++        JSON.stringify(run.amounts));
++      ok(`6: …${loc} ${key} — no figure is left in the words, and nothing is lost or reworded`,
++        stray.length === 0 && run.whole === sentence && !run.words.some((w) => w.startsWith("<?")), JSON.stringify(stray));
++    }
++  }
++  // ⭐ CONTROLS: a sentence with no figure is one untouched string; a compact figure is still one figure.
++  ok("6: ⭐ a sentence with no figure comes back as itself", (() => { const r = moneyRuns("Hakuna ada."); return r.length === 1 && r[0] === "Hakuna ada."; })());
++  ok("6: ⭐ …and a compact figure is read whole", read(moneyRuns("Bwawa: TZS 9.9M leo")).amounts.join() === "TZS 9.9M");
++  ok("6: ⭐ …and a sentence's own comma after a figure stays in the sentence",
++    read(moneyRuns("deposits to TZS 5,000,000, needs")).amounts.join() === "TZS 5,000,000");
++
++  const field = rf(`${ROOT}/src/components/wallet/amount-field.tsx`, "utf8");
++  const RAW_EXAMPLE = /placeholder="\d{4,}"/;
++  ok("6: AmountField's hint goes through moneyRuns", field.includes("{moneyRuns(hint)}") && field.includes(`import { moneyRuns } from "@/lib/fill-nodes";`));
++  ok("6: …and its example is written as the platform writes a figure (formatNumber), never a bare digit run",
++    field.includes("const AMOUNT_EXAMPLE = formatNumber(10_000);") && field.includes("placeholder={AMOUNT_EXAMPLE}") && !RAW_EXAMPLE.test(field));
++  ok("6: ⭐ CONTROL — the raw-example matcher still sees the shape that shipped", RAW_EXAMPLE.test(`placeholder="10000"`));
++}
++
+ console.log(`\nmoney-format: ${pass} passed, ${fail} failed`);
+ if (fail > 0) process.exit(1);
+diff --git a/scripts/share-link-readable.test.mts b/scripts/share-link-readable.test.mts
+index 3b40c9a5b..990bad0dd 100644
+--- a/scripts/share-link-readable.test.mts
++++ b/scripts/share-link-readable.test.mts
+@@ -96,5 +96,31 @@ const share = decomment(readFileSync(join(ROOT, "src/components/markets/share-bu
+      /text-text-subtle break-all">\{url\.replace\(/.test(share));
+ }
+ 
++// ── 4 · One line is the copy button's height, and nothing hangs under the field ───────────────
++// 2026-10-09, the visual pass's round 3 (tile 182 at 1280): the field measured y702–747 (46px) beside "Nakili" at
++// y706–749 (44px) — tops 4px apart, bottoms 2px. `leading-[1.5]` made one line 19.5px (a 45.5px box), and the textarea,
++// an inline-block, sat on its wrapper's line box with the strut's descent under it, so the row centred the button on a
++// taller box than the field. The arithmetic is read from the config, not remembered: line + 2 × padding + 2 × border.
++{
++  const tw = readFileSync(join(ROOT, "tailwind.config.ts"), "utf8");
++  const css = readFileSync(join(ROOT, "src/app/globals.css"), "utf8");
++  const bodySmLine = Number(/"body-sm":\s*\["13px",\s*\{\s*lineHeight:\s*"(\d+)px"/.exec(tw)?.[1] ?? NaN);
++  const py2 = Number(/"2":\s*"(\d+)px"/.exec(tw)?.[1] ?? NaN);
++  const control = Number(/--h-control-md:\s*(\d+)px/.exec(css)?.[1] ?? NaN);
++  const fits = (cls: string) => {
++    const toks = cls.split(/\s+/);
++    return toks.includes("block") && toks.includes("text-body-sm") && toks.includes("py-2") && toks.includes("border")
++      && !toks.some((t) => t.startsWith("leading-"));
++  };
++  const cls = /className="field-measure ([^"]*)"/.exec(invite)?.[1] ?? "";
++  ok("4: ⭐ the field is a block on text-body-sm's own line, 12px padding and a 1px border — no leading of its own",
++     fits(cls), cls);
++  ok("4: …and that one line is the copy button's height: line + 2 × padding + 2 × border = the btn-md control",
++     bodySmLine + 2 * py2 + 2 === control && /className="btn btn-ghost btn-md shrink-0/.test(invite),
++     `${bodySmLine} + 2×${py2} + 2 = ${bodySmLine + 2 * py2 + 2} vs --h-control-md ${control}`);
++  ok("4: ⭐ CONTROL — the field as it shipped (inline, leading-[1.5]) is refused",
++     !fits("w-full resize-none overflow-hidden rounded-lg border border-border bg-bg-inset px-3 py-2 font-mono text-body-sm font-medium leading-[1.5] text-text break-all"));
++}
++
+ console.log(`\n${pass} passed, ${fail} failed`);
+ process.exit(fail ? 1 : 0);
+diff --git a/scripts/type-scale.test.mts b/scripts/type-scale.test.mts
+index 3d1bc3d77..7d56c8c1c 100644
+--- a/scripts/type-scale.test.mts
++++ b/scripts/type-scale.test.mts
+@@ -151,7 +151,7 @@ const SRC = join(ROOT, "src");
+ // The 22 that fell and were never locked in: help/page, legal/_components x2, live/loading, profile/notifications, wallet/deposit/return
+ // x2, wallet/receipt/[id] x3, profile/email-editor, updown/price-hero, updown-card x3, updown-stake-controls x4, admin/affiliate-admin-client,
+ // admin/reports (the retired "Generation pipeline" box, b87244a9) and the old kyc banner link. Lower this number as the 28 are lifted.
+-const RATCHET_SUBFLOOR = 750; // +6, 2026-10-08 (red-on-main triage of 318b8881): 28 sub-floor sites written since the 2026-09-19 ceiling, 22 lifted or deleted without a lock-in — the member list is the comment block directly above this line, each with its commit and date. // -3, 2026-09-19 (C7 step 3's visual pass, the first renders ever taken of `report-pack-card.tsx`): C5-6 shipped a 10px centred SENTENCE under the pack's one control, and the two signature-slot lines — the moment an officer signed a Gaming Board filing, and the awaiting-signature state — were 10px and 11px under a 13px name. All three took `text-body-sm`, the platform's own shape for a second line under a name (`/admin/agents`, and the desk's roster, both of which chose it in writing BECAUSE it clears this floor). Lowered in the same commit as the run that measured it: 747 above a tree at 744 is slack, not safety. // -2, 2026-09-13 (KYC at withdrawal + the visual pass): the new admin reading sites (three justification counters, the refused report payout cell) were lifted to text-body-sm rather than written sub-floor, and the profile stat strip dropped two. // -N, 2026-09-08 (PLAYER QUERY stage 4): re-derived from the run and locked in rather than left as slack — this file's own rule is that a ratchet above the number the tree reaches SILENTLY LICENSES ONE REGRESSION. §3 fell because two cap notices written this stage were caught as NEW offenders while being written (a sentence is reading copy, so text-caption/label are below the floor and do not count as a fix) and moved to text-body-sm; the other three were already below their ratchet before this stage touched them.   // -1, 2026-08-31, DG-A-08: the proposals row cell stopped hand-rolling its three controls — `Reject` and `Delete` became the kit `<Button size="sm">` and `View chain` took `.row-link`, and the sub-floor `text-micro` went with them.   // -2, 2026-08-31, DG-S-02: `ui/tabs.tsx` hand-wrote its count pip THREE times, two of them at `text-[11px]` — under this floor and a fifth implementation of the pip the stage-9 consolidation existed to remove. All three are the kit `<CountBadge>` now, which caps at 99 and renders nothing at zero. ⚠️ AND THE FIRST ATTEMPT MOVED THIS NUMBER THE WRONG WAY, which is the finding worth keeping: putting the `segmented` variant's off-ladder `text-[12.5px]` onto `text-label` (12) added a NEW sub-floor site here (753 → 752, the two pips masking it), because 12 is UNDER §T4's 12.5px floor and a tab label is a §T3 CONTROL LABEL with no claim on the blessed sub-micro tier. The rung is `text-body-sm` (13) — which also puts all three variants on ONE size. Caught by re-deriving the ratchet rather than by reading the diff.   // -2, 2026-08-30, session 82: `install-invite`'s body copy (12px prose under this very floor, in the one dismissible dialog with no Escape path) and `report-pack-controls`' CopyHash, which took `.btn-sm`'s 13px when it adopted the kit. # −1 more, 2026-08-30, DG-A-06: `/admin/proposals`'s queue rail carried a `text-[11px]` chip — 22.5px, the smallest filter control in the console — and adopting the primitive's geometry retired it.   // ✅ 2026-08-30, −48 and DG-A-14 IS CLOSED: 39 of the 48 were FIXED (27 sentences lifted onto `text-body-sm`, 9 labels split from their hint, 3 more after a third reader overturned the fixer's refusal) and ⚠️ **9 came off by RECLASSIFICATION, not by moving a glyph** — adjudicated as genuine labels, and that half of the number is stated rather than folded in. // was 804: ⛔ 2026-08-30, +48: THE POPULATION GREW, NOT THE DEFECT — the third time this ratchet has had to be re-based upward for that reason, and the third time it was the BLESSING that was wrong rather than the product. §3 exempted "an UPPERCASE tracked microlabel", keyed on the DRESSING, so 48 sentences and labels-with-their-hint-welded-on were counted as labels while sitting 3-4px under §T4's reading floor. They are DG-A-14's population and they now count. // 2026-08-30: -5, the five section eyebrows that carried NO tracking at all and gained §T3's 0.14em with the rest (DG-A-11's tracking sweep). ⚠️ They fell out because a GLYPH moved — from `text-micro`'s own 0.4px to 1.4px — not because the blessing widened: `.eyebrow` was added to `isBlessedMicrolabel` in the same commit, and without it the sweep would have read as +291 on a ratchet that may only shrink. // 2026-08-29: -268 total, the ADMIN then PLAYER prose sweeps (DG-A-12); then -2 for `fee-simulator.tsx`'s two licence paragraphs, 10.5px prose lifted to `text-body-sm`. ⭐ THE FIRST TIME §3 MOVED IN THREE SWEEPS, and that is the point: §3 falls only when a GLYPH gets more legible, which is why it held flat at 763 through 376 renames that bought §4 alone.
++const RATCHET_SUBFLOOR = 747; // -3, 2026-10-09 (the visual pass's round 3, tiles 195/196): the <Stat> rungs lg, xl and 2xl set their hint at text-[10px], so /agent's hint SENTENCES were 10px; every hint is text-body-sm now (§8). // +6, 2026-10-08 (red-on-main triage of 318b8881): 28 sub-floor sites written since the 2026-09-19 ceiling, 22 lifted or deleted without a lock-in — the member list is the comment block directly above this line, each with its commit and date. // -3, 2026-09-19 (C7 step 3's visual pass, the first renders ever taken of `report-pack-card.tsx`): C5-6 shipped a 10px centred SENTENCE under the pack's one control, and the two signature-slot lines — the moment an officer signed a Gaming Board filing, and the awaiting-signature state — were 10px and 11px under a 13px name. All three took `text-body-sm`, the platform's own shape for a second line under a name (`/admin/agents`, and the desk's roster, both of which chose it in writing BECAUSE it clears this floor). Lowered in the same commit as the run that measured it: 747 above a tree at 744 is slack, not safety. // -2, 2026-09-13 (KYC at withdrawal + the visual pass): the new admin reading sites (three justification counters, the refused report payout cell) were lifted to text-body-sm rather than written sub-floor, and the profile stat strip dropped two. // -N, 2026-09-08 (PLAYER QUERY stage 4): re-derived from the run and locked in rather than left as slack — this file's own rule is that a ratchet above the number the tree reaches SILENTLY LICENSES ONE REGRESSION. §3 fell because two cap notices written this stage were caught as NEW offenders while being written (a sentence is reading copy, so text-caption/label are below the floor and do not count as a fix) and moved to text-body-sm; the other three were already below their ratchet before this stage touched them.   // -1, 2026-08-31, DG-A-08: the proposals row cell stopped hand-rolling its three controls — `Reject` and `Delete` became the kit `<Button size="sm">` and `View chain` took `.row-link`, and the sub-floor `text-micro` went with them.   // -2, 2026-08-31, DG-S-02: `ui/tabs.tsx` hand-wrote its count pip THREE times, two of them at `text-[11px]` — under this floor and a fifth implementation of the pip the stage-9 consolidation existed to remove. All three are the kit `<CountBadge>` now, which caps at 99 and renders nothing at zero. ⚠️ AND THE FIRST ATTEMPT MOVED THIS NUMBER THE WRONG WAY, which is the finding worth keeping: putting the `segmented` variant's off-ladder `text-[12.5px]` onto `text-label` (12) added a NEW sub-floor site here (753 → 752, the two pips masking it), because 12 is UNDER §T4's 12.5px floor and a tab label is a §T3 CONTROL LABEL with no claim on the blessed sub-micro tier. The rung is `text-body-sm` (13) — which also puts all three variants on ONE size. Caught by re-deriving the ratchet rather than by reading the diff.   // -2, 2026-08-30, session 82: `install-invite`'s body copy (12px prose under this very floor, in the one dismissible dialog with no Escape path) and `report-pack-controls`' CopyHash, which took `.btn-sm`'s 13px when it adopted the kit. # −1 more, 2026-08-30, DG-A-06: `/admin/proposals`'s queue rail carried a `text-[11px]` chip — 22.5px, the smallest filter control in the console — and adopting the primitive's geometry retired it.   // ✅ 2026-08-30, −48 and DG-A-14 IS CLOSED: 39 of the 48 were FIXED (27 sentences lifted onto `text-body-sm`, 9 labels split from their hint, 3 more after a third reader overturned the fixer's refusal) and ⚠️ **9 came off by RECLASSIFICATION, not by moving a glyph** — adjudicated as genuine labels, and that half of the number is stated rather than folded in. // was 804: ⛔ 2026-08-30, +48: THE POPULATION GREW, NOT THE DEFECT — the third time this ratchet has had to be re-based upward for that reason, and the third time it was the BLESSING that was wrong rather than the product. §3 exempted "an UPPERCASE tracked microlabel", keyed on the DRESSING, so 48 sentences and labels-with-their-hint-welded-on were counted as labels while sitting 3-4px under §T4's reading floor. They are DG-A-14's population and they now count. // 2026-08-30: -5, the five section eyebrows that carried NO tracking at all and gained §T3's 0.14em with the rest (DG-A-11's tracking sweep). ⚠️ They fell out because a GLYPH moved — from `text-micro`'s own 0.4px to 1.4px — not because the blessing widened: `.eyebrow` was added to `isBlessedMicrolabel` in the same commit, and without it the sweep would have read as +291 on a ratchet that may only shrink. // 2026-08-29: -268 total, the ADMIN then PLAYER prose sweeps (DG-A-12); then -2 for `fee-simulator.tsx`'s two licence paragraphs, 10.5px prose lifted to `text-body-sm`. ⭐ THE FIRST TIME §3 MOVED IN THREE SWEEPS, and that is the point: §3 falls only when a GLYPH gets more legible, which is why it held flat at 763 through 376 renames that bought §4 alone.
+ 
+ /** §4 — every hand-typed size in the product: `text-[Npx]` plus inline literal
+  *  `style={{ fontSize: N }}`. Measured 2026-08-21: 1,839 + 38.
+@@ -237,7 +237,7 @@ const RATCHET_SUBFLOOR = 750; // +6, 2026-10-08 (red-on-main triage of 318b8881)
+ // outright, the market question onto `text-title-lg md:text-display-3` (§T2's named violation),
+ // `admin/resolver/[id]` onto `text-title-sm` while its `<h1>` became an `<h2>`, and five
+ // hand-retypings of the same 28px recipe.
+-const RATCHET_ARBITRARY_SIZE = 906; // -3, 2026-09-19 (C7 step 3's visual pass): the same three sites in `report-pack-card.tsx` — a sub-floor SENTENCE and a hand-typed SIZE are one call site counted by two rules, so fixing one lowers both. ⭐ This is what took §4 from 909-against-908 (a red inherited from `origin/main`, +1 NEW with no owner) to GREEN — the +1 was never found because nobody had rendered this card. // -6, 2026-09-13 (the visual pass: the new admin controls moved onto text-body-sm / text-micro / text-title-sm and the fixers converted hand-typed sizes they touched). // -1, 2026-09-09 (PLAYER QUERY stage 6 close): the /proposals summary sentence moved off text-[12px] onto text-body-sm, which is what took §3 back to its ratchet — a sub-floor SENTENCE and a hand-typed SIZE are the same call site counted by two rules, so fixing one lowers both. Lowered in the SAME commit, per this file own rule that a ratchet above the number the tree reaches is slack, not safety.   // -N, 2026-09-08 (PLAYER QUERY stage 4): re-derived from the run and locked in rather than left as slack — this file's own rule is that a ratchet above the number the tree reaches SILENTLY LICENSES ONE REGRESSION. §3 fell because two cap notices written this stage were caught as NEW offenders while being written (a sentence is reading copy, so text-caption/label are below the floor and do not count as a fix) and moved to text-body-sm; the other three were already below their ratchet before this stage touched them.   // -2, 2026-08-31, DG-A-12 (Ali sign-off): `ui/stat.tsx` named its two FREE rungs — `text-[14px]` -> `text-body` and `text-[18px]` -> `text-title-sm`, the same px, so no figure moved. The other five stay hand-typed on purpose: 15/17/24 are the --type-* ladder (T7) and 13.5/21 are off both, with 35 money call sites behind the 13.5 default.   // -4, 2026-08-31, DG-S-02: every hand-typed size in `ui/tabs.tsx` is gone — `text-[13px]` (line) and `text-[12.5px]` (segmented) onto `text-body-sm`, and the two `text-[11px]` count pips into the kit `<CountBadge>`. ⭐ The primitive that §K rule 7 (2026-08-31) sends every admin section rail to now spells no size by hand, which is the point of fixing it BEFORE an adopter: the two drifting variants had ZERO call sites, so the repaint cost nothing on the day and would have cost twelve consoles a week later. ⚠️ BUT THE RUNG SWAP IS NOT FREE ON THE ONE VARIANT THAT DOES SHIP, and an A/B bench in the real production fonts said so after the commit message had already claimed it was: `text-[13px]` sets a size and nothing else, while `text-body-sm` carries `letter-spacing: -0.05px` and `line-height: 18px` — so `/wallet`'s rail moved 92.44 → 92.03px on "Activity". A convergence (both shipped admin section rails already render `text-body-sm`), but a rendered one. ⛔ Moving a hand-typed size onto its ladder rung is never only a rename; check what else the rung carries.   // -10, 2026-08-30, session 82: DG-A-08's kit conversions delete a hand-typed size every time a hand-rolled control becomes a `<Button>`, and DG-P-03 moved six page h1s onto `text-title-lg`. # −1, 2026-08-30, DG-A-06, same chip. ⚠️ A ratchet left ABOVE the number the tree already reaches is SLACK, not safety — it silently licenses one regression, and this one was caught by a reviewer re-deriving all three rather than by the suite, which passes either way.
++const RATCHET_ARBITRARY_SIZE = 901; // -5, 2026-10-09 (the visual pass's round 3): the <Stat> hints' three text-[10px] (now text-body-sm) and the market page's local KPI fork with its text-[13px] / text-[18px] (now the kit's sm-plain and xl rungs). Only this change's own five are locked in; the run measures 877, and the rest belong to the lanes that removed them. // -3, 2026-09-19 (C7 step 3's visual pass): the same three sites in `report-pack-card.tsx` — a sub-floor SENTENCE and a hand-typed SIZE are one call site counted by two rules, so fixing one lowers both. ⭐ This is what took §4 from 909-against-908 (a red inherited from `origin/main`, +1 NEW with no owner) to GREEN — the +1 was never found because nobody had rendered this card. // -6, 2026-09-13 (the visual pass: the new admin controls moved onto text-body-sm / text-micro / text-title-sm and the fixers converted hand-typed sizes they touched). // -1, 2026-09-09 (PLAYER QUERY stage 6 close): the /proposals summary sentence moved off text-[12px] onto text-body-sm, which is what took §3 back to its ratchet — a sub-floor SENTENCE and a hand-typed SIZE are the same call site counted by two rules, so fixing one lowers both. Lowered in the SAME commit, per this file own rule that a ratchet above the number the tree reaches is slack, not safety.   // -N, 2026-09-08 (PLAYER QUERY stage 4): re-derived from the run and locked in rather than left as slack — this file's own rule is that a ratchet above the number the tree reaches SILENTLY LICENSES ONE REGRESSION. §3 fell because two cap notices written this stage were caught as NEW offenders while being written (a sentence is reading copy, so text-caption/label are below the floor and do not count as a fix) and moved to text-body-sm; the other three were already below their ratchet before this stage touched them.   // -2, 2026-08-31, DG-A-12 (Ali sign-off): `ui/stat.tsx` named its two FREE rungs — `text-[14px]` -> `text-body` and `text-[18px]` -> `text-title-sm`, the same px, so no figure moved. The other five stay hand-typed on purpose: 15/17/24 are the --type-* ladder (T7) and 13.5/21 are off both, with 35 money call sites behind the 13.5 default.   // -4, 2026-08-31, DG-S-02: every hand-typed size in `ui/tabs.tsx` is gone — `text-[13px]` (line) and `text-[12.5px]` (segmented) onto `text-body-sm`, and the two `text-[11px]` count pips into the kit `<CountBadge>`. ⭐ The primitive that §K rule 7 (2026-08-31) sends every admin section rail to now spells no size by hand, which is the point of fixing it BEFORE an adopter: the two drifting variants had ZERO call sites, so the repaint cost nothing on the day and would have cost twelve consoles a week later. ⚠️ BUT THE RUNG SWAP IS NOT FREE ON THE ONE VARIANT THAT DOES SHIP, and an A/B bench in the real production fonts said so after the commit message had already claimed it was: `text-[13px]` sets a size and nothing else, while `text-body-sm` carries `letter-spacing: -0.05px` and `line-height: 18px` — so `/wallet`'s rail moved 92.44 → 92.03px on "Activity". A convergence (both shipped admin section rails already render `text-body-sm`), but a rendered one. ⛔ Moving a hand-typed size onto its ladder rung is never only a rename; check what else the rung carries.   // -10, 2026-08-30, session 82: DG-A-08's kit conversions delete a hand-typed size every time a hand-rolled control becomes a `<Button>`, and DG-P-03 moved six page h1s onto `text-title-lg`. # −1, 2026-08-30, DG-A-06, same chip. ⚠️ A ratchet left ABOVE the number the tree already reaches is SLACK, not safety — it silently licenses one regression, and this one was caught by a reviewer re-deriving all three rather than by the suite, which passes either way.
+ /*  ⬇️ 38 → 37 on 2026-08-25. The wallet balance pill carried `fontSize: 12.5` inline — an
+  *  off-ladder literal AND invisible to every class-based gate. It now reads `text-caption`
+  *  below `sm` and `text-label` from there, both ON the closed ladder (§T1), which is also
+@@ -1163,6 +1163,27 @@ ratchet("§6 arbitrary tracking-[…]", arbTrack, RATCHET_ARBITRARY_TRACKING, "R
+     twLadder.get("micro") === "10", `text-micro = ${twLadder.get("micro")}px`);
+ }
+ 
++// ═══════════════════════════════════════════════════════════════════════════════
++// §8 — WHAT A <Stat> PRINTS UNDER AND OVER ITS FIGURE (2026-10-09, the visual pass's round 3)
++// ═══════════════════════════════════════════════════════════════════════════════
++// Tiles 195/196: the `lg`/`xl`/`2xl` rungs set their HINT at `text-[10px]`, and /agent's hints are sentences
++// ("kwa kila dau lililofungwa la wachezaji uliowaleta") — reading copy 10px from ascender to descender (§T4). Tiles
++// 217/218: in Chinese the LABEL kept §T3's sub-micro tier, blessed for UPPERCASE microlabels only, so 投注额 / 赔付 were
++// 9px ideographs. Every hint is now `text-body-sm`, and a Chinese label takes `--type-micro`, untracked.
++log("\n§8 — the <Stat>'s hint and its Chinese label (§T4 · §T3)");
++{
++  const stat = decomment(readFileSync(join(SRC, "components", "ui", "stat.tsx"), "utf8"));
++  const hints = [...stat.matchAll(/hint: "([^"]+)"/g)].map((m) => m[1]);
++  check("§8 every <Stat> rung sets its hint on the reading floor (text-body-sm) — a hint is a sentence wherever words are passed",
++    hints.length >= 8 && hints.every((h) => h === "text-body-sm"), `hints: ${[...new Set(hints)].join(", ")} (${hints.length})`);
++  const css = decommentCss(readFileSync(join(SRC, "app", "globals.css"), "utf8"));
++  check("§8 a Chinese <Stat> label leaves the sub-micro tier for --type-micro (11px) and drops its tracking, on the label's own hook",
++    css.includes(":lang(zh) .stat-label { font-size: var(--type-micro); letter-spacing: 0; }") && /--type-micro:\s*11px;/.test(css)
++      && /"stat-label",\s*"font-mono uppercase",/.test(stat));
++  check("§8 ⭐ CONTROL — the hint reader sees a sub-floor hint where one is written",
++    [...`xl: { hint: "text-[10px]" }`.matchAll(/hint: "([^"]+)"/g)].map((m) => m[1]).join() === "text-[10px]");
++}
++
+ // ─── Summary ──────────────────────────────────────────────────────────────────
+ const semantic = (() => {
+   let n = 0;
+diff --git a/scripts/updown-filter-sheet.test.mts b/scripts/updown-filter-sheet.test.mts
+index f1cf1b678..ca6cb6c29 100644
+--- a/scripts/updown-filter-sheet.test.mts
++++ b/scripts/updown-filter-sheet.test.mts
+@@ -337,5 +337,26 @@ const { dict } = await import("../src/lib/i18n-dict.ts");
+      `${semantics} pills · ${replaces} replace · ${noScroll} scroll={false}`);
+ }
+ 
++/**
++ * ⭐ 12 · THE BOARD'S HEAD — the pills stand beside the title, the tagline runs under both (2026-10-09, the visual
++ * pass's round 3, tile 200 at sw 390). The board set its whole PageHeader in a flex row with the rules and history
++ * pills, so the tagline was squeezed into what they left and broke "Je, bei itakuwa / juu au chini muda ukiisha?"
++ * (92px over 164px) in a 357px column one ~260px line fits. PageHeader's `actions` put the pills in the heading's own row.
++ */
++{
++  const header = decomment(readFileSync(join(ROOT, "src/components/ui/page-header.tsx"), "utf8"));
++  const OLD_SHAPE = /<div className="flex items-start justify-between gap-3">\s*<PageHeader[^>]*subtitle=/;
++  ok("12: ⭐ the board hands its pills to PageHeader as `actions`, beside its tagline",
++     /<PageHeader\s+eyebrow=\{t\.market\.udStreaming\}\s+title=\{t\.market\.udTitle\}\s+subtitle=\{t\.market\.udTagline\}\s+actions=\{/.test(page));
++  ok("12: ⛔ …and never again sets a subtitled PageHeader beside them in a flex row", !OLD_SHAPE.test(page));
++  const rowEnd = header.indexOf(") : head}");
++  const sub = header.indexOf("{subtitle}");
++  ok("12: PageHeader's actions row holds the eyebrow and the title only; the subtitle renders once, under the row",
++     header.includes("<div>{head}</div>") && rowEnd > 0 && sub > rowEnd && header.split("{subtitle}").length - 1 === 1,
++     `row ends @${rowEnd} · subtitle @${sub}`);
++  ok("12: ⭐ CONTROL — the shape as it shipped is still recognised",
++     OLD_SHAPE.test(`<div className="flex items-start justify-between gap-3">\n  <PageHeader eyebrow={a} title={b} subtitle={c} />`));
++}
++
+ console.log(`\nupdown-filter-sheet: ${pass} passed, ${fail} failed`);
+ if (fail > 0) process.exit(1);
+diff --git a/src/app/agent/page.tsx b/src/app/agent/page.tsx
+index ead4f4428..6b6b609bb 100644
+--- a/src/app/agent/page.tsx
++++ b/src/app/agent/page.tsx
+@@ -165,9 +165,12 @@ export default async function AgentProgrammePage({ searchParams }: { searchParam
+       {notice && <Callout tone={notice.tone} size="md">{notice.text}</Callout>}
+ 
+       {/* ⭐ THE THREE FACTS A PARTNER DECIDES ON, above the fold, from config. Gold + mono on the
+-          two money tiles only (§M3); the time tile is neutral. */}
++          two money tiles only (§M3); the time tile is neutral.
++          ⭐ ON THE PAGE'S CONTENT EDGE (2026-10-09, the visual pass's round 3, tiles 195 and 196): the `glass` box pads
++          14px and every section below it pads 20 (`p-4`), so these tiles' words stood at x147 over the sections' x153 at
++          1280 and x31 over x37 at 390. `p-4` here, so one column keeps one edge. */}
+       <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+-        <Stat size="xl" boxed="glass" labelStyle="strong" tone="gold"
++        <Stat size="xl" boxed="glass" labelStyle="strong" tone="gold" className="p-4"
+           label={t.agent.statEarn}
+           value={<span className="amount">{fill(t.agent.statEarnValue, { pct: String(cfg.defaultCommissionPct) })}</span>}
+           hint={t.agent.statEarnHint} icon={<I.percent s={14} />} iconAlign="end" />
+@@ -175,11 +178,11 @@ export default async function AgentProgrammePage({ searchParams }: { searchParam
+             unconditionally, so management's 2026-09-08 flip to EXCLUSIVE would have left the
+             public page stating the opposite of what the applicant is charged. The figure
+             above it is `fee.totalTzs` either way — what an applicant owes, never the net. */}
+-        <Stat size="xl" boxed="glass" labelStyle="strong" tone="gold"
++        <Stat size="xl" boxed="glass" labelStyle="strong" tone="gold" className="p-4"
+           label={t.agent.statCost}
+           value={<span className="amount">{formatTzs(fee.totalTzs)}</span>}
+           hint={vatHint} icon={<I.coins s={14} />} iconAlign="end" />
+-        <Stat size="xl" boxed="glass" labelStyle="strong"
++        <Stat size="xl" boxed="glass" labelStyle="strong" className="p-4"
+           label={t.agent.statTime}
+           value={fill(t.agent.statTimeValue, { days: String(cfg.reviewSlaDays) })}
+           hint={t.agent.statTimeHint} icon={<I.clock s={14} />} iconAlign="end" />
+diff --git a/src/app/fairness/page.tsx b/src/app/fairness/page.tsx
+index f35e86c94..b1c3b1b5f 100644
+--- a/src/app/fairness/page.tsx
++++ b/src/app/fairness/page.tsx
+@@ -188,8 +188,9 @@ export default async function FairnessPage({ searchParams }: { searchParams: Pro
+         </p>
+       </header>
+ 
+-      {/* How it works */}
+-      <section className="glass-panel p-5 space-y-4">
++      {/* How it works — on the hero's padding, `p-5 lg:p-6` (2026-10-09, the visual pass's round 3, tile 188): at 1280
++          its heading stood at x158 under the hero's words at x165 (24px against 32px). One column, one content edge. */}
++      <section className="glass-panel p-5 lg:p-6 space-y-4">
+         <div className="flex items-baseline justify-between flex-wrap gap-2">
+           <h2 className="font-display text-[20px] font-semibold text-text">{t.common.fairnessHowItWorks}</h2>
+           <span className="font-mono text-caption eyebrow uppercase text-text-subtle">FATF R.10 · POCA Cap 423 §16</span>
+diff --git a/src/app/globals.css b/src/app/globals.css
+index 93896224b..1e9cf44a0 100644
+--- a/src/app/globals.css
++++ b/src/app/globals.css
+@@ -1084,6 +1084,16 @@ body {
+ .mcardp-oneside,
+ .mcardp-pctcap { letter-spacing: 0.14em; }
+ 
++/* ⭐ A CHINESE STAT LABEL TAKES THE LADDER'S MICRO RUNG, UNTRACKED (2026-10-09, the visual pass's round 3, tiles 217
++   and 218: 投注额 / 赔付 on a ticket, drawn as 9px glyphs). `<Stat>`'s labels sit on §T3's sub-micro tier (9–10px,
++   tracked 0.10–0.14em), which the rule blesses for UPPERCASE mono microlabels ONLY: a Latin capital at 9px is a
++   6.5px letter of a few strokes. Chinese has no case, so the tier's premise does not hold — the same 9px is a full-em
++   ideograph of up to fifteen strokes, drawn by the device's fallback face (no CJK webfont, §T6). In Chinese the label
++   takes `--type-micro` (11px), the first rung above that tier on this file's ladder (§T7), and no tracking: tracking
++   spaces identifiers (§T3), and 0.1em between ideographs only loosens a word. Latin and Swahili labels are unchanged.
++   (0,2,0), so it outranks the label's own size and tracking utilities, which carry no responsive variant. */
++:lang(zh) .stat-label { font-size: var(--type-micro); letter-spacing: 0; }
++
+ /* ===========================================================================
+    Tipping rails + heraldic furniture
+    =========================================================================== */
+@@ -6543,8 +6553,27 @@ html[lang="zh"] .kp-udrule { word-break: keep-all; }
+ .kp-jhdr__pill { flex-shrink: 0; padding: 0 12px; }
+ .kp-jhdr__auth { flex-shrink: 0; padding-inline: 14px; font-size: var(--type-small); }
+ /* The bell's slot keeps the bell's 40px box while the bell itself waits for the width to be known, so the cluster
+-   does not move when it arrives (`one-poller.ts`). */
+-.kp-jhdr__bell { justify-content: center; min-width: var(--h-control-sm); }
++   does not move when it arrives (`one-poller.ts`).
++   ⭐ AND IT STANDS CENTRED BETWEEN ITS NEIGHBOURS (2026-10-09, the visual pass's round 3, tiles 038 and 162 at 1280,
++   048 at 1024). The avatar carries the classic bar's `sm:ml-1` (`avatar-menu.tsx`: the row's terminal control, set
++   4px apart), so the bell's ink sat 25px from the language box and 29px from the avatar's ring (1139 | 1165–1178 |
++   1208 at 1280; 883 | 909–922 | 952 at 1024). The slot takes the same 4px on its near side: 29 and 29, the bell's box
++   16px from each neighbour, and the room its count badge grows into (below). Only from 1024, where the slot is drawn;
++   below that the span is `hidden` and the 320 row's 10.7px of slack is untouched. */
++.kp-jhdr__bell { justify-content: center; min-width: var(--h-control-sm); margin-left: var(--sp-1); }
++/* ⭐ THE COUNT BADGE CLEARS THE BELL'S DOME (same tiles). The classic bell hangs its pip by its RIGHT edge, 3px down and
++   1px in (`notifications-panel.tsx`, inline), so a two-digit pip grew LEFT over the glyph: "25" filled x1169–1188,
++   y13–26 over a bell whose ink is x1165–1178, y21–36, and only the rim and clapper showed. In the journey the pip hangs
++   by its LEFT edge, 1px past the glyph's centre line (21px into the 40px button), and its top on the 44px controls'
++   top line (−2px, half of 44 − 40), so it grows right, into the slot's 4px and the 12px gap, and never back over the
++   dome. Computed from the bell's path (`glyphs.tsx`, a 5-unit dome at s=20) and the pip's box (18px, 2px ring): at
++   rest the ring clears the dome's stroke by 1px; at the `notif-badge-pulse` peak (1.25×, about its centre) the fill
++   still clears it, "99+" included, and only the background-coloured ring cuts the dome's shoulder — its job.
++   "99+" (30px) ends 5px short of the avatar's ring at rest and 1px short at the pulse's peak.
++   ⛔ `!important`, AND IT IS EARNED (the E-101c rule above `.ticket-target`): the classic position is an INLINE style,
++   which beats every selector without it, and that file is the classic bell every live player has, which S6 does not
++   touch (A1, `qa:bell-untouched`). The selector names the journey's slot, so the classic bar is served what it was. */
++.kp-jhdr__bell .count-badge { top: -2px !important; right: auto !important; left: 21px !important; }
+ @media (min-width: 360px) { .kp-jhdr__plus { display: inline-flex; } }
+ @media (min-width: 360px) { .kp-jhdr__pill { padding: 0 12px 0 10px; } }
+ @media (min-width: 640px) { .kp-jhdr__row { gap: var(--sp-5); } }
+@@ -6592,6 +6621,27 @@ html[lang="zh"] .kp-udrule { word-break: keep-all; }
+    and left "tickets" alone on line 2; balanced, it reads "Sign in to see / your tickets". A title that fits on one
+    line (sw "Ingia uone tiketi zako", 219px, tile 113; zh, tile 119; every language from 360) is unchanged. */
+ .kp-jsheet__title { margin: 0; padding-right: var(--sp-12); font-family: var(--font-display); font-weight: 700; font-size: var(--type-h3); line-height: 1.25; color: var(--text); text-wrap: balance; }
++/* ⭐ TIKETI ZANGU'S CARDS SHARE THEIR ROWS, NOT ONLY THEIR HEIGHT (2026-10-09, the visual pass's round 3, tile 168 at
++   1280). A pair already shares a height (the grid's stretch, `tickets-view.tsx`), but each card laid its own rows out,
++   so a two-line question beside a one-line one put DAU at y714 in the first card and y694 in its neighbour, and left
++   42px under the shorter card's last line against 22px under the taller one's. From 768, where the list is two
++   columns, each card's five rows (`ticket-card.tsx`: the chips, the question, the stake and payout, the details, the
++   Sell row) are the list's own row tracks (`subgrid`), so every row of a pair starts on one line and a shorter
++   question's room opens under it, not at the card's foot.
++   ⭐ THE MECHANICS. A subgrid's tracks ARE the list's, so a row gap on the list would open inside every card: the list
++   drops its row gap and each card from the second row on takes it back as a top margin (16px, the `gap-3` it was).
++   The card's border and padding ride on its first and last rows (the spec's "extra margin on the items at the edges"),
++   so the Sell row is always rendered, empty where nothing can be sold, and the bottom padding always has a row to sit on.
++   ⛔ `@supports` FENCES IT: a browser without subgrid (Chrome 111–116 sit inside the floor `color-mix()` already sets)
++   keeps today's layout exactly — the flex column, `grow` on the details, the list's gap. Below 768 one card is a row,
++   so nothing changes there either. */
++@supports (grid-template-rows: subgrid) {
++  @media (min-width: 768px) {
++    .kp-tickets { row-gap: 0; }
++    .kp-ticket { display: grid; grid-row: span 5; grid-template-rows: subgrid; }
++    .kp-ticket:nth-child(n + 3) { margin-top: var(--sp-4); }
++  }
++}
+ 
+ /* ── THE CENTRE COIN — UPDATE-2026-09-28 §2 ───────────────────────────────────────
+    The rail's middle slot is the wallet's door, and the coin is the 50pick mark AS a control: the
+diff --git a/src/app/help/page.tsx b/src/app/help/page.tsx
+index b56aab6b3..f8f9358e9 100644
+--- a/src/app/help/page.tsx
++++ b/src/app/help/page.tsx
+@@ -198,8 +198,12 @@ function ContactCard({
+     tone === "success" ? "border-success-border bg-success-bg text-success-fg"
+     : tone === "info"  ? "border-info-border bg-info-bg text-info-fg"
+     :                    "border-aqua-500/50 bg-aqua-500/10 text-aqua-300";
++  // ⭐ ONE COLUMN, ONE CONTENT EDGE (2026-10-09, the visual pass's round 3, tiles 189, 190, 205). The hero and the FAQ
++  // pad `p-5 lg:p-6` (24px, 32px from 1024), and these cards padded 20: their icon and number stood at x37 under the
++  // hero's words at x41 on a phone, and x153 against x165 at 1280. They take the column's padding, as the quick links
++  // below do.
+   const card = (
+-    <div className="rounded-xl glass-panel p-4 space-y-2 hover:border-brand-400 transition-colors h-full">
++    <div className="rounded-xl glass-panel p-5 lg:p-6 space-y-2 hover:border-brand-400 transition-colors h-full">
+       <div className="flex items-center gap-2">
+         <span className={`inline-flex h-7 w-7 items-center justify-center rounded-md border ${tintCls}`}>
+           {icon}
+@@ -230,9 +234,11 @@ function QuickLinkCard({
+     : tone === "info" ? "bg-info-bg text-info-fg"
+     :                   "bg-aqua-500/10 text-aqua-300";
+   return (
++    // The column's padding too (2026-10-09, tiles 189 and 190): 20px here put the glyph 4px (8px from 1024) inside the
++    // edge the hero, the contact cards and the FAQ above it share.
+     <Link
+       href={href as never}
+-      className="flex items-center gap-3 rounded-xl glass-panel p-4 hover:border-brand-400 transition-colors"
++      className="flex items-center gap-3 rounded-xl glass-panel p-5 lg:p-6 hover:border-brand-400 transition-colors"
+     >
+       {/* ⚠️ LITERALS, not `h-9 w-9` — spacing is overridden (tailwind.config.ts:200-215), so
+           `h-9` was 64px: 24px larger than the 40px badge on this very same page. */}
+diff --git a/src/app/markets/[id]/page.tsx b/src/app/markets/[id]/page.tsx
+index b6418b82b..f3acd77e2 100644
+--- a/src/app/markets/[id]/page.tsx
++++ b/src/app/markets/[id]/page.tsx
+@@ -484,18 +484,8 @@ export default async function MarketDetail({
+       {/* ── Back link ── */}
+       <BackLink fallbackHref="/markets" label={t.common.markets} />
+ 
+-      {/* ── Page header — title, badges, share ──
+-          A7: faint 96px category-glyph watermark behind the question (isolate
+-          keeps the -z-10 mark above the header bg but below the content). */}
+-      <header className="relative isolate mt-3 mb-5">
+-        {(() => {
+-          const Cat = I[categoryGlyph(m.category)];
+-          return (
+-            <span aria-hidden className="pointer-events-none absolute right-1 bottom-0 -z-10 text-text opacity-[0.07]">
+-              <Cat s={96} />
+-            </span>
+-          );
+-        })()}
++      {/* ── Page header — title, badges, share ── */}
++      <header className="mt-3 mb-5">
+         <div className="mb-3 flex flex-wrap items-center gap-2">
+           <Chip variant="cat" size="lg">{marketCategoryLabel(t, m.category)}</Chip>
+           {/* C1a hero state — LIVE only while actually accepting predictions
+@@ -531,17 +521,25 @@ export default async function MarketDetail({
+               is convicted and the prose link is not; the open question about inline links is
+               recorded in the register for Ali rather than decided here.
+               ⚠️ `-my-` absorbs the growth so the header row does not move. */}
+-          <a
+-            href={m.sourceUrl}
+-            target="_blank"
+-            rel="noopener noreferrer"
+-            className="inline-flex items-center gap-1 ml-auto min-h-[var(--tap-min)] -my-[11px] py-[11px] text-[12px] font-mono text-text-muted hover:text-text"
+-          >
+-            {t.common.source}
+-            <I.ext s={12} />
+-          </a>
+-          <WatchStar marketId={m.id} initial={watching} signedIn={!!session} />
+-          <ShareButton marketId={m.id} title={m.titleEn} refCode={myRefCode} />
++          {/* ⭐ THE THREE ACTIONS ARE ONE GROUP, AND THE GROUP WRAPS WHOLE (2026-10-09, the visual pass's round 3, tiles
++              161 and 199 at 390). Each used to be its own item in this wrapping row, with `ml-auto` on the source link
++              alone, so at 390 the row broke between them: "Chanzo" stayed up with the chips and the star and SHIRIKI
++              opened line 2 at the left — the star's glyph, with no visible box of its own, floating at x29–42 against
++              the chips' edge at 16 and SHIRIKI's at 68. Grouped, they share the right edge on whichever line they land:
++              beside the chips at 1280 exactly as before, and together under them on a phone. */}
++          <div className="ml-auto flex items-center gap-2">
++            <a
++              href={m.sourceUrl}
++              target="_blank"
++              rel="noopener noreferrer"
++              className="inline-flex items-center gap-1 min-h-[var(--tap-min)] -my-[11px] py-[11px] text-[12px] font-mono text-text-muted hover:text-text"
++            >
++              {t.common.source}
++              <I.ext s={12} />
++            </a>
++            <WatchStar marketId={m.id} initial={watching} signedIn={!!session} />
++            <ShareButton marketId={m.id} title={m.titleEn} refCode={myRefCode} />
++          </div>
+         </div>
+         {/* C1a — slim gilt hairline framing the question ("seal of the real") */}
+         <div aria-hidden className="gilt-hairline mb-3" />
+@@ -559,7 +557,26 @@ export default async function MarketDetail({
+             `text-title-md md:text-title-lg` (22/28) — that demotes the market question below
+             every other page title, which is the opposite of what this page is for.
+             2026-09-13 — balanced wrapping: sw titles left one word alone on line two. */}
+-        <h1 className="font-display text-title-lg md:text-display-3 font-bold leading-tight tracking-[-0.02em] text-text text-balance">{pickLocalized(locale, m.titleEn, m.titleSw, m.titleZh)}</h1>
++        {/* A7 — the faint category glyph is a watermark BEHIND THE QUESTION, so it is drawn on the question's own box:
++            centred on it, two of its ems tall (56px under its 28px rung, 72px under 36), `isolate` keeping the -z-10
++            mark above the page and under the words.
++            ⭐ 2026-10-09 (the visual pass's round 3, tiles 161, 162, 199): it hung from the whole header's bottom-right
++            at 96px, taller than the question, so it climbed into the row above — the gilt hairline ran through the
++            weather cloud (y356 through its arc at y353–360 at 390; y273 across it at 1280) and the cloud's top sat
++            under SHIRIKI (y217–256). On the question's box, computed from the glyph paths (the 1.9 stroke included) for
++            a one-line question, the tightest case: the hairline keeps ≥5px of air (forex, whose arrows reach y0.85 of
++            24, at 72px; the weather cloud 6.5px) and the band below ≥13px. A longer question only adds room. */}
++        <div className="relative isolate">
++          {(() => {
++            const Cat = I[categoryGlyph(m.category)];
++            return (
++              <span aria-hidden className="pointer-events-none absolute right-1 top-1/2 -z-10 flex -translate-y-1/2 text-text opacity-[0.07] text-title-lg md:text-display-3">
++                <Cat s={56} className="h-[2em] w-[2em]" />
++              </span>
++            );
++          })()}
++          <h1 className="font-display text-title-lg md:text-display-3 font-bold leading-tight tracking-[-0.02em] text-text text-balance">{pickLocalized(locale, m.titleEn, m.titleSw, m.titleZh)}</h1>
++        </div>
+       </header>
+ 
+       {/* ── Main two-column layout ──
+@@ -603,8 +620,14 @@ export default async function MarketDetail({
+             2026-09-13 — offset 72px = the 56px sticky header (an inline height in top-app-bar.tsx;
+             no token exists) + 16px air. The old spacing key resolved to 32px on this scale, so
+             the stuck card slid under the header. loading.tsx mirrors it. */}
++        {/* ⭐ A FLEX COLUMN WITH A GAP, NOT `space-y-3` (2026-10-09, the visual pass's round 3, tile 162 at 1280, and
++            161 at 390). The signed-in branch opens on the D40 heading, which is `sr-only` — out of flow, taking no room
++            — and `space-y-*` counts siblings in DOM order, so the first card a player SEES still took the 16px rung
++            the heading "held" (DESIGN_AUTHORITY §S1's trap): the bet column began at y370 beside the probability bar's
++            y354, and 16px further from the question on a phone. `gap` spaces in-flow items only, and an absolutely
++            positioned child is not one, so the heading stays first in the region (D40) and costs nothing. */}
+         <div className="order-1 lg:order-2 lg:col-start-2 lg:row-start-1 lg:self-stretch">
+-        <aside className="space-y-3 lg:sticky lg:top-[72px] lg:z-10" aria-labelledby={BET_PANEL_HEADING}>
++        <aside className="flex flex-col gap-3 lg:sticky lg:top-[72px] lg:z-10" aria-labelledby={BET_PANEL_HEADING}>
+           {bettingOpen ? (
+             session ? (
+               <>
+@@ -802,14 +825,20 @@ export default async function MarketDetail({
+             {/* "TZS 0" is factually true, but on a fresh market it reads as
+                 failure rather than as an opening. Same words the card uses, so
+                 the two surfaces say the same thing about the same state. */}
+-            {/* ⭐ STAGE 9b — the first two are the kit <Stat>: `card` box (rounded-md,
+-                border, bg-elevated, p-3), `widest` label (10px semibold 0.14em) and the
+-                `xl` rung (18px, mt-1, leading-tight). A pixel-for-pixel mapping.
+-                ⚠️ The THIRD is still the local `KPI` and that is deliberate — see the
+-                note on the function below. */}
+-            <Stat size="xl" labelStyle="widest" boxed="card" label={t.market.volume}     value={freshMarket ? t.market.noPoolYet : formatTzsCompact(m.yesPool + m.noPool)} icon={<I.chart s={14} />} />
+-            <Stat size="xl" labelStyle="widest" boxed="card" label={t.market.predictors} value={String(m.predictorCount)}     icon={<I.users s={14} />} />
+-            <KPI label={t.market.resolves}   value={formatEatDateTime(Date.parse(m.resolutionAt), Date.now(), t.common.monthsShort, locale)} mono className="col-span-2 sm:col-span-1" />
++            {/* ⭐ STAGE 9b — the kit <Stat>: `card` box (rounded-md, border, bg-elevated, p-3), `widest` label (10px
++                semibold 0.14em) and the `xl` rung (18px, mt-1, leading-tight).
++                ⭐ 2026-10-09 (the visual pass's round 3, tile 162): ALL THREE ARE THE KIT'S NOW, AND EVERY FIGURE IS MONO.
++                The pool figure "TZS 5K" was set in the display face (§M4: money is `.amount`, mono and untracked) and the
++                predictor count beside it too (§T5: every numeral is mono); the close time was the last tile on the
++                local `KPI` fork, with no glyph where its neighbours carry one and a 14px label row against their 15px,
++                so its value stood 2px above theirs (y468 against y470). It is the `sm-plain` rung that fork's own note
++                asked for (13px mono, regular, its rung's own 18px line), which puts its figures' tops within half a pixel
++                of the 18px ones: a timestamp stays quieter than the two figures, on their line. It keeps 13px because
++                18px does not fit its column: the Chinese date carries its year ("2026年10月9日 00:53", ~194px at 18px)
++                in a 145–163px tile from 1024. "No pool yet" is words, so it keeps the display face. */}
++            <Stat size="xl" labelStyle="widest" boxed="card" label={t.market.volume} font={freshMarket ? undefined : "mono"} value={freshMarket ? t.market.noPoolYet : <span className="amount">{formatTzsCompact(m.yesPool + m.noPool)}</span>} icon={<I.chart s={14} />} />
++            <Stat size="xl" labelStyle="widest" boxed="card" label={t.market.predictors} font="mono" value={String(m.predictorCount)} icon={<I.users s={14} />} />
++            <Stat size="sm-plain" labelStyle="widest" boxed="card" label={t.market.resolves} value={formatEatDateTime(Date.parse(m.resolutionAt), Date.now(), t.common.monthsShort, locale)} icon={<I.calendarClock s={14} />} className="col-span-2 sm:col-span-1" />
+           </div>
+ 
+           {/* 2b. Resolution panel — outcome, attestation, pool + fee (resolved only) */}
+@@ -901,8 +930,12 @@ export default async function MarketDetail({
+                       </div>
+                     )}
+                     <div className="flex flex-wrap items-center gap-x-3 gap-y-0.5">
+-                      <p className="font-mono text-[10px] tracking-[0.06em] text-text-muted tabular-nums">
+-                        <I.ticket s={10} className="inline -mt-px mr-0.5 opacity-60" />
++                      {/* The ticket glyph stands off its number by the clock line's own 4px (`gap-1`), in the same flex
++                          shape: it sat inline with a 2px margin, so its ink came 2px from "pos_…" while the clock's came
++                          5px from its words (2026-10-09, the visual pass's round 3, tile 162: x174–183 → 186 against
++                          x361–369 → 375). The id may break (E-100). */}
++                      <p className="flex min-w-0 items-center gap-1 break-all font-mono text-[10px] tracking-[0.06em] text-text-muted tabular-nums">
++                        <I.ticket s={10} className="shrink-0 opacity-60" />
+                         {p.id}
+                       </p>
+                       <p className="flex items-center gap-1 font-mono text-[10px] tracking-[0.04em] text-text-faint tabular-nums">
+@@ -1119,29 +1152,5 @@ function similarTimeLeft(iso: string, t: Awaited<ReturnType<typeof getServerT>>[
+   }, fill);
+ }
+ 
+-/**
+- * ⚠️ STAGE 9b — THIS FORK IS DOWN TO ONE CONSUMER AND IS NOT DELETED YET.
+- *
+- * Its `mono` branch is the reason. That branch paints the resolution time at **13px,
+- * weight 400**, and `ui/stat` has neither: its nearest rung is `xs` at 13.5px, and it
+- * applies `font-bold` to every value unconditionally. Migrating this call site would
+- * make the timestamp half a pixel larger AND bold — a visible restyle of a live
+- * surface, which is not what a consolidation is allowed to buy.
+- *
+- * ⛔ So the `!mono` branch is now dead code kept ONLY as the record of what the two
+- * migrated tiles above render; do not add a third caller. The fix is one of:
+- *   (a) a `sm-plain` rung in `ui/stat.tsx` (13px mono, weight 400), or
+- *   (b) an owner decision to accept 13.5/bold — at which point this function goes.
+- * Either way it is a change to a file this pass does not own.
+- */
+-function KPI({ label, value, icon, mono, className }: { label: string; value: string; icon?: React.ReactNode; mono?: boolean; className?: string }) {
+-  return (
+-    <div className={`rounded-md border border-border bg-bg-elevated p-3 ${className ?? ""}`}>
+-      <div className="flex items-center gap-1.5 text-text-subtle">
+-        {icon}
+-        <p className="font-mono text-micro uppercase eyebrow font-semibold">{label}</p>
+-      </div>
+-      <p className={`mt-1 ${mono ? "font-mono text-[13px]" : "font-display text-[18px] font-bold"} tabular-nums text-text leading-tight`}>{value}</p>
+-    </div>
+-  );
+-}
++/* The local `KPI` fork that stood here is gone (2026-10-09): its last tile, the close time, is the kit <Stat>'s
++   `sm-plain` rung — option (a) of the fork's own note — so the strip is one component again. */
+diff --git a/src/app/profile/invite/invite-client.tsx b/src/app/profile/invite/invite-client.tsx
+index afeb97e08..b09091f62 100644
+--- a/src/app/profile/invite/invite-client.tsx
++++ b/src/app/profile/invite/invite-client.tsx
+@@ -67,7 +67,14 @@ function LinkField({ value, label }: { value: string; label: string }) {
+       // ⛔ `break-all`, not the default word wrap. A URL has no spaces, so without it the
+       // browser keeps the whole thing on one line and the textarea scrolls instead of
+       // wrapping — the same defect in a taller box.
+-      className="field-measure w-full resize-none overflow-hidden rounded-lg border border-border bg-bg-inset px-3 py-2 font-mono text-body-sm font-medium leading-[1.5] text-text break-all brand-focus hover:border-border-strong transition-colors"
++      // ⭐ ONE LINE IS THE COPY BUTTON'S HEIGHT, AND NOTHING HANGS UNDER IT (2026-10-09, the visual pass's round 3,
++      // tile 182 at 1280): the field measured y702–747 (46px) beside "Nakili" at y706–749 (44px) — tops 4px apart,
++      // bottoms 2px, text centres 725.5 against 728. Two causes: `leading-[1.5]` made one line 19.5px, so the
++      // self-sized box was 19.5 + 2×12 + 2 = 45.5px; and a textarea is INLINE-BLOCK, so its wrapper's line box added
++      // the strut's descent under it and the row centred the button on that taller box. `block` drops the strut, and
++      // `text-body-sm`'s own 18px line makes one line 18 + 24 + 2 = 44px, the `btn-md` control height: one top, one
++      // bottom, one centre. A wrapped link still grows the field a line at a time (the fit below).
++      className="field-measure block w-full resize-none overflow-hidden rounded-lg border border-border bg-bg-inset px-3 py-2 font-mono text-body-sm font-medium text-text break-all brand-focus hover:border-border-strong transition-colors"
+     />
+   );
+ }
+diff --git a/src/app/profile/kyc/page.tsx b/src/app/profile/kyc/page.tsx
+index 35aedca73..256638bf3 100644
+--- a/src/app/profile/kyc/page.tsx
++++ b/src/app/profile/kyc/page.tsx
+@@ -10,7 +10,7 @@ import { db } from "@/lib/server/store";
+ import { getKycStatus, startKyc } from "@/lib/server/kyc-service";
+ import { DateSelect } from "@/components/ui/date-select";
+ import { Input, Field as KitField } from "@/components/ui/input";
+-import { FilterPill, FilterGroupKey } from "@/components/ui/filter-pill";
++import { FilterPill } from "@/components/ui/filter-pill";
+ import { SubmitButton } from "@/components/ui/submit-button";
+ import { submitIdentityAction, submitKycForReviewAction, restartKycAction } from "./actions";
+ import { isFinalRefusal } from "@/lib/kyc-refusal";
+@@ -389,10 +389,13 @@ export default async function KycPage({ searchParams }: { searchParams?: Promise
+             <div>
+               <FieldLegend as="p" className="block mb-1.5">{t.profile.chooseIdType}</FieldLegend>
+               <p className="mb-2.5 text-body-sm text-text-muted leading-snug">{t.profile.chooseIdTypeBody}</p>
++              {/* ⛔ NO GROUP KEY OVER THESE PILLS (2026-10-09, the visual pass's round 3, tiles 332 and 333). A
++                  `FilterGroupKey` reading "What to attach" / "Vya kuambatanisha" sat between the line above and the
++                  pills (y682–689 at 1280): a SECOND label for a group the legend already names ("Choose your ID
++                  document"), which the group's `aria-label` repeats, and a wrong one — these pills choose which
++                  document you hold; nothing is attached here (that is step 2). A key names a filter's axis; this rail is
++                  a form's chooser (`filter-language.test.mts` files it as a non-filter). The legend and its line say it. */}
+               <div className="flex flex-wrap items-center gap-1.5" role="group" aria-label={t.profile.chooseIdType}>
+-                {/* Own line at EVERY width (2026-09-13): inline at 1280 the key took the first
+-                    row with three chips and wrapped the fourth under itself. */}
+-                <FilterGroupKey className="basis-full">{t.profile.idDocsNeeded}</FilterGroupKey>
+                 {ID_DOC_TYPES.map((ty) => (
+                   <FilterPill
+                     key={ty}
+diff --git a/src/app/updown/page.tsx b/src/app/updown/page.tsx
+index 23f660bbb..c39b6317b 100644
+--- a/src/app/updown/page.tsx
++++ b/src/app/updown/page.tsx
+@@ -96,12 +96,19 @@ export default async function UpDownPage({
+       {/* Rounds turn over in minutes, so the board refreshes itself. */}
+       <RefreshPoller intervalMs={20_000} />
+ 
+-      <div className="flex items-start justify-between gap-3">
+-        <PageHeader eyebrow={t.market.udStreaming} title={t.market.udTitle} subtitle={t.market.udTagline} />
+-        {/* ⭐ THE RULES DOOR — this product had none. It takes the SAME pill recipe as the
++      {/* ⭐ THE PILLS STAND BESIDE THE TITLE, AND THE TAGLINE RUNS UNDER BOTH (2026-10-09, the visual pass's round 3,
++          tile 200 at sw 390). This page used to set the whole PageHeader in a flex row with the pills, so the tagline
++          was squeezed into what they left and broke in two ("Je, bei itakuwa / juu au chini muda ukiisha?", 92px over
++          164px) in a 357px column one ~260px line fits. `actions` puts them in the heading's own row. */}
++      <PageHeader
++        eyebrow={t.market.udStreaming}
++        title={t.market.udTitle}
++        subtitle={t.market.udTagline}
++        actions={
++        /* ⭐ THE RULES DOOR — this product had none. It takes the SAME pill recipe as the
+             history link beside it rather than a second idiom, so the header stays one row of
+             equals. The label collapses to the glyph under `sm`, exactly as its neighbour does,
+-            which is what keeps two pills off the title at 360. */}
++            which is what keeps two pills off the title at 360. */
+         <div className="mt-1 flex shrink-0 items-center gap-2">
+           <Link
+             href="/legal/rules/up-down"
+@@ -126,7 +133,8 @@ export default async function UpDownPage({
+             <I.chevronRight s={11} />
+           </Link>
+         </div>
+-      </div>
++        }
++      />
+ 
+       {/* ── Price tape — real readings only; an asset with no confirmed price
+              shows an em-dash rather than a plausible-looking zero. ─────────── */}
+diff --git a/src/components/journey/tickets/ticket-card.tsx b/src/components/journey/tickets/ticket-card.tsx
+index ddc63f4e9..76e0b6bcb 100644
+--- a/src/components/journey/tickets/ticket-card.tsx
++++ b/src/components/journey/tickets/ticket-card.tsx
+@@ -91,6 +91,8 @@ export function TicketCard({ p, m, price, t, locale, serverNow }: {
+   const liveValue = price?.value ?? null;
+   // Selling is shut once selection has closed or the exit window has passed: the classic page's own rule.
+   const sellShut = closed || price?.sellable === false;
++  // The Sell row draws for an open ticket the page priced, or one whose selling has shut (it then says so).
++  const sellRow = open && (liveValue !== null || sellShut);
+   // The free window's end, the server's own instant (A8), bound once: the button counts down to it, and its clock time,
+   // read here on the server, is the time the journey's line names.
+   const freeUntil = freeExitEndsAt({ placedAt: p.placedAt }, m);
+@@ -99,7 +101,7 @@ export function TicketCard({ p, m, price, t, locale, serverNow }: {
+     <article
+       id={p.id}
+       data-row-id={p.id}
+-      className="ticket-target scroll-mt-[96px] flex flex-col rounded-xl border border-border bg-bg-elevated p-4"
++      className="kp-ticket ticket-target scroll-mt-[96px] flex flex-col rounded-xl border border-border bg-bg-elevated p-4"
+     >
+       <div className="flex flex-wrap items-center justify-between gap-2">
+         <Chip size="sm" variant={p.side === "YES" ? "yes" : "no"}>{sideWord(t, p.side, "MARKET")}</Chip>
+@@ -120,7 +122,8 @@ export function TicketCard({ p, m, price, t, locale, serverNow }: {
+         )}
+       </div>
+       {/* `grow`: in a row of cards that share a height, the shorter card's spare room opens here, so its Sell row sits
+-          on the card's floor, level with its neighbour's (2026-10-08, tiles 213, 222, 225, 228, 168). */}
++          on the card's floor, level with its neighbour's (2026-10-08, tiles 213, 222, 225, 228, 168). From 768, in a
++          browser with subgrid, the rows themselves are shared (`.kp-ticket`) and this is the fallback's rule. */}
+       <div className="mt-3 grow space-y-1 text-body-sm text-text-muted">
+         <p className="flex items-center gap-1.5 break-all font-mono"><I.ticket s={14} className="shrink-0" />{p.id}</p>
+         <p className="flex items-center gap-1.5">
+@@ -138,8 +141,12 @@ export function TicketCard({ p, m, price, t, locale, serverNow }: {
+           </p>
+         )}
+       </div>
+-      {open && (liveValue !== null || sellShut) && (
+-        <div className="mt-3 border-t border-border/60 pt-3">
++      {/* ⭐ THE FIFTH ROW IS ALWAYS THERE, EMPTY WHEN NOTHING CAN BE SOLD (2026-10-09, tile 168). From 768 the card's rows
++          are the list's own tracks (`.kp-ticket`, subgrid), and the card's bottom padding rides on its last row: a
++          settled ticket with no row there would leave that padding nothing to sit on. Empty, it is a 0px box with no
++          margin, so a phone and a browser without subgrid draw exactly what they did. */}
++      <div className={sellRow ? "mt-3 border-t border-border/60 pt-3" : undefined}>
++        {sellRow && (
+           <SellButton
+             positionId={p.id}
+             stake={p.stake}
+@@ -152,8 +159,8 @@ export function TicketCard({ p, m, price, t, locale, serverNow }: {
+             look="journey"
+             freeUntilLabel={freeUntil ? formatClock(freeUntil) : null}
+           />
+-        </div>
+-      )}
++        )}
++      </div>
+     </article>
+   );
+ }
+diff --git a/src/components/journey/tickets/tickets-view.tsx b/src/components/journey/tickets/tickets-view.tsx
+index f395ef579..2af3d6d7c 100644
+--- a/src/components/journey/tickets/tickets-view.tsx
++++ b/src/components/journey/tickets/tickets-view.tsx
+@@ -114,8 +114,10 @@ export function TicketsView({ rows, positions, markets, prices, lens, page, serv
+           {/* The cards of a row share its height (the grid's own stretch; 2026-10-08, tiles 213, 222, 225, 228, 168).
+               `items-start` let each card stop at its content, so a row with a two-line question beside a one-line one
+               ended ragged: measured at 1280, 16px under the taller card and 36px under the shorter, against the 16px gap
+-              everywhere else. The card is a flex column whose detail lines grow, so the spare room sits above the Sell row. */}
+-          <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
++              everywhere else. The card is a flex column whose detail lines grow, so the spare room sits above the Sell row.
++              ⭐ From 768 the pair also shares its ROWS (`.kp-tickets` / `.kp-ticket` in globals.css, subgrid, 2026-10-09,
++              tile 168): a two-line question no longer puts its card's stake row 20px below its neighbour's. */}
++          <div className="kp-tickets grid grid-cols-1 gap-3 md:grid-cols-2">
+             {paged.map((row) => {
+               const p = positions.get(row.id);
+               const m = markets.get(row.marketId);
+diff --git a/src/components/markets/position-card.tsx b/src/components/markets/position-card.tsx
+index 86360449a..7271c90b7 100644
+--- a/src/components/markets/position-card.tsx
++++ b/src/components/markets/position-card.tsx
+@@ -136,9 +136,11 @@ export function PositionCard({ marketId, marketTitle, side, productLine, stake,
+         <div className="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-0.5">
+           {/* E-100 · the same rule as the wallet's TICKET box: an identifier must be able to
+               break, or a narrow card clips the end off the one string support asks for. */}
++          {/* The glyph stands off the number by the clock line's 4px, in the clock line's flex shape (2026-10-09, the
++              visual pass's round 3 — the question page's twin of this row measured 2px against the clock's 5px). */}
+           {positionId && (
+-            <p className="min-w-0 font-mono text-[10px] tracking-[0.06em] text-text-muted break-all">
+-              <I.ticket s={10} className="inline -mt-px mr-0.5 opacity-60" />
++            <p className="flex min-w-0 items-center gap-1 font-mono text-[10px] tracking-[0.06em] text-text-muted break-all">
++              <I.ticket s={10} className="shrink-0 opacity-60" />
+               {positionId}
+             </p>
+           )}
+diff --git a/src/components/ui/back-link.tsx b/src/components/ui/back-link.tsx
+index de329e75b..2e474c425 100644
+--- a/src/components/ui/back-link.tsx
++++ b/src/components/ui/back-link.tsx
+@@ -56,7 +56,12 @@ export function BackLink({
+       }}
+       className="min-h-[44px] inline-flex items-center gap-1.5 text-label font-mono uppercase tracking-[0.16em] text-text-subtle hover:text-text transition-all hover:-translate-x-0.5 group"
+     >
+-      <I.chevronLeft s={11} />
++      {/* ⭐ THE CHEVRON'S TIP SITS ON THE COLUMN'S EDGE (2026-10-09, the visual pass's round 3, tiles 332/333 and
++          067–069): the glyph draws its point at x9 of its 24-unit box, stroke 1.9, so at 11px its ink began 3.7px in
++          and "‹ WASIFU" / "‹ POCHI" stood 3px inside the card edge under it (x19 against 16 at 390, x355 against 352 at
++          1280). The 3px margin hands back that side bearing — the mark and its word move together, so their own
++          spacing is unchanged and the button's box still starts on the edge. */}
++      <I.chevronLeft s={11} className="-ml-[3px]" />
+       {label}
+     </button>
+   );
+diff --git a/src/components/ui/page-header.tsx b/src/components/ui/page-header.tsx
+index a5a287bd0..af4a86c35 100644
+--- a/src/components/ui/page-header.tsx
++++ b/src/components/ui/page-header.tsx
+@@ -26,6 +26,7 @@ export function PageHeader({
+   icon,
+   tone = "subtle",
+   className,
++  actions,
+ }: {
+   /**
+    * The small line over the heading, with `icon` inside it. ⭐ Optional since the Vodacom plan S6 (WP9): Tiketi zangu's
+@@ -39,9 +40,18 @@ export function PageHeader({
+   icon?: ReactNode;
+   tone?: Tone;
+   className?: string;
++  /**
++   * Controls that stand beside the eyebrow and the title (a page's own doors — Up & Down's rules and history pills).
++   * ⭐ BESIDE THE HEADING, NOT BESIDE THE WHOLE HEADER (2026-10-09, the visual pass's round 3, tile 200 at sw 390). The
++   * Up & Down page used to put this whole component in a flex row with its pills, so the tagline under the title was
++   * squeezed into what the pills left (~220px of a 357px column) and broke "Je, bei itakuwa / juu au chini muda
++   * ukiisha?" (92px over 164px) where one ~260px line fits. Here the row holds the eyebrow and the title, and the
++   * subtitle runs the column's full width under it. Without `actions` the markup is exactly what it was.
++   */
++  actions?: ReactNode;
+ }) {
+-  return (
+-    <div className={className}>
++  const head = (
++    <>
+       {eyebrow != null && (
+         <p
+           className={`flex items-center gap-2 mb-1 font-mono text-caption uppercase eyebrow font-bold ${EYEBROW_TONE[tone]}`}
+@@ -62,6 +72,16 @@ export function PageHeader({
+       <h1 className="font-display text-title-lg font-bold text-text leading-tight tracking-[-0.02em] text-balance">
+         {title}
+       </h1>
++    </>
++  );
++  return (
++    <div className={className}>
++      {actions != null ? (
++        <div className="flex items-start justify-between gap-3">
++          <div>{head}</div>
++          {actions}
++        </div>
++      ) : head}
+       {subtitle != null && (
+         <p className="mt-1 text-[13px] italic text-text-subtle text-balance">{subtitle}</p>
+       )}
+diff --git a/src/components/ui/stat.tsx b/src/components/ui/stat.tsx
+index 36ebf2805..630507115 100644
+--- a/src/components/ui/stat.tsx
++++ b/src/components/ui/stat.tsx
+@@ -62,7 +62,7 @@ const TONE: Record<StatTone, string> = {
+  * `face` is the DEFAULT face for the rung; `money` overrides it to mono (M4).
+  * `gap` is the space between label and value — part of the rung because the
+  * dialects that grew a bigger value also grew the gap under the label. */
+-export type StatSize = "xs" | "sm" | "md" | "lg" | "xl" | "2xl" | "3xl";
++export type StatSize = "xs" | "sm" | "sm-plain" | "md" | "lg" | "xl" | "2xl" | "3xl";
+ 
+ /**
+  * ⭐ DG-A-12/DG-P-05, RULED 2026-08-31 (Ali's call). Two of these seven rungs are now NAMED and
+@@ -80,14 +80,30 @@ export type StatSize = "xs" | "sm" | "md" | "lg" | "xl" | "2xl" | "3xl";
+  * ⚠️ A rung is a TUPLE — it also sets letter-spacing and line-height. `lead` overrides the
+  * line-height below, and `money` forces `letterSpacing: normal` (§M4), so the two renames above
+  * are inert on money figures and cost -0.05px/-0.36px of tracking on non-money ones.
++ *
++ * ⭐ `sm-plain` (2026-10-09, the visual pass's round 3, tile 162) is the rung the market page's
++ * local `KPI` fork asked for in its own note: 13px mono at REGULAR weight, for a timestamp that
++ * sits in a row of `xl` figures and must stay quieter than them. It keeps `text-body-sm`'s own
++ * 18px line (no `lead`), and that is the alignment: under the same `mt-1`, a 13px figure on an
++ * 18px line puts its cap tops within half a pixel of an 18px figure's on its 22.5px
++ * `leading-tight` line (JetBrains Mono: ascent 1.02, descent 0.30, cap 0.73 of the em), so the
++ * row's values read as one line. Every other rung is bold (`weight` absent).
++ *
++ * ⭐ AND EVERY HINT IS ON THE READING FLOOR (2026-10-09, tiles 195 and 196). `lg`, `xl` and `2xl`
++ * set their hint at `text-[10px]`, and a hint is a SENTENCE wherever a caller passes words
++ * ("kwa kila dau lililofungwa la wachezaji uliowaleta", "hukaguliwa na afisa wa uzingatiaji" on
++ * /agent — 10px from ascender to descender). §T4: reading copy is never below 12.5px, and a
++ * sentence takes `text-body-sm`, which every other rung's hint already used. The agent
++ * dashboard's `xl` "TZS" hint now matches its `3xl` neighbours' too.
+  */
+-const SIZE: Record<StatSize, { text: string; face: "mono" | "display"; lead: string; gap: string; hint: string }> = {
++const SIZE: Record<StatSize, { text: string; face: "mono" | "display"; lead: string; gap: string; hint: string; weight?: string }> = {
+   /* the kit's own rung */                    xs:    { text: "text-[13.5px]", face: "mono",    lead: "leading-tight",   gap: "",        hint: "text-body-sm" },
+   /* wallet SubStat */                        sm:    { text: "text-body",     face: "mono",    lead: "leading-tight",   gap: "",        hint: "text-body-sm" },
++  /* markets close time, beside xl figures */ "sm-plain": { text: "text-body-sm", face: "mono", lead: "",              gap: "mt-1",    hint: "text-body-sm", weight: "font-normal" },
+   /* admin/payments Stat */                   md:    { text: "text-[15px]",   face: "mono",    lead: "leading-tight",   gap: "",        hint: "text-body-sm" },
+-  /* activity MoneyTile */                    lg:    { text: "text-[17px]",   face: "display", lead: "leading-tight",   gap: "mt-1",    hint: "text-[10px]" },
+-  /* profile Stat · markets KPI · perf Stat */xl:    { text: "text-title-sm", face: "display", lead: "leading-tight",   gap: "mt-1",    hint: "text-[10px]" },
+-  /* performance Kpi */                       "2xl": { text: "text-[21px]",   face: "mono",    lead: "leading-none",    gap: "mt-1.5",  hint: "text-[10px]" },
++  /* activity MoneyTile */                    lg:    { text: "text-[17px]",   face: "display", lead: "leading-tight",   gap: "mt-1",    hint: "text-body-sm" },
++  /* profile Stat · markets KPI · perf Stat */xl:    { text: "text-title-sm", face: "display", lead: "leading-tight",   gap: "mt-1",    hint: "text-body-sm" },
++  /* performance Kpi */                       "2xl": { text: "text-[21px]",   face: "mono",    lead: "leading-none",    gap: "mt-1.5",  hint: "text-body-sm" },
+   /* invite Kpi */                            "3xl": { text: "text-[24px]",   face: "mono",    lead: "leading-none",    gap: "mt-1.5",  hint: "text-body-sm" },
+ };
+ 
+@@ -197,7 +213,10 @@ export function Stat({
+   const face = money ? "mono" : (font ?? sz.face);
+   const labelRow = (
+     <p
++      // `stat-label` is the hook for one rule in globals.css: in Chinese the label leaves the sub-micro tier for
++      // `--type-micro` and drops its tracking (§T3 blesses that tier for UPPERCASE microlabels only; tiles 217, 218).
+       className={cn(
++        "stat-label",
+         "font-mono uppercase",
+         LABEL[labelStyle],
+         labelTone === "yes" ? "text-yes-300" : labelTone === "no" ? "text-no-300" : null,
+@@ -228,7 +247,8 @@ export function Stat({
+       <p
+         className={cn(
+           face === "mono" ? "font-mono" : "font-display",
+-          "font-bold tabular-nums",
++          sz.weight ?? "font-bold",
++          "tabular-nums",
+           sz.text,
+           sz.lead,
+           sz.gap,
+diff --git a/src/components/wallet/amount-field.tsx b/src/components/wallet/amount-field.tsx
+index 74a1ed186..de2cd77dd 100644
+--- a/src/components/wallet/amount-field.tsx
++++ b/src/components/wallet/amount-field.tsx
+@@ -12,6 +12,16 @@
+ import { useState } from "react";
+ import { Input } from "@/components/ui/input";
+ import { FieldLegend } from "@/components/ui/field-legend";
++import { moneyRuns } from "@/lib/fill-nodes";
++import { formatNumber } from "@/lib/utils";
++
++/**
++ * ⭐ THE EXAMPLE IS WRITTEN AS THE PLATFORM WRITES A FIGURE (2026-10-09, the visual pass's round 3, tiles 069 and 174).
++ * It read "10000", the one place a player met a figure with no thousands separator; every amount elsewhere is
++ * `formatNumber`'s "10,000". The box still takes the digits however they are typed — a comma is dropped on entry
++ * (`input.tsx`, strict numeric mode) — so the example teaches nothing the field refuses.
++ */
++const AMOUNT_EXAMPLE = formatNumber(10_000);
+ 
+ const fmt = (v: number) => (v >= 1_000_000 ? `${v / 1_000_000}M` : v >= 1_000 ? `${v / 1_000}K` : String(v));
+ 
+@@ -54,7 +64,7 @@ export function AmountField({
+         name={name}
+         inputMode="numeric"
+         autoComplete="off"
+-        placeholder="10000"
++        placeholder={AMOUNT_EXAMPLE}
+         prefix="TZS"
+         mono
+         size="lg"
+@@ -98,8 +108,10 @@ export function AmountField({
+       )}
+ 
+       {/* break-keep: Chinese breaks only at spaces and punctuation (text-balance alone split 最高 and 需先); it changes
+-          nothing for Latin text, and overflow-wrap still wraps an over-long run. */}
+-      {hint && <p className="mt-2 text-body-sm text-text-subtle text-balance break-keep [overflow-wrap:anywhere]">{hint}</p>}
++          nothing for Latin text, and overflow-wrap still wraps an over-long run.
++          ⭐ Its figures are money, so each is an `.amount` (§M4, `moneyRuns`): "TZS 1,015 … TZS 5,000,000" was set in the
++          body face (2026-10-09, tiles 069 and 174), the only amounts on either form not in mono. */}
++      {hint && <p className="mt-2 text-body-sm text-text-subtle text-balance break-keep [overflow-wrap:anywhere]">{moneyRuns(hint)}</p>}
+     </div>
+   );
+ }
+diff --git a/src/lib/fill-nodes.tsx b/src/lib/fill-nodes.tsx
+index 2cfe2d33f..dca52b32a 100644
+--- a/src/lib/fill-nodes.tsx
++++ b/src/lib/fill-nodes.tsx
+@@ -27,3 +27,33 @@ export function fillNodes(template: string, vars: Record<string, ReactNode>): Re
+   if (last < template.length) out.push(template.slice(last));
+   return out;
+ }
++
++/**
++ * Every money figure a FINISHED sentence states — "TZS 1,015", "TZS\u00a05,000,000", "TZS 9.9M" — each in its own
++ * `<span className="amount">`, the words around them untouched.
++ *
++ * ⭐ WHY A SECOND HELPER (2026-10-09, the visual pass's round 3, tiles 069 and 174). The deposit and withdraw limits
++ * line is a dictionary sentence whose currency code is TYPED in it ("Kiwango cha chini TZS\u00a0{min} …"), and the
++ * deposit one also states two thresholds as literal figures ("TZS\u00a01,000,000", "TZS\u00a05,000,000"). `fillNodes`
++ * can only dress a placeholder, so it would set "1,015" in mono and leave "TZS" beside it in the body face — half a
++ * figure. This reads the figure whole, code and digits, wherever the sentence put it, in all three languages (each
++ * writes "TZS" + a space or a no-break space + the digits). §M4: a figure is mono and untracked in prose too; §T5: the
++ * sentence keeps its voice.
++ * ⛔ Text in, nodes out: it never formats a number, so what the sentence says is what is shown.
++ */
++// Thousands groups are read as groups, so a sentence's own comma after a figure ("…to TZS 5,000,000, needs…") stays
++// in the sentence and never joins the figure.
++const MONEY_RUN = /TZS[\u00a0 ]\d+(?:,\d{3})*(?:\.\d+)?[KMB]?/g;
++export function moneyRuns(text: string): ReactNode[] {
++  const out: ReactNode[] = [];
++  let last = 0;
++  let i = 0;
++  for (const m of text.matchAll(MONEY_RUN)) {
++    const at = m.index ?? 0;
++    if (at > last) out.push(text.slice(last, at));
++    out.push(<span key={i++} className="amount">{m[0]}</span>);
++    last = at + m[0].length;
++  }
++  if (last < text.length) out.push(text.slice(last));
++  return out;
++}

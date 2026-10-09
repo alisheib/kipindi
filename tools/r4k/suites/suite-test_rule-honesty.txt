@@ -1,0 +1,9 @@
+
+── A · a round that MOVES and still VOIDs exists at every ladder rung 
+
+── B · the banded rule sentence names both targets, in all three locales 
+
+── C · the round page selects the sentence from the round's own band 
+
+PASS — 22 passed, 0 failed
+

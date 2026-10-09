@@ -1,0 +1,642 @@
+﻿=== 129 auth-login-signin-refused zh 390 shot=viewport vp=390x780
+expect: A sign-in attempt through the real form with the right password, in this language: refused at the gate, back on /auth/login with the exclusion panel and its date; still signed out (no capsule).
+requested: the sign-in form (zh) | status=303 redirects= last={"kind":"server-action","url":"/auth/login","status":303} hydrated=True
+url: /auth/login?excluded=serving&until=2026-10-10 | title: 登录 · 50pick | h1: 欢迎回来
+header: capsule= gold=False signIn=2 rail=True desk=False lit= preview=True sessEnded=False dialogs=0 font=16px
+live[status]: 预览 — 您正在查看尚未上线的新流程。退出预览
+live[alert]: 自我排除已激活您的自我排除期至 2026-10-10。在此之前您无法登录，且账户不会自动恢复，需要您联系我们提出申请。0769777877msaada@50pick.tz
+nextError: {"dialog":false,"sign":null}
+overflow ok=True docOver=0 offenders=0 reach=0 clipped=0 offFixed=0 ctrlPast= list=
+pageErrors= console= devOnly=
+probe={"ok":true,"where":"/auth/login?excluded=serving\u0026until=2026-10-10","signedIn":false} note= flags=
+=== 130 auth-login-signin-refused zh 1280 shot=viewport vp=1280x900
+expect: A sign-in attempt through the real form with the right password, in this language: refused at the gate, back on /auth/login with the exclusion panel and its date; still signed out (no capsule).
+requested: the sign-in form (zh) | status=303 redirects= last={"kind":"server-action","url":"/auth/login","status":303} hydrated=True
+url: /auth/login?excluded=serving&until=2026-10-10 | title: 登录 · 50pick | h1: 欢迎回来
+header: capsule= gold=False signIn=2 rail=False desk=True lit= preview=True sessEnded=False dialogs=0 font=16px
+live[status]: 预览 — 您正在查看尚未上线的新流程。退出预览
+live[alert]: 自我排除已激活您的自我排除期至 2026-10-10。在此之前您无法登录，且账户不会自动恢复，需要您联系我们提出申请。0769777877msaada@50pick.tz
+nextError: {"dialog":false,"sign":null}
+overflow ok=True docOver=0 offenders=0 reach=0 clipped=0 offFixed=0 ctrlPast= list=
+pageErrors= console= devOnly=
+probe={"ok":true,"where":"/auth/login?excluded=serving\u0026until=2026-10-10","signedIn":false} note= flags=
+=== 131 root-header sw 360 shot=viewport top band 360x185 vp=360x780
+expect: Signed out by the exclusion: the guest header (Ingia, Jisajili), no capsule, no pill.
+requested: / | status=200 redirects= last={"kind":"document","url":"/","status":200} hydrated=True
+url: / | title: 50pick — Predict events. Not chance. | h1: NDIO au HAPANA?
+header: capsule= gold=False signIn=2 rail=True desk=False lit=["/=page","/=page"] preview=True sessEnded=False dialogs=0 font=16px
+live[status]: Onyesho la awali — unaona safari mpya kabla haijazinduliwa.Toka kwenye onyesho
+nextError: {"dialog":false,"sign":null}
+overflow ok=True docOver=0 offenders=0 reach=0 clipped=0 offFixed=0 ctrlPast= list=
+pageErrors= console= devOnly=
+probe= note= flags=
+=== 132 root sw 360 shot=viewport vp=360x780
+expect: Home as a signed-out visitor holding the pass.
+requested: / | status=200 redirects= last={"kind":"document","url":"/","status":200} hydrated=True
+url: / | title: 50pick — Predict events. Not chance. | h1: NDIO au HAPANA?
+header: capsule= gold=False signIn=2 rail=True desk=False lit=["/=page","/=page"] preview=True sessEnded=False dialogs=0 font=16px
+live[status]: Onyesho la awali — unaona safari mpya kabla haijazinduliwa.Toka kwenye onyesho
+nextError: {"dialog":false,"sign":null}
+overflow ok=True docOver=0 offenders=0 reach=0 clipped=0 offFixed=0 ctrlPast= list=
+pageErrors= console= devOnly=
+probe= note= flags=
+=== 133 root-header sw 390 shot=viewport top band 390x185 vp=390x780
+expect: Signed out by the exclusion: the guest header (Ingia, Jisajili), no capsule, no pill.
+requested: / | status=200 redirects= last={"kind":"document","url":"/","status":200} hydrated=True
+url: / | title: 50pick — Predict events. Not chance. | h1: NDIO au HAPANA?
+header: capsule= gold=False signIn=2 rail=True desk=False lit=["/=page","/=page"] preview=True sessEnded=False dialogs=0 font=16px
+live[status]: Onyesho la awali — unaona safari mpya kabla haijazinduliwa.Toka kwenye onyesho
+nextError: {"dialog":false,"sign":null}
+overflow ok=True docOver=0 offenders=0 reach=0 clipped=0 offFixed=0 ctrlPast= list=
+pageErrors= console= devOnly=
+probe= note= flags=
+=== 134 root sw 390 shot=viewport vp=390x780
+expect: Home as a signed-out visitor holding the pass.
+requested: / | status=200 redirects= last={"kind":"document","url":"/","status":200} hydrated=True
+url: / | title: 50pick — Predict events. Not chance. | h1: NDIO au HAPANA?
+header: capsule= gold=False signIn=2 rail=True desk=False lit=["/=page","/=page"] preview=True sessEnded=False dialogs=0 font=16px
+live[status]: Onyesho la awali — unaona safari mpya kabla haijazinduliwa.Toka kwenye onyesho
+nextError: {"dialog":false,"sign":null}
+overflow ok=True docOver=0 offenders=0 reach=0 clipped=0 offFixed=0 ctrlPast= list=
+pageErrors= console= devOnly=
+probe= note= flags=
+=== 135 root-header sw 1280 shot=viewport top band 1280x141 vp=1280x900
+expect: Signed out by the exclusion: the guest header (Ingia, Jisajili), no capsule, no pill.
+requested: / | status=200 redirects= last={"kind":"document","url":"/","status":200} hydrated=True
+url: / | title: 50pick — Predict events. Not chance. | h1: NDIO au HAPANA?
+header: capsule= gold=False signIn=2 rail=False desk=True lit=["/=page","/=page"] preview=True sessEnded=False dialogs=0 font=16px
+live[status]: Onyesho la awali — unaona safari mpya kabla haijazinduliwa.Toka kwenye onyesho
+nextError: {"dialog":false,"sign":null}
+overflow ok=True docOver=0 offenders=0 reach=0 clipped=0 offFixed=0 ctrlPast= list=
+pageErrors= console= devOnly=
+probe= note= flags=
+=== 136 root sw 1280 shot=viewport vp=1280x900
+expect: Home as a signed-out visitor holding the pass.
+requested: / | status=200 redirects= last={"kind":"document","url":"/","status":200} hydrated=True
+url: / | title: 50pick — Predict events. Not chance. | h1: NDIO au HAPANA?
+header: capsule= gold=False signIn=2 rail=False desk=True lit=["/=page","/=page"] preview=True sessEnded=False dialogs=0 font=16px
+live[status]: Onyesho la awali — unaona safari mpya kabla haijazinduliwa.Toka kwenye onyesho
+nextError: {"dialog":false,"sign":null}
+overflow ok=True docOver=0 offenders=0 reach=0 clipped=0 offFixed=0 ctrlPast= list=
+pageErrors= console= devOnly=
+probe= note= flags=
+=== 137 positions sw 360 shot=viewport vp=360x780
+expect: /positions signed out: proxy.ts sends it to sign-in (/auth/login?next=…).
+requested: /positions | status=200 redirects="/positions" last={"kind":"document","url":"/auth/login?next=%2Fpositions","status":200} hydrated=True
+url: /auth/login?next=%2Fpositions | title: Ingia · 50pick | h1: Karibu tena
+header: capsule= gold=False signIn=2 rail=True desk=False lit= preview=True sessEnded=False dialogs=0 font=16px
+live[status]: Onyesho la awali — unaona safari mpya kabla haijazinduliwa.Toka kwenye onyesho
+nextError: {"dialog":false,"sign":null}
+overflow ok=True docOver=0 offenders=0 reach=0 clipped=0 offFixed=0 ctrlPast= list=
+pageErrors= console= devOnly=
+probe= note= flags=
+=== 138 positions sw 390 shot=viewport vp=390x780
+expect: /positions signed out: proxy.ts sends it to sign-in (/auth/login?next=…).
+requested: /positions | status=200 redirects="/positions" last={"kind":"document","url":"/auth/login?next=%2Fpositions","status":200} hydrated=True
+url: /auth/login?next=%2Fpositions | title: Ingia · 50pick | h1: Karibu tena
+header: capsule= gold=False signIn=2 rail=True desk=False lit= preview=True sessEnded=False dialogs=0 font=16px
+live[status]: Onyesho la awali — unaona safari mpya kabla haijazinduliwa.Toka kwenye onyesho
+nextError: {"dialog":false,"sign":null}
+overflow ok=True docOver=0 offenders=0 reach=0 clipped=0 offFixed=0 ctrlPast= list=
+pageErrors= console= devOnly=
+probe= note= flags=
+=== 139 positions sw 1280 shot=viewport vp=1280x900
+expect: /positions signed out: proxy.ts sends it to sign-in (/auth/login?next=…).
+requested: /positions | status=200 redirects="/positions" last={"kind":"document","url":"/auth/login?next=%2Fpositions","status":200} hydrated=True
+url: /auth/login?next=%2Fpositions | title: Ingia · 50pick | h1: Karibu tena
+header: capsule= gold=False signIn=2 rail=False desk=True lit= preview=True sessEnded=False dialogs=0 font=16px
+live[status]: Onyesho la awali — unaona safari mpya kabla haijazinduliwa.Toka kwenye onyesho
+nextError: {"dialog":false,"sign":null}
+overflow ok=True docOver=0 offenders=0 reach=0 clipped=0 offFixed=0 ctrlPast= list=
+pageErrors= console= devOnly=
+probe= note= flags=
+=== 140 account sw 360 shot=viewport vp=360x780
+expect: The hub for a guest: the prompt (Ingia au jisajili …), no identity card, no sign-out row.
+requested: /account | status=200 redirects= last={"kind":"document","url":"/account","status":200} hydrated=True
+url: /account | title: Akaunti · 50pick | h1: Akaunti
+header: capsule= gold=False signIn=2 rail=True desk=False lit=["/account=page","/account=page"] preview=True sessEnded=False dialogs=0 font=16px
+live[status]: Onyesho la awali — unaona safari mpya kabla haijazinduliwa.Toka kwenye onyesho
+nextError: {"dialog":false,"sign":null}
+overflow ok=True docOver=0 offenders=0 reach=0 clipped=0 offFixed=0 ctrlPast= list=
+pageErrors= console= devOnly=
+probe= note= flags=
+=== 141 account sw 390 shot=viewport vp=390x780
+expect: The hub for a guest: the prompt (Ingia au jisajili …), no identity card, no sign-out row.
+requested: /account | status=200 redirects= last={"kind":"document","url":"/account","status":200} hydrated=True
+url: /account | title: Akaunti · 50pick | h1: Akaunti
+header: capsule= gold=False signIn=2 rail=True desk=False lit=["/account=page","/account=page"] preview=True sessEnded=False dialogs=0 font=16px
+live[status]: Onyesho la awali — unaona safari mpya kabla haijazinduliwa.Toka kwenye onyesho
+nextError: {"dialog":false,"sign":null}
+overflow ok=True docOver=0 offenders=0 reach=0 clipped=0 offFixed=0 ctrlPast= list=
+pageErrors= console= devOnly=
+probe= note= flags=
+=== 142 account sw 1280 shot=viewport vp=1280x900
+expect: The hub for a guest: the prompt (Ingia au jisajili …), no identity card, no sign-out row.
+requested: /account | status=200 redirects= last={"kind":"document","url":"/account","status":200} hydrated=True
+url: /account | title: Akaunti · 50pick | h1: Akaunti
+header: capsule= gold=False signIn=2 rail=False desk=True lit=["/account=page","/account=page"] preview=True sessEnded=False dialogs=0 font=16px
+live[status]: Onyesho la awali — unaona safari mpya kabla haijazinduliwa.Toka kwenye onyesho
+nextError: {"dialog":false,"sign":null}
+overflow ok=True docOver=0 offenders=0 reach=0 clipped=0 offFixed=0 ctrlPast= list=
+pageErrors= console= devOnly=
+probe= note= flags=
+=== 143 wallet-deposit sw 360 shot=viewport vp=360x780
+expect: /wallet/deposit signed out: redirected to /auth/login?next=/wallet/deposit.
+requested: /wallet/deposit | status=200 redirects="/wallet/deposit" last={"kind":"document","url":"/auth/login?next=%2Fwallet%2Fdeposit","status":200} hydrated=True
+url: /auth/login?next=%2Fwallet%2Fdeposit | title: Ingia · 50pick | h1: Karibu tena
+header: capsule= gold=False signIn=2 rail=True desk=False lit= preview=True sessEnded=False dialogs=0 font=16px
+live[status]: Onyesho la awali — unaona safari mpya kabla haijazinduliwa.Toka kwenye onyesho
+nextError: {"dialog":false,"sign":null}
+overflow ok=True docOver=0 offenders=0 reach=0 clipped=0 offFixed=0 ctrlPast= list=
+pageErrors= console= devOnly=
+probe= note= flags=
+=== 144 wallet-deposit sw 390 shot=viewport vp=390x780
+expect: /wallet/deposit signed out: redirected to /auth/login?next=/wallet/deposit.
+requested: /wallet/deposit | status=200 redirects="/wallet/deposit" last={"kind":"document","url":"/auth/login?next=%2Fwallet%2Fdeposit","status":200} hydrated=True
+url: /auth/login?next=%2Fwallet%2Fdeposit | title: Ingia · 50pick | h1: Karibu tena
+header: capsule= gold=False signIn=2 rail=True desk=False lit= preview=True sessEnded=False dialogs=0 font=16px
+live[status]: Onyesho la awali — unaona safari mpya kabla haijazinduliwa.Toka kwenye onyesho
+nextError: {"dialog":false,"sign":null}
+overflow ok=True docOver=0 offenders=0 reach=0 clipped=0 offFixed=0 ctrlPast= list=
+pageErrors= console= devOnly=
+probe= note= flags=
+=== 145 wallet-deposit sw 1280 shot=viewport vp=1280x900
+expect: /wallet/deposit signed out: redirected to /auth/login?next=/wallet/deposit.
+requested: /wallet/deposit | status=200 redirects="/wallet/deposit" last={"kind":"document","url":"/auth/login?next=%2Fwallet%2Fdeposit","status":200} hydrated=True
+url: /auth/login?next=%2Fwallet%2Fdeposit | title: Ingia · 50pick | h1: Karibu tena
+header: capsule= gold=False signIn=2 rail=False desk=True lit= preview=True sessEnded=False dialogs=0 font=16px
+live[status]: Onyesho la awali — unaona safari mpya kabla haijazinduliwa.Toka kwenye onyesho
+nextError: {"dialog":false,"sign":null}
+overflow ok=True docOver=0 offenders=0 reach=0 clipped=0 offFixed=0 ctrlPast= list=
+pageErrors= console= devOnly=
+probe= note= flags=
+=== 146 profile-responsible-gambling sw 360 shot=viewport vp=360x780
+expect: /profile/responsible-gambling signed out: redirected to /auth/login?next=/profile/responsible-gambling.
+requested: /profile/responsible-gambling | status=200 redirects="/profile/responsible-gambling" last={"kind":"document","url":"/auth/login?next=%2Fprofile%2Fresponsible-gambling","status":200} hydrated=True
+url: /auth/login?next=%2Fprofile%2Fresponsible-gambling | title: Ingia · 50pick | h1: Karibu tena
+header: capsule= gold=False signIn=2 rail=True desk=False lit= preview=True sessEnded=False dialogs=0 font=16px
+live[status]: Onyesho la awali — unaona safari mpya kabla haijazinduliwa.Toka kwenye onyesho
+nextError: {"dialog":false,"sign":null}
+overflow ok=True docOver=0 offenders=0 reach=0 clipped=0 offFixed=0 ctrlPast= list=
+pageErrors= console= devOnly=
+probe= note= flags=
+=== 147 profile-responsible-gambling sw 390 shot=viewport vp=390x780
+expect: /profile/responsible-gambling signed out: redirected to /auth/login?next=/profile/responsible-gambling.
+requested: /profile/responsible-gambling | status=200 redirects="/profile/responsible-gambling" last={"kind":"document","url":"/auth/login?next=%2Fprofile%2Fresponsible-gambling","status":200} hydrated=True
+url: /auth/login?next=%2Fprofile%2Fresponsible-gambling | title: Ingia · 50pick | h1: Karibu tena
+header: capsule= gold=False signIn=2 rail=True desk=False lit= preview=True sessEnded=False dialogs=0 font=16px
+live[status]: Onyesho la awali — unaona safari mpya kabla haijazinduliwa.Toka kwenye onyesho
+nextError: {"dialog":false,"sign":null}
+overflow ok=True docOver=0 offenders=0 reach=0 clipped=0 offFixed=0 ctrlPast= list=
+pageErrors= console= devOnly=
+probe= note= flags=
+=== 148 profile-responsible-gambling sw 1280 shot=viewport vp=1280x900
+expect: /profile/responsible-gambling signed out: redirected to /auth/login?next=/profile/responsible-gambling.
+requested: /profile/responsible-gambling | status=200 redirects="/profile/responsible-gambling" last={"kind":"document","url":"/auth/login?next=%2Fprofile%2Fresponsible-gambling","status":200} hydrated=True
+url: /auth/login?next=%2Fprofile%2Fresponsible-gambling | title: Ingia · 50pick | h1: Karibu tena
+header: capsule= gold=False signIn=2 rail=False desk=True lit= preview=True sessEnded=False dialogs=0 font=16px
+live[status]: Onyesho la awali — unaona safari mpya kabla haijazinduliwa.Toka kwenye onyesho
+nextError: {"dialog":false,"sign":null}
+overflow ok=True docOver=0 offenders=0 reach=0 clipped=0 offFixed=0 ctrlPast= list=
+pageErrors= console= devOnly=
+probe= note= flags=
+=== 149 market sw 360 shot=viewport vp=360x780
+expect: A seeded question signed out: the bet panel offers sign-in to predict (market.signInToPredict) instead of the side picker.
+requested: /markets/mkt_4113370aada2377a92cd | status=200 redirects= last={"kind":"document","url":"/markets/mkt_4113370aada2377a92cd","status":200} hydrated=True
+url: /markets/mkt_4113370aada2377a92cd | title: Simba SC yashinda NBC Premier League 2026-27 · 50pick | h1: Simba SC yashinda NBC Premier League 2026-27
+header: capsule= gold=False signIn=2 rail=True desk=False lit=["/=true","/=true"] preview=True sessEnded=False dialogs=0 font=16px
+live[status]: Onyesho la awali — unaona safari mpya kabla haijazinduliwa.Toka kwenye onyesho
+nextError: {"dialog":false,"sign":null}
+overflow ok=True docOver=0 offenders=0 reach=0 clipped=0 offFixed=0 ctrlPast= list=
+pageErrors= console= devOnly=
+probe={"question":"Simba SC wins the NBC Premier League 2026-27","betPanel":{"panel":true,"sidePicker":null,"dial":false,"links":["/auth/register?next=%2Fmarkets%2Fmkt_4113370aada2377a92cd","/auth/login?next=%2Fmarkets%2Fmkt_4113370aada2377a92cd"]}} note= flags=
+=== 150 market-yes sw 360 shot=viewport vp=360x780
+expect: The bet panel’s first control tapped while signed out: where it leads (the sign-in page, with the question as next).
+requested: /markets/mkt_4113370aada2377a92cd → the bet panel's first link (/auth/register?next=%2Fmarkets%2Fmkt_4113370aada2377a92cd) | status=200 redirects= last={"kind":"rsc","url":"/auth/register?next=%2Fmarkets%2Fmkt_4113370aada2377a92cd\u0026_rsc=2vx5b","status":200} hydrated=True
+url: /auth/register?next=%2Fmarkets%2Fmkt_4113370aada2377a92cd | title: Fungua akaunti · 50pick | h1: Karibu kwenye 50pick
+header: capsule= gold=False signIn=2 rail=True desk=False lit= preview=True sessEnded=False dialogs=0 font=16px
+live[status]: Onyesho la awali — unaona safari mpya kabla haijazinduliwa.Toka kwenye onyesho
+nextError: {"dialog":false,"sign":null}
+overflow ok=True docOver=0 offenders=0 reach=0 clipped=0 offFixed=0 ctrlPast= list=
+pageErrors= console= devOnly=
+probe={"ok":true,"control":"the bet panel\u0027s first link (/auth/register?next=%2Fmarkets%2Fmkt_4113370aada2377a92cd)","landed":"/auth/register?next=%2Fmarkets%2Fmkt_4113370aada2377a92cd","betPanel":{"panel":false,"sidePicker":null,"dial":false,"links":[]}} note= flags=
+=== 151 market sw 390 shot=viewport vp=390x780
+expect: A seeded question signed out: the bet panel offers sign-in to predict (market.signInToPredict) instead of the side picker.
+requested: /markets/mkt_4113370aada2377a92cd | status=200 redirects= last={"kind":"document","url":"/markets/mkt_4113370aada2377a92cd","status":200} hydrated=True
+url: /markets/mkt_4113370aada2377a92cd | title: Simba SC yashinda NBC Premier League 2026-27 · 50pick | h1: Simba SC yashinda NBC Premier League 2026-27
+header: capsule= gold=False signIn=2 rail=True desk=False lit=["/=true","/=true"] preview=True sessEnded=False dialogs=0 font=16px
+live[status]: Onyesho la awali — unaona safari mpya kabla haijazinduliwa.Toka kwenye onyesho
+nextError: {"dialog":false,"sign":null}
+overflow ok=True docOver=0 offenders=0 reach=0 clipped=0 offFixed=0 ctrlPast= list=
+pageErrors= console= devOnly=
+probe={"question":"Simba SC wins the NBC Premier League 2026-27","betPanel":{"panel":true,"sidePicker":null,"dial":false,"links":["/auth/register?next=%2Fmarkets%2Fmkt_4113370aada2377a92cd","/auth/login?next=%2Fmarkets%2Fmkt_4113370aada2377a92cd"]}} note= flags=
+=== 152 market-yes sw 390 shot=viewport vp=390x780
+expect: The bet panel’s first control tapped while signed out: where it leads (the sign-in page, with the question as next).
+requested: /markets/mkt_4113370aada2377a92cd → the bet panel's first link (/auth/register?next=%2Fmarkets%2Fmkt_4113370aada2377a92cd) | status=200 redirects= last={"kind":"rsc","url":"/auth/register?next=%2Fmarkets%2Fmkt_4113370aada2377a92cd\u0026_rsc=2vx5b","status":200} hydrated=True
+url: /auth/register?next=%2Fmarkets%2Fmkt_4113370aada2377a92cd | title: Fungua akaunti · 50pick | h1: Karibu kwenye 50pick
+header: capsule= gold=False signIn=2 rail=True desk=False lit= preview=True sessEnded=False dialogs=0 font=16px
+live[status]: Onyesho la awali — unaona safari mpya kabla haijazinduliwa.Toka kwenye onyesho
+nextError: {"dialog":false,"sign":null}
+overflow ok=True docOver=0 offenders=0 reach=0 clipped=0 offFixed=0 ctrlPast= list=
+pageErrors= console= devOnly=
+probe={"ok":true,"control":"the bet panel\u0027s first link (/auth/register?next=%2Fmarkets%2Fmkt_4113370aada2377a92cd)","landed":"/auth/register?next=%2Fmarkets%2Fmkt_4113370aada2377a92cd","betPanel":{"panel":false,"sidePicker":null,"dial":false,"links":[]}} note= flags=
+=== 153 market sw 1280 shot=viewport vp=1280x900
+expect: A seeded question signed out: the bet panel offers sign-in to predict (market.signInToPredict) instead of the side picker.
+requested: /markets/mkt_4113370aada2377a92cd | status=200 redirects= last={"kind":"document","url":"/markets/mkt_4113370aada2377a92cd","status":200} hydrated=True
+url: /markets/mkt_4113370aada2377a92cd | title: Simba SC yashinda NBC Premier League 2026-27 · 50pick | h1: Simba SC yashinda NBC Premier League 2026-27
+header: capsule= gold=False signIn=2 rail=False desk=True lit=["/=true","/=true"] preview=True sessEnded=False dialogs=0 font=16px
+live[status]: Onyesho la awali — unaona safari mpya kabla haijazinduliwa.Toka kwenye onyesho
+nextError: {"dialog":false,"sign":null}
+overflow ok=True docOver=0 offenders=0 reach=0 clipped=0 offFixed=0 ctrlPast= list=
+pageErrors= console= devOnly=
+probe={"question":"Simba SC wins the NBC Premier League 2026-27","betPanel":{"panel":true,"sidePicker":null,"dial":false,"links":["/auth/register?next=%2Fmarkets%2Fmkt_4113370aada2377a92cd","/auth/login?next=%2Fmarkets%2Fmkt_4113370aada2377a92cd"]}} note= flags=
+=== 154 market-yes sw 1280 shot=viewport vp=1280x900
+expect: The bet panel’s first control tapped while signed out: where it leads (the sign-in page, with the question as next).
+requested: /markets/mkt_4113370aada2377a92cd → the bet panel's first link (/auth/register?next=%2Fmarkets%2Fmkt_4113370aada2377a92cd) | status=200 redirects= last={"kind":"rsc","url":"/auth/register?next=%2Fmarkets%2Fmkt_4113370aada2377a92cd\u0026_rsc=2vx5b","status":200} hydrated=True
+url: /auth/register?next=%2Fmarkets%2Fmkt_4113370aada2377a92cd | title: Fungua akaunti · 50pick | h1: Karibu kwenye 50pick
+header: capsule= gold=False signIn=2 rail=False desk=True lit= preview=True sessEnded=False dialogs=0 font=16px
+live[status]: Onyesho la awali — unaona safari mpya kabla haijazinduliwa.Toka kwenye onyesho
+nextError: {"dialog":false,"sign":null}
+overflow ok=True docOver=0 offenders=0 reach=0 clipped=0 offFixed=0 ctrlPast= list=
+pageErrors= console= devOnly=
+probe={"ok":true,"control":"the bet panel\u0027s first link (/auth/register?next=%2Fmarkets%2Fmkt_4113370aada2377a92cd)","landed":"/auth/register?next=%2Fmarkets%2Fmkt_4113370aada2377a92cd","betPanel":{"panel":false,"sidePicker":null,"dial":false,"links":[]}} note= flags=
+=== 155 root-header en 360 shot=viewport top band 360x185 vp=360x780
+expect: Signed out by the exclusion: the guest header (Ingia, Jisajili), no capsule, no pill.
+requested: / | status=200 redirects= last={"kind":"document","url":"/","status":200} hydrated=True
+url: / | title: 50pick — Predict events. Not chance. | h1: YES or NO?
+header: capsule= gold=False signIn=2 rail=True desk=False lit=["/=page","/=page"] preview=True sessEnded=False dialogs=0 font=16px
+live[status]: Preview — you are seeing the new journey before it launches.Exit preview
+nextError: {"dialog":false,"sign":null}
+overflow ok=True docOver=0 offenders=0 reach=0 clipped=0 offFixed=0 ctrlPast= list=
+pageErrors= console= devOnly=
+probe= note= flags=
+=== 156 root en 360 shot=viewport vp=360x780
+expect: Home as a signed-out visitor holding the pass.
+requested: / | status=200 redirects= last={"kind":"document","url":"/","status":200} hydrated=True
+url: / | title: 50pick — Predict events. Not chance. | h1: YES or NO?
+header: capsule= gold=False signIn=2 rail=True desk=False lit=["/=page","/=page"] preview=True sessEnded=False dialogs=0 font=16px
+live[status]: Preview — you are seeing the new journey before it launches.Exit preview
+nextError: {"dialog":false,"sign":null}
+overflow ok=True docOver=0 offenders=0 reach=0 clipped=0 offFixed=0 ctrlPast= list=
+pageErrors= console= devOnly=
+probe= note= flags=
+=== 157 root-header en 390 shot=viewport top band 390x185 vp=390x780
+expect: Signed out by the exclusion: the guest header (Ingia, Jisajili), no capsule, no pill.
+requested: / | status=200 redirects= last={"kind":"document","url":"/","status":200} hydrated=True
+url: / | title: 50pick — Predict events. Not chance. | h1: YES or NO?
+header: capsule= gold=False signIn=2 rail=True desk=False lit=["/=page","/=page"] preview=True sessEnded=False dialogs=0 font=16px
+live[status]: Preview — you are seeing the new journey before it launches.Exit preview
+nextError: {"dialog":false,"sign":null}
+overflow ok=True docOver=0 offenders=0 reach=0 clipped=0 offFixed=0 ctrlPast= list=
+pageErrors= console= devOnly=
+probe= note= flags=
+=== 158 root en 390 shot=viewport vp=390x780
+expect: Home as a signed-out visitor holding the pass.
+requested: / | status=200 redirects= last={"kind":"document","url":"/","status":200} hydrated=True
+url: / | title: 50pick — Predict events. Not chance. | h1: YES or NO?
+header: capsule= gold=False signIn=2 rail=True desk=False lit=["/=page","/=page"] preview=True sessEnded=False dialogs=0 font=16px
+live[status]: Preview — you are seeing the new journey before it launches.Exit preview
+nextError: {"dialog":false,"sign":null}
+overflow ok=True docOver=0 offenders=0 reach=0 clipped=0 offFixed=0 ctrlPast= list=
+pageErrors= console= devOnly=
+probe= note= flags=
+=== 159 root-header en 1280 shot=viewport top band 1280x141 vp=1280x900
+expect: Signed out by the exclusion: the guest header (Ingia, Jisajili), no capsule, no pill.
+requested: / | status=200 redirects= last={"kind":"document","url":"/","status":200} hydrated=True
+url: / | title: 50pick — Predict events. Not chance. | h1: YES or NO?
+header: capsule= gold=False signIn=2 rail=False desk=True lit=["/=page","/=page"] preview=True sessEnded=False dialogs=0 font=16px
+live[status]: Preview — you are seeing the new journey before it launches.Exit preview
+nextError: {"dialog":false,"sign":null}
+overflow ok=True docOver=0 offenders=0 reach=0 clipped=0 offFixed=0 ctrlPast= list=
+pageErrors= console= devOnly=
+probe= note= flags=
+=== 160 root en 1280 shot=viewport vp=1280x900
+expect: Home as a signed-out visitor holding the pass.
+requested: / | status=200 redirects= last={"kind":"document","url":"/","status":200} hydrated=True
+url: / | title: 50pick — Predict events. Not chance. | h1: YES or NO?
+header: capsule= gold=False signIn=2 rail=False desk=True lit=["/=page","/=page"] preview=True sessEnded=False dialogs=0 font=16px
+live[status]: Preview — you are seeing the new journey before it launches.Exit preview
+nextError: {"dialog":false,"sign":null}
+overflow ok=True docOver=0 offenders=0 reach=0 clipped=0 offFixed=0 ctrlPast= list=
+pageErrors= console= devOnly=
+probe= note= flags=
+=== 161 positions en 360 shot=viewport vp=360x780
+expect: /positions signed out: proxy.ts sends it to sign-in (/auth/login?next=…).
+requested: /positions | status=200 redirects="/positions" last={"kind":"document","url":"/auth/login?next=%2Fpositions","status":200} hydrated=True
+url: /auth/login?next=%2Fpositions | title: Sign in · 50pick | h1: Welcome back
+header: capsule= gold=False signIn=2 rail=True desk=False lit= preview=True sessEnded=False dialogs=0 font=16px
+live[status]: Preview — you are seeing the new journey before it launches.Exit preview
+nextError: {"dialog":false,"sign":null}
+overflow ok=True docOver=0 offenders=0 reach=0 clipped=0 offFixed=0 ctrlPast= list=
+pageErrors= console= devOnly=
+probe= note= flags=
+=== 162 positions en 390 shot=viewport vp=390x780
+expect: /positions signed out: proxy.ts sends it to sign-in (/auth/login?next=…).
+requested: /positions | status=200 redirects="/positions" last={"kind":"document","url":"/auth/login?next=%2Fpositions","status":200} hydrated=True
+url: /auth/login?next=%2Fpositions | title: Sign in · 50pick | h1: Welcome back
+header: capsule= gold=False signIn=2 rail=True desk=False lit= preview=True sessEnded=False dialogs=0 font=16px
+live[status]: Preview — you are seeing the new journey before it launches.Exit preview
+nextError: {"dialog":false,"sign":null}
+overflow ok=True docOver=0 offenders=0 reach=0 clipped=0 offFixed=0 ctrlPast= list=
+pageErrors= console= devOnly=
+probe= note= flags=
+=== 163 positions en 1280 shot=viewport vp=1280x900
+expect: /positions signed out: proxy.ts sends it to sign-in (/auth/login?next=…).
+requested: /positions | status=200 redirects="/positions" last={"kind":"document","url":"/auth/login?next=%2Fpositions","status":200} hydrated=True
+url: /auth/login?next=%2Fpositions | title: Sign in · 50pick | h1: Welcome back
+header: capsule= gold=False signIn=2 rail=False desk=True lit= preview=True sessEnded=False dialogs=0 font=16px
+live[status]: Preview — you are seeing the new journey before it launches.Exit preview
+nextError: {"dialog":false,"sign":null}
+overflow ok=True docOver=0 offenders=0 reach=0 clipped=0 offFixed=0 ctrlPast= list=
+pageErrors= console= devOnly=
+probe= note= flags=
+=== 164 account en 360 shot=viewport vp=360x780
+expect: The hub for a guest: the prompt (Ingia au jisajili …), no identity card, no sign-out row.
+requested: /account | status=200 redirects= last={"kind":"document","url":"/account","status":200} hydrated=True
+url: /account | title: Account · 50pick | h1: Account
+header: capsule= gold=False signIn=2 rail=True desk=False lit=["/account=page","/account=page"] preview=True sessEnded=False dialogs=0 font=16px
+live[status]: Preview — you are seeing the new journey before it launches.Exit preview
+nextError: {"dialog":false,"sign":null}
+overflow ok=True docOver=0 offenders=0 reach=0 clipped=0 offFixed=0 ctrlPast= list=
+pageErrors= console= devOnly=
+probe= note= flags=
+=== 165 account en 390 shot=viewport vp=390x780
+expect: The hub for a guest: the prompt (Ingia au jisajili …), no identity card, no sign-out row.
+requested: /account | status=200 redirects= last={"kind":"document","url":"/account","status":200} hydrated=True
+url: /account | title: Account · 50pick | h1: Account
+header: capsule= gold=False signIn=2 rail=True desk=False lit=["/account=page","/account=page"] preview=True sessEnded=False dialogs=0 font=16px
+live[status]: Preview — you are seeing the new journey before it launches.Exit preview
+nextError: {"dialog":false,"sign":null}
+overflow ok=True docOver=0 offenders=0 reach=0 clipped=0 offFixed=0 ctrlPast= list=
+pageErrors= console= devOnly=
+probe= note= flags=
+=== 166 account en 1280 shot=viewport vp=1280x900
+expect: The hub for a guest: the prompt (Ingia au jisajili …), no identity card, no sign-out row.
+requested: /account | status=200 redirects= last={"kind":"document","url":"/account","status":200} hydrated=True
+url: /account | title: Account · 50pick | h1: Account
+header: capsule= gold=False signIn=2 rail=False desk=True lit=["/account=page","/account=page"] preview=True sessEnded=False dialogs=0 font=16px
+live[status]: Preview — you are seeing the new journey before it launches.Exit preview
+nextError: {"dialog":false,"sign":null}
+overflow ok=True docOver=0 offenders=0 reach=0 clipped=0 offFixed=0 ctrlPast= list=
+pageErrors= console= devOnly=
+probe= note= flags=
+=== 167 wallet-deposit en 360 shot=viewport vp=360x780
+expect: /wallet/deposit signed out: redirected to /auth/login?next=/wallet/deposit.
+requested: /wallet/deposit | status=200 redirects="/wallet/deposit" last={"kind":"document","url":"/auth/login?next=%2Fwallet%2Fdeposit","status":200} hydrated=True
+url: /auth/login?next=%2Fwallet%2Fdeposit | title: Sign in · 50pick | h1: Welcome back
+header: capsule= gold=False signIn=2 rail=True desk=False lit= preview=True sessEnded=False dialogs=0 font=16px
+live[status]: Preview — you are seeing the new journey before it launches.Exit preview
+nextError: {"dialog":false,"sign":null}
+overflow ok=True docOver=0 offenders=0 reach=0 clipped=0 offFixed=0 ctrlPast= list=
+pageErrors= console= devOnly=
+probe= note= flags=
+=== 168 wallet-deposit en 390 shot=viewport vp=390x780
+expect: /wallet/deposit signed out: redirected to /auth/login?next=/wallet/deposit.
+requested: /wallet/deposit | status=200 redirects="/wallet/deposit" last={"kind":"document","url":"/auth/login?next=%2Fwallet%2Fdeposit","status":200} hydrated=True
+url: /auth/login?next=%2Fwallet%2Fdeposit | title: Sign in · 50pick | h1: Welcome back
+header: capsule= gold=False signIn=2 rail=True desk=False lit= preview=True sessEnded=False dialogs=0 font=16px
+live[status]: Preview — you are seeing the new journey before it launches.Exit preview
+nextError: {"dialog":false,"sign":null}
+overflow ok=True docOver=0 offenders=0 reach=0 clipped=0 offFixed=0 ctrlPast= list=
+pageErrors= console= devOnly=
+probe= note= flags=
+=== 169 wallet-deposit en 1280 shot=viewport vp=1280x900
+expect: /wallet/deposit signed out: redirected to /auth/login?next=/wallet/deposit.
+requested: /wallet/deposit | status=200 redirects="/wallet/deposit" last={"kind":"document","url":"/auth/login?next=%2Fwallet%2Fdeposit","status":200} hydrated=True
+url: /auth/login?next=%2Fwallet%2Fdeposit | title: Sign in · 50pick | h1: Welcome back
+header: capsule= gold=False signIn=2 rail=False desk=True lit= preview=True sessEnded=False dialogs=0 font=16px
+live[status]: Preview — you are seeing the new journey before it launches.Exit preview
+nextError: {"dialog":false,"sign":null}
+overflow ok=True docOver=0 offenders=0 reach=0 clipped=0 offFixed=0 ctrlPast= list=
+pageErrors= console= devOnly=
+probe= note= flags=
+=== 170 profile-responsible-gambling en 360 shot=viewport vp=360x780
+expect: /profile/responsible-gambling signed out: redirected to /auth/login?next=/profile/responsible-gambling.
+requested: /profile/responsible-gambling | status=200 redirects="/profile/responsible-gambling" last={"kind":"document","url":"/auth/login?next=%2Fprofile%2Fresponsible-gambling","status":200} hydrated=True
+url: /auth/login?next=%2Fprofile%2Fresponsible-gambling | title: Sign in · 50pick | h1: Welcome back
+header: capsule= gold=False signIn=2 rail=True desk=False lit= preview=True sessEnded=False dialogs=0 font=16px
+live[status]: Preview — you are seeing the new journey before it launches.Exit preview
+nextError: {"dialog":false,"sign":null}
+overflow ok=True docOver=0 offenders=0 reach=0 clipped=0 offFixed=0 ctrlPast= list=
+pageErrors= console= devOnly=
+probe= note= flags=
+=== 171 profile-responsible-gambling en 390 shot=viewport vp=390x780
+expect: /profile/responsible-gambling signed out: redirected to /auth/login?next=/profile/responsible-gambling.
+requested: /profile/responsible-gambling | status=200 redirects="/profile/responsible-gambling" last={"kind":"document","url":"/auth/login?next=%2Fprofile%2Fresponsible-gambling","status":200} hydrated=True
+url: /auth/login?next=%2Fprofile%2Fresponsible-gambling | title: Sign in · 50pick | h1: Welcome back
+header: capsule= gold=False signIn=2 rail=True desk=False lit= preview=True sessEnded=False dialogs=0 font=16px
+live[status]: Preview — you are seeing the new journey before it launches.Exit preview
+nextError: {"dialog":false,"sign":null}
+overflow ok=True docOver=0 offenders=0 reach=0 clipped=0 offFixed=0 ctrlPast= list=
+pageErrors= console= devOnly=
+probe= note= flags=
+=== 172 profile-responsible-gambling en 1280 shot=viewport vp=1280x900
+expect: /profile/responsible-gambling signed out: redirected to /auth/login?next=/profile/responsible-gambling.
+requested: /profile/responsible-gambling | status=200 redirects="/profile/responsible-gambling" last={"kind":"document","url":"/auth/login?next=%2Fprofile%2Fresponsible-gambling","status":200} hydrated=True
+url: /auth/login?next=%2Fprofile%2Fresponsible-gambling | title: Sign in · 50pick | h1: Welcome back
+header: capsule= gold=False signIn=2 rail=False desk=True lit= preview=True sessEnded=False dialogs=0 font=16px
+live[status]: Preview — you are seeing the new journey before it launches.Exit preview
+nextError: {"dialog":false,"sign":null}
+overflow ok=True docOver=0 offenders=0 reach=0 clipped=0 offFixed=0 ctrlPast= list=
+pageErrors= console= devOnly=
+probe= note= flags=
+=== 173 market en 360 shot=viewport vp=360x780
+expect: A seeded question signed out: the bet panel offers sign-in to predict (market.signInToPredict) instead of the side picker.
+requested: /markets/mkt_4113370aada2377a92cd | status=200 redirects= last={"kind":"document","url":"/markets/mkt_4113370aada2377a92cd","status":200} hydrated=True
+url: /markets/mkt_4113370aada2377a92cd | title: Simba SC wins the NBC Premier League 2026-27 · 50pick | h1: Simba SC wins the NBC Premier League 2026-27
+header: capsule= gold=False signIn=2 rail=True desk=False lit=["/=true","/=true"] preview=True sessEnded=False dialogs=0 font=16px
+live[status]: Preview — you are seeing the new journey before it launches.Exit preview
+nextError: {"dialog":false,"sign":null}
+overflow ok=True docOver=0 offenders=0 reach=0 clipped=0 offFixed=0 ctrlPast= list=
+pageErrors= console= devOnly=
+probe={"question":"Simba SC wins the NBC Premier League 2026-27","betPanel":{"panel":true,"sidePicker":null,"dial":false,"links":["/auth/register?next=%2Fmarkets%2Fmkt_4113370aada2377a92cd","/auth/login?next=%2Fmarkets%2Fmkt_4113370aada2377a92cd"]}} note= flags=
+=== 174 market-yes en 360 shot=viewport vp=360x780
+expect: The bet panel’s first control tapped while signed out: where it leads (the sign-in page, with the question as next).
+requested: /markets/mkt_4113370aada2377a92cd → the bet panel's first link (/auth/register?next=%2Fmarkets%2Fmkt_4113370aada2377a92cd) | status=200 redirects= last={"kind":"rsc","url":"/auth/register?next=%2Fmarkets%2Fmkt_4113370aada2377a92cd\u0026_rsc=2vx5b","status":200} hydrated=True
+url: /auth/register?next=%2Fmarkets%2Fmkt_4113370aada2377a92cd | title: Create account · 50pick | h1: Welcome to 50pick
+header: capsule= gold=False signIn=2 rail=True desk=False lit= preview=True sessEnded=False dialogs=0 font=16px
+live[status]: Preview — you are seeing the new journey before it launches.Exit preview
+nextError: {"dialog":false,"sign":null}
+overflow ok=True docOver=0 offenders=0 reach=0 clipped=0 offFixed=0 ctrlPast= list=
+pageErrors= console= devOnly=
+probe={"ok":true,"control":"the bet panel\u0027s first link (/auth/register?next=%2Fmarkets%2Fmkt_4113370aada2377a92cd)","landed":"/auth/register?next=%2Fmarkets%2Fmkt_4113370aada2377a92cd","betPanel":{"panel":false,"sidePicker":null,"dial":false,"links":[]}} note= flags=
+=== 175 market en 390 shot=viewport vp=390x780
+expect: A seeded question signed out: the bet panel offers sign-in to predict (market.signInToPredict) instead of the side picker.
+requested: /markets/mkt_4113370aada2377a92cd | status=200 redirects= last={"kind":"document","url":"/markets/mkt_4113370aada2377a92cd","status":200} hydrated=True
+url: /markets/mkt_4113370aada2377a92cd | title: Simba SC wins the NBC Premier League 2026-27 · 50pick | h1: Simba SC wins the NBC Premier League 2026-27
+header: capsule= gold=False signIn=2 rail=True desk=False lit=["/=true","/=true"] preview=True sessEnded=False dialogs=0 font=16px
+live[status]: Preview — you are seeing the new journey before it launches.Exit preview
+nextError: {"dialog":false,"sign":null}
+overflow ok=True docOver=0 offenders=0 reach=0 clipped=0 offFixed=0 ctrlPast= list=
+pageErrors= console= devOnly=
+probe={"question":"Simba SC wins the NBC Premier League 2026-27","betPanel":{"panel":true,"sidePicker":null,"dial":false,"links":["/auth/register?next=%2Fmarkets%2Fmkt_4113370aada2377a92cd","/auth/login?next=%2Fmarkets%2Fmkt_4113370aada2377a92cd"]}} note= flags=
+=== 176 market-yes en 390 shot=viewport vp=390x780
+expect: The bet panel’s first control tapped while signed out: where it leads (the sign-in page, with the question as next).
+requested: /markets/mkt_4113370aada2377a92cd → the bet panel's first link (/auth/register?next=%2Fmarkets%2Fmkt_4113370aada2377a92cd) | status=200 redirects= last={"kind":"rsc","url":"/auth/register?next=%2Fmarkets%2Fmkt_4113370aada2377a92cd\u0026_rsc=2vx5b","status":200} hydrated=True
+url: /auth/register?next=%2Fmarkets%2Fmkt_4113370aada2377a92cd | title: Create account · 50pick | h1: Welcome to 50pick
+header: capsule= gold=False signIn=2 rail=True desk=False lit= preview=True sessEnded=False dialogs=0 font=16px
+live[status]: Preview — you are seeing the new journey before it launches.Exit preview
+nextError: {"dialog":false,"sign":null}
+overflow ok=True docOver=0 offenders=0 reach=0 clipped=0 offFixed=0 ctrlPast= list=
+pageErrors= console= devOnly=
+probe={"ok":true,"control":"the bet panel\u0027s first link (/auth/register?next=%2Fmarkets%2Fmkt_4113370aada2377a92cd)","landed":"/auth/register?next=%2Fmarkets%2Fmkt_4113370aada2377a92cd","betPanel":{"panel":false,"sidePicker":null,"dial":false,"links":[]}} note= flags=
+=== 177 market en 1280 shot=viewport vp=1280x900
+expect: A seeded question signed out: the bet panel offers sign-in to predict (market.signInToPredict) instead of the side picker.
+requested: /markets/mkt_4113370aada2377a92cd | status=200 redirects= last={"kind":"document","url":"/markets/mkt_4113370aada2377a92cd","status":200} hydrated=True
+url: /markets/mkt_4113370aada2377a92cd | title: Simba SC wins the NBC Premier League 2026-27 · 50pick | h1: Simba SC wins the NBC Premier League 2026-27
+header: capsule= gold=False signIn=2 rail=False desk=True lit=["/=true","/=true"] preview=True sessEnded=False dialogs=0 font=16px
+live[status]: Preview — you are seeing the new journey before it launches.Exit preview
+nextError: {"dialog":false,"sign":null}
+overflow ok=True docOver=0 offenders=0 reach=0 clipped=0 offFixed=0 ctrlPast= list=
+pageErrors= console= devOnly=
+probe={"question":"Simba SC wins the NBC Premier League 2026-27","betPanel":{"panel":true,"sidePicker":null,"dial":false,"links":["/auth/register?next=%2Fmarkets%2Fmkt_4113370aada2377a92cd","/auth/login?next=%2Fmarkets%2Fmkt_4113370aada2377a92cd"]}} note= flags=
+=== 178 market-yes en 1280 shot=viewport vp=1280x900
+expect: The bet panel’s first control tapped while signed out: where it leads (the sign-in page, with the question as next).
+requested: /markets/mkt_4113370aada2377a92cd → the bet panel's first link (/auth/register?next=%2Fmarkets%2Fmkt_4113370aada2377a92cd) | status=200 redirects= last={"kind":"rsc","url":"/auth/register?next=%2Fmarkets%2Fmkt_4113370aada2377a92cd\u0026_rsc=2vx5b","status":200} hydrated=True
+url: /auth/register?next=%2Fmarkets%2Fmkt_4113370aada2377a92cd | title: Create account · 50pick | h1: Welcome to 50pick
+header: capsule= gold=False signIn=2 rail=False desk=True lit= preview=True sessEnded=False dialogs=0 font=16px
+live[status]: Preview — you are seeing the new journey before it launches.Exit preview
+nextError: {"dialog":false,"sign":null}
+overflow ok=True docOver=0 offenders=0 reach=0 clipped=0 offFixed=0 ctrlPast= list=
+pageErrors= console= devOnly=
+probe={"ok":true,"control":"the bet panel\u0027s first link (/auth/register?next=%2Fmarkets%2Fmkt_4113370aada2377a92cd)","landed":"/auth/register?next=%2Fmarkets%2Fmkt_4113370aada2377a92cd","betPanel":{"panel":false,"sidePicker":null,"dial":false,"links":[]}} note= flags=
+=== 179 root-header zh 360 shot=viewport top band 360x167 vp=360x780
+expect: Signed out by the exclusion: the guest header (Ingia, Jisajili), no capsule, no pill.
+requested: / | status=200 redirects= last={"kind":"document","url":"/","status":200} hydrated=True
+url: / | title: 50pick — Predict events. Not chance. | h1: 是还是否？
+header: capsule= gold=False signIn=2 rail=True desk=False lit=["/=page","/=page"] preview=True sessEnded=False dialogs=0 font=16px
+live[status]: 预览 — 您正在查看尚未上线的新流程。退出预览
+nextError: {"dialog":false,"sign":null}
+overflow ok=True docOver=0 offenders=0 reach=0 clipped=0 offFixed=0 ctrlPast= list=
+pageErrors= console= devOnly=
+probe= note= flags=
+=== 180 root zh 360 shot=viewport vp=360x780
+expect: Home as a signed-out visitor holding the pass.
+requested: / | status=200 redirects= last={"kind":"document","url":"/","status":200} hydrated=True
+url: / | title: 50pick — Predict events. Not chance. | h1: 是还是否？
+header: capsule= gold=False signIn=2 rail=True desk=False lit=["/=page","/=page"] preview=True sessEnded=False dialogs=0 font=16px
+live[status]: 预览 — 您正在查看尚未上线的新流程。退出预览
+nextError: {"dialog":false,"sign":null}
+overflow ok=True docOver=0 offenders=0 reach=0 clipped=0 offFixed=0 ctrlPast= list=
+pageErrors= console= devOnly=
+probe= note= flags=
+=== 181 root-header zh 390 shot=viewport top band 390x167 vp=390x780
+expect: Signed out by the exclusion: the guest header (Ingia, Jisajili), no capsule, no pill.
+requested: / | status=200 redirects= last={"kind":"document","url":"/","status":200} hydrated=True
+url: / | title: 50pick — Predict events. Not chance. | h1: 是还是否？
+header: capsule= gold=False signIn=2 rail=True desk=False lit=["/=page","/=page"] preview=True sessEnded=False dialogs=0 font=16px
+live[status]: 预览 — 您正在查看尚未上线的新流程。退出预览
+nextError: {"dialog":false,"sign":null}
+overflow ok=True docOver=0 offenders=0 reach=0 clipped=0 offFixed=0 ctrlPast= list=
+pageErrors= console= devOnly=
+probe= note= flags=
+=== 182 root zh 390 shot=viewport vp=390x780
+expect: Home as a signed-out visitor holding the pass.
+requested: / | status=200 redirects= last={"kind":"document","url":"/","status":200} hydrated=True
+url: / | title: 50pick — Predict events. Not chance. | h1: 是还是否？
+header: capsule= gold=False signIn=2 rail=True desk=False lit=["/=page","/=page"] preview=True sessEnded=False dialogs=0 font=16px
+live[status]: 预览 — 您正在查看尚未上线的新流程。退出预览
+nextError: {"dialog":false,"sign":null}
+overflow ok=True docOver=0 offenders=0 reach=0 clipped=0 offFixed=0 ctrlPast= list=
+pageErrors= console= devOnly=
+probe= note= flags=
+=== 183 root-header zh 1280 shot=viewport top band 1280x141 vp=1280x900
+expect: Signed out by the exclusion: the guest header (Ingia, Jisajili), no capsule, no pill.
+requested: / | status=200 redirects= last={"kind":"document","url":"/","status":200} hydrated=True
+url: / | title: 50pick — Predict events. Not chance. | h1: 是还是否？
+header: capsule= gold=False signIn=2 rail=False desk=True lit=["/=page","/=page"] preview=True sessEnded=False dialogs=0 font=16px
+live[status]: 预览 — 您正在查看尚未上线的新流程。退出预览
+nextError: {"dialog":false,"sign":null}
+overflow ok=True docOver=0 offenders=0 reach=0 clipped=0 offFixed=0 ctrlPast= list=
+pageErrors= console= devOnly=
+probe= note= flags=
+=== 184 root zh 1280 shot=viewport vp=1280x900
+expect: Home as a signed-out visitor holding the pass.
+requested: / | status=200 redirects= last={"kind":"document","url":"/","status":200} hydrated=True
+url: / | title: 50pick — Predict events. Not chance. | h1: 是还是否？
+header: capsule= gold=False signIn=2 rail=False desk=True lit=["/=page","/=page"] preview=True sessEnded=False dialogs=0 font=16px
+live[status]: 预览 — 您正在查看尚未上线的新流程。退出预览
+nextError: {"dialog":false,"sign":null}
+overflow ok=True docOver=0 offenders=0 reach=0 clipped=0 offFixed=0 ctrlPast= list=
+pageErrors= console= devOnly=
+probe= note= flags=
+=== 185 positions zh 360 shot=viewport vp=360x780
+expect: /positions signed out: proxy.ts sends it to sign-in (/auth/login?next=…).
+requested: /positions | status=200 redirects="/positions" last={"kind":"document","url":"/auth/login?next=%2Fpositions","status":200} hydrated=True
+url: /auth/login?next=%2Fpositions | title: 登录 · 50pick | h1: 欢迎回来
+header: capsule= gold=False signIn=2 rail=True desk=False lit= preview=True sessEnded=False dialogs=0 font=16px
+live[status]: 预览 — 您正在查看尚未上线的新流程。退出预览
+nextError: {"dialog":false,"sign":null}
+overflow ok=True docOver=0 offenders=0 reach=0 clipped=0 offFixed=0 ctrlPast= list=
+pageErrors= console= devOnly=
+probe= note= flags=
+=== 186 positions zh 390 shot=viewport vp=390x780
+expect: /positions signed out: proxy.ts sends it to sign-in (/auth/login?next=…).
+requested: /positions | status=200 redirects="/positions" last={"kind":"document","url":"/auth/login?next=%2Fpositions","status":200} hydrated=True
+url: /auth/login?next=%2Fpositions | title: 登录 · 50pick | h1: 欢迎回来
+header: capsule= gold=False signIn=2 rail=True desk=False lit= preview=True sessEnded=False dialogs=0 font=16px
+live[status]: 预览 — 您正在查看尚未上线的新流程。退出预览
+nextError: {"dialog":false,"sign":null}
+overflow ok=True docOver=0 offenders=0 reach=0 clipped=0 offFixed=0 ctrlPast= list=
+pageErrors= console= devOnly=
+probe= note= flags=
+=== 187 positions zh 1280 shot=viewport vp=1280x900
+expect: /positions signed out: proxy.ts sends it to sign-in (/auth/login?next=…).
+requested: /positions | status=200 redirects="/positions" last={"kind":"document","url":"/auth/login?next=%2Fpositions","status":200} hydrated=True
+url: /auth/login?next=%2Fpositions | title: 登录 · 50pick | h1: 欢迎回来
+header: capsule= gold=False signIn=2 rail=False desk=True lit= preview=True sessEnded=False dialogs=0 font=16px
+live[status]: 预览 — 您正在查看尚未上线的新流程。退出预览
+nextError: {"dialog":false,"sign":null}
+overflow ok=True docOver=0 offenders=0 reach=0 clipped=0 offFixed=0 ctrlPast= list=
+pageErrors= console= devOnly=
+probe= note= flags=
+=== 188 account zh 360 shot=viewport vp=360x780
+expect: The hub for a guest: the prompt (Ingia au jisajili …), no identity card, no sign-out row.
+requested: /account | status=200 redirects= last={"kind":"document","url":"/account","status":200} hydrated=True
+url: /account | title: 账户 · 50pick | h1: 账户
+header: capsule= gold=False signIn=2 rail=True desk=False lit=["/account=page","/account=page"] preview=True sessEnded=False dialogs=0 font=16px
+live[status]: 预览 — 您正在查看尚未上线的新流程。退出预览
+nextError: {"dialog":false,"sign":null}
+overflow ok=True docOver=0 offenders=0 reach=0 clipped=0 offFixed=0 ctrlPast= list=
+pageErrors= console= devOnly=
+probe= note= flags=
+=== 189 account zh 390 shot=viewport vp=390x780
+expect: The hub for a guest: the prompt (Ingia au jisajili …), no identity card, no sign-out row.
+requested: /account | status=200 redirects= last={"kind":"document","url":"/account","status":200} hydrated=True
+url: /account | title: 账户 · 50pick | h1: 账户
+header: capsule= gold=False signIn=2 rail=True desk=False lit=["/account=page","/account=page"] preview=True sessEnded=False dialogs=0 font=16px
+live[status]: 预览 — 您正在查看尚未上线的新流程。退出预览
+nextError: {"dialog":false,"sign":null}
+overflow ok=True docOver=0 offenders=0 reach=0 clipped=0 offFixed=0 ctrlPast= list=
+pageErrors= console= devOnly=
+probe= note= flags=
+=== 190 account zh 1280 shot=viewport vp=1280x900
+expect: The hub for a guest: the prompt (Ingia au jisajili …), no identity card, no sign-out row.
+requested: /account | status=200 redirects= last={"kind":"document","url":"/account","status":200} hydrated=True
+url: /account | title: 账户 · 50pick | h1: 账户
+header: capsule= gold=False signIn=2 rail=False desk=True lit=["/account=page","/account=page"] preview=True sessEnded=False dialogs=0 font=16px
+live[status]: 预览 — 您正在查看尚未上线的新流程。退出预览
+nextError: {"dialog":false,"sign":null}
+overflow ok=True docOver=0 offenders=0 reach=0 clipped=0 offFixed=0 ctrlPast= list=
+pageErrors= console= devOnly=
+probe= note= flags=
+=== 191 wallet-deposit zh 360 shot=viewport vp=360x780
+expect: /wallet/deposit signed out: redirected to /auth/login?next=/wallet/deposit.
+requested: /wallet/deposit | status=200 redirects="/wallet/deposit" last={"kind":"document","url":"/auth/login?next=%2Fwallet%2Fdeposit","status":200} hydrated=True
+url: /auth/login?next=%2Fwallet%2Fdeposit | title: 登录 · 50pick | h1: 欢迎回来
+header: capsule= gold=False signIn=2 rail=True desk=False lit= preview=True sessEnded=False dialogs=0 font=16px
+live[status]: 预览 — 您正在查看尚未上线的新流程。退出预览
+nextError: {"dialog":false,"sign":null}
+overflow ok=True docOver=0 offenders=0 reach=0 clipped=0 offFixed=0 ctrlPast= list=
+pageErrors= console= devOnly=
+probe= note= flags=
+=== 192 wallet-deposit zh 390 shot=viewport vp=390x780
+expect: /wallet/deposit signed out: redirected to /auth/login?next=/wallet/deposit.
+requested: /wallet/deposit | status=200 redirects="/wallet/deposit" last={"kind":"document","url":"/auth/login?next=%2Fwallet%2Fdeposit","status":200} hydrated=True
+url: /auth/login?next=%2Fwallet%2Fdeposit | title: 登录 · 50pick | h1: 欢迎回来
+header: capsule= gold=False signIn=2 rail=True desk=False lit= preview=True sessEnded=False dialogs=0 font=16px
+live[status]: 预览 — 您正在查看尚未上线的新流程。退出预览
+nextError: {"dialog":false,"sign":null}
+overflow ok=True docOver=0 offenders=0 reach=0 clipped=0 offFixed=0 ctrlPast= list=
+pageErrors= console= devOnly=
+probe= note= flags=

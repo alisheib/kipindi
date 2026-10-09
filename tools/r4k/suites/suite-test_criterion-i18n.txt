@@ -1,0 +1,102 @@
+PASS 1: en gets English and is not a fallback
+PASS 1: sw gets the Swahili
+PASS 1: zh gets the Chinese
+PASS 1: sw with a undefined translation falls back to English, and SAYS so
+PASS 1: sw with a null translation falls back to English, and SAYS so
+PASS 1: sw with a empty translation falls back to English, and SAYS so
+PASS 1: sw with a whitespace translation falls back to English, and SAYS so
+PASS 1: zh with a whitespace translation does the same
+PASS 1: en never reports a fallback
+PASS 1: en never reports a fallback
+PASS 1: en never reports a fallback
+PASS 1: en never reports a fallback
+PASS 2: the fallback claim matches the rendered text in all 18 locale × data cases — 0 disagreed
+PASS 2: and the sweep is not vacuous — every cell ran, both arms present — 18 cells
+PASS 2: CONTROL — pickCriterion picks the same TEXT as pickLocalized; only the disclosure is new — 18/18
+PASS 3: the market page renders the criterion through pickCriterion
+PASS 3: the criterion section was located — 2116 chars
+PASS 3: …and it is the RIGHT section — heading + source link, and it did not run away — 2116 chars, 1 <section>
+PASS 3: its BODY paragraph is the localised text, not the raw column
+PASS 3: …and the RAW column appears nowhere outside the English-original disclosure
+PASS 3: while the disclosure itself DOES carry it (else the negative above is vacuous)
+PASS 3: the page branches on the fallback FACT
+PASS 3: and the 'no translation' note sits inside that branch, not unconditionally — gap 242
+PASS 3: the note is rendered exactly once — not in both arms
+PASS 3: and English-is-binding is the OTHER arm, after it — bind@1209 none@718
+PASS 4: criterionNoTranslation is defined in all three locales — found 3
+PASS 4: criterionNoTranslation is non-empty in all three
+PASS 4: criterionNoTranslation is genuinely translated — three DISTINCT strings — 3 distinct
+PASS 4: criterionEnglishBinding is defined in all three locales — found 3
+PASS 4: criterionEnglishBinding is non-empty in all three
+PASS 4: criterionEnglishBinding is genuinely translated — three DISTINCT strings — 3 distinct
+PASS 4: criterionShowEnglish is defined in all three locales — found 3
+PASS 4: criterionShowEnglish is non-empty in all three
+PASS 4: criterionShowEnglish is genuinely translated — three DISTINCT strings — 3 distinct
+PASS 4: the ZH criterionNoTranslation contains Han characters
+PASS 4: the ZH criterionEnglishBinding contains Han characters
+PASS 4: the ZH criterionShowEnglish contains Han characters
+PASS 5: the PredictionMarket model was located
+PASS 5: resolutionCriterionSw is declared NULLABLE (additive)
+PASS 5: resolutionCriterionZh is declared NULLABLE (additive)
+PASS 5: toStoredMarket reads both columns
+PASS 5: marketStore.set was located — 5071 chars
+PASS 5: resolutionCriterionSw is written in BOTH arms of the upsert (create + update) — 2 arm(s)
+PASS 5: resolutionCriterionZh is written in BOTH arms of the upsert (create + update) — 2 arm(s)
+PASS 5: the migration file exists
+PASS 5: the migration adds both columns
+PASS 5: and is purely additive — no NOT NULL, no DROP, no data rewrite
+PASS 6: an undefined translation is legitimate — no issue, stores null
+PASS 6: an null translation is legitimate — no issue, stores null
+PASS 6: an empty translation is legitimate — no issue, stores null
+PASS 6: an whitespace translation is legitimate — no issue, stores null
+PASS 6: a stub is refused as TOO_SHORT
+PASS 6: …and is never stored
+PASS 6: the English itself is refused as SAME_AS_ENGLISH
+PASS 6: …and is never stored
+PASS 6: the English re-cased is still the English
+PASS 6: the English re-spaced is still the English
+PASS 6: a real translation is accepted
+PASS 6: …and stored trimmed
+PASS 6: a Chinese translation is accepted despite being far shorter than the English
+PASS 6: PROPERTY — across 10 hostile inputs, the English is never stored as a translation
+PASS 6: …and the sweep is not vacuous — some of those inputs DO store
+PASS 7: the wizard sends both translations
+PASS 7: the wizard imports the shared rule
+PASS 7: the action imports the SAME shared rule
+PASS 7: and neither re-implements it locally
+PASS 7: the wizard blocks step 2 on either issue
+PASS 7: and it evaluates the rule against the ENGLISH criterion, not against nothing
+PASS 7: the action reads both fields off the form
+PASS 7: the action REFUSES rather than silently correcting
+PASS 7: and it passes both into CreateMarketInput
+PASS 7: createMarket normalises both columns
+PASS 7: and NEITHER falls back to the English criterion
+PASS 8: the provider tool schema asks for both translations
+PASS 8: the outer tool-schema `required` was located — 7 required-array(s) in file
+PASS 8: …both are DECLARED and neither is REQUIRED — omitting beats guessing
+PASS 8: the prompt tells the model to OMIT rather than guess, and never to copy the English
+PASS 8: the generation copies both onto the poll THROUGH the shared normaliser
+PASS 8: the officer's edit applies the same rule
+PASS 8: the AIPoll row carries BOTH columns in BOTH directions
+PASS 8: ingestCandidate normalises BOTH columns
+PASS 8: resolutionCriterionSw is written in BOTH arms of the candidate upsert — 2 arm(s)
+PASS 8: resolutionCriterionZh is written in BOTH arms of the candidate upsert — 2 arm(s)
+PASS 8: the two calls in ai-poll-publish.ts were located SEPARATELY — create=750 ingest=743
+PASS 8: the candidates createMarket call was located — 514
+PASS 8: …and publishPollAction still delegates to that module, so this is live code
+PASS 8: publishing an AI poll carries both into THE createMarket CALL
+PASS 8: publishing a CANDIDATE carries both too — the second, easily-missed path
+PASS 8: and the candidate RECORD gets them at ingest — a SEPARATE claim, separately located
+PASS 8: the EXECUTING companions are wired, because a grep is not a proof
+PASS 8: the officer's review page RENDERS both translations
+PASS 8: …and says what a missing one means rather than leaving a blank row
+PASS 8: the officer can EDIT both, under the same imported rule
+PASS 8: the edit panel's submit() was located — 2626
+PASS 8: …and it REFUSES to save while a translation issue stands
+PASS 8: AIPoll declares both columns NULLABLE
+PASS 8: MarketCandidate declares both columns NULLABLE
+PASS 8: the AI migration exists and touches both tables
+PASS 8: and is purely additive
+
+criterion-i18n: 99 passed, 0 failed
+

@@ -1,0 +1,37 @@
+﻿
+── 1 · the catalogue is complete, and honest about what it does not know 
+
+── 2 · normalisation is a uniqueness control, not a tidy-up ──
+
+── 3 · per-type validation — every refusal beside its acceptance 
+
+── 4 · required slots and expiry are per-document, never a count 
+
+── 5 · 🔴 ONE DOCUMENT, ONE ACCOUNT — for every one of the four 
+
+── 6 · 🔴 the age gate belongs to the PLAYER, not to the NIDA number 
+
+── 7 · expiry is refused at submit, and re-checked before review 
+
+── 8 · the required slots gate submission, per document ──────
+node.exe : [email] sendEmailToUser skipped — no email for user usr_exp_1… (user.email=null, phone=+25579…)
+At line:1 char:1
++ & "C:\Program Files\nodejs/node.exe" "C:\Program Files\nodejs/node_mo ...
++ ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: ([email] sendEma... phone=+25579…):String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+ 
+
+── 9 · the identity tuple is the ONLY home — the deprecated mirror is GONE 
+[kyc] no admin notify recipients resolved — admin email skipped
+[email] sendEmailToUser skipped — no email for user usr_slots_1… (user.email=null, phone=+25579…)
+
+── 10 · every player-facing string exists in all three languages 
+
+── 11 · the surfaces read the catalogue rather than re-writing it 
+
+────────────────────────────────────────────────────────────────
+  FOUR IDENTITY DOCUMENTS: 200 passed, 0 failed
+  Uniqueness is enforced by the DATABASE on ("idType","idNumber");
+  run 'npm run red:id-documents' to see this suite refuse each defect.
+────────────────────────────────────────────────────────────────

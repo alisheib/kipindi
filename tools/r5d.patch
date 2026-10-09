@@ -1,0 +1,2585 @@
+diff --git a/package.json b/package.json
+index fc48503a4..09600a78f 100644
+--- a/package.json
++++ b/package.json
+@@ -1011,6 +1011,7 @@
+     "test:notifications-page": "tsx scripts/notifications-page.test.mts",
+     "test:visual-pass-r4c": "tsx scripts/visual-pass-r4c.test.mts",
+     "test:visual-pass-r4j": "tsx scripts/visual-pass-r4j.test.mts",
++    "test:visual-pass-r5d": "tsx scripts/visual-pass-r5d.test.mts",
+     "red:notifications-page": "node scripts/notifications-page-red.mjs",
+     "red:measure": "node scripts/measure-red.mjs",
+     "red:decomment": "node scripts/decomment-red.mjs",
+diff --git a/public/sw.js b/public/sw.js
+index c6f269bd5..de2d0a765 100644
+--- a/public/sw.js
++++ b/public/sw.js
+@@ -1,9 +1,9 @@
+ /**
+  * 50pick Service Worker — offline fallback + push notification support.
+  *
+- * Strategy: network-first for pages (always fresh), cache-first for static
+- * assets (fonts, icons, images). Push notifications display even when the
+- * app is closed.
++ * Strategy: network-first for pages (always fresh), stale-while-revalidate for
++ * static files (fonts, icons, images) — and only an image or a font is ever
++ * kept. Push notifications display even when the app is closed.
+  *
+  * Registered from src/lib/register-sw.ts (client-side, lazy).
+  */
+@@ -21,8 +21,14 @@
+ // copy was the header of whoever was signed in at install — their balance, their avatar, the staff preview strip —
+ // shown offline to anybody on that phone afterwards. The name is bumped so `activate` below deletes those caches on
+ // every device that already holds one; the new copy is fetched with no cookie (`precacheRequest`) and is a document
+-// that reads nothing from its request (`src/app/offline/route.ts`). ⛔ Never reuse a name up to v4.
+-const CACHE_NAME = "50pick-v5";
++// that reads nothing from its request (`src/app/offline/route.ts`).
++// 🔴 v5 → v6 (2026-10-09, round 5, review F2 · the static rule's half of hotfix 9cb95938): EVERY NAME UP TO v5 RAN A
++// STATIC RULE THAT COULD KEEP A PAGE. It matched by the address's file name alone and kept whatever answered, so a
++// signed-in reader's page at `/markets/x.png` (a not-found inside their app shell) was stored and answered first to the
++// next visitor of that address on the same phone (a sandbox run of this worker). The rule now never takes a navigation
++// and keeps only an image or a font (`keepable`, below); the name moves so `activate` drops what an older one stored.
++// v5 itself never reached production (main ran v4), so devices there go v4 → v6. ⛔ Never reuse a name up to v5.
++const CACHE_NAME = "50pick-v6";
+ // C2j — dedicated branded offline route (precached below) instead of falling
+ // back to the data-heavy home page. Since R4-G a self-contained document, not a page: `src/lib/offline-document.ts`.
+ const OFFLINE_URL = "/offline";
+@@ -104,6 +110,40 @@ function offlineResponse() {
+   ));
+ }
+ 
++/**
++ * ⭐ THE OFFLINE DOCUMENT IS KEPT FRESH BY THE NAVIGATIONS THAT SUCCEED (2026-10-09, round 5, review F3). It was fetched
++ * at install and never again: a phone kept that copy for the cache's whole life — the licence number the route bakes in,
++ * and any later fix to `offline-document.ts`, never reached it — and a precache that failed at install was never tried
++ * again, so that phone had only the last resort above. Now a navigation the network answered also refreshes it, in the
++ * background (`event.waitUntil`), with the precache's own cookieless request: at most one look per worker wake, and a
++ * fetch only when the kept copy is missing or not from the last day by its own `date` header (which the cache keeps),
++ * so browsing costs one small request a day. `cache.add` writes only a response that is ok, so a failed refresh leaves
++ * the kept copy as it was.
++ */
++const OFFLINE_REFRESH_MS = 24 * 60 * 60 * 1000;
++let offlineLooked = false;
++function refreshOffline() {
++  if (offlineLooked) return Promise.resolve();
++  offlineLooked = true;
++  return caches.open(CACHE_NAME).then((cache) => cache.match(OFFLINE_URL).then((kept) => {
++    const age = kept ? Math.abs(Date.now() - Date.parse(kept.headers.get("date") || "")) : NaN;
++    if (age < OFFLINE_REFRESH_MS) return undefined;
++    return cache.add(precacheRequest(OFFLINE_URL));
++  })).catch(() => undefined);
++}
++
++/**
++ * ⛔ ONLY AN IMAGE OR A FONT IS KEPT (round 5, review F2; see the v6 note above). The static rule below picks requests by
++ * the address, and an address can end in ".png" without naming a file — `/markets/x.png` is a page. Navigations never
++ * reach that rule (the navigation branch comes first), and what the network answers is stored only when it says it is
++ * an image or a font: never a page (`text/html`), and never the router's data for one (`text/x-component`, which a move
++ * inside the app to such an address fetches).
++ */
++const KEEPABLE_TYPE = /^(?:image|font)\//i;
++function keepable(response) {
++  return response.ok && KEEPABLE_TYPE.test(response.headers.get("content-type") || "");
++}
++
+ // Activate: clean old caches
+ self.addEventListener("activate", (event) => {
+   event.waitUntil(
+@@ -114,7 +154,7 @@ self.addEventListener("activate", (event) => {
+   self.clients.claim();
+ });
+ 
+-// Fetch: network-first for navigation, cache-first for static assets
++// Fetch: network-first for navigation, stale-while-revalidate for static files
+ self.addEventListener("fetch", (event) => {
+   const { request } = event;
+   const url = new URL(request.url);
+@@ -125,7 +165,23 @@ self.addEventListener("fetch", (event) => {
+   // API routes — always network, never cache
+   if (url.pathname.startsWith("/api/")) return;
+ 
+-  // Static assets (fonts, images, icons) — cache-first
++  // Navigation — network-first, offline fallback.
++  // ⛔ FIRST, BEFORE THE STATIC RULE (round 5, review F2): a navigation is a page whatever its address ends in
++  // (`/markets/x.png`), and it is never stored.
++  if (request.mode === "navigate") {
++    // ⛔ E-381 §6 item 13 · `caches.match` resolves to `undefined` when the page was never cached, and
++    // `respondWith(undefined)` throws — the player got the browser's own network-error page instead of ours.
++    // ⭐ A page the network answered also keeps the offline document fresh, in the background (`refreshOffline`).
++    event.respondWith(
++      fetch(request).then((response) => {
++        if (response.ok) event.waitUntil(refreshOffline());
++        return response;
++      }, () => offlineResponse()),
++    );
++    return;
++  }
++
++  // Static files (fonts, images, icons) — stale-while-revalidate
+   if (
+     url.pathname.startsWith("/icons/") ||
+     url.pathname.startsWith("/brand/") ||
+@@ -134,10 +190,11 @@ self.addEventListener("fetch", (event) => {
+   ) {
+     // Stale-while-revalidate: answer from the cache at once when we can, and refresh the entry in the background,
+     // so a replaced logo at the same URL reaches the player on their next visit (it used to need a CACHE_NAME bump).
++    // ⛔ Only an image or a font is stored (`keepable`), so only an image or a font can ever answer from here.
+     event.respondWith(
+       caches.open(CACHE_NAME).then((cache) => cache.match(request).then((cached) => {
+         const network = fetch(request).then((response) => {
+-          if (response.ok) cache.put(request, response.clone());
++          if (keepable(response)) cache.put(request, response.clone());
+           return response;
+         });
+         if (cached) { event.waitUntil(network.catch(() => undefined)); return cached; }
+@@ -146,16 +203,6 @@ self.addEventListener("fetch", (event) => {
+     );
+     return;
+   }
+-
+-  // Navigation — network-first, offline fallback
+-  if (request.mode === "navigate") {
+-    // ⛔ E-381 §6 item 13 · `caches.match` resolves to `undefined` when the page was never cached, and
+-    // `respondWith(undefined)` throws — the player got the browser's own network-error page instead of ours.
+-    event.respondWith(
+-      fetch(request).catch(() => offlineResponse()),
+-    );
+-    return;
+-  }
+ });
+ 
+ // Push notifications — display even when app is closed
+diff --git a/scripts/anchors/visual-pass-r4k.anchors.mjs b/scripts/anchors/visual-pass-r4k.anchors.mjs
+index 5cea63af6..0dfa937ca 100644
+--- a/scripts/anchors/visual-pass-r4k.anchors.mjs
++++ b/scripts/anchors/visual-pass-r4k.anchors.mjs
+@@ -12,6 +12,8 @@
+ /** @typedef {{ name: string, file: string, from: string, to: string, expect: string }} RedMutation */
+ 
+ const VIEW = "src/components/ui/not-found-view.tsx";
++// ⚠️ ROUND 5 (R5-D, review G1's sibling): the view is client code, so its words live in a data module of their own.
++const WORDS = "src/components/ui/not-found-words.ts";
+ 
+ /** @type {RedMutation[]} */
+ export const MUTATIONS = [
+@@ -20,7 +22,7 @@ export const MUTATIONS = [
+   { name: "the column's gutter back to px-5 (24px)", file: VIEW, from: "overflow-hidden px-3 py-10", to: "overflow-hidden px-5 py-10", expect: "6.1" },
+   { name: "the cards back in the market page's order (Markets first)", file: VIEW, from: "<Link href=\"/\" className={CARD}>", to: "<Link href=\"/markets\" className={CARD}>", expect: "1.2" },
+   { name: "the heading unbalanced", file: VIEW, from: "tracking-[-0.02em] text-text text-balance\">", to: "tracking-[-0.02em] text-text\">", expect: "3.1" },
+-  { name: "the English apostrophe straight", file: VIEW, from: "We couldn’t find that page", to: "We couldn't find that page", expect: "1.5" },
++  { name: "the English apostrophe straight", file: WORDS, from: "We couldn’t find that page", to: "We couldn't find that page", expect: "1.5" },
+   { name: "the Chinese hint free to break inside a word again", file: VIEW, from: "text-balance [word-break:keep-all] [overflow-wrap:break-word]\">", to: "text-balance\">", expect: "3.2" },
+   { name: "the gap with no word-spacing", file: "src/app/globals.css", from: "letter-spacing: 0; word-spacing: 0.05em;", to: "letter-spacing: 0; word-spacing: 0;", expect: "4.6" },
+   { name: "the helper drops the gap", file: "src/lib/cjk-marks.tsx", from: "    if (next !== undefined) {\n", to: "    if (next === \"never\") {\n", expect: "4.3" },
+diff --git a/scripts/journey-tickets.test.mts b/scripts/journey-tickets.test.mts
+index dd8b42cd9..cb2d5bef2 100644
+--- a/scripts/journey-tickets.test.mts
++++ b/scripts/journey-tickets.test.mts
+@@ -96,6 +96,8 @@ const LOADING = "src/app/positions/loading.tsx";
+ const ERROR = "src/app/positions/error.tsx";
+ const HISTORY = "src/app/updown/history/page.tsx";
+ const HISTORY_LOADING = "src/app/updown/history/loading.tsx";
++/** Round 5 (review G1): the history loading file hands its answer to this drawing, which the journey's root ghost also draws. */
++const HISTORY_GHOST = "src/app/updown/history/history-ghost.tsx";
+ const HISTORY_ERROR = "src/app/updown/history/error.tsx";
+ const TICKETS_DIR = "src/components/journey/tickets/";
+ const VIEW = `${TICKETS_DIR}tickets-view.tsx`;
+@@ -121,7 +123,7 @@ const SELL_HOST = "src/components/markets/sell-result-host.tsx";
+ const MARKET_PAGE = "src/app/markets/[id]/page.tsx";
+ /** The journey's own Tiketi files, each held whole. */
+ const JOURNEY_FILES = [VIEW, CARD, SWITCH, RAIL, GHOST, RULE];
+-const SOURCES = [PAGE, BAR, LOADING, ERROR, HISTORY, HISTORY_LOADING, HISTORY_ERROR, ...JOURNEY_FILES,
++const SOURCES = [PAGE, BAR, LOADING, ERROR, HISTORY, HISTORY_LOADING, HISTORY_GHOST, HISTORY_ERROR, ...JOURNEY_FILES,
+   CLASSIC_CARD, TONE, SIDE_LABEL, TABS, GUEST_SHEET, PROXY, SELL_GATE, TW_CONFIG, SELL_BUTTON, SELL_MODAL, SELL_RESULT, SELL_HOST, MARKET_PAGE];
+ 
+ type World = {
+@@ -622,13 +624,15 @@ function g10Loading(W: World, ok: Ok) {
+   const early = body.indexOf(JOURNEY_GHOST_RETURN);
+   const classic = body.indexOf(CLASSIC_RETURN);
+   const lost = CLASSIC_GHOST.filter((b) => !(count(loading, b) === 1 && body.indexOf(b) > classic));
+-  const historyHead = siblingTernaries(hloading, HISTORY_GHOST_OPEN, "{journey ? null : ");
++  // ⚠️ MOVED IN ROUND 5 (review G1, R5-D): the two head lines are in the drawing the loading file hands its answer to.
++  const hghost = text(W, HISTORY_GHOST);
++  const historyHead = siblingTernaries(hghost, HISTORY_GHOST_OPEN, "{journey ? null : ");
+   ok("10.ghost · each loading file returns ONE ghost by the answer: /positions Tiketi zangu's for a journey request, BEFORE its one classic return, which keeps every block of today's; /updown/history swaps only its two head lines, each a sibling ternary where it stood",
+     asked > 0 && early > asked && classic > early && count(loading, JOURNEY_GHOST_RETURN) === 1 && count(loading, CLASSIC_RETURN) === 1
+       && count(loading, "<TicketsGhost") === 1 && lost.length === 0
+-      && historyHead === HISTORY_GHOST_HEAD && count(hloading, "<TicketsHeadGhost") === 1,
++      && historyHead === HISTORY_GHOST_HEAD && count(hghost, "<TicketsHeadGhost") === 1 && count(hloading, "return <UpDownHistoryGhost t={t} journey={journey} />;") === 1,
+     lost.length > 0 ? `today's ghost lost: ${lost.join(" · ")}` : historyHead.slice(0, 200));
+-  const pickers = [LOADING, HISTORY_LOADING, GHOST];
++  const pickers = [LOADING, HISTORY_LOADING, HISTORY_GHOST, GHOST];
+   const inBrowser = pickers.filter((f) => isClient(text(W, f)) || text(W, f).includes("useJourneyOn"));
+   const clientLoads = pickers.flatMap((f) => loadsOf(W, f).filter((l) => isClient(textOf(W, l))).map((l) => `${f} loads ${l}`));
+   const tiketi = ticketFiles();
+@@ -1087,7 +1091,7 @@ const sessionRead = swap(HISTORY_LOADING, ASK_BOTH, `${ASK_BOTH}${LF}  await cur
+ const journeyForAll = swap(LOADING, JOURNEY_GHOST_RETURN, "return <TicketsGhost t={t} />;");
+ const classicForJourney = swap(LOADING, JOURNEY_GHOST_RETURN, "");
+ const classicBlockLost = swap(LOADING, CLASSIC_GHOST[3], "<div aria-hidden>");
+-const historyGhostForAll = swap(HISTORY_LOADING, HISTORY_GHOST_OPEN, "{true ? <TicketsHeadGhost");
++const historyGhostForAll = swap(HISTORY_GHOST, HISTORY_GHOST_OPEN, "{true ? <TicketsHeadGhost");
+ const ghostsInBrowser = withFile(GHOST, (s) => `"use client";${LF}${s}`);
+ const clientImport = withFile(LOADING, (s) => `import { TicketSwitchRail } from "@/components/journey/tickets/ticket-switch-rail";${LF}${s}`);
+ const errorForAll = swap(ERROR, "body={journeyOn ? t.journey.ticketsErrorBody : t.error.positionsSafe}", "body={t.journey.ticketsErrorBody}");
+@@ -1206,7 +1210,7 @@ const plants: Plant[] = [
+   { name: "every reader is drawn the journey's ghost", expect: ["10.ghost"], world: journeyForAll, landed: changed(journeyForAll, LOADING) },
+   { name: "a journey reader is drawn the classic ghost (“Nafasi”)", expect: ["10.ghost"], world: classicForJourney, landed: changed(classicForJourney, LOADING) },
+   { name: "today's ghost loses a block (the exposure bar)", expect: ["10.ghost"], world: classicBlockLost, landed: changed(classicBlockLost, LOADING) },
+-  { name: "the history ghost wears the tickets' head for every reader", expect: ["10.ghost"], world: historyGhostForAll, landed: changed(historyGhostForAll, HISTORY_LOADING) },
++  { name: "the history ghost wears the tickets' head for every reader", expect: ["10.ghost"], world: historyGhostForAll, landed: changed(historyGhostForAll, HISTORY_GHOST) },
+   { name: "the ghosts become client code (picked in the browser again)", expect: ["10.pick"], world: ghostsInBrowser, landed: changed(ghostsInBrowser, GHOST) },
+   { name: "a loading file imports a client module", expect: ["10.pick"], world: clientImport, landed: changed(clientImport, LOADING) },
+   { name: "the error page gives every reader the tickets' words", expect: ["10.error"], world: errorForAll, landed: changed(errorForAll, ERROR) },
+diff --git a/scripts/measure-system.test.mts b/scripts/measure-system.test.mts
+index 060481ddf..4cbf72226 100644
+--- a/scripts/measure-system.test.mts
++++ b/scripts/measure-system.test.mts
+@@ -180,11 +180,13 @@ log(`  (ratchet holds ${RAW_WIDTH_ALLOWLIST.size} file(s) — the list may only
+    cleanly — and `px-4` is **20px** on this repo's overridden scale (tailwind.config.ts:216),
+    which was the whole of D45. The gutter needs its own assertion or the fix is
+    one edit away from silently coming back. */
++// ⚠️ Round 5 (review G1, R5-D): the two loading files' drawings moved, byte for byte, into the ghost modules beside them
++// (the journey's root loading state draws them in the browser); the loading files render them, so the wrapper is read there.
+ const HOUSE_GUTTER_ROUTES = [
+   "src/app/updown/page.tsx",
+-  "src/app/updown/loading.tsx",
++  "src/app/updown/updown-ghost.tsx",
+   "src/app/updown/history/page.tsx",
+-  "src/app/updown/history/loading.tsx",
++  "src/app/updown/history/history-ghost.tsx",
+ ];
+ for (const rel of HOUSE_GUTTER_ROUTES) {
+   const src = decomment(readFileSync(join(ROOT, rel), "utf8"));
+diff --git a/scripts/offline-neutral.test.mts b/scripts/offline-neutral.test.mts
+index 556afbf19..1796a4ee0 100644
+--- a/scripts/offline-neutral.test.mts
++++ b/scripts/offline-neutral.test.mts
+@@ -23,6 +23,13 @@
+  *   §9 THE LAST RESORT SPEAKS ALL THREE LANGUAGES. The worker's own fallback (when even the document was never
+  *      cached) was English and Swahili only; its words are held to the dictionary and its scripts are RUN as in §4/§7.
+  *   §10 PUSH AND THE STATIC-ASSET STRATEGY ARE UNTOUCHED, by running their handlers.
++ *   §11 THE STATIC RULE KEEPS ONLY AN IMAGE OR A FONT (round 5, review F2 — the worker's half of hotfix 9cb95938). It
++ *      matched by the address's file name and kept whatever answered, so a signed-in reader's page at `/markets/x.png`
++ *      was stored and answered first to the next visitor of that address on the same phone. A navigation never reaches
++ *      it now, and only an image or a font is stored: run here for a page, the router's data and a login redirect.
++ *   §12 THE OFFLINE DOCUMENT STAYS FRESH (round 5, review F3). It was fetched at install only, so a licence change or a
++ *      fix to the document never reached a phone that held it, and a failed precache was never retried. A navigation
++ *      the network answered now refreshes it, cookieless, at most one look per worker wake, when missing or a day old.
+  *
+  * ⛔ IN-PROCESS BY CONSTRUCTION: it reads files, builds the document in memory and runs scripts in a `vm` sandbox; it
+  * opens nothing for writing (so `test:red-anchors` §4 counts its red twin as in-process).
+@@ -77,9 +84,15 @@ const T = (l: keyof typeof dict) => dict[l] as Dict;
+ const j = (v: unknown) => JSON.stringify(v);
+ const squash = (s: string) => s.replace(/\s+/g, " ").trim();
+ const htmlEsc = (s: string) => s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#39;");
+-/** Every name a cache that held the old "/offline" page could have had: the worker's names up to v4. */
+-const TAINTED = new Set(["50pick-v1", "50pick-v2", "50pick-v3", "50pick-v4"]);
++/**
++ * Every name a cache that may hold a person's page could have had: the worker's names up to v4 (the old "/offline" page,
++ * R4-G), and v5 too (round 5, review F2: every name up to v5 ran the static rule that kept whatever answered an address
++ * ending in ".png" — `/markets/x.png`, a page).
++ */
++const TAINTED = new Set(["50pick-v1", "50pick-v2", "50pick-v3", "50pick-v4", "50pick-v5"]);
+ const ORIGIN = "https://50pick.tz";
++/** The offline document's key in the worker's cache: the route's path. */
++const OFFLINE_KEY = OD.OFFLINE_PATH;
+ 
+ /* ── the service worker, run in a sandbox ──────────────────────────────────────────────────────────────────────── */
+ 
+@@ -90,18 +103,24 @@ class FakeRequest {
+   }
+ }
+ class FakeResponse {
+-  body: string; status: number; ok: boolean; headers: Record<string, string>;
++  body: string; status: number; ok: boolean; headers: Headers;
+   constructor(body: string, init: { status?: number; headers?: Record<string, string> } = {}) {
+-    this.body = body; this.status = init.status ?? 200; this.ok = this.status >= 200 && this.status < 300; this.headers = init.headers ?? {};
++    this.body = body; this.status = init.status ?? 200; this.ok = this.status >= 200 && this.status < 300; this.headers = new Headers(init.headers ?? {});
+   }
+   clone() { return this; }
+ }
+ const keyOf = (r: unknown) => (typeof r === "string" ? r : (r as { url: string }).url).replace(ORIGIN, "");
+ 
+-function loadSw(src: string, seed: Record<string, Record<string, string>> = {}) {
++/**
++ * The worker in a sandbox. `net` answers the worker's own `fetch` (offline — a TypeError — unless given); `addNet` answers
++ * what `cache.add` fetches (a precache that always lands, unless given: then `cache.add` keeps only an ok answer, as the
++ * real one does, and rejects otherwise). A seed entry is a body, or a FakeResponse with its headers.
++ */
++type SwNet = (r: FakeRequest | string) => Promise<FakeResponse>;
++function loadSw(src: string, seed: Record<string, Record<string, string | FakeResponse>> = {}, opts: { net?: SwNet; addNet?: SwNet } = {}) {
+   const handlers: Record<string, (e: unknown) => unknown> = {};
+   const store = new Map<string, Map<string, FakeResponse>>();
+-  for (const [name, entries] of Object.entries(seed)) store.set(name, new Map(Object.entries(entries).map(([u, b]) => [u, new FakeResponse(b)])));
++  for (const [name, entries] of Object.entries(seed)) store.set(name, new Map(Object.entries(entries).map(([u, b]) => [u, typeof b === "string" ? new FakeResponse(b) : b])));
+   const added: Array<{ cache: string; req: unknown }> = [];
+   const shown: Array<{ title: string; options: Record<string, unknown> }> = [];
+   const fetched: string[] = [];
+@@ -110,7 +129,13 @@ function loadSw(src: string, seed: Record<string, Record<string, string>> = {})
+       if (!store.has(name)) store.set(name, new Map());
+       const m = store.get(name)!;
+       return {
+-        add: async (r: unknown) => { added.push({ cache: name, req: r }); m.set(keyOf(r), new FakeResponse(`<precached ${keyOf(r)}>`)); },
++        add: async (r: unknown) => {
++          added.push({ cache: name, req: r });
++          if (!opts.addNet) { m.set(keyOf(r), new FakeResponse(`<precached ${keyOf(r)}>`)); return; }
++          const res = await opts.addNet(r as FakeRequest);
++          if (!res.ok) throw new TypeError(`cache.add: ${res.status}`);
++          m.set(keyOf(r), res);
++        },
+         match: async (r: unknown) => m.get(keyOf(r)),
+         put: async (r: unknown, res: FakeResponse) => { m.set(keyOf(r), res); },
+       };
+@@ -128,7 +153,7 @@ function loadSw(src: string, seed: Record<string, Record<string, string>> = {})
+   };
+   const ctx = vm.createContext({
+     self, caches, Request: FakeRequest, Response: FakeResponse, URL, Promise, Object, JSON, console,
+-    fetch: async (r: unknown) => { fetched.push(keyOf(r)); throw new TypeError("Failed to fetch (offline)"); },
++    fetch: async (r: unknown) => { fetched.push(keyOf(r)); if (opts.net) return opts.net(r as FakeRequest); throw new TypeError("Failed to fetch (offline)"); },
+   });
+   vm.runInContext(src, ctx, { filename: "sw.js" });
+   const event = (extra: Record<string, unknown>) => {
+@@ -136,7 +161,14 @@ function loadSw(src: string, seed: Record<string, Record<string, string>> = {})
+     let answer: Promise<unknown> | undefined;
+     // A rejected answer (an uncached asset with the network down) is "no answer", never a throw out of the check.
+     const e = { ...extra, waitUntil: (p: Promise<unknown>) => { waits.push(Promise.resolve(p).catch(() => undefined)); }, respondWith: (p: Promise<unknown>) => { answer = Promise.resolve(p).catch(() => undefined); } };
+-    return { e, settle: async () => { await Promise.all(waits); return answer ? await answer : undefined; } };
++    // Settled to the end: the answer, then every `waitUntil` — including one registered inside the answer's own chain
++    // (the navigation's offline refresh, round 5), which the event's lifetime covers as the browser's does.
++    const settle = async () => {
++      const a = answer ? await answer : undefined;
++      for (let n = -1; n !== waits.length;) { n = waits.length; await Promise.all(waits); }
++      return a;
++    };
++    return { e, settle };
+   };
+   const fire = async (type: string, extra: Record<string, unknown> = {}) => {
+     const h = handlers[type];
+@@ -196,7 +228,7 @@ async function run(W: World, log: (l: string) => void): Promise<string[]> {
+   log("§2 · every cache that may hold a person's page is deleted, and none is read");
+   {
+     const name = loadSw(W.sw).get("CACHE_NAME") as string | undefined;
+-    ok("2.name · the cache name is past every name that cached a page (50pick-v1…v4)", typeof name === "string" && !TAINTED.has(name) && /^50pick-v\d+$/.test(name), String(name));
++    ok("2.name · the cache name is past every name that may have cached a page (50pick-v1…v5)", typeof name === "string" && !TAINTED.has(name) && /^50pick-v\d+$/.test(name), String(name));
+     const sw = loadSw(W.sw, { "50pick-v4": { "/offline": "<PERSON: Salio TZS 100,000>" }, "50pick-v3": { "/offline": "<PERSON>" }, "someone-else": {} });
+     await sw.fire("install");
+     await sw.fire("activate");
+@@ -388,9 +420,10 @@ async function run(W: World, log: (l: string) => void): Promise<string[]> {
+     api.handlers.fetch?.({ request: new FakeRequest(`${ORIGIN}/api/wallet`), respondWith: () => { answered = true; }, waitUntil: () => undefined });
+     ok("10.api · an API request is never answered by the worker", !answered);
+     const src = decomment(W.sw);
+-    ok("10.static.rule · the static rule and its stale-while-revalidate are as they were",
++    // ⚠️ MOVED IN ROUND 5 (review F2): the copy is refreshed through `keepable` (§11), no longer for any ok answer.
++    ok("10.static.rule · the static rule and its stale-while-revalidate are as they were, the copy refreshed through `keepable` (§11)",
+       src.includes('url.pathname.startsWith("/icons/")') && src.includes('url.pathname.startsWith("/brand/")') && src.includes('url.pathname.startsWith("/hero/")')
+-        && src.includes("url.pathname.match(/\\.(woff2?|ttf|otf|svg|png|jpg|webp|ico)$/)") && src.includes("if (response.ok) cache.put(request, response.clone());")
++        && src.includes("url.pathname.match(/\\.(woff2?|ttf|otf|svg|png|jpg|webp|ico)$/)") && src.includes("if (keepable(response)) cache.put(request, response.clone());")
+         && src.includes("if (cached) { event.waitUntil(network.catch(() => undefined)); return cached; }"));
+     await sw.fire("push", { data: { json: () => ({ title: "Dau limepotea", body: "b", tag: "updown-1", url: "/updown" }), text: () => "" } });
+     const n = sw.shown[0];
+@@ -398,6 +431,99 @@ async function run(W: World, log: (l: string) => void): Promise<string[]> {
+       !!n && n.title === "Dau limepotea" && n.options.tag === "updown-1" && n.options.renotify === true && j(n.options.data) === j({ url: "/updown" }), j(n));
+     ok("10.click · a notification click still opens or focuses the app", typeof sw.handlers.notificationclick === "function");
+   }
++
++  log("§11 · the static rule keeps only an image or a font (round 5, review F2 — the worker's half of hotfix 9cb95938)");
++  {
++    // What the network answers, as production did on 2026-10-09: `/markets/<anything>.png` is a PAGE — the market
++    // not-found inside the app shell of whoever asked (their header, their balance) — and the router's data for a move
++    // to it is text/x-component. A sign-in wall answering at a static file's address is a page too.
++    const PAGE = "<!doctype html><header>Salio TZS 188,888 · Asha M.</header><main>404</main>";
++    const page = () => new FakeResponse(PAGE, { headers: { "content-type": "text/html; charset=utf-8" } });
++    const net: SwNet = async (r) => {
++      const u = new URL(typeof r === "string" ? r : r.url, ORIGIN);
++      if (u.searchParams.has("_rsc")) return new FakeResponse('0:["$","header",null,{"children":"Salio TZS 188,888"}]', { headers: { "content-type": "text/x-component" } });
++      if (u.pathname.startsWith("/markets/") || u.pathname === "/brand/behind-a-wall.png") return page();
++      if (u.pathname.endsWith(".woff2")) return new FakeResponse("<woff2>", { headers: { "content-type": "font/woff2" } });
++      return new FakeResponse("<png>", { headers: { "content-type": "image/png" } });
++    };
++    const sw = loadSw(W.sw, {}, { net });
++    await sw.fire("install");
++    const name = sw.get("CACHE_NAME") as string;
++    const kept = () => [...(sw.store.get(name)?.keys() ?? [])];
++    const bodyOf = (r: { answer: unknown }) => (r.answer as FakeResponse | undefined)?.body;
++    const signedIn = await sw.fire("fetch", { request: new FakeRequest(`${ORIGIN}/markets/x.png`, { mode: "navigate", credentials: "include" }) });
++    const nextVisitor = await sw.fire("fetch", { request: new FakeRequest(`${ORIGIN}/markets/x.png`, { mode: "navigate" }) });
++    ok("11.navigate · a navigation to an address ending in \".png\" is a page: the network answers it, nothing is stored, and the next visitor of that address is answered by the network again",
++      bodyOf(signedIn) === PAGE && bodyOf(nextVisitor) === PAGE && !kept().some((k) => k.startsWith("/markets/")) && sw.fetched.filter((f) => f === "/markets/x.png").length === 2,
++      j({ kept: kept(), fetched: sw.fetched }));
++    const move = await sw.fire("fetch", { request: new FakeRequest(`${ORIGIN}/markets/x.png?_rsc=1x2y3`) });
++    ok("11.rsc · a move inside the app to that address (the router's data for the page, text/x-component) is passed through, never stored",
++      (move.answer as FakeResponse | undefined)?.headers.get("content-type") === "text/x-component" && !kept().some((k) => k.startsWith("/markets/")), j(kept()));
++    const wall = await sw.fire("fetch", { request: new FakeRequest(`${ORIGIN}/brand/behind-a-wall.png`) });
++    ok("11.html · a page answering at a static file's own address (a sign-in wall, a not-found) is passed through, never stored",
++      bodyOf(wall) === PAGE && !kept().includes("/brand/behind-a-wall.png"), j(kept()));
++    await sw.fire("fetch", { request: new FakeRequest(`${ORIGIN}/icons/icon-192.png`) });
++    await sw.fire("fetch", { request: new FakeRequest(`${ORIGIN}/_next/static/media/inter-latin.woff2`) });
++    ok("11.keep · CONTROL — an image and a font are still stored, so the rule still does its job",
++      kept().includes("/icons/icon-192.png") && kept().includes("/_next/static/media/inter-latin.woff2"), j(kept()));
++    const keep = sw.get("keepable") as ((r: FakeResponse) => boolean) | undefined;
++    const TYPES: Array<[string, boolean]> = [["image/png", true], ["image/svg+xml", true], ["image/x-icon", true], ["image/webp", true], ["font/woff2", true],
++      ["text/html; charset=utf-8", false], ["text/x-component", false], ["application/json", false], ["application/octet-stream", false], ["", false]];
++    const wrong = typeof keep !== "function" ? ["no keepable"] : TYPES.filter(([t, want]) => keep(new FakeResponse("", { headers: t ? { "content-type": t } : {} })) !== want).map(([t]) => t || "(none)");
++    ok("11.types · `keepable` says yes to an ok image or font and to nothing else — a page, the router's data, JSON, an untyped body, an image that is not ok",
++      wrong.length === 0 && keep!(new FakeResponse("", { status: 404, headers: { "content-type": "image/png" } })) === false, wrong.join(", "));
++    // Offline, with a page planted at that address in the worker's own cache (what an older rule stored): the navigation
++    // is answered by the offline document, never by the page.
++    const planted = loadSw(W.sw, { [name]: { "/offline": "<offline doc>", "/markets/x.png": "<PERSON: Salio TZS 188,888>" } });
++    const offline = await planted.fire("fetch", { request: new FakeRequest(`${ORIGIN}/markets/x.png`, { mode: "navigate" }) });
++    ok("11.offline · offline, a navigation to that address is answered by the offline document — never by a page kept there",
++      bodyOf(offline) === "<offline doc>", String(bodyOf(offline)).slice(0, 80));
++  }
++
++  log("§12 · the offline document stays fresh (round 5, review F3)");
++  {
++    const DAY = 24 * 60 * 60 * 1000;
++    const keptDoc = (age: number | null, body = "<offline doc v1>") => new FakeResponse(body, { headers: age === null ? {} : { date: new Date(Date.now() - age).toUTCString() } });
++    const newDoc = async () => new FakeResponse("<offline doc v2>", { headers: { "content-type": "text/html; charset=utf-8", date: new Date().toUTCString() } });
++    const okPage: SwNet = async () => new FakeResponse("<page>", { headers: { "content-type": "text/html; charset=utf-8" } });
++    const nav = (sw: ReturnType<typeof loadSw>, path = "/positions") => sw.fire("fetch", { request: new FakeRequest(`${ORIGIN}${path}`, { mode: "navigate" }) });
++    const refreshes = (sw: ReturnType<typeof loadSw>) => sw.added.filter((a) => keyOf(a.req) === OFFLINE_KEY);
++    const docIn = (sw: ReturnType<typeof loadSw>) => sw.store.get(sw.get("CACHE_NAME") as string)?.get(OFFLINE_KEY)?.body;
++    const name = loadSw(W.sw).get("CACHE_NAME") as string;
++
++    // A precache that failed at install: nothing kept. The next page the network answers fetches it.
++    const lost = loadSw(W.sw, {}, { net: okPage, addNet: newDoc });
++    await nav(lost);
++    const req = refreshes(lost)[0]?.req as { credentials?: string; cache?: string } | string | undefined;
++    ok("12.retry · a precache that failed at install is fetched by the next page the network answers — with the precache's own request (no cookie, no HTTP-cache copy)",
++      refreshes(lost).length === 1 && typeof req === "object" && req.credentials === "omit" && req.cache === "reload" && docIn(lost) === "<offline doc v2>",
++      j({ refreshes: refreshes(lost).length, req, kept: docIn(lost) }));
++    const old = loadSw(W.sw, { [name]: { [OFFLINE_KEY]: keptDoc(DAY + 3_600_000) } }, { net: okPage, addNet: newDoc });
++    await nav(old);
++    ok("12.stale · a copy older than a day is replaced (the licence number and any fix reach the phone)", refreshes(old).length === 1 && docIn(old) === "<offline doc v2>", j({ kept: docIn(old) }));
++    const undated = loadSw(W.sw, { [name]: { [OFFLINE_KEY]: keptDoc(null) } }, { net: okPage, addNet: newDoc });
++    await nav(undated);
++    ok("12.undated · a copy with no date of its own is replaced", refreshes(undated).length === 1 && docIn(undated) === "<offline doc v2>", j({ kept: docIn(undated) }));
++    const recent = loadSw(W.sw, { [name]: { [OFFLINE_KEY]: keptDoc(3_600_000) } }, { net: okPage, addNet: newDoc });
++    await nav(recent);
++    ok("12.fresh · a copy from the last day is left alone: no request", refreshes(recent).length === 0 && docIn(recent) === "<offline doc v1>", j({ refreshes: refreshes(recent).length }));
++    // One look per worker wake: the answer here never carries a date, so without the guard every page would fetch again.
++    const undatedAnswer: SwNet = async () => new FakeResponse("<offline doc, undated>", { headers: { "content-type": "text/html; charset=utf-8" } });
++    const wake = loadSw(W.sw, { [name]: { [OFFLINE_KEY]: keptDoc(null) } }, { net: okPage, addNet: undatedAnswer });
++    await nav(wake); await nav(wake, "/updown"); await nav(wake, "/wallet");
++    ok("12.wake · three pages in one worker wake look once — one request, however the copy is dated", refreshes(wake).length === 1, j({ refreshes: refreshes(wake).length }));
++    const down = loadSw(W.sw, { [name]: { [OFFLINE_KEY]: keptDoc(null) } }, { addNet: newDoc });
++    const offlineNav = await nav(down);
++    ok("12.offline · a page the network could not answer refreshes nothing (it is answered by the kept copy)",
++      refreshes(down).length === 0 && (offlineNav.answer as FakeResponse | undefined)?.body === "<offline doc v1>", j({ refreshes: refreshes(down).length }));
++    const serverError = loadSw(W.sw, { [name]: { [OFFLINE_KEY]: keptDoc(null) } }, { net: async () => new FakeResponse("<500>", { status: 500 }), addNet: newDoc });
++    await nav(serverError);
++    ok("12.not-ok · a page the server answered with an error refreshes nothing", refreshes(serverError).length === 0, j({ refreshes: refreshes(serverError).length }));
++    const refused = loadSw(W.sw, { [name]: { [OFFLINE_KEY]: keptDoc(2 * DAY) } }, { net: okPage, addNet: async () => new FakeResponse("<503>", { status: 503 }) });
++    await nav(refused);
++    ok("12.keeps · a refresh the server refuses leaves the kept copy as it was — the phone is never left without its offline document",
++      refreshes(refused).length === 1 && docIn(refused) === "<offline doc v1>", j({ kept: docIn(refused) }));
++  }
+   return failed;
+ }
+ 
+@@ -454,9 +580,32 @@ const PLANTS: Plant[] = [
+   { name: "the last resort in English and Swahili only (no Chinese)", expect: /^9\.words /,
+     world: swap("sw", /\n\s*zh: \{ offline: "[^"]*", hint: "[^"]*", retry: "[^"]*" \},/, ""), needs: has("sw", /\n\s*zh: \{ offline:/) },
+   { name: "the static rule stops refreshing its copy", expect: /^10\.static\.rule /,
+-    world: swap("sw", "if (response.ok) cache.put(request, response.clone());", ""), needs: has("sw", "if (response.ok) cache.put(request, response.clone());") },
++    world: swap("sw", "if (keepable(response)) cache.put(request, response.clone());", ""), needs: has("sw", "if (keepable(response)) cache.put(request, response.clone());") },
+   { name: "a push loses its tag", expect: /^10\.push /,
+     world: swap("sw", 'tag: payload.tag || "50pick-notification",', 'tag: "50pick-notification",'), needs: has("sw", 'tag: payload.tag || "50pick-notification",') },
++  // Round 5 (R5-D) — review F2 and F3.
++  { name: "the cache name kept at v5 (a name whose static rule could keep a page)", expect: /^2\.name /,
++    world: swap("sw", /const CACHE_NAME = "[^"]+";/, 'const CACHE_NAME = "50pick-v5";'), needs: has("sw", /const CACHE_NAME = "[^"]+";/) },
++  { name: "an image-like address's navigation handed to the static rule again (as before round 5)", expect: /^11\.(navigate|offline) /,
++    world: swap("sw", 'if (request.mode === "navigate") {', 'if (request.mode === "navigate" && !/\\.(woff2?|ttf|otf|svg|png|jpg|webp|ico)$/.test(url.pathname)) {'),
++    needs: has("sw", 'if (request.mode === "navigate") {') },
++  { name: "the static rule keeps any ok answer again (a page, the router's data)", expect: /^11\.(rsc|html) /,
++    world: swap("sw", "if (keepable(response)) cache.put(request, response.clone());", "if (response.ok) cache.put(request, response.clone());"),
++    needs: has("sw", "if (keepable(response)) cache.put(request, response.clone());") },
++  { name: "`keepable` lets text through", expect: /^11\.types /,
++    world: swap("sw", "const KEEPABLE_TYPE = /^(?:image|font)\\//i;", "const KEEPABLE_TYPE = /^(?:image|font|text)\\//i;"), needs: has("sw", "const KEEPABLE_TYPE = /^(?:image|font)\\//i;") },
++  { name: "a page the network answered no longer refreshes the offline document (install-only, as before)", expect: /^12\.(retry|stale|undated) /,
++    world: swap("sw", "if (response.ok) event.waitUntil(refreshOffline());", ""), needs: has("sw", "if (response.ok) event.waitUntil(refreshOffline());") },
++  { name: "the refresh sends the session cookie (`cache.add(url)`)", expect: /^12\.retry /,
++    world: swap("sw", "return cache.add(precacheRequest(OFFLINE_URL));", "return cache.add(OFFLINE_URL);"), needs: has("sw", "return cache.add(precacheRequest(OFFLINE_URL));") },
++  { name: "every page refetches the offline document (no one look per worker wake)", expect: /^12\.wake /,
++    world: swap("sw", "if (offlineLooked) return Promise.resolve();", ""), needs: has("sw", "if (offlineLooked) return Promise.resolve();") },
++  { name: "a copy from the last day refetched anyway (no age)", expect: /^12\.fresh /,
++    world: swap("sw", "if (age < OFFLINE_REFRESH_MS) return undefined;", ""), needs: has("sw", "if (age < OFFLINE_REFRESH_MS) return undefined;") },
++  { name: "a refresh tried when the network failed too", expect: /^12\.offline /,
++    world: swap("sw", "}, () => offlineResponse()),", "}, () => { event.waitUntil(refreshOffline()); return offlineResponse(); }),"), needs: has("sw", "}, () => offlineResponse()),") },
++  { name: "a refresh on a server error too (any answer)", expect: /^12\.not-ok /,
++    world: swap("sw", "if (response.ok) event.waitUntil(refreshOffline());", "event.waitUntil(refreshOffline());"), needs: has("sw", "if (response.ok) event.waitUntil(refreshOffline());") },
+ ];
+ 
+ if (!PROVE_RED) {
+diff --git a/scripts/ui-consistency-baseline.json b/scripts/ui-consistency-baseline.json
+index 6d692f37c..ff8628c72 100644
+--- a/scripts/ui-consistency-baseline.json
++++ b/scripts/ui-consistency-baseline.json
+@@ -32,8 +32,8 @@
+     "numeric-size-utility::src/app/positions/performance/loading.tsx": 2,
+     "numeric-size-utility::src/app/profile/kyc/page.tsx": 6,
+     "numeric-size-utility::src/app/results/loading.tsx": 1,
+-    "numeric-size-utility::src/app/updown/history/loading.tsx": 1,
+-    "numeric-size-utility::src/app/updown/loading.tsx": 2,
++    "numeric-size-utility::src/app/updown/history/history-ghost.tsx": 1,
++    "numeric-size-utility::src/app/updown/updown-ghost.tsx": 2,
+     "numeric-size-utility::src/components/admin/admin-charts.tsx": 1,
+     "numeric-size-utility::src/components/admin/admin-mobile-nav.tsx": 1,
+     "numeric-size-utility::src/components/admin/admin-shell.tsx": 4,
+diff --git a/scripts/visual-pass-r4j.test.mts b/scripts/visual-pass-r4j.test.mts
+index 6434766b9..d01448cfb 100644
+--- a/scripts/visual-pass-r4j.test.mts
++++ b/scripts/visual-pass-r4j.test.mts
+@@ -17,7 +17,9 @@
+  *            hero's intro is ONE module both draw; /live's search ghost wears the page's band
+  *   §4  E40 · the Needle's rest rule clears a Chinese caption of tile 269's geometry, and the caption's box holds its ink
+  *   §5  the not-found mark: the overlays stop standing down, and the chrome stops lighting a tab and polling, on any
+- *            not-found page
++ *            not-found page — and (round 5, R5-D, review F4/F5) for the path being drawn only, in every frame, and before
++ *            the scripts run wherever the server's HTML carries the verdict (the mark, or the loading boundary's 404
++ *            template, measured on React's own server renderer)
+  * ⛔ It READS and renders in memory. Nothing here writes a file; the mutation proof (S/r4j/mutation-r4j.mjs) is the one
+  * thing that plants defects in the real sources, and it restores them byte for byte.
+  */
+@@ -58,6 +60,13 @@ function rule(src: string, selector: string): string {
+   return m ? m[1] : "";
+ }
+ const hasDirective = (s: string, d: string) => new RegExp(`^\\s*["']${d}["'];?`).test(s);
++/** Next's digest for `notFound()` — `HTTP_ERROR_FALLBACK_ERROR_CODE` and the 404 status — read from the framework itself. */
++const HAF = createRequire(import.meta.url)("next/dist/client/components/http-access-fallback/http-access-fallback") as {
++  HTTP_ERROR_FALLBACK_ERROR_CODE: string; HTTPAccessErrorStatus: { NOT_FOUND: number };
++};
++const NEXT_404 = `${HAF.HTTP_ERROR_FALLBACK_ERROR_CODE};${HAF.HTTPAccessErrorStatus.NOT_FOUND}`;
++/** The server's verdict "this record is missing", as React leaves it in the HTML of a loading boundary (round 5, F5). */
++const VERDICT = `template[data-dgst="${NEXT_404}"]`;
+ 
+ const SHELL = "src/components/layout/app-shell.tsx";
+ const JHDR = "src/components/journey/journey-top-bar.tsx";
+@@ -214,8 +223,10 @@ section("2 · E37 E41 · no cross-fade of the chrome, one current destination an
+ section("3 · E38 · the journey's loading ghosts (tiles 277 280 290 293 296: one 360px box at x32–1247 for every page)");
+ {
+   const loading = read(LOADING), shell = read(SHELL);
++  // ⚠️ MOVED IN ROUND 5 (review G1, R5-D): the arm renders the ghosts' lazy client binding with the one server answer
++  // the browser cannot read (the rails); the words are the client dictionary's (`test:visual-pass-r5d` §2).
+   const journeyArm = (s: string) => squash(s).includes(
+-    'const pathname = (await headers()).get("x-pathname") ?? ""; if (!pathname.startsWith("/admin") && !isOptOutPath(pathname) && (await resolveSimpleJourney()).journey) { const { t, locale } = await getServerT(); return <JourneyRouteGhost t={t} locale={locale} />; }');
++    'const pathname = (await headers()).get("x-pathname") ?? ""; if (!pathname.startsWith("/admin") && !isOptOutPath(pathname) && (await resolveSimpleJourney()).journey) { return <LazyJourneyRouteGhost rails={heroRailNames(null)} />; }');
+   const classicArm = (s: string) => squash(s).includes('return ( <div className="mx-auto max-w-[1280px] px-3 lg:px-6 py-10"> <SectionLoader height={360} /> </div> );');
+   ok("3.1 · the root loading file asks AppShell's own questions — not the console, not the opt-out page, the per-request resolver — and draws the journey's ghost for a journey reader alone",
+     journeyArm(loading) && shell.includes('if (pathname.startsWith("/admin")) {') && shell.includes("if (isOptOutPath(pathname)) {") && shell.includes("const journeyRead = resolveSimpleJourney();"));
+@@ -239,18 +250,24 @@ section("3 · E38 · the journey's loading ghosts (tiles 277 280 290 293 296: on
+     JSON.stringify({ keys, patterns }));
+   ok("3.3′ PLANT · a tab without its ghost (Juu/Chini back to the box) is reported", !covers(keys.filter((k) => k !== "/updown"), patterns));
+   ok("3.3″ PLANT · a question without its ghost is reported", !covers(keys, []));
+-  const own: Array<[string, string, string]> = [
+-    ['"/updown": <UpDownLoading />', "UpDownLoading", "@/app/updown/loading"],
+-    ['"/updown/history": <UpDownHistoryLoading />', "UpDownHistoryLoading", "@/app/updown/history/loading"],
+-    ['"/wallet/deposit": <DepositLoading />', "DepositLoading", "@/app/wallet/deposit/loading"],
+-    ['"/wallet/deposit/return": <DepositReturnLoading />', "DepositReturnLoading", "@/app/wallet/deposit/return/loading"],
+-    ['["^/markets/[^/]+$", <MarketDetailLoading />]', "MarketDetailLoading", "@/app/markets/[id]/loading"],
++  // ⚠️ MOVED IN ROUND 5 (review G1, R5-D): the root ghost is drawn in the browser now, so it imports each page's DRAWING —
++  // the loading file itself where it reads nothing (a question's, the provider's return), else the drawing the loading
++  // file hands its words to (Juu/Chini's, the round history's, the deposit's) — and each loading file renders that same
++  // drawing: one drawing, never redrawn. [the ghost's use, its import, the page's loading file, what that file renders]
++  const own: Array<[string, string, string, string]> = [
++    ['"/updown": <UpDownGhost t={t} />', 'import { UpDownGhost } from "@/app/updown/updown-ghost";', "src/app/updown/loading.tsx", "return <UpDownGhost t={t} />;"],
++    ['"/updown/history": <UpDownHistoryGhost t={t} journey />', 'import { UpDownHistoryGhost } from "@/app/updown/history/history-ghost";', "src/app/updown/history/loading.tsx", "return <UpDownHistoryGhost t={t} journey={journey} />;"],
++    ['"/wallet/deposit": <DepositGhost t={t} />', 'import { DepositGhost } from "@/app/wallet/deposit/deposit-ghost";', "src/app/wallet/deposit/loading.tsx", "return <DepositGhost t={t} />;"],
++    ['"/wallet/deposit/return": <DepositReturnLoading />', 'import DepositReturnLoading from "@/app/wallet/deposit/return/loading";', "src/app/wallet/deposit/return/loading.tsx", "export default function DepositReturnLoading() {"],
++    ['["^/markets/[^/]+$", <MarketDetailLoading />]', 'import MarketDetailLoading from "@/app/markets/[id]/loading";', "src/app/markets/[id]/loading.tsx", "export default function MarketDetailLoading() {"],
+   ];
+-  ok("3.4 · each ghost is its page's own: Tiketi zangu's journey ghost, the hero's intro components, and every other page's own loading file, imported, never redrawn",
++  const oneDrawing = (g: string) => own.filter(([use, imp, file, renders]) => !(g.includes(use) && g.includes(imp) && read(file).includes(renders)));
++  ok("3.4 · each ghost is its page's own: Tiketi zangu's journey ghost, the hero's intro components, and every other page's own drawing — the one its loading file renders — imported, never redrawn",
+     ghost.includes('"/positions": <TicketsGhost t={t} />') && ghost.includes('import { TicketsGhost } from "@/components/journey/tickets/tickets-ghost";')
+-      && read("src/app/positions/loading.tsx").includes("if (journey) return <TicketsGhost t={t} />;")
+-      && own.every(([use, name, spec]) => ghost.includes(use) && ghost.includes(`import ${name} from "${spec}";`)),
+-    JSON.stringify(own.filter(([use, name, spec]) => !(ghost.includes(use) && ghost.includes(`import ${name} from "${spec}";`))).map((o) => o[1])));
++      && read("src/app/positions/loading.tsx").includes("if (journey) return <TicketsGhost t={t} />;") && oneDrawing(ghost).length === 0,
++    JSON.stringify(oneDrawing(ghost).map((o) => o[2])));
++  ok("3.4′ PLANT · a second copy of Juu/Chini's ghost drawn in the root ghost (the loading file's drawing no longer the one shown) is reported",
++    oneDrawing(ghost.replace('"/updown": <UpDownGhost t={t} />', '"/updown": <div className="mx-auto w-full max-w-board px-3 lg:px-6 py-6" aria-busy="true" />')).length === 1);
+ }
+ {
+   // RoutePick, rendered: exact paths only, and never a key the object inherits.
+@@ -289,7 +306,8 @@ section("3 · E38 · the journey's loading ghosts (tiles 277 280 290 293 296: on
+       && ["<Claim t={t} />", "<Ask t={t} />", "<TrustLines t={t} locale={locale} rails={rails} />"].every((j) => hr.includes(j));
+   ok("3.7 · Claim, Ask and TrustLines are defined once, in hero-intro.tsx, and the hero renders them where it did", introOk(intro, hero));
+   ok("3.7′ PLANT · a second copy of the h1 left in the hero is reported", !introOk(intro, `${hero}\nfunction Ask({ t }: { t: Dict }) { return null; }`));
+-  // ⛔ The ghost is drawn by the ROOT loading file: whatever client module it reaches joins every page's first load.
++  // ⛔ The ghost is drawn by the ROOT loading file: whatever module it reaches rides with it — into every page's first
++  // load while it was drawn on the server, into its own chunk since round 5 (G1) — so the intro stays lean either way.
+   const importsOf = (s: string) => [...s.matchAll(/^import [^;]*? from "([^"]+)";/gm)].map((m) => m[1]);
+   const ALLOWED = ["@/components/ui/glyphs", "@/components/brand", "@/lib/utils", "@/lib/support-config", "@/lib/rail-list", "@/lib/i18n-dict", "@/lib/side-label"];
+   const lean = (s: string) => importsOf(s).every((m) => ALLOWED.includes(m)) && !hasDirective(s, "use client");
+@@ -379,14 +397,30 @@ section("4 · E40 · the rest rule on tile 269's geometry (zh 360 /markets: the
+ section("5 · the not-found mark (tiles 345–398: the market not-found stood the bubble and the Needle down, lit Maswali, and polled into 404s)");
+ {
+   const lib = read(MARK_LIB), mark = read(MARK);
+-  ok("5.1 · not-found-mark.ts is a hook module with no directive: its server snapshot is false, its id and event named once",
+-    !hasDirective(lib, "use client") && !hasDirective(lib, "use server") && NF.notFoundServerSnapshot() === false
+-      && lib.includes('export const NOT_FOUND_MARK = "kp-not-found";') && lib.includes("return useSyncExternalStore(subscribeNotFound, notFoundSnapshot, notFoundServerSnapshot);"));
+-  const markOk = (s: string) => hasDirective(s, "use client") && squash(s).includes("useEffect(() => { announceNotFound(); return announceNotFound; }, []);")
+-    && s.includes("return <span hidden id={NOT_FOUND_MARK} />;");
+-  ok("5.2 · NotFoundMark writes the hidden span into the page and announces it when it comes and when it goes", markOk(mark)
+-    && renderToStaticMarkup(h(NotFoundMark)) === '<span hidden="" id="kp-not-found"></span>');
+-  ok("5.2′ PLANT · a mark that does not announce its going (the overlays stay up after leaving) is reported", !markOk(mark.replace("return announceNotFound;", "")));
++  // ⚠️ 5.1, 5.2 and 5.11 MOVED IN ROUND 5 (review F4, R5-D): the mark carries the path it was drawn for and the answer is
++  // "the mark's path is the path being drawn" — presence alone answered "not found" for the NEXT page while the router
++  // drew it (the old span still in the document), and a transition's commit paints before a passive cleanup runs.
++  const hookOk = (s: string) => squash(s).includes("export function useNotFoundShown(): boolean { const path = usePathname() ?? \"\"; const markPath = useSyncExternalStore(subscribeNotFound, notFoundSnapshot, notFoundServerSnapshot); return isNotFoundFor(markPath, path); }")
++    && squash(s).includes("export function isNotFoundFor(markPath: string | null, path: string): boolean { return markPath !== null && markPath === path; }")
++    && s.includes('import { usePathname } from "next/navigation";');
++  ok("5.1 · not-found-mark.ts is a hook module with no directive: its server snapshot is \"no mark\" (null), its id, attribute and event named once, and the hook answers for the path being drawn",
++    !hasDirective(lib, "use client") && !hasDirective(lib, "use server") && NF.notFoundServerSnapshot() === null
++      && lib.includes('export const NOT_FOUND_MARK = "kp-not-found";') && lib.includes('export const NOT_FOUND_PATH_ATTR = "data-path";') && hookOk(lib));
++  ok("5.1′ PLANT · the hook back to the span's presence (R4-J's: \"not found\" for the next page while the old span is up) is reported",
++    !hookOk(lib.replace("return isNotFoundFor(markPath, path);", "return markPath !== null;")));
++  const markOk = (s: string) => hasDirective(s, "use client") && s.includes('const path = usePathname() ?? "";')
++    && squash(s).includes("useLayoutEffect(() => { announceNotFound(); }, [path]);") && squash(s).includes("useEffect(() => announceNotFound, []);")
++    && s.includes("return <span hidden id={NOT_FOUND_MARK} data-path={path} />;");
++  const { PathnameContext: PathCtx } = createRequire(import.meta.url)("next/dist/shared/lib/hooks-client-context.shared-runtime") as {
++    PathnameContext: import("react").Context<string | null>;
++  };
++  const drawnAt = renderToStaticMarkup(h(PathCtx.Provider, { value: "/markets/mkt_gone" }, h(NotFoundMark)));
++  ok("5.2 · NotFoundMark writes the hidden span with the path it was drawn for, announces its coming in a LAYOUT effect (before that commit's paint) and its going in a passive cleanup (after the span is out)",
++    markOk(mark) && drawnAt === '<span hidden="" id="kp-not-found" data-path="/markets/mkt_gone"></span>', drawnAt);
++  ok("5.2′ PLANT · a mark that does not announce its going (the overlays stay up after leaving) is reported", !markOk(mark.replace("useEffect(() => announceNotFound, []);", "")));
++  ok("5.2″ PLANT · its coming announced by a passive effect again (a transition paints the not-found page with a tab lit first) is reported",
++    !markOk(mark.replace("useLayoutEffect(() => { announceNotFound(); }, [path]);", "useEffect(() => { announceNotFound(); }, [path]);")));
++  ok("5.2‴ PLANT · a mark that names no path (presence again) is reported", !markOk(mark.replace(" data-path={path} />", " />")));
+   // Only client code may load the hook module (journey-on.ts's rule, for its reason).
+   const files: string[] = [];
+   const walk = (d: string) => { for (const n of readdirSync(d)) { const p = join(d, n).replace(/\\/g, "/"); if (statSync(p).isDirectory()) walk(p); else if (/\.(tsx?|mts)$/.test(n)) files.push(p); } };
+@@ -424,9 +458,10 @@ section("5 · the not-found mark (tiles 345–398: the market not-found stood th
+   ok("5.7′ PLANT · the dot polling on a not-found page again is reported", !dot(tabs.replace(" && pollers.dot && !notFoundShown", " && pollers.dot")));
+ }
+ {
+-  // Before the scripts run: the server lit the tab the address names; the mark in the same HTML unlights it, by CSS,
+-  // each lit value put back to the slot's own base value.
+-  const id = `#${NF.NOT_FOUND_MARK}`;
++  // Before the scripts run: the server lit the tab the address names; the server's verdict in the same HTML unlights it,
++  // by CSS, each lit value put back to the slot's own base value. ⚠️ MOVED IN ROUND 5 (review F5): the verdict is the
++  // mark (an unmatched address) OR the boundary's 404 template (a record found missing inside a loading boundary).
++  const id = `#${NF.NOT_FOUND_MARK}, ${VERDICT}`;
+   const unlit = (css: string) => {
+     const at = (sel: string) => rule(css, `:root:has(${id}) ${sel}`);
+     const decl = (body: string, prop: string) => new RegExp(`(?:^|;)\\s*${esc(prop)}:\\s*([^;]+);`).exec(body)?.[1].trim();
+@@ -443,9 +478,66 @@ section("5 · the not-found mark (tiles 345–398: the market not-found stood th
+     return { ok: keys.every((k) => got[k] !== undefined && got[k] === base[k]) && base.after === "scaleX(0)", base, got };
+   };
+   const now = unlit(CSS);
+-  ok(`5.12 · until the scripts run, the not-found mark (${id}) unlights the tab the server lit, every lit value put back to the slot's own`, now.ok, JSON.stringify({ base: now.base, got: now.got }));
++  ok(`5.12 · until the scripts run, the server's not-found verdict (${id}) unlights the tab the server lit, every lit value put back to the slot's own`, now.ok, JSON.stringify({ base: now.base, got: now.got }));
+   ok("5.12′ PLANT · the rail's lit pip left on a not-found page's first paint is reported",
+     !unlit(CSS.replace(`:root:has(${id}) .kp-rail--journey .kp-rail__item[data-on] .kp-rail__pip { background: none; box-shadow: none; }`, "")).ok);
++  ok("5.12″ PLANT · the rule reading the mark alone again (R4-J's: a missing question's, round's or proposal's first paint keeps its tab lit) is reported",
++    !unlit(CSS.split(`:root:has(${id})`).join(`:root:has(#${NF.NOT_FOUND_MARK})`)).ok);
++}
++{
++  // ⭐ ROUND 5 (review F5) · WHAT THE SERVER'S HTML OF A MISSING RECORD CARRIES, on React's own server renderer — Next's
++  // compiled copy, the one the app renders with. A record found missing inside a loading boundary: no class error
++  // boundary runs on the server, so no not-found page and no mark — the ghost, and the boundary's template with Next's
++  // digest; written in the HTML when the verdict is in before the shell is sent, and by React's inline `$RX` script when
++  // it streams in after. If an upgrade changes any of it, 5.12's selector reads nothing: re-measure before trusting it.
++  const req = createRequire(import.meta.url);
++  const R = req("next/dist/compiled/react") as typeof import("react");
++  const { renderToPipeableStream: fizz } = req("next/dist/compiled/react-dom/server.node.js") as typeof import("react-dom/server");
++  const notFoundError = () => Object.assign(new Error(NEXT_404), { digest: NEXT_404 });
++  class Boundary extends R.Component<{ children?: import("react").ReactNode }, { nf: boolean }> {
++    state = { nf: false };
++    static getDerivedStateFromError() { return { nf: true }; }
++    render() { return this.state.nf ? R.createElement("span", { hidden: true, id: NF.NOT_FOUND_MARK }) : this.props.children; }
++  }
++  const render = (Page: () => never, late: () => void) => new Promise<string>((resolve) => {
++    let out = "";
++    const sink = new Writable({ write(c, _e, cb) { out += c.toString(); cb(); } });
++    const doc = R.createElement("html", null, R.createElement("body", null, R.createElement("header", null, "chrome"),
++      R.createElement(R.Suspense, { fallback: R.createElement("div", { id: "ghost" }, "ghost") }, R.createElement(Boundary, null, R.createElement(Page)))));
++    const s = fizz(doc, { onError: (e) => (e as { digest?: string }).digest, onShellReady() { s.pipe(sink); late(); } });
++    setTimeout(() => resolve(out), 150);
++  });
++  const early = await render(() => { throw notFoundError(); }, () => undefined);
++  ok(`5.13 · a verdict in before the shell: the HTML is the ghost and <template data-dgst="${NEXT_404}">, and no mark (no class boundary runs on the server)`,
++    // (a development build adds data-msg and data-stck after the digest; production writes the digest alone)
++    new RegExp(`<template data-dgst="${esc(NEXT_404)}"[^>]*></template>`).test(early) && early.includes('<div id="ghost">ghost</div>') && !early.includes(NF.NOT_FOUND_MARK), early.slice(0, 300));
++  let ready = false, go = () => undefined as void;
++  const wait = new Promise<void>((r) => { go = () => { ready = true; r(); }; });
++  const streamed = await render(() => { if (!ready) throw wait; throw notFoundError(); }, () => { setTimeout(go, 20); });
++  const call = /\$RX\("([^"]+)","([^"]+)"/.exec(streamed);
++  const rx = /\$RX=(function\([^)]*\)\{[\s\S]*?\});/.exec(streamed)?.[1];
++  const tpl = { dataset: {} as Record<string, string>, previousSibling: { data: "$?" } };
++  if (call && rx) new Function("document", `var $RX=${rx};$RX(${JSON.stringify(call[1])},${JSON.stringify(call[2])});`)({ getElementById: (i: string) => (i === call[1] ? tpl : null) });
++  ok(`5.14 · a verdict streamed in after the shell: React's inline $RX writes data-dgst="${NEXT_404}" onto the ghost's template before any app script runs`,
++    !!call && streamed.includes(`<template id="${call[1]}"></template>`) && tpl.dataset.dgst === NEXT_404 && !streamed.includes(NF.NOT_FOUND_MARK), JSON.stringify({ call: call?.slice(1), dgst: tpl.dataset.dgst }));
++  ok("5.14′ CONTROL · a record that IS there streams its page: no 404 template anywhere",
++    !(await render(() => R.createElement("main", null, "the question") as never, () => undefined)).includes("data-dgst"));
++}
++{
++  // ⭐ ROUND 5 (review F4) · THE ONE DECISION, for the path being drawn. Leaving a not-found page the router draws the next
++  // page while the old span is still in the document; moving between two missing records the new span is not in yet.
++  const CASES: Array<[string | null, string, boolean, string]> = [
++    [null, "/markets", false, "no mark up"],
++    ["/markets/mkt_gone", "/markets/mkt_gone", true, "the not-found page itself"],
++    ["/markets/mkt_gone", "/markets", false, "leaving it: the next page drawn while the old span is up"],
++    ["/markets/mkt_gone", "/markets/mkt_other", false, "a move to another address, before its own mark lands"],
++    ["/updown/rnd_gone", "/updown/rnd_gone", true, "a missing round"],
++  ];
++  const wrong = CASES.filter(([m, p, want]) => NF.isNotFoundFor(m, p) !== want).map(([, , , why]) => why);
++  ok("5.15 · `isNotFoundFor`: \"not found\" only when the mark that is up was drawn for the path being drawn", wrong.length === 0, wrong.join(" | "));
++  const presence = (m: string | null) => m !== null;
++  ok("5.15′ CONTROL · R4-J's presence rule answers \"not found\" for the next page while the old span is up (the F4 frame) — the case 5.15 tells apart",
++    presence("/markets/mkt_gone") === true && NF.isNotFoundFor("/markets/mkt_gone", "/markets") === false);
+ }
+ {
+   // The shared view (R4-K) renders the mark, so every not-found answer carries it and nothing else can.
+@@ -465,24 +557,24 @@ section("5 · the not-found mark (tiles 345–398: the market not-found stood th
+   ok("5.10 · no other page renders the mark", elsewhere.length === 0, JSON.stringify(elsewhere));
+ }
+ {
+-  // The hook's answer, in a stand-in browser: the span's presence, heard through the event.
++  // The hook's answer, in a stand-in browser: the path the span was drawn for, heard through the event.
+   const target = new EventTarget();
+-  const present = new Set<string>();
++  const present = new Map<string, string>();
+   const g = globalThis as unknown as { window?: unknown; document?: unknown };
+   const before = { window: g.window, document: g.document };
+   g.window = { addEventListener: target.addEventListener.bind(target), removeEventListener: target.removeEventListener.bind(target), dispatchEvent: target.dispatchEvent.bind(target) };
+-  g.document = { getElementById: (id: string) => (present.has(id) ? {} : null) };
++  g.document = { getElementById: (id: string) => (present.has(id) ? { getAttribute: (a: string) => (a === NF.NOT_FOUND_PATH_ATTR ? present.get(id)! : null) } : null) };
+   try {
+     let told = 0;
+     const leave = NF.subscribeNotFound(() => { told++; });
+     const a = NF.notFoundSnapshot();
+-    present.add(NF.NOT_FOUND_MARK); NF.announceNotFound();
++    present.set(NF.NOT_FOUND_MARK, "/markets/mkt_gone"); NF.announceNotFound();
+     const b = NF.notFoundSnapshot();
+     present.delete(NF.NOT_FOUND_MARK); NF.announceNotFound();
+     const c = NF.notFoundSnapshot();
+     leave(); NF.announceNotFound();
+-    ok("5.11 · the snapshot is the span's presence, every coming and going is heard once, and letting go stops listening",
+-      a === false && b === true && c === false && told === 2, JSON.stringify({ a, b, c, told }));
++    ok("5.11 · the snapshot is the path the span was drawn for (null with no span), every coming and going is heard once, and letting go stops listening",
++      a === null && b === "/markets/mkt_gone" && c === null && told === 2, JSON.stringify({ a, b, c, told }));
+   } finally {
+     g.window = before.window;
+     g.document = before.document;
+diff --git a/scripts/visual-pass-r4k.test.mts b/scripts/visual-pass-r4k.test.mts
+index 81585b507..0972986ec 100644
+--- a/scripts/visual-pass-r4k.test.mts
++++ b/scripts/visual-pass-r4k.test.mts
+@@ -27,7 +27,10 @@ import { createElement as h } from "react";
+ import { renderToStaticMarkup } from "react-dom/server";
+ import { decomment, decommentCss } from "./lib/decomment.mts";
+ import { dict as DICTS } from "../src/lib/i18n-dict.ts";
+-import { NotFoundView, NOT_FOUND_WORDS, notFoundTitle } from "../src/components/ui/not-found-view.tsx";
++import { NotFoundView } from "../src/components/ui/not-found-view.tsx";
++// ⚠️ MOVED IN ROUND 5 (R5-D, review G1's sibling): the view is client code, so its words and title live in a data module
++// a server file can read (`not-found-words.ts`; `test:visual-pass-r5d` §4).
++import { NOT_FOUND_WORDS, notFoundTitle } from "../src/components/ui/not-found-words.ts";
+ import { hangCjkMarks, CJK_MARK_TRIM, CJK_TRIM_EM } from "../src/lib/cjk-marks.tsx";
+ import twConfigModule from "../tailwind.config.ts";
+ import { MUTATIONS } from "./anchors/visual-pass-r4k.anchors.mjs";
+@@ -140,20 +143,25 @@ section("2 · the not-found's title in the page's language, noindex in the head
+     ok(`2.3 · ${p} exports the root's metadata — the not-found convention reads the DEEPEST not-found's, and these had none`,
+       c.includes(`import { generateMetadata as notFoundMetadata } from "@/app/not-found";`) && /export async function generateMetadata\(\) \{\s*return notFoundMetadata\(\);\s*\}/.test(c));
+   }
++  // ⚠️ 2.4–2.6 MOVED IN ROUND 5 (review F1, R5-D): the market's metadata no longer calls notFound() — Next renders a
++  // notFound() thrown in generateMetadata as the not-found PAGE, so a failed read there 404'd a real market. All three
++  // record pages now answer the not-found's metadata for a missing record, the board's title in the reader's language
++  // for a failed read, and throw nothing (`test:visual-pass-r5d` §1 holds the rule with its plants).
+   const market = code("src/app/markets/[id]/page.tsx");
+   const mMeta = market.slice(market.indexOf("export async function generateMetadata"), market.indexOf("export default async function"));
+-  ok("2.4 · the market page's metadata still calls notFound() for a missing market — that is what sends Next to the not-found's",
+-    /let m: [^;]+= null;\s*try \{ m = await getMarket\(id\); \} catch \{[^}]*\}\s*if \(!m\) notFound\(\);/.test(mMeta));
++  ok("2.4 · the market page's metadata answers the not-found's own metadata for a missing market (the deepest not-found's, 2.3, the same words) — and never throws notFound() (round 5, F1)",
++    /let m: [^;]+= null;\s*try \{ m = await getMarket\(id\); \} catch \{ return \{ title: t\.market\.title \}; \}\s*if \(!m\) return notFoundMetadata\(\);/.test(mMeta)
++      && !/\bnotFound\(\)/.test(mMeta) && market.includes(`import { generateMetadata as notFoundMetadata } from "@/app/not-found";`));
+   const ud = code("src/app/updown/[roundId]/page.tsx");
+   const udMeta = ud.slice(ud.indexOf("export async function generateMetadata"), ud.indexOf("export default async function"));
+-  ok("2.5 · /updown/[roundId]: a round the read did not find is titled by the not-found; a FAILED read keeps ‘Up & Down’",
+-    /try \{\s*d = await getRoundDetail\(roundId\);\s*\} catch \{ return \{ title: "Up & Down" \}; \}\s*if \(!d\) return notFoundMetadata\(\);/.test(udMeta)
++  ok("2.5 · /updown/[roundId]: a round the read did not find is titled by the not-found; a FAILED read keeps the board's neutral title, in the reader's language (round 5: was the English ‘Up & Down’)",
++    /try \{\s*d = await getRoundDetail\(roundId\);\s*\} catch \{ return \{ title: t\.market\.udTitle \}; \}\s*if \(!d\) return notFoundMetadata\(\);/.test(udMeta)
+       && !/\.catch\(\(\) => null\)/.test(udMeta) && ud.includes(`import { generateMetadata as notFoundMetadata } from "@/app/not-found";`));
+   const pr = code("src/app/proposals/[id]/page.tsx");
+   const prMeta = pr.slice(pr.indexOf("export async function generateMetadata"), pr.indexOf("export default async function"));
+-  ok("2.6 · /proposals/[id]: the same — the not-found's title for a proposal that does not exist (unless proposals are DISABLED, when the page redirects)",
+-    /if \(!p\) return getProposalsConfig\(\)\.state === "DISABLED" \? \{ title: "Proposal" \} : notFoundMetadata\(\);/.test(prMeta)
+-      && /\} catch \{ return \{ title: "Proposal" \}; \}/.test(prMeta));
++  ok("2.6 · /proposals/[id]: the same — the not-found's title for a proposal that does not exist (unless proposals are DISABLED, when the page redirects), the board's title in the reader's language otherwise (round 5: was the English ‘Proposal’)",
++    /if \(!p\) return getProposalsConfig\(\)\.state === "DISABLED" \? \{ title: t\.proposals\.title \} : notFoundMetadata\(\);/.test(prMeta)
++      && /\} catch \{ return \{ title: t\.proposals\.title \}; \}/.test(prMeta));
+   ok("2.5′ PLANT · the shipped updown metadata (‘Up & Down’ for a missing round) is reported",
+     !/if \(!d\) return notFoundMetadata\(\);/.test(`const d = await getRoundDetail(roundId).catch(() => null);\n  return { title: d?.titleEn ?? "Up & Down" };`));
+ }
+diff --git a/scripts/visual-pass-r5d.test.mts b/scripts/visual-pass-r5d.test.mts
+new file mode 100644
+index 000000000..806fb5551
+--- /dev/null
++++ b/scripts/visual-pass-r5d.test.mts
+@@ -0,0 +1,662 @@
++/**
++ * ROUND 5 OF THE VISUAL PASS, HELPER D (2026-10-09) — the code review's findings on the offline path, the not-found mark,
++ * the route ghosts and the record pages' metadata, each fix held beside a control or a plant that proves it can fail.
++ *
++ *   npx tsx scripts/visual-pass-r5d.test.mts        (npm run test:visual-pass-r5d)
++ *
++ * The owner's rule (Ali, 2026-10-08/09): only perfect visual and logical results, and one convention per pattern. Where
++ * an older suite owns the area its checks live there; this suite holds the rest:
++ *   §1 F1 · a record page's metadata never decides what the page is: a FAILED read answers the board's title in the
++ *          reader's language, a read that found nothing the not-found page's metadata, and nothing throws — the three
++ *          record pages' functions RUN (transpiled from their own source), the shipped bodies as the controls; and the
++ *          census of every generateMetadata in src/app
++ *   §2 G1 · the journey's route ghosts are a client chunk: the root loading element carries one reference and the rails
++ *          (built by RUNNING the root loading file, serialized the way the review measured it: 27,349 bytes before);
++ *          every ghost renders in every language on React's server renderer; and each is the very drawing its page's
++ *          loading file renders — byte for byte
++ *   §3 G2 · what a server render error in the shell's bare parts does, on the app's own copy of React's server renderer,
++ *          and that the shell and the ghost say so
++ *   §4 G1's sibling · the not-found element each payload carries (the root's in every one): the view's reference and its
++ *          words, RUN in three languages (5,938 bytes before), the words in a data module beside the client view — and
++ *          the server graph walked so no server module reads a value out of a client module
++ *   §5 F4's pattern · every useSyncExternalStore reader classified (a store read by what stands outside the page), and
++ *          the framework pinned: a page that is left leaves the document (no cacheComponents, no hidden <Activity>)
++ *   F2 F3 → `test:offline-neutral` §11 §12 (the service worker, RUN in its sandbox) · F4 F5 → `test:visual-pass-r4j` §5
++ *   (5.1 5.2 5.11–5.15: the mark's path, the layout announcement, the server's 404 template on React's own renderer)
++ * ⛔ It READS, builds and renders in memory; it writes nothing. The on-disk mutation proof is S/r5d/mutation-r5d.mjs.
++ */
++import { readFileSync, readdirSync, statSync, existsSync } from "node:fs";
++import { join, posix } from "node:path";
++import { createRequire } from "node:module";
++import { Writable } from "node:stream";
++import NodeModule from "node:module";
++import { decomment } from "./lib/decomment.mts";
++
++const req = createRequire(import.meta.url);
++let pass = 0;
++const fails: string[] = [];
++const ok = (name: string, cond: boolean, detail = "") => {
++  if (cond) { pass++; console.log(`  ok   ${name}`); }
++  else { fails.push(`${name}${detail ? ` — ${detail}` : ""}`); console.log(`  FAIL ${name}${detail ? ` — ${detail}` : ""}`); }
++};
++const section = (s: string) => console.log(`\n── ${s} ${"─".repeat(Math.max(0, 100 - s.length))}`);
++const raw = (p: string) => readFileSync(p, "utf8").replace(/\r\n/g, "\n");
++/** Source with its comments out (the shared scanner), so a rule quoted in a note is never mistaken for the rule. */
++const code = (p: string) => decomment(raw(p));
++const squash = (s: string) => s.replace(/\s+/g, " ");
++const count = (s: string, needle: string) => s.split(needle).length - 1;
++const j = (v: unknown) => JSON.stringify(v);
++const hasDirective = (s: string, d: string) => new RegExp(`^\\s*["']${d}["'];?`).test(s);
++
++/* ── the world the server components run in: the request's language, address and journey answer, stubbed ─────────── */
++type Locale = "sw" | "en" | "zh";
++const LOCALES: Locale[] = ["sw", "en", "zh"];
++const REQ = { locale: "sw" as Locale, path: "/", journey: true };
++const nextHeaders = req("next/headers") as { cookies: unknown; headers: unknown };
++nextHeaders.cookies = async () => ({ get: (k: string) => (k === "kp-locale" ? { value: REQ.locale } : undefined) });
++nextHeaders.headers = async () => new Headers({ "x-pathname": REQ.path });
++{
++  const at = req.resolve("../src/lib/server/journey-preview.ts");
++  const stub = new NodeModule(at);
++  stub.filename = at; stub.loaded = true;
++  stub.exports = { resolveSimpleJourney: async () => ({ state: "LIVE", journey: REQ.journey, preview: false, pass: null }) };
++  (req.cache as Record<string, unknown>)[at] = stub;
++}
++const React = req("react") as typeof import("react");
++const h = React.createElement;
++const { renderToStaticMarkup } = req("react-dom/server") as typeof import("react-dom/server");
++const { dict } = req("../src/lib/i18n-dict.ts") as { dict: Record<Locale, Record<string, Record<string, string>>> };
++
++/* ══ §1 · F1 · A RECORD PAGE'S METADATA NEVER DECIDES THE PAGE ═══════════════════════════════════════════════════════ */
++section("1 · F1 · a failed read is the board's title in the reader's language, a missing record the not-found's, nothing throws");
++
++/** A function's whole text, from its head through the brace that closes its body (the parameter list's braces skipped). */
++function fnText(src: string, head: string): string {
++  const at = src.indexOf(head);
++  if (at < 0) return "";
++  let i = src.indexOf("(", at), depth = 0;
++  for (; i < src.length; i++) { if (src[i] === "(") depth++; else if (src[i] === ")" && --depth === 0) break; }
++  const open = src.indexOf("{", i);
++  depth = 0;
++  for (let k = open; k < src.length; k++) { if (src[k] === "{") depth++; else if (src[k] === "}" && --depth === 0) return src.slice(at, k + 1); }
++  return "";
++}
++const esbuild = req("esbuild") as { transformSync: (c: string, o: { loader: string }) => { code: string } };
++const NOT_FOUND = Symbol("notFound() thrown");
++const NOT_FOUND_META = { title: "Hakuna ukurasa · 404", robots: { index: false, follow: false }, __sentinel: "notFoundMetadata()" };
++type Calls = { notFound: number; notFoundMetadata: number };
++/** A page's generateMetadata, transpiled from its own source and run with its readers stubbed. */
++function runnable(fn: string, read: (id: string) => Promise<unknown>, calls: Calls, locale: Locale, config = "ACTIVE") {
++  const js = esbuild.transformSync(fn.replace(/^export\s+/, ""), { loader: "ts" }).code;
++  const reader = async (id: string) => read(id);
++  const deps: Record<string, unknown> = {
++    getServerT: async () => ({ t: dict[locale], locale }),
++    getMarket: reader, getRoundDetail: reader, getProposalDetail: reader,
++    getProposalsConfig: () => ({ state: config }),
++    notFound: () => { calls.notFound++; throw NOT_FOUND; },
++    notFoundMetadata: async () => { calls.notFoundMetadata++; return NOT_FOUND_META; },
++    pickLocalized: (l: Locale, en: string, sw?: string | null, zh?: string | null) => (l === "sw" ? sw : l === "zh" ? zh : en) || en,
++    sharePreviewPrice: () => ({ kind: "none" }), sharePreviewSettled: () => null, sharePreviewDescription: () => "desc",
++    resolveWinShareToken: async () => null, formatTzs: (n: number) => `TZS ${n}`, ROOT_OPEN_GRAPH: { siteName: "50pick" },
++  };
++  return new Function(...Object.keys(deps), `${js}\nreturn generateMetadata;`)(...Object.values(deps)) as
++    (a: { params: Promise<Record<string, string>>; searchParams?: Promise<Record<string, string>> }) => Promise<unknown>;
++}
++type Outcome = { result?: unknown; threw?: unknown; calls: Calls };
++async function outcome(fn: string, read: (id: string) => Promise<unknown>, locale: Locale, config = "ACTIVE"): Promise<Outcome> {
++  const calls: Calls = { notFound: 0, notFoundMetadata: 0 };
++  try {
++    const result = await runnable(fn, read, calls, locale, config)({ params: Promise.resolve({ id: "rec_1", roundId: "rec_1" }), searchParams: Promise.resolve({}) });
++    return { result, calls };
++  } catch (e) { return { threw: e === NOT_FOUND ? "notFound()" : String(e), calls }; }
++}
++const RECORD = { titleEn: "Will it rain?", titleSw: "Je, mvua itanyesha?", titleZh: "会下雨吗？", yesPool: 0, noPool: 0, predictorCount: 0, status: "LIVE", resolvedOutcome: null };
++const fail = async () => { throw new Error("connection terminated unexpectedly (a database blip)"); };
++const none = async () => null;
++const found = async () => RECORD;
++/** [page, its file, the board's title key — the one its board page is titled by, the board's file] */
++const RECORD_PAGES: Array<[string, string, (l: Locale) => string, string, string]> = [
++  ["/markets/[id]", "src/app/markets/[id]/page.tsx", (l) => dict[l].market.title, "src/app/markets/page.tsx", "return { title: t.market.title };"],
++  ["/updown/[roundId]", "src/app/updown/[roundId]/page.tsx", (l) => dict[l].market.udTitle, "src/app/updown/page.tsx", "return { title: t.market.udTitle };"],
++  ["/proposals/[id]", "src/app/proposals/[id]/page.tsx", (l) => dict[l].proposals.title, "src/app/proposals/page.tsx", "const title = t.proposals.title;"],
++];
++/** The rule, judged on one generateMetadata's text: what each read's outcome answers, in every language. */
++async function judgeMeta(fn: string, board: (l: Locale) => string, recordTitle: (l: Locale) => string | null): Promise<string[]> {
++  const wrong: string[] = [];
++  if (!fn) return ["no generateMetadata"];
++  for (const l of LOCALES) {
++    const f = await outcome(fn, fail, l);
++    if (f.threw !== undefined || j(f.result) !== j({ title: board(l) }) || f.calls.notFound + f.calls.notFoundMetadata > 0)
++      wrong.push(`${l} · a failed read answered ${f.threw !== undefined ? `a throw (${f.threw})` : j(f.result)}, not the board's ${j(board(l))}`);
++    const n = await outcome(fn, none, l);
++    if (n.threw !== undefined || n.result !== NOT_FOUND_META || n.calls.notFound > 0)
++      wrong.push(`${l} · a record not there answered ${n.threw !== undefined ? `a throw (${n.threw})` : j(n.result)}, not the not-found's metadata`);
++    const want = recordTitle(l);
++    const y = await outcome(fn, found, l);
++    if (want !== null && (y.threw !== undefined || (y.result as { title?: string } | undefined)?.title !== want))
++      wrong.push(`${l} · a record found was titled ${y.threw !== undefined ? `a throw (${y.threw})` : j((y.result as { title?: string })?.title)}`);
++  }
++  return wrong;
++}
++const titleIn = (l: Locale) => (l === "sw" ? RECORD.titleSw : l === "zh" ? RECORD.titleZh : RECORD.titleEn);
++for (const [route, file, board, boardFile, boardLine] of RECORD_PAGES) {
++  const fn = fnText(code(file), "export async function generateMetadata");
++  // The round's metadata names a round by its English title (the round has no other); the others by the reader's.
++  const wrong = await judgeMeta(fn, board, route === "/updown/[roundId]" ? () => RECORD.titleEn : titleIn);
++  ok(`1.1 · ${route}: RUN in sw, en and zh — a failed read answers the board's title in that language (${LOCALES.map((l) => j(board(l))).join(" ")}), a record not there the not-found's metadata, a record found its title; notFound() never called`,
++    wrong.length === 0, wrong.join(" | "));
++  ok(`1.2 · ${route}: the neutral title is the board's own name — ${boardFile} is titled by the same key`, code(boardFile).includes(boardLine), boardLine);
++}
++{
++  // The proposal board switched off: the page redirects there, so the metadata says the board's name too.
++  const fn = fnText(code("src/app/proposals/[id]/page.tsx"), "export async function generateMetadata");
++  const off = await outcome(fn, none, "zh", "DISABLED");
++  ok("1.3 · /proposals/[id] with the board switched off (the page redirects to it): the board's title, in the reader's language",
++    j(off.result) === j({ title: dict.zh.proposals.title }) && off.calls.notFound === 0, j(off));
++}
++{
++  // CONTROLS — the shipped bodies the review found, run through the same judge.
++  const SHIPPED_MARKET = `export async function generateMetadata({ params }: { params: Promise<{ id: string }> }): Promise<Metadata> {
++  const { id } = await params;
++  let m: Awaited<ReturnType<typeof getMarket>> | null = null;
++  try { m = await getMarket(id); } catch { /* graceful */ }
++  if (!m) notFound();
++  const { locale } = await getServerT();
++  return { title: pickLocalized(locale, m.titleEn, m.titleSw, m.titleZh) };
++}`;
++  const shipped = await outcome(decomment(SHIPPED_MARKET), fail, "sw");
++  ok("1.1′ CONTROL · the market's shipped body (round 4): a database blip in its read calls notFound() — the real market replaced by \"Hakuna ukurasa · 404\" — and the judge reports it",
++    shipped.threw === "notFound()" && (await judgeMeta(decomment(SHIPPED_MARKET), RECORD_PAGES[0][2], titleIn)).length > 0, j(shipped));
++  const SHIPPED_ROUND = `export async function generateMetadata({ params }: { params: Promise<{ roundId: string }> }): Promise<Metadata> {
++  const { roundId } = await params;
++  let d: Awaited<ReturnType<typeof getRoundDetail>> = null;
++  try {
++    d = await getRoundDetail(roundId);
++  } catch { return { title: "Up & Down" }; }
++  if (!d) return notFoundMetadata();
++  return { title: d.titleEn };
++}`;
++  const round = await judgeMeta(SHIPPED_ROUND, RECORD_PAGES[1][2], () => RECORD.titleEn);
++  ok("1.1″ CONTROL · the round's shipped body (round 4): the English \"Up & Down\" for a failed read in Swahili and Chinese — reported, in those two languages only",
++    round.length === 2 && round.every((w) => /^(sw|zh) · a failed read/.test(w)), round.join(" | "));
++}
++{
++  // The census: EVERY generateMetadata in src/app. None throws, redirects or calls notFound(); the ones that read a record
++  // are exactly the three record pages, each read inside a try.
++  const files: string[] = [];
++  const walk = (d: string) => { for (const n of readdirSync(d)) { const p = posix.join(d, n); if (statSync(p).isDirectory()) walk(p); else if (/\.tsx?$/.test(n)) files.push(p); } };
++  walk("src/app");
++  const census = (read: (p: string) => string) => {
++    const fns = files.map((f) => [f, fnText(read(f), "export async function generateMetadata")] as const).filter(([, fn]) => fn !== "");
++    const deciding = fns.filter(([, fn]) => /\bnotFound\(\)|\bredirect\(|\bthrow\b/.test(fn)).map(([f]) => f);
++    const readers = fns.filter(([, fn]) => /\b(?:getMarket|getRoundDetail|getProposalDetail)\(/.test(fn)).map(([f]) => f).sort();
++    const unguarded = fns.filter(([, fn]) => /\b(?:getMarket|getRoundDetail|getProposalDetail)\(/.test(fn) && !/try\s*\{[^}]*\b(?:getMarket|getRoundDetail|getProposalDetail)\(/.test(fn)).map(([f]) => f);
++    return { count: fns.length, deciding, readers, unguarded };
++  };
++  const now = census(code);
++  ok(`1.4 · the census: ${now.count} generateMetadata in src/app — none throws, redirects or calls notFound(); the record readers are exactly the three record pages, each read inside a try`,
++    now.count >= 40 && now.deciding.length === 0 && j(now.readers) === j(RECORD_PAGES.map((r) => r[1]).sort()) && now.unguarded.length === 0, j(now));
++  const planted = census((p) => (p === "src/app/markets/[id]/page.tsx" ? code(p).replace("if (!m) return notFoundMetadata();", "if (!m) notFound();") : code(p)));
++  ok("1.4′ PLANT · the market's notFound() back in its metadata is found by the census", j(planted.deciding) === j(["src/app/markets/[id]/page.tsx"]), j(planted.deciding));
++
++  // ⭐ EVERY OTHER READ TOO. A metadata read that REJECTS is thrown by `MetadataOutlet` beside the page, under the page's
++  // boundaries — the error page replaces a page whose own reads succeeded. So outside a `try`, a generateMetadata awaits
++  // only reads that never reject: each of these catches its own failure, or is the shell's own read for the same request
++  // (whose throw has already failed the document).
++  const NEVER_REJECT: Record<string, string> = {
++    getServerT: "the reader's language, the shell's own read",
++    notFoundMetadata: "getServerT and the not-found's words",
++    currentSession: "the session, the shell's own read for this request",
++    resolveSimpleJourney: "catches: any failure answers WITHDRAWN (lib/server/journey-preview.ts)",
++    invitePaysPlayersNow: "catches: \"Never rejects; any failure answers false\" (lib/server/invite-rewards-switch.ts)",
++    inviteViewerFor: "catches: a failed read answers NO_VIEWER (lib/server/affiliate-service.ts)",
++  };
++  /** The function's text with every `try { … }` body taken out (braces balanced). */
++  const outsideTry = (fn: string) => {
++    let out = "", i = 0;
++    for (let at = fn.indexOf("try {", i); at >= 0; at = fn.indexOf("try {", i)) {
++      out += fn.slice(i, at);
++      let k = fn.indexOf("{", at), depth = 0;
++      for (; k < fn.length; k++) { if (fn[k] === "{") depth++; else if (fn[k] === "}" && --depth === 0) break; }
++      i = k + 1;
++    }
++    return out + fn.slice(i);
++  };
++  /** What a function awaits outside a try: each `await f(…)`, and each call inside an awaited `Promise.all([…])`. */
++  const awaited = (fn: string) => {
++    const s = outsideTry(fn);
++    const names = [...s.matchAll(/await\s+([A-Za-z_$][\w$]*)\s*\(/g)].map((m) => m[1]).filter((n) => n !== "params" && n !== "searchParams");
++    for (const m of s.matchAll(/await\s+Promise\.all\(\[([\s\S]*?)\]\)/g)) names.push(...[...m[1].matchAll(/(?<![.\w$])([a-z][\w$]*)\s*\(/g)].map((x) => x[1]));
++    return [...new Set(names.filter((n) => n !== "Promise"))];
++  };
++  const reads = (read: (p: string) => string) => files.flatMap((f) => {
++    const fn = fnText(read(f), "export async function generateMetadata");
++    return fn ? awaited(fn).filter((n) => !(n in NEVER_REJECT)).map((n) => `${f}: ${n}`) : [];
++  });
++  const loose = reads(code);
++  const used = [...new Set(files.flatMap((f) => { const fn = fnText(code(f), "export async function generateMetadata"); return fn ? awaited(fn) : []; }))].sort();
++  const catches = ["src/lib/server/journey-preview.ts", "src/lib/server/invite-rewards-switch.ts", "src/lib/server/affiliate-service.ts"].every((p) => /\}\s*catch\s*\{/.test(code(p)));
++  ok(`1.4″ · and outside a try, every generateMetadata awaits only reads that never reject (${used.join(", ")}) — the three that catch do catch`,
++    loose.length === 0 && catches && used.includes("getMarket") === false, loose.join(" | ") || j(used));
++  const plantedRead = reads((p) => (p === "src/app/updown/[roundId]/page.tsx" ? code(p).replace(/try \{\s*d = await getRoundDetail\(roundId\);\s*\} catch \{ return \{ title: t\.market\.udTitle \}; \}/, "d = await getRoundDetail(roundId);") : code(p)));
++  ok("1.4‴ PLANT · the round's read taken out of its try (a failed read would throw beside the page) is found", j(plantedRead) === j(["src/app/updown/[roundId]/page.tsx: getRoundDetail"]), j(plantedRead));
++}
++{
++  // The body's read is the one that decides, and its note says so (the old note called the metadata's catch "title garnish");
++  // and the market's not-found no longer says the page's metadata calls notFound().
++  const page = raw("src/app/markets/[id]/page.tsx"), nf = raw("src/app/markets/[id]/not-found.tsx");
++  ok("1.5 · the body still reads the market with no catch and calls notFound() only for a missing row (B-1), its note no longer calls the metadata's catch \"title garnish\", and the market's not-found no longer says the page's metadata calls notFound()",
++    /const m = await getMarket\(id\);\s*if \(!m\) notFound\(\);/.test(code("src/app/markets/[id]/page.tsx")) && !page.includes("title garnish") && page.includes("THIS read is the only one that decides the page")
++      && !/generateMetadata` on the page calls `notFound\(\)`/.test(nf) && nf.includes("CORRECTED IN ROUND 5 (review F1)"));
++}
++
++/* ══ §2 · G1 · THE ROUTE GHOSTS ARE A CLIENT CHUNK ═══════════════════════════════════════════════════════════════════ */
++section("2 · G1 · the root loading element is a reference and the rails; every ghost is drawn in the browser, and is its page's own");
++const GHOST = "src/components/journey/route-ghost.tsx";
++const GHOST_LAZY = "src/components/journey/route-ghost-lazy.tsx";
++const SHELL_LAZY = "src/components/layout/shell-lazy.tsx";
++const LOADING = "src/app/loading.tsx";
++const SRC_EXTS = [".ts", ".tsx", "/index.ts", "/index.tsx"];
++/** Every module a file loads at runtime (value imports, side-effect imports, dynamic imports), resolved in src. */
++function loads(file: string, text: (p: string) => string): Array<{ spec: string; to: string | null }> {
++  const s = decomment(text(file));
++  const specs = [
++    ...[...s.matchAll(/^\s*import\s+(?!type\s)[\s\S]*?\s+from\s+["']([^"']+)["']/gm)].map((m) => m[1]),
++    ...[...s.matchAll(/^\s*import\s+["']([^"']+)["']/gm)].map((m) => m[1]),
++    ...[...s.matchAll(/\bimport\(\s*["']([^"']+)["']\s*\)/g)].map((m) => m[1]),
++  ];
++  return specs.map((spec) => {
++    const base = spec.startsWith("@/") ? `src/${spec.slice(2)}` : spec.startsWith(".") ? posix.join(posix.dirname(file), spec) : null;
++    const to = base === null ? null : SRC_EXTS.map((e) => base + e).find((p) => existsSync(p) && statSync(p).isFile()) ?? null;
++    return { spec, to };
++  });
++}
++/** What in the client graph from `entry` cannot load in a browser: next/headers, a server module, a Node built-in. */
++function serverOnly(entry: string, text: (p: string) => string = raw): { reached: number; bad: string[] } {
++  const seen = new Set<string>(); const bad: string[] = [];
++  const visit = (f: string) => {
++    if (seen.has(f)) return; seen.add(f);
++    for (const { spec, to } of loads(f, text)) {
++      if (/^(?:next\/headers|next\/server|server-only|node:|fs$|path$|crypto$|@prisma\/)/.test(spec) || spec.startsWith("@/lib/server/")) bad.push(`${f} → ${spec}`);
++      if (to) visit(to);
++    }
++  };
++  visit(entry);
++  return { reached: seen.size, bad };
++}
++{
++  const ghost = code(GHOST);
++  const shape = (s: string) => hasDirective(s, "use client") && s.includes("export function JourneyRouteGhost({ rails }: { rails: readonly string[] }) {")
++    && squash(s).includes("const { t, locale } = useT();") && s.includes('import { useT } from "@/lib/i18n";');
++  ok("2.1 · route-ghost.tsx is client code: the ghosts take the rails alone and read the words from the client dictionary (`useT`)", shape(ghost));
++  ok("2.1′ PLANT · the ghosts drawn by a server component again (the directive gone) is reported", !shape(ghost.replace(/^\s*"use client";/, "")));
++  const graph = serverOnly(GHOST_LAZY);
++  ok(`2.2 · nothing the ghosts load is server code: ${graph.reached} modules from the lazy binding, no next/headers, no @/lib/server/*, no Node built-in`, graph.reached > 10 && graph.bad.length === 0, graph.bad.join(" | "));
++  const replanted = serverOnly(GHOST_LAZY, (p) => (p === GHOST ? `import { heroRailNames } from "@/lib/server/payout-rails";\n${raw(p)}` : raw(p)));
++  ok("2.2′ PLANT · the rails read in the ghost again (`heroRailNames` from @/lib/server/payout-rails) is reported", replanted.bad.some((b) => b.includes("@/lib/server/payout-rails")), replanted.bad.join(" | "));
++}
++{
++  const lazy = code(GHOST_LAZY), shell = code(SHELL_LAZY);
++  const statics = [...lazy.matchAll(/^\s*import\s+([^;]*?)\s+from\s+"([^"]+)";/gm)].map((m) => `${m[1].trim()} from ${m[2]}`);
++  const LINE = 'export const LazyJourneyRouteGhost = dynamic(() => import("@/components/journey/route-ghost").then((m) => m.JourneyRouteGhost).catch(nothingIfLost));';
++  const options = ["ssr", "loading", "suspense"].filter((w) => lazy.includes(w));
++  ok("2.3 · route-ghost-lazy.tsx is the shell's pattern: client code whose one static import is next/dynamic, one binding with no option object (the server render stays on, no boundary of its own), its loader ending in the lost-chunk guard",
++    hasDirective(lazy, "use client") && j(statics) === j(["dynamic from next/dynamic"]) && count(lazy, LINE) === 1 && count(lazy, "export ") === 1 && options.length === 0,
++    j({ statics, options, line: count(lazy, LINE) }));
++  // The guard, character for character: the stand-in, the once-per-page flag and the guard itself.
++  const guardOf = (s: string) => {
++    const a = s.indexOf("function Nothing(): null {"), b = s.indexOf("return Nothing;\n}", a);
++    return a < 0 || b < 0 ? "" : squash(s.slice(a, b + "return Nothing;\n}".length));
++  };
++  ok("2.4 · its lost-chunk guard is the shell's own, character for character (a ChunkLoadError leaves the ghost out and reports once; any other error is thrown on)",
++    guardOf(lazy) !== "" && guardOf(lazy) === guardOf(shell) && guardOf(lazy).includes('error.name !== "ChunkLoadError") throw error;'), guardOf(lazy).slice(0, 120));
++  ok("2.4′ PLANT · a guard that takes every error is reported", guardOf(lazy.replace('if (!(error instanceof Error) || error.name !== "ChunkLoadError") throw error;', "")) !== guardOf(shell));
++}
++{
++  const loading = code(LOADING);
++  const arm = (s: string) => squash(s).includes("(await resolveSimpleJourney()).journey) { return <LazyJourneyRouteGhost rails={heroRailNames(null)} />; }")
++    && s.includes('import { LazyJourneyRouteGhost } from "@/components/journey/route-ghost-lazy";')
++    && !s.includes("@/components/journey/route-ghost\"") && !/getServerT/.test(s);
++  ok("2.5 · the root loading file hands the lazy binding the one server answer the browser cannot read (the rails that pay out), and no words and no ghost of its own", arm(loading));
++  ok("2.5′ PLANT · the words handed in again (the dictionary written into every payload) is reported",
++    !arm(loading.replace("<LazyJourneyRouteGhost rails={heroRailNames(null)} />", "<LazyJourneyRouteGhost rails={heroRailNames(null)} t={t} />")));
++}
++
++/** The root loading element as Next writes it into a payload — Flight's shape: a "use client" export is a reference
++ *  (`$L<n>`) with its props; a server component is replaced by what it returns; a host element is ["$", tag, key, props]. */
++const clientRefs = new Map<unknown, string>();
++function collectClientRefs(): void {
++  for (const [file, mod] of Object.entries(req.cache as Record<string, { exports?: Record<string, unknown> }>)) {
++    if (!/[\\/]src[\\/]/.test(file) || !existsSync(file)) continue;
++    if (!hasDirective(decomment(readFileSync(file, "utf8").replace(/^﻿/, "")), "use client")) continue;
++    for (const [name, v] of Object.entries(mod.exports ?? {})) {
++      if (typeof v === "function" || (v !== null && typeof v === "object" && "$$typeof" in (v as object))) clientRefs.set(v, `${file.split(/[\\/]src[\\/]/)[1].replace(/\\/g, "/")}#${name}`);
++    }
++  }
++}
++async function flight(node: unknown, named: Set<string>): Promise<unknown> {
++  if (node === null || node === undefined) return node === undefined ? "$undefined" : null;
++  if (typeof node === "string") return node.startsWith("$") ? `$${node}` : node;
++  if (typeof node === "number" || typeof node === "boolean") return node;
++  if (Array.isArray(node)) return Promise.all(node.map((n) => flight(n, named)));
++  const el = node as { $$typeof?: symbol; type?: unknown; key?: string | null; props?: Record<string, unknown> };
++  if (el.$$typeof === Symbol.for("react.transitional.element")) {
++    const props = async () => Object.fromEntries(await Promise.all(Object.entries(el.props ?? {}).filter(([, v]) => v !== undefined)
++      .map(async ([k, v]) => [k, typeof v === "function" ? "$F" : await flight(v, named)] as const)));
++    if (typeof el.type === "string") return ["$", el.type, el.key ?? null, await props()];
++    if (el.type === Symbol.for("react.fragment")) return flight(el.props?.children, named);
++    const ref = clientRefs.get(el.type);
++    if (ref) { named.add(ref); return ["$", `$L${named.size.toString(16)}`, el.key ?? null, await props()]; }
++    if (typeof el.type === "function") return flight(await (el.type as (p: unknown) => unknown)(el.props), named);
++    throw new Error(`unknown element type ${String(el.type)}`);
++  }
++  if (typeof node === "object") return Object.fromEntries(await Promise.all(Object.entries(node as Record<string, unknown>).map(async ([k, v]) => [k, await flight(v, named)] as const)));
++  return String(node);
++}
++const RootLoading = (req("../src/app/loading.tsx") as { default: () => Promise<unknown> }).default;
++const { heroRailNames } = req("../src/lib/server/payout-rails.ts") as { heroRailNames: (p: null) => string[] };
++const RAILS = heroRailNames(null);
++// Every module the checks below serialize or render, loaded BEFORE the client references are collected (a "use client"
++// export not yet loaded would be taken for a server component and called).
++const { RoutePick } = req("../src/components/ui/route-pick.tsx") as { RoutePick: unknown };
++const { UpDownGhost } = req("../src/app/updown/updown-ghost.tsx") as { UpDownGhost: unknown };
++const { UpDownHistoryGhost } = req("../src/app/updown/history/history-ghost.tsx") as { UpDownHistoryGhost: unknown };
++const { DepositGhost } = req("../src/app/wallet/deposit/deposit-ghost.tsx") as { DepositGhost: unknown };
++const { TicketsGhost } = req("../src/components/journey/tickets/tickets-ghost.tsx") as { TicketsGhost: unknown };
++const MarketDetailLoading = (req("../src/app/markets/[id]/loading.tsx") as { default: unknown }).default;
++const DepositReturnLoading = (req("../src/app/wallet/deposit/return/loading.tsx") as { default: unknown }).default;
++const { JourneyRouteGhost } = req("../src/components/journey/route-ghost.tsx") as { JourneyRouteGhost: (p: { rails: readonly string[] }) => unknown };
++const { I18nProvider } = req("../src/lib/i18n.tsx") as { I18nProvider: (p: { initial: Locale; children: unknown }) => unknown };
++collectClientRefs();
++const GHOST_MARKUP = /kp-hero|kp-hub|kp-shimmer-track|kp-hghost|aria-busy/;
++{
++  const sizes: string[] = [];
++  let worst = 0, refsOk = true, markupFree = true, propsOk = true;
++  for (const l of LOCALES) {
++    REQ.locale = l; REQ.path = "/"; REQ.journey = true;
++    const named = new Set<string>();
++    const el = await RootLoading();
++    const json = j(await flight(el, named));
++    worst = Math.max(worst, Buffer.byteLength(json));
++    sizes.push(`${l} ${Buffer.byteLength(json)} B`);
++    refsOk &&= j([...named]) === j(["components/journey/route-ghost-lazy.tsx#LazyJourneyRouteGhost"]);
++    markupFree &&= !GHOST_MARKUP.test(json);
++    propsOk &&= j((el as { props: unknown }).props) === j({ rails: RAILS });
++  }
++  ok(`2.6 · RUN for a journey reader, the root loading element is ONE client reference and the rails — ${sizes.join(", ")} of Flight JSON (it was 27,349 / 27,318 / 27,310), under 200 in every language; no ghost markup in it`,
++    worst > 0 && worst < 200 && refsOk && markupFree && propsOk, j({ sizes, refsOk, markupFree, propsOk }));
++  // CONTROL — the same serializer on the element as it was drawn before: RoutePick holding every page's ghost, drawn by
++  // the server (the drawings themselves, imported from their modules: here they are server components).
++  const t = dict.sw;
++  const before = h(RoutePick as never, {
++    routes: { "/updown": h(UpDownGhost as never, { t }), "/positions": h(TicketsGhost as never, { t }), "/updown/history": h(UpDownHistoryGhost as never, { t, journey: true }),
++      "/wallet/deposit": h(DepositGhost as never, { t }), "/wallet/deposit/return": h(DepositReturnLoading as never) },
++    patterns: [["^/markets/[^/]+$", h(MarketDetailLoading as never)]], other: null,
++  } as never);
++  const beforeJson = j(await flight(before, new Set()));
++  ok(`2.6′ CONTROL · the same serializer on the server-drawn shape (six of the nine ghosts — the home's, the hub's and the spinner left out): ${Buffer.byteLength(beforeJson)} B, every node of every ghost written out — the cost 2.6 holds gone`,
++    Buffer.byteLength(beforeJson) > 10_000 && GHOST_MARKUP.test(beforeJson), String(Buffer.byteLength(beforeJson)));
++  // The classic reader: the box, unchanged, and no ghost reference at all.
++  REQ.journey = false;
++  const classicNamed = new Set<string>();
++  const classic = j(await flight(await RootLoading(), classicNamed));
++  REQ.journey = true;
++  ok("2.7 · a classic reader is drawn the classic box as before (the brand's SectionLoader in the 1280 column), and no ghost reference rides in its payload",
++    classic.includes("mx-auto max-w-[1280px] px-3 lg:px-6 py-10") && [...classicNamed].every((r) => r.startsWith("components/brand.tsx#")) && !classic.includes("route-ghost"), classic.slice(0, 200));
++}
++
++/* Every ghost, in every language, on React's server renderer — inside the providers the root layout gives it. */
++const { AppRouterContext } = req("next/dist/shared/lib/app-router-context.shared-runtime") as { AppRouterContext: import("react").Context<unknown> };
++const { PathnameContext } = req("next/dist/shared/lib/hooks-client-context.shared-runtime") as { PathnameContext: import("react").Context<string | null> };
++const ROUTER = { push() {}, replace() {}, refresh() {}, prefetch() {}, back() {}, forward() {}, hmrRefresh() {} };
++const inApp = (path: string, l: Locale, el: unknown) =>
++  renderToStaticMarkup(h(AppRouterContext.Provider, { value: ROUTER }, h(PathnameContext.Provider, { value: path }, h(I18nProvider as never, { initial: l }, el as never))));
++const ghostAt = (path: string, l: Locale) => inApp(path, l, h(JourneyRouteGhost as never, { rails: RAILS }));
++{
++  // [path, what that page's ghost shows, read in the reader's language]
++  const PAGES: Array<[string, (l: Locale) => string]> = [
++    ["/", () => 'class="kp-hero"'],
++    ["/updown", (l) => dict[l].market.udStreaming],
++    ["/positions", (l) => dict[l].journey.tabTickets],
++    ["/account", (l) => `>${dict[l].journey.tabAccount}</h1>`],
++    ["/updown/history", (l) => dict[l].journey.tabTickets],
++    ["/wallet/deposit", (l) => dict[l].common.deposit],
++    ["/wallet/deposit/return", () => 'class="rounded-card border border-border bg-bg-elevated p-6 space-y-4 kp-shimmer-track"'],
++    ["/markets/mkt_any", () => "lg:grid-cols-[1fr_360px]"],
++    ["/help", () => 'role="status"'],
++  ];
++  const wrong: string[] = [];
++  for (const [path, mark] of PAGES) for (const l of LOCALES) {
++    try { const html = ghostAt(path, l); if (!html.includes(mark(l))) wrong.push(`${path} ${l}: no ${mark(l)}`); }
++    catch (e) { wrong.push(`${path} ${l}: THREW ${String(e).slice(0, 120)}`); }
++  }
++  ok(`2.8 · every ghost renders on React's server renderer, in sw, en and zh, inside the root layout's providers, and shows its own page in that language (${PAGES.length} paths × 3) — no throw (G2: it stands in the shell)`,
++    wrong.length === 0, wrong.join(" | "));
++  const homeWords = LOCALES.map((l) => ghostAt("/", l).includes(dict[l].home.heroLedeAct));
++  ok("2.8′ CONTROL · the words follow the provider's language, not the server's: the home ghost's lede in each of the three", homeWords.every(Boolean), j(homeWords));
++  const railsShown = RAILS.every((r) => ghostAt("/", "sw").includes(r));
++  ok(`2.9 · the home ghost's trust rows name the rails it is handed (${RAILS.join(", ")})`, railsShown);
++}
++{
++  // ONE DRAWING: each page's loading file (RUN, as Next runs it for that page) and the root ghost at that page's address
++  // write the same bytes, in every language.
++  const load = (p: string) => (req(p) as { default: () => unknown }).default;
++  const CASES: Array<[string, string]> = [
++    ["/updown", "../src/app/updown/loading.tsx"],
++    ["/updown/history", "../src/app/updown/history/loading.tsx"],
++    ["/wallet/deposit", "../src/app/wallet/deposit/loading.tsx"],
++    ["/wallet/deposit/return", "../src/app/wallet/deposit/return/loading.tsx"],
++    ["/markets/mkt_any", "../src/app/markets/[id]/loading.tsx"],
++    ["/positions", "../src/app/positions/loading.tsx"],
++  ];
++  const differ: string[] = [];
++  for (const [path, file] of CASES) for (const l of LOCALES) {
++    REQ.locale = l; REQ.path = path; REQ.journey = true;
++    const own = inApp(path, l, await load(file)());
++    if (own !== ghostAt(path, l)) differ.push(`${path} ${l}`);
++  }
++  ok(`2.10 · one drawing: each page's own loading file, RUN for a journey reader, and the root ghost at its address write the same bytes (${CASES.length} pages × 3 languages)`,
++    differ.length === 0, differ.join(", "));
++  REQ.locale = "sw"; REQ.journey = false;
++  const classicHistory = inApp("/updown/history", "sw", await load("../src/app/updown/history/loading.tsx")());
++  REQ.journey = true;
++  ok("2.10′ CONTROL · a classic reader's /updown/history ghost (today's two head lines) is NOT the journey's — so 2.10's equality is the drawing's, not a blank",
++    classicHistory !== ghostAt("/updown/history", "sw") && !classicHistory.includes(dict.sw.journey.tabTickets));
++}
++
++/* ══ §3 · G2 · AN ERROR IN THE SHELL'S BARE PARTS ═══════════════════════════════════════════════════════════════════ */
++section("3 · G2 · a server render error in a part with no boundary of its own fails the document — measured, and said where it lives");
++{
++  const R = req("next/dist/compiled/react") as typeof import("react");
++  const { renderToPipeableStream: fizz } = req("next/dist/compiled/react-dom/server.node.js") as typeof import("react-dom/server");
++  const Boom = (): never => { throw new Error("a part threw on the server"); };
++  /** A page still being read when the shell is sent (a fresh pending read for each document). */
++  const pendingPage = () => {
++    let ready = false, go = () => undefined as void;
++    const wait = new Promise<void>((r) => { go = () => { ready = true; r(); }; });
++    return { Page: () => { if (!ready) throw wait; return R.createElement("main", null, "page"); }, go };
++  };
++  const run = (make: (Page: () => unknown) => unknown) => new Promise<string[]>((resolve) => {
++    const { Page, go } = pendingPage();
++    const events: string[] = [];
++    const sink = new Writable({ write(_c, _e, cb) { cb(); } });
++    const s = fizz(make(Page) as never, {
++      onShellReady() { events.push("shell"); s.pipe(sink); },
++      onShellError() { events.push("shell-error"); },
++      onError() { events.push("error"); },
++    });
++    setTimeout(go, 20);
++    setTimeout(() => resolve(events), 120);
++  });
++  const html = (...kids: unknown[]) => R.createElement("html", null, R.createElement("body", null, ...(kids as never[])));
++  const bare = await run((Page) => html(R.createElement(Boom), R.createElement(R.Suspense, { fallback: R.createElement("div", null, "ghost") }, R.createElement(Page as never))));
++  const boxed = await run((Page) => html(R.createElement(R.Suspense, { fallback: R.createElement("div", { className: "kp-jhdr" }) }, R.createElement(Boom)), R.createElement(R.Suspense, { fallback: null }, R.createElement(Page as never))));
++  const inFallback = await run((Page) => html(R.createElement("header", null, "bar"), R.createElement(R.Suspense, { fallback: R.createElement(Boom) }, R.createElement(Page as never))));
++  ok("3.1 · on the app's copy of React's server renderer: a throw in a part with NO boundary ends the shell (the document fails); in the root loading fallback — where the ghost stands — it ends the shell too",
++    bare.includes("shell-error") && !bare.includes("shell") && inFallback.includes("shell-error") && !inFallback.includes("shell"), j({ bare, inFallback }));
++  ok("3.1′ CONTROL · the same throw inside a boundary of its own is contained: the shell is sent, the part drawn in the browser", boxed.includes("shell") && !boxed.includes("shell-error"), j(boxed));
++}
++{
++  const shell = raw("src/components/layout/app-shell.tsx"), ghost = raw(GHOST);
++  ok("3.2 · it is said where it lives: AppShell's note at the journey's header and tabs, and the ghost's own note, name the uncontained error, why no boundary is added (E36), and that neither reads anything to throw on",
++    shell.includes("A SERVER RENDER ERROR IN EITHER PART IS NO LONGER CONTAINED (round 5, review G2)") && shell.includes("would outline the part behind the shell again (E36)")
++      && ghost.includes("AND A THROW HERE STILL FAILS THE DOCUMENT (review G2)"));
++}
++
++/* Every source file, and each one's text with its comments out — read once, for the two census sections below. */
++const SRC_FILES: string[] = [];
++{
++  const walkSrc = (d: string) => { for (const n of readdirSync(d)) { const p = posix.join(d, n); if (statSync(p).isDirectory()) walkSrc(p); else if (/\.(tsx?|mts)$/.test(n)) SRC_FILES.push(p); } };
++  walkSrc("src");
++}
++const srcText = new Map<string, string>();
++const srcCode = (p: string) => { if (!srcText.has(p)) srcText.set(p, code(p)); return srcText.get(p)!; };
++
++/* ══ §4 · G1'S SIBLING · THE NOT-FOUND ELEMENTS ═════════════════════════════════════════════════════════════════════ */
++section("4 · G1's sibling · the not-found element every payload carries is the view's reference and its words, not the page");
++const NF_ROUTES: Array<[string, string]> = [["root", "src/app/not-found.tsx"], ["market", "src/app/markets/[id]/not-found.tsx"], ["proposal", "src/app/proposals/[id]/not-found.tsx"]];
++const NF_VIEW = "src/components/ui/not-found-view.tsx", NF_WORDS = "src/components/ui/not-found-words.ts";
++/** The view's own nodes, as Flight writes them: its frame's classes, its wave, its glyphs' svg and paths, its nav. */
++const NF_MARKUP = /kp-nf-topo|kp-shortpage|"svg"|"path"|"nav"/;
++{
++  // Each segment hands its not-found element to its router (create-component-tree.js `notFound`): the root's rides in every
++  // payload rendered from the root — each document, each refresh — and the question's in every question page's.
++  const pages = NF_ROUTES.map(([name, p]) => [name, (req(`../${p}`) as { default: () => Promise<unknown> }).default] as const);
++  const { NotFoundView } = req(`../${NF_VIEW}`) as { NotFoundView: unknown };
++  collectClientRefs();
++  const sizes: string[] = [], wrong: string[] = [];
++  for (const [name, NotFound] of pages) for (const l of LOCALES) {
++    REQ.locale = l;
++    const named = new Set<string>();
++    let json = "";
++    // A throw is a finding, not a crash: the view drawn on the server again calls its wave's useId with no renderer.
++    try { json = j(await flight(await NotFound(), named)); }
++    catch (e) { wrong.push(`${name} ${l}: THREW ${String(e).slice(0, 100)}`); continue; }
++    const b = Buffer.byteLength(json);
++    sizes.push(`${name} ${l} ${b}`);
++    if (b >= 600 || NF_MARKUP.test(json) || j([...named]) !== j(["components/ui/not-found-view.tsx#NotFoundView"])) wrong.push(`${name} ${l}: ${b} B ${[...named].join(",")}`);
++  }
++  REQ.locale = "sw";
++  ok(`4.1 · RUN in sw, en and zh, each not-found element is ONE reference, the view's, and the words it is handed — under 600 B (${sizes.join(", ")} B; drawn on the server it was 5,938 / 5,923 / 6,379)`,
++    wrong.length === 0, wrong.join(" | "));
++  // CONTROL — the same serializer with the view drawn on the server, as it was before round 5 (its client parts stay
++  // references: the mark, the logo, next/link): every node of the page written out.
++  const link = req("next/link") as { default?: unknown };
++  const LinkComp = link.default ?? link;
++  const viewRef = clientRefs.get(NotFoundView);
++  const Rx = React as unknown as { useId: () => string };
++  const realUseId = Rx.useId;
++  clientRefs.delete(NotFoundView);
++  clientRefs.set(LinkComp, "next/link#default");
++  Rx.useId = () => "_S_0_"; // the wave's pattern id: what a server component's useId writes (outside a renderer it has none)
++  let drawn = "";
++  try { drawn = j(await flight(await pages[0][1](), new Set())); }
++  finally { Rx.useId = realUseId; if (viewRef) clientRefs.set(NotFoundView, viewRef); clientRefs.delete(LinkComp); }
++  ok(`4.1′ CONTROL · the same serializer on round 4's shape (the view drawn on the server): ${Buffer.byteLength(drawn)} B, the page's every node written out — the cost 4.1 holds gone`,
++    Buffer.byteLength(drawn) > 5000 && NF_MARKUP.test(drawn), String(Buffer.byteLength(drawn)));
++}
++{
++  const view = code(NF_VIEW), words = code(NF_WORDS);
++  const shapes = hasDirective(view, "use client") && !hasDirective(words, "use client") && !hasDirective(words, "use server")
++    && /export const NOT_FOUND_WORDS = \{/.test(words) && /export const notFoundTitle = /.test(words)
++    && !/export const (?:NOT_FOUND_WORDS|notFoundTitle)\b/.test(view) && view.includes('import type { NotFoundWords } from "@/components/ui/not-found-words";');
++  const routes = NF_ROUTES.every(([, p]) => {
++    const c = code(p);
++    return c.includes('import { NotFoundView } from "@/components/ui/not-found-view";') && /import \{ NOT_FOUND_WORDS(?:, notFoundTitle)? \} from "@\/components\/ui\/not-found-words";/.test(c);
++  });
++  ok("4.2 · the view is client code and its words and title are data beside it (not-found-words.ts, no directive): the three not-found files take the view by its component name and the words from the data module",
++    shapes && routes);
++}
++{
++  // ⛔ THE TRAP THE SPLIT AVOIDS, FOR EVERY FILE. On the server a "use client" module's exports are references: a component
++  // can be rendered, but a constant read out of one or a function called from one throws at render — and a test run in
++  // Node never sees it (no bundler, no directive). So walk the SERVER graph — every src/app module without "use client",
++  // then every value import of a module without it — and hold each import of a client module to its components.
++  const resolveSrc = (from: string, spec: string) => {
++    const base = spec.startsWith("@/") ? `src/${spec.slice(2)}` : spec.startsWith(".") ? posix.join(posix.dirname(from), spec) : null;
++    return base === null ? null : SRC_EXTS.concat([""]).map((e) => base + e).find((p) => existsSync(p) && statSync(p).isFile()) ?? null;
++  };
++  const component = (n: string) => /^[A-Z][a-z0-9]/.test(n);
++  const serverGraph = (text: (p: string) => string) => {
++    const isClientFile = (p: string) => hasDirective(text(p), "use client");
++    const stack = SRC_FILES.filter((p) => p.startsWith("src/app/") && !isClientFile(p));
++    const roots = stack.length, seen = new Set<string>(), bad: string[] = [], edges: string[] = [];
++    while (stack.length) {
++      const f = stack.pop()!;
++      if (seen.has(f)) continue;
++      seen.add(f);
++      const s = text(f);
++      for (const m of s.matchAll(/^\s*(?:import|export)\s+(?!type\s)([\s\S]*?)\s+from\s+["']([^"']+)["']/gm)) {
++        const to = resolveSrc(f, m[2]);
++        if (!to) continue;
++        const clause = m[1].trim(), names: string[] = [];
++        const def = /^([A-Za-z_$][\w$]*)\s*(?:,|$)/.exec(clause);
++        if (def) names.push(def[1]);
++        const braces = /\{([^}]*)\}/.exec(clause);
++        if (braces) for (const part of braces[1].split(",")) { const n = part.trim(); if (n && !/^type\s/.test(n)) names.push(n.split(/\s+as\s+/)[0].trim()); }
++        if (/\*/.test(clause)) names.push(clause);
++        if (isClientFile(to)) {
++          edges.push(`${f} → ${to}: ${names.join(", ")}`);
++          const wrongNames = names.filter((n) => !component(n));
++          if (wrongNames.length) bad.push(`${f} → ${to}: ${wrongNames.join(", ")}`);
++        } else stack.push(to);
++      }
++      for (const m of s.matchAll(/^\s*import\s+["']([^"']+)["']/gm)) { const to = resolveSrc(f, m[1]); if (to && !isClientFile(to)) stack.push(to); }
++    }
++    return { roots, walked: seen.size, bad, edges };
++  };
++  const now = serverGraph(srcCode);
++  const sees = now.edges.includes("src/app/not-found.tsx → src/components/ui/not-found-view.tsx: NotFoundView");
++  ok(`4.3 · no server module takes anything but a component from a client module — the server graph walked from ${now.roots} src/app entries through ${now.walked} modules, ${now.edges.length} imports of client modules`,
++    now.bad.length === 0 && now.roots > 300 && now.walked > 600 && sees, now.bad.join(" | ") || `sees the root not-found's import: ${sees}`);
++  const OLD_IMPORT = 'import { NOT_FOUND_WORDS, NotFoundView, notFoundTitle } from "@/components/ui/not-found-view";';
++  const planted = serverGraph((p) => (p === "src/app/not-found.tsx"
++    ? srcCode(p).replace('import { NotFoundView } from "@/components/ui/not-found-view";', OLD_IMPORT).replace('import { NOT_FOUND_WORDS, notFoundTitle } from "@/components/ui/not-found-words";', "")
++    : srcCode(p)));
++  ok("4.3′ PLANT · the root not-found reading its words and title out of the (client) view again — round 4's import — is reported",
++    j(planted.bad) === j(["src/app/not-found.tsx → src/components/ui/not-found-view.tsx: NOT_FOUND_WORDS, notFoundTitle"]), j(planted.bad));
++}
++
++/* ══ §5 · F4'S PATTERN · A STORE READ BY WHAT STANDS OUTSIDE THE PAGE ═══════════════════════════════════════════════ */
++section("5 · F4's pattern · every useSyncExternalStore reader is classified, and a page that is left leaves the document");
++{
++  // F4 was a page's DOM mark read through useSyncExternalStore by chrome OUTSIDE the page: while the router drew the next
++  // page the old mark was still in the document, and its going was announced after the paint. Every reader of the same
++  // shape is named here with why it is, or is not, that defect; a new one is reported until it is classified.
++  const READERS: Record<string, string> = {
++    "src/lib/not-found-mark.ts": "a page's mark read by the chrome — answered for the path being drawn, arrival announced in a layout effect (F4)",
++    "src/lib/journey/journey-on.ts": "the shell's mark, layout-scoped: no soft navigation re-runs the root layout; a refresh that flips the server's answer is the staleness its note accepts (named to the integrator)",
++    "src/lib/invitation-slot.ts": "claims read beside the claimant's own in-render eligibility: a stale store can delay a card a frame, never show two",
++    "src/components/ui/unsaved-changes.tsx": "a registry whose writers and painter all stand in one page, and leave it together",
++    "src/components/layout/nav-more.tsx": "the reader's density (<html data-density>), not a page's state",
++    "src/components/journey/account/card-size-row.tsx": "the reader's density, not a page's state",
++    "src/lib/analytics-consent.ts": "the reader's consent, not a page's state",
++    "src/lib/journey/one-poller.ts": "a media query, not a page's state",
++    "src/lib/journey/use-unread-count.ts": "the unread feed, not a page's state",
++  };
++  const readers = (text: (p: string) => string) => SRC_FILES.filter((p) => /\buseSyncExternalStore\s*(?:<[^>]*>)?\s*\(/.test(text(p))).sort();
++  const now = readers(srcCode);
++  ok(`5.1 · every useSyncExternalStore reader in src (${now.length}) is classified: ${Object.entries(READERS).map(([f, why]) => `${f.split("/").pop()} — ${why}`).join("; ")}`,
++    j(now) === j(Object.keys(READERS).sort()), j(now));
++  const planted = readers((p) => (p === "src/lib/journey/header-state.ts" ? `${srcCode(p)}\nexport const useMarkShown = () => useSyncExternalStore(() => () => {}, () => document.getElementById("kp-x") !== null, () => false);` : srcCode(p)));
++  ok("5.1′ PLANT · a new reader (a DOM mark in a module no one has classified) is reported", j(planted) !== j(Object.keys(READERS).sort()) && planted.includes("src/lib/journey/header-state.ts"));
++}
++{
++  // Both F4's answer and F5's CSS assume that a page that is left LEAVES the document in the commit that draws the next
++  // one. Next 16 keeps left pages mounted in a hidden <Activity> only with `cacheComponents` on: then the old not-found's
++  // span would stay, `:root:has(#kp-not-found)` would rest the next page's tab, and `getElementById` could find the old span.
++  const cfg = code("next.config.ts");
++  const bf = raw("node_modules/next/dist/client/components/bfcache-state-manager.js"), lr = raw("node_modules/next/dist/client/components/layout-router.js");
++  const leaves = (c: string) => !/\bcacheComponents\b/.test(c)
++    && bf.includes("const MAX_BF_CACHE_ENTRIES = process.env.__NEXT_CACHE_COMPONENTS ? 3 : 1;")
++    && lr.includes("if (process.env.__NEXT_CACHE_COMPONENTS) {") && lr.includes("(0, _jsxruntime.jsx)(_react.Activity, {");
++  ok("5.2 · a page that is left leaves the document: next.config turns no cacheComponents on, and without it Next keeps ONE router entry and wraps no segment in a hidden <Activity> (bfcache-state-manager.js, layout-router.js) — read from the framework, so an upgrade that changes it is noticed",
++    leaves(cfg));
++  ok("5.2′ PLANT · cacheComponents turned on is reported", !leaves(cfg.replace("experimental: {", "cacheComponents: true,\n  experimental: {")));
++}
++
++console.log(`\nvisual-pass-r5d: ${pass} passed, ${fails.length} failed\n`);
++if (fails.length) {
++  for (const f of fails) console.error(`  · ${f}`);
++  process.exit(1);
++}
+diff --git a/src/app/globals.css b/src/app/globals.css
+index 4a390f22d..faefe6b69 100644
+--- a/src/app/globals.css
++++ b/src/app/globals.css
+@@ -6953,18 +6953,30 @@ html[lang="zh"] .kp-udrule { word-break: keep-all; }
+    (the weight does not transition). On the journey's rail the lit state changes at once, ink, pip and weight together.
+    ⛔ The classic rules are not edited: the classic rail and the admin pending-changes bar keep their fades. */
+ .kp-rail--journey .kp-rail__item, .kp-rail--journey .kp-rail__pip { transition: none; }
+-/* ⭐ A NOT-FOUND PAGE LIGHTS NO DESTINATION, FROM ITS FIRST PAINT (2026-10-09, the visual pass round 4, R4-J; tiles
++/* ⭐ A NOT-FOUND PAGE LIGHTS NO DESTINATION, BEFORE THE SCRIPTS RUN (2026-10-09, the visual pass round 4, R4-J; tiles
+    372–398). The journey's chrome reads the not-found mark once it hydrates (`lib/not-found-mark.ts`) and then lights
+    nothing; but the server draws the chrome BEFORE the page finds out it is a not-found, so the first HTML lit the tab its
+-   address names (Maswali on a missing question, Juu/Chini on a missing round). The mark is in that same HTML, so until
+-   the scripts run it unlights the lit tab here: each lit value put back to the slot's own (`test:visual-pass-r4j` §5
+-   holds them equal to the base rules). ⛔ Journey classes only: the classic rail's rules, which the journey rail wears,
+-   are not edited, and a classic page carries no journey rail. */
+-:root:has(#kp-not-found) .kp-rail--journey .kp-rail__item[data-on] { color: var(--text-subtle); }
+-:root:has(#kp-not-found) .kp-rail--journey .kp-rail__item[data-on] .kp-rail__pip { background: none; box-shadow: none; }
+-:root:has(#kp-not-found) .kp-rail--journey .kp-rail__item[data-on] .kp-rail__label { font-weight: 600; }
+-:root:has(#kp-not-found) .kp-jnav__link:is([aria-current], [data-on]) { color: var(--text-muted); }
+-:root:has(#kp-not-found) .kp-jnav__link:is([aria-current], [data-on])::after { transform: scaleX(0); }
++   address names (Maswali on a missing question, Juu/Chini on a missing round). Until the scripts run, this rule unlights
++   the lit tab: each lit value put back to the slot's own (`test:visual-pass-r4j` §5 holds them equal to the base rules).
++   ⚠️ WHAT IT CAN READ, CORRECTED IN ROUND 5 (review F5). The mark (`#kp-not-found`) is in the server's HTML only where the
++   server draws the not-found page itself — an address no route matches. A question, a round or a proposal that is not
++   there is found missing INSIDE a loading boundary, and React 19.2's server renderer runs no class error boundary, so
++   that HTML is the page's loading ghost with NO mark: R4-J's "from the first paint" never held for them. What that HTML
++   does carry is React's own record of the verdict, on the boundary's template: `data-dgst="NEXT_HTTP_ERROR_FALLBACK;404"`
++   (Next's digest for `notFound()`), written by the server when the verdict is in before the shell is sent, and by React's
++   inline `$RX` script the moment it streams in later. The rule reads both, so the tab rests from the moment the verdict
++   is in the document; the ghost stands until the scripts draw the not-found page, which brings the mark (the template
++   goes with the ghost). Deciding "missing" before the stream instead would need the record read above the root loading
++   boundary — on every question page, ahead of its ghost (`test:visual-pass-r4j` §5 has the framework's lines).
++   ⚠️ It assumes a page that is left leaves the document with its mark: Next keeps left pages in a hidden <Activity> only
++   with `cacheComponents` on, which this app does not turn on (`test:visual-pass-r5d` §5 pins it).
++   ⛔ Journey classes only: the classic rail's rules, which the journey rail wears, are not edited, and a classic page
++   carries no journey rail. */
++:root:has(#kp-not-found, template[data-dgst="NEXT_HTTP_ERROR_FALLBACK;404"]) .kp-rail--journey .kp-rail__item[data-on] { color: var(--text-subtle); }
++:root:has(#kp-not-found, template[data-dgst="NEXT_HTTP_ERROR_FALLBACK;404"]) .kp-rail--journey .kp-rail__item[data-on] .kp-rail__pip { background: none; box-shadow: none; }
++:root:has(#kp-not-found, template[data-dgst="NEXT_HTTP_ERROR_FALLBACK;404"]) .kp-rail--journey .kp-rail__item[data-on] .kp-rail__label { font-weight: 600; }
++:root:has(#kp-not-found, template[data-dgst="NEXT_HTTP_ERROR_FALLBACK;404"]) .kp-jnav__link:is([aria-current], [data-on]) { color: var(--text-muted); }
++:root:has(#kp-not-found, template[data-dgst="NEXT_HTTP_ERROR_FALLBACK;404"]) .kp-jnav__link:is([aria-current], [data-on])::after { transform: scaleX(0); }
+ /* The guest Tiketi sheet's title: the display face, kept clear of the close button the Modal pins top-right.
+    ⭐ Balanced (2026-10-08, the visual pass, tile 116): at en 320 its 232px measure holds "Sign in to see your" (188px)
+    and left "tickets" alone on line 2; balanced, it reads "Sign in to see / your tickets". A title that fits on one
+diff --git a/src/app/loading.tsx b/src/app/loading.tsx
+index aacd6f282..39f586130 100644
+--- a/src/app/loading.tsx
++++ b/src/app/loading.tsx
+@@ -1,20 +1,24 @@
+ import { headers } from "next/headers";
+ import { SectionLoader } from "@/components/brand";
+-import { JourneyRouteGhost } from "@/components/journey/route-ghost";
+-import { getServerT } from "@/lib/i18n-server";
++import { LazyJourneyRouteGhost } from "@/components/journey/route-ghost-lazy";
+ import { isOptOutPath } from "@/lib/marketing/optout";
+ import { resolveSimpleJourney } from "@/lib/server/journey-preview";
++import { heroRailNames } from "@/lib/server/payout-rails";
+ 
+ export default async function RootLoading() {
+   /* ⭐ A JOURNEY READER IS DRAWN THE GHOST OF THE PAGE BEING OPENED (2026-10-09, the visual pass round 4, R4-J; E38):
+      `components/journey/route-ghost.tsx` has the why and the pages. The question is AppShell's, asked the way AppShell
+      asks it — the console and the opt-out page return before the resolver there, so they never get the journey here
+      either — and the resolver is the one per-request answer (React `cache`) the shell has already read for this
+-     render. Everybody else is drawn the box below, unchanged. */
++     render. Everybody else is drawn the box below, unchanged.
++     ⭐ THE GHOSTS ARE A CLIENT CHUNK (round 5, review G1): this element is sent again with every payload rendered from the
++     root — each journey document and each refresh — so it carries a reference and the one thing the browser cannot read
++     for itself, the rails that pay out (`heroRailNames`; the page drops a paused one, the ghost names them all, as
++     before). The words are the client dictionary's, in the language the browser has (`route-ghost.tsx`, loaded through
++     `route-ghost-lazy.tsx`). */
+   const pathname = (await headers()).get("x-pathname") ?? "";
+   if (!pathname.startsWith("/admin") && !isOptOutPath(pathname) && (await resolveSimpleJourney()).journey) {
+-    const { t, locale } = await getServerT();
+-    return <JourneyRouteGhost t={t} locale={locale} />;
++    return <LazyJourneyRouteGhost rails={heroRailNames(null)} />;
+   }
+   // 1280 = the board width tier. This was 1240, a one-off matching no page in the
+   // app, so the generic fallback always reflowed into whatever route resolved next.
+diff --git a/src/app/markets/[id]/loading.tsx b/src/app/markets/[id]/loading.tsx
+index fa9da4070..39387e136 100644
+--- a/src/app/markets/[id]/loading.tsx
++++ b/src/app/markets/[id]/loading.tsx
+@@ -1,8 +1,11 @@
+-import { getServerT } from "@/lib/i18n-server";
+ import { PageContainer } from "@/components/layout/page-container";
+ 
+-export default async function MarketDetailLoading() {
+-  const { t } = await getServerT();
++/**
++ * ⭐ IT READS NOTHING (2026-10-09, the visual pass round 5, review G1): it asked for the words and drew none of them, and
++ * that read was all that kept this file off the browser. The journey's root loading state
++ * (`components/journey/route-ghost.tsx`) now draws this very skeleton there, on a move to a question.
++ */
++export default function MarketDetailLoading() {
+   // Width MUST match markets/[id]/page.tsx (1080). It was 1100, so every navigation
+   // to a market detail page reflowed by 20px the moment the real page took over.
+   return (
+diff --git a/src/app/markets/[id]/not-found.tsx b/src/app/markets/[id]/not-found.tsx
+index 6a8002f0d..1ab43653c 100644
+--- a/src/app/markets/[id]/not-found.tsx
++++ b/src/app/markets/[id]/not-found.tsx
+@@ -1,5 +1,6 @@
+ import { getServerT } from "@/lib/i18n-server";
+-import { NOT_FOUND_WORDS, NotFoundView } from "@/components/ui/not-found-view";
++import { NotFoundView } from "@/components/ui/not-found-view";
++import { NOT_FOUND_WORDS } from "@/components/ui/not-found-words";
+ import { generateMetadata as notFoundMetadata } from "@/app/not-found";
+ 
+ /**
+@@ -15,9 +16,11 @@ import { generateMetadata as notFoundMetadata } from "@/app/not-found";
+  * (app-render.js:1894–1897). ⛔ Do not buy a 404 by deleting a `loading.tsx` (every async route keeps one); the head
+  * says `noindex` through the metadata below, which is what a crawler acts on.
+  *
+- * ⭐ THE TITLE IS THE NOT-FOUND'S, IN THE PAGE'S LANGUAGE (E47). `generateMetadata` on the page calls `notFound()` for a
+- * missing market; Next then resolves metadata again under the not-found convention, and that reads the DEEPEST
+- * not-found's — this file's. With no export here the tab kept the root's English default.
++ * ⭐ THE TITLE IS THE NOT-FOUND'S, IN THE PAGE'S LANGUAGE (E47). Whenever Next resolves this segment's metadata under
++ * the not-found convention it reads the DEEPEST not-found's — this file's; with no export here the tab kept the root's
++ * English default. ⚠️ CORRECTED IN ROUND 5 (review F1): the page's own metadata no longer calls `notFound()` (thrown
++ * there, it replaced a REAL market with this page whenever its read failed) — for a market the read did not find, it
++ * answers this same metadata itself, so the tab says the same either way.
+  */
+ export async function generateMetadata() {
+   return notFoundMetadata();
+diff --git a/src/app/markets/[id]/page.tsx b/src/app/markets/[id]/page.tsx
+index ef432e0db..48322e773 100644
+--- a/src/app/markets/[id]/page.tsx
++++ b/src/app/markets/[id]/page.tsx
+@@ -60,18 +60,33 @@ import { pickLocalized, pickCriterion, marketCategoryLabel } from "@/lib/localiz
+ import { PageContainer } from "@/components/layout/page-container";
+ import { signoffOf } from "@/lib/markets/signoff";
+ import { objectionRulings } from "@/lib/server/reversals";
++import { generateMetadata as notFoundMetadata } from "@/app/not-found";
+ 
+ 
+ export const dynamic = "force-dynamic";
+ 
++/**
++ * ⭐ THE METADATA NEVER DECIDES WHAT THE PAGE IS (2026-10-09, the visual pass's round 5, review F1). This read used to
++ * swallow a failure and then call `notFound()` on the empty result — and Next 16 renders a `notFound()` thrown here as
++ * the segment's not-found page: `MetadataOutlet` stands beside the page, under the page's own boundaries, and throws the
++ * metadata's error there (next/dist/esm/lib/metadata/metadata.js, `MetadataOutlet`; app-render's create-component-tree
++ * renders it with the page). So one database blip in this read, while the body's own read succeeded, served a REAL
++ * market — perhaps holding the reader's money — as "Hakuna ukurasa · 404" with `noindex, nofollow`: what B-1 forbids the
++ * body (at its read, below).
++ * ⭐ ONE RULE FOR EVERY RECORD PAGE'S METADATA (here, `/updown/[roundId]` and `/proposals/[id]`): a FAILED read answers
++ * the section's title in the reader's language — the key its board page is titled by (`t.market.title`, "Masoko") —
++ * and says nothing about the record; a read that SUCCEEDED and found nothing answers the not-found page's own metadata
++ * (its title and `noindex`); nothing here throws. The body's read alone decides the page: the market, the error page
++ * with its retry, or the not-found page.
++ */
+ export async function generateMetadata(
+   { params, searchParams }: { params: Promise<{ id: string }>; searchParams: Promise<{ w?: string }> },
+ ): Promise<Metadata> {
+   const { id } = await params;
++  const { t, locale } = await getServerT();
+   let m: Awaited<ReturnType<typeof getMarket>> | null = null;
+-  try { m = await getMarket(id); } catch { /* graceful */ }
+-  if (!m) notFound();
+-  const { locale } = await getServerT();
++  try { m = await getMarket(id); } catch { return { title: t.market.title }; }
++  if (!m) return notFoundMetadata();
+   // ⭐ The share preview's words come from the SAME rule as its image (`share-preview.ts`, landing v3
+   // WP14b): "YES 62% · NO 38%" only where both sides hold money; "One side only." / "No bets yet." where
+   // there is no price. It used to print "YES 100% · NO 0%" and an invented "YES 50% · NO 50%".
+@@ -145,7 +160,8 @@ export default async function MarketDetail({
+   // B-1 — no swallow on the PRIMARY read: a failed query must throw to
+   // markets/error.tsx (retry), never 404 a market that may be holding money.
+   // notFound() fires only when the query succeeded and the row is absent.
+-  // (generateMetadata's own catch above deliberately stays — title garnish.)
++  // ⛔ THIS read is the only one that decides the page. generateMetadata reads the market too, and its catch answers the
++  // board's neutral title, never "missing" (round 5, F1: a notFound() there replaced the page — its note has why).
+   const m = await getMarket(id);
+   if (!m) notFound();
+ 
+diff --git a/src/app/not-found.tsx b/src/app/not-found.tsx
+index 126e901f6..4475d57cc 100644
+--- a/src/app/not-found.tsx
++++ b/src/app/not-found.tsx
+@@ -1,6 +1,7 @@
+ import type { Metadata } from "next";
+ import { getServerT } from "@/lib/i18n-server";
+-import { NOT_FOUND_WORDS, NotFoundView, notFoundTitle } from "@/components/ui/not-found-view";
++import { NotFoundView } from "@/components/ui/not-found-view";
++import { NOT_FOUND_WORDS, notFoundTitle } from "@/components/ui/not-found-words";
+ 
+ /**
+  * The page's title and robots, in the visitor's language — the visitor's chosen language (the `kp-locale` cookie), else
+diff --git a/src/app/proposals/[id]/not-found.tsx b/src/app/proposals/[id]/not-found.tsx
+index 466b1c5d3..91324fd94 100644
+--- a/src/app/proposals/[id]/not-found.tsx
++++ b/src/app/proposals/[id]/not-found.tsx
+@@ -1,5 +1,6 @@
+ import { getServerT } from "@/lib/i18n-server";
+-import { NOT_FOUND_WORDS, NotFoundView } from "@/components/ui/not-found-view";
++import { NotFoundView } from "@/components/ui/not-found-view";
++import { NOT_FOUND_WORDS } from "@/components/ui/not-found-words";
+ import { generateMetadata as notFoundMetadata } from "@/app/not-found";
+ 
+ /**
+diff --git a/src/app/proposals/[id]/page.tsx b/src/app/proposals/[id]/page.tsx
+index b42144dfb..b7d813302 100644
+--- a/src/app/proposals/[id]/page.tsx
++++ b/src/app/proposals/[id]/page.tsx
+@@ -25,15 +25,18 @@ export const dynamic = "force-dynamic";
+ // ⭐ 2026-10-09 (the visual pass's round 4, E47): a proposal that does not exist is titled as the not-found it renders —
+ // the not-found page's own metadata, in the page's language, with `noindex` — never the English "Proposal". Only when
+ // the read SUCCEEDED and found nothing; a failed read keeps the neutral default, as the page sends it to error.tsx.
++// ⭐ THE NEUTRAL DEFAULT IS THE BOARD'S TITLE, IN THE READER'S LANGUAGE (round 5, review F1 — one rule for every record
++// page's metadata, `markets/[id]/page.tsx` has it): `t.proposals.title`, the key `/proposals` is titled by, where it was
++// the English "Proposal" in every language. Nothing here throws, so a failed read never decides the page.
+ export async function generateMetadata({ params }: { params: Promise<{ id: string }> }): Promise<Metadata> {
+   const { id } = await params;
+-  const { locale } = await getServerT();
++  const { t, locale } = await getServerT();
+   let p: Awaited<ReturnType<typeof getProposalDetail>> = null;
+   try {
+     p = await getProposalDetail(id, null);
+-  } catch { return { title: "Proposal" }; }
++  } catch { return { title: t.proposals.title }; }
+   // DISABLED: the page redirects to the board, so this address names no proposal page either way.
+-  if (!p) return getProposalsConfig().state === "DISABLED" ? { title: "Proposal" } : notFoundMetadata();
++  if (!p) return getProposalsConfig().state === "DISABLED" ? { title: t.proposals.title } : notFoundMetadata();
+   return { title: pickLocalized(locale, p.titleEn, p.titleSw, p.titleZh) };
+ }
+ 
+diff --git a/src/app/updown/[roundId]/page.tsx b/src/app/updown/[roundId]/page.tsx
+index 0e5aae682..d61de69cb 100644
+--- a/src/app/updown/[roundId]/page.tsx
++++ b/src/app/updown/[roundId]/page.tsx
+@@ -89,14 +89,19 @@ const eyebrow = "m-0 font-mono text-micro font-semibold uppercase eyebrow text-t
+  * ⭐ A ROUND THAT DOES NOT EXIST IS TITLED AS THE NOT-FOUND IT RENDERS (2026-10-09, the visual pass's round 4, E47): the
+  * not-found page's own metadata — "Hakuna ukurasa · 404", in the page's language, with `noindex` — where the tab used to
+  * read "Up & Down · 50pick" over a page that said the round was not there. Only when the read SUCCEEDED and found
+- * nothing (the page's own rule, UD-15); a failed read keeps the neutral "Up & Down", as the page sends it to error.tsx.
++ * nothing (the page's own rule, UD-15); a failed read keeps the neutral title, as the page sends it to error.tsx.
++ * ⭐ THE NEUTRAL TITLE IS THE BOARD'S, IN THE READER'S LANGUAGE (round 5, review F1 — one rule for every record page's
++ * metadata, `markets/[id]/page.tsx` has it): `t.market.udTitle`, the key `/updown` is titled by ("Juu na Chini",
++ * "涨跌"), where it was the English "Up & Down" in every language. Nothing here throws, so a failed read never decides
++ * the page.
+  */
+ export async function generateMetadata({ params }: { params: Promise<{ roundId: string }> }): Promise<Metadata> {
+   const { roundId } = await params;
++  const { t } = await getServerT();
+   let d: Awaited<ReturnType<typeof getRoundDetail>> = null;
+   try {
+     d = await getRoundDetail(roundId);
+-  } catch { return { title: "Up & Down" }; }
++  } catch { return { title: t.market.udTitle }; }
+   if (!d) return notFoundMetadata();
+   return { title: d.titleEn };
+ }
+diff --git a/src/app/updown/history/history-ghost.tsx b/src/app/updown/history/history-ghost.tsx
+new file mode 100644
+index 000000000..046d55254
+--- /dev/null
++++ b/src/app/updown/history/history-ghost.tsx
+@@ -0,0 +1,24 @@
++import { TicketsHeadGhost } from "@/components/journey/tickets/tickets-ghost";
++import type { Dict } from "@/lib/i18n-dict";
++
++/**
++ * /updown/history loading skeleton, for both shells — the journey's head (Tiketi zangu's name and switch) or today's two
++ * lines, by `journey`, the answer `loading.tsx` (this folder) asks on the server (S6 WP9, VODACOM-PLAN §0h point 21).
++ * ⭐ ONE DRAWING, TWO READERS (2026-10-09, the visual pass round 5, review G1): `loading.tsx` draws it with that answer
++ * and the words it reads, and the journey's root loading state (`components/journey/route-ghost.tsx`) draws it in the
++ * browser, for a journey reader, on a move here. So it reads nothing itself, and its module may load in the browser.
++ * ⛔ Two sibling ternaries, each where its line stood, so a reader the journey is not shown to is served today's tree.
++ */
++export function UpDownHistoryGhost({ t, journey }: { t: Dict; journey: boolean }) {
++  return (
++    <div className="mx-auto w-full max-w-reading px-3 lg:px-6 py-6" aria-busy="true">
++      {journey ? <TicketsHeadGhost t={t} /> : <div className="h-4 w-[128px] rounded bg-bg-elevated kp-shimmer-track" aria-hidden />}
++      {journey ? null : <div className="mt-3 h-7 w-52 rounded-md bg-bg-elevated kp-shimmer-track" aria-hidden />}
++      <div className="mt-5 grid grid-cols-2 sm:grid-cols-3 gap-3" aria-hidden>
++        {Array.from({ length: 3 }).map((_, i) => <div key={i} className="h-[80px] rounded-xl border border-border bg-bg-elevated kp-shimmer-track" />)}
++      </div>
++      <div className="mt-4 h-64 rounded-xl border border-border bg-bg-elevated kp-shimmer-track" aria-hidden />
++      <span className="sr-only">{t.common.loading}</span>
++    </div>
++  );
++}
+diff --git a/src/app/updown/history/loading.tsx b/src/app/updown/history/loading.tsx
+index 69b889a06..f5fb580ce 100644
+--- a/src/app/updown/history/loading.tsx
++++ b/src/app/updown/history/loading.tsx
+@@ -1,21 +1,13 @@
+ import { getServerT } from "@/lib/i18n-server";
+ import { resolveSimpleJourney } from "@/lib/server/journey-preview";
+-import { TicketsHeadGhost } from "@/components/journey/tickets/tickets-ghost";
++import { UpDownHistoryGhost } from "@/app/updown/history/history-ghost";
+ 
+ export default async function UpDownHistoryLoading() {
+   /* ⭐ S6 WP9 (VODACOM-PLAN §0h point 21): the head is chosen on the server, from the answer the page will give —
+      Tiketi zangu's name and switch for a journey request, today's two lines for everybody else; the rest is everybody's.
+-     ⛔ Two sibling ternaries, each where its line stood, so a reader the journey is not shown to is served today's tree. */
++     ⛔ The drawing (`history-ghost.tsx`, round 5, review G1: the journey's root loading state draws it in the browser)
++     swaps only those two lines, each a sibling ternary where it stood, so a reader the journey is not shown to is
++     served today's tree. */
+   const [{ t }, { journey }] = await Promise.all([getServerT(), resolveSimpleJourney()]);
+-  return (
+-    <div className="mx-auto w-full max-w-reading px-3 lg:px-6 py-6" aria-busy="true">
+-      {journey ? <TicketsHeadGhost t={t} /> : <div className="h-4 w-[128px] rounded bg-bg-elevated kp-shimmer-track" aria-hidden />}
+-      {journey ? null : <div className="mt-3 h-7 w-52 rounded-md bg-bg-elevated kp-shimmer-track" aria-hidden />}
+-      <div className="mt-5 grid grid-cols-2 sm:grid-cols-3 gap-3" aria-hidden>
+-        {Array.from({ length: 3 }).map((_, i) => <div key={i} className="h-[80px] rounded-xl border border-border bg-bg-elevated kp-shimmer-track" />)}
+-      </div>
+-      <div className="mt-4 h-64 rounded-xl border border-border bg-bg-elevated kp-shimmer-track" aria-hidden />
+-      <span className="sr-only">{t.common.loading}</span>
+-    </div>
+-  );
++  return <UpDownHistoryGhost t={t} journey={journey} />;
+ }
+diff --git a/src/app/updown/loading.tsx b/src/app/updown/loading.tsx
+index 4a540ac69..d8d4873a8 100644
+--- a/src/app/updown/loading.tsx
++++ b/src/app/updown/loading.tsx
+@@ -1,39 +1,11 @@
+ import { getServerT } from "@/lib/i18n-server";
++import { UpDownGhost } from "@/app/updown/updown-ghost";
+ 
+ /**
+- * /updown loading skeleton. Mirrors the board's real header + card grid so there is no
+- * layout jump when the page swaps in — same max-width, same grid, same card height.
++ * /updown loading skeleton — the drawing is `updown-ghost.tsx` (round 5, review G1: the journey's root loading state
++ * draws the same one in the browser). This file reads the words on the server.
+  */
+ export default async function UpDownLoading() {
+   const { t } = await getServerT();
+-  return (
+-    <div className="mx-auto w-full max-w-board px-3 lg:px-6 py-6" aria-busy="true">
+-      <div className="mb-4">
+-        <p className="font-mono text-caption uppercase eyebrow font-bold text-text-subtle">{t.market.udStreaming}</p>
+-        <div className="mt-1 h-7 w-40 rounded-md bg-bg-elevated kp-shimmer-track" aria-hidden />
+-      </div>
+-      {/* price tape */}
+-      {/* ⚠️ LITERAL, not `h-10` — spacing is overridden (tailwind.config.ts:200-215) so the
+-          price tape ghost drew 80px. */}
+-      <div className="mt-4 h-[44px] rounded-xl bg-bg-inset kp-shimmer-track" aria-hidden />
+-      {/* asset + duration tabs */}
+-      <div className="mt-4 flex gap-2" aria-hidden>
+-        {/* ⚠️ LITERAL, not `h-9`. This skeleton was the LAST surviving copy of a bug the code
+-            already fixed: the asset tabs migrated to FilterPill's deliberate `min-h-[44px]`,
+-            but the ghost still reproduced the old 64px that `h-9` renders on this repo's
+-            overridden scale (tailwind.config.ts:200-215). */}
+-        {Array.from({ length: 2 }).map((_, i) => <div key={i} className="h-[44px] w-[96px] rounded-md bg-bg-elevated kp-shimmer-track" />)}
+-      </div>
+-      <div className="mt-2 flex gap-1.5" aria-hidden>
+-        {Array.from({ length: 3 }).map((_, i) => <div key={i} className="h-7 w-[64px] rounded-md bg-bg-inset kp-shimmer-track" />)}
+-      </div>
+-      {/* card grid — same shape as the live grid so nothing shifts */}
+-      <div className="mt-4 grid items-stretch gap-4" style={{ gridTemplateColumns: "repeat(auto-fill, minmax(300px, 1fr))" }} aria-hidden>
+-        {Array.from({ length: 3 }).map((_, i) => (
+-          <div key={i} className="rounded-xl border border-border bg-bg-elevated kp-shimmer-track" style={{ height: 360 }} />
+-        ))}
+-      </div>
+-      <span className="sr-only">{t.common.loading}</span>
+-    </div>
+-  );
++  return <UpDownGhost t={t} />;
+ }
+diff --git a/src/app/updown/updown-ghost.tsx b/src/app/updown/updown-ghost.tsx
+new file mode 100644
+index 000000000..7a72fc4fe
+--- /dev/null
++++ b/src/app/updown/updown-ghost.tsx
+@@ -0,0 +1,41 @@
++import type { Dict } from "@/lib/i18n-dict";
++
++/**
++ * /updown loading skeleton. Mirrors the board's real header + card grid so there is no
++ * layout jump when the page swaps in — same max-width, same grid, same card height.
++ * ⭐ ONE DRAWING, TWO READERS (2026-10-09, the visual pass round 5, review G1): `loading.tsx` (this folder) draws it
++ * with the words it reads on the server, and the journey's root loading state (`components/journey/route-ghost.tsx`)
++ * draws it in the browser on a move to /updown. So it reads nothing itself, and its module may load in the browser.
++ */
++export function UpDownGhost({ t }: { t: Dict }) {
++  return (
++    <div className="mx-auto w-full max-w-board px-3 lg:px-6 py-6" aria-busy="true">
++      <div className="mb-4">
++        <p className="font-mono text-caption uppercase eyebrow font-bold text-text-subtle">{t.market.udStreaming}</p>
++        <div className="mt-1 h-7 w-40 rounded-md bg-bg-elevated kp-shimmer-track" aria-hidden />
++      </div>
++      {/* price tape */}
++      {/* ⚠️ LITERAL, not `h-10` — spacing is overridden (tailwind.config.ts:200-215) so the
++          price tape ghost drew 80px. */}
++      <div className="mt-4 h-[44px] rounded-xl bg-bg-inset kp-shimmer-track" aria-hidden />
++      {/* asset + duration tabs */}
++      <div className="mt-4 flex gap-2" aria-hidden>
++        {/* ⚠️ LITERAL, not `h-9`. This skeleton was the LAST surviving copy of a bug the code
++            already fixed: the asset tabs migrated to FilterPill's deliberate `min-h-[44px]`,
++            but the ghost still reproduced the old 64px that `h-9` renders on this repo's
++            overridden scale (tailwind.config.ts:200-215). */}
++        {Array.from({ length: 2 }).map((_, i) => <div key={i} className="h-[44px] w-[96px] rounded-md bg-bg-elevated kp-shimmer-track" />)}
++      </div>
++      <div className="mt-2 flex gap-1.5" aria-hidden>
++        {Array.from({ length: 3 }).map((_, i) => <div key={i} className="h-7 w-[64px] rounded-md bg-bg-inset kp-shimmer-track" />)}
++      </div>
++      {/* card grid — same shape as the live grid so nothing shifts */}
++      <div className="mt-4 grid items-stretch gap-4" style={{ gridTemplateColumns: "repeat(auto-fill, minmax(300px, 1fr))" }} aria-hidden>
++        {Array.from({ length: 3 }).map((_, i) => (
++          <div key={i} className="rounded-xl border border-border bg-bg-elevated kp-shimmer-track" style={{ height: 360 }} />
++        ))}
++      </div>
++      <span className="sr-only">{t.common.loading}</span>
++    </div>
++  );
++}
+diff --git a/src/app/wallet/deposit/deposit-ghost.tsx b/src/app/wallet/deposit/deposit-ghost.tsx
+new file mode 100644
+index 000000000..41e069da3
+--- /dev/null
++++ b/src/app/wallet/deposit/deposit-ghost.tsx
+@@ -0,0 +1,87 @@
++import { PageContainer } from "@/components/layout/page-container";
++import { PageHeader } from "@/components/ui/page-header";
++import { PageHero } from "@/components/ui/page-hero";
++import { I } from "@/components/ui/glyphs";
++import type { Dict } from "@/lib/i18n-dict";
++
++/**
++ * B-29 / V-2 — the skeleton mirrors the FORM the page actually renders
++ * (amount field → provider grid → phone field → gold confirm), instead of the
++ * old centered spinner panel that repainted into a completely different shape.
++ * ⭐ ONE DRAWING, TWO READERS (2026-10-09, the visual pass round 5, review G1): `loading.tsx` (this folder) draws it
++ * with the words it reads on the server, and the journey's root loading state (`components/journey/route-ghost.tsx`)
++ * draws it in the browser on a move to /wallet/deposit. So it reads nothing itself, and its module may load there.
++ */
++export function DepositGhost({ t }: { t: Dict }) {
++  /* ⭐ DG-P-04 · §S1 — THE RHYTHM IS DECLARED ON THE CONTAINER, NOT SPRINKLED PER ELEMENT.
++     This read `<PageContainer tier="form">` + `<header className="mb-6">`, i.e. a 32px gap
++     typed onto one child, while the page it stands in for (`page.tsx`, same directory)
++     declares `space-y-5` = 24px. So the deposit form MOVED 8px the instant the skeleton was
++     replaced, on a money surface. Measured, not guessed: `form` is the most unanimous tier in
++     the product — 10 of 10 containers that declare a rhythm declare `space-y-5`. */
++  return (
++    <PageContainer tier="form" className="space-y-5">
++      {/* 🔴 DG-P-03 · §L1 · §K — THIS SKELETON NAMED THE PAGE TWO DIFFERENT THINGS, ON A MONEY
++          FORM. It drew the eyebrow "Deposit" over an h1 reading **"Loading"**, while
++          `page.tsx:88` renders eyebrow "Add funds" over the h1 "Deposit" — so BOTH strings
++          changed the instant the data landed, and for the moment before it the page's own
++          heading was the word `Loading`. §L1: one name per destination. `positions/loading.tsx`
++          states this rule in its own header; this file was the counter-example.
++          ⭐ It now renders the SAME three components the page does, with the same props —
++          BackLink ghost, `PageHero` and `PageHeader` (plain since 2026-10-07, §M3a D1) — so the shape and
++          the words are the page's, not a second copy of them. The h1 recipe was also
++          `font-display text-[28px] font-bold text-text`, missing the `leading-tight
++          tracking-[-0.02em]` `PageHeader` carries, so the heading changed line-height too. */}
++      {/* WIDTH IS A LITERAL, not `w-16` — the Tailwind spacing scale is OVERRIDDEN and
++          INVERTS at the keys it does not cover: `w-16` is stock 64px while `w-12` is an
++          overridden 128px, so the bigger number paints the smaller box. `test:spacing-scale`
++          derives that forbidden set from the two scales and ratchets it. Same 64px, on a key
++          that cannot invert. */}
++      <div className="h-4 w-[64px] rounded bg-bg-overlay kp-shimmer-track" aria-hidden />
++
++      <PageHero>
++        <PageHeader
++          icon={<I.arrowDownToLine s={14} className="text-text-subtle" />}
++          eyebrow={t.common.addFunds}
++          title={t.common.deposit}
++          subtitle={t.wallet.mobileMoney}
++        />
++      </PageHero>
++
++      <div className="space-y-5" aria-hidden>
++        {/* Amount field */}
++        <div className="space-y-2">
++          <div className="h-3 w-[80px] rounded bg-bg-overlay kp-shimmer-track" />
++          {/* ⚠️ TOKEN, not `h-11` — spacing is overridden (tailwind.config.ts:200-215) so `h-11`
++              drew 96px. This ghost stands in for `<Input size="md">`, which reads its height
++              from --h-input (44px) — so consume the SAME token and the two can never drift.
++              PLAYER MONEY SURFACE: a mismatch here is a jump on the deposit form. */}
++          <div className="h-[var(--h-input)] w-full rounded-lg border border-border bg-bg-inset kp-shimmer-track" />
++          <div className="h-2.5 w-48 rounded bg-bg-overlay/60 kp-shimmer-track" />
++        </div>
++
++        {/* Provider tile grid (2 cols mobile / 3 cols sm — the real radio grid) */}
++        <div className="space-y-2">
++          <div className="h-3 w-28 rounded bg-bg-overlay kp-shimmer-track" />
++          <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
++            {Array.from({ length: 6 }).map((_, i) => (
++              <div key={i} className="h-[86px] rounded-md border border-border kp-shimmer-track" style={{ background: "var(--bg-inset)" }} />
++            ))}
++          </div>
++        </div>
++
++        {/* Destination phone field */}
++        <div className="space-y-2">
++          <div className="h-3 w-[128px] rounded bg-bg-overlay kp-shimmer-track" />
++          {/* ⚠️ TOKEN, not `h-11` (96px on the overridden scale) — same `<Input size="md">`. */}
++          <div className="h-[var(--h-input)] w-full rounded-lg border border-border bg-bg-inset kp-shimmer-track" />
++        </div>
++
++        {/* Gold confirm CTA */}
++        {/* ⚠️ TOKEN, not `h-12` (128px on the overridden scale) — the gold confirm is a
++            `btn-lg`, whose height is --h-control-lg (48px). */}
++        <div className="h-[var(--h-control-lg)] w-full rounded-md bg-gold-500/25 kp-shimmer-track" />
++      </div>
++    </PageContainer>
++  );
++}
+diff --git a/src/app/wallet/deposit/loading.tsx b/src/app/wallet/deposit/loading.tsx
+index 679195056..a815ebfc7 100644
+--- a/src/app/wallet/deposit/loading.tsx
++++ b/src/app/wallet/deposit/loading.tsx
+@@ -1,85 +1,11 @@
+ import { getServerT } from "@/lib/i18n-server";
+-import { PageContainer } from "@/components/layout/page-container";
+-import { PageHeader } from "@/components/ui/page-header";
+-import { PageHero } from "@/components/ui/page-hero";
+-import { I } from "@/components/ui/glyphs";
++import { DepositGhost } from "@/app/wallet/deposit/deposit-ghost";
+ 
+ /**
+- * B-29 / V-2 — the skeleton mirrors the FORM the page actually renders
+- * (amount field → provider grid → phone field → gold confirm), instead of the
+- * old centered spinner panel that repainted into a completely different shape.
++ * /wallet/deposit loading skeleton — the drawing is `deposit-ghost.tsx` (round 5, review G1: the journey's root loading
++ * state draws the same one in the browser). This file reads the words on the server.
+  */
+ export default async function DepositLoading() {
+   const { t } = await getServerT();
+-  /* ⭐ DG-P-04 · §S1 — THE RHYTHM IS DECLARED ON THE CONTAINER, NOT SPRINKLED PER ELEMENT.
+-     This read `<PageContainer tier="form">` + `<header className="mb-6">`, i.e. a 32px gap
+-     typed onto one child, while the page it stands in for (`page.tsx`, same directory)
+-     declares `space-y-5` = 24px. So the deposit form MOVED 8px the instant the skeleton was
+-     replaced, on a money surface. Measured, not guessed: `form` is the most unanimous tier in
+-     the product — 10 of 10 containers that declare a rhythm declare `space-y-5`. */
+-  return (
+-    <PageContainer tier="form" className="space-y-5">
+-      {/* 🔴 DG-P-03 · §L1 · §K — THIS SKELETON NAMED THE PAGE TWO DIFFERENT THINGS, ON A MONEY
+-          FORM. It drew the eyebrow "Deposit" over an h1 reading **"Loading"**, while
+-          `page.tsx:88` renders eyebrow "Add funds" over the h1 "Deposit" — so BOTH strings
+-          changed the instant the data landed, and for the moment before it the page's own
+-          heading was the word `Loading`. §L1: one name per destination. `positions/loading.tsx`
+-          states this rule in its own header; this file was the counter-example.
+-          ⭐ It now renders the SAME three components the page does, with the same props —
+-          BackLink ghost, `PageHero` and `PageHeader` (plain since 2026-10-07, §M3a D1) — so the shape and
+-          the words are the page's, not a second copy of them. The h1 recipe was also
+-          `font-display text-[28px] font-bold text-text`, missing the `leading-tight
+-          tracking-[-0.02em]` `PageHeader` carries, so the heading changed line-height too. */}
+-      {/* WIDTH IS A LITERAL, not `w-16` — the Tailwind spacing scale is OVERRIDDEN and
+-          INVERTS at the keys it does not cover: `w-16` is stock 64px while `w-12` is an
+-          overridden 128px, so the bigger number paints the smaller box. `test:spacing-scale`
+-          derives that forbidden set from the two scales and ratchets it. Same 64px, on a key
+-          that cannot invert. */}
+-      <div className="h-4 w-[64px] rounded bg-bg-overlay kp-shimmer-track" aria-hidden />
+-
+-      <PageHero>
+-        <PageHeader
+-          icon={<I.arrowDownToLine s={14} className="text-text-subtle" />}
+-          eyebrow={t.common.addFunds}
+-          title={t.common.deposit}
+-          subtitle={t.wallet.mobileMoney}
+-        />
+-      </PageHero>
+-
+-      <div className="space-y-5" aria-hidden>
+-        {/* Amount field */}
+-        <div className="space-y-2">
+-          <div className="h-3 w-[80px] rounded bg-bg-overlay kp-shimmer-track" />
+-          {/* ⚠️ TOKEN, not `h-11` — spacing is overridden (tailwind.config.ts:200-215) so `h-11`
+-              drew 96px. This ghost stands in for `<Input size="md">`, which reads its height
+-              from --h-input (44px) — so consume the SAME token and the two can never drift.
+-              PLAYER MONEY SURFACE: a mismatch here is a jump on the deposit form. */}
+-          <div className="h-[var(--h-input)] w-full rounded-lg border border-border bg-bg-inset kp-shimmer-track" />
+-          <div className="h-2.5 w-48 rounded bg-bg-overlay/60 kp-shimmer-track" />
+-        </div>
+-
+-        {/* Provider tile grid (2 cols mobile / 3 cols sm — the real radio grid) */}
+-        <div className="space-y-2">
+-          <div className="h-3 w-28 rounded bg-bg-overlay kp-shimmer-track" />
+-          <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+-            {Array.from({ length: 6 }).map((_, i) => (
+-              <div key={i} className="h-[86px] rounded-md border border-border kp-shimmer-track" style={{ background: "var(--bg-inset)" }} />
+-            ))}
+-          </div>
+-        </div>
+-
+-        {/* Destination phone field */}
+-        <div className="space-y-2">
+-          <div className="h-3 w-[128px] rounded bg-bg-overlay kp-shimmer-track" />
+-          {/* ⚠️ TOKEN, not `h-11` (96px on the overridden scale) — same `<Input size="md">`. */}
+-          <div className="h-[var(--h-input)] w-full rounded-lg border border-border bg-bg-inset kp-shimmer-track" />
+-        </div>
+-
+-        {/* Gold confirm CTA */}
+-        {/* ⚠️ TOKEN, not `h-12` (128px on the overridden scale) — the gold confirm is a
+-            `btn-lg`, whose height is --h-control-lg (48px). */}
+-        <div className="h-[var(--h-control-lg)] w-full rounded-md bg-gold-500/25 kp-shimmer-track" />
+-      </div>
+-    </PageContainer>
+-  );
++  return <DepositGhost t={t} />;
+ }
+diff --git a/src/components/journey/route-ghost-lazy.tsx b/src/components/journey/route-ghost-lazy.tsx
+new file mode 100644
+index 000000000..98dfcfea5
+--- /dev/null
++++ b/src/components/journey/route-ghost-lazy.tsx
+@@ -0,0 +1,63 @@
++"use client";
++
++/**
++ * THE JOURNEY'S ROUTE GHOSTS, AS A CHUNK OF THEIR OWN (2026-10-09, the Vodacom visual pass round 5, review G1) — the
++ * one binding the root loading file (`app/loading.tsx`) renders for a journey reader. `route-ghost.tsx` has the ghosts
++ * and the measurements.
++ *
++ * ⭐ WHY THIS FILE. Drawn by a server component, the ghosts were DATA: every node of every page's ghost written into the
++ * root loading element, which Next sends with every payload rendered from the root — each journey document and each
++ * refresh. Drawn by a client component loaded here, that element's data is one reference and the rail names; the
++ * ghosts are CODE, fetched once and kept by the browser. This is the shell's own pattern (`components/layout/
++ * shell-lazy.tsx`, VODACOM-PLAN §0h point 20): `next/dynamic` in a client module, which a production build showed
++ * splits each part into a chunk of its own, fetched when a render uses it — a classic visitor's never does. A server
++ * module cannot defer one itself (`test:journey-shell` 12.nodefer.platform: from a server file it joins the first load).
++ * ⚠️ That the ghosts leave the first load is shown only by a production build (the lock turn's, VODACOM-PLAN §0i).
++ * ⛔ THE SERVER RENDER STAYS ON, AND NO OPTION OBJECT: with neither `ssr: false` nor `loading`, `next/dynamic` adds no
++ * Suspense boundary of its own (a boundary here would be outlined behind the shell — R4-J's E36), the server draws the
++ * ghost the document opens on into its first HTML as before, and names this chunk in the page's head.
++ * ⭐ A PART WHOSE CODE NEVER ARRIVES IS LEFT OUT, NOT FATAL — the shell's guard, character for character
++ * (`test:visual-pass-r5d` §2 holds the two equal): a `ChunkLoadError` renders nothing (the move shows no ghost, then the
++ * page), reported once per page to `/api/client-error`; any other error is thrown on. The guard is repeated, not
++ * imported: `shell-lazy.tsx` is AppShell's alone and states it in itself (`test:journey-shell` 12.module.home,
++ * 12.module.dynamic, 12.module.lost).
++ */
++import dynamic from "next/dynamic";
++
++/** What a part renders when its code never arrived: nothing. */
++function Nothing(): null {
++  return null;
++}
++
++/** One report per page: the parts share one connection, so a dropped one would otherwise report each of them. */
++let reported = false;
++
++/**
++ * The end of every part's loader: a `ChunkLoadError` (the browser could not fetch the part's code) leaves the part out,
++ * reported once; anything else is thrown on, as it was before WP6c. See "A PART WHOSE CODE NEVER ARRIVES" above.
++ */
++function nothingIfLost(error: unknown): typeof Nothing {
++  if (!(error instanceof Error) || error.name !== "ChunkLoadError") throw error;
++  if (!reported && typeof window !== "undefined") {
++    reported = true;
++    try {
++      const body = JSON.stringify({
++        message: `A part of the shell never arrived and was left out: ${error.message}`.slice(0, 1_000),
++        stack: String(error.stack ?? "").slice(0, 4_000),
++        path: window.location.pathname,
++        digest: null,
++        build: String((globalThis as { NEXT_DEPLOYMENT_ID?: string }).NEXT_DEPLOYMENT_ID ?? "") || null,
++      });
++      if (typeof navigator.sendBeacon === "function") {
++        navigator.sendBeacon("/api/client-error", new Blob([body], { type: "application/json" }));
++      }
++    } catch {
++      /* reporting must never be the thing that breaks the page */
++    }
++  }
++  return Nothing;
++}
++
++// The journey's loading state, page by page (`route-ghost.tsx`), for a journey request only: `app/loading.tsx` renders
++// it from its journey arm, handing it the rails that pay out (read on the server).
++export const LazyJourneyRouteGhost = dynamic(() => import("@/components/journey/route-ghost").then((m) => m.JourneyRouteGhost).catch(nothingIfLost));
+diff --git a/src/components/journey/route-ghost.tsx b/src/components/journey/route-ghost.tsx
+index 4e1bf1f35..42165020b 100644
+--- a/src/components/journey/route-ghost.tsx
++++ b/src/components/journey/route-ghost.tsx
+@@ -1,3 +1,5 @@
++"use client";
++
+ /**
+  * THE JOURNEY'S LOADING STATE, PAGE BY PAGE (2026-10-09, the Vodacom visual pass round 4, R4-J; E38) — what the ROOT
+  * loading file draws for a journey reader: the ghost of the page being opened, in that page's own column, so the page
+@@ -13,27 +15,49 @@
+  * And /positions never showed the Tiketi zangu ghost its own loading file draws: the root's box stood in front of it.
+  *
+  * ⭐ WHAT EACH PAGE GETS, picked in the browser by the path (`RoutePick`: the root's loading element is drawn once, with
+- * the document, and kept), every node drawn here on the server:
++ * the document, and kept), every node drawn here — in the browser since round 5 (below), and on the server for the
++ * document's own first paint:
+  *   /           the hero's own band and grid, its claim, h1, lede and trust rows set in the page's own words (from
+  *               `hero-intro.tsx`, the very components the page renders) but not shown — each line a bar — so every
+  *               block stands where the page puts it in every language; the featured card and the act as blocks.
+  *               ⛔ Not shown, because the hero's blocks rise in as they arrive (`kp-rise`): readable words in the
+  *               ghost would vanish and fade back in, identical, the moment the page lands.
+- *   /updown     Juu/Chini's ghost, `updown/loading.tsx` itself (one drawing for both shells, and the tab's page), so a
+- *               tap on the tab shows the board it opens, not a box.
++ *   /updown     Juu/Chini's ghost, the drawing `updown/loading.tsx` renders (`updown-ghost.tsx`: one drawing for both
++ *               shells, and the tab's page), so a tap on the tab shows the board it opens, not a box.
+  *   /positions  Tiketi zangu's ghost, the one `positions/loading.tsx` draws for a journey reader, so the two are one.
+  *   /account    the hub's column, h1 and identity card (a guest's prompt instead, chosen by the header's own sign-in
+  *               pills), and its cards cut into the page's two columns by the page's own rule (`hubColumnCut`), for the
+  *               rows a plain signed-in player is shown (a guest's, for a guest).
+  *   the journey's other pages — the ones `surfaces.ts` lists as the journey's own (`JOURNEY_ROUTE`): a question
+  *               (`/markets/<id>`, the one pattern), Tiketi zangu's Up & Down list, the deposit screen and the provider's
+- *               return — each its own loading file itself, which already draws a journey reader's ghost where it differs
+- *               (the Up & Down list's), so the root's state and the page's are one drawing.
++ *               return — each the drawing its own loading file renders (the file itself where it reads nothing: the
++ *               question's and the return's; the drawing it hands its words to where it reads them: the list's
++ *               `history-ghost.tsx`, a journey reader's head, and the deposit's `deposit-ghost.tsx`), so the root's state
++ *               and the page's are one drawing.
+  *   any other   the brand's spinner in a block as tall as the classic box, and no frame: a framed box promises a
+  *               column, and the pages behind this branch use several; each page's own loading file (if it has one)
+  *               draws its column as soon as the page starts to arrive.
+- * ⚠️ THE COST: every node is drawn into this element's data, which a journey document carries whichever page it opens —
+- * a few kilobytes before compression, so the set stays the four tabs and the journey's own pages.
++ *
++ * ⭐ A CHUNK OF ITS OWN, DRAWN IN THE BROWSER (2026-10-09, the visual pass round 5, review G1). Drawn on the server, every
++ * node of every ghost was written into the root loading element's data — 27,349 bytes of Flight JSON (3,083 gzipped; the
++ * /account ghost 8,162, both its member and guest sets) — and Next 16 sends the root segment's loading element again with
++ * every RSC payload rendered from the root: every journey document, and every `router.refresh()` (the RefreshPoller's
++ * beat, 15 s on a question and on /live, 20 s on Tiketi zangu, Juu/Chini, the wallet and the round history, and after
++ * each bet) — about 109 KB a minute of data to parse on a question page. So this module is client code, loaded by
++ * `next/dynamic` from `route-ghost-lazy.tsx` (the shell's pattern, `shell-lazy.tsx`): the element's data is now one
++ * reference and the rail names it is handed — 77 bytes of Flight JSON in every language, and one ~200-byte import row
++ * naming the chunk (`test:visual-pass-r5d` §2 builds the element and holds it under 200 bytes). The words come from the
++ * client dictionary (`useT`), which every page already carries, so a language changed in the browser is the ghost's
++ * language too. The server still draws the ghost the document opens on, in its first HTML (the dynamic part renders on
++ * the server; its chunk is preloaded in the head). The chunk itself is fetched once and kept: its size is a production
++ * build's to measure (the lock turn's).
++ * ⚠️ WHAT IT CANNOT DO IN THE BROWSER: read the server. The rails that pay out are read on the server (`heroRailNames`)
++ * and handed in; nothing else here is read at all.
++ * ⚠️ AND A THROW HERE STILL FAILS THE DOCUMENT (review G2). The server renders this ghost inside the root loading
++ * boundary's fallback, which is part of the shell, and React's server renderer contains a throw only in a Suspense
++ * boundary BELOW it — a boundary here would be outlined behind the shell (R4-J's E36), so there is none. It draws from
++ * the words and the rail names alone, and `test:visual-pass-r5d` §2 renders every ghost in every language on React's
++ * server renderer; a chunk that never arrives in the browser leaves the ghost out (`route-ghost-lazy.tsx`).
+  * ⛔ A JOURNEY READER ONLY. `app/loading.tsx` returns this from its journey arm, which asks the shell's own two answers
+  * (the console and the opt-out page are never the journey; the per-request resolver); everybody else is served the
+  * classic SectionLoader, byte for byte. `/account` keeps no loading file of its own (A3): its ghost is here, behind the
+@@ -45,26 +69,27 @@ import { BrandSpinner } from "@/components/brand";
+ import { PageContainer } from "@/components/layout/page-container";
+ import { RoutePick } from "@/components/ui/route-pick";
+ import { TicketsGhost } from "@/components/journey/tickets/tickets-ghost";
+-import UpDownLoading from "@/app/updown/loading";
+-import UpDownHistoryLoading from "@/app/updown/history/loading";
++import { UpDownGhost } from "@/app/updown/updown-ghost";
++import { UpDownHistoryGhost } from "@/app/updown/history/history-ghost";
+ import MarketDetailLoading from "@/app/markets/[id]/loading";
+-import DepositLoading from "@/app/wallet/deposit/loading";
++import { DepositGhost } from "@/app/wallet/deposit/deposit-ghost";
+ import DepositReturnLoading from "@/app/wallet/deposit/return/loading";
+ import { Ask, Claim, TrustLines } from "@/components/home/hero-intro";
+ import { hubColumnCut, hubRowsFor, wideRowCount, type HubGroup, type HubMember, type HubRow } from "@/components/journey/account/hub-rows";
+-import { heroRailNames } from "@/lib/server/payout-rails";
++import { useT } from "@/lib/i18n";
+ import type { Dict, Locale } from "@/lib/i18n-dict";
+ 
+-export function JourneyRouteGhost({ t, locale }: { t: Dict; locale: Locale }) {
++export function JourneyRouteGhost({ rails }: { rails: readonly string[] }) {
++  const { t, locale } = useT();
+   return (
+     <RoutePick
+       routes={{
+-        "/": <HomeGhost t={t} locale={locale} />,
+-        "/updown": <UpDownLoading />,
++        "/": <HomeGhost t={t} locale={locale} rails={rails} />,
++        "/updown": <UpDownGhost t={t} />,
+         "/positions": <TicketsGhost t={t} />,
+         "/account": <AccountGhost t={t} />,
+-        "/updown/history": <UpDownHistoryLoading />,
+-        "/wallet/deposit": <DepositLoading />,
++        "/updown/history": <UpDownHistoryGhost t={t} journey />,
++        "/wallet/deposit": <DepositGhost t={t} />,
+         "/wallet/deposit/return": <DepositReturnLoading />,
+       }}
+       patterns={[["^/markets/[^/]+$", <MarketDetailLoading />]]}
+@@ -78,8 +103,9 @@ export function JourneyRouteGhost({ t, locale }: { t: Dict; locale: Locale }) {
+  * spans as the page writes them; the trust rows name every rail that pays out (the page drops a paused one: a row a word
+  * shorter, below the h1). The featured card is the live card's height (`--mcard-h`) and the act one control tall — enough
+  * that from 1024 the left column stays the taller one, as on the page, so the intro sits on the band's padding there too.
++ * The rails are the server's answer (`heroRailNames(null)`, read by `app/loading.tsx`): this module runs in the browser.
+  */
+-function HomeGhost({ t, locale }: { t: Dict; locale: Locale }) {
++function HomeGhost({ t, locale, rails }: { t: Dict; locale: Locale; rails: readonly string[] }) {
+   return (
+     <section className="kp-hero" aria-hidden="true">
+       <div className="kp-hero__inner kp-hghost">
+@@ -92,7 +118,7 @@ function HomeGhost({ t, locale }: { t: Dict; locale: Locale }) {
+             <span className="kp-hero__lede-l">{t.home.heroLedeAct}</span>{" "}
+             <span className="kp-hero__lede-l kp-hero__lede-l--pay">{t.home.heroLedePay}</span>
+           </p>
+-          <TrustLines t={t} locale={locale} rails={heroRailNames(null)} />
++          <TrustLines t={t} locale={locale} rails={rails} />
+         </div>
+         <div className="kp-hero__card">
+           <div className="kp-hghost__card kp-shimmer-track" />
+diff --git a/src/components/layout/app-shell.tsx b/src/components/layout/app-shell.tsx
+index fcf24a805..72f0f9ea5 100644
+--- a/src/components/layout/app-shell.tsx
++++ b/src/components/layout/app-shell.tsx
+@@ -415,6 +415,12 @@ export async function AppShell({ children }: { children: React.ReactNode }) {
+           in the page's head (next/dynamic's PreloadChunks) and fetched beside the page's own scripts. And a chunk that
+           never arrives leaves its part out (`nothingIfLost`) as before, but the server's markup then has no client
+           twin, so React renders the whole page again in the browser, without that part, instead of that part alone.
++          ⚠️ AND A SERVER RENDER ERROR IN EITHER PART IS NO LONGER CONTAINED (round 5, review G2). React's server
++          renderer contains a throw only in a Suspense boundary above it (its boundary drew the fallback and let the page
++          through); with none, the throw ends the shell and the whole document fails — a 500 for the page that was asked.
++          Neither part throws today: each draws from the props computed above and reads nothing of its own on the server.
++          Kept that way on purpose — a boundary to contain it would outline the part behind the shell again (E36). The
++          root loading file's journey ghost stands in the shell the same way (`components/journey/route-ghost.tsx`).
+           Classic visitors are untouched: these two arms are the journey's. */}
+       {journeyShown ? <LazyJourneyTopBar user={journeyUser} onBreak={promoSuppressed} breakEnd={journeyBreak} proposalsState={proposalsState} inviteVisible={inviteVisible} invitePaid={invitePaid} /> : <TopAppBar user={topUser} proposalsState={proposalsState} inviteVisible={inviteVisible} invitePaid={invitePaid} />}
+       {/* ⭐ THE PREVIEW MARKER — first under the bar, so whoever holds this browser knows at once that they are
+diff --git a/src/components/ui/not-found-mark.tsx b/src/components/ui/not-found-mark.tsx
+index aea816b0c..bb31766c6 100644
+--- a/src/components/ui/not-found-mark.tsx
++++ b/src/components/ui/not-found-mark.tsx
+@@ -4,19 +4,26 @@
+  * THE NOT-FOUND MARK — an empty, hidden span that says "this is a not-found page" to what stands outside the page
+  * (2026-10-09, the Vodacom visual pass round 4, R4-J). `lib/not-found-mark.ts` has the why and the readers.
+  *
+- * ⭐ The span is in the server's HTML, so a document load is answered before any script runs; the effect announces the
+- * mark when it mounts on a move inside the app, and again when it goes — the cleanup of an unmounted mark runs after
+- * React has taken its span out of the page, so the answer read then is already "no".
++ * ⭐ The span names the path it was drawn for (`data-path`, round 5, review F4), so the answer is about the page being
++ * drawn, never the one being left: while the router draws the next page the old span is still in the document, and its
++ * path is not the new one. It is in the server's HTML wherever the server draws the not-found page itself (an address no
++ * route matches), so that document load is answered before any script runs; a record found missing inside a loading
++ * boundary is drawn by the scripts (`lib/not-found-mark.ts` has why).
++ * ⭐ ARRIVING IS ANNOUNCED IN A LAYOUT EFFECT: it runs in the commit that inserts the span, and the chrome's re-render it
++ * causes is flushed before the browser paints — so no painted frame shows the not-found page with a tab lit. Re-run when
++ * the path changes, should React keep this span across a move from one not-found address to another.
++ * ⭐ GOING IS ANNOUNCED BY A PASSIVE CLEANUP, which runs after React has taken the span out of the page, so the answer
++ * read then is "no mark" (a layout cleanup runs while the span is still there and would read the old path).
+  * ⛔ Rendered by the shared not-found view only (`components/ui/not-found-view.tsx`), so every not-found answer carries
+  * it and no other page can: `test:visual-pass-r4j` §5 holds both.
+  */
+-import { useEffect } from "react";
++import { useEffect, useLayoutEffect } from "react";
++import { usePathname } from "next/navigation";
+ import { NOT_FOUND_MARK, announceNotFound } from "@/lib/not-found-mark";
+ 
+ export function NotFoundMark() {
+-  useEffect(() => {
+-    announceNotFound();
+-    return announceNotFound;
+-  }, []);
+-  return <span hidden id={NOT_FOUND_MARK} />;
++  const path = usePathname() ?? "";
++  useLayoutEffect(() => { announceNotFound(); }, [path]);
++  useEffect(() => announceNotFound, []);
++  return <span hidden id={NOT_FOUND_MARK} data-path={path} />;
+ }
+diff --git a/src/components/ui/not-found-view.tsx b/src/components/ui/not-found-view.tsx
+index e2fda01a5..f83e6d234 100644
+--- a/src/components/ui/not-found-view.tsx
++++ b/src/components/ui/not-found-view.tsx
+@@ -1,9 +1,11 @@
++"use client";
++
+ import Link from "next/link";
+ import { I } from "@/components/ui/glyphs";
+ import { FiftyMark } from "@/components/brand";
+ import { BrandTopo } from "@/components/brand-topo";
+ import { hangCjkMarks } from "@/lib/cjk-marks";
+-import type { Locale } from "@/lib/i18n-dict";
++import type { NotFoundWords } from "@/components/ui/not-found-words";
+ // ⭐ R4-J (2026-10-09): every not-found answer says so to what stands outside the page (`lib/not-found-mark.ts`).
+ import { NotFoundMark } from "@/components/ui/not-found-mark";
+ 
+@@ -16,8 +18,8 @@ import { NotFoundMark } from "@/components/ui/not-found-mark";
+  * gold on a page that pays nothing (§M3, Q5 "gold is money, and nothing else"). All three now render this view.
+  *   · THE ORDER IS DECIDED ONCE: Home · Markets · Help — the root page's, its first glyph the arrow back.
+  *   · ONE LINK COLOUR, `--brand-300`, for the one way out under the cards; a segment names its own (`way`).
+- *   · THE WORDS ARE THE ROOT PAGE'S, below, in every language — the market page used the dictionary's twin of these
+- *     sentences, whose English h1 types a straight apostrophe ("couldn't", E44; S12 owns that key).
++ *   · THE WORDS ARE THE ROOT PAGE'S, in every language (`not-found-words.ts`) — the market page used the dictionary's
++ *     twin of these sentences, whose English h1 types a straight apostrophe ("couldn't", E44; S12 owns that key).
+  *   · THE CONTENT EDGE IS THE HOUSE GUTTER, `px-3` (16px): `px-5` was 24px, so on a phone the cards stood 8px inside
+  *     the edge every other page keeps, in both shells (E51: cards x24–336 at 360).
+  *   · THE WAVE FADES OUT (E46). Clipped to this 640px column it was a hard-edged box at 1280 (x320–959, y169–823):
+@@ -27,44 +29,17 @@ import { NotFoundMark } from "@/components/ui/not-found-mark";
+  *     the Chinese hint broke inside 选择 at 390 and left 继续。 alone at 1280. Chinese breaks only after its marks
+  *     (`keep-all`, `break-word` the floor), and every mark that ends a line hangs its empty half (`hangCjkMarks`, E50).
+  *   · `max-w-form` is the 640px tier token, so the view states no hand-typed page width (`test:measure`).
++ *
++ * ⭐ CLIENT CODE, SO A PAYLOAD CARRIES A REFERENCE, NOT THE PAGE (2026-10-09, the visual pass's round 5, R5-D — review
++ * G1's sibling). Next hands each segment's not-found element to that segment's router (create-component-tree.js,
++ * `notFound`), so the root's rides in EVERY payload rendered from the root — each document and each `router.refresh()`,
++ * for every reader in both shells — and the question's in every question page's (its RefreshPoller beats every 15 s).
++ * Drawn on the server, every node of this view was written into each: 5,938 bytes of Flight JSON in Swahili (5,923 en,
++ * 6,379 zh), so a question page's refresh carried two copies. As client code the element is this view's reference and
++ * the words it is handed (`test:visual-pass-r5d` §4 measures it and holds it small). Nothing a reader sees changes: the
++ * server still picks the language and draws the page into the first HTML (a client component renders there too).
++ * ⛔ The words and the title live in `not-found-words.ts`: a server file cannot read a value out of this module.
+  */
+-export const NOT_FOUND_WORDS = {
+-  en: {
+-    notFoundCode: "404",
+-    notFound: "Page not found",
+-    notFoundBody: "We couldn’t find that page",
+-    notFoundHint: "The link may be stale, the market may have resolved, or the URL was typed in slightly off. Pick a destination below to keep going.",
+-    home: "Home",
+-    markets: "Markets",
+-    help: "Help",
+-    browseOpenMarkets: "Browse open markets",
+-  },
+-  sw: {
+-    notFoundCode: "404",
+-    notFound: "Hakuna ukurasa",
+-    notFoundBody: "Hatukupata ukurasa huo",
+-    notFoundHint: "Kiungo kinaweza kuwa kimepitwa na wakati, soko linaweza kuwa limetatuliwa, au URL imeandikwa vibaya. Chagua mahali pa kwenda hapa chini.",
+-    home: "Mwanzo",
+-    markets: "Masoko",
+-    help: "Msaada",
+-    browseOpenMarkets: "Tazama masoko yaliyo wazi",
+-  },
+-  zh: {
+-    notFoundCode: "404",
+-    notFound: "页面未找到",
+-    notFoundBody: "我们找不到该页面",
+-    notFoundHint: "链接可能已失效，市场可能已结算，或URL输入有误。请选择以下目的地继续。",
+-    home: "首页",
+-    markets: "市场",
+-    help: "帮助",
+-    browseOpenMarkets: "浏览开放市场",
+-  },
+-} as const satisfies Record<Locale, Record<string, string>>;
+-
+-export type NotFoundWords = (typeof NOT_FOUND_WORDS)[Locale];
+-
+-/** The page's tab title, in its language: "Hakuna ukurasa · 404" (the root layout's template adds " · 50pick"). */
+-export const notFoundTitle = (w: NotFoundWords) => `${w.notFound} · ${w.notFoundCode}`;
+ 
+ const CARD = "group rounded-xl border border-border bg-bg-elevated p-3.5 text-left transition-all hover:border-brand-400 hover:bg-bg-overlay hover:-translate-y-0.5 hover:shadow-[var(--shadow-3)]";
+ /* ⚠️ LITERALS, not `h-7 w-7` — the spacing scale is overridden (tailwind.config.ts), so `h-7` IS 40px; written as what
+diff --git a/src/components/ui/not-found-words.ts b/src/components/ui/not-found-words.ts
+new file mode 100644
+index 000000000..22a5fd887
+--- /dev/null
++++ b/src/components/ui/not-found-words.ts
+@@ -0,0 +1,52 @@
++import type { Locale } from "@/lib/i18n-dict";
++
++/**
++ * THE NOT-FOUND'S WORDS AND ITS TAB TITLE — data, with no directive: the server's not-found files pick the page's language
++ * (`app/not-found.tsx`: the reader's chosen language, else Swahili) and hand that language's words to the one view
++ * (`not-found-view.tsx`), and the metadata titles the tab with them.
++ *
++ * ⭐ THE WORDS ARE THE ROOT PAGE'S, in every language (2026-10-09, the visual pass's round 4, E43 E44) — the market page
++ * used the dictionary's twin of these sentences, whose English h1 types a straight apostrophe ("couldn't", E44; S12 owns
++ * that key).
++ * ⛔ NOT IN THE VIEW'S MODULE (2026-10-09, the visual pass's round 5, R5-D — review G1's sibling). The view is client code,
++ * and on the server a "use client" module's exports are references: a component can be rendered, but
++ * `NOT_FOUND_WORDS[locale]` would throw ("cannot dot into a client module") and `notFoundTitle()` could not be called.
++ * `test:visual-pass-r5d` §4 walks the server graph and holds every import of a client module to its components.
++ */
++export const NOT_FOUND_WORDS = {
++  en: {
++    notFoundCode: "404",
++    notFound: "Page not found",
++    notFoundBody: "We couldn’t find that page",
++    notFoundHint: "The link may be stale, the market may have resolved, or the URL was typed in slightly off. Pick a destination below to keep going.",
++    home: "Home",
++    markets: "Markets",
++    help: "Help",
++    browseOpenMarkets: "Browse open markets",
++  },
++  sw: {
++    notFoundCode: "404",
++    notFound: "Hakuna ukurasa",
++    notFoundBody: "Hatukupata ukurasa huo",
++    notFoundHint: "Kiungo kinaweza kuwa kimepitwa na wakati, soko linaweza kuwa limetatuliwa, au URL imeandikwa vibaya. Chagua mahali pa kwenda hapa chini.",
++    home: "Mwanzo",
++    markets: "Masoko",
++    help: "Msaada",
++    browseOpenMarkets: "Tazama masoko yaliyo wazi",
++  },
++  zh: {
++    notFoundCode: "404",
++    notFound: "页面未找到",
++    notFoundBody: "我们找不到该页面",
++    notFoundHint: "链接可能已失效，市场可能已结算，或URL输入有误。请选择以下目的地继续。",
++    home: "首页",
++    markets: "市场",
++    help: "帮助",
++    browseOpenMarkets: "浏览开放市场",
++  },
++} as const satisfies Record<Locale, Record<string, string>>;
++
++export type NotFoundWords = (typeof NOT_FOUND_WORDS)[Locale];
++
++/** The page's tab title, in its language: "Hakuna ukurasa · 404" (the root layout's template adds " · 50pick"). */
++export const notFoundTitle = (w: NotFoundWords) => `${w.notFound} · ${w.notFoundCode}`;
+diff --git a/src/components/ui/route-pick.tsx b/src/components/ui/route-pick.tsx
+index 65da1d71f..2f0e71d8e 100644
+--- a/src/components/ui/route-pick.tsx
++++ b/src/components/ui/route-pick.tsx
+@@ -10,6 +10,10 @@
+  * the page being drawn. The nodes themselves are drawn on the server and handed in — `routes` keyed by exact path, and
+  * `patterns` for a page with a parameter (a question), each an anchored expression's source, `^…$` — so this module is a
+  * few lines of browser code and draws nothing of its own.
++ * ⚠️ CORRECTED IN ROUND 5 (review G1): the nodes are no longer drawn on the server. Drawn there, every node of every ghost
++ * was written into the root loading element, which rides in every payload rendered from the root; the journey's ghost
++ * (`components/journey/route-ghost.tsx`) is now a client chunk that draws them in the browser — and on the server for
++ * the document's first HTML — and hands them in here as before. This module is unchanged: it still only picks.
+  * ⛔ Exact paths and whole-path patterns only: a prefix would hand one page's ghost to every page below it.
+  */
+ import type { ReactNode } from "react";
+diff --git a/src/lib/not-found-mark.ts b/src/lib/not-found-mark.ts
+index b98355218..9f0101a03 100644
+--- a/src/lib/not-found-mark.ts
++++ b/src/lib/not-found-mark.ts
+@@ -4,8 +4,8 @@
+  * item and R4-K's ruling).
+  *
+  * The shared not-found view (`components/ui/not-found-view.tsx`) renders `NotFoundMark`
+- * (`components/ui/not-found-mark.tsx`): an empty, hidden span with the id below, written into the server's HTML of a
+- * not-found answer, and an event raised when it mounts and when it goes. `useNotFoundShown` reads it.
++ * (`components/ui/not-found-mark.tsx`): an empty, hidden span with the id below, carrying the path it was drawn for, and
++ * an event raised when it mounts and when it goes. `useNotFoundShown` reads it.
+  *
+  * ⭐ WHY THE OVERLAYS ASK. `surfaces.ts` lists `/markets/<id>` as a page the journey re-draws — a question, whose bet panel
+  * the Needle, the channels panel and the chat bubble stand down for — and the path of a market that does not exist is the
+@@ -17,16 +17,42 @@
+  * Action POSTs to the page's own address: on a not-found address Next answers 404, and every signed-in player on a
+  * not-found page logged "Failed to load resource: 404" for each beat. While the mark is up neither counter is mounted.
+  *
+- * ⭐ THE SERVER SNAPSHOT IS FALSE, like `useJourneyOn`'s: a server render, and the hydration that matches it, are what
+- * they were. The mark is in the HTML before any script runs, so the check `useSyncExternalStore` makes right after
+- * hydrating finds it; on a move inside the app the mark's own effect announces it.
++ * ⭐ THE ANSWER IS FOR THE PATH ON SCREEN, IN EVERY FRAME (2026-10-09, the visual pass round 5, review F4). It was the
++ * span's presence alone, and leaving a not-found page the router renders the next page in a transition while the old
++ * span is still in the document: the chrome rendered the NEW path with "not found" — no tab lit, the overlays standing
++ * where a not-found page stands them — and that frame was painted, because the mark's going was announced by an effect
++ * cleanup, which a transition's commit runs after the paint. So the span now carries the path it was drawn for
++ * (`data-path`), the snapshot is that path, and the answer is "the mark's path IS the path being drawn"
++ * (`isNotFoundFor`): the old page's span answers "no" for the new path in the very render that draws it. And arriving,
++ * the mark announces itself in a LAYOUT effect, so the chrome's answer turns before that commit's first paint (React
++ * flushes the update a layout effect schedules before it yields to the browser); its going is still announced after
++ * React has taken the span out (a passive cleanup), which only brings the store up to date — the answer was already
++ * "no" for every path but its own.
++ * ⚠️ IT ASSUMES A PAGE THAT IS LEFT LEAVES THE DOCUMENT, in the commit that draws the next one — and so does the CSS rule
++ * below. Next 16 keeps left pages mounted in a hidden `<Activity>` only with `cacheComponents` on, which this app does not
++ * turn on; with it, the old span would stay, `getElementById` could find it, and the CSS would rest the next page's tab.
++ * `test:visual-pass-r5d` §5 pins the config and the framework's two lines.
++ *
++ * ⭐ THE SERVER SNAPSHOT IS "NO MARK", like `useJourneyOn`'s: a server render, and the hydration that matches it, are what
++ * they were. React checks the store right after hydrating, and the mark is then in the document.
++ * ⚠️ BEFORE THE SCRIPTS RUN, ONLY CSS CAN ANSWER, and it can only answer where the server's HTML says "not found". The
++ * root not-found (an address no route matches) is drawn by the server with the mark in it: `:root:has(#kp-not-found)`
++ * (globals.css) rests the lit tab from the first paint. A record that is not there — a question, a round, a proposal —
++ * is found missing INSIDE a loading boundary: React 19.2's server renderer runs no class error boundary, so that HTML is
++ * the page's loading ghost, with no mark, and React's own record of the verdict: the boundary's `<template
++ * data-dgst="NEXT_HTTP_ERROR_FALLBACK;404">` (written by the server, or by React's inline `$RX` script when the verdict
++ * streams in later). The same rule reads that template (round 5, review F5), so the tab rests from the moment the
++ * verdict is in the document, while the ghost stands until the scripts draw the not-found page.
+  * ⛔ NO "use client" HERE, AND ONLY CLIENT CODE MAY LOAD IT — `journey-on.ts`'s rule, for its reason: a hook in a server
+  * component builds and then fails on its first render. `test:visual-pass-r4j` §5 holds its loaders.
+  */
+ import { useSyncExternalStore } from "react";
++import { usePathname } from "next/navigation";
+ 
+ /** The id of the empty, hidden span the not-found view writes into the page. */
+ export const NOT_FOUND_MARK = "kp-not-found";
++/** The span's attribute: the path the not-found page was drawn for. */
++export const NOT_FOUND_PATH_ATTR = "data-path";
+ /** Raised when the mark mounts and when it goes. */
+ export const NOT_FOUND_EVENT = "50pick:not-found";
+ 
+@@ -35,22 +61,29 @@ export function subscribeNotFound(onChange: () => void): () => void {
+   return () => window.removeEventListener(NOT_FOUND_EVENT, onChange);
+ }
+ 
+-/** Whether the page on screen carries the mark (client only). */
+-export function notFoundSnapshot(): boolean {
+-  return document.getElementById(NOT_FOUND_MARK) !== null;
++/** The path the page on screen is a not-found for, or null when no mark is up (client only). */
++export function notFoundSnapshot(): string | null {
++  return document.getElementById(NOT_FOUND_MARK)?.getAttribute(NOT_FOUND_PATH_ATTR) ?? null;
+ }
+ 
+-/** ⛔ Always false: the server render, and the hydration that matches it, are today's page. */
+-export function notFoundServerSnapshot(): boolean {
+-  return false;
++/** ⛔ Always "no mark": the server render, and the hydration that matches it, are today's page. */
++export function notFoundServerSnapshot(): string | null {
++  return null;
+ }
+ 
+-/** Announce that the mark came or went: `NotFoundMark`'s effect, on mount and on cleanup. */
++/** Announce that the mark came or went: `NotFoundMark`'s effects, on mount and on cleanup. */
+ export function announceNotFound(): void {
+   window.dispatchEvent(new Event(NOT_FOUND_EVENT));
+ }
+ 
+-/** True while a not-found page is on screen. */
++/** The one decision: a not-found page is on screen for `path` when the mark that is up was drawn for `path`. */
++export function isNotFoundFor(markPath: string | null, path: string): boolean {
++  return markPath !== null && markPath === path;
++}
++
++/** True while a not-found page is on screen — for the path being drawn, never for the page before it. */
+ export function useNotFoundShown(): boolean {
+-  return useSyncExternalStore(subscribeNotFound, notFoundSnapshot, notFoundServerSnapshot);
++  const path = usePathname() ?? "";
++  const markPath = useSyncExternalStore(subscribeNotFound, notFoundSnapshot, notFoundServerSnapshot);
++  return isNotFoundFor(markPath, path);
+ }

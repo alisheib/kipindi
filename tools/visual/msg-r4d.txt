@@ -1,0 +1,46 @@
+Visual pass round 4 (R4-D): Up & Down's axis in dollars and its controls on one rhythm, /live's cards level on a 16px grid, the bar caption on the bar's centre, the market page's star and title edge, the tallies' sentence word
+
+Every finding was re-measured first. Every "after" is computed from the code and the fonts; the next tile round
+reads them.
+
+- Up & Down chart (164, 202):
+  - The price scale read "2896.04": the engine's own price format has no grouping. It is now a custom format through
+    `usd()`, so the scale, the live tag and the crosshair read "$2,896.04", as the page does.
+  - The axis's faint ink on 164 was the capture, not the ink: every delta on that tile is 0.25–0.26 of 202's, so it
+    was shot ~26% into the chart's 520ms fade-in. `--text-subtle` measures 6.3:1 on the card.
+- Chart controls (202): the key's bare span hung on the page's 22.4px line. The gaps were 4 / 8 / 12px. The wrapper is
+  now flex (a 14px line), its foot is computed from JetBrains Mono's TTF, and the rails are gap-y-2: 12 / 12 / 12.
+- Round page panel (165, 166):
+  - The stake is set in `.amount`.
+  - A new EstimateNote hangs the ×-note's lines beside an 11px column, as the ⓘ note's do. It is on the panel, the
+    board card and the locked-side panel, whose 10px note rises to 13px.
+  - A line that opens on the quote stamp opens on a capital (`.ud-cap-first` / first-letter), so it reads
+    "Imenukuliwa 04:01:21 EAT", and the same word stays lower case inside the sentence. The words are unchanged.
+- /live (178, 196):
+  - The Up & Down chip's 20px box made its card's row 6px taller. TAG_BOX_Y gives the bare label the same box, so the
+    three cards are level.
+  - `.market-grid` was a bare 14px, on no ladder and ruled nowhere. It is now `--sp-4` (16px), as Tiketi zangu and
+    the hub use; the phone's Compact 10px is unchanged.
+- Bar caption: `space-between` centred the lean word between two unequal labels, 7–7.5px left of the bar's centre. A
+  `1fr auto 1fr` grid puts it on the bar's centre. Sides never wrap; the caption gives way.
+- Market page (161, 162):
+  - The source link's icon ink stops 2.03px short of its box, so the star's gaps read 27 / 25. `-mr-[2px]` makes
+    them 25 / 25.
+  - The title's first capital stood 2px in from the page edge (Sora 700's 0.082em bearing, from the font). A
+    first-line indent of −0.075em fixes it, decided by the first letter, never by locale.
+- Tallies: /results' "0 imetatuliwa · TZS 0 Imekamilika" used the tab label. They now use the sentence word
+  `market.tickerSettled`: on /results, the result cards, and /positions' win-rate hint ("3 imekamilika"). That hint
+  renders only for a holder, so qa:classic-shell-parity's empty portfolio cells are unchanged.
+- /markets 390 count line (195): it sat 6px under the pill and 8px over the hairline. `--sp-2` each way gives 12 / 12;
+  the bar grows 8px.
+- The lean label is upright: no mono italic is loaded, so the browser sheared it.
+
+Guards: test:visual-pass-r4d, 63 checks (it reads the source through decomment). The mutation proof caught 21 of 21
+planted defects.
+
+On the merged tip (rebased on main): 32 suites exit 0, among them updown-chart, market-columns, money-format,
+type-scale, contrast, density-contract, featured-card, eyebrow-roles, journey-shell, i18n and red-anchors 4989. On
+the R4-D tree: 122 suites, all 42 updown-* among them. test:dead-css's exit 1 is main's own: a6331ca1 reads the
+contacts importer's data-import-checking="skeleton" as a render of .skeleton.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>

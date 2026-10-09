@@ -1,0 +1,40 @@
+PASS 2: Monday 00:00 EAT starts its own week — 2026-09-27T21:00:00.000Z
+PASS 2: one second before it is still LAST week (Sunday 23:59:59 EAT) — 2026-09-20T21:00:00.000Z
+PASS 2: a Wednesday afternoon belongs to that Monday
+PASS 2: ⛔ UTC's Monday is not the week — Monday 01:00 UTC is already Monday 04:00 EAT, same week
+PASS 1: open = OPEN on a market still taking picks (own cut-off, or resolutionAt when none) — {"open":3,"awaiting":3,"paidThisWeekTzs":6200}
+PASS 1: awaiting = OPEN after the cut-off, or on a CLOSED/RESOLVED market — {"open":3,"awaiting":3,"paidThisWeekTzs":6200}
+PASS 1: ⭐ open + awaiting is /positions' Open count — the missing-market row is dropped by BOTH
+PASS 1: paid = a win's payout + a cash-out's proceeds THIS week (not last week, not a loss, not a refund) — 6200
+PASS 1: no positions → all three zero (the hero turns that into one sentence, §3)
+PASS 3: a signed-in player gets SignedInAct where a visitor gets the CTAs
+PASS 3: ⭐ the trust lines stay ABOVE it for a player too — one list, inside .kp-hero__intro, for everyone (R7, L21)
+PASS 3: ⛔ a failed picks read renders nothing — the figures are gated on `picks`, not defaulted
+PASS 3: no picks at all is ONE sentence, not three zeros
+PASS 3: …and at zero balance the empty-balance prompt says it alone (the two sentences said it twice)
+PASS 3: ⛔ a frozen wallet is not invited to pick — the no-picks sentence is withheld when held, as at zero
+PASS 3-control: …and the pre-fix line (the invitation over the frozen notice) IS caught by that matcher
+PASS 3: the trust rows wrap even (no word alone under a full line) and Chinese keeps its words whole there (round 3, F3 + F1) — {"trust":true,"trustZh":true,"lead":true,"leadZh":true,"measure":true}
+PASS 3: the player's lead wraps even and keeps Chinese words whole (round 3, F4 + F1) — {"trust":true,"trustZh":true,"lead":true,"leadZh":true,"measure":true}
+PASS 3: ⭐ the block's lead and frozen notice share ONE measure (round 3, F12) — {"trust":true,"trustZh":true,"lead":true,"leadZh":true,"measure":true}
+PASS 3-control: each wrap rule, planted away, IS caught (a guard that cannot fail is decoration) — caught 4/4: the trust rows unbalanced · zh trust rows break anywhere · the lead unbalanced · the frozen notice back on its own 560px
+PASS 3: ⛔ R17 · no money control in the signed-in hero — no Deposit, no Withdraw, at any width
+PASS 3: ⛔ …and no balance figure either — the header capsule states it at every value, zero included (R10)
+PASS 3-control: the pair it replaced IS still reachable — the Wallet the capsule opens keeps both sides
+PASS 3: ⛔ the retired hero-wallet rules are DELETED from globals.css, not left unreferenced
+PASS 3-control: …and that matcher can still SEE such a rule, so the line above is not simply blind
+PASS 3: ⛔ a frozen wallet still SAYS so, and is decided before the empty-balance prompt
+PASS 3: at zero the empty-balance prompt is ONE sentence, and it names a METHOD rather than a location
+PASS 3: the money figure obeys the eye (<Cash>) — ONE figure now, the week's payout
+PASS 3: the block's two doors are the player's own positions and the RG limits — neither is money
+PASS 3: Set limits closes the block
+PASS 3: ⛔ the page turns a FAILED read into null, never into a zero (B-1)
+PASS 3: the hero's balance is the header's wallet row (db.wallet.findByUserId)
+PASS 4: the platform figure is BEHIND only when it is below what this reader alone was paid this week
+PASS 4-control: equal, above, or a failed read on either side decides nothing (never a withheld slot by accident)
+PASS 4: the page re-reads a total that is behind the reader, withholds one still behind, and the proof band prints THAT
+PASS 4-control: the pre-fix wiring (the memo straight to the band) IS caught
+PASS 4: ONE read of the total — the memo and the re-read share `readPaidOutTzs`, and nothing else sums the ledger here
+
+landing-mine: 37 passed, 0 failed
+

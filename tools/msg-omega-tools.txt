@@ -1,0 +1,6 @@
+handover(vodacom): OMEGA-COMPILE01's tools, 2026-10-07 - the queue-aware heavy-lock helper, the in-memory server runner, the lock-turn chains for A8j's WebKit runs, the S6 close-out and WP12, and Node ports of the handover's tools
+
+Its README says what each does, the lock-and-queue protocol the sessions on that PC agreed, and the day's lessons. The
+work order and its state stay in docs/VODACOM-PLAN.md section 0 on main.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>

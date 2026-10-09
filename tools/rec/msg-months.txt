@@ -1,0 +1,27 @@
+Player dates in the reader's own month words - sw and zh players read "8 Oct" on tickets, the market page and eight more surfaces
+
+WP12's tiles showed a Swahili ticket card reading "Imewekwa 8 Oct, 15:18" and a Chinese one "下注于 8 Oct, 15:18": every
+player date that went through utils' formatDeadline / formatDayTime / formatDateTime / formatDayShort was formatted
+"en-GB", whatever the reader's language. The house fix already existed - eat-day's formatEatDateTime / formatEatDate,
+with the dictionary's own month words (t.common.monthsShort), which the receipts moved to on 2026-10-07 (§L4).
+
+- 19 calls, 10 files, onto the localized helpers in the reader's locale: the market page (results expected, the Resolves
+  KPI, both countdowns' dates, the Opened line - two of them through an fmtTime alias, removed), /positions and its
+  PositionCard, the journey ticket card (both <time> dates), the resolution panel, responsible gambling (the break and
+  exclusion ends, the cooling-off dates), the watchlist, the deposit page's break notice, the sessions page, and the
+  performance page (a day: formatEatDate). Every clock stays; nothing gains one. The two client components read the
+  year rule off the server's serverNow, never their own Date.now(), so the first browser render is the server's.
+- eat-day: an instant that is not one reads "—" instead of throwing - its day key reaches toISOString, and one
+  unreadable timestamp would otherwise take a whole player page down where "Invalid Date" used to print.
+- test:timer-date §3 holds the new rule (the surfaces it names date only through the localized helper in the reader's
+  words, each <time dateTime={X}> formats that X, a fence over all ten files bans the English helpers and a device
+  clock in client files) and §4 the "—"; red:timer-date 17/17 with five new mutations; test:journey-tickets and
+  test:sell-grace-truth pin the new expressions, their twins 102/102 and 155/155.
+
+Left in English, for the next pass: formatDateTimeSafe on /fairness and the wallet's bonus expiry, formatDateShort in
+the comments thread and three agent pages, formatDate on source of funds, and a few sentences built in src/lib (the
+lockout "until" lines, paysFrom, reapplyAt).
+
+{PROOF}
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>

@@ -1,0 +1,21 @@
+docs(vodacom): IN FLIGHT ~00:30 EAT — the visual pass proved in M1/M2, round 3's two regressions fixed, WP1's turn I read
+
+- The visual pass on vodacom-visual (rebased on d9b7a5b6): G1–G5, the break Wallet, and what lock turns M1 and M2
+  proved.
+  - M1: typecheck 0; test:all 468/474, five failures main's own, the sixth house-bot-disclosure's D19a pin, red by
+    construction on any branch that touches src/app/legal/; header fit 6/6 over 66 cells and its red 10/10; landmark
+    seals 504 + 276 cells, 0 problems; needle-rest 20/20; the preview drive 33/33.
+  - M2: 1645 checks over 333 tiles, 0 failed.
+- Round 3's read found two regressions of the pass, both fixed:
+  - a94e6229: G1's kp-qrow collided with the landing board's row class.
+  - 329d1ad7: React's $ACTION_ID_ input defeated G4's money-form fix.
+  Four helpers are on the rest. Queue: marketing's STEP 54, then M3, M4 and M5.
+- S7 WP1 turn I:
+  - Parity v3's prove-red and baseline were refused for the moving LIVE strip, which 9bcb22f7 captures still.
+  - qa:served-skeleton now reads Turbopack's dev chunk hash as noise (9ad1f6d9), and its null pair is IDENTICAL under
+    --main --norm store-ids.
+  - first-load PASS. I2 waits for a lock turn.
+
+test:vodacom-plan 18 rows, 0 failures; test:docs green.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>

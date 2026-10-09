@@ -1,0 +1,15 @@
+Vodacom S6 WP12: qa:journey-shell, the shell's tile drive (WP6b step 5) - 335 cells of the journey shell and the classic chrome, each tile's heading asserted
+
+scripts/qa-journey-shell.mjs (new; npm run qa:journey-shell -- <outDir>, the outDir outside the repository): on a fresh
+in-memory dev server only (it refuses anything else), the done-when tiles of S6 in thirteen sections - classic, header,
+sheet, unread, wallet, focus, tabs, tickets, hub, overlays, viewer, emailbar, kyc (KP_ONLY picks them; they always run in
+that order) - with a cell budget (KP_BUDGET_MIN) after which each section left prints BLOCKED by name, and a watchdog.
+Exit 0 every line passed, 1 a FAIL, 2 REFUSED, 3 no FAIL but something BLOCKED. Every selector and word is cited by file
+and symbol (never by line), every word in en, sw and zh.
+
+Drafted on ALI-BLADE15 and reviewed there in three lenses (22 problems fixed); never run before this commit. S6-PLAN's WP12 note
+now says the drive is written; qa-journey-preview.mjs's step 7 is still owed.
+
+Proof on OMEGA-COMPILE01: {PROOF}
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>

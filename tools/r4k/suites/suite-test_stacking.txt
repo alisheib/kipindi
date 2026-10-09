@@ -1,0 +1,156 @@
+
+§1 · every named surface still declares the rung the contract says
+PASS 1.x skip-link declares z=9999 — WCAG 2.4.1 skip link — above literally everything, including a locale change
+PASS 1.x locale-overlay declares z=9000 — the whole app is re-rendering in another language; nothing may sit over it
+PASS 1.x nav-progress declares z=2000 — DELIBERATELY above toasts — navigation feedback outranks a message about the page you are leaving
+PASS 1.x toast declares z=1800 — DELIBERATELY above modals — see operation-result-modal.tsx
+PASS 1.x win-celebration declares z=1700 — a Modal raised off its default — earned money outranks whatever is open
+PASS 1.x reality-check declares z=1700 — RG interruption — same rung as the celebration, by design
+PASS 1.x tooltip declares z=1600 — declared rung of the legacy inline tooltip (position:absolute — context-dependent in practice)
+PASS 1.x offline-banner declares z=200 — connectivity is a fact about the whole app, so it outranks page chrome
+PASS 1.x first-visit-primer declares z=150 — a Modal raised above select/date-select so the primer is never pierced
+PASS 1.x select declares z=130 — DELIBERATELY above modals — a Select inside a dialog must open over it
+PASS 1.x date-select declares z=120 — same reason as select; below select so a Select over a calendar still wins
+PASS 1.x modal declares z=100 — THE dialog rung — the default every consequential confirm rides
+PASS 1.x filter-sheet-lift declares z=100 — the discovery bar is lifted to the dialog rung WHILE its sheet is open, and only then
+PASS 1.x chat-panel-mobile declares z=80 — full-height chat sheet on phones
+PASS 1.x chat-scrim-mobile declares z=79 — one rung under its own panel
+PASS 1.x needle-drawer-panel declares z=71 — the Needle's bottom sheet
+PASS 1.x needle-drawer-scrim declares z=70 — one rung under its own panel
+PASS 1.x chat-panel-desktop declares z=70 — anchored panel, no scrim on desktop
+PASS 1.x notifications-panel declares z=61 — the bell panel
+PASS 1.x avatar-menu-panel declares z=61 — the account menu
+PASS 1.x notifications-scrim declares z=60 — one rung under its own panel
+PASS 1.x avatar-menu-scrim declares z=60 — one rung under its own panel
+PASS 1.x chat-fab declares z=60 — the chat bubble floats with the menus, not with the bars
+PASS 1.x pull-to-refresh declares z=60 — the pull indicator crosses the top bar
+PASS 1.x channels-panel declares z=50 — the follow-us card, top-right: over the Needle, under every menu
+PASS 1.x install-invite declares z=50 — the install card, bottom: the same rung
+PASS 1.x consent-prompt declares z=50 — the analytics consent card, in the install card's box: the same rung
+PASS 1.x needle declares z=45 — ABOVE both nav bars so it can never be trapped under one, BELOW every menu/dialog so a fidget never covers a decision
+PASS 1.x bottom-nav declares z=40 — primary navigation on the phone
+PASS 1.x admin-top-bar declares z=40 — elevated above the page body so the AI-toolkit dropdown overlays content
+PASS 1.x top-app-bar declares z=30 — the player header
+PASS 1.x journey-tabs declares z=40 — the journey's tab rail (SJ-16) — the classic rail's rung, for the classic rail's reasons
+PASS 1.x journey-top-bar declares z=30 — the journey header (SJ-15) — the classic header's rung
+PASS 1.x discovery-bar declares z=20 — the shared query bar's filter rail — the lowest chrome rung
+PASS 1.x ticker-focus-lift declares z=11 — the LIVE strip's focus-ring lift — one over its own z-10 end cap, and under every bar
+
+§2 · the TRAPPED families — effective root z, proved three ways
+PASS 2.x nav-more-rail does not portal out of bottom-nav — no createPortal, so it cannot escape the context
+PASS 2.x bottom-nav really renders <NavMore> — the containment is real, in source
+PASS 2.x bottom-nav forms a stacking context (positioned + z-index) — "lg:hidden fixed inset-x-0 bottom-0 z-40 kp-rail"
+PASS 2.x nav-more-rail declares z=50
+PASS 2.x nav-more-rail lands at effective z=40, not its declared 50 — TRAPPED: asks for 50, sealed at 40 — the phone rail's overflow menu — opens upward out of a z-40 fixed bar
+PASS 2.x nav-more-bar does not portal out of top-app-bar — no createPortal, so it cannot escape the context
+PASS 2.x top-app-bar really renders <NavMore> — the containment is real, in source
+PASS 2.x top-app-bar forms a stacking context (positioned + z-index) — ""sticky top-0 z-30 app-topbar""
+PASS 2.x nav-more-bar declares z=50
+PASS 2.x nav-more-bar lands at effective z=30, not its declared 50 — TRAPPED: asks for 50, sealed at 30 — the header's More menu — hangs from a z-30 sticky header
+PASS 2.x language-menu does not portal out of top-app-bar — no createPortal, so it cannot escape the context
+PASS 2.x top-app-bar really renders <LanguageMenu> — the containment is real, in source
+PASS 2.x top-app-bar forms a stacking context (positioned + z-index) — ""sticky top-0 z-30 app-topbar""
+PASS 2.x language-menu declares z=30
+PASS 2.x language-menu lands at effective z=30, not its declared 30 — declares the same rung as the bar it lives in — the number reads like a choice and is not one
+PASS 2.x menu-shell does not portal out of discovery-bar — no createPortal, so it cannot escape the context
+PASS 2.x discovery-bar really renders <MenuShell> — the containment is real, in source
+PASS 2.x discovery-bar forms a stacking context (positioned + z-index) — "kp-discovery-bar sticky top-[56px] z-20"
+PASS 2.x menu-shell declares z=30
+PASS 2.x menu-shell lands at effective z=20, not its declared 30 — TRAPPED: asks for 30, sealed at 20 — the board's filter dropdowns — asks for 30, lands at the bar's 20
+PASS 2.x admin-ai-toolkit does not portal out of admin-top-bar — no createPortal, so it cannot escape the context
+PASS 2.x admin-top-bar really renders <AiToolkit> — the containment is real, in source
+PASS 2.x admin-top-bar forms a stacking context (positioned + z-index) — ""relative z-40 border-b border-border""
+PASS 2.x admin-ai-toolkit declares z=50
+PASS 2.x admin-ai-toolkit lands at effective z=40, not its declared 50 — TRAPPED: asks for 50, sealed at 40 — the admin AI switchboard — its own file's comment reasons from the 50
+PASS 2.x journey-language-menu does not portal out of journey-top-bar — no createPortal, so it cannot escape the context
+PASS 2.x journey-top-bar really renders <LanguageMenu> — the containment is real, in source
+PASS 2.x journey-top-bar forms a stacking context (positioned + z-index) — ""sticky top-0 z-30 app-topbar kp-jhdr""
+PASS 2.x journey-language-menu declares z=30
+PASS 2.x journey-language-menu lands at effective z=30, not its declared 30 — the same menu, hung from the journey header from 1024 — sealed at that header's rung, as under the classic one
+
+§3 · the effective order, and the inversions that are deliberate
+PASS 3.x skip-link (9999) > locale-overlay (9000) — a keyboard user must be able to skip content even mid-locale-change
+PASS 3.x locale-overlay (9000) > nav-progress (2000) — the app is re-rendering in another language — nothing may show through
+PASS 3.x nav-progress (2000) > toast (1800) — DELIBERATE: route feedback outranks a message about the page being left
+PASS 3.x toast (1800) > modal (100) — DELIBERATE (operation-result-modal.tsx): a toast must be readable over a dialog
+PASS 3.x toast (1800) > win-celebration (1700) — even the celebration does not bury a toast
+PASS 3.x win-celebration (1700) > modal (100) — earned money outranks whatever dialog was open
+PASS 3.x reality-check (1700) > modal (100) — an RG interruption outranks whatever dialog was open
+PASS 3.x offline-banner (200) > first-visit-primer (150) — connectivity is a fact about the whole app
+PASS 3.x first-visit-primer (150) > select (130) — the primer must not be pierced by a dropdown behind it
+PASS 3.x select (130) > date-select (120) — a Select opened over a calendar still wins
+PASS 3.x date-select (120) > modal (100) — DELIBERATE: a picker inside a dialog must open OVER it, not inside it
+PASS 3.x modal (100) > chat-panel-mobile (80) — a dialog outranks the chat sheet
+PASS 3.x chat-panel-mobile (80) > chat-scrim-mobile (79) — a panel is above its own scrim
+PASS 3.x needle-drawer-panel (71) > needle-drawer-scrim (70) — a panel is above its own scrim
+PASS 3.x needle-drawer-scrim (70) > notifications-panel (61) — the drawer covers the bell panel
+PASS 3.x notifications-panel (61) > notifications-scrim (60) — a panel is above its own scrim
+PASS 3.x avatar-menu-panel (61) > avatar-menu-scrim (60) — a panel is above its own scrim
+PASS 3.x notifications-scrim (60) > needle (45) — ⭐ THE NEEDLE RULE: a fidget must never cover a decision
+PASS 3.x chat-fab (60) > needle (45) — ⭐ THE NEEDLE RULE: a fidget must never cover a control
+PASS 3.x channels-panel (50) > needle (45) — ⭐ THE NEEDLE RULE: a fidget never covers an open card (321: the parked disc hid this panel's right border)
+PASS 3.x install-invite (50) > needle (45) — ⭐ THE NEEDLE RULE: the same, for the install card
+PASS 3.x consent-prompt (50) > needle (45) — ⭐ THE NEEDLE RULE: the same, for the analytics consent card
+PASS 3.x avatar-menu-scrim (60) > channels-panel (50) — a menu the player opened covers a card nobody asked for
+PASS 3.x chat-fab (60) > install-invite (50) — the chat bubble stays over the bottom cards its 148px clearance was measured against
+PASS 3.x chat-fab (60) > consent-prompt (50) — the same, for the consent card in the install card's box
+PASS 3.x needle (45) > bottom-nav (40) — ⭐ THE NEEDLE RULE: the object passes OVER the bars so it can never be trapped under one
+PASS 3.x needle (45) > top-app-bar (30) — ⭐ THE NEEDLE RULE: same, on desktop
+PASS 3.x bottom-nav (40) > top-app-bar (30) — the phone rail sits over the header when both are on screen
+PASS 3.x top-app-bar (30) > discovery-bar (20) — the board's filter rail scrolls under the header, not over it
+PASS 3.x discovery-bar (20) > ticker-focus-lift (11) — the strip's ring lift only has to clear the strip's own end cap; it must never rise to the chrome, so a focused strip scrolls under the bars like any other content
+PASS 3.x needle (45) > journey-tabs (40) — ⭐ THE NEEDLE RULE, on the journey's rail: the object passes OVER it so it can never be trapped under it
+PASS 3.x journey-tabs (40) > journey-top-bar (30) — the journey's rail sits over its header when both are on screen, as the classic pair do
+PASS 3.x journey-top-bar (30) > discovery-bar (20) — the board's filter rail scrolls under the journey header, not over it
+PASS 3.c CONTROL — planted back at z-40, the channels panel reads 40 and BELOW the Needle (what tile 321 showed) — the card law can fail
+PASS 3.x nav-more-rail cannot outrank its own bottom-nav — an anchored menu is sealed in the bar it hangs from; its declared 50 buys it nothing
+PASS 3.x nav-more-bar cannot outrank its own top-app-bar — an anchored menu is sealed in the bar it hangs from; its declared 50 buys it nothing
+PASS 3.x language-menu cannot outrank its own top-app-bar — an anchored menu is sealed in the bar it hangs from; its declared 30 buys it nothing
+PASS 3.x menu-shell cannot outrank its own discovery-bar — an anchored menu is sealed in the bar it hangs from; its declared 30 buys it nothing
+PASS 3.x admin-ai-toolkit cannot outrank its own admin-top-bar — an anchored menu is sealed in the bar it hangs from; its declared 50 buys it nothing
+PASS 3.x journey-language-menu cannot outrank its own journey-top-bar — an anchored menu is sealed in the bar it hangs from; its declared 30 buys it nothing
+PASS 3.x nav-more-rail (effective 40) is BELOW the Needle (45) despite declaring 50 — the Needle suppresses itself on money surfaces; it does not yield to an anchored menu
+PASS 3.x nav-more-bar (effective 30) is BELOW the Needle (45) despite declaring 50 — the Needle suppresses itself on money surfaces; it does not yield to an anchored menu
+PASS 3.x language-menu (effective 30) is BELOW the Needle (45) despite declaring 30 — the Needle suppresses itself on money surfaces; it does not yield to an anchored menu
+PASS 3.x menu-shell (effective 20) is BELOW the Needle (45) despite declaring 30 — the Needle suppresses itself on money surfaces; it does not yield to an anchored menu
+PASS 3.x admin-ai-toolkit (effective 40) is BELOW the Needle (45) despite declaring 50 — the Needle suppresses itself on money surfaces; it does not yield to an anchored menu
+PASS 3.x journey-language-menu (effective 30) is BELOW the Needle (45) despite declaring 30 — the Needle suppresses itself on money surfaces; it does not yield to an anchored menu
+
+§4 · the Tailwind zIndex ladder states SHIPPED truth
+PASS 4.1 the zIndex ladder block is readable
+PASS 4.2 the ladder has rungs
+PASS 4.3 ladder.modal === the Modal's own default (modal.tsx) — 100
+PASS 4.4 ladder.toast === the toast viewport's own z (toast.tsx) — 1800
+PASS 4.5 ladder.tooltip === .kp-tooltip-popover's own z (globals.css) — 1600
+PASS 4.6 ladder.celebration === the win celebration's own z (win-celebration.tsx) — 1700
+PASS 4.7 the admin nav drawer still dresses itself with the ladder — 2 uses (scrim + aside)
+PASS 4.8 the admin nav drawer resolves BELOW the shared Modal — z-popover 70 < Modal 100
+PASS 4.9 `popover` is an alias of `drawer`, not a second copy of the rung — both 70
+
+§5 · no non-portaled `position: fixed` inside route content
+PASS 5.1a every route's children go through <RouteTransition> — route content is wrapped
+PASS 5.1b RouteTransition really stamps `route-enter` — both the SSR class and the client re-trigger
+PASS 5.1c `.route-enter` is still a fill-retaining animation (the containing-block trap) — a `both` fill keeps the final keyframe's transform for ever, and a transformed element is the containing block for every fixed descendant
+PASS 5.2 no NEW non-portaled viewport-anchored `fixed` overlay inside route content (full-viewport OR edge-anchored) — 1 found, all ratcheted
+PASS 5.3 <AiOverlayShell> is reachable from route content (the trap is real, not theoretical) — rendered by src/app/admin/ai-polls/poll-actions.tsx, src/app/admin/updown/proposals/proposal-actions.tsx — `fixed inset-0` + role=dialog + aria-modal, NO portal, rendered from admin ROUTE files. Inside `.route-enter`'s retained transform its `inset: 0` resolves to the page wrapper, not the window. Fix: portal it to document.body (what <Modal> does), or adopt <Modal> outright.
+PASS 5.4 ratchet entry src/components/ui/ai-progress.tsx is still a real finding — still un-portaled
+PASS 5.6 CONTROL · a binding reads as rendering its component in both forms (LazyA renders Alpha; LazyC, next/dynamic, renders Gamma; LazyD, with the lost-chunk guard after it, renders Delta), one per statement, and the journey rail's one consumer is AppShell, through the binding it imports from the shell's lazy module (WP6c) — AppShell renders the journey rail through LazyJourneyTabs, declared in shell-lazy.tsx
+
+§6 · the closed rung set — no new hand-typed z-index
+PASS 6.1 every root-plane z in src/ is a named rung — 23 rungs, all accounted for: 11, 20, 30, 40, 45, 50, 60, 61, 70, 71, 79, 80, 100, 120, 130, 150, 200, 1600, 1700, 1800, 2000, 9000, 9999
+PASS 6.1b CONTROL — an unnamed z (12–16, one per spelling the sweep reads) is reported, and the ticker's named 11 is not — five spellings, all reported
+PASS 6.2 every named rung is actually painted at somewhere in src/ — no orphan rungs
+PASS 6.3 no Tailwind ladder rung is fiction — 20 rungs, all shipped
+
+§7 · needle.css's prose stack table may only name rungs that ship
+PASS 7.1 the prose stack table is still where the contract expects it — found in needle.css
+PASS 7.2 no NEW fictional rung in the prose table — 10 numbers read: 30, 40, 50, 60, 90, 100, 120, 130, 200, 1800
+PASS 7.3 prose ratchet 90 is still a real finding — needle.css names `popovers 90`; nothing in src/ has ever painted at 90. The real popover-ish rungs are 60/61 (menus) and 70/71 (drawers).
+PASS 8.1 ⛔ the primer's RENDER guard tests SUPPRESS_ON, not only HIDE_ON — the mount effect cannot retract a modal that is already open — tapping a market card from /markets left the tour over the bet widget
+PASS 8.2 ⚠️ CONTROL — a render-time `return null` guard was actually found
+PASS 8.3 ⚠️ CONTROL — both path patterns are still declared
+PASS 8.4 the automation block can be opted out of, so the primer can be photographed — the block is kept — ~10 drives assume the primer is absent — but a driver can now ask for it
+PASS 8.5 ⚠️ CONTROL — the UA block still exists (removing it would break ~10 drives)
+
+139 passed, 0 failed
+

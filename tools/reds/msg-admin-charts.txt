@@ -1,0 +1,10 @@
+fix(red:admin-charts): A4 re-anchored after fdba7cad moved the y-axis tick text into yTickRows - dead since 2026-08-29
+
+A4 drops the axis' tick step so every label rounds to an integer; DG-A-15 moved the labels into an HTML layer whose
+text is computed once in yTickRows (`text: compact(t, range / 4),`), so the JSX `{compact(t, range / 4)}` anchor
+matched nothing. Same call, same defect.
+
+Proof on OMEGA-COMPILE01 (2026-10-08): red:admin-charts 23/0, exit 0 (twice; one earlier run failed only its closing
+re-run under heavy load and passed alone); test:admin-charts 68/0; A4 fails the §1 distinct-labels assertions.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>

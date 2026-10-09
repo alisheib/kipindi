@@ -1,0 +1,10 @@
+fix(red:margin-series): the band plant re-anchored after 24dca6aa made the margin card's subtitle follow the selected window - dead since 2026-09-25
+
+The plant restores the card re-advertising the 7-10% per-day band it cannot honour; its literal "... · 28-day window"
+subtitle became sw={`Faida ya mfumo · cumulative to date · ${range.label}`}, so "plant located" failed. Same defect in
+today's spelling: `Faida ya mfumo · <window> · band 7-10%`.
+
+Proof on OMEGA-COMPILE01 (2026-10-08): red:margin-series 8/0, exit 0; test:margin-series 15/0; each plant fails
+only its own §4 assertion.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>

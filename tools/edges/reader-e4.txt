@@ -1,0 +1,81 @@
+You are one of several strict tile readers for 50pick's visual pass for Vodacom, reading the journey's EDGE SCENARIOS
+(a player on a break, a self-excluded player, the longest name and title, Slow 3G loading, not-found pages, odd
+viewports, enlarged text, offline, an empty wallet). The owner's rule: only perfect visual AND logical results are
+accepted; nothing is deferred as "small".
+
+Read this file first, completely, with the Read tool — it is your instructions, and it points you to two more you must
+read: C:/Users/asheib/AppData/Local/Temp/claude/C--Users-asheib/0e745525-51fe-4451-ace7-c9987576fc15/scratchpad/edges/read-brief-edges.md
+
+S = C:/Users/asheib/AppData/Local/Temp/claude/C--Users-asheib/0e745525-51fe-4451-ace7-c9987576fc15/scratchpad
+TILES = C:/Users/asheib/AppData/Local/Temp/claude/C--Users-asheib/0e745525-51fe-4451-ace7-c9987576fc15/scratchpad/edges/tiles  (the PNGs, plus qa-journey-edges.json — the log, one entry per tile, matched by `file`)
+
+Your tiles (64 of them). Open EVERY one, in this order, and read its log entry before judging it:
+193--s2-selfexclude--wallet-deposit--excluded--zh--1280.png
+194--s2-selfexclude--profile-responsible-gambling--excluded--zh--360.png
+195--s2-selfexclude--profile-responsible-gambling--excluded--zh--390.png
+196--s2-selfexclude--profile-responsible-gambling--excluded--zh--1280.png
+197--s2-selfexclude--market--excluded--zh--360.png
+198--s2-selfexclude--market-yes--excluded--zh--360.png
+199--s2-selfexclude--market--excluded--zh--390.png
+200--s2-selfexclude--market-yes--excluded--zh--390.png
+201--s2-selfexclude--market--excluded--zh--1280.png
+202--s2-selfexclude--market-yes--excluded--zh--1280.png
+203--s3-longname--profile-hero--longname-words--sw--360.png
+204--s3-longname--profile-hero--longname-words--sw--390.png
+205--s3-longname--profile-hero--longname-words--sw--1280.png
+206--s3-longname--account-hub-id--longname-words--sw--360.png
+207--s3-longname--account-hub-id--longname-words--sw--390.png
+208--s3-longname--account-hub-id--longname-words--sw--1280.png
+209--s3-longname--account-avatar-menu--longname-words--sw--1280.png
+210--s3-longname--account-hub-id--longname-words--en--360.png
+211--s3-longname--account-hub-id--longname-words--en--390.png
+212--s3-longname--account-hub-id--longname-words--en--1280.png
+213--s3-longname--account-avatar-menu--longname-words--en--1280.png
+214--s3-longname--account-hub-id--longname-words--zh--360.png
+215--s3-longname--account-hub-id--longname-words--zh--390.png
+216--s3-longname--account-hub-id--longname-words--zh--1280.png
+217--s3-longname--account-avatar-menu--longname-words--zh--1280.png
+218--s3-longname--profile-hero--longname-unbroken--sw--360.png
+219--s3-longname--profile-hero--longname-unbroken--sw--390.png
+220--s3-longname--profile-hero--longname-unbroken--sw--1280.png
+221--s3-longname--account-hub-id--longname-unbroken--sw--360.png
+222--s3-longname--account-hub-id--longname-unbroken--sw--390.png
+223--s3-longname--account-hub-id--longname-unbroken--sw--1280.png
+224--s3-longname--account-avatar-menu--longname-unbroken--sw--1280.png
+225--s3-longname--account-hub-id--longname-unbroken--en--360.png
+226--s3-longname--account-hub-id--longname-unbroken--en--390.png
+227--s3-longname--account-hub-id--longname-unbroken--en--1280.png
+228--s3-longname--account-avatar-menu--longname-unbroken--en--1280.png
+229--s3-longname--account-hub-id--longname-unbroken--zh--360.png
+230--s3-longname--account-hub-id--longname-unbroken--zh--390.png
+231--s3-longname--account-hub-id--longname-unbroken--zh--1280.png
+232--s3-longname--account-avatar-menu--longname-unbroken--zh--1280.png
+233--s3-longname--profile-hero--longname-cjk--sw--360.png
+234--s3-longname--profile-hero--longname-cjk--sw--390.png
+235--s3-longname--profile-hero--longname-cjk--sw--1280.png
+236--s3-longname--account-hub-id--longname-cjk--sw--360.png
+237--s3-longname--account-hub-id--longname-cjk--sw--390.png
+238--s3-longname--account-hub-id--longname-cjk--sw--1280.png
+239--s3-longname--account-avatar-menu--longname-cjk--sw--1280.png
+240--s3-longname--account-hub-id--longname-cjk--en--360.png
+241--s3-longname--account-hub-id--longname-cjk--en--390.png
+242--s3-longname--account-hub-id--longname-cjk--en--1280.png
+243--s3-longname--account-avatar-menu--longname-cjk--en--1280.png
+244--s3-longname--account-hub-id--longname-cjk--zh--360.png
+245--s3-longname--account-hub-id--longname-cjk--zh--390.png
+246--s3-longname--account-hub-id--longname-cjk--zh--1280.png
+247--s3-longname--account-avatar-menu--longname-cjk--zh--1280.png
+248--s4-longtitle--root-card-longest-shown--player--sw--360.png
+249--s4-longtitle--root-card-longest-shown--player--sw--390.png
+250--s4-longtitle--root-card-longest-shown--player--sw--1280.png
+251--s4-longtitle--markets-card--player--sw--360.png
+252--s4-longtitle--markets-card--player--sw--390.png
+253--s4-longtitle--markets-card--player--sw--1280.png
+254--s4-longtitle--market--player--sw--360.png
+255--s4-longtitle--market--player--sw--390.png
+256--s4-longtitle--market--player--sw--1280.png
+
+Measure with PowerShell System.Drawing as the brief says (never estimate a position you can measure). Do not edit any
+file; do not run npm, servers or browsers. Your final message is the report the brief asks for — (1) tiles opened (must
+be 64) and the BLOCKED entries in your range, (2) FINDINGS (most visible first; LOGIC findings marked), (3) DOUBTS.
+Nothing else.

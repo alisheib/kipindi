@@ -1,0 +1,3 @@
+docs(vodacom): WP12 LIVE (17693fdc) and read back on production (qa:live 348/348, its first signed-in run as mobile01) - its §0i bullet with the proof (typecheck at three bases, WP12's suites and reds green, parity: no served byte changes) and what is still owed; §0h points 61-63 (the calls, the claret open point, the two shared tools fixed); the owner's ruling noted where the tracker still read the email step; in flight: marketing's turn, then A2 with the db:scratch fix
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>

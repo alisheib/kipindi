@@ -1,0 +1,6 @@
+﻿──────────────────────────────────────────────────────────────────────
+cn() COLLISION — no call site loses a class on its way to the browser
+──────────────────────────────────────────────────────────────────────
+  1377 source files scanned
+
+✅ every class handed to cn() survives it.

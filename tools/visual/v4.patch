@@ -1,0 +1,168 @@
+diff --git a/scripts/journey-funnel.test.mts b/scripts/journey-funnel.test.mts
+index 3163fb0b..03efafe1 100644
+--- a/scripts/journey-funnel.test.mts
++++ b/scripts/journey-funnel.test.mts
+@@ -276,7 +276,8 @@ async function run(impl: Impl, log: (l: string) => void, tag: string): Promise<s
+     /if \(outcome\.credited && outcome\.txn\) \{[\s\S]*?runOutsideLock\(\(\) => \{\s*void import\("\.\/journey-funnel"\)\.then\(\(m\) => m\.countDepositFunnel\(t\)\)/.test(wallet)
+       && /origin: \(parse\.data as \{ origin\?: "low_balance" \}\)\.origin \?\? null,/.test(wallet));
+   ok("9.form · the deposit page adds the origin only for from=low-balance; the action accepts only low_balance and carries it through a failure",
+-    impl.depPage.includes('{sp.from === "low-balance" && <input type="hidden" name="origin" value="low_balance" />}')
++    // 2026-10-08: the input carries `hidden` so the form's space-y-5 does not count it (WP12 tile 068); the pin is the same field.
++    impl.depPage.includes('{sp.from === "low-balance" && <input type="hidden" hidden name="origin" value="low_balance" />}')
+       && impl.depAction.includes('const origin = formData.get("origin") === "low_balance" ? ("low_balance" as const) : undefined;')
+       && impl.depAction.includes('if (origin) carry.set("from", "low-balance");'));
+   ok("9.create-only · the origin is written on create and skipped by BOTH update paths; its migration adds one nullable column under the lock-retry block",
+diff --git a/src/app/globals.css b/src/app/globals.css
+index ee2deb45..f8bbfa7d 100644
+--- a/src/app/globals.css
++++ b/src/app/globals.css
+@@ -1579,6 +1579,13 @@ html[data-fab-idle] .cm-fab:not(.cm-fab--open):not(:focus-within) {
+ 
+ .cm-fab {
+   transition: opacity var(--t-quick) var(--m-glide), transform var(--t-quick) var(--m-glide);
++  /* 2026-10-08 (WP12 item 4) · THE BUBBLE CLEARS THE HOME INDICATOR, AS THE RAIL UNDER IT DOES. ChatRoot places it with
++     an inline `bottom` (80 over a phone rail, 16 without one — test:stacking's locator pins that line), and the rail
++     grows by `env(safe-area-inset-bottom)` (`.kp-rail`; layout.tsx sets viewport-fit=cover). On a notched iPhone
++     (inset ≈34px) the rail's top sits about 99px up while the bubble's foot sat at 80: its lower 19px lay on the
++     rail's last tab for the 3s D75 leaves it up. A margin on a fixed box lifts it off its `bottom` by the same inset
++     the rail adds. ⚠️ Inert wherever the inset is 0 — Android, desktop and every Playwright frame. */
++  margin-bottom: env(safe-area-inset-bottom, 0px);
+ }
+ @media (prefers-reduced-motion: reduce) {
+   html[data-scrolling] .cm-fab:not(.cm-fab--open):not(:focus-within),
+@@ -5896,6 +5903,10 @@ html[lang="zh"] .kp-udrule { word-break: keep-all; }
+ .kp-wsheet__label { font-family: var(--font-mono); font-weight: 700; font-size: var(--type-micro); text-transform: uppercase; color: var(--text-subtle); }
+ .kp-wsheet__bal { display: flex; align-items: center; justify-content: space-between; gap: var(--sp-2); margin-top: var(--sp-1); }
+ .kp-wsheet__amt { font-family: var(--font-mono); font-weight: 700; font-size: var(--type-h1); line-height: 1.1; font-variant-numeric: tabular-nums; color: var(--gold-300); overflow-wrap: anywhere; }
++/* 2026-10-08 (WP12 tiles 088–092) · the journey capsule's Wallet, held or masked, reads its figure in plain ink, as the
++   capsule that opened it does (`.kp-jbal:is([data-held], [data-masked])` below; DESIGN_AUTHORITY rule 8a). Only the
++   journey's Wallet sets these attributes (wallet-sheet.tsx), so the classic Wallet keeps its gold. */
++.kp-wsheet__amt:is([data-held], [data-masked]) { color: var(--text); }
+ .kp-wsheet__pair { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--sp-3); }
+ .kp-wsheet__col { display: flex; flex-direction: column; align-items: stretch; gap: var(--sp-2); min-width: 0; }
+ /* 56 on the sheet (thumb reach, the delivery's 54 rounded UP to the --h-control-xl rung), 48 in the panel. */
+diff --git a/src/app/legal/legal-nav.tsx b/src/app/legal/legal-nav.tsx
+index 2fa3cbf0..e46d3931 100644
+--- a/src/app/legal/legal-nav.tsx
++++ b/src/app/legal/legal-nav.tsx
+@@ -102,6 +102,11 @@ export function LegalNav({ items, ariaLabel }: { items: LegalNavItem[]; ariaLabe
+            ⚠️ `px-3.5` (14px) is the SAME off-scale key on the horizontal axis and is left
+            alone deliberately: this row is the tap floor, and a width change is a different
+            decision with a different blast radius. Reported, not smuggled. */
++        /* ⭐ 2026-10-08 · THE ACTIVE ROW'S LABEL STAYS ON ITS SIBLINGS' LINE (WP12 tiles 206–210). The left rule above is
++           a real 2px border, and a border sits OUTSIDE the padding, so the active label started 2px right of the others
++           (measured at 390: x 33 against 31). The active row gives those 2px back from its left padding — 2 + 12 = the
++           14px of `px-3.5` — so every label starts on one edge and the rule stays the row's non-colour signal (§A4).
++           `pl-[12px]` is a literal because `pl-2` is 12px only on this repo's overridden scale; the literal reads true. */
+         return (
+           <Link
+             key={n.href}
+@@ -109,7 +114,7 @@ export function LegalNav({ items, ariaLabel }: { items: LegalNavItem[]; ariaLabe
+             aria-current={active ? "page" : undefined}
+             style={active ? { background: "var(--pill-active)" } : undefined}
+             className={`block px-3.5 py-3 transition-colors ${i > 0 ? "border-t border-border" : ""} ${
+-              active ? "border-l-2 border-l-brand-500" : "hover:bg-bg-overlay"
++              active ? "border-l-2 border-l-brand-500 pl-[12px]" : "hover:bg-bg-overlay"
+             }`}
+           >
+             {/* ⭐ DG-P-11 — THE ACTIVE INK WAS `--brand-300`, WHICH NAVIGATION ALREADY SPENT ON
+diff --git a/src/app/wallet/deposit/page.tsx b/src/app/wallet/deposit/page.tsx
+index 8d97a164..a47a85d4 100644
+--- a/src/app/wallet/deposit/page.tsx
++++ b/src/app/wallet/deposit/page.tsx
+@@ -232,8 +232,10 @@ export default async function DepositPage({ searchParams }: { searchParams: Prom
+             synchronous FAILED came back as ok and no new attempt was made. Keyed on the signed refusal, each refusal is
+             a new key; a double tap or a lost response on the SAME screen still dedupes. */}
+         <IdempotencyKeyField key={sp.error ?? ""} />
+-        {/* The journey funnel (Vodacom plan S3b): a deposit started from a not-enough-money state says so. */}
+-        {sp.from === "low-balance" && <input type="hidden" name="origin" value="low_balance" />}
++        {/* The journey funnel (Vodacom plan S3b): a deposit started from a not-enough-money state says so.
++            `hidden` keeps it out of the form's `space-y-5` sibling count, as on the key above (2026-10-08, WP12 tile 068):
++            without it a low-balance deposit put the 24px gap back above the method chooser. */}
++        {sp.from === "low-balance" && <input type="hidden" hidden name="origin" value="low_balance" />}
+         <fieldset>
+           <FieldLegend as="legend" className="mb-2">
+             {t.wallet.choosePaymentMethod}
+diff --git a/src/components/chat/ChatRoot.tsx b/src/components/chat/ChatRoot.tsx
+index b11fcbfc..dea1360f 100644
+--- a/src/components/chat/ChatRoot.tsx
++++ b/src/components/chat/ChatRoot.tsx
+@@ -334,7 +334,8 @@ function ChatRootInner({
+         style={{
+           position: "fixed",
+           right: 16,
+-          // 80 clears the phone rail, whose reserve is `--rail-h` (globals.css): move this with that token.
++          // 80 clears the phone rail, whose reserve is `--rail-h` (globals.css): move this with that token. The
++          // home-indicator inset the rail adds on top is added to the bubble by `.cm-fab`'s margin (globals.css).
+           bottom: isMobile ? 80 : 16,
+           zIndex: 60,
+         }}
+diff --git a/src/components/layout/wallet-sheet.tsx b/src/components/layout/wallet-sheet.tsx
+index 86d95183..acc89609 100644
+--- a/src/components/layout/wallet-sheet.tsx
++++ b/src/components/layout/wallet-sheet.tsx
+@@ -27,7 +27,7 @@ import * as React from "react";
+ import Link from "next/link";
+ import { Modal } from "@/components/ui/modal";
+ import { Button } from "@/components/ui/button";
+-import { Cash, CashEye } from "@/components/ui/cash";
++import { Cash, CashEye, useCashHidden } from "@/components/ui/cash";
+ import { I } from "@/components/ui/glyphs";
+ import { useT } from "@/lib/i18n";
+ import { formatTzs } from "@/lib/utils";
+@@ -45,12 +45,23 @@ export function WalletSheet({
+   balance: number;
+   held: boolean;
+   anchorRef: React.RefObject<HTMLElement | null>;
+-  /** S6 · the journey capsule's Wallet: its two doors read "Weka pesa" and "Toa pesa". Omitted, today's words. */
++  /** S6 · the journey capsule's Wallet: its two doors read "Weka pesa" and "Toa pesa", and its figure takes the capsule's
++   *  ink (gold on a live balance only). Omitted, today's words and today's ink. */
+   journey?: boolean;
+ }) {
+   const { t } = useT();
+   const depVia = React.useId();
+   const wdVia = React.useId();
++  const hidden = useCashHidden();
++  /* ⭐ 2026-10-08 · THE JOURNEY'S WALLET READS ITS FIGURE IN THE CAPSULE'S INK (WP12 tiles 088–092). DESIGN_AUTHORITY
++     rule 8a: the captioned balance is gold on a live balance only, plain ink when held or masked (its rule in
++     globals.css: gold marks money you can use). A frozen wallet's capsule read "TZS 100,000" in plain ink and the Wallet it opened read the same figure in
++     gold (measured: #F5F8FF against #F3CB7A), so one balance spoke two inks a tap apart. The figure now answers the
++     same two states the capsule's rule names (`.kp-wsheet__amt` in globals.css).
++     ⛔ The journey's Wallet only: the classic capsule's figure is gold in every state and its Wallet matches it, and
++     classic readers' pages do not change during S6/S7. */
++  const plainHeld = journey && held;
++  const plainMasked = journey && hidden;
+ 
+   return (
+     <Modal
+@@ -68,7 +79,7 @@ export function WalletSheet({
+       <div data-testid="wallet-sheet">
+         <p className="kp-wsheet__label">{held ? t.common.balanceFrozen : t.wallet.available}</p>
+         <div className="kp-wsheet__bal">
+-          <p className="kp-wsheet__amt"><Cash>{formatTzs(balance)}</Cash></p>
++          <p className="kp-wsheet__amt" data-held={plainHeld ? "" : undefined} data-masked={plainMasked ? "" : undefined}><Cash>{formatTzs(balance)}</Cash></p>
+           <CashEye size={16} />
+         </div>
+       </div>
+diff --git a/src/components/wallet/idempotency-key-field.tsx b/src/components/wallet/idempotency-key-field.tsx
+index 83be1527..01c944a9 100644
+--- a/src/components/wallet/idempotency-key-field.tsx
++++ b/src/components/wallet/idempotency-key-field.tsx
+@@ -13,8 +13,16 @@ import { useRef } from "react";
+  * client `useRef` persists across the server re-render, so retrying the same
+  * form re-submits the SAME key and the server dedupes it. Mirrors the bet
+  * path's per-intent `useRef` key.
++ *
++ * ⭐ THE `hidden` ATTRIBUTE IS LAYOUT, NOT A REPEAT OF `type="hidden"` (2026-10-08, WP12 tiles 067/068/173/174).
++ * Tailwind 3's `space-y-*` gives a margin to every child that FOLLOWS a sibling not carrying `[hidden]`, and an
++ * `<input type="hidden">` paints nothing but is still such a sibling. As the first child of the deposit and withdraw
++ * forms it handed the first visible child — the method chooser's fieldset — the form's 24px gap ABOVE it: 24px of blank
++ * at the top of the card (measured 50px above "CHAGUA NJIA YA KULIPA" / "MAHALI" against 27px above the hero's eyebrow
++ * and 24px at the card's sides). With `hidden` the selector skips it, so the card's padding is the only space above
++ * its first line. A `hidden` input is still submitted with its form; nothing else about it changes.
+  */
+ export function IdempotencyKeyField({ name = "idempotencyKey" }: { name?: string }) {
+   const key = useRef<string>(crypto.randomUUID());
+-  return <input type="hidden" name={name} value={key.current} />;
++  return <input type="hidden" hidden name={name} value={key.current} />;
+ }

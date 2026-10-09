@@ -1,0 +1,15 @@
+  production: decision 7). **The owed runs, 2026-10-08 on OMEGA-COMPILE01:** A2 — typecheck 0, `test:all` 453/471
+  with all 13 database suites green, every other failure also failing alone on main; B2 — **the v2 compare at main:**
+  against `parity-v2-7c859cdf-omega.json` (the v2 baseline re-captured at `7c859cdf` on this PC, its `--prove-red` and
+  a null compare clean), A18 refused the base (eight merges from other lanes since `7c859cdf`); with `--allow-base`
+  37/38 — 4.1's 224 cells differ, and every difference is attributed: the rail reserve (S6 WP11's own,
+  `footer-rail-h`), the helpline gone (`0652f61f`) and the email bar gone (`012cccbc`), both the owner's rulings, and an
+  invisible Suspense marker before the guest sign-in link (`791afa8d`) — **no unexpected S6 difference**; 4.2–4.6 and
+  every Sell expectation pass; the header fit 6/6 over 66 cells, its two reds caught; C — `qa:journey-shell` 1643 checks
+  and 333 of 335 tiles (the two Up & Down round tiles BLOCKED: this PC's price feed published no open price), every
+  tile read (§0h point 64), `qa:footer-reachable` four ways as designed (102/102 and 108/108, both controls caught 5);
+  D — `qa:landmark-seal` 276 cells and `--journey` 504, 0 problems; local `qa:live` 334/334; G1's `--prove-red`
+  caught; G — G1 14/14; `qa:journey-preview` 33/33 twice (C's one stop at §5 was a click before hydration: the drive
+  now waits for React); E — the A8j drive in WebKit, all 15 of its checks, its Z reading only the WebKit dev server's lazy-chunk failure (the Needle's chunk, and WebKit's "access control" fetch message), which the same drive reads on unmodified main `586c5183` too; F — S7 WP0's reds on its tip (`red:ticker-honesty` alone 28/28, `red:simple-journey-flag` 37/37), the bar probe (no problems, en and zh at 390), and the A8i-2 drive under reduced motion 24/24. The tiles' findings were fixed and are LIVE `{FIXES}` (§0h point 64), proved
+  as one branch: {H}. DESIGN_AUTHORITY rule 8c's owed clause is gone (G1 green). **Still owed:** a production landmark
+  seal (decision 7, an Owner's link); the bell's stale clause (S15).

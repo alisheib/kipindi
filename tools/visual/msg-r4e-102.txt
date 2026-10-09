@@ -1,0 +1,7 @@
+test(visual-pass-r4e): 10.2 reads the privacy page's version date from the page instead of pinning it
+
+Main moved the privacy notice to v2026-10-09 (S14, "Toleo 2026-10-09"); 10.2 had pinned "Toleo 2026-10-07", so it went
+red on the rebase while the page draws exactly what it guards: "Act 2022" kept whole, the date and every word unchanged.
+The date is now read from the page's META, so the next policy version cannot break it again.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>

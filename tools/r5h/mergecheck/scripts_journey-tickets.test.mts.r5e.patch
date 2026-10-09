@@ -1,0 +1,19 @@
+diff --git a/scripts/journey-tickets.test.mts b/scripts/journey-tickets.test.mts
+index dd8b42cd9..01c12f1a4 100644
+--- a/scripts/journey-tickets.test.mts
++++ b/scripts/journey-tickets.test.mts
+@@ -282,10 +282,10 @@ const TITLE_LINK = "<Link href={" + BT + "/markets/${p.marketId}" + BT + " as ne
+  * The question's words, WHOLE: the short title or the full question, straight inside the link and never clamped.
+  * ⚠️ Until 2026-10-08 this pinned a two-line clamp on the full question; the visual pass (tile 211) found it cutting the
+  * bet's own question at 320 ("…kutakuwa kijani…" with "kesho?" hidden), so the pin now holds the opposite: no clamp.
+- * `keepUnits` (2026-10-08 · G1): the same words, with a number and its Chinese unit ("200毫米") kept on one line.
+- * ⚠️ `keepFigures` since round 4 of the visual pass (2026-10-09, edges 197 255): keep-words.tsx's title rule, which keeps
+- * `keepUnits`' ideograph unit and adds a season ("2026-27") and a unit word ("dakika 28:00") — the same words, every
+- * title surface on one rule (visual-pass-r4h §5 holds it).
++ * A number and its Chinese unit ("200毫米") kept on one line since 2026-10-08 (G1); `keepFigures` since round 4 of the
++ * visual pass (2026-10-09, edges 197 255): keep-words.tsx's title rule, which keeps a Chinese unit from its closed list
++ * (round 5, H1 — the round-3 helper that took "one or two ideographs" is deleted) and adds a season ("2026-27") and a unit
++ * word ("dakika 28:00") — the same words, every title surface on one rule (visual-pass-r4h §4 and r5e hold it).
+  */
+ const TITLE_WORDS = `hover:underline">{keepFigures(title.text)}</Link>`;
+ /** The heading the question sits in: one 20px line per line of words (16px type, leading 1.25), its lines balanced. */

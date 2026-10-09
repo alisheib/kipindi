@@ -1,0 +1,1578 @@
+﻿diff --git a/package.json b/package.json
+index fc48503a4..38e110816 100644
+--- a/package.json
++++ b/package.json
+@@ -659,6 +659,7 @@
+     "test:visual-pass-r4k": "tsx scripts/visual-pass-r4k.test.mts",
+     "red:visual-pass-r4k": "tsx scripts/visual-pass-r4k.test.mts --prove",
+     "test:visual-pass-r4h": "tsx scripts/visual-pass-r4h.test.mts",
++    "test:visual-pass-r5a": "tsx scripts/visual-pass-r5a.test.mts",
+     "red:journey-tickets": "tsx scripts/journey-tickets.test.mts --prove-red",
+     "test:signoff": "tsx scripts/signoff.test.mts",
+     "test:proposal-evidence-age": "tsx scripts/proposal-evidence-age.test.mts",
+diff --git a/scripts/anchors/featured-card.anchors.mjs b/scripts/anchors/featured-card.anchors.mjs
+index 288a4de45..0ce4ef038 100644
+--- a/scripts/anchors/featured-card.anchors.mjs
++++ b/scripts/anchors/featured-card.anchors.mjs
+@@ -126,7 +126,8 @@ export const MUTATIONS = [
+   {
+     name: "the featured pool loses its word and its money face (a bare \"TZS 10,800\" again)",
+     file: "src/components/markets/market-card.tsx",
+-    from: `          {fresh ? t.market.noPoolYet : featured ? <>{t.common.pool}{" "}<span className="amount">{formatTzs(volume)}</span></> : formatTzs(volume)}`,
++    // Round 5 (R5-A): the grid card's figure names itself to a screen reader (`sr-only`); the anchor follows the line.
++    from: `          {fresh ? t.market.noPoolYet : featured ? <>{t.common.pool}{" "}<span className="amount">{formatTzs(volume)}</span></> : <><span className="sr-only">{t.common.pool}{" "}</span>{formatTzs(volume)}</>}`,
+     to: `          {fresh ? t.market.noPoolYet : formatTzs(volume)}`,
+     expect: "2.18",
+   },
+diff --git a/scripts/campaign-gates.test.mts b/scripts/campaign-gates.test.mts
+index a75fc6b65..139310377 100644
+--- a/scripts/campaign-gates.test.mts
++++ b/scripts/campaign-gates.test.mts
+@@ -1894,8 +1894,10 @@ async function runAssertions(impl: Impl): Promise<void> {
+         && card.indexOf("setPosting(true);", confirmAt) < card.indexOf("startConfirming(async () => {", confirmAt),
+       // R4-I (2026-10-09): ConfirmModal draws its ✕ in its header row (on the medallion's centre, edges E22), withdrawn while
+       // a request is in flight exactly as Modal's corner ✕ was (`showClose={!loading}`) — so the ✕ half reads that form.
++      // Round 5 (R5-A, F20): still withheld on `loading` alone (live while only `confirmHeld`), now with its box kept
++      // (`CloseX withheld`) so the title never re-wraps while the request runs.
+       kitHeld: m.includes("disabled={!armed || loading || confirmHeld}") && m.includes("disabled={loading} onClick={onClose}")
+-        && m.includes("closeOnScrim={!loading}") && m.includes("{!loading && <CloseX onClick={onClose}") && m.includes("onClose={loading ? () => {} : onClose}"),
++        && m.includes("closeOnScrim={!loading}") && m.includes("<CloseX withheld={loading} onClick={onClose}") && m.includes("onClose={loading ? () => {} : onClose}"),
+     };
+     const answers = `fence ${fe.ok ? "counted" : SPLIT.isAudienceSlotBusy(fe.e) ? "busy" : "threw"} at ${fe.at} ms · read ${rd.ok ? rd.v.read : "threw"} at ${rd.at} · run ${rn.ok ? (rn.v.ok ? "confirmed" : rn.v.reason) : "threw"} at ${rn.at} · split ${sp.ok ? "walked" : SPLIT.isAudienceSlotBusy(sp.e) ? "busy" : "threw"} at ${sp.at} (bound ${bound} ms)`;
+     return [Object.values(busy).every(Boolean) && Object.values(said).every(Boolean) && Object.values(wired).every(Boolean),
+diff --git a/scripts/design-gate/eyebrow-roles.mjs b/scripts/design-gate/eyebrow-roles.mjs
+index f83155f37..9f6c2d661 100644
+--- a/scripts/design-gate/eyebrow-roles.mjs
++++ b/scripts/design-gate/eyebrow-roles.mjs
+@@ -255,11 +255,13 @@ export const NOT_EYEBROW = new Map([
+   ["app/profile/kyc/page.tsx :: className=\"font-mono text-label uppercase tracking-[0.14em] text-text-subtle hover:text-text\" ↵ >", "CONTROL_LABEL"],
+   ["app/profile/page.tsx :: <span className=\"inline-flex items-center rounded-pill border border-gold-700/50 bg-gold-500/15 px-1.5 py-0.5 font-mono text-micro font-bold uppercase tracking-[0.08em] t", "STATUS_CHIP"],
+   ["app/proposals/[id]/page.tsx :: <p className=\"mb-3 font-mono text-micro uppercase tracking-[0.16em] font-bold text-gold-300\">{t.common.yourProposalApproved}</p> ↵ <RewardBurst", "CELEBRATION"],
+-  ["app/results/page.tsx :: <span className=\"ml-auto inline-flex items-center gap-1.5 font-mono text-micro uppercase tracking-[0.16em] font-bold text-gold-300\"> ↵ <I.crown s={13} /> {t.results.notab", "STATUS_CHIP"],
++  // Round 5 (R5-A, F19): the flag's words sit in a span of their own (`kp-track-end`, its trailing tracking taken back).
++  ["app/results/page.tsx :: <span className=\"ml-auto inline-flex items-center gap-1.5 font-mono text-micro uppercase tracking-[0.16em] font-bold text-gold-300\"> ↵ <I.crown s={13} /> <span className=", "STATUS_CHIP"],
+   ["app/updown/[roundId]/page.tsx :: <p className=\"mt-1 flex items-center gap-1.5 font-mono text-micro font-semibold uppercase tracking-[0.10em] text-text-subtle\"> ↵ {isOpen && <span className=\"live-dot\" />}", "STATUS_CHIP"],
+   ["app/updown/[roundId]/page.tsx :: className=\"inline-flex items-center gap-0.5 font-mono text-micro font-semibold uppercase tracking-[0.08em]\" ↵ style={{ color: \"var(--brand-300)\" }}>", "CONTROL_LABEL"],
+   ["app/updown/history/page.tsx :: <span className=\"font-mono text-micro uppercase tracking-[0.10em] text-text-faint\"> ↵ {g.bets.length} {t.market.udBets}", "OTHER"],
+-  ["app/updown/page.tsx :: <span className=\"ml-auto inline-flex items-center gap-1.5 font-mono text-micro uppercase tracking-[0.10em] text-text-faint\"> ↵ <span className=\"live-dot\" /> {t.market.udS", "STATUS_CHIP"],
++  // Round 5 (R5-A, F19): the note's words sit in a span of their own (`kp-track-end`, its trailing tracking taken back).
++  ["app/updown/page.tsx :: <span className=\"ml-auto inline-flex items-center gap-1.5 font-mono text-micro uppercase tracking-[0.10em] text-text-faint\"> ↵ <span className=\"live-dot\" /> <span classNa", "STATUS_CHIP"],
+   // ⭐ ONE recipe, TWO pills. The board header carried this string twice — the history link and
+   // the new rules link — and a second copy of its `tracking-[0.10em]` took the arbitrary-tracking
+   // ratchet 236 → 237. Hoisting it to a `HEADER_PILL` const fixed that and moved the uppercase
+diff --git a/scripts/enter-where-pressed.test.mts b/scripts/enter-where-pressed.test.mts
+index 19499903e..2ab00afd9 100644
+--- a/scripts/enter-where-pressed.test.mts
++++ b/scripts/enter-where-pressed.test.mts
+@@ -953,10 +953,14 @@ function run(w: World, log: (l: string) => void): string[] {
+       && /initialFocus=\{primaryRef\}/.test(orm) && /if \(onPrimary\) onPrimary\(\); else onClose\(\)/.test(ormPrimary),
+     JSON.stringify({ bet: betConfirm.slice(0, 80), sell: sellConfirm.slice(0, 80), orm: ormPrimary.slice(0, 80) }));
+   const ormSecondary = buttonWith(orm, "if (onSecondary) onSecondary(); else onClose()") ?? "";
+-  ok("2.3 · each way out is a real button with its own act — the bet's ✕ and Cancel, the Sell's keep, the result's secondary",
+-    count(bet, "onClick={onCancel}") >= 2 && count(sell, "onClick={onCancel}") >= 1
++  // Round 5 (R5-A, F20, 2026-10-09): the bet's ✕ is no longer drawn by hand with `onClick={onCancel}` — it is the one ✕,
++  // `CloseX` (a real `type="button"`, modal.tsx), closing through the dialog's guarded close as the Sell's does, and
++  // withheld while a request is in flight. So the ✕ half reads that form in both money dialogs.
++  const guardedX = "<CloseX withheld={pending} onClick={() => { if (!pending) onCancel(); }}";
++  ok("2.3 · each way out is a real button with its own act — the bet's and the Sell's ✕ (CloseX, the guarded close), the bet's Cancel, the Sell's keep, the result's secondary",
++    count(bet, "onClick={onCancel}") >= 1 && count(sell, "onClick={onCancel}") >= 1 && [bet, sell].every((s) => s.includes(guardedX))
+       && [bet, sell].every((s) => !/onClick=\{onConfirm\}/.test(s)) && /type="button"/.test(ormSecondary),
+-    JSON.stringify({ betCancels: count(bet, "onClick={onCancel}"), sellCancels: count(sell, "onClick={onCancel}") }));
++    JSON.stringify({ betCancels: count(bet, "onClick={onCancel}"), sellCancels: count(sell, "onClick={onCancel}"), guardedX: [bet, sell].map((s) => s.includes(guardedX)) }));
+ 
+   ok("2.5 · the rule is pure — held-key.ts imports nothing, so the guard runs the very rule the dialog runs",
+     !/^\s*import\b/m.test(decomment(w.read(RULE))) && /export function swallowsHeldKey\(/.test(w.read(RULE)));
+diff --git a/scripts/featured-card.test.mts b/scripts/featured-card.test.mts
+index 82629d2cf..c4ce675a7 100644
+--- a/scripts/featured-card.test.mts
++++ b/scripts/featured-card.test.mts
+@@ -197,7 +197,9 @@ const card = decomment(read("src/components/markets/market-card.tsx"));
+   const nbAt = css.indexOf("\n.mcardp-nobets {");
+   const nobets = nbAt < 0 ? "" : css.slice(nbAt, css.indexOf("}", nbAt));
+   // The pool slot: the no-pool words on a fresh card (round 3), the NAMED figure on the featured card (round 4, 2.18).
+-  const POOL_SPAN = /<span data-market-part="pool" className=\{fresh \? "mcardp-nopool" : featured \? "mcardp-pool" : undefined\}>\s*\{fresh \? t\.market\.noPoolYet : featured \? <>\{t\.common\.pool\}\{" "\}<span className="amount">\{formatTzs\(volume\)\}<\/span><\/> : formatTzs\(volume\)\}\s*<\/span>/;
++  // Round 5 (R5-A) moved this pin: a grid card's figure names itself to a screen reader in the same word (`sr-only`),
++  // with no change on screen.
++  const POOL_SPAN = /<span data-market-part="pool" className=\{fresh \? "mcardp-nopool" : featured \? "mcardp-pool" : undefined\}>\s*\{fresh \? t\.market\.noPoolYet : featured \? <>\{t\.common\.pool\}\{" "\}<span className="amount">\{formatTzs\(volume\)\}<\/span><\/> : <><span className="sr-only">\{t\.common\.pool\}\{" "\}<\/span>\{formatTzs\(volume\)\}<\/>\}\s*<\/span>/;
+   check("2.15 the empty state reads at the reading floor — no bets, be the first, and the featured no-pool words at --type-small; the no-bets line in --text-subtle on its measured 15px box",
+     nobets.includes("font-size: var(--type-small);") && nobets.includes("line-height: 15px;") && nobets.includes("color: var(--text-subtle);")
+       && !/letter-spacing/.test(nobets)
+diff --git a/scripts/qa-journey-shell.mjs b/scripts/qa-journey-shell.mjs
+index 065f19dcc..530cb82ac 100644
+--- a/scripts/qa-journey-shell.mjs
++++ b/scripts/qa-journey-shell.mjs
+@@ -246,8 +246,8 @@ const W = {
+   guestPrompt: { sw: 'Ingia au jisajili ili uone pochi na tiketi zako.', en: 'Sign in or sign up to see your wallet and tickets.', zh: '登录或注册以查看您的钱包和注单。' },
+   /** common.staffConsole */
+   staffConsole: { sw: 'Konsoli ya wafanyakazi', en: 'Staff console', zh: '员工控制台' },
+-  /** common.verifyId: the Profile card’s door to /profile/kyc */
+-  verifyId: { sw: 'Thibitisha ID', en: 'Verify ID', zh: '身份验证' },
++  /** profile.verifyIdentity: the Profile card’s door to /profile/kyc — the KYC page’s own h1 since round 5 (F17) */
++  verifyId: { sw: 'Thibitisha kitambulisho', en: 'Verify your identity', zh: '验证您的身份' },
+   /** notif.unreadOne and notif.unreadN: the dot’s count in words (journey-tabs.tsx, `TabUnread`’s sr-only span) */
+   unreadOne: { sw: '1 haijasomwa', en: '1 unread', zh: '1 条未读' },
+   unreadN: { sw: '{n} hazijasomwa', en: '{n} unread', zh: '{n} 条未读' },
+@@ -898,6 +898,18 @@ async function settle(page, ms = 300) {
+   await page.evaluate(() => new Promise((done) => requestAnimationFrame(() => requestAnimationFrame(() => done(true)))));
+   await page.waitForTimeout(ms);
+ }
++/**
++ * ⭐ THE POINTER IS PARKED BEFORE EVERY SHOT (round 5 of the visual pass, 2026-10-09, F5 — tiles 095 099 327). A tile was
++ * shot wherever the drive’s last press or scroll had left the pointer, so a hover state was photographed as the page: a
++ * desktop nav tab’s hover box and a second underline beside the active one (095 099, the held header at 1024), a featured
++ * card’s lit border (327). `shoot` now parks it first, as R4-G’s edges drive does (`parkPointer`, the same expression):
++ * on the page’s left gutter at half the viewport’s height, where nothing hovers, then a beat longer than the hover
++ * transitions (motion.css: --t-flick 90 ms, --t-quick 140 ms, --t-base 220 ms) before the Needle’s rest is awaited. The
++ * focus cells and the viewer’s soft move park it through the same helper (they each wrote the move out by hand).
++ */
++const parkPointer = (page) => page.mouse.move(2, Math.round((page.viewportSize()?.height ?? viewport(390).height) / 2)).catch(() => {});
++/** The pause after parking: longer than the slowest hover transition (`--t-base`, 220 ms). */
++const PARK_SETTLE_MS = 260;
+ async function resize(page, width) {
+   const now = page.viewportSize();
+   if (!now || now.width !== width) await page.setViewportSize(viewport(width));
+@@ -1265,7 +1277,9 @@ async function shoot(page, cell, spec, { dialog = false, dialogProblem = null }
+   }
+   seq += 1;
+   const file = `${[String(seq).padStart(3, '0'), cell.section, cell.route, cell.viewer, cell.state, cell.locale, cell.width].join('--')}${wrong ? '--WRONG-PAGE' : ''}.png`;
+-  await settle(page, 150);
++  // F5 · no tile in a hover state the drive left behind: the pointer parked, then the hover transitions run out.
++  await parkPointer(page);
++  await settle(page, PARK_SETTLE_MS);
+   // ⭐ R3-B (2026-10-09) · THE TILE SHOWS THE NEEDLE AT ITS REST, never a glide on its way there: round 3's 194 caught
+   // the disc mid-flight across the /markets stat line, and a reader cannot tell a glide from a rest in one frame. A
+   // Needle that has not come to rest by NEEDLE_REST_MS is a finding of its own — a rest that never comes is a chain.
+@@ -1324,7 +1338,7 @@ async function noHub(vw) {
+  * A box-shadow alone is never a ring: the capsule and the gilt pill wear one at rest.
+  */
+ async function focusStep(page, cell, step) {
+-  await page.mouse.move(2, Math.round(viewport(cell.width).height / 2)).catch(() => {});
++  await parkPointer(page);
+   const rest = await page.evaluate(RING_PROBE, step.sel);
+   const placed = await page.evaluate(TAB_PREV, step.sel);
+   let f = null;
+@@ -2092,7 +2106,7 @@ async function viewerSection() {
+     await page.waitForSelector('#main-content h1', { state: 'attached', timeout: 60_000 });
+     // ⛔ The pointer leaves the row it pressed (round 3, 2026-10-09, tile 326): it stayed at the hub row's centre, where
+     // /results draws its outcome pills, so "HAPANA 2" was shot in its HOVER fill (#03002D, x188–280) beside a bare "NDIO 3".
+-    await page.mouse.move(2, Math.round(viewport(390).height / 2)).catch(() => {});
++    await parkPointer(page);
+     await settle(page, 600);
+     // 3 · A’s session ends: the same account signs in elsewhere (one session per account).
+     await demo('', null, 'a second sign-in of the demo account, which ends A’s session');
+diff --git a/scripts/updown-filter-sheet.test.mts b/scripts/updown-filter-sheet.test.mts
+index ca6cb6c29..b3d5e8efc 100644
+--- a/scripts/updown-filter-sheet.test.mts
++++ b/scripts/updown-filter-sheet.test.mts
+@@ -298,8 +298,9 @@ const { dict } = await import("../src/lib/i18n-dict.ts");
+   // which is what `.m-out` and every other dialog in the product already leaves on.
+   ok("10: ⛔ …and the exit reuses the product's existing leave motion rather than minting one",
+      exitPanel === "m-leave-out" && !/@keyframes\s+kp-fsheet/.test(css), exitPanel);
++  // Round 5 (R5-A, F20 follow-up, 2026-10-09): the sheet's ✕ is the shared `CloseX` now, imported on the same line.
+   ok("10: ⛔ the exit beat comes from the shared `exitBeatMs`, not a literal",
+-     /import \{ exitBeatMs \} from "@\/components\/ui\/modal"/.test(sheet) && /exitBeatMs\("--t-quick"\)/.test(sheet));
++     /import \{ (?:CloseX, )?exitBeatMs \} from "@\/components\/ui\/modal"/.test(sheet) && /exitBeatMs\("--t-quick"\)/.test(sheet));
+   ok("10: ⚠️ …and a zero beat (reduced motion) closes INSTANTLY rather than holding",
+      /if \(ms <= 0\) \{ finish\(\); return; \}/.test(sheet));
+   // ⚠️ Re-opening mid-exit must cancel the pending close, or the timeout shuts the sheet the
+diff --git a/scripts/visual-pass-r3c.test.mts b/scripts/visual-pass-r3c.test.mts
+index 6ca2289f5..d6f9403bc 100644
+--- a/scripts/visual-pass-r3c.test.mts
++++ b/scripts/visual-pass-r3c.test.mts
+@@ -420,8 +420,11 @@ section("10 · the capture waits for the unread sign it shoots, and its pointer
+   ok("10.2 · the wait outlasts one failed read's retry (21–39 s) and asks the once-reading Arifa row to read again",
+     /UNREAD_WAIT_MS = 45_000/.test(drive) && /new Event\('50pick:refresh-notifications'\)/.test(drive)
+       && /INBOX_CHANGED = "50pick:refresh-notifications"/.test(read("src/lib/journey/unread-count.ts")));
++  // Round 5 (R5-A, F5) moved this pin: the move is the harness's one `parkPointer` helper now (R4-G's expression, the same
++  // move to x 2 at half the viewport), which `shoot` also calls before every tile — the helper must still be that move.
+   ok("10.3 · after pressing the hub's Matokeo row the pointer moves off the page's controls (the HAPANA hover fill on tile 326)",
+-    /a\.kp-hub__row\[href='\/results'\]`\)\.first\(\)\.click[\s\S]{0,600}?page\.mouse\.move\(2,/.test(drive));
++    /a\.kp-hub__row\[href='\/results'\]`\)\.first\(\)\.click[\s\S]{0,600}?await parkPointer\(page\);/.test(drive)
++      && /const parkPointer = \(page\) => page\.mouse\.move\(2, /.test(drive));
+ }
+ 
+ console.log(`\nvisual-pass-r3c: ${pass} passed, ${fails.length} failed\n`);
+diff --git a/scripts/visual-pass-r4d.test.mts b/scripts/visual-pass-r4d.test.mts
+index 97df7afaf..23729294d 100644
+--- a/scripts/visual-pass-r4d.test.mts
++++ b/scripts/visual-pass-r4d.test.mts
+@@ -260,8 +260,10 @@ section("6 · the market page: the star midway between its neighbours' ink; the
+ section("7 · /results: the tally reads in one case (tile 172)");
+ {
+   const res = code("src/app/results/page.tsx");
++  // Round 5 (R5-A, F12) moved this pin: the count before its word is grouped (`formatNumber`), as every count line is —
++  // the words are this section's, unchanged.
+   ok("7.1 · \"0 imetatuliwa · TZS 0 imekamilika\" — the figure's sentence word, not the tab's label",
+-    res.includes("{totalCount} {t.results.resolved} · {formatTzsCompact(totalVolume)} {t.market.tickerSettled}"));
++    res.includes("{formatNumber(totalCount)} {t.results.resolved} · {formatTzsCompact(totalVolume)} {t.market.tickerSettled}"));
+   ok("7.2 · …and each result card's \"TZS 6K imekamilika\" beside \"2 watabiri\"",
+     res.includes("{formatTzsCompact(m.yesPool + m.noPool)} {t.market.tickerSettled}"));
+   ok("7.3 · ⛔ the tab label is no longer read for a sentence on this page", !res.includes("{t.common.settled}"));
+diff --git a/scripts/visual-pass-r4h.test.mts b/scripts/visual-pass-r4h.test.mts
+index aab4800e9..94a4eb2dd 100644
+--- a/scripts/visual-pass-r4h.test.mts
++++ b/scripts/visual-pass-r4h.test.mts
+@@ -379,7 +379,9 @@ section("6 · E31 E33 the journey's account menu (tiles 209 213 224 228 239 243
+   // E33 · /positions by the tab's name and glyph.
+   const tickets = JOURNEY_TABS.find((d) => d.key === "tickets");
+   ok("6.5 · in the journey the /positions row reads the tab's own key and glyph (journey.tabTickets · ticket), as JOURNEY_TABS names that tab",
+-    squash(menu).includes(`: journey && r.href === "/positions" ? { ...r, icon: I.ticket, en: t.journey.tabTickets, sw: t.journey.tabTickets, zh: t.journey.tabTickets } : r,`)
++    // Round 5 (R5-A, F17) moved this pin: the branch after it is no longer the bare `r` but the journey's other page
++    // names (`journeyName`, the KYC page, the leaderboard, the proposals page) — the /positions mapping is unchanged.
++    squash(menu).includes(`: journey && r.href === "/positions" ? { ...r, icon: I.ticket, en: t.journey.tabTickets, sw: t.journey.tabTickets, zh: t.journey.tabTickets } : journeyName[r.href] ?`)
+       && tickets?.href === "/positions" && tickets.label === "journey.tabTickets" && tickets.glyph === "ticket",
+     show(tickets));
+   ok("6.5′ CONTROL · the two names differ in every language (Nafasi / Tiketi zangu · Positions / My tickets · 持仓 / 我的注单)",
+diff --git a/scripts/visual-pass-r4i.test.mts b/scripts/visual-pass-r4i.test.mts
+index 386a8618d..9cf258b61 100644
+--- a/scripts/visual-pass-r4i.test.mts
++++ b/scripts/visual-pass-r4i.test.mts
+@@ -367,21 +367,29 @@ section("3 · the limits page: the callout at reading size, the two forms in lin
+ }
+ 
+ /* ══ §4 · THE ✕ ON ITS HEADER'S CENTRE ════════════════════════════════════════════════════════════════════════════════ */
+-section("4 · every confirm's ✕ on its header's centre, and the header no taller for it (E22 E54)");
++section("4 · every confirm's ✕ on its title's capitals, and the header no taller for it (E22 E54; round 5 F20)");
+ {
+   const MOD = read("src/components/ui/modal.tsx");
+   const confirmOf = (src: string) => src.slice(src.indexOf("export function ConfirmModal("));
+-  /** A margin utility's signed px on the overridden scale ("-mt-1" → −4, "mt-1" → 4), 0 when the class is absent. */
++  /** A margin utility's signed px — a step of the overridden scale ("-mt-1" → −4, "mt-1" → 4) or, since round 5, an
++   *  arbitrary px ("mt-[2.8px]" → 2.8) — 0 when the class is absent. */
+   const margin = (cls: string, side: string) => {
+-    const m = new RegExp(`(?:^|\\s)(-?)${side}-([0-9.]+)(?=\\s|$)`).exec(cls);
+-    return m ? (m[1] ? -1 : 1) * twStep(m[2]) : 0;
++    const m = new RegExp(`(?:^|\\s)(-?)${side}-(?:\\[([0-9.]+)px\\]|([0-9.]+))(?=\\s|$)`).exec(cls);
++    return m ? (m[1] ? -1 : 1) * (m[2] !== undefined ? Number(m[2]) : twStep(m[3])) : 0;
+   };
+   const BOX = twStep("8"); // the ✕'s 48px box (h-8 w-8)
+   // ConfirmModal: the medallion is 36px, 2px down; the ✕ is CloseX (48px), in the header row after the text.
+   const medallionTop = twStep("0.5"), medallionCentre = medallionTop + 36 / 2;
++  // ⭐ Round 5 (R5-A, F20) moved this section's target: ONE convention for every ✕ of a panel, a sheet or a dialog — the
++  // capitals of its title's first line (R4-E's guest sheet, this file's own bet confirm below). ConfirmModal's title is
++  // under its eyebrow: the eyebrow's 14px line, `mt-0.5`, then an 18px title in a 1.25 line. The medallion's centre was
++  // R4-I's place for it (E22), level with neither text line.
++  const titleCaps = 14 + twStep("0.5") + soraCapCentreEm(1.25) * 18;
++  // Round 5 (R5-A, F20 follow-up) also moved how it is withdrawn: `withheld={loading}` keeps its box (CloseX, modal.tsx)
++  // where `{!loading && …}` took it out of the row — so the title cannot re-wrap while a request runs.
+   const confirmX = (src: string) => {
+     const c = confirmOf(src);
+-    const cls = /\{!loading && <CloseX onClick=\{onClose\} label=\{t\.common\.close\} className="([^"]+)" \/>\}/.exec(c)?.[1];
++    const cls = /<CloseX withheld=\{loading\} onClick=\{onClose\} label=\{t\.common\.close\} className="([^"]+)" \/>/.exec(c)?.[1];
+     const wired = /showClose=\{false\}/.test(c) && /className="mt-0\.5 shrink-0 inline-flex h-\[36px\] w-\[36px\]/.test(c)
+       && /function CloseX\([\s\S]*?className=\{`\$\{className\} inline-flex h-8 w-8 items-center justify-center rounded-md/.test(src);
+     if (!cls || !wired) return null;
+@@ -390,8 +398,8 @@ section("4 · every confirm's ✕ on its header's centre, and the header no tall
+     return { centre: top + BOX / 2, occupies: BOX + top + bottom, insetPhone: twStep("5") + margin(cls, "mr"), insetLg: twStep("6") - (lgRight ? twStep(lgRight[1]) : 0) };
+   };
+   const cx = confirmX(MOD);
+-  ok(`4.1 · ConfirmModal: the ✕ centres ${cx?.centre}px down the header row — the medallion's centre (${medallionCentre}px) — at every padding`,
+-    !!cx && Math.abs(cx.centre - medallionCentre) < 0.01, JSON.stringify(cx));
++  ok(`4.1 · ConfirmModal: the ✕ centres ${cx?.centre}px down the header row — on the title's capitals (${titleCaps.toFixed(2)}px), at every padding`,
++    !!cx && Math.abs(cx.centre - titleCaps) < 0.5, JSON.stringify(cx));
+   ok(`4.1′ · …and takes ${cx?.occupies}px of the row, no more than the medallion's ${medallionTop + 36}: the row is as tall as it was, with or without the ✕ (it is withdrawn while a request is in flight)`,
+     !!cx && cx.occupies <= medallionTop + 36);
+   ok(`4.1″ · it stands ${cx?.insetPhone}px / ${cx?.insetLg}px inside the panel's right edge (phone / from 1024) — where Modal pins every other dialog's (right-3, 16px)`,
+@@ -400,25 +408,32 @@ section("4 · every confirm's ✕ on its header's centre, and the header no tall
+   const old = { phone: twStep("5") + medallionCentre - (twStep("3") + BOX / 2), lg: twStep("6") + medallionCentre - (twStep("3") + BOX / 2) };
+   ok(`4.1‴ CONTROL · Modal's pinned ✕ stood ${old.phone}px above the header on a phone (measured on 002: ✕ y270–279, medallion y261–296) and ${old.lg}px from 1024`,
+     old.phone === 4 && old.lg === 12);
+-  const noRise = confirmX(MOD.replace('className="-mt-1 -mb-1.5 -mr-1.5 lg:-mr-3 shrink-0"', 'className="-mb-1.5 -mr-1.5 lg:-mr-3 shrink-0"'));
+-  const grows = confirmX(MOD.replace('className="-mt-1 -mb-1.5 -mr-1.5 lg:-mr-3 shrink-0"', 'className="-mt-1 -mr-1.5 lg:-mr-3 shrink-0"'));
+-  ok(`4.1⁗ PLANT · the ✕ without its 4px rise (centre ${noRise?.centre} against ${medallionCentre}) and without its bottom give-back (${grows?.occupies}px of the row) are each reported`,
+-    !!noRise && Math.abs(noRise.centre - medallionCentre) >= 0.01 && !!grows && grows.occupies > medallionTop + 36);
++  const LIVE_X = 'className="mt-[2.8px] -mb-[12.8px] -mr-1.5 lg:-mr-3 shrink-0"';
++  const onMedallion = confirmX(MOD.replace(LIVE_X, 'className="-mt-1 -mb-1.5 -mr-1.5 lg:-mr-3 shrink-0"'));
++  const grows = confirmX(MOD.replace(LIVE_X, 'className="mt-[2.8px] -mr-1.5 lg:-mr-3 shrink-0"'));
++  ok(`4.1⁗ PLANT · the ✕ back on the medallion's centre (${onMedallion?.centre}px, ${(titleCaps - (onMedallion?.centre ?? 0)).toFixed(1)}px above the capitals — round 4's place) and without its bottom give-back (${grows?.occupies}px of the row) are each reported`,
++    !!onMedallion && Math.abs(onMedallion.centre - medallionCentre) < 0.01 && Math.abs(onMedallion.centre - titleCaps) >= 0.5
++      && !!grows && grows.occupies > medallionTop + 36);
+ 
+   // BetConfirmModal: its own ✕, in the row beside the eyebrow (14px line) and the title (Sora 15px, leading-snug 1.375).
+   const BCM = read("src/components/markets/bet-confirm-modal.tsx");
+   const capCentre = 14 + twStep("1") + soraCapCentreEm(1.375) * 15;
++  // Round 5 (R5-A, F20 follow-up): the ✕ is no longer drawn by hand — it is the one ✕, `CloseX` (the same 48px box,
++  // modal.tsx), named "Funga" and closing through the guarded close — so its classes are read from that call.
+   const betX = (src: string) => {
+-    const cls = /aria-label=\{t\.common\.cancel\}\s*className="([^"]*?)\s*inline-flex h-8 w-8 items-center justify-center rounded-md text-text-subtle/.exec(src)?.[1];
++    const cls = /<CloseX withheld=\{pending\} onClick=\{\(\) => \{ if \(!pending\) onCancel\(\); \}\} label=\{t\.common\.close\} className="([^"]*)" \/>/.exec(src)?.[1];
+     return cls === undefined ? null : { centre: margin(cls, "mt") + BOX / 2, occupies: BOX + margin(cls, "mt") + margin(cls, "mb") };
+   };
+   const bx = betX(BCM);
+   ok(`4.2 · the bet confirm's ✕ centres ${bx?.centre}px down, on the title's capitals (${capCentre.toFixed(2)}px: Sora caps centre ${soraCapCentreEm(1.375).toFixed(4)}em in a 1.375 line), and still takes ${bx?.occupies}px of the row`,
+     !!bx && Math.abs(bx.centre - capCentre) < 0.5 && bx.occupies === BOX, JSON.stringify(bx));
+-  const betOld = betX(BCM.replace('className="mt-1 -mb-1 shrink-0 inline-flex', 'className="shrink-0 inline-flex'));
++  // Round 5 (R5-A, F20) moved these plants' anchor: the ✕ also steps out to 16px inside the panel's edge (`-mr-1.5
++  // lg:-mr-3`, as ConfirmModal's) — the vertical classes they plant on are unchanged.
++  const BET_X = 'className="mt-1 -mb-1 -mr-1.5 lg:-mr-3 shrink-0"';
++  const betOld = betX(BCM.replace(BET_X, 'className="-mr-1.5 lg:-mr-3 shrink-0"'));
+   ok(`4.2′ CONTROL/PLANT · without the 4px it centres ${betOld?.centre}px, ${(capCentre - (betOld?.centre ?? 0)).toFixed(2)}px above the capitals (068: ✕ ink y64–73, the title's first line y66–78)`,
+     !!betOld && Math.abs(betOld.centre - capCentre - -3.94) < 0.05);
+-  const betGrows = betX(BCM.replace('className="mt-1 -mb-1 shrink-0 inline-flex', 'className="mt-1 shrink-0 inline-flex'));
++  const betGrows = betX(BCM.replace(BET_X, 'className="mt-1 -mr-1.5 lg:-mr-3 shrink-0"'));
+   ok(`4.2″ PLANT · the 4px not given back (${betGrows?.occupies}px: a one-line title's row 4px taller) is reported`, !!betGrows && betGrows.occupies !== BOX);
+ }
+ 
+diff --git a/scripts/visual-pass-r4j.test.mts b/scripts/visual-pass-r4j.test.mts
+index 6434766b9..842414aa6 100644
+--- a/scripts/visual-pass-r4j.test.mts
++++ b/scripts/visual-pass-r4j.test.mts
+@@ -291,7 +291,9 @@ section("3 · E38 · the journey's loading ghosts (tiles 277 280 290 293 296: on
+   ok("3.7′ PLANT · a second copy of the h1 left in the hero is reported", !introOk(intro, `${hero}\nfunction Ask({ t }: { t: Dict }) { return null; }`));
+   // ⛔ The ghost is drawn by the ROOT loading file: whatever client module it reaches joins every page's first load.
+   const importsOf = (s: string) => [...s.matchAll(/^import [^;]*? from "([^"]+)";/gm)].map((m) => m[1]);
+-  const ALLOWED = ["@/components/ui/glyphs", "@/components/brand", "@/lib/utils", "@/lib/support-config", "@/lib/rail-list", "@/lib/i18n-dict", "@/lib/side-label"];
++  // Round 5 (R5-A, F18) added keep-words: the trust row keeps the Board's name whole (`keepRegulator`). It is a module with
++  // no directive that imports only React's types, so it puts no client code into the root's first load.
++  const ALLOWED = ["@/components/ui/glyphs", "@/components/brand", "@/lib/utils", "@/lib/support-config", "@/lib/rail-list", "@/lib/i18n-dict", "@/lib/side-label", "@/components/ui/keep-words"];
+   const lean = (s: string) => importsOf(s).every((m) => ALLOWED.includes(m)) && !hasDirective(s, "use client");
+   ok("3.8 · hero-intro.tsx imports only what the three parts draw with (no market card, filter pill or tipping bar into the root's first load)", lean(intro), JSON.stringify(importsOf(intro)));
+   ok("3.8′ PLANT · the market card imported there is reported", !lean(`import { MarketCard } from "@/components/markets/market-card";\n${intro}`));
+diff --git a/src/app/admin/objections/objection-decision.tsx b/src/app/admin/objections/objection-decision.tsx
+index 566c58e11..6ae48a216 100644
+--- a/src/app/admin/objections/objection-decision.tsx
++++ b/src/app/admin/objections/objection-decision.tsx
+@@ -138,6 +138,8 @@ export function ObjectionDecision({ objectionId, canReverse, canDecide = true }:
+         closeOnScrim={false}
+         labelledBy="objection-decision-title"
+         maxWidth={460}
++        /* The ✕ is withheld while the decision is in flight (round 5, F20 — the one rule, `CloseX` in modal.tsx). */
++        showClose={!pending}
+       >
+         {copy && (
+           <div ref={dialogRef} className="space-y-4">
+diff --git a/src/app/admin/payments/stuck-payout-controls.tsx b/src/app/admin/payments/stuck-payout-controls.tsx
+index a3d52aaa5..d00dd2c7d 100644
+--- a/src/app/admin/payments/stuck-payout-controls.tsx
++++ b/src/app/admin/payments/stuck-payout-controls.tsx
+@@ -81,7 +81,8 @@ export function StuckPayoutControls({ txnId, amountLabel }: { txnId: string; amo
+         Return to player
+       </Button>
+ 
+-      <Modal open={open} onClose={close} ariaLabel="Return a frozen payout to the player" maxWidth={520}>
++      {/* The ✕ is withheld while the return is in flight (round 5, F20 — the one rule, `CloseX` in modal.tsx). */}
++      <Modal open={open} onClose={close} ariaLabel="Return a frozen payout to the player" maxWidth={520} showClose={!pending}>
+         <div className="p-5 space-y-4">
+           <div>
+             <p className="font-display text-[17px] font-bold text-text">Return this payout to the player?</p>
+diff --git a/src/app/admin/settlement/hold-button.tsx b/src/app/admin/settlement/hold-button.tsx
+index 1dd4ed8d3..c285310f0 100644
+--- a/src/app/admin/settlement/hold-button.tsx
++++ b/src/app/admin/settlement/hold-button.tsx
+@@ -97,6 +97,8 @@ export function HoldButton({
+         closeOnScrim={false}
+         labelledBy="hold-title"
+         maxWidth={480}
++        /* The ✕ is withheld while the hold is in flight (round 5, F20 — the one rule, `CloseX` in modal.tsx). */
++        showClose={!pending}
+       >
+         <div className="space-y-4">
+           {/* ⚠️ `text-body-lg`, NOT the `text-[16px]` its neighbour `settle-button.tsx:78`
+diff --git a/src/app/admin/settlement/settle-button.tsx b/src/app/admin/settlement/settle-button.tsx
+index e20d26a2e..ce8747000 100644
+--- a/src/app/admin/settlement/settle-button.tsx
++++ b/src/app/admin/settlement/settle-button.tsx
+@@ -73,6 +73,8 @@ export function SettleButton({
+         closeOnScrim={false}
+         labelledBy="settle-title"
+         maxWidth={440}
++        /* The ✕ is withheld while the settlement is in flight (round 5, F20 — the one rule, `CloseX` in modal.tsx). */
++        showClose={!pending}
+       >
+         <div className="space-y-4">
+           <h2 id="settle-title" className="font-display text-[16px] font-semibold text-text">
+diff --git a/src/app/admin/updown/proposals/proposal-actions.tsx b/src/app/admin/updown/proposals/proposal-actions.tsx
+index 143e9f41b..d115d4b0b 100644
+--- a/src/app/admin/updown/proposals/proposal-actions.tsx
++++ b/src/app/admin/updown/proposals/proposal-actions.tsx
+@@ -423,6 +423,8 @@ export function ReviewActions({
+         labelledBy={`review-title-${id}`}
+         maxWidth={620}
+         closeOnScrim={!pending}
++        /* The ✕ is withheld while a save or an approval is in flight (round 5, F20 — the one rule, `CloseX` in modal.tsx). */
++        showClose={!pending}
+       >
+         <div className="space-y-3">
+           <h2 id={`review-title-${id}`} className="font-display text-[16px] font-semibold text-text">
+@@ -531,6 +533,8 @@ export function ReviewActions({
+         labelledBy={`reject-title-${id}`}
+         maxWidth={460}
+         closeOnScrim={!pending}
++        /* The ✕ is withheld while the rejection is in flight (round 5, F20 — the one rule, `CloseX` in modal.tsx). */
++        showClose={!pending}
+       >
+         <div ref={rejectRef} className="space-y-3">
+           <h2 id={`reject-title-${id}`} className="font-display text-[16px] font-semibold text-text">
+@@ -621,6 +625,10 @@ export function ArmAction({
+         open={open}
+         onClose={() => setOpen(false)}
+         onConfirm={arm}
++        /* The chain is armed with this dialog open, so it wears the request (round 5, F20 — the one rule, `CloseX` in
++           modal.tsx): the ✕ withheld, Cancel and Arm disabled, the scrim and Esc refused — where the ✕ and Cancel closed it
++           mid-request and Arm could fire twice. */
++        loading={pending}
+         title={`Start ${assetKey} ${durationMinutes}m?`}
+         tone="claret"
+         tier="hard"
+@@ -695,6 +703,8 @@ export function DeleteProposalAction({ id }: { id: string }) {
+         open={open}
+         onClose={() => setOpen(false)}
+         onConfirm={del}
++        /* Deleted with this dialog open, so it wears the request (round 5, F20 — the one rule, `CloseX` in modal.tsx). */
++        loading={pending}
+         title="Delete this proposal?"
+         tone="claret"
+         confirmLabel="Delete"
+diff --git a/src/app/admin/updown/updown-controls.tsx b/src/app/admin/updown/updown-controls.tsx
+index 0fd98d8ab..aeab7d3f1 100644
+--- a/src/app/admin/updown/updown-controls.tsx
++++ b/src/app/admin/updown/updown-controls.tsx
+@@ -1214,6 +1214,9 @@ export function ReadingMethodForm({
+         open={confirmOpen}
+         onClose={() => setConfirmOpen(false)}
+         onConfirm={save}
++        /* Saved with this dialog open, so it wears the request (round 5, F20 — the one rule, `CloseX` in modal.tsx): the ✕
++           withheld, both buttons disabled, the scrim and Esc refused — where the ✕ and Cancel closed it mid-request. */
++        loading={pending}
+         title="Switch to simulated prices?"
+         tone="claret"
+         tier="hard"
+diff --git a/src/app/globals.css b/src/app/globals.css
+index 4a390f22d..90db9ee1b 100644
+--- a/src/app/globals.css
++++ b/src/app/globals.css
+@@ -2209,6 +2209,15 @@ html.kp-reduce-motion .ticker-pause,
+ /* The wrapper carries the echo line under the box, so the cap must sit on the
+    wrapper too or the hint stretches the full container width. */
+ .search-box-wrap { max-width: var(--w-field); }
++/* ⭐ /markets' SEARCH STANDS 34px OVER ITS PILLS, AS EVERY BAR'S DOES (round 5 of the visual pass, 2026-10-09, R5-A — the
++   check on tile 193; R4-C's band rule, `QUERY_SEARCH_BAND_CLASS` in query-bar.tsx). /markets has no rung between its
++   search and its bar, so the box's echo row (8 + 17 = 25px) is the whole gap, plus the bar's own top: row 1's 10px from
++   640 (35px) and the compact phone bar's 6px below it (31px — tile 193: the box y268–313, the Wazi pill from y345). The
++   wrapper gives 1px back from 640, and lends 3px in the compact phone bar (the rule inside its block, further down) —
++   outside the sticky bar, so the pinned chrome is no taller — and both read 34. The Comfortable phone bar keeps the
++   desktop rows, so it takes the desktop's −1. The loading ghost's search wears the class too, so the ghost lands as the
++   page does. */
++.kp-markets-search { margin-bottom: -1px; }
+ 
+ /* Admin AI-polls: briefly ring a poll row that was just generated/regenerated
+    so the operator's eye lands on it after the list refreshes + scrolls. */
+@@ -4287,8 +4296,9 @@ html[data-sheet-open] .route-enter { animation: none; }
+    ⭐ THREE BLOCKS, ONE DOM, PLACED BY GRID AREAS (WP2). Below 1024 they stack in source order —
+    intro (what 50pick is) → card (a live market) → act (what to do, and why to trust it) — so the
+    featured market sits right after the lede on a phone, inside the first screen (V15). From 1024
+-   the intro and the act share the left column and the card takes the right one, vertically centred
+-   against the pair, which is the delivery's desktop composition. No `order`, no second copy.
++   the intro and the act share the left column and the card takes the right one, its top on the
++   claim's capitals (round 5, F2 — it was centred against the pair; the 1024 block below says why).
++   No `order`, no second copy.
+    ⚠️ THE PHONE RUNG IS SET HERE, NOT IN A MEDIA QUERY — the 768 block overrides both values. U6
+    stepped it 48/32 → 32/24 (measured −64px at 360); hero v3 (2026-09-27, spec §5) takes the top to
+    20 and the gap to 20, keeping 32 at the foot: the trust rows now sit above the card, and the
+@@ -4317,18 +4327,31 @@ html[data-sheet-open] .route-enter { animation: none; }
+   .kp-hero__intro { gap: var(--sp-4); }
+   .kp-hero__lockup { gap: var(--sp-3); }
+ }
++/* ⭐ THE CARD STANDS ON THE CLAIM'S CAPITALS, NOT ON THE MIDDLE OF THE COLUMN (round 5 of the visual pass, 2026-10-09,
++   F2 — tiles 018–112 and 002–012). It was centred against the intro and the act together, so its top fell wherever that
++   column's height put it: from 2px over the claim's capitals (en 1150, a player) and 4–9px under them on a short column
++   (en 1280: card y197, capitals y193) to 66px under them on a tall one (sw held 1280: y259) — a near-miss with the
++   claim where it was close, and a card floating mid-column where it was not. ⭐ It now hangs from the grid's top line,
++   and so does the left column: the
++   intro's row is its own height and the act's row takes the rest (`auto 1fr`), so a card taller than the left column
++   grows the act's row, never the intro's, and the claim always starts on the grid's top line. The card is lowered from
++   that line to the claim's capitals: the claim is 13px JetBrains Mono at line-height 1.35, whose capitals start
++   (1.35 − 1.32)/2 + 1.02 − 0.73 = 0.305em = 3.97px under the line's top — hinted on Windows they start on that line's
++   4th pixel row (y193 under a line at y190 on every journey tile, y124 under y121 on the classic ones), so the card's
++   1px edge takes that row: 3px. Chinese has no capitals; its ideographs (the system CJK face on the same baseline)
++   start a row higher on every zh tile (y192 / y123), so there the card takes 2px. The same rule at every desktop width
++   and in both shells — the hero is a shared body. Below 1024 nothing changes: the blocks stack. */
+ @media (min-width: 1024px) {
+   .kp-hero__inner {
+     grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
++    grid-template-rows: auto 1fr;
+     grid-template-areas: "intro card" "act card";
+     column-gap: var(--sp-12);
+     row-gap: var(--sp-8);
+-    align-items: center;
++    align-items: start;
+   }
+-  /* The left pair sits as one block beside the card: the intro rests on the row line, the act
+-     hangs from it, so the two read as a column rather than as two cells centred apart. */
+-  .kp-hero__intro { align-self: end; }
+-  .kp-hero__act { align-self: start; }
++  .kp-hero__card { margin-top: 3px; }
++  :lang(zh) .kp-hero__card { margin-top: 2px; }
+ }
+ /* An empty book renders no featured market: the pitch and the act take the whole width, with no blank
+    right column and no doubled gap where the card would have been. */
+@@ -4415,6 +4438,25 @@ html[data-sheet-open] .route-enter { animation: none; }
+ /* A wallet's name is one name: "Airtel Money" and "Mixx by Yas" broke across lines at 320–1024 in all three languages
+    (WP12's tiles, 2026-10-08). The joiners between the names still let the list wrap. */
+ .kp-hero__rail { color: var(--text); font-weight: 500; white-space: nowrap; }
++/* ⭐ THE GAMING BOARD'S NAME IS ONE NAME WHEREVER ITS LINE CAN HOLD IT (round 5 of the visual pass, 2026-10-09, F18 —
++   tile 307; `keepRegulator`, keep-words.tsx). The journey footer at en 1024 tore it ("Licensed by the Gaming" / "Board of
++   Tanzania.") and the hero's trust row at sw 360–390 ("Leseni ya Bodi ya Michezo" / "ya Kubahatisha Tanzania."). The name
++   is `nowrap` only where the line is at least as wide as the name, so it can never overflow: each line's box is a size
++   container and the condition is the name's own width in Inter 13px (`text-body-sm` and the trust row's
++   `--type-small`), from the font — en "Gaming Board of Tanzania." 164.7px, sw "Bodi ya Michezo ya Kubahatisha Tanzania."
++   259.3px, zh 坦桑尼亚博彩委员会 117px — plus 3px. A narrower line wraps the sentence as before (the footer's 160px column
++   at 768 holds no English name; from 768 to 1199 no footer column holds the Swahili one). The journey's footer sentence is
++   `.kp-gbt`; the hero's trust row is `.kp-gbt-row`, the ROW being the container because the loading ghost draws the
++   words' own span `fit-content`, which size containment would empty — so its widths add the row's 28px roundel and
++   12px gap. The classic footer is frozen chrome and wears neither. */
++.kp-gbt { container: kp-gbt / inline-size; }
++@container kp-gbt (min-width: 168px) { .kp-gbt-name:lang(en) { white-space: nowrap; } }
++@container kp-gbt (min-width: 263px) { .kp-gbt-name:lang(sw) { white-space: nowrap; } }
++@container kp-gbt (min-width: 120px) { .kp-gbt-name:lang(zh) { white-space: nowrap; } }
++.kp-hero__trust > li.kp-gbt-row { container: kp-gbt-row / inline-size; }
++@container kp-gbt-row (min-width: 208px) { .kp-gbt-name:lang(en) { white-space: nowrap; } }
++@container kp-gbt-row (min-width: 303px) { .kp-gbt-name:lang(sw) { white-space: nowrap; } }
++@container kp-gbt-row (min-width: 160px) { .kp-gbt-name:lang(zh) { white-space: nowrap; } }
+ /* ⛔ `.kp-hero__tel` (the helpline link in row 1) was DELETED 2026-10-06 with the helpline itself —
+    the owner's ruling took it off every player surface (docs/COMPLIANCE-DECISIONS.md). */
+ 
+@@ -5053,6 +5095,25 @@ html[data-sheet-open] .route-enter { animation: none; }
+ .mcardp-pct .u { font-size: 13px; color: var(--text-subtle); margin-left: 1px; }
+ /* §T3 0.14em, was 0.12 — tracking in the shared eyebrow rule beside `.amount`. */
+ .mcardp-pctcap { font-family: var(--font-mono); font-size: 9.5px; font-weight: 600; text-transform: uppercase; color: var(--yes-400); }
++/* ⭐ A RIGHT-ALIGNED TRACKED LABEL ENDS WHERE ITS NEIGHBOURS END (round 5 of the visual pass, 2026-10-09, F19 — tile 327;
++   R3-C's rule for the admin tables' right-aligned heads, `.admin-tbl thead th.text-right::after`, carried to every label
++   of the kind). The price caption is tracked 0.14em and right-aligned over its figure, and a browser adds the tracking
++   after the LAST letter too: "NDIO" ended at x355 while "67%", the time left, the bar and HAPANA's edge end at x357–358
++   — the trailing 1.33px (0.14 × 9.5px) and the O's own 0.84px side bearing (88/1000 of its cell). An empty inline-block
++   after the label takes the tracking back, so its last letter's advance meets the edge the figure's meets; what remains
++   (under 1px) is that letter's side bearing in its monospace cell, as R3-C left it. The same for each label of this kind:
++   the one-sided label on the card's right-aligned move line (centred or left-aligned everywhere else, where it keeps its
++   tracking), the bar's right-hand side label (tracked 0.05em) and, through `kp-track-end` on the label's own text, the
++   /results spotlight's flag (0.16em) and Up & Down's live note (0.10em). Left-aligned and centred labels are untouched.
++   ⚠️ The pseudo-element must sit inside the text's own box: on an inline-flex label it would be a flex item of its own,
++   and the label's `gap` would open in front of it — hence the text span on those two. */
++.mcardp-pctcap::after,
++.mcardp-moveline .mcardp-oneside::after,
++.tipbar-labels .tb-no::after,
++.kp-track-end::after { content: ""; display: inline-block; margin-inline-end: calc(-1 * var(--track-end, 0.14em)); }
++.tipbar-labels .tb-no { --track-end: 0.05em; }
++.kp-track-end--16 { --track-end: 0.16em; }
++.kp-track-end--10 { --track-end: 0.10em; }
+ .mcardp-spark { line-height: 0; margin-top: 2px; }
+ .mcardp-traders { display:flex; align-items:center; gap:7px; }
+ .av-stack { display:flex; }
+@@ -6985,6 +7046,17 @@ html[lang="zh"] .kp-udrule { word-break: keep-all; }
+    by 0.5 while the title's baseline snapped up by 0.3. Centring the 0.6em point instead makes the margin −4px — the
+    sheet's height whole again (147, two lines 172) — so phone and desktop both land within ±0.5px (predicted +0.3). */
+ .kp-jsheet__title { margin: calc(var(--sp-10) - var(--sp-8) - var(--type-h3) * 0.6) 0 0; padding-right: var(--sp-12); font-family: var(--font-display); font-weight: 700; font-size: var(--type-h3); line-height: 1.25; color: var(--text); text-wrap: balance; }
++/* ⭐ EVERY DIALOG'S TITLE STANDS ON ITS CORNER ✕ THE SAME WAY (round 5 of the visual pass, 2026-10-09, F20 — the one
++   convention, `CloseX` in modal.tsx). The guest sheet's rule above, for every other Modal whose title sits beside the
++   corner ✕: Modal pins the ✕'s 48px box 16px under the panel's padding edge (`right-3 top-3`), so it centres 40px down;
++   the panel's content starts at its padding (`p-5 lg:p-6`: 24px, 32px from 1024); a Sora title in a 1.25 line centres
++   its capitals 0.6em down its first line — so the title's top margin is 40 − 24 − 0.6em (40 − 32 − 0.6em from 1024), in
++   the title's own size, and its first line's capitals stand on the ✕ at both paddings. Before (from the CSS): the
++   how-it-works title's capitals 33.4px down (✕ 6.6px under them on a phone), the share dialog's 34.15 (5.85), the
++   objection dialog's 35.6 (4.4; and 3.6px above them from 1024). The right padding keeps a title clear of the ✕, as the
++   guest sheet's does. */
++.kp-modal-title { margin-top: calc(var(--sp-10) - var(--sp-6) - 0.6em); padding-right: var(--sp-12); line-height: 1.25; }
++@media (min-width: 1024px) { .kp-modal-title { margin-top: calc(var(--sp-10) - var(--sp-8) - 0.6em); } }
+ /* ⭐ TIKETI ZANGU'S CARDS SHARE THEIR ROWS, NOT ONLY THEIR HEIGHT (2026-10-09, the visual pass's round 3, tile 168 at
+    1280). A pair already shares a height (the grid's stretch, `tickets-view.tsx`), but each card laid its own rows out,
+    so a two-line question beside a one-line one put DAU at y714 in the first card and y694 in its neighbour, and left
+@@ -7594,6 +7666,8 @@ html[lang="zh"] .kp-udrule { word-break: keep-all; }
+     }
+   }
+   html:not([data-density="comfortable"]) .kp-discovery-bar:has(> [data-bar-row]) > [data-bar-row] { display: contents; }
++  /* /markets' search over this compact bar: see `.kp-markets-search`, beside `.search-box-wrap`. */
++  html:not([data-density="comfortable"]) .kp-markets-search { margin-bottom: 3px; }
+   html:not([data-density="comfortable"]) .kp-discovery-bar:has(> [data-bar-row]) [data-strip-autoscroll] { grid-area: 1 / 1 / 2 / 2; }
+   html:not([data-density="comfortable"]) .kp-discovery-bar:has(> [data-bar-row]) [data-bar-cell="sort"] { grid-area: 1 / 2 / 2 / 3; }
+   html:not([data-density="comfortable"]) .kp-discovery-bar:has(> [data-bar-row]) .kp-fsheet { grid-area: 1 / 3 / 2 / 4; }
+diff --git a/src/app/leaderboard/page.tsx b/src/app/leaderboard/page.tsx
+index 321a66f65..920550514 100644
+--- a/src/app/leaderboard/page.tsx
++++ b/src/app/leaderboard/page.tsx
+@@ -7,7 +7,7 @@
+  * sample data is generated for the empty demo store in non-production only.
+  */
+ import { ROOT_OPEN_GRAPH } from "../layout";
+-import { cn, fill } from "@/lib/utils";
++import { cn, fill, formatNumber } from "@/lib/utils";
+ import { db } from "@/lib/server/store";
+ import Link from "next/link";
+ import { I } from "@/components/ui/glyphs";
+@@ -621,8 +621,10 @@ function Podium({ top, t }: { top: Row[]; t: Dict }) {
+                 {r.roi >= 0 ? "+" : ""}{r.roi.toFixed(1)}%
+               </span>
+               {r.streak > 0 && <span className="mt-1"><HotChip streak={r.streak} t={t} /></span>}
++              {/* Round 5 (F12): a count's word is the dictionary's sentence word (`results.resolved`, "5 imetatuliwa" — the
++                  /results tally's), never a column label lower-cased in code; the count grouped by `formatNumber`. */}
+               <span className="mt-1 font-mono text-[10px] text-text-subtle">
+-                {r.resolved} {t.leaderboard.tableResolved.toLowerCase()}
++                {formatNumber(r.resolved)} {t.results.resolved}
+               </span>
+             </div>
+           );
+diff --git a/src/app/legal/_components.tsx b/src/app/legal/_components.tsx
+index d0255bb27..440fd7b76 100644
+--- a/src/app/legal/_components.tsx
++++ b/src/app/legal/_components.tsx
+@@ -11,9 +11,32 @@ import { I } from "@/components/ui/glyphs";
+ import { GiltCorner } from "@/components/brand";
+ import { PageHeader } from "@/components/ui/page-header";
+ import { DotSeq } from "@/components/ui/dot-seq";
+-import { keepYears } from "@/components/ui/keep-words";
++import { keepLastWords, keepYears } from "@/components/ui/keep-words";
+ import { type Locale } from "@/lib/i18n-server";
+ 
++/**
++ * ⭐ A LEGAL TITLE NEVER LEAVES ITS LAST WORD ALONE BEHIND A CONNECTIVE (round 5 of the visual pass, 2026-10-09, F16 —
++ * tile 210). `PageHeader` balances its h1 "so a wrapping title never leaves one word … alone on its last line" — and for a
++ * title of three words balancing cannot keep that promise: "Kanuni za Michezo" is 256.7px against the 254px the legal
++ * header leaves its title at 390 (the 40px sigil and its 14px gap beside it), so it wraps, and the evener of its two
++ * breaks is "Kanuni za / Michezo" (133 / 118px) — the connective ending line 1 and its noun alone on line 2. Where the
++ * second-to-last word is a connective — sw ya · za · wa · la · cha · vya · kwa · na, en of · and · & — the connective and
++ * the last word break together (`keepLastWords`), which is how "Masharti / ya Huduma" already wraps: "Kanuni / za Michezo"
++ * at 320–390 sw, "Terms / of Service" at 320–360 en, "Sera / ya Faragha" at 320 sw. Every other title, every other width
++ * and Chinese are unchanged — names stay whole ("Up & Down", "Mchezo Salama"), as the plain balanced wrap keeps them.
++ * ⚠️ The pair cannot break, so it is bound only while it is short: at most 10 characters, and every current pair is
++ * measured under the narrowest title line there is (184px at 320 — "ya Huduma" is the widest, 155.6px in Sora 700 at
++ * 28px); `test:visual-pass-r5a` §3 holds both. "ya NDIO/HAPANA" (251.6px) is 14 characters and is left to wrap.
++ */
++const CONNECTIVE = /^(?:ya|za|wa|la|cha|vya|kwa|na|of|and|&)$/i;
++const KEEP_PAIR_MAX = 10;
++export function legalTitle(title: string): ReactNode {
++  const words = title.split(" ");
++  if (words.length < 3 || !CONNECTIVE.test(words[words.length - 2])) return title;
++  if (words.slice(-2).join(" ").length > KEEP_PAIR_MAX) return title;
++  return keepLastWords(title);
++}
++
+ /**
+  * WHICH LANGUAGE IS THE LEGALLY BINDING ONE — stated once, for every legal document.
+  *
+@@ -84,7 +107,7 @@ export function LegalHeader({
+             `PageHeader` has no slot for it, and adding one for a single caller would widen a
+             31-site primitive to fit its 32nd. The `space-y-1` still spaces it, unchanged. */}
+         <div className="min-w-0 space-y-1">
+-          <PageHeader eyebrow={eyebrow} title={title} subtitle={subtitle} />
++          <PageHeader eyebrow={eyebrow} title={legalTitle(title)} subtitle={subtitle} />
+           {meta && (
+             // 2026-09-13: balanced so the zh line does not strand "布。" on its own row.
+             // 2026-09-27: 13px, not 11px. The version line is a sentence a reader reads, so it sits on the reading floor (§T4).
+diff --git a/src/app/live/loading.tsx b/src/app/live/loading.tsx
+index 4f6a6de3c..cba9be5ed 100644
+--- a/src/app/live/loading.tsx
++++ b/src/app/live/loading.tsx
+@@ -50,7 +50,8 @@ export default async function LiveLoading() {
+             <div className="flex items-center justify-between gap-3">
+               <div className="flex items-center gap-2">
+                 <span className="kp-shimmer-track block h-[18px] w-[18px] rounded-full bg-bg-overlay" />
+-                <p className="font-mono text-label uppercase eyebrow font-bold text-text">{t.home.liveSection}</p>
++                {/* The page's own eyebrow word since round 5 (`common.live`, F17), so the ghost's row is the page's. */}
++                <p className="font-mono text-label uppercase eyebrow font-bold text-text">{t.common.live}</p>
+               </div>
+               <div className="kp-shimmer-track h-[13px] w-[112px] rounded bg-bg-overlay" />
+             </div>
+diff --git a/src/app/live/page.tsx b/src/app/live/page.tsx
+index 5c8f951b9..0ea9a4b41 100644
+--- a/src/app/live/page.tsx
++++ b/src/app/live/page.tsx
+@@ -186,7 +186,9 @@ export default async function LivePage({
+                 <PulseRing size={18} color="var(--aqua-400)">
+                   <span className="block w-2 h-2 rounded-full" style={{ background: "var(--aqua-400)" }} />
+                 </PulseRing>
+-                <p className="font-mono text-label uppercase eyebrow font-bold text-text">{t.home.liveSection}</p>
++                {/* Round 5 (F17, one page, one name): the page's own name — its <title>, its h1, the nav's and the hub's
++                    "Mubashara" (`common.live`) — where this eyebrow said "HAI" (`home.liveSection`) in Swahili. */}
++                <p className="font-mono text-label uppercase eyebrow font-bold text-text">{t.common.live}</p>
+               </div>
+               {/* ⛔ `data-result-count` — §3 rule 5. The promise is published so an instrument can
+                   check it against the delivery; it is the attribute `qa:count-truth` reads. And
+diff --git a/src/app/markets/loading.tsx b/src/app/markets/loading.tsx
+index 418fd873e..c5df2ca78 100644
+--- a/src/app/markets/loading.tsx
++++ b/src/app/markets/loading.tsx
+@@ -64,7 +64,7 @@ export default async function MarketsLoading() {
+           borders sit outside a padding box but inside a border-box height — so a ghost given
+           `h-[var(--h-input)]` with a `border` draws 44 where the field draws 46. Measured on
+           production: `.search-box-wrap` 71px = 46 + 8 (`mt-1.5`) + 17 (the echo row). */}
+-      <div aria-hidden className="search-box-wrap">
++      <div aria-hidden className="search-box-wrap kp-markets-search">
+         {/* ⚠️ TOKEN, not `h-11` — spacing is overridden (tailwind.config.ts:200-215) so `h-11`
+             drew 96px. This ghosts `<Input size="md">`, which reads --h-input (44px); consume the
+             same token so the ghost and the field can never drift apart. */}
+diff --git a/src/app/markets/page.tsx b/src/app/markets/page.tsx
+index 0388a9c08..3adffbd81 100644
+--- a/src/app/markets/page.tsx
++++ b/src/app/markets/page.tsx
+@@ -219,10 +219,12 @@ export default async function MarketsPage({ searchParams }: { searchParams: Prom
+         </p>
+       </div>
+ 
++      {/* `kp-markets-search` (round 5): 34px from the box to the bar's pills at every width, as on every other bar. */}
+       <SearchBox
+         placeholder={t.common.searchMarkets}
+         ariaLabel={t.common.searchMarkets}
+         helpFields={fieldNames(MARKET_SEARCH)}
++        className="kp-markets-search"
+       />
+ 
+       <Suspense fallback={<GridSkeleton />}>
+@@ -347,7 +349,8 @@ async function DiscoveryBoard({ searchParams }: { searchParams: Promise<SP> }) {
+       />
+ 
+       {/* ⭐ `mt-5` (24px; round 4, 2026-10-09, tile 196): with the bar's own 10px the cards stand 34px under its last row,
+-          as its pills stand 35 under the search (the echo row 25 + the bar's 10) — it was `mt-3`, 26. On the phone's
++          as its pills stand 34 under the search (the echo row 25 + the bar's 10, less the 1px `kp-markets-search` gives
++          back since round 5) — it was `mt-3`, 26. On the phone's
+           one-line bar the cards stand 24 under its hairline (16 before). */}
+       <section data-board="grid" className="market-grid mt-5">
+         {paged.map((r) => {
+diff --git a/src/app/profile/page.tsx b/src/app/profile/page.tsx
+index f8664945e..c7402f1b6 100644
+--- a/src/app/profile/page.tsx
++++ b/src/app/profile/page.tsx
+@@ -366,7 +366,9 @@ export default async function ProfilePage() {
+               refuses a restart, so "ID document · selfie · review" offered a journey the server refuses.
+               The red pill above still links to /profile/kyc, which explains the refusal. */}
+           {kycLevel !== "APPROVED" && !(kycLevel === "REJECTED" && isFinalRefusal(kyc?.rejectReason)) && (
+-            <SettingRow icon={I.shieldcheck}   title={t.common.verifyId}             subtitle={t.profile.verifyIdSub}            href="/profile/kyc" />
++            /* Round 5 (F17, one page, one name): the KYC page's own h1 ("Thibitisha kitambulisho / Verify your identity"),
++               as the journey's hub row and menu say since this round — the row said "Thibitisha ID / Verify ID". */
++            <SettingRow icon={I.shieldcheck}   title={t.profile.verifyIdentity}      subtitle={t.profile.verifyIdSub}            href="/profile/kyc" />
+           )}
+           <SettingRow icon={I.fileSignature}   title={t.profile.sourceOfFunds}       subtitle={t.profile.sourceOfFundsSub}                      href="/profile/source-of-funds" />
+           <SettingRow icon={I.device}          title={t.profile.activeSessions}      subtitle={t.profile.activeSessionsSub}        href="/profile/sessions" />
+diff --git a/src/app/results/page.tsx b/src/app/results/page.tsx
+index dba66bb19..526a83151 100644
+--- a/src/app/results/page.tsx
++++ b/src/app/results/page.tsx
+@@ -31,7 +31,7 @@ import {
+ import { parseQuery, matchesQuery, fieldNames, MARKET_SEARCH } from "@/lib/search";
+ import { NotableCarousel } from "./notable-carousel";
+ import { RefreshPoller } from "@/components/ui/refresh-poller";
+-import { formatTzsCompact } from "@/lib/utils";
++import { formatNumber, formatTzsCompact } from "@/lib/utils";
+ import { Ring } from "@/components/charts/ring";
+ import { pickLocalized, marketCategoryLabel } from "@/lib/localized";
+ import { getServerT } from "@/lib/i18n-server";
+@@ -407,8 +407,10 @@ async function ResultsContent({
+               second clause borrowed `common.settled`, the capitalised STATUS LABEL ("Settled", a tab's name), for a
+               sentence's word. The dictionary already has that word in its sentence form, the one the live ticker writes
+               after a figure ("TZS 6K imekamilika …"): `market.tickerSettled` — "settled" / "imekamilika" / "已结算". */}
++          {/* Round 5 (F12): a count before its word is grouped as every count line is (`formatNumber`) — production's
++              archive holds 12,479, which read "12479 imetatuliwa". `data-result-count` stays the bare integer. */}
+           <p data-result-count={totalCount} className="hidden sm:block amount text-micro text-text-subtle whitespace-nowrap">
+-            {totalCount} {t.results.resolved} · {formatTzsCompact(totalVolume)} {t.market.tickerSettled}
++            {formatNumber(totalCount)} {t.results.resolved} · {formatTzsCompact(totalVolume)} {t.market.tickerSettled}
+           </p>
+         </div>
+       </div>
+@@ -432,6 +434,13 @@ async function ResultsContent({
+           10px and the page's 24px between the box and the lens pills — 69px, against 34 under the bar. The band keeps the
+           10px above the box and lets the echo row lie inside the gap below it, so the box sits 34 under the header row,
+           the pills 34 under the box, and the grid 34 under the sort. `QUERY_SEARCH_BAND_CLASS` says how. */}
++      {/* ⛔ THE CONTROLS ARE WITHHELD ON AN EMPTY ARCHIVE, and only then (round 5 of the visual pass, 2026-10-09, R5-A —
++          from R5-F's audit of the filter bars) — §A5: a search box and a bar of pills all reading 0 above "no resolved
++          markets yet" are controls that cannot act, and every other route with a bar already withholds it on an empty
++          book (/positions, /wallet, /updown/history, /proposals, /watchlist, /fairness, /positions/performance). Every
++          other empty state keeps the bar, because there the bar is the way OUT of it: a filter or a search that matched
++          nothing in an archive that holds rows. `archiveRows` is the whole archive, before any filter or search. */}
++      {archiveRows.length > 0 && (
+       <div className={QUERY_SEARCH_BAND_CLASS}>
+         <Suspense>
+           <SearchBox
+@@ -441,6 +450,7 @@ async function ResultsContent({
+           />
+         </Suspense>
+       </div>
++      )}
+ 
+       {/* ⭐ THE BAR REPLACES THE SIDEBAR. `/results` carried its rails as a desktop `aside` of
+           full-width pills at board width, beside `/markets` which uses the bar — a second layout
+@@ -450,7 +460,7 @@ async function ResultsContent({
+           different one. ⚠️ `countClassName` on `FilterPill` existed SOLELY for that sidebar's
+           full-width rows and now has no consumer — left in the primitive deliberately, because
+           removing a prop is a separate decision from removing its only call site. */}
+-      <ResultsBar state={state} counts={counts} resultCount={totalCount} t={t} />
++      {archiveRows.length > 0 && <ResultsBar state={state} counts={counts} resultCount={totalCount} t={t} />}
+ 
+       {/* Grid — ⛔ no `mt-*`, see the header band above (DG-P-04 · §S1). */}
+       <div className="flex flex-col gap-5 lg:flex-row lg:gap-6">
+@@ -611,8 +621,9 @@ function FeaturedResult({ m, t, locale }: { m: Awaited<ReturnType<typeof listMar
+         {isVoid
+           ? <Chip variant="pending" size="sm">{t.common.voided}</Chip>
+           : <Chip variant="resolved" size="sm">{t.market.resolvedOutcome} · {outcomeWord(t, m.resolvedOutcome ?? "VOID", m.productLine)}</Chip>}
++        {/* Round 5 (F19): the flag ends on the card's edge — its trailing 0.16em taken back (`kp-track-end`, globals.css). */}
+         <span className="ml-auto inline-flex items-center gap-1.5 font-mono text-micro uppercase tracking-[0.16em] font-bold text-gold-300">
+-          <I.crown s={13} /> {t.results.notableResult}
++          <I.crown s={13} /> <span className="kp-track-end kp-track-end--16">{t.results.notableResult}</span>
+         </span>
+       </div>
+       <h2 className="mb-4 max-w-[70ch] font-display text-[18px] lg:text-[22px] font-semibold leading-tight text-text group-hover:text-gold-100">
+@@ -632,7 +643,11 @@ function FeaturedResult({ m, t, locale }: { m: Awaited<ReturnType<typeof listMar
+       <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-1 font-mono text-[11px] tabular-nums text-text-muted">
+         {/* The figure's sentence word, not the tab label — the tally's rule above (round 4): "TZS 6K imekamilika". */}
+         <span>{formatTzsCompact(m.yesPool + m.noPool)} {t.market.tickerSettled}</span>
+-        <span className="flex items-center gap-1"><I.users s={11} /> {m.predictorCount} {t.market.predictors}</span>
++        {/* ⭐ …AND THE COUNT'S TOO (round 5, F12, tile 1280): "⚇ 2 Watabiri" put the capitalised COLUMN LABEL
++            (`market.predictors`, the Stat's label on the market page) in the middle of a line, where every card under this
++            one reads "2 watabiri". The count line now says it as the cards and the board's rows do — the sentence word, one
++            for one predictor (`predictorsCount` / `predictorsCountOne`), the count grouped by `formatNumber`. */}
++        <span className="flex items-center gap-1"><I.users s={11} /> {formatNumber(m.predictorCount)} {m.predictorCount === 1 ? t.market.predictorsCountOne : t.market.predictorsCount}</span>
+       </div>
+     </Link>
+   );
+diff --git a/src/app/updown/page.tsx b/src/app/updown/page.tsx
+index c39b6317b..475c87551 100644
+--- a/src/app/updown/page.tsx
++++ b/src/app/updown/page.tsx
+@@ -151,8 +151,9 @@ export default async function UpDownPage({
+             </span>
+           </span>
+         ))}
++        {/* Round 5 (F19): the note ends on the row's edge — its trailing 0.10em taken back (`kp-track-end`, globals.css). */}
+         <span className="ml-auto inline-flex items-center gap-1.5 font-mono text-micro uppercase tracking-[0.10em] text-text-faint">
+-          <span className="live-dot" /> {t.market.udStreaming}
++          <span className="live-dot" /> <span className="kp-track-end kp-track-end--10">{t.market.udStreaming}</span>
+         </span>
+       </div>
+ 
+diff --git a/src/components/charts/terminal-chart.tsx b/src/components/charts/terminal-chart.tsx
+index f30dc2163..fe300c143 100644
+--- a/src/components/charts/terminal-chart.tsx
++++ b/src/components/charts/terminal-chart.tsx
+@@ -51,6 +51,9 @@ export type TerminalRange = "15M" | "30M" | "1H" | "6H" | "12H" | "24H" | "7D";
+ export type TerminalStyle = "line" | "candles";
+ type LinePoint = { t: number; price: number | null };
+ type Candle = { t: number; o: number; h: number; l: number; c: number; n?: number; v?: number | null; forming?: boolean };
++/** How long the pane may say "loading" for one request: the route's vendor read aborts at 8s; 12s leaves its own reads. */
++export const HISTORY_DEADLINE_MS = 12_000;
++
+ type Feed = {
+   series:
+     | { mode: "line"; points: LinePoint[] }
+@@ -137,6 +140,16 @@ export function TerminalChart({
+     const load = async () => {
+       if (document.visibilityState === "hidden") return;
+       const seq = ++seqRef.current;
++      /* ⭐ "LOADING" HAS A DEADLINE (round 5 of the visual pass, 2026-10-09 — tiles 163 164 200, a card that read "Inapakia…"
++         over an empty pane). The request had none, so a window that never came — a stalled connection, a cold route — left
++         the pane saying it was loading for as long as the page stayed open. The route answers within its vendor's 8s
++         abort (`updown-terminal-vendor.ts`) and its own reads; past HISTORY_DEADLINE_MS with no answer the pane says the
++         existing honest sentence instead — `udChartError`, "Chart unavailable — retrying" — and the polling below keeps
++         retrying, so a late or a later answer still draws. A drawn chart is never replaced (F3); a VERIFIED empty
++         answer still says "no reads". */
++      const deadline = setTimeout(() => {
++        if (alive && seq === seqRef.current) setStatus((s) => (s === "loading" ? "error" : s));
++      }, HISTORY_DEADLINE_MS);
+       try {
+         const r = await fetch(`/api/updown/history?asset=${encodeURIComponent(assetKey)}&range=${range}&style=${style}`, {
+           // no-cache (NOT no-store): the browser stores the body, sends
+@@ -161,6 +174,9 @@ export function TerminalChart({
+       } catch {
+         if (!alive || seq !== seqRef.current) return;
+         setStatus((s) => (s === "ok" ? "ok" : "error"));
++      } finally {
++        // The whole answer is in (or failed): the deadline stands down — a body that is slow to arrive is still waited for.
++        clearTimeout(deadline);
+       }
+     };
+     rangeRef.current = range;
+diff --git a/src/components/home/hero-intro.tsx b/src/components/home/hero-intro.tsx
+index 6efa014d1..320cc9d40 100644
+--- a/src/components/home/hero-intro.tsx
++++ b/src/components/home/hero-intro.tsx
+@@ -19,6 +19,8 @@ import { FIRST_LICENSED_EVIDENCE } from "@/lib/support-config";
+ import { railListParts } from "@/lib/rail-list";
+ import type { Dict, Locale } from "@/lib/i18n-dict";
+ import { sideWord } from "@/lib/side-label";
++// A module with no directive and only React's types: it adds nothing to the root's first load (`test:visual-pass-r4j` §3.8).
++import { keepRegulator } from "@/components/ui/keep-words";
+ 
+ /**
+  * The claim — "50pick │ Tanzania's first licensed prediction market" (spec §4; R9).
+@@ -123,9 +125,12 @@ export function TrustLines({ t, locale, rails }: { t: Dict; locale: Locale; rail
+   const after = at < 0 ? "" : t.home.heroRails.slice(at + "{rails}".length);
+   return (
+     <ul className="kp-hero__trust" role="list">
+-      <li>
++      {/* ⭐ The Board's name is one name wherever the row can hold it (round 5, F18's rule, as the journey's footer keeps it):
++          at sw 360–390 the balanced row read "Leseni ya Bodi ya Michezo" / "ya Kubahatisha Tanzania.", the name torn in
++          two; it now reads "Leseni ya" / "Bodi ya Michezo ya Kubahatisha Tanzania." (`keepRegulator`, `.kp-gbt-row`). */}
++      <li className="kp-gbt-row">
+         <span className="kp-rg__18">{t.footer.eighteenPlus}</span>
+-        <span>{t.footer.licensedByGbt}</span>
++        <span>{keepRegulator(t.footer.licensedByGbt)}</span>
+       </li>
+       {parts.length > 0 && (
+         <li>
+diff --git a/src/components/journey/account/hub-rows.ts b/src/components/journey/account/hub-rows.ts
+index cd5d0cd74..30854e766 100644
+--- a/src/components/journey/account/hub-rows.ts
++++ b/src/components/journey/account/hub-rows.ts
+@@ -53,18 +53,44 @@ export const HUB_WORDS = [
+   "journey.hubGroupProfile", "journey.hubGroupHelp", "journey.hubGroupSettings", "journey.hubGroupAgent",
+   "journey.hubGroupFairnessHelp", "journey.hubGroupLegal",
+   "common.wallet", "common.balanceFrozen", "journey.withdrawAction",
+-  "common.results", "common.live", "common.leaderboard",
++  "common.results", "common.live", "leaderboard.title",
+   "footer.setLimits", "journey.hubLimitsSub", "footer.takeABreak", "footer.selfExclude",
+-  "profile.inviteFriends", "agent.dashTitle", "common.proposeEarn",
+-  "common.profile", "common.verifyId", "profile.verifyIdSub", "footer.resolutionAttestation",
++  "profile.inviteFriends", "agent.dashTitle", "proposals.title",
++  "common.profile", "profile.verifyIdentity", "profile.verifyIdSub", "footer.resolutionAttestation",
+   "common.help", "journey.hubHelpSub", "common.notifications", "common.search", "agent.footerLink",
+-  "footer.privacyNotice", "footer.amlKyc", "footer.terms", "footer.gameRtp",
++  "common.consentMore", "footer.amlKyc", "footer.terms", "footer.gameRtp",
+ ] as const;
++
++/*
++ * ⭐ ONE PAGE, ONE NAME — EVERY ROW (round 5 of the visual pass, 2026-10-09, F17; the R4-H rule of edges E4 / E33: a door
++ * names its page as the page names itself). Each row was held to the name its page gives itself — its title, the
++ * eyebrow that names it, its h1 — and four said something else; each now takes the page's own words, from keys the
++ * dictionary already has:
++ *   · Thibitisha kitambulisho / Verify your identity / 验证您的身份 — the KYC page's h1 (`profile.verifyIdentity`); the row
++ *     said "Thibitisha ID" / "Verify ID" (tile 331);
++ *   · Bingwa / Leaderboard / 排行榜 — the leaderboard's own title, its eyebrow and its <title> (`leaderboard.title`); the
++ *     row said "Jedwali la Washindi" in Swahili;
++ *   · Mapendekezo ya Masoko / Market Proposals / 市场提议 — the proposals page's own title (`proposals.title`, its eyebrow
++ *     and its h1); the row said "Pendekeza na upate zawadi / Propose & earn / 提议赚钱";
++ *   · Sera ya faragha / Privacy policy / 隐私政策 — the privacy page's title ("Sera ya Faragha / Privacy Policy / 隐私政策",
++ *     page-local, as every legal title is), in the one key that already carries those words (`common.consentMore`, the
++ *     consent prompt's link to the same page); the row said "Notisi ya faragha / Privacy notice / 隐私声明".
++ * The journey's other doors to these pages say the same since this round: its footer (`public-footer.tsx`, the journey
++ * arm), its avatar menu (`avatar-menu.tsx`, the journey's menu) and the profile page's KYC row.
++ * The rest match their page already: Matokeo, Mubashara (the live page's title and h1), Uthibitisho wa utatuzi, Msaada,
++ * Pochi, Arifa, Wasifu, Alika marafiki, Masharti ya huduma, Kuwa wakala. They differ by design where a row names an ACT on
++ * its page rather than the page — Weka mipaka, Pumzika, Jizuie (owner-approved RG doors, each landing on its own
++ * section), Tafuta — and Toa pesa is the journey's own word for its money doors (its Wallet sheet's button says the
++ * same), while the withdraw page itself says "Toa" over "Toa fedha": that page's words are the wallet's to align. They
++ * cannot match yet where no key holds the page's name: the rules page ("RTP ya mchezo na sheria" for "Kanuni za
++ * Michezo") and the Swahili AML title ("Sera ya AML / KYC" for "Sera ya Kuzuia Uoshaji wa Fedha na KYC") — both S12
++ * items, words this pass cannot add.
++ */
+ export type HubWord = (typeof HUB_WORDS)[number];
+ 
+ /** A glyph of `I` (`components/ui/glyphs.tsx`). The row renderer indexes `I` with it, so a wrong name fails the build. */
+ export type HubGlyph =
+-  | "wallet" | "arrowUpFromLine" | "checkCircle" | "radio" | "podium" | "shield" | "pause" | "circleStop"
++  | "wallet" | "arrowUpFromLine" | "resolved" | "radio" | "podium" | "shield" | "pause" | "circleStop"
+   | "users" | "sparkle" | "user" | "idCard" | "sealCheck" | "headset" | "search" | "shieldcheck"
+   | "fileText" | "tippingScales" | "info";
+ 
+@@ -98,9 +124,12 @@ export type HubGroupKey =
+ /** One card: a list named by its group word — never a navigation landmark (S6-PLAN WP5 step 2). */
+ export type HubGroup = { key: HubGroupKey; label: HubWord; rows: HubRow[] };
+ 
+-const RESULTS: HubRow = { id: "results", kind: "link", href: "/results", label: "common.results", glyph: "checkCircle" };
++/** ⭐ Matokeo wears the results page's own glyph (round 5, the check on tile 197): `checkCircle` drew the same circled check
++ *  as Uthibitisho wa utatuzi's `sealCheck` one card below, two doors under one sign. `resolved` — the check in its rays — is
++ *  the one /results' header, the classic menu's Results row and the trust band already draw. */
++const RESULTS: HubRow = { id: "results", kind: "link", href: "/results", label: "common.results", glyph: "resolved" };
+ const LIVE: HubRow = { id: "live", kind: "link", href: "/live", label: "common.live", glyph: "radio" };
+-const LEADERBOARD: HubRow = { id: "leaderboard", kind: "link", href: "/leaderboard", label: "common.leaderboard", glyph: "podium" };
++const LEADERBOARD: HubRow = { id: "leaderboard", kind: "link", href: "/leaderboard", label: "leaderboard.title", glyph: "podium" };
+ const FAIRNESS: HubRow = { id: "fairness", kind: "link", href: "/fairness", label: "footer.resolutionAttestation", glyph: "sealCheck" };
+ /** ⛔ Msaada's second line names no phone number (§0h point 10). */
+ const HELP: HubRow = { id: "help", kind: "link", href: "/help", label: "common.help", sub: "journey.hubHelpSub", glyph: "headset" };
+@@ -142,7 +171,7 @@ function guestGroups(): HubGroup[] {
+       key: "legal",
+       label: "journey.hubGroupLegal",
+       rows: [
+-        { id: "privacy", kind: "link", href: "/legal/privacy", label: "footer.privacyNotice", glyph: "fileText" },
++        { id: "privacy", kind: "link", href: "/legal/privacy", label: "common.consentMore", glyph: "fileText" },
+         { id: "aml", kind: "link", href: "/legal/aml", label: "footer.amlKyc", glyph: "shieldcheck" },
+         { id: "terms", kind: "link", href: "/legal/terms", label: "footer.terms", glyph: "tippingScales" },
+         { id: "rules", kind: "link", href: "/legal/rules", label: "footer.gameRtp", glyph: "info" },
+@@ -168,11 +197,11 @@ function memberGroups(v: HubMember): HubGroup[] {
+     });
+   }
+   if (v.doors.proposalsVisible) {
+-    share.push({ id: "proposals", kind: "link", href: "/proposals", label: "common.proposeEarn", glyph: "sparkle", extra: "proposals" });
++    share.push({ id: "proposals", kind: "link", href: "/proposals", label: "proposals.title", glyph: "sparkle", extra: "proposals" });
+   }
+ 
+   const profile: HubRow[] = [{ id: "profile", kind: "link", href: "/profile", label: "common.profile", glyph: "user" }];
+-  if (v.kycOffered) profile.push({ id: "kyc", kind: "link", href: "/profile/kyc", label: "common.verifyId", sub: "profile.verifyIdSub", glyph: "idCard" });
++  if (v.kycOffered) profile.push({ id: "kyc", kind: "link", href: "/profile/kyc", label: "profile.verifyIdentity", sub: "profile.verifyIdSub", glyph: "idCard" });
+   profile.push(FAIRNESS);
+ 
+   // Kuwa wakala under the footer's own rule: the programme open, or the reader already inside it (§0h point 9).
+diff --git a/src/components/layout/avatar-menu.tsx b/src/components/layout/avatar-menu.tsx
+index cb6679f19..017b6193d 100644
+--- a/src/components/layout/avatar-menu.tsx
++++ b/src/components/layout/avatar-menu.tsx
+@@ -137,6 +137,15 @@ export function AvatarMenu({
+      ⚠️ The override writes the RESOLVED label into all three locale fields on purpose — `Item`
+      then picks it whichever locale it is in. A second literal per language here would be a fourth
+      copy of a sentence the dictionary already owns. */
++  /* ⭐ …AND IN THE JOURNEY EVERY DOOR NAMES ITS PAGE AS THE PAGE DOES (round 5 of the visual pass, 2026-10-09, F17 — the
++     rule above for /positions, carried to the rest of this menu's journey rows). The KYC page's h1 is "Thibitisha
++     kitambulisho / Verify your identity" where this row said "Kuthibitisha kitambulisho / Verify ID"; the leaderboard
++     calls itself "Bingwa" in Swahili where this row said "Jedwali la Washindi"; the proposals page is "Mapendekezo ya
++     Masoko / Market Proposals" where this row said "Pendekeza na upate zawadi / Propose & earn". The journey's hub and
++     footer say the page's words since this round too (`hub-rows.ts`). Classic rows keep their words (frozen chrome). */
++  const journeyName: Partial<Record<string, string>> = journey
++    ? { "/profile/kyc": t.profile.verifyIdentity, "/leaderboard": t.leaderboard.title, "/proposals": t.proposals.title }
++    : {};
+   const rows = MENU_ROWS
+     .filter((r) => (!r.proposals || proposalsState !== "DISABLED") && (!r.invite || inviteVisible))
+     .map((r) =>
+@@ -144,7 +153,9 @@ export function AvatarMenu({
+         ? { ...r, en: t.profile.inviteFriends, sw: t.profile.inviteFriends, zh: t.profile.inviteFriends, accent: false }
+         : journey && r.href === "/positions"
+           ? { ...r, icon: I.ticket, en: t.journey.tabTickets, sw: t.journey.tabTickets, zh: t.journey.tabTickets }
+-          : r,
++          : journeyName[r.href]
++            ? { ...r, en: journeyName[r.href]!, sw: journeyName[r.href]!, zh: journeyName[r.href]! }
++            : r,
+     )
+     /* ⛔ NO GOLD ON AN INVITATION TO EARN, IN THE JOURNEY (round 4's gold audit, 2026-10-09, edge tile 209). Q5 "gold is
+        money, and nothing else"; M3 "struck gold appears only where money was earned"; D5 "on an inducement, a house
+diff --git a/src/components/layout/public-footer.tsx b/src/components/layout/public-footer.tsx
+index f9b7afb3c..ff84d7469 100644
+--- a/src/components/layout/public-footer.tsx
++++ b/src/components/layout/public-footer.tsx
+@@ -24,6 +24,7 @@ import { LICENCE_NUMBER } from "@/lib/support-config";
+ import { SOCIAL_LIVE } from "@/lib/social";
+ import { SOCIAL_MARK } from "@/components/ui/social-marks";
+ import { useT } from "@/lib/i18n";
++import { keepRegulator } from "@/components/ui/keep-words";
+ import type { ProposalsState } from "@/lib/server/proposals-config";
+ 
+ export function PublicFooter({
+@@ -151,8 +152,12 @@ export function PublicFooter({
+             <span className="font-display font-bold text-[14px] text-text">50pick</span>
+           </div>
+           {/* zh keeps its words whole (break-keep); the zh string carries zero-width break hints between its words. */}
+-          <p className="text-text-muted leading-relaxed text-body-sm text-balance break-keep">
+-            {t.footer.licensedByGbt}
++          {/* ⭐ …AND IN THE JOURNEY THE REGULATOR'S NAME IS ONE NAME (round 5, F18 — tile 307): at en 1024 the line read
++              "Licensed by the Gaming" / "Board of Tanzania."; it now reads "Licensed by the" / "Gaming Board of Tanzania.",
++              the name kept whole wherever the column can hold it (`keepRegulator`, keep-words.tsx; `.kp-gbt`, globals.css).
++              ⛔ The journey's footer only: the classic footer is frozen chrome and keeps main's bytes (`journeyShown`). */}
++          <p className={`text-text-muted leading-relaxed text-body-sm text-balance break-keep${journeyShown ? " kp-gbt" : ""}`}>
++            {journeyShown ? keepRegulator(t.footer.licensedByGbt) : t.footer.licensedByGbt}
+           </p>
+           <p className="font-mono text-[11px] text-text-subtle tabular-nums">
+             {t.footer.license}: {license}
+@@ -249,10 +254,15 @@ export function PublicFooter({
+               at 1024, the 160px one at 768), the line breaks are balanced: "Pendekeza masoko" over "upate pesa
+               INAKUJA", where a greedy break had left the flag alone on the second line.
+               ⛔ For the journey's footer ONLY (2026-10-09): the classic footer is frozen chrome and keeps main's
+-              greedy break, so its bytes and boxes stay main's (`journeyShown` above). */}
++              greedy break, so its bytes and boxes stay main's (`journeyShown` above). Since round 5 the journey's label
++              is the page's own name (below), and the same balance shares its lines with the flag. */}
++          {/* ⭐ ONE PAGE, ONE NAME IN THE JOURNEY (round 5, F17): its footer names /proposals, /legal/privacy and /help as
++              those pages name themselves — "Mapendekezo ya Masoko" (`proposals.title`), "Sera ya faragha / Privacy policy"
++              (the privacy page's title, `common.consentMore`), "Msaada / Help" (`common.help`) — the words the journey's hub
++              and avatar menu use since this round (`hub-rows.ts`). The classic footer keeps its words (frozen chrome). */}
+           {proposalsState !== "DISABLED" && (
+             <FooterLink href="/proposals" balance={journeyShown}>
+-              {t.footer.proposeGetPaid}
++              {journeyShown ? t.proposals.title : t.footer.proposeGetPaid}
+               <ProposalsStateBadge state={proposalsState} comingSoonLabel={t.proposals.comingSoonTag} maintenanceLabel={t.proposals.maintenanceTag} size="xs" className="ml-1.5" />
+             </FooterLink>
+           )}
+@@ -271,11 +281,11 @@ export function PublicFooter({
+           {/* The public door closes with the programme — a link to a 404 is not a door — but
+               it stays open for anyone already inside it. Resolved in `app-shell.tsx`. */}
+           {agentDoorVisible && <FooterLink href="/agent">{t.agent.footerLink}</FooterLink>}
+-          <FooterLink href="/help">{t.footer.helpSupport}</FooterLink>
++          <FooterLink href="/help">{journeyShown ? t.common.help : t.footer.helpSupport}</FooterLink>
+         </FooterCol>
+ 
+         <FooterCol heading={t.footer.privacy}>
+-          <FooterLink href="/legal/privacy">{t.footer.privacyNotice}</FooterLink>
++          <FooterLink href="/legal/privacy">{journeyShown ? t.common.consentMore : t.footer.privacyNotice}</FooterLink>
+           <FooterLink href="/legal/aml">{t.footer.amlKyc}</FooterLink>
+           <FooterLink href="/legal/terms">{t.footer.terms}</FooterLink>
+           <FooterLink href="/profile/account">{t.footer.exportClose}</FooterLink>
+diff --git a/src/components/markets/bet-confirm-modal.tsx b/src/components/markets/bet-confirm-modal.tsx
+index 1fa594634..0e45c7e72 100644
+--- a/src/components/markets/bet-confirm-modal.tsx
++++ b/src/components/markets/bet-confirm-modal.tsx
+@@ -23,7 +23,7 @@
+  */
+ 
+ import { useEffect, useRef, useState } from "react";
+-import { Modal } from "@/components/ui/modal";
++import { CloseX, Modal } from "@/components/ui/modal";
+ import { Callout } from "@/components/ui/callout";
+ import { I } from "@/components/ui/glyphs";
+ import { haptics } from "@/lib/haptics";
+@@ -281,15 +281,16 @@ export function BetConfirmModal({
+               row's top, so the ✕ centred 24px down while the title's first line — under the 14px eyebrow line and 4px —
+               centres its capitals 18 + 0.6625 × 15 = 27.9px down (Sora: caps 0.2975–1.0275em in a 1.375 line). Measured on
+               068: ✕ ink y64–73, the title's first line y66–78 — 3.5px above. `mt-1` lowers it 4px: 28 against 27.9; `-mb-1`
+-              gives the 4px back, so the box still takes 48px of the row and a one-line title's row does not grow. */}
+-          <button
+-            type="button"
+-            onClick={onCancel}
+-            aria-label={t.common.cancel}
+-            className="mt-1 -mb-1 shrink-0 inline-flex h-8 w-8 items-center justify-center rounded-md text-text-subtle hover:bg-bg-overlay hover:text-text transition-colors"
+-          >
+-            <I.x s={16} />
+-          </button>
++              gives the 4px back, so the box still takes 48px of the row and a one-line title's row does not grow.
++              ⭐ ROUND 5 (F20, the one convention — `CloseX` in modal.tsx): …and 16px inside the panel's right edge, where
++              Modal pins every dialog's ✕ and ConfirmModal's stands: the body's padding put this one 24px in on a phone and
++              32px from 1024, so it steps out 8px / 16px (`-mr-1.5 lg:-mr-3`), as ConfirmModal's does.
++              ⭐ …and it is the one ✕, `CloseX` (it was drawn by hand here, the box and glyph copied): named "Funga" as every
++              ✕ is, where it said "Ghairi" — the name of the Cancel button under it, so a screen reader heard two of them —
++              and closing through the dialog's own guarded close, as the sell confirm's does. While a bet is in flight it is
++              withheld (the one rule, `CloseX`): Ghairi is disabled then, and the ✕ was drawn and dead beside it; its box
++              stays, so the title and the body never move. */}
++          <CloseX withheld={pending} onClick={() => { if (!pending) onCancel(); }} label={t.common.close} className="mt-1 -mb-1 -mr-1.5 lg:-mr-3 shrink-0" />
+         </div>
+ 
+         {/* Side + stake summary */}
+diff --git a/src/components/markets/discovery-bar.tsx b/src/components/markets/discovery-bar.tsx
+index f2786dde0..ee6878800 100644
+--- a/src/components/markets/discovery-bar.tsx
++++ b/src/components/markets/discovery-bar.tsx
+@@ -39,8 +39,10 @@ import {
+   QuerySort,
+   QueryStrip,
+ } from "@/components/ui/query-bar";
++import { formatTzsCompact } from "@/lib/utils";
+ import {
+   ODDS_IDS,
++  POOL_FLOORS,
+   POOL_IDS,
+   SORT_IDS,
+   STATUS_IDS,
+@@ -101,7 +103,8 @@ import { FilterSheet, FilterSheetGroup } from "./filter-sheet";
+  */
+ function Chip(props: {
+   href: string;
+-  label: string;
++  /** A word, or (the pool floors) a sum set as money — FilterPill takes either. */
++  label: React.ReactNode;
+   count?: number;
+   pressed: boolean;
+   glyph?: React.ReactNode;
+@@ -167,10 +170,18 @@ export function DiscoveryBar({
+     cont: t.market.oddsCont,
+     long: t.market.oddsLong,
+   };
+-  const POOL_LABEL: Record<PoolId, string> = {
++  /* ⭐ A POOL FLOOR IS A SUM, SO IT IS WRITTEN AS ONE (round 5 of the visual pass, 2026-10-09, F15 — /markets at 1280).
++     The chips read "TZS 10k+" / "TZS 50k+", the dictionary's own strings, in the chip's sans with a lower-case k, a few
++     centimetres from every other compact sum on the page — "TZS 49K" over the bar, the cards' "TZS 10,800" — which are
++     mono with a capital K. Each floor's label is now the floor itself (`POOL_FLOORS`, the number `matchesPool` tests the
++     rows against) through the money formatter, set as money (`.amount`): "TZS 10K+", so the label can never say a
++     different figure from the filter it names. The "+" is the floor's "or more" and stays with its figure. "Any" is a
++     word and stays the chip's word. (`market.pool10k` / `pool50k` stay in the dictionary, which this pass does not edit.) */
++  const poolFloor = (p: Exclude<PoolId, "any">) => <span className="amount">{formatTzsCompact(POOL_FLOORS[p])}+</span>;
++  const POOL_LABEL: Record<PoolId, React.ReactNode> = {
+     any: t.market.poolAny,
+-    "10k": t.market.pool10k,
+-    "50k": t.market.pool50k,
++    "10k": poolFloor("10k"),
++    "50k": poolFloor("50k"),
+   };
+ 
+   // A signed-out player has no server-side watchlist, so the segment would always read 0.
+diff --git a/src/components/markets/filter-sheet.tsx b/src/components/markets/filter-sheet.tsx
+index 4bb257431..e1e447fc1 100644
+--- a/src/components/markets/filter-sheet.tsx
++++ b/src/components/markets/filter-sheet.tsx
+@@ -64,8 +64,8 @@ import * as React from "react";
+ import { Button } from "@/components/ui/button";
+ import { I } from "@/components/ui/glyphs";
+ import { useModalLock } from "@/lib/use-modal-lock";
+-/* ⛔ ONE definition of the exit beat, and of the three reduced-motion gates behind it. */
+-import { exitBeatMs } from "@/components/ui/modal";
++/* ⛔ ONE definition of the exit beat, and of the three reduced-motion gates behind it — and of the ✕ (`CloseX`). */
++import { CloseX, exitBeatMs } from "@/components/ui/modal";
+ 
+ /** The same list `Modal` traps against — kept identical so the two cannot drift apart. */
+ const FOCUSABLE =
+@@ -368,25 +368,30 @@ export function FilterSheet({
+           <h2 id={titleId} className="font-display text-[16px] font-bold leading-tight text-text">
+             {title}
+           </h2>
+-          <button
+-            type="button"
+-            onClick={close}
+-            aria-label={closeLabel}
+-            /* ⚠️ 48px AS AN ARBITRARY LITERAL — the ONE close-✕ size in the kit
++          {/* ⚠️ 48px AS AN ARBITRARY LITERAL — the ONE close-✕ size in the kit
+                (modal.tsx, toast.tsx and bet-confirm-modal.tsx all render 48×48).
+                This said `h-9 w-9`, which is 64×64px on the OVERRIDDEN spacing
+                scale (tailwind.config.ts:200-215), so the product's close
+-               affordance shipped in two sizes. ⛔ Never a scale token here. */
+-            /* ⚠️ `-mr-3` IS OPTICAL ALIGNMENT, NOT A NUDGE, and it only became correct once the
++               affordance shipped in two sizes. ⛔ Never a scale token here.
++              ⚠️ `-mr-3` WAS OPTICAL ALIGNMENT, NOT A NUDGE, and it only became correct once the
+                panel had real padding. The 48px target holds a 16px glyph, so 16px of the box
+-               is slack on each side. Pulling the BOX 16px past the 20px content edge puts the
+-               GLYPH's right edge exactly on that edge — so the ✕ lines up with the 20px gutter
++               is slack on each side. Pulling the BOX 16px past the 20px content edge put the
++               GLYPH's right edge exactly on that edge — so the ✕ lined up with the 20px gutter
+                the heading starts at, instead of floating 24px in. It was `-mr-1` against a
+-               padding of zero, which is how it came to overflow the viewport by 3px. */
+-            className="-mr-3 -mt-1 inline-flex h-[48px] w-[48px] shrink-0 items-center justify-center rounded-md text-text-subtle transition-colors hover:bg-bg-overlay hover:text-text"
+-          >
+-            <I.x s={16} />
+-          </button>
++               padding of zero, which is how it came to overflow the viewport by 3px.
++              ⭐ ON THE TITLE'S CAPITALS (round 5 of the visual pass, 2026-10-09, F20 — the one convention, `CloseX` in
++               modal.tsx): the box sat 4px over the row's top (`-mt-1`), so the ✕ centred 20px down while the title — a 1.25
++               line of 16px at the row's top — centres its capitals 0.6 × 16 = 9.6px down: the ✕ stood 10.4px under them.
++               The box rises to −14.4px and gives the 10.4px back under it (`mb-[10.4px]`), so the row is the 44px it was
++               and the groups below do not move.
++              ⭐ THE ONE ✕ (round 5 follow-up, 2026-10-09, F20): it was `CloseX` in all but name — its own <button>, the same
++               48px box, 16px glyph and inks, copied — so it is `CloseX` now (modal.tsx; `h-8 w-8` is this scale's 48px), and
++               it stands where every dialog's and the guest sheet's ✕ stands: its box 16px inside the panel's right edge.
++               `-mr-3` put the box 4px from the screen's edge (the sheet's padding is 20px, `--sp-5`) to set the glyph on the
++               heading's gutter — the one ✕ in the product placed that way; `-mr-1` (4px) gives back 12px, and the panel's
++               padding keeps the box inside the screen. Nothing is in flight behind this sheet — it filters what is already
++               read — so its ✕ is never withheld. */}
++          <CloseX onClick={close} label={closeLabel} className="-mr-1 -mt-[14.4px] mb-[10.4px] shrink-0" />
+         </div>
+ 
+         <div className="kp-fsheet-body">{children}</div>
+diff --git a/src/components/markets/market-card.tsx b/src/components/markets/market-card.tsx
+index 27d2c06c2..2a580061f 100644
+--- a/src/components/markets/market-card.tsx
++++ b/src/components/markets/market-card.tsx
+@@ -11,7 +11,7 @@ import { ShareButton } from "@/components/markets/share-button";
+ import { Chip } from "@/components/ui/chip";
+ import { keepFigures } from "@/components/ui/keep-words";
+ import { STATUS_TONE, TONE_CHIP } from "@/lib/status-tone";
+-import { cn, fill, formatTzs } from "@/lib/utils";
++import { cn, fill, formatNumber, formatTzs } from "@/lib/utils";
+ import { useT } from "@/lib/i18n";
+ import { pickLocalized, marketCategoryLabel } from "@/lib/localized";
+ import { outcomeWord, sideWord, type LabelProductLine } from "@/lib/side-label";
+@@ -239,7 +239,8 @@ function HowItWorks() {
+         ariaLabel={t.common.howItWorks}
+         maxWidth={320}
+       >
+-        <p className="mb-1.5 font-display text-[13px] font-bold text-text">{t.common.howItWorks}</p>
++        {/* `kp-modal-title` (round 5, F20): its first line's capitals on the corner ✕, as every dialog's title stands. */}
++        <p className="kp-modal-title mb-1.5 font-display text-[13px] font-bold text-text">{t.common.howItWorks}</p>
+         <p className="text-body-sm leading-[1.55] text-text-muted">
+           {t.common.howItWorksBody}
+         </p>
+@@ -628,7 +629,10 @@ export function MarketCard({
+                 ))}
+               </span>
+             )}
+-            <span className="t-txt" data-market-part="predictors"><b>{predictors.toLocaleString()}</b>{" "}{predictors === 1 ? t.market.predictorsCountOne : t.market.predictorsCount}</span>
++            {/* Round 5 (F12): grouped by `formatNumber`, the platform's one count grouping (the board's rows and the /results
++                spotlight write the same line) — `toLocaleString()` grouped by whatever locale the runtime held, so the
++                server's HTML and a browser set to another locale could print one count two ways. */}
++            <span className="t-txt" data-market-part="predictors"><b>{formatNumber(predictors)}</b>{" "}{predictors === 1 ? t.market.predictorsCountOne : t.market.predictorsCount}</span>
+           </>
+         )}
+       </div>
+@@ -675,8 +679,12 @@ export function MarketCard({
+             `mcardp-pool` (round 4, G7): once there is a pool the featured card NAMES it, in the board row's own words
+             ("Bwawa TZS 10,800", `common.pool`), the figure set as money (`.amount`) at the same 13px. A grid card's row
+             also carries its countdown, so its figure keeps the row's 11px and no word (its one-line row, D35, is full at 360). */}
++        {/* Round 5 (the check on the /markets grid, 2026-10-09): a grid card's figure names itself to a screen reader in the
++            featured card's own word ("Bwawa TZS 10,800"). On screen it keeps no word: at 320 the row's worst case — a
++            7-digit pool, "dakika 59 zimebaki" and the info button — already fills 257.6 of its 258px, so even a glyph
++            (+16px) would wrap a fixed-height card; whether to give the grid card room for the word is an owner question. */}
+         <span data-market-part="pool" className={fresh ? "mcardp-nopool" : featured ? "mcardp-pool" : undefined}>
+-          {fresh ? t.market.noPoolYet : featured ? <>{t.common.pool}{" "}<span className="amount">{formatTzs(volume)}</span></> : formatTzs(volume)}
++          {fresh ? t.market.noPoolYet : featured ? <>{t.common.pool}{" "}<span className="amount">{formatTzs(volume)}</span></> : <><span className="sr-only">{t.common.pool}{" "}</span>{formatTzs(volume)}</>}
+         </span>
+         {comments != null && comments > 0 && (
+           <>
+diff --git a/src/components/markets/objection-dialog.tsx b/src/components/markets/objection-dialog.tsx
+index 86ccd01a7..1b021ca03 100644
+--- a/src/components/markets/objection-dialog.tsx
++++ b/src/components/markets/objection-dialog.tsx
+@@ -102,9 +102,14 @@ export function ObjectionDialog({ marketId, onFiled }: { marketId: string; onFil
+         onClose={() => !pending && setOpen(false)}
+         labelledBy="objection-title"
+         maxWidth={460}
++        /* While the objection is being filed the ✕ is withheld (round 5, F20 — the one rule, `CloseX` in modal.tsx): Cancel
++           is disabled then and the close refused, and the ✕ was drawn and dead beside them. It stands in the corner, out of
++           the flow, so nothing moves. */
++        showClose={!pending}
+       >
+         <div className="space-y-4">
+-          <h2 id="objection-title" className="font-display text-[16px] font-semibold text-text">
++          {/* `kp-modal-title` (round 5, F20): its first line's capitals on the corner ✕, as every dialog's title stands. */}
++          <h2 id="objection-title" className="kp-modal-title font-display text-[16px] font-semibold text-text">
+             {t.market.objTitle}
+           </h2>
+ 
+diff --git a/src/components/markets/sell-confirm-modal.tsx b/src/components/markets/sell-confirm-modal.tsx
+index abb656281..d7bd3257c 100644
+--- a/src/components/markets/sell-confirm-modal.tsx
++++ b/src/components/markets/sell-confirm-modal.tsx
+@@ -23,7 +23,7 @@
+  */
+ 
+ import { useEffect, useRef, useState } from "react";
+-import { Modal } from "@/components/ui/modal";
++import { CloseX, Modal } from "@/components/ui/modal";
+ import { I } from "@/components/ui/glyphs";
+ import { Callout } from "@/components/ui/callout";
+ import { haptics } from "@/lib/haptics";
+@@ -94,14 +94,28 @@ export function SellConfirmModal({ open, pending, stake, value, positionId, onCo
+       closeOnScrim={!pending}
+       initialFocus={confirmRef}
+       safeFocus={keepRef}
++      /* ⭐ THE ✕ ON THE TITLE'S CAPITALS (round 5 of the visual pass, 2026-10-09, F20 — the one convention, `CloseX` in
++         modal.tsx). Modal pinned it to the corner, 40px down the panel: beside the eyebrow (its line is 14px), 12.6px
++         above the question's capitals on a phone and 20.6px from 1024 — the bet confirm's header is this same eyebrow
++         over a question, and its ✕ stands on the question. So it is drawn in the header row, as the bet confirm's and
++         ConfirmModal's are: the question's first line starts 14 + 4 (`mt-1`) = 18px down, a 1.375 line of 16px, so its
++         capitals centre 18 + 0.6625 × 16 = 28.6px down — the 48px box drops 4.6px and gives back 12.6px under it, taking
++         the header's own 40px; 16px inside the panel's right edge (`-mr-1.5 lg:-mr-3`), where Modal pins it. It closes
++         through the dialog's own guarded close, as the corner one did. A long question now wraps before the ✕. While a
++         sale is in flight it is withheld (the one rule, `CloseX`): the keep button is disabled then, and a ✕ drawn but
++         dead beside it was the one way out that looked live; its box stays, so the question and the body never move. */
++      showClose={false}
+     >
+-      <div className="mb-4 min-w-0">
+-        <p className="font-mono text-micro uppercase eyebrow font-bold text-text-subtle">
+-          {t.dialog.cashOutTitle}
+-        </p>
+-        <p className="mt-1 font-display text-[16px] font-semibold text-text leading-snug">
+-          {titleLabel ?? t.dialog.sellPositionNow}
+-        </p>
++      <div className="mb-4 flex items-start gap-3">
++        <div className="min-w-0 flex-1">
++          <p className="font-mono text-micro uppercase eyebrow font-bold text-text-subtle">
++            {t.dialog.cashOutTitle}
++          </p>
++          <p className="mt-1 font-display text-[16px] font-semibold text-text leading-snug">
++            {titleLabel ?? t.dialog.sellPositionNow}
++          </p>
++        </div>
++        <CloseX withheld={pending} onClick={() => { if (!pending) onCancel(); }} label={t.common.close} className="mt-[4.6px] -mb-[12.6px] -mr-1.5 lg:-mr-3 shrink-0" />
+       </div>
+ 
+       {/* E-100 · same rule again. This one sits inside a modal, which is the narrowest place
+diff --git a/src/components/markets/share-button.tsx b/src/components/markets/share-button.tsx
+index d5d30f1a4..648f4dbfc 100644
+--- a/src/components/markets/share-button.tsx
++++ b/src/components/markets/share-button.tsx
+@@ -115,7 +115,8 @@ export function ShareButton({
+           anchored sheet (own z-index, own ✕, no focus trap, no scroll lock).
+           Chrome, a11y and the scrim recipe are all inherited now. */}
+       <Modal open={open} onClose={() => setOpen(false)} ariaLabel={t.dialog.shareMarket} maxWidth={360}>
+-        <p className="mb-2 font-display text-[14px] font-semibold text-text">{t.dialog.shareMarket}</p>
++        {/* `kp-modal-title` (round 5, F20): its first line's capitals on the corner ✕, as every dialog's title stands. */}
++        <p className="kp-modal-title mb-2 font-display text-[14px] font-semibold text-text">{t.dialog.shareMarket}</p>
+         <div className="-mx-2">
+               {hasWebShare && (
+                 <button
+diff --git a/src/components/pwa/install-invite.tsx b/src/components/pwa/install-invite.tsx
+index e66ca510c..bedd9f774 100644
+--- a/src/components/pwa/install-invite.tsx
++++ b/src/components/pwa/install-invite.tsx
+@@ -272,9 +272,15 @@ export function InstallInvite() {
+              measured by `qa:install-shown` as `div 302x137 in 298x137`, at EVERY width and in ALL
+              THREE languages. ⛔ Four pixels is invisible in a screenshot; arithmetic caught it on
+              the first run. A negative margin is precisely how text and controls leave their box. */
+-          className="shrink-0 inline-flex h-[44px] w-[44px] items-center justify-center rounded-md text-text-subtle hover:text-text"
++          /* ⭐ ON THE TITLE'S CAPITALS (round 5 of the visual pass, 2026-10-09, F20 — the one convention, `CloseX` in
++             modal.tsx; the channels panel, this card's twin, the same). The box stood on the row's top, so the ✕ centred
++             22px down while the title — a 1.25 line of 14px on the row's top — centres its capitals 0.6 × 14 = 8.4px down:
++             13.6px under them. The box rises 13.6px — a TOP margin, into the card's own 14px padding, so it stays inside
++             the card and adds no width (the right margin the note above forbids is not touched); the row keeps its
++             height, which the text column sets. The glyph is the dialogs' 16px, centred on a whole pixel. */
++          className="-mt-[13.6px] shrink-0 inline-flex h-[44px] w-[44px] items-center justify-center rounded-md text-text-subtle hover:text-text"
+         >
+-          <I.x s={15} aria-hidden />
++          <I.x s={16} aria-hidden />
+         </button>
+       </div>
+     </div>
+diff --git a/src/components/rg/reality-check.tsx b/src/components/rg/reality-check.tsx
+index 9e3b4ccf7..f152f8166 100644
+--- a/src/components/rg/reality-check.tsx
++++ b/src/components/rg/reality-check.tsx
+@@ -134,7 +134,15 @@ export function RealityCheckHost({ enabled, intervalMin = DEFAULT_INTERVAL, user
+       <div aria-hidden className="absolute inset-x-0 top-0 h-[2px]" style={{ background: "linear-gradient(90deg, var(--gold-500), var(--gold-300), var(--gold-500))" }} />
+ 
+       <div className="space-y-4">
+-        <div className="flex items-center gap-2.5">
++        {/* ⭐ THE TITLE'S FIRST LINE ON THE CORNER ✕ (round 5 of the visual pass, 2026-10-09, F20 — the one convention,
++            `CloseX` in modal.tsx; a position only, no word of this RG notice changes). Modal pins the ✕ 40px under the
++            panel's padding edge; this row started at the padding (24px, 32px from 1024) and centred a one-line title on the
++            40px badge, so the title's capitals stood 43.6px down — the ✕ 3.6px above them on a phone and 11.6px from 1024
++            — and a title that wrapped lifted its first line further. The title now hangs from the badge's centre (its
++            first line centred on it, 20px less half its 1.25 line), so a second line grows downward, and the row rises to
++            put those capitals — 20 − 0.025em = 19.6px down it — on the ✕. The row keeps 48px clear of the ✕ on its right,
++            as every dialog title does (`.kp-modal-title`), so a long title wraps before it instead of running under it. */}
++        <div className="-mt-[3.6px] lg:-mt-[11.6px] flex items-start gap-2.5 pr-8">
+           {/* ⛔ LITERALS, NOT `h-8 w-8` — the spacing scale is overridden
+               (tailwind.config.ts:200-215) and that pair is 48×48px. 40px = --tap-min, the
+               badge disc every other section heading in the product uses. */}
+@@ -143,7 +151,7 @@ export function RealityCheckHost({ enabled, intervalMin = DEFAULT_INTERVAL, user
+           </span>
+           <h2
+             id="reality-check-title"
+-            className="font-display text-[15.5px] font-bold leading-tight text-text"
++            className="mt-[calc(20px-0.625em)] font-display text-[15.5px] font-bold leading-tight text-text"
+           >
+             {t.rg.playingFor}{" "}
+             <span className="font-mono text-gold-300">{elapsedMin}</span>{" "}
+diff --git a/src/components/social/channels-panel.tsx b/src/components/social/channels-panel.tsx
+index 48c91d191..1d32cdd7b 100644
+--- a/src/components/social/channels-panel.tsx
++++ b/src/components/social/channels-panel.tsx
+@@ -183,7 +183,9 @@ function measureTop(panel: HTMLElement | null = null): number {
+     const below = main.offsetTop + 12;
+     const stack = Math.min(Math.max(below, TOP_FALLBACK), TOP_CAP);
+     const bar = pinnedBarBottom(panel);
+-    return bar > 0 ? Math.max(stack, bar + 12) : stack;
++    // ⭐ A WHOLE PIXEL (round 5, F20): a pinned bar's height can be fractional, and a card on a half pixel draws its
++    // border, its title's baseline and its × each snapped its own way — the × then stands off the capitals it is set on.
++    return bar > 0 ? Math.max(stack, Math.round(bar + 12)) : stack;
+   } catch {
+     return TOP_FALLBACK;
+   }
+@@ -359,11 +361,18 @@ export function ChannelsPanel({ promoSuppressed }: { promoSuppressed: boolean })
+       {/* 2026-10-08 (WP12's tiles 320, 321, 323, 324) — the title row is a row like the two below it: the title is
+           centred on the close control's 44px box, so the × sits on the title's line (it hung 13px under it, the
+           title pinned to the top of that box), and the title's centre stands one row pitch (46px) above the first
+-          row's — the list's 2px top margin is the 2px between its rows. It was 62px. */}
+-      <div className="flex items-center gap-3">
++          row's — the list's 2px top margin is the 2px between its rows. It was 62px.
++          ⭐ …ON THE TITLE'S CAPITALS, NOT ITS LINE (round 5 of the visual pass, 2026-10-09, F20 — the one convention,
++          `CloseX` in modal.tsx). Measured on 320 321 323 324: "F" y229.6–240.0 (centre 234.8), the × ink y232.3–240.7
++          (centre 236.5) — the × 1.7px under the capitals. Sora centres its capitals 0.025em above the middle of a 1.25
++          line (0.35px at 14px), and the 15px glyph, centred in the 44px box, stood on a half pixel and was drawn half a
++          pixel lower. The title now stands on the row's top with its capitals' centre on the box's — 22 − 0.6 × 14 =
++          13.6px down (a top margin of 22px less 0.6em, R4-E's construction for the guest sheet) — and the glyph is the dialogs'
++          16px, which centres on a whole pixel. The row stays 44px, so the 46px pitch holds. */}
++      <div className="flex items-start gap-3">
+         <p
+           id="channels-panel-title"
+-          className="min-w-0 flex-1 font-display text-body font-semibold leading-tight text-text"
++          className="mt-[calc(22px-0.6em)] min-w-0 flex-1 font-display text-body font-semibold leading-tight text-text"
+         >
+           {t.channels.title}
+         </p>
+@@ -374,7 +383,7 @@ export function ChannelsPanel({ promoSuppressed }: { promoSuppressed: boolean })
+           data-testid="channels-panel-close"
+           className="shrink-0 inline-flex h-[44px] w-[44px] items-center justify-center rounded-md text-text-subtle hover:text-text transition-colors"
+         >
+-          <I.x s={15} aria-hidden />
++          <I.x s={16} aria-hidden />
+         </button>
+       </div>
+ 
+diff --git a/src/components/ui/keep-words.tsx b/src/components/ui/keep-words.tsx
+index 9da09641f..714fbdaa3 100644
+--- a/src/components/ui/keep-words.tsx
++++ b/src/components/ui/keep-words.tsx
+@@ -170,3 +170,21 @@ export function keepIdRuns(id: string): ReactNode {
+     return i === 0 ? [run] : [<wbr key={`w${i}`} />, run];
+   });
+ }
++
++/**
++ * THE REGULATOR'S NAME IS ONE NAME, WHERE ITS LINE CAN HOLD IT (round 5 of the visual pass, 2026-10-09, F18 — tile 307):
++ * the journey footer at en 1024 read "Licensed by the Gaming" / "Board of Tanzania.", the Board's name torn in two, where
++ * "Licensed by the" / "Gaming Board of Tanzania." fits its 216px column (164.7px for the name and its full stop). The
++ * name — as `footer.licensedByGbt` writes it in each language — goes in a `.kp-gbt-name` span; the sentence's own
++ * element wears `.kp-gbt`, a size container, and the span is `nowrap` only where that container is at least as wide as
++ * the name in its language (globals.css): a column narrower than the name lets it wrap as before, so it can never
++ * overflow. The text is unchanged (the zh name keeps its zero-width break hint, which `nowrap` simply does not take).
++ * A sentence without the name is returned untouched.
++ */
++const REGULATOR = /Gaming Board of Tanzania|Bodi ya Michezo ya Kubahatisha Tanzania|坦桑尼亚​?博彩委员会/;
++
++export function keepRegulator(text: string): ReactNode {
++  const m = REGULATOR.exec(text);
++  if (!m) return text;
++  return [text.slice(0, m.index), <span key="gbt" className="kp-gbt-name">{m[0]}</span>, text.slice(m.index + m[0].length)];
++}
+diff --git a/src/components/ui/modal.tsx b/src/components/ui/modal.tsx
+index 25e36af11..596e74741 100644
+--- a/src/components/ui/modal.tsx
++++ b/src/components/ui/modal.tsx
+@@ -172,15 +172,31 @@ export function useExitPhase(open: boolean, beat: ExitBeat = "--t-quick"): { pre
+ 
+ /**
+  * The dialog's ✕ — ONE definition (R4-I, 2026-10-09). Modal pins it to the panel's corner; ConfirmModal draws it in its
+- * header row, on the medallion's centre (see there). A 48px box (`h-8 w-8` on this repo's overridden scale), a 16px glyph.
++ * header row (see there), and so do the sell and bet confirms (`sell-confirm-modal.tsx`, `bet-confirm-modal.tsx`, which
++ * import it). A 48px box (`h-8 w-8` on this repo's overridden scale), a 16px glyph.
++ * ⭐ ONE CONVENTION FOR WHERE IT STANDS (round 5 of the visual pass, 2026-10-09, F20): a panel's, a sheet's or a dialog's ✕
++ * is centred on the cap band of its title's FIRST line — R4-E's guest sheet, R4-I's bet confirm — and its box stands 16px
++ * inside the panel's right edge, where Modal pins it. Sora's capitals are centred L/2 − 0.025em below the top of a line
++ * of height L (ascent 0.97, descent 0.29, cap 0.73 per em): 0.6em in a 1.25 line, 0.6625em in a 1.375 one. Where the ✕
++ * is pinned to the corner, the title comes to it (`.kp-modal-title`, `.kp-jsheet__title`, globals.css); where it stands
++ * in a header row, it goes to the title (ConfirmModal below, the bet and sell confirms, the filter sheet).
++ * ⭐ ONE RULE WHILE A REQUEST IS IN FLIGHT (round 5, 2026-10-09, F20): the ✕ is there exactly when the dialog's own way
++ * out is. While a request the dialog sent is in flight — its Cancel or keep button disabled, the scrim and Esc refused,
++ * because closing then reads as cancelled while the server goes ahead — the ✕ is WITHHELD, as twenty dialogs already
++ * withheld Modal's (`showClose={!pending}`) and ConfirmModal withheld its own. A ✕ drawn but dead was the one way out
++ * that looked live and did nothing. Pinned to the corner, Modal simply does not draw it (it stands out of the flow, so
++ * nothing moves); in a header row it is `withheld` here — not drawn (`invisible`), not pressable (`disabled`, which the
++ * focus trap skips), its box kept — so the row is as tall and the title wraps exactly as beside the ✕: the body never
++ * moves. A dialog busy with its way out still open (ConfirmModal's `confirmHeld`, a re-read) keeps its ✕ drawn and live.
+  */
+-function CloseX({ onClick, label, className }: { onClick: () => void; label: string; className: string }) {
++export function CloseX({ onClick, label, className, withheld = false }: { onClick: () => void; label: string; className: string; withheld?: boolean }) {
+   return (
+     <button
+       type="button"
+       onClick={onClick}
+       aria-label={label}
+-      className={`${className} inline-flex h-8 w-8 items-center justify-center rounded-md text-text-subtle hover:bg-bg-overlay hover:text-text transition-colors`}
++      disabled={withheld}
++      className={`${className} inline-flex h-8 w-8 items-center justify-center rounded-md text-text-subtle hover:bg-bg-overlay hover:text-text transition-colors${withheld ? " invisible" : ""}`}
+     >
+       <I.x s={16} />
+     </button>
+@@ -826,7 +842,16 @@ export function ConfirmModal({
+          from the panel's right edge, where Modal draws every other dialog's. Its bottom gives back 8px (`-mb-1.5`), so it
+          occupies 48 − 4 − 8 = 36px of the row, under the medallion's 38: the row is exactly as tall as it was, and stays
+          so when the ✕ is withdrawn — the body below never moves. A long title now wraps before the ✕ instead of running
+-         under it. While a request is in flight it is not drawn, as Modal's was not (`showClose={!loading}`). */
++         under it. While a request is in flight it is not drawn, as Modal's was not (`showClose={!loading}`).
++         ⭐ ROUND 5 (2026-10-09, F20) — ON THE TITLE'S CAPITALS, THE ONE CONVENTION (`CloseX` above). The medallion's centre
++         (20px down) is between the eyebrow and the title, level with neither line; the bet confirm, whose header is the
++         same eyebrow over a title, already stood its ✕ on the title's capitals. Here the title's first line starts
++         14 (the eyebrow's line) + 2 (`mt-0.5`) = 16px down, a 1.25 line of 18px, so its capitals centre 16 + 0.6 × 18 =
++         26.8px down: the 48px box drops to 2.8px (`mt-[2.8px]`) and gives back 12.8px under it (`-mb-[12.8px]`), so it
++         still takes 38px of the row — the medallion's 2 + 36 — and the row is as tall as it was. 16px inside the panel's
++         right edge, as before. While a request is in flight it is `withheld` (CloseX above: not drawn, its box kept), where
++         it was taken out of the row: that gave a title 56px more line on a phone (48 from 1024), so one that wrapped beside
++         the ✕ could fold back to one line while the request ran, and the body rose under it. Now nothing moves. */
+       showClose={false}
+     >
+       <div className="mb-3 flex items-start gap-3">
+@@ -852,7 +877,7 @@ export function ConfirmModal({
+             {title}
+           </h2>
+         </div>
+-        {!loading && <CloseX onClick={onClose} label={t.common.close} className="-mt-1 -mb-1.5 -mr-1.5 lg:-mr-3 shrink-0" />}
++        <CloseX withheld={loading} onClick={onClose} label={t.common.close} className="mt-[2.8px] -mb-[12.8px] -mr-1.5 lg:-mr-3 shrink-0" />
+       </div>
+ 
+       <div className="text-[13.5px] text-text-muted leading-relaxed mb-4">
+diff --git a/src/components/ui/toast.tsx b/src/components/ui/toast.tsx
+index dad5e7b00..5e0abed96 100644
+--- a/src/components/ui/toast.tsx
++++ b/src/components/ui/toast.tsx
+@@ -717,11 +717,15 @@ function ToastItem({ toast, exiting, onDismiss, onPause, onResume }: { toast: To
+           ) : null}
+         </div>
+       </div>
++      {/* ⭐ ON THE TITLE'S CAPITALS (round 5 of the visual pass, 2026-10-09, F20 — the one convention, `CloseX` in modal.tsx):
++          the 48px box stood 8px down (`top-1.5`), centring the ✕ 32px down, while the title — a 1.25 line of 13px under
++          the row's 16px (`py-3`) — centres its capitals 16 + 0.6 × 13 = 23.8px down: 8.2px under them. At the toast's top
++          edge the box centres 24px down, 0.2px from them, and a title that wraps keeps its first line there. */}
+       <button
+         type="button"
+         onClick={onDismiss}
+         data-toast-dismiss=""
+-        className="absolute right-1.5 top-1.5 inline-flex h-8 w-8 items-center justify-center rounded-md text-text-subtle hover:bg-bg-overlay hover:text-text transition-colors"
++        className="absolute right-1.5 top-0 inline-flex h-8 w-8 items-center justify-center rounded-md text-text-subtle hover:bg-bg-overlay hover:text-text transition-colors"
+         aria-label={t.common.dismiss}
+       >
+         <I.x s={14} />

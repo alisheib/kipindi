@@ -1,0 +1,41 @@
+Hotfix: the one-year immutable cache goes to static files only — a page at an image-like address was cached at the edge
+
+next.config.ts's headers() sent `public, max-age=31536000, immutable` to `/:all*(svg|jpg|jpeg|png|webp|avif|ico|woff|woff2)`. A
+path-to-regexp group needs no dot, so that source matched PAGES too: `/markets/<anything>.png`, `/markets/mexico`,
+`/u/federico`, any address ending in those letters.
+
+Measured on production (2026-10-09, guest requests with no cookies, a throwaway address):
+- `/markets/zz-cache-probe-<n>.png` answered 200 text/html with that header, and Cloudflare stored it:
+  `cf-cache-status: MISS`, then `HIT` on the second request.
+- `/markets/mexico` was sent the same header (`DYNAMIC` at the edge, kept by the browser).
+
+So a signed-in reader sent such a link could have their page — the header's name, masked phone and balance — kept at
+the edge for the next visitor of the same address. And a browser kept any page whose address merely ended in those
+letters for a year without asking again. Found by the visual pass's code review (the route-ghost / offline review of
+vodacom-visual); the rule itself predates it.
+
+The fix: the immutable cache is sent to an explicit list only:
+- the folders and files under public/: icons, brand, pay, og, screenshots, email-signatures, favicon.ico, favicon.svg;
+- Next's hashed build output, `/_next/static/:path*` (fonts come from next/font, under /_next/static/media).
+The service worker and the manifest are not immutable, as before.
+
+Guard: test:static-cache-scope, 15 checks. It reads the rules from next.config.ts itself and matches them with Next's
+own `getPathMatch`, as the server compiles a header's source:
+- §1 every source is a real folder or file under public/, or the build output;
+- §2 all 31 files under those folders, the favicons and a hashed chunk still match, while sw.js and manifest.json do
+  not;
+- §3 none of 25 page addresses matches (the ones above, plus the app's own routes);
+- §4 control: the old suffix rule matches /markets/x.png, /markets/mexico and /u/federico; and a plant of it back into
+  the list is reported by §3.
+
+Proved on an in-memory `next dev --webpack` of this tree (lock turn WH):
+- every page address is sent `Cache-Control: no-cache, must-revalidate` — /markets/zz-probe.png, /markets/mexico,
+  /u/federico, /positions/abc.jpg, /markets and /;
+- /icons/icon-192.png, /brand/mark-color.svg, /favicon.ico and /favicon.svg keep
+  `public, max-age=31536000, immutable`;
+- 0 problems.
+
+The service worker's own extension rule (it caches by file name too) is fixed with the visual pass, whose sw.js
+rewrite is on vodacom-visual.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>

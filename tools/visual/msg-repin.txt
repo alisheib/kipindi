@@ -1,0 +1,22 @@
+house-bot-reports: two pins R3-C moved, re-pinned in the open — the cancellation notice re-measured with its change reviewed, and one money site 4 lines down
+
+Lock turn M6 ran test:house-bot-reports alone on the visual branch (exit 1) and on main (exit 0); the branch's
+three failures all trace to R3-C's notification changes.
+
+- 0.198.2 / 0.198.c2: the player's cancellation notice (notifyMarketCancelled) is byte-pinned (PLAYER_NOTIFIER_HASHES)
+  so that no house reader or word reaches a player's notice. Its rule: "a change here is a change to a player's
+  notice: re-measure only with the change reviewed as one". Reviewed:
+  - an officer's reason that already ends in "." no longer gets a second one (endClause);
+  - the " · pos_…" suffix left the words for the link (ticketHref: the refunded ticket, falling back to /wallet);
+  - no house reader, no house word, the same three sentences otherwise.
+  The measure was reproduced outside the suite (sha256 over the declaration's decommented text, trailing spaces and
+  blank lines dropped). It gives main's stored hash for all five notifiers on origin/main, and on the branch it
+  changes only this one: 0feaad92… → 303f06a9fa81…. The four others are untouched.
+- 0.232.2: the seven money sites are line-pinned on purpose. R3-C's win notice in settleMarket stopped appending the
+  position id to its words, four lines above the emergency void, so that site reads 4697. Main's line 4693 is the
+  same db.txn.create write, compared line by line; the six before it do not move. The pin's own history records the
+  move.
+
+The suite needs the scratch Postgres (both stores, no memory-only mode); it runs in the next lock turn on this tip.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>

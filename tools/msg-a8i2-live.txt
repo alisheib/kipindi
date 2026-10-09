@@ -1,0 +1,3 @@
+docs(vodacom): A8i-2 LIVE 586c5183 - read back on 50pick.tz and www (dpl from 09:38:56 UTC, fresh container, health ok, qa:live 318/318); its records (0i, 0h point 59); A8j in flight next; the owner ruling of 2026-10-07 noted (S9 not built)
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>

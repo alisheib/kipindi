@@ -1,0 +1,32 @@
+scripts: the five red:social-* harnesses exit 0 when every plant is caught; test:stacking 6.1 names the ticker's z 11
+
+Two reds main has carried since September, both in scripts only.
+
+red:social-home, -token, -rel, -promo and -panel never read green in red:all (since 3baf4bb9 and b241a92b,
+2026-09-12): they exited 1 when the guard went red - the guard WORKING - and red:all passes a harness only on exit 0.
+It was wrong the other way too: the four social-links flags exited 0 when the plant was NOT caught, so a toothless
+guard would have read PASS; and social-panel judged its run by a count (>= 8 failures), which any eight could meet.
+
+- scripts/lib/red-judge.mts (new): one judge for an in-process red run, in the fleet's polarity. Exit 0: the plain suite
+  is green (run as a child), every plant took and tripped the assertion(s) it names, and nothing else failed. Exit 2: a
+  control stopped firing (a plant STALE or MISSED). Exit 1: the proof is unsound (a red plain suite, or a STRAY failure).
+  It runs its own ten controls before every verdict, and a mistyped --prove-red flag exits 2 instead of reading green.
+- social-links: each flag names its one assertion (one constant, read by the check and by the verdict); the rel plant
+  must prove it changed the footer. Plain-run output unchanged.
+- social-panel: its plants go in through injectDefect (a stale or ambiguous anchor is reported, never silently skipped),
+  each names its assertion(s), and the 3.1 control its header always described now exists (the shell's self-exclusion
+  comparison inverted): eight plants, nine failures. Plain-run output unchanged.
+
+test:stacking 6.1 ("every root-plane z in src/ is a named rung") has been red since 2ab8830e (2026-09-26), which lifted
+the focused LIVE strip one over its own z-10 end cap (globals.css, .ticker-viewport:focus-visible, z-index 11) and named
+nothing. It is a real root-plane value - nothing seals the strip - so it is named: ROOT_SURFACES gains ticker-focus-lift
+(z 11), the laws gain discovery-bar > ticker-focus-lift, and 11 joins KNOWN_ROOT_RUNGS. LOCAL_PLANE_MAX stays 10:
+raising it would have un-policed 11-19 everywhere. 6.1b is the control: an unnamed z of 12-16 in each of the five
+spellings the sweep reads must be reported, and 11 must not.
+
+Proof, on 51aae5a9: test:stacking 129/129 (was 125 + 1 failed); test:social-links 19/19 and test:social-panel 53/53
+(plain runs unchanged); red:social-home, -token, -rel, -promo 1/1 each and red:social-panel 8/8, each exit 0;
+red:all --only social 5/5; with the footer's rel reworded, red:social-rel exits 2 (STALE plant, red baseline), the file
+restored byte for byte after; test:red-anchors line for line as on main; test:decomment and test:orphans unchanged.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>

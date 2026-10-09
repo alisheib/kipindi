@@ -1,0 +1,12 @@
+fix(red:policy-lines): L0's plant derives the RG page's version from the code's own constant - the typed 2026-09-26 rotted when 0652f61f re-versioned the page, and the case went green
+
+L0 moves the RG page's English META version while the version every save stamps against stays put. Its plant
+replaced the literal 'en: "Version 2026-09-26 ·', which 0652f61f (2026-10-06, the helpline ruling) re-versioned to
+2026-10-06 together with POLICY_PAGES.rg.codeVersion; the replace matched nothing, srcPlant reported "changed
+nothing" and L0 stayed green. It now anchors on `en: "Version ${RG_CODE} ·` (the file's existing constant) and
+moves it to 2099-12-31, a date no real re-version reaches. No assertion changed.
+
+Proof on OMEGA-COMPILE01 (2026-10-08, main f89dcdb9): red:policy-lines 49/49 caught, exit 0 (48/49 before), L0 read
+"rg 2099-12-31/2026-10-06/2026-10-06 vs 2026-10-06"; test:policy-lines 11/0.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>

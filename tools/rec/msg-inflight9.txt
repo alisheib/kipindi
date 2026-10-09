@@ -1,0 +1,9 @@
+docs(vodacom): IN FLIGHT - WP12's turns B2, C and D read; a hydration bug found on main and fixed on a branch; three more main reds fixed
+
+Turn B2: the S6 v2 compare attributes every difference in 224 cells - no unexpected S6 difference. Turn C: 1643
+checks, 333 of 335 tiles (two BLOCKED: no local price feed), the footer four ways as designed; it found
+/profile/responsible-gambling failing to hydrate on every load - fix 2b98b99e on vodacom-rg-hyd, its browser proof
+queued as turn G with the preview drive's section 5 rerun. Turn D running: both landmark seals 0 problems, local
+qa:live 334/334. Main repairs today: 51aae5a9, dfd0072e, b1dec89b.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>

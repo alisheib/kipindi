@@ -1,0 +1,22 @@
+Vodacom S7 WP0: the scripts-only repairs before S7 - red:ticker-honesty's 28 cases declared and judged by the whole check id, and test:stacking's primer checks renumbered 8.1-8.5
+
+S7 starts its preparation step before S6's WP12 closes, by Ali's choice of 2026-10-07 under S7-PLAN's narrower
+overrule (A8i-2 and A8j live and read back): WP0 only, nothing served changes.
+
+- red:ticker-honesty (S7-PLAN A4): its 28 cases move byte for byte into scripts/anchors/ticker-honesty.anchors.mjs, so
+  test:red-anchors section 3 audits each anchor resolving exactly once. Its verdict now needs a failing line that STARTS
+  with "✗ <id> " (an expected 11.2 was met by a failing 11.21 or 11.22, and 1.1 by 1.1-control), behind a control that
+  refuses to run if the matcher cannot tell an id from its neighbours. test:red-anchors' undeclared ceiling comes down
+  65 -> 64 in the same commit.
+- test:stacking (A3): the primer's five checks were 6.1-6.5, the z-order block's own ids, so a primer regression read as
+  the known z-order red. Renumbered 8.1-8.5 (7.x is the prose table's); only the labels and the two comments that cite
+  them change, and S7-PLAN's WP8 names them 8.1-8.5 too.
+- red:simple-journey-flag (A3 item 3) is NOT re-anchored here: money doors' release of the same day (the owner's ruling)
+  deletes the email bar, flips 10.shell.emailbar and replaces the twin's two stale email-bar plants with one. S7-PLAN's
+  A3 says so, and WP0 reads that twin as the release leaves it.
+
+Proof on OMEGA-COMPILE01: the moved cases deep-equal the old array (28/28); test:red-anchors 64 vs 64, with only main's
+two known anchor failures (bar-geometry, updown-handover) and every ticker-honesty anchor resolving once; test:stacking
+red only on its known 6.1 z-order check (z=11), the primer's 8.1-8.5 green; test:ticker-honesty green. {PROOF}
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>

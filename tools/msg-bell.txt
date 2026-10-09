@@ -1,0 +1,9 @@
+Vodacom S6: the classic bell's bytes put back as they were before S6 (A1) - A8i-2 had corrected two lines of its comment
+
+S6-PLAN A1: notifications-panel.tsx is untouched until S15 (the classic bell is not refactored; WP12's qa:bell-untouched
+proves it byte for byte). A8i-2 (586c5183) rewrote two lines of a comment there, which its draft had only reported: the
+comment says <Modal> guards only Shift+Tab, and since A8i-2 Modal's Tab trap guards both ways. The comment goes back to
+its pre-S6 bytes; that one stale clause is owed to S15, when the bell is next touched. A comment only: no behaviour and no
+served byte changes (production bundles carry no comments).
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>

@@ -1,0 +1,32 @@
+﻿
+Q5 — gold is money, and nothing else
+
+── 1 · identity surfaces carry no money ink ─────────────────────
+  ok   1.control · src/components/ui/identity-avatar.tsx is still real code after stripping
+  ok   1 · src/components/ui/identity-avatar.tsx uses no money-ink token
+  ok   1b · src/components/ui/identity-avatar.tsx uses no money-ink Tailwind class
+  ok   1.control · src/components/updown/updown-card.tsx is still real code after stripping
+  ok   1 · src/components/updown/updown-card.tsx uses no money-ink token
+  ok   1b · src/components/updown/updown-card.tsx uses no money-ink Tailwind class
+  ok   1b.control · a planted `text-gold-300` is caught
+  ok   1b.control · `border-gilt` and `bg-gold/15` are caught
+  ok   1b.control · `text-goldenrod`-like and `gold-600` tokens are not money ink
+
+── 2 · the rank ladder is metallic, not monetary ────────────────
+  ok   2.locate · .tier-bronze exists in globals.css
+  ok   2 · .tier-bronze wears no money-ink token
+  ok   2.locate · .tier-silver exists in globals.css
+  ok   2 · .tier-silver wears no money-ink token
+  ok   2.locate · .tier-gold exists in globals.css
+  ok   2 · .tier-gold wears no money-ink token
+  ok   2.locate · .tier-diamond exists in globals.css
+  ok   2 · .tier-diamond wears no money-ink token
+  ok   2.locate · .tier-sovereign exists in globals.css
+  ok   2 · .tier-sovereign wears no money-ink token
+
+── 3 · …and the law is still WORTH enforcing (a live consumer exists) ──
+  ok   3 · `.gilt-ink` still exists and is still consumed by a money surface
+
+gold-is-money: 20 passed, 0 failed
+
+gold-is-money: OK — identity is metallic, money is gold, and the two do not overlap.

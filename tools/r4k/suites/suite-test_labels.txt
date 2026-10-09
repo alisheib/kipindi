@@ -1,0 +1,85 @@
+
+label lexicon guard (DESIGN_AUTHORITY §L)
+
+  PASS schema parse — MarketSide has both arms
+  PASS schema parse — PositionStatus has five arms
+  PASS schema parse — UpDownRoundOutcome has three arms
+  PASS §1 every enum arm resolves to a real word in all 3 locales × both products
+  PASS §1b the round vocabulary is genuinely different from the poll vocabulary
+  PASS §2 no ASCII enum token inside a Swahili or Chinese string
+  PASS §3 scanner has files to scan
+  PASS §3 no enum is interpolated into a sentence on a player surface
+  PASS §3b the scanner reached the player render tree
+  PASS §3b no side/outcome token is typed out where a player reads it
+  PASS §3b no exempted file has GROWN a new raw side token
+  PASS §3b the exemption list carries no file that is already clean
+  PASS §3c a {side}/{outcome}/{status} placeholder is filled from the lexicon, never from the stored token
+  PASS §3d no display-position template interpolates a stored side
+  PASS §3d no string BUILT from a stored side reaches a player
+  PASS §3d no localized NOTIFICATION field interpolates a stored side
+  PASS §3d control · the Up & Down push in the poll's vocabulary IS detected
+  PASS §3d control · …and the shipped, routed spelling is NOT
+  PASS §3d control · the pre-fix modal title IS detected
+  PASS §3d control · …and the FIXED spelling is NOT
+  PASS §3d control · the pre-fix heldLabel IS detected
+  PASS §3d control · a `.has()` test on the same name is NOT
+  PASS §3d control · a trailing CR WOULD have blinded the taint rule (why nl() exists)
+  PASS §4 private word-maps outside the lexicon do not increase (≤ 11)
+
+  PASS §5a token scanner rejects a Chinese string carrying YES
+  PASS §5b token scanner rejects a Swahili string carrying CASHED_OUT
+  PASS §5c token scanner ACCEPTS a clean Chinese string
+  PASS §5d token scanner is not fooled by a KEY named like an enum
+  PASS §5e interpolation scanner rejects `resolved ${opts.outcome}`
+  PASS §5f interpolation scanner rejects a Chinese sentence carrying the enum
+  PASS §5g interpolation scanner ACCEPTS the lexicon-routed form
+  PASS §5h interpolation scanner ACCEPTS a URL carrying ?side=
+  PASS §5i private-map matcher rejects a dictionary ternary
+  PASS §5j private-map matcher ACCEPTS a tone ternary (a colour is not a word)
+  PASS §7a no PLAYER emitter takes a bare `marketTitle: string`
+  PASS §7b the emitters take the three-language shape
+  PASS §7c `notifyWin`'s label is localized too — it was the one that took a pre-built string
+  PASS §7d every PLAYER notify/alert caller passes all three titles, not `titleEn`
+  PASS §7e …and they go through `localizedText`, so the empty-translation fallback is one rule
+  PASS §7f ⚠️ the ADMIN objection emitter stays English by design
+  PASS §8 a surface holding EVERY product line resolves its side words through the lexicon
+  PASS §9 a money record's description names the side in the product's vocabulary
+  PASS §10 a surface that reads BOTH product lines resolves every side word from the row
+  PASS §10b the scanner REJECTS a mixed read that passes a literal
+  PASS §10b the scanner ACCEPTS a single-product surface passing a literal
+  PASS §10b the scanner ACCEPTS a label that names a product with BOTH arguments literal
+  PASS §10b the scanner does not read a COMMENT as a mixed-book read
+  PASS §10b the scanner ACCEPTS a mixed read that resolves from the row
+  PASS §10b the scanner actually saw the mixed-book surfaces
+  PASS §11a no NEW site de-underscores an enum on its way to a human
+  PASS §11a the de-underscore ratchet holds no stale entries
+  PASS §11a the scanner actually reached the ratcheted files
+  PASS §11b the schema yielded underscored enum arms to look for
+  PASS §11b no enum arm is typed out where a person reads it
+  PASS §11b the exemption list is not carrying a file that is already clean
+  PASS §11c the console is scanned at all — the gap this section closes
+  PASS §11c no NEW enum is interpolated into a sentence an officer reads
+  PASS §11c the console-prose ratchet holds no stale entries
+  NOTE §11c 10 enum-in-a-sentence site(s) remain in the console, across 6 file(s) — the number may only fall.
+
+  PASS §11d de-underscore scanner rejects the withdraw dialog's old `provider.replace(/_/g, " ")`
+  PASS §11d …and the `.split("_")` spelling of the same defect
+  PASS §11d …and `replaceAll`, which no earlier draft matched
+  PASS §11d de-underscore scanner ACCEPTS base64url decoding (`_` → `/`, a codec)
+  PASS §11d de-underscore scanner ACCEPTS a comment that quotes the defect it removed
+  PASS §11d literal-arm scanner rejects `<Chip>PENDING_REVIEW</Chip>`
+  PASS §11d literal-arm scanner rejects an arm in a label field
+  PASS §11d literal-arm scanner rejects a token on its OWN LINE inside a chip
+  PASS §11d literal-arm scanner ACCEPTS a generic + arrow run that merely spans a `>` and a `<`
+  PASS §11d literal-arm scanner ACCEPTS an env var name — an ops page must spell it exactly
+  PASS §11d literal-arm scanner ACCEPTS the enum doing its job in code
+  PASS §11d literal-arm scanner ACCEPTS an <option value> carrying the arm
+  PASS §11d prose scanner ACCEPTS a color-mix() paint instruction naming `status`
+  PASS §11d prose scanner still REJECTS the same enum in an actual sentence
+  PASS §11d the fetch binding is found, so the HTTP exclusion has a premise
+  PASS §11d HTTP exclusion fires on `Server returned ${res.status}` when `res` IS a fetch
+  PASS §11d …and does NOT fire when the same name was never bound to fetch
+  PASS §11d …and does NOT fire on a real enum beside an HTTP status
+
+ALL PASS — 3 locales × 2 products, 1402 files scanned, 11/11 private maps
+

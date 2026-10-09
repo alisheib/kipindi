@@ -1,0 +1,81 @@
+﻿PASS §1 saved email reaches the reader
+PASS §1 saved phone reaches the reader
+PASS §1 saved phoneTel reaches the reader
+PASS §2.1 the stale `helpline` key in the saved row does NOT become the helpline
+PASS §2.2 the stale keys are not carried in the live config at all
+PASS §2.3 ⭐ a saved helpline and licence REACH the config (the owner's rule, 2026-10-03)
+PASS §2.4 the server module registered the live reader
+PASS §2.4 a helpline and licence save through the real setter is accepted
+PASS §2.4 ★ HELPLINE() / HELPLINE_TEL() / LICENCE_NUMBER() return the SAVED values on the server
+PASS §2.4 …and putting the stored values back moves the readers back
+PASS §2.5 ★ in a browser, the readers return what the layout published on <html>
+PASS §2.5 ⚠️ CONTROL — with nothing published, the browser readers fall back to the defaults, never blank
+PASS §2.5 the attribute names are the declared ones
+PASS §10 refuses an address with no @
+PASS §10 …and leaves the stored config untouched after an address with no @
+PASS §10 refuses an address with a space
+PASS §10 …and leaves the stored config untouched after an address with a space
+PASS §10 refuses a blank phone
+PASS §10 …and leaves the stored config untouched after a blank phone
+PASS §10 refuses an undialable phone
+PASS §10 …and leaves the stored config untouched after an undialable phone
+PASS §10 refuses a blank helpline
+PASS §10 …and leaves the stored config untouched after a blank helpline
+PASS §10 refuses a helpline with words in it
+PASS §10 …and leaves the stored config untouched after a helpline with words in it
+PASS §10 refuses a blank licence
+PASS §10 …and leaves the stored config untouched after a blank licence
+PASS §10 refuses a licence carrying markup
+PASS §10 …and leaves the stored config untouched after a licence carrying markup
+PASS §10 ⚠️ CONTROL — a well-formed save, helpline and licence included, is ACCEPTED
+PASS §10 ★ accepts the helpline set to our OWN support number (E-328's refusal is gone)
+PASS §10 ★ accepts a support phone that is a short code
+PASS §10 ★ accepts a support phone that is a toll-free line
+PASS §10 ★ accepts a licence number with brackets and a colon
+[audit] ADMIN config.support_updated officer_test SUPPORT_CONFIG#global
+[audit] ADMIN config.support_updated officer_test SUPPORT_CONFIG#global
+PASS §3 every helpline label renders the helpline
+PASS §4 no client component reads an operator-editable contact
+PASS §5 no client component imports the server support-config
+PASS §6 no operator contact is published as a helpline or as free
+PASS §7 no at-risk response hands out an operator contact
+PASS §8 the literal sweep walked both trees
+PASS §8 no support contact is a literal outside support-config.ts
+PASS §9 the default email is a usable address
+PASS §9 the default phone is the LOCAL form a player reads
+PASS §9 the default phone is dialable at all
+PASS §9 the default phoneTel is E.164
+PASS §9 phoneTel is exactly what phone derives to
+PASS §11 no module-scope value captures a config getter
+PASS §12.1 ⭐ the licence DEFAULT is the number Ali supplied — pinned against the RULING, not against itself
+PASS §12.2 the licence literal appears in exactly ONE file — its declaration, and nowhere else
+PASS §12.3 ⛔ no surface still carries the retired TZ-GBT placeholder as a VALUE
+PASS §12.4 ⚠️ CONTROL — the render sites were actually found, and they read the getter
+PASS §12.5 ⚠️ CONTROL — the literal detector still fires on a planted second copy
+PASS §13.1 ★ every guard this campaign shipped is on the predeploy chain
+PASS §13.2 ⚠️ CONTROL — the predeploy chain was parsed and is substantial
+PASS §13.3 ⚠️ CONTROL — every name asserted above is a real npm script
+PASS §14.1 ★ every rendered support contact sits inside an anchor with the right scheme
+PASS §14.2 ⚠️ CONTROL — contact text renders were actually found
+PASS §14.3 ⚠️ CONTROL — the detector flags bare text, accepts an anchor, and handles wrapped JSX and sibling elements
+PASS §14.4 ⚠️ CONTROL — the exemption list is exactly one named file that still exists
+PASS §14.5 ★ no support contact is rendered as bare text from a string or after a label expression
+PASS §14.6 ⚠️ CONTROL — the detector flags the old faq5 string and a label-first render, and accepts anchors, hrefs and attributes
+PASS §14.7 ★ /help still carries its at-risk answer (faq5), and the page reads no helpline
+PASS §14.8 ★ /help's open answers clear the next divider (pb-3), and faq5 keeps its Chinese words whole (break-keep)
+PASS §14.9 ⚠️ CONTROL — the same check fails without the bottom padding, and fails with faq5 out of the whole-word set
+PASS §15.1 ★ no player-facing file reads the helpline — pages, components, emails, the Help chat (only the SMS footer and the admin card may)
+PASS §15.2 ★ no player-facing component renders a label that names a helpline
+PASS §15.3 ★ the root error page prints no helpline and reads no published one
+PASS §15.4 ⚠️ CONTROL — the readers detector flags a player file that reads the helpline, and passes the SMS footer and the admin card
+PASS §15.5 ⚠️ CONTROL — the label detector flags a label that reads "Helpline", and passes one that does not
+PASS §15.6 ⚠️ CONTROL — the error-page detector flags the old copies and the old attribute read
+PASS §15.7 ⚠️ CONTROL — every exempted file exists, and the SMS footer still reads the helpline
+PASS §16.1 ★ the Support contacts card has no read-only or disabled box
+PASS §16.2 ★ the card offers all four values — email, phone, helpline, licence
+PASS §16.3 the save action reads the names the form posts — and never the stale `helpline` key (E-328)
+PASS §16.4 ★ the root layout publishes the SAVED facts on <html> (what HELPLINE() reads in a browser)
+PASS §0 the population is non-empty
+PASS §0 the file sweep found src
+
+77 passed, 0 failed

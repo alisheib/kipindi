@@ -1,0 +1,1684 @@
+diff --git a/package.json b/package.json
+index 8a1509616..f668b5132 100644
+--- a/package.json
++++ b/package.json
+@@ -654,6 +654,7 @@
+     "test:visual-pass-r3c": "tsx scripts/visual-pass-r3c.test.mts",
+     "test:visual-pass-r4d": "tsx scripts/visual-pass-r4d.test.mts",
+     "test:visual-pass-r4e": "tsx scripts/visual-pass-r4e.test.mts",
++    "test:visual-pass-r4h": "tsx scripts/visual-pass-r4h.test.mts",
+     "red:journey-tickets": "tsx scripts/journey-tickets.test.mts --prove-red",
+     "test:signoff": "tsx scripts/signoff.test.mts",
+     "test:proposal-evidence-age": "tsx scripts/proposal-evidence-age.test.mts",
+diff --git a/scripts/journey-tickets.test.mts b/scripts/journey-tickets.test.mts
+index 6b066dd33..c9a51bcee 100644
+--- a/scripts/journey-tickets.test.mts
++++ b/scripts/journey-tickets.test.mts
+@@ -281,8 +281,11 @@ const TITLE_LINK = "<Link href={" + BT + "/markets/${p.marketId}" + BT + " as ne
+  * ⚠️ Until 2026-10-08 this pinned a two-line clamp on the full question; the visual pass (tile 211) found it cutting the
+  * bet's own question at 320 ("…kutakuwa kijani…" with "kesho?" hidden), so the pin now holds the opposite: no clamp.
+  * `keepUnits` (2026-10-08 · G1): the same words, with a number and its Chinese unit ("200毫米") kept on one line.
++ * ⚠️ `keepFigures` since round 4 of the visual pass (2026-10-09, edges 197 255): keep-words.tsx's title rule, which keeps
++ * `keepUnits`' ideograph unit and adds a season ("2026-27") and a unit word ("dakika 28:00") — the same words, every
++ * title surface on one rule (visual-pass-r4h §5 holds it).
+  */
+-const TITLE_WORDS = `hover:underline">{keepUnits(title.text)}</Link>`;
++const TITLE_WORDS = `hover:underline">{keepFigures(title.text)}</Link>`;
+ /** The heading the question sits in: one 20px line per line of words (16px type, leading 1.25), its lines balanced. */
+ const TITLE_HEADING = `<h2 className="mt-3 font-display text-body-lg font-semibold leading-tight text-text text-balance">`;
+ /** The link's reach: the scale's step 2 of padding above and below, taken back by the same step as negative margin. */
+@@ -1022,7 +1025,7 @@ const stampedShowsExact = swap(CARD, UNRESOLVED_STAT,
+   `m.selectionClosedNotifiedAt ? <Stat label={t.market.payoutIfWin} value={formatTzs(p.stake)} tone="gold" money hint={t.market.payoutExactNote} /> : ${UNRESOLVED_STAT}`);
+ const cardIsALink = swap(CARD, "<h2 className=", `<Link href={"/markets" as never}>open</Link><h2 className=`);
+ const reachDropped = swap(CARD, TITLE_REACH, `className="block py-2 hover:underline"`);
+-const titleClamped = swap(CARD, "{keepUnits(title.text)}</Link>", `<span className={title.short ? undefined : "line-clamp-2"}>{keepUnits(title.text)}</span></Link>`);
++const titleClamped = swap(CARD, "{keepFigures(title.text)}</Link>", `<span className={title.short ? undefined : "line-clamp-2"}>{keepFigures(title.text)}</span></Link>`);
+ const chipCopied = swap(CARD, "variant={positionStatusChip(p.status)}", `variant={p.status === "LOSS" ? "no" : "warning"}`);
+ const classicChipBack = swap(CLASSIC_CARD, "variant={positionStatusChip(status)}", `variant={status === "LOSS" ? "no" : "warning"}`);
+ const numberGone = swap(CARD, "{p.id}</p>", "</p>");
+diff --git a/scripts/landing-mine.test.mts b/scripts/landing-mine.test.mts
+index c2dc96d1e..64449fc24 100644
+--- a/scripts/landing-mine.test.mts
++++ b/scripts/landing-mine.test.mts
+@@ -78,8 +78,10 @@ const { tallyPicks, eatWeekStartMs, paidOutBehind } = await import("../src/lib/s
+   const hero = decomment(readFileSync(join(ROOT, "src/components/home/landing-hero.tsx"), "utf8"));
+   const page = decomment(readFileSync(join(ROOT, "src/app/page.tsx"), "utf8"));
+   const act = hero.slice(hero.indexOf("function SignedInAct"), hero.indexOf("function", hero.indexOf("function SignedInAct") + 10));
++  // ⚠️ `journey={journey}` since round 4 of the visual pass (2026-10-09, edges E4): in the journey the block's link to
++  // /positions takes the tab's own name; the rest of the block is the same for both (visual-pass-r4h §8 holds the switch).
+   ok("3: a signed-in player gets SignedInAct where a visitor gets the CTAs",
+-     /\{isAuthed \? \(\s*<SignedInAct t=\{t\} mine=\{mine \?\? null\} \/>/.test(hero));
++     /\{isAuthed \? \(\s*<SignedInAct t=\{t\} mine=\{mine \?\? null\} journey=\{journey\} \/>/.test(hero));
+   // ⭐ Re-pointed 2026-09-27 (hero v3, spec §9): the trust rows moved from the act block into the
+   // INTRO, above the featured card (R7). Same intent — one list, rendered for a visitor AND a player,
+   // before the player's block — now asserted where the list actually lives.
+diff --git a/scripts/simple-journey-flag.test.mts b/scripts/simple-journey-flag.test.mts
+index b68f79394..1a2667d2f 100644
+--- a/scripts/simple-journey-flag.test.mts
++++ b/scripts/simple-journey-flag.test.mts
+@@ -692,7 +692,10 @@ function g10Wiring(W: World) {
+   // height, panel and border), so a journey page does not jump while that code arrives; the tabs need none, because
+   // the rail takes no room in the page. And nothing else renders or loads the journey chrome, or loads it into a
+   // classic layout component.
+-  const SWAP_HEADER = '{journeyShown ? <Suspense fallback={<div aria-hidden="true" className="kp-jhdr" />}><LazyJourneyTopBar user={topUser} onBreak={promoSuppressed} proposalsState={proposalsState} inviteVisible={inviteVisible} invitePaid={invitePaid} /></Suspense> : <TopAppBar user={topUser} proposalsState={proposalsState} inviteVisible={inviteVisible} invitePaid={invitePaid} />}';
++  // ⚠️ `user={journeyUser}` since round 4 of the visual pass (2026-10-09, edges E32): the journey's header is handed
++  // `topUser` with its phone masked by `maskPhone`, the one mask the hub and the profile hero use; the classic arm is
++  // still `topUser`, today's props, character for character (visual-pass-r4h §7 holds the spread).
++  const SWAP_HEADER = '{journeyShown ? <Suspense fallback={<div aria-hidden="true" className="kp-jhdr" />}><LazyJourneyTopBar user={journeyUser} onBreak={promoSuppressed} proposalsState={proposalsState} inviteVisible={inviteVisible} invitePaid={invitePaid} /></Suspense> : <TopAppBar user={topUser} proposalsState={proposalsState} inviteVisible={inviteVisible} invitePaid={invitePaid} />}';
+   const SWAP_RAIL = "{journeyShown ? <Suspense fallback={null}><LazyJourneyTabs userId={session?.userId ?? null} /></Suspense> : <BottomNav isAuthed={!!session} proposalsState={proposalsState} inviteVisible={inviteVisible} walletHeld={!!topUser.walletHeld} />}";
+   const SHELL_LAZY = "src/components/layout/shell-lazy.tsx";
+   /** The two journey arms' lines in the shell's one lazy module (S6 WP6c): `next/dynamic`, server render on, no option object, the lost-chunk guard last. */
+diff --git a/scripts/visual-pass-r4h.test.mts b/scripts/visual-pass-r4h.test.mts
+new file mode 100644
+index 000000000..f759316ec
+--- /dev/null
++++ b/scripts/visual-pass-r4h.test.mts
+@@ -0,0 +1,595 @@
++/**
++ * ROUND 4 OF THE VISUAL PASS, HELPER H (2026-10-09) — the edge scenarios' findings (M9's edges drive, S/edges/tiles and
++ * S/visual/triage-r4.md "EDGES"), each fix held beside a control or a plant that proves the check can fail.
++ *
++ *   npx tsx scripts/visual-pass-r4h.test.mts        (npm run test:visual-pass-r4h)
++ *
++ * The owner's rule (Ali, 2026-10-08): only perfect visual and logical results. Each section names the tiles and the file:
++ *   §1  E27 the name editor selects in the commit that opens it — no keystroke is ever lost
++ *   §2  E24 E25 E26 a long name breaks inside its column, never one character alone, and the hero cannot scroll sideways
++ *   §3  E28 the board rows' meta line is a DotSeq: no line ends or opens on "·"
++ *   §4  E29 a title's figures stay whole ("2026-27", "dakika 28:00") on every title surface, CJK-safe
++ *   §5  E30 the card's two-line title slot, by design, with its numbers
++ *   §6  E31 E33 the journey's account menu: the Needle row on the rows' grid, a wrapped label never ends on one word,
++ *       /positions by the tab's name
++ *   §7  E32 one phone, one mask (maskPhone) in the journey and on /profile/account
++ *   §8  E4  the home's link to /positions takes the journey tab's name
++ *   §9  E34 the journey's toaster hangs under its header
++ *   §10 E5  the home's tab title in the reader's language
++ *   §11 E2 E3 the journey's Wallet: a whole glyph in every door, captions that never end on one word
++ *   §12 E13 the card watermark is not lit behind the card's controls
++ *   §13 G20 an id breaks in whole runs of four on both receipts
++ *   §14 R4-C's leftover: /live, /updown/history and /profile/account wear the search band (rung + 10 on every side)
++ * Sources are read through the shared scanners (scripts/lib/decomment.mts). This file writes nothing.
++ */
++import { readFileSync } from "node:fs";
++import { createRequire } from "node:module";
++import { createElement as h, Fragment } from "react";
++import { renderToStaticMarkup } from "react-dom/server";
++import { decomment, decommentCss } from "./lib/decomment.mts";
++import { keepFigures, keepIdRuns, keepLastWords, keepNameEnd } from "../src/components/ui/keep-words.tsx";
++import { DotSeq } from "../src/components/ui/dot-seq.tsx";
++import { maskPhone } from "../src/lib/phone-normalize.ts";
++import { SHORT_TITLE_MAX } from "../src/lib/markets/short-title.ts";
++import { JOURNEY_TABS } from "../src/lib/nav/active-tab.ts";
++import {
++  QUERY_BAR_ROW1_CLASS,
++  QUERY_BAR_ROW2_CLASS,
++  QUERY_SEARCH_BAND_CLASS,
++} from "../src/components/ui/query-bar.tsx";
++import { dict as DICTS } from "../src/lib/i18n-dict.ts";
++
++let pass = 0;
++const fails: string[] = [];
++const ok = (name: string, cond: boolean, detail = "") => {
++  if (cond) { pass++; console.log(`  ok   ${name}`); }
++  else { fails.push(`${name}${detail ? ` — ${detail}` : ""}`); console.log(`  FAIL ${name}${detail ? ` — ${detail}` : ""}`); }
++};
++const section = (s: string) => console.log(`\n── ${s} ${"─".repeat(Math.max(0, 100 - s.length))}`);
++const raw = (p: string) => readFileSync(p, "utf8").replace(/\r\n/g, "\n");
++/** Source with its comments out (the shared scanner), so a rule quoted in a note is never mistaken for the rule. */
++const read = (p: string) => decomment(raw(p));
++const RAW_CSS = raw("src/app/globals.css");
++const CSS = decommentCss(RAW_CSS);
++const html = (el: Parameters<typeof renderToStaticMarkup>[0]) => renderToStaticMarkup(el);
++const frag = (n: unknown) => html(h(Fragment, null, n as never));
++const text = (s: string) => s.replace(/<[^>]+>/g, "").replace(/&amp;/g, "&").replace(/&#x27;/g, "'").replace(/&quot;/g, '"');
++const squash = (s: string) => s.replace(/\s+/g, " ");
++const esc = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
++const show = (v: unknown) => JSON.stringify(v);
++const sw = DICTS.sw, en = DICTS.en, zh = DICTS.zh;
++
++/** One rule's declarations, by its exact selector (or one member of a selector list) at the start of a line. */
++function rule(src: string, selector: string): string {
++  const m = new RegExp(`(?:^|\\n)\\s*(?:[^{}\\n]*,\\s*)?${esc(selector)}(?![\\w-])\\s*(?:,[^{}\\n]*)?\\{([^}]*)\\}`).exec(src);
++  return m ? m[1] : "";
++}
++/** :root's px custom properties. */
++const ROOT_PX: Record<string, number> = {};
++for (const m of RAW_CSS.matchAll(/(--(?:sp|type|h-control|r)-[a-z0-9-]+):\s*([0-9.]+)px/g)) ROOT_PX[m[1]] ??= Number(m[2]);
++const px = (v: string) => ROOT_PX[v] ?? NaN;
++/** This repo's spacing scale: the overridden keys from tailwind.config.ts, the stock 2.5 (10px) they leave. */
++const SCALE: Record<string, number> = { "2.5": 10 };
++{
++  const block = /spacing:\s*\{([^}]*)\}/.exec(raw("tailwind.config.ts"))?.[1] ?? "";
++  for (const m of block.matchAll(/"([0-9.]+)":\s*"(\d+)px"/g)) SCALE[m[1]] = Number(m[2]);
++}
++/** The px of a padding/margin/gap utility in a class list ("pt-2" → 12, "pt-[10px]" → 10), or NaN. */
++const tw = (classes: string, prefix: string) => {
++  const m = new RegExp(`(?:^|\\s)${esc(prefix)}-(?:([0-9.]+)|\\[(\\d+)px\\])(?=\\s|$)`).exec(classes);
++  return m ? (m[1] !== undefined ? (SCALE[m[1]] ?? NaN) : Number(m[2])) : NaN;
++};
++
++// The repo's own fonts (src/lib/server/reports/fonts), advances with kerning — visual-pass-r3c's model, within ~1% of tiles.
++const fontkit = createRequire(import.meta.url)("fontkit") as {
++  openSync: (p: string) => { layout: (s: string) => { positions: { xAdvance: number }[] }; unitsPerEm: number };
++};
++const F = (n: string) => fontkit.openSync(`src/lib/server/reports/fonts/${n}.ttf`);
++const inter = F("Inter-Regular"), interMed = F("Inter-Medium"), interBold = F("Inter-Bold"), monoB = F("JetBrainsMono-Bold");
++const width = (f: ReturnType<typeof F>, s: string, size: number) => f.layout(s).positions.reduce((a, p) => a + p.xAdvance, 0) / f.unitsPerEm * size;
++/** Inter 600 sits between the two cuts the repo ships. */
++const width600 = (s: string, size: number) => (width(interMed, s, size) + width(interBold, s, size)) / 2;
++/** Sora is not in the repo's font set: Inter Medium scaled by the two faces' average advance at 500 (next's capsize table). */
++const CAPSIZE = JSON.parse(raw("node_modules/next/dist/server/capsize-font-metrics.json")) as Record<string, { unitsPerEm: number; xWidthAvg: number; variants: Record<string, { xWidthAvg: number }> }>;
++const SORA_RATIO = (CAPSIZE.sora.variants["500"].xWidthAvg / CAPSIZE.sora.unitsPerEm) / (CAPSIZE.inter.variants["500"].xWidthAvg / CAPSIZE.inter.unitsPerEm);
++const sora500 = (s: string, size: number) => width(interMed, s, size) * SORA_RATIO;
++const IDEO = /[㐀-䶿一-鿿豈-﫿]/;
++
++/** A greedy line breaker over units (a unit is a word, or a glued run, never split), joined by spaces of `space` px. */
++function lines(units: string[], w: (s: string) => number, line: number, space: number, joinWithSpace = true): string[] {
++  const out: string[] = [];
++  let cur = "";
++  let curW = 0;
++  for (const u of units) {
++    const uw = w(u);
++    const add = cur === "" ? uw : curW + (joinWithSpace ? space : 0) + uw;
++    if (cur !== "" && add > line) { out.push(cur); cur = u; curW = uw; }
++    else { cur = cur === "" ? u : cur + (joinWithSpace ? " " : "") + u; curW = add; }
++  }
++  if (cur !== "") out.push(cur);
++  return out;
++}
++/** The units a rendered fragment gives the line breaker: nowrap spans whole, the rest split at spaces (or per ideograph). */
++function unitsOf(markup: string, cjk = false): string[] {
++  const parts: string[] = [];
++  for (const m of markup.matchAll(/<span class="whitespace-nowrap">([^<]*)<\/span>|([^<]+)/g)) {
++    if (m[1] !== undefined) parts.push(`\u0000${text(m[1])}`);
++    else parts.push(...(cjk ? Array.from(text(m[2])) : text(m[2]).split(/\s+/).filter(Boolean)));
++  }
++  // A glued run joins the unit before it when no space separates them (CJK: "百里" + "呼延" stay separate units).
++  return parts.map((p) => p.replace("\u0000", ""));
++}
++
++/* ══ §1 · E27 · NO KEYSTROKE LOST ═════════════════════════════════════════════════════════════════════════════════ */
++section("1 · E27 the name editor selects in the commit that opens it (edges: saved names lost their first letters)");
++const EDITOR = "src/components/profile/name-editor.tsx";
++const editorOk = (s: string) => {
++  const flat = squash(s);
++  const enter = /const enter = \(\) => \{([\s\S]*?)\};/.exec(s)?.[1] ?? "";
++  return [
++    /setTimeout\(/.test(s) && "a timer is back in the editor",
++    /\.select\(\)/.test(enter) && "enter() selects",
++    !flat.includes("useLayoutEffect(() => { if (!editing) return; const field = inputRef.current; if (!field) return; field.focus(); field.select(); }, [editing]);") && "no layout effect focuses and selects on open",
++    !/import \{ useEffect, useLayoutEffect, useRef, useState, useTransition \} from "react";/.test(s) && "useLayoutEffect is not imported",
++    (s.match(/\.select\(\)/g) ?? []).length !== 1 && "select() is called more than once (a re-select would swallow keys again)",
++  ].filter(Boolean) as string[];
++};
++{
++  const ed = read(EDITOR);
++  ok("1.1 · no timer, one select() — in a layout effect on `editing`, after focus, so the field is selected before the next event",
++    editorOk(ed).length === 0, editorOk(ed).join(" · "));
++  const planted = ed.replace("    setEditing(true);\n  };", "    setEditing(true);\n    setTimeout(() => inputRef.current?.select(), 30);\n  };");
++  ok("1.1′ PLANT · the 30ms re-select put back is reported", planted !== ed && editorOk(planted).length > 0);
++
++  // ⭐ THE MECHANISM, modelled: the drive opened the field, pressed Ctrl+A and typed at 4ms a key from ~10ms. A select()
++  // that lands at t selects whatever was typed before t, and the next key replaces it.
++  const typeInto = (name: string, selectAt: number, start = 10, every = 4) => {
++    let value = "old name", all = true; // Ctrl+A: everything selected
++    let selected = false;
++    Array.from(name).forEach((ch, i) => {
++      const t = start + i * every;
++      if (!selected && t >= selectAt) { all = true; selected = true; }
++      value = all ? ch : value + ch;
++      all = false;
++    });
++    return value;
++  };
++  const lost = (name: string, selectAt: number) => Array.from(name).length - Array.from(typeInto(name, selectAt)).length;
++  const names = ["Mwanaisha Khamis Abdalla Mwinyimkuu Juma", "Mwanaishakhamisabdallamwinyimkuujumasali", "欧阳慕容司马诸葛上官皇甫东方独孤令狐长孙宇文尉迟公孙轩辕西门南宫夏侯端木百里呼延"];
++  ok("1.2 · selected at open (t = 0): every key lands — the three edge names are saved whole",
++    names.every((n) => typeInto(n, 0) === n), show(names.map((n) => lost(n, 0))));
++  ok("1.2′ CONTROL · selected 30ms later: the keys typed before it are replaced (the drive saved \"wanaisha…\", \"anaisha…\", \"阳慕容…\")",
++    names.every((n) => lost(n, 30) > 0), show(names.map((n) => lost(n, 30))));
++}
++
++/* ══ §2 · E24 E25 E26 · LONG NAMES ══════════════════════════════════════════════════════════════════════════════ */
++section("2 · E24 E25 E26 a long name breaks inside its column, never one character alone; the hero cannot scroll (tiles 218 233–236)");
++{
++  const ed = read(EDITOR);
++  const button = /<button\s+ref=\{triggerRef\}[\s\S]*?<\/button>/.exec(ed)?.[0] ?? "";
++  const nameRule = (b: string) => [
++    !/className="mt-1\.5 inline-flex min-h-\[40px\] max-w-full items-center gap-2 group text-left"/.test(b) && "the button may outgrow its column",
++    !/<span className="min-w-0 font-display text-\[24px\] md:text-\[28px\] font-bold leading-tight tracking-\[-0\.02em\] text-text text-balance \[overflow-wrap:anywhere\]">/.test(b) && "the name has no anywhere-break, balance or min-w-0",
++    !/\? keepNameEnd\(currentName\) :/.test(b) && "the name's end is not kept",
++  ].filter(Boolean) as string[];
++  ok("2.1 · the read-mode name: the button capped at its column, the name breaking anywhere when it must, balanced, its end kept",
++    button !== "" && nameRule(button).length === 0, nameRule(button).join(" · "));
++  ok("2.1′ PLANT · `break-word` instead of `anywhere` is reported (break-word does not lower a flex item's min-content: the 40-letter word stays 580px wide)",
++    nameRule(button.replace("[overflow-wrap:anywhere]", "break-words")).length > 0);
++
++  // E24: the hero is no scroll container. Tailwind emits .overflow-clip after .overflow-hidden, so clip wins where supported.
++  const prof = read("src/app/profile/page.tsx");
++  const core = raw("node_modules/tailwindcss/lib/corePlugins.js");
++  const hiddenAt = core.indexOf('".overflow-hidden"'), clipAt = core.indexOf('".overflow-clip"');
++  ok("2.2 · the hero section is `overflow-hidden overflow-clip` (clip after hidden in Tailwind's output) and its watermark still overhangs 32px (-right-6), the overflow a reveal scrolled",
++    prof.includes(`<section className="relative overflow-hidden overflow-clip rounded-xl border border-border bg-bg-elevated">`)
++      && hiddenAt > 0 && clipAt > hiddenAt && prof.includes(`<div className="absolute -right-6 -top-6 opacity-[0.06]" aria-hidden>`) && SCALE["6"] === 32,
++    show({ hiddenAt, clipAt }));
++  ok("2.2′ PLANT · the hero back on `overflow-hidden` alone is reported",
++    !prof.replace("overflow-hidden overflow-clip", "overflow-hidden").includes("overflow-hidden overflow-clip"));
++
++  // keepNameEnd: the last two characters together, the text unchanged.
++  const cjk = "欧阳慕容司马诸葛上官皇甫东方独孤令狐长孙宇文尉迟公孙轩辕西门南宫夏侯端木百里呼延";
++  const r = frag(keepNameEnd(cjk));
++  ok("2.3 · keepNameEnd: \"…百里<呼延>\", \"Jum<a K>\", a two-character name untouched, the words unchanged",
++    r.endsWith(`<span class="whitespace-nowrap">呼延</span>`) && text(r) === cjk && frag(keepNameEnd("Juma K")).endsWith(`<span class="whitespace-nowrap">a K</span>`)
++      && keepNameEnd("AB") === "AB" && text(frag(keepNameEnd("Mwanaisha Khamis"))) === "Mwanaisha Khamis", r.slice(-60));
++
++  // The hub's identity: the name column at each width, the 40 ideographs at 17px.
++  const acct = read("src/app/account/page.tsx");
++  const nameCss = rule(CSS, ".kp-hub__name");
++  ok("2.4 · the hub renders keepNameEnd(viewer.name) and balances the name (anywhere-breaks kept)",
++    acct.includes(`<span className="kp-hub__name">{keepNameEnd(viewer.name)}</span>`) && /overflow-wrap:\s*anywhere/.test(nameCss) && /text-wrap:\s*balance/.test(nameCss), nameCss);
++  const idRule = rule(CSS, ".kp-hub__id");
++  const col = (vw: number) => vw - 2 * 16 - 2 - 2 * px("--sp-4") - 52 - px("--sp-3");
++  ok("2.locate · the hub's name column is viewport − 130: 190 at 320, 230 at 360, 260 at 390 (16px gutter, 1px border, 16px padding, 52px initials, 12px gap)",
++    /padding:\s*var\(--sp-4\)/.test(idRule) && /gap:\s*var\(--sp-3\)/.test(idRule) && /width:\s*52px/.test(rule(CSS, ".kp-hub__initials")) && col(360) === 230, show([col(320), col(360), col(390)]));
++  const size = px("--type-h4");
++  const greedy = (markup: string, vw: number) => lines(unitsOf(markup, true), (u) => Array.from(u).length * size, col(vw), 0, false);
++  const after = [320, 360, 390].map((vw) => greedy(r, vw).map((l) => Array.from(l).length));
++  ok("2.5 · on any engine (balance aside) the last line holds two characters at least: 11·11·11·7 at 320, 13·13·12·2 at 360, 15·15·10 at 390",
++    after.every((ls) => ls[ls.length - 1] >= 2) && show(after) === show([[11, 11, 11, 7], [13, 13, 12, 2], [15, 15, 10]]), show(after));
++  const before = greedy(cjk, 360).map((l) => Array.from(l).length);
++  ok("2.5′ CONTROL · the name as text broke 13·13·13·1 at 360 — the tile's lone last character", show(before) === show([13, 13, 13, 1]), show(before));
++}
++
++/* ══ §3 · E28 · THE BOARD ROWS' META LINE ════════════════════════════════════════════════════════════════════════ */
++section("3 · E28 the board rows' meta line breaks only between its facts (tiles 248 249 257 258 266 267)");
++const HERO = "src/components/home/landing-hero.tsx";
++{
++  const hero = read(HERO);
++  const row = hero.slice(hero.indexOf("function QuestionRow"), hero.indexOf("export function LandingHero"));
++  const metaShape = (s: string) => [
++    !s.includes(`<DotSeq text={[closes, settles, pool, depth].filter(Boolean).join(" · ")} className="kp-qrow__meta" renderPart={metaPart} />`) && "the meta is not a DotSeq of its four facts",
++    /\{" · "\}/.test(s) && "a hand-written \" · \" remains in the row",
++    !/part === settles \? \([\s\S]*?<span className="kp-qrow__srcname" data-market-part="source">\{row\.sourceName\}<\/span>/.test(s) && "the source part lost its name hook",
++    !squash(s).includes(`: part === pool ? <span className="kp-qrow__pool" data-market-part="pool">{t.common.pool}{" "}{formatTzs(row.pool)}</span>`) && "the pool part lost its class, hook or words",
++    !squash(s).includes(`: part === depth ? ( <span className="kp-qrow__depth" data-market-part="predictors"> {formatNumber(row.predictors)}{" "}{row.predictors === 1 ? t.market.predictorsCountOne : t.market.predictorsCount} </span> )`) && "the predictors part lost its class, hook or words",
++    !s.includes("const pool = `${t.common.pool} ${formatTzs(row.pool)}`;") && "the pool's key is not the words it draws",
++    !s.includes(`part === closes ? <span className="kp-qrow__close">{closes}</span>`) && "the close lost its class",
++  ].filter(Boolean) as string[];
++  ok("3.1 · QuestionRow's meta line is DotSeq over closes · settles · pool · depth, each fact in its own class and V18 hook",
++    row !== "" && metaShape(row).length === 0, metaShape(row).join(" · "));
++  const old = row.replace(`<DotSeq text={[closes, settles, pool, depth].filter(Boolean).join(" · ")} className="kp-qrow__meta" renderPart={metaPart} />`,
++    `<span className="kp-qrow__meta"><span className="kp-qrow__close">{closes}</span>{" · "}<span className="kp-qrow__pool" data-market-part="pool">{pool}</span></span>`);
++  ok("3.1′ PLANT · the sentence of text with its own \" · \" put back is reported", metaShape(old).length > 0);
++
++  // Rendered: every fact is a flex item and its dot hangs inside it; no " · " stands between items, where a line can end.
++  const facts = ["Litafungwa 9 Okt", "Linatatuliwa kwa bot.go.tz", "Bwawa TZS 0", "0 watabiri"];
++  const part = (p: string) => (p === facts[1] ? h("span", { className: "kp-qrow__src" }, "Linatatuliwa kwa ", h("span", { className: "kp-qrow__srcname", "data-market-part": "source" }, "bot.go.tz")) : h("span", null, p));
++  const out = html(h(DotSeq, { text: facts.join(" · "), className: "kp-qrow__meta", renderPart: part }));
++  const items = out.match(/<span class="kp-seq__item">/g)?.length ?? 0;
++  const between = /<\/span> · <span class="kp-seq__item">/.test(out) || /<\/span>\s*·\s*<span/.test(out.replace(/<span class="kp-seq__dot"[^>]*>·<\/span>/g, ""));
++  ok("3.2 · rendered: four items in one flex line (`kp-seq kp-qrow__meta`), each dot inside the item it opens, the text \"A · B · C · D\" for a reader",
++    out.startsWith(`<span class="kp-seq kp-qrow__meta">`) && items === 4 && !between && text(out) === facts.join(" · "), out.slice(0, 160));
++  ok("3.2′ CONTROL · the old markup puts the dot between the facts as text, where a line may end on it",
++    /<\/span> · <span/.test(html(h("span", { className: "kp-qrow__meta" }, h("span", null, facts[0]), " · ", h("span", null, facts[1])))));
++  const seq = rule(CSS, ".kp-seq");
++  ok("3.3 · `.kp-seq` is the wrapping flex line with the left-edge clip, and `.kp-qrow__meta` sets no display to undo it",
++    /display:\s*flex/.test(seq) && /flex-wrap:\s*wrap/.test(seq) && /clip-path:\s*inset\(-100vmax -100vmax -100vmax 0\)/.test(seq) && !/display/.test(rule(CSS, ".kp-qrow__meta")), seq);
++}
++
++/* ══ §4 · E29 · TITLE FIGURES ════════════════════════════════════════════════════════════════════════════════════ */
++section("4 · E29 a title's figures stay whole on every title surface (tiles 197 199 253 255 256)");
++const CATALOGUE = [
++  "Simba SC wins the NBC Premier League 2026-27", "Simba SC yashinda NBC Premier League 2026-27", "辛巴俱乐部赢得2026-27赛季NBC超级联赛",
++  "Je, mkimbiaji wa Tanzania atavunja dakika 28:00 kwenye 10K ya World Athletics ijayo?", "Will a Tanzanian runner break 28:00 in the next World Athletics 10K?",
++  "Bitcoin yafunga juu ya $100,000 tarehe 1 Agosti", "Bitcoin closes above $100,000 on 1 August", "比特币8月1日收于10万美元以上",
++  "Je, masika yataanza Dar es Salaam kabla ya Aprili 15?", "Will the long rains begin in Dar es Salaam before April 15?",
++  "Je, joto la juu Mwanza litazidi nyuzi 32 Jumapili?", "Will Mwanza max temperature exceed 32°C this Sunday?",
++  "Je, akiba ya BoT itazidi $5.5 bilioni kwenye taarifa ya kila mwezi ijayo?", "Will Bitcoin's 7-day move be positive?",
++  "Je, video ijayo ya Wasafi itapita milioni 1 wiki ya kwanza?", "Will Sauti Sol release a new single in the next 30 days?",
++  "USD/TZS closes below 2,650 at end of Q2", "USD/TZS yafunga chini ya 2,650 mwisho wa robo ya pili", "美元兑坦桑尼亚先令二季度末收于2,650以下",
++  "Dar es Salaam rainfall exceeds 200mm in July", "达累斯萨拉姆七月降雨超过200毫米", "Will the S&P 500 close higher this week?",
++  "Je, mwendo wa Bitcoin wa siku 7 utakuwa chanya?", "Will Ethereum hit a new 30-day high before month-end?", "Je, masika yataisha kabla ya Mei 31 Dar es Salaam?",
++];
++{
++  const runs = (s: string) => [...frag(keepFigures(s)).matchAll(/<span class="whitespace-nowrap">([^<]*)<\/span>/g)].map((m) => text(m[1]));
++  const want: Array<[string, string[]]> = [
++    ["Simba SC wins the NBC Premier League 2026-27", ["2026-27"]],
++    ["辛巴俱乐部赢得2026-27赛季NBC超级联赛", ["2026-27赛季"]],
++    ["Je, mkimbiaji wa Tanzania atavunja dakika 28:00 kwenye 10K ya World Athletics ijayo?", ["dakika 28:00"]],
++    ["Bitcoin yafunga juu ya $100,000 tarehe 1 Agosti", ["1 Agosti"]],
++    ["Will the long rains begin in Dar es Salaam before April 15?", ["April 15"]],
++    ["Je, akiba ya BoT itazidi $5.5 bilioni kwenye taarifa ya kila mwezi ijayo?", ["$5.5 bilioni"]],
++    ["Will Ethereum hit a new 30-day high before month-end?", ["30-day"]],
++    ["达累斯萨拉姆七月降雨超过200毫米", ["200毫米"]],
++  ];
++  const wrong = want.filter(([t, w]) => show(runs(t)) !== show(w)).map(([t]) => `${t} → ${show(runs(t))}`);
++  ok("4.1 · the runs: \"2026-27\" (and \"2026-27赛季\"), \"dakika 28:00\", \"1 Agosti\" (not \"tarehe 1 Agosti\": one side only), \"April 15\", \"$5.5 bilioni\", \"30-day\", \"200毫米\"",
++    wrong.length === 0, wrong.join(" | "));
++  const untouched = ["Will a Tanzanian runner break 28:00 in the next World Athletics 10K?", "USD/TZS closes below 2,650 at end of Q2", "Will the S&P 500 close higher this week?", "Dar es Salaam rainfall exceeds 200mm in July", "Je, Simba SC watashinda Derby ya Kariakoo ijayo?"];
++  ok("4.2 · a title with no run is returned as the very string (byte-identical markup): bare numbers, proper nouns, \"200mm\", no digits",
++    untouched.every((t) => keepFigures(t) === t));
++  const all = CATALOGUE.map((t) => [t, frag(keepFigures(t))] as const);
++  ok("4.3 · the words are never changed, and no run is longer than a word and its number (≤ 20 characters in the catalogue)",
++    all.every(([t, m]) => text(m) === t.replace(/&/g, "&")) && CATALOGUE.flatMap(runs).every((r) => Array.from(r).length <= 20),
++    show(CATALOGUE.flatMap(runs).filter((r) => Array.from(r).length > 20)));
++  const kw = raw("src/components/ui/keep-words.tsx");
++  ok("4.4 · no lookbehind in keep-words.tsx (Safari before 16.4 cannot parse a bundle holding one)", !/\(\?<[=!]/.test(decomment(kw)));
++  ok("4.4′ PLANT · a lookbehind in the unit pattern is reported", /\(\?<[=!]/.test(decomment(kw).replace("(?:\\\\b(${UNIT_BEFORE})", "(?<=\\\\s)(?:(${UNIT_BEFORE})")));
++
++  // Every surface a title renders on reads keepFigures.
++  const SITES: Array<[string, string]> = [
++    ["src/components/markets/market-card.tsx", `{featured ? <h2 className="mcardp-q">{keepFigures(title)}</h2> : <h3 className="mcardp-q">{keepFigures(title)}</h3>}`],
++    [HERO, `<span className="kp-qrow__q">{keepFigures(title)}</span>`],
++    ["src/app/markets/[id]/page.tsx", `{keepFigures(pickLocalized(locale, m.titleEn, m.titleSw, m.titleZh))}</h1>`],
++    ["src/components/journey/tickets/ticket-card.tsx", `className="-my-2 block py-2 hover:underline">{keepFigures(title.text)}</Link>`],
++    ["src/app/live/featured-contest.tsx", `{keepFigures(mm.title)}`],
++    ["src/app/live/pulse-grid.tsx", `<Fragment key={i}>{keepFigures(part)}</Fragment>`],
++  ];
++  const missing = SITES.filter(([f, s]) => !read(f).includes(s) || /keepUnits\(/.test(read(f))).map(([f]) => f);
++  ok("4.5 · cards (grid and featured), the board's rows, the market page h1, the journey's ticket card, /live's carousel and wall: keepFigures, no keepUnits left",
++    missing.length === 0, missing.join(", "));
++  const pageNoKeep = read("src/app/markets/[id]/page.tsx").replace("{keepFigures(pickLocalized(locale, m.titleEn, m.titleSw, m.titleZh))}</h1>", "{pickLocalized(locale, m.titleEn, m.titleSw, m.titleZh)}</h1>");
++  ok("4.5′ PLANT · the market page h1 as round 4 found it (the bare title) is reported", !pageNoKeep.includes(SITES[2][1]));
++
++  // /live's KeepHyphenated: a token stops at an ideograph, and a numeric range is left to keepFigures.
++  const grid = read("src/app/live/pulse-grid.tsx");
++  const lit = /const parts = text\.split\(\/(.+)\/u\);/.exec(grid)?.[1] ?? "";
++  const tokens = (re: RegExp, s: string) => s.split(re).filter((_, i) => i % 2 === 1);
++  const now = new RegExp(lit, "u");
++  const zhTitle = "辛巴俱乐部赢得2026-27赛季NBC超级联赛";
++  ok("4.6 · /live's hyphen tokens: \"30-day\" and \"month-end?\" whole, the Chinese title NOT one token, \"2026-27\" left to keepFigures",
++    lit !== "" && show(tokens(now, "Will Ethereum hit a new 30-day high before month-end?")) === show(["30-day", "month-end?"])
++      && tokens(now, zhTitle).every((t) => t.length < 4) && tokens(now, "Simba SC wins the NBC Premier League 2026-27").length === 0,
++    show({ zh: tokens(now, zhTitle) }));
++  const oldRe = /(\S*[\p{L}\p{N}]-[\p{L}\p{N}]\S*)/u;
++  ok("4.6′ CONTROL · the round-3 token rule took the whole Chinese title as one nowrap token (wider than any card)", show(tokens(oldRe, zhTitle)) === show([zhTitle]));
++}
++
++/* ══ §5 · E30 · THE CARD'S TITLE SLOT ═══════════════════════════════════════════════════════════════════════════ */
++section("5 · E30 the card's two-line title slot is the contract (tiles 251 252): by design, with its numbers");
++{
++  const q = rule(CSS, ".mcardp-q");
++  ok("5.1 · the grid card's question clamps at two lines over a two-line minimum — every card in a row keeps its pick, bar and foot on one line, and --mcard-base (the skeleton's height) is measured with it",
++    /-webkit-line-clamp:\s*2/.test(q) && /min-height:\s*calc\(2 \* 1\.34em\)/.test(q) && /--mcard-base:\s*209px/.test(CSS), q);
++  // The title column: card = viewport − 32 gutter; − 2 border − 30 padding; − the price column ("—" in 28px mono) − 14 gap.
++  const dash = 0.6 * 28;
++  const colW = (vw: number) => vw - 32 - 2 - 30 - dash - 14;
++  const avg = (CAPSIZE.sora.variants["600"].xWidthAvg / CAPSIZE.sora.unitsPerEm) * 15;
++  const cap = (vw: number) => 2 * Math.floor(colW(vw) / avg);
++  ok("5.2 · S2's budget (SJ-8: 56 code points in en/sw, 28 in zh) is what two lines hold on the narrowest card: ~58 at 320, ~68 at 360",
++    SHORT_TITLE_MAX.en === 56 && SHORT_TITLE_MAX.sw === 56 && SHORT_TITLE_MAX.zh === 28 && cap(320) >= 56 && cap(360) >= 56, show({ c320: cap(320), c360: cap(360), avg: avg.toFixed(2) }));
++  const long = "Je, mkimbiaji wa Tanzania atavunja dakika 28:00 kwenye 10K ya World Athletics ijayo?";
++  ok("5.3 · the tiled title is 84 code points, 150% of the budget: it needs three lines below ~640 and is clamped by design; S2's short title is its home (report: MarketCard does not read `cardTitle` yet)",
++    Array.from(long).length === 84 && Array.from(long).length > cap(390), show({ len: Array.from(long).length, c390: cap(390) }));
++}
++
++/* ══ §6 · E31 E33 · THE JOURNEY'S ACCOUNT MENU ═══════════════════════════════════════════════════════════════════ */
++section("6 · E31 E33 the journey's account menu (tiles 209 213 224 228 239 243 247)");
++{
++  const menu = read("src/components/layout/avatar-menu.tsx");
++  const drawer = read("src/components/layout/needle-drawer.tsx");
++  const jbar = squash(read("src/components/journey/journey-top-bar.tsx"));
++  const cbar = read("src/components/layout/top-app-bar.tsx");
++  ok("6.1 · only the journey's header says `journey`; the classic bar's menu takes no new prop",
++    /<AvatarMenu [^>]*invitePaid=\{invitePaid\} journey \/>/.test(jbar) && !/journey/.test(/<AvatarMenu[\s\S]*?\/>/.exec(cbar)?.[0] ?? "journey"), "");
++  ok("6.2 · the classic arms are today's: the padded Needle wrapper with the `menu-row` variant, the bare label, MENU_ROWS' own words for /positions",
++    squash(menu).includes(`) : ( <div className="border-t border-border px-2 py-2"> <NeedleControlsDrawer variant="menu-row" /> </div> )}`)
++      && menu.includes("{journey ? <span>{keepLastWords(primary)}</span> : primary}")
++      && menu.includes(`{ href: "/positions",      icon: I.portfolio,   en: "Positions",      sw: "Nafasi",                    zh: "持仓" },`));
++  // E31 · the Needle row on the rows' geometry.
++  const item = /className=\{cn\(\s*"(flex items-center gap-2\.5 px-3 py-2[^"]*)"/.exec(menu)?.[1] ?? "";
++  const branch = /variant === "menu-item" \? \(([\s\S]*?)\) : variant === "hub-row"/.exec(drawer)?.[1] ?? "";
++  const btnClass = /className="([^"]+)"/.exec(branch)?.[1] ?? "";
++  const geometry = (b: string, c: string) => [
++    tw(c, "px") !== tw(item, "px") && "inset differs",
++    tw(c, "py") !== tw(item, "py") && "height differs",
++    tw(c, "gap") !== tw(item, "gap") && "gap differs",
++    !/<NeedleMark size=\{15\} \/>/.test(b) && "the mark is not in the rows' 15px glyph box",
++    !/role="menuitem"/.test(b) && "not a menuitem",
++  ].filter(Boolean) as string[];
++  ok("6.3 · the `menu-item` row: Item's 16px inset, 12px padding and 10px gap (gap-[10px] = gap-2.5), the 15px glyph box, a menuitem — in a `py-1` wrapper with no side padding",
++    branch !== "" && geometry(branch, btnClass).length === 0 && tw(item, "px") === 16 && tw(item, "gap") === 10
++      && squash(menu).includes(`{journey ? ( <div className="border-t border-border py-1"> <NeedleControlsDrawer variant="menu-item" /> </div> )`),
++    `${geometry(branch, btnClass).join(" · ")} | item "${item}" | row "${btnClass}"`);
++  ok("6.3′ CONTROL · the classic row stood 24px in (wrapper px-2 + button px-2) against the rows' 16", 2 * SCALE["2"] === 24 && tw(item, "px") === 16);
++  // The chevron: path x 15 of 24 plus half its 2.2 stroke, in a 14px box.
++  // The chevron is drawn once for both menu rows (`menuTail`); the journey's row asks for the overhang.
++  const tail = /<svg width="14" height="14" viewBox="0 0 24 24" aria-hidden="true" className=\{overhang \? "([^"]*)" : "([^"]*)"\}><path d="M9 6l6 6-6 6" fill="none" stroke="currentColor" strokeWidth="2\.2"/.exec(drawer);
++  const svg = tail && /\{menuTail\(true\)\}/.test(branch) ? [tail[0], tail[1]] : null;
++  ok("6.4.locate · both menu rows end with `menuTail`, the classic one without the overhang, its chevron's class exactly as before",
++    !!tail && tail[2] === "text-text-subtle" && /variant === "menu-row" \? \([\s\S]*?\{menuTail\(false\)\}[\s\S]*?\) : variant === "menu-item"/.test(drawer));
++  const ink = (15 + 2.2 / 2) / 24 * 14, bearing = 14 - ink;
++  const residual = (cls: string) => bearing + (/(^|\s)-mr-1(\s|$)/.test(cls) ? -SCALE["1"] : 0);
++  ok("6.4 · the chevron's ink ends 0.6px from the rows' right edge (its 4.6px side bearing, overhung by -mr-1's 4px) — INAKUJA's pill ends on that edge",
++    svg !== null && residual(svg[1]) >= 0 && residual(svg[1]) < 1, `bearing ${bearing.toFixed(2)} · residual ${svg ? residual(svg[1]).toFixed(2) : "no svg"}`);
++  ok("6.4′ PLANT · without the overhang the ink stands 4.6px short", residual("text-text-subtle") > 4);
++  // E33 · /positions by the tab's name and glyph.
++  const tickets = JOURNEY_TABS.find((d) => d.key === "tickets");
++  ok("6.5 · in the journey the /positions row reads the tab's own key and glyph (journey.tabTickets · ticket), as JOURNEY_TABS names that tab",
++    squash(menu).includes(`: journey && r.href === "/positions" ? { ...r, icon: I.ticket, en: t.journey.tabTickets, sw: t.journey.tabTickets, zh: t.journey.tabTickets } : r,`)
++      && tickets?.href === "/positions" && tickets.label === "journey.tabTickets" && tickets.glyph === "ticket",
++    show(tickets));
++  ok("6.5′ CONTROL · the two names differ in every language (Nafasi / Tiketi zangu · Positions / My tickets · 持仓 / 我的注单)",
++    [sw, en, zh].every((d) => d.common.positions !== d.journey.tabTickets));
++  // The wrapped labels: the room beside INAKUJA and the last-two-word pairs.
++  const flag = 7 * (0.6 * 8.5 + 0.08 * 8.5) + 9.5 + 4 + 2 * 8 + 2; // xs StatusFlag: 7 mono capitals, icon, gap, padding, border
++  const room = 280 - 2 - 2 * tw(item, "px") - 15 - tw(item, "gap");
++  const beside = room - flag - tw(item, "gap");
++  const labels = [...[...menu.matchAll(/en: "([^"]+)",\s*sw: "([^"]+)"/g)].flatMap((m) => [m[1], m[2]]), ...[sw, en].flatMap((d) => [d.profile.inviteFriends, d.journey.tabTickets])];
++  const pairs = labels.map((l) => { const m = frag(keepLastWords(l)).match(/<span class="whitespace-nowrap">([^<]*)<\/span>/); return [l, m ? text(m[1]) : null] as const; });
++  const widest = Math.max(...pairs.map(([, p]) => (p ? sora500(p, 13) : 0)));
++  ok("6.6 · every glued pair fits the label's room beside INAKUJA (~139px; the widest pair ~" + Math.round(widest) + "px at Sora 13px)",
++    Math.abs(flag - 72) < 2 && widest <= beside, show({ flag: flag.toFixed(1), room, beside: beside.toFixed(1), pairs }));
++  const label = "Pendekeza na upate zawadi";
++  const space = sora500(" ", 13);
++  const before = lines(label.split(" "), (u) => sora500(u, 13), beside, space).map((l) => l.split(" ").length);
++  const after = lines(unitsOf(frag(keepLastWords(label))), (u) => sora500(u, 13), beside, space);
++  ok("6.7 · \"Pendekeza na\" / \"upate zawadi\" beside the pill", show(after) === show(["Pendekeza na", "upate zawadi"]), show({ after, beside: beside.toFixed(1) }));
++  ok("6.7′ CONTROL · as text it broke 3 · 1 — \"zawadi\" alone (the tile)", show(before) === show([3, 1]), show(before));
++}
++
++/* ══ §7 · E32 · ONE MASK ═══════════════════════════════════════════════════════════════════════════════════════ */
++section("7 · E32 one phone, one mask in the journey and on /profile/account (tiles 209 213 vs 203 206)");
++{
++  const shell = read("src/components/layout/app-shell.tsx");
++  ok("7.1 · the journey's header is handed topUser with its phone through maskPhone; the classic bar keeps topUser",
++    shell.includes("const journeyUser = session ? { ...topUser, phone: maskPhone(session.phoneE164) } : topUser;")
++      && shell.includes("<LazyJourneyTopBar user={journeyUser} onBreak={promoSuppressed}") && shell.includes(": <TopAppBar user={topUser} proposalsState={proposalsState}")
++      && shell.includes('import { maskPhone } from "@/lib/phone-normalize";'));
++  ok("7.1′ CONTROL · the classic mask is still the stars (frozen chrome until S15), so the classic menu reads as it did",
++    shell.includes("? `${session.phoneE164.slice(0, 4)}*****${session.phoneE164.slice(-2)}`"));
++  ok("7.2 · maskPhone gives the hub's and the hero's shape, and a short value masks to dots",
++    maskPhone("+255712345684") === "+255••••84" && maskPhone("+25571") === "••••" && read("src/lib/server/hub-viewer.ts").includes("phone: maskPhone(user?.phoneE164),"));
++  const acct = read("src/app/profile/account/page.tsx");
++  ok("7.3 · /profile/account masks through maskPhone, no hand-written stars",
++    acct.includes(`value={user?.phoneE164 ? maskPhone(user.phoneE164) : "—"}`) && !/phoneE164\.slice\(/.test(acct));
++  ok("7.3′ PLANT · the hand mask put back is reported", /phoneE164\.slice\(/.test(acct.replace("maskPhone(user.phoneE164)", "`${user.phoneE164.slice(0, 4)}*****${user.phoneE164.slice(-2)}`")));
++}
++
++/* ══ §8 · E4 · THE HOME'S LINK TO /positions ════════════════════════════════════════════════════════════════════ */
++section("8 · E4 the home's signed-in link names /positions by the journey tab's key");
++{
++  const hero = read(HERO);
++  const page = read("src/app/page.tsx");
++  ok("8.1 · journey ? journey.tabTickets : home.myPositions, the flag from the one resolver, false for a visitor and by default",
++    hero.includes("{journey ? t.journey.tabTickets : t.home.myPositions}") && hero.includes("export function LandingHero({ figures, t, locale, isAuthed, nowMs, cards, mine, rails, journey = false }: Props) {")
++      && hero.includes("<SignedInAct t={t} mine={mine ?? null} journey={journey} />")
++      && page.includes("const journey = isAuthed && (await resolveSimpleJourney()).journey;") && page.includes("journey={journey}"));
++  ok("8.1′ CONTROL · the two keys name the page differently (Nafasi zangu / Tiketi zangu), so the classic reader keeps today's words",
++    sw.home.myPositions === "Nafasi zangu" && sw.journey.tabTickets === "Tiketi zangu" && en.home.myPositions !== en.journey.tabTickets);
++}
++
++/* ══ §9 · E34 · THE TOASTER ══════════════════════════════════════════════════════════════════════════════════════ */
++section("9 · E34 the journey's toaster hangs under its header (tiles 203 218 233 235)");
++{
++  const toast = read("src/components/ui/toast.tsx");
++  const viewport = /<div\s+role="region"[\s\S]*?className="([^"]+)"\s*>/.exec(toast);
++  ok("9.1 · the toaster carries the hook as an attribute, its classes unchanged (the classic overlay census names classes, not data attributes)",
++    !!viewport && /data-toaster=""/.test(viewport[0]) && viewport[1] === "pointer-events-none fixed inset-x-0 top-0 z-[1800] flex flex-col items-center gap-2 px-3 pt-3 sm:inset-x-auto sm:right-4 sm:top-4 sm:items-end sm:pt-0", viewport?.[1]);
++  const base = /:root:has\(#kp-journey-shell\) \[data-toaster\] \{ top: 56px; \}/.test(CSS);
++  const sm = /@media \(min-width: 640px\) \{ :root:has\(#kp-journey-shell\) \[data-toaster\] \{ top: calc\(56px \+ var\(--sp-2\)\); \} \}/.test(CSS);
++  const header = Number(/height:\s*(\d+)px/.exec(rule(CSS, ".kp-jhdr"))?.[1] ?? NaN);
++  const menuPhone = /top-\[calc\(env\(safe-area-inset-top\)\+(\d+)px\)\]/.exec(read("src/components/layout/avatar-menu.tsx"))?.[1];
++  const menuSm = /sm:top-\[(\d+)px\]/.exec(read("src/components/layout/avatar-menu.tsx"))?.[1];
++  ok("9.2 · journey-only rules: the stack starts at the header's 56px foot — the first toast at 56 + 16 = 72 on a phone, 64 from 640, where the account menu hangs (72 · 64)",
++    base && sm && header === 56 && 56 + SCALE["3"] === Number(menuPhone) && 56 + px("--sp-2") === Number(menuSm), show({ base, sm, header, menuPhone, menuSm }));
++  ok("9.2′ CONTROL · the classic stack's 16px (phone) and 20px (from 640) from the viewport top fall inside the 56px header", SCALE["3"] < 56 && SCALE["4"] < 56);
++  ok("9.3 · (1,2,0) — :root, :has(#id), [attr] — outweighs the stack's own `top-0` / `sm:top-4` (0,1,0) whatever the order", true);
++}
++
++/* ══ §10 · E5 · THE HOME'S TITLE ═══════════════════════════════════════════════════════════════════════════════ */
++section("10 · E5 the home's tab title in the reader's language (38 sw + 37 zh tiles read English)");
++{
++  const page = read("src/app/page.tsx");
++  const layout = read("src/app/layout.tsx");
++  const def = /default: "([^"]+)",\s*template: "%s · 50pick"/.exec(layout)?.[1];
++  const shape = /title: \{ absolute: `50pick — \$\{t\.auth\.railTagline\}` \}/.test(page) && /export async function generateMetadata\(\): Promise<Metadata> \{\s*const \{ t \} = await getServerT\(\);/.test(page) && !/export const metadata\b/.test(page);
++  const title = (d: typeof sw) => `50pick — ${d.auth.railTagline}`;
++  ok("10.1 · the home's metadata is generated per request: \"50pick — \" + the dictionary's tagline, `absolute` (the layout's template would append \" · 50pick\")",
++    shape && def === title(en), show({ def, en: title(en) }));
++  ok("10.2 · en reads exactly as before; sw \"50pick — Tabiri matukio. Si bahati.\"; zh \"50pick — 预测事件，而非运气。\"",
++    title(en) === "50pick — Predict events. Not chance." && title(sw) === "50pick — Tabiri matukio. Si bahati." && title(zh) === "50pick — 预测事件，而非运气。");
++  ok("10.2′ CONTROL · without a title of its own the home took the layout's English default in every language", def === "50pick — Predict events. Not chance." && def !== title(sw));
++  ok("10.3 · the openGraph spread survives (share-preview §1)", page.includes(`openGraph: { ...ROOT_OPEN_GRAPH, url: "/" },`));
++}
++
++/* ══ §11 · E2 E3 · THE JOURNEY'S WALLET ═════════════════════════════════════════════════════════════════════════ */
++section("11 · E2 E3 the journey's Wallet doors and captions at 320 (tiles 488 496)");
++{
++  const sheet = rule(CSS, ".kp-wsheet");
++  const pad = px("--sp-5"), gapPair = px("--sp-3");
++  const col = (vw: number) => (vw - 2 - 2 * pad - gapPair) / 2;
++  ok("11.locate · a door's column is 133px at 320 (the sheet's 20px padding, the pair's 12px gap, a 1px border)",
++    /padding:\s*var\(--sp-3\) var\(--sp-5\)/.test(sheet) && /gap:\s*var\(--sp-3\)/.test(rule(CSS, ".kp-wsheet__pair")) && col(320) === 133, show(col(320)));
++  const need = (label: string) => width600(label, 15) + 8 + 16 + 2;
++  const room = (vw: number, side: number) => col(vw) - 2 * side;
++  const labels = [sw, en, zh].flatMap((d) => [d.journey.depositAction, d.journey.withdrawAction]);
++  const tight = labels.filter((l) => need(l) > room(320, px("--sp-3")));
++  ok("11.1 · with 12px a side every journey door holds its 16px glyph, the 8px gap and its label at 320 (Weka pesa needs ~105.5 of 109)",
++    /:root:has\(#kp-journey-shell\) \.kp-wsheet__act \{ padding-inline: var\(--sp-3\); \}/.test(CSS) && /:root:has\(#kp-journey-shell\) \.kp-wsheet__act > svg \{ flex-shrink: 0; \}/.test(CSS) && tight.length === 0,
++    show({ tight, weka: need(sw.journey.depositAction).toFixed(1), room: room(320, px("--sp-3")) }));
++  ok("11.1′ CONTROL · btn-lg's 20px left 93 at 320: the ⊕ shrank by ~12px (the tile's ~4px glyph), and Withdraw's arrow by ~3",
++    need(sw.journey.depositAction) - room(320, 20) > 10 && need(en.journey.withdrawAction) > room(320, 20), show({ weka: (need(sw.journey.depositAction) - room(320, 20)).toFixed(1), wd: (need(en.journey.withdrawAction) - room(320, 20)).toFixed(1) }));
++  const ws = read("src/components/layout/wallet-sheet.tsx");
++  ok("11.2 · the journey's captions keep their last two words together; the classic arm keeps the text",
++    ws.includes("{journey ? keepLastWords(t.wallet.mobileMoney) : t.wallet.mobileMoney}") && ws.includes("{journey ? keepLastWords(t.wallet.mobileMoneyOnly) : t.wallet.mobileMoneyOnly}"));
++  const space = width(inter, " ", 13);
++  const cap = (markup: string) => lines(unitsOf(markup), (u) => width(inter, u, 13), col(320), space);
++  const nowLines = cap(frag(keepLastWords(en.wallet.mobileMoney)));
++  ok("11.3 · en 320: \"Mobile money\" / \"or card\" (134px in a 133px column)", show(nowLines) === show(["Mobile money", "or card"]), show(nowLines));
++  ok("11.3′ CONTROL · as text it left \"card\" alone (the tile)", show(cap(en.wallet.mobileMoney)) === show(["Mobile money or", "card"]), show(cap(en.wallet.mobileMoney)));
++  ok("11.4 · sw and zh stay one line at 320", cap(frag(keepLastWords(sw.wallet.mobileMoney))).length === 1 && zh.wallet.mobileMoney.length * 13 <= col(320));
++}
++
++/* ══ §12 · E13 · THE CARD WATERMARK ════════════════════════════════════════════════════════════════════════════ */
++section("12 · E13 the card watermark is not lit behind the card's controls (tiles 160 184)");
++{
++  const lit = (css: string) => /:hover[^{}]*\.mcardp-watermark\s*\{/.test(css);
++  ok("12.1 · no hover rule reaches the watermark, and it keeps its resting ink (0.055, --border-strong)",
++    !lit(CSS) && /opacity:\s*0\.055/.test(rule(CSS, ".mcardp-watermark")) && /color:\s*var\(--border-strong\)/.test(rule(CSS, ".mcardp-watermark")));
++  ok("12.1′ PLANT · the round-3 lift put back is reported", lit(`${CSS}\n@media (hover: hover) { .mcardp:hover .mcardp-watermark { opacity: 0.22; color: var(--brand-400); } }`));
++  ok("12.2 · the card still answers the pointer itself (the ring and the lift)", /\.mcardp:hover \{ transform: translateY\(var\(--m-lift\)\); border-color: var\(--brand-500\);/.test(CSS));
++}
++
++/* ══ §13 · G20 · IDS ON THE RECEIPTS ═══════════════════════════════════════════════════════════════════════════ */
++section("13 · G20 an id breaks in whole runs of four on both receipts (S9's note: one or two characters alone at 390)");
++{
++  const runsOf = (id: string) => [...frag(keepIdRuns(id)).matchAll(/<span class="whitespace-nowrap">([^<]*)<\/span>/g)].map((m) => m[1]);
++  const ids = ["txn_ab12cd34ef56", "SEL2026100912345678901", "ord_rc_held_0123456789", "abc1234"];
++  ok("13.1 · runs of four, a <wbr> between them, a short tail joined to the run before; the id unchanged; ≤ 7 characters untouched",
++    show(runsOf(ids[0])) === show(["txn_", "ab12", "cd34", "ef56"]) && show(runsOf(ids[1])) === show(["SEL2", "0261", "0091", "2345", "678901"])
++      && ids.slice(0, 3).every((i) => text(frag(keepIdRuns(i))) === i && runsOf(i).every((r) => r.length >= 4 && r.length <= 7))
++      && frag(keepIdRuns(ids[1])).split("<wbr/>").length === 5 && keepIdRuns(ids[3]) === ids[3], show(ids.map(runsOf)));
++  // At 390: the receipt's value column beside each label (13px Inter labels, 20px row padding, 20px gap), mono at 13px.
++  const label = (l: string) => Array.from(l).filter((c) => IDEO.test(c)).length * 13 + width(inter, Array.from(l).filter((c) => !IDEO.test(c)).join(""), 13);
++  const dd = (l: string) => 390 - 32 - 2 * SCALE["4"] - label(l) - SCALE["4"];
++  const adv = 0.6 * 13;
++  const greedyRuns = (id: string, w: number) => lines(runsOf(id), (u) => u.length * adv, w, 0, false);
++  const greedyChars = (id: string, w: number) => lines(Array.from(id), () => adv, w, 0, false);
++  const cases = [sw, en, zh].flatMap((d) => [d.wallet.transactionId, d.wallet.gatewayReference]).flatMap((l) => ids.slice(0, 3).map((id) => ({ l, id, w: dd(l) })));
++  const lastNow = cases.map((c) => { const ls = greedyRuns(c.id, c.w); return ls[ls.length - 1].length; });
++  const lastWas = cases.map((c) => { const ls = greedyChars(c.id, c.w); return ls[ls.length - 1].length; });
++  ok("13.2 · every id, under every label in three languages at 390, ends its last line with four characters at least (lines then balanced by text-wrap)",
++    lastNow.every((n) => n >= 4), show(lastNow));
++  ok("13.2′ CONTROL · break-all left one or two characters alone (S9's note) — here " + lastWas.filter((n) => n <= 2).length + " of " + cases.length + " cases",
++    lastWas.some((n) => n <= 2), show(lastWas));
++  const ret = read("src/app/wallet/deposit/return/page.tsx"), rec = read("src/app/wallet/receipt/[id]/page.tsx");
++  ok("13.3 · both receipts render their two ids through keepIdRuns in a balanced block, no break-all on an id",
++    ret.includes(`<span className="block font-mono text-text text-balance">{keepIdRuns(outcome.txn.id)}</span>`) && ret.includes(`{keepIdRuns(outcome.txn.providerRef)}`)
++      && rec.includes(`<span className="block font-mono text-balance">{keepIdRuns(txn.id)}</span>`) && rec.includes(`{keepIdRuns(txn.providerRef)}`)
++      && !/break-all/.test(ret) && !/break-all/.test(rec));
++}
++
++/* ══ §14 · R4-C'S LEFTOVER · THE SEARCH BAND ═══════════════════════════════════════════════════════════════════ */
++section("14 · R4-C's leftover: /live, /updown/history and /profile/account wear the search band (rung + 10 on every side)");
++{
++  const BAND_PT = tw(QUERY_SEARCH_BAND_CLASS, "pt");
++  const ROW1_PT = tw(QUERY_BAR_ROW1_CLASS, "pt"), ROW2_PB = tw(QUERY_BAR_ROW2_CLASS, "pb");
++  const echo = /className=\{`(mt-[0-9.]+) min-h-\[(\d+)px\]/.exec(read("src/components/ui/search-box.tsx"));
++  const ECHO = echo ? tw(echo[1], "mt") + Number(echo[2]) : NaN;
++  const HANG = Number(/\.kp-search-band\.kp-search-band:has\(\+ \.kp-discovery-bar\)\s*\{\s*margin-bottom:\s*-(\d+)px;/.exec(CSS)?.[1] ?? NaN);
++  const HANG_REST = Number(/\.kp-search-band\.kp-search-band:not\(:has\(\+ \.kp-discovery-bar\)\)\s*\{\s*margin-bottom:\s*-(\d+)px;/.exec(CSS)?.[1] ?? NaN);
++  ok("14.locate · r4c's constants: band 10 over the box, echo row 25, hang 25 over a bar / 15 over anything else, the bar's 10 / 10",
++    BAND_PT === 10 && ECHO === 25 && HANG === 25 && HANG_REST === 15 && ROW1_PT === 10 && ROW2_PB === 10, show({ BAND_PT, ECHO, HANG, HANG_REST, ROW1_PT, ROW2_PB }));
++  const report: Record<string, unknown> = {};
++  const bad: string[] = [];
++  // /live: the wall follows the box (no bar), in the page's space-y-5.
++  {
++    const grid = read("src/app/live/pulse-grid.tsx"), page = read("src/app/live/page.tsx");
++    const rung = SCALE[/<PageContainer tier="board" className="relative space-y-([0-9.]+)">/.exec(page)?.[1] ?? ""];
++    const banded = /<div className=\{QUERY_SEARCH_BAND_CLASS\}>\s*<Suspense>\s*<SearchBox/.test(grid) && /<\/Suspense>\s*<\/div>[\s{}]*<div className="market-grid">/.test(grid);
++    const g = { over: rung + (banded ? BAND_PT : 0), under: ECHO - (banded ? HANG_REST : 0) + rung };
++    report.live = g;
++    if (!banded || !(g.over === rung + 10 && g.under === rung + 10)) bad.push("live");
++    ok("14.1′ CONTROL · /live as round 4 found it: 24 over the box, 49 under it (tile 205 measured 49)", rung === 24 && ECHO + rung === 49);
++  }
++  // /updown/history: margins on a 24px rung; the bar stays the container's child.
++  {
++    const page = read("src/app/updown/history/page.tsx");
++    const band = /<div className=\{`\$\{QUERY_SEARCH_BAND_CLASS\} (mt-[0-9.]+) (pb-[0-9.]+)`\}>\s*<SearchBox[\s\S]*?<\/div>\s*<HistoryBar/.exec(page);
++    const strip = tw(/<div className="(mt-[0-9.]+) grid grid-cols-2 sm:grid-cols-3 gap-3">/.exec(page)?.[1] ?? "", "mt");
++    const mt = band ? tw(band[1], "mt") : NaN, pb = band ? tw(band[2], "pb") : NaN;
++    const g = { over: mt + BAND_PT, boxToPills: ECHO - HANG + pb + ROW1_PT, under: ROW2_PB + strip };
++    report.updownHistory = g;
++    if (!band || !(g.over === strip + 10 && g.boxToPills === strip + 10 && g.under === strip + 10)) bad.push("updown/history");
++    ok("14.2′ CONTROL · /updown/history as round 4 found it: 20 over the box, 35 to the pills", SCALE["4"] === 20 && ECHO + ROW1_PT === 35);
++    ok("14.2″ · the bar is still the page container's direct child (it sticks within its parent): no wrapper opens around <HistoryBar",
++      !/<div[^>]*>\s*<HistoryBar/.test(page));
++  }
++  // /profile/account: the activity panel's space-y-3, the panel bar after the band.
++  {
++    const page = read("src/app/profile/account/page.tsx");
++    const panel = /<section className="rounded-xl glass-panel p-5 space-y-([0-9.]+)">\s*<div className="flex items-center gap-2">\s*<I\.activity/.exec(page);
++    const rung = SCALE[panel?.[1] ?? ""];
++    const banded = /<div className=\{QUERY_SEARCH_BAND_CLASS\}>\s*<Suspense>\s*<SearchBox[\s\S]*?<\/Suspense>\s*<\/div>\s*<AccountActivityBar/.test(page);
++    const g = { over: rung + (banded ? BAND_PT : 0), boxToPills: ECHO - (banded ? HANG : 0) + rung + ROW1_PT, under: ROW2_PB + rung };
++    report.profileAccount = g;
++    if (!banded || !(g.over === rung + 10 && g.boxToPills === rung + 10 && g.under === rung + 10)) bad.push("profile/account");
++    ok("14.3′ CONTROL · /profile/account as round 4 found it (`py-1`): 20 over the box, 55 to the pills, 26 under the bar", rung === 16 && rung + 4 === 20 && ECHO + 4 + rung + ROW1_PT === 55);
++    const bar = read("src/app/profile/account/account-bar.tsx");
++    ok("14.3″ · the panel's bar is a `kp-discovery-bar` (QUERY_BAR_CLASS_PANEL), so the band's hang applies", /<div data-filter-rail className=\{QUERY_BAR_CLASS_PANEL\}>/.test(bar));
++  }
++  ok("14.1 · each page's gaps around its search equal its rung + 10: /live 34 · 34, /updown/history 34 · 34 · 34, /profile/account 26 · 26 · 26",
++    bad.length === 0, bad.length ? bad.join(" · ") : show(report));
++  const plantLive = read("src/app/live/pulse-grid.tsx").replace("<div className={QUERY_SEARCH_BAND_CLASS}>", "<div>");
++  ok("14.1′ PLANT · /live's band dropped is reported", !/<div className=\{QUERY_SEARCH_BAND_CLASS\}>\s*<Suspense>\s*<SearchBox/.test(plantLive));
++}
++
++console.log(`\nvisual-pass-r4h: ${pass} passed, ${fails.length} failed\n`);
++if (fails.length) {
++  for (const f of fails) console.error(`  · ${f}`);
++  process.exit(1);
++}
+diff --git a/src/app/account/page.tsx b/src/app/account/page.tsx
+index 19cfc9d7b..9df0133c8 100644
+--- a/src/app/account/page.tsx
++++ b/src/app/account/page.tsx
+@@ -28,6 +28,7 @@ import { currentSession } from "@/lib/server/auth-service";
+ import { loadHubViewer } from "@/lib/server/hub-viewer";
+ import { resolveSimpleJourney } from "@/lib/server/journey-preview";
+ import { getServerT } from "@/lib/i18n-server";
++import { keepNameEnd } from "@/components/ui/keep-words";
+ 
+ export const dynamic = "force-dynamic";
+ 
+@@ -70,7 +71,8 @@ export default async function AccountHubPage() {
+           <div className="kp-hub__id">
+             <span className="kp-hub__initials" aria-hidden>{viewer.initials}</span>
+             <span className="kp-hub__who">
+-              <span className="kp-hub__name">{viewer.name}</span>
++              {/* Balanced, and never one character alone on its last line (round 4, edges 236 240 244): `.kp-hub__name`. */}
++              <span className="kp-hub__name">{keepNameEnd(viewer.name)}</span>
+               <span className="kp-hub__phone">{viewer.phone}</span>
+             </span>
+           </div>
+diff --git a/src/app/globals.css b/src/app/globals.css
+index 47109f721..1e476dc38 100644
+--- a/src/app/globals.css
++++ b/src/app/globals.css
+@@ -4951,12 +4951,14 @@ html[data-sheet-open] .route-enter { animation: none; }
+    `transform` also leaves the transition list with it: a transition naming a
+    property nothing changes is a promise the next reader will try to keep.
+    ⚠️ `.2s` ×3 → `--t-base` (220), the nearest rung to 200. */
+-.mcardp-watermark { position: absolute; bottom: -18px; right: -14px; color: var(--border-strong); opacity: 0.055; pointer-events: none; z-index: 0;
+-  transition: opacity var(--t-base) linear, color var(--t-base) linear; }
++/* 🔴 ROUND 4 OF THE VISUAL PASS (2026-10-09, edges tiles 160 184, E13) · AND THE HOVER LEG IS GONE TOO. The glyph bleeds
++   out of the card's bottom-right corner, which is where the foot keeps its controls — the share glyph, "Details" and the
++   (i) button — so lifting it 0.055 → 0.22 in --brand-400 on hover lit a decoration (28,38,122 against the card's ground)
++   directly behind three controls, at the moment the pointer is on the card to use them. A control is read over a quiet
++   ground; the card's own hover already answers the pointer (the ring and the lift above), so the watermark simply stays
++   at rest. Nothing else changes: the glyph, its place and its resting ink are the kit's. */
++.mcardp-watermark { position: absolute; bottom: -18px; right: -14px; color: var(--border-strong); opacity: 0.055; pointer-events: none; z-index: 0; }
+ .mcardp-watermark svg { width: 140px; height: 140px; }
+-@media (hover: hover) {
+-  .mcardp:hover .mcardp-watermark { opacity: 0.22; color: var(--brand-400); }
+-}
+ .mcardp > *:not(.mcardp-watermark) { position: relative; z-index: 1; }
+ .mcardp-top { display: flex; align-items: center; flex-wrap: nowrap; gap: 5px; min-height: 20px; }
+ /* 🔴 D65 · AT LARGE TEXT THIS ROW CUT THE CATEGORY WORD TO A SINGLE LETTER.
+@@ -6261,6 +6263,14 @@ html[lang="zh"] .kp-udrule { word-break: keep-all; }
+    frozen until S15 (the classic capsule's Wallet keeps the catch-all's square ring). */
+ :root:has(#kp-journey-shell) .kp-wsheet__link { margin-inline: calc(-1 * var(--sp-1)); padding-inline: var(--sp-1); border-radius: var(--r-sm); }
+ :root:has(#kp-journey-shell) .kp-wsheet__link:focus-visible { box-shadow: 0 0 0 4px oklch(63% 0.18 262 / 0.25); }
++/* ⭐ The journey's Wallet doors keep their glyph whole (round 4 of the visual pass, 2026-10-09, edges tile 488, E2). At 320
++   a door is 133px wide; `.btn-lg`'s 20px a side leaves 91px for the glyph, the 8px gap and the label, and the journey's
++   "Weka pesa" (Inter 600 15px, ~79.5px) needs 103.5 — so the 16px ⊕ shrank to ~4px, the one flex item that could give
++   (the label is nowrap). The glyph no longer shrinks, and the doors pad 12px a side, which leaves 107px: the content is
++   centred, so wherever it fit before nothing moves (Toa pesa 90, Deposit 80, Withdraw 94 — which squeezed its arrow to
++   13px at en 320 the same way). ⚠️ Journey-only: the classic capsule opens this same sheet (frozen until S15). */
++:root:has(#kp-journey-shell) .kp-wsheet__act { padding-inline: var(--sp-3); }
++:root:has(#kp-journey-shell) .kp-wsheet__act > svg { flex-shrink: 0; }
+ 
+ /* ── S6 · THE CAPTIONED BALANCE (SJ-15) — the journey header's wallet door ──────────────────────────────────
+    "Salio" over "TZS 2,000": one 44px button that opens the Wallet above. Only the journey header renders it
+@@ -6333,7 +6343,11 @@ html[lang="zh"] .kp-udrule { word-break: keep-all; }
+ .kp-hub__id { display: flex; align-items: center; gap: var(--sp-3); min-width: 0; padding: var(--sp-4); border: 1px solid var(--border); border-radius: var(--r-lg); background: var(--bg-elevated); }
+ .kp-hub__initials { flex-shrink: 0; display: inline-flex; align-items: center; justify-content: center; width: 52px; height: 52px; border: 1px solid var(--border-strong); border-radius: var(--r-pill); background: var(--bg-royal-soft); font-family: var(--font-display); font-weight: 700; font-size: var(--type-h4); color: var(--text); }
+ .kp-hub__who { display: flex; flex-direction: column; gap: var(--sp-1); min-width: 0; }
+-.kp-hub__name { font-family: var(--font-display); font-weight: 600; font-size: var(--type-h4); line-height: 1.25; color: var(--text); overflow-wrap: anywhere; }
++/* The name balances its lines (round 4 of the visual pass, 2026-10-09, edges tiles 236 240 244, E26): 40 Chinese characters
++   broke 13 · 13 · 13 · 1 at 360, the last alone. Balanced they read 10 · 10 · 10 · 10 (Chromium 114, Firefox 121, Safari
++   17.5); and on any engine `keepNameEnd` (keep-words.tsx) keeps the last two characters together, so a line never holds
++   one alone. */
++.kp-hub__name { font-family: var(--font-display); font-weight: 600; font-size: var(--type-h4); line-height: 1.25; color: var(--text); overflow-wrap: anywhere; text-wrap: balance; }
+ .kp-hub__phone { font-family: var(--font-mono); font-size: var(--type-small); font-variant-numeric: tabular-nums; white-space: nowrap; color: var(--text-subtle); }
+ .kp-hub__grid { display: grid; grid-template-columns: minmax(0, 1fr); align-items: start; gap: var(--sp-4); }
+ /* From 1024 the two columns stack on their own (WP12's tiles 122-317, 2026-10-08): the row-major grid paired the cards
+@@ -6811,6 +6825,15 @@ html[lang="zh"] .kp-udrule { word-break: keep-all; }
+    so at equal specificity they win and the utility is ignored — the classic bar's `.btn` lesson, measured at 360.
+    The nav and the desktop-only wrappers take their display from their utilities and nothing else. */
+ .kp-jhdr { height: 56px; background: var(--panel); border-bottom: 1px solid var(--border); }
++/* ⭐ THE JOURNEY'S TOASTS HANG UNDER ITS HEADER (round 4 of the visual pass, 2026-10-09, edges tiles 203 218 233 235, E34).
++   The toaster is fixed to the viewport's top (toast.tsx), so "Jina limesasishwa" lay over the header's controls — the
++   capsule, the pill, the language box, the bell and the avatar at 1280 (x998–1244 y20–95), the whole header on a phone.
++   In the journey the stack starts at the header's foot (56px): on a phone its own 16px top padding sets the first toast
++   at 72, and from 640 it stands 8px under the header (64), where the account menu hangs (`sm:top-[64px]`). The header is
++   sticky at the top, so this holds at every scroll position. ⛔ Journey-only: the classic overlays are parity-captured
++   chrome (`qa:classic-shell-parity`), and the hook is an attribute, which that census does not name. */
++:root:has(#kp-journey-shell) [data-toaster] { top: 56px; }
++@media (min-width: 640px) { :root:has(#kp-journey-shell) [data-toaster] { top: calc(56px + var(--sp-2)); } }
+ .kp-jhdr__row { display: flex; align-items: center; gap: 6px; height: 100%; max-width: var(--w-board); margin-inline: auto; padding-inline: var(--sp-4); }
+ /* The right-hand controls, grouped as the classic bar groups them: one gap on a phone, the cluster's own from 640. */
+ .kp-jhdr__cluster { display: flex; flex-shrink: 0; align-items: center; gap: 6px; }
+diff --git a/src/app/live/featured-contest.tsx b/src/app/live/featured-contest.tsx
+index 1d925bb36..ba1704cbe 100644
+--- a/src/app/live/featured-contest.tsx
++++ b/src/app/live/featured-contest.tsx
+@@ -16,7 +16,7 @@ import { leanWords, sideWord } from "@/lib/side-label";
+ import { TippingBar } from "@/components/brand";
+ import { I } from "@/components/ui/glyphs";
+ // 2026-10-08 · G1: a Chinese "200毫米" in a slide's question never breaks between the number and its unit.
+-import { keepUnits } from "@/components/ui/keep-units";
++import { keepFigures } from "@/components/ui/keep-words";
+ import { useT } from "@/lib/i18n";
+ 
+ // ⛔ `productLine` is REQUIRED, not optional. /live carries both products (see `pulse-grid`),
+@@ -163,7 +163,7 @@ export function FeaturedContest({
+                 data-slide-active={i === idx ? "" : undefined}
+                 className="font-display text-[19px] lg:text-[24px] font-semibold leading-tight text-text group-hover:text-aqua-100"
+               >
+-                {keepUnits(mm.title)}
++                {keepFigures(mm.title)}
+               </h2>
+             ))}
+           </div>
+diff --git a/src/app/live/pulse-grid.tsx b/src/app/live/pulse-grid.tsx
+index 232a3ece0..9374741e3 100644
+--- a/src/app/live/pulse-grid.tsx
++++ b/src/app/live/pulse-grid.tsx
+@@ -1,12 +1,14 @@
+ "use client";
+ 
+-import { Suspense, useEffect, useRef, useState } from "react";
++import { Fragment, Suspense, useEffect, useRef, useState } from "react";
+ import Link from "next/link";
+ import { BrandSpinner, TippingBar } from "@/components/brand";
+ import { I, categoryGlyph } from "@/components/ui/glyphs";
+ import { marketCategoryLabel, pickLocalized } from "@/lib/localized";
+ import { useT } from "@/lib/i18n";
+ import { SearchBox } from "@/components/ui/search-box";
++import { QUERY_SEARCH_BAND_CLASS } from "@/components/ui/query-bar";
++import { keepFigures } from "@/components/ui/keep-words";
+ import { fieldNames, MARKET_SEARCH } from "@/lib/search";
+ import { sideWord } from "@/lib/side-label";
+ import { priceState } from "@/lib/markets/price-state";
+@@ -109,14 +111,20 @@ export function LivePulseGrid({ markets }: { markets: Market[] }) {
+         * many of them are painted at once.
+         */}
+       {/* ⚠️ SUSPENSE: in `url` mode `SearchBox` reads `useSearchParams`, which needs a boundary —
+-          every other surface that uses it wraps it the same way. */}
+-      <Suspense>
+-        <SearchBox
+-          placeholder={t.common.searchLiveMarkets}
+-          ariaLabel={t.common.searchLiveMarkets}
+-          helpFields={fieldNames(MARKET_SEARCH)}
+-        />
+-      </Suspense>
++          every other surface that uses it wraps it the same way.
++          ⭐ THE SEARCH IS A BAND (round 4 of the visual pass, 2026-10-09, R4-C's leftover; tile 205 measured 49px under the
++          box): `QUERY_SEARCH_BAND_CLASS`, as on every other page with a search. /live has no query bar, so the box's echo row
++          lies 15px into the gap below it (globals.css `.kp-search-band`): on the page's 24px rung the box stands 34 under
++          the hero and the wall 34 under the box — 24 + 10 over, 25 − 15 + 24 under — where it stood 24 over and 49 under. */}
++      <div className={QUERY_SEARCH_BAND_CLASS}>
++        <Suspense>
++          <SearchBox
++            placeholder={t.common.searchLiveMarkets}
++            ariaLabel={t.common.searchLiveMarkets}
++            helpFields={fieldNames(MARKET_SEARCH)}
++          />
++        </Suspense>
++      </div>
+ 
+       {/* ⛔ The search-miss empty state lives in `page.tsx` now, beside the count it must agree
+           with. A second one here would be a second definition of "nothing matched". */}
+@@ -146,10 +154,17 @@ export function LivePulseGrid({ markets }: { markets: Market[] }) {
+  * Renders a title with every hyphenated token ("30-day", "month-end?", "Man-City") in a nowrap span, so a balanced
+  * wrap can move the whole token but never break after its hyphen (E-400 ⑦b). `split` with a capturing group puts
+  * the tokens at odd indices and the text between them — spaces included — at even ones, so no space is added or lost.
++ * ⭐ ROUND 4 (2026-10-09, edges 197 255): a token stops at an ideograph, its hyphen touches a letter, and the text
++ * between the tokens keeps its figures whole. `\S*` ran across Chinese, which has no spaces, so
++ * "辛巴俱乐部赢得2026-27赛季NBC超级联赛" was ONE token — the whole title in one nowrap span, wider than any card. A token
++ * is now a run of non-space, non-Han characters around a hyphen with a letter on one side ("month-end?", "30-day"); a
++ * range of two numbers ("2026-27") is a figure, and `keepFigures` (keep-words.tsx, the cards' and the market page's own
++ * rule) shapes the text between the tokens, so "2026-27赛季" and "dakika 28:00" never break inside. A part with no
++ * figure renders as the plain text it was (a keyed fragment, no element).
+  */
+ export function KeepHyphenated({ text }: { text: string }) {
+-  const parts = text.split(/(\S*[\p{L}\p{N}]-[\p{L}\p{N}]\S*)/u);
+-  return <>{parts.map((part, i) => (i % 2 === 1 ? <span key={i} className="whitespace-nowrap">{part}</span> : part))}</>;
++  const parts = text.split(/([^\s\p{Script=Han}]*(?:\p{L}-[\p{L}\p{N}]|\p{N}-\p{L})[^\s\p{Script=Han}]*)/u);
++  return <>{parts.map((part, i) => (i % 2 === 1 ? <span key={i} className="whitespace-nowrap">{part}</span> : <Fragment key={i}>{keepFigures(part)}</Fragment>))}</>;
+ }
+ 
+ /**
+diff --git a/src/app/markets/[id]/page.tsx b/src/app/markets/[id]/page.tsx
+index 086ac88e6..e8ba1d45c 100644
+--- a/src/app/markets/[id]/page.tsx
++++ b/src/app/markets/[id]/page.tsx
+@@ -5,6 +5,7 @@ import { I, categoryGlyph } from "@/components/ui/glyphs";
+ // E-101b · a fragment names a row; this is what actually scrolls to it.
+ import { HashFocus } from "@/components/ui/hash-focus";
+ import { BackLink } from "@/components/ui/back-link";
++import { keepFigures } from "@/components/ui/keep-words";
+ import { TippingBar } from "@/components/brand";
+ import { Countdown } from "@/components/markets/countdown";
+ import { ShareButton } from "@/components/markets/share-button";
+@@ -595,7 +596,7 @@ export default async function MarketDetail({
+           })()}
+           <h1 data-stem={QUESTION_STEM.test(pickLocalized(locale, m.titleEn, m.titleSw, m.titleZh)) ? "" : undefined}
+             className="font-display text-title-lg md:text-display-3 font-bold leading-tight tracking-[-0.02em] text-text text-balance data-[stem]:indent-[-0.075em]"
+-          >{pickLocalized(locale, m.titleEn, m.titleSw, m.titleZh)}</h1>
++          >{/* `keepFigures` (round 4, edges 197 199 255): "2026-27" and "dakika 28:00" never break inside. */}{keepFigures(pickLocalized(locale, m.titleEn, m.titleSw, m.titleZh))}</h1>
+         </div>
+       </header>
+ 
+diff --git a/src/app/page.tsx b/src/app/page.tsx
+index 6b6fed5bb..f4adce67d 100644
+--- a/src/app/page.tsx
++++ b/src/app/page.tsx
+@@ -23,6 +23,7 @@ import { shownYesPct } from "@/lib/markets/price-state";
+ import { BOARD_LENSES, heroFigures, type BoardLens, type HeroRow } from "@/lib/markets/hero";
+ import { landingComposition } from "@/lib/markets/landing";
+ import { getServerT } from "@/lib/i18n-server";
++import { resolveSimpleJourney } from "@/lib/server/journey-preview";
+ import { getGlobalConfig } from "@/lib/server/market-config";
+ import { ratesFrom } from "@/app/legal/rules/_shared";
+ import { landingPicks, paidOutBehind } from "@/lib/server/landing-picks";
+@@ -44,16 +45,25 @@ export const dynamic = "force-dynamic";
+  * `metadataBase` in the layout resolves these to the absolute site URL, which is why they are
+  * written relative and there is no second copy of the base URL here to drift.
+  */
+-export const metadata: Metadata = {
+-  alternates: { canonical: "/" },
+-  // ⛔ SPREAD, NEVER REPLACE. `openGraph: { url: "/" }` on its own wiped og:image, og:locale,
+-  // og:site_name and og:type from this page — Next merges metadata per FIELD, so a partial
+-  // openGraph object replaces the layout’s entire one. Measured 0 of each on "/" against 6 on
+-  // /markets, on the same deploy.
+-  // ⚠️ `url` is KEPT rather than dropped: nothing here isolates whether Next synthesises og:url
+-  // from `alternates.canonical`, and dropping it would risk re-deleting the tag this replaces.
+-  openGraph: { ...ROOT_OPEN_GRAPH, url: "/" },
+-};
++export async function generateMetadata(): Promise<Metadata> {
++  const { t } = await getServerT();
++  return {
++    // ⭐ THE TAB SPEAKS THE READER'S LANGUAGE (round 4 of the visual pass, 2026-10-09, edges E5): the home's title was the
++    // layout's English default, "50pick — Predict events. Not chance.", in Swahili and Chinese too (38 sw and 37 zh tiles),
++    // while every other page names itself in the reader's words. The same composition, its line from the dictionary's own
++    // tagline (`auth.railTagline`: "Tabiri matukio. Si bahati." · "预测事件，而非运气。"); `absolute`, because the
++    // layout's template would add " · 50pick" to a title that already opens with the name. No new words.
++    title: { absolute: `50pick — ${t.auth.railTagline}` },
++    alternates: { canonical: "/" },
++    // ⛔ SPREAD, NEVER REPLACE. `openGraph: { url: "/" }` on its own wiped og:image, og:locale,
++    // og:site_name and og:type from this page — Next merges metadata per FIELD, so a partial
++    // openGraph object replaces the layout’s entire one. Measured 0 of each on "/" against 6 on
++    // /markets, on the same deploy.
++    // ⚠️ `url` is KEPT rather than dropped: nothing here isolates whether Next synthesises og:url
++    // from `alternates.canonical`, and dropping it would risk re-deleting the tag this replaces.
++    openGraph: { ...ROOT_OPEN_GRAPH, url: "/" },
++  };
++}
+ 
+ /**
+  * THE LANDING PAGE — round-2 kit README §1 / SPEC §1 + §3, applied in batch 3.
+@@ -235,6 +245,9 @@ export default async function LandingPage({ searchParams }: {
+   ]);
+   const udRound = udDetail ? toUpdownBandRound(udDetail, locale) : null;
+   const isAuthed = !!session;
++  // The signed-in block names /positions by the journey tab's own key for a journey reader (round 4, edges E4). The one
++  // cached resolver every journey page asks; a visitor's block has no such link, so a visitor is never asked about.
++  const journey = isAuthed && (await resolveSimpleJourney()).journey;
+   // ⭐ WP14 part 2 · the signed-in hero's own reads, in parallel. Each fails to NULL on its own, and a
+   // null part renders nothing (B-1: a failed read is not a zero). The wallet row is the same one the
+   // header reads (app-shell), so the hero's balance and the chip cannot disagree.
+@@ -276,6 +289,7 @@ export default async function LandingPage({ searchParams }: {
+         cards={{ charts: cardCharts, traders: traderMap }}
+         mine={mine}
+         rails={heroRailNames(railPauses)}
++        journey={journey}
+       />
+ 
+       {/* ── §1a′ THE PROOF — the three figures, the whole board's conviction, the closing-soonest
+diff --git a/src/app/profile/account/page.tsx b/src/app/profile/account/page.tsx
+index 05cb0a1d1..4729720ef 100644
+--- a/src/app/profile/account/page.tsx
++++ b/src/app/profile/account/page.tsx
+@@ -10,6 +10,8 @@ import { FilterPill } from "@/components/ui/filter-pill";
+ import { ScrollX } from "@/components/ui/scroll-x";
+ import { Pagination, PLAYER_PER_PAGE, parsePage } from "@/components/ui/pagination";
+ import { SearchBox } from "@/components/ui/search-box";
++import { QUERY_SEARCH_BAND_CLASS } from "@/components/ui/query-bar";
++import { maskPhone } from "@/lib/phone-normalize";
+ import { parseQuery, matchesQuery, fieldNames, ACCOUNT_ACTIVITY_SEARCH } from "@/lib/search";
+ import { AccountActivityBar, type ActivityCounts } from "./account-bar";
+ import { auditCategoryLabel, auditActionLabel } from "@/lib/account/category-label";
+@@ -224,9 +226,10 @@ export default async function AccountPage({ searchParams }: { searchParams?: Pro
+           <Item label={t.common.yourName} value={user?.displayName ?? "—"} />
+           <Item
+             label={t.auth.phone}
+-            value={user?.phoneE164
+-              ? `${user.phoneE164.slice(0, 4)}*****${user.phoneE164.slice(-2)}`
+-              : "—"}
++            /* ONE PHONE, ONE MASK (round 4 of the visual pass, 2026-10-09, edges E32): this read "+255*****84" in the audit
++               log's stars while /profile and the hub read "+255••••84" — `maskPhone` (phone-normalize.ts) is the one
++               definition of a masked number, and a short or malformed value masks to dots instead of being echoed. */
++            value={user?.phoneE164 ? maskPhone(user.phoneE164) : "—"}
+           />
+           <Item label={t.profile.region} value={user?.region ?? "—"} />
+           <Item
+@@ -277,8 +280,13 @@ export default async function AccountPage({ searchParams }: { searchParams?: Pro
+           <>
+             {/* ⛔ NOT STICKY. `QUERY_BAR_CLASS` already sticks at `top-[56px]`, and two sticky
+                 surfaces cannot share one offset — that is the 91px overlap `qa:bar-geometry` found
+-                on three routes at once. */}
+-            <div className="py-1">
++                on three routes at once.
++                ⭐ THE SEARCH AND THE PANEL'S BAR ARE ONE BAND (round 4 of the visual pass, 2026-10-09, R4-C's leftover):
++                `QUERY_SEARCH_BAND_CLASS`, as on every page with a search over its bar. The panel's rung is 16px
++                (`space-y-3`), so the box stands 26 under the heading, the pills 26 under the box and the table 26 under
++                the bar's last row — 16 + 10 each — where `py-1` put the box 20 under the heading and the pills 55 under it
++                (the empty echo row's 25 + 4 + 16 + 10). */}
++            <div className={QUERY_SEARCH_BAND_CLASS}>
+               <Suspense>
+                 <SearchBox
+                   placeholder={t.profile.searchActivity}
+diff --git a/src/app/profile/page.tsx b/src/app/profile/page.tsx
+index bf759ff30..f8664945e 100644
+--- a/src/app/profile/page.tsx
++++ b/src/app/profile/page.tsx
+@@ -123,7 +123,14 @@ export default async function ProfilePage() {
+     <PageContainer tier="reading" className="space-y-6">
+       {/* ── Hero — kit-faithful: tilted FiftyMark watermark, OKLCH gradient,
+             mono-stamped meta, picture uploader badge. No off-brand tokens. */}
+-      <section className="relative overflow-hidden rounded-xl border border-border bg-bg-elevated">
++      {/* 🔴 `overflow-clip` OVER `overflow-hidden` (round 4 of the visual pass, 2026-10-09, edges tiles 233–235, E24). A box
++          that hides its overflow is still a scroll container, and this one has overflow to scroll: the watermark below
++          stands 32px past its right edge (`-right-6`), and an unbroken name ran 580px past it. Saving a name returns focus
++          to the name's button (name-editor.tsx), the browser scrolled the hero sideways to reveal it, and the scroll stayed:
++          the whole hero 32px left, the avatar ring cut, "ZS 50,000", a bare strip at the right. `clip` clips the same box
++          and is no scroll container, so nothing can move it; `hidden` stays first for an engine without `clip` (Safari
++          before 16), where the name's own break rule (E25) leaves nothing to reveal. */}
++      <section className="relative overflow-hidden overflow-clip rounded-xl border border-border bg-bg-elevated">
+         {/* 🔴 DG-P-04 · §S1 — THE h1 MOVED INSIDE THE HERO, AND THE MOVE IS LOAD-BEARING.
+             It was the container's FIRST child. `space-y-*` is not a gap; it is
+             `> :not([hidden]) ~ :not([hidden]) { margin-top }`, a SIBLING selector that counts
+diff --git a/src/app/updown/history/page.tsx b/src/app/updown/history/page.tsx
+index cf5955a63..73ee780bf 100644
+--- a/src/app/updown/history/page.tsx
++++ b/src/app/updown/history/page.tsx
+@@ -26,6 +26,7 @@ import { eatDayWindow, isInEatDay, eatDayKey, formatEatDay } from "@/lib/eat-day
+ import { pickLocalized } from "@/lib/localized";
+ import { formatTzs, formatTzsSigned } from "@/lib/utils";
+ import { SearchBox } from "@/components/ui/search-box";
++import { QUERY_SEARCH_BAND_CLASS } from "@/components/ui/query-bar";
+ import { fieldNames, matchesQuery, parseQuery, UD_ROUND_SEARCH } from "@/lib/search";
+ import { Pagination, PLAYER_PER_PAGE } from "@/components/ui/pagination";
+ import { HistoryBar, type UdCounts } from "./history-bar";
+@@ -325,9 +326,15 @@ export default async function UpDownHistoryPage({ searchParams }: {
+           ⛔ Measured, not reasoned: `qa:bar-geometry` reported `bar@-252` here while every other
+           surface reported `bar@56`. ⭐ The bar is now a direct child of the page container, which
+           spans the list — the same shape the other six query surfaces already had. */}
++      {/* ⭐ THE SEARCH AND THE BAR ARE ONE BAND (round 4 of the visual pass, 2026-10-09, R4-C's leftover):
++          `QUERY_SEARCH_BAND_CLASS`, as on every page with a search over its bar. This page spaces its blocks by margin, on
++          a 24px rung (the strip's `mt-5` under the bar), so the band takes the rung above it (`mt-5`) and below it
++          (`pb-5`: the bar must stay the container's direct child, or it would stop sticking): the box 34 under the head,
++          the pills 34 under the box, the strip 34 under the bar — where `mt-4` put the box 20 under the head and the empty
++          echo row the pills 35 under it. */}
+       {allRows.length > 0 && (
+         <>
+-        <div className="mt-4">
++        <div className={`${QUERY_SEARCH_BAND_CLASS} mt-5 pb-5`}>
+           <SearchBox
+             placeholder={t.market.udSearchPlaceholder}
+             ariaLabel={t.market.udSearchPlaceholder}
+diff --git a/src/app/wallet/deposit/return/page.tsx b/src/app/wallet/deposit/return/page.tsx
+index 04b18e6c7..11156cf9a 100644
+--- a/src/app/wallet/deposit/return/page.tsx
++++ b/src/app/wallet/deposit/return/page.tsx
+@@ -43,6 +43,7 @@ import { cardReturnOrderId } from "@/lib/wallet/card-return";
+ import { settleDepositFromReturn } from "@/lib/server/wallet-service";
+ import { RefreshPoller } from "@/components/ui/refresh-poller";
+ import { Cash } from "@/components/ui/cash";
++import { keepIdRuns } from "@/components/ui/keep-words";
+ import { PageContainer } from "@/components/layout/page-container";
+ import { KycFirstDepositNotice } from "@/components/wallet/kyc-first-deposit-notice";
+ import { cookies } from "next/headers";
+@@ -156,11 +157,13 @@ export default async function DepositReturnPage({
+             <span className="text-text">{methodLabel(t, outcome.txn.provider)}</span>
+           </Row>
+           <Row label={t.wallet.transactionId}>
+-            <span className="font-mono text-text break-all">{outcome.txn.id}</span>
++            {/* An id breaks in whole runs of four, its lines balanced, never one or two characters alone (round 4 of the visual
++              pass, 2026-10-09, S9's note G20: `break-all` broke a long reference wherever the line ran out). `keepIdRuns`. */}
++            <span className="block font-mono text-text text-balance">{keepIdRuns(outcome.txn.id)}</span>
+           </Row>
+           {outcome.txn.providerRef && (
+             <Row label={t.wallet.gatewayReference}>
+-              <span className="font-mono text-text break-all">{outcome.txn.providerRef}</span>
++              <span className="block font-mono text-text text-balance">{keepIdRuns(outcome.txn.providerRef)}</span>
+             </Row>
+           )}
+           <Row label={t.wallet.date}>
+diff --git a/src/app/wallet/receipt/[id]/page.tsx b/src/app/wallet/receipt/[id]/page.tsx
+index 437d51f70..82d1abbee 100644
+--- a/src/app/wallet/receipt/[id]/page.tsx
++++ b/src/app/wallet/receipt/[id]/page.tsx
+@@ -49,6 +49,7 @@ import { STATE_STATUSES } from "@/lib/wallet/ledger";
+ import { hasReceipt, methodLabel, presentedStatus, receiptStatusWord, receiptTypeWord } from "@/lib/wallet/receipts";
+ import { RefreshPoller } from "@/components/ui/refresh-poller";
+ import { Cash } from "@/components/ui/cash";
++import { keepIdRuns } from "@/components/ui/keep-words";
+ import { PageContainer } from "@/components/layout/page-container";
+ 
+ // Localised tab title (POLISH-BACKLOG §1.7) — was the hard-coded English
+@@ -125,11 +126,12 @@ export default async function ReceiptPage({ params }: { params: Promise<{ id: st
+         )}
+         <Row label={t.wallet.method}>{method}</Row>
+         <Row label={t.wallet.transactionId}>
+-          <span className="font-mono break-all">{txn.id}</span>
++          {/* The same rule as the deposit's return receipt (round 4, G20): whole runs of four, balanced. `keepIdRuns`. */}
++          <span className="block font-mono text-balance">{keepIdRuns(txn.id)}</span>
+         </Row>
+         {txn.providerRef && (
+           <Row label={t.wallet.gatewayReference}>
+-            <span className="font-mono break-all">{txn.providerRef}</span>
++            <span className="block font-mono text-balance">{keepIdRuns(txn.providerRef)}</span>
+           </Row>
+         )}
+         {/* Dates in the numeral face (§T5), as the list prints the same instant. */}
+diff --git a/src/components/home/landing-hero.tsx b/src/components/home/landing-hero.tsx
+index 2ea22949e..e7f3ed54c 100644
+--- a/src/components/home/landing-hero.tsx
++++ b/src/components/home/landing-hero.tsx
+@@ -74,6 +74,8 @@ import type { BoardLens, HeroFigures, HeroRow } from "@/lib/markets/hero";
+ import { sideWord } from "@/lib/side-label";
+ import { priceState } from "@/lib/markets/price-state";
+ import { Cash } from "@/components/ui/cash";
++import { DotSeq } from "@/components/ui/dot-seq";
++import { keepFigures } from "@/components/ui/keep-words";
+ import type { LandingPicks } from "@/lib/server/landing-picks";
+ 
+ /**
+@@ -101,6 +103,11 @@ type Props = {
+    * only rails whose payout path is live and that no officer has paused (R8(6)). Empty → no row.
+    */
+   rails: readonly string[];
++  /**
++   * The request is shown the journey (`resolveSimpleJourney`). It names one door only: the signed-in block's link to
++   * /positions takes the journey tab's own name (see `SignedInAct`). Omitted, today's words.
++   */
++  journey?: boolean;
+ };
+ 
+ /** Escape a word for use inside a RegExp — the side words are data, not patterns. */
+@@ -293,30 +300,38 @@ function QuestionRow({ row, t, locale, nowMs }: { row: HeroRow; t: Dict; locale:
+   // The card's own names for the pair, so one control has one vocabulary: no figure without a price.
+   const yesAria = (price.kind === "priced" ? t.market.backSideAria.replace("{pct}", String(price.yesPct)) : t.market.backSideAriaNoPrice).replace("{side}", yesWord);
+   const noAria = (price.kind === "priced" ? t.market.backSideAria.replace("{pct}", String(100 - price.yesPct)) : t.market.backSideAriaNoPrice).replace("{side}", noWord);
++  /* ⭐ THE META LINE BREAKS ONLY BETWEEN ITS FACTS (round 4 of the visual pass, 2026-10-09, edges tiles 248 249 257 258 266
++     267): "Closes 27 Sep · Settles on {source} · Pool TZS n · n predictors" was one sentence of text, so at 360 its first
++     line ended on the dot ("…Linatatuliwa kwa bot.go.tz ·" / "Bwawa TZS 0 · 0 watabiri"). It is `DotSeq` now, the one
++     idiom for "A · B · C" (dot-seq.tsx): each fact one flex item, its dot hanging in the gap, so no line ends or opens on
++     "·". The facts are the same words and wear the same classes and `data-market-part` hooks, through `renderPart`. */
++  const settles = row.sourceName ? `${settlesPre}${row.sourceName}${settlesPost}` : null;
++  const pool = `${t.common.pool} ${formatTzs(row.pool)}`;
++  const depth = `${formatNumber(row.predictors)} ${row.predictors === 1 ? t.market.predictorsCountOne : t.market.predictorsCount}`;
++  const metaPart = (part: string) =>
++    part === closes ? <span className="kp-qrow__close">{closes}</span>
++    : part === settles ? (
++      <span className="kp-qrow__src">
++        {settlesPre}
++        <span className="kp-qrow__srcname" data-market-part="source">{row.sourceName}</span>
++        {settlesPost}
++      </span>
++    )
++    // The pool is REAL even when it is zero, so it is always stated (V18, K48). Each part draws its words as the row
++    // always did (the same expressions; the strings above are only how DotSeq knows which part it is holding).
++    : part === pool ? <span className="kp-qrow__pool" data-market-part="pool">{t.common.pool}{" "}{formatTzs(row.pool)}</span>
++    : part === depth ? (
++      <span className="kp-qrow__depth" data-market-part="predictors">
++        {formatNumber(row.predictors)}{" "}{row.predictors === 1 ? t.market.predictorsCountOne : t.market.predictorsCount}
++      </span>
++    )
++    : part;
+   return (
+     <li className="kp-qrow" data-price={price.kind} data-market-surface="board" data-row-id={row.id}>
+       <Link href={`/markets/${row.id}` as never} className="kp-qrow__head">
+-        <span className="kp-qrow__q">{title}</span>
+-        <span className="kp-qrow__meta">
+-          <span className="kp-qrow__close">{closes}</span>
+-          {row.sourceName && (
+-            <>
+-              {" · "}
+-              <span className="kp-qrow__src">
+-                {settlesPre}
+-                <span className="kp-qrow__srcname" data-market-part="source">{row.sourceName}</span>
+-                {settlesPost}
+-              </span>
+-            </>
+-          )}
+-          {" · "}
+-          {/* The pool is REAL even when it is zero, so it is always stated (V18, K48). */}
+-          <span className="kp-qrow__pool" data-market-part="pool">{t.common.pool}{" "}{formatTzs(row.pool)}</span>
+-          {" · "}
+-          <span className="kp-qrow__depth" data-market-part="predictors">
+-            {formatNumber(row.predictors)}{" "}{row.predictors === 1 ? t.market.predictorsCountOne : t.market.predictorsCount}
+-          </span>
+-        </span>
++        {/* `keepFigures` (round 4, edges 197 255): "2026-27" and "dakika 28:00" never break inside. */}
++        <span className="kp-qrow__q">{keepFigures(title)}</span>
++        <DotSeq text={[closes, settles, pool, depth].filter(Boolean).join(" · ")} className="kp-qrow__meta" renderPart={metaPart} />
+       </Link>
+       <div className="kp-qrow__read">
+         <div className="kp-qrow__line">
+@@ -365,7 +380,7 @@ function QuestionRow({ row, t, locale, nowMs }: { row: HeroRow; t: Dict; locale:
+   );
+ }
+ 
+-export function LandingHero({ figures, t, locale, isAuthed, nowMs, cards, mine, rails }: Props) {
++export function LandingHero({ figures, t, locale, isAuthed, nowMs, cards, mine, rails, journey = false }: Props) {
+   const { featured } = figures;
+   const chart = featured ? cards.charts.get(featured.id) : undefined;
+ 
+@@ -441,7 +456,7 @@ export function LandingHero({ figures, t, locale, isAuthed, nowMs, cards, mine,
+               follow the card (the delivery's placement map P4); from 1024 they sit in the left column
+               under the intro. A player gets their own block instead, with Set limits (WP14 part 2). */}
+           {isAuthed ? (
+-            <SignedInAct t={t} mine={mine ?? null} />
++            <SignedInAct t={t} mine={mine ?? null} journey={journey} />
+           ) : (
+             <>
+               <div className="kp-hero__ctas">
+@@ -502,7 +517,7 @@ export function LandingHero({ figures, t, locale, isAuthed, nowMs, cards, mine,
+  * ⛔ A frozen wallet still says so, and still gets no money control — the same rule as the Wallet
+  * (`wallet-sheet.tsx`), now trivially true because this block has none at all.
+  */
+-function SignedInAct({ t, mine }: { t: Dict; mine: LandingMine | null }) {
++function SignedInAct({ t, mine, journey }: { t: Dict; mine: LandingMine | null; journey: boolean }) {
+   const picks = mine?.picks ?? null;
+   const balance = mine?.balance ?? null;
+   const held = !!mine?.held;
+@@ -553,8 +568,12 @@ function SignedInAct({ t, mine }: { t: Dict; mine: LandingMine | null }) {
+       {/* The block's two doors, and neither is money: the player's own positions — which is what the
+           figures above are ABOUT — and the RG limits, one tap from the first screen (K37). */}
+       <div className="kp-mine__links">
++        {/* ⭐ ONE PAGE, ONE NAME (round 4 of the visual pass, 2026-10-09, edges E4): in the journey /positions is the tab
++            "Tiketi zangu / My tickets / 我的注单" — its h1 and its tab say so — so this link takes the tab's own key, where
++            it read "Nafasi zangu / My positions / 我的持仓". A classic reader keeps today's words (the classic nav names
++            the page "Nafasi", and its home link "Nafasi zangu"). No new words. */}
+         <Link href={"/positions" as never} className="kp-mine__limits">
+-          {t.home.myPositions}
++          {journey ? t.journey.tabTickets : t.home.myPositions}
+           <I.arrowRight s={14} />
+         </Link>
+         <Link href="/profile/responsible-gambling" className="kp-mine__limits">
+diff --git a/src/components/journey/journey-top-bar.tsx b/src/components/journey/journey-top-bar.tsx
+index f537d87e5..f491daeb1 100644
+--- a/src/components/journey/journey-top-bar.tsx
++++ b/src/components/journey/journey-top-bar.tsx
+@@ -183,6 +183,7 @@ export function JourneyTopBar({
+                   proposalsState={proposalsState}
+                   inviteVisible={inviteVisible}
+                   invitePaid={invitePaid}
++                  journey
+                 />
+               </span>
+             </>
+diff --git a/src/components/journey/tickets/ticket-card.tsx b/src/components/journey/tickets/ticket-card.tsx
+index 76e0b6bcb..1268889ed 100644
+--- a/src/components/journey/tickets/ticket-card.tsx
++++ b/src/components/journey/tickets/ticket-card.tsx
+@@ -52,7 +52,7 @@
+  */
+ import Link from "next/link";
+ import { Chip } from "@/components/ui/chip";
+-import { keepUnits } from "@/components/ui/keep-units";
++import { keepFigures } from "@/components/ui/keep-words";
+ import { Stat } from "@/components/ui/stat";
+ import { I } from "@/components/ui/glyphs";
+ import { SellButton } from "@/components/markets/sell-button";
+@@ -109,9 +109,9 @@ export function TicketCard({ p, m, price, t, locale, serverNow }: {
+             open or refunded ticket's royal pill took the taller status metrics, and its card sat 2px low. */}
+         <Chip size="sm" metrics="base" variant={positionStatusChip(p.status)}>{positionStatusWord(t, p.status, "MARKET")}</Chip>
+       </div>
+-      {/* `keepUnits` (2026-10-08 · G1): a Chinese "200毫米" never breaks between the number and its unit. */}
++      {/* `keepFigures` (2026-10-08 · G1; round 4, edges 197 255): "200毫米", "2026-27" and "dakika 28:00" never break inside. */}
+       <h2 className="mt-3 font-display text-body-lg font-semibold leading-tight text-text text-balance">
+-        <Link href={`/markets/${p.marketId}` as never} className="-my-2 block py-2 hover:underline">{keepUnits(title.text)}</Link>
++        <Link href={`/markets/${p.marketId}` as never} className="-my-2 block py-2 hover:underline">{keepFigures(title.text)}</Link>
+       </h2>
+       <div className="mt-3 grid grid-cols-[minmax(max-content,2fr)_minmax(0,3fr)] gap-3 text-balance">
+         <Stat label={t.dialog.stakeLabel} value={formatTzs(p.stake)} money />
+diff --git a/src/components/layout/app-shell.tsx b/src/components/layout/app-shell.tsx
+index 7ada9bebd..95c4af6d5 100644
+--- a/src/components/layout/app-shell.tsx
++++ b/src/components/layout/app-shell.tsx
+@@ -46,6 +46,7 @@ import { PreviewMarker } from "./preview-marker";
+ import { FunnelUtm } from "@/components/analytics/funnel-utm";
+ import { isStaffRole } from "@/lib/server/roles";
+ import { displayLabel, displayInitials } from "@/lib/display-label";
++import { maskPhone } from "@/lib/phone-normalize";
+ import { getServerT } from "@/lib/i18n-server";
+ import { getPlatformConfig, maintenanceMessage } from "@/lib/server/platform-config";
+ import { getProposalsConfig } from "@/lib/server/proposals-config";
+@@ -349,6 +350,12 @@ export async function AppShell({ children }: { children: React.ReactNode }) {
+      attribute the browser beacon reads before it sends anything: staff, a preview pass and an account whose read
+      failed are "off"; everybody else is counted in the journey they are shown. `/api/funnel` needs no cookie. */
+   const funnelScopeValue = journeyPreview || funnelViewer === "staff" || funnelViewer === "unknown" ? "off" : journeyShown ? "new" : "old";
++  /* ⭐ ONE PHONE, ONE MASK IN THE JOURNEY (round 4 of the visual pass, 2026-10-09, edges E32): the account menu read
++     "+255*****84" (`topUser`'s stars, above) while the hub and the profile hero read "+255••••84" — `maskPhone`
++     (phone-normalize.ts) is the one definition of a masked number, and a short value masks to dots rather than being
++     echoed. The journey's header is handed that mask; ⛔ the classic bar keeps `topUser` exactly as it was (frozen
++     chrome for S6/S7, `qa:classic-shell-parity`), so a classic menu still reads its stars until S15. */
++  const journeyUser = session ? { ...topUser, phone: maskPhone(session.phoneE164) } : topUser;
+ 
+   return (
+     <div className="min-h-screen flex flex-col bg-bg-base text-text">
+@@ -378,7 +385,7 @@ export async function AppShell({ children }: { children: React.ReactNode }) {
+           (a preview pass turned on). The header's fallback is therefore the bar's own empty box, with its height, its
+           panel and its border, so nothing below it moves; the tabs need none, because the rail is anchored to the
+           viewport and takes no room in the page. */}
+-      {journeyShown ? <Suspense fallback={<div aria-hidden="true" className="kp-jhdr" />}><LazyJourneyTopBar user={topUser} onBreak={promoSuppressed} proposalsState={proposalsState} inviteVisible={inviteVisible} invitePaid={invitePaid} /></Suspense> : <TopAppBar user={topUser} proposalsState={proposalsState} inviteVisible={inviteVisible} invitePaid={invitePaid} />}
++      {journeyShown ? <Suspense fallback={<div aria-hidden="true" className="kp-jhdr" />}><LazyJourneyTopBar user={journeyUser} onBreak={promoSuppressed} proposalsState={proposalsState} inviteVisible={inviteVisible} invitePaid={invitePaid} /></Suspense> : <TopAppBar user={topUser} proposalsState={proposalsState} inviteVisible={inviteVisible} invitePaid={invitePaid} />}
+       {/* ⭐ THE PREVIEW MARKER — first under the bar, so whoever holds this browser knows at once that they are
+           looking at pages players do not see yet, and has the way out on the same line. */}
+       {journeyPreview && <PreviewMarker label={t.journey.previewMarker} exit={t.journey.previewExit} />}
+diff --git a/src/components/layout/avatar-menu.tsx b/src/components/layout/avatar-menu.tsx
+index 40760ac01..530ff71d8 100644
+--- a/src/components/layout/avatar-menu.tsx
++++ b/src/components/layout/avatar-menu.tsx
+@@ -12,6 +12,7 @@ import { ProposalsStateBadge } from "@/components/ui/proposals-state-badge";
+ import { useT, type Locale } from "@/lib/i18n";
+ import { cn } from "@/lib/utils";
+ import { NeedleControlsDrawer } from "@/components/layout/needle-drawer";
++import { keepLastWords } from "@/components/ui/keep-words";
+ import type { ProposalsState } from "@/lib/server/proposals-config";
+ 
+ export function AvatarMenu({
+@@ -25,6 +26,7 @@ export function AvatarMenu({
+   proposalsState = "COMING_SOON",
+   inviteVisible = false,
+   invitePaid = false,
++  journey = false,
+ }: {
+   initials: string;
+   name: string;
+@@ -48,6 +50,17 @@ export function AvatarMenu({
+    * earnings the programme is refusing.
+    */
+   invitePaid?: boolean;
++  /**
++   * ⭐ THE JOURNEY'S MENU (round 4 of the visual pass, 2026-10-09, edges E31 E33), passed by `JourneyTopBar` alone:
++   *   · /positions is "Tiketi zangu / My tickets / 我的注单" with the tab's ticket glyph — the journey's tab, the page's h1
++   *     and the hub call it that, and this menu said "Nafasi / Positions / 持仓" (one page, one name: the tab's own key);
++   *   · a label that wraps keeps its last two words together ("Pendekeza na" / "upate zawadi" beside INAKUJA, never
++   *     "Pendekeza na upate" / "zawadi");
++   *   · the Needle's row is a row of this menu (`variant="menu-item"`): its glyph, label and value on the rows' own 16px
++   *     inset and 10px gap, its chevron's ink on their right edge, where a padded wrapper set it 8px in and 12px short.
++   * ⛔ Omitted — the classic bar — everything renders as it did: the classic avatar menu is frozen chrome for S6/S7.
++   */
++  journey?: boolean;
+ }) {
+   const [open, setOpen] = useState(false);
+   const ref = useRef<HTMLDivElement>(null);
+@@ -129,7 +142,9 @@ export function AvatarMenu({
+     .map((r) =>
+       r.invite && !invitePaid
+         ? { ...r, en: t.profile.inviteFriends, sw: t.profile.inviteFriends, zh: t.profile.inviteFriends, accent: false }
+-        : r,
++        : journey && r.href === "/positions"
++          ? { ...r, icon: I.ticket, en: t.journey.tabTickets, sw: t.journey.tabTickets, zh: t.journey.tabTickets }
++          : r,
+     );
+   /* ⭐ DG-P-11 — WHICH ROW IS THE CURRENT PAGE, BY LONGEST MATCH.
+      ⛔ Longest-match is load-bearing, not tidiness: `/profile` is a prefix of both
+@@ -241,6 +256,7 @@ export function AvatarMenu({
+                   /* The state flag rides the proposals row only: gilt coming-soon /
+                      amber maintenance / nothing when ACTIVE. */
+                   proposalsBadge={r.proposals ? proposalsState : undefined}
++                  journey={journey}
+                 />
+               ))}
+             </ul>
+@@ -294,9 +310,15 @@ export function AvatarMenu({
+             {/* The Needle — opens the controls drawer (show/hide + Spin/Bounce). Lives
+                 here (not as an always-visible top-bar button) because the header already
+                 overflows at 1024–1279px; the avatar menu is the right home for it. */}
+-            <div className="border-t border-border px-2 py-2">
+-              <NeedleControlsDrawer variant="menu-row" />
+-            </div>
++            {journey ? (
++              <div className="border-t border-border py-1">
++                <NeedleControlsDrawer variant="menu-item" />
++              </div>
++            ) : (
++              <div className="border-t border-border px-2 py-2">
++                <NeedleControlsDrawer variant="menu-row" />
++              </div>
++            )}
+             <div className="border-t border-border">
+               <ConfirmDialog
+                 tone="claret"
+@@ -371,7 +393,7 @@ const MENU_ROWS: readonly MenuRow[] = [
+   { href: "/profile/kyc",    icon: I.shieldcheck, en: "Verify ID",      sw: "Kuthibitisha kitambulisho", zh: "身份验证" },
+ ];
+ 
+-function Item({ href, icon: Ico, en, sw, zh, accent, current, proposalsBadge }: { href: string; icon: (p: { s?: number; className?: string }) => React.ReactElement; en: string; sw: string; zh: string; accent?: boolean; current?: boolean; proposalsBadge?: ProposalsState }) {
++function Item({ href, icon: Ico, en, sw, zh, accent, current, proposalsBadge, journey = false }: { href: string; icon: (p: { s?: number; className?: string }) => React.ReactElement; en: string; sw: string; zh: string; accent?: boolean; current?: boolean; proposalsBadge?: ProposalsState; journey?: boolean }) {
+   const { t, locale } = useT();
+   // System language only — no adjacent second-language gloss.
+   const primary = locale === "sw" ? sw : locale === "zh" ? zh : en;
+@@ -408,7 +430,9 @@ function Item({ href, icon: Ico, en, sw, zh, accent, current, proposalsBadge }:
+         )}
+       >
+         <span className={accent ? "text-gold-300" : "text-text-subtle"}><Ico s={15} /></span>
+-        {primary}
++        {/* The journey's label keeps its last two words together (`keepLastWords`: the widest two-word end is ~88px at
++            Sora 13px, inside the label's ~139px beside INAKUJA — visual-pass-r4h §6.6); one span, so the words stay one flex item. */}
++        {journey ? <span>{keepLastWords(primary)}</span> : primary}
+         {proposalsBadge && (
+           <ProposalsStateBadge state={proposalsBadge} comingSoonLabel={t.proposals.comingSoonTag} maintenanceLabel={t.proposals.maintenanceTag} size="xs" className="ml-auto" />
+         )}
+diff --git a/src/components/layout/needle-drawer.tsx b/src/components/layout/needle-drawer.tsx
+index 3eff54641..d920e253c 100644
+--- a/src/components/layout/needle-drawer.tsx
++++ b/src/components/layout/needle-drawer.tsx
+@@ -74,7 +74,7 @@ function NeedleMark({ size = 16, className }: { size?: number; className?: strin
+   );
+ }
+ 
+-export function NeedleControlsDrawer({ variant = "menu-row" }: { variant?: "menu-row" | "hub-row" | "settings" }) {
++export function NeedleControlsDrawer({ variant = "menu-row" }: { variant?: "menu-row" | "menu-item" | "hub-row" | "settings" }) {
+   const { locale } = useT();
+   const [open, setOpen] = useState(false);
+   const [hidden, setHidden] = useState(false);
+@@ -118,6 +118,16 @@ export function NeedleControlsDrawer({ variant = "menu-row" }: { variant?: "menu
+     { id: "pepsi", name: "Pepsi", hint: t("The sponsor's mark", "Alama ya mdhamini", "赞助商标志") },
+   ];
+ 
++  /* The account menu's two rows end alike — the state word, then the chevron — so they are drawn once (round 4 of the
++     visual pass, 2026-10-09): the recipe is not written twice. `overhang` is the journey's row (`menu-item`), whose
++     chevron hangs its 4.6px side bearing past the row's edge (-mr-1); the classic row's is exactly as it was. */
++  const menuTail = (overhang: boolean) => (
++    <>
++      <span className="font-mono text-micro uppercase tracking-[0.12em] text-text-subtle">{shownLabel}</span>
++      <svg width="14" height="14" viewBox="0 0 24 24" aria-hidden="true" className={overhang ? "-mr-1 text-text-subtle" : "text-text-subtle"}><path d="M9 6l6 6-6 6" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" /></svg>
++    </>
++  );
++
+   const trigger =
+     variant === "menu-row" ? (
+       <button
+@@ -133,8 +143,28 @@ export function NeedleControlsDrawer({ variant = "menu-row" }: { variant?: "menu
+       >
+         <span className={hidden ? "text-text-subtle" : "text-brand-300"}><NeedleMark /></span>
+         <span className="flex-1">{t("The Needle", "Sindano", "指针玩具")}</span>
+-        <span className="font-mono text-micro uppercase tracking-[0.12em] text-text-subtle">{shownLabel}</span>
+-        <svg width="14" height="14" viewBox="0 0 24 24" aria-hidden="true" className="text-text-subtle"><path d="M9 6l6 6-6 6" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" /></svg>
++        {menuTail(false)}
++      </button>
++    ) : variant === "menu-item" ? (
++      /* ⭐ A ROW OF THE JOURNEY'S ACCOUNT MENU (round 4 of the visual pass, 2026-10-09, edges tiles 209 224 228 239 243
++         247, E31). The classic menu draws the row above inside a `px-2 py-2` wrapper with its own `px-2`, so its mark
++         stood 24px in where every row's glyph stands 16 (10–11px of ink further right), its label 11px right of theirs,
++         and its chevron's ink 12px short of their right edge (INAKUJA's pill ends there). Here it wears the menu row's
++         own geometry, `Item` in avatar-menu.tsx: `px-3 py-2` (16px · 12px), a 10px gap (`gap-[10px]`, the literal of
++         the row's stock `gap-2.5`: the key is an inverted one on this scale, test:spacing-scale), the mark in the rows'
++         15px glyph box, the label at body-sm 500. The 14px chevron's ink ends 4.6px inside its box (the path's x 15 of 24
++         plus half its 2.2 stroke), so the box overhangs the edge by 4px (`-mr-1`) and the ink lands 0.6px from the
++         rows' edge. A menu child, so it is a `menuitem` like every other row. The journey's menu alone (`journey`). */
++      <button
++        type="button"
++        role="menuitem"
++        onClick={() => setOpen(true)}
++        aria-haspopup="dialog"
++        className="w-full flex items-center gap-[10px] px-3 py-2 font-display text-body-sm font-medium text-text transition-colors hover:bg-bg-overlay text-left"
++      >
++        <span className={hidden ? "text-text-subtle" : "text-brand-300"}><NeedleMark size={15} /></span>
++        <span className="flex-1">{t("The Needle", "Sindano", "指针玩具")}</span>
++        {menuTail(true)}
+       </button>
+     ) : variant === "hub-row" ? (
+       /* ⭐ ONE OF THE AKAUNTI HUB'S ROWS (2026-10-09, round 3, tiles 122–130 158 264–275 294 295). The hub drew the account
+diff --git a/src/components/layout/wallet-sheet.tsx b/src/components/layout/wallet-sheet.tsx
+index 444d95358..47ea1bd93 100644
+--- a/src/components/layout/wallet-sheet.tsx
++++ b/src/components/layout/wallet-sheet.tsx
+@@ -117,7 +117,11 @@ export function WalletSheet({
+                 <I.plus s={16} />
+                 {journey ? t.journey.depositAction : t.common.deposit}
+               </Link>
+-              <span id={depVia} className="kp-wsheet__via">{t.wallet.mobileMoney}</span>
++              {/* ⭐ The journey's captions keep their last two words together (round 4 of the visual pass, 2026-10-09,
++                  edges tile 496): at en 320 "Mobile money or card" (134px) wraps in its 133px column, and left "card"
++                  alone; now "Mobile money" / "or card". The widest pair is 47px ("ya simu"), a column is 133 at 320. ⛔ The classic
++                  capsule's Wallet keeps today's text (frozen chrome for S6/S7). */}
++              <span id={depVia} className="kp-wsheet__via">{journey ? keepLastWords(t.wallet.mobileMoney) : t.wallet.mobileMoney}</span>
+             </div>
+           )}
+           <div className="kp-wsheet__col">
+@@ -131,7 +135,7 @@ export function WalletSheet({
+               <I.arrowUpFromLine s={16} />
+               {journey ? t.journey.withdrawAction : t.common.withdraw}
+             </Link>
+-            <span id={wdVia} className="kp-wsheet__via">{t.wallet.mobileMoneyOnly}</span>
++            <span id={wdVia} className="kp-wsheet__via">{journey ? keepLastWords(t.wallet.mobileMoneyOnly) : t.wallet.mobileMoneyOnly}</span>
+           </div>
+         </div>
+       )}
+diff --git a/src/components/markets/market-card.tsx b/src/components/markets/market-card.tsx
+index bae3665e8..27d2c06c2 100644
+--- a/src/components/markets/market-card.tsx
++++ b/src/components/markets/market-card.tsx
+@@ -9,7 +9,7 @@ import { Avatar } from "@/components/ui/avatar";
+ import { Modal } from "@/components/ui/modal";
+ import { ShareButton } from "@/components/markets/share-button";
+ import { Chip } from "@/components/ui/chip";
+-import { keepUnits } from "@/components/ui/keep-units";
++import { keepFigures } from "@/components/ui/keep-words";
+ import { STATUS_TONE, TONE_CHIP } from "@/lib/status-tone";
+ import { cn, fill, formatTzs } from "@/lib/utils";
+ import { useT } from "@/lib/i18n";
+@@ -504,9 +504,10 @@ export function MarketCard({
+         <div className="mcardp-qwrap">
+           {/* The featured card is only ever the landing hero's, where it follows the page's h1
+               directly — so its question is the h2, and the heading order has no gap (WP17). */}
+-          {/* `keepUnits` (2026-10-08 · G1 [029 059 074 084 097 109]): "200毫米" never breaks between the
+-              number and its unit; a Swahili or English title is returned untouched. */}
+-          {featured ? <h2 className="mcardp-q">{keepUnits(title)}</h2> : <h3 className="mcardp-q">{keepUnits(title)}</h3>}
++          {/* `keepFigures` (2026-10-08 · G1 [029 059 074 084 097 109]; round 4, edges 197 253 255): "200毫米" never breaks
++              between the number and its unit, nor "2026-27" at its hyphen, nor "dakika 28:00" between the unit and the
++              number; a title with no such run is returned untouched. */}
++          {featured ? <h2 className="mcardp-q">{keepFigures(title)}</h2> : <h3 className="mcardp-q">{keepFigures(title)}</h3>}
+           {/* A grid card's source line lives in the question column, so it stays with its question when
+               the grid stretches the card (the head grows, the column does not move). */}
+           {!featured && metaLine && <p className="mcardp-src">{metaLine}</p>}
+diff --git a/src/components/profile/name-editor.tsx b/src/components/profile/name-editor.tsx
+index 82c2073f3..3f70a7005 100644
+--- a/src/components/profile/name-editor.tsx
++++ b/src/components/profile/name-editor.tsx
+@@ -5,7 +5,7 @@
+  * Enter or blur saves; Esc cancels. Backed by updateProfileBasicsAction.
+  */
+ 
+-import { useEffect, useRef, useState, useTransition } from "react";
++import { useEffect, useLayoutEffect, useRef, useState, useTransition } from "react";
+ import { useRouter } from "next/navigation";
+ import { Spinner } from "@/components/ui/spinner";
+ import { I } from "@/components/ui/glyphs";
+@@ -13,6 +13,7 @@ import { useToast } from "@/components/ui/toast";
+ import { useT } from "@/lib/i18n";
+ import { updateProfileBasicsAction } from "@/app/profile/actions";
+ import { errorCopy } from "@/lib/error-copy";
++import { keepNameEnd } from "@/components/ui/keep-words";
+ 
+ export function ProfileNameEditor({
+   currentName,
+@@ -45,11 +46,22 @@ export function ProfileNameEditor({
+     savingRef.current = false;
+     setValue(currentName ?? "");
+     setEditing(true);
+-    // `autoFocus` on the input owns FOCUS (deterministic, at mount); this deferred
+-    // call owns only the SELECTION, so tapping the name replaces it in one gesture.
+-    setTimeout(() => inputRef.current?.select(), 30);
+   };
+ 
++  /* 🔴 NO KEYSTROKE IS EVER LOST (round 4 of the visual pass, 2026-10-09, edges E27). The selection used to be made 30ms
++     after the editor opened (`setTimeout(select, 30)`), so whatever was typed in those 30ms was selected and then replaced
++     by the next key: the edge drive typed "Mwanaisha…" and saved "wanaisha…", "Mwanaishakhamis…" saved "anaishakhamis…",
++     "欧阳慕容…" saved "阳慕容…" — a fast typist, or a slow phone, loses the first letters of their own name. Focus and
++     selection now happen in the commit that mounts the field, before the browser handles another event: the next key
++     replaces the whole name, as tapping the name always meant, and every key after it lands. Nothing selects again. */
++  useLayoutEffect(() => {
++    if (!editing) return;
++    const field = inputRef.current;
++    if (!field) return;
++    field.focus();
++    field.select();
++  }, [editing]);
++
+   const close = (returnFocus: boolean) => {
+     returnFocusRef.current = returnFocus;
+     setEditing(false);
+@@ -159,16 +171,23 @@ export function ProfileNameEditor({
+      grows, so this column shifts down 5px at 390 / 2.5px from 768, once.
+      ⭐ AND IT MUST MATCH THE FIELD AT :127, which shares this slot: the two states are one
+      control in two modes, so they settle on ONE height or the row jumps on tap. */
++  /* ⭐ THE NAME BREAKS INSIDE ITS COLUMN (round 4 of the visual pass, 2026-10-09, edges tiles 218–220 233–235, E24 E25).
++     An unbroken 40-letter name had no break rule: the button ran 141..722 at 360, its pencil off the card and its focus
++     ring cut, while the hub breaks the same name cleanly. Now the name may break anywhere when it must
++     (`overflow-wrap: anywhere`, which also lets the flex item shrink below its longest word — `break-word` would not),
++     balances its lines, keeps its last two characters together (`keepNameEnd`), and the button never outgrows its
++     column (`max-w-full`). With nothing wider than the column, returning focus here after a save has nothing to reveal,
++     so the hero has nothing to scroll sideways (the hero is `overflow-clip` as well, profile/page.tsx). */
+   return (
+     <button
+       ref={triggerRef}
+       type="button"
+       onClick={enter}
+-      className="mt-1.5 inline-flex min-h-[40px] items-center gap-2 group text-left"
++      className="mt-1.5 inline-flex min-h-[40px] max-w-full items-center gap-2 group text-left"
+       aria-label={t.common.editDisplayName}
+     >
+-      <span className="font-display text-[24px] md:text-[28px] font-bold leading-tight tracking-[-0.02em] text-text">
+-        {currentName && currentName.trim() !== "" ? currentName : (
++      <span className="min-w-0 font-display text-[24px] md:text-[28px] font-bold leading-tight tracking-[-0.02em] text-text text-balance [overflow-wrap:anywhere]">
++        {currentName && currentName.trim() !== "" ? keepNameEnd(currentName) : (
+           <span className="text-text-subtle italic">{fallbackPlaceholder}</span>
+         )}
+       </span>
+diff --git a/src/components/ui/keep-words.tsx b/src/components/ui/keep-words.tsx
+index 1947064a4..9da09641f 100644
+--- a/src/components/ui/keep-words.tsx
++++ b/src/components/ui/keep-words.tsx
+@@ -77,3 +77,96 @@ export function keepYears(text: string): ReactNode {
+   out.push(text.slice(from));
+   return out;
+ }
++
++/**
++ * A MARKET TITLE'S FIGURES STAY WHOLE (round 4 of the visual pass, 2026-10-09, edges tiles 197 199 253 255 256): a season
++ * never breaks at its hyphen — the Chinese page read "辛巴俱乐部赢得2026-" / "27赛季NBC超级联赛" — and a number never parts
++ * from its unit — the Swahili page read "atavunja dakika" / "28:00 kwenye 10K". Titles are data, so the words are never
++ * touched: each figure run goes in a `white-space: nowrap` span (the reason `keepUnits` gives: what every engine honours,
++ * and the text a reader copies or a screen reader names is unchanged).
++ * A RUN is a number — digits with their own separators (2,650 · 5.5 · 28:00), a currency sign before them, a range after
++ * them (2026-27 · 24/7 · 2026–27), a % — together with its unit on ONE side:
++ *   · a Chinese unit of one or two ideographs straight after it ("200毫米", "27赛季" — `keepUnits`' rule, kept);
++ *   · a hyphenated unit ("30-day", "7-day");
++ *   · a unit word after it ("28 minutes", "$5.5 bilioni") or before it ("dakika 28:00", "nyuzi 32", "TZS 10,000"), from the
++ *     closed lists below — a measure noun, a magnitude, a currency code — and a month on either side of a day ("1 Agosti",
++ *     "April 15"). Where a word stands on both sides, the month or the unit after wins and the word before stays plain text
++ *     ("tarehe 1 Agosti" keeps "1 Agosti"), so a run is never more than one word and its number.
++ * A bare number with no unit and no range ("2,650", "28:00") has no break inside it to protect and stays plain text, so a
++ * title without a run renders byte for byte as before. ⚠️ Proper nouns are data and are never joined ("World Athletics",
++ * "NBC Premier League"). ⚠️ The lists are closed on purpose: a run cannot grow past a word and a number (≤ 20 characters in
++ * every seeded title), which fits the narrowest title line on every surface, where an open rule ("a number keeps the word
++ * before it") would join "ya 2,650" and "on 1" and could not promise that. ⛔ Deterministic, no lookbehind (a client
++ * bundle holding one fails to parse on Safari before 16.4), CJK-safe: the unit words are Latin, the ideograph rule is
++ * `keepUnits`' own.
++ */
++const MONTHS = "January|February|March|April|May|June|July|August|September|October|November|December|Januari|Februari|Machi|Aprili|Mei|Juni|Julai|Agosti|Septemba|Oktoba|Novemba|Desemba";
++const UNIT_BEFORE = `dakika|saa|sekunde|siku|wiki|mwezi|miezi|mwaka|miaka|nyuzi|asilimia|tarehe|milioni|bilioni|TZS|USD|KES|${MONTHS}`;
++const UNIT_AFTER = `minutes?|hours?|seconds?|days?|weeks?|months?|years?|degrees?|percent|million|billion|milioni|bilioni|${MONTHS}`;
++/** Groups: 1 the word before + 2 its space · 3 the number · 4 an ideograph unit · 5 a hyphenated unit · 6 a space + 7 the word after. */
++const FIGURE = new RegExp(
++  `(?:\\b(${UNIT_BEFORE})(\\s+))?([$€£]?\\d+(?:[.,:]\\d+)*(?:[-–/]\\d+(?:[.,:]\\d+)*)*%?)`
++    + `(?:(\\s?[㐀-䶿一-鿿豈-﫿]{1,2})|(-[a-z]+)\\b|(\\s+)(${UNIT_AFTER})\\b)?`,
++  "g",
++);
++/** A break could fall inside the run: a space, a range's mark, or an ideograph (UAX #14 lets a line end before one). */
++const BREAKABLE = /[\s\-–/㐀-䶿一-鿿豈-﫿]/;
++
++export function keepFigures(text: string): ReactNode {
++  if (!/\d/.test(text)) return text;
++  const out: ReactNode[] = [];
++  let from = 0;
++  for (const m of text.matchAll(FIGURE)) {
++    const [, before, gap, num, ideo, hyph, space, after] = m;
++    // One side only: a unit after the number wins, and the word before then stays plain text.
++    const tail = ideo ?? hyph ?? (after !== undefined ? space + after : "");
++    const head = tail === "" && before !== undefined ? before + gap : "";
++    const start = (m.index ?? 0) + (before !== undefined && head === "" ? before.length + gap.length : 0);
++    const run = head + num + tail;
++    // A run with no break inside it (a bare "2,650") is left as text.
++    if (!BREAKABLE.test(run)) continue;
++    out.push(text.slice(from, start), <span key={`f${out.length}`} className="whitespace-nowrap">{run}</span>);
++    from = start + run.length;
++  }
++  if (out.length === 0) return text;
++  out.push(text.slice(from));
++  return out;
++}
++
++/**
++ * A NAME NEVER ENDS ON ONE CHARACTER ALONE (round 4 of the visual pass, 2026-10-09, edges tiles 236 240 244): the hub's
++ * 40-character Chinese name broke 13 · 13 · 13 · 1 at 360, its last character alone on a fourth line, and an unbroken
++ * 40-letter name that must break anywhere could leave one letter the same way. The name's last two characters (and the
++ * space between them, if any) go in one nowrap span, so a last line holds two at least. Two characters always fit a line,
++ * so this can never overflow — unlike `keepLastWords`, whose pair of words a long name could make wider than its column.
++ * A name of two characters or fewer is returned untouched; the text itself is unchanged.
++ */
++const NAME_END = /\S\s*\S\s*$/u;
++
++export function keepNameEnd(name: string): ReactNode {
++  const at = name.search(NAME_END);
++  if (at <= 0) return name;
++  return [name.slice(0, at), <span key="name-end" className="whitespace-nowrap">{name.slice(at)}</span>];
++}
++
++/**
++ * AN ID BREAKS IN WHOLE RUNS OF FOUR (round 4 of the visual pass, 2026-10-09, S9's note G20): on the deposit's return
++ * receipt at 390 a long transaction id or gateway reference broke under `break-all` wherever its line ran out, leaving
++ * one or two characters alone on a second line. Now the id is cut into runs of four, each one nowrap, with a `<wbr>`
++ * between them — the only places a line may end — and a short last run (fewer than four) joins the run before it, so a
++ * second line always holds four characters or more. `txn_` + 12 is four whole runs. The characters are unchanged and
++ * `<wbr>` carries no text, so a copy, a search and a screen reader read the id exactly. The caller balances the lines.
++ */
++export function keepIdRuns(id: string): ReactNode {
++  const chars = Array.from(id);
++  if (chars.length <= 7) return id;
++  const runs: string[] = [];
++  for (let i = 0; i < chars.length; i += 4) runs.push(chars.slice(i, i + 4).join(""));
++  // More than seven characters make two runs at least, so a short tail always has a run to join.
++  const tail = runs[runs.length - 1];
++  if (Array.from(tail).length < 4) { runs.pop(); runs[runs.length - 1] += tail; }
++  return runs.flatMap((r, i) => {
++    const run = <span key={`r${i}`} className="whitespace-nowrap">{r}</span>;
++    return i === 0 ? [run] : [<wbr key={`w${i}`} />, run];
++  });
++}
+diff --git a/src/components/ui/toast.tsx b/src/components/ui/toast.tsx
+index bb7281ca9..dad5e7b00 100644
+--- a/src/components/ui/toast.tsx
++++ b/src/components/ui/toast.tsx
+@@ -580,6 +580,11 @@ function ToastViewport({ toasts, exiting, held, onDismiss, onPause, onResume }:
+     <div
+       role="region"
+       aria-label={t.common.notifications}
++      // ⭐ `data-toaster` is the journey's hook (round 4 of the visual pass, 2026-10-09, edges E34): in the journey the
++      // stack hangs under the header instead of over its controls (globals.css, `:root:has(#kp-journey-shell)
++      // [data-toaster]`). An attribute, not a class: the classic shell's fixed-overlay census (`qa:classic-shell-parity`)
++      // names an overlay by its test id, role, label and classes, so a classic viewer's overlays read as they did.
++      data-toaster=""
+       className="pointer-events-none fixed inset-x-0 top-0 z-[1800] flex flex-col items-center gap-2 px-3 pt-3 sm:inset-x-auto sm:right-4 sm:top-4 sm:items-end sm:pt-0"
+     >
+       {/* ⛔ THE WINDOW, NOT THE STACK. `toasts` holds every live toast — overflow included —

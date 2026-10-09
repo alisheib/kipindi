@@ -1,0 +1,29 @@
+﻿
+§1 · the two properties that caused G-7 are gone
+PASS 1.1 the chip is not whitespace-nowrap via className — a chip that cannot wrap is drawn outside its column
+PASS 1.2 the chip does not force white-space:nowrap in its style
+PASS 1.3 the chip caps its width at its container — without max-w-full it lays out at max-content and hangs off the card
+PASS 1.4 the size table's height is applied as minHeight, not height
+
+§2 · the size table still exists and still drives the pill's size
+PASS 2.1 every size still declares a height — found 8: 21, 23, 18, 20, 21, 23, 25, 27
+PASS 2.2 the smallest pill is still the kit's 18px — min 18
+
+§3 · the swap is a NO-OP for one-line chips — the arithmetic, pinned
+PASS 3.1 lineHeight and paddingBlock are readable — lineHeight=1.15 paddingBlock=2
+PASS 3.2 the size table pairs parsed — 8 pairs
+PASS 3.x a 21px chip (font 9) still renders at 21px on one line — content box would be 14.35px — under the min
+PASS 3.x a 23px chip (font 9) still renders at 23px on one line — content box would be 14.35px — under the min
+PASS 3.x a 18px chip (font 9.5) still renders at 18px on one line — content box would be 14.92px — under the min
+PASS 3.x a 20px chip (font 10) still renders at 20px on one line — content box would be 15.50px — under the min
+PASS 3.x a 21px chip (font 10.5) still renders at 21px on one line — content box would be 16.07px — under the min
+PASS 3.x a 23px chip (font 11) still renders at 23px on one line — content box would be 16.65px — under the min
+PASS 3.x a 25px chip (font 12) still renders at 25px on one line — content box would be 17.80px — under the min
+PASS 3.x a 27px chip (font 12.5) still renders at 27px on one line — content box would be 18.38px — under the min
+
+§4 · ONE DEFINITION — the chip is the COMPONENT, and the CSS family is gone
+PASS 4.1 globals.css declares NO .chip / .chip-* rule — the component is the only definition — 0 rule(s) still declared: 
+PASS 4.2 no call site spells a chip as a CSS class — a tone is a `variant`, a size is a `size` — 0: 
+PASS 4.3 CONTROL — the scan reached the tree, so 0 hits means 0 defects and not 0 reach — 703 .tsx files scanned (floor 300)
+
+19 passed, 0 failed

@@ -1,0 +1,30 @@
+Offline (R4-G): the offline page holds no person and speaks the language of the moment, old cached copies are dropped, and the offline notice sits under the header instead of on it
+
+The edge scenarios (M9, scenario 9) found a live defect for every player.
+
+- public/sw.js precached "/offline" with `cache.add`, so the request carried the session, kp-locale and preview cookies. /offline was a page inside the root layout, so the cached HTML was AppShell for whoever was signed in at install. It held:
+  - for a classic player: TopAppBar's name, initials, masked phone, avatar, userId, balance, held flag and admin flag;
+  - for a journey player: the capsule "Salio TZS 100,000", the gold pill, `onBreak` and the staff preview strip.
+  Offline, any later visitor on that device was shown that person's header and balance. An English or Chinese player read it in Swahili: it never hydrated, because the worker caches no chunks, and the provider never writes <html lang>. Back online it hydrated at another address into an aria-current mismatch ("2 Issues").
+- The OfflineBanner was a fixed z-[200] strip over the 56px header of both shells. Its words ran over the mark, the capsule and the pill, and at 1280 it took the nav links' clicks: elementFromPoint returned the banner, and the drive's 1280 tap timed out three times.
+- sw.js's no-cache fallback was English and Swahili only, in sentences outside the dictionary.
+
+The fix:
+- /offline is a route handler (src/app/offline/route.ts) returning one self-contained document (src/lib/offline-document.ts). It has no layout, no shell and no React, so there is nothing to hydrate. It reads nothing from the request; its only input is the public licence number. The worker fetches it with credentials "omit" and cache "reload".
+- Every phrase (common.offline, common.offlineHint, error.tryAgain, the footer's 18+ / licence / stop lines) appears once per language. A head script reads kp-locale (then the saved choice, then Swahili) and sets <html lang> and the title before first paint. No new words.
+- Retry and the browser's `online` event reload the address the player asked for. Nothing reloads while still offline.
+- It is one look for both shells: the mark (brand-mark.ts geometry), the wifi-off disc, the backdrop, the pill retry, and 16px gutters. Its fonts fall back to the system font, as global-error.tsx's do, because next/font's files are build-hashed.
+- CACHE_NAME 50pick-v4 → v5, so `activate` deletes every older cache on devices that already hold a person's page. The offline lookup reads only the current cache.
+- Push and the static-asset strategy are unchanged.
+- The banner is the kit's warning NoticeBar, in AppShell's flow under the header, first of the notices. It has no position and no z-index; role="alert" is kept through a new `assertive` prop (off by default, so the other bars are unchanged). The 200 rung is removed from the stacking contract, KNOWN_ROOT_RUNGS, tailwind's `banner` and needle.css's note. Online, nothing changes.
+
+Guards:
+- test:offline-neutral, 65 checks. It runs sw.js's install/activate/fetch/push in a sandbox against a recording cache, and the document's scripts for 11 cookie/storage cases.
+- red:offline-neutral 23/23, in-process: precache with credentials, a session read in the route, the old cache name, a hard-coded language, a fixed banner, a fallback without Chinese, and more.
+- journey-shell drops its three /offline page checks (it is not a page now), and route-census and the stacking contract follow.
+
+On the merged tip: 31 suites exit 0, including offline-neutral, red:offline-neutral 23/23, journey-shell 432, stacking, design-frozen, route-census, simple-journey-flag, needle-host, the r3c/r4c/r4d/r4e suites and red-anchors 4990.
+
+The scratch edges drive (outside the repo) parks the pointer before every tile, logs every failed subresource, and probes the cached document, the notice's box and what is on top at each header control. The browser proof runs in the next lock turn.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>

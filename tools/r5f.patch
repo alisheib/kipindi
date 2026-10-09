@@ -1,0 +1,1298 @@
+diff --git a/package.json b/package.json
+index fc48503a4..34fd2cd91 100644
+--- a/package.json
++++ b/package.json
+@@ -1011,6 +1011,7 @@
+     "test:notifications-page": "tsx scripts/notifications-page.test.mts",
+     "test:visual-pass-r4c": "tsx scripts/visual-pass-r4c.test.mts",
+     "test:visual-pass-r4j": "tsx scripts/visual-pass-r4j.test.mts",
++    "test:visual-pass-r5f": "tsx scripts/visual-pass-r5f.test.mts",
+     "red:notifications-page": "node scripts/notifications-page-red.mjs",
+     "red:measure": "node scripts/measure-red.mjs",
+     "red:decomment": "node scripts/decomment-red.mjs",
+diff --git a/scripts/anchors/bar-geometry.anchors.mjs b/scripts/anchors/bar-geometry.anchors.mjs
+index 467679106..30229405a 100644
+--- a/scripts/anchors/bar-geometry.anchors.mjs
++++ b/scripts/anchors/bar-geometry.anchors.mjs
+@@ -135,7 +135,14 @@ export const MUTATIONS = [
+     file: "src/components/ui/query-bar.tsx",
+     from: '  "kp-discovery-bar sticky top-[56px] z-20 -mx-3 bg-bg-base px-3 lg:-mx-6 lg:px-6";',
+     to: '  "kp-discovery-bar relative z-20 -mx-3 bg-bg-base px-3 lg:-mx-6 lg:px-6";',
+-    expect: "stick",
++    /**
++     * ⚠️ THE ARM'S OWN WORDS, NOT "stick" (R5-F, 2026-10-09). "stick" is inside "sticky", so it also matched the OTHER
++     * arm's line ("ANOTHER STICKY SURFACE … Two sticky surfaces …") and the driver's 🔶 lines: this case could be
++     * credited by the wrong arm. The red twin now matches `expect` on ✗ lines only, and this is the line the mutation
++     * must produce — measured by the driver's non-sticky branch (`judgeStick`: "it is position: relative, so it left
++     * with the page").
++     */
++    expect: "THE BAR DID NOT STICK",
+     route: "/markets",
+   },
+   {
+@@ -202,7 +209,30 @@ export const MUTATIONS = [
+     from: '        className="w-full min-w-[var(--tap-min)] rounded-l-pill rounded-r-none border-r-0"',
+     to: '        className="min-w-[var(--tap-min)] rounded-l-pill rounded-r-none border-r-0"',
+     expect: "OVERLAP",
+-    route: "/markets",
++    /**
++     * ⚠️ RE-POINTED 2026-10-09 (R5-F) FROM `/markets` TO `/watchlist` — THE DEFECT IS THE SAME, THE REFERENCE BAR'S
++     * PHONE LAYOUT IS NOT. Since U4 (2c9380e00, 2026-09-23) `/markets` below 640 is ONE grid line,
++     * `minmax(160px, 1fr) auto auto` (globals.css, [COMPACT]): the sort cell sits in an `auto` track sized toward the
++     * summary's own max-content, and its value is hidden there (the key "Panga" and the caret are all it shows) —
++     * measured 67px at 360 sw with the strip on its 160px floor (`S/runs/wbm-bar.log`: summary 182→249, strip edge 176).
++     * So an unbound summary has a pixel or two to run at 360: under the driver's 1px threshold, or a coin toss on it —
++     * never the 44px shape this case restores. (At 320 the track IS squeezed — D79's 27px summary, 40px since its
++     * floor — and the plant would bite; 320 is outside the driver's matrix, so the case moves to a bar where the default
++     * matrix poses it.)
++     * 🔴 AND ITS FAILURE WOULD HAVE BEEN HIDDEN BY THE HARNESS: the precondition checked `/markets` at 1280 only, while
++     * the untouched driver read five OVERLAP lines of its own at 360 (the U4 strip's scrolled-away chips), so
++     * "caught → OVERLAP" was on offer for a mutation that changed next to nothing.
++     * ⭐ `/watchlist` IS WHERE THE ORIGINAL MECHANISM STILL LIVES, AT ITS WORST: a two-row bar whose row 2 is sort + the
++     * Filters trigger at 360, and whose DEFAULT sort is the longest default value on any two-row bar —
++     * "Yaliyoongezwa karibuni" (watchlist-bar.tsx: `starred` is first and the default). Below `lg` the summary is its
++     * value + 40px (1px borders, 8px padding each side, an 8px gap, the 14px caret); the cell left beside a ~134px
++     * trigger is ~182px, the details ~138px, so the value is ellipsised today and, unbound, the summary runs to its
++     * ~190px max-content — straight across the 44px direction button, the 2026-09-08 shape (16→206 vs 154→198).
++     * ⚠️ Reasoned from the markup and the CSS, not measured: the red twin's first run is the measurement, and if it
++     * reports NOT CAUGHT the label arithmetic above is what to re-measure. Its rows need `npm run fixture:player`
++     * (stars) — the precondition refuses without them.
++     */
++    route: "/watchlist",
+   },
+   {
+     /**
+diff --git a/scripts/live/bar-geometry-drive.mjs b/scripts/live/bar-geometry-drive.mjs
+index fccb67a1f..572220741 100644
+--- a/scripts/live/bar-geometry-drive.mjs
++++ b/scripts/live/bar-geometry-drive.mjs
+@@ -21,8 +21,8 @@
+  * (its parent `<details>` is a plain block). `w-full` is what binds it. **Re-measure, never
+  * re-reason.**
+  *
+- * ── THREE ASSERTIONS, PER SURFACE × WIDTH × LOCALE ───────────────────────────────────────────
+- *   1 · NO OVERLAP  — no two visible controls on the same visual row share pixels.
++ * ── FOUR ASSERTIONS, PER SURFACE × WIDTH × LOCALE ────────────────────────────────────────────
++ *   1 · NO OVERLAP  — no two visible controls on the same visual row share PAINTED pixels.
+  *   2 · NO CLIPPING — no control runs past the viewport, unless it lives in a strip that scrolls.
+  *   3 · NO SHORT CONTROL — every one reaches the 44px tap floor.
+  *   4 · THE BAR ACTUALLY STICKS, AND NOTHING IS DRAWN THROUGH IT. Two defects, one measurement,
+@@ -47,13 +47,53 @@
+  *   2 · A control inside a horizontally SCROLLING strip is not clipped when it runs past the
+  *       viewport — that is what the strip is FOR. Measure against the scroll container.
+  *
++ * ── ROUND 5 OF THE VISUAL PASS (R5-F, 2026-10-09) · THE DRIVE WAS RED ON MAIN, AND EVERY LINE WAS THE INSTRUMENT ──
++ * 🔴 88 failures at main a6331ca1 (92 on the visual-pass tip), so its red twin refused to run and for a round neither
++ * proved anything. Three causes, each now a rule in `bar-geometry-rules.mjs` (shared with the red twin and pinned by
++ * `test:visual-pass-r5f`):
++ *   ① NO FIXTURE (63 lines, "NO [data-filter-rail]"). Seven routes withhold their bar on an EMPTY book by design (§A5 —
++ *     every guard dates from 2026-09-08, the day those routes were declared below), and the run had no rows: a fresh
++ *     in-memory store, no `npm run fixture:player`. ⭐ Rows and no bar is still a failure; NO ROWS AND NO BAR is the
++ *     third outcome — BAR NOT MEASURED, printed and named — and a declared surface measured NOWHERE makes the whole run a
++ *     SKIPPED one (exit 3), never a green one.
++ *   ② OVERLAP OF THINGS NOBODY CAN SEE (14 lines, /markets at 360). Since U4 (2c9380e00, 2026-09-23) the phone bar is
++ *     one grid line — the lens strip, `overflow-x: auto` and masked, beside sort and Filters — and a chip past the strip's
++ *     edge is scrolled away: clipped, unpainted, untappable there. ⭐ Assertion 1 now compares PAINTED boxes (each layout
++ *     box cut by every ancestor that clips its overflow — `clip.mjs`'s reach rule, applied to sight). Exemption 2 still
++ *     covers clipping by the viewport; this is the same fact about the strip, asked by the overlap instead.
++ *   ③ A STICK MEASURED PAST ITS OWN RANGE (11 lines at 1280 on main, 15 on the tip). `scrollTo(0, 1200)` on a thin page
++ *     lands on the page's end,
++ *     where each bar's PARENT has already ended and pushed the bar up under the header — correct sticky behaviour, read
++ *     as "did not stick" and "header drawn through the bar" (measured: bar bottom = parent content bottom on /markets,
++ *     /results and /notifications, `S/runs/wm16e-stick-*.log`). ⭐ Assertion 4 now scrolls INSIDE the range where the
++ *     bar must sit on its own offset, or reports STICK NOT MEASURED; and rows below the bar's parent fail it outright.
++ *
++ * ⛔ THE FIXTURE IS A PRECONDITION, NOT A FORMALITY. Build it once per fresh server, BEFORE this driver:
++ *     npm run fixture:player -- <baseUrl>
++ *   (positions, Up & Down bets, stars, an ACTIVE proposals board, a settled archive — `scripts/live/up-fixture.mjs`). The
++ *   receipts book `/wallet` and `/wallet/receipts` need is built by this driver's own sign-in (`/auth/demo?receipts=1`,
++ *   idempotent: fifteen receipts once, through the real deposit and withdraw doors).
++ *
+  * ⭐ RUN IT AGAINST THE REFERENCE FIRST. If `/markets` fails, the instrument is the defect.
+  *
+  *   node scripts/live/bar-geometry-drive.mjs [baseUrl] [--only=/watchlist] [--widths=360,768,1280]
+  *                                            [--locales=sw,en,zh] [--shots=<dir>]
++ *   exit 0 green where measured (🔶 lines name what was not) · 1 a failure · 3 a skipped run (nothing measured, or a
++ *   declared surface measured nowhere — build the fixture)
+  */
+ import { chromium } from "playwright";
+ import { mkdirSync } from "node:fs";
++import {
++  BOOK_PROBE,
++  CONTROL_PROBE,
++  STICK_AFTER_PROBE,
++  STICK_PROBE,
++  findOverlaps,
++  judgeMissingRail,
++  judgeStick,
++  overlapLine,
++  planStick,
++} from "./bar-geometry-rules.mjs";
+ 
+ const BASE = process.argv.find((a) => a.startsWith("http")) || "http://localhost:3031";
+ if (!/^https?:\/\/(localhost|127\.0\.0\.1)[:/]/.test(BASE)) {
+@@ -95,6 +135,17 @@ const SURFACES = [
+   { id: "/results", path: "/results", minControls: 12 },
+   { id: "/positions", path: "/positions", minControls: 8 },
+   { id: "/wallet", path: "/wallet", minControls: 8 },
++  /**
++   * DECLARED 2026-10-09 (round 5 of the visual pass, R5-F). ⛔ THE ONE STICKY QUERY BAR NO LIVE GATE MEASURED: it shipped
++   * on 2026-10-07 (012cccbc9) with `QUERY_BAR_CLASS` — `sticky top-[56px]`, the wallet's own arrangement — and this list
++   * was last edited on 2026-09-10, so the route list no longer matched the app.
++   * ⭐ `minControls: 13` IS COUNTED FROM THE MARKUP, NOT FROM A FIXTURE: 3 lens pills (all · in · out) + 5 state pills +
++   * 5 window pills, every one a `<FilterPill>`, which renders a `<Link>` whatever its count (`aria-disabled` when blocked,
++   * never a removed href). ⚠️ Reasoned, so the first lock-turn run re-measures it — the `/leaderboard` note below is what
++   * a floor written from a guess looks like when the vacuity control catches it.
++   * Its rows come from the sign-in's receipts book (`/auth/demo?receipts=1`); `fixture:player` makes none.
++   */
++  { id: "/wallet/receipts", path: "/wallet/receipts", minControls: 13 },
+   { id: "/updown/history", path: "/updown/history", minControls: 8 },
+   { id: "/proposals", path: "/proposals", minControls: 10 },
+   { id: "/notifications", path: "/notifications", minControls: 6 },
+@@ -125,8 +176,19 @@ const SURFACES = [
+   { id: "/fairness", path: "/fairness", minControls: 8 },
+   /* DECLARED 2026-09-08 (PLAYER QUERY, task 4.10). Three pills and no second row — the smallest
+      bar in this list, and worth measuring precisely because it is small: a three-pill strip has
+-     nowhere to hide a collision. */
+-  { id: "/positions/performance", path: "/positions/performance", minControls: 3 },
++     nowhere to hide a collision.
++     ⚠️ `withheld` (R5-F, 2026-10-09) — THE ONE BAR THIS FIXTURE MAY LEGITIMATELY NOT DRAW. The page withholds it unless
++     the player has SETTLED positions in two products (`positions/performance/page.tsx:191`, `lenses.length > 2`), and a
++     local store settles no Up & Down round (`up-fixture.mjs` records why: no price feed). The page renders no
++     `[data-row-id]` either, so a withheld bar and a missing one look alike here: it is reported BAR NOT MEASURED with this
++     reason and does not make the run a skipped one. Its presence is held by `test:filter-language`, which declares
++     `performance-bar.tsx`. */
++  {
++    id: "/positions/performance",
++    path: "/positions/performance",
++    minControls: 3,
++    withheld: "the page draws its product lens only when the player has settled positions in two products (positions/performance/page.tsx:191), and this store settles no Up & Down round",
++  },
+   /**
+    * DECLARED 2026-09-09 (PLAYER QUERY §12 ①). `/leaderboard`'s FIRST filter — a product lens, on a
+    * page whose own source used to say in writing that it must never declare a rail because a sort
+@@ -171,8 +233,20 @@ const problems = [];
+  * loudly, counted separately, never added to `measured`, and named in the summary.
+  */
+ const notMeasured = [];
++const notMeasure = (tag, why) => {
++  console.log(`  🔶 ${tag}: ${why}`);
++  notMeasured.push(`${tag}: ${why}`);
++};
++/** ⛔ A declared surface measured at no width and in no locale is a SKIPPED surface — see the exit below. */
++const measuredSurfaces = new Set();
+ let measured = 0;
+ 
++/**
++ * ⭐ `?receipts=1` — the receipts book (fifteen deposits and withdrawals through the real doors), so `/wallet/receipts`
++ * has rows to filter. Idempotent: an account that already holds fifteen is left alone (`auth/demo/route.ts`).
++ */
++const SIGN_IN = `${BASE}/auth/demo?receipts=1`;
++
+ const browser = await chromium.launch();
+ for (const locale of LOCALES) {
+   for (const width of WIDTHS) {
+@@ -182,7 +256,7 @@ for (const locale of LOCALES) {
+     });
+     await ctx.addCookies([{ name: "kp-locale", value: locale, url: BASE }]);
+     const page = await ctx.newPage();
+-    const auth = await page.goto(`${BASE}/auth/demo`, { waitUntil: "domcontentloaded", timeout: 60_000 }).catch(() => null);
++    const auth = await page.goto(SIGN_IN, { waitUntil: "domcontentloaded", timeout: 60_000 }).catch(() => null);
+     if (!auth || auth.status() >= 400) {
+       console.error("🔴 could not sign in at /auth/demo — a run asked to sign in and unable to has measured nothing.");
+       await browser.close();
+@@ -190,84 +264,49 @@ for (const locale of LOCALES) {
+     }
+ 
+     for (const s of surfaces) {
++      const tag = `${s.id} ${locale} ${width}`;
+       await page.goto(`${BASE}${s.path}`, { waitUntil: "domcontentloaded", timeout: 40_000 });
+-      const rail = await page.waitForSelector("[data-filter-rail]", { timeout: 20_000 }).catch(() => null);
+-      if (!rail) { problems.push(`${s.id} ${locale} ${width}: NO [data-filter-rail]`); continue; }
++      // ⭐ The page settles on ONE of three things — its bar, its rows, or its empty state. Wait for any, then ask for
++      //    the bar: an empty book no longer costs twenty seconds per width and locale, and a bar that arrives late still
++      //    gets its own wait.
++      await page.waitForSelector("[data-filter-rail], [data-row-id], [data-empty-state]", { timeout: 20_000 }).catch(() => null);
++      const rail = await page.waitForSelector("[data-filter-rail]", { timeout: 3_000 }).catch(() => null);
++      if (!rail) {
++        const verdict = judgeMissingRail(await page.evaluate(BOOK_PROBE), s);
++        if (verdict.kind === "fail") problems.push(`${tag}: ${verdict.why}`);
++        else notMeasure(tag, verdict.why);
++        continue;
++      }
+       await page.waitForTimeout(400);
+ 
+       // ⛔ Refuse the wrong language rather than shoot it — evidence that LOOKS right is worse
+       //    than none. Same rule as `player-query-shots.mjs`.
+       const lang = await page.getAttribute("html", "lang");
+-      if (lang !== LANG[locale]) { problems.push(`${s.id} ${locale} ${width}: <html lang="${lang}">`); continue; }
++      if (lang !== LANG[locale]) { problems.push(`${tag}: <html lang="${lang}">`); continue; }
+ 
+       await rail.screenshot({ path: `${SHOTS}/${s.id.replace(/\W+/g, "-").replace(/^-|-$/g, "")}-${width}-${locale}.png` });
+ 
++      // `CONTROL_PROBE` (bar-geometry-rules.mjs) carries both exemptions and the painted box. ⛔ A real function, never a
++      // string — `clip.mjs` records what a string `pageFunction` silently returns.
+       const boxes = await page.$$eval(
+         "[data-filter-rail] a, [data-filter-rail] button, [data-filter-rail] summary",
+-        (els) =>
+-          els.map((e) => {
+-            const r = e.getBoundingClientRect();
+-            const cs = getComputedStyle(e);
+-            // EXEMPTION 1 — inside a SHUT disclosure. Its own <summary> is not inside it.
+-            //
+-            // 🔴 AND FOR A DAY IT WAS, WHICH BLINDED THE ASSERTION THIS DRIVER WAS BUILT FOR.
+-            // The walk began at `e.parentElement`, and a <summary>'s parent IS the <details> it
+-            // opens — so every summary on every bar (the sort control AND the `Filters` trigger)
+-            // was exempted from all three measurements. The line above has always claimed the
+-            // opposite; the code did not implement it. ⛔ The cost was exact: assertion 1 (NO
+-            // OVERLAP) was structurally incapable of failing on the sort summary — the very
+-            // control whose 44px collision with the direction button is the reason this driver
+-            // exists — and the red mutation written to prove it kept reporting NOT CAUGHT while
+-            // the mutation was working perfectly. A guard that exempts what it polices.
+-            //
+-            // ⚠️ The walk still starts ABOVE that one disclosure rather than skipping the rule:
+-            // a sort menu nested inside a shut `Filters` sheet must stay exempt, because Chrome
+-            // lays a closed <details> out and neither paints nor hit-tests it.
+-            let n = e.tagName === "SUMMARY" ? (e.parentElement && e.parentElement.parentElement) : e.parentElement;
+-            let inClosed = false;
+-            while (n) {
+-              if (n.tagName === "DETAILS" && !n.open) { inClosed = true; break; }
+-              n = n.parentElement;
+-            }
+-            // EXEMPTION 2 — the nearest ancestor that actually scrolls horizontally is the frame
+-            // this control must fit inside; only with none does the viewport apply.
+-            let sc = e.parentElement, scrolls = false;
+-            while (sc) {
+-              const st = getComputedStyle(sc);
+-              if (/(auto|scroll)/.test(st.overflowX) && sc.scrollWidth > sc.clientWidth + 1) { scrolls = true; break; }
+-              sc = sc.parentElement;
+-            }
+-            return {
+-              text: (e.textContent || "").trim().slice(0, 24),
+-              x: Math.round(r.x), y: Math.round(r.y), w: Math.round(r.width), h: Math.round(r.height),
+-              inClosed, scrolls,
+-              vis: cs.visibility !== "hidden" && cs.display !== "none" && r.width > 0 && r.height > 0,
+-            };
+-          }),
++        CONTROL_PROBE,
+       );
+       const vis = boxes.filter((b) => b.vis && !b.inClosed);
+       if (vis.length < s.minControls && width >= 1280) {
+-        problems.push(`${s.id} ${locale} ${width}: only ${vis.length} visible controls, floor ${s.minControls} — a rail is missing and every check below is vacuous`);
++        problems.push(`${tag}: only ${vis.length} visible controls, floor ${s.minControls} — a rail is missing and every check below is vacuous`);
+         continue;
+       }
+       measured += vis.length;
++      measuredSurfaces.add(s.id);
+ 
+-      for (let i = 0; i < vis.length; i++) {
+-        for (let j = i + 1; j < vis.length; j++) {
+-          const a = vis[i], b = vis[j];
+-          // Same visual row: their vertical spans genuinely intersect by more than a hair.
+-          const vOv = Math.min(a.y + a.h, b.y + b.h) - Math.max(a.y, b.y);
+-          const hOv = Math.min(a.x + a.w, b.x + b.w) - Math.max(a.x, b.x);
+-          if (vOv > Math.min(a.h, b.h) / 2 && hOv > 1) {
+-            problems.push(`${s.id} ${locale} ${width}: OVERLAP ${hOv}px "${a.text}"(${a.x}→${a.x + a.w}) vs "${b.text}"(${b.x}→${b.x + b.w})`);
+-          }
+-        }
+-      }
++      // 1 · NO OVERLAP, over PAINTED boxes — see the R5-F note in the header and `findOverlaps`.
++      for (const o of findOverlaps(vis)) problems.push(`${tag}: ${overlapLine(o)}`);
+       for (const b of vis) {
+         if (!b.scrolls && (b.x < -1 || b.x + b.w > width + 1)) {
+-          problems.push(`${s.id} ${locale} ${width}: CLIPPED "${b.text}" ${b.x}→${b.x + b.w} vs viewport ${width}`);
++          problems.push(`${tag}: CLIPPED "${b.text}" ${b.x}→${b.x + b.w} vs viewport ${width}`);
+         }
+-        if (b.h < 44) problems.push(`${s.id} ${locale} ${width}: SHORT ${b.h}px "${b.text}"`);
++        if (b.h < 44) problems.push(`${tag}: SHORT ${b.h}px "${b.text}"`);
+       }
+ 
+       /**
+@@ -285,6 +324,10 @@ for (const locale of LOCALES) {
+        * stick" — a defect invented by the instrument out of a thin fixture. `/notifications`
+        * reported `top 237` for exactly this reason. ⚠️ It is reported as NOT MEASURED rather than
+        * skipped silently: an unexercisable assertion that prints nothing reads as a pass.
++       * 🔴 ①b (R5-F, 2026-10-09) — AND A PAGE THAT SCROLLS PAST THE BAR'S OWN RANGE CANNOT PROVE ONE EITHER. On a thin
++       * page `1200` clamps to the page's end, where the bar's PARENT has already ended and pushed it up — correct sticky
++       * behaviour, reported as "did not stick" and as the header "drawn through" it. `planStick` scrolls INSIDE the range
++       * where the bar must sit on its own `top` (rows below its parent fail it outright: the 247px-wrapper shape).
+        *
+        * 🔴 ② NOT EVERY BAR PROMISES A PAGE-LEVEL OFFSET. `/profile/account`'s rail filters ONE
+        * table inside one of five panels; a sticky band there would follow the reader down and
+@@ -293,44 +336,21 @@ for (const locale of LOCALES) {
+        * bars that DO promise the offset, instead of being loosened for all of them.
+        */
+       if (width >= 1280 && s.sticky !== false) {
+-        await page.evaluate(() => window.scrollTo(0, 1200));
+-        await page.waitForTimeout(450);
+-        const scrolled = await page.evaluate(() => Math.round(window.scrollY));
+-        if (scrolled < 200) {
+-          console.log(`  🔶 ${s.id} ${locale} ${width}: STICK NOT MEASURED — the page scrolled ${scrolled}px, so nothing was proved. Seed more rows.`);
+-          notMeasured.push(`${s.id} ${locale} ${width} (page scrolled only ${scrolled}px)`);
+-          await page.evaluate(() => window.scrollTo(0, 0));
+-          continue;
+-        }
+-        const stuck = await page.evaluate(() => {
+-          const bar = document.querySelector("[data-filter-rail]");
+-          if (!bar) return null;
+-          const rb = bar.getBoundingClientRect();
+-          const hits = [];
+-          for (const e of document.querySelectorAll("body *")) {
+-            if (e === bar || bar.contains(e) || e.contains(bar)) continue;
+-            const cs = getComputedStyle(e);
+-            if (cs.position !== "sticky" && cs.position !== "fixed") continue;
+-            const r = e.getBoundingClientRect();
+-            if (r.width < 200 || r.height < 8) continue;
+-            const v = Math.min(rb.bottom, r.bottom) - Math.max(rb.top, r.top);
+-            const h = Math.min(rb.right, r.right) - Math.max(rb.left, r.left);
+-            if (v > 2 && h > 2) hits.push(`${e.tagName.toLowerCase()}.${String(e.className).trim().split(/\s+/).slice(0, 2).join(".")} by ${Math.round(v)}px`);
+-          }
+-          return { top: Math.round(rb.top), hits };
+-        });
+-        if (stuck) {
+-          // ⚠️ A bar ABOVE the viewport has scrolled away — it did not stick. The tolerance is
+-          //    generous (0 ≤ top ≤ 200) because the exact offset is the shell's business, not this
+-          //    driver's; what is being asserted is that the bar is still ON SCREEN.
+-          if (stuck.top < 0 || stuck.top > 200) {
+-            problems.push(`${s.id} ${locale} ${width}: THE BAR DID NOT STICK — after scrolling it sits at top ${stuck.top}. A sticky element only sticks within its PARENT's box; check the wrapper's height.`);
+-          }
+-          for (const h of stuck.hits) {
+-            problems.push(`${s.id} ${locale} ${width}: ANOTHER STICKY SURFACE IS DRAWN THROUGH THE BAR — ${h}. Two sticky surfaces cannot share one offset.`);
+-          }
++        await page.evaluate(() => window.scrollTo({ top: 0, behavior: "instant" }));
++        await page.waitForTimeout(150);
++        const g = await page.evaluate(STICK_PROBE);
++        if (!g) { problems.push(`${tag}: THE BAR DID NOT STICK — the bar was gone from the page before the scroll`); continue; }
++        const plan = planStick(g);
++        if (plan.kind === "fail") problems.push(`${tag}: ${plan.why}`);
++        else if (plan.kind === "not-measured") notMeasure(tag, plan.why);
++        else {
++          await page.evaluate((y) => window.scrollTo({ top: y, behavior: "instant" }), plan.y);
++          await page.waitForTimeout(450);
++          const verdict = judgeStick(g, plan, await page.evaluate(STICK_AFTER_PROBE));
++          for (const p of verdict.problems) problems.push(`${tag}: ${p}`);
++          if (verdict.notMeasured) notMeasure(tag, verdict.notMeasured);
+         }
+-        await page.evaluate(() => window.scrollTo(0, 0));
++        await page.evaluate(() => window.scrollTo({ top: 0, behavior: "instant" }));
+       }
+     }
+     await ctx.close();
+@@ -339,17 +359,31 @@ for (const locale of LOCALES) {
+ await browser.close();
+ 
+ console.log(`\n${measured} control box${measured === 1 ? "" : "es"} measured across ${surfaces.length} surface(s) × ${WIDTHS.length} width(s) × ${LOCALES.length} locale(s) → ${SHOTS}`);
++// ⚠️ NAMED IN THE SUMMARY, not swallowed — an unexercisable assertion that prints nothing reads as one that passed.
++if (notMeasured.length) {
++  console.log(`\n🔶 ${notMeasured.length} assertion(s) NOT MEASURED — the fixture could not pose them, and green does not cover them:`);
++  notMeasured.forEach((n) => console.log("   " + n));
++}
++/** ⛔ A SKIPPED SURFACE IS NOT A PASS: declared, asked for, and measured at no width in no locale (and not one that
++ *  declares its bar may be withheld on this fixture). The usual cause is a run without `npm run fixture:player`.
++ *  ⚠️ A surface that already FAILED is not listed here too — its ✗ line says what is wrong, and "build the fixture"
++ *  beside it would send the reader to the wrong place. Every ✗ line opens with its surface's id. */
++const failed = new Set(problems.map((p) => p.split(" ")[0]));
++const skipped = surfaces.filter((s) => !s.withheld && !measuredSurfaces.has(s.id) && !failed.has(s.id)).map((s) => s.id);
++const skippedLine = `🔴 SKIPPED SURFACE(S) — ${skipped.join(", ")}: no bar measured at any width or locale. A skipped surface is not a pass; build the fixture first:  npm run fixture:player -- ${BASE}`;
+ if (problems.length) {
+   console.error("\n🔴 problems:");
+   problems.forEach((p) => console.error("  ✗ " + p));
++  if (skipped.length) console.error("\n" + skippedLine);
+   process.exit(1);
+ }
+ // ⛔ Zero boxes is a skipped run, not a pass.
+-if (measured === 0) { console.error("🔴 ZERO controls measured — a skipped run, not a pass."); process.exit(3); }
+-// ⚠️ NAMED IN THE SUMMARY, not swallowed — an unexercisable assertion that prints nothing reads
+-//    as one that passed.
+-if (notMeasured.length) {
+-  console.log(`\n🔶 ${notMeasured.length} stick assertion(s) NOT MEASURED — the fixture could not pose them:`);
+-  notMeasured.forEach((n) => console.log("   " + n));
++if (measured === 0) {
++  console.error("🔴 ZERO controls measured — a skipped run, not a pass.");
++  if (skipped.length) console.error(skippedLine);
++  process.exit(3);
+ }
+-console.log("✅ no two controls overlap, nothing is clipped, nothing is under 44px.");
++if (skipped.length) { console.error("\n" + skippedLine); process.exit(3); }
++console.log(notMeasured.length
++  ? "✅ where measured: no two controls overlap, nothing is clipped, nothing is under 44px, every bar sticks — 🔶 the lines above were not measured."
++  : "✅ no two controls overlap, nothing is clipped, nothing is under 44px, and every sticky bar holds its offset.");
+diff --git a/scripts/live/bar-geometry-rules.mjs b/scripts/live/bar-geometry-rules.mjs
+new file mode 100644
+index 000000000..ee204901e
+--- /dev/null
++++ b/scripts/live/bar-geometry-rules.mjs
+@@ -0,0 +1,329 @@
++/**
++ * ⭐ THE RULES OF `qa:bar-geometry`, IN ONE PLACE — imported by the drive (`bar-geometry-drive.mjs`), by its red twin
++ * (`scripts/red-bar-geometry.mjs`) and by the static proof that pins them (`scripts/visual-pass-r5f.test.mts`), so a gate,
++ * its red proof and the suite that guards both can never disagree about what a measurement MEANS. The same shape as
++ * `clip.mjs`, which the seal and its red harness share for the same reason.
++ *
++ * ── WHY IT WAS SPLIT OUT (round 5 of the visual pass, R5-F, 2026-10-09) ────────────────────────────────────────────────
++ * 🔴 THE DRIVE READ RED ON MAIN ITSELF — 88 failures at a6331ca1, the same 88 + 4 on the visual-pass tip — and its red twin
++ * refused to run while it did ("already RED on /proposals"), so for a whole round neither proved anything. Every one of
++ * the 92 was the instrument, not the app (the R5-F report has the evidence):
++ *   · 63 × "NO [data-filter-rail]" — the run had no fixture. Seven routes withhold their bar on an EMPTY book by design
++ *     (§A5; every guard dates from 2026-09-08, the day those routes were declared here), and the lock turn ran the drive
++ *     on a fresh in-memory store without `npm run fixture:player`. ⇒ `judgeMissingRail`.
++ *   · 14 × "OVERLAP" on /markets at 360 — since U4 (2c9380e00, 2026-09-23) the phone bar is ONE grid line: the lens strip
++ *     (`overflow-x: auto`, masked) in column 1, sort and Filters in columns 2–3. A chip that runs past the strip's edge is
++ *     scrolled-away content — the strip clips it, so it is neither painted nor hit there. The drive compared LAYOUT boxes,
++ *     so it "found" chips under the sort control that nobody can see. ⇒ `CONTROL_PROBE`'s painted box + `findOverlaps`.
++ *   · 8 × "ANOTHER STICKY SURFACE … header.sticky.top-0" and 3 × "THE BAR DID NOT STICK" at 1280 on main (7 on the tip,
++ *     where round 4's tighter bands left /results' column 45px shorter and /notifications' bar 4px taller, so the same
++ *     push went further) — the drive scrolled to
++ *     1200, the thin fixture clamped that to the page's maximum (559), and by then each bar's PARENT had ended, pushing the
++ *     bar up under the header exactly as a sticky element must (measured: bar bottom = parent content bottom on all three
++ *     routes, `S/runs/wm16e-stick-*.log`). Rule ① only knew "the page did not scroll"; it did not know "the page scrolled
++ *     past the bar's own range". ⇒ `planStick` measures INSIDE that range, or says NOT MEASURED, or — if rows run on past
++ *     the parent's end, the /updown/history `bar@-252` shape — fails.
++ *
++ * ⛔ THE PROBES RUN IN THE BROWSER: real functions, never strings (`clip.mjs` records why — E-191), and self-contained —
++ *    Playwright serialises their source, so they may not reach anything outside their own bodies.
++ */
++
++/** ⛔ The travel a stick must be shown over before it counts as proved — rule ①'s 200px, kept. */
++export const MIN_TRAVEL = 200;
++/** How far past the bar's own place the drive scrolls on a long page (the old `scrollTo(0, 1200)`, made relative). */
++export const REACH = 1200;
++/** A stuck bar sits ON its own `top`; two pixels absorb sub-pixel layout and nothing else. */
++export const STUCK_TOLERANCE = 2;
++
++/**
++ * THE CONTROLS OF THE BAR, as `$$eval` sees them — one record per `[data-filter-rail] a|button|summary`.
++ *
++ * `x y w h` is the LAYOUT box (the tap floor and the viewport clip are asserted on it, as before). ⭐ `seen` is the PAINTED
++ * box: the layout box cut by every ancestor that clips its overflow — the same rule `clip.mjs` states for reach ("a control
++ * is reachable if some ancestor can be scrolled sideways to bring it into view"), applied to sight. The part of a chip past
++ * its strip's edge is scrolled away: not painted, not hit-tested. The strip's mask (`.kp-strip-fade`, globals.css) only
++ * fades pixels INSIDE the strip's own box, so it adds nothing outside it — a strip-clipped chip under its strip's mask can
++ * overlap nothing a person sees outside that strip. ⛔ `null` when nothing of the control is painted.
++ *
++ * ⚠️ The walk follows the CONTAINING-BLOCK chain, not the DOM chain: an absolutely positioned box escapes the clip of every
++ * non-positioned ancestor below its containing block, a fixed one escapes all of them (unless a transform/filter/contain
++ * ancestor holds it). `display: contents` and inline ancestors generate no clipping box. `clip-path` is not modelled — no
++ * bar control sits where one cuts (`.kp-qbar-row`'s only clips 12px LEFT of the row, for the divider rule).
++ */
++export const CONTROL_PROBE = (els) => {
++  const html = document.documentElement;
++  const holds = (st) =>
++    st.transform !== "none" || st.filter !== "none" || st.perspective !== "none" || /paint|layout|strict|content/.test(st.contain);
++  const painted = (e, r) => {
++    let x1 = r.left, y1 = r.top, x2 = r.right, y2 = r.bottom;
++    let cur = e;
++    for (;;) {
++      const pos = getComputedStyle(cur).position;
++      let a = cur.parentElement;
++      if (pos === "fixed") { while (a && a !== html && !holds(getComputedStyle(a))) a = a.parentElement; }
++      else if (pos === "absolute") {
++        while (a && a !== html && getComputedStyle(a).position === "static" && !holds(getComputedStyle(a))) a = a.parentElement;
++      }
++      if (!a || a === html) break;
++      const st = getComputedStyle(a);
++      if (st.display !== "contents" && st.display !== "inline") {
++        const cx = st.overflowX !== "visible", cy = st.overflowY !== "visible", paint = /paint|strict|content/.test(st.contain);
++        if (cx || cy || paint) {
++          const ar = a.getBoundingClientRect();
++          const left = ar.left + a.clientLeft, top = ar.top + a.clientTop;
++          if (cx || paint) { x1 = Math.max(x1, left); x2 = Math.min(x2, left + a.clientWidth); }
++          if (cy || paint) { y1 = Math.max(y1, top); y2 = Math.min(y2, top + a.clientHeight); }
++        }
++      }
++      cur = a;
++    }
++    return x2 - x1 > 0.5 && y2 - y1 > 0.5
++      ? { x: Math.round(x1), y: Math.round(y1), w: Math.round(x2 - x1), h: Math.round(y2 - y1) }
++      : null;
++  };
++  return els.map((e) => {
++    const r = e.getBoundingClientRect();
++    const cs = getComputedStyle(e);
++    // EXEMPTION 1 — inside a SHUT disclosure. Its own <summary> is not inside it.
++    //
++    // 🔴 AND FOR A DAY IT WAS, WHICH BLINDED THE ASSERTION THIS DRIVER WAS BUILT FOR.
++    // The walk began at `e.parentElement`, and a <summary>'s parent IS the <details> it
++    // opens — so every summary on every bar (the sort control AND the `Filters` trigger)
++    // was exempted from all three measurements. The line above has always claimed the
++    // opposite; the code did not implement it. ⛔ The cost was exact: assertion 1 (NO
++    // OVERLAP) was structurally incapable of failing on the sort summary — the very
++    // control whose 44px collision with the direction button is the reason this driver
++    // exists — and the red mutation written to prove it kept reporting NOT CAUGHT while
++    // the mutation was working perfectly. A guard that exempts what it polices.
++    //
++    // ⚠️ The walk still starts ABOVE that one disclosure rather than skipping the rule:
++    // a sort menu nested inside a shut `Filters` sheet must stay exempt, because Chrome
++    // lays a closed <details> out and neither paints nor hit-tests it.
++    // (Moved here from the drive with the rest of the probe, R5-F 2026-10-09; `test:visual-pass-r5f` §2 pins it.)
++    let n = e.tagName === "SUMMARY" ? (e.parentElement && e.parentElement.parentElement) : e.parentElement;
++    let inClosed = false;
++    while (n) {
++      if (n.tagName === "DETAILS" && !n.open) { inClosed = true; break; }
++      n = n.parentElement;
++    }
++    // EXEMPTION 2 — the nearest ancestor that actually scrolls horizontally is the frame this control must fit inside;
++    // only with none does the viewport apply.
++    let sc = e.parentElement, scrolls = false;
++    while (sc) {
++      const st = getComputedStyle(sc);
++      if (/(auto|scroll)/.test(st.overflowX) && sc.scrollWidth > sc.clientWidth + 1) { scrolls = true; break; }
++      sc = sc.parentElement;
++    }
++    return {
++      text: (e.textContent || "").trim().slice(0, 24),
++      x: Math.round(r.x), y: Math.round(r.y), w: Math.round(r.width), h: Math.round(r.height),
++      seen: painted(e, r),
++      inClosed, scrolls,
++      vis: cs.visibility !== "hidden" && cs.display !== "none" && r.width > 0 && r.height > 0,
++    };
++  });
++};
++
++/**
++ * ASSERTION 1 · NO OVERLAP — over PAINTED boxes. Two controls are on one visual row when their painted spans intersect
++ * vertically by more than half the shorter one, and they collide when they then share more than a pixel across.
++ * ⛔ A control with nothing painted (`seen: null`) can collide with nothing — it is scrolled away, not hidden under.
++ */
++export function findOverlaps(controls) {
++  const shown = controls.filter((c) => c.seen);
++  const out = [];
++  for (let i = 0; i < shown.length; i++) {
++    for (let j = i + 1; j < shown.length; j++) {
++      const a = shown[i].seen, b = shown[j].seen;
++      const vOv = Math.min(a.y + a.h, b.y + b.h) - Math.max(a.y, b.y);
++      const hOv = Math.min(a.x + a.w, b.x + b.w) - Math.max(a.x, b.x);
++      if (vOv > Math.min(a.h, b.h) / 2 && hOv > 1) out.push({ a: shown[i], b: shown[j], hOv });
++    }
++  }
++  return out;
++}
++
++/** One overlap, as the failure line prints it — the painted span, and the layout box when the two differ. */
++export function overlapLine({ a, b, hOv }) {
++  const span = (c) => `"${c.text}"(${c.seen.x}→${c.seen.x + c.seen.w}${c.seen.x !== c.x || c.seen.w !== c.w ? `, box ${c.x}→${c.x + c.w}` : ""})`;
++  return `OVERLAP ${hOv}px ${span(a)} vs ${span(b)}`;
++}
++
++/**
++ * THE PAGE WITHOUT A BAR — is it a page with nothing to filter, or a bar that is missing?
++ * Counts the instrumentation contract's rows (`data-row-id`) and the empty-state stamp (`data-empty-state`).
++ */
++export const BOOK_PROBE = () => ({
++  rows: document.querySelectorAll("[data-row-id]").length,
++  emptyStates: document.querySelectorAll("[data-empty-state]").length,
++});
++
++/**
++ * ⛔ ROWS AND NO BAR IS A DEFECT; NO ROWS AND NO BAR IS A PAGE WITH NOTHING TO FILTER. The second is the THIRD OUTCOME —
++ * NOT MEASURED, printed and named, never a pass — and the drive refuses a run in which a declared surface was measured
++ * nowhere (`skips`), because that is a skipped surface, not a green one. A surface may declare `withheld` when its bar is
++ * withheld BY DESIGN on a non-empty page this fixture produces (/positions/performance, one settled product): that one is
++ * NOT MEASURED with its own reason and does not make the run a skipped one.
++ * ⚠️ The failure line keeps the words "NO [data-filter-rail]", which every reader of this gate already greps for.
++ */
++export function judgeMissingRail(book, surface) {
++  if (book.rows > 0) {
++    return { kind: "fail", why: `NO [data-filter-rail] — ${book.rows} row(s) on the page and no bar over them` };
++  }
++  if (surface.withheld) return { kind: "not-measured", skips: false, why: `BAR NOT MEASURED — no bar and no row: ${surface.withheld}` };
++  return {
++    kind: "not-measured",
++    skips: true,
++    why: book.emptyStates > 0
++      ? "BAR NOT MEASURED — the page shows its empty state and no row; this route withholds its bar on an empty book by design (§A5). Build the fixture: npm run fixture:player"
++      : "BAR NOT MEASURED — the page renders no row ([data-row-id]) and no empty state: nothing here for a bar to filter, and a withheld bar looks like a missing one. Build the fixture: npm run fixture:player",
++  };
++}
++
++/**
++ * THE BAR'S STICK GEOMETRY, measured AT REST (scroll 0): its own `position` and `top`, its natural place in the document,
++ * its height and bottom margin, the bottom of its CONTAINING BLOCK's content box (a sticky box never leaves it — CSS
++ * Positioned Layout 3, the margin box stays inside the containing block), and how many rows sit BELOW that block, outside
++ * it — rows a bar can no longer be stuck over.
++ */
++export const STICK_PROBE = () => {
++  const bar = document.querySelector("[data-filter-rail]");
++  if (!bar) return null;
++  const html = document.documentElement;
++  const cs = getComputedStyle(bar);
++  let cb = bar.parentElement;
++  while (cb && cb !== html && getComputedStyle(cb).display === "contents") cb = cb.parentElement;
++  const sy = window.scrollY;
++  const r = bar.getBoundingClientRect();
++  const pr = cb.getBoundingClientRect();
++  const pcs = getComputedStyle(cb);
++  const cbBottom = pr.bottom + sy - (parseFloat(pcs.paddingBottom) || 0) - (parseFloat(pcs.borderBottomWidth) || 0);
++  let rowsBelow = 0;
++  for (const e of document.querySelectorAll("[data-row-id]")) {
++    if (cb.contains(e)) continue;
++    const er = e.getBoundingClientRect();
++    if (er.height > 0 && er.top + sy >= cbBottom - 1) rowsBelow++;
++  }
++  return {
++    position: cs.position,
++    offset: cs.top === "auto" ? null : parseFloat(cs.top),
++    docTop: Math.round((r.top + sy) * 10) / 10,
++    h: Math.round(r.height * 10) / 10,
++    mb: parseFloat(cs.marginBottom) || 0,
++    cbBottom: Math.round(cbBottom * 10) / 10,
++    cb: `${cb.tagName.toLowerCase()}.${String(cb.className).trim().split(/\s+/).slice(0, 3).join(".")}`,
++    rowsBelow,
++    maxScroll: Math.max(0, html.scrollHeight - window.innerHeight),
++  };
++};
++
++/**
++ * WHERE TO SCROLL, OR WHY NOT.
++ *
++ * A sticky bar leaves its natural place at `start` (its top minus its own offset) and its parent's end pushes it up after
++ * `release` (the containing block's content bottom minus the bar's bottom margin, height and offset). ⭐ Only between the
++ * two does the bar HAVE to sit on its offset — so the drive scrolls there: `REACH` past `start` on a long page, the page's
++ * end or one pixel before `release`, whichever comes first. ⛔ The old fixed `scrollTo(0, 1200)` landed past `release` on
++ * every thin page and reported the parent's end as a bar that "did not stick".
++ *
++ *   rows below its parent              → { kind: "fail" }          — /updown/history's 247px wrapper: the bar unpins
++ *                                                                    while its own rows are still scrolling. ⛔ Asked
++ *                                                                    FIRST and whatever the page's length: it is a fact
++ *                                                                    about the markup, and a long fixture would only
++ *                                                                    postpone it past the range the drive scrolls
++ *   travel ≥ MIN_TRAVEL                → { kind: "measure" }       — the bar must sit on its offset there
++ *   travel short, nothing below        → { kind: "not-measured" }  — the fixture is too short to prove a stick
++ *
++ * A bar that is NOT `sticky` (relative, static) on a surface that promises the stick is measured too: scroll `REACH` (or
++ * as far as the page goes) and read where it went. `fixed` keeps the old on-screen tolerance.
++ */
++export function planStick(g, { minTravel = MIN_TRAVEL, reach = REACH } = {}) {
++  if (g.position === "sticky" && g.offset != null) {
++    const start = Math.max(0, g.docTop - g.offset);
++    const release = g.cbBottom - g.mb - g.h - g.offset;
++    if (g.rowsBelow > 0) {
++      return {
++        kind: "fail",
++        why: `THE BAR DID NOT STICK — its parent <${g.cb}> ends ${Math.max(0, Math.round(release - start))}px of travel after the bar's place while ${g.rowsBelow} row(s) run on below it. A sticky element only sticks within its PARENT's box; check the wrapper's height.`,
++      };
++    }
++    const y = Math.floor(Math.min(start + reach, g.maxScroll, release - 1));
++    const travel = y - start;
++    if (travel >= minTravel) return { kind: "measure", sticky: true, y, travel, start, release };
++    const short = g.maxScroll < release - 1
++      ? `the page scrolls only ${g.maxScroll}px, ${Math.max(0, Math.round(g.maxScroll - start))}px past the bar's place`
++      : `its parent <${g.cb}> ends ${Math.max(0, Math.round(release - start))}px of travel after the bar's place, and no row lies below it`;
++    return { kind: "not-measured", why: `STICK NOT MEASURED — ${short}; a stick needs ${minTravel}px to prove. Seed more rows (npm run fixture:player).` };
++  }
++  const y = Math.floor(Math.min(reach, g.maxScroll));
++  if (y < minTravel) return { kind: "not-measured", why: `STICK NOT MEASURED — the page scrolls only ${g.maxScroll}px, so nothing was proved. Seed more rows.` };
++  return { kind: "measure", sticky: false, y, travel: y, start: 0, release: Infinity };
++}
++
++/**
++ * AFTER THE SCROLL: where the bar is, and every other sticky/fixed surface drawn through it.
++ * ⚠️ `hits` skips the bar's own subtree and ancestors, surfaces under 200×8 (a pip is not a band), and anything that only
++ * TOUCHES the bar (≤ 2px) — the header ends exactly where a stuck bar begins.
++ */
++export const STICK_AFTER_PROBE = () => {
++  const bar = document.querySelector("[data-filter-rail]");
++  if (!bar) return null;
++  const rb = bar.getBoundingClientRect();
++  const hits = [];
++  for (const e of document.querySelectorAll("body *")) {
++    if (e === bar || bar.contains(e) || e.contains(bar)) continue;
++    const cs = getComputedStyle(e);
++    if (cs.position !== "sticky" && cs.position !== "fixed") continue;
++    const r = e.getBoundingClientRect();
++    if (r.width < 200 || r.height < 8) continue;
++    const v = Math.min(rb.bottom, r.bottom) - Math.max(rb.top, r.top);
++    const h = Math.min(rb.right, r.right) - Math.max(rb.left, r.left);
++    if (v > 2 && h > 2) hits.push(`${e.tagName.toLowerCase()}.${String(e.className).trim().split(/\s+/).slice(0, 2).join(".")} by ${Math.round(v)}px`);
++  }
++  return { scrollY: Math.round(window.scrollY), top: Math.round(rb.top * 10) / 10, hits };
++};
++
++/**
++ * THE VERDICT. `{ problems, notMeasured }` — each problem a full sentence; `notMeasured` a reason or null.
++ * ⛔ "THE BAR DID NOT STICK" and "ANOTHER STICKY SURFACE IS DRAWN THROUGH THE BAR" are the two arms' words, and the red
++ * twin matches them on the ✗ lines — keep them verbatim.
++ *
++ * ⚠️ THE TOLERANCE WAS 0 ≤ top ≤ 200 AND IS NOW THE BAR'S OWN `top` ± 2 (R5-F, 2026-10-09). The old drive said "the
++ * exact offset is the shell's business, not this driver's; what is being asserted is that the bar is still ON SCREEN" —
++ * right while it scrolled blind, because it could not know where a bar SHOULD be after `scrollTo(0, 1200)`. It knows now:
++ * it scrolls only inside the range where a sticky box must sit on its own declared `top` (CSS Positioned Layout 3), so
++ * the reference is the bar's declaration, not the shell's — and a bar on screen but OFF its offset (a gap the page shows
++ * through, a bar half under the header) is a failure a person sees. A `fixed` bar keeps the old on-screen tolerance.
++ */
++export function judgeStick(g, plan, after, { minTravel = MIN_TRAVEL, tolerance = STUCK_TOLERANCE } = {}) {
++  const problems = [];
++  if (!after) return { problems: ["THE BAR DID NOT STICK — it was gone from the page after the scroll"], notMeasured: null };
++  if (plan.sticky) {
++    const travel = after.scrollY - plan.start;
++    if (travel < minTravel) {
++      return { problems, notMeasured: `STICK NOT MEASURED — the scroll landed at ${after.scrollY}px, only ${Math.round(travel)}px past the bar's place (planned ${plan.y}); the page changed under the drive.` };
++    }
++    if (Math.abs(after.top - g.offset) > tolerance) {
++      problems.push(`THE BAR DID NOT STICK — scrolled ${after.scrollY}px, ${Math.round(travel)}px past its place and still inside its parent, it sits at top ${after.top} instead of its own offset ${g.offset}. A sticky element only sticks within its PARENT's box; check the wrapper's height.`);
++    }
++  } else if (g.position !== "fixed") {
++    problems.push(`THE BAR DID NOT STICK — it is position: ${g.position}, so it left with the page: after scrolling ${after.scrollY}px it sits at top ${after.top}. A surface that promises the stick must be sticky (declare \`sticky: false\` if it does not promise one).`);
++  } else if (after.top < 0 || after.top > 200) {
++    problems.push(`THE BAR DID NOT STICK — after scrolling it sits at top ${after.top}.`);
++  }
++  for (const h of after.hits) {
++    problems.push(`ANOTHER STICKY SURFACE IS DRAWN THROUGH THE BAR — ${h}. Two sticky surfaces cannot share one offset.`);
++  }
++  return { problems, notMeasured: null };
++}
++
++/* ── READING THE DRIVE'S OUTPUT (the red twin) ─────────────────────────────────────────────────────────────────────── */
++
++/** The failure lines alone. ⛔ An `expect` is matched HERE, never against the whole output: a 🔶 line or a header that
++ *  happens to contain the expected words must not be read as the failure a mutation caused. */
++export const failLines = (out) => String(out).split("\n").filter((l) => l.includes("✗")).map((l) => l.trim());
++
++/** The NOT MEASURED lines naming one route — `"/positions "` with its space, so `/positions/performance` is not it.
++ *  Both kinds carry the words: "BAR NOT MEASURED" (no bar on the page) and "STICK NOT MEASURED" (no range to prove). */
++export const notMeasuredLines = (out, route) =>
++  String(out).split("\n").filter((l) => l.includes("NOT MEASURED") && l.includes(`${route} `)).map((l) => l.trim());
+diff --git a/scripts/red-bar-geometry.mjs b/scripts/red-bar-geometry.mjs
+index f888be8fa..c157fba82 100644
+--- a/scripts/red-bar-geometry.mjs
++++ b/scripts/red-bar-geometry.mjs
+@@ -32,6 +32,21 @@
+  * ⛔ Needs the dev server up — the same precondition as the driver.
+  *   `rm -rf .next/dev && npx next dev -p 3031`   (⛔ never `next start`: the store refuses the
+  *   in-memory fallback in production, so local visual work runs on `next dev`.)
++ * ⛔ AND THE DRIVER'S FIXTURE, built once on that server BEFORE this harness:  `npm run fixture:player -- <baseUrl>`.
++ *   Two cases need `/proposals` ACTIVE and seeded, one needs stars on `/watchlist`; without them the precondition below
++ *   refuses and names what it could not measure, rather than crediting a mutation with a bar that was never drawn.
++ *
++ * ── ROUND 5 OF THE VISUAL PASS (R5-F, 2026-10-09) · THREE WAYS THIS HARNESS COULD CREDIT A CATCH IT NEVER MADE ──────
++ *   ① THE PRECONDITION WAS PER ROUTE, AND THE PROOFS ARE PER ROUTE × SHAPE. `/markets` was checked at 1280/sw only (the
++ *     shape of its FIRST case), while `sort-summary-unbound` was proved there at 360/sw — where the untouched driver read
++ *     five OVERLAP lines of its own (the U4 strip). So that case would have reported "caught → OVERLAP" for a mutation
++ *     that changes nothing on that bar. ⭐ Every distinct route × width × locale is now checked before and after.
++ *   ② "GREEN" WAS EXIT 0, AND EXIT 0 CAN HOLD A NOT MEASURED. A route whose bar was never drawn (no fixture) or whose
++ *     stick the page was too short to pose is not a baseline a mutation can be measured against. ⭐ The precondition now
++ *     needs exit 0 AND no NOT MEASURED line for the route.
++ *   ③ `expect` WAS MATCHED AGAINST THE WHOLE OUTPUT. "stick" is in "sticky" — in the OTHER arm's failure line, and in a
++ *     🔶 line — so `bar-is-not-sticky` could be "caught" by the wrong arm. ⭐ `expect` is matched on the ✗ lines only,
++ *     and that case expects its own arm's words (`anchors/bar-geometry.anchors.mjs`).
+  *
+  * Run: npm run red:bar-geometry
+  */
+@@ -39,6 +54,7 @@ import { readFileSync, writeFileSync } from "node:fs";
+ import { execFileSync } from "node:child_process";
+ import { injectDefect } from "./red-anchor.mjs";
+ import { MUTATIONS } from "./anchors/bar-geometry.anchors.mjs";
++import { failLines, notMeasuredLines } from "./live/bar-geometry-rules.mjs";
+ 
+ const BASE = process.argv.find((a) => a.startsWith("http")) || "http://localhost:3031";
+ const DRIVER = "scripts/live/bar-geometry-drive.mjs";
+@@ -51,6 +67,8 @@ const DRIVER = "scripts/live/bar-geometry-drive.mjs";
+  * would look like the defect.
+  */
+ const SHAPE = {
++  // ⚠️ On `/watchlist` since R5-F (2026-10-09), not `/markets`: below 640 the reference bar is U4's one-line grid, whose
++  // sort column is sized toward its content, so at 360 an unbound summary has a pixel or two to run. See the case's note.
+   "sort-summary-unbound": { widths: "360", locales: "sw" },
+   "desktop-group-does-not-wrap": { widths: "1280", locales: "sw" },
+   "bar-is-not-sticky": { widths: "1280", locales: "sw" },
+@@ -96,18 +114,33 @@ const settle = async (route) => {
+  * ⭐ WHAT MATTERS IS THAT THE ROUTE UNDER MUTATION IS GREEN BEFORE IT IS MUTATED. That is the
+  * claim "this mutation caused this failure" rests on, and it is now checked for each case
+  * individually, at the width and locale that case is proved at.
++ * 🔴 R5-F (2026-10-09): "for each case individually" was the intent and not the code — the loop ran once per ROUTE, at
++ * its first case's shape. It now runs once per route × shape (`proofs`), and "green" means green AND measured.
+  */
+-const routesUnderProof = [...new Set(MUTATIONS.map((c) => c.route))];
+-for (const route of routesUnderProof) {
+-  const shape = SHAPE[MUTATIONS.find((c) => c.route === route).name] ?? {};
+-  const b = runDriver(route, shape);
+-  if (b.code !== 0) {
+-    console.error(`REFUSING: qa:bar-geometry is already RED on ${route} (untouched tree) — fix that first, or a mutation there cannot be shown to cause anything.`);
+-    console.error(b.out.split("\n").filter((l) => l.includes("✗")).slice(0, 6).join("\n"));
++const shapeOf = (c) => SHAPE[c.name] ?? {};
++const keyOf = (c) => `${c.route} @ ${shapeOf(c).widths ?? "default"}/${shapeOf(c).locales ?? "default"}`;
++/** One representative case per route × width × locale — the unit a precondition and an after-check are about. */
++const proofs = [...new Map(MUTATIONS.map((c) => [keyOf(c), c])).values()];
++/** ⛔ Green AND measured: exit 0, and not one NOT MEASURED line for the route. A bar never drawn is no baseline. */
++const baseline = (c) => {
++  const b = runDriver(c.route, shapeOf(c));
++  const unposed = notMeasuredLines(b.out, c.route);
++  return { ...b, unposed, ok: b.code === 0 && unposed.length === 0 };
++};
++for (const c of proofs) {
++  const b = baseline(c);
++  if (!b.ok) {
++    console.error(`REFUSING: qa:bar-geometry is not green-and-measured on ${keyOf(c)} (untouched tree, exit ${b.code}) — fix that first, or a mutation there cannot be shown to cause anything.`);
++    const why = [
++      ...failLines(b.out),
++      ...b.unposed,
++      ...b.out.split("\n").filter((l) => /SKIPPED SURFACE|ZERO controls|could not sign in/.test(l)).map((l) => l.trim()),
++    ];
++    console.error(why.slice(0, 8).map((l) => `  ${l}`).join("\n"));
+     process.exit(1);
+   }
+ }
+-console.log(`precondition: the driver is GREEN on every route under proof (${routesUnderProof.join(", ")})\n`);
++console.log(`precondition: the driver is GREEN, with nothing unmeasured, on every route × shape under proof (${proofs.map(keyOf).join(" · ")})\n`);
+ 
+ const originals = new Map();
+ for (const f of new Set(MUTATIONS.map((c) => c.file))) originals.set(f, readFileSync(f, "utf8"));
+@@ -138,8 +171,9 @@ for (const [i, c] of MUTATIONS.entries()) {
+   } else if (r.code === 0) {
+     problems.push(`case ${i + 1} (${c.name}): stayed GREEN at ${shape.widths ?? "default"}/${shape.locales ?? "default"}`);
+     console.log(`  ${i + 1}. NOT CAUGHT   ${c.name}`);
+-  } else if (!r.out.includes(c.expect)) {
+-    const lines = r.out.split("\n").filter((l) => l.includes("✗")).slice(0, 3).map((l) => l.trim());
++  } else if (!failLines(r.out).some((l) => l.includes(c.expect))) {
++    // ⛔ On the ✗ lines only — see the R5-F note in the header (③).
++    const lines = failLines(r.out).slice(0, 3);
+     problems.push(`case ${i + 1} (${c.name}): red, but no failure mentioned "${c.expect}" — got ${lines.join(" | ") || "(no ✗ line)"}`);
+     console.log(`  ${i + 1}. WRONG REASON ${c.name}`);
+   } else {
+@@ -152,10 +186,9 @@ for (const [i, c] of MUTATIONS.entries()) {
+ //    reasoning that left a payout gate disabled; the question gets its own answer.
+ const unrestored = [...originals].filter(([f, original]) => readFileSync(f, "utf8") !== original).map(([f]) => f);
+ for (const f of unrestored) problems.push(`${f} NOT RESTORED — the working tree is dirty`);
+-// ⚠️ The after-check is per-route too, for the same reason the precondition is.
+-for (const route of routesUnderProof) {
+-  const shape = SHAPE[MUTATIONS.find((c) => c.route === route).name] ?? {};
+-  if (runDriver(route, shape).code !== 0) problems.push(`the driver is RED on ${route} after restore`);
++// ⚠️ The after-check is per route × shape too, and asks the same question the precondition did.
++for (const c of proofs) {
++  if (!baseline(c).ok) problems.push(`the driver is RED (or no longer measures) on ${keyOf(c)} after restore`);
+ }
+ const after = { code: problems.some((p) => p.includes("after restore")) ? 1 : 0 };
+ 
+diff --git a/scripts/visual-pass-r5f.test.mts b/scripts/visual-pass-r5f.test.mts
+new file mode 100644
+index 000000000..da04f6cda
+--- /dev/null
++++ b/scripts/visual-pass-r5f.test.mts
+@@ -0,0 +1,427 @@
++/**
++ * ROUND 5 OF THE VISUAL PASS, HELPER F (2026-10-09) — `qa:bar-geometry` guards again. The drive read RED ON MAIN (88
++ * failures at a6331ca1, 92 on the tip) and its red twin refused to run, so neither proved anything; every failure was the
++ * instrument (the R5-F report classifies all 92). The repair lives in `scripts/live/bar-geometry-rules.mjs`, shared by the
++ * drive, its red twin and this suite, so the three cannot drift. A browser cannot run here, so this suite replays the
++ * MEASUREMENTS the failing runs logged through the new rules — and keeps every real defect the drive exists for red.
++ *
++ *   npx tsx scripts/visual-pass-r5f.test.mts        (npm run test:visual-pass-r5f)
++ *
++ *   §1  no bar on the page: rows and no bar FAILS; no rows is NOT MEASURED, never a pass; a declared surface measured
++ *       nowhere makes a skipped run — and the route list matches the app (every sticky query bar, no stale route)
++ *   §2  overlap over PAINTED boxes: the 14 logged /markets-360 overlaps (sw · en · zh) reproduce under the old rule and
++ *       vanish under the new one; the overlap the drive was built for stays red; the probe's clip walk (fake DOM)
++ *   §3  the stick inside its own range: the 18 logged positions (tip + main) reproduce at the page's end and the bar sits
++ *       on its offset where the drive now scrolls; the 247px wrapper, a non-sticky bar, a band at the bar's offset and a
++ *       bar off its offset stay red; a thin page is NOT MEASURED; the probes (fake DOM)
++ *   §4  the red twin: per route × shape, green-AND-measured, `expect` on ✗ lines only; every case's route, shape and words
++ *   §5  the drive's wiring: the rules are what it runs, the sign-in builds the receipts book, a skipped surface exits 3
++ * The mutation proof (each defect planted on disk, this suite failing on its check, every file restored byte-identical)
++ * is the scratchpad's `r5f/mutate.mjs`; its result is in R5-F's report.
++ */
++import { readFileSync, readdirSync, statSync } from "node:fs";
++import { join, relative } from "node:path";
++import { decomment } from "./lib/decomment.mts";
++import {
++  BOOK_PROBE, CONTROL_PROBE, MIN_TRAVEL, REACH, STICK_AFTER_PROBE, STICK_PROBE,
++  failLines, findOverlaps, judgeMissingRail, judgeStick, notMeasuredLines, overlapLine, planStick,
++} from "./live/bar-geometry-rules.mjs";
++import { MUTATIONS } from "./anchors/bar-geometry.anchors.mjs";
++
++let pass = 0;
++const fails: string[] = [];
++const ok = (name: string, cond: boolean, detail = "") => {
++  if (cond) { pass++; console.log(`  ok   ${name}`); }
++  else { fails.push(`${name}${detail ? ` — ${detail}` : ""}`); console.log(`  FAIL ${name}${detail ? ` — ${detail}` : ""}`); }
++};
++const section = (s: string) => console.log(`\n── ${s} ${"─".repeat(Math.max(0, 100 - s.length))}`);
++const raw = (p: string) => readFileSync(p, "utf8").replace(/\r\n/g, "\n");
++const code = (p: string) => decomment(raw(p));
++
++const DRIVE = "scripts/live/bar-geometry-drive.mjs";
++const RULES = "scripts/live/bar-geometry-rules.mjs";
++const TWIN = "scripts/red-bar-geometry.mjs";
++
++/** The drive's SURFACES, evaluated from its own source (the drive launches a browser on import, so it is read, not run). */
++function driveSurfaces(): Array<{ id: string; path: string; minControls: number; sticky?: boolean; withheld?: string }> {
++  const src = code(DRIVE);
++  const at = src.indexOf("const SURFACES = [");
++  const end = src.indexOf("\n];", at);
++  if (at < 0 || end < 0) return [];
++  return new Function(`return ${src.slice(at + "const SURFACES = ".length, end + 3).replace(/;\s*$/, "")}`)();
++}
++
++/* ── a fake DOM, just large enough for the probes ─────────────────────────────────────────────────────────────── */
++type Style = Record<string, string>;
++const STYLE_DEFAULTS: Style = {
++  position: "static", overflowX: "visible", overflowY: "visible", display: "block", visibility: "visible",
++  transform: "none", filter: "none", perspective: "none", contain: "none", top: "auto",
++  marginBottom: "0px", paddingBottom: "0px", borderBottomWidth: "0px",
++};
++class El {
++  tagName: string; parentElement: El | null = null; kids: El[] = []; style: Style; attrs: Record<string, string>;
++  textContent: string; className: string; open = true; clientLeft = 0; clientTop = 0;
++  x: number; y: number; w: number; h: number; scrollW: number;
++  constructor(tag: string, box: [number, number, number, number], style: Style = {}, o: { text?: string; cls?: string; attrs?: Record<string, string>; scrollW?: number; open?: boolean } = {}) {
++    this.tagName = tag.toUpperCase(); [this.x, this.y, this.w, this.h] = box; this.style = style;
++    this.textContent = o.text ?? ""; this.className = o.cls ?? ""; this.attrs = o.attrs ?? {}; this.scrollW = o.scrollW ?? box[2];
++    if (o.open === false) this.open = false;
++  }
++  add(...k: El[]) { for (const c of k) { c.parentElement = this; this.kids.push(c); } return this; }
++  get clientWidth() { return this.w; } get clientHeight() { return this.h; } get scrollWidth() { return this.scrollW; }
++  getBoundingClientRect() { return { x: this.x, y: this.y, left: this.x, top: this.y, width: this.w, height: this.h, right: this.x + this.w, bottom: this.y + this.h }; }
++  contains(o: El) { for (let n: El | null = o; n; n = n.parentElement) if (n === this) return true; return false; }
++  all(): El[] { return this.kids.flatMap((k) => [k, ...k.all()]); }
++}
++function installDom(html: El, body: El, scroll = { scrollY: 0, innerHeight: 1000, scrollHeight: 2000 }) {
++  const g = globalThis as Record<string, unknown>;
++  g.getComputedStyle = (e: El) => ({ ...STYLE_DEFAULTS, ...e.style });
++  const pick = (sel: string) => {
++    if (sel === "body *") return body.all();
++    const attrs = sel.split(",").map((s) => s.trim().replace(/^\[|\]$/g, ""));
++    return html.all().filter((e) => attrs.some((a) => a in e.attrs));
++  };
++  Object.defineProperty(html, "scrollHeight", { value: scroll.scrollHeight, configurable: true });
++  g.document = { documentElement: html, querySelector: (s: string) => pick(s)[0] ?? null, querySelectorAll: (s: string) => pick(s) };
++  g.window = { scrollY: scroll.scrollY, innerHeight: scroll.innerHeight };
++}
++
++/* ═════════════════════════════════════════════════════════════════════════════════════════════════════════════ */
++section("§1 · no bar on the page — a defect, a page with nothing to filter, or a stale route");
++{
++  const surface = { id: "/proposals" };
++  const withRows = judgeMissingRail({ rows: 12, emptyStates: 0 }, surface);
++  ok("1.1 · ⛔ rows and no bar FAILS, in the words every reader greps for", withRows.kind === "fail" && withRows.why.startsWith("NO [data-filter-rail]"), JSON.stringify(withRows));
++  const empty = judgeMissingRail({ rows: 0, emptyStates: 1 }, surface);
++  ok("1.2 · no rows + its empty state is NOT MEASURED (§A5 withholds the bar), never a pass, and it SKIPS the surface",
++    empty.kind === "not-measured" && empty.skips === true && empty.why.includes("BAR NOT MEASURED") && empty.why.includes("fixture:player"), JSON.stringify(empty));
++  const bare = judgeMissingRail({ rows: 0, emptyStates: 0 }, surface);
++  ok("1.3 · no rows and no empty state (a COMING_SOON board) is NOT MEASURED too, and skips", bare.kind === "not-measured" && bare.skips === true, JSON.stringify(bare));
++  const held = judgeMissingRail({ rows: 0, emptyStates: 0 }, { id: "/positions/performance", withheld: "two products" });
++  ok("1.4 · a surface that DECLARES its bar may be withheld is NOT MEASURED with its reason, and does not skip the run",
++    held.kind === "not-measured" && held.skips === false && held.why.includes("two products"), JSON.stringify(held));
++  const heldRows = judgeMissingRail({ rows: 3, emptyStates: 0 }, { id: "/x", withheld: "reason" });
++  ok("1.5 · …but a declaration never excuses rows without a bar", heldRows.kind === "fail");
++
++  // The route list must match the app as it is: every STICKY query bar (`data-filter-rail className={QUERY_BAR_CLASS}`)
++  // is a surface of the drive, and every surface the drive declares sticky still has one.
++  const files: string[] = [];
++  const walk = (d: string) => { for (const f of readdirSync(d)) { const p = join(d, f); if (statSync(p).isDirectory()) walk(p); else if (/\.tsx$/.test(f)) files.push(p); } };
++  walk("src");
++  const sticky = files.filter((f) => /data-filter-rail className=\{QUERY_BAR_CLASS\}/.test(code(f)));
++  const routeOf = (f: string) => {
++    const rel = relative("src", f).replace(/\\/g, "/");
++    if (rel === "components/markets/discovery-bar.tsx") return "/markets";
++    const m = rel.match(/^app\/(.+)\/[^/]+\.tsx$/);
++    return m ? `/${m[1]}` : `?${rel}`;
++  };
++  const stickyRoutes = new Map(sticky.map((f) => [routeOf(f), f.replace(/\\/g, "/")]));
++  /** ⛔ The one deliberate absence, with its reason — the same reason `count-truth-drive.mjs` records for all four drives. */
++  const EXCLUDED: Record<string, string> = { "/profile/invite": "the agent recruit book renders only for an approved agent; /auth/demo mints a player" };
++  const surfaces = driveSurfaces();
++  const ids = new Set(surfaces.map((s) => s.id));
++  ok("1.6 · fixture · the drive's SURFACES evaluate, and the census finds the sticky bars", surfaces.length >= 12 && stickyRoutes.size >= 12, `${surfaces.length} surfaces · ${stickyRoutes.size} sticky bars`);
++  const missing = [...stickyRoutes.keys()].filter((r) => !ids.has(r) && !(r in EXCLUDED));
++  ok("1.7 · every sticky query bar in the app is a surface of the drive (or a named exclusion)", missing.length === 0,
++    missing.map((r) => `${r} (${stickyRoutes.get(r)})`).join(", "));
++  ok("1.8 · …including /wallet/receipts, the one that shipped (2026-10-07, 012cccbc9) after the list was last edited", ids.has("/wallet/receipts"));
++  const stale = surfaces.filter((s) => s.sticky !== false && !stickyRoutes.has(s.id)).map((s) => s.id);
++  ok("1.9 · ⛔ no surface the drive asserts a stick on has lost its sticky bar (a stale route)", stale.length === 0, stale.join(", "));
++  const panel = code("src/app/profile/account/account-bar.tsx");
++  const board = code("src/app/leaderboard/page.tsx");
++  ok("1.10 · the two `sticky: false` declarations are true: /profile/account takes QUERY_BAR_CLASS_PANEL, /leaderboard no bar class",
++    surfaces.filter((s) => s.sticky === false).map((s) => s.id).sort().join(",") === "/leaderboard,/profile/account"
++      && /data-filter-rail className=\{QUERY_BAR_CLASS_PANEL\}/.test(panel) && !/QUERY_BAR_CLASS\b/.test(board));
++  ok("1.11 · only /positions/performance declares a withheld bar, and its page still withholds it for one product",
++    surfaces.filter((s) => s.withheld).map((s) => s.id).join(",") === "/positions/performance"
++      && /settledAll\.length > 0 && lenses\.length > 2 && \(/.test(code("src/app/positions/performance/page.tsx")));
++  const receipts = surfaces.find((s) => s.id === "/wallet/receipts");
++  const rb = code("src/app/wallet/receipts/receipts-bar.tsx");
++  ok("1.12 · /wallet/receipts' floor is the data-independent count: 3 lenses + 5 states + 5 windows, every one a FilterPill link",
++    receipts?.minControls === 13 && /RECEIPT_LENSES\.map/.test(rb) && /RECEIPT_STATES\.map[\s\S]*RECEIPT_STATES\.map/.test(rb) && /RECEIPT_WHEN_IDS\.map[\s\S]*RECEIPT_WHEN_IDS\.map/.test(rb)
++      && /export const RECEIPT_LENSES = \["all", "in", "out"\]/.test(code("src/lib/wallet/receipts.ts"))
++      && /export const LEDGER_STATES = \["any", "flight", "confirmed", "failed", "reversed"\]/.test(code("src/lib/wallet/ledger.ts"))
++      && /export const PLAYER_PRESETS = \["today", "yesterday", "7d", "30d", "all"\]/.test(code("src/lib/query/windows.ts")));
++}
++
++section("§2 · overlap over PAINTED boxes — what a person can see, and only that");
++{
++  /** One logged /markets row at 360: the strip's chips, the sort summary, the direction button, the Filters trigger. */
++  type Box = { text: string; x: number; w: number };
++  const ROWS: Record<string, { strip: number; chips: Box[]; summary: Box; dir: Box; filters: Box; logged: number[] }> = {
++    // `S/runs/wbm-bar.log` (main a6331ca1) — identical on the tip (`wm15-bar.log`) and at 90cb52ea (`wm11-bar.log`).
++    sw: { strip: 176, chips: [{ text: "chip0", x: 16, w: 79 }, { text: "Zinafunga leo0", x: 99, w: 135 }, { text: "Mpya0", x: 238, w: 83 }, { text: "Inasubiri matokeo0", x: 326, w: 160 }],
++      summary: { text: "PangaPesa nyingi", x: 182, w: 67 }, dir: { text: "↑", x: 249, w: 44 }, filters: { text: "Vichujio", x: 299, w: 45 }, logged: [52, 11, 44, 22, 18] },
++    en: { strip: 182, chips: [{ text: "chip0", x: 16, w: 82 }, { text: "Closing today0", x: 102, w: 135 }, { text: "New0", x: 241, w: 77 }, { text: "In progress0", x: 322, w: 119 }],
++      summary: { text: "SortBiggest pool", x: 188, w: 61 }, dir: { text: "↑", x: 249, w: 44 }, filters: { text: "Filters", x: 299, w: 45 }, logged: [49, 8, 44, 19, 22] },
++    zh: { strip: 189, chips: [{ text: "chip0", x: 16, w: 90 }, { text: "chip1", x: 110, w: 85 }, { text: "新增0", x: 199, w: 75 }, { text: "等待结果0", x: 278, w: 101 }],
++      summary: { text: "排序奖池最大", x: 195, w: 54 }, dir: { text: "↑", x: 249, w: 44 }, filters: { text: "筛选", x: 299, w: 45 }, logged: [50, 25, 15, 45] },
++  };
++  const Y = 70, H = 44;
++  for (const [loc, row] of Object.entries(ROWS)) {
++    // The DOM as U4 lays it out below 640: body clips sideways; the bar is a grid; its rows are `display: contents`; the
++    // strip (`overflow-x: auto` → `overflow-y` computes to auto) carries 12px of padding/negative margin (round 3, [319]).
++    const html = new El("html", [0, 0, 360, 900]);
++    const body = new El("body", [0, 0, 360, 900], { overflowX: "clip" });
++    const bar = new El("div", [0, 56, 360, 120], { display: "grid", position: "sticky", top: "56px" }, { attrs: { "data-filter-rail": "" } });
++    const row1 = new El("div", [0, 0, 0, 0], { display: "contents" });
++    const row2 = new El("div", [0, 0, 0, 0], { display: "contents", overflowX: "hidden" }); // ⛔ a contents box clips nothing, whatever it says
++    const strip = new El("nav", [4, Y - 12, row.strip - 4, H + 24], { overflowX: "auto", overflowY: "auto", display: "flex" }, { scrollW: 600 });
++    const chips = row.chips.map((c) => new El("a", [c.x, Y, c.w, H], {}, { text: c.text }));
++    const cell = new El("div", [row.summary.x, Y, row.dir.x + row.dir.w - row.summary.x, H], { display: "flex" });
++    const details = new El("details", [row.summary.x, Y, row.summary.w, H]);
++    const summary = new El("summary", [row.summary.x, Y, row.summary.w, H], {}, { text: row.summary.text });
++    const dir = new El("a", [row.dir.x, Y, row.dir.w, H], {}, { text: row.dir.text });
++    const sheet = new El("details", [row.filters.x, Y, row.filters.w, H], {}, { open: false });
++    const trigger = new El("summary", [row.filters.x, Y, row.filters.w, H], {}, { text: row.filters.text });
++    html.add(body.add(bar.add(row1.add(strip.add(...chips)), row2.add(cell.add(details.add(summary), dir), sheet.add(trigger)))));
++    installDom(html, body);
++    const controls = (CONTROL_PROBE as (els: El[]) => Array<{ text: string; x: number; w: number; seen: { x: number; w: number } | null; vis: boolean; inClosed: boolean; scrolls: boolean }>)(
++      [...chips, summary, dir, trigger]);
++    const vis = controls.filter((c) => c.vis && !c.inClosed);
++    // The old instrument: painted = layout. It must reproduce exactly what the failing run logged.
++    const asBefore = findOverlaps(vis.map((c) => ({ ...c, seen: { x: c.x, y: Y, w: c.w, h: H } })));
++    ok(`2.${loc}.1 · the logged run is reproduced: the LAYOUT boxes give exactly the ${row.logged.length} overlaps wbm-bar.log printed (${row.logged.join(", ")}px)`,
++      asBefore.map((o) => o.hOv).join(",") === row.logged.join(","), asBefore.map((o) => `${o.hOv} ${o.a.text}/${o.b.text}`).join(" · "));
++    const now = findOverlaps(vis);
++    ok(`2.${loc}.2 · ⭐ over PAINTED boxes there are none: the strip clips its chips at x${row.strip}, before the sort cell at x${row.summary.x}`,
++      now.length === 0, now.map(overlapLine).join(" · "));
++    // ⛔ …and not because the controls vanished: the sort, the arrow and the trigger are painted whole (the `display:
++    //    contents` row that says `overflow-x: hidden` generates no box and clips nothing).
++    const whole = [summary, dir, trigger].map((e) => controls[[...chips, summary, dir, trigger].indexOf(e)]);
++    ok(`2.${loc}.2b · the controls beside the strip are painted whole, so "none" is a measurement, not an absence`,
++      whole.every((c) => c.seen !== null && c.seen.x === c.x && c.seen.w === c.w), JSON.stringify(whole.map((c) => c.seen)));
++    const cut = controls.find((c) => c.text === row.chips[2].text)!;
++    ok(`2.${loc}.3 · the probe's walk: a chip past the strip's edge has nothing painted; one straddling it is cut at the edge`,
++      cut.seen === null && (loc !== "sw" || controls[1].seen?.x === 99 && controls[1].seen.x + controls[1].seen.w === row.strip), JSON.stringify(controls.map((c) => c.seen)));
++    ok(`2.${loc}.4 · exemption 2 still holds for the CLIPPED assertion: every chip lives in a strip that scrolls`, controls.slice(0, row.chips.length).every((c) => c.scrolls));
++    ok(`2.${loc}.5 · exemption 1 still holds: the Filters <summary> of a SHUT sheet is measured (its own disclosure is not "inside" it)`,
++      controls[controls.length - 1].inClosed === false);
++  }
++
++  // ⛔ THE DEFECT THE DRIVE WAS BUILT FOR STAYS RED — a two-row bar, nothing between the summary and body clips it.
++  {
++    const html = new El("html", [0, 0, 360, 900]);
++    const body = new El("body", [0, 0, 360, 900], { overflowX: "clip" });
++    const row2 = new El("div", [16, 120, 328, 44], { display: "flex" });
++    const cell = new El("div", [16, 120, 182, 44], { display: "flex" });
++    const details = new El("details", [16, 120, 138, 44]);
++    const summary = new El("summary", [16, 120, 190, 44], {}, { text: "PangaYaliyoongezwa karibu" }); // unbound: its max-content
++    const dir = new El("a", [154, 120, 44, 44], {}, { text: "↑" });
++    const trigger = new El("summary", [210, 120, 134, 44], {}, { text: "Vichujio" });
++    html.add(body.add(row2.add(cell.add(details.add(summary), dir), new El("details", [210, 120, 134, 44], {}, { open: false }).add(trigger))));
++    installDom(html, body);
++    const controls = (CONTROL_PROBE as (els: El[]) => never[])([summary, dir, trigger]);
++    const o = findOverlaps(controls);
++    ok("2.6 · ⛔ PLANT · the summary run across the direction button (16→206 vs 154→198) is still a 44px OVERLAP",
++      o.length === 1 && o[0].hOv === 44 && overlapLine(o[0]).startsWith("OVERLAP 44px"), o.map(overlapLine).join(" · "));
++    // …and the 2026-09-08 shipped numbers, straight through the judgement.
++    const shipped = findOverlaps([
++      { text: "summary", x: 16, w: 239, seen: { x: 16, y: 0, w: 239, h: 44 } },
++      { text: "↑", x: 154, w: 44, seen: { x: 154, y: 0, w: 44, h: 44 } },
++    ]);
++    ok("2.7 · ⛔ PLANT · the shipped defect (sw summary 16→255 · button 154→198) is a 44px OVERLAP", shipped.length === 1 && shipped[0].hOv === 44);
++  }
++
++  // The walk follows the containing-block chain and paints only what each box's clip lets through.
++  {
++    const html = new El("html", [0, 0, 1280, 1000]);
++    const body = new El("body", [0, 0, 1280, 1000]);
++    const posd = new El("div", [0, 0, 1280, 400], { position: "relative" });
++    const hider = new El("div", [100, 100, 100, 100], { overflowX: "hidden", overflowY: "hidden" });
++    const absA = new El("a", [150, 120, 200, 44], { position: "absolute" }, { text: "abs" });
++    const inFlow = new El("a", [150, 120, 200, 44], {}, { text: "flow" });
++    const fixedA = new El("a", [150, 120, 200, 44], { position: "fixed" }, { text: "fixed" });
++    const yOnly = new El("div", [0, 300, 1280, 20], { overflowY: "hidden" });
++    const tall = new El("a", [10, 290, 2000, 44], {}, { text: "tall" });
++    const contained = new El("div", [500, 500, 50, 50], { contain: "paint" });
++    const big = new El("a", [480, 480, 200, 200], {}, { text: "contain" });
++    const inline = new El("span", [600, 600, 10, 10], { display: "inline", overflowX: "hidden" });
++    const inl = new El("a", [600, 600, 100, 44], {}, { text: "inline" });
++    html.add(body.add(posd.add(hider.add(absA, inFlow, fixedA)), yOnly.add(tall), contained.add(big), inline.add(inl)));
++    installDom(html, body);
++    const [a, f, x, t, c, i] = (CONTROL_PROBE as (els: El[]) => Array<{ seen: { x: number; y: number; w: number; h: number } | null }>)([absA, inFlow, fixedA, tall, big, inl]).map((r) => r.seen);
++    ok("2.8 · an in-flow control is cut by its overflow-hidden ancestor (150→200 of 150→350)", f?.x === 150 && f.w === 50 && f.h === 44, JSON.stringify(f));
++    ok("2.9 · an ABSOLUTE control escapes a non-positioned clipper below its containing block", a?.w === 200, JSON.stringify(a));
++    ok("2.10 · a FIXED control escapes every ancestor's clip", x?.w === 200, JSON.stringify(x));
++    ok("2.11 · `overflow-y` alone cuts only the vertical span", t?.w === 2000 && t.y === 300 && t.h === 20, JSON.stringify(t));
++    ok("2.12 · `contain: paint` cuts both", c?.x === 500 && c.w === 50 && c.h === 50, JSON.stringify(c));
++    ok("2.13 · an INLINE ancestor clips nothing, whatever its overflow says", i?.w === 100, JSON.stringify(i));
++  }
++}
++
++section("§3 · the stick, measured inside its own range");
++{
++  /**
++   * The 18 rows `S/stick-probe.mjs` measured after `scrollTo(0, 1200)` at 1280×900 (`S/runs/wm16e-stick-tip.log`,
++   * `wm16e-stick-main.log`): every page clamped at 559/559. [route, natural top, bar top @559, bar h, parent bottom
++   * @559, parent's bottom padding ("room below bar in parent")].
++   */
++  const RUNS: Record<string, Array<[string, number, number, number, number, number]>> = {
++    tip: [
++      ["sw /results", 210, -27, 176, 149, 0], ["sw /notifications", 321, 12, 120, 164, 32], ["sw /markets", 194, -104, 176, 104, 32],
++      ["en /results", 210, -27, 176, 149, 0], ["en /notifications", 321, 12, 120, 164, 32], ["en /markets", 194, -104, 176, 104, 32],
++      ["zh /results", 210, -49, 176, 127, 0], ["zh /notifications", 321, -10, 120, 142, 32], ["zh /markets", 194, -125, 120, 27, 32],
++    ],
++    main: [
++      ["sw /results", 245, 22, 172, 194, 0], ["sw /notifications", 336, 27, 116, 175, 32], ["sw /markets", 194, -98, 172, 106, 32],
++      ["en /results", 245, 22, 172, 194, 0], ["en /notifications", 336, 27, 116, 175, 32], ["en /markets", 194, -98, 172, 106, 32],
++      ["zh /results", 245, 0, 172, 172, 0], ["zh /notifications", 336, 5, 116, 153, 32], ["zh /markets", 194, -119, 116, 29, 32],
++    ],
++  };
++  const MAX = 559, OFFSET = 56;
++  /** Where a sticky box sits after a scroll (CSS Positioned Layout 3): its offset, unless its parent's end pushes it up. */
++  const stuckTop = (natural: number, h: number, cbBottom: number, y: number) =>
++    natural - y >= OFFSET ? natural - y : Math.min(OFFSET, cbBottom - h - y);
++  for (const [tree, rows] of Object.entries(RUNS)) {
++    let reproduced = 0, measured = 0, onOffset = 0, worst = Infinity;
++    const off: string[] = [];
++    for (const [name, natural, topAt559, h, parentBottom, pad] of rows) {
++      const cbBottom = parentBottom + MAX - pad;
++      if (stuckTop(natural, h, cbBottom, MAX) === topAt559) reproduced++; else off.push(`${name} model ${stuckTop(natural, h, cbBottom, MAX)} vs logged ${topAt559}`);
++      const g = { position: "sticky", offset: OFFSET, docTop: natural, h, mb: 0, cbBottom, cb: "div", rowsBelow: 0, maxScroll: MAX };
++      const plan = planStick(g);
++      if (plan.kind === "measure") {
++        measured++; worst = Math.min(worst, plan.travel);
++        const top = stuckTop(natural, h, cbBottom, plan.y);
++        const v = judgeStick(g, plan, { scrollY: plan.y, top, hits: [] });
++        if (top === OFFSET && v.problems.length === 0 && !v.notMeasured) onOffset++; else off.push(`${name} at ${plan.y}: top ${top}`);
++      } else off.push(`${name}: ${plan.kind} ${"why" in plan ? plan.why : ""}`);
++    }
++    ok(`3.${tree}.1 · the logged run is reproduced: at the page's end (559) each bar sits where its PARENT's end pushed it — ${rows.length}/${rows.length} logged tops`,
++      reproduced === rows.length, off.join(" · "));
++    ok(`3.${tree}.2 · ⭐ where the drive now scrolls (inside each bar's range, ≥ ${MIN_TRAVEL}px past its place) all ${rows.length} are MEASURED and on their offset`,
++      measured === rows.length && onOffset === rows.length, `${measured} measured, ${onOffset} on offset, shortest travel ${worst}px · ${off.join(" · ")}`);
++  }
++  const g0 = { position: "sticky", offset: 56, docTop: 194, h: 176, mb: 0, cbBottom: 631, cb: "div", rowsBelow: 0, maxScroll: 559 };
++  const p0 = planStick(g0);
++  ok("3.1 · /markets tip sw: the drive scrolls to 398 (one pixel before its release at 399), 260px of travel — not to 1200",
++    p0.kind === "measure" && p0.y === 398 && p0.travel === 260, JSON.stringify(p0));
++  const long = planStick({ ...g0, cbBottom: 6000, maxScroll: 5000 });
++  ok(`3.2 · on a long page it still scrolls ${REACH}px past the bar's place, as the old drive did`, long.kind === "measure" && long.travel === REACH, JSON.stringify(long));
++  const thin = planStick({ ...g0, cbBottom: 420, maxScroll: 559 });
++  ok("3.3 · a parent that ends before the bar can travel 200px, with no row below it, is STICK NOT MEASURED — not a pass, not a fail",
++    thin.kind === "not-measured" && thin.why.includes("STICK NOT MEASURED"), JSON.stringify(thin));
++  const flat = planStick({ ...g0, maxScroll: 120 });
++  ok("3.4 · a page that cannot scroll is STICK NOT MEASURED (rule ①)", flat.kind === "not-measured" && flat.why.includes("scrolls only 120px"), JSON.stringify(flat));
++  // ⛔ PLANTS — every defect assertion 4 exists for stays red.
++  const wrapper = planStick({ ...g0, cbBottom: 194 + 247, rowsBelow: 400 });
++  ok("3.5 · ⛔ PLANT · /updown/history's 247px wrapper (rows run on below the bar's parent) FAILS — whatever the page's length",
++    wrapper.kind === "fail" && wrapper.why.startsWith("THE BAR DID NOT STICK") && wrapper.why.includes("400 row(s)"), JSON.stringify(wrapper));
++  const wrapperLong = planStick({ ...g0, cbBottom: 6000, maxScroll: 5000, rowsBelow: 3 });
++  ok("3.6 · ⛔ …even when the parent is long enough to pass the travel test (the rows below it are the defect)", wrapperLong.kind === "fail");
++  const relG = { ...g0, position: "relative", offset: null };
++  const relPlan = planStick(relG);
++  const rel = relPlan.kind === "measure" ? judgeStick(relG, relPlan, { scrollY: relPlan.y, top: 194 - relPlan.y, hits: [] }) : null;
++  ok("3.7 · ⛔ PLANT (red:bar-geometry `bar-is-not-sticky`) · a bar that is position: relative is measured and FAILS in its arm's words",
++    relPlan.kind === "measure" && relPlan.y === 559 && rel !== null && rel.problems.length === 1 && rel.problems[0].startsWith("THE BAR DID NOT STICK — it is position: relative"),
++    JSON.stringify(rel));
++  const band = judgeStick(g0, p0 as never, { scrollY: 398, top: 56, hits: ["div.sticky.top-[56px] by 79px"] });
++  ok("3.8 · ⛔ PLANT (`search-band-shares-the-bar-offset`) · a band stuck at the bar's offset is ANOTHER STICKY SURFACE",
++    band.problems.length === 1 && band.problems[0].startsWith("ANOTHER STICKY SURFACE IS DRAWN THROUGH THE BAR — div.sticky.top-[56px] by 79px"), JSON.stringify(band));
++  const offIt = judgeStick(g0, p0 as never, { scrollY: 398, top: -150, hits: [] });
++  ok("3.9 · ⛔ PLANT · a sticky bar that is NOT on its offset inside its own range FAILS", offIt.problems.length === 1 && offIt.problems[0].includes("instead of its own offset 56"), JSON.stringify(offIt));
++  const nudge = judgeStick(g0, p0 as never, { scrollY: 398, top: 57.5, hits: [] });
++  ok("3.10 · a stuck bar within 2px of its offset passes (sub-pixel layout, nothing more)", nudge.problems.length === 0);
++  const landed = judgeStick(g0, p0 as never, { scrollY: 200, top: 56, hits: [] });
++  ok("3.11 · a scroll that lands short of 200px of travel is NOT MEASURED, never read as a pass", landed.problems.length === 0 && !!landed.notMeasured, JSON.stringify(landed));
++
++  // The probes themselves, on a fake page: a sticky bar, its padded parent, rows inside and outside it, the header.
++  {
++    const html = new El("html", [0, 0, 1280, 1000]);
++    const body = new El("body", [0, 0, 1280, 1459]);
++    const header = new El("header", [0, 0, 1280, 56], { position: "sticky", top: "0px" }, { cls: "sticky top-0 z-40" });
++    const contentsWrap = new El("div", [0, 0, 0, 0], { display: "contents" });
++    const parent = new El("div", [104, 56, 1072, 607], { paddingBottom: "32px" }, { cls: "mx-auto w-full max-w-board px-3" });
++    const bar = new El("div", [104, 194, 1072, 176], { position: "sticky", top: "56px" }, { attrs: { "data-filter-rail": "" } });
++    const rowIn = new El("article", [104, 400, 300, 200], {}, { attrs: { "data-row-id": "m1" } });
++    const rowOut = new El("article", [104, 700, 300, 200], {}, { attrs: { "data-row-id": "m2" } });
++    const empty = new El("div", [104, 400, 300, 100], {}, { attrs: { "data-empty-state": "boxed" } });
++    html.add(body.add(header, parent.add(contentsWrap.add(bar), rowIn, empty), rowOut));
++    installDom(html, body, { scrollY: 0, innerHeight: 900, scrollHeight: 1459 });
++    const g = (STICK_PROBE as () => Record<string, unknown>)();
++    ok("3.12 · STICK_PROBE: the bar's own position and offset, its place, and its CONTAINING block's content bottom (padding off, `display: contents` skipped)",
++      g.position === "sticky" && g.offset === 56 && g.docTop === 194 && g.h === 176 && g.cbBottom === 631 && String(g.cb).startsWith("div.mx-auto") && g.maxScroll === 559,
++      JSON.stringify(g));
++    ok("3.13 · STICK_PROBE counts the rows BELOW the parent's end and outside it — one here", g.rowsBelow === 1, JSON.stringify(g));
++    const book = (BOOK_PROBE as () => { rows: number; emptyStates: number })();
++    ok("3.14 · BOOK_PROBE counts rows and empty states", book.rows === 2 && book.emptyStates === 1, JSON.stringify(book));
++    // After a scroll that leaves the bar stuck at 56: the header ends where the bar begins — touching is not drawing through.
++    bar.y = 56; installDom(html, body, { scrollY: 398, innerHeight: 900, scrollHeight: 1459 });
++    const after = (STICK_AFTER_PROBE as () => { scrollY: number; top: number; hits: string[] })();
++    ok("3.15 · STICK_AFTER_PROBE: a stuck bar at 56 under a 56px header has NO hit (they touch, they do not overlap)",
++      after.top === 56 && after.scrollY === 398 && after.hits.length === 0, JSON.stringify(after));
++    const bandEl = new El("div", [104, 56, 1072, 79], { position: "sticky", top: "56px" }, { cls: "sticky top-[56px] z-20 kp-search-band" });
++    const pip = new El("div", [1200, 60, 20, 20], { position: "fixed" });
++    parent.add(bandEl, pip); installDom(html, body, { scrollY: 398, innerHeight: 900, scrollHeight: 1459 });
++    const hit = (STICK_AFTER_PROBE as () => { hits: string[] })();
++    ok("3.16 · ⛔ PLANT · …and a band stuck at the same offset IS a hit, while a 20px pip is not a band",
++      hit.hits.length === 1 && hit.hits[0] === "div.sticky.top-[56px] by 79px", JSON.stringify(hit.hits));
++    bar.y = -104; installDom(html, body, { scrollY: 559, innerHeight: 900, scrollHeight: 1459 });
++    const pushed = (STICK_AFTER_PROBE as () => { hits: string[] })();
++    ok("3.17 · the logged 'header drawn through the bar' is the bar PUSHED under it at the page's end (the old scroll), not a shared offset",
++      pushed.hits.includes("header.sticky.top-0 by 56px"), JSON.stringify(pushed.hits));
++  }
++}
++
++section("§4 · the red twin — per route × shape, green AND measured, `expect` on the failure lines");
++{
++  const twin = code(TWIN);
++  const shapeKeys = [...twin.matchAll(/^\s*"([a-z-]+)": \{ widths: "(\d+)", locales: "(\w+)" \}/gm)].map((m) => ({ name: m[1], widths: m[2], locales: m[3] }));
++  const shape = new Map(shapeKeys.map((s) => [s.name, s]));
++  ok("4.1 · every declared case has a CHOSEN shape (width and locale), never a default", MUTATIONS.every((c: { name: string }) => shape.has(c.name)),
++    MUTATIONS.filter((c: { name: string }) => !shape.has(c.name)).map((c: { name: string }) => c.name).join(", "));
++  ok("4.2 · ⛔ the precondition and the after-check run per route × WIDTH × LOCALE (`proofs`), not per route",
++    /const keyOf = \(c\) => `\$\{c\.route\} @ \$\{shapeOf\(c\)\.widths/.test(twin) && /for \(const c of proofs\) \{\s*const b = baseline\(c\)/.test(twin)
++      && /for \(const c of proofs\) \{\s*if \(!baseline\(c\)\.ok\)/.test(twin) && !/routesUnderProof/.test(twin));
++  ok("4.3 · ⛔ 'green' is exit 0 AND no NOT MEASURED line for the route", /ok: b\.code === 0 && unposed\.length === 0/.test(twin) && /notMeasuredLines\(b\.out, c\.route\)/.test(twin));
++  ok("4.4 · ⛔ `expect` is matched on the ✗ lines only", /failLines\(r\.out\)\.some\(\(l\) => l\.includes\(c\.expect\)\)/.test(twin) && !/r\.out\.includes\(c\.expect\)/.test(twin));
++  const out = [
++    "  🔶 /markets sw 1280: STICK NOT MEASURED — the page scrolls only 120px; a stick needs 200px to prove.",
++    "🔴 problems:",
++    "  ✗ /markets sw 1280: ANOTHER STICKY SURFACE IS DRAWN THROUGH THE BAR — header.sticky.top-0 by 56px. Two sticky surfaces cannot share one offset.",
++    "   /positions/performance sw 1280: BAR NOT MEASURED — no bar and no row: two products",
++  ].join("\n");
++  ok("4.5 · failLines keeps the ✗ lines and nothing else", failLines(out).length === 1 && failLines(out)[0].startsWith("✗ /markets"));
++  ok("4.6 · ⛔ CONTROL · the old expect \"stick\" is satisfied by the OTHER arm's line — why it changed", failLines(out).some((l) => l.includes("stick")));
++  ok("4.7 · …and the arm's own words are not", !failLines(out).some((l) => l.includes("THE BAR DID NOT STICK")));
++  ok("4.8 · notMeasuredLines finds the route's own lines, and `/positions` is not `/positions/performance`",
++    notMeasuredLines(out, "/markets").length === 1 && notMeasuredLines(out, "/positions").length === 0 && notMeasuredLines(out, "/positions/performance").length === 1);
++  const byName = new Map(MUTATIONS.map((c: { name: string }) => [c.name, c]));
++  const notSticky = byName.get("bar-is-not-sticky") as { expect: string; route: string };
++  ok("4.9 · `bar-is-not-sticky` expects its own arm's words", notSticky?.expect === "THE BAR DID NOT STICK");
++  const unbound = byName.get("sort-summary-unbound") as { route: string };
++  ok("4.10 · `sort-summary-unbound` is proved on /watchlist at 360/sw (U4 made /markets' phone sort column content-sized)",
++    unbound?.route === "/watchlist" && shape.get("sort-summary-unbound")?.widths === "360" && shape.get("sort-summary-unbound")?.locales === "sw");
++  const wl = code("src/app/watchlist/watchlist-bar.tsx");
++  ok("4.11 · /watchlist is a TWO-ROW bar (no `data-bar-row`), sort + Filters in row 2, and `starred` is its default sort",
++    !/data-bar-row/.test(wl) && /<QuerySort[\s\S]*<FilterSheet/.test(wl) && /sort: "starred" as FollowSortId/.test(code("src/lib/watchlist/following.ts")));
++  const surfaces = driveSurfaces();
++  const ids = new Map(surfaces.map((s) => [s.id, s]));
++  const words = code(RULES) + code(DRIVE);
++  for (const c of MUTATIONS as Array<{ name: string; route: string; expect: string }>) {
++    const s = ids.get(c.route);
++    const stickArm = /STICK|STICKY/.test(c.expect);
++    ok(`4.12.${c.name} · its route is a surface of the drive, its words are words the drive prints${stickArm ? ", and a stick arm is proved at 1280 on a sticky surface" : ""}`,
++      !!s && words.includes(c.expect) && (!stickArm || (shape.get(c.name)?.widths === "1280" && s.sticky !== false)), `${c.route} · "${c.expect}"`);
++  }
++}
++
++section("§5 · the drive runs the rules, builds its receipts book, and refuses a skipped run");
++{
++  const drive = code(DRIVE);
++  ok("5.1 · the overlap is `findOverlaps` over `CONTROL_PROBE` — no layout-box loop left in the drive",
++    /\$\$eval\(\s*"\[data-filter-rail\] a, \[data-filter-rail\] button, \[data-filter-rail\] summary",\s*CONTROL_PROBE,?\s*\)/.test(drive)
++      && /for \(const o of findOverlaps\(vis\)\)/.test(drive) && !/const vOv =/.test(drive));
++  ok("5.2 · ⛔ the stick is `planStick` + `judgeStick` — no fixed `scrollTo(0, 1200)` left", /planStick\(g\)/.test(drive) && /judgeStick\(g, plan,/.test(drive) && !/scrollTo\(0, 1200\)/.test(drive));
++  ok("5.3 · a page without a bar goes through `judgeMissingRail`", /judgeMissingRail\(await page\.evaluate\(BOOK_PROBE\), s\)/.test(drive));
++  ok("5.4 · the sign-in builds the receipts book, and the demo route still honours it",
++    /\/auth\/demo\?receipts=1/.test(drive) && /searchParams\.get\("receipts"\) === "1"\) await ensureDemoReceipts/.test(code("src/app/auth/demo/route.ts")));
++  ok("5.5 · ⛔ a declared surface measured nowhere exits 3 (a skipped run), after the failures and the zero check",
++    /if \(skipped\.length\) \{ console\.error\("\\n" \+ skippedLine\); process\.exit\(3\); \}/.test(drive) && /!s\.withheld && !measuredSurfaces\.has\(s\.id\)/.test(drive));
++  ok("5.6 · NOT MEASURED is printed and summarised, never folded into `measured`",
++    /const notMeasure = \(tag, why\) => \{/.test(drive) && /notMeasured\.forEach/.test(drive));
++}
++
++console.log(`\n${pass} passed · ${fails.length} failed`);
++if (fails.length) { console.error("\nFAILED:"); fails.forEach((f) => console.error("  ✗ " + f)); process.exit(1); }

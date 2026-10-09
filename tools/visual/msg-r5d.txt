@@ -1,0 +1,56 @@
+Visual pass round 5 (R5-D): the code review's offline, not-found and route-ghost findings — the loading ghosts and the not-found view out of every payload, a real market never served as "not found", the worker caching only images and fonts
+
+From the three independent code reviews of vodacom-visual (review 1 F1–F5, review 2 G1–G2), each re-verified first.
+
+- F1: the market's generateMetadata called notFound() when its read FAILED. In Next 16.2.4 the MetadataOutlet rethrows
+  beside the page, so a database blip replaced a real market (maybe holding the reader's money) with the 404 and
+  noindex. There is now one rule for the three record pages (market, round, proposal):
+  - a failed read gives the board's title in the reader's language (existing keys; the round and proposal had used an
+    English section title);
+  - a missing record gives the not-found's own metadata;
+  - nothing throws.
+  All 59 generateMetadata are checked and pinned.
+- F2 (the service-worker half; the next.config half is hotfix 9cb95938 on main):
+  - sw.js matched by file suffix before navigations and stored any ok answer, so a signed-in page at /markets/abc.png
+    (and its ?_rsc= data) was kept and served to the next visitor offline.
+  - Navigations are now handled first, only an ok image or font is stored, and the cache name goes v5 → v6.
+- F3: the offline document was never refreshed. A navigation the network answered now refreshes /offline in the
+  background: at most once per wake, only when the copy is missing or a day old, cookieless, and a failure keeps the old
+  copy.
+- F4: leaving a not-found page, the next page rendered one frame with notFoundShown. The mark now carries the path it
+  was drawn for, and the chrome believes it only for that path. Arrival is announced in a layout effect. All 9
+  useSyncExternalStore readers are classified (10 at the merge: main's admin-crumbs, already keyed by the path).
+- F5: under a loading.tsx the server writes the ghost and a NEXT_HTTP_ERROR_FALLBACK;404 template, with no mark
+  (verified on React's production renderer). The five first-paint rules now read that template too.
+- G1: the route-ghost set (27 KB of Flight in every journey document and every refresh) becomes a client chunk
+  (route-ghost-lazy.tsx; words from the client dictionary; the server passes only the payout rails).
+  - Three page drawings moved byte-for-byte into shared modules.
+  - The not-found view became client code too (its words in not-found-words.ts).
+  - A new guard fails if any server module takes a non-component value from a client module.
+  Measured with the reviewer's script:
+  - the root's two elements: 33,287 → 486 B per journey document and refresh;
+  - /markets/[id] (15 s refresh): 187.6 → 34.3 KB/min;
+  - /updown/[roundId] (5 s): 439 → 45.5 KB/min.
+- G2: a server error in the bare journey header and tabs, or in the ghost's server render, fails the document. This is
+  documented at both mounts; nothing in them can throw.
+
+Classic viewers see the same loading box (byte for byte, no ghost reference), the same not-found pages (their payloads
+~5.5 KB smaller), a record page's title in their own language when only the metadata read fails, and the same
+worker. F4 and F5 are journey-only.
+
+For the integrator, outside this helper's area:
+- src/proxy.ts's matcher skips addresses ending in image extensions, so a page there gets no security headers
+  (separate hotfix);
+- the segment loading skeletons still ride every refresh of their pages;
+- journey-flag.tsx raises its flag in a passive effect.
+
+Guards: test:visual-pass-r5d (43 checks); offline-neutral §11/§12 (10 plants); r4j §5 extended; the r4k pins and anchor
+follow the moved words. Mutation proof on the merged tree: 27/27 caught, 16/16 files byte-identical.
+
+On the merged, rebased tip: 41 suites exit 0, among them:
+- r5d 43, offline-neutral and its red, r4j, r4k and its red;
+- journey-tickets, journey-shell and simple-journey-flag, each with its red;
+- measure, ui-consistency, red-anchors, decomment, route-census, client-graph-safe, shell-boundary;
+- static-cache-scope, guards-exist, docs, and every visual-pass suite.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>

@@ -1,0 +1,7 @@
+WIP Vodacom S6 A8i-2: the handover draft applied as drafted (branch only - under review, not for main as is)
+
+Typecheck, test:enter-where-pressed and its red twin (76/76) pass. The control run of the new drive on live main
+(9352de7c, OMEGA-COMPILE01): 15 pass, 8 fail - K1 K2 W2 ESC DD SL UD1 UD2, as the draft predicts (W2 sold a ticket;
+a held Enter on Up & Down's UP placed 13 bets). Review findings are being applied next.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>

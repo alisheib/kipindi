@@ -1,0 +1,36 @@
+Classic parity (R4-F): the footer's balance is the journey's alone, and the classic /positions empty state is named — the compare has nothing unexplained
+
+M8's v2 compare (90cb52ea against main d9b7a5b6's baseline) read 38/39: 4.1 found 224 cells changed, every one of them
+by this pass.
+
+- The footer, in all 224 cells. G2's FooterLink `balance` put one class (text-balance) on the proposals label, and at
+  768/1024 the COMING SOON pill's boxes moved (5 lines, signatures unchanged). The footer is classic CHROME, frozen for
+  S6/S7, so the balance is now the journey's alone.
+  - app-shell.tsx renders the footer in two arms, as the header and the rail do. The else arm is today's element with
+    today's props, so the classic page's RSC data is main's too.
+  - public-footer.tsx takes `journeyShown` (default false), and the link is `balance={journeyShown}`.
+  - Rendered offline, the classic span's class is exactly main's string.
+  - Consequence (owner item 13): classic viewers keep main's greedy break, so the pill again sits alone on its line at
+    768/1024.
+- The classic /positions empty state, in 24 cells. G3 added classes and R3-C (INK_TOP) cropped the drawing to its
+  ink. It is a shared page BODY, fixed for every player, so it is named in EXPECTED_DIFFS, never re-baselined (A3):
+  - `positions-empty-state` covers the three tag pairs, verbatim;
+  - `positions-empty-state-layout-en` and `-layout-sw` cover 13 measured lines × 4 widths, plus each language's link
+    pair. Every other box sits 14px higher and nothing moves sideways.
+  - New harness check 4.2b (missingAlongside, 4.6's twin for the matrix) holds the layout entries to the markup entry.
+  - New synthetic proofs: P.5p (each entry matches only its own change) and P.6p (4.2b reports a missing layout entry).
+- VODACOM-PLAN §0i lists the three entries, as A3 requires.
+
+Replayed offline on the two capture files with the harness's own code:
+- the synthetic control: 57/57;
+- §4 passes everything but the footer fields, which this capture predates;
+- with the footer region set to the baseline's, 9/9;
+- footer markup with the class removed: 224/224 equal to the baseline, byte for byte.
+The browser compare runs in the next lock turn.
+
+Guards: test:simple-journey-flag 10.shell.chrome.footer, 135/135; red:simple-journey-flag 40/40, with 3 new plants:
+the else arm saying journeyShown, the link balanced for everyone, and the default true.
+On the merged tip (rebased on main): journey-shell 435, journey-account 85, ui-consistency, visual-pass-r3c 70,
+red-anchors 4989, decomment 22, hooks-order, source-bytes, design-frozen, stacking 139, and node --check.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>

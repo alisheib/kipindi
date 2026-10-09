@@ -1,0 +1,460 @@
+"use client";
+
+import { useState, useTransition, useMemo, useEffect, useRef, useCallback } from "react";
+import { useToast } from "@/components/ui/toast";
+import { buyPositionAction } from "@/app/markets/actions";
+import { funnelBetFields, sendFunnel } from "@/lib/journey/funnel-beacon";
+import { formatTzs } from "@/lib/utils";
+import { haptics } from "@/lib/haptics";
+// §F8 · how long the success toast stands, from the ONE module that owns dwell times.
+import { DWELL_BET_PLACED_MS } from "@/lib/feedback-timing";
+import { quickStakes, parseStake, insufficientFor } from "./stake-math";
+// UD-4 · the ONE code→copy map, shared by every bet surface. The server string is
+// audit truth; the player reads the dictionary.
+import { udBetErrorCopy, type UdBetFailure } from "./updown-bet-errors";
+// UD-2 · the server-anchored clock, the same one the card's phase runs on.
+import { useServerNowGated } from "@/lib/use-shared-second";
+
+// Re-exported so existing importers of these helpers keep working.
+export { quickStakes, parseStake } from "./stake-math";
+
+export type PlacedSignal = { side: "UP" | "DOWN"; amount: number; nonce: number };
+
+/**
+ * ⭐ THE BET RECEIPT — what the confirmation modal states, captured at the moment the server
+ * confirms the bet.
+ *
+ * ⛔ `placedAt` AND `bonusStakeTzs` COME FROM THE SERVER'S REPLY, never from the browser.
+ * The receipt tells the player whether this bet can still be cancelled, and that answer is
+ * `cashOutValue`'s: runway measured from the server's own placement instant, and refused
+ * outright on any bonus-funded stake. A `Date.now()` here would drift from the instant the
+ * money path recorded, and assuming zero bonus would promise an exit the server refuses.
+ *
+ * ⛔ ONE SLOT, NOT A LIST. Repeat taps are repeat bets (Ali's standing decision), so a burst
+ * REPLACES this rather than queueing — one modal showing the latest bet, never a stack. The
+ * surface keys the modal on `nonce` so each new bet restarts the auto-dismiss instead of
+ * inheriting the first tap's countdown, which on a fast burst would close it almost at once.
+ */
+export type PlacedReceipt = {
+  side: "UP" | "DOWN";
+  amount: number;
+  placedAt: string;
+  bonusStakeTzs: number;
+  nonce: number;
+};
+
+/**
+ * Turns each new placement `nonce` into a short-lived boolean the surface uses to add
+ * the success-pulse class, then clears it so a rapid next tap re-fires cleanly. Motion
+ * itself is removed under `prefers-reduced-motion` in CSS — this only toggles the class.
+ */
+export function usePlacePulse(nonce: number | undefined, ms = 260): boolean {
+  const [on, setOn] = useState(false);
+  useEffect(() => {
+    if (!nonce) return;
+    setOn(true);
+    const id = setTimeout(() => setOn(false), ms);
+    return () => clearTimeout(id);
+  }, [nonce, ms]);
+  return on;
+}
+
+/**
+ * The Up & Down quick-bet — the SINGLE money-adjacent client logic, shared by the
+ * board card and the round-detail bet box so the two can never drift.
+ *
+ * A tap places through the SAME `buyPositionAction` the conviction dial uses (no
+ * parallel money path). It is OPTIMISTIC and keeps the surface in place: we bump a
+ * per-side delta and let the caller's poller reconcile server truth. The delta resets
+ * whenever the server value advances (the effect below), so a reconciled refresh never
+ * double-counts. Each tap gets a fresh idempotency key — deliberate repeat taps are
+ * deliberate repeat bets (the "bet a lot in one tap" ask). A failed tap rolls its
+ * optimistic delta back and shows the server's reason.
+ *
+ * SUCCESS feedback is FOUR channels (E-64, 2026-08-05): a `justPlaced` signal the surface
+ * turns into a 150–250ms pulse, a short mobile haptic, an `aria-live` message for screen
+ * readers, and a 3-second `variant: "success"` toast naming the side and the amount.
+ *
+ * ⛔ THE TOAST WAS ABSENT FOR A REASON THAT DID NOT SURVIVE CONTACT WITH PLAYERS. It was
+ * removed because it piled up on rapid taps, leaving only the three quiet channels — none
+ * of which a sighted player reliably notices. Ali, relaying real users: *"there is not
+ * popup nothing on placing bet on up and down."* Measured by staking a real TZS 500: zero
+ * toasts, zero dialogs, while a FAILED bet toasted `danger` loudly. Loud when nothing
+ * happened, silent when money left the wallet. The pile-up is a DURATION problem and is
+ * fixed with `durationMs: 3000`; it was never a reason to say nothing.
+ * 🔒 `npm run test:updown-bet-feedback` asserts this inside the success branch specifically —
+ * the file has always contained `toast(` on its failure paths, so a file-level check for the
+ * symbol would be green over the exact defect.
+ *
+ * STAKE can be a preset chip OR a custom typed amount. `customMode` swaps the source;
+ * `customValid` gates placement so a bad amount never reaches the server (which also
+ * re-validates the bounds — this is UX, not the security boundary).
+ */
+export function useUpDownQuickBet(opts: {
+  marketId?: string;
+  minStake?: number;
+  maxStake?: number;
+  myUpStake?: number;
+  myDownStake?: number;
+  /**
+   * UD-1 · the viewer's wallet balance, threaded from the server payload. `null` /
+   * `undefined` = unknown (a failed read must never render as zero — B-1), and the
+   * gate simply does not arm; the server stays the security boundary either way.
+   */
+  walletBalance?: number | null;
+  /**
+   * UD-2 · the round's lock instant + the server clock, so a tap after the lock is
+   * refused HERE — no optimistic flash, no network round-trip — on every surface,
+   * covering the final-second race the phase-aware panels cannot (they flip the
+   * presentation; this refuses the money call itself).
+   */
+  selectionClosesAtMs?: number | null;
+  serverNowMs?: number;
+  /** i18n copy — the hook stays language-agnostic. `placed` is the aria-live prefix. */
+  copy: { placed: string; failed: string; up: string; down: string; insufficient?: string };
+  /** UD-4 · the udErr* dictionary slice for `udBetErrorCopy`. */
+  errCopy: Parameters<typeof udBetErrorCopy>[2];
+  /** C2/C3 · the `t.error` dictionary, which carries the reason-driven `fail*` copy.
+   *  Separate from `errCopy` (`t.market`) because the two live in different dictionary
+   *  sections and merging them would put money-refusal copy in the market namespace. */
+  reasonCopy: Record<string, string>;
+}) {
+  const { marketId, myUpStake = 0, myDownStake = 0, copy, errCopy, reasonCopy } = opts;
+  const min = opts.minStake ?? 1_000;
+  const max = opts.maxStake ?? 1_000_000;
+  const stakes = useMemo(() => quickStakes(min, max), [min, max]);
+  const [stakeIdx, setStakeIdx] = useState(0);
+
+  // ── Custom amount ──────────────────────────────────────────────────────────
+  const [customMode, setCustomMode] = useState(false);
+  const [customValue, setCustomValue] = useState("");
+  const customParsed = parseStake(customValue);
+  const customValid = customParsed != null && customParsed >= min && customParsed <= max;
+
+  const presetStake = stakes[Math.min(stakeIdx, stakes.length - 1)] ?? min;
+  const stake = customMode ? (customValid ? customParsed! : 0) : presetStake;
+  /** Placement is allowed only when the chosen amount is usable. */
+  const stakeReady = customMode ? customValid : presetStake > 0;
+
+  // ── UD-7 · the in-flight ledger, keyed by idempotency key ──────────────────
+  //
+  // 🔴 WHAT TWO COUNTERS COULD NOT SAY. With `optUp/optDown` as plain sums, a server
+  // reconcile landing BETWEEN a success and a late failure zeroed both — including the
+  // amount still genuinely in flight — and a late failure then subtracted from a
+  // counter that no longer contained it (clamped, so it silently misstated "You're
+  // in" until the next poll). Per-key entries make every transition exact: place adds
+  // a key, failure deletes ITS key, success marks ITS key settled, and a server
+  // advance removes only the SETTLED keys (their money is now inside `myUpStake`).
+  // The displayed stake is server truth + precisely the taps still unaccounted for.
+  type InFlightEntry = { side: "UP" | "DOWN"; amount: number; settled: boolean };
+  const [inFlight, setInFlight] = useState<ReadonlyMap<string, InFlightEntry>>(new Map());
+  const mutateInFlight = useCallback(
+    (fn: (m: Map<string, InFlightEntry>) => void) =>
+      setInFlight((prev) => { const m = new Map(prev); fn(m); return m; }),
+    [],
+  );
+  const optUp = [...inFlight.values()].reduce((s, e) => s + (e.side === "UP" ? e.amount : 0), 0);
+  const optDown = [...inFlight.values()].reduce((s, e) => s + (e.side === "DOWN" ? e.amount : 0), 0);
+  const [pending, startBet] = useTransition();
+  const { toast } = useToast();
+
+  // ── UD-9 · the per-tap acknowledgement + the queued escalation ─────────────
+  //
+  // The side buttons stay ENABLED while pending — repeat taps are repeat bets (Ali's
+  // standing decision; do not debounce). What was missing is acknowledgement: on a slow
+  // link the only in-flight signal was a helper-line dot. `pendingSide` names the last
+  // tapped side so THAT button can carry a small spinner, and `pendingSlow` trips once
+  // a burst has been in flight beyond ~2.5s (admission can legitimately queue a bet for
+  // seconds) so the helper line can escalate to "still placing — your tap is queued".
+  // ⛔ Driven off a timestamp ref read by one interval cleared on settle — never a
+  // setTimeout that *schedules a message* (the falling edge clears everything).
+  const [pendingSide, setPendingSide] = useState<"UP" | "DOWN" | null>(null);
+  const [pendingSlow, setPendingSlow] = useState(false);
+  const pendingStartRef = useRef<number | null>(null);
+  useEffect(() => {
+    if (!pending) {
+      pendingStartRef.current = null;
+      setPendingSlow(false);
+      setPendingSide(null);
+      return;
+    }
+    pendingStartRef.current ??= Date.now();
+    const id = setInterval(() => {
+      if (pendingStartRef.current != null && Date.now() - pendingStartRef.current > 2_500) {
+        setPendingSlow(true);
+      }
+    }, 500);
+    return () => clearInterval(id);
+  }, [pending]);
+
+  /**
+   * ⭐ E-166 · PUBLISH "A BET IS IN THE AIR" WHERE THE HANDOVER CAN SEE IT.
+   *
+   * ⛔ The auto-advance on `/updown/[roundId]` may not navigate out from under a submission —
+   * a bet placed a heartbeat before the round hands over must land and be reported on the page
+   * that owns it, not vanish mid-flight into a different round. That gate has to read something
+   * REAL, or it is a comment pretending to be a control.
+   *
+   * A `<body>` attribute rather than a context, deliberately: the bet hook and the handover sit
+   * in different subtrees on both surfaces (the card's controls and the page's poller), and a
+   * provider spanning them would exist solely to carry one boolean. `useModalLock` already
+   * establishes the body element as this app's cross-tree signal for "do not move the player".
+   *
+   * ⚠️ REFERENCE-COUNTED. Several cards can be mid-place at once on the board, and a naive
+   * `delete` on the first one to settle would clear the flag while another was still in flight.
+   */
+  useEffect(() => {
+    if (!pending || typeof document === "undefined") return;
+    const body = document.body;
+    const n = Number.parseInt(body.dataset.udBusyCount ?? "0", 10) || 0;
+    body.dataset.udBusyCount = String(n + 1);
+    body.dataset.udBusy = "1";
+    return () => {
+      const left = (Number.parseInt(body.dataset.udBusyCount ?? "1", 10) || 1) - 1;
+      if (left > 0) { body.dataset.udBusyCount = String(left); return; }
+      delete body.dataset.udBusyCount;
+      delete body.dataset.udBusy;
+    };
+  }, [pending]);
+
+  // ── UD-1/UD-2/UD-3 · pre-flight + refusal state ────────────────────────────
+  //
+  // A tap that cannot succeed must never look like a placed bet: these gates refuse
+  // BEFORE the optimistic apply and before any network call. They are UX only —
+  // `buyPosition` re-validates every one of them — exactly like `stake-math`'s bounds.
+  // ⭐ GATED, because this hook is called unconditionally by EVERY UpDownCard on the board.
+  // It reads the clock to derive ONE boolean — has the selection window shut — and an
+  // ungated `useServerNow` returns a new number every second, so every card on the board
+  // re-rendered once a second for a value that changes ONCE per round. That single line was
+  // the last per-second whole-card render left after the ticker consolidation.
+  // The key IS the boolean, so a render is requested only on the flip.
+  const closesAt = opts.selectionClosesAtMs;
+  const serverNow = useServerNowGated(
+    opts.serverNowMs,
+    (nowMs) => (closesAt != null && nowMs >= closesAt ? "shut" : "open"),
+  );
+  /** The lock has passed on the server-anchored clock — betting is over on this round. */
+  const lockPassed =
+    opts.selectionClosesAtMs != null && serverNow != null && serverNow >= opts.selectionClosesAtMs;
+  /** The server refused with SELECTION_CLOSED — it has spoken; don't wait for the poll. */
+  const [lockedByServer, setLockedByServer] = useState(false);
+  /** The chosen stake exceeds the known balance, AFTER the money already committed in
+   *  this burst (the other session's `insufficientFor` — one home, and it subtracts
+   *  in-flight spend, which a bare `stake > balance` misses on a rapid burst). Unknown
+   *  balance (null) never gates — B-1: a failed read never invents "insufficient". */
+  const insufficient = stakeReady && insufficientFor(opts.walletBalance, optUp + optDown, stake);
+  /* The journey funnel (Vodacom plan S3b, §0f) — the "not enough money" state, counted once per surface. */
+  const lowBalanceCounted = useRef(false);
+  useEffect(() => {
+    if (!insufficient || lowBalanceCounted.current) return;
+    lowBalanceCounted.current = true;
+    sendFunnel("low_balance", "updown");
+  }, [insufficient]);
+  /** UD-3 · a compliance/account block the surface must present as an acknowledge-modal. */
+  const [blocked, setBlocked] = useState<Extract<UdBetFailure, { kind: "blocked" }> | null>(null);
+  const clearBlocked = useCallback(() => setBlocked(null), []);
+
+  // Success pulse signal + a screen-reader announcement, alongside the toast and the receipt.
+  const [justPlaced, setJustPlaced] = useState<PlacedSignal | null>(null);
+  /** UD-22 · the confirmation modal's contents. One slot — a burst coalesces (see the type). */
+  const [placedReceipt, setPlacedReceipt] = useState<PlacedReceipt | null>(null);
+  const clearPlacedReceipt = useCallback(() => setPlacedReceipt(null), []);
+  const [liveMessage, setLiveMessage] = useState("");
+  const nonce = useRef(0);
+
+  // Server truth advanced (the surface's poller refreshed) ⇒ drop the SETTLED
+  // entries — the fresh myUp/myDownStake already contains those bets, so keeping them
+  // would double-count. Entries still in flight stay counted (UD-7): their money has
+  // not reached the server value yet, and dropping them was the old counters'
+  // misstatement. Keyed on the raw server values so it fires only when they actually
+  // change — not on every optimistic tap.
+  useEffect(() => {
+    setInFlight((prev) => {
+      if (![...prev.values()].some((e) => e.settled)) return prev;
+      const m = new Map([...prev].filter(([, e]) => !e.settled));
+      return m;
+    });
+  }, [myUpStake, myDownStake]);
+  const shownUp = myUpStake + optUp;
+  const shownDown = myDownStake + optDown;
+
+  // ── UD-5/UD-6 · ONE surface reconciliation per tap BURST, not per tap ──────
+  //
+  // The falling edge of `pending` (the exact `useDeferredToast` idiom): when the last
+  // queued placement settles, dispatch the platform's own refresh event — the same one
+  // the conviction dial and the sell button fire — and the mounted RefreshPoller
+  // re-fetches once. This is what updates the round page's pools/pill (UD-5, which the
+  // action's revalidate list never covered) AND what replaces the board's per-tap
+  // `revalidatePath("/updown")` (UD-6a — removed from the action), so six fast taps
+  // cost one board render instead of six racing the poller.
+  const wasPending = useRef(false);
+  useEffect(() => {
+    if (wasPending.current && !pending) {
+      window.dispatchEvent(new Event("50pick:refresh"));
+    }
+    wasPending.current = pending;
+  }, [pending]);
+
+  const enterCustom = useCallback(() => { setCustomMode(true); }, []);
+  const exitCustom = useCallback(() => { setCustomMode(false); }, []);
+  const pickPreset = useCallback((i: number) => { setCustomMode(false); setStakeIdx(i); }, []);
+
+  const place = (side: "UP" | "DOWN") => {
+    if (!marketId || !stakeReady) return;
+    // ── UD-2 · the lock, refused at the tap ──────────────────────────────────
+    // The surfaces flip their presentation at the lock instant; this is the belt under
+    // that braces — the final-second race where a tap lands as the clock crosses zero.
+    // No optimistic flash, no request: announce for SRs and stop. (The buttons are
+    // normally already disabled/replaced by the time this can fire.)
+    if (lockPassed || lockedByServer) {
+      setLiveMessage(errCopy.udErrSelectionClosed);
+      return;
+    }
+    // ── UD-1 · the balance, consulted before the wallet is asked ─────────────
+    // Insufficient balance is the most common real-money refusal, and it is
+    // PREDICTABLE — round-tripping it made a doomed tap look placed for a beat.
+    // Factual register (a fact about the wallet, not an alarm), aria-live for SRs,
+    // and the surface shows the inline reason + deposit route via `insufficient`.
+    if (insufficient) {
+      const msg = copy.insufficient ?? errCopy.udErrInvalid;
+      setLiveMessage(msg);
+      toast({ title: msg, variant: "factual" });
+      return;
+    }
+    const amount = stake;
+    const key =
+      (globalThis.crypto?.randomUUID?.() as string | undefined) ??
+      `${marketId}-${side}-${amount}-${Date.now()}-${optUp + optDown}`;
+    // Optimistic first — the tap feels instant even before the round-trip returns.
+    // The entry is THIS tap's; only this tap's outcome can remove or settle it (UD-7).
+    mutateInFlight((m) => m.set(key, { side, amount, settled: false }));
+    setPendingSide(side); // UD-9 · the tapped button carries the acknowledgement
+    startBet(async () => {
+      const fd = new FormData();
+      fd.set("marketId", marketId);
+      fd.set("side", side === "UP" ? "YES" : "NO");
+      fd.set("stake", String(amount));
+      fd.set("idempotencyKey", key);
+      funnelBetFields(fd, "quick"); // the server counts the bet with its origin once it lands (S3b)
+      try {
+        const r = await buyPositionAction(fd);
+        // UD-7 · AUTH LOSS IS NOT A FAILED BET. A signed-out session makes the action
+        // `redirect("/auth/login")` — the router is already navigating when we get
+        // here and there is no verdict object at all. The old code fell into the
+        // generic failure branch, so the player saw "Bet not placed" (danger) WHILE
+        // being bounced to sign-in — two contradictory stories about one tap. Clear
+        // the optimistic entry silently and let the navigation speak.
+        if (r == null) {
+          mutateInFlight((m) => { m.delete(key); });
+          return;
+        }
+        if ("ok" in r && r.ok) {
+          // E-64 · FOUR channels, because money left the wallet: a pulse the surface
+          // animates, a screen-reader line, a short haptic, and — since 2026-08-05 — a
+          // visible toast. It used to be the first three only, on the reasoning that a
+          // toast piled up on rapid taps. That reasoning was half right and the omission
+          // was wrong: a FAILED bet toasted loudly two lines below while a SUCCESSFUL one
+          // said nothing a sighted player could see, so the screen read "nothing happened"
+          // at the exact moment TZS left the wallet — and the natural response is to tap
+          // again. The pile-up is solved by the 3s `durationMs`, not by silence.
+          // The tap's money moved — mark ITS entry settled; the next server advance
+          // (which now includes it) removes it (UD-7).
+          mutateInFlight((m) => { const e = m.get(key); if (e) m.set(key, { ...e, settled: true }); });
+          nonce.current += 1;
+          setJustPlaced({ side, amount, nonce: nonce.current });
+          // UD-22 · the FIFTH channel, and the one the house rule always required: every
+          // consequential mutation ends in the shared `OperationResultModal` (CLAUDE.md, "UX
+          // commitments"). Up & Down was the exception — a bet moved real money and produced
+          // a pulse, an SR line, a haptic and a 3s toast, but never the centred receipt that
+          // a deposit, a sale and a withdrawal all get. The toast stays: it is the SECONDARY
+          // signal the same rule names, and it is what a player mid-burst reads.
+          const placed = r.data;
+          if (placed) {
+            setPlacedReceipt({
+              side, amount, nonce: nonce.current,
+              placedAt: placed.placedAt,
+              bonusStakeTzs: placed.bonusStakeTzs,
+            });
+          }
+          // UD-21 · re-announce IDENTICAL consecutive bets. Two same-side same-stake taps
+          // set the same string, and most screen readers do not re-voice unchanged
+          // live-region content — so the second bet was silent for SR users, the E-64 gap
+          // one channel down. A zero-width-space suffix alternating on the nonce changes
+          // the NODE without changing what is spoken. (Chosen over "total so far" copy
+          // because the async closure would need a ref-carried running total; invisible
+          // and stale-proof beats richer-but-derivable.)
+          setLiveMessage(
+            `${copy.placed} · ${side === "UP" ? copy.up : copy.down} · ${formatTzs(amount)}` +
+            "\u200B".repeat(nonce.current % 2),
+          );
+          // ⛔ The toast does NOT replace the line above. A toast is a transient region a
+          // screen reader may never voice; `aria-live` is the announcement, this is the
+          // sighted equivalent. Both, always.
+          toast({
+            title: copy.placed,
+            description: `${side === "UP" ? copy.up : copy.down} · ${formatTzs(amount)}`,
+            variant: "success",
+            // §F8 · the dwell is named, not typed. The value is unchanged (3s — Ali:
+            // "keep placing bets popups normal"); what changed is that it is now filed
+            // beside the dwells it has to be read against instead of sitting here as a
+            // bare number. ⚠️ `feedback-law` rule 9.8 pins this value — it must read the
+            // constant from `feedback-timing.ts` the way rules 9.0–9.4 already do,
+            // rather than grepping this file for the literal.
+            durationMs: DWELL_BET_PLACED_MS,
+          });
+          // Named token from the central vocabulary (respects the master switch,
+          // per-token prefs and reduced-motion) — not a raw navigator.vibrate.
+          haptics.confirm();
+        } else {
+          // This tap's entry, and only this tap's, comes back out (UD-7).
+          mutateInFlight((m) => { m.delete(key); });
+          // UD-3/UD-4 · the refusal, in the player's own language, presented per the §5
+          // matrix: race/transient → STICKY danger toast (a money refusal stays until
+          // read); compliance/account block → the acknowledge-modal the surface hosts.
+          const code = r && "code" in r ? (r as { code?: string }).code : undefined;
+          const serverError = r && "error" in r ? (r as { error?: string }).error : undefined;
+          // C2/C3 · the machine REASON and its figures, when the service emits them. This is
+          // what lets a 999 stake be refused with a sentence NAMING the minimum on THIS
+          // surface — it mapped every INVALID to one generic line and discarded the server
+          // string by design, so docs/RULES.md §2.3 was unmet here (FAILURE-INVENTORY §3.4).
+          const fail = udBetErrorCopy(code, serverError, errCopy, r as never, reasonCopy, formatTzs);
+          if (fail.kind === "blocked") {
+            setBlocked(fail);
+          } else {
+            if (fail.lockNow) setLockedByServer(true);
+            setLiveMessage(fail.description);
+            toast({ title: copy.failed, description: fail.description, variant: "danger", durationMs: 0 });
+          }
+        }
+      } catch {
+        mutateInFlight((m) => { m.delete(key); });
+        // Transport-level failure — no server verdict at all. Sticky, like every
+        // money-path failure: the player must be able to read why nothing happened.
+        toast({ title: copy.failed, description: errCopy.udErrBusy, variant: "danger", durationMs: 0 });
+      }
+    });
+  };
+
+  return {
+    stakes, stakeIdx, setStakeIdx: pickPreset, stake, stakeReady,
+    shownUp, shownDown, pending, place,
+    // custom amount
+    min, max, customMode, customValue, setCustomValue, customValid, enterCustom, exitCustom,
+    // feedback
+    justPlaced, liveMessage,
+    /** UD-22 · the placed-bet receipt for the confirmation modal, or null. */
+    placedReceipt, clearPlacedReceipt,
+    // UD-9 · per-tap acknowledgement + slow-burst escalation
+    /** The last tapped side while a burst is in flight — that button shows a spinner. */
+    pendingSide: pending ? pendingSide : null,
+    /** A burst has been in flight > ~2.5s (admission queue) — escalate the helper line. */
+    pendingSlow: pending && pendingSlow,
+    // pre-flight + refusal state (UD-1/UD-2/UD-3)
+    /** True when the chosen stake exceeds the KNOWN balance — surfaces disable + explain. */
+    insufficient,
+    /** The lock has passed (server-anchored clock) or the server said SELECTION_CLOSED. */
+    locallyLocked: lockPassed || lockedByServer,
+    /** A compliance/account block to present as the acknowledge-modal. */
+    blocked, clearBlocked,
+  };
+}

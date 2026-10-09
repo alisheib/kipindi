@@ -1,0 +1,18 @@
+Journey bell: the count badge clears the dome — 1px higher, and no rose glow on the journey's opaque bar
+
+Round 4's readers (tiles 268 269 276 277 278 at 1024/1280) measured R3-D's badge off the dome but touching it: the
+ring's corner met the dome's top-right shoulder (red x919–938 y8–21 against the dome's x911–921 y22–31 at 1024), and
+the rose lift's 8px glow dyed the shoulder's stroke (x918–921 y21–24; (920,22) = 83,24,69 against the left shoulder's
+145,141,186).
+
+- globals.css, the journey slot only: the pip rises 1px (top −3), opening a 1px gap between its ring and the dome. It
+  cannot move right, because "99+" at the pulse's peak already ends 1px from the avatar. It also drops the lift's
+  rose glow and keeps its dark drop. The glow exists because the classic bar is glass, where a flat drop disappears
+  (the lift's own note), and the journey's bar is an opaque panel (7.frame). Classic pips keep both.
+- test:journey-shell 7.bell pins top −3 and the dark-drop-only box-shadow (no 8px term). New plant "the rose glow comes
+  back to the journey bell's pip"; the !important plant follows the new top.
+
+journey-shell 435; red:journey-shell 181/181 caught, 363 proofs held, the new plant landed; stacking 139,
+css-vars-defined, design-frozen, dead-css. Read on the next tiles.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>

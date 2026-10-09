@@ -1,0 +1,47 @@
+Vodacom S6 A8i-2: a key held down presses once, wherever it is; nothing behind the top dialog takes a key; an uncovered money dialog lands on its way out
+
+Closes, for every player and in both looks, the holes A8i left, each proven on live main (9352de7c) by the drive's
+control run: a second Enter 60 ms after the win seal's SOLD the ticket under it (W2), and so did Enter mashed through two
+queued seals (SQ); Enter held on "Hifadhi nafasi" or Cancel reopened the confirm under the finger (K1, K2); one Escape
+closed the seal and the Sell confirm (ESC); Enter, Enter on the dial placed the bet (DD); a quote lapsing under the seal
+sent focus behind it, where Enter, Enter placed a bet (SL); a held Enter on Up & Down's UP placed 13 bets, and on the
+receipt's "Keep playing" 13 more (UD1, UD2).
+
+- src/components/ui/key-guard.tsx (new): one window capture listener (keydown, keyup), installed by AppShell and by every
+  Modal. It swallows (prevents AND stops) a held repeat that would press something, anywhere; an Enter or Space behind
+  the top dialog; a fresh press in the 400 ms arming beat; and a Space released where it did not go down.
+- src/lib/modal-stack.ts (new, browser-free): the page's open dialogs by zIndex then open order; where a key lands; the
+  beat; and leaveLayer, which decides where focus goes when a dialog closes: never behind the dialog now on top; an
+  uncovered dialog on its way out (safeFocus); whatever takes focus armed; a dialog opened with focus on the page arms
+  nothing; a dialog's way back handed on when the one it lay in closes.
+- Modal: joins the stack in a layout effect; takes focus only while on top, never on a disabled button; answers keys
+  only while on top; one Escape closes one dialog, and an Escape with a dropdown's list open is the list's; the Tab trap
+  pulls focus in both ways; the leaving ghost is inert; its own held-key line is gone (the guard runs first).
+- Money confirms name their way out: the bet confirm's "Ghairi", the Sell confirm's "Hifadhi nafasi", ConfirmModal's
+  Cancel (deposit, withdraw, every officer's money confirm).
+- held-key.ts: Space on the bet dial (a slider) is a press.
+
+The handover draft (ALI-BLADE15, never run) was reviewed here in three lenses and changed by what they confirmed: the
+way out (two queued seals, the second drawn late on a slow phone, left an Enter meant for it on the sell button after
+its beat), the layout effect, one Escape one dialog, Space on the dial, the page never armed, and a suite that RUNS the
+guard and leaveLayer. Its quote-clock reset is dropped (the race was refuted twice).
+
+Guard: test:enter-where-pressed (predeploy) builds key-guard.tsx and leaveLayer from their text and fires keys through
+them; names every money confirm's way out; counts every key event named in src/ (2.8); fails closed on inline handlers,
+namespace imports and parameter names; reads React key props in every file that draws a dialog. red:enter-where-pressed:
+103 plants, 103 caught. The drive qa:enter-where-pressed (ENGINE=webkit|firefox for the other engines): each Sell case
+its own ticket, BLOCKED never a FAIL, bets and sales counted at the network with positive controls.
+
+Proof on OMEGA-COMPILE01: typecheck; test:enter-where-pressed green and its red twin 103/103;
+the structural suites green (stacking 6.1 and red-anchors x2 are main's own); qa:enter-where-pressed on this tree -
+Chromium 24/24, Firefox 23/24, WebKit 23/24, the non-Chromium red being only the dev server's hot-reload chunk, which
+fails the same on live main; on live main (9352de7c) Chromium 15 pass / 9 fail - exactly K1 K2 W2 ESC SQ DD SL UD1 UD2 -
+and Firefox the same nine plus that chunk; the 2026-10-04 12-case drive: S J K W R B F BE E pass (W2 now lands on
+"Hifadhi nafasi" by design; P is A8i's design difference); test:all 433/463 with every red on the 0i baseline list or a
+database suite first run without the local Postgres binaries - those 13 then green (house-bot-designation's known
+scratch flake 161/161 alone).
+
+Served bytes for a classic viewer: no markup, word or class changes (refs and safeFocus are not drawn; inert only on the
+client-only exit ghost); behaviour only.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>

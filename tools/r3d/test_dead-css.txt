@@ -1,0 +1,41 @@
+﻿dead-css: reading F:/kipindi-r3d
+
+DEAD CSS · 6 stylesheet(s) + 1377 source file(s) + 1472 script(s)
+  643 classes authored · 584 rendered · 12 dynamically built · 18 named only by a script · 29 dead
+
+  ok   1.0 the probe actually read the corpus (643 classes, 1377 source files, 1472 scripts)
+  ok   1.1 ⭐ nothing renders these and they are not on the baseline (baseline 47, may only SHRINK)
+  ok   1.2 the baseline holds no stale entries
+  ok   1.3 ⭐ each verdict is still reachable, pinned by example (a corpus that silently empties condemns everything)
+  ok   1.4 ⛔ 12 class(es) are EXCLUDED as dynamically built — named in full below, never silently
+         badge--*         .badge--locked .badge--progress .badge--unlocked
+         tier-*           .tier-bronze .tier-diamond .tier-gold .tier-silver .tier-sovereign
+         tuck-*           .tuck-bottom .tuck-left .tuck-right .tuck-top
+
+  named only by a script — nothing renders them: 18
+      · .cm-dot   src/styles/chat/chat-styles.css:825
+      · .cm-handoff-meta   src/styles/chat/chat-styles.css:726 , src/styles/chat/chat-styles.css:734
+      · .countdown--critical   src/app/state-tokens.css:54 , src/app/state-tokens.css:148
+      · .countdown--urgent   src/app/state-tokens.css:53 , src/app/state-tokens.css:148
+      · .g-swap   src/app/motion.css:548 , src/app/motion.css:549
+      · .g-swap-out   src/app/motion.css:550 , src/app/motion.css:587 , src/app/motion.css:597
+      · .m-ambient   src/app/globals.css:3075 , src/app/motion.css:245 , src/app/motion.css:310
+      · .m-aura   src/app/motion.css:229 , src/app/motion.css:312
+      · .m-draw   src/app/motion.css:242
+      · .m-live-pip   src/app/motion.css:248 , src/app/motion.css:313
+      · .m-needle   src/app/motion.css:230
+      · .m-urgent   src/app/motion.css:249 , src/app/motion.css:313
+      · .mark-breathe   src/app/globals.css:2599 , src/app/globals.css:3075
+      · .mark-flip   src/app/motion.css:558 , src/app/motion.css:587 , src/app/motion.css:597
+      · .mark-pending   src/app/globals.css:3075 , src/app/motion.css:569 , src/app/motion.css:587 , src/app/motion.css:597
+      · .mat-inset   src/app/motion.css:385
+      · .skeleton   src/app/globals.css:2242 , src/app/globals.css:3075
+      · .stagger-item   src/app/globals.css:2810 , src/app/globals.css:3159
+
+  dead, by file:
+       16  src/app/globals.css
+       21  src/app/motion.css
+       15  src/styles/chat/chat-styles.css
+
+DEAD CSS — all checks passed
+

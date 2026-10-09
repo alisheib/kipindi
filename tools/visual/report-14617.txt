@@ -1,0 +1,1 @@
+<result>This agent's report was delivered to you as a message from \"aec9bf239b0234673\" (its SubagentHandback call). Read it there; it is not repeated here.\n</result>\n<usage><subagent_tokens>447046</subagent_tokens><tool_uses>224</tool_uses><duration_ms>2665131</duration_ms></usage>\n</task-notification>"}

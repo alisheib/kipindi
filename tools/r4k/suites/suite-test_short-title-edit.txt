@@ -1,0 +1,250 @@
+§1–§11, §13 · the in-memory twin and the wiring
+PASS 1.hard.too_long.en.refused · refused, naming shortTitleEn, in the rule's own sentence
+PASS 1.hard.too_long.en.unchanged · …and nothing moved: the four values, no store write, no row write
+PASS 1.hard.too_long.en.unaudited · …and no audit row claims an edit that did not happen (nor a sentinel check of one)
+PASS 1.hard.too_long.sw.refused · refused, naming shortTitleSw, in the rule's own sentence
+PASS 1.hard.too_long.sw.unchanged · …and nothing moved: the four values, no store write, no row write
+PASS 1.hard.too_long.sw.unaudited · …and no audit row claims an edit that did not happen (nor a sentinel check of one)
+PASS 1.hard.too_long.zh.refused · refused, naming shortTitleZh, in the rule's own sentence
+PASS 1.hard.too_long.zh.unchanged · …and nothing moved: the four values, no store write, no row write
+PASS 1.hard.too_long.zh.unaudited · …and no audit row claims an edit that did not happen (nor a sentinel check of one)
+PASS 1.hard.not_gsm7.en.refused · refused, naming shortTitleEn, in the rule's own sentence
+PASS 1.hard.not_gsm7.en.unchanged · …and nothing moved: the four values, no store write, no row write
+PASS 1.hard.not_gsm7.en.unaudited · …and no audit row claims an edit that did not happen (nor a sentinel check of one)
+PASS 1.hard.not_gsm7.sw.refused · refused, naming shortTitleSw, in the rule's own sentence
+PASS 1.hard.not_gsm7.sw.unchanged · …and nothing moved: the four values, no store write, no row write
+PASS 1.hard.not_gsm7.sw.unaudited · …and no audit row claims an edit that did not happen (nor a sentinel check of one)
+PASS 1.hard.form.en.refused · refused, naming shortTitleEn, in the rule's own sentence
+PASS 1.hard.form.en.unchanged · …and nothing moved: the four values, no store write, no row write
+PASS 1.hard.form.en.unaudited · …and no audit row claims an edit that did not happen (nor a sentinel check of one)
+PASS 1.hard.form.sw.refused · refused, naming shortTitleSw, in the rule's own sentence
+PASS 1.hard.form.sw.unchanged · …and nothing moved: the four values, no store write, no row write
+PASS 1.hard.form.sw.unaudited · …and no audit row claims an edit that did not happen (nor a sentinel check of one)
+PASS 1.hard.form.zh.refused · refused, naming shortTitleZh, in the rule's own sentence
+PASS 1.hard.form.zh.unchanged · …and nothing moved: the four values, no store write, no row write
+PASS 1.hard.form.zh.unaudited · …and no audit row claims an edit that did not happen (nor a sentinel check of one)
+PASS 1.hard.copied_english.sw.refused · refused, naming shortTitleSw, in the rule's own sentence
+PASS 1.hard.copied_english.sw.unchanged · …and nothing moved: the four values, no store write, no row write
+PASS 1.hard.copied_english.sw.unaudited · …and no audit row claims an edit that did not happen (nor a sentinel check of one)
+PASS 1.hard.copied_english.zh.refused · refused, naming shortTitleZh, in the rule's own sentence
+PASS 1.hard.copied_english.zh.unchanged · …and nothing moved: the four values, no store write, no row write
+PASS 1.hard.copied_english.zh.unaudited · …and no audit row claims an edit that did not happen (nor a sentinel check of one)
+[audit] ADMIN market.short_title_edited usr_ste_officer Market#mkt_ste_ste_warn
+[audit] ADMIN market.short_title_checked usr_ste_officer Market#mkt_ste_ste_warn
+PASS 2.warn · a number the full question does not contain is a WARNING: it saves, and is handed back to the officer
+[audit] ADMIN market.short_title_edited usr_ste_officer Market#mkt_ste_ste_keep
+[audit] ADMIN market.short_title_checked usr_ste_officer Market#mkt_ste_ste_keep
+PASS 3.keep · a field the act does not carry is KEPT — only the Swahili moved
+[audit] ADMIN market.short_title_edited usr_ste_officer Market#mkt_ste_ste_keep
+PASS 3.clear.empty · a field sent EMPTY is cleared (null — the card shows the full question)
+[audit] ADMIN market.short_title_edited usr_ste_officer Market#mkt_ste_ste_keep
+PASS 3.clear.null · null clears too
+PASS 4.comp.unknown · a competition this build does not know is REFUSED by name — never coerced, never stored
+[audit] ADMIN market.short_title_edited usr_ste_officer Market#mkt_ste_ste_c0
+PASS 4.comp.trim · a known key is stored, trimmed
+[audit] ADMIN market.short_title_edited usr_ste_officer Market#mkt_ste_ste_c0
+PASS 4.comp.clear · an empty competition clears it
+PASS 5.updown · an Up & Down round is refused and untouched — rounds are not cards and are out of S2
+PASS 6.unknown.market · a market that does not exist is refused, and not created
+PASS 6.no.officer · an act with no officer is refused and changes nothing
+PASS 7.noop · the same values (or none) are `changed: false`, with no write and NO audit row
+[audit] ADMIN market.short_title_edited usr_ste_officer Market#mkt_ste_ste_aud
+[audit] ADMIN market.short_title_checked usr_ste_officer Market#mkt_ste_ste_aud
+PASS 8.audit.edit · an edit leaves ONE ADMIN row `market.short_title_edited` — the officer, the market, before and after
+[audit] ADMIN market.short_title_approved usr_ste_officer Market#mkt_ste_ste_bf
+[audit] ADMIN market.short_title_checked usr_ste_officer Market#mkt_ste_ste_bf
+PASS 8.audit.backfill · an approved draft is recorded as `market.short_title_approved`, carrying the draft it came from
+[audit] ADMIN market.short_title_edited usr_ste_officer Market#mkt_ste_ste_fold
+[audit] ADMIN market.short_title_checked usr_ste_officer Market#mkt_ste_ste_fold
+PASS 9.fold · curly quotes pasted from a document are stored as their GSM-7 twins
+[audit] ADMIN market.short_title_edited usr_ste_officer Market#mkt_ste_ste_money
+[audit] ADMIN market.short_title_checked usr_ste_officer Market#mkt_ste_ste_money
+PASS 10.money.untouched · the full wording, the source, the status, the pools and the stake count are exactly as they were
+[audit] ADMIN market.short_title_edited usr_ste_officer Market#mkt_ste_ste_narrow
+[audit] ADMIN market.short_title_checked usr_ste_officer Market#mkt_ste_ste_narrow
+PASS 11.write.narrow · a change is ONE `setShortTitles` — never the full-row `set`, never `stamp`, never a pool call
+[audit] ADMIN market.short_title_edited usr_ste_officer Market#mkt_ste_ste_raw
+[audit] ADMIN market.short_title_checked usr_ste_officer Market#mkt_ste_ste_raw
+PASS 14.competition.raw · a stored competition this build does not know survives a round trip untouched — read raw, kept by an edit of another field — and displays as none
+PASS 14.competition.resend · sending the stored key back is not a new value: no refusal, no change
+[audit] ADMIN market.short_title_edited usr_ste_officer Market#mkt_ste_ste_raw
+PASS 14.competition.replace · …and a known key replaces it
+[audit] ADMIN market.short_title_approved usr_ste_officer Market#mkt_ste_ste_oie
+[audit] ADMIN market.short_title_checked usr_ste_officer Market#mkt_ste_ste_oie
+PASS 15.onlyIfEmpty.skipped · a field named in onlyIfEmpty that the market already has is NOT written, and is reported in `skipped`
+PASS 15.onlyIfEmpty.written · …while the fields it names that are still empty are written
+PASS 15.onlyIfEmpty.audit · …and the act's audit row says what was skipped
+PASS 15.onlyIfEmpty.none-left · when every field sent is skipped the act is a no-op: changed false, both listed, no write, no new row
+PASS 15.expectedBefore.refused · a field changed since the officer's page loaded is refused, NAMING it — nothing moves, no row
+PASS 15.expectedBefore.competition · …the competition too, even when the act does not write it
+[audit] ADMIN market.short_title_edited usr_ste_officer Market#mkt_ste_ste_exp
+[audit] ADMIN market.short_title_checked usr_ste_officer Market#mkt_ste_ste_exp
+PASS 15.expectedBefore.match · when the page's values are still the market's, the act lands
+[audit] ADMIN market.short_title_edited usr_ste_officer Market#mkt_ste_ste_exp2
+[audit] ADMIN market.short_title_checked usr_ste_officer Market#mkt_ste_ste_exp2
+PASS 15.expectedBefore.empty · a page that showed an empty field ("") matches a market that has none
+[audit] ADMIN market.short_title_approved usr_ste_officer Market#mkt_ste_ste_extra
+[audit] ADMIN market.short_title_checked usr_ste_officer Market#mkt_ste_ste_extra
+PASS 15.auditExtra.merged · auditExtra is merged into the act's audit row (the draft's sentinel agreement, editedByOfficer)
+PASS 15.auditExtra.cannot-overwrite · …and can never overwrite what the act itself records (before and after)
+[audit] ADMIN market.short_title_edited usr_ste_officer Market#mkt_ste_ste_legacy
+[audit] ADMIN market.short_title_checked usr_ste_officer Market#mkt_ste_ste_legacy
+PASS 15.untouched.verbatim · a stored value a rule would now refuse neither blocks an edit to another field nor is rewritten by it
+PASS 15.untouched.caused · …but a problem THIS act gives an untouched field is refused, naming it (the English made equal to the Swahili)
+[audit] ADMIN market.short_title_edited usr_ste_officer Market#mkt_ste_ste_sen
+[audit] ADMIN market.short_title_checked usr_ste_officer Market#mkt_ste_ste_sen
+PASS 16.sentinel.changed · after an edit lands, the sentinel reads exactly the languages it changed — their NEW words — once
+PASS 16.sentinel.outside-lock · …from OUTSIDE the market lock
+PASS 16.sentinel.after-record · …and only once the act's own audit row is on file
+PASS 16.sentinel.result · …and the act hands its verdict back: checked, per language
+PASS 16.sentinel.row · …and records it: ONE ADMIN `market.short_title_checked` row — the officer, via, the languages, the words, each verdict
+[audit] ADMIN market.short_title_edited usr_ste_officer Market#mkt_ste_ste_sen
+PASS 16.sentinel.none · sentinelLocales "none": the act lands and the sentinel is not asked — agreement null, no new row
+[audit] ADMIN market.short_title_edited usr_ste_officer Market#mkt_ste_ste_sen
+[audit] ADMIN market.short_title_checked usr_ste_officer Market#mkt_ste_ste_sen
+PASS 16.sentinel.list · a list names the languages read — their CURRENT words — whatever the act changed
+[audit] ADMIN market.short_title_edited usr_ste_officer Market#mkt_ste_ste_sen
+PASS 16.sentinel.quiet · nothing new to read, nothing asked: a competition-only change, a no-op and a refusal never call the sentinel
+[audit] ADMIN market.short_title_edited usr_ste_officer Market#mkt_ste_ste_sendis
+[audit] ADMIN market.short_title_checked usr_ste_officer Market#mkt_ste_ste_sendis
+PASS 16.sentinel.disagree · a disagreement comes back as one, with the sentinel's reason — the write still stands
+[audit] ADMIN market.short_title_edited usr_ste_officer Market#mkt_ste_ste_senfail
+[audit] ADMIN market.short_title_checked usr_ste_officer Market#mkt_ste_ste_senfail
+[audit] ADMIN market.short_title_edited usr_ste_officer Market#mkt_ste_ste_senfail
+[audit] ADMIN market.short_title_checked usr_ste_officer Market#mkt_ste_ste_senfail
+[audit] ADMIN market.short_title_edited usr_ste_officer Market#mkt_ste_ste_senfail
+[audit] ADMIN market.short_title_checked usr_ste_officer Market#mkt_ste_ste_senfail
+[audit] ADMIN market.short_title_edited usr_ste_officer Market#mkt_ste_ste_senfail
+[audit] ADMIN market.short_title_checked usr_ste_officer Market#mkt_ste_ste_senfail
+PASS 16.sentinel.garbage · an answer that is not an answer at all is "unchecked" — never "agrees"
+PASS 16.sentinel.throws · a sentinel that throws never fails the act: it LANDED, and the verdict is "unchecked" with the reason — never "agrees"
+PASS 16.sentinel.partial · an answer that leaves out a language asked about is "unchecked" as a WHOLE — never a partial "agrees"
+PASS 16.sentinel.unchecked · "not checked" stays not checked, with its reason — and all four failures are on the record as unchecked, per language
+[audit] ADMIN market.short_title_checked usr_ste_officer Market#mkt_ste_ste_create
+PASS 16.record.create · recordShortTitleAgreement reads the market fresh, asks only about the languages that HAVE a short title, and records via "create"
+PASS 16.record.nothing · nothing to read is null and no row: a language with no short title, a market that does not exist, no language named, an Up & Down round
+[audit] ADMIN market.short_title_checked usr_ste_officer Market#mkt_ste_ste_create
+PASS 16.record.never-throws · a store that throws never escapes: the record is "unchecked" with the reason, and the row says so
+PASS 17.onlyIfEmpty.in-lock · a short title an officer sets while an approval WAITS for the lock is never overwritten — judged on the fresh read inside it
+PASS 17.recategorise.lock · a re-file that waits on the market lock never puts back a short title applied meanwhile — and still lands (MS-1)
+[audit] ADMIN market.recategorised usr_ste_officer Market#mkt_ste_ste_recat
+PASS 18.sentence.too_long · "it has N" counts the value the rule judged (trimmed, zero-width dropped, folded) — not the raw text
+PASS 18.sentence.not_gsm7 · the characters listed are only those that SURVIVED the fold — never a curly quote a text message carries as a straight one
+PASS 18.lines.checked · a checked record reads "agrees" / "does not agree: <issue>", only for the languages it holds
+PASS 18.lines.unchecked · "not checked", with the reason beside it (for the surface to say ONCE), for every language asked; nothing checked is no line at all — never "agrees"
+PASS 18.lines.changed · the languages read by default are those given a NEW, present short title — a cleared or untouched one is not
+PASS 18.seam.production · the sentinel's test seam refuses to run in production
+PASS 13.action.gate · setMarketShortTitlesAction: session → sign-in redirect → requireAdminOrThrow → applyShortTitles, in that order
+PASS 13.action.via · …as the officer in the session, via "edit"
+PASS 13.action.place · it sits AFTER adminReopenMarketAction, outside the block test:recategorise reads as recategorise's own
+PASS 13.action.absent · a field ABSENT from the form is undefined (keep), never "" (clear)
+PASS 13.action.revalidate · the four pages refresh only when something changed, and /results is not one of them
+PASS 13.action.warnings · warnings go back to the officer PER LANGUAGE (shown under the field they name), in the service's own sentences
+PASS 13.action.expected · the action reads what the page showed (`expected.<field>`, for every field) and hands it to applyShortTitles as expectedBefore
+PASS 13.action.sentinel · the sentinel is left ON for the edit (the service's "changed"), and its verdict goes back in the service's words for the languages it read
+PASS 13.create.rule · createMarketAction runs the shared rule and REFUSES a hard issue in the service's words, with its field, before anything is created
+PASS 13.create.pass · …and hands the normalised values and a checked competition to createMarket
+PASS 13.create.sentinel · once the market EXISTS, createMarketAction asks the sentinel about every short title it STORED, via "create" — never awaited, so a slow check never holds the publish
+PASS 13.wizard.rule · the wizard runs the SAME imported rule, and a hard issue blocks Continue
+PASS 13.wizard.sends · …and sends the three short titles and the competition
+PASS 13.control.gate · the control consults the act gate, disables Save for a read-only role, and guards its exits
+PASS 13.control.budget · the counters read SHORT_TITLE_MAX and codePoints — no budget typed by hand
+PASS 13.control.warning · the rule is there, in the ONE shared wording, ABOVE the inputs — and it says the short title must say exactly the same thing
+PASS 13.control.sends-moved · only the fields the officer changed are sent (absent = keep on the server)
+PASS 13.control.expected · …and each one carries what the page showed, so another officer's change is refused, not overwritten
+PASS 13.control.sentinel · the sentinel's verdict is shown beside each language it read, in the three inks, and typing clears it
+PASS 13.control.focus · a refused field takes the focus once the save has SETTLED (an effect on [focusField, pending]) — never inside the transition, where every input is disabled
+PASS 13.control.unknown-competition · a stored competition this build does not know is SHOWN as such, not as a blank select
+PASS 13.page.updown · the page renders the control for a long-form market only, never an Up & Down round
+PASS 13.gate.pin · test:admin-action-gate pins the action as admin-gated
+PASS 13.service.sentinel-after · in applyShortTitles the sentinel is called after the lock's block closes and after the act's audit row — never inside the lock
+PASS 13.service.seam · the sentinel's test seam refuses to run in production
+
+§1–§12 · database mode — its own process
+PASS db.1.hard.too_long.en.refused · refused, naming shortTitleEn, in the rule's own sentence
+PASS db.1.hard.too_long.en.unchanged · …and nothing moved: the four values, no store write, no row write
+PASS db.1.hard.too_long.en.unaudited · …and no audit row claims an edit that did not happen (nor a sentinel check of one)
+PASS db.1.hard.too_long.sw.refused · refused, naming shortTitleSw, in the rule's own sentence
+PASS db.1.hard.too_long.sw.unchanged · …and nothing moved: the four values, no store write, no row write
+PASS db.1.hard.too_long.sw.unaudited · …and no audit row claims an edit that did not happen (nor a sentinel check of one)
+PASS db.1.hard.too_long.zh.refused · refused, naming shortTitleZh, in the rule's own sentence
+PASS db.1.hard.too_long.zh.unchanged · …and nothing moved: the four values, no store write, no row write
+PASS db.1.hard.too_long.zh.unaudited · …and no audit row claims an edit that did not happen (nor a sentinel check of one)
+PASS db.1.hard.not_gsm7.en.refused · refused, naming shortTitleEn, in the rule's own sentence
+PASS db.1.hard.not_gsm7.en.unchanged · …and nothing moved: the four values, no store write, no row write
+PASS db.1.hard.not_gsm7.en.unaudited · …and no audit row claims an edit that did not happen (nor a sentinel check of one)
+PASS db.1.hard.not_gsm7.sw.refused · refused, naming shortTitleSw, in the rule's own sentence
+PASS db.1.hard.not_gsm7.sw.unchanged · …and nothing moved: the four values, no store write, no row write
+PASS db.1.hard.not_gsm7.sw.unaudited · …and no audit row claims an edit that did not happen (nor a sentinel check of one)
+PASS db.1.hard.form.en.refused · refused, naming shortTitleEn, in the rule's own sentence
+PASS db.1.hard.form.en.unchanged · …and nothing moved: the four values, no store write, no row write
+PASS db.1.hard.form.en.unaudited · …and no audit row claims an edit that did not happen (nor a sentinel check of one)
+PASS db.1.hard.form.sw.refused · refused, naming shortTitleSw, in the rule's own sentence
+PASS db.1.hard.form.sw.unchanged · …and nothing moved: the four values, no store write, no row write
+PASS db.1.hard.form.sw.unaudited · …and no audit row claims an edit that did not happen (nor a sentinel check of one)
+PASS db.1.hard.form.zh.refused · refused, naming shortTitleZh, in the rule's own sentence
+PASS db.1.hard.form.zh.unchanged · …and nothing moved: the four values, no store write, no row write
+PASS db.1.hard.form.zh.unaudited · …and no audit row claims an edit that did not happen (nor a sentinel check of one)
+PASS db.1.hard.copied_english.sw.refused · refused, naming shortTitleSw, in the rule's own sentence
+PASS db.1.hard.copied_english.sw.unchanged · …and nothing moved: the four values, no store write, no row write
+PASS db.1.hard.copied_english.sw.unaudited · …and no audit row claims an edit that did not happen (nor a sentinel check of one)
+PASS db.1.hard.copied_english.zh.refused · refused, naming shortTitleZh, in the rule's own sentence
+PASS db.1.hard.copied_english.zh.unchanged · …and nothing moved: the four values, no store write, no row write
+PASS db.1.hard.copied_english.zh.unaudited · …and no audit row claims an edit that did not happen (nor a sentinel check of one)
+PASS db.2.warn · a number the full question does not contain is a WARNING: it saves, and is handed back to the officer
+PASS db.3.keep · a field the act does not carry is KEPT — only the Swahili moved
+PASS db.3.clear.empty · a field sent EMPTY is cleared (null — the card shows the full question)
+PASS db.3.clear.null · null clears too
+PASS db.4.comp.unknown · a competition this build does not know is REFUSED by name — never coerced, never stored
+PASS db.4.comp.trim · a known key is stored, trimmed
+PASS db.4.comp.clear · an empty competition clears it
+PASS db.5.updown · an Up & Down round is refused and untouched — rounds are not cards and are out of S2
+PASS db.6.unknown.market · a market that does not exist is refused, and not created
+PASS db.6.no.officer · an act with no officer is refused and changes nothing
+PASS db.7.noop · the same values (or none) are `changed: false`, with no write and NO audit row
+PASS db.8.audit.edit · an edit leaves ONE ADMIN row `market.short_title_edited` — the officer, the market, before and after
+PASS db.8.audit.backfill · an approved draft is recorded as `market.short_title_approved`, carrying the draft it came from
+PASS db.9.fold · curly quotes pasted from a document are stored as their GSM-7 twins
+PASS db.10.money.untouched · the full wording, the source, the status, the pools and the stake count are exactly as they were
+PASS db.11.write.narrow · a change is ONE `setShortTitles` — never the full-row `set`, never `stamp`, never a pool call
+PASS db.14.competition.raw · a stored competition this build does not know survives a round trip untouched — read raw, kept by an edit of another field — and displays as none
+PASS db.14.competition.resend · sending the stored key back is not a new value: no refusal, no change
+PASS db.14.competition.replace · …and a known key replaces it
+PASS db.15.onlyIfEmpty.skipped · a field named in onlyIfEmpty that the market already has is NOT written, and is reported in `skipped`
+PASS db.15.onlyIfEmpty.written · …while the fields it names that are still empty are written
+PASS db.15.onlyIfEmpty.audit · …and the act's audit row says what was skipped
+PASS db.15.onlyIfEmpty.none-left · when every field sent is skipped the act is a no-op: changed false, both listed, no write, no new row
+PASS db.15.expectedBefore.refused · a field changed since the officer's page loaded is refused, NAMING it — nothing moves, no row
+PASS db.15.expectedBefore.competition · …the competition too, even when the act does not write it
+PASS db.15.expectedBefore.match · when the page's values are still the market's, the act lands
+PASS db.15.expectedBefore.empty · a page that showed an empty field ("") matches a market that has none
+PASS db.15.auditExtra.merged · auditExtra is merged into the act's audit row (the draft's sentinel agreement, editedByOfficer)
+PASS db.15.auditExtra.cannot-overwrite · …and can never overwrite what the act itself records (before and after)
+PASS db.15.untouched.verbatim · a stored value a rule would now refuse neither blocks an edit to another field nor is rewritten by it
+PASS db.15.untouched.caused · …but a problem THIS act gives an untouched field is refused, naming it (the English made equal to the Swahili)
+PASS db.16.sentinel.changed · after an edit lands, the sentinel reads exactly the languages it changed — their NEW words — once
+PASS db.16.sentinel.outside-lock · …from OUTSIDE the market lock
+PASS db.16.sentinel.after-record · …and only once the act's own audit row is on file
+PASS db.16.sentinel.result · …and the act hands its verdict back: checked, per language
+PASS db.16.sentinel.row · …and records it: ONE ADMIN `market.short_title_checked` row — the officer, via, the languages, the words, each verdict
+PASS db.16.sentinel.none · sentinelLocales "none": the act lands and the sentinel is not asked — agreement null, no new row
+PASS db.16.sentinel.list · a list names the languages read — their CURRENT words — whatever the act changed
+PASS db.16.sentinel.quiet · nothing new to read, nothing asked: a competition-only change, a no-op and a refusal never call the sentinel
+PASS db.16.sentinel.disagree · a disagreement comes back as one, with the sentinel's reason — the write still stands
+PASS db.16.sentinel.garbage · an answer that is not an answer at all is "unchecked" — never "agrees"
+PASS db.16.sentinel.throws · a sentinel that throws never fails the act: it LANDED, and the verdict is "unchecked" with the reason — never "agrees"
+PASS db.16.sentinel.partial · an answer that leaves out a language asked about is "unchecked" as a WHOLE — never a partial "agrees"
+PASS db.16.sentinel.unchecked · "not checked" stays not checked, with its reason — and all four failures are on the record as unchecked, per language
+PASS db.16.record.create · recordShortTitleAgreement reads the market fresh, asks only about the languages that HAVE a short title, and records via "create"
+PASS db.16.record.nothing · nothing to read is null and no row: a language with no short title, a market that does not exist, no language named, an Up & Down round
+PASS db.16.record.never-throws · a store that throws never escapes: the record is "unchecked" with the reason, and the row says so
+PASS db.12.write.one-update · ONE predictionMarket.update, of exactly the four columns and updatedAt — never an upsert, never a pool column
+PASS db.12.write.in-lock · the read and the write run on the LOCK's transaction, after the lock is taken
+PASS db.12.write.none · a refusal and a no-op write nothing to the table
+PASS db.12.audit.table · the audit row is in the TABLE (not only this process's ring), with before and after
+PASS db.12.audit.unrecorded · an audit insert that fails leaves the act LANDED and says so: ok, changed, recorded false
+PASS db.12.recategorise.in-lock · recategoriseMarket reads and writes on the market LOCK's transaction, after the lock is taken (MS-1)
+PASS db.ran · the database-mode process ran its checks and exited clean
+
+short-title-edit: 194 passed, 0 failed
+

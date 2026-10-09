@@ -1,0 +1,1045 @@
+diff --git a/package.json b/package.json
+index bd92616b7..d4807dc5f 100644
+--- a/package.json
++++ b/package.json
+@@ -990,6 +990,7 @@
+     "ops:updown-bell-live-check": "tsx scripts/ops-updown-bell-live-check.mts",
+     "ops:preflight-notification-idx": "tsx scripts/ops-preflight-notification-idx.mts",
+     "test:notifications-page": "tsx scripts/notifications-page.test.mts",
++    "test:visual-pass-r4c": "tsx scripts/visual-pass-r4c.test.mts",
+     "red:notifications-page": "node scripts/notifications-page-red.mjs",
+     "red:measure": "node scripts/measure-red.mjs",
+     "red:decomment": "node scripts/decomment-red.mjs",
+diff --git a/scripts/anchors/bar-geometry.anchors.mjs b/scripts/anchors/bar-geometry.anchors.mjs
+index a2967a83d..467679106 100644
+--- a/scripts/anchors/bar-geometry.anchors.mjs
++++ b/scripts/anchors/bar-geometry.anchors.mjs
+@@ -232,8 +232,10 @@ export const MUTATIONS = [
+      */
+     name: "search-band-shares-the-bar-offset",
+     file: "src/app/proposals/page.tsx",
+-    from: '          <div className="py-2.5">',
+-    to: '          <div className="sticky top-[56px] z-20 py-2.5">',
++    // ⚠️ RE-ANCHORED 2026-10-09 (round 4 of the visual pass): the band is `QUERY_SEARCH_BAND_CLASS` now (10px over the box
++    // and its echo row inside the gap to the bar, query-bar.tsx). The defect is unchanged — the band stuck at the bar's offset.
++    from: '          <div className={QUERY_SEARCH_BAND_CLASS}>',
++    to: '          <div className={`sticky top-[56px] z-20 ${QUERY_SEARCH_BAND_CLASS}`}>',
+     expect: "ANOTHER STICKY SURFACE IS DRAWN THROUGH THE BAR",
+     route: "/proposals",
+   },
+diff --git a/scripts/journey-tickets.test.mts b/scripts/journey-tickets.test.mts
+index 54e49f3c4..6b066dd33 100644
+--- a/scripts/journey-tickets.test.mts
++++ b/scripts/journey-tickets.test.mts
+@@ -571,7 +571,8 @@ const CLASSIC_GHOST = [
+   `<PageHeader eyebrow={t.common.positions} title={t.positions.headline} subtitle={t.positions.headlineBody} />`,
+   `<div className="glass-panel px-5 pt-4 pb-[18px] kp-shimmer-track" aria-hidden>`,
+   `<div className="rounded-lg border border-border bg-bg-elevated/60 p-3 kp-shimmer-track" aria-hidden>`,
+-  `<div className="h-[44px] w-full rounded-lg border border-border-control bg-bg-inset kp-shimmer-track" aria-hidden />`,
++  // The search: the page's own band since round 4 of the visual pass (2026-10-09; it was a bare 44px box).
++  `<div className={QUERY_SEARCH_BAND_CLASS} aria-hidden>`,
+   "<div className={QUERY_BAR_ROW2_CLASS}>",
+   "{Array.from({ length: 6 }).map((_, i) => (",
+ ];
+diff --git a/scripts/qa-journey-shell.mjs b/scripts/qa-journey-shell.mjs
+index ce7ad58ba..065f19dcc 100644
+--- a/scripts/qa-journey-shell.mjs
++++ b/scripts/qa-journey-shell.mjs
+@@ -878,6 +878,21 @@ const NEEDLE_RESTING = () => {
+ /** The rest check waits 180–900 ms, a glide settles in under 1.5 s, and one more check may follow it: 6 s is a chain. */
+ const NEEDLE_REST_MS = 6_000;
+ 
++/**
++ * ⭐ ROUND 4 (2026-10-09) · A CHART IS SHOT AFTER ITS CANVAS HAS ARRIVED, never during its fade. R4-D measured Up & Down's
++ * tile 164 shot ~26% into the terminal chart's 520 ms arrival (`opacity var(--dur-arrive)` on the canvas's container,
++ * terminal-chart.tsx), so every ink on it read at a quarter of tile 202's. That container is the `role="img"` box's child
++ * whose inline style carries the `--dur-arrive` transition; it states 1 once a feed is drawn (0 while it loads), so the
++ * picture has arrived when its COMPUTED opacity is 1. ⛔ A wait, never a style override and never reduced motion: the
++ * tile shows the page's own motion, finished. A canvas that has not arrived after CHART_ARRIVE_MS (a feed that is empty,
++ * failed or slow — the chart's own state, judged elsewhere) is SAID, never failed, as `unreadLanded` does.
++ */
++const CHART_CANVAS = '[role="img"] > [style*="--dur-arrive"]';
++const CHART_ARRIVED = (sel) => [...document.querySelectorAll(sel)].every((el) => getComputedStyle(el).opacity === '1');
++const CHART_OPACITIES = (sel) => [...document.querySelectorAll(sel)].map((el) => getComputedStyle(el).opacity).join(', ');
++/** The fade is 520 ms; 5 s lets a feed's first read land as well. */
++const CHART_ARRIVE_MS = 5_000;
++
+ /** Two frames and a beat: a resize’s layout, and what mounts on it, have landed. */
+ async function settle(page, ms = 300) {
+   await page.evaluate(() => new Promise((done) => requestAnimationFrame(() => requestAnimationFrame(() => done(true)))));
+@@ -1256,6 +1271,9 @@ async function shoot(page, cell, spec, { dialog = false, dialogProblem = null }
+   // Needle that has not come to rest by NEEDLE_REST_MS is a finding of its own — a rest that never comes is a chain.
+   const rested = await page.waitForFunction(NEEDLE_RESTING, null, { timeout: NEEDLE_REST_MS, polling: 100 }).then(() => true, () => false);
+   if (!rested) problems.push(`the Needle had not come to rest ${NEEDLE_REST_MS / 1000} s after the page settled`);
++  // Round 4: an Up & Down chart's canvas at its full ink, its 520 ms arrival over (CHART_ARRIVED, above). Said, not failed.
++  const arrived = await page.waitForFunction(CHART_ARRIVED, CHART_CANVAS, { timeout: CHART_ARRIVE_MS, polling: 50 }).then(() => true, () => false);
++  if (!arrived) say(`  · ${file}: a chart's canvas had not arrived ${CHART_ARRIVE_MS / 1000} s after the page settled (computed opacity ${await page.evaluate(CHART_OPACITIES, CHART_CANVAS)})`);
+   try {
+     await page.screenshot({ path: join(OUT, file), fullPage: false, caret: 'initial', timeout: 30_000 });
+     count.tiles += 1;
+@@ -1447,6 +1465,9 @@ async function ticketState(v, viewer, st) {
+     for (const width of widths) {
+       await resize(page, width);
+       await toTop(page);
++      // The demo player's tickets tiles owe the same unread sign as its tab tiles (round 4, 2026-10-09: no Akaunti dot on
++      // 217 and 218, no bell "25" on 219, while every other player tile had one) — the same wait, the same logged miss.
++      if (viewer === 'player') await unreadLanded(page, width);
+       const cell = { section: 'tickets', route: st.route, pathname: st.path.split('?')[0], viewer, state: st.id, locale, width };
+       await checkShell(page, cell, { journey: true });
+       await shoot(page, cell, HEAD.tickets);
+diff --git a/scripts/spacing-scale.test.mts b/scripts/spacing-scale.test.mts
+index 910af4c99..0ac3ea282 100644
+--- a/scripts/spacing-scale.test.mts
++++ b/scripts/spacing-scale.test.mts
+@@ -111,7 +111,7 @@ for (const f of walk(SRC)) {
+  * ⚠️ Set from the measured tree, comments stripped. If it drops, lower it in the same commit —
+  * a ceiling above the real count stops being a ratchet.
+  */
+-const CEILING = 460;   // -3, 2026-10-07 (money doors): the deposit email door and the app-wide email bar were DELETED (owner ruling — a deposit asks no email) and took their `px-3.5`/`gap-2.5` with them; the receipt page's button row moved `gap-2.5` → `gap-2` (12px on this scale) with its new second button. // -1, 2026-10-03 (marketing validation batch 6): the player balance adjustment's hand-rolled amount box (balance-adjust-controls.tsx, the "9,500.00" -> 950,000 defect) left for the kit Field + Input, taking its `px-2.5` with it. // -9, 2026-09-30 (the Vodacom plan S1 session): THE RATCHET ARRIVED RED, 488 against 473 — fifteen inverted keys added since 2026-09-23 by other lanes (the finance and admin skeletons, the invite switch dialog, two Up & Down panels, one shell row), holding predeploy red on main. ALL 24 inverted usages in those eight files moved to SAME-PIXEL literals (w-14 -> w-[56px], w-16 -> w-[64px], w-20 -> w-[80px], w-28 -> w-[112px], gap-2.5/py-2.5/mt-2.5 -> [10px], mt-3.5 -> [14px], scroll-mt-24 -> [96px]; the root is 16px, so rem == px): ZERO rendered change, 488 -> 464. Literals, not override keys, per the per-prefix rule below (ui-consistency condemns 7-12 on w/h). // -2, 2026-09-23: PRE-EXISTING RED, and not this session's work — the same shape as the 2026-09-05 HOUSE-3 entry below. The ratchet arrived at HEAD failing check 2 at 473 against 475: two usages had been removed by earlier work that did not lower the constant. Re-measured here rather than copied — 473 across 171 files — and confirmed to predate today: `git diff 7747dffa..HEAD -- src/` adds and removes ZERO inverted keys, so nothing in this session's window moved it. ⛔ Check 2 is an EQUALITY on purpose: a ceiling above the real count has stopped being a ratchet and silently re-admits two usages. // -1, 2026-09-13 (withdrawal review removed): the admin approvals page lost its Co-sign chip and its px-2.5. // -2, 2026-09-13 (the visual pass): p-3.5 → p-[14px] on the KYC upload card and space-y-2.5 → gap-[10px] on the register consents, both same-pixel. // -75, 2026-09-10: THE RATCHET WAS RED — 561 against a ceiling of 553, eight usages added by work that landed after 2026-09-05, and it had been holding `predeploy` red. ⭐ CLEARED BY MOVING 83 USAGES OFF THE STOCK SCALE WITH ZERO RENDERED CHANGE, which is possible for exactly FOUR of the eight inverted keys: the override is all px and the stock keys leak rem, and for these four the two scales land on the SAME pixel — proven from COMPILED CSS, not assumed: `16 → 4rem → 64px == 9 → 64px`, `20 → 5rem → 80px == 10`, `24 → 6rem → 96px == 11`, `32 → 8rem → 128px == 12`. The root really is 16px (globals.css sets no html font-size; production reports 16px), which is the premise that makes rem==px here. ⛔ `2.5` (10px), `3.5` (14px), `14` (56px) and `28` (112px) have NO override equivalent — moving those is a real ±2px rendered change and NONE were touched, which is why 478 is not lower. ⚠️ SCOPED TO `loading.tsx` SKELETONS, 31 files: placeholder boxes with no text to reflow, no interactive control to displace and nothing measuring them. **The same four keys appear 35 more times in files carrying real content and were deliberately LEFT** — this file's own note warns against a sweep that spreads a problem while tidying one. 🔴 **AND THE FIRST ATTEMPT AT THE FIX TRADED THIS FAILURE FOR ANOTHER ONE, WHICH IS THE PART WORTH READING.** Swapping `w-16 → w-9` satisfies THIS guard and violates `ui-consistency`'s `numeric-size-utility`, which condemns keys 7–12 on `h`/`w`/`min-*`/`max-*` precisely BECAUSE they read from the overridden scale — 30 new findings, in the same edit that made this one green. ⭐ **Both guards are right, so the remedy is PER-PREFIX**, and the other rule's own description names it (*"use an explicit literal (h-[32px])"*): width/height/size take `w-[64px]`, while padding·margin·gap·inset take the override key. 89 of the 90 sites here were width/height, so they are literals. ⭐ HOW THE "no rendered change" CLAIM WAS CHECKED rather than asserted: the whole diff was re-derived by applying the per-prefix map to every removed line and compared to the added line — all 88 changed lines differ ONLY by that swap, and the checker carries a non-empty control because its first version passed an EMPTY diff (0 >= 0). // -1, 2026-09-05, HOUSE-3: PRE-EXISTING RED, not this session's work. The ratchet arrived at HEAD failing check 2 at 553 against a ceiling of 554 — a parallel session removed an inverted key and did not lower the constant, and check 2 is an EQUALITY on purpose: a ceiling above the real count has stopped being a ratchet and silently re-admits one usage. Re-measured here, not copied: 553 across 185 files. // -7, 2026-09-03: `layout/needle-drawer.tsx` — the Needle's theme menu shipped ELEVEN inverted keys (3× `gap-2.5`, 3× `py-2.5`, `px-2.5`, 2× `pt-3.5`, `py-3.5`, `mt-3.5`), which is what took this ratchet 561 → 565 and held `test:all` red on `main`. All eleven moved onto the scale: 2.5 (Tailwind STOCK 10px) → 2 (this product's OVERRIDDEN 12px) and 3.5 (stock 14px) → 3 (override 16px). ⚠️ EVERY MOVE IS +2px AND IS A RENDERED CHANGE, said plainly rather than folded in — a drawer menu's gaps and paddings each grow 2px, verified at 320/390 not to overflow or clip. ⭐ AND NOTE WHICH DIRECTION THE DEFECT RAN: `gap-2.5` painted 10px where `gap-2` paints 12, so the file's author had written the LARGER-looking key for the SMALLER box, four times, without any way to notice. That inversion is derived from the two scales by §0, not typed in — which is why this guard could name it. ⛔ The file belongs to a parallel session; the change is 2px of air on the product's own scale, and the eleven sites are listed here so its owner can see exactly what moved.   // -1, 2026-08-31, DG-S-03: `/admin/roles`'s hand-rolled section rail declared its height as `py-2.5` — 10px on a scale where `py-2` is 12 — and it went with the rail when the page adopted the kit `<Tabs variant="line">`, whose 44px is a declared height rather than padding. ⭐ Worth reading twice, because it is the same defect in two guards at once: `tap-target` §3 reads a DECLARED height and is structurally blind to one made of padding, so `/admin/players/[id]`'s 52px `py-3` rail has never been visible to it either. A control that states its height as padding is invisible to the tap gate AND, at a `.5` step, counted by this one.   // -59, 2026-08-30, session 82 -- the largest fall this ratchet has taken, and it is a SIDE EFFECT: DG-A-08 replaced ~24 hand-rolled admin controls with kit `<Button>`s, and every one of them took its hand-typed `px-2.5 py-1.5` inverted-key padding with it. ⛔ The matcher was NOT touched this session (`git status` on this file: clean), which is the check that separates a cleanup from a collapse -- and §3 still sees 566 usages across 188 files. # 2026-08-30: -3 (DG-A-06). `px-2.5` left three hand-rolled selection capsules as they converted to FilterPill — CardSortControl's two byte-identical copies and /admin/proposals' queue rail. ⭐ The primitive's dense rank writes `px-2.5` too, so the win is real but SMALLER than the conversion looks: the inverted key moved from three call sites into ONE definition site, which is the shape this ratchet wants. Before that — 2026-08-29: -3, AdminKpi x2 + its skeleton left p-3.5 (14px) for p-2 (12px) — DG-A-16. Then -1 on 2026-08-30 (DG-P-03): the BackLink ghost's `w-16`. ⚠️ AND THIS GUARD EARNED ITS KEEP THE SAME DAY — adopting `PageHeader` in the deposit and withdraw skeletons meant COPYING that ghost into two more files, and this suite caught it at 631 before it shipped. A ratchet's job is not only to shrink a backlog; it is to stop a sweep from spreading one while it tidies something else.
++const CEILING = 457;   // -3, 2026-10-09 (round 4 of the visual pass): the `py-2.5` bands round the search on /results, /watchlist and /proposals became `QUERY_SEARCH_BAND_CLASS` (query-bar.tsx), whose 10px is the literal `pt-[10px]` — a rendered change on purpose (the band's bottom 10px left with its echo row's gap, test:visual-pass-r4c §1), and no new inverted key: the new row-1-alone class takes `pb-[10px]` too. // -3, 2026-10-07 (money doors): the deposit email door and the app-wide email bar were DELETED (owner ruling — a deposit asks no email) and took their `px-3.5`/`gap-2.5` with them; the receipt page's button row moved `gap-2.5` → `gap-2` (12px on this scale) with its new second button. // -1, 2026-10-03 (marketing validation batch 6): the player balance adjustment's hand-rolled amount box (balance-adjust-controls.tsx, the "9,500.00" -> 950,000 defect) left for the kit Field + Input, taking its `px-2.5` with it. // -9, 2026-09-30 (the Vodacom plan S1 session): THE RATCHET ARRIVED RED, 488 against 473 — fifteen inverted keys added since 2026-09-23 by other lanes (the finance and admin skeletons, the invite switch dialog, two Up & Down panels, one shell row), holding predeploy red on main. ALL 24 inverted usages in those eight files moved to SAME-PIXEL literals (w-14 -> w-[56px], w-16 -> w-[64px], w-20 -> w-[80px], w-28 -> w-[112px], gap-2.5/py-2.5/mt-2.5 -> [10px], mt-3.5 -> [14px], scroll-mt-24 -> [96px]; the root is 16px, so rem == px): ZERO rendered change, 488 -> 464. Literals, not override keys, per the per-prefix rule below (ui-consistency condemns 7-12 on w/h). // -2, 2026-09-23: PRE-EXISTING RED, and not this session's work — the same shape as the 2026-09-05 HOUSE-3 entry below. The ratchet arrived at HEAD failing check 2 at 473 against 475: two usages had been removed by earlier work that did not lower the constant. Re-measured here rather than copied — 473 across 171 files — and confirmed to predate today: `git diff 7747dffa..HEAD -- src/` adds and removes ZERO inverted keys, so nothing in this session's window moved it. ⛔ Check 2 is an EQUALITY on purpose: a ceiling above the real count has stopped being a ratchet and silently re-admits two usages. // -1, 2026-09-13 (withdrawal review removed): the admin approvals page lost its Co-sign chip and its px-2.5. // -2, 2026-09-13 (the visual pass): p-3.5 → p-[14px] on the KYC upload card and space-y-2.5 → gap-[10px] on the register consents, both same-pixel. // -75, 2026-09-10: THE RATCHET WAS RED — 561 against a ceiling of 553, eight usages added by work that landed after 2026-09-05, and it had been holding `predeploy` red. ⭐ CLEARED BY MOVING 83 USAGES OFF THE STOCK SCALE WITH ZERO RENDERED CHANGE, which is possible for exactly FOUR of the eight inverted keys: the override is all px and the stock keys leak rem, and for these four the two scales land on the SAME pixel — proven from COMPILED CSS, not assumed: `16 → 4rem → 64px == 9 → 64px`, `20 → 5rem → 80px == 10`, `24 → 6rem → 96px == 11`, `32 → 8rem → 128px == 12`. The root really is 16px (globals.css sets no html font-size; production reports 16px), which is the premise that makes rem==px here. ⛔ `2.5` (10px), `3.5` (14px), `14` (56px) and `28` (112px) have NO override equivalent — moving those is a real ±2px rendered change and NONE were touched, which is why 478 is not lower. ⚠️ SCOPED TO `loading.tsx` SKELETONS, 31 files: placeholder boxes with no text to reflow, no interactive control to displace and nothing measuring them. **The same four keys appear 35 more times in files carrying real content and were deliberately LEFT** — this file's own note warns against a sweep that spreads a problem while tidying one. 🔴 **AND THE FIRST ATTEMPT AT THE FIX TRADED THIS FAILURE FOR ANOTHER ONE, WHICH IS THE PART WORTH READING.** Swapping `w-16 → w-9` satisfies THIS guard and violates `ui-consistency`'s `numeric-size-utility`, which condemns keys 7–12 on `h`/`w`/`min-*`/`max-*` precisely BECAUSE they read from the overridden scale — 30 new findings, in the same edit that made this one green. ⭐ **Both guards are right, so the remedy is PER-PREFIX**, and the other rule's own description names it (*"use an explicit literal (h-[32px])"*): width/height/size take `w-[64px]`, while padding·margin·gap·inset take the override key. 89 of the 90 sites here were width/height, so they are literals. ⭐ HOW THE "no rendered change" CLAIM WAS CHECKED rather than asserted: the whole diff was re-derived by applying the per-prefix map to every removed line and compared to the added line — all 88 changed lines differ ONLY by that swap, and the checker carries a non-empty control because its first version passed an EMPTY diff (0 >= 0). // -1, 2026-09-05, HOUSE-3: PRE-EXISTING RED, not this session's work. The ratchet arrived at HEAD failing check 2 at 553 against a ceiling of 554 — a parallel session removed an inverted key and did not lower the constant, and check 2 is an EQUALITY on purpose: a ceiling above the real count has stopped being a ratchet and silently re-admits one usage. Re-measured here, not copied: 553 across 185 files. // -7, 2026-09-03: `layout/needle-drawer.tsx` — the Needle's theme menu shipped ELEVEN inverted keys (3× `gap-2.5`, 3× `py-2.5`, `px-2.5`, 2× `pt-3.5`, `py-3.5`, `mt-3.5`), which is what took this ratchet 561 → 565 and held `test:all` red on `main`. All eleven moved onto the scale: 2.5 (Tailwind STOCK 10px) → 2 (this product's OVERRIDDEN 12px) and 3.5 (stock 14px) → 3 (override 16px). ⚠️ EVERY MOVE IS +2px AND IS A RENDERED CHANGE, said plainly rather than folded in — a drawer menu's gaps and paddings each grow 2px, verified at 320/390 not to overflow or clip. ⭐ AND NOTE WHICH DIRECTION THE DEFECT RAN: `gap-2.5` painted 10px where `gap-2` paints 12, so the file's author had written the LARGER-looking key for the SMALLER box, four times, without any way to notice. That inversion is derived from the two scales by §0, not typed in — which is why this guard could name it. ⛔ The file belongs to a parallel session; the change is 2px of air on the product's own scale, and the eleven sites are listed here so its owner can see exactly what moved.   // -1, 2026-08-31, DG-S-03: `/admin/roles`'s hand-rolled section rail declared its height as `py-2.5` — 10px on a scale where `py-2` is 12 — and it went with the rail when the page adopted the kit `<Tabs variant="line">`, whose 44px is a declared height rather than padding. ⭐ Worth reading twice, because it is the same defect in two guards at once: `tap-target` §3 reads a DECLARED height and is structurally blind to one made of padding, so `/admin/players/[id]`'s 52px `py-3` rail has never been visible to it either. A control that states its height as padding is invisible to the tap gate AND, at a `.5` step, counted by this one.   // -59, 2026-08-30, session 82 -- the largest fall this ratchet has taken, and it is a SIDE EFFECT: DG-A-08 replaced ~24 hand-rolled admin controls with kit `<Button>`s, and every one of them took its hand-typed `px-2.5 py-1.5` inverted-key padding with it. ⛔ The matcher was NOT touched this session (`git status` on this file: clean), which is the check that separates a cleanup from a collapse -- and §3 still sees 566 usages across 188 files. # 2026-08-30: -3 (DG-A-06). `px-2.5` left three hand-rolled selection capsules as they converted to FilterPill — CardSortControl's two byte-identical copies and /admin/proposals' queue rail. ⭐ The primitive's dense rank writes `px-2.5` too, so the win is real but SMALLER than the conversion looks: the inverted key moved from three call sites into ONE definition site, which is the shape this ratchet wants. Before that — 2026-08-29: -3, AdminKpi x2 + its skeleton left p-3.5 (14px) for p-2 (12px) — DG-A-16. Then -1 on 2026-08-30 (DG-P-03): the BackLink ghost's `w-16`. ⚠️ AND THIS GUARD EARNED ITS KEEP THE SAME DAY — adopting `PageHeader` in the deposit and withdraw skeletons meant COPYING that ghost into two more files, and this suite caught it at 631 before it shipped. A ratchet's job is not only to shrink a backlog; it is to stop a sweep from spreading one while it tidies something else.
+ 
+ ok(`1: 🔴 inverted spacing usages may only shrink (${total}, ceiling ${CEILING})`,
+   total <= CEILING,
+diff --git a/scripts/visual-pass-r3c.test.mts b/scripts/visual-pass-r3c.test.mts
+index 1f25578c1..00bda2976 100644
+--- a/scripts/visual-pass-r3c.test.mts
++++ b/scripts/visual-pass-r3c.test.mts
+@@ -277,8 +277,9 @@ section("4 · /leaderboard: the tier is not gold, the sort keeps the page's rhyt
+   const row = cn(QUERY_BAR_ROW2_CLASS, "py-0");
+   ok("4.3 · the sort row is the bar's row with its padding handed back (py-0): 32px above and below, like every gap on the page",
+     lb.includes(`<div className={cn(QUERY_BAR_ROW2_CLASS, "py-0")}>`) && /\bpy-0\b/.test(row) && !/\bp[tb]-/.test(row), row);
+-  ok("4.3′ CONTROL · the bar's own row carries 8px over and 10px under (pt-1.5, pb-2.5) — the 40/42px gaps this removes",
+-    /\bpt-1\.5\b/.test(QUERY_BAR_ROW2_CLASS) && /\bpb-2\.5\b/.test(QUERY_BAR_ROW2_CLASS));
++  // Round 4 (2026-10-09) moved the bar's row 2 to 12px under row 1 (pt-2, test:visual-pass-r4c §1); the control follows it.
++  ok("4.3′ CONTROL · the bar's own row carries 12px over and 10px under (pt-2, pb-2.5) — the 44/42px gaps this removes",
++    /(?:^|\s)pt-2(?:\s|$)/.test(QUERY_BAR_ROW2_CLASS) && /\bpb-2\.5\b/.test(QUERY_BAR_ROW2_CLASS));
+   const after = rule(css, ".admin-tbl thead th.text-right::after");
+   const track = /\.mcardp-pctcap\s*\{\s*letter-spacing:\s*([0-9.]+)em/.exec(css)?.[1];
+   const back = /margin-right:\s*-([0-9.]+)em/.exec(after)?.[1];
+diff --git a/scripts/visual-pass-r4c.test.mts b/scripts/visual-pass-r4c.test.mts
+new file mode 100644
+index 000000000..5ede187aa
+--- /dev/null
++++ b/scripts/visual-pass-r4c.test.mts
+@@ -0,0 +1,328 @@
++/**
++ * ROUND 4 OF THE VISUAL PASS, HELPER C (2026-10-09) — every fix a later edit could silently undo, held, each beside a
++ * control or a plant that proves the check can fail.
++ *
++ *   npx tsx scripts/visual-pass-r4c.test.mts        (npm run test:visual-pass-r4c)
++ *
++ * The owner's rule (Ali, 2026-10-08): only perfect visual and logical results. Each section names the tiles the defect was
++ * measured on (S/visual/tiles-r4) and the file that fixes it; the measurements are in those files' notes.
++ *   §1 a filter bar's rhythm: the search and its bar are one band (rung + 10 on every side), rows 12px apart
++ *   §2 the group divider stands in the middle of the gap the eye sees
++ *   §3 notifications: money whole and mono in a title, a body's last two words together, the actions on the icon's line
++ *   §4 the capture waits for the unread sign on the tickets tiles too
++ * Sources are read through the shared scanners (scripts/lib/decomment.mts): decomment for code, decommentCss for CSS.
++ */
++import { readFileSync } from "node:fs";
++import { decomment, decommentCss } from "./lib/decomment.mts";
++import { createElement as h } from "react";
++import { renderToStaticMarkup } from "react-dom/server";
++import {
++  QUERY_BAR_ROW1_ALONE_CLASS,
++  QUERY_BAR_ROW1_CLASS,
++  QUERY_BAR_ROW2_CLASS,
++  QUERY_SEARCH_BAND_CLASS,
++} from "../src/components/ui/query-bar.tsx";
++import { moneyRuns, moneySentence } from "../src/lib/fill-nodes.tsx";
++import { DotSeq } from "../src/components/ui/dot-seq.tsx";
++
++let pass = 0;
++const fails: string[] = [];
++const ok = (name: string, cond: boolean, detail = "") => {
++  if (cond) { pass++; console.log(`  ok   ${name}`); }
++  else { fails.push(`${name}${detail ? ` — ${detail}` : ""}`); console.log(`  FAIL ${name}${detail ? ` — ${detail}` : ""}`); }
++};
++const section = (s: string) => console.log(`\n── ${s} ${"─".repeat(Math.max(0, 100 - s.length))}`);
++const read = (p: string) => readFileSync(p, "utf8").replace(/\r\n/g, "\n");
++const code = (p: string) => decomment(read(p));
++const RAW_CSS = read("src/app/globals.css");
++const css = decommentCss(RAW_CSS);
++const html = (el: Parameters<typeof renderToStaticMarkup>[0]) => renderToStaticMarkup(el);
++const show = (v: unknown) => JSON.stringify(v);
++
++/** This repo's spacing scale: the overridden keys from tailwind.config.ts, then Tailwind's own for the keys it leaves. */
++const SCALE: Record<string, number> = { "2.5": 10 };
++{
++  const block = /spacing:\s*\{([^}]*)\}/.exec(read("tailwind.config.ts"))?.[1] ?? "";
++  for (const m of block.matchAll(/"([0-9.]+)":\s*"(\d+)px"/g)) SCALE[m[1]] = Number(m[2]);
++}
++/** The px of a padding/margin/gap utility in a class list ("pt-2" → 12, "pt-[10px]" → 10), or NaN. */
++const px = (classes: string, prefix: string) => {
++  const m = new RegExp(`(?:^|\\s)${prefix.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}-(?:([0-9.]+)|\\[(\\d+)px\\])(?=\\s|$)`).exec(classes);
++  return m ? (m[1] !== undefined ? (SCALE[m[1]] ?? NaN) : Number(m[2])) : NaN;
++};
++
++/** Specificity (b, c) of a simple selector list member — classes, attributes and pseudo-classes, the functional ones
++ *  (:has, :not, :is) by their most specific argument, :where by nothing; elements and pseudo-elements in c. */
++function specificity(sel: string): [number, number] {
++  let b = 0, c = 0, i = 0;
++  const s = sel.trim();
++  while (i < s.length) {
++    const ch = s[i];
++    if (ch === "." || ch === "[") {
++      b++;
++      if (ch === "[") i = s.indexOf("]", i) + 1;
++      else { i++; while (i < s.length && /[\w-]/.test(s[i])) i++; }
++    } else if (s.startsWith("::", i)) {
++      c++; i += 2; while (i < s.length && /[\w-]/.test(s[i])) i++;
++    } else if (ch === ":") {
++      const name = /^:([\w-]+)/.exec(s.slice(i))?.[1] ?? "";
++      i += 1 + name.length;
++      if (s[i] === "(") {
++        let depth = 0, j = i;
++        for (; j < s.length; j++) { if (s[j] === "(") depth++; else if (s[j] === ")" && --depth === 0) break; }
++        const inner = s.slice(i + 1, j);
++        i = j + 1;
++        if (name === "where") continue;
++        if (["has", "not", "is"].includes(name)) {
++          const best = inner.split(",").map((x) => specificity(x.replace(/^\s*[>+~]\s*/, ""))).sort((x, y) => y[0] - x[0] || y[1] - x[1])[0];
++          b += best[0]; c += best[1];
++        } else b++;
++      } else b++;
++    } else if (/[a-z]/i.test(ch)) {
++      c++; while (i < s.length && /[\w-]/.test(s[i])) i++;
++    } else i++;
++  }
++  return [b, c];
++}
++const beats = (x: [number, number], y: [number, number]) => x[0] > y[0] || (x[0] === y[0] && x[1] >= y[1]);
++
++/* ══ §1 · THE FILTER BAR'S RHYTHM ═══════════════════════════════════════════════════════════════════════════════════ */
++section("1 · a filter bar: the search and its bar one band, rung + 10 on every side, rows 12px apart (tiles 171 172 174 193 194 196)");
++const glow = /--glow-selected:\s*0 0 ([0-9.]+)px (-?[0-9.]+)px/.exec(RAW_CSS);
++const HALO = glow ? Number(glow[1]) + Number(glow[2]) : NaN;
++const ROW1_PT = px(QUERY_BAR_ROW1_CLASS, "pt");
++const ROW2_PT = px(QUERY_BAR_ROW2_CLASS, "pt");
++const ROW2_PB = px(QUERY_BAR_ROW2_CLASS, "pb");
++const ROW2_GAP = px(QUERY_BAR_ROW2_CLASS, "gap");
++const BAND_PT = px(QUERY_SEARCH_BAND_CLASS, "pt");
++const searchBox = code("src/components/ui/search-box.tsx");
++const echoClasses = /className=\{`(mt-[0-9.]+) min-h-\[(\d+)px\]/.exec(searchBox);
++const ECHO = echoClasses ? px(echoClasses[1], "mt") + Number(echoClasses[2]) : NaN;
++const hangRule = /\.kp-search-band\.kp-search-band:has\(\+ \.kp-discovery-bar\)\s*\{\s*margin-bottom:\s*-(\d+)px;\s*\}/.exec(css);
++const restRule = /\.kp-search-band\.kp-search-band:not\(:has\(\+ \.kp-discovery-bar\)\)\s*\{\s*margin-bottom:\s*-(\d+)px;\s*\}/.exec(css);
++const HANG = hangRule ? Number(hangRule[1]) : NaN;
++const HANG_REST = restRule ? Number(restRule[1]) : NaN;
++{
++  ok("1.locate · the scale reads the overridden keys (2 → 12, 5 → 24, 6 → 32) and the halo reaches 11px (12px of blur, −1 spread)",
++    SCALE["2"] === 12 && SCALE["5"] === 24 && SCALE["6"] === 32 && SCALE["1.5"] === 8 && HALO === 11, show({ SCALE, HALO }));
++  ok("1.1 · row 2 stands 12px under row 1 (pt-2), the gap its own wrapped lines keep (gap-2), and the selected pill's 11px halo clears it",
++    ROW2_PT === 12 && ROW2_PT === ROW2_GAP && ROW2_PT > HALO, show({ ROW2_PT, ROW2_GAP, HALO }));
++  const old = QUERY_BAR_ROW2_CLASS.replace(/(^|\s)pt-2(?=\s|$)/, "$1pt-1.5");
++  ok("1.1′ PLANT · round 3's pt-1.5 put back (8px: /markets' chips → PANGA 8 against PANGA → BWAWA 12, the halo on PANGA's border) is reported",
++    old !== QUERY_BAR_ROW2_CLASS && !(px(old, "pt") === ROW2_GAP && px(old, "pt") > HALO), px(old, "pt").toString());
++  ok("1.2 · the search band pads 10px over the box — the bar's own 10px over its pills (row 1's pt-2.5), as the literal pt-[10px] (2.5 is an inverted key, test:spacing-scale) — and is the CSS hook kp-search-band",
++    BAND_PT === 10 && BAND_PT === ROW1_PT && /(^|\s)kp-search-band(\s|$)/.test(QUERY_SEARCH_BAND_CLASS) && !/-2\.5(\s|$)/.test(QUERY_SEARCH_BAND_CLASS),
++    QUERY_SEARCH_BAND_CLASS);
++  ok("1.3 · the echo row (mt-1.5 + min-h-[17px] = 25px) lies inside the gap below the box: −25px over a query bar, whose 10px top padding is the clearance; −15px over anything else",
++    ECHO === 25 && HANG === ECHO && HANG_REST === ECHO - ROW1_PT, show({ ECHO, HANG, HANG_REST }));
++  const spaceY: [number, number] = specificity(".space-y-5 > :not([hidden]) ~ :not([hidden])");
++  const band = specificity(".kp-search-band.kp-search-band:has(+ .kp-discovery-bar)");
++  const rest = specificity(".kp-search-band.kp-search-band:not(:has(+ .kp-discovery-bar))");
++  const utilitiesAt = RAW_CSS.indexOf("@tailwind utilities;");
++  const ruleAt = RAW_CSS.indexOf(".kp-search-band.kp-search-band:has(");
++  ok("1.4 · the band's rules weigh (0,3,0), as much as space-y's later-sibling rule that zeroes a child's margin-bottom, and come after the utilities, so they win",
++    beats(band, spaceY) && beats(rest, spaceY) && spaceY[0] === 3 && utilitiesAt > 0 && ruleAt > utilitiesAt, show({ spaceY, band, rest }));
++  ok("1.4′ PLANT · the same rule with one class (0,2,0) loses to space-y and is reported",
++    !beats(specificity(".kp-search-band:has(+ .kp-discovery-bar)"), spaceY));
++
++  // ⭐ THE MODEL, page by page: the gap a reader sees over the box, between the box and the pills, and under the bar's last
++  // row. The rung is the page's own (its container's class); the band and the bar add their 10px; the echo row is lent
++  // to the gap below the box. Equal on every page, and the rung + 10 of each.
++  type Page = { file: string; rung: string; band: RegExp };
++  const BAND_ON_WRAPPER = /<div className=\{QUERY_SEARCH_BAND_CLASS\}>\s*<Suspense>\s*<SearchBox/;
++  const BAND_ON_BOX = /<SearchBox[^>]*className=\{QUERY_SEARCH_BAND_CLASS\}/;
++  const PAGES: Page[] = [
++    { file: "src/app/results/page.tsx", rung: `<div className="flex flex-col gap-5">`, band: BAND_ON_WRAPPER },
++    { file: "src/app/notifications/page.tsx", rung: `<PageContainer tier="reading" className="space-y-5">`, band: BAND_ON_BOX },
++    { file: "src/app/watchlist/page.tsx", rung: `<PageContainer tier="board" className="space-y-5">`, band: BAND_ON_WRAPPER },
++    { file: "src/app/proposals/page.tsx", rung: `<PageContainer tier="reading" className="space-y-6">`, band: BAND_ON_WRAPPER },
++    { file: "src/app/positions/page.tsx", rung: `<PageContainer tier="reading" className="space-y-6">`, band: BAND_ON_BOX },
++    { file: "src/app/fairness/page.tsx", rung: `<section className="flex flex-col gap-5">`, band: BAND_ON_WRAPPER },
++  ];
++  const rungOf = (s: string) => SCALE[/(?:space-y|gap)-([0-9.]+)/.exec(s)?.[1] ?? ""] ?? NaN;
++  const gaps = (rung: number, banded: boolean, wrapperPb = 0) => ({
++    over: rung + (banded ? BAND_PT : 0),
++    boxToPills: ECHO - (banded ? HANG : 0) + wrapperPb + rung + ROW1_PT,
++    under: ROW2_PB + rung,
++  });
++  const report: Record<string, unknown> = {};
++  const bad: string[] = [];
++  for (const p of PAGES) {
++    const src = code(p.file);
++    const rung = rungOf(p.rung);
++    const g = gaps(rung, p.band.test(src));
++    report[p.file.split("/")[2]] = g;
++    if (!src.includes(p.rung) || !p.band.test(src) || !(g.over === g.boxToPills && g.boxToPills === g.under && g.under === rung + 10)) bad.push(p.file);
++    if (/<div className="(?:py-2\.5|pb-2|py-\[10px\])">\s*<Suspense>\s*<SearchBox/.test(src)) bad.push(`${p.file}: an old wrapper`);
++  }
++  ok("1.5 · on every page with a search over its bar the box sits rung + 10 under the block above it, the pills rung + 10 under the box, the next block rung + 10 under the sort — 34 · 34 · 34 on a 24px rung, 42 · 42 · 42 on 32",
++    bad.length === 0, bad.length ? bad.join(" · ") : show(report));
++  const before = gaps(24, false, 10);
++  ok("1.5′ CONTROL · /results as round 4 found it (no band, `py-2.5` round the box) puts 69px between the box and the pills (tiles 171 172), and /notifications 59",
++    before.boxToPills === 69 && gaps(24, false).boxToPills === 59, show({ results: before.boxToPills, notifications: gaps(24, false).boxToPills }));
++
++  // The ghosts stand in with the same band, so nothing moves when the page lands.
++  const ghosts = [
++    ["src/app/results/loading.tsx", /<div className=\{QUERY_SEARCH_BAND_CLASS\} aria-hidden>\s*<div className="search-box-wrap">[\s\S]{0,260}?<p className="mt-1\.5 min-h-\[17px\]" \/>/],
++    ["src/app/results/page.tsx", /<div className=\{QUERY_SEARCH_BAND_CLASS\} aria-hidden>\s*<div className="search-box-wrap">[\s\S]{0,260}?<p className="mt-1\.5 min-h-\[17px\]" \/>/],
++    ["src/app/positions/loading.tsx", /<div className=\{QUERY_SEARCH_BAND_CLASS\} aria-hidden>\s*<div className="search-box-wrap">[\s\S]{0,260}?<p className="mt-1\.5 min-h-\[17px\]" \/>/],
++  ] as const;
++  const lostGhosts = ghosts.filter(([f, re]) => !re.test(code(f))).map(([f]) => f);
++  ok("1.6 · the three ghosts of a banded search draw the band — the box's height and its echo row in a search-box-wrap — over the bar's ghost",
++    lostGhosts.length === 0, lostGhosts.join(", "));
++
++  // /markets keeps no rung between its search and its bar: its echo row IS the gap (25 + 10 = 35), and its grid now
++  // stands as far under the bar.
++  const markets = code("src/app/markets/page.tsx");
++  const marketsGhost = code("src/app/markets/loading.tsx");
++  const gridMt = SCALE[/<section data-board="grid" className="market-grid mt-([0-9.]+)">/.exec(markets)?.[1] ?? ""] ?? NaN;
++  ok("1.7 · /markets wears no band (no rung between its search and its bar: 25 + 10 = 35 to the pills) and its cards stand 34 under the bar (pb 10 + mt-5), its ghost's grid likewise (tile 196 read 26)",
++    !markets.includes("QUERY_SEARCH_BAND_CLASS") && Math.abs(ECHO + ROW1_PT - (ROW2_PB + gridMt)) <= 1 && marketsGhost.includes(`<div className="market-grid mt-5" aria-hidden>`),
++    show({ above: ECHO + ROW1_PT, below: ROW2_PB + gridMt }));
++  ok("1.7′ CONTROL · its old mt-3 left 26 under the bar against 35 over it", ROW2_PB + SCALE["3"] === 26);
++
++  // Tiketi zangu: row 1 drawn alone, with row 2's bottom padding.
++  const bar = code("src/app/positions/positions-bar.tsx");
++  const ghost = code("src/components/journey/tickets/tickets-ghost.tsx");
++  const alonePb = px(QUERY_BAR_ROW1_ALONE_CLASS, "pb");
++  const rung = rungOf(`className="space-y-6"`);
++  ok("1.8 · Tiketi zangu's bar (row 1 alone) pads 10 under its pills as over them, so the tab rule stands 42 over the pills and the first ticket 42 under them (tiles 169 170 214–228 read 42 / 44)",
++    QUERY_BAR_ROW1_ALONE_CLASS.startsWith(QUERY_BAR_ROW1_CLASS) && alonePb === ROW2_PB && rung + ROW1_PT === alonePb + rung
++      && /<div className=\{QUERY_BAR_ROW1_ALONE_CLASS\}>/.test(bar) && /<div className=\{QUERY_BAR_ROW1_ALONE_CLASS\}>/.test(ghost)
++      && !/QUERY_BAR_ROW1_CLASS\} pb-/.test(bar + ghost) && code("src/components/journey/tickets/tickets-view.tsx").includes(`<PageContainer tier="reading" className="space-y-6">`),
++    show({ over: rung + ROW1_PT, under: alonePb + rung }));
++  ok("1.8′ PLANT · the hand-typed pb-2 put back (12px) leaves 42 over and 44 under, and is reported", rung + ROW1_PT !== px(`${QUERY_BAR_ROW1_CLASS} pb-2`, "pb") + rung);
++
++  // Fairness: the section's own gap, nothing typed per element.
++  const fair = code("src/app/fairness/page.tsx");
++  const sectionBody = fair.slice(fair.indexOf(`<section className="flex flex-col gap-5">`), fair.indexOf("</section>", fair.indexOf(`<section className="flex flex-col gap-5">`)));
++  ok("1.9 · /fairness' record section spaces itself by its gap alone: no mb under the heading, no py round the exits, no mt over the pager",
++    sectionBody.length > 0 && !/<h2 className="[^"]*\bmb-/.test(sectionBody) && !/gap-1\.5 py-2"/.test(sectionBody) && !/"mt-4 rounded-lg/.test(sectionBody),
++    sectionBody.slice(0, 120));
++}
++
++/* ══ §2 · THE GROUP DIVIDER ══════════════════════════════════════════════════════════════════════════════════════════ */
++section("2 · the group divider stands in the middle of the gap the eye sees (tile 196, row 3: 31 | 1 | 14)");
++{
++  const block = /@supports selector\(:has\(a\)\)\s*\{\s*@media \(min-width: 1024px\)\s*\{([\s\S]*?)\n\s*\}\s*\n\}/.exec(css)?.[1] ?? "";
++  const colGap = Number(/\.kp-qbar-row:has\(\.kp-qdiv\)\s*\{\s*column-gap:\s*(\d+)px/.exec(block)?.[1] ?? NaN);
++  const base = Number(/\.kp-qdiv \+ \*::before\s*\{[^}]*left:\s*(-?\d+)px/.exec(block)?.[1] ?? NaN);
++  const unsel = /:has\(> \.kp-fchip:last-child:not\(\[data-on\]\)\) \+ \.kp-qdiv \+ \*::before\s*\{\s*left:\s*(-?\d+)px;\s*\}/.exec(block);
++  const shifted = Number(unsel?.[1] ?? NaN);
++  // An unselected pill: its border is transparent and its padding px-3, so its ink stops border + padding inside the box.
++  const pill = code("src/components/ui/filter-pill.tsx");
++  const inset = 1 + (/rank === "dense" \? "px-2\.5" : "px-3"/.test(pill) ? SCALE["3"] : NaN);
++  const sides = (left: number, gapFromInk: number) => ({ before: left + gapFromInk, after: -left - 1 });
++  const boxed = sides(base, colGap);
++  const inked = sides(shifted, colGap + inset);
++  ok("2.locate · the row's column gap is 29px, the rule 1px at 14px into it, and an unselected pill's ink stops 17px inside its box (border 1 + px-3 16)",
++    colGap === 29 && base === -15 && inset === 17 && /"border-transparent text-text-muted/.test(pill), show({ colGap, base, inset }));
++  ok("2.1 · after a selected (bordered) last pill the rule stands 14 | 1 | 14 between the boxes, clear of the pill's 11px halo",
++    boxed.before === boxed.after && boxed.before > HALO, show(boxed));
++  ok("2.2 · after an UNSELECTED last pill it moves to the middle of the 46px from that pill's ink to the next box: 22 | 1 | 23 (the half pixel cannot be split without blurring a 1px rule)",
++    !!unsel && Math.abs(inked.before - inked.after) <= 1 && inked.before + inked.after + 1 === colGap + inset, show(inked));
++  ok("2.2′ CONTROL · without the move the same rule stands 31 | 1 | 14 from what the eye sees (tile 196: x412 after ink to x380, box from x427)",
++    sides(base, colGap + inset).before === 31 && sides(base, colGap + inset).after === 14);
++  ok("2.3 · the rule is keyed on the group's own last pill (`:has(> .kp-fchip:last-child:not([data-on]))`) — never on the bar's row class, which globals.css may style only through the divider's :has (test:density-contract 4q)",
++    !!unsel && !/\.kp-qbar-row[^{,]*:last-child/.test(css) && specificity(":has(> .kp-fchip:last-child:not([data-on])) + .kp-qdiv + *::before")[0] > specificity(".kp-qdiv + *::before")[0]);
++}
++
++/* ══ §3 · NOTIFICATIONS ══════════════════════════════════════════════════════════════════════════════════════════════ */
++section("3 · notifications: a figure whole and mono, a body's last two words together, the actions on the icon's line (tiles 193 194)");
++{
++  const strip = (s: string) => s.replace(/<[^>]+>/g, "");
++  const title = "Soko limefutwa · TZS 4,200 imerejeshwa";
++  const t = html(h(DotSeq, { text: title, renderPart: (p: string) => moneyRuns(p) }));
++  ok("3.1 · the title is two items — \"Soko limefutwa\" and \"TZS 4,200 imerejeshwa\" — so it breaks between them, never after its dot, and its figure is one .amount (mono, untracked, nowrap)",
++    t === `<span class="kp-seq"><span class="kp-seq__item">Soko limefutwa</span><span class="kp-seq__item"> <span class="kp-seq__dot" aria-hidden="true">·</span> <span class="amount">TZS 4,200</span> imerejeshwa</span></span>`,
++    t);
++  ok("3.1′ CONTROL · without renderPart DotSeq is byte for byte what it was (round 3's 9.1 shape), and a title with no dot is one span",
++    html(h(DotSeq, { text: "A · B" })) === `<span class="kp-seq"><span class="kp-seq__item">A</span><span class="kp-seq__item"> <span class="kp-seq__dot" aria-hidden="true">·</span> B</span></span>`
++      && html(h(DotSeq, { text: "Dau limepotea TZS 3,500", renderPart: (p: string) => moneyRuns(p) })) === `<span>Dau limepotea <span class="amount">TZS 3,500</span></span>`);
++  const body = "Dau lako lote limerejeshwa kwenye pochi yako.";
++  const b = html(h("p", null, moneySentence(body)));
++  ok("3.2 · a body's last two words move to the next line together: \"…kwenye\" / \"pochi yako.\" (tile 194 ended on \"yako.\" alone)",
++    b === `<p>Dau lako lote limerejeshwa kwenye <span class="inline-block max-w-full">pochi yako.</span></p>` && strip(b) === body, b);
++  const money = "Soko limefutwa kwa dharura. TZS 4,200 imerejeshwa.";
++  const m = html(h("p", null, moneySentence(money)));
++  ok("3.3 · …never cutting a figure: when the last two words would split \"TZS 4,200\", the kept end starts at its TZS",
++    m === `<p>Soko limefutwa kwa dharura. <span class="inline-block max-w-full"><span class="amount">TZS 4,200</span> imerejeshwa.</span></p>` && strip(m) === money, m);
++  ok("3.4 · Chinese, and a text of two words or fewer, take moneyRuns alone (keepLastWords' own rules)",
++    html(h("p", null, moneySentence("已退还 TZS 4,200 到你的钱包"))) === `<p>已退还 <span class="amount">TZS 4,200</span> 到你的钱包</p>`
++      && html(h("p", null, moneySentence("Imesomwa yote"))) === `<p>Imesomwa yote</p>`);
++  const fn = read("src/lib/fill-nodes.tsx");
++  ok("3.5 · the kept end is an INLINE BLOCK, never a nowrap span: a pair wider than the 100px column at 320 wraps inside itself instead of running under the ✓",
++    /className="inline-block max-w-full"/.test(code("src/lib/fill-nodes.tsx")) && !/whitespace-nowrap/.test(code("src/lib/fill-nodes.tsx")) && fn.includes("export function moneySentence("));
++  const page = code("src/app/notifications/page.tsx");
++  ok("3.6 · /notifications draws both title branches through DotSeq + moneyRuns and the body through moneySentence",
++    (page.match(/<DotSeq text=\{pickTitle\(n\)\} renderPart=\{moneyRuns\} \/>/g) ?? []).length === 2 && !/(?<!=)\{pickTitle\(n\)\}/.test(page)
++      && page.includes("{moneySentence(pickBody(n))}") && !/>\{pickBody\(n\)\}</.test(page));
++  ok("3.6′ PLANT · the bare title put back is reported", /(?<!=)\{pickTitle\(n\)\}/.test(page.replace("<DotSeq text={pickTitle(n)} renderPart={moneyRuns} />", "{pickTitle(n)}")));
++  // The action column: the row is items-start; the plate is 32px at mt-0.5; each control is 44px.
++  const actions = code("src/app/notifications/row-actions.tsx");
++  const plateTop = /<IconPlate size=\{32\} className=\{cn\("mt-0\.5 border"/.test(page) ? SCALE["0.5"] : NaN;
++  const plateMid = plateTop + 32 / 2;
++  const lift = px(/<span className="([^"]*)"/.exec(actions)?.[1] ?? "", "-mt");
++  const restoreLift = px(/className="(-mt-[^"]*min-h-\[44px\] px-2[^"]*)"/.exec(actions)?.[1] ?? "", "-mt");
++  ok("3.7 · the ✓ and × centre on the leading icon: a 44px control lifted 4px (−mt-1) has its middle 18px down, the plate's middle (2 + 16) — and Restore likewise",
++    -lift + 44 / 2 === plateMid && -restoreLift + 44 / 2 === plateMid && /className="flex items-start gap-3 p-3"/.test(page)
++      && (actions.match(/min-h-\[44px\]/g) ?? []).length === 3,
++    show({ plateMid, controlMid: -lift + 22, restoreMid: -restoreLift + 22 }));
++  ok("3.7′ CONTROL · unlifted, the controls' middle sat 22px down — 4px under the icon's 18 (tile 194: glyph y674 against the plate's 669.5)",
++    0 + 44 / 2 - plateMid === 4);
++}
++
++/* ══ §4 · THE CAPTURE ════════════════════════════════════════════════════════════════════════════════════════════════ */
++section("4 · the capture waits for the demo player's unread sign on the tickets tiles too (217 218 219)");
++{
++  const drive = read("scripts/qa-journey-shell.mjs");
++  const ticket = drive.slice(drive.indexOf("async function ticketState("), drive.indexOf("async function tabTour("));
++  const loop = ticket.slice(ticket.indexOf("for (const width of widths)"));
++  const waitAt = loop.indexOf("if (viewer === 'player') await unreadLanded(page, width);");
++  ok("4.1 · each tickets tile of the demo player waits for the counter mounted at its width before it is judged and shot — the tab tiles' rule, logged and never failed",
++    ticket.length > 0 && waitAt > loop.indexOf("await toTop(page);") && waitAt < loop.indexOf("await checkShell(page, cell") && waitAt < loop.indexOf("await shoot(page, cell"),
++    loop.slice(0, 400));
++  ok("4.2 · …and unreadLanded still only says a missing sign (§3 of the drive judges the counts)",
++    /async function unreadLanded\(page, width/.test(drive) && /if \(!sign \|\| !row\) say\(/.test(drive) && !/if \(!sign \|\| !row\) (?:ok|fail)\(/.test(drive));
++  const planted = ticket.replace("if (viewer === 'player') await unreadLanded(page, width);", "");
++  ok("4.1′ PLANT · the wait taken out of the tickets loop is reported", !planted.includes("await unreadLanded(page, width)"));
++
++  // ⭐ An Up & Down chart is shot after its canvas's 520ms arrival (R4-D: tile 164 was shot ~26% into it, every ink at a
++  // quarter of tile 202's). The wait sits in shoot(), so every tile that shows a chart takes it.
++  const shoot = drive.slice(drive.indexOf("async function shoot("), drive.indexOf("\n}\n", drive.indexOf("async function shoot(")));
++  const waitChart = shoot.indexOf("await page.waitForFunction(CHART_ARRIVED, CHART_CANVAS");
++  ok("4.3 · shoot() waits for every chart canvas to arrive before the screenshot, and only SAYS one that has not (an empty or failed feed is the chart's own state)",
++    waitChart > 0 && waitChart < shoot.indexOf("await page.screenshot(") && /if \(!arrived\) say\(/.test(shoot) && !/if \(!arrived\) problems\.push/.test(shoot)
++      && /const CHART_CANVAS = '\[role="img"\] > \[style\*="--dur-arrive"\]';/.test(drive) && /const CHART_ARRIVE_MS = 5_000;/.test(drive),
++    shoot.slice(0, 200));
++  ok("4.3′ CONTROL · a wait, not an override: the capture never emulates reduced motion and never restyles the chart",
++    !/reducedMotion|prefers-reduced-motion|emulateMedia/.test(drive) && !/--dur-arrive[^\n]*(?:0ms|0s)/.test(drive));
++  // The selector finds the chart's own markup: the role="img" box's first child carries the arrival transition and
++  // states its target inline, and React writes that transition into the style attribute the selector reads.
++  const chart = code("src/components/charts/terminal-chart.tsx");
++  const styled = html(h("div", { style: { opacity: 1, transition: "opacity var(--dur-arrive) var(--ease-glide)" } }));
++  ok("4.4 · …and finds the terminal chart's canvas container: the role=\"img\" box's child whose inline style fades on --dur-arrive (terminal-chart.tsx), as React serialises it",
++    /<div role="img"[^>]*>\s*<div\s+ref=\{wrapRef\}\s+className="absolute inset-0"\s+style=\{\{ opacity: feed \? 1 : 0, transition: "opacity var\(--dur-arrive\) var\(--ease-glide\)" \}\}/.test(chart)
++      && /style="[^"]*--dur-arrive/.test(styled), styled);
++  // The probe itself, run on a stand-in document: arrived only when the COMPUTED opacity is 1.
++  const probeSrc = /const CHART_ARRIVED = (\(sel\) => [^\n]+);/.exec(drive)?.[1] ?? "";
++  const run = (src: string, computed: string[]) => {
++    const els = computed.map((o) => ({ o }));
++    const doc = { querySelectorAll: () => els };
++    const fn = new Function("document", "getComputedStyle", `return ${src};`)(doc, (el: { o: string }) => ({ opacity: el.o })) as (s: string) => boolean;
++    return fn(CHART_CANVAS_SEL);
++  };
++  const CHART_CANVAS_SEL = '[role="img"] > [style*="--dur-arrive"]';
++  ok("4.5 · the probe holds a canvas caught mid-fade (computed 0.25, tile 164's) and one with no feed yet, and lets an arrived one (1) or a page with no chart through",
++    probeSrc !== "" && run(probeSrc, ["0.25"]) === false && run(probeSrc, ["0"]) === false && run(probeSrc, ["1"]) === true && run(probeSrc, []) === true
++      && run(probeSrc, ["1", "0.6"]) === false, probeSrc);
++  const inline = probeSrc.replace("getComputedStyle(el).opacity === '1'", "(el.target ?? '1') === '1'");
++  ok("4.5′ PLANT · a probe that reads the INLINE target (1 from the first frame of the fade) lets tile 164's mid-fade canvas through, and is reported",
++    inline !== probeSrc && run(inline, ["0.25"]) === true);
++}
++
++console.log(`\nvisual-pass-r4c: ${pass} passed, ${fails.length} failed\n`);
++if (fails.length) {
++  for (const f of fails) console.error(`  · ${f}`);
++  process.exit(1);
++}
+diff --git a/src/app/fairness/page.tsx b/src/app/fairness/page.tsx
+index 37a8e0099..4be41e132 100644
+--- a/src/app/fairness/page.tsx
++++ b/src/app/fairness/page.tsx
+@@ -19,6 +19,7 @@ import { Pagination, PLAYER_PER_PAGE } from "@/components/ui/pagination";
+ import { Suspense } from "react";
+ import { FilterPill } from "@/components/ui/filter-pill";
+ import { SearchBox } from "@/components/ui/search-box";
++import { QUERY_SEARCH_BAND_CLASS } from "@/components/ui/query-bar";
+ import { parseQuery, matchesQuery, fieldNames, MARKET_SEARCH } from "@/lib/search";
+ import { FairnessBar, type AttestationCounts } from "./fairness-bar";
+ import {
+@@ -232,15 +233,21 @@ export default async function FairnessPage({ searchParams }: { searchParams: Pro
+         </ol>
+       </section>
+ 
+-      {/* Resolved markets table */}
+-      <section>
+-        <h2 className="font-display text-[20px] font-semibold text-text mb-3">{t.common.recentlyResolved}</h2>
++      {/* Resolved markets table.
++          ⭐ ONE RHYTHM, ITS `gap` (round 4 of the visual pass, 2026-10-09). The section spaced itself element by element —
++          `mb-3` under the heading, `pb-2` under the search, nothing under the bar, `py-2` round the exits, `mt-4` over the
++          pager — so the search's empty echo row and its 12px stood 47px between the box and the lens pills, and the table
++          began 10px under the sort. Now 24 between blocks (§S1, `--rh-tight`: a heading and what it labels), the search
++          and its bar one band (`QUERY_SEARCH_BAND_CLASS`): heading → box 34, box → pills 34, sort → table 34, as on
++          /results. */}
++      <section className="flex flex-col gap-5">
++        <h2 className="font-display text-[20px] font-semibold text-text">{t.common.recentlyResolved}</h2>
+ 
+         {/* ⛔ THE CONTROLS ARE WITHHELD ONLY WHEN THE RECORD IS GENUINELY EMPTY. Every other empty
+             state keeps the bar, because there the bar is the way OUT of the empty state. */}
+         {rows.length > 0 && (
+           <>
+-            <div className="pb-2">
++            <div className={QUERY_SEARCH_BAND_CLASS}>
+               <Suspense>
+                 <SearchBox
+                   placeholder={t.common.searchMarkets}
+@@ -254,7 +261,7 @@ export default async function FairnessPage({ searchParams }: { searchParams: Pro
+         )}
+ 
+         {totalCount === 0 && exits.length > 0 && (
+-          <div className="flex flex-wrap items-center gap-1.5 py-2">
++          <div className="flex flex-wrap items-center gap-1.5">
+             {exits.map((e) => (
+               <FilterPill
+                 key={e.id}
+@@ -394,7 +401,7 @@ export default async function FairnessPage({ searchParams }: { searchParams: Pro
+           </ScrollX>
+         )}
+         {totalPages > 1 && (
+-          <div className="mt-4 rounded-lg border border-border bg-bg-elevated/40 overflow-hidden">
++          <div className="rounded-lg border border-border bg-bg-elevated/40 overflow-hidden">
+             {/* ⛔ `totalCount`, THE SAME VARIABLE THE BAR PUBLISHES — never recomputed, or the
+                 pager counts a different population from the number above it. And `baseHref` now
+                 carries the state: it was the bare string "/fairness", so a page turn dropped the
+diff --git a/src/app/globals.css b/src/app/globals.css
+index bc73799e6..610ed50a7 100644
+--- a/src/app/globals.css
++++ b/src/app/globals.css
+@@ -3648,9 +3648,29 @@ th .link-pending { --lp-inset: 0px; --lp-bottom: 8px; }
+       width: 1px; height: 24px; margin-top: -12px;
+       background: var(--border); pointer-events: none;
+     }
++    /* ⭐ 2026-10-09 · round 4 [196] · …CENTRED ON THE GAP THE EYE SEES. The 14px above is measured from the pill BOXES,
++       and an unselected pill's box is invisible (`border-transparent`, `px-3`): its ink stops 17px inside it, so a
++       group ending on one put its rule 31px after that ink and 14px before the next box — /markets at 1280, row 3,
++       "TZS 50k+ 0" ink to x380, the rule at x412, MADA's box from x427. When the group before ends on an UNSELECTED
++       pill the rule moves 9px left, to the middle of the 46px from its ink to the next box (22 | 1 | 23; the
++       half-pixel cannot be split without blurring a 1px rule). A selected last pill draws its border, so the box IS
++       the edge and the rule stays at 14 | 1 | 14, clear of its 11px halo. The group after always opens on a key or a
++       bordered control, whose box is its visible edge. */
++    :has(> .kp-fchip:last-child:not([data-on])) + .kp-qdiv + *::before { left: -24px; }
+   }
+ }
+ 
++/* ⭐ 2026-10-09 · round 4 [171 172 193 194 204] · THE SEARCH BOX OVER A QUERY BAR (`QUERY_SEARCH_BAND_CLASS`,
++   query-bar.tsx, which says why). Its echo row — `mt-1.5 min-h-[17px]` in search-box.tsx, 8 + 17 = 25px, reserved
++   even when empty — lies inside the gap below it instead of adding to it: −25px when a query bar follows (the bar's
++   own 10px top padding keeps the echo clear of its opaque band), −15px over anything else (10px of it stays). So the
++   gap from the box to the bar's pills is the page's rung + 10, as under the bar.
++   ⛔ DOUBLED, as `.amount.amount` is: (0,3,0) ties `space-y-*`'s `> :not([hidden]) ~ :not([hidden])`, which sets every
++   later child's margin-bottom to 0, and this file is emitted after the utilities, so it wins; in a `gap` container
++   (/results) the negative margin simply subtracts from the gap. */
++.kp-search-band.kp-search-band:has(+ .kp-discovery-bar) { margin-bottom: -25px; }
++.kp-search-band.kp-search-band:not(:has(+ .kp-discovery-bar)) { margin-bottom: -15px; }
++
+ /* The sort/topic menus are <details>, so they open with no JavaScript. The native marker is
+    replaced by the caret glyph inside the summary.
+    ⚠️ DESKTOP ONLY since batch 6 — the phone layout is `.kp-fsheet` below. */
+diff --git a/src/app/markets/loading.tsx b/src/app/markets/loading.tsx
+index 74cf899dd..6378cecfe 100644
+--- a/src/app/markets/loading.tsx
++++ b/src/app/markets/loading.tsx
+@@ -128,7 +128,8 @@ export default async function MarketsLoading() {
+         </div>
+       </div>
+ 
+-      <div className="market-grid mt-3" aria-hidden>
++      {/* `mt-5`, the page's own margin over its grid (round 4, 2026-10-09). */}
++      <div className="market-grid mt-5" aria-hidden>
+         {Array.from({ length: PLAYER_PER_PAGE }).map((_, i) => (
+           <div
+             key={i}
+diff --git a/src/app/markets/page.tsx b/src/app/markets/page.tsx
+index bc0cc9df0..0388a9c08 100644
+--- a/src/app/markets/page.tsx
++++ b/src/app/markets/page.tsx
+@@ -346,7 +346,10 @@ async function DiscoveryBoard({ searchParams }: { searchParams: Promise<SP> }) {
+         signedIn={!!userId}
+       />
+ 
+-      <section data-board="grid" className="market-grid mt-3">
++      {/* ⭐ `mt-5` (24px; round 4, 2026-10-09, tile 196): with the bar's own 10px the cards stand 34px under its last row,
++          as its pills stand 35 under the search (the echo row 25 + the bar's 10) — it was `mt-3`, 26. On the phone's
++          one-line bar the cards stand 24 under its hairline (16 before). */}
++      <section data-board="grid" className="market-grid mt-5">
+         {paged.map((r) => {
+           const m = byId.get(r.id)!;
+           const cc = cardCharts.get(m.id) ?? { spark: [] };
+diff --git a/src/app/notifications/page.tsx b/src/app/notifications/page.tsx
+index 48f14953e..866913419 100644
+--- a/src/app/notifications/page.tsx
++++ b/src/app/notifications/page.tsx
+@@ -40,6 +40,9 @@ import { EmptyState } from "@/components/ui/empty-state";
+ import { IconPlate } from "@/components/ui/icon-plate";
+ import { Suspense } from "react";
+ import { SearchBox } from "@/components/ui/search-box";
++import { QUERY_SEARCH_BAND_CLASS } from "@/components/ui/query-bar";
++import { DotSeq } from "@/components/ui/dot-seq";
++import { moneyRuns, moneySentence } from "@/lib/fill-nodes";
+ import { fieldNames, NOTIFICATION_SEARCH } from "@/lib/search";
+ import { NotificationsBar } from "./notifications-bar";
+ import { Pagination, PLAYER_PER_PAGE } from "@/components/ui/pagination";
+@@ -165,12 +168,16 @@ export default async function NotificationsPage({
+       />
+ 
+       {/* ⭐ SEARCH — the last player lens surface without one, and the one that needed it most:
+-          this is where a player comes to find ONE receipt among a year of round results. */}
++          this is where a player comes to find ONE receipt among a year of round results.
++          ⭐ ONE BAND WITH THE BAR (round 4, 2026-10-09, tiles 193 194): the empty echo row and the page's 24px stood
++          between the box and the lens pills — 59–60px, against 34 under the bar. In the band the box sits 34 under the
++          header and the pills 34 under the box (`QUERY_SEARCH_BAND_CLASS`). */}
+       <Suspense>
+         <SearchBox
+           placeholder={t.notif.searchNotifications}
+           ariaLabel={t.notif.searchNotifications}
+           helpFields={fieldNames(NOTIFICATION_SEARCH)}
++          className={QUERY_SEARCH_BAND_CLASS}
+         />
+       </Suspense>
+ 
+@@ -261,7 +268,11 @@ export default async function NotificationsPage({
+                     {n.href ? (
+                       <Link href={n.href as never} className="block group">
+                         <p className="font-display text-body-sm font-semibold text-text leading-tight group-hover:underline underline-offset-2">
+-                          {pickTitle(n)}
++                          {/* ⭐ Round 4, 2026-10-09 (tiles 193 194): the money is `moneyRuns`' — "TZS 4,200" whole, in the
++                              mono face (§M4), where it was display sans and broke "TZS" / "4,200" at 390 — and the title's
++                              " · " is `DotSeq`'s, so it breaks between "Soko limefutwa" and "TZS 4,200 imerejeshwa" and
++                              never ends a line on its dot. */}
++                          <DotSeq text={pickTitle(n)} renderPart={moneyRuns} />
+                           {/* §A4 — colour is never the only signal, so the unread state is
+                               also a word a screen reader can reach. */}
+                           {isUnread && <span className="sr-only"> · {t.notif.unread}</span>}
+@@ -269,11 +280,13 @@ export default async function NotificationsPage({
+                       </Link>
+                     ) : (
+                       <p className="font-display text-body-sm font-semibold text-text leading-tight">
+-                        {pickTitle(n)}
++                        <DotSeq text={pickTitle(n)} renderPart={moneyRuns} />
+                         {isUnread && <span className="sr-only"> · {t.notif.unread}</span>}
+                       </p>
+                     )}
+-                    <p className="mt-1 text-label text-text-muted leading-snug break-words">{pickBody(n)}</p>
++                    {/* Its figures whole and its last two words together (`moneySentence`, round 4): at 1280 the body
++                        ended "…kwenye pochi" / "yako." (tile 194). */}
++                    <p className="mt-1 text-label text-text-muted leading-snug break-words">{moneySentence(pickBody(n))}</p>
+                     <p className="mt-1.5 font-mono text-micro text-text-subtle tabular-nums">
+                       {relTime(n.createdAt, t)}
+                     </p>
+diff --git a/src/app/notifications/row-actions.tsx b/src/app/notifications/row-actions.tsx
+index 9e332ef1f..c44bdceea 100644
+--- a/src/app/notifications/row-actions.tsx
++++ b/src/app/notifications/row-actions.tsx
+@@ -56,7 +56,7 @@ export function NotificationRowActions({
+         /* ≥44px tap target on a player surface (`test:tap-target`). The label is text, not a
+            bare glyph, because "what does this arrow do" is not a question to ask someone
+            about their own money history. */
+-        className="shrink-0 inline-flex items-center gap-1 min-h-[44px] px-2 rounded-md font-mono text-micro font-bold uppercase text-accent-400 hover:text-text hover:bg-bg-overlay transition-colors disabled:opacity-50"
++        className="-mt-1 shrink-0 inline-flex items-center gap-1 min-h-[44px] px-2 rounded-md font-mono text-micro font-bold uppercase text-accent-400 hover:text-text hover:bg-bg-overlay transition-colors disabled:opacity-50"
+       >
+         <I.rotateCcw s={12} />
+         {restoreLabel}
+@@ -69,9 +69,14 @@ export function NotificationRowActions({
+      and both are icon-only with an `aria-label`, matching the bell's own ✕.
+      ⛔ Dismiss is offered on the ARCHIVE only because it is reversible: it stamps
+      `dismissedAt`, and the **Cleared** lens plus Restore are the way back. Without that
+-     lens this control would be a delete button wearing a tidy-up label. */
++     lens this control would be a delete button wearing a tidy-up label.
++     ⭐ THE COLUMN STANDS ON THE ROW'S LEADING ICON (round 4, 2026-10-09, tile 194). The row is `items-start`, so the 44px
++     controls began at the content's top and their glyphs sat on y674 against the 32px plate's centre at y669.5 (card 2:
++     795 / 790.5) — 4–5px low. The plate is 2px under the content's top (`mt-0.5`), its centre 18px down; a 44px control
++     centred there starts 4px ABOVE the top: `-mt-1`, here and on Restore. The glyphs then centre on the icon, as a list
++     row's trailing control does on its leading one. */
+   return (
+-    <span className="shrink-0 inline-flex items-center gap-0.5">
++    <span className="-mt-1 shrink-0 inline-flex items-center gap-0.5">
+       {unread && (
+         <button
+           type="button"
+diff --git a/src/app/positions/loading.tsx b/src/app/positions/loading.tsx
+index b047f1eac..0fefcee1a 100644
+--- a/src/app/positions/loading.tsx
++++ b/src/app/positions/loading.tsx
+@@ -1,7 +1,7 @@
+ import { getServerT } from "@/lib/i18n-server";
+ import { PageContainer } from "@/components/layout/page-container";
+ import { PageHeader } from "@/components/ui/page-header";
+-import { QUERY_BAR_CLASS, QUERY_BAR_ROW1_CLASS, QUERY_BAR_ROW2_CLASS } from "@/components/ui/query-bar";
++import { QUERY_BAR_CLASS, QUERY_BAR_ROW1_CLASS, QUERY_BAR_ROW2_CLASS, QUERY_SEARCH_BAND_CLASS } from "@/components/ui/query-bar";
+ import { resolveSimpleJourney } from "@/lib/server/journey-preview";
+ import { TicketsGhost } from "@/components/journey/tickets/tickets-ghost";
+ 
+@@ -75,9 +75,15 @@ export default async function PositionsLoading() {
+         <div className="h-2.5 w-full rounded-pill bg-bg-overlay" />
+       </div>
+ 
+-      {/* The search box — ⚠️ 44px, the control floor, written as a literal: this repo overrides
+-          Tailwind's spacing scale, so `h-11` is not 44 here. */}
+-      <div className="h-[44px] w-full rounded-lg border border-border-control bg-bg-inset kp-shimmer-track" aria-hidden />
++      {/* The search band — the page's own class (round 4, 2026-10-09): 10px over a `search-box-wrap` of the box's
++          height (`--h-input` + its border) and its 25px echo row, which lies inside the gap to the bar
++          (`QUERY_SEARCH_BAND_CLASS`). It was a bare 44px box standing in for a 71px search. */}
++      <div className={QUERY_SEARCH_BAND_CLASS} aria-hidden>
++        <div className="search-box-wrap">
++          <div className="h-[calc(var(--h-input)+2px)] w-full rounded-lg border border-border-control bg-bg-inset kp-shimmer-track" />
++          <p className="mt-1.5 min-h-[17px]" />
++        </div>
++      </div>
+ 
+       {/* The query bar — two rows, the same classes the real bar wears.
+           ⛔ CAPSULES, NOT AN UNDERLINE RAIL. The lens strip is `FilterPill`s at 44px; a ghost
+diff --git a/src/app/positions/page.tsx b/src/app/positions/page.tsx
+index d73ce66b2..a1ca6527d 100644
+--- a/src/app/positions/page.tsx
++++ b/src/app/positions/page.tsx
+@@ -16,6 +16,7 @@ import { ensureAffiliateAccount, inviteViewerFor } from "@/lib/server/affiliate-
+ import { inviteIsLiveFor } from "@/lib/feature-state";
+ import { EmptyState } from "@/components/ui/empty-state";
+ import { SearchBox } from "@/components/ui/search-box";
++import { QUERY_SEARCH_BAND_CLASS } from "@/components/ui/query-bar";
+ import { fieldNames, matchesQuery, parseQuery, POSITION_SEARCH } from "@/lib/search";
+ import { PositionsBar, type PortfolioCounts } from "./positions-bar";
+ import {
+@@ -354,11 +355,14 @@ export default async function PositionsPage({ searchParams }: { searchParams: Pr
+       {positions.length > 0 && (
+         <>
+           {/* ⭐ Search sits OUTSIDE the sheet at every width — a player who can see the box knows
+-              the page is searchable. `helpFields` teaches the grammar by clickable example. */}
++              the page is searchable. `helpFields` teaches the grammar by clickable example.
++              ⭐ One band with the bar (round 4, 2026-10-09, `QUERY_SEARCH_BAND_CLASS`): the empty echo row and the page's
++              32px left 67px between the box and the lens pills; the band leaves 42, as above it and under the bar. */}
+           <SearchBox
+             placeholder={t.positions.searchPlaceholder}
+             ariaLabel={t.positions.searchPlaceholder}
+             helpFields={fieldNames(POSITION_SEARCH)}
++            className={QUERY_SEARCH_BAND_CLASS}
+           />
+           <PositionsBar state={state} counts={counts} resultCount={matched.length} t={t} />
+         </>
+diff --git a/src/app/positions/positions-bar.tsx b/src/app/positions/positions-bar.tsx
+index ccccce270..9694eae59 100644
+--- a/src/app/positions/positions-bar.tsx
++++ b/src/app/positions/positions-bar.tsx
+@@ -21,6 +21,7 @@ import { FilterPill, FilterGroupKey } from "@/components/ui/filter-pill";
+ import { FilterSheet, FilterSheetGroup } from "@/components/markets/filter-sheet";
+ import {
+   QUERY_BAR_CLASS,
++  QUERY_BAR_ROW1_ALONE_CLASS,
+   QUERY_BAR_ROW1_CLASS,
+   QUERY_BAR_ROW2_CLASS,
+   QUERY_GROUP_CLASS,
+@@ -279,12 +280,13 @@ function PositionsRail({ children }: { children: ReactNode }) {
+  * window groups are row 2's, which this variant does not draw (WP9 step 5; §0h point 23).
+  * ⭐ A SIBLING OF `PositionsBar`, NOT A PROP ON IT: the classic bar computes and draws exactly what it did, and this one is
+  * handed nothing it does not draw. Row 1's class has no bottom padding of its own (row 2 supplies it on the classic
+- * bar), so the strip adds the scale's `pb-2`.
++ * bar), so the row drawn alone takes row 2's (`QUERY_BAR_ROW1_ALONE_CLASS`, 10px; it was a hand-typed `pb-2`, 12px,
++ * which put the first ticket 44px under the pills against the tab rule's 42 over them — round 4, 2026-10-09).
+  */
+ export function PositionsBarJourney({ state, t }: { state: PortfolioState; t: Dict }) {
+   return (
+     <PositionsRail>
+-      <div className={`${QUERY_BAR_ROW1_CLASS} pb-2`}>
++      <div className={QUERY_BAR_ROW1_ALONE_CLASS}>
+         <QueryStrip ariaLabel={t.journey.ticketsFilterAria}>
+           {POSITION_LENSES.map((l) => (
+             <FilterPill
+diff --git a/src/app/proposals/page.tsx b/src/app/proposals/page.tsx
+index 18d96502a..d8141bbc0 100644
+--- a/src/app/proposals/page.tsx
++++ b/src/app/proposals/page.tsx
+@@ -24,6 +24,7 @@ import { pickLocalized } from "@/lib/localized";
+ import { formatTzs, formatNumber } from "@/lib/utils";
+ import { PageContainer } from "@/components/layout/page-container";
+ import { SearchBox } from "@/components/ui/search-box";
++import { QUERY_SEARCH_BAND_CLASS } from "@/components/ui/query-bar";
+ import { parseQuery, matchesQuery, fieldNames, BOARD_PROPOSAL_SEARCH } from "@/lib/search";
+ import { ProposalsBar, type BoardCounts } from "./proposals-bar";
+ import {
+@@ -237,8 +238,10 @@ export default async function ProposalsPage({
+       {rows.length > 0 && (
+         <>
+           {/* ⛔ NOT STICKY — see `/results/page.tsx`'s note. `QUERY_BAR_CLASS` already sticks at
+-              `top-[56px]`, so a second sticky band at the same offset overlaps it by 91px. */}
+-          <div className="py-2.5">
++              `top-[56px]`, so a second sticky band at the same offset overlaps it by 91px.
++              ⭐ One band with the bar (round 4, 2026-10-09, `QUERY_SEARCH_BAND_CLASS`): `py-2.5` left 77px between the box
++              and the lens pills on this page's 32px rung; the band leaves 42, as under the bar. */}
++          <div className={QUERY_SEARCH_BAND_CLASS}>
+             <Suspense>
+               <SearchBox
+                 placeholder={t.proposals.searchProposals}
+diff --git a/src/app/results/loading.tsx b/src/app/results/loading.tsx
+index 34c8749b7..e6ab351cf 100644
+--- a/src/app/results/loading.tsx
++++ b/src/app/results/loading.tsx
+@@ -6,6 +6,7 @@ import {
+   QUERY_BAR_ROW1_CLASS,
+   QUERY_BAR_ROW2_CLASS,
+   QUERY_GROUP_CLASS,
++  QUERY_SEARCH_BAND_CLASS,
+   QUERY_STRIP_CLASS,
+ } from "@/components/ui/query-bar";
+ 
+@@ -18,7 +19,7 @@ import {
+  * header and the grid it renders three bands this ghost did not have at all:
+  *
+  *   · header row (eyebrow + the NDIO/HAPANA donut and counts)      38px at 320, 360 and 414
+- *   · the STICKY search band — `py-2.5` around the search box      91px  (not 44)
++ *   · the STICKY search band — `py-2.5` around the search box      91px  (not 44; 56 since round 4, see below)
+  *   · the discovery bar — lens strip + sort/filter, two rows      116px
+  *   · the notable-results carousel                          497 / 458 / 436px at 320 / 360 / 414
+  *
+@@ -41,7 +42,7 @@ import {
+  * ⭐ EVERY BAND BELOW IS STRUCTURE, NOT A MEASUREMENT, WITH ONE EXCEPTION. The search band and
+  * the discovery bar are built from the page's own wrappers and tokens (`search-box-wrap`,
+  * `--h-input`, `QUERY_BAR_*`, `QUERY_STRIP_CLASS`, `QUERY_GROUP_CLASS`), so they compute to 91
+- * and 116 rather than being told to. ⚠️ The exception is the carousel's height: its content is a
++ * and 116 rather than being told to (56 and 120 since round 4: the search band and row 2's 12px). ⚠️ The exception is the carousel's height: its content is a
+  * market question, so no arrangement of empty boxes can derive it. It is reserved at the
+  * measured 458 and **guarded** — `qa:ghost-landing` fails this route if the board lands more
+  * than 120px from where the ghost promised, which is what makes a single measured number safe to
+@@ -72,9 +73,10 @@ export default async function ResultsLoading() {
+           </div>
+         </div>
+ 
+-        {/* The STICKY search band. ⛔ `py-2.5` is the band, not decoration: it is the 20px that
+-          turns a 71px `search-box-wrap` into the 91px the page actually reserves. */}
+-        <div className="py-[10px]" aria-hidden>
++        {/* The search band — the page's own class (round 4, 2026-10-09). ⛔ It is the band, not decoration: 10px over
++          a 71px `search-box-wrap`, whose 25px echo row lies inside the gap to the bar below (`globals.css`,
++          `.kp-search-band`), so it takes 56px of the column, as the page's does. It was `py-[10px]`, 91px. */}
++        <div className={QUERY_SEARCH_BAND_CLASS} aria-hidden>
+           <div className="search-box-wrap">
+             <div className="kp-shimmer-track h-[calc(var(--h-input)+2px)] rounded-lg border border-border bg-bg-inset" />
+             <p className="mt-1.5 min-h-[17px]" />
+diff --git a/src/app/results/page.tsx b/src/app/results/page.tsx
+index b5c87b892..6522e0df7 100644
+--- a/src/app/results/page.tsx
++++ b/src/app/results/page.tsx
+@@ -14,7 +14,7 @@ import { getCardCharts } from "@/lib/server/market-history";
+ import { EmptyState } from "@/components/ui/empty-state";
+ import { Pagination, PLAYER_PER_PAGE } from "@/components/ui/pagination";
+ import { SearchBox } from "@/components/ui/search-box";
+-import { QUERY_BAR_CLASS, QUERY_BAR_ROW1_CLASS, QUERY_BAR_ROW2_CLASS } from "@/components/ui/query-bar";
++import { QUERY_BAR_CLASS, QUERY_BAR_ROW1_CLASS, QUERY_BAR_ROW2_CLASS, QUERY_SEARCH_BAND_CLASS } from "@/components/ui/query-bar";
+ import { ResultsBar, type ArchiveCounts } from "./results-bar";
+ import {
+   archiveCounts,
+@@ -424,7 +424,11 @@ async function ResultsContent({
+           and `/updown/history` all render `SearchBox` unstuck; the BAR is the control worth
+           pinning, because it is how a player changes the view. Seven of seven routes now agree,
+           and one fewer number is derived from another element's height. */}
+-      <div className="py-2.5">
++      {/* ⭐ ONE BAND WITH THE BAR (round 4, 2026-10-09, tiles 171 172): `py-2.5` put the search's empty echo row, its own
++          10px and the page's 24px between the box and the lens pills — 69px, against 34 under the bar. The band keeps the
++          10px above the box and lets the echo row lie inside the gap below it, so the box sits 34 under the header row,
++          the pills 34 under the box, and the grid 34 under the sort. `QUERY_SEARCH_BAND_CLASS` says how. */}
++      <div className={QUERY_SEARCH_BAND_CLASS}>
+         <Suspense>
+           <SearchBox
+             placeholder={t.common.searchResults}
+@@ -645,14 +649,16 @@ function ResultsSkeleton() {
+         <div className="h-3.5 w-36 rounded bg-bg-overlay kp-shimmer-track" />
+       </div>
+ 
+-      {/* Search skeleton.
+-          ⚠️ FILED, NOT FIXED (DG-P-13 / DG-A-20): this bar is **44px** and the band it stands
+-          in for renders **91px** on production — a sticky wrapper (`py-2.5`) around a real
+-          `SearchBox` with its echo row. So the grid below still lands ~47px out when the
+-          fallback is replaced. That is a skeleton-SHAPE defect, not a rhythm one; DG-P-04 fixes
+-          the gaps and leaves the height with a measured number rather than a complaint.
+-          `markets/loading.tsx` already has the right shape to copy (`search-box-wrap`). */}
+-      <div className="h-[44px] rounded-md bg-bg-overlay kp-shimmer-track" style={{ maxWidth: 460 }} />
++      {/* Search skeleton — the page's own band (round 4, 2026-10-09): `QUERY_SEARCH_BAND_CLASS` around a
++          `search-box-wrap` of the box's height and the echo row, as `results/loading.tsx` draws it. It was a 44px bar
++          standing in for a 91px band (DG-P-13 / DG-A-20, filed): the band now takes 56px of the column (10 + 46 + 25,
++          less the 25 its echo row lends the gap to the bar), and the ghost takes the same. */}
++      <div className={QUERY_SEARCH_BAND_CLASS} aria-hidden>
++        <div className="search-box-wrap">
++          <div className="kp-shimmer-track h-[calc(var(--h-input)+2px)] rounded-lg border border-border bg-bg-inset" />
++          <p className="mt-1.5 min-h-[17px]" />
++        </div>
++      </div>
+ 
+       {/* ⭐ THE GHOST FOLLOWS THE BAR, and its classes are IMPORTED rather than retyped, so a
+           change to the bar's padding or sticky offset moves the ghost in the same commit by
+diff --git a/src/app/watchlist/page.tsx b/src/app/watchlist/page.tsx
+index c6ff345c6..486a4f36c 100644
+--- a/src/app/watchlist/page.tsx
++++ b/src/app/watchlist/page.tsx
+@@ -29,6 +29,7 @@ import { FilterPill } from "@/components/ui/filter-pill";
+ import { MarketCard } from "@/components/markets/market-card";
+ import { Pagination, PLAYER_PER_PAGE } from "@/components/ui/pagination";
+ import { SearchBox } from "@/components/ui/search-box";
++import { QUERY_SEARCH_BAND_CLASS } from "@/components/ui/query-bar";
+ import { getSession } from "@/lib/server/session";
+ import { listWatchedMarketIds } from "@/lib/server/watchlist-service";
+ import { playerMarketsByIds, isClosedByTime, isSelectionClosed } from "@/lib/server/market-service";
+@@ -178,8 +179,10 @@ export default async function WatchlistPage({
+       {rows.length > 0 && (
+         <>
+           {/* ⛔ NOT STICKY — see `/results/page.tsx`'s note. `QUERY_BAR_CLASS` already sticks at
+-              `top-[56px]`, so a second sticky band at the same offset overlaps it by 91px. */}
+-          <div className="py-2.5">
++              `top-[56px]`, so a second sticky band at the same offset overlaps it by 91px.
++              ⭐ One band with the bar (round 4, 2026-10-09, `QUERY_SEARCH_BAND_CLASS`): `py-2.5` left 69px between the box
++              and the lens pills, as on /results (tiles 171 172); the band leaves 34, as under the bar. */}
++          <div className={QUERY_SEARCH_BAND_CLASS}>
+             <Suspense>
+               <SearchBox
+                 placeholder={t.common.searchMarkets}
+diff --git a/src/components/journey/tickets/tickets-ghost.tsx b/src/components/journey/tickets/tickets-ghost.tsx
+index 4e13478ad..00dc607d4 100644
+--- a/src/components/journey/tickets/tickets-ghost.tsx
++++ b/src/components/journey/tickets/tickets-ghost.tsx
+@@ -11,7 +11,7 @@
+  */
+ import { PageContainer } from "@/components/layout/page-container";
+ import { PageHeader } from "@/components/ui/page-header";
+-import { QUERY_BAR_CLASS, QUERY_BAR_ROW1_CLASS } from "@/components/ui/query-bar";
++import { QUERY_BAR_CLASS, QUERY_BAR_ROW1_ALONE_CLASS } from "@/components/ui/query-bar";
+ import type { Dict } from "@/lib/i18n-dict";
+ 
+ /** The seven lenses, at widths near their labels' (a row of identical boxes reads as a loading bar, not a strip). */
+@@ -36,7 +36,7 @@ export function TicketsGhost({ t }: { t: Dict }) {
+     <PageContainer tier="reading" className="space-y-6">
+       <TicketsHeadGhost t={t} />
+       <div className={QUERY_BAR_CLASS} aria-hidden>
+-        <div className={`${QUERY_BAR_ROW1_CLASS} pb-2`}>
++        <div className={QUERY_BAR_ROW1_ALONE_CLASS}>
+           <div className="flex min-w-0 flex-1 items-center gap-1 overflow-hidden">
+             {LENS_WIDTHS.map((w, i) => (
+               <div key={i} className={`h-[44px] ${w} shrink-0 rounded-pill bg-bg-overlay`} />
+diff --git a/src/components/ui/dot-seq.tsx b/src/components/ui/dot-seq.tsx
+index 71f63769b..b01843017 100644
+--- a/src/components/ui/dot-seq.tsx
++++ b/src/components/ui/dot-seq.tsx
+@@ -20,18 +20,28 @@
+  * to a copy and paste, and to a reader that does not separate flex items. One space before and one after the hidden dot
+  * make the text the dictionary wrote, "A · B". Both sit at the start of a flex item, where white space collapses, so
+  * nothing moves on the screen.
++ * ⭐ `renderPart` (round 4, 2026-10-09, the notifications' titles, tiles 193 194): a part can be dressed — a notice's
++ * "Soko limefutwa · TZS 4,200 imerejeshwa" sets its figure through `moneyRuns`, whole and in the mono face. Without it
++ * each part is its own text, byte for byte as before.
+  */
++import type { ReactNode } from "react";
+ import { cn } from "@/lib/utils";
+ 
+-export function DotSeq({ text, className, mono = false }: { text: string; className?: string; mono?: boolean }) {
++export function DotSeq({ text, className, mono = false, renderPart }: {
++  text: string;
++  className?: string;
++  mono?: boolean;
++  renderPart?: (part: string) => ReactNode;
++}) {
+   const parts = text.split(" · ");
+-  if (parts.length < 2) return <span className={className}>{text}</span>;
++  const draw = (part: string) => (renderPart ? renderPart(part) : part);
++  if (parts.length < 2) return <span className={className}>{draw(text)}</span>;
+   return (
+     <span className={cn("kp-seq", mono && "kp-seq--mono", className)}>
+       {parts.map((part, i) => (
+         <span key={i} className="kp-seq__item">
+           {i > 0 && <>{" "}<span className="kp-seq__dot" aria-hidden>·</span>{" "}</>}
+-          {part}
++          {draw(part)}
+         </span>
+       ))}
+     </span>
+diff --git a/src/components/ui/query-bar.tsx b/src/components/ui/query-bar.tsx
+index cc60ba94e..c704b8228 100644
+--- a/src/components/ui/query-bar.tsx
++++ b/src/components/ui/query-bar.tsx
+@@ -81,6 +81,14 @@ export const QUERY_BAR_CLASS_PANEL =
+ 
+ /** Row 1 — the lens strip and the result count. Row 2 — sort, then filters. */
+ export const QUERY_BAR_ROW1_CLASS = "flex items-center gap-x-3 pt-2.5";
++/**
++ * Row 1 DRAWN ALONE — a bar with no row 2 (Tiketi zangu's, `PositionsBarJourney`, and its ghost): row 2's bottom padding
++ * (10px) moves onto it, so the bar is 10px over and under its pills, like every bar. It wrote `pb-2` (12px) by hand: on
++ * the page's 32px rung the tab rule stood 42px over the pills and the first ticket 44px under them (round 4, 2026-10-09,
++ * tiles 169 170 214–228). Now 42 and 42. ⚠️ `pb-[10px]`, not `pb-2.5`: the stock 2.5 is an inverted key on this scale
++ * (`test:spacing-scale`), and the literal is the same pixel.
++ */
++export const QUERY_BAR_ROW1_ALONE_CLASS = `${QUERY_BAR_ROW1_CLASS} pb-[10px]`;
+ /**
+  * 🔴 PLAYER-FILTERS 2026-09-09 · `gap-x-2` BECAME `gap-2`, BECAUSE THIS ROW WRAPS AND HAD NO
+  * ROW GAP AT ALL.
+@@ -98,8 +106,34 @@ export const QUERY_BAR_ROW1_CLASS = "flex items-center gap-x-3 pt-2.5";
+  * phone/Swahili case gains the 12px (`tailwind.config.ts:215`) that makes two rows two rows.
+  * ⛔ Guarded by `qa:tap-truth`'s DISJOINT/ATREST arms, which measure rendered boxes rather than
+  * class strings — the reason this survived every source-scanning gate the repo already had.
++ *
++ * ⭐ 2026-10-09 · round 4 [171 172 174 193 194 196] · ROW 2 STANDS 12px UNDER ROW 1, THE SAME 12px AS ITS OWN
++ * WRAPPED LINES (`pt-2`, was `pt-1.5`). At 8px the bar's rhythm was 8 between the lens strip and the sort and 12
++ * between row 2's own lines (/markets at 1280: chips → PANGA 8, PANGA → BWAWA 12; /wallet: 8 / 12), and the selected
++ * pill's halo (`--glow-selected`, 11px of reach) lay on the sort control's border — PANGA's top edge on the 9th of its
++ * 11 pixels. 12 is the row gap the bar already uses and clears the halo by a pixel. The /markets phone bar
++ * (rows `display: contents`) and /leaderboard's sort row (`py-0`) are untouched.
++ */
++export const QUERY_BAR_ROW2_CLASS = "kp-qbar-row flex flex-wrap items-center gap-2 pb-2.5 pt-2";
++
++/**
++ * ⭐ THE SEARCH BOX OVER A QUERY BAR — one band with the bar under it (2026-10-09, round 4, tiles 171 172 193 194).
++ *
++ * 🔴 THE EMPTY BAND UNDER THE SEARCH. `SearchBox` reserves its echo row (8 + 17 = 25px) under the box even when it is
++ * empty, so a reader typing never moves the page. On `/markets` that row IS the gap to the bar (25 + the bar's 10px =
++ * 35, as measured), but every other page put its own rung between the search and the bar as well: /results 25 + its
++ * band's 10 + 24 + 10 = 69px (tiles 171 172), /notifications 25 + 24 + 10 = 59–60 (193 194), /watchlist 69, /proposals
++ * and the classic /positions 67–77 — against 34 under the bar.
++ * ⭐ So this band carries the page's rung + the bar's 10px on both sides, and its echo row lies INSIDE the gap below it
++ * (`globals.css`, `.kp-search-band`: a 25px negative margin when a query bar follows, so the bar's own 10px top padding
++ * is the clearance; 15px over anything else, which keeps 10 of it). `pt-[10px]` is the bar's own 10px (row 1's `pt-2.5`)
++ * above the box, written as the literal because the stock 2.5 is an inverted key on this scale (`test:spacing-scale`). A
++ * page with a 24px rung reads 34 · 34 · 34 around the search and its bar, a 32px rung 42 · 42 · 42.
++ * ⛔ A box whose echo shows still pushes the bar down: the margin is a constant, so a two-line echo moves everything
++ * under it by its second line and nothing is drawn under the bar's opaque band.
++ * ⛔ NOT on `/markets`: its search and bar have no rung between them, so the echo row is already the whole gap.
+  */
+-export const QUERY_BAR_ROW2_CLASS = "kp-qbar-row flex flex-wrap items-center gap-2 pb-2.5 pt-1.5";
++export const QUERY_SEARCH_BAND_CLASS = "kp-search-band pt-[10px]";
+ 
+ /**
+  * The LENS strip — rank-primary pills, scrolling below `lg`, wrapping above it.
+diff --git a/src/lib/fill-nodes.tsx b/src/lib/fill-nodes.tsx
+index dca52b32a..fa4ac45df 100644
+--- a/src/lib/fill-nodes.tsx
++++ b/src/lib/fill-nodes.tsx
+@@ -57,3 +57,31 @@ export function moneyRuns(text: string): ReactNode[] {
+   if (last < text.length) out.push(text.slice(last));
+   return out;
+ }
++
++/**
++ * A FINISHED SENTENCE WITH ITS FIGURES WHOLE (`moneyRuns`) AND ITS LAST TWO WORDS ON ONE LINE — for a column that can be
++ * narrower than those two words (round 4 of the visual pass, 2026-10-09: /notifications at 1280, tile 194, ended a body
++ * "…kwenye pochi" / "yako.").
++ *
++ * ⭐ AN INLINE BLOCK, NOT `keepLastWords`' nowrap span. A notice's body is a stored sentence that ends however its template
++ * or its market ends it, in a column 100px wide at 320 (the row's ✓ and × take 90 of it); a nowrap pair wider than the
++ * column would run out of it, under the ✓. An inline block moves to the next line whole when the pair fits on one, and
++ * wraps inside itself when it does not, so it can never overflow. ⛔ An inline block takes no text decoration from its
++ * parent, so this is for plain text (a body), never a link that underlines on hover.
++ * ⭐ A figure is never cut: when the last two words would split a "TZS 4,200", the kept end starts at its "TZS".
++ * Chinese, and a sentence of two words or fewer, take `moneyRuns` alone (`keepLastWords`' own two rules, keep-words.tsx).
++ */
++const IDEOGRAPH = /[㐀-䶿一-鿿豈-﫿]/;
++const LAST_TWO = /\S+\s+\S+\s*$/;
++export function moneySentence(text: string): ReactNode[] {
++  let at = IDEOGRAPH.test(text) ? -1 : text.search(LAST_TWO);
++  for (const m of text.matchAll(MONEY_RUN)) {
++    const start = m.index ?? 0;
++    if (start < at && at < start + m[0].length) at = start;
++  }
++  if (at <= 0) return moneyRuns(text);
++  return [
++    ...moneyRuns(text.slice(0, at)),
++    <span key="end" className="inline-block max-w-full">{moneyRuns(text.slice(at))}</span>,
++  ];
++}

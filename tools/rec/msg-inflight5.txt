@@ -1,0 +1,3 @@
+docs(vodacom): in flight - turn A running on WP12; db:scratch's sweep found blind to its own io_worker in junctioned worktrees (twelve database suites could not start) and fixed on vodacom-dbscratch; WP12 rebased onto it; turn A2 queued before parity
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>

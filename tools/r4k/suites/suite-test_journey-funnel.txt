@@ -1,0 +1,47 @@
+journey-funnel — the Vodacom plan S3b counters (in-memory store)
+  PASS 1.valid · the beacon's own bodies for the two browser steps are accepted, exactly as built
+  PASS 1.refused · a server step from a browser, a foreign origin, an unknown variant, an extra key (an id), a missing key, an uppercase or unsafe or long tag, junk, an array, empty, oversized — all null, never a throw
+  PASS 2.server · the server steps pass the same list (tags stored lowercased); an origin or step the list does not name is dropped
+  PASS 3.day · counted on the EAST AFRICA day: two opens at 23:30 EAT on 1 Oct, one at 00:30 EAT on 2 Oct (the same UTC day), one board open; the refused bet counted nowhere
+  PASS 3.range · a range reads its days inclusively and nothing else
+  PASS 3.prune · totals are kept 400 days and pruned the day after
+  PASS 4.columns · the model's columns are exactly the day, the five tags and the count — no user, session, IP, market or amount
+  PASS 4.migration · it only CREATEs, IF NOT EXISTS (no DROP, ALTER, UPDATE or DELETE)
+  PASS 5.retention · retention.purge.daily prunes the funnel totals, best-effort, and reports the rows
+  PASS 6.utm · the first touch keeps utm_source and utm_campaign lowercased; an unsafe value is dropped; a stored value is read defensively
+  PASS 7.endpoint · the real POST handler counts a same-origin browser beacon, and not a cross-site POST, a crawler, a browser claiming a bet, or junk; it always answers 204
+  PASS 7.no-cookie · the endpoint reads no cookie or session and sets none; POST only; rate-limited on a real rule
+  PASS 8.scope · the beacon sends only when the server-rendered scope is old or new, skips automation, and touches no cookie and no storage but the kp-utm session key
+  PASS 8.shell · the shell renders the scope: off for a preview, staff, or an account it could not read; else the journey shown
+  PASS 8.census · every sendFunnel call names a browser step and only origins its step allows; the bet forms carry allowed origins (dial, quick)
+  PASS 8.links · the Up & Down deposit links carry from=low-balance; the home page's side links carry from=home
+  PASS 9.bet · a player's bet is counted with its origin (dial, quick) in the old journey; staff and an origin a bet may not have are not
+[audit] WALLET deposit.initiated usr_fnl_0_p Transaction#txn_d6e3f860fdfba1cfd2be0ec2
+[audit] WALLET deposit.dispatch usr_fnl_0_p User#usr_fnl_0_p
+[audit] WALLET deposit.confirmed usr_fnl_0_p Transaction#txn_d6e3f860fdfba1cfd2be0ec2
+[email] sending "Deposit confirmed · TZS 5,000" → u***@t.tz (tag=deposit)
+[email-stub] To: u***@t.tz | Subject: Deposit confirmed · TZS 5,000
+[audit] WALLET deposit.initiated usr_fnl_0_p Transaction#txn_534b50498899904c309f9642
+[audit] WALLET deposit.dispatch usr_fnl_0_p User#usr_fnl_0_p
+[audit] WALLET deposit.confirmed usr_fnl_0_p Transaction#txn_534b50498899904c309f9642
+[email] sending "Deposit confirmed · TZS 3,000" → u***@t.tz (tag=deposit)
+[email-stub] To: u***@t.tz | Subject: Deposit confirmed · TZS 3,000
+[audit] WALLET deposit.initiated usr_fnl_0_s Transaction#txn_521a49d7b96ee260f967df40
+[audit] WALLET deposit.dispatch usr_fnl_0_s User#usr_fnl_0_s
+[audit] WALLET deposit.confirmed usr_fnl_0_s Transaction#txn_521a49d7b96ee260f967df40
+[email] sending "Deposit confirmed · TZS 4,000" → u***@t.tz (tag=deposit)
+[email-stub] To: u***@t.tz | Subject: Deposit confirmed · TZS 4,000
+  PASS 9.deposit · the REAL deposit(): a low-balance deposit is counted as low_balance and a direct one as direct when CONFIRMED; a staff deposit is not counted; the row keeps its origin
+  PASS 9.counter · the deposit counter maps the row's origin (low_balance stays, anything else is direct) and never counts a house row
+  PASS 9.bet-wiring · the bet action counts only after buyPosition returned ok and NOT a replay, from the form the dial built
+  PASS 9.deposit-wiring · the deposit is counted in settleDepositConfirmed's post-lock block, outside the lock, by a dynamic import — and its row is written with the origin
+  PASS 9.form · the deposit page adds the origin only for from=low-balance; the action accepts only low_balance and carries it through a failure
+  PASS 9.create-only · the origin is written on create and skipped by BOTH update paths; its migration adds one nullable column under the lock-retry block
+  PASS 10.measure · a share is the numerator over its own denominator (30%); a numerator above it is held at 100% and flagged; no denominator is no figure
+  PASS 10.totals · sheet → bet counts only bets from a sheet (the dial), never Up & Down quick bets; short → deposit only low-balance deposits; the journeys and a campaign are kept apart
+  PASS 10.report · from the rows: two confirmed deposits, one followed by the player's bet within 30 minutes (the house-marked bet at 5 minutes does not count); one more player with a first bet
+  PASS 10.panel · the panel is mounted on /admin/insights AFTER the page's access check, and it contains its own read failure
+
+JOURNEY FUNNEL — all checks passed
+
+

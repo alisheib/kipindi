@@ -1,0 +1,20 @@
+docs(vodacom): IN FLIGHT ~20:30 EAT — the visual pass on vodacom-visual, the Modal fix live, §5's stop named correctly
+
+- The visual pass so far, on branch vodacom-visual (on main e16f9353):
+  - G1 (cards, Chinese number units, strip fades, filter dividers, the Needle over text, pill height, carousel
+    caption).
+  - G4 (the money forms' top gap, the legal nav, the held sheet figure, the chat bubble on a notched phone).
+  - G5 and the owner's rule that the header's edge is the page's edge at every width. `/` follows in the journey
+    only, so classic viewers are served what they were.
+  - The edge plan's logic bug: the journey Wallet offered Weka pesa during a break.
+  - G2 and G3 are still working. Lock turns M1–M3 are queued, then I2.
+- The kit Modal fix is LIVE (e16f9353), with turn L's results.
+- Correction: the line on WP12's owed runs said §5's one stop in turn C was a click before hydration. It was the
+  Modal taking focus back from a field already chosen. The preview drive's wait for React is a precondition, not
+  that stop's cause.
+- Turn I (S7 WP1 calibration) is running: --prove-red 114/122 because the ticker strip moved between two captures.
+  The strip is frozen for the capture in 9bcb22f7, which I2 recalibrates.
+
+test:vodacom-plan 18 rows, 0 failures; test:docs every reference resolves.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>

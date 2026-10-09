@@ -1,0 +1,9 @@
+Vodacom S6 A8i-2 follow-up: qa:enter-where-pressed runs with REDUCED_MOTION=1 too - A8i-2's owed "reduced motion"
+
+Under prefers-reduced-motion a closing dialog unmounts at once (exitBeatMs is 0), so there is no leaving ghost and the
+cases built on the seal's exit (W2, SQ) meet the arming beat alone. REDUCED_MOTION=1 gives the drive's one browser
+context reducedMotion "reduce" and says so in its first line; without it nothing changes.
+
+Proof on OMEGA-COMPILE01: the drive parses. {PROOF}
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>

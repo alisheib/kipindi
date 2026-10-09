@@ -1,0 +1,23 @@
+﻿precondition: gate is GREEN on the untouched tree
+
+  1. caught      the-K-to-M-seam-branches-before-rounding  →  formatTzsCompact(999,500) === "TZS 1.0M"
+  2. caught      the-M-to-B-seam-branches-before-rounding  →  formatTzsCompact(999,500,000) === "TZS 1.0B"
+  3. caught      the-10M-decimal-step-branches-before-rounding  →  formatTzsCompact(9,999,999) === "TZS 10M"
+  4. caught      the-width-contract-lies-again  →  3: ⭐ the doc's positive exemplar
+  5. caught      the-sibling-emits-an-ascii-hyphen  →  4: negatives carry U+2212, not an ASCII hyphen
+  6. caught      the-promoted-step-branch-is-dropped  →  4: sub-1 ticks keep enough decimals
+  7. caught      the-limits-line-in-the-body-face-again  →  6: AmountField's hint goes through moneyRuns
+  8. caught      the-example-loses-its-separator  →  6: …and its example is written as the platform writes a figure
+  9. caught      a-figure-swallows-the-sentence-comma  →  6: ⭐ …and a sentence's own comma after a figure stays in the sentence
+
+9/9 caught · files restored: all · green after restore: true
+RED PROOF COMPLETE
+node.exe : (node:7112) [DEP0190] DeprecationWarning: Passing args to a child process with shell option true can lead 
+to security vulnerabilities, as the arguments are not escaped, only concatenated.
+At line:1 char:1
++ & "C:\Program Files\nodejs/node.exe" "C:\Program Files\nodejs/node_mo ...
++ ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: ((node:7112) [DE...y concatenated.:String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+ 
+(Use `node --trace-deprecation ...` to show where the warning was created)

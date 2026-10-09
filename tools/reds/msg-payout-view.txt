@@ -1,0 +1,13 @@
+test(payout-view): §4's fee check follows landing v3 C1-H - it pinned a resolvedSide line fd16567b removed, so test:payout-view was red on main
+
+§4 required `const resolvedSide = outcome === "VOID" ? undefined : outcome`: the fee must never be priced off a void's
+losing side (it has none). fd16567b (landing v3 C1-H) removed that variable: once there is a verdict the fee is read
+through chargedFee, which mirrors settlement (a VOID or a one-sided pool takes the zero fee), handed the outcome
+itself; poolFee is only the outcome-neutral projection before one. The check now holds that: chargedFee is handed
+`resolvedOutcome: outcome`, and poolFee is handed no side derived from the outcome.
+
+Proof on OMEGA-COMPILE01 (2026-10-08, main 042b52e4): test:payout-view 40/0 (38/1 before); red:payout-view 5/5.
+Controls in the page, restored after: chargedFee handed "YES" instead of the outcome fails the first; poolFee handed
+the outcome fails the second.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>

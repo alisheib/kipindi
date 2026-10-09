@@ -1,0 +1,287 @@
+diff --git a/scripts/journey-tickets.test.mts b/scripts/journey-tickets.test.mts
+index 92c0c0ca..42d0b2e0 100644
+--- a/scripts/journey-tickets.test.mts
++++ b/scripts/journey-tickets.test.mts
+@@ -273,10 +273,14 @@ const RULE_CALL = "const payout = ticketPayout(p);";
+ const FIGURE_LEAKS = ["potentialPayout", "selectionClosedNotifiedAt", "payoutIfWin", "payoutExactNote", `"exact"`];
+ const CHIP_RULE = `status === "LOSS" ? "no" : (playerStatusChip(status) ?? "warning")`;
+ const TITLE_LINK = "<Link href={" + BT + "/markets/${p.marketId}" + BT + " as never}";
+-/** The question's words: the short title, or the full one held to two lines by a clamp on the words themselves. */
+-const TITLE_WORDS = `<span className={title.short ? undefined : "line-clamp-2"}>{title.text}</span>`;
+-/** The heading the question sits in: one 20px line per line of words (16px type, leading 1.25). */
+-const TITLE_HEADING = `<h2 className="mt-3 font-display text-body-lg font-semibold leading-tight text-text">`;
++/**
++ * The question's words, WHOLE: the short title or the full question, straight inside the link and never clamped.
++ * ⚠️ Until 2026-10-08 this pinned a two-line clamp on the full question; the visual pass (tile 211) found it cutting the
++ * bet's own question at 320 ("…kutakuwa kijani…" with "kesho?" hidden), so the pin now holds the opposite: no clamp.
++ */
++const TITLE_WORDS = `hover:underline">{title.text}</Link>`;
++/** The heading the question sits in: one 20px line per line of words (16px type, leading 1.25), its lines balanced. */
++const TITLE_HEADING = `<h2 className="mt-3 font-display text-body-lg font-semibold leading-tight text-text text-balance">`;
+ /** The link's reach: the scale's step 2 of padding above and below, taken back by the same step as negative margin. */
+ const TITLE_REACH = `className="-my-2 block py-2 hover:underline"`;
+ /** Step 2 of the spacing scale as tailwind.config.ts overrides it: 12px, so a 20px line reaches 44px. */
+@@ -309,14 +313,14 @@ function g2Card(I: Impl, W: World, ok: Ok) {
+     arm.includes("value={t.journey.ticketPayoutAtResult}") && !arm.includes("formatTzs(") && !arm.includes("money")
+       && count(card, RULE_CALL) === 1 && count(card, "<Stat") === 3 && leaks.length === 0,
+     show({ leaks, stats: count(card, "<Stat"), arm: arm.slice(0, 160) }));
+-  ok("2.title · the question is the card's only link — to its market — the short title where one is approved, the full one held to two lines",
++  ok("2.title · the question is the card's only link — to its market — the short title where one is approved, the full one otherwise, and either one WHOLE: no clamp cuts the bet's own question (2026-10-08)",
+     count(card, "<Link") === 1 && card.includes(TITLE_LINK) && card.indexOf("<h2") < card.indexOf(TITLE_LINK)
+       && card.indexOf(TITLE_LINK) < card.indexOf("</h2>") && card.includes("const title = cardTitle(locale, m);")
+-      && card.includes(TITLE_WORDS) && card.includes("<article"),
+-    show({ links: count(card, "<Link"), words: card.includes(TITLE_WORDS) }));
+-  ok("2.reach · the question's link reaches 44px and moves nothing: 12px of padding each way (step 2 of this repo's scale) around its 20px line, taken back by the same negative margin — side-picker's absorber — with the two-line clamp on the words inside, never on the padded link",
++      && card.includes(TITLE_WORDS) && !card.includes("line-clamp") && card.includes("<article"),
++    show({ links: count(card, "<Link"), words: card.includes(TITLE_WORDS), clamp: card.includes("line-clamp") }));
++  ok("2.reach · the question's link reaches 44px and moves nothing: 12px of padding each way (step 2 of this repo's scale) around its 20px lines, taken back by the same negative margin — side-picker's absorber — with the words straight inside the padded link",
+     card.includes(`${TITLE_LINK} ${TITLE_REACH}>`) && card.includes(TITLE_HEADING) && card.includes(TITLE_WORDS)
+-      && !card.includes("line-clamp-2 hover:underline") && text(W, TW_CONFIG).includes(STEP_2),
++      && text(W, TW_CONFIG).includes(STEP_2),
+     show({ reach: card.includes(TITLE_REACH), heading: card.includes(TITLE_HEADING), step2: text(W, TW_CONFIG).includes(STEP_2) }));
+   const classic = text(W, CLASSIC_CARD);
+   const tone = fnBody(text(W, TONE), "export function positionStatusChip(");
+@@ -993,6 +997,7 @@ const stampedShowsExact = swap(CARD, UNRESOLVED_STAT,
+   `m.selectionClosedNotifiedAt ? <Stat label={t.market.payoutIfWin} value={formatTzs(p.stake)} tone="gold" money hint={t.market.payoutExactNote} /> : ${UNRESOLVED_STAT}`);
+ const cardIsALink = swap(CARD, "<h2 className=", `<Link href={"/markets" as never}>open</Link><h2 className=`);
+ const reachDropped = swap(CARD, TITLE_REACH, `className="block py-2 hover:underline"`);
++const titleClamped = swap(CARD, "{title.text}</Link>", `<span className={title.short ? undefined : "line-clamp-2"}>{title.text}</span></Link>`);
+ const chipCopied = swap(CARD, "variant={positionStatusChip(p.status)}", `variant={p.status === "LOSS" ? "no" : "warning"}`);
+ const classicChipBack = swap(CLASSIC_CARD, "variant={positionStatusChip(status)}", `variant={status === "LOSS" ? "no" : "warning"}`);
+ const numberGone = swap(CARD, "{p.id}</p>", "</p>");
+@@ -1117,6 +1122,7 @@ const plants: Plant[] = [
+   { name: "the card prints a figure on an open ticket", expect: ["2.render"], world: figureOnOpen, landed: changed(figureOnOpen, CARD) },
+   { name: "the card shows the exact figure once the closing sweep has stamped the market (the classic card's rule)", expect: ["2.render"], world: stampedShowsExact, landed: changed(stampedShowsExact, CARD) },
+   { name: "the card gains a second link", expect: ["2.title"], world: cardIsALink, landed: changed(cardIsALink, CARD) },
++  { name: "the full question is held to two lines again (at 320 it hid the end of the bet's own question)", expect: ["2.title"], world: titleClamped, landed: changed(titleClamped, CARD) },
+   { name: "the question's link loses its pull-back (the card grows 24px)", expect: ["2.reach"], world: reachDropped, landed: changed(reachDropped, CARD) },
+   { name: "the journey card spells the colour rule itself", expect: ["2.chip"], world: chipCopied, landed: changed(chipCopied, CARD) },
+   { name: "the classic card goes back to its own ternary", expect: ["2.chip"], world: classicChipBack, landed: changed(classicChipBack, CLASSIC_CARD) },
+diff --git a/src/app/globals.css b/src/app/globals.css
+index ee2deb45..9f4ebafa 100644
+--- a/src/app/globals.css
++++ b/src/app/globals.css
+@@ -6438,8 +6438,11 @@ html[lang="zh"] .kp-udrule { word-break: keep-all; }
+    returns. `.kp-rail__item` itself is not edited. */
+ .kp-rail--journey .kp-rail__item { justify-content: flex-start; }
+ @media (min-width: 360px) { .kp-rail--journey .kp-rail__item { justify-content: center; } }
+-/* The guest Tiketi sheet's title: the display face, kept clear of the close button the Modal pins top-right. */
+-.kp-jsheet__title { margin: 0; padding-right: var(--sp-12); font-family: var(--font-display); font-weight: 700; font-size: var(--type-h3); line-height: 1.25; color: var(--text); }
++/* The guest Tiketi sheet's title: the display face, kept clear of the close button the Modal pins top-right.
++   ⭐ Balanced (2026-10-08, the visual pass, tile 116): at en 320 its 232px measure holds "Sign in to see your" (188px)
++   and left "tickets" alone on line 2; balanced, it reads "Sign in to see / your tickets". A title that fits on one
++   line (sw "Ingia uone tiketi zako", 219px, tile 113; zh, tile 119; every language from 360) is unchanged. */
++.kp-jsheet__title { margin: 0; padding-right: var(--sp-12); font-family: var(--font-display); font-weight: 700; font-size: var(--type-h3); line-height: 1.25; color: var(--text); text-wrap: balance; }
+ 
+ /* ── THE CENTRE COIN — UPDATE-2026-09-28 §2 ───────────────────────────────────────
+    The rail's middle slot is the wallet's door, and the coin is the 50pick mark AS a control: the
+diff --git a/src/app/markets/[id]/page.tsx b/src/app/markets/[id]/page.tsx
+index 338a7059..b6418b82 100644
+--- a/src/app/markets/[id]/page.tsx
++++ b/src/app/markets/[id]/page.tsx
+@@ -687,10 +687,14 @@ export default async function MarketDetail({
+                 <p className="font-mono text-micro uppercase eyebrow font-bold text-gold-300">
+                   {t.market.signInToPredict}
+                 </p>
+-                <h2 id={BET_PANEL_HEADING} className="mt-1.5 font-display text-[18px] font-bold text-text leading-tight">
++                {/* ⭐ Balanced, both centred lines (2026-10-08, the visual pass, tile 199): at sw 390 the title's 292px
++                    measure held "Weka dau lako kwenye soko" (258px) and left "hili" alone; balanced it reads "Weka dau
++                    lako / kwenye soko hili". The note under it is balanced too, and its Chinese breaks only at its
++                    comma (keep-all, with break-word as the floor), never inside 手机号. */}
++                <h2 id={BET_PANEL_HEADING} className="mt-1.5 font-display text-[18px] font-bold text-text leading-tight text-balance">
+                   {t.market.placeYourStake}
+                 </h2>
+-                <p className="mt-1.5 text-body-sm text-text-muted leading-snug">
++                <p className="mt-1.5 text-body-sm text-text-muted leading-snug text-balance [word-break:keep-all] [overflow-wrap:break-word]">
+                   {t.market.browseForFree}
+                 </p>
+                 {(() => {
+diff --git a/src/app/updown/history/page.tsx b/src/app/updown/history/page.tsx
+index 49ac6f01..cf5955a6 100644
+--- a/src/app/updown/history/page.tsx
++++ b/src/app/updown/history/page.tsx
+@@ -363,7 +363,13 @@ export default async function UpDownHistoryPage({ searchParams }: {
+               a player who filtered to `Up wins` and saw nothing would have been told they had
+               never played. Each exit carries a REAL cross-filtered count, so none of them leads
+               to another empty page. */}
++          {/* ⭐ TIKETI ZANGU'S TWO KINDS DRAW ONE EMPTY STATE (2026-10-08, tiles 233, 236, 239 against 242, 245, 248): for a
++              journey reader this is the Juu/Chini tab beside Maswali, whose empty state fills the content width (PV-03:
++              it lines up with the switch and the name above it). Boxed, this one was a 360px card centred at 460-820
++              under a 1016px switch rail, and the box changed width as the reader changed tabs. Everybody else keeps
++              today's centred box. */}
+           <EmptyState
++            fill={journey}
+             title={
+               cause === "no-rows" ? t.market.udNoHistory
+               : cause === "search-miss" ? t.market.udNoRoundsThatDay
+diff --git a/src/components/journey/tickets/ticket-card.tsx b/src/components/journey/tickets/ticket-card.tsx
+index 5b660f5b..f067378b 100644
+--- a/src/components/journey/tickets/ticket-card.tsx
++++ b/src/components/journey/tickets/ticket-card.tsx
+@@ -7,12 +7,27 @@
+  * while it is open, when selection closes; then the Sell button.
+  *
+  * ⭐ THE QUESTION IS THE SHORT TITLE where an officer approved one (S2's `cardTitle`, on the projection WP8 widened),
+- * and otherwise the reader's own full question, held to two lines.
++ * and otherwise the reader's own full question — WHOLE, at every width (2026-10-08, the visual pass, tile 211). It was
++ * held to two lines, and at 320 that cut "Je, kufungwa kwa kila siku kwa Bitcoin kutakuwa kijani…" before "kesho?":
++ * the one card a player opens to see their bet named the bet only in part. The canvas draws the question unclamped
++ * (s4-9-tiketi-open's `<h2>`), the board's 2-line clamp (Q6) is a rule for browsing cards, not for a ticket, and the
++ * row's cards now share a height (`tickets-view.tsx`), so a longer question costs its row a line and hides nothing.
++ * Its lines are balanced, as the board's question is (`.mcardp-q`), so no word is left alone on the last ("…close be /
++ * green?" at en 390, tile 215).
+  * ⭐ ITS LINK REACHES 44px AND THE CARD DOES NOT MOVE (Law 9's tap floor): twelve pixels of padding above and below the
+  * question, taken back by the same twelve as negative margin — the absorber `side-picker.tsx` uses — so one line is a
+  * 44px target and two lines 64px, while every line sits where it would without them. Its neighbours, the state chips
+- * above and the stake and payout below, are 16px away and neither holds a control. The two-line clamp sits on the words
+- * inside: on the padded link itself a third line would show through the padding.
++ * above and the stake and payout below, are 16px away and neither holds a control. ⚠️ The card is a flex column (so the
++ * Sell row can sit on its floor), which makes the heading a flex item: its margin no longer collapses with the link's
++ * negative one but holds it inside, and the arithmetic lands every line on the same pixel (16 below the chips, 16 above
++ * the stake), with the link's reach overhanging the heading's box by the same twelve each way.
++ * ⭐ THE PAYOUT CELL GETS THE ROOM THE STAKE DOES NOT NEED (2026-10-08, tiles 211, 214, 215). Two equal halves gave the
++ * open ticket's words — "Matokeo yakitoka" 129.6px, "When the result is in" 170.1px in 13.5px JetBrains Mono bold —
++ * a 115px cell at 320 and 150px at 390, so they broke "Matokeo / yakitoka" and "When the result is / in". The stake is
++ * never wider than "TZS 1,000,000" (105.3px; PLATFORM_MAX_STAKE), so the row splits 2 : 3, and the stake's column never
++ * narrows below its own figure (`minmax(max-content, …)`): a stake figure never breaks, and only the one-million stake at
++ * 320 takes the words back to two lines. The words' lines are balanced, so a wrap that remains is an even pair
++ * ("When the / result is in"), never a word alone.
+  * ⛔ NO PAYOUT FIGURE ON ANY UNRESOLVED TICKET (SJ-4, DESIGN_AUTHORITY §C3, VODACOM-PLAN §0h point 22): "Malipo ·
+  * Matokeo yakitoka" while betting is open, after selling closes, and after the closing sweep has stamped the market; the
+  * figure arrives with the result ("Malipo ya mwisho"). `ticketPayout` holds the rule and `test:journey-tickets` §2
+@@ -83,18 +98,16 @@ export function TicketCard({ p, m, price, t, locale, serverNow }: {
+     <article
+       id={p.id}
+       data-row-id={p.id}
+-      className="ticket-target scroll-mt-[96px] rounded-xl border border-border bg-bg-elevated p-4"
++      className="ticket-target scroll-mt-[96px] flex flex-col rounded-xl border border-border bg-bg-elevated p-4"
+     >
+       <div className="flex flex-wrap items-center justify-between gap-2">
+         <Chip size="sm" variant={p.side === "YES" ? "yes" : "no"}>{sideWord(t, p.side, "MARKET")}</Chip>
+         <Chip size="sm" variant={positionStatusChip(p.status)}>{positionStatusWord(t, p.status, "MARKET")}</Chip>
+       </div>
+-      <h2 className="mt-3 font-display text-body-lg font-semibold leading-tight text-text">
+-        <Link href={`/markets/${p.marketId}` as never} className="-my-2 block py-2 hover:underline">
+-          <span className={title.short ? undefined : "line-clamp-2"}>{title.text}</span>
+-        </Link>
++      <h2 className="mt-3 font-display text-body-lg font-semibold leading-tight text-text text-balance">
++        <Link href={`/markets/${p.marketId}` as never} className="-my-2 block py-2 hover:underline">{title.text}</Link>
+       </h2>
+-      <div className="mt-3 grid grid-cols-2 gap-3">
++      <div className="mt-3 grid grid-cols-[minmax(max-content,2fr)_minmax(0,3fr)] gap-3 text-balance">
+         <Stat label={t.dialog.stakeLabel} value={formatTzs(p.stake)} money />
+         {payout.kind === "atResult" ? (
+           <Stat label={t.journey.ticketPayout} value={t.journey.ticketPayoutAtResult} tone="muted" />
+@@ -102,7 +115,9 @@ export function TicketCard({ p, m, price, t, locale, serverNow }: {
+           <Stat label={t.journey.ticketFinalPayout} value={formatTzs(payout.amount)} tone={payout.won ? "gold" : "default"} struck={payout.won} money />
+         )}
+       </div>
+-      <div className="mt-3 space-y-1 text-body-sm text-text-muted">
++      {/* `grow`: in a row of cards that share a height, the shorter card's spare room opens here, so its Sell row sits
++          on the card's floor, level with its neighbour's (2026-10-08, tiles 213, 222, 225, 228, 168). */}
++      <div className="mt-3 grow space-y-1 text-body-sm text-text-muted">
+         <p className="flex items-center gap-1.5 break-all font-mono"><I.ticket s={14} className="shrink-0" />{p.id}</p>
+         <p className="flex items-center gap-1.5">
+           <I.clock s={14} className="shrink-0" />
+diff --git a/src/components/journey/tickets/tickets-ghost.tsx b/src/components/journey/tickets/tickets-ghost.tsx
+index e1a4bceb..4e13478a 100644
+--- a/src/components/journey/tickets/tickets-ghost.tsx
++++ b/src/components/journey/tickets/tickets-ghost.tsx
+@@ -44,7 +44,8 @@ export function TicketsGhost({ t }: { t: Dict }) {
+           </div>
+         </div>
+       </div>
+-      <div className="grid grid-cols-1 items-start gap-3 md:grid-cols-2" aria-hidden>
++      {/* The view's own grid and the card's own stake/payout split (2026-10-08): rows stretch, the payout takes 3 parts. */}
++      <div className="grid grid-cols-1 gap-3 md:grid-cols-2" aria-hidden>
+         {[0, 1, 2, 3].map((i) => (
+           <div key={i} className="rounded-xl border border-border bg-bg-elevated p-4 kp-shimmer-track">
+             <div className="flex items-center justify-between gap-2">
+@@ -52,7 +53,7 @@ export function TicketsGhost({ t }: { t: Dict }) {
+               <div className="h-5 w-[96px] rounded-pill bg-bg-overlay" />
+             </div>
+             <div className="mt-3 h-4 w-3/4 rounded bg-bg-overlay" />
+-            <div className="mt-3 grid grid-cols-2 gap-3">
++            <div className="mt-3 grid grid-cols-[minmax(max-content,2fr)_minmax(0,3fr)] gap-3">
+               <div className="h-[44px] rounded bg-bg-overlay" />
+               <div className="h-[44px] rounded bg-bg-overlay" />
+             </div>
+diff --git a/src/components/journey/tickets/tickets-view.tsx b/src/components/journey/tickets/tickets-view.tsx
+index 7e78dee1..b6d6aa51 100644
+--- a/src/components/journey/tickets/tickets-view.tsx
++++ b/src/components/journey/tickets/tickets-view.tsx
+@@ -109,7 +109,11 @@ export function TicketsView({ rows, positions, markets, prices, lens, page, serv
+         />
+       ) : (
+         <>
+-          <div className="grid grid-cols-1 items-start gap-3 md:grid-cols-2">
++          {/* The cards of a row share its height (the grid's own stretch; 2026-10-08, tiles 213, 222, 225, 228, 168).
++              `items-start` let each card stop at its content, so a row with a two-line question beside a one-line one
++              ended ragged: measured at 1280, 16px under the taller card and 36px under the shorter, against the 16px gap
++              everywhere else. The card is a flex column whose detail lines grow, so the spare room sits above the Sell row. */}
++          <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+             {paged.map((row) => {
+               const p = positions.get(row.id);
+               const m = markets.get(row.marketId);
+diff --git a/src/components/ui/empty-state-classes.ts b/src/components/ui/empty-state-classes.ts
+index ba80e3f4..81b4360a 100644
+--- a/src/components/ui/empty-state-classes.ts
++++ b/src/components/ui/empty-state-classes.ts
+@@ -24,9 +24,22 @@
+ export const EMPTY_STATE_BOX =
+   "rounded-xl border border-dashed border-border-strong bg-bg-elevated px-8 py-8 text-center";
+ 
++/**
++ * ⭐ CHINESE BREAKS BETWEEN WORDS, NOT INSIDE THEM (2026-10-08, the visual pass, tile 247). Chinese may break between
++ * any two characters, so a centred line of it split 显示 into "…将显 / 示在这里。". `keep-all` breaks it only where its
++ * punctuation and spaces do (after ，。 and the —— dash); Latin text is untouched by it. `break-word` is the floor
++ * under that: a run with no break in it that is wider than its box still breaks rather than overflows.
++ * ⚠️ Arbitrary properties, not `break-keep break-words`: tailwind-merge (`cn`) files both under ONE `break-*` group
++ * and would keep only the last of them.
++ */
++const CJK_WORDS = "[word-break:keep-all] [overflow-wrap:break-word]";
++
+ /** The title line. `text-balance` is part of it because it changes where the line WRAPS, and a
+  *  ghost that wraps differently from its page is a ghost with a different height. */
+-export const EMPTY_STATE_TITLE = "font-display text-[15.5px] font-semibold text-balance";
++export const EMPTY_STATE_TITLE = `font-display text-[15.5px] font-semibold text-balance ${CJK_WORDS}`;
+ 
+-/** The body line. Measured line box: 21.125px at `text-body-sm leading-relaxed`. */
+-export const EMPTY_STATE_BODY = "mt-2 text-body-sm leading-relaxed";
++/** The body line. Measured line box: 21.125px at `text-body-sm leading-relaxed`.
++ *  ⭐ Balanced, like the title (2026-10-08, tiles 232, 233, 235, 236): it is centred, and the greedy fill left one word
++ *  under a full line — "Weka dau kwenye ubao na litaonekana / hapa.", "…and it appears / here." Balancing keeps the
++ *  number of lines and evens their lengths, so no height moves and nothing is left alone. */
++export const EMPTY_STATE_BODY = `mt-2 text-body-sm leading-relaxed text-balance ${CJK_WORDS}`;
+diff --git a/src/components/ui/empty-state.tsx b/src/components/ui/empty-state.tsx
+index 6d9d02d0..8955df8e 100644
+--- a/src/components/ui/empty-state.tsx
++++ b/src/components/ui/empty-state.tsx
+@@ -78,12 +78,26 @@ export function EmptyState({
+         {illustration ?? <DefaultIllustration kind={kind} />}
+       </div>
+       <p className={cn(EMPTY_STATE_TITLE, "text-text")}>{title}</p>
+-      {body && <p className={cn(EMPTY_STATE_BODY, "text-text-subtle")}>{body}</p>}
++      {body && <p className={cn(EMPTY_STATE_BODY, "text-text-subtle")}>{dashOnItsWord(body)}</p>}
+       {action && <div className="mt-4">{action}</div>}
+     </div>
+   );
+ }
+ 
++/**
++ * ⭐ A DASH NEVER OPENS A LINE (2026-10-08, the visual pass, tiles 241 and 243). "Chagua swali, bonyeza NDIO au HAPANA
++ * — tiketi yako itaonekana hapa." broke at the space BEFORE its dash, so line 2 began "— tiketi yako…" (en: "— your
++ * ticket shows up here."). The words are the dictionary's and stay so; only the break before the dash is taken away:
++ *   · a spaced dash (sw, en) — the space before it becomes a no-break space, so the dash ends its line with its word;
++ *   · an unspaced dash (zh "否——您") — a word joiner (U+2060, zero-width) holds it to the character before.
++ * A break AFTER the dash is untouched, and an unspaced en dash ("1–5", a range) is left alone.
++ */
++const NO_BREAK_SPACE = String.fromCharCode(0x00a0);
++const WORD_JOINER = String.fromCharCode(0x2060);
++function dashOnItsWord(text: string): string {
++  return text.replace(/[ \t]+(?=[—–])/g, NO_BREAK_SPACE).replace(/([^\s—])(?=—)/g, `$1${WORD_JOINER}`);
++}
++
+ /** Compact error-state — same chrome, no-rose accent. */
+ export function ErrorState({
+   title,

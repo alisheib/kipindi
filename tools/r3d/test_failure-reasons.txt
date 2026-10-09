@@ -1,0 +1,425 @@
+﻿
+§1 · a 999 stake is refused with a message NAMING the minimum
+[audit] ADMIN market.created test Market#mkt_6c40082516b6a2ab96ce
+PASS 1.1 · 999 is refused — Stake must be a whole number between TZS 1,000 and TZS 1,000,000.
+PASS 1.2 · ★ and the refusal carries the machine reason `stake_below_min` — stake_below_min
+PASS 1.3 · ★ …and the BOUND as a NUMBER, not buried in English prose — 1000
+PASS 1.4.en · ★ the player's sentence NAMES the minimum — Minimum bet is TZS 1,000. Enter TZS 1,000 or more and try again.
+PASS 1.5.en · …and it is a WARNING they can act on, not a red error — warning
+PASS 1.5b.en · ★ NO placeholder survives — the sentence is finished, not merely correct — Minimum bet is TZS 1,000. Enter TZS 1,000 or more and try again.
+PASS 1.4.sw · ★ the player's sentence NAMES the minimum — Dau la chini kabisa ni TZS 1,000. Weka TZS 1,000 au zaidi kisha jaribu tena.
+PASS 1.5.sw · …and it is a WARNING they can act on, not a red error — warning
+PASS 1.5b.sw · ★ NO placeholder survives — the sentence is finished, not merely correct — Dau la chini kabisa ni TZS 1,000. Weka TZS 1,000 au zaidi kisha jaribu tena.
+PASS 1.6.sw · ⛔ …and it is NOT the English sentence — Dau la chini kabisa ni TZS 1,000. Weka T
+PASS 1.4.zh · ★ the player's sentence NAMES the minimum — 最低投注为 TZS 1,000。请输入 TZS 1,000 或以上后重试。
+PASS 1.5.zh · …and it is a WARNING they can act on, not a red error — warning
+PASS 1.5b.zh · ★ NO placeholder survives — the sentence is finished, not merely correct — 最低投注为 TZS 1,000。请输入 TZS 1,000 或以上后重试。
+PASS 1.6.zh · ⛔ …and it is NOT the English sentence — 最低投注为 TZS 1,000。请输入 TZS 1,000 或以上后重试。
+PASS 1.7.en · ★ the UP & DOWN surface names it too — it showed one generic line before — Minimum bet is TZS 1,000. Enter TZS 1,000 or more and try again.
+PASS 1.7.sw · ★ the UP & DOWN surface names it too — it showed one generic line before — Dau la chini kabisa ni TZS 1,000. Weka TZS 1,000 au zaidi kisha jaribu tena.
+PASS 1.7.zh · ★ the UP & DOWN surface names it too — it showed one generic line before — 最低投注为 TZS 1,000。请输入 TZS 1,000 或以上后重试。
+PASS 1.8 · over-max is refused with `stake_above_max` — stake_above_max
+PASS 1.9 · ★ …the sentence names the maximum AND says the cap is per BET — Maximum for a single bet is TZS 1,000,000. You can place more than one bet on this market.
+[audit] BET market.position.opened fr_player Position#pos_ac12b486b359be4bc98d
+node.exe : [email] sendEmailToUser skipped — no email for user fr_player… (user.email=null, phone=+25579…)
+At line:1 char:1
++ & "C:\Program Files\nodejs/node.exe" "C:\Program Files\nodejs/node_mo ...
++ ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: ([email] sendEma... phone=+25579…):String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+ 
+[audit] WALLET bonus.wagering_skipped_opposite_side fr_player Position#pos_5714f34a63838dbf8890
+[audit] BET market.position.opened fr_player Position#pos_5714f34a63838dbf8890
+PASS 1.10 · ★ exactly 1,000 and exactly 1,000,000 are ACCEPTED — the refusals above are not blanket — min=true max=true
+
+§2 · the registry cannot ship a blank screen
+PASS 2.0 · the registry is not empty — 71 reasons
+PASS 2.en.render · ★ all 71 reasons render a FINISHED sentence — no leftover placeholder
+PASS 2.en.figures · ★ every declared figure actually lands in the sentence
+PASS 2.sw.render · ★ all 71 reasons render a FINISHED sentence — no leftover placeholder
+PASS 2.sw.figures · ★ every declared figure actually lands in the sentence
+PASS 2.zh.render · ★ all 71 reasons render a FINISHED sentence — no leftover placeholder
+PASS 2.zh.figures · ★ every declared figure actually lands in the sentence
+PASS 2.en · all 71 reasons have complete copy
+PASS 2.sw · all 71 reasons have complete copy
+PASS 2.zh · all 71 reasons have complete copy
+PASS 2.spec · every reason declares a valid severity and channel — 71 checked
+
+§3 · the renderer never puts audit prose in front of a player
+PASS 3.1 · ★ a reasoned refusal renders the DICTIONARY, not the server sentence — Dau la chini kabisa ni TZS 1,000. Weka TZS 1,000 au zaidi kisha jaribu tena.
+PASS 3.2 · ★ an UNREASONED refusal renders the caller's fallback — still not the server sentence — fallback
+PASS 3.3 · …and it is a warning, not an alarm — an unclassifiable refusal is usually a stale shape — warning/null
+PASS 3.4 · an UNKNOWN reason token falls back too, rather than rendering the token — fallback
+
+§4 · C4 · the BUSY lie
+PASS 4.1 · ★ they are NOT the same sentence — We’re busy right now. Your sta vs Something went wrong at our en
+PASS 4.2 · ★ only `system_busy` promises the stake did not move — Something went wrong at our end. Check your wallet before retrying — if the bet is there, it went through.
+PASS 4.3 · ★ `system_error` tells them to CHECK, which is the honest instruction — Something went wrong at our end. Check your wallet before retrying — if the bet is there, it went through.
+PASS 4.4 · and the severities differ — busy is a warning, an unknown outcome is an error — warning/error
+
+§5 · the checker can say no
+PASS 5.1 · the complete dictionary passes
+PASS 5.2 · ★ a MISSING string is caught — stake_below_min: no copy for key "failStakeBelowMin"
+PASS 5.3 · ★ a BLANK string is caught
+PASS 5.4 · ★ a placeholder `detail` cannot supply is caught — it would render as a literal dash — stake_below_min: copy uses {balance} but `needs` does not declare it
+PASS 5.5 · ★ …and a DECLARED figure the copy never uses is caught too — computed and dropped — stake_below_min: declares need "min" but the copy never uses it
+
+§6 · gold means earned money
+PASS 6.1 · there ARE warning-severity reasons to get wrong — 41
+PASS 6.2 · ★ no warning-severity reason is routed to a modal — a fixable problem does not seize the screen
+PASS 6.3 · ★ the RG daily-loss cap is an ERROR in a MODAL — LCCP informed consent, on both products
+PASS 6.4 · ★ a frozen wallet is an ERROR, not the NOT_FOUND 'refresh and try again' it used to render as — error
+
+§7 · B2 · the warning a grant-holder gets before taking the other side
+PASS 7.1 · ★ it is a WARNING, never an error — the bet still goes through if they choose — warning
+PASS 7.2 · ★ …and it names the amount they still have to wager, as a figure — This bet won’t count toward your bonus. You already have money on the other side of this market, and only one side counts toward the TZS 40,000 you still need to bet before your bonus can be withdrawn.
+PASS 7.3 · …and says WHY: they already hold the other side of this market — This bet won’t count toward your bonus. You already have money on the other side of this market, and only one side counts toward the TZS 40,000 you still need to bet before your bonus can be withdrawn.
+PASS 7.4 · ★ it renders INLINE, beside the control — a modal would read as a refusal — inline
+PASS 7.5.en · a finished sentence, with the figure — This bet won’t count toward your bonus. You already have mon
+PASS 7.5.sw · a finished sentence, with the figure — Dau hili halitahesabiwa kwenye bonasi yako. Tayari una fedha
+PASS 7.5.zh · a finished sentence, with the figure — 此注不计入您的奖金要求。您在本市场的另一方已有资金，仅一方计入您提取奖金前仍需投注的 TZS 40,000。
+PASS 7.6 · ★ the market page gates the warning on an UNFULFILLED grant, not on merely hedging
+PASS 7.7 · ★ …computed on the READ path, and NOT called inside the bet transaction (P2028) — page=true market-service=false
+PASS 7.8 · ★ …and the page passes the remaining wagering as `detail.remaining` — renderFailure({ … reason: "bonus_wagering_one_side", detail: { remaining: … } }) ?
+
+§8 · the phrase tests still match the server's own words
+[email] sendEmailToUser skipped — no email for user fr_player… (user.email=null, phone=+25579…)
+PASS 8.0 · fixture · the server tree was walked and read — 272 files, 22888 literals
+PASS 8.wallet frozen · a real server string still matches — 23 candidate(s), e.g. "The pools are frozen, so this is the exact amount — not an"
+PASS 8.wallet frozen · …and it still maps to its OWN line, not the generic fallback — got "Your wallet is frozen. Contact support to resolve it." — expected "Your wallet is frozen. Contact support to resolve it."
+PASS 8.passthrough · ⚠️ a bilingual EN·SW gateway line passes through untranslated, BY DESIGN
+PASS 8.control · ⚠️ an unrecognised INVALID string DOES fall through to the generic line — got "That didn't go through. Check the details and try again."
+PASS 8.control · …and so does an unrecognised SUSPENDED string — got "This service is temporarily paused. Try again shortly."
+
+§8b · the reasons that replaced the deleted phrase tests
+PASS 8b.withdraw-min.en · renders its OWN line, not the generic fallback — The smallest amount we can send after the fee is TZS 1,000. Withdraw a
+PASS 8b.withdraw-min.en · ⛔ NO placeholder survives — the {min}-twice defect — The smallest amount we can send after the fee is TZS 1,000. Withdraw a
+PASS 8b.withdraw-min.en · both figures come from detail, as numbers — The smallest amount we can send after the fee is TZS 1,000. Withdraw at least TZS 1,016.
+PASS 8b.withdraw-min.en · ⛔ and NOTHING was scraped out of the prose — The smallest amount we can send after the fee is TZS 1,000. Withdraw at least TZS 1,016.
+PASS 8b.deposit_limit.en · the reason wins over the prose — This deposit would pass a deposit limit you set. You can review your l
+PASS 8b.sof_required.en · the reason wins over the prose — This deposit needs a source-of-funds declaration that our team has acc
+PASS 8b.email_unverified.en · the reason wins over the prose — Confirm your email address before you withdraw. Open the link we sent 
+PASS 8b.id_taken.en · the reason wins over the prose — This identity document is already linked to another account. Contact s
+PASS 8b.id_not_verified.en · the reason wins over the prose — Enter your identity document details first.
+PASS 8b.id_number_format.en · the reason wins over the prose — That number doesn't match the rule for the document you chose. Check i
+PASS 8b.id_expired.en · the reason wins over the prose — That document has expired. Use one that is still valid, or renew it fi
+PASS 8b.id_expiry_required.en · the reason wins over the prose — Enter the expiry date printed on the document.
+PASS 8b.doc_image_type.en · the reason wins over the prose — The document must be a clear JPG, PNG, or WebP photo.
+PASS 8b.doc_too_large.en · the reason wins over the prose — The photo is too large. Use one under 3 MB.
+PASS 8b.docs_locked.en · the reason wins over the prose — Your verification is locked while our team reviews it, and once it is 
+PASS 8b.docs_required.en · the reason wins over the prose — Attach every required document before submitting.
+PASS 8b.extra_docs_required.en · the reason wins over the prose — Upload every requested document before submitting.
+PASS 8b.no_extra_request.en · the reason wins over the prose — No extra documents are being requested right now.
+PASS 8b.withdraw-min.sw · renders its OWN line, not the generic fallback — Kiasi kidogo zaidi tunachoweza kutuma baada ya ada ni TZS 1,000. Toa a
+PASS 8b.withdraw-min.sw · ⛔ NO placeholder survives — the {min}-twice defect — Kiasi kidogo zaidi tunachoweza kutuma baada ya ada ni TZS 1,000. Toa a
+PASS 8b.withdraw-min.sw · both figures come from detail, as numbers — Kiasi kidogo zaidi tunachoweza kutuma baada ya ada ni TZS 1,000. Toa angalau TZS 1,016.
+PASS 8b.withdraw-min.sw · ⛔ and NOTHING was scraped out of the prose — Kiasi kidogo zaidi tunachoweza kutuma baada ya ada ni TZS 1,000. Toa angalau TZS 1,016.
+PASS 8b.deposit_limit.sw · the reason wins over the prose — Amana hii ingepita kikomo cha amana ulichojiwekea. Unaweza kukagua vik
+PASS 8b.sof_required.sw · the reason wins over the prose — Amana hii inahitaji tamko la chanzo cha fedha lililokubaliwa na timu y
+PASS 8b.email_unverified.sw · the reason wins over the prose — Thibitisha barua pepe yako kabla ya kutoa pesa. Fungua kiungo tulichok
+PASS 8b.id_taken.sw · the reason wins over the prose — Hati hii ya utambulisho tayari imeunganishwa na akaunti nyingine. Wasi
+PASS 8b.id_not_verified.sw · the reason wins over the prose — Weka taarifa za hati yako ya utambulisho kwanza.
+PASS 8b.id_number_format.sw · the reason wins over the prose — Nambari hii hailingani na kanuni ya hati uliyochagua. Ilinganishe na h
+PASS 8b.id_expired.sw · the reason wins over the prose — Hati hii imekwisha muda wake. Tumia hati ambayo bado ni halali, au ifa
+PASS 8b.id_expiry_required.sw · the reason wins over the prose — Weka tarehe ya mwisho iliyoandikwa kwenye hati.
+PASS 8b.doc_image_type.sw · the reason wins over the prose — Hati lazima iwe picha safi ya JPG, PNG au WebP.
+PASS 8b.doc_too_large.sw · the reason wins over the prose — Picha ni kubwa mno. Tumia picha chini ya MB 3.
+PASS 8b.docs_locked.sw · the reason wins over the prose — Uthibitisho wako umefungwa wakati timu yetu inaukagua, na baada ya kui
+PASS 8b.docs_required.sw · the reason wins over the prose — Ambatisha kila hati inayohitajika kabla ya kuwasilisha.
+PASS 8b.extra_docs_required.sw · the reason wins over the prose — Pakia kila hati iliyoombwa kabla ya kuwasilisha.
+PASS 8b.no_extra_request.sw · the reason wins over the prose — Hakuna hati za ziada zinazoombwa kwa sasa.
+PASS 8b.withdraw-min.zh · renders its OWN line, not the generic fallback — 扣除手续费后我们能发送的最小金额为TZS 1,000。请至少提现TZS 1,016。
+PASS 8b.withdraw-min.zh · ⛔ NO placeholder survives — the {min}-twice defect — 扣除手续费后我们能发送的最小金额为TZS 1,000。请至少提现TZS 1,016。
+PASS 8b.withdraw-min.zh · both figures come from detail, as numbers — 扣除手续费后我们能发送的最小金额为TZS 1,000。请至少提现TZS 1,016。
+PASS 8b.withdraw-min.zh · ⛔ and NOTHING was scraped out of the prose — 扣除手续费后我们能发送的最小金额为TZS 1,000。请至少提现TZS 1,016。
+PASS 8b.deposit_limit.zh · the reason wins over the prose — 此笔充值将超出您设置的充值限额。您可以在负责任博彩中查看您的限额。
+PASS 8b.sof_required.zh · the reason wins over the prose — 此笔充值需要一份经我们团队审核通过的资金来源声明。请在个人资料中填写，审核通过后即可完成此笔充值。
+PASS 8b.email_unverified.zh · the reason wins over the prose — 提现前请先确认您的电子邮箱。请打开我们发送给您的链接，或在个人资料中添加邮箱地址。
+PASS 8b.id_taken.zh · the reason wins over the prose — 该身份证件已与其他账户绑定。如有误请联系客服。
+PASS 8b.id_not_verified.zh · the reason wins over the prose — 请先填写您的身份证件信息。
+PASS 8b.id_number_format.zh · the reason wins over the prose — 该号码不符合所选证件的规则。请对照证件核对后重试。
+PASS 8b.id_expired.zh · the reason wins over the prose — 该证件已过期。请使用仍在有效期内的证件，或先办理换新。
+PASS 8b.id_expiry_required.zh · the reason wins over the prose — 请填写证件上印制的有效期截止日期。
+PASS 8b.doc_image_type.zh · the reason wins over the prose — 证件必须是清晰的 JPG、PNG 或 WebP 照片。
+PASS 8b.doc_too_large.zh · the reason wins over the prose — 照片过大。请使用小于 3 MB 的照片。
+PASS 8b.docs_locked.zh · the reason wins over the prose — 我们的团队审核期间以及审核通过后，您的验证信息均已锁定。
+PASS 8b.docs_required.zh · the reason wins over the prose — 提交前请附上所有必需的证件照片。
+PASS 8b.extra_docs_required.zh · the reason wins over the prose — 提交前请上传所有被要求的证件。
+PASS 8b.no_extra_request.zh · the reason wins over the prose — 目前没有需要补充的证件。
+PASS 8b.control · ⚠️ an UNKNOWN reason falls through to the phrase tests, not to a blank — That didn't go through. Check the details and try again.
+PASS 8b.deleted · "deposit limit" no longer has a phrase test
+PASS 8b.deleted · "source of funds" no longer has a phrase test
+PASS 8b.deleted · "withdraw min" no longer has a phrase test
+PASS 8b.deleted · "verify identity" no longer has a phrase test
+PASS 8b.deleted · "NIDA already linked" no longer has a phrase test
+PASS 8b.deleted · "doc image type" no longer has a phrase test
+PASS 8b.deleted · "doc too large" no longer has a phrase test
+PASS 8b.deleted · "docs locked" no longer has a phrase test
+PASS 8b.deleted · "no extra request" no longer has a phrase test
+PASS 8b.deleted · "NIDA not verified" no longer has a phrase test
+PASS 8b.deleted · "all three documents" no longer has a phrase test
+PASS 8b.deleted · "extra docs required" no longer has a phrase test
+
+§8c · the services still emit the reasons that replaced the phrase tests
+PASS 8c.id_taken · kyc-service.ts still says why — no `reason: "id_taken"` — the refusal now falls to the generic line, silently
+PASS 8c.id_not_verified · kyc-service.ts still says why — no `reason: "id_not_verified"` — the refusal now falls to the generic line, silently
+PASS 8c.id_number_format · kyc-service.ts still says why — no `reason: "id_number_format"` — the refusal now falls to the generic line, silently
+PASS 8c.id_expired · kyc-service.ts still says why — no `reason: "id_expired"` — the refusal now falls to the generic line, silently
+PASS 8c.id_expiry_required · kyc-service.ts still says why — no `reason: "id_expiry_required"` — the refusal now falls to the generic line, silently
+PASS 8c.docs_required · kyc-service.ts still says why — no `reason: "docs_required"` — the refusal now falls to the generic line, silently
+PASS 8c.extra_docs_required · kyc-service.ts still says why — no `reason: "extra_docs_required"` — the refusal now falls to the generic line, silently
+PASS 8c.docs_locked · kyc-service.ts still says why — no `reason: "docs_locked"` — the refusal now falls to the generic line, silently
+PASS 8c.no_extra_request · kyc-service.ts still says why — no `reason: "no_extra_request"` — the refusal now falls to the generic line, silently
+PASS 8c.doc_image_type · kyc-service.ts still says why — no `reason: "doc_image_type"` — the refusal now falls to the generic line, silently
+PASS 8c.doc_too_large · kyc-service.ts still says why — no `reason: "doc_too_large"` — the refusal now falls to the generic line, silently
+PASS 8c.deposit_limit · wallet-service.ts still says why — no `reason: "deposit_limit"` — the refusal now falls to the generic line, silently
+PASS 8c.sof_required · wallet-service.ts still says why — no `reason: "sof_required"` — the refusal now falls to the generic line, silently
+PASS 8c.withdraw_below_min · wallet-service.ts still says why — no `reason: "withdraw_below_min"` — the refusal now falls to the generic line, silently
+PASS 8c.self_excluded · wallet-service.ts still says why — no `reason: "self_excluded"` — the refusal now falls to the generic line, silently
+PASS 8c.cooling_off · wallet-service.ts still says why — no `reason: "cooling_off"` — the refusal now falls to the generic line, silently
+PASS 8c.loss_limit_daily · market-service.ts still says why — no `reason: "loss_limit_daily"` — the refusal now falls to the generic line, silently
+PASS 8c.self_excluded · market-service.ts still says why — no `reason: "self_excluded"` — the refusal now falls to the generic line, silently
+PASS 8c.cooling_off · market-service.ts still says why — no `reason: "cooling_off"` — the refusal now falls to the generic line, silently
+PASS 8c.account_blocked · market-service.ts still says why — no `reason: "account_blocked"` — the refusal now falls to the generic line, silently
+PASS 8c.control · the pin can fail — an unemitted reason reads as absent
+PASS 8c.retired · no code emits `kyc_required` any more — the withdrawal identity refusal is back — see docs/BOARD-DISCLOSURE-B-E.md
+PASS 8c.retired · …and the registry no longer maps it — a mapped code nothing emits is the dead-mapping defect session 47 filed six of
+PASS 8c.retired · …and the union member is gone too
+PASS 8c.retired · en: the orphaned dictionary key is gone — three dictionary keys outliving their reason is undetectable without this
+PASS 8c.retired · sw: the orphaned dictionary key is gone — three dictionary keys outliving their reason is undetectable without this
+PASS 8c.retired · zh: the orphaned dictionary key is gone — three dictionary keys outliving their reason is undetectable without this
+PASS 8c.retired.control · the same checks still detect a reason that IS present
+PASS 8c.retired.control · …and still detect a dictionary key that IS present
+PASS 8c.loss-limit · ⛔ `checkLossLimit` still has exactly ONE player-refusing caller, and it is the one that says why — src/lib/server/market-service.ts
+PASS 8c.loss-limit.exempt · every named read-only caller still calls it (no stale exemption)
+PASS 8c.banner · a known reason renders
+PASS 8c.banner · ⛔ an UNKNOWN reason renders NOTHING, rather than echoing itself
+PASS 8c.banner · …and an absent reason renders nothing
+PASS 8c.banner · severity drives the tone
+
+§9 · a coded refusal knows how loud to be
+PASS 9.EMAIL_INVALID · resolves to email_invalid — email_invalid
+PASS 9.EMAIL_INVALID · …at severity warning — warning
+PASS 9.EMAIL_INVALID · …and shows neither the server prose nor the generic line — Enter a valid email address.
+PASS 9.EMAIL_TAKEN · resolves to email_taken — email_taken
+PASS 9.EMAIL_TAKEN · …at severity warning — warning
+PASS 9.EMAIL_TAKEN · …and shows neither the server prose nor the generic line — That email is already linked to another account.
+PASS 9.NAME_INVALID · resolves to name_invalid — name_invalid
+PASS 9.NAME_INVALID · …at severity warning — warning
+PASS 9.NAME_INVALID · …and shows neither the server prose nor the generic line — Enter a display name up to 40 characters.
+PASS 9.AVATAR_TYPE · resolves to avatar_type — avatar_type
+PASS 9.AVATAR_TYPE · …at severity warning — warning
+PASS 9.AVATAR_TYPE · …and shows neither the server prose nor the generic line — Only JPEG, PNG, or WebP images are accepted.
+PASS 9.AVATAR_SIZE · resolves to avatar_size — avatar_size
+PASS 9.AVATAR_SIZE · …at severity warning — warning
+PASS 9.AVATAR_SIZE · …and shows neither the server prose nor the generic line — That image is too large. Try a smaller picture.
+PASS 9.PW_CURRENT_WRONG · resolves to password_wrong — password_wrong
+PASS 9.PW_CURRENT_WRONG · …at severity warning — warning
+PASS 9.PW_CURRENT_WRONG · …and shows neither the server prose nor the generic line — Your current password is incorrect.
+PASS 9.PW_WEAK · resolves to password_weak — password_weak
+PASS 9.PW_WEAK · …at severity warning — warning
+PASS 9.PW_WEAK · …and shows neither the server prose nor the generic line — Choose a stronger password — at least 8 characters
+PASS 9.VOTING_CLOSED · resolves to voting_closed — voting_closed
+PASS 9.VOTING_CLOSED · …at severity info — info
+PASS 9.VOTING_CLOSED · …and shows neither the server prose nor the generic line — Voting has closed for this proposal.
+PASS 9.PAUSED · resolves to proposals_paused — proposals_paused
+PASS 9.PAUSED · …at severity info — info
+PASS 9.PAUSED · …and shows neither the server prose nor the generic line — Proposals are paused right now. Try again later.
+PASS 9.AUTH · resolves to signin_required — signin_required
+PASS 9.AUTH · …at severity warning — warning
+PASS 9.AUTH · …and shows neither the server prose nor the generic line — Your session has ended. Sign in and try again.
+PASS 9.NOT_FOUND · resolves to not_found — not_found
+PASS 9.NOT_FOUND · …at severity info — info
+PASS 9.NOT_FOUND · …and shows neither the server prose nor the generic line — We couldn't find that. Refresh and try again.
+PASS 9.BUSY · resolves to system_busy — system_busy
+PASS 9.BUSY · …at severity warning — warning
+PASS 9.BUSY · …and shows neither the server prose nor the generic line — We’re busy right now. Your stake has NOT moved — t
+PASS 9.control · INVALID is deliberately NOT mapped — it means four different things — null / GENERIC
+PASS 9.control · SUSPENDED is deliberately NOT mapped — it means four different things — null / GENERIC
+PASS 9.control · an unknown code falls back to the caller's own generic line
+PASS 9.precedence · an explicit reason beats the code — maintenance
+
+§9b · every mapped code is emitted by something
+PASS 9b.0 · fixture · the emitting tree was walked and read — 889 files
+PASS 9b.RATE_LIMITED · something really returns this code — no emitter for "RATE_LIMITED" — the row maps a refusal the product never sends, and §9 would still pass by synthesising it
+PASS 9b.BUSY · something really returns this code — no emitter for "BUSY" — the row maps a refusal the product never sends, and §9 would still pass by synthesising it
+PASS 9b.NOT_FOUND · something really returns this code — no emitter for "NOT_FOUND" — the row maps a refusal the product never sends, and §9 would still pass by synthesising it
+PASS 9b.PAUSED · something really returns this code — no emitter for "PAUSED" — the row maps a refusal the product never sends, and §9 would still pass by synthesising it
+PASS 9b.AUTH · something really returns this code — no emitter for "AUTH" — the row maps a refusal the product never sends, and §9 would still pass by synthesising it
+PASS 9b.EMAIL_INVALID · something really returns this code — no emitter for "EMAIL_INVALID" — the row maps a refusal the product never sends, and §9 would still pass by synthesising it
+PASS 9b.EMAIL_TAKEN · something really returns this code — no emitter for "EMAIL_TAKEN" — the row maps a refusal the product never sends, and §9 would still pass by synthesising it
+PASS 9b.EMAIL_UNVERIFIED · something really returns this code — no emitter for "EMAIL_UNVERIFIED" — the row maps a refusal the product never sends, and §9 would still pass by synthesising it
+PASS 9b.NAME_INVALID · something really returns this code — no emitter for "NAME_INVALID" — the row maps a refusal the product never sends, and §9 would still pass by synthesising it
+PASS 9b.AVATAR_TYPE · something really returns this code — no emitter for "AVATAR_TYPE" — the row maps a refusal the product never sends, and §9 would still pass by synthesising it
+PASS 9b.AVATAR_SIZE · something really returns this code — no emitter for "AVATAR_SIZE" — the row maps a refusal the product never sends, and §9 would still pass by synthesising it
+PASS 9b.PW_CURRENT_WRONG · something really returns this code — no emitter for "PW_CURRENT_WRONG" — the row maps a refusal the product never sends, and §9 would still pass by synthesising it
+PASS 9b.PW_WEAK · something really returns this code — no emitter for "PW_WEAK" — the row maps a refusal the product never sends, and §9 would still pass by synthesising it
+PASS 9b.VOTING_CLOSED · something really returns this code — no emitter for "VOTING_CLOSED" — the row maps a refusal the product never sends, and §9 would still pass by synthesising it
+PASS 9b.control · a code nothing emits reads as absent
+PASS 9b.deleted.DOC_IMAGE · still emitted by nothing — which is why its row is gone — something now returns "DOC_IMAGE" — restore its REASON_BY_CODE row
+PASS 9b.deleted.DOC_TOO_LARGE · still emitted by nothing — which is why its row is gone — something now returns "DOC_TOO_LARGE" — restore its REASON_BY_CODE row
+PASS 9b.deleted.DOCS_LOCKED · still emitted by nothing — which is why its row is gone — something now returns "DOCS_LOCKED" — restore its REASON_BY_CODE row
+PASS 9b.deleted.NO_EXTRA_REQUEST · still emitted by nothing — which is why its row is gone — something now returns "NO_EXTRA_REQUEST" — restore its REASON_BY_CODE row
+PASS 9b.deleted.NIDA_TAKEN · still emitted by nothing — which is why its row is gone — something now returns "NIDA_TAKEN" — restore its REASON_BY_CODE row
+PASS 9b.deleted.MAINTENANCE · still emitted by nothing — which is why its row is gone — something now returns "MAINTENANCE" — restore its REASON_BY_CODE row
+
+§9c · loudness is pinned on the reason route, not only the code route
+PASS 9c.id_taken · resolves through the REASON — id_taken
+PASS 9c.id_taken · …at severity error — error
+PASS 9c.id_taken · …on the modal channel — modal
+PASS 9c.id_taken · …and shows neither the server prose nor the generic line — This identity document is already linked to anothe
+PASS 9c.id_number_format · resolves through the REASON — id_number_format
+PASS 9c.id_number_format · …at severity warning — warning
+PASS 9c.id_number_format · …on the inline channel — inline
+PASS 9c.id_number_format · …and shows neither the server prose nor the generic line — That number doesn't match the rule for the documen
+PASS 9c.id_expired · resolves through the REASON — id_expired
+PASS 9c.id_expired · …at severity warning — warning
+PASS 9c.id_expired · …on the inline channel — inline
+PASS 9c.id_expired · …and shows neither the server prose nor the generic line — That document has expired. Use one that is still v
+PASS 9c.id_expiry_required · resolves through the REASON — id_expiry_required
+PASS 9c.id_expiry_required · …at severity warning — warning
+PASS 9c.id_expiry_required · …on the inline channel — inline
+PASS 9c.id_expiry_required · …and shows neither the server prose nor the generic line — Enter the expiry date printed on the document.
+PASS 9c.doc_image_type · resolves through the REASON — doc_image_type
+PASS 9c.doc_image_type · …at severity warning — warning
+PASS 9c.doc_image_type · …on the inline channel — inline
+PASS 9c.doc_image_type · …and shows neither the server prose nor the generic line — The document must be a clear JPG, PNG, or WebP pho
+PASS 9c.doc_too_large · resolves through the REASON — doc_too_large
+PASS 9c.doc_too_large · …at severity warning — warning
+PASS 9c.doc_too_large · …on the inline channel — inline
+PASS 9c.doc_too_large · …and shows neither the server prose nor the generic line — The photo is too large. Use one under 3 MB.
+PASS 9c.docs_locked · resolves through the REASON — docs_locked
+PASS 9c.docs_locked · …at severity info — info
+PASS 9c.docs_locked · …on the inline channel — inline
+PASS 9c.docs_locked · …and shows neither the server prose nor the generic line — Your verification is locked while our team reviews
+PASS 9c.no_extra_request · resolves through the REASON — no_extra_request
+PASS 9c.no_extra_request · …at severity info — info
+PASS 9c.no_extra_request · …on the inline channel — inline
+PASS 9c.no_extra_request · …and shows neither the server prose nor the generic line — No extra documents are being requested right now.
+PASS 9c.maintenance · resolves through the REASON — maintenance
+PASS 9c.maintenance · …at severity error — error
+PASS 9c.maintenance · …on the toast channel — toast
+PASS 9c.maintenance · …and shows neither the server prose nor the generic line — Betting is paused for maintenance. Nothing has bee
+
+§9d · every reason in the registry is emitted by something
+PASS 9d.0 · fixture · the emitting tree was walked and read — 1375 files
+PASS 9d.stake_below_min · a player can actually reach this row — NEITHER route reaches "stake_below_min": nothing emits it and no code maps to it — so it has copy in three languages that no player can ever see, which is E-232's exact shape
+PASS 9d.stake_above_max · a player can actually reach this row — NEITHER route reaches "stake_above_max": nothing emits it and no code maps to it — so it has copy in three languages that no player can ever see, which is E-232's exact shape
+PASS 9d.stake_not_whole · a player can actually reach this row — NEITHER route reaches "stake_not_whole": nothing emits it and no code maps to it — so it has copy in three languages that no player can ever see, which is E-232's exact shape
+PASS 9d.balance_insufficient · a player can actually reach this row — NEITHER route reaches "balance_insufficient": nothing emits it and no code maps to it — so it has copy in three languages that no player can ever see, which is E-232's exact shape
+PASS 9d.market_not_live · a player can actually reach this row — NEITHER route reaches "market_not_live": nothing emits it and no code maps to it — so it has copy in three languages that no player can ever see, which is E-232's exact shape
+PASS 9d.selection_closed · a player can actually reach this row — NEITHER route reaches "selection_closed": nothing emits it and no code maps to it — so it has copy in three languages that no player can ever see, which is E-232's exact shape
+PASS 9d.loss_limit_daily · a player can actually reach this row — NEITHER route reaches "loss_limit_daily": nothing emits it and no code maps to it — so it has copy in three languages that no player can ever see, which is E-232's exact shape
+PASS 9d.rate_limited · a player can actually reach this row — NEITHER route reaches "rate_limited": nothing emits it and no code maps to it — so it has copy in three languages that no player can ever see, which is E-232's exact shape
+PASS 9d.system_busy · a player can actually reach this row — NEITHER route reaches "system_busy": nothing emits it and no code maps to it — so it has copy in three languages that no player can ever see, which is E-232's exact shape
+PASS 9d.system_error · a player can actually reach this row — NEITHER route reaches "system_error": nothing emits it and no code maps to it — so it has copy in three languages that no player can ever see, which is E-232's exact shape
+PASS 9d.maintenance · a player can actually reach this row — NEITHER route reaches "maintenance": nothing emits it and no code maps to it — so it has copy in three languages that no player can ever see, which is E-232's exact shape
+PASS 9d.account_blocked · a player can actually reach this row — NEITHER route reaches "account_blocked": nothing emits it and no code maps to it — so it has copy in three languages that no player can ever see, which is E-232's exact shape
+PASS 9d.self_excluded · a player can actually reach this row — NEITHER route reaches "self_excluded": nothing emits it and no code maps to it — so it has copy in three languages that no player can ever see, which is E-232's exact shape
+PASS 9d.cooling_off · a player can actually reach this row — NEITHER route reaches "cooling_off": nothing emits it and no code maps to it — so it has copy in three languages that no player can ever see, which is E-232's exact shape
+PASS 9d.session_limit_reached · a player can actually reach this row — NEITHER route reaches "session_limit_reached": nothing emits it and no code maps to it — so it has copy in three languages that no player can ever see, which is E-232's exact shape
+PASS 9d.wallet_frozen · a player can actually reach this row — NEITHER route reaches "wallet_frozen": nothing emits it and no code maps to it — so it has copy in three languages that no player can ever see, which is E-232's exact shape
+PASS 9d.wallet_missing · a player can actually reach this row — NEITHER route reaches "wallet_missing": nothing emits it and no code maps to it — so it has copy in three languages that no player can ever see, which is E-232's exact shape
+PASS 9d.not_your_position · a player can actually reach this row — NEITHER route reaches "not_your_position": nothing emits it and no code maps to it — so it has copy in three languages that no player can ever see, which is E-232's exact shape
+PASS 9d.position_not_open · a player can actually reach this row — NEITHER route reaches "position_not_open": nothing emits it and no code maps to it — so it has copy in three languages that no player can ever see, which is E-232's exact shape
+PASS 9d.bonus_funded_no_exit · a player can actually reach this row — NEITHER route reaches "bonus_funded_no_exit": nothing emits it and no code maps to it — so it has copy in three languages that no player can ever see, which is E-232's exact shape
+PASS 9d.market_settled · a player can actually reach this row — NEITHER route reaches "market_settled": nothing emits it and no code maps to it — so it has copy in three languages that no player can ever see, which is E-232's exact shape
+PASS 9d.cashout_value_zero · a player can actually reach this row — NEITHER route reaches "cashout_value_zero": nothing emits it and no code maps to it — so it has copy in three languages that no player can ever see, which is E-232's exact shape
+PASS 9d.exit_window_closed · a player can actually reach this row — NEITHER route reaches "exit_window_closed": nothing emits it and no code maps to it — so it has copy in three languages that no player can ever see, which is E-232's exact shape
+PASS 9d.price_changed · a player can actually reach this row — NEITHER route reaches "price_changed": nothing emits it and no code maps to it — so it has copy in three languages that no player can ever see, which is E-232's exact shape
+PASS 9d.cashout_pool_short · a player can actually reach this row — NEITHER route reaches "cashout_pool_short": nothing emits it and no code maps to it — so it has copy in three languages that no player can ever see, which is E-232's exact shape
+PASS 9d.idempotency_key_conflict · a player can actually reach this row — NEITHER route reaches "idempotency_key_conflict": nothing emits it and no code maps to it — so it has copy in three languages that no player can ever see, which is E-232's exact shape
+PASS 9d.bonus_wagering_one_side · a player can actually reach this row — NEITHER route reaches "bonus_wagering_one_side": nothing emits it and no code maps to it — so it has copy in three languages that no player can ever see, which is E-232's exact shape
+PASS 9d.deposit_limit · a player can actually reach this row — NEITHER route reaches "deposit_limit": nothing emits it and no code maps to it — so it has copy in three languages that no player can ever see, which is E-232's exact shape
+PASS 9d.payout_destination_not_registered · a player can actually reach this row — NEITHER route reaches "payout_destination_not_registered": nothing emits it and no code maps to it — so it has copy in three languages that no player can ever see, which is E-232's exact shape
+PASS 9d.withdraw_balance_insufficient · a player can actually reach this row — NEITHER route reaches "withdraw_balance_insufficient": nothing emits it and no code maps to it — so it has copy in three languages that no player can ever see, which is E-232's exact shape
+PASS 9d.withdraw_bonus_locked · a player can actually reach this row — NEITHER route reaches "withdraw_bonus_locked": nothing emits it and no code maps to it — so it has copy in three languages that no player can ever see, which is E-232's exact shape
+PASS 9d.sof_required · a player can actually reach this row — NEITHER route reaches "sof_required": nothing emits it and no code maps to it — so it has copy in three languages that no player can ever see, which is E-232's exact shape
+PASS 9d.withdraw_below_min · a player can actually reach this row — NEITHER route reaches "withdraw_below_min": nothing emits it and no code maps to it — so it has copy in three languages that no player can ever see, which is E-232's exact shape
+PASS 9d.email_invalid · a player can actually reach this row — NEITHER route reaches "email_invalid": nothing emits it and no code maps to it — so it has copy in three languages that no player can ever see, which is E-232's exact shape
+PASS 9d.email_taken · a player can actually reach this row — NEITHER route reaches "email_taken": nothing emits it and no code maps to it — so it has copy in three languages that no player can ever see, which is E-232's exact shape
+PASS 9d.email_unverified · a player can actually reach this row — NEITHER route reaches "email_unverified": nothing emits it and no code maps to it — so it has copy in three languages that no player can ever see, which is E-232's exact shape
+PASS 9d.kyc_not_verified · a player can actually reach this row — NEITHER route reaches "kyc_not_verified": nothing emits it and no code maps to it — so it has copy in three languages that no player can ever see, which is E-232's exact shape
+PASS 9d.kyc_pending_review · a player can actually reach this row — NEITHER route reaches "kyc_pending_review": nothing emits it and no code maps to it — so it has copy in three languages that no player can ever see, which is E-232's exact shape
+PASS 9d.kyc_more_info · a player can actually reach this row — NEITHER route reaches "kyc_more_info": nothing emits it and no code maps to it — so it has copy in three languages that no player can ever see, which is E-232's exact shape
+PASS 9d.kyc_rejected · a player can actually reach this row — NEITHER route reaches "kyc_rejected": nothing emits it and no code maps to it — so it has copy in three languages that no player can ever see, which is E-232's exact shape
+PASS 9d.kyc_refused_final · a player can actually reach this row — NEITHER route reaches "kyc_refused_final": nothing emits it and no code maps to it — so it has copy in three languages that no player can ever see, which is E-232's exact shape
+PASS 9d.account_close_held · a player can actually reach this row — NEITHER route reaches "account_close_held": nothing emits it and no code maps to it — so it has copy in three languages that no player can ever see, which is E-232's exact shape
+PASS 9d.name_invalid · a player can actually reach this row — NEITHER route reaches "name_invalid": nothing emits it and no code maps to it — so it has copy in three languages that no player can ever see, which is E-232's exact shape
+PASS 9d.avatar_type · a player can actually reach this row — NEITHER route reaches "avatar_type": nothing emits it and no code maps to it — so it has copy in three languages that no player can ever see, which is E-232's exact shape
+PASS 9d.avatar_size · a player can actually reach this row — NEITHER route reaches "avatar_size": nothing emits it and no code maps to it — so it has copy in three languages that no player can ever see, which is E-232's exact shape
+PASS 9d.doc_image_type · a player can actually reach this row — NEITHER route reaches "doc_image_type": nothing emits it and no code maps to it — so it has copy in three languages that no player can ever see, which is E-232's exact shape
+PASS 9d.doc_too_large · a player can actually reach this row — NEITHER route reaches "doc_too_large": nothing emits it and no code maps to it — so it has copy in three languages that no player can ever see, which is E-232's exact shape
+PASS 9d.docs_required · a player can actually reach this row — NEITHER route reaches "docs_required": nothing emits it and no code maps to it — so it has copy in three languages that no player can ever see, which is E-232's exact shape
+PASS 9d.extra_docs_required · a player can actually reach this row — NEITHER route reaches "extra_docs_required": nothing emits it and no code maps to it — so it has copy in three languages that no player can ever see, which is E-232's exact shape
+PASS 9d.password_wrong · a player can actually reach this row — NEITHER route reaches "password_wrong": nothing emits it and no code maps to it — so it has copy in three languages that no player can ever see, which is E-232's exact shape
+PASS 9d.password_weak · a player can actually reach this row — NEITHER route reaches "password_weak": nothing emits it and no code maps to it — so it has copy in three languages that no player can ever see, which is E-232's exact shape
+PASS 9d.docs_locked · a player can actually reach this row — NEITHER route reaches "docs_locked": nothing emits it and no code maps to it — so it has copy in three languages that no player can ever see, which is E-232's exact shape
+PASS 9d.no_extra_request · a player can actually reach this row — NEITHER route reaches "no_extra_request": nothing emits it and no code maps to it — so it has copy in three languages that no player can ever see, which is E-232's exact shape
+PASS 9d.voting_closed · a player can actually reach this row — NEITHER route reaches "voting_closed": nothing emits it and no code maps to it — so it has copy in three languages that no player can ever see, which is E-232's exact shape
+PASS 9d.proposals_paused · a player can actually reach this row — NEITHER route reaches "proposals_paused": nothing emits it and no code maps to it — so it has copy in three languages that no player can ever see, which is E-232's exact shape
+PASS 9d.not_found · a player can actually reach this row — NEITHER route reaches "not_found": nothing emits it and no code maps to it — so it has copy in three languages that no player can ever see, which is E-232's exact shape
+PASS 9d.id_taken · a player can actually reach this row — NEITHER route reaches "id_taken": nothing emits it and no code maps to it — so it has copy in three languages that no player can ever see, which is E-232's exact shape
+PASS 9d.id_not_verified · a player can actually reach this row — NEITHER route reaches "id_not_verified": nothing emits it and no code maps to it — so it has copy in three languages that no player can ever see, which is E-232's exact shape
+PASS 9d.id_number_format · a player can actually reach this row — NEITHER route reaches "id_number_format": nothing emits it and no code maps to it — so it has copy in three languages that no player can ever see, which is E-232's exact shape
+PASS 9d.id_expired · a player can actually reach this row — NEITHER route reaches "id_expired": nothing emits it and no code maps to it — so it has copy in three languages that no player can ever see, which is E-232's exact shape
+PASS 9d.id_expiry_required · a player can actually reach this row — NEITHER route reaches "id_expiry_required": nothing emits it and no code maps to it — so it has copy in three languages that no player can ever see, which is E-232's exact shape
+PASS 9d.account_suspended · declared unreachable BY DESIGN, with a reason — it is reachable now — delete its UNEMITTED_BY_DESIGN entry: DEBT (E-233). Its COPY is reachable — `errSuspended` is what `error-copy.ts`'s SUSPENDED arm falls back to — but the ROW is not, because `SUSPENDED` is deliberately absent from REASON_BY_CODE (four families share that code, so mapping it would mistranslate three of them). Wiring it means teaching the operator-pause path to emit its own reason, which is a separate change from E-232's RG one.
+PASS 9d.signin_required · a player can actually reach this row — NEITHER route reaches "signin_required": nothing emits it and no code maps to it — so it has copy in three languages that no player can ever see, which is E-232's exact shape
+PASS 9d.rg_limit_invalid · a player can actually reach this row — NEITHER route reaches "rg_limit_invalid": nothing emits it and no code maps to it — so it has copy in three languages that no player can ever see, which is E-232's exact shape
+PASS 9d.rg_period_invalid · a player can actually reach this row — NEITHER route reaches "rg_period_invalid": nothing emits it and no code maps to it — so it has copy in three languages that no player can ever see, which is E-232's exact shape
+PASS 9d.sof_incomplete · declared unreachable BY DESIGN, with a reason — it is reachable now — delete its UNEMITTED_BY_DESIGN entry: DEBT (E-233). The wallet emits only the coarse `sof_required`; these two finer source-of-funds refusals have copy in three languages and no emitter. Wiring them is a money-path change in `wallet-service.withdraw`, with its own live proof.
+PASS 9d.sof_locked · declared unreachable BY DESIGN, with a reason — it is reachable now — delete its UNEMITTED_BY_DESIGN entry: DEBT (E-233). See `sof_incomplete` — same emitter, same tranche.
+PASS 9d.close_confirm_required · a player can actually reach this row — NEITHER route reaches "close_confirm_required": nothing emits it and no code maps to it — so it has copy in three languages that no player can ever see, which is E-232's exact shape
+PASS 9d.password_mismatch · a player can actually reach this row — NEITHER route reaches "password_mismatch": nothing emits it and no code maps to it — so it has copy in three languages that no player can ever see, which is E-232's exact shape
+PASS 9d.reset_link_invalid · a player can actually reach this row — NEITHER route reaches "reset_link_invalid": nothing emits it and no code maps to it — so it has copy in three languages that no player can ever see, which is E-232's exact shape
+PASS 9d.unknown_failure · a player can actually reach this row — NEITHER route reaches "unknown_failure": nothing emits it and no code maps to it — so it has copy in three languages that no player can ever see, which is E-232's exact shape
+PASS 9d.routes · both routes are in use — direct emitters exist and the code map is populated — 65 reasons emitted directly · 14 codes mapped
+PASS 9d.control · a reason nothing emits reads as absent
+PASS 9d.e232.self_excluded · E-232's wiring is still in place — "self_excluded" lost its emitter — a self-excluded player is being told "try again shortly" again
+PASS 9d.e232.cooling_off · E-232's wiring is still in place — "cooling_off" lost its emitter — a self-excluded player is being told "try again shortly" again
+PASS 9d.e232.account_blocked · E-232's wiring is still in place — "account_blocked" lost its emitter — a self-excluded player is being told "try again shortly" again
+
+§9e · the chosen reason actually reaches the player's screen
+PASS 9e.the poll bet card · the reason copy is RENDERED, not just handed in — src/components/markets/conviction-dial.tsx — the reason is computed and discarded, which is E-234's exact shape
+PASS 9e.the cash-out result · the reason copy is RENDERED, not just handed in — src/components/markets/sell-result.tsx — the reason is computed and discarded, which is E-234's exact shape
+PASS 9e.the Up & Down blocked modal · the reason copy is RENDERED, not just handed in — src/components/updown/updown-bet-blocked-modal.tsx — the reason is computed and discarded, which is E-234's exact shape
+PASS 9e.control · the same check reads a surface that does NOT render a reason as absent
+PASS 9e.constant · stakeHasntMoved appears only as a FALLBACK, never as the whole subtitle — the hardcoded claim is back in front of every refusal
+
+§9f · the identity reasons come from the withdrawal gate, and from nowhere on the way in
+PASS 9f.0 · fixture · the whole of src was walked — 1375 files
+PASS 9f.kyc_not_verified · ★ written in exactly one file — the withdrawal gate — src/lib/server/kyc-gate.ts
+PASS 9f.kyc_pending_review · ★ written in exactly one file — the withdrawal gate — src/lib/server/kyc-gate.ts
+PASS 9f.kyc_more_info · ★ written in exactly one file — the withdrawal gate — src/lib/server/kyc-gate.ts
+PASS 9f.kyc_rejected · ★ written in exactly one file — the withdrawal gate — src/lib/server/kyc-gate.ts
+PASS 9f.gate · ★ the gate has exactly one caller outside its own file — wallet-service — src/lib/server/wallet-service.ts
+PASS 9f.fixture · withdraw(), deposit() and buyPositionInner() were each found — withdraw=12775 deposit=9049 bet=21991
+PASS 9f.withdraw · ★ …and that caller is withdraw(), which hands the gate's own reason straight through
+PASS 9f.deposit · ⛔ deposit() carries no identity refusal and asks no identity gate
+PASS 9f.bet · ⛔ buyPositionInner() — both products stake through it — carries none either
+PASS 9f.control · the refusal detector fires on a restored gate, in either shape
+PASS 9f.kyc_refused_final · ★ written in exactly one file — kyc-service — src/lib/server/kyc-service.ts
+PASS 9f.kyc_refused_final · …inside startKyc, the restart it refuses
+PASS 9f.registry.kyc_not_verified · error, on the modal channel — a hard block whose fix lives on another page — error/modal
+PASS 9f.registry.kyc_pending_review · error, on the modal channel — a hard block whose fix lives on another page — error/modal
+PASS 9f.registry.kyc_more_info · error, on the modal channel — a hard block whose fix lives on another page — error/modal
+PASS 9f.registry.kyc_rejected · error, on the modal channel — a hard block whose fix lives on another page — error/modal
+PASS 9f.registry.kyc_refused_final · error, INLINE — beside the restart it refuses, never a modal — error/inline
+PASS 9f.copy.en · kyc_refused_final renders a finished sentence of its own — This verification was refused and can't be restarted from your account. Contact 
+PASS 9f.copy.sw · kyc_refused_final renders a finished sentence of its own — Uthibitisho huu ulikataliwa na hauwezi kuanzishwa upya kutoka kwenye akaunti yak
+PASS 9f.copy.zh · kyc_refused_final renders a finished sentence of its own — 此身份验证已被拒绝，无法从您的账户重⁠新发起。请⁠联系客服，我们的团队会向您说明后续安排。
+PASS 9f.copy.en · ⛔ …and it never tells them to try again — the restart is exactly what it refuses — This verification was refused and can't be restarted from your account. Contact support and our team will explain what happens next.
+
+§10 · raw server strings in front of a player — the ratchet
+PASS 10.1 · ★ NO player surface renders a raw server string (0 ≤ 0)
+PASS 10.2 · ⛔ …and if the count ever drops below the ceiling, LOWER IT (0 vs 0)
+PASS 10.3 · control · the pattern still CATCHES a raw server string
+PASS 10.4 · control · …and still IGNORES the dictionary, which is the correct thing to render
+PASS 10.5 · control · …and the tree really was walked — 401 player .tsx files
+PASS 10.6 · control · the BANNER pattern catches a page rendering the server's own sentence
+PASS 10.7 · control · …and ignores one rendering the registry
+PASS 10.8 · control · the two channels really are two different patterns
+     (admin surfaces, excluded by design: 114 raw renders across the staff console)
+
+failure-reasons (with §8 + §9 + §10): 376 passed, 0 failed

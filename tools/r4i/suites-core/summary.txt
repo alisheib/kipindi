@@ -1,0 +1,43 @@
+# 2026-10-09T07:23:38.050Z · 41 scripts
+test:visual-pass-r4i exit=0 2s :: visual-pass-r4i: 120 passed, 0 failed
+test:timer-date exit=0 1s :: timer-date: 77 passed, 0 failed
+test:enter-where-pressed exit=0 1s :: ENTER WHERE PRESSED — all checks passed
+test:implicit-submit exit=0 3s :: IMPLICIT SUBMIT — all checks passed
+test:rg-race exit=0 3s :: rg-limit-race: 12 passed, 0 failed
+test:rg-doors exit=0 2s :: rg-doors: 113 passed, 0 failed
+test:rg-cash-incentive exit=0 1s :: [email] sendEmailToUser withheld — money mail to an unconfirmed address for user prop_locked… (user.email=p***@t.tz)
+test:rg-policy exit=0 1s :: rg-policy: 23 passed, 0 failed
+test:rg-limit-change exit=0 2s :: ALL PASS — 24 passed, 0 failed
+test:failure-reasons exit=0 4s :: [email] sendEmailToUser skipped — no email for user fr_player… (user.email=null, phone=+25579…)
+test:popup-fit exit=0 1s :: popup-fit: OK — 78 popups walked, 6 carry a clip and every one of those carries a reason
+test:red-anchors exit=0 3s :: red-anchors: 4989 passed, 0 failed
+test:decomment exit=0 4s :: ALL PASS — 22 passed, 0 failed
+test:hooks-order exit=0 1s :: all green
+test:ui-consistency exit=0 2s ::   ALL PASS — no new UI-consistency drift beyond the tracked baseline.
+test:i18n exit=0 1s :: ALL PASS — en=2628 sw=2628 zh=2628 keys
+test:journey-shell exit=0 2s :: JOURNEY SHELL — all 435 checks passed
+test:journey-account exit=0 2s :: JOURNEY ACCOUNT — all 85 checks passed
+test:journey-tickets exit=0 1s :: JOURNEY TICKETS — all 51 checks passed
+test:simple-journey-flag exit=0 5s :: 135 passed, 0 failed
+test:type-scale exit=0 2s :: ALL PASS — 1402 source files, 189 money elements.
+test:money-format exit=0 2s :: money-format: 69 passed, 0 failed
+test:tap-target exit=0 1s :: 30 passed, 0 failed
+test:eyebrow-roles exit=0 1s :: ✅ 644 sites, every one accounted for.
+test:visual-pass-r3c exit=0 1s :: visual-pass-r3c: 70 passed, 0 failed
+test:visual-pass-r4d exit=0 2s :: visual-pass-r4d: 63 passed, 0 failed
+test:visual-pass-r4e exit=0 2s :: visual-pass-r4e: 68 passed, 0 failed
+test:kyc exit=0 21s :: ALL KYC-SECURITY SCENARIOS PASS — 44 passed, 0 failed
+test:kyc-step-guards exit=0 5s :: [email] sendEmailToUser skipped — no email for user usr_ksg_recove… (user.email=null, phone=+25574…)
+test:kyc-gate-state-table exit=0 1s :: kyc-gate-state-table: 18 passed, 0 failed
+test:kyc-gate exit=0 39s :: [email] sendEmailToUser withheld — money mail to an unconfirmed address for user kg_rejected_no… (user.email=k***@t.tz)
+test:kyc-stage exit=0 1s :: ALL PASS — 127 passed, 0 failed
+test:kyc-restart-docs exit=0 51s :: (Use `node --trace-deprecation ...` to show where the warning was created)
+test:kyc-copy-truth exit=0 1s :: kyc-copy-truth: 431 passed, 0 failed
+test:kyc-at-withdrawal exit=0 14s :: [email] sendEmailToUser withheld — money mail to an unconfirmed address for user usr_fed29da05c… (user.email=l***@t.tz)
+test:kyc-honesty exit=0 2s :: ALL PASS — 18 passed, 0 failed
+test:kyc-reject-reason exit=0 1s :: ALL PASSED — 70 passed, 0 failed
+test:kyc-doc-metadata exit=0 1s :: ALL PASSED — 20 passed, 0 failed
+test:kyc-workstation-time exit=0 1s :: ALL PASSED — 17 passed, 0 failed
+test:kyc-approved-copy exit=0 1s :: ALL PASS — 87 passed, 0 failed
+test:kyc-attestations exit=0 1s :: ALL PASS — 39 passed, 0 failed
+DONE

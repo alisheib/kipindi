@@ -1,0 +1,158 @@
+qa:classic-shell-parity — compare — http://localhost:3041
+  tree F:\kipindi-s7wp1\ @ c37b5e47 (clean) · forks from origin/main at 48842adb · rollout OFF
+  the book's normalisers ON: market-ids — ⚠ set by KP_PARITY_NORMALISE for this run, not by this file's switches · candidates: market-ids, time-left, eat-dates, relative-times, chart-paths, avatar-ids, chunk-hashes
+
+§0 · the base (S6-PLAN A18)
+  PASS 0.1 the baseline's c37b5e47 is an ancestor of HEAD c37b5e47, and no merge since it carried served files in
+  0 commit(s) since the baseline change a served file — each should be an S6 package; any other is another lane's change inside this compare:
+  Chromium stub-0
+
+§1 · a guest
+  ✗ guest|en|360|/ — stub browser: no server, no browser in this run
+  ✗ guest|en|360|/markets — stub browser: no server, no browser in this run
+  ✗ guest|en|360|/positions — stub browser: no server, no browser in this run
+  ✗ guest|en|360|/wallet — stub browser: no server, no browser in this run
+  ✗ guest|en|360|/profile — stub browser: no server, no browser in this run
+  ✗ guest|en|360|/account — stub browser: no server, no browser in this run
+  ✗ guest|en|360|/kp-parity-no-such-page — stub browser: no server, no browser in this run
+  ✗ guest|en|768|/ — stub browser: no server, no browser in this run
+  ✗ guest|en|768|/markets — stub browser: no server, no browser in this run
+  ✗ guest|en|768|/positions — stub browser: no server, no browser in this run
+  ✗ guest|en|768|/wallet — stub browser: no server, no browser in this run
+  ✗ guest|en|768|/profile — stub browser: no server, no browser in this run
+  ✗ guest|en|768|/account — stub browser: no server, no browser in this run
+  ✗ guest|en|768|/kp-parity-no-such-page — stub browser: no server, no browser in this run
+  ✗ guest|en|1024|/ — stub browser: no server, no browser in this run
+  ✗ guest|en|1024|/markets — stub browser: no server, no browser in this run
+  ✗ guest|en|1024|/positions — stub browser: no server, no browser in this run
+  ✗ guest|en|1024|/wallet — stub browser: no server, no browser in this run
+  ✗ guest|en|1024|/profile — stub browser: no server, no browser in this run
+  ✗ guest|en|1024|/account — stub browser: no server, no browser in this run
+  ✗ guest|en|1024|/kp-parity-no-such-page — stub browser: no server, no browser in this run
+  ✗ guest|en|1280|/ — stub browser: no server, no browser in this run
+  ✗ guest|en|1280|/markets — stub browser: no server, no browser in this run
+  ✗ guest|en|1280|/positions — stub browser: no server, no browser in this run
+  ✗ guest|en|1280|/wallet — stub browser: no server, no browser in this run
+  ✗ guest|en|1280|/profile — stub browser: no server, no browser in this run
+  ✗ guest|en|1280|/account — stub browser: no server, no browser in this run
+  ✗ guest|en|1280|/kp-parity-no-such-page — stub browser: no server, no browser in this run
+  guest · en · 28 cells · 0s
+  ✗ guest|sw|360|/ — stub browser: no server, no browser in this run
+  ✗ guest|sw|360|/markets — stub browser: no server, no browser in this run
+  ✗ guest|sw|360|/positions — stub browser: no server, no browser in this run
+  ✗ guest|sw|360|/wallet — stub browser: no server, no browser in this run
+  ✗ guest|sw|360|/profile — stub browser: no server, no browser in this run
+  ✗ guest|sw|360|/account — stub browser: no server, no browser in this run
+  ✗ guest|sw|360|/kp-parity-no-such-page — stub browser: no server, no browser in this run
+  ✗ guest|sw|768|/ — stub browser: no server, no browser in this run
+  ✗ guest|sw|768|/markets — stub browser: no server, no browser in this run
+  ✗ guest|sw|768|/positions — stub browser: no server, no browser in this run
+  ✗ guest|sw|768|/wallet — stub browser: no server, no browser in this run
+  ✗ guest|sw|768|/profile — stub browser: no server, no browser in this run
+  ✗ guest|sw|768|/account — stub browser: no server, no browser in this run
+  ✗ guest|sw|768|/kp-parity-no-such-page — stub browser: no server, no browser in this run
+  ✗ guest|sw|1024|/ — stub browser: no server, no browser in this run
+  ✗ guest|sw|1024|/markets — stub browser: no server, no browser in this run
+  ✗ guest|sw|1024|/positions — stub browser: no server, no browser in this run
+  ✗ guest|sw|1024|/wallet — stub browser: no server, no browser in this run
+  ✗ guest|sw|1024|/profile — stub browser: no server, no browser in this run
+  ✗ guest|sw|1024|/account — stub browser: no server, no browser in this run
+  ✗ guest|sw|1024|/kp-parity-no-such-page — stub browser: no server, no browser in this run
+  ✗ guest|sw|1280|/ — stub browser: no server, no browser in this run
+  ✗ guest|sw|1280|/markets — stub browser: no server, no browser in this run
+  ✗ guest|sw|1280|/positions — stub browser: no server, no browser in this run
+  ✗ guest|sw|1280|/wallet — stub browser: no server, no browser in this run
+  ✗ guest|sw|1280|/profile — stub browser: no server, no browser in this run
+  ✗ guest|sw|1280|/account — stub browser: no server, no browser in this run
+  ✗ guest|sw|1280|/kp-parity-no-such-page — stub browser: no server, no browser in this run
+  guest · sw · 28 cells · 0s
+
+§1 · the demo player
+  FAIL 1.player the demo player is signed in — stub browser: no server, no browser in this run
+
+§1 · the demo player under an officer's hold
+  FAIL 1.held the demo player under an officer's hold is signed in — stub browser: no server, no browser in this run
+
+§1 · the demo player with an unconfirmed email
+  FAIL 1.unverified the demo player with an unconfirmed email is signed in — stub browser: no server, no browser in this run
+
+§1s · the Sell button a classic holder is served (WP10): the demo player's open ticket, at 360/1280 × en/sw, and the classic confirm at 360 in the holder block
+  FAIL 1.player the demo player is signed in — stub browser: no server, no browser in this run
+
+§1b · a classic reader's page bodies (S7 WP1, A8): the book, seeded through existing dev-test doors, then / · /markets · /live · /results · /watchlist · /markets/:similar at 360/1280 × en/sw for guest and player (/watchlist: the player only)
+  FAIL 1.player the demo player is signed in — stub browser: no server, no browser in this run
+  ✗ not captured: the demo player could not be signed in
+
+§2 · the population is what it claims
+  FAIL 2.0 every cell was captured (224) — 224: guest|en|360|/ (stub browser: no server, no browser in this run) · guest|en|360|/markets (stub browser: no server, no browser in this run) · guest|en|360|/positions (stub browser: no server, no browser in this run) · guest|en|360|/wallet (stub browser: no server, no browser in this run) · guest|en|360|/profile (stub browser: no server, no browser in this run) · guest|en|360|/account (stub browser: no server, no browser in this run) …
+  PASS 2.1 every cell rendered the shell — one header, one rail, one footer
+  PASS 2.2 every cell settled — two snapshots 700 ms apart agreed
+  PASS 2.3 no viewer carries a preview pass
+  PASS 2.4 no journey test id, flag or class anywhere in the page
+  PASS 2.5 the raw HTML was read, is the shell's, and carries no journey trace
+  PASS 2.6 the guest is a guest — /positions, /wallet and /profile land on the sign-in page
+  PASS 2.7 the signed-in viewers are signed in — none of those three lands anywhere else
+  FAIL 2.8 the held viewer is held — no header deposit control at 1280, where the player has one — 2: held|en|1280|/ has no header · player|en|1280|/ has none
+  PASS 2.9 no viewer sees an email bar, in any cell — the bar is deleted (the owner's ruling of 2026-10-07), the unconfirmed email included
+  PASS 2.10 below 1024 the rail is among the fixed overlays — the census sees what is there
+  PASS 2.11 the signed-in viewers' /positions captured its page body
+  PASS 2.13 only React's DEV performance-track sentence is ever filed as DEV-only — every other page error is compared
+  PASS 2.12 the served files held still for the whole capture (checked after every viewer and language)
+
+§3 · /account, for a viewer the journey is not shown to, is the not-found page (A3 — every run)
+  FAIL 3.0 the control path is a true 404 with a not-found body (0 of 32 pairs) — 1: 32 pair(s) not captured
+  PASS 3.1 /account shows the not-found body (its main text is the control's)
+  PASS 3.2 …under the not-found title
+  PASS 3.3 …marked noindex
+  PASS 3.4 …with no journey test id, flag or class in the page
+  PASS 3.5 …and none in the bytes the server sent, where a streamed fallback would still be (G3)
+  PASS 3.6 no loading file of /account's own in the tree the server runs — the root loader is generic (A3)
+
+§S · the Sell button a classic holder is served (WP10 — every run that captures)
+  FAIL S.0 the demo player was given an open ticket through the real money paths, and every Sell cell was captured (8) — 9: the seed: not run · sell|en|360|/positions (the viewer could not be signed in) · sell|en|360|/markets/:held (the viewer could not be signed in) · sell|en|1280|/positions (the viewer could not be signed in) · sell|en|1280|/markets/:held (the viewer could not be signed in) · sell|sw|360|/positions (the viewer could not be signed in) …
+  PASS S.1 every Sell cell settled, answered 200 and stayed where it was sent: the holder is signed in
+  PASS S.2 every Sell cell was captured INSIDE the free window — one strip, its countdown read as m:ss, and one button — and each confirm cell holds one classic confirm, captured inside its quote hold (and no other cell holds one)
+  PASS S.3 no journey test id, flag or class in a Sell cell, in the page or in the bytes the server sent
+  PASS S.4 every Sell cell's first paint was captured in a page whose scripts were all held — nothing hydrated — and it holds the page's Sell button (S6 A8e)
+
+§B · a classic reader's page bodies, the LIVE strip, the similar rail and /'s head, over the seeded book (S7 WP1, A8 — every run that captures)
+  the book: seed-markets named 0 LIVE non-demo question(s) (of ? LIVE) · placed ? · byStatus null · byLens null · REFUSED: the demo player could not be signed in
+  card states drawn across the book's cells: live priced 0 · one-sided 0 · empty pool 0 · selection closed 0 · resolved YES 0 · resolved NO 0 · void 0 · other 0
+  FAIL B.0 the book was seeded through dev-test doors that already exist — seed-markets, seed-player-portfolio { markets: 12 }, seed-watchlist — and every reply holds what A8 item 1 asks; every book cell was captured (44) — 45: the demo player could not be signed in · book-guest|en|360|/ (not captured: the demo player could not be signed in) · book-guest|en|360|/markets (not captured: the demo player could not be signed in) · book-guest|en|360|/live (not captured: the demo player could not be signed in) · book-guest|en|360|/results (not captured: the demo player could not be signed in) · book-guest|en|360|/markets/:similar (not captured: the demo player could not be signed in) …
+  PASS B.1 every book cell settled, answered 200 and stayed where it was sent: the player is signed in, and the question page is the book's first question
+  FAIL B.2 before any book cell, /results showed the voided question's card (marketIds[11]), drawn void, and settled YES and NO cards (A8 item 2) — 1: /results was not read
+  FAIL B.3 before any book cell, /watchlist showed a void card, a done card and a selection-closed card (A8 item 2) — 1: /watchlist was not read
+  PASS B.4 every book cell captured its body — <main> on /, /markets, /live, /results, /watchlist and the similar rail on /markets/:similar — and every / cell its head from the bytes: the canonical link and og:url
+  PASS B.5 every lobby cell (/, /markets, /live, /results) captured one LIVE strip — the book's settlements, waited for before the first cell
+  PASS B.6 no journey test id, flag or class (S7's kp-jcard, kp-jhome, kp-jhowto and kp-howto included) in a book cell, in the page or in the bytes the server sent
+  FAIL B.7 the book drew every classic card state S7 touches — live priced, one-sided, empty pool, selection closed, resolved YES, resolved NO, void — 7: no live priced card in any book cell · no one-sided card in any book cell · no empty pool card in any book cell · no selection closed card in any book cell · no resolved YES card in any book cell · no resolved NO card in any book cell …
+  PASS B.8 only React's DEV performance-track sentence is ever filed as DEV-only in a book cell — every other page error is compared
+
+§4 · parity with the baseline (c37b5e47, captured 2026-10-08T14:45:06.981Z)
+  PASS 4.0 the same cells as the baseline — 224 vs 224
+  FAIL 4.1 ⭐ no unexpected difference in 0 cells
+  PASS 4.2 each named difference is seen in all of its cells or in none
+  EXPECTED account-streams-200 — seen in 0 of 32 cell(s). S6 WP5 adds the /account hub, which calls notFound() for every request the journey is not shown to. The root loading.tsx has streamed by then, so Next answers the not-found BODY at HTTP 200 where an unmatched path is a true 404 (pre-deploy-live-check.mjs: a 200 is not a render). The body, the title, noindex and the absence of any journey trace are asserted on every run (§3); beside the status only the robots meta moves, and that is its own entry (account-robots-noindex).
+  EXPECTED account-robots-noindex — seen in 0 of 32 cell(s). S6 WP5 (A2): /account's own generateMetadata answers every request the journey is not shown to with the not-found page's title and robots noindex, nofollow. On a matched route that page metadata REPLACES the root layout's 'index, follow', and Next adds a noindex of its own only to a 404, so at HTTP 200 the bytes carry Next's not-found noindex plus the page's own noindex, nofollow (measured on the first compare after WP5: every /account cell) where an unmatched path sends the pair above. Still noindex for a crawler (§3.3 holds it on every run); the title is the same string (§3.2).
+  EXPECTED footer-rail-h — seen in 0 of 224 cell(s). S6 WP11: the footer's rail reserve names the token --rail-h (88px, globals.css) instead of the literal, so its class string moves in every cell while what it computes does not — footerPaddingBottom and scrollPaddingBottom are their own fields, compared in every cell, and must still be equal (88px below 1024; the footer 0px from 1024).
+  PASS 4.3 the same Sell cells as the baseline — 8 vs 8
+  FAIL 4.4 ⭐ no unexpected difference in the 0 Sell cells: a classic holder is sold to by today's Sell button and confirm
+  FAIL 4.4f ⭐ every Sell cell's first paint (every script held, nothing hydrated) is the baseline's own first paint or — in all of its cells or none — sell-first-paint, the baseline's Sell button as the browser drew it — 0 of 8 compared · 
+  NAMED sell-first-paint — seen in 0 of 8 Sell cell(s). S6 A8e: the Sell button's countdown starts at the time its instant had left at the server's own render, so the server paints the arm the browser then draws. Inside the free window that is the strip (its countdown the server's m:ss) and the free button, 'Toka bila gharama · TZS {stake} · pesa yote', where the server painted 'Uza sasa · TZS {stake} −0 ada' with no strip until the page had started on the phone (the A8b drive saw that picture on a Back restore; on a slow phone it lasts seconds, and the strip then pushed the button down). Every Sell cell captures its first paint with the page's scripts held (S.4). Against a baseline captured before first paints were (the v2 file), each first paint must be the baseline's Sell button as the browser drew it; against a baseline with first paints of its own, the same first paint is the same, and A8e's change is this transition. The first paint before A8e, and a strip whose note the server writes as two texts, differ (P.5f).
+  EXPECTED sell-positions-wrap — seen in 0 of 4 Sell cell(s). S6 A8g, carrying S6 A8b's two pairs (named sell-narrow-phone until A8d and A8g split them by place): every host that does not ask for the stack is drawn the wrap class, so /positions' Sell button carries kp-sell-wrap at every width beside A8b's free-note classes (below 360 the free note is left out — the strip above already says there is no fee — so the free row fits a 320 phone; each entry is matched alone against the baseline, so this one carries those pairs too). The rule is phone-only (globals.css, below 640): at 1280 every box and computed style is as before (regions.button.layout, compared there); at 360 the figure becomes a wrapping row whose note sits the same 8px from the figure while the row fits — its styles move, which sell-positions-wrap-layout-en and -sw name, measured — and goes under the figure where one line cannot hold both (the Swahili free row for TZS 1,000,000 from 360px — to 376px with the label as this baseline measured it, to 383px by the static model, whose label is an upper bound and which also runs a six-figure stake over to 366px — and a Chinese legacy paid row with a six-figure fee at 320 to 324px; the seeded TZS 1,500 row fits, so no captured cell wraps). Served but captured by no field: the stylesheet's second phone block (two rules, matching only .kp-sell-wrap), and on a phone, for those big rows, the note under the figure (VODACOM-PLAN §0i A8g).
+  EXPECTED sell-holder-stack — seen in 0 of 4 Sell cell(s). S6 A8d: the question page's holder block asks for the stacked phone row (stackOnPhone), so its Sell button carries the class kp-sell-stack at every width, beside A8b's two free-note pairs (each entry is matched alone against the baseline, so this one carries them too). The rule is phone-only (globals.css, below 640): at 1280 every box and computed style is as before (regions.button.layout, compared there), and at 360 the layout change is named and measured in sell-holder-stack-layout-en and -sw. Served but captured by no field: stackOnPhone in the holder block's RSC props, the stylesheet's phone block (four rules, matching only .kp-sell-stack) and, below 640, each open ticket's row 12px taller, so what sits below it moves down by that (VODACOM-PLAN §0i A8d).
+  EXPECTED sell-holder-stack-layout-en — seen in 0 of 1 Sell cell(s). S6 A8d: below 640 the holder block's Sell button stacks — the --h-control-xl rung (244x44 becomes 244x56), the label on one centred line, the figure and its note centred on the next. The v2 baseline measured this one-line row 14px past the button's content in English (the Swahili cell has its own entry). The `to` is this cell's layout as the first compare after A8d measured it, copied from that compare's .current.json and named exactly (A3), never re-baselined.
+  EXPECTED sell-holder-stack-layout-sw — seen in 0 of 1 Sell cell(s). S6 A8d: below 640 the holder block's Sell button stacks — the --h-control-xl rung (244x44 becomes 244x56), the label on one centred line, the figure and its note centred on the next. The v2 baseline measured this one-line row 67px past the button's content and 50px past its edge in Swahili (the English cell has its own entry). The `to` is this cell's layout as the first compare after A8d measured it, copied from that compare's .current.json and named exactly (A3), never re-baselined.
+  EXPECTED sell-positions-wrap-layout-en — seen in 0 of 1 Sell cell(s). S6 A8g: below 640 the /positions Sell button's figure is a wrapping flex row — display flex, wrap, its lines at the right end on one baseline, an 8px column gap where the note's own 8px margin was — so the figure's and the note's computed styles move, and the note's box becomes a flex item's (its line's 16.5px height, where it was an inline box), while every glyph stays where it was: the seeded TZS 1,500 row fits on one line, so nothing wraps in this cell (the Swahili cell has its own entry). The `to` is this cell's layout as the first compare after A8g measured it, copied from that compare's .current.json and named exactly (A3), never re-baselined.
+  EXPECTED sell-positions-wrap-layout-sw — seen in 0 of 1 Sell cell(s). S6 A8g: below 640 the /positions Sell button's figure is a wrapping flex row — display flex, wrap, its lines at the right end on one baseline, an 8px column gap where the note's own 8px margin was — so the figure's and the note's computed styles move, and the note's box becomes a flex item's (its line's 16.5px height, where it was an inline box), while every glyph stays where it was: the seeded TZS 1,500 row fits on one line in Swahili too, so nothing wraps in this cell (the English cell has its own entry). The `to` is this cell's layout as the first compare after A8g measured it, copied from that compare's .current.json and named exactly (A3), never re-baselined.
+  EXPECTED sell-strip-whole — seen in 0 of 8 Sell cell(s). S6 A8g: the free strip above the Sell button keeps each of its three parts whole and wraps only between them — it becomes a wrapping row (flex-wrap: a part that cannot share a line moves to the next one whole), its one gap split into 8px between parts and 2px between lines — on both hosts, in every Sell cell. Its words, figures and look are as before; in the holder block at 360 in Swahili, where its parts broke inside (TOKA BILA over GHARAMA, · Hakuna over ada), they now read TOKA BILA GHARAMA m:ss over · Hakuna ada, each whole (sell-strip-whole-layout). Served but captured by no field: in the holder block in Swahili the strip takes those two whole lines from 320 to 376px, and to 382px while its countdown reads ten minutes or more — 42px tall, where the squeezed strip it replaces measured 40 at 360 — so its ticket row there is 2px taller (VODACOM-PLAN §0i A8g).
+  EXPECTED sell-strip-whole-layout — seen in 0 of 8 Sell cell(s). S6 A8g: the boxes and computed styles the strip's classes draw, predicted from the v2 baseline's own capture: in every Sell cell the strip's signature moves by flex-wrap (wrap) and gap (2px 8px), its parts' not at all — the new id re-derived as the harness writes one, the first 12 hex digits of the sha1 of the signature text, the method checked against every id the baseline holds; and in the one cell whose Swahili parts no longer share a line (the holder block at 360) the strip grows 2px (40 to 42), the free word and the countdown sit whole on its first line and the note whole on its second, 2px below. Any other box or style is still a failure, read from its capture and never re-baselined (A3).
+  EXPECTED sell-confirm-whole-figure — seen in 0 of 2 Sell cell(s). S6 A8f: the classic confirm's money figure is one object and its receive row reflows (test:sell-grace-truth §6). The figure under 'Utapokea' is an amount, so it can no longer break between 'TZS' and '1,500' (a browser drew that in Swahili at 360 and 390); the row wraps when the fee column cannot share its line; alone on its line the fee column grows to the box's width, its words at the right edge; and the fee keeps a 16px clear space before it, so two figures never run together. Four class strings in each of the 2 confirm cells; no word moves.
+  EXPECTED sell-confirm-receive-boxes — seen in 0 of 2 Sell cell(s). S6 A8f: the boxes and computed styles the classes above draw in the 2 confirm cells, predicted from the v2 baseline's capture and §6's model. English, a free TZS 1,500 at 360, keeps its one line (2.8px to spare): every box stays where it was but the fee column, which now grows over the free space (191.5 wide 106.5, was 194.5 wide 103.5; its words right-aligned exactly as before), and the styles move by the row's flex-wrap and row gap, the figure's amount face and nowrap, the column's flex-grow and the fee's 16px padding. Swahili, whose figure split, now wraps: the figure whole on its line (129.5 wide, 24 high), the fee column below it at the row's width, the box 40px taller, so the centred dialog grows 40px — its top 20px higher, its auto margins 20px smaller — and everything after the box moves 20px down.
+  PASS 4.5 each named Sell difference is seen in all of its cells or in none
+  PASS 4.6 each measured Sell difference is seen in all of its cells whenever the served change that causes it is seen
+  PASS 4.7 the same book cells as the baseline — 44 vs 44
+  FAIL 4.8 ⭐ no unexpected difference in the 0 book cells: a classic reader is served today's page bodies, LIVE strip, similar rail and head
+  PASS 4.9 each named book difference is seen in all of its cells or in none
+
+35/52 passed — compare · tree c37b5e47 · 1s

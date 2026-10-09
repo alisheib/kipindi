@@ -1,0 +1,25 @@
+Journey header: the page's edge at every width — 16px below 1024, 32px from 1024
+
+The owner's rule (2026-10-08): the header's edge is the page's edge at every width. The tiles measured the journey
+header 4px outside the page at 320 (its 12px gutter against the page's 16), and 8px inside it from 640 (the classic
+bar's 24px) and 8px outside it from 1024 (24 against the page's 32). The row now pads exactly as PageContainer
+(`px-3 lg:px-6`, 16 / 32 on this repo's scale), in one step at the page's own breakpoint.
+
+- globals.css: .kp-jhdr__row pads var(--sp-4); the 360 step and the 640 gutter are gone; the 1024 rule adds
+  var(--sp-8). The gaps are unchanged.
+- Fit, read off the tiles: the least slack is now sw at 320 with TZS 999,999 or a hidden balance, 18.7 → 10.7px,
+  more than any glyph. The "+" and the 12px figure below 360 stay.
+- journey-header-fit.mjs: the gutter probe expects 16px below 1024 and 32px from it. Its red twin has 10 mutations
+  (was 9): gutter-12-returns, edge-32-from-1024-lost, gutter-24-from-640-returns.
+- test:journey-shell: 7.gutter holds the base 16, no 360/640/1280 padding, 32 at 1024, four row blocks, the tokens,
+  PageContainer's spelling and the Tailwind scale. 7.steps now reads the classic bar's gaps only, since its gutter
+  is no longer the journey's. New plants: the old 12px returns; 24 returns from 640; the 1024 step is lost; a 360
+  step comes back; the pages move their edge while the header keeps the old one.
+- VODACOM-PLAN §0g design call 10 and the WP6b record, and S6-PLAN A5 (WP6a step 1, §7 tests, the WP6b mutation
+  list), carry the dated amendment.
+
+test:journey-shell 430 checks and red:journey-shell 165/165 on the G5 tree; tsc exit 0; 26 more static suites
+green. The browser proof (qa:journey-header-fit 66/66 expected, red:journey-header-fit 10/10) runs on the combined
+branch under the shared lock.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>

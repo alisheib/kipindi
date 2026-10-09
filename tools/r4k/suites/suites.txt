@@ -1,0 +1,21 @@
+test:visual-pass-r4k: exit 0 · 1s · ok   9.4 · every icon, manifest, image and screenshot the layout and manifest name is in public/ (16 checked) | visual-pass-r4k: 77 passed, 0 failed
+test:red-anchors: exit 0 · 3s · still un-audited (64): red:labels, red:updown-result-clock, red:mobile-visual-plan, red:combobox-truncate, red:unwrappable-id, red:aipoll-reap, red:aipoll-publi | red-anchors: 5025 passed, 0 failed
+test:decomment: exit 0 · 4s · PASS 5.3 …and that script is inside the set pii-in-logs §3 scans | ALL PASS — 22 passed, 0 failed
+test:hooks-order: exit 0 · 1s · hooks-order: 7 passed, 0 failed | all green
+test:ui-consistency: exit 0 · 2s · PASS K8c CONTROL · a copy of input.tsx whose empty notice carries one more class (py-1) fails K8's judge — the empty region would take a height under every fiel | ALL PASS — no new UI-consistency drift beyond the tracked baseline.
+test:i18n: exit 0 · 1s · PASS CONTROL · the scan read the console (100+ files) and would catch an unpinned provider | ALL PASS — en=2628 sw=2628 zh=2628 keys
+test:journey-shell: exit 0 · 3s · PASS 12.c · CONTROL · the readers can fail: the lazy reader takes lazy(, React.lazy( and lazy<T>( and leaves makelazy( and a Lazy name alone; the import reader  | JOURNEY SHELL — all 435 checks passed
+test:simple-journey-flag: exit 0 · 5s · PASS 12.db.ran · the database-mode process ran its checks and exited clean | 135 passed, 0 failed
+test:route-census: exit 0 · 1s · route-census: 6 passed, 0 failed · 59 routes on disk · 59 named in §4 | route-census: OK — every client-facing route has a ruling, and every ruling has a route
+test:gold-is-money: exit 0 · 1s · gold-is-money: 23 passed, 0 failed | gold-is-money: OK — identity is metallic, money is gold, and the two do not overlap.
+test:contrast: exit 0 · 2s · INFO  R5 · void band (22% field, decorative — exempt; stated in words) on --wash-raised (worst stop) 1.38 (need 3) | contrast-audit: 118 checks · 0 gate failure(s) (decorative dividers are WCAG 1.4.11-exempt)
+test:type-scale: exit 0 · 2s · Ladder adoption: 2283 semantic vs 866 arbitrary (72.5% on the scale). DONE = every ratchet at 0. | ALL PASS — 1400 source files, 189 money elements.
+test:eyebrow-roles: exit 0 · 1s · of which 15 carry `.row-link` — the row navigation link, a CONTROL LABEL whose case and 0.10em live in globals.css (DG-A-08) | ✅ 641 sites, every one accounted for.
+test:withdrawn-features: exit 0 · 3s · [email] sendEmailToUser withheld — money mail to an unconfirmed address for user w5e_ref… (user.email=w***@t.tz) | [house-bot] the feature is WITHDRAWN — the engine is not started and no timer is armed (04 F2)
+test:visual-pass-r3c: exit 0 · 1s · ok   10.3 · after pressing the hub's Matokeo row the pointer moves off the page's controls (the HAPANA hover fill on tile 326) | visual-pass-r3c: 70 passed, 0 failed
+test:visual-pass-r4d: exit 0 · 2s · ok   9.1′ PLANT · the rule as it shipped is reported | visual-pass-r4d: 63 passed, 0 failed
+test:journey-account: exit 0 · 2s · PASS 7.ran · the database-mode process ran its checks and exited clean | JOURNEY ACCOUNT — all 85 checks passed
+test:measure: exit 0 · 1s · PASS 8. ⭐ CONTROL — the bearing derivation reads the glyph (a 3px bearing for the point at x9) | ALL PASS — 719 tsx files
+test:design-frozen: exit 0 · 1s · (ratchet holds 35 tsx file(s) / 154 value(s), 1 stylesheet(s) / 78 value(s) — every number may only shrink) | PASS — design primitives are frozen
+test:market-columns: exit 0 · 1s · PASS 7: ⭐ CONTROL — the shape matcher still reads the shape it is written for | market-columns: 25 passed, 0 failed
+test:dead-css: exit 1 · 4s · 15  src/styles/chat/chat-styles.css | DEAD CSS — 1 check(s) FAILED

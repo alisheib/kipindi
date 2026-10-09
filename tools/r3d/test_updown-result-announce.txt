@@ -1,0 +1,58 @@
+﻿
+Up & Down · the result moment, and the owner decision it must not reverse
+
+§0 · the slices this suite reasons over (refuse to measure an empty one)
+  ok   0.1 the announcer's effect body is locatable
+  ok   0.2 …and is substantial
+  ok   0.3 `myStakesByMarket`'s body is locatable
+  ok   0.4 …and is substantial
+
+§1 · the board carries the viewer's settled result (it never did before)
+  ok   1.1 `BoardRound` declares `myResult`
+  ok   1.2 …with all three outcomes, not just a win
+  ok   1.3 `myStakesByMarket` populates it inside its own body
+  ok   1.4 the payout comes from `finalPayout`, never a projection
+  ok   1.5 …and the status is read off the POSITION row, not inferred from the round outcome
+  ok   1.6 `toBoardRound` actually passes it through
+
+§2 · the moment is a TRANSITION — a popup that fires because you opened a page is an ambush
+  ok   2.1 the first render SEEDS rather than announces
+  ok   2.2 a round unknown to this mount is seeded, not announced
+  ok   2.3 …and only a false → true transition announces
+  ok   2.4 it is deduped per round beyond the mount (sessionStorage)
+
+§3 · a refund is neither a win nor a loss — conflating them is a false money statement
+  ok   3.1 WIN is handled
+  ok   3.2 VOID is handled SEPARATELY from LOSS
+  ok   3.3 the win fires the kit's existing celebration, not a bespoke popup
+  ok   3.4 …headlining the REALISED payout, not the stake or an estimate
+  ok   3.5 the loss names the amount (an unnamed number is the euphemism RG forbids)
+  ok   3.6 ⚠️ RG — the loss does NOT celebrate: no haptic in the announcer at all
+  ok   3.7 every string comes from the dictionary, never a literal
+
+§4 · ⛔ Ali's 2026-07-24 suppression stands — this feature must stay in-app
+  ok   4.notifyWin · the announcer does not reach for `notifyWin`
+  ok   4.notifyLoss · the announcer does not reach for `notifyLoss`
+  ok   4.notifyRefund · the announcer does not reach for `notifyRefund`
+  ok   4.sendEmailToUser · the announcer does not reach for `sendEmailToUser`
+  ok   4.pushOnly · the announcer does not reach for `pushOnly`
+  ok   4.sendPushToUser · the announcer does not reach for `sendPushToUser`
+  ok   4.control · the stripped source is still real code (else §4's absences prove nothing)
+  ok   4.1 `perEventNotificationsSuppressed` still suppresses UPDOWN
+
+§5 · one shared announcer, mounted on both surfaces (§0.1b rule 1)
+  ok   5.board · imports the shared announcer
+  ok   5.board · …and renders it
+  ok   5.round page · imports the shared announcer
+  ok   5.round page · …and renders it
+
+§6 · the new copy resolves in EN, SW and ZH
+  ok   6.udStakeReturnedTitle · defined three times
+  ok   6.udStakeReturnedTitle · …and not three copies of the English
+  ok   6.udLostTitle · defined three times
+  ok   6.udLostTitle · …and not three copies of the English
+  ok   6.udUpDown · defined three times
+  ok   6.udUpDown · …and not three copies of the English
+
+updown-result-announce: 39 passed, 0 failed
+updown-result-announce: OK — win celebrates, loss and refund state their own truth, and nothing leaves the app

@@ -1,0 +1,1338 @@
+
+### src/app/admin/2fa/setup/setup-client.tsx (4)
+     45 [prop] variant: "warning"  ::  toast({ title: "Enter 6 digits", variant: "warning" });
+     93 [prop] variant: "warning"  ::  toast({ title: "2FA removed", description: "Re-enable it to keep your admin account safe.", variant: "warning" });
+    172 [prop] variant: "warning"  ::  if (stepCode.length !== 6) { toast({ title: "Enter your current 6-digit code", variant: "warning" }); return; }
+    198 [prop] variant: "warning"  ::  if (stepCode.length !== 6) { toast({ title: "Enter your current 6-digit code", variant: "warning" }); return; }
+
+### src/app/admin/affiliate/affiliate-admin-client.tsx (2)
+    241 [prop] variant: "warning"  ::  if (r.warning) toast({ title: "Affiliate config saved · Imehifadhiwa", description: r.warning, variant: "warning" });
+    283 [tw] text-warning-fg  ::  <span aria-hidden className="shrink-0 text-warning-fg"><I.lock s={14} /></span>
+
+### src/app/admin/affiliate/payable-switch.tsx (4)
+    103 [var] var(--warning-500)  ::  borderColor: payable ? "color-mix(in oklab, var(--royal-500) 28%, var(--border))" : "color-mix(in oklab, var(--warning-500) 36%, var(--border))",
+    104 [var] var(--warning-500)  ::  background: payable ? "var(--bg-elevated)" : "color-mix(in oklab, var(--warning-500) 8%, var(--bg-elevated))",
+    112 [var] var(--warning-500)  ::  bg={payable ? "color-mix(in oklab, var(--royal-500) 18%, transparent)" : "color-mix(in oklab, var(--warning-500) 20%, transparent)"}
+    113 [var] var(--warning-fg)  ::  fg={payable ? "var(--royal-300)" : "var(--warning-fg)"}
+
+### src/app/admin/agents/[id]/decision-rail.tsx (13)
+    142 [tw] text-gold-300  ::  <Input mono inputMode="decimal" name="commissionPct" value={rate} onChange={(e) => setRate(e.target.value)} prefix="%" className="text-gold-300" disabled={!mayAct} />
+    150 [prop] tone="warning"  ::  <ConfirmDialog tone="warning" title="Pause this agent?" body="Their code stops recruiting and no new commission accrues. Commission already paid stays. Reversible."
+    186 [prop] tone="warning"  ::  <ConfirmDialog tone="warning" title="Withdraw this invitation?" body="The link stops working. The application (if one exists) is closed as declined."
+    195 [tw] border-gold-700/60  ::  <div className="rounded-md border border-gold-700/60 p-3 space-y-3" style={{ background: "color-mix(in oklab, var(--gold-500) 6%, transparent)" }}>
+    195 [var] var(--gold-500)  ::  <div className="rounded-md border border-gold-700/60 p-3 space-y-3" style={{ background: "color-mix(in oklab, var(--gold-500) 6%, transparent)" }}>
+    196 [tw] text-gold-300  ::  <p className="font-mono text-micro uppercase eyebrow font-bold text-gold-300">Fee</p>
+    197 [tw] text-gold-300  ::  <p className="amount text-body-sm font-bold text-gold-300">{formatTzs(state.fee.expectedTzs)}</p>
+    201 [tw] text-gold-300  ::  <Input mono inputMode="numeric" name="attestedTzs" prefix="TZS" value={attested} onChange={(e) => setAttested(e.target.value)} className="text-gold-300" />
+    209 [prop] variant="gold"  ::  <Button variant="gold" size="md" disabled={!mayAct || pending} loading={pending} onClick={() => run("Reconciling fee…", () => reconcileFeeAction(fd({ attestedTzs: attested, statementRef, sourceAccount })), "Fee reconcile
+    232 [tw] text-warning-500  ::  <p className="text-body-sm text-warning-500">Refund owed{state.fee.refundDueAt ? ` · due ${formatDateShort(state.fee.refundDueAt)}` : ""} · to {state.fee.sourceAccount ?? "the paying account"}</p>
+    234 [tw] text-gold-300  ::  <Input mono inputMode="numeric" name="refundAmount" prefix="TZS" value={refundAmount} onChange={(e) => setRefundAmount(e.target.value)} className="text-gold-300" />
+    239 [prop] variant="gold"  ::  <Button variant="gold" size="md" disabled={!mayAct || pending} loading={pending} onClick={() => run("Recording refund…", () => recordFeeRefundAction(fd({ reference: refundRef, amountTzs: refundAmount })), "Refund recorde
+    249 [tw] text-gold-300  ::  <Input mono inputMode="decimal" name="commissionPct" value={rate} onChange={(e) => setRate(e.target.value)} prefix="%" className="text-gold-300" disabled={!mayAct || !state.canDecide} />
+
+### src/app/admin/agents/[id]/doc-grid.tsx (6)
+     39 [tw] border-warning-500/60  ::  : d.rejected ? "border-warning-500/60 bg-warning-500/[0.06] hover:border-warning"
+     39 [tw] bg-warning-500/[0.06]  ::  : d.rejected ? "border-warning-500/60 bg-warning-500/[0.06] hover:border-warning"
+     39 [tw] hover:border-warning  ::  : d.rejected ? "border-warning-500/60 bg-warning-500/[0.06] hover:border-warning"
+     44 [prop] variant="warning"  ::  {d.thirdParty && <Chip variant="warning">3rd party</Chip>}
+     52 [tw] text-warning-500  ::  {d.rejected && d.rejectReason && <p className="mt-1 text-body-sm leading-snug text-warning-500">{d.rejectReason}</p>}
+     62 [tw] text-warning-500  ::  <p className="text-body-sm text-warning-500">Third-party identity document. Viewing is audited; it is held {thirdPartyHoldDays} days after the decision and then destroyed.</p>
+
+### src/app/admin/agents/[id]/page.tsx (5)
+    214 [tw] text-warning-500  ::  {app.infoRequestNote && <p className="mt-3 text-body-sm text-warning-500"><I.info s={12} className="inline mr-1" />Requested: {app.infoRequestNote}</p>}
+    224 [tw] border-gold-700  ::  <div className="rounded-xl border border-gold-700 p-4" style={{ background: "color-mix(in oklab, var(--gold-500) 8%, var(--bg-elevated))" }}>
+    224 [var] var(--gold-500)  ::  <div className="rounded-xl border border-gold-700 p-4" style={{ background: "color-mix(in oklab, var(--gold-500) 8%, var(--bg-elevated))" }}>
+    227 [tw] text-gold-300  ::  <p className="font-mono text-micro uppercase eyebrow font-bold text-gold-300">Registration fee</p>
+    228 [tw] text-gold-300  ::  <p className="mt-1 amount text-title-lg font-bold text-gold-300">{formatTzs(feeShownTzs)}</p>
+
+### src/app/admin/agents/agents-client.tsx (4)
+     61 [prop] variant="gold"  ::  <Button size="sm" variant="gold" disabled={pending} onClick={() => run(ref.current, "Settling…", () => { const f = new FormData(); f.set("rewardId", rewardId); f.set("reference", reference); return settlePayableAction(f)
+    153 [prop] tone="warning"  ::  <ConfirmDialog tone="warning" title="Withdraw this invitation?" body="The link stops working." confirmLabel="Withdraw" cancelLabel="Keep"
+    185 [tw] text-gold-300  ::  <Input mono inputMode={opts.decimal ? "decimal" : "numeric"} name={k} value={v[k]} onChange={set(k)} prefix={opts.money ? "TZS" : undefined} className={opts.money || opts.decimal ? "text-gold-300" : undefined} disabled={
+    294 [tw] text-warning-500  ::  <p className="flex gap-1.5 text-body-sm leading-relaxed text-warning-500">
+
+### src/app/admin/agents/page.tsx (10)
+    274 [prop] tone="warning"  ::  <Callout tone="warning" size="md">
+    395 [tw] text-gold-300  ::  <td className="p-3 text-right tabular amount text-gold-300">{formatTzs(a.feeAmountTzs ?? 0)}</td>
+    637 [tw] text-gold-300  ::  <dd className="mt-0.5 font-mono text-gold-300">{formatTzs(fee.totalTzs)}</dd>
+    695 [prop] variant="warning"  ::  case "REFUND_DUE": return <Chip variant="warning">{word}</Chip>;
+    761 [prop] variant="warning"  ::  <td className="py-2 pr-3 font-mono whitespace-nowrap">{formatDateShort(inv.expiresAt)}{expiringSoon && <Chip variant="warning" className="ml-2">Soon</Chip>}</td>
+    789 [tw] text-gold-300  ::  <td className="p-3 text-right tabular amount text-gold-300">{formatTzs(row.revenueTzs)}</td>
+    790 [tw] text-gold-300  ::  <td className="p-3 text-right tabular amount text-gold-300">
+    792 [tw] text-warning-500  ::  {row.pendingTzs > 0 && <div className="amount text-body-sm text-warning-500">{formatTzs(row.pendingTzs)} pending</div>}
+    797 [prop] variant="warning"  ::  <Chip variant="warning">{row.marketSkewPct}% from one market</Chip>
+    812 [tw] text-gold-300  ::  <td className="p-3 text-right tabular amount text-gold-300">{formatTzs(reward.amountTzs)}</td>
+
+### src/app/admin/ai-polls/page.tsx (2)
+    267 [tw] text-warning-fg  ::  <span className="text-warning-fg text-micro">Set ANTHROPIC_API_KEY in Railway to use real Claude</span>
+    310 [prop] variant="warning"  ::  <Chip size="sm" variant="warning">{pendingSorted.length} pending</Chip>
+
+### src/app/admin/ai-polls/poll-actions.tsx (10)
+    361 [tw] text-warning-fg  ::  <p className="flex items-start gap-1.5 text-body-sm text-warning-fg leading-snug">
+    529 [tw] bg-warning-bg  ::  <span className="inline-flex h-[36px] w-[36px] items-center justify-center rounded-full bg-warning-bg text-warning-fg shrink-0"><I.warning s={18} /></span>
+    529 [tw] text-warning-fg  ::  <span className="inline-flex h-[36px] w-[36px] items-center justify-center rounded-full bg-warning-bg text-warning-fg shrink-0"><I.warning s={18} /></span>
+    532 [tw] text-warning-fg  ::  <p className="font-mono text-[11px] text-warning-fg">Try generating again</p>
+    537 [tw] border-warning-border  ::  <span key={i} className="inline-flex items-center px-2 py-0.5 rounded-pill text-[10px] font-mono border border-warning-border bg-warning-bg text-warning-fg">{r}</span>
+    537 [tw] bg-warning-bg  ::  <span key={i} className="inline-flex items-center px-2 py-0.5 rounded-pill text-[10px] font-mono border border-warning-border bg-warning-bg text-warning-fg">{r}</span>
+    537 [tw] text-warning-fg  ::  <span key={i} className="inline-flex items-center px-2 py-0.5 rounded-pill text-[10px] font-mono border border-warning-border bg-warning-bg text-warning-fg">{r}</span>
+   1051 [var] var(--warning-fg)  ::  s === "good" ? "var(--success-fg)" : s === "warning" ? "var(--warning-fg)" : "var(--danger-fg)";
+   1357 [prop] tone="warning"  ::  tone="warning"
+   1744 [tw] text-warning-fg  ::  <p role={hardHere ? "alert" : undefined} className={`mt-1 text-body-sm leading-snug ${hardHere ? "text-danger-fg" : "text-warning-fg"}`}>
+
+### src/app/admin/ai-polls/short-title-drafts.tsx (4)
+     96 [tw] text-warning-fg  ::  v.kind === "agrees" ? "text-success-fg" : v.kind === "disagrees" ? "text-danger-fg" : "text-warning-fg";
+    180 [tw] text-warning-fg  ::  className={`text-body-sm ${runNote.tone === "fail" ? "text-danger-fg" : runNote.tone === "warn" ? "text-warning-fg" : "text-text-secondary"}`}
+    348 [tw] text-warning-fg  ::  <p key={i} className="text-body-sm text-warning-fg break-words">{s}</p>
+    415 [tw] text-warning-fg  ::  <p key={i} className="mt-1 text-body-sm text-warning-fg break-words">{s}</p>
+
+### src/app/admin/ai-usage/credit-controls.tsx (1)
+     62 [prop] tone="warning"  ::  tone="warning"
+
+### src/app/admin/ai-usage/cycle-controls.tsx (2)
+    257 [prop] tone="warning"  ::  tone="warning"
+    314 [prop] tone="warning"  ::  tone="warning"
+
+### src/app/admin/ai-usage/page.tsx (6)
+    255 [tw] border-warning-fg/50  ::  ? "border-warning-fg/50 bg-bg-overlay"
+    498 [tw] text-warning-fg  ::  <span className="text-warning-fg">They differ by {usd(cyc.conservation.driftUsd)} — investigate before pricing from this page.</span>
+    570 [tw] text-warning-fg  ::  {cyc.fx.stale ? <span className="text-warning-fg"> — {adminCount(Math.round(cyc.fx.ageDays ?? 0), "day")} old; refresh it before pricing from this.</span> : null}.</>
+    621 [prop] variant="warning"  ::  ? <Chip size="sm" variant="warning">PART YEAR</Chip>
+    677 [tw] text-warning-fg  ::  <td className={`p-3 font-mono tabular-nums text-right ${r.usedPct > 100.01 ? "text-warning-fg" : "text-text-tertiary"}`}>{r.usedPct.toFixed(0)}%</td>
+    747 [tw] text-warning-fg  ::  <div className="text-caption text-warning-fg mt-0.5">alerted: {c.alertedLevel}</div>
+
+### src/app/admin/aml/aml-actions-client.tsx (1)
+     74 [prop] variant: "warning"  ::  toast({ title: "Reason required", description: `${kind === "approve" ? "Approval" : "Reject"} needs a reason of at least 5 characters.`, variant: "warning" });
+
+### src/app/admin/aml/page.tsx (3)
+    139 [prop] variant="warning"  ::  <Chip size="sm" variant="warning" className="ml-2">
+    144 [tw] text-warning  ::  <span className="block font-mono text-micro text-warning mt-1">
+    238 [tw] text-warning  ::  <td className="font-mono tabular text-right text-warning">{f.multiple.toFixed(1)}×</td>
+
+### src/app/admin/approvals/page.tsx (7)
+    233 [tw] text-warning-fg  ::  <p className="mb-3 text-body-sm text-warning-fg">
+    238 [tw] text-warning-fg  ::  <p className="mb-3 text-body-sm text-warning-fg">
+    242 [tw] text-warning-fg  ::  <p className="mb-3 text-body-sm text-warning-fg">
+    409 [tw] text-warning-fg  ::  <span className="text-warning-fg">not readable</span>
+    413 [prop] variant="warning"  ::  <Chip size="sm" variant="warning">Never approved</Chip>
+    418 [prop] variant="warning"  ::  <td className="py-2 pr-3"><Chip size="sm" variant="warning">{s.reviewStatus}</Chip></td>
+    438 [prop] variant="warning"  ::  variant="warning"
+
+### src/app/admin/approvals/sof-review-client.tsx (1)
+     76 [prop] variant: "warning"  ::  toast({ title: "Reason required", description: `${decision === "REJECT" ? "Reject" : "More info"} needs a reason of at least 5 characters.`, variant: "warning" });
+
+### src/app/admin/audit/page.tsx (3)
+    171 [tw] text-warning-fg  ::  <p className="font-mono text-[11px] text-warning-fg bg-warning-bg border border-warning-border rounded-md px-3 py-2">
+    171 [tw] bg-warning-bg  ::  <p className="font-mono text-[11px] text-warning-fg bg-warning-bg border border-warning-border rounded-md px-3 py-2">
+    171 [tw] border-warning-border  ::  <p className="font-mono text-[11px] text-warning-fg bg-warning-bg border border-warning-border rounded-md px-3 py-2">
+
+### src/app/admin/bonuses/bonus-admin-client.tsx (5)
+    154 [var] var(--warning-500)  ::  borderColor: on ? "color-mix(in oklab, var(--royal-500) 28%, var(--border))" : "color-mix(in oklab, var(--warning-500) 36%, var(--border))",
+    155 [var] var(--warning-500)  ::  background: on ? "var(--bg-elevated)" : "color-mix(in oklab, var(--warning-500) 8%, var(--bg-elevated))",
+    160 [var] var(--warning-500)  ::  bg={on ? "color-mix(in oklab, var(--royal-500) 18%, transparent)" : "color-mix(in oklab, var(--warning-500) 20%, transparent)"}
+    161 [var] var(--warning-fg)  ::  fg={on ? "var(--royal-300)" : "var(--warning-fg)"}
+    344 [prop] tone="warning"  ::  tone="warning"
+
+### src/app/admin/campaigns/new/campaign-confirm.tsx (3)
+    132 [prop] tone="warning"  ::  <Callout tone="warning" role="alert">
+    279 [prop] variant: "warning"  ::  if (o.gone) deferToast({ title: COMPOSE_CONFIRM_REFUSED, description: o.description, variant: "warning" });
+    295 [prop] variant: "warning"  ::  toast({ title: composeNotDraftTitle(form.status), description: notDraft, variant: "warning" });
+
+### src/app/admin/campaigns/new/composer-client.tsx (2)
+    440 [prop] tone="warning"  ::  tone="warning"
+    742 [prop] tone="warning"  ::  <Callout tone="warning" role="status">
+
+### src/app/admin/campaigns/new/composer-copy.ts (2)
+    515 [prop] variant: "warning"  ::  if (reason === "busy") return { kind: "keep", toast: { title: COMPOSE_CONFIRM_BUSY_CONFIRM, variant: "warning" } };
+    529 [prop] variant: "warning"  ::  : { kind: "close", toast: { title: COMPOSE_CONFIRM_REFUSED, description: notice, variant: "warning" } };
+
+### src/app/admin/campaigns/new/page.tsx (1)
+     91 [prop] tone="warning"  ::  <Callout tone="warning" role="note">
+
+### src/app/admin/candidates/page.tsx (1)
+    211 [prop] variant="warning"  ::  <Chip size="sm" variant="warning">{pendingSorted.length} pending</Chip>
+
+### src/app/admin/compliance/page.tsx (16)
+     31 [prop] tone: "warning"  ::  const REPORTS: ReadonlyArray<{ id: string; title: string; sub: string; tone: "warning" | "royal" | "danger" | "neutral" }> = [
+     32 [prop] tone: "warning"  ::  { id: "gbt-monthly",    title: "Monthly report",         sub: "Calendar month · 12 sheets · signed JSON", tone: "warning" },
+    254 [tw] text-warning-fg  ::  <p className="font-mono text-micro text-warning-fg mt-1">
+    266 [tw] text-warning-fg  ::  <p className="font-mono text-micro eyebrow uppercase text-warning-fg">
+    271 [tw] text-warning-fg  ::  <li key={w} className="font-mono text-micro text-warning-fg break-words">· {w}</li>
+    307 [tw] text-warning-fg  ::  <p className="font-mono text-micro text-warning-fg mt-1">
+    376 [tw] text-warning  ::  <span className="font-mono text-micro text-warning tracking-wider">{rg.expiringThisWeek} expiring</span>
+    379 [tw] text-warning-fg  ::  <p className={["font-mono text-micro eyebrow uppercase", rg ? "text-text-tertiary" : "text-warning-fg"].join(" ")}>{rg ? "active roster" : "couldn't load"}</p>
+    383 [tw] text-warning-fg  ::  <p className={["font-mono text-micro eyebrow uppercase", rg ? "text-text-tertiary" : "text-warning-fg"].join(" ")}>{rg ? "in progress" : "couldn't load"}</p>
+    386 [tw] text-warning-fg  ::  <div className={["font-mono font-bold text-title-md tabular", rg ? "text-warning-fg" : "text-text-tertiary"].join(" ")}>{rg ? rg.pendingLimitIncrease : "n/a"}</div>
+    387 [tw] text-warning-fg  ::  <p className={["font-mono text-micro eyebrow uppercase", rg ? "text-text-tertiary" : "text-warning-fg"].join(" ")}>{rg ? "pending 24h cool-down" : "couldn't load"}</p>
+    435 [var] var(--warning-fg)  ::  { flex: tookBreak, color: "var(--warning-fg)" },
+    530 [tw] bg-warning/15  ::  r.tone === "warning" ? "bg-warning/15 text-warning" :
+    530 [tw] text-warning  ::  r.tone === "warning" ? "bg-warning/15 text-warning" :
+    605 [tw] text-warning  ::  <I.heartPulse s={14} className="text-warning" />
+    613 [prop] variant="warning"  ::  <Chip size="sm" variant="warning">markers n/a</Chip>
+
+### src/app/admin/config/config-form.tsx (2)
+    388 [prop] tone="warning"  ::  tone="warning"
+    494 [prop] variant: "warning"  ::  deferToast({ title: "Override cleared", variant: "warning" });
+
+### src/app/admin/config/fee-simulator.tsx (4)
+    143 [prop] tone="gold"  ::  tone="gold"
+    186 [prop] tone="gold"  ::  <Stat label="Fee charged" value={formatTzs(Math.round(sim.fee.fee))} tone="gold" money
+    219 [prop] tone="warning"  ::  <Callout tone="warning" title="Stake exceeds the winning pool">
+    226 [prop] tone="gold"  ::  <Stat label="Payout" value={formatTzs(sim.res.payout)} tone="gold" money />
+
+### src/app/admin/config/page.tsx (7)
+     77 [prop] variant="resolved"  ::  <Chip size="md" variant="resolved">
+    119 [tw] border-warning-border  ::  <AdminCard className="border-warning-border bg-warning-bg">
+    119 [tw] bg-warning-bg  ::  <AdminCard className="border-warning-border bg-warning-bg">
+    121 [tw] text-warning  ::  <I.warning s={18} className="text-warning shrink-0 mt-0.5" />
+    152 [tw] text-warning-fg  ::  <p className="text-warning-fg">
+    397 [tw] border-warning-border  ::  <AdminCard className="border-warning-border bg-warning-bg">
+    397 [tw] bg-warning-bg  ::  <AdminCard className="border-warning-border bg-warning-bg">
+
+### src/app/admin/contacts/contact-form.tsx (1)
+    796 [prop] tone="warning"  ::  <Callout tone="warning" role="alert">{CONTACT_FORM.discardAsk}</Callout>
+
+### src/app/admin/contacts/contacts-bulk-bar.tsx (4)
+    222 [prop] variant: "warning"  ::  toast({ title: CONTACTS_BULK.refused, description: r.error, variant: "warning" });
+    263 [tw] text-warning-fg  ::  {s.note !== null && <p role="status" className="text-body-sm text-warning-fg" data-bulk-note>{s.note}</p>}
+    368 [prop] tone="warning"  ::  {paramRefusal !== null && <Callout tone="warning" role="alert">{paramRefusal}</Callout>}
+    432 [prop] tone="warning"  ::  {notice !== null && <Callout tone="warning" role="alert">{notice}</Callout>}
+
+### src/app/admin/contacts/contacts-copy.ts (1)
+    108 [prop] variant: "warning"  ::  WITHDRAWN: { label: "Withdrawn", variant: "warning" },
+
+### src/app/admin/contacts/import/contacts-import-dialog.tsx (9)
+    625 [prop] tone: "warning"  ::  return go({ at: "adopt", view: out.view, busy: false }, { tone: "warning", text: IMPORT_STALLED, actions: [] });
+    631 [prop] tone: "warning"  ::  found: { tone: "warning", text: IMPORT_CONNECTION, actions: [] },
+    632 [prop] tone: "warning"  ::  unread: { tone: "warning", text: IMPORT_DROPPED, actions: [] },
+    728 [prop] tone: "warning"  ::  return go({ at: "paused", view: out.view, acting: false }, { tone: "warning", text: IMPORT_STALLED, actions: [] });
+    734 [prop] tone: "warning"  ::  found: { tone: "warning", text: IMPORT_CONNECTION, actions: [] },
+    735 [prop] tone: "warning"  ::  unread: { tone: "warning", text: IMPORT_DROPPED, actions: [] },
+    814 [prop] tone: "warning"  ::  go(here, { tone: "warning", text: OTHERS.gone, actions: [] });
+    937 [prop] tone="warning"  ::  <Callout tone="warning" role="alert" title={IMPORT_SKEW}>{IMPORT_SKEW_DETAIL}</Callout>
+    955 [prop] tone="warning"  ::  <Callout tone="warning" role="status">{IMPORT_UNREAD}</Callout>
+
+### src/app/admin/contacts/import/import-decision-panel.tsx (2)
+    457 [prop] tone: "warning"  ::  tone: "warning",
+    504 [prop] tone: "warning"  ::  <ImportAlert alert={{ tone: "warning", text: LIST.failed, actions: [{ label: IMPORT_TRY_AGAIN, run: () => void loadLists(), act: "lists-retry" }] }} />
+
+### src/app/admin/contacts/import/import-done-panel.tsx (1)
+    173 [prop] tone: "warning"  ::  tone: "warning",
+
+### src/app/admin/contacts/import/import-mapping-panel.tsx (1)
+    127 [prop] tone="warning"  ::  <Callout tone="warning" role="status">{MAPPING.sheetHint}</Callout>
+
+### src/app/admin/contacts/page.tsx (1)
+    289 [prop] tone="warning"  ::  <Callout tone="warning" role="alert" className="min-w-0 flex-1">{exportRefused}</Callout>
+
+### src/app/admin/desk/[id]/not-found.tsx (1)
+     45 [prop] tone="warning"  ::  <Callout tone="warning" size="md" surface="panel" role="status">
+
+### src/app/admin/desk/[id]/page.tsx (4)
+    142 [tw] text-warning-fg  ::  {captions && r.caption && <span className="block text-body-sm text-warning-fg">{r.caption}</span>}
+    175 [tw] text-warning-fg  ::  <span className="block text-body-sm text-warning-fg">{it.message}</span>
+    407 [prop] tone="warning"  ::  tone="warning"
+    571 [prop] tone="warning"  ::  <Callout tone="warning" title={CONSOLE_REFUSAL_TITLE}>{view.queryRefusal}</Callout>
+
+### src/app/admin/desk/[id]/rules-form.tsx (10)
+    338 [prop] variant: "warning"  ::  toast({ title: model.copy.clearTitle, description: model.copy.clearDone, variant: "warning" });
+    563 [prop] tone="warning"  ::  <Callout tone="warning" size="sm" surface="panel" role="note">{model.copy.byHandNote}</Callout>
+    610 [tw] text-warning-fg  ::  <p className="text-body-sm text-warning-fg max-w-[52ch]">{list.onceOn}</p>
+    613 [tw] text-warning-fg  ::  <p className="text-body-sm text-warning-fg max-w-[52ch]">{list.none}</p>
+    652 [prop] tone="warning"  ::  <Callout tone="warning" size="sm" surface="panel" role="note">{model.copy.boundsUnreadable}</Callout>
+    705 [tw] text-warning-fg  ::  <span className="text-warning-fg">{model.copy.notSavedYet}</span>
+    813 [tw] text-warning-fg  ::  <p className="text-body-sm text-warning-fg max-w-[52ch]">{model.schedule.windowsIgnored}</p>
+    900 [tw] text-warning-fg  ::  <span className="text-warning-fg">{cap.caption}</span>
+    938 [prop] tone="warning"  ::  <Callout tone="warning" size="md" surface="panel" role="status" title={model.copy.draftTitle}>
+    966 [prop] tone="warning"  ::  <Callout tone="warning" size="md" surface="panel" role="status" title="Saved — check these">
+
+### src/app/admin/desk/limits-form.tsx (2)
+    143 [tw] text-warning-fg  ::  <span className="text-warning-fg">{row.caption}</span>
+    327 [prop] tone="warning"  ::  <Callout tone="warning" size="md" surface="panel" role="status" title="Saved — check these">
+
+### src/app/admin/desk/new/account-list.tsx (1)
+     43 [prop] tone="warning"  ::  <Callout tone="warning" title={view.refusalTitle}>{view.queryRefusal}</Callout>
+
+### src/app/admin/desk/new/page.tsx (1)
+    263 [prop] tone="warning"  ::  {view.warnings.map((r) => <CheckNotice key={`w-${r.code}`} row={r} tone="warning" />)}
+
+### src/app/admin/desk/page.tsx (10)
+    188 [tw] text-warning-fg  ::  <p className="text-body-sm text-warning-fg">Couldn&apos;t read — this is not zero.</p>
+    196 [tw] text-warning-fg  ::  <p className="text-body-sm text-warning-fg">
+    236 [tw] text-warning-fg  ::  {row.edgeText ? <span className="text-warning-fg">{row.edgeText}</span> : null}
+    403 [tw] text-warning-fg  ::  <Link href={view.limitsFirstUnsetHref as Route} className="inline-flex items-center min-h-[var(--tap-min)] text-body-sm text-warning-fg hover:underline">
+    407 [tw] text-warning-fg  ::  <span className="text-body-sm text-warning-fg">{view.limitsFirstPlain}</span>
+    481 [prop] tone="warning"  ::  <Callout tone="warning" title="Switched off by the daily loss limit">
+    547 [prop] tone="warning"  ::  <Callout tone="warning" title={CONSOLE_REFUSAL_TITLE}>{rosterView.queryRefusal}</Callout>
+    644 [tw] text-warning-fg  ::  <Link href={r.inert.href as Route} className="inline-flex items-center min-h-[var(--tap-min)] max-w-[34ch] text-body-sm text-warning-fg hover:underline">
+    722 [prop] tone="warning"  ::  <Callout tone="warning" title={CONSOLE_REFUSAL_TITLE}>{feedView.queryRefusal}</Callout>
+   1180 [prop] tone="warning"  ::  <Callout tone="warning" title={CONSOLE_REFUSAL_TITLE}>{resultsView.queryRefusal}</Callout>
+
+### src/app/admin/finance/page.tsx (3)
+    287 [tw] border-warning-border  ::  <div className="flex items-start gap-3 rounded-md border border-warning-border bg-warning-bg px-4 py-3">
+    287 [tw] bg-warning-bg  ::  <div className="flex items-start gap-3 rounded-md border border-warning-border bg-warning-bg px-4 py-3">
+    288 [var] var(--warning-500)  ::  <span aria-hidden className="mt-1 h-1.5 w-1.5 shrink-0 rounded-pill" style={{ background: "var(--warning-500)" }} />
+
+### src/app/admin/insights/page.tsx (2)
+    178 [tw] text-gold-300  ::  <td className="py-2 pl-3 text-right font-mono tabular-nums text-gold-300">{formatTzs(c.ltvPerPlayer)}</td>
+    205 [tw] text-warning-fg  ::  <p className="text-[13px] text-warning-fg">Couldn&apos;t load category GGR — a data read failed, so this is not a real zero. Refresh to retry.</p>
+
+### src/app/admin/invites/[id]/page.tsx (3)
+     75 [tw] border-warning-fg/40  ::  <div className="flex items-start gap-2.5 rounded-lg border border-warning-fg/40 bg-warning/10 px-3.5 py-3 text-[12.5px] text-text-muted">
+     75 [tw] bg-warning/10  ::  <div className="flex items-start gap-2.5 rounded-lg border border-warning-fg/40 bg-warning/10 px-3.5 py-3 text-[12.5px] text-text-muted">
+     76 [tw] text-warning-fg  ::  <span className="text-warning-fg shrink-0 mt-0.5"><I.warning s={15} /></span>
+
+### src/app/admin/journey/page.tsx (2)
+    293 [tw] text-warning-fg  ::  <p className="text-body-sm text-warning-fg">Stored switch unreadable — reads as Off</p>
+    324 [prop] tone="warning"  ::  <Callout tone="warning" role="alert">{refusal}</Callout>
+
+### src/app/admin/journey/preview-links.tsx (1)
+     52 [prop] variant: "warning"  ::  toast({ title: "Could not copy", description: "Select the address and copy it by hand.", variant: "warning" });
+
+### src/app/admin/kyc/[id]/kyc-doc-viewer.tsx (1)
+    102 [tw] text-warning-fg  ::  <I.warning s={24} className="text-warning-fg" />
+
+### src/app/admin/kyc/[id]/page.tsx (9)
+    367 [tw] text-warning-fg  ::  <span className="text-warning-fg">could not be read — not zero</span>
+    373 [tw] text-warning-fg  ::  <span className="block text-warning-fg">
+    427 [tw] text-warning-fg  ::  <span className="text-warning-fg">could not be read</span>
+    441 [tw] text-warning-fg  ::  <p className="mt-2 text-body-sm text-warning-fg">
+    460 [var] var(--warning-fg)  ::  <p className="font-mono text-[26px] font-bold leading-none tabular-nums" style={{ color: risk.band === "high" ? "var(--danger-fg)" : risk.band === "medium" ? "var(--warning-fg)" : "var(--success-fg)" }}>
+    522 [tw] text-warning-fg  ::  <p className="text-body-sm text-warning-fg">This player&apos;s balance position could not be read. It is NOT zero — reload before deciding.</p>
+    537 [tw] text-warning-fg  ::  <p className="text-body-sm text-warning-fg" data-refused-blocking-holds={refused.blockingHolds.length}>
+    573 [tw] text-warning-fg  ::  <p className="text-body-sm text-warning-fg">The decision history could not be read. Do not assume there is none.</p>
+    591 [tw] text-warning-fg  ::  {priorDecisions?.truncated && <p className="mt-1 text-body-sm text-warning-fg">Older audit entries on this account are not shown here — the full list is in the refused-funds report.</p>}
+
+### src/app/admin/kyc/[id]/refused-funds-panel.tsx (2)
+    100 [prop] variant: "warning"  ::  ? { title: "Decision recorded · the return did not start", description: `${r.payoutError} The rest of the balance stays frozen — decide again to return it.`, variant: "warning" }
+    170 [tw] text-warning-fg  ::  <span className={`font-mono text-body-sm tabular-nums ${justified ? "text-text-subtle" : "text-warning-fg"}`}>
+
+### src/app/admin/kyc/[id]/reopen-refusal-control.tsx (1)
+     53 [prop] variant: "warning"  ::  toast({ title: "Refusal re-opened", description: "The player may verify again. Any other hold on the wallet stays in place.", variant: "warning" });
+
+### src/app/admin/kyc/page.tsx (5)
+    228 [tw] text-warning-fg  ::  <span className="text-warning-fg">not readable</span>
+    314 [tw] text-warning-fg  ::  <p className="text-body-sm text-warning-fg">
+    319 [tw] text-warning-fg  ::  <p className="text-body-sm text-warning-fg">
+    329 [tw] text-warning-fg  ::  <span className="text-warning-fg">Cash-outs refused for an unconfirmed email could not be read.</span>
+    380 [tw] text-warning-fg  ::  <p className="mb-3 text-body-sm text-warning-fg">
+
+### src/app/admin/kyc/refused/page.tsx (3)
+    202 [tw] text-warning-fg  ::  {a.lastDecision?.outcome ? `${REFUSED_FUNDS_OUTCOME_COPY[a.lastDecision.outcome].label} · ${formatDateTime(a.lastDecision.at)}` : <span className="text-warning-fg">none yet</span>}
+    223 [tw] text-warning-fg  ::  <p className="mb-2 text-body-sm text-warning-fg">Showing the newest {report.decisions.length} of {report.decisionsTotal} decisions.</p>
+    261 [tw] text-warning-fg  ::  <span className="text-warning-fg">status not read</span>
+
+### src/app/admin/markets/[id]/page.tsx (3)
+    300 [prop] tone="gold"  ::  tone="gold"
+    340 [prop] tone="gold"  ::  tone="gold"
+    358 [prop] tone="warning"  ::  <Callout tone="warning" className="mt-3" title="ONE-SIDED — this poll will refund everyone and earn nothing">
+
+### src/app/admin/markets/new/wizard.tsx (1)
+    270 [tw] text-warning-fg  ::  <p role={note.hard ? "alert" : undefined} className={`mt-1.5 text-body-sm leading-snug ${note.hard ? "text-danger-fg" : "text-warning-fg"}`}>
+
+### src/app/admin/markets/short-title-control.tsx (4)
+     85 [tw] text-warning-fg  ::  const VERDICT_INK: Record<Verdict["kind"], string> = { agrees: "text-success-fg", disagrees: "text-danger-fg", unchecked: "text-warning-fg" };
+    196 [prop] variant: "warning"  ::  ? { title: "Saved — but its audit record was not written", description: shortTitleAuditMissed("change"), variant: "warning" }
+    198 [prop] variant: "warning"  ::  ? { title: "Card wording saved — read the notes under the fields", description: CARD_ONLY, variant: "warning" }
+    234 [tw] text-warning-fg  ::  {said.map((w) => <p key={w} className="mt-1 text-body-sm text-warning-fg break-words">{w}</p>)}
+
+### src/app/admin/objections/objection-decision.tsx (8)
+    112 [tw] border-warning-border  ::  className="inline-flex min-h-[40px] items-center gap-1 rounded-md border border-warning-border bg-warning-bg px-2.5 py-1.5 font-mono text-micro font-bold uppercase tracking-[0.08em] text-warning-fg hover:bg-warning-borde
+    112 [tw] bg-warning-bg  ::  className="inline-flex min-h-[40px] items-center gap-1 rounded-md border border-warning-border bg-warning-bg px-2.5 py-1.5 font-mono text-micro font-bold uppercase tracking-[0.08em] text-warning-fg hover:bg-warning-borde
+    112 [tw] text-warning-fg  ::  className="inline-flex min-h-[40px] items-center gap-1 rounded-md border border-warning-border bg-warning-bg px-2.5 py-1.5 font-mono text-micro font-bold uppercase tracking-[0.08em] text-warning-fg hover:bg-warning-borde
+    112 [tw] hover:bg-warning-border  ::  className="inline-flex min-h-[40px] items-center gap-1 rounded-md border border-warning-border bg-warning-bg px-2.5 py-1.5 font-mono text-micro font-bold uppercase tracking-[0.08em] text-warning-fg hover:bg-warning-borde
+    120 [tw] border-warning-border  ::  className="inline-flex min-h-[40px] items-center gap-1 rounded-md border border-warning-border bg-warning-bg px-2.5 py-1.5 font-mono text-micro font-bold uppercase tracking-[0.08em] text-warning-fg hover:bg-warning-borde
+    120 [tw] bg-warning-bg  ::  className="inline-flex min-h-[40px] items-center gap-1 rounded-md border border-warning-border bg-warning-bg px-2.5 py-1.5 font-mono text-micro font-bold uppercase tracking-[0.08em] text-warning-fg hover:bg-warning-borde
+    120 [tw] text-warning-fg  ::  className="inline-flex min-h-[40px] items-center gap-1 rounded-md border border-warning-border bg-warning-bg px-2.5 py-1.5 font-mono text-micro font-bold uppercase tracking-[0.08em] text-warning-fg hover:bg-warning-borde
+    120 [tw] hover:bg-warning-border  ::  className="inline-flex min-h-[40px] items-center gap-1 rounded-md border border-warning-border bg-warning-bg px-2.5 py-1.5 font-mono text-micro font-bold uppercase tracking-[0.08em] text-warning-fg hover:bg-warning-borde
+
+### src/app/admin/objections/page.tsx (3)
+     89 [tw] border-warning-border  ::  <div className="flex items-start gap-2 rounded-md border border-warning-border bg-warning-bg px-3 py-2.5 text-[12.5px] text-warning-fg">
+     89 [tw] bg-warning-bg  ::  <div className="flex items-start gap-2 rounded-md border border-warning-border bg-warning-bg px-3 py-2.5 text-[12.5px] text-warning-fg">
+     89 [tw] text-warning-fg  ::  <div className="flex items-start gap-2 rounded-md border border-warning-border bg-warning-bg px-3 py-2.5 text-[12.5px] text-warning-fg">
+
+### src/app/admin/payments/control-plane.tsx (6)
+    146 [var] var(--gold-400)  ::  ? { borderColor: "color-mix(in oklab, var(--gold-400) 45%, transparent)", background: "color-mix(in oklab, var(--gold-500) 12%, var(--bg-elevated))" }
+    146 [var] var(--gold-500)  ::  ? { borderColor: "color-mix(in oklab, var(--gold-400) 45%, transparent)", background: "color-mix(in oklab, var(--gold-500) 12%, var(--bg-elevated))" }
+    153 [var] var(--gold-400)  ::  ? { background: "linear-gradient(180deg, var(--gold-400), var(--gold-600))", color: "oklch(18% 0.03 264)" }
+    153 [var] var(--gold-600)  ::  ? { background: "linear-gradient(180deg, var(--gold-400), var(--gold-600))", color: "oklch(18% 0.03 264)" }
+    222 [prop] tone="warning"  ::  tone="warning"
+    251 [prop] tone="warning"  ::  <Callout tone="warning" glyph="info" className="mt-3">
+
+### src/app/admin/payments/page.tsx (2)
+    257 [var] var(--warning-fg)  ::  <span className="h-2 w-2 rounded-full" style={{ background: pip === "yes" ? "var(--yes-400)" : pip === "warning" ? "var(--warning-fg)" : pip === "no" ? "var(--no-400)" : "var(--text-subtle)" }} />
+    329 [tw] text-warning  ::  const tone = p.verdict === "ENABLED" ? "text-success" : p.verdict === "NOT_ENABLED" ? "text-danger" : "text-warning";
+
+### src/app/admin/payments/payout-status-control.tsx (9)
+     92 [tw] border-warning-border  ::  <p className="flex items-start gap-1.5 rounded-md border border-warning-border bg-warning-bg px-2.5 py-2 text-body-sm leading-snug text-text-muted">
+     92 [tw] bg-warning-bg  ::  <p className="flex items-start gap-1.5 rounded-md border border-warning-border bg-warning-bg px-2.5 py-2 text-body-sm leading-snug text-text-muted">
+     93 [tw] text-warning-fg  ::  <I.alertCircle s={13} className="mt-px shrink-0 text-warning-fg" />
+    138 [var] var(--gilt)  ::  ? { borderColor: "var(--gilt)", background: "color-mix(in oklab, var(--gilt) 9%, transparent)", color: "var(--text)" }
+    138 [var] var(--gilt)  ::  ? { borderColor: "var(--gilt)", background: "color-mix(in oklab, var(--gilt) 9%, transparent)", color: "var(--text)" }
+    173 [tw] text-warning-fg  ::  <span className="mt-1 block text-body-sm leading-snug text-warning-fg">
+    216 [var] var(--warning-border)  ::  ? { borderColor: "var(--warning-border)", background: "var(--warning-bg)", color: "var(--warning-fg)" }
+    216 [var] var(--warning-bg)  ::  ? { borderColor: "var(--warning-border)", background: "var(--warning-bg)", color: "var(--warning-fg)" }
+    216 [var] var(--warning-fg)  ::  ? { borderColor: "var(--warning-border)", background: "var(--warning-bg)", color: "var(--warning-fg)" }
+
+### src/app/admin/payments/selcom-statement-card.tsx (1)
+    145 [tw] text-warning  ::  <span className="text-warning">This did not touch Selcom.</span> A winner is credited inside their
+
+### src/app/admin/players/[id]/balance-adjust-controls.tsx (1)
+     81 [prop] variant: "warning"  ::  toast({ title: "Second officer required", description: r.message, variant: "warning" });
+
+### src/app/admin/players/[id]/force-reverify-controls.tsx (2)
+     76 [prop] variant: "warning"  ::  ? { title: "Re-verification required · wallet frozen", description: "The player must re-submit documents, and deposits, bets and withdrawals are stopped until an officer lifts the freeze.", variant: "warning" }
+     77 [prop] variant: "warning"  ::  : { title: "Re-verification required", description: "This stops no money. To stop deposits, bets and withdrawals, freeze the wallet.", variant: "warning" });
+
+### src/app/admin/players/[id]/page.tsx (20)
+    281 [tw] text-warning-fg  ::  : <span data-email-standing="unconfirmed" className="text-warning-fg">· unconfirmed — needed to withdraw</span>}
+    286 [tw] text-warning-fg  ::  <I.mail s={10} /> <span className="text-warning-fg">no email — one is needed to withdraw</span>
+    324 [prop] variant="warning"  ::  <Chip size="sm" variant="warning">limit {formatTzsCompact(rg.dailyDepositLimit).replace("TZS ", "")}/day</Chip>
+    338 [tw] text-warning-fg  ::  <p className="font-mono text-micro text-warning-fg tracking-wider">couldn&apos;t compute</p>
+    352 [var] var(--warning-500)  ::  colorVar={riskBand === "high" ? "var(--danger-500)" : riskBand === "medium" ? "var(--warning-500)" : "var(--success-500)"}
+    552 [tw] border-warning-fg/40  ::  <div className="rounded-lg border-2 border-warning-fg/40 bg-warning/10 px-4 py-3 flex items-start gap-3">
+    552 [tw] bg-warning/10  ::  <div className="rounded-lg border-2 border-warning-fg/40 bg-warning/10 px-4 py-3 flex items-start gap-3">
+    555 [tw] text-warning-fg  ::  <I.shieldAlert s={16} className="text-warning-fg shrink-0 mt-0.5 g-ring" />
+    557 [tw] text-warning-fg  ::  <p className="font-display font-semibold text-warning-fg text-[13px]">Action required · Inahitaji ukaguzi</p>
+    563 [tw] border-warning-border  ::  <div className="rounded-lg border border-warning-border bg-warning-bg px-4 py-3 flex items-start gap-3">
+    563 [tw] bg-warning-bg  ::  <div className="rounded-lg border border-warning-border bg-warning-bg px-4 py-3 flex items-start gap-3">
+    564 [tw] text-warning-fg  ::  <I.alertCircle s={16} className="text-warning-fg shrink-0 mt-0.5" />
+    566 [tw] text-warning-fg  ::  <p className="font-display font-semibold text-warning-fg text-[13px]">Awaiting player response</p>
+    596 [tw] border-warning-border  ::  <div className={`rounded-md px-3 py-2.5 flex items-start gap-2.5 text-caption ${userEmail ? "border border-border bg-bg-inset/30" : "border-2 border-warning-border bg-warning-bg"}`}>
+    596 [tw] bg-warning-bg  ::  <div className={`rounded-md px-3 py-2.5 flex items-start gap-2.5 text-caption ${userEmail ? "border border-border bg-bg-inset/30" : "border-2 border-warning-border bg-warning-bg"}`}>
+    597 [tw] text-warning-fg  ::  <I.mail s={14} className={userEmail ? "text-text-tertiary mt-0.5" : "text-warning-fg mt-0.5"} />
+    604 [tw] text-warning-fg  ::  <p className="text-body-sm font-semibold text-warning-fg">No email on file — KYC notifications will not reach this player</p>
+    736 [tw] text-warning  ::  <span className="text-warning font-medium">
+    761 [tw] border-warning-border  ::  <div className="rounded-md border border-warning-border bg-warning-bg p-4 flex items-start gap-2.5">
+    761 [tw] bg-warning-bg  ::  <div className="rounded-md border border-warning-border bg-warning-bg p-4 flex items-start gap-2.5">
+
+### src/app/admin/players/[id]/reset-password-button.tsx (5)
+     53 [tw] border-warning-fg/40  ::  <div className="inline-flex items-center gap-2 rounded-md border border-warning-fg/40 bg-warning/10 px-3 py-2">
+     53 [tw] bg-warning/10  ::  <div className="inline-flex items-center gap-2 rounded-md border border-warning-fg/40 bg-warning/10 px-3 py-2">
+     54 [tw] text-warning-fg  ::  <I.keyRound s={14} className="text-warning-fg shrink-0" />
+     56 [tw] text-warning-fg  ::  <p className="font-mono text-micro uppercase eyebrow text-warning-fg">Temporary password</p>
+     74 [prop] tone="warning"  ::  tone="warning"
+
+### src/app/admin/players/[id]/set-email-form.tsx (5)
+     85 [tw] border-warning-fg/40  ::  className="shrink-0 whitespace-nowrap h-[40px] px-3 rounded-md border border-warning-fg/40 bg-warning/10 font-mono text-[11px] font-bold text-warning-fg hover:bg-warning/20 disabled:opacity-40 transition-colors"
+     85 [tw] bg-warning/10  ::  className="shrink-0 whitespace-nowrap h-[40px] px-3 rounded-md border border-warning-fg/40 bg-warning/10 font-mono text-[11px] font-bold text-warning-fg hover:bg-warning/20 disabled:opacity-40 transition-colors"
+     85 [tw] text-warning-fg  ::  className="shrink-0 whitespace-nowrap h-[40px] px-3 rounded-md border border-warning-fg/40 bg-warning/10 font-mono text-[11px] font-bold text-warning-fg hover:bg-warning/20 disabled:opacity-40 transition-colors"
+     85 [tw] hover:bg-warning/20  ::  className="shrink-0 whitespace-nowrap h-[40px] px-3 rounded-md border border-warning-fg/40 bg-warning/10 font-mono text-[11px] font-bold text-warning-fg hover:bg-warning/20 disabled:opacity-40 transition-colors"
+     97 [prop] tone="warning"  ::  tone="warning"
+
+### src/app/admin/players/[id]/wallet-freeze-controls.tsx (3)
+    107 [prop] variant: "warning"  ::  ? { title: "Officer hold added", description: "The wallet stays frozen until an officer lifts this hold, even once the other holds are lifted.", variant: "warning" }
+    108 [prop] variant: "warning"  ::  : { title: "Wallet frozen", description: "Deposits, bets and withdrawals are stopped until an officer lifts the freeze.", variant: "warning" });
+    116 [prop] variant="warning"  ::  <Chip size="sm" variant="warning">
+
+### src/app/admin/players/page.tsx (1)
+    574 [var] var(--warning-500)  ::  { key: "COOLED_OFF",    color: "var(--warning-500)" },
+
+### src/app/admin/privacy/dsar-controls.tsx (1)
+    219 [prop] tone="warning"  ::  tone="warning"
+
+### src/app/admin/proposals/admin-proposals-client.tsx (7)
+     77 [var] var(--gold-300)  ::  icon: I.clock, fg: "var(--gold-300)",
+     78 [var] var(--gold-500)  ::  selBg: "color-mix(in oklab, var(--gold-500) 16%, transparent)",
+     79 [var] var(--gold-500)  ::  selBorder: "color-mix(in oklab, var(--gold-500) 45%, transparent)",
+     84 [var] var(--warning-500)  ::  icon: I.pause, fg: "var(--warning-500)",
+     85 [var] var(--warning-500)  ::  selBg: "color-mix(in oklab, var(--warning-500) 18%, transparent)",
+     86 [var] var(--warning-500)  ::  selBorder: "color-mix(in oklab, var(--warning-500) 46%, transparent)",
+    644 [prop] tone="warning"  ::  tone="warning"
+
+### src/app/admin/proposals/page.tsx (2)
+     19 [prop] variant: "gold"  ::  COMING_SOON: { variant: "gold", label: "Coming soon" },
+     20 [prop] variant: "warning"  ::  MAINTENANCE: { variant: "warning", label: "Maintenance" },
+
+### src/app/admin/reports/generate-button.tsx (1)
+    190 [prop] tone="warning"  ::  tone="warning"
+
+### src/app/admin/reports/page.tsx (9)
+    340 [tw] border-warning-border  ::  <div className="flex items-start gap-3 rounded-md border border-warning-border bg-warning-bg px-4 py-3">
+    340 [tw] bg-warning-bg  ::  <div className="flex items-start gap-3 rounded-md border border-warning-border bg-warning-bg px-4 py-3">
+    341 [var] var(--warning-500)  ::  <span aria-hidden className="mt-1 h-1.5 w-1.5 shrink-0 rounded-pill" style={{ background: "var(--warning-500)" }} />
+    503 [tw] text-warning-fg  ::  <p className="text-body-sm text-warning-fg">
+    541 [tw] text-warning-fg  ::  <td className={["text-left font-semibold", unknown ? "text-warning-fg" : "text-text"].join(" ")}>{label}</td>
+    575 [tw] text-warning-fg  ::  <span className="text-warning-fg">
+    605 [tw] bg-warning/15  ::  t.severity === "high"     ? "bg-warning/15 text-warning" :
+    605 [tw] text-warning  ::  t.severity === "high"     ? "bg-warning/15 text-warning" :
+    693 [prop] variant="warning"  ::  <Chip size="sm" variant="warning">MONTH IN PROGRESS</Chip>
+
+### src/app/admin/reports/report-pack-card.tsx (2)
+     92 [var] var(--gold-400)  ::  const nodeColor = isSeal && sealed ? "var(--gold-400)" : done ? "var(--brand-400)" : "var(--border-strong)";
+    187 [var] var(--gold-400)  ::  <I.shieldcheck s={16} className="mt-0.5 shrink-0" style={{ color: "var(--gold-400)" }} />
+
+### src/app/admin/resolver-queue/bulk-resolve-bar.tsx (6)
+    225 [prop] variant="warning"  ::  {willSkip.length > 0 && <Chip size="sm" variant="warning">{willSkip.length} will skip</Chip>}
+    287 [tw] border-warning/50  ::  <div className="mt-3 rounded-md border border-warning/50 bg-warning/5 p-3">
+    287 [tw] bg-warning/5  ::  <div className="mt-3 rounded-md border border-warning/50 bg-warning/5 p-3">
+    296 [tw] text-warning  ::  <label htmlFor="bulk-override-reason" className="mb-1.5 flex items-center gap-1 font-mono text-body-sm text-warning">
+    310 [tw] border-warning/50  ::  className="w-full rounded-md border border-warning/50 bg-bg-overlay px-3 py-2 text-label text-text outline-none admin-focus transition-colors placeholder:text-text-subtle"
+    542 [tw] text-warning  ::  { key: "staged", label: "Staged — awaiting a second officer", tone: "text-warning", rows: result.staged.map((r) => ({ marketId: r.marketId, title: r.title, outcome: r.outcome })) },
+
+### src/app/admin/resolver-queue/bulk-verdict-copy.ts (3)
+     32 [prop] variant: "warning"  ::  "awaiting-countersignature": { label: BULK_VERDICT.awaitingCountersignature.en, variant: "warning" },
+     33 [prop] variant: "warning"  ::  "still-live":              { label: BULK_VERDICT.stillLive.en,             variant: "warning" },
+     34 [prop] variant: "warning"  ::  "claimed-elsewhere":       { label: BULK_VERDICT.claimedElsewhere.en,      variant: "warning" },
+
+### src/app/admin/resolver-queue/page.tsx (1)
+    295 [tw] text-warning  ::  {requireTwoOfficer && awaitingStage2 > 0 && <><span className="text-border">·</span><span className="text-warning">{awaitingStage2} awaiting 2nd</span></>}
+
+### src/app/admin/resolver-queue/resolve-controls.tsx (1)
+     43 [prop] variant: "warning"  ::  toast({ title: "Stage 1 recorded", description: "Awaiting second officer to release.", variant: "warning" });
+
+### src/app/admin/resolver-queue/row-select.tsx (3)
+    136 [tw] border-warning/50  ::  <p className="flex items-start gap-1.5 rounded-md border border-warning/50 bg-warning/5 px-3 py-2 font-mono text-caption leading-relaxed text-warning">
+    136 [tw] bg-warning/5  ::  <p className="flex items-start gap-1.5 rounded-md border border-warning/50 bg-warning/5 px-3 py-2 font-mono text-caption leading-relaxed text-warning">
+    136 [tw] text-warning  ::  <p className="flex items-start gap-1.5 rounded-md border border-warning/50 bg-warning/5 px-3 py-2 font-mono text-caption leading-relaxed text-warning">
+
+### src/app/admin/resolver-queue/two-admin-toggle.tsx (3)
+     75 [var] var(--warning-border)  ::  : { borderColor: "var(--warning-border)", background: "var(--warning-bg)" }}
+     75 [var] var(--warning-bg)  ::  : { borderColor: "var(--warning-border)", background: "var(--warning-bg)" }}
+     82 [var] var(--warning-fg)  ::  style={{ color: enabled ? "var(--text-subtle)" : "var(--warning-fg)" }}
+
+### src/app/admin/resolver/[id]/page.tsx (1)
+    110 [prop] variant="warning"  ::  <Chip size="sm" variant="warning">{CEREMONY.awaitingSecondOfficer.en.toUpperCase()}</Chip>
+
+### src/app/admin/resolver/[id]/resolution-ceremony.tsx (1)
+     98 [prop] variant: "warning"  ::  toast({ title: "Stage 1 attested", description: "Awaiting a second officer to seal.", variant: "warning" });
+
+### src/app/admin/retention/page.tsx (2)
+    248 [tw] border-warning-border  ::  <AdminCard className="border-warning-border bg-warning-bg">
+    248 [tw] bg-warning-bg  ::  <AdminCard className="border-warning-border bg-warning-bg">
+
+### src/app/admin/retention/purge-chain-card.tsx (1)
+    191 [prop] tone="warning"  ::  {costError && <Callout tone="warning" title="Refused">{costError}</Callout>}
+
+### src/app/admin/roles/read-tiers-matrix.tsx (2)
+    122 [tw] border-warning-border  ::  <div className="rounded-md border border-warning-border bg-warning-bg px-3 py-2">
+    122 [tw] bg-warning-bg  ::  <div className="rounded-md border border-warning-border bg-warning-bg px-3 py-2">
+
+### src/app/admin/roles/roles-matrix.tsx (1)
+     24 [var] var(--warning-500)  ::  const MONEY = "var(--warning-500)";
+
+### src/app/admin/self-exclusions/page.tsx (2)
+     93 [prop] variant="warning"  ::  <Chip size="sm" variant="warning">{counts.cooledOff} cooling-off</Chip>
+    144 [prop] variant="warning"  ::  <Chip size="sm" variant="warning"><I.pause s={10} /> cooling-off</Chip>
+
+### src/app/admin/settlement/hold-button.tsx (8)
+     87 [tw] border-warning-border  ::  className="inline-flex min-h-[40px] items-center gap-1.5 rounded-md border border-warning-border bg-warning-bg px-3 py-2 font-mono text-micro font-bold uppercase eyebrow text-warning-fg transition-colors hover:bg-warning
+     87 [tw] bg-warning-bg  ::  className="inline-flex min-h-[40px] items-center gap-1.5 rounded-md border border-warning-border bg-warning-bg px-3 py-2 font-mono text-micro font-bold uppercase eyebrow text-warning-fg transition-colors hover:bg-warning
+     87 [tw] text-warning-fg  ::  className="inline-flex min-h-[40px] items-center gap-1.5 rounded-md border border-warning-border bg-warning-bg px-3 py-2 font-mono text-micro font-bold uppercase eyebrow text-warning-fg transition-colors hover:bg-warning
+     87 [tw] hover:bg-warning-border  ::  className="inline-flex min-h-[40px] items-center gap-1.5 rounded-md border border-warning-border bg-warning-bg px-3 py-2 font-mono text-micro font-bold uppercase eyebrow text-warning-fg transition-colors hover:bg-warning
+     87 [tw] disabled:hover:bg-warning-bg  ::  className="inline-flex min-h-[40px] items-center gap-1.5 rounded-md border border-warning-border bg-warning-bg px-3 py-2 font-mono text-micro font-bold uppercase eyebrow text-warning-fg transition-colors hover:bg-warning
+    159 [tw] border-warning-border  ::  <p className="flex items-start gap-2 rounded-md border border-warning-border bg-warning-bg px-3 py-2 text-body-sm leading-relaxed text-warning-fg">
+    159 [tw] bg-warning-bg  ::  <p className="flex items-start gap-2 rounded-md border border-warning-border bg-warning-bg px-3 py-2 text-body-sm leading-relaxed text-warning-fg">
+    159 [tw] text-warning-fg  ::  <p className="flex items-start gap-2 rounded-md border border-warning-border bg-warning-bg px-3 py-2 text-body-sm leading-relaxed text-warning-fg">
+
+### src/app/admin/settlement/page.tsx (7)
+     45 [tw] border-warning-border  ::  ? "flex items-start gap-2 rounded-md border border-warning-border bg-warning-bg px-3 py-2.5 text-[12.5px] text-warning-fg"
+     45 [tw] bg-warning-bg  ::  ? "flex items-start gap-2 rounded-md border border-warning-border bg-warning-bg px-3 py-2.5 text-[12.5px] text-warning-fg"
+     45 [tw] text-warning-fg  ::  ? "flex items-start gap-2 rounded-md border border-warning-border bg-warning-bg px-3 py-2.5 text-[12.5px] text-warning-fg"
+    165 [tw] border-warning-border  ::  className="inline-flex min-h-[40px] items-center gap-1.5 rounded-md border border-warning-border bg-warning-bg px-3 py-2 font-mono text-micro font-bold uppercase tracking-[0.08em] text-warning-fg hover:bg-warning-border 
+    165 [tw] bg-warning-bg  ::  className="inline-flex min-h-[40px] items-center gap-1.5 rounded-md border border-warning-border bg-warning-bg px-3 py-2 font-mono text-micro font-bold uppercase tracking-[0.08em] text-warning-fg hover:bg-warning-border 
+    165 [tw] text-warning-fg  ::  className="inline-flex min-h-[40px] items-center gap-1.5 rounded-md border border-warning-border bg-warning-bg px-3 py-2 font-mono text-micro font-bold uppercase tracking-[0.08em] text-warning-fg hover:bg-warning-border 
+    165 [tw] hover:bg-warning-border  ::  className="inline-flex min-h-[40px] items-center gap-1.5 rounded-md border border-warning-border bg-warning-bg px-3 py-2 font-mono text-micro font-bold uppercase tracking-[0.08em] text-warning-fg hover:bg-warning-border 
+
+### src/app/admin/settlement/settle-button.tsx (3)
+     90 [tw] border-warning-border  ::  <p className="flex items-start gap-2 rounded-md border border-warning-border bg-warning-bg px-3 py-2 text-body-sm leading-relaxed text-warning-fg">
+     90 [tw] bg-warning-bg  ::  <p className="flex items-start gap-2 rounded-md border border-warning-border bg-warning-bg px-3 py-2 text-body-sm leading-relaxed text-warning-fg">
+     90 [tw] text-warning-fg  ::  <p className="flex items-start gap-2 rounded-md border border-warning-border bg-warning-bg px-3 py-2 text-body-sm leading-relaxed text-warning-fg">
+
+### src/app/admin/sources/page.tsx (3)
+    141 [tw] border-warning-border  ::  : "border-warning-border bg-warning-bg text-warning-fg"
+    141 [tw] bg-warning-bg  ::  : "border-warning-border bg-warning-bg text-warning-fg"
+    141 [tw] text-warning-fg  ::  : "border-warning-border bg-warning-bg text-warning-fg"
+
+### src/app/admin/sources/source-controls.tsx (4)
+     57 [prop] variant: "warning"  ::  deferToast({ title: "Source removed", description: label, variant: "warning" });
+    236 [tw] border-warning/50  ::  <div role="status" className="rounded-md border border-warning/50 bg-warning/5 p-3">
+    236 [tw] bg-warning/5  ::  <div role="status" className="rounded-md border border-warning/50 bg-warning/5 p-3">
+    237 [tw] text-warning  ::  <p className="mb-1.5 font-mono text-body-sm text-warning">
+
+### src/app/admin/staff/staff-forms.tsx (1)
+     46 [var] var(--warning-500)  ::  const MONEY = "var(--warning-500)";
+
+### src/app/admin/system/licence-outreach-card.tsx (1)
+    102 [tw] text-warning  ::  <span aria-hidden className="text-warning">•</span>
+
+### src/app/admin/system/marketing-sms-card.tsx (1)
+    110 [tw] text-warning-fg  ::  const tone = view.state === "open" ? "text-text font-semibold" : view.why === "unreadable" || view.why === "malformed" ? "text-warning-fg" : "text-text";
+
+### src/app/admin/system/marketing-sms-form.tsx (2)
+    146 [tw] text-warning-fg  ::  return <p className="text-body-sm text-warning-fg" data-sms-settings="load-failed">{LOAD_FAILED_NOTE}</p>;
+    160 [tw] text-warning-fg  ::  <p className={`text-body-sm ${view.readable ? "text-text-tertiary" : "text-warning-fg"}`} data-sms-settings-note>{why}</p>
+
+### src/app/admin/system/marketing-wordings-form.tsx (1)
+    331 [tw] text-warning-fg  ::  <p id={statusId} className={`mt-1.5 text-body-sm ${status.saved ? "text-text-subtle" : "text-warning-fg"}`} data-wording-status={status.saved ? "saved" : "unsaved"}>
+
+### src/app/admin/system/page.tsx (7)
+    473 [tw] text-warning  ::  <span className="text-warning">
+    479 [tw] text-warning  ::  <span className="text-warning">
+    774 [tw] text-warning-fg  ::  <strong className="text-warning-fg">Connected, but schema tables are missing.</strong>{" "}
+    819 [tw] text-warning-fg  ::  <I.keyRound s={16} className={bootstrap.length > 0 ? "text-success mt-0.5 shrink-0" : "text-warning-fg mt-0.5 shrink-0"} />
+    831 [tw] text-warning-fg  ::  <strong className="text-warning-fg">ADMIN_BOOTSTRAP_PHONES is empty.</strong>{" "}
+    877 [tw] text-warning  ::  <td className={["py-2 pr-3 font-mono tabular text-right", b.tokens === 0 ? "text-danger font-semibold" : b.tokens < 3 ? "text-warning" : "text-text"].join(" ")}>{b.tokens}</td>
+    899 [tw] text-warning-fg  ::  <p className="text-warning-fg">
+
+### src/app/admin/system/policy-lines-form.tsx (3)
+    355 [tw] text-warning-fg  ::  <li key={f} className="flex items-start gap-1.5 text-body-sm text-warning-fg">
+    421 [tw] text-warning-fg  ::  <p id={statusId} className={`mt-1 text-body-sm ${status.saved ? "text-text-subtle" : "text-warning-fg"}`} data-policy-status={status.saved ? (now[key].words === null ? "reviewed" : "saved") : "unsaved"}>
+    453 [tw] text-warning-fg  ::  <li key={h} className="text-body-sm text-warning-fg">{h}</li>
+
+### src/app/admin/system/sms-credit-tile.ts (1)
+    185 [prop] tone: "warning"  ::  return { value: "—", tone: "warning", note: `Couldn't read the balance${reason ? `${NB}— ${reason}` : ""}`, caption: facts };
+
+### src/app/admin/system/system-client.tsx (1)
+    347 [prop] variant: "warning"  ::  ? { title: "Maintenance ON — new bets & deposits paused", variant: "warning" }
+
+### src/app/admin/tax/lock-panel.tsx (2)
+    118 [prop] tone="warning"  ::  tone="warning"
+    148 [prop] tone="warning"  ::  tone="warning"
+
+### src/app/admin/tax/page.tsx (3)
+    248 [prop] tone="warning"  ::  <Callout tone="warning" size="md" title={`Locked ${eatDateTimeLabel(lock.lockedAtMs)} EAT by ${who(lock.lockedBy)} — and the live books have moved since.`}>
+    258 [prop] tone="warning"  ::  <Callout tone="warning" size="md" title="Period in progress — not for filing.">
+    290 [prop] tone="warning"  ::  <Callout tone="warning" title="The period in this link could not be read.">
+
+### src/app/admin/totp-verify/verify-form.tsx (1)
+     17 [prop] variant: "warning"  ::  toast({ title: "Enter 6 digits", variant: "warning" });
+
+### src/app/admin/transactions/page.tsx (4)
+    153 [prop] variant="warning"  ::  <Chip variant="warning" size="sm">{summary.unreconciledCount}</Chip>
+    159 [prop] variant="warning"  ::  <Chip variant="warning" size="sm">{summary.amlCount}</Chip>
+    296 [var] var(--gold-300)  ::  <span className="ml-1.5 text-micro uppercase tracking-[0.1em] text-[var(--gold-300)]">
+    302 [var] var(--gold-300)  ::  ? <span className="text-[var(--gold-300)]" title={t.providerStatus ?? "No gateway reference — this movement cannot be reconciled"}>missing</span>
+
+### src/app/admin/updown/page.tsx (5)
+    654 [tw] text-warning-fg  ::  <span className="text-warning-fg" title={"detail" in s ? s.detail : undefined}>
+    712 [tw] text-warning-fg  ::  : health === "low-payout" ? "text-warning-fg"
+    825 [tw] text-warning-fg  ::  <div className="font-mono text-body-sm text-warning-fg max-w-[36ch] lg:max-w-[80ch]">
+    949 [tw] text-warning-fg  ::  <div className="mt-1 font-mono text-[10.5px] text-warning-fg">
+    974 [tw] text-warning-fg  ::  <p className="mb-3 text-body-sm text-warning-fg" data-stored-min-stake={storedStakeDefaults.defaultMinStake}>
+
+### src/app/admin/updown/proposals/page.tsx (6)
+    205 [tw] border-warning-border  ::  <div className="rounded-lg border border-warning-border bg-warning-bg p-3 text-body-sm leading-[1.55] text-warning-fg">
+    205 [tw] bg-warning-bg  ::  <div className="rounded-lg border border-warning-border bg-warning-bg p-3 text-body-sm leading-[1.55] text-warning-fg">
+    205 [tw] text-warning-fg  ::  <div className="rounded-lg border border-warning-border bg-warning-bg p-3 text-body-sm leading-[1.55] text-warning-fg">
+    270 [tw] text-warning-fg  ::  <p className="font-mono text-[11px] text-warning-fg bg-warning-bg border border-warning-border rounded-md px-3 py-2">
+    270 [tw] bg-warning-bg  ::  <p className="font-mono text-[11px] text-warning-fg bg-warning-bg border border-warning-border rounded-md px-3 py-2">
+    270 [tw] border-warning-border  ::  <p className="font-mono text-[11px] text-warning-fg bg-warning-bg border border-warning-border rounded-md px-3 py-2">
+
+### src/app/admin/updown/proposals/proposal-actions.tsx (7)
+    128 [tw] text-warning-fg  ::  <div className={stale ? "text-warning-fg" : "text-text-subtle"}>
+    132 [tw] text-warning-fg  ::  <div className="text-warning-fg">⚠ older than the {maxStalenessSeconds}s round window</div>
+    203 [prop] variant: "warning"  ::  variant: "warning",
+    282 [tw] text-warning-fg  ::  <p className="text-body-sm leading-[1.55] text-warning-fg">
+    432 [tw] border-warning-border  ::  <div className="rounded-lg border border-warning-border bg-warning-bg p-3 text-body-sm leading-[1.55] text-warning-fg">
+    432 [tw] bg-warning-bg  ::  <div className="rounded-lg border border-warning-border bg-warning-bg p-3 text-body-sm leading-[1.55] text-warning-fg">
+    432 [tw] text-warning-fg  ::  <div className="rounded-lg border border-warning-border bg-warning-bg p-3 text-body-sm leading-[1.55] text-warning-fg">
+
+### src/app/admin/updown/rounds/page.tsx (3)
+    235 [tw] text-warning-fg  ::  <p className="font-mono text-[11px] text-warning-fg bg-warning-bg border border-warning-border rounded-md px-3 py-2">
+    235 [tw] bg-warning-bg  ::  <p className="font-mono text-[11px] text-warning-fg bg-warning-bg border border-warning-border rounded-md px-3 py-2">
+    235 [tw] border-warning-border  ::  <p className="font-mono text-[11px] text-warning-fg bg-warning-bg border border-warning-border rounded-md px-3 py-2">
+
+### src/app/admin/updown/updown-controls.tsx (4)
+    776 [tw] text-warning-fg  ::  <p className="text-body-sm leading-[1.55] text-warning-fg">
+   1144 [tw] border-warning-border  ::  ? "border-warning-border bg-warning-bg text-warning-fg"
+   1144 [tw] bg-warning-bg  ::  ? "border-warning-border bg-warning-bg text-warning-fg"
+   1144 [tw] text-warning-fg  ::  ? "border-warning-border bg-warning-bg text-warning-fg"
+
+### src/app/agent/apply/apply-client.tsx (7)
+    195 [prop] tone="warning"  ::  <Callout tone="warning" size="md">{app.infoRequestNote}</Callout>
+    526 [tw] border-warning-500  ::  : rejected ? "border-warning-500 bg-warning-500/[0.08] cursor-pointer hover:border-warning-fg"
+    526 [tw] bg-warning-500/[0.08]  ::  : rejected ? "border-warning-500 bg-warning-500/[0.08] cursor-pointer hover:border-warning-fg"
+    526 [tw] hover:border-warning-fg  ::  : rejected ? "border-warning-500 bg-warning-500/[0.08] cursor-pointer hover:border-warning-fg"
+    535 [tw] bg-warning/15  ::  rejected ? "bg-warning/15 text-warning" : done ? "bg-success/15 text-success" : "bg-bg-overlay text-text-subtle border border-border"
+    535 [tw] text-warning  ::  rejected ? "bg-warning/15 text-warning" : done ? "bg-success/15 text-success" : "bg-bg-overlay text-text-subtle border border-border"
+    541 [tw] text-warning-500  ::  <span className={`mt-0.5 block font-mono text-body-sm ${rejected ? "text-warning-500" : done ? "text-yes-300" : "text-text-subtle"}`}>{stateLabel}</span>
+
+### src/app/agent/invite/[token]/invite-client.tsx (2)
+     66 [prop] tone="warning"  ::  <Callout tone="warning" size="md">
+     86 [prop] tone="warning"  ::  {error && <Callout tone="warning" size="md">{error}</Callout>}
+
+### src/app/agent/page.tsx (1)
+    150 [prop] tone: "warning"  ::  else if (view.state === "info_required") { cta = { kind: "continue" }; notice = { tone: "warning", text: t.agent.stateInfo }; }
+
+### src/app/api/og/market/[id]/route.tsx (7)
+     41 [cls] gilt  ::  gilt: "#cba95a",
+     79 [hex] #E3BC66  ::  <line x1="38.39" y1="3.43" x2="61.61" y2="96.57" stroke="#E3BC66" strokeWidth="3.5" strokeLinecap="round" />
+     80 [hex] #E3BC66  ::  <circle cx="50" cy="50" r="5" fill="#E3BC66" />
+     93 [cls] gilt  ::  letterSpacing: "0.18em", textTransform: "uppercase", color: C.gilt,
+     97 [cls] gilt  ::  <div style={{ display: "flex", marginTop: 10, fontSize: 92, fontWeight: 700, letterSpacing: "-0.03em", color: C.gilt }}>
+    147 [hex] #E3BC66  ::  <line x1="38.39" y1="3.43" x2="61.61" y2="96.57" stroke="#E3BC66" strokeWidth="3.5" strokeLinecap="round" />
+    148 [hex] #E3BC66  ::  <circle cx="50" cy="50" r="5" fill="#E3BC66" />
+
+### src/app/api/og/page/route.tsx (3)
+     42 [hex] #E3BC66  ::  <line x1="38.39" y1="3.43" x2="61.61" y2="96.57" stroke="#E3BC66" strokeWidth="3.5" strokeLinecap="round" />
+     43 [hex] #E3BC66  ::  <circle cx="50" cy="50" r="5" fill="#E3BC66" />
+     52 [hex] #E3BC66  ::  <div style={{ marginTop: 22, width: 168, height: 2, borderRadius: 2, background: "linear-gradient(90deg, transparent, #E3BC66, transparent)" }} />
+
+### src/app/auth/forgot-password/page.tsx (2)
+     86 [tw] border-warning-border  ::  <div role="alert" className="rounded-md border border-warning-border bg-warning-bg px-3.5 py-3 text-[13px] text-text-muted">
+     86 [tw] bg-warning-bg  ::  <div role="alert" className="rounded-md border border-warning-border bg-warning-bg px-3.5 py-3 text-[13px] text-text-muted">
+
+### src/app/auth/login/page.tsx (9)
+    111 [prop] tone: "warning"  ::  tone: "warning" as const,
+    160 [prop] tone: "warning"  ::  tone: "warning" as const,
+    170 [prop] tone: "warning"  ::  tone: "warning" as const,
+    184 [prop] tone: "warning"  ::  tone: "warning" as const,
+    196 [prop] tone: "warning"  ::  tone: "warning" as const,
+    211 [prop] tone: "warning"  ::  tone: "warning" as const,
+    236 [prop] tone: "warning"  ::  tone: "warning" as const,
+    270 [tw] border-warning-border  ::  : "border-warning-border bg-warning-bg")
+    270 [tw] bg-warning-bg  ::  : "border-warning-border bg-warning-bg")
+
+### src/app/auth/register/page.tsx (2)
+    151 [tw] text-gold-300  ::  {t.auth.signUpAndGet} <span className="amount text-gold-300">{formatTzs(referral.newPlayerBonusTzs)}</span> {t.auth.toStart}
+    166 [tw] text-gold-300  ::  <p className="text-[14px] font-bold text-text">{t.auth.claimBonus} <span className="amount text-gold-300">{formatTzs(invite.bonusAmountTzs)}</span></p>
+
+### src/app/auth/register/register-form.tsx (5)
+    105 [prop] tone: "warning"  ::  tone: "warning" as const,
+    117 [prop] tone: "warning"  ::  tone: "warning" as const,
+    126 [prop] tone: "warning"  ::  tone: "warning" as const,
+    155 [tw] border-warning-border  ::  : "border-warning-border bg-warning-bg")
+    155 [tw] bg-warning-bg  ::  : "border-warning-border bg-warning-bg")
+
+### src/app/global-error.tsx (1)
+    134 [oklch] oklch(86% 0.13 82)  ::  const GOLD = "oklch(86% 0.13 82)";
+
+### src/app/globals.css (102)
+     98 [oklch] oklch(98% 0.030 84)  ::  --gold-50:  oklch(98% 0.030 84);
+     99 [oklch] oklch(94% 0.058 84)  ::  --gold-100: oklch(94% 0.058 84);
+    100 [oklch] oklch(90% 0.095 84)  ::  --gold-200: oklch(90% 0.095 84);
+    101 [oklch] oklch(86% 0.110 84)  ::  --gold-300: oklch(86% 0.110 84);
+    102 [oklch] oklch(80% 0.1141 84)  ::  --gold-400: oklch(80% 0.1141 84);
+    103 [oklch] oklch(72% 0.114 84)  ::  --gold-500: oklch(72% 0.114 84);
+    104 [oklch] oklch(64% 0.102 84)  ::  --gold-600: oklch(64% 0.102 84);
+    105 [oklch] oklch(56% 0.092 84)  ::  --gold-700: oklch(56% 0.092 84);
+    106 [oklch] oklch(46% 0.078 84)  ::  --gold-800: oklch(46% 0.078 84);
+    107 [oklch] oklch(36% 0.062 84)  ::  --gold-900: oklch(36% 0.062 84);
+    108 [oklch] oklch(26% 0.046 84)  ::  --gold-950: oklch(26% 0.046 84);
+    115 [oklch] oklch(76% 0.068 88)  ::  --metal-gold: oklch(76% 0.068 88);
+    203 [oklch] oklch(78% 0.13 86)  ::  --warning-500: oklch(78% 0.13 86);
+    435 [oklch] oklch(78% 0.115 84)  ::  --border-gold:   oklch(78% 0.115 84);
+    455 [var] var(--gold-300)  ::  --gilt:          var(--gold-300);
+    465 [var] var(--gold-400)  ::  --gilt-strong:   var(--gold-400);
+    496 [oklch] oklch(91% 0.090 84)  ::  oklch(91% 0.090 84) 0%, oklch(79% 0.114 84) 48%,
+    496 [oklch] oklch(79% 0.114 84)  ::  oklch(91% 0.090 84) 0%, oklch(79% 0.114 84) 48%,
+    497 [oklch] oklch(72% 0.114 84)  ::  oklch(72% 0.114 84) 100%);
+    499 [oklch] oklch(95% 0.054 84 / 0.35)  ::  --gilt-metal-edge: inset 0 0 0 1px oklch(95% 0.054 84 / 0.35);
+    505 [oklch] oklch(99% 0.02 95 / 0.22)  ::  --gilt-sheen: linear-gradient(104deg, transparent 40%, oklch(99% 0.02 95 / 0.22) 50%, transparent 60%);
+    509 [oklch] oklch(91% 0.090 84)  ::  oklch(91% 0.090 84) 0%, oklch(84% 0.114 84) 50%,
+    509 [oklch] oklch(84% 0.114 84)  ::  oklch(91% 0.090 84) 0%, oklch(84% 0.114 84) 50%,
+    510 [oklch] oklch(77% 0.120 84)  ::  oklch(77% 0.120 84) 100%);
+    515 [oklch] oklch(79% 0.114 84)  ::  oklch(79% 0.114 84) 0deg 2.5deg, oklch(65% 0.102 84) 2.5deg 5deg);
+    515 [oklch] oklch(65% 0.102 84)  ::  oklch(79% 0.114 84) 0deg 2.5deg, oklch(65% 0.102 84) 2.5deg 5deg);
+    551 [var] var(--gold-500)  ::  --gold:               var(--gold-500);
+    552 [var] var(--gold-400)  ::  --gold-hover:         var(--gold-400);
+    553 [var] var(--gold-600)  ::  --gold-active:        var(--gold-600);
+    554 [oklch] oklch(20% 0.05 84)  ::  --gold-fg:            oklch(20% 0.05 84);
+    555 [var] var(--gold-500)  ::  --gold-subtle:        color-mix(in oklab, var(--gold-500) 18%, transparent);
+    556 [var] var(--gold-500)  ::  --gold-subtle-hover:  color-mix(in oklab, var(--gold-500) 30%, transparent);
+    573 [var] var(--warning-500)  ::  --warning:        var(--warning-500);
+    574 [var] var(--warning-500)  ::  --warning-bg:     color-mix(in oklab, var(--warning-500) 18%, transparent);
+    575 [var] var(--warning-500)  ::  --warning-border: color-mix(in oklab, var(--warning-500) 36%, transparent);
+    576 [var] var(--gilt)  ::  --warning-fg:     var(--gilt);
+    599 [var] var(--gold-500)  ::  --bet-jackpot: var(--gold-500);
+    600 [var] var(--gold-400)  ::  --bet-streak: var(--gold-400);
+    677 [var] var(--gold-500)  ::  --glow-gold:    0 0 24px -4px color-mix(in oklab, var(--gold-500) 60%, transparent);
+    680 [var] var(--gold-400)  ::  --glow-jackpot: 0 0 60px -8px color-mix(in oklab, var(--gold-400) 70%, transparent);
+    805 [var] var(--gold-300)  ::  --g-gold:     linear-gradient(180deg, var(--gold-300), var(--gold-600));
+    805 [var] var(--gold-600)  ::  --g-gold:     linear-gradient(180deg, var(--gold-300), var(--gold-600));
+    806 [var] var(--gold-300)  ::  --g-jackpot:  radial-gradient(circle at 30% 20%, var(--gold-300), var(--gold-700));
+    806 [var] var(--gold-700)  ::  --g-jackpot:  radial-gradient(circle at 30% 20%, var(--gold-300), var(--gold-700));
+    807 [var] var(--gold-700)  ::  --g-aurora:   linear-gradient(135deg, var(--royal-700), var(--royal-500), var(--gold-700));
+    839 [var] var(--gilt)  ::  --bar-needle:           var(--gilt);
+    840 [var] var(--gilt)  ::  --bar-needle-glow:      color-mix(in oklab, var(--gilt) 55%, transparent);
+    846 [oklch] oklch(75% 0.110 84 / 0.5)  ::  --bar-shimmer:          linear-gradient(90deg, transparent 0%, oklch(75% 0.110 84 / 0.5) 50%, transparent 100%);
+    847 [oklch] oklch(78% 0.115 84 / 0)  ::  --bar-sweep:            linear-gradient(90deg, transparent 0%, oklch(78% 0.115 84 / 0) 20%, oklch(78% 0.115 84 / 0.90) 50%, oklch(78% 0.115 84 / 0) 80%, transparent 100%);
+    847 [oklch] oklch(78% 0.115 84 / 0.90)  ::  --bar-sweep:            linear-gradient(90deg, transparent 0%, oklch(78% 0.115 84 / 0) 20%, oklch(78% 0.115 84 / 0.90) 50%, oklch(78% 0.115 84 / 0) 80%, transparent 100%);
+    847 [oklch] oklch(78% 0.115 84 / 0)  ::  --bar-sweep:            linear-gradient(90deg, transparent 0%, oklch(78% 0.115 84 / 0) 20%, oklch(78% 0.115 84 / 0.90) 50%, oklch(78% 0.115 84 / 0) 80%, transparent 100%);
+   1119 [var] var(--gilt)  ::  .gilt        { color: var(--gilt); }
+   1119 [cls] gilt  ::  .gilt        { color: var(--gilt); }
+   1135 [var] var(--gilt)  ::  background: linear-gradient(90deg, transparent, var(--claret-400) 18%, var(--gilt) 50%, var(--claret-400) 82%, transparent);
+   1143 [var] var(--gilt)  ::  radial-gradient(circle at 20% 30%, color-mix(in oklab, var(--gilt) 6%, transparent) 0, transparent 28%),
+   1364 [cls] btn-gold  ::  .btn-gold {
+   1365 [var] var(--gold-500)  ::  background: var(--gold-500);
+   1366 [var] var(--gold-fg)  ::  color: var(--gold-fg);
+   1369 [oklch] oklch(95% 0.054 84 / 0.55)  ::  box-shadow: inset 0 0 0 1px oklch(95% 0.054 84 / 0.55), 0 1px 2px oklch(10% 0.05 262 / 0.35);
+   1373 [cls] btn-gold  ::  .btn-gold:hover:not(:disabled) { filter: brightness(var(--btn-hover-gain)); box-shadow: inset 0 0 0 1px oklch(95% 0.054 84 / 0.55), 0 5px 16px oklch(80% 0.114 84 / 0.5); }
+   1373 [oklch] oklch(95% 0.054 84 / 0.55)  ::  .btn-gold:hover:not(:disabled) { filter: brightness(var(--btn-hover-gain)); box-shadow: inset 0 0 0 1px oklch(95% 0.054 84 / 0.55), 0 5px 16px oklch(80% 0.114 84 / 0.5); }
+   1373 [oklch] oklch(80% 0.114 84 / 0.5)  ::  .btn-gold:hover:not(:disabled) { filter: brightness(var(--btn-hover-gain)); box-shadow: inset 0 0 0 1px oklch(95% 0.054 84 / 0.55), 0 5px 16px oklch(80% 0.114 84 / 0.5); }
+   2236 [var] var(--gilt)  ::  18%  { box-shadow: inset 0 0 0 2px var(--gilt), 0 0 18px 1px oklch(78% 0.13 86 / 0.4); background-color: color-mix(in oklab, var(--gilt) 9%, transparent); }
+   2236 [var] var(--gilt)  ::  18%  { box-shadow: inset 0 0 0 2px var(--gilt), 0 0 18px 1px oklch(78% 0.13 86 / 0.4); background-color: color-mix(in oklab, var(--gilt) 9%, transparent); }
+   2236 [oklch] oklch(78% 0.13 86 / 0.4)  ::  18%  { box-shadow: inset 0 0 0 2px var(--gilt), 0 0 18px 1px oklch(78% 0.13 86 / 0.4); background-color: color-mix(in oklab, var(--gilt) 9%, transparent); }
+   2326 [oklch] oklch(40% 0.060 70)  ::  .tier-bronze  { background: oklch(40% 0.060 70);  color: oklch(90% 0.060 78);   border-color: oklch(58% 0.090 70); }
+   2326 [oklch] oklch(90% 0.060 78)  ::  .tier-bronze  { background: oklch(40% 0.060 70);  color: oklch(90% 0.060 78);   border-color: oklch(58% 0.090 70); }
+   2326 [oklch] oklch(58% 0.090 70)  ::  .tier-bronze  { background: oklch(40% 0.060 70);  color: oklch(90% 0.060 78);   border-color: oklch(58% 0.090 70); }
+   2343 [oklch] oklch(38% 0.045 88)  ::  .tier-gold    { background: oklch(38% 0.045 88);  color: oklch(94% 0.030 88);   border-color: var(--metal-gold); }
+   2343 [oklch] oklch(94% 0.030 88)  ::  .tier-gold    { background: oklch(38% 0.045 88);  color: oklch(94% 0.030 88);   border-color: var(--metal-gold); }
+   2620 [var] var(--gold-300)  ::  0%   { color: var(--gold-300); text-shadow: 0 0 18px color-mix(in oklab, var(--gold-300) 60%, transparent); }
+   2620 [var] var(--gold-300)  ::  0%   { color: var(--gold-300); text-shadow: 0 0 18px color-mix(in oklab, var(--gold-300) 60%, transparent); }
+   2631 [cls] seal-impress  ::  @keyframes seal-impress { 0% { transform: scale(2.2); opacity: 0; filter: blur(6px); } 100% { transform: scale(1); opacity: 1; filter: blur(0); } }
+   2638 [cls] seal-recoil  ::  @keyframes seal-recoil { from { translate: 0 2px; } to { translate: 0 0; } }
+   2655 [cls] seal-rim  ::  .seal-rim {
+   2657 [var] var(--gilt-reeding)  ::  background: var(--gilt-reeding);
+   2658 [var] var(--gilt-metal-edge)  ::  box-shadow: var(--gilt-metal-edge),
+   2660 [var] var(--gold-500)  ::  0 0 30px -6px color-mix(in oklab, var(--gold-500) 32%, transparent);
+   2663 [cls] seal-spec  ::  .seal-spec {
+   2665 [oklch] oklch(99% 0.02 95 / 0.18)  ::  background: radial-gradient(circle at 42% 20%, oklch(99% 0.02 95 / 0.18), transparent 62%);
+   2670 [cls] seal-enamel  ::  .seal-enamel {
+   2675 [var] var(--gilt)  ::  inset 0 0 0 1.5px color-mix(in oklab, var(--gilt) 50%, transparent),
+   2678 [cls] seal-enamel  ::  .seal-enamel::before {
+   2685 [cls] seal-band  ::  .seal-band {
+   2688 [oklch] oklch(99% 0.02 95 / 0.15)  ::  oklch(99% 0.02 95 / 0.15) 26deg, transparent 56deg);
+   2796 [cls] seal-place  ::  @keyframes seal-place {
+   3086 [cls] seal-impress  ::  .badge-unlock-coin { animation: seal-impress var(--dur-glide) var(--ease-celebrate) both; }
+   3151 [cls] seal-impress  ::  @keyframes seal-impress  { from { opacity: 0; } to { opacity: 1; transform: none; filter: none; } }
+   6303 [var] var(--gold-300)  ::  .kp-wsheet__amt { font-family: var(--font-mono); font-weight: 700; font-size: var(--type-h1); line-height: 1.1; font-variant-numeric: tabular-nums; color: var(--gold-300); overflow-wrap: anywhere; }
+   6355 [var] var(--gold-300)  ::  .kp-jbal { display: inline-flex; flex-shrink: 0; align-items: center; gap: var(--sp-2); height: var(--h-control-md); padding: 0 10px; border-radius: var(--r-pill); background: var(--bg-inset); box-shadow: inset 0 0 0 1px
+   6356 [var] var(--gold-300)  ::  .kp-jbal[data-flash] { box-shadow: 0 0 0 3px color-mix(in oklab, var(--gold-300) 22%, transparent), inset 0 0 0 1px var(--gold-300); }
+   6356 [var] var(--gold-300)  ::  .kp-jbal[data-flash] { box-shadow: 0 0 0 3px color-mix(in oklab, var(--gold-300) 22%, transparent), inset 0 0 0 1px var(--gold-300); }
+   6367 [var] var(--gold-300)  ::  .kp-jbal__fig { display: inline-grid; justify-items: center; font-weight: 700; font-size: 12px; line-height: 1.1; color: var(--gold-300); transition: color var(--t-base) var(--m-glide); }
+   6371 [var] var(--gold-200)  ::  .kp-jbal:hover .kp-jbal__fig { color: var(--gold-200); }
+   6508 [var] var(--gold-300)  ::  .kp-mine__n--gold { color: var(--gold-300); }
+   6686 [var] var(--gilt)  ::  color: var(--gilt);
+   6860 [var] var(--gilt)  ::  background: var(--gilt);
+   7129 [var] var(--gilt-sheen)  ::  background-image: var(--gilt-sheen), var(--gilt-metal);
+   7129 [var] var(--gilt-metal)  ::  background-image: var(--gilt-sheen), var(--gilt-metal);
+   7132 [var] var(--gilt-metal-edge)  ::  box-shadow: var(--gilt-metal-edge), inset 0 -3px 0 oklch(6% 0.06 268 / 0.18);
+   7133 [var] var(--gold-fg)  ::  color: var(--gold-fg);
+   7163 [var] var(--gilt)  ::  color: var(--gilt);
+
+### src/app/legal/responsible-gambling/page.tsx (6)
+     85 [tw] text-gold-300  ::  <a href="/profile/responsible-gambling" className="text-gold-300 hover:text-gold-200 underline-offset-2 hover:underline">
+     85 [tw] hover:text-gold-200  ::  <a href="/profile/responsible-gambling" className="text-gold-300 hover:text-gold-200 underline-offset-2 hover:underline">
+    139 [tw] text-gold-300  ::  <a href="/profile/responsible-gambling" className="text-gold-300 hover:text-gold-200 underline-offset-2 hover:underline">
+    139 [tw] hover:text-gold-200  ::  <a href="/profile/responsible-gambling" className="text-gold-300 hover:text-gold-200 underline-offset-2 hover:underline">
+    194 [tw] text-gold-300  ::  <a href="/profile/responsible-gambling" className="whitespace-nowrap text-gold-300 hover:text-gold-200 underline-offset-2 hover:underline">
+    194 [tw] hover:text-gold-200  ::  <a href="/profile/responsible-gambling" className="whitespace-nowrap text-gold-300 hover:text-gold-200 underline-offset-2 hover:underline">
+
+### src/app/legal/terms/page.tsx (12)
+    222 [tw] text-gold-300  ::  <a href="/profile/responsible-gambling" className="text-gold-300 hover:text-gold-200 underline-offset-2 hover:underline">Responsible Gambling</a>.
+    222 [tw] hover:text-gold-200  ::  <a href="/profile/responsible-gambling" className="text-gold-300 hover:text-gold-200 underline-offset-2 hover:underline">Responsible Gambling</a>.
+    223 [tw] text-gold-300  ::  See the dedicated <a href="/legal/responsible-gambling" className="text-gold-300 hover:text-gold-200 underline-offset-2 hover:underline">Responsible Gambling Policy</a>.
+    223 [tw] hover:text-gold-200  ::  See the dedicated <a href="/legal/responsible-gambling" className="text-gold-300 hover:text-gold-200 underline-offset-2 hover:underline">Responsible Gambling Policy</a>.
+    378 [tw] text-gold-300  ::  <a href="/profile/responsible-gambling" className="text-gold-300 hover:text-gold-200 underline-offset-2 hover:underline">Mchezo Salama</a>.
+    378 [tw] hover:text-gold-200  ::  <a href="/profile/responsible-gambling" className="text-gold-300 hover:text-gold-200 underline-offset-2 hover:underline">Mchezo Salama</a>.
+    379 [tw] text-gold-300  ::  Angalia <a href="/legal/responsible-gambling" className="text-gold-300 hover:text-gold-200 underline-offset-2 hover:underline">Sera ya Mchezo Salama</a> maalum.
+    379 [tw] hover:text-gold-200  ::  Angalia <a href="/legal/responsible-gambling" className="text-gold-300 hover:text-gold-200 underline-offset-2 hover:underline">Sera ya Mchezo Salama</a> maalum.
+    495 [tw] text-gold-300  ::  <a href="/profile/responsible-gambling" className="text-gold-300 hover:text-gold-200 underline-offset-2 hover:underline">负责任博彩</a>
+    495 [tw] hover:text-gold-200  ::  <a href="/profile/responsible-gambling" className="text-gold-300 hover:text-gold-200 underline-offset-2 hover:underline">负责任博彩</a>
+    496 [tw] text-gold-300  ::  中设置充值限额、暂停游戏或自我排除。另请参阅专门的<a href="/legal/responsible-gambling" className="text-gold-300 hover:text-gold-200 underline-offset-2 hover:underline">负责任博彩政策</a>。
+    496 [tw] hover:text-gold-200  ::  中设置充值限额、暂停游戏或自我排除。另请参阅专门的<a href="/legal/responsible-gambling" className="text-gold-300 hover:text-gold-200 underline-offset-2 hover:underline">负责任博彩政策</a>。
+
+### src/app/markets/[id]/page.tsx (8)
+    542 [prop] variant="resolved"  ::  <Chip variant="resolved" size="lg">{t.market.resolvedOutcome} · {outcomeWord(t, m.resolvedOutcome ?? "VOID", "MARKET")}</Chip>
+    687 [tw] border-warning-border  ::  <div className="rounded-lg border border-warning-border bg-warning-bg px-3.5 py-2.5">
+    687 [tw] bg-warning-bg  ::  <div className="rounded-lg border border-warning-border bg-warning-bg px-3.5 py-2.5">
+    695 [tw] text-warning-fg  ::  <p className="font-mono text-body-sm font-bold text-warning-fg">
+    716 [tw] border-warning-border  ::  <p className="mt-2 pt-2 border-t border-warning-border text-body-sm leading-snug font-semibold text-warning-fg">
+    716 [tw] text-warning-fg  ::  <p className="mt-2 pt-2 border-t border-warning-border text-body-sm leading-snug font-semibold text-warning-fg">
+    980 [tw] text-gold-300  ::  p.status === "OPEN" ? "text-info-fg" : p.status === "WIN" ? "text-gold-300" : p.status === "LOSS" ? "text-no-300" : "text-text-subtle"
+    998 [tw] text-gold-300  ::  <span className={`font-bold tabular-nums ${p.status === "WIN" ? "text-gold-300" : "text-text"}`}>{formatTzs(p.finalPayout ?? 0)}</span>
+
+### src/app/motion.css (39)
+    236 [var] var(--gilt)  ::  background: linear-gradient(90deg, transparent, color-mix(in oklab, var(--gilt) 22%, transparent), transparent);
+    437 [var] var(--warning-500)  ::  .mat-tint-warn { --mat-tint: inset 0 0 0 1px color-mix(in oklab, var(--warning-500) 32%, transparent); }
+    437 [cls] mat-tint-warn  ::  .mat-tint-warn { --mat-tint: inset 0 0 0 1px color-mix(in oklab, var(--warning-500) 32%, transparent); }
+    439 [var] var(--gilt)  ::  .mat-tint-gilt { --mat-tint: inset 0 0 0 1px color-mix(in oklab, var(--gilt) 40%, transparent); }
+    446 [cls] gilt-metal  ::  .gilt-metal {
+    447 [var] var(--gilt-sheen)  ::  background-image: var(--gilt-sheen), var(--gilt-metal);
+    447 [var] var(--gilt-metal)  ::  background-image: var(--gilt-sheen), var(--gilt-metal);
+    450 [var] var(--gold-fg)  ::  color: var(--gold-fg);
+    451 [var] var(--gilt-metal-edge)  ::  box-shadow: var(--gilt-metal-edge), 0 1px 2px oklch(6% 0.06 268 / 0.55),
+    452 [var] var(--gold-500)  ::  0 6px 18px -6px color-mix(in oklab, var(--gold-500) 28%, transparent);
+    456 [cls] gilt-metal  ::  .gilt-metal:hover {
+    458 [var] var(--gilt-metal-edge)  ::  box-shadow: var(--gilt-metal-edge), 0 2px 4px oklch(6% 0.06 268 / 0.55),
+    459 [var] var(--gold-500)  ::  0 10px 24px -6px color-mix(in oklab, var(--gold-500) 38%, transparent);
+    467 [cls] gilt-metal  ::  .gilt-metal:active { transform: translateY(0) scale(var(--m-press)); filter: brightness(0.94); transition-duration: var(--t-flick); }
+    475 [cls] gilt-metal  ::  .gilt-metal:focus-visible {
+    478 [var] var(--gilt-metal-edge)  ::  box-shadow: var(--gilt-metal-edge), 0 0 0 4px oklch(63% 0.18 262 / 0.25);
+    480 [var] var(--gilt-metal-edge)  ::  .gilt-metal:disabled { filter: grayscale(0.45) brightness(0.8); opacity: 0.6; box-shadow: var(--gilt-metal-edge); }
+    480 [cls] gilt-metal  ::  .gilt-metal:disabled { filter: grayscale(0.45) brightness(0.8); opacity: 0.6; box-shadow: var(--gilt-metal-edge); }
+    490 [cls] gilt-ink  ::  .gilt-ink {
+    491 [var] var(--gilt-ink)  ::  background: var(--gilt-ink);
+    497 [oklch] oklch(80% 0.114 84 / 0.16)  ::  filter: drop-shadow(0 0 16px oklch(80% 0.114 84 / 0.16));
+    515 [cls] seal-arrive  ::  .seal-arrive { animation: seal-impress var(--t-max) var(--m-settle) both,
+    515 [cls] seal-impress  ::  .seal-arrive { animation: seal-impress var(--t-max) var(--m-settle) both,
+    516 [cls] seal-recoil  ::  seal-recoil var(--t-flick) linear var(--t-max); }
+    517 [cls] seal-sheen  ::  .seal-sheen  { animation: badge-seal-rays var(--t-max) var(--m-glide)
+    520 [cls] seal-commit  ::  .seal-commit { animation: seal-place var(--t-stage) var(--m-settle) both; }
+    520 [cls] seal-place  ::  .seal-commit { animation: seal-place var(--t-stage) var(--m-settle) both; }
+    533 [cls] seal-cascade  ::  .seal-cascade > .g-settle { animation-delay: calc(var(--t-stage) + min(var(--i, 0), 4) * var(--m-stagger)); }
+    534 [cls] seal-mark-flip  ::  .seal-mark-flip { animation: mark-flip var(--t-move) var(--m-settle) calc(var(--t-max) + var(--t-stage)) 1 both; }
+    588 [cls] seal-arrive  ::  .crest-arrive, .crest-ring-reveal, .seal-arrive, .seal-commit, .mark-flip,
+    588 [cls] seal-commit  ::  .crest-arrive, .crest-ring-reveal, .seal-arrive, .seal-commit, .mark-flip,
+    589 [cls] seal-mark-flip  ::  .seal-mark-flip, .needle-sweep, .needle-settle-loss, .mark-pending
+    592 [cls] gilt-metal  ::  .gilt-metal:hover  { animation: none !important; }
+    595 [cls] seal-sheen  ::  .seal-sheen        { animation: none !important; opacity: 0; }
+    601 [cls] seal-arrive  ::  html.kp-reduce-motion .seal-arrive, html.kp-reduce-motion .seal-commit,
+    601 [cls] seal-commit  ::  html.kp-reduce-motion .seal-arrive, html.kp-reduce-motion .seal-commit,
+    603 [cls] seal-mark-flip  ::  html.kp-reduce-motion .seal-mark-flip,
+    605 [cls] gilt-metal  ::  html.kp-reduce-motion .mark-pending, html.kp-reduce-motion .gilt-metal:hover
+    607 [cls] seal-sheen  ::  html.kp-reduce-motion .seal-sheen { animation: none !important; opacity: 0; }
+
+### src/app/positions/performance/page.tsx (12)
+    248 [var] var(--gilt)  ::  className={`amount text-[34px] font-bold leading-none ${netPnl > 0 ? "text-[var(--gilt)]" : netPnl < 0 ? "text-no-300" : "text-text"}`}
+    249 [var] var(--gilt)  ::  style={netPnl > 0 ? { textShadow: "0 0 24px color-mix(in oklab, var(--gilt) 30%, transparent)" } : undefined}
+    287 [tw] border-gold-700/50  ::  className={`relative overflow-hidden rounded-xl border p-5 ${bestMarket ? "border-gold-700/50" : "border-border"}`}
+    288 [oklch] oklch(40% 0.11 82 / 0.14)  ::  style={{ background: bestMarket ? "radial-gradient(120% 140% at 100% 0%, oklch(40% 0.11 82 / 0.14), transparent 55%), var(--bg-elevated)" : "var(--bg-elevated)" }}
+    297 [tw] border-gold-500  ::  className={`inline-flex h-[48px] w-[48px] shrink-0 items-center justify-center rounded-full border-2 ${bestMarket ? "border-gold-500 text-gold-300" : "border-border text-text-subtle"}`}
+    297 [tw] text-gold-300  ::  className={`inline-flex h-[48px] w-[48px] shrink-0 items-center justify-center rounded-full border-2 ${bestMarket ? "border-gold-500 text-gold-300" : "border-border text-text-subtle"}`}
+    299 [var] var(--gold-400)  ::  ? { background: "radial-gradient(circle at 50% 30%, oklch(45% 0.12 84 / 0.35), oklch(24% 0.06 80 / 0.25))", boxShadow: "0 0 20px -4px color-mix(in oklab, var(--gold-400) 55%, transparent)" }
+    299 [oklch] oklch(45% 0.12 84 / 0.35)  ::  ? { background: "radial-gradient(circle at 50% 30%, oklch(45% 0.12 84 / 0.35), oklch(24% 0.06 80 / 0.25))", boxShadow: "0 0 20px -4px color-mix(in oklab, var(--gold-400) 55%, transparent)" }
+    299 [oklch] oklch(24% 0.06 80 / 0.25)  ::  ? { background: "radial-gradient(circle at 50% 30%, oklch(45% 0.12 84 / 0.35), oklch(24% 0.06 80 / 0.25))", boxShadow: "0 0 20px -4px color-mix(in oklab, var(--gold-400) 55%, transparent)" }
+    309 [tw] text-gold-300  ::  className={`amount text-[26px] lg:text-[30px] font-bold leading-none ${bestMarket ? "text-gold-300" : "text-text-subtle"}`}
+    310 [var] var(--gold-400)  ::  style={bestMarket ? { textShadow: "0 0 20px color-mix(in oklab, var(--gold-400) 30%, transparent)" } : undefined}
+    393 [var] var(--gilt)  ::  <p className={`text-body-sm font-bold amount ${r.pnl > 0 ? "text-[var(--gilt)]" : r.pnl < 0 ? "text-no-300" : "text-text"}`}>{formatTzsSigned(r.pnl)}</p>
+
+### src/app/profile/account/privacy-request-form.tsx (2)
+     97 [tw] border-warning-border  ::  <p className="rounded-md border border-warning-border bg-warning-bg/15 px-3 py-2 text-label text-text-secondary">
+     97 [tw] bg-warning-bg/15  ::  <p className="rounded-md border border-warning-border bg-warning-bg/15 px-3 py-2 text-label text-text-secondary">
+
+### src/app/profile/invite/agent-dashboard.tsx (2)
+    138 [prop] tone="gold"  ::  {dash.pendingTzs > 0 && <Stat size="xl" labelStyle="strong" boxed="glass" tone="gold" money label={t.agent.dashPending} value={formatNumber(dash.pendingTzs)} hint="TZS" />}
+    220 [tw] text-gold-300  ::  <div className={`w-[72px] text-right font-mono text-body-sm font-semibold tabular-nums ${r.commissionTzs > 0 ? "text-gold-300" : "text-text-subtle"}`}>
+
+### src/app/profile/invite/page.tsx (5)
+     68 [prop] tone = "gold"  ::  function EarningsRing({ value, label, tone = "gold" }: { value: number; label: string; tone?: "gold" | "royal" }) {
+     70 [var] var(--gold-400)  ::  const stroke = tone === "gold" ? "var(--gold-400)" : "var(--royal-400)";
+     71 [var] var(--gold-300)  ::  const glow = tone === "gold" ? "var(--gold-300)" : "var(--royal-300)";
+     72 [var] var(--gold-300)  ::  const text = tone === "gold" ? "var(--gold-300)" : "var(--royal-200)";
+    554 [tw] text-gold-300  ::  <div className={`w-[64px] text-right font-mono text-[12.5px] font-semibold ${r.earnedTzs > 0 ? "text-gold-300" : "text-text-subtle"}`}>
+
+### src/app/profile/kyc/page.tsx (7)
+    296 [tw] border-warning-border  ::  <section role="status" className="rounded-xl border border-warning-border bg-warning-bg p-4 lg:p-5">
+    296 [tw] bg-warning-bg  ::  <section role="status" className="rounded-xl border border-warning-border bg-warning-bg p-4 lg:p-5">
+    299 [tw] bg-warning-bg  ::  <span className="inline-flex h-[36px] w-[36px] shrink-0 items-center justify-center rounded-full bg-warning-bg text-warning-fg">
+    299 [tw] text-warning-fg  ::  <span className="inline-flex h-[36px] w-[36px] shrink-0 items-center justify-center rounded-full bg-warning-bg text-warning-fg">
+    303 [tw] text-warning-fg  ::  <p className="font-display text-[14px] font-bold text-warning-fg">{t.profile.kycMoreInfo}</p>
+    321 [tw] bg-warning-bg  ::  <span className="inline-flex h-7 w-7 items-center justify-center rounded-full bg-warning-bg text-warning-fg">
+    321 [tw] text-warning-fg  ::  <span className="inline-flex h-7 w-7 items-center justify-center rounded-full bg-warning-bg text-warning-fg">
+
+### src/app/profile/page.tsx (3)
+    111 [prop] tone: "warning"  ::  ? { tone: "warning", label: t.profile.kycMoreInfoPill, glyph: I.upload }
+    288 [tw] border-warning-border  ::  <section className="rounded-xl border border-warning-border bg-warning-bg p-5">
+    288 [tw] bg-warning-bg  ::  <section className="rounded-xl border border-warning-border bg-warning-bg p-5">
+
+### src/app/profile/security/security-client.tsx (3)
+    268 [tw] border-warning-border  ::  <div className="flex items-start gap-2 rounded-md border border-warning-border bg-warning-bg px-3 py-2 text-[12px] text-warning-fg">
+    268 [tw] bg-warning-bg  ::  <div className="flex items-start gap-2 rounded-md border border-warning-border bg-warning-bg px-3 py-2 text-[12px] text-warning-fg">
+    268 [tw] text-warning-fg  ::  <div className="flex items-start gap-2 rounded-md border border-warning-border bg-warning-bg px-3 py-2 text-[12px] text-warning-fg">
+
+### src/app/profile/source-of-funds/page.tsx (3)
+    262 [tw] border-warning-border  ::  <div className="flex items-start gap-2.5 rounded-md border border-warning-border bg-warning-bg p-3.5">
+    262 [tw] bg-warning-bg  ::  <div className="flex items-start gap-2.5 rounded-md border border-warning-border bg-warning-bg p-3.5">
+    263 [tw] text-warning-fg  ::  <I.fileSignature s={18} className="shrink-0 mt-0.5 text-warning-fg" />
+
+### src/app/proposals/[id]/page.tsx (3)
+    117 [var] var(--gold-700)  ::  <section className="relative overflow-hidden rounded-xl border p-5 text-center" style={{ borderColor: "var(--gold-700)", background: "linear-gradient(160deg, var(--bg-elevated), var(--royal-950))" }}>
+    118 [var] var(--gold-700)  ::  <div aria-hidden className="pointer-events-none absolute inset-0" style={{ background: "linear-gradient(180deg, transparent, color-mix(in oklab, var(--gold-700) 16%, transparent))" }} />
+    120 [tw] text-gold-300  ::  <p className="mb-3 font-mono text-micro uppercase tracking-[0.16em] font-bold text-gold-300">{t.common.yourProposalApproved}</p>
+
+### src/app/proposals/page.tsx (1)
+    358 [tw] text-gold-300  ::  {p.isMine && p.bonusGrantedTzs > 0 && <span className="flex items-center gap-1 text-gold-300"><I.coins s={12} /> +{formatNumber(p.bonusGrantedTzs)} {t.proposals.earned}</span>}
+
+### src/app/results/page.tsx (1)
+    620 [prop] variant="resolved"  ::  : <Chip variant="resolved" size="sm">{t.market.resolvedOutcome} · {outcomeWord(t, m.resolvedOutcome ?? "VOID", m.productLine)}</Chip>}
+
+### src/app/updown/[roundId]/page.tsx (1)
+    591 [cls] gilt-ink  ::  <p className={`mt-1 m-0 text-title-md font-bold leading-none amount${payoutStruck ? " gilt-ink" : " text-text"}`}>{formatTzs(myPosition.payout ?? 0)}</p>
+
+### src/app/wallet/wallet-client.tsx (7)
+     56 [oklch] oklch(78% 0.13 80 / 0.3)  ::  border: "1px solid oklch(78% 0.13 80 / 0.3)",
+     75 [oklch] oklch(92% 0.06 84 / 0.15)  ::  boxShadow: "inset 0 0 0 1px oklch(92% 0.06 84 / 0.15), var(--elev-modal)",
+    105 [tw] text-gold-300  ::  className="mt-3 inline-flex items-center gap-1.5 font-mono text-caption uppercase tracking-[0.14em] text-gold-300 hover:text-gold-200 transition-colors"
+    105 [tw] hover:text-gold-200  ::  className="mt-3 inline-flex items-center gap-1.5 font-mono text-caption uppercase tracking-[0.14em] text-gold-300 hover:text-gold-200 transition-colors"
+    378 [tw] bg-warning-bg  ::  <span className="inline-flex items-center rounded-pill px-1.5 py-px text-[8px] font-bold bg-warning-bg border border-warning-border text-warning-fg">
+    378 [tw] border-warning-border  ::  <span className="inline-flex items-center rounded-pill px-1.5 py-px text-[8px] font-bold bg-warning-bg border border-warning-border text-warning-fg">
+    378 [tw] text-warning-fg  ::  <span className="inline-flex items-center rounded-pill px-1.5 py-px text-[8px] font-bold bg-warning-bg border border-warning-border text-warning-fg">
+
+### src/app/wallet/withdraw/page.tsx (2)
+    181 [tw] text-warning-fg  ::  <Cash className="mt-1 font-mono text-[10.5px] tabular-nums text-warning-fg block">
+    326 [tw] text-warning-fg  ::  <NoticeRow icon={<I.alertCircle s={15} className="text-warning-fg" />} title={t.wallet.taxNotice} body={fill(t.wallet.taxBody, { pct: pctNum(wcfg.withdrawalFeeRate) })} />
+
+### src/app/wallet/withdraw/withdraw-confirm.tsx (1)
+    184 [prop] tone="warning"  ::  <ReceiptRow emphasis="fee" tone="warning" label={t.wallet.taxNotice} value={`−${formatTzs(fee)}`} />
+
+### src/components/admin/admin-charts.tsx (2)
+     56 [var] var(--gold-400)  ::  { fill: "var(--gold-400)", ink: "var(--royal-950)" },
+     58 [var] var(--gold-800)  ::  { fill: "var(--gold-800)", ink: "var(--text)" },
+
+### src/components/admin/admin-shell.tsx (15)
+    466 [var] var(--warning-500)  ::  <span aria-hidden className="h-1.5 w-1.5 rounded-pill inline-block" style={{ background: "var(--warning-500)" }} />
+    467 [tw] text-warning-fg  ::  <span className="font-mono uppercase tracking-wider text-warning-fg" style={{ fontSize: 9.5 }}>couldn&apos;t compute</span>
+    475 [tw] text-warning-fg  ::  : effectiveTone === "warning" ? "text-warning-fg"
+    477 [tw] text-gold  ::  : effectiveTone === "gold" ? "text-gold"
+    480 [tw] text-warning-fg  ::  const noteInk = tone === "danger" ? "text-danger" : tone === "warning" ? "text-warning-fg" : "text-text-secondary";
+    644 [tw] border-warning-border  ::  <div className="flex items-start gap-3 rounded-md border border-warning-border bg-warning-bg px-4 py-3">
+    644 [tw] bg-warning-bg  ::  <div className="flex items-start gap-3 rounded-md border border-warning-border bg-warning-bg px-4 py-3">
+    645 [var] var(--warning-500)  ::  <span aria-hidden className="mt-1 h-2 w-2 shrink-0 rounded-pill" style={{ background: "var(--warning-500)" }} />
+    647 [tw] text-warning-fg  ::  <p className="font-semibold text-warning-fg">Couldn&apos;t load{what ? ` ${what}` : ""}</p>
+    727 [tw] bg-gold/15  ::  gold: "bg-gold/15 text-gold",
+    727 [tw] text-gold  ::  gold: "bg-gold/15 text-gold",
+    731 [tw] bg-warning/15  ::  warning: "bg-warning/15 text-warning",
+    731 [tw] text-warning  ::  warning: "bg-warning/15 text-warning",
+    882 [tw] bg-warning/15  ::  warn: "bg-warning/15 text-warning",
+    882 [tw] text-warning  ::  warn: "bg-warning/15 text-warning",
+
+### src/components/admin/ai-toolkit.tsx (8)
+    150 [tw] border-warning-border  ::  ? "border-warning-border bg-warning-bg text-warning-fg"
+    150 [tw] bg-warning-bg  ::  ? "border-warning-border bg-warning-bg text-warning-fg"
+    150 [tw] text-warning-fg  ::  ? "border-warning-border bg-warning-bg text-warning-fg"
+    154 [tw] text-warning-fg  ::  <I.sparkle s={13} className={!hasKey ? "text-text-subtle" : anyPaused ? "text-warning-fg" : "text-brand-300"} />
+    192 [tw] border-warning-border  ::  <div className="rounded-md border border-warning-border bg-warning-bg px-3 py-2.5 text-body-sm text-warning-fg leading-snug">
+    192 [tw] bg-warning-bg  ::  <div className="rounded-md border border-warning-border bg-warning-bg px-3 py-2.5 text-body-sm text-warning-fg leading-snug">
+    192 [tw] text-warning-fg  ::  <div className="rounded-md border border-warning-border bg-warning-bg px-3 py-2.5 text-body-sm text-warning-fg leading-snug">
+    313 [tw] text-warning-fg  ::  <span className={warn ? "text-warning-fg" : "text-text-tertiary"}>
+
+### src/components/admin/attestation-rail.tsx (4)
+     44 [tw] border-warning-fg/40  ::  : "flex items-start gap-2.5 rounded-md border border-warning-fg/40 bg-warning/10 px-3 py-2.5"
+     44 [tw] bg-warning/10  ::  : "flex items-start gap-2.5 rounded-md border border-warning-fg/40 bg-warning/10 px-3 py-2.5"
+     47 [tw] text-warning-fg  ::  <Icon s={15} className={`mt-0.5 shrink-0 ${blocked ? "text-claret-300" : "text-warning-fg"}`} />
+     51 [tw] text-warning-fg  ::  blocked ? "text-claret-300" : "text-warning-fg"
+
+### src/components/admin/kyc-review-controls.tsx (6)
+    113 [tw] border-warning/50  ::  <><div className={`space-y-2 rounded-lg border p-3 ${rejecting ? "border-no-700/50 bg-no-500/[0.06]" : "border-warning/50 bg-warning/[0.06]"}`}>
+    113 [tw] bg-warning/[0.06]  ::  <><div className={`space-y-2 rounded-lg border p-3 ${rejecting ? "border-no-700/50 bg-no-500/[0.06]" : "border-warning/50 bg-warning/[0.06]"}`}>
+    205 [tw] text-warning-fg  ::  className="btn btn-ghost btn-md w-full sm:w-auto inline-flex items-center justify-center gap-1.5 text-warning-fg"
+    206 [var] var(--warning-500)  ::  style={{ borderRadius: 999, borderColor: "var(--warning-500)" }}
+    212 [prop] tone="warning"  ::  tone="warning"
+    239 [tw] text-warning-fg  ::  <p className="mt-2 text-caption text-warning-fg">
+
+### src/components/brand.tsx (2)
+    186 [oklch] oklch(78% 0.13 80)  ::  stroke="oklch(78% 0.13 80)"
+    192 [oklch] oklch(78% 0.13 80)  ::  <circle cx="6" cy="6" r="2" fill="oklch(78% 0.13 80)" />
+
+### src/components/brand/reward-burst.tsx (7)
+     45 [var] var(--gold-500)  ::  border: "2px solid var(--gold-500)",
+     47 [var] var(--gold-300)  ::  "radial-gradient(circle at 42% 30%, color-mix(in oklab, var(--gold-300) 25%, transparent), color-mix(in oklab, var(--gold-500) 6%, transparent))",
+     47 [var] var(--gold-500)  ::  "radial-gradient(circle at 42% 30%, color-mix(in oklab, var(--gold-300) 25%, transparent), color-mix(in oklab, var(--gold-500) 6%, transparent))",
+     48 [var] var(--gold-300)  ::  boxShadow: "inset 0 0 0 1px color-mix(in oklab, var(--gold-300) 18%, transparent)",
+     49 [var] var(--gold-300)  ::  color: "var(--gold-300)",
+     62 [prop] tone = "gold"  ::  tone = "gold",
+    108 [cls] gilt-ink  ::  className={cn("gilt-ink mt-4 font-bold", animate && "g-settle")}
+
+### src/components/charts/pnl-chart.tsx (4)
+     78 [var] var(--gilt)  ::  <line x1={X0} y1={zeroY} x2={X1} y2={zeroY} stroke="var(--gilt)" strokeWidth="1" strokeDasharray="2 5" opacity="0.55" />
+     79 [var] var(--gilt)  ::  <text className="ud-svg-label" x={X0} y={zeroY - 5} fill="var(--gilt)" fontSize="9" letterSpacing="0.14em" opacity="0.7">{breakEvenLabel.toUpperCase()}</text>
+     81 [var] var(--gilt)  ::  <text className="ud-svg-label" x={X1 + 6} y={zeroY + 3} fill="var(--gilt)" fontSize="9" opacity="0.8">0</text>
+    100 [var] var(--gilt)  ::  <span style={{ color: "var(--gilt)" }}>{breakEvenLabel.toUpperCase()}</span>
+
+### src/components/chat/HelpMark.tsx (1)
+     16 [cls] gilt  ::  variant?: "gilt" | "indigo" | "halo";
+
+### src/components/home/landing-hero.tsx (2)
+    541 [var] var(--gilt)  ::  <span className="kp-proof__num" style={{ color: "var(--gilt)" }}>
+    554 [var] var(--gilt)  ::  <span className="kp-proof__num" style={{ color: "var(--gilt)" }}>
+
+### src/components/journey/journey-top-bar.tsx (1)
+    191 [cls] gilt-metal  ::  className="btn gilt-metal btn-md btn-pill kp-jhdr__pill"
+
+### src/components/kyc/kyc-gate-panel.tsx (6)
+     84 [tw] border-warning-border  ::  action:  { ring: "border-warning-border", ink: "text-warning-fg", wash: "bg-warning-bg" },
+     84 [tw] text-warning-fg  ::  action:  { ring: "border-warning-border", ink: "text-warning-fg", wash: "bg-warning-bg" },
+     84 [tw] bg-warning-bg  ::  action:  { ring: "border-warning-border", ink: "text-warning-fg", wash: "bg-warning-bg" },
+     91 [tw] border-warning-border  ::  held:    { ring: "border-warning-border", ink: "text-warning-fg", wash: "bg-warning-bg" },
+     91 [tw] text-warning-fg  ::  held:    { ring: "border-warning-border", ink: "text-warning-fg", wash: "bg-warning-bg" },
+     91 [tw] bg-warning-bg  ::  held:    { ring: "border-warning-border", ink: "text-warning-fg", wash: "bg-warning-bg" },
+
+### src/components/layout/app-shell.tsx (2)
+    447 [prop] tone="warning"  ::  tone="warning"
+    450 [prop] tone="warning"  ::  action={<NoticeBarAction href={endedNotice.href} tone="warning">{t.common.signIn}</NoticeBarAction>}
+
+### src/components/layout/avatar-menu.tsx (10)
+    292 [tw] hover:bg-gold-500/10  ::  : "group flex items-center gap-2.5 rounded-lg px-2.5 py-2.5 transition-colors hover:bg-gold-500/10"}
+    295 [var] var(--gold-400)  ::  : { border: "1px solid color-mix(in oklab, var(--gold-400) 22%, transparent)", background: "color-mix(in oklab, var(--gold-500) 6%, transparent)" }}
+    295 [var] var(--gold-500)  ::  : { border: "1px solid color-mix(in oklab, var(--gold-400) 22%, transparent)", background: "color-mix(in oklab, var(--gold-500) 6%, transparent)" }}
+    297 [tw] text-gold-300  ::  <span className={journey ? "inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-md text-brand-300" : "inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-md text-gold-300"} style={{ background: 
+    297 [var] var(--gold-500)  ::  <span className={journey ? "inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-md text-brand-300" : "inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-md text-gold-300"} style={{ background: 
+    302 [tw] text-gold-300/80  ::  <span className={journey ? "block font-mono text-micro uppercase tracking-[0.14em] text-brand-300/80 leading-tight mt-0.5" : "block font-mono text-micro uppercase tracking-[0.14em] text-gold-300/80 leading-tight mt-0.5"}
+    310 [tw] text-gold-300/70  ::  <I.arrowRight s={14} className={journey ? "text-brand-300/70 transition-colors group-hover:text-brand-300" : "text-gold-300/70 transition-colors group-hover:text-gold-300"} aria-hidden />
+    310 [tw] text-gold-300  ::  <I.arrowRight s={14} className={journey ? "text-brand-300/70 transition-colors group-hover:text-brand-300" : "text-gold-300/70 transition-colors group-hover:text-gold-300"} aria-hidden />
+    443 [tw] hover:bg-gold-500/10  ::  accent ? "hover:bg-gold-500/10" : "hover:bg-bg-overlay",
+    446 [tw] text-gold-300  ::  <span className={accent ? "text-gold-300" : "text-text-subtle"}><Ico s={15} /></span>
+
+### src/components/layout/live-ticker.tsx (1)
+     86 [var] var(--gold-400)  ::  <Dot color="var(--gold-400)" size={3} className="ticker-sep opacity-40 ml-2" />
+
+### src/components/layout/needle.css (3)
+     73 [hex] #E3BC66  ::  --ndl-rim-warm: #E3BC66;
+     80 [var] var(--gilt)  ::  --ndl-aura:   var(--gilt);
+     81 [var] var(--gold-300)  ::  --ndl-aura-2: var(--gold-300);
+
+### src/components/layout/notifications-panel.tsx (2)
+     78 [tw] bg-gold-500/[0.04]  ::  const unreadWash = journey ? "bg-brand-500/[0.04]" : "bg-gold-500/[0.04]";
+    719 [var] var(--gold-400)  ::  <circle cx="42" cy="14" r="4" fill="var(--gold-400)" stroke="none" />
+
+### src/components/layout/top-app-bar.tsx (2)
+    349 [cls] gilt-metal  ::  className="btn gilt-metal btn-md btn-pill"
+    533 [var] var(--gilt)  ::  borderRadius: "var(--r-pill)", background: "var(--gilt)",
+
+### src/components/layout/wallet-balance-pill.tsx (9)
+    225 [var] var(--gold-300)  ::  ? "0 0 0 3px color-mix(in oklab, var(--gold-300) 22%, transparent), inset 0 0 0 1px var(--gold-300)"
+    225 [var] var(--gold-300)  ::  ? "0 0 0 3px color-mix(in oklab, var(--gold-300) 22%, transparent), inset 0 0 0 1px var(--gold-300)"
+    226 [oklch] oklch(78% 0.13 80 / 0.35)  ::  : "inset 0 0 0 1px oklch(78% 0.13 80 / 0.35)",
+    271 [tw] text-gold-300  ::  "cursor-pointer text-gold-300 hover:text-gold-200",
+    271 [tw] hover:text-gold-200  ::  "cursor-pointer text-gold-300 hover:text-gold-200",
+    407 [var] var(--gold-300)  ::  <span aria-hidden className="hidden h-[24px] w-px shrink-0 bg-[color-mix(in_oklab,var(--gold-300)_26%,transparent)] sm:block" />
+    432 [tw] hover:text-gold-200  ::  className="inline-flex h-full w-[var(--tap-min)] shrink-0 items-center justify-center rounded-r-pill text-[var(--gold-300)] transition-colors hover:bg-[color-mix(in_oklab,var(--gold-300)_10%,transparent)] hover:text-gold
+    432 [var] var(--gold-300)  ::  className="inline-flex h-full w-[var(--tap-min)] shrink-0 items-center justify-center rounded-r-pill text-[var(--gold-300)] transition-colors hover:bg-[color-mix(in_oklab,var(--gold-300)_10%,transparent)] hover:text-gold
+    432 [var] var(--gold-300)  ::  className="inline-flex h-full w-[var(--tap-min)] shrink-0 items-center justify-center rounded-r-pill text-[var(--gold-300)] transition-colors hover:bg-[color-mix(in_oklab,var(--gold-300)_10%,transparent)] hover:text-gold
+
+### src/components/layout/wallet-sheet.tsx (1)
+    138 [cls] gilt-metal  ::  className="btn gilt-metal btn-lg kp-wsheet__act"
+
+### src/components/markets/bet-confirm-modal.tsx (1)
+    408 [cls] btn-gold  ::  className="btn btn-gold btn-lg w-full"
+
+### src/components/markets/comments-thread.tsx (2)
+    214 [tw] text-warning-fg  ::  <span className={`font-mono text-[10.5px] tabular-nums ${remaining < 40 ? "text-warning-fg" : "text-text-subtle"}`}>
+    336 [tw] hover:text-warning-fg  ::  className="inline-flex items-center gap-1 min-h-[var(--tap-min)] -my-[12px] py-[12px] font-mono text-[10.5px] text-text-subtle hover:text-warning-fg transition-colors disabled:opacity-50"
+
+### src/components/markets/conviction-dial.tsx (4)
+    892 [prop] variant: "warning"  ::  return { title: t.common.busyTitle, body: t.common.busyBody, variant: "warning", retryable: true };
+    894 [prop] variant: "warning"  ::  return { title: t.common.slowDown, body: t.common.tooManyAttemptsRow, variant: "warning" };
+    896 [prop] variant: "warning"  ::  return { title: t.common.marketClosed, body: t.common.marketStoppedPredictions, variant: "warning" };
+    911 [prop] variant: "warning"  ::  return { title: t.common.couldNotPlace, body: errorCopy(t, { code: "SUSPENDED", error: err }), variant: "warning" };
+
+### src/components/markets/house-lean-warning.tsx (1)
+     46 [prop] tone="warning"  ::  <Callout tone="warning" className="mt-3" title={keepText(t.market.crowdedWarning)}>
+
+### src/components/markets/objection-dialog.tsx (5)
+     94 [tw] border-warning-border  ::  className="inline-flex min-h-[44px] items-center gap-1.5 rounded-md border border-warning-border bg-warning-bg px-3 py-2 text-[12px] font-semibold text-warning-fg transition-colors hover:bg-warning-border brand-focus"
+     94 [tw] bg-warning-bg  ::  className="inline-flex min-h-[44px] items-center gap-1.5 rounded-md border border-warning-border bg-warning-bg px-3 py-2 text-[12px] font-semibold text-warning-fg transition-colors hover:bg-warning-border brand-focus"
+     94 [tw] text-warning-fg  ::  className="inline-flex min-h-[44px] items-center gap-1.5 rounded-md border border-warning-border bg-warning-bg px-3 py-2 text-[12px] font-semibold text-warning-fg transition-colors hover:bg-warning-border brand-focus"
+     94 [tw] hover:bg-warning-border  ::  className="inline-flex min-h-[44px] items-center gap-1.5 rounded-md border border-warning-border bg-warning-bg px-3 py-2 text-[12px] font-semibold text-warning-fg transition-colors hover:bg-warning-border brand-focus"
+    113 [prop] tone="warning"  ::  <Callout tone="warning">{t.market.objIntro}</Callout>
+
+### src/components/markets/operation-result-modal.tsx (6)
+    141 [var] var(--warning-500)  ::  ...crest("var(--warning-500)", "var(--warning-500)"),
+    141 [var] var(--warning-500)  ::  ...crest("var(--warning-500)", "var(--warning-500)"),
+    163 [var] var(--gold-500)  ::  gold:  "linear-gradient(90deg, var(--gold-500), var(--gold-300))",
+    163 [var] var(--gold-300)  ::  gold:  "linear-gradient(90deg, var(--gold-500), var(--gold-300))",
+    391 [cls] btn-gold  ::  ? (stripTone === "gold" ? "btn-gold" : stripTone === "yes" ? "btn-yes" : stripTone === "no" ? "btn-no" : "btn-primary")
+    444 [cls] seal-commit  ::  variant === "success" && (stripTone === "yes" || stripTone === "no") ? " seal-commit" : ""
+
+### src/components/markets/position-share.tsx (4)
+    123 [tw] border-gold-700/60  ::  ? "border-gold-700/60 bg-gold-500/10 text-gold-300 hover:bg-gold-500/15"
+    123 [tw] bg-gold-500/10  ::  ? "border-gold-700/60 bg-gold-500/10 text-gold-300 hover:bg-gold-500/15"
+    123 [tw] text-gold-300  ::  ? "border-gold-700/60 bg-gold-500/10 text-gold-300 hover:bg-gold-500/15"
+    123 [tw] hover:bg-gold-500/15  ::  ? "border-gold-700/60 bg-gold-500/10 text-gold-300 hover:bg-gold-500/15"
+
+### src/components/markets/resolution-panel.tsx (8)
+    209 [tw] border-warning-border  ::  <div className="rounded-md border border-warning-border bg-warning-bg px-3 py-2 space-y-1.5 text-[12px] text-warning-fg">
+    209 [tw] bg-warning-bg  ::  <div className="rounded-md border border-warning-border bg-warning-bg px-3 py-2 space-y-1.5 text-[12px] text-warning-fg">
+    209 [tw] text-warning-fg  ::  <div className="rounded-md border border-warning-border bg-warning-bg px-3 py-2 space-y-1.5 text-[12px] text-warning-fg">
+    309 [tw] border-warning-border  ::  <p className="flex items-start gap-2 rounded-md border border-warning-border bg-warning-bg px-3 py-2 text-body-sm leading-relaxed text-warning-fg">
+    309 [tw] bg-warning-bg  ::  <p className="flex items-start gap-2 rounded-md border border-warning-border bg-warning-bg px-3 py-2 text-body-sm leading-relaxed text-warning-fg">
+    309 [tw] text-warning-fg  ::  <p className="flex items-start gap-2 rounded-md border border-warning-border bg-warning-bg px-3 py-2 text-body-sm leading-relaxed text-warning-fg">
+    357 [tw] text-gilt  ::  {win && <I.check s={12} className="text-gilt" />}
+    363 [tw] text-gilt  ::  strong ? "text-text" : win ? "text-gilt" : muted ? "text-text-subtle" : "text-text-muted",
+
+### src/components/markets/sell-confirm-modal.tsx (3)
+    151 [prop] tone="warning"  ::  <Callout tone="warning" className="mt-3">
+    159 [prop] tone="warning"  ::  <Callout tone="warning" live className="mt-3">{t.dialog.quoteExpired}</Callout>
+    168 [cls] btn-gold  ::  className="btn btn-gold btn-lg w-full"
+
+### src/components/markets/win-celebration.tsx (13)
+    134 [cls] seal-arrive  ::  <div aria-hidden className="seal-arrive relative mb-[22px] h-[132px] w-[132px]">
+    135 [cls] seal-rim  ::  <div className="seal-rim" />
+    136 [cls] seal-spec  ::  <div className="seal-spec" />
+    137 [cls] seal-enamel  ::  <div className="seal-enamel">
+    138 [cls] seal-mark-flip  ::  <span className="seal-mark-flip inline-block">
+    142 [cls] seal-band  ::  <div className="seal-band seal-sheen" />
+    142 [cls] seal-sheen  ::  <div className="seal-band seal-sheen" />
+    295 [cls] seal-cascade  ::  <div className="seal-cascade flex flex-col items-center px-7 pb-7 pt-10 text-center">
+    300 [tw] text-gold-300  ::  className="g-settle font-mono text-micro uppercase tracking-[0.2em] font-bold text-gold-300"
+    318 [tw] text-gold-300  ::  className={`g-settle mt-3 font-mono text-[38px] font-bold leading-[1.1] tabular-nums ${struck ? "gilt-ink" : "text-gold-300"}`}
+    318 [cls] gilt-ink  ::  className={`g-settle mt-3 font-mono text-[38px] font-bold leading-[1.1] tabular-nums ${struck ? "gilt-ink" : "text-gold-300"}`}
+    326 [tw] text-gold-300  ::  className="g-settle mt-1.5 font-mono text-[13px] tabular-nums text-gold-300"
+    349 [cls] gilt-metal  ::  className="g-settle btn gilt-metal btn-md mt-5 w-full"
+
+### src/components/positions/pnl-summary-strip.tsx (3)
+     75 [var] var(--gilt)  ::  valueClass={settledNet > 0 ? "text-[var(--gilt)]" : settledNet < 0 ? "text-no-300" : "text-text"}
+    116 [var] var(--gilt)  ::  stroke="var(--gilt)" strokeWidth="2.4" strokeLinecap="round"
+    120 [var] var(--gilt)  ::  <circle cx="22" cy="34" r="2.4" fill="var(--gilt)" />
+
+### src/components/rg/limit-usage.tsx (1)
+     29 [var] var(--warning)  ::  reached || pct >= 90 ? "var(--danger-500)" : pct >= 75 ? "var(--warning)" : "var(--royal-400)";
+
+### src/components/ui/button.tsx (1)
+     50 [cls] btn-gold  ::  gold:         "btn-gold",
+
+### src/components/ui/callout.tsx (16)
+     52 [var] var(--warning-bg)  ::  bg: "var(--warning-bg)",
+     53 [var] var(--warning-border)  ::  border: "var(--warning-border)",
+     54 [var] var(--warning-500)  ::  panelBg: "color-mix(in oklab, var(--warning-500) 18%, var(--bg-elevated))",
+     55 [var] var(--warning-500)  ::  panelBorder: "color-mix(in oklab, var(--warning-500) 36%, var(--border))",
+     56 [var] var(--warning-500)  ::  fg: "var(--warning-500)",
+    105 [tw] border-warning-border  ::  box: "border-warning-border bg-warning-bg", strongBox: "border-warning-fg bg-warning-bg", icon: "text-warning-fg", glyph: "warning",
+    105 [tw] bg-warning-bg  ::  box: "border-warning-border bg-warning-bg", strongBox: "border-warning-fg bg-warning-bg", icon: "text-warning-fg", glyph: "warning",
+    105 [tw] border-warning-fg  ::  box: "border-warning-border bg-warning-bg", strongBox: "border-warning-fg bg-warning-bg", icon: "text-warning-fg", glyph: "warning",
+    105 [tw] bg-warning-bg  ::  box: "border-warning-border bg-warning-bg", strongBox: "border-warning-fg bg-warning-bg", icon: "text-warning-fg", glyph: "warning",
+    105 [tw] text-warning-fg  ::  box: "border-warning-border bg-warning-bg", strongBox: "border-warning-fg bg-warning-bg", icon: "text-warning-fg", glyph: "warning",
+    106 [var] var(--warning-fg)  ::  panel: { bg: MAINTENANCE_AMBER.panelBg, border: MAINTENANCE_AMBER.panelBorder }, fg: "var(--warning-fg)",
+    142 [tw] border-warning-border  ::  box: "border-warning-border bg-warning-bg", strongBox: "border-warning-fg bg-warning-bg", icon: "text-warning-fg", glyph: "pause",
+    142 [tw] bg-warning-bg  ::  box: "border-warning-border bg-warning-bg", strongBox: "border-warning-fg bg-warning-bg", icon: "text-warning-fg", glyph: "pause",
+    142 [tw] border-warning-fg  ::  box: "border-warning-border bg-warning-bg", strongBox: "border-warning-fg bg-warning-bg", icon: "text-warning-fg", glyph: "pause",
+    142 [tw] bg-warning-bg  ::  box: "border-warning-border bg-warning-bg", strongBox: "border-warning-fg bg-warning-bg", icon: "text-warning-fg", glyph: "pause",
+    142 [tw] text-warning-fg  ::  box: "border-warning-border bg-warning-bg", strongBox: "border-warning-fg bg-warning-bg", icon: "text-warning-fg", glyph: "pause",
+
+### src/components/ui/chip.tsx (13)
+     85 [var] var(--gold-300)  ::  const GILT:  React.CSSProperties = { background: "oklch(72% 0.13 80 / 0.22)",  color: "var(--gold-300)",   borderColor: "oklch(80% 0.13 80 / 0.5)" };
+     85 [oklch] oklch(72% 0.13 80 / 0.22)  ::  const GILT:  React.CSSProperties = { background: "oklch(72% 0.13 80 / 0.22)",  color: "var(--gold-300)",   borderColor: "oklch(80% 0.13 80 / 0.5)" };
+     85 [oklch] oklch(80% 0.13 80 / 0.5)  ::  const GILT:  React.CSSProperties = { background: "oklch(72% 0.13 80 / 0.22)",  color: "var(--gold-300)",   borderColor: "oklch(80% 0.13 80 / 0.5)" };
+    103 [var] var(--gold-300)  ::  resolved:  { background: "linear-gradient(180deg, var(--gold-300), var(--gold-500))", color: "oklch(24% 0.06 80)", borderColor: "oklch(60% 0.10 78)" },
+    103 [var] var(--gold-500)  ::  resolved:  { background: "linear-gradient(180deg, var(--gold-300), var(--gold-500))", color: "oklch(24% 0.06 80)", borderColor: "oklch(60% 0.10 78)" },
+    103 [oklch] oklch(24% 0.06 80)  ::  resolved:  { background: "linear-gradient(180deg, var(--gold-300), var(--gold-500))", color: "oklch(24% 0.06 80)", borderColor: "oklch(60% 0.10 78)" },
+    103 [oklch] oklch(60% 0.10 78)  ::  resolved:  { background: "linear-gradient(180deg, var(--gold-300), var(--gold-500))", color: "oklch(24% 0.06 80)", borderColor: "oklch(60% 0.10 78)" },
+    105 [oklch] oklch(72% 0.13 80 / 0.18)  ::  paused:    { background: "oklch(72% 0.13 80 / 0.18)",                    color: "oklch(82% 0.16 80)", borderColor: "oklch(80% 0.13 80 / 0.4)" },
+    105 [oklch] oklch(82% 0.16 80)  ::  paused:    { background: "oklch(72% 0.13 80 / 0.18)",                    color: "oklch(82% 0.16 80)", borderColor: "oklch(80% 0.13 80 / 0.4)" },
+    105 [oklch] oklch(80% 0.13 80 / 0.4)  ::  paused:    { background: "oklch(72% 0.13 80 / 0.18)",                    color: "oklch(82% 0.16 80)", borderColor: "oklch(80% 0.13 80 / 0.4)" },
+    107 [oklch] oklch(72% 0.13 80 / 0.22)  ::  warning:   { background: "oklch(72% 0.13 80 / 0.22)",                    color: "oklch(82% 0.16 80)", borderColor: "oklch(80% 0.13 80 / 0.5)" },
+    107 [oklch] oklch(82% 0.16 80)  ::  warning:   { background: "oklch(72% 0.13 80 / 0.22)",                    color: "oklch(82% 0.16 80)", borderColor: "oklch(80% 0.13 80 / 0.5)" },
+    107 [oklch] oklch(80% 0.13 80 / 0.5)  ::  warning:   { background: "oklch(72% 0.13 80 / 0.22)",                    color: "oklch(82% 0.16 80)", borderColor: "oklch(80% 0.13 80 / 0.5)" },
+
+### src/components/ui/dot.tsx (2)
+     36 [var] var(--warning-500)  ::  warning: "var(--warning-500)",
+     39 [var] var(--gold-500)  ::  gold:    "var(--gold-500)",
+
+### src/components/ui/empty-state.tsx (1)
+    150 [oklch] oklch(78% 0.14 86)  ::  const g = "oklch(78% 0.14 86)";
+
+### src/components/ui/identity-avatar.tsx (16)
+     83 [oklch] oklch(86% 0.13 82)  ::  const g = "oklch(86% 0.13 82)";
+     95 [oklch] oklch(80% 0.13 84)  ::  <line x1={top.x} y1={top.y} x2={bot.x} y2={bot.y} stroke="oklch(80% 0.13 84)" strokeWidth={Math.max(2.4, su(1.5, size))} strokeLinecap="round" />
+    100 [oklch] oklch(80% 0.13 84)  ::  <circle cx={cx} cy={cy} r={r - 3} fill="none" stroke="oklch(80% 0.13 84)" strokeWidth={Math.max(0.8, su(1, size))} opacity="0.6" />
+    123 [oklch] oklch(80% 0.13 84)  ::  <path d="M0 30 A 50 50 0 0 1 100 30 L100 22 L0 22 Z" fill="oklch(80% 0.13 84)" opacity="0.16" />
+    124 [oklch] oklch(82% 0.13 84)  ::  <line x1="14" y1="30" x2="86" y2="30" stroke="oklch(82% 0.13 84)" strokeWidth={Math.max(0.8, su(1, size))} opacity="0.7" />
+    125 [oklch] oklch(86% 0.13 82)  ::  {Array.from({ length: chiefPips }).map((_, i) => { const t = (i + 1) / (chiefPips + 1); return <circle key={i} cx={14 + t * 72} cy="25" r={Math.max(1.5, su(1, size))} fill="oklch(86% 0.13 82)" />; })}
+    130 [oklch] oklch(80% 0.13 84)  ::  <circle cx="50" cy="50" r="46.5" fill="none" stroke="oklch(80% 0.13 84)" strokeWidth={Math.max(1, su(1, size))} opacity="0.62" />
+    152 [oklch] oklch(82% 0.13 84)  ::  {!small && <path d={path} fill="none" stroke="oklch(82% 0.13 84)" strokeWidth={Math.max(0.7, su(1, size))} opacity="0.62" />}
+    161 [oklch] oklch(86% 0.10 84)  ::  <text x="50" y="51.5" textAnchor="middle" dominantBaseline="middle" fontFamily="Sora, sans-serif" fontWeight="700" fontSize="20" fill="oklch(86% 0.10 84)" style={{ letterSpacing: "-0.02em" }}>{initials}</text>
+    165 [oklch] oklch(80% 0.13 84)  ::  <circle cx="50" cy="50" r="46.5" fill="none" stroke="oklch(80% 0.13 84)" strokeWidth={Math.max(1, su(1, size))} opacity="0.6" />
+    186 [oklch] oklch(80% 0.13 84)  ::  {!small && <g stroke="oklch(80% 0.13 84)" strokeWidth={Math.max(0.7, su(1, size))} opacity="0.55" fill="none">
+    190 [oklch] oklch(86% 0.13 82)  ::  {!small && nodes.map((nd, i) => <circle key={i} cx={nd[0].toFixed(1)} cy={nd[1].toFixed(1)} r={i === 0 ? 2.4 : 1.6} fill="oklch(86% 0.13 82)" />)}
+    193 [oklch] oklch(86% 0.13 82)  ::  : <circle cx="50" cy="50" r="6" fill="oklch(86% 0.13 82)" />}
+    196 [oklch] oklch(80% 0.13 84)  ::  <circle cx="50" cy="50" r="46.5" fill="none" stroke="oklch(80% 0.13 84)" strokeWidth={Math.max(1, su(1, size))} opacity="0.6" />
+    234 [oklch] oklch(58% 0.09 70)  ::  bronze: "oklch(58% 0.09 70)", silver: "oklch(82% 0.018 268)", gold: "oklch(76% 0.068 88)",
+    234 [oklch] oklch(76% 0.068 88)  ::  bronze: "oklch(58% 0.09 70)", silver: "oklch(82% 0.018 268)", gold: "oklch(76% 0.068 88)",
+
+### src/components/ui/language-menu.tsx (1)
+     41 [var] var(--gilt)  ::  const tickInk = journey ? "var(--brand-300)" : "var(--gilt)";
+
+### src/components/ui/maintenance-badge.tsx (1)
+     40 [var] var(--warning-500)  ::  color: "var(--warning-500)",
+
+### src/components/ui/notice-bar.tsx (7)
+     34 [tw] border-warning-border  ::  warning:     { bar: "border-warning-border bg-warning-bg text-warning-fg",     accent: "var(--warning-fg)" },
+     34 [tw] bg-warning-bg  ::  warning:     { bar: "border-warning-border bg-warning-bg text-warning-fg",     accent: "var(--warning-fg)" },
+     34 [tw] text-warning-fg  ::  warning:     { bar: "border-warning-border bg-warning-bg text-warning-fg",     accent: "var(--warning-fg)" },
+     34 [var] var(--warning-fg)  ::  warning:     { bar: "border-warning-border bg-warning-bg text-warning-fg",     accent: "var(--warning-fg)" },
+    163 [tw] border-warning-fg/40  ::  warning:     "border-warning-fg/40 hover:bg-warning-fg/10",
+    163 [tw] hover:bg-warning-fg/10  ::  warning:     "border-warning-fg/40 hover:bg-warning-fg/10",
+    175 [prop] tone = "warning"  ::  tone = "warning",
+
+### src/components/ui/offline-banner.tsx (1)
+     47 [prop] tone="warning"  ::  <NoticeBar tone="warning" glyph="alertCircle" assertive testId="offline-notice">
+
+### src/components/ui/password-input.tsx (2)
+    144 [tw] bg-warning  ::  : tone === "warning" ? "bg-warning"
+    148 [tw] text-warning-fg  ::  : tone === "warning" ? "text-warning-fg"
+
+### src/components/ui/receipt-row.tsx (1)
+     89 [tw] text-warning-fg  ::  tone === "warning" ? "text-warning-fg" : tone === "no" ? "text-no-300" : tone === "yes" ? "text-yes-300" : null;
+
+### src/components/ui/stat.tsx (2)
+     55 [tw] text-gold-300  ::  gold: "text-gold-300",
+    256 [cls] gilt-ink  ::  struck ? "gilt-ink" : TONE[tone],
+
+### src/components/ui/toast.tsx (7)
+    527 [tw] bg-gold-500  ::  bar: "bg-gold-500",
+    528 [tw] text-gold-300  ::  icon: <span className="text-gold-300"><I.warning s={18} /></span>,
+    529 [cls] mat-tint-warn  ::  surface: "mat-tint-warn",
+    530 [tw] bg-gold-500  ::  rail: "bg-gold-500",
+    543 [tw] bg-gold-500  ::  bar: "bg-gold-500",
+    544 [tw] text-gold-300  ::  icon: <span className="text-gold-300"><I.trophy s={18} /></span>,
+    546 [tw] bg-gold-500  ::  rail: "bg-gold-500",
+
+### src/components/ui/unsaved-changes.tsx (2)
+    501 [tw] text-warning-fg  ::  <span className="inline-flex items-center gap-2 font-mono text-micro uppercase eyebrow text-warning-fg">
+    502 [tw] bg-warning-fg  ::  <span aria-hidden className="h-1.5 w-1.5 shrink-0 rounded-pill bg-warning-fg" />
+
+### src/components/updown/price-hero.tsx (2)
+    234 [var] var(--gilt)  ::  <line x1="0" y1={openY} x2="606" y2={openY} stroke="var(--gilt)" strokeWidth="1.25" strokeDasharray="3 4" opacity="0.75" />
+    235 [var] var(--gilt)  ::  <text className="ud-svg-label" x="0" y={(parseFloat(openY) - 6).toFixed(1)} fill="var(--gilt)" fontFamily="var(--font-mono)" fontSize="9" fontWeight="600" letterSpacing="0.12em" opacity="0.9">
+
+### src/components/updown/round-stake-panel.tsx (1)
+    269 [cls] btn-gold  ::  className="btn btn-gold btn-lg mt-3 w-full justify-center"
+
+### src/lib/brand-mark.ts (1)
+     19 [hex] #E3BC66  ::  gold: "#E3BC66",
+
+### src/lib/marketing/campaign-estimate.ts (2)
+    300 [prop] tone: "warning"  ::  if (b.kind === "unreadable") return { key: "credit", label: "SMS credit", value: "—", tone: "warning", note: unreadableNote(b) };
+    321 [prop] tone: "warning"  ::  key: "covers", label: "Covers", value: count(m.covers, "recipient", "recipients"), tone: "warning",
+
+### src/lib/notification-appearance.ts (3)
+     62 [tw] border-gold-700  ::  case "WIN":          return "border-gold-700 bg-gold-500/10 text-gold-300";
+     62 [tw] bg-gold-500/10  ::  case "WIN":          return "border-gold-700 bg-gold-500/10 text-gold-300";
+     62 [tw] text-gold-300  ::  case "WIN":          return "border-gold-700 bg-gold-500/10 text-gold-300";
+
+### src/lib/offline-document.ts (3)
+     79 [oklch] oklch(86% 0.110 84)  ::  "--gold-300": "oklch(86% 0.110 84)",
+     80 [var] var(--gold-300)  ::  "--gilt": "var(--gold-300)",
+    174 [var] var(--gilt)  ::  `.kp-off__rule{height:1px;max-width:var(--w-board);margin:0 auto;background:linear-gradient(90deg,transparent,var(--claret-400) 18%,var(--gilt) 50%,var(--claret-400) 82%,transparent);opacity:.95}`,
+
+### src/lib/score-band.ts (3)
+     40 [var] var(--warning-fg)  ::  warn: "var(--warning-fg)",
+     47 [var] var(--warning-fg)  ::  warn: "var(--warning-fg)",
+     54 [var] var(--warning-500)  ::  warn: "var(--warning-500)",
+
+### src/lib/server/email.ts (2)
+    696 [prop] variant: "gold"  ::  function ctaButton(hrefOrPath: string, label: string, variant: "gold" | "primary" = "primary"): string {
+    811 [prop] accent: "gold"  ::  wrap(body, { ...opts, accent: "gold" });
+
+### src/lib/server/house-console-read.ts (1)
+    885 [prop] tone: "warning"  ::  return { ...shared, tone: "warning", alert: false, meta: at(beats?.plannerFailedAtMs ?? null),
+
+### src/lib/server/reports/brand.ts (1)
+     33 [cls] gilt  ::  gilt:       "#C39A2A",
+
+### src/lib/server/reports/pdf.ts (11)
+    104 [cls] gilt  ::  doc.rect(0, BAND_H - 2.5, pageW, 2.5).fill(BRAND.gilt);
+    256 [cls] gilt  ::  doc.rect(contentX, y, contentW, 1.5).fill(BRAND.gilt);
+    310 [cls] gilt  ::  doc.rect(x, yy, 3, cardH).fill(BRAND.gilt);
+    402 [cls] gilt  ::  doc.rect(contentX, y + headerH - 1.5, contentW, 1.5).fill(BRAND.gilt);
+    445 [cls] gilt  ::  doc.rect(contentX, y + 1, 3, 14).fill(BRAND.gilt);
+    519 [cls] gilt  ::  doc.rect(contentX, y, contentW, 1.5).fill(BRAND.gilt);
+    520 [cls] gilt  ::  doc.rect(contentX, y + totalH - 1, contentW, 1.5).fill(BRAND.gilt);
+    550 [cls] gilt  ::  doc.rect(contentX, y + 1, 3, 13).fill(BRAND.gilt);
+    590 [cls] gilt  ::  doc.rect(contentX, y + 1, 3, 13).fill(BRAND.gilt);
+    605 [cls] gilt  ::  doc.rect(x, y, 3, blockH).fill(BRAND.gilt);
+    617 [cls] gilt  ::  doc.lineWidth(0.4).strokeColor(BRAND.gilt)
+
+### src/lib/server/reports/xlsx.ts (6)
+     95 [cls] gilt  ::  properties: { tabColor: { argb: argb(BRAND.gilt) } },
+    168 [cls] gilt  ::  type: "pattern", pattern: "solid", fgColor: { argb: argb(BRAND.gilt) },
+    321 [cls] gilt  ::  bottom: { style: "thin", color: { argb: argb(BRAND.gilt) } },
+    375 [cls] gilt  ::  bottom: { style: "medium", color: { argb: argb(BRAND.gilt) } },
+    442 [cls] gilt  ::  top: { style: "medium", color: { argb: argb(BRAND.gilt) } },
+    443 [cls] gilt  ::  bottom: { style: "medium", color: { argb: argb(BRAND.gilt) } },
+
+### src/lib/status-tone.ts (5)
+     59 [cls] gilt  ::  | "gilt"
+     84 [cls] gilt  ::  gilt:       "gold",
+     99 [tw] text-warning-fg  ::  amber: "text-warning-fg",
+    121 [cls] gilt  ::  RESOLVED: { player: "giltStruck", admin: "gilt", proposals: "giltStruck" },
+    187 [cls] gilt  ::  WIN:  { player: "gilt" },
+
+### src/styles/chat/chat-tokens.css (3)
+     49 [var] var(--gilt)  ::  --gilt-edge:      color-mix(in oklab, var(--gilt) 55%, transparent);
+     50 [var] var(--gilt)  ::  --gilt-edge-hover: color-mix(in oklab, var(--gilt) 75%, transparent);
+     51 [oklch] oklch(60% 0.12 82)  ::  --gilt-deep:      oklch(60% 0.12 82);
+
+TOTAL 928 hits in 204 files

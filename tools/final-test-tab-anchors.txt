@@ -1,0 +1,25 @@
+──────────────────────────────────────────────────────────────────────
+§K rule 7d ③ · TAB ANCHORS — a link must land on the section it names
+──────────────────────────────────────────────────────────────────────
+
+§1 · 3 anchored admin link(s) found
+  PASS 1.0 at least 3 anchored link(s) — the scanner still finds them
+      · lib/house-bot/console-routes.ts → /admin/desk?tab=limits#limits-first-unset
+      · lib/server/ai-usage.ts → /admin/ai-usage#ai-cycle-gate
+      · lib/server/ai-usage.ts → /admin/ai-usage?tab=settings#ai-credit-budget
+
+§2 · the anchor is rendered on the tab the href selects
+  PASS 2.x /admin/desk?tab=limits#limits-first-unset → #limits-first-unset is rendered
+  PASS 2.x /admin/desk?tab=limits#limits-first-unset → #limits-first-unset lives on "limits", href selects "limits"
+  PASS 2.x /admin/ai-usage#ai-cycle-gate → #ai-cycle-gate is rendered
+  PASS 2.x /admin/ai-usage#ai-cycle-gate → #ai-cycle-gate is above the rail (every tab)
+  PASS 2.x /admin/ai-usage?tab=settings#ai-credit-budget → #ai-credit-budget is rendered
+  PASS 2.x /admin/ai-usage?tab=settings#ai-credit-budget → #ai-credit-budget lives on "settings", href selects "settings"
+
+§3 · what this gate does NOT prove
+      An UNANCHORED link's INTENT. `/admin/system` was broken for a whole wave by a
+      link that resolved fine and simply meant a different section. No regex reads
+      intent; auditing inbound links after railing a page is a HUMAN step, and it
+      is written into DESIGN-BASELINE.md §3b rather than implied by a green run.
+
+✅ every anchored admin link lands on the section that holds its anchor

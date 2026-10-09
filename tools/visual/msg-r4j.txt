@@ -1,0 +1,57 @@
+Visual pass round 4 (R4-J): the journey's header and tabs in the first paint, no cross-fade of the chrome on a tap, each page's own loading ghost, and a not-found page that is not a question page
+
+From the edge scenarios' Slow-3G and not-found read (M9). Every finding was re-measured from the tiles first.
+
+- E36: on all 16 mid-load tiles the journey header band was one colour (5,2,79) and the rail was missing, while the
+  DOM held both.
+  - Cause: each journey arm was the only child of its own <Suspense>, and React 19.2's server renderer outlines a
+    finished boundary over 500 bytes once the shell passes 12,800. The fallback (an empty .kp-jhdr, or nothing) is
+    written in place, and the part waits in a hidden div for the inline $RC script; with scripting off it never
+    appears.
+  - Fix: both arms render bare in AppShell, journey only. test:visual-pass-r4j §1 proves the outlining on React's own
+    server renderer, with a boxed control.
+  - What the boundary protected is kept another way:
+    - the capsule is drawn masked until the browser's stored choice is read (WalletBalanceCaptioned), with the same
+      box widths (D31);
+    - the client-mounted bell has a still twin (BellStill, a plain link to /notifications) holding its slot.
+  - Cost: a page's hydration now also waits for the two small preloaded chunks.
+- E37/E41: 22 of 27 tap frames showed the chrome doubled and dimmed ("TZS 188,888"), and two tabs were lit.
+  - Cause: route-transition.tsx started a View Transition of the whole document after the router had committed, so
+    both snapshots were of the new page, and the rail's pip froze mid-transition.
+  - Fix: a journey reader gets the page wrapper's CSS entrance only (journeyFlagSnapshot), and the journey's rail
+    pip and nav underline do not transition. The classic cross-fade is untouched.
+  - Tile 328's blank is a CDP capture inside the transition's render suppression; a viewer keeps the last frame.
+- E38: every journey loading state was the root SectionLoader box (phones y252–612; at 1280 x32–1247 against the
+  x132–1147 column). The root loading now draws JourneyRouteGhost for a journey reader (AppShell's own gates), and
+  RoutePick picks the page's own ghost:
+  - "/" — the hero's intro, moved into hero-intro.tsx;
+  - /positions — TicketsGhost;
+  - /account — the hub column;
+  - /updown, /updown/history, /wallet/deposit, its return and /markets/<id> — their loading files;
+  - any other page — a frameless spinner.
+  /live's search ghost wears QUERY_SEARCH_BAND_CLASS (R4-H's request). To check in the lock turn: the ghosts ride in
+  every journey document.
+- E39: framework, not changed. Next 16 streams the <title> inside Suspense "Next.Metadata"; on navigation React removes
+  the old one before the new resolves (app-router.js 97–109, react-dom-client 10136–10148, 17083–17088).
+- E40: the rest rule handles tile 269's caption (decideRest moves the disc 14px clear). The drive tiled ~560 ms after
+  its own scroll without waiting for window.needle.resting(); a drive copy waits for it, so no product change.
+- Not-found pages: the market and Up & Down 404s lit Maswali / Juu-Chini, hid the Needle, the chat bubble and the
+  channels panel (surfaces.ts treats /markets/<id> as the redrawn question page), and polled server actions that 404
+  on the unmatched URL.
+  - A not-found mark is added: src/lib/not-found-mark.ts, plus a hidden #kp-not-found from NotFoundView.
+  - The overlays stand down only when `journeyOn && isJourneySurface(pathname) && !notFoundShown`.
+  - No tab is lit there, and the Akaunti dot's counter and the live bell are not mounted there.
+  - A journey-only `:root:has(#kp-not-found)` rule puts the server-lit tab back to rest from the first paint.
+
+Classic viewers: header, tabs, loading box, cross-fade, rail CSS, bell and capsule are unchanged. Page-body changes for
+both shells: the /live loading band, the hero refactor (same output), and the hidden mark on not-found pages.
+
+Guards: test:visual-pass-r4j, 69 checks. journey-shell is extended (§8 bell slot, §9 census, §11 the stand-down term,
+§12, 433 checks) and simple-journey-flag's anchors are generalised. Mutation proof: 22/22 plants caught on the merged
+tree, every file restored byte-identical.
+
+On the merged tip: 40 suites exit 0, including r4j 69, journey-shell 433, red:journey-shell 185/185,
+simple-journey-flag and its red, hero-copy, needle-host, stacking, reduce-motion, the r3c/r4c/r4d/r4e/r4h/r4k
+suites, offline-neutral and red-anchors.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>

@@ -1,0 +1,13 @@
+docs(vodacom): the owner's ruling of 2026-10-07 on the S4 canvas - the short-of-the-minimum board offers TZS 1,000 (TZS 800 left), and S9's six email-code boards are marked superseded
+
+- s4-5-low-min500.dc.html: the deposit minimum is TZS 1,000, so a player TZS 200 short is offered "Weka pesa TZS 1,000"
+  and told TZS 800 stays in the balance (it was TZS 500 and TZS 300); the file keeps its name, canvas.json's key.
+- the six s4-6-code-* boards: kept as drawn, marked superseded in their titles and in canvas.json (a deposit asks no
+  email question; S9 asks no code and they are not built).
+- canvas.json's three notes beside those rows: the low-balance note's draft sentence carries the TZS 1,000 version
+  beside it (as S4-COPY-AUDIT does), and the deposit row's title and notes mark the code step superseded.
+- The canvas README records the revision. Every other board was read for the old minimum: the source-of-funds board's
+  TZS 500 is a balance, and the bet sheet's below-minimum board already reads TZS 1,000.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+

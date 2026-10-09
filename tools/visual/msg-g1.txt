@@ -1,0 +1,35 @@
+Visual pass G1: cards, Chinese number units, strip fades, filter dividers, the Needle over text, pill height, carousel caption
+
+The owner's rule (2026-10-08): only perfect visual and logical results. Every item was measured on the S6 tiles with
+pixel scans before it was changed.
+
+- Featured card's top row (sw 320/360): the weather glyph, its label and the time left wrapped as three loose items
+  and split apart. The glyph and label are now one unit (.mcardp-catgrp) and, with the time left, one tail
+  (.mcardp-tail) that stays on the chips' line or moves down whole. The 2px nudge moved to the chip before it, so
+  one-line rows keep the same 7px gap. en, zh and 768+ are unchanged.
+- Chinese titles broke "200 / 毫米". No CSS property keeps only that break in all three engines (keep-all
+  unbreaks the whole title; U+2060 is stripped by short-title.ts). New keepUnits() (ui/keep-units.tsx) wraps a
+  number and its next one or two Han characters in a nowrap span. sw/en markup is byte-identical, and one regex
+  serves server and client. Applied on the market card, the journey ticket card and the live carousel.
+- Filter strips: a hard cut at the leading edge, and the trailing fade ran into the next control. strip-autoscroll
+  now sets data-edges (start/end/both/none). The leading fade shows only once scrolled; the trailing ramp ends 8px
+  inside the strip; scroll-padding-inline keeps a focused chip clear of both fades. With no JavaScript yet it
+  behaves as "end", so hydration changes nothing.
+- A stray divider at the end of a wrapped filter row (tiles 170, 194). The rule is now the ::before of the group it
+  introduces, so it can never end a line. Only rows with a divider change (:has); without :has the old rule stays.
+- The Needle sat over the /markets stat line at 390. Its rest check counted controls only. It now also counts
+  visible text in the dial's band, prefers a rest clear of both, and falls back to the control-only rule (E-413)
+  when none is in reach. bottom-nav.tsx's comment named a needle-rest.css that never existed; corrected.
+  needle-rest.test.mjs restates the rule (it needs a server; it runs in the lock turn).
+- IMEBATILISHWA and the royal state pills were 20px against 18px. Chip gains metrics?: "status" | "base"; the state
+  pills on ticket-card and position-card use "base". Every other call site is unchanged.
+- The live carousel's caption was truncated at 390 (its comment meant ≤320 only). It now wraps on balanced lines,
+  with the gap to the pager 16 → 12 so "SHAKA ZAIDI" fits at 320. Two lines fit the arrows' 44px row.
+
+Pins updated, each exactly what the fix changes: journey-tickets (the title words go through keepUnits) and
+needle-rest. No dictionary string changed.
+
+Static suites, run on the G1 tree: 58 green. A full tsc and the browser proof (tiles, needle-rest) run on the
+combined branch under the shared lock.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>

@@ -1,0 +1,15 @@
+fix(red:cert-expiry): the threshold case demands one day more than the real runway, read from the baseline - a fixed 60 went stale when the origin certificates were renewed (67 days left)
+
+red:cert-expiry drives the watch's expiry assertion from outside with CERT_MIN_DAYS; it set 60 against "~49 days" of
+real runway. The origin certificates were re-issued (67 days left on both hosts, to 2026-12-14), so demanding 60 was
+satisfied, the watch rightly exited 0, and the harness reported a MISS for a defect it no longer planted. Let's Encrypt
+renews about a month before expiry, so the runway swings between ~30 and ~90 days and no fixed figure stays above it.
+The harness now reads the runway from the baseline run (the watch's "ORIGIN certificate has more than N days left (Xd,"
+line) and demands one day more; if that line cannot be read it stops rather than guess. Same knob, same check, both
+hosts. The declaration's comment says so.
+
+Proof on OMEGA-COMPILE01 (2026-10-08, main 018e77e3): red:cert-expiry 3/3 failure modes caught, the tree clean, exit 0
+(the threshold case MISSED before); the baseline read 67d, 67d and the case demanded 68. qa:cert-expiry 5/0. Not
+changed: the watch's Number(process.env.CERT_MIN_DAYS ?? 21) reads an EMPTY variable as 0 (|| 21 would not).
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>

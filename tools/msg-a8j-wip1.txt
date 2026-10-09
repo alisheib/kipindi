@@ -1,0 +1,9 @@
+WIP Vodacom S6 A8j: Enter in a form never skips its confirm - the handover draft revised for its 19 review problems and a verifier's findings (branch only - drives next, ships after A8i-2)
+
+ConfirmDialog submitsForm: a native form guard (refuses every submit but the confirm's own, opens the dialog the
+trigger's way), a hidden default input type=submit disabled until the guard listens (autocomplete=off: Firefox never
+restores it enabled), and a hidden unnamed second text field (WebKit). One guarded dialog per form. Consumers: withdraw,
+deposit, close-account, the RG confirm, the hub's sign-out. test:implicit-submit 25/25, red:implicit-submit 61/61 caught
+and 1/1 green control held; typecheck; light suites green (red-anchors x2 main's own). The drive has not run yet.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>

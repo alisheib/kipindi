@@ -1,0 +1,18 @@
+test(decomment): kyc-stage, report-note-truth and the u8 opt-out drive read comments through the shared decomment() - test:decomment 2.1 from 24 to 21 against its ceiling of 20
+
+test:decomment 2.1 holds the number of scripts that carry a private `//` stripper to a shrink-only ceiling of 20 (met
+exactly by 0d19d33c); four later scripts each added one, so it has read 24 since 2026-10-02 and failed in test:all.
+- scripts/kyc-stage.test.mts strips the Prisma enum body with decomment() (same arms: the suite's output is identical,
+  127/0);
+- scripts/report-note-truth.test.mjs loses a dead line (an `if` with an empty body that only carried the stripper; its
+  note that comment lines count is kept as a comment; output identical, 11/0);
+- scripts/live/marketing-u8-optout-drive.mjs strips each i18n block with decomment() (the repo pins Node 24, which
+  imports the .mts natively): the strings it reads are identical in all twelve blocks it uses (sw, en, zh x optout,
+  footer, chat, primer), and a trailing or block comment now counts too.
+The fourth, scripts/campaign-models.test.mts, is moved on marketing's engine branch (its index checks are being
+rewritten there) and lands with their STEP 52; until then 2.1 reads 21 against 20 from that file alone.
+
+Proof on OMEGA-COMPILE01 (2026-10-08, main 5b89b32b): test:kyc-stage and test:report-note-truth identical before and
+after; the drive parses (node --check) and its parsed copy is identical; test:decomment 2.1 reads 21 vs 20.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>

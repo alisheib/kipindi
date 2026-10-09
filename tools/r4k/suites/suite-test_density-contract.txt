@@ -1,0 +1,47 @@
+
+§1 · §2 · the Compact fence over every stylesheet
+  PASS 6 stylesheets parsed · 19 Compact rule(s) fenced · 38 other phone-only rule(s), each saying why it is general
+
+§3 · density is decided in CSS, stamped in one place
+  PASS 1405 source files: no density variant, no third reader
+
+§4 · the wiring
+  PASS §4a the cookie is kp-density, and only the literal "comfortable" selects Comfortable
+  PASS §4b the layout reads the cookie on the server and stamps ONLY comfortable (no attribute = Compact)
+  PASS §4c the client setter keeps the cookie for Comfortable only — Compact DELETES it, so no cookie really is Compact
+  PASS §4c′ after every commit the attribute is re-read from the cookie (a refresh in flight cannot write an old choice back)
+  PASS §4d the rail row is one 44px menuitemcheckbox, hidden ≥ 640, with its state and a decorative toggle
+  PASS §4d′ control · the same row with `max-sm:hidden` (hidden on phones instead) is reported
+  PASS §4g the store reads the attribute through useSyncExternalStore, never a render-time DOM read plus a forced re-render
+  PASS §4e only the rail's menu carries it: bottom-nav passes cardSpacing, the top bar does not
+  PASS §4f the decorative toggle is a bare aria-hidden span — no role, no focus, no handler
+  PASS §4h the Akaunti hub's card-size row is one switch, ≥ 44px, hidden ≥ 640, read through useSyncExternalStore and written through applyCardSpacing, and never names the attribute
+  PASS §4h′ control · the same row shown at every width is reported
+
+§5 · planted fixtures — each must be reported
+  PASS §5 a fenced Compact rule → accepted
+  PASS §5 a fenced comma list → accepted
+  PASS §5 an exempt general phone rule → accepted
+  PASS §5 a phone block that declares itself general once, first → accepted
+  PASS §5 an OR media list that contains the phone query → reported
+  PASS §5 a `not` media query built on the phone query → reported
+  PASS §5 an ungated phone rule on the filter sheet (outside any board allow-list) → reported
+  PASS §5 an ungated phone token on :root → reported
+  PASS §5 a general comment that is NOT first in its block → reported
+  PASS §5 a gate with no phone query → reported
+  PASS §5 a phone query under a ≥ 640 query → reported
+  PASS §5 a comma list with one ungated part → reported
+  PASS §5 the wrong polarity ([data-density=compact]) → reported
+  PASS §5 a gate on comfortable (changes the promised board) → reported
+  PASS §5 a phone rule on the card that FORGOT its gate → reported
+  PASS §5 a phone rule on the discovery bar that forgot its gate → reported
+  PASS §5 a Tailwind density variant in a component → reported
+  PASS §5 a third reader of the attribute → reported
+  PASS §5 a comment that merely names data-density → accepted
+  PASS §5 a max-sm: utility on the market card → reported
+  PASS §5 an arbitrary max-[…]: variant on the card → reported
+  PASS §5 an ordinary sm: (≥ 640) utility on the card → accepted
+  PASS 4q · the filter row's kp- hook is its own — globals.css styles it only through the divider's :has rule, and no other component wears it (round 3, tile 326); the old kp-qrow collision, put back in a copy, is reported
+
+ALL PASS — 36 passed, 0 failed
+

@@ -1,0 +1,18 @@
+﻿PASS 1: globals still gives a bare textarea its own focus halo (the thing being neutralised) — outline: 2px solid transparent; outline-offset: 2px; border-color: var(--brand-500); box-shadow: 0 0 0 3px oklch(63% 0.1
+PASS 1: …and its keyboard state still paints a SOLID brand outline (E-129)
+PASS 1: ⭐ chat-styles.css is @imported ABOVE globals' own rules — so a chat rule at equal specificity LOSES — @import at line 20, first competing rule at 1857
+PASS 2: ⭐ POSITIVE CONTROL — the composer shell still paints the focus ring
+PASS 2: …as a brand border
+PASS 2: …plus the 3px brand halo
+PASS 2: …and a real outline for forced-colors (E-129)
+PASS 3: a rule neutralises the field's own ring in the FOCUS state — .cm-composer textarea:focus, .cm-composer textarea:focus-visible
+PASS 3: …it zeroes the field's box-shadow — box-shadow: none; outline-color: transparent;
+PASS 3: ⛔ …by making the outline TRANSPARENT, never `none` (E-129 forced-colors)
+PASS 3: …and it covers :focus-visible too, which is where the SOLID outline arrives — .cm-composer textarea:focus, .cm-composer textarea:focus-visible
+PASS 3: ⭐ every branch is scoped to BOTH .cm-composer and textarea — (0,2,1), which outranks globals' (0,1,1) — .cm-composer textarea:focus, .cm-composer textarea:focus-visible
+PASS 4: the kit's own reference implementation still exists (.input-group .input:focus)
+PASS 4: …and its shell still paints the ring it owns
+PASS 5: at rest the field still draws no border
+PASS 5: …and carries the transparent outline forced-colors substitutes on
+
+16 passed, 0 failed

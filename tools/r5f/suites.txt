@@ -1,0 +1,11 @@
+test:hooks-order exit=0 :: hooks-order: 7 passed, 0 failed all green 
+test:ui-consistency exit=0 ::    ALL PASS — no new UI-consistency drift beyond the tracked baseline. 
+test:i18n exit=0 ::  ALL PASS — en=2628 sw=2628 zh=2628 keys 
+test:journey-shell exit=0 :: JOURNEY SHELL — all 433 checks passed  
+test:simple-journey-flag exit=0 ::  135 passed, 0 failed 
+test:eyebrow-roles exit=0 ::  ✅ 640 sites, every one accounted for. 
+test:type-scale exit=0 ::  ALL PASS — 1410 source files, 189 money elements. 
+test:spacing-scale exit=0 ::  spacing-scale: 10 passed, 0 failed · 455 inverted usages in 165 files 
+test:design-frozen exit=0 ::  PASS — design primitives are frozen 
+test:css-vars-defined exit=0 ::  css-vars-defined: 300 references checked, 0 undefined. 
+test:stacking exit=0 ::  137 passed, 0 failed 

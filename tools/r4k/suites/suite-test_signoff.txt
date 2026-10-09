@@ -1,0 +1,28 @@
+PASS §1 a solo resolve (both stamps the same officer) is one officer
+PASS §1 two distinct officers are two
+PASS §1 the automatic resolver is automatic, never 'one officer'
+PASS §1 the demo auto-settle is automatic
+PASS §1 no stamp at all is unknown (null), not a claim
+PASS §1 a REVERSE upheld after the seal is 'corrected on objection', whatever the stamps
+PASS §1 a REVERSE before a later seal yields to the stamps (an emergency void re-stamped it)
+PASS §1 an objection VOID by another officer after the seal is 'corrected on objection'
+PASS §1 an EMERGENCY void's own closing row (same officer as the new seal) is not 'on objection'
+PASS §1 a ruling on a market with no recorded seal time still counts
+PASS §1 no rulings is the stamps
+PASS §1 each sign-off has its own word
+PASS §2 AUTO_RESOLVER_ACTOR is found — system_auto_resolver
+PASS §2 AUTO_RESOLVER_ACTOR carries the automatic prefix — system_auto_resolver vs system_
+PASS §3 src/lib/server/platform-stats.ts derives the sign-off through signoffOf WITH the market's rulings
+PASS §3 src/app/fairness/page.tsx derives the sign-off through signoffOf WITH the market's rulings
+PASS §3 src/app/api/fairness/recent/route.ts derives the sign-off through signoffOf WITH the market's rulings
+PASS §3 src/app/markets/[id]/page.tsx derives the sign-off through signoffOf WITH the market's rulings
+PASS §3 the market page no longer derives two-officer inline
+PASS §3 /fairness PRINTS the sign-off through signoffWord
+PASS §3 the landing strip PRINTS it through signoffWord
+PASS §3 the resolution panel hides the overturned verdict's evidence
+PASS §4 control · the flagless plant landed
+PASS §4 control · a flagless call is reported
+PASS §4 control · an inline two-stamp derivation is reported
+
+signoff: 25 passed, 0 failed
+

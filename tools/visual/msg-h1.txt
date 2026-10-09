@@ -1,0 +1,23 @@
+Journey home: the hero and every band keep the header's edge (16px to 1023, 32px from 1024)
+
+The same owner's rule on `/`. The hero (.kp-hero__inner) and every band (.kp-band__inner, which is every section on
+the home page) step to 24px at 768. Against the header's and the pages' 16 / 32, that put `/` 8px inside the
+header from 768 and 8px outside it from 1024 (G5's tiles 017/018 and 047/048).
+
+The fix is scoped to the journey, by the shell's server-rendered mark: `:root:has(#kp-journey-shell)`. The span is in
+the HTML before any script runs, so the first paint already has these values and nothing moves on hydration.
+Classic viewers are served what they were (VODACOM-PLAN §0i; qa:classic-shell-parity), and the classic home keeps
+its 24. A browser without :has() keeps 24, which is the classic look and not a break. The global alternative would
+have moved the classic home for every player now, against the plan's rule that nothing changes for players before
+the launch.
+
+- globals.css: one journey block at 768 (var(--sp-4)) and one at 1024 (var(--sp-8)) for both containers. The desktop
+  rhythm comment notes that the 768 step is the classic's.
+- test:journey-shell 7.landing-edge holds both blocks, exactly once each, the base rules' 16, and the mark's id. Four
+  plants are each caught by it: the journey steps to 24 at 768; the 32 step is lost; the scope is dropped (the
+  classic home would move); the mark is renamed under the rule.
+
+test:journey-shell 431/431; red:journey-shell 169/169 caught, 339 proofs held. Browser proof (tiles of `/` at 768,
+1024, 1150 and 1280 in both shells) runs on the combined branch under the shared lock.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>

@@ -1,0 +1,840 @@
+diff --git a/scripts/anchors/featured-card.anchors.mjs b/scripts/anchors/featured-card.anchors.mjs
+index 85e1143fe..9918910e0 100644
+--- a/scripts/anchors/featured-card.anchors.mjs
++++ b/scripts/anchors/featured-card.anchors.mjs
+@@ -72,4 +72,33 @@ export const MUTATIONS = [
+     to: ` as={featured ? "img" : undefined} />`,
+     expect: "2.4",
+   },
++  // Round 3 (2026-10-08): the meta line's break and the empty state's reading floor.
++  {
++    name: "the meta line's dot goes back into the running text (a line can end on '·' again)",
++    file: "src/components/markets/market-card.tsx",
++    from: `          {closesOn && <span className="mcardp-src__dot">{" · "}</span>}`,
++    to: `          {closesOn ? " · " : null}`,
++    expect: "2.14",
++  },
++  {
++    name: "Chinese breaks the meta line's parts anywhere again (结算来 / 源 at 320)",
++    file: "src/app/globals.css",
++    from: `.mcardp-src:lang(zh) { word-break: keep-all; }`,
++    to: `.mcardp-src:lang(zh) { word-break: normal; }`,
++    expect: "2.14",
++  },
++  {
++    name: "the no-bets line loses its measured 15px box (the cold-start card grows 4.5px past its skeleton)",
++    file: "src/app/globals.css",
++    from: `  line-height: 15px;`,
++    to: `  line-height: 1.5;`,
++    expect: "2.15",
++  },
++  {
++    name: "the invitation drops back to the trader row's 10px count type",
++    file: "src/app/globals.css",
++    from: `.mcardp-traders .mcardp-befirst { font-size: var(--type-small); }`,
++    to: `.mcardp-traders .mcardp-befirst { color: var(--brand-300); }`,
++    expect: "2.15",
++  },
+ ];
+diff --git a/scripts/design-frozen.test.mts b/scripts/design-frozen.test.mts
+index 89d7ef28f..0e3b2083d 100644
+--- a/scripts/design-frozen.test.mts
++++ b/scripts/design-frozen.test.mts
+@@ -208,7 +208,7 @@ const FROZEN_RATCHET = new Map<string, number>([
+   ["src/components/admin/admin-shell.tsx", 3],               // 3× hand-typed letterSpacing. −1 recorded 2026-09-03 (PV-13c): the entry was already STALE at HEAD — this file is untouched by that row, the ratchet had simply not been lowered when one value was fixed earlier
+   ["src/components/updown/round-countdown.tsx", 3],
+   ["src/app/positions/performance/page.tsx", 2],             // raw-oklch radial gradients
+-  ["src/components/layout/live-ticker.tsx", 2],              // oklch fade beside var(--bg-inset)
++  ["src/components/layout/live-ticker.tsx", 1],              // the end cap's oklch fade beside var(--bg-inset). 2 → 1 on 2026-10-08 (round 3): the LIVE label's fade moved into `.ticker-label` in globals.css, where the journey's leading-edge rule can reach it
+   // ⬇️ 2 → 1 on 2026-08-25. The capsule rebuild added a hairline seam and an eye hover
+   // tint, and this gate caught them as RAW colours — correctly. Both now read
+   // `color-mix(in oklab, var(--gold-300) N%, transparent)`, i.e. they CONSUME the token
+diff --git a/scripts/featured-card.test.mts b/scripts/featured-card.test.mts
+index cdc8d2035..eec5fe918 100644
+--- a/scripts/featured-card.test.mts
++++ b/scripts/featured-card.test.mts
+@@ -173,6 +173,37 @@ const card = decomment(read("src/components/markets/market-card.tsx"));
+     !/source-registry/.test(card) && !/new URL\(/.test(card) && !/sourceHost\(/.test(card));
+   check("2.13 a cashed-out live card names its empty pool (the D29 word, never 'No bets yet')",
+     /\{live && noPrice && !neverBet && <div className="mcardp-nobets" data-market-part="state">\{t\.market\.noPoolYet\}<\/div>\}/.test(card));
++
++  // Round 3 (2026-10-08) — two measured tile defects a later edit could quietly bring back.
++  const css = read("src/app/globals.css").replace(/\r\n/g, "\n");
++  const metaAt = card.indexOf("const metaLine = ");
++  const meta = metaAt < 0 ? "" : card.slice(metaAt, card.indexOf(") : null;", metaAt));
++  // 2.14 · zh 320 broke "…结算来 / 源：CoinGecko": the meta line is two parts that break only between them, the " · "
++  // hanging in the gap before the source (the hub's idiom, one rule for both), and a Chinese part keeps its words.
++  check("2.14 the meta line breaks only BETWEEN its two parts, its dot hangs in the gap (no line ends or starts on '·'), and Chinese keeps 来源 whole",
++    /<span className="mcardp-src__seq">/.test(meta)
++      && (meta.match(/<span className="mcardp-src__part">/g) ?? []).length === 2
++      && /\{closesOn && <span className="mcardp-src__dot">\{" · "\}<\/span>\}\s*\{settlesPre\}/.test(meta)
++      && !/\{closesOn && sourceName \? " · " : null\}/.test(meta)
++      && css.includes("\n.kp-hub__seq, .mcardp-src__seq { display: flex; flex-wrap: wrap; column-gap: var(--sp-3); clip-path: inset(-100vmax -100vmax -100vmax 0); }")
++      && css.includes("\n.kp-hub__seq-dot, .mcardp-src__dot { position: absolute; top: 0; right: 100%; width: var(--sp-3); text-align: center; }")
++      && css.includes("\n.mcardp-src:lang(zh) { word-break: keep-all; }"),
++    meta.slice(0, 160));
++  check("2.14-control the slice is the real meta line (it holds the source part the gate reads)",
++    /data-market-part="source"/.test(meta) && meta.length < 1_500, String(meta.length));
++  // 2.15 · the empty-state copy measured cap height 7–8px (10–11px type) and "Hakuna dau bado" 4.21:1 — reading copy under
++  // §T4's floor and §A1's 4.5. It reads at `--type-small`, untracked, and the no-bets line keeps the 15px box the card's
++  // measured base (`--mcard-base`) was taken with, so the card and its skeleton keep their height.
++  const nbAt = css.indexOf("\n.mcardp-nobets {");
++  const nobets = nbAt < 0 ? "" : css.slice(nbAt, css.indexOf("}", nbAt));
++  check("2.15 the empty state reads at the reading floor — no bets, be the first, and the featured no-pool words at --type-small; the no-bets line in --text-subtle on its measured 15px box",
++    nobets.includes("font-size: var(--type-small);") && nobets.includes("line-height: 15px;") && nobets.includes("color: var(--text-subtle);")
++      && !/letter-spacing/.test(nobets)
++      && css.includes("\n.mcardp-traders .mcardp-befirst { font-size: var(--type-small); }")
++      && css.includes("\n.mcardp--featured .mcardp-meta > .mcardp-nopool { font-size: var(--type-small); }")
++      && /<span data-market-part="pool" className=\{fresh \? "mcardp-nopool" : undefined\}>\{fresh \? t\.market\.noPoolYet : formatTzs\(volume\)\}<\/span>/.test(card),
++    nobets.replace(/\s+/g, " ").slice(0, 200));
++  check("2.15-control the no-bets rule is found (its slice holds the line's own centring)", nobets.includes("text-align: center;"));
+ }
+ 
+ // ── §3 · call sites ────────────────────────────────────────────────────────────────────────────────
+diff --git a/scripts/hero-copy.test.mts b/scripts/hero-copy.test.mts
+index ab3ab0269..5a3f0de45 100644
+--- a/scripts/hero-copy.test.mts
++++ b/scripts/hero-copy.test.mts
+@@ -11,7 +11,8 @@
+  *      a dated entry citing it (R9 — the owner's attestation + the Board's licence-fee acknowledgement).
+  * §2 · THE QUESTION. `home.heroAsk` holds `{yes}` then `{no}`, each exactly once, in every language, and
+  *      the hero fills them with `sideWord(…, "MARKET")` — so the h1 reads "YES or NO?", "NDIO au HAPANA?"
+- *      and "是还是否？", the buttons' own words, with no `lang` of its own.
++ *      and "是还是否？", the buttons' own words, with no `lang` of its own. §2c: a line that opens on a straight stem
++ *      (H, N) is set back by the stem's measured side bearing, decided from those side words and never the locale.
+  * §3 · THE WALLETS. "{rails}" names exactly the mobile-money rails whose payout path is live (R8(6)):
+  *      the payment catalogue ∩ `WithdrawSchema` ∩ `DepositSchema` ∩ a wallet-cashin code, cross-checked
+  *      against the withdraw page's own tiles and the withdraw action's allow-list; a paused rail drops
+@@ -77,6 +78,7 @@ type World = {
+   dict: Record<Locale, Flat>;
+   src: Map<string, string>;
+   hero: string;               // decommented landing-hero.tsx
++  css: string;                // globals.css, line endings normalised — §2c reads the headline's set-back rules
+   page: string;               // decommented app/page.tsx
+   evidence: Evidence;
+   compliance: string;
+@@ -100,6 +102,7 @@ function load(): World {
+     dict: { en: flatten(dict.en as never), sw: flatten(dict.sw as never), zh: flatten(dict.zh as never) },
+     src,
+     hero: src.get(HERO) ?? "",
++    css: read("src/app/globals.css"),
+     page: src.get("src/app/page.tsx") ?? "",
+     evidence: FIRST_LICENSED_EVIDENCE(),
+     compliance: read("docs/COMPLIANCE-DECISIONS.md"),
+@@ -230,6 +233,32 @@ const CHECKS: Check[] = [
+     if (!/<h1 className="kp-hero__headline">/.test(ask)) d.push("no h1.kp-hero__headline in Ask");
+     return d;
+   } },
++  /* §2c · round 3 (2026-10-08): "NDIO au / HAPANA?" began 3px (44px type), 4px (60px) and 5px (72px) right of the page's
++     edge — Sora's side bearing on N and H, 0.068–0.073em measured off the tiles' first inked column — where "YES or NO?"
++     and 是 sit on it. The set-back is decided from the SIDE WORDS (the buttons' own, `sideWord`), so it follows them into
++     any locale, and the group before a set-back one gives the width back, so a one-line headline is unchanged. */
++  { id: "2c", label: "a headline line that opens on a straight stem (H, N) is set back by the measured bearing — from the side words, never the locale — and a one-line headline keeps its gap", run: (w) => {
++    const d: string[] = [];
++    const ask = w.hero.slice(w.hero.indexOf("function Ask("), w.hero.indexOf("function TrustLines("));
++    const stem = w.hero.match(/const STEM_START = (\/[^;\n]*);/)?.[1];
++    if (stem !== "/^[HN]/u") d.push(`STEM_START is ${stem ?? "missing"} — only H and N were measured; measure a letter's bearing on a tile before adding it`);
++    if (!/const lead = s\.slice\(0, a\)\.trim\(\) === "" && STEM_START\.test\(yes\);/.test(ask)) d.push("the first group's set-back is not decided by the YES side word opening the h1");
++    if (!/const next = STEM_START\.test\(no\);/.test(ask)) d.push("the second group's set-back is not decided by the NO side word");
++    if (!/<span className="kp-hero__grp" data-stem=\{lead \? "" : undefined\} data-stem-next=\{next \? "" : undefined\}>/.test(ask)) d.push("the first group does not carry data-stem={lead} and data-stem-next={next}");
++    if (!/<span className="kp-hero__grp" data-stem=\{next \? "" : undefined\}>/.test(ask)) d.push("the second group does not carry data-stem={next}");
++    if (/\blocale\b|\bLocale\b/.test(ask)) d.push("Ask reads the locale — the set-back follows the side words");
++    const hAt = w.css.indexOf("\n.kp-hero__headline {");
++    const headline = hAt < 0 ? "" : w.css.slice(hAt, w.css.indexOf("}", hAt));
++    if (!headline.includes("--hero-stem: 0.07em;")) d.push("the bearing is not .kp-hero__headline's --hero-stem: 0.07em");
++    if ((w.css.match(/\.kp-hero__grp\[data-stem\] \{ margin-inline-start: calc\(-1 \* var\(--hero-stem\)\); \}/g) ?? []).length !== 1) d.push("no single rule sets a [data-stem] group back by --hero-stem");
++    if ((w.css.match(/\.kp-hero__grp\[data-stem-next\] \{ margin-inline-end: var\(--hero-stem\); \}/g) ?? []).length !== 1) d.push("no single rule gives the width back before a set-back group — a one-line headline's gap would shrink");
++    // The rule applied to the shipped side words: Swahili opens both lines on a stem, English only "NO" (mid-line on its
++    // one line, so nothing moves), Chinese neither.
++    const re = stem && stem.startsWith("/") ? new RegExp(stem.slice(1, stem.lastIndexOf("/")), "u") : /$^/u;
++    const got = LOCALES.map((loc) => `${loc}:${re.test(w.dict[loc].get("common.yes") ?? "") ? "Y" : "-"}${re.test(w.dict[loc].get("common.no") ?? "") ? "N" : "-"}`).join(" ");
++    if (got !== "en:-N sw:YN zh:--") d.push(`the side words set back as [${got}], measured as [en:-N sw:YN zh:--]`);
++    return d;
++  } },
+ 
+   /* §3 · the wallets */
+   { id: "3a", label: "the payout-capable rails agree with the withdraw page, the withdraw action and the payout ladder", run: (w) => {
+@@ -359,6 +388,12 @@ const PLANTS: Record<string, { note: string; plant: (w: World) => World }[]> = {
+   ],
+   "2a": [{ note: "{yes} twice in sw", plant: (w) => withDict(w, "sw", "home.heroAsk", "{yes} au {yes}?") }],
+   "2b": [{ note: "the English lang back on the h1", plant: (w) => withHero(w, w.hero.replace('<h1 className="kp-hero__headline">', '<h1 className="kp-hero__headline" lang="en">')) }],
++  "2c": [
++    { note: "every headline is set back, the English Y too", plant: (w) => withHero(w, w.hero.replace('const lead = s.slice(0, a).trim() === "" && STEM_START.test(yes);', "const lead = true;")) },
++    { note: "the group before a set-back one stops giving the width back (a one-line gap shrinks by 0.07em)", plant: (w) => ({ ...w, css: w.css.replace(".kp-hero__grp[data-stem-next] { margin-inline-end: var(--hero-stem); }", "") }) },
++    { note: "a letter nobody measured joins the stems", plant: (w) => withHero(w, w.hero.replace("const STEM_START = /^[HN]/u;", "const STEM_START = /^[A-Z]/u;")) },
++    { note: "the set-back keyed on the locale", plant: (w) => withHero(w, w.hero.replace("function Ask({ t }: { t: Dict }) {", "function Ask({ t, locale }: { t: Dict; locale: Locale }) {")) },
++  ],
+   "3a": [{ note: "a rail the withdraw path does not pay out on", plant: (w) => ({ ...w, payoutRails: [...w.payoutRails, { id: "TTCL_PESA", name: "TTCL Pesa" }] }) }],
+   "3b": [{ note: "an extra name in the rendered list", plant: (w) => ({ ...w, railNames: (p) => [...w.railNames(p), "Tigo Pesa"] }) }],
+   "3c": [{ note: "a filter that ignores the kill switch", plant: (w) => ({ ...w, railNames: () => w.railNames(null) }) }],
+diff --git a/scripts/journey-shell.test.mts b/scripts/journey-shell.test.mts
+index 174400fe9..42de38854 100644
+--- a/scripts/journey-shell.test.mts
++++ b/scripts/journey-shell.test.mts
+@@ -1341,8 +1341,9 @@ function g7Header(W: World, ok: Ok) {
+   // on hydration), they keep the header's edge: the base rules' 16px to 1023 and 32px from 1024. Classic viewers keep
+   // their 24 (VODACOM-PLAN §0i: served what they were).
+   const SHELL_SCOPE = ":root:has(#kp-journey-shell)";
++  // Read per container: the journey's 1024 step also holds the LIVE strip's edge (7.ticker-edge), in a block of its own.
+   const journeyEdge = (px: number) => mediaBlocks(css)
+-    .filter((b) => b.cond === `(min-width: ${px}px)` && b.body.includes(SHELL_SCOPE))
++    .filter((b) => b.cond === `(min-width: ${px}px)` && b.body.includes(SHELL_SCOPE) && b.body.includes(".kp-hero__inner"))
+     .map((b) => b.body.replace(/\s+/g, " ").trim());
+   const landingEdge = (sp: string) => `${SHELL_SCOPE} .kp-hero__inner, ${SHELL_SCOPE} .kp-band__inner { padding-inline: var(--sp-${sp}); }`;
+   const landing = {
+@@ -1355,6 +1356,43 @@ function g7Header(W: World, ok: Ok) {
+       && landing.at768.length === 1 && landing.at768[0] === landingEdge("4")
+       && landing.at1024.length === 1 && landing.at1024[0] === landingEdge("8") && landing.mark,
+     show(landing));
++  // ⭐ THE LIVE STRIP, ROUND 3 (2026-10-08). It is shared with the classic shell (`live-ticker.tsx`, in AppShell), so every
++  // journey rule rides the same server-rendered mark and classic viewers are served what they were (VODACOM-PLAN §0i).
++  // The label's and the run's layout moved out of inline styles into `.ticker-label` / `.ticker-viewport` with the
++  // same values, because an inline style beats every rule below.
++  const ticker = text(W, "src/components/layout/live-ticker.tsx");
++  const one = (sel: string) => {
++    const at = css.indexOf(`${LF}${SHELL_SCOPE} ${sel} {`);
++    return at < 0 || css.indexOf(`${LF}${SHELL_SCOPE} ${sel} {`, at + 1) >= 0 ? "" : css.slice(at + 1, css.indexOf("}", at) + 1);
++  };
++  const strip = {
++    label: baseRule(css, ".ticker-label"), viewport: baseRule(css, ".ticker-viewport"),
++    edge: mediaBlocks(css).filter((b) => b.cond === "(min-width: 1024px)" && b.body.includes(".ticker-strip")).map((b) => b.body.replace(/\s+/g, " ").trim()),
++    fade: one(".ticker-label"), runPad: one(".ticker-viewport"), item: one(".ticker-item"), sep: one(".ticker-sep"),
++    sp4: tokenValue(css, "sp-4"), sp6: tokenValue(css, "sp-6"), sp8: tokenValue(css, "sp-8"), board: tokenValue(css, "w-board"),
++    labelMarkup: ticker.includes(`<div className="ticker-label">`) && !/paddingLeft: (?:16|8)\b|paddingRight: 24\b/.test(ticker),
++    itemMarkup: ticker.includes(`className="ticker-item inline-flex items-center gap-1.5 shrink-0 font-mono text-[12px] pr-8 whitespace-nowrap"`),
++    sepMarkup: ticker.includes(`className="ticker-sep opacity-40 ml-2"`),
++    gap: W.tailwind.includes(`"1.5": "8px"`),
++  };
++  // ③ From 1024 the strip's content keeps the page's edge: the label's own 16 plus 16, inside the 1280 board on a wider
++  // screen, as the header's row is (tile 145: "LIVE" at x16 and the pause glyph to x1263 under a header at 33–1247).
++  ok("7.ticker-edge · from 1024 the journey's LIVE strip keeps the page's edge — 16px more each side of the label's own 16 (and of the pause glyph's own 16), inside the 1280 board, one journey-scoped block, the label's padding no longer inline (round 3, 2026-10-08)",
++    strip.edge.length === 1 && strip.edge[0] === `${SHELL_SCOPE} .ticker-strip { padding-inline: calc(max(0px, (100% - var(--w-board)) / 2) + var(--sp-4)); }`
++      && strip.label.includes("padding-left: 16px;") && strip.sp4 === "16px" && strip.board === "1280px" && strip.labelMarkup,
++    show(strip));
++  // ① The leading edge fades like the trailing one: the label's 24px of trailing padding lies OVER the run (solid to the
++  // word's end, then nothing), and the run starts 24px further under it, so item 1 still rests 8px clear of the fade.
++  ok("7.ticker-fade · the journey's run fades in under the LIVE label's trailing 24px as it fades out under the end cap — the label overlaps the run by exactly its padding and the run's rest position does not move (round 3, tiles 194 198 201 202 318 322 326 327 329)",
++    strip.label.includes("padding-right: 24px;") && strip.label.includes("var(--bg-inset) 70%,") && strip.sp6 === "24px"
++      && strip.fade === `${SHELL_SCOPE} .ticker-label { margin-right: calc(-1 * var(--sp-6)); background: linear-gradient(90deg, var(--bg-inset) 0%, var(--bg-inset) calc(100% - var(--sp-6)), oklch(11% 0.11 268 / 0) 100%); }`
++      && strip.viewport.includes("padding-left: 8px;") && strip.runPad === `${SHELL_SCOPE} .ticker-viewport { padding-left: calc(8px + var(--sp-6)); }`,
++    show(strip));
++  // ② The separator sits mid-gap: gap 8 + the dot's 24 before it, the item's 32 after it (it read 19 and 47 on tile 145).
++  ok("7.ticker-dot · the journey's separator dot sits mid-gap — the item's 8px gap plus the dot's 24px margin before it equals the item's 32px trailing padding after it (round 3, tile 145)",
++    strip.item === `${SHELL_SCOPE} .ticker-item { padding-right: var(--sp-8); }` && strip.sep === `${SHELL_SCOPE} .ticker-sep { margin-left: var(--sp-6); }`
++      && strip.itemMarkup && strip.sepMarkup && strip.gap && 8 + parseInt(strip.sp6, 10) === parseInt(strip.sp8, 10),
++    show(strip));
+   const cluster = baseRule(css, ".kp-jhdr__cluster");
+   ok("7.gap · 6px between the row's controls below 640 (A5), in the row and inside its cluster alike — no step on the row moves them before 640",
+     row.includes("gap: 6px;") && row.includes("display: flex") && !row360.includes("gap")
+@@ -2658,6 +2696,15 @@ ${s}`);
+     const homeUnscoped = withCss((s) => s.replace(`${HOME_SCOPE} .kp-hero__inner,`, ".kp-hero__inner,"));
+     const SHELL_MARK = "src/lib/journey/shell-mark.ts";
+     const markRenamed = withFile(WORLD, SHELL_MARK, (s) => s.replace(`= "kp-journey-shell";`, `= "kp-journey-mark";`));
++    // 7.ticker-*'s plants (round 3): the strip's edge unscoped (the classic strip would move) or lost, the label's padding
++    // inline again (no rule can reach it), the leading fade gone, item 1 moved under the fade, the dot back off-centre.
++    const TICKER = "src/components/layout/live-ticker.tsx";
++    const tickerEdgeUnscoped = withCss((s) => s.replace(`${HOME_SCOPE} .ticker-strip {`, ".ticker-strip {"));
++    const tickerEdgeLost = withCss((s) => s.replace(`${HOME_SCOPE} .ticker-strip { padding-inline: calc(max(0px, (100% - var(--w-board)) / 2) + var(--sp-4)); }`, ""));
++    const tickerInline = withFile(WORLD, TICKER, (s) => s.replace(`<div className="ticker-label">`, `<div className="ticker-label" style={{ paddingLeft: 16 }}>`));
++    const tickerFadeLost = withCss((s) => s.replace(`${HOME_SCOPE} .ticker-label { margin-right: calc(-1 * var(--sp-6));`, `${HOME_SCOPE} .ticker-label { margin-right: 0;`));
++    const tickerRestMoves = withCss((s) => s.replace(`${HOME_SCOPE} .ticker-viewport { padding-left: calc(8px + var(--sp-6)); }`, `${HOME_SCOPE} .ticker-viewport { padding-left: 8px; }`));
++    const tickerDotOff = withCss((s) => s.replace(`${HOME_SCOPE} .ticker-sep { margin-left: var(--sp-6); }`, `${HOME_SCOPE} .ticker-sep { margin-left: var(--sp-5); }`));
+     const figure14 = withCss(inRule(".kp-jbal__fig", "font-size: 12px", "font-size: 14px"));
+     const gap8 = withCss(inRule(".kp-jhdr__row", "gap: 6px;", "gap: 8px;"));
+     const homeFlush = withCss(inRule(".kp-jhdr__home", "margin-inline: -9px", "margin-inline: 0"));
+@@ -3006,6 +3053,18 @@ ${s}`);
+         world: homeUnscoped, landed: cssChanged(homeUnscoped), landedAs: "the classic hero moves for every player" },
+       { name: "the shell's mark is renamed under the rule that reads it", expect: at("7.landing-edge ·"),
+         world: markRenamed, landed: changed(markRenamed, SHELL_MARK), landedAs: "the rule waits for a span no page writes" },
++      { name: "the LIVE strip's edge rule loses its journey scope", expect: at("7.ticker-edge ·"),
++        world: tickerEdgeUnscoped, landed: cssChanged(tickerEdgeUnscoped), landedAs: "the classic strip moves 16px in for every player" },
++      { name: "the LIVE strip's 1024 edge is lost", expect: at("7.ticker-edge ·"),
++        world: tickerEdgeLost, landed: cssChanged(tickerEdgeLost), landedAs: "LIVE at x16 under a header at x32 again" },
++      { name: "the LIVE label's padding goes back inline", expect: at("7.ticker-edge ·"),
++        world: tickerInline, landed: changed(tickerInline, TICKER), landedAs: "an inline style no journey rule can reach" },
++      { name: "the label stops overlapping the run", expect: at("7.ticker-fade ·"),
++        world: tickerFadeLost, landed: cssChanged(tickerFadeLost), landedAs: "a glyph cut at full ink right after LIVE again" },
++      { name: "the run starts under the label without its extra padding", expect: at("7.ticker-fade ·"),
++        world: tickerRestMoves, landed: cssChanged(tickerRestMoves), landedAs: "item 1 rests under the fade, 24px left of where it was" },
++      { name: "the separator dot's margin leaves the scale's 24", expect: at("7.ticker-dot ·"),
++        world: tickerDotOff, landed: cssChanged(tickerDotOff), landedAs: "28px before the dot and 32 after it" },
+       { name: "a 14px figure below 360", expect: at("7.figure ·"),
+         world: figure14, landed: cssChanged(figure14), landedAs: "TZS 999,999 two characters wider at 320" },
+       { name: "the gap becomes 8px", expect: at("7.gap ·"),
+diff --git a/scripts/landing-mine.test.mts b/scripts/landing-mine.test.mts
+index 178036f64..c2dc96d1e 100644
+--- a/scripts/landing-mine.test.mts
++++ b/scripts/landing-mine.test.mts
+@@ -6,8 +6,11 @@
+  *      PAID only what a win or a cash-out paid since Monday 00:00 EAT.
+  * §2 · THE WEEK — `eatWeekStartMs` on both sides of the Sunday→Monday midnight in Dar es Salaam.
+  * §3 · THE HERO'S CONTRACT — a failed read renders nothing (never a zero), no picks is one sentence,
+- *      the pair is the Wallet's pair (same rung, same box), a frozen wallet gets no money buttons, and
+- *      the trust lines stay above it.
++ *      the pair is the Wallet's pair (same rung, same box), a frozen wallet gets no money buttons and no
++ *      invitation to pick, and the trust lines stay above it — and round 3's wrap rules (2026-10-08): the trust
++ *      rows and the lead wrap even, Chinese keeps its words whole there, and the block keeps one measure.
++ * §4 · ONE SCREEN, ONE LEDGER — the proof band's "paid out to players" is never shown below what the reader
++ *      alone was paid this week (`paidOutBehind`): the page re-reads the total past the memo, then withholds.
+  *
+  * Run: npm run test:landing-mine
+  */
+@@ -20,7 +23,7 @@ const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..");
+ let pass = 0, fail = 0;
+ const ok = (l: string, c: boolean, x = "") => { c ? pass++ : fail++; console.log(`${c ? "PASS" : "FAIL"} ${l}${x ? ` — ${x}` : ""}`); };
+ 
+-const { tallyPicks, eatWeekStartMs } = await import("../src/lib/server/landing-picks.ts");
++const { tallyPicks, eatWeekStartMs, paidOutBehind } = await import("../src/lib/server/landing-picks.ts");
+ 
+ // ── 2 · the week (asserted first: §1 leans on it) ──────────────────────────────
+ {
+@@ -91,7 +94,47 @@ const { tallyPicks, eatWeekStartMs } = await import("../src/lib/server/landing-p
+   ok("3: no picks at all is ONE sentence, not three zeros", /<p className="kp-mine__lead">\{t\.home\.picksNone\}<\/p>/.test(act));
+   ok("3: …and at zero balance the empty-balance prompt says it alone (the two sentences said it twice)",
+      /emptyWallet \? null : <p className="kp-mine__lead">\{t\.home\.picksNone\}/.test(act) && /const emptyWallet = !held && balance !== null && balance <= 0/.test(act));
+-  const css = readFileSync(join(ROOT, "src/app/globals.css"), "utf8");
++  // ⛔ Round 3 (2026-10-08, tiles 090 091 095 096 099 100): "Choose a side on a market to make your first" stood directly
++  // above "Your wallet is frozen". A held wallet is not invited to pick — the notice speaks alone, no new words.
++  const HELD_QUIET = /held \|\| emptyWallet \? null : <p className="kp-mine__lead">\{t\.home\.picksNone\}<\/p>/;
++  ok("3: ⛔ a frozen wallet is not invited to pick — the no-picks sentence is withheld when held, as at zero",
++     HELD_QUIET.test(act));
++  ok("3-control: …and the pre-fix line (the invitation over the frozen notice) IS caught by that matcher",
++     !HELD_QUIET.test('emptyWallet ? null : <p className="kp-mine__lead">{t.home.picksNone}</p>'));
++  const css = readFileSync(join(ROOT, "src/app/globals.css"), "utf8").replace(/\r\n/g, "\n");
++  /** A base rule's declarations: the rule written at a line start, `sel {` exactly. */
++  const ruleOf = (src: string, sel: string) => { const at = src.indexOf(`\n${sel} {`); return at < 0 ? "" : src.slice(at, src.indexOf("}", at)); };
++  // Round 3's wrap rules for the hero's intro and the player's block — each a measured tile defect a later edit could undo.
++  const wrap = (src: string) => ({
++    // F3 · the licence row left "Tanzania." alone (sw 360/390, en 320, the classic home too): balanced rows.
++    trust: ruleOf(src, ".kp-hero__trust").includes("text-wrap: balance;"),
++    // F1 · zh 1024 split 提现 and left "现。" alone: keep-all, with anywhere as the floor.
++    trustZh: /\n\.kp-hero__trust:lang\(zh\) \{ word-break: keep-all; overflow-wrap: anywhere; \}/.test(src),
++    // F4 · en 1024 left "first." alone: the lead is balanced.
++    lead: ruleOf(src, ".kp-mine__lead").includes("text-wrap: balance"),
++    // F1 · zh 1024 split 选择 and 下一次: keep-all on the lead.
++    leadZh: /\n\.kp-mine__lead:lang\(zh\) \{ word-break: keep-all; overflow-wrap: anywhere; \}/.test(src),
++    // F12 · one measure: the lead (34em) and the frozen notice (560px) ended 16px apart at 1280.
++    measure: ruleOf(src, ".kp-mine").includes("--mine-measure: calc(34 * var(--type-h4))")
++      && ruleOf(src, ".kp-mine__lead").includes("max-width: var(--mine-measure)")
++      && ruleOf(src, ".kp-mine__held").includes("max-width: var(--mine-measure)"),
++  });
++  const w = wrap(css);
++  ok("3: the trust rows wrap even (no word alone under a full line) and Chinese keeps its words whole there (round 3, F3 + F1)",
++     w.trust && w.trustZh, JSON.stringify(w));
++  ok("3: the player's lead wraps even and keeps Chinese words whole (round 3, F4 + F1)", w.lead && w.leadZh, JSON.stringify(w));
++  ok("3: ⭐ the block's lead and frozen notice share ONE measure (round 3, F12)", w.measure, JSON.stringify(w));
++  {
++    const planted = [
++      ["the trust rows unbalanced", css.replace("  text-wrap: balance;\n}\n.kp-hero__trust > li {", "}\n.kp-hero__trust > li {"), "trust"],
++      ["zh trust rows break anywhere", css.replace(".kp-hero__trust:lang(zh) { word-break: keep-all;", ".kp-hero__trust:lang(zh) { word-break: normal;"), "trustZh"],
++      ["the lead unbalanced", css.replace("max-width: var(--mine-measure); text-wrap: balance; }", "max-width: var(--mine-measure); }"), "lead"],
++      ["the frozen notice back on its own 560px", css.replace("background: var(--bg-inset); max-width: var(--mine-measure); }", "background: var(--bg-inset); max-width: 560px; }"), "measure"],
++    ] as const;
++    const caught = planted.filter(([, src, key]) => src !== css && !wrap(src)[key]).map(([n]) => n);
++    ok("3-control: each wrap rule, planted away, IS caught (a guard that cannot fail is decoration)",
++       caught.length === planted.length, `caught ${caught.length}/${planted.length}: ${caught.join(" · ")}`);
++  }
+   const sheet = decomment(readFileSync(join(ROOT, "src/components/layout/wallet-sheet.tsx"), "utf8"));
+   /* ⭐ R17 (Ali, 2026-09-28) · THE SIGNED-IN HERO HOLDS NO MONEY CONTROL AND NO BALANCE, and the six
+      assertions below are that absence made checkable. They replace "Deposit and Withdraw at the SAME
+@@ -132,6 +175,27 @@ const { tallyPicks, eatWeekStartMs } = await import("../src/lib/server/landing-p
+      /landingPicks\(session\.userId, nowMs\)\.catch\(\(\) => null\)/.test(page) &&
+      /balance: wallet === undefined \? null :/.test(page));
+   ok("3: the hero's balance is the header's wallet row (db.wallet.findByUserId)", /db\.wallet\.findByUserId\(session\.userId\)/.test(page));
++
++  // ⛔ ROUND 3 (2026-10-08, tiles 133 135 137): "TZS 48,208 paid to you this week" over "TZS 0 paid out to players".
++  // The platform figure is memoised for a minute and the picks are read now; every win and cash-out writes its CONFIRMED
++  // txn with the position, so a fresh total below one reader's own payouts means a stale memo (a real player's first
++  // days) or a ledger the positions disagree with (a seeded store). The page re-reads once, then withholds.
++  const p = (paid: number) => ({ open: 0, awaiting: 0, paidThisWeekTzs: paid });
++  ok("4: the platform figure is BEHIND only when it is below what this reader alone was paid this week",
++     paidOutBehind(0, p(48_208)) && paidOutBehind(48_207, p(48_208)));
++  ok("4-control: equal, above, or a failed read on either side decides nothing (never a withheld slot by accident)",
++     !paidOutBehind(48_208, p(48_208)) && !paidOutBehind(66_000, p(48_208)) && !paidOutBehind(null, p(48_208))
++     && !paidOutBehind(0, null) && !paidOutBehind(0, p(0)));
++  const stats = decomment(readFileSync(join(ROOT, "src/lib/server/platform-stats.ts"), "utf8"));
++  const RE_READ = /const paidOutTzs = paidOutBehind\(stats\.paidOutTzs, ownPicks\)\s*\?\s*await readPaidOutTzs\(\)\.then\(\(fresh\) => \(paidOutBehind\(fresh, ownPicks\) \? null : fresh\)\)\s*:\s*stats\.paidOutTzs;/;
++  ok("4: the page re-reads a total that is behind the reader, withholds one still behind, and the proof band prints THAT",
++     /const ownPicks = mine\?\.picks \?\? null;/.test(page) && RE_READ.test(page)
++     && /<LandingProof figures=\{figures\} t=\{t\} paidOutTzs=\{paidOutTzs\} \/>/.test(page));
++  ok("4-control: the pre-fix wiring (the memo straight to the band) IS caught",
++     !/<LandingProof figures=\{figures\} t=\{t\} paidOutTzs=\{paidOutTzs\} \/>/.test("<LandingProof figures={figures} t={t} paidOutTzs={stats.paidOutTzs} />"));
++  ok("4: ONE read of the total — the memo and the re-read share `readPaidOutTzs`, and nothing else sums the ledger here",
++     (stats.match(/sumConfirmedByTypes\(/g) ?? []).length === 1 && /const paidOutTzs = await readPaidOutTzs\(\);/.test(stats)
++     && /export async function readPaidOutTzs\(\)/.test(stats));
+ }
+ 
+ console.log(`\nlanding-mine: ${pass} passed, ${fail} failed`);
+diff --git a/src/app/globals.css b/src/app/globals.css
+index 93896224b..116a8ec71 100644
+--- a/src/app/globals.css
++++ b/src/app/globals.css
+@@ -1456,8 +1456,44 @@ body {
+   will-change: transform;
+ }
+ /* The clipping box around the marquee. ⛔ It used to carry `overflow: hidden` as an INLINE style, which
+-   no rule can override — so the calm branch below could not turn it into a scroller. Moved here. */
+-.ticker-viewport { overflow: hidden; }
++   no rule can override — so the calm branch below could not turn it into a scroller. Moved here.
++   Its layout followed it on 2026-10-08 (the same trap, one property over): the journey's leading fade below has to
++   move `padding-left`. The values are the ones the inline style carried — the 8px is the air between the LIVE label's
++   fade and item 1 at rest (live-ticker.tsx). */
++.ticker-viewport { flex: 1 1 auto; min-width: 0; display: flex; align-items: center; padding-left: 8px; overflow: hidden; }
++/* The fixed LIVE label (live-ticker.tsx), moved here from its inline style for the same reason and with the same values:
++   16px in, 24px of trailing padding, solid ground to 70% that fades out across that padding. */
++.ticker-label {
++  flex: 0 0 auto;
++  z-index: 10;
++  display: flex;
++  align-items: center;
++  padding-left: 16px;
++  padding-right: 24px;
++  background: linear-gradient(90deg, var(--bg-inset) 0%, var(--bg-inset) 70%, oklch(11% 0.11 268 / 0) 100%);
++}
++/* ⭐ THE JOURNEY'S STRIP (2026-10-08, round 3's tiles; classic viewers are served what they were — VODACOM-PLAN §0i —
++   so every rule here is scoped by the shell's server-rendered mark, `shell-mark.ts`, like the hero's edge rule).
++   ① THE LEADING EDGE FADES LIKE THE TRAILING ONE. The run was clipped hard at the viewport's left edge, right after the
++      label, so a glyph stood cut at full ink there (x115 on tiles 198 201 202 318 322 326 327 329 at 390; 194 at 1280),
++      while the end cap fades the run's last 40px. The label's trailing 24px now lies OVER the run (the cap's own
++      overlap, mirrored): solid to the end of the word, fading to nothing across the padding, and the viewport starts
++      under it with 24px more padding, so item 1 still rests 8px clear of the fade and nothing moves at rest or in motion.
++   ② THE SEPARATOR SITS MID-GAP. Each item ends `gap 8 + dot margin 12` before its dot and `pr-8`'s 48 after it, so the
++      dot read 19px from one item and 47px from the next (tile 145: "Saturday?" ends 413, dot 433–436, "TZS 8K" 484). The
++      dot's margin is the spacing scale's 24, and the item's trailing padding its 32: 32 on each side. The item is 4px
++      narrower, so the run is too (the strip's 70s loop covers that slightly shorter distance).
++   ③ FROM 1024 THE STRIP'S CONTENT KEEPS THE PAGE'S EDGE — 32px, and inside the 1280 board on a wider screen — as the
++      header's row does (`.kp-jhdr__row`: `--w-board`, 32px from 1024). The label is 16px in and the pause glyph's ink
++      ends 16px from the strip's end, so the strip pads 16 more each side: on tile 145 (1280) "LIVE" began at x16 and
++      the pause glyph ended at x1263 under a header running 33–1247. Below 1024 both already sit on the 16px edge. */
++:root:has(#kp-journey-shell) .ticker-label { margin-right: calc(-1 * var(--sp-6)); background: linear-gradient(90deg, var(--bg-inset) 0%, var(--bg-inset) calc(100% - var(--sp-6)), oklch(11% 0.11 268 / 0) 100%); }
++:root:has(#kp-journey-shell) .ticker-viewport { padding-left: calc(8px + var(--sp-6)); }
++:root:has(#kp-journey-shell) .ticker-item { padding-right: var(--sp-8); }
++:root:has(#kp-journey-shell) .ticker-sep { margin-left: var(--sp-6); }
++@media (min-width: 1024px) {
++  :root:has(#kp-journey-shell) .ticker-strip { padding-inline: calc(max(0px, (100% - var(--w-board)) / 2) + var(--sp-4)); }
++}
+ /* ⚠️ AND THE SAME TRAP CAUGHT THE DUPLICATE COPY, one commit after it was written down for the box above.
+    This wrapper carried `style={{ display: "contents" }}` INLINE, so the calm branch's `display: none` could
+    not touch it — verified on production: `dupDisplay` read `contents` under `prefers-reduced-motion` and the
+@@ -4244,8 +4280,20 @@ html[data-sheet-open] .route-enter { animation: none; }
+   font-size: var(--type-small);
+   line-height: 1.5;
+   color: var(--text-muted);
++  /* A row that wraps wraps EVEN, never one word under a full line (round 3's tiles, 2026-10-08): the licence row left
++     "Tanzania." alone under "Leseni ya Bodi ya Michezo ya Kubahatisha" at 360 and 390 and under "Licensed by the
++     Gaming Board of" at 320, in both shells. Balanced, the two lines share the words. Balance, not pretty: Firefox and
++     older Safari ignore pretty (`trust-band.tsx`). A row that fits one line is untouched. */
++  text-wrap: balance;
+ }
+ .kp-hero__trust > li { display: grid; grid-template-columns: 28px minmax(0, 1fr); column-gap: var(--sp-3); align-items: center; }
++/* ⚠️ Chinese may break between any two characters, so at 1024 the wallet row ended "…Mixx by Yas 充值和提 / 现。" — 提现
++   split and "现。" alone (round 3's tiles 034 064 075 086 099 111). keep-all breaks it only at its spaces and after its
++   commas (、), so a word stays whole, and balance shares the two lines: "可通过 M-Pesa、Airtel Money、" over
++   "HaloPesa或Mixx by Yas 充值和提现。" at every width that needs two. The licence row carries its own break points
++   (`footer.licensedByGbt`'s zero-width spaces). A run longer than its line still breaks rather than overflow — the
++   `.kp-hub__sub:lang(zh)` rule. */
++.kp-hero__trust:lang(zh) { word-break: keep-all; overflow-wrap: anywhere; }
+ .kp-hero__trust-glyph { display: flex; justify-content: center; color: var(--text-subtle); }
+ /* The wallet names are the row's emphasis — brand spellings from the payment catalogue, in the
+    reader's own list form (`rail-list.ts`); the joiners and the sentence stay muted. */
+@@ -4334,9 +4382,21 @@ html[data-sheet-open] .route-enter { animation: none; }
+   color: var(--hero-text-strong);
+   margin: 0;
+   text-wrap: balance;
++  /* The left side bearing of a straight-stem capital in Sora 800 — see `.kp-hero__grp[data-stem]` below. */
++  --hero-stem: 0.07em;
+ }
+ .kp-hero__headline:lang(zh) { letter-spacing: 0; line-height: 1.1; }
+ .kp-hero__grp { white-space: nowrap; }
++/* ⭐ A LINE THAT STARTS ON A STRAIGHT STEM STARTS AT THE PAGE'S EDGE (round 3's tiles, 2026-10-08). Sora draws N and H
++   with a side bearing, so "NDIO au / HAPANA?" sat right of the edge every other line keeps: measured from the first
++   inked column's coverage, 3.0px at 44px (tiles 013–016), 4.4px at 60px (017, 018) and 5.2px at 72px (020) — 0.068 to
++   0.073em, so 0.07em, within 0.2px of each. The English Y (0.3–0.45px) and the Chinese 是 (1.2px) start where they are.
++   `Ask` (landing-hero.tsx) decides it from the SIDE WORDS, never the locale: a group whose word starts on a measured
++   stem (H, N) and that can begin a line is set back by the bearing; the group before a set-back one gives the same
++   width back at its end, so on one line ("YES or NO?", or "NDIO au HAPANA?" at 768) the gap between the groups is
++   exactly what it was, and only a group that opens a line moves. Measure a letter before adding it to `STEM_START`. */
++.kp-hero__grp[data-stem] { margin-inline-start: calc(-1 * var(--hero-stem)); }
++.kp-hero__grp[data-stem-next] { margin-inline-end: var(--hero-stem); }
+ .kp-hero__side[data-side="yes"] { color: var(--hero-yes-accent); }
+ .kp-hero__side[data-side="no"] { color: var(--hero-no-accent); }
+ .kp-hero__conn { font-weight: 400; color: var(--text-muted); }
+@@ -5012,17 +5072,27 @@ html[data-sheet-open] .route-enter { animation: none; }
+ .mcardp-pct--no { color: var(--no-400); }
+ .mcardp-pct--void { color: var(--text-muted); }
+ .mcardp-pctcap--result { color: var(--text-subtle); }
++/* ⭐ THE STATE IS READ AT THE READING FLOOR (round 3's tiles, 2026-10-08). "Hakuna dau bado" was 10px mono in
++   `--text-faint`, tracked 0.06em: cap height 7px and a measured peak of 4.21:1 (tile 014) and 4.30:1 (091), under §A1's
++   4.5. It is a sentence, not a microlabel, so §T4's remedy applies — the lowest rung above the 12.5px floor
++   (`--type-small`, 13px), no tracking — in the board row's own voice for the same words (`.kp-qrow__unit--label`:
++   mono, 13px, `--text-subtle`, 6.36:1 on this wash). ⚠️ THE LINE BOX STAYS 15px, which is 10px × the body's 1.5 — the
++   box `--mcard-base` was measured with (347.44px at 360, the cold-start card this line sits on), so the card and its
++   skeleton keep their height in both densities, and the words keep the centre they had. */
+ .mcardp-nobets {
+   font-family: var(--font-mono);
+-  font-size: 10px;
+-  letter-spacing: 0.06em;
++  font-size: var(--type-small);
++  line-height: 15px;
+   text-align: center;
+-  color: var(--text-faint);
++  color: var(--text-subtle);
+   margin-top: 6px;
+ }
+ /* The invitation. Brand blue = chrome, deliberately NOT gold: gold means money
+-   you have earned (RULES law 3), and nobody has earned anything here yet. */
++   you have earned (RULES law 3), and nobody has earned anything here yet.
++   At the reading floor too (round 3): "Kuwa wa kwanza kutabiri" was the trader row's 10px count type (cap height 8px).
++   13px in the row's own 1.5 is 19.5px, inside the row's 24px (22px Compact) `--mcard-traders-h`, so nothing moves. */
+ .mcardp-befirst { color: var(--brand-300); }
++.mcardp-traders .mcardp-befirst { font-size: var(--type-small); }
+ 
+ /* ── One-sided (landing v3 · WP6, 2026-09-27) ─────────────────────────────────
+    Money on ONE side has no price (MOBILE-VISUAL ruling 13): the card keeps the
+@@ -5097,6 +5167,10 @@ html[data-sheet-open] .route-enter { animation: none; }
+   text-wrap: pretty;
+ }
+ .mcardp-srcname { color: var(--text-muted); }
++/* Its two parts — the close and the source — are the line's only break (`.mcardp-src__seq`, beside `.kp-hub__seq`), and a
++   part that must wrap inside itself in Chinese breaks at its spaces and after its colon, never inside 结算来源 or 截止
++   (keep-all; `overflow-wrap: anywhere` above stays the floor for a run longer than the line). */
++.mcardp-src:lang(zh) { word-break: keep-all; }
+ /* The featured card's line is a child of the CARD, after the question and before the pick in the
+    reading order (K36). Below 640 it is SHOWN under the YES/NO row — the first screen at 360 has no room
+    above it (V15, hero v3 §7) — by `order`, which moves no focusable thing (it is text). From 640 it sits
+@@ -5104,6 +5178,12 @@ html[data-sheet-open] .route-enter { animation: none; }
+ .mcardp-src--featured { margin-top: 0; order: 1; }
+ .mcardp--featured > .mcardp-meta,
+ .mcardp--featured > .mcardp-foot { order: 2; }
++/* "Hakuna bwawa bado" in the featured card's pool slot is a sentence too (round 3: 11px, cap height 8px), so it takes
++   the same 13px as the line above. FEATURED ONLY, and measured: the featured row holds the words and the 44px info
++   button alone (its time is top-right), 133 + 7 + 44 = 184px against 256 at 320. A grid card's row also holds an 11px
++   countdown — "masaa 21 yamebaki", 112px — and at 360 the words at 13px would need 302 of 296px, so its one-line meta
++   row (`.mcardp-meta`, D35) would wrap and the card would grow a row. The row is 44px tall either way. */
++.mcardp--featured .mcardp-meta > .mcardp-nopool { font-size: var(--type-small); }
+ @media (min-width: 640px) {
+   .mcardp-src--featured { order: 0; max-inline-size: 60ch; }
+   .mcardp--featured > .mcardp-meta,
+@@ -6115,10 +6195,13 @@ html[lang="zh"] .kp-udrule { word-break: keep-all; }
+    Each thing is one flex item (`HubSub`, hub-row.tsx) and the dot before it hangs in the gap to its left, so a thing
+    that opens a line carries its dot outside the box, where the clip hides it: one line reads as before, two read
+    "Maswali ya kawaida · Simu" over "Barua pepe". The clip cuts the LEFT edge only, so a word wider than its line
+-   still shows whole on the right, as the plain line always did. */
+-.kp-hub__seq { display: flex; flex-wrap: wrap; column-gap: var(--sp-3); clip-path: inset(-100vmax -100vmax -100vmax 0); }
+-.kp-hub__seq-item { position: relative; min-width: 0; }
+-.kp-hub__seq-dot { position: absolute; top: 0; right: 100%; width: var(--sp-3); text-align: center; }
++   still shows whole on the right, as the plain line always did.
++   ⭐ ONE IDIOM, TWO HOOKS: the featured card's meta line ("2026年10月9日 截止 · 结算来源：CoinGecko", `.mcardp-src__seq`,
++   market-card.tsx) is drawn the same way (round 3's tiles 029 059 074 084 097 109: at 320 Chinese it broke
++   "…结算来 / 源：CoinGecko", splitting 来源). Its dot keeps the sentence's own " · " for a screen reader. */
++.kp-hub__seq, .mcardp-src__seq { display: flex; flex-wrap: wrap; column-gap: var(--sp-3); clip-path: inset(-100vmax -100vmax -100vmax 0); }
++.kp-hub__seq-item, .mcardp-src__part { position: relative; min-width: 0; }
++.kp-hub__seq-dot, .mcardp-src__dot { position: absolute; top: 0; right: 100%; width: var(--sp-3); text-align: center; }
+ /* The proposals row's flag rides its label (WP12's tiles 124, 255, 297, 2026-10-08). In the row's trailing slot it took
+    84px from the label, and "Pendekeza na upate zawadi" folded in two at 390 though the label alone fits. Now the two
+    share one wrapping line: side by side, the flag at the row's end as before, where both fit (English and Chinese at
+@@ -6154,14 +6237,24 @@ html[lang="zh"] .kp-udrule { word-break: keep-all; }
+ /* ── WP14 part 2 · THE SIGNED-IN HERO (the delivery's §4a/§4c) ─────────────────────────────────
+    Your picks → the balance with the same Deposit/Withdraw pair (or the empty-balance prompt) →
+    Set limits. The pair is the Wallet's: one rung, one box, only the skin differs (V19). */
+-.kp-mine { display: flex; flex-direction: column; gap: var(--sp-5); }
++.kp-mine { display: flex; flex-direction: column; gap: var(--sp-5); --mine-measure: calc(34 * var(--type-h4)); }
+ .kp-mine__eyebrow { font-family: var(--font-mono); font-weight: 700; font-size: var(--type-micro); text-transform: uppercase; color: var(--text-subtle); }
+ .kp-mine__stats { display: flex; flex-wrap: wrap; gap: var(--sp-3) var(--sp-8); margin-top: var(--sp-2); }
+ .kp-mine__stat { display: flex; flex-direction: column; gap: var(--sp-1); min-width: 0; }
+ .kp-mine__n { font-family: var(--font-mono); font-weight: 700; font-size: var(--type-h1); line-height: 1.1; font-variant-numeric: tabular-nums; color: var(--text); overflow-wrap: anywhere; }
+ .kp-mine__n--gold { color: var(--gold-300); }
+ .kp-mine__l { font-size: var(--type-small); line-height: 1.35; color: var(--text-muted); }
+-.kp-mine__lead { font-size: var(--type-h4); line-height: 1.5; color: var(--text-muted); max-width: 34em; }
++/* ⭐ ONE MEASURE FOR THE BLOCK (round 3's tile 091, 2026-10-08): the lead was capped at 34em (578px) and the frozen
++   notice at 560px, so at 1280 the lead's first line ran to x607 over a box that ended at x591 — two right edges in one
++   column. Both take the lead's reading measure, 34 × the lead's 17px (`--mine-measure`, on `.kp-mine` above). */
++/* Balanced (round 3's tiles 056 073 095 107): at 1024 English left "first." alone under "No picks yet. Choose a side on
++   a market to make your". */
++.kp-mine__lead { font-size: var(--type-h4); line-height: 1.5; color: var(--text-muted); max-width: var(--mine-measure); text-wrap: balance; }
++/* Chinese breaks between any two characters, so at 1024 the leads split their last word: "…完成您的第一次选 / 择。" and
++   "…即可进行下一 / 次选择。" (round 3's tiles 075 086 099 111). keep-all ends a line only at 。and ，— each of these
++   sentences is two or three short clauses, so a line holds whole clauses (the `.kp-hub__sub:lang(zh)` and
++   `.kp-udrule` rule). */
++.kp-mine__lead:lang(zh) { word-break: keep-all; overflow-wrap: anywhere; }
+ /* ⭐ R17 (2026-09-28) · THE BLOCK'S TWO QUIET DOORS, SIDE BY SIDE — My positions and Set limits. It held
+    ONE link (`align-self: flex-start` inside the column), so a second would have stacked under it and read
+    as two separate rows rather than one footer to the block. ⛔ `gap`, never `column-gap`: in Swahili the
+@@ -6178,7 +6271,7 @@ html[lang="zh"] .kp-udrule { word-break: keep-all; }
+ /* The box has an edge: the hero's ground (--bg-overlay) is the very colour of --bg-inset, so the frozen notice drew no
+    box at all, only its padding — two lines indented 16px from everything above and below them, reading as stray text
+    (WP12's tiles, 2026-10-08). */
+-.kp-mine__held { display: flex; flex-direction: column; gap: var(--sp-1); padding: var(--sp-4); border: 1px solid var(--border); border-radius: var(--r-lg); background: var(--bg-inset); max-width: 560px; }
++.kp-mine__held { display: flex; flex-direction: column; gap: var(--sp-1); padding: var(--sp-4); border: 1px solid var(--border); border-radius: var(--r-lg); background: var(--bg-inset); max-width: var(--mine-measure); }
+ .kp-mine__held-t { font-family: var(--font-display); font-weight: 700; font-size: var(--type-h4); line-height: 1.25; color: var(--text); }
+ .kp-mine__held-b { font-size: var(--type-small); line-height: 1.45; color: var(--text-muted); }
+ .kp-mine__limits { display: inline-flex; align-items: center; gap: var(--sp-1); align-self: flex-start; min-height: var(--h-control-md); font-weight: 600; font-size: var(--type-small); color: var(--text); text-decoration: underline; text-decoration-color: var(--border-strong); text-underline-offset: 4px; }
+diff --git a/src/app/page.tsx b/src/app/page.tsx
+index a05f9d8aa..6b6fed5bb 100644
+--- a/src/app/page.tsx
++++ b/src/app/page.tsx
+@@ -9,7 +9,7 @@ import { listSources, sourceNameFor, type TrustedSource } from "@/lib/server/sou
+ 
+ import { getCardCharts } from "@/lib/server/market-history";
+ import { getSession } from "@/lib/server/session";
+-import { getPlatformStats } from "@/lib/server/platform-stats";
++import { getPlatformStats, readPaidOutTzs } from "@/lib/server/platform-stats";
+ import { LandingHero, LandingProof, QuestionBoard } from "@/components/home/landing-hero";
+ import { HowItWorks } from "@/components/home/how-it-works";
+ import { TopicTiles } from "@/components/home/topic-tiles";
+@@ -25,7 +25,7 @@ import { landingComposition } from "@/lib/markets/landing";
+ import { getServerT } from "@/lib/i18n-server";
+ import { getGlobalConfig } from "@/lib/server/market-config";
+ import { ratesFrom } from "@/app/legal/rules/_shared";
+-import { landingPicks } from "@/lib/server/landing-picks";
++import { landingPicks, paidOutBehind } from "@/lib/server/landing-picks";
+ import { db } from "@/lib/server/store";
+ import { getKillSwitches } from "@/lib/server/payment-ops";
+ import { heroRailNames, heroRails } from "@/lib/server/payout-rails";
+@@ -248,6 +248,14 @@ export default async function LandingPage({ searchParams }: {
+         held: !!wallet && wallet.status !== "ACTIVE",
+       }))
+     : null;
++  // ⛔ ONE SCREEN, NOT TWO TRUTHS ABOUT ONE LEDGER (round 3, 2026-10-08). The proof band's "paid out to players" is
++  // memoised for a minute; the reader's "paid to you this week" is read now. When the memo is below what this reader
++  // alone was paid, it predates their payout — read the total again, and if it is still behind, withhold the slot
++  // rather than print a figure the screen itself contradicts (`paidOutBehind`, landing-picks.ts).
++  const ownPicks = mine?.picks ?? null;
++  const paidOutTzs = paidOutBehind(stats.paidOutTzs, ownPicks)
++    ? await readPaidOutTzs().then((fresh) => (paidOutBehind(fresh, ownPicks) ? null : fresh))
++    : stats.paidOutTzs;
+ 
+   // ⚠️ `timeLeftStr` LEFT THIS FILE WITH THE GRID (WP9). It was the shared wrapper around
+   // `timeLeftLabel` for the grid cards; the featured card and the board rows each build their own
+@@ -273,7 +281,7 @@ export default async function LandingPage({ searchParams }: {
+       {/* ── §1a′ THE PROOF — the three figures, the whole board's conviction, the closing-soonest
+           board. Directly under the hero since v3, so the hero's first screen is the pitch and a
+           live market (WP2 / V15). */}
+-      <LandingProof figures={figures} t={t} paidOutTzs={stats.paidOutTzs} />
++      <LandingProof figures={figures} t={t} paidOutTzs={paidOutTzs} />
+ 
+       {/* ── §1a″ THE BOARD — the landing's ONE market list (WP9 · R15). Its section header and its
+           ordering rail are `QuestionBoard`'s; the rail's two lenses are computed on the server from
+diff --git a/src/components/home/landing-hero.tsx b/src/components/home/landing-hero.tsx
+index e99976f4e..2ea22949e 100644
+--- a/src/components/home/landing-hero.tsx
++++ b/src/components/home/landing-hero.tsx
+@@ -168,9 +168,17 @@ function Claim({ t }: { t: Dict }) {
+  * own space after the connective (none in zh, which fits one line), so a narrow screen reads two
+  * designed lines, never "NDIO" alone over "au HAPANA?".
+  * ⛔ No `lang` attribute: since R7(3) the h1 IS in the page's language.
+- * `test:hero-copy` §2 pins `{yes}` before `{no}`, each exactly once, in every locale; the fallback
+- * below only keeps a malformed string readable.
++ * ⭐ A LINE THAT OPENS ON A STRAIGHT STEM IS SET BACK BY ITS SIDE BEARING (round 3, 2026-10-08): "NDIO" and "HAPANA"
++ * began 3–5px right of the page's edge (0.07em of Sora 800, measured — `.kp-hero__grp[data-stem]` in globals.css), where
++ * "YES" and 是 sit on it. Decided from the SIDE WORDS, so it follows the buttons' words and never a locale: a group
++ * that can open a line and starts on a measured stem takes `data-stem`, and the group before a set-back one takes
++ * `data-stem-next`, which gives the width back at its end — so on one line nothing between the groups moves.
++ * `test:hero-copy` §2 pins `{yes}` before `{no}`, each exactly once, in every locale, and §2c the set-back; the
++ * fallback below only keeps a malformed string readable.
+  */
++/** Capitals whose left edge is a straight stem with the bearing measured on the tiles. ⛔ Measure before adding one. */
++const STEM_START = /^[HN]/u;
++
+ function Ask({ t }: { t: Dict }) {
+   const yes = sideWord(t, "YES", "MARKET");
+   const no = sideWord(t, "NO", "MARKET");
+@@ -181,15 +189,19 @@ function Ask({ t }: { t: Dict }) {
+   const between = s.slice(a + "{yes}".length, b);
+   const conn = between.trimEnd();
+   const gap = between.slice(conn.length);
++  // The first group opens the h1's first line only when nothing is written before it; the second opens a line
++  // whenever the h1 wraps at its gap, so it is set back whenever its word starts on a stem.
++  const lead = s.slice(0, a).trim() === "" && STEM_START.test(yes);
++  const next = STEM_START.test(no);
+   return (
+     <h1 className="kp-hero__headline">
+       {s.slice(0, a)}
+-      <span className="kp-hero__grp">
++      <span className="kp-hero__grp" data-stem={lead ? "" : undefined} data-stem-next={next ? "" : undefined}>
+         <span className="kp-hero__side" data-side="yes">{yes}</span>
+         <span className="kp-hero__conn">{conn}</span>
+       </span>
+       {gap}
+-      <span className="kp-hero__grp">
++      <span className="kp-hero__grp" data-stem={next ? "" : undefined}>
+         <span className="kp-hero__side" data-side="no">{no}</span>
+         <span className="kp-hero__q">{s.slice(b + "{no}".length)}</span>
+       </span>
+@@ -497,10 +509,14 @@ function SignedInAct({ t, mine }: { t: Dict; mine: LandingMine | null }) {
+   const noPicks = !!picks && picks.open === 0 && picks.awaiting === 0 && picks.paidThisWeekTzs === 0;
+   // At zero the empty-balance prompt already says what to do next; the no-picks sentence beside it said it twice.
+   const emptyWallet = !held && balance !== null && balance <= 0;
++  // ⛔ AND A FROZEN WALLET IS NOT INVITED TO PICK (round 3's tiles 090 091 095 096 099 100, 2026-10-08): "Choose a side
++  // on a market to make your first" stood directly above "Your wallet is frozen" — an invitation the platform refuses.
++  // The held notice speaks alone, as the Wallet and the journey header withhold their money invitations for a held
++  // wallet (`wallet-sheet.tsx`, `header-state.ts`). No new words: the sentence is simply not shown.
+   return (
+     <div className="kp-mine" data-testid="landing-mine">
+       {picks && (noPicks ? (
+-        emptyWallet ? null : <p className="kp-mine__lead">{t.home.picksNone}</p>
++        held || emptyWallet ? null : <p className="kp-mine__lead">{t.home.picksNone}</p>
+       ) : (
+         <div>
+           <p className="kp-mine__eyebrow">{t.home.yourPicks}</p>
+diff --git a/src/components/layout/live-ticker.tsx b/src/components/layout/live-ticker.tsx
+index faf61e729..4be20ebc1 100644
+--- a/src/components/layout/live-ticker.tsx
++++ b/src/components/layout/live-ticker.tsx
+@@ -62,7 +62,8 @@ function Items({ events, prefix, verbs, sides }: { events: TickerEvent[]; prefix
+   return (
+     <>
+       {events.map((ev) => (
+-        <span key={`${prefix}-${ev.id}`} className="inline-flex items-center gap-1.5 shrink-0 font-mono text-[12px] pr-8 whitespace-nowrap">
++        // `ticker-item` / `ticker-sep`: the journey's hooks — it centres the dot between two items (globals.css, ②).
++        <span key={`${prefix}-${ev.id}`} className="ticker-item inline-flex items-center gap-1.5 shrink-0 font-mono text-[12px] pr-8 whitespace-nowrap">
+           {/* A VOID CARRIES NO FIGURE AND NO SIDE — we kept nothing and every stake was
+               refunded, so there is no amount that describes what happened, and no winning
+               side to name. Stated neutrally, never as an error: licence condition 4 / §C4,
+@@ -82,7 +83,7 @@ function Items({ events, prefix, verbs, sides }: { events: TickerEvent[]; prefix
+           {/* Stage 9b — kit <Dot>. `color` rather than `tone="gold"`: the separator is
+               gold-400, one stop lighter than the tone's gold-500, and a consolidation
+               does not get to change a hue on the way past. */}
+-          <Dot color="var(--gold-400)" size={3} className="opacity-40 ml-2" />
++          <Dot color="var(--gold-400)" size={3} className="ticker-sep opacity-40 ml-2" />
+         </span>
+       ))}
+     </>
+@@ -248,12 +249,11 @@ export function LiveTicker({ events }: { events: TickerEvent[] }) {
+           underneath the label. Flex makes the track start wherever the label
+           actually ends, in every locale, with no measurement. The gradient is now
+           solid across the label and fades only in its trailing padding, so nothing
+-          is ever legible beneath the text. */}
+-      <div style={{
+-        flex: "0 0 auto", zIndex: 10,
+-        display: "flex", alignItems: "center", paddingLeft: 16, paddingRight: 24,
+-        background: "linear-gradient(90deg, var(--bg-inset) 0%, var(--bg-inset) 70%, oklch(11% 0.11 268 / 0) 100%)",
+-      }}>
++          is ever legible beneath the text.
++          Its style is `.ticker-label` in globals.css since 2026-10-08, with the same values: the journey's
++          strip lays that trailing padding OVER the run, so the leading edge fades as the end cap does — a
++          rule an inline style would have beaten. */}
++      <div className="ticker-label">
+         <span style={{ display: "inline-flex", alignItems: "center", gap: 6 }}>
+           {/* Stage 9b — kit <Dot pulse>, which IS `.live-dot`: same 6px, same
+               `--live-400`, same 2600ms breathe, and the same gating at all three
+@@ -284,7 +284,8 @@ export function LiveTicker({ events }: { events: TickerEvent[] }) {
+           instrument's is how the next reader "protects" behaviour nothing ever needed. */}
+       {/* ⛔ `overflow` LIVES IN THE STYLESHEET NOW, NOT HERE. An inline style beats any rule, and the
+           reduced-motion branch has to be able to turn this box into a scroller — see `.ticker-viewport`
+-          in globals.css. Everything else stays inline because it is layout this component owns. */}
++          in globals.css. ⚠️ Its layout followed on 2026-10-08 (the 8px of air included): the journey's leading
++          fade moves its `padding-left`, and an inline style would have beaten that rule too. */}
+       {/* ⭐ A TAP ANYWHERE ON THE RUN STOPS IT, OR STARTS IT AGAIN. The strip is 32px tall and the
+           platform's finger floor is 40 (`--tap-min`, Law 9), so the control at the end cannot reach the
+           floor inside the strip — but the whole run can, being the full width. This is the phone's way
+@@ -311,7 +312,6 @@ export function LiveTicker({ events }: { events: TickerEvent[] }) {
+           if (p && (Math.abs(e.clientX - p.x) > 6 || e.currentTarget.scrollLeft !== p.scrollLeft)) return;
+           toggle();
+         }}
+-        style={{ flex: "1 1 auto", minWidth: 0, display: "flex", alignItems: "center", paddingLeft: 8 }}
+       >
+         <div
+           ref={trackRef}
+diff --git a/src/components/markets/market-card.tsx b/src/components/markets/market-card.tsx
+index 5e2357e26..3c7649f0c 100644
+--- a/src/components/markets/market-card.tsx
++++ b/src/components/markets/market-card.tsx
+@@ -389,19 +389,25 @@ export function MarketCard({
+      The name is its own span — the part the gate reads — set inside the dictionary's sentence, so each
+      locale keeps its own word order. Text, never a link: the card is one stretched link already (WP17),
+      and the market page links the source. */
++  /* ⭐ TWO PARTS, AND THE LINE BREAKS ONLY BETWEEN THEM (round 3's tiles 029 059 074 084 097 109, 2026-10-08). As one run
++     of text, Chinese broke it anywhere: at 320 "2026年10月9日 截止 · 结算来 / 源：CoinGecko" split 来源. Each part is now a
++     flex item (`.mcardp-src__seq`, the hub's own idiom beside `.kp-hub__seq`), and the " · " before the source hangs in
++     the gap to its left, so a part that opens a line carries its dot outside the line, where the clip hides it — no
++     line ends on "·" or starts with one. The dot keeps the sentence's own " · ", so a screen reader hears the line as
++     before. */
+   const [settlesPre = "", settlesPost = ""] = t.market.settlesOn.split("{source}");
+   const metaLine = closesOn || sourceName ? (
+-    <>
+-      {closesOn}
+-      {closesOn && sourceName ? " · " : null}
++    <span className="mcardp-src__seq">
++      {closesOn && <span className="mcardp-src__part">{closesOn}</span>}
+       {sourceName && (
+-        <>
++        <span className="mcardp-src__part">
++          {closesOn && <span className="mcardp-src__dot">{" · "}</span>}
+           {settlesPre}
+           <span className="mcardp-srcname" data-market-part="source">{sourceName}</span>
+           {settlesPost}
+-        </>
++        </span>
+       )}
+-    </>
++    </span>
+   ) : null;
+   /* ⭐ WP3 · THE PREDICTOR FLOOR (R7): the featured card — the page's lead market — withholds its count and
+      its crest row below `FEATURED_PREDICTOR_FLOOR` ("2 watabiri" there reads as a dead market). It says so
+@@ -663,7 +669,8 @@ export function MarketCard({
+       )}
+ 
+       <div className="mcardp-meta">
+-        <span data-market-part="pool">{fresh ? t.market.noPoolYet : formatTzs(volume)}</span>
++        {/* `mcardp-nopool`: the words, not a figure — read at 13px on the featured card (globals.css, round 3). */}
++        <span data-market-part="pool" className={fresh ? "mcardp-nopool" : undefined}>{fresh ? t.market.noPoolYet : formatTzs(volume)}</span>
+         {comments != null && comments > 0 && (
+           <>
+             <span className="dot" />
+diff --git a/src/lib/server/landing-picks.ts b/src/lib/server/landing-picks.ts
+index 0062cb7f4..97b21ec25 100644
+--- a/src/lib/server/landing-picks.ts
++++ b/src/lib/server/landing-picks.ts
+@@ -52,6 +52,22 @@ export function tallyPicks(rows: readonly PickRow[], markets: ReadonlyMap<string
+   return { open, awaiting, paidThisWeekTzs: paid };
+ }
+ 
++/**
++ * True when the platform's "paid out to players" figure is provably BEHIND this reader's own read — below what they
++ * alone were paid this week. Pure.
++ *
++ * ⭐ WHY (round 3, 2026-10-08): one screen said "TZS 48,208 paid to you this week" over "TZS 0 paid out to players"
++ * (tiles 133 135 137, a seeded demo store). The platform figure is memoised for a minute (`getPlatformStats`) and the
++ * picks are read per request, so after a player's first win the two can disagree in production too, while that
++ * player's payouts are most of what the platform has ever paid. The page then reads the total again past the memo
++ * (`readPaidOutTzs`); a total STILL behind means the ledger and the positions disagree, and the slot is withheld
++ * rather than contradict the reader's own figure (B-1: a figure known to be incomplete is not printed). A failed read
++ * on either side decides nothing.
++ */
++export function paidOutBehind(platformPaidOutTzs: number | null, picks: LandingPicks | null): boolean {
++  return platformPaidOutTzs !== null && picks !== null && picks.paidThisWeekTzs > platformPaidOutTzs;
++}
++
+ export async function landingPicks(userId: string, nowMs: number): Promise<LandingPicks> {
+   const positions = await listPositionsForUser(userId, 5_000, "MARKET");
+   const weekStart = eatWeekStartMs(nowMs);
+diff --git a/src/lib/server/platform-stats.ts b/src/lib/server/platform-stats.ts
+index ea0a087cd..01cd172b0 100644
+--- a/src/lib/server/platform-stats.ts
++++ b/src/lib/server/platform-stats.ts
+@@ -183,9 +183,22 @@ export async function getPlatformStats(): Promise<PlatformStats> {
+   // plausible 50, and the card gates on the pool rather than on a guess. null now means UNKNOWN
+   // and the hero withholds the slot; a real zero still prints, because a platform that has paid
+   // out nothing yet should say so.
+-  const paidOutTzs = await Promise.resolve(db.txn.sumConfirmedByTypes(["BET_PAYOUT", "CASHOUT"]))
+-    .catch(() => null);
++  const paidOutTzs = await readPaidOutTzs();
+   const value: PlatformStats = { settledCount: resolved.length, recentSettlements: settlements, paidOutTzs };
+   globalThis.__50PICK_PLATFORM_STATS = { at: now, value };
+   return value;
+ }
++
++/**
++ * Σ CONFIRMED payouts + cash-outs, read NOW — the memo's own read above, and its one home.
++ *
++ * ⭐ EXPORTED FOR ONE CASE (2026-10-08, round 3): the landing reads it again, past the memo, only when the cached
++ * figure is below what the signed-in reader alone was paid this week (`paidOutBehind`, landing-picks.ts). Every win
++ * and cash-out writes its CONFIRMED txn with the position (market-service.ts: inside the settlement's money
++ * transaction; after the cash-out's credit), so a fresh total is never below one player's own payouts — the memo's
++ * age (`TTL_MS`) is the gap, and a real player can meet it only while their payouts are most of what the platform
++ * has paid. null = the read failed, never a zero.
++ */
++export async function readPaidOutTzs(): Promise<number | null> {
++  return Promise.resolve(db.txn.sumConfirmedByTypes(["BET_PAYOUT", "CASHOUT"])).catch(() => null);
++}

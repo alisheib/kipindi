@@ -1,0 +1,12 @@
+  ✓ CONTROL  the unmutated tree is GREEN — a red below is caused by the mutation
+
+  ✓ RED  wagering-credits-both-sides — ⭐ THE EXPLOIT, verbatim as it stood at 8c06517f — every stake accrues, so a 25,000/25,000 hedge on ONE market clears a 10,000 grant's 5x requirement for 3,250 of fee. ⛔ RE-POINTED: the `from` quoted the pre-house line and had been resolving ZERO times
+  ✓ RED  cashout-keeps-the-turnover — ⭐ B1b, verbatim — a FREE cancellation returns the whole stake and keeps its wagering credit, so bet→cancel→repeat clears a bonus at zero cost
+  ✓ RED  one-account-one-side-guard-restored — the 2026-08-04 refusal comes back — the bet half of the rule silently reverts and only the wagering half ships
+  ✓ RED  wagering-suppressed-by-ANY-prior-position — ⚠️ THE OVER-CORRECTION — turnover stops the moment a player holds anything on the market, so an honest player topping up ONE side can never clear a bonus they earned
+  ✓ RED  opposite-predicate-ignores-position-status — ⚠️ a CLOSED opposite leg keeps suppressing turnover forever, so cancelling the hedge (the documented escape hatch) never restores credit — the rule becomes a trap
+  ✓ RED  opposite-predicate-inverted — ⚠️ the sides swap, so the FIRST side of a market accrues nothing and only the hedge does — the exact inverse of the rule, and green on any check that only counts 'some turnover was suppressed'
+
+tree restored · 6/7 defects caught
+  ✗ house-position-counts-as-the-holders-hedge — GUARD DID NOT CATCH IT (⛔ THE DEFECT FIXED 2026-09-21, planted back: drop `p.houseBotId == null` and an OPEN house position on the other side makes `opposite` truthy for the holder's own unmarked real-money stake, so their bonus wagering accrues ZERO — while the documented escape (close the opposite leg) is refused for a house leg, and a later void still REVERSES the turnover that never accrued)
+EXIT=1

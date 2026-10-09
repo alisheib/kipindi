@@ -1,0 +1,23 @@
+Vodacom S7 WP0: red:ops-provision-staff's six plants declared - main has read 66 against test:red-anchors' ceiling of 65 since 4bd4c728; with red:ticker-honesty's cases declared, 64 against 64
+
+red:ops-provision-staff plants each defect in a COPY of scripts/ops-provision-staff.mts outside the repo and never
+rewrites the script itself, but its red mode writes those copies, and §4's in-process class admits no file-writing
+call - so it counted among the harnesses whose anchors nobody audits, and put main at 66 against the ceiling of 65
+when it landed (4bd4c728, through the ops-provision-qa merge). S7 WP0 lowers the ceiling to 64 by declaring
+red:ticker-honesty; on main as it stands (f89dcdb9) that read 65 against 64. Declaring is how a file-writing harness
+leaves the count, as chat-safety and ticker-honesty did; the ceiling is not raised.
+
+- scripts/anchors/ops-provision-staff.anchors.mjs (new): the six plants as data - name, file, expect, from, to - the
+  strings byte for byte. Proven: the original inline plants (taken from HEAD and evaluated as written) and the
+  declared from/to turn the real script into the same text, plant by plant, with the same names and expected claims.
+- scripts/ops-provision-staff.test.mts: imports them; each still replaces its anchor's first occurrence (now with a
+  replacer function, so a `$` in a plant can never be read as a pattern).
+- scripts/red-anchors.test.mts: the ceiling's note names it, re-derived on main f89dcdb9: 64 against 64.
+
+Proof on OMEGA-COMPILE01 (2026-10-08), on S7 WP0 rebased onto main f89dcdb9: red:ops-provision-staff 10/10 claims and
+6 of 6 plants held, the same as before the move; test:ops-provision-staff 10/10; test:red-anchors 4.1 and 4.2 pass
+(64 vs 64) and every declared ops anchor resolves exactly once. Its two remaining failures are other lanes' anchors
+that no longer resolve, on main too (bar-geometry's in query-bar.tsx, removed by be4fb670; updown-handover's in
+updown-card-phase.ts, removed by a7da5f89).
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>

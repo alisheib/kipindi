@@ -1,0 +1,45 @@
+qa:bar-geometry repaired (R5-F): it guards again — painted boxes, an empty book or a short page said NOT MEASURED, never a pass or a false defect
+
+The drive read RED on main itself: 88 failures on a6331ca1, 89 on 90cb52ea, 92 on 88ee1a42. Its red twin refused to
+run while it was red, so neither proved anything. Every line classified; none is something a person would see.
+
+- "NO [data-filter-rail]", 63 lines (7 routes × 3 widths × 3 locales): not stale. Every route still carries its bar,
+  and each withholds it on an empty book by design (§A5; all seven guards date from 2026-09-08). The lock turn ran on
+  an unseeded in-memory store, and `fixture:player` — built for exactly this — had never run on OMEGA.
+- "OVERLAP", 14 lines, all /markets 360: since U4 (2c9380e00) the phone bar is one grid line with a masked,
+  sideways-scrolling lens strip. The "overlaps" were the parts of chips past the strip's edge, clipped by the strip and
+  neither painted nor tappable there. The drive compared layout boxes; its exemption covered only viewport clipping.
+- "THE BAR DID NOT STICK" / "ANOTHER STICKY SURFACE … header.sticky.top-0", 11 (main) and 15 (tip): on the thin store
+  scrollTo(1200) stopped at the page's end (559). Each bar's parent had ended and pushed it under the header, which is
+  correct sticky behaviour. The probe (M15x) reproduced all 18 positions on both trees. The tip's 4 extra lines are
+  round 4's tighter bands (the bar 35px higher on /results), not a regression.
+
+The repair:
+- new scripts/live/bar-geometry-rules.mjs, shared by the drive, the red twin and the suite:
+  - overlap is measured on PAINTED boxes, each control cut by every ancestor that clips it;
+  - a page with rows but no bar fails, and a page with no rows is BAR NOT MEASURED;
+  - the stick is measured by scrolling inside the bar's own range (up to 1200px past its place), where the bar must sit
+    on its `top` within 2px; rows below its parent fail, and a page too short is STICK NOT MEASURED; a declared
+    surface measured nowhere makes the run SKIPPED (exit 3).
+- The drive has 13 surfaces: /wallet/receipts added (012cccbc9's sticky bar no gate measured), and
+  /positions/performance declared withheld (it needs two settled products). It signs in at `/auth/demo?receipts=1`.
+- red:bar-geometry:
+  - its precondition checks every route × width × locale under proof (it checked /markets only at 1280, while case 4
+    ran at 360), requires green AND measured, and matches `expect` on ✗ lines only ("stick" was also inside "Two
+    sticky surfaces");
+  - sort-summary-unbound is re-pointed to /watchlist at 360 (since U4 it could not bite on /markets).
+- The anchors resolve once on main and the tip.
+
+The lock turn runs `fixture:player`, the drive and its red twin on ONE fresh server per tree (the fixture lives in that
+server's memory), with main as the control.
+
+Guard: test:visual-pass-r5f, 81 checks. It replays the logged boxes and the 18 stick positions through the old and new
+rules, keeps every plant red, and runs the in-browser probes on a small fake DOM. Mutation proof: 22/22 caught, files
+byte-identical.
+
+Suites, all exit 0 on the R5-F tree: red-anchors 5026, decomment, filter-language 303, live-target-safe, hooks-order,
+ui-consistency, i18n, journey-shell 433, simple-journey-flag, eyebrow-roles, type-scale, spacing-scale, design-frozen,
+css-vars-defined and stacking. On the merged branch: visual-pass-r5f, red-anchors, decomment, filter-language and
+live-target-safe exit 0, and node --check passes on all four scripts.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>

@@ -1,0 +1,11 @@
+﻿
+[client-graph-safe] §0 CONTROL · the walker works, in BOTH directions
+  ✓ §0 POSITIVE · config-store.ts REACHES prisma (it imports it directly) walked 2
+  ✓ §0 NEGATIVE · a pure client-safe module does NOT clean
+  ✓ §0 POSITIVE · the server config module still reaches it, so the target is live walked 4
+
+[client-graph-safe] §1 client-reachable modules stay clear of the Prisma client
+  ✓ §1 ratchet · every pinned module exists and was walked 50 of 50
+  ✓ §1 no pinned client-reachable module reaches the Prisma client
+
+ALL PASS — client-graph-safe: 5 passed, 0 failed

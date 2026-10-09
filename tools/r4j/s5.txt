@@ -1,0 +1,243 @@
+ | BLOCKED | root-mid-load | sw | 360 | hyd=undefined | title=undefined | h1=undefined | url=undefined
+   probe.kind=undefined times=undefined at=undefined
+   reason=no mid-load frame: the content arrived 35809 ms in, before any frame showed a skeleton or the header over an empty page (timings {"commit":255,"css":35809,"content":35809})
+275 | tile | root-loaded | sw | 360 | hyd=true | title="50pick — Predict events. Not chance." | h1="NDIO au HAPANA?" | url=/
+   probe.kind=undefined times={"commit":255,"css":35809,"content":35809,"loaded":36867} at=undefined
+   header={"j":true,"cap":"Salio TZS 100,000","gold":true,"rail":true,"desk":false,"lit":["/=page","/=page"]}
+276 | tile | root-tap-mid | sw | 360 | hyd=true | title="" | h1=null | url=/
+   probe.kind=the target’s skeleton times={"pending":55,"skeleton":2352} at={"path":"/","readyState":"complete","cssReady":true,"header":true,"skeleton":1,"pending":1,"content":false} before={"path":"/account","readyState":"complete","cssReady":true,"header":true,"skeleton":0,"pending":0,"content":false}
+   header={"j":true,"cap":"Salio TZS 100,000","gold":true,"rail":true,"desk":false,"lit":["/=page","/=page"]}
+277 | tile | positions-mid-load | sw | 360 | hyd=false | title="Tiketi zangu · 50pick" | h1="Tiketi zangu" | url=/positions
+   probe.kind=skeleton times={"commit":174,"css":35799,"skeleton":35799} at={"path":"/positions","readyState":"interactive","cssReady":true,"header":true,"skeleton":1,"pending":0,"content":false}
+   header={"j":true,"cap":"Salio TZS 100,000","gold":true,"rail":false,"desk":false,"lit":["/positions=page","/positions=page"]}
+278 | tile | positions-loaded | sw | 360 | hyd=true | title="Tiketi zangu · 50pick" | h1="Tiketi zangu" | url=/positions
+   probe.kind=undefined times={"commit":174,"css":35799,"skeleton":35799,"loaded":36814} at=undefined
+   header={"j":true,"cap":"Salio TZS 100,000","gold":true,"rail":true,"desk":false,"lit":["/positions=page","/positions=page"]}
+279 | tile | positions-tap-mid | sw | 360 | hyd=true | title="" | h1=null | url=/positions
+   probe.kind=the target’s skeleton times={"pending":58,"skeleton":2485} at={"path":"/positions","readyState":"complete","cssReady":true,"header":true,"skeleton":1,"pending":1,"content":false} before={"path":"/","readyState":"complete","cssReady":true,"header":true,"skeleton":0,"pending":0,"content":false}
+   header={"j":true,"cap":"Salio TZS 100,000","gold":true,"rail":true,"desk":false,"lit":["/positions=page","/positions=page"]}
+280 | tile | account-mid-load | sw | 360 | hyd=false | title="Akaunti · 50pick" | h1="Akaunti" | url=/account
+   probe.kind=skeleton times={"commit":216,"css":35837,"skeleton":35837} at={"path":"/account","readyState":"interactive","cssReady":true,"header":true,"skeleton":1,"pending":0,"content":false}
+   header={"j":true,"cap":"Salio TZS 100,000","gold":true,"rail":false,"desk":false,"lit":["/account=page","/account=page"]}
+281 | tile | account-loaded | sw | 360 | hyd=true | title="Akaunti · 50pick" | h1="Akaunti" | url=/account
+   probe.kind=undefined times={"commit":216,"css":35837,"skeleton":35837,"loaded":36957} at=undefined
+   header={"j":true,"cap":"Salio TZS 100,000","gold":true,"rail":true,"desk":false,"lit":["/account=page","/account=page"]}
+282 | tile | account-tap-mid | sw | 360 | hyd=true | title="" | h1=null | url=/account
+   probe.kind=the target’s skeleton times={"pending":68,"skeleton":2404} at={"path":"/account","readyState":"complete","cssReady":true,"header":true,"skeleton":1,"pending":1,"content":false} before={"path":"/","readyState":"complete","cssReady":true,"header":true,"skeleton":0,"pending":0,"content":false}
+   header={"j":true,"cap":"Salio TZS 100,000","gold":true,"rail":true,"desk":false,"lit":["/account=page","/account=page"]}
+ | BLOCKED | root-mid-load | sw | 390 | hyd=undefined | title=undefined | h1=undefined | url=undefined
+   probe.kind=undefined times=undefined at=undefined
+   reason=no mid-load frame: the content arrived 35918 ms in, before any frame showed a skeleton or the header over an empty page (timings {"commit":274,"css":35918,"content":35918})
+283 | tile | root-loaded | sw | 390 | hyd=true | title="50pick — Predict events. Not chance." | h1="NDIO au HAPANA?" | url=/
+   probe.kind=undefined times={"commit":274,"css":35918,"content":35918,"loaded":36954} at=undefined
+   header={"j":true,"cap":"Salio TZS 100,000","gold":true,"rail":true,"desk":false,"lit":["/=page","/=page"]}
+284 | tile | root-tap-mid | sw | 390 | hyd=true | title="" | h1=null | url=/
+   probe.kind=the target’s skeleton times={"pending":65,"skeleton":2309} at={"path":"/","readyState":"complete","cssReady":true,"header":true,"skeleton":1,"pending":1,"content":false} before={"path":"/account","readyState":"complete","cssReady":true,"header":true,"skeleton":0,"pending":0,"content":false}
+   header={"j":true,"cap":"Salio TZS 100,000","gold":true,"rail":true,"desk":false,"lit":["/=page","/=page"]}
+ | BLOCKED | positions-mid-load | sw | 390 | hyd=undefined | title=undefined | h1=undefined | url=undefined
+   probe.kind=undefined times=undefined at=undefined
+   reason=no mid-load frame: the content arrived 35793 ms in, before any frame showed a skeleton or the header over an empty page (timings {"commit":179,"css":35793,"content":35793})
+285 | tile | positions-loaded | sw | 390 | hyd=true | title="Tiketi zangu · 50pick" | h1="Tiketi zangu" | url=/positions
+   probe.kind=undefined times={"commit":179,"css":35793,"content":35793,"loaded":36807} at=undefined
+   header={"j":true,"cap":"Salio TZS 100,000","gold":true,"rail":true,"desk":false,"lit":["/positions=page","/positions=page"]}
+286 | tile | positions-tap-mid | sw | 390 | hyd=true | title="" | h1=null | url=/positions
+   probe.kind=the target’s skeleton times={"pending":41,"skeleton":2460} at={"path":"/positions","readyState":"complete","cssReady":true,"header":true,"skeleton":1,"pending":1,"content":false} before={"path":"/","readyState":"complete","cssReady":true,"header":true,"skeleton":0,"pending":0,"content":false}
+   header={"j":true,"cap":"Salio TZS 100,000","gold":true,"rail":true,"desk":false,"lit":["/positions=page","/positions=page"]}
+287 | tile | account-mid-load | sw | 390 | hyd=false | title="Akaunti · 50pick" | h1="Akaunti" | url=/account
+   probe.kind=skeleton times={"commit":219,"css":35800,"skeleton":35800} at={"path":"/account","readyState":"loading","cssReady":true,"header":true,"skeleton":1,"pending":0,"content":false}
+   header={"j":true,"cap":"Salio TZS 100,000","gold":true,"rail":false,"desk":false,"lit":["/account=page","/account=page"]}
+288 | tile | account-loaded | sw | 390 | hyd=true | title="Akaunti · 50pick" | h1="Akaunti" | url=/account
+   probe.kind=undefined times={"commit":219,"css":35800,"skeleton":35800,"loaded":36996} at=undefined
+   header={"j":true,"cap":"Salio TZS 100,000","gold":true,"rail":true,"desk":false,"lit":["/account=page","/account=page"]}
+289 | tile | account-tap-mid | sw | 390 | hyd=true | title="" | h1=null | url=/account
+   probe.kind=the target’s skeleton times={"pending":73,"skeleton":2415} at={"path":"/account","readyState":"complete","cssReady":true,"header":true,"skeleton":1,"pending":1,"content":false} before={"path":"/","readyState":"complete","cssReady":true,"header":true,"skeleton":0,"pending":0,"content":false}
+   header={"j":true,"cap":"Salio TZS 100,000","gold":true,"rail":true,"desk":false,"lit":["/account=page","/account=page"]}
+290 | tile | root-mid-load | sw | 1280 | hyd=false | title="50pick — Predict events. Not chance." | h1="NDIO au HAPANA?" | url=/
+   probe.kind=skeleton times={"commit":225,"css":35811,"skeleton":35811} at={"path":"/","readyState":"loading","cssReady":true,"header":true,"skeleton":1,"pending":0,"content":false}
+   header={"j":true,"cap":"Salio TZS 100,000","gold":true,"rail":false,"desk":false,"lit":["/=page","/=page"]}
+291 | tile | root-loaded | sw | 1280 | hyd=true | title="50pick — Predict events. Not chance." | h1="NDIO au HAPANA?" | url=/
+   probe.kind=undefined times={"commit":225,"css":35811,"skeleton":35811,"loaded":37047} at=undefined
+   header={"j":true,"cap":"Salio TZS 100,000","gold":true,"rail":false,"desk":true,"lit":["/=page","/=page"]}
+292 | tile | root-tap-mid | sw | 1280 | hyd=true | title="" | h1=null | url=/
+   probe.kind=the target’s skeleton times={"pending":43,"skeleton":2327} at={"path":"/","readyState":"complete","cssReady":true,"header":true,"skeleton":1,"pending":1,"content":false} before={"path":"/account","readyState":"complete","cssReady":true,"header":true,"skeleton":0,"pending":0,"content":false}
+   header={"j":true,"cap":"Salio TZS 100,000","gold":true,"rail":false,"desk":true,"lit":["/=page","/=page"]}
+293 | tile | positions-mid-load | sw | 1280 | hyd=false | title="Tiketi zangu · 50pick" | h1="Tiketi zangu" | url=/positions
+   probe.kind=skeleton times={"commit":175,"css":35752,"skeleton":35752} at={"path":"/positions","readyState":"interactive","cssReady":true,"header":true,"skeleton":1,"pending":0,"content":false}
+   header={"j":true,"cap":"Salio TZS 100,000","gold":true,"rail":false,"desk":false,"lit":["/positions=page","/positions=page"]}
+294 | tile | positions-loaded | sw | 1280 | hyd=true | title="Tiketi zangu · 50pick" | h1="Tiketi zangu" | url=/positions
+   probe.kind=undefined times={"commit":175,"css":35752,"skeleton":35752,"loaded":36802} at=undefined
+   header={"j":true,"cap":"Salio TZS 100,000","gold":true,"rail":false,"desk":true,"lit":["/positions=page","/positions=page"]}
+295 | tile | positions-tap-mid | sw | 1280 | hyd=true | title="" | h1=null | url=/positions
+   probe.kind=the target’s skeleton times={"pending":67,"skeleton":2483} at={"path":"/positions","readyState":"complete","cssReady":true,"header":true,"skeleton":1,"pending":1,"content":false} before={"path":"/","readyState":"complete","cssReady":true,"header":true,"skeleton":0,"pending":0,"content":false}
+   header={"j":true,"cap":"Salio TZS 100,000","gold":true,"rail":false,"desk":true,"lit":["/positions=page","/positions=page"]}
+296 | tile | account-mid-load | sw | 1280 | hyd=false | title="Akaunti · 50pick" | h1="Akaunti" | url=/account
+   probe.kind=skeleton times={"commit":203,"css":35831,"skeleton":35831} at={"path":"/account","readyState":"interactive","cssReady":true,"header":true,"skeleton":1,"pending":0,"content":false}
+   header={"j":true,"cap":"Salio TZS 100,000","gold":true,"rail":false,"desk":false,"lit":["/account=page","/account=page"]}
+297 | tile | account-loaded | sw | 1280 | hyd=true | title="Akaunti · 50pick" | h1="Akaunti" | url=/account
+   probe.kind=undefined times={"commit":203,"css":35831,"skeleton":35831,"loaded":36939} at=undefined
+   header={"j":true,"cap":"Salio TZS 100,000","gold":true,"rail":false,"desk":true,"lit":["/account=page","/account=page"]}
+298 | tile | account-tap-mid | sw | 1280 | hyd=true | title="" | h1=null | url=/account
+   probe.kind=the target’s skeleton times={"pending":65,"skeleton":2431} at={"path":"/account","readyState":"complete","cssReady":true,"header":true,"skeleton":1,"pending":1,"content":false} before={"path":"/","readyState":"complete","cssReady":true,"header":true,"skeleton":0,"pending":0,"content":false}
+   header={"j":true,"cap":"Salio TZS 100,000","gold":true,"rail":false,"desk":true,"lit":["/account=page","/account=page"]}
+299 | tile | root-mid-load | en | 360 | hyd=false | title="50pick — Predict events. Not chance." | h1="YES or NO?" | url=/
+   probe.kind=skeleton times={"commit":248,"css":35852,"skeleton":35852} at={"path":"/","readyState":"interactive","cssReady":true,"header":true,"skeleton":1,"pending":0,"content":false}
+   header={"j":true,"cap":"Balance TZS 100,000","gold":true,"rail":false,"desk":false,"lit":["/=page","/=page"]}
+300 | tile | root-loaded | en | 360 | hyd=true | title="50pick — Predict events. Not chance." | h1="YES or NO?" | url=/
+   probe.kind=undefined times={"commit":248,"css":35852,"skeleton":35852,"loaded":36965} at=undefined
+   header={"j":true,"cap":"Balance TZS 100,000","gold":true,"rail":true,"desk":false,"lit":["/=page","/=page"]}
+301 | tile | root-tap-mid | en | 360 | hyd=true | title="" | h1=null | url=/
+   probe.kind=the target’s skeleton times={"pending":67,"skeleton":2303} at={"path":"/","readyState":"complete","cssReady":true,"header":true,"skeleton":1,"pending":1,"content":false} before={"path":"/account","readyState":"complete","cssReady":true,"header":true,"skeleton":0,"pending":0,"content":false}
+   header={"j":true,"cap":"Balance TZS 100,000","gold":true,"rail":true,"desk":false,"lit":["/=page","/=page"]}
+ | BLOCKED | positions-mid-load | en | 360 | hyd=undefined | title=undefined | h1=undefined | url=undefined
+   probe.kind=undefined times=undefined at=undefined
+   reason=no mid-load frame: the content arrived 35792 ms in, before any frame showed a skeleton or the header over an empty page (timings {"commit":198,"css":35792,"content":35792})
+302 | tile | positions-loaded | en | 360 | hyd=true | title="My tickets · 50pick" | h1="My tickets" | url=/positions
+   probe.kind=undefined times={"commit":198,"css":35792,"content":35792,"loaded":36794} at=undefined
+   header={"j":true,"cap":"Balance TZS 100,000","gold":true,"rail":true,"desk":false,"lit":["/positions=page","/positions=page"]}
+303 | tile | positions-tap-mid | en | 360 | hyd=true | title="" | h1=null | url=/positions
+   probe.kind=the target’s skeleton times={"pending":64,"skeleton":2472} at={"path":"/positions","readyState":"complete","cssReady":true,"header":true,"skeleton":1,"pending":1,"content":false} before={"path":"/","readyState":"complete","cssReady":true,"header":true,"skeleton":0,"pending":0,"content":false}
+   header={"j":true,"cap":"Balance TZS 100,000","gold":true,"rail":true,"desk":false,"lit":["/positions=page","/positions=page"]}
+304 | tile | account-mid-load | en | 360 | hyd=false | title="Account · 50pick" | h1="Account" | url=/account
+   probe.kind=skeleton times={"commit":219,"css":35802,"skeleton":35802} at={"path":"/account","readyState":"loading","cssReady":true,"header":true,"skeleton":1,"pending":0,"content":false}
+   header={"j":true,"cap":"Balance TZS 100,000","gold":true,"rail":false,"desk":false,"lit":["/account=page","/account=page"]}
+305 | tile | account-loaded | en | 360 | hyd=true | title="Account · 50pick" | h1="Account" | url=/account
+   probe.kind=undefined times={"commit":219,"css":35802,"skeleton":35802,"loaded":36870} at=undefined
+   header={"j":true,"cap":"Balance TZS 100,000","gold":true,"rail":true,"desk":false,"lit":["/account=page","/account=page"]}
+306 | tile | account-tap-mid | en | 360 | hyd=true | title="" | h1=null | url=/account
+   probe.kind=the target’s skeleton times={"pending":41,"skeleton":2394} at={"path":"/account","readyState":"complete","cssReady":true,"header":true,"skeleton":1,"pending":1,"content":false} before={"path":"/","readyState":"complete","cssReady":true,"header":true,"skeleton":0,"pending":0,"content":false}
+   header={"j":true,"cap":"Balance TZS 100,000","gold":true,"rail":true,"desk":false,"lit":["/account=page","/account=page"]}
+ | BLOCKED | root-mid-load | en | 390 | hyd=undefined | title=undefined | h1=undefined | url=undefined
+   probe.kind=undefined times=undefined at=undefined
+   reason=no mid-load frame: the content arrived 35892 ms in, before any frame showed a skeleton or the header over an empty page (timings {"commit":239,"css":35892,"content":35892})
+307 | tile | root-loaded | en | 390 | hyd=true | title="50pick — Predict events. Not chance." | h1="YES or NO?" | url=/
+   probe.kind=undefined times={"commit":239,"css":35892,"content":35892,"loaded":37099} at=undefined
+   header={"j":true,"cap":"Balance TZS 100,000","gold":true,"rail":true,"desk":false,"lit":["/=page","/=page"]}
+308 | tile | root-tap-mid | en | 390 | hyd=true | title="" | h1=null | url=/
+   probe.kind=the target’s skeleton times={"pending":59,"skeleton":2290} at={"path":"/","readyState":"complete","cssReady":true,"header":true,"skeleton":1,"pending":1,"content":false} before={"path":"/account","readyState":"complete","cssReady":true,"header":true,"skeleton":0,"pending":0,"content":false}
+   header={"j":true,"cap":"Balance TZS 100,000","gold":true,"rail":true,"desk":false,"lit":["/=page","/=page"]}
+ | BLOCKED | positions-mid-load | en | 390 | hyd=undefined | title=undefined | h1=undefined | url=undefined
+   probe.kind=undefined times=undefined at=undefined
+   reason=no mid-load frame: the content arrived 35797 ms in, before any frame showed a skeleton or the header over an empty page (timings {"commit":194,"css":35797,"content":35797})
+309 | tile | positions-loaded | en | 390 | hyd=true | title="My tickets · 50pick" | h1="My tickets" | url=/positions
+   probe.kind=undefined times={"commit":194,"css":35797,"content":35797,"loaded":36766} at=undefined
+   header={"j":true,"cap":"Balance TZS 100,000","gold":true,"rail":true,"desk":false,"lit":["/positions=page","/positions=page"]}
+310 | tile | positions-tap-mid | en | 390 | hyd=true | title="" | h1=null | url=/positions
+   probe.kind=the target’s skeleton times={"pending":50,"skeleton":2508} at={"path":"/positions","readyState":"complete","cssReady":true,"header":true,"skeleton":1,"pending":1,"content":false} before={"path":"/","readyState":"complete","cssReady":true,"header":true,"skeleton":0,"pending":0,"content":false}
+   header={"j":true,"cap":"Balance TZS 100,000","gold":true,"rail":true,"desk":false,"lit":["/positions=page","/positions=page"]}
+311 | tile | account-mid-load | en | 390 | hyd=false | title="Account · 50pick" | h1="Account" | url=/account
+   probe.kind=skeleton times={"commit":210,"css":35753,"skeleton":35753} at={"path":"/account","readyState":"loading","cssReady":true,"header":true,"skeleton":1,"pending":0,"content":false}
+   header={"j":true,"cap":"Balance TZS 100,000","gold":true,"rail":false,"desk":false,"lit":["/account=page","/account=page"]}
+312 | tile | account-loaded | en | 390 | hyd=true | title="Account · 50pick" | h1="Account" | url=/account
+   probe.kind=undefined times={"commit":210,"css":35753,"skeleton":35753,"loaded":36817} at=undefined
+   header={"j":true,"cap":"Balance TZS 100,000","gold":true,"rail":true,"desk":false,"lit":["/account=page","/account=page"]}
+313 | tile | account-tap-mid | en | 390 | hyd=true | title="" | h1=null | url=/account
+   probe.kind=the target’s skeleton times={"pending":43,"skeleton":2412} at={"path":"/account","readyState":"complete","cssReady":true,"header":true,"skeleton":1,"pending":1,"content":false} before={"path":"/","readyState":"complete","cssReady":true,"header":true,"skeleton":0,"pending":0,"content":false}
+   header={"j":true,"cap":"Balance TZS 100,000","gold":true,"rail":true,"desk":false,"lit":["/account=page","/account=page"]}
+ | BLOCKED | root-mid-load | en | 1280 | hyd=undefined | title=undefined | h1=undefined | url=undefined
+   probe.kind=undefined times=undefined at=undefined
+   reason=no mid-load frame: the content arrived 35854 ms in, before any frame showed a skeleton or the header over an empty page (timings {"commit":213,"css":35854,"content":35854})
+314 | tile | root-loaded | en | 1280 | hyd=true | title="50pick — Predict events. Not chance." | h1="YES or NO?" | url=/
+   probe.kind=undefined times={"commit":213,"css":35854,"content":35854,"loaded":36865} at=undefined
+   header={"j":true,"cap":"Balance TZS 100,000","gold":true,"rail":false,"desk":true,"lit":["/=page","/=page"]}
+315 | tile | root-tap-mid | en | 1280 | hyd=true | title="" | h1=null | url=/
+   probe.kind=the target’s skeleton times={"pending":50,"skeleton":2320} at={"path":"/","readyState":"complete","cssReady":true,"header":true,"skeleton":1,"pending":1,"content":false} before={"path":"/account","readyState":"complete","cssReady":true,"header":true,"skeleton":0,"pending":0,"content":false}
+   header={"j":true,"cap":"Balance TZS 100,000","gold":true,"rail":false,"desk":true,"lit":["/=page","/=page"]}
+ | BLOCKED | positions-mid-load | en | 1280 | hyd=undefined | title=undefined | h1=undefined | url=undefined
+   probe.kind=undefined times=undefined at=undefined
+   reason=no mid-load frame: the content arrived 35786 ms in, before any frame showed a skeleton or the header over an empty page (timings {"commit":178,"css":35786,"content":35786})
+316 | tile | positions-loaded | en | 1280 | hyd=true | title="My tickets · 50pick" | h1="My tickets" | url=/positions
+   probe.kind=undefined times={"commit":178,"css":35786,"content":35786,"loaded":36753} at=undefined
+   header={"j":true,"cap":"Balance TZS 100,000","gold":true,"rail":false,"desk":true,"lit":["/positions=page","/positions=page"]}
+317 | tile | positions-tap-mid | en | 1280 | hyd=true | title="" | h1=null | url=/positions
+   probe.kind=the target’s skeleton times={"pending":72,"skeleton":2477} at={"path":"/positions","readyState":"complete","cssReady":true,"header":true,"skeleton":1,"pending":1,"content":false} before={"path":"/","readyState":"complete","cssReady":true,"header":true,"skeleton":0,"pending":0,"content":false}
+   header={"j":true,"cap":"Balance TZS 100,000","gold":true,"rail":false,"desk":true,"lit":["/positions=page","/positions=page"]}
+318 | tile | account-mid-load | en | 1280 | hyd=false | title="Account · 50pick" | h1="Account" | url=/account
+   probe.kind=skeleton times={"commit":221,"css":35899,"skeleton":35899} at={"path":"/account","readyState":"interactive","cssReady":true,"header":true,"skeleton":1,"pending":0,"content":false}
+   header={"j":true,"cap":"Balance TZS 100,000","gold":true,"rail":false,"desk":false,"lit":["/account=page","/account=page"]}
+319 | tile | account-loaded | en | 1280 | hyd=true | title="Account · 50pick" | h1="Account" | url=/account
+   probe.kind=undefined times={"commit":221,"css":35899,"skeleton":35899,"loaded":36994} at=undefined
+   header={"j":true,"cap":"Balance TZS 100,000","gold":true,"rail":false,"desk":true,"lit":["/account=page","/account=page"]}
+320 | tile | account-tap-mid | en | 1280 | hyd=true | title="" | h1=null | url=/account
+   probe.kind=the target’s skeleton times={"pending":58,"skeleton":2352} at={"path":"/account","readyState":"complete","cssReady":true,"header":true,"skeleton":1,"pending":1,"content":false} before={"path":"/","readyState":"complete","cssReady":true,"header":true,"skeleton":0,"pending":0,"content":false}
+   header={"j":true,"cap":"Balance TZS 100,000","gold":true,"rail":false,"desk":true,"lit":["/account=page","/account=page"]}
+ | BLOCKED | root-mid-load | zh | 360 | hyd=undefined | title=undefined | h1=undefined | url=undefined
+   probe.kind=undefined times=undefined at=undefined
+   reason=no mid-load frame: the content arrived 35895 ms in, before any frame showed a skeleton or the header over an empty page (timings {"commit":238,"css":35895,"content":35895})
+321 | tile | root-loaded | zh | 360 | hyd=true | title="50pick — Predict events. Not chance." | h1="是还是否？" | url=/
+   probe.kind=undefined times={"commit":238,"css":35895,"content":35895,"loaded":36987} at=undefined
+   header={"j":true,"cap":"余额 TZS 100,000","gold":true,"rail":true,"desk":false,"lit":["/=page","/=page"]}
+322 | tile | root-tap-mid | zh | 360 | hyd=true | title="" | h1=null | url=/
+   probe.kind=the target’s skeleton times={"pending":63,"skeleton":2308} at={"path":"/","readyState":"complete","cssReady":true,"header":true,"skeleton":1,"pending":1,"content":false} before={"path":"/account","readyState":"complete","cssReady":true,"header":true,"skeleton":0,"pending":0,"content":false}
+   header={"j":true,"cap":"余额 TZS 100,000","gold":true,"rail":true,"desk":false,"lit":["/=page","/=page"]}
+323 | tile | positions-mid-load | zh | 360 | hyd=false | title="我的注单 · 50pick" | h1="我的注单" | url=/positions
+   probe.kind=skeleton times={"commit":192,"css":35831,"skeleton":35831} at={"path":"/positions","readyState":"loading","cssReady":true,"header":true,"skeleton":1,"pending":0,"content":false}
+   header={"j":true,"cap":"余额 TZS 100,000","gold":true,"rail":false,"desk":false,"lit":["/positions=page","/positions=page"]}
+324 | tile | positions-loaded | zh | 360 | hyd=true | title="我的注单 · 50pick" | h1="我的注单" | url=/positions
+   probe.kind=undefined times={"commit":192,"css":35831,"skeleton":35831,"loaded":36988} at=undefined
+   header={"j":true,"cap":"余额 TZS 100,000","gold":true,"rail":true,"desk":false,"lit":["/positions=page","/positions=page"]}
+325 | tile | positions-tap-mid | zh | 360 | hyd=true | title="" | h1=null | url=/positions
+   probe.kind=the target’s skeleton times={"pending":62,"skeleton":2498} at={"path":"/positions","readyState":"complete","cssReady":true,"header":true,"skeleton":1,"pending":1,"content":false} before={"path":"/","readyState":"complete","cssReady":true,"header":true,"skeleton":0,"pending":0,"content":false}
+   header={"j":true,"cap":"余额 TZS 100,000","gold":true,"rail":true,"desk":false,"lit":["/positions=page","/positions=page"]}
+326 | tile | account-mid-load | zh | 360 | hyd=false | title="账户 · 50pick" | h1="账户" | url=/account
+   probe.kind=skeleton times={"commit":236,"css":35861,"skeleton":35861} at={"path":"/account","readyState":"loading","cssReady":true,"header":true,"skeleton":1,"pending":0,"content":false}
+   header={"j":true,"cap":"余额 TZS 100,000","gold":true,"rail":false,"desk":false,"lit":["/account=page","/account=page"]}
+327 | tile | account-loaded | zh | 360 | hyd=true | title="账户 · 50pick" | h1="账户" | url=/account
+   probe.kind=undefined times={"commit":236,"css":35861,"skeleton":35861,"loaded":36959} at=undefined
+   header={"j":true,"cap":"余额 TZS 100,000","gold":true,"rail":true,"desk":false,"lit":["/account=page","/account=page"]}
+328 | tile | account-tap-mid | zh | 360 | hyd=true | title="" | h1=null | url=/account
+   probe.kind=the target’s skeleton times={"pending":75,"skeleton":2398} at={"path":"/account","readyState":"complete","cssReady":true,"header":true,"skeleton":1,"pending":1,"content":false} before={"path":"/","readyState":"complete","cssReady":true,"header":true,"skeleton":0,"pending":0,"content":false}
+   header={"j":true,"cap":"余额 TZS 100,000","gold":true,"rail":true,"desk":false,"lit":["/account=page","/account=page"]}
+ | BLOCKED | root-mid-load | zh | 390 | hyd=undefined | title=undefined | h1=undefined | url=undefined
+   probe.kind=undefined times=undefined at=undefined
+   reason=no mid-load frame: the content arrived 36026 ms in, before any frame showed a skeleton or the header over an empty page (timings {"commit":295,"css":36026,"content":36026})
+329 | tile | root-loaded | zh | 390 | hyd=true | title="50pick — Predict events. Not chance." | h1="是还是否？" | url=/
+   probe.kind=undefined times={"commit":295,"css":36026,"content":36026,"loaded":37099} at=undefined
+   header={"j":true,"cap":"余额 TZS 100,000","gold":true,"rail":true,"desk":false,"lit":["/=page","/=page"]}
+330 | tile | root-tap-mid | zh | 390 | hyd=true | title="" | h1=null | url=/
+   probe.kind=the target’s skeleton times={"pending":67,"skeleton":2335} at={"path":"/","readyState":"complete","cssReady":true,"header":true,"skeleton":1,"pending":1,"content":false} before={"path":"/account","readyState":"complete","cssReady":true,"header":true,"skeleton":0,"pending":0,"content":false}
+   header={"j":true,"cap":"余额 TZS 100,000","gold":true,"rail":true,"desk":false,"lit":["/=page","/=page"]}
+331 | tile | positions-mid-load | zh | 390 | hyd=false | title="我的注单 · 50pick" | h1="我的注单" | url=/positions
+   probe.kind=skeleton times={"commit":193,"css":35834,"skeleton":35834} at={"path":"/positions","readyState":"interactive","cssReady":true,"header":true,"skeleton":1,"pending":0,"content":false}
+   header={"j":true,"cap":"余额 TZS 100,000","gold":true,"rail":false,"desk":false,"lit":["/positions=page","/positions=page"]}
+332 | tile | positions-loaded | zh | 390 | hyd=true | title="我的注单 · 50pick" | h1="我的注单" | url=/positions
+   probe.kind=undefined times={"commit":193,"css":35834,"skeleton":35834,"loaded":36985} at=undefined
+   header={"j":true,"cap":"余额 TZS 100,000","gold":true,"rail":true,"desk":false,"lit":["/positions=page","/positions=page"]}
+333 | tile | positions-tap-mid | zh | 390 | hyd=true | title="" | h1=null | url=/positions
+   probe.kind=the target’s skeleton times={"pending":74,"skeleton":2433} at={"path":"/positions","readyState":"complete","cssReady":true,"header":true,"skeleton":1,"pending":1,"content":false} before={"path":"/","readyState":"complete","cssReady":true,"header":true,"skeleton":0,"pending":0,"content":false}
+   header={"j":true,"cap":"余额 TZS 100,000","gold":true,"rail":true,"desk":false,"lit":["/positions=page","/positions=page"]}
+334 | tile | account-mid-load | zh | 390 | hyd=false | title="账户 · 50pick" | h1="账户" | url=/account
+   probe.kind=skeleton times={"commit":271,"css":35934,"skeleton":35934} at={"path":"/account","readyState":"interactive","cssReady":true,"header":true,"skeleton":1,"pending":0,"content":false}
+   header={"j":true,"cap":"余额 TZS 100,000","gold":true,"rail":false,"desk":false,"lit":["/account=page","/account=page"]}
+335 | tile | account-loaded | zh | 390 | hyd=true | title="账户 · 50pick" | h1="账户" | url=/account
+   probe.kind=undefined times={"commit":271,"css":35934,"skeleton":35934,"loaded":36992} at=undefined
+   header={"j":true,"cap":"余额 TZS 100,000","gold":true,"rail":true,"desk":false,"lit":["/account=page","/account=page"]}
+336 | tile | account-tap-mid | zh | 390 | hyd=true | title="" | h1=null | url=/account
+   probe.kind=the target’s skeleton times={"pending":56,"skeleton":2411} at={"path":"/account","readyState":"complete","cssReady":true,"header":true,"skeleton":1,"pending":1,"content":false} before={"path":"/","readyState":"complete","cssReady":true,"header":true,"skeleton":0,"pending":0,"content":false}
+   header={"j":true,"cap":"余额 TZS 100,000","gold":true,"rail":true,"desk":false,"lit":["/account=page","/account=page"]}
+ | BLOCKED | root-mid-load | zh | 1280 | hyd=undefined | title=undefined | h1=undefined | url=undefined
+   probe.kind=undefined times=undefined at=undefined
+   reason=no mid-load frame: the content arrived 35968 ms in, before any frame showed a skeleton or the header over an empty page (timings {"commit":262,"css":35968,"content":35968})
+337 | tile | root-loaded | zh | 1280 | hyd=true | title="50pick — Predict events. Not chance." | h1="是还是否？" | url=/
+   probe.kind=undefined times={"commit":262,"css":35968,"content":35968,"loaded":37015} at=undefined
+   header={"j":true,"cap":"余额 TZS 100,000","gold":true,"rail":false,"desk":true,"lit":["/=page","/=page"]}
+338 | tile | root-tap-mid | zh | 1280 | hyd=true | title="" | h1=null | url=/
+   probe.kind=the target’s skeleton times={"pending":61,"skeleton":2318} at={"path":"/","readyState":"complete","cssReady":true,"header":true,"skeleton":1,"pending":1,"content":false} before={"path":"/account","readyState":"complete","cssReady":true,"header":true,"skeleton":0,"pending":0,"content":false}
+   header={"j":true,"cap":"余额 TZS 100,000","gold":true,"rail":false,"desk":true,"lit":["/=page","/=page"]}
+339 | tile | positions-mid-load | zh | 1280 | hyd=false | title="我的注单 · 50pick" | h1="我的注单" | url=/positions
+   probe.kind=skeleton times={"commit":184,"css":35817,"skeleton":35817} at={"path":"/positions","readyState":"loading","cssReady":true,"header":true,"skeleton":1,"pending":0,"content":false}
+   header={"j":true,"cap":"余额 TZS 100,000","gold":true,"rail":false,"desk":false,"lit":["/positions=page","/positions=page"]}
+340 | tile | positions-loaded | zh | 1280 | hyd=true | title="我的注单 · 50pick" | h1="我的注单" | url=/positions
+   probe.kind=undefined times={"commit":184,"css":35817,"skeleton":35817,"loaded":36879} at=undefined
+   header={"j":true,"cap":"余额 TZS 100,000","gold":true,"rail":false,"desk":true,"lit":["/positions=page","/positions=page"]}
+341 | tile | positions-tap-mid | zh | 1280 | hyd=true | title="" | h1=null | url=/positions
+   probe.kind=the target’s skeleton times={"pending":63,"skeleton":2492} at={"path":"/positions","readyState":"complete","cssReady":true,"header":true,"skeleton":1,"pending":1,"content":false} before={"path":"/","readyState":"complete","cssReady":true,"header":true,"skeleton":0,"pending":0,"content":false}
+   header={"j":true,"cap":"余额 TZS 100,000","gold":true,"rail":false,"desk":true,"lit":["/positions=page","/positions=page"]}
+342 | tile | account-mid-load | zh | 1280 | hyd=false | title="账户 · 50pick" | h1="账户" | url=/account
+   probe.kind=skeleton times={"commit":219,"css":35845,"skeleton":35845} at={"path":"/account","readyState":"loading","cssReady":true,"header":true,"skeleton":1,"pending":0,"content":false}
+   header={"j":true,"cap":"余额 TZS 100,000","gold":true,"rail":false,"desk":false,"lit":["/account=page","/account=page"]}
+343 | tile | account-loaded | zh | 1280 | hyd=true | title="账户 · 50pick" | h1="账户" | url=/account
+   probe.kind=undefined times={"commit":219,"css":35845,"skeleton":35845,"loaded":37057} at=undefined
+   header={"j":true,"cap":"余额 TZS 100,000","gold":true,"rail":false,"desk":true,"lit":["/account=page","/account=page"]}
+344 | tile | account-tap-mid | zh | 1280 | hyd=true | title="" | h1=null | url=/account
+   probe.kind=the target’s skeleton times={"pending":64,"skeleton":2432} at={"path":"/account","readyState":"complete","cssReady":true,"header":true,"skeleton":1,"pending":1,"content":false} before={"path":"/","readyState":"complete","cssReady":true,"header":true,"skeleton":0,"pending":0,"content":false}
+   header={"j":true,"cap":"余额 TZS 100,000","gold":true,"rail":false,"desk":true,"lit":["/account=page","/account=page"]}

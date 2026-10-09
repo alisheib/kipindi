@@ -1,0 +1,69 @@
+Visual pass round 4 (R4-I): every break and exclusion end said with its time in the reader's language, no "bet now" during a break, the old dial legible and its confirm on one screen, the auth and RG pages whole and without gold
+
+From the edge scenarios' break, self-exclusion and sign-in read (M9). Every finding was re-measured first. No
+dictionary string changed: the approved responsible-gambling sentences are composed and their values formatted.
+
+- E35 FIRST — no hole for the same person. A self-excluded person cannot register again with the same phone (+255… or
+  07…: ALREADY_EXISTS, auth-service.ts 586–589) or email (any case: EMAIL_EXISTS, 602–610). They are told "account
+  already exists — sign in", and signing in lands on the exclusion panel with its end. Proved in-process (§13), with
+  plants. OWNER: a NEW phone + email registers a fresh account; nothing at sign-up ties a person to an excluded one.
+- Ends with time:
+  - The exclusion panel printed the raw URL day ("hadi 2026-10-10", split "2026- / 10-10").
+  - The refusal said "hadi 9 Oct 2026, 06:02" (English month in sw/zh, split).
+  - The cooled sign-in panel and the RG confirm gave no end at all.
+  - Five redirects and the bell's two RG notices cut the UTC day.
+  src/lib/break-end.ts is now the one path: breakEndParam writes the instant; readBreakEndParam accepts only it or a
+  round-tripped day, never used for logic; formatBreakEnd = formatEatDateTime. Each end sits in an approved sentence
+  as one unbreakable run: "hadi 10 Okt, 05:05" / "until 10 Oct, 05:05" / "至 2026年10月10日 05:05". The cooled
+  redirect carries &until=; the confirm names the picked length.
+- No "bet now" during a break, as R3-A did for a held wallet, failing open:
+  - the home lead and add-funds prompt give way to the break notice;
+  - Tiketi zangu shows the break sentence without "Tazama maswali";
+  - classic /positions has no Browse;
+  - the market page shows the break sentence and hides "place another".
+  Generic product lines are an OWNER question.
+- The journey Wallet sheet says why Deposit is gone: "Deposits paused" over rg.breakActive with its end. The shell
+  derives journeyBreak from the row it already reads; the classic bar's props are unchanged. The hub's Pumzika row
+  shows its status.
+- The deposit-paused notice:
+  - centred, 32/32 on phones and 48/48 from 640;
+  - full-width text;
+  - neutral tone (gold is money);
+  - a cooling-off gets a Withdraw door ("Toa pesa" in the journey, "Toa" in classic).
+- The old dial (live for classic players):
+  - the scale is legible: 10px, 6.67:1, and a figure only where it clears the thumb;
+  - the caption has its own lines;
+  - the 1280 pill no longer covers "UAMUZI WAKO";
+  - the confirm is capped at 100dvh−40px, with the clock, Confirm, Ghairi and the footnote always on screen.
+  "Possible winnings" is in mono, the Multiplier label is centred, "YOU ARE PICKING" sits on one line and the
+  dialog's widows are kept. The refusal drops its repeated eyebrow and is an alertdialog with its reason and focus.
+- Dialog ✕: the bet confirm's sits on the title's cap band (28 vs 27.94px); ConfirmModal's sits on the medallion's
+  centre in the header row, without growing it.
+- RG page: the two limit forms line up (one field and one button width, the other's label reserved invisibly). The
+  callout is 13px (it was 11) and zh "现。" is kept with 提现.
+- Auth:
+  - the eyebrows are brand, not gold (R4-K's ruling), as are the CTAs; bonus cards keep gold only on the money;
+  - the forgot-password link is 13px with a 40px tap area, and the form does not grow;
+  - the zh exclusion icon sits on the title's ink;
+  - widows are kept;
+  - from 1024 the brand panel stands on the header's 32px edge, and its wordmark is hidden from 1280.
+  The OTP page uses maskPhone. "INAISHA" becomes "INATATULIWA" (common.resolves).
+
+Merged onto R4-G/H/J/K: the journey bar is handed breakEnd={journeyBreak} beside R4-H's journeyUser. The pins in
+simple-journey-flag SWAP_HEADER and r4i 9.3 / 10.2 follow R4-H's shape.
+
+Guards:
+- test:visual-pass-r4i: 128 checks. It renders AuthHeader, HubRowItem, Callout, RgConfirmSubmit and loadHubViewer,
+  and runs §13/§15 on the in-memory store.
+- Mutation proof on the merged tree: 88 planted, 88 caught, all restored byte-identical (one anchor re-pointed to
+  R4-H's call line).
+
+On the merged tree: 60 suites exit 0, among them:
+- r4i 128, the r3c/r4c/r4d/r4e/r4h/r4j/r4k suites and offline-neutral;
+- timer-date, enter-where-pressed, implicit-submit;
+- rg-race, rg-doors, rg-cash-incentive, rg-policy, rg-limit-change, failure-reasons, popup-fit;
+- journey-shell, journey-account, journey-tickets, simple-journey-flag;
+- type-scale, money-format, tap-target, eyebrow-roles, landing-mine, featured-card;
+- the kyc suites, payments, card-return-order, deposit-phone, journey-funnel, wallet-freeze and red-anchors.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>

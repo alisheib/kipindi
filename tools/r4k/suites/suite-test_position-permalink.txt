@@ -1,0 +1,48 @@
+
+── 1 · an UP & DOWN position goes to its ROUND, never to the other game's list ──
+  ok   1.1 ⭐ it lands on the round page
+  ok   1.2 ⭐ and it carries the position id as the fragment, so a row can be scrolled to
+  ok   1.3 that is not a fallback
+  ok   1.4 ⛔ it NEVER points at /positions
+
+── 2 · …and when the round row is missing it degrades to the RIGHT list ──
+  ok   2.1 ⭐ the fallback is the Up & Down portfolio, not the long-form one
+  ok   2.2 ⛔ still never /positions
+  ok   2.3 and it SAYS it degraded rather than leaving the caller to infer it
+
+── 3 · a long-form position goes to its MARKET, where its card is rendered ──
+  ok   3.1 ⭐ it lands on the market page
+  ok   3.2 not a fallback
+  ok   3.3 with no market at all it degrades to the long-form list, and says so
+
+── 3b · the shared pieces ──
+  ok   3b.1 the anchor id IS the position id — one convention, both destinations
+  ok   3b.2 the pre-resolution href is the ownership-checked route
+
+── 4 · the four surfaces are WIRED to it (statements, not mentions) ──
+  ok   4.1 the wallet's TICKET box is a link whose href is computed, not the literal "/positions"
+  ok   4.2 ⭐ the Up & Down result panel no longer links into the long-form list
+  ok   4.3 …it uses the shared rule to reach the Up & Down portfolio instead
+  ok   4.4 ⭐ no email quotes a Reference and then links to a generic list
+  ok   4.5 notifyWin no longer DEFAULTS to the list
+
+── 5 · the destinations RENDER the anchor, or the fragment lands nowhere ──
+  ok   5.1 ⭐ each position card on the market page carries its own id as an anchor
+  ok   5.2 …and is offset so a fixed header does not cover the row it scrolled to
+  ok   5.3 ⭐ the round page renders an anchor per position id the viewer holds
+  ok   5.5 ⭐ /markets/[id]/page.tsx scrolls to the fragment (<HashFocus />)
+  ok   5.5 ⭐ /updown/[roundId]/page.tsx scrolls to the fragment (<HashFocus />)
+  ok   5.5 ⭐ /updown/history/page.tsx scrolls to the fragment (<HashFocus />)
+  ok   5.5 ⭐ /positions/page.tsx scrolls to the fragment (<HashFocus />)
+  ok   5.5 ⭐ src/components/journey/tickets/tickets-view.tsx scrolls to the fragment (<HashFocus />)
+  ok   5.6 ⭐ the journey's ticket card carries its own id as an anchor, ringed and offset under the header
+  ok   5.4 a targeted row is VISIBLY marked, so the player can see which one they came for
+
+── 6 · the resolver route enforces OWNERSHIP (a permalink is guessable) ──
+  ok   6.1 it requires a session
+  ok   6.2 ⭐ it compares the position's owner to the viewer
+  ok   6.3 it uses the shared rule rather than re-deriving the destination
+  ok   6.4 a ticket that is not the viewer's does not say whether it exists
+
+31 passed, 0 failed
+

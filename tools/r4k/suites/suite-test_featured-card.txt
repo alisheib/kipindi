@@ -1,0 +1,102 @@
+the featured card and the market meta line (landing v3 WP3 + WP4 · V18)
+
+── §1 · the pure rules
+  PASS 1.1 SOON fires the last millisecond under an hour
+  PASS 1.2 SOON fires at one millisecond left
+  PASS 1.3 ⛔ not at exactly an hour (the label reads hours there)
+  PASS 1.4 ⛔ not once closed, not unknown, not NaN
+  PASS 1.5 the band is the label's own hour
+  PASS 1.6 the mark sits at the printed price minus the move (20k/10k prints 67, +5 → 62)
+  PASS 1.7 ⛔ no mark on a one-sided pool, whatever the move
+  PASS 1.8 ⛔ no mark on an empty pool
+  PASS 1.9 ⛔ no mark without a measured move
+  PASS 1.10 the mark is kept within 1–99 like every printed price
+  PASS 1.10-control an ordinary move is not clamped
+  PASS 1.11 the predictor floor is one constant, 10
+  PASS 1.12 below the floor the featured card withholds its count ("2 watabiri" reads as a dead market)
+  PASS 1.13 at the floor and above it states it
+  PASS 1.14 a fresh card keeps its invitation (it is not a count)
+  PASS 1.15 a registered host is named by its label
+  PASS 1.16 …with or without www
+  PASS 1.17 ⛔ a look-alike domain prints as ITSELF, never as the name it imitates
+  PASS 1.18 a source switched off after publishing is still the one the market settles on
+  PASS 1.19 a market re-categorised after publishing still names its source
+  PASS 1.20 the MOST SPECIFIC registered domain wins, whatever the registry's order
+  PASS 1.20-control the parent domain still names its own hosts
+  PASS 1.21 an unregistered host prints as the host, without www
+  PASS 1.22 ⛔ an unparseable or absent URL names nothing (never the raw string)
+  PASS 1.23 the display host is one helper (and never the raw URL)
+
+── §1b · the 24h move is measured between two PRICES and two READINGS
+  PASS 1.24 two priced readings give a real move (500/500 → 700/300 = +20)
+  PASS 1.25 ⛔ no move from an empty baseline (0/0 → 700/300)
+  PASS 1.26 ⛔ no move from a one-sided baseline (1000/0 → 1000/500)
+  PASS 1.27 ⛔ no move onto a one-sided present (500/500 → 1000/0)
+  PASS 1.29 ⛔ no move from a baseline that had no price, even with two prices after it (1000/0 → 600/400 → 700/300)
+  PASS 1.28-fixture the in-memory history store is reachable
+  PASS 1.28 ⛔ one reading inside the window is not a move (it printed ±0 while the price had moved)
+  PASS 1.28-control two readings inside the window DO give a move (+20 from the first of them)
+
+── §2 · the card's source
+  PASS 2.1 SOON asks the milliseconds (`closesWithinTheHour(msLeft)`)
+  PASS 2.2 ⛔ no label-shaped SOON test remains (it never fired in sw or zh)
+  PASS 2.2-control the pre-fix SOON test IS detected
+  PASS 2.3 the 24h mark is featured, live and priced only
+  PASS 2.3-control a mark on every card IS detected
+  PASS 2.4 the delta prints the mark's own number (`yesPct - dayAgo`), and the bar draws that mark
+  PASS 2.5 the featured bar is an IMAGE of the split, named by the whole reading
+  PASS 2.6 the featured time sits in the TOP row, and the meta row drops it there
+  PASS 2.6-control the slice is the real top row (it holds the status chip)
+  PASS 2.7 ⭐ the featured meta line comes BEFORE the pick in the reading order (K36; below 640 CSS only SHOWS it under)
+  PASS 2.8 a grid card's source line sits in its question column
+  PASS 2.9 the source NAME is its own part inside the dictionary's sentence
+  PASS 2.10 the predictor floor is the featured card's only, read from the ONE constant
+  PASS 2.11 a card that withholds its count SAYS so (the gate reads the count and the floor)
+  PASS 2.10-control a floor applied to every card IS detected
+  PASS 2.12 ⛔ the card never reads the registry and never parses a URL
+  PASS 2.13 a cashed-out live card names its empty pool (the D29 word, never 'No bets yet')
+  PASS 2.14 the meta line breaks only BETWEEN its two parts, its dot hangs in the gap (no line ends or starts on '·'), and Chinese keeps 来源 whole
+  PASS 2.14-control the slice is the real meta line (it holds the source part the gate reads)
+  PASS 2.15 the empty state reads at the reading floor — no bets, be the first, and the featured no-pool words at --type-small; the no-bets line in --text-subtle on its measured 15px box
+  PASS 2.15-control the no-bets rule is found (its slice holds the line's own centring)
+  PASS 2.16 the featured card's time keeps at least 16px from its category — the tail's column gap is --sp-4 (16px), its row gap the row's 5px, the time still pushed right, and the glyph, word and time still one tail
+  PASS 2.16-control the round-3 tail (5px both ways) IS detected
+  PASS 2.17 the cold-start pair sits mid-way between the rail and the pick — lowered by --mcard-empty-drop (from the density's own tokens), the row under it giving the same back, so the space above and below its ink agrees within 0.5px in Comfortable and in Compact and the card keeps its height
+  PASS 2.17-control round 3's geometry (no drop: 18 over 28) IS detected, and so is a lost pair rule
+  PASS 2.18 the featured card NAMES its pool — the board row's own word (`common.pool`: Pool / Bwawa / 奖池) before the figure set as money (`.amount`: mono, tabular), at the words' 13px in the card's figure ink (the count's --text, 600), on the row's own 16.5px line box; a grid card keeps its bare 11px figure
+  PASS 2.18-control the round-3 bare figure IS detected
+
+── §3 · the call sites
+  PASS 3.0 fixture · every <MarketCard> call site was found (a scan that finds none proves nothing)
+  PASS 3.1 `sourceName` is passed by the landing's featured card ONLY (the /markets card geometry is untouched)
+  PASS 3.2 `closesOn` is the featured card's only
+  PASS 3.3 every card that can be live passes `msLeft` (SOON in every locale)
+  PASS 3.3-control a live call site without `msLeft` IS detected
+  PASS 3.4 the page reads the registry ONCE and resolves each row through `sourceNameFor`
+
+── §4 · TippingBar's 24h mark
+  PASS 4.1 the mark is drawn only on the PRICED rail (after the empty return)
+  PASS 4.2 …before the needle, so the needle wins where they coincide
+  PASS 4.3 …hidden from a screen reader (the bar's name carries the reading)
+  PASS 4.4 the mark is `--text` (3:1 on both fills, `test:contrast`) and never animated
+
+── §5 · the dictionary
+  PASS 5.en closesOn · settlesOn · h24Ago · barReading exist, placeholders intact
+  PASS 5.sw closesOn · settlesOn · h24Ago · barReading exist, placeholders intact
+  PASS 5.zh closesOn · settlesOn · h24Ago · barReading exist, placeholders intact
+  PASS 5.sw-review the meta line agrees with its subject (soko, li-) in both halves
+
+── §6 · every part the gate reads exists (V18)
+  PASS 6.1 the card carries every part
+  PASS 6.2 the board row carries every part
+  PASS 6.3 both carry their surface
+  PASS 6.0-control the row slice is the real row
+  PASS 6.1-control a dropped part IS detected
+
+── §7 · V18's two exceptions stay featured-only
+  PASS 7.1 the predictor floor is excused only on the featured card, only when the card states n < floor
+  PASS 7.2 the source may sit under the pick ON SCREEN only on the featured card below 640, and never after it in the DOM
+  PASS 7.2-control a waiver without the DOM half IS detected
+
+ALL PASS — featured-card: 82 passed, 0 failed
+

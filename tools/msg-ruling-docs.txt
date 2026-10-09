@@ -1,0 +1,13 @@
+docs(vodacom): the owner's ruling of 2026-10-07 noted where S4's copy audit, S6-PLAN and MOBILE-VISUAL-PLAN still describe the email bar, the deposit's email gate or the TZS 500 minimum; the email bar's SHELVED row deleted with the bar
+
+Money doors' release (the same day) deletes the app-wide email bar and the deposit's email gate for every viewer, asks
+no email question before a deposit, and raises the minimum deposit to TZS 1,000. Each place that still described the
+old state gets a dated note beside it (nothing historical is rewritten): S4-COPY-AUDIT (the 500 minimum, the gate's
+words), S6-PLAN (the parity capture, WP7's bar decision, its SHELVED row, 10.shell.emailbar - flipped by that release -
+the WP7 risk, the gate census), MOBILE-VISUAL-PLAN (the bar's two descriptions). SHELVED.md's row for the bar is
+deleted, as the row itself said it would be when the bar went: there is nothing to re-mount.
+
+Proof on OMEGA-COMPILE01: test:docs, test:journey-tickets (it reads SHELVED), test:vodacom-plan and
+test:design-one-door green.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>

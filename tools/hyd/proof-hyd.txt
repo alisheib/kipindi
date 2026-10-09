@@ -1,0 +1,7 @@
+Proof on OMEGA-COMPILE01: typecheck 0; test:ui-consistency all pass with K3g and K3h new, and K3g FAILS on main's
+input.tsx (both halves render the label alone, no bounds); test:numeric 98/98; test:source-bytes, hooks-order,
+design-frozen, client-graph-safe, shell-boundary and measure green; test:red-anchors the same line for line with and
+without the change. In a real browser (a fresh dev server; the demo player; /profile/responsible-gambling in en and sw
+at 390 and 1280, four fresh loads each run): on the parent 75487060, 4 of 4 loads threw "Hydration failed" and the
+server's HTML had no line under the box while the browser's read "Chini 5 · Juu 120" (the control); on the fix, 4 of 4
+loads with no hydration error and the server's HTML stating the same "Chini 5 · Juu 120" the browser shows.

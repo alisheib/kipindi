@@ -1,0 +1,12 @@
+diff --git a/package.json b/package.json
+index fc48503a4..38e110816 100644
+--- a/package.json
++++ b/package.json
+@@ -659,6 +659,7 @@
+     "test:visual-pass-r4k": "tsx scripts/visual-pass-r4k.test.mts",
+     "red:visual-pass-r4k": "tsx scripts/visual-pass-r4k.test.mts --prove",
+     "test:visual-pass-r4h": "tsx scripts/visual-pass-r4h.test.mts",
++    "test:visual-pass-r5a": "tsx scripts/visual-pass-r5a.test.mts",
+     "red:journey-tickets": "tsx scripts/journey-tickets.test.mts --prove-red",
+     "test:signoff": "tsx scripts/signoff.test.mts",
+     "test:proposal-evidence-age": "tsx scripts/proposal-evidence-age.test.mts",

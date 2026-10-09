@@ -1,0 +1,10 @@
+qa:journey-shell: a focus ring must be on the screen, and the rail's slot ring is read at -2px
+
+WP12's tiles showed the rail's Akaunti tab (390) wearing exactly the ring §6 asked for - 2px solid at +2px - while its
+right and bottom sides were drawn past the screen's edges; the cell read PASS. FOCUS_PROBE now reports the ring's
+outer box (the element grown by offset + width) and whether all of it is inside the viewport, and every focus cell
+needs it. The tab's expected offset follows globals.css: the rail's slots draw their ring inside (-2px).
+
+{PROOF}
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>

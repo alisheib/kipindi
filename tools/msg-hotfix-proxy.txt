@@ -1,0 +1,21 @@
+Hotfix: the proxy runs for every page address — a page at an image-like address went out without its security headers
+
+src/proxy.ts's matcher skipped `.*\.(?:svg|png|jpg|jpeg|gif|webp|ico)$` — any address ending in an image extension,
+pages included. A page at `/markets/x.png` (a real 200 with the signed-in reader's header) therefore went out with none
+of `withSecurityHeaders`' headers — X-Frame-Options DENY, the CSP, HSTS, nosniff, Referrer-Policy (the proxy is their
+only source) — and with no `x-pathname`, so it could be framed by another site. This is the same suffix defect as
+next.config's immutable-cache rule (hotfix 9cb95938). Found by the visual pass's code review (R5-D); the matcher
+predates it.
+
+The fix: the proxy skips Next's build output and image optimiser, and public/'s own static folders and favicons, by
+NAME (icons/, brand/, pay/, og/, screenshots/, email-signatures/, favicon.ico, favicon.svg; each top-level, with its
+slash, so `/iconsx/…` is not skipped). Never a file-name suffix. sw.js and manifest.json run the proxy, as before.
+
+Guard: test:proxy-scope, 5 checks. It reads the matcher from src/proxy.ts and compiles it with Next's own
+getMiddlewareMatchers, as the build's middleware analysis does:
+- §1 all 25 page addresses run the proxy (the image-suffixed ones and the app's routes);
+- §2 all 31 files under public/'s static folders, the favicons and /_next/static + /_next/image skip it;
+- §3 control: the old matcher skipped /markets/x.png, /positions/abc.jpg and /u/federico.svg; and a plant of it is
+  reported by §1.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>

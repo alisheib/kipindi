@@ -1,0 +1,41 @@
+Visual pass round 4 (R4-C): a search box and its filter bar are one band, the /markets divider centred on what the eye sees, notification titles and bodies whole with money in mono, their actions on the icon's centre; the tile tool waits for unread signs and the chart's fade
+
+Every finding was re-measured first. Every "after" is computed from the code; the next tile round reads them.
+
+- The band under the search box: 69px on /results, 59–60 on notifications, 49 on /live, 69 on /watchlist, 77 on
+  /proposals, 67 on classic /positions; chips → sort 8–10px.
+  - Two causes. SearchBox always reserves its 25px echo row. Each page put its own rung between the box and the bar
+    (/results' py-2.5 wrapper + gap-5, notifications' space-y-5).
+  - One rule: a search box and its bar are one band, at the page's rung + the bar's own 10px on every side, rows 12
+    apart inside the bar (which also clears the selected chip's halo). `QUERY_SEARCH_BAND_CLASS` (the doubled
+    `.kp-search-band` selector outranks space-y) is on /results, /watchlist, /proposals, /fairness, notifications and
+    classic /positions; QUERY_BAR_ROW2 is pt-2; Tiketi zangu's hand-typed pb-2 becomes QUERY_BAR_ROW1_ALONE (42/42,
+    was 42/44); the loading ghosts follow.
+  - Predicted: /results 34 / 12 / 34 (content 31px higher), notifications 34 / 34 / 12 / 34, /markets 35 / 12 / 12 / 34.
+- /markets divider (196, 172): the rule sat 31 | 14 from the ink around it, because an unselected pill's ink stops 17px
+  inside its box. When the last pill is unselected the rule moves to −24px: 22 | 23. A selected last pill keeps 14 | 14,
+  clear of its halo.
+- Notifications (193, 194):
+  - Titles go through DotSeq with moneyRuns (a new optional renderPart; without it DotSeq's output is byte-identical),
+    so "TZS 4,200" is mono and whole and the break falls between the clauses.
+  - Bodies go through moneySentence(): money runs plus the last two words kept together as an inline-block, so no
+    widow. Chinese is untouched.
+  - The ✓ / × controls rise 4px onto the icon plate's centre.
+- /results 390's "unsignalled" 4th lens: REFUTED. The strip carries R3-C's 64px end ramp (HAPANA's "0" is ~52% dimmer)
+  and the 4th pill begins past the strip's visible end. Unchanged.
+- Tile tool (qa-journey-shell):
+  - The tickets tiles wait for the unread signs.
+  - shoot() waits for the Up & Down chart's fade to reach opacity 1 (R4-D: tile 164 was shot 26% into it). It is a
+    wait only, and it reports rather than fails.
+
+Guards:
+- test:visual-pass-r4c, 38 checks, with plants for each fix.
+- Re-pinned: visual-pass-r3c 4.3′, journey-tickets CLASSIC_GHOST[4], spacing-scale's ceiling 460 → 457, and the
+  bar-geometry anchor for the band.
+- red:journey-tickets 107/107 on the R4-C tree.
+
+On the merged tip: 31 suites exit 0, among them filter-language, density-contract, notifications-page, journey-tickets,
+journey-shell, money-format, spacing-scale, needle-host 94 and red-anchors 4989, plus node --check. test:dead-css's
+exit 1 is main's own.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>

@@ -1,0 +1,17 @@
+fix(red:updown-result-announce): two mutations re-anchored after eb887f9d's lane chain, and suite 3.4 scoped to the win celebration - the celebrated amount had been unguarded
+
+eb887f9d (PRESENCE-4) folded the announcer's outcome arms into a CEREMONY / TOAST / LEDGER chain, so
+void-treated-as-loss and sends-an-email reported ANCHOR NOT FOUND. Each now anchors on today's arm and plants the
+same defect: the VOID arm dead (a refund falls into the loss toast, caught by 3.2), an email sender referenced in
+the win arm (caught by 4.sendEmailToUser).
+
+And a real hole: "celebrates the STAKE instead of the realised payout" was MISSED. Its anchor, amount: res.payout,
+also matches the away-ledger's recordAway line, and suite 3.4 asked that text of the WHOLE effect, so the ledger
+line kept it green while dispatchWinCelebration headlined the stake (planting at the ledger alone was missed too).
+The plant now anchors on the unique kind: "WIN" pair at the celebration, and 3.4 reads the dispatchWinCelebration
+call alone (sliceBraces), so a celebrated figure that is not the figure paid fails it.
+
+Proof on OMEGA-COMPILE01 (2026-10-08, main f89dcdb9): red:updown-result-announce 8/8 required caught (+1
+documented miss), files restored byte for byte, exit 0 (it read 5/8 before); test:updown-result-announce 39/0.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>

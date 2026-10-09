@@ -1,0 +1,69 @@
+﻿PASS 1: the board renders a FilterSheet
+PASS 1: …inside a wrapper that hides it from `sm` up
+PASS 1: the asset rail still exists and is shown from `sm` up
+PASS 1: the duration rail still exists and is shown from `sm` up
+PASS 2: ⭐ the trigger label is composed from the active ASSET and the active DURATION
+PASS 2: the active asset is resolved from the chips' own on-state, not re-derived
+PASS 2: the active duration likewise
+PASS 2: ⛔ …with a fallback that still names the axes rather than saying 'Filters'
+PASS 2: the accessible name interpolates both axes too
+PASS 3: ⛔ the split is at `sm`, never at `md` or `lg`
+PASS 4: the sheet is the EXISTING kit component, imported not re-implemented
+PASS 4: the options are the EXISTING FilterPill
+PASS 4: ⛔ no locally-declared sheet/drawer component
+PASS 4: ⛔ no motion vocabulary at this call site
+PASS 4: ⛔ and no hand-written paint values either
+PASS 5: the page passes the sheet's copy from the dictionary
+PASS 5: …and reuses the kit's existing close label rather than minting a second one
+PASS 5: en has udFilterTitle
+PASS 5: en has udFilterAria naming both axes — Filters — showing {asset}, {duration}
+PASS 5: sw has udFilterTitle
+PASS 5: sw has udFilterAria naming both axes — Vichujio — inaonyesha {asset}, {duration}
+PASS 5: zh has udFilterTitle
+PASS 5: zh has udFilterAria naming both axes — 筛选——正在显示 {asset}、{duration}
+PASS 5: ⭐ the title is genuinely translated, not one string three times — Filter the board / Chuja ubao / 筛选看板
+PASS 6: 🔴 the sheet lifts ITSELF, so any host inherits the fix
+PASS 6: …and is positioned, or z-index would not apply to a <details> at all
+PASS 6: ⚠️ …and the discovery-bar lift is still there, because it solves the other half
+PASS 7: 🔴 the trigger carries a caret — the affordance every other disclosure has
+PASS 7: …and it rotates when the sheet opens, so the caret is live and not an ornament
+PASS 7: ⛔ …without joining the `.kp-menu` count that qa:discovery-board asserts
+PASS 7: the /updown trigger asks for the FIELD shape by passing a value
+PASS 7: …and the field shape is defined as a full-width control-radius row
+PASS 8: CONTROL: the panel rule exists to be checked
+PASS 8: 🔴 the panel's padding does not reference the undefined `--gutter` — position: fixed; left: 0; right: 0; bottom: 0; z-index: 2;
+  display: flex; flex-direction: column;
+  max-height: min(82vh, 640px);
+  border-radius: var(--r-xl) var(--r-xl) 0 0;
+  padding: var(--sp-3) var(--sp-5) calc(env(safe-area-inset-bottom, 0px) + var(--sp-4));
+PASS 8: …the horizontal gutter is --sp-5 (20px), the same inset the page lays out on — position: fixed; left: 0; right: 0; bottom: 0; z-index: 2;
+  display: flex; flex-direction: column;
+  max-height: min(82vh, 640px);
+  border-radius: var(--r-xl) var(--r-xl) 0 0;
+  padding: var(--sp-3) var(--sp-5) calc(env(safe-area-inset-bottom, 0px) + var(--sp-4));
+PASS 8: …and the bottom keeps the safe-area inset, so `Done` clears the home indicator — position: fixed; left: 0; right: 0; bottom: 0; z-index: 2;
+  display: flex; flex-direction: column;
+  max-height: min(82vh, 640px);
+  border-radius: var(--r-xl) var(--r-xl) 0 0;
+  padding: var(--sp-3) var(--sp-5) calc(env(safe-area-inset-bottom, 0px) + var(--sp-4));
+PASS 9: 🔴 the optimistic on-state is scoped to `isPending`, so it cannot outlive the navigation
+PASS 9: ⛔ …and EVERY `pendingHref != null` reference is the `isPending`-scoped one — 1 scoped of 1
+PASS 9: ⚠️ the pending href is PARSED, never substring-matched
+PASS 9: …the asset is compared against the parsed `asset` param
+PASS 9: ⛔ …and a pending href with no `d` falls through to the real active duration
+PASS 10: CONTROL: all four animation names were located — a reader that finds nothing passes everything — entrance m-sheet-rise/m-scrim-in · exit m-leave-out/m-leave-out
+PASS 10: 🔴 the panel's EXIT keyframe NAME differs from its ENTRANCE's — or the animation never restarts — m-sheet-rise → m-leave-out
+PASS 10: 🔴 …and the scrim's likewise — m-scrim-in → m-leave-out
+PASS 10: ⛔ …and the exit reuses the product's existing leave motion rather than minting one — m-leave-out
+PASS 10: ⛔ the exit beat comes from the shared `exitBeatMs`, not a literal
+PASS 10: ⚠️ …and a zero beat (reduced motion) closes INSTANTLY rather than holding
+PASS 10: ⚠️ re-opening mid-exit cancels the pending close
+PASS 11: 🔴 the transition REPLACES rather than pushes, and does not scroll
+PASS 11: ⛔ …and no `router.push` survives on this board
+PASS 11: ⚠️ EVERY pill carries the same invariant on its Link — all four call sites — 4 pills · 4 replace · 4 scroll={false}
+PASS 12: ⭐ the board hands its pills to PageHeader as `actions`, beside its tagline
+PASS 12: ⛔ …and never again sets a subtitled PageHeader beside them in a flex row
+PASS 12: PageHeader's actions row holds the eyebrow and the title only; the subtitle renders once, under the row — row ends @1237 · subtitle @1355
+PASS 12: ⭐ CONTROL — the shape as it shipped is still recognised
+
+updown-filter-sheet: 55 passed, 0 failed

@@ -1,0 +1,24 @@
+Field: a child handed over in a lazy wrapper states its bounds on the server too - the responsible-gambling page hydrates again
+
+The responsible-gambling page failed to hydrate on every load, in English and Swahili, in all three engines: "Hydration
+failed because the server rendered HTML didn't match the client", on its reality-check box (qa:journey-shell 15.1 in
+WP12's turn C, and every A8j drive of 2026-10-07 that opened the page), so React threw the page's tree away and drew it
+again in the browser. The server's HTML had no "Min 5 · Max 120" line under the box and no aria-describedby on it; the
+browser's had both.
+
+Why: the Field states a numeric box's bounds from its direct child's props (vb6, fieldBounds). On the SERVER, the Flight
+client that decodes a Server Component page hands an element over inside a lazy wrapper when something the element names
+had not arrived as it was read (its client module; in a dev build, its owner's record) - and isValidElement is false for
+the wrapper, so the server stated no bound. The browser had everything by then and got the bare element.
+
+- src/components/ui/input.tsx: handedElement opens a lazy wrapper with Children.toArray, the way React's renderer opens
+  one: the element, or - while it is still loading - this Field suspends until it is there, as rendering the child would
+  a moment later. Both renders then read the same props. Nothing else about the Field changes.
+- scripts/ui-consistency.test.mts: K3g renders a numeric box handed over inside a lazy wrapper both ways (loaded already,
+  and arriving a moment later under a renderer that waits, as the server's does) and needs "Min 5 · Max 120" from both;
+  K3h is its control (a copy that does not open the wrapper fails K3g); K0b now checks the unplanted copy passes K3g too;
+  K3e's plant follows the line it plants into.
+
+{PROOF}
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>

@@ -1,0 +1,12 @@
+import { createRequire } from "node:module";
+const req = createRequire("F:/kipindi-r4f/package.json");
+const { createElement: h } = req("react");
+const { renderToStaticMarkup } = req("react-dom/server");
+const { PublicFooter } = await import("file:///F:/kipindi-r4f/src/components/layout/public-footer.tsx");
+const props = { proposalsState: "COMING_SOON", agentDoorVisible: true, inviteVisible: true, supportEmail: "a@b.c", supportPhone: "0769", supportPhoneTel: "+255769" };
+const classic = renderToStaticMarkup(h(PublicFooter, props));
+const journey = renderToStaticMarkup(h(PublicFooter, { ...props, journeyShown: true }));
+const span = (s: string) => (s.match(/<a [^>]*href="\/proposals"[^>]*><span class="([^"]*)"/) ?? [])[1];
+console.log("classic:", span(classic));
+console.log("journey:", span(journey));
+console.log("text-balance count classic", (classic.match(/text-balance/g) ?? []).length, "journey", (journey.match(/text-balance/g) ?? []).length);

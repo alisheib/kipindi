@@ -1,0 +1,94 @@
+
+── 1 · a short sentence never ends on one word alone ───────────────────────────────────────────────────
+  ok   1.1 · keepLastWords holds the last two words in one nowrap span: "Kwa simu tu. <Hakuna kinachofichwa.>"
+  ok   1.2 · …and leaves Chinese, and a text of two words or fewer, exactly as written
+  ok   1.2′ CONTROL · the text itself is unchanged — the span only removes the one break before the last word
+  ok   1.3 · the hub's card-size hint (tiles 124 127 256 264 294 295 298 302 306 331) never leaves a word alone: its sentences are kept whole
+  ok   1.4 · the held Wallet's notice (tile 092) keeps its last two words together
+  ok   1.5 · the fairness lead (tiles 187 204) keeps its last two words together
+  ok   1.6 · no .kp-hub__row--switch grid remains — the switch no longer sits on the label's line (round 4, tile 259)
+  ok   1.6′ PLANT · the round-3 grid rule put back is reported
+  ok   1.7.locate · the hub row's padding and gap are the ones the model assumes (8/16px, 12px gap) and the sub-line is 13px
+  ok   1.7 · the hint is ONE line from 360 in en (≤ 206px) and zh (14 ideographs at 1em), from 390 in sw (≤ 236)
+  ok   1.8 · where it wraps (sw below 390, every language at 320) each sentence fits its line, so it breaks between them: "Kwa simu tu." / "Hakuna kinachofichwa."
+  ok   1.8′ CONTROL · beside the value AND the switch (round 2's 113px at 320) the same sentence could not hold a line at 320
+  ok   1.9 · the RG lead and the support line are text-balance ("…pumzika au" / "jizuie." and "…kupitia" / "begambleaware.org.")
+
+── 2 · the empty state: a YES/NO pair on one line, and content centred in its box ──────────────────────
+  ok   2.locate · the dictionary has YES/NO pairs to hold (the Tiketi zangu empty body among them)
+  ok   2.1 · emptyStateBody binds every pair with no-break spaces ("NDIO au HAPANA", "YES or NO")
+  ok   2.2 · …and keeps G3's dash rule: the space before the dash is a no-break space too
+  ok   2.3 CONTROL · lower-case "au"/"or" and Chinese are left to break as before
+  ok   2.3′ PLANT · the dash rule alone does not hold the pair — the pair rule is what does
+  ok   2.4 · EmptyState renders its body through emptyStateBody
+  ok   2.5.locate · twelve drawings were read and measured
+  ok   2.5 · every INK_TOP row is its drawing's first ink row (the topmost stroke, less half the 1.5px stroke, rounded down)
+  ok   2.6 · every drawing's svg takes its frame from its own row, and none is a full 56px square any more
+  ok   2.7 · frame() starts the viewBox at the row, keeps the 56-unit width, and shortens the svg by the same amount
+  ok   2.5′ PLANT · a row one unit too deep (audit 8, which would clip its top stroke) is reported
+  ok   2.8 · the box's padding is still 48px top and bottom (py-8 on the overridden scale), the button's 48px under its ink
+
+── 3 · a filter strip has room for the selected pill's halo (tile 319) ─────────────────────────────────
+  ok   3.1 · below 1024 the strip pads above, below and before its pills and takes the same back as negative margin
+  ok   3.2 · the room (12px) is at least the halo's reach (blur + spread = 11px), above, below and before
+  ok   3.2′ PLANT · a halo grown to 16px of blur would outreach the room and is reported
+  ok   3.3 · the trailing side keeps its own room: the strip's pr-2 (12px), and no margin is taken back there
+  ok   3.4 · the leading fade moved in by the same 12px (transparent to 12, opaque from 44): a chip scrolled off the start fades from the content edge, as before
+  ok   3.5 · the trailing ramp is at least 64px and ends 8px inside the strip, in every mask that has one (4: end and both, -webkit- and plain), and the keyboard's end padding reaches past it
+  ok   3.5′ PLANT · G1's 32px ramp put back is reported (it fell wholly on a hidden chip's padding at sw 390, tile 326)
+
+── 4 · /leaderboard: the tier is not gold, the sort keeps the page's rhythm, a right-aligned head ends on its column 
+  ok   4.1 · the top tier stat has no accent (it was "gold": "Fedha" — silver — in the money ink)
+  ok   4.2 · …and the ribbon offers no gold accent to reach for (`test:gold-is-money` holds the file)
+  ok   4.3 · the sort row is the bar's row with its padding handed back (py-0): 32px above and below, like every gap on the page
+  ok   4.3′ CONTROL · the bar's own row carries 12px over and 10px under (pt-2, pb-2.5) — the 44/42px gaps this removes
+  ok   4.4 · a right-aligned head takes back the letter-space the eyebrow rule puts after its last letter
+  ok   4.4.locate · the eyebrow rule's selector list still covers `.admin-tbl thead`
+  ok   4.4′ PLANT · a head tracked 0.12em while the rule takes 0.14 back is reported
+
+── 5 · the hub's Needle row is one of the hub's rows (tiles 122–130 158 264–275 294 295) ───────────────
+  ok   5.1 · the hub asks the drawer for its hub row, in a plain list item
+  ok   5.2 · its row, its 20px glyph slot, its label and its 18px chevron are the ordinary row's
+  ok   5.3 · its value is the hub's value (not the menu's mono capitals)
+  ok   5.4 · the padded item and its rules are gone
+  ok   5.4′ CONTROL · the account menu keeps its own row (variant menu-row is untouched)
+
+── 6 · the guest tickets sheet's title stands on the ×'s line (tiles 113–121 156) ──────────────────────
+  ok   6.locate · the Modal's × is `absolute top-3 h-8` — 16px down, a 48px box — centred 40px under the padding edge
+  ok   6.1 · below 1024 (12 + 4 + 16 = 32px down) and from 1024 (32px of padding) the title's first line stands on the ×'s 40px (within the 0.5px its capitals ask)
+  ok   6.1′ PLANT · with no margin the line is centred 44.5px down, 4.5px under the × — reported
+
+── 7 · Chinese is never slanted (tile 275) ─────────────────────────────────────────────────────────────
+  ok   7.1 · a zh page draws no synthesized oblique
+  ok   7.1′ CONTROL · the rule has something to do: the footer's stop-gambling line still wears italic
+  ok   7.2 · the app loads no italic face of its own (so an upright zh page loses nothing)
+
+── 8 · notifications: never "..", and no raw position id in a sentence (tile 192) ──────────────────────
+  ok   8.1 · endClause ends an officer's reason once: "settlement." + "." is one stop; Chinese takes 。; ? and ! keep their mark
+  ok   8.2 · a row written before the fix reads without its ".." and its " · pos_…" (the tile-192 sentence)
+  ok   8.3 · …and a win's old label ("<title> · pos_… kimelipa.") loses its id too
+  ok   8.4 CONTROL · an ellipsis, a labelled reference and a sentence written today pass through unchanged
+  ok   8.5 · a position's notice opens its ticket: the market's page at the position's anchor; an orphan, its permalink; none, the given link
+  ok   8.6 · an Up & Down result opens the round's page at the ticket (where /positions/<id> resolves it)
+  ok   8.7 · no notice writes a position id into its words any more
+  ok   8.8 · every officer reason that a template ends with a stop goes through endClause (cancelled and declined, three languages each)
+  ok   8.9 · a win's label is the market's name alone (its link is the position's permalink)
+  ok   8.10 · the bell and /notifications read every body through readableNotificationBody
+  ok   8.7′ PLANT · the old composition is what 8.7 reports
+
+── 9 · a line written "A · B" breaks only between its parts, and its dot never ends a line (tiles 181 207) 
+  ok   9.1 · two parts, two items, the second carrying its dot hidden from assistive tech, the mono gap asked for
+  ok   9.2 CONTROL · a line with no " · " is one plain span, byte for byte
+  ok   9.3 · the dot hangs in the gap before its part and the box clips its left edge, so a dot that would open a line is not drawn
+  ok   9.4 · the hub's second lines, the legal header's version line and the invite page's call all draw it
+  ok   9.5 · on a phone the invite's call takes the card's width under the dial and its caption; from sm the row is as it was
+  ok   9.5.locate · every invite call is written as two parts, so each reads as two lines at most on a phone
+
+── 10 · the capture waits for the unread sign it shoots, and its pointer leaves what it pressed ────────
+  ok   10.1 · the demo player's tab and hub tiles wait for the counter mounted at their width (dot below 1024, bell from 1024)
+  ok   10.2 · the wait outlasts one failed read's retry (21–39 s) and asks the once-reading Arifa row to read again
+  ok   10.3 · after pressing the hub's Matokeo row the pointer moves off the page's controls (the HAPANA hover fill on tile 326)
+
+visual-pass-r3c: 70 passed, 0 failed
+
+

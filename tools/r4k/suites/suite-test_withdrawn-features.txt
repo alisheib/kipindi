@@ -1,0 +1,30 @@
+[audit] SYSTEM affiliate.account.created w5_player_ref AffiliateAccount#w5_player_ref
+[audit] SYSTEM affiliate.account.created w5_agent_ref AffiliateAccount#w5_agent_ref
+[audit] SYSTEM affiliate.account.created w5_roleonly_ref AffiliateAccount#w5_roleonly_ref
+[audit] SYSTEM affiliate.account.created w5_recruit_a AffiliateAccount#w5_recruit_a
+[audit] ADMIN affiliate.recruit.bound w5_recruit_a User#w5_recruit_a
+[audit] SYSTEM affiliate.account.created w5_selfex_ref AffiliateAccount#w5_selfex_ref
+[audit] ADMIN affiliate.bind.refused_withdrawn w5_recruit_d User#w5_recruit_d
+[audit] SYSTEM affiliate.account.created w5_recruit_b AffiliateAccount#w5_recruit_b
+[audit] ADMIN affiliate.recruit.bound w5_recruit_b User#w5_recruit_b
+[audit] SYSTEM affiliate.account.created w5_recruit_c AffiliateAccount#w5_recruit_c
+[audit] ADMIN affiliate.recruit.bound w5_recruit_c User#w5_recruit_c
+[audit] ADMIN affiliate.config.updated test-officer AffiliateConfig#global
+[audit] SYSTEM affiliate.account.created w5d_ref AffiliateAccount#w5d_ref
+[audit] SYSTEM affiliate.accrual_refused system User#w5d_rec
+[audit] SYSTEM affiliate.account.created w5e_ref AffiliateAccount#w5e_ref
+[audit] SYSTEM affiliate.account.created w5e_rec AffiliateAccount#w5e_rec
+[audit] ADMIN affiliate.recruit.bound w5e_rec User#w5e_rec
+[audit] SYSTEM affiliate.accrual_refused system User#w5e_rec
+[audit] WALLET wallet.credit_internal system Wallet#wal_w5e_ref
+[audit] WALLET affiliate.reward.recorded system ReferralReward#ref_c1867d31007db4643017b470
+[audit] SYSTEM affiliate.account.created w5g_ref AffiliateAccount#w5g_ref
+[audit] SYSTEM affiliate.accrual_refused system User#w5g_rec
+[audit] SYSTEM affiliate.accrual_refused system User#w5g_rec
+[house-bot] engine started on local-b92d207c02be — first pass in 20s
+[house-bot] withdrawn-features §9b — the engine stops claiming and hands its claims back
+
+88 passed · 0 failed
+
+[email] sendEmailToUser withheld — money mail to an unconfirmed address for user w5e_ref… (user.email=w***@t.tz)
+[house-bot] the feature is WITHDRAWN — the engine is not started and no timer is armed (04 F2)

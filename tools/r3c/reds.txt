@@ -1,0 +1,8 @@
+red:journey-account
+red:journey-shell
+red:density-contract
+red:marketing-consent
+red:policy-lines
+red:rg-policy
+red:implicit-submit
+red:sell-grace-truth

@@ -1,0 +1,37 @@
+
+§1 · the document declares notranslate
+PASS §1a the `notranslate` meta is emitted
+PASS §1b `<html>` carries translate="no"
+PASS §1c …and the `notranslate` class
+
+§2 · the DOM guard is installed early enough to matter
+PASS §2a the host is a client module
+PASS §2b ⭐ it installs at MODULE SCOPE, outside the component
+PASS §2c …and it is not wrapped in useEffect
+PASS §2d the layout renders it
+PASS §2e ⭐ …as the FIRST child of <body>
+
+§3 · ⭐ the guard actually neutralises the throw
+PASS §3a control · the unguarded DOM DOES throw
+PASS §3b 🔴 with the guard, removeChild no longer throws
+PASS §3c …and it returns the node, as the DOM contract requires
+PASS §3d ⭐ a GENUINE removal still happens
+PASS §3e insertBefore survives a stale reference
+PASS §3f ⭐ …and the content is APPENDED, not lost
+PASS §3g re-installing is a no-op
+
+§4 · an interception is reported, not hidden
+PASS §4a it beacons to the client-error endpoint
+PASS §4b …via sendBeacon
+PASS §4c …throttled to once per load
+PASS §4d the reporter cannot throw
+PASS §4e the patch itself cannot throw
+
+§5 · controls
+PASS §5a control · a layout with no meta IS detected
+PASS §5b control · an <html> without translate IS detected
+PASS §5c control · an effect-wrapped install IS detected
+PASS §5d control · a guard with no reporting IS detected
+
+ALL PASS — 24 passed, 0 failed
+

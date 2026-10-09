@@ -1,0 +1,3 @@
+docs(vodacom): in flight - red:all's Windows timeout fix live (b2e9db81: a timed-out harness no longer runs beside the next); the db:scratch fix reviewed and waiting on turn A2; two WP12 pieces fixed against the ruling; WP12 rebased onto main; turns re-queued so each stops after a bad one
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>

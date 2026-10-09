@@ -1,0 +1,49 @@
+fix(red:all): on Windows a timed-out harness ran on beside the next one, mutating files - the runner now waits for it before it reads the tree, and stops the fleet if it outlives --orphan-wait; a DIRTY report no longer prints src/ as rc/
+
+What happened. spawnSync's timeout kills the shell it started (npm.cmd needs one), and Windows does not take that
+shell's children with it: npm and the harness's own node process ran on, still injecting defects, while the loop
+started the next harness beside them - the concurrency this file's "SEQUENTIAL, DELIBERATELY" forbids. On 2026-10-07
+(the Vodacom lane's WP12 turn A, F:\kipindi-wp12) red:house-bot-console read TIME at 300 s and went on mutating for
+twelve more minutes: the eleven harnesses that ran in that time all read DIRTY on its files (house-console-read.ts,
+the desk wizard, roster-actions.ts, the desk page, its zz-ruling-513 control file), and red:house-bot-c5 refused to
+start because one of its targets was off HEAD. It ended only when its suite child was stopped with the status its
+restore guard reads as a console stop; every one of its 66 targets was then equal to HEAD. Later in the same run
+red:kyc-gate timed out and did the same to the harnesses after it.
+
+What the runner does now, on Windows only: after a TIME it lists the node processes descended from the dead shell
+(Windows keeps an orphan's parent pid; a process older than the harness's start is a stranger that reused a pid) and
+waits for them to end - a harness puts its own files back on its way out - before it reads the tree. A pid counts as
+the harness's only while its start time is exactly the one first read (a suite child that exits early frees its pid,
+and pids come back within about a minute on a busy machine). An unreadable process list is asked again until the cap.
+If they are still running after --orphan-wait seconds - default 4 h, longer than any harness's own full run
+(red:house-bot-c5 measures ~45 min), so a default run waits a slow harness out rather than stopping at it - the fleet
+STOPS: the row names the processes (pid and image), the harness's tree is not judged while it may still be writing,
+and the summary says why and how many did not run (exit 1). It never kills them: a Windows kill runs no handler and
+leaves the defect on disk (scripts/lib/red-restore-guard.mjs). Only node is waited for: a leftover that never ends but
+writes nothing (a Postgres worker, esbuild's service) does not hold the fleet. The walk bridges one dead process, the
+killed root; every other link of shell -> npm -> shell -> [tsx ->] harness waits for its child (said in the code).
+
+And residuePaths trimmed the porcelain status before slicing `XY path`: the first line of a worktree-only change
+(` M src/...`) lost its leading space, so every DIRTY report's first path read `rc/...`. Two stale comments are
+corrected (the timeout "kills npm"; a `git diff --name-only` fallback residuePaths never had).
+
+An independent review of the first version found the pid-reuse hole, a default cap shorter than red:house-bot-c5 (so
+every default run on Windows would have stopped there), the unreadable-list case, a still-running harness reported as
+a broken restore, and the one-dead-link limit of the walk; all are fixed or stated here. It ran the PowerShell call as
+the code does (417 lines parsed, names with spaces rebuilt, a null CreationDate dropping one line only), checked the
+timestamps (local CreationDate to UTC epoch ms; 10-22 ms from Node's clock), confirmed all 239 red:* scripts are node or
+tsx (tsx re-spawns node.exe), and the residue paths for renames, quoted paths and LF output.
+
+Proof on OMEGA-COMPILE01, with two fake harnesses (a sleeper that outlives a 5 s timeout and stamps a marker file;
+one that appends a line to README.md), the old runner (origin/main's) against the new:
+  · old: TIME at 5.0 s, the runner exited at +4.8 s, the harness ended at +25.0 s - after the runner.
+  · new (default cap): TIME at 5.0 s, "2 process(es) of this harness ran on", waited 23 s; the harness ended at
+    +25.0 s and the runner read the tree and exited at +28.0 s.
+  · new with --orphan-wait 8 and a second harness queued: "still running after --orphan-wait 8s: <pid> (node.exe),
+    <pid> (node.exe)", no DIRTY verdict for it, STOPPED with that reason, "1 harness(es) did not run", exit 1,
+    README.md untouched.
+  · residue: old printed "EADME.md, package.json, ackage.json"; new prints "README.md".
+  · test:red-anchors §2 (the runner enumerates package.json, excludes only itself) and test:journey-shell (430, its
+    10.leash.red-all pin on KP_RED_ALL) pass with the new file.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>

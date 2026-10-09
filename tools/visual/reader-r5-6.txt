@@ -1,0 +1,75 @@
+You are one of several strict tile readers in round 5 of 50pick's visual pass for Vodacom. The owner's rule: only
+perfect visual and logical results are accepted; nothing is deferred as "small".
+
+Read these two files first, completely, with the Read tool — they are your instructions:
+1. C:/Users/asheib/AppData/Local/Temp/claude/C--Users-asheib/0e745525-51fe-4451-ace7-c9987576fc15/scratchpad/visual/read-brief-r2.md — how to read, what counts, what is known and by design, how to report.
+2. C:/Users/asheib/AppData/Local/Temp/claude/C--Users-asheib/0e745525-51fe-4451-ace7-c9987576fc15/scratchpad/visual/read-brief-r5-fixes.md — what round 4 fixed and what each fix must now look like. For every fix your tiles
+   show, report VERIFIED (with the measurement) or NOT FIXED / FIXED WRONG (with the measurement). Its last section lists
+   what was fixed AFTER these tiles — note those as "seen, already fixed after r5", not as findings.
+Also read C:/Users/asheib/AppData/Local/Temp/claude/C--Users-asheib/0e745525-51fe-4451-ace7-c9987576fc15/scratchpad/visual/owner-items.md (the items waiting for the owner: note them when a tile shows one, never as new).
+
+Your tiles (53 of them) are in C:/Users/asheib/AppData/Local/Temp/claude/C--Users-asheib/0e745525-51fe-4451-ace7-c9987576fc15/scratchpad/visual/tiles-r5. Open EVERY one, in this order:
+281--hub--account--guest--hub-top--sw--1280.png
+282--hub--account--guest--hub-top--en--320.png
+283--hub--account--guest--hub-top--en--360.png
+284--hub--account--guest--hub-top--en--390.png
+285--hub--account--guest--hub-2--en--390.png
+286--hub--account--guest--hub-top--en--1024.png
+287--hub--account--guest--hub-top--en--1280.png
+288--hub--account--guest--hub-top--zh--320.png
+289--hub--account--guest--hub-top--zh--360.png
+290--hub--account--guest--hub-top--zh--390.png
+291--hub--account--guest--hub-2--zh--390.png
+292--hub--account--guest--hub-top--zh--1024.png
+293--hub--account--guest--hub-top--zh--1280.png
+294--hub--account--staff--staff-card--sw--320.png
+295--hub--account--staff--staff-card--sw--360.png
+296--hub--account--staff--hub-top--sw--390.png
+297--hub--account--staff--hub-2--sw--390.png
+298--hub--account--staff--hub-3--sw--390.png
+299--hub--account--staff--staff-card--sw--1024.png
+300--hub--account--staff--hub-top--sw--1280.png
+301--hub--account--staff--hub-2--sw--1280.png
+302--hub--account--staff--staff-card--en--320.png
+303--hub--account--staff--staff-card--en--360.png
+304--hub--account--staff--hub-top--en--390.png
+305--hub--account--staff--hub-2--en--390.png
+306--hub--account--staff--hub-3--en--390.png
+307--hub--account--staff--staff-card--en--1024.png
+308--hub--account--staff--hub-top--en--1280.png
+309--hub--account--staff--hub-2--en--1280.png
+310--hub--account--staff--staff-card--zh--320.png
+311--hub--account--staff--staff-card--zh--360.png
+312--hub--account--staff--hub-top--zh--390.png
+313--hub--account--staff--hub-2--zh--390.png
+314--hub--account--staff--hub-3--zh--390.png
+315--hub--account--staff--staff-card--zh--1024.png
+316--hub--account--staff--hub-top--zh--1280.png
+317--hub--account--staff--hub-2--zh--1280.png
+318--overlays--root--player--overlays-off--sw--390.png
+319--overlays--positions--player--overlays-off--sw--390.png
+320--overlays--help--player--overlays-on--sw--390.png
+321--overlays--account--player--overlays-on--sw--390.png
+322--overlays--root--guest--overlays-off--sw--390.png
+323--overlays--help--guest--overlays-on--sw--390.png
+324--overlays--account--guest--overlays-on--sw--390.png
+325--viewer--account--A--before--sw--390.png
+326--viewer--results--A--ended--sw--390.png
+327--viewer--root--B--signed-in--sw--390.png
+328--viewer--account--B--signed-in--sw--390.png
+329--emailbar--root--player-unconfirmed--journey-no-bar--sw--390.png
+330--emailbar--root--player-unconfirmed--classic-no-bar--sw--390.png
+331--kyc--account--player-no-kyc--kyc-row--sw--390.png
+332--kyc--profile-kyc--player-no-kyc--active-tab--sw--390.png
+333--kyc--profile-kyc--player-no-kyc--active-tab--sw--1280.png
+
+Each tile also has a diff overlay against round 4's capture of the same cell, in C:/Users/asheib/AppData/Local/Temp/claude/C--Users-asheib/0e745525-51fe-4451-ace7-c9987576fc15/scratchpad/visual/diff-r5, named <tile>--diff.png: the new
+tile dimmed, every changed pixel red. Use it to find what moved, then judge the TILE itself — live market data, prices
+and times change between runs (that red is expected), so a red region is a pointer, never a finding by itself, and an
+unchanged region can still hold a defect earlier rounds missed. The overlay list with each tile's changed regions is
+C:/Users/asheib/AppData/Local/Temp/claude/C--Users-asheib/0e745525-51fe-4451-ace7-c9987576fc15/scratchpad/visual/diff-r5/diff.json.
+
+Measure with PowerShell System.Drawing as the brief says (no Python on this PC). Do not edit any file; do not run npm,
+servers or browsers. Your final message is the report the brief asks for — (1) tiles opened (must be 53), (2) FINDINGS
+(most visible first: tile · what · where · how measured · which rule), (3) the VERIFIED / NOT FIXED list for round 4's
+fixes, (4) "seen, already fixed after r5", (5) DOUBTS. Nothing else.

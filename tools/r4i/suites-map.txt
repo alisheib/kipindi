@@ -1,0 +1,266 @@
+red:bonus-one-side ← src/lib/server/market-service.ts
+red:bonus-withdrawable ← src/lib/server/wallet-service.ts
+red:bulk-resolve ← src/lib/server/market-service.ts
+red:campaign-gates ← src/components/ui/modal.tsx
+red:card-return-order ← src/lib/server/wallet-service.ts
+red:cashback-hidden ← src/app/wallet/deposit/page.tsx, src/lib/server/wallet-service.ts
+red:cashout-price-guard ← src/lib/server/market-service.ts
+red:chip-one-home ← src/components/updown/updown-card.tsx
+red:confirm-gate ← src/components/ui/modal.tsx
+red:contrast-callsite ← src/components/markets/conviction-dial.tsx, src/components/updown/updown-card.tsx
+red:dal-parity ← src/lib/server/market-service.ts
+red:density-contract ← src/components/updown/updown-card.tsx
+red:deposit-ceiling ← src/lib/server/wallet-service.ts
+red:deposit-phone ← src/app/wallet/deposit/page.tsx
+red:enter-where-pressed ← src/components/layout/app-shell.tsx, src/components/markets/bet-confirm-modal.tsx, src/components/markets/conviction-dial.tsx, src/components/markets/operation-result-modal.tsx, src/components/ui/modal.tsx
+red:failure-reasons ← src/app/markets/[id]/page.tsx, src/app/profile/responsible-gambling/page.tsx, src/lib/error-copy.ts, src/lib/failure-reasons.ts, src/lib/server/market-service.ts
+red:feedback-law ← src/components/updown/use-quick-bet.ts, src/lib/server/market-service.ts
+red:hero-copy ← src/app/page.tsx, src/components/home/landing-hero.tsx
+red:house-bot-c5 ← src/lib/server/market-service.ts
+red:house-bot-chatbot ← src/app/markets/[id]/page.tsx
+red:house-bot-console ← src/lib/server/market-service.ts
+red:house-bot-engine ← src/lib/server/market-service.ts
+red:house-bot-money ← src/lib/server/market-service.ts
+red:implicit-submit ← src/app/profile/responsible-gambling/page.tsx, src/app/wallet/deposit/page.tsx, src/components/rg/rg-confirm-submit.tsx, src/components/ui/modal.tsx
+red:install-invite ← src/components/layout/app-shell.tsx
+red:journey-account ← src/app/account/page.tsx, src/app/profile/responsible-gambling/page.tsx, src/components/journey/account/hub-row.tsx, src/components/journey/account/hub-rows.ts, src/lib/server/hub-viewer.ts
+red:journey-estimate ← src/lib/server/market-service.ts
+red:journey-funnel ← src/app/wallet/deposit/actions.ts, src/app/wallet/deposit/page.tsx, src/components/home/landing-hero.tsx, src/components/layout/app-shell.tsx, src/components/markets/conviction-dial.tsx, src/components/updown/round-stake-panel.tsx, src/components/updown/use-quick-bet.ts, src/lib/server/wallet-service.ts
+red:journey-shell ← src/app/account/page.tsx, src/app/positions/page.tsx, src/app/wallet/deposit/actions.ts, src/components/journey/account/hub-rows.ts, src/components/journey/journey-top-bar.tsx, src/components/journey/tickets/tickets-view.tsx, src/components/layout/app-shell.tsx, src/components/layout/wallet-balance-pill.tsx, src/components/layout/wallet-sheet.tsx, src/components/ui/modal.tsx
+red:journey-tickets ← src/app/markets/[id]/page.tsx, src/app/positions/page.tsx
+red:kyc-gate ← src/lib/server/market-service.ts, src/lib/server/wallet-service.ts
+red:layout-staleness ← src/app/auth/login/page.tsx, src/components/layout/wallet-balance-pill.tsx, src/lib/server/market-service.ts
+red:lipa-qr ← src/app/wallet/deposit/page.tsx
+red:market-columns ← src/app/markets/[id]/page.tsx
+red:market-result-announce ← src/components/markets/conviction-dial.tsx
+red:marketing-consent-ledger ← src/app/auth/register/register-form.tsx
+red:marketing-optout ← src/components/layout/app-shell.tsx
+red:measure ← src/app/positions/page.tsx, src/components/layout/app-shell.tsx
+red:motion-ladder ← src/components/markets/operation-result-modal.tsx
+red:msisdn-prefill ← src/app/wallet/deposit/page.tsx
+red:officer-hold ← src/lib/server/market-service.ts
+red:one-sided ← src/app/markets/[id]/page.tsx, src/app/page.tsx, src/components/home/landing-hero.tsx, src/components/updown/updown-card.tsx, src/lib/server/market-service.ts
+red:payout-destination ← src/lib/server/wallet-service.ts
+red:pending-bet ← src/app/profile/responsible-gambling/actions.ts, src/app/wallet/deposit/actions.ts, src/lib/auth-landing.ts
+red:position-permalink ← src/app/markets/[id]/page.tsx, src/components/journey/tickets/tickets-view.tsx
+red:recategorise ← src/lib/server/market-service.ts
+red:reconcile-announce ← src/lib/server/wallet-service.ts
+red:refused-funds ← src/lib/server/wallet-service.ts
+red:refused-funds-race ← src/lib/server/wallet-service.ts
+red:rg-doors ← src/app/auth/login/actions.ts, src/app/auth/login/page.tsx, src/lib/server/market-service.ts
+red:sell-grace-truth ← src/app/markets/[id]/page.tsx, src/app/positions/page.tsx, src/components/journey/tickets/tickets-view.tsx, src/components/markets/operation-result-modal.tsx, src/components/ui/modal.tsx, src/lib/server/market-service.ts
+red:sell-price-guard ← src/app/markets/[id]/page.tsx, src/app/positions/page.tsx, src/components/journey/tickets/tickets-view.tsx, src/components/layout/app-shell.tsx, src/lib/error-copy.ts, src/lib/failure-reasons.ts, src/lib/server/market-service.ts
+red:share-preview ← src/app/markets/[id]/page.tsx, src/lib/server/market-service.ts
+red:shell-boundary ← src/app/account/page.tsx, src/components/journey/account/hub-rows.ts
+red:short-title-ai ← src/lib/server/market-service.ts
+red:short-title-edit ← src/lib/server/market-service.ts
+red:short-title-fit ← src/lib/server/market-service.ts
+red:simple-journey-flag ← src/app/account/page.tsx, src/app/page.tsx, src/components/journey/journey-top-bar.tsx, src/components/layout/app-shell.tsx
+red:social-panel ← src/components/layout/app-shell.tsx
+red:split-bar ← src/app/positions/page.tsx, src/components/updown/updown-card.tsx
+red:tap-rung ← src/components/layout/wallet-balance-pill.tsx
+red:thin-alert ← src/lib/server/market-service.ts
+red:ticker-honesty ← src/components/layout/app-shell.tsx
+red:timer-date ← src/app/markets/[id]/page.tsx, src/app/positions/page.tsx
+red:tz-msisdn ← src/lib/server/wallet-service.ts
+red:updown-bet-feedback ← src/components/updown/use-quick-bet.ts
+red:updown-digest ← src/lib/server/market-service.ts
+red:updown-handover ← src/components/updown/updown-card.tsx
+red:updown-pricing ← src/components/updown/round-stake-panel.tsx
+red:updown-push ← src/lib/server/market-service.ts
+red:updown-source-class ← src/components/updown/updown-card.tsx
+red:updown-void-copy ← src/components/updown/updown-card.tsx, src/lib/server/market-service.ts
+red:wallet-reach ← src/components/journey/journey-top-bar.tsx, src/components/layout/wallet-balance-pill.tsx, src/components/layout/wallet-sheet.tsx
+red:webhook-money ← src/lib/server/wallet-service.ts
+red:withdraw-email-gate ← src/lib/server/wallet-service.ts
+red:withdrawn-features ← src/components/journey/account/hub-rows.ts
+test:admin-money-ops ← src/lib/server/wallet-service.ts
+test:agent-fee-wallet ← src/lib/server/wallet-service.ts
+test:ai-source-allowlist ← src/lib/server/market-service.ts
+test:aipoll-publish ← src/lib/server/market-service.ts
+test:aml-dispatch-window ← src/lib/server/wallet-service.ts
+test:audit-gap ← src/lib/server/market-service.ts
+test:auth-email ← src/app/auth/register/register-form.tsx
+test:betting-ink ← src/components/home/landing-hero.tsx, src/components/updown/updown-card.tsx
+test:board-discovery ← src/lib/server/market-service.ts
+test:bonus-betting ← src/lib/server/market-service.ts
+test:bonus-one-side ← src/lib/server/market-service.ts
+test:bonus-withdrawable ← src/lib/error-copy.ts, src/lib/server/market-service.ts, src/lib/server/wallet-service.ts
+test:bulk-resolve ← src/lib/server/market-service.ts
+test:campaign-gates ← src/components/ui/modal.tsx
+test:card-return-order ← src/lib/server/wallet-service.ts
+test:cashback ← src/lib/server/wallet-service.ts
+test:cashback-hidden ← src/app/wallet/deposit/page.tsx, src/lib/server/wallet-service.ts
+test:cashout ← src/lib/server/market-service.ts
+test:cashout-lock ← src/lib/server/market-service.ts
+test:cert-c3 ← src/lib/server/market-service.ts, src/lib/server/wallet-service.ts
+test:cert-d3 ← src/lib/server/wallet-service.ts
+test:cert-f1 ← src/app/wallet/deposit/page.tsx
+test:charged-fee ← src/lib/server/market-service.ts
+test:chart-one-home ← src/components/markets/conviction-dial.tsx
+test:client-graph-safe ← src/lib/auth-landing.ts
+test:concurrency ← src/lib/server/market-service.ts, src/lib/server/wallet-service.ts
+test:confirm-gate ← src/components/ui/modal.tsx
+test:criterion-ai-publish ← src/lib/server/market-service.ts
+test:criterion-chain ← src/lib/server/market-service.ts
+test:criterion-i18n ← src/app/markets/[id]/page.tsx, src/lib/server/market-service.ts
+test:dal-parity ← src/lib/server/market-service.ts
+test:density-contract ← src/components/updown/updown-card.tsx
+test:deposit-ceiling ← src/lib/server/wallet-service.ts
+test:deposit-gate ← src/lib/server/wallet-service.ts
+test:deposit-notifications ← src/lib/server/wallet-service.ts
+test:deposit-phone ← src/app/wallet/deposit/page.tsx
+test:design-frozen ← src/app/markets/[id]/page.tsx, src/components/layout/wallet-balance-pill.tsx, src/components/markets/bet-confirm-modal.tsx, src/components/markets/conviction-dial.tsx, src/components/ui/modal.tsx, src/components/updown/round-stake-panel.tsx, src/components/updown/updown-card.tsx
+test:dsar-secrets ← src/app/markets/[id]/page.tsx
+test:duration ← src/lib/server/market-service.ts
+test:emergency ← src/lib/server/market-service.ts
+test:enter-where-pressed ← src/components/layout/app-shell.tsx, src/components/markets/bet-confirm-modal.tsx, src/components/markets/conviction-dial.tsx, src/components/markets/operation-result-modal.tsx, src/components/ui/modal.tsx
+test:erasure ← src/components/layout/app-shell.tsx
+test:eyebrow-roles ← src/app/auth/login/page.tsx, src/app/markets/[id]/page.tsx, src/app/positions/page.tsx, src/components/auth/auth-shell.tsx, src/components/markets/conviction-dial.tsx, src/components/ui/callout.tsx, src/components/ui/modal.tsx, src/components/updown/updown-card.tsx
+test:failure-reasons ← src/app/markets/[id]/page.tsx, src/components/markets/conviction-dial.tsx, src/components/updown/updown-bet-errors.ts, src/lib/error-copy.ts, src/lib/failure-reasons.ts, src/lib/server/market-service.ts, src/lib/server/wallet-service.ts
+test:fast-payout ← src/lib/server/wallet-service.ts
+test:featured-card ← src/app/page.tsx, src/components/home/landing-hero.tsx
+test:fee-model ← src/lib/server/market-service.ts
+test:feedback-law ← src/components/markets/bet-confirm-modal.tsx, src/components/markets/conviction-dial.tsx, src/components/markets/operation-result-modal.tsx, src/components/ui/modal.tsx, src/components/updown/use-quick-bet.ts, src/lib/server/market-service.ts
+test:filter-language ← src/components/home/landing-hero.tsx
+test:gold-is-money ← src/components/updown/updown-card.tsx
+test:hero-contract ← src/app/page.tsx
+test:hero-copy ← src/app/page.tsx, src/components/home/landing-hero.tsx
+test:house-bot-disclosure ← src/app/markets/[id]/page.tsx, src/app/page.tsx
+test:house-bot-rules ← src/app/markets/[id]/page.tsx, src/lib/server/market-service.ts
+test:house-bot-seam ← src/app/markets/[id]/page.tsx, src/lib/failure-reasons.ts, src/lib/server/market-service.ts
+test:house-bot-surfaces ← src/app/markets/[id]/page.tsx, src/app/positions/page.tsx, src/lib/failure-reasons.ts, src/lib/server/market-service.ts
+test:implicit-submit ← src/app/profile/responsible-gambling/page.tsx, src/app/wallet/deposit/page.tsx, src/components/rg/rg-confirm-submit.tsx, src/components/ui/modal.tsx
+test:install-invite ← src/components/layout/app-shell.tsx
+test:integrity ← src/lib/server/market-service.ts, src/lib/server/wallet-service.ts
+test:invite-flow ← src/lib/server/market-service.ts
+test:journey-account ← src/app/account/page.tsx, src/app/profile/responsible-gambling/page.tsx, src/components/journey/account/hub-row.tsx, src/components/journey/account/hub-rows.ts, src/lib/server/hub-viewer.ts
+test:journey-estimate ← src/lib/server/market-service.ts
+test:journey-funnel ← src/app/wallet/deposit/actions.ts, src/app/wallet/deposit/page.tsx, src/components/home/landing-hero.tsx, src/components/layout/app-shell.tsx, src/components/markets/conviction-dial.tsx, src/components/updown/round-stake-panel.tsx, src/components/updown/use-quick-bet.ts, src/lib/server/wallet-service.ts
+test:journey-shell ← src/app/account/page.tsx, src/app/positions/page.tsx, src/app/wallet/deposit/actions.ts, src/components/journey/account/hub-rows.ts, src/components/journey/journey-top-bar.tsx, src/components/journey/tickets/tickets-view.tsx, src/components/layout/app-shell.tsx, src/components/layout/wallet-balance-pill.tsx, src/components/layout/wallet-sheet.tsx, src/components/ui/modal.tsx
+test:journey-tickets ← src/app/markets/[id]/page.tsx, src/app/positions/page.tsx
+test:keyframes ← src/components/markets/operation-result-modal.tsx
+test:killswitch ← src/lib/server/wallet-service.ts
+test:kyc-approved-copy ← src/app/wallet/deposit/page.tsx, src/lib/server/market-service.ts, src/lib/server/wallet-service.ts
+test:kyc-at-withdrawal ← src/app/auth/login/actions.ts, src/app/wallet/deposit/page.tsx, src/lib/auth-landing.ts, src/lib/server/market-service.ts, src/lib/server/wallet-service.ts
+test:kyc-copy-truth ← src/lib/server/wallet-service.ts
+test:kyc-gate ← src/components/updown/use-quick-bet.ts, src/lib/server/market-service.ts, src/lib/server/wallet-service.ts
+test:labels ← src/lib/server/market-service.ts
+test:landing-contract ← src/app/page.tsx
+test:landing-mine ← src/app/page.tsx, src/components/home/landing-hero.tsx, src/components/layout/wallet-sheet.tsx
+test:late-bet ← src/lib/server/market-service.ts
+test:layout-staleness ← src/app/auth/login/page.tsx, src/components/journey/journey-top-bar.tsx, src/components/layout/app-shell.tsx, src/components/layout/wallet-balance-pill.tsx, src/lib/server/market-service.ts, src/lib/server/wallet-service.ts
+test:lifecycle-e2e ← src/lib/server/market-service.ts
+test:lock-tx-threading ← src/lib/server/wallet-service.ts
+test:loser-share-fee ← src/lib/server/market-service.ts
+test:loss-limit ← src/lib/server/market-service.ts
+test:maintenance ← src/lib/server/market-service.ts, src/lib/server/wallet-service.ts
+test:market-columns ← src/app/markets/[id]/page.tsx
+test:market-result-announce ← src/components/markets/conviction-dial.tsx
+test:marketing-consent-ledger ← src/app/auth/register/register-form.tsx
+test:marketing-optout ← src/components/layout/app-shell.tsx
+test:markets ← src/lib/server/market-service.ts
+test:measure ← src/components/layout/app-shell.tsx
+test:mixed-flow ← src/lib/server/market-service.ts
+test:money-invariants ← src/lib/server/market-service.ts
+test:money-minimums ← src/lib/server/market-service.ts, src/lib/server/wallet-service.ts
+test:msisdn-prefill ← src/app/wallet/deposit/actions.ts, src/app/wallet/deposit/page.tsx
+test:officer-conflict ← src/lib/server/market-service.ts
+test:one-sided ← src/app/markets/[id]/page.tsx, src/app/page.tsx, src/components/home/landing-hero.tsx, src/components/updown/updown-card.tsx, src/lib/server/market-service.ts
+test:operator-error ← src/lib/failure-reasons.ts
+test:otp-delivery ← src/app/auth/login/actions.ts
+test:override-scope ← src/app/markets/[id]/page.tsx, src/lib/server/market-service.ts
+test:payments ← src/app/wallet/deposit/page.tsx, src/lib/server/wallet-service.ts
+test:payout-callback-identity ← src/lib/server/wallet-service.ts
+test:payout-destination ← src/app/wallet/deposit/page.tsx, src/lib/failure-reasons.ts, src/lib/server/wallet-service.ts
+test:pending-bet ← src/app/profile/responsible-gambling/actions.ts, src/app/wallet/deposit/actions.ts, src/lib/auth-landing.ts
+test:player-invite-unpaid ← src/lib/server/wallet-service.ts
+test:pool-residual ← src/lib/server/market-service.ts
+test:popup-fit ← src/components/layout/wallet-sheet.tsx, src/components/markets/bet-confirm-modal.tsx, src/components/markets/conviction-dial.tsx, src/components/markets/operation-result-modal.tsx, src/components/rg/rg-confirm-submit.tsx, src/components/ui/modal.tsx
+test:position-permalink ← src/app/markets/[id]/page.tsx, src/app/positions/page.tsx, src/components/journey/tickets/tickets-view.tsx
+test:predictor-count ← src/lib/server/market-service.ts
+test:privacy-notice ← src/components/layout/app-shell.tsx
+test:product-line ← src/lib/server/market-service.ts
+test:proposal-close ← src/lib/server/market-service.ts
+test:recategorise ← src/lib/server/market-service.ts
+test:reconcile-announce ← src/lib/server/wallet-service.ts
+test:redis-failopen ← src/lib/server/market-service.ts
+test:reduce-motion ← src/components/markets/operation-result-modal.tsx
+test:referral ← src/app/auth/login/actions.ts, src/app/auth/login/page.tsx
+test:refresh-cadence ← src/app/markets/[id]/page.tsx
+test:refused-funds ← src/lib/server/wallet-service.ts
+test:refused-funds-p1 ← src/lib/server/wallet-service.ts
+test:refused-funds-race ← src/lib/server/wallet-service.ts
+test:report-parity ← src/lib/server/market-service.ts
+test:report-window-reads ← src/lib/server/market-service.ts
+test:rg-cash-incentive ← src/lib/server/wallet-service.ts
+test:rg-doors ← src/app/auth/login/actions.ts, src/app/auth/login/page.tsx, src/app/profile/responsible-gambling/actions.ts, src/lib/auth-landing.ts, src/lib/server/market-service.ts
+test:rg-race ← src/lib/server/market-service.ts, src/lib/server/wallet-service.ts
+test:route-census ← src/app/page.tsx, src/app/wallet/deposit/page.tsx
+test:scenario-coverage ← src/lib/server/wallet-service.ts
+test:scheduler ← src/lib/server/market-service.ts
+test:section-rail ← src/app/positions/page.tsx
+test:selection-closed ← src/lib/server/market-service.ts
+test:sell-grace-truth ← src/app/markets/[id]/page.tsx, src/app/positions/page.tsx, src/components/journey/tickets/tickets-view.tsx, src/components/markets/operation-result-modal.tsx, src/components/ui/modal.tsx, src/lib/server/market-service.ts
+test:sell-price-guard ← src/app/markets/[id]/page.tsx, src/app/positions/page.tsx, src/components/journey/tickets/tickets-view.tsx, src/components/layout/app-shell.tsx, src/lib/error-copy.ts, src/lib/failure-reasons.ts, src/lib/server/market-service.ts
+test:sentinel-guards ← src/lib/server/market-service.ts
+test:settle-atomicity ← src/lib/server/market-service.ts
+test:settlement-gate ← src/lib/server/market-service.ts
+test:share-preview ← src/app/markets/[id]/page.tsx
+test:shell-boundary ← src/app/account/page.tsx, src/components/journey/account/hub-rows.ts, src/components/layout/app-shell.tsx
+test:short-title-ai ← src/lib/server/market-service.ts
+test:short-title-edit ← src/lib/server/market-service.ts
+test:short-title-fit ← src/lib/server/market-service.ts
+test:signoff ← src/app/markets/[id]/page.tsx, src/lib/server/market-service.ts
+test:simple-journey-flag ← src/app/account/page.tsx, src/app/page.tsx, src/components/journey/journey-top-bar.tsx, src/components/layout/app-shell.tsx
+test:social-panel ← src/components/layout/app-shell.tsx
+test:stacking ← src/components/journey/journey-top-bar.tsx, src/components/layout/app-shell.tsx, src/components/ui/modal.tsx
+test:tap-target ← src/components/layout/wallet-balance-pill.tsx
+test:tax-report ← src/lib/server/market-service.ts
+test:thin-alert ← src/lib/server/market-service.ts
+test:ticker-honesty ← src/components/layout/app-shell.tsx
+test:timer-date ← src/app/markets/[id]/page.tsx, src/app/positions/page.tsx, src/app/profile/responsible-gambling/page.tsx, src/app/wallet/deposit/page.tsx
+test:trilingual ← src/lib/server/market-service.ts
+test:two-admin ← src/lib/server/market-service.ts
+test:type-scale ← src/app/auth/login/page.tsx, src/app/markets/[id]/page.tsx, src/app/positions/page.tsx, src/app/profile/responsible-gambling/page.tsx, src/components/auth/auth-shell.tsx, src/components/markets/conviction-dial.tsx, src/components/ui/callout.tsx, src/components/ui/modal.tsx, src/components/updown/updown-card.tsx
+test:tz-msisdn ← src/lib/server/wallet-service.ts
+test:ui-consistency ← src/app/positions/page.tsx, src/components/ui/modal.tsx
+test:updown-adversarial ← src/lib/server/market-service.ts
+test:updown-bell ← src/lib/server/market-service.ts
+test:updown-bet-feedback ← src/components/updown/use-quick-bet.ts
+test:updown-clock-guard ← src/components/updown/updown-card.tsx
+test:updown-cutover ← src/lib/server/market-service.ts
+test:updown-digest ← src/lib/server/market-service.ts
+test:updown-e2e-flow ← src/lib/server/market-service.ts
+test:updown-engine ← src/lib/server/market-service.ts
+test:updown-handover ← src/components/ui/modal.tsx, src/components/updown/updown-card.tsx, src/components/updown/use-quick-bet.ts
+test:updown-heal ← src/lib/server/market-service.ts
+test:updown-hedge-quote ← src/components/updown/updown-card.tsx, src/lib/server/market-service.ts
+test:updown-late-close ← src/lib/server/market-service.ts
+test:updown-load ← src/lib/server/market-service.ts
+test:updown-match ← src/components/updown/updown-card.tsx
+test:updown-pricing ← src/components/updown/round-stake-panel.tsx, src/components/updown/updown-card.tsx
+test:updown-proposal ← src/lib/server/market-service.ts
+test:updown-push ← src/lib/server/market-service.ts
+test:updown-quickbet ← src/components/updown/updown-bet-errors.ts, src/components/updown/updown-card.tsx, src/components/updown/use-quick-bet.ts, src/lib/server/market-service.ts
+test:updown-reporting ← src/lib/server/market-service.ts
+test:updown-result-announce ← src/lib/server/market-service.ts
+test:updown-source-class ← src/app/markets/[id]/page.tsx, src/components/updown/updown-card.tsx
+test:updown-void-copy ← src/components/updown/updown-card.tsx, src/lib/server/market-service.ts
+test:updown-window ← src/components/updown/updown-card.tsx, src/components/updown/use-quick-bet.ts, src/lib/server/market-service.ts
+test:visual-pass-r3c ← src/app/profile/responsible-gambling/page.tsx, src/components/journey/account/hub-row.tsx, src/components/layout/app-shell.tsx, src/components/layout/wallet-sheet.tsx, src/components/ui/modal.tsx, src/lib/server/market-service.ts
+test:visual-pass-r4c ← src/app/positions/page.tsx, src/components/journey/tickets/tickets-view.tsx
+test:visual-pass-r4d ← src/app/markets/[id]/page.tsx, src/app/positions/page.tsx, src/components/journey/tickets/tickets-view.tsx, src/components/updown/round-stake-panel.tsx, src/components/updown/updown-card.tsx
+test:visual-pass-r4e ← src/app/profile/responsible-gambling/page.tsx, src/components/layout/wallet-balance-pill.tsx
+test:visual-pass-r4i ← src/app/auth/login/actions.ts, src/app/auth/login/page.tsx, src/app/auth/register/register-form.tsx, src/app/markets/[id]/page.tsx, src/app/page.tsx, src/app/positions/page.tsx, src/app/profile/responsible-gambling/actions.ts, src/app/profile/responsible-gambling/page.tsx, src/app/wallet/deposit/actions.ts, src/app/wallet/deposit/page.tsx, src/components/auth/auth-panel.tsx, src/components/auth/auth-shell.tsx, src/components/auth/login-identifier.tsx, src/components/home/landing-hero.tsx, src/components/journey/account/hub-row.tsx, src/components/journey/journey-top-bar.tsx, src/components/journey/tickets/tickets-view.tsx, src/components/layout/app-shell.tsx, src/components/layout/wallet-sheet.tsx, src/components/markets/bet-confirm-modal.tsx, src/components/markets/conviction-dial.tsx, src/components/markets/house-lean-warning.tsx, src/components/markets/operation-result-modal.tsx, src/components/rg/rg-confirm-submit.tsx, src/components/ui/callout.tsx, src/components/ui/modal.tsx, src/components/updown/round-stake-panel.tsx, src/components/updown/updown-bet-errors.ts, src/components/updown/updown-card.tsx, src/components/updown/use-quick-bet.ts, src/lib/auth-landing.ts, src/lib/failure-reasons.ts, src/lib/server/hub-viewer.ts, src/lib/server/market-service.ts, src/lib/server/wallet-service.ts, src/components/markets/dial-scale.ts, src/components/rg/rg-period-width.ts, src/components/ui/keep-run.tsx, src/lib/break-end.ts
+test:wallet-freeze ← src/app/wallet/deposit/page.tsx, src/components/layout/app-shell.tsx, src/lib/server/market-service.ts, src/lib/server/wallet-service.ts
+test:wallet-reach ← src/components/journey/journey-top-bar.tsx, src/components/layout/wallet-balance-pill.tsx, src/components/layout/wallet-sheet.tsx
+test:wallet-receipts ← src/lib/server/wallet-service.ts
+test:watchlist ← src/lib/server/market-service.ts
+test:webhook-sec ← src/lib/server/wallet-service.ts
+test:win-share ← src/lib/server/market-service.ts
+test:withdraw-email-gate ← src/app/wallet/deposit/actions.ts, src/lib/server/wallet-service.ts
+test:withdrawal ← src/lib/server/wallet-service.ts
+test:withdrawn-features ← src/lib/server/market-service.ts
+
+TOTAL 264

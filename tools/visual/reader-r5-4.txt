@@ -1,0 +1,78 @@
+You are one of several strict tile readers in round 5 of 50pick's visual pass for Vodacom. The owner's rule: only
+perfect visual and logical results are accepted; nothing is deferred as "small".
+
+Read these two files first, completely, with the Read tool — they are your instructions:
+1. C:/Users/asheib/AppData/Local/Temp/claude/C--Users-asheib/0e745525-51fe-4451-ace7-c9987576fc15/scratchpad/visual/read-brief-r2.md — how to read, what counts, what is known and by design, how to report.
+2. C:/Users/asheib/AppData/Local/Temp/claude/C--Users-asheib/0e745525-51fe-4451-ace7-c9987576fc15/scratchpad/visual/read-brief-r5-fixes.md — what round 4 fixed and what each fix must now look like. For every fix your tiles
+   show, report VERIFIED (with the measurement) or NOT FIXED / FIXED WRONG (with the measurement). Its last section lists
+   what was fixed AFTER these tiles — note those as "seen, already fixed after r5", not as findings.
+Also read C:/Users/asheib/AppData/Local/Temp/claude/C--Users-asheib/0e745525-51fe-4451-ace7-c9987576fc15/scratchpad/visual/owner-items.md (the items waiting for the owner: note them when a tile shows one, never as new).
+
+Your tiles (56 of them) are in C:/Users/asheib/AppData/Local/Temp/claude/C--Users-asheib/0e745525-51fe-4451-ace7-c9987576fc15/scratchpad/visual/tiles-r5. Open EVERY one, in this order:
+169--tabs--results--player--active-tab--sw--390.png
+170--tabs--results--player--active-tab--sw--1280.png
+171--tabs--wallet--player--active-tab--sw--390.png
+172--tabs--wallet--player--active-tab--sw--1280.png
+173--tabs--wallet-withdraw--player--active-tab--sw--390.png
+174--tabs--wallet-withdraw--player--active-tab--sw--1280.png
+175--tabs--live--player--active-tab--sw--390.png
+176--tabs--live--player--active-tab--sw--1280.png
+177--tabs--leaderboard--player--active-tab--sw--390.png
+178--tabs--leaderboard--player--active-tab--sw--1280.png
+179--tabs--profile-responsible-gambling--player--active-tab--sw--390.png
+180--tabs--profile-responsible-gambling--player--active-tab--sw--1280.png
+181--tabs--profile-invite--player--active-tab--sw--390.png
+182--tabs--profile-invite--player--active-tab--sw--1280.png
+183--tabs--proposals--player--active-tab--sw--390.png
+184--tabs--proposals--player--active-tab--sw--1280.png
+185--tabs--profile--player--active-tab--sw--390.png
+186--tabs--profile--player--active-tab--sw--1280.png
+187--tabs--fairness--player--active-tab--sw--390.png
+188--tabs--fairness--player--active-tab--sw--1280.png
+189--tabs--help--player--active-tab--sw--390.png
+190--tabs--help--player--active-tab--sw--1280.png
+191--tabs--notifications--player--active-tab--sw--390.png
+192--tabs--notifications--player--active-tab--sw--1280.png
+193--tabs--markets--player--active-tab--sw--390.png
+194--tabs--markets--player--active-tab--sw--1280.png
+195--tabs--agent--player--active-tab--sw--390.png
+196--tabs--agent--player--active-tab--sw--1280.png
+197--tabs--account--guest--active-tab--sw--390.png
+198--tabs--root--guest--active-tab--sw--390.png
+199--tabs--markets-id--guest--active-tab--sw--390.png
+200--tabs--updown--guest--active-tab--sw--390.png
+201--tabs--results--guest--active-tab--sw--390.png
+202--tabs--live--guest--active-tab--sw--390.png
+203--tabs--leaderboard--guest--active-tab--sw--390.png
+204--tabs--fairness--guest--active-tab--sw--390.png
+205--tabs--help--guest--active-tab--sw--390.png
+206--tabs--legal-responsible-gambling--guest--active-tab--sw--390.png
+207--tabs--legal-privacy--guest--active-tab--sw--390.png
+208--tabs--legal-aml--guest--active-tab--sw--390.png
+209--tabs--legal-terms--guest--active-tab--sw--390.png
+210--tabs--legal-rules--guest--active-tab--sw--390.png
+211--tickets--positions-open--player--open--sw--320.png
+212--tickets--positions-open--player--open--sw--390.png
+213--tickets--positions-open--player--open--sw--1280.png
+214--tickets--positions-open--player--open--en--320.png
+215--tickets--positions-open--player--open--en--390.png
+216--tickets--positions-open--player--open--en--1280.png
+217--tickets--positions-open--player--open--zh--320.png
+218--tickets--positions-open--player--open--zh--390.png
+219--tickets--positions-open--player--open--zh--1280.png
+220--tickets--positions-settled--player--settled--sw--320.png
+221--tickets--positions-settled--player--settled--sw--390.png
+222--tickets--positions-settled--player--settled--sw--1280.png
+223--tickets--positions-settled--player--settled--en--320.png
+224--tickets--positions-settled--player--settled--en--390.png
+
+Each tile also has a diff overlay against round 4's capture of the same cell, in C:/Users/asheib/AppData/Local/Temp/claude/C--Users-asheib/0e745525-51fe-4451-ace7-c9987576fc15/scratchpad/visual/diff-r5, named <tile>--diff.png: the new
+tile dimmed, every changed pixel red. Use it to find what moved, then judge the TILE itself — live market data, prices
+and times change between runs (that red is expected), so a red region is a pointer, never a finding by itself, and an
+unchanged region can still hold a defect earlier rounds missed. The overlay list with each tile's changed regions is
+C:/Users/asheib/AppData/Local/Temp/claude/C--Users-asheib/0e745525-51fe-4451-ace7-c9987576fc15/scratchpad/visual/diff-r5/diff.json.
+
+Measure with PowerShell System.Drawing as the brief says (no Python on this PC). Do not edit any file; do not run npm,
+servers or browsers. Your final message is the report the brief asks for — (1) tiles opened (must be 56), (2) FINDINGS
+(most visible first: tile · what · where · how measured · which rule), (3) the VERIFIED / NOT FIXED list for round 4's
+fixes, (4) "seen, already fixed after r5", (5) DOUBTS. Nothing else.

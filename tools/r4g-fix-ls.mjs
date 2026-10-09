@@ -1,0 +1,11 @@
+import { readFileSync, writeFileSync } from 'node:fs';
+const f = process.argv[2];
+let s = readFileSync(f, 'utf8');
+const LS = String.fromCharCode(0x2028), PS = String.fromCharCode(0x2029);
+const bs = String.fromCharCode(92);
+const before = s;
+s = s.split('.replace(/' + LS + '/g,').join('.replace(/' + bs + 'u2028/g,');
+s = s.split('.replace(/' + PS + '/g,').join('.replace(/' + bs + 'u2029/g,');
+const left = [...s].filter((c) => c === LS || c === PS).length;
+writeFileSync(f, s);
+console.log('changed', before !== s, 'raw separators left', left);

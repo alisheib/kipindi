@@ -1,0 +1,11 @@
+fix(red:updown-chain-stats): count-window-not-time-window re-anchored after 758bbf8b's bulk round read - the only case guarding the 7-day window could not inject since 2026-08-29
+
+758bbf8b ("/admin/updown fired 46 queries per render") replaced the per-chain `.list({ chainId: c.id, boundaryFrom:
+statsFrom, limit: STATS_CAP })` with one bulk `roundStore.list({ chainIds, boundaryFrom: statsFrom, limit:
+GLOBAL_STATS_CAP })`. The plant is the same defect on today's call: boundaryFrom dropped, so the sample is the newest
+N rounds instead of the last 7 days; §4 ("the window is TIME-based") catches it.
+
+Proof on OMEGA-COMPILE01 (2026-10-08, main f89dcdb9): red:updown-chain-stats 9/9 caught, exit 0 (8/9 before);
+test:updown-chain-stats 44/0.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>

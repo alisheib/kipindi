@@ -1,0 +1,91 @@
+
+> fiftypick@0.1.0 test:guards-exist
+> tsx scripts/guards-exist.test.mts
+
+
+§1 · a guard cited FROM CODE must exist
+   scanned 3087 files · 1095 distinct script names cited
+
+
+§2 · cited only in docs — 72 name(s), reported not failed
+   · command                            docs/design-system/v5-2026-09-29-simplified-journey/S7-PLAN.md
+   · e2e:journey                        docs/VODACOM-PLAN.md
+   · e2e:maswali-fault                  docs/MASWALI-MILLIONEA-IMPLEMENTATION.md, docs/SESSION-PROMPT-MASWALI-BUILD.md
+   · e2e:maswali-money                  docs/MASWALI-MILLIONEA-IMPLEMENTATION.md, docs/SESSION-PROMPT-MASWALI-BUILD.md
+   · ops:agent-config-sync              docs/MONEY-GATE-REMEDIATION.md
+   · ops:marketing-campaign-evidence    docs/marketing-specs/ENGINE-SPEC.md
+   · ops:marketing-preflight            docs/marketing-specs/ENGINE-SPEC.md
+   · qa                                 docs/LIVE-QA-CAMPAIGN.md
+   · qa:chunks-prod                     docs/design-system/v5-2026-09-29-simplified-journey/S7-PLAN.md
+   · qa:first-load                      docs/design-system/v5-2026-09-29-simplified-journey/S7-PLAN.md
+   · qa:journey-above-fold              docs/design-system/v5-2026-09-29-simplified-journey/S7-PLAN.md
+   · qa:journey-home                    docs/design-system/v5-2026-09-29-simplified-journey/S7-PLAN.md
+   · qa:live-experience                 docs/LIVE-QA-CAMPAIGN.md
+   · qa:marketing-confirm               docs/MARKETING-CAMPAIGN-AND-CONTACTS-SETUP.md, docs/marketing-specs/ENGINE-SPEC.md
+   · qa:marketing-live                  docs/marketing-specs/ENGINE-SPEC.md
+   · qa:marketing-results               docs/marketing-specs/ENGINE-SPEC.md
+   · qa:served-skeleton                 docs/design-system/v5-2026-09-29-simplified-journey/S7-PLAN.md
+   · red:52:human                       docs/MONEY-GATE-REMEDIATION.md
+   · red:agent-matrix                   docs/AGENT-STRESS-TEST-FINDINGS.md
+   · red:journey-home                   docs/design-system/v5-2026-09-29-simplified-journey/S7-PLAN.md
+   · red:landing-grid                   docs/design-system/v4-2026-09-26-landing-ten/specs/d2-wp3-wp4-wp9-v18-wp14b.md
+   · red:marketing-engine               docs/marketing-specs/ENGINE-SPEC.md
+   · red:markets-redirect               docs/design-system/v5-2026-09-29-simplified-journey/S7-PLAN.md
+   · red:maswali-engine                 docs/MASWALI-MILLIONEA-IMPLEMENTATION.md, docs/SESSION-PROMPT-MASWALI-BUILD.md
+   · red:popup-fit                      docs/design-system/v5-2026-09-29-simplified-journey/S6-PLAN.md
+   · red:stacking                       docs/design-system/v5-2026-09-29-simplified-journey/S6-PLAN.md
+   · red:true                           docs/MONEY-GATE-REMEDIATION.md
+   · test:5433                          docs/MONEY-GATE-REMEDIATION.md
+   · test:admin-2fa-honesty             docs/DATA-AUDIT-2026-08-20.md
+   · test:agent-attribution             docs/AGENT-STRESS-TEST-FINDINGS.md
+   · test:bet-concurrency               docs/SESSION-PROMPT-AI-CYCLES.md
+   · test:bet-sheet                     docs/VODACOM-PLAN.md
+   · test:campaign-plan                 docs/MARKETING-CAMPAIGN-AND-CONTACTS-SETUP.md
+   · test:campaign-visuals              docs/MARKETING-CAMPAIGN-AND-CONTACTS-SETUP.md, docs/marketing-specs/ENGINE-SPEC.md
+   · test:cert-a2                       docs/MODULE-CERTIFICATION-PROGRAM.md
+   · test:cert-expiry                   docs/LIVE-QA-CAMPAIGN.md, docs/SESSION-PROMPT-BONUS-AND-CARE-DESK.md
+   · test:conflict-gate                 docs/COMPLIANCE-DECISIONS.md
+   · test:copy-enums                    docs/DESIGN-GATE-ADMIN-2026-08-28.md
+   · test:deposit-return                docs/VODACOM-PLAN.md
+   · test:deposit-status-read           docs/VODACOM-PLAN.md
+   · test:dev-route-guard               docs/MARKETING-CAMPAIGN-AND-CONTACTS-SETUP.md
+   · test:email-code                    docs/VODACOM-PLAN.md
+   · test:journey-above-fold            docs/VODACOM-PLAN.md, docs/design-system/v5-2026-09-29-simplified-journey/S7-PLAN.md
+   · test:journey-home                  docs/design-system/v5-2026-09-29-simplified-journey/S7-PLAN.md
+   · test:kyc-status-honesty            docs/LIVE-QA-CAMPAIGN.md
+   · test:label-lexicon                 docs/LIVE-QA-CAMPAIGN.md, docs/design-system/v4-2026-09-26-landing-ten/specs/hero-v3.md
+   · test:landing-grid                  docs/design-system/v4-2026-09-26-landing-ten/specs/d2-wp3-wp4-wp9-v18-wp14b.md
+   · test:marketing-engine              docs/MARKETING-CAMPAIGN-AND-CONTACTS-SETUP.md, docs/marketing-specs/ENGINE-SPEC.md, docs/marketing-specs/U35.md
+   · test:markets-redirect              docs/VODACOM-PLAN.md, docs/design-system/v5-2026-09-29-simplified-journey/S7-PLAN.md
+   · test:maswali-admissibility         docs/MASWALI-MILLIONEA-IMPLEMENTATION.md
+   · test:maswali-adversarial           docs/MASWALI-MILLIONEA-IMPLEMENTATION.md, docs/SESSION-PROMPT-MASWALI-BUILD.md
+   · test:maswali-cap                   docs/MASWALI-MILLIONEA-IMPLEMENTATION.md, docs/SESSION-PROMPT-MASWALI-BUILD.md
+   · test:maswali-ceremony              docs/MASWALI-MILLIONEA-IMPLEMENTATION.md
+   · test:maswali-config                docs/MASWALI-MILLIONEA-IMPLEMENTATION.md, docs/SESSION-PROMPT-MASWALI-BUILD.md
+   · test:maswali-design                docs/MASWALI-MILLIONEA-IMPLEMENTATION.md
+   · test:maswali-engine                docs/MASWALI-MILLIONEA-IMPLEMENTATION.md, docs/SESSION-PROMPT-MASWALI-BUILD.md
+   · test:maswali-fairness              docs/MASWALI-MILLIONEA-IMPLEMENTATION.md, docs/SESSION-PROMPT-MASWALI-BUILD.md
+   · test:maswali-i18n                  docs/MASWALI-MILLIONEA-IMPLEMENTATION.md
+   · test:maswali-law                   docs/MASWALI-MILLIONEA-IMPLEMENTATION.md, docs/SESSION-PROMPT-MASWALI-BUILD.md
+   · test:maswali-money                 docs/MASWALI-MILLIONEA-IMPLEMENTATION.md, docs/SESSION-PROMPT-MASWALI-BUILD.md
+   · test:maswali-notify                docs/MASWALI-MILLIONEA-IMPLEMENTATION.md
+   · test:maswali-rbac                  docs/MASWALI-MILLIONEA-IMPLEMENTATION.md
+   · test:maswali-reporting             docs/MASWALI-MILLIONEA-IMPLEMENTATION.md, docs/SESSION-PROMPT-MASWALI-BUILD.md
+   · test:maswali-ui                    docs/MASWALI-MILLIONEA-IMPLEMENTATION.md
+   · test:motion-timing                 docs/PLAYER-VISUAL-2026-09.md
+   · test:payment-killswitch            docs/COMPLIANCE-DECISIONS.md
+   · test:post-register-landing         docs/VODACOM-PLAN.md
+   · test:routing                       docs/AGENT-STRESS-TEST-FINDINGS.md
+   · test:shelved                       docs/VODACOM-PLAN.md
+   · test:solo-resolution               docs/COMPLIANCE-DECISIONS.md
+   · test:stacking-contract             docs/MARKETING-CAMPAIGN-AND-CONTACTS-SETUP.md
+   · test:withdrawal-fee                docs/RULES.md
+
+§3 · every npm script points at a file that exists
+
+§4 · ⚠️ POSITIVE CONTROL — the checker must catch a phantom
+
+══════════════════════════════════════════════════════════════════════
+  GUARDS EXIST: 9 passed, 0 failed
+══════════════════════════════════════════════════════════════════════
+exit=0

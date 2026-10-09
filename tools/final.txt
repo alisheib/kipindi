@@ -1,0 +1,12 @@
+red:tab-anchors EXIT=0
+red:margin-series EXIT=0
+red:admin-charts EXIT=0
+red:contrast EXIT=0
+red:tap-floor EXIT=0
+red:tap-rung EXIT=0
+test:tab-anchors EXIT=0
+test:margin-series EXIT=0
+test:admin-charts EXIT=0
+test:contrast EXIT=0
+test:tap-target EXIT=0
+test:red-anchors EXIT=1

@@ -1,0 +1,10 @@
+Vodacom S7 WP1 calibration: the LIVE strip is captured still
+
+The first calibration's --prove-red (114/122): two captures of one book cell on one server disagreed in the LIVE strip -
+60 of its 73 element lines, its items a few px apart - because its run is a CSS marquee; the noise then sat outside
+every plant's own field. Each book cell now reads the strip in the product's own still state (the readable list at
+scroll 0, the marquee's first frame): a style in the document head, outside every captured region.
+
+{PROOF}
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>

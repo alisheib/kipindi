@@ -1,0 +1,18 @@
+test(bonus-one-side): §6 places a real house leg - the suite could not tell an engine leg from a hedge, so red:bonus-one-side's house-position plant had read MISSED since f41e632c
+
+red:bonus-one-side plants the 2026-09-21 money defect back - drop `p.houseBotId == null` from the `opposite` predicate,
+so an OPEN house leg on the other side counts as the holder's own hedge and their real-money stake accrues ZERO toward
+their bonus - and the suite stayed green: every position §1-§5 creates is a player's own. f41e632c added the plant with
+its anchor measured and no assertion behind it.
+
+§6 places the house leg the way the product does (placeHouseBet through the house seam, by the shared house-bot world:
+a designated, active bot account, an OPENER intent on NO), then the holder bets their own money on YES: 6.4 holds that
+stake accruing in full (10,000), 6.5 a same-side top-up (15,000). 6.1 is the control that the leg is really there,
+OPEN, house-marked, on the holder's account; 6.6 the control that the same account's OWN unmarked opposite leg still
+suppresses - only the marker differs. The harness now pins that plant to the assertion it trips (caughtBy /^FAIL 6.4 /)
+and prints which checks failed, so a crash or another section can no longer count as a catch.
+
+Proof on OMEGA-COMPILE01 (2026-10-08, main 018e77e3): test:bonus-one-side 28/0 (22 before); red:bonus-one-side 7/7,
+exit 0 (6/7 before), the house plant failing exactly 6.4 and 6.5.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>

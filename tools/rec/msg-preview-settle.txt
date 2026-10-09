@@ -1,0 +1,10 @@
+qa:journey-preview: a control is driven only once React owns the page
+
+WP12's turn C stopped once in section 5 on a "Create the link" button that stayed disabled; turn G's two reruns of the
+same drive (the plain one, and a copy that dumped the dialog just before the click: both fields filled, the button
+armed) passed 33/33. settle() waited for <main> and 900 ms - the server's HTML can be up before React attaches on a
+slow first compile - and now also waits for a React fiber on <main>, as qa:journey-shell holds its header to.
+
+{PROOF}
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>

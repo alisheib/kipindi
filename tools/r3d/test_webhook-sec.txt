@@ -1,0 +1,18 @@
+﻿[audit] WALLET deposit.initiated usr_m4 Transaction#txn_f8ae1de5af60b8db321a54c8
+[audit] WALLET deposit.dispatch usr_m4 User#usr_m4
+[audit] WALLET deposit.pending usr_m4 Transaction#txn_f8ae1de5af60b8db321a54c8
+[audit] SECURITY webhook.amount_mismatch system Transaction#txn_f8ae1de5af60b8db321a54c8
+[audit] WALLET payments.reconcile_needs_review system Transaction#txn_f8ae1de5af60b8db321a54c8
+[audit] WALLET deposit.confirmed usr_m4 Transaction#txn_f8ae1de5af60b8db321a54c8
+[email] sending "Deposit confirmed · TZS 50,000" → u***@t.tz (tag=deposit)
+[email-stub] To: u***@t.tz | Subject: Deposit confirmed · TZS 50,000
+[audit] WALLET deposit.initiated usr_cb Transaction#txn_58394d8b2727f15e451cd6c6
+[audit] WALLET deposit.dispatch usr_cb User#usr_cb
+[audit] WALLET deposit.pending usr_cb Transaction#txn_58394d8b2727f15e451cd6c6
+[audit] WALLET deposit.confirmed usr_cb Transaction#txn_58394d8b2727f15e451cd6c6
+[email] sending "Deposit confirmed · TZS 30,000" → u***@t.tz (tag=deposit)
+[email-stub] To: u***@t.tz | Subject: Deposit confirmed · TZS 30,000
+[audit] SECURITY webhook.terminal_contradicted usr_cb Transaction#txn_58394d8b2727f15e451cd6c6
+[audit] WALLET payments.reconcile_needs_review system Transaction#txn_58394d8b2727f15e451cd6c6
+
+webhook-security: 21 passed, 0 failed

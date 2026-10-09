@@ -1,0 +1,211 @@
+﻿[audit] SYSTEM contacts.contact.registered usr_e1e005d303d5c2034dd922c9 MarketingContact#mc_rxjessefgspgidfq
+[audit] AUTH user.registered usr_e1e005d303d5c2034dd922c9 User#usr_e1e005d303d5c2034dd922c9
+[email-stub] To: p***@50pick.tz | Subject: Welcome to 50pick · Karibu
+[email] sending "Confirm your email · 50pick" → p***@50pick.tz (tag=email-verify)
+[email-stub] To: p***@50pick.tz | Subject: Confirm your email · 50pick
+PASS A1 registration succeeds
+PASS A2 the player's own address confirms
+[audit] COMPLIANCE user.email.verified usr_e1e005d303d5c2034dd922c9 User#usr_e1e005d303d5c2034dd922c9
+PASS A3 emailVerifiedAt is set
+[audit] AUTH user.login.password usr_e1e005d303d5c2034dd922c9 User#usr_e1e005d303d5c2034dd922c9
+[email-stub] To: p***@50pick.tz | Subject: Signed in · Umeingia 50pick
+PASS A4 login ran through the email-binding step
+PASS A5 login did NOT overwrite the player's email with the mapped one
+PASS A6 login did NOT disturb the verified flag
+PASS A7 the account is NOT 'verified' against an address nobody confirmed
+[audit] SYSTEM contacts.contact.registered usr_52d66d7e3662a25673d0261a MarketingContact#mc_emryujqwvxxkzwhi
+[audit] AUTH user.registered usr_52d66d7e3662a25673d0261a User#usr_52d66d7e3662a25673d0261a
+[email-stub] To: s***@50pick.tz | Subject: Welcome to 50pick · Karibu
+[email] sending "Confirm your email · 50pick" → s***@50pick.tz (tag=email-verify)
+[email-stub] To: s***@50pick.tz | Subject: Confirm your email · 50pick
+PASS B1 registration succeeds
+[email] sending "Confirm your email · 50pick" → s***@50pick.tz (tag=email-verify)
+[email-stub] To: s***@50pick.tz | Subject: Confirm your email · 50pick
+PASS B2 a deliverable address reports ok
+PASS B3 …and reports WHY (sent/stub), not a bare boolean
+[audit] SYSTEM email.suppressed system 
+[email] sending "Confirm your email · 50pick" → s***@50pick.tz (tag=email-verify)
+[email] suppressed (bounced/complained): b***@50pick.tz | Confirm your email · 50pick
+node.exe : [email] sendEmailToUser delivery failed for s***@50pick.tz (reason=suppressed, subject="Confirm your email 
+· 50pick")
+At line:1 char:1
++ & "C:\Program Files\nodejs/node.exe" "C:\Program Files\nodejs/node_mo ...
++ ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: ([email] sendEma...mail · 50pick"):String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+ 
+PASS B4 a suppressed address reports FAILURE, not success
+PASS B5 …and names the reason so the UI can offer a way out
+[audit] SYSTEM contacts.contact.registered usr_e078fe4cc2a8150f358fadb2 MarketingContact#mc_azcxkxobytrndulh
+[audit] AUTH user.registered usr_e078fe4cc2a8150f358fadb2 User#usr_e078fe4cc2a8150f358fadb2
+[email-stub] To: t***@50pick.tz | Subject: Welcome to 50pick · Karibu
+[email] sending "Confirm your email · 50pick" → t***@50pick.tz (tag=email-verify)
+[email-stub] To: t***@50pick.tz | Subject: Confirm your email · 50pick
+[email] sending "Confirm your email · 50pick" → t***@50pick.tz (tag=email-verify)
+[email-stub] To: t***@50pick.tz | Subject: Confirm your email · 50pick
+PASS C1 a verification email was captured
+PASS C2 the body carries a real /auth/verify-email link
+[audit] COMPLIANCE user.email.verified usr_e078fe4cc2a8150f358fadb2 User#usr_e078fe4cc2a8150f358fadb2
+PASS C3 the token round-trips and confirms the address
+[audit] SYSTEM contacts.contact.registered usr_cffc5e73a281a7aa34d846fb MarketingContact#mc_qmuecqogkiyptuue
+[audit] AUTH user.registered usr_cffc5e73a281a7aa34d846fb User#usr_cffc5e73a281a7aa34d846fb
+[email-stub] To: s***@50pick.tz | Subject: Welcome to 50pick · Karibu
+[email] sending "Confirm your email · 50pick" → s***@50pick.tz (tag=email-verify)
+[email-stub] To: s***@50pick.tz | Subject: Confirm your email · 50pick
+PASS D1 first account with the address is created
+[audit] SECURITY register.duplicate_email system User#usr_cffc5e73a281a7aa34d846fb
+PASS D2 a second account on the same email is refused
+PASS D3 …with EMAIL_EXISTS, so the page can say the right thing and link to the EMAIL
+[audit] AUTH register.duplicate_phone system Phone#+25577*****44
+PASS D4 a second account on the same phone is refused
+PASS D5 …and is still reported as ALREADY_EXISTS (phone), not EMAIL_EXISTS
+[audit] SYSTEM contacts.contact.registered usr_fbcf293e135f7c648eea159f MarketingContact#mc_yuwiugqcfzqqkxca
+[audit] AUTH user.registered usr_fbcf293e135f7c648eea159f User#usr_fbcf293e135f7c648eea159f
+[email-stub] To: b***@50pick.tz | Subject: Welcome to 50pick · Karibu
+[email] sending "Confirm your email · 50pick" → b***@50pick.tz (tag=email-verify)
+[email-stub] To: b***@50pick.tz | Subject: Confirm your email · 50pick
+[audit] COMPLIANCE user.email.verified usr_fbcf293e135f7c648eea159f User#usr_fbcf293e135f7c648eea159f
+PASS E1 the first address is confirmed
+[audit] COMPLIANCE user.email.set usr_fbcf293e135f7c648eea159f User#usr_fbcf293e135f7c648eea159f
+[email] sending "Confirm your email · 50pick" → a***@50pick.tz (tag=email-verify)
+[email-stub] To: a***@50pick.tz | Subject: Confirm your email · 50pick
+[email-stub] To: b***@50pick.tz | Subject: Your 50pick email was changed · Usalama
+PASS E2 the change is accepted
+PASS E3 the new address is stored
+PASS E4 verification is CLEARED — depositing is re-gated
+PASS E5 a fresh confirmation link was sent to the NEW address
+PASS E6 the OLD address is warned about the change (takeover defence)
+PASS E7 a stale link for the previous address does not verify
+PASS E8 …and the account is still unverified
+[audit] SYSTEM contacts.contact.registered usr_1cfec3657dae6128991f8726 MarketingContact#mc_ewevpavxytqpvraf
+[audit] AUTH user.registered usr_1cfec3657dae6128991f8726 User#usr_1cfec3657dae6128991f8726
+[email-stub] To: f***@50pick.tz | Subject: Welcome to 50pick · Karibu
+[email] sending "Confirm your email · 50pick" → f***@50pick.tz (tag=email-verify)
+[email-stub] To: f***@50pick.tz | Subject: Confirm your email · 50pick
+PASS F0 fixture · a fresh account with a real password
+PASS F0b fixture · its address is confirmed
+[audit] SECURITY auth.reauth.bad_password usr_1cfec3657dae6128991f8726 User#usr_1cfec3657dae6128991f8726
+PASS F1 a wrong current password is refused: PW_CURRENT_WRONG, reason password_wrong
+PASS F1b …the address and its confirmation are untouched
+PASS F1c …nothing was mailed: no confirmation link, no change alert
+PASS F1d …and the refusal is on record as a re-auth failure for an email change
+[audit] COMPLIANCE user.email.set usr_1cfec3657dae6128991f8726 User#usr_1cfec3657dae6128991f8726
+[email] sending "Confirm your email · 50pick" → f***@50pick.tz (tag=email-verify)
+[email-stub] To: f***@50pick.tz | Subject: Confirm your email · 50pick
+[email-stub] To: f***@50pick.tz | Subject: Your 50pick email was changed · Usalama
+PASS F2 the right current password changes the address
+PASS F2b …stored UNCONFIRMED: depositing is re-gated
+PASS F2c …a confirmation link went to the NEW address
+PASS F2d …and the change alert to the OLD one
+PASS F2e …the in-app SECURITY notice has a Chinese title and body
+PASS F2f …and the audit row names who and what was proved: by self, proof password
+[email-stub] To: f***@50pick.tz | Subject: Your 50pick email was removed · Usalama
+[audit] COMPLIANCE user.email.cleared usr_1cfec3657dae6128991f8726 User#usr_1cfec3657dae6128991f8726
+PASS F3 the right password removes the address
+PASS F3b …the REMOVED address is warned: 'Your email was removed', with no 'New address' row
+PASS F3c …and the in-app notice says it was removed, with a Chinese title and body
+PASS F3d …the cleared row names who and what was proved
+[audit] SYSTEM contacts.contact.registered usr_7536f0b2769b3622ccac8026 MarketingContact#mc_lnbpfygcbyexrhyu
+[audit] AUTH user.registered usr_7536f0b2769b3622ccac8026 User#usr_7536f0b2769b3622ccac8026
+[email-stub] To: f***@50pick.tz | Subject: Welcome to 50pick · Karibu
+[email] sending "Confirm your email · 50pick" → f***@50pick.tz (tag=email-verify)
+[email-stub] To: f***@50pick.tz | Subject: Confirm your email · 50pick
+PASS F4 the SAME address with an EMPTY password is a no-op: ok, unchanged
+PASS F4b …nothing was mailed
+[audit] SECURITY auth.reauth.bad_password usr_7536f0b2769b3622ccac8026 User#usr_7536f0b2769b3622ccac8026
+[audit] SECURITY auth.reauth.bad_password usr_7536f0b2769b3622ccac8026 User#usr_7536f0b2769b3622ccac8026
+[audit] SECURITY auth.reauth.bad_password usr_7536f0b2769b3622ccac8026 User#usr_7536f0b2769b3622ccac8026
+[audit] SECURITY auth.reauth.bad_password usr_7536f0b2769b3622ccac8026 User#usr_7536f0b2769b3622ccac8026
+PASS F4c …and it spent NOTHING: five wrong attempts afterwards all still answer PW_CURRENT_WRONG
+[audit] SECURITY auth.reauth.bad_password usr_7536f0b2769b3622ccac8026 User#usr_7536f0b2769b3622ccac8026
+[audit] SYSTEM contacts.contact.registered usr_88efcbfdff0c6921ebcde6c8 MarketingContact#mc_jwrizutjipxnxpop
+[audit] AUTH user.registered usr_88efcbfdff0c6921ebcde6c8 User#usr_88efcbfdff0c6921ebcde6c8
+[email-stub] To: f***@50pick.tz | Subject: Welcome to 50pick · Karibu
+[email] sending "Confirm your email · 50pick" → f***@50pick.tz (tag=email-verify)
+[email-stub] To: f***@50pick.tz | Subject: Confirm your email · 50pick
+[audit] SECURITY auth.reauth.bad_password usr_88efcbfdff0c6921ebcde6c8 User#usr_88efcbfdff0c6921ebcde6c8
+[audit] SECURITY auth.reauth.bad_password usr_88efcbfdff0c6921ebcde6c8 User#usr_88efcbfdff0c6921ebcde6c8
+[audit] SECURITY auth.reauth.bad_password usr_88efcbfdff0c6921ebcde6c8 User#usr_88efcbfdff0c6921ebcde6c8
+[audit] SECURITY auth.reauth.bad_password usr_88efcbfdff0c6921ebcde6c8 User#usr_88efcbfdff0c6921ebcde6c8
+[audit] SECURITY auth.reauth.bad_password usr_88efcbfdff0c6921ebcde6c8 User#usr_88efcbfdff0c6921ebcde6c8
+PASS F5 after five wrong passwords even the RIGHT one waits: RATE_LIMITED, with a wait
+PASS F5b …and the address is unchanged
+[audit] SECURITY auth.reauth.rate_limited usr_88efcbfdff0c6921ebcde6c8 User#usr_88efcbfdff0c6921ebcde6c8
+PASS F5c ONE bucket with the password change: it answers RATE_LIMITED too
+PASS F5d ⛔ …and the SIGN-IN lock is untouched: failedLoginCount 0, lockedUntil null
+[audit] SECURITY auth.reauth.rate_limited usr_88efcbfdff0c6921ebcde6c8 User#usr_88efcbfdff0c6921ebcde6c8
+[audit] COMPLIANCE user.email.set usr_aei_f6_nopw User#usr_aei_f6_nopw
+[email] sending "Confirm your email · 50pick" → f***@50pick.tz (tag=email-verify)
+[email-stub] To: f***@50pick.tz | Subject: Confirm your email · 50pick
+PASS F6 a password-less account adds an address with no password to ask
+PASS F6b …recorded as the residual it is: by self, proof none
+[audit] SYSTEM contacts.contact.registered usr_45656217308e02415de85503 MarketingContact#mc_bsgeehgyljbyymbn
+[audit] AUTH user.registered usr_45656217308e02415de85503 User#usr_45656217308e02415de85503
+[email-stub] To: f***@50pick.tz | Subject: Welcome to 50pick · Karibu
+[email] sending "Confirm your email · 50pick" → f***@50pick.tz (tag=email-verify)
+[email-stub] To: f***@50pick.tz | Subject: Confirm your email · 50pick
+[audit] KYC kyc.started usr_45656217308e02415de85503 Kyc#kyc_6f76c47a790d074c8a34
+[audit] KYC nida.check.requested usr_45656217308e02415de85503 User#usr_45656217308e02415de85503
+[audit] KYC nida.check.format_accepted usr_45656217308e02415de85503 User#usr_45656217308e02415de85503
+[audit] KYC kyc.id.accepted usr_45656217308e02415de85503 Kyc#kyc_6f76c47a790d074c8a34
+PASS F7 ⛔ the identity step is no email door: whatever it answered, the address and its confirmation are untouched
+PASS F7b …and nothing went to the address it was handed
+PASS F8 fixture · updateProfileBasicsAction was located
+PASS F8b it refuses any form that carries an email
+PASS F8c …and reaches no email writer: neither setUserEmail nor changeOwnEmail
+PASS F9 ⛔ setUserEmail( appears in exactly two src files: the single writer itself and the officer door
+PASS F9b the KYC identity schema has no email field (Zod strips one a stale page still posts)
+PASS F9c the KYC page renders no input named email, in any state
+PASS F9d the account editor saves through changeEmailAction, with the current password
+PASS F9e the re-auth bucket is 5 tokens, one back per five minutes
+PASS H0 fixture · the resend handler was located
+PASS H1 resend reads r.sent BEFORE it ever says 'Confirmation sent'
+PASS H2 …the not-sent branch says ALREADY CONFIRMED, refreshes the page and stops
+PASS H3 a save whose link did not go says so: verifyErrSuppressed, in a FACTUAL toast
+PASS H4 ⛔ never the gold warning variant, anywhere in the editor
+[audit] SYSTEM contacts.contact.registered usr_4e78d67950d37b9fb32928bd MarketingContact#mc_eemiuuklzvuivodq
+[audit] AUTH user.registered usr_4e78d67950d37b9fb32928bd User#usr_4e78d67950d37b9fb32928bd
+[email-stub] To: j***@50pick.tz | Subject: Welcome to 50pick · Karibu
+[email] sending "Confirm your email · 50pick" → j***@50pick.tz (tag=email-verify)
+[email-stub] To: j***@50pick.tz | Subject: Confirm your email · 50pick
+[audit] SYSTEM contacts.contact.registered usr_e5d261eab39dc4ed6e46cae2 MarketingContact#mc_lektefscbjmdpdyd
+[audit] AUTH user.registered usr_e5d261eab39dc4ed6e46cae2 User#usr_e5d261eab39dc4ed6e46cae2
+[email-stub] To: j***@50pick.tz | Subject: Welcome to 50pick · Karibu
+[email] sending "Confirm your email · 50pick" → j***@50pick.tz (tag=email-verify)
+[email-stub] To: j***@50pick.tz | Subject: Confirm your email · 50pick
+[audit] SYSTEM contacts.contact.registered usr_fab49547c5f3c3622c6e23d7 MarketingContact#mc_epusgbfgdcejwimu
+[audit] AUTH user.registered usr_fab49547c5f3c3622c6e23d7 User#usr_fab49547c5f3c3622c6e23d7
+[email-stub] To: j***@50pick.tz | Subject: Welcome to 50pick · Karibu
+[email] sending "Confirm your email · 50pick" → j***@50pick.tz (tag=email-verify)
+[email-stub] To: j***@50pick.tz | Subject: Confirm your email · 50pick
+PASS J0 fixture · three fresh accounts
+PASS J1 a fresh link peeks as pending, naming its account and address
+PASS J1b …and a peek writes nothing
+PASS J2 ⛔ opened with NO session (a mail scanner, a stranger): needs_password, nothing written
+PASS J3 ⛔ opened in SOMEONE ELSE'S session: needs_password too
+[audit] COMPLIANCE user.email.verified usr_4e78d67950d37b9fb32928bd User#usr_4e78d67950d37b9fb32928bd
+PASS J4 opened in the account's OWN session: confirmed on open
+PASS J4b …recorded as via link, proof session
+[audit] SECURITY auth.reauth.bad_password usr_e5d261eab39dc4ed6e46cae2 User#usr_e5d261eab39dc4ed6e46cae2
+PASS J5 the form with a WRONG password: password_wrong, nothing confirmed
+PASS J5b …and it is on record as a re-auth failure for a confirmation
+[audit] COMPLIANCE user.email.verified usr_e5d261eab39dc4ed6e46cae2 User#usr_e5d261eab39dc4ed6e46cae2
+PASS J6 the form with the account's own password: confirmed
+PASS J6b …recorded as via link, proof password
+PASS J6c ⛔ …and it created NO session
+PASS J7 the form with no proof at all: proof_required, nothing confirmed
+PASS J8 the J4 link again, with no proof: already — a confirmed address asks for none
+[audit] COMPLIANCE user.email.set usr_4e78d67950d37b9fb32928bd User#usr_4e78d67950d37b9fb32928bd
+[email] sending "Confirm your email · 50pick" → m***@50pick.tz (tag=email-verify)
+[email-stub] To: m***@50pick.tz | Subject: Confirm your email · 50pick
+[email-stub] To: j***@50pick.tz | Subject: Your 50pick email was changed · Usalama
+PASS J9 ⛔ the writer re-reads the account: a confirmation for the OLD address is a mismatch and writes nothing
+PASS J9b a garbage token peeks as invalid
+PASS J10 the confirmation page opens the link through openEmailVerifyLink, with the session
+PASS J10b ⛔ …and calls no writer itself: no markEmailVerified, confirmEmailWithProof or verifyEmailToken
+PASS J10c the action file opens with the "use server" directive, has exactly ONE export, and calls confirmEmailWithProof(
+PASS J10d the GET-time confirmer is gone: no function verifyEmailToken
+PASS J10e ⭐ ONE writer of a confirmation: `emailVerifiedAt: new Date` appears exactly once in src/, in email-verification.ts
+PASS J10f ⛔ no other src file calls markEmailVerified( — S9 adds its caller deliberately, and updates this pin
+
+auth-email-integrity: 90 passed, 0 failed

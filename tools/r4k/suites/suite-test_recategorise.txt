@@ -1,0 +1,36 @@
+PASS 1: ⭐ a mis-filed market can be corrected
+PASS 1: …and the change reports both ends — other → weather
+PASS 1: …and it really is stored
+[audit] ADMIN market.recategorised usr_test_officer Market#mkt_recat_39595
+PASS 1: re-filing under the same category is a no-op
+PASS 1: a market that does not exist is refused, not silently created
+PASS 2: 🔴 "politics" is refused
+PASS 2: 🔴 "Politics" is refused
+PASS 2: 🔴 "POLITICS" is refused
+PASS 2: 🔴 "religion" is refused
+PASS 2: 🔴 "adult" is refused
+PASS 2: 🔴 "violence" is refused
+PASS 2: 🔴 the market's category is untouched after every refusal — sports
+PASS 2: ⭐ the coercer really would have swallowed it — the trap is real, not theoretical — other
+PASS 2: ⛔ …and `recategoriseMarket` does NOT use it
+PASS 2: the refusal names the permitted categories — "politics" is not a category this licence permits. Choose one of: sports, macro, weather, crypto, culture, tech, other.
+PASS 3: politics is not in the canonical list
+PASS 3: the list still holds the seven the licence permits — sports, macro, weather, crypto, culture, tech, other
+PASS 3: the control takes its choices as a prop rather than declaring its own
+PASS 3: …and the page passes the canonical list
+PASS 4: the change is audited with before and after
+PASS 4: the action is admin-gated
+PASS 4: ⛔ …and it does NOT demand a 2FA step-up for a filing change
+PASS 4: ⛔ the write is the spread plus the category, and nothing else — marketStore.set({ ...m, category: after }, tx);
+    return { m, before, changed: true };
+PASS 4: ⛔ …and there is exactly ONE write in the whole function
+PASS 4: 🔴 the read and the write are under the market lock, both on the lock's transaction (MS-1) — {"iLock":536,"iRead":609,"iWrite":797}
+PASS 4b: 🔴 a short title that lands while the re-file waits for the lock survives it — and the re-file still lands (MS-1) — {"category":"sports","shortTitleEn":"Will it rain in Dar es Salaam?"}
+PASS 5: ⭐ `/results` is force-dynamic -- it re-reads the category, so it cannot go stale
+PASS 5: …and it really does group off `m.category`, so a correction moves the market
+PASS 5: …and the action names `/results` anyway, so a static `/results` still refreshes
+PASS 5: …and `/markets` re-reads it too
+
+recategorise: 30 passed, 0 failed
+[audit] ADMIN market.recategorised usr_test_officer Market#mkt_recat_95028
+

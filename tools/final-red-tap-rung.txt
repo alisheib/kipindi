@@ -1,0 +1,14 @@
+──────────────────────────────────────────────────────────────────────
+red:tap-rung — the control for test:tap-target §6 (PV-13a/PV-13b)
+──────────────────────────────────────────────────────────────────────
+  HEAD   exit 0 (test:tap-target green — both PV-13 fixes ship)
+  ✓ wallet-balance-pill.tsx — revert CashEye to the shipped h-[42px] w-[32px] (BOTH axes: PV-13a's height, D78's width)
+      caught: FAIL 6.2 no named control hand-types a pixel height OR WIDTH at its call site — each defers to a rung in BOTH axes — wallet-balance-pill.tsx → <CashEye> (the balance-hide eye toggle) hand-types 42px at the call site instead of reading a --h-control-*/--tap-min rung
+  ✓ globals.css — revert .mcardp-info to the shipped content-box 28px/8px pad (46px total)
+      caught: FAIL 6.2 no named control hand-types a pixel height OR WIDTH at its call site — each defers to a rung in BOTH axes — .mcardp-info ("How it works", every market card) hand-types 28px at the call site instead of reading a --h-control-*/--tap-min rung
+  ✓ globals.css — the captioned balance (.kp-jbal) hand-types 44px instead of naming --h-control-md
+      caught: FAIL 6.2 no named control hand-types a pixel height OR WIDTH at its call site — each defers to a rung in BOTH axes — .kp-jbal (the journey header's captioned balance, S6) hand-types 44px at the call site instead of reading a --h-control-*/--tap-min rung
+  ✓ globals.css — the captioned balance (.kp-jbal) declares no height at all
+      caught: FAIL 6.3 the captioned balance (.kp-jbal) takes its height from a --h-control-* rung, by name — display: inline-flex; flex-shrink: 0; align-items: center; gap: var(--sp-2); padding: 0 10px; border-radius: var(--r-pill); background: var(
+
+4/4 mutations caught

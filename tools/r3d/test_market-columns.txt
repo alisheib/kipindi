@@ -1,0 +1,32 @@
+﻿PASS 1: the desktop layout is still a 2-column grid with a fixed rail
+PASS 1: …and it still declares two rows
+PASS 1: the page still renders a related-markets section
+PASS 2: ⭐ related markets span BOTH columns — 
+}
+        {similar.length > 0 && (
+          <section
+            className="order-3 lg:col-span-2 lg:row-start-2 min-w-0"
+            
+PASS 2: ⛔ …and are NOT parked in the right column, where they outgrew the left one
+PASS 2: ⛔ the left column no longer spans both rows
+PASS 2: the bet widget sticks ONLY within row 1
+PASS 3: the cards use the shared board grid
+PASS 3: ⛔ …with no forced single column left over from the rail
+PASS 4: related markets keep `order-3`, so the phone renders exactly as before
+PASS 4: the aside is still first on mobile — the bet widget stays above the fold
+PASS 4: …and the content column still follows it
+PASS 5: ⭐ the bet column spaces its cards with a flex gap, which an out-of-flow heading cannot take a rung of — <aside className="flex flex-col gap-3 lg:sticky lg:top-[72px] lg:z-10" aria-labelledby={BE
+PASS 5: ⭐ …and the signed-in branch still opens on the D40 sr-only heading (the premise)
+PASS 5: the category watermark is drawn on the question's own box — centred on it, two of its ems, behind it — 436 chars between the box and the <h1>
+PASS 5: ⛔ …and never again from the whole header's bottom edge
+PASS 5: the source link, the star and SHARE are ONE right-aligned group, so they wrap together
+PASS 6: ⭐ the pool figure is an .amount on the mono face (words only when there is no pool yet)
+PASS 6: …the predictor count is mono
+PASS 6: …and the close time is a kit Stat on the sm-plain rung, with its glyph
+PASS 6: ⛔ the local KPI fork is gone
+PASS 7: the question page's ticket line is the clock line's flex shape (4px)
+PASS 7: …and so is the classic position card's
+PASS 7: ⛔ no ticket glyph is set inline with a margin any more
+PASS 7: ⭐ CONTROL — the shape matcher still reads the shape it is written for
+
+market-columns: 25 passed, 0 failed

@@ -1,0 +1,1 @@
+REFUSED — KP_PARITY_NORMALISE names no candidate normaliser: dates. The candidates are market-ids, time-left, eat-dates, relative-times, chart-paths, avatar-ids, chunk-hashes (or none).

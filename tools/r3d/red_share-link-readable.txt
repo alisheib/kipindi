@@ -1,0 +1,25 @@
+﻿precondition: gate is GREEN on the untouched tree
+
+  1. caught      back-to-a-single-line-input  →  1: ⛔ the referral link is a <textarea>, not a single-line <input>
+  2. caught      word-wrap-instead-of-break-all  →  1: ⛔ …and it breaks a URL, which has no spaces to wrap at
+  3. caught      fit-without-collapsing  →  2: ⛔ …and it collapses BEFORE measuring, or the field can only ever grow
+  4. caught      height-ignores-the-borders  →  2: ⛔ …and it adds the borders back, because height sets the BORDER box
+  5. caught      measured-once-on-mount  →  2: …re-measuring on every width change, not once on mount
+  6. caught      dialog-truncates-again  →  3: ⛔ the dialog's link line no longer truncates
+  7. caught      flex-column-floor-restored  →  3: ⚠️ the text column may shrink below its content (min-w-0)
+  8. caught      plate-yields-instead  →  3: ⚠️ …and the 36px plate beside it may not (shrink-0)
+  9. caught      control-field-renders-nothing  →  1: ⭐ POSITIVE CONTROL — the control is fed the real link
+  10. caught      the-field-inline-again  →  4: ⭐ the field is a block on text-body-sm's own line
+  11. caught      the-field-takes-its-own-leading  →  4: ⭐ the field is a block on text-body-sm's own line
+
+11/11 caught · files restored: all · green after restore: true
+RED PROOF COMPLETE
+node.exe : (node:23336) [DEP0190] DeprecationWarning: Passing args to a child process with shell option true can lead 
+to security vulnerabilities, as the arguments are not escaped, only concatenated.
+At line:1 char:1
++ & "C:\Program Files\nodejs/node.exe" "C:\Program Files\nodejs/node_mo ...
++ ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: ((node:23336) [D...y concatenated.:String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+ 
+(Use `node --trace-deprecation ...` to show where the warning was created)

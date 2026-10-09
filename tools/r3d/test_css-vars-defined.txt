@@ -1,0 +1,6 @@
+﻿css-vars-defined: read 1383 files under F:\kipindi-r3d\src
+  435 custom properties defined · 296 referenced without a fallback
+
+PASS every var() reference resolves to a definition
+
+css-vars-defined: 296 references checked, 0 undefined.

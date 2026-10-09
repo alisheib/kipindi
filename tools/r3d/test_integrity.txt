@@ -1,0 +1,1 @@
+﻿content-integrity: OK — no misleading, superseded, or removed-code patterns in current-truth surfaces

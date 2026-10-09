@@ -1,0 +1,69 @@
+Visual pass round 5 (R5-A): the home card on the claim's capitals, one page one name in the journey, every close ✕ on its title's capitals, counts grouped and lower-case, the regulator's name and the legal titles kept whole, right-aligned tracked labels ending on their column's edge
+
+From round 5's read of 88ee1a42. Every item re-measured first and brought, with its siblings, to one convention.
+
+- F2: the home's featured card was centred against the intro and the act together, so its top fell 2px over to 66px
+  under the claim's capitals (48 desktop tiles, y191–259). From 1024 the grid hangs from its top line (`auto 1fr`,
+  `align-items: start`) and the card is lowered onto the claim's first ink row: 3px (the mono claim's capitals start
+  0.305em = 3.97px into its line, hinted onto row 4), 2px in zh. Both shells (a shared body); the loading ghost too.
+- F12: /results' count line printed the capitalised label ("2 Watabiri"); it now reads "2 watabiri" through formatNumber
+  and the plural keys, as the cards do. Siblings: the card's count (toLocaleString → formatNumber), the /results tally
+  grouped ("12,479 imetatuliwa"), the leaderboard's lower-cased label from its own key.
+- F15: /markets' pool chips were dictionary strings ("TZS 10k+", sans, lower-case k); now formatTzsCompact of the very
+  floor the filter applies, in `.amount` mono ("TZS 10K+"), as every other money chip.
+- F16: legal titles kept a connective with its noun (legalTitle(): sw ya/za/wa/la/cha/vya/kwa/na, en of/and/&, pairs
+  ≤ 10 characters): "Kanuni / za Michezo", "Terms / of Service", "Sera / ya Faragha" at the widths where they wrap; all
+  24 titles swept at 320–412, names never split.
+- F17: one page, one name in the journey — the hub, the avatar menu, the footer and the profile's KYC row now name each
+  page as the page names itself (KYC "Thibitisha kitambulisho", leaderboard "Bingwa", proposals "Mapendekezo ya Masoko",
+  privacy "Sera ya faragha", help "Msaada"); /live's eyebrow "MUBASHARA" (page and ghost). Classic chrome keeps its
+  words (frozen); the RG doors name an action by design.
+- F18: the regulator's name is one name wherever its line can hold it (keepRegulator + size containers `.kp-gbt`): the
+  journey footer at en 1024 reads "Licensed by the / Gaming Board of Tanzania."; the hero's trust row at sw 360–390 and
+  en 320 the same. A narrower line wraps as before; it can never overflow.
+- F19: right-aligned tracked labels end where their neighbours end (R3-C's trailing-tracking take-back): the price
+  caption ("NDIO" x355 → x357, the figure's edge), the card's one-sided move label, the bar's right label, the /results
+  spotlight flag and Up & Down's live note (`kp-track-end`).
+- F20: one convention for every close ✕ — centred on its title's first-line capitals, its box 16px inside the panel's
+  right edge; CloseX is the single ✕. Channels panel (1.70px low → ≈0.1), how-it-works, share and objection dialogs
+  (`.kp-modal-title`), ConfirmModal (from the medallion's centre to the title's capitals), sell confirm (a header-row
+  CloseX), bet confirm (16px in; its hand-drawn ✕ now the one CloseX, announced "Funga" not a second "Ghairi"), filter
+  sheet (the one CloseX, its box 16px inside the sheet's edge — 12px further in), install card, the reality check
+  (position only, no word changed), toast.
+  ONE IN-FLIGHT RULE: while a request a dialog sent is in flight (Cancel disabled, scrim and Esc refused), its ✕ is
+  withheld too — a corner ✕ is not drawn (`showClose={!pending}`), a header-row ✕ keeps its box but is invisible and
+  disabled (`CloseX withheld`), so no row changes height and no body moves (ConfirmModal's old removal could lift the
+  body mid-request). A busy dialog that stays closable keeps its ✕. Siblings: the sell and bet confirms, the objection
+  dialog; and in admin, five corner ✕s that were drawn but dead mid-request (objection decision, hold, settle, stuck
+  payout, proposal actions), and three confirms kept open across their own request without `loading` (proposal arm and
+  delete, Up & Down's switch to simulated prices) — whose ✕ and Cancel could close them mid-request, and Arm fire twice.
+- F5: the tile harness parks the pointer (R4-G's parkPointer) and waits past --t-base before every shot — no tile taken
+  in a hover state.
+- §A5: /results withholds its search band and filter bar when the archive is empty, as its siblings do.
+- Checks: /markets' search stands 34px over its pills at every width (was 31 on phones, 35 on desktop), ghost too; the
+  guest hub's Matokeo row takes /results' own glyph; the Up & Down chart's load has a 12s deadline (the existing "Chati
+  haipatikani — inajaribu tena", polling retries, a late answer still draws); the grid card's pool figure gets a
+  screen-reader word (no room at 320 for a visible one — owner item).
+
+Guards: test:visual-pass-r5a (91 checks; a ✕ census over every ✕ site in src — 30 sites in 24 files — that fails on
+an unclassified ✕ and on a hand-drawn ✕ in a dialog; the in-flight rule over 27 dialogs and 4 confirms). Mutation proof:
+41 planted, 41 caught on the named check, all restored byte-identical. Re-pins (each with its reason): r4d §7.1, r4h
+§6.5, r4i §4, r4j §3.8, r3c §10.3, featured-card §2.15 + its anchors, eyebrow-roles (two STATUS_CHIP signatures),
+enter-where-pressed 2.3, campaign-gates kitHeld, updown-filter-sheet 10.
+
+Merged onto R5-B/C/D/E/F (rebased on main 118fc75c): the /results spotlight flag is R5-C's brand ink with R5-A's tracked
+span (r5a 7.2, r5c 2.4 and the eyebrow-roles signature follow it); keepRegulator matches the zh name's zero-width break
+hint as any format character (`\p{Cf}`), so the source names no invisible character (R5-E's census, r5e §6.5). On the
+merged tree: every suite reading a touched file, R5-A's and R5-E's lists, the red twins, and the three rounds' mutation
+proofs (R5-A 41, R5-C 59, R5-E 27) re-run.
+
+Owner items: the grid card's pool label at 320; ConfirmModal's ✕ on the title; the journey's proposals doors without
+"earn"; sw "Bingwa" vs "Jedwali la Washindi"; the legal titles' connective rule. S12: the rules page's name key, the sw
+AML and limits door names, sw "hai" vs "Mubashara", the zh regulator's two names, `proposals.earned` "umepataa".
+
+Classic viewers see the shared-body changes (home card, legal titles, hero trust row, NDIO and the bar's label,
+/results, the leaderboard row, every dialog and sheet ✕, /profile's KYC row, /live's eyebrow, the chart deadline,
+/markets' gap and chips, the ✕ withheld while a bet, sale or objection is in flight, the filter sheet's ✕ 12px in); the
+classic footer and avatar menu are unchanged (frozen chrome).
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>

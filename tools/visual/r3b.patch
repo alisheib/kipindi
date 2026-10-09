@@ -1,0 +1,1532 @@
+diff --git a/package.json b/package.json
+index c68635474..ef4a76cc5 100644
+--- a/package.json
++++ b/package.json
+@@ -177,6 +177,7 @@
+     "test:ui-consistency": "tsx scripts/ui-consistency.test.mts",
+     "test:type-scale": "tsx scripts/type-scale.test.mts",
+     "test:needle": "tsx scripts/needle-physics.test.mts",
++    "test:needle-host": "tsx scripts/needle-host.test.mts",
+     "test:integrity": "tsx scripts/content-integrity.test.mts",
+     "test:maintenance": "tsx scripts/maintenance-mode.test.mts",
+     "test:emergency": "tsx scripts/emergency-void.test.mts",
+diff --git a/scripts/needle-host.test.mts b/scripts/needle-host.test.mts
+new file mode 100644
+index 000000000..d7bd7ab02
+--- /dev/null
++++ b/scripts/needle-host.test.mts
+@@ -0,0 +1,404 @@
++/**
++ * needle-host — THE NEEDLE'S REST RULES, PROVED WITHOUT A BROWSER (R3-B, the Vodacom visual pass, round 3).
++ *
++ *   npx tsx scripts/needle-host.test.mts      (npm run test:needle-host)
++ *
++ * The host in `components/layout/needle.tsx` reads the page and hands boxes to `lib/needle-rest.ts`, which decides
++ * where the parked disc rests and what a viewport change does to a disc on its way to a rest. This suite drives that
++ * module on synthetic boxes, and its viewport rule on the VENDORED ENGINE ITSELF, replaying the capture drive that made
++ * round 3's tiles — so each rule is shown to fix the defect the tiles measured, and each section carries a PLANT: the
++ * rule taken away in memory, run on the same input, must show the defect again. A section whose plant cannot fail
++ * proves nothing. `test:needle-rest` proves the same rules on the real page, in a browser.
++ *
++ *   §1 the module's constants agree with the files they restate (the engine, needle.css, the host's halo).
++ *   §2 ① A VIEWPORT CHANGE RE-SEATS A DISC ON ITS WAY TO A REST — tiles 295 296 299 304 307 315.
++ *   §3 ② THE CLEARANCE TIERS — tiles 194 257 265 273 296 301 309 310; ③ AN OPEN SURFACE IS A KEEP-OUT — tile 321.
++ *   §4 the host wires the rules in (source, comments stripped): the census, the triggers, the probe.
++ */
++import { readFileSync } from "node:fs";
++import { join } from "node:path";
++import { NeedleBody, CONST } from "../src/lib/needle-physics.js";
++import {
++  EDGE_MARGIN, HALO_BREATHE, GLOW_GAP, RIM_CLEARANCE, FLOOR_CLEARANCE, REST_TIERS,
++  censusPad, decideRest, glowReach, hugs, paintsNothing, railRange, reseat,
++  type Box, type Geometry, type RestInput, type RestTier,
++} from "../src/lib/needle-rest.ts";
++
++const ROOT = new URL("..", import.meta.url).pathname.replace(/^\/([A-Za-z]:)/, "$1");
++const rd = (p: string) => readFileSync(join(ROOT, p), "utf8");
++/** Comments blanked (block comments that start at a boundary, and line comments), as `test:stacking` reads code. */
++const code = (s: string) => s.replace(/(^|[\s{(,;=])\/\*[\s\S]*?\*\//g, (m, p1: string) => p1 + m.slice(p1.length).replace(/[^\n]/g, " "))
++  .replace(/(^|[^:"'`\w/])\/\/[^\n]*/g, "$1");
++
++let pass = 0;
++const failures: string[] = [];
++const ok = (label: string, cond: boolean, detail = "") => {
++  if (cond) { pass++; console.log(`  PASS ${label}${detail ? ` — ${detail}` : ""}`); }
++  else { failures.push(`${label}${detail ? ` — ${detail}` : ""}`); console.log(`  FAIL ${label}${detail ? ` — ${detail}` : ""}`); }
++};
++
++// ── The host's own geometry, restated (needle.tsx `diameter`, `haloInset`; §1 holds the source to these) ─────────────
++const diameter = (w: number, h: number) => Math.round(Math.min(64, Math.max(56, Math.min(w, h) * 0.155)));
++const haloFraction = (w: number, h: number) => {
++  const t = Math.min(1, Math.max(0, (Math.min(w, h) - 360) / (900 - 360)));
++  return (14 + t * 20) / 100;
++};
++/** The capture drive's viewports (qa-journey-shell.mjs `viewport`). */
++const vh = (w: number) => (w < 1024 ? 780 : 900);
++
++console.log("\n§1 · the module's constants agree with the files they restate");
++{
++  ok("1.1 EDGE_MARGIN is the engine's CONST.EDGE_MARGIN", EDGE_MARGIN === CONST.EDGE_MARGIN, `${EDGE_MARGIN} vs ${CONST.EDGE_MARGIN}`);
++  const css = rd("src/components/layout/needle.css");
++  const breathe = /@keyframes needle-wake-breathe \{[\s\S]*?50%[^}]*scale\(([\d.]+)\)/.exec(css);
++  ok("1.2 HALO_BREATHE is the peak of needle.css's `needle-wake-breathe` (its 50% scale)",
++    !!breathe && Number(breathe[1]) === HALO_BREATHE, breathe ? `css ${breathe[1]} vs ${HALO_BREATHE}` : "keyframe not found");
++  const host = code(rd("src/components/layout/needle.tsx"));
++  ok("1.3 the host's halo and diameter are the ones restated here",
++    host.includes("const t = clampN((Math.min(v.w, v.h) - 360) / (900 - 360), 0, 1);") && host.includes("return -(14 + t * 20).toFixed(1);")
++    && host.includes("return Math.round(clampN(Math.min(v.w, v.h) * 0.155, 56, 64));"));
++  // The glow, against the tiles: the aqua tint measured past the disc's box.
++  const g390 = glowReach(diameter(390, 780), haloFraction(390, 780));
++  const g1024 = glowReach(diameter(1024, 900), haloFraction(1024, 900));
++  ok("1.4 the glow reaches 11.4px past the box at 390 — tile 254 measured the tint from x349 to the box at x360 (11px)",
++    Math.abs(g390 - 11.4) < 0.15, g390.toFixed(2));
++  ok("1.5 …and 25px at 1024 — tile 257 measured the faint tint from x975/976 at 18px under the centre (the halo's circle there: 24.7px out)",
++    Math.abs(g1024 - 25) < 0.1, g1024.toFixed(2));
++  ok("1.6 the tiers are the documented five, best first, and the census reaches the widest pad",
++    REST_TIERS.length === 5
++    && REST_TIERS[0].pad(10) === 10 + GLOW_GAP && REST_TIERS[0].frames && REST_TIERS[0].text
++    && REST_TIERS[1].pad(10) === 10 + GLOW_GAP && !REST_TIERS[1].frames && REST_TIERS[1].text
++    && REST_TIERS[2].pad(10) === RIM_CLEARANCE && !REST_TIERS[2].frames && REST_TIERS[2].text
++    && REST_TIERS[3].pad(10) === FLOOR_CLEARANCE && !REST_TIERS[3].frames && REST_TIERS[3].text
++    && REST_TIERS[4].pad(10) === FLOOR_CLEARANCE && !REST_TIERS[4].frames && !REST_TIERS[4].text
++    && censusPad(g1024) === g1024 + GLOW_GAP && censusPad(1) === RIM_CLEARANCE);
++}
++
++// ── §2 · the engine, driven the way the host drives it ─────────────────────────────────────────────────────────────────
++type Frame = { x: number; y: number; cx: number; size: number; parked: boolean; parking: boolean; edge: string; w: number };
++type Body = InstanceType<typeof NeedleBody>;
++const DT = 1000 / 60;
++const NO_INS = { top: 0, right: 0, bottom: 0, left: 0 };
++const geometryOf = (b: Body): Geometry => { const L = b.limits(); return { minX: L.minX, maxX: L.maxX, minY: L.minY, maxY: L.maxY, size: b.size }; };
++
++/** The host's rest half, minus the DOM: one body, its glide, and `applyViewport` with or without the reseat. */
++class HostSim {
++  vp: { w: number; h: number };
++  b: Body;
++  gliding = false;
++  laidOut: Geometry;
++  frames: Frame[] = [];
++  constructor(w: number, h: number, edge: "left" | "right", y: number, readonly withReseat: boolean) {
++    this.vp = { w, h };
++    this.b = new NeedleBody({
++      size: diameter(w, h),
++      bounds: () => ({ w: this.vp.w, h: this.vp.h, insets: NO_INS }),
++      onPark: () => { this.gliding = false; },
++    });
++    // The host's side-rail override (needle.tsx `body.nearestEdge`).
++    this.b.nearestEdge = () => { const L = this.b.limits(); return (this.b.cx - L.minX) <= ((L.maxX + this.b.size) - this.b.cx) ? "left" : "right"; };
++    this.b.y = y;
++    this.b.snapPark(edge);
++    this.laidOut = geometryOf(this.b);
++  }
++  /** settleClear's glide: the engine's own park spring, aimed at the same x. */
++  glideTo(y: number) { this.gliding = true; this.b.parked = false; this.b.parking = true; this.b.target = { x: this.b.x, y }; }
++  /** A tap on the parked disc (needle.tsx `release`: `body.wake(true)`). */
++  tap() { this.b.wake(true); }
++  /** needle.tsx `applyViewport`, with the R3-B reseat or (the PLANT) without it — what the host did before: an
++   *  unconditional `reclamp()` and nothing else. */
++  resize(w: number, h: number) {
++    const before = this.laidOut;
++    const x0 = this.b.x, y0 = this.b.y;
++    this.vp = { w, h };
++    const d = diameter(w, h);
++    if (d !== this.b.size) this.b.setSize(d);
++    const after = geometryOf(this.b);
++    if (!this.withReseat) this.b.reclamp();
++    else {
++      const changed = before.minX !== after.minX || before.maxX !== after.maxX || before.minY !== after.minY
++        || before.maxY !== after.maxY || before.size !== after.size;
++      if (changed) {
++        this.b.reclamp();
++        const r = reseat({ before, after, edge: this.b.edge, parked: this.b.parked, parking: this.b.parking, held: !!this.b.held,
++          moving: this.b.moving, x: x0, y: y0, target: this.b.target });
++        if (r.kind === "rest") { this.b.y = r.y; this.b.snapPark(this.b.edge); this.gliding = false; }
++        else if (r.kind === "aim") { this.b.x = r.x; this.b.target = r.target; }
++      }
++    }
++    this.laidOut = after;
++    this.frames = [];
++  }
++  run(n: number) {
++    for (let i = 0; i < n; i++) {
++      this.b.advance(DT);
++      const b = this.b;
++      this.frames.push({ x: b.x, y: b.y, cx: b.cx, size: b.size, parked: b.parked, parking: b.parking, edge: b.edge, w: this.vp.w });
++    }
++  }
++  /** Until the engine sleeps (a wake's linger is 2.6 s, then the park). */
++  settle() { for (let i = 0; i < 900; i++) { this.run(1); if (!this.b.awake) break; } }
++}
++/** Tucked half off its edge: the centre ON the viewport's edge. */
++const halfOff = (f: Frame) => (f.edge === "right" ? Math.abs(f.cx - f.w) < 0.5 : Math.abs(f.cx) < 0.5);
++const offRail = (fs: Frame[]) => fs.filter((f) => !halfOff(f));
++const wholly = (fs: Frame[]) => fs.filter((f) => f.x >= -0.5 && f.x + f.size <= f.w + 0.5);
++const describe = (f: Frame | undefined) => (f ? `x=${f.x.toFixed(1)} cx=${f.cx.toFixed(1)} of ${f.w}, edge ${f.edge}, parked ${f.parked}` : "none");
++
++console.log("\n§2 · ① a viewport change re-seats a disc on its way to a rest (the capture drive's resizes, on the engine)");
++{
++  // 2.1 · tile 295. The staff hub at 320 (294), a glide in flight to the staff card's clear height, then 360.
++  const case295 = (withReseat: boolean) => {
++    const s = new HostSim(320, vh(320), "right", 376, withReseat);
++    s.glideTo(455); s.run(8);
++    s.resize(360, vh(360)); s.settle();
++    return s;
++  };
++  const fixed295 = case295(true), old295 = case295(false);
++  ok("2.1 295 · a glide in flight at 320 → 360: from the resize on, every frame is tucked half off the RIGHT edge at 360 (cx = 360), never wholly inside",
++    offRail(fixed295.frames).length === 0 && fixed295.b.parked && fixed295.b.edge === "right",
++    `${fixed295.frames.length} frames; first off the rail: ${describe(offRail(fixed295.frames)[0])}`);
++  ok("2.1 PLANT · without the reseat (the host before R3-B) the same drive puts the disc wholly inside at the 320 tuck x — the x≈293 tile 295 measured",
++    wholly(old295.frames).some((f) => Math.abs(f.x - 292) < 1.5), `first wholly inside: ${describe(wholly(old295.frames)[0])}`);
++
++  // 2.2 · tiles 299 → 300–317. 390 → 1024 with a glide in flight.
++  const case299 = (withReseat: boolean) => {
++    const s = new HostSim(390, vh(390), "right", 455, withReseat);
++    s.glideTo(504); s.run(8);
++    s.resize(1024, vh(1024)); s.settle();
++    return s;
++  };
++  const fixed299 = case299(true), old299 = case299(false);
++  ok("2.2 299 · a glide in flight at 390 → 1024: every frame tucked half off the RIGHT edge at 1024, and it rests there",
++    offRail(fixed299.frames).length === 0 && fixed299.b.parked && fixed299.b.edge === "right",
++    `rest: ${describe(fixed299.frames.at(-1))}`);
++  ok("2.2 PLANT · without the reseat it crosses mid-page and parks on the LEFT — tile 299's x≈241 on the way, and the left edge every later tile kept",
++    old299.b.edge === "left" && old299.frames.some((f) => f.x > 100 && f.x < 800), `ended ${describe(old299.frames.at(-1))}`);
++
++  // 2.3 · tiles 304 307 315: on the LEFT rail (a player's throw put it there), the same resize.
++  const caseLeft = (withReseat: boolean) => {
++    const s = new HostSim(390, vh(390), "left", 437, withReseat);
++    s.glideTo(500); s.run(8);
++    s.resize(1024, vh(1024)); s.settle();
++    return s;
++  };
++  const fixedLeft = caseLeft(true), oldLeft = caseLeft(false);
++  ok("2.3 304 307 · on the left rail, a glide in flight at 390 → 1024: every frame tucked half off the LEFT edge, never at the wall",
++    offRail(fixedLeft.frames).length === 0 && fixedLeft.b.parked && fixedLeft.b.edge === "left", `rest: ${describe(fixedLeft.frames.at(-1))}`);
++  ok("2.3 PLANT · without the reseat it sits wholly inside at the left wall, x = 0 — the x≈0 tiles 304 and 307 measured",
++    wholly(oldLeft.frames).some((f) => Math.abs(f.x) < 0.5), `first wholly inside: ${describe(wholly(oldLeft.frames)[0])}`);
++
++  // 2.4 · a height-only change mid-glide (a phone's URL bar): the glide goes on, its end kept in the box.
++  const caseBar = (withReseat: boolean) => {
++    const s = new HostSim(390, 780, "right", 600, withReseat);
++    s.glideTo(700); s.run(6);
++    const y0 = s.b.y;
++    s.resize(390, 700); s.settle();
++    return { s, y0 };
++  };
++  const bar = caseBar(true), oldBar = caseBar(false);
++  const steps = bar.s.frames.slice(1).map((f, i) => Math.abs(f.y - bar.s.frames[i].y));
++  const railMax = railRange(geometryOf(bar.s.b)).maxY;
++  ok("2.4 a height-only change mid-glide does not snap: the glide goes on (no frame steps over 24px, x never moves) and ends tucked at the box's lowest rest",
++    Math.max(...steps) <= 24 && offRail(bar.s.frames).length === 0 && bar.s.b.parked && Math.abs(bar.s.b.y - railMax) < 0.5,
++    `from y=${bar.y0.toFixed(1)}: max step ${Math.max(...steps).toFixed(1)}px, rest y=${bar.s.b.y.toFixed(1)} (rail max ${railMax})`);
++  ok("2.4 PLANT · without the reseat the disc pops 30px into the box (reclamp: x = 330, wholly inside) and the glide runs on past the new viewport's bottom",
++    Math.abs(oldBar.s.frames[0].x - 330) < 1.5 && oldBar.s.frames.some((f) => f.y + f.size > 700 + 0.5),
++    `first x ${oldBar.s.frames[0].x.toFixed(1)}, lowest box bottom ${Math.max(...oldBar.s.frames.map((f) => f.y + f.size)).toFixed(1)} in 700`);
++
++  // 2.5 · a tap's peek interrupted by a width change goes home, on its own edge.
++  const casePeek = (withReseat: boolean, landFirst: boolean) => {
++    const s = new HostSim(390, vh(390), "right", 455, withReseat);
++    s.tap(); s.run(landFirst ? 90 : 8);
++    s.resize(1024, vh(1024)); s.settle();
++    return s;
++  };
++  const peek = casePeek(true, false), oldPeek = casePeek(false, false);
++  ok("2.5 a peek (a tap) cut by 390 → 1024 goes home: tucked half off the RIGHT edge on every frame after",
++    offRail(peek.frames).length === 0 && peek.b.parked && peek.b.edge === "right", `rest: ${describe(peek.frames.at(-1))}`);
++  ok("2.5 PLANT · without the reseat the peek lands mid-page at the 390 peek x and parks LEFT",
++    oldPeek.b.edge === "left", `ended ${describe(oldPeek.frames.at(-1))}`);
++  const linger = casePeek(true, true), oldLinger = casePeek(false, true);
++  ok("2.6 lingering at the peek (landed, waiting out the 2.6 s linger) when 390 → 1024 comes: home on the RIGHT, every frame",
++    offRail(linger.frames).length === 0 && linger.b.parked && linger.b.edge === "right", `rest: ${describe(linger.frames.at(-1))}`);
++  ok("2.6 PLANT · without the reseat it waits mid-page and parks LEFT", oldLinger.b.edge === "left", `ended ${describe(oldLinger.frames.at(-1))}`);
++
++  // 2.7 · CONTROLS: what is not on its way to a rest is left to the engine.
++  const g = (w: number, size: number): Geometry => ({ minX: 0, maxX: w - size, minY: 0, maxY: 780 - size, size });
++  const base = { before: g(390, 60), after: g(1024, 64), edge: "right", x: 360, y: 400, target: null };
++  ok("2.7 CONTROL · a parked disc, a held one, a flying one and a still one mid-screen are kept (the engine re-tucks, the player and physics own the rest)",
++    reseat({ ...base, parked: true, parking: false, held: false, moving: false }).kind === "keep"
++    && reseat({ ...base, parked: false, parking: false, held: true, moving: false }).kind === "keep"
++    && reseat({ ...base, parked: false, parking: false, held: false, moving: true, x: 200 }).kind === "keep"
++    && reseat({ ...base, parked: false, parking: false, held: false, moving: false, x: 200 }).kind === "keep"
++    && reseat({ ...base, after: base.before, parked: false, parking: true, held: false, moving: false, target: { x: 360, y: 300 } }).kind === "keep");
++  const parked = new HostSim(390, vh(390), "right", 300, true);
++  parked.resize(1024, vh(1024)); parked.run(30);
++  ok("2.7 CONTROL · a disc at rest through 390 → 1024 is tucked half off the right edge by the engine itself",
++    offRail(parked.frames).length === 0 && parked.b.edge === "right");
++
++  // 2.8 · a viewport event that changes nothing (a visualViewport scroll, a repeated resize) mid-glide.
++  const same = (withReseat: boolean) => {
++    const s = new HostSim(390, vh(390), "right", 300, withReseat);
++    s.glideTo(380); s.run(6);
++    s.resize(390, vh(390)); s.run(6);
++    return s;
++  };
++  ok("2.8 a viewport event that changes nothing leaves a glide on its rail: no reclamp, every frame half off the right edge",
++    offRail(same(true).frames).length === 0, describe(offRail(same(true).frames)[0]));
++  ok("2.8 PLANT · the old unconditional reclamp pulls the gliding disc into the box — wholly inside at the wall, x = 330",
++    wholly(same(false).frames).some((f) => Math.abs(f.x - 330) < 1.5), describe(same(false).frames[0]));
++}
++
++// ── §3 · the tiers, on boxes ───────────────────────────────────────────────────────────────────────────────────────────
++console.log("\n§3 · ② the clearance tiers and ③ open surfaces, on the boxes the host would hand in (390 × 780, right rail)");
++{
++  const SIZE = diameter(390, 780);                       // 60
++  const GLOW = glowReach(SIZE, haloFraction(390, 780));  // 11.4
++  const fpAt = (y: number): Box => ({ left: 390 - SIZE / 2, right: 390, top: y, bottom: y + SIZE });
++  const { minY, maxY } = railRange({ minX: 0, maxX: 390 - SIZE, minY: 0, maxY: 780 - SIZE, size: SIZE });
++  const q = (y: number, controls: Box[], text: Box[], accepted: number | null = null, frames: Box[] = []): RestInput =>
++    ({ fp: fpAt(y), controls, frames, text, glow: GLOW, reach: 780 / 3, minY, maxY, y, accepted });
++  /** The gap from the disc's box at `y` to a box, along the axis that separates them (negative = they overlap). */
++  const gap = (y: number, r: Box) => {
++    const f = fpAt(y);
++    return Math.max(r.left - f.right, f.left - r.right, r.top - f.bottom, f.top - r.bottom);
++  };
++  const box = (left: number, right: number, top: number, bottom: number): Box => ({ left, right, top, bottom });
++
++  // 3.1 · 257 265 273: a pill whose right end is 2px from the disc's box.
++  const pill = box(250, 358, 300, 344);
++  const r1 = decideRest(q(290, [pill], []));
++  ok("3.1 257 · a control 2px from the disc moves it, to the nearest rest clear of the GLOW by 4px (tier 0)",
++    r1.y !== null && r1.tier === 0 && gap(r1.y, pill) >= GLOW + GLOW_GAP, `rest y=${r1.y} tier ${r1.tier}, gap ${r1.y === null ? "-" : gap(r1.y, pill).toFixed(1)}`);
++  const OLD: RestTier[] = [{ name: "the old 4px", frames: false, text: true, pad: () => 4 }, { name: "the old floor", frames: false, text: false, pad: () => 4 }];
++  const pill6 = box(250, 354, 300, 344);
++  ok("3.1 PLANT · the pre-R3-B rule (4px from the box) reads a 6px gap as clear and leaves the disc there; the tiers move it",
++    decideRest(q(290, [pill6], []), OLD).y === null && decideRest(q(290, [pill6], [])).y !== null);
++  ok("3.1 PLANT · and with no clearance at all, the 2px pill reads as clear — the clearance is what sees a touch",
++    decideRest(q(290, [pill], []), [{ name: "the box only", frames: false, text: true, pad: () => 0 }]).y === null);
++
++  // 3.2 · CONTROL: clear of the glow by its 4px → it stays.
++  const far = box(250, 390 - SIZE / 2 - GLOW - GLOW_GAP - 0.5, 300, 344);
++  const r2 = decideRest(q(290, [far], []));
++  ok("3.2 CONTROL · a control clear of the glow by 4px leaves the disc where it is", r2.y === null && r2.tier === 0, JSON.stringify(r2));
++
++  // 3.3 · 194: the /markets stat line's last glyph 1px from the ring.
++  const stat = box(200, 359, 305, 319);
++  const r3 = decideRest(q(290, [], [stat]));
++  ok("3.3 194 · a line of text 1px from the disc moves it clear of the glow (text counts at tiers 0–3)",
++    r3.y !== null && r3.tier === 0 && gap(r3.y, stat) >= GLOW + GLOW_GAP, `rest y=${r3.y}`);
++
++  // 3.4 · a page too dense for the glow: lines every 90px leave 76px gaps — room for the rim's 8px, not the glow's 15.4.
++  const lines = Array.from({ length: 9 }, (_, i) => box(300, 359, 20 + 90 * i, 34 + 90 * i));
++  const r4 = decideRest(q(290, [], lines));
++  ok("3.4 a page with no room for the glow rests at tier 2: the rim 8px clear of every line, the nearest such rest",
++    r4.y === 312 && r4.tier === 2 && Math.min(...lines.map((l) => gap(312, l))) >= RIM_CLEARANCE, JSON.stringify(r4));
++  ok("3.4 …and does not move again where it rests (accepted at tier 2 — no chained glide, E-413)",
++    decideRest(q(312, [], lines, 2)).y === null);
++  ok("3.4 …nor when the record is gone (the page moved) and nothing better is within reach",
++    decideRest(q(312, [], lines, null)).y === null);
++  ok("3.4 CONTROL · with a tier-0 gap in reach (one line removed) it takes the glow-clear rest instead",
++    decideRest(q(290, [], lines.filter((_, i) => i !== 4))).tier === 0);
++
++  // 3.5 · E-413's floor: text every 30px (no gap anywhere), a control under the disc.
++  const dense = Array.from({ length: 26 }, (_, i) => box(300, 380, 10 + 30 * i, 24 + 30 * i));
++  const cta = box(250, 380, 300, 340);
++  const r5 = decideRest(q(290, [cta], dense));
++  ok("3.5 a dense page with a control under the disc: off the control by 4px, text accepted (tier 4, E-413's floor)",
++    r5.y === 236 && r5.tier === 4 && gap(236, cta) >= FLOOR_CLEARANCE, JSON.stringify(r5));
++  ok("3.5 …and it stays there (no chain)", decideRest(q(236, [cta], dense, 4)).y === null);
++  ok("3.5 …but a CONTROL appearing under the accepted rest is re-decided (worse than its tier)",
++    decideRest(q(236, [cta, box(250, 380, 250, 280)], dense, 4)).y !== null);
++
++  // 3.6 · nothing anywhere: it stays (E-400 ①).
++  const wall = box(0, 390, 0, 780);
++  const r6 = decideRest(q(290, [wall], []));
++  ok("3.6 nothing clear within reach: it stays where it is", r6.y === null && r6.tier === REST_TIERS.length, JSON.stringify(r6));
++
++  // 3.7 · 321: the open channels panel (x 12–378, y 180–366 at 390) over the disc at y≈290.
++  const panel = box(12, 378, 180, 366);
++  const r7 = decideRest(q(290, [panel], []));
++  ok("3.7 321 · an open panel over the disc moves it off the panel, clear of its whole box by the glow's 4px",
++    r7.y !== null && r7.tier === 0 && gap(r7.y, panel) >= GLOW + GLOW_GAP, `rest y=${r7.y}, gap ${r7.y === null ? "-" : gap(r7.y, panel).toFixed(1)}`);
++  ok("3.7 PLANT · with the panel's box out of the census (the host before R3-B: its content alone, here none in the band) it stays on the panel",
++    decideRest(q(290, [], [])).y === null);
++
++  // 3.8 · the reach is kept: E-400 ①'s third of the viewport.
++  const r8 = decideRest(q(290, [box(0, 390, 0, 650)], []));
++  ok("3.8 a clear rest beyond a third of the viewport is not taken (it stays)", r8.y === null, JSON.stringify(r8));
++
++  // 3.9 · 296: beside a full-width card (x 16–374) the half-off disc (x ≥ 360) lies over the card's frame. Its content
++  // is clear (tier 1), so the old rules left it there; a rest over nothing at all within reach is taken instead.
++  const card = box(16, 374, 300, 500);
++  const r9 = decideRest(q(370, [], [], null, [card]));
++  ok("3.9 296 · over a big card's frame, with a rest over nothing within reach: it moves there, the frame clear of the glow by 4px (tier 0)",
++    r9.y === 224 && r9.tier === 0 && gap(224, card) >= GLOW + GLOW_GAP, JSON.stringify(r9));
++  ok("3.9 PLANT · without the frame tier (E-400's content rule alone) it stays over the card",
++    decideRest(q(370, [], [], null, [card]), REST_TIERS.slice(1)).y === null);
++  const longCard = box(16, 374, 0, 780);
++  const r9b = decideRest(q(370, [], [], null, [longCard]));
++  ok("3.9 CONTROL · where cards fill the reach it stays, content clear (tier 1, E-400's rule: 14px of a card's frame and padding)",
++    r9b.y === null && r9b.tier === 1, JSON.stringify(r9b));
++
++  // 3.10 · the painted box that stands in for text (301 309 310's roundel): what paints, and what hugs.
++  const clear = ["transparent", "rgba(0, 0, 0, 0)", "rgba(255, 255, 255, 0.0)", "oklch(0.5 0.1 268 / 0)", "rgb(0 0 0 / 0%)", ""];
++  const ink = ["rgb(0, 0, 0)", "rgba(0, 0, 0, 0.5)", "rgb(150, 160, 190)", "oklch(0.5 0.1 268)", "rgba(10, 20, 30, 0.04)", "rgb(0 0 0 / 0.3)"];
++  ok("3.10 a colour paints nothing only when its alpha is 0 (or it is transparent)",
++    clear.every(paintsNothing) && !ink.some(paintsNothing), JSON.stringify({ clear: clear.map(paintsNothing), ink: ink.map(paintsNothing) }));
++  const trailingZero = (c: string) => !c || c === "transparent" || /[,/]\s*0(?:\.0*)?\s*\)$/.test(c);
++  ok("3.10 PLANT · a 'trailing 0' rule (this host's first draft) reads opaque black, rgb(0, 0, 0), as unpainted — the cases above catch it",
++    trailingZero("rgb(0, 0, 0)") && !paintsNothing("rgb(0, 0, 0)"));
++  ok("3.10 a 28px roundel hugs its 17×13 '18+'; a 358×86 card does not hug an 80×17 name in it",
++    hugs(box(33, 61, 571, 599), box(38.5, 55.5, 578, 591)) && !hugs(box(16, 374, 252, 338), box(97, 177, 270, 287)));
++}
++
++// ── §4 · the host wires the rules in ───────────────────────────────────────────────────────────────────────────────────
++console.log("\n§4 · the host wires the rules in (needle.tsx, comments stripped)");
++{
++  const host = code(rd("src/components/layout/needle.tsx"));
++  const between = (from: string, to: string) => { const i = host.indexOf(from); const j = i < 0 ? -1 : host.indexOf(to, i + from.length); return i < 0 || j < 0 ? "" : host.slice(i, j); };
++  const settle = between("function settleClear() {", "function scheduleClear(");
++  const park = between("onPark: () => {", "onSleep:");
++  const view = between("function applyViewport() {", "applyViewport();");
++  const rest = between("function clearRestY(): number | null {", "function settleClear() {");
++  ok("4.0 CONTROL · the four bodies this section reads were found (a reader that finds nothing proves nothing)",
++    settle.length > 40 && park.length > 40 && view.length > 40 && rest.length > 40);
++  ok("4.1 a check that comes due mid-glide is kept for the landing, BEFORE anything is decided (257 265 273)",
++    /clearTimer = null;\s*if \(gliding\) \{ recheckOnLand = true; return; \}\s*const y = clearRestY\(\);/.test(settle));
++  ok("4.2 …and the glide's landing runs it, while a landing with nothing asked for asks for nothing (no chain)",
++    /if \(gliding\) \{[^}]*save\(\);\s*if \(recheckOnLand\) \{ recheckOnLand = false; scheduleClear\(\); \}\s*return;/.test(park));
++  ok("4.3 the decision is the module's: the census hands controls AND open surfaces, big controls' frames, the text, the glow and the record",
++    /const census = controlsInBand\(band\);/.test(rest) && /controls: \[\.\.\.census\.content, \.\.\.surfacesInBand\(band\)\]/.test(rest)
++    && /frames: census\.frames,/.test(rest) && /text: textInBand\(band,/.test(rest)
++    && /decideRest\(\{/.test(rest) && /const g = glowPx\(\);/.test(rest) && host.includes("const glowPx = () => glowReach(body.size, -haloInset() / 100);"));
++  ok("4.4 the old 4px constant is gone from the host (one home for a clearance: needle-rest.ts)", !/\bCLEARANCE\b/.test(host));
++  ok("4.5 a viewport change re-seats: applyViewport reads the old geometry, asks `reseat`, and a rest is tucked on the same edge",
++    /const before = laidOut;/.test(view) && /reseat\(\{ before, after,/.test(view)
++    && /if \(r\.kind === "rest"\) \{ body\.y = r\.y; body\.snapPark\(body\.edge\); endGlide\(\); save\(\); \}/.test(view)
++    && /else if \(r\.kind === "aim"\) \{ body\.x = r\.x; body\.target = r\.target; \}/.test(view) && /laidOut = after;/.test(view));
++  ok("4.5b …and reclamps only when the geometry changed (2.8: a no-change event left the glide alone)",
++    /const changed = !before \|\| /.test(view) && /if \(changed\) \{\s*body\.reclamp\(\);/.test(view) && (view.match(/body\.reclamp\(\)/g) ?? []).length === 1);
++  const surfaces = /const SURFACES = "([^"]+)";/.exec(host)?.[1] ?? "";
++  ok("4.6 the surfaces are the house's two markers and the popup roles",
++    ["[data-needle-keepout]", "[data-invitation]", "[role=dialog]", "[role=alertdialog]", "[role=menu]", "[role=listbox]", "dialog[open]"].every((s) => surfaces.split(",").includes(s)), surfaces);
++  ok("4.7 a surface opening or going asks for a check: an observer on the body's subtree, disconnected on cleanup",
++    /new MutationObserver\(/.test(host) && /surfaceObserver\.observe\(document\.body, \{\s*subtree: true, childList: true, attributes: true/.test(host)
++    && /scheduleClear\(SURFACE_SETTLE\)/.test(host) && /surfaceObserver\.disconnect\(\);/.test(host));
++  ok("4.8 text counts its painted box (a roundel, a pill) and small media (301 309 310's 18+ ring)",
++    /const ink = inks\.get\(parent\) \?\? boxOf\(t\);/.test(host) && /MEDIA\.has\(el\.tagName\)/.test(host)
++    && /if \(!hugs\(r, t\)\) return null;/.test(host) && /!paintsNothing\(s\.backgroundColor\)/.test(host));
++  ok("4.9 drives can wait for the rest: `window.needle.resting()`",
++    /resting: \(\) => isSuppressed\(\) \|\| \(body\.parked && !body\.held && !gliding && clearTimer === null && raf === null\),/.test(host));
++  // The three floating cards carry the marker the census reads (their rung over the Needle is test:stacking's).
++  const cards = ["src/components/social/channels-panel.tsx", "src/components/pwa/install-invite.tsx", "src/components/analytics/consent-prompt.tsx"];
++  const unmarked = cards.filter((f) => !/data-invitation="[a-z-]+"/.test(code(rd(f))));
++  ok("4.10 every floating invitation card carries `data-invitation`, so an open one is a keep-out at rest", unmarked.length === 0, unmarked.join(", "));
++  // PLANT for 4.1: the deferral moved below the decision (a glide would be decided over) reads as missing.
++  const planted = settle.replace("if (gliding) { recheckOnLand = true; return; }", "").replace("const y = clearRestY();", "const y = clearRestY();\n    if (gliding) { recheckOnLand = true; return; }");
++  ok("4.1 PLANT · the deferral planted AFTER the decision is not read as the rule",
++    !/clearTimer = null;\s*if \(gliding\) \{ recheckOnLand = true; return; \}\s*const y = clearRestY\(\);/.test(planted));
++}
++
++console.log(`\n[needle-host] ${pass} passed, ${failures.length} failed`);
++if (failures.length) { console.log("\nFAILURES:"); for (const f of failures) console.log("  · " + f); process.exit(1); }
+diff --git a/scripts/needle-rest.test.mjs b/scripts/needle-rest.test.mjs
+index b383de405..1ad4215e8 100644
+--- a/scripts/needle-rest.test.mjs
++++ b/scripts/needle-rest.test.mjs
+@@ -9,12 +9,28 @@
+  *
+  *   §1 GLIDE, frame by frame — placed over a control, a scroll-idle starts a glide that: stays on the rail (x fixed),
+  *      never jumps (per-frame step and step-change bounded), never overshoots its rest by more than 3px, settles in
+- *      under 1.5 s, travels at most a third of the viewport, ends with nothing under it, vibrates nothing, and does
+- *      not move again on the next scroll-idle.
+- *   §2 LEAVE IT ALONE — already clear: a scroll-idle does not move it. Held: no glide.
++ *      under 1.5 s, travels at most a third of the viewport, ends with nothing under it and no control within 4px,
++ *      vibrates nothing, and does not move again on the next scroll-idle.
++ *   §2 LEAVE IT ALONE — clear of everything by the glow's 4px (a clean room): a scroll-idle does not move it.
+  *   §3 REDUCED MOTION — the same move is a one-frame snap, with no parking frames.
+  *   §4 THE SWEEP — five pages × four scroll positions at 360 and 768, the session-96 population: after scroll-idle,
+  *      count the samples where the footprint covers a control.
++ *   ⭐ 2026-10-09 · R3-B (the Vodacom visual pass, round 3 — `lib/needle-rest.ts` has the measurements). In a CLEAN
++ *   ROOM (every element of the page hidden but the Needle and what the section plants, so the only thing near the
++ *   rail is the thing under test), at 390 × 780 and 1024 × 900:
++ *   §5 THE CLEARANCE — a control 2px from the disc (257), a line of text 1px from it (194), a painted roundel whose
++ *      ring is inside the clearance while its glyphs are not (301 309 310) and a 16px icon each move it, to a rest
++ *      clear of the GLOW by 4px; CONTROLS: the control just past that clearance, and the roundel without its paint,
++ *      leave it where it is.
++ *   §6 AN OPEN SURFACE — a floating panel (role=dialog, data-needle-keepout) appearing over the parked disc, with no
++ *      scroll at all, moves it off the panel's whole box by the glow's 4px (321); CONTROL: one on the far half of the
++ *      viewport does not.
++ *   §7 A RESIZE MID-GLIDE — 390 → 1024, 1024 → 390, and on the left rail: from the resize on, EVERY frame is tucked
++ *      half off its own edge (the centre on the viewport's edge), it rests there, and the stored edge is that edge
++ *      (295 296 299 304 307 315: wholly inside, mid-page, and parked on the left).
++ *   §8 A SCROLL MID-GLIDE — the page moves under a glide so that its target is no longer clear: the landing re-checks
++ *      and the disc ends clear (257 265 273); then no further glide. `window.needle.resting()` is false while the
++ *      glide is in flight and true once it has landed.
+  *
+  * Local only (drives /auth/demo).   BASE=http://localhost:3009 node scripts/needle-rest.test.mjs
+  */
+@@ -31,7 +47,7 @@ const ok = (label, cond, extra = "") => {
+ for (let i = 0; i < 30; i++) { if (await fetch(BASE + "/api/health").then((r) => r.ok).catch(() => false)) break; await wait(1500); }
+ const browser = await chromium.launch(process.env.QA_CHROMIUM_PATH ? { executablePath: process.env.QA_CHROMIUM_PATH } : {});
+ 
+-/** In-page helpers, installed once per page: the same footprint and control census the host uses. */
++/** In-page helpers, installed once per page: the same footprint and census the host uses. */
+ const HELPERS = () => {
+   const INTERACTIVE = 'a[href],button,input:not([type="hidden"]),select,textarea,summary,[role="button"],[role="link"],[role="tab"],[role="switch"],[role="checkbox"],[role="menuitem"],[tabindex]:not([tabindex="-1"])';
+   const root = document.getElementById("needle-root");
+@@ -59,7 +75,7 @@ const HELPERS = () => {
+     .filter(({ r, cs }) => r.width >= 1 && r.height >= 1 && cs.visibility !== "hidden" && cs.pointerEvents !== "none" && r.bottom > 0 && r.top < innerHeight);
+   const hitsFp = (x, f) => x.width > 0 && x.left < f.right && x.right > f.left && x.top < f.bottom && x.bottom > f.top;
+   // 2026-10-08 · G1 [193] · the host's SECOND rule, restated the same way: visible text outside any control (the
+-  // /markets stat line the disc rested on) is under it too, measured with the host's own 4px clearance. The host
++  // /markets stat line the disc rested on) is under it too, measured with the host's own 4px floor. The host
+   // prunes its walk for speed; this walks every text node, so it can only find MORE than the host does.
+   const textCovered = () => {
+     const f = fp(); const C = 4; const out = [];
+@@ -78,9 +94,21 @@ const HELPERS = () => {
+     }
+     return out;
+   };
++  // ⭐ R3-B · the host's glow, restated: the wake halo is a circle `size·(1 + 2h)` across, breathing to 1.06 of it
++  // (needle.css), h = −`--halo`/100 — so it reaches (1.06·(½ + h) − ½)·size past the disc's box.
++  const glow = () => {
++    const b = window.__needle;
++    const v = parseFloat(document.querySelector("#needle-root #needle").style.getPropertyValue("--halo"));
++    return Math.max(0, (1.06 * (0.5 + -v / 100) - 0.5) * b.size);
++  };
++  /** The gap from the footprint to a box, along the axis that separates them (negative = they overlap). */
++  const gapOf = (r) => { const f = fp(); return Math.max(r.left - f.right, f.left - r.right, r.top - f.bottom, f.top - r.bottom); };
+   window.__nr = {
+     fp,
++    glow,
+     covered: () => { const f = fp(); return controls().filter(({ n }) => contentRects(n).some((x) => hitsFp(x, f))).map(({ n }) => (n.textContent || n.getAttribute("aria-label") || n.tagName).trim().slice(0, 30)); },
++    /** Controls whose content (or whole small box) is within `pad` of the footprint — every tier keeps 4px. */
++    nearControls: (pad) => controls().filter(({ n }) => contentRects(n).some((x) => x.width > 0 && gapOf(x) < pad)).map(({ n }) => (n.textContent || n.tagName).trim().slice(0, 30)),
+     textCovered,
+     /** Content of a control reaching the strip the parked disc occupies, away from the top and bottom bars. */
+     rightControl: () => {
+@@ -90,12 +118,39 @@ const HELPERS = () => {
+       }
+       return null;
+     },
+-    placeAt: (cy) => { const b = window.__needle; b.y = cy - b.size / 2; b.snapPark("right"); },
++    placeAt: (cy, edge = "right") => { const b = window.__needle; b.y = cy - b.size / 2; b.snapPark(edge); },
+     record: (ms) => new Promise((res) => {
+       const out = []; const t0 = performance.now(); const b = window.__needle;
+-      const step = (t) => { out.push({ t: t - t0, x: b.x, y: b.y, parked: b.parked, parking: b.parking }); if (t - t0 < ms) requestAnimationFrame(step); else res(out); };
++      const step = (t) => { out.push({ t: t - t0, x: b.x, y: b.y, size: b.size, vw: innerWidth, edge: b.edge, parked: b.parked, parking: b.parking, resting: window.needle?.resting?.() ?? null }); if (t - t0 < ms) requestAnimationFrame(step); else res(out); };
+       requestAnimationFrame(step);
+     }),
++    /** ⭐ R3-B · THE CLEAN ROOM: every element hidden (visibility — the layout stays) but the Needle and the plants. */
++    clean: () => {
++      const s = document.createElement("style");
++      s.id = "nr-clean";
++      s.textContent = "body * { visibility: hidden !important; } #needle-root, #needle-root *, .nr-plant, .nr-plant * { visibility: visible !important; }";
++      document.head.appendChild(s);
++    },
++    /** A fixed element from `html`, styled by `css`, marked as a plant. */
++    plant: (html, css) => {
++      const holder = document.createElement("div");
++      holder.innerHTML = html;
++      const el = holder.firstElementChild;
++      el.classList.add("nr-plant");
++      Object.assign(el.style, { position: "fixed", zIndex: "10", margin: "0", boxSizing: "border-box" }, css);
++      document.body.appendChild(el);
++      return el.getBoundingClientRect().toJSON();
++    },
++    unplant: () => { for (const e of document.querySelectorAll(".nr-plant")) e.remove(); },
++    move: (sel, css) => { Object.assign(document.querySelector(sel).style, css); return document.querySelector(sel).getBoundingClientRect().toJSON(); },
++    /** The gap from the footprint to a plant's box, or to its text's own box (`text`). */
++    gap: (sel, mode = "box") => {
++      const el = document.querySelector(sel);
++      if (mode === "text") { const rg = document.createRange(); rg.selectNodeContents(el); return gapOf(rg.getBoundingClientRect()); }
++      return gapOf(el.getBoundingClientRect());
++    },
++    textRight: (sel) => { const rg = document.createRange(); rg.selectNodeContents(document.querySelector(sel)); return rg.getBoundingClientRect().right; },
++    storedEdge: () => { try { return JSON.parse(localStorage.getItem("50pick.needle.pos") || "null")?.edge ?? null; } catch { return null; } },
+   };
+   let vib = 0; const orig = navigator.vibrate?.bind(navigator);
+   navigator.vibrate = (...a) => { vib++; return orig ? orig(...a) : true; };
+@@ -115,6 +170,19 @@ async function openNeedlePage(width, height, path) {
+   await page.evaluate(HELPERS);
+   return { ctx, page };
+ }
++/** Until `window.needle.resting()` (needle.tsx): tucked, no check pending, no glide, the loop asleep. */
++const waitRest = (page, ms = 4000) => page.waitForFunction(() => !!window.needle && window.needle.resting() === true, null, { timeout: ms, polling: 50 }).then(() => true, () => false);
++/** A scroll-idle, as the host hears one (it listens to scroll events in capture), then its rest. */
++const kick = async (page) => { await page.evaluate(() => document.dispatchEvent(new Event("scroll"))); await wait(60); return waitRest(page); };
++/** A clean room at `w × h` on /markets, the Needle placed at `cy`. */
++async function cleanRoom(w, h) {
++  const { ctx, page } = await openNeedlePage(w, h, "/markets");
++  await page.evaluate(() => scrollTo(0, 0)); await wait(400);
++  await page.evaluate(() => window.__nr.clean());
++  await wait(300);
++  return { ctx, page };
++}
++const place = async (page, cy, edge = "right") => { await page.evaluate(([c, e]) => window.__nr.placeAt(c, e), [cy, edge]); await page.evaluate(() => window.__nr.record(40)); return page.evaluate(() => window.__nr.fp()); };
+ 
+ // ── §1 THE GLIDE, FRAME BY FRAME ─────────────────────────────────────────────────────────────────────────
+ console.log("\n[needle-rest] §1 the glide, frame by frame (360×740)");
+@@ -158,8 +226,9 @@ console.log("\n[needle-rest] §1 the glide, frame by frame (360×740)");
+     const overshoot = Math.max(0, ...frames.map((f) => (f.y - rest) * dir));
+     ok("§1 overshoot past the rest position ≤ 3 px", overshoot <= 3, `overshoot=${overshoot.toFixed(2)}`);
+     ok("§1 it travels at most a third of the viewport", Math.abs(rest - before.y) <= 740 / 3 + 1, `moved=${(rest - before.y).toFixed(1)}`);
+-    const after = await page.evaluate(() => ({ covered: window.__nr.covered(), vib: window.__vib() }));
++    const after = await page.evaluate(() => ({ covered: window.__nr.covered(), near: window.__nr.nearControls(4), vib: window.__vib() }));
+     ok("§1 at rest nothing interactive is under the footprint", after.covered.length === 0, JSON.stringify(after.covered));
++    ok("§1 …and no control within 4px of it (every tier keeps 4px off a control — R3-B)", after.near.length === 0, JSON.stringify(after.near));
+     ok("§1 the glide vibrates nothing (the player did nothing)", after.vib === before.vib, `${before.vib} → ${after.vib}`);
+     ok("§1 frames were really recorded (≥ 60 across the glide window)", frames.length >= 60 && moving.length >= 10, `${frames.length} frames, ${moving.length} moving`);
+     // Stability: the next scroll-idle leaves it alone.
+@@ -168,25 +237,21 @@ console.log("\n[needle-rest] §1 the glide, frame by frame (360×740)");
+     const again = await page.evaluate(() => window.__nr.record(900));
+     ok("§1 the next scroll-idle does not move it again (no chained glide)", again.every((f) => Math.abs(f.y - y1) < 0.5 && !f.parking));
+   }
++  await ctx.close();
++}
+ 
+-  // ── §2 LEAVE IT ALONE ────────────────────────────────────────────────────────────────────────────────
+-  console.log("\n[needle-rest] §2 a clear rest and a held disc are left alone");
+-  await page.evaluate(() => scrollTo(0, 0)); await wait(900);
+-  let clearY = null;
+-  for (let cy = 140; cy < 600; cy += 20) {
+-    await page.evaluate((c) => window.__nr.placeAt(c), cy);
+-    await page.evaluate(() => window.__nr.record(40));
+-    // Clear by BOTH of the host's rules (2026-10-08): a rest with text under it is one the host now moves.
+-    if ((await page.evaluate(() => window.__nr.covered().length + window.__nr.textCovered().length)) === 0) { clearY = cy; break; }
+-  }
+-  ok("precondition · a clear rest position exists at the top of /markets", clearY !== null);
+-  if (clearY !== null) {
+-    const y0 = await page.evaluate(() => window.__needle.y);
+-    const recP = page.evaluate(() => window.__nr.record(900));
+-    await page.evaluate(() => document.dispatchEvent(new Event("scroll")));
+-    const fr = await recP;
+-    ok("§2 already clear: a scroll-idle does not move it", fr.every((f) => Math.abs(f.y - y0) < 0.5 && !f.parking));
+-  }
++// ── §2 LEAVE IT ALONE ────────────────────────────────────────────────────────────────────────────────
++console.log("\n[needle-rest] §2 a rest clear of everything is left alone (clean room, 360×740)");
++{
++  // R3-B: the host's best tier is clear of the GLOW by 4px, and it prefers that over a 4px rest within reach — so "already
++  // clear" is now measured in a clean room, where nothing is near the rail but the page's hidden layout.
++  const { ctx, page } = await cleanRoom(360, 740);
++  await place(page, 360);
++  const y0 = await page.evaluate(() => window.__needle.y);
++  const recP = page.evaluate(() => window.__nr.record(900));
++  await page.evaluate(() => document.dispatchEvent(new Event("scroll")));
++  const fr = await recP;
++  ok("§2 already clear: a scroll-idle does not move it", fr.every((f) => Math.abs(f.y - y0) < 0.5 && !f.parking));
+   await ctx.close();
+ }
+ 
+@@ -235,6 +300,128 @@ for (const [w, h] of [[360, 740], [768, 1024]]) {
+   ok(`§4 ${w}px · no sample rests on a control (was 6 of 40 across 360 and 768)`, covered === 0, `${covered}/${samples} · ${where.join(" ; ")}`);
+ }
+ 
++// ── §5 THE CLEARANCE ─────────────────────────────────────────────────────────────────────────────────────
++console.log("\n[needle-rest] §5 the clearance: what touches the disc moves it clear of the glow (clean room)");
++for (const [W, H] of [[390, 780], [1024, 900]]) {
++  const { ctx, page } = await cleanRoom(W, H);
++  const pad = (await page.evaluate(() => window.__nr.glow())) + 4;
++  console.log(`  · ${W}×${H}: the glow reaches ${(pad - 4).toFixed(1)}px past the disc; the clearance is ${pad.toFixed(1)}px`);
++  /** Place at 400, plant, scroll-idle, rest: where it ended, and the plant's gap. */
++  const trial = async (label, html, css, { mode = "box", expect }) => {
++    const f = await place(page, 400);
++    const planted = await page.evaluate(([h, c]) => window.__nr.plant(h, c), [html, css(f)]);
++    await wait(80);
++    const y0 = await page.evaluate(() => window.__needle.y);
++    const rested = await kick(page);
++    const end = await page.evaluate((m) => ({ y: window.__needle.y, parked: window.__needle.parked, gap: window.__nr.gap(".nr-plant", m) }), mode);
++    const moved = Math.abs(end.y - y0) > 1;
++    if (expect === "move") ok(`§5 ${W} · ${label} moves it, to a rest whose gap is ≥ ${pad.toFixed(1)}px`, rested && end.parked && moved && end.gap >= pad - 0.5, JSON.stringify({ planted, ...end }));
++    else ok(`§5 ${W} · CONTROL · ${label} leaves it where it is`, rested && !moved, JSON.stringify({ planted, ...end }));
++    await page.evaluate(() => window.__nr.unplant());
++  };
++  const midOf = (f) => `${f.top + (f.bottom - f.top) / 2 - 20}px`;
++  await trial("a control 2px from the disc (257: the preview pill)", '<button type="button">Toka kwenye onyesho</button>',
++    (f) => ({ left: `${f.left - 2 - 160}px`, top: midOf(f), width: "160px", height: "40px" }), { expect: "move" });
++  await trial("a control just past the clearance", '<button type="button">Toka kwenye onyesho</button>',
++    (f) => ({ left: `${f.left - pad - 1 - 160}px`, top: midOf(f), width: "160px", height: "40px" }), { expect: "stay" });
++  await trial("a line of text 1px from the disc (194: the stat line)", "<p>40 hai · TZS 49K katika mchezo</p>",
++    (f) => ({ right: `${W - (f.left - 1)}px`, top: midOf(f), whiteSpace: "nowrap", font: "13px sans-serif" }), { mode: "text", expect: "move" });
++  // The roundel: its ring 2px inside the clearance, its glyphs outside it — the painted box is the ink (301 309 310).
++  const roundel = (paint) => ({ display: "inline-flex", alignItems: "center", justifyContent: "center", width: "28px", height: "28px",
++    borderRadius: "50%", font: "600 11px sans-serif", border: paint ? "1.5px solid rgb(150, 160, 190)" : "0" });
++  for (const paint of [true, false]) {
++    const f = await place(page, 400);
++    await page.evaluate(([c]) => window.__nr.plant("<span>18+</span>", c), [{ ...roundel(paint), left: `${f.left - pad + 2 - 28}px`, top: midOf(f) }]);
++    const glyphsOut = await page.evaluate(([l, p]) => window.__nr.textRight(".nr-plant") < l - p, [f.left, pad]);
++    ok(`§5 ${W} · precondition · the roundel's glyphs sit outside the clearance (only its ${paint ? "ring" : "box"} reaches in)`, glyphsOut);
++    const y0 = await page.evaluate(() => window.__needle.y);
++    const rested = await kick(page);
++    const y1 = await page.evaluate(() => window.__needle.y);
++    if (paint) ok(`§5 ${W} · a painted roundel whose ring is inside the clearance moves it (its ring is its ink)`, rested && Math.abs(y1 - y0) > 1, `${y0} → ${y1}`);
++    else ok(`§5 ${W} · CONTROL · the same text in an unpainted box leaves it where it is`, rested && Math.abs(y1 - y0) <= 1, `${y0} → ${y1}`);
++    await page.evaluate(() => window.__nr.unplant());
++  }
++  await trial("a 16px icon 2px from the disc (small media are content)", '<svg width="16" height="16" viewBox="0 0 16 16"><circle cx="8" cy="8" r="7" fill="rgb(150,160,190)"></circle></svg>',
++    (f) => ({ left: `${f.left - 2 - 16}px`, top: `${f.top + 20}px`, width: "16px", height: "16px" }), { expect: "move" });
++  await ctx.close();
++}
++
++// ── §6 AN OPEN SURFACE ───────────────────────────────────────────────────────────────────────────────────
++console.log("\n[needle-rest] §6 an open surface over the parked disc moves it, with no scroll at all (clean room, 390×780)");
++{
++  const { ctx, page } = await cleanRoom(390, 780);
++  const pad = (await page.evaluate(() => window.__nr.glow())) + 4;
++  for (const far of [false, true]) {
++    const f = await place(page, 400);
++    await wait(1200);   // the placement's own checks are long done
++    const y0 = await page.evaluate(() => window.__needle.y);
++    await page.evaluate(([c]) => window.__nr.plant('<div role="dialog" aria-modal="false" data-needle-keepout="">Fuata 50pick</div>', c),
++      [{ left: "12px", right: far ? "50%" : "12px", top: `${f.top - 100}px`, height: "220px", background: "rgb(20, 22, 70)" }]);
++    await wait(120);
++    const rested = await waitRest(page, 4000);
++    const end = await page.evaluate(() => ({ y: window.__needle.y, gap: window.__nr.gap(".nr-plant") }));
++    if (!far) ok(`§6 321 · a panel opening over the disc moves it off the panel's whole box, gap ≥ ${pad.toFixed(1)}px — no scroll was dispatched`,
++      rested && Math.abs(end.y - y0) > 1 && end.gap >= pad - 0.5, JSON.stringify({ y0, ...end }));
++    else ok("§6 CONTROL · a panel on the far half of the viewport leaves it where it is", rested && Math.abs(end.y - y0) <= 1, JSON.stringify({ y0, ...end }));
++    await page.evaluate(() => window.__nr.unplant());
++    await wait(600);
++  }
++  await ctx.close();
++}
++
++// ── §7 A RESIZE MID-GLIDE ────────────────────────────────────────────────────────────────────────────────
++console.log("\n[needle-rest] §7 a resize mid-glide re-seats the disc on its own edge, every frame (clean room)");
++for (const [from, to, edge] of [[[390, 780], [1024, 900], "right"], [[1024, 900], [390, 780], "right"], [[390, 780], [1024, 900], "left"]]) {
++  const { ctx, page } = await cleanRoom(from[0], from[1]);
++  const f = await place(page, 400, edge);
++  // A control touching the disc on the inner side, so a scroll-idle starts a glide.
++  const innerX = edge === "right" ? f.left - 2 - 120 : f.right + 2;
++  await page.evaluate(([c]) => window.__nr.plant('<button type="button">Toka</button>', c), [{ left: `${innerX}px`, top: `${f.top + 10}px`, width: "120px", height: "40px" }]);
++  await page.evaluate(() => document.dispatchEvent(new Event("scroll")));
++  await wait(330);
++  const inFlight = await page.evaluate(() => window.__needle.parking);
++  ok(`§7 ${edge} ${from[0]} → ${to[0]} · precondition · a glide is in flight when the viewport changes`, inFlight);
++  const recP = page.evaluate(() => window.__nr.record(2500));
++  await wait(50);
++  await page.setViewportSize({ width: to[0], height: to[1] });
++  const frames = (await recP).filter((fr) => fr.vw === to[0]);
++  const off = frames.filter((fr) => (edge === "right" ? Math.abs(fr.x + fr.size / 2 - fr.vw) >= 0.5 : Math.abs(fr.x + fr.size / 2) >= 0.5));
++  ok(`§7 ${edge} ${from[0]} → ${to[0]} · from the resize on, every frame is tucked half off the ${edge.toUpperCase()} edge (295 296 299 304 307)`,
++    frames.length >= 30 && off.length === 0, `${frames.length} frames; first off: ${JSON.stringify(off[0] ?? null)}`);
++  const rested = await waitRest(page);
++  const end = await page.evaluate(() => ({ parked: window.__needle.parked, edge: window.__needle.edge, stored: window.__nr.storedEdge() }));
++  ok(`§7 ${edge} ${from[0]} → ${to[0]} · it rests there, and the stored edge is ${edge} (no later page opens it on the other side)`,
++    rested && end.parked && end.edge === edge && end.stored === edge, JSON.stringify(end));
++  await ctx.close();
++}
++
++// ── §8 A SCROLL MID-GLIDE ────────────────────────────────────────────────────────────────────────────────
++console.log("\n[needle-rest] §8 the page moves under a glide: the landing re-checks (clean room, 390×780)");
++{
++  const { ctx, page } = await cleanRoom(390, 780);
++  const pad = (await page.evaluate(() => window.__nr.glow())) + 4;
++  const f = await place(page, 400);
++  await page.evaluate(([c]) => window.__nr.plant('<button type="button" id="nr-p">Toka kwenye onyesho</button>', c), [{ left: `${f.left - 2 - 160}px`, top: `${f.top + 10}px`, width: "160px", height: "40px" }]);
++  await page.evaluate(() => document.dispatchEvent(new Event("scroll")));
++  await wait(300);
++  const flight = await page.evaluate(() => ({ parking: window.__needle.parking, resting: window.needle.resting(), target: window.__needle.target }));
++  ok("§8 precondition · a glide is in flight, and `resting()` says so", flight.parking && flight.resting === false && !!flight.target, JSON.stringify(flight));
++  if (flight.target) {
++    // The page moves under it: the control now stands where the glide is heading, and the scroll is heard mid-glide.
++    await page.evaluate(([y]) => window.__nr.move("#nr-p", { top: `${y + 10}px` }), [flight.target.y]);
++    await page.evaluate(() => document.dispatchEvent(new Event("scroll")));
++    const rested = await waitRest(page, 6000);
++    const end = await page.evaluate(() => ({ y: window.__needle.y, gap: window.__nr.gap("#nr-p"), resting: window.needle.resting() }));
++    ok(`§8 257 · it does not stay where the old page sent it: at rest it clears the control by ≥ ${pad.toFixed(1)}px, and resting() is true`,
++      rested && end.resting === true && end.gap >= pad - 0.5, JSON.stringify({ target: flight.target.y, ...end }));
++    const y1 = end.y;
++    await page.evaluate(() => document.dispatchEvent(new Event("scroll")));
++    const again = await page.evaluate(() => window.__nr.record(900));
++    ok("§8 …and the next scroll-idle does not move it again (no chain)", again.every((fr) => Math.abs(fr.y - y1) < 0.5 && !fr.parking));
++  }
++  await ctx.close();
++}
++
+ await browser.close();
+ console.log(`\n[needle-rest] ${pass} passed, ${failures.length} failed`);
+ if (failures.length) { console.log("\nFAILURES:"); for (const f of failures) console.log("  · " + f); process.exit(1); }
+diff --git a/scripts/qa-journey-shell.mjs b/scripts/qa-journey-shell.mjs
+index bd220a3f0..3eebade3f 100644
+--- a/scripts/qa-journey-shell.mjs
++++ b/scripts/qa-journey-shell.mjs
+@@ -867,6 +867,17 @@ function watch(page, who) {
+   });
+ }
+ 
++/**
++ * The Needle at rest, or hidden, or absent (needle.tsx `window.needle.resting()`: tucked, no rest check pending, no
++ * glide, its loop asleep). A guest, a classic page and a build without the probe all answer true.
++ */
++const NEEDLE_RESTING = () => {
++  const n = window.needle;
++  return !n || typeof n.resting !== 'function' || n.resting() === true;
++};
++/** The rest check waits 180–900 ms, a glide settles in under 1.5 s, and one more check may follow it: 6 s is a chain. */
++const NEEDLE_REST_MS = 6_000;
++
+ /** Two frames and a beat: a resize’s layout, and what mounts on it, have landed. */
+ async function settle(page, ms = 300) {
+   await page.evaluate(() => new Promise((done) => requestAnimationFrame(() => requestAnimationFrame(() => done(true)))));
+@@ -1240,6 +1251,11 @@ async function shoot(page, cell, spec, { dialog = false, dialogProblem = null }
+   seq += 1;
+   const file = `${[String(seq).padStart(3, '0'), cell.section, cell.route, cell.viewer, cell.state, cell.locale, cell.width].join('--')}${wrong ? '--WRONG-PAGE' : ''}.png`;
+   await settle(page, 150);
++  // ⭐ R3-B (2026-10-09) · THE TILE SHOWS THE NEEDLE AT ITS REST, never a glide on its way there: round 3's 194 caught
++  // the disc mid-flight across the /markets stat line, and a reader cannot tell a glide from a rest in one frame. A
++  // Needle that has not come to rest by NEEDLE_REST_MS is a finding of its own — a rest that never comes is a chain.
++  const rested = await page.waitForFunction(NEEDLE_RESTING, null, { timeout: NEEDLE_REST_MS, polling: 100 }).then(() => true, () => false);
++  if (!rested) problems.push(`the Needle had not come to rest ${NEEDLE_REST_MS / 1000} s after the page settled`);
+   try {
+     await page.screenshot({ path: join(OUT, file), fullPage: false, caret: 'initial', timeout: 30_000 });
+     count.tiles += 1;
+diff --git a/scripts/stacking-contract.test.mts b/scripts/stacking-contract.test.mts
+index fc1268a7e..0b910e1e6 100644
+--- a/scripts/stacking-contract.test.mts
++++ b/scripts/stacking-contract.test.mts
+@@ -187,6 +187,13 @@ const ROOT_SURFACES: Surface[] = [
+   { id: "avatar-menu-scrim",   file: "src/components/layout/avatar-menu.tsx",            find: /fixed inset-0 z-\[(\d+)\] bg-black\/45/,                     z:   60, note: "one rung under its own panel" },
+   { id: "chat-fab",            file: "src/components/chat/ChatRoot.tsx",                 find: /bottom: isMobile \? 80 : 16,\s*\n\s*zIndex: (\d+),/,         z:   60, note: "the chat bubble floats with the menus, not with the bars" },
+   { id: "pull-to-refresh",     file: "src/components/ui/pull-to-refresh.tsx",            find: /fixed left-1\/2 z-\[(\d+)\]/,                                z:   60, note: "the pull indicator crosses the top bar" },
++  /* NAMED 2026-10-09 (R3-B, the Vodacom visual pass, tile 321). The three floating invitation cards were `z-40` and named
++     nowhere — so nothing saw that the Needle (45) painted OVER them: the parked disc sat on the open channels panel and
++     hid its right border. Each is a dialog or a region a player is asked to read, so the Needle rule below holds them
++     over it; they stay under the chat bubble and every menu's scrim (60), which a player opened on purpose. */
++  { id: "channels-panel",      file: "src/components/social/channels-panel.tsx",         find: /fixed left-3 right-3 z-(\d+) lg:left-auto lg:right-6/,       z:   50, note: "the follow-us card, top-right: over the Needle, under every menu" },
++  { id: "install-invite",      file: "src/components/pwa/install-invite.tsx",            find: /lg:bottom-6 z-(\d+) lg:right-auto[^"]*p-3\.5 shadow-lg/,     z:   50, note: "the install card, bottom: the same rung" },
++  { id: "consent-prompt",      file: "src/components/analytics/consent-prompt.tsx",      find: /lg:bottom-6 z-(\d+) lg:right-auto[^"]*p-3 shadow-lg/,        z:   50, note: "the analytics consent card, in the install card's box: the same rung" },
+   { id: "needle",              file: "src/components/layout/needle.css",                 find: /#needle-root #needle \{[^}]*z-index: (\d+);/,                z:   45, note: "ABOVE both nav bars so it can never be trapped under one, BELOW every menu/dialog so a fidget never covers a decision" },
+   { id: "bottom-nav",          file: "src/components/layout/bottom-nav.tsx",             find: /lg:hidden fixed inset-x-0 bottom-0 z-(\d+) kp-rail/,         z:   40, note: "primary navigation on the phone" },
+   { id: "admin-top-bar",       file: "src/components/admin/admin-shell.tsx",             find: /"relative z-(\d+) border-b border-border"/,                  z:   40, note: "elevated above the page body so the AI-toolkit dropdown overlays content" },
+@@ -335,6 +342,12 @@ const LAWS: Array<[string, string, string]> = [
+   ["avatar-menu-panel", "avatar-menu-scrim", "a panel is above its own scrim"],
+   ["notifications-scrim", "needle",  "⭐ THE NEEDLE RULE: a fidget must never cover a decision"],
+   ["chat-fab", "needle",             "⭐ THE NEEDLE RULE: a fidget must never cover a control"],
++  ["channels-panel", "needle",       "⭐ THE NEEDLE RULE: a fidget never covers an open card (321: the parked disc hid this panel's right border)"],
++  ["install-invite", "needle",       "⭐ THE NEEDLE RULE: the same, for the install card"],
++  ["consent-prompt", "needle",       "⭐ THE NEEDLE RULE: the same, for the analytics consent card"],
++  ["avatar-menu-scrim", "channels-panel", "a menu the player opened covers a card nobody asked for"],
++  ["chat-fab", "install-invite",     "the chat bubble stays over the bottom cards its 148px clearance was measured against"],
++  ["chat-fab", "consent-prompt",     "the same, for the consent card in the install card's box"],
+   ["needle", "bottom-nav",           "⭐ THE NEEDLE RULE: the object passes OVER the bars so it can never be trapped under one"],
+   ["needle", "top-app-bar",          "⭐ THE NEEDLE RULE: same, on desktop"],
+   ["bottom-nav", "top-app-bar",      "the phone rail sits over the header when both are on screen"],
+@@ -348,6 +361,17 @@ for (const [above, below, why] of LAWS) {
+      Number.isFinite(zOf(above)) && Number.isFinite(zOf(below)) && zOf(above) > zOf(below), why, why);
+ }
+ 
++// CONTROL (R3-B, 2026-10-09) — the card laws can fail. Planted back at its old `z-40` (in memory, never on disk), the
++// channels panel's own locator reads 40, and 40 is below the Needle: the shape tile 321 photographed.
++{
++  const card = ROOT_SURFACES.find((s) => s.id === "channels-panel");
++  const planted = card ? soleZ(src(card.file).replace("right-3 z-50 lg:left-auto", "right-3 z-40 lg:left-auto"), card.find) : null;
++  ok("3.c CONTROL — planted back at z-40, the channels panel reads 40 and BELOW the Needle (what tile 321 showed)",
++     !!planted && planted.hits === 1 && planted.z === 40 && !(planted.z > zOf("needle")),
++     `read ${JSON.stringify(planted)} against the Needle's ${zOf("needle")}`,
++     "the card law can fail");
++}
++
+ // The trapped families, stated as the invariant rather than as a number: an anchored
+ // menu travels WITH its bar and cannot outrank it. This is the claim `needle.css`'s
+ // prose table gets wrong, and it is the one worth pinning.
+diff --git a/src/components/analytics/consent-prompt.tsx b/src/components/analytics/consent-prompt.tsx
+index 64120ab42..bffd5f4a6 100644
+--- a/src/components/analytics/consent-prompt.tsx
++++ b/src/components/analytics/consent-prompt.tsx
+@@ -68,8 +68,9 @@ export function ConsentPrompt() {
+       aria-labelledby="consent-prompt-title"
+       data-testid="consent-prompt"
+       data-invitation="analytics-consent"
+-      /* InstallInvite's box (see its note on the 148px phone clearance and the lg corner), padded on the repo scale. */
+-      className="fixed left-3 right-3 bottom-[calc(148px_+_env(safe-area-inset-bottom))] lg:bottom-6 z-40 lg:right-auto lg:left-6 lg:max-w-[380px] rounded-xl glass-panel border border-border p-3 shadow-lg"
++      /* InstallInvite's box (see its note on the 148px phone clearance and the lg corner, and on its `z-50` over the
++         Needle), padded on the repo scale. */
++      className="fixed left-3 right-3 bottom-[calc(148px_+_env(safe-area-inset-bottom))] lg:bottom-6 z-50 lg:right-auto lg:left-6 lg:max-w-[380px] rounded-xl glass-panel border border-border p-3 shadow-lg"
+     >
+       <div className="flex items-start gap-3">
+         <span className="shrink-0 mt-0.5 text-gold-300" aria-hidden><I.chart s={18} /></span>
+diff --git a/src/components/layout/needle.tsx b/src/components/layout/needle.tsx
+index ac23ef623..e8af7a2da 100644
+--- a/src/components/layout/needle.tsx
++++ b/src/components/layout/needle.tsx
+@@ -18,7 +18,7 @@
+  *     onRecord forwarded to analytics only and NEVER rendered.
+  *
+  * Hard rules honoured (CLAUDE-CODE-BRIEF §4): one instance, below every overlay/modal
+- * (z 25 — see needle.css; 50pick modals are z 100, not the brief's assumed 1000), hidden
++ * (z 45 — see needle.css; the floating cards are 50, 50pick modals are z 100, not the brief's assumed 1000), hidden
+  * on money surfaces, colour untouched, reduced-motion respected by the engine, personal
+  * best never displayed.
+  */
+@@ -29,6 +29,7 @@ import { getPrefs, type NeedleTheme } from "@/lib/haptics";
+ import { isMoneySurface, isJourneySurface } from "@/lib/surfaces";
+ import { useJourneyOn } from "@/lib/journey/journey-on";
+ import { PEPSI_PATHS, PEPSI_TRANSFORM } from "@/lib/needle-art";
++import { censusPad, decideRest, glowReach, hugs, paintsNothing, railRange, reseat, type Box, type Geometry } from "@/lib/needle-rest";
+ import type { NeedleOptions } from "@/lib/needle-physics";
+ import "./needle.css";
+ 
+@@ -292,8 +293,19 @@ function mountNeedle(
+     },
+     onCross: () => haptic("cross"),
+     // A rest glide (E-400 ①) ends in the engine's own park, so it lands here too: no haptic for it — the player did
+-    // nothing — and no re-check, or a glide could chain into another.
+-    onPark: () => { if (gliding) { gliding = false; glideQuietUntil = performance.now() + 2000; save(); return; } haptic("tuck"); save(); scheduleClear(); },
++    // nothing — and no re-check of its own, or a glide could chain into another. ⭐ R3-B: a check something ELSE asked
++    // for while it glided (a scroll under it, a resize, a route, a panel) runs now, on the page as it is.
++    onPark: () => {
++      if (gliding) {
++        gliding = false;
++        glideQuietUntil = performance.now() + 2000;
++        save();
++        if (recheckOnLand) { recheckOnLand = false; scheduleClear(); }
++        return;
++      }
++      recheckOnLand = false;
++      haptic("tuck"); save(); scheduleClear();
++    },
+     // …and the sleep that follows a glide is silent too (measured: it buzzed once per glide before this).
+     onSleep: () => { el.style.willChange = "auto"; if (performance.now() >= glideQuietUntil) { haptic("settled"); scheduleClear(); } save(); },
+     onTrue: () => haptic("trueFound"),
+@@ -349,31 +361,57 @@ function mountNeedle(
+      (`target` + `parking`, exactly the path `parkTo` takes) — or snaps under reduced motion. If no clear position
+      exists within reach it stays where it is. The engine is not edited: this is host logic, like `nearestEdge`.
+      ⛔ Never while held, mid-throw, parking, suppressed, or on a top/bottom edge; never chained (a glide's own park
+-     does not re-check); `test:needle-rest` reviews the glide frame by frame. */
++     does not re-check); `test:needle-rest` reviews the glide frame by frame.
++     ⭐ 2026-10-09 · R3-B · THE DECISION IS GEOMETRY NOW, IN `@/lib/needle-rest`: this host reads the page — the
++     controls, the open floating surfaces, the visible text near the rail — and hands it the boxes. The tiers (nothing
++     under the GLOW, not even a card's frame; then content and text clear of the glow; then the rim 8px clear; then 4px;
++     then off every control), the reseat on a viewport change and the record that stops a chained glide are
++     documented there, once, and `test:needle-host` proves them on the
++     vendored engine without a browser. Three triggers were added here: a check asked for mid-glide runs when the glide
++     lands, an open surface mounting or going asks for one, and a viewport change re-seats a disc on its way to a rest. */
+   const INTERACTIVE = 'a[href],button,input:not([type="hidden"]),select,textarea,summary,[role="button"],[role="link"],[role="tab"],[role="switch"],[role="checkbox"],[role="menuitem"],[tabindex]:not([tabindex="-1"])';
+-  const CLEARANCE = 4;
++  /* ⭐ R3-B ③ · THE OPEN FLOATING SURFACES A PARKED DISC MUST NEVER COVER (tile 321: the disc on the open channels
++     panel, hiding its right border). The house's two markers — `data-needle-keepout` (the rails, the rail's coin, the
++     channels panel: until now an obstacle to a THROWN disc only) and `data-invitation` (every floating invitation card)
++     — and any popup that floats: a dialog, menu or listbox laid out fixed or absolute. One laid out in the flow is a
++     row of options (the hub's language row), and its options are counted as controls. Each counts WHOLE.
++     ⚠️ The role values are unquoted on purpose (the same selector): this file READS dialogs and renders none, and
++     `test:popup-fit` finds the popups it must review by the quoted role attribute a component renders. */
++  const SURFACES = "[data-needle-keepout],[data-invitation],[role=dialog],[role=alertdialog],[role=menu],[role=listbox],dialog[open]";
++  const MARKED = "[data-needle-keepout],[data-invitation]";
+   let gliding = false;
+   let glideQuietUntil = 0;
+   let clearTimer: number | null = null;
++  /* ⭐ R3-B · A CHECK ASKED FOR WHILE A GLIDE IS IN FLIGHT IS NOT DROPPED. It was: `clearRestY` answered "not
++     parked" and the landing re-checks nothing, so a glide chosen for one scroll position landed after the page had
++     moved and stayed there — the disc on the preview strip's "Toka kwenye onyesho" pill at 1024, its rim at x992
++     against the pill's border at x991 (257, and 265 273 in the other two languages, all three at y≈64). The landing
++     still asks for nothing by itself (no chain); a scroll, a resize, a route or a surface DURING the glide does. */
++  let recheckOnLand = false;
++  type Band = { left: number; right: number };
++  const boxOf = (r: Box): Box => ({ left: r.left, right: r.right, top: r.top, bottom: r.bottom });
+   /* The footprint from the ENGINE's pose, not the DOM: the disc's box (the tap pad sits inside it on a side rail),
+      clipped to the viewport. ⚠️ Measured 2026-09-14: under reduced motion the app's universal clamp gives #needle a
+      near-zero transition, so getBoundingClientRect() right after a paint still returned the previous position and the
+      rest check looked at the wrong place. Geometry has no such lag. */
+-  function footprint() {
++  function footprint(): Box {
+     const v = viewport();
+     return { left: Math.max(0, body.x), right: Math.min(v.w, body.x + body.size), top: body.y, bottom: body.y + body.size };
+   }
++  /** How far the wake halo's glow reaches past the disc at this size (`glowReach`; `--halo` is `haloInset()`, a
++      negative %). Not `glow`: that name is the grab glow's element, above. */
++  const glowPx = () => glowReach(body.size, -haloInset() / 100);
+   /* What must not be under the disc is a control's CONTENT — its text, icon or field — or the whole of a SMALL
+      control (≤ 64px either way). Measured: on /markets and /live every rail height crosses a full-width card link, so
+      "any control" left no clear position at all, while 16px of a 328px card's padding hides nothing a player needs.
+      The session-96 cases were all content: a CTA's label end, the Rounds/Chart toggle, a footer link. */
+   const SMALL_CONTROL = 64;
+-  function contentRects(n: HTMLElement, band: { left: number; right: number }) {
+-    const out: Array<{ left: number; right: number; top: number; bottom: number }> = [];
++  function contentRects(n: HTMLElement, band: Band) {
++    const out: Box[] = [];
+     const r = n.getBoundingClientRect();
+-    const inBand = (x: { left: number; right: number }) => x.right >= band.left - CLEARANCE && x.left <= band.right + CLEARANCE;
++    const inBand = (x: Box) => x.right >= band.left && x.left <= band.right;
+     if (r.width <= SMALL_CONTROL || r.height <= SMALL_CONTROL || n.matches("input,select,textarea")) {
+-      if (inBand(r)) out.push({ left: r.left, right: r.right, top: r.top, bottom: r.bottom });
++      if (inBand(r)) out.push(boxOf(r));
+       return out;
+     }
+     const walker = document.createTreeWalker(n, NodeFilter.SHOW_TEXT);
+@@ -381,26 +419,41 @@ function mountNeedle(
+     for (let node = walker.nextNode(); node; node = walker.nextNode()) {
+       if (!(node.textContent || "").trim() || node.parentElement?.closest("svg")) continue;
+       range.selectNodeContents(node);
+-      for (const t of range.getClientRects()) if (t.width > 0 && inBand(t)) out.push({ left: t.left, right: t.right, top: t.top, bottom: t.bottom });
++      for (const t of range.getClientRects()) if (t.width > 0 && inBand(t)) out.push(boxOf(t));
+     }
+     for (const e of n.querySelectorAll("svg,img,video,canvas,input,select,textarea")) {
+       if (e.parentElement?.closest("svg")) continue;
+       const t = e.getBoundingClientRect();
+-      if (t.width > 0 && inBand(t)) out.push({ left: t.left, right: t.right, top: t.top, bottom: t.bottom });
++      if (t.width > 0 && inBand(t)) out.push(boxOf(t));
+     }
+     return out;
+   }
+-  function controlsInBand(fp: { left: number; right: number }) {
+-    const out: Array<{ left: number; right: number; top: number; bottom: number }> = [];
++  /** Each control's content (as above) and, for a big one, its whole box: its frame, which only the best tier counts. */
++  function controlsInBand(band: Band) {
++    const content: Box[] = [];
++    const frames: Box[] = [];
+     for (const n of document.querySelectorAll<HTMLElement>(INTERACTIVE)) {
+       if (root.contains(n)) continue;
+       const r = n.getBoundingClientRect();
+       if (r.width < 1 || r.height < 1) continue;
+-      if (r.right < fp.left - CLEARANCE || r.left > fp.right + CLEARANCE) continue;
++      if (r.right < band.left || r.left > band.right) continue;
+       if (r.bottom < -viewport().h || r.top > 2 * viewport().h) continue;
+       const cs = getComputedStyle(n);
+       if (cs.visibility === "hidden" || cs.pointerEvents === "none") continue;
+-      out.push(...contentRects(n, fp));
++      content.push(...contentRects(n, band));
++      if (r.width > SMALL_CONTROL && r.height > SMALL_CONTROL) frames.push(boxOf(r));
++    }
++    return { content, frames };
++  }
++  function surfacesInBand(band: Band) {
++    const out: Box[] = [];
++    for (const n of document.querySelectorAll<HTMLElement>(SURFACES)) {
++      if (root.contains(n)) continue;
++      const r = n.getBoundingClientRect();
++      if (r.width < 1 || r.height < 1 || r.right < band.left || r.left > band.right) continue;
++      if (!n.matches(MARKED) && !/^(fixed|absolute)$/.test(getComputedStyle(n).position)) continue;
++      if (!seen(n)) continue;
++      out.push(boxOf(r));
+     }
+     return out;
+   }
+@@ -410,10 +463,16 @@ function mountNeedle(
+      reserves no room for the rest position, and never did: the `needle-rest.css` that `bottom-nav.tsx` cites was
+      never written (no commit ever added it) — the rest position is this host logic, and it had a blind spot.
+      So the visible text in the band is read as well: a TreeWalker over the page that skips the Needle, controls
+-     (counted above, by their own rule), svg and script, and every subtree whose box neither reaches the band nor
+-     overflows — so on a phone it reads the few elements at the right edge, not the page. Text that is not seen
+-     (`visibility: hidden` slides, an `opacity: 0` ancestor, a 1px screen-reader-only box) is not counted. */
+-  const TEXT_SKIP = new Set(["SCRIPT", "STYLE", "NOSCRIPT", "TEMPLATE", "svg", "IFRAME", "CANVAS", "VIDEO", "IMG", "SELECT", "TEXTAREA"]);
++     (counted above, by their own rule), script, and every subtree whose box neither reaches the band nor overflows —
++     so on a phone it reads the few elements at the right edge, not the page. Text that is not seen
++     (`visibility: hidden` slides, an `opacity: 0` ancestor, a 1px screen-reader-only box) is not counted.
++     ⭐ R3-B · AND ITS INK, NOT JUST ITS GLYPHS: text in a box painted round it (a roundel, a pill, a chip, a badge)
++     counts as the box — the footer's 18+ roundel's ring was 0–1px from the disc at 1280 and 320 (301 309 310) while
++     its glyphs sat 6px further in. A small picture outside any control (an icon, a mark, an avatar, ≤ 64px) counts
++     as text; a larger one is a surface (art, a background, a chart's field). */
++  const TEXT_SKIP = new Set(["SCRIPT", "STYLE", "NOSCRIPT", "TEMPLATE", "IFRAME", "SELECT", "TEXTAREA"]);
++  const MEDIA = new Set(["svg", "IMG", "CANVAS", "VIDEO"]);
++  const SMALL_MEDIA = 64;
+   // Both spellings of the options: Chromium 105–120 read `checkOpacity`/`checkVisibilityCSS`, later engines the
+   // `…Property` names; an engine ignores the pair it does not know.
+   type CheckVisibility = (o?: { opacityProperty?: boolean; visibilityProperty?: boolean; checkOpacity?: boolean; checkVisibilityCSS?: boolean }) => boolean;
+@@ -423,9 +482,18 @@ function mountNeedle(
+       ? check.call(el, { opacityProperty: true, visibilityProperty: true, checkOpacity: true, checkVisibilityCSS: true })
+       : getComputedStyle(el).visibility === "visible";
+   }
+-  function textInBand(fp: { left: number; right: number }, rows: { top: number; bottom: number }) {
+-    const out: Array<{ left: number; right: number; top: number; bottom: number }> = [];
+-    const inBand = (x: { left: number; right: number }) => x.right >= fp.left - CLEARANCE && x.left <= fp.right + CLEARANCE;
++  /** The box painted round a line of text, when one hugs it (`hugs`, needle-rest.ts) — else null. */
++  function paintedBox(el: Element, t: Box): Box | null {
++    const r = el.getBoundingClientRect();
++    if (!hugs(r, t)) return null;
++    const s = getComputedStyle(el);
++    const border = ["top", "right", "bottom", "left"].some((k) =>
++      parseFloat(s.getPropertyValue(`border-${k}-width`)) > 0 && !paintsNothing(s.getPropertyValue(`border-${k}-color`)));
++    return border || !paintsNothing(s.backgroundColor) || s.backgroundImage !== "none" || s.boxShadow !== "none" ? boxOf(r) : null;
++  }
++  function textInBand(band: Band, rows: { top: number; bottom: number }) {
++    const out: Box[] = [];
++    const inBand = (x: Box) => x.right >= band.left && x.left <= band.right;
+     const walker = document.createTreeWalker(document.body, NodeFilter.SHOW_ELEMENT | NodeFilter.SHOW_TEXT, {
+       acceptNode(n) {
+         if (n.nodeType === Node.TEXT_NODE) return (n.textContent || "").trim() ? NodeFilter.FILTER_ACCEPT : NodeFilter.FILTER_REJECT;
+@@ -436,73 +504,68 @@ function mountNeedle(
+         if (r.width === 0 && r.height === 0) return getComputedStyle(el).display === "contents" ? NodeFilter.FILTER_SKIP : NodeFilter.FILTER_REJECT;
+         // Only the rows a rest within reach can occupy (the caller's window), so a long page costs nothing extra.
+         const near = inBand(r) && r.bottom >= rows.top && r.top <= rows.bottom;
++        if (MEDIA.has(el.tagName)) {
++          // Counted here and never walked into: an svg's own <text> is part of its picture.
++          if (near && r.width > 1 && r.height > 1 && r.width <= SMALL_MEDIA && r.height <= SMALL_MEDIA && seen(el)) out.push(boxOf(r));
++          return NodeFilter.FILTER_REJECT;
++        }
+         const overflows = el.scrollWidth > el.clientWidth + 1 || el.scrollHeight > el.clientHeight + 1;
+         return near || overflows ? NodeFilter.FILTER_SKIP : NodeFilter.FILTER_REJECT;
+       },
+     });
+     const range = document.createRange();
++    const inks = new Map<Element, Box | null>();
+     for (let node = walker.nextNode(); node; node = walker.nextNode()) {
+       const parent = node.parentElement;
+       if (!parent) continue;
+       range.selectNodeContents(node);
+       let visible: boolean | null = null;
+       for (const t of range.getClientRects()) {
+-        if (t.width <= 1 || t.height <= 1 || !inBand(t)) continue;
++        if (t.width <= 1 || t.height <= 1) continue;
++        if (!inks.has(parent)) inks.set(parent, paintedBox(parent, t));
++        const ink = inks.get(parent) ?? boxOf(t);
++        if (!inBand(ink)) continue;
+         visible ??= seen(parent);
+         if (!visible) break;
+-        out.push({ left: t.left, right: t.right, top: t.top, bottom: t.bottom });
++        out.push(ink);
+       }
+     }
+     return out;
+   }
+-  /* A rest taken KNOWING text was under it (no gap in the text within reach): it is not re-decided until the page
+-     moves under it. Without this, a rest chosen by the control-only floor below could, on the next scroll-idle,
+-     find a text-clear spot within reach of its NEW height and glide again — a chain, which E-413 forbids
+-     (`test:needle-rest` §1). Compared with 2px of slack: the park spring lands within a pixel of its target. */
+-  let textAccepted: { y: number; sx: number; sy: number } | null = null;
+-  const acceptText = (y: number) => { textAccepted = { y, sx: window.scrollX, sy: window.scrollY }; };
+-  /** The y to rest at: `null` = already clear (or not applicable), `undefined` = nothing clear within reach. */
+-  function clearRestY(): number | null | undefined {
++  /* The tier a rest was taken at, and where (its y and the page's scroll): the rest is not re-decided until the page
++     moves under it, or what is under it gets worse than that tier — E-413's rule (`test:needle-rest` §1) that a rest
++     never chains into a second glide. Compared with 2px of slack: the park spring lands within a pixel of its target. */
++  let accepted: { tier: number; y: number; sx: number; sy: number } | null = null;
++  /** The y to rest at, or `null` to stay (already at its best, nothing better within reach, or not applicable). */
++  function clearRestY(): number | null {
+     if (!body.parked || body.held || body.parking || isSuppressed()) return null;
+     if (body.edge !== "left" && body.edge !== "right") return null;
+     const fp = footprint();
+-    const under = (rects: Array<{ left: number; right: number; top: number; bottom: number }>) => (dy: number) => rects.some((r) =>
+-      r.left < fp.right + CLEARANCE && r.right > fp.left - CLEARANCE
+-      && r.top < fp.bottom + dy + CLEARANCE && r.bottom > fp.top + dy - CLEARANCE);
++    const g = glowPx();
++    const pad = censusPad(g);
++    const band = { left: fp.left - pad, right: fp.right + pad };
+     const reach = viewport().h / 3;
+-    const onControl = under(controlsInBand(fp));
+-    const settled = textAccepted !== null && Math.abs(textAccepted.y - body.y) < 2
+-      && textAccepted.sx === window.scrollX && textAccepted.sy === window.scrollY;
+-    const onText: (dy: number) => boolean = settled ? () => false : under(textInBand(fp, { top: fp.top - reach - CLEARANCE, bottom: fp.bottom + reach + CLEARANCE }));
+-    if (!onControl(0) && !onText(0)) return null;
+     const L = body.limits();
+-    const m = 14;
+-    const minY = L.minY + m;
+-    const maxY = Math.max(minY, L.maxY - m);
+-    const nearest = (clear: (dy: number) => boolean) => {
+-      for (let d = 2; d <= reach; d += 2) {
+-        for (const sign of [-1, 1]) {
+-          const y = body.y + sign * d;
+-          if (y < minY || y > maxY) continue;
+-          if (clear(y - body.y)) return y;
+-        }
+-      }
+-      return undefined;
+-    };
+-    // First choice: the nearest rest with neither a control nor a line of text under it.
+-    const clearOfAll = nearest((dy) => !onControl(dy) && !onText(dy));
+-    if (clearOfAll !== undefined) { textAccepted = null; return clearOfAll; }
+-    // ⛔ E-413's guarantee is the floor and text never weakens it: off a CONTROL even where no gap in the
+-    // text is within reach (a dense page). Text alone with nowhere clear to go stays put, as before.
+-    if (!onControl(0)) { acceptText(body.y); return undefined; }
+-    const offControl = nearest((dy) => !onControl(dy));
+-    if (offControl !== undefined) acceptText(offControl);
+-    return offControl;
++    const { minY, maxY } = railRange({ minX: L.minX, maxX: L.maxX, minY: L.minY, maxY: L.maxY, size: body.size });
++    const here = accepted !== null && Math.abs(accepted.y - body.y) < 2
++      && accepted.sx === window.scrollX && accepted.sy === window.scrollY;
++    const census = controlsInBand(band);
++    const r = decideRest({
++      fp,
++      controls: [...census.content, ...surfacesInBand(band)],
++      frames: census.frames,
++      text: textInBand(band, { top: fp.top - reach - pad, bottom: fp.bottom + reach + pad }),
++      glow: g, reach, minY, maxY, y: body.y,
++      accepted: here && accepted ? accepted.tier : null,
++    });
++    accepted = r.tier === 0 ? null : { tier: r.tier, y: r.y ?? body.y, sx: window.scrollX, sy: window.scrollY };
++    return r.y;
+   }
+   function settleClear() {
+     clearTimer = null;
++    if (gliding) { recheckOnLand = true; return; }
+     const y = clearRestY();
+-    if (y === null || y === undefined) return;
++    if (y === null) return;
+     if (calmed) {
+       body.y = y;
+       body.snapPark(body.edge);
+@@ -520,6 +583,11 @@ function mountNeedle(
+     if (clearTimer !== null) window.clearTimeout(clearTimer);
+     clearTimer = window.setTimeout(settleClear, delay);
+   }
++  /** A glide that ends without its own park (a viewport change re-seated it): quiet, and nothing owed on landing. */
++  function endGlide() {
++    if (gliding) { gliding = false; glideQuietUntil = performance.now() + 2000; }
++    recheckOnLand = false;
++  }
+ 
+   let saved: { x?: number; y?: number; edge?: string } | null = null;
+   try { saved = JSON.parse(localStorage.getItem("50pick.needle.pos") || "null"); } catch { /* ignore */ }
+@@ -725,14 +793,43 @@ function mountNeedle(
+   }) as EventListener);
+   on(hit, "pointerleave", (() => { hoverTo = 0; start(); }) as EventListener);
+ 
++  /* ⭐ R3-B ① · A VIEWPORT CHANGE RE-SEATS A DISC ON ITS WAY TO A REST; IT NEVER STRANDS ITS TARGET. Measured on the
++     round-3 tiles, the hub drive resizing 320 → 360 → 390 → 1024 → 1280 in one document: a glide in flight at each
++     resize kept the tuck x of the width it started at — x≈293 at 360 (the 320 tuck, 295), x≈330 at 390 (the wall, 296)
++     — and after 390 → 1024 the engine saw the disc at x≈358 "not tucked", judged it by its centre (392 < 512) and sent
++     it LEFT, caught mid-way at x≈241 on the Toka button (299); `save()` then kept the left edge for every later page
++     (300–317, round 2's 299 and 304 the same). `reseat` (needle-rest.ts) decides; `laidOut` is the geometry the
++     pose and the target were set in, read BEFORE the change, because `limits()` already answers for the new one.
++     ⛔ And no `reclamp()` when nothing moved (a visualViewport scroll, a repeated event): it clamps any body that is
++     not parked into the travel box, and a disc gliding along its rail is outside the box on purpose — it popped 30px
++     inward at 390 and slid back out (`test:needle-host` 2.4). When the rail stays put, the glide keeps its x. */
++  let laidOut: Geometry | null = null;
++  const geometry = (): Geometry => {
++    const L = body.limits();
++    return { minX: L.minX, maxX: L.maxX, minY: L.minY, maxY: L.maxY, size: body.size };
++  };
+   function applyViewport() {
++    const before = laidOut;
++    const x0 = body.x, y0 = body.y;
+     const d = diameter();
+     if (d !== body.size) body.setSize(d);
+     el.style.setProperty("--nsize", d + "px");
+     el.style.setProperty("--inlay", (2.6 * (88 / d)).toFixed(2));
+     el.style.setProperty("--halo", haloInset() + "%");
+     el.style.setProperty("--needlew", (4.4 * Math.max(1, 74 / d)).toFixed(2));
+-    body.reclamp();
++    const after = geometry();
++    const changed = !before || before.minX !== after.minX || before.maxX !== after.maxX || before.minY !== after.minY
++      || before.maxY !== after.maxY || before.size !== after.size;
++    if (changed) {
++      body.reclamp();
++      if (before) {
++        const r = reseat({ before, after, edge: body.edge, parked: body.parked, parking: body.parking, held: !!body.held,
++          moving: body.moving, x: x0, y: y0, target: body.target });
++        if (r.kind === "rest") { body.y = r.y; body.snapPark(body.edge); endGlide(); save(); }
++        else if (r.kind === "aim") { body.x = r.x; body.target = r.target; }
++      }
++      laidOut = after;
++    }
+     paint(0);
+   }
+   applyViewport();
+@@ -747,6 +844,35 @@ function mountNeedle(
+   on(document, "scroll", (() => scheduleClear()) as EventListener, { capture: true, passive: true });
+   on(window, "resize", (() => scheduleClear(260)) as EventListener);
+   scheduleClear(900);
++  /* ⭐ R3-B ③ · A SURFACE THAT OPENS OR GOES IS A REASON TO LOOK AGAIN. Scroll, resize, a route and a park were the
++     only triggers, and a panel opens with none of them — the channels panel, 45 s into a visit (321). A floating
++     surface mounting, unmounting, or gaining or losing its marker or role asks for a check once its entrance has
++     played (`.m-float-in` is --t-quick, 140ms). Filtered to those surfaces: a live ticker's re-render costs one
++     `matches` per added element. */
++  const SURFACE_SETTLE = 200;
++  const POPUP_ROLE = /^(dialog|alertdialog|menu|listbox)$/;
++  const surfaceObserver = new MutationObserver((records) => {
++    for (const r of records) {
++      if (r.type === "attributes") {
++        const t = r.target as Element;
++        const was = r.attributeName === "role" && POPUP_ROLE.test(r.oldValue ?? "");
++        const marker = r.attributeName === "data-needle-keepout" || r.attributeName === "data-invitation";
++        if (was || marker || t.matches(SURFACES) || t.querySelector(SURFACES)) { scheduleClear(SURFACE_SETTLE); return; }
++        continue;
++      }
++      for (const list of [r.addedNodes, r.removedNodes]) {
++        for (const n of list) {
++          if (n.nodeType !== Node.ELEMENT_NODE) continue;
++          const e = n as Element;
++          if (e.matches(SURFACES) || e.querySelector(SURFACES)) { scheduleClear(SURFACE_SETTLE); return; }
++        }
++      }
++    }
++  });
++  surfaceObserver.observe(document.body, {
++    subtree: true, childList: true, attributes: true, attributeOldValue: true,
++    attributeFilter: ["open", "hidden", "role", "data-needle-keepout", "data-invitation"],
++  });
+ 
+   on(document, "visibilitychange", (() => {
+     if (document.hidden) stop();
+@@ -770,6 +896,10 @@ function mountNeedle(
+   const api = {
+     session: (minutes: number) => { if (body.setSession(minutes)) { paint(0); if (!isSuppressed()) start(); } },
+     acknowledge: () => { if (body.acknowledge() && !isSuppressed()) start(); },
++    /** ⭐ R3-B · A READ FOR DRIVES, NEVER A CALL A PAGE MAKES: true when nothing about the rest is pending — tucked, no
++        check waiting, no glide, the loop asleep — or when the Needle is hidden. `qa:journey-shell` waits on it before a
++        tile, so a tile shows the rest and not a glide on its way there (round 3's 194 was one). */
++    resting: () => isSuppressed() || (body.parked && !body.held && !gliding && clearTimer === null && raf === null),
+   };
+   (window as unknown as { needle?: typeof api; __needle?: typeof body }).needle = api;
+   (window as unknown as { needle?: typeof api; __needle?: typeof body }).__needle = body;
+@@ -805,6 +935,7 @@ function mountNeedle(
+   return () => {
+     stop();
+     if (clearTimer !== null) window.clearTimeout(clearTimer);
++    surfaceObserver.disconnect();
+     motionGateObserver.disconnect();
+     window.clearInterval(sessionTimer);
+     for (const [t, type, h, opts] of listeners) t.removeEventListener(type, h, opts as EventListenerOptions);
+diff --git a/src/components/pwa/install-invite.tsx b/src/components/pwa/install-invite.tsx
+index cb3c4777a..e66ca510c 100644
+--- a/src/components/pwa/install-invite.tsx
++++ b/src/components/pwa/install-invite.tsx
+@@ -227,8 +227,10 @@ export function InstallInvite() {
+          fails silently. `lg:bottom-6` is 32px on this repo's OVERRIDDEN spacing scale, matching
+          `lg:left-6` so the card sits in a square corner inset.
+          ⛔ An inline `bottom` beats every class, so this must stay a class or the `lg:` rung is
+-         unreachable — which is exactly how the 96 survived three weeks under a green guard. */
+-      className="fixed left-3 right-3 bottom-[calc(148px_+_env(safe-area-inset-bottom))] lg:bottom-6 z-40 lg:right-auto lg:left-6 lg:max-w-[380px] rounded-xl glass-panel border border-border p-3.5 shadow-lg"
++         unreachable — which is exactly how the 96 survived three weeks under a green guard.
++         ⭐ 2026-10-09 (R3-B) — `z-50`, over the Needle's 45 and under the chat bubble's 60: a fidget
++         never covers a dialog, and this card is one. The channels panel's note has the measurement. */
++      className="fixed left-3 right-3 bottom-[calc(148px_+_env(safe-area-inset-bottom))] lg:bottom-6 z-50 lg:right-auto lg:left-6 lg:max-w-[380px] rounded-xl glass-panel border border-border p-3.5 shadow-lg"
+     >
+       <div className="flex items-start gap-3">
+         <span className="shrink-0 mt-0.5 text-gold-300" aria-hidden><I.download s={18} /></span>
+diff --git a/src/components/social/channels-panel.tsx b/src/components/social/channels-panel.tsx
+index 41dc93b59..c6380c08f 100644
+--- a/src/components/social/channels-panel.tsx
++++ b/src/components/social/channels-panel.tsx
+@@ -327,9 +327,15 @@ export function ChannelsPanel({ promoSuppressed }: { promoSuppressed: boolean })
+          bottom-right, and the tab bar owns the bottom edge on phones. Moving this one to the top
+          ENDS the competition instead of arbitrating it — which is what the single global slot
+          was doing wrong.
+-         ⚠️ Toasts also land top-right, but at `z-1800` against this card's `z-40`, so a toast
++         ⚠️ Toasts also land top-right, but at `z-1800` against this card's `z-50`, so a toast
+          paints OVER it for its few seconds. That precedence is correct: a toast answers
+          something the player just did; this card answers nothing.
++         ⭐ 2026-10-09 (R3-B, tile 321) — 50, ABOVE THE NEEDLE'S 45. At 40 the parked disc sat ON this
++         open card and hid its right border: the Needle's own rule is that a fidget never covers a
++         menu or a dialog, and this is a dialog. Every floating invitation card takes the same rung
++         (install-invite.tsx, consent-prompt.tsx), under the chat bubble and every menu's scrim at 60;
++         `test:stacking` names all three and holds them over the Needle. The disc also rests clear of
++         an open card (needle.tsx, `SURFACES`), so the rung only matters while it glides away.
+          ⛔ `top` is an INLINE style here because it is MEASURED, not chosen — see `measureTop`.
+          It is the one value on this element that cannot be a class, there is no responsive
+          `top`, and so nothing can shadow it. Every static value stays a class.
+@@ -339,7 +345,7 @@ export function ChannelsPanel({ promoSuppressed }: { promoSuppressed: boolean })
+          compiled that prose into a real rule whose value held literal dots, which is invalid
+          CSS, and one bad declaration failed the whole stylesheet parse so every route served
+          500. A comment is not inert in a file the class scanner reads. */
+-      className={`fixed left-3 right-3 z-40 lg:left-auto lg:right-6 lg:max-w-[400px] overflow-hidden rounded-xl mat-float px-3 pb-3 ${exiting ? "m-float-out" : "m-float-in"}`}
++      className={`fixed left-3 right-3 z-50 lg:left-auto lg:right-6 lg:max-w-[400px] overflow-hidden rounded-xl mat-float px-3 pb-3 ${exiting ? "m-float-out" : "m-float-in"}`}
+       /* `.m-float-in` sets `transform-origin: top left`; this card grows from the top RIGHT. */
+       style={{ top: `${topPx}px`, transformOrigin: "top right" }}
+     >
+diff --git a/src/lib/needle-rest.ts b/src/lib/needle-rest.ts
+new file mode 100644
+index 000000000..1c2cd3791
+--- /dev/null
++++ b/src/lib/needle-rest.ts
+@@ -0,0 +1,204 @@
++/**
++ * THE NEEDLE'S REST, AS GEOMETRY: the pure half of the host's rest logic in `components/layout/needle.tsx`.
++ *
++ * The host reads the page (the controls, the open floating surfaces and the visible text near the rail) and hands
++ * the boxes here; this decides where the parked disc should rest, and what a viewport change does to a disc on its
++ * way to a rest. No DOM, no engine import: `test:needle-host` drives it on synthetic boxes and on the vendored engine
++ * itself, so every rule below is proved without a browser (`test:needle-rest` proves the same rules on the real page).
++ *
++ * ⭐ 2026-10-09 · R3-B (round 3 of the Vodacom visual pass: tiles 194 257 265 273 295 296 299 301 304 307 309 310 315
++ * 321). Three defects, each measured on the tiles before it was changed:
++ *   ① A VIEWPORT CHANGE STRANDED A TARGET. A rest glide aims at an absolute pose (the tuck x of the width it started
++ *     at), and so does the engine's own park and a tap's peek. On a resize the engine's `reclamp()` only clamps a
++ *     body that is not parked into the travel box; the target stayed. The glide landed on the OLD width's tuck x,
++ *     which the engine then saw as "not tucked": clamped to the wall (wholly inside, 295 296 304 307 315) or, after
++ *     `nearestEdge` judged it by its centre, parked on the LEFT (299, caught mid-way at x≈241) — and `save()` kept
++ *     the left edge for every later page (300–317). `reseat` below re-derives the rest at the new geometry.
++ *   ② 0–2 px READ AS TOUCHING. The rest kept 4px from the disc's box, but the parked disc's ink does not stop at its
++ *     box: the wake halo glows past it. Measured on the tiles — the aqua tint runs 11px past the box at 390 (254:
++ *     x349 to the box at 360, +12 to +28 on green) and to 25px at 1024 (257: from x975, faint). The tiers below
++ *     clear the GLOW first, then the rim — and the best of them clears a card's FRAME too: at 360–390 the half-off
++ *     rest shows 28–30px of disc past a 16px gutter, so beside a full-width card it lies over the card's right end
++ *     (296: borders at x373), which E-400 accepts only when no rest over nothing at all is within reach.
++ *   ③ A PANEL WAS NOT A KEEP-OUT AT REST. An open floating surface (the channels panel, 321) was an obstacle to a
++ *     thrown disc and nothing to a parked one. The host now hands open surfaces in with the controls, whole.
++ */
++
++/** A box in viewport px (the DOMRect fields the rules read). */
++export type Box = { left: number; right: number; top: number; bottom: number };
++/** The engine's travel box (`NeedleBody.limits()`), the fields read here, with the diameter it was computed for. */
++export type Geometry = { minX: number; maxX: number; minY: number; maxY: number; size: number };
++export type Pose = { x: number; y: number };
++
++/** = the engine's `CONST.EDGE_MARGIN`: a parked disc keeps this far inside the travel box's top and bottom.
++ *  Restated, not imported: the engine is a lazy chunk (needle.tsx loads it on mount) and this module is not.
++ *  `test:needle-host` holds the two equal. */
++export const EDGE_MARGIN = 14;
++
++/** The peak of the wake halo's breathe — `needle.css`, `@keyframes needle-wake-breathe`, 50%: `scale(1.06)`.
++ *  `test:needle-host` reads it out of needle.css. */
++export const HALO_BREATHE = 1.06;
++
++/**
++ * How far the parked disc's GLOW reaches past the disc's box, in px. The wake halo (`#wake`, needle.css) is a circle
++ * `size × (1 + 2·halo)` across, centred on the disc, breathing to `HALO_BREATHE` of that: so it reaches
++ * `(HALO_BREATHE·(½ + halo) − ½)·size` past the box. `halo` is `--halo` as a positive fraction (needle.tsx
++ * `haloInset()`: 0.14 at a 360 short side, rising to 0.34 from 900). 11.4px at 390 and 25px at 1024 — the two
++ * tints measured on tiles 254 and 257. The rim itself is drawn inside the box (r = 48.05 of 100: 1.2px in).
++ */
++export function glowReach(size: number, halo: number): number {
++  return Math.max(0, (HALO_BREATHE * (0.5 + halo) - 0.5) * size);
++}
++
++/** Air beyond the glow at the best tier. */
++export const GLOW_GAP = 4;
++/** What the rim keeps from every control and line of text when the page has no room for the glow: four times the
++ *  2px the round-3 readers measured as touching (257 265 273 194 301 309 310), and twice the 4px the rest kept before. */
++export const RIM_CLEARANCE = 8;
++/** The old 4px — the floor tiers below keep it, so no page rests worse than it did. */
++export const FLOOR_CLEARANCE = 4;
++
++/**
++ * THE TIERS, BEST FIRST. A rest is taken at the best tier within reach; each one says what it gives up.
++ * `pad` is measured from the disc's box (= the rim's ink to 1.2px), in px, on all four sides. Always counted: a
++ * control's content (its text, icon or field), a small control (≤ 64px either way) whole, and an open floating
++ * surface whole. `frames` adds a big control's WHOLE box (a full-width card's border and padding); `text` adds visible
++ * text (a painted badge's whole box) and small media.
++ *   0 · NOTHING under the glow, not even a card's frame, and GLOW_GAP of air beyond it  — the rest the design means
++ *   1 · every control's content and every line of text clear of the glow by GLOW_GAP     — E-400's card rule: the
++ *       tucked half (28–30px visible at 360–390, past a 16px page gutter) may lie over a big card's frame and padding
++ *   2 · the rim clears that content and text by RIM_CLEARANCE                           — the glow may wash over it
++ *   3 · …by FLOOR_CLEARANCE                                                             — G1's rule, for a dense page
++ *   4 · off every control by FLOOR_CLEARANCE, text accepted                             — E-413's floor, unchanged
++ * Nothing at any tier within reach: it stays where it is (E-400 ①, as before).
++ */
++export type RestTier = { readonly name: string; readonly frames: boolean; readonly text: boolean; readonly pad: (glow: number) => number };
++export const REST_TIERS: readonly RestTier[] = [
++  { name: "nothing under the glow", frames: true, text: true, pad: (glow) => glow + GLOW_GAP },
++  { name: "content clear of the glow", frames: false, text: true, pad: (glow) => glow + GLOW_GAP },
++  { name: "rim clear of all content", frames: false, text: true, pad: () => RIM_CLEARANCE },
++  { name: "4px clear of all content", frames: false, text: true, pad: () => FLOOR_CLEARANCE },
++  { name: "off every control", frames: false, text: false, pad: () => FLOOR_CLEARANCE },
++];
++/** The widest pad any tier asks for — how far the host's census must reach past the disc. */
++export const censusPad = (glow: number, tiers: readonly RestTier[] = REST_TIERS) => Math.max(...tiers.map((t) => t.pad(glow)));
++
++export type RestInput = {
++  /** The disc's box now, clipped to the viewport. */
++  fp: Box;
++  /** Controls' content, small controls whole, and every open floating surface whole. */
++  controls: readonly Box[];
++  /** The whole box of every big control (> 64px both ways): its frame and padding, which only tier 0 counts. */
++  frames: readonly Box[];
++  /** Visible text (a painted badge's whole box) and small media. */
++  text: readonly Box[];
++  glow: number;
++  /** How far a rest may be from where it is, in px (the host: a third of the viewport). */
++  reach: number;
++  /** The `y` range a rest may take on the rail. */
++  minY: number;
++  maxY: number;
++  /** The disc's `y` now. */
++  y: number;
++  /** The tier a rest was already taken at HERE (same y, same scroll), or null. A rest taken at tier k is not
++   *  re-decided until the page moves under it or gets worse than k: E-413's rule against a chained glide. */
++  accepted: number | null;
++};
++/** `y` null: stay. `tier`: the tier of the rest it ends at (`tiers.length` = none of them). */
++export type RestOutput = { y: number | null; tier: number };
++
++/** `tiers` is a seam for `test:needle-host`, which plants the old rules in memory to show they read a touch as clear. */
++export function decideRest(q: RestInput, tiers: readonly RestTier[] = REST_TIERS): RestOutput {
++  const hits = (rects: readonly Box[], pad: number, dy: number) => rects.some((r) =>
++    r.left < q.fp.right + pad && r.right > q.fp.left - pad
++    && r.top < q.fp.bottom + dy + pad && r.bottom > q.fp.top + dy - pad);
++  const holds = (t: number, dy: number) => {
++    const tier = tiers[t];
++    const pad = tier.pad(q.glow);
++    return !hits(q.controls, pad, dy) && !(tier.text && hits(q.text, pad, dy)) && !(tier.frames && hits(q.frames, pad, dy));
++  };
++  let now = tiers.length;
++  for (let t = 0; t < tiers.length; t++) if (holds(t, 0)) { now = t; break; }
++  if (now === 0) return { y: null, tier: 0 };
++  if (q.accepted !== null && now <= q.accepted) return { y: null, tier: now };
++  // The nearest rest at the best tier within reach — up before down at the same distance, 2px steps (as E-400 ①).
++  for (let t = 0; t < now; t++) {
++    for (let d = 2; d <= q.reach; d += 2) {
++      for (const sign of [-1, 1]) {
++        const y = q.y + sign * d;
++        if (y < q.minY || y > q.maxY) continue;
++        if (holds(t, y - q.y)) return { y, tier: t };
++      }
++    }
++  }
++  return { y: null, tier: now };
++}
++
++/** A computed colour that paints nothing: `transparent`, `rgba(…, 0)`, or any colour function whose `/ alpha` is 0.
++ *  ⚠️ A trailing 0 alone is not enough: `rgb(0, 0, 0)` is black. */
++export function paintsNothing(c: string): boolean {
++  if (!c || c === "transparent" || /\/\s*0(?:\.0*)?%?\s*\)$/.test(c)) return true;
++  const rgba = /^rgba\(([^)]*)\)$/.exec(c)?.[1].split(",");
++  return !!rgba && rgba.length === 4 && /^\s*0(?:\.0*)?\s*$/.test(rgba[3]);
++}
++
++/** Whether an element's box HUGS a line of its text — at most 24px taller and 48px wider: a roundel, a pill, a chip,
++ *  a badge. When such a box is painted, the text's ink is the box (301 309 310: the 18+ roundel). A card or a
++ *  paragraph's own box does not hug its text, so it never stands in for it. */
++export function hugs(box: Box, text: Box): boolean {
++  return box.bottom - box.top <= text.bottom - text.top + 24 && box.right - box.left <= text.right - text.left + 48;
++}
++
++/** The `y` range a parked disc may take on the rail of a travel box (the engine's `parkPose` clamp). */
++export function railRange(g: Geometry): { minY: number; maxY: number } {
++  const minY = g.minY + EDGE_MARGIN;
++  return { minY, maxY: Math.max(minY, g.maxY - EDGE_MARGIN) };
++}
++
++export type ReseatInput = {
++  /** The geometry the body's pose and target were set in (the last layout), and the one it is in now. */
++  before: Geometry;
++  after: Geometry;
++  edge: string;
++  parked: boolean;
++  parking: boolean;
++  held: boolean;
++  moving: boolean;
++  /** The pose BEFORE the change (before `setSize` re-centred it). */
++  x: number;
++  y: number;
++  target: Pose | null;
++};
++export type ReseatOutput = { kind: "keep" } | { kind: "rest"; y: number } | { kind: "aim"; target: Pose; x: number };
++
++/**
++ * WHAT A VIEWPORT CHANGE DOES TO A DISC ON ITS WAY TO A REST (① above).
++ *  · parked — the engine re-tucks it itself (`setSize`/`reclamp` → `snapPark`): keep.
++ *  · held, or flying free — the player's, and physics': keep (the engine clamps a free body into the new box).
++ *  · heading for a rest (a rest glide, the engine's park, a tap's peek) or lingering at its peek after a tap:
++ *      a HEIGHT-only change (the rail did not move — a phone's URL bar) keeps the move, its end clamped into the
++ *      new box, and its x where it was: `aim`. ⚠️ The x matters: `reclamp()` clamps any body that is not parked into
++ *      the travel box, and a disc gliding along its rail is OUTSIDE the box on purpose (tucked) — `test:needle-host`
++ *      2.4 measured the pop, 30px inward at 390 and back out over half a second, on a height-only change.
++ *      A change that moves the rail (a width or a diameter) ends the move AT ITS REST: tucked half off the SAME
++ *      edge, at the height it was heading for, centre kept as `setSize` keeps it: `rest`. A peek a resize
++ *      interrupts goes home, rather than being re-aimed across a re-laid page.
++ * The host asks only when the geometry changed: with none, it does not `reclamp()` at all (a visualViewport scroll
++ * would otherwise pop a gliding disc the same way).
++ */
++export function reseat(q: ReseatInput): ReseatOutput {
++  if (q.held || q.parked || (q.edge !== "left" && q.edge !== "right")) return { kind: "keep" };
++  const sameRail = q.after.minX === q.before.minX && q.after.maxX === q.before.maxX && q.after.size === q.before.size;
++  if (sameRail && q.after.minY === q.before.minY && q.after.maxY === q.before.maxY) return { kind: "keep" };
++  const { minY, maxY } = railRange(q.after);
++  const clampY = (y: number) => Math.min(maxY, Math.max(minY, y));
++  const centred = (y: number) => y + (q.before.size - q.after.size) / 2;
++  if (q.parking && q.target) {
++    if (sameRail) return { kind: "aim", target: { x: q.target.x, y: clampY(q.target.y) }, x: q.x };
++    return { kind: "rest", y: clampY(centred(q.target.y)) };
++  }
++  // Lingering at its peek (the wake pose of the OLD geometry), waiting out the wake's linger before it parks.
++  const peekX = q.edge === "right" ? Math.max(q.before.minX, q.before.maxX - EDGE_MARGIN) : q.before.minX + EDGE_MARGIN;
++  if (!sameRail && !q.parking && !q.moving && Math.abs(q.x - peekX) < 1.5) return { kind: "rest", y: clampY(centred(q.y)) };
++  return { kind: "keep" };
++}
+diff --git a/tailwind.config.ts b/tailwind.config.ts
+index 373e4e63e..d22002361 100644
+--- a/tailwind.config.ts
++++ b/tailwind.config.ts
+@@ -353,6 +353,10 @@ const config: Config = {
+          not one of them ever lands there: each is sealed inside its bar's stacking
+          context (nav-more → 40 and 30, the admin AI toolkit → 40). Naming it would
+          hand the next session a number that reads like a promise and is not one.
++         ⚠️ 2026-10-09: three surfaces DO land at a root 50 — the floating invitation cards
++         (channels panel, install card, consent card), over the Needle's 45 and under the
++         menus' 60. They write the number, so `test:stacking` reads and ranks it; the ladder
++         still names no `50`, because the four menus above would read it as theirs.
+          In-card stickies use `raised`; there is no `sticky` rung for the same reason. */
+       zIndex: {
+         base: "0",                    // .mcardp-watermark — the floor of a card's own context

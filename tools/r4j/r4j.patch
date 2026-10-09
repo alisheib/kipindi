@@ -1,0 +1,1955 @@
+diff --git a/package.json b/package.json
+index 8a1509616c424c57eca0fc0666b1369997abfd99..a67117e65362bc083d858c3bb589681102ba1f9b 100644
+--- a/package.json
++++ b/package.json
+@@ -1004,6 +1004,7 @@
+     "ops:preflight-notification-idx": "tsx scripts/ops-preflight-notification-idx.mts",
+     "test:notifications-page": "tsx scripts/notifications-page.test.mts",
+     "test:visual-pass-r4c": "tsx scripts/visual-pass-r4c.test.mts",
++    "test:visual-pass-r4j": "tsx scripts/visual-pass-r4j.test.mts",
+     "red:notifications-page": "node scripts/notifications-page-red.mjs",
+     "red:measure": "node scripts/measure-red.mjs",
+     "red:decomment": "node scripts/decomment-red.mjs",
+diff --git a/scripts/hero-copy.test.mts b/scripts/hero-copy.test.mts
+index 5a3f0de45296dc4f87e202d58e87c1e654232f84..e6a2d65e9553198c7970acff95d0b6269b847b0a 100644
+--- a/scripts/hero-copy.test.mts
++++ b/scripts/hero-copy.test.mts
+@@ -77,7 +77,7 @@ function srcFiles(): Map<string, string> {
+ type World = {
+   dict: Record<Locale, Flat>;
+   src: Map<string, string>;
+-  hero: string;               // decommented landing-hero.tsx
++  hero: string;               // decommented hero-intro.tsx, then landing-hero.tsx (`heroOf`)
+   css: string;                // globals.css, line endings normalised — §2c reads the headline's set-back rules
+   page: string;               // decommented app/page.tsx
+   evidence: Evidence;
+@@ -90,6 +90,12 @@ type World = {
+ };
+ 
+ const HERO = "src/components/home/landing-hero.tsx";
++/** The hero's static intro — the claim, the h1 and the trust rows — moved verbatim out of HERO on 2026-10-09 (R4-J) so the
++ *  journey's loading ghost for `/` can draw it without loading the hero's market card. The two files are one hero here. */
++const INTRO = "src/components/home/hero-intro.tsx";
++/** Between the two files in `World.hero`: a line neither file can hold, so a plant on the joined text splits back cleanly. */
++const JOIN = "\n/* ══ hero-copy: landing-hero.tsx follows ══ */\n";
++const heroOf = (src: Map<string, string>) => (src.get(INTRO) ?? "") + JOIN + (src.get(HERO) ?? "");
+ const DICT = "src/lib/i18n-dict.ts";
+ 
+ function load(): World {
+@@ -101,7 +107,7 @@ function load(): World {
+   return {
+     dict: { en: flatten(dict.en as never), sw: flatten(dict.sw as never), zh: flatten(dict.zh as never) },
+     src,
+-    hero: src.get(HERO) ?? "",
++    hero: heroOf(src),
+     css: read("src/app/globals.css"),
+     page: src.get("src/app/page.tsx") ?? "",
+     evidence: FIRST_LICENSED_EVIDENCE(),
+@@ -161,13 +167,13 @@ function firstScreen(hero: string): string {
+ 
+ const CHECKS: Check[] = [
+   /* §1 · "first" is gated */
+-  { id: "1a", label: "`heroClaimFirst` is read in ONE place in src/, inside the FIRST_LICENSED_EVIDENCE() branch", run: (w) => {
++  { id: "1a", label: "`heroClaimFirst` is read in ONE place in src/, the hero's claim (hero-intro.tsx), inside the FIRST_LICENSED_EVIDENCE() branch", run: (w) => {
+     const d: string[] = [];
+     let reads = 0;
+     for (const [f, s] of w.src) {
+       if (f === DICT) continue;
+       const n = (s.match(/heroClaimFirst/g) ?? []).length;
+-      if (n && f !== HERO) d.push(`${f} reads heroClaimFirst ×${n}`);
++      if (n && f !== INTRO) d.push(`${f} reads heroClaimFirst ×${n}`);
+       reads += n;
+     }
+     if (reads !== 1) d.push(`heroClaimFirst is read ${reads} time(s) in src/, not once`);
+@@ -367,7 +373,15 @@ const CHECKS: Check[] = [
+ /* ── §6 · the plants — one per check, each on a COPY of the world ─────────────────────────── */
+ const cloneDict = (w: World) => ({ en: new Map(w.dict.en), sw: new Map(w.dict.sw), zh: new Map(w.dict.zh) });
+ const withDict = (w: World, loc: Locale, k: string, v: string): World => { const dd = cloneDict(w); dd[loc].set(k, v); return { ...w, dict: dd }; };
+-const withHero = (w: World, hero: string): World => { const src = new Map(w.src); src.set(HERO, hero); return { ...w, hero, src }; };
++/** A plant on the joined hero text, written back to the two files it came from (`heroOf`'s JOIN splits it again). */
++const withHero = (w: World, hero: string): World => {
++  const src = new Map(w.src);
++  const at = hero.indexOf(JOIN);
++  if (at < 0) throw new Error("hero-copy: a plant removed the line between hero-intro.tsx and landing-hero.tsx");
++  src.set(INTRO, hero.slice(0, at));
++  src.set(HERO, hero.slice(at + JOIN.length));
++  return { ...w, hero, src };
++};
+ const inTrust = (w: World, jsx: string) => withHero(w, w.hero.replace('<ul className="kp-hero__trust" role="list">', `<ul className="kp-hero__trust" role="list">${jsx}`));
+ 
+ const PLANTS: Record<string, { note: string; plant: (w: World) => World }[]> = {
+diff --git a/scripts/journey-shell.test.mts b/scripts/journey-shell.test.mts
+index e84d8ce71a3896e82b8dce0192ed245cbadc897e..74e98b748d0a2892ff6930f8acd18dec2f8f39b3 100644
+--- a/scripts/journey-shell.test.mts
++++ b/scripts/journey-shell.test.mts
+@@ -67,8 +67,8 @@
+  *      script never passes) and inside `red:all` (which marks its harnesses with KP_RED_ALL); and the stylesheet holds
+  *      no red-run witness, so a mutation a hard kill left behind fails here, by name.
+  *   §11 THE OVERLAYS (WP7) — what the flag is for. On the pages the journey re-draws a journey viewer meets no Needle,
+- *      no channels panel and no chat bubble: each stand-down is ONE term, `journeyOn && isJourneySurface(pathname)`,
+- *      joined to the rule the overlay already had (today's half verbatim, so with the flag down the rule IS today's) or
++ *      no channels panel and no chat bubble: each stand-down is ONE term, `journeyOn && isJourneySurface(pathname)`
++ *      (`&& !notFoundShown` since R4-J: a not-found page on a question's path is no journey page), joined to the rule the overlay already had (today's half verbatim, so with the flag down the rule IS today's) or
+  *      a guard straight after the pinned line it follows; each overlay reads the flag once and asks the one list (§2)
+  *      once; the chat keeps its conversation; the HIDE_ON patterns other gates pin are unchanged; the analytics consent
+  *      prompt is still asked of everybody; the email-verify bar — gated on the same per-request answer (VODACOM-PLAN
+@@ -77,7 +77,9 @@
+  *   §12 THE SHELL'S DEFERRED PARTS (WP6c, VODACOM-PLAN §0h point 20) — AppShell is a server component, and its own
+  *      `React.lazy` split nothing: every module it named rode in every page's first load. So every lazily loaded part
+  *      AppShell renders comes from ONE client module, `shell-lazy.tsx`, under the name it always had, each the one child
+- *      of the Suspense boundary it always had; AppShell imports none of the parts' own modules and no React `lazy`, and
++ *      of the Suspense boundary it always had — save the journey's header and tabs, which since R4-J (2026-10-09, E36)
++ *      stand in none, so the page's first HTML draws them (12.shell.bare); AppShell imports none of the parts' own
++ *      modules and no React `lazy`, and
+  *      imports the offline banner statically (its job is a connection that fails); that module is "use client", imports
+  *      nothing statically but `next/dynamic`, declares exactly the parts table (each part one line, server render on, no
+  *      option object, its loader ending in the lost-chunk guard, which takes a ChunkLoadError alone) and only AppShell
+@@ -251,6 +253,14 @@ const SHELL_PARTS: ReadonlyArray<readonly [string, string, string]> = [
+   ["LazyJourneyTopBar", "@/components/journey/journey-top-bar", "JourneyTopBar"],
+   ["LazyJourneyTabs", "@/components/journey/journey-tabs", "JourneyTabs"],
+ ];
++/**
++ * The parts AppShell renders in NO Suspense boundary of their own: the journey's header and tabs (2026-10-09, the visual
++ * pass round 4, R4-J; E36). In a boundary React 19.2 outlined them — their fallback in the page's first HTML (the bar's
++ * empty box; nothing for the rail) and the part itself after the shell, moved in by an inline script — so on all 16
++ * Slow 3G mid-load tiles the header band was empty and the rail missing. Bare, they are drawn by the first paint; what
++ * that costs (the page's hydration waits for their chunks too) is written at their mount in AppShell.
++ */
++const BARE_PARTS: readonly string[] = ["LazyJourneyTopBar", "LazyJourneyTabs"];
+ /** A part's one line in the shell's lazy module, exactly as it is written there. */
+ const partLine = ([binding, spec, symbol]: readonly [string, string, string]) =>
+   `export const ${binding} = dynamic(() => import("${spec}").then((m) => m.${symbol}).catch(nothingIfLost));`;
+@@ -841,7 +851,8 @@ function g5Flag(I: Impl, W: World, G: Graph, ok: Ok) {
+ /*
+  * What the flag of §5 is for. On the pages the journey re-draws (`isJourneySurface`, §2), a reader the shell put in the
+  * journey meets no Needle, no channels panel and no chat bubble; everywhere else, and for every other reader, each
+- * overlay is what it was. So each stand-down is ONE term, `journeyOn && isJourneySurface(pathname)`, joined to the rule
++ * overlay is what it was. So each stand-down is ONE term, `journeyOn && isJourneySurface(pathname)` — never on a not-found
++ * page (`&& !notFoundShown`, R4-J, 2026-10-09: `lib/not-found-mark.ts`) — joined to the rule
+  * the overlay already had — `useJourneyOn` answers false without the flag and on the server (§5), which leaves today's
+  * rule exactly — or a guard straight after the pinned line it follows. Read here with comments stripped: each join as
+  * written beside today's half; each overlay reading the flag once and the one journey list once; the chat keeping its
+@@ -855,8 +866,9 @@ const OVERLAY_CHANNELS = "src/components/social/channels-panel.tsx";
+ const OVERLAY_CHAT = "src/components/chat/ChatRoot.tsx";
+ /** How each overlay reads the flag: the shell's answer, through `useJourneyOn`, once. */
+ const OVERLAY_READS_FLAG = "const journeyOn = useJourneyOn();";
+-/** The one stand-down term. */
+-const OVERLAY_TERM = "journeyOn && isJourneySurface(pathname)";
++/** The one stand-down term — and since R4-J (2026-10-09) never on a not-found page: the market not-found answers on a
++ *  question's path, and has no bet panel to stand down for (R4-K's ruling; `lib/not-found-mark.ts`). */
++const OVERLAY_TERM = "journeyOn && isJourneySurface(pathname) && !notFoundShown";
+ /**
+  * A term JOINED to what an overlay already had: the file holds `today + join + end`, and `today + end` no longer — so
+  * with the term false, the expression is today's.
+@@ -865,7 +877,7 @@ const OVERLAY_JOINS: ReadonlyArray<{ id: string; file: string; says: string; tod
+   { id: "needle", file: OVERLAY_NEEDLE, says: "the Needle hides where it hid, and for a journey viewer on a journey page",
+     today: "const suppressed = hiddenPref || isMoneySurface(pathname)", join: ` || (${OVERLAY_TERM})`, end: ";" },
+   { id: "needle.deps", file: OVERLAY_NEEDLE, says: "its gate runs again when the flag goes up or down",
+-    today: "}, [hiddenPref, pathname", join: ", journeyOn", end: "]);" },
++    today: "}, [hiddenPref, pathname", join: ", journeyOn, notFoundShown", end: "]);" },
+   { id: "channels.eligible", file: OVERLAY_CHANNELS, says: "the channels panel is eligible where it was, and never on a journey page for a journey viewer",
+     today: "const eligible = open && !promoSuppressed && !suppressedRoute(pathname)", join: " && !journeyHidden", end: ";" },
+ ];
+@@ -1653,9 +1665,9 @@ function g8Tabs(I: Impl, W: World, G: Graph, ok: Ok) {
+     ok("8.poll.media · a phone reads false and a desktop true, a change is heard once, and letting go stops listening",
+       phone === false && desk === true && told === 1 && media.listening() === 0, show({ phone, desk, told, listening: media.listening() }));
+   });
+-  ok("8.poll.bar · the header MOUNTS the bell only from 1024 — never merely hidden — in a slot that keeps its width",
++  ok("8.poll.bar · the header MOUNTS the bell only from 1024 — never merely hidden — and on no not-found page, in a slot that keeps its width and holds the bell's still twin until then (R4-J, E36)",
+     bar.includes("const pollers = pollersAt(useLgUp());") && count(bar, "<NotificationsPanel") === 1
+-      && bar.includes(`<span className="hidden lg:inline-flex kp-jhdr__bell">{pollers.bell && <NotificationsPanel />}</span>`)
++      && bar.includes(`<span className="hidden lg:inline-flex kp-jhdr__bell">{pollers.bell && !notFoundShown ? <NotificationsPanel /> : <BellStill label={t.common.notifications} />}</span>`)
+       && baseRule(css, ".kp-jhdr__bell").includes("min-width: var(--h-control-sm)"));
+   ok("8.poll.rail · the rail mounts the dot's counter only below 1024, for a signed-in viewer — the counter lives in the one component that guard renders",
+     rail.includes("const pollers = pollersAt(useLgUp());") && count(rail, "<TabUnread") === 1
+@@ -1859,12 +1871,15 @@ const WALLET_SHEET_DOORS: readonly ChromeDoor[] = [
+   { href: "/profile/responsible-gambling", file: WALLET_SHEET_FILE, gate: MEMBER },
+   { href: "/wallet", file: WALLET_SHEET_FILE, gate: MEMBER },
+ ];
+-/** The journey header's own links on a phone, and which of `journeyHeaderState`'s answers shows each. */
+-const JOURNEY_HEADER_DOORS: ReadonlyArray<{ href: string; when: "always" | "pill" | "authPills" }> = [
++/** The journey header's own links on a phone, and which of `journeyHeaderState`'s answers shows each — and its one link
++ *  that shows from 1024 only ("desktop"), which no phone root counts: the bell's still twin (R4-J, 2026-10-09, E36), a
++ *  signed-in reader's plain link to the notifications page until the live bell may mount, and on a not-found page. */
++const JOURNEY_HEADER_DOORS: ReadonlyArray<{ href: string; when: "always" | "pill" | "authPills" | "desktop" }> = [
+   { href: "/", when: "always" },
+   { href: "/wallet/deposit", when: "pill" },
+   { href: "/auth/login", when: "authPills" },
+   { href: "/auth/register", when: "authPills" },
++  { href: "/notifications", when: "desktop" },
+ ];
+ /** What a guest's Tiketi zangu opens: the guest sheet's two doors, each returning to the tickets. */
+ const GUEST_SHEET_DOORS: readonly string[] = ["/auth/register?next=%2Fpositions", "/auth/login?next=%2Fpositions"];
+@@ -2256,7 +2271,9 @@ function g10Terms(I: Impl, W: World, ok: Ok) {
+  *   (b) every lazily loaded part it renders is a binding it imports from that module under the table's name, rendered
+  *       once, as the one child of its own Suspense boundary: next/dynamic adds none of its own, so that boundary is the
+  *       part's only one (without it the part's boundary markers leave the HTML, and its chunk holds up the hydration of
+- *       the whole page); AppShell imports none of the parts' own modules, by any import; nothing else imports the
++ *       the whole page) — save the journey's header and tabs (BARE_PARTS, R4-J), which stand in none, so that React
++ *       19.2 draws them in the page's first HTML (12.shell.bare); AppShell imports none of the parts' own modules, by
++ *       any import; nothing else imports the
+  *       module; and the offline banner is NOT a part: AppShell imports it statically, as its code always came, because
+  *       its one job is a connection that fails;
+  *   (c) the module is "use client", its one static import is `next/dynamic`, and it declares exactly the table, each
+@@ -2323,9 +2340,13 @@ function g12ShellParts(W: World, G: Graph, ok: Ok) {
+     show([...imported].sort()) === show([...table].sort()) && notOnce.length === 0 && stray.length === 0 && !ownBinding,
+     show({ imported, notOnce, stray, ownBinding }));
+   const flat = squash(shell);
+-  const unwrapped = table.filter((b) => [...flat.matchAll(wrappedPart(b))].length !== 1);
+-  ok(`12.shell.wrapped · every part is the one child of its own Suspense boundary in AppShell, as before WP6c: next/dynamic adds none, so without it the part's boundary markers leave the HTML and its chunk holds up the whole page's hydration (${table.length})`,
+-    unwrapped.length === 0, show({ unwrapped }));
++  const unwrapped = table.filter((b) => !BARE_PARTS.includes(b) && [...flat.matchAll(wrappedPart(b))].length !== 1);
++  ok(`12.shell.wrapped · every part but the journey's header and tabs is the one child of its own Suspense boundary in AppShell, as before WP6c: next/dynamic adds none, so without it the part's boundary markers leave the HTML and its chunk holds up the whole page's hydration (${table.length - BARE_PARTS.length})`,
++    unwrapped.length === 0 && BARE_PARTS.every((b) => table.includes(b)), show({ unwrapped }));
++  const chrome = BARE_PARTS.map((b) => ({ b, arm: count(flat, `{journeyShown ? <${b} `), boxed: [...flat.matchAll(wrappedPart(b))].length }));
++  const emptyBox = count(flat, `className="kp-jhdr"`);
++  ok("12.shell.bare · the journey's header and tabs stand in NO Suspense boundary: each is the journeyShown arm itself, so React 19.2 draws them in the page's first HTML instead of outlining them after the shell behind an empty box (R4-J, E36); and AppShell draws no empty header box",
++    chrome.every((r) => r.arm === 1 && r.boxed === 0) && emptyBox === 0, show({ chrome, emptyBox }));
+   const offline = {
+     imported: importedNames(W, SHELL, OFFLINE_BANNER), mounted: count(flat, OFFLINE_MOUNT), tags: count(shell, "<OfflineBanner"),
+     deferred: (G.out.get(SHELL_LAZY) ?? []).includes(OFFLINE_BANNER), loaders: [...(G.into.get(OFFLINE_BANNER) ?? [])].sort(),
+@@ -2545,7 +2566,7 @@ if (!PROVE_RED) {
+     // a HIDE_ON pattern moved; the consent prompt gated; the email bar back for a journey viewer; the flag loaded eagerly.
+     const flagForEveryone = withFile(WORLD, SHELL, (s) => s.replace("{journeyShown && <Suspense fallback={null}><LazyJourneyFlag /></Suspense>}", "<Suspense fallback={null}><LazyJourneyFlag /></Suspense>"));
+     const needleForAll = withFile(WORLD, OVERLAY_NEEDLE, (s) => s.replace(`(${OVERLAY_TERM})`, "isJourneySurface(pathname)"));
+-    const needleDepsStale = withFile(WORLD, OVERLAY_NEEDLE, (s) => s.replace("}, [hiddenPref, pathname, journeyOn]);", "}, [hiddenPref, pathname]);"));
++    const needleDepsStale = withFile(WORLD, OVERLAY_NEEDLE, (s) => s.replace("}, [hiddenPref, pathname, journeyOn, notFoundShown]);", "}, [hiddenPref, pathname]);"));
+     const panelEligibleAnyway = withFile(WORLD, OVERLAY_CHANNELS, (s) => s.replace(" && !journeyHidden;", ";"));
+     const panelRendersAnyway = withFile(WORLD, OVERLAY_CHANNELS, (s) => s.replace(`${LF}  if (journeyHidden) return null;`, ""));
+     const panelHiddenEverywhere = withFile(WORLD, OVERLAY_CHANNELS, (s) => s.replace(`const journeyHidden = ${OVERLAY_TERM};`, `const journeyHidden = journeyOn && (pathname ?? "").startsWith("/");`));
+@@ -2769,7 +2790,7 @@ ${s}`);
+     const sectionSaysPage = withFile(WORLD, JHDR, (s) => s.replace("aria-current={tabAriaCurrent(pathname, d.key)}", `aria-current={active === d.key ? "page" : undefined}`));
+     const languageOnPhones = withFile(WORLD, JHDR, (s) => s.replace(`<span className="hidden lg:inline-flex"><LanguageMenu /></span>`, "<LanguageMenu />"));
+     const inlineHeight = withFile(WORLD, JHDR, (s) => s.replace(`data-testid="journey-top-bar"`, `data-testid="journey-top-bar" style={{ height: 64 }}`));
+-    const bellEverywhere = withFile(WORLD, JHDR, (s) => s.replace("{pollers.bell && <NotificationsPanel />}", "<NotificationsPanel />"));
++    const bellEverywhere = withFile(WORLD, JHDR, (s) => s.replace("{pollers.bell && !notFoundShown ? <NotificationsPanel /> : <BellStill label={t.common.notifications} />}", "<NotificationsPanel />"));
+     // 7.bell's plants (2026-10-09): the slot loses its 4px, the pip hangs by its right edge again, the override loses
+     // the `!important` an inline style needs, and the two premises move under it — the avatar's gap and the classic pip.
+     const bellOffCentre = withCss(inRule(".kp-jhdr__bell", " margin-left: var(--sp-1);", ""));
+@@ -2869,6 +2890,13 @@ ${s}`);
+       new RegExp(`<Suspense fallback=[{]null[}]>[ ${LF}]*<LazyPullToRefresh />[ ${LF}]*</Suspense>`), "<LazyPullToRefresh />"));
+     const winTwice = withFile(WORLD, SHELL, (s) => s.replace("<Suspense fallback={null}><LazyWinCelebration /></Suspense>",
+       "<Suspense fallback={null}><LazyWinCelebration /></Suspense><Suspense fallback={null}><LazyWinCelebration /></Suspense>"));
++    // R4-J (E36): the journey's chrome put back in the boundaries React 19.2 outlines. (Anchored before the `user` prop,
++    // whichever value it is handed.)
++    const headerBoxed = withFile(WORLD, SHELL, (s) => s.replace("{journeyShown ? <LazyJourneyTopBar user=",
++      `{journeyShown ? <Suspense fallback={<div aria-hidden="true" className="kp-jhdr" />}><LazyJourneyTopBar user=`)
++      .replace("invitePaid={invitePaid} /> : <TopAppBar", "invitePaid={invitePaid} /></Suspense> : <TopAppBar"));
++    const tabsBoxed = withFile(WORLD, SHELL, (s) => s.replace("{journeyShown ? <LazyJourneyTabs userId={session?.userId ?? null} /> :",
++      "{journeyShown ? <Suspense fallback={null}><LazyJourneyTabs userId={session?.userId ?? null} /></Suspense> :"));
+     const offlineDeferred = withFile(
+       withFile(WORLD, SHELL_LAZY, (s) => `${s}${LF}export const LazyOfflineBanner = dynamic(() => `
+         + `import("@/components/ui/offline-banner").then((m) => m.OfflineBanner).catch(nothingIfLost));${LF}`),
+@@ -3293,6 +3321,10 @@ ${s}`);
+         world: pullUnwrapped, landed: changed(pullUnwrapped, SHELL), landedAs: "the same, for a mount written over three lines" },
+       { name: "AppShell renders a part twice", expect: at("12.shell.parts ·"),
+         world: winTwice, landed: changed(winTwice, SHELL), landedAs: "two celebration hosts: one win, two seals" },
++      { name: "the journey header back in a Suspense boundary over the bar's empty box (R4-J, E36)", expect: at("12.shell.bare ·"),
++        world: headerBoxed, landed: changed(headerBoxed, SHELL), landedAs: "an empty header band on every slow first paint, the header moved in after the shell" },
++      { name: "the journey tabs back in a Suspense boundary (R4-J, E36)", expect: at("12.shell.bare ·"),
++        world: tabsBoxed, landed: changed(tabsBoxed, SHELL), landedAs: "no rail on a slow first paint" },
+       { name: "the offline banner deferred like the parts", expect: at("12.shell.offline ·"),
+         world: offlineDeferred, landed: changed(offlineDeferred, SHELL) && changed(offlineDeferred, SHELL_LAZY), landedAs: "the banner's code behind a fetch the dropped connection it reports on can stop" },
+       { name: "the shell's lazy module declares a part outside the table", expect: at("12.module.dynamic ·"),
+diff --git a/scripts/simple-journey-flag.test.mts b/scripts/simple-journey-flag.test.mts
+index b68f793942cb6e65d8d7beaf8ce3b01a72f57029..9084c3c87c786b665f185a53215e902ca21d79eb 100644
+--- a/scripts/simple-journey-flag.test.mts
++++ b/scripts/simple-journey-flag.test.mts
+@@ -686,14 +686,15 @@ function g10Wiring(W: World) {
+   // ⭐ THE SHELL SWAP (S6 WP6b). The journey's header and tabs render only in the `journeyShown` arm of a ternary whose
+   // else arm is today's classic element with today's props, written out here so a change to either arm is a decision:
+   // a request the resolver does not show the journey to is served what it was served before. Each journey arm is a LAZY
+-  // binding in its own Suspense, since WP6c a `next/dynamic` part of the shell's one client module, `shell-lazy.tsx`
+-  // (AppShell's own `React.lazy` split nothing: VODACOM-PLAN §0h point 20), so the journey chrome's code stays out of
+-  // the first-load bundle every classic visitor downloads. The header's fallback is the bar's own empty box (its
+-  // height, panel and border), so a journey page does not jump while that code arrives; the tabs need none, because
+-  // the rail takes no room in the page. And nothing else renders or loads the journey chrome, or loads it into a
+-  // classic layout component.
+-  const SWAP_HEADER = '{journeyShown ? <Suspense fallback={<div aria-hidden="true" className="kp-jhdr" />}><LazyJourneyTopBar user={topUser} onBreak={promoSuppressed} proposalsState={proposalsState} inviteVisible={inviteVisible} invitePaid={invitePaid} /></Suspense> : <TopAppBar user={topUser} proposalsState={proposalsState} inviteVisible={inviteVisible} invitePaid={invitePaid} />}';
+-  const SWAP_RAIL = "{journeyShown ? <Suspense fallback={null}><LazyJourneyTabs userId={session?.userId ?? null} /></Suspense> : <BottomNav isAuthed={!!session} proposalsState={proposalsState} inviteVisible={inviteVisible} walletHeld={!!topUser.walletHeld} />}";
++  // binding, since WP6c a `next/dynamic` part of the shell's one client module, `shell-lazy.tsx` (AppShell's own
++  // `React.lazy` split nothing: VODACOM-PLAN §0h point 20), so the journey chrome's code stays out of the first-load
++  // bundle every classic visitor downloads. ⭐ AND THE ARM IS THE PART ITSELF, IN NO SUSPENSE BOUNDARY (R4-J,
++  // 2026-10-09; E36): in one, React 19.2 drew the boundary's fallback (the bar's empty box; nothing for the rail) in the
++  // page's first HTML and moved the part in after the shell by an inline script — an empty header band and no rail on
++  // every Slow 3G mid-load tile. And nothing else renders or loads the journey chrome, or loads it into a classic
++  // layout component.
++  const SWAP_HEADER = "{journeyShown ? <LazyJourneyTopBar user={topUser} onBreak={promoSuppressed} proposalsState={proposalsState} inviteVisible={inviteVisible} invitePaid={invitePaid} /> : <TopAppBar user={topUser} proposalsState={proposalsState} inviteVisible={inviteVisible} invitePaid={invitePaid} />}";
++  const SWAP_RAIL = "{journeyShown ? <LazyJourneyTabs userId={session?.userId ?? null} /> : <BottomNav isAuthed={!!session} proposalsState={proposalsState} inviteVisible={inviteVisible} walletHeld={!!topUser.walletHeld} />}";
+   const SHELL_LAZY = "src/components/layout/shell-lazy.tsx";
+   /** The two journey arms' lines in the shell's one lazy module (S6 WP6c): `next/dynamic`, server render on, no option object, the lost-chunk guard last. */
+   const DYNAMIC_LINES = [
+@@ -703,10 +704,10 @@ function g10Wiring(W: World) {
+   const lazySrc = W.files.get(SHELL_LAZY) ?? "";
+   const tally = (needle: string) => shell.split(needle).length - 1;
+   const tallyLazy = (needle: string) => lazySrc.split(needle).length - 1;
+-  ok("10.shell.chrome.header · the journey header renders only in the journeyShown arm, lazily, over the bar's own empty box, and the else arm is today's TopAppBar with today's props",
+-    tally(SWAP_HEADER) === 1 && tally("<LazyJourneyTopBar") === 1 && tally("<TopAppBar") === 1,
+-    j({ swap: tally(SWAP_HEADER), journey: tally("<LazyJourneyTopBar"), classic: tally("<TopAppBar") }));
+-  ok("10.shell.chrome.tabs · the journey tabs render only in the journeyShown arm, lazily, and the else arm is today's BottomNav with today's props",
++  ok("10.shell.chrome.header · the journey header renders only in the journeyShown arm, lazily and in no Suspense boundary (no empty box in front of it), and the else arm is today's TopAppBar with today's props",
++    tally(SWAP_HEADER) === 1 && tally("<LazyJourneyTopBar") === 1 && tally("<TopAppBar") === 1 && tally('className="kp-jhdr"') === 0,
++    j({ swap: tally(SWAP_HEADER), journey: tally("<LazyJourneyTopBar"), classic: tally("<TopAppBar"), box: tally('className="kp-jhdr"') }));
++  ok("10.shell.chrome.tabs · the journey tabs render only in the journeyShown arm, lazily and in no Suspense boundary, and the else arm is today's BottomNav with today's props",
+     tally(SWAP_RAIL) === 1 && tally("<LazyJourneyTabs") === 1 && tally("<BottomNav") === 1,
+     j({ swap: tally(SWAP_RAIL), journey: tally("<LazyJourneyTabs"), classic: tally("<BottomNav") }));
+   // ⭐ THE FOOTER'S TWO ARMS (2026-10-09, the visual pass). The classic footer is the classic shell's chrome, frozen for S6
+@@ -910,7 +911,7 @@ const PLANTS: Plant[] = [
+   { name: "the Akaunti hub renders without the journey (no notFound before its reads)", expect: new RegExp("^10[.]page[.]account"),
+     world: (w) => files(w, "src/app/account/page.tsx", (s) => s.replace("if (!journey) notFound();", "")) },
+   { name: "the journey tabs render for everyone (S6 WP6b)", expect: new RegExp("^10[.]shell[.]chrome[.]tabs"),
+-    world: (w) => ({ ...w, shell: w.shell.replace("{journeyShown ? <Suspense fallback={null}><LazyJourneyTabs", "{true ? <Suspense fallback={null}><LazyJourneyTabs") }) },
++    world: (w) => ({ ...w, shell: w.shell.replace("{journeyShown ? <LazyJourneyTabs", "{true ? <LazyJourneyTabs") }) },
+   { name: "the classic rail is dropped (S6 WP6b)", expect: new RegExp("^10[.]shell[.]chrome[.]tabs"),
+     world: (w) => ({ ...w, shell: w.shell.replace(" : <BottomNav isAuthed={!!session} proposalsState={proposalsState} inviteVisible={inviteVisible} walletHeld={!!topUser.walletHeld} />}", " : null}") }) },
+   { name: "the classic footer's arm says journeyShown too, so every reader's proposals link is balanced (the visual pass, 2026-10-09)", expect: new RegExp("^10[.]shell[.]chrome[.]footer"),
+@@ -921,8 +922,10 @@ const PLANTS: Plant[] = [
+     world: (w) => files(w, "src/components/layout/public-footer.tsx", (s) => s.replace("journeyShown = false,", "journeyShown = true,")) },
+   { name: "the journey header renders beside the classic one (S6 WP6b)", expect: new RegExp("^10[.]shell[.]chrome[.]header"),
+     world: (w) => ({ ...w, shell: w.shell.replace("<HeaderScrollCast />", "<HeaderScrollCast /><LazyJourneyTopBar user={topUser} onBreak={false} proposalsState={proposalsState} />") }) },
+-  { name: "the journey header's fallback leaves no box, so a journey page jumps while its code arrives (S6 WP6b)", expect: new RegExp("^10[.]shell[.]chrome[.]header"),
+-    world: (w) => ({ ...w, shell: w.shell.replace('<Suspense fallback={<div aria-hidden="true" className="kp-jhdr" />}><LazyJourneyTopBar', "<Suspense fallback={null}><LazyJourneyTopBar") }) },
++  { name: "the journey header back in a Suspense boundary over the bar's empty box, so a slow first paint shows an empty band (R4-J, E36)", expect: new RegExp("^10[.]shell[.]chrome[.]header"),
++    world: (w) => ({ ...w, shell: w.shell.replace("{journeyShown ? <LazyJourneyTopBar user=", '{journeyShown ? <Suspense fallback={<div aria-hidden="true" className="kp-jhdr" />}><LazyJourneyTopBar user=').replace("invitePaid={invitePaid} /> : <TopAppBar", "invitePaid={invitePaid} /></Suspense> : <TopAppBar") }) },
++  { name: "the journey tabs back in a Suspense boundary, so a slow first paint has no rail (R4-J, E36)", expect: new RegExp("^10[.]shell[.]chrome[.]tabs"),
++    world: (w) => ({ ...w, shell: w.shell.replace("{journeyShown ? <LazyJourneyTabs userId={session?.userId ?? null} /> :", "{journeyShown ? <Suspense fallback={null}><LazyJourneyTabs userId={session?.userId ?? null} /></Suspense> :") }) },
+   { name: "AppShell imports the journey header statically, so every visitor downloads it (S6 WP6b)", expect: new RegExp("^10[.]shell[.]chrome[.]lazy"),
+     world: (w) => ({ ...w, shell: w.shell.replace('import { BottomNav } from "./bottom-nav";', 'import { BottomNav } from "./bottom-nav"; import { JourneyTopBar } from "@/components/journey/journey-top-bar";') }) },
+   { name: "a classic component imports a journey module (S6 WP6b)", expect: new RegExp("^10[.]shell[.]chrome[.]only"),
+diff --git a/scripts/visual-pass-r4j.test.mts b/scripts/visual-pass-r4j.test.mts
+new file mode 100644
+index 0000000000000000000000000000000000000000..6434766b91a74796c960b7374c51e9e65962b92a
+--- /dev/null
++++ b/scripts/visual-pass-r4j.test.mts
+@@ -0,0 +1,496 @@
++/**
++ * ROUND 4 OF THE VISUAL PASS, HELPER J (2026-10-09) — HOW THE JOURNEY LOADS AND NAVIGATES, every fix a later edit could
++ * silently undo, held, each check beside a control or a plant that proves it can fail.
++ *
++ *   npx tsx scripts/visual-pass-r4j.test.mts        (npm run test:visual-pass-r4j)
++ *
++ * The owner's rule (Ali, 2026-10-08): only perfect visual and logical results. Vodacom reviews on real Tanzanian mobile
++ * networks, so how the journey LOADS matters as much as how it looks loaded. The tiles are the Slow 3G edge tiles
++ * (S/edges/tiles 275–344, the readers' E36–E41) and the s4/s6 tiles (269, 345–398); the measurements are in the fixes'
++ * own notes.
++ *   §1  E36 · the journey's header and tabs are in the page's FIRST HTML: no Suspense boundary for React 19.2 to outline
++ *            (proved on React's own server renderer, with the boxed shape as the control), and the bell's slot holds the
++ *            bell's still twin until the live bell may mount
++ *   §2  E37 · E41 · a route change moves only the page: no document cross-fade for a journey reader, and one current
++ *            destination and one lit tab in every frame (the journey's own rules; the classic rail keeps its fades)
++ *   §3  E38 · each journey tab's loading state is its own page's ghost in its own column, picked by the exact path; the
++ *            hero's intro is ONE module both draw; /live's search ghost wears the page's band
++ *   §4  E40 · the Needle's rest rule clears a Chinese caption of tile 269's geometry, and the caption's box holds its ink
++ *   §5  the not-found mark: the overlays stop standing down, and the chrome stops lighting a tab and polling, on any
++ *            not-found page
++ * ⛔ It READS and renders in memory. Nothing here writes a file; the mutation proof (S/r4j/mutation-r4j.mjs) is the one
++ * thing that plants defects in the real sources, and it restores them byte for byte.
++ */
++import { readFileSync, existsSync, readdirSync, statSync } from "node:fs";
++import { join } from "node:path";
++import { createRequire } from "node:module";
++import { Writable } from "node:stream";
++import { createElement as h, Fragment, Suspense, useContext, type ReactElement } from "react";
++import { renderToPipeableStream, renderToStaticMarkup } from "react-dom/server";
++import { decomment, decommentCss } from "./lib/decomment.mts";
++import { decideRest, glowReach, REST_TIERS, RIM_CLEARANCE, type Box } from "../src/lib/needle-rest.ts";
++import { JOURNEY_TABS } from "../src/lib/nav/active-tab.ts";
++import { isJourneySurface } from "../src/lib/surfaces.ts";
++import { RoutePick } from "../src/components/ui/route-pick.tsx";
++import { NotFoundMark } from "../src/components/ui/not-found-mark.tsx";
++import * as NF from "../src/lib/not-found-mark.ts";
++
++let pass = 0;
++const fails: string[] = [];
++const ok = (name: string, cond: boolean, detail = "") => {
++  if (cond) { pass++; console.log(`  ok   ${name}`); }
++  else { fails.push(`${name}${detail ? ` — ${detail}` : ""}`); console.log(`  FAIL ${name}${detail ? ` — ${detail}` : ""}`); }
++};
++/** A check that cannot run in this tree (a file another helper adds), printed and counted as neither. */
++const pending = (name: string, why: string) => console.log(`  ---- ${name} — not applicable here: ${why}`);
++const section = (s: string) => console.log(`\n── ${s} ${"─".repeat(Math.max(0, 100 - s.length))}`);
++const raw = (p: string) => readFileSync(p, "utf8").replace(/\r\n/g, "\n");
++/** Source with its comments out (the shared scanner), so a rule quoted in a note is never mistaken for the rule. */
++const read = (p: string) => decomment(raw(p));
++/** Whitespace runs as one space: JSX compared across its line breaks. */
++const squash = (s: string) => s.replace(/\s+/g, " ");
++const count = (s: string, needle: string) => s.split(needle).length - 1;
++const esc = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
++const CSS = decommentCss(raw("src/app/globals.css"));
++/** One rule's declarations, by its exact selector (or one member of a selector list) at the start of a line. */
++function rule(src: string, selector: string): string {
++  const m = new RegExp(`(?:^|\\n)\\s*(?:[^{}\\n]*,\\s*)?${esc(selector)}(?![\\w-])\\s*(?:,[^{}\\n]*)?\\{([^}]*)\\}`).exec(src);
++  return m ? m[1] : "";
++}
++const hasDirective = (s: string, d: string) => new RegExp(`^\\s*["']${d}["'];?`).test(s);
++
++const SHELL = "src/components/layout/app-shell.tsx";
++const JHDR = "src/components/journey/journey-top-bar.tsx";
++const JTABS = "src/components/journey/journey-tabs.tsx";
++const BELL = "src/components/layout/notifications-panel.tsx";
++const RT = "src/components/ui/route-transition.tsx";
++const LOADING = "src/app/loading.tsx";
++const GHOST = "src/components/journey/route-ghost.tsx";
++const PICK = "src/components/ui/route-pick.tsx";
++const HERO = "src/components/home/landing-hero.tsx";
++const INTRO = "src/components/home/hero-intro.tsx";
++const ACCOUNT = "src/app/account/page.tsx";
++const LIVE_LOADING = "src/app/live/loading.tsx";
++const MARK_LIB = "src/lib/not-found-mark.ts";
++const MARK = "src/components/ui/not-found-mark.tsx";
++const VIEW = "src/components/ui/not-found-view.tsx";
++const NEEDLE = "src/components/layout/needle.tsx";
++const CHAT = "src/components/chat/ChatRoot.tsx";
++const CHANNELS = "src/components/social/channels-panel.tsx";
++
++/* ══ §1 · E36 · THE JOURNEY CHROME IS IN THE FIRST HTML ═════════════════════════════════════════════════════════ */
++section("1 · E36 · the header and tabs paint without JavaScript (tiles 277–342: header band one colour, no rail)");
++
++/** The shell keeps the journey's two parts out of any Suspense boundary: each is the journeyShown arm itself. */
++function bareChrome(shell: string): { ok: boolean; why: string } {
++  const flat = squash(shell);
++  const boxed = /<Suspense\b[^>]*>\s*<LazyJourney(TopBar|Tabs)\b/.exec(flat);
++  const header = count(flat, "{journeyShown ? <LazyJourneyTopBar ");
++  const tabs = count(flat, "{journeyShown ? <LazyJourneyTabs ");
++  const emptyBox = count(flat, 'className="kp-jhdr"');
++  return { ok: !boxed && header === 1 && tabs === 1 && emptyBox === 0, why: JSON.stringify({ boxed: boxed?.[0] ?? null, header, tabs, emptyBox }) };
++}
++{
++  const shell = read(SHELL);
++  const now = bareChrome(shell);
++  ok("1.1 · AppShell renders the journey's header and tabs as the journeyShown arms themselves, in no Suspense boundary, with no empty header box", now.ok, now.why);
++  const headerBoxed = shell.replace(/\{journeyShown \? <LazyJourneyTopBar ([^\n]*?) \/> : <TopAppBar/,
++    '{journeyShown ? <Suspense fallback={<div aria-hidden="true" className="kp-jhdr" />}><LazyJourneyTopBar $1 /></Suspense> : <TopAppBar');
++  ok("1.1′ PLANT · the header back in its boundary over the bar's empty box is reported", headerBoxed !== shell && !bareChrome(headerBoxed).ok);
++  const tabsBoxed = shell.replace("{journeyShown ? <LazyJourneyTabs userId={session?.userId ?? null} /> :",
++    "{journeyShown ? <Suspense fallback={null}><LazyJourneyTabs userId={session?.userId ?? null} /></Suspense> :");
++  ok("1.1″ PLANT · the tabs back in theirs is reported", tabsBoxed !== shell && !bareChrome(tabsBoxed).ok);
++}
++
++/** React's own server renderer, the shell flushed once everything is ready (as a fast server renders a journey page). */
++function streamHtml(el: ReactElement): Promise<string> {
++  return new Promise((resolve, reject) => {
++    let html = "";
++    const sink = new Writable({
++      write(chunk, _enc, cb) { html += chunk.toString(); cb(); },
++      final(cb) { resolve(html); cb(); },
++    });
++    const { pipe } = renderToPipeableStream(el, { onAllReady() { pipe(sink); }, onError(e) { reject(e); } });
++  });
++}
++/** A header of the journey header's weight (its markup is ~3 kB; past the 500 bytes that make a boundary outlinable). */
++const Header = () => h("header", { id: "jhdr", className: "kp-jhdr" }, "h".repeat(800));
++const page = (header: ReactElement, filler: number) =>
++  h("html", null, h("body", null, header, h("main", { id: "main-content" }, "p".repeat(filler))));
++const boxed = () => h(Suspense, { fallback: h("div", { "aria-hidden": "true", className: "kp-jhdr", id: "jhdr-fallback" }) }, h(Header));
++{
++  const bare = await streamHtml(page(h(Header), 20_000));
++  const boxedBig = await streamHtml(page(boxed(), 20_000));
++  const boxedSmall = await streamHtml(page(boxed(), 2_000));
++  const at = (html: string, s: string) => html.indexOf(s);
++  ok("1.2 · React 19.2: a header in NO boundary is written where it stands, before the page, in the shell's own bytes",
++    at(bare, '<header id="jhdr"') > -1 && at(bare, '<header id="jhdr"') < at(bare, '<main id="main-content"') && !bare.includes("$RC"),
++    `header@${at(bare, '<header id="jhdr"')} main@${at(bare, '<main id="main-content"')}`);
++  ok("1.2′ CONTROL · the same header IN a boundary, in a shell past 12,800 bytes, is OUTLINED: the fallback box where the header stands, the header itself after the page in a hidden div that only the inline $RC script moves in (the E36 mechanism)",
++    at(boxedBig, 'id="jhdr-fallback"') > -1 && at(boxedBig, 'id="jhdr-fallback"') < at(boxedBig, '<main id="main-content"')
++      && at(boxedBig, '<header id="jhdr"') > at(boxedBig, '<main id="main-content"') && /<div hidden id="S:\d+">/.test(boxedBig) && boxedBig.includes("$RC"),
++    `fallback@${at(boxedBig, 'id="jhdr-fallback"')} main@${at(boxedBig, '<main id="main-content"')} header@${at(boxedBig, '<header id="jhdr"')}`);
++  ok("1.2″ CONTROL · and in a shell under 12,800 bytes the same boundary is written inline — the count that outlines it is the WHOLE shell's, wherever the boundary stands",
++    at(boxedSmall, '<header id="jhdr"') > -1 && at(boxedSmall, '<header id="jhdr"') < at(boxedSmall, '<main id="main-content"') && !boxedSmall.includes('id="jhdr-fallback"'));
++  // The framework's own copy (the one Next renders with) carries the predicate the proof above ran on.
++  const fw = readFileSync("node_modules/next/dist/compiled/react-dom/cjs/react-dom-server.node.production.js", "utf8");
++  ok("1.3 · Next's compiled react-dom outlines by the same rule: a boundary past 500 bytes, counted against the whole shell's 12,800 (if this fails after an upgrade, re-measure E36 before trusting §1.2)",
++    fw.includes("500 < boundary.byteSize") && fw.includes("void 0 === progressiveChunkSize ? 12800 : progressiveChunkSize")
++      && fw.includes("flushedByteSize = request.byteSize") && fw.includes("flushedByteSize + boundary.byteSize > request.progressiveChunkSize"));
++}
++
++/** The live bell's trigger, as notifications-panel.tsx draws it closed, and its still twin in the journey header. */
++function bellTwin(bar: string, panel: string, tw: string): { ok: boolean; why: string } {
++  // The panel is read decommented, so the cn( call's notes are blank lines between its two class strings.
++  const live = /className=\{cn\(\s*"([^"]+)",\s*open \? "[^"]+" : "([^"]+)"/.exec(panel);
++  const still = /function BellStill[\s\S]*?<div className="([^"]+)">\s*<Link\s+href="\/notifications"\s+aria-label=\{label\}\s+className="([^"]+)"\s*>\s*<span aria-hidden className="inline-flex">\s*<I\.bell s=\{20\} \/>\s*<\/span>\s*<\/Link>\s*<\/div>/.exec(bar);
++  if (!live || !still) return { ok: false, why: JSON.stringify({ live: !!live, still: !!still }) };
++  const step = (k: string) => new RegExp(`"${k}":\\s*"([0-9]+)px"`).exec(tw)?.[1];
++  // The live control's classes with its spacing steps written as what they render.
++  const want = `${live[1]} ${live[2]}`.split(" ").map((c) => (/^[hw]-\d+$/.test(c) ? `${c[0]}-[${step(c.slice(2))}px]` : c)).sort();
++  const got = still[2].split(" ").sort();
++  const wrapper = /<div ref=\{ref\} className="([^"]+)">/.exec(panel)?.[1];
++  const slot = bar.includes('<span className="hidden lg:inline-flex kp-jhdr__bell">{pollers.bell && !notFoundShown ? <NotificationsPanel /> : <BellStill label={t.common.notifications} />}</span>');
++  return {
++    ok: JSON.stringify(want) === JSON.stringify(got) && still[1] === wrapper && slot && panel.includes("<I.bell s={20} />"),
++    why: JSON.stringify({ want, got, wrapper, stillWrapper: still[1], slot }),
++  };
++}
++{
++  const bar = read(JHDR), panel = read(BELL), tw = raw("tailwind.config.ts");
++  const now = bellTwin(bar, panel, tw);
++  ok("1.4 · the bell's slot holds the bell's still twin — the live trigger's wrapper, 40px round box, ink and 20px glyph, a plain link to /notifications — until the live bell may mount (it is mounted from 1024 alone, and never on a not-found page)", now.ok, now.why);
++  ok("1.4′ PLANT · the empty slot of before (the live bell or nothing) is reported",
++    !bellTwin(bar.replace("{pollers.bell && !notFoundShown ? <NotificationsPanel /> : <BellStill label={t.common.notifications} />}", "{pollers.bell && <NotificationsPanel />}"), panel, tw).ok);
++  ok("1.4″ PLANT · a twin 4px off the live bell's box is reported", !bellTwin(bar.replace("h-[40px] w-[40px]", "h-[44px] w-[44px]"), panel, tw).ok);
++}
++
++{
++  // What the old boundary also kept back: the capsule's figure, for a reader who hid balances (a choice the server
++  // cannot read). Now in the first HTML, the capsule is drawn masked until the browser has read the choice.
++  const cap = read("src/components/layout/wallet-balance-pill.tsx");
++  const body = cap.slice(cap.indexOf("export function WalletBalanceCaptioned"));
++  const masksFirst = (s: string) => squash(s).includes("const chosen = useCashHidden(); const [choiceRead, setChoiceRead] = useState(false); useEffect(() => { setChoiceRead(true); }, []); const hidden = chosen || !choiceRead;")
++    && s.includes("<span>{hidden ? BALANCE_MASK : formatBalancePill(display)}</span>") && s.includes('data-masked={hidden ? "" : undefined}');
++  ok("1.5 · the journey capsule is drawn MASKED by the server and the hydration that matches it — the figure arrives with the stored hide-balances choice, in one render (a reader who hid it never sees it flash)", masksFirst(body));
++  ok("1.5′ PLANT · the figure drawn before the choice is read is reported", !masksFirst(body.replace("const hidden = chosen || !choiceRead;", "const hidden = chosen;")));
++  // Rendered on React's server renderer, as the first HTML draws it: no effect has run, so the mask is what paints.
++  const { WalletBalanceCaptioned } = await import("../src/components/layout/wallet-balance-pill.tsx");
++  const html = renderToStaticMarkup(h(WalletBalanceCaptioned, { balance: 100_000 }));
++  const visible = /<span class="kp-jbal__fig amount">(?:<span aria-hidden="true" class="kp-jbal__sizer">[^<]*<\/span>){2}<span>([^<]*)<\/span>/.exec(html)?.[1];
++  ok("1.6 · …and so the server's HTML paints \"TZS •••••\", never \"TZS 100,000\", with the masked ink (data-masked)", visible === "TZS •••••" && html.includes('data-masked=""'), JSON.stringify({ visible }));
++  ok("1.6′ CONTROL · the box still holds the figure's width (its sizer), so nothing moves when the figure arrives", html.includes('<span aria-hidden="true" class="kp-jbal__sizer">TZS 100,000</span>'));
++}
++
++/* ══ §2 · E37 · E41 · A ROUTE CHANGE MOVES ONLY THE PAGE ═══════════════════════════════════════════════════════ */
++section("2 · E37 E41 · no cross-fade of the chrome, one current destination and one lit tab (tiles 292 301 306 315 328 333 338)");
++{
++  const rt = read(RT);
++  const vt = (s: string) => s.includes("if (doc.startViewTransition && !motionOff() && !journeyFlagSnapshot()) {")
++    && /import \{ journeyFlagSnapshot \} from "@\/lib\/journey\/journey-on";/.test(s) && hasDirective(s, "use client");
++  ok("2.1 · a journey reader's route change never starts a document View Transition (the root cross-fade took the header, the strip and the rail, 4px apart and dimmed); everybody else keeps it", vt(rt));
++  ok("2.1′ PLANT · the journey term dropped is reported", !vt(rt.replace(" && !journeyFlagSnapshot()", "")));
++  // The native cross-fade itself is untouched: a classic reader is served it.
++  ok("2.2 · the native cross-fade's rules are unchanged for everybody else (vt-fade-out −4px / vt-fade-in +4px, --t-quick)",
++    /@keyframes vt-fade-out \{\s*from \{ opacity: 1; transform: none; \}\s*to\s+\{ opacity: 0; transform: translateY\(-4px\); \}\s*\}/.test(CSS)
++      && /::view-transition-old\(root\),\s*::view-transition-new\(root\) \{[^}]*animation-duration: var\(--t-quick\);/.test(CSS));
++}
++{
++  const jnavCut = (css: string) => /\n\.kp-jnav__link:not\(:hover\), \.kp-jnav__link:not\(:hover\)::after \{ transition: none; \}/.test(css)
++    && /transition: transform var\(--t-base\)/.test(rule(css, ".kp-jnav__link::after"));
++  ok("2.3 · the desktop destinations: the current mark changes at once — leaving and arriving — and only a hover draws its preview in (0,2,0 over the base's 0,1,0)", jnavCut(CSS));
++  ok("2.3′ PLANT · the cut removed (two underlines for 220ms, tile 315) is reported",
++    !jnavCut(CSS.replace(".kp-jnav__link:not(:hover), .kp-jnav__link:not(:hover)::after { transition: none; }", "")));
++  const railCut = (css: string) => /\n\.kp-rail--journey \.kp-rail__item, \.kp-rail--journey \.kp-rail__pip \{ transition: none; \}/.test(css);
++  ok("2.4 · the journey rail: ink, pip and weight change together, at once (the pip half-lit on the tab being left for 140ms, tiles 301 306 333)", railCut(CSS));
++  ok("2.4′ PLANT · the journey rail's cut removed is reported", !railCut(CSS.replace(".kp-rail--journey .kp-rail__item, .kp-rail--journey .kp-rail__pip { transition: none; }", "")));
++  ok("2.5 · the CLASSIC rail keeps its fades — `.kp-rail__item` and `.kp-rail__pip` are not edited (frozen chrome; the admin bar wears them too)",
++    /transition: color var\(--t-quick\) ease-out;/.test(rule(CSS, ".kp-rail__item"))
++      && /transition: background var\(--t-quick\) ease-out, box-shadow var\(--t-quick\) ease-out;/.test(rule(CSS, ".kp-rail__pip"))
++      && !/\n\.kp-rail__item[^{\n]*\{[^}]*transition: none/.test(CSS));
++}
++
++/* ══ §3 · E38 · EACH TAB'S LOADING STATE IS ITS OWN PAGE'S GHOST ══════════════════════════════════════════════════ */
++section("3 · E38 · the journey's loading ghosts (tiles 277 280 290 293 296: one 360px box at x32–1247 for every page)");
++{
++  const loading = read(LOADING), shell = read(SHELL);
++  const journeyArm = (s: string) => squash(s).includes(
++    'const pathname = (await headers()).get("x-pathname") ?? ""; if (!pathname.startsWith("/admin") && !isOptOutPath(pathname) && (await resolveSimpleJourney()).journey) { const { t, locale } = await getServerT(); return <JourneyRouteGhost t={t} locale={locale} />; }');
++  const classicArm = (s: string) => squash(s).includes('return ( <div className="mx-auto max-w-[1280px] px-3 lg:px-6 py-10"> <SectionLoader height={360} /> </div> );');
++  ok("3.1 · the root loading file asks AppShell's own questions — not the console, not the opt-out page, the per-request resolver — and draws the journey's ghost for a journey reader alone",
++    journeyArm(loading) && shell.includes('if (pathname.startsWith("/admin")) {') && shell.includes("if (isOptOutPath(pathname)) {") && shell.includes("const journeyRead = resolveSimpleJourney();"));
++  ok("3.2 · everybody else is drawn the classic box, unchanged (the classic arm is today's markup)", classicArm(loading));
++  ok("3.2′ PLANT · a classic box moved is reported", !classicArm(loading.replace("py-10", "py-6")));
++  ok("3.2″ PLANT · the journey arm without the resolver (the ghost for every reader) is reported", !journeyArm(loading.replace(" && (await resolveSimpleJourney()).journey", "")));
++}
++{
++  const ghost = read(GHOST);
++  const keys = [...squash(ghost).matchAll(/"(\/[a-z/]*)": </g)].map((m) => m[1]);
++  const patterns = [...squash(ghost).matchAll(/\["(\^[^"]+\$)", </g)].map((m) => m[1]);
++  const tabs = JOURNEY_TABS.map((d) => d.href);
++  // The journey's own pages (surfaces.ts), as paths: each exact one, a question, and the deposit screen's return.
++  const SURFACES = ["/updown/history", "/wallet/deposit", "/wallet/deposit/return"];
++  const want = [...tabs, ...SURFACES].sort();
++  const covers = (k: string[], p: string[]) => JSON.stringify([...k].sort()) === JSON.stringify(want)
++    && JSON.stringify(p) === JSON.stringify(["^/markets/[^/]+$"])
++    && [...SURFACES, "/markets/mkt_x"].every((s) => isJourneySurface(s)) && SURFACES.every((s) => k.includes(s));
++  ok(`3.3 · the ghost picks a page for each of the four tabs (${tabs.join(" ")}) and each of the journey's own pages (surfaces.ts: ${SURFACES.join(" ")} and a question), exactly, and draws a frameless spinner for every other page`,
++    covers(keys, patterns) && squash(ghost).includes("other={<AnyPageGhost />}") && !/rounded-lg border/.test(ghost.slice(ghost.indexOf("function AnyPageGhost"))),
++    JSON.stringify({ keys, patterns }));
++  ok("3.3′ PLANT · a tab without its ghost (Juu/Chini back to the box) is reported", !covers(keys.filter((k) => k !== "/updown"), patterns));
++  ok("3.3″ PLANT · a question without its ghost is reported", !covers(keys, []));
++  const own: Array<[string, string, string]> = [
++    ['"/updown": <UpDownLoading />', "UpDownLoading", "@/app/updown/loading"],
++    ['"/updown/history": <UpDownHistoryLoading />', "UpDownHistoryLoading", "@/app/updown/history/loading"],
++    ['"/wallet/deposit": <DepositLoading />', "DepositLoading", "@/app/wallet/deposit/loading"],
++    ['"/wallet/deposit/return": <DepositReturnLoading />', "DepositReturnLoading", "@/app/wallet/deposit/return/loading"],
++    ['["^/markets/[^/]+$", <MarketDetailLoading />]', "MarketDetailLoading", "@/app/markets/[id]/loading"],
++  ];
++  ok("3.4 · each ghost is its page's own: Tiketi zangu's journey ghost, the hero's intro components, and every other page's own loading file, imported, never redrawn",
++    ghost.includes('"/positions": <TicketsGhost t={t} />') && ghost.includes('import { TicketsGhost } from "@/components/journey/tickets/tickets-ghost";')
++      && read("src/app/positions/loading.tsx").includes("if (journey) return <TicketsGhost t={t} />;")
++      && own.every(([use, name, spec]) => ghost.includes(use) && ghost.includes(`import ${name} from "${spec}";`)),
++    JSON.stringify(own.filter(([use, name, spec]) => !(ghost.includes(use) && ghost.includes(`import ${name} from "${spec}";`))).map((o) => o[1])));
++}
++{
++  // RoutePick, rendered: exact paths only, and never a key the object inherits.
++  const { PathnameContext } = createRequire(import.meta.url)("next/dist/shared/lib/hooks-client-context.shared-runtime") as {
++    PathnameContext: import("react").Context<string | null>;
++  };
++  const routes = { "/": h("b", null, "home"), "/positions": h("b", null, "tickets") };
++  const patterns = [["^/markets/[^/]+$", h("b", null, "question")]] as const;
++  const at = (path: string, Pick: typeof RoutePick = RoutePick) =>
++    renderToStaticMarkup(h(PathnameContext.Provider, { value: path }, h(Pick, { routes, patterns, other: h("i", null, "other") })));
++  const exact = at("/") === "<b>home</b>" && at("/positions") === "<b>tickets</b>" && at("/positions/performance") === "<i>other</i>"
++    && at("/markets") === "<i>other</i>" && at("/constructor") === "<i>other</i>" && at("/toString") === "<i>other</i>"
++    && at("/markets/mkt_1") === "<b>question</b>" && at("/markets/mkt_1/share") === "<i>other</i>";
++  ok("3.5 · RoutePick draws a page's ghost on that exact path, or the whole path a pattern names, only — a page below it, any other page and an inherited key all get the other", exact,
++    JSON.stringify(["/", "/positions", "/positions/performance", "/markets", "/constructor", "/markets/mkt_1", "/markets/mkt_1/share"].map((p) => at(p))));
++  // The control: the prefix matcher a later edit might reach for hands /positions' ghost to every page below it.
++  const Prefix: typeof RoutePick = ({ routes: r, other }) => {
++    const p = useContext(PathnameContext) ?? "";
++    const k = Object.keys(r).filter((x) => x !== "/").find((x) => p === x || p.startsWith(`${x}/`));
++    return h(Fragment, null, k ? r[k] : Object.prototype.hasOwnProperty.call(r, p) ? r[p] : other);
++  };
++  ok("3.5′ CONTROL · a prefix matcher is told apart (it draws Tiketi zangu's ghost on /positions/performance)", at("/positions/performance", Prefix) === "<b>tickets</b>");
++  const pick = read(PICK);
++  ok("3.6 · route-pick.tsx is a few lines of browser code that draws nothing of its own: client, usePathname, own-property lookup, whole-path patterns",
++    hasDirective(pick, "use client") && pick.includes("if (Object.prototype.hasOwnProperty.call(routes, pathname)) return <>{routes[pathname]}</>;")
++      && pick.includes("const hit = patterns.find(([source]) => new RegExp(source).test(pathname));")
++      && pick.includes('import { usePathname } from "next/navigation";'));
++}
++{
++  // The hero's intro is ONE module: the page and its ghost render the same three components.
++  const hero = read(HERO), intro = read(INTRO), ghost = read(GHOST);
++  const defs = (s: string) => ["Claim", "Ask", "TrustLines"].map((n) => count(s, `function ${n}(`));
++  const introOk = (i: string, hr: string) =>
++    JSON.stringify(defs(i)) === "[1,1,1]" && JSON.stringify(defs(hr)) === "[0,0,0]"
++      && hr.includes('import { Ask, Claim, TrustLines } from "./hero-intro";')
++      && ["<Claim t={t} />", "<Ask t={t} />", "<TrustLines t={t} locale={locale} rails={rails} />"].every((j) => hr.includes(j));
++  ok("3.7 · Claim, Ask and TrustLines are defined once, in hero-intro.tsx, and the hero renders them where it did", introOk(intro, hero));
++  ok("3.7′ PLANT · a second copy of the h1 left in the hero is reported", !introOk(intro, `${hero}\nfunction Ask({ t }: { t: Dict }) { return null; }`));
++  // ⛔ The ghost is drawn by the ROOT loading file: whatever client module it reaches joins every page's first load.
++  const importsOf = (s: string) => [...s.matchAll(/^import [^;]*? from "([^"]+)";/gm)].map((m) => m[1]);
++  const ALLOWED = ["@/components/ui/glyphs", "@/components/brand", "@/lib/utils", "@/lib/support-config", "@/lib/rail-list", "@/lib/i18n-dict", "@/lib/side-label"];
++  const lean = (s: string) => importsOf(s).every((m) => ALLOWED.includes(m)) && !hasDirective(s, "use client");
++  ok("3.8 · hero-intro.tsx imports only what the three parts draw with (no market card, filter pill or tipping bar into the root's first load)", lean(intro), JSON.stringify(importsOf(intro)));
++  ok("3.8′ PLANT · the market card imported there is reported", !lean(`import { MarketCard } from "@/components/markets/market-card";\n${intro}`));
++  // The home ghost is the hero's skeleton: the same classes in the same order, the same three components.
++  const SKELETON = ['className="kp-hero"', 'kp-hero__inner', 'className="kp-hero__intro"', 'className="kp-hero__lockup"', "<Claim t={t} />", "<Ask t={t} />",
++    'className="kp-hero__lede"', '<span className="kp-hero__lede-l">{t.home.heroLedeAct}</span>', '<span className="kp-hero__lede-l kp-hero__lede-l--pay">{t.home.heroLedePay}</span>',
++    "<TrustLines t={t} locale={locale} rails=", 'className="kp-hero__card"', 'className="kp-hero__act"'];
++  const inOrder = (s: string) => { let at = -1; return SKELETON.every((k) => { const i = s.indexOf(k, at + 1); if (i < 0) return false; at = i; return true; }); };
++  const homeGhost = ghost.slice(ghost.indexOf("function HomeGhost"), ghost.indexOf("const A_PLAYER"));
++  const heroBody = hero.slice(hero.indexOf("export function LandingHero"));
++  ok("3.9 · the home ghost is the hero's own skeleton — band, grid, intro, lockup, claim, h1, the lede's two spans, the trust rows, the card's and the act's places — in the page's order",
++    inOrder(homeGhost) && inOrder(heroBody));
++  ok("3.9′ PLANT · a ghost without the lede (every block under it 40px high) is reported", !inOrder(homeGhost.replace(/<p className="kp-hero__lede">[\s\S]*?<\/p>/, "")));
++  ok("3.10 · the ghost's words are the page's, set and not shown (a bar under each), and it never plays the hero's entrance — the page's blocks rise in once, over still bars",
++    /\.kp-hero__inner\.kp-hghost > \*:nth-child\(n\) \{ animation: none; \}/.test(CSS)
++      && /\.kp-hero__inner > \*:nth-child\(1\) \{ animation: kp-rise/.test(CSS)
++      && /\.kp-hghost \.kp-hero__intro, \.kp-hghost \.kp-hero__intro \* \{ color: transparent; \}/.test(CSS)
++      && homeGhost.includes('<section className="kp-hero" aria-hidden="true">'));
++}
++{
++  // /account: the page's own column, h1, identity card, prompt and column cut.
++  const page = read(ACCOUNT), ghost = read(GHOST);
++  const acct = ghost.slice(ghost.indexOf("function AccountGhost"), ghost.indexOf("function AnyPageGhost"));
++  const h1 = /<h1 className="([^"]+)">\{t\.journey\.tabAccount\}<\/h1>/.exec(page)?.[1];
++  const sameShape = (g: string) => !!h1 && g.includes(`<h1 className="${h1}">{t.journey.tabAccount}</h1>`)
++    && page.includes('<PageContainer tier="reading">') && g.includes('<PageContainer tier="reading">')
++    && g.includes('<div className="kp-hub">') && page.includes('<div className="kp-hub" data-testid="journey-account-hub">')
++    && g.includes("const cut = hubColumnCut(groups.map((g) => wideRowCount(g.rows)));") && page.includes("const weights = groups.map((g) => wideRowCount(g.rows));")
++    && g.includes('row.kind === "language" ? "lg:hidden" : row.kind === "cardSize" ? "sm:hidden" : undefined')
++    && read("src/components/journey/account/language-row.tsx").includes('<li className="lg:hidden">')
++    && read("src/components/journey/account/card-size-row.tsx").includes('<li className="sm:hidden">');
++  ok("3.11 · the /account ghost stands in the page's own column (tier reading), with the page's h1 and the page's column cut; its hiding rows hide where the page's do", sameShape(acct));
++  ok("3.11′ PLANT · a ghost in the board's column (the 100px jump of E38) is reported", !sameShape(acct.replace('<PageContainer tier="reading">', '<PageContainer tier="board">')));
++  const bar = read(JHDR);
++  const guestBy = (css: string, b: string) => /\n\.kp-hubghost--guest \{ display: none; \}/.test(css)
++    && /\n:root:has\(\.kp-jhdr__auth\) \.kp-hubghost--member \{ display: none; \}/.test(css)
++    && /\n:root:has\(\.kp-jhdr__auth\) p\.kp-hubghost--guest \{ display: block; \}/.test(css)
++    && /\n:root:has\(\.kp-jhdr__auth\) \.kp-hub__grid\.kp-hubghost--guest \{ display: grid; \}/.test(css)
++    && count(b, "kp-jhdr__auth") === 2 && b.includes("{state.authPills && (");
++  ok("3.12 · a guest is drawn a guest's hub, chosen by the header's own sign-in pills (a guest's alone, and in the first HTML since §1)", guestBy(CSS, bar));
++  ok("3.12′ PLANT · the pills renamed in the header (every guest drawn a member's hub) is reported", !guestBy(CSS, bar.split("kp-jhdr__auth").join("kp-jhdr__signin")));
++}
++{
++  const live = read(LIVE_LOADING);
++  const banded = (s: string) => squash(s).includes('<div className={QUERY_SEARCH_BAND_CLASS} aria-hidden> <div className="search-box-wrap">')
++    && s.includes('import { QUERY_SEARCH_BAND_CLASS } from "@/components/ui/query-bar";');
++  ok("3.13 · /live's search ghost wears the page's search band (R4-H's request: pulse-grid.tsx wraps the box in QUERY_SEARCH_BAND_CLASS), imported, never retyped", banded(live));
++  ok("3.13′ PLANT · the bare box of before is reported",
++    !banded(live.replace('<div className={QUERY_SEARCH_BAND_CLASS} aria-hidden>\n        <div className="search-box-wrap">', '<div aria-hidden className="search-box-wrap">')));
++}
++
++/* ══ §4 · E40 · THE NEEDLE CLEARS A CHINESE CAPTION ═════════════════════════════════════════════════════════════ */
++section("4 · E40 · the rest rule on tile 269's geometry (zh 360 /markets: the disc 0–1px from \"46 个市场 · 奖池最大\")");
++{
++  // Tile 269, measured: the caption's ink x224–343 × y111–121; the disc (56px at 360: `diameter()`), tucked half off the
++  // right edge (centre x360), its rim's outer edge at y≈115.6 in column x352 — 1.17px under the circle's top there — so
++  // its box from y≈114. `--halo` 14% at a 360 short side → the glow's reach.
++  const size = 56, halo = 0.14, glow = glowReach(size, halo);
++  // The caption's line box: JetBrains Mono at 11.5px, baseline y≈120.5. Its range box is the PRIMARY face's content area
++  // (ascent 1.02em, descent 0.30em — read below), whatever face draws the ideographs.
++  const fontkit = createRequire(import.meta.url)("fontkit") as { openSync: (p: string) => { ascent: number; descent: number; unitsPerEm: number } };
++  const jbm = fontkit.openSync("src/lib/server/reports/fonts/JetBrainsMono-Regular.ttf");
++  const asc = jbm.ascent / jbm.unitsPerEm, desc = -jbm.descent / jbm.unitsPerEm;
++  // An ideograph is drawn inside its em box: 0.88em over the alphabetic baseline and 0.12em under it (the ideographic
++  // baseline) — so a box of ascent ≥ 0.88em and descent ≥ 0.12em holds its ink, in any CJK face.
++  ok("4.1 · the caption's box holds its Chinese ink: the mono face's content area (ascent 1.02em, descent 0.30em) contains the ideographic em box (0.88 / 0.12) — box vs ink is not the hole",
++    asc >= 0.88 && desc >= 0.12, `ascent ${asc} descent ${desc}`);
++  const base = 120.5, px = 11.5;
++  const caption: Box = { left: 224, right: 343, top: base - asc * px, bottom: base + desc * px };
++  const fp: Box = { left: 332, right: 360, top: 114, bottom: 114 + size };
++  const q = { fp, controls: [], frames: [], text: [caption], above: [], glow, reach: 780 / 3, minY: 70, maxY: 690, y: fp.top, accepted: null };
++  const r = decideRest(q);
++  const clearance = r.y === null ? -1 : r.y - caption.bottom;
++  ok(`4.2 · on tile 269's geometry the rule does NOT accept the disc where it was drawn (tier ${REST_TIERS.length - 1}, text under the rim) and moves it below the caption, ≥ ${RIM_CLEARANCE}px clear`,
++    r.y !== null && r.tier <= 2 && clearance >= RIM_CLEARANCE, JSON.stringify({ r, clearance: clearance.toFixed(1), glow: glow.toFixed(2) }));
++  const blind = decideRest({ ...q, text: [] });
++  ok("4.2′ CONTROL · the same disc with the caption unread stays where it was drawn — so 4.2 is the caption's doing", blind.y === null && blind.tier === 0);
++  // ⚠️ What this cannot prove without a browser is WHEN the rule ran on tile 269: the edges drive shoots two frames and
++  // ~560ms after its own scrollIntoView and never waits for `window.needle.resting()` (R3-B's read for drives, which
++  // qa-journey-shell waits on). The lock turn re-runs scenario 4 with that wait (S/r4j/qa-journey-edges.r4j.patch) and
++  // `S/r4j/r4j-verdict.mjs` holds the disc ≥ 8px off the caption's ink on the re-taken tile.
++}
++
++/* ══ §5 · THE NOT-FOUND MARK ═══════════════════════════════════════════════════════════════════════════════════════ */
++section("5 · the not-found mark (tiles 345–398: the market not-found stood the bubble and the Needle down, lit Maswali, and polled into 404s)");
++{
++  const lib = read(MARK_LIB), mark = read(MARK);
++  ok("5.1 · not-found-mark.ts is a hook module with no directive: its server snapshot is false, its id and event named once",
++    !hasDirective(lib, "use client") && !hasDirective(lib, "use server") && NF.notFoundServerSnapshot() === false
++      && lib.includes('export const NOT_FOUND_MARK = "kp-not-found";') && lib.includes("return useSyncExternalStore(subscribeNotFound, notFoundSnapshot, notFoundServerSnapshot);"));
++  const markOk = (s: string) => hasDirective(s, "use client") && squash(s).includes("useEffect(() => { announceNotFound(); return announceNotFound; }, []);")
++    && s.includes("return <span hidden id={NOT_FOUND_MARK} />;");
++  ok("5.2 · NotFoundMark writes the hidden span into the page and announces it when it comes and when it goes", markOk(mark)
++    && renderToStaticMarkup(h(NotFoundMark)) === '<span hidden="" id="kp-not-found"></span>');
++  ok("5.2′ PLANT · a mark that does not announce its going (the overlays stay up after leaving) is reported", !markOk(mark.replace("return announceNotFound;", "")));
++  // Only client code may load the hook module (journey-on.ts's rule, for its reason).
++  const files: string[] = [];
++  const walk = (d: string) => { for (const n of readdirSync(d)) { const p = join(d, n).replace(/\\/g, "/"); if (statSync(p).isDirectory()) walk(p); else if (/\.(tsx?|mts)$/.test(n)) files.push(p); } };
++  walk("src");
++  const loaders = files.filter((f) => /from "@\/lib\/not-found-mark"/.test(read(f)));
++  const servers = loaders.filter((f) => !hasDirective(read(f), "use client"));
++  ok(`5.3 · only client code loads it (${loaders.length}: ${loaders.map((f) => f.split("/").pop()).join(", ")})`, loaders.length === 6 && servers.length === 0, JSON.stringify(servers));
++}
++{
++  // The three overlays: the stand-down term joined by `&& !notFoundShown`, the mark read once each.
++  const TERM = "journeyOn && isJourneySurface(pathname) && !notFoundShown";
++  const sites: Array<[string, string, string]> = [
++    ["the Needle", NEEDLE, `const suppressed = hiddenPref || isMoneySurface(pathname) || (${TERM});`],
++    ["the chat bubble", CHAT, `if (${TERM}) return null;`],
++    ["the channels panel", CHANNELS, `const journeyHidden = ${TERM};`],
++  ];
++  const overlay = (s: string, line: string) => count(s, line) === 1 && count(s, "const notFoundShown = useNotFoundShown();") === 1
++    && s.includes('import { useNotFoundShown } from "@/lib/not-found-mark";');
++  for (const [name, file, line] of sites) ok(`5.4 · ${name} stands down for a journey page that is not a not-found page: ${line}`, overlay(read(file), line));
++  ok("5.4′ PLANT · the chat's term without the mark (the market not-found loses its bubble again) is reported",
++    !overlay(read(CHAT).replace(`if (${TERM}) return null;`, "if (journeyOn && isJourneySurface(pathname)) return null;"), sites[1][2]));
++  ok("5.5 · the Needle's gate runs again when the mark comes or goes", read(NEEDLE).includes("}, [hiddenPref, pathname, journeyOn, notFoundShown]);"));
++}
++{
++  // The journey's chrome: no path on a not-found page (no tab lit), no unread poll there.
++  const chrome = (s: string) => s.includes("const route = usePathname();") && s.includes("const notFoundShown = useNotFoundShown();")
++    && s.includes("const pathname = notFoundShown ? null : route;") && s.includes("useEffect(() => { setSheetOpen(false); }, [route]);")
++    && s.includes("const active = activeTabFor(pathname);") && s.includes("aria-current={tabAriaCurrent(pathname, d.key)}");
++  const bar = read(JHDR), tabs = read(JTABS);
++  ok("5.6 · the header and the rail read no path on a not-found page — no destination and no tab lit (the market not-found lit Maswali) — and close a sheet on every move", chrome(bar) && chrome(tabs));
++  ok("5.6′ PLANT · the rail lighting its tab from the address again is reported", !chrome(tabs.replace("const pathname = notFoundShown ? null : route;", "const pathname = route;")));
++  const dot = (s: string) => s.includes('const content = d.key === "account" && userId !== null && pollers.dot && !notFoundShown');
++  ok("5.7 · the Akaunti dot's counter is not mounted on a not-found page (its Server Action posted to the not-found address and logged a 404 each beat), nor the live bell (§1.4)",
++    dot(tabs) && bar.includes("{pollers.bell && !notFoundShown ? <NotificationsPanel /> : <BellStill"));
++  ok("5.7′ PLANT · the dot polling on a not-found page again is reported", !dot(tabs.replace(" && pollers.dot && !notFoundShown", " && pollers.dot")));
++}
++{
++  // Before the scripts run: the server lit the tab the address names; the mark in the same HTML unlights it, by CSS,
++  // each lit value put back to the slot's own base value.
++  const id = `#${NF.NOT_FOUND_MARK}`;
++  const unlit = (css: string) => {
++    const at = (sel: string) => rule(css, `:root:has(${id}) ${sel}`);
++    const decl = (body: string, prop: string) => new RegExp(`(?:^|;)\\s*${esc(prop)}:\\s*([^;]+);`).exec(body)?.[1].trim();
++    const base = { item: decl(rule(css, ".kp-rail__item"), "color"), label: decl(rule(css, ".kp-rail__label"), "font-weight"),
++      link: decl(rule(css, ".kp-jnav__link"), "color"), after: decl(rule(css, ".kp-jnav__link::after"), "transform"),
++      pipBg: decl(rule(css, ".kp-rail__pip"), "background") ?? "none", pipShadow: decl(rule(css, ".kp-rail__pip"), "box-shadow") ?? "none" };
++    const got = { item: decl(at(".kp-rail--journey .kp-rail__item[data-on]"), "color"),
++      pipBg: decl(at(".kp-rail--journey .kp-rail__item[data-on] .kp-rail__pip"), "background"),
++      pipShadow: decl(at(".kp-rail--journey .kp-rail__item[data-on] .kp-rail__pip"), "box-shadow"),
++      label: decl(at(".kp-rail--journey .kp-rail__item[data-on] .kp-rail__label"), "font-weight"),
++      link: decl(at(".kp-jnav__link:is([aria-current], [data-on])"), "color"),
++      after: decl(at(".kp-jnav__link:is([aria-current], [data-on])::after"), "transform") };
++    const keys = ["item", "pipBg", "pipShadow", "label", "link", "after"] as const;
++    return { ok: keys.every((k) => got[k] !== undefined && got[k] === base[k]) && base.after === "scaleX(0)", base, got };
++  };
++  const now = unlit(CSS);
++  ok(`5.12 · until the scripts run, the not-found mark (${id}) unlights the tab the server lit, every lit value put back to the slot's own`, now.ok, JSON.stringify({ base: now.base, got: now.got }));
++  ok("5.12′ PLANT · the rail's lit pip left on a not-found page's first paint is reported",
++    !unlit(CSS.replace(`:root:has(${id}) .kp-rail--journey .kp-rail__item[data-on] .kp-rail__pip { background: none; box-shadow: none; }`, "")).ok);
++}
++{
++  // The shared view (R4-K) renders the mark, so every not-found answer carries it and nothing else can.
++  if (!existsSync(VIEW)) {
++    pending("5.8 · the shared not-found view renders <NotFoundMark />", "this tree predates R4-K's not-found-view.tsx; its one-line wiring is S/r4j/not-found-view.r4j.patch, applied with this change");
++  } else {
++    const view = read(VIEW);
++    const wired = (s: string) => s.includes('import { NotFoundMark } from "@/components/ui/not-found-mark";') && count(s, "<NotFoundMark />") === 1;
++    ok("5.8 · the shared not-found view renders <NotFoundMark /> once — every not-found answer carries the mark", wired(view));
++    ok("5.8′ PLANT · the view without it is reported", !wired(view.replace("<NotFoundMark />", "")));
++    const pages = readdirSync("src/app", { recursive: true }).map(String).filter((p) => p.replace(/\\/g, "/").endsWith("not-found.tsx") && !p.replace(/\\/g, "/").startsWith("admin/"));
++    const viaView = pages.filter((p) => read(join("src/app", p)).includes("<NotFoundView"));
++    ok(`5.9 · every player-facing not-found page renders the shared view (${viaView.length}/${pages.length})`, pages.length > 0 && viaView.length === pages.length, JSON.stringify(pages));
++  }
++  const elsewhere = [...readdirSync("src", { recursive: true })].map(String).filter((p) => /\.tsx$/.test(p))
++    .filter((p) => !p.replace(/\\/g, "/").endsWith("ui/not-found-view.tsx") && read(join("src", p)).includes("<NotFoundMark"));
++  ok("5.10 · no other page renders the mark", elsewhere.length === 0, JSON.stringify(elsewhere));
++}
++{
++  // The hook's answer, in a stand-in browser: the span's presence, heard through the event.
++  const target = new EventTarget();
++  const present = new Set<string>();
++  const g = globalThis as unknown as { window?: unknown; document?: unknown };
++  const before = { window: g.window, document: g.document };
++  g.window = { addEventListener: target.addEventListener.bind(target), removeEventListener: target.removeEventListener.bind(target), dispatchEvent: target.dispatchEvent.bind(target) };
++  g.document = { getElementById: (id: string) => (present.has(id) ? {} : null) };
++  try {
++    let told = 0;
++    const leave = NF.subscribeNotFound(() => { told++; });
++    const a = NF.notFoundSnapshot();
++    present.add(NF.NOT_FOUND_MARK); NF.announceNotFound();
++    const b = NF.notFoundSnapshot();
++    present.delete(NF.NOT_FOUND_MARK); NF.announceNotFound();
++    const c = NF.notFoundSnapshot();
++    leave(); NF.announceNotFound();
++    ok("5.11 · the snapshot is the span's presence, every coming and going is heard once, and letting go stops listening",
++      a === false && b === true && c === false && told === 2, JSON.stringify({ a, b, c, told }));
++  } finally {
++    g.window = before.window;
++    g.document = before.document;
++  }
++}
++
++console.log(`\nvisual-pass-r4j: ${pass} passed, ${fails.length} failed\n`);
++if (fails.length) {
++  for (const f of fails) console.error(`  · ${f}`);
++  process.exit(1);
++}
+diff --git a/src/app/globals.css b/src/app/globals.css
+index 47109f72170e5f0bbb42ec7eb43f45c09fd2e311..4dad00403f872cc61113724e086ad405a5872aef 100644
+--- a/src/app/globals.css
++++ b/src/app/globals.css
+@@ -6867,6 +6867,13 @@ html[lang="zh"] .kp-udrule { word-break: keep-all; }
+ .kp-jnav__link:not([aria-current]):not([data-on]):hover::after { transform: scaleX(1); }
+ .kp-jnav__link:is([aria-current], [data-on]) { color: var(--text); }
+ .kp-jnav__link:is([aria-current], [data-on])::after { transform: scaleX(1); background: var(--brand-500); box-shadow: 0 0 8px color-mix(in oklab, var(--brand-500) 50%, transparent); }
++/* ⭐ ONE DESTINATION IS CURRENT IN EVERY FRAME (2026-10-09, the visual pass round 4, R4-J; E37/E41, tiles 292 315 338 at
++   1280). The current mark moves when the router commits the new page, and with the transitions above the old link's
++   underline shrank over --t-base (220ms) while the new one stood full: two underlines, and two links in the current ink,
++   for most of a quarter second. So the mark changes at once, everywhere but on the way IN to a hover: a transition plays
++   by the rules of the state it goes to, and the hovered state is the only one that keeps them, so a hover still draws
++   its preview underline in, and every other change (the current mark arriving or leaving, a hover ending) is a cut. */
++.kp-jnav__link:not(:hover), .kp-jnav__link:not(:hover)::after { transition: none; }
+ 
+ /* ⭐ THE JOURNEY RAIL — four equal tabs (SJ-16) on the classic rail's own surface, slot, pip and label, worn unchanged.
+    ⛔ `.kp-rail` itself is not edited: the admin pending-changes bar wears it too. The grid goes on the LIST (A18): on
+@@ -6890,6 +6897,24 @@ html[lang="zh"] .kp-udrule { word-break: keep-all; }
+    returns. `.kp-rail__item` itself is not edited. */
+ .kp-rail--journey .kp-rail__item { justify-content: flex-start; }
+ @media (min-width: 360px) { .kp-rail--journey .kp-rail__item { justify-content: center; } }
++/* ⭐ ONE TAB IS LIT IN EVERY FRAME (2026-10-09, the visual pass round 4, R4-J; E37/E41, tiles 301 306 333). The classic
++   slot fades its ink and its pip over --t-quick (`.kp-rail__item`, `.kp-rail__pip`), so for 140ms after the router
++   commits the new page the pill is half on the tab being left and half on the new one, beside the new label already bold
++   (the weight does not transition). On the journey's rail the lit state changes at once, ink, pip and weight together.
++   ⛔ The classic rules are not edited: the classic rail and the admin pending-changes bar keep their fades. */
++.kp-rail--journey .kp-rail__item, .kp-rail--journey .kp-rail__pip { transition: none; }
++/* ⭐ A NOT-FOUND PAGE LIGHTS NO DESTINATION, FROM ITS FIRST PAINT (2026-10-09, the visual pass round 4, R4-J; tiles
++   372–398). The journey's chrome reads the not-found mark once it hydrates (`lib/not-found-mark.ts`) and then lights
++   nothing; but the server draws the chrome BEFORE the page finds out it is a not-found, so the first HTML lit the tab its
++   address names (Maswali on a missing question, Juu/Chini on a missing round). The mark is in that same HTML, so until
++   the scripts run it unlights the lit tab here: each lit value put back to the slot's own (`test:visual-pass-r4j` §5
++   holds them equal to the base rules). ⛔ Journey classes only: the classic rail's rules, which the journey rail wears,
++   are not edited, and a classic page carries no journey rail. */
++:root:has(#kp-not-found) .kp-rail--journey .kp-rail__item[data-on] { color: var(--text-subtle); }
++:root:has(#kp-not-found) .kp-rail--journey .kp-rail__item[data-on] .kp-rail__pip { background: none; box-shadow: none; }
++:root:has(#kp-not-found) .kp-rail--journey .kp-rail__item[data-on] .kp-rail__label { font-weight: 600; }
++:root:has(#kp-not-found) .kp-jnav__link:is([aria-current], [data-on]) { color: var(--text-muted); }
++:root:has(#kp-not-found) .kp-jnav__link:is([aria-current], [data-on])::after { transform: scaleX(0); }
+ /* The guest Tiketi sheet's title: the display face, kept clear of the close button the Modal pins top-right.
+    ⭐ Balanced (2026-10-08, the visual pass, tile 116): at en 320 its 232px measure holds "Sign in to see your" (188px)
+    and left "tickets" alone on line 2; balanced, it reads "Sign in to see / your tickets". A title that fits on one
+@@ -7051,6 +7076,40 @@ html[lang="zh"] .kp-udrule { word-break: keep-all; }
+   color: var(--text);
+ }
+ 
++/* =====================================================================
++   THE JOURNEY'S LOADING GHOSTS (2026-10-09, the Vodacom visual pass round 4, R4-J; E38)
++   =====================================================================
++   Worn only by `components/journey/route-ghost.tsx`, which the root loading file draws for a journey reader alone, page
++   by page; no classic element wears one of these classes. Every box is the page's own (the `.kp-hero*` and `.kp-hub*`
++   rules above): these rules only hide the words and paint the bars, so a ghost is the page's layout, not a copy of it. */
++/* `/`. ⛔ The hero's entrance (`kp-rise`, ENTRY MOTION below) is the PAGE's: the ghost does not play it, so the page's
++   blocks rise in once, over still bars. (0,3,0) outranks the entrance's (0,2,0) wherever this block stands. */
++.kp-hero__inner.kp-hghost > *:nth-child(n) { animation: none; }
++/* The words are set, so every line breaks where the page's will, and not shown: a bar takes each block's place. */
++.kp-hghost .kp-hero__intro, .kp-hghost .kp-hero__intro * { color: transparent; }
++.kp-hghost .kp-hero__intro :is(svg, .kp-hero__claim-rule) { visibility: hidden; }
++.kp-hghost :is(.kp-hero__claim-text, .kp-hero__lede-l, .kp-hero__trust > li > span:last-child) { border-radius: var(--r-sm); background: var(--bg-elevated); }
++/* As wide as the words, never wider: `fit-content` keeps every line's break, so no height moves. */
++.kp-hghost :is(.kp-hero__lede-l, .kp-hero__trust > li > span:last-child) { width: fit-content; }
++.kp-hghost .kp-rg__18 { border-color: transparent; background: var(--bg-elevated); }
++/* The h1's bar is drawn under it, not on it: its box must keep the page's width, which is what breaks its lines. */
++.kp-hghost .kp-hero__headline { position: relative; }
++.kp-hghost .kp-hero__headline::before { content: ""; position: absolute; inset: 0.08em 25% 0.08em 0; border-radius: var(--r-md); background: var(--bg-elevated); }
++.kp-hghost__card { height: var(--mcard-h); border: 1px solid var(--border); border-radius: var(--r-lg); background: var(--bg-elevated); }
++.kp-hghost__act { width: min(100%, 320px); height: var(--h-control-xl); border-radius: var(--r-pill); background: var(--bg-elevated); }
++/* `/account`. The identity card and every row are the hub's own boxes (the 52px ring, the 56px row), their words bars.
++   A guest is drawn the prompt and a guest's cards, chosen by what the header shows: its sign-in pills
++   (`a.kp-jhdr__auth`, `journeyHeaderState`) are a guest's alone, and the header is in the page's first HTML. A browser
++   without `:has()` draws the member's. */
++.kp-hubghost--guest { display: none; }
++:root:has(.kp-jhdr__auth) .kp-hubghost--member { display: none; }
++:root:has(.kp-jhdr__auth) p.kp-hubghost--guest { display: block; }
++:root:has(.kp-jhdr__auth) .kp-hub__grid.kp-hubghost--guest { display: grid; }
++.kp-hubghost__name { width: 144px; max-width: 100%; height: calc(var(--type-h4) * 1.25); border-radius: var(--r-sm); background: var(--bg-overlay); }
++.kp-hubghost__phone { width: 112px; height: calc(var(--type-small) * 1.5); border-radius: var(--r-sm); background: var(--bg-overlay); }
++.kp-hubghost__glyph { flex-shrink: 0; width: 20px; height: 20px; border-radius: var(--r-sm); background: var(--bg-overlay); }
++.kp-hubghost__label { width: 40%; height: calc(var(--type-body) * 1.3); border-radius: var(--r-sm); background: var(--bg-overlay); }
++
+ /* =====================================================================
+    ENTRY MOTION — kit MOTION.md + README §Interactions (batch 3)
+    =====================================================================
+diff --git a/src/app/live/loading.tsx b/src/app/live/loading.tsx
+index 17d23dfac3133ef70e1055e45924009f424555f8..4f6a6de3cf75f4f5a9dd679313e1bf9668ca3afb 100644
+--- a/src/app/live/loading.tsx
++++ b/src/app/live/loading.tsx
+@@ -1,5 +1,6 @@
+ import { getServerT } from "@/lib/i18n-server";
+ import { PageContainer } from "@/components/layout/page-container";
++import { QUERY_SEARCH_BAND_CLASS } from "@/components/ui/query-bar";
+ 
+ /**
+  * `/live` loading skeleton — the ghost a player sees after tapping "Mubashara".
+@@ -90,10 +91,15 @@ export default async function LiveLoading() {
+         </header>
+       </div>
+ 
+-      {/* Search — the real box and its echo row, by class rather than by measurement. */}
+-      <div aria-hidden className="search-box-wrap">
+-        <div className="kp-shimmer-track h-[calc(var(--h-input)+2px)] rounded-lg border border-border bg-bg-inset" />
+-        <p className="mt-1.5 min-h-[17px]" />
++      {/* Search — the real box and its echo row, by class rather than by measurement.
++          ⭐ IN THE PAGE'S SEARCH BAND (2026-10-09, the visual pass round 4, R4-J at R4-H's request): the page wraps its
++          box in `QUERY_SEARCH_BAND_CLASS` (pulse-grid.tsx) — 10px over the box, and the echo row lying 15px into the gap
++          below it — so the ghost wears the same band, imported, never retyped: the wall lands where the ghost's stood. */}
++      <div className={QUERY_SEARCH_BAND_CLASS} aria-hidden>
++        <div className="search-box-wrap">
++          <div className="kp-shimmer-track h-[calc(var(--h-input)+2px)] rounded-lg border border-border bg-bg-inset" />
++          <p className="mt-1.5 min-h-[17px]" />
++        </div>
+       </div>
+ 
+       {/* The wall. 180px is the PulseCard, measured at 178–183 on production across four widths
+diff --git a/src/app/loading.tsx b/src/app/loading.tsx
+index 177539cc2ebbcab2e8df105b7a92b50db5f64985..aacd6f28284754dde65c739d62efbde1e8719530 100644
+--- a/src/app/loading.tsx
++++ b/src/app/loading.tsx
+@@ -1,6 +1,21 @@
++import { headers } from "next/headers";
+ import { SectionLoader } from "@/components/brand";
++import { JourneyRouteGhost } from "@/components/journey/route-ghost";
++import { getServerT } from "@/lib/i18n-server";
++import { isOptOutPath } from "@/lib/marketing/optout";
++import { resolveSimpleJourney } from "@/lib/server/journey-preview";
+ 
+-export default function RootLoading() {
++export default async function RootLoading() {
++  /* ⭐ A JOURNEY READER IS DRAWN THE GHOST OF THE PAGE BEING OPENED (2026-10-09, the visual pass round 4, R4-J; E38):
++     `components/journey/route-ghost.tsx` has the why and the pages. The question is AppShell's, asked the way AppShell
++     asks it — the console and the opt-out page return before the resolver there, so they never get the journey here
++     either — and the resolver is the one per-request answer (React `cache`) the shell has already read for this
++     render. Everybody else is drawn the box below, unchanged. */
++  const pathname = (await headers()).get("x-pathname") ?? "";
++  if (!pathname.startsWith("/admin") && !isOptOutPath(pathname) && (await resolveSimpleJourney()).journey) {
++    const { t, locale } = await getServerT();
++    return <JourneyRouteGhost t={t} locale={locale} />;
++  }
+   // 1280 = the board width tier. This was 1240, a one-off matching no page in the
+   // app, so the generic fallback always reflowed into whatever route resolved next.
+   return (
+diff --git a/src/components/chat/ChatRoot.tsx b/src/components/chat/ChatRoot.tsx
+index dea1360faa7c907e03ef628c31b46ae069604019..4edacee754248df1bff84c7170a1522e431d4d6b 100644
+--- a/src/components/chat/ChatRoot.tsx
++++ b/src/components/chat/ChatRoot.tsx
+@@ -27,6 +27,7 @@ import { chatWithClaude } from "@/app/_actions/chat";
+ import { useT } from "@/lib/i18n";
+ import { isJourneySurface } from "@/lib/surfaces";
+ import { useJourneyOn } from "@/lib/journey/journey-on";
++import { useNotFoundShown } from "@/lib/not-found-mark";
+ 
+ // `s` = the marketing opt-out page (D6) — no chat bubble on the way out; `test:marketing-optout` pins it.
+ const HIDE_ON = /^\/(auth|admin|s)(\/|$)/;
+@@ -93,6 +94,8 @@ export function ChatRoot({ supportEmail }: { supportEmail: string }) {
+   const [lang, setLang] = useState<"en" | "sw">("en");
+   // ⭐ S6 WP7 · whether the shell put this page in the new journey (false for everybody else, and on the server).
+   const journeyOn = useJourneyOn();
++  // ⭐ R4-J (2026-10-09) · a not-found page is no journey page, whatever its path (`lib/not-found-mark.ts`).
++  const notFoundShown = useNotFoundShown();
+ 
+   // Hydrate from sessionStorage on mount so a returning player sees
+   // their prior turn. Server-render starts empty — that's correct,
+@@ -253,7 +256,7 @@ export function ChatRoot({ supportEmail }: { supportEmail: string }) {
+   /* ⭐ S6 WP7 · NOT ON THE NEW JOURNEY'S PAGES, FOR A JOURNEY VIEWER — the bubble stands down there and nowhere else.
+      Unlike HIDE_ON (left as it is) this neither closes the panel nor clears the history: the conversation is where
+      the player left it on the next page that shows the bubble. */
+-  if (journeyOn && isJourneySurface(pathname)) return null;
++  if (journeyOn && isJourneySurface(pathname) && !notFoundShown) return null;
+   // Not drawn until the viewport is known, so it never flashes at the desktop offset over the rail.
+   if (isMobile === null) return null;
+ 
+diff --git a/src/components/home/hero-intro.tsx b/src/components/home/hero-intro.tsx
+new file mode 100644
+index 0000000000000000000000000000000000000000..6efa014d1199d8c991c32f67a73a0cd37591be22
+--- /dev/null
++++ b/src/components/home/hero-intro.tsx
+@@ -0,0 +1,142 @@
++/**
++ * THE HERO'S STATIC INTRO — the claim, the question (the h1) and the trust rows, the part of the landing hero that
++ * reads no market and no session: only the words, the locale and the wallets that pay out. Moved here VERBATIM from
++ * `landing-hero.tsx` (2026-10-09, the visual pass round 4, R4-J) so that the journey's loading ghost for `/`
++ * (`components/journey/route-ghost.tsx`) can draw the very same claim, h1 and rows the page lands with, and so lands
++ * where it promised in every language: the h1 is two lines in sw and en and one in zh, the claim one line or two.
++ * ⛔ WHY A MODULE OF ITS OWN. The ghost is drawn by the ROOT loading file, and every client module a root-segment
++ * server file reaches joins the scripts EVERY page loads first (VODACOM-PLAN §0h point 20, the WP6c lesson).
++ * `landing-hero.tsx` imports the market card, the filter pill and the tipping bar; this file imports only what the
++ * three parts draw with: its one client module is `brand.tsx` (the wordmark), which every page already loads first;
++ * the rest (the glyphs, the words, the rail list) is drawn on the server.
++ * `landing-hero.tsx` renders all three exactly where it did, with the same props. `test:hero-copy` reads the two files
++ * as one hero (§1 `heroClaimFirst` is read in this file alone), and `test:visual-pass-r4j` §3 holds the imports.
++ */
++import { I } from "@/components/ui/glyphs";
++import { FiftyWordmark } from "@/components/brand";
++import { fill } from "@/lib/utils";
++import { FIRST_LICENSED_EVIDENCE } from "@/lib/support-config";
++import { railListParts } from "@/lib/rail-list";
++import type { Dict, Locale } from "@/lib/i18n-dict";
++import { sideWord } from "@/lib/side-label";
++
++/**
++ * The claim — "50pick │ Tanzania's first licensed prediction market" (spec §4; R9).
++ *
++ * ⭐ A CLASS OF ITS OWN, NOT THE SHARED EYEBROW: `.kp-hero__eyebrow` also styles the section labels
++ * further down the page, and the claim is the brightest small text on the first screen (`--text`,
++ * mono 600), where those are quiet labels. Its tracking joins the one 0.14em list in globals.css.
++ * ⭐ THE WORDMARK IS THE LOGO USED AS A LOGO — below 1280 the header shows only the mark, so the name
++ * "50pick" reaches the first screen here. From 1280 the header carries the wordmark and this one is
++ * hidden (CSS), with its rule.
++ * ⛔ "FIRST" IS READ ONLY INSIDE THE EVIDENCE BRANCH BELOW. `test:hero-copy` §1 fails if
++ * `heroClaimFirst` is read anywhere else, or if any other string claims a first.
++ * The text is stored in sentence case; CSS does the capitals.
++ */
++export function Claim({ t }: { t: Dict }) {
++  return (
++    <p className="kp-hero__claim">
++      <span className="kp-hero__claim-mark"><FiftyWordmark size={15} tz={false} /></span>{" "}
++      <span className="kp-hero__claim-rule" aria-hidden />{" "}
++      <span className="kp-hero__claim-text">{FIRST_LICENSED_EVIDENCE() ? t.home.heroClaimFirst : t.home.heroClaim}</span>
++    </p>
++  );
++}
++
++/**
++ * The h1 — the question in the reader's language: "NDIO au HAPANA?" · "YES or NO?" · "是还是否？"
++ * (INHERIT-MANIFEST R7(3)).
++ *
++ * ⭐ THE SIDE WORDS ARE THE BUTTONS' OWN WORDS BY CONSTRUCTION: `sideWord(t, …, "MARKET")` fills them,
++ * so the headline cannot say "NDIYO" while the buttons say "NDIO". Each wears its outcome ink (§B2);
++ * the connective ("au" / "or" / "还是") is the quiet word, one weight of the same face.
++ * ⭐ TWO GROUPS THAT DO NOT BREAK INSIDE: "NDIO au" and "HAPANA?". The only break is the dict string's
++ * own space after the connective (none in zh, which fits one line), so a narrow screen reads two
++ * designed lines, never "NDIO" alone over "au HAPANA?".
++ * ⛔ No `lang` attribute: since R7(3) the h1 IS in the page's language.
++ * ⭐ A LINE THAT OPENS ON A STRAIGHT STEM IS SET BACK BY ITS SIDE BEARING (round 3, 2026-10-08): "NDIO" and "HAPANA"
++ * began 3–5px right of the page's edge (0.07em of Sora 800, measured — `.kp-hero__grp[data-stem]` in globals.css), where
++ * "YES" and 是 sit on it. Decided from the SIDE WORDS, so it follows the buttons' words and never a locale: a group
++ * that can open a line and starts on a measured stem takes `data-stem`, and the group before a set-back one takes
++ * `data-stem-next`, which gives the width back at its end — so on one line nothing between the groups moves.
++ * `test:hero-copy` §2 pins `{yes}` before `{no}`, each exactly once, in every locale, and §2c the set-back; the
++ * fallback below only keeps a malformed string readable.
++ */
++/** Capitals whose left edge is a straight stem with the bearing measured on the tiles. ⛔ Measure before adding one. */
++const STEM_START = /^[HN]/u;
++
++export function Ask({ t }: { t: Dict }) {
++  const yes = sideWord(t, "YES", "MARKET");
++  const no = sideWord(t, "NO", "MARKET");
++  const s = t.home.heroAsk;
++  const a = s.indexOf("{yes}");
++  const b = s.indexOf("{no}");
++  if (a < 0 || b < a) return <h1 className="kp-hero__headline">{fill(s, { yes, no })}</h1>;
++  const between = s.slice(a + "{yes}".length, b);
++  const conn = between.trimEnd();
++  const gap = between.slice(conn.length);
++  // The first group opens the h1's first line only when nothing is written before it; the second opens a line
++  // whenever the h1 wraps at its gap, so it is set back whenever its word starts on a stem.
++  const lead = s.slice(0, a).trim() === "" && STEM_START.test(yes);
++  const next = STEM_START.test(no);
++  return (
++    <h1 className="kp-hero__headline">
++      {s.slice(0, a)}
++      <span className="kp-hero__grp" data-stem={lead ? "" : undefined} data-stem-next={next ? "" : undefined}>
++        <span className="kp-hero__side" data-side="yes">{yes}</span>
++        <span className="kp-hero__conn">{conn}</span>
++      </span>
++      {gap}
++      <span className="kp-hero__grp" data-stem={next ? "" : undefined}>
++        <span className="kp-hero__side" data-side="no">{no}</span>
++        <span className="kp-hero__q">{s.slice(b + "{no}".length)}</span>
++      </span>
++    </h1>
++  );
++}
++
++/**
++ * The trust rows — ONE list, the same for a visitor and a player, above the featured card.
++ *
++ *   row 1 · 18+ · "Licensed by the Gaming Board of Tanzania."
++ *   row 2 · "Deposit and withdraw with M-Pesa, Airtel Money, HaloPesa or Mixx by Yas."
++ *
++ * ⭐ ROW 1 IS THE FOOTER'S OWN WORDS. `footer.eighteenPlus` and `footer.licensedByGbt` are assessed
++ * keys, reused verbatim. ⛔ No helpline (the owner's ruling of 2026-10-06). The gambling-warning
++ * SENTENCE is not here (R7(2)): the footer keeps it on every page. The licence NUMBER stays in the
++ * footer too (K39).
++ * ⭐ ROW 2 NAMES ONLY WALLETS THAT PAY OUT (R8(6)). `rails` is computed on the server from the money
++ * path's own definitions (`server/payout-rails.ts`) and joined by `Intl.ListFormat` in the reader's
++ * language (`rail-list.ts`): the names are never typed into the dictionary, and a rail an officer has
++ * paused is not named while it is paused. No rails → no row, never "Deposit and withdraw with ."
++ * ⭐ WHY ABOVE THE CARD: on a phone the rows after the card and the CTAs began below the first screen,
++ * so 18+ and the licence never reached it (K29, P15). In the SOURCE, not by CSS
++ * `order` — keyboard and screen-reader order must match the screen (WCAG 1.3.2).
++ * ⛔ No `aria-label` on the roundel: "18+" is its text, and ARIA prohibits a label on a generic span.
++ * `role="list"`: WebKit drops the list role from a `ul` styled `list-style: none` (VoiceOver on iPhone).
++ * ⚠️ `ul.kp-hero__trust` is read by the landing gate (V8's text map, V21) and by capture.mjs.
++ */
++export function TrustLines({ t, locale, rails }: { t: Dict; locale: Locale; rails: readonly string[] }) {
++  const parts = railListParts(locale, rails);
++  const at = t.home.heroRails.indexOf("{rails}");
++  const before = at < 0 ? t.home.heroRails : t.home.heroRails.slice(0, at);
++  const after = at < 0 ? "" : t.home.heroRails.slice(at + "{rails}".length);
++  return (
++    <ul className="kp-hero__trust" role="list">
++      <li>
++        <span className="kp-rg__18">{t.footer.eighteenPlus}</span>
++        <span>{t.footer.licensedByGbt}</span>
++      </li>
++      {parts.length > 0 && (
++        <li>
++          <span className="kp-hero__trust-glyph" aria-hidden><I.mobileMoney s={16} /></span>
++          <span>
++            {before}
++            {parts.map((p, i) => (p.rail ? <span key={i} className="kp-hero__rail">{p.text}</span> : p.text))}
++            {after}
++          </span>
++        </li>
++      )}
++    </ul>
++  );
++}
+diff --git a/src/components/home/landing-hero.tsx b/src/components/home/landing-hero.tsx
+index 2ea22949e58ff06bfcb713c38aa6e56bf622b069..4b22ae7c2c9df5e3bdfa407da919e96b7b8ca1f4 100644
+--- a/src/components/home/landing-hero.tsx
++++ b/src/components/home/landing-hero.tsx
+@@ -30,9 +30,11 @@
+  *
+  * ⚠️ SPACES. Every space between two elements is an explicit `{" "}` or sits inside a dict string:
+  * SWC has dropped the whitespace around JSX expressions on production before.
+- * ⚠️ `brand.tsx` is a "use client" module. `FiftyWordmark` and `FiftyMark` are rendered here as JSX
+- * only — calling a helper exported by a client module from this server component once took every
+- * page down while the typecheck and the build stayed green.
++ * ⚠️ `brand.tsx` is a "use client" module. `FiftyMark` (here) and `FiftyWordmark` (the claim, in
++ * `hero-intro.tsx`) are rendered as JSX only — calling a helper exported by a client module from this
++ * server component once took every page down while the typecheck and the build stayed green.
++ * ⭐ THE CLAIM, THE H1 AND THE TRUST ROWS LIVE IN `hero-intro.tsx` (2026-10-09, R4-J), moved verbatim
++ * so the journey's loading ghost for `/` draws the same intro without loading this file.
+  *
+  * ⭐ ONE DOM, PLACED BY GRID AREAS — never a second copy. Below 1024 the three blocks stack in
+  * source order (intro → card → act); from 1024 the intro and the act share the left column and the
+@@ -61,13 +63,14 @@ import { MarketCard } from "@/components/markets/market-card";
+ // bespoke toggle, and this file is declared to `test:filter-language` because of it — §3.1/§3.2 assert
+ // that every declared surface imports the primitive and renders it IN ITS OWN SOURCE.
+ import { FilterPill } from "@/components/ui/filter-pill";
+-import { FiftyMark, FiftyWordmark, TippingBar } from "@/components/brand";
++import { FiftyMark, TippingBar } from "@/components/brand";
++// The claim, the h1 and the trust rows: the hero's static intro, a module of its own so the loading ghost for `/` can draw
++// it too without loading this file's market card (R4-J, 2026-10-09; `hero-intro.tsx` says why).
++import { Ask, Claim, TrustLines } from "./hero-intro";
+ import { fill, formatNumber, formatTzs, formatTzsCompact } from "@/lib/utils";
+ import { pickLocalized } from "@/lib/localized";
+ import { timeLeftLabel } from "@/lib/markets/time-left";
+ import { formatEatDate } from "@/lib/eat-day";
+-import { FIRST_LICENSED_EVIDENCE } from "@/lib/support-config";
+-import { railListParts } from "@/lib/rail-list";
+ import type { Dict, Locale } from "@/lib/i18n-dict";
+ import { boardLenses, QUESTION_BOARD_SIZE } from "@/lib/markets/hero";
+ import type { BoardLens, HeroFigures, HeroRow } from "@/lib/markets/hero";
+@@ -134,127 +137,6 @@ function Inked({ text, yes, no }: { text: string; yes: string; no: string }) {
+   );
+ }
+ 
+-/**
+- * The claim — "50pick │ Tanzania's first licensed prediction market" (spec §4; R9).
+- *
+- * ⭐ A CLASS OF ITS OWN, NOT THE SHARED EYEBROW: `.kp-hero__eyebrow` also styles the section labels
+- * further down the page, and the claim is the brightest small text on the first screen (`--text`,
+- * mono 600), where those are quiet labels. Its tracking joins the one 0.14em list in globals.css.
+- * ⭐ THE WORDMARK IS THE LOGO USED AS A LOGO — below 1280 the header shows only the mark, so the name
+- * "50pick" reaches the first screen here. From 1280 the header carries the wordmark and this one is
+- * hidden (CSS), with its rule.
+- * ⛔ "FIRST" IS READ ONLY INSIDE THE EVIDENCE BRANCH BELOW. `test:hero-copy` §1 fails if
+- * `heroClaimFirst` is read anywhere else, or if any other string claims a first.
+- * The text is stored in sentence case; CSS does the capitals.
+- */
+-function Claim({ t }: { t: Dict }) {
+-  return (
+-    <p className="kp-hero__claim">
+-      <span className="kp-hero__claim-mark"><FiftyWordmark size={15} tz={false} /></span>{" "}
+-      <span className="kp-hero__claim-rule" aria-hidden />{" "}
+-      <span className="kp-hero__claim-text">{FIRST_LICENSED_EVIDENCE() ? t.home.heroClaimFirst : t.home.heroClaim}</span>
+-    </p>
+-  );
+-}
+-
+-/**
+- * The h1 — the question in the reader's language: "NDIO au HAPANA?" · "YES or NO?" · "是还是否？"
+- * (INHERIT-MANIFEST R7(3)).
+- *
+- * ⭐ THE SIDE WORDS ARE THE BUTTONS' OWN WORDS BY CONSTRUCTION: `sideWord(t, …, "MARKET")` fills them,
+- * so the headline cannot say "NDIYO" while the buttons say "NDIO". Each wears its outcome ink (§B2);
+- * the connective ("au" / "or" / "还是") is the quiet word, one weight of the same face.
+- * ⭐ TWO GROUPS THAT DO NOT BREAK INSIDE: "NDIO au" and "HAPANA?". The only break is the dict string's
+- * own space after the connective (none in zh, which fits one line), so a narrow screen reads two
+- * designed lines, never "NDIO" alone over "au HAPANA?".
+- * ⛔ No `lang` attribute: since R7(3) the h1 IS in the page's language.
+- * ⭐ A LINE THAT OPENS ON A STRAIGHT STEM IS SET BACK BY ITS SIDE BEARING (round 3, 2026-10-08): "NDIO" and "HAPANA"
+- * began 3–5px right of the page's edge (0.07em of Sora 800, measured — `.kp-hero__grp[data-stem]` in globals.css), where
+- * "YES" and 是 sit on it. Decided from the SIDE WORDS, so it follows the buttons' words and never a locale: a group
+- * that can open a line and starts on a measured stem takes `data-stem`, and the group before a set-back one takes
+- * `data-stem-next`, which gives the width back at its end — so on one line nothing between the groups moves.
+- * `test:hero-copy` §2 pins `{yes}` before `{no}`, each exactly once, in every locale, and §2c the set-back; the
+- * fallback below only keeps a malformed string readable.
+- */
+-/** Capitals whose left edge is a straight stem with the bearing measured on the tiles. ⛔ Measure before adding one. */
+-const STEM_START = /^[HN]/u;
+-
+-function Ask({ t }: { t: Dict }) {
+-  const yes = sideWord(t, "YES", "MARKET");
+-  const no = sideWord(t, "NO", "MARKET");
+-  const s = t.home.heroAsk;
+-  const a = s.indexOf("{yes}");
+-  const b = s.indexOf("{no}");
+-  if (a < 0 || b < a) return <h1 className="kp-hero__headline">{fill(s, { yes, no })}</h1>;
+-  const between = s.slice(a + "{yes}".length, b);
+-  const conn = between.trimEnd();
+-  const gap = between.slice(conn.length);
+-  // The first group opens the h1's first line only when nothing is written before it; the second opens a line
+-  // whenever the h1 wraps at its gap, so it is set back whenever its word starts on a stem.
+-  const lead = s.slice(0, a).trim() === "" && STEM_START.test(yes);
+-  const next = STEM_START.test(no);
+-  return (
+-    <h1 className="kp-hero__headline">
+-      {s.slice(0, a)}
+-      <span className="kp-hero__grp" data-stem={lead ? "" : undefined} data-stem-next={next ? "" : undefined}>
+-        <span className="kp-hero__side" data-side="yes">{yes}</span>
+-        <span className="kp-hero__conn">{conn}</span>
+-      </span>
+-      {gap}
+-      <span className="kp-hero__grp" data-stem={next ? "" : undefined}>
+-        <span className="kp-hero__side" data-side="no">{no}</span>
+-        <span className="kp-hero__q">{s.slice(b + "{no}".length)}</span>
+-      </span>
+-    </h1>
+-  );
+-}
+-
+-/**
+- * The trust rows — ONE list, the same for a visitor and a player, above the featured card.
+- *
+- *   row 1 · 18+ · "Licensed by the Gaming Board of Tanzania."
+- *   row 2 · "Deposit and withdraw with M-Pesa, Airtel Money, HaloPesa or Mixx by Yas."
+- *
+- * ⭐ ROW 1 IS THE FOOTER'S OWN WORDS. `footer.eighteenPlus` and `footer.licensedByGbt` are assessed
+- * keys, reused verbatim. ⛔ No helpline (the owner's ruling of 2026-10-06). The gambling-warning
+- * SENTENCE is not here (R7(2)): the footer keeps it on every page. The licence NUMBER stays in the
+- * footer too (K39).
+- * ⭐ ROW 2 NAMES ONLY WALLETS THAT PAY OUT (R8(6)). `rails` is computed on the server from the money
+- * path's own definitions (`server/payout-rails.ts`) and joined by `Intl.ListFormat` in the reader's
+- * language (`rail-list.ts`): the names are never typed into the dictionary, and a rail an officer has
+- * paused is not named while it is paused. No rails → no row, never "Deposit and withdraw with ."
+- * ⭐ WHY ABOVE THE CARD: on a phone the rows after the card and the CTAs began below the first screen,
+- * so 18+ and the licence never reached it (K29, P15). In the SOURCE, not by CSS
+- * `order` — keyboard and screen-reader order must match the screen (WCAG 1.3.2).
+- * ⛔ No `aria-label` on the roundel: "18+" is its text, and ARIA prohibits a label on a generic span.
+- * `role="list"`: WebKit drops the list role from a `ul` styled `list-style: none` (VoiceOver on iPhone).
+- * ⚠️ `ul.kp-hero__trust` is read by the landing gate (V8's text map, V21) and by capture.mjs.
+- */
+-function TrustLines({ t, locale, rails }: { t: Dict; locale: Locale; rails: readonly string[] }) {
+-  const parts = railListParts(locale, rails);
+-  const at = t.home.heroRails.indexOf("{rails}");
+-  const before = at < 0 ? t.home.heroRails : t.home.heroRails.slice(0, at);
+-  const after = at < 0 ? "" : t.home.heroRails.slice(at + "{rails}".length);
+-  return (
+-    <ul className="kp-hero__trust" role="list">
+-      <li>
+-        <span className="kp-rg__18">{t.footer.eighteenPlus}</span>
+-        <span>{t.footer.licensedByGbt}</span>
+-      </li>
+-      {parts.length > 0 && (
+-        <li>
+-          <span className="kp-hero__trust-glyph" aria-hidden><I.mobileMoney s={16} /></span>
+-          <span>
+-            {before}
+-            {parts.map((p, i) => (p.rail ? <span key={i} className="kp-hero__rail">{p.text}</span> : p.text))}
+-            {after}
+-          </span>
+-        </li>
+-      )}
+-    </ul>
+-  );
+-}
+-
+ /**
+  * ONE ROW OF THE CLOSING-SOONEST BOARD (landing v3 · WP4).
+  *
+diff --git a/src/components/journey/journey-tabs.tsx b/src/components/journey/journey-tabs.tsx
+index fb23a7239a3633d9b1ef7dcd2d4fd313ecc2f244..92d080f179374a6861636da95c55a3d4714d571c 100644
+--- a/src/components/journey/journey-tabs.tsx
++++ b/src/components/journey/journey-tabs.tsx
+@@ -36,18 +36,23 @@ import { useT } from "@/lib/i18n";
+ import { JOURNEY_TABS, activeTabFor, tabAriaCurrent, tabLabel } from "@/lib/nav/active-tab";
+ import { pollersAt, useLgUp } from "@/lib/journey/one-poller";
+ import { useUnreadCount } from "@/lib/journey/use-unread-count";
++import { useNotFoundShown } from "@/lib/not-found-mark";
+ 
+ /** One slot class for a tab link and for a guest's tab button alike: the two must read as the same kind of thing. */
+ const RAIL_ITEM = "kp-rail__item min-w-0";
+ 
+ /** `userId` is the viewer's id, or null for a guest: the dot's counter is keyed by it (WP3). */
+ export function JourneyTabs({ userId }: { userId: string | null }) {
+-  const pathname = usePathname();
++  const route = usePathname();
+   const { t } = useT();
+   const pollers = pollersAt(useLgUp());
++  // ⭐ R4-J (2026-10-09) · A NOT-FOUND PAGE IS NO PAGE OF OURS, whatever its address says (`lib/not-found-mark.ts`): the
++  // rail reads no path there — no tab lit (the market not-found lit Maswali) — and mounts no unread dot.
++  const notFoundShown = useNotFoundShown();
++  const pathname = notFoundShown ? null : route;
+   const [sheetOpen, setSheetOpen] = useState(false);
+   // The rail outlives the page: a sheet left open would wait over the page the reader went to.
+-  useEffect(() => { setSheetOpen(false); }, [pathname]);
++  useEffect(() => { setSheetOpen(false); }, [route]);
+   const active = activeTabFor(pathname);
+ 
+   return (
+@@ -74,7 +79,7 @@ export function JourneyTabs({ userId }: { userId: string | null }) {
+                 )}
+               </>
+             );
+-            const content = d.key === "account" && userId !== null && pollers.dot
++            const content = d.key === "account" && userId !== null && pollers.dot && !notFoundShown
+               ? <TabUnread userId={userId}>{body}</TabUnread>
+               : body(null);
+             return (
+diff --git a/src/components/journey/journey-top-bar.tsx b/src/components/journey/journey-top-bar.tsx
+index f537d87e50a4bcfc8067a884b8baed80b4a0af9b..e35d5e651ea25c3c29140ad3e727dd2d7f92a7f8 100644
+--- a/src/components/journey/journey-top-bar.tsx
++++ b/src/components/journey/journey-top-bar.tsx
+@@ -37,7 +37,8 @@
+  * ── ⛔ ONE UNREAD POLLER PER WIDTH ───────────────────────────────────────────────────────────────────────────────
+  * The bell polls on its own every 30 s, and so does the Akaunti tab's dot. The bell shows from 1024 and the rail
+  * below it, so the bell is MOUNTED only where it shows (`pollersAt`), never merely hidden: a hidden bell still asks.
+- * Its slot keeps its width, so the cluster does not move when the bell arrives just after hydration.
++ * Its slot keeps its width, so the cluster does not move when the bell arrives just after hydration — and since R4-J
++ * (2026-10-09, E36) the slot is not empty until then: the server draws the bell's still twin there (`BellStill`).
+  *
+  * ── THE DESTINATIONS FROM 1024 ───────────────────────────────────────────────────────────────────────────────────
+  * The kit's section language, not the canvas's pills (§0h point 7): an underline says "you are here" on a
+@@ -60,11 +61,40 @@ import { useT } from "@/lib/i18n";
+ import { JOURNEY_TABS, activeTabFor, tabAriaCurrent, tabLabel } from "@/lib/nav/active-tab";
+ import { journeyHeaderState } from "@/lib/journey/header-state";
+ import { pollersAt, useLgUp } from "@/lib/journey/one-poller";
++import { useNotFoundShown } from "@/lib/not-found-mark";
+ import type { ProposalsState } from "@/lib/server/proposals-config";
+ 
+ /** One class for every destination, link or button: a guest's Tiketi zangu must not read as another kind of thing. */
+ const JNAV = "kp-jnav__link";
+ 
++/**
++ * ⭐ THE BELL BEFORE IT RINGS (2026-10-09, the visual pass round 4, R4-J; E36). The live bell (`NotificationsPanel`) is
++ * mounted only where it shows and only once the browser has said so (`pollersAt`: a mounted bell polls), so the
++ * server's HTML held an EMPTY slot at 1280 — the header painted without its bell until the page's scripts ran, on a
++ * slow network for seconds. This is the bell's own box and glyph — the same wrapper, the same 40px round control, the
++ * same 20px glyph in the same span — drawn by the server, as a plain link to the notifications page: before the
++ * scripts arrive it works the way the page's other links do, and the live bell takes its place, pixel for pixel, the
++ * moment it may mount. It is also what a not-found page shows (no poll there: `lib/not-found-mark.ts`), where the
++ * live bell's Server Action could only be answered 404.
++ * ⚠️ `h-[40px] w-[40px]` is the live bell's `h-7 w-7` written as what it renders (the spacing scale is overridden in
++ * tailwind.config.ts: `7` IS 40px), so `test:ui-consistency`'s numeric-size rule has nothing new to baseline.
++ */
++function BellStill({ label }: { label: string }) {
++  return (
++    <div className="relative z-10">
++      <Link
++        href="/notifications"
++        aria-label={label}
++        className="relative inline-flex h-[40px] w-[40px] items-center justify-center rounded-full transition-colors text-text-subtle hover:text-text hover:bg-bg-overlay/40"
++      >
++        <span aria-hidden className="inline-flex">
++          <I.bell s={20} />
++        </span>
++      </Link>
++    </div>
++  );
++}
++
+ export function JourneyTopBar({
+   user,
+   onBreak,
+@@ -81,14 +111,18 @@ export function JourneyTopBar({
+   inviteVisible?: boolean;
+   invitePaid?: boolean;
+ }) {
+-  const pathname = usePathname();
++  const route = usePathname();
+   const { t } = useT();
+   // The live figure, as the classic bar feeds its capsule: a deposit landing over SSE moves it with no navigation.
+   const liveBalance = useLiveBalance(user.balance ?? 0);
+   const pollers = pollersAt(useLgUp());
++  // ⭐ R4-J (2026-10-09) · A NOT-FOUND PAGE IS NO PAGE OF OURS, whatever its address says (`lib/not-found-mark.ts`): the
++  // bar reads no path there — no destination lit (the market not-found lit Maswali) — and mounts no bell.
++  const notFoundShown = useNotFoundShown();
++  const pathname = notFoundShown ? null : route;
+   const [sheetOpen, setSheetOpen] = useState(false);
+   // The bar outlives the page: a sheet left open would wait over the page the reader went to.
+-  useEffect(() => { setSheetOpen(false); }, [pathname]);
++  useEffect(() => { setSheetOpen(false); }, [route]);
+   const state = journeyHeaderState({
+     isAuthed: user.isAuthed,
+     balance: user.balance,
+@@ -170,7 +204,7 @@ export function JourneyTopBar({
+           <span className="hidden lg:inline-flex"><LanguageMenu /></span>
+           {user.isAuthed && (
+             <>
+-              <span className="hidden lg:inline-flex kp-jhdr__bell">{pollers.bell && <NotificationsPanel />}</span>
++              <span className="hidden lg:inline-flex kp-jhdr__bell">{pollers.bell && !notFoundShown ? <NotificationsPanel /> : <BellStill label={t.common.notifications} />}</span>
+               <span className="hidden lg:inline-flex">
+                 <AvatarMenu
+                   initials={user.initials}
+diff --git a/src/components/journey/route-ghost.tsx b/src/components/journey/route-ghost.tsx
+new file mode 100644
+index 0000000000000000000000000000000000000000..4e1bf1f357379943c9dd8f1aa1b7545213e5bf0a
+--- /dev/null
++++ b/src/components/journey/route-ghost.tsx
+@@ -0,0 +1,180 @@
++/**
++ * THE JOURNEY'S LOADING STATE, PAGE BY PAGE (2026-10-09, the Vodacom visual pass round 4, R4-J; E38) — what the ROOT
++ * loading file draws for a journey reader: the ghost of the page being opened, in that page's own column, so the page
++ * lands where its ghost stood.
++ *
++ * ⭐ WHY THE ROOT'S LOADING STATE IS THE ONE THAT SHOWS. The root loading file wraps every page below the root layout,
++ * and it is the one a reader meets first: on a document load (React 19.2 sends a finished page AFTER the shell, so the
++ * shell's fallback is what paints first; AppShell's note at the journey header has the mechanism), and on every move to
++ * a page whose loading state the browser does not hold yet — always on a dev server, and on production until the link's
++ * prefetch has landed. It was the generic SectionLoader for everybody: a 360px box with the logo, measured on the Slow
++ * 3G tiles at y253–612 on a phone (277 280) and x32–1247 × y209–568 at 1280 (290 293 296) — where /positions and
++ * /account land their h1 at y206–228 on a phone (278 281) and their column at x132–1147, h1 y162, at 1280 (294 297).
++ * And /positions never showed the Tiketi zangu ghost its own loading file draws: the root's box stood in front of it.
++ *
++ * ⭐ WHAT EACH PAGE GETS, picked in the browser by the path (`RoutePick`: the root's loading element is drawn once, with
++ * the document, and kept), every node drawn here on the server:
++ *   /           the hero's own band and grid, its claim, h1, lede and trust rows set in the page's own words (from
++ *               `hero-intro.tsx`, the very components the page renders) but not shown — each line a bar — so every
++ *               block stands where the page puts it in every language; the featured card and the act as blocks.
++ *               ⛔ Not shown, because the hero's blocks rise in as they arrive (`kp-rise`): readable words in the
++ *               ghost would vanish and fade back in, identical, the moment the page lands.
++ *   /updown     Juu/Chini's ghost, `updown/loading.tsx` itself (one drawing for both shells, and the tab's page), so a
++ *               tap on the tab shows the board it opens, not a box.
++ *   /positions  Tiketi zangu's ghost, the one `positions/loading.tsx` draws for a journey reader, so the two are one.
++ *   /account    the hub's column, h1 and identity card (a guest's prompt instead, chosen by the header's own sign-in
++ *               pills), and its cards cut into the page's two columns by the page's own rule (`hubColumnCut`), for the
++ *               rows a plain signed-in player is shown (a guest's, for a guest).
++ *   the journey's other pages — the ones `surfaces.ts` lists as the journey's own (`JOURNEY_ROUTE`): a question
++ *               (`/markets/<id>`, the one pattern), Tiketi zangu's Up & Down list, the deposit screen and the provider's
++ *               return — each its own loading file itself, which already draws a journey reader's ghost where it differs
++ *               (the Up & Down list's), so the root's state and the page's are one drawing.
++ *   any other   the brand's spinner in a block as tall as the classic box, and no frame: a framed box promises a
++ *               column, and the pages behind this branch use several; each page's own loading file (if it has one)
++ *               draws its column as soon as the page starts to arrive.
++ * ⚠️ THE COST: every node is drawn into this element's data, which a journey document carries whichever page it opens —
++ * a few kilobytes before compression, so the set stays the four tabs and the journey's own pages.
++ * ⛔ A JOURNEY READER ONLY. `app/loading.tsx` returns this from its journey arm, which asks the shell's own two answers
++ * (the console and the opt-out page are never the journey; the per-request resolver); everybody else is served the
++ * classic SectionLoader, byte for byte. `/account` keeps no loading file of its own (A3): its ghost is here, behind the
++ * same answer, so nothing streams to a classic visitor before the hub's gate.
++ * `test:visual-pass-r4j` §3 holds every part of this file to the page it stands for.
++ */
++import type { ReactNode } from "react";
++import { BrandSpinner } from "@/components/brand";
++import { PageContainer } from "@/components/layout/page-container";
++import { RoutePick } from "@/components/ui/route-pick";
++import { TicketsGhost } from "@/components/journey/tickets/tickets-ghost";
++import UpDownLoading from "@/app/updown/loading";
++import UpDownHistoryLoading from "@/app/updown/history/loading";
++import MarketDetailLoading from "@/app/markets/[id]/loading";
++import DepositLoading from "@/app/wallet/deposit/loading";
++import DepositReturnLoading from "@/app/wallet/deposit/return/loading";
++import { Ask, Claim, TrustLines } from "@/components/home/hero-intro";
++import { hubColumnCut, hubRowsFor, wideRowCount, type HubGroup, type HubMember, type HubRow } from "@/components/journey/account/hub-rows";
++import { heroRailNames } from "@/lib/server/payout-rails";
++import type { Dict, Locale } from "@/lib/i18n-dict";
++
++export function JourneyRouteGhost({ t, locale }: { t: Dict; locale: Locale }) {
++  return (
++    <RoutePick
++      routes={{
++        "/": <HomeGhost t={t} locale={locale} />,
++        "/updown": <UpDownLoading />,
++        "/positions": <TicketsGhost t={t} />,
++        "/account": <AccountGhost t={t} />,
++        "/updown/history": <UpDownHistoryLoading />,
++        "/wallet/deposit": <DepositLoading />,
++        "/wallet/deposit/return": <DepositReturnLoading />,
++      }}
++      patterns={[["^/markets/[^/]+$", <MarketDetailLoading />]]}
++      other={<AnyPageGhost />}
++    />
++  );
++}
++
++/**
++ * `/` — LandingHero's band, grid and intro (`landing-hero.tsx`), the words set but not shown. The lede is the page's two
++ * spans as the page writes them; the trust rows name every rail that pays out (the page drops a paused one: a row a word
++ * shorter, below the h1). The featured card is the live card's height (`--mcard-h`) and the act one control tall — enough
++ * that from 1024 the left column stays the taller one, as on the page, so the intro sits on the band's padding there too.
++ */
++function HomeGhost({ t, locale }: { t: Dict; locale: Locale }) {
++  return (
++    <section className="kp-hero" aria-hidden="true">
++      <div className="kp-hero__inner kp-hghost">
++        <div className="kp-hero__intro">
++          <hgroup className="kp-hero__lockup">
++            <Claim t={t} />
++            <Ask t={t} />
++          </hgroup>
++          <p className="kp-hero__lede">
++            <span className="kp-hero__lede-l">{t.home.heroLedeAct}</span>{" "}
++            <span className="kp-hero__lede-l kp-hero__lede-l--pay">{t.home.heroLedePay}</span>
++          </p>
++          <TrustLines t={t} locale={locale} rails={heroRailNames(null)} />
++        </div>
++        <div className="kp-hero__card">
++          <div className="kp-hghost__card kp-shimmer-track" />
++        </div>
++        <div className="kp-hero__act">
++          <div className="kp-hghost__act kp-shimmer-track" />
++        </div>
++      </div>
++    </section>
++  );
++}
++
++/**
++ * The rows a plain signed-in player is shown (tiles 281 297: the wallet and withdraw, play, the three safety rows, invite
++ * and propose, profile and fairness, help and notifications, the settings, the agent door). Only the SHAPE is read from
++ * it — which cards, how many rows, which rows hide at which width — never a name, a figure or a door.
++ */
++const A_PLAYER: HubMember = {
++  signedIn: true, userId: "", name: "", initials: "", phone: "", balance: null, walletHeld: false, kycOffered: false,
++  agentInStanding: false, proposalsState: "COMING_SOON",
++  doors: { inviteVisible: true, invitePaid: false, agentDoorVisible: true, proposalsVisible: true, staffConsole: false },
++};
++
++/** `/account` — `app/account/page.tsx`'s column, hub, h1 and cards, each card cut where the page cuts it. */
++function AccountGhost({ t }: { t: Dict }) {
++  return (
++    <PageContainer tier="reading">
++      <div className="kp-hub">
++        <h1 className="font-display text-title-lg font-bold leading-tight text-text">{t.journey.tabAccount}</h1>
++        <div className="kp-hub__id kp-hubghost--member" aria-hidden="true">
++          <span className="kp-hub__initials kp-shimmer-track" />
++          <span className="kp-hub__who">
++            <span className="kp-hubghost__name" />
++            <span className="kp-hubghost__phone" />
++          </span>
++        </div>
++        <p className="kp-hub__prompt kp-hubghost--guest">{t.journey.hubGuestPrompt}</p>
++        <HubGhostCards groups={hubRowsFor(A_PLAYER)} who="member" />
++        <HubGhostCards groups={hubRowsFor({ signedIn: false })} who="guest" />
++      </div>
++    </PageContainer>
++  );
++}
++
++/** The hub's grid for one kind of reader: the page's two columns, cut by `hubColumnCut` over `wideRowCount`. */
++function HubGhostCards({ groups, who }: { groups: HubGroup[]; who: "member" | "guest" }) {
++  const cut = hubColumnCut(groups.map((g) => wideRowCount(g.rows)));
++  const card = (g: HubGroup) => (
++    <ul key={g.key} className="kp-hub__card">
++      {g.rows.map((row) => <HubGhostRow key={row.id} row={row} />)}
++    </ul>
++  );
++  return (
++    <div className={`kp-hub__grid kp-hubghost--${who}`} aria-hidden="true">
++      <div className="kp-hub__col">{groups.slice(0, cut).map(card)}</div>
++      <div className="kp-hub__col">{groups.slice(cut).map(card)}</div>
++    </div>
++  );
++}
++
++/** A row as the page draws it: the hub row's own box (the 56px rung), a glyph's place and a label's; the language row
++ *  hidden from 1024 and the card-size row from 640, as their own `<li>`s hide (`language-row.tsx`, `card-size-row.tsx`).
++ *  The bars sit straight in the row (no glyph or text wrapper): the row's height is its rung's, whatever is in it. */
++function HubGhostRow({ row }: { row: HubRow }) {
++  const hide = row.kind === "language" ? "lg:hidden" : row.kind === "cardSize" ? "sm:hidden" : undefined;
++  return (
++    <li className={hide}>
++      <div className="kp-hub__row">
++        <span className="kp-hubghost__glyph" />
++        <span className="kp-hubghost__label" />
++      </div>
++    </li>
++  );
++}
++
++/** Any other page: the classic loader's spinner in a box as tall as the classic one, without the box's frame. */
++function AnyPageGhost(): ReactNode {
++  return (
++    <PageContainer tier="board">
++      <div className="grid h-[360px] place-items-center">
++        <BrandSpinner size={56} />
++      </div>
++    </PageContainer>
++  );
++}
+diff --git a/src/components/layout/app-shell.tsx b/src/components/layout/app-shell.tsx
+index 7ada9bebde4bcf03af7e4b6ea3e2f6f7e006cbfd..16038bdd4fe71805300a8c1bfd9438a527f65042 100644
+--- a/src/components/layout/app-shell.tsx
++++ b/src/components/layout/app-shell.tsx
+@@ -7,10 +7,12 @@ import { SUPPORT_EMAIL, SUPPORT_PHONE, SUPPORT_PHONE_TEL } from "@/lib/server/su
+ // tabs) come from ONE client module, `./shell-lazy`, which declares each with `next/dynamic` (the Vodacom plan S6,
+ // WP6c; VODACOM-PLAN §0h point 20). They are rendered below under the names they always had, where they always were,
+ // with the same props, each in the Suspense boundary it always had, which is now that part's only one (next/dynamic
+-// adds none): keep every part the one child of its own. A part whose code never arrives is left out rather than taking
+-// the page down (`nothingIfLost`, there). ⛔ NEVER A REACT LAZY HERE: this is a SERVER component, and its own
+-// `React.lazy` bindings kept nothing out of the first load (production and a local build, 2026-10-03): every module
+-// they named rode in the scripts every page loads first, for every visitor. `test:journey-shell` §12 holds this.
++// adds none): keep every part the one child of its own — save the journey's header and tabs, which stand in none, so
++// that the page's first HTML draws them (R4-J, 2026-10-09; the note at their mount). A part whose code never arrives is
++// left out rather than taking the page down (`nothingIfLost`, there). ⛔ NEVER A REACT LAZY HERE: this is a SERVER
++// component, and its own `React.lazy` bindings kept nothing out of the first load (production and a local build,
++// 2026-10-03): every module they named rode in the scripts every page loads first, for every visitor.
++// `test:journey-shell` §12 holds this.
+ import {
+   LazyPullToRefresh, LazyNotifyPoller, LazyEventStream, LazyInstallInvite, LazyConsentPrompt, LazyChannelsPanel,
+   LazyJourneyFlag, LazyWinCelebration, LazySellResultHost, LazyJourneyTopBar, LazyJourneyTabs,
+@@ -372,13 +374,33 @@ export async function AppShell({ children }: { children: React.ReactNode }) {
+       <Suspense fallback={null}><NavProgress /></Suspense>
+       {/* ⭐ THE JOURNEY'S HEADER AND TABS (Vodacom plan S6, WP6b), for a request the resolver shows the journey to and
+           for no other: every other request gets today's bar and rail with today's props, in the two else arms. Each
+-          journey arm is lazy, a `next/dynamic` part of `./shell-lazy` (WP6c; see the note at its import), and the
+-          server still renders it into the page, so a fallback shows only while its code is on the way — a beat of a
+-          streamed page, or a switch into the journey mid-visit
+-          (a preview pass turned on). The header's fallback is therefore the bar's own empty box, with its height, its
+-          panel and its border, so nothing below it moves; the tabs need none, because the rail is anchored to the
+-          viewport and takes no room in the page. */}
+-      {journeyShown ? <Suspense fallback={<div aria-hidden="true" className="kp-jhdr" />}><LazyJourneyTopBar user={topUser} onBreak={promoSuppressed} proposalsState={proposalsState} inviteVisible={inviteVisible} invitePaid={invitePaid} /></Suspense> : <TopAppBar user={topUser} proposalsState={proposalsState} inviteVisible={inviteVisible} invitePaid={invitePaid} />}
++          journey arm is lazy, a `next/dynamic` part of `./shell-lazy` (WP6c; see the note at its import): its CODE is a
++          chunk of its own, so a classic visitor never downloads it, and the server renders its MARKUP into the page.
++          ⛔ AND THAT MARKUP IS PART OF THE PAGE'S FIRST HTML, IN NO SUSPENSE BOUNDARY (2026-10-09, the visual pass round 4,
++          R4-J; E36). Each arm was the one child of its own boundary, the header's over the bar's empty box. React 19.2's
++          server renderer OUTLINES a finished boundary of more than 500 bytes once the shell it stands in passes 12,800
++          (`flushedByteSize = request.byteSize`, then `flushedByteSize + boundary.byteSize > progressiveChunkSize` and
++          `isEligibleForOutlining`, react-dom-server, in node_modules/next/dist/compiled): the fallback goes into the HTML
++          where the part stands, and the part itself goes after the rest of the shell, in a hidden div that only React's
++          inline `$RC` script moves into place, on an animation frame and at most every 300ms (`$RC`/`$RV` in the same
++          file). The count is the WHOLE shell's, wherever the boundary stands in it, so on all 16 Slow 3G mid-load tiles
++          (277–342) the header band was the empty box, one colour (5,2,79) from y0 to y53, and the rail was not drawn at
++          all (the page colour, 8,0,41, over y716–779), while the probe found both in the document; and with scripting
++          off they never appear. Rendered bare, both are drawn where they stand by the first paint
++          (`test:visual-pass-r4j` §1 proves the outlining on React's own server renderer).
++          ⭐ What the boundaries kept back, and what keeps it now: the capsule's FIGURE for a reader who hid balances (a
++          choice in the browser's storage the server cannot read) — the journey capsule is drawn masked until it is read
++          (`WalletBalanceCaptioned`); and the bell, mounted only once the browser says where it shows — its still twin
++          holds the slot (`BellStill`, journey-top-bar.tsx). The empty box's other job, holding the bar's height while
++          its code arrived, has nothing left to do: a document's first HTML holds the bar itself, and a switch into the
++          journey mid-visit is a router transition, which keeps the bar it had until the new one is ready.
++          ⚠️ What the boundaries also did, and what that costs now: a part with no boundary of its own hydrates with the
++          page, so the page's hydration also waits for the header's and the rail's chunks — each a few kilobytes, named
++          in the page's head (next/dynamic's PreloadChunks) and fetched beside the page's own scripts. And a chunk that
++          never arrives leaves its part out (`nothingIfLost`) as before, but the server's markup then has no client
++          twin, so React renders the whole page again in the browser, without that part, instead of that part alone.
++          Classic visitors are untouched: these two arms are the journey's. */}
++      {journeyShown ? <LazyJourneyTopBar user={topUser} onBreak={promoSuppressed} proposalsState={proposalsState} inviteVisible={inviteVisible} invitePaid={invitePaid} /> : <TopAppBar user={topUser} proposalsState={proposalsState} inviteVisible={inviteVisible} invitePaid={invitePaid} />}
+       {/* ⭐ THE PREVIEW MARKER — first under the bar, so whoever holds this browser knows at once that they are
+           looking at pages players do not see yet, and has the way out on the same line. */}
+       {journeyPreview && <PreviewMarker label={t.journey.previewMarker} exit={t.journey.previewExit} />}
+@@ -468,7 +490,7 @@ export async function AppShell({ children }: { children: React.ReactNode }) {
+           the centre slot is a money-in control and `/wallet/deposit` REFUSES a held wallet, so
+           that slot becomes the Wallet door instead. Same input, same rule, two surfaces — read
+           from the one place the wallet's status is resolved (`topUser` above). */}
+-      {journeyShown ? <Suspense fallback={null}><LazyJourneyTabs userId={session?.userId ?? null} /></Suspense> : <BottomNav isAuthed={!!session} proposalsState={proposalsState} inviteVisible={inviteVisible} walletHeld={!!topUser.walletHeld} />}
++      {journeyShown ? <LazyJourneyTabs userId={session?.userId ?? null} /> : <BottomNav isAuthed={!!session} proposalsState={proposalsState} inviteVisible={inviteVisible} walletHeld={!!topUser.walletHeld} />}
+       <RealityCheckHost enabled={!!session} intervalMin={realityCheckMin} userId={session?.userId ?? null} />
+       {/* 🔴 SESSION-GATED, like its neighbours on the lines above and below (audit F-08).
+           It was the only one of the three that was not, and the omission had no upper bound.
+diff --git a/src/components/layout/needle.tsx b/src/components/layout/needle.tsx
+index 8fc302274e354c8e8ca2246833bef012ca446396..057f2df7030edf1167dfa414e0206899d3d772ac 100644
+--- a/src/components/layout/needle.tsx
++++ b/src/components/layout/needle.tsx
+@@ -28,6 +28,7 @@ import { usePathname } from "next/navigation";
+ import { getPrefs, type NeedleTheme } from "@/lib/haptics";
+ import { isMoneySurface, isJourneySurface } from "@/lib/surfaces";
+ import { useJourneyOn } from "@/lib/journey/journey-on";
++import { useNotFoundShown } from "@/lib/not-found-mark";
+ import { PEPSI_PATHS, PEPSI_TRANSFORM } from "@/lib/needle-art";
+ import {
+   bubbleInk, censusPad, decideRest, glideFrame, glowReach, hugs, newGlideClock, paintsNothing, railRange, reseat, restReach,
+@@ -1007,6 +1008,9 @@ export function Needle() {
+   const pathname = usePathname();
+   // ⭐ S6 WP7 · the shell's answer, through the flag it raises: false for everybody else, and on the server.
+   const journeyOn = useJourneyOn();
++  // ⭐ R4-J (2026-10-09) · a not-found page is no journey page, whatever its path (`lib/not-found-mark.ts`): the market
++  // not-found answers on a question's path and has no bet panel to stand down for (R4-K's ruling).
++  const notFoundShown = useNotFoundShown();
+   const [hiddenPref, setHiddenPref] = useState(false);
+   /* ⭐ SSR renders the HOUSE disc, always — never the persisted value, which lives in
+      localStorage and is unreadable on the server. Reading it after mount is what keeps
+@@ -1049,12 +1053,12 @@ export function Needle() {
+   // journey's own pages (S6 WP7: the extra term is false for everybody else, so their gate is today's).
+   // Written to a ref so the engine picks it up even if it finishes mounting after this runs.
+   useEffect(() => {
+-    const suppressed = hiddenPref || isMoneySurface(pathname) || (journeyOn && isJourneySurface(pathname));
++    const suppressed = hiddenPref || isMoneySurface(pathname) || (journeyOn && isJourneySurface(pathname) && !notFoundShown);
+     wantSuppressed.current = suppressed;
+     apiRef.current?.setSuppressed(suppressed);
+     // A new page is new content under the rail (E-400 ①).
+     apiRef.current?.recheckRest();
+-  }, [hiddenPref, pathname, journeyOn]);
++  }, [hiddenPref, pathname, journeyOn, notFoundShown]);
+ 
+   return <div id="needle-root" ref={hostRef} data-needle-theme={theme} />;
+ }
+diff --git a/src/components/layout/shell-lazy.tsx b/src/components/layout/shell-lazy.tsx
+index 5d59e313ecd6ea9f69c19b4599e5558013afd1fc..7c7c2603261c331100d73becd63ee3db77eefec0 100644
+--- a/src/components/layout/shell-lazy.tsx
++++ b/src/components/layout/shell-lazy.tsx
+@@ -17,6 +17,11 @@
+  * AppShell's fallback: the markup a classic visitor is served keeps its elements and its boundary markers; the head
+  * gains the preloads, and the inline RSC data names this module's exports. Turning the server render off would also
+  * take the journey header out of the server's HTML. Only WHEN a part's code downloads changes.
++ * ⭐ THE JOURNEY'S HEADER AND TABS SIT IN NO BOUNDARY (2026-10-09, the visual pass round 4, R4-J; E36). In one, React
++ * 19.2's server renderer drew the boundary's fallback in the page's first HTML and moved the part in later, by an inline
++ * script, so a slow phone painted an empty header band and no rail (AppShell's note at their mount has the mechanism and
++ * the tiles). Bare, they are drawn by the first paint; their chunks are still their own, and still only a journey page
++ * asks for them.
+  * ⚠️ `qa:classic-shell-parity` compares the shell's regions (header, rail, footer, email bar) and its on-screen
+  * overlays; these parts' boundaries sit beside those regions, so it cannot see them. `test:journey-shell`
+  * 12.shell.wrapped holds the boundaries, and the served-HTML drive of VODACOM-PLAN §0i (WP6c) compares the bytes.
+diff --git a/src/components/layout/wallet-balance-pill.tsx b/src/components/layout/wallet-balance-pill.tsx
+index 3ce73c690836fc9f2185004735d734288a5f0a04..bfba073d3211dfdbbb8f2d7efcbadd22f19b173a 100644
+--- a/src/components/layout/wallet-balance-pill.tsx
++++ b/src/components/layout/wallet-balance-pill.tsx
+@@ -467,7 +467,18 @@ export function WalletBalanceCaptioned({ balance, held = false, onBreak = false
+   const [open, setOpen] = useState(false);
+   const capsuleRef = useRef<HTMLButtonElement>(null);
+   const { display, flashing, delta } = useBalanceRoll(balance);
+-  const hidden = useCashHidden();
++  /* ⭐ MASKED UNTIL THE READER'S CHOICE IS READ (2026-10-09, the visual pass round 4, R4-J; E36). "Hide balances" lives
++     in the browser's storage (`useCashHidden`), so the server cannot know it, and since R4-J the journey header is in the
++     page's FIRST HTML — painted before any script runs, on a slow network for seconds. Drawn from the server's answer
++     alone, the capsule would show the real figure to a reader who hid it, for as long as the page's scripts take. So the
++     server's render, and the hydration that matches it, draw the mask; the figure arrives with the first render after
++     hydration, in the same render as the stored choice (both are set by this component's effects, in one batch). The
++     box is the wider of figure and mask (D31), so nothing moves when it does. ⛔ Journey only: the classic pill and every
++     `Cash` keep their own reading of the choice. */
++  const chosen = useCashHidden();
++  const [choiceRead, setChoiceRead] = useState(false);
++  useEffect(() => { setChoiceRead(true); }, []);
++  const hidden = chosen || !choiceRead;
+   // A frozen wallet keeps its capsule and says so in the caption ("Salio · limegandishwa"), beside a lock.
+   const caption = held ? t.common.balanceFrozen : t.journey.balanceCaption;
+   // The TARGET, not the rolling value: the reserved box and the name are final from the first frame.
+diff --git a/src/components/social/channels-panel.tsx b/src/components/social/channels-panel.tsx
+index c6380c08f7ec200dc56eccb50a4c949cbeffe2f6..48c91d191b52b9cfd2596b376d143abb43e4035a 100644
+--- a/src/components/social/channels-panel.tsx
++++ b/src/components/social/channels-panel.tsx
+@@ -53,6 +53,7 @@ import { SOCIAL, SOCIAL_LIVE } from "@/lib/social";
+ import { SOCIAL_MARK } from "@/components/ui/social-marks";
+ import { isCommitSurface, isJourneySurface } from "@/lib/surfaces";
+ import { useJourneyOn } from "@/lib/journey/journey-on";
++import { useNotFoundShown } from "@/lib/not-found-mark";
+ import { useInvitationSlot } from "@/lib/invitation-slot";
+ import { useExitPhase } from "@/components/ui/modal";
+ import { useT } from "@/lib/i18n";
+@@ -195,7 +196,9 @@ export function ChannelsPanel({ promoSuppressed }: { promoSuppressed: boolean })
+      below, like the route rule beside it; the visit timer never reads the path. For every other viewer `journeyOn`
+      is false, so both read exactly as they did. */
+   const journeyOn = useJourneyOn();
+-  const journeyHidden = journeyOn && isJourneySurface(pathname);
++  // ⭐ R4-J (2026-10-09) · a not-found page is no journey page, whatever its path (`lib/not-found-mark.ts`).
++  const notFoundShown = useNotFoundShown();
++  const journeyHidden = journeyOn && isJourneySurface(pathname) && !notFoundShown;
+   const [open, setOpen] = useState(false);
+   const [topPx, setTopPx] = useState(TOP_FALLBACK);
+   const panelRef = useRef<HTMLDivElement>(null);
+diff --git a/src/components/ui/not-found-mark.tsx b/src/components/ui/not-found-mark.tsx
+new file mode 100644
+index 0000000000000000000000000000000000000000..aea816b0c3d9c850e94d4e54d1ec92b14d6ddee9
+--- /dev/null
++++ b/src/components/ui/not-found-mark.tsx
+@@ -0,0 +1,22 @@
++"use client";
++
++/**
++ * THE NOT-FOUND MARK — an empty, hidden span that says "this is a not-found page" to what stands outside the page
++ * (2026-10-09, the Vodacom visual pass round 4, R4-J). `lib/not-found-mark.ts` has the why and the readers.
++ *
++ * ⭐ The span is in the server's HTML, so a document load is answered before any script runs; the effect announces the
++ * mark when it mounts on a move inside the app, and again when it goes — the cleanup of an unmounted mark runs after
++ * React has taken its span out of the page, so the answer read then is already "no".
++ * ⛔ Rendered by the shared not-found view only (`components/ui/not-found-view.tsx`), so every not-found answer carries
++ * it and no other page can: `test:visual-pass-r4j` §5 holds both.
++ */
++import { useEffect } from "react";
++import { NOT_FOUND_MARK, announceNotFound } from "@/lib/not-found-mark";
++
++export function NotFoundMark() {
++  useEffect(() => {
++    announceNotFound();
++    return announceNotFound;
++  }, []);
++  return <span hidden id={NOT_FOUND_MARK} />;
++}
+diff --git a/src/components/ui/route-pick.tsx b/src/components/ui/route-pick.tsx
+new file mode 100644
+index 0000000000000000000000000000000000000000..65da1d71f91881795d6d0ecd46d693cf218367ff
+--- /dev/null
++++ b/src/components/ui/route-pick.tsx
+@@ -0,0 +1,31 @@
++"use client";
++
++/**
++ * ONE OF SEVERAL SERVER-DRAWN NODES, PICKED BY THE PATH BEING SHOWN (2026-10-09, the visual pass round 4, R4-J; E38).
++ *
++ * The ROOT loading file is drawn once, with the document, and the router keeps that one element: every later move inside
++ * the app that reaches a page the browser holds no part of shows it as the page's loading state. So a loading state that
++ * belongs to a PAGE cannot be chosen on the server for the root (it would be the first page's for ever after); it is
++ * chosen here, from `usePathname()`, which during a move already names the page being moved to, and on the server names
++ * the page being drawn. The nodes themselves are drawn on the server and handed in — `routes` keyed by exact path, and
++ * `patterns` for a page with a parameter (a question), each an anchored expression's source, `^…$` — so this module is a
++ * few lines of browser code and draws nothing of its own.
++ * ⛔ Exact paths and whole-path patterns only: a prefix would hand one page's ghost to every page below it.
++ */
++import type { ReactNode } from "react";
++import { usePathname } from "next/navigation";
++
++export function RoutePick({
++  routes,
++  patterns = [],
++  other,
++}: {
++  routes: Readonly<Record<string, ReactNode>>;
++  patterns?: ReadonlyArray<readonly [source: string, node: ReactNode]>;
++  other: ReactNode;
++}) {
++  const pathname = usePathname() ?? "";
++  if (Object.prototype.hasOwnProperty.call(routes, pathname)) return <>{routes[pathname]}</>;
++  const hit = patterns.find(([source]) => new RegExp(source).test(pathname));
++  return <>{hit ? hit[1] : other}</>;
++}
+diff --git a/src/components/ui/route-transition.tsx b/src/components/ui/route-transition.tsx
+index 182cce6afb601414112e7c65d934cd5152a947d4..804509b0edc3c7433cd3bae5e590b2dae5a3eff0 100644
+--- a/src/components/ui/route-transition.tsx
++++ b/src/components/ui/route-transition.tsx
+@@ -2,6 +2,7 @@
+ 
+ import { usePathname } from "next/navigation";
+ import { useRef, useEffect, useState } from "react";
++import { journeyFlagSnapshot } from "@/lib/journey/journey-on";
+ 
+ /**
+  * The two CLAMP gates, read live (§M6). A View Transition is started from JS, so
+@@ -56,6 +57,20 @@ function motionOff(): boolean {
+  * `[data-motion="minimal"] *`) cannot reach it. Gate 2 — the player's own in-app
+  * "Reduce motion" switch — therefore had no effect on route cross-fades at all,
+  * on every navigation. JS is the only place that hole can be closed.
++ *
++ * ⛔ A JOURNEY PAGE NEVER CROSS-FADES THE DOCUMENT (2026-10-09, the Vodacom visual pass round 4, R4-J; E37 and E41,
++ * the Slow 3G tap tiles 292 301 306 315 333 338 and the blank 328). The cross-fade is of the ROOT, so it took the
++ * header, the preview strip and the rail with it: two snapshots `vt-fade-out`/`vt-fade-in` move 4px apart (−2 and +2 at
++ * the midpoint), measured as the capsule figure's "T" spread from 10 rows (y29–38, tile 300) to 15 (y27–41, tile 301)
++ * and its gold dimmed from 243,203,122 to 184,152,100. Both snapshots are of the NEW page: the `[pathname]` effect below
++ * runs after the router has committed the target, so the "old" image is the new skeleton too, and the transition
++ * cross-faded the page with itself. What the old image did keep was the rail's pip mid-way through its own transition,
++ * frozen lit on the tab being left while the new tab's label was already bold: two tabs lit at once. And a frame taken
++ * while the browser held rendering between the two captures came back as the bare page colour, 280,800 px of 8,0,41
++ * (328). The journey's chrome must hold still while a page changes under it, so for a journey reader (the shell's mark,
++ * `journeyFlagSnapshot`, read at the moment of the change) the arrival is the CSS entrance on this wrapper alone — the
++ * one every other engine already gets — and the header and the rail, outside it, do not move. A classic page is
++ * unchanged: it keeps the native cross-fade.
+  */
+ export function RouteTransition({ children }: { children: React.ReactNode }) {
+   const pathname = usePathname();
+@@ -84,7 +99,7 @@ export function RouteTransition({ children }: { children: React.ReactNode }) {
+         startViewTransition?: (cb: () => void) => { finished: Promise<void> };
+       };
+ 
+-      if (doc.startViewTransition && !motionOff()) {
++      if (doc.startViewTransition && !motionOff() && !journeyFlagSnapshot()) {
+         // Use the View Transitions API — the browser handles the cross-fade, and
+         // it is then the ONLY entrance this arrival gets.
+         viaViewTransitionRef.current = true;
+diff --git a/src/lib/not-found-mark.ts b/src/lib/not-found-mark.ts
+new file mode 100644
+index 0000000000000000000000000000000000000000..b983552182d6e7c630cfe417114823e5d05fae52
+--- /dev/null
++++ b/src/lib/not-found-mark.ts
+@@ -0,0 +1,56 @@
++/**
++ * IS A NOT-FOUND PAGE ON SCREEN? — the browser's answer, for the overlays and the journey's chrome, which stand outside
++ * the page and are handed no prop by it (2026-10-09, the Vodacom visual pass round 4, R4-J; the integrator's not-found
++ * item and R4-K's ruling).
++ *
++ * The shared not-found view (`components/ui/not-found-view.tsx`) renders `NotFoundMark`
++ * (`components/ui/not-found-mark.tsx`): an empty, hidden span with the id below, written into the server's HTML of a
++ * not-found answer, and an event raised when it mounts and when it goes. `useNotFoundShown` reads it.
++ *
++ * ⭐ WHY THE OVERLAYS ASK. `surfaces.ts` lists `/markets/<id>` as a page the journey re-draws — a question, whose bet panel
++ * the Needle, the channels panel and the chat bubble stand down for — and the path of a market that does not exist is the
++ * same path. So on that not-found page a journey reader lost the bubble and the Needle to a bet panel that is not there,
++ * and the journey's Maswali tab was lit for a question that is not there. A not-found page is no journey page and no
++ * tab's page, whatever its path says: each stand-down term is joined by `&& !notFoundShown`, and the chrome lights no
++ * tab while the mark is up.
++ * ⭐ AND THE POLLS STOP. The bell and the Akaunti tab's dot ask their question through a Server Action, and a Server
++ * Action POSTs to the page's own address: on a not-found address Next answers 404, and every signed-in player on a
++ * not-found page logged "Failed to load resource: 404" for each beat. While the mark is up neither counter is mounted.
++ *
++ * ⭐ THE SERVER SNAPSHOT IS FALSE, like `useJourneyOn`'s: a server render, and the hydration that matches it, are what
++ * they were. The mark is in the HTML before any script runs, so the check `useSyncExternalStore` makes right after
++ * hydrating finds it; on a move inside the app the mark's own effect announces it.
++ * ⛔ NO "use client" HERE, AND ONLY CLIENT CODE MAY LOAD IT — `journey-on.ts`'s rule, for its reason: a hook in a server
++ * component builds and then fails on its first render. `test:visual-pass-r4j` §5 holds its loaders.
++ */
++import { useSyncExternalStore } from "react";
++
++/** The id of the empty, hidden span the not-found view writes into the page. */
++export const NOT_FOUND_MARK = "kp-not-found";
++/** Raised when the mark mounts and when it goes. */
++export const NOT_FOUND_EVENT = "50pick:not-found";
++
++export function subscribeNotFound(onChange: () => void): () => void {
++  window.addEventListener(NOT_FOUND_EVENT, onChange);
++  return () => window.removeEventListener(NOT_FOUND_EVENT, onChange);
++}
++
++/** Whether the page on screen carries the mark (client only). */
++export function notFoundSnapshot(): boolean {
++  return document.getElementById(NOT_FOUND_MARK) !== null;
++}
++
++/** ⛔ Always false: the server render, and the hydration that matches it, are today's page. */
++export function notFoundServerSnapshot(): boolean {
++  return false;
++}
++
++/** Announce that the mark came or went: `NotFoundMark`'s effect, on mount and on cleanup. */
++export function announceNotFound(): void {
++  window.dispatchEvent(new Event(NOT_FOUND_EVENT));
++}
++
++/** True while a not-found page is on screen. */
++export function useNotFoundShown(): boolean {
++  return useSyncExternalStore(subscribeNotFound, notFoundSnapshot, notFoundServerSnapshot);
++}

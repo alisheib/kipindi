@@ -1,0 +1,10 @@
+PASS 1.1 every client-facing route has a ruling in §4
+PASS 1.2 every route §4 names still exists on disk
+PASS 2.1 CONTROL: the route glob found a real population — 59 non-admin page.tsx routes
+PASS 2.2 CONTROL: §4 was located and parsed — 7872 chars, 59 routes named
+PASS 2.3 CONTROL: the two sides genuinely overlap — this is a comparison, not two lists — 59 routes matched on both sides
+PASS 2.4 CONTROL: admin and api are excluded from the population
+
+route-census: 6 passed, 0 failed · 59 routes on disk · 59 named in §4
+route-census: OK — every client-facing route has a ruling, and every ruling has a route
+

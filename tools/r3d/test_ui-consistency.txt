@@ -1,0 +1,71 @@
+﻿UI-consistency linter
+
+  Findings by rule:
+       0  [E] dropped-aria-label-prop
+       0  [E] native-select
+       0  [E] native-datetime
+       0  [E] native-checkbox
+       0  [E] hand-rolled-split-bar
+       0  [E] tipping-bar-without-cold-start
+       0  [E] hardcoded-pill-active
+       0  [E] tr-restates-row-hover
+       1  [W] adhoc-portal
+       0  [E] undefined-admin-table-class
+      48  [W] raw-button-btn-class
+      10  [W] bare-text-button
+       0  [E] collapsing-label-without-aria-label
+       0  [E] combobox-trigger-truncates
+       0  [W] unwrappable-identifier
+       0  [W] btn-inline-height-override
+      75  [E] numeric-size-utility
+       0  [W] table-not-admin-tbl
+  ── 134 findings across 70 (rule,file) pairs, 1374 source files.
+
+  Baseline: 72 (rule,file) pairs, 136 known findings.
+
+  ✓ 2 baseline entries improved — re-baseline to lock in the win:
+      numeric-size-utility::src/app/results/loading.tsx: 1 → 0
+      raw-button-btn-class::src/components/profile/email-editor.tsx: 1 → 0
+      → npm run test:ui-consistency -- --update-baseline
+
+  KIT PINS — the form atoms, rendered in English (vb6)
+    PASS K0b the in-memory copies with NOTHING planted — input.tsx, and modal.tsx's gate — pass K1, K3d, K3g, K7 and K8, so a red plant below is the plant
+    PASS K1 ⭐ a Field with an error renders it as role=alert, and its control's aria-describedby names that line
+    PASS K1b …and the control reads invalid: the Field's error and the box are one fact
+    PASS K1c a Field with only a hint renders no alert and no aria-invalid, and its control is described by the hint
+    PASS K1d CONTROL · a copy of input.tsx whose error line lost role=alert fails K1's judge
+    PASS K2 a Field marked optional says so after its label, in the dictionary's words
+    PASS K2b a Field marked required puts aria-required on its control — and an unmarked one does not
+    PASS K2c the control's name is the legend alone (aria-labelledby), so the lines under it are read once, as its description
+    PASS K2d a control that brings its own name keeps it — the legend never overrides an aria-label
+    PASS K3 a numeric box's bounds are stated in its hint — min and max are inert on the text input that renders it
+    PASS K3b after a hint that ends a sentence the bound follows a space; a min of 0 on a box that cannot go negative is not stated
+    PASS K3c after a hint that does not end a sentence the bound follows a middle dot — 'Current TZS 1,000' and 'Min 1,000' never run together
+    PASS K3d ⭐ the bounds are read from the child's PROPS: a numeric box whose element type is not the Input itself (a Server Component page's lazy reference) still states them
+    PASS K3e CONTROL · a copy of input.tsx that checks the child's TYPE (the first build) fails K3d's judge — no bound on a server page
+    PASS K3g ⭐ a numeric box handed over INSIDE A LAZY WRAPPER — as the server's Flight client hands a Server Component page's element when something it names had not arrived — still states its bounds, loaded already or a moment later: the server's HTML says what the browser's does (the responsible-gambling page threw its tree away on every load, 2026-10-08)
+    PASS K3h CONTROL · a copy of input.tsx that does not open the wrapper (the build before) fails K3g's judge
+    PASS K3f a box that is not numeric states no bounds
+    PASS K4 ⭐ Textarea takes an error: the danger border, the danger wash and aria-invalid — as the Input does
+    PASS K4b …and inside a Field with an error it reads invalid and is described by the alert
+    PASS K4c a caller's own aria-invalid paints the box too — one fact (the composer bodies set it today)
+    PASS K4d a Textarea with no error carries no aria-invalid and keeps the ordinary border
+    PASS K5 ⭐ Select takes an error: aria-invalid on the combobox, the danger border and the danger wash
+    PASS K5b …and inside a Field with an error the combobox reads invalid and names the alert — no hand-written line needed
+    PASS K5c a Select with no error has no aria-invalid and keeps the ordinary border
+    PASS K6 ⭐ DateSelect takes an error: each of its three segments (named in English here) reads invalid, and the box is painted red
+    PASS K6b with no error, no segment reads invalid and the box keeps its border
+    PASS K6c required is checked in JavaScript: a submit of the field's form with no date asks for one (a noValidate form never shows the bubble)
+    PASS K6d CONTROL · the same check on a DateSelect that no longer listens for the submit is red
+    PASS K7 ⭐ a count gate arms on the count as the title writes it — '2,981', '2 981', a no-break-space grouping and '2981'
+    PASS K7b …and on nothing else: '2981.0', '29810', '2,9810', '298' and an empty entry stay disarmed
+    PASS K7c a word gate is unchanged: 'delete' arms DELETE as it always did, 'DELET' and '2,981' do not
+    PASS K7d it still fails closed — an empty word never arms — and a medium confirm is always armed
+    PASS K7e CONTROL · a copy of modal.tsx's gate that compares the exact text again (the pre-fix gate) fails K7's judge — '2,981' stays disarmed
+    PASS K7f the dialog arms through that rule, opens a numeric keypad for a count, and confirms on Enter through a form that stops at the dialog
+    PASS K7g CONTROL · a gate form whose submit could climb to the page's own form is reported
+    PASS K8 ⭐ a Field's notice line is a live region that is ALWAYS mounted — empty while nothing is owed, its classes exactly text-body-sm and text-text (no margin, padding or minimum height to give it a height) — and its control does not name it until it holds words
+    PASS K8b CONTROL · a copy of input.tsx that mounts the notice only once it holds words (the first build) fails K8's judge — a region created already holding its words is announced unreliably
+    PASS K8c CONTROL · a copy of input.tsx whose empty notice carries one more class (py-1) fails K8's judge — the empty region would take a height under every field
+
+  ALL PASS — no new UI-consistency drift beyond the tracked baseline.

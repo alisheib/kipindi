@@ -1,0 +1,1 @@
+S="C:/Users/asheib/AppData/Local/Temp/claude/C--Users-asheib/0e745525-51fe-4451-ace7-c9987576fc15/scratchpad"; node "$S/find-report.cjs" "# R5-C" "$S/r5c/report.md" | cut -c1-260

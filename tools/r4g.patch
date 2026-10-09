@@ -1,0 +1,1167 @@
+diff --git a/docs/PLAYER-QUERY-CAMPAIGN.md b/docs/PLAYER-QUERY-CAMPAIGN.md
+index 4a916a71d..18988a3ec 100644
+--- a/docs/PLAYER-QUERY-CAMPAIGN.md
++++ b/docs/PLAYER-QUERY-CAMPAIGN.md
+@@ -1003,7 +1003,13 @@ total written in prose.
+ | Journey hub | `/account` | A fixed list of doors, not a collection. Journey only: every request the journey is not shown to gets the not-found page until S15 (Vodacom plan S6 WP5, SJ-17). |
+ | Public agent | `/agent` · `/agent/apply` · `/agent/status` | Static copy and a form. |
+ | Legal | `/legal/terms` · `/legal/aml` · `/legal/privacy` · `/legal/responsible-gambling` · `/legal/agent-terms` · `/legal/rules` · `/legal/rules/yes-no` · `/legal/rules/up-down` | A document is read, not queried — but see the ruling below. |
+-| Other | `/` · `/help` · `/offline` | See the rulings below. |
++| Other | `/` · `/help` | See the rulings below. |
++
++> ⭐ **THE OFFLINE FALLBACK LEFT THIS CENSUS ON 2026-10-09 (R4-G, the Vodacom visual pass), BECAUSE IT IS NO LONGER A
++> PAGE.** It was `src/app/offline/page.tsx`; it is now a route handler, `src/app/offline/route.ts`, answering one
++> self-contained document with no shell, no session and nothing listed — so `test:route-census`'s population
++> (`page.tsx` files) no longer holds it, and this section must not name it. Its ruling would have been "nothing", for
++> the reason it always had: one message and one retry.
+ 
+ > 🔴 **`/auth/admin` WAS MISSING FROM THIS CENSUS UNTIL 2026-09-08, AND `test:route-census` FOUND
+ > IT ON ITS FIRST RUN.** It is the staff sign-in page — a client-facing route that is NOT under
+diff --git a/package.json b/package.json
+index 8a1509616..f49b32e95 100644
+--- a/package.json
++++ b/package.json
+@@ -648,6 +648,8 @@
+     "qa:journey-funnel": "node scripts/qa-journey-funnel.cjs",
+     "test:journey-shell": "tsx scripts/journey-shell.test.mts",
+     "red:journey-shell": "tsx scripts/journey-shell.test.mts --prove-red",
++    "test:offline-neutral": "tsx scripts/offline-neutral.test.mts",
++    "red:offline-neutral": "tsx scripts/offline-neutral.test.mts --prove-red",
+     "test:journey-account": "tsx scripts/journey-account.test.mts",
+     "red:journey-account": "tsx scripts/journey-account.test.mts --prove-red",
+     "test:journey-tickets": "tsx scripts/journey-tickets.test.mts",
+diff --git a/public/sw.js b/public/sw.js
+index 48c0ac00d..c6f269bd5 100644
+--- a/public/sw.js
++++ b/public/sw.js
+@@ -16,19 +16,33 @@
+ // v3 → v4 (2026-09-14, E-381 §6 item 13): static assets are now stale-while-revalidate, so a same-URL asset
+ // refreshes on the next visit by itself — this name no longer has to be bumped by hand for that. The bump
+ // clears caches written by the old cache-first rule once.
+-const CACHE_NAME = "50pick-v4";
++// 🔴 v4 → v5 (2026-10-09, R4-G · the privacy and money-truth fix): EVERY CACHE UP TO v4 MAY HOLD A PERSON'S PAGE.
++// "/offline" was a page rendered inside the app shell, and `cache.add` sent the session cookie with it, so the cached
++// copy was the header of whoever was signed in at install — their balance, their avatar, the staff preview strip —
++// shown offline to anybody on that phone afterwards. The name is bumped so `activate` below deletes those caches on
++// every device that already holds one; the new copy is fetched with no cookie (`precacheRequest`) and is a document
++// that reads nothing from its request (`src/app/offline/route.ts`). ⛔ Never reuse a name up to v4.
++const CACHE_NAME = "50pick-v5";
+ // C2j — dedicated branded offline route (precached below) instead of falling
+-// back to the data-heavy home page.
++// back to the data-heavy home page. Since R4-G a self-contained document, not a page: `src/lib/offline-document.ts`.
+ const OFFLINE_URL = "/offline";
+ 
+ // Static assets worth caching for instant repeat loads
+ const PRECACHE = [
+-  "/offline",
++  OFFLINE_URL,
+   "/favicon.svg",
+   "/favicon.ico",
+   "/brand/mark-color.svg",
+ ];
+ 
++/**
++ * ⛔ A PRECACHE REQUEST CARRIES NO COOKIE (R4-G, 2026-10-09). `cache.add(url)` builds a same-origin request, and a
++ * same-origin request sends the session cookie: the server rendered "/offline" for the person signed in and this
++ * worker kept it. `credentials: "omit"` sends no cookie at all (no session, no language, no preview pass), and
++ * `cache: "reload"` lets no HTTP-cache copy answer in the network's place.
++ */
++const precacheRequest = (url) => new Request(url, { credentials: "omit", cache: "reload" });
++
+ // Install: precache critical assets.
+ // ⚠️ E-381 §6 item 13 · ONE AT A TIME, NOT addAll. `cache.addAll` is atomic: one failed precache fetch (a deploy
+ // in progress, a flaky connection) rejected the whole install and discarded the worker — and with it the offline
+@@ -36,19 +50,56 @@ const PRECACHE = [
+ self.addEventListener("install", (event) => {
+   event.waitUntil(
+     caches.open(CACHE_NAME).then((cache) =>
+-      Promise.allSettled(PRECACHE.map((url) => cache.add(url)))),
++      Promise.allSettled(PRECACHE.map((url) => cache.add(precacheRequest(url))))),
+   );
+   self.skipWaiting();
+ });
+ 
+-/** The branded offline page if it is cached, otherwise a minimal one — never `undefined`. */
++/**
++ * The last resort, when even the offline document was never cached: its own three languages — each phrase exactly as
++ * `src/lib/i18n-dict.ts` writes `common.offline`, `common.offlineHint` and `error.tryAgain` (`test:offline-neutral`
++ * holds every one to the dictionary) — chosen when it is SHOWN from the `kp-locale` cookie or the saved choice, with a
++ * retry, and a reload by itself when the connection comes back. Swahili, the platform default, when nothing is chosen.
++ */
++const FALLBACK_DEFAULT = "sw";
++const FALLBACK_WORDS = {
++  en: { offline: "You’re offline", hint: "Some features may not work", retry: "Try again" },
++  sw: { offline: "Hauko mtandaoni", hint: "Baadhi ya vipengele huenda visifanye kazi", retry: "Jaribu tena" },
++  zh: { offline: "您已离线", hint: "部分功能可能无法使用", retry: "再试一次" },
++};
++
++function fallbackDocument() {
++  const langs = Object.keys(FALLBACK_WORDS);
++  const esc = (s) => s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
++  const say = (k) => langs.map((l) => `<span class="l" lang="${l}">${esc(FALLBACK_WORDS[l][k])}</span>`).join("");
++  const hide = langs.map((l) => `html:not([lang="${l}"]) .l[lang="${l}"]`).join(",");
++  const titles = JSON.stringify(Object.fromEntries(langs.map((l) => [l, `${FALLBACK_WORDS[l].offline} · 50pick`]))).replace(/</g, "\\u003c");
++  return `<!doctype html><html lang="${FALLBACK_DEFAULT}" translate="no" class="notranslate"><head><meta charset="utf-8">`
++    + '<meta name="viewport" content="width=device-width, initial-scale=1"><meta name="google" content="notranslate">'
++    + `<title>${esc(FALLBACK_WORDS[FALLBACK_DEFAULT].offline)} · 50pick</title>`
++    + `<script>(function(){var L=${JSON.stringify(langs)},T=${titles},N="kp-locale",l="${FALLBACK_DEFAULT}",v=null;`
++    + 'try{var m=document.cookie.match(new RegExp("(?:^|; )"+N+"=([^;]*)"));if(m)v=decodeURIComponent(m[1])}catch(e){}'
++    + "if(L.indexOf(v)<0){try{v=localStorage.getItem(N)}catch(e){v=null}}"
++    + "if(L.indexOf(v)>=0)l=v;document.documentElement.lang=l;document.title=T[l]})();</script>"
++    + `<style>${hide}{display:none}body{margin:0;min-height:100vh;display:grid;place-items:center;background:#0b0d2e;color:#e8e9f5;`
++    + "font:16px system-ui,sans-serif;text-align:center;padding:24px}h1{font-size:20px;margin:0 0 8px}p{margin:0 0 20px}"
++    + "button{font:600 14px system-ui,sans-serif;height:44px;padding:0 16px;border-radius:999px;border:1px solid oklch(40% 0.20 268);"
++    + "background:oklch(53% 0.20 268);color:oklch(99% 0.006 268);cursor:pointer}</style></head>"
++    + `<body><main id="main-content"><h1>${say("offline")}</h1><p>${say("hint")}</p>`
++    + `<button type="button" id="kp-offline-retry">${say("retry")}</button></main>`
++    + `<script>(function(){function again(){if(location.pathname===${JSON.stringify(OFFLINE_URL)})location.replace("/");else location.reload()}`
++    + 'var b=document.getElementById("kp-offline-retry");if(b)b.addEventListener("click",again);'
++    + 'window.addEventListener("online",again)})();</script></body></html>';
++}
++
++/**
++ * The offline document if it is cached, otherwise the last resort above — never `undefined`.
++ * ⛔ Looked up in THIS worker's cache only: a cache from an older name can never answer, even in the moment before
++ * `activate` has deleted it.
++ */
+ function offlineResponse() {
+-  return caches.match(OFFLINE_URL).then((cached) => cached || new Response(
+-    '<!doctype html><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">'
+-      + '<title>50pick · offline</title><body style="margin:0;min-height:100vh;display:grid;place-items:center;'
+-      + 'background:#0b0d2e;color:#e8e9f5;font:16px system-ui,sans-serif;text-align:center;padding:24px">'
+-      + '<div><p style="font-weight:700;font-size:20px">You are offline</p>'
+-      + '<p>Check your connection and try again · Hakuna mtandao, jaribu tena.</p></div></body>',
++  return caches.open(CACHE_NAME).then((cache) => cache.match(OFFLINE_URL)).then((cached) => cached || new Response(
++    fallbackDocument(),
+     { status: 503, headers: { "content-type": "text/html; charset=utf-8", "cache-control": "no-store" } },
+   ));
+ }
+diff --git a/scripts/design-frozen.test.mts b/scripts/design-frozen.test.mts
+index 0e3b2083d..404b88c8c 100644
+--- a/scripts/design-frozen.test.mts
++++ b/scripts/design-frozen.test.mts
+@@ -330,8 +330,9 @@ const CONSUMES_SYSTEM = /var\(--/;
+  *     before any stylesheet exists.
+  *   - a colour passed into a JS library's option object (the QR encoder) is an
+  *     argument, not a style.
+- *   - `env(safe-area-inset-*)` is the DEVICE's number, not ours. `offline-banner`
+- *     computes its top padding from the notch; no token can express that.
++ *   - `env(safe-area-inset-*)` is the DEVICE's number, not ours: a padding computed
++ *     from the notch cannot be a token. (`offline-banner` was the example until
++ *     2026-10-09, when it became an in-flow NoticeBar with no inline style.)
+  */
+ const CANNOT_TOKENIZE = /\bthemeColor\b|QRCode\.|toDataURL\(|\benv\(/;
+ /** A keyword is not a design value — it is the absence of one. */
+diff --git a/scripts/journey-shell.test.mts b/scripts/journey-shell.test.mts
+index e84d8ce71..9c48e498e 100644
+--- a/scripts/journey-shell.test.mts
++++ b/scripts/journey-shell.test.mts
+@@ -447,7 +447,9 @@ const EXPECTED: Record<string, Expect> = {
+   "/auth/2fa": AUTH, "/auth/admin": AUTH, "/auth/forgot-password": AUTH, "/auth/login": AUTH, "/auth/otp": AUTH,
+   "/auth/register": AUTH, "/auth/reset-password": AUTH, "/auth/verify-email": AUTH,
+   "/s": OPT_OUT, "/s/[token]": OPT_OUT,
+-  "/offline": { tab: null, why: "the service worker's offline fallback, a page a reader is sent to and never browses to" },
++  // `/offline` LEFT THE CENSUS ON 2026-10-09 (R4-G): it is a route handler now (`src/app/offline/route.ts`), a
++  // self-contained document with no shell and no tabs, not a page — so it is on no reader's tab bar to decide.
++  // `lib/nav/active-tab.ts` keeps its no-tab row: the path still lights nothing, whatever answers it.
+ };
+ /**
+  * Decided before its page exists. ⛔ An entry here EXPIRES: `1.census.ahead` fails once the page is on disk, so the
+@@ -1881,7 +1883,7 @@ const EXTERNAL: ReadonlyArray<{ route: string; file: string; cite: string; why:
+   { route: "/auth/verify-email", file: "src/lib/server/email-verification.ts", cite: "/auth/verify-email?token=", why: "the confirmation link, sent by email" },
+   { route: "/s", file: "src/lib/marketing/footer.ts", cite: 'OPTOUT_PATH = "/s/"', why: "a marketing SMS's opt-out link that lost its token" },
+   { route: "/s/[token]", file: "src/lib/marketing/footer.ts", cite: 'OPTOUT_PATH = "/s/"', why: "the opt-out link in every marketing SMS" },
+-  { route: "/offline", file: "public/sw.js", cite: 'OFFLINE_URL = "/offline"', why: "the service worker's offline fallback" },
++  // (`/offline` left with its census entry, 2026-10-09: a route handler's document, not a page — see EXPECTED.)
+ ];
+ /**
+  * A15: the four doors two tickets routes enter through — each classic page's own, which every classic reader uses, and
+diff --git a/scripts/offline-neutral.test.mts b/scripts/offline-neutral.test.mts
+new file mode 100644
+index 000000000..556afbf19
+--- /dev/null
++++ b/scripts/offline-neutral.test.mts
+@@ -0,0 +1,482 @@
++/**
++ * test:offline-neutral — THE OFFLINE PAGE HOLDS NO PERSON, SPEAKS THE LANGUAGE OF NOW, RECOVERS, AND THE OFFLINE
++ * NOTICE COVERS NOTHING (R4-G, the Vodacom visual pass, 2026-10-09 — edge scenario 9, tiles 453–485).
++ *
++ *   npm run test:offline-neutral
++ *   npm run red:offline-neutral    (--prove-red: every defect below is planted IN MEMORY and must be caught)
++ *
++ * What the edge drive found, and what each section holds:
++ *   §1 THE PRECACHE SENDS NO COOKIE. `cache.add("/offline")` sent the session cookie, so the copy the worker kept was
++ *      the shell rendered for whoever was signed in. The install handler is RUN here, against a recording cache.
++ *   §2 EVERY CACHE THAT MAY HOLD A PERSON'S PAGE GOES. The name moved past every name that cached a page (v1–v4), the
++ *      activate handler (run here) leaves only the current cache, and the offline answer is read from that one alone.
++ *   §3 THE OFFLINE ROUTE READS NOTHING FROM THE REQUEST. A route handler (no root layout, so no shell), reading no
++ *      cookie, no header and no session; its only import besides the document is the public licence number.
++ *   §4 THE LANGUAGE OF NOW. The document's own head script is RUN for every cookie a phone can hold: `<html lang>` and
++ *      the title follow `kp-locale` at show time, and every phrase is the dictionary's own, one span per language.
++ *   §5 THE LOOK'S SOURCES. Every token, the primary button's paint, the backdrop and the two glyphs equal the files
++ *      they were copied from (the document cannot load the app's stylesheet offline, so it carries its own copy).
++ *   §6 NO PERSON, NOTHING TO HYDRATE. The built document carries no piece of the shell and no script but its own two.
++ *   §7 IT RECOVERS. The retry and the browser's `online` event reload the address asked for (home, on `/offline`).
++ *   §8 THE OFFLINE NOTICE COVERS NOTHING. The banner that lay on the header of both shells is a NoticeBar in AppShell's
++ *      flow, between the header and the page, positioned nowhere and announced as an alert.
++ *   §9 THE LAST RESORT SPEAKS ALL THREE LANGUAGES. The worker's own fallback (when even the document was never
++ *      cached) was English and Swahili only; its words are held to the dictionary and its scripts are RUN as in §4/§7.
++ *   §10 PUSH AND THE STATIC-ASSET STRATEGY ARE UNTOUCHED, by running their handlers.
++ *
++ * ⛔ IN-PROCESS BY CONSTRUCTION: it reads files, builds the document in memory and runs scripts in a `vm` sandbox; it
++ * opens nothing for writing (so `test:red-anchors` §4 counts its red twin as in-process).
++ */
++import { readFileSync, existsSync } from "node:fs";
++import { join } from "node:path";
++import vm from "node:vm";
++import { decomment, decommentCss } from "./lib/decomment.mts";
++import { dict, DEFAULT_LOCALE, type Dict } from "../src/lib/i18n-dict.ts";
++import { MARK } from "../src/lib/brand-mark.ts";
++import * as OD from "../src/lib/offline-document.ts";
++
++const ROOT = new URL("..", import.meta.url).pathname.replace(/^\/([A-Za-z]:)/, "$1");
++const PROVE_RED = process.argv.includes("--prove-red");
++const read = (p: string) => readFileSync(join(ROOT, p), "utf8").replace(/\r\n/g, "\n");
++
++const F = {
++  sw: "public/sw.js",
++  route: "src/app/offline/route.ts",
++  page: "src/app/offline/page.tsx",
++  doc: "src/lib/offline-document.ts",
++  banner: "src/components/ui/offline-banner.tsx",
++  noticeBar: "src/components/ui/notice-bar.tsx",
++  shell: "src/components/layout/app-shell.tsx",
++  globals: "src/app/globals.css",
++  topo: "src/components/brand-topo.tsx",
++  glyphs: "src/components/ui/glyphs.tsx",
++  layout: "src/app/layout.tsx",
++  i18n: "src/lib/i18n.tsx",
++} as const;
++
++type World = {
++  sw: string; route: string; docModule: string; pageExists: boolean; doc: string;
++  banner: string; noticeBar: string; shell: string; globals: string; topo: string; glyphs: string; layout: string; i18n: string;
++  tokens: Record<string, string>; primary: Record<string, string>;
++  topoData: { opacity: number; width: number; height: number; stroke: string; strokeWidth: string; paths: readonly string[] };
++  glyphData: Record<string, string>;
++};
++
++const LICENCE = "GBT-TEST-0001";
++const REAL: World = {
++  sw: read(F.sw), route: read(F.route), docModule: read(F.doc), pageExists: existsSync(join(ROOT, F.page)),
++  doc: OD.offlineDocument({ licenceNumber: LICENCE }),
++  banner: read(F.banner), noticeBar: read(F.noticeBar), shell: read(F.shell), globals: read(F.globals), topo: read(F.topo),
++  glyphs: read(F.glyphs), layout: read(F.layout), i18n: read(F.i18n),
++  tokens: { ...OD.OFFLINE_TOKENS }, primary: { ...OD.OFFLINE_PRIMARY },
++  topoData: { ...OD.OFFLINE_TOPO, paths: [...OD.OFFLINE_TOPO.paths] }, glyphData: { ...OD.OFFLINE_GLYPHS },
++};
++
++const LOCALES = Object.keys(dict) as Array<keyof typeof dict>;
++const T = (l: keyof typeof dict) => dict[l] as Dict;
++const j = (v: unknown) => JSON.stringify(v);
++const squash = (s: string) => s.replace(/\s+/g, " ").trim();
++const htmlEsc = (s: string) => s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#39;");
++/** Every name a cache that held the old "/offline" page could have had: the worker's names up to v4. */
++const TAINTED = new Set(["50pick-v1", "50pick-v2", "50pick-v3", "50pick-v4"]);
++const ORIGIN = "https://50pick.tz";
++
++/* ── the service worker, run in a sandbox ──────────────────────────────────────────────────────────────────────── */
++
++class FakeRequest {
++  url: string; credentials: string; cache: string; mode: string; method = "GET";
++  constructor(url: string, init: { credentials?: string; cache?: string; mode?: string } = {}) {
++    this.url = String(url); this.credentials = init.credentials ?? "same-origin"; this.cache = init.cache ?? "default"; this.mode = init.mode ?? "cors";
++  }
++}
++class FakeResponse {
++  body: string; status: number; ok: boolean; headers: Record<string, string>;
++  constructor(body: string, init: { status?: number; headers?: Record<string, string> } = {}) {
++    this.body = body; this.status = init.status ?? 200; this.ok = this.status >= 200 && this.status < 300; this.headers = init.headers ?? {};
++  }
++  clone() { return this; }
++}
++const keyOf = (r: unknown) => (typeof r === "string" ? r : (r as { url: string }).url).replace(ORIGIN, "");
++
++function loadSw(src: string, seed: Record<string, Record<string, string>> = {}) {
++  const handlers: Record<string, (e: unknown) => unknown> = {};
++  const store = new Map<string, Map<string, FakeResponse>>();
++  for (const [name, entries] of Object.entries(seed)) store.set(name, new Map(Object.entries(entries).map(([u, b]) => [u, new FakeResponse(b)])));
++  const added: Array<{ cache: string; req: unknown }> = [];
++  const shown: Array<{ title: string; options: Record<string, unknown> }> = [];
++  const fetched: string[] = [];
++  const caches = {
++    open: async (name: string) => {
++      if (!store.has(name)) store.set(name, new Map());
++      const m = store.get(name)!;
++      return {
++        add: async (r: unknown) => { added.push({ cache: name, req: r }); m.set(keyOf(r), new FakeResponse(`<precached ${keyOf(r)}>`)); },
++        match: async (r: unknown) => m.get(keyOf(r)),
++        put: async (r: unknown, res: FakeResponse) => { m.set(keyOf(r), res); },
++      };
++    },
++    keys: async () => [...store.keys()],
++    delete: async (n: string) => store.delete(n),
++    match: async (r: unknown) => { for (const m of store.values()) { const hit = m.get(keyOf(r)); if (hit) return hit; } return undefined; },
++  };
++  const self = {
++    addEventListener: (t: string, fn: (e: unknown) => unknown) => { handlers[t] = fn; },
++    skipWaiting: () => undefined,
++    clients: { claim: () => undefined, matchAll: async () => [], openWindow: async () => undefined },
++    location: { origin: ORIGIN },
++    registration: { showNotification: async (title: string, options: Record<string, unknown>) => { shown.push({ title, options }); } },
++  };
++  const ctx = vm.createContext({
++    self, caches, Request: FakeRequest, Response: FakeResponse, URL, Promise, Object, JSON, console,
++    fetch: async (r: unknown) => { fetched.push(keyOf(r)); throw new TypeError("Failed to fetch (offline)"); },
++  });
++  vm.runInContext(src, ctx, { filename: "sw.js" });
++  const event = (extra: Record<string, unknown>) => {
++    const waits: Promise<unknown>[] = [];
++    let answer: Promise<unknown> | undefined;
++    // A rejected answer (an uncached asset with the network down) is "no answer", never a throw out of the check.
++    const e = { ...extra, waitUntil: (p: Promise<unknown>) => { waits.push(Promise.resolve(p).catch(() => undefined)); }, respondWith: (p: Promise<unknown>) => { answer = Promise.resolve(p).catch(() => undefined); } };
++    return { e, settle: async () => { await Promise.all(waits); return answer ? await answer : undefined; } };
++  };
++  const fire = async (type: string, extra: Record<string, unknown> = {}) => {
++    const h = handlers[type];
++    if (!h) return { missing: true, answer: undefined as unknown };
++    const ev = event(extra);
++    h(ev.e);
++    return { missing: false, answer: await ev.settle() };
++  };
++  const get = (expr: string) => { try { return vm.runInContext(expr, ctx); } catch { return undefined; } };
++  return { handlers, store, added, shown, fetched, fire, get };
++}
++
++/* ── a document's own scripts, run in a sandbox ────────────────────────────────────────────────────────────────── */
++
++type DocEnv = { cookie?: string; stored?: string | null; storageThrows?: boolean; pathname?: string };
++function runDoc(html: string, env: DocEnv) {
++  const scripts = [...html.matchAll(/<script>([\s\S]*?)<\/script>/g)].map((m) => m[1]);
++  const win: Record<string, Array<() => void>> = {};
++  const button = { on: {} as Record<string, Array<() => void>>, addEventListener(t: string, f: () => void) { (this.on[t] ??= []).push(f); } };
++  const calls: string[] = [];
++  const document = {
++    cookie: env.cookie ?? "", documentElement: { lang: "<server>" }, title: "<server>",
++    getElementById: (id: string) => (id === OD.OFFLINE_RETRY_ID ? button : null),
++  };
++  const localStorage = { getItem: (k: string) => { if (env.storageThrows) throw new Error("storage blocked"); return k === OD.OFFLINE_LOCALE_COOKIE ? env.stored ?? null : null; } };
++  const location = { pathname: env.pathname ?? "/positions", reload: () => calls.push("reload"), replace: (u: string) => calls.push(`replace:${u}`) };
++  const addEventListener = (t: string, f: () => void) => { (win[t] ??= []).push(f); };
++  const ctx = vm.createContext({ document, localStorage, location, window: { addEventListener }, addEventListener, RegExp, decodeURIComponent, JSON });
++  let error: string | null = null;
++  for (const s of scripts) { try { vm.runInContext(s, ctx); } catch (e) { error = String(e); } }
++  return { scripts: scripts.length, lang: document.documentElement.lang, title: document.title, button, win, calls, error };
++}
++
++/* ── the checks ────────────────────────────────────────────────────────────────────────────────────────────────── */
++
++async function run(W: World, log: (l: string) => void): Promise<string[]> {
++  const failed: string[] = [];
++  const ok = (label: string, cond: boolean, extra = "") => {
++    if (cond) log(`  PASS ${label}`);
++    else { failed.push(label); log(`  FAIL ${label}${extra ? ` — ${extra}` : ""}`); }
++  };
++
++  log("§1 · the precache sends no cookie");
++  {
++    const sw = loadSw(W.sw);
++    const inst = await sw.fire("install");
++    const reqs = sw.added.map((a) => a.req as { url?: string; credentials?: string; cache?: string } | string);
++    const offline = reqs.find((r) => (typeof r === "string" ? r : r.url) === "/offline");
++    const omitted = reqs.length > 0 && reqs.every((r) => typeof r !== "string" && r.credentials === "omit");
++    ok("1.install · the install handler precaches the offline document", !inst.missing && offline !== undefined, j(reqs));
++    ok("1.omit · every precache request is sent with `credentials: \"omit\"` — no session, no language, no preview pass rides along",
++      omitted, j(reqs.map((r) => (typeof r === "string" ? `${r} (a bare URL: same-origin credentials)` : `${r.url} ${r.credentials}`))));
++    ok("1.reload · …and with `cache: \"reload\"`, so no HTTP-cache copy answers in the network's place",
++      reqs.length > 0 && reqs.every((r) => typeof r !== "string" && r.cache === "reload"), j(reqs));
++  }
++
++  log("§2 · every cache that may hold a person's page is deleted, and none is read");
++  {
++    const name = loadSw(W.sw).get("CACHE_NAME") as string | undefined;
++    ok("2.name · the cache name is past every name that cached a page (50pick-v1…v4)", typeof name === "string" && !TAINTED.has(name) && /^50pick-v\d+$/.test(name), String(name));
++    const sw = loadSw(W.sw, { "50pick-v4": { "/offline": "<PERSON: Salio TZS 100,000>" }, "50pick-v3": { "/offline": "<PERSON>" }, "someone-else": {} });
++    await sw.fire("install");
++    await sw.fire("activate");
++    const left = [...sw.store.keys()];
++    ok("2.activate · after install and activate, the worker's own cache is the only one left", left.length === 1 && left[0] === name, j(left));
++    const fresh = loadSw(W.sw, { "50pick-v4": { "/offline": "<PERSON: Salio TZS 100,000>" } });
++    const nav = await fresh.fire("fetch", { request: new FakeRequest(`${ORIGIN}/positions`, { mode: "navigate" }) });
++    const body = (nav.answer as FakeResponse | undefined)?.body ?? "";
++    ok("2.lookup · a failed navigation is never answered from an older cache, even before `activate` has run",
++      !nav.missing && !body.includes("PERSON") && body.length > 0, body.slice(0, 80));
++    const installed = loadSw(W.sw);
++    await installed.fire("install");
++    const nav2 = await installed.fire("fetch", { request: new FakeRequest(`${ORIGIN}/positions`, { mode: "navigate" }) });
++    ok("2.served · once installed, a failed navigation is answered with the precached offline document",
++      (nav2.answer as FakeResponse | undefined)?.body === "<precached /offline>", (nav2.answer as FakeResponse | undefined)?.body ?? "nothing");
++  }
++
++  log("§3 · the offline route reads nothing from the request");
++  {
++    const route = decomment(W.route);
++    const mod = decomment(W.docModule);
++    const importsOf = (s: string) => [...s.matchAll(/^\s*import\s[^;]*?from\s+"([^"]+)"/gm)].map((m) => m[1]);
++    const READS = /\bcookies\s*\(|\bheaders\s*\(|\bgetSession\b|\bcurrentSession\b|\breadVerifiedSession\b|\bSESSION_COOKIE\b|\bresolveSimpleJourney\b|\breq(?:uest)?\.(?:cookies|headers)\b/;
++    ok("3.page · /offline is not a page: no `page.tsx`, so the root layout (and AppShell) never wraps it", !W.pageExists, F.page);
++    ok("3.handler · the route answers GET with a Response built by `offlineDocument`, taking no request at all",
++      /export\s+(?:async\s+)?function\s+GET\s*\(\s*\)/.test(route) && /offlineDocument\(/.test(route), squash(route.slice(0, 400)));
++    ok("3.imports · the route imports only the document and the public licence number; the document only the dictionary and the mark",
++      j(importsOf(route).sort()) === j(["@/lib/offline-document", "@/lib/server/support-config"]) && j(importsOf(mod).sort()) === j(["@/lib/brand-mark", "@/lib/i18n-dict"]),
++      j({ route: importsOf(route), doc: importsOf(mod) }));
++    ok("3.reads · neither file reads a cookie, a header or a session", !READS.test(route) && !READS.test(mod),
++      (route.match(READS) ?? mod.match(READS) ?? [""])[0]);
++    ok("3.reads.c · CONTROL — the same matcher sees `await cookies()` and `getSession()`",
++      READS.test("const jar = await cookies();") && READS.test("const s = await getSession();") && !READS.test("getSupportConfig().licenceNumber"));
++    ok("3.licence · the licence number is the document's one input, and it reaches the page", W.doc.includes(`: ${LICENCE}</p>`));
++  }
++
++  log("§4 · the language the player has now");
++  {
++    const server = new RegExp(`^<!doctype html><html lang="${DEFAULT_LOCALE}"`).test(W.doc);
++    ok(`4.server · the bytes say the platform default (${DEFAULT_LOCALE}) until the page is shown`, server, W.doc.slice(0, 80));
++    const cases: Array<[string, DocEnv, string]> = [
++      ["en cookie", { cookie: "kp-locale=en" }, "en"],
++      ["zh cookie", { cookie: "kp-locale=zh" }, "zh"],
++      ["sw cookie", { cookie: "kp-locale=sw" }, "sw"],
++      ["cookie among others", { cookie: "a=1; kp-locale=zh; b=2" }, "zh"],
++      ["no cookie, nothing saved", {}, DEFAULT_LOCALE],
++      ["an unknown language", { cookie: "kp-locale=fr" }, DEFAULT_LOCALE],
++      ["a longer name that ends in kp-locale", { cookie: "xkp-locale=en" }, DEFAULT_LOCALE],
++      ["no cookie, the saved choice", { stored: "en" }, "en"],
++      ["the cookie wins over the saved choice", { cookie: "kp-locale=zh", stored: "en" }, "zh"],
++      ["storage blocked", { storageThrows: true }, DEFAULT_LOCALE],
++      ["a malformed cookie value", { cookie: "kp-locale=%E0%A4%A" }, DEFAULT_LOCALE],
++    ];
++    for (const [name, env, want] of cases) {
++      const r = runDoc(W.doc, env);
++      const title = `${T(want as keyof typeof dict).common.offline} · 50pick`;
++      ok(`4.lang.${name.replace(/\s+/g, "-")} · <html lang="${want}"> and the title "${title}"`, r.lang === want && r.title === title && r.error === null,
++        j({ lang: r.lang, title: r.title, error: r.error }));
++    }
++    const css = (W.doc.match(/<style>([\s\S]*?)<\/style>/) ?? ["", ""])[1];
++    const hideRule = css.match(/([^{}]*)\{display:none\}/)?.[1] ?? "";
++    const hidesAll = LOCALES.every((l) => hideRule.split(",").map((s) => s.trim()).includes(`html:not([lang="${l}"]) .l[lang="${l}"]`));
++    ok("4.css · the stylesheet hides every language's spans except the one `<html lang>` names", hidesAll, hideRule);
++    const PHRASES: Array<[string, string, (t: Dict) => string]> = [
++      ["title", `<h1 class="kp-off__title">`, (t) => t.common.offline],
++      ["hint", `<p class="kp-off__hint">`, (t) => t.common.offlineHint],
++      ["retry", `<button type="button" id="${OD.OFFLINE_RETRY_ID}" class="kp-off__retry">`, (t) => t.error.tryAgain],
++    ];
++    for (const [name, open, pick] of PHRASES) {
++      const at = W.doc.indexOf(open);
++      const spans = LOCALES.map((l) => `<span class="l" lang="${l}">${htmlEsc(pick(T(l)))}</span>`).join("");
++      const tail = at >= 0 ? W.doc.slice(at + open.length) : "";
++      const body = name === "retry" ? tail.replace(/^<svg[\s\S]*?<\/svg><span>/, "") : tail;
++      ok(`4.words.${name} · the ${name} is the dictionary's own words, one span per language, and nothing else`, at >= 0 && body.startsWith(spans + (name === "retry" ? "</span></button>" : name === "title" ? "</h1>" : "</p>")),
++        at < 0 ? `no ${open}` : body.slice(0, 160));
++    }
++    const footer = [(t: Dict) => t.footer.licensedByGbt, (t: Dict) => t.footer.stopGambling, (t: Dict) => t.footer.license];
++    const regulator = footer.every((pick) => LOCALES.every((l) => W.doc.includes(`<span class="l" lang="${l}">${htmlEsc(pick(T(l)))}</span>`)));
++    ok("4.footer · the regulator lines (licensed by the Gaming Board, the licence, the stop line) are the footer's own words in every language", regulator);
++  }
++
++  log("§5 · the look's sources");
++  {
++    const css = decommentCss(W.globals);
++    const first = (name: string) => css.match(new RegExp(`(?:^|[;{\\s])${name.replace(/[-]/g, "\\-")}\\s*:\\s*([^;]+);`))?.[1];
++    const drift = Object.entries(W.tokens).filter(([k, v]) => squash(first(k) ?? "<absent>") !== squash(v)).map(([k, v]) => `${k}: doc ${v} · globals.css ${first(k) ?? "absent"}`);
++    ok(`5.tokens · each of the document's ${Object.keys(W.tokens).length} tokens is globals.css's own value`, drift.length === 0 && Object.keys(W.tokens).length >= 15, drift.join(" | "));
++    const block = css.match(/(?:^|\n)\.btn-primary\s*\{([^}]*)\}/)?.[1] ?? "";
++    const decl = (p: string) => block.match(new RegExp(`(?:^|;)\\s*${p}\\s*:\\s*([^;]+);`))?.[1];
++    const pDrift = Object.entries(W.primary).filter(([k, v]) => squash(decl(k) ?? "<absent>") !== squash(v)).map(([k, v]) => `${k}: doc ${v} · .btn-primary ${decl(k) ?? "absent"}`);
++    ok("5.primary · the retry's paint is `.btn-primary`'s, property for property", block.length > 0 && pDrift.length === 0, pDrift.join(" | ") || "no .btn-primary block");
++    const topo = decomment(W.topo);
++    const topoPaths = [...topo.matchAll(/<path d="([^"]+)"/g)].map((m) => m[1]);
++    const topoOk = j(topoPaths) === j(W.topoData.paths) && topo.includes(`width="${W.topoData.width}" height="${W.topoData.height}"`)
++      && topo.includes(`stroke="${W.topoData.stroke}"`) && topo.includes(`strokeWidth="${W.topoData.strokeWidth}"`)
++      && new RegExp(`opacity\\s*=\\s*${String(W.topoData.opacity).replace(".", "\\.")}\\b`).test(topo);
++    ok("5.topo · the backdrop is BrandTopo's tile, ink, contours and default opacity", topoOk, j({ topoPaths }));
++    const glyphs = decomment(W.glyphs);
++    const inner = (name: string) => (glyphs.match(new RegExp(`\\b${name}: \\(p: GlyphProps\\) => <G \\{\\.\\.\\.p\\}>([\\s\\S]*?)</G>,`))?.[1] ?? "<absent>").replace(/\s*\/>/g, "/>").trim();
++    const gDrift = Object.entries(W.glyphData).filter(([k, v]) => inner(k) !== v).map(([k]) => `${k}: glyphs.tsx ${inner(k)}`);
++    ok("5.glyphs · the wifi-off disc and the retry's arrow are glyphs.tsx's own drawings", gDrift.length === 0, gDrift.join(" | "));
++    ok("5.mark · the mark is brand-mark.ts's one geometry", W.doc.includes(`<path d="${MARK.greenPath}" fill="${MARK.green}"/>`) && W.doc.includes(`<path d="${MARK.redPath}" fill="${MARK.red}"/>`));
++  }
++
++  log("§6 · no person, nothing to hydrate");
++  {
++    const SHELL_SIGNS = ["journey-top-bar", "kp-jhdr", "journey-balance", "journey-tabs", "journey-preview-marker", "data-kp-funnel", "app-topbar", "kp-rail", "avatar", "Salio", "Balance", "TZS", "__next_f", "/_next/", "<link"];
++    const found = SHELL_SIGNS.filter((s) => W.doc.includes(s));
++    ok("6.no-shell · the document carries no piece of the shell: no header, capsule, balance, rail, preview strip or avatar", found.length === 0, found.join(", "));
++    const tags = [...W.doc.matchAll(/<script\b([^>]*)>/g)].map((m) => m[1]);
++    ok("6.scripts · exactly two scripts, both its own and inline — no Next.js runtime, no chunk, nothing to hydrate", tags.length === 2 && tags.every((a) => a === ""), j(tags));
++    ok("6.no-react · the document module imports no React and no component", !/from\s+"react"|from\s+"@\/components\//.test(decomment(W.docModule)));
++    ok("6.landmark · one main landmark and one h1", (W.doc.match(/<main\b/g) ?? []).length === 1 && (W.doc.match(/<h1\b/g) ?? []).length === 1);
++  }
++
++  log("§7 · it recovers");
++  {
++    const away = runDoc(W.doc, { pathname: "/positions" });
++    (away.button.on.click ?? []).forEach((f) => f());
++    ok("7.retry · \"Jaribu tena\" reloads the address the player asked for", j(away.calls) === j(["reload"]), j(away.calls));
++    const back = runDoc(W.doc, { pathname: "/positions" });
++    (back.win.online ?? []).forEach((f) => f());
++    ok("7.online · the connection coming back reloads it by itself", j(back.calls) === j(["reload"]), j(back.calls));
++    const own = runDoc(W.doc, { pathname: "/offline" });
++    (own.button.on.click ?? []).forEach((f) => f());
++    ok("7.own · on /offline itself there is nothing to retry: home", j(own.calls) === j(["replace:/"]), j(own.calls));
++    const idle = runDoc(W.doc, { pathname: "/positions" });
++    ok("7.idle · nothing reloads by itself while the browser stays offline (no reload loop on a server that is down)", idle.calls.length === 0, j(idle.calls));
++  }
++
++  log("§8 · the offline notice covers nothing");
++  {
++    const banner = decomment(W.banner);
++    const shell = decomment(W.shell);
++    const nb = decomment(W.noticeBar);
++    const POSITIONED = /\b(?:fixed|absolute|sticky)\b|\bz-\[|\bz-\d|zIndex|\binset-|\btop-0\b|style=\{/;
++    ok("8.notice · the banner is the kit's warning NoticeBar, announced as an alert", /<NoticeBar\b[^>]*\btone="warning"[^>]*\bassertive\b/.test(banner), squash(banner.slice(banner.indexOf("return ("), banner.indexOf("return (") + 200)));
++    ok("8.unpositioned · …positioned nowhere: no fixed, absolute or sticky, no z-index, no inline style", !POSITIONED.test(banner), (banner.match(POSITIONED) ?? [""])[0]);
++    ok("8.unpositioned.c · CONTROL — the matcher sees the strip it replaced", POSITIONED.test(`className="fixed top-0 inset-x-0 z-[200] flex"`));
++    const root = nb.match(/return \(\s*<div([\s\S]*?)>/)?.[1] ?? "";
++    ok("8.noticebar · NoticeBar itself is in the flow, and `assertive` makes it an alert",
++      root.length > 0 && !/\b(?:fixed|absolute|sticky)\b/.test(root) && /role=\{assertive \? "alert" : "status"\}/.test(root), squash(root));
++    const MOUNT = "<Suspense fallback={null}><OfflineBanner /></Suspense>";
++    const body = shell.slice(shell.indexOf("export async function AppShell"), shell.indexOf("function SkipToContent"));
++    const at = body.indexOf(MOUNT);
++    const header = body.search(/<LazyJourneyTopBar\b[\s\S]*?<TopAppBar\b/);
++    const main = body.indexOf("<MainLandmark>");
++    ok("8.flow · AppShell mounts it once, after the header and before the page — in the flow between them",
++      body.split(MOUNT).length === 2 && header > 0 && at > header && main > at && shell.split("<OfflineBanner").length === 2, j({ header, at, main }));
++  }
++
++  log("§9 · the last resort speaks all three languages");
++  {
++    const sw = loadSw(W.sw);
++    const words = sw.get("FALLBACK_WORDS") as Record<string, { offline: string; hint: string; retry: string }> | undefined;
++    const def = sw.get("FALLBACK_DEFAULT");
++    const want = Object.fromEntries(LOCALES.map((l) => [l, { offline: T(l).common.offline, hint: T(l).common.offlineHint, retry: T(l).error.tryAgain }]));
++    ok("9.words · its words are the dictionary's `common.offline`, `common.offlineHint` and `error.tryAgain`, in every language", j(words) === j(want), j(words));
++    ok("9.default · its default is the platform's", def === DEFAULT_LOCALE, String(def));
++    ok("9.url · the worker's OFFLINE_URL is the route's path", sw.get("OFFLINE_URL") === OD.OFFLINE_PATH, String(sw.get("OFFLINE_URL")));
++    const html = String(sw.get("fallbackDocument()") ?? "");
++    const zh = runDoc(html, { cookie: "kp-locale=zh" });
++    const en = runDoc(html, { stored: "en" });
++    const none = runDoc(html, {});
++    ok("9.lang · shown, it follows the cookie, then the saved choice, then the default — as the document does",
++      zh.lang === "zh" && en.lang === "en" && none.lang === DEFAULT_LOCALE && zh.error === null, j({ zh: zh.lang, en: en.lang, none: none.lang, error: zh.error }));
++    (zh.button.on.click ?? []).forEach((f) => f());
++    (none.win.online ?? []).forEach((f) => f());
++    ok("9.recovers · its retry reloads, and so does the connection coming back", j(zh.calls) === j(["reload"]) && j(none.calls) === j(["reload"]), j({ zh: zh.calls, none: none.calls }));
++    const cookieName = W.layout.match(/jar\.get\("([^"]+)"\)\?\.value\);/)?.[1];
++    const providerName = W.i18n.match(/const COOKIE_NAME = "([^"]+)";/)?.[1];
++    ok("9.cookie · the document and the fallback read the cookie the layout and the provider read", cookieName === OD.OFFLINE_LOCALE_COOKIE && providerName === OD.OFFLINE_LOCALE_COOKIE && /N="kp-locale"/.test(html),
++      j({ cookieName, providerName }));
++  }
++
++  log("§10 · push and the static-asset strategy are untouched");
++  {
++    const sw = loadSw(W.sw);
++    await sw.fire("install");
++    const name = sw.get("CACHE_NAME") as string;
++    sw.store.get(name)?.set("/brand/x.svg", new FakeResponse("<cached svg>"));
++    const asset = await sw.fire("fetch", { request: new FakeRequest(`${ORIGIN}/brand/x.svg`) });
++    ok("10.static · a static asset is answered from the cache at once, and the network is asked to refresh it",
++      (asset.answer as FakeResponse | undefined)?.body === "<cached svg>" && sw.fetched.includes("/brand/x.svg"), j({ body: (asset.answer as FakeResponse | undefined)?.body, fetched: sw.fetched }));
++    const missing = await sw.fire("fetch", { request: new FakeRequest(`${ORIGIN}/icons/new.png`) });
++    ok("10.static.miss · an uncached asset goes to the network", sw.fetched.includes("/icons/new.png") && missing.answer === undefined);
++    const api = loadSw(W.sw);
++    let answered = false;
++    api.handlers.fetch?.({ request: new FakeRequest(`${ORIGIN}/api/wallet`), respondWith: () => { answered = true; }, waitUntil: () => undefined });
++    ok("10.api · an API request is never answered by the worker", !answered);
++    const src = decomment(W.sw);
++    ok("10.static.rule · the static rule and its stale-while-revalidate are as they were",
++      src.includes('url.pathname.startsWith("/icons/")') && src.includes('url.pathname.startsWith("/brand/")') && src.includes('url.pathname.startsWith("/hero/")')
++        && src.includes("url.pathname.match(/\\.(woff2?|ttf|otf|svg|png|jpg|webp|ico)$/)") && src.includes("if (response.ok) cache.put(request, response.clone());")
++        && src.includes("if (cached) { event.waitUntil(network.catch(() => undefined)); return cached; }"));
++    await sw.fire("push", { data: { json: () => ({ title: "Dau limepotea", body: "b", tag: "updown-1", url: "/updown" }), text: () => "" } });
++    const n = sw.shown[0];
++    ok("10.push · a push still shows its notification with its tag, renotify and the address it opens",
++      !!n && n.title === "Dau limepotea" && n.options.tag === "updown-1" && n.options.renotify === true && j(n.options.data) === j({ url: "/updown" }), j(n));
++    ok("10.click · a notification click still opens or focuses the app", typeof sw.handlers.notificationclick === "function");
++  }
++  return failed;
++}
++
++/* ── the plants ────────────────────────────────────────────────────────────────────────────────────────────────── */
++
++type Plant = { name: string; expect: RegExp; world: (w: World) => World; needs: (w: World) => boolean };
++const swap = (field: keyof World, from: string | RegExp, to: string) => (w: World): World => ({ ...w, [field]: (w[field] as string).replace(from, to) });
++const has = (field: keyof World, s: string | RegExp) => (w: World) => (typeof s === "string" ? (w[field] as string).includes(s) : s.test(w[field] as string));
++
++const PLANTS: Plant[] = [
++  { name: "the precache sends the session cookie again (`cache.add(url)`)", expect: /^1\.omit /,
++    world: swap("sw", "cache.add(precacheRequest(url))", "cache.add(url)"), needs: has("sw", "cache.add(precacheRequest(url))") },
++  { name: "the old cache name kept (50pick-v4)", expect: /^2\.name /,
++    world: swap("sw", /const CACHE_NAME = "[^"]+";/, 'const CACHE_NAME = "50pick-v4";'), needs: has("sw", /const CACHE_NAME = "[^"]+";/) },
++  { name: "activate keeps the older caches", expect: /^2\.activate /,
++    world: swap("sw", "keys.filter((k) => k !== CACHE_NAME).map((k) => caches.delete(k))", "[]"), needs: has("sw", "keys.filter((k) => k !== CACHE_NAME).map((k) => caches.delete(k))") },
++  { name: "the offline answer looked up in every cache (`caches.match`)", expect: /^2\.lookup /,
++    world: swap("sw", "caches.open(CACHE_NAME).then((cache) => cache.match(OFFLINE_URL))", "caches.match(OFFLINE_URL)"), needs: has("sw", "caches.open(CACHE_NAME).then((cache) => cache.match(OFFLINE_URL))") },
++  { name: "a session read in the offline route", expect: /^3\.(reads|imports) /,
++    world: (w) => ({ ...w, route: `import { cookies } from "next/headers";\n${w.route.replace("export function GET(): Response {", "export async function GET(): Promise<Response> {\n  const jar = await cookies();")}` }),
++    needs: has("route", "export function GET(): Response {") },
++  { name: "the route takes the request (and so could read it)", expect: /^3\.handler /,
++    world: swap("route", "export function GET(): Response {", "export function GET(req: Request): Response {"), needs: has("route", "export function GET(): Response {") },
++  { name: "/offline is a page again (rendered inside the root layout and AppShell)", expect: /^3\.page /,
++    world: (w) => ({ ...w, pageExists: true }), needs: () => true },
++  { name: "a hard-coded language (the head script gone: the bytes' Swahili for everybody)", expect: /^4\.lang\.en-cookie /,
++    world: (w) => ({ ...w, doc: w.doc.replace(/<head>([\s\S]*?)<script>[\s\S]*?<\/script>/, "<head>$1") }), needs: has("doc", "<head>") },
++  { name: "the language read but never applied to the spans (Swahili always shown)", expect: /^4\.css /,
++    world: swap("doc", 'html:not([lang="sw"]) .l[lang="sw"],', ""), needs: has("doc", 'html:not([lang="sw"]) .l[lang="sw"],') },
++  { name: "a hand-typed sentence instead of the dictionary's", expect: /^4\.words\.hint /,
++    world: (w) => ({ ...w, doc: w.doc.replace(`>${htmlEsc(T("en").common.offlineHint)}<`, ">Check your connection and try again<") }),
++    needs: has("doc", `>${htmlEsc(T("en").common.offlineHint)}<`) },
++  { name: "a token drifted from globals.css", expect: /^5\.tokens /,
++    world: (w) => ({ ...w, tokens: { ...w.tokens, "--bg": "oklch(15% 0.130 268)" } }), needs: () => true },
++  { name: "the retry painted off the primary button", expect: /^5\.primary /,
++    world: (w) => ({ ...w, primary: { ...w.primary, "border-color": "oklch(44% 0.20 268)" } }), needs: () => true },
++  { name: "a glyph redrawn by hand", expect: /^5\.glyphs /,
++    world: (w) => ({ ...w, glyphData: { ...w.glyphData, wifiOff: '<path d="M4 4l16 16"/>' } }), needs: () => true },
++  { name: "the shell's header (and its balance) back in the document", expect: /^6\.no-shell /,
++    world: swap("doc", "<body>", '<body><header class="kp-jhdr" data-testid="journey-top-bar"><span data-testid="journey-balance">Salio TZS 100,000</span></header>'), needs: has("doc", "<body>") },
++  { name: "the app's runtime back in the document (something to hydrate)", expect: /^6\.scripts /,
++    world: swap("doc", "</body>", '<script src="/_next/static/chunks/main-app.js" async></script></body>'), needs: has("doc", "</body>") },
++  { name: "a retry button that does nothing", expect: /^7\.retry /,
++    world: swap("doc", 'if(b)b.addEventListener("click",again);', ""), needs: has("doc", 'if(b)b.addEventListener("click",again);') },
++  { name: "no recovery when the connection comes back", expect: /^7\.online /,
++    world: swap("doc", 'window.addEventListener("online",again)', "void 0"), needs: has("doc", 'window.addEventListener("online",again)') },
++  { name: "the banner back as a fixed strip over the header", expect: /^8\.unpositioned /,
++    world: swap("banner", '<NoticeBar tone="warning"', '<div className="fixed top-0 inset-x-0 z-[200]" /><NoticeBar tone="warning"'), needs: has("banner", '<NoticeBar tone="warning"') },
++  { name: "the banner mounted back after the page (its old place)", expect: /^8\.flow /,
++    world: (w) => ({ ...w, shell: w.shell.replace("<Suspense fallback={null}><OfflineBanner /></Suspense>", "").replace("<RouteTransition>{children}</RouteTransition>\n      </MainLandmark>", "<RouteTransition>{children}</RouteTransition>\n      </MainLandmark>\n      <Suspense fallback={null}><OfflineBanner /></Suspense>") }),
++    needs: has("shell", "<RouteTransition>{children}</RouteTransition>\n      </MainLandmark>") },
++  { name: "NoticeBar ignores `assertive` (the alert becomes a polite status)", expect: /^8\.noticebar /,
++    world: swap("noticeBar", 'role={assertive ? "alert" : "status"}', 'role="status"'), needs: has("noticeBar", 'role={assertive ? "alert" : "status"}') },
++  { name: "the last resort in English and Swahili only (no Chinese)", expect: /^9\.words /,
++    world: swap("sw", /\n\s*zh: \{ offline: "[^"]*", hint: "[^"]*", retry: "[^"]*" \},/, ""), needs: has("sw", /\n\s*zh: \{ offline:/) },
++  { name: "the static rule stops refreshing its copy", expect: /^10\.static\.rule /,
++    world: swap("sw", "if (response.ok) cache.put(request, response.clone());", ""), needs: has("sw", "if (response.ok) cache.put(request, response.clone());") },
++  { name: "a push loses its tag", expect: /^10\.push /,
++    world: swap("sw", 'tag: payload.tag || "50pick-notification",', 'tag: "50pick-notification",'), needs: has("sw", 'tag: payload.tag || "50pick-notification",') },
++];
++
++if (!PROVE_RED) {
++  console.log("offline-neutral — the offline page holds no person, speaks the language of now, and covers nothing (R4-G)");
++  const failed = await run(REAL, (l) => console.log(l));
++  console.log(`\nOFFLINE NEUTRAL — ${failed.length === 0 ? "all checks passed" : `${failed.length} failed`}\n`);
++  process.exitCode = failed.length === 0 ? 0 : 1;
++} else {
++  const quiet = () => undefined;
++  let caught = 0, fail = 0;
++  const ok = (label: string, cond: boolean, extra = "") => { if (!cond) fail++; console.log(`${cond ? "PROVED  " : "MISSED  "} ${label}${extra ? ` — ${extra}` : ""}`); };
++  const clean = await run(REAL, quiet);
++  ok("the REAL tree passes every check", clean.length === 0, clean.join(" | "));
++  for (const p of PLANTS) {
++    if (!p.needs(REAL)) { ok(p.name, false, "the plant's anchor is not in the real source — the plant would plant nothing"); continue; }
++    const failures = await run(p.world(REAL), quiet);
++    const hit = failures.some((f) => p.expect.test(f));
++    if (hit) caught++;
++    ok(p.name, hit, hit ? `caught by ${failures.filter((f) => p.expect.test(f)).map((f) => f.split(" ")[0]).join(", ")}` : failures.length === 0 ? "NOTHING failed — the gate cannot see this defect" : `failed instead: ${failures.slice(0, 2).join(" | ")}`);
++  }
++  console.log(`\nRED CONTROL — ${caught}/${PLANTS.length} caught${fail === 0 ? "" : ` · ${fail} FAILED`}\n`);
++  process.exitCode = fail === 0 ? 0 : 1;
++}
+diff --git a/scripts/stacking-contract.test.mts b/scripts/stacking-contract.test.mts
+index 0b910e1e6..e51ec419a 100644
+--- a/scripts/stacking-contract.test.mts
++++ b/scripts/stacking-contract.test.mts
+@@ -170,7 +170,12 @@ const ROOT_SURFACES: Surface[] = [
+   //    which is the one number the old Tailwind ladder already had right — and it is
+   //    deliberately absent from the §3 ordering laws for exactly that reason.
+   { id: "tooltip",             file: "src/app/globals.css",                              find: /(?:^|\n)\.kp-tooltip-popover \{[\s\S]{0,1400}?z-index:\s*(\d+);/, z: 1600, note: "declared rung of the legacy inline tooltip (position:absolute — context-dependent in practice)" },
+-  { id: "offline-banner",      file: "src/components/ui/offline-banner.tsx",             find: /fixed top-0 inset-x-0 z-\[(\d+)\]/,                          z:  200, note: "connectivity is a fact about the whole app, so it outranks page chrome" },
++  /* ⛔ THE OFFLINE BANNER'S ROW (z 200, "connectivity outranks page chrome") IS GONE, AND THE RUNG WITH IT (R4-G,
++     2026-10-09, edge scenario 9). Outranking the chrome was the defect: a fixed strip at the viewport's top, it lay on
++     the header of both shells and took its clicks — offline, no header control could be pressed. It is now the kit's
++     NoticeBar in AppShell's flow under the header (offline-banner.tsx), positioned nowhere and declaring no z, so it has
++     no rung; 200 left KNOWN_ROOT_RUNGS, the Tailwind ladder's `banner` and needle.css's prose table in the same commit.
++     `test:offline-neutral` §8 holds the strip in the flow. */
+   { id: "first-visit-primer",  file: "src/components/onboarding/first-visit-primer.tsx", find: /zIndex=\{(\d+)\}/,                                           z:  150, note: "a Modal raised above select/date-select so the primer is never pierced" },
+   { id: "select",              file: "src/components/ui/select.tsx",                     find: /fixed z-\[(\d+)\] rounded-control/,                          z:  130, note: "DELIBERATELY above modals — a Select inside a dialog must open over it" },
+   { id: "date-select",         file: "src/components/ui/date-select.tsx",                find: /fixed inset-0 z-\[(\d+)\] flex items-center/,                z:  120, note: "same reason as select; below select so a Select over a calendar still wins" },
+@@ -330,7 +335,6 @@ const LAWS: Array<[string, string, string]> = [
+   ["toast", "win-celebration",       "even the celebration does not bury a toast"],
+   ["win-celebration", "modal",       "earned money outranks whatever dialog was open"],
+   ["reality-check", "modal",         "an RG interruption outranks whatever dialog was open"],
+-  ["offline-banner", "first-visit-primer", "connectivity is a fact about the whole app"],
+   ["first-visit-primer", "select",   "the primer must not be pierced by a dropdown behind it"],
+   ["select", "date-select",          "a Select opened over a calendar still wins"],
+   ["date-select", "modal",           "DELIBERATE: a picker inside a dialog must open OVER it, not inside it"],
+@@ -727,7 +731,7 @@ console.log("\n§6 · the closed rung set — no new hand-typed z-index");
+ const LOCAL_PLANE_MAX = 10;
+ const KNOWN_ROOT_RUNGS = new Set<number>([
+   11, 20, 30, 40, 45, 50, 60, 61, 70, 71, 79, 80,
+-  100, 120, 130, 150, 200, 1600, 1700, 1800, 2000, 9000, 9999,
++  100, 120, 130, 150, 1600, 1700, 1800, 2000, 9000, 9999,
+ ]);
+ 
+ /** The five spellings of a z-index the sweep reads: Tailwind arbitrary and scale, an inline style, a JSX prop, CSS. */
+diff --git a/src/app/offline/page.tsx b/src/app/offline/page.tsx
+deleted file mode 100644
+index 1d6b78fb4..000000000
+--- a/src/app/offline/page.tsx
++++ /dev/null
+@@ -1,39 +0,0 @@
+-"use client";
+-
+-/**
+- * C2j — branded /offline route. The service worker precaches this and serves it
+- * as the navigation fallback when the network is down (public/sw.js). Client
+- * component so it localises from the kp-locale cookie even when served from
+- * cache. FiftyMark + "You're offline" + a retry that reloads once back online.
+- */
+-import { FiftyMark } from "@/components/brand";
+-import { BrandTopo } from "@/components/brand-topo";
+-import { I } from "@/components/ui/glyphs";
+-import { useT } from "@/lib/i18n";
+-
+-export default function OfflinePage() {
+-  const { t } = useT();
+-  return (
+-    <div className="relative isolate flex min-h-[calc(100vh-44px)] items-center justify-center overflow-hidden px-4 py-10">
+-      <BrandTopo opacity={0.09} />
+-      <div className="relative z-10 flex max-w-[400px] flex-col items-center text-center">
+-        <FiftyMark size={64} />
+-        {/* ⚠️ LITERALS, not `h-10 w-10` — spacing is overridden (tailwind.config.ts:200-215),
+-            so `h-10` was an 80px disc rivalling the size={64} mark above it. */}
+-        <span className="mt-6 inline-flex h-[40px] w-[40px] items-center justify-center rounded-full border border-border bg-bg-overlay text-text-subtle">
+-          <I.wifiOff s={18} />
+-        </span>
+-        <h1 className="mt-4 font-display text-title-lg font-bold leading-tight text-text">{t.common.offline}</h1>
+-        <p className="mt-2 text-[13px] leading-snug text-text-muted">{t.common.offlineHint}</p>
+-        <button
+-          type="button"
+-          onClick={() => window.location.reload()}
+-          className="btn btn-primary btn-md btn-pill mt-6 inline-flex items-center gap-1.5"
+-        >
+-          <I.rotateCcw s={14} />
+-          {t.error.tryAgain}
+-        </button>
+-      </div>
+-    </div>
+-  );
+-}
+diff --git a/src/app/offline/route.ts b/src/app/offline/route.ts
+new file mode 100644
+index 000000000..d747aa6ac
+--- /dev/null
++++ b/src/app/offline/route.ts
+@@ -0,0 +1,25 @@
++/**
++ * `/offline` — THE SERVICE WORKER'S OFFLINE DOCUMENT (`public/sw.js` precaches it and shows it to any navigation the
++ * network could not answer). The document itself, and why it is built the way it is, is `src/lib/offline-document.ts`.
++ *
++ * 🔴 A ROUTE HANDLER, NOT A PAGE — AND THAT IS THE FIX, NOT A STYLE (R4-G, 2026-10-09). As `page.tsx` it was rendered
++ * inside the root layout, so the copy the worker cached was AppShell for whoever was signed in at that moment — their
++ * header, their balance, the staff preview strip — in the language of that moment, and it hydrated into a mismatch
++ * when shown at another address. A route handler renders no layout, no shell and no React: the answer is one string.
++ * ⛔ IT READS NOTHING FROM THE REQUEST. No `cookies()`, no `headers()`, no session — the only input is the public
++ * licence number (`/admin/system`), so every visitor is sent the same bytes, and nothing about a person can be cached.
++ * `test:offline-neutral` holds this file to that (and plants a session read to prove it would see one).
++ * ⛔ 200, not 503: `cache.add` refuses a response that is not ok, and the worker would have nothing to show.
++ */
++import { getSupportConfig } from "@/lib/server/support-config";
++import { offlineDocument } from "@/lib/offline-document";
++
++export const dynamic = "force-dynamic";
++export const runtime = "nodejs";
++
++export function GET(): Response {
++  return new Response(offlineDocument({ licenceNumber: getSupportConfig().licenceNumber }), {
++    status: 200,
++    headers: { "content-type": "text/html; charset=utf-8", "cache-control": "no-store" },
++  });
++}
+diff --git a/src/components/layout/app-shell.tsx b/src/components/layout/app-shell.tsx
+index 7ada9bebd..af93273f5 100644
+--- a/src/components/layout/app-shell.tsx
++++ b/src/components/layout/app-shell.tsx
+@@ -393,6 +393,14 @@ export async function AppShell({ children }: { children: React.ReactNode }) {
+           from the first byte, every overlay reads the answer right after hydrating. A classic page never carries it. */}
+       {journeyShown && <span hidden id={JOURNEY_SHELL_MARK} />}
+       {funnelScopeValue !== "off" && <FunnelUtm />}
++      {/* ⭐ THE OFFLINE NOTICE — IN THE FLOW, UNDER THE HEADER, FIRST OF THE NOTICES (R4-G, 2026-10-09; edge scenario 9).
++          It was a FIXED strip at the viewport's top over everything (`z-[200]`), and it lay on the header of both shells:
++          its words ran over the mark, the capsule and the pill on a phone, over the nav links at 1280, and it took their
++          clicks — offline, no header control could be pressed (the drive's 1280 tap timed out three times on the band).
++          It is now the kit's `NoticeBar` here, like the notices below it: it covers nothing and pushes the page down by
++          its own height while the browser is offline. Mounted here once, in its own boundary, still imported statically
++          (`test:journey-shell` 12.shell.offline). */}
++      <Suspense fallback={null}><OfflineBanner /></Suspense>
+       <AnnouncementBanner maintenance={maintBanner} announcement={announcement} />
+       {/* 🔴 E-381 · the in-place answer to a session that ended during a refresh — see the note at
+           `endedReason`. Server-rendered, and its only action is a plain `<a>`. */}
+@@ -495,9 +503,6 @@ export async function AppShell({ children }: { children: React.ReactNode }) {
+       <Suspense fallback={null}>
+         <AuthFlash />
+       </Suspense>
+-      <Suspense fallback={null}>
+-        <OfflineBanner />
+-      </Suspense>
+       <Suspense fallback={null}>
+         <LazyPullToRefresh />
+       </Suspense>
+diff --git a/src/components/layout/needle.css b/src/components/layout/needle.css
+index 545a329f8..5bec8c8fd 100644
+--- a/src/components/layout/needle.css
++++ b/src/components/layout/needle.css
+@@ -145,8 +145,8 @@
+ /* z-index: the object must FLOAT ABOVE the app's nav chrome so it can never be hidden
+    behind or trapped under a bar — the bug that made it "stick" to the bottom nav on phones
+    and the top bar on desktop, and vanish on some pages. 50pick's real stack: top bar 30,
+-   bottom nav 40, dropdowns 50, menus 60, popovers 90, MODALS 100, selects 120–130, banners
+-   200, toasts 1800. 45 sits ABOVE both nav bars (so it passes over them, front-most) but
++   bottom nav 40, dropdowns 50, menus 60, popovers 90, MODALS 100, selects 120–130,
++   toasts 1800. 45 sits ABOVE both nav bars (so it passes over them, front-most) but
+    BELOW every dropdown / menu / popover / decision and modal (a fidget must never cover
+    one). DEVIATION from the playground's 900 (which assumed modals at 1000). 09-needle CHANGELOG. */
+ #needle-root #needle { position: fixed; top: 0; left: 0; width: var(--nsize, 80px); height: var(--nsize, 80px); z-index: 45; pointer-events: none; }
+diff --git a/src/components/ui/notice-bar.tsx b/src/components/ui/notice-bar.tsx
+index 31a01d54c..ca7460c98 100644
+--- a/src/components/ui/notice-bar.tsx
++++ b/src/components/ui/notice-bar.tsx
+@@ -54,6 +54,7 @@ export function NoticeBar({
+   onDismiss,
+   dismissLabel = "Dismiss",
+   testId,
++  assertive = false,
+ }: {
+   tone?: NoticeBarTone;
+   /** Leading glyph. Omit for the plain tone dot (the broadcast-bar look). */
+@@ -65,15 +66,21 @@ export function NoticeBar({
+   onDismiss?: () => void;
+   dismissLabel?: string;
+   testId?: string;
++  /**
++   * An EVENT that just happened, announced at once (`role="alert"`) — the connection dropping (`OfflineBanner`).
++   * ⛔ Never for a standing condition: those are rendered on page load, and an alert would interrupt every load.
++   */
++  assertive?: boolean;
+ }) {
+   const t = TONE[tone];
+   const Glyph = glyph ? I[glyph] : null;
+   return (
+     <div
+-      // `status`/`polite`, never `alert`: these describe a standing condition, so
+-      // they must not interrupt a screen-reader mid-sentence on every page load.
+-      role="status"
+-      aria-live="polite"
++      // `status`/`polite` by default, never `alert`: these describe a standing condition, so
++      // they must not interrupt a screen-reader mid-sentence on every page load. `assertive` is the
++      // one exception, for a bar that appears on an event (see the prop).
++      role={assertive ? "alert" : "status"}
++      aria-live={assertive ? undefined : "polite"}
+       data-testid={testId}
+       className={`border-b ${t.bar}`}
+     >
+diff --git a/src/components/ui/offline-banner.tsx b/src/components/ui/offline-banner.tsx
+index 2a738050d..74e6187cc 100644
+--- a/src/components/ui/offline-banner.tsx
++++ b/src/components/ui/offline-banner.tsx
+@@ -1,14 +1,27 @@
+ "use client";
+ 
+ /**
+- * OfflineBanner — shows a slim banner at the top of the viewport when
+- * the browser loses network connectivity. Hides automatically when
+- * the connection is restored. Prevents players from attempting deposits
+- * or bets that would silently fail.
++ * OfflineBanner — the kit's warning `NoticeBar`, in the page's flow under the header, while the browser has no network.
++ * Hides itself when the connection comes back. Tells players before they try a deposit or a bet that would fail.
++ *
++ * 🔴 IT USED TO LIE ON THE HEADER (R4-G, 2026-10-09 — edge scenario 9, tiles 453–483, both shells, every width).
++ * It was `fixed top-0 inset-x-0 z-[200]`, a strip at the top of the viewport over everything — and its fill is
++ * `--warning-bg`, which is itself an 18% tint, so the strip let the header show through it. On a phone its words ran
++ * over the mark, the 18+ badge, the capsule ("Salio" unreadable) and the gold pill, its icon on the mark; at 1280 its
++ * band (y 0–37) lay across the nav links, the capsule, the pill, the language box and the avatar. And it took their
++ * clicks: offline, `elementFromPoint` at a nav link's centre is this strip, so no header control could be pressed —
++ * the drive's 1280 tap on "Tiketi zangu" timed out three times on it ("locator.click: Timeout 10000ms exceeded").
++ *
++ * ⭐ NOW IT IS A NOTICE LIKE THE OTHERS (`NoticeBar` says it is the single definition of "a full-width bar under the
++ * app bar", and names an offline state among its uses). AppShell mounts it first among the notices, in the flow: it
++ * covers nothing — no header, no control, no sticky band below — and the page moves down by its height while the
++ * browser is offline. It keeps `role="alert"` (`assertive`): it appears on an event, the connection dropping, and is
++ * announced at once. ⚠️ The cost, stated: it scrolls with the page rather than floating over it, so a player far down
++ * a page sees it when they scroll back up — the price of never again covering the controls it warns about.
+  */
+ 
+ import { useEffect, useState } from "react";
+-import { I } from "@/components/ui/glyphs";
++import { NoticeBar } from "@/components/ui/notice-bar";
+ import { useT } from "@/lib/i18n";
+ 
+ export function OfflineBanner() {
+@@ -31,20 +44,8 @@ export function OfflineBanner() {
+   if (!offline) return null;
+ 
+   return (
+-    <div
+-      role="alert"
+-      className="fixed top-0 inset-x-0 z-[200] flex items-center justify-center gap-2 px-4 py-2 text-[12px] font-semibold text-text"
+-      // DS-16 — the strip stays viewport-fixed (connectivity outranks layout),
+-      // but it paints with the WARNING semantic family now, not a hue-40 amber
+-      // that matched no token in the system.
+-      style={{
+-        background: "linear-gradient(90deg, color-mix(in oklab, var(--warning-bg) 88%, var(--bg-base)), color-mix(in oklab, var(--warning-bg) 70%, var(--bg-base)))",
+-        borderBottom: "1px solid color-mix(in oklab, var(--warning-fg) 45%, transparent)",
+-        paddingTop: "calc(env(safe-area-inset-top, 0px) + 8px)",
+-      }}
+-    >
+-      <I.alertCircle s={14} />
+-      {t.common.offline} &middot; {t.common.offlineHint}
+-    </div>
++    <NoticeBar tone="warning" glyph="alertCircle" assertive testId="offline-notice">
++      <span className="font-semibold">{t.common.offline}</span> &middot; {t.common.offlineHint}
++    </NoticeBar>
+   );
+ }
+diff --git a/src/lib/offline-document.ts b/src/lib/offline-document.ts
+new file mode 100644
+index 000000000..a593566e9
+--- /dev/null
++++ b/src/lib/offline-document.ts
+@@ -0,0 +1,228 @@
++/**
++ * ⭐ THE OFFLINE DOCUMENT — what `/offline` answers (`src/app/offline/route.ts`), and so what the service worker shows
++ * a player whose connection is gone (`public/sw.js` precaches it and serves it to any navigation the network could not
++ * answer). Built here, as one string, from the dictionary, the brand mark's one geometry and the design tokens.
++ *
++ * 🔴 WHY IT IS NOT A PAGE ANY MORE (R4-G, the Vodacom visual pass, 2026-10-09 — edge scenario 9, tiles 453–485).
++ * `/offline` was `src/app/offline/page.tsx`, so it rendered inside the ROOT LAYOUT: AppShell around it, for whoever
++ * asked. The service worker precached it at install with `cache.add("/offline")` — a same-origin request, so the
++ * session cookie and the `kp-locale` cookie rode along — and kept that HTML for the life of the cache. Three defects
++ * came out of that one fact, and the tiles show all three:
++ *   1. THE WRONG LANGUAGE. The cached copy was the server's render in the language of the moment it was cached (the
++ *      drive installed it in Swahili), so every English and Chinese tile read "Hauko mtandaoni" with `<html lang="sw">`.
++ *      The page claimed to "localise from the kp-locale cookie even when served from cache"; it could only do that
++ *      once React hydrated, and hydration needs the page's script chunks — which the worker never caches (offline:
++ *      `net::ERR_INTERNET_DISCONNECTED` on each). And even hydrated, the provider changes its STATE from the cookie,
++ *      never `<html lang>` (`i18n.tsx`: only `setLocale` writes it).
++ *   2. A PERSON'S PAGE, KEPT. The cached copy was the WHOLE SHELL rendered for the person signed in at install: the
++ *      journey header with "Salio TZS 100,000" on every tile, the staff preview strip, the avatar — or the classic
++ *      bar with the balance and the name. Offline, anybody on that phone later (after sign-out, a shared handset) was
++ *      shown that player's header and balance, and the player a balance that was days old.
++ *   3. A HYDRATION MISMATCH BACK ONLINE (tile 455). That HTML was rendered for the URL `/offline` and is shown at the
++ *      URL the player asked for (`/positions`): when its chunks did load, React hydrated a tree whose path-, time- and
++ *      session-derived attributes no longer matched the client's, and the Next.js error dialog opened.
++ *
++ * ⭐ SO THE DOCUMENT IS NOW THIS STRING, AND EACH DEFECT IS IMPOSSIBLE BY CONSTRUCTION, NOT BY CARE:
++ *   · NO PERSON. It is built from no request: no cookie, no header, no session is read (`route.ts` reads only the
++ *     public licence number), and the worker fetches it with `credentials: "omit"` besides. It has no header, no
++ *     balance, no name, no sign-in state, no preview strip — nothing of the shell at all.
++ *   · THE LANGUAGE OF NOW. Every phrase is here in every language the dictionary holds, each in a `lang` span; the
++ *     script in the head reads `kp-locale` from `document.cookie` (then the saved choice, as the provider does) when
++ *     the page is SHOWN, sets `<html lang>` and the title, and the stylesheet shows only that language's spans. The
++ *     words are the dictionary's own (`common.offline`, `common.offlineHint`, `error.tryAgain`, the footer's
++ *     regulator lines) — no sentence is written here.
++ *   · NOTHING TO HYDRATE. No React, no Next.js runtime, no script but its own two: there is no tree to mismatch, and
++ *     nothing it needs can be missing offline — the mark, the glyphs, the backdrop and the styles are all inline.
++ *   · IT RECOVERS. "Jaribu tena" reloads the address the player asked for; the browser's `online` event does the
++ *     same by itself; on `/offline` itself (nothing there to retry) both go home.
++ *
++ * ⭐ ONE LOOK, FOR THE CLASSIC AND THE JOURNEY ALIKE — decided, and why. The page's body was already the same in both
++ * (the mark, the wifi-off disc, the title, the hint, the pill retry on the topographic backdrop); only the chrome
++ * around it differed, and the chrome is exactly what carried the person. Which of the two a phone is shown is decided
++ * on the server from the session and the preview pass; a document that must read neither cannot know it, and a guess
++ * would be wrong for one of them. So both get the body they already had, drawn from the same tokens, with the
++ * regulator lines a page must carry (18+, the Gaming Board licence, the stop line — `public-footer.tsx`: LCCP SR 5.1.5)
++ * below the fold, as `OptOutShell` carries them.
++ * ⚠️ THE ONE THING IT CANNOT CARRY: the brand faces. next/font self-hosts Sora and Inter under build-hashed names that
++ * only the app's own stylesheet knows, so this document names them first and falls back to the system face, exactly
++ * as `global-error.tsx` does for the same reason.
++ * ⛔ Every token, the primary button's paint, the backdrop, the two glyphs and the dictionary words are held to their
++ * sources by `test:offline-neutral` — a copy here that drifts fails there.
++ */
++import { dict, DEFAULT_LOCALE, type Dict, type Locale } from "@/lib/i18n-dict";
++import { markInnerSvg } from "@/lib/brand-mark";
++
++/** The path the document is served at — the service worker's `OFFLINE_URL` names the same. */
++export const OFFLINE_PATH = "/offline";
++/** The language cookie the language menu writes and the root layout reads (`layout.tsx`, `i18n.tsx` COOKIE_NAME). */
++export const OFFLINE_LOCALE_COOKIE = "kp-locale";
++/** Every language the dictionary holds, in its own order: the document carries all of them and shows one. */
++export const OFFLINE_LOCALES = Object.keys(dict) as Locale[];
++/** The retry button, which the document's own script answers. */
++export const OFFLINE_RETRY_ID = "kp-offline-retry";
++
++/**
++ * The design tokens the document paints with, each exactly as `src/app/globals.css` declares it (its one site — E-117).
++ * The document cannot load that stylesheet offline, so it declares them itself; `test:offline-neutral` §5 compares each.
++ */
++export const OFFLINE_TOKENS = {
++  "--bg": "oklch(6.5% 0.130 268)",
++  "--bg-elevated": "oklch(22% 0.140 268)",
++  "--bg-overlay": "oklch(11% 0.110 268)",
++  "--border": "oklch(36% 0.130 268)",
++  "--text": "oklch(98% 0.012 268)",
++  "--text-muted": "oklch(86% 0.040 268)",
++  "--text-subtle": "oklch(70% 0.080 268)",
++  "--pearl-50": "oklch(99% 0.006 268)",
++  "--brand-500": "oklch(63% 0.180 262)",
++  "--claret-400": "oklch(60% 0.160 15)",
++  "--gold-300": "oklch(86% 0.110 84)",
++  "--gilt": "var(--gold-300)",
++  "--font-cjk": "'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', 'Noto Sans CJK SC', 'Noto Sans SC', 'Source Han Sans SC'",
++  "--font-display": "'Sora', system-ui, var(--font-cjk), sans-serif",
++  "--font-body": "'Inter', system-ui, var(--font-cjk), sans-serif",
++  "--font-mono": "'JetBrains Mono', ui-monospace, var(--font-cjk), monospace",
++  "--type-body": "15px",
++  "--type-micro": "11px",
++  "--h-control-md": "44px",
++  "--r-pill": "999px",
++  "--w-board": "1280px",
++} as const;
++
++/** `.btn-primary`'s paint, property for property as `globals.css` writes it (`test:offline-neutral` §5). */
++export const OFFLINE_PRIMARY = {
++  background: "linear-gradient(180deg, oklch(53% 0.20 268) 0%, oklch(48% 0.20 268) 100%)",
++  color: "var(--pearl-50)",
++  "border-color": "oklch(40% 0.20 268)",
++  "box-shadow": "inset 0 0 0 1px oklch(74% 0.16 268 / 0.32), 0 2px 8px -2px oklch(20% 0.10 268 / 0.50), 0 8px 22px -10px oklch(48% 0.20 268 / 0.55)",
++  "letter-spacing": "0.005em",
++  "text-shadow": "0 1px 0 oklch(20% 0.10 268 / 0.40)",
++} as const;
++
++/** `BrandTopo` (`src/components/brand-topo.tsx`) at the opacity the offline page drew it: its tile, ink and four contours. */
++export const OFFLINE_TOPO = {
++  opacity: 0.09,
++  width: 240,
++  height: 180,
++  stroke: "oklch(96% 0.005 240)",
++  strokeWidth: "0.6",
++  paths: [
++    "M 0 90 Q 60 60 120 90 T 240 90",
++    "M 0 60 Q 60 30 120 60 T 240 60",
++    "M 0 120 Q 60 100 120 120 T 240 120",
++    "M 0 150 Q 60 130 120 150 T 240 150",
++  ],
++} as const;
++
++/** The two line glyphs the page drew (`I.wifiOff`, `I.rotateCcw` in `src/components/ui/glyphs.tsx`), as their inner SVG. */
++export const OFFLINE_GLYPHS = {
++  wifiOff: '<path d="M8.5 13.2a6.3 6.3 0 0 1 7 0"/><path d="M5 10a10.6 10.6 0 0 1 4.2-2.3M14.8 7.7A10.6 10.6 0 0 1 19 10"/><circle cx="12" cy="17.2" r="1" fill="currentColor" stroke="none"/><path d="M4 4l16 16"/>',
++  rotateCcw: '<path d="M3 12a9 9 0 1 0 2.6-6.3L3 8"/><path d="M3 3.5V8h4.5"/>',
++} as const;
++
++const esc = (s: string) => s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#39;");
++/** A value for an inline script: JSON, with every `<` escaped so no string can close the element it sits in. */
++const js = (v: unknown) => JSON.stringify(v).replace(/</g, "\\u003c").replace(/\u2028/g, "\\u2028").replace(/\u2029/g, "\\u2029");
++const tFor = (l: Locale) => dict[l] as Dict;
++/** One phrase in every language, each in a span the stylesheet shows only under its own `<html lang>`. */
++const say = (pick: (t: Dict) => string) => OFFLINE_LOCALES.map((l) => `<span class="l" lang="${l}">${esc(pick(tFor(l)))}</span>`).join("");
++/** A 24-grid line glyph, drawn as `glyphs.tsx`'s `G` draws it. */
++const glyph = (inner: string, s: number) =>
++  `<svg viewBox="0 0 24 24" width="${s}" height="${s}" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${inner}</svg>`;
++/** The tab title in each language: the app's title template, `%s · 50pick`. */
++const titleOf = (l: Locale) => `${tFor(l).common.offline} · 50pick`;
++
++/**
++ * The head script: the language the player has NOW — `kp-locale` from the cookie, else the saved choice (the
++ * provider's own order, `i18n.tsx`), else the platform default — onto `<html lang>` and the title, before first paint.
++ */
++function localiser(): string {
++  const titles = Object.fromEntries(OFFLINE_LOCALES.map((l) => [l, titleOf(l)]));
++  return `(function(){var L=${js(OFFLINE_LOCALES)},T=${js(titles)},N=${js(OFFLINE_LOCALE_COOKIE)},l=${js(DEFAULT_LOCALE)},v=null;`
++    + `try{var m=document.cookie.match(new RegExp("(?:^|; )"+N+"=([^;]*)"));if(m)v=decodeURIComponent(m[1])}catch(e){}`
++    + `if(L.indexOf(v)<0){try{v=localStorage.getItem(N)}catch(e){v=null}}`
++    + `if(L.indexOf(v)>=0)l=v;document.documentElement.lang=l;document.title=T[l]})();`;
++}
++
++/** The body script: the retry reloads the address the player asked for, and so does the connection coming back. */
++function recovery(): string {
++  return `(function(){function again(){if(location.pathname===${js(OFFLINE_PATH)})location.replace("/");else location.reload()}`
++    + `var b=document.getElementById(${js(OFFLINE_RETRY_ID)});if(b)b.addEventListener("click",again);`
++    + `window.addEventListener("online",again)})();`;
++}
++
++function stylesheet(): string {
++  const tokens = Object.entries(OFFLINE_TOKENS).map(([k, v]) => `${k}:${v}`).join(";");
++  const primary = Object.entries(OFFLINE_PRIMARY).map(([k, v]) => `${k}:${v}`).join(";");
++  const hide = OFFLINE_LOCALES.map((l) => `html:not([lang="${l}"]) .l[lang="${l}"]`).join(",");
++  return [
++    `:root{${tokens};color-scheme:dark}`,
++    `*,*::before,*::after{box-sizing:border-box}`,
++    `html{-webkit-text-size-adjust:100%;text-size-adjust:100%}`,
++    `body{margin:0;background:var(--bg);color:var(--text);font-family:var(--font-body);font-size:var(--type-body);line-height:1.5;-webkit-font-smoothing:antialiased;font-feature-settings:"ss01","cv11";-webkit-tap-highlight-color:transparent}`,
++    `svg{display:block}`,
++    `${hide}{display:none}`,
++    `.kp-off{position:relative;isolation:isolate;overflow:hidden;display:flex;align-items:center;justify-content:center;min-height:100vh;min-height:100svh;padding:32px 16px}`,
++    `.kp-off__topo{position:absolute;inset:0;width:100%;height:100%;opacity:${OFFLINE_TOPO.opacity};pointer-events:none}`,
++    `.kp-off__col{position:relative;z-index:1;display:flex;flex-direction:column;align-items:center;max-width:400px;text-align:center}`,
++    `.kp-off__disc{margin-top:32px;display:inline-flex;align-items:center;justify-content:center;width:40px;height:40px;border-radius:var(--r-pill);border:1px solid var(--border);background:var(--bg-overlay);color:var(--text-subtle)}`,
++    `.kp-off__title{margin:20px 0 0;font-family:var(--font-display);font-size:28px;line-height:1.25;letter-spacing:-0.85px;font-weight:700;color:var(--text)}`,
++    `.kp-off__hint{margin:12px 0 0;font-size:13px;line-height:1.375;color:var(--text-muted)}`,
++    `.kp-off__retry{margin:32px 0 0;display:inline-flex;align-items:center;justify-content:center;gap:8px;height:var(--h-control-md);padding:0 16px;border:1px solid transparent;border-radius:var(--r-pill);font-family:var(--font-body);font-size:14px;font-weight:600;line-height:inherit;white-space:nowrap;cursor:pointer;-webkit-user-select:none;user-select:none;-webkit-appearance:none;appearance:none;${primary}}`,
++    `.kp-off__retry:focus-visible{outline:2px solid var(--brand-500);outline-offset:2px;box-shadow:0 0 0 4px oklch(63% 0.18 262 / 0.25)}`,
++    `.kp-off__rg{background:color-mix(in oklab,var(--bg-elevated) 40%,transparent)}`,
++    `.kp-off__rule{height:1px;max-width:var(--w-board);margin:0 auto;background:linear-gradient(90deg,transparent,var(--claret-400) 18%,var(--gilt) 50%,var(--claret-400) 82%,transparent);opacity:.95}`,
++    `.kp-off__rg-in{max-width:var(--w-board);margin:0 auto;padding:20px 16px 40px;display:flex;flex-direction:column;gap:12px}`,
++    `.kp-off__rg-row{display:flex;align-items:center;gap:10px}`,
++    `.kp-off__18{flex:none;display:inline-flex;align-items:center;justify-content:center;width:28px;height:28px;border:2px solid var(--text-subtle);border-radius:var(--r-pill);font-family:var(--font-display);font-weight:700;font-size:var(--type-micro);color:var(--text)}`,
++    `.kp-off__rg p{margin:0;font-size:13px;line-height:18px;letter-spacing:-0.05px;text-wrap:balance;word-break:keep-all}`,
++    `.kp-off__rg .kp-off__gbt{color:var(--text-muted);line-height:1.625}`,
++    `.kp-off__lic{font-family:var(--font-mono);font-variant-numeric:tabular-nums;color:var(--text-subtle)}`,
++    `.kp-off__stop{font-style:italic;color:var(--text-subtle)}`,
++    `@media (min-width:1024px){.kp-off__rg-in{padding-left:32px;padding-right:32px}}`,
++  ].join("");
++}
++
++/**
++ * The whole document. ⛔ Its only input is the licence number, a public fact (`/admin/system`): nothing about the
++ * person asking can reach it, because nothing about the request is read.
++ */
++export function offlineDocument({ licenceNumber }: { licenceNumber: string }): string {
++  const topo = OFFLINE_TOPO.paths
++    .map((d) => `<path d="${d}" fill="none" stroke="${OFFLINE_TOPO.stroke}" stroke-width="${OFFLINE_TOPO.strokeWidth}"/>`)
++    .join("");
++  return "<!doctype html>"
++    + `<html lang="${DEFAULT_LOCALE}" translate="no" class="notranslate">`
++    + "<head>"
++    + `<meta charset="utf-8">`
++    + `<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=5, viewport-fit=cover">`
++    + `<meta name="theme-color" content="#0a0e33">`
++    + `<meta name="google" content="notranslate">`
++    + `<meta name="robots" content="noindex">`
++    + `<title>${esc(titleOf(DEFAULT_LOCALE))}</title>`
++    + `<script>${localiser()}</script>`
++    + `<style>${stylesheet()}</style>`
++    + "</head>"
++    + "<body>"
++    + `<main id="main-content" class="kp-off">`
++    + `<svg class="kp-off__topo" aria-hidden="true"><defs><pattern id="kp-off-topo" x="0" y="0" width="${OFFLINE_TOPO.width}" height="${OFFLINE_TOPO.height}" patternUnits="userSpaceOnUse">${topo}</pattern></defs><rect width="100%" height="100%" fill="url(#kp-off-topo)"/></svg>`
++    + `<div class="kp-off__col">`
++    + `<svg class="kp-off__mark" viewBox="0 0 100 100" width="64" height="64" role="img" aria-label="50pick">${markInnerSvg("color", false)}</svg>`
++    + `<span class="kp-off__disc" aria-hidden="true">${glyph(OFFLINE_GLYPHS.wifiOff, 18)}</span>`
++    + `<h1 class="kp-off__title">${say((t) => t.common.offline)}</h1>`
++    + `<p class="kp-off__hint">${say((t) => t.common.offlineHint)}</p>`
++    + `<button type="button" id="${OFFLINE_RETRY_ID}" class="kp-off__retry">${glyph(OFFLINE_GLYPHS.rotateCcw, 14)}<span>${say((t) => t.error.tryAgain)}</span></button>`
++    + "</div>"
++    + "</main>"
++    + `<footer class="kp-off__rg">`
++    + `<div class="kp-off__rule" aria-hidden="true"></div>`
++    + `<div class="kp-off__rg-in">`
++    + `<div class="kp-off__rg-row"><span class="kp-off__18">${say((t) => t.footer.eighteenPlus)}</span><p class="kp-off__gbt">${say((t) => t.footer.licensedByGbt)}</p></div>`
++    + `<p class="kp-off__lic">${say((t) => t.footer.license)}: ${esc(licenceNumber)}</p>`
++    + `<p class="kp-off__stop">${say((t) => t.footer.stopGambling)}</p>`
++    + "</div>"
++    + "</footer>"
++    + `<script>${recovery()}</script>`
++    + "</body>"
++    + "</html>";
++}
+diff --git a/tailwind.config.ts b/tailwind.config.ts
+index d22002361..b79d988c3 100644
+--- a/tailwind.config.ts
++++ b/tailwind.config.ts
+@@ -372,7 +372,7 @@ const config: Config = {
+         "date-select": "120",         // above modals on purpose: a picker in a dialog opens OVER it
+         select: "130",                // above date-select on purpose
+         primer: "150",                // first-visit primer — never pierced by a picker
+-        banner: "200",                // offline banner
++        // (`banner: "200"` is gone, 2026-10-09 R4-G: the offline banner is a NoticeBar in the flow now, with no rung.)
+         tooltip: "1600",
+         celebration: "1700",          // win celebration · RG reality check
+         toast: "1800",                // above modals on purpose — see operation-result-modal.tsx

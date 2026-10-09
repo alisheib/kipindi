@@ -1,0 +1,20 @@
+Filter bars: the row's hook is .kp-qbar-row — G1's .kp-qrow was the landing board's question row, and it laid every filter bar out as one
+
+Round 3, tile 326: on /results at sw 390 "Vichujio" dropped to its own line under the sort pill (207px free beside it;
+round 2 had it on the row), over a 69px empty band between the search box and the chips. G1 hung its divider rule on
+a kp-qrow class added to QUERY_BAR_ROW2_CLASS, but .kp-qrow is already the landing board's question row (globals.css: a
+grid with areas, padding-block 16px, a bottom border; tablet and desktop steps). Defined after the utilities, it
+beat the row's own flex, gap and padding, so every filter bar built on QUERY_BAR_ROW2_CLASS (markets, results,
+tickets, notifications, leaderboard, fairness, the loading skeleton) was laid out as a board row since G1.
+
+- query-bar.tsx: QUERY_BAR_ROW2_CLASS's hook is kp-qbar-row, a name nothing else uses.
+- globals.css: the divider rule reads .kp-qbar-row:has(.kp-qdiv), with a note on why the name must stay its own.
+- test:density-contract 4q, the guard: the row's kp- hook is styled in globals.css only by the divider's :has rule,
+  and no other component wears it. Its control re-runs the same measure on a copy with the old kp-qrow put back,
+  which must be reported.
+
+density-contract 36/36, --prove-red 5/5; filter-language, stacking 129/129, dead-css, ui-consistency,
+journey-tickets 50/50, css-vars-defined, design-frozen, section-rail, red-anchors 4883/0. qa:bar-geometry and its red
+need a server; they run in the next lock turn, with the re-tiling.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>

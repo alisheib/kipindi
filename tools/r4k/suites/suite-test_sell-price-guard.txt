@@ -1,0 +1,72 @@
+sell-price-guard — a sale is paid the figure the player confirmed, or nothing happens (Vodacom plan S6, A8c)
+
+§1 · the service — the check, its place, the statements before it, the two refusals, the one emitter
+PASS 1.sig · cashOutPosition takes the confirmed figure as an option — `opts: { expectedValue?: number } = {}` — so every caller that sends none (the dev routes, internal callers) is unchanged
+PASS 1.guard · the check is strict, in both directions, against `paid` — `opts.expectedValue !== paid` — once, and nothing else in the file reads the figure
+PASS 1.clamp · `paid` is the figure the sale credits: the price under the conservation clamp, declared once before the check, and the very figure the wallet is credited and the transaction books after it
+PASS 1.place · the check sits inside both locks (wallet, then market), after every refusal that existed before it — so a shut exit still answers in its own words — and before the first write, the pool's debit
+PASS 1.before · every statement between the lock and the check only reads: the five reads (the position twice, the market, the wallet, cashOutValue), the second lock, refusals and arithmetic — no write, no audit, no event, no assignment to anything read
+PASS 1.refusal · the refusal is CONFLICT with the server's own figures — cashout_pool_short first, where the pool holds less than the price (`paid !== value`), else price_changed — two plain returns that write, audit, emit and await nothing
+PASS 1.emitter · cashOutPosition is each reason's one emitter: no other source returns price_changed or cashout_pool_short, and the only other src file that names either is the registry
+
+§2 · the action and its form — one call; read once, a broken figure refused before the money path, the figure handed on, a refused price recorded after it
+PASS 2.action · the action is one call: after its session check it hands the whole form to cashOutPositionFromForm, and reads no field and calls no money path itself
+PASS 2.read · the form's path reads the ticket and the figure once each, through the one parser, in the money path's own module
+PASS 2.refuse · a figure that is not a plain whole number is refused BEFORE the money path — a cash-out token spent first, then recorded, then INVALID / unknown_failure, the generic line — and never read as no figure
+PASS 2.hand · the service is handed the figure the form carried (or none, when none was sent)
+PASS 2.record · a refused price — moved or short — is recorded once, after the service has returned (outside both locks, never inside the money's transaction): one fire-and-forget audit row, and no other refusal is
+
+§3 · the parser — run
+PASS 3.broken · every broken figure is refused — grouped, signed, decimal, empty, a word, past the safe integers, padded, leading zeros, an exponent, hex — and so is a form entry that is not text
+PASS 3.absent · no field at all is no figure — the sale goes ahead without the check, as before A8c
+PASS 3.good · a plain whole number of shillings is read back exactly, up to the largest safe integer
+PASS 3.client · the client's own encoding, String(value), reads back as the same figure; the forms it must never send — formatTzs, formatNumber, the net — are refused
+
+§4 · the client and its hosts — the figure sent, both looks, the moved price's calm toast, its one refresh and the wait, the hosts' price
+PASS 4.send · submit() sends the figure the confirm showed — String(value), never formatted, never the net — once, beside the position and before the action
+PASS 4.shared · both looks sell through that one submit: one function, handed to the one confirm in the dialogs both returns draw
+PASS 4.moved · a refusal for a moved price asks the page for the server's new price once — inside the refusal branch, after the message (the registry's, with the figures) is toasted — with the button waiting on it, and no other refusal does; since S6 A8h a refused sale that is a fault shows its result after that ask (§7)
+PASS 4.calm · the moved price is a refusal the player fixes with one more tap, and their money did not move: its toast is `factual` (no red, no error buzz — DESIGN_AUTHORITY §F3); since S6 A8h every refused sale's toast is `factual` unless the refusal is a fault (7.loud), and stays until it is read (7.stays)
+PASS 4.waiting · while the server's new price is fetched both looks wait — 'Inapakia…' for the words and the spoken name, no figure, no free strip or line, nothing to press — from one state, set only by that ask and cleared when the refreshed page is drawn (pending falls), declared above every return
+PASS 4.hosts.positions · /positions prices every Sell button with cashOutValue's own `value` — into the classic list's button and, through the view's map, the journey's card
+PASS 4.hosts.market · the question page prices its holder block's Sell button with cashOutValue's own `value`
+PASS 4.hosts.card · the journey's ticket card hands its Sell button the price the page put in its map, no other figure
+
+§5 · the words — the two registry rows and their sentences in three languages
+PASS 5.row · the moved price's row: a warning (the player can sell again at once, and their money did not move), on the toast channel, keyed to failPriceChanged, interpolating the new figure
+PASS 5.row.pool · the short pool's row: an error (a fault of ours the player cannot fix), on the toast channel, keyed to failCashoutPoolShort, with no figure
+PASS 5.copy.en · the player's sentence is the dictionary's own, with the server's NEW figure (TZS 9,000) in it — never the stale figure the button held, never a placeholder, never the generic line
+PASS 5.short.en · …short enough for a toast on a 320px phone
+PASS 5.pool.en · the short pool's sentence is the dictionary's own — no figure (the page shows none that would sell), never the generic line
+PASS 5.copy.sw · the player's sentence is the dictionary's own, with the server's NEW figure (TZS 9,000) in it — never the stale figure the button held, never a placeholder, never the generic line, and not the English sentence
+PASS 5.short.sw · …short enough for a toast on a 320px phone
+PASS 5.pool.sw · the short pool's sentence is the dictionary's own — no figure (the page shows none that would sell), never the generic line, and not the English sentence
+PASS 5.copy.zh · the player's sentence is the dictionary's own, with the server's NEW figure (TZS 9,000) in it — never the stale figure the button held, never a placeholder, never the generic line, and not the English sentence
+PASS 5.short.zh · …short enough for a toast on a 320px phone
+PASS 5.pool.zh · the short pool's sentence is the dictionary's own — no figure (the page shows none that would sell), never the generic line, and not the English sentence
+PASS 5.sw · Swahili: 'Bei imebadilika …', and dau in class 5 — 'Dau lako halijauzwa', 'kuliuza' (Claude's review, S4-COPY-AUDIT 'Swahili review' 4)
+PASS 5.sw.pool · Swahili: the short pool says it is our fault and sends the player to support, dau in class 5 — 'dau hili haliwezi kuuzwa', 'Wasiliana na msaada'
+PASS 5.zh · Chinese: formal 您, the failure registry's sell word 卖出, and no 持仓
+PASS 5.zh.pool · Chinese: formal 您, 卖出, the platform's 联系客服, and no 持仓
+PASS 5.broken · a broken figure's refusal renders the generic line in every language — never the server's English
+
+§6 · the wiring
+PASS 6.wired · this suite runs in predeploy, its red twin is declared, and the two-store suite boots its Postgres through db-scratch, with its own red
+PASS 6.memory · test:cashout (predeploy) runs the same cases on the memory store
+
+§7 · the result and the refusal (S6 A8h) — handed to the shell's host, the button's own only as the fallback, a refused sale as loud as the registry ranks it, its toast kept until read and whole, the host's mount, how it draws, and the way back
+PASS 7.handed · a sale's result goes to the shell's host first: `showResult` hands it over (`handSellResult`, with the control that opened the sale) and sets the button's own result only when no host took it, the one place that result is set
+PASS 7.calls · submit() shows a result twice and no more: a sale that went through, handed over before the page is asked to refresh (so the host reads the page while the ticket is on it), and a refused sale that is a hard block or a fault
+PASS 7.moved · a moved price opens no result: the refusal shows one only for a fault, and the registry ranks a moved price a warning, so its calm toast is the whole answer (DESIGN_AUTHORITY §F2), at once, with no result to hold it back (toast.tsx §F1); the ask is followed by the fault's result and, else, the way focus comes back
+PASS 7.loud · a refused sale is as loud as the registry ranks its reason (DESIGN_AUTHORITY §F2/§F3, FAILURE-INVENTORY §0): the red toast and the ✗ result only for a hard block or a fault — the registry's error, a refusal it cannot rank, and BUSY, which on this path is only the request that threw (the cash-out path never answers with it) — and the calm toast alone for a warning or an info; run over every answer a sale can be refused with, every reason the cash-out path emits among them
+PASS 7.stays · every refused sale's toast stays until it is read (DESIGN_AUTHORITY §F2, §F8: durationMs 0), and the next sale, from any button on any page, dismisses it before it starts — one slot for the tab, at the module's top level — so one answer stands, the latest, never a stack (§F6)
+PASS 7.whole · a refused sale's toast keeps each money figure whole: its sentence goes through keepFiguresWhole, which joins TZS to its number with a no-break space (a toast draws plain text; S6 A8f's promise for the moved price's sentence, which only the toast draws since A8h)
+PASS 7.fallback · the button keeps its own result only as the fallback: its dialogs draw the one definition (`SellResultModal`) from the button's own state, which only `showResult` sets once no host took the result, and the button writes no result of its own
+PASS 7.ack · the hand-off is answered before it returns: `handSellResult` dispatches the one event with an ack object and returns what the host set on it, and the host's listener takes the result, then marks it taken: the win celebration's handshake (dispatchEvent runs every listener before it returns)
+PASS 7.host · the host outlives every row and costs no first download: AppShell mounts it once, for a signed-in visitor, in its own Suspense boundary, as a part of the shell's lazy module, whose one line loads it with next/dynamic (its server render on, a lost chunk left out); the host's module is client code, and nothing else names it
+PASS 7.draw · the host draws the result it took, as it was handed: nothing at all until a result arrives (so no served byte changes), then the one result, open while it is open, in the look the button handed over, with a close that closes it
+PASS 7.away · a move to another page closes the result, as leaving the page did before A8h (a phone's own Back among them), and drops the way back read on the page left behind
+PASS 7.focus · when the result closes, focus goes back near the control that opened the sale, never to a field: the button remembers that control when its confirm opens and hands it over (7.handed), the host reads the page's controls around it when the result arrives (7.ack) and gives focus back once, when the result closes, and only from nowhere (never out of another open dialog, such as a win seal over the result) — to the opener if it can take it, else the nearest of 24 controls after it, else before it, in the page's main region, drawn, enabled, never a field, without scrolling; and a refused sale that opens no result gives focus back to the button once it can be pressed again
+
+SELL PRICE GUARD — all 54 checks passed
+

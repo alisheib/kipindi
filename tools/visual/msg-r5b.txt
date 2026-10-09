@@ -1,0 +1,55 @@
+Visual pass round 5 (R5-B): the Wallet's footer, the tabs and the docked sheets on the column's rhythm, notices dated in the reader's language and cut at a word, one name for each money action in the journey, an empty inbox without filters
+
+From round 5's read of 88ee1a42. Every item was re-measured first and brought, with its siblings, to one convention.
+
+- F3: the Wallet sheet and popover's hairline sat 16–18px under the content and 8px over Funga (tiles 132/133). The
+  journey's foot padding is now --sp-4, giving 16 | 16 in every state (held, normal, break). The filter sheet (already
+  16|16) is the reference; bands with their own padding differ legitimately.
+- F6: Tiketi zangu's sub-tabs started 12px (underline) and 20px (label) inside the column edge (167: x28/x36 vs x16).
+  Journey [data-section-rail] now takes the header nav's tab geometry: 12px padding, the underline exactly the
+  label's width, the rail reaching into the gutter. First label and underline sit on x16 / x132. /wallet's rail and
+  its loading ghost (`data-rail-ghost`) follow.
+- F7: docked sheets drew their border and edge light along the screen's last row (y778/y779). In the journey the box
+  runs 1px past the screen with no bottom border, for the Wallet, guest, primer, reality-check, filter and Needle-drawer
+  sheets and the chat sheet. Nothing moves.
+- F8: the journey bell badge has no drop shadow, so the dome's shoulder is untouched (425 → 475, as its mirror).
+  Classic keeps glow and drop.
+- F9: a Swahili notice read "kuanzia 9 Oct 2026, 11:53". market-service built ONE English date into all three bodies.
+  The verdict and revoked-agent notices, and their emails, now format per locale ("Malipo kuanzia 9 Okt, 11:53" /
+  "2026年10月9日 11:53"). Stored past notices keep their text.
+- F10: 82 + 3 `.slice(0,n)` title cuts in notices, and four email subjects, now cut at a word boundary with "…"
+  (clipQuote). A Chinese cut never falls inside a Latin word or figure. The wallet ledger's money-record descriptions
+  are untouched (pinned by red:updown-void-copy).
+- F11: the journey Wallet's buttons read "Amana" / "Toa" under a header pill saying "Weka pesa". In the journey the
+  header buttons, the balance card and both empty-state doors now use journey.depositAction / withdrawAction. The sw
+  pair fits one row at 320.
+- F13: Wallet 1280 had 59px above "Risiti zote" and 49px below. The door rides the search band's rhythm (R4-C's
+  technique), 42 | 42, the list 24px higher; the tap target stays 44.
+- F14: the count line under the chips sat 8px down. One constant, QUERY_BAR_ROW1_WRAP_CLASS, for both bars and the
+  receipts ghost gives 12 | 12 (/markets' rhythm).
+- /notifications (§A5, consistency): the search and the filter bar are withheld on a genuinely empty inbox, as on its
+  eight siblings, and kept once there is a notice (cleared ones too).
+- The zero-balance lead keeps "mobile money" / "pesa ya simu" whole (keepText with the Wallet's own method label).
+- The deposit and withdraw check badge sits 4px into its corner: 7px clear of the logo at 320 (was 3).
+- Judged, not changed (owner questions):
+  - the header focus rings sit 2px from the next control at 390 (the S4 fit rule's 6px gaps);
+  - zh boxed text is 1.5px high (CJK ideographs sit ~0.12em higher than Latin; every zh box shows it).
+
+Classic viewers get the shared fixes: dates and cuts in new notices and emails, F13/F14 on /wallet and
+/wallet/receipts, the empty inbox, the home lead, the badge and /wallet's ghost rail. F3/F6/F7/F8/F11 are journey-only.
+
+Guards:
+- test:visual-pass-r5b, 75 checks; it drives the notifier and email in-process.
+- Re-pinned: house-bot-reports' notifier hashes (notifyMarketCancelled, notifyObjectionDecided, notifyVerdictRecorded
+  and ForMarket, with a replica reproducing HEAD's pins), journey-shell 7.bell "none" plus a new plant, spacing-scale
+  455 → 454, landing-mine 3, visual-pass-r3c 8.8 and cert-c3's paysAt.
+- Mutation proof on the merged tree: 36/36 caught, all restored byte-identical.
+
+On the merged tip (with R5-D): 40 suites exit 0, among them:
+- r5b 75, r5d, r5f, journey-shell 433 and its red 186/186;
+- spacing-scale, density-contract, landing-mine, cert-c3 1529;
+- notifications-page, wallet-reach, wallet-receipts, journey-tickets, offline-neutral;
+- every visual-pass suite, money-format, failure-reasons, timer-date, filter-language, measure, static-cache-scope,
+  guards-exist and red-anchors.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>

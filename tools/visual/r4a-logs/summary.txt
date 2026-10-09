@@ -1,0 +1,59 @@
+
+test:featured-card           exit 0     2s  ALL PASS — featured-card: 82 passed, 0 failed
+test:hero-copy               exit 0     2s  hero-copy: 17 passed, 0 failed
+test:hero-contract           exit 0     1s  PASS — the hero states nothing it cannot prove
+test:landing-contract        exit 0     1s  all green
+test:landing-mine            exit 0     2s  landing-mine: 37 passed, 0 failed
+test:journey-shell           exit 0     2s  JOURNEY SHELL — all 435 checks passed
+test:ticker-honesty          exit 0     1s  all green
+test:ui-consistency          exit 0     2s    ALL PASS — no new UI-consistency drift beyond the tracked baseline.
+test:density-contract        exit 0     1s  ALL PASS — 36 passed, 0 failed
+test:design-frozen           exit 0     1s  PASS — design primitives are frozen
+test:type-scale              exit 0     2s  ALL PASS — 1379 source files, 187 money elements.
+test:money-format            exit 0     2s  money-format: 69 passed, 0 failed
+test:gold-is-money           exit 0     1s  gold-is-money: OK — identity is metallic, money is gold, and the two do not overlap.
+test:contrast                exit 0     1s  contrast-audit: 118 checks · 0 gate failure(s) (decorative dividers are WCAG 1.4.11-exempt)
+test:dead-css                exit 0     4s  DEAD CSS — all checks passed
+test:css-vars-defined        exit 0     2s  css-vars-defined: 299 references checked, 0 undefined.
+test:stacking                exit 0     2s  139 passed, 0 failed
+test:hooks-order             exit 0     1s  all green
+test:tokens                  exit 0     1s  ALL PASS — 6 css files, 48 guarded tokens
+test:spacing-scale           exit 0     1s  spacing-scale: 10 passed, 0 failed · 460 inverted usages in 166 files
+test:red-anchors             exit 0     3s  red-anchors: 4935 passed, 0 failed
+test:client-graph-safe       exit 0     0s  ALL PASS — client-graph-safe: 5 passed, 0 failed
+test:sell-grace-truth        exit 0     4s  sell-grace-truth: 49 passed, 0 failed
+test:needle-host             exit 0     1s  [needle-host] 68 passed, 0 failed
+test:integrity               exit 0     3s  content-integrity: OK — no misleading, superseded, or removed-code patterns in current-truth surfaces
+test:betting-ink             exit 0     1s  ALL PASS — 27 passed, 0 failed
+test:labels                  exit 0     4s  ALL PASS — 3 locales × 2 products, 1381 files scanned, 11/11 private maps
+test:outcome                 exit 0     1s  ALL PASS — scanned 1382 ts/tsx files
+test:history                 exit 0     1s  market-history guard: all checks passed
+test:bridge                  exit 0     4s  PASS — 706 tsx files, 20 colour families, 17 shadow rungs, 155 alpha classes probed
+test:tap-target              exit 0     1s  30 passed, 0 failed
+test:design-one-door         exit 0     1s  ONE DOOR — design rulebook is singular and labelled.
+test:card-share              exit 0     1s  card-share: 31 passed, 0 failed
+test:chat-focus-ring         exit 0     1s  16 passed, 0 failed
+test:share-link-readable     exit 0     1s  19 passed, 0 failed
+test:updown-filter-sheet     exit 0     1s  updown-filter-sheet: 55 passed, 0 failed
+test:measure                 exit 0     1s  ALL PASS — 706 tsx files
+test:journey-tickets         exit 0     2s  JOURNEY TICKETS — all 51 checks passed
+test:visual-pass-r3c         exit 0     3s  visual-pass-r3c: 70 passed, 0 failed
+test:wallet-reach            exit 0     1s  wallet-reach: 84 passed, 0 failed
+test:grid-paging             exit 0     1s  ALL PASS — 41 passed, 0 failed
+test:chip-contract           exit 0     1s  19 passed, 0 failed
+test:position-permalink      exit 0     1s  31 passed, 0 failed
+test:presence-class          exit 0     1s  presence-class: OK — the seal is for a win the player watched land, and nothing is marked delivered undelivered.
+test:popup-fit               exit 0     1s  popup-fit: OK — 77 popups walked, 6 carry a clip and every one of those carries a reason
+test:motion-ladder           exit 0     2s  12 passed, 0 failed
+test:m1-light                exit 0     1s  M1 — all checks passed
+test:reduce-motion           exit 0     2s  M6 — all checks passed
+test:keyframes               exit 0     1s  KEYFRAME REGISTRY — all checks passed
+test:board-discovery         exit 0     1s  ────────────────────────────────────────────────────────────────
+test:discovery-contract      exit 0     1s  ✅ discovery contract: all assertions passed
+test:eyebrow-roles           exit 0     1s  ✅ 643 sites, every one accounted for.
+test:admin-charts            exit 0     4s  68 passed, 0 failed
+test:one-sided               exit 0     2s  ALL PASS — one-sided markets
+test:filter-language         exit 0     2s  all green
+test:guards-exist            exit 0     2s  ══════════════════════════════════════════════════════════════════════
+test:orphans                 exit 1    11s  ──────────────────────────────────────────────────────────────────────
+DONE

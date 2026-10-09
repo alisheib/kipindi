@@ -1,0 +1,12 @@
+──────────────────────────────────────────────────────────────────────
+red:tab-anchors — the control for §K rule 7d ③
+──────────────────────────────────────────────────────────────────────
+  HEAD · exit 0
+  ✅ ⭐ THE REAL DEFECT REPLAYED · the remedy link loses its tab
+       exit 1 · expected "lives on "settings", href selects "cycles"" → FAILED as intended
+  ✅ the anchor itself is renamed · the button scrolls nowhere
+       exit 1 · expected "#ai-credit-budget is rendered" → FAILED as intended
+  ✅ ⛔ THE SCANNER GOES BLIND · no anchored link is found at all
+       exit 1 · expected "anchored link(s) — the scanner still finds them" → FAILED as intended
+
+✅ every planted defect is caught, and each on its own assertion.

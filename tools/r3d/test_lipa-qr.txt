@@ -1,0 +1,50 @@
+﻿Lipa QR guard
+
+root: F:\kipindi-r3d
+module: F:/kipindi-r3d/src/lib/server/lipa-config.ts
+module: F:/kipindi-r3d/src/lib/lipa.ts
+
+§1 the artwork actually decodes to the payload we pinned
+  PASS 1.1 the configured asset is on disk
+  PASS 1.2 it decodes as a QR code
+  PASS 1.3 the decoded payload is byte-identical to the pinned qrPayload
+  PASS 1.4 the payload's EMVCo CRC-16 re-derives
+  PASS 1.5 the payload names the configured Lipa number
+  PASS 1.6 the filename's hash matches the payload (so a reissued QR gets a new URL)
+  PASS 1.7 exactly one Lipa QR asset exists
+
+§2 the QR cannot contradict the account named beside it
+  PASS 2.1 shows when the destination IS the Lipa number
+  PASS 2.2 hides when the destination is a DIFFERENT account
+  PASS 2.3 hides when the operator switch is off
+  PASS 2.4 hides when the destination is empty (absence is not agreement)
+  PASS 2.5 hides when there is no asset
+  PASS 2.6 a spaced or dashed form of the same number still matches
+  PASS 2.7 a number that merely CONTAINS the Lipa number does not match
+  PASS 2.8 the display form groups as the poster prints it
+
+§2b the release gate withholds the QR everywhere, whatever the config says
+  PASS 2b.1 ⛔ the release gate is OFF — the QR is withheld
+  PASS 2b.2 ⛔ the PERFECT config — matching account, switch on, asset present — still renders NOTHING
+  PASS 2b.3 ⭐ …and the rule itself WOULD have shown it, so it is the GATE refusing, not a broken config
+  PASS 2b.4 no config shape reaches the screen while withheld
+
+§3 the config refuses values that would break the affordance
+  PASS 3.1 rejects a non-numeric Lipa number
+  PASS 3.2 rejects a too-short Lipa number
+  PASS 3.3 rejects an empty merchant name
+  PASS 3.4 rejects a USSD code that is not one
+  PASS 3.5 rejects an asset path outside /pay/
+  PASS 3.6 rejects an empty pinned payload
+  PASS 3.8 rejects a RASTER asset, even at a valid /pay/ path
+  PASS 3.7 a spaced Lipa number is refused rather than silently stored
+
+§4 the panel appears only where a human reconciles the payment
+  PASS 4.1 no surface outside the allow-list renders the QR panel
+  PASS 4.2 every allow-listed surface still renders it
+  PASS 4.3 the pinned payload never reaches a component
+  PASS 4.3b CONTROL · a real interpolation is still caught after decommenting
+  PASS 4.3c CONTROL · …while a docblock merely NAMING the field is not
+  PASS 4.4 no wallet surface renders the static QR (it would credit no wallet)
+
+ALL PASS — OCEAN ENTERTAINMENT LIMITED · Lipa 7006 3747 · selcom-lipa-qr.d997c1d2.svg

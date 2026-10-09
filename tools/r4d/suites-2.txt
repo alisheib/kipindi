@@ -1,0 +1,125 @@
+# 122 suites, 2026-10-09T02:21:33.991Z
+# skipped as live (browser): test:responsive
+test:market-columns	exit 0	1s	PASS 7: ⭐ CONTROL — the shape matcher still reads the shape it is written for ⏎  ⏎ market-columns: 25 passed, 0 failed
+test:updown-filter-sheet	exit 0	1s	PASS 12: ⭐ CONTROL — the shape as it shipped is still recognised ⏎  ⏎ updown-filter-sheet: 55 passed, 0 failed
+test:money-format	exit 0	2s	PASS 6: ⭐ CONTROL — the raw-example matcher still sees the shape that shipped ⏎  ⏎ money-format: 69 passed, 0 failed
+test:type-scale	exit 0	2s	  Ladder adoption: 2215 semantic vs 876 arbitrary (71.7% on the scale). DONE = every ratchet at 0. ⏎  ⏎ ALL PASS — 1379 source files, 189 money elements.
+test:contrast	exit 0	1s	INFO  R5 · void band (22% field, decorative — exempt; stated in words) on --wash-raised (worst stop) 1.38 (need 3) ⏎  ⏎ contrast-audit: 118 checks · 0 gate failure(s) (decorative dividers are WCAG 1.4.11-exempt)
+test:ui-consistency	exit 0	2s	    PASS K8c CONTROL · a copy of input.tsx whose empty notice carries one more class (py-1) fails K8's judge — the empty region would take a height under every field ⏎  ⏎   ALL PASS — no new UI-consistency drift beyond the tracked baseline.
+test:density-contract	exit 0	1s	  PASS 4q · the filter row's kp- hook is its own — globals.css styles it only through the divider's :has rule, and no other component wears it (round 3, tile 326); the old kp-qrow collision, put back in a copy, is reported ⏎  ⏎ ALL PASS — 36 passed, 0 failed
+test:design-frozen	exit 0	1s	  (ratchet holds 35 tsx file(s) / 154 value(s), 1 stylesheet(s) / 78 value(s) — every number may only shrink) ⏎  ⏎ PASS — design primitives are frozen
+test:dead-css	exit 0	4s	       15  src/styles/chat/chat-styles.css ⏎  ⏎ DEAD CSS — all checks passed
+test:css-vars-defined	exit 0	2s	PASS every var() reference resolves to a definition ⏎  ⏎ css-vars-defined: 298 references checked, 0 undefined.
+test:featured-card	exit 0	2s	  PASS 7.2-control a waiver without the DOM half IS detected ⏎  ⏎ ALL PASS — featured-card: 76 passed, 0 failed
+test:measure	exit 0	1s	  PASS 8. ⭐ CONTROL — the bearing derivation reads the glyph (a 3px bearing for the point at x9) ⏎  ⏎ ALL PASS — 706 tsx files
+test:tap-target	exit 0	1s	PASS 6.3 the captioned balance (.kp-jbal) takes its height from a --h-control-* rung, by name — .kp-jbal declares height: var(--h-control-md), the 44px rung ⏎  ⏎ 30 passed, 0 failed
+test:hooks-order	exit 0	1s	hooks-order: 7 passed, 0 failed ⏎ all green
+test:red-anchors	exit 0	2s	     still un-audited (64): red:labels, red:updown-result-clock, red:mobile-visual-plan, red:combobox-truncate, red:unwrappable-id, red:aipoll-reap, red:aipoll-publish, red:stake-bounds, red:updown-cutover, red:contrast, red:contrast-rendered, red:payout-view, red:settlement-expectation, red:tracker-hygiene, red:updown-bars, red:updown-chain-stats, red:updown-digest, red:updown-grid, red:updown-la
+test:decomment	exit 0	4s	  PASS 5.3 …and that script is inside the set pii-in-logs §3 scans ⏎  ⏎ ALL PASS — 22 passed, 0 failed
+test:gold-is-money	exit 0	1s	gold-is-money: 23 passed, 0 failed ⏎  ⏎ gold-is-money: OK — identity is metallic, money is gold, and the two do not overlap.
+test:visual-pass-r4d	exit 0	2s	  ok   9.1′ PLANT · the rule as it shipped is reported ⏎  ⏎ visual-pass-r4d: 63 passed, 0 failed
+test:updown-config	exit 0	1s	 ⏎ updown-config: 92 passed, 0 failed ⏎ updown-config: OK — grid derived not accumulated · source gate holds · winner floor holds · observations write-once
+test:updown-engine	exit 0	2s	 ⏎ updown-engine: 98 passed, 0 failed ⏎ updown-engine: OK — UP=YES holds, voids refund in full, observations are shared, settlement is exactly-once, money conserves
+test:updown-adversarial	exit 0	2s	 ⏎ updown-adversarial: 13 passed, 0 failed ⏎ updown-adversarial: OK — closed rounds refuse bets, stake manipulation refused, double-submit pays once, similar rail is clean, stopped chains stay stopped
+test:updown-reporting	exit 0	2s	[email] sendEmailToUser skipped — no email for user rep_b… (user.email=null, phone=+25595…) ⏎ [email] sendEmailToUser skipped — no email for user rep_a… (user.email=null, phone=+25595…) ⏎ [email] sendEmailToUser skipped — no email for user rep_b… (user.email=null, phone=+25595…)
+test:updown-quickbet	exit 0	2s	 ⏎ updown-quickbet: 53 passed, 0 failed ⏎ updown-quickbet: OK — one tap places once, duplicates pay once, distinct taps stack, 'you're in' is per-viewer, bad taps refused
+test:updown-heal	exit 0	2s	PASS E86.11 · …and an ordinary provider error is NOT swept into the carve-out ⏎  ⏎ ALL PASS — 164 passed, 0 failed
+test:updown-rearm	exit 0	2s	PASS 7.7c · ⭐ …and an unresolved round left behind stays visible to the healer's read — 2 unresolved rows, round present ⏎  ⏎ ALL PASS — 48 passed, 0 failed
+test:updown-tick-cadence	exit 0	4s	PASS 7.10 · the health readout starts clean and exposes the list at all ⏎  ⏎ ALL PASS — 39 passed, 0 failed
+test:updown-hedge-quote	exit 0	2s	PASS 5.5 · …and the winning leg alone carried the whole payout — up leg 14105 of 14105 ⏎  ⏎ ALL PASS — 28 passed, 0 failed
+test:updown-load	exit 0	2s	updown-load (in-memory locks): 6 passed, 0 failed ⏎   note: in-memory mode proves exactly-once + conservation under concurrent fire; run with DATABASE_URL + USE_PRISMA_DAL=true to also exercise the connection pool (P2024). ⏎ updown-load: OK — concurrent taps place exactly once, duplicates pay once, the pool conserves every shilling
+test:updown-feed	exit 0	1s	  OK — a simulated price cannot settle production, a missing key refuses rather ⏎        than inventing, the API key never reaches a stored observation, and an ⏎        undated or off-domain quote is refused.
+test:updown-source	exit 0	1s	  OK — no path recomputes a live round's line, moves its source link, or ⏎        resolves against the asset row; the feed cannot fabricate or leak its ⏎        key; and an ops mistake cannot void a round that holds money.
+test:updown-late-close	exit 0	2s	PASS 6.2 · and its round voids on that recorded failure, not on a second opinion — VOID ⏎  ⏎ ✅ late-close: 38 passed, 0 failed
+test:updown-window	exit 0	2s	PASS 7b.4 · the board card threads its lock instant into the hook (belt-and-braces on every surface) ⏎  ⏎ ✅ updown-window: 49 passed, 0 failed
+test:updown-result-clock	exit 0	1s	  ok   8.6 …and the captions for the phases it can now enter alone ⏎  ⏎ 29 passed, 0 failed
+test:updown-margin	exit 0	1s	PASS 5.2 · ⭐ an operator can still widen ONE chain — the decision set a default, not a law ⏎  ⏎ ✅ updown-margin: 25 passed, 0 failed
+test:updown-readiness	exit 0	1s	PASS 6.14 · ⭐ omitting the record leaves every catalogue rule exactly as strict ⏎  ⏎ ✅ updown-readiness: 49 passed, 0 failed
+test:updown-digest	exit 0	1s	updown-digest (E-37 + E-43): 73 passed, 0 failed ⏎ [email] sendEmailToUser withheld — money mail to an unconfirmed address for user dg_a… (user.email=d***@test.tz) ⏎ [email] sendEmailToUser withheld — money mail to an unconfirmed address for user dg_b… (user.email=d***@test.tz)
+test:updown-push	exit 0	1s	E-57 · Up & Down push — 34 passed, 0 failed
+test:updown-source-class	exit 0	1s	E-53 · updown source class — 40 passed, 0 failed
+test:updown-durations	exit 0	1s	E-62 · durations — 76 passed, 0 failed
+test:updown-chain-stats	exit 0	1s	UP & DOWN CHAIN STATS — 44 passed, 0 failed
+test:updown-grid	exit 0	1s	UP & DOWN GRID — 17 passed, 0 failed
+test:updown-bars	exit 0	1s	UP & DOWN BARS — 27 passed, 0 failed
+test:updown-proposal	exit 0	2s	  UPDOWN PROPOSALS: 91 passed, 0 failed ⏎   A proposal cannot arm without an officer; an approval does not survive an edit; ⏎   evidence does not follow a changed link; and the source lock holds through the arm path.
+test:updown-e2e-flow	exit 0	2s	  never once completed in production. UP, DOWN and VOID all settle; stale and ⏎   undated quotes are still refused. ⏎   ⚠️ STILL UNPROVEN: that a real provider returns a usable quote. Needs the key.
+test:updown-symbols	exit 0	1s	  ok   the quote endpoint is https ⏎  ⏎ 87 passed, 0 failed
+test:updown-admin-options	exit 0	1s	PASS 7.12 · the table's min-width grew with the new column — admin-tbl min-w-[820px] ⏎  ⏎ ✅ updown-admin-options: 50 passed, 0 failed
+test:updown-void-copy	exit 0	1s	PASS E94.9 · a long-form poll that voids is UNCHANGED — it has no per-round reason to name — reaching for a round on a market that has none would be a lookup that always fails ⏎  ⏎ ✅ updown-void-copy: 49 passed, 0 failed
+test:updown-advice	exit 0	1s	PASS 7.12 · the seconds-left figure IS bettingSecondsAfterLag, not a re-derivation ⏎  ⏎ ✅ updown-feed-advice: 63 passed, 0 failed
+test:updown-chart	exit 0	1s	UP & DOWN CHART LABELS — 11 passed, 0 failed
+test:updown-bet-feedback	exit 0	1s	 ⏎ updown-bet-feedback: 24 passed, 0 failed ⏎ updown-bet-feedback: OK — placing a bet is announced visibly, audibly and haptically, in three languages
+test:updown-result-announce	exit 0	1s	 ⏎ updown-result-announce: 39 passed, 0 failed ⏎ updown-result-announce: OK — win celebrates, loss and refund state their own truth, and nothing leaves the app
+test:updown-pricing	exit 0	1s	 ⏎ updown-pricing: 61 passed, 0 failed ⏎ ✓ the multiplier a player is shown is the one the money path would pay.
+test:updown-cutover	exit 0	2s	PASS 5b.2 · ★ a VOID charges nothing and refunds BOTH sides in full — 500000→500000 · 500000→500000 ⏎  ⏎ updown-fee-cutover: 23 passed, 0 failed
+test:updown-playbook	exit 0	1s	  XRP/USD   clean       60  —               —          Tape behaves like a fair market (variance ratio 1.00). ⏎  ⏎ PASS  updown-playbook — 82 passed, 0 failed
+test:updown-movement	exit 0	1s	 ⏎ updown-movement: 48 passed, 0 failed ⏎ ✓ the gate now asks both questions: can it be priced, and can it be decided.
+test:updown-positions-visible	exit 0	1s	 ⏎ updown-positions-visible: 29 passed, 0 failed ⏎ updown-positions-visible: OK — every position renders on both surfaces, the read cap is stated, and a hedge is not flattened to one side
+test:updown-match	exit 0	2s	PASS 13.10 nothing on the band is gold ⏎  ⏎ ALL PASS — 116 passed, 0 failed
+test:updown-handover	exit 0	1s	  ok   10.5 ⛔ the TABS still offer every length — a chain's state says whether MORE rounds will appear, not whether the ones there can be played (E-67) ⏎  ⏎ ALL PASS — 117 passed, 0 failed
+test:updown-bell	exit 0	1s	── 6 · the push keeps its PER-ROUND key (money news must not overwrite money news)  ⏎  ⏎ Up & Down bell rows (owner decision 2026-08-22) — 105 passed, 0 failed
+test:updown-clock-guard	exit 0	1s	PASS §7v control · a second copy of the settled spelling IS counted ⏎  ⏎ ALL PASS — 62 passed, 0 failed
+test:updown-history-pnl	exit 0	1s	PASS §4e control · stripComments removes prose that names the defect ⏎  ⏎ ALL PASS — 26 passed, 0 failed
+test:timer-date	exit 0	1s	PASS 4: CONTROL — a real instant still reads in the reader's month words — 8 Okt, 15:18 ⏎  ⏎ timer-date: 77 passed, 0 failed
+test:recategorise	exit 0	1s	 ⏎ recategorise: 30 passed, 0 failed ⏎ [audit] ADMIN market.recategorised usr_test_officer Market#mkt_recat_95028
+test:read-tiers	exit 0	2s	PASS 9.3 ⭐ POSITIVE CONTROL · §9 reads the real decider, not an empty slice — 7181 bytes · decider 184 chars ⏎  ⏎ read-tiers: 83 passed, 0 failed
+test:sell-grace-truth	exit 0	4s	PASS 6.control · CONTROL · with today's rules (the row not wrapping, the figure no amount) the model draws what the v2 parity baseline (7c859cdf) captured of the classic confirm for a free TZS 1,500 at 360 — the English row on one line, the figure's column 129.6px beside a 103.6px fee column, 2.8px to spare (captured: 129.5 and 103.5), and the Swahili figure's column squeezed to 104.0px beside 132
+test:sell-price-guard	exit 0	3s	PASS 7.focus · when the result closes, focus goes back near the control that opened the sale, never to a field: the button remembers that control when its confirm opens and hands it over (7.handed), the host reads the page's controls around it when the result arrives (7.ack) and gives focus back once, when the result closes, and only from nowhere (never out of another open dialog, such as a win se
+test:marketing-optout	exit 0	1s	marketing-optout: 121 passed, 0 failed ⏎ [optout] stop failed: planted: the ledger write failed once ⏎ [optout] refused a mint with an unusable identifier
+test:tokens	exit 0	1s	  PASS button sizes reference --h-control-* (no literal px height) ⏎  ⏎ ALL PASS — 6 css files, 48 guarded tokens
+test:integrity	exit 0	3s	content-integrity: OK — no misleading, superseded, or removed-code patterns in current-truth surfaces
+test:product-line	exit 0	1s	 ⏎ product-line: 48 passed, 0 failed ⏎ product-line: OK — money reads see both products; player boards see long-form polls only
+test:betting-ink	exit 0	1s	PASS §6f control · an AI poll form error in the NO ink is reported —         {dateError && <p className="mt-1 text-body-sm text-no-300">{dateError}</p>} ⏎  ⏎ ALL PASS — 27 passed, 0 failed
+test:i18n	exit 0	1s	  PASS CONTROL · the scan read the console (100+ files) and would catch an unpinned provider ⏎  ⏎ ALL PASS — en=2628 sw=2628 zh=2628 keys
+test:labels	exit 0	4s	  PASS §11d …and does NOT fire on a real enum beside an HTTP status ⏎  ⏎ ALL PASS — 3 locales × 2 products, 1381 files scanned, 11/11 private maps
+test:house-bot-surfaces	exit 0	17s	PASS 6.gap.1 · ⛔ WHAT IS STILL OPEN, MEASURED AND PRINTED RATHER THAN LEFT TO BE FOUND · the complement §0 printed has shrunk by ≥ 400 files, and NOT ONE of the ≥ 700 files under src/app/ or src/components/ is left in it: every admin page, player route, officer and public route handler, layout, action and component is now inside a house-word population. What remains is internal modules that neithe
+test:outcome	exit 0	2s	  PASS D42 control · a typed-out void word IS detected ⏎  ⏎ ALL PASS — scanned 1382 ts/tsx files
+test:bridge	exit 0	3s	  PASS §9.3 …and the rung that started this — `success-500` — is reachable ⏎  ⏎ PASS — 706 tsx files, 20 colour families, 17 shadow rungs, 155 alpha classes probed
+test:stacking	exit 0	2s	PASS 8.5 ⚠️ CONTROL — the UA block still exists (removing it would break ~10 drives) ⏎  ⏎ 139 passed, 0 failed
+test:design-one-door	exit 0	1s	  ok   docs/README.md names the tracked-file derivation (git tracks 130 at this level) ⏎  ⏎ ONE DOOR — design rulebook is singular and labelled.
+test:search-adoption	exit 0	2s	  PASS every file rendering a <SearchBox> was actually PARSED as an element ⏎  ⏎ ALL PASS — 1382 source files
+test:confirm-gate	exit 0	1s	PASS 3: ⛔ …and `isHard` no longer depends on the word being truthy — that expression is the original defect: a missing word silently downgraded the tier ⏎  ⏎ confirm-gate: 9 passed, 0 failed
+test:spacing-scale	exit 0	1s	PASS 4: 🔴 the proposals row no longer tightens at the sm breakpoint — sm:gap-3.5 is 14px against a base gap-3 of 16px — wider layout, tighter gutter ⏎  ⏎ spacing-scale: 10 passed, 0 failed · 460 inverted usages in 166 files
+test:card-share	exit 0	1s	PASS 7: control · the old closed-card root IS detected ⏎  ⏎ card-share: 31 passed, 0 failed
+test:chat-focus-ring	exit 0	1s	PASS 5: …and carries the transparent outline forced-colors substitutes on ⏎  ⏎ 16 passed, 0 failed
+test:share-link-readable	exit 0	1s	PASS 4: ⭐ CONTROL — the field as it shipped (inline, leading-[1.5]) is refused ⏎  ⏎ 19 passed, 0 failed
+test:rule-honesty	exit 0	2s	── C · the round page selects the sentence from the round's own band  ⏎  ⏎ PASS — 22 passed, 0 failed
+test:short-title-edit	exit 0	3s	PASS db.ran · the database-mode process ran its checks and exited clean ⏎  ⏎ short-title-edit: 194 passed, 0 failed
+test:journey-funnel	exit 0	7s	  PASS 10.panel · the panel is mounted on /admin/insights AFTER the page's access check, and it contains its own read failure ⏎  ⏎ JOURNEY FUNNEL — all checks passed
+test:journey-shell	exit 0	2s	  PASS 12.c · CONTROL · the readers can fail: the lazy reader takes lazy(, React.lazy( and lazy<T>( and leaves makelazy( and a Lazy name alone; the import reader takes lazy by name or renamed, from react only; the list reader reads across lines, from the module named; the tag reader finds each part's element; the boundary reader takes a part alone in its boundary and nothing else; the deferral rea
+test:journey-tickets	exit 0	1s	PASS 12.words · the journey's sell path (the look, the shared dialogs under it, the confirm with the journey's words, the toasts) says no 'nafasi' and reads none of the three classic lines that do; every word resolves in en, sw and zh; its one Chinese 持仓 is the sold receipt's small heading and its three Swahili 'toa' words today's cash-out headings, each named (§0h point 36) ⏎  ⏎ JOURNEY TICKETS —
+test:visual-pass-r3c	exit 0	1s	  ok   10.3 · after pressing the hub's Matokeo row the pointer moves off the page's controls (the HAPANA hover fill on tile 326) ⏎  ⏎ visual-pass-r3c: 70 passed, 0 failed
+test:signoff	exit 0	1s	PASS §4 control · an inline two-stamp derivation is reported ⏎  ⏎ signoff: 25 passed, 0 failed
+test:payout-view	exit 0	1s	E-49 · payout view — 40 passed, 0 failed
+test:cert-c1	exit 0	1s	[email-stub] To: s***@example.tz | Subject: s ⏎  ⏎ cert-c1 (email truth): 1237 passed, 0 failed
+test:wallet-reach	exit 0	1s	PASS 8c.5 …and nothing AROUND them yields by width either: the bar's only width gates are the brand's halves, the destinations and the three desktop wrappers, and the width is asked once, for the bell — ["mark-flip-i inline-flex xl:hidden","hidden xl:inline-flex","hidden lg:flex kp-jnav","hidden lg:inline-flex","hidden lg:inline-flex kp-jhdr__bell","hidden lg:inline-flex"] ⏎  ⏎ wallet-reach: 84 pa
+test:landing-mine	exit 0	1s	PASS 4: ONE read of the total — the memo and the re-read share `readPaidOutTzs`, and nothing else sums the ledger here ⏎  ⏎ landing-mine: 37 passed, 0 failed
+test:grid-paging	exit 0	1s	PASS 4.6 · ⛔ the mobile nav controls are sized literally, not with the 80px scale token ⏎  ⏎ ALL PASS — 41 passed, 0 failed
+test:chart-one-home	exit 0	1s	PASS 5.3 the allowed library is imported ONLY under the home (static or dynamic) ⏎  ⏎ ALL PASS — 30 passed, 0 failed (14 chart-shaped files · 12 members in the home · 9 named exemptions)
+test:chip-contract	exit 0	1s	PASS 4.3 CONTROL — the scan reached the tree, so 0 hits means 0 defects and not 0 reach — 705 .tsx files scanned (floor 300) ⏎  ⏎ 19 passed, 0 failed
+test:proof-privacy	exit 0	1s	  ok   self-test: the viewerIsStaff check fails when it is removed ⏎  ⏎ 12 passed, 0 failed
+test:position-permalink	exit 0	1s	  ok   6.4 a ticket that is not the viewer's does not say whether it exists ⏎  ⏎ 31 passed, 0 failed
+test:refresh-cadence	exit 0	1s	  ok   5c.4 ⛔ the page's clock is the SERVER's, so the bound cannot be beaten by a fast handset ⏎  ⏎ 34 passed, 0 failed
+test:feedback-law	exit 0	1s	 ⏎ feedback-law: 150 passed, 0 failed  (of 150) ⏎ feedback-law: OK — one answer per class of action, and every refusal names its way out.
+test:presence-class	exit 0	1s	 ⏎ presence-class: 83 passed, 0 failed  (of 83) ⏎ presence-class: OK — the seal is for a win the player watched land, and nothing is marked delivered undelivered.
+test:motion-ladder	exit 0	2s	  (frozen declarations, each with a prior ruling: --dur-stage) ⏎  ⏎ 12 passed, 0 failed
+test:m1-light	exit 0	1s	          dark inset = a sunken well; M1 blesses it (--edge-shade, 'inset wells only') ⏎  ⏎ M1 — all checks passed
+test:reduce-motion	exit 0	2s	          §M5 names this atom as THE in-flight indicator. Not ambient, not decoration — it exists only while an operation is outstanding, and silence is the wrong answer to "still working" on the slowest device. Both universal clamps still reach it and the stopped ring stays visible. ⏎  ⏎ M6 — all checks passed
+test:keyframes	exit 0	2s	       12  src/styles/chat/chat-styles.css ⏎  ⏎ KEYFRAME REGISTRY — all checks passed
+test:board-discovery	exit 0	1s	──────────────────────────────────────────────────────────────── ⏎   BOARD DISCOVERY: all checks passed ⏎ ────────────────────────────────────────────────────────────────
+test:hero-copy	exit 0	2s	 ⏎ state: claim P ("first", evidence 2026-09-27 · INHERIT-MANIFEST R9) · rails [M-Pesa, Airtel Money, HaloPesa, Mixx by Yas] ⏎ hero-copy: 17 passed, 0 failed
+test:eyebrow-roles	exit 0	1s	     of which 15 carry `.row-link` — the row navigation link, a CONTROL LABEL whose case and 0.10em live in globals.css (DG-A-08) ⏎  ⏎ ✅ 643 sites, every one accounted for.
+test:section-rail	exit 0	1s	  vacuity floor        11 · population 11 ✅ ⏎  ⏎ ✅ every rail of destinations names the one in force.
+test:unsaved-changes	exit 0	1s	  PASS 3.4c CONTROL · a hook that no longer restores through restoreDraftInto is reported ⏎  ⏎ ✅ every admin form that can lose work guards all three exits
+test:criterion-i18n	exit 0	1s	PASS 8: and is purely additive ⏎  ⏎ criterion-i18n: 99 passed, 0 failed
+test:override-scope	exit 0	1s	PASS 5: …by refusing the stake, not just referencing the names ⏎  ⏎ market-override-scope: 20 passed, 0 failed
+test:admin-charts	exit 0	2s	  ok   §8 …and imports the shared one instead ⏎  ⏎ 68 passed, 0 failed
+test:ticker-honesty	exit 0	1s	ticker-honesty: 117 assertions passed ⏎ all green
+test:one-sided	exit 0	3s	  PASS 16.9-control the priced dial DOES draw its split and its figure (the matchers can see one) ⏎  ⏎ ALL PASS — one-sided markets
+test:share-preview	exit 0	1s	  PASS 4.8 the og image reads the settled rule and draws the final pool, not a lean, once settled ⏎  ⏎ ALL PASS — share preview
+test:filter-language	exit 0	2s	filter-language: 303 assertions passed · 17 player + 16 admin rails · 27 discovered ⏎ all green
+test:failure-reasons	exit 0	4s	failure-reasons (with §8 + §9 + §10): 376 passed, 0 failed ⏎ [email] sendEmailToUser skipped — no email for user fr_player… (user.email=null, phone=+25579…) ⏎ [email] sendEmailToUser skipped — no email for user fr_player… (user.email=null, phone=+25579…)
+test:chart-series	exit 0	1s	PASS §4 volume is drawable ⏎  ⏎ 20 passed, 0 failed
+test:client-error-report	exit 0	1s	PASS §6f control · the ordering test can fail ⏎  ⏎ ALL PASS — 56 passed, 0 failed
+# done

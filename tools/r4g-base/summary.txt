@@ -1,0 +1,14 @@
+test:journey-shell exit=0
+test:route-census exit=0
+test:stacking exit=0
+test:red-anchors exit=0
+test:design-frozen exit=0
+test:ui-consistency exit=0
+test:i18n exit=0
+test:simple-journey-flag exit=0
+test:shell-boundary exit=0
+test:hooks-order exit=0
+test:decomment exit=0
+test:layout-staleness exit=0
+test:marketing-optout exit=0
+test:translation-safety exit=0

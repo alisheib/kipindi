@@ -1,0 +1,54 @@
+  ✓ CONTROL — the gate is GREEN on an UNMUTATED copy of everything it reads
+  ✓ RED  darken --text to a mid grey — body ink that cannot be read on the canvas
+         → FAIL --text on --bg → 1.48
+  ✓ RED  revert .btn-yes fill to its pre-H10 57% — white label back to 4.05
+         → FAIL btn-yes label (pearl on yes-bg) → 4.05
+  ✓ RED  lighten .btn-no fill — the NO button's label stops clearing AA
+         → FAIL btn-no label (pearl on no-bg) → 2.79
+  ✓ RED  revert --danger-500 to its pre-H10 60% — white label back to 4.28
+         → FAIL btn-danger label (pearl on danger-500) → 3.35
+  ✓ RED  dim --pearl-50 — every solid button label at once
+         → FAIL btn-no label (pearl on no-bg) → 1.53
+  ✓ RED  darken --gilt to 45% — money ink on the canvas (M4: money is read)
+         → FAIL --gilt money ink on --bg → 2.70
+  ✓ RED  darken --gilt-ink's deep stop to 45% — every struck money figure at once (DA-7)
+         → FAIL gilt-ink amount (struck-metal type on --bg, worst stop) → 2.70
+  ✓ RED  lighten --royal-950 — the proposal bonus panel goes pale under struck gold ink (DA-7)
+         → FAIL DA-7 · gilt-ink on the proposal bonus panel (gold-700 @16% over royal, oklab) → 1.13
+  ✓ RED  darken --gold-500 — .btn-gold's own dark label on its own fill
+         → FAIL btn-gold label (gold-fg on gold-500) → 1.80
+  ✓ RED  restore .btn-primary's 60% light stop — E-119, the white label back to 4.0
+         → FAIL btn-primary label (pearl on royal ramp, worst stop) → 4.01
+  ✓ RED  crank .btn-primary's hover brightness to 1.30 — a raster-only failure
+         → FAIL btn-primary label :hover (filter rastered) → 3.87
+  ✓ RED  make one of .btn-primary's gradient stops an unscoreable color-mix()
+         → refused: contrast-audit: ".btn-primary { background } stop: color-mix(in oklab" is not a literal oklch(), a #hex, or a 
+  ✓ RED  add an unmodelled contrast() to .btn-primary's hover filter
+         → refused: contrast-audit: ".btn-primary:hover:not(:disabled)" applies filter function "contrast", which this model does 
+  ✓ RED  raise --btn-hover-gain to 1.20 — the whole solid family loses AA on hover
+         → FAIL btn-primary label :hover (filter rastered) → 4.23
+  ✓ RED  make --btn-hover-gain non-numeric — an unreadable AA input
+         → refused: contrast-audit: --btn-hover-gain is "var(--something-else)", not a plain number
+  ✓ RED  re-declare --btn-hover-gain a second time (INTAKE §2a, numeric)
+         → refused: contrast-audit: --btn-hover-gain has 2 declaration sites (1.03 | 1.25). INTAKE §2a: the browser takes the LAST
+  ✓ RED  re-declare --bg at the top of :root instead of editing line 244 (INTAKE §2a)
+         → refused: contrast-audit: --bg has 2 declaration sites (oklch(45% 0.130 268) | oklch(6.5% 0.130 268)). INTAKE §2a: the b
+  ✓ RED  make .btn-gold's fill a color-mix() the parser cannot score
+         → refused: contrast-audit: ".btn-gold { background }: color-mix(in oklab, var(--gold-500) 90%, black)" is not a literal o
+  ✓ RED  rename --gilt out from under the gate — a token the gate names must exist
+         → refused: contrast-audit: --gilt is not declared in the corpus (C:\Users\asheib\AppData\Local\Temp\contrast-red-jlrDfk\r
+  ✓ RED  E-121 restored — .cm-send:hover swaps its fill to the lighter --brand-400
+         → FAIL cm-send glyph :hover (own fill + filter rastered) → 2.44
+  ✓ RED  .cm-send's resting fill lightened to --brand-300 — the glyph goes under 3.0
+         → FAIL cm-send glyph (#fff on brand-500) → 1.79
+  ✓ RED  make .cm-send's glyph #888 — the hex parser must read the VALUE, not just the shape
+         → FAIL cm-send glyph (#fff on brand-500) → 1.01
+  ✓ RED  make .cm-escalate's ramp unscoreable — the chat sheet gets no softer treatment
+         → refused: contrast-audit: ".cm-escalate { background } stop: color-mix(in oklab" is not a literal oklch(), a #hex, or a 
+  ✓ RED  lighten .gilt-metal's ink to near-white — the money CTA's label goes unreadable
+         → FAIL gilt-metal label (gold-fg on the struck ramp, worst stop) → 1.17
+  ✓ RED  darken --gilt-metal's body stop to 28% — the token ramp must actually be read
+         → FAIL gilt-metal label (gold-fg on the struck ramp, worst stop) → 1.24
+
+RED HARNESS (contrast) — 25/25 caught · 4 sheet(s) untouched
+EXIT=0

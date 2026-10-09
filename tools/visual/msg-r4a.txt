@@ -1,0 +1,36 @@
+Visual pass round 4 (R4-A): the featured card's category and time apart, its empty-state pair centred, its pool labelled as money, and the ticker's fade off the label
+
+Round 4's readers measured these; each was re-measured first. Every "after" is computed, and the next tile round reads
+them.
+
+- The top row at sw 390 (045 077 089 102 015 037, classic 001 007): when the category+time tail fit on line 1,
+  "UCHUMI" and "masaa 1 yamebaki" sat 9px apart (the time's own word space is 7px), so they read as one phrase. 412
+  had 31px, en 390 124. `.mcardp-tail` takes a 16px column gap (row gap 5px, the large-text stack unchanged). At sw
+  390 the tail now wraps to line 2 as it does at 360: category left, time right. Whenever it shares a line the gap
+  is at least ~18px. en, zh and 768+ are unchanged.
+  A consequence, read on the tiles: at sw 390 the card grows ~21px. Under the staff preview strip (110px) its YES/NO
+  ends ~2px under the bottom rail on the preview tiles. Players never see that strip, so they keep ~110px of
+  clearance, and V15's 360 × 740 budget is untouched (360 already wrapped).
+- The no-bets pair ("Hakuna dau bado" / "Kuwa wa kwanza kutabiri") sat 18 above / 28 below between the pool bar and
+  YES/NO at 768–1280, and 14 / 18 at phone widths. A new token --mcard-empty-drop (derived from --mcard-traders-h and
+  --mcard-act-mt, so it follows each density) moves the pair down and takes the same back under it. It is centred
+  within 0.5px, and the card's height (--mcard-base) and the skeleton are unchanged.
+- The featured card's pool figure: "TZS 10,800" was 11px, dim and unlabelled. It now reads "Bwawa / Pool / 奖池 TZS
+  10,800", the board row's own words on the same page (t.common.pool; no dictionary change), at --type-small on the
+  row's 16.5px line, the figure as .amount in --text at 600. The grid cards' 11px figure is unchanged: R3-A
+  measured no room for a label at 360.
+- The journey ticker: round 3's fade started at the label's last letter, so a faded glyph sat 1px after "MUBASHARA"
+  ("MUBASHARAsiku" at 321 325 330 332). The label now carries 16px of solid ground, then the 24px fade — 40px, the
+  end cap's own — and the viewport's padding follows. Item 1 rests ~8px clear of the fade. Journey only; the classic
+  ticker is untouched.
+
+Guards: featured-card 2.16 / 2.17 / 2.18 with controls (2.17 re-derives above and below from the tokens for both
+densities, within 0.5px), 2.15's markup pin, and red anchors for each; journey-shell 7.ticker-fade re-pinned (--sp-4 at
+16px), two plants re-targeted, two new ("the fade touches the label again").
+
+On the merged tip: featured-card 82, journey-shell 435, hero-contract, landing-contract, red-anchors 4935. On the R4-A
+tree: 21 named suites and ~35 more that read these files exit 0; red:journey-shell 183/183 (367 proofs),
+red:featured-card 18/18, red:ticker-honesty 28/28, red:hero-copy 27, red:density-contract 5/5. test:orphans' exit 1
+is main's own (two landing-v3 panel files). tsc and the tiles run in the next lock turn.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>

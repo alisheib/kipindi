@@ -1,0 +1,3 @@
+WIP Vodacom S6 A8i-2: the drive reads the wallet over HTTP, keeps the primer shut, retries an interrupted navigation
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>

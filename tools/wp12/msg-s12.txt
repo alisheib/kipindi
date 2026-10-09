@@ -1,0 +1,17 @@
+Vodacom S6 WP12: qa:journey-shell's §12 follows the owner's ruling of 2026-10-07 - once the email bar is deleted, neither the journey reader nor the classic one whose address is unconfirmed may be shown one
+
+The tile drive was written before money doors' release (012cccbc) deleted the app-wide email bar. Its §12 held WP7's
+rule: a journey reader with an unconfirmed address is not shown the bar, and the same reader without a pass is (the
+control, n === 1). On today's tree that control can only fail, and the journey half reads zero for a reason that has
+nothing to do with the journey.
+
+So §12 now reads which tree it runs on, the way qa:classic-shell-parity's 2.9 does (884c292d): EMAIL_BAR_GONE is the
+absence of src/components/layout/email-verify-banner.tsx in the drive's own repository (the run list starts the server
+from that tree). With the component there, the old rule and its control, unchanged. With it gone, both readers must be
+shown no bar (states journey-no-bar and classic-no-bar), and the section's title and the header's plan say so. There is
+no control to be had once the component is deleted: the file decides, not the count. /auth/demo?email=unverified still
+exists (it now sets up the withdraw email card), so both tiles are still taken. S6-PLAN's WP12 note says the same.
+
+node --check: clean. Its run is turn C (the 335 tiles).
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>

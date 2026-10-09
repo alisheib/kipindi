@@ -1,0 +1,20 @@
+﻿
+── 1 · the mock is labelled as a mock ────────────────────────
+
+── 2 · nothing claims a government match ─────────────────────
+
+── 2b · privacy declares only what the code actually does ────
+
+── 3 · uniqueness is atomic, not hopeful ─────────────────────
+
+── 3c · the final-refusal predicate (2026-09-13): migration, list and both fast paths agree 
+
+── 4 · rejection is visible, and the record survives being looked at 
+
+── 5 · each transition emits the right event, and only it ────
+
+────────────────────────────────────────────────────────────────
+  D1 · KYC SUBMISSIONS: 104 passed, 0 failed
+  Uniqueness is enforced by the DATABASE; run 'npm run load:nida-race'
+  against the disposable cluster to see it refuse two containers.
+────────────────────────────────────────────────────────────────

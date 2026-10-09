@@ -1,0 +1,59 @@
+Visual pass round 3 (R3-C): widows, the YES/NO pair, empty states centred, whole chip halos, notifications without ".." or raw ids, the leaderboard's tier and heads, the hub's Needle row, the guest sheet's ×, upright Chinese
+
+Round 3's readers measured these; each was re-measured first. Every "after" is computed, not shot, and the next tile
+round reads them. Two are visible layout changes to look at on the tiles: the card-size row and the invite hero on a
+phone.
+
+- Widows, seven surfaces. keepLastWords (ui/keep-words.tsx, G1's nowrap-span method) on the held Wallet's notice
+  and the fairness lead. The hub's card-size row takes the rail menu's own layout (.kp-hub__row--switch: the hint on
+  its own line across the row): one line from 360, two whole lines at 320, and the row ~62px instead of 73. The RG
+  page's two paragraphs are balanced. Below sm the invite call takes the card's width under the dial, two phrases
+  ("Shiriki kiungo chako" / "uone wanaojiunga"). The privacy notice's version line no longer ends on "·".
+- One dotted-sequence idiom: G2's HubSub becomes ui/dot-seq.tsx (DotSeq), and .kp-hub__seq* is renamed .kp-seq*, with
+  a mono variant whose 3ch gap is " · " exactly. Merge with R3-A: the featured card's meta line (.mcardp-src__*) sits
+  on the same rules as a selector list. featured-card 2.14 pins the merged rules, and visual-pass-r3c's rule() reads
+  a selector inside a list (never a longer selector that only starts with it).
+- EmptyState: an UPPER au/or UPPER pair stays on one line ("NDIO au HAPANA", "YES or NO"; pairOnOneLine beside G3's
+  dashOnItsWord, both in ui/empty-state-text.ts, no-break spaces built in code). Content was 56 above / 48 below in its
+  box, because each drawing's ink starts 7–14 units down its own canvas. INK_TOP gives each viewBox its first ink row,
+  so it reads 48 / 48 at the same scale.
+- Strips: the selected pill's halo (--glow-selected reaches 11px) was clipped square by the scroller. Below 1024 the
+  strip keeps 12px of room on the block and leading sides, with negative margins, so no pill moves. The leading fade and
+  scroll-padding move in by the same 12px.
+- /results' "HAPANA 2" plate was the capture's pointer resting on the pill (the hover fill). qa:journey-shell now
+  parks the pointer at the left edge after it navigates. "Batili" is the fourth lens, so no filter is missing.
+- Notifications: an officer's reason that already ends in "." got a second one, and endClause() drops the reason's
+  own stop. " · pos_…" was appended to sentences to keep notify()'s 90 s dedupe apart. The id now lives in each
+  notice's link (/markets/<id>#<position>, the ticket itself), so the words carry no id. The cancelled-market notice
+  links to its refunded ticket (it was /wallet). Old stored rows are shown cleaned (lib/notification-text.ts, in the
+  bell and on /notifications).
+- Leaderboard: the "Fedha" (silver) tier was drawn in money gold. It is plain ink now, and the dead gold accent leaves
+  PageRibbon. The sort row loses the extra padding the kp-qrow collision left (32 / 32). Right-aligned heads give back
+  their trailing tracking (every admin table).
+- The hub's Needle row is a real hub row (needle-drawer variant "hub-row": the 20px glyph slot, the value in the
+  value's type, the 18px chevron). The .kp-hub__needle rules are gone.
+- The guest tickets sheet's × stood 4–4.5px above the title's line. The title's first line is centred on the close box
+  (margin −4.5px), as G2 did for the channels panel.
+- zh: html:lang(zh) { font-synthesis-style: none } — no fake italic on Chinese (the footer's RG motto).
+- Missing unread signs: not a regression (no file on the unread path changed), but capture timing. qa:journey-shell's
+  unreadLanded() waits for the counter mounted at that width and asks the Arifa row to read again; a sign still
+  missing is logged.
+
+Guards: the new test:visual-pass-r3c (68, each fix with a control or plant); gold-is-money holds page-ribbon.tsx;
+house-bot-money's cases find rows by link and assert no id in the words; the D19-1 red anchor follows the new win call.
+
+On the merged tree (R3-A + R3-B + R3-D + R3-C), all exit 0: journey-shell 435, journey-account 85, journey-tickets
+51, visual-pass-r3c 68, featured-card 76, landing-mine, hero-copy, needle-host, red-anchors, stacking,
+ui-consistency, density-contract, type-scale, money-format, measure, market-columns, design-frozen, dead-css,
+css-vars-defined, hooks-order, gold-is-money, contrast, tap-target, popup-fit, filter-language, social-panel,
+updown-digest, updown-bell, notifications-page, position-permalink, settlement-gate, cert-c3, guards-exist,
+client-graph-safe, spacing-scale, wallet-reach, implicit-submit, layout-staleness. Reds: journey-shell 180/180,
+journey-account 48/48, journey-tickets 107/107. test:house-bot-disclosure's D19a byte pin now also reads
+legal/_components.tsx (markup only, no word). tsc, the DB suites (house-bot-money) and the browser proof run in lock
+turns M6/M7.
+
+Open, for the owner: the leaderboard podium's gold ring and crown and the HotChip gold flame (Q5, "no streak flames").
+Open, for the coordinator: on /results at sw 390 the fourth chip's label sits wholly past the strip's end, so the
+32px trailing fade dims nothing but HAPANA's "2" — a wider ramp is proposed.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>

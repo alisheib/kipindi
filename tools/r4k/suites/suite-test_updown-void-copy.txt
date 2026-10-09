@@ -1,0 +1,52 @@
+PASS 1.1 · a no-move void says so
+PASS 1.2 · a source failure says so — OUR failure, named
+PASS 1.3 · a source mismatch says so
+PASS 1.4 · an operator void says so
+PASS 1.5 · ⭐ E-65 · a DECIDED round that refunded this player reads UNMATCHED, not a void — unmatched
+PASS 1.6 · …and the same holds when the round went UP
+PASS 1.7 · ⭐ a player who LOST gets no refund sentence — silence, not a consolation
+PASS 1.8 · a player who WON likewise
+PASS 1.9 · an unresolved round has no refund reason
+PASS 1.10 · ⭐ an UNRECOGNISED void reason surfaces as unexplained — never folded into no-move
+PASS 1.11 · …and so does a void with NO reason recorded
+PASS 2.1 · ⭐ a VOID has no direction to render
+PASS 2.2 · an unresolved round has none either
+PASS 2.3 · a decided round keeps its direction
+PASS 3.en · every reason has copy in EN
+PASS 3.enb · ⭐ and all six are DIFFERENT sentences — not one branch wearing six names — 6/6 distinct
+PASS 3.sw · every reason has copy in SW
+PASS 3.swb · ⭐ and all six are DIFFERENT sentences — not one branch wearing six names — 6/6 distinct
+PASS 3.zh · every reason has copy in ZH
+PASS 3.zhb · ⭐ and all six are DIFFERENT sentences — not one branch wearing six names — 6/6 distinct
+PASS 3.4 · ⭐ the UNMATCHED sentence explains the missing counterparty, not the price — Nobody backed the other side, so there was nothing to win and nothing to lose. Your stake is back in full.
+PASS 3.5 · …and it never tells the player they lost — Nobody backed the other side, so there was nothing to win and nothing to lose. Your stake is back in full.
+PASS 3.6 · the source-failure sentence owns it as OUR failure — We could not confirm a closing price for this round, so nobody was paid. Your stake is back in full.
+PASS 3.7 · ⭐ EVERY reason states the stake is back in full
+PASS 4.1 · the card asks the shared rule
+PASS 4.2 · the round page asks the shared rule
+PASS 4.3 · ⭐ the card's two-branch ternary is GONE
+PASS 4.4 · ⭐ and the round page's is too
+PASS 4.5 · ⭐ the card branches on whether THIS viewer was refunded, not on `state === void`
+PASS 4.6 · …and so does the round page
+PASS 4.9 · ⭐ the RESULT panel itself carries the refund reason — a branch that exists but cannot be reached is not a fix — a refunded player matches `decided && myPosition && result` FIRST and never reaches the branch below
+PASS 4.7 · the card is fed the viewer's refunded stake
+PASS 4.8 · ⭐ and the board actually COMPUTES it — a settled position paid exactly its stake
+PASS E87.1 · ⭐ the result chip consults the refund REASON, not what is left over after WIN/LOSS — the chip still falls through to the round's void label
+PASS E87.2 · …and it is the same `refundReason` the sentence below it uses — one rule, one panel — the chip must read the rule that is already computed above it
+PASS E87.3 · ⭐ `unmatched` is the ONLY refund reason that happens on a round that decided — if this changes, the chip rule above must change with it
+PASS E87.4 · …and every other reason really does come from a VOID round
+PASS E87.5.en · a "stake returned" label exists and is distinct from the void label — Stake returned vs Void · refunded
+PASS E87.5.sw · a "stake returned" label exists and is distinct from the void label — Dau limerudishwa vs Batili · imerudishwa
+PASS E87.5.zh · a "stake returned" label exists and is distinct from the void label — 投注已退回 vs 作废 · 已退款
+PASS E94.1 · ⭐ every STORED void reason has its own wallet wording — one or more reasons missing from VOID_REFUND_DESCRIPTION
+PASS E94.2 · ⭐ 'the price did not move' and 'we cancelled it' are not the same row — Refund · price did not move enough vs Refund · round cancelled by our team
+PASS E94.3 · the operator wording mirrors the card — cancelled by us, not the internal word — Refund · round cancelled by our team
+PASS E94.4 · the no-move wording names the PRICE, not a verdict — Refund · price did not move enough
+PASS E94.5 · a source failure is owned as ours, not blamed on the price — Refund · closing price could not be confirmed
+PASS E94.6 · ⭐ the refund txn description is built from the map — the map being right does not change a single row a player can see
+PASS E94.7 · …and the round is looked up ONCE, before the position loop — one round read per refunded position is a query per player on the settlement path
+PASS E94.8 · ⛔ an UNRECOGNISED reason keeps the old generic wording rather than guessing — the same rule refundReasonFor follows — never invent a reason for someone's money
+PASS E94.9 · a long-form poll that voids is UNCHANGED — it has no per-round reason to name — reaching for a round on a market that has none would be a lookup that always fails
+
+✅ updown-void-copy: 49 passed, 0 failed
+

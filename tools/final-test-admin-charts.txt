@@ -1,0 +1,89 @@
+
+test:admin-charts — the chart primitives, rendered, at the edges
+
+§1 AdminAreaChart
+  ok   §1 empty series says 'No data in this window' rather than drawing
+  ok   §1 empty series emits NO <path> (nothing is drawn from nothing)
+  ok   §1 a ONE-POINT series does not invent a second vertex
+  ok   §1 y-axis labels are distinct for a series with max 1 (5 gridlines, 5 different values)
+  ok   §1 y-axis labels are distinct for a series with max 2 (5 gridlines, 5 different values)
+  ok   §1 y-axis labels are distinct for a series with max 3 (5 gridlines, 5 different values)
+  ok   §1 y-axis labels are distinct for a series with max 4 (5 gridlines, 5 different values)
+  ok   §1 CONTROL — an all-zero series renders (its axis may legitimately repeat)
+  ok   §1 a huge outlier emits no NaN/Infinity coordinates
+  ok   §1 CONTROL — the huge value is compacted on the axis, not printed raw
+  ok   §1 ⛔ AdminAreaChart emits NO <text> — the axis layer is HTML (DG-A-15)
+  ok   §1 …and it emits the x labels it was handed
+  ok   §1 …with the y ticks beside them
+
+§2 AdminStackedBars
+  ok   §2 empty bars say 'No data' rather than drawing
+  ok   §2 empty bars emit NO <rect>
+  ok   §2 a ZERO segment paints no height (a rail with no volume shows none)
+  ok   §2 an all-zero stack emits no NaN
+  ok   §2 ⛔ AdminStackedBars emits NO <text> — labels and legend are HTML (DG-A-15)
+  ok   §2 …the legend still names every band
+  ok   §2 …and the x labels are still emitted
+
+§3 AdminSpark
+  ok   §3 a 0-point series renders nothing rather than a flat invented line
+  ok   §3 a 1-point series renders nothing (a line needs two points)
+  ok   §3 CONTROL — a 2-point series DOES draw
+  ok   §3 a constant series emits no NaN
+
+§4 AdminMeter
+  ok   §4 a ZERO value paints no fill
+  ok   §4 cap=0 emits no NaN
+  ok   §4 over-cap still prints the true value (the bar clamps, so the number must not)
+  ok   §4 CONTROL — over-cap flips to the danger colour
+
+§5 AdminBarList
+  ok   §5 a ZERO row paints no bar
+  ok   §5 CONTROL — the non-zero row still paints full width
+  ok   §5 an all-zero list emits no NaN
+  ok   §5 CONTROL — an empty list renders without throwing
+  ok   §5 CONTROL — a tiny NON-zero row still paints its visibility floor
+  ok   §4 CONTROL — a tiny NON-zero meter still paints its 1% floor
+  ok   §2 CONTROL — a tiny NON-zero segment still paints its 0.5px floor
+
+§6 AdminGauge
+  ok   §6 a zero gauge emits no NaN
+  ok   §6 max=0 emits no NaN
+  ok   §6 over-max still prints the true value (the arc clamps, so the number must not)
+
+§7 AdminStackedBar
+  ok   §7 an EMPTY bar paints no bands at all
+  ok   §7 …and says so in words rather than showing an empty frame
+  ok   §7 🔴 an ALL-ZERO bar paints no bands — the S-04 defect
+  ok   §7 …and does not paint the rose self-exclusion band over an empty window
+  ok   §7 the empty label is the caller's own words, not a generic placeholder
+  ok   §7 ⭐ CONTROL — a bar WITH data still paints every band
+  ok   §7 …and does not claim to be empty
+  ok   §7 ⛔ a ZERO segment beside real ones is not painted
+  ok   §7 …and it is the ZERO one that is missing, not just any of them
+  ok   §7 ⭐ CONTROL — a tiny NON-zero segment still paints its 2% visibility floor
+
+§8 CATEGORICAL_RAMP
+  ok   §8 var(--royal-700) and var(--text) both resolve to real tokens
+  ok   §8 var(--royal-700) on var(--text) reaches AA at 10px
+  ok   §8 var(--gold-400) and var(--royal-950) both resolve to real tokens
+  ok   §8 var(--gold-400) on var(--royal-950) reaches AA at 10px
+  ok   §8 var(--royal-400) and var(--royal-950) both resolve to real tokens
+  ok   §8 var(--royal-400) on var(--royal-950) reaches AA at 10px
+  ok   §8 var(--gold-800) and var(--text) both resolve to real tokens
+  ok   §8 var(--gold-800) on var(--text) reaches AA at 10px
+  ok   §8 var(--royal-200) and var(--royal-950) both resolve to real tokens
+  ok   §8 var(--royal-200) on var(--royal-950) reaches AA at 10px
+  ok   §8 ⛔ every ramp entry was actually measured — the loop is not vacuous
+  ok   §8 ⭐ the whole ramp clears AA
+  ok   §8 band 1 is distinguishable from band 2
+  ok   §8 band 2 is distinguishable from band 3
+  ok   §8 band 3 is distinguishable from band 4
+  ok   §8 band 4 is distinguishable from band 5
+  ok   §8 ⛔ the ramp borrows no aqua (finishing pass only — /admin/live is the named exception)
+  ok   §8 ⛔ …and no claret (the colour of an irreversible ceremony)
+  ok   §8 ⭐ /admin no longer keeps its own copy of the ramp
+  ok   §8 …and imports the shared one instead
+
+68 passed, 0 failed
+

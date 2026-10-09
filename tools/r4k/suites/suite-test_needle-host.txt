@@ -1,0 +1,109 @@
+
+§1 · the module's constants agree with the files they restate
+  PASS 1.1 EDGE_MARGIN is the engine's CONST.EDGE_MARGIN — 14 vs 14
+  PASS 1.1b ENGINE_SUBSTEP and ENGINE_MAX_SUBSTEPS are the engine's CONST.SUBSTEP and CONST.MAX_SUBSTEPS — 8.333333333333334 / 8.333333333333334 · 6 / 6
+  PASS 1.2 HALO_BREATHE is the peak of needle.css's `needle-wake-breathe` (its 50% scale) — css 1.06 vs 1.06
+  PASS 1.3 the host's halo and diameter are the ones restated here
+  PASS 1.4 the glow reaches 11.4px past the box at 390 — tile 254 measured the tint from x349 to the box at x360 (11px) — 11.41
+  PASS 1.5 …and 25px at 1024 — tile 257 measured the faint tint from x975/976 at 18px under the centre (the halo's circle there: 24.7px out) — 24.99
+  PASS 1.6 the tiers are the documented five, best first, and the census reaches the widest pad
+
+§2 · ① a viewport change re-seats a disc on its way to a rest (the capture drive's resizes, on the engine)
+  PASS 2.1 295 · a glide in flight at 320 → 360: from the resize on, every frame is tucked half off the RIGHT edge at 360 (cx = 360), never wholly inside — 1 frames; first off the rail: none
+  PASS 2.1 PLANT · without the reseat (the host before R3-B) the same drive puts the disc wholly inside at the 320 tuck x — the x≈293 tile 295 measured — first wholly inside: x=292.0 cx=320.0 of 360, edge right, parked false
+  PASS 2.2 299 · a glide in flight at 390 → 1024: every frame tucked half off the RIGHT edge at 1024, and it rests there — rest: x=992.0 cx=1024.0 of 1024, edge right, parked true
+  PASS 2.2 PLANT · without the reseat it crosses mid-page and parks on the LEFT — tile 299's x≈241 on the way, and the left edge every later tile kept — ended x=-32.0 cx=0.0 of 1024, edge left, parked true
+  PASS 2.3 304 307 · on the left rail, a glide in flight at 390 → 1024: every frame tucked half off the LEFT edge, never at the wall — rest: x=-32.0 cx=0.0 of 1024, edge left, parked true
+  PASS 2.3 PLANT · without the reseat it sits wholly inside at the left wall, x = 0 — the x≈0 tiles 304 and 307 measured — first wholly inside: x=-0.3 cx=31.7 of 1024, edge left, parked false
+  PASS 2.4 a height-only change mid-glide does not snap: the glide goes on (no frame steps over 24px, x never moves) and ends tucked at the box's lowest rest — from y=615.6: max step 3.0px, rest y=626.0 (rail max 626)
+  PASS 2.4 PLANT · without the reseat the disc pops 30px into the box (reclamp: x = 330, wholly inside) and the glide runs on past the new viewport's bottom — first x 330.3, lowest box bottom 756.9 in 700
+  PASS 2.5 a peek (a tap) cut by 390 → 1024 goes home: tucked half off the RIGHT edge on every frame after — rest: x=992.0 cx=1024.0 of 1024, edge right, parked true
+  PASS 2.5 PLANT · without the reseat the peek lands mid-page at the 390 peek x and parks LEFT — ended x=-32.0 cx=0.0 of 1024, edge left, parked true
+  PASS 2.6 lingering at the peek (landed, waiting out the 2.6 s linger) when 390 → 1024 comes: home on the RIGHT, every frame — rest: x=992.0 cx=1024.0 of 1024, edge right, parked true
+  PASS 2.6 PLANT · without the reseat it waits mid-page and parks LEFT — ended x=-32.0 cx=0.0 of 1024, edge left, parked true
+  PASS 2.7 CONTROL · a parked disc, a held one, a flying one and a still one mid-screen are kept (the engine re-tucks, the player and physics own the rest)
+  PASS 2.7 CONTROL · a disc at rest through 390 → 1024 is tucked half off the right edge by the engine itself
+  PASS 2.8 a viewport event that changes nothing leaves a glide on its rail: no reclamp, every frame half off the right edge — none
+  PASS 2.8 PLANT · the old unconditional reclamp pulls the gliding disc into the box — wholly inside at the wall, x = 330 — x=330.3 cx=360.3 of 390, edge right, parked false
+
+§3 · ② the clearance tiers and ③ open surfaces, on the boxes the host would hand in (390 × 780, right rail)
+  PASS 3.1 257 · a control 2px from the disc moves it, to the nearest rest clear of the GLOW by 4px (tier 0) — rest y=224 tier 0, gap 16.0
+  PASS 3.1 PLANT · the pre-R3-B rule (4px from the box) reads a 6px gap as clear and leaves the disc there; the tiers move it
+  PASS 3.1 PLANT · and with no clearance at all, the 2px pill reads as clear — the clearance is what sees a touch
+  PASS 3.2 CONTROL · a control clear of the glow by 4px leaves the disc where it is — {"y":null,"tier":0}
+  PASS 3.3 194 · a line of text 1px from the disc moves it clear of the glow (text counts at tiers 0–3) — rest y=336
+  PASS 3.4 a page with no room for the glow rests at tier 2: the rim 8px clear of every line, the nearest such rest — {"y":312,"tier":2}
+  PASS 3.4 …and does not move again where it rests (accepted at tier 2 — no chained glide, E-413)
+  PASS 3.4 …nor when the record is gone (the page moved) and nothing better is within reach
+  PASS 3.4 CONTROL · with a tier-0 gap in reach (one line removed) it takes the glow-clear rest instead
+  PASS 3.5 a dense page with a control under the disc: off the control by 4px, text accepted (tier 4, E-413's floor) — {"y":236,"tier":4}
+  PASS 3.5 …and it stays there (no chain)
+  PASS 3.5 …but a CONTROL appearing under the accepted rest is re-decided (worse than its tier)
+  PASS 3.6 nothing clear within reach: it stays where it is — {"y":null,"tier":5}
+  PASS 3.7 321 · an open panel over the disc moves it off the panel, clear of its whole box by the glow's 4px — rest y=382, gap 16.0
+  PASS 3.7 PLANT · with the panel's box out of the census (the host before R3-B: its content alone, here none in the band) it stays on the panel
+  PASS 3.8 a clear rest beyond a third of the viewport is not taken (it stays) — {"y":null,"tier":5}
+  PASS 3.9 296 · over a big card's frame, with a rest over nothing within reach: it moves there, the frame clear of the glow by 4px (tier 0) — {"y":224,"tier":0}
+  PASS 3.9 PLANT · without the frame tier (E-400's content rule alone) it stays over the card
+  PASS 3.9 CONTROL · where cards fill the reach it stays, content clear (tier 1, E-400's rule: 14px of a card's frame and padding) — {"y":null,"tier":1}
+  PASS 3.10 a colour paints nothing only when its alpha is 0 (or it is transparent) — {"clear":[true,true,true,true,true,true],"ink":[false,false,false,false,false,false]}
+  PASS 3.10 PLANT · a 'trailing 0' rule (this host's first draft) reads opaque black, rgb(0, 0, 0), as unpainted — the cases above catch it
+  PASS 3.10 a 28px roundel hugs its 17×13 '18+'; a 358×86 card does not hug an 80×17 name in it
+
+§4 · the host wires the rules in (needle.tsx, comments stripped)
+  PASS 4.0 CONTROL · the four bodies this section reads were found (a reader that finds nothing proves nothing)
+  PASS 4.1 a check that comes due mid-glide is kept for the landing, BEFORE anything is decided (257 265 273)
+  PASS 4.2 …and the glide's landing runs it, while a landing with nothing asked for asks for nothing (no chain)
+  PASS 4.3 the decision is the module's: the census hands controls AND open surfaces, big controls' frames, the text, the glow and the record
+  PASS 4.4 the old 4px constant is gone from the host (one home for a clearance: needle-rest.ts)
+  PASS 4.5 a viewport change re-seats: applyViewport reads the old geometry, asks `reseat`, and a rest is tucked on the same edge
+  PASS 4.5b …and reclamps only when the geometry changed (2.8: a no-change event left the glide alone)
+  PASS 4.6 the surfaces are the house's two markers and the popup roles — [data-needle-keepout],[data-invitation],[role=dialog],[role=alertdialog],[role=menu],[role=listbox],dialog[open]
+  PASS 4.7 a surface opening or going asks for a check: an observer on the body's subtree, disconnected on cleanup
+  PASS 4.8 text counts its painted box (a roundel, a pill) and small media (301 309 310's 18+ ring)
+  PASS 4.9 drives can wait for the rest: `window.needle.resting()`
+  PASS 4.10 every floating invitation card carries `data-invitation`, so an open one is a keep-out at rest
+  PASS 4.1 PLANT · the deferral planted AFTER the decision is not read as the rule
+
+§5 · M7 · a rest glide's frames, on the engine, under real frame timing (test:needle-rest §1's measure)
+  PASS 5.1 the spring's own profile: on an even 60 fps stream a 158px glide's step changes by ≤ 3px (its start, and its ≤ 3.6px landing snap) — change 2.96, peak step 6.68 (two substeps), 783 ms
+  PASS 5.2 PLANT · the host before M7 (each frame's real interval): some 158px glides change step by over 6px — M7's 6.50, beside a step of three substeps at peak (10.03) — 355/2520 runs over 6px, worst 6.72 (60 Hz ±1 ms, seed 89), worst step 10.03
+  PASS 5.3 158px · frame-locked: no change of step over 6px at 50–144 Hz with up to ±2 ms jitter (§1's limit) — worst 3.66 (50 Hz ±2 ms, seed 59) over 2520 runs
+  PASS 5.3 158px · …and §1's other limits hold: settles under 1.5 s, overshoot ≤ 3px, lands on its rest — longest 1035 ms, overshoot 0.00, 0.000px off
+  PASS 5.3 246px · frame-locked: no change of step over 6px at 50–144 Hz with up to ±2 ms jitter (§1's limit) — worst 5.71 (50 Hz ±2 ms, seed 59) over 2520 runs
+  PASS 5.3 246px · …and §1's other limits hold: settles under 1.5 s, overshoot ≤ 3px, lands on its rest — longest 1113 ms, overshoot 0.00, 0.000px off
+  PASS 5.4 a dropped frame is not caught up in one jump: the step changes by ≤ 6px wherever the frame is lost — frame-locked worst 3.14 · the host before M7 10.79
+  PASS 5.5 the host's tick steps ONLY its own glide by `glideFrame` (gliding, parking, not held), and each glide starts a fresh clock
+  PASS 5.6 the player taking the disc ends the host's glide (a grab, a bounce tap, Escape, Space/Enter, the arrows), so a throw is never frame-locked
+  PASS 5.5 PLANT · the lock widened to every frame is not read as the rule
+
+§6 · ④ R4-B · the chat bubble is a keep-out at every tier, shown or faded (tiles 313 314 315 305)
+  PASS 6.1 BUBBLE_RING_OUTSET and BUBBLE_RING_BREATHE are chat-styles.css's (`.cm-bubble::after` inset, `cm-bubble-ring` at 50%) — css 3 / 1.08 vs 3 / 1.08
+  PASS 6.1b the bubble's box restated below is the house's: 44px on a phone, 56 on a desktop (chat-styles.css), 16px from the right, 80 above the phone rail below 1024 and 16 from 1024 (ChatRoot)
+  PASS 6.2 the bubble's ink is its box grown by the ring at its widest — 5px round the 44px phone bubble — and holds the ring tile 305 measured (x256–307 × y652–703), within 1.5px of it — {"left":255,"right":309,"top":651,"bottom":705}
+  PASS 6.2b every tier keeps the glow and its 4px from the bubble, and the census reaches that far
+  PASS 6.3 313 · the disc at y634 under the bubble moves, at tier 0, to the nearest height clear of its ink by the glow's 13.99px — y580 — {"y":580,"tier":0}, gap to the ink 15.00
+  PASS 6.3 PLANT · the bubble dropped from the obstacle set (the host before R4-B, the bubble faded when the check ran): it stays at y634, the bubble's ink over its box by 17 × 39px — the tile's 136 px of hidden ink, x293–303 y659–682 — {"y":null,"tier":0}
+  PASS 6.3 …and it stays at y580 on the next check (no chain) — {"y":null,"tier":0}
+  PASS 6.4 PLANT · 314 · the bubble as an ordinary control (its box at the tier's pad) gives y586, the tile's rest — and its ring 9px from the disc's box, inside the 14px — {"y":586,"tier":0}, ring gap 9.00
+  PASS 6.4 314 · with the bubble's ink in, y580 — the ring clear by the glow's 14px — {"y":580,"tier":0}
+  PASS 6.5 PLANT · 315–317 · the box-only rule at 390 gives y580, the tiles' rest — its ring 11px from the disc's box, inside the 15.4px — {"y":580,"tier":0}, ring gap 11.00
+  PASS 6.5 315 · with the ink in, y574 — the ring clear by 15.41px — {"y":574,"tier":0}
+  PASS 6.6 CONTROL · 305 · the English licence line moves the disc to y546 (the tile's rest), with the bubble in the set or out of it — {"y":546,"tier":0} / without the bubble {"y":546,"tier":0}
+  PASS 6.7 a page too dense for the text tiers rests at tier 4 (text accepted) and STILL keeps the bubble's ink the glow's 14px away — y580 — {"y":580,"tier":4}
+  PASS 6.7 PLANT · the box-only rule at tier 4 rests 4px from the bubble's box — y596, the rim 1px into its ring — {"y":596,"tier":4}, ring gap -1.00
+  PASS 6.8 740 × 360 · a disc at its lowest rest (y290) under the bubble reaches past the third (120) to the nearest height clear of it: reach 130, rest y160 — reach 130, {"y":160,"tier":0}
+  PASS 6.8 PLANT · held to the third, nothing within reach clears it and it stays under the bubble
+  PASS 6.8 CONTROL · a disc clear of the bubble keeps the third (y100), and so does one with no bubble at all
+  PASS 6.9 CONTROL · on the LEFT rail at y634 the right-hand bubble is nothing to the disc: it stays — {"y":null,"tier":0}
+  PASS 6.10 CONTROL · the two bodies this reads were found
+  PASS 6.10 clearRestY hands the bubble in (`above`), takes its reach from `restReach`, and reads the page's text over that reach
+  PASS 6.11 the bubble's census reads it SHOWN OR FADED: every `.cm-fab`, at its `.cm-bubble`, skipped only when `visibility: hidden`, its fade's translate taken back off, grown by its ring — never a pointer-events, opacity or `seen` test
+  PASS 6.12 the bubble's arrival or going asks for a check (ChatRoot is a lazy overlay that can land after the first one)
+  PASS 6.13 `.cm-fab` and `.cm-bubble` are ChatRoot's wrapper and ChatBubble's button, and both of globals.css's fades set `pointer-events: none` on the wrapper (why the control census, which skips that, could not hold it)
+  PASS 6.10 PLANT · the bubble dropped from clearRestY's obstacle set is not read as wired
+  PASS 6.11 PLANT · the control census's `pointer-events: none` skip planted into the bubble's census (a faded bubble invisible again) is not read as the rule
+  PASS 6.10 PLANT · the reach held to a third (no way out from under the bubble on a short screen) is not read as wired
+
+[needle-host] 94 passed, 0 failed
+

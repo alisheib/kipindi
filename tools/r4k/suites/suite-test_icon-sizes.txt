@@ -1,0 +1,10 @@
+
+ICON SIZE RATCHET — 719 .tsx files walked, 19 distinct sizes found
+
+  ✓ no glyph size outside the frozen set (19 values)
+  ✓ every frozen size is still used — the allow-list carries no slack
+  ✓ no hand-rolled icon plates — `IconPlate` is the only home for the family
+
+ICON KIT — 19 frozen sizes, no drift, no slack, no hand-rolled plates.
+
+

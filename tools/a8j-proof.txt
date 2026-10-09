@@ -1,0 +1,11 @@
+Proof on OMEGA-COMPILE01, on the exact squashed tree: typecheck; test:implicit-submit green; red:implicit-submit 61/61
+caught and 1/1 green held; test:enter-where-pressed, test:journey-account (85), test:journey-shell (429),
+test:close-account-phrase and test:ui-consistency green. qa:implicit-submit (run before its last edit: the sleeping
+page in a fresh context, and Z naming the known error) on Chromium and on Firefox: every case passes but Z (P1x is
+WebKit's), and Z saw only the RG page's hydration mismatch, which main shows too. WebKit: every after-load case passes
+and no case moved money; P1 and P2 could not keep the page asleep (WebKit took the scripts from its memory cache) and
+P1x did not post with the field stripped, so no run has yet shown that WebKit needs the field - that re-run, with the
+fresh context, and a WebKit control on 586c5183 are owed. The control on live main (586c5183, Chromium) failed exactly
+W1 W2 K1 K2 D1 P1 R1 C2 C1: W1 and P1 each withdrew 20,000 with no confirm, C1 closed the account. test:all 433/464:
+every red is on the 0i baseline list, one of the 13 database suites (they need a database; A8j touches none of their
+code), or audit-drain's timing flake (42/42 when re-run on this tree).

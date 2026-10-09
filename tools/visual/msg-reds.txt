@@ -1,0 +1,13 @@
+test: two red twins green again — the colour gate judges the standalone /offline document against its own tokens, and implicit-submit's confirm plants anchor on the prop's own line
+
+Found by R5-I's red-twin sweep; both were red on the branch before round 5's last merges.
+- red:css-vars-defined missed its E-286 control since round 4: src/lib/offline-document.ts (R4-G) writes the /offline
+  page with its own token map, and its `"--gilt": …` key certified the app's --gilt — the real declaration deleted from
+  globals.css, the gate stayed green. A standalone document is now its own scope: its definitions certify only its own
+  uses, and every token it uses must be defined inside it (it loads no app stylesheet: 21 used, 21 defined). New
+  positive control `a-standalone-document-defines-its-own-tokens` (its own --gilt deleted → reported, though the app
+  still defines the name); the harness now plants into each case's own file (it always wrote globals.css). 7/7 cases.
+- red:implicit-submit 59/61: R5-C put a note between `submitsForm` and `trigger={` in the deposit and withdraw
+  confirms, so the two-line plant anchor occurred 0 times. The plants now anchor on the prop's own line. 61/61.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>

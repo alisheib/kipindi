@@ -1,0 +1,12 @@
+const fs = require("fs");
+const p = "F:/kipindi-vdocs/docs/VODACOM-PLAN.md";
+let s = fs.readFileSync(p, "utf8");
+const t0 = /updated 2026-10-09 ~1[0-9]:[0-9]{2} EAT/;
+if (!t0.test(s)) throw new Error("timestamp anchor");
+s = s.replace(t0, "updated 2026-10-09 ~14:40 EAT");
+const re = /⏸ \*\*PAUSED at Ali's word[^\n]*?it goes live only when a read finds nothing\. /;
+if (!re.test(s)) throw new Error("pause anchor");
+const next = "▶ **RESUMED at Ali's word (2026-10-09 ~14:25 EAT, \"proceed\"; paused ~13:10).** `vodacom-visual` is rebased onto main `2174fb02` (34 commits, no conflict; the static-cache hotfix and S14's STEP 54 under it) — tip `7689cc76`, every visual-pass suite and main's new guards green on it (`test:orphans` main's own). The five round-5 helpers are relaunched on their saved briefs and worktrees; then their merge, the final proof (M16a–d), round 6's read, and it goes live only when a read finds nothing. ";
+s = s.replace(re, () => next);
+fs.writeFileSync(p, s);
+console.log("ok");

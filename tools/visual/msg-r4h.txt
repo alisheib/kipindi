@@ -1,0 +1,38 @@
+Visual pass round 4 (R4-H): long names stay in their column and the profile cannot slide, no typed letter lost, titles keep their figures whole, one page one name in the journey, the toaster under the header, the home's title in the reader's language, receipts' ids without stragglers
+
+From the edge scenarios' read (M9). Every finding was re-measured first, and every "after" is computed (round 5's tiles read them).
+
+- Profile hero (233–235): after the 40-character names, the hero was scrolled 32px sideways and read "ZS 50,000". The cause was an overflow-hidden section (still a scroll container) revealing the name button, 141..722 wide at 360, when focus returned to it. Now:
+  - the section is overflow-clip;
+  - the name button is max-w-full;
+  - the name breaks (overflow-wrap anywhere, balanced, keepNameEnd: never one character alone).
+  The hub's CJK name breaks 10·10·10·10 where balance is supported, never 13·13·13·1.
+- Name editor: a 30ms delayed re-select swallowed the first 1–2 typed keys (the saved names lost their first letters). It now focuses and selects once, in the layout effect that mounts the field, with no timer.
+- Board rows' meta line goes through DotSeq, so no line ends on "·".
+- keepFigures (keep-words.tsx) keeps a figure with its range and unit whole — "2026-27赛季", "dakika 28:00", "$5.5 bilioni" — on cards, board rows, the market h1, the ticket card and /live. /live's KeepHyphenated no longer swallows a whole Chinese title into one nowrap span.
+- E30, the /markets card's two-line clamp: BY DESIGN. It is the card height contract (--mcard-base); there is no cross-engine word-boundary ellipsis. For the owner: MarketCard does not read S2's approved short titles (cardTitle).
+- Journey account menu (journey prop):
+  - the Needle row is on the menu row's own geometry: inset 16, gap 10, chevron at the edge;
+  - "Pendekeza na / upate zawadi";
+  - /positions is named by the journey tab's own key (journey.tabTickets), with its ticket glyph;
+  - the phone is masked by maskPhone, as on the hub and hero ("+255••••84", not "+255*****84");
+  - no gold on an invitation to earn (R4-K's audit: Q5, M3, D5). Invite & Earn and Propose & earn are drawn in the row family's ink.
+  The classic menu is frozen chrome and keeps all of these.
+- The home's signed-in link to /positions uses the tab's key in the journey. /profile/account's mask is maskPhone for both shells.
+- The journey's toaster (data-toaster, journey-only rule) hangs under its header: 72px on phones, 64 from 640.
+- The home's document title was the layout's English default in every language. It is now "50pick — " + the existing auth.railTagline: sw "50pick — Tabiri matukio. Si bahati.", zh "50pick — 预测事件，而非运气。", en unchanged.
+- Journey Wallet sheet at 320 (journey-only):
+  - the doors pad 12px and the glyph no longer shrinks (the ⊕ was crushed to ~4px);
+  - the captions keep their last two words together ("Mobile money / or card").
+- The featured card's hover no longer lifts the category watermark behind its controls.
+- Receipts (S9's note): keepIdRuns cuts a long id into runs of four with a break point between them, a short tail joined to the run before, in a balanced block. Both receipts; the id is unchanged.
+- R4-C's leftover: /live, /updown/history and /profile/account wear the search band (34·34, 34·34·34, 26·26·26).
+
+Guards: test:visual-pass-r4h, 81 checks (79 from R4-H, plus 6.8 / 6.8′ for the journey menu's gold, added at merge). R4-H's on-disk mutation proof caught 33/33, with files restored byte-identical. Re-pinned: simple-journey-flag SWAP_HEADER, journey-tickets TITLE_WORDS, landing-mine §3, and spacing-scale's ceiling 457 → 455. That last drop is R4-K's: the not-found pages' hand-rolled p-3.5 cards, which R4-K's merge check did not run.
+
+On the merged tip, 42 suites exit 0, among them:
+- the r3c/r4c/r4d/r4e/r4h/r4k suites, offline-neutral, journey-shell, journey-account, simple-journey-flag;
+- density-contract, featured-card, eyebrow-roles, type-scale, money-format, spacing-scale 455, journey-tickets, landing-mine;
+- wallet-reach, wallet-receipts, card-return-order, share-preview, gold-is-money, and red-anchors.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>

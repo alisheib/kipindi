@@ -1,0 +1,22 @@
+Vodacom S6 A8j: what WebKit showed - before the page wakes the disabled default control alone holds Enter in Playwright's WebKit; the second field stays as a belt, and the drive's P1x reports the engine's rule
+
+The WebKit runs A8j owed (OMEGA-COMPILE01, WebKit 2272, the sleeping page now in a fresh context): P1 and P2 pass -
+before the page wakes, Enter posts nothing and moves no money. P1x, the second text field taken out of the server's
+HTML, posted nothing either, while the same Enter on the tree before A8j (586c5183), whose form has no submit control,
+posted and withdrew 20,000 (its P1) - so the drive does see a WebKit post, and this WebKit honours a disabled default
+control where WebKit's source was read to skip it.
+
+- qa:implicit-submit: P1x no longer demands a post. It reports which rule the WebKit it ran in follows (a post: the
+  field holds it; none: the control alone does) and fails only when its set-up does not hold (and then names no rule: on the tree before A8j there is no control to skip); its header records what
+  the three engines showed.
+- implicit-submit.test.mts: its WebKit models are the stricter reading, kept on purpose so the field stays required (a
+  note; no check changes).
+- confirm-dialog.tsx: the second field's comment says what was read and what ran (comments only; nothing served
+  changes).
+
+Proof on OMEGA-COMPILE01: test:implicit-submit green; red:implicit-submit 61/61 caught and 1/1 green held; the drive
+parses. Before this edit, on 88fb1f41's code: WebKit 14/16 (P1x as above; Z the WebKit dev server's lazy-chunk and
+fetch errors, the same on the control) and Chromium 15/15. {PROOF}
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+

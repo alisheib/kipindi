@@ -1,0 +1,36 @@
+scripts: test:eyebrow-roles and test:house-bot-holder-lifecycle green again; test:orphans down to two Workflow files
+
+Three census reds on main, each read before it was changed. Scripts and package.json only.
+
+test:eyebrow-roles (red since b151d874, 2026-09-20; exit 5): seven uppercase tracked sites nobody had given a role.
+Each was READ in src, and none is a section eyebrow: compliance's reality-check readout and the share card's lean word
+are re-keyed (their text changed under the old keys), finance's "all time · not this window", "top 5 of N by deposit
+volume", "Statutory" and "This view" are OTHER (annotations and export captions), the share card's "One side only / No
+bets yet / No pool yet" is a STATUS_CHIP. 644 sites, every one accounted for.
+
+test:house-bot-holder-lifecycle (exit 4 since e14e4204, 2026-09-25):
+- 2.1: scripts/marketing-consent/licence-basis.mts (a section of test:marketing-consent) writes fixture accounts and a
+  self-exclusion row into the in-memory store and was neither a suite by name nor declared; it now carries the
+  "house-bot: covered by L2 sweep" line, with what it writes and who imports it.
+- 2.2: the shrink-only script population had grown 25 to 34 with no lane moving the number. Each of the nine new
+  members was read (all write the in-memory store of their own test process, to their own fixture accounts; none
+  reaches a database or a server), and the ceiling is raised in writing, by the rule the 24-to-25 note sets.
+
+test:orphans (red since 37bde8a5, 2026-09-28): 12 undeclared landing-v3 tools and 2 stale allowlist entries.
+- Nine tools that verify-*.sh wrappers launch are wired as qa:landing-v3:* (never test:*, so test:all and red:all are
+  unchanged): c1-seed, c1-drive (tsx, as verify-c1.sh runs it), band-drive, band-metrics, band-agree, wp34-seed,
+  featured-budget, hero-served, hero-states.
+- panels/panel-args.mjs hard-coded the first laptop's C:/kipindi-landing-v3; it now finds the checkout it sits in, and
+  is wired as qa:landing-v3:panel-args.
+- ai-poll-break-it.mts and fuzz-malformed-payloads.mjs leave the allowlist (228 declared): the gate reads them as no
+  longer orphaned since 8de52856 names them, as scan subjects, in test:source-bytes.
+- LEFT for the landing lane: panels/band-panel.js and panels/hero-panel.js are Claude Code Workflow scripts (export
+  const meta, a global args), not node scripts, so nothing in package.json can honestly run them; the allowlist may
+  only shrink. The test now names exactly those two.
+
+Proof, on dfd0072e: test:eyebrow-roles exit 0 (644 sites); test:house-bot-holder-lifecycle 16/16, exit 0;
+test:marketing-consent 162/162 and red:marketing-consent RED PROOF COMPLETE; test:orphans 2 undeclared (the two
+Workflow files), no stale entry; panel-args resolves this checkout; test:docs and test:guards-exist green;
+test:type-scale output and test:decomment verdicts identical to main's (both red on main for other reasons).
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>

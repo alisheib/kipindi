@@ -1,0 +1,15 @@
+test(icon-sizes): the two red proofs exit 0 when the ratchet catches their plant - they exited 1 by design since ee3cc696, so red:all read both as failed on a healthy main
+
+red:icon-sizes and red:icon-sizes-slack ran the real checks over a planted defect and exited 1 ("the process is red"),
+while every other red:* exits 0 when its guard catches the defect and red-all.mjs reads any non-zero exit as a broken
+harness - and the slack proof printed the ratchet's own instruction for a REAL slack over a value (41) that was never in
+FROZEN. The three checks are now one audit(population, frozen); the real run prints it unchanged, and each proof plants
+its defect IN MEMORY (a `<Glyph s={37} />` line in a fake file through the same scan; FROZEN plus 41), and exits 0
+only when the untouched tree audits clean and the audit reports exactly the planted defect. Still no file-writing call,
+so both stay in test:red-anchors §4's in-process class.
+
+Proof on OMEGA-COMPILE01 (2026-10-08, main 018e77e3): test:icon-sizes output byte-identical to main's; red:icon-sizes
+and red:icon-sizes-slack 1/1, exit 0 (exit 1 before). Scratch controls: a broken size or slack comparison reads MISSED,
+exit 1; a red baseline voids the proof.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>

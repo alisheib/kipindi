@@ -1,0 +1,106 @@
+
+§1 · the model itself
+PASS 1.1 there are exactly FOUR read classes — a fifth must DISPLACE one (§3.1) — money.figures, identity.contact, identity.personal, history.activity
+PASS 1.2 every STAFF role has a complete row — no role can fall through to an implicit default — ADMIN,COMPLIANCE,MODERATOR,FINANCE,GROWTH,AUDITOR,SUPPORT
+PASS 1.3 every cell is one of the three legal values
+PASS 1.4 `history.activity` is NOT maskable — a list of a player's own bets has no useful masked form — maskable = money.figures, identity.contact, identity.personal
+PASS 1.5 no role is granted `masked` on a NON-maskable class — that cell would be undefined behaviour
+
+§2 · the rulings — each pinned to the decision that made it
+PASS 2.1 D3 · ADMIN resolves through the TABLE, not a short-circuit — flipping its cell must change the answer — an override on ADMIN is honoured
+PASS 2.2 D3 · and the source contains no ADMIN bypass inside the read-tier resolver — no `role === "ADMIN"` early-return in defaultReadGrant
+PASS 2.3 D3 · every SENSITIVE class is masked at rest for ADMIN too — `read` means MAY REVEAL, not `sees it` — ADMIN: masked at rest, reveal permitted
+PASS 2.4 D1 · ⭐ SUPPORT reads `money.figures` as `masked` — not `read`, and not `none` — got masked
+PASS 2.5 D1 · …so SUPPORT can NEVER reveal a balance, while ADMIN can — the SAME run, both directions
+PASS 2.6 ⭐ POSITIVE CONTROL (same role) · SUPPORT still reads `history.activity` IN FULL — it can do its job
+PASS 2.7 D2 · SUPPORT may not reveal the email address
+PASS 2.8 D2 · COMPLIANCE may — the tier distinguishes roles rather than hiding from everybody
+PASS 2.9 SUPPORT does not see `identity.personal` at all — the KYC set is not on the support desk
+PASS 2.10 AUDITOR sees it MASKED rather than not at all — read-only oversight still needs the shape
+PASS 2.11 ⛔ NOT the over-correction · at least one non-ADMIN role can still reveal a money figure — COMPLIANCE,FINANCE,AUDITOR
+PASS 2.12 ⛔ NOT the over-correction · every staff role retains `history.activity`
+
+§3 · fail closed
+PASS 3.1 an unknown role reads NOTHING — the axis fails closed, never open
+PASS 3.2 PLAYER and AGENT are not staff and resolve to `none` (§6: the axis never governs a player's own view)
+PASS 3.3 null / undefined resolve to `none` rather than throwing
+PASS 3.4 an ABSENT override yields the default, a PRESENT one wins — mirrors RoleDomainGrant exactly
+
+§4 · completeness + drift
+PASS 4.1 every class has a label and a summary — a class cannot be added without saying what it means
+PASS 4.2 every cell value has a label for the /admin/roles editor
+PASS 4.3 drift · no class is missing from any staff row, and no row carries a class that no longer exists
+PASS 4.4 ⛔ NO .tsx asks the question — only the kit primitive may resolve a read cell (§6) — 0 offenders
+
+§5 · the runtime — override resolution, and what it refuses to store
+PASS 5.1 with NO overrides the runtime returns the code defaults — the seed matrix IS the live one — {"money.figures":"masked","identity.contact":"masked","identity.personal":"none","history.activity":"read"}
+PASS 5.2 `readCell` and the pure `canRead` agree when there is no override — one decision, two entry points
+PASS 5.3 D3 · ⭐ ADMIN's read row is EDITABLE and the override is honoured — no ADMIN bypass here — ADMIN set to masked ⇒ cannot reveal
+PASS 5.4 ⭐ POSITIVE CONTROL · the DOMAIN axis still bypasses for ADMIN — the Owner cannot lock itself out
+PASS 5.5 reset returns every cell to the code default
+PASS 5.6 ⛔ an unknown read CLASS is refused rather than stored — TEXT columns cannot reject a typo
+PASS 5.7 ⛔ an unknown CELL value is refused rather than stored
+PASS 5.8 ⛔ a non-staff role is refused — PLAYER can never acquire a read grant
+PASS 5.9 ⛔ `masked` is refused on a class with NO masked form (history.activity)
+PASS 5.10 ⭐ POSITIVE CONTROL · a LEGAL edit on that same class still succeeds — 5.9 is not a blanket refusal
+PASS 5.11 the editor matrix covers every staff role × every class — 7 roles
+PASS 5.12 ⛔ the DB-row validator accepts every legal pair and NOTHING else
+PASS 5.13 …and the WRITER refuses exactly what the LOADER discards — one decision, never two
+
+§6 · the editor surface
+PASS 6.1 ⛔ the read matrix is a TAB on /admin/roles, not a page of its own — both matrices render from one page, and no sibling route exists
+PASS 6.2 ⭐ D3 · the DOMAIN action refuses ADMIN and the READ action does NOT — the pair IS the ruling — domain refuses=true · read refuses=false
+PASS 6.3 …and the READ action accepts every STAFF role, ADMIN included
+PASS 6.4 ⚠️ saving a read cell revalidates the PLAYER page too, not just the editor
+PASS 6.5 the edit is audited under its own action name, distinct from the domain one
+PASS 6.6 ⛔ the SERVER refuses `masked` on a class with no masked form — the greyed option is a real rule
+PASS 6.9 ⛔ D4 · the reveal AWAITS an audit row, and does so BEFORE returning the value — awaited, and ordered before the return
+PASS 6.10 ⛔ D4 · the audit payload names the class and the field, never the value
+PASS 6.7 ⭐ the editor's Selects are named with `ariaLabel`, never the hyphenated attribute (E-225)
+PASS 6.8 ⚠️ an unavailable level is OFFERED and disabled WITH A REASON, not removed from the list
+
+§7 · the DRIFT DETECTOR — the ratchet §5.5 asked for
+PASS 7.1 ⛔ RATCHET · every governed field on an admin surface is wired or reviewed (ceiling 0) — 0 unreviewed
+PASS 7.2 ⭐ POSITIVE CONTROL · the population is BOTH admin trees, not a remembered list — 288 in app/admin + 23 in components/admin = 311
+PASS 7.3 ⭐ …and it CAN still match: the wired page holds the accessors, inside <Sensitive> — stripping <Sensitive> is what makes 7.1 zero, not the absence of the fields
+PASS 7.4 every exemption and every reviewed site carries a reason, and both lists may only shrink — 1 file exemptions · 12 reviewed sites
+
+§8 · the phone, and the file-producing surfaces
+PASS 8.1 the phone is IN the registry, under identity.contact — the class has always CLAIMED the phone (roles.ts READ_CLASS_SUMMARY); this is where it becomes true
+PASS 8.2 ⛔ msisdn is a SEPARATE field addressing a TRANSACTION, not the player's account phone — a payout destination read back off user.phoneE164 would state, on a money row, that the money went somewhere it did not
+PASS 8.3 the reveal's audit row takes its targetType from the registry, never the literal "User" — an msisdn reveal filed against a player id points an investigator at the wrong record
+PASS 8.4 🔴 the reveal is NOT gated on one hardcoded domain — <Sensitive> renders on four different domains' routes; pinning the action to one refused COMPLIANCE on every reveal, everywhere, by a throw the control could not display
+PASS 8.5 …and it refuses SOFTLY, so the control can show the reason
+PASS 8.6 ⛔ the mask lives in a module with NO imports, so a client component cannot drag the store into a browser chunk — sensitive-fields.ts imports the store; app-shell.tsx and auth/otp mask phones on the client
+PASS 8.7 ⛔ a short or malformed number masks to dots and is NEVER echoed — six hand-written masks read `phone.length > 6 ? masked : phone` — the junk row was the one printed in full
+PASS 8.8 ⛔ no admin surface hand-rolls a phone mask — there were SEVEN, in THREE different shapes — 0
+PASS 8.9 🔴 the transactions CSV masks msisdn unless the reader's cell permits a reveal — the gate is `accounting`, which FINANCE and AUDITOR hold — and both sit at the `masked` ceiling, so two roles forbidden a single unmasked phone could pull 50,000 into a file
+PASS 8.10 …and the column NAMES itself when masked, because a CSV has no eye — otherwise a reconciler reads the dots as a corrupt number and opens an incident
+PASS 8.11 …and a FULL pull writes pii.revealed with the row count, never a value — `transactions.exported` alone does not record that PII left the building
+PASS 8.11b ⛔ the transactions CSV refuses a cross-site request and a HEAD BEFORE the session is read — the contacts export's gate (2026-10-02) — a link on any site could make a signed-in officer's browser pull the file and write its pii.revealed row in their name
+PASS 8.12 ⛔ a sensitive roster does not label a row with maskName's PHONE fallback — both use maskedRosterLabel — a masked name, else the non-PII handle
+PASS 8.13 ⭐ POSITIVE CONTROL · the detector can still see a `maskName(` call
+PASS 8.14 ⛔ a roster label for a player with NO name is not a phone in any form — got "Player #2QM1A8" against +255712000101
+PASS 8.15 …and it is the non-PII handle this product already chose — got "Player #2QM1A8"
+PASS 8.16 ⭐ POSITIVE CONTROL · a player WITH a name still gets the masked name, not the handle — got "As***a M."
+PASS 8.18 ⛔ the DSAR bundle carries the FULL phone — deliberate, GDPR Art. 15 — the subject is entitled to their own data; masking it here would be a compliance defect, not a control
+PASS 8.19 …and that export is AUDITED, which is what makes 8.18 acceptable — a full-PII bundle handed out with no record is the failure D4 exists to prevent
+PASS 8.20 ⛔ the FIU suspicious-activity report MASKS the phone — a regulator artefact keeps ASCII stars on purpose — `••••` is non-ASCII and would break a CSV consumer
+PASS 8.21 ⛔ the cross-operator self-exclusion register HASHES it, never masks it — it is matched against other operators' registers, so it must be a stable salted digest and not a display string
+PASS 8.22 ⛔ contactPhone is a SEPARATE field addressing a MARKETING CONTACT, not a player's account phone — a contact may be nobody's account: read back off user.phoneE164 it would reveal some player's number on a row that is not theirs
+PASS 8.23 ⭐ a BARE 255… key masks as +255••••NN — the same shape as the account's +255… (EXECUTED) — +255••••01 / +255••••01
+PASS 8.23c CONTROL · the old bare-key mask (first four characters as typed) FAILS that shape, so 8.23 can fail
+PASS 8.24 ⛔ a role at the masked ceiling gets NO copy control — the masked branch renders the span alone — if (cell === "masked") {
+    return <span className="font-mono text-caption text-text-tertiary">{masked}</span>;
+  }
+PASS 8.24b …and Copy fetches through the AUDITED reveal before it writes the clipboard, rendered only when asked for — 620 chars
+PASS 8.25 the SMS refusal list masks through the ONE mask, so a bad number in it reads +255••••NN, never 2557••••NN
+PASS 8.17 ⭐ POSITIVE CONTROL · §8 reads real files, not empty strings — 3792 / 3084 / 5581 bytes
+
+§9 · the campaign estimate — a platform aggregate governed by money.figures
+PASS 9.1 ⭐ READ_CLASS_SUMMARY's money.figures names the SMS campaign cost estimate and credit — the widening is said, not silent — wallet balance, bonus balance, lifetime deposits and withdrawals — any TZS total attributable to one named player — and the SMS campaign cost estimate and credit
+PASS 9.2 ⛔ the estimate's money decider asks readCell(money.figures) for read TOGETHER WITH canView(accounting) — masked is not readable, ADMIN is not exempt — export async function campaignMoneyVisible(role: Role): Promise<boolean> { return (await canView(role, "accounting")) && (await readCell(role, "money.figures")) === "read"; } 
+PASS 9.3 ⭐ POSITIVE CONTROL · §9 reads the real decider, not an empty slice — 7181 bytes · decider 184 chars
+
+read-tiers: 83 passed, 0 failed
+

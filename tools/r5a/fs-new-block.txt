@@ -1,0 +1,24 @@
+          {/* ⚠️ 48px AS AN ARBITRARY LITERAL — the ONE close-✕ size in the kit
+               (modal.tsx, toast.tsx and bet-confirm-modal.tsx all render 48×48).
+               This said `h-9 w-9`, which is 64×64px on the OVERRIDDEN spacing
+               scale (tailwind.config.ts:200-215), so the product's close
+               affordance shipped in two sizes. ⛔ Never a scale token here.
+              ⚠️ `-mr-3` WAS OPTICAL ALIGNMENT, NOT A NUDGE, and it only became correct once the
+               panel had real padding. The 48px target holds a 16px glyph, so 16px of the box
+               is slack on each side. Pulling the BOX 16px past the 20px content edge put the
+               GLYPH's right edge exactly on that edge — so the ✕ lined up with the 20px gutter
+               the heading starts at, instead of floating 24px in. It was `-mr-1` against a
+               padding of zero, which is how it came to overflow the viewport by 3px.
+              ⭐ ON THE TITLE'S CAPITALS (round 5 of the visual pass, 2026-10-09, F20 — the one convention, `CloseX` in
+               modal.tsx): the box sat 4px over the row's top (`-mt-1`), so the ✕ centred 20px down while the title — a 1.25
+               line of 16px at the row's top — centres its capitals 0.6 × 16 = 9.6px down: the ✕ stood 10.4px under them.
+               The box rises to −14.4px and gives the 10.4px back under it (`mb-[10.4px]`), so the row is the 44px it was
+               and the groups below do not move.
+              ⭐ THE ONE ✕ (round 5 follow-up, 2026-10-09, F20): it was `CloseX` in all but name — its own <button>, the same
+               48px box, 16px glyph and inks, copied — so it is `CloseX` now (modal.tsx; `h-8 w-8` is this scale's 48px), and
+               it stands where every dialog's and the guest sheet's ✕ stands: its box 16px inside the panel's right edge.
+               `-mr-3` put the box 4px from the screen's edge (the sheet's padding is 20px, `--sp-5`) to set the glyph on the
+               heading's gutter — the one ✕ in the product placed that way; `-mr-1` (4px) gives back 12px, and the panel's
+               padding keeps the box inside the screen. Nothing is in flight behind this sheet — it filters what is already
+               read — so its ✕ is never withheld. */}
+          <CloseX onClick={close} label={closeLabel} className="-mr-1 -mt-[14.4px] mb-[10.4px] shrink-0" />

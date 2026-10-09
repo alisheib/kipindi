@@ -1,0 +1,25 @@
+// The grant chip reads the dictionary through its accessor (`grantStatusChip`) — a key template beside `status` read as a
+// sentence to test:labels §3; the accessor keeps the key in the dictionary's own file.
+module.exports = [
+  { file: "src/app/wallet/wallet-client.tsx",
+    from: 'import { playerStatusChip, playerStatusInk } from "@/lib/status-tone";',
+    to: 'import { grantStatusChip, playerStatusInk } from "@/lib/status-tone";' },
+  { file: "src/app/wallet/wallet-client.tsx",
+    from: '<Chip variant={playerStatusChip(`GRANT_${g.status}`) ?? "neutral"} size="sm" metrics="base">',
+    to: '<Chip variant={grantStatusChip(g.status) ?? "neutral"} size="sm" metrics="base">' },
+  { file: "src/app/wallet/wallet-client.tsx",
+    from: "                              (`status-tone.ts`, the GRANT_ keys). Every word was a hand-rolled WARNING pill — amber,",
+    to: "                              (`status-tone.ts`, `grantStatusChip`). Every word was a hand-rolled WARNING pill — amber," },
+  { file: "scripts/visual-pass-r5i.test.mts",
+    from: 'import { playerStatusChip, STATUS_TONE, TONE_CHIP } from "../src/lib/status-tone.ts";',
+    to: 'import { grantStatusChip, playerStatusChip, STATUS_TONE, TONE_CHIP } from "../src/lib/status-tone.ts";' },
+  { file: "scripts/visual-pass-r5i.test.mts",
+    from: "  const got = Object.fromEntries(Object.keys(want).map((s) => [s, playerStatusChip(`GRANT_${s}`)]));",
+    to: "  const got = Object.fromEntries(Object.keys(want).map((s) => [s, grantStatusChip(s)]));" },
+  { file: "scripts/visual-pass-r5i.test.mts",
+    from: '  ok("4.2 · the grant row\'s word is the kit Chip in the dictionary\'s tone (`playerStatusChip(\\`GRANT_${status}\\`)`), one size for every state",\n    /<Chip variant=\\{playerStatusChip\\(`GRANT_\\$\\{g\\.status\\}`\\) \\?\\? "neutral"\\} size="sm" metrics="base">/.test(card)',
+    to: '  ok("4.2 · the grant row\'s word is the kit Chip in the dictionary\'s tone (`grantStatusChip`), one size for every state",\n    /<Chip variant=\\{grantStatusChip\\(g\\.status\\) \\?\\? "neutral"\\} size="sm" metrics="base">/.test(card)' },
+  { file: "scripts/visual-pass-r5i.test.mts",
+    from: '    words.length === 7 && words.filter((w) => w !== "ACTIVE").every((w) => playerStatusChip(`GRANT_${w}`) !== null), words.join(","));',
+    to: '    words.length === 7 && words.filter((w) => w !== "ACTIVE").every((w) => grantStatusChip(w) !== null) && grantStatusChip("ACTIVE") === null && grantStatusChip(undefined) === null, words.join(","));' },
+];

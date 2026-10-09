@@ -1,0 +1,14 @@
+Player dates, the second pass: fairness, the bonus expiry, comments, the three agent pages and source of funds in the reader's month words
+
+The rest of the player dates that printed English month names, through utils' formatDateTimeSafe, formatDateShort and
+formatDate: /fairness (the resolved time), the wallet card's bonus expiry, the comment thread's dates from a week
+back, /agent, /agent/status and the agent invite (every date line), and source of funds (submitted). All onto eat-day
+in the reader's words; a missing date still reads "—" (eat-day's guard).
+
+test:timer-date's fence takes all of them, and its English-helper list takes the three helpers. Two client files read
+the year rule off the device clock by their own design - the comment thread's relative time, and the wallet file whose
+TxnRow already does - and are held to the first two fence checks, not the third, with the reason written.
+
+{PROOF}
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>

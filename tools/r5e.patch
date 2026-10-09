@@ -1,0 +1,2263 @@
+diff --git a/package.json b/package.json
+index fc48503a4..60004be0e 100644
+--- a/package.json
++++ b/package.json
+@@ -659,6 +659,7 @@
+     "test:visual-pass-r4k": "tsx scripts/visual-pass-r4k.test.mts",
+     "red:visual-pass-r4k": "tsx scripts/visual-pass-r4k.test.mts --prove",
+     "test:visual-pass-r4h": "tsx scripts/visual-pass-r4h.test.mts",
++    "test:visual-pass-r5e": "tsx scripts/visual-pass-r5e.test.mts",
+     "red:journey-tickets": "tsx scripts/journey-tickets.test.mts --prove-red",
+     "test:signoff": "tsx scripts/signoff.test.mts",
+     "test:proposal-evidence-age": "tsx scripts/proposal-evidence-age.test.mts",
+diff --git a/scripts/anchors/money-format.anchors.mjs b/scripts/anchors/money-format.anchors.mjs
+index d42408668..b783fee7d 100644
+--- a/scripts/anchors/money-format.anchors.mjs
++++ b/scripts/anchors/money-format.anchors.mjs
+@@ -112,8 +112,10 @@ export const MUTATIONS = [
+     why: "The figure matcher reads digits and commas greedily, so \"…to TZS 5,000,000, needs…\" sets the sentence's own comma in mono as part of the money",
+     file: "src/lib/fill-nodes.tsx",
+     suite: "money-format",
+-    from: `const MONEY_RUN = /TZS[\\u00a0 ]\\d+(?:,\\d{3})*(?:\\.\\d+)?[KMB]?/g;`,
+-    to: `const MONEY_RUN = /TZS[\\u00a0 ]\\d[\\d,]*(?:\\.\\d+)?[KMB]?/g;`,
++    // ⚠️ Anchor moved 2026-10-09 (round 5, R5-E, review 3's doubt): the matcher also reads a signed figure whole —
++    // `formatTzs`' "TZS −4,200" and `formatTzsSigned`'s "−TZS 1,234" / "+TZS 1,234". The defect planted is the same one.
++    from: `const MONEY_RUN = /[+\\u2212]?TZS[\\u00a0 ]\\u2212?\\d+(?:,\\d{3})*(?:\\.\\d+)?[KMB]?/g;`,
++    to: `const MONEY_RUN = /[+\\u2212]?TZS[\\u00a0 ]\\u2212?\\d[\\d,]*(?:\\.\\d+)?[KMB]?/g;`,
+     expect: `6: ⭐ …and a sentence's own comma after a figure stays in the sentence`,
+   },
+ ];
+diff --git a/scripts/journey-tickets.test.mts b/scripts/journey-tickets.test.mts
+index dd8b42cd9..01c12f1a4 100644
+--- a/scripts/journey-tickets.test.mts
++++ b/scripts/journey-tickets.test.mts
+@@ -282,10 +282,10 @@ const TITLE_LINK = "<Link href={" + BT + "/markets/${p.marketId}" + BT + " as ne
+  * The question's words, WHOLE: the short title or the full question, straight inside the link and never clamped.
+  * ⚠️ Until 2026-10-08 this pinned a two-line clamp on the full question; the visual pass (tile 211) found it cutting the
+  * bet's own question at 320 ("…kutakuwa kijani…" with "kesho?" hidden), so the pin now holds the opposite: no clamp.
+- * `keepUnits` (2026-10-08 · G1): the same words, with a number and its Chinese unit ("200毫米") kept on one line.
+- * ⚠️ `keepFigures` since round 4 of the visual pass (2026-10-09, edges 197 255): keep-words.tsx's title rule, which keeps
+- * `keepUnits`' ideograph unit and adds a season ("2026-27") and a unit word ("dakika 28:00") — the same words, every
+- * title surface on one rule (visual-pass-r4h §5 holds it).
++ * A number and its Chinese unit ("200毫米") kept on one line since 2026-10-08 (G1); `keepFigures` since round 4 of the
++ * visual pass (2026-10-09, edges 197 255): keep-words.tsx's title rule, which keeps a Chinese unit from its closed list
++ * (round 5, H1 — the round-3 helper that took "one or two ideographs" is deleted) and adds a season ("2026-27") and a unit
++ * word ("dakika 28:00") — the same words, every title surface on one rule (visual-pass-r4h §4 and r5e hold it).
+  */
+ const TITLE_WORDS = `hover:underline">{keepFigures(title.text)}</Link>`;
+ /** The heading the question sits in: one 20px line per line of words (16px type, leading 1.25), its lines balanced. */
+diff --git a/scripts/popup-fit.test.mts b/scripts/popup-fit.test.mts
+index a03da96da..ade5a2046 100644
+--- a/scripts/popup-fit.test.mts
++++ b/scripts/popup-fit.test.mts
+@@ -371,8 +371,9 @@ console.log("\n§3 · the highest-stakes popup in the product");
+   // exchange rate close above 2,650 on any day before 30 September 2026, per Bank of Tanzania
+   // official rates?" — and Swahili and Chinese are longer than English.
+   // R4-I (2026-10-09): the title is drawn through `keepText` (its last two words kept together, so "2026-27" never stands
+-  // alone) — the same text, unclamped; the anchor reads either form.
+-  const titleBlock = /\{marketTitle && \([\s\S]{0,400}?\{(?:keepText\()?marketTitle\)?\}/.exec(bet)?.[0] ?? "";
++  // alone) — the same text, unclamped; the anchor reads either form. Round 5 (R5-E): its figure runs are kept too
++  // (`keepText(marketTitle, figureRuns(marketTitle))`), so the anchor reads that form as well.
++  const titleBlock = /\{marketTitle && \([\s\S]{0,400}?\{(?:keepText\()?marketTitle(?:, figureRuns\(marketTitle\))?\)?\}/.exec(bet)?.[0] ?? "";
+   ok("3.1 the confirm dialog still renders the market title (this check is not blind)",
+      titleBlock.length > 0, "the title block moved — re-anchor before trusting 3.2");
+   ok("3.2 ★★ and it is NOT clamped — a player must be able to read the whole thing before committing money",
+diff --git a/scripts/sell-price-guard.test.mts b/scripts/sell-price-guard.test.mts
+index 1e5a91385..94083ee5d 100644
+--- a/scripts/sell-price-guard.test.mts
++++ b/scripts/sell-price-guard.test.mts
+@@ -159,7 +159,9 @@ const RESULT = "src/components/markets/sell-result.tsx";
+ const HOST = "src/components/markets/sell-result-host.tsx";
+ const SHELL = "src/components/layout/app-shell.tsx";
+ const SHELL_LAZY = "src/components/layout/shell-lazy.tsx";
+-const SOURCES = [SVC, ACTIONS, BUTTON, CASHOUT_SUITE, POSITIONS, MARKET_PAGE, CARD, VIEW, RESULT, HOST, SHELL, SHELL_LAZY];
++/** Round 5 (R5-E): the toaster, which draws every amount a toast states as an `.amount` — the refused sale's figures among them. */
++const TOAST = "src/components/ui/toast.tsx";
++const SOURCES = [SVC, ACTIONS, BUTTON, CASHOUT_SUITE, POSITIONS, MARKET_PAGE, CARD, VIEW, RESULT, HOST, SHELL, SHELL_LAZY, TOAST];
+ const REGISTRY = "src/lib/failure-reasons.ts";
+ 
+ function walkSrc(dir: string, out: string[] = []): string[] {
+@@ -347,7 +349,7 @@ const REFUSAL_OPEN = "if (!r.ok) {";
+ const MESSAGE = "const msg = errorCopy(t, r);";
+ const MOVED = `const moved = r.reason === "price_changed";`;
+ /** S6 A8h — every refused sale's toast: `factual` unless the refusal is a fault (§7.loud), kept until it is read, its figures whole. */
+-const TOAST_CALM = 'lastRefusalToast = toast({ title: t.toast.couldntCashOut, description: keepFiguresWhole(msg), variant: fault ? "danger" : "factual", durationMs: 0 });';
++const TOAST_CALM = 'lastRefusalToast = toast({ title: t.toast.couldntCashOut, description: msg, variant: fault ? "danger" : "factual", durationMs: 0 });';
+ /** S6 A8h — a refused sale shows its result only when it is a hard block or a fault (§7). */
+ const REFUSAL_SHOWN = 'if (fault) showResult({ variant: "danger", value: value, net, error: msg });';
+ const REFRESH = `window.dispatchEvent(new Event("50pick:refresh"));`;
+@@ -557,9 +559,15 @@ const HAND_OFF = [
+   '}',
+ ].join("");
+ const EVENT_LINE = 'export const SELL_RESULT_EVENT = "50pick:sell-result";';
+-/** The no-break space a refused sale's toast joins each figure with, and the helper that joins them. */
+-const NO_BREAK_LINE = 'const NO_BREAK = String.fromCharCode(160);';
+-const WHOLE = 'export const keepFiguresWhole = (sentence: string) => sentence.split("TZS ").join("TZS" + NO_BREAK);';
++/** How a refused sale's figures stay whole: the toaster draws every amount in a toast's words as one `.amount` (`moneyRuns`:
++ *  whole and mono, §M4), title and sentence. ⚠️ Pins moved 2026-10-09 (round 5, R5-E, review 3 H4's sweep): the Sell button
++ *  passed its sentence through `keepFiguresWhole` (sell-result.tsx), which joined "TZS" to its number with a no-break space —
++ *  a character in the toast's text, travelling into a copy and a find-in-page — and every other toast's figures could split
++ *  at "TZS" and were not mono. Now one rule, in the toaster, for every toast; no character is built anywhere. */
++const NO_BREAK_LINE = 'String.fromCharCode(160)';
++const TOAST_IMPORT = 'import { moneyRuns } from "@/lib/fill-nodes";';
++const TOAST_TITLE = '<p className="font-display text-[13px] font-semibold text-text leading-tight">{moneyRuns(toast.title)}</p>';
++const TOAST_WORDS = '<p className="mt-0.5 text-body-sm text-text-muted leading-snug">{moneyRuns(toast.description)}</p>';
+ /** The host's listener, squashed whole: it takes the result, marks the hand-off taken, then reads the way focus goes back. */
+ const LISTENER = [
+   'useEffect(() => {',
+@@ -688,9 +696,11 @@ function g7Result(I: Impl, W: World, ok: Ok) {
+       && count(submit, DISMISS) === 1 && submit.indexOf("inFlight.current = true;") < submit.indexOf(DISMISS) && submit.indexOf(DISMISS) < submit.indexOf("start(async")
+       && count(button, SLOT) === 1 && button.includes(`${LF}${SLOT}`) && button.indexOf(SLOT) < button.indexOf(COMPONENT_HEAD) && count(button, COMPONENT_HEAD) === 1,
+     show({ dismiss: count(submit, DISMISS), toast: count(refusal, TOAST_CALM), slot: count(button, SLOT), topLevel: button.includes(`${LF}${SLOT}`), beforeComponent: button.indexOf(SLOT) < button.indexOf(COMPONENT_HEAD) }));
+-  ok("7.whole · a refused sale's toast keeps each money figure whole: its sentence goes through keepFiguresWhole, which joins TZS to its number with a no-break space (a toast draws plain text; S6 A8f's promise for the moved price's sentence, which only the toast draws since A8h)",
+-    TOAST_CALM.includes("description: keepFiguresWhole(msg)") && count(refusal, "keepFiguresWhole(msg)") === 1 && count(result, NO_BREAK_LINE) === 1 && count(result, WHOLE) === 1,
+-    show({ helper: count(result, WHOLE), space: count(result, NO_BREAK_LINE) }));
++  const toastSrc = text(W, TOAST);
++  ok("7.whole · a refused sale's toast keeps each money figure whole: it hands the toast its sentence as written, and the toast draws every amount in its words as one `.amount` (moneyRuns: whole and mono, §M4) — no character inserted, here, in the result's module or in the toast (S6 A8f's promise for the moved price's sentence, which only the toast draws since A8h)",
++    TOAST_CALM.includes("description: msg,") && count(refusal, "description: msg,") === 1 && count(toastSrc, TOAST_IMPORT) === 1 && count(toastSrc, TOAST_TITLE) === 1 && count(toastSrc, TOAST_WORDS) === 1
++      && [button, result, toastSrc].every((x) => count(x, NO_BREAK_LINE) === 0) && count(result, "keepFiguresWhole") === 0 && count(button, "keepFiguresWhole") === 0,
++    show({ words: count(toastSrc, TOAST_WORDS), title: count(toastSrc, TOAST_TITLE), space: [button, result, toastSrc].map((x) => count(x, NO_BREAK_LINE)) }));
+   const dialogs = squash(between(button, "const dialogs = (", "if (journey) {"));
+   ok("7.fallback · the button keeps its own result only as the fallback: its dialogs draw the one definition (`SellResultModal`) from the button's own state, which only `showResult` sets once no host took the result, and the button writes no result of its own",
+     count(dialogs, FALLBACK) === 1 && count(button, "<SellResultModal") === 1 && count(button, "<OperationResultModal") === 0
+@@ -821,7 +831,7 @@ const sendsNet = swap(BUTTON, SEND, `fd.set("expectedValue", String(net));`);
+ const sendsNothing = swap(BUTTON, SEND, "");
+ const priceUnasked = swap(BUTTON, PRICE_ASK, "");
+ const everyRefusalAsks = swap(BUTTON, PRICE_ASK, `setRepricing(true); ${REFRESH}`);
+-const movedAlarmed = swap(BUTTON, TOAST_CALM, 'lastRefusalToast = toast({ title: t.toast.couldntCashOut, description: keepFiguresWhole(msg), variant: "danger", durationMs: 0 });');
++const movedAlarmed = swap(BUTTON, TOAST_CALM, 'lastRefusalToast = toast({ title: t.toast.couldntCashOut, description: msg, variant: "danger", durationMs: 0 });');
+ const classicSaysSelling = swap(BUTTON, `${LF}            : repricing ? t.common.loading`, "");
+ const journeyKeepsFigure = swap(BUTTON, JOURNEY_WAIT[3], "{lapsed ? null : (");
+ const waitNeverEnds = swap(BUTTON, CLEAR, "");
+@@ -851,8 +861,8 @@ const busyCalm = swap(BUTTON, FAULT, FAULT.replace('r.code === "BUSY" || ', ""))
+ const shutExitLoud: Impl["reasons"] = { ...REAL.reasons, exit_window_closed: { ...REAL.reasons.exit_window_closed, severity: "error" } };
+ const toastLeaves = swap(BUTTON, TOAST_CALM, TOAST_CALM.replace(", durationMs: 0 });", " });"));
+ const staleToastKept = swap(BUTTON, DISMISS, "");
+-const figureSplits = swap(RESULT, WHOLE, 'export const keepFiguresWhole = (sentence: string) => sentence;');
+-const toastRawFigure = swap(BUTTON, "description: keepFiguresWhole(msg)", "description: msg");
++const figureSplits = swap(TOAST, TOAST_WORDS, TOAST_WORDS.replace("{moneyRuns(toast.description)}", "{toast.description}"));
++const toastNoBreak = swap(BUTTON, "description: msg,", 'description: msg.split("TZS ").join("TZS" + String.fromCharCode(160)),');
+ const ownResultMarkup = swap(BUTTON, "<SellResultModal", "<OperationResultModal");
+ const hostNeverAnswers = swap(HOST, "if (handOff.ack) handOff.ack.accepted = true;", "");
+ const handOffAlwaysTaken = swap(RESULT, "return ack.accepted;", "return true;");
+@@ -938,8 +948,8 @@ const plants: Plant[] = [
+   { name: "the registry ranks a shut exit an error (its refusal turns red, with a result)", expect: ["7.loud"], impl: { reasons: shutExitLoud }, landed: shutExitLoud.exit_window_closed.severity === "error" },
+   { name: "a refused sale's toast leaves after 4.5 s again (a moved price, told by its toast alone, is gone before it is read)", expect: ["7.stays"], world: toastLeaves, landed: changed(toastLeaves, BUTTON) },
+   { name: "the next sale leaves the last refusal's toast up (a stale 'couldn't cash out' beside the sale's own answer)", expect: ["7.stays"], world: staleToastKept, landed: changed(staleToastKept, BUTTON) },
+-  { name: "the toast's figures can split again (the helper hands the sentence back as it was)", expect: ["7.whole"], world: figureSplits, landed: changed(figureSplits, RESULT) },
+-  { name: "the toast draws the raw sentence ('TZS' can end a line without its number)", expect: ["7.whole"], world: toastRawFigure, landed: changed(toastRawFigure, BUTTON) },
++  { name: "the toast draws its sentence raw again ('TZS' can end a line without its number, and the figure is not mono)", expect: ["7.whole"], world: figureSplits, landed: changed(figureSplits, TOAST) },
++  { name: "the refused sale's sentence is joined with a no-break space again (a character in the toast's text, copied and searched)", expect: ["7.whole"], world: toastNoBreak, landed: changed(toastNoBreak, BUTTON) },
+   { name: "the button writes a result of its own again instead of the shared one", expect: ["7.fallback"], world: ownResultMarkup, landed: changed(ownResultMarkup, BUTTON) },
+   { name: "the host never answers the hand-off (every button draws its own result as well)", expect: ["7.ack"], world: hostNeverAnswers, landed: changed(hostNeverAnswers, HOST) },
+   { name: "the hand-off claims a host took the result whether or not one did (with no host, the result is lost)", expect: ["7.ack"], world: handOffAlwaysTaken, landed: changed(handOffAlwaysTaken, RESULT) },
+diff --git a/scripts/visual-pass-r3c.test.mts b/scripts/visual-pass-r3c.test.mts
+index 6ca2289f5..fb09ad78a 100644
+--- a/scripts/visual-pass-r3c.test.mts
++++ b/scripts/visual-pass-r3c.test.mts
+@@ -23,7 +23,8 @@ import { createElement as h } from "react";
+ import { renderToStaticMarkup } from "react-dom/server";
+ import { keepLastWords } from "../src/components/ui/keep-words.tsx";
+ import { DotSeq } from "../src/components/ui/dot-seq.tsx";
+-import { dashOnItsWord, emptyStateBody, pairOnOneLine } from "../src/components/ui/empty-state-text.ts";
++import { emptyStateBody, emptyStateRanges } from "../src/components/ui/empty-state-text.ts";
++import { runAndDashRanges } from "../src/components/ui/keep-run.tsx";
+ import { endClause, readableNotificationBody, roundTicketHref, ticketHref } from "../src/lib/notification-text.ts";
+ import { QUERY_BAR_ROW2_CLASS } from "../src/components/ui/query-bar.tsx";
+ import { cn } from "../src/lib/utils.ts";
+@@ -127,19 +128,23 @@ section("2 · the empty state: a YES/NO pair on one line, and content centred in
+   walk(DICTS.sw); walk(DICTS.en);
+   ok("2.locate · the dictionary has YES/NO pairs to hold (the Tiketi zangu empty body among them)",
+     found.some((s) => s.includes("NDIO au HAPANA")) && found.some((s) => s.includes("YES or NO")), `${found.length} found`);
+-  const unbound = found.filter((s) => !/[A-Z]{2,} (au|or) [A-Z]{2,}/.test(emptyStateBody(s)));
+-  ok("2.1 · emptyStateBody binds every pair with no-break spaces (\"NDIO au HAPANA\", \"YES or NO\")", unbound.length === 0, unbound.join(" | "));
+-  ok("2.2 · …and keeps G3's dash rule: the space before the dash is a no-break space too",
+-    emptyStateBody("Chagua swali, bonyeza NDIO au HAPANA — tiketi").includes(`NDIO${NBSP}au${NBSP}HAPANA${NBSP}—`));
++  // ⚠️ Pins moved 2026-10-09 (round 5, R5-E, review 3 H4): the pair and the dash are held by nowrap SPANS (`keepRanges`,
++  // keep-run.tsx), no longer by no-break spaces and a word joiner inserted into the words — those travelled into a copy,
++  // a find-in-page and the accessible text. The same breaks: a held run is what a no-break space held, and nothing more.
++  const held = (s: string) => emptyStateRanges(s).map(([a, b]) => s.slice(a, b));
++  const unbound = found.filter((s) => !held(s).some((r) => /[A-Z]{2,} (au|or) [A-Z]{2,}/.test(r)));
++  ok("2.1 · emptyStateBody holds every pair in one nowrap run (\"NDIO au HAPANA\", \"YES or NO\")", unbound.length === 0, unbound.join(" | "));
++  const body = renderToStaticMarkup(h("p", null, emptyStateBody("Chagua swali, bonyeza NDIO au HAPANA — tiketi")));
++  ok("2.2 · …and keeps G3's dash rule: the dash is held to the word before it, in the same run — and no character is added",
++    body === `<p>Chagua swali, bonyeza <span class="whitespace-nowrap">NDIO au HAPANA —</span> tiketi</p>` && !body.includes(NBSP), body);
+   ok("2.3 CONTROL · lower-case \"au\"/\"or\" and Chinese are left to break as before",
+-    pairOnOneLine("Juu au Chini, ndio au hapana") === "Juu au Chini, ndio au hapana" && pairOnOneLine("按 是 或 否") === "按 是 或 否");
++    emptyStateRanges("Juu au Chini, ndio au hapana").length === 0 && emptyStateRanges("按 是 或 否").length === 0);
+   ok("2.3′ PLANT · the dash rule alone does not hold the pair — the pair rule is what does",
+-    !dashOnItsWord("bonyeza NDIO au HAPANA — tiketi").includes(`NDIO${NBSP}au`));
++    !runAndDashRanges("bonyeza NDIO au HAPANA — tiketi").some(([a, b]) => "bonyeza NDIO au HAPANA — tiketi".slice(a, b).includes("NDIO au")));
+   const es = read("src/components/ui/empty-state.tsx");
+-  // ⚠️ Pin moved 2026-10-09 (round 4, R4-K, E50): the body now also passes through `hangCjkMarks` — a centred Chinese
+-  // line hangs the empty half of the mark that ends it — so the call reads `{hangCjkMarks(emptyStateBody(body))}`.
+-  // emptyStateBody is still the body's one text rule and still applied first; only the wrapper is new.
+-  ok("2.4 · EmptyState renders its body through emptyStateBody", es.includes("{hangCjkMarks(emptyStateBody(body))}") && !/function dashOnItsWord/.test(es));
++  // ⚠️ Pin moved 2026-10-09 (round 4, R4-K, E50) to `{hangCjkMarks(emptyStateBody(body))}`, and again in round 5 (R5-E,
++  // H4): `emptyStateBody` now draws the spans and hangs each part's marks itself, so the call is `{emptyStateBody(body)}`.
++  ok("2.4 · EmptyState renders its body through emptyStateBody", es.includes("{emptyStateBody(body)}") && !/function dashOnItsWord/.test(es));
+ 
+   // ⭐ EACH DRAWING'S INK TOP, COMPUTED FROM ITS OWN GEOMETRY, IS ITS ROW IN INK_TOP (floor), AND EACH SVG USES ITS ROW.
+   const inkTop = INK_TOP_OF(es);
+diff --git a/scripts/visual-pass-r4d.test.mts b/scripts/visual-pass-r4d.test.mts
+index 97df7afaf..3f803904f 100644
+--- a/scripts/visual-pass-r4d.test.mts
++++ b/scripts/visual-pass-r4d.test.mts
+@@ -169,7 +169,11 @@ section("3 · the round page: the stake is money, the × note hangs, the quote s
+   ok("3.8 CONTROL · the premise: the stamp's word is written in lower case in sw and en (it follows \"… · \")",
+     /^[a-z]/.test(DICTS.sw.market.udQuoted) && /^[a-z]/.test(DICTS.en.market.udQuoted));
+   const page = code("src/app/updown/[roundId]/page.tsx");
+-  ok("3.9 · the round page still composes the stamp from that word", page.includes("const stamp = quotedAt ? `${t.market.udQuoted}"));
++  // ⚠️ Pin moved 2026-10-09 (round 5, R5-E, review 3 H4's sweep): the stamp was a string whose spaces were no-break
++  // spaces (characters in the page's text, copied and searched); it is one nowrap span now, the same word first, so the
++  // capital the line opens on (3.10, 3.11: `::first-letter` reaches into an inline child) is unchanged.
++  ok("3.9 · the round page still composes the stamp from that word",
++    page.includes(`const stamp = quotedAt ? <span className="whitespace-nowrap">{t.market.udQuoted} {quotedAt}</span> : null;`));
+   const hero = code("src/components/updown/price-hero.tsx");
+   ok("3.10 · the hero's detail line carries `ud-cap-first`", hero.includes(`<p className="ud-cap-first mt-1.5 mb-0 text-body-sm text-text-muted">{copy.aboveBelow}</p>`));
+   ok("3.11 · …whose first letter is set as a capital, and below 400 each stacked clause's is too",
+diff --git a/scripts/visual-pass-r4i.test.mts b/scripts/visual-pass-r4i.test.mts
+index 386a8618d..09ca15316 100644
+--- a/scripts/visual-pass-r4i.test.mts
++++ b/scripts/visual-pass-r4i.test.mts
+@@ -38,9 +38,10 @@ import { dict as DICTS } from "../src/lib/i18n-dict.ts";
+ import { fill } from "../src/lib/utils.ts";
+ import { formatEatDateTime, formatEatDate } from "../src/lib/eat-day.ts";
+ import {
+-  breakEndParam, readBreakEndParam, formatBreakEnd, firstDateSentence, breakSentenceText, breakStateOf, breakStateFromTimers,
++  breakEndParam, readBreakEndParam, formatBreakEnd, firstDateSentence, breakSentence, breakStateOf, breakStateFromTimers,
+ } from "../src/lib/break-end.ts";
+ import { keepText, keptRanges, digitChoice } from "../src/components/ui/keep-run.tsx";
++import { emptyStateBody } from "../src/components/ui/empty-state-text.ts";
+ import { renderFailure, failureUntil } from "../src/lib/failure-reasons.ts";
+ import { accountRefusalPath } from "../src/lib/auth-landing.ts";
+ import { dialScale, dialTickLabel, dialDetents, DIAL_LABEL_PX } from "../src/components/markets/dial-scale.ts";
+@@ -475,8 +476,11 @@ section("5 · the bet confirm fits the screen and keeps its answers on it; its a
+     /<p className="amount text-\[18px\] font-bold tabular-nums text-text leading-none">\s*TZS \{formatNumber\(Math\.round/.test(BCM)
+       && /<p className="amount text-\[18px\] font-bold tabular-nums text-text leading-none">\s*TZS \{formatNumber\(estimate\)\}/.test(read("src/components/markets/conviction-dial.tsx"))
+       && /\.amount\.amount \{ font-family: var\(--font-mono\);[^}]*white-space: nowrap;/.test(CSS));
++  // ⚠️ Pin moved 2026-10-09 (round 5, R5-E, F1 F4 and review 3 H1): the title also keeps its figures whole — the runs
++  // `keepFigures` keeps on every card (`figureRuns`) are its kept runs too — so the call is
++  // `keepText(marketTitle, figureRuns(marketTitle))`; the last two words are kept as before.
+   ok("5.5 · the title, the exit terms (\"5 minutes\" one run), the disclosures and the footnote are kept whole",
+-    /\{keepText\(marketTitle\)\}/.test(BCM) && /keepText\(freeExitBody, exitMinsRun \? \[exitMinsRun\] : \[\]\)/.test(BCM)
++    /\{keepText\(marketTitle, figureRuns\(marketTitle\)\)\}/.test(BCM) && /keepText\(freeExitBody, exitMinsRun \? \[exitMinsRun\] : \[\]\)/.test(BCM)
+       && /\{keepText\(t\.dialog\.poolSharePayout\)\}/.test(BCM) && /\{keepText\(t\.dialog\.estimateDisclaimer\)\}/.test(BCM));
+   const run = new RegExp(`\\S+\\s+5\\s+\\S+`).exec(fill(T.en.dialog.freeExitBodyLocked, { mins: 5, lock: 5, pct: 9 }))?.[0];
+   ok(`5.5′ · the exit run is "${run}" in English, "${new RegExp(`\\S+\\s+5\\s+\\S+`).exec(fill(T.sw.dialog.freeExitBodyLocked, { mins: 5, lock: 5, pct: 9 }))?.[0]}" in Swahili`, !!run && run.includes("5 minutes"));
+@@ -658,9 +662,13 @@ section("9 · during a break nothing says \"bet now\" (E19)");
+     /const breakNow = firstTicket && !!breakBody;/.test(TV) && /const emptyBody = breakNow && breakBody \? breakBody/.test(TV) && /action=\{breakNow \? null : firstTicket \? \(/.test(TV));
+   ok("9.5 · …and the classic /positions alike (its \"drag the conviction dial\" body and its Browse button)",
+     /cause === "no-rows" && breakBody \? breakBody/.test(POS) && /browseLabel=\{cause === "no-rows" && !breakBody \? t\.positions\.browseMarkets : undefined\}/.test(POS) && /breakBody=\{breakBody\}/.test(POS));
+-  const sentence = breakSentenceText(T.sw.rg.breakActive, END_ISO, NOW, T.sw.common.monthsShort, "sw");
+-  ok("9.6 · the empty state's string keeps the end whole with its own no-break spaces (the EmptyState body's mechanism)",
+-    sentence.includes("10 Okt, 05:05") && sentence.replace(/ /g, " ") === fill(T.sw.rg.breakActive, { date: endText("sw") }));
++  // ⚠️ Pin moved 2026-10-09 (round 5, R5-E, review 3 H4): the end is a RUN the EmptyState body keeps whole as a nowrap
++  // span (`breakSentence` → `emptyStateBody`, the keepText convention) — no longer no-break spaces in the words.
++  const sentence = breakSentence(T.sw.rg.breakActive, END_ISO, NOW, T.sw.common.monthsShort, "sw");
++  const drawn = html(emptyStateBody(sentence));
++  ok("9.6 · the empty state keeps the end whole as one run, every character the dictionary's and the formatter's",
++    sentence.text === fill(T.sw.rg.breakActive, { date: endText("sw") }) && sentence.keep.length === 1 && sentence.keep[0] === endText("sw")
++      && endText("sw") === "10 Okt, 05:05" && !/[\u00a0\u2060]/.test(drawn) && /<span class="whitespace-nowrap">[^<]*10 Okt, 05:05[^<]*<\/span>/.test(drawn), drawn);
+   const MKT = read("src/app/markets/[id]/page.tsx");
+   ok("9.7 · the market page: \"Tumia kidhibiti kuanza\" gives way to the break's sentence, and \"place another prediction\" is not said",
+     /\{myPositions\.length === 0 && \(breakEnd && breakDate \? \(/.test(MKT) && /\{!breakEnd && <p className="mb-4 text-body-sm text-text-muted">\{t\.market\.similarMarketsBody\}<\/p>\}/.test(MKT));
+diff --git a/scripts/visual-pass-r4k.test.mts b/scripts/visual-pass-r4k.test.mts
+index 81585b507..d66ad4d7d 100644
+--- a/scripts/visual-pass-r4k.test.mts
++++ b/scripts/visual-pass-r4k.test.mts
+@@ -29,6 +29,7 @@ import { decomment, decommentCss } from "./lib/decomment.mts";
+ import { dict as DICTS } from "../src/lib/i18n-dict.ts";
+ import { NotFoundView, NOT_FOUND_WORDS, notFoundTitle } from "../src/components/ui/not-found-view.tsx";
+ import { hangCjkMarks, CJK_MARK_TRIM, CJK_TRIM_EM } from "../src/lib/cjk-marks.tsx";
++import { emptyStateBody } from "../src/components/ui/empty-state-text.ts";
+ import twConfigModule from "../tailwind.config.ts";
+ import { MUTATIONS } from "./anchors/visual-pass-r4k.anchors.mjs";
+ 
+@@ -232,8 +233,11 @@ section("4 · a Chinese mark that ends a centred line hangs its empty part (E50;
+   const end = html(h("p", null, hangCjkMarks("选择一方以设置您的信念并下注。")));
+   ok("4.2 · a line-final 。 is set back and nothing follows it", end === `<p>选择一方以设置您的信念并下注<span class="kp-cjk-mark">。</span></p>`, end);
+   const mid = html(h("p", null, hangCjkMarks("选择一个问题，点击")));
+-  ok("4.3 · a mid-text ， is set back AND followed by the gap that pays it back",
+-    mid === `<p>选择一个问题<span class="kp-cjk-mark">，</span><span aria-hidden="true" class="kp-cjk-gap"> </span>点击</p>`, mid);
++  // ⚠️ Pin moved 2026-10-09 (round 5, R5-E, review 3's doubt): the gap's space is the stylesheet's (`::after`), so the
++  // gap is an EMPTY span and the text is the dictionary's, character for character (copy, find-in-page, textContent).
++  ok("4.3 · a mid-text ， is set back AND followed by the gap that pays it back — a space the stylesheet draws, not the text",
++    mid === `<p>选择一个问题<span class="kp-cjk-mark">，</span><span aria-hidden="true" class="kp-cjk-gap"></span>点击</p>`
++      && /\.kp-cjk-gap::after\s*\{\s*content:\s*" ";\s*\}/.test(css), mid);
+   const q = html(h("p", null, hangCjkMarks("它会朝哪个方向结算？")));
+   ok("4.4 · ？ takes its own, smaller trim", q.endsWith(`<span class="kp-cjk-mark kp-cjk-mark--q">？</span></p>`), q);
+   const pair = html(h("p", null, hangCjkMarks("真的？！")));
+@@ -264,7 +268,10 @@ section("4 · a Chinese mark that ends a centred line hangs its empty part (E50;
+   }
+   // The helper is where the centred Chinese lines are.
+   ok("4.10 · applied where the lines are centred: the empty state's title and body, the side picker's question and sub-line, the not-found hint",
+-    code("src/components/ui/empty-state.tsx").includes("{hangCjkMarks(title)}") && code("src/components/ui/empty-state.tsx").includes("{hangCjkMarks(emptyStateBody(body))}")
++    // ⚠️ Pin moved 2026-10-09 (round 5, R5-E, H4): the body's marks hang inside `emptyStateBody`, which draws its held runs
++    // as spans (no character inserted), so the call is `{emptyStateBody(body)}` and the rendered body is checked here.
++    code("src/components/ui/empty-state.tsx").includes("{hangCjkMarks(title)}") && code("src/components/ui/empty-state.tsx").includes("{emptyStateBody(body)}")
++      && html(h("p", null, emptyStateBody("选择一个问题，点击“是”或“否”——您的注单会显示在这里。"))).endsWith(`显示在这里<span class="kp-cjk-mark">。</span></p>`)
+       && code("src/components/markets/side-picker.tsx").includes("{hangCjkMarks(t.market.whichWay)}") && code("src/components/markets/side-picker.tsx").includes("{hangCjkMarks(t.market.chooseSideHelp)}")
+       && viewMarkup.includes("{hangCjkMarks(words.notFoundHint)}"));
+   ok("4.6′ PLANT · a gap with no word-spacing would leave a mid-line mark 0.05em short", Math.abs(sp + 0 - CJK_TRIM_EM.mark) > 0.01);
+diff --git a/scripts/visual-pass-r5e.test.mts b/scripts/visual-pass-r5e.test.mts
+new file mode 100644
+index 000000000..cd97a111b
+--- /dev/null
++++ b/scripts/visual-pass-r5e.test.mts
+@@ -0,0 +1,758 @@
++/**
++ * ROUND 5 OF THE VISUAL PASS, HELPER E (2026-10-09) — text wrapping and the keep-words helpers: review 3's H1–H5 and its
++ * doubts, and triage-r5's F1 and F4. Every fix is held beside a control or a planted defect that proves the check can fail.
++ *
++ *   npx tsx scripts/visual-pass-r5e.test.mts            (npm run test:visual-pass-r5e)
++ *
++ * The owner's rule (Ali, 2026-10-09): consistency and perfection in each move — a finding is fixed on every surface that
++ * shares its pattern, never only on the tile that showed it.
++ *   §1 H1   a title's figure keeps its OWN unit (a closed Chinese list, longest first) and its currency code
++ *   §2 F1 F4 + H1's siblings: every market title is balanced and keeps its figures whole, on every surface
++ *   §3 F1 F4 the mechanism: Chromium's greedy / pretty / balance, modelled from its source, reproduces the tiles
++ *   §4 H2 H3 a name's end is two whole characters (grapheme clusters, as ICU cuts them) and a bounded gap
++ *   §5 H2's rule for every keep helper: a kept run holds at most one wide white space
++ *   §6 H4   nothing is inserted into the words: the empty state, the dates, the toasts, the stamps, the CJK gap
++ *   §7      moneyRuns reads a signed figure whole (review 3's doubt)
++ *   §8 H5   keep-units.tsx is gone, and nothing names it as live code
++ *   §9      the widest figure run fits the narrowest title line
++ */
++import { readFileSync, existsSync, readdirSync, statSync } from "node:fs";
++import { createRequire } from "node:module";
++import { join } from "node:path";
++import { createElement as h, isValidElement } from "react";
++import { renderToStaticMarkup } from "react-dom/server";
++import { decomment, decommentCss } from "./lib/decomment.mts";
++import { dict as DICTS } from "../src/lib/i18n-dict.ts";
++import {
++  keepFigures, figureRanges, figureRuns, keepNameEnd, characterSpans, keepLastWords, keepYears, KEPT_GAP, KEPT_SPACE,
++} from "../src/components/ui/keep-words.tsx";
++import { keepText, keptRanges, digitChoice } from "../src/components/ui/keep-run.tsx";
++import { emptyStateBody, emptyStateRanges } from "../src/components/ui/empty-state-text.ts";
++import { hangCjkMarks } from "../src/lib/cjk-marks.tsx";
++import { moneyRuns } from "../src/lib/fill-nodes.tsx";
++import { breakSentence } from "../src/lib/break-end.ts";
++import { formatTzs, formatTzsCompact, formatTzsSigned } from "../src/lib/utils.ts";
++import { KeepHyphenated } from "../src/app/live/pulse-grid.tsx";
++
++const require = createRequire(import.meta.url);
++let pass = 0;
++const fails: string[] = [];
++const ok = (name: string, cond: boolean, detail = "") => {
++  if (cond) { pass++; console.log(`  ok   ${name}`); }
++  else { fails.push(`${name}${detail ? ` — ${detail}` : ""}`); console.log(`  FAIL ${name}${detail ? ` — ${detail}` : ""}`); }
++};
++const section = (s: string) => console.log(`\n── ${s} ${"─".repeat(Math.max(0, 100 - s.length))}`);
++const read = (p: string) => readFileSync(p, "utf8").replace(/\r\n/g, "\n");
++// Source and the stylesheet through the shared scanners (scripts/lib/decomment.mts) — never a private stripper.
++const code = (p: string) => decomment(read(p));
++const CSS = decommentCss(read("src/app/globals.css"));
++const show = (x: unknown) => JSON.stringify(x).replace(/[\u00a0\u2000-\u200f\u2028-\u202f\u205f-\u206f\u3000\ufeff]/g, (c) => `\\u${c.codePointAt(0)!.toString(16).padStart(4, "0")}`);
++const decode = (s: string) => s.replace(/&lt;/g, "<").replace(/&gt;/g, ">").replace(/&quot;/g, '"').replace(/&#x27;/g, "'").replace(/&amp;/g, "&");
++/** A node's markup inside a div, the div left out. */
++const html = (n: unknown) => renderToStaticMarkup(h("div", null, n as never)).replace(/^<div>|<\/div>$/g, "");
++/** The text a copy, a search and a screen reader read (every text node). */
++const textOf = (markup: string) => decode(markup.replace(/<[^>]*>/g, ""));
++/** The nowrap runs a node draws, in order. */
++const runsOf = (n: unknown) => [...html(n).matchAll(/<span class="whitespace-nowrap">([^<]*)<\/span>/g)].map((m) => decode(m[1]));
++/** The text with each nowrap run in [brackets]. */
++const br = (n: unknown) => decode(html(n).replace(/<span class="whitespace-nowrap">/g, "[").replace(/<\/span>/g, "]"));
++/** Every array a helper BUILT (React freezes JSX's static ones) carries unique keys on its elements. */
++function keyIssues(node: unknown): number {
++  let bad = 0;
++  const visit = (n: unknown) => {
++    if (Array.isArray(n)) {
++      const seen = new Set<string>();
++      for (const c of n) {
++        if (!Object.isFrozen(n) && isValidElement(c)) { if (c.key == null || seen.has(c.key)) bad++; else seen.add(c.key); }
++        visit(c);
++      }
++    } else if (isValidElement(n)) visit((n.props as { children?: unknown }).children);
++  };
++  visit(node);
++  return bad;
++}
++/** Every CSS rule, as [selector, body]. */
++const RULES = [...CSS.matchAll(/([^{}]+)\{([^{}]*)\}/g)].map((m) => [m[1].trim(), m[2]] as const);
++const rulesFor = (selector: string) => RULES.filter(([s]) => s.split(",").map((x) => x.trim()).includes(selector)).map(([, b]) => b);
++const IDEO = /[㐀-䶿一-鿿豈-﫿]/u;
++const SEG = new Intl.Segmenter("en", { granularity: "grapheme" });
++function xorshift(seed: number) { return () => { seed ^= seed << 13; seed ^= seed >>> 17; seed ^= seed << 5; return ((seed >>> 0) % 1e6) / 1e6; }; }
++const D = DICTS as unknown as Record<"sw" | "en" | "zh", Record<string, Record<string, unknown>>>;
++const allStrings = (loc: "sw" | "en" | "zh") => {
++  const out: string[] = [];
++  const walk = (o: unknown) => { if (typeof o === "string") out.push(o); else if (o && typeof o === "object") for (const v of Object.values(o)) walk(v); };
++  walk(D[loc]);
++  return out;
++};
++const YES_NO = { sw: ["NDIO", "HAPANA"], en: ["YES", "NO"], zh: ["是", "否"] } as const;
++const filled = (loc: "sw" | "en" | "zh") => allStrings(loc).map((s) => s.replace(/\{yes\}/g, YES_NO[loc][0]).replace(/\{no\}/g, YES_NO[loc][1]));
++
++/** Every title the repo seeds (the in-memory fixtures, the AI examples, the dev seed, R4-H's catalogue), with a digit. */
++const SEEDED = (() => {
++  const set = new Set<string>();
++  for (const f of ["src/lib/server/market-service.ts", "src/lib/server/ai-provider.ts", "src/app/api/dev-test/seed-real-markets/route.ts"]) {
++    for (const m of read(f).matchAll(/(?:(?:short)?[tT]itle(?:En|Sw|Zh)|\ben|\bsw|\bzh):\s*"((?:[^"\\\n]|\\.)*)"/g)) if (/\d/.test(m[1])) set.add(m[1]);
++  }
++  // R4-H's catalogue (visual-pass-r4h §4), its titles only.
++  const r4h = read("scripts/visual-pass-r4h.test.mts");
++  const cat = r4h.slice(r4h.indexOf("const CATALOGUE = ["), r4h.indexOf("];", r4h.indexOf("const CATALOGUE = [")));
++  for (const m of cat.matchAll(/"([^"\n]+)"/g)) if (/\d/.test(m[1])) set.add(m[1]);
++  return [...set];
++})();
++
++/* ══ §1 · H1 ════════════════════════════════════════════════════════════════════════════════════════════════════════ */
++section("1 · H1 a title's figure keeps its OWN unit — a closed Chinese list, longest first — and its currency code");
++{
++  // Review 3 (a): the tail took "the next one or two ideographs, whatever they are". The seeded Chinese titles, whole.
++  const ZH: Array<[string, string]> = [
++    ["超过15万美元？", "超过[15万美元]？"],
++    ["比特币8月1日收于10万美元以上", "比特币[8月1日]收于[10万美元]以上"],
++    ["Simba SC能否赢得2026年坦桑尼亚超级联赛？", "Simba SC能否赢得[2026年]坦桑尼亚超级联赛？"],
++    ["坦桑尼亚2026年第三季度GDP增长能否超过6%？", "坦桑尼亚[2026年]第三季度GDP增长能否超过6%？"],
++    ["达累斯萨拉姆2026年7月降雨量能否超过200毫米？", "达累斯萨拉姆[2026年][7月]降雨量能否超过[200毫米]？"],
++    ["Diamond Platnumz能否在2026年10月前发行新专辑？", "Diamond Platnumz能否在[2026年][10月]前发行新专辑？"],
++    ["比特币价格能否在2026年8月底前超过15万美元？", "比特币价格能否在[2026年][8月底]前超过[15万美元]？"],
++    ["SGR多多马-辛吉达段能否在2026年12月前投入运营？", "SGR多多马-辛吉达段能否在[2026年][12月]前投入运营？"],
++    ["达累斯萨拉姆七月降雨超过200毫米", "达累斯萨拉姆七月降雨超过[200毫米]"],
++    ["辛巴俱乐部赢得2026-27赛季NBC超级联赛", "辛巴俱乐部赢得[2026-27赛季]NBC超级联赛"],
++    ["美元兑坦桑尼亚先令二季度末收于2,650以下", "美元兑坦桑尼亚先令二季度末收于2,650以下"],
++  ];
++  const wrongZh = ZH.filter(([t, want]) => br(keepFigures(t)) !== want).map(([t]) => `${t} → ${br(keepFigures(t))}`);
++  ok("1.1 · the run ends at the unit: \"[15万美元]？\" (美元 whole), \"[2026年]坦桑尼亚\" (年|坦 free), \"[7月]降雨量\", \"[10月]前\", \"[8月1日]收于\", and \"2,650以下\" plain (以下 is no unit)",
++    wrongZh.length === 0, wrongZh.join(" | "));
++  // The old rule in miniature: any one or two ideographs after a number.
++  ok("1.1′ CONTROL · the round-4 tail (\"one or two ideographs, whatever they are\") takes 雨量's 降 and 美元's 美",
++    /\d+\s?[㐀-鿿]{1,2}/u.exec("7月降雨量")?.[0] === "7月降" && /\d+(?:[.,]\d+)*\s?[㐀-鿿]{1,2}/u.exec("超过15万美元？")?.[0] === "15万美");
++  // Review 3 (b): the currency code was left out whenever a unit followed.
++  const HEAD: Array<[string, string]> = [
++    ["Simba watapata TZS 1 bilioni?", "Simba watapata [TZS 1 bilioni]?"],
++    ["TZS 4,200以上", "[TZS 4,200]以上"],
++    ["奖金会超过TZS 1,000,000吗？", "奖金会超过[TZS 1,000,000]吗？"],
++    ["Bei ya TZS 4,200", "Bei ya [TZS 4,200]"],
++    ["Bitcoin yafunga juu ya $100,000 tarehe 1 Agosti", "Bitcoin yafunga juu ya $100,000 tarehe [1 Agosti]"],
++  ];
++  const wrongHead = HEAD.filter(([t, want]) => br(keepFigures(t)) !== want).map(([t]) => `${t} → ${br(keepFigures(t))}`);
++  ok("1.2 · a currency code is part of its figure, unit or not (\"[TZS 1 bilioni]\", \"[TZS 4,200]以上\"); any other word before stays out when a unit follows (\"tarehe [1 Agosti]\")",
++    wrongHead.length === 0, wrongHead.join(" | "));
++  // The doubts: a capitalised unit word opens a sentence; a Swahili noun AFTER the number is the next phrase.
++  const CAP: Array<[string, string]> = [
++    ["Dakika 90 za mwisho?", "[Dakika 90] za mwisho?"], ["Saa 3 usiku?", "[Saa 3] usiku?"],
++    ["Will Ethereum hit a new 30-Day high?", "Will Ethereum hit a new [30-Day] high?"], ["Je, atavunja dakika 28:00 kwenye 10K?", "Je, atavunja [dakika 28:00] kwenye 10K?"],
++  ];
++  const wrongCap = CAP.filter(([t, want]) => br(keepFigures(t)) !== want).map(([t]) => `${t} → ${br(keepFigures(t))}`);
++  ok("1.3 · a unit word that opens a sentence keeps its number (\"[Dakika 90]\", \"[Saa 3]\", \"[30-Day]\"), as its lower-case twin does",
++    wrongCap.length === 0, wrongCap.join(" | "));
++  ok("1.3′ CONTROL (decided) · \"28:00 dakika\" stays plain: Swahili names the unit first, and a noun after a number opens the next phrase (\"mabao 2 siku ya mwisho\")",
++    keepFigures("Atavunja 28:00 dakika?") === "Atavunja 28:00 dakika?" && keepFigures("mabao 2 siku ya mwisho") === "mabao 2 siku ya mwisho");
++  const MONTHS_CASES: Array<[string, string]> = [
++    ["Will the SGR Dodoma-Singida section begin operations before December 2026?", "Will the SGR Dodoma-Singida section begin operations before December 2026?"],
++    ["Je, sehemu ya SGR Dodoma-Singida itaanza huduma kabla ya Desemba 2026?", "Je, sehemu ya SGR Dodoma-Singida itaanza huduma kabla ya Desemba 2026?"],
++    ["Will the long rains begin in Dar es Salaam before April 15?", "Will the long rains begin in Dar es Salaam before [April 15]?"],
++    ["Je, masika yataisha kabla ya Mei 31 Dar es Salaam?", "Je, masika yataisha kabla ya [Mei 31] Dar es Salaam?"], ["msimu wa Agosti 2026-27", "msimu wa Agosti [2026-27]"],
++  ];
++  const wrongMonth = MONTHS_CASES.filter(([t, want]) => br(keepFigures(t)) !== want).map(([t]) => `${t} → ${br(keepFigures(t))}`);
++  ok("1.3″ · a month keeps its DAY (\"[April 15]\", \"[Mei 31]\") and never a year: \"December 2026\" is no run (225px at the market h1's 28px, wider than its 220px line at 320 — §9)",
++    wrongMonth.length === 0, wrongMonth.join(" | "));
++
++  // The reviewer's prototype (review/fix.ts), verbatim lists, against the worktree over the reviewer's own corpus.
++  const MONTHS = "January|February|March|April|May|June|July|August|September|October|November|December|Januari|Februari|Machi|Aprili|Mei|Juni|Julai|Agosti|Septemba|Oktoba|Novemba|Desemba";
++  const RZH = "万美元|亿美元|万先令|亿先令|美元|先令|欧元|英镑|毫米|厘米|公里|千米|公斤|千克|毫升|分钟|小时|赛季|季度|百分点|摄氏度|个月|年底|年初|月底|月初|月中|[年月日号时分秒天周岁米克吨升元万亿场球届次名个度轮局倍]";
++  const RFIG = new RegExp(`(?:\\b(dakika|saa|sekunde|siku|wiki|mwezi|miezi|mwaka|miaka|nyuzi|asilimia|tarehe|milioni|bilioni|TZS|USD|KES|${MONTHS})(\\s+))?([$€£]?\\d+(?:[.,:]\\d+)*(?:[-–/]\\d+(?:[.,:]\\d+)*)*%?)`
++    + `(?:(\\s?(?:${RZH}))|(-[a-z]+)\\b|(\\s+)(minutes?|hours?|seconds?|days?|weeks?|months?|years?|degrees?|percent|million|billion|milioni|bilioni|${MONTHS})\\b)?`, "g");
++  const reviewer = (t: string): string[] => {
++    const out: string[] = [];
++    for (const m of t.matchAll(RFIG)) {
++      const [, before, gap, num, ideo, hyph, space, after] = m;
++      const tail = ideo ?? hyph ?? (after !== undefined ? space + after : "");
++      const head = before !== undefined && (tail === "" || /^(?:TZS|USD|KES)$/.test(before)) ? before + gap : "";
++      const run = head + num + tail;
++      if (/[\s\-–/㐀-䶿一-鿿豈-﫿]/u.test(run)) out.push(run);
++    }
++    return out;
++  };
++  const r = xorshift(5);
++  const P = ["TZS ", "USD ", "dakika ", "1", "200", "2026-27", "28:00", "万美元", "美元", "年", "月底", "坦桑尼亚", "以上", " ", "超过", "bilioni", " minutes", "-day", "%", "，", "Agosti ", "\u00a0", "Simba", "?"];
++  let textBad = 0, keysBad = 0, unexplained = 0, wideGap = 0, monthYear = 0;
++  const odd: string[] = [];
++  // A prototype run that pairs a month with a number that is no day (1–31): the rule 1.3″ no longer keeps.
++  const MONTH_WORD = new RegExp(`(?:^|\\s)(?:${MONTHS})(?:\\s|$)`);
++  const MONTH_DAY = new RegExp(`^(?:(?:${MONTHS})\\s+(?:0?[1-9]|[12]\\d|3[01])|(?:0?[1-9]|[12]\\d|3[01])\\s+(?:${MONTHS}))$`);
++  const pairsAMonthWithANonDay = (s: string) => reviewer(s).some((run) => MONTH_WORD.test(` ${run} `) && !MONTH_DAY.test(run));
++  for (let i = 0; i < 20000; i++) {
++    let s = ""; const k = Math.floor(r() * 12);
++    for (let j = 0; j < k; j++) s += P[Math.floor(r() * P.length)];
++    const node = keepFigures(s);
++    if (textOf(html(node)) !== s) textBad++;
++    keysBad += keyIssues(node);
++    if (show(runsOf(node)) !== show(reviewer(s))) {
++      // The intended differences on this corpus: a gap of two or more wide spaces is no longer held (§5), and a month
++      // holds a day, never another number (1.3″).
++      if (/[^\S\t\n\f\r ][\t\n\f\r ]*[^\S\t\n\f\r ]/u.test(s)) wideGap++;
++      else if (pairsAMonthWithANonDay(s)) monthYear++;
++      else { unexplained++; if (odd.length < 3) odd.push(`${show(s)}: ${show(runsOf(node))} vs ${show(reviewer(s))}`); }
++    }
++  }
++  ok(`1.4 · over the reviewer's own corpus (review/fix.ts, seed 5, 20,000 titles) the words are unchanged, the keys unique, and the runs are the reviewer's prototype's — but where a gap holds two or more wide spaces (${wideGap}, §5) or a month stands by a number that is no day (${monthYear}, 1.3″)`,
++    textBad === 0 && keysBad === 0 && unexplained === 0, `text ${textBad} keys ${keysBad} unexplained ${unexplained}: ${odd.join(" | ")}`);
++  const seededBad = SEEDED.filter((t) => textOf(html(keepFigures(t))) !== t || keyIssues(keepFigures(t)) > 0);
++  ok(`1.5 · every seeded title (${SEEDED.length}) keeps its words, character for character, with unique keys`, SEEDED.length > 60 && seededBad.length === 0, show(seededBad));
++  // The shared helper behind the bet dialog's title (§2): the same runs as the cards.
++  ok("1.6 · `figureRuns` is `keepFigures`' runs, as words (what `keepText` takes), and `figureRanges` their places",
++    SEEDED.every((t) => show(figureRuns(t)) === show(runsOf(keepFigures(t))) && figureRanges(t).every(([a, b], i) => t.slice(a, b) === figureRuns(t)[i])));
++  const LOOKBEHIND = /\(\?<[=!]/;
++  const helpers = ["src/components/ui/keep-words.tsx", "src/components/ui/keep-run.tsx", "src/components/ui/empty-state-text.ts", "src/lib/cjk-marks.tsx", "src/lib/fill-nodes.tsx"];
++  ok("1.7 · no lookbehind in any keep helper (a client bundle holding one fails to parse on Safari before 16.4)",
++    helpers.every((f) => !LOOKBEHIND.test(code(f))), helpers.filter((f) => LOOKBEHIND.test(code(f))).join(", "));
++  ok("1.7′ PLANT · a lookbehind in the figure pattern is reported", LOOKBEHIND.test(code(helpers[0]).replace("(?:\\\\b(${UNIT_BEFORE})", "(?<=\\\\s)(?:(${UNIT_BEFORE})")));
++}
++
++/* ══ §2 · EVERY MARKET TITLE ═════════════════════════════════════════════════════════════════════════════════════════ */
++section("2 · F1 F4 + H1's siblings: every market title is balanced and keeps its figures whole, on every surface");
++{
++  type Surface = { name: string; file: string; draws: string[]; balanced: (src: string) => boolean };
++  const cls = (src: string, needle: string) => src.includes(needle);
++  const SURFACES: Surface[] = [
++    { name: "the grid and featured cards", file: "src/components/markets/market-card.tsx",
++      draws: [`{featured ? <h2 className="mcardp-q">{keepFigures(title)}</h2> : <h3 className="mcardp-q">{keepFigures(title)}</h3>}`],
++      balanced: () => rulesFor(".mcardp-q").some((b) => /text-wrap:\s*balance/.test(b)) && rulesFor(".mcardp--featured .mcardp-q").every((b) => !/text-wrap/.test(b)) },
++    { name: "the landing board's rows", file: "src/components/home/landing-hero.tsx", draws: [`<span className="kp-qrow__q">{keepFigures(title)}</span>`],
++      balanced: () => rulesFor(".kp-qrow__q").some((b) => /text-wrap:\s*balance/.test(b)) },
++    { name: "the market page's h1", file: "src/app/markets/[id]/page.tsx", draws: [`{keepFigures(pickLocalized(locale, m.titleEn, m.titleSw, m.titleZh))}</h1>`],
++      balanced: (s) => /<h1 data-stem=[\s\S]{0,200}?className="[^"]*\btext-balance\b[^"]*"\s*>(?:\{\})?\{keepFigures\(pickLocalized/.test(s) },
++    { name: "the journey's ticket card", file: "src/components/journey/tickets/ticket-card.tsx", draws: [`{keepFigures(title.text)}</Link>`],
++      balanced: (s) => cls(s, `<h2 className="mt-3 font-display text-body-lg font-semibold leading-tight text-text text-balance">`) },
++    { name: "/live's featured carousel", file: "src/app/live/featured-contest.tsx", draws: [`{keepFigures(mm.title)}`],
++      balanced: (s) => cls(s, `className="font-display text-[19px] lg:text-[24px] font-semibold leading-tight text-text text-balance group-hover:text-aqua-100"`) },
++    { name: "/live's wall", file: "src/app/live/pulse-grid.tsx", draws: [`<Fragment key={i}>{keepFigures(part)}</Fragment>`, `<KeepHyphenated text={title} />`],
++      balanced: (s) => /font-display text-\[13\.5px\] font-semibold leading-snug text-text text-balance/.test(s) },
++    { name: "/results' notable result", file: "src/app/results/page.tsx", draws: [`{keepFigures(pickLocalized(locale, m.titleEn, m.titleSw, m.titleZh))}`],
++      balanced: (s) => cls(s, `font-semibold leading-tight text-text text-balance group-hover:text-gold-100">`) },
++    { name: "the proposals board", file: "src/app/proposals/page.tsx", draws: [`text-balance">{keepFigures(pickLocalized(locale, p.titleEn, p.titleSw, p.titleZh))}</p>`],
++      balanced: (s) => cls(s, `tracking-[-0.01em] text-text text-balance">{keepFigures(`) },
++    { name: "a proposal's page", file: "src/app/proposals/[id]/page.tsx", draws: [`text-balance">{keepFigures(pickLocalized(locale, p.titleEn, p.titleSw, p.titleZh))}</h1>`],
++      balanced: (s) => cls(s, `tracking-[-0.02em] text-balance">{keepFigures(`) },
++    { name: "the classic ticket (PositionCard)", file: "src/components/markets/position-card.tsx", draws: [`{keepFigures(marketTitle)}`],
++      balanced: (s) => cls(s, `tracking-[-0.005em] text-text line-clamp-2 text-balance">`) },
++    { name: "/fairness' resolved table", file: "src/app/fairness/page.tsx", draws: [`{keepFigures(titleOf(m))}</Link>`],
++      balanced: (s) => cls(s, `line-clamp-2 text-balance">{keepFigures(titleOf(m))}</Link>`) },
++    { name: "the bet dialog's title", file: "src/components/markets/bet-confirm-modal.tsx", draws: [`{keepText(marketTitle, figureRuns(marketTitle))}`],
++      balanced: (s) => cls(s, `<p className="mt-1 font-display text-[15px] font-semibold text-text leading-snug text-balance">`) },
++  ];
++  const surfaceFault = (s: Surface, src: string) => [
++    !s.draws.every((d) => src.includes(d)) && "does not draw the title through keepFigures",
++    !s.balanced(src) && "is not balanced",
++    /\btext-pretty\b/.test(src.slice(Math.max(0, src.indexOf(s.draws[0]) - 400), src.indexOf(s.draws[0]))) && "wears text-pretty",
++  ].filter(Boolean) as string[];
++  const faults = SURFACES.map((s) => [s.name, surfaceFault(s, code(s.file))] as const).filter(([, f]) => f.length);
++  ok(`2.1 · ${SURFACES.length} title surfaces draw the title through keepFigures and balance its lines — the seven of round 4 and /results' notable card, the proposals board and page, the classic ticket, /fairness, the bet dialog`,
++    faults.length === 0, faults.map(([n, f]) => `${n}: ${f.join(", ")}`).join(" | "));
++  // ⛔ No market title is set `pretty`: Chromium's orphan rule pulls ONE character down in Chinese (F1).
++  const PRETTY_ON_TITLE = (css: string) => [...css.matchAll(/([^{}]+)\{([^{}]*)\}/g)].some((m) => /mcardp-q|kp-qrow__q/.test(m[1]) && /text-wrap(?:-style)?:\s*pretty/.test(m[2]));
++  ok("2.2 · no rule sets a market title `text-wrap: pretty` (the featured card wore it — F1's mechanism, §3)", !PRETTY_ON_TITLE(CSS));
++  ok("2.2′ PLANT · the featured question back on `pretty` is reported",
++    PRETTY_ON_TITLE(CSS.replace(".mcardp--featured .mcardp-q { -webkit-line-clamp: 3;", ".mcardp--featured .mcardp-q { text-wrap: pretty; -webkit-line-clamp: 3;")));
++  ok("2.2″ PLANT · a surface that loses its balance or its keepFigures is reported",
++    surfaceFault(SURFACES[4], code(SURFACES[4].file).replace("text-text text-balance group-hover:text-aqua-100", "text-text group-hover:text-aqua-100")).length > 0
++      && surfaceFault(SURFACES[6], code(SURFACES[6].file).replace("{keepFigures(pickLocalized(locale, m.titleEn, m.titleSw, m.titleZh))}", "{pickLocalized(locale, m.titleEn, m.titleSw, m.titleZh)}")).length > 0);
++  // The bet dialog draws its title with keepText (its last two words, R4-I) AND the cards' figure runs.
++  const dialog = keptRanges("Je, mkimbiaji wa Tanzania atavunja dakika 28:00 kwenye 10K ya World Athletics ijayo?", figureRuns("Je, mkimbiaji wa Tanzania atavunja dakika 28:00 kwenye 10K ya World Athletics ijayo?"))
++    .map(([a, b]) => "Je, mkimbiaji wa Tanzania atavunja dakika 28:00 kwenye 10K ya World Athletics ijayo?".slice(a, b));
++  ok("2.3 · the bet dialog's title keeps \"dakika 28:00\" whole as the cards do, and its last two words as R4-I did", show(dialog) === show(["dakika 28:00", "Athletics ijayo?"]), show(dialog));
++  // /live's wall: KeepHyphenated hands every non-hyphen part to keepFigures.
++  ok("2.4 · /live's wall keeps the same runs: \"[2026-27赛季]\", \"[dakika 28:00]\"",
++    br(h(KeepHyphenated, { text: "辛巴俱乐部赢得2026-27赛季NBC超级联赛" })) === "辛巴俱乐部赢得[2026-27赛季]NBC超级联赛"
++      && br(h(KeepHyphenated, { text: "Je, atavunja dakika 28:00?" })) === "Je, atavunja [dakika 28:00]?");
++  // Every player file that names a market (or proposal) title is either a surface above, hands it to one, or is not a
++  // place a title wraps — classified here, so a new surface cannot appear without being set the same way.
++  const ROLE: Record<string, string> = {
++    "src/app/fairness/page.tsx": "surface", "src/app/live/pulse-grid.tsx": "surface", "src/app/markets/[id]/page.tsx": "surface",
++    "src/app/proposals/[id]/page.tsx": "surface", "src/app/proposals/page.tsx": "surface", "src/app/results/page.tsx": "surface",
++    "src/components/home/landing-hero.tsx": "surface", "src/components/markets/bet-confirm-modal.tsx": "surface",
++    "src/components/markets/market-card.tsx": "surface", "src/components/markets/position-card.tsx": "surface",
++    "src/app/live/page.tsx": "hands it to featured-contest.tsx and pulse-grid.tsx", "src/app/markets/page.tsx": "hands it to MarketCard",
++    "src/app/page.tsx": "hands it to the landing hero", "src/app/positions/page.tsx": "hands it to PositionCard and the tickets view",
++    "src/app/watchlist/page.tsx": "hands it to MarketCard", "src/components/markets/side-picker.tsx": "hands it to the dial and the notify prompt",
++    "src/app/markets/actions.ts": "a server action: no drawing",
++    "src/app/notifications/page.tsx": "a notice's own title, not a market's", "src/components/layout/notifications-panel.tsx": "a notice's own title, not a market's",
++    "src/app/proposals/new/create-form.tsx": "an input", "src/components/markets/notify-prompt.tsx": "a system notification's body",
++    "src/components/markets/position-share.tsx": "the words a share sends", "src/components/home/trust-band.tsx": "one line, ellipsised — it never wraps",
++    "src/app/positions/performance/page.tsx": "a reference in body text — its figures whole (keepFigures), not a title to balance",
++    "src/components/markets/conviction-dial.tsx": "the bet result's subtitle, body text — its figures whole (keepFigures), not a title to balance",
++  };
++  const walk = (dir: string, out: string[] = []): string[] => {
++    for (const n of readdirSync(dir)) {
++      const p = `${dir}/${n}`;
++      if (statSync(p).isDirectory()) { if (!/^src\/(?:app\/admin|components\/admin|app\/api)$/.test(p)) walk(p, out); }
++      else if (/\.tsx?$/.test(n)) out.push(p);
++    }
++    return out;
++  };
++  const population = [...walk("src/app"), ...walk("src/components")].filter((f) => /titleZh|marketTitle/.test(code(f)));
++  const unclassified = population.filter((f) => !(f in ROLE));
++  ok(`2.5 · every player file that names a market title (${population.length}) is classified — a surface held by 2.1, one that hands it on, or not a wrapping title`,
++    unclassified.length === 0 && population.length >= 20, unclassified.join(", "));
++  const refs = ["src/app/positions/performance/page.tsx", "src/components/markets/conviction-dial.tsx"];
++  ok("2.6 · the two references in body text keep the figures whole too (the best market's line, the bet result's subtitle)",
++    code(refs[0]).includes("{keepFigures(bestTitle)}") && code(refs[1]).includes("? (marketTitle != null ? keepFigures(marketTitle) : t.common.positionOpenNotify)"));
++}
++
++/* ══ §3 · F1 F4 — THE MECHANISM ══════════════════════════════════════════════════════════════════════════════════════ */
++section("3 · F1 F4 Chromium's greedy / pretty / balance, modelled from its source, reproduce the tiles and give the after");
++/*
++ * The model (third_party/blink/renderer/core/layout/inline/score_line_breaker.cc, read 2026-10-09):
++ *   · `pretty` acts only when the greedy LAST line is under a third of the line (kShortLineDenominator = 3) and has no
++ *     break opportunity inside it (`ShouldOptimize`); it needs ≥ 3 candidates (kMinCandidates), sets kOrphansPenalty =
++ *     10000 on the last one, scores each line delta² plus a line penalty, the last line by its start's penalty only;
++ *   · `balance` scores every line, the last too (`is_balanced_`), over at most 6 lines;
++ *   · neither is suspended by `-webkit-line-clamp` in shipping Chrome (only behind CSSLineClampLineBreakingEllipsis).
++ * Sora's advances are next/font's own Sora (latin, variable; sha256 3902474d…, the dev build's
++ * 6bd983bd58a87a3d-s.p.0h108oidc_0fm.woff2), hmtx + HVAR at 600 and 700, in 1/1000 em, for U+0020–U+007E; an ideograph
++ * is 1em. The model reproduced tiles 029, 023 and 026 to within 2px (below).
++ */
++const SORA: Record<600 | 700, number[]> = {
++  600: "216,310,473,712,651,877,717,266,387,387,569,594,269,507,269,386,756,425,627,626,662,637,678,596,657,678,269,269,594,590,594,559,1126,773,688,799,785,596,560,832,801,326,642,728,553,954,867,865,658,865,720,674,610,780,729,1062,713,655,650,387,386,387,602,585,300,588,699,610,699,620,381,683,648,325,332,617,305,978,648,679,699,699,417,549,431,639,584,897,587,562,497,387,375,387,527".split(",").map(Number),
++  700: "210,317,495,722,651,891,731,268,393,393,570,596,273,509,273,407,763,428,632,632,672,644,687,607,667,687,273,273,596,590,596,563,1127,782,692,800,781,594,560,833,800,332,643,752,558,971,876,864,667,864,730,667,618,776,740,1071,722,657,647,393,407,393,617,590,300,594,703,611,703,624,382,686,652,334,339,639,315,983,652,681,703,703,421,556,434,645,597,922,601,570,502,393,376,393,543".split(",").map(Number),
++};
++type Box = { size: number; wght: 600 | 700; ls: number };
++const WIDE = /[㐀-䶿一-鿿豈-﫿\u3000-\u303f\uff00-\uffef]/u;
++const adv = (s: string, b: Box) => Array.from(s).reduce((w, c) => {
++  const cp = c.codePointAt(0)!;
++  return w + (WIDE.test(c) ? 1 : cp >= 0x20 && cp <= 0x7e ? SORA[b.wght][cp - 0x20] / 1000 : 0.6) * b.size + b.ls * b.size;
++}, 0);
++/** A piece never breaks inside; `space` is the collapsible space after it (it hangs at a line end); `brk` says whether a
++ *  line may end after it; `at` is where its text starts in the title, in code points. */
++type Piece = { text: string; w: number; space: number; brk: boolean; at: number };
++const NO_BREAK_BEFORE = /[，。、；：！？）」』】〉》”’,.!?;:)\]}%]/u;
++const NO_BREAK_AFTER = /[（「『【〈《“‘(\[{$€£]/u;
++/** Pieces of a drawn title: each nowrap run whole, the rest split where UAX #14 lets a line end in it. */
++function pieces(markup: string, b: Box): Piece[] {
++  const chars: Array<{ c: string; id: number }> = [];
++  let k = 0;
++  for (const m of markup.matchAll(/<span class="whitespace-nowrap">([^<]*)<\/span>|([^<]+)/g)) {
++    const id = m[1] !== undefined ? k++ : -1;
++    for (const c of Array.from(decode(m[1] ?? m[2]))) chars.push({ c, id });
++  }
++  const canBreak = (i: number) => {
++    const a = chars[i - 1], z = chars[i];
++    if (a.id >= 0 && a.id === z.id) return false;
++    if (z.c === " ") return false;
++    if (a.c === " ") return !NO_BREAK_BEFORE.test(z.c);
++    if (NO_BREAK_BEFORE.test(z.c) || NO_BREAK_AFTER.test(a.c)) return false;
++    if (WIDE.test(a.c) || WIDE.test(z.c)) return true;
++    return a.c === "-" && /\p{L}/u.test(z.c);
++  };
++  const out: Piece[] = [];
++  let cur = { text: "", spaces: 0, at: 0 };
++  const close = (brk: boolean) => {
++    if (cur.text === "" && out.length) { out[out.length - 1].space += cur.spaces * adv(" ", b); out[out.length - 1].brk = brk; }
++    else if (cur.text !== "") out.push({ text: cur.text, w: adv(cur.text, b), space: cur.spaces * adv(" ", b), brk, at: cur.at });
++    cur = { text: "", spaces: 0, at: 0 };
++  };
++  chars.forEach((ch, i) => {
++    if (i > 0 && canBreak(i)) close(true);
++    if (ch.c === " " && !(ch.id >= 0 && chars[i + 1]?.id === ch.id)) cur.spaces++;
++    else { if (cur.text === "") cur.at = i; cur.text += ch.c; }
++  });
++  close(false);
++  if (out.length) out[out.length - 1].brk = false;
++  return out;
++}
++const lineW = (ps: Piece[], i: number, j: number) => { let w = 0; for (let k = i; k < j; k++) w += ps[k].w + ps[k].space; return w + ps[j].w; };
++function greedy(ps: Piece[], W: number): number[] {
++  const ends: number[] = [];
++  let start = 0, last = -1;
++  for (let j = 0; j < ps.length; j++) {
++    if (j > start && lineW(ps, start, j) > W + 1e-6 && last >= start) { ends.push(last); start = last + 1; last = -1; j = start - 1; continue; }
++    if (ps[j].brk) last = j;
++  }
++  ends.push(ps.length - 1);
++  return ends;
++}
++function scored(ps: Piece[], W: number, b: Box, balanced: boolean): number[] | null {
++  const cands = ps.map((p, i) => (p.brk ? i : -1)).filter((i) => i >= 0);
++  if (cands.length < 3) return null;
++  const pen = new Map<number, number>(cands.map((c) => [c, 0]));
++  pen.set(cands[cands.length - 1], 10000);
++  const linePenalty = 4 * W * b.size;
++  const best = new Map<number, { s: number; prev: number }>([[-1, { s: 0, prev: NaN }]]);
++  for (const e of [...cands, ps.length - 1]) {
++    const isLast = e === ps.length - 1;
++    let here: { s: number; prev: number } | null = null;
++    for (const [sIdx, sv] of best) {
++      if (sIdx >= e) continue;
++      const delta = W - lineW(ps, sIdx + 1, e);
++      const startPen = sIdx === -1 ? 0 : pen.get(sIdx) ?? 0;
++      const width = delta < 0 ? 1e12 : isLast && !balanced ? 4 * startPen : delta * delta;
++      const s = sv.s + width + (isLast ? 0 : pen.get(e) ?? 0) + linePenalty;
++      if (!here || s < here.s) here = { s, prev: sIdx };
++    }
++    if (here) best.set(e, here);
++  }
++  const out: number[] = [];
++  for (let e = ps.length - 1; e !== -1; e = best.get(e)!.prev) out.unshift(e);
++  return out;
++}
++function pretty(ps: Piece[], W: number, b: Box): number[] {
++  const g = greedy(ps, W);
++  if (g.length <= 1 || g.length > 4) return g;
++  const start = g[g.length - 2] + 1;
++  const inside = ps.slice(start, ps.length - 1).some((p) => p.brk);
++  return lineW(ps, start, ps.length - 1) < W / 3 && !inside ? scored(ps, W, b, false) ?? g : g;
++}
++const balance = (ps: Piece[], W: number, b: Box) => { const g = greedy(ps, W); return g.length <= 1 || g.length > 6 ? g : scored(ps, W, b, true) ?? g; };
++const lines = (ps: Piece[], ends: number[]) => {
++  const out: Array<{ text: string; w: number }> = [];
++  let s = 0;
++  for (const e of ends) { out.push({ text: ps.slice(s, e + 1).map((p, k) => p.text + (k < e - s && p.space > 0 ? " " : "")).join(""), w: lineW(ps, s, e) }); s = e + 1; }
++  return out;
++};
++/** The featured card's question column: the card (viewport - 32, the hero's 456px from 1024) - 2 border - 30 padding -
++ *  14 gap - the 22px mono dash (0.6em - 0.02em tracking); its type 15px/600 below 640, h4 (17px) 700, h3 (20px) from 1024. */
++const FEAT_COL = (vw: number) => (vw >= 1024 ? 456 : vw - 32) - 2 - 30 - 14 - 22 * (0.6 - 0.02);
++const FEAT_BOX = (vw: number): Box => (vw >= 1024 ? { size: 20, wght: 700, ls: -0.015 } : vw >= 640 ? { size: 17, wght: 700, ls: -0.015 } : { size: 15, wght: 600, ls: -0.015 });
++const feat = (t: string, vw: number, mode: "greedy" | "pretty" | "balance") => {
++  const b = FEAT_BOX(vw), W = FEAT_COL(vw), ps = pieces(html(keepFigures(t)), b);
++  return lines(ps, mode === "greedy" ? greedy(ps, W) : mode === "pretty" ? pretty(ps, W, b) : balance(ps, W, b));
++};
++{
++  const ZH = "达累斯萨拉姆七月降雨超过200毫米", EN = "Dar es Salaam rainfall exceeds 200mm in July", SW = "Mvua Dar es Salaam yazidi 200mm Julai";
++  ok("3.locate · the stylesheet the model reads: the card's question 15px/600 with \u22120.015em, h4 700 from 640, h3 from 1024",
++    rulesFor(".mcardp-q").some((x) => /font-weight:\s*600/.test(x) && /font-size:\s*15px/.test(x) && /letter-spacing:\s*-0\.015em/.test(x))
++      && /font-size: var\(--type-h4\); font-weight: 700;/.test(CSS) && /\.mcardp--featured \.mcardp-q \{ font-size: var\(--type-h3\);/.test(CSS));
++  // CONTROL — the tiles as they were drawn (ink measured with System.Drawing: 029 x32–194 / 32–107; 023 33–318 / 32–80; 026 553–936 / 552–617).
++  const z = feat(ZH, 320, "pretty"), e = feat(EN, 390, "pretty"), e2 = feat(EN, 1024, "pretty");
++  const near = (got: number, ink: number) => Math.abs(got - ink) <= 2.5;
++  ok("3.1 CONTROL · `pretty` draws tile 029 (zh 320): \"达累斯萨拉姆七月降雨超\" / \"过200毫米\" — 162.5 / 75.7px against ink 163 / 76 — because the greedy last line was the one unbreakable run \"200毫米\", 61px of 229 (under a third)",
++    show(z.map((l) => l.text)) === show(["达累斯萨拉姆七月降雨超", "过200毫米"]) && near(z[0].w, 163) && near(z[1].w, 76)
++      && feat(ZH, 320, "greedy")[1].text === "200毫米" && feat(ZH, 320, "greedy")[1].w < FEAT_COL(320) / 3, show(z));
++  ok("3.2 CONTROL · and is plain greedy in English (tile 023, 390: 287.6 / 48.5 against ink 286 / 49; tile 026, 1024: 386.0 / 65.2 against 384 / 66) — \"in July\" has a break inside, so the orphan rule never acts",
++    show(e.map((l) => l.text)) === show(["Dar es Salaam rainfall exceeds 200mm", "in July"]) && near(e[0].w, 286) && near(e[1].w, 49)
++      && show(e2.map((l) => l.text)) === show(e.map((l) => l.text)) && near(e2[0].w, 384) && near(e2[1].w, 66), show([e, e2]));
++  // AFTER — balance.
++  const want: Array<[string, number, string[]]> = [
++    [ZH, 320, ["达累斯萨拉姆七月", "降雨超过200毫米"]], [ZH, 360, [ZH]], [ZH, 390, [ZH]],
++    [EN, 390, ["Dar es Salaam rainfall", "exceeds 200mm in July"]], [EN, 1024, ["Dar es Salaam rainfall", "exceeds 200mm in July"]],
++    [SW, 320, ["Mvua Dar es Salaam", "yazidi 200mm Julai"]], [SW, 360, ["Mvua Dar es Salaam", "yazidi 200mm Julai"]], [SW, 390, [SW]],
++  ];
++  const wrongAfter = want.filter(([t, vw, w]) => show(feat(t, vw, "balance").map((l) => l.text)) !== show(w)).map(([t, vw]) => `${vw} ${show(feat(t, vw, "balance"))}`);
++  ok("3.3 · balanced, the featured question reads \"达累斯萨拉姆七月 / 降雨超过200毫米\" at 320 (one line at 360 and 390), \"Dar es Salaam rainfall / exceeds 200mm in July\" at 390 and 1024, \"Mvua Dar es Salaam / yazidi 200mm Julai\" at 320 and 360",
++    wrongAfter.length === 0, wrongAfter.join(" | "));
++  // Every width 320–1023: balance never cuts 超过 and never leaves a short last line; pretty and greedy do.
++  const split: Record<string, number[]> = { pretty: [], balance: [] }, short: Record<string, number[]> = { greedy: [], balance: [] };
++  for (let vw = 320; vw < 1024; vw++) {
++    for (const m of ["pretty", "balance"] as const) if (feat(ZH, vw, m).some((l, i, a) => i < a.length - 1 && l.text.endsWith("超"))) split[m].push(vw);
++    for (const t of [EN, SW, ZH]) for (const m of ["greedy", "balance"] as const) {
++      const ls = feat(t, vw, m);
++      if (ls.length > 1 && ls[ls.length - 1].w < FEAT_COL(vw) / 3) short[m].push(vw);
++    }
++  }
++  ok("3.4 · at every width from 320 to 1023 the balanced question never cuts 超过 and never ends on a line under a third wide (en, sw, zh)",
++    split.balance.length === 0 && short.balance.length === 0, show({ split: split.balance, short: short.balance }));
++  ok(`3.4′ CONTROL · pretty cuts 超过 at ${split.pretty.length} widths (${split.pretty[0]}–${split.pretty[split.pretty.length - 1]}), and greedy leaves a short last line at ${new Set(short.greedy).size} widths`,
++    split.pretty.length > 0 && split.pretty[0] === 320 && short.greedy.length > 0);
++  // The Chinese titles on four surfaces at the phone widths: where does each mode cut a word? (ICU's dictionary
++  // segmentation, an analysis aid only.) Balance must cut no more words than greedy on any surface, and none on the cards.
++  const words = new Intl.Segmenter("zh", { granularity: "word" });
++  const inside = (t: string) => { const s = new Set<number>(); for (const w of words.segment(t)) { const n = Array.from(w.segment).length; if (n > 1 && w.isWordLike) { const at = Array.from(t.slice(0, w.index)).length; for (let k = 1; k < n; k++) s.add(at + k); } } return s; };
++  const ZH_TITLES = SEEDED.filter((t) => IDEO.test(t));
++  const SURF: Array<[string, Box, (vw: number) => number]> = [
++    // The grid card's column is R4-H's (visual-pass-r4h §5): the card less its border and padding, the 28px mono "—" price column and 14px.
++    ["featured", { size: 15, wght: 600, ls: -0.015 }, FEAT_COL], ["board row", { size: 17, wght: 700, ls: -0.01 }, (vw) => vw - 32],
++    ["grid card", { size: 15, wght: 600, ls: -0.015 }, (vw) => vw - 32 - 2 - 30 - 0.6 * 28 - 14], ["/live carousel", { size: 19, wght: 600, ls: 0 }, (vw) => vw - 32 - 2 - 40],
++  ];
++  const tally: Record<string, Record<string, number>> = {};
++  for (const [name, b, col] of SURF) {
++    tally[name] = { greedy: 0, pretty: 0, balance: 0 };
++    for (const t of ZH_TITLES) for (const vw of [320, 360, 390, 412]) {
++      const ps = pieces(html(keepFigures(t)), b), W = col(vw), bad = inside(t);
++      for (const [m, ends] of [["greedy", greedy(ps, W)], ["pretty", pretty(ps, W, b)], ["balance", balance(ps, W, b)]] as const) {
++        // Each line after the first starts where its first piece starts in the title.
++        const cuts = ends.slice(0, -1).map((e) => ps[e + 1].at);
++        if (cuts.some((c) => bad.has(c))) {
++          tally[name][m]++;
++          if (m === "balance" && process.env.R5E_VERBOSE) console.log(`       balance cuts a word: ${name} ${vw} ${lines(ps, ends).map((l) => l.text).join(" / ")}`);
++        }
++      }
++    }
++  }
++  console.log(`       (Chinese titles cut inside a word, ${ZH_TITLES.length} titles × 4 widths: ${Object.entries(tally).map(([n, t]) => `${n} ${show(t)}`).join(" · ")})`);
++  // ⚠️ Not none: Chinese may break between any two ideographs (UAX #14, and Chinese typesetting), and no engine offers a
++  // phrase-aware break for Chinese (`word-break: auto-phrase` is Chromium's, for Japanese). Balance halves the cuts.
++  ok("3.5 · on every title surface balance cuts fewer Chinese words than greedy and than pretty — why balance, and not `:lang(zh)` greedy, is the one rule (pretty cuts the most)",
++    Object.values(tally).every((t) => t.balance < t.greedy && t.balance < t.pretty) && Object.values(tally).every((t) => t.pretty >= t.greedy), show(tally));
++}
++
++/* ══ §4 · H2 H3 ══════════════════════════════════════════════════════════════════════════════════════════════════════ */
++section("4 · H2 H3 a name ends on two whole characters — clusters as ICU cuts them — with a bounded gap");
++{
++  const FAMILY = "\u{1F468}\u200d\u{1F469}\u200d\u{1F467}", TECH = "\u{1F469}\u200d\u{1F4BB}", RAINBOW = "\u{1F3F3}\ufe0f\u200d\u{1F308}";
++  const THUMB = "\u{1F44D}\u{1F3FD}", TZ = "\u{1F1F9}\u{1F1FF}", KE = "\u{1F1F0}\u{1F1EA}", KEYCAP = "1\ufe0f\u20e3";
++  const kept = (n: string) => { const x = keepNameEnd(n); return Array.isArray(x) ? textOf(html(x[1])) : null; };
++  const CASES: Array<[string, string | null]> = [
++    ["Juma K", "a K"], ["Mwanaisha Khamis", "is"], ["AB", null], [`Ali ${FAMILY}`, `i ${FAMILY}`], [`Neema ${TECH}`, `a ${TECH}`],
++    [`Juma ${RAINBOW}`, `a ${RAINBOW}`], [`Asha ${THUMB}`, `a ${THUMB}`], [`Ali ${TZ}`, `i ${TZ}`], [`ab${TZ}${KE}`, `${TZ}${KE}`],
++    ["Zoe\u0308", "oe\u0308"], [`Namba ${KEYCAP}`, `a ${KEYCAP}`], ["Player #A3F2K8", "K8"],
++    // the joiners and vowels that are not marks, and the clusters that open on more than one code point
++    ["Name \u0e01\u0e33", "e \u0e01\u0e33"], ["Name \u0eaa\u0eb3", "e \u0eaa\u0eb3"], ["Name \uff76\uff9e", "e \uff76\uff9e"], ["Name \u1100\uac00", "e \u1100\uac00"],
++    [`Name ${TZ}\ufe0f`, `e ${TZ}\ufe0f`], ["Name \u0915\u094d\u0951\u0937", "e \u0915\u094d\u0951\u0937"], ["Ali \u{113D1}a", "i \u{113D1}a"],
++    // H2: the gap is bounded
++    ["AB" + "\u3000".repeat(37) + "C", null], ["AB" + "\u2003".repeat(37) + "C", null], ["AB" + " ".repeat(37) + "C", "B" + " ".repeat(37) + "C"],
++    ["张三\u3000丰", "三\u3000丰"], ["AB\u3000\u3000C", null],
++  ];
++  const wrong = CASES.filter(([n, w]) => kept(n) !== w).map(([n, w]) => `${show(n)} kept ${show(kept(n))}, want ${show(w)}`);
++  ok("4.1 · the end is the last two user-perceived characters: \"a 👩\u200d💻\" whole, a flag's pair, a letter with its marks, Thai and Lao AM, the half-width voiced mark, old-Hangul jamo, a conjunct; and a gap of 37 ideographic spaces is never one unbreakable run",
++    wrong.length === 0, wrong.join(" | "));
++  // The round-4 rule in miniature: two CODE POINTS.
++  const tip = /\S\s*\S\s*$/u.exec(`Neema ${TECH}`)?.[0] ?? "";
++  ok("4.1′ CONTROL · two code points cut the technologist emoji (its ZWJ and 💻 kept, 👩 left out), and their gap ran over 37 ideographic spaces",
++    tip === "\u200d\u{1F4BB}" && (/\S\s*\S\s*$/u.exec("AB" + "\u3000".repeat(37) + "C")?.[0].length ?? 0) === 39);
++  // The pattern against Node's ICU, code point by code point (planes 0, 1 and 14), in the contexts that join.
++  const icuBounds = (s: string) => new Set([...SEG.segment(s)].map((g) => g.index).concat(s.length));
++  const splitsCluster = (s: string) => { const b = icuBounds(s); return characterSpans(s).some(([a, z]) => !b.has(a) || !b.has(z)); };
++  const CTX: Array<(x: string) => string> = [(x) => "a" + x, (x) => x + "a", (x) => "\u0915\u094d" + x, (x) => "\u1100" + x, (x) => "\uac00" + x,
++    (x) => "\uac01" + x, (x) => "\u{1F469}\u200d" + x, (x) => "\u{1F1F9}" + x, (x) => " " + x];
++  const under: string[] = [];
++  let probed = 0;
++  for (const [from, to] of [[0, 0xd7ff], [0xe000, 0x1ffff], [0xe0000, 0xe01ef]]) {
++    for (let cp = from; cp <= to; cp++) {
++      const x = String.fromCodePoint(cp);
++      for (const c of CTX) { probed++; if (splitsCluster(c(x)) && under.length < 8) under.push(`U+${cp.toString(16).toUpperCase()} in ${show(c("X"))}`); }
++    }
++  }
++  console.log(`       (Node ${process.version}, ICU ${process.versions.icu}, Unicode ${process.versions.unicode}; ${probed} strings)`);
++  ok("4.2 · no character the pattern reads ever parts what ICU keeps together — every code point of planes 0, 1 and 14, in nine contexts (after a letter, before one, after a virama, after each Hangul jamo shape, after a ZWJ, after a lone flag letter, after a space)",
++    under.length === 0, under.join(" | "));
++  ok("4.2′ CONTROL · code points as characters part Thai AM, a trailing ZWJ, a flag and its mark (what a one-code-point rule would cut)",
++    ["\u0e01\u0e33", "a\u200d", `${TZ}\ufe0f`].every((s) => [...s.matchAll(/\S/gu)].length > [...SEG.segment(s)].length));
++  // A fuzzed name corpus: the cut always on an ICU boundary, and two visible characters at least.
++  const r = xorshift(9);
++  const TOK = ["Juma", "K", "Mwanaisha", "a", "B", "百里", "呼延", TECH, FAMILY, THUMB, TZ, KE, KEYCAP, RAINBOW, "e\u0301", "Zoe\u0308",
++    "\u0915\u094d\u0937", "\u092a\u094d\u0930\u0915\u093e\u0936", "\ud55c\uad6d\uc5b4", "\u1100\u1161\u11a8", "\u0e01\u0e33", "\uff76\uff9e", "\u0645\u06cc\u200c\u062e\u0648\u0627\u0647\u0645", "\u0600\u0661", "#A3F2K8"];
++  const WS = [" ", " ", "  ", "\u3000", "\u00a0", "\u2003", ""];
++  let shaped = 0, bad = 0, textBad = 0;
++  const odd: string[] = [];
++  for (let i = 0; i < 4000; i++) {
++    let s = ""; const k = 1 + Math.floor(r() * 6);
++    for (let j = 0; j < k; j++) s += TOK[Math.floor(r() * TOK.length)] + WS[Math.floor(r() * WS.length)];
++    const node = keepNameEnd(s);
++    if (textOf(html(node)) !== s || keyIssues(node) > 0) textBad++;
++    if (!Array.isArray(node)) continue;
++    shaped++;
++    const cut = (node[0] as string).length;
++    const visible = [...SEG.segment(s.slice(cut))].filter((g) => !/^\s+$/u.test(g.segment)).length;
++    if (!icuBounds(s).has(cut) || visible < 2) { bad++; if (odd.length < 3) odd.push(show(s)); }
++  }
++  ok(`4.3 · over 4,000 fuzzed names (${shaped} shaped) the cut is always an ICU grapheme boundary, two visible characters at least are kept, and the words and keys are intact`,
++    bad === 0 && textBad === 0 && shaped > 2000, `bad ${bad} text ${textBad}: ${odd.join(" | ")}`);
++  // The two call sites, as R4-H left them.
++  ok("4.4 · the hub and the name editor draw keepNameEnd, balanced and free to break anywhere when they must",
++    code("src/app/account/page.tsx").includes("<span className=\"kp-hub__name\">{keepNameEnd(viewer.name)}</span>")
++      && rulesFor(".kp-hub__name").some((b) => /text-wrap:\s*balance/.test(b) && /overflow-wrap:\s*anywhere/.test(b))
++      && /\? keepNameEnd\(currentName\) :/.test(code("src/components/profile/name-editor.tsx")));
++  // Linear time, whatever the name (a 40-unit limit holds the real ones; the pattern holds its own).
++  const t0 = performance.now();
++  for (const s of ["a".repeat(20000), "a" + "\u0301".repeat(19999), "\u0915" + "\u094d".repeat(19999), "\u1100".repeat(20000), "\u{1F1F9}".repeat(10000), "a\u200d".repeat(10000), " \u0301".repeat(10000)]) keepNameEnd(s);
++  ok("4.5 · seven adversarial 20,000-unit names (marks, viramas, jamo, flag letters, joiners) take under a second together", performance.now() - t0 < 1000, `${(performance.now() - t0).toFixed(0)} ms`);
++}
++
++/* ══ §5 · ONE GAP RULE ═══════════════════════════════════════════════════════════════════════════════════════════════ */
++section("5 · H2's rule for every keep helper: a kept run holds at most one wide white space");
++{
++  const kw = code("src/components/ui/keep-words.tsx"), kr = code("src/components/ui/keep-run.tsx");
++  const uses = [
++    ["the last two words' space (keepLastWords, keepText)", kw.includes("const SPACE_KEPT = new RegExp(`^${KEPT_SPACE}$`);")
++      && kw.includes("!SPACE_KEPT.test(text.slice(gap, second))") && kw.includes("const at = lastTwo(text, \"kept\")?.[0] ?? -1;") && kr.includes("} else tail = lastTwo(text, \"any\");")],
++    ["keepYears' word and year", kw.includes("const SPACE_YEAR = new RegExp(`\\\\S(${KEPT_SPACE}(?:1[89]|2\\\\d)\\\\d{2})")],
++    ["keepFigures' unit before", kw.includes("(?:\\\\b(${UNIT_BEFORE})(${KEPT_SPACE}))?")],
++    ["keepFigures' unit after", kw.includes("|(${KEPT_SPACE})(${UNIT_AFTER})\\\\b)?")],
++    ["keepNameEnd's gap", kw.includes("const NAME_GAP = new RegExp(`^${KEPT_GAP}$`);")],
++    ["keepText's dash", kr.includes("const DASH = new RegExp(`${KEPT_SPACE}[—–](?=\\\\s|$)|—+`, \"gu\");")],
++    ["digitChoice", kr.includes("const DIGIT_CHOICE = new RegExp(`(^|\\\\D)(\\\\d+${KEPT_SPACE}\\\\S{1,3}${KEPT_SPACE}\\\\d+)`, \"g\");")],
++  ] as const;
++  ok("5.1 · every kept pattern takes its spaces from `KEPT_SPACE` / `KEPT_GAP`: keepLastWords, keepYears, keepFigures (both sides), keepNameEnd, keepText (its dash and its last two), digitChoice",
++    uses.every(([, u]) => u), uses.filter(([, u]) => !u).map(([n]) => n).join(", "));
++  const GAP = new RegExp(`^${KEPT_GAP}$`);
++  ok("5.2 · the rule: collapsible spaces however many (they render as one), and one other white space at most",
++    ["", " ", "   ", "\t \n", "\u00a0", " \u3000 ", "\u2003"].every((g) => GAP.test(g)) && ["\u00a0\u00a0", "\u3000\u3000", " \u3000 \u3000"].every((g) => !GAP.test(g))
++      && new RegExp(KEPT_SPACE).exec("x")?.index === undefined);
++  const CASES: Array<[string, () => unknown, string]> = [
++    ["dakika\u00a028:00", () => keepFigures("dakika\u00a028:00"), "[dakika\u00a028:00]"], ["dakika  28:00", () => keepFigures("dakika  28:00"), "[dakika  28:00]"],
++    ["dakika\u3000\u300028:00", () => keepFigures("dakika\u3000\u300028:00"), "dakika\u3000\u300028:00"],
++    ["Act  2022", () => keepYears("Act  2022"), "[Act  2022]"], ["Act\u3000\u30002022", () => keepYears("Act\u3000\u30002022"), "Act\u3000\u30002022"],
++    ["kwa simu tu.", () => keepLastWords("Hakuna kwa simu tu."), "Hakuna kwa [simu tu.]"], ["simu\u3000\u3000tu.", () => keepLastWords("Hakuna simu\u3000\u3000tu."), "Hakuna simu\u3000\u3000tu."],
++    ["neno —", () => keepText("neno — kisha baadaye sana"), "[neno —] kisha [baadaye sana]"],
++    ["neno\u3000\u3000—", () => keepText("neno\u3000\u3000— kisha baadaye sana"), "neno\u3000\u3000— kisha [baadaye sana]"],
++    ["6 au 7", () => keepText("Anza na 6 au 7 kwanza sasa", digitChoice("Anza na 6 au 7 kwanza sasa")), "Anza na [6 au 7] [kwanza sasa]"],
++    ["6\u3000\u3000au 7", () => keepText("Anza na 6\u3000\u3000au 7 kwanza sasa", digitChoice("Anza na 6\u3000\u3000au 7 kwanza sasa")), "Anza na 6\u3000\u3000au 7 [kwanza sasa]"],
++  ];
++  const wrong = CASES.filter(([, f, w]) => br(f()) !== w).map(([n, f]) => `${show(n)} → ${show(br(f()))}`);
++  ok("5.3 · a figure, a year, the last two words, a dash and a digit choice hold one wide space but not two (\"dakika\\u00a028:00\" whole, \"dakika\" + two U+3000 + \"28:00\" left to wrap)",
++    wrong.length === 0, wrong.join(" | "));
++  ok("5.3′ CONTROL · `\\s+` would hold 37 ideographic spaces in one run (~600px)", /dakika\s+28:00/.exec("dakika" + "\u3000".repeat(37) + "28:00")?.[0].length === 48);
++  // The rule changes nothing in the real copy: no dictionary string and no seeded title has a gap of two wide spaces.
++  const twoWide = /[^\S\t\n\f\r ][\t\n\f\r ]*[^\S\t\n\f\r ]/u;
++  const hits = [...(["sw", "en", "zh"] as const).flatMap((l) => allStrings(l)), ...SEEDED].filter((s) => twoWide.test(s));
++  ok("5.4 · no dictionary string and no seeded title holds two wide spaces in one gap, so every one of them draws exactly as before", hits.length === 0, show(hits.slice(0, 3)));
++  // Linear, whatever the text: the last two words read back from the end, a year found from its space, a digit choice
++  // tried only where a run of digits starts (round 5). The patterns they replaced were quadratic on a long word.
++  const LONG = ["a".repeat(20000), "1".repeat(20000), "。".repeat(20000), "1" + " ".repeat(20000) + "x", "Act ".repeat(5000), "2022,".repeat(4000)];
++  const t0 = performance.now();
++  for (const s of LONG) { keepLastWords(s); keepYears(s); keepText(s, digitChoice(s)); }
++  const took = performance.now() - t0;
++  const oldLast = new RegExp(`\\S+${KEPT_SPACE}\\S+(?:${KEPT_SPACE})?$`), t1 = performance.now();
++  "a".repeat(10000).search(oldLast);
++  const oldTook = performance.now() - t1, t2 = performance.now();
++  keepLastWords("a".repeat(10000));
++  const newTook = performance.now() - t2;
++  ok(`5.5 · keepLastWords, keepYears, keepText and digitChoice are linear: six adversarial 20,000-character texts take ${took.toFixed(0)}ms together`,
++    took < 150, `${took.toFixed(0)} ms`);
++  ok(`5.5′ CONTROL · the "word, space, word, end" pattern they replaced takes ${oldTook.toFixed(0)}ms on 10,000 letters (the reader ${newTook.toFixed(1)}ms)`,
++    oldTook > 10 * newTook && oldTook > 20, `${oldTook.toFixed(1)} vs ${newTook.toFixed(1)} ms`);
++}
++
++/* ══ §6 · H4 NOTHING INSERTED ════════════════════════════════════════════════════════════════════════════════════════ */
++section("6 · H4 nothing is inserted into the words — the empty state, the dates, the toasts, the stamps, the Chinese gap");
++{
++  const INSERTED = /[\u00a0\u2060]/u;
++  const bodies = (["sw", "en", "zh"] as const).flatMap((l) => filled(l));
++  const changed = bodies.filter((s) => { const m = html(emptyStateBody(s)); return textOf(m) !== s || (INSERTED.test(m) && !INSERTED.test(s)); });
++  ok(`6.1 · every dictionary sentence (${bodies.length}, placeholders filled) keeps its words through the empty state's body, character for character — no U+00A0, no U+2060`,
++    changed.length === 0, show(changed.slice(0, 2)));
++  // The breaks are the round-3 rule's, exactly: its no-break spaces and word joiner, now spans (UAX #14, `linebreak`).
++  const LineBreaker = require("linebreak") as new (s: string) => { nextBreak: () => { position: number } | null };
++  const breaks = (s: string) => { const b = new Set<number>(); const lb = new LineBreaker(s); let x; while ((x = lb.nextBreak())) if (x.position < s.length) b.add(x.position); return b; };
++  const NB = String.fromCharCode(0xa0), WJ = String.fromCharCode(0x2060);
++  const round3 = (s: string) => s.replace(/\b([A-Z]{2,})[ \t]+(au|or)[ \t]+(?=[A-Z]{2,}\b)/g, `$1${NB}$2${NB}`).replace(/[ \t]+(?=[—–])/g, NB).replace(/([^\s—])(?=—)/g, `$1${WJ}`);
++  const oldBreaks = (s: string) => {
++    const o = round3(s), map: number[] = [];
++    for (let i = 0, j = 0; i <= o.length; i++) { map.push(j); if (o[i] !== WJ || s[j] === WJ) j++; }
++    return new Set([...breaks(o)].map((p) => map[p]));
++  };
++  const newBreaks = (s: string) => { const spans = emptyStateRanges(s); return new Set([...breaks(s)].filter((p) => !spans.some(([a, b]) => a < p && p < b))); };
++  const differ = bodies.filter((s) => { const a = oldBreaks(s), b = newBreaks(s); return a.size !== b.size || [...a].some((p) => !b.has(p)); });
++  ok("6.2 · and it breaks exactly where the round-3 rule let it: the same UAX #14 break opportunities in every dictionary sentence, no-break spaces and word joiner replaced by nowrap spans",
++    differ.length === 0, show(differ.slice(0, 2)));
++  ok("6.2′ CONTROL · the round-3 rule did insert them: \"NDIO au HAPANA —\" with three U+00A0, \"否——\" with a U+2060",
++    round3("bonyeza NDIO au HAPANA — tiketi").split(NB).length === 4 && round3("“否”——您").includes(WJ));
++  const sw = fill(D.sw.journey.ticketsEmptyOpenBody as string, YES_NO.sw), zh = fill(D.zh.journey.ticketsEmptyOpenBody as string, YES_NO.zh);
++  const dash = zh.indexOf("——"), zhRun = zh.slice(dash - 1, dash + 2);
++  ok(`6.3 · Tiketi zangu's empty body: "[NDIO au HAPANA —]" one run, the zh dash held to the character before it ("[${zhRun}]") and its last 。 hung`,
++    br(emptyStateBody(sw)).includes("[NDIO au HAPANA —]") && dash > 0 && html(emptyStateBody(zh)).includes(`<span class="whitespace-nowrap">${zhRun}</span>`)
++      && html(emptyStateBody(zh)).endsWith(`<span class="kp-cjk-mark">。</span>`), show([br(emptyStateBody(sw)), html(emptyStateBody(zh)).slice(-80)]));
++  // A break's end, filled into the approved sentence: a run the body keeps, never no-break spaces in the words.
++  const NOW = Date.parse("2026-10-09T09:00:00Z"), END = "2026-10-10T02:05:00Z";
++  const dates = (["sw", "en", "zh"] as const).map((l) => {
++    const s = breakSentence(D[l].rg.breakActive as string, END, NOW, D[l].common.monthsShort as unknown as string[], l);
++    return { l, s, m: html(emptyStateBody(s)) };
++  });
++  ok("6.4 · a break's end is ONE nowrap run in the empty state, in sw, en and zh (zh's \"2026年10月10日 05:05\" no longer breaks inside), its words the formatter's",
++    dates.every(({ s, m }) => s.keep.length === 1 && textOf(m) === s.text && !INSERTED.test(m) && runsOf(emptyStateBody(s)).some((r) => r.includes(s.keep[0]))), show(dates.map((d) => d.m.slice(0, 120))));
++  // The sweep: no player-facing helper or component inserts an invisible character for layout. The files that hold one
++  // are listed with their reason; a new one fails until it is classified.
++  const ESC = /\\u00[aA]0|\\u2060|\\u200[bB]|\\u202[fF]|&nbsp;|&#160;|fromCharCode\((?:160|0x00?[aA]0|0x2060|8288|0x200[bB])\)|[\u00a0\u2060\u200b\u202f]/;
++  const REASON: Record<string, string> = {
++    "src/lib/fill-nodes.tsx": "reads a typed U+00A0 inside a figure (MONEY_RUN); inserts none",
++    "src/app/legal/responsible-gambling/page.tsx": "owner-approved RG copy, authored with &nbsp; (byte-pinned legal tree)",
++    "src/app/legal/rules/page.tsx": "the legal version line, authored (byte-pinned legal tree)",
++    "src/lib/legal/policy-lines.ts": "models the legal pages' own &nbsp;", "src/lib/legal/kept-promises.ts": "models the legal pages' own &nbsp;",
++    "src/components/analytics/analytics-choice.tsx": "an empty slot's line box (no words) — named for the integrator",
++    "src/components/ui/search-box.tsx": "an empty slot's line box (no words) — named for the integrator",
++    "src/components/ui/time-select.tsx": "an empty slot's line box, aria-hidden (no words) — named for the integrator",
++    "src/components/home/trust-band.tsx": "an empty cell's line box, aria-hidden (no words) — named for the integrator",
++    "src/components/updown/use-quick-bet.ts": "a live region's re-announce nonce (U+200B), not layout",
++    "src/lib/markets/short-title.ts": "strips invisible characters from titles; the admin's form hint", "src/lib/server/ai-poll-generation.ts": "strips them from AI titles",
++    "src/lib/server/ai-provider.ts": "a fixture that feeds the stripper", "src/lib/contacts/import-parse.ts": "reads them in imported numbers",
++    "src/lib/contacts/import-read.ts": "reads them in imported numbers", "src/lib/house-bot/rules.ts": "reads them out of figures", "src/lib/sms-compose.ts": "folds them out of SMS text",
++    "src/lib/server/tax-report-doc.ts": "a PDF (no CSS to keep a run whole)", "src/lib/server/house-console-read.ts": "the operator console (admin)",
++    "src/lib/admin-status-lexicon.ts": "the operator console (admin)", "src/lib/marketing/sms-settings.ts": "the operator console (admin)",
++    "src/lib/marketing/campaign-confirm.ts": "the operator console (admin)", "src/lib/marketing/campaign-estimate.ts": "the operator console (admin)",
++    "src/lib/server/marketing/campaign-confirm-service.ts": "the operator console (admin)", "src/lib/server/marketing/owner-save.ts": "the operator console (admin)",
++  };
++  const walkAll = (dir: string, out: string[] = []): string[] => { for (const n of readdirSync(dir)) { const p = join(dir, n).replace(/\\/g, "/"); if (statSync(p).isDirectory()) walkAll(p, out); else if (/\.(tsx?|css)$/.test(n)) out.push(p); } return out; };
++  const scan = (f: string) => (f.endsWith(".css") ? decommentCss(read(f)) : decomment(read(f)));
++  const holders = walkAll("src").filter((f) => f !== "src/lib/i18n-dict.ts" && !/^src\/(?:app|components)\/admin\//.test(f) && ESC.test(scan(f)));
++  const unexplained = holders.filter((f) => !(f in REASON));
++  ok(`6.5 · outside the dictionary, the admin console and the legal tree, no player code inserts a no-break space, word joiner or zero-width space for layout — the ${holders.length} files that hold one each have a reason`,
++    unexplained.length === 0, unexplained.join(", "));
++  const MINE = ["src/components/ui/empty-state-text.ts", "src/components/ui/empty-state.tsx", "src/lib/break-end.ts", "src/components/markets/sell-result.tsx",
++    "src/components/markets/sell-button.tsx", "src/components/ui/toast.tsx", "src/app/updown/[roundId]/page.tsx", "src/lib/cjk-marks.tsx", "src/components/ui/keep-run.tsx", "src/components/ui/keep-words.tsx"];
++  ok("6.5′ · the files round 5 cleared hold none (the empty state, the break sentence, the sell toast, the toaster, the Up & Down stamp, the CJK gap, the keep helpers)",
++    MINE.every((f) => !ESC.test(decomment(read(f)))), MINE.filter((f) => ESC.test(decomment(read(f)))).join(", "));
++  // The toaster draws every amount its words state as an `.amount` — the sell refusal's among them, every other too.
++  const toast = code("src/components/ui/toast.tsx");
++  ok("6.6 · the toast draws its title and its sentence through moneyRuns: every amount mono and whole (§M4), no character slipped in",
++    toast.includes(`<p className="font-display text-[13px] font-semibold text-text leading-tight">{moneyRuns(toast.title)}</p>`)
++      && toast.includes(`<p className="mt-0.5 text-body-sm text-text-muted leading-snug">{moneyRuns(toast.description)}</p>`)
++      && toast.includes(`import { moneyRuns } from "@/lib/fill-nodes";`) && /description\?: string;/.test(toast)
++      && code("src/components/markets/sell-button.tsx").includes("description: msg, variant: fault ?"));
++  const toasts = [`Dau limewekwa · NDIO ${formatTzs(1000)}`, `Imeuzwa · ${formatTzs(9000)} imerudishwa`, `${formatTzs(450)} ada ya kutoka mapema`, `Juu · ${formatTzs(12345)}`];
++  ok("6.6′ · the toasts' figures (\"Bet placed · YES TZS 1,000\", \"Sold · TZS 9,000 returned\", a fee, a payout) are each one `.amount`",
++    toasts.every((s) => [...html(moneyRuns(s)).matchAll(/<span class="amount">([^<]*)<\/span>/g)].length === 1 && textOf(html(moneyRuns(s))) === s));
++  const ud = code("src/app/updown/[roundId]/page.tsx");
++  ok("6.7 · the Up & Down quote stamp (\"imenukuliwa 18:55:02 EAT\") is one nowrap span, not no-break spaces",
++    ud.includes(`const stamp = quotedAt ? <span className="whitespace-nowrap">{t.market.udQuoted} {quotedAt}</span> : null;`) && !/\\u00A0/i.test(ud));
++  // The CJK gap: its space is the stylesheet's, generated, so the text is the dictionary's.
++  const hint = D.zh.market.chooseSideHelp as string, hm = html(hangCjkMarks(D.zh.market.whichWay as string)) + html(hangCjkMarks(hint));
++  ok("6.8 · a mid-line Chinese mark's gap is an EMPTY span whose space is `.kp-cjk-gap::after` — the page's text (copy, find-in-page, textContent) is the dictionary's",
++    /<span aria-hidden="true" class="kp-cjk-gap(?: kp-cjk-gap--q)?"><\/span>/.test(html(hangCjkMarks("选择一个问题，点击"))) && textOf(html(hangCjkMarks(hint))) === hint
++      && rulesFor(".kp-cjk-gap::after").some((b) => /content:\s*" "/.test(b)) && !/kp-cjk-gap[^>]*> </.test(hm));
++  ok("6.8′ CONTROL · the round-4 gap held a real space: \"，\" + \" \" + \"点击\" in the text, which a find for \"，点击\" misses",
++    textOf(`选择一个问题<span class="kp-cjk-mark">，</span><span aria-hidden="true" class="kp-cjk-gap"> </span>点击`).includes("， 点击"));
++  // The dash rule is found from the dash (keep-run's `dashRanges`): linear, where a "unit, then a dash" pattern backtracked.
++  const t0 = performance.now();
++  for (const s of ["。".repeat(10000), "word ".repeat(2000) + "— x", "a".repeat(10000) + " — b"]) emptyStateBody(s);
++  const took = performance.now() - t0;
++  ok(`6.9 · the empty state's dash rule is linear: three adversarial 10,000-character bodies take ${took.toFixed(0)}ms together (the round-5 pattern took ~600ms on the first alone)`,
++    took < 150, `${took.toFixed(0)} ms`);
++  ok("6.9′ · and a spaced dash right after another dash is held to it too (\"作 — — x\": no line opens on the second dash)",
++    br(emptyStateBody("作 — — x")) === "[作 — —] x", br(emptyStateBody("作 — — x")));
++}
++
++/* ══ §7 · SIGNED FIGURES ═════════════════════════════════════════════════════════════════════════════════════════════ */
++section("7 · moneyRuns reads a signed figure whole, in the platform's own spellings (review 3's doubt)");
++{
++  const fig = (s: string) => [...html(moneyRuns(s)).matchAll(/<span class="amount">([^<]*)<\/span>/g)].map((m) => decode(m[1]));
++  const neg = formatTzs(-4200), compact = formatTzsCompact(-1_234_567), minus = formatTzsSigned(-1234), plus = formatTzsSigned(1234);
++  ok(`7.1 · "${neg}", "${compact}" (formatTzs, formatTzsCompact: the minus after the code) and "${minus}", "${plus}" (formatTzsSigned: the sign before it) are each one amount in a sentence`,
++    [neg, compact, minus, plus].every((x) => show(fig(`Salio ${x} leo.`)) === show([x])) && neg === "TZS \u22124,200" && minus === "\u2212TZS 1,234", show([neg, compact, minus, plus].map((x) => fig(`Salio ${x} leo.`))));
++  ok("7.1′ CONTROL · a hyphen is never read as a sign (\"TZS -4,200\", \"Juu-TZS 5\" are not amounts), and a sentence's comma stays out",
++    fig("TZS -4,200").length === 0 && show(fig("Juu-TZS 5")) === show(["TZS 5"]) && show(fig("hadi TZS 5,000,000, inahitaji")) === show(["TZS 5,000,000"]));
++}
++
++/* ══ §8 · H5 ═════════════════════════════════════════════════════════════════════════════════════════════════════════ */
++section("8 · H5 keep-units.tsx is gone, and nothing names it as live code");
++{
++  const files = [...(function* walk(d: string): Generator<string> { for (const n of readdirSync(d)) { const p = `${d}/${n}`; if (statSync(p).isDirectory()) yield* walk(p); else if (/\.(tsx?|mts|mjs|cjs)$/.test(n)) yield p; } })("src"), ...readdirSync("scripts").filter((n) => /\.(mts|mjs|cjs|ts)$/.test(n)).map((n) => `scripts/${n}`)];
++  const importers = files.filter((f) => /from ["'][^"']*keep-units["']|keepUnits\(/.test(decomment(read(f))));
++  ok("8.1 · src/components/ui/keep-units.tsx does not exist, nothing imports it and nothing calls keepUnits", !existsSync("src/components/ui/keep-units.tsx") && importers.length === 0, importers.join(", "));
++}
++
++/* ══ §9 · THE WIDEST RUN FITS ════════════════════════════════════════════════════════════════════════════════════════ */
++section("9 · the widest figure run fits the narrowest title line (a run is nowrap: wider, it would overflow)");
++{
++  // The narrowest title line is the market page's h1 at 320: 28px Sora 700, -0.02em, in 320 - 2 × 16 - (2em + 12px).
++  const H1 = { size: 28, wght: 700 as const, ls: -0.02 }, h1Line = 320 - 32 - (2 * 28 + 12);
++  const page = code("src/app/markets/[id]/page.tsx");
++  ok("9.locate · the market h1: text-title-lg (28px), bold, tracking \u22120.02em, pr-[calc(2em+12px)]",
++    /className="font-display text-title-lg md:text-display-3 font-bold leading-tight tracking-\[-0\.02em\] text-text text-balance pr-\[calc\(2em\+12px\)\]/.test(page) && h1Line === 220);
++  // Every seeded title's runs, and the platform's own ways of putting a figure in a question.
++  const PLATFORM = ["TZS 1 bilioni", "TZS 2.5 bilioni", "TZS 100 milioni", "TZS 4,200", "TZS 500,000", "TZS 1,000,000", "$100,000", "$5.5 bilioni", "USD 5.5 billion",
++    "dakika 28:00", "Septemba 30", "asilimia 100", "nyuzi 35", "2026-27赛季", "15万美元", "8月31日"];
++  const all = [...new Set([...SEEDED.flatMap(figureRuns), ...PLATFORM.flatMap(figureRuns)])];
++  const widest = all.map((r) => [r, adv(r, H1)] as const).sort((a, b) => b[1] - a[1]);
++  ok(`9.1 · every seeded title's runs (${SEEDED.flatMap(figureRuns).length}) and the platform's phrasings of a figure fit: the widest, "${widest[0][0]}", is ${widest[0][1].toFixed(1)}px at the h1's 28px, inside its ${h1Line}px line at 320`,
++    widest.length > 15 && widest[0][1] <= h1Line, show(widest.slice(0, 3)));
++  ok("9.1′ CONTROL · \"December 2026\" would not (225px) — why a month keeps only its day (1.3″) — nor would an absurd figure (\"TZS 10,000,000 bilioni\")",
++    adv("December 2026", H1) > h1Line && keepFigures("before December 2026?") === "before December 2026?" && adv("TZS 10,000,000 bilioni", H1) > h1Line);
++  // Measured, not asserted — named in round 5's report as an owner question: a 14-character figure is as wide as a
++  // 14-letter word at that h1 (which has no overflow-wrap), and reaches into the 8px before its 7%-opacity watermark.
++  console.log(`       (wider than the 220px line at 320: ${["TZS 10,000,000", "USD 100 million"].map((x) => `"${x}" ${adv(x, H1).toFixed(1)}px`).join(", ")}; "?" after one adds ${adv("?", H1).toFixed(1)}px)`);
++}
++
++/* ══ the end ═════════════════════════════════════════════════════════════════════════════════════════════════════════ */
++function fill(template: string, [yes, no]: readonly [string, string]): string { return template.replace(/\{yes\}/g, yes).replace(/\{no\}/g, no); }
++console.log(`\nvisual-pass-r5e: ${pass} passed, ${fails.length} failed`);
++if (fails.length) {
++  for (const f of fails) console.error(`  · ${f}`);
++  process.exit(1);
++}
+diff --git a/src/app/fairness/page.tsx b/src/app/fairness/page.tsx
+index f9e4b8c83..35956cac2 100644
+--- a/src/app/fairness/page.tsx
++++ b/src/app/fairness/page.tsx
+@@ -37,7 +37,7 @@ import { formatEatDateTime } from "@/lib/eat-day";
+ import { getGlobalConfig } from "@/lib/server/market-config";
+ import { durationHours } from "@/lib/duration-phrase";
+ import { EmptyState } from "@/components/ui/empty-state";
+-import { keepLastWords } from "@/components/ui/keep-words";
++import { keepFigures, keepLastWords } from "@/components/ui/keep-words";
+ import { getServerT } from "@/lib/i18n-server";
+ import { outcomeWord } from "@/lib/side-label";
+ import { pickLocalized } from "@/lib/localized";
+@@ -342,7 +342,8 @@ export default async function FairnessPage({ searchParams }: { searchParams: Pro
+                      which is the only way those properties are checkable in three languages. */
+                   <tr key={m.id} role="row" data-row-id={m.id} className="border-b border-border last:border-b-0 align-top">
+                     <td role="cell" data-th={t.common.thMarket} className="p-3 max-w-[420px]">
+-                      <Link href={`/markets/${m.id}` as never} className="font-display font-semibold text-text hover:text-brand-300 line-clamp-2">{titleOf(m)}</Link>
++                      {/* A market title, set as every market title is (round 5, R5-E): balanced, its figures whole. */}
++                      <Link href={`/markets/${m.id}` as never} className="font-display font-semibold text-text hover:text-brand-300 line-clamp-2 text-balance">{keepFigures(titleOf(m))}</Link>
+                     </td>
+                     <td role="cell" data-th={t.common.thOutcome} className="p-3">
+                       {/* §L3 — this printed the stored token, and its null arm printed the
+diff --git a/src/app/globals.css b/src/app/globals.css
+index 4a390f22d..366694cfd 100644
+--- a/src/app/globals.css
++++ b/src/app/globals.css
+@@ -1695,11 +1695,14 @@ html[data-fab-idle] .cm-fab:not(.cm-fab--open):not(:focus-within) {
+    says why and how it was measured). The mark is set back by its trim; the gap after it — a collapsible space, removed
+    at the end of a line and kept mid-line — pays the trim back to the pixel: drawn in `--font-mono`, whose space is
+    0.6em in every weight, plus `word-spacing` for the rest (0.65 − 0.6 = 0.05em; ？ 0.5 − 0.6 = −0.1em). Its line
+-   height is 0, so the line box cannot grow, and it takes no part in a selection. */
++   height is 0, so the line box cannot grow, and it takes no part in a selection.
++   ⭐ Round 5 (2026-10-09): the space is GENERATED (`::after`, inheriting the gap's face and spacing) on an empty span, so
++   it is not in the page's text — a copy, a find-in-page ("，点击") and `textContent` read the dictionary's words exactly. */
+ .kp-cjk-mark { margin-inline-end: -0.65em; }
+ .kp-cjk-mark--q { margin-inline-end: -0.5em; }
+ .kp-cjk-gap { font-family: var(--font-mono); line-height: 0; letter-spacing: 0; word-spacing: 0.05em; -webkit-user-select: none; user-select: none; }
+ .kp-cjk-gap--q { word-spacing: -0.1em; }
++.kp-cjk-gap::after { content: " "; }
+ 
+ /* 🔴 D32 · UNDER REDUCED MOTION THIS STRIP DID NOT SLOW DOWN — IT FROZE, SHOWING 24% OF ONE OF TWELVE EVENTS.
+    `animation-play-state: paused` stops the marquee at frame 0, and frame 0 is not a readable state: measured
+@@ -4801,7 +4804,10 @@ html[data-sheet-open] .route-enter { animation: none; }
+    again — V7 in the landing gate is what re-catches it. Below 640 it clamps at three lines (U6's bound: the
+    board takes whatever seven markets its ordering puts first, and one long title would otherwise run seven
+    lines — a bound that matters MORE since WP9 grew the board from four rows to seven); the
+-   ellipsis says the question continues, and the link — whose name is the whole question — opens it. */
++   ellipsis says the question continues, and the link — whose name is the whole question — opens it.
++   ⭐ BALANCED, AS EVERY MARKET TITLE IS (round 5, 2026-10-09, F1 F4 — see `.mcardp--featured .mcardp-q`): `pretty` is
++   Chromium's orphan rule, which re-breaks only when the last line is short and one unbreakable piece — in Chinese the
++   piece it pulls down is one character, cut from the word before a figure ("超 / 过200毫米") — and is greedy otherwise. */
+ .kp-qrow__q {
+   font-family: var(--font-display);
+   font-weight: 700;
+@@ -4810,7 +4816,7 @@ html[data-sheet-open] .route-enter { animation: none; }
+   line-height: 1.25;
+   color: var(--text);
+   max-inline-size: 44ch;
+-  text-wrap: pretty;
++  text-wrap: balance;
+   display: -webkit-box;
+   -webkit-box-orient: vertical;
+   -webkit-line-clamp: 3;
+@@ -5301,8 +5307,19 @@ html[data-sheet-open] .route-enter { animation: none; }
+ /* The question. Whole from 640 — h4, then h3 from 1024 (the concept's 21–26px mapped onto the locked
+    ladder). Below 640 it keeps the card's 15px and clamps at THREE lines in every language: at 360 the
+    hero's first screen has ~65px left for everything WP3 adds (hero v3 §7), and the clamp paints an
+-   ellipsis while the h2 keeps the whole question for a screen reader and the card's link names it. */
+-.mcardp--featured .mcardp-q { -webkit-line-clamp: 3; min-height: 0; overflow-wrap: break-word; text-wrap: pretty; }
++   ellipsis while the h2 keeps the whole question for a screen reader and the card's link names it.
++   ⭐ ITS LINES ARE BALANCED, LIKE EVERY OTHER MARKET TITLE (round 5, 2026-10-09, F1 F4: tiles 029 059 074 084 097 109
++   and 023 026). It wore `text-wrap: pretty`, which Chromium (score_line_breaker.cc, `ShouldOptimize`) applies only
++   when the greedy last line is under a third of the line AND has no break opportunity inside, and then re-breaks the
++   paragraph so that line is not an orphan: at zh 320 the last line was the figure run "200毫米" (61px of 229 — one
++   unbreakable piece, kept whole by `keepFigures`), so one character came down with it — "…降雨超 / 过200毫米" (tile 029:
++   163 + 76px), the word 超过 cut; any other last line has a break inside, so `pretty` is plain greedy — en 390
++   "…exceeds 200mm / in July", 286 + 49px. So the featured question takes the card's own `text-wrap: balance`
++   (`.mcardp-q`): "达累斯萨拉姆七月 / 降雨超过200毫米", "Dar es Salaam rainfall / exceeds 200mm in July". A `-webkit-line-clamp`
++   does not stop it (Chromium suspends the scorer under a clamp only behind the experimental
++   CSSLineClampLineBreakingEllipsis). `test:visual-pass-r5e` §3 models greedy, pretty and balance from that source,
++   reproduces the tiles, and sweeps every width; §2 holds every title surface to balance. */
++.mcardp--featured .mcardp-q { -webkit-line-clamp: 3; min-height: 0; overflow-wrap: break-word; }
+ @media (min-width: 640px) {
+   .mcardp--featured .mcardp-q { display: block; -webkit-line-clamp: unset; overflow: visible; font-size: var(--type-h4); font-weight: 700; }
+ }
+diff --git a/src/app/live/featured-contest.tsx b/src/app/live/featured-contest.tsx
+index ba1704cbe..56d14f22e 100644
+--- a/src/app/live/featured-contest.tsx
++++ b/src/app/live/featured-contest.tsx
+@@ -154,14 +154,18 @@ export function FeaturedContest({
+             questions cannot be reached by a screen reader or by Tab. `display: none` would
+             collapse the track and bring the defect straight back; `aria-hidden` alone would
+             leave six focusable headings inside one link, the exact self-contradiction the dot
+-            rail's note below exists to describe. */}
++            rail's note below exists to describe.
++
++            ⭐ BALANCED, AS EVERY MARKET TITLE IS (round 5, 2026-10-09, F1 F4): this heading alone wrapped greedily,
++            the featured card's "…exceeds 200mm / in July" shape. Balancing moves no line count (it narrows the lines
++            it has), so the stack's height — the tallest question's — is unchanged. */}
+         <Link href={href as Route} className="group block">
+           <div className="kp-slide-stack mb-4">
+             {markets.map((mm, i) => (
+               <h2
+                 key={mm.id}
+                 data-slide-active={i === idx ? "" : undefined}
+-                className="font-display text-[19px] lg:text-[24px] font-semibold leading-tight text-text group-hover:text-aqua-100"
++                className="font-display text-[19px] lg:text-[24px] font-semibold leading-tight text-text text-balance group-hover:text-aqua-100"
+               >
+                 {keepFigures(mm.title)}
+               </h2>
+diff --git a/src/app/positions/page.tsx b/src/app/positions/page.tsx
+index df7ee6a77..84ddb9715 100644
+--- a/src/app/positions/page.tsx
++++ b/src/app/positions/page.tsx
+@@ -15,6 +15,7 @@ import { currentSession } from "@/lib/server/auth-service";
+ import { ensureAffiliateAccount, inviteViewerFor } from "@/lib/server/affiliate-service";
+ import { inviteIsLiveFor } from "@/lib/feature-state";
+ import { EmptyState } from "@/components/ui/empty-state";
++import type { EmptyStateBody } from "@/components/ui/empty-state-text";
+ import { SearchBox } from "@/components/ui/search-box";
+ import { QUERY_SEARCH_BAND_CLASS } from "@/components/ui/query-bar";
+ import { fieldNames, matchesQuery, parseQuery, POSITION_SEARCH } from "@/lib/search";
+@@ -37,7 +38,7 @@ import { PageContainer } from "@/components/layout/page-container";
+ import { resolveSimpleJourney } from "@/lib/server/journey-preview";
+ import { TicketsView } from "@/components/journey/tickets/tickets-view";
+ import { isLockedOut } from "@/lib/server/responsible-gambling";
+-import { breakSentenceText, breakStateOf } from "@/lib/break-end";
++import { breakSentence, breakStateOf } from "@/lib/break-end";
+ 
+ export async function generateMetadata() {
+   const { t } = await getServerT();
+@@ -271,7 +272,7 @@ export default async function PositionsPage({ searchParams }: { searchParams: Pr
+     .then(breakStateOf)
+     .catch(() => null);
+   const breakBody = breakEnd
+-    ? breakSentenceText(breakEnd.exclusion ? t.rg.exclusionActive : t.rg.breakActive, breakEnd.until, serverNow, t.common.monthsShort, locale)
++    ? breakSentence(breakEnd.exclusion ? t.rg.exclusionActive : t.rg.breakActive, breakEnd.until, serverNow, t.common.monthsShort, locale)
+     : null;
+   const emptyBody =
+     cause === "no-rows" && breakBody ? breakBody
+@@ -536,7 +537,7 @@ function Empty({
+ }: {
+   kind: "positions" | "default";
+   title: string;
+-  body?: string;
++  body?: EmptyStateBody;
+   browseLabel?: string;
+   /** ⛔ Each carries a REAL, cross-filtered count — never an exit to another empty page. */
+   exits?: Array<{ id: string; label: string; href: string }>;
+diff --git a/src/app/positions/performance/page.tsx b/src/app/positions/performance/page.tsx
+index d42257804..cc3f244d2 100644
+--- a/src/app/positions/performance/page.tsx
++++ b/src/app/positions/performance/page.tsx
+@@ -13,6 +13,7 @@ import { listPositionsForUser, getMarket } from "@/lib/server/market-service";
+ import { currentSession } from "@/lib/server/auth-service";
+ import { getServerT } from "@/lib/i18n-server";
+ import { pickLocalized } from "@/lib/localized";
++import { keepFigures } from "@/components/ui/keep-words";
+ import { sideWord } from "@/lib/side-label";
+ import { PageContainer } from "@/components/layout/page-container";
+ import { PerformanceBar } from "./performance-bar";
+@@ -326,7 +327,8 @@ export default async function PerformancePage({
+                   {bestMarket && bestTitle && (
+                     <p className="mt-1.5 line-clamp-2 text-body-sm text-text-muted">
+                       <Link href={`/markets/${bestMarket.marketId}` as never} className="hover:text-text transition-colors">
+-                        {bestTitle}
++                        {/* The question, its figures whole as on every card (`keepFigures`, round 5, R5-E). */}
++                        {keepFigures(bestTitle)}
+                       </Link>
+                     </p>
+                   )}
+diff --git a/src/app/proposals/[id]/page.tsx b/src/app/proposals/[id]/page.tsx
+index b42144dfb..1f94ca270 100644
+--- a/src/app/proposals/[id]/page.tsx
++++ b/src/app/proposals/[id]/page.tsx
+@@ -14,6 +14,7 @@ import { CategoryIcon, categoryLabel } from "@/components/proposals/category-ico
+ import { RewardBurst } from "@/components/brand/reward-burst";
+ import { getServerT } from "@/lib/i18n-server";
+ import { pickLocalized } from "@/lib/localized";
++import { keepFigures } from "@/components/ui/keep-words";
+ import { formatTzsSigned } from "@/lib/utils";
+ import { PageContainer } from "@/components/layout/page-container";
+ import { generateMetadata as notFoundMetadata } from "@/app/not-found";
+@@ -63,7 +64,8 @@ export default async function ProposalDetailPage({ params }: { params: Promise<{
+           <Chip variant="neutral"><CategoryIcon category={p.category} />{categoryLabel(t, p.category)}</Chip>
+           <span className="ml-auto font-mono text-[10.5px] text-text-subtle">{t.common.resolves} {p.resolutionDate}</span>
+         </div>
+-        <h1 className="font-display text-title-lg font-bold leading-tight tracking-[-0.02em]">{pickLocalized(locale, p.titleEn, p.titleSw, p.titleZh)}</h1>
++        {/* A question, set as every market title is (round 5, R5-E — F1 F4, review 3 H1): balanced, its figures whole. */}
++        <h1 className="font-display text-title-lg font-bold leading-tight tracking-[-0.02em] text-balance">{keepFigures(pickLocalized(locale, p.titleEn, p.titleSw, p.titleZh))}</h1>
+         {p.description && <p className="mt-2 text-[13px] leading-relaxed text-text-muted">{p.description}</p>}
+         <div className="mt-3.5 flex items-center gap-3">
+           <VoteControl proposalId={p.id} up={p.up} down={p.down} myVote={p.myVote} horizontal disabled={!active || !open} />
+diff --git a/src/app/proposals/page.tsx b/src/app/proposals/page.tsx
+index d8141bbc0..5ac790557 100644
+--- a/src/app/proposals/page.tsx
++++ b/src/app/proposals/page.tsx
+@@ -21,6 +21,7 @@ import { StatusBadge } from "@/components/proposals/status-badge";
+ import { CategoryIcon, categoryLabel } from "@/components/proposals/category-icon";
+ import { getServerT } from "@/lib/i18n-server";
+ import { pickLocalized } from "@/lib/localized";
++import { keepFigures } from "@/components/ui/keep-words";
+ import { formatTzs, formatNumber } from "@/lib/utils";
+ import { PageContainer } from "@/components/layout/page-container";
+ import { SearchBox } from "@/components/ui/search-box";
+@@ -346,7 +347,8 @@ function ProposalCard({ p, disabled, t, locale, ageStr }: { p: ProposalView; dis
+           <Chip variant="neutral"><CategoryIcon category={p.category} />{categoryLabel(t, p.category)}</Chip>
+           <span className="ml-auto font-mono text-[10.5px] text-text-subtle">{ageStr(p.createdAt)}</span>
+         </div>
+-        <p className="font-display text-[15.5px] font-semibold leading-snug tracking-[-0.01em] text-text">{pickLocalized(locale, p.titleEn, p.titleSw, p.titleZh)}</p>
++        {/* A question, set as every market title is (round 5, R5-E — F1 F4, review 3 H1): balanced, its figures whole. */}
++        <p className="font-display text-[15.5px] font-semibold leading-snug tracking-[-0.01em] text-text text-balance">{keepFigures(pickLocalized(locale, p.titleEn, p.titleSw, p.titleZh))}</p>
+         {p.description && <p className="mt-1.5 text-body-sm leading-relaxed text-text-muted line-clamp-2">{p.description}</p>}
+         <div className="mt-2.5 flex items-center gap-3.5 font-mono text-[11px] text-text-subtle">
+           <span>{t.proposals.byProposer} {p.proposerMasked}</span>
+diff --git a/src/app/results/page.tsx b/src/app/results/page.tsx
+index dba66bb19..71471ea07 100644
+--- a/src/app/results/page.tsx
++++ b/src/app/results/page.tsx
+@@ -34,6 +34,7 @@ import { RefreshPoller } from "@/components/ui/refresh-poller";
+ import { formatTzsCompact } from "@/lib/utils";
+ import { Ring } from "@/components/charts/ring";
+ import { pickLocalized, marketCategoryLabel } from "@/lib/localized";
++import { keepFigures } from "@/components/ui/keep-words";
+ import { getServerT } from "@/lib/i18n-server";
+ import { outcomeWord, sideWord, type LabelProductLine } from "@/lib/side-label";
+ import { PageContainer } from "@/components/layout/page-container";
+@@ -615,8 +616,10 @@ function FeaturedResult({ m, t, locale }: { m: Awaited<ReturnType<typeof listMar
+           <I.crown s={13} /> {t.results.notableResult}
+         </span>
+       </div>
+-      <h2 className="mb-4 max-w-[70ch] font-display text-[18px] lg:text-[22px] font-semibold leading-tight text-text group-hover:text-gold-100">
+-        {pickLocalized(locale, m.titleEn, m.titleSw, m.titleZh)}
++      {/* A market title, set as every market title is (round 5, R5-E — F1 F4, review 3 H1): its lines balanced and its
++          figures whole (`keepFigures`); this headline wrapped greedily, the featured card's "…exceeds 200mm / in July". */}
++      <h2 className="mb-4 max-w-[70ch] font-display text-[18px] lg:text-[22px] font-semibold leading-tight text-text text-balance group-hover:text-gold-100">
++        {keepFigures(pickLocalized(locale, m.titleEn, m.titleSw, m.titleZh))}
+       </h2>
+       {price.kind === "priced" ? (
+         <TippingBar yesPct={price.yesPct} height={28} showLabels resolved={!isVoid} recastOnHover={false}
+diff --git a/src/app/updown/[roundId]/page.tsx b/src/app/updown/[roundId]/page.tsx
+index 0e5aae682..c75da6a7a 100644
+--- a/src/app/updown/[roundId]/page.tsx
++++ b/src/app/updown/[roundId]/page.tsx
+@@ -182,16 +182,18 @@ export default async function UpDownRoundPage({
+     const o = decideOutcomeByTargets(heroLive, round.upTarget, round.downTarget);
+     return o.voidReason === "source-failed" ? null : o.outcome === "UP" ? "up" as const : o.outcome === "DOWN" ? "down" as const : "level" as const;
+   })();
+-  // No-break spaces: "imenukuliwa 18:55:02 EAT" is one unit and never splits at a line end.
++  // "imenukuliwa 18:55:02 EAT" is one unit and never splits at a line end: one nowrap run. Round 5 (2026-10-09, review 3
++  // H4's sweep): it was no-break spaces — characters in the page's text, travelling into a copy and a find-in-page — and
++  // is now a span, the keep helpers' convention (keep-words.tsx); the words are the dictionary's and the formatter's.
+   const quotedAt = asset.sourceQuotedAt ? fmtEAT(asset.sourceQuotedAt) : null;
+-  const stamp = quotedAt ? `${t.market.udQuoted}\u00A0${quotedAt.replace(/ /g, "\u00A0")}` : null;
++  const stamp = quotedAt ? <span className="whitespace-nowrap">{t.market.udQuoted} {quotedAt}</span> : null;
+   const moveText = move == null || move === 0 ? null
+     : !decided && tone === "level" ? fill(t.market.udLevelBy, { amount: `$${Math.abs(move).toFixed(dec)}` })
+       : `${move > 0 ? t.market.udAboveOpenBy : t.market.udBelowOpenBy} $${Math.abs(move).toFixed(dec)}`;
+   // E-53 · the KIND of market, never the vendor. The class arrives already resolved from
+   // the server (`publicSourceClassFor`), so the domain is not in this payload to leak.
+   const source = decided
+-    ? `${t.market[SOURCE_CLASS_KEY[asset.sourceClass]]}${stamp ? ` · ${stamp}` : ""}`
++    ? <>{t.market[SOURCE_CLASS_KEY[asset.sourceClass]]}{stamp && <>{" · "}{stamp}</>}</>
+     : t.market[SOURCE_CLASS_KEY[asset.sourceClass]];
+   // Two clauses, never split inside: the move and its quote stamp. Below 400 they stack and the "·" hides, so no
+   // line ends on a dangling dot — the landing band's own rule (frame panel round 3, 2026-09-27).
+diff --git a/src/components/journey/tickets/tickets-view.tsx b/src/components/journey/tickets/tickets-view.tsx
+index e348207ae..c45d78c4c 100644
+--- a/src/components/journey/tickets/tickets-view.tsx
++++ b/src/components/journey/tickets/tickets-view.tsx
+@@ -25,6 +25,7 @@ import { I } from "@/components/ui/glyphs";
+ import { HashFocus } from "@/components/ui/hash-focus";
+ import { RefreshPoller } from "@/components/ui/refresh-poller";
+ import { EmptyState } from "@/components/ui/empty-state";
++import type { KeptBody } from "@/components/ui/empty-state-text";
+ import { Pagination, PLAYER_PER_PAGE } from "@/components/ui/pagination";
+ import { PageContainer } from "@/components/layout/page-container";
+ import { PositionsBarJourney } from "@/app/positions/positions-bar";
+@@ -62,7 +63,7 @@ export function TicketsView({ rows, positions, markets, prices, lens, page, serv
+   t: Dict;
+   /** R4-I · the reader's break, as the page words it (`rg.breakActive` with its end), or null: the first-ticket empty state
+    *  then says it instead of "pick a question…", and offers no way to bet. The page reads it; this view only draws. */
+-  breakBody?: string | null;
++  breakBody?: KeptBody | null;
+ }) {
+   const state: PortfolioState = { ...PORTFOLIO_DEFAULT_STATE, tab: lens };
+   const shown = sortPortfolio(filterPortfolio(rows, state, serverNow, ANY_TEXT), state);
+diff --git a/src/components/markets/bet-confirm-modal.tsx b/src/components/markets/bet-confirm-modal.tsx
+index 1fa594634..c5b9a6873 100644
+--- a/src/components/markets/bet-confirm-modal.tsx
++++ b/src/components/markets/bet-confirm-modal.tsx
+@@ -33,6 +33,7 @@ import { sideWord } from "@/lib/side-label";
+ import { DEFAULT_CASHOUT_FEE_RATE, DEFAULT_FREE_EXIT_GRACE_MINUTES, DEFAULT_PAID_EXIT_WINDOW_MINUTES, type LeanLevel, type PollRates } from "@/lib/payout";
+ import { formatTzs, formatNumber } from "@/lib/utils";
+ import { keepText } from "@/components/ui/keep-run";
++import { figureRuns } from "@/components/ui/keep-words";
+ 
+ const QUOTE_HOLD_MS = 10_000;
+ /** How long a bet may wait before we explain the wait. Short enough that the
+@@ -271,9 +272,11 @@ export function BetConfirmModal({
+                  `overflow-hidden` exists for the gilt strip's rounded corners on a panel with no
+                  fixed height. A taller title grows the panel and the container scrolls; it does
+                  not push the confirm button out of reach. */
+-              <p className="mt-1 font-display text-[15px] font-semibold text-text leading-snug">
+-                {/* R4-I · never one word alone on its last line ("2026-27" stood alone at 1280, tile 076). */}
+-                {keepText(marketTitle)}
++              <p className="mt-1 font-display text-[15px] font-semibold text-text leading-snug text-balance">
++                {/* R4-I · never one word alone on its last line ("2026-27" stood alone at 1280, tile 076). Round 5 (R5-E,
++                    F1 F4 and review 3 H1): set as every market title is — balanced, and its figures whole (`figureRuns`:
++                    "dakika 28:00", "2026-27", "200毫米" never break inside), the runs `keepFigures` keeps on every card. */}
++                {keepText(marketTitle, figureRuns(marketTitle))}
+               </p>
+             )}
+           </div>
+diff --git a/src/components/markets/conviction-dial.tsx b/src/components/markets/conviction-dial.tsx
+index bce5cdf08..1e6534113 100644
+--- a/src/components/markets/conviction-dial.tsx
++++ b/src/components/markets/conviction-dial.tsx
+@@ -35,6 +35,7 @@ import { renderFailure, hasReason, failureUntil, type FailureDetail } from "@/li
+ import { formatBreakEnd } from "@/lib/break-end";
+ import { dialScale } from "./dial-scale";
+ import { keepText } from "@/components/ui/keep-run";
++import { keepFigures } from "@/components/ui/keep-words";
+ 
+ type Side = "YES" | "NO" | "NEUTRAL";
+ 
+@@ -1799,7 +1800,8 @@ export function ConvictionDial({ marketId, yesPool, noPool, baseStake = 1_000, m
+           title={resultData.variant === "success" ? `${sideWord(t, resultData.side, "MARKET")} · ${formatTzs(resultData.stake)}` : refusalRepeatsEyebrow ? t.common.couldNotPlaceBet : (resultData.title ?? resultData.error ?? t.error.tryAgain)}
+           subtitle={
+             resultData.variant === "success"
+-              ? (marketTitle ?? t.common.positionOpenNotify)
++              // The question bet on, its figures whole as on every card (`keepFigures`, round 5, R5-E).
++              ? (marketTitle != null ? keepFigures(marketTitle) : t.common.positionOpenNotify)
+               // 🔴 E-234 · THE REASON WAS COMPUTED AND THEN GUARANTEED UNREAD. This subtitle was
+               // the constant `t.common.stakeHasntMoved`, and the failure path passes the reason
+               // copy in as `error` (`error: mapped.body`) while ALSO setting `title` — so the
+diff --git a/src/components/markets/position-card.tsx b/src/components/markets/position-card.tsx
+index 7271c90b7..a994b28f1 100644
+--- a/src/components/markets/position-card.tsx
++++ b/src/components/markets/position-card.tsx
+@@ -10,6 +10,7 @@ import { Chip } from "@/components/ui/chip";
+ import { Stat } from "@/components/ui/stat";
+ import { I } from "@/components/ui/glyphs";
+ import { useT } from "@/lib/i18n";
++import { keepFigures } from "@/components/ui/keep-words";
+ import { sideWord, positionStatusWord, type LabelProductLine } from "@/lib/side-label";
+ // ⭐ THE STATUS-COLOUR DICTIONARY (stage 5.3). The word comes from `side-label`, the COLOUR from
+ // here — two definition sites for two different facts, neither typed at this call site. Since S6 WP9 the
+@@ -130,8 +131,10 @@ export function PositionCard({ marketId, marketTitle, side, productLine, stake,
+         </span>
+       </div>
+       <div className="mb-3.5">
+-        <p className="font-display text-[15px] font-semibold leading-tight tracking-[-0.005em] text-text line-clamp-2">
+-          {marketTitle}
++        {/* The market's title, set as every market title is (round 5, R5-E — F1 F4, review 3 H1): balanced, its figures
++            whole — the journey's ticket card (`ticket-card.tsx`) sets the same question the same way. */}
++        <p className="font-display text-[15px] font-semibold leading-tight tracking-[-0.005em] text-text line-clamp-2 text-balance">
++          {keepFigures(marketTitle)}
+         </p>
+         <div className="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-0.5">
+           {/* E-100 · the same rule as the wallet's TICKET box: an identifier must be able to
+diff --git a/src/components/markets/sell-button.tsx b/src/components/markets/sell-button.tsx
+index 1a146635b..a3d34df89 100644
+--- a/src/components/markets/sell-button.tsx
++++ b/src/components/markets/sell-button.tsx
+@@ -108,7 +108,7 @@ import { useDeferredToast } from "@/components/ui/toast";
+ import { useT } from "@/lib/i18n";
+ import { cashOutPositionAction } from "@/app/markets/actions";
+ import { SellConfirmModal } from "./sell-confirm-modal";
+-import { SellResultModal, handSellResult, keepFiguresWhole, type SellResultData } from "./sell-result";
++import { SellResultModal, handSellResult, type SellResultData } from "./sell-result";
+ import { formatTzs, formatNumber } from "@/lib/utils";
+ import { errorCopy } from "@/lib/error-copy";
+ import { REASONS, hasReason, reasonForCode } from "@/lib/failure-reasons";
+@@ -436,12 +436,12 @@ export function SellButton({
+           // refusal, a warning or an info (a moved price, too many tries, selling shut, the ticket already sold or settled),
+           // gets the calm `factual` toast alone, since §F2 gives a refusal the player can fix no popup, and focus comes back
+           // to this button (`refocus`, above). Every refusal's toast stays until it is read (§F2, §F8: `durationMs: 0`),
+-          // each figure in it whole (`keepFiguresWhole`), and the next sale, from any button, dismisses it. Before A8h every refusal opened
++          // each figure in it whole (the toast draws every amount as an `.amount`), and the next sale, from any button, dismisses it. Before A8h every refusal opened
+           // the ✗ result over a red toast, a moved price's too, its calm toast held behind it (toast.tsx §F1).
+           const moved = r.reason === "price_changed";
+           const said = hasReason(r) ? r.reason : reasonForCode(r.code);
+           const fault = r.code === "BUSY" || said === null || REASONS[said].severity === "error";
+-          lastRefusalToast = toast({ title: t.toast.couldntCashOut, description: keepFiguresWhole(msg), variant: fault ? "danger" : "factual", durationMs: 0 });
++          lastRefusalToast = toast({ title: t.toast.couldntCashOut, description: msg, variant: fault ? "danger" : "factual", durationMs: 0 });
+           if (moved) { setRepricing(true); window.dispatchEvent(new Event("50pick:refresh")); }
+           if (fault) showResult({ variant: "danger", value: value, net, error: msg });
+           else refocus.current = true;
+diff --git a/src/components/markets/sell-result.tsx b/src/components/markets/sell-result.tsx
+index 41bf98310..624e6f786 100644
+--- a/src/components/markets/sell-result.tsx
++++ b/src/components/markets/sell-result.tsx
+@@ -19,8 +19,9 @@
+  * a result is never lost. Either way it stays until the player closes it or, for a sale that went through, until its
+  * own countdown ends (DESIGN_AUTHORITY §F2's shared 5 s, held while it is read), never because a row was redrawn. A
+  * result is a sale that went through, or a refused sale the player cannot clear (the registry's error, or a fault:
+- * §F2); every other refusal is told by its toast alone (`submit()`, in the Sell button), and `keepFiguresWhole` keeps
+- * whole the figures that toast names.
++ * §F2); every other refusal is told by its toast alone (`submit()`, in the Sell button), whose figures the toast itself
++ * keeps whole (every amount a toast states is an `.amount`, toast.tsx — round 5: the sentence had a no-break space
++ * joined into it here, `keepFiguresWhole`, a character that travelled into a copy and a find-in-page).
+  *
+  * ⛔ ONE RESULT, ONE DEFINITION. `SellResultModal` is the only place the result's words and figures are written, moved
+  * here from the Sell button unchanged; the host and the button's fallback both draw it, so the two can never drift.
+@@ -58,17 +59,6 @@ export function handSellResult(handOff: Omit<SellResultHandOff, "ack">): boolean
+   return ack.accepted;
+ }
+ 
+-/** A no-break space: a money figure's "TZS" never ends a line without its number. */
+-const NO_BREAK = String.fromCharCode(160);
+-
+-/**
+- * A refused sale's sentence as its toast draws it. A toast draws plain text, so each money figure in the sentence ("TZS
+- * 9,000", as `formatTzs` writes one) is joined to its "TZS" by a no-break space and moves to the next line whole
+- * (DESIGN_AUTHORITY §M4). Since S6 A8h a moved price is named in its toast alone, so the figure S6 A8f kept whole in the
+- * result stays whole there too. Only the space inside a figure changes; every word is the dictionary's.
+- */
+-export const keepFiguresWhole = (sentence: string) => sentence.split("TZS ").join("TZS" + NO_BREAK);
+-
+ /**
+  * The result of a sale, in both looks. The journey's look changes one word, the line under a refusal (a ticket where
+  * today's says a position, S6 A7); since S6 A8f the money figures in its title are whole (`wholeFigures`).
+diff --git a/src/components/ui/empty-state-text.ts b/src/components/ui/empty-state-text.ts
+index 576246f05..906e65973 100644
+--- a/src/components/ui/empty-state-text.ts
++++ b/src/components/ui/empty-state-text.ts
+@@ -1,41 +1,53 @@
+ /**
+  * The empty state's TEXT rules, in one plain module — beside `empty-state-classes.ts`, and for the same reason: a plain
+  * module can be read by a server component and driven by a test without a browser, where an export of the `"use client"`
+- * `empty-state.tsx` could be neither. `EmptyState` passes its body through `emptyStateBody`; the words stay the
++ * `empty-state.tsx` could be neither. `EmptyState` draws its body through `emptyStateBody`; the words stay the
+  * dictionary's own, and only where a line may break changes.
+  */
++import type { ReactNode } from "react";
++import { hangCjkMarks } from "@/lib/cjk-marks";
++import { keepRanges, mergeRanges, runAndDashRanges } from "./keep-run";
+ 
+ /**
+  * ⭐ A DASH NEVER OPENS A LINE (2026-10-08, the visual pass, tiles 241 and 243). "Chagua swali, bonyeza NDIO au HAPANA
+  * — tiketi yako itaonekana hapa." broke at the space BEFORE its dash, so line 2 began "— tiketi yako…" (en: "— your
+- * ticket shows up here."). The words are the dictionary's and stay so; only the break before the dash is taken away:
+- *   · a spaced dash (sw, en) — the space before it becomes a no-break space, so the dash ends its line with its word;
+- *   · an unspaced dash (zh "否——您") — a word joiner (U+2060, zero-width) holds it to the character before.
+- * A break AFTER the dash is untouched, and an unspaced en dash ("1–5", a range) is left alone.
+- */
+-const NO_BREAK_SPACE = String.fromCharCode(0x00a0);
+-const WORD_JOINER = String.fromCharCode(0x2060);
+-export function dashOnItsWord(text: string): string {
+-  return text.replace(/[ \t]+(?=[—–])/g, NO_BREAK_SPACE).replace(/([^\s—])(?=—)/g, `$1${WORD_JOINER}`);
+-}
+-
+-/**
++ * ticket shows up here."). The dash is held to the unit before it — "HAPANA —", and in Chinese the character before
++ * "——" ("否——") — so a line can end after the dash but never begin with it (`dashRanges`, keep-run.tsx: one rule for every
++ * kept sentence). A break AFTER the dash is untouched, and an unspaced en dash ("1–5", a range) is left alone.
++ *
+  * ⭐ A YES/NO PAIR IS ONE PHRASE (2026-10-09, round 3, tiles 241 and 244). Balanced, "Chagua swali, bonyeza NDIO au HAPANA
+  * — tiketi yako itaonekana hapa." still broke INSIDE the pair at 390 — "…bonyeza NDIO au" / "HAPANA — tiketi…" (en "…press
+  * YES or" / "NO — your…") — so the two answers a reader chooses between stood on two lines. Two capitalised words joined
+- * by "au" or "or" are held on one line by no-break spaces, the dash rule's method: built with `String.fromCharCode`, so the
+- * source holds no invisible character, and the dictionary's words are untouched. Measured with the repo's Inter at 13px
+- * in the 260px measure: sw takes three balanced lines ("Chagua swali, bonyeza" / "NDIO au HAPANA — tiketi" / "yako
+- * itaonekana hapa."), the shape it already had at 320; en keeps two ("Pick a question, press YES or NO —" / "your ticket
+- * shows up here.").
++ * by "au" or "or" are held on one line. Measured with the repo's Inter at 13px in the 260px measure: sw takes three
++ * balanced lines ("Chagua swali, bonyeza" / "NDIO au HAPANA — tiketi" / "yako itaonekana hapa."), the shape it already had
++ * at 320; en keeps two ("Pick a question, press YES or NO —" / "your ticket shows up here.").
+  * ⚠️ Only an all-capitals word of two or more letters on each side: an ordinary "au"/"or" between lower-case words is left
+  * to break as before, and zh, which writes neither, is unchanged.
++ *
++ * ⭐ ROUND 5 (2026-10-09, review 3 H4) · NOTHING IS INSERTED. Both rules used to put characters INTO the body — a no-break
++ * space before the dash and inside the pair, a word joiner (U+2060) before "——" — and those characters travelled into a
++ * copy, a find-in-page and the accessible text ("…是或否 + U+2060 + ——您…"), the very reason keep-words.tsx and keep-run.tsx keep
++ * their runs with `white-space: nowrap` spans instead. The body now does the same: each held run is one nowrap span
++ * (`keepRanges`), the text between them plain, and every part's Chinese marks hang as before (`hangCjkMarks`, told what
++ * follows the part, so a mark at a part's end behaves as it does mid-text). The breaks are exactly the old ones: a run
++ * holds what a no-break space or a word joiner held, and nothing else.
+  */
+-export function pairOnOneLine(text: string): string {
+-  return text.replace(/\b([A-Z]{2,})[ \t]+(au|or)[ \t]+(?=[A-Z]{2,}\b)/g, `$1${NO_BREAK_SPACE}$2${NO_BREAK_SPACE}`);
++const PAIR = /\b[A-Z]{2,}[ \t]+(?:au|or)[ \t]+(?=([A-Z]{2,})\b)/g;
++
++/** A body with runs to keep whole that the CALLER put into it — a date it filled in (`breakSentence`, break-end.ts). */
++export type KeptBody = { text: string; keep: readonly string[] };
++export type EmptyStateBody = string | KeptBody;
++
++/** The spans of the body that must not break: each YES/NO pair, each dash with its unit, each run the caller names. */
++export function emptyStateRanges(text: string, keep: readonly string[] = []): Array<[number, number]> {
++  const ranges = runAndDashRanges(text, keep);
++  // The second word is read by the lookahead, so "A or B or C" holds both pairs (and they merge into one run).
++  for (const m of text.matchAll(PAIR)) ranges.push([m.index ?? 0, (m.index ?? 0) + m[0].length + m[1].length]);
++  return mergeRanges(ranges);
+ }
+ 
+-/** The body's one text helper: the pair first (its spaces become no-break spaces), then the dash. */
+-export function emptyStateBody(text: string): string {
+-  return dashOnItsWord(pairOnOneLine(text));
++/** The body as `EmptyState` draws it: its held runs nowrap, its Chinese marks hung, its words the dictionary's. */
++export function emptyStateBody(body: EmptyStateBody): ReactNode {
++  const { text, keep } = typeof body === "string" ? { text: body, keep: [] as readonly string[] } : body;
++  return keepRanges(text, emptyStateRanges(text, keep), hangCjkMarks);
+ }
+diff --git a/src/components/ui/empty-state.tsx b/src/components/ui/empty-state.tsx
+index e04b0fe99..b0b3cfc35 100644
+--- a/src/components/ui/empty-state.tsx
++++ b/src/components/ui/empty-state.tsx
+@@ -17,7 +17,7 @@ import type { ReactNode } from "react";
+ import { cn } from "@/lib/utils";
+ import { useT } from "@/lib/i18n";
+ import { EMPTY_STATE_BOX, EMPTY_STATE_TITLE, EMPTY_STATE_BODY } from "./empty-state-classes";
+-import { emptyStateBody } from "./empty-state-text";
++import { emptyStateBody, type EmptyStateBody } from "./empty-state-text";
+ import { hangCjkMarks } from "@/lib/cjk-marks";
+ 
+ type Kind =
+@@ -37,7 +37,8 @@ export function EmptyState({
+   kind?: Kind;
+   illustration?: ReactNode;
+   title: string;
+-  body?: string;
++  /** The words, or the words with the runs the caller put into them that must stay whole (a date: `breakSentence`). */
++  body?: EmptyStateBody;
+   /** Accepted for back-compat; no longer rendered (single-language UI). */
+   titleSw?: string;
+   bodySw?: string;
+@@ -80,9 +81,11 @@ export function EmptyState({
+         {illustration ?? <DefaultIllustration kind={kind} />}
+       </div>
+       {/* ⭐ Both lines are centred, so a Chinese mark that ends one hangs its empty half (`hangCjkMarks`, 2026-10-09,
+-          round 4, E50: "…显示在这里。" stood 4.5px left of the box's centre on tiles 427 428). Latin text is untouched. */}
++          round 4, E50: "…显示在这里。" stood 4.5px left of the box's centre on tiles 427 428). Latin text is untouched.
++          The body's held runs (its dash, its YES/NO pair, a caller's date) are nowrap spans and its marks hang inside
++          `emptyStateBody` — round 5 (H4): nothing is inserted into the words. */}
+       <p className={cn(EMPTY_STATE_TITLE, "text-text")}>{hangCjkMarks(title)}</p>
+-      {body && <p className={cn(EMPTY_STATE_BODY, "text-text-subtle")}>{hangCjkMarks(emptyStateBody(body))}</p>}
++      {body && <p className={cn(EMPTY_STATE_BODY, "text-text-subtle")}>{emptyStateBody(body)}</p>}
+       {action && <div className="mt-4">{action}</div>}
+     </div>
+   );
+diff --git a/src/components/ui/keep-run.tsx b/src/components/ui/keep-run.tsx
+index c29fe5e1f..1d8663a72 100644
+--- a/src/components/ui/keep-run.tsx
++++ b/src/components/ui/keep-run.tsx
+@@ -9,7 +9,7 @@
+  *   · lines opening on a dash — "— bado unaweza…" (006 035 039 060 116 125) and, in Chinese, "——您仍可登录" (093–095);
+  *   · a last line of one word — "pesa." (002), "yatakapoisha." (005), "malipo." (035), "mdogo." (039), "kufanya." (040),
+  *     "utuombe." / "us." (113–127), and in Chinese one character and its stop — "现。" (097), "请。" (119–121).
+- * ⭐ THE ANSWER IS THE ONE `keep-words.tsx` AND `keep-units.tsx` ALREADY GIVE: what must stay together goes in a
++ * ⭐ THE ANSWER IS THE ONE `keep-words.tsx` ALREADY GIVES: what must stay together goes in a
+  * `white-space: nowrap` span — what every engine honours — and the text itself (the accessible name, a copy, a search hit)
+  * is unchanged, character for character. No no-break space and no word joiner is inserted (keep-words.tsx says why).
+  *   · each `run` the caller names (a date it put into the sentence) is one span;
+@@ -19,37 +19,67 @@
+  * Spans that touch or overlap become one ("hadi" … "9 Okt, 06:02." is one run when the date is the last two words).
+  * ⚠️ ONLY FOR SENTENCES WHOSE KEPT RUNS ARE NARROWER THAN THEIR NARROWEST LINE — a kept run cannot break, so a wider one
+  * would overflow. `test:visual-pass-r4i` measures every call site's widest run against its narrowest line, per language.
+- * ⛔ Deterministic, regular expressions only and no lookbehind (Safari before 16.4 cannot parse one, and this runs in the
+- * browser), so the server and the browser draw the same spans and hydration cannot mismatch.
++ * ⛔ Deterministic — regular expressions with no lookbehind (Safari before 16.4 cannot parse one, and this runs in the
++ * browser) and one plain scan — so the server and the browser draw the same spans and hydration cannot mismatch.
++ * ⭐ ROUND 5 (2026-10-09, review 3 H4) · ONE DASH RULE AND ONE RENDERER FOR EVERY KEPT SENTENCE: the empty state's body
++ * held its dash and its YES/NO pair by INSERTING a no-break space and a word joiner (empty-state-text.ts, round 3) — the
++ * convention this file and keep-words.tsx exist to avoid. It now draws its runs here (`keepRanges`), with this file's
++ * dash rule (`dashRanges`), so a dash is held the same way in every sentence. The rule holds the dash to ONE unbreakable
++ * unit before it — a Latin word, or one ideograph — where it once took `\S+`, which in Chinese ("…无需其他操作 — 您的…")
++ * is the whole clause; and an unspaced em dash ("否——", "word—") to the unit before it, as that body always did.
+  */
+-import type { ReactNode } from "react";
++import { Fragment, type ReactNode } from "react";
++import { KEPT_SPACE, lastTwo } from "./keep-words";
+ 
+ const IDEO = "㐀-䶿一-鿿豈-﫿";
+ const IDEOGRAPH = new RegExp(`[${IDEO}]`);
+-/** A spaced dash and the word before it: "kufupishwa —", "estimate only —". */
+-const SPACED_DASH = /\S+\s+[—–](?=\s|$)/g;
+-/** A Chinese dash pair and the character before it: "短——". */
+-const CJK_DASH = /\S——/g;
+-/** The last two words (and the space after them). */
+-const LAST_TWO = /\S+\s+\S+\s*$/;
++/**
++ * A dash and the one unit before it, which it never parts from: a spaced dash ("kufupishwa —", "作 —", "8 am –") or an
++ * unspaced em dash run ("否——", "word—"). The unit is a run with no break inside it — letters, digits, marks, never a
++ * space, a hyphen, a dash, a slash or an ideograph — or else one character (an ideograph breaks on both sides, so it is
++ * held alone, and "e-mail —" keeps "mail —", leaving the break after "e-"). An unspaced en dash ("10–20") is a range and
++ * is left alone. The space before a spaced dash is `KEPT_SPACE` (keep-words.tsx: at most one wide white space in a run).
++ * ⛔ FOUND FROM THE DASH, THE UNIT READ BACKWARDS — linear. A pattern that tried a unit at every place ("a run, then a
++ * dash") backtracked over each long run before failing, quadratic: '。' × 10,000 took half a second in the empty state.
++ */
++const DASH = new RegExp(`${KEPT_SPACE}[—–](?=\\s|$)|—+`, "gu");
++const UNIT = new RegExp(`[^\\s\\-–—/${IDEO}]`, "u");
++export function dashRanges(text: string): Array<[number, number]> {
++  const out: Array<[number, number]> = [];
++  for (const m of text.matchAll(DASH)) {
++    const d = m.index ?? 0;
++    let a = d;
++    while (a > 0 && UNIT.test(text[a - 1])) a--;
++    if (a === d) {
++      // No run before it: the one character before it (both halves of a surrogate pair), unless that is white space.
++      const low = d > 1 && text.charCodeAt(d - 1) >= 0xdc00 && text.charCodeAt(d - 1) <= 0xdfff;
++      const before = low ? d - 2 : d - 1;
++      if (before < 0 || /\s/u.test(text[before])) continue;
++      a = before;
++    }
++    out.push([a, d + m[0].length]);
++  }
++  return out;
++}
+ /** The last two ideographs and whatever closes them ("提现。", "申请。"). */
+ const LAST_TWO_IDEO = new RegExp(`[${IDEO}]{2}[^${IDEO}\\s]*\\s*$`);
+ 
+-/** The [start, end) spans of `text` that must not break, merged where they touch or overlap. */
+-export function keptRanges(text: string, runs: readonly string[] = []): Array<[number, number]> {
++/** Each place a caller's run stands in `text`, and each dash with its unit (`dashRanges`), as [start, end) spans. */
++export function runAndDashRanges(text: string, runs: readonly string[] = []): Array<[number, number]> {
+   const ranges: Array<[number, number]> = [];
+   for (const run of runs) {
+     if (!run) continue;
+     for (let at = text.indexOf(run); at >= 0; at = text.indexOf(run, at + run.length)) ranges.push([at, at + run.length]);
+   }
+-  for (const m of text.matchAll(SPACED_DASH)) ranges.push([m.index ?? 0, (m.index ?? 0) + m[0].length]);
+-  for (const m of text.matchAll(CJK_DASH)) ranges.push([m.index ?? 0, (m.index ?? 0) + m[0].length]);
+-  const tail = (IDEOGRAPH.test(text) ? LAST_TWO_IDEO : LAST_TWO).exec(text);
+-  // A tail that is the whole text has nothing to be stranded from.
+-  if (tail && tail.index > 0) ranges.push([tail.index, tail.index + tail[0].trimEnd().length]);
+-  ranges.sort((a, b) => a[0] - b[0] || a[1] - b[1]);
++  ranges.push(...dashRanges(text));
++  return ranges;
++}
++
++/** Spans sorted, and merged where they touch or overlap. */
++export function mergeRanges(ranges: ReadonlyArray<readonly [number, number]>): Array<[number, number]> {
++  const sorted = [...ranges].sort((a, b) => a[0] - b[0] || a[1] - b[1]);
+   const merged: Array<[number, number]> = [];
+-  for (const r of ranges) {
++  for (const r of sorted) {
+     const last = merged[merged.length - 1];
+     if (last && r[0] <= last[1]) last[1] = Math.max(last[1], r[1]);
+     else merged.push([r[0], r[1]]);
+@@ -57,23 +87,57 @@ export function keptRanges(text: string, runs: readonly string[] = []): Array<[n
+   return merged;
+ }
+ 
+-/** Two numbers joined by a short word — "6 or 7", "6 au 7", "6 或 7" — as runs to keep whole (a phone number's first digit). */
+-const DIGIT_CHOICE = /\d+\s+\S{1,3}\s+\d+/g;
+-export function digitChoice(text: string): string[] {
+-  return [...text.matchAll(DIGIT_CHOICE)].map((m) => m[0]);
++/** The [start, end) spans of `text` that must not break, merged where they touch or overlap. */
++export function keptRanges(text: string, runs: readonly string[] = []): Array<[number, number]> {
++  const ranges = runAndDashRanges(text, runs);
++  // The last two words (`lastTwo`, keep-words.tsx: read from the end, the space between them a kept one) — in Chinese the
++  // last two ideographs and what closes them — the white space after them left out of the span.
++  let tail: [number, number] | null;
++  if (IDEOGRAPH.test(text)) {
++    const m = LAST_TWO_IDEO.exec(text);
++    tail = m ? [m.index, m.index + m[0].trimEnd().length] : null;
++  } else tail = lastTwo(text, "any");
++  // A tail that is the whole text has nothing to be stranded from.
++  if (tail && tail[0] > 0) ranges.push(tail);
++  return mergeRanges(ranges);
+ }
+ 
+-/** `text` with its kept spans drawn unbreakable (see the header). The words are untouched. */
+-export function keepText(text: string, runs: readonly string[] = []): ReactNode {
+-  const ranges = keptRanges(text, runs);
+-  if (ranges.length === 0) return text;
++/**
++ * `text` drawn with each span in `ranges` (sorted, disjoint) as one `white-space: nowrap` run, the text between them
++ * plain. `piece` draws the words of each part — it is handed the part and the text that follows it, so a rule that looks
++ * one character ahead (`hangCjkMarks`) reads the paragraph, not the part. The words are never changed: no character is
++ * added, none is removed.
++ */
++export function keepRanges(
++  text: string,
++  ranges: ReadonlyArray<readonly [number, number]>,
++  piece: (part: string, following: string) => ReactNode = (part) => part,
++): ReactNode {
++  if (ranges.length === 0) return piece(text, "");
+   const out: ReactNode[] = [];
++  const plain = (a: number, b: number) => {
++    const p = piece(text.slice(a, b), text.slice(b));
++    out.push(typeof p === "string" ? p : <Fragment key={`t${a}`}>{p}</Fragment>);
++  };
+   let from = 0;
+   for (const [a, b] of ranges) {
+-    if (a > from) out.push(text.slice(from, a));
+-    out.push(<span key={`k${a}`} className="whitespace-nowrap">{text.slice(a, b)}</span>);
++    if (a > from) plain(from, a);
++    out.push(<span key={`k${a}`} className="whitespace-nowrap">{piece(text.slice(a, b), text.slice(b))}</span>);
+     from = b;
+   }
+-  if (from < text.length) out.push(text.slice(from));
++  if (from < text.length) plain(from, text.length);
+   return out;
+ }
++
++/** Two numbers joined by a short word — "6 or 7", "6 au 7", "6 或 7" — as runs to keep whole (a phone number's first digit).
++ *  Tried only where a run of digits starts (the text's start, or after a non-digit), which is where the first match
++ *  starts anyway — linear, where a try at every digit backtracked over each long run of them. */
++const DIGIT_CHOICE = new RegExp(`(^|\\D)(\\d+${KEPT_SPACE}\\S{1,3}${KEPT_SPACE}\\d+)`, "g");
++export function digitChoice(text: string): string[] {
++  return [...text.matchAll(DIGIT_CHOICE)].map((m) => m[2]);
++}
++
++/** `text` with its kept spans drawn unbreakable (see the header). The words are untouched. */
++export function keepText(text: string, runs: readonly string[] = []): ReactNode {
++  return keepRanges(text, keptRanges(text, runs));
++}
+diff --git a/src/components/ui/keep-units.tsx b/src/components/ui/keep-units.tsx
+deleted file mode 100644
+index d5bc608b8..000000000
+--- a/src/components/ui/keep-units.tsx
++++ /dev/null
+@@ -1,49 +0,0 @@
+-/**
+- * A NUMBER AND ITS UNIT NEVER PART AT A LINE END — "200毫米", never "200" / "毫米".
+- *
+- * 2026-10-08 · G1 [029 059 074 084 097 109]. At 320 the landing's featured question in Chinese read
+- * "达累斯萨拉姆七月降雨超过200" / "毫米": the unit alone on line 2. Unicode line breaking (UAX #14) allows a
+- * break between a digit and a following ideograph (NU ÷ ID), and every engine — Chromium and WebKit through
+- * ICU, Firefox through its own segmenter — takes it.
+- *
+- * ⛔ WHY THIS IS NOT A CSS-ONLY ANSWER — researched before choosing, because titles are data:
+- *   · `word-break: keep-all` removes the break between the number and the unit, and with it EVERY break
+- *     between two ideographs: a Chinese title has no spaces, so it becomes one unbreakable word that then
+- *     overflows or is cut wherever `overflow-wrap` forces it — worse everywhere else.
+- *   · `word-break: auto-phrase` (BudouX) is Chromium-only and Japanese-only; Chinese is not supported.
+- *   · `line-break: strict|loose|anywhere` governs small kana and punctuation, not NU ÷ ID.
+- *   · `text-wrap: balance|pretty` choose WHICH break to take, not WHICH breaks exist: they can still pick
+- *     this one, and Firefox does not ship `pretty`.
+- *   · U+2060 WORD JOINER would work in Chromium and WebKit, but Firefox has a history of ignoring it
+- *     (bugzilla 1125644), it travels into copy and paste and find-in-page, and `short-title.ts` already
+- *     strips it from stored titles as an invisible character.
+- * ⭐ What every engine honours is `white-space: nowrap` on an inline box. So the title is rendered with the
+- * number and the one or two ideographs that follow it inside a nowrap span; the text itself — the h2's
+- * accessible name, a search hit, a copied title — is unchanged, and every other break is left alone.
+- *
+- * ⚠️ One or two ideographs, because a unit is one ("米", "月", "场") or two ("毫米", "公里", "分钟"); where
+- * the second one is not part of the unit ("7月降雨" keeps "7月降" together) the break simply lands one
+- * character later, which costs nothing in Chinese. A number followed by Latin letters ("200mm") is already
+- * unbreakable under UAX #14 (NU × AL), and Swahili and English titles carry no ideographs, so for them this
+- * returns the string untouched — byte-identical markup.
+- * ⛔ Deterministic (one regular expression, no `Intl.Segmenter`), so the server and the browser cannot
+- * disagree about where the spans go and hydration cannot mismatch.
+- */
+-import type { ReactNode } from "react";
+-
+-const NUMBER_UNIT = /\d+(?:[.,]\d+)*\s?[㐀-䶿一-鿿豈-﫿]{1,2}/g;
+-
+-export function keepUnits(text: string): ReactNode {
+-  if (!/\d/.test(text)) return text;
+-  const out: ReactNode[] = [];
+-  let last = 0;
+-  for (const m of text.matchAll(NUMBER_UNIT)) {
+-    const at = m.index ?? 0;
+-    if (at > last) out.push(text.slice(last, at));
+-    out.push(<span key={at} className="whitespace-nowrap">{m[0]}</span>);
+-    last = at + m[0].length;
+-  }
+-  if (out.length === 0) return text;
+-  if (last < text.length) out.push(text.slice(last));
+-  return out;
+-}
+diff --git a/src/components/ui/keep-words.tsx b/src/components/ui/keep-words.tsx
+index 9da09641f..288cfe5eb 100644
+--- a/src/components/ui/keep-words.tsx
++++ b/src/components/ui/keep-words.tsx
+@@ -7,9 +7,9 @@
+  *
+  * ⛔ WHY NOT `text-wrap: pretty` ALONE: it chooses WHICH break to take, by a heuristic each engine sets for itself, and
+  * Firefox does not ship it; a guard cannot prove what it will pick. ⛔ AND WHY NOT A NO-BREAK SPACE: it travels into the
+- * copied text and the find-in-page match. ⭐ So, as `keepUnits` does for a number and its unit, the last two words go in
+- * a `white-space: nowrap` span — what every engine honours — and the text itself (the accessible name, a copy, a search
+- * hit) is unchanged. Every other break is left alone, so a sentence that fits on its lines wraps exactly as it did.
++ * copied text and the find-in-page match. ⭐ So, as `keepFigures` below does for a number and its unit, the last two words
++ * go in a `white-space: nowrap` span — what every engine honours — and the text itself (the accessible name, a copy, a
++ * search hit) is unchanged. Every other break is left alone, so a sentence that fits on its lines wraps exactly as it did.
+  *
+  * ⚠️ Only for SHORT closing words, on surfaces whose line is always wider than them (each call site says why): the pair
+  * cannot break, so on a line narrower than it would overflow. ⚠️ Text with an ideograph is returned untouched — Chinese
+@@ -20,12 +20,42 @@
+ import type { ReactNode } from "react";
+ 
+ const IDEOGRAPH = /[㐀-䶿一-鿿豈-﫿]/;
+-/** The last two whitespace-separated words, with any trailing space. */
+-const LAST_TWO = /\S+\s+\S+\s*$/;
++/**
++ * ⭐ THE WHITE SPACE A KEPT RUN MAY HOLD (round 5, 2026-10-09, review 3 H2 — one rule for every keep helper): any run of
++ * collapsible spaces, which renders as one, and at most ONE other white space (a no-break space, an ideographic space).
++ * A run held across `\s+` could hold any number of U+3000 or U+2003 — "dakika" + 37 ideographic spaces + "28:00" is one
++ * unbreakable run some 600px wide — so where the gap is wider than that the words are left to wrap as words do.
++ * `KEPT_GAP` may be empty; `KEPT_SPACE` is the same with at least one white space.
++ */
++export const KEPT_GAP = "[\\t\\n\\f\\r ]*(?:[^\\S\\t\\n\\f\\r ][\\t\\n\\f\\r ]*)?";
++export const KEPT_SPACE = `(?=\\s)${KEPT_GAP}`;
++const SPACE_KEPT = new RegExp(`^${KEPT_SPACE}$`);
++const WHITE = /\s/;
++
++/**
++ * The last two whitespace-separated words of `text` — the space between them a kept one (`KEPT_SPACE`) — as [where the
++ * first starts, where the second ends], or null. `trail` is the white space after them: `"kept"` when the caller draws it
++ * inside the span (it must be a kept space too), `"any"` when the span leaves it out.
++ * ⛔ READ FROM THE END, word by word — linear. The pattern it replaces ("word, space, word, end"), tried at every place,
++ * backtracked over every long word before it failed: quadratic, a quarter of a second on 10,000 letters (round 5).
++ */
++export function lastTwo(text: string, trail: "kept" | "any"): [number, number] | null {
++  let end = text.length;
++  while (end > 0 && WHITE.test(text[end - 1])) end--;
++  if (trail === "kept" && end < text.length && !SPACE_KEPT.test(text.slice(end))) return null;
++  let second = end;
++  while (second > 0 && !WHITE.test(text[second - 1])) second--;
++  let gap = second;
++  while (gap > 0 && WHITE.test(text[gap - 1])) gap--;
++  let first = gap;
++  while (first > 0 && !WHITE.test(text[first - 1])) first--;
++  if (second === end || first === gap || !SPACE_KEPT.test(text.slice(gap, second))) return null;
++  return [first, end];
++}
+ 
+ export function keepLastWords(text: string): ReactNode {
+   if (IDEOGRAPH.test(text)) return text;
+-  const at = text.search(LAST_TWO);
++  const at = lastTwo(text, "kept")?.[0] ?? -1;
+   // ⛔ `at <= 0`: the whole text is two words or fewer (or one word), so nothing can be stranded.
+   if (at <= 0) return text;
+   return [text.slice(0, at), <span key="last-words" className="whitespace-nowrap">{text.slice(at)}</span>];
+@@ -62,16 +92,23 @@ export function keepSentences(text: string): ReactNode {
+  * "Act 2022" is now one nowrap span; every other break is left alone and the text is unchanged. A year is four digits
+  * (1800–2999) standing as a word — followed by a space, the end, or punctuation — so a date ("2026-10-07") and a longer
+  * number ("16221") are not years. It applies inside Chinese text too: the Latin name it binds is not broken by keep-all.
++ * ⛔ Found from the year's space (where a word ends) and the word read back from it — linear (round 5: "word, space,
++ * year" tried at every place was quadratic on a long word, and a space tried at every place on a long run of spaces);
++ * the space is `KEPT_SPACE`.
+  */
+-const WORD_YEAR = /\S+\s+(?:1[89]|2\d)\d{2}(?=$|[\s.,;:!?)\]。，；：])/g;
++const SPACE_YEAR = new RegExp(`\\S(${KEPT_SPACE}(?:1[89]|2\\d)\\d{2})(?=$|[\\s.,;:!?)\\]。，；：])`, "g");
+ 
+ export function keepYears(text: string): ReactNode {
+   const out: ReactNode[] = [];
+   let from = 0;
+-  for (const m of text.matchAll(WORD_YEAR)) {
+-    const at = m.index ?? 0;
+-    out.push(text.slice(from, at), <span key={`y${out.length}`} className="whitespace-nowrap">{m[0]}</span>);
+-    from = at + m[0].length;
++  for (const m of text.matchAll(SPACE_YEAR)) {
++    const space = (m.index ?? 0) + 1;
++    // The word before the space, never reaching into the run before it.
++    let at = space;
++    while (at > from && !WHITE.test(text[at - 1])) at--;
++    if (at === space) continue;
++    out.push(text.slice(from, at), <span key={`y${out.length}`} className="whitespace-nowrap">{text.slice(at, space + m[1].length)}</span>);
++    from = space + m[1].length;
+   }
+   if (out.length === 0) return text;
+   out.push(text.slice(from));
+@@ -82,53 +119,94 @@ export function keepYears(text: string): ReactNode {
+  * A MARKET TITLE'S FIGURES STAY WHOLE (round 4 of the visual pass, 2026-10-09, edges tiles 197 199 253 255 256): a season
+  * never breaks at its hyphen — the Chinese page read "辛巴俱乐部赢得2026-" / "27赛季NBC超级联赛" — and a number never parts
+  * from its unit — the Swahili page read "atavunja dakika" / "28:00 kwenye 10K". Titles are data, so the words are never
+- * touched: each figure run goes in a `white-space: nowrap` span (the reason `keepUnits` gives: what every engine honours,
+- * and the text a reader copies or a screen reader names is unchanged).
++ * touched: each figure run goes in a `white-space: nowrap` span (what every engine honours, and the text a reader copies or
++ * a screen reader names is unchanged — no no-break space, no word joiner).
+  * A RUN is a number — digits with their own separators (2,650 · 5.5 · 28:00), a currency sign before them, a range after
+  * them (2026-27 · 24/7 · 2026–27), a % — together with its unit on ONE side:
+- *   · a Chinese unit of one or two ideographs straight after it ("200毫米", "27赛季" — `keepUnits`' rule, kept);
+- *   · a hyphenated unit ("30-day", "7-day");
++ *   · a Chinese unit straight after it, from the closed list `ZH_UNIT`, longest first ("200毫米", "15万美元", "27赛季", and
++ *     "8月1日" — a month with its day, the twin of "1 Agosti" below);
++ *   · a hyphenated unit ("30-day", "7-day", "30-Day");
+  *   · a unit word after it ("28 minutes", "$5.5 bilioni") or before it ("dakika 28:00", "nyuzi 32", "TZS 10,000"), from the
+  *     closed lists below — a measure noun, a magnitude, a currency code — and a month on either side of a day ("1 Agosti",
+- *     "April 15"). Where a word stands on both sides, the month or the unit after wins and the word before stays plain text
+- *     ("tarehe 1 Agosti" keeps "1 Agosti"), so a run is never more than one word and its number.
++ *     "April 15"; never a year — round 5: "December 2026" was kept, `DAY` below). Where a word stands on both sides, the
++ *     month or the unit after wins and the word before stays plain text ("tarehe 1 Agosti" keeps "1 Agosti"), so a run is
++ *     never more than one word and its number — except a CURRENCY CODE, which is part of the figure itself: "TZS 1
++ *     bilioni", "TZS 4,200" in "TZS 4,200以上" (round 5, H1: the code was left behind whenever a unit followed).
++ * ⭐ ROUND 5 (2026-10-09, review 3 H1): the Chinese unit was "one or two ideographs, whatever they are" (`keepUnits`' rule),
++ * so the run took the next word's first character — "[7月降]雨量", "[2026年坦]桑尼亚" (the good break 年|坦 lost),
++ * "[1日收]于", "超过[15万美]元？" (美元 cut). The closed list ends the run at the unit; `keepUnits` itself, which nothing
++ * imported any more, is gone. A lower-case unit word also opens a sentence ("Dakika 90 za mwisho", "Saa 3 usiku"): the same
++ * pair, capitalised. ⛔ NOT a Swahili word AFTER the number ("28:00 dakika"): Swahili names the unit first, and a noun after
++ * a number usually opens the next phrase ("mabao 2 siku ya mwisho"), so such a pair is left to wrap as words do.
+  * A bare number with no unit and no range ("2,650", "28:00") has no break inside it to protect and stays plain text, so a
+  * title without a run renders byte for byte as before. ⚠️ Proper nouns are data and are never joined ("World Athletics",
+- * "NBC Premier League"). ⚠️ The lists are closed on purpose: a run cannot grow past a word and a number (≤ 20 characters in
+- * every seeded title), which fits the narrowest title line on every surface, where an open rule ("a number keeps the word
+- * before it") would join "ya 2,650" and "on 1" and could not promise that. ⛔ Deterministic, no lookbehind (a client
+- * bundle holding one fails to parse on Safari before 16.4), CJK-safe: the unit words are Latin, the ideograph rule is
+- * `keepUnits`' own.
++ * "NBC Premier League"). ⚠️ The lists are closed on purpose: a run cannot grow past a figure and its one unit, where an
++ * open rule ("a number keeps the word before it") would join "ya 2,650" and "on 1". The narrowest title line is the market
++ * page's h1 at 320 — 220px at 28px bold, about 13 characters — and `test:visual-pass-r5e` §9 measures every seeded title's
++ * runs and the platform's money phrasings against it ("TZS 2.5 bilioni" 195px, "TZS 1,000,000" 208px); a 14-character
++ * figure ("TZS 10,000,000", 229px) is wider, as a 14-letter word is (round 5's report names it). ⛔ Deterministic, no
++ * lookbehind (a client bundle holding one fails to parse on Safari before 16.4), CJK-safe: the unit words are Latin, and a
++ * Chinese unit is one of the listed words.
+  */
+ const MONTHS = "January|February|March|April|May|June|July|August|September|October|November|December|Januari|Februari|Machi|Aprili|Mei|Juni|Julai|Agosti|Septemba|Oktoba|Novemba|Desemba";
+-const UNIT_BEFORE = `dakika|saa|sekunde|siku|wiki|mwezi|miezi|mwaka|miaka|nyuzi|asilimia|tarehe|milioni|bilioni|TZS|USD|KES|${MONTHS}`;
+-const UNIT_AFTER = `minutes?|hours?|seconds?|days?|weeks?|months?|years?|degrees?|percent|million|billion|milioni|bilioni|${MONTHS}`;
+-/** Groups: 1 the word before + 2 its space · 3 the number · 4 an ideograph unit · 5 a hyphenated unit · 6 a space + 7 the word after. */
++/** A lower-case unit word with its capital too ("dakika" | "Dakika"), for the one that opens a sentence. */
++const capital = (words: string) => words.split("|").map((w) => `[${w[0]}${w[0].toUpperCase()}]${w.slice(1)}`).join("|");
++const UNIT_BEFORE = `${capital("dakika|saa|sekunde|siku|wiki|mwezi|miezi|mwaka|miaka|nyuzi|asilimia|tarehe|milioni|bilioni")}|TZS|USD|KES|${MONTHS}`;
++const UNIT_AFTER = `${capital("minutes?|hours?|seconds?|days?|weeks?|months?|years?|degrees?|percent|million|billion|milioni|bilioni")}|${MONTHS}`;
++/** A currency code is part of the figure, so it stays the run's head even when a unit follows ("TZS 1 bilioni"). */
++const CURRENCY = /^(?:TZS|USD|KES)$/;
++/** A month keeps its DAY ("1 Agosti", "April 15", "Mei 31"), never a year: "December 2026" is 225px at the market page's
++ *  28px h1, wider than that h1's 220px line at 320 (test:visual-pass-r5e §9), and a month and its year read whole on two
++ *  lines as two words do. */
++const MONTH = new RegExp(`^(?:${MONTHS})$`);
++const DAY = /^(?:0?[1-9]|[12]\d|3[01])$/;
++/** The Chinese units a number keeps, longest first, so "万美元" is taken before "万" and the next word never joins. */
++const ZH_UNIT = "月\\d{1,2}[日号]|万美元|亿美元|万先令|亿先令|美元|先令|欧元|英镑|毫米|厘米|公里|千米|公斤|千克|毫升|分钟|小时|赛季|季度|百分点|摄氏度|个月|年底|年初|月底|月初|月中|[年月日号时分秒天周岁米克吨升元万亿场球届次名个度轮局倍]";
++/** Groups: 1 the word before + 2 its space · 3 the number · 4 a Chinese unit · 5 a hyphenated unit · 6 a space + 7 the word
++ *  after. The spaces are `KEPT_SPACE` (round 5, H2's rule): never an unbounded run of wide white space inside a run. */
+ const FIGURE = new RegExp(
+-  `(?:\\b(${UNIT_BEFORE})(\\s+))?([$€£]?\\d+(?:[.,:]\\d+)*(?:[-–/]\\d+(?:[.,:]\\d+)*)*%?)`
+-    + `(?:(\\s?[㐀-䶿一-鿿豈-﫿]{1,2})|(-[a-z]+)\\b|(\\s+)(${UNIT_AFTER})\\b)?`,
++  `(?:\\b(${UNIT_BEFORE})(${KEPT_SPACE}))?([$€£]?\\d+(?:[.,:]\\d+)*(?:[-–/]\\d+(?:[.,:]\\d+)*)*%?)`
++    + `(?:(\\s?(?:${ZH_UNIT}))|(-[A-Za-z][a-z]*)\\b|(${KEPT_SPACE})(${UNIT_AFTER})\\b)?`,
+   "g",
+ );
+ /** A break could fall inside the run: a space, a range's mark, or an ideograph (UAX #14 lets a line end before one). */
+ const BREAKABLE = /[\s\-–/㐀-䶿一-鿿豈-﫿]/;
+ 
+-export function keepFigures(text: string): ReactNode {
+-  if (!/\d/.test(text)) return text;
+-  const out: ReactNode[] = [];
+-  let from = 0;
++/** Each figure run of `text` as a [start, end) span, in order (the rule above). */
++export function figureRanges(text: string): Array<[number, number]> {
++  const out: Array<[number, number]> = [];
++  if (!/\d/.test(text)) return out;
+   for (const m of text.matchAll(FIGURE)) {
+     const [, before, gap, num, ideo, hyph, space, after] = m;
+-    // One side only: a unit after the number wins, and the word before then stays plain text.
+-    const tail = ideo ?? hyph ?? (after !== undefined ? space + after : "");
+-    const head = tail === "" && before !== undefined ? before + gap : "";
++    // A month on either side holds a day only.
++    const day = DAY.test(num);
++    const afterHeld = after !== undefined && (day || !MONTH.test(after));
++    const beforeHeld = before !== undefined && (day || !MONTH.test(before));
++    // One side only: a unit after the number wins, and the word before then stays plain text — unless it is a currency.
++    const tail = ideo ?? hyph ?? (afterHeld ? space + after : "");
++    const head = beforeHeld && (tail === "" || CURRENCY.test(before)) ? before + gap : "";
+     const start = (m.index ?? 0) + (before !== undefined && head === "" ? before.length + gap.length : 0);
+     const run = head + num + tail;
+     // A run with no break inside it (a bare "2,650") is left as text.
+-    if (!BREAKABLE.test(run)) continue;
+-    out.push(text.slice(from, start), <span key={`f${out.length}`} className="whitespace-nowrap">{run}</span>);
+-    from = start + run.length;
++    if (BREAKABLE.test(run)) out.push([start, start + run.length]);
++  }
++  return out;
++}
++
++/** The figure runs themselves — for a sentence that `keepText` draws (keep-run.tsx), which takes its runs as words. */
++export function figureRuns(text: string): string[] {
++  return figureRanges(text).map(([a, b]) => text.slice(a, b));
++}
++
++export function keepFigures(text: string): ReactNode {
++  const ranges = figureRanges(text);
++  if (ranges.length === 0) return text;
++  const out: ReactNode[] = [];
++  let from = 0;
++  for (const [a, b] of ranges) {
++    out.push(text.slice(from, a), <span key={`f${out.length}`} className="whitespace-nowrap">{text.slice(a, b)}</span>);
++    from = b;
+   }
+-  if (out.length === 0) return text;
+   out.push(text.slice(from));
+   return out;
+ }
+@@ -140,13 +218,61 @@ export function keepFigures(text: string): ReactNode {
+  * space between them, if any) go in one nowrap span, so a last line holds two at least. Two characters always fit a line,
+  * so this can never overflow — unlike `keepLastWords`, whose pair of words a long name could make wider than its column.
+  * A name of two characters or fewer is returned untouched; the text itself is unchanged.
++ * ⭐ ROUND 5 (2026-10-09, review 3 H2 H3) · A CHARACTER IS WHAT A READER SEES, AND THE GAP IS BOUNDED:
++ *   · "two characters" were two code points, so the cut landed INSIDE one emoji — "Neema" and the technologist emoji
++ *     (👩 ZWJ 💻) drew "Neema 👩" outside the span and the ZWJ and 💻 inside it, the sequence parted by an element
++ *     boundary (an engine that shapes per element draws two glyphs). A character is now a whole extended grapheme
++ *     cluster (`CHARACTER`): a flag's two regional indicators, a letter with its marks, a skin tone, a tag sequence, a
++ *     ZWJ sequence, an Indic conjunct (Unicode 15.1's GB9c), Thai and Lao AM, Hangul jamo, a prepended mark with its
++ *     base — read LEFT TO RIGHT, so the flags of "🇹🇿🇰🇪" pair as the text does. Checked code point by code point against
++ *     ICU's own segmentation (Node 24: ICU 78, Unicode 17) the pattern never parts what ICU keeps together; where the two
++ *     differ it joins MORE (a Myanmar vowel sign, any letter after a virama), which only keeps one more character with
++ *     the end;
++ *   · the space between the two (and after the last) was any `\s`, so "AB" + 37 × U+3000 + "C" (40 units, which the
++ *     name's max(40) accepts) became one unbreakable 39-character run, ~663px in the hub. Now only collapsible spaces
++ *     (a run of them renders as one) and at most ONE other white space may stand there, so the kept end is two
++ *     characters and a gap of a few ems at most; a name whose end is wider is returned as it came.
++ * ⛔ A REGULAR EXPRESSION, NOT `Intl.Segmenter`: Firefox has it only from 125, and its clusters follow each engine's own
++ * ICU data — Node's on the server, the browser's in the client (GB9c, for one, is Unicode 15.1) — so the name editor (a
++ * client component) could draw its span in one place on the server and another in the browser, and hydration would
++ * mismatch. The pattern is the same text on both sides, and it uses only general categories and `\p{RI}` (Unicode
++ * property escapes: Chrome 64, Safari 11.1, Firefox 78), no lookbehind. `test:visual-pass-r5e` holds its cut to Node's
++ * own grapheme boundaries.
+  */
+-const NAME_END = /\S\s*\S\s*$/u;
++/** Marks that open a cluster: Unicode's Prepend class (Arabic number signs and their kin; U+113D1 since Unicode 16). */
++const PREPEND = "\\u0600-\\u0605\\u06DD\\u070F\\u0890\\u0891\\u08E2\\u0D4E\\u{110BD}\\u{110CD}\\u{111C2}\\u{111C3}\\u{113D1}\\u{1193F}\\u{11941}\\u{11A3A}\\u{11A84}-\\u{11A89}\\u{11D46}\\u{11F02}";
++/** The viramas that join two consonants into one conjunct (GB9c): Devanagari, Bengali, Gujarati, Oriya, Telugu, Malayalam. */
++const LINKER = "\\u094D\\u09CD\\u0ACD\\u0B4D\\u0C4D\\u0D4D";
++/** What joins the character before it: every mark, and the joiners and vowels Unicode joins that are not marks — ZWNJ
++ *  and ZWJ, Thai and Lao AM (ำ ຳ), the half-width voiced marks (ﾞ ﾟ), skin tones, emoji tags, Hangul vowel and final
++ *  jamo (and Kirat Rai's, which Unicode 16 classes with them). */
++const EXTEND = "\\p{M}\\u200C\\u200D\\u0E33\\u0EB3\\uFF9E\\uFF9F\\u{1F3FB}-\\u{1F3FF}\\u{E0020}-\\u{E007F}\\u1160-\\u11FF\\uD7B0-\\uD7FF\\u{16D63}\\u{16D67}-\\u{16D6A}";
++/** Hangul leading jamo, which join each other and the syllable after them (old Hangul). */
++const L_JAMO = "\\u1100-\\u115F\\uA960-\\uA97C";
++/** Where a cluster opens: a flag's two regional indicators, a prepended mark and its base, leading jamo and their
++ *  syllable, or any other character that is not white space. */
++const OPENER = `\\p{RI}\\p{RI}|[${PREPEND}]*(?:[${L_JAMO}]+[\\uAC00-\\uD7A3]?|\\S)`;
++/** One user-perceived character: an opener (or a white space that a mark follows), then its marks, a conjunct's next
++ *  consonant (a few marks may stand between, ≤ 4 so no input can make the pattern backtrack far), and each ZWJ with
++ *  the whole character it joins. */
++const CHARACTER = new RegExp(
++  `(?:${OPENER}|\\s(?=[${EXTEND}]))(?:[${LINKER}][\\p{M}\\u200D]{0,4}\\p{L}|\\u200D(?:${OPENER})|[${EXTEND}])*`,
++  "gu",
++);
++/** What may stand between the last two characters, and after the last: collapsible spaces and at most one other (`KEPT_GAP`). */
++const NAME_GAP = new RegExp(`^${KEPT_GAP}$`);
++
++/** Each user-perceived character of `text` as a [start, end) span, left to right — white space between them left out. */
++export function characterSpans(text: string): Array<[number, number]> {
++  return [...text.matchAll(CHARACTER)].map((m): [number, number] => [m.index ?? 0, (m.index ?? 0) + m[0].length]);
++}
+ 
+ export function keepNameEnd(name: string): ReactNode {
+-  const at = name.search(NAME_END);
+-  if (at <= 0) return name;
+-  return [name.slice(0, at), <span key="name-end" className="whitespace-nowrap">{name.slice(at)}</span>];
++  // The last two characters, read left to right (`characterSpans`' pattern), keeping only the last two.
++  let a: [number, number] | null = null, b: [number, number] | null = null;
++  for (const m of name.matchAll(CHARACTER)) { a = b; b = [m.index ?? 0, (m.index ?? 0) + m[0].length]; }
++  if (!a || !b || a[0] <= 0 || !NAME_GAP.test(name.slice(a[1], b[0])) || !NAME_GAP.test(name.slice(b[1]))) return name;
++  return [name.slice(0, a[0]), <span key="name-end" className="whitespace-nowrap">{name.slice(a[0])}</span>];
+ }
+ 
+ /**
+diff --git a/src/components/ui/toast.tsx b/src/components/ui/toast.tsx
+index dad5e7b00..3ececaec1 100644
+--- a/src/components/ui/toast.tsx
++++ b/src/components/ui/toast.tsx
+@@ -19,6 +19,7 @@
+ import * as React from "react";
+ import { I } from "@/components/ui/glyphs";
+ import { cn } from "@/lib/utils";
++import { moneyRuns } from "@/lib/fill-nodes";
+ import { haptics } from "@/lib/haptics";
+ import { useT } from "@/lib/i18n";
+ import { subscribeResultModal } from "@/lib/result-modal-presence";
+@@ -31,6 +32,7 @@ import { groupKeyFor, mergeGroup } from "@/lib/toast-group";
+ type ToastVariant = "default" | "success" | "warning" | "danger" | "gold" | "factual";
+ 
+ type ToastInput = {
++  /** Words. Every amount they state ("TZS 9,000") is drawn as an `.amount` by the toast itself (`ToastItem`, §M4). */
+   title: string;
+   description?: string;
+   variant?: ToastVariant;
+@@ -710,10 +712,15 @@ function ToastItem({ toast, exiting, onDismiss, onPause, onResume }: { toast: To
+           {v.icon}
+         </div>
+         <div className="min-w-0 flex-1">
+-          {/* Kit toast-title 13px / 600 / -2px margin */}
+-          <p className="font-display text-[13px] font-semibold text-text leading-tight">{toast.title}</p>
++          {/* Kit toast-title 13px / 600 / -2px margin.
++              ⭐ EVERY AMOUNT A TOAST STATES IS AN `.amount` (DESIGN_AUTHORITY §M4: mono, untracked, never reflowed),
++              drawn here once for every toast (`moneyRuns`): "Bet placed · YES TZS 1,000", "Sold · TZS 9,000 returned", a
++              payout, a refused sale's moved price. Its `white-space: nowrap` keeps "TZS" and its digits on one line, so no
++              caller joins them with a no-break space (round 5, 2026-10-09, review 3 H4: the refused sale's toast did, a
++              character that travelled into a copy and a find-in-page) — the words stay the caller's, character for character. */}
++          <p className="font-display text-[13px] font-semibold text-text leading-tight">{moneyRuns(toast.title)}</p>
+           {toast.description ? (
+-            <p className="mt-0.5 text-body-sm text-text-muted leading-snug">{toast.description}</p>
++            <p className="mt-0.5 text-body-sm text-text-muted leading-snug">{moneyRuns(toast.description)}</p>
+           ) : null}
+         </div>
+       </div>
+diff --git a/src/components/updown/price-hero.tsx b/src/components/updown/price-hero.tsx
+index 3fcf938f2..feab629d7 100644
+--- a/src/components/updown/price-hero.tsx
++++ b/src/components/updown/price-hero.tsx
+@@ -75,7 +75,7 @@ export function PriceHero({
+     downLabel?: string;     // "Down target"
+     awaitingRead: string;   // "Awaiting read"
+     aboveBelow: ReactNode | null; // "Above open by $4.45" — null when no live price
+-    source: string | null;  // "Source: Kitco · quoted 14:34:58" — null when unknown
++    source: ReactNode | null; // "Source: Kitco · quoted 14:34:58" (its stamp one nowrap run) — null when unknown
+     chartAlt: string;
+   };
+ }) {
+diff --git a/src/lib/break-end.ts b/src/lib/break-end.ts
+index 147c885e3..5b8ab1ec3 100644
+--- a/src/lib/break-end.ts
++++ b/src/lib/break-end.ts
+@@ -86,16 +86,17 @@ export function formatBreakEnd(end: BreakEnd | number, nowMs: number, monthsShor
+ }
+ 
+ /**
+- * An approved break/exclusion sentence with its end filled in, for a surface that can only take a STRING (the kit's
+- * `EmptyState` body). The date cannot be wrapped in a no-wrap box there, so its own spaces become no-break spaces — the
+- * mechanism that body already uses for its dash and its YES/NO pair (`empty-state-text.ts`) — and the date stays one run.
+- * Every other character of the sentence is the dictionary's. The slot is filled through a replacer, so a `$&` is inert.
++ * An approved break/exclusion sentence with its end filled in, for the kit's `EmptyState` body: the words, and the end
++ * as a run to keep whole — `EmptyState` draws it as one `white-space: nowrap` span (`emptyStateBody`), the `keepText`
++ * convention. ⭐ Round 5 (2026-10-09, review 3 H4): the date's own spaces used to become no-break spaces, the body's old
++ * mechanism, and travelled into a copy and a find-in-page; now every character of the sentence is the dictionary's and
++ * the formatter's. The slot is filled through a replacer, so a `$&` is inert.
+  */
+-export function breakSentenceText(
++export function breakSentence(
+   template: string, untilIso: string, nowMs: number, monthsShort: readonly string[], locale: "en" | "sw" | "zh",
+-): string {
+-  const date = formatBreakEnd(Date.parse(untilIso), nowMs, monthsShort, locale).replace(/ /g, String.fromCharCode(0x00a0));
+-  return template.replace(/\{date\}/g, () => date);
++): { text: string; keep: readonly string[] } {
++  const date = formatBreakEnd(Date.parse(untilIso), nowMs, monthsShort, locale);
++  return { text: template.replace(/\{date\}/g, () => date), keep: [date] };
+ }
+ 
+ /**
+diff --git a/src/lib/cjk-marks.tsx b/src/lib/cjk-marks.tsx
+index 9c86454d4..af42692e1 100644
+--- a/src/lib/cjk-marks.tsx
++++ b/src/lib/cjk-marks.tsx
+@@ -17,8 +17,15 @@ import { Fragment, type ReactNode } from "react";
+  * end of a line (CSS Text 3 §4.1.2) and keeps everywhere else. Mid-line the mark is a full em again, to the pixel; at
+  * the end of a line — wherever the browser broke it — the line's box stops at the mark's ink. The space is drawn in
+  * `--font-mono`, whose space is 0.6em in every weight (the repo's JetBrains Mono: 600 of 1000 units), so its width is
+- * known: `.kp-cjk-gap` adds the rest as `word-spacing`. Its line height is 0 (the line box cannot grow) and it is not
+- * selectable (a copied sentence has no stray space). After: 。 at 13px −0.16px, ？ at 17px −0.13px.
++ * known: `.kp-cjk-gap` adds the rest as `word-spacing`. Its line height is 0 (the line box cannot grow). After: 。 at 13px
++ * −0.16px, ？ at 17px −0.13px.
++ * ⭐ THE SPACE IS NOT IN THE TEXT (round 5, 2026-10-09, review 3's doubt): it was a real U+0020 in an aria-hidden,
++ * unselectable span, so the DOM text read "选择一个问题， 点击" — a find-in-page for "，点击" missed it, and a copy relied on
++ * `user-select: none` (unverified on WebKit). It is now CSS generated content (`.kp-cjk-gap::after { content: " " }`) on
++ * an EMPTY span: generated text is never copied, never searched and never part of `textContent`, and a collapsible space
++ * in it still collapses at a line's end (CSS Text 3 §4.1.2 works on the formatting context's text, generated or not).
++ * The same convention as every keep helper (keep-words.tsx): the words on the page are the dictionary's, character for
++ * character — the layout is done by elements and styles, never by a character slipped into the text.
+  *
+  * ⛔ NOT `text-spacing-trim`: Chromium ships it from 123 with `space-first` / `trim-start` — the START of a line — and its
+  * `normal` halves a line-final mark only "if it does not otherwise fit"; WebKit's support is partial, and either needs
+@@ -50,15 +57,19 @@ const CLOSER = /^[”’」』）》】〉〕)\]}]$/u;
+ /**
+  * The text with every full-width closing mark that ends a run set to hang (see above). A string with no such mark is
+  * returned as it came.
++ * `following` (round 5, 2026-10-09): the text that comes after this piece in the same paragraph, when a caller draws the
++ * paragraph in pieces (`keepRanges`: a nowrap run, then plain text). Only its first character is read, so a mark that
++ * ends a piece hangs, and pays its gap back, exactly as it would in the whole text.
+  */
+-export function hangCjkMarks(text: string): ReactNode {
++export function hangCjkMarks(text: string, following = ""): ReactNode {
+   const chars = Array.from(text);
+   if (!chars.some((c) => isMark(c))) return text;
++  const after = Array.from(following.slice(0, 2))[0];
+   const out: ReactNode[] = [];
+   let run = "";
+   let k = 0;
+   chars.forEach((c, i) => {
+-    const next = chars[i + 1];
++    const next = i + 1 < chars.length ? chars[i + 1] : after;
+     // A mark hangs at the end of the text, or before a character that is neither a mark, a closer nor white space.
+     if (!isMark(c) || isMark(next) || (next !== undefined && (/\s/.test(next) || CLOSER.test(next)))) { run += c; return; }
+     if (run) out.push(run);
+@@ -66,7 +77,8 @@ export function hangCjkMarks(text: string): ReactNode {
+     const cls = CJK_MARK_TRIM[c];
+     out.push(<span key={k++} className={cls}>{c}</span>);
+     if (next !== undefined) {
+-      out.push(<span key={k++} aria-hidden="true" className={cls.endsWith("--q") ? "kp-cjk-gap kp-cjk-gap--q" : "kp-cjk-gap"}>{" "}</span>);
++      // Empty: its space is the stylesheet's (`.kp-cjk-gap::after`), so the text stays the dictionary's.
++      out.push(<span key={k++} aria-hidden="true" className={cls.endsWith("--q") ? "kp-cjk-gap kp-cjk-gap--q" : "kp-cjk-gap"} />);
+     }
+   });
+   if (run) out.push(run);
+diff --git a/src/lib/fill-nodes.tsx b/src/lib/fill-nodes.tsx
+index fa4ac45df..674b04f16 100644
+--- a/src/lib/fill-nodes.tsx
++++ b/src/lib/fill-nodes.tsx
+@@ -43,7 +43,10 @@ export function fillNodes(template: string, vars: Record<string, ReactNode>): Re
+  */
+ // Thousands groups are read as groups, so a sentence's own comma after a figure ("…to TZS 5,000,000, needs…") stays
+ // in the sentence and never joins the figure.
+-const MONEY_RUN = /TZS[\u00a0 ]\d+(?:,\d{3})*(?:\.\d+)?[KMB]?/g;
++// ⭐ Round 5 (2026-10-09, review 3's doubt): a signed figure is read whole too, in the platform's two spellings —
++// `formatTzs` / `formatTzsCompact` put the minus after the code ("TZS −4,200", "TZS −1.2M"), `formatTzsSigned` puts its
++// sign before it ("−TZS 1,234", "+TZS 1,234"). The minus is U+2212, never a hyphen, so no hyphen of a sentence is taken.
++const MONEY_RUN = /[+\u2212]?TZS[\u00a0 ]\u2212?\d+(?:,\d{3})*(?:\.\d+)?[KMB]?/g;
+ export function moneyRuns(text: string): ReactNode[] {
+   const out: ReactNode[] = [];
+   let last = 0;

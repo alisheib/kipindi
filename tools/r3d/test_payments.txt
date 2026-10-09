@@ -1,0 +1,108 @@
+﻿[audit] WALLET deposit.initiated usr_dep Transaction#txn_3102bc33bf902e75a183a6c8
+[audit] WALLET deposit.dispatch usr_dep User#usr_dep
+[audit] WALLET deposit.pending usr_dep Transaction#txn_3102bc33bf902e75a183a6c8
+[audit] WALLET deposit.confirmed usr_dep Transaction#txn_3102bc33bf902e75a183a6c8
+[email] sending "Deposit confirmed · TZS 50,000" → u***@t.tz (tag=deposit)
+[email-stub] To: u***@t.tz | Subject: Deposit confirmed · TZS 50,000
+[audit] WALLET deposit.initiated usr_dep Transaction#txn_f1bb664f2fbae6e4cc8b1931
+[audit] WALLET deposit.dispatch usr_dep User#usr_dep
+[audit] WALLET deposit.pending usr_dep Transaction#txn_f1bb664f2fbae6e4cc8b1931
+[audit] WALLET deposit.failed usr_dep Transaction#txn_f1bb664f2fbae6e4cc8b1931
+[email] sending "Deposit failed · TZS 9,000" → u***@t.tz (tag=deposit)
+[email-stub] To: u***@t.tz | Subject: Deposit failed · TZS 9,000
+[audit] WALLET deposit.initiated usr_sync Transaction#txn_1667ea9ff7a8741b5070f213
+[audit] WALLET deposit.dispatch usr_sync User#usr_sync
+[audit] WALLET deposit.confirmed usr_sync Transaction#txn_1667ea9ff7a8741b5070f213
+[email] sending "Deposit confirmed · TZS 12,000" → u***@t.tz (tag=deposit)
+[email-stub] To: u***@t.tz | Subject: Deposit confirmed · TZS 12,000
+[audit] WALLET withdraw.initiated usr_wd Transaction#txn_b97a4829ff5668cebe0c40c2
+[audit] WALLET withdraw.dispatch usr_wd User#usr_wd
+[audit] WALLET withdraw.pending usr_wd Transaction#txn_b97a4829ff5668cebe0c40c2
+[audit] WALLET withdraw.confirmed usr_wd Transaction#txn_b97a4829ff5668cebe0c40c2
+[email] sending "Withdrawal sent · TZS 19,700" → u***@t.tz (tag=withdrawal)
+[email-stub] To: u***@t.tz | Subject: Withdrawal sent · TZS 19,700
+[audit] WALLET withdraw.initiated usr_wd Transaction#txn_253fe77e9615119105c38965
+[audit] WALLET withdraw.dispatch usr_wd User#usr_wd
+[audit] WALLET withdraw.pending usr_wd Transaction#txn_253fe77e9615119105c38965
+[audit] WALLET withdraw.failed usr_wd Transaction#txn_253fe77e9615119105c38965
+[email] sending "Withdrawal returned · TZS 20,000" → u***@t.tz (tag=withdrawal)
+[email-stub] To: u***@t.tz | Subject: Withdrawal returned · TZS 20,000
+[audit] WALLET deposit.initiated usr_rec Transaction#txn_e0e80bc93cb852d0c31e41be
+[audit] WALLET deposit.dispatch usr_rec User#usr_rec
+[audit] WALLET deposit.pending usr_rec Transaction#txn_e0e80bc93cb852d0c31e41be
+[audit] WALLET deposit.failed usr_rec Transaction#txn_e0e80bc93cb852d0c31e41be
+[audit] WALLET payments.reconcile_sweep system 
+[email] sending "Deposit failed · TZS 7,000" → u***@t.tz (tag=deposit)
+[email-stub] To: u***@t.tz | Subject: Deposit failed · TZS 7,000
+[audit] WALLET withdraw.initiated usr_aml Transaction#txn_44446df0d636443ecb30aa61
+[audit] WALLET withdraw.dispatch usr_aml User#usr_aml
+[audit] WALLET withdraw.confirmed usr_aml Transaction#txn_44446df0d636443ecb30aa61
+[email] sending "Withdrawal sent · TZS 985,000" → u***@t.tz (tag=withdrawal)
+[email-stub] To: u***@t.tz | Subject: Withdrawal sent · TZS 985,000
+[audit] WALLET withdraw.initiated usr_aml2 Transaction#txn_af2d8767eb0afa2a7a3e3345
+[audit] WALLET withdraw.dispatch usr_aml2 User#usr_aml2
+[audit] WALLET withdraw.confirmed usr_aml2 Transaction#txn_af2d8767eb0afa2a7a3e3345
+[email] sending "Withdrawal sent · TZS 492,500" → u***@t.tz (tag=withdrawal)
+[email-stub] To: u***@t.tz | Subject: Withdrawal sent · TZS 492,500
+[audit] WALLET withdraw.initiated usr_cap Transaction#txn_7bfeb8b47247bc987e8d5b10
+[audit] WALLET withdraw.dispatch usr_cap User#usr_cap
+[audit] WALLET withdraw.confirmed usr_cap Transaction#txn_7bfeb8b47247bc987e8d5b10
+[email] sending "Withdrawal sent · TZS 4,925,000" → u***@t.tz (tag=withdrawal)
+[email-stub] To: u***@t.tz | Subject: Withdrawal sent · TZS 4,925,000
+[audit] WALLET withdraw.dispatch usr_aml_legacy User#usr_aml_legacy
+[audit] COMPLIANCE withdraw.approved_dispatched system Transaction#txn_legacy_usr_aml_legacy
+[audit] WALLET withdraw.confirmed usr_aml_legacy Transaction#txn_legacy_usr_aml_legacy
+[email] sending "Withdrawal sent · TZS 985,000" → u***@t.tz (tag=withdrawal)
+[email-stub] To: u***@t.tz | Subject: Withdrawal sent · TZS 985,000
+[audit] WALLET withdraw.initiated usr_sel Transaction#txn_0d36053c18797a4a11a397b9
+[audit] WALLET withdraw.dispatch usr_sel User#usr_sel
+[selcom] /walletcashin/process accepted (wdr_073317ef8a7d9a35cbf7) — HTTP 200 · resultcode=111 · result=PENDING · rail=WALLET_CASHIN utilitycode=VMCASHIN payee=25570***10 amount=29550 vendor=v pin=set
+[audit] WALLET withdraw.rail_attempt usr_sel Transaction#txn_0d36053c18797a4a11a397b9
+[audit] WALLET withdraw.pending usr_sel Transaction#txn_0d36053c18797a4a11a397b9
+[payments] payout txn_0d36053c18797a4a11a397b9 (wdr_073317ef8a7d9a35cbf7) — PENDING: HTTP 200 · resultcode=111 · result=PENDING
+[audit] WALLET payments.reconcile_sweep system 
+[payments] payout txn_0d36053c18797a4a11a397b9 (wdr_073317ef8a7d9a35cbf7) — CONFIRMED: HTTP 200 · resultcode=000 · result=SUCCESS
+[audit] WALLET withdraw.confirmed usr_sel Transaction#txn_0d36053c18797a4a11a397b9
+[audit] WALLET payments.reconcile_sweep system 
+[email] sending "Withdrawal sent · TZS 29,550" → u***@t.tz (tag=withdrawal)
+[email-stub] To: u***@t.tz | Subject: Withdrawal sent · TZS 29,550
+[audit] WALLET withdraw.initiated usr_selaml Transaction#txn_d65106bede23bdbf25160d9c
+[audit] WALLET withdraw.dispatch usr_selaml User#usr_selaml
+[selcom] /walletcashin/process accepted (wdr_24466d2970ed07d6d778) — HTTP 200 · resultcode=111 · result=PENDING · rail=WALLET_CASHIN utilitycode=VMCASHIN payee=25570***11 amount=1477500 vendor=v pin=set
+[audit] WALLET withdraw.rail_attempt usr_selaml Transaction#txn_d65106bede23bdbf25160d9c
+[audit] WALLET withdraw.pending usr_selaml Transaction#txn_d65106bede23bdbf25160d9c
+[payments] payout txn_d65106bede23bdbf25160d9c (wdr_24466d2970ed07d6d778) — CONFIRMED: HTTP 200 · resultcode=000 · result=SUCCESS
+[audit] WALLET withdraw.confirmed usr_selaml Transaction#txn_d65106bede23bdbf25160d9c
+[audit] WALLET payments.reconcile_sweep system 
+[email] sending "Withdrawal sent · TZS 1,477,500" → u***@t.tz (tag=withdrawal)
+[email-stub] To: u***@t.tz | Subject: Withdrawal sent · TZS 1,477,500
+[audit] WALLET withdraw.dispatch usr_selaml_legacy User#usr_selaml_legacy
+[selcom] /walletcashin/process accepted (wdr_7fdaa08a7d54b8d705b5) — HTTP 200 · resultcode=111 · result=PENDING · rail=WALLET_CASHIN utilitycode=VMCASHIN payee=25570***12 amount=1477500 vendor=v pin=set
+[audit] WALLET withdraw.rail_attempt usr_selaml_legacy Transaction#txn_legacy_usr_selaml_legacy
+[audit] COMPLIANCE withdraw.approved_dispatched system Transaction#txn_legacy_usr_selaml_legacy
+[payments] payout txn_legacy_usr_selaml_legacy (wdr_7fdaa08a7d54b8d705b5) — CONFIRMED: HTTP 200 · resultcode=000 · result=SUCCESS
+[audit] WALLET withdraw.confirmed usr_selaml_legacy Transaction#txn_legacy_usr_selaml_legacy
+[audit] WALLET payments.reconcile_sweep system 
+[email] sending "Withdrawal sent · TZS 1,477,500" → u***@t.tz (tag=withdrawal)
+[email-stub] To: u***@t.tz | Subject: Withdrawal sent · TZS 1,477,500
+[audit] WALLET withdraw.dispatch usr_selaml2 User#usr_selaml2
+[audit] COMPLIANCE withdraw.approved_dispatch_failed system Transaction#txn_legacy_usr_selaml2
+[audit] WALLET deposit.initiated usr_seld Transaction#txn_82f9ba614fc8afada9706582
+[audit] WALLET deposit.dispatch usr_seld User#usr_seld
+[audit] WALLET deposit.pending usr_seld Transaction#txn_82f9ba614fc8afada9706582
+[audit] WALLET payments.reconcile_sweep system 
+[audit] WALLET deposit.confirmed usr_seld Transaction#txn_82f9ba614fc8afada9706582
+[email] sending "Deposit confirmed · TZS 30,000" → u***@t.tz (tag=deposit)
+[email-stub] To: u***@t.tz | Subject: Deposit confirmed · TZS 30,000
+[audit] WALLET payments.reconcile_sweep system 
+[audit] WALLET deposit.initiated usr_result Transaction#txn_168cc0a7ad43f9489160e551
+[audit] WALLET deposit.dispatch usr_result User#usr_result
+[audit] WALLET deposit.pending usr_result Transaction#txn_168cc0a7ad43f9489160e551
+[audit] WALLET deposit.failed usr_result Transaction#txn_168cc0a7ad43f9489160e551
+[email] sending "Deposit failed · TZS 8,000" → u***@t.tz (tag=deposit)
+[email-stub] To: u***@t.tz | Subject: Deposit failed · TZS 8,000
+[audit] WALLET deposit.initiated usr_result Transaction#txn_98225fb523f5f9cb377a654e
+[audit] WALLET deposit.dispatch usr_result User#usr_result
+
+payment-webhook: 77 passed, 0 failed
+[audit] WALLET deposit.pending usr_result Transaction#txn_98225fb523f5f9cb377a654e

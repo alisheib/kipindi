@@ -1,0 +1,16 @@
+S12 (prepared 2026-10-08, ships with S12): the card's time left in Swahili - saa, and the singular for one
+
+S4-COPY-AUDIT "Found 2026-10-08": market.timeLeftH "masaa {n} yamebaki" read "masaa 1 yamebaki" for one hour. Saa is
+the standard noun (N-class, as siku and dakika beside it), and one takes the singular verb.
+
+- time-left.ts: optional singular templates (daysOne, hoursOne, minutesOne), used when the printed count is 1.
+- i18n-dict.ts: sw "siku/saa/dakika {n} zimebaki" and the singular "... imebaki"; en and zh singular keys repeat the plural.
+- the five callers pass the singular keys; test:time-left 31 to 86 assertions (behaviour, the six Swahili strings pinned,
+  a census of every caller) and red:time-left 6/6 with a census case.
+
+Proof on OMEGA-COMPILE01 (base a042dc65): typecheck 0; test:time-left, test:i18n (2631 keys each), test:trilingual,
+test:translation-safety, test:landing-contract, test:hero-contract, test:featured-card green; red:time-left 6/6; the
+census control (a caller's hoursOne removed) red on exactly that call, restored byte for byte. test:house-bot-disclosure
+pins the dictionary to origin/main (D19a), so it reads red on this branch until it merges.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>

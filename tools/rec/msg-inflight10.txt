@@ -1,0 +1,9 @@
+docs(vodacom): IN FLIGHT - the 333 tiles read and every finding checked; the real ones fixed on branches for turn H; four more main reds fixed
+
+The readers' findings were checked against the code and, where a position was estimated, the pixels. Fixed on
+branches, to be proved together in turn H: the RG hydration failure, English month words for sw/zh, the frozen notice's
+box, the rail's off-screen ring (and the drive's check that missed it), the hub's corner ring, the Needle row's size,
+wallet names breaking, the withdraw balance's face. Live today: 51aae5a9, dfd0072e, b1dec89b, a042dc65, 318b8881,
+bb9c951d. Queue: marketing, G, E, F, H; then the fixes go live, S6 closes and S7 WP0 goes live.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>

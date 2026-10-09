@@ -1,0 +1,42 @@
+The Needle (R4-B): the chat bubble is an obstacle shown or faded, ring included — the dial no longer rests under it
+
+Round 4 (tile 313, hub, zh 320): the dial (ink x293–319, y635–688) rested partly under the chat bubble (box
+x260–304 × y656–700, ring ink x256–308 × y649–703). Compared with the same dial unobstructed on 305, the bubble hid
+136 of its 994 ink pixels. The stacking is the house rule (the bubble at z60 over the Needle's z45: a fidget must never
+cover a control); the rest check was what failed.
+
+- Cause: the control census skips a control with pointer-events none (needle.tsx), and both of the bubble's fades
+  set exactly that: D3 while scrolling and for 250 ms after, and D75 after 3 s with no touch. The rest check runs
+  180 ms after a scroll, inside D3, so the bubble was invisible to it, and the disc stayed at the height restored from
+  the previous page. When the bubble was shown, it counted only as a 44px box, without the pulse ring that paints 5px
+  outside it (314 and 315 rested 9 and 11px from the ring, inside their 14 and 15.4px).
+- needle-rest.ts:
+  - a new input `above`, kept glow + 4 from the disc's box at every tier;
+  - bubbleInk grows the bubble's box to its ring at full breathe (5px, 5.48 around the 56px bubble);
+  - restReach: a third of the viewport, but for a disc under the bubble, as far as the nearest height clear of it
+    (130px on a 740 × 360 landscape phone).
+- needle.tsx: bubblesInBand reads every .cm-fab at its .cm-bubble, shown or faded. It skips only visibility:hidden,
+  takes the fade's translate back off, and never tests pointer-events or opacity. The MutationObserver re-checks when
+  the lazy bubble arrives or leaves. The bubble itself is untouched (ChatRoot, chat-styles.css, globals.css).
+- Replayed on the vendored engine: 313 → y580 at tier 0, 15px from the bubble's ink; 314 → 580; 315 → 574, 17px clear;
+  en 305 unchanged at 546; a dense page keeps 14px even at the lowest tier; landscape 290 → 160.
+- en and zh rest at different heights for one cell, by design. The rest is the nearest acceptable height from where
+  the disc already is, and that position carries between pages. en's licence line reaches into the band and moves
+  it; zh's ends at x188 and did not.
+
+Guards: test:needle-host §6, 26 checks (94/94 in all). It reads the ring's inset and breathe from chat-styles.css and
+the box from ChatRoot, holds the ink model to the ring measured on 305 within 1.5px, and replays the four tiles' rests.
+Plants:
+- the bubble dropped from the obstacle set (the disc stays at 634, overlapping 17 × 39);
+- the bubble as its box only (the tiles' 586 / 580);
+- the reach held to a third;
+- three source plants.
+needle-rest.test.mjs §9 (browser) asserts, at 320/390/1024, that a bubble arriving moves a parked disc with no scroll,
+and that shown, idle-faded and scroll-faded bubbles are each cleared by glow + 4; node --check 0.
+
+On the merged tip: needle-host 94, journey-shell 435, stacking 139, chat-availability, decomment 22, red-anchors 4935.
+On the R4-B tree: 16 suites exit 0, and red:journey-shell 181/181. tsc and the browser suite run in the next lock turn.
+Noted for the owner (with item 10): at zh 390 hub-top the dial sits over the 排行榜 row's right end, 9px from its
+chevron, because the hub's cards fill the right edge and nothing clear is in reach.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>

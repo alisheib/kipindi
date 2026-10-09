@@ -1,0 +1,85 @@
+  // THE CENSUS (round 5, widened by the integrator's review): every ✕ glyph in src — admin too — SITE BY SITE, and what it
+  // is. "CloseX" is the one ✕ (modal.tsx); "hand ✕" closes the surface it stands on but is drawn by hand, each with why;
+  // "row ✕" dismisses a row or clears a field — no surface's close; "glyph" is an ✕ that closes nothing. A new ✕ anywhere
+  // fails until it is classified, and a ✕ drawn by hand in a file that hosts a dialog CloseX serves fails outright.
+  type Kind = "CloseX" | "hand ✕" | "row ✕" | "glyph";
+  const C = (kind: Kind, why: string) => ({ kind, why });
+  const CENSUS: Record<string, Array<{ kind: Kind; why: string }>> = {
+    "src/components/ui/modal.tsx": [C("CloseX", "the one ✕: Modal's corner, ConfirmModal's, the sell and bet confirms' and the filter sheet's (8.1–8.6)")],
+    "src/components/ui/toast.tsx": [C("hand ✕", "a toast's dismiss, no dialog: a 14px glyph and the stack's `data-toast-dismiss` hook; on its title's capitals (8.11)")],
+    "src/components/ui/notice-bar.tsx": [C("hand ✕", "a bar's dismiss, no dialog: a 40px box reaching into its 32px row, on its one line")],
+    "src/components/wallet/kyc-first-deposit-notice.tsx": [C("hand ✕", "a notice's dismiss, no dialog: centred on the notice (R5-B's wallet; named)")],
+    "src/components/social/channels-panel.tsx": [C("hand ✕", "a non-modal card's close, no scrim: its 44px box sets the card's row; on its title's capitals (8.7)")],
+    "src/components/pwa/install-invite.tsx": [C("hand ✕", "a non-modal card's close, the channels card's twin: 44px; on its title's capitals (8.8)")],
+    "src/components/onboarding/first-visit-primer.tsx": [C("hand ✕", "the primer's SKIP, a 40px box in its step-dots row — no title beside it to stand on")],
+    "src/components/layout/notifications-panel.tsx": [C("hand ✕", "the bell panel's close — R5-B's lane (the bell, notifications); named, not changed"), C("row ✕", "a notification row's dismiss")],
+    "src/components/admin/admin-mobile-nav.tsx": [C("hand ✕", "the admin drawer's close — admin chrome, a 44px box")],
+    "src/app/notifications/row-actions.tsx": [C("row ✕", "a notification row's delete")],
+    "src/components/ui/search-box.tsx": [C("row ✕", "clears the field")],
+    "src/components/ui/query-bar.tsx": [C("row ✕", "clears the query")],
+    "src/components/ui/date-select.tsx": [C("row ✕", "back to the calendar")],
+    "src/app/admin/invites/invite-admin-client.tsx": [C("row ✕", "removes a staged row")],
+    "src/components/admin/kyc-review-controls.tsx": [C("row ✕", "removes a document request"), C("glyph", "the rejecting state of a button"), C("glyph", "Reject…")],
+    "src/app/admin/approvals/sof-review-client.tsx": [C("glyph", "Reject")],
+    "src/app/admin/ai-polls/poll-actions.tsx": [C("glyph", "a refused medallion"), C("glyph", "an error mark")],
+    "src/app/admin/aml/aml-actions-client.tsx": [C("glyph", "Reject")],
+    "src/app/admin/agents/[id]/doc-grid.tsx": [C("glyph", "a missing document")],
+    "src/app/admin/kyc/[id]/kyc-decision-rail.tsx": [C("glyph", "a failed check"), C("glyph", "Reject")],
+    "src/app/admin/payments/reconcile-controls.tsx": [C("glyph", "Write off")],
+    "src/app/admin/payments/retry-controls.tsx": [C("glyph", "Cancel the payout")],
+    "src/app/admin/payments/stuck-payout-controls.tsx": [C("glyph", "Return to player")],
+    "src/app/admin/players/[id]/page.tsx": [C("glyph", "a missing document"), C("glyph", "a missing requested document")],
+  };
+  /** Every `.tsx` under src, its comments out. */
+  const SRC: Array<[string, string]> = [];
+  const walkAll = (dir: string) => { for (const f of readdirSync(dir)) { const p = join(dir, f); if (statSync(p).isDirectory()) walkAll(p); else if (/\.tsx$/.test(f)) SRC.push([p.replace(/\\/g, "/"), read(p)]); } };
+  walkAll("src");
+  /** Each ✕ site of a source: what holds it (a button, a Button's `leading`, or neither) and the holder's aria-label. */
+  const xSites = (src: string) => [...src.matchAll(/<I\.x\b/g)].map((m) => {
+    const before = src.slice(0, m.index);
+    if (/leading=\{\s*$/.test(before)) return { holder: "leading", label: "" };
+    const open = Math.max(before.lastIndexOf("<button"), before.lastIndexOf("<Button"));
+    const shut = Math.max(before.lastIndexOf("</button>"), before.lastIndexOf("</Button>"));
+    if (open < 0 || open < shut) return { holder: "none", label: "" };
+    return { holder: "button", label: /aria-label=(\{[^}]*\}|"[^"]*")/.exec(before.slice(open))?.[1] ?? "" };
+  });
+  const DIALOG_HOST = /<(?:Modal|ConfirmModal)[\s>]|role="(?:alert)?dialog"/;
+  const census = (files: Array<[string, string]>) => {
+    const found: Record<string, ReturnType<typeof xSites>> = {};
+    for (const [f, s] of files) { const sites = xSites(s); if (sites.length) found[f] = sites; }
+    const problems: string[] = [];
+    for (const [f, sites] of Object.entries(found)) {
+      const kinds = CENSUS[f];
+      if (!kinds) { problems.push(`${f}: ${sites.length} ✕ unclassified`); continue; }
+      if (kinds.length !== sites.length) { problems.push(`${f}: ${sites.length} ✕ drawn, ${kinds.length} classified`); continue; }
+      sites.forEach((site, i) => {
+        const k = kinds[i].kind;
+        // A close or a dismiss is never filed as a mere glyph; a hand-drawn or row ✕ is a button that says what it does.
+        if (k === "glyph" && site.holder === "button" && /close|dismiss|skip|Close/.test(site.label)) problems.push(`${f} #${i + 1}: a ${site.label} filed as a glyph`);
+        if ((k === "hand ✕" || k === "row ✕") && (site.holder !== "button" || !site.label)) problems.push(`${f} #${i + 1}: a ${k} that is no labelled button`);
+        if (k === "CloseX" && f !== "src/components/ui/modal.tsx") problems.push(`${f} #${i + 1}: a second CloseX`);
+      });
+    }
+    for (const f of Object.keys(CENSUS)) if (!found[f]) problems.push(`${f}: classified, but draws no ✕`);
+    // ⛔ No ✕ drawn by hand where CloseX serves: a file that hosts a Modal, a ConfirmModal or a dialog draws its close as
+    // CloseX — the primer's SKIP (no title to stand on), the bell's panel (R5-B) and the admin drawer are named above.
+    const NAMED_HAND = ["src/components/onboarding/first-visit-primer.tsx", "src/components/layout/notifications-panel.tsx", "src/components/admin/admin-mobile-nav.tsx",
+      "src/components/social/channels-panel.tsx", "src/components/pwa/install-invite.tsx"];
+    for (const [f, s] of files) {
+      if (!DIALOG_HOST.test(s) || NAMED_HAND.includes(f)) continue;
+      const hand = (found[f] ?? []).filter((site, i) => site.holder === "button" && (CENSUS[f]?.[i]?.kind ?? "hand ✕") === "hand ✕");
+      if (hand.length) problems.push(`${f}: a dialog's ✕ drawn by hand (${hand.map((h) => h.label || "no label").join(", ")})`);
+    }
+    return { found, problems };
+  };
+  const cz = census(SRC);
+  const siteCount = Object.values(cz.found).reduce((n, s) => n + s.length, 0);
+  ok(`8.10 · the census: ${siteCount} ✕ drawn in ${Object.keys(cz.found).length} files of src, admin too, each SITE classified — one CloseX; ${Object.values(CENSUS).flat().filter((c) => c.kind === "hand ✕").length} closes drawn by hand, each named with why; no dialog's ✕ drawn by hand`,
+    cz.problems.length === 0, cz.problems.join(" | "));
+  const plantBet = SRC.map(([f, s]): [string, string] => [f, f.endsWith("bet-confirm-modal.tsx") ? s.replace(GUARDED_X, '<button type="button" onClick={onCancel} aria-label={t.common.cancel} className="mt-1 -mb-1 -mr-1.5 lg:-mr-3 shrink-0 inline-flex h-8 w-8"><I.x s={16} /></button>') : s]);
+  const plantSheet = SRC.map(([f, s]): [string, string] => [f, f.endsWith("ui/toast.tsx") ? s.replace("<I.x s={14} />", '<I.x s={14} /></button><button type="button" aria-label={t.common.close} onClick={onDismiss}><I.x s={16} />') : s]);
+  ok("8.10′ PLANT · round 4's hand-drawn ✕ back in the bet confirm, and a second ✕ drawn in the toast, are each reported",
+    census(plantBet).problems.length > 0 && census(plantSheet).problems.length > 0,
+    show({ bet: census(plantBet).problems, toast: census(plantSheet).problems }));
+  const misfiled = (() => { const keep = CENSUS["src/components/ui/toast.tsx"]; CENSUS["src/components/ui/toast.tsx"] = [C("glyph", "planted")]; const p = census(SRC).problems; CENSUS["src/components/ui/toast.tsx"] = keep; return p; })();
+  ok("8.10″ PLANT · a toast's dismiss filed as a mere glyph is reported", misfiled.some((p) => p.includes("filed as a glyph")), misfiled.join(" | "));

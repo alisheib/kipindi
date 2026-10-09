@@ -1,0 +1,28 @@
+Design-frozen guard (DESIGN_AUTHORITY B9/B10)
+
+  PASS no NEW inline design value beyond the ratchet
+  PASS no NEW raw design value in a component stylesheet
+  PASS the .tsx scanner reached the files it is ratcheting
+  PASS the .css scanner reached a component stylesheet at all
+  PASS the ratchets hold no stale exemptions
+  PASS no hand-rolled createPortal outside the shared primitives
+
+  PASS PC1 a literal BESIDE a var on the same line is seen
+  PASS PC2 a token-consuming border is NOT a violation
+  PASS PC3 a hand-typed radius is seen
+  PASS PC4 a hand-typed tracking is seen — the type scale is frozen too
+  PASS PC5 `rounded-[10px]` is seen …
+  PASS PC6 … and `shadow-[var(--shadow-3)]` is NOT — the brackets read a token
+  PASS PC7 a runtime-driven value is data, not design
+  PASS PC8 … but a literal colour beside a runtime binding still is
+  PASS PC9 a CSS keyword is the absence of a design value
+  PASS PC10 a `CSSProperties` constant is scanned like a style prop
+  PASS PC11 css: a normal declaration hand-typing a colour is seen
+  PASS PC12 css: a custom-property DEFINITION is not
+  PASS PC13 css: a declaration reading a token is not
+  PASS PC14 css: a hand-typed radius is seen
+
+  (ratchet holds 35 tsx file(s) / 154 value(s), 1 stylesheet(s) / 78 value(s) — every number may only shrink)
+
+PASS — design primitives are frozen
+

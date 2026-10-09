@@ -1,0 +1,14 @@
+
+red:margin-series — the guard must FAIL when the per-bucket defect returns
+
+  ok   CONTROL — the guard is GREEN on the unmodified tree
+  ok   plant located: the accumulators move INSIDE the bucket loop (A6, exactly)
+  ok   RED: the accumulators move INSIDE the bucket loop (A6, exactly) → guard exits non-zero
+  ok   restored byte-identical after: the accumulators move INSIDE the bucket loop (A6, exactly)
+  ok   plant located: the card re-advertises the 7–10% band it cannot honour
+  ok   RED: the card re-advertises the 7–10% band it cannot honour → guard exits non-zero
+  ok   restored byte-identical after: the card re-advertises the 7–10% band it cannot honour
+  ok   CONTROL — the guard is GREEN again after every restore
+
+8 passed, 0 failed
+

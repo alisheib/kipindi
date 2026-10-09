@@ -1,0 +1,11 @@
+red:implicit-submit: the "kit Button after WithdrawConfirm" plant follows the withdraw form's wrapper
+
+My money-form fix (329d1ad7) moved the withdraw form's body into an inner <div className="space-y-5">. The plant
+"a kit Button of no type drawn AFTER WithdrawConfirm" anchored on the guard's line followed directly by "</form>",
+which no longer exists, so red:implicit-submit failed with that plant unresolved (R3-C found it; M1 did not run this
+red). The plant now anchors on the guard's line, the wrapper's </div> and </form>, and puts the Button inside the
+wrapper, where a later edit would add it. Same defect, same check (4.5).
+
+test:implicit-submit green; red:implicit-submit 61/61 caught, 1/1 green held, and this plant PROVED.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>

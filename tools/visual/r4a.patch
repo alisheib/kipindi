@@ -1,0 +1,320 @@
+diff --git a/scripts/anchors/featured-card.anchors.mjs b/scripts/anchors/featured-card.anchors.mjs
+index 9918910e0..288a4de45 100644
+--- a/scripts/anchors/featured-card.anchors.mjs
++++ b/scripts/anchors/featured-card.anchors.mjs
+@@ -101,4 +101,40 @@ export const MUTATIONS = [
+     to: `.mcardp-traders .mcardp-befirst { color: var(--brand-300); }`,
+     expect: "2.15",
+   },
++  // Round 4 (2026-10-09): the top row's two facts, the cold-start pair's centre, the named pool.
++  {
++    name: "the tail's column gap goes back to the row's 5px (\"UCHUMI masaa 1 yamebaki\" at sw 390)",
++    file: "src/app/globals.css",
++    from: `.mcardp-tail { display: flex; flex-wrap: wrap; align-items: center; gap: 5px var(--sp-4); flex: 1 1 auto; min-width: 0; }`,
++    to: `.mcardp-tail { display: flex; flex-wrap: wrap; align-items: center; gap: 5px; flex: 1 1 auto; min-width: 0; }`,
++    expect: "2.16",
++  },
++  {
++    name: "the no-bets line stops being lowered (the pair back at 18 over 28, and the card 4.8px short)",
++    file: "src/app/globals.css",
++    from: `.mcardp-nobets:has(+ .mcardp-traders .mcardp-befirst) { margin-top: calc(6px + var(--mcard-empty-drop)); }`,
++    to: `.mcardp-nobets:has(+ .mcardp-traders .mcardp-befirst) { margin-top: 6px; }`,
++    expect: "2.17",
++  },
++  {
++    name: "the drop's constant drifts from the metrics it was derived from (the pair off-centre again)",
++    file: "src/app/globals.css",
++    from: `  --mcard-empty-drop: calc((var(--mcard-traders-h) / 2 + var(--mcard-act-mt) - 13.4px) / 2);`,
++    to: `  --mcard-empty-drop: calc((var(--mcard-traders-h) / 2 + var(--mcard-act-mt) - 8px) / 2);`,
++    expect: "2.17",
++  },
++  {
++    name: "the featured pool loses its word and its money face (a bare \"TZS 10,800\" again)",
++    file: "src/components/markets/market-card.tsx",
++    from: `          {fresh ? t.market.noPoolYet : featured ? <>{t.common.pool}{" "}<span className="amount">{formatTzs(volume)}</span></> : formatTzs(volume)}`,
++    to: `          {fresh ? t.market.noPoolYet : formatTzs(volume)}`,
++    expect: "2.18",
++  },
++  {
++    name: "the featured pool drops the row's line box (a selection-closed featured card grows 3px)",
++    file: "src/app/globals.css",
++    from: `.mcardp--featured .mcardp-meta > .mcardp-pool { font-size: var(--type-small); line-height: 16.5px; }`,
++    to: `.mcardp--featured .mcardp-meta > .mcardp-pool { font-size: var(--type-small); }`,
++    expect: "2.18",
++  },
+ ];
+diff --git a/scripts/featured-card.test.mts b/scripts/featured-card.test.mts
+index 8d308b06e..82629d2cf 100644
+--- a/scripts/featured-card.test.mts
++++ b/scripts/featured-card.test.mts
+@@ -196,14 +196,76 @@ const card = decomment(read("src/components/markets/market-card.tsx"));
+   // measured base (`--mcard-base`) was taken with, so the card and its skeleton keep their height.
+   const nbAt = css.indexOf("\n.mcardp-nobets {");
+   const nobets = nbAt < 0 ? "" : css.slice(nbAt, css.indexOf("}", nbAt));
++  // The pool slot: the no-pool words on a fresh card (round 3), the NAMED figure on the featured card (round 4, 2.18).
++  const POOL_SPAN = /<span data-market-part="pool" className=\{fresh \? "mcardp-nopool" : featured \? "mcardp-pool" : undefined\}>\s*\{fresh \? t\.market\.noPoolYet : featured \? <>\{t\.common\.pool\}\{" "\}<span className="amount">\{formatTzs\(volume\)\}<\/span><\/> : formatTzs\(volume\)\}\s*<\/span>/;
+   check("2.15 the empty state reads at the reading floor — no bets, be the first, and the featured no-pool words at --type-small; the no-bets line in --text-subtle on its measured 15px box",
+     nobets.includes("font-size: var(--type-small);") && nobets.includes("line-height: 15px;") && nobets.includes("color: var(--text-subtle);")
+       && !/letter-spacing/.test(nobets)
+       && css.includes("\n.mcardp-traders .mcardp-befirst { font-size: var(--type-small); }")
+       && css.includes("\n.mcardp--featured .mcardp-meta > .mcardp-nopool { font-size: var(--type-small); }")
+-      && /<span data-market-part="pool" className=\{fresh \? "mcardp-nopool" : undefined\}>\{fresh \? t\.market\.noPoolYet : formatTzs\(volume\)\}<\/span>/.test(card),
++      && POOL_SPAN.test(card),
+     nobets.replace(/\s+/g, " ").slice(0, 200));
+   check("2.15-control the no-bets rule is found (its slice holds the line's own centring)", nobets.includes("text-align: center;"));
++
++  // Round 4 (2026-10-09) — three more measured tile defects on the featured card.
++  // 2.16 · G1: at sw 390 the tail fitted the chips' line with "UCHUMI" and "masaa 1 yamebaki" 9px apart (tiles 045 077 089 102)
++  // — a word space and 2px, one phrase. The tail's COLUMN gap is the scale's 16, so the time keeps 16px from its category or
++  // the whole tail takes the next line; its ROW gap stays the row's 5px (the D65 stack); the time is still pushed right.
++  const ruleOf = (src: string, sel: string) => { const at = src.indexOf(`\n${sel} {`); return at < 0 ? "" : src.slice(at + 1, src.indexOf("}", at) + 1); };
++  const tailOk = (src: string) => {
++    const tail = ruleOf(src, ".mcardp-tail");
++    return tail.includes("gap: 5px var(--sp-4);") && tail.includes("flex-wrap: wrap;") && (src.match(/\n\.mcardp-tail \{/g) ?? []).length === 1
++      && ruleOf(src, ".mcardp-closes").includes("margin-left: auto;") && /--sp-4: 16px;/.test(src);
++  };
++  check("2.16 the featured card's time keeps at least 16px from its category — the tail's column gap is --sp-4 (16px), its row gap the row's 5px, the time still pushed right, and the glyph, word and time still one tail",
++    tailOk(css) && /<span className="mcardp-tail">\s*<span className="mcardp-catgrp">/.test(card), ruleOf(css, ".mcardp-tail"));
++  check("2.16-control the round-3 tail (5px both ways) IS detected", !tailOk(css.replace("gap: 5px var(--sp-4);", "gap: 5px;")));
++
++  // 2.17 · G5: "Hakuna dau bado" / "Kuwa wa kwanza kutabiri" sat 18px under the rail and 28px over YES/NO from 640 (tile 020:
++  // bar to y369, ink 388–425, buttons y454), 14 / 18 in Compact (013 015). The pair is lowered by --mcard-empty-drop, derived
++  // from the density's own tokens, and the row under it gives the same back (the card does not move). Re-derived here from the
++  // stylesheet's own numbers and the face's metrics at 13px — the cap top 2.7px into the 15px no-bets box, the invitation's
++  // baseline 4.7px below its row's middle — the space above the pair's ink and below it agree within half a pixel, both densities.
++  const pairRules = (src: string) => src.includes("\n.mcardp-nobets:has(+ .mcardp-traders .mcardp-befirst) { margin-top: calc(6px + var(--mcard-empty-drop)); }")
++    && src.includes("\n.mcardp-nobets + .mcardp-traders:has(.mcardp-befirst) { margin-bottom: calc(-1 * var(--mcard-empty-drop)); }");
++  const DROP = /\n {2}--mcard-empty-drop: calc\(\(var\(--mcard-traders-h\) \/ 2 \+ var\(--mcard-act-mt\) - (\d+(?:\.\d+)?)px\) \/ 2\);/;
++  const tok = (src: string, name: string, from: number) => Number(new RegExp(`--${name}: (\\d+(?:\\.\\d+)?)px;`).exec(src.slice(from))?.[1] ?? NaN);
++  const centred = (src: string) => {
++    const k = Number(DROP.exec(src)?.[1] ?? NaN);
++    const nbMt = Number(/margin-top: (\d+)px;/.exec(ruleOf(src, ".mcardp-nobets"))?.[1] ?? NaN);
++    const compactAt = src.indexOf('html:not([data-density="comfortable"]) {\n    --mcard-pt:');
++    const CAP_IN = 2.7, BASE_DROP = 4.7;
++    const at = (from: number) => {
++      const gap = tok(src, "mcard-gap", from), actMt = tok(src, "mcard-act-mt", from), th = tok(src, "mcard-traders-h", from);
++      const drop = (th / 2 + actMt - k) / 2;
++      return { drop, above: gap + nbMt + CAP_IN + drop, below: th / 2 - BASE_DROP + gap + actMt - drop };
++    };
++    const comfortable = at(0), compact = compactAt < 0 ? null : at(compactAt);
++    const ok = nbMt === 6 && compact !== null && [comfortable, compact].every((p) => p.drop > 0 && Math.abs(p.above - p.below) <= 0.5);
++    return { ok, k, nbMt, comfortable, compact };
++  };
++  const pair = centred(css);
++  check("2.17 the cold-start pair sits mid-way between the rail and the pick — lowered by --mcard-empty-drop (from the density's own tokens), the row under it giving the same back, so the space above and below its ink agrees within 0.5px in Comfortable and in Compact and the card keeps its height",
++    pairRules(css) && (css.match(/--mcard-empty-drop:/g) ?? []).length === 1 && pair.ok, JSON.stringify(pair));
++  check("2.17-control round 3's geometry (no drop: 18 over 28) IS detected, and so is a lost pair rule",
++    !centred(css.replace("+ var(--mcard-act-mt) - 13.4px) / 2);", "+ var(--mcard-act-mt) - 23.4px) / 2);")).ok
++      && !pairRules(css.replace("margin-top: calc(6px + var(--mcard-empty-drop));", "margin-top: 6px;")));
++
++  // 2.18 · G7: once there is a pool the featured card printed "TZS 10,800" at the row's 11px (cap 8px), in --text-subtle and
++  // with no word (tiles 141 142 145) — smaller than the "Hakuna bwawa bado" round 3 gave the same slot, and nothing said what
++  // the money was. It is NAMED in the board row's own word for it, the figure set as money, at the words' 13px.
++  const poolRule = "\n.mcardp--featured .mcardp-meta > .mcardp-pool { font-size: var(--type-small); line-height: 16.5px; }";
++  const poolInk = "\n.mcardp-pool > .amount { color: var(--text); font-weight: 600; }";
++  const poolWords = (["en", "sw", "zh"] as const).map((l) => (dict[l] as { common: Record<string, string> }).common.pool);
++  const heroRow = decomment(read("src/components/home/landing-hero.tsx"));
++  check("2.18 the featured card NAMES its pool — the board row's own word (`common.pool`: Pool / Bwawa / 奖池) before the figure set as money (`.amount`: mono, tabular), at the words' 13px in the card's figure ink (the count's --text, 600), on the row's own 16.5px line box; a grid card keeps its bare 11px figure",
++    POOL_SPAN.test(card) && css.includes(poolRule) && css.includes(poolInk)
++      && css.includes("\n.amount.amount { font-family: var(--font-mono); font-variant-numeric: tabular-nums;")
++      && /\{t\.common\.pool\}\{" "\}\{formatTzs\(row\.pool\)\}/.test(heroRow)
++      && JSON.stringify(poolWords) === JSON.stringify(["Pool", "Bwawa", "奖池"]),
++    JSON.stringify(poolWords));
++  check("2.18-control the round-3 bare figure IS detected",
++    !POOL_SPAN.test('<span data-market-part="pool" className={fresh ? "mcardp-nopool" : undefined}>{fresh ? t.market.noPoolYet : formatTzs(volume)}</span>'));
+ }
+ 
+ // ── §3 · call sites ────────────────────────────────────────────────────────────────────────────────
+diff --git a/scripts/journey-shell.test.mts b/scripts/journey-shell.test.mts
+index bac817a94..e84d8ce71 100644
+--- a/scripts/journey-shell.test.mts
++++ b/scripts/journey-shell.test.mts
+@@ -1381,12 +1381,14 @@ function g7Header(W: World, ok: Ok) {
+     strip.edge.length === 1 && strip.edge[0] === `${SHELL_SCOPE} .ticker-strip { padding-inline: calc(max(0px, (100% - var(--w-board)) / 2) + var(--sp-4)); }`
+       && strip.label.includes("padding-left: 16px;") && strip.sp4 === "16px" && strip.board === "1280px" && strip.labelMarkup,
+     show(strip));
+-  // ① The leading edge fades like the trailing one: the label's 24px of trailing padding lies OVER the run (solid to the
+-  // word's end, then nothing), and the run starts 24px further under it, so item 1 still rests 8px clear of the fade.
+-  ok("7.ticker-fade · the journey's run fades in under the LIVE label's trailing 24px as it fades out under the end cap — the label overlaps the run by exactly its padding and the run's rest position does not move (round 3, tiles 194 198 201 202 318 322 326 327 329)",
+-    strip.label.includes("padding-right: 24px;") && strip.label.includes("var(--bg-inset) 70%,") && strip.sp6 === "24px"
+-      && strip.fade === `${SHELL_SCOPE} .ticker-label { margin-right: calc(-1 * var(--sp-6)); background: linear-gradient(90deg, var(--bg-inset) 0%, var(--bg-inset) calc(100% - var(--sp-6)), oklch(11% 0.11 268 / 0) 100%); }`
+-      && strip.viewport.includes("padding-left: 8px;") && strip.runPad === `${SHELL_SCOPE} .ticker-viewport { padding-left: calc(8px + var(--sp-6)); }`,
++  // ① The leading edge fades like the trailing one: the label's trailing ground lies OVER the run, and the run starts that
++  // much further under it, so item 1 still rests 8px clear of the fade. ④ Round 4 (2026-10-09): that ground is 16px of
++  // SOLID after the word and THEN the 24px fade — round 3 faded from the word's very end, and a faded glyph stood 1px after
++  // "MUBASHARA" (tiles 321 325 330 332: label ink to x89, the run's from x91). The classic label keeps its 24px and 70%.
++  ok("7.ticker-fade · the journey's run fades in under the LIVE label as it fades out under the end cap — 16px of solid ground after the word, THEN the 24px fade, the label overlapping the run by exactly that 40px and item 1 resting 8px clear of the fade (round 3, tiles 194 198 201 202 318 322 326 327 329; round 4, tiles 321 325 330 332)",
++    strip.label.includes("padding-right: 24px;") && strip.label.includes("var(--bg-inset) 70%,") && strip.sp4 === "16px" && strip.sp6 === "24px"
++      && strip.fade === `${SHELL_SCOPE} .ticker-label { padding-right: calc(var(--sp-4) + var(--sp-6)); margin-right: calc(-1 * (var(--sp-4) + var(--sp-6))); background: linear-gradient(90deg, var(--bg-inset) 0%, var(--bg-inset) calc(100% - var(--sp-6)), oklch(11% 0.11 268 / 0) 100%); }`
++      && strip.viewport.includes("padding-left: 8px;") && strip.runPad === `${SHELL_SCOPE} .ticker-viewport { padding-left: calc(8px + var(--sp-4) + var(--sp-6)); }`,
+     show(strip));
+   // ② The separator sits mid-gap: gap 8 + the dot's 24 before it, the item's 32 after it (it read 19 and 47 on tile 145).
+   ok("7.ticker-dot · the journey's separator dot sits mid-gap — the item's 8px gap plus the dot's 24px margin before it equals the item's 32px trailing padding after it (round 3, tile 145)",
+@@ -2727,8 +2729,16 @@ ${s}`);
+     const tickerEdgeUnscoped = withCss((s) => s.replace(`${HOME_SCOPE} .ticker-strip {`, ".ticker-strip {"));
+     const tickerEdgeLost = withCss((s) => s.replace(`${HOME_SCOPE} .ticker-strip { padding-inline: calc(max(0px, (100% - var(--w-board)) / 2) + var(--sp-4)); }`, ""));
+     const tickerInline = withFile(WORLD, TICKER, (s) => s.replace(`<div className="ticker-label">`, `<div className="ticker-label" style={{ paddingLeft: 16 }}>`));
+-    const tickerFadeLost = withCss((s) => s.replace(`${HOME_SCOPE} .ticker-label { margin-right: calc(-1 * var(--sp-6));`, `${HOME_SCOPE} .ticker-label { margin-right: 0;`));
+-    const tickerRestMoves = withCss((s) => s.replace(`${HOME_SCOPE} .ticker-viewport { padding-left: calc(8px + var(--sp-6)); }`, `${HOME_SCOPE} .ticker-viewport { padding-left: 8px; }`));
++    const TICKER_GROUND = `${HOME_SCOPE} .ticker-label { padding-right: calc(var(--sp-4) + var(--sp-6)); margin-right: calc(-1 * (var(--sp-4) + var(--sp-6)));`;
++    const tickerFadeLost = withCss((s) => s.replace(TICKER_GROUND, `${HOME_SCOPE} .ticker-label { padding-right: calc(var(--sp-4) + var(--sp-6)); margin-right: 0;`));
++    const tickerRestMoves = withCss((s) => s.replace(`${HOME_SCOPE} .ticker-viewport { padding-left: calc(8px + var(--sp-4) + var(--sp-6)); }`, `${HOME_SCOPE} .ticker-viewport { padding-left: 8px; }`));
++    // Round 4 (G12): the fade touches the label again — round 3's own geometry put back whole (24px of fade from the word's
++    // end, the run 24px under it), and the solid stop pulled back to the word inside today's 40px.
++    const tickerFadeAtWord = withCss((s) => s
++      .replace(TICKER_GROUND, `${HOME_SCOPE} .ticker-label { margin-right: calc(-1 * var(--sp-6));`)
++      .replace(`${HOME_SCOPE} .ticker-viewport { padding-left: calc(8px + var(--sp-4) + var(--sp-6)); }`, `${HOME_SCOPE} .ticker-viewport { padding-left: calc(8px + var(--sp-6)); }`));
++    const tickerSolidLost = withCss((s) => s.replace(`${TICKER_GROUND} background: linear-gradient(90deg, var(--bg-inset) 0%, var(--bg-inset) calc(100% - var(--sp-6)),`,
++      `${TICKER_GROUND} background: linear-gradient(90deg, var(--bg-inset) 0%, var(--bg-inset) calc(100% - var(--sp-4) - var(--sp-6)),`));
+     const tickerDotOff = withCss((s) => s.replace(`${HOME_SCOPE} .ticker-sep { margin-left: var(--sp-6); }`, `${HOME_SCOPE} .ticker-sep { margin-left: var(--sp-5); }`));
+     const figure14 = withCss(inRule(".kp-jbal__fig", "font-size: 12px", "font-size: 14px"));
+     const gap8 = withCss(inRule(".kp-jhdr__row", "gap: 6px;", "gap: 8px;"));
+@@ -3093,9 +3103,13 @@ ${s}`);
+       { name: "the LIVE label's padding goes back inline", expect: at("7.ticker-edge ·"),
+         world: tickerInline, landed: changed(tickerInline, TICKER), landedAs: "an inline style no journey rule can reach" },
+       { name: "the label stops overlapping the run", expect: at("7.ticker-fade ·"),
+-        world: tickerFadeLost, landed: cssChanged(tickerFadeLost), landedAs: "a glyph cut at full ink right after LIVE again" },
++        world: tickerFadeLost, landed: cssChanged(tickerFadeLost), landedAs: "a glyph cut at full ink after LIVE again" },
+       { name: "the run starts under the label without its extra padding", expect: at("7.ticker-fade ·"),
+-        world: tickerRestMoves, landed: cssChanged(tickerRestMoves), landedAs: "item 1 rests under the fade, 24px left of where it was" },
++        world: tickerRestMoves, landed: cssChanged(tickerRestMoves), landedAs: "item 1 rests under the label's solid ground, 40px left of where it was" },
++      { name: "the fade touches the label again (round 3's 24px from the word's end)", expect: at("7.ticker-fade ·"),
++        world: tickerFadeAtWord, landed: cssChanged(tickerFadeAtWord), landedAs: "a faded glyph 1px after MUBASHARA — \"MUBASHARAsiku\"" },
++      { name: "the label's solid ground is lost inside its 40px (the fade starts at the word)", expect: at("7.ticker-fade ·"),
++        world: tickerSolidLost, landed: cssChanged(tickerSolidLost), landedAs: "a 40px fade from the word's end, its first glyph ~2px after the label" },
+       { name: "the separator dot's margin leaves the scale's 24", expect: at("7.ticker-dot ·"),
+         world: tickerDotOff, landed: cssChanged(tickerDotOff), landedAs: "28px before the dot and 32 after it" },
+       { name: "a 14px figure below 360", expect: at("7.figure ·"),
+diff --git a/src/app/globals.css b/src/app/globals.css
+index bc73799e6..83dc8ca30 100644
+--- a/src/app/globals.css
++++ b/src/app/globals.css
+@@ -882,6 +882,10 @@
+   --mcard-base-closed: 160px;
+   --mcard-h: calc(var(--mcard-base) + var(--mcard-pt) + 8 * var(--mcard-gap) + var(--mcard-act-mt) + var(--mcard-act-mb) + var(--mcard-traders-h) + var(--mcard-meta-mb));
+   --mcard-h-closed: calc(var(--mcard-base-closed) + var(--mcard-pt) + 6 * var(--mcard-gap) + var(--mcard-act-mt) + var(--mcard-act-mb) + var(--mcard-traders-h) + var(--mcard-meta-mb));
++  /* How far the cold-start pair ("No bets yet" / "Be the first to predict") is lowered to sit mid-way between the rail and
++     the pick — derived from the two tokens that differ between the densities, like --mcard-h, so Compact gets its own
++     (4.8px Comfortable, 1.8px Compact). It moves the pair, never the card: see `.mcardp-nobets` below. */
++  --mcard-empty-drop: calc((var(--mcard-traders-h) / 2 + var(--mcard-act-mt) - 13.4px) / 2);
+   /* UP & DOWN CARD RHYTHM (U3). The round card is a `.mcardp` too, so it already follows
+      --mcard-gap and --mcard-pt. These four are the spacing INSIDE it, which the market card
+      has no equivalent of. The values are the ones the card shipped with, moved out of the TSX
+@@ -1494,7 +1498,7 @@ body {
+    ① THE LEADING EDGE FADES LIKE THE TRAILING ONE. The run was clipped hard at the viewport's left edge, right after the
+       label, so a glyph stood cut at full ink there (x115 on tiles 198 201 202 318 322 326 327 329 at 390; 194 at 1280),
+       while the end cap fades the run's last 40px. The label's trailing 24px now lies OVER the run (the cap's own
+-      overlap, mirrored): solid to the end of the word, fading to nothing across the padding, and the viewport starts
++      overlap, mirrored): solid to the end of the word (16px past it since round 4, ④), fading to nothing across the padding, and the viewport starts
+       under it with 24px more padding, so item 1 still rests 8px clear of the fade and nothing moves at rest or in motion.
+    ② THE SEPARATOR SITS MID-GAP. Each item ends `gap 8 + dot margin 12` before its dot and `pr-8`'s 48 after it, so the
+       dot read 19px from one item and 47px from the next (tile 145: "Saturday?" ends 413, dot 433–436, "TZS 8K" 484). The
+@@ -1503,9 +1507,15 @@ body {
+    ③ FROM 1024 THE STRIP'S CONTENT KEEPS THE PAGE'S EDGE — 32px, and inside the 1280 board on a wider screen — as the
+       header's row does (`.kp-jhdr__row`: `--w-board`, 32px from 1024). The label is 16px in and the pause glyph's ink
+       ends 16px from the strip's end, so the strip pads 16 more each side: on tile 145 (1280) "LIVE" began at x16 and
+-      the pause glyph ended at x1263 under a header running 33–1247. Below 1024 both already sit on the 16px edge. */
+-:root:has(#kp-journey-shell) .ticker-label { margin-right: calc(-1 * var(--sp-6)); background: linear-gradient(90deg, var(--bg-inset) 0%, var(--bg-inset) calc(100% - var(--sp-6)), oklch(11% 0.11 268 / 0) 100%); }
+-:root:has(#kp-journey-shell) .ticker-viewport { padding-left: calc(8px + var(--sp-6)); }
++      the pause glyph ended at x1263 under a header running 33–1247. Below 1024 both already sit on the 16px edge.
++   ④ CLEAR GROUND BEFORE THE FADE (round 4, 2026-10-09 · G12 [321 325 330 332]). ① faded the run in from the word's very
++      end, so a faded glyph stood 1px after the label (sw 390: "MUBASHARA" ink ends x89, the run's ink from x91, full again
++      at x112–114) and read "MUBASHARAsiku" — where round 3's strip had ~20px of plain background. The label's
++      trailing ground is now 16px of solid (`--sp-4`, the clear the end cap keeps before the pause glyph) and THEN the 24px
++      fade (`--sp-6`): 40px over the run, as the end cap's own 40. The run's ink can show no closer than 16px after the
++      word, a glyph is still never cut at full ink, and item 1 rests 8px clear of the fade as before — 16px further right. */
++:root:has(#kp-journey-shell) .ticker-label { padding-right: calc(var(--sp-4) + var(--sp-6)); margin-right: calc(-1 * (var(--sp-4) + var(--sp-6))); background: linear-gradient(90deg, var(--bg-inset) 0%, var(--bg-inset) calc(100% - var(--sp-6)), oklch(11% 0.11 268 / 0) 100%); }
++:root:has(#kp-journey-shell) .ticker-viewport { padding-left: calc(8px + var(--sp-4) + var(--sp-6)); }
+ :root:has(#kp-journey-shell) .ticker-item { padding-right: var(--sp-8); }
+ :root:has(#kp-journey-shell) .ticker-sep { margin-left: var(--sp-6); }
+ @media (min-width: 1024px) {
+@@ -4919,12 +4929,19 @@ html[data-sheet-open] .route-enter { animation: none; }
+    line 2; at 360–412 the time left stood alone on a right-aligned line. `.mcardp-catgrp` binds the glyph
+    to its word (they never part); `.mcardp-tail` carries that pair and the time, so the tail either fits on
+    the chips' line or drops to the next one WHOLE — category left, time right (`margin-left: auto` below).
+-   The gaps are the row's own 5px, so a row that fitted before (English, Chinese, every width ≥ 768) still
+-   fits, at the same widths, to the pixel. The tail wraps inside itself only if it cannot fit a line on its
++   The gaps were the row's own 5px, so a row that fitted before (English, Chinese, every width ≥ 768) still
++   fitted, at the same widths, to the pixel (the column gap is 16 since round 4, below). The tail wraps inside itself only if it cannot fit a line on its
+    own (large Android text, D65): then the category keeps its line and the time takes the next.
+    ⭐ The glyph's 2px nudge is now the margin of whatever precedes the tail: it separates the glyph from the
+-   chip before it exactly as before, and it no longer indents the glyph when the tail starts a line. */
+-.mcardp-tail { display: flex; flex-wrap: wrap; align-items: center; gap: 5px; flex: 1 1 auto; min-width: 0; }
++   chip before it exactly as before, and it no longer indents the glyph when the tail starts a line.
++   2026-10-09 · round 4, G1 [045 077 089 102] · THE CATEGORY AND THE TIME ARE TWO FACTS, NEVER ONE PHRASE. With the
++   row's 5px between them the tail fitted the chips' line at sw 390 with 9px of ink between "UCHUMI" and "masaa 1
++   yamebaki" — one word space plus 2px, so it read as one phrase (31px at 412, 124 in English at 390). The tail's
++   COLUMN gap is now the scale's 16 (`--sp-4`): it holds the line only while the time can stand at least 16px clear of
++   the category (~18px of ink), and otherwise drops down whole, as at 320–360 — category left, time right. Its ROW gap
++   stays the row's 5px, so the D65 stack (time under its category) is unchanged. Only the featured card's tail has two
++   items, so no other card can move. */
++.mcardp-tail { display: flex; flex-wrap: wrap; align-items: center; gap: 5px var(--sp-4); flex: 1 1 auto; min-width: 0; }
+ .mcardp-catgrp { display: flex; align-items: center; gap: 5px; min-width: 0; }
+ .mcardp-top > :has(+ .mcardp-tail) { margin-right: 2px; }
+ /* §T3 0.14em, was 0.12 — tracking in the shared eyebrow rule beside `.amount`. */
+@@ -5132,6 +5149,18 @@ html[data-sheet-open] .route-enter { animation: none; }
+    13px in the row's own 1.5 is 19.5px, inside the row's 24px (22px Compact) `--mcard-traders-h`, so nothing moves. */
+ .mcardp-befirst { color: var(--brand-300); }
+ .mcardp-traders .mcardp-befirst { font-size: var(--type-small); }
++/* ⭐ THE PAIR SITS MID-WAY BETWEEN THE RAIL AND THE PICK (round 4, 2026-10-09 · G5 [002 013 015 017 018 020]). "Hakuna dau
++   bado" / "Kuwa wa kwanza kutabiri" sat 18px under the rail and 28px over YES/NO from 640 (bar ends y369, ink 388–425,
++   buttons y454 on tile 020), 14 / 18 in Compact (013, 015) — the same in English and Chinese. Measured ink to ink: the
++   first line's cap top is 2.7px into its 15px box (JetBrains Mono's 13px content area is 17.2px), the invitation's
++   baseline 4.7px below its row's middle, so
++     above = gap + 6 + 2.7            below = traders-h / 2 − 4.7 + gap + act-mt
++   and lowering the pair by half the difference, `--mcard-empty-drop` = (traders-h / 2 + act-mt − 13.4) / 2, makes them
++   equal: 23.5 / 23.5 from 640, 16.5 / 16.5 in Compact. The no-bets line takes that much more top margin and the row under
++   it gives the same back below, so every row past the pair, the card and its skeleton (`--mcard-base`) stay where they
++   were. Only this pair: the no-bets line alone, or over a predictor count, is a different shape and keeps its place. */
++.mcardp-nobets:has(+ .mcardp-traders .mcardp-befirst) { margin-top: calc(6px + var(--mcard-empty-drop)); }
++.mcardp-nobets + .mcardp-traders:has(.mcardp-befirst) { margin-bottom: calc(-1 * var(--mcard-empty-drop)); }
+ 
+ /* ── One-sided (landing v3 · WP6, 2026-09-27) ─────────────────────────────────
+    Money on ONE side has no price (MOBILE-VISUAL ruling 13): the card keeps the
+@@ -5223,6 +5252,16 @@ html[data-sheet-open] .route-enter { animation: none; }
+    countdown — "masaa 21 yamebaki", 112px — and at 360 the words at 13px would need 302 of 296px, so its one-line meta
+    row (`.mcardp-meta`, D35) would wrap and the card would grow a row. The row is 44px tall either way. */
+ .mcardp--featured .mcardp-meta > .mcardp-nopool { font-size: var(--type-small); }
++/* ⭐ …AND THE POOL ITSELF, ONCE THERE IS ONE (round 4, 2026-10-09 · G7 [141 142 145]). "TZS 10,800" stood in that slot as the
++   row's 11px figure (cap height 8px), in --text-subtle and with no word: nothing said it was the pool, and the words that
++   replaced it on a fresh card read larger than the money. It now says what the money is in the landing board's own words
++   for it ("Bwawa TZS 10,800", `common.pool`, the row under this card — one thing, one wording on a page), at the same
++   13px as the words, the label in the row's ink and the figure as money (`.amount`: mono, tabular, untracked, whole) in
++   the card's figure ink — the predictor count's --text and 600. The row is 44px tall beside the info button, but a
++   selection-closed featured card has no button, so the line box stays the row's own 16.5px (11px × the body's 1.5) and
++   that card keeps its height too. Width: 16 characters at 7.8px, 125px (+ 7 + 44 against 256 at 320). */
++.mcardp--featured .mcardp-meta > .mcardp-pool { font-size: var(--type-small); line-height: 16.5px; }
++.mcardp-pool > .amount { color: var(--text); font-weight: 600; }
+ @media (min-width: 640px) {
+   .mcardp-src--featured { order: 0; max-inline-size: 60ch; }
+   .mcardp--featured > .mcardp-meta,
+diff --git a/src/components/markets/market-card.tsx b/src/components/markets/market-card.tsx
+index b52650fc5..bae3665e8 100644
+--- a/src/components/markets/market-card.tsx
++++ b/src/components/markets/market-card.tsx
+@@ -486,7 +486,8 @@ export function MarketCard({
+             glyph and its word are one unit that never parts (`.mcardp-catgrp`), and that unit plus the time
+             are the tail (`.mcardp-tail`): it stays on the chips' line while it fits and otherwise moves down
+             WHOLE, the category on the left and the time on the right — the row's own design on its own line.
+-            DOM order (status, signal, category, time) is unchanged. */}
++            DOM order (status, signal, category, time) is unchanged. Round 4 (G1): the time keeps at least 16px from
++            the category, or the tail takes the next line — "UCHUMI masaa 1 yamebaki" read as one phrase at 9px. */}
+         <span className="mcardp-tail">
+           <span className="mcardp-catgrp">
+             <span className="mcardp-catico"><CatIco /></span>
+@@ -669,8 +670,13 @@ export function MarketCard({
+       )}
+ 
+       <div className="mcardp-meta">
+-        {/* `mcardp-nopool`: the words, not a figure — read at 13px on the featured card (globals.css, round 3). */}
+-        <span data-market-part="pool" className={fresh ? "mcardp-nopool" : undefined}>{fresh ? t.market.noPoolYet : formatTzs(volume)}</span>
++        {/* `mcardp-nopool`: the words, not a figure — read at 13px on the featured card (globals.css, round 3).
++            `mcardp-pool` (round 4, G7): once there is a pool the featured card NAMES it, in the board row's own words
++            ("Bwawa TZS 10,800", `common.pool`), the figure set as money (`.amount`) at the same 13px. A grid card's row
++            also carries its countdown, so its figure keeps the row's 11px and no word (its one-line row, D35, is full at 360). */}
++        <span data-market-part="pool" className={fresh ? "mcardp-nopool" : featured ? "mcardp-pool" : undefined}>
++          {fresh ? t.market.noPoolYet : featured ? <>{t.common.pool}{" "}<span className="amount">{formatTzs(volume)}</span></> : formatTzs(volume)}
++        </span>
+         {comments != null && comments > 0 && (
+           <>
+             <span className="dot" />

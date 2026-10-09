@@ -1,0 +1,42 @@
+Visual pass round 5 (R5-E): every market title balanced with its figures whole, Chinese units and currencies kept with their numbers, no invisible character inserted into any sentence, the keep-words helpers linear and cluster-safe
+
+From round 5's read of 88ee1a42 and the third code review (H1–H5). Every item re-measured first and brought, with its
+siblings, to one convention.
+
+- F1/F4: the featured card's title wore `text-wrap: pretty`, Chromium's orphan rule — at zh 320 it pulled one character
+  of 超过 down with the unbreakable "200毫米" ("…降雨超 / 过200毫米", tile 029: 163 + 76px); elsewhere it is plain greedy
+  ("…exceeds 200mm / in July", tile 023). It takes the card's own `balance`, as do the board rows: "达累斯萨拉姆七月 /
+  降雨超过200毫米", "Dar es Salaam rainfall / exceeds 200mm in July". Over 16 zh titles at 4 widths `balance` cuts the
+  fewest Chinese words (featured 2 vs greedy 7 / pretty 14). Every title surface now follows one convention,
+  keepFigures + balance: the /live carousel, /results notable, /proposals list and page, the classic position card,
+  /fairness, the bet dialog's title (and its result subtitle and the performance best-market line keep figures whole).
+- H1: keepFigures took any one or two ideographs as a unit and dropped a currency before a unit word: "超过[15万美]元？",
+  "[7月降]雨量", "TZS [4,200以上]". A closed Chinese unit list (longest first) and a currency head: "超过[15万美元]？",
+  "[7月]降雨量", "[TZS 4,200]以上", "[8月1日]收于", "Simba watapata [TZS 1 bilioni]?"; a month keeps only a day (so
+  "December" / "2026" may wrap at 320). Over the reviewer's 20,000-title corpus the words are unchanged.
+- H2/H3: no helper glues across more than one non-collapsible space (`KEPT_SPACE`, every keep helper), and keepNameEnd
+  never splits a grapheme cluster ICU keeps whole (0 splits over planes 0, 1, 14 in nine contexts — 1,165,680 strings).
+- H4: the empty states inserted U+2060 and U+00A0 into the dictionary's sentences; they now draw held runs as nowrap
+  spans, nothing inserted (0 inserted characters over 7,968 sentences, the UAX #14 break opportunities identical). The
+  zh break date is one run. The Up & Down stamp is one span; every amount in a toast is an `.amount` (§M4) through one
+  toaster-wide rule (the refused sale's no-break space removed); "TZS −4,200", "−TZS 1,234" read whole (moneyRuns).
+- The CJK gap is a generated space (`.kp-cjk-gap::after`), never copied, searched or in textContent.
+- H5: keep-units.tsx (no importers) deleted.
+- Timing: every helper linear (keepText 498 → 76 ms, keepLastWords 234 → 0.3 ms on 10,000-character inputs); exactly
+  equivalent output over 28,563 strings × 8 helpers.
+
+Guards: test:visual-pass-r5e (60 checks: the tile reproductions, the title census, the inserted-character ratchet).
+Mutation proof: 27 planted, 27 caught on the named check, all restored byte-identical. Re-pins (each with its reason):
+r3c, r4d 3.9, r4i, r4k, journey-tickets, sell-price-guard (and two plants), popup-fit, the money-format anchor.
+
+Merged onto R5-B/C/D/F (rebased on main 118fc75c): /results' notable title keeps R5-C's brand hover with R5-E's balance and
+whole figures; r5e 2.1's pin follows that hover ink. On the merged tree: 153 suites (the reds main's own or the shared
+Prisma client's), red:journey-tickets/sell-price-guard/visual-pass-r4k, and the 27-plant proof re-run clean.
+
+Owner items: very wide figures on a market h1 at 320; Chinese words still cut under balance at 320 (fewer, not zero);
+mono amounts in every toast; a month and its year may wrap apart. S12: none.
+
+Classic viewers see the same balanced titles, whole figures, empty states and toast amounts (shared bodies); classic
+chrome is untouched.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>

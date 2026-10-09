@@ -1,0 +1,10 @@
+Vodacom S6 A8i-2 follow-up: the Up & Down card's UD-16 comment says what the card is today - its link an anchor stretched over its content, the controls raised above the link (comment only)
+
+A8i-2's draft reported this comment as made untrue and left it outside its touch list: it still said the <article> is
+the link (role="link"). The card's link has since become an anchor stretched OVER the card's content (.mcardp-open, z-index 2 over its
+rows at 1) with the action block raised above it (.ud-act, z-index 3), so a tap in the controls area never reaches
+the link, and the wrapper's click and Enter/Space swallowing is defence in depth; the header, countdown and stats sit
+beneath the link, so a tap there opens the round. No behaviour and no served byte changes.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+

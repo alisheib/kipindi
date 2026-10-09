@@ -1,0 +1,14 @@
+test(updown-source-class): §2's "never sourceDomain" reads the payload, not the whole module - the chart's server-side vendor call made it fail on every tree
+
+§2 asked `!/sourceDomain/` of all of updown-board.ts. Since c6f798b3 (CHART-SPRINT-2, the vendor tier) the module
+hands the stored asset's sourceDomain to vendorBarsFor on the server (getAssetTerminalSeries), which returns bars and
+never the domain - so the check failed on main whatever the payload held, and red:updown-source-class's "caught"
+verdicts were read against a red baseline. It now reads what reaches a player: the exported BoardAsset shape and the
+asset literal each builder returns (both carry `sourceClass: publicSourceClassFor(a)`); three blocks, none may
+name sourceDomain.
+
+Proof on OMEGA-COMPILE01 (2026-10-08, main 042b52e4): test:updown-source-class 40/0 (39/1 before);
+red:updown-source-class 5/5 against a green baseline; a sourceDomain planted in getRoundDetail's asset fails exactly
+the new §2 (restored after).
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>

@@ -1,0 +1,8 @@
+docs(vodacom): S4-COPY-AUDIT - the card's time left found wrong in Swahili (ships with S12), and the referee consent line signed off
+
+Read from WP12's tiles as Ali's Swahili reviewer (VODACOM-PLAN section 0h point 3): market.timeLeftH "masaa {n} yamebaki"
+read "masaa 1 yamebaki" for one hour - the standard noun is saa, and one takes the singular verb. A correction to a live
+word, so it ships with S12 (prepared on branch vodacom-s12-timeleft). Item 5 signs off agent.refConsentRule, the new
+line a042dc65 shipped (a new sentence, not a correction).
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>

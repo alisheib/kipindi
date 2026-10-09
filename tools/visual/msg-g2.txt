@@ -1,0 +1,37 @@
+Visual pass G2: the Akaunti hub without bands or orphans, the profile invite's spacing, the footer pill, the channels panel's ×
+
+The owner's rule (2026-10-08): only perfect visual and logical results. Every item was measured on the tiles with pixel
+scans first.
+
+- "Pendekeza na upate zawadi" wrapped beside its INAKUJA badge (tiles 124, 255, 297), because the badge took 84px of
+  the label's line. Label and badge now share a head (.kp-hub__head). From 360 the badge drops under the label like a
+  subtitle when both do not fit, and the row stays 56px. Below 360 it never wraps, which would make a 72px row. DOM
+  order is unchanged.
+- The guest "Msaada" subtitle wrapped word by word (73px row at 360 with "pepe" alone). HubSub splits a subtitle at the
+  dictionary's own " · " into parts that never break inside themselves. The dots are decorative, centred in the gaps,
+  and clipped at a line's start. The same applies to every dotted hub subtitle, which look the same on one line.
+- The two-column hub opened 73px bands under shorter cards (257, 280, 258, 300, 125). It is now two flex columns, cut
+  where they are most nearly level (hubColumnCut on wideRowCount's rows; the staff card always goes last on the
+  right). DOM, keyboard and reading order are hubRowsFor's. Below 1024 the columns stack and phones are
+  pixel-identical. The visible change: cards no longer pair side by side at 1024+.
+- The footer's proposals link left its COMING SOON pill alone on a line at 1024 (299, 307) and at en 768. That link
+  alone gets text-balance (FooterLink's new balance prop).
+- /profile/invite: "MARAFIKI ZAKO" sat 6–7px under the buttons against the page's 28px rhythm (a !mt-1 override). The
+  label, its note and the list are now one block taking the stack's 24px, with 12px between label and list. The diff
+  is mostly re-indentation.
+- Orphans: the zh card-size hint ("…任何内 / 容。") keeps its words whole (.kp-hub__sub:lang(zh)), and the guest lead
+  ("zako.", "tickets.") is balanced.
+- The channels panel's × sat 13.5px below the title's line and the first row 62.5px from the title against 46px
+  between rows. It is now items-center with a 2px top gap: the × on the title's line and 46px everywhere. Class
+  changes only.
+
+Reported, not changed: the badge names are bilingual EN · SW in every locale. They are hard-coded in
+achievements.ts, so this goes to S12 (dictionary keys per locale). Also for S12: a shorter sw help subtitle ("Maswali ·
+Simu · Barua pepe") would give a 56px row at 320/360.
+
+On the merged tree: journey-account 85/85, journey-shell 431/431, ui-consistency, density-contract, dead-css,
+design-frozen, stacking 129/129, css-vars-defined, popup-fit, social-panel 53/53, tap-target, spacing-scale. On the
+G2 tree: tsc 0 under the shared lock, and 50 suites green. No dictionary string changed. Browser proof on the
+combined branch under the lock.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>

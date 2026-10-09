@@ -1,0 +1,42 @@
+
+§1 · the LIVE signal wears neutral ink and the broadcast red
+PASS §1a time-left (card, featured top-right, board row), the topic live count, the hero figure and its pip: no betting ink
+
+§2 · a countdown's last seconds pulse; they do not turn rose
+PASS §2a the pod, the board panel and the card pulse in the final 30 s without rose digits
+
+§3 · planted controls
+PASS §3a control · every planted copy found its target
+PASS §3b control · YES-green time-left is reported — .mcardp-meta .live paints the betting pair; .mcardp-meta .live is not the neutral --text-muted
+PASS §3c control · the YES pip and glow are reported — .kp-proof__pip wears the YES ink or glow; .kp-proof__pip is not the broadcast --live-400
+PASS §3d control · a YES-green hero figure is reported — the hero's open-markets figure is var(--yes-400)
+PASS §3e control · rose pod digits are reported — round-countdown.tsx: an urgent branch paints the betting pair
+PASS §3f control · rose card digits are reported — updown-card.tsx: an urgent branch paints the betting pair; the card's digits do not take the phase tone
+PASS §3g control · a YES-green board-row time left is reported — .kp-qrow__left paints the betting pair
+PASS §3h control · a YES-green featured top-right time is reported — .mcardp-closes paints the betting pair
+
+§4 · the Up & Down match: the clock, the rail and the playhead never wear a side's ink
+PASS §4a the clock row, the rail, the posts, the lane and the playhead: no betting ink
+PASS §4b control · every planted copy found its target
+PASS §4c control · rose digits in the stylesheet are reported — .kp-udclock__digits paints the betting pair
+PASS §4d control · rose digits inline in the leaf are reported — updown-match-digits.tsx paints the betting pair
+
+§5 · the 24h move wears neutral ink, one reading on every card
+PASS §5a the featured and the grid card print the 24h move through ONE neutral component
+PASS §5b the card is the only surface that prints a 24h move, and the retired `twentyFourHourMove` is gone
+PASS §5c control · every planted copy found its target
+PASS §5d control · a YES/NO-inked move (inline, the retired grid spelling) is reported — the move component paints the betting pair; the move component sets an inline style (its ink is the stylesheet's)
+PASS §5e control · a YES-green move in the stylesheet is reported — .mcardp-h24 paints the betting pair
+PASS §5f control · a grid card with its own move renderer again is reported — a second move renderer is back in market-card.tsx; the grid card does not print its move through the one component
+
+§6 · a form's validation line wears the danger ink, never the betting NO pair
+PASS §6a the market wizard's errors wear the danger ink — no betting class anywhere in it
+PASS §6b short-title-control.tsx names no side — no betting class
+PASS §6b short-title-drafts.tsx names no side — no betting class
+PASS §6c the AI poll form's validation lines wear the danger ink
+PASS §6d control · every planted copy found its target
+PASS §6e control · a wizard refusal in the NO ink is reported — text-no-300
+PASS §6f control · an AI poll form error in the NO ink is reported —         {dateError && <p className="mt-1 text-body-sm text-no-300">{dateError}</p>}
+
+ALL PASS — 27 passed, 0 failed
+

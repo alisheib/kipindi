@@ -1,0 +1,19 @@
+﻿i18n parity guard
+
+  PASS sw: no missing keys
+  PASS sw: no extra keys
+  PASS zh: no missing keys
+  PASS zh: no extra keys
+  PASS sw: no untranslated values
+  PASS zh: no untranslated values
+  PASS sw: placeholder parity
+  PASS zh: placeholder parity
+  PASS no hardcoded fee percentages in copy (use {pct})
+  PASS the admin console pins English on BOTH render paths (the gate pages and the shell), each with lang="en"
+  PASS CONTROL · that check FAILS on the layout with one pin dropped
+  PASS a pinned provider never reads the player's cookie or saved choice, and setLocale is a no-op inside it
+  PASS CONTROL · that check FAILS on a provider whose effect reads the cookie anyway
+  PASS no file inside the console mounts an UNPINNED I18nProvider
+  PASS CONTROL · the scan read the console (100+ files) and would catch an unpinned provider
+
+ALL PASS — en=2628 sw=2628 zh=2628 keys

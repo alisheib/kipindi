@@ -1,0 +1,10 @@
+docs(vodacom): WP12's owed runs recorded (the v2 compare at main among them), the tiles' findings as section 0h point 64, rule 8c's G1 clause; S6 stays open for the visual pass
+
+Section 0i's WP12 bullet records every owed run as it ran on 2026-10-08 - A2, B2 (the v2 compare at main: every
+difference in 224 cells attributed, no unexpected S6 difference), C, D, G, E and F - and the fixes LIVE as 8e0f1e69
+with their proof. Point 64 records what the 333 tiles found: fixed and live, held for S12, not bugs, and everything
+else being fixed under the owner's rule of 2026-10-08 (only perfect visual and logical results). DESIGN_AUTHORITY
+rule 8c: G1's first run is green, so its owed clause goes. IN FLIGHT: S7 WP0 live (ce2c3afa), the Modal focus fix
+and its proof, WP1 written. S6 closes after the visual pass, not now.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>

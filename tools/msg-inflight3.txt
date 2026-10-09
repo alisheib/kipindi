@@ -1,0 +1,3 @@
+docs(vodacom): A8i-2 reviewed in three lenses and revised on vodacom-a8i2 (2e0aa062) - suite green, red twin 103/103; the drives and the battery next
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>

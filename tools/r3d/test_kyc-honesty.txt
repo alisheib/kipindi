@@ -1,0 +1,21 @@
+﻿PASS the pre-submission step-2 card still exists
+PASS step-2 card does NOT render t.profile.idVerified
+PASS step-2 card uses the truthful idSaved label instead
+PASS idVerified is still used (the approval burst)
+PASS idVerified at offset 42354 is gated on APPROVED
+PASS en has profile.idSaved
+PASS en idSaved does not itself claim verification
+PASS sw has profile.idSaved
+PASS sw idSaved does not itself claim verification
+PASS zh has profile.idSaved
+PASS zh idSaved does not itself claim verification
+[audit] KYC nida.check.requested usr_honesty_probe User#usr_honesty_probe
+PASS verifyNida still accepts a well-formed NIDA
+PASS it does NOT claim an authority check happened
+PASS it invents no match score
+PASS it invents no gender
+PASS it echoes the player's own claim unchanged
+PASS no hardcoded 0.97 match score in nida.ts code
+PASS no hardcoded gender: "M" in nida.ts code
+
+ALL PASS — 18 passed, 0 failed

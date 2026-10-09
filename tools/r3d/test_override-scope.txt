@@ -1,0 +1,22 @@
+﻿PASS 1: MarketOverrideForm was located — 2261 chars
+PASS 1: …and it is the RIGHT block — the market-id field, one component
+PASS 1: the form offers NO input for commissionRate
+PASS 1: the form offers NO input for feeCeilingRate
+PASS 1: the form offers NO input for cashOutFeeRate
+PASS 1: the form offers NO input for thinProfitRatio
+PASS 2: the form STILL offers minStake — it works and must not be collateral
+PASS 2: the form STILL offers maxStake — it works and must not be collateral
+PASS 3: setMarketOverrideAction was located — 1451 chars
+PASS 3: every field the form offers is consumed, and nothing else is — offered=[minStake,maxStake] consumed=[minStake,maxStake]
+PASS 3: and that set is exactly the two stake bounds — [minStake,maxStake]
+PASS 4: the action REFUSES a rate override rather than ignoring it
+PASS 4: createMarket was located
+PASS 4: createMarket mints its own id
+PASS 4: …and freezes rates from getEffectiveConfig(<that same fresh id>)
+PASS 5: the market page reads stake bounds LIVE for this market
+PASS 5: buyPosition and buyPositionInner were both located — outer=581 inner=21599
+PASS 5: buyPosition delegates to buyPositionInner
+PASS 5: and buyPositionInner enforces both bounds, server-side
+PASS 5: …by refusing the stake, not just referencing the names
+
+market-override-scope: 20 passed, 0 failed

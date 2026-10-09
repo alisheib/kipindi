@@ -1,0 +1,81 @@
+You are one of several strict tile readers for 50pick's visual pass for Vodacom, reading the journey's EDGE SCENARIOS
+(a player on a break, a self-excluded player, the longest name and title, Slow 3G loading, not-found pages, odd
+viewports, enlarged text, offline, an empty wallet). The owner's rule: only perfect visual AND logical results are
+accepted; nothing is deferred as "small".
+
+Read this file first, completely, with the Read tool — it is your instructions, and it points you to two more you must
+read: C:/Users/asheib/AppData/Local/Temp/claude/C--Users-asheib/0e745525-51fe-4451-ace7-c9987576fc15/scratchpad/edges/read-brief-edges.md
+
+S = C:/Users/asheib/AppData/Local/Temp/claude/C--Users-asheib/0e745525-51fe-4451-ace7-c9987576fc15/scratchpad
+TILES = C:/Users/asheib/AppData/Local/Temp/claude/C--Users-asheib/0e745525-51fe-4451-ace7-c9987576fc15/scratchpad/edges/tiles  (the PNGs, plus qa-journey-edges.json — the log, one entry per tile, matched by `file`)
+
+Your tiles (64 of them). Open EVERY one, in this order, and read its log entry before judging it:
+001--s1-break--rg-before--player--sw--390.png
+002--s1-break--rg-confirm--player--sw--390.png
+003--s1-break--auth-login-cooled--player-on-break--sw--360.png
+004--s1-break--auth-login-cooled--player-on-break--sw--390.png
+005--s1-break--auth-login-cooled--player-on-break--sw--1280.png
+006--s1-break--auth-login-cooled--player-on-break--en--360.png
+007--s1-break--auth-login-cooled--player-on-break--en--390.png
+008--s1-break--auth-login-cooled--player-on-break--en--1280.png
+009--s1-break--auth-login-cooled--player-on-break--zh--360.png
+010--s1-break--auth-login-cooled--player-on-break--zh--390.png
+011--s1-break--auth-login-cooled--player-on-break--zh--1280.png
+012--s1-break--root-header--player-on-break--sw--360.png
+013--s1-break--root--player-on-break--sw--360.png
+014--s1-break--root-wallet-sheet--player-on-break--sw--360.png
+015--s1-break--root-header--player-on-break--sw--390.png
+016--s1-break--root--player-on-break--sw--390.png
+017--s1-break--root-wallet-sheet--player-on-break--sw--390.png
+018--s1-break--root-header--player-on-break--sw--1280.png
+019--s1-break--root--player-on-break--sw--1280.png
+020--s1-break--root-wallet-sheet--player-on-break--sw--1280.png
+021--s1-break--positions--player-on-break--sw--360.png
+022--s1-break--positions--player-on-break--sw--390.png
+023--s1-break--positions--player-on-break--sw--1280.png
+024--s1-break--account--player-on-break--sw--360.png
+025--s1-break--account--player-on-break--sw--390.png
+026--s1-break--account--player-on-break--sw--1280.png
+027--s1-break--wallet-deposit--player-on-break--sw--360.png
+028--s1-break--wallet-deposit--player-on-break--sw--390.png
+029--s1-break--wallet-deposit--player-on-break--sw--1280.png
+030--s1-break--profile-responsible-gambling--player-on-break--sw--360.png
+031--s1-break--profile-responsible-gambling--player-on-break--sw--390.png
+032--s1-break--profile-responsible-gambling--player-on-break--sw--1280.png
+033--s1-break--market--player-on-break--sw--360.png
+034--s1-break--market-yes--player-on-break--sw--360.png
+035--s1-break--market-bet-confirm--player-on-break--sw--360.png
+036--s1-break--market-bet-attempt--player-on-break--sw--360.png
+037--s1-break--market--player-on-break--sw--390.png
+038--s1-break--market-yes--player-on-break--sw--390.png
+039--s1-break--market-bet-confirm--player-on-break--sw--390.png
+040--s1-break--market-bet-attempt--player-on-break--sw--390.png
+041--s1-break--market--player-on-break--sw--1280.png
+042--s1-break--market-yes--player-on-break--sw--1280.png
+043--s1-break--market-bet-confirm--player-on-break--sw--1280.png
+044--s1-break--market-bet-attempt--player-on-break--sw--1280.png
+045--s1-break--root-header--player-on-break--en--360.png
+046--s1-break--root--player-on-break--en--360.png
+047--s1-break--root-wallet-sheet--player-on-break--en--360.png
+048--s1-break--root-header--player-on-break--en--390.png
+049--s1-break--root--player-on-break--en--390.png
+050--s1-break--root-wallet-sheet--player-on-break--en--390.png
+051--s1-break--root-header--player-on-break--en--1280.png
+052--s1-break--root--player-on-break--en--1280.png
+053--s1-break--root-wallet-sheet--player-on-break--en--1280.png
+054--s1-break--positions--player-on-break--en--360.png
+055--s1-break--positions--player-on-break--en--390.png
+056--s1-break--positions--player-on-break--en--1280.png
+057--s1-break--account--player-on-break--en--360.png
+058--s1-break--account--player-on-break--en--390.png
+059--s1-break--account--player-on-break--en--1280.png
+060--s1-break--wallet-deposit--player-on-break--en--360.png
+061--s1-break--wallet-deposit--player-on-break--en--390.png
+062--s1-break--wallet-deposit--player-on-break--en--1280.png
+063--s1-break--profile-responsible-gambling--player-on-break--en--360.png
+064--s1-break--profile-responsible-gambling--player-on-break--en--390.png
+
+Measure with PowerShell System.Drawing as the brief says (never estimate a position you can measure). Do not edit any
+file; do not run npm, servers or browsers. Your final message is the report the brief asks for — (1) tiles opened (must
+be 64) and the BLOCKED entries in your range, (2) FINDINGS (most visible first; LOGIC findings marked), (3) DOUBTS.
+Nothing else.

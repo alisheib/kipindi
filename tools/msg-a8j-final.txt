@@ -1,0 +1,42 @@
+Vodacom S6 A8j: Enter in a form never skips its confirm - the withdraw amount box and the close-account phrase box open their dialog instead of submitting
+
+ConfirmDialog forces its trigger to type="button", so the withdraw form had no submit button and one text field, and a
+browser SUBMITS such a form when Enter (or a phone's Go key) is pressed in that field: the withdrawal was sent with no
+"Confirm withdrawal" - no fee, no "You receive", no recipient. Enter in the close-account phrase box closed the account
+and its wallet the same way. Before the page woke, the same Enter posted the server action as plain HTML.
+
+- ConfirmDialog gains the opt-in submitsForm: a native submit guard on the form that refuses every submit but the
+  confirm's own (prevented AND stopped, so React's root never runs the action) and opens the dialog the way the trigger
+  does; a hidden default <input type="submit" autocomplete="off"> disabled until the guard listens (Chromium and Firefox
+  stop Enter before the page wakes; autocomplete=off keeps Firefox from restoring it enabled); and a hidden unnamed
+  second text field (WebKit's source, read 2026-10-07, submits a one-field form past a disabled control, and every
+  iPhone browser is WebKit; no run has shown it yet - see Proof). One guarded dialog per form (a second throws in
+  development and stays out in production). In WebKit before Safari 16.4 Enter there is inert - safe.
+- Consumers: withdraw, deposit (Enter now opens its confirm; it did nothing before), close account, the RG break and
+  self-exclusion confirm, the journey hub's sign-out.
+
+Guard: test:implicit-submit (predeploy) - the guard run on real submit events; the server's markup read by each engine's
+own implicit-submission rule; a census of every ConfirmDialog/ConfirmModal in src/ by scope and one hop into imports
+(every confirm that submits a form carries the prop, synchronously, one per form; no form's own submit reaches what its
+confirm confirms save two named by design); the six host forms with nothing else submit-capable anywhere inside them.
+red:implicit-submit: 61 plants caught and 1 green control held. The drive qa:implicit-submit (ENGINE=webkit|firefox),
+including P1x: WebKit with the second field stripped from the HTML must post.
+
+The handover draft (ALI-BLADE15, never run) was revised here for its 19 review problems and an independent verifier's
+findings (product verdict: sound).
+
+Proof on OMEGA-COMPILE01, on the exact squashed tree: typecheck; test:implicit-submit green; red:implicit-submit 61/61
+caught and 1/1 green held; test:enter-where-pressed, test:journey-account (85), test:journey-shell (429),
+test:close-account-phrase and test:ui-consistency green. qa:implicit-submit (run before its last edit: the sleeping
+page in a fresh context, and Z naming the known error) on Chromium and on Firefox: every case passes but Z (P1x is
+WebKit's), and Z saw only the RG page's hydration mismatch, which main shows too. WebKit: every after-load case passes
+and no case moved money; P1 and P2 could not keep the page asleep (WebKit took the scripts from its memory cache) and
+P1x did not post with the field stripped, so no run has yet shown that WebKit needs the field - that re-run, with the
+fresh context, and a WebKit control on 586c5183 are owed. The control on live main (586c5183, Chromium) failed exactly
+W1 W2 K1 K2 D1 P1 R1 C2 C1: W1 and P1 each withdrew 20,000 with no confirm, C1 closed the account. test:all 433/464:
+every red is on the 0i baseline list, one of the 13 database suites (they need a database; A8j touches none of their
+code), or audit-drain's timing flake (42/42 when re-run on this tree).
+
+Served bytes: two hidden inputs inside each host form (no word, class or layout change); no other page changes.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>

@@ -1,0 +1,22 @@
+test:visual-pass-r5i exit=0 3s — visual-pass-r5i: 112 passed, 0 failed
+test:visual-pass-r5c exit=0 2s — visual-pass-r5c: 91 passed, 0 failed
+test:feedback-law exit=0 2s — feedback-law: OK — one answer per class of action, and every refusal names its way out.
+test:betting-ink exit=0 1s — ALL PASS — 35 passed, 0 failed
+test:design-frozen exit=0 2s — PASS — design primitives are frozen
+test:eyebrow-roles exit=0 1s — 
+test:type-scale exit=0 3s — ALL PASS — 1435 source files, 187 money elements.
+test:visual-pass-r4i exit=0 2s — visual-pass-r4i: 128 passed, 0 failed
+test:updown-bet-feedback exit=0 1s — updown-bet-feedback: OK — placing a bet is announced visibly, audibly and haptically, in three languages
+test:red-anchors exit=0 3s — red-anchors: 5068 passed, 0 failed
+test:ui-consistency exit=0 2s —   ALL PASS — no new UI-consistency drift beyond the tracked baseline.
+test:css-vars-defined exit=0 2s — PASS every var() reference resolves to a definition
+test:i18n exit=0 1s — ALL PASS — en=2628 sw=2628 zh=2628 keys
+test:decomment exit=0 5s — ALL PASS — 22 passed, 0 failed
+test:hooks-order exit=0 1s — hooks-order: 7 passed, 0 failed
+test:journey-shell exit=0 3s — JOURNEY SHELL — all 433 checks passed
+test:simple-journey-flag exit=0 5s — 135 passed, 0 failed
+test:spacing-scale exit=0 2s — spacing-scale: 10 passed, 0 failed · 453 inverted usages in 165 files
+test:stacking exit=0 2s — 137 passed, 0 failed
+test:failure-reasons exit=0 5s — failure-reasons (with §8 + §9 + §10): 376 passed, 0 failed
+test:updown-quickbet exit=0 2s — updown-quickbet: OK — one tap places once, duplicates pay once, distinct taps stack, 'you're in' is per-viewer, bad taps refused
+ALL DONE

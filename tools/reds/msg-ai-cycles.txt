@@ -1,0 +1,19 @@
+fix(red:ai-cycles): the mutant trees move out of node_modules - tsx never applies tsconfig paths under node_modules, so since 418f1b59 every mutant died on an @/ import and the harness read 0/29, "broken"
+
+The harness built each mutant tree in node_modules/.red-ai-cycles (so bare specifiers like @prisma/client resolve), but
+tsx skips tsconfig `paths` for any file whose path contains /node_modules/. That held while the meter's modules imported
+each other relatively; 418f1b59 (2026-09-20) made platform-config.ts, which ai-cycles.ts imports, re-export from
+@/lib/platform-timezone, and from then on every mutant died on "Cannot find module '@/lib/platform-timezone'" before
+printing a line - which the harness read as "it read some other tree" and called all 29 broken, hiding the error. (In a
+junctioned worktree the nest also landed in another checkout's package folder.)
+
+Each mutant now lives in the repo root as .red-ai-cycles-<pid>.red-tmp/ (ignored by `*.red-tmp`) with its own copy of
+src, the gate, tsconfig.json and package.json, and the gate runs with the copy as its CWD - the layout red:refused-funds
+and red:tax-report use. The unmutated copy must run green first (or the harness refuses with the gate's own error), a
+broken mutant now shows what the gate said, each run has a 180 s bound, and npx is no longer needed. No anchor, plant
+or check changed.
+
+Proof on OMEGA-COMPILE01 (2026-10-08, main 018e77e3): red:ai-cycles 29/29 proven, 0 broken, exit 0 (0/29 before),
+every module under test resolving inside its copy; test:ai-cycles 144/0; no tree left behind.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>

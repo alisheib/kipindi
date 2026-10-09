@@ -1,0 +1,95 @@
+qa:classic-shell-parity — prove-red — http://localhost:3041
+  tree F:\kipindi-s7wp1\ @ c37b5e47 (clean) · forks from origin/main at 48842adb · rollout OFF
+  the book's normalisers ON: none (this file's switches) · candidates: market-ids, time-left, eat-dates, relative-times, chart-paths, avatar-ids, chunk-hashes
+  Chromium stub-0
+
+§P · the control — first on synthetic captures, then planted in the browser
+  PASS P.1 identical cells differ in nothing
+  PASS P.2 /account 404 → 200 is the named expected difference, not a failure — {"unexpected":[],"expected":[{"field":"status","id":"account-streams-200"}]}
+  PASS P.3 …and /account 404 → 500 stays a failure (an entry is one transition, not a wildcard)
+  PASS P.4 …and 404 → 200 on any other route stays a failure (the entry is scoped to /account)
+  PASS P.4b /account's robots pair → 'noindex' + 'noindex, nofollow' is the named difference; another value, or the same change on the control path, stays a failure — {"robotsNamed":{"unexpected":[],"expected":[{"field":"notFound.robots","id":"account-robots-noindex"}]},"robotsOther":{"unexpected":[{"field":"notFound.robots","detail":"\"index, follow\\nnoindex\" → \"index, follow\""}],"expected":[]},"robotsElsewhere":{"unexpected":[{"field":"notFound.robots","det
+  PASS P.5 a recorded substitution is expected, and a second change beside it is still caught — {"subOnly":{"unexpected":[],"expected":[{"field":"regions.footer.html","id":"control-footer-class"}]},"subPlus":{"unexpected":[{"field":"regions.footer.html","detail":"\"<footer class=\\\"pad-new\\\">x</footer>\" → \"<footer class=\\\"pad-new\\\">y</footer>\""}],"expected":[]}}
+  PASS P.6 a named difference seen in part of its population is reported (§4.2), and in all or none of it is not
+  PASS P.5c S6 A8f's two named confirm differences — the receive row's four class strings, and the boxes they draw — pass in the classic confirm's place, while a second change beside either, or the same change at the other Sell place, stays a failure — {"markup":{"unexpected":[],"expected":[{"field":"regions.confirm.html","id":"sell-confirm-whole-figure"}]},"boxes":{"unexpected":[],"expected":[{"field":"regions.confirm.layout","id":"sell-confirm-receive-boxes"}]},"markupPlus":{"unexpected":[{"field":"regions.confirm.html","detail":"first difference at character 265: \"-[24px] leading-none text-text\\\">TZS 1,500</p></div><div class=\\\"grow text
+  PASS P.5s S6 A8b's, A8d's and A8g's named Sell differences each pass at their own Sell place in en and in sw — A8b's free-note classes with the wrap class on /positions (sell-positions-wrap), and with the stack class on the holder block's button (sell-holder-stack) — while a second change beside either, either markup at the other place, A8b's markup alone, or either off the Sell places, stays a failure — [{"l":"en","positions":{"unexpected":[],"expected":[{"field":"regions.button.html","id":"sell-positions-wrap"}]},"holder":{"unexpected":[],"expected":[{"field":"regions.button.html","id":"sell-holder-stack"}]},"strays":[{"unexpected":[{"field":"regions.button.html","detail":"first difference at character 158: \" class=\\\"font-mono tabular-nums\\\">TZS 3,600<span class=\\\"ml-1.5 hidden opacity-80
+  PASS P.5L S6 A8d's and A8g's measured Sell layouts — the holder block's stack and /positions' wrap at 360, in en and in sw — each pass as exactly their own entry at their own Sell place, while anything beside the measured text, or the same change at the other Sell place, stays a failure — [{"id":"sell-holder-stack-layout-en","named":{"unexpected":[],"expected":[{"field":"regions.button.layout","id":"sell-holder-stack-layout-en"}]},"beside":{"unexpected":[{"field":"regions.button.layout","detail":"5 of 5 element line(s) differ; first: button box 0,0,244x44 → 0,0,244x56; button style "}],"expected":[]},"elsewhere":{"unexpected":[{"field":"regions.button.layout","detail":"4 of 4 eleme
+  PASS P.6s a Sell layout missing beside the served change that causes it is reported (§4.6), each one, and neither, or both in all of their cells, is not — [["sell-holder-stack-layout-en","sell-holder-stack"],["sell-holder-stack-layout-sw","sell-holder-stack"],["sell-positions-wrap-layout-en","sell-positions-wrap"],["sell-positions-wrap-layout-sw","sell-positions-wrap"],["sell-strip-whole-layout","sell-strip-whole"]]
+  PASS P.5g S6 A8g's two named strip differences — the strip's class string, and the signatures and boxes it draws — pass together at both Sell places in en and in sw, in a capture and in a first paint, while a second change beside them, a note the server writes as two texts, or the same change off the Sell places stays a failure — [["en","/positions",["sell-strip-whole","sell-strip-whole-layout"],1,1,2,"sell-first-paint"],["en","/markets/:held",["sell-strip-whole","sell-strip-whole-layout"],1,1,2,"sell-first-paint"],["sw","/positions",["sell-strip-whole","sell-strip-whole-layout"],1,1,2,"sell-first-paint"],["sw","/markets/:held",["sell-strip-whole","sell-strip-whole-layout"],1,1,2,"sell-first-paint"]]
+  PASS P.5f S6 A8e's first paint — the strip and the free button, on the markup a capture records — is the baseline's Sell button as today's tree draws it (sell-first-paint) at both Sell places in en and in sw, while a strip whose note the server writes as two texts, the first paint before A8e (no strip, 'Uza sasa · TZS 3,600 −0 ada') and a second change beside it stay failures; and against a baseline with a first paint of its own, the same first paint is the same and A8e's is the named transition — [["en","/positions","sell-first-paint",["regions.strip.html"],["regions.button.html","regions.strip.count","regions.strip.html"],["regions.button.html"],"same","sell-first-paint"],["en","/markets/:held","sell-first-paint",["regions.strip.html"],["regions.button.html","regions.strip.count","regions.strip.html"],["regions.button.html"],"same","sell-first-paint"],["sw","/positions","sell-first-paint"
+  PASS P.7 a clean synthetic capture passes every check in §2 and §3 — {"2":[],"3":[]}
+  PASS P.7d the DEV-only filter takes React's DEV measure sentence, and nothing else (another error, a longer sentence, a mark, nothing) — {"takes":[true,true],"leaves":[false,false,false,false,false]}
+  PASS P.check 2.0 — a cell that did not capture turns 2.0 red, and nothing else in §2 — 2.0
+  PASS P.check 2.0 — a cell missing from the matrix turns 2.0 red, and nothing else in §2 — 2.0
+  PASS P.check 2.1 — a cell without its header turns 2.1 red, and nothing else in §2 — 2.1
+  PASS P.check 2.1 — a cell with two rails turns 2.1 red, and nothing else in §2 — 2.1
+  PASS P.check 2.2 — a cell that never settled turns 2.2 red, and nothing else in §2 — 2.2
+  PASS P.check 2.3 — a viewer carrying a preview pass turns 2.3 red, and nothing else in §2 — 2.3
+  PASS P.check 2.4 — a journey test id in the page turns 2.4 red, and nothing else in §2 — 2.4
+  PASS P.check 2.4 — the journey flag on the page turns 2.4 red, and nothing else in §2 — 2.4
+  PASS P.check 2.5 — a journey test id in the raw HTML turns 2.5 red, and nothing else in §2 — 2.5
+  PASS P.check 2.5 — raw HTML that could not be read turns 2.5 red, and nothing else in §2 — 2.5
+  PASS P.check 2.5 — raw HTML that is not the shell turns 2.5 red, and nothing else in §2 — 2.5
+  PASS P.check 2.6 — a guest who stays on /wallet turns 2.6 red, and nothing else in §2 — 2.6
+  PASS P.check 2.7 — a signed-in viewer sent to sign-in turns 2.7 red, and nothing else in §2 — 2.7
+  PASS P.check 2.8 — a held viewer with the header deposit control turns 2.8 red, and nothing else in §2 — 2.8
+  PASS P.check 2.8 — a player without it turns 2.8 red, and nothing else in §2 — 2.8
+  PASS P.check 2.9 — an email bar drawn after its deletion, for the unconfirmed email turns 2.9 red, and nothing else in §2 — 2.9
+  PASS P.check 2.9 — an email bar drawn after its deletion, for the player on another page turns 2.9 red, and nothing else in §2 — 2.9
+  PASS P.check 2.10 — no rail among the overlays at 360 turns 2.10 red, and nothing else in §2 — 2.10
+  PASS P.check 2.11 — a signed-in /positions without its body turns 2.11 red, and nothing else in §2 — 2.11
+  PASS P.check 2.13 — a real page error filed as DEV-only (it would never be compared) turns 2.13 red, and nothing else in §2 — 2.13
+  PASS P.check 3.0 — a control path answering 200 turns 3.0 red, and nothing else in §3 — 3.0
+  PASS P.check 3.0 — a not-found body too short to be one, on both paths turns 3.0 red, and nothing else in §3 — 3.0
+  PASS P.check 3.1 — /account with a body of its own turns 3.1 red, and nothing else in §3 — 3.1
+  PASS P.check 3.2 — /account under a title of its own turns 3.2 red, and nothing else in §3 — 3.2
+  PASS P.check 3.3 — /account without noindex turns 3.3 red, and nothing else in §3 — 3.3
+  PASS P.check 3.4 — /account with a journey test id in the page turns 3.4 red, and nothing else in §3 — 3.4
+  PASS P.check 3.5 — /account with a journey test id in its raw HTML turns 3.5 red, and nothing else in §3 — 3.5
+  PASS P.check 3.6 — an account/loading file in the tree turns 3.6 red, and nothing else in §3 — 3.6
+  PASS P.7s a clean synthetic Sell capture passes every check in §S — []
+  PASS P.check S.0 — a seed that placed no open ticket turns S.0 red, and nothing else in §S — S.0
+  PASS P.check S.0 — a Sell cell missing from the capture turns S.0 red, and nothing else in §S — S.0
+  PASS P.check S.1 — a Sell cell that never settled turns S.1 red, and nothing else in §S — S.1
+  PASS P.check S.1 — a Sell cell sent to sign-in turns S.1 red, and nothing else in §S — S.1
+  PASS P.check S.2 — a Sell cell captured after the free window closed (no strip) turns S.2 red, and nothing else in §S — S.2
+  PASS P.check S.2 — a strip whose ticking clock was not read as m:ss turns S.2 red, and nothing else in §S — S.2
+  PASS P.check S.2 — a confirm cell whose dialog never opened turns S.2 red, and nothing else in §S — S.2
+  PASS P.check S.2 — a confirm captured after its quote hold ran out (its gold button disabled) turns S.2 red, and nothing else in §S — S.2
+  PASS P.check S.3 — a journey trace in a Sell cell turns S.3 red, and nothing else in §S — S.3
+  PASS P.check S.4 — a Sell cell whose first paint was never captured turns S.4 red, and nothing else in §S — S.4
+  PASS P.check S.4 — a first paint read after the page had hydrated (its scripts not held) turns S.4 red, and nothing else in §S — S.4
+  PASS P.8n each candidate text normaliser (market-ids, time-left, eat-dates, relative-times, avatar-ids, chunk-hashes) maps its own sample, leaves its control as it is, is idempotent, does work `norm` does not, and acts exactly when it is switched on (this run: none); the page normaliser (chart-paths) is a selector handed to the page only when on — []
+  PASS P.8h the head reader reads /'s canonical link and every og:* meta from the bytes, in order — attributes in any order, a tag streamed into the body, never twitter:* or the RSC payload — and a dropped og:url is reported in the head field and nowhere else (unread bytes read as null) — {"got":"canonical http://localhost:3041\nog:title 50pick — Predict events. Not chance.\nog:url http://localhost:3041\nog:image http://localhost:3041/og/og-1200x630.png\nog:image:width 1200\nog:locale sw_TZ","headRun":["head"]}
+  PASS P.8s A8 item 1's verdict passes a book whose replies hold what A8 asks (its Up & Down refusal recorded, never refused; the void is marketIds[11], the similar rail's question marketIds[0]), and refuses each defect alone — a pool of 11, a door's 404, 11 placed, no VOID intended, no WIN or LOSS held, a settlement or a cash-out refused, 11 ids, the watchlist not ok, no progress row — {"good":[],"bad":[]}
+  PASS P.8p A8 item 2's probe passes /results with the void card drawn void and settled YES and NO cards, and /watchlist with void, done and selection-closed cards; each absence is reported on its own page alone; and the card classifier reads void, resolved NO and YES, selection closed, one-sided, empty pool and live priced from the classic card's classes — {"probeRuns":[],"misread":[]}
+  PASS P.8t the live trace asks for S7's class names (kp-jcard, kp-jhome, kp-jhowto, kp-howto) beside S6's journey, and its class report names them — and no classic class — {"selector":"[data-testid^=\"journey-\"],[data-journey],[class*=\"journey\"],[class*=\"kp-jcard\"],[class*=\"kp-jhome\"],[class*=\"kp-jhowto\"],[class*=\"kp-howto\"]","missed":[],"caught":[]}
+  PASS P.7b a clean synthetic book passes every check in §B — []
+  PASS P.check B.0 — a seed A8 item 1 refuses turns B.0 red, and nothing else in §B — B.0
+  PASS P.check B.0 — a book cell missing from the capture turns B.0 red, and nothing else in §B — B.0
+  PASS P.check B.0 — a book cell that did not capture turns B.0 red, and nothing else in §B — B.0
+  PASS P.check B.1 — a book cell that never settled turns B.1 red, and nothing else in §B — B.1
+  PASS P.check B.1 — the player's /watchlist sent to sign-in turns B.1 red, and nothing else in §B — B.1
+  PASS P.check B.1 — a book cell answering 500 turns B.1 red, and nothing else in §B — B.1
+  PASS P.check B.2 — the voided question's card missing from /results turns B.2 red, and nothing else in §B — B.2
+  PASS P.check B.2 — no settled NO card on /results turns B.2 red, and nothing else in §B — B.2
+  PASS P.check B.3 — no selection-closed card on /watchlist turns B.3 red, and nothing else in §B — B.3
+  PASS P.check B.3 — no done card on /watchlist turns B.3 red, and nothing else in §B — B.3
+  PASS P.check B.4 — a /results cell without its <main> turns B.4 red, and nothing else in §B — B.4
+  PASS P.check B.4 — the question page without its similar rail turns B.4 red, and nothing else in §B — B.4
+  PASS P.check B.4 — /'s head without og:url turns B.4 red, and nothing else in §B — B.4
+  PASS P.check B.4 — /'s head unread turns B.4 red, and nothing else in §B — B.4
+  PASS P.check B.5 — a lobby cell without the LIVE strip turns B.5 red, and nothing else in §B — B.5
+  PASS P.check B.6 — a kp-jcard element in a classic page turns B.6 red, and nothing else in §B — B.6
+  PASS P.check B.6 — journey-home-ghost in a classic /markets raw body turns B.6 red, and nothing else in §B — B.6
+  PASS P.check B.7 — no one-sided card anywhere in the book turns B.7 red, and nothing else in §B — B.7
+  PASS P.check B.7 — no void card anywhere in the book turns B.7 red, and nothing else in §B — B.7
+  PASS P.check B.8 — a real page error filed as DEV-only (it would never be compared) turns B.8 red, and nothing else in §B — B.8
+  FAIL 1.player the demo player is signed in — stub browser: no server, no browser in this run
+  FAIL P.guest|en|360|/ the cell was captured — stub browser: no server, no browser in this run
+  FAIL P.player|sw|1280|/markets the viewer is signed in
+  FAIL P.player|en|360|/positions the viewer is signed in
+  FAIL P.sell the demo player is given an open ticket through the real money paths — the demo player is not signed in
+  FAIL P.book the book is seeded through the existing dev-test doors (A8 item 1: seed-markets named 0 LIVE non-demo question(s) (of ? LIVE) · placed ? · byStatus null · byLens null · REFUSED: the demo player is not signed in), and the probe finds A8 item 2's cards on /results and /watchlist — the demo player is not signed in · /results was not read · /watchlist was not read
+
+81/87 passed — prove-red · tree c37b5e47 · 0s

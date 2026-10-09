@@ -1,0 +1,17 @@
+test:betting-ink
+test:cashback-hidden
+test:design-frozen
+test:journey-tickets
+test:kyc-at-withdrawal
+test:kyc-stage
+test:position-permalink
+test:timer-date
+test:visual-pass-r5b
+test:wallet-freeze
+test:wallet-receipts
+test:withdrawn-features
+test:client-graph-safe
+test:visual-pass-r5i
+test:visual-pass-r5c
+test:wallet-reach
+test:type-scale

@@ -1,0 +1,23 @@
+Vodacom S7 WP1 calibration: qa:served-skeleton reads Turbopack's dev chunk hash as noise; its null pair is identical under --main --norm store-ids
+
+The tool's calibration null pair is two fresh in-memory servers at b644717d, captured in lock turn I on 2026-10-08
+(14 cells each). It differed in head and preloads in 13 of the 14 cells. In every case the difference was the
+7 characters Turbopack's dev server writes before "._.js" in a chunk's name (src_app_page_tsx_1133eyd._.js against
+…_050~h13._.js), and they change with every server start. The always-on chunk-hash rule reads only runs of 8+ hex
+digits (webpack's and a production build's), and these are neither hex nor 8 long ("0c.3d1v", "0b3_sbz").
+
+- A new always-on normalisation, "Turbopack's dev chunk hashes": in the same three places as the hex rule (a
+  /_next/static/ path, its %2F form, a next_static/ precedence key), exactly 7 characters of [0-9a-z._~-] right
+  before "._.js" / "._.css" become "~". The rule is exactly 7 and anchored on "._." on purpose: a wider run would eat
+  the module's own name ("…_tsx_1133eyd"), which is a real difference.
+- Self-test, 78/78. The synthetic document now carries a Turbopack dev chunk, so N.1 (the noisy twin compares clean)
+  needs the rule, and N.3 (with the rule off, the twin differs) proves it is what absorbs that noise. N.5: a module
+  whose name changes is still a head difference. N.6: a hash holding "~" is the same noise.
+- The null pair re-read offline with the rule:
+  - default and --main: one difference left, the question page's og:image and twitter:image. They name the market
+    id each server minted (mkt_d3f6… against mkt_ab9e…), on guest and player.
+  - --main --norm store-ids: IDENTICAL, all 14 cells, every field and every bail-out count.
+  So store-ids is the one extra this calibration proves, as the header asks ("switched on only when a null pair
+  proves it necessary").
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>

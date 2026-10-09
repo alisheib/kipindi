@@ -1,0 +1,53 @@
+Visual pass round 4 (R4-E): the hub's card-size row back to the hub's rhythm, the Needle row's glyph in the family's ink, the sheet × on the cap centre, badge names whole, one content edge per column, deposit methods without a hole, the journey capsule centred
+
+Every finding was re-measured first. Every "after" is computed; the next tile round reads them.
+
+- Card-size row (259, R3-C's regression): the switch sat on the label's line (146.5) while the glyph centred on the
+  row (156.5), and the row was 61px against the hub's 56.
+  - It is now a plain hub row: glyph, a text column (label and value paired on one line, `.kp-hub__pair`, the hint
+    under them), then the switch, with glyph and switch centred on the row.
+  - keepSentences wraps the hint only between its sentences.
+  - Predicted on 259: 56px, glyph and switch both at 153.5, the hint on one line.
+  - Accepted consequence, measured: a switch centred on the row covers both text lines, so the text column is
+    viewport − 154px. The sw hint (224.9px) takes two lines at sw 360 (a 73px row), and en/zh at 320 also take two.
+    Both are whole sentences, never split words. A shorter sw hint is an S12 candidate.
+- Needle hub row (122–130): NeedleMark's 0.5-opacity r42 ring drew at half ink and 18.4px. A new I.needle glyph
+  (the family's r9 ring, the mark's tilt, one ink) draws the row. The mark keeps its two tones where it IS the mark.
+- Sheet × (116, 117): phones sat 1–1.5px below the cap band, for two reasons: Sora's cap band sits 0.5px above the
+  line box's middle, and a −4.5px margin put the docked sheet's top on a half pixel. The margin is now −4px from the
+  type token, and the sheet height is whole: about +0.3px everywhere.
+- Badge names (186, 188): DotSeq stacks a centred sequence (`stack`, one part per line, dot transparent) and shapes
+  each part. "First Win" sits over "Ushindi wa Kwanza", and no line opens or ends on "·" or leaves "Kwanza" alone.
+- Content edges: the /profile stat strip, the RG help card (its art −4px of its ink inset), the RG sound card and the
+  proposals notice now share the column's 20/24px edge (x41 at 390, x165 at 1280). The /profile AKAUNTI grid moves
+  from 12px to the hub's 16.
+- /fairness: the numerals hang from a .fairness-steps counter at the heading's edge (x165–166), not the browser's
+  outside markers.
+- Wallet "Weka mipaka" (journey only, since the classic capsule opens the same sheet): the square focus ring gets
+  the radius, padding and `.btn` halo, and no word moves.
+- Agent stat hints are balanced. The privacy version line keeps a year with its word ("Act 2022", keepYears).
+- Deposit methods (069): ProviderRadioGrid becomes a 6-track grid from 640. A last row of two takes three tracks
+  each, and a last row of one takes the row. Phones have two columns, and a lone Card spans the row. Withdraw's four
+  rails are 2×2 on phones and four across from 768.
+- Journey capsule: a short figure sat right in the box D31 reserves for 999,999 (TZS 0: 39 | 10). Rule 8a decides
+  the box, not where the words sit in it, so the caption, figure and delta are centred (24.4 | 24.4). The caption is
+  now centred at every balance, too: at TZS 258,208 on 390 it sits ~34px left of its old flush-right spot. Classic
+  capsule unchanged.
+
+Merged onto R4-C:
+- DotSeq had grown two props for one job: R4-C's `renderPart` (notifications) and R4-E's `keep` (legal line, badge
+  names). They are now one, `renderPart`, with R4-E's `stack` kept. The legal header and the badge shelf use
+  renderPart, and the r4e and r3c 9.4 pins follow.
+- eyebrow-roles' signature for the notification restore control follows R4-C's `-mt-1`: the same site and role
+  (CONTROL_LABEL). R4-C's commit read red there alone.
+
+Guards: test:visual-pass-r4e, 68 checks with a control or plant for each fix. Re-pinned: visual-pass-r3c
+§1.3/1.6–1.8, §6.1, §9.4, wallet-reach 8.18, and the journey-header-fit anchor. On the R4-E tree: red:wallet-reach
+27/27, red:density-contract 5/5, red:journey-account 48/48.
+
+On the merged tip: 76 suites exit 0, among them visual-pass-r4e 68, r4c 38, r4d 63, r3c 70, journey-account,
+journey-shell, wallet-reach 84, eyebrow-roles 645, icon-sizes, privacy-notice, payments, red-anchors 4989. Two reds:
+test:dead-css is main's own, and test:house-bot-disclosure's D19a pin is red by construction while the legal tree
+differs from main.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>

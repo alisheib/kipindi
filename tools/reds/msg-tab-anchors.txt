@@ -1,0 +1,11 @@
+test(tab-anchors): the vacuity floor is the population again (3) - a third anchored link arrived at 3b17b03e and the floor stayed 2, so losing one link cleared it and red:tab-anchors' blind-scanner case read DID NOT fail
+
+The plant (one anchored admin link stops matching) landed, but with three links and a floor of two the gate still
+found two, exited 0, and the control correctly called the gate blind to a partial loss. FLOOR is now 3 - the
+population: if any link stops being found it is no longer verified, and that must fail. The case names its assertion
+without the number, so the next re-derivation cannot strand it again.
+
+Proof on OMEGA-COMPILE01 (2026-10-08, main 018e77e3): red:tab-anchors 3/3, exit 0, the blind case failing exactly
+"1.0 at least 3 anchored link(s)" (2 found); test:tab-anchors green.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>

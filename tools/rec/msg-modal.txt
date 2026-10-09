@@ -1,0 +1,16 @@
+Modal: the opening never takes focus back from a control already chosen in the dialog
+
+A dialog took focus 30 ms after it opened, unconditionally (S6 A8i-2's opening, modal.tsx). Whatever reached a field of
+the dialog in those 30 ms - a fast tap, assistive technology, autofill, a tool filling the form - had focus pulled back
+to the first target, and the next characters typed landed in the wrong field. qa:journey-preview section 5 caught it
+(intermittently: 2 of 3 runs in turn J, and in turns C and H): the drive filled the link's label, moved to the reason
+at +27 ms, focus snapped back to the label at +28 ms, the reason was typed into the label, and "Create the link"
+never armed - recorded by a diagnostic copy of the drive (every focus, input and dialog change from the open click).
+
+Now, when focus is already on a control inside the panel as the opening runs, it stays there, and the dialog's beat is
+armed all the same (the first moment of a dialog still presses nothing). Every other path is unchanged: focus outside
+the dialog is brought in, a covered dialog still waits until it is on top, leaveLayer and the re-arm still move focus.
+
+{PROOF}
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>

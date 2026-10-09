@@ -1,0 +1,20 @@
+0	10s	test:visual-pass-r5d	visual-pass-r5d: 43 passed, 0 failed
+0	2s	test:visual-pass-r4j	visual-pass-r4j: 79 passed, 0 failed
+0	1s	test:visual-pass-r4k	visual-pass-r4k: 77 passed, 0 failed
+0	2s	test:measure	ALL PASS — 727 tsx files
+0	1s	test:offline-neutral	OFFLINE NEUTRAL — all checks passed
+0	3s	test:journey-tickets	JOURNEY TICKETS — all 51 checks passed
+0	3s	test:red-anchors	red-anchors: 5026 passed, 0 failed
+0	5s	test:decomment	ALL PASS — 22 passed, 0 failed
+0	2s	test:hooks-order	hooks-order: 7 passed, 0 failed
+0	2s	test:ui-consistency	  ALL PASS — no new UI-consistency drift beyond the tracked baseline.
+0	2s	test:i18n	ALL PASS — en=2628 sw=2628 zh=2628 keys
+0	3s	test:journey-shell	JOURNEY SHELL — all 433 checks passed
+0	5s	test:simple-journey-flag	135 passed, 0 failed
+0	1s	test:eyebrow-roles	
+0	3s	test:type-scale	ALL PASS — 1415 source files, 189 money elements.
+0	1s	test:spacing-scale	spacing-scale: 10 passed, 0 failed · 455 inverted usages in 165 files
+0	2s	test:design-frozen	PASS — design primitives are frozen
+0	2s	test:css-vars-defined	PASS every var() reference resolves to a definition
+0	2s	test:stacking	137 passed, 0 failed
+DONE

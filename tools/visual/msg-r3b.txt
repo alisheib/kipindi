@@ -1,0 +1,40 @@
+The Needle (R3-B): a resize mid-glide no longer strands the dial on the wrong edge; its rest clears text, controls and open panels by its glow; panels stack above it
+
+Round 3 measured the dial wholly inside the viewport (296, 295), parked on the LEFT edge over row icons (304, 307,
+315), mid-page on a button (299), touching a pill, a stat line and the 18+ ring (257, 265, 273, 194, 301, 309, 310),
+and over the open channels panel (321). Measured again on the tiles, all confirmed.
+
+- One cause for the first two: the rest glide sets an absolute target (needle.tsx), and on a resize applyViewport
+  called reclamp(), which clamps a body that is not parked but leaves its target. The glide landed on the old width's
+  tuck x, the engine judged it untucked, and it re-parked on the nearest edge by the disc's centre: after 390 → 1024
+  the centre was at 392 < 512, so it parked LEFT. save() stored "left", and every later page restored it. Neither a
+  drag nor a rest the logic chose.
+- A new pure module, src/lib/needle-rest.ts (reseat): applyViewport reclamps only when the laid-out geometry changed.
+  When the rail moves (width or diameter), any glide, park or peek finishes at its rest, tucked half off the SAME edge
+  at the height it was heading for. A height-only change keeps the glide and clamps its end.
+- Clearance (REST_TIERS), measured from the disc's box, which is the rim's ink within 1.2px. The glow reaches 10px at
+  360, 11.4 at 390 and 25 on a 900px short side. Tier 0: nothing within glow + 4. Tier 1: content and text clear of
+  glow + 4, with a card's frame allowed under it. Tier 2: the rim 8px off content and text. Tier 3: 4px (the old rule).
+  Tier 4: 4px off every control, text accepted (E-413's floor). Text counts the painted box around it (the 18+ ring);
+  small icons and images count too. A check that comes due mid-glide runs when the glide lands.
+- Open surfaces: the channels panel, install card and consent card go to z-50, above the Needle (45) and below the
+  menus (60). The rest counts open surfaces whole ([data-needle-keepout], [data-invitation], fixed or absolute
+  dialogs, menus and listboxes), and a MutationObserver re-checks when one appears or goes.
+- qa:journey-shell's shoot() waits up to 6 s for window.needle.resting() before each tile. A dial that never settles
+  is a failing line, so a mid-glide tile like 194 is no longer captured as a rest.
+
+Guards: the new test:needle-host (57 checks) replays the capture's resizes on the vendored engine. With the old host
+it reproduces x≈292 at 360, the left park, x=0 at the wall and the 30px pop; with the new host none of them occur. It
+also covers the tiers on synthetic boxes and the host wiring. test:stacking: three rows, six laws, and a control (the
+panel planted back at z-40 reads below the Needle). needle-rest.test.mjs (browser) gains §5 clearance with controls,
+§6 an opening panel, §7 a resize mid-glide on both rails, §8 a scroll mid-glide; node --check 0.
+
+On the merged tree: needle-host 57/57, journey-shell 434, red:journey-shell 175/175 (351 proofs), stacking 139,
+red-anchors 4891, popup-fit, ui-consistency, design-frozen, hooks-order. On the R3-B tree, 45 suites exit 0 and
+5 reds (social-panel, enter-where-pressed, marketing-optout, install-invite, journey-shell). test:orphans' exit 1 is
+main's own: two landing-v3 panel files. tsc and the browser suite run in the next lock turn.
+
+Known: a player whose dial this bug stored on the left keeps it there until they throw it back (a bug-caused left
+cannot be told from a thrown one).
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>

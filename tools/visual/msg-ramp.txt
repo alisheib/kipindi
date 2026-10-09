@@ -1,0 +1,17 @@
+Chip strips: a 64px trailing fade, so "there is more" shows even when the next chip lies wholly past the edge
+
+R3-C measured /results at sw 390 (tile 326). The fourth lens, "Batili 1", began at x284 with its label from x300; the
+strip ends at 302, and G1's 32px ramp is transparent from 294. So the ramp fell on that chip's padding and dimmed only
+HAPANA's "2": the row read as finished, and its chips added up to 5 of the legend's 6.
+
+- globals.css (below 1024): the trailing ramp in the "end" and "both" masks runs opaque to 100% − 72px and transparent
+  8px inside the edge, as before — 64px instead of 32, so it always lies over the last visible label. A strip with
+  nothing hidden, or scrolled to its end, is still not masked. The keyboard's scroll padding at the end grows to 72px,
+  so a focused chip stops clear of the ramp.
+- test:visual-pass-r3c 3.4 follows the end padding. 3.5: every ramp is at least 64px, ends 8px inside, and the end
+  padding reaches past it. 3.5′: G1's 32px put back is reported.
+
+visual-pass-r3c 70/70, filter-language, density-contract, ui-consistency, dead-css, design-frozen, tap-target,
+journey-tickets 51. Read on the next tiles: /markets, /results, notifications and Tiketi zangu at 320–412.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>

@@ -1,0 +1,3 @@
+docs(vodacom): PAUSED at Ali's word (~13:10 EAT) - nothing of the lane runs, the lock is free; vodacom-visual e60cf75f not live, the static-cache hotfix 9cb95938 live; the resume point recorded
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>

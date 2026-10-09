@@ -1,0 +1,12 @@
+fix(red:updown-bet-feedback): three mutations re-anchored after b14c749f named the bet toast's dwell - the harness read 4/7 since 2026-08-21
+
+b14c749f (design-perfection stage 06) replaced the toast's literal durationMs: 3000 with the named constant
+DWELL_BET_PLACED_MS and put a six-line §F8 comment above it, so no-toast, no-duration and
+moved-out-of-the-success-branch reported ANCHOR NOT FOUND. Each now anchors on today's text and plants the same
+defect: the success toast deleted, the dwell line removed, the toast moved out of the success branch. A note in the
+harness says the comment lines are part of the anchor.
+
+Proof on OMEGA-COMPILE01 (2026-10-08, main f89dcdb9): red:updown-bet-feedback 7/7 caught, file restored byte for
+byte, exit 0; test:updown-bet-feedback 24/0. Every anchor resolves exactly once (scripts/red-anchor.mjs).
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>

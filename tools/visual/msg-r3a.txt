@@ -1,0 +1,46 @@
+Visual pass round 3 (R3-A): the home hero's Chinese breaks and widows, the Swahili headline's optical edge, the ticker's edges, a held wallet's lead, and a paid-out figure that could contradict a player
+
+Round 3's nine readers measured these on the tiles; each was re-measured before the change. Nothing here is from
+a browser yet: the predicted pixels below are computed, and the next tile round reads them.
+
+- zh 1024: the trust line broke "…充值和提 / 现。" and the signed-in lead broke "…第一次选 / 择。" and "…下一 / 次选择。",
+  new since the hero's edge went to 32. `.kp-hero__trust` and `.kp-mine__lead` keep CJK words whole under :lang(zh)
+  (keep-all, overflow-wrap anywhere) and are balanced. Lines now break between clauses.
+- zh 320 meta line "…截止 · 结算来 / 源：CoinGecko": its two parts are flex items (the hub's dotted-sequence pattern,
+  the " · " clipped when a part opens a line, still read aloud), and zh keeps its words: "2026年10月9日 截止" /
+  "结算来源：CoinGecko".
+- Widows: "Tanzania." alone in the licence row (sw 360/390, en 320, the classic home too — a shared body) and
+  "first." alone in the signed-in lead (en 1024). Both are balanced.
+- The sw headline "NDIO au / HAPANA?" sat 3 / 4.4 / 5.2px inside the edge at 44 / 60 / 72px (N and H side bearing,
+  ~0.07em; Y 0.3–0.45px, 是 1.2px). `Ask` marks a side-word group that starts with a measured stem letter (/^[HN]/,
+  never the locale) and the CSS pulls it left by --hero-stem, with the group before it giving the width back, so a
+  one-line headline does not move. The h1's pinned markup is unchanged.
+- Card empty states: "Hakuna dau bado" was ~10px at 4.2–4.3:1. The no-bets line, the be-first line and the featured
+  no-pool words take --type-small (the ladder's first step above the 12.5px floor), with line boxes that keep the
+  measured card heights. Not changed: the grid card's "No pool yet" at 360 sw would wrap its meta row.
+- A held wallet: the signed-in lead invited a first pick above "Pochi yako imegandishwa". It is now withheld for a held
+  or empty wallet, as the Wallet and the header already withhold their invitations. The lead and the frozen box share
+  one measure (--mine-measure): the lead ran 16px past the box at sw 1280.
+- The LIVE ticker (journey only; classic viewers are served what they were): a soft fade where the label meets the
+  track instead of a glyph cut at full ink; from 1024 the strip's content edges are the page's (LIVE at 32, pause to
+  W−32); the separator dot is centred (19/47px → 32/32). The label's and viewport's inline styles moved to CSS with
+  identical values.
+- "TZS 48,208 paid to you this week" above "TZS 0 PAID OUT TO PLAYERS". The platform figure (all confirmed payout and
+  cash-out transactions) can trail a player's own week inside the stats cache's 60 s, or after a cash-out whose ledger
+  write failed (market-service marks the position first). paidOutBehind() detects it; readPaidOutTzs() re-reads past
+  the cache; a figure still behind is withheld.
+
+Guards: landing-mine §4 (37), featured-card 2.14 / 2.15 with red anchors, hero-copy §2c with 4 plants, journey-shell
+7.ticker-edge / 7.ticker-fade / 7.ticker-dot with 6 plants (7.landing-edge widened). design-frozen's live-ticker inline
+budget 2 → 1.
+
+All exit 0: hero-copy, hero-contract, landing-contract, landing-mine, featured-card, ui-consistency, density-contract,
+design-frozen, type-scale, gold-is-money, contrast, dead-css, css-vars-defined, stacking, journey-shell 434,
+ticker-honesty, hooks-order, tokens, spacing-scale, and 40 more suites that read these files. Reds: hero-copy 27/27,
+journey-shell 175/175 (351 proofs), featured-card 13/13, ticker-honesty 28/28, density-contract 5/5. tsc and the
+browser proof run in the next lock turn.
+
+For the owner: "PAID OUT TO PLAYERS" counts house-bot winnings (no user filter in sumConfirmedByTypes) — what a
+public money figure includes is a ruling, so it is unchanged.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>

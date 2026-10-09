@@ -1,0 +1,81 @@
+You are one of several strict tile readers for 50pick's visual pass for Vodacom, reading the journey's EDGE SCENARIOS
+(a player on a break, a self-excluded player, the longest name and title, Slow 3G loading, not-found pages, odd
+viewports, enlarged text, offline, an empty wallet). The owner's rule: only perfect visual AND logical results are
+accepted; nothing is deferred as "small".
+
+Read this file first, completely, with the Read tool — it is your instructions, and it points you to two more you must
+read: C:/Users/asheib/AppData/Local/Temp/claude/C--Users-asheib/0e745525-51fe-4451-ace7-c9987576fc15/scratchpad/edges/read-brief-edges.md
+
+S = C:/Users/asheib/AppData/Local/Temp/claude/C--Users-asheib/0e745525-51fe-4451-ace7-c9987576fc15/scratchpad
+TILES = C:/Users/asheib/AppData/Local/Temp/claude/C--Users-asheib/0e745525-51fe-4451-ace7-c9987576fc15/scratchpad/edges/tiles  (the PNGs, plus qa-journey-edges.json — the log, one entry per tile, matched by `file`)
+
+Your tiles (64 of them). Open EVERY one, in this order, and read its log entry before judging it:
+321--s5-slow3g--root-loaded--player--zh--360.png
+322--s5-slow3g--root-tap-mid--player--zh--360.png
+323--s5-slow3g--positions-mid-load--player--zh--360.png
+324--s5-slow3g--positions-loaded--player--zh--360.png
+325--s5-slow3g--positions-tap-mid--player--zh--360.png
+326--s5-slow3g--account-mid-load--player--zh--360.png
+327--s5-slow3g--account-loaded--player--zh--360.png
+328--s5-slow3g--account-tap-mid--player--zh--360.png
+329--s5-slow3g--root-loaded--player--zh--390.png
+330--s5-slow3g--root-tap-mid--player--zh--390.png
+331--s5-slow3g--positions-mid-load--player--zh--390.png
+332--s5-slow3g--positions-loaded--player--zh--390.png
+333--s5-slow3g--positions-tap-mid--player--zh--390.png
+334--s5-slow3g--account-mid-load--player--zh--390.png
+335--s5-slow3g--account-loaded--player--zh--390.png
+336--s5-slow3g--account-tap-mid--player--zh--390.png
+337--s5-slow3g--root-loaded--player--zh--1280.png
+338--s5-slow3g--root-tap-mid--player--zh--1280.png
+339--s5-slow3g--positions-mid-load--player--zh--1280.png
+340--s5-slow3g--positions-loaded--player--zh--1280.png
+341--s5-slow3g--positions-tap-mid--player--zh--1280.png
+342--s5-slow3g--account-mid-load--player--zh--1280.png
+343--s5-slow3g--account-loaded--player--zh--1280.png
+344--s5-slow3g--account-tap-mid--player--zh--1280.png
+345--s6-notfound--markets-mkt_doesnotexist--guest--sw--360.png
+346--s6-notfound--markets-mkt_doesnotexist--guest--sw--390.png
+347--s6-notfound--markets-mkt_doesnotexist--guest--sw--1280.png
+348--s6-notfound--updown-udr_doesnotexist--guest--sw--360.png
+349--s6-notfound--updown-udr_doesnotexist--guest--sw--390.png
+350--s6-notfound--updown-udr_doesnotexist--guest--sw--1280.png
+351--s6-notfound--does-not-exist--guest--sw--360.png
+352--s6-notfound--does-not-exist--guest--sw--390.png
+353--s6-notfound--does-not-exist--guest--sw--1280.png
+354--s6-notfound--markets-mkt_doesnotexist--guest--en--360.png
+355--s6-notfound--markets-mkt_doesnotexist--guest--en--390.png
+356--s6-notfound--markets-mkt_doesnotexist--guest--en--1280.png
+357--s6-notfound--updown-udr_doesnotexist--guest--en--360.png
+358--s6-notfound--updown-udr_doesnotexist--guest--en--390.png
+359--s6-notfound--updown-udr_doesnotexist--guest--en--1280.png
+360--s6-notfound--does-not-exist--guest--en--360.png
+361--s6-notfound--does-not-exist--guest--en--390.png
+362--s6-notfound--does-not-exist--guest--en--1280.png
+363--s6-notfound--markets-mkt_doesnotexist--guest--zh--360.png
+364--s6-notfound--markets-mkt_doesnotexist--guest--zh--390.png
+365--s6-notfound--markets-mkt_doesnotexist--guest--zh--1280.png
+366--s6-notfound--updown-udr_doesnotexist--guest--zh--360.png
+367--s6-notfound--updown-udr_doesnotexist--guest--zh--390.png
+368--s6-notfound--updown-udr_doesnotexist--guest--zh--1280.png
+369--s6-notfound--does-not-exist--guest--zh--360.png
+370--s6-notfound--does-not-exist--guest--zh--390.png
+371--s6-notfound--does-not-exist--guest--zh--1280.png
+372--s6-notfound--markets-mkt_doesnotexist--player--sw--360.png
+373--s6-notfound--markets-mkt_doesnotexist--player--sw--390.png
+374--s6-notfound--markets-mkt_doesnotexist--player--sw--1280.png
+375--s6-notfound--updown-udr_doesnotexist--player--sw--360.png
+376--s6-notfound--updown-udr_doesnotexist--player--sw--390.png
+377--s6-notfound--updown-udr_doesnotexist--player--sw--1280.png
+378--s6-notfound--does-not-exist--player--sw--360.png
+379--s6-notfound--does-not-exist--player--sw--390.png
+380--s6-notfound--does-not-exist--player--sw--1280.png
+381--s6-notfound--markets-mkt_doesnotexist--player--en--360.png
+382--s6-notfound--markets-mkt_doesnotexist--player--en--390.png
+383--s6-notfound--markets-mkt_doesnotexist--player--en--1280.png
+384--s6-notfound--updown-udr_doesnotexist--player--en--360.png
+
+Measure with PowerShell System.Drawing as the brief says (never estimate a position you can measure). Do not edit any
+file; do not run npm, servers or browsers. Your final message is the report the brief asks for — (1) tiles opened (must
+be 64) and the BLOCKED entries in your range, (2) FINDINGS (most visible first; LOGIC findings marked), (3) DOUBTS.
+Nothing else.

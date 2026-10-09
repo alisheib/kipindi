@@ -1,0 +1,13 @@
+fix(red:contrast): the harness copies everything the gate reads, not four stylesheets - since 4732e602 the gate also reads chip.tsx and walks src for call sites, so 22 of 25 mutants crashed on ENOENT and read as misses
+
+contrast-audit.mts reads src/components/ui/chip.tsx (PV-13c, tsxVariantValue) and walks every .ts/.tsx under src
+(§P-u, §P-u2), all relative to CONTRAST_ROOT. The harness copied only the four sheets, so every mutation that got past
+the parser died on ENOENT and exited 1 with no FAIL line - printed as a MISS. The three "catches" were the mutations
+that throw while the sheets are parsed, before chip.tsx is read. One root now holds every .ts/.tsx under src plus the
+sheets, one sheet is swapped in and out per mutation, the gate must be GREEN on the unmutated root first (a CONTROL
+line), a crash is reported as a crash, and the temp tree is removed on exit.
+
+Proof on OMEGA-COMPILE01 (2026-10-08): red:contrast 25/25 caught, exit 0 (3/25 before), each first FAIL the intended
+pair; test:contrast 118 checks, 0 failures. A copy without chip.tsx stops at the CONTROL with its ENOENT.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>

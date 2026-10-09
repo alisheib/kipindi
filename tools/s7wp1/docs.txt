@@ -1,0 +1,6 @@
+
+checked 649 links · 521 script paths · 908 npm refs · 45 evidence shots · 129 FLOWS.md anchors across docs/
+⚠️  19 historical screenshot(s) cited but never committed — listed in MISSING_EVIDENCE, and that list may only shrink.
+
+✅ every reference in docs/ resolves.
+

@@ -1,0 +1,15 @@
+Vodacom S3 engine: shortfallPlan asks no email step - the owner's ruling of 2026-10-07 (a deposit asks no email question)
+
+The ruling's owed item in this lane ("shortfall.ts's emailCodeFirst"): the low-balance plan's step 12 had an unconfirmed
+email meet a 6-digit code before the deposit (S9's code step, now superseded and not built).
+- src/lib/journey/shortfall.ts: DepositOption loses emailCodeFirst and ShortfallInput loses emailVerified (no caller
+  but its test: the deposit page takes only DEPOSIT_QUICK_AMOUNTS); the gate order reads 11 D, 12 the deposit-limit
+  headroom, 13 source of funds, 14 deposit; the example for a shortfall of 300 reads [1,000, 5,000, 10,000] with
+  belowDepositMin, the TZS 1,000 minimum money doors' release brings to DEPOSIT_MIN_TZS.
+- scripts/shortfall.test.mts: 4.email now holds the deposit option to exactly its four fields (kind, amount, chips,
+  belowDepositMin), so a code-first flag cannot return unseen; its red plant puts an email step back on the option.
+No served byte changes: no page draws this plan yet (S8).
+
+Proof on OMEGA-COMPILE01: test:shortfall green; red:shortfall 12/12 caught, the new plant among them. {PROOF}
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>

@@ -1,0 +1,81 @@
+You are one of several strict tile readers for 50pick's visual pass for Vodacom, reading the journey's EDGE SCENARIOS
+(a player on a break, a self-excluded player, the longest name and title, Slow 3G loading, not-found pages, odd
+viewports, enlarged text, offline, an empty wallet). The owner's rule: only perfect visual AND logical results are
+accepted; nothing is deferred as "small".
+
+Read this file first, completely, with the Read tool — it is your instructions, and it points you to two more you must
+read: C:/Users/asheib/AppData/Local/Temp/claude/C--Users-asheib/0e745525-51fe-4451-ace7-c9987576fc15/scratchpad/edges/read-brief-edges.md
+
+S = C:/Users/asheib/AppData/Local/Temp/claude/C--Users-asheib/0e745525-51fe-4451-ace7-c9987576fc15/scratchpad
+TILES = C:/Users/asheib/AppData/Local/Temp/claude/C--Users-asheib/0e745525-51fe-4451-ace7-c9987576fc15/scratchpad/edges/tiles  (the PNGs, plus qa-journey-edges.json — the log, one entry per tile, matched by `file`)
+
+Your tiles (64 of them). Open EVERY one, in this order, and read its log entry before judging it:
+129--s2-selfexclude--auth-login-signin-refused--excluded--zh--390.png
+130--s2-selfexclude--auth-login-signin-refused--excluded--zh--1280.png
+131--s2-selfexclude--root-header--excluded--sw--360.png
+132--s2-selfexclude--root--excluded--sw--360.png
+133--s2-selfexclude--root-header--excluded--sw--390.png
+134--s2-selfexclude--root--excluded--sw--390.png
+135--s2-selfexclude--root-header--excluded--sw--1280.png
+136--s2-selfexclude--root--excluded--sw--1280.png
+137--s2-selfexclude--positions--excluded--sw--360.png
+138--s2-selfexclude--positions--excluded--sw--390.png
+139--s2-selfexclude--positions--excluded--sw--1280.png
+140--s2-selfexclude--account--excluded--sw--360.png
+141--s2-selfexclude--account--excluded--sw--390.png
+142--s2-selfexclude--account--excluded--sw--1280.png
+143--s2-selfexclude--wallet-deposit--excluded--sw--360.png
+144--s2-selfexclude--wallet-deposit--excluded--sw--390.png
+145--s2-selfexclude--wallet-deposit--excluded--sw--1280.png
+146--s2-selfexclude--profile-responsible-gambling--excluded--sw--360.png
+147--s2-selfexclude--profile-responsible-gambling--excluded--sw--390.png
+148--s2-selfexclude--profile-responsible-gambling--excluded--sw--1280.png
+149--s2-selfexclude--market--excluded--sw--360.png
+150--s2-selfexclude--market-yes--excluded--sw--360.png
+151--s2-selfexclude--market--excluded--sw--390.png
+152--s2-selfexclude--market-yes--excluded--sw--390.png
+153--s2-selfexclude--market--excluded--sw--1280.png
+154--s2-selfexclude--market-yes--excluded--sw--1280.png
+155--s2-selfexclude--root-header--excluded--en--360.png
+156--s2-selfexclude--root--excluded--en--360.png
+157--s2-selfexclude--root-header--excluded--en--390.png
+158--s2-selfexclude--root--excluded--en--390.png
+159--s2-selfexclude--root-header--excluded--en--1280.png
+160--s2-selfexclude--root--excluded--en--1280.png
+161--s2-selfexclude--positions--excluded--en--360.png
+162--s2-selfexclude--positions--excluded--en--390.png
+163--s2-selfexclude--positions--excluded--en--1280.png
+164--s2-selfexclude--account--excluded--en--360.png
+165--s2-selfexclude--account--excluded--en--390.png
+166--s2-selfexclude--account--excluded--en--1280.png
+167--s2-selfexclude--wallet-deposit--excluded--en--360.png
+168--s2-selfexclude--wallet-deposit--excluded--en--390.png
+169--s2-selfexclude--wallet-deposit--excluded--en--1280.png
+170--s2-selfexclude--profile-responsible-gambling--excluded--en--360.png
+171--s2-selfexclude--profile-responsible-gambling--excluded--en--390.png
+172--s2-selfexclude--profile-responsible-gambling--excluded--en--1280.png
+173--s2-selfexclude--market--excluded--en--360.png
+174--s2-selfexclude--market-yes--excluded--en--360.png
+175--s2-selfexclude--market--excluded--en--390.png
+176--s2-selfexclude--market-yes--excluded--en--390.png
+177--s2-selfexclude--market--excluded--en--1280.png
+178--s2-selfexclude--market-yes--excluded--en--1280.png
+179--s2-selfexclude--root-header--excluded--zh--360.png
+180--s2-selfexclude--root--excluded--zh--360.png
+181--s2-selfexclude--root-header--excluded--zh--390.png
+182--s2-selfexclude--root--excluded--zh--390.png
+183--s2-selfexclude--root-header--excluded--zh--1280.png
+184--s2-selfexclude--root--excluded--zh--1280.png
+185--s2-selfexclude--positions--excluded--zh--360.png
+186--s2-selfexclude--positions--excluded--zh--390.png
+187--s2-selfexclude--positions--excluded--zh--1280.png
+188--s2-selfexclude--account--excluded--zh--360.png
+189--s2-selfexclude--account--excluded--zh--390.png
+190--s2-selfexclude--account--excluded--zh--1280.png
+191--s2-selfexclude--wallet-deposit--excluded--zh--360.png
+192--s2-selfexclude--wallet-deposit--excluded--zh--390.png
+
+Measure with PowerShell System.Drawing as the brief says (never estimate a position you can measure). Do not edit any
+file; do not run npm, servers or browsers. Your final message is the report the brief asks for — (1) tiles opened (must
+be 64) and the BLOCKED entries in your range, (2) FINDINGS (most visible first; LOGIC findings marked), (3) DOUBTS.
+Nothing else.

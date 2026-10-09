@@ -1,0 +1,13 @@
+diff --git a/src/app/markets/loading.tsx b/src/app/markets/loading.tsx
+index 418fd873e..c5df2ca78 100644
+--- a/src/app/markets/loading.tsx
++++ b/src/app/markets/loading.tsx
+@@ -64,7 +64,7 @@ export default async function MarketsLoading() {
+           borders sit outside a padding box but inside a border-box height — so a ghost given
+           `h-[var(--h-input)]` with a `border` draws 44 where the field draws 46. Measured on
+           production: `.search-box-wrap` 71px = 46 + 8 (`mt-1.5`) + 17 (the echo row). */}
+-      <div aria-hidden className="search-box-wrap">
++      <div aria-hidden className="search-box-wrap kp-markets-search">
+         {/* ⚠️ TOKEN, not `h-11` — spacing is overridden (tailwind.config.ts:200-215) so `h-11`
+             drew 96px. This ghosts `<Input size="md">`, which reads --h-input (44px); consume the
+             same token so the ghost and the field can never drift apart. */}

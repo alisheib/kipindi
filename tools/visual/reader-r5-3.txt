@@ -1,0 +1,78 @@
+You are one of several strict tile readers in round 5 of 50pick's visual pass for Vodacom. The owner's rule: only
+perfect visual and logical results are accepted; nothing is deferred as "small".
+
+Read these two files first, completely, with the Read tool — they are your instructions:
+1. C:/Users/asheib/AppData/Local/Temp/claude/C--Users-asheib/0e745525-51fe-4451-ace7-c9987576fc15/scratchpad/visual/read-brief-r2.md — how to read, what counts, what is known and by design, how to report.
+2. C:/Users/asheib/AppData/Local/Temp/claude/C--Users-asheib/0e745525-51fe-4451-ace7-c9987576fc15/scratchpad/visual/read-brief-r5-fixes.md — what round 4 fixed and what each fix must now look like. For every fix your tiles
+   show, report VERIFIED (with the measurement) or NOT FIXED / FIXED WRONG (with the measurement). Its last section lists
+   what was fixed AFTER these tiles — note those as "seen, already fixed after r5", not as findings.
+Also read C:/Users/asheib/AppData/Local/Temp/claude/C--Users-asheib/0e745525-51fe-4451-ace7-c9987576fc15/scratchpad/visual/owner-items.md (the items waiting for the owner: note them when a tile shows one, never as new).
+
+Your tiles (56 of them) are in C:/Users/asheib/AppData/Local/Temp/claude/C--Users-asheib/0e745525-51fe-4451-ace7-c9987576fc15/scratchpad/visual/tiles-r5. Open EVERY one, in this order:
+113--sheet--root--guest--tickets-sheet--sw--320.png
+114--sheet--root--guest--tickets-sheet--sw--390.png
+115--sheet--root--guest--tickets-sheet--sw--1280.png
+116--sheet--root--guest--tickets-sheet--en--320.png
+117--sheet--root--guest--tickets-sheet--en--390.png
+118--sheet--root--guest--tickets-sheet--en--1280.png
+119--sheet--root--guest--tickets-sheet--zh--320.png
+120--sheet--root--guest--tickets-sheet--zh--390.png
+121--sheet--root--guest--tickets-sheet--zh--1280.png
+122--unread--account--player--arifa--sw--1280.png
+123--unread--account--player--dot--sw--390.png
+124--unread--account--player--arifa--sw--390.png
+125--unread--account--player--arifa--en--1280.png
+126--unread--account--player--dot--en--390.png
+127--unread--account--player--arifa--en--390.png
+128--unread--account--player--arifa--zh--1280.png
+129--unread--account--player--dot--zh--390.png
+130--unread--account--player--arifa--zh--390.png
+131--unread--root--player--dot-unlit-tab--sw--320.png
+132--wallet--root--player--wallet-sheet--sw--390.png
+133--wallet--root--player--wallet-sheet--sw--1280.png
+134--wallet--root--player--wallet-sheet--en--390.png
+135--wallet--root--player--wallet-sheet--en--1280.png
+136--wallet--root--player--wallet-sheet--zh--390.png
+137--wallet--root--player--wallet-sheet--zh--1280.png
+138--focus--root--player--focus-capsule--sw--390.png
+139--focus--root--player--focus-pill--sw--390.png
+140--focus--root--player--focus-tab--sw--390.png
+141--focus--root--player--focus-link--sw--1280.png
+142--focus--root--player--focus-capsule--en--390.png
+143--focus--root--player--focus-pill--en--390.png
+144--focus--root--player--focus-tab--en--390.png
+145--focus--root--player--focus-link--en--1280.png
+146--focus--root--player--focus-capsule--zh--390.png
+147--focus--root--player--focus-pill--zh--390.png
+148--focus--root--player--focus-tab--zh--390.png
+149--focus--root--player--focus-link--zh--1280.png
+150--focus--account--player--focus-hub-row--sw--390.png
+151--focus--root--player--focus-wallet-withdraw--sw--390.png
+152--focus--root--player--focus-wallet-limits--sw--390.png
+153--focus--root--player--focus-wallet-withdraw--sw--1280.png
+154--focus--root--player--focus-wallet-limits--sw--1280.png
+155--focus--root--guest--focus-signin--sw--390.png
+156--focus--root--guest--focus-sheet-door--sw--390.png
+157--tabs--account--player--active-tab--sw--390.png
+158--tabs--account--player--active-tab--sw--1280.png
+159--tabs--root--player--active-tab--sw--390.png
+160--tabs--root--player--active-tab--sw--1280.png
+161--tabs--markets-id--player--active-tab--sw--390.png
+162--tabs--markets-id--player--active-tab--sw--1280.png
+163--tabs--updown--player--active-tab--sw--390.png
+164--tabs--updown--player--active-tab--sw--1280.png
+165--tabs--updown-history--player--active-tab--sw--390.png
+166--tabs--updown-history--player--active-tab--sw--1280.png
+167--tabs--positions--player--active-tab--sw--390.png
+168--tabs--positions--player--active-tab--sw--1280.png
+
+Each tile also has a diff overlay against round 4's capture of the same cell, in C:/Users/asheib/AppData/Local/Temp/claude/C--Users-asheib/0e745525-51fe-4451-ace7-c9987576fc15/scratchpad/visual/diff-r5, named <tile>--diff.png: the new
+tile dimmed, every changed pixel red. Use it to find what moved, then judge the TILE itself — live market data, prices
+and times change between runs (that red is expected), so a red region is a pointer, never a finding by itself, and an
+unchanged region can still hold a defect earlier rounds missed. The overlay list with each tile's changed regions is
+C:/Users/asheib/AppData/Local/Temp/claude/C--Users-asheib/0e745525-51fe-4451-ace7-c9987576fc15/scratchpad/visual/diff-r5/diff.json.
+
+Measure with PowerShell System.Drawing as the brief says (no Python on this PC). Do not edit any file; do not run npm,
+servers or browsers. Your final message is the report the brief asks for — (1) tiles opened (must be 56), (2) FINDINGS
+(most visible first: tile · what · where · how measured · which rule), (3) the VERIFIED / NOT FIXED list for round 4's
+fixes, (4) "seen, already fixed after r5", (5) DOUBTS. Nothing else.

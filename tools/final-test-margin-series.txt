@@ -1,0 +1,28 @@
+
+test:margin-series — the operator-margin chart is a margin
+
+§1 impossible readings
+  ok   §1 CONTROL — the per-bucket algorithm DOES produce 100% on this live-shaped data
+  ok   §1 CONTROL — and it DOES produce a reading below −300%
+  ok   §1 no cumulative point reads 100% once anything has settled
+  ok   §1 no cumulative point swings below −100%
+
+§2 the definition is unchanged
+  ok   §2 with a single bucket, cumulative === the plain hold% (the definition did not change)
+  ok   §2 refunds still reduce the margin (a voided poll cannot inflate it)
+  ok   §2 an empty window is 0, not NaN
+
+§3 the chart agrees with the tile beside it
+  ok   §3 the live-shaped fixture: the LAST cumulative point equals the aggregate KPI
+  ok   §3 a settled window: the LAST cumulative point equals the aggregate KPI
+  ok   §3 a window with an empty tail: the LAST cumulative point equals the aggregate KPI
+  ok   §3 CONTROL — the per-bucket algorithm's last point does NOT equal the KPI
+
+§4 the shipped source
+  ok   §4 marginSeries was located
+  ok   §4 the running totals are declared BEFORE the bucket loop (that is the fix)
+  ok   §4 exactly ONE AdminCard is titled 'Operator margin' (an anchor matching twice is not an anchor)
+  ok   §4 that card no longer advertises a per-day band it cannot honour
+
+15 passed, 0 failed
+

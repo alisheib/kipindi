@@ -1,0 +1,62 @@
+fix(db-scratch): the sweep finds its own io_worker in a worktree whose node_modules is a junction, and no longer takes a sibling's live cluster; a start that fails shows postgres's own reason
+
+What broke. On 2026-10-07 `test:all` in F:\kipindi-wp12 (node_modules a junction to
+F:\kipindi-a8j) ran its first database suite green, and the next twelve all failed with
+"the cluster failed to start and gave no reason". The first suite's stop had left an
+io_worker alive, holding the cluster's shared memory. The sweep that exists for exactly
+that case matched postgres processes by the checkout's path in their command line, but a
+child's command line is only `"<bin>/postgres.exe" --forkchild="io_worker" <handle>`: the
+data directory is not in it, and in a junctioned worktree the binary's path names the
+OTHER checkout. The same test, run from the checkout the junctions point at, matched every
+sibling's live cluster, because all of them run its binaries. Most worktrees on the shared
+PC are junctioned.
+
+What the sweep takes now, on Windows:
+  · a postmaster whose -D argument is this checkout's data directory, the whole argument
+    (quoted or not; not a subdirectory, not ".pgscratch - Copy", not a sibling's);
+  · a --forkchild child of such a postmaster, or of a dead one whose pid this tool read
+    from the cluster's own pid file;
+  · an orphaned child (its parent gone) whose binary lives under this checkout, which is
+    what the old rule caught in a checkout with its own node_modules. From a junction
+    target that includes the siblings' orphans too, which is harmless: their postmaster is
+    dead, so they serve no live cluster and only block their own directory's next start.
+Each is killed inside the PowerShell run that listed it, only while it is still the
+process listed (its start time, within 1 ms): a pid freed by taskkill between a listing and
+a kill in another process could have named a stranger. POSIX is unchanged.
+
+The pid file is read FIRST, before `--reset` deletes the directory and before a failed start
+deletes the file. `--reset` sweeps the old cluster's leftovers before it deletes, and initdb
+gets the same sweep-and-retry as the start (its bootstrap meets the same shared-memory block,
+whose name comes from the data directory's path; 9 package scripts run `--reset --run`).
+
+A failed start now prints postgres's own last lines, kept per attempt: embedded-postgres
+rejects with nothing when the server exits early, so the reason ("pre-existing shared memory
+block is still in use") was printed by postgres and thrown away, and the hint below it never
+fired. The hint no longer offers a kill by path (that is the rule that takes junctioned
+siblings); it prints a PowerShell line that lists the processes with ParentAlive and says
+which are safe to stop. Ctrl-C in the interactive mode sweeps too, and only a cluster it
+started.
+
+And the stop is bounded (10 s), as the failure handler's already was: when the postmaster is
+already gone, pg.stop() waits for an exit that has happened and never settles, so `--run`
+never reached process.exit(code) and embedded-postgres's exit hook (async-exit-hook) ended the
+process with 0 ten seconds later - a failing suite reported as passing.
+
+An independent review of the first version found the --reset/initdb gap, the unbounded stop,
+stale log lines that could raise a false hint, a hint that did not paste into PowerShell 5.1,
+the list-then-kill window and four inexact comments; all are fixed here. It also ran 13
+mocked selections (siblings with a longer name, a `.pgscratch2`, a known pid now alive: none
+taken) and confirmed a dead postmaster reads as gone while its pid stays reserved by its
+orphans' handles.
+
+Checks: tsc --strict on the file clean; the -D match against 8 command lines in PowerShell
+itself (3 taken, 5 refused, as designed); the sweep's PowerShell runs and parses (with the kill
+removed: nothing to take, none running); Process.StartTime and the listing's CreationDate
+agree within 0.001 ms. Dry run of the first version against a live orphan: from
+F:\kipindi-wp12 with no known parent 0, with the parent pid it read that one process; from
+F:\kipindi-a8j that one (the orphan rule); from F:\kipindi-s7 0.
+
+Proof on OMEGA-COMPILE01 (2026-10-08, turn A2): test:all in F:kipindi-wp12 - node_modules a junction to F:kipindi-a8j - with this fix under WP12: 453/471, and all 13 database suites passed back to back on port 5471; db:scratch reported 0 sweeps, 0 retries and 0 "gave no reason"; postgres processes after the battery and after the red reruns: 0 alive, 0 orphaned. The control is turn A on the old sweep, 2026-10-07: 12 of the same 13 failed to start ("gave no reason") after the first suite left an io_worker behind. No orphan was left this run, so the sweep's kill path is proven by the dry runs above and the review, not by this battery.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+

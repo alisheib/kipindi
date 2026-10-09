@@ -1,0 +1,24 @@
+agent apply: a referee refusal reads in the applicant's language - test:failure-reasons green again
+
+test:failure-reasons 10.1 had been red on main: the agent application's referees step put the service's refusal - an
+English sentence - in the toast and on the box at fault, so a Swahili or Chinese applicant read English. Each refusal
+names its field, and the dictionary already held each field's rule in all three languages (the boxes' own title):
+
+- src/app/agent/apply/apply-client.tsx: the field picks the line - a name box refNameRule, a contact box
+  refContactRule, the consent box refConsentRule - for the toast and for the box alike. A refusal with no field is the
+  application's own state (not started, under review, closed): the toast says something did not work and the page is
+  read again, which then shows that state in the applicant's language.
+- src/lib/i18n-dict.ts: refConsentRule, new, in en, sw and zh ("Tick the box to confirm that both referees agreed to be
+  named." / "Weka alama kwenye kisanduku kuthibitisha kwamba wadhamini wote wawili wamekubali kutajwa." /
+  "请勾选此框，确认两位推荐人均同意被提名。").
+
+Still English, and left: the submit step's result sheet subtitle (submitForReview's refusals), which the form's own
+gates make reachable only in a race (missing items, unaccepted terms and an unverified identity are blocked on the page
+before the button arms).
+
+Proof, on cd447109: typecheck 0; test:failure-reasons 376/376 (10.1 and 10.2: 0 against the ceiling of 0);
+test:i18n (en=sw=zh=2628 keys), test:trilingual 38/38, test:translation-safety 24/24, test:feedback-law OK; the suites
+that read this page green: agent-fee-wallet-path 61/61, journey-shell 430/430, kyc-at-withdrawal 154/154, lipa-qr,
+popup-fit.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>

@@ -1,0 +1,24 @@
+﻿precondition: gate is GREEN on the untouched tree
+
+  1. caught      back-into-the-rail  →  2: ⭐ related markets span BOTH columns
+  2. caught      left-column-spans-both-rows-again  →  2: ⛔ the left column no longer spans both rows
+  3. caught      control-no-related-section  →  1: the page still renders a related-markets section
+  4. caught      cards-forced-single-column  →  3: ⛔ …with no forced single column left over from the rail
+  5. caught      bet-column-back-on-space-y  →  5: ⭐ the bet column spaces its cards with a flex gap, which an out-of-flow heading cannot take a rung of
+  6. caught      watermark-hangs-from-the-header-again  →  5: the category watermark is drawn on the question's own box — centred on it, two of its ems, behind it
+  7. caught      actions-wrap-one-by-one  →  5: the source link, the star and SHARE are ONE right-aligned group, so they wrap together
+  8. caught      pool-figure-in-the-display-face  →  6: ⭐ the pool figure is an .amount on the mono face (words only when there is no pool yet)
+  9. caught      close-time-off-the-plain-rung  →  6: …and the close time is a kit Stat on the sm-plain rung, with its glyph
+  10. caught      ticket-glyph-inline-again  →  7: the question page's ticket line is the clock line's flex shape (4px)
+
+10/10 caught · files restored: all · green after restore: true
+RED PROOF COMPLETE
+node.exe : (node:4208) [DEP0190] DeprecationWarning: Passing args to a child process with shell option true can lead 
+to security vulnerabilities, as the arguments are not escaped, only concatenated.
+At line:1 char:1
++ & "C:\Program Files\nodejs/node.exe" "C:\Program Files\nodejs/node_mo ...
++ ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: ((node:4208) [DE...y concatenated.:String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+ 
+(Use `node --trace-deprecation ...` to show where the warning was created)

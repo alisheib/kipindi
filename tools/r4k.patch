@@ -1,0 +1,1376 @@
+diff --git a/package.json b/package.json
+index 8a1509616..845b0308e 100644
+--- a/package.json
++++ b/package.json
+@@ -654,6 +654,8 @@
+     "test:visual-pass-r3c": "tsx scripts/visual-pass-r3c.test.mts",
+     "test:visual-pass-r4d": "tsx scripts/visual-pass-r4d.test.mts",
+     "test:visual-pass-r4e": "tsx scripts/visual-pass-r4e.test.mts",
++    "test:visual-pass-r4k": "tsx scripts/visual-pass-r4k.test.mts",
++    "red:visual-pass-r4k": "tsx scripts/visual-pass-r4k.test.mts --prove",
+     "red:journey-tickets": "tsx scripts/journey-tickets.test.mts --prove-red",
+     "test:signoff": "tsx scripts/signoff.test.mts",
+     "test:proposal-evidence-age": "tsx scripts/proposal-evidence-age.test.mts",
+diff --git a/scripts/anchors/visual-pass-r4k.anchors.mjs b/scripts/anchors/visual-pass-r4k.anchors.mjs
+new file mode 100644
+index 000000000..5cea63af6
+--- /dev/null
++++ b/scripts/anchors/visual-pass-r4k.anchors.mjs
+@@ -0,0 +1,35 @@
++/**
++ * THE ANCHORS `red:visual-pass-r4k` MUTATES — declared, as DATA, importable without running.
++ *
++ * ⛔ A SIDECAR: `test:red-anchors` answers "does every anchor still resolve, exactly once?" WITHOUT executing the
++ * harness, which rewrites real source. One definition, imported by both. ⚠️ NO SIDE EFFECTS. Data only, repo-relative
++ * POSIX paths, anchors written with \n (they resolve in the CRLF tree), and no replacement contains its own anchor.
++ *
++ * Each mutation puts back one defect the visual pass's round 4 (helper K, 2026-10-09) removed; `expect` is the check of
++ * `scripts/visual-pass-r4k.test.mts` that must then fail.
++ */
++
++/** @typedef {{ name: string, file: string, from: string, to: string, expect: string }} RedMutation */
++
++const VIEW = "src/components/ui/not-found-view.tsx";
++
++/** @type {RedMutation[]} */
++export const MUTATIONS = [
++  { name: "the market not-found loses its metadata (title back to the root's English)", file: "src/app/markets/[id]/not-found.tsx", from: "export async function generateMetadata() {\n  return notFoundMetadata();\n}\n", to: "", expect: "2.3" },
++  { name: "the not-found link goes back to gold", file: VIEW, from: "text-brand-300 hover:text-brand-200\"\n", to: "text-gold-300 hover:text-gold-200\"\n", expect: "1.3" },
++  { name: "the column's gutter back to px-5 (24px)", file: VIEW, from: "overflow-hidden px-3 py-10", to: "overflow-hidden px-5 py-10", expect: "6.1" },
++  { name: "the cards back in the market page's order (Markets first)", file: VIEW, from: "<Link href=\"/\" className={CARD}>", to: "<Link href=\"/markets\" className={CARD}>", expect: "1.2" },
++  { name: "the heading unbalanced", file: VIEW, from: "tracking-[-0.02em] text-text text-balance\">", to: "tracking-[-0.02em] text-text\">", expect: "3.1" },
++  { name: "the English apostrophe straight", file: VIEW, from: "We couldn’t find that page", to: "We couldn't find that page", expect: "1.5" },
++  { name: "the Chinese hint free to break inside a word again", file: VIEW, from: "text-balance [word-break:keep-all] [overflow-wrap:break-word]\">", to: "text-balance\">", expect: "3.2" },
++  { name: "the gap with no word-spacing", file: "src/app/globals.css", from: "letter-spacing: 0; word-spacing: 0.05em;", to: "letter-spacing: 0; word-spacing: 0;", expect: "4.6" },
++  { name: "the helper drops the gap", file: "src/lib/cjk-marks.tsx", from: "    if (next !== undefined) {\n", to: "    if (next === \"never\") {\n", expect: "4.3" },
++  { name: "the empty state's title not hung", file: "src/components/ui/empty-state.tsx", from: "{hangCjkMarks(title)}", to: "{title}", expect: "4.10" },
++  { name: "the wave's top and bottom hard again", file: "src/app/globals.css", from: "  mask-image: linear-gradient(to bottom, transparent, black var(--sp-16), black calc(100% - var(--sp-16)), transparent);\n", to: "", expect: "5.2" },
++  { name: "the wave's sides fade on a phone too", file: "src/app/globals.css", from: "--kp-nf-side: clamp(0px, calc((100vw - var(--w-form)) * 1000), var(--sp-16));", to: "--kp-nf-side: var(--sp-16);", expect: "5.4" },
++  { name: "the question's column back under the watermark", file: "src/app/markets/[id]/page.tsx", from: " pr-[calc(2em+12px)] ", to: " ", expect: "7.1" },
++  { name: "the clock's label back in --warning-fg (gold)", file: "src/components/markets/countdown.tsx", from: "uppercase eyebrow text-text-subtle\">{resolvedLabel}", to: "uppercase eyebrow text-warning-fg\">{resolvedLabel}", expect: "8.1" },
++  { name: "the market panel's eyebrow back in gold", file: "src/app/markets/[id]/page.tsx", from: "eyebrow font-bold text-text-subtle\">\n                  {t.market.signInToPredict}", to: "eyebrow font-bold text-gold-300\">\n                  {t.market.signInToPredict}", expect: "8.2" },
++  { name: "a missing round titled ‘Up & Down’ again", file: "src/app/updown/[roundId]/page.tsx", from: "if (!d) return notFoundMetadata();", to: "if (!d) return { title: \"Up & Down\" };", expect: "2.5" },
++  { name: "a missing proposal titled ‘Proposal’ again", file: "src/app/proposals/[id]/page.tsx", from: ": notFoundMetadata();", to: ": { title: \"Proposal\" };", expect: "2.6" },
++];
+diff --git a/scripts/design-gate/eyebrow-roles.mjs b/scripts/design-gate/eyebrow-roles.mjs
+index 70928171a..f30844c59 100644
+--- a/scripts/design-gate/eyebrow-roles.mjs
++++ b/scripts/design-gate/eyebrow-roles.mjs
+@@ -240,13 +240,9 @@ export const NOT_EYEBROW = new Map([
+   ["app/leaderboard/loading.tsx :: <p className=\"font-mono text-caption uppercase tracking-[0.18em] text-text-muted\"> ↵ {t.common.loading}", "OTHER"],
+   ["app/leaderboard/page.tsx :: <span className=\"inline-flex items-center rounded-pill border border-border bg-bg-overlay px-2 py-0.5 font-mono text-micro font-bold uppercase tracking-[0.10em] text-text", "STATUS_CHIP"],
+   ["app/live/pulse-grid.tsx :: <p className=\"font-mono text-micro uppercase tracking-[0.16em] text-text-subtle\"> ↵ {t.common.loadingMore}", "OTHER"],
+-  ["app/markets/[id]/not-found.tsx :: <p className=\"font-mono text-micro font-bold uppercase tracking-[0.20em] text-gold-300\"> ↵ {t.error.notFoundCode}", "CELEBRATION"],
+-  ["app/markets/[id]/not-found.tsx :: className=\"mt-6 inline-flex items-center gap-2 font-mono text-caption uppercase tracking-[0.14em] text-gold-300 hover:text-gold-200\" ↵ >", "CONTROL_LABEL"],
+   ["app/markets/[id]/page.tsx :: <span className=\"closing-pill inline-flex items-center gap-1.5 rounded-full border h-[26px] px-2.5 font-mono text-caption font-bold uppercase tracking-[0.10em] tabular-nu", "STATUS_CHIP"],
+   ["app/markets/[id]/page.tsx :: <span className={`inline-flex items-center gap-1.5 rounded-full border h-[26px] px-2.5 font-mono text-caption font-bold uppercase tracking-[0.10em] ${ ↵ settling ? \"borde", "STATUS_CHIP"],
+   ["app/markets/[id]/page.tsx :: <span className={`text-micro uppercase tracking-[0.10em] font-semibold ${ ↵ p.status === \"OPEN\" ? \"text-info-fg\" : p.status === \"WIN\" ? \"text-gold-300\" : p.status === \"LO", "STATUS_CHIP"],
+-  ["app/not-found.tsx :: <p className=\"font-mono text-micro font-bold uppercase tracking-[0.20em] text-text-subtle\"> ↵ {d.notFoundCode} · {d.notFound}", "CELEBRATION"],
+-  ["app/not-found.tsx :: className=\"mt-6 inline-flex items-center gap-2 font-mono text-caption uppercase tracking-[0.14em] text-brand-300 hover:text-brand-200\" ↵ >", "CONTROL_LABEL"],
+   ["app/notifications/bulk-bar.tsx :: <span className=\"font-mono text-micro font-bold uppercase text-text-subtle truncate\"> ↵ {countLabel}", "STATUS_CHIP"],
+   ["app/notifications/row-actions.tsx :: className=\"-mt-1 shrink-0 inline-flex items-center gap-1 min-h-[44px] px-2 rounded-md font-mono text-micro font-bold uppercase text-accent-400 hover:text-text hover:bg-bg", "CONTROL_LABEL"],
+   ["app/positions/page.tsx :: <div className=\"mb-1.5 flex items-center justify-between gap-2 font-mono text-micro uppercase tracking-[0.12em] tabular-nums\"> ↵ <span className=\"font-bold text-yes-300\">", "OTHER"],
+@@ -257,8 +253,6 @@ export const NOT_EYEBROW = new Map([
+   ["app/profile/kyc/page.tsx :: <span className=\"inline-flex items-center gap-1 rounded-pill border border-success-border bg-success-bg px-2.5 py-0.5 font-mono text-micro font-bold uppercase tracking-[0", "STATUS_CHIP"],
+   ["app/profile/kyc/page.tsx :: className=\"font-mono text-label uppercase tracking-[0.14em] text-text-subtle hover:text-text\" ↵ >", "CONTROL_LABEL"],
+   ["app/profile/page.tsx :: <span className=\"inline-flex items-center rounded-pill border border-gold-700/50 bg-gold-500/15 px-1.5 py-0.5 font-mono text-micro font-bold uppercase tracking-[0.08em] t", "STATUS_CHIP"],
+-  ["app/proposals/[id]/not-found.tsx :: <Link href=\"/proposals\" className=\"mt-6 inline-flex items-center gap-2 font-mono text-caption uppercase tracking-[0.14em] text-gold-300 hover:text-gold-200\"> ↵ <I.globe s", "CONTROL_LABEL"],
+-  ["app/proposals/[id]/not-found.tsx :: <p className=\"font-mono text-micro font-bold uppercase tracking-[0.20em] text-gold-300\"> ↵ {t.error.notFoundCode}", "CELEBRATION"],
+   ["app/proposals/[id]/page.tsx :: <p className=\"mb-3 font-mono text-micro uppercase tracking-[0.16em] font-bold text-gold-300\">{t.common.yourProposalApproved}</p> ↵ <RewardBurst", "CELEBRATION"],
+   ["app/results/page.tsx :: <span className=\"ml-auto inline-flex items-center gap-1.5 font-mono text-micro uppercase tracking-[0.16em] font-bold text-gold-300\"> ↵ <I.crown s={13} /> {t.results.notab", "STATUS_CHIP"],
+   ["app/updown/[roundId]/page.tsx :: <p className=\"mt-1 flex items-center gap-1.5 font-mono text-micro font-semibold uppercase tracking-[0.10em] text-text-subtle\"> ↵ {isOpen && <span className=\"live-dot\" />}", "STATUS_CHIP"],
+@@ -333,6 +327,11 @@ export const NOT_EYEBROW = new Map([
+   // chip wears `filterPillClass`; neither is uppercase or tracked.
+   ["components/ui/duration-input.tsx :: \"font-mono uppercase tracking-[0.06em] text-text-subtle group-hover:text-text transition-colors leading-none\", ↵ size === \"sm\" ? \"text-[9px]\" : \"text-[10px]\",", "CONTROL_LABEL"],
+   ["components/ui/modal.tsx :: className=\"mt-1 w-full rounded-lg border border-border-strong bg-bg-overlay px-3 py-2.5 font-mono text-body-lg tracking-[0.2em] uppercase text-text outline-none focus:bor", "TYPE_TO_CONFIRM"],
++  // ⭐ 2026-10-09 (the visual pass's round 4, E43): the three not-found pages render ONE view, so their six declarations
++  // (app/not-found.tsx, app/markets/[id]/not-found.tsx, app/proposals/[id]/not-found.tsx — two each, the market and
++  // proposal ones in gold) are these two. Roles unchanged: the 0.20em kicker is RouteError's family, the link a control.
++  ["components/ui/not-found-view.tsx :: <p className=\"font-mono text-micro font-bold uppercase tracking-[0.20em] text-text-subtle\"> ↵ {words.notFoundCode} · {words.notFound}", "CELEBRATION"],
++  ["components/ui/not-found-view.tsx :: className=\"mt-6 inline-flex items-center gap-2 font-mono text-caption uppercase tracking-[0.14em] text-brand-300 hover:text-brand-200\" ↵ >", "CONTROL_LABEL"],
+   ["components/ui/page-loader.tsx :: <p className=\"font-mono text-caption uppercase tracking-[0.18em] text-text-muted\"> ↵ {t.common.loading}", "STATUS_CHIP"],
+   ["components/ui/pagination.tsx :: <p className=\"font-mono text-micro tracking-[0.14em] uppercase text-text-subtle\"> ↵ {((safePage - 1) * perPage + 1).toLocaleString()}–{Math.min(safePage * perPage, total)", "OTHER"],
+   ["components/ui/password-input.tsx :: <p className={cn(\"mt-1 font-mono text-label sm:text-micro uppercase tracking-[0.14em] font-bold\", fgCls)}> ↵ {label}", "STATUS_CHIP"],
+diff --git a/scripts/measure-system.test.mts b/scripts/measure-system.test.mts
+index f7480746f..060481ddf 100644
+--- a/scripts/measure-system.test.mts
++++ b/scripts/measure-system.test.mts
+@@ -78,9 +78,9 @@ const RAW_WIDTH_ALLOWLIST = new Set<string>([
+   "src/app/proposals/page.tsx",           // py-12, on the DISABLED state only —
+                                           //   the board itself IS migrated
+   // ── Full-height centring compositions, not measure containers ─────────────
+-  "src/app/not-found.tsx",                // min-h-[80svh] px-5 py-10, centred
+-  "src/app/markets/[id]/not-found.tsx",   // min-h-[80svh] px-5 py-10, centred
+-  "src/app/proposals/[id]/not-found.tsx", // min-h-[80svh] px-5 py-10, centred
++  // ⭐ THE THREE NOT-FOUND PAGES LEFT THIS LIST ON 2026-10-09 (the visual pass's round 4, E43/E51): they render the one
++  //    `components/ui/not-found-view.tsx`, which states the 640px column as the `max-w-form` tier token and the house
++  //    16px gutter (`px-3`), so no hand-typed width is left to list. The list may only shrink.
+   "src/components/ui/route-error.tsx",    // min-h-[60svh] px-5 py-12, centred
+   // ⭐ D45 · THE FOUR UP & DOWN ENTRIES LEFT THIS LIST ON 2026-09-24, and the list may only
+   //    shrink, so they cannot come back quietly. They stated a flat `px-4` — which is **20px**
+diff --git a/scripts/ui-consistency-baseline.json b/scripts/ui-consistency-baseline.json
+index d07fdc926..6d692f37c 100644
+--- a/scripts/ui-consistency-baseline.json
++++ b/scripts/ui-consistency-baseline.json
+@@ -29,7 +29,6 @@
+     "numeric-size-utility::src/app/auth/admin/page.tsx": 1,
+     "numeric-size-utility::src/app/help/page.tsx": 2,
+     "numeric-size-utility::src/app/markets/[id]/loading.tsx": 1,
+-    "numeric-size-utility::src/app/not-found.tsx": 6,
+     "numeric-size-utility::src/app/positions/performance/loading.tsx": 2,
+     "numeric-size-utility::src/app/profile/kyc/page.tsx": 6,
+     "numeric-size-utility::src/app/results/loading.tsx": 1,
+diff --git a/scripts/visual-pass-r3c.test.mts b/scripts/visual-pass-r3c.test.mts
+index 280eb1aee..f8ae56bba 100644
+--- a/scripts/visual-pass-r3c.test.mts
++++ b/scripts/visual-pass-r3c.test.mts
+@@ -136,7 +136,10 @@ section("2 · the empty state: a YES/NO pair on one line, and content centred in
+   ok("2.3′ PLANT · the dash rule alone does not hold the pair — the pair rule is what does",
+     !dashOnItsWord("bonyeza NDIO au HAPANA — tiketi").includes(`NDIO${NBSP}au`));
+   const es = read("src/components/ui/empty-state.tsx");
+-  ok("2.4 · EmptyState renders its body through emptyStateBody", es.includes("{emptyStateBody(body)}") && !/function dashOnItsWord/.test(es));
++  // ⚠️ Pin moved 2026-10-09 (round 4, R4-K, E50): the body now also passes through `hangCjkMarks` — a centred Chinese
++  // line hangs the empty half of the mark that ends it — so the call reads `{hangCjkMarks(emptyStateBody(body))}`.
++  // emptyStateBody is still the body's one text rule and still applied first; only the wrapper is new.
++  ok("2.4 · EmptyState renders its body through emptyStateBody", es.includes("{hangCjkMarks(emptyStateBody(body))}") && !/function dashOnItsWord/.test(es));
+ 
+   // ⭐ EACH DRAWING'S INK TOP, COMPUTED FROM ITS OWN GEOMETRY, IS ITS ROW IN INK_TOP (floor), AND EACH SVG USES ITS ROW.
+   const inkTop = INK_TOP_OF(es);
+diff --git a/scripts/visual-pass-r4k.test.mts b/scripts/visual-pass-r4k.test.mts
+new file mode 100644
+index 000000000..81585b507
+--- /dev/null
++++ b/scripts/visual-pass-r4k.test.mts
+@@ -0,0 +1,418 @@
++/**
++ * ROUND 4 OF THE VISUAL PASS, HELPER K (2026-10-09) — the not-found pages, the centred Chinese line, the market page's
++ * watermark and clock, and the gold on them: every fix held beside a control or a plant that proves the check can fail.
++ *
++ *   npx tsx scripts/visual-pass-r4k.test.mts            (npm run test:visual-pass-r4k)
++ *   npx tsx scripts/visual-pass-r4k.test.mts --prove    (npm run red:visual-pass-r4k — the mutation proof: each defect
++ *                                                        is written into its real file, this suite is run on it and must
++ *                                                        fail on that check, and the file is restored byte-identical)
++ *
++ * The owner's rule (Ali, 2026-10-08): only perfect visual and logical results. The findings are triage-r4 "EDGES"
++ * (tiles S/edges/tiles 345–434); each section names its finding, the measurement, and the file that fixes it.
++ *   §1 one not-found everywhere (E43 E44): one view, one card order, one link colour, no gold, the root page's words
++ *   §2 the not-found's title, in the page's language, with noindex in the head (E47) — and the framework's own lines
++ *   §3 the heading and the hint break whole (E42), computed for the Chinese hint at every width
++ *   §4 a Chinese mark that ends a centred line hangs its empty part (E50)
++ *   §5 the wave fades out (E46)
++ *   §6 the content edge is the house gutter (E51)
++ *   §7 the market question's column ends before the watermark (E49)
++ *   §8 gold is money: the clock's labels, the market panel's eyebrow, the not-found (the gold audit)
++ *   §9 E48: the "404" a player's 404 page logs is its own Server Action, answered with the page's status
++ */
++import { readFileSync, writeFileSync, existsSync } from "node:fs";
++import { createHash } from "node:crypto";
++import { createRequire } from "node:module";
++import { spawnSync } from "node:child_process";
++import { createElement as h } from "react";
++import { renderToStaticMarkup } from "react-dom/server";
++import { decomment, decommentCss } from "./lib/decomment.mts";
++import { dict as DICTS } from "../src/lib/i18n-dict.ts";
++import { NotFoundView, NOT_FOUND_WORDS, notFoundTitle } from "../src/components/ui/not-found-view.tsx";
++import { hangCjkMarks, CJK_MARK_TRIM, CJK_TRIM_EM } from "../src/lib/cjk-marks.tsx";
++import twConfigModule from "../tailwind.config.ts";
++import { MUTATIONS } from "./anchors/visual-pass-r4k.anchors.mjs";
++
++const SELF = "scripts/visual-pass-r4k.test.mts";
++const PROVE = process.argv.includes("--prove");
++
++let pass = 0;
++const fails: string[] = [];
++const ok = (name: string, cond: boolean, detail = "") => {
++  if (cond) { pass++; console.log(`  ok   ${name}`); }
++  else { fails.push(`${name}${detail ? ` — ${detail}` : ""}`); console.log(`  FAIL ${name}${detail ? ` — ${detail}` : ""}`); }
++};
++const section = (s: string) => console.log(`\n── ${s} ${"─".repeat(Math.max(0, 100 - s.length))}`);
++const read = (p: string) => readFileSync(p, "utf8").replace(/\r\n/g, "\n");
++// Source and the stylesheet through the shared scanners (scripts/lib/decomment.mts) — never a private stripper.
++const code = (p: string) => decomment(read(p));
++const css = decommentCss(read("src/app/globals.css"));
++const html = (el: Parameters<typeof renderToStaticMarkup>[0]) => renderToStaticMarkup(el);
++const twConfig = ((twConfigModule as unknown as { default?: typeof twConfigModule }).default ?? twConfigModule);
++const SPACE = (twConfig.theme?.extend?.spacing ?? {}) as Record<string, string>;
++const tw = (key: string) => parseFloat(SPACE[key] ?? "NaN");
++const FONT_SIZE = (twConfig.theme?.extend?.fontSize ?? {}) as Record<string, [string, unknown]>;
++const rung = (key: string) => parseFloat(FONT_SIZE[key]?.[0] ?? "NaN");
++/** One rule's declarations, by its exact selector at the start of a line; the first match. */
++function rule(src: string, selector: string): string {
++  const esc = selector.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
++  const m = new RegExp(`(?:^|\\n)\\s*${esc}\\s*\\{([^}]*)\\}`).exec(src);
++  return m ? m[1] : "";
++}
++const ROOT_PX: Record<string, number> = {};
++for (const m of read("src/app/globals.css").matchAll(/(--(?:sp-[0-9]+|w-form)):\s*([0-9.]+)px/g)) ROOT_PX[m[1]] ??= Number(m[2]);
++
++// The repo's own fonts (src/lib/server/reports/fonts) — the faces `--font-mono` and `--font-body` load, read for metrics.
++const fontkit = createRequire(import.meta.url)("fontkit") as {
++  openSync: (p: string) => { unitsPerEm: number; glyphForCodePoint: (c: number) => { advanceWidth: number }; layout: (s: string) => { advanceWidth: number } };
++};
++const JBM = fontkit.openSync("src/lib/server/reports/fonts/JetBrainsMono-Regular.ttf");
++const JBM_BOLD = fontkit.openSync("src/lib/server/reports/fonts/JetBrainsMono-Bold.ttf");
++const INTER = fontkit.openSync("src/lib/server/reports/fonts/Inter-Regular.ttf");
++const spaceEm = (f: typeof JBM) => f.glyphForCodePoint(0x20).advanceWidth / f.unitsPerEm;
++
++/**
++ * Microsoft YaHei, measured from its own advance (GDI+ GenericTypographic at 200px, 2026-10-09, this PC — the face the
++ * edges tiles were drawn in): where each mark's ink ends inside its 1em, and where an ideograph's begins.
++ */
++const YAHEI = { inkStart: 0.015, rightEmpty: { "。": 0.690, "，": 0.695, "、": 0.700, "；": 0.685, "：": 0.685, "！": 0.685, "？": 0.530 } as Record<string, number> };
++/** A centred one-line run's ink-centre offset from its box's centre, in px: (left gap − right gap) / 2. */
++const inkOffset = (px: number, endMark: string, trim: number) => ((YAHEI.inkStart - (YAHEI.rightEmpty[endMark] - trim)) / 2) * px;
++
++/* ══ §1 · ONE NOT-FOUND ═══════════════════════════════════════════════════════════════════════════════════════════════ */
++section("1 · one not-found everywhere — one view, one order, one link colour, no gold (E43 E44; tiles 345–398)");
++const ROUTES = {
++  root: "src/app/not-found.tsx",
++  market: "src/app/markets/[id]/not-found.tsx",
++  proposal: "src/app/proposals/[id]/not-found.tsx",
++} as const;
++const VIEW = "src/components/ui/not-found-view.tsx";
++const view = code(VIEW);
++const viewMarkup = view.slice(view.indexOf("export function NotFoundView"));
++/** A not-found route that draws markup of its own (the second design) rather than the one view. */
++const ownMarkup = (c: string) => /<nav\b|FiftyMark|BrandTopo|text-gold|grid-cols/.test(c);
++for (const [name, p] of Object.entries(ROUTES)) {
++  const c = code(p);
++  ok(`1.1 · ${name} renders the one view (${p})`, c.includes(`from "@/components/ui/not-found-view"`) && /<NotFoundView\b/.test(c) && !ownMarkup(c));
++}
++const pages = (["sw", "en", "zh"] as const).map((l) => ({ l, out: html(h(NotFoundView, { words: NOT_FOUND_WORDS[l], recoveryLabel: DICTS[l].error.recoveryLinks })) }));
++for (const { l, out } of pages) {
++  const hrefs = [...out.matchAll(/<a [^>]*href="([^"]+)"/g)].map((m) => m[1]);
++  const w = NOT_FOUND_WORDS[l];
++  ok(`1.2 · ${l}: the kicker, the heading and the three cards in ONE order — Home · Markets · Help — then the one way out`,
++    out.includes(`>${w.notFoundCode} · ${w.notFound}</p>`) && out.includes(`>${w.notFoundBody}</h1>`)
++      && hrefs.join(" ") === "/ /markets /help /markets"
++      && out.indexOf(`>${w.home}</p>`) < out.indexOf(`>${w.markets}</p>`) && out.indexOf(`>${w.markets}</p>`) < out.indexOf(`>${w.help}</p>`),
++    hrefs.join(" "));
++  ok(`1.3 · ${l}: one link colour (brand-300), and no gold anywhere on the page`,
++    (out.match(/text-brand-300 hover:text-brand-200/g) ?? []).length === 1 && !/gold|gilt/.test(out));
++}
++const proposal = html(h(NotFoundView, { words: NOT_FOUND_WORDS.sw, recoveryLabel: DICTS.sw.error.recoveryLinks, way: { href: "/proposals", label: DICTS.sw.error.backToProposals } }));
++ok("1.4 · the proposal not-found is the same page with its own way out: the same three cards, then ‘Rudi kwenye mapendekezo’",
++  [...proposal.matchAll(/<a [^>]*href="([^"]+)"/g)].map((m) => m[1]).join(" ") === "/ /markets /help /proposals" && proposal.includes(`>${DICTS.sw.error.backToProposals}<svg`));
++ok("1.4b · …and its route passes exactly that", /way=\{\{ href: "\/proposals", label: t\.error\.backToProposals \}\}/.test(code(ROUTES.proposal)));
++ok("1.5 · E44: the English heading types a typographic apostrophe — ‘couldn’t’ — and no word on the page a straight one",
++  NOT_FOUND_WORDS.en.notFoundBody === "We couldn’t find that page" && !Object.values(NOT_FOUND_WORDS.en).some((s) => s.includes("'")));
++// The words are the ones the product already ships: the dictionary's own error.* sentences, the only difference the
++// apostrophe the dictionary's English types straight (S12 owns that key), so no word here is new.
++{
++  const d = (l: "sw" | "en" | "zh") => ({ notFoundCode: DICTS[l].error.notFoundCode, notFound: DICTS[l].error.notFound, notFoundBody: DICTS[l].error.notFoundBody, notFoundHint: DICTS[l].error.notFoundHint, home: DICTS[l].common.home, markets: DICTS[l].common.markets, help: DICTS[l].common.help, browseOpenMarkets: DICTS[l].error.browseOpenMarkets });
++  const same = (l: "sw" | "en" | "zh") => Object.entries(d(l)).filter(([k, v]) => (NOT_FOUND_WORDS[l] as Record<string, string>)[k] !== v).map(([k]) => k);
++  ok("1.6 · sw and zh: every word is the dictionary's own (error.*, common.home/markets/help)", same("sw").length === 0 && same("zh").length === 0, `${same("sw")} ${same("zh")}`);
++  ok("1.6b · en: the same, but for the dictionary's straight apostrophe in error.notFoundBody (S12)",
++    same("en").join() === "notFoundBody" && DICTS.en.error.notFoundBody.replace("'", "’") === NOT_FOUND_WORDS.en.notFoundBody);
++}
++{
++  const OLD_MARKET = `<div className="mb-5"><FiftyMark size={64} /></div><p className="font-mono text-micro font-bold uppercase tracking-[0.20em] text-gold-300">{t.error.notFoundCode}</p><nav aria-label={t.error.recoveryLinks} className="mt-6 grid w-full max-w-[420px] grid-cols-1 gap-2 sm:grid-cols-3"><Link href="/markets">`;
++  ok("1.1′ PLANT · the shipped market page's own markup (a gold 404, Masoko first) is reported by 1.1's test", ownMarkup(OLD_MARKET));
++}
++
++/* ══ §2 · THE TITLE ═══════════════════════════════════════════════════════════════════════════════════════════════════ */
++section("2 · the not-found's title in the page's language, noindex in the head (E47; tiles 345–398)");
++{
++  const root = code(ROUTES.root);
++  ok("2.1 · the root not-found's metadata: its own title key in the visitor's language, and noindex/nofollow",
++    /export async function generateMetadata\(\)/.test(root)
++      && root.includes("return { title: notFoundTitle(NOT_FOUND_WORDS[locale]), robots: { index: false, follow: false } };"));
++  ok("2.2 · the title reads ‘Hakuna ukurasa · 404’ / ‘Page not found · 404’ / ‘页面未找到 · 404’",
++    notFoundTitle(NOT_FOUND_WORDS.sw) === "Hakuna ukurasa · 404" && notFoundTitle(NOT_FOUND_WORDS.en) === "Page not found · 404" && notFoundTitle(NOT_FOUND_WORDS.zh) === "页面未找到 · 404");
++  for (const p of [ROUTES.market, ROUTES.proposal]) {
++    const c = code(p);
++    ok(`2.3 · ${p} exports the root's metadata — the not-found convention reads the DEEPEST not-found's, and these had none`,
++      c.includes(`import { generateMetadata as notFoundMetadata } from "@/app/not-found";`) && /export async function generateMetadata\(\) \{\s*return notFoundMetadata\(\);\s*\}/.test(c));
++  }
++  const market = code("src/app/markets/[id]/page.tsx");
++  const mMeta = market.slice(market.indexOf("export async function generateMetadata"), market.indexOf("export default async function"));
++  ok("2.4 · the market page's metadata still calls notFound() for a missing market — that is what sends Next to the not-found's",
++    /let m: [^;]+= null;\s*try \{ m = await getMarket\(id\); \} catch \{[^}]*\}\s*if \(!m\) notFound\(\);/.test(mMeta));
++  const ud = code("src/app/updown/[roundId]/page.tsx");
++  const udMeta = ud.slice(ud.indexOf("export async function generateMetadata"), ud.indexOf("export default async function"));
++  ok("2.5 · /updown/[roundId]: a round the read did not find is titled by the not-found; a FAILED read keeps ‘Up & Down’",
++    /try \{\s*d = await getRoundDetail\(roundId\);\s*\} catch \{ return \{ title: "Up & Down" \}; \}\s*if \(!d\) return notFoundMetadata\(\);/.test(udMeta)
++      && !/\.catch\(\(\) => null\)/.test(udMeta) && ud.includes(`import { generateMetadata as notFoundMetadata } from "@/app/not-found";`));
++  const pr = code("src/app/proposals/[id]/page.tsx");
++  const prMeta = pr.slice(pr.indexOf("export async function generateMetadata"), pr.indexOf("export default async function"));
++  ok("2.6 · /proposals/[id]: the same — the not-found's title for a proposal that does not exist (unless proposals are DISABLED, when the page redirects)",
++    /if \(!p\) return getProposalsConfig\(\)\.state === "DISABLED" \? \{ title: "Proposal" \} : notFoundMetadata\(\);/.test(prMeta)
++      && /\} catch \{ return \{ title: "Proposal" \}; \}/.test(prMeta));
++  ok("2.5′ PLANT · the shipped updown metadata (‘Up & Down’ for a missing round) is reported",
++    !/if \(!d\) return notFoundMetadata\(\);/.test(`const d = await getRoundDetail(roundId).catch(() => null);\n  return { title: d?.titleEn ?? "Up & Down" };`));
++}
++// The status: the framework's, line by line — a pin, so an upgrade that changes any of it is noticed here.
++{
++  const NEXT = "node_modules/next/dist/esm";
++  const at = (p: string, needle: string) => {
++    const src = existsSync(`${NEXT}/${p}`) ? read(`${NEXT}/${p}`) : "";
++    const i = src.indexOf(needle);
++    return i < 0 ? 0 : src.slice(0, i).split("\n").length;
++  };
++  const meta = at("lib/metadata/resolve-metadata.js", "errorMetadataItem[0] = errorMetadataExport;");
++  ok(`2.7 · Next reads the deepest not-found's metadata under the error convention (resolve-metadata.js:${meta})`, meta > 0);
++  const caught = at("lib/metadata/metadata.js", "return getNotFoundMetadata(tree, pathnameForMetadata");
++  ok(`2.8 · a notFound() in generateMetadata is caught and the not-found's metadata resolved instead (metadata.js:${caught})`, caught > 0);
++  const status = at("server/app-render/app-render.js", "res.statusCode = getAccessFallbackHTTPStatus(err);");
++  ok(`2.9 · the 404 status is set only where the error escaped the shell — the render's catch (app-render.js:${status})`, status > 0);
++  const captured = at("server/app-render/create-error-handler.js", "allCapturedErrors.push(thrownValue);");
++  const noindex = at("server/app-render/make-get-server-inserted-html.js", 'content: "noindex"');
++  ok(`2.10 · a notFound() inside a Suspense boundary is captured (create-error-handler.js:${captured}) and streams a robots noindex (make-get-server-inserted-html.js:${noindex})`, captured > 0 && noindex > 0);
++  ok("2.11 · …and the two routes that answer 200 have a loading.tsx — the boundary that commits the status first (⛔ kept: every async route keeps one)",
++    existsSync("src/app/markets/[id]/loading.tsx") && existsSync("src/app/updown/[roundId]/loading.tsx") && existsSync("src/app/loading.tsx"));
++}
++
++/* ══ §3 · BREAKS ══════════════════════════════════════════════════════════════════════════════════════════════════════ */
++section("3 · the heading and the hint break whole (E42; tiles 345 354 355 364 390 396 398)");
++{
++  const h1 = /<h1 className="([^"]+)">\s*\{words\.notFoundBody\}/.exec(viewMarkup)?.[1] ?? "";
++  ok("3.1 · the heading is balanced — ‘Hatukupata / ukurasa huo’, ‘We couldn’t / find that page’ — never one word alone", /\btext-balance\b/.test(h1), h1);
++  const hint = /<p className="([^"]+)">\s*\{hangCjkMarks\(words\.notFoundHint\)\}/.exec(viewMarkup)?.[1] ?? "";
++  ok("3.2 · the hint is balanced, and Chinese breaks only after its marks (keep-all, break-word the floor)",
++    /\btext-balance\b/.test(hint) && hint.includes("[word-break:keep-all]") && hint.includes("[overflow-wrap:break-word]"), hint);
++  // The Chinese hint, laid out: 13px, every ideograph and full-width mark 1em; "URL" in the repo's Inter.
++  const PX = 13;
++  const url = INTER.layout("URL").advanceWidth / INTER.unitsPerEm;
++  const segs = ["链接可能已失效，", "市场可能已结算，", "或URL输入有误。", "请选择以下目的地继续。"];
++  ok("3.3.locate · the hint is those four clauses, in that order", segs.join("") === NOT_FOUND_WORDS.zh.notFoundHint);
++  const em = (s: string) => Array.from(s).reduce((a, c) => a + (/[A-Za-z]/.test(c) ? 0 : 1), 0) + (s.includes("URL") ? url : 0);
++  /** A line's width: its clauses at full width, its LAST mark trimmed (the gap after it is gone at the line's end). */
++  const lineW = (line: string[]) => (line.reduce((a, s) => a + em(s), 0) - CJK_TRIM_EM.mark) * PX;
++  const greedy = (w: number) => {
++    const lines: string[][] = [[]];
++    for (const s of segs) { const cur = lines[lines.length - 1]; if (cur.length && lineW([...cur, s]) > w) lines.push([s]); else cur.push(s); }
++    return lines;
++  };
++  /** text-wrap: balance — the fewest lines the box allows, at the narrowest width that still gives that many. */
++  const balanced = (box: number) => { const n = greedy(box).length; let w = box; while (w > 1 && greedy(w - 1).length === n) w--; return greedy(w); };
++  for (const [vw, box] of [[320, 320 - 2 * tw("3")], [360, 360 - 2 * tw("3")], [390, Math.min(420, 390 - 2 * tw("3"))], [1280, 420]] as const) {
++    const lines = balanced(box);
++    ok(`3.3 · zh hint at ${vw} (${box}px): two lines, ‘…已结算，’ / ‘或URL…继续。’ — 选择 whole, 继续。 not alone, each line ending on a hung mark`,
++      lines.length === 2 && lines[0].join("") === segs[0] + segs[1] && lines[1].join("") === segs[2] + segs[3] && lines.every((l) => lineW(l) <= box),
++      lines.map((l) => `${l.join("")} (${lineW(l).toFixed(1)}px)`).join(" / "));
++  }
++  // CONTROL — the same model without keep-all and balance, in the old 24px gutter, reproduces what the tiles measured: a
++  // character-level greedy fill split 选择 at 390 (342px) and left 继续。 alone at 1280 (420px).
++  const chars = Array.from(NOT_FOUND_WORDS.zh.notFoundHint.replace("URL", "\u0001"));
++  const fill = (box: number) => { const out: string[] = [""]; let w = 0; for (const c of chars) { const cw = (c === "\u0001" ? url : 1) * PX; if (w + cw > box) { out.push(""); w = 0; } out[out.length - 1] += c === "\u0001" ? "URL" : c; w += cw; } return out; };
++  const at390 = fill(390 - 2 * tw("5")), at1280 = fill(420);
++  ok("3.3′ CONTROL · the old fill reproduces the tiles: ‘…请选 / 择…’ at 390 and ‘继续。’ alone at 1280",
++    at390[0].endsWith("请选") && at1280[at1280.length - 1] === "继续。", `${at390.join(" / ")} || ${at1280.join(" / ")}`);
++}
++
++/* ══ §4 · THE HANGING MARK ════════════════════════════════════════════════════════════════════════════════════════════ */
++section("4 · a Chinese mark that ends a centred line hangs its empty part (E50; tiles 390 396 398 427 428 433 434)");
++{
++  // Latin text is untouched: every sw and en dictionary string comes back as the same string.
++  const latin: string[] = [];
++  const walk = (v: unknown) => { if (typeof v === "string") latin.push(v); else if (v && typeof v === "object") for (const x of Object.values(v)) walk(x); };
++  walk(DICTS.sw); walk(DICTS.en);
++  // (Two sw/en strings quote a Chinese example — "[事件]会在[日期]前发生吗？" — and are Chinese text: they are not Latin.)
++  const HAN = /[　-〿㐀-鿿＀-￯]/;
++  const latinOnly = latin.filter((s) => !HAN.test(s));
++  const moved = latinOnly.filter((s) => hangCjkMarks(s) !== s);
++  ok(`4.1 · every sw and en dictionary string with no Chinese in it (${latinOnly.length} of ${latin.length}) comes back as itself — no change for Latin text`,
++    latinOnly.length > 1000 && latin.length - latinOnly.length < 10 && moved.length === 0, moved.slice(0, 3).join(" | "));
++  const end = html(h("p", null, hangCjkMarks("选择一方以设置您的信念并下注。")));
++  ok("4.2 · a line-final 。 is set back and nothing follows it", end === `<p>选择一方以设置您的信念并下注<span class="kp-cjk-mark">。</span></p>`, end);
++  const mid = html(h("p", null, hangCjkMarks("选择一个问题，点击")));
++  ok("4.3 · a mid-text ， is set back AND followed by the gap that pays it back",
++    mid === `<p>选择一个问题<span class="kp-cjk-mark">，</span><span aria-hidden="true" class="kp-cjk-gap"> </span>点击</p>`, mid);
++  const q = html(h("p", null, hangCjkMarks("它会朝哪个方向结算？")));
++  ok("4.4 · ？ takes its own, smaller trim", q.endsWith(`<span class="kp-cjk-mark kp-cjk-mark--q">？</span></p>`), q);
++  const pair = html(h("p", null, hangCjkMarks("真的？！")));
++  ok("4.5 · two marks in a row: only the last hangs (no mid-line compression)", pair === `<p>真的？<span class="kp-cjk-mark">！</span></p>`, pair);
++  const quoted = html(h("p", null, hangCjkMarks("“你好，”他说。")));
++  ok("4.5b · a mark before a closing quote is left whole — no gap, so no line can start on the ”",
++    quoted === `<p>“你好，”他说<span class="kp-cjk-mark">。</span></p>`, quoted);
++  // The stylesheet pays the trim back exactly: the gap is a space in the mono face (0.6em in every weight, from the
++  // repo's JetBrains Mono) plus word-spacing — so mid-line a mark is a whole em again.
++  const mark = rule(css, ".kp-cjk-mark"), markQ = rule(css, ".kp-cjk-mark--q"), gap = rule(css, ".kp-cjk-gap"), gapQ = rule(css, ".kp-cjk-gap--q");
++  const num = (s: string, prop: string) => parseFloat(new RegExp(`${prop}:\\s*(-?[0-9.]+)em`).exec(s)?.[1] ?? "NaN");
++  const sp = spaceEm(JBM);
++  ok("4.6.locate · the mono face's space is 0.6em, regular and bold", sp === 0.6 && spaceEm(JBM_BOLD) === 0.6, `${sp} ${spaceEm(JBM_BOLD)}`);
++  ok("4.6 · the trims are the helper's (0.65em, ？ 0.5em) and each gap is exactly its trim: 0.6 + 0.05 = 0.65, 0.6 − 0.1 = 0.5",
++    -num(mark, "margin-inline-end") === CJK_TRIM_EM.mark && -num(markQ, "margin-inline-end") === CJK_TRIM_EM.question
++      && Math.abs(sp + num(gap, "word-spacing") - CJK_TRIM_EM.mark) < 1e-9 && Math.abs(sp + num(gapQ, "word-spacing") - CJK_TRIM_EM.question) < 1e-9,
++    `${mark} | ${markQ} | ${gap} | ${gapQ}`);
++  ok("4.7 · the gap cannot grow the line or be copied: mono face, line-height 0, letter-spacing 0, user-select none",
++    /font-family:\s*var\(--font-mono\)/.test(gap) && /line-height:\s*0;/.test(gap) && /letter-spacing:\s*0;/.test(gap) && /(?:^|[^-])user-select:\s*none/.test(gap));
++  ok("4.8 · no trim cuts into the ink: every mark's YaHei empty part ≥ its trim",
++    Object.keys(CJK_MARK_TRIM).every((c) => YAHEI.rightEmpty[c] >= (c === "？" ? CJK_TRIM_EM.question : CJK_TRIM_EM.mark) + YAHEI.inkStart));
++  // Before → after, from the face's advance: the measured tiles (−4.5 at 13px, −4.0 at 17px) against the model.
++  const cases: Array<[string, number, string, number]> = [["the not-found hint / the empty state's body · 。 13px", 13, "。", -4.5], ["the hint's first line · ， 13px", 13, "，", NaN], ["the side picker's question · ？ 17px", 17, "？", -4.0], ["the side picker's sub-line · 。 13px", 13, "。", -4.0]];
++  for (const [what, px, c, measured] of cases) {
++    const before = inkOffset(px, c, 0), after = inkOffset(px, c, c === "？" ? CJK_TRIM_EM.question : CJK_TRIM_EM.mark);
++    ok(`4.9 · ${what}: ink centre ${before.toFixed(2)}px → ${after.toFixed(2)}px${Number.isNaN(measured) ? "" : ` (tiles: ${measured})`}`,
++      before < -4 && Math.abs(after) < 0.5 && (Number.isNaN(measured) || Math.abs(before - measured) < 0.6));
++  }
++  // The helper is where the centred Chinese lines are.
++  ok("4.10 · applied where the lines are centred: the empty state's title and body, the side picker's question and sub-line, the not-found hint",
++    code("src/components/ui/empty-state.tsx").includes("{hangCjkMarks(title)}") && code("src/components/ui/empty-state.tsx").includes("{hangCjkMarks(emptyStateBody(body))}")
++      && code("src/components/markets/side-picker.tsx").includes("{hangCjkMarks(t.market.whichWay)}") && code("src/components/markets/side-picker.tsx").includes("{hangCjkMarks(t.market.chooseSideHelp)}")
++      && viewMarkup.includes("{hangCjkMarks(words.notFoundHint)}"));
++  ok("4.6′ PLANT · a gap with no word-spacing would leave a mid-line mark 0.05em short", Math.abs(sp + 0 - CJK_TRIM_EM.mark) > 0.01);
++  ok("4.9′ PLANT · untrimmed, the 。 line is 4.4px off centre — the defect the tiles measured", inkOffset(13, "。", 0) < -4);
++}
++
++/* ══ §5 · THE WAVE ════════════════════════════════════════════════════════════════════════════════════════════════════ */
++section("5 · the wave fades out (E46; tile 380: a hard-edged box x320–959, y169–823)");
++{
++  ok("5.1 · the view nests the wave in its two masks: .kp-nf-topo › .kp-nf-topo__x › BrandTopo",
++    /<div aria-hidden className="kp-nf-topo">\s*<div className="kp-nf-topo__x">\s*<BrandTopo id="notfound-topo" opacity=\{0\.09\} \/>/.test(viewMarkup));
++  const outer = rule(css, ".kp-nf-topo"), inner = rule(css, ".kp-nf-topo__x");
++  const V = "linear-gradient(to bottom, transparent, black var(--sp-16), black calc(100% - var(--sp-16)), transparent)";
++  const H = "linear-gradient(to right, transparent, black var(--kp-nf-side), black calc(100% - var(--kp-nf-side)), transparent)";
++  // Declaration by declaration — `-webkit-mask-image: …` contains `mask-image: …`, so a substring test would pass with
++  // one spelling gone.
++  const decls = (body: string) => new Set(body.split(";").map((d) => d.trim().replace(/\s+/g, " ")).filter(Boolean));
++  ok("5.2 · top and bottom fade over --sp-16 (64px), both spellings", decls(outer).has(`-webkit-mask-image: ${V}`) && decls(outer).has(`mask-image: ${V}`), outer);
++  ok("5.3 · the sides fade over --kp-nf-side, both spellings", decls(inner).has(`-webkit-mask-image: ${H}`) && decls(inner).has(`mask-image: ${H}`), inner);
++  const side = /--kp-nf-side:\s*clamp\(0px, calc\(\(100vw - var\(--w-form\)\) \* 1000\), var\(--sp-16\)\);/.test(inner);
++  const fade = (vw: number) => Math.min(Math.max(0, (vw - ROOT_PX["--w-form"]) * 1000), ROOT_PX["--sp-16"]);
++  ok(`5.4 · the side fade is 0 where the column is the screen and 64px past it: 360→${fade(360)}, 640→${fade(640)}, 768→${fade(768)}, 1280→${fade(1280)}`,
++    side && fade(360) === 0 && fade(640) === 0 && fade(768) === 64 && fade(1280) === 64 && ROOT_PX["--w-form"] === 640);
++  ok("5.5 · both layers fill the column and take no pointer", /position:\s*absolute;\s*inset:\s*0;\s*pointer-events:\s*none;/.test(rule(css, ".kp-nf-topo, .kp-nf-topo__x")));
++  ok("5.1′ PLANT · the shipped root page (BrandTopo straight in the column) is reported", !/<div aria-hidden className="kp-nf-topo">/.test(`<BrandTopo id="notfound-topo" opacity={0.09} />`));
++}
++
++/* ══ §6 · THE CONTENT EDGE ════════════════════════════════════════════════════════════════════════════════════════════ */
++section("6 · the content edge is the house gutter (E51; tiles 345 351: cards x24–336 at 360)");
++{
++  const frame = /<div className="(kp-shortpage [^"]+)">/.exec(viewMarkup)?.[1] ?? "";
++  const pad = /\bpx-(\d+(?:\.\d+)?)\b/.exec(frame)?.[1] ?? "";
++  const house = /pad === "page" && "px-(\d+) lg:px-\d+ py-\d+"/.exec(code("src/components/layout/page-container.tsx"))?.[1] ?? "";
++  ok(`6.1 · the column's gutter is px-${pad} = ${tw(pad)}px, the house gutter (PageContainer px-${house} = ${tw(house)}px) — the cards stand at x16 on a phone`,
++    pad === house && tw(pad) === 16, frame);
++  ok("6.2 · the column is the 640px tier token, not a hand-typed width", /\bmax-w-form\b/.test(frame) && !/max-w-\[/.test(frame) && /--w-form:\s*640px;/.test(css));
++  ok("6.1′ PLANT · the old px-5 is 24px — the 8px the tiles measured", tw("5") === 24);
++}
++
++/* ══ §7 · THE WATERMARK ═══════════════════════════════════════════════════════════════════════════════════════════════ */
++section("7 · the market question's column ends before the watermark (E49; tile 433: 赛's ink to x701 over the mark at x680–741)");
++{
++  const page = code("src/app/markets/[id]/page.tsx");
++  const mark = /<span aria-hidden className="(pointer-events-none absolute right-(\d+) [^"]+)">\s*<Cat s=\{96\} className="h-\[2em\] w-\[2em\]" \/>/.exec(page);
++  const h1 = /<h1 data-stem=[^>]*?className="([^"]+)"/.exec(page)?.[1] ?? "";
++  const pr = /\bpr-\[calc\(2em\+(\d+)px\)\]/.exec(h1);
++  const rungs = (cls: string) => (/(?:^|\s)text-([a-z0-9-]+)\s+md:text-([a-z0-9-]+)/.exec(cls) ?? []).slice(1).join(",");
++  ok("7.locate · the watermark is a 2em box at right-N, on the same type rungs as the h1", !!mark && rungs(mark?.[1] ?? "") === rungs(h1) && rungs(h1) === "title-lg,display-3", `${rungs(mark?.[1] ?? "")} vs ${rungs(h1)}`);
++  const right = tw(mark?.[2] ?? "");
++  const air = Number(pr?.[1] ?? NaN) - right;
++  // The page column's right edge: 16px in from the screen on a phone and at 768 (tile 433: x752), the reading tier's
++  // inner edge at 1280 ((1280 + 1080) / 2 − 32 = 1148). The gap is the same at every width: it is written in the h1's em.
++  for (const [w, px, contentRight] of [[390, rung("title-lg"), 390 - tw("3")], [768, rung("display-3"), 768 - tw("3")], [1280, rung("display-3"), 1148]] as const) {
++    const markLeft = contentRight - right - 2 * px;
++    const h1Right = contentRight - (2 * px + Number(pr?.[1]));
++    ok(`7.1 · at ${w} (${px}px): the question's column ends at x${h1Right}, ${markLeft - h1Right}px before the mark's box at x${markLeft}`, markLeft - h1Right === 8 && air === 8);
++  }
++  ok("7.2 · R4-D's first-line indent is kept", h1.includes("data-[stem]:indent-[-0.075em]") && h1.includes("text-balance"));
++  ok("7.1′ PLANT · without the padding the column runs under the mark (tile 433: ink to x701 > the mark's box at x676)", 701 > 752 - right - 2 * rung("display-3"));
++}
++
++/* ══ §8 · GOLD IS MONEY ═══════════════════════════════════════════════════════════════════════════════════════════════ */
++section("8 · gold is money, and nothing else — the clock's labels, the market panel's eyebrow, the not-found (the gold audit)");
++{
++  // The class form of the money ink, exactly as test:gold-is-money writes it — read from that file, so the two cannot drift.
++  const gim = read("scripts/gold-is-money.test.mts");
++  const src = /const MONEY_CLASS = (\/.+\/g);/.exec(gim)?.[1] ?? "";
++  const body = src.slice(1, src.lastIndexOf("/"));
++  const MONEY_CLASS = new RegExp(body, "g");
++  // `--warning-fg` IS `--gilt` (globals.css; DESIGN_AUTHORITY F3), so its class is money ink too.
++  const MONEY_VAR = /var\(\s*--(gilt|gilt-metal|gilt-ink|gilt-strong|gilt-reeding|gold-(300|400|500))\s*\)|text-warning-fg/g;
++  ok("8.locate · gold-is-money's MONEY_CLASS was read, and --warning-fg is --gilt", src.length > 40 && new RegExp(body).test("text-gold-300") && /--warning-fg:\s*var\(--gilt\);/.test(css));
++  const hits = (s: string) => [...s.matchAll(MONEY_CLASS)].map((m) => m[0]).concat([...s.matchAll(MONEY_VAR)].map((m) => m[0]));
++  const cd = code("src/components/markets/countdown.tsx");
++  const label = /<span className="([^"]+)">\{resolvedLabel\}<\/span>/.exec(cd)?.[1] ?? "";
++  ok("8.1 · the clock's label (‘Uchaguzi unafungwa baada ya’ / ‘Matokeo baada ya’) is the page's label ink, not --warning-fg (= --gilt)",
++    label.includes("text-text-subtle") && hits(label).length === 0, label);
++  const page = code("src/app/markets/[id]/page.tsx");
++  const eyebrow = /<p className="([^"]+)">\s*\{t\.market\.signInToPredict\}/.exec(page)?.[1] ?? "";
++  ok("8.2 · the market panel's ‘Ingia ili kutabiri’ / 登录以预测 eyebrow is the eyebrow ink the side picker uses in the same slot",
++    eyebrow.includes("text-text-subtle") && hits(eyebrow).length === 0 && code("src/components/markets/side-picker.tsx").includes(`<p className="font-mono text-micro uppercase eyebrow font-bold text-text-subtle text-center">`), eyebrow);
++  ok("8.3 · the not-found view and its three routes carry no money ink", hits(view).length === 0 && Object.values(ROUTES).every((p) => hits(code(p)).length === 0), hits(view).join());
++  ok("8.1′ PLANT · the shipped label (text-warning-fg) and the shipped not-found link (text-gold-300) are caught",
++    hits(`<span className="font-mono text-micro uppercase eyebrow text-warning-fg">`).length === 1 && hits(`className="... text-gold-300 hover:text-gold-200"`).length === 1);
++}
++
++/* ══ §9 · E48 ═════════════════════════════════════════════════════════════════════════════════════════════════════════ */
++section("9 · E48 — the 404 a player's not-found page logs is its own Server Action, answered with the page's status");
++{
++  const NEXT = "node_modules/next/dist/esm";
++  const base = existsSync(`${NEXT}/server/base-server.js`) ? read(`${NEXT}/server/base-server.js`) : "";
++  const r404 = base.indexOf("async render404(");
++  const line = base.slice(0, r404).split("\n").length;
++  ok(`9.1 · an unmatched path renders /_not-found with 404 — for a POST too (base-server.js:${line}, render404 sets res.statusCode = 404)`,
++    r404 > 0 && base.slice(r404, r404 + 600).includes("res.statusCode = 404;"));
++  const red = existsSync(`${NEXT}/client/components/router-reducer/reducers/server-action-reducer.js`) ? read(`${NEXT}/client/components/router-reducer/reducers/server-action-reducer.js`) : "";
++  ok("9.2 · the client takes the action's answer by its RSC content type, whatever the status — the action works; only the browser logs the 404",
++    /const isRscResponse = !!\(contentType && contentType\.startsWith\(RSC_CONTENT_TYPE_HEADER\)\);/.test(red) && /if \(!isRscResponse && !redirectLocation\)/.test(red));
++  ok("9.3 · the journey's unread dot asks that Server Action from every signed-in page (guests ask nothing: their 404s log only the document)",
++    code("src/lib/journey/use-unread-count.ts").includes(`import { fetchMyNotifications } from "@/app/_actions/notifications";`) && /^["']use server["']/.test(read("src/app/_actions/notifications.ts")));
++  // Every file the root layout and the manifest name exists: the 404 is not a missing asset.
++  const layout = code("src/app/layout.tsx");
++  const manifest = JSON.parse(read("public/manifest.json")) as { icons: Array<{ src: string }>; shortcuts: Array<{ icons: Array<{ src: string }> }>; screenshots: Array<{ src: string }> };
++  const named = [...layout.matchAll(/(?:url|manifest|images):\s*\[?\s*\{?\s*(?:url:\s*)?"(\/[^"]+)"/g)].map((m) => m[1])
++    .concat(manifest.icons.map((i) => i.src), manifest.shortcuts.flatMap((s) => s.icons.map((i) => i.src)), manifest.screenshots.map((s) => s.src));
++  const missing = named.filter((p) => !existsSync(`public${p}`));
++  ok(`9.4 · every icon, manifest, image and screenshot the layout and manifest name is in public/ (${named.length} checked)`, named.length >= 12 && missing.length === 0, missing.join(", "));
++}
++
++/* ══ RESULT ═══════════════════════════════════════════════════════════════════════════════════════════════════════════ */
++console.log(`\nvisual-pass-r4k: ${pass} passed, ${fails.length} failed`);
++if (fails.length && !PROVE) {
++  for (const f of fails) console.error(`  · ${f}`);
++  process.exit(1);
++}
++
++/* ══ THE MUTATION PROOF (--prove) ═════════════════════════════════════════════════════════════════════════════════════ */
++if (PROVE) {
++  if (fails.length) { console.error("\n✗ the suite is not green on the real tree — fix that before proving it red"); process.exit(1); }
++  // The mutations are DATA in scripts/anchors/visual-pass-r4k.anchors.mjs, so test:red-anchors audits every anchor
++  // (exactly once, in its file) without running this harness.
++  const PLANTS = MUTATIONS as Array<{ name: string; file: string; from: string; to: string; expect: string }>;
++
++  const sha = (b: Buffer) => createHash("sha256").update(b).digest("hex");
++  const files = [...new Set(PLANTS.map((p) => p.file))];
++  const original = new Map(files.map((f) => [f, readFileSync(f)]));
++  let proven = 0;
++  const wrong: string[] = [];
++  try {
++    for (const p of PLANTS) {
++      const buf = original.get(p.file)!;
++      const text = buf.toString("utf8");
++      const eol = text.includes("\r\n") ? "\r\n" : "\n";
++      const from = p.from.replace(/\n/g, eol), to = p.to.replace(/\n/g, eol);
++      if (text.split(from).length !== 2) { wrong.push(`${p.name}: the anchor is not in ${p.file} exactly once`); continue; }
++      writeFileSync(p.file, text.replace(from, to));
++      const run = spawnSync(process.execPath, ["--import", "tsx", SELF], { encoding: "utf8", timeout: 180_000 });
++      writeFileSync(p.file, buf);
++      const out = `${run.stdout ?? ""}${run.stderr ?? ""}`;
++      const caught = run.status !== 0 && out.split("\n").some((l) => l.includes("FAIL") && l.includes(` ${p.expect} `));
++      const restored = sha(readFileSync(p.file)) === sha(buf);
++      console.log(`  ${caught && restored ? "red " : "MISS"} ${p.name} → ${p.expect}${caught ? "" : ` (exit ${run.status})`}${restored ? "" : " — NOT RESTORED"}`);
++      if (caught && restored) proven++; else wrong.push(p.name);
++    }
++  } finally {
++    for (const [f, b] of original) writeFileSync(f, b);
++  }
++  const drift = files.filter((f) => sha(readFileSync(f)) !== sha(original.get(f)!));
++  console.log(`\nvisual-pass-r4k --prove: ${proven}/${PLANTS.length} plants caught; ${files.length} files restored byte-identical${drift.length ? ` — ⛔ ${drift.join(", ")} DIFFER` : ""}`);
++  if (proven !== PLANTS.length || drift.length) { for (const w of wrong) console.error(`  · ${w}`); process.exit(1); }
++}
+diff --git a/src/app/globals.css b/src/app/globals.css
+index 47109f721..0af2b385d 100644
+--- a/src/app/globals.css
++++ b/src/app/globals.css
+@@ -1674,6 +1674,33 @@ html[data-fab-idle] .cm-fab:not(.cm-fab--open):not(:focus-within) {
+   .kp-shortpage nav { margin-top: var(--sp-4); }
+ }
+ 
++/* ⭐ THE NOT-FOUND WAVE FADES INTO THE PAGE (2026-10-09, the visual pass's round 4, E46; `not-found-view.tsx`). Clipped
++   to its 640px column the wave was a hard-edged box at 1280 — x320–959, y169–823 on tile 380 — and on a phone its top
++   began as a line under the header. The outer layer fades it over 64px at the top and the bottom; the inner one over
++   64px at the sides, but only where the column is narrower than the screen: the clamp is 0 at a 640px viewport or less,
++   where the column's sides are the screen's own edges, and the full 64px a pixel past it. Two nested masks multiply,
++   so no `mask-composite` is needed. The mask's colour is only its alpha. */
++.kp-nf-topo, .kp-nf-topo__x { position: absolute; inset: 0; pointer-events: none; }
++.kp-nf-topo {
++  -webkit-mask-image: linear-gradient(to bottom, transparent, black var(--sp-16), black calc(100% - var(--sp-16)), transparent);
++  mask-image: linear-gradient(to bottom, transparent, black var(--sp-16), black calc(100% - var(--sp-16)), transparent);
++}
++.kp-nf-topo__x {
++  --kp-nf-side: clamp(0px, calc((100vw - var(--w-form)) * 1000), var(--sp-16));
++  -webkit-mask-image: linear-gradient(to right, transparent, black var(--kp-nf-side), black calc(100% - var(--kp-nf-side)), transparent);
++  mask-image: linear-gradient(to right, transparent, black var(--kp-nf-side), black calc(100% - var(--kp-nf-side)), transparent);
++}
++
++/* ⭐ A CHINESE MARK THAT ENDS A CENTRED LINE HANGS ITS EMPTY PART (2026-10-09, round 4, E50; `src/lib/cjk-marks.tsx`
++   says why and how it was measured). The mark is set back by its trim; the gap after it — a collapsible space, removed
++   at the end of a line and kept mid-line — pays the trim back to the pixel: drawn in `--font-mono`, whose space is
++   0.6em in every weight, plus `word-spacing` for the rest (0.65 − 0.6 = 0.05em; ？ 0.5 − 0.6 = −0.1em). Its line
++   height is 0, so the line box cannot grow, and it takes no part in a selection. */
++.kp-cjk-mark { margin-inline-end: -0.65em; }
++.kp-cjk-mark--q { margin-inline-end: -0.5em; }
++.kp-cjk-gap { font-family: var(--font-mono); line-height: 0; letter-spacing: 0; word-spacing: 0.05em; -webkit-user-select: none; user-select: none; }
++.kp-cjk-gap--q { word-spacing: -0.1em; }
++
+ /* 🔴 D32 · UNDER REDUCED MOTION THIS STRIP DID NOT SLOW DOWN — IT FROZE, SHOWING 24% OF ONE OF TWELVE EVENTS.
+    `animation-play-state: paused` stops the marquee at frame 0, and frame 0 is not a readable state: measured
+    on production at 360, the clipping window is 245px against a track of 27,440px, entry 1 alone is 1,045px, and
+diff --git a/src/app/markets/[id]/not-found.tsx b/src/app/markets/[id]/not-found.tsx
+index c4a8ac9d5..6a8002f0d 100644
+--- a/src/app/markets/[id]/not-found.tsx
++++ b/src/app/markets/[id]/not-found.tsx
+@@ -1,69 +1,29 @@
+-import Link from "next/link";
+-import { cookies } from "next/headers";
+-import { I } from "@/components/ui/glyphs";
+-import { FiftyMark } from "@/components/brand";
+-import { dict, localeOrDefault, type Locale } from "@/lib/i18n-dict";
++import { getServerT } from "@/lib/i18n-server";
++import { NOT_FOUND_WORDS, NotFoundView } from "@/components/ui/not-found-view";
++import { generateMetadata as notFoundMetadata } from "@/app/not-found";
+ 
+ /**
+- * Colocated not-found page for the /markets/[id] segment.
++ * Colocated not-found page for the /markets/[id] segment — the app's one not-found view (`not-found-view.tsx`), in the
++ * one card order, with the one way out (the open markets).
+  *
+- * Without this file Next.js 16 calls `notFound()` from MarketDetail
+- * server-component, renders our global `app/not-found.tsx`, but
+- * returns HTTP 200 instead of 404 — search engines + tooling read
+- * that as "the page exists" which is wrong. A segment-level
+- * not-found.tsx forces the right status while keeping the same
+- * branded fallback the catch-all uses.
++ * 🔴 IT DOES NOT MAKE THE STATUS 404, WHATEVER THIS NOTE USED TO SAY. Measured (2026-10-09, a dev server, curl):
++ * `/markets/mkt_doesnotexist` answers HTTP **200**. This segment has a `loading.tsx` (and the root has one), so Next
++ * flushes the shell — and commits the status — before `MarketDetail` reads the market and calls `notFound()`: the
++ * error lands inside a Suspense boundary, is caught by the HTML renderer (`createHTMLErrorHandler`,
++ * next/dist/esm/server/app-render/create-error-handler.js:107) and only adds `<meta name="robots" content="noindex">`
++ * to the stream (make-get-server-inserted-html.js:29–36). A 404 status is set only when the error escapes the shell
++ * (app-render.js:1894–1897). ⛔ Do not buy a 404 by deleting a `loading.tsx` (every async route keeps one); the head
++ * says `noindex` through the metadata below, which is what a crawler acts on.
+  *
+- * Uses inline cookie-based locale (cannot use generateMetadata in
+- * not-found pages).
++ * ⭐ THE TITLE IS THE NOT-FOUND'S, IN THE PAGE'S LANGUAGE (E47). `generateMetadata` on the page calls `notFound()` for a
++ * missing market; Next then resolves metadata again under the not-found convention, and that reads the DEEPEST
++ * not-found's — this file's. With no export here the tab kept the root's English default.
+  */
+-export default async function MarketNotFound() {
+-  const jar = await cookies();
+-  const locale: Locale = localeOrDefault(jar.get("kp-locale")?.value);
+-  const t = dict[locale];
++export async function generateMetadata() {
++  return notFoundMetadata();
++}
+ 
+-  return (
+-    <div className="kp-shortpage mx-auto flex min-h-[80svh] max-w-[640px] flex-col items-center justify-center px-5 py-10 text-center">
+-      <div className="mb-5">
+-        <FiftyMark size={64} />
+-      </div>
+-      <p className="font-mono text-micro font-bold uppercase tracking-[0.20em] text-gold-300">
+-        {t.error.notFoundCode}
+-      </p>
+-      <h1 className="mt-2 font-display text-title-lg font-bold leading-tight tracking-[-0.02em] text-text">
+-        {t.error.notFoundBody}
+-      </h1>
+-      <p className="mt-3 max-w-[420px] text-[13px] leading-relaxed text-text-subtle">
+-        {t.error.notFoundHint}
+-      </p>
+-      <nav aria-label={t.error.recoveryLinks} className="mt-6 grid w-full max-w-[420px] grid-cols-1 gap-2 sm:grid-cols-3">
+-        <Link
+-          href="/markets"
+-          className="rounded-xl border border-border bg-bg-elevated p-3 text-left transition-colors hover:border-brand-400 hover:bg-bg-overlay"
+-        >
+-          <p className="font-display text-[13px] font-semibold text-text">{t.common.markets}</p>
+-        </Link>
+-        <Link
+-          href="/"
+-          className="rounded-xl border border-border bg-bg-elevated p-3 text-left transition-colors hover:border-brand-400 hover:bg-bg-overlay"
+-        >
+-          <p className="font-display text-[13px] font-semibold text-text">{t.common.home}</p>
+-        </Link>
+-        <Link
+-          href="/help"
+-          className="rounded-xl border border-border bg-bg-elevated p-3 text-left transition-colors hover:border-brand-400 hover:bg-bg-overlay"
+-        >
+-          <p className="font-display text-[13px] font-semibold text-text">{t.common.help}</p>
+-        </Link>
+-      </nav>
+-      <Link
+-        href="/markets"
+-        className="mt-6 inline-flex items-center gap-2 font-mono text-caption uppercase tracking-[0.14em] text-gold-300 hover:text-gold-200"
+-      >
+-        <I.globe s={12} />
+-        {t.error.browseOpenMarkets}
+-        <I.arrowRight s={12} />
+-      </Link>
+-    </div>
+-  );
++export default async function MarketNotFound() {
++  const { t, locale } = await getServerT();
++  return <NotFoundView words={NOT_FOUND_WORDS[locale]} recoveryLabel={t.error.recoveryLinks} />;
+ }
+diff --git a/src/app/markets/[id]/page.tsx b/src/app/markets/[id]/page.tsx
+index 086ac88e6..ac4d6e615 100644
+--- a/src/app/markets/[id]/page.tsx
++++ b/src/app/markets/[id]/page.tsx
+@@ -583,7 +583,12 @@ export default async function MarketDetail({
+             a one-line question, the tightest case: the hairline keeps ≥5px of air (forex, whose arrows reach y0.85 of
+             24, at 72px; the weather cloud 6.5px) and the band below ≥13px. A longer question only adds room.
+             The size is the box's `h-[2em] w-[2em]`; `s` is only the svg's own width/height before the stylesheet, and it
+-            stays the frozen 96 the watermark always drew at (test:icon-sizes — a new value would grow the glyph set). */}
++            stays the frozen 96 the watermark always drew at (test:icon-sizes — a new value would grow the glyph set).
++            ⭐ AND THE QUESTION'S COLUMN ENDS BEFORE IT (2026-10-09, the visual pass's round 4, E49, tile 433 at zh 768): the
++            h1 ran the full width, so a long question set its last glyph over the mark — 赛's ink to x701 across the
++            football at x680–741. The h1 now stops `2em + 12px` short of the right edge: the mark's 2em box, its `right-1`
++            (4px), and 8px of air, in the h1's own em (the mark is sized by the same rung), so at every width the words
++            wrap before the mark and the mark stands beside them. The first-line indent (R4-D) is untouched. */}
+         <div className="relative isolate">
+           {(() => {
+             const Cat = I[categoryGlyph(m.category)];
+@@ -594,7 +599,7 @@ export default async function MarketDetail({
+             );
+           })()}
+           <h1 data-stem={QUESTION_STEM.test(pickLocalized(locale, m.titleEn, m.titleSw, m.titleZh)) ? "" : undefined}
+-            className="font-display text-title-lg md:text-display-3 font-bold leading-tight tracking-[-0.02em] text-text text-balance data-[stem]:indent-[-0.075em]"
++            className="font-display text-title-lg md:text-display-3 font-bold leading-tight tracking-[-0.02em] text-text text-balance pr-[calc(2em+12px)] data-[stem]:indent-[-0.075em]"
+           >{pickLocalized(locale, m.titleEn, m.titleSw, m.titleZh)}</h1>
+         </div>
+       </header>
+@@ -727,7 +732,11 @@ export default async function MarketDetail({
+                     "var(--hero-panel-grad)",
+                 }}
+               >
+-                <p className="font-mono text-micro uppercase eyebrow font-bold text-gold-300">
++                {/* ⭐ The panel's eyebrow in the eyebrow's ink, not gold (2026-10-09, round 4's gold audit): "Ingia ili
++                    kutabiri" / 登录以预测 is an invitation to sign in, and gold is money that was earned (§M3; Q5 "gold is
++                    money, and nothing else"). It is the same slot the signed-in side picker fills with "Chagua upande
++                    wako", in `text-text-subtle` — one panel, one eyebrow ink for either viewer. */}
++                <p className="font-mono text-micro uppercase eyebrow font-bold text-text-subtle">
+                   {t.market.signInToPredict}
+                 </p>
+                 {/* ⭐ Balanced, both centred lines (2026-10-08, the visual pass, tile 199): at sw 390 the title's 292px
+diff --git a/src/app/not-found.tsx b/src/app/not-found.tsx
+index 035e74e2a..126e901f6 100644
+--- a/src/app/not-found.tsx
++++ b/src/app/not-found.tsx
+@@ -1,153 +1,35 @@
+-import Link from "next/link";
+-import { cookies } from "next/headers";
+-import { I } from "@/components/ui/glyphs";
+-import { FiftyMark } from "@/components/brand";
+-import { BrandTopo } from "@/components/brand-topo";
++import type { Metadata } from "next";
+ import { getServerT } from "@/lib/i18n-server";
+-import { localeOrDefault } from "@/lib/i18n-dict";
+-
+-/* ── Inline i18n dict for this server component (cannot use useT) ─────── */
+-const t404 = {
+-  en: {
+-    notFoundCode: "404",
+-    notFound: "Page not found",
+-    notFoundBody: "We couldn\u2019t find that page",
+-    notFoundHint: "The link may be stale, the market may have resolved, or the URL was typed in slightly off. Pick a destination below to keep going.",
+-    home: "Home",
+-    markets: "Markets",
+-    help: "Help",
+-    browseOpenMarkets: "Browse open markets",
+-  },
+-  sw: {
+-    notFoundCode: "404",
+-    notFound: "Hakuna ukurasa",
+-    notFoundBody: "Hatukupata ukurasa huo",
+-    notFoundHint: "Kiungo kinaweza kuwa kimepitwa na wakati, soko linaweza kuwa limetatuliwa, au URL imeandikwa vibaya. Chagua mahali pa kwenda hapa chini.",
+-    home: "Mwanzo",
+-    markets: "Masoko",
+-    help: "Msaada",
+-    browseOpenMarkets: "Tazama masoko yaliyo wazi",
+-  },
+-  zh: {
+-    notFoundCode: "404",
+-    notFound: "\u9875\u9762\u672a\u627e\u5230",
+-    notFoundBody: "\u6211\u4eec\u627e\u4e0d\u5230\u8be5\u9875\u9762",
+-    notFoundHint: "\u94fe\u63a5\u53ef\u80fd\u5df2\u5931\u6548\uff0c\u5e02\u573a\u53ef\u80fd\u5df2\u7ed3\u7b97\uff0c\u6216URL\u8f93\u5165\u6709\u8bef\u3002\u8bf7\u9009\u62e9\u4ee5\u4e0b\u76ee\u7684\u5730\u7ee7\u7eed\u3002",
+-    home: "\u9996\u9875",
+-    markets: "\u5e02\u573a",
+-    help: "\u5e2e\u52a9",
+-    browseOpenMarkets: "\u6d4f\u89c8\u5f00\u653e\u5e02\u573a",
+-  },
+-} as const;
+-
+-type Locale = keyof typeof t404;
++import { NOT_FOUND_WORDS, NotFoundView, notFoundTitle } from "@/components/ui/not-found-view";
+ 
+ /**
+- * Resolve locale: the visitor's chosen language (the `kp-locale` cookie), else Swahili — the platform default, the same
+- * rule every other page uses (`localeOrDefault`). The browser's Accept-Language is no longer consulted: a 404 must not
+- * speak a different language from the page the visitor just left.
++ * The page's title and robots, in the visitor's language — the visitor's chosen language (the `kp-locale` cookie), else
++ * Swahili, the platform default, the rule every other page uses (`getServerT` → `localeOrDefault`). The browser's
++ * Accept-Language is not consulted: a 404 must not speak a different language from the page the visitor just left.
++ *
++ * ⭐ EVERY NOT-FOUND IN THE APP ANSWERS WITH THIS (2026-10-09, the visual pass's round 4, E47). `/markets/[id]` and
++ * `/proposals/[id]` export it from their own not-found files — the error convention reads the DEEPEST not-found's
++ * metadata, and theirs had none, so a missing market kept the root layout's English "50pick — Predict events. Not
++ * chance." — and `/account` imports it for everybody the journey is not shown to.
++ * ⭐ AND IT SAYS `noindex` IN THE HEAD. Under a `loading.tsx` the response is committed (200) before `notFound()` runs;
++ * Next then streams `<meta name="robots" content="noindex">` with the not-found UI, but the head still carried the root
++ * layout's "index, follow" beside it (measured on a dev server, `/markets/mkt_doesnotexist`). The page's own robots now
++ * replace the root's, so the head and the stream agree.
+  */
+-async function resolveLocale(): Promise<Locale> {
+-  const jar = await cookies();
+-  return localeOrDefault(jar.get("kp-locale")?.value);
+-}
+-
+-export async function generateMetadata() {
+-  const lang = await resolveLocale();
+-  const d = t404[lang];
+-  return { title: `${d.notFound} · ${d.notFoundCode}` };
++export async function generateMetadata(): Promise<Metadata> {
++  const { locale } = await getServerT();
++  return { title: notFoundTitle(NOT_FOUND_WORDS[locale]), robots: { index: false, follow: false } };
+ }
+ 
+ /**
+- * Global 404 page — caught by Next.js App Router whenever a request hits
+- * a URL that doesn't match a route. We give the player a branded landing
+- * with three explicit next-steps so they can keep moving instead of
+- * bouncing off the platform. Industry standard for licensed operators:
+- * the 404 must NOT look like a system error and must offer a clear path
+- * back to the play surfaces.
++ * Global 404 page — caught by Next.js App Router whenever a request hits a URL that doesn't match a route, and whenever
++ * a segment with no not-found of its own calls `notFound()` (`/updown/[roundId]`). We give the player a branded landing
++ * with three explicit next-steps so they can keep moving instead of bouncing off the platform. Industry standard for
++ * licensed operators: the 404 must NOT look like a system error and must offer a clear path back to the play surfaces.
+  *
+- * No PII is rendered here — the URL the player tried is not echoed back,
+- * so the page is safe to log + cache.
++ * No PII is rendered here — the URL the player tried is not echoed back, so the page is safe to log + cache.
+  */
+ export default async function NotFound() {
+-  const lang = await resolveLocale();
+-  const d = t404[lang];
+-  const { t } = await getServerT();
+-
+-  return (
+-    // Same kit frame as the shared RouteError (A3): FiftyMark 64 over a faint
+-    // BrandTopo, a glyph badge, neutral chrome. A 404 is "not found", not an
+-    // error — so the badge is royal/info (not the RouteError rose alert tint),
+-    // and there's no gold here (404 isn't earned-money).
+-    <div className="kp-shortpage relative mx-auto flex min-h-[80svh] max-w-[640px] flex-col items-center justify-center overflow-hidden px-5 py-10 text-center">
+-      <BrandTopo id="notfound-topo" opacity={0.09} />
+-      <div className="relative flex flex-col items-center">
+-        <FiftyMark size={64} />
+-        <div
+-          /* ⚠️ LITERALS, not `h-11 w-11` — spacing is overridden (tailwind.config.ts:200-215)
+-             so `h-11` renders 96px, i.e. a medallion that rivalled the size={64} mark above it. */
+-          className="mb-3 mt-5 inline-flex h-[44px] w-[44px] items-center justify-center rounded-full border border-brand-600 bg-brand-500/10 text-brand-300"
+-          style={{ boxShadow: "0 0 0 7px color-mix(in oklab, var(--brand-500) 8%, transparent)" }}
+-        >
+-          <I.search s={19} />
+-        </div>
+-        <p className="font-mono text-micro font-bold uppercase tracking-[0.20em] text-text-subtle">
+-          {d.notFoundCode} · {d.notFound}
+-        </p>
+-        <h1 className="mt-2 font-display text-title-lg font-bold leading-tight tracking-[-0.02em] text-text">
+-          {d.notFoundBody}
+-        </h1>
+-        <p className="mt-3 max-w-[420px] text-[13px] leading-relaxed text-text-subtle">
+-          {d.notFoundHint}
+-        </p>
+-        {/* 🔴 D68 · THREE ACROSS AT EVERY WIDTH, BECAUSE ONE PER ROW PUT THEM OFF THE SCREEN.
+-            This page tells the player to choose where to go next, and at 320×640 — the smallest supported
+-            phone — not one destination was usable: measured, the first was 61.6% visible behind the bottom
+-            rail and the other two were **entirely off-screen**, with nothing at rest to say they existed.
+-            Each card stacks a 28px glyph over its label inside `p-3.5`, so it is 101.5px tall and three of
+-            them are 304px — more than the page had left after the mark, the badge, the code line, the
+-            heading and the hint. ⭐ The labels are one short word each (`Mwanzo` / `Masoko` / `Msaada`,
+-            and shorter in EN and ZH), so three across at 320 gives each ~86px of an ~48px word and turns
+-            304px into one row. The `sm:` gate was the whole defect: the phone got the layout designed for
+-            the case where there is room to spare. */}
+-        <nav aria-label={t.error.recoveryLinks} className="mt-6 grid w-full max-w-[420px] grid-cols-3 gap-2.5">
+-          <Link
+-            href="/"
+-            className="group rounded-xl border border-border bg-bg-elevated p-3.5 text-left transition-all hover:border-brand-400 hover:bg-bg-overlay hover:-translate-y-0.5 hover:shadow-[var(--shadow-3)]"
+-          >
+-            <span className="mb-2 inline-flex h-7 w-7 items-center justify-center rounded-md bg-bg-inset text-text-subtle group-hover:text-brand-300 transition-colors">
+-              <I.arrowRight s={13} style={{ transform: "rotate(180deg)" }} />
+-            </span>
+-            <p className="font-display text-[13px] font-semibold text-text">{d.home}</p>
+-          </Link>
+-          <Link
+-            href="/markets"
+-            className="group rounded-xl border border-border bg-bg-elevated p-3.5 text-left transition-all hover:border-brand-400 hover:bg-bg-overlay hover:-translate-y-0.5 hover:shadow-[var(--shadow-3)]"
+-          >
+-            <span className="mb-2 inline-flex h-7 w-7 items-center justify-center rounded-md bg-bg-inset text-text-subtle group-hover:text-brand-300 transition-colors">
+-              <I.chart s={13} />
+-            </span>
+-            <p className="font-display text-[13px] font-semibold text-text">{d.markets}</p>
+-          </Link>
+-          <Link
+-            href="/help"
+-            className="group rounded-xl border border-border bg-bg-elevated p-3.5 text-left transition-all hover:border-brand-400 hover:bg-bg-overlay hover:-translate-y-0.5 hover:shadow-[var(--shadow-3)]"
+-          >
+-            <span className="mb-2 inline-flex h-7 w-7 items-center justify-center rounded-md bg-bg-inset text-text-subtle group-hover:text-brand-300 transition-colors">
+-              <I.info s={13} />
+-            </span>
+-            <p className="font-display text-[13px] font-semibold text-text">{d.help}</p>
+-          </Link>
+-        </nav>
+-        <Link
+-          href="/markets"
+-          className="mt-6 inline-flex items-center gap-2 font-mono text-caption uppercase tracking-[0.14em] text-brand-300 hover:text-brand-200"
+-        >
+-          <I.globe s={12} />
+-          {d.browseOpenMarkets}
+-          <I.arrowRight s={12} />
+-        </Link>
+-      </div>
+-    </div>
+-  );
++  const { t, locale } = await getServerT();
++  return <NotFoundView words={NOT_FOUND_WORDS[locale]} recoveryLabel={t.error.recoveryLinks} />;
+ }
+diff --git a/src/app/proposals/[id]/not-found.tsx b/src/app/proposals/[id]/not-found.tsx
+index ad2f18734..466b1c5d3 100644
+--- a/src/app/proposals/[id]/not-found.tsx
++++ b/src/app/proposals/[id]/not-found.tsx
+@@ -1,50 +1,25 @@
+-import Link from "next/link";
+-import { cookies } from "next/headers";
+-import { I } from "@/components/ui/glyphs";
+-import { FiftyMark } from "@/components/brand";
+-import { dict, localeOrDefault, type Locale } from "@/lib/i18n-dict";
++import { getServerT } from "@/lib/i18n-server";
++import { NOT_FOUND_WORDS, NotFoundView } from "@/components/ui/not-found-view";
++import { generateMetadata as notFoundMetadata } from "@/app/not-found";
+ 
+ /**
+- * Colocated not-found for /proposals/[id] — mirrors markets/[id]/not-found so an
+- * invalid proposal id returns a real 404 with the branded fallback (not the
+- * generic app 404 at HTTP 200). Uses inline cookie locale (metadata can't run
+- * in not-found pages).
++ * Colocated not-found for /proposals/[id] — the app's one not-found view (`not-found-view.tsx`): the same kicker, the
++ * same three cards in the same order, and its own way out, back to the proposals board, under them in the one link
++ * colour. (It wore a gold "404" and a gold link — gold is money, §M3/Q5 — and put its way back in the first card.)
++ * ⚠️ The status is whatever the stream committed before `notFound()` ran — this segment has a `loading.tsx`; see
++ * `markets/[id]/not-found.tsx`. The title and the head's `noindex` are the not-found's own, below.
+  */
+-export default async function ProposalNotFound() {
+-  const jar = await cookies();
+-  const locale: Locale = localeOrDefault(jar.get("kp-locale")?.value);
+-  const t = dict[locale];
++export async function generateMetadata() {
++  return notFoundMetadata();
++}
+ 
++export default async function ProposalNotFound() {
++  const { t, locale } = await getServerT();
+   return (
+-    <div className="kp-shortpage mx-auto flex min-h-[80svh] max-w-[640px] flex-col items-center justify-center px-5 py-10 text-center">
+-      <div className="mb-5">
+-        <FiftyMark size={64} />
+-      </div>
+-      <p className="font-mono text-micro font-bold uppercase tracking-[0.20em] text-gold-300">
+-        {t.error.notFoundCode}
+-      </p>
+-      <h1 className="mt-2 font-display text-title-lg font-bold leading-tight tracking-[-0.02em] text-text">
+-        {t.error.notFoundBody}
+-      </h1>
+-      <p className="mt-3 max-w-[420px] text-[13px] leading-relaxed text-text-subtle">
+-        {t.error.notFoundHint}
+-      </p>
+-      <nav aria-label={t.error.recoveryLinks} className="mt-6 grid w-full max-w-[420px] grid-cols-1 gap-2 sm:grid-cols-3">
+-        <Link href="/proposals" className="rounded-xl border border-border bg-bg-elevated p-3 text-left transition-colors hover:border-brand-400 hover:bg-bg-overlay">
+-          <p className="font-display text-[13px] font-semibold text-text">{t.error.backToProposals}</p>
+-        </Link>
+-        <Link href="/markets" className="rounded-xl border border-border bg-bg-elevated p-3 text-left transition-colors hover:border-brand-400 hover:bg-bg-overlay">
+-          <p className="font-display text-[13px] font-semibold text-text">{t.common.markets}</p>
+-        </Link>
+-        <Link href="/help" className="rounded-xl border border-border bg-bg-elevated p-3 text-left transition-colors hover:border-brand-400 hover:bg-bg-overlay">
+-          <p className="font-display text-[13px] font-semibold text-text">{t.common.help}</p>
+-        </Link>
+-      </nav>
+-      <Link href="/proposals" className="mt-6 inline-flex items-center gap-2 font-mono text-caption uppercase tracking-[0.14em] text-gold-300 hover:text-gold-200">
+-        <I.globe s={12} />
+-        {t.error.backToProposals}
+-        <I.arrowRight s={12} />
+-      </Link>
+-    </div>
++    <NotFoundView
++      words={NOT_FOUND_WORDS[locale]}
++      recoveryLabel={t.error.recoveryLinks}
++      way={{ href: "/proposals", label: t.error.backToProposals }}
++    />
+   );
+ }
+diff --git a/src/app/proposals/[id]/page.tsx b/src/app/proposals/[id]/page.tsx
+index eb618123d..b42144dfb 100644
+--- a/src/app/proposals/[id]/page.tsx
++++ b/src/app/proposals/[id]/page.tsx
+@@ -16,19 +16,25 @@ import { getServerT } from "@/lib/i18n-server";
+ import { pickLocalized } from "@/lib/localized";
+ import { formatTzsSigned } from "@/lib/utils";
+ import { PageContainer } from "@/components/layout/page-container";
++import { generateMetadata as notFoundMetadata } from "@/app/not-found";
+ 
+ export const dynamic = "force-dynamic";
+ 
+ // Shared-proposal links carried the generic "50pick" title before this — now the
+ // browser-tab/OG title is the proposal's own title (matches markets/[id]).
++// ⭐ 2026-10-09 (the visual pass's round 4, E47): a proposal that does not exist is titled as the not-found it renders —
++// the not-found page's own metadata, in the page's language, with `noindex` — never the English "Proposal". Only when
++// the read SUCCEEDED and found nothing; a failed read keeps the neutral default, as the page sends it to error.tsx.
+ export async function generateMetadata({ params }: { params: Promise<{ id: string }> }): Promise<Metadata> {
+   const { id } = await params;
+   const { locale } = await getServerT();
++  let p: Awaited<ReturnType<typeof getProposalDetail>> = null;
+   try {
+-    const p = await getProposalDetail(id, null);
+-    if (p) return { title: pickLocalized(locale, p.titleEn, p.titleSw, p.titleZh) };
+-  } catch { /* graceful — fall through to default */ }
+-  return { title: "Proposal" };
++    p = await getProposalDetail(id, null);
++  } catch { return { title: "Proposal" }; }
++  // DISABLED: the page redirects to the board, so this address names no proposal page either way.
++  if (!p) return getProposalsConfig().state === "DISABLED" ? { title: "Proposal" } : notFoundMetadata();
++  return { title: pickLocalized(locale, p.titleEn, p.titleSw, p.titleZh) };
+ }
+ 
+ export default async function ProposalDetailPage({ params }: { params: Promise<{ id: string }> }) {
+diff --git a/src/app/updown/[roundId]/page.tsx b/src/app/updown/[roundId]/page.tsx
+index 3cd07a64c..0e5aae682 100644
+--- a/src/app/updown/[roundId]/page.tsx
++++ b/src/app/updown/[roundId]/page.tsx
+@@ -15,8 +15,10 @@
+  * Gold appears at most twice and both are earned/committed money: the Confirm button and
+  * a winning payout. Everything else is neutral or YES/NO — never gold for decoration.
+  */
++import type { Metadata } from "next";
+ import Link from "next/link";
+ import { notFound } from "next/navigation";
++import { generateMetadata as notFoundMetadata } from "@/app/not-found";
+ import { BackLink } from "@/components/ui/back-link";
+ import { Chip } from "@/components/ui/chip";
+ import { STATUS_TONE, TONE_CHIP } from "@/lib/status-tone";
+@@ -83,10 +85,20 @@ const eyebrow = "m-0 font-mono text-micro font-semibold uppercase eyebrow text-t
+ // fmtEAT moved to updown-source-label.ts (E-262) — the board chart panel now renders the
+ // same receipt line, and two private copies of one formatter is the drift that file stops.
+ 
+-export async function generateMetadata({ params }: { params: Promise<{ roundId: string }> }) {
++/**
++ * ⭐ A ROUND THAT DOES NOT EXIST IS TITLED AS THE NOT-FOUND IT RENDERS (2026-10-09, the visual pass's round 4, E47): the
++ * not-found page's own metadata — "Hakuna ukurasa · 404", in the page's language, with `noindex` — where the tab used to
++ * read "Up & Down · 50pick" over a page that said the round was not there. Only when the read SUCCEEDED and found
++ * nothing (the page's own rule, UD-15); a failed read keeps the neutral "Up & Down", as the page sends it to error.tsx.
++ */
++export async function generateMetadata({ params }: { params: Promise<{ roundId: string }> }): Promise<Metadata> {
+   const { roundId } = await params;
+-  const d = await getRoundDetail(roundId).catch(() => null);
+-  return { title: d?.titleEn ?? "Up & Down" };
++  let d: Awaited<ReturnType<typeof getRoundDetail>> = null;
++  try {
++    d = await getRoundDetail(roundId);
++  } catch { return { title: "Up & Down" }; }
++  if (!d) return notFoundMetadata();
++  return { title: d.titleEn };
+ }
+ 
+ export default async function UpDownRoundPage({
+diff --git a/src/components/markets/countdown.tsx b/src/components/markets/countdown.tsx
+index 4646264ce..cf902e3a3 100644
+--- a/src/components/markets/countdown.tsx
++++ b/src/components/markets/countdown.tsx
+@@ -70,7 +70,13 @@ export function Countdown({ to, label, serverNow, at }: { to: string; label?: st
+           0.4px exactly as before — the label renders pixel-for-pixel what it did. The date
+           takes the ladder's own spacing and so adds no `tracking-` utility either (§6). */}
+       <div className="flex flex-wrap items-center gap-x-2 gap-y-1 mb-2">
+-        <span className="font-mono text-micro uppercase eyebrow text-warning-fg">{resolvedLabel}</span>
++        {/* ⭐ THE LABEL IS A LABEL, NOT A WARNING, AND NOT GOLD (2026-10-09, the visual pass's round 4, gold audit; tiles
++            041 042 433). "Uchaguzi unafungwa baada ya" / "Matokeo baada ya" wore `--warning-fg`, which IS `--gilt`
++            (DESIGN_AUTHORITY F3) — the capsule's gold, on a clock that pays nothing: §M3 "struck gold appears only where
++            money was earned", Q5 "gold is money, and nothing else". Nothing is wrong while a question is open, and a
++            closing one says so in its own pill beside the category chip. The ink is the page's label ink — the KPI tiles'
++            labels above it and this clock's own unit labels below are `text-text-subtle`. */}
++        <span className="font-mono text-micro uppercase eyebrow text-text-subtle">{resolvedLabel}</span>
+         {/* ⭐ A <time> WITH THE MACHINE-READABLE INSTANT, not a styled span. `dateTime` carries
+             the SAME `to` the clock counts down to, which is what lets a live driver assert the
+             date NAMES the right moment rather than merely that some date is present — a date
+diff --git a/src/components/markets/side-picker.tsx b/src/components/markets/side-picker.tsx
+index f7eb22b4d..5edef827b 100644
+--- a/src/components/markets/side-picker.tsx
++++ b/src/components/markets/side-picker.tsx
+@@ -20,6 +20,7 @@ import { sideWord } from "@/lib/side-label";
+ import { priceState } from "@/lib/markets/price-state";
+ import type { PollRates } from "@/lib/payout";
+ import { sendFunnel } from "@/lib/journey/funnel-beacon";
++import { hangCjkMarks } from "@/lib/cjk-marks";
+ 
+ type Props = {
+   marketId: string;
+@@ -127,8 +128,11 @@ export function SidePicker({
+       <p className="font-mono text-micro uppercase eyebrow font-bold text-text-subtle text-center">
+         {t.common.pickYourSide}
+       </p>
++      {/* ⭐ The question and the line under the buttons are centred, so a Chinese ？ or 。 that ends one hangs its empty
++          part (`hangCjkMarks`, 2026-10-09, round 4, E50: both lines stood 4px left of the panel's centre on tile 433).
++          Latin text is untouched. */}
+       <h3 className="mt-1.5 mb-4 font-display text-[17px] font-bold text-text leading-tight text-center">
+-        {t.market.whichWay}
++        {hangCjkMarks(t.market.whichWay)}
+       </h3>
+       {/* 🔴 NO PRICE WITHOUT TWO SIDES — the same rule the card obeys (`priceState`).
+           On an EMPTY pool these buttons once read "YES @ 50% · NO @ 50%" (the default of the
+@@ -161,7 +165,7 @@ export function SidePicker({
+         </button>
+       </div>
+       <p className="mt-3 text-center text-body-sm text-text-subtle leading-snug">
+-        {t.market.chooseSideHelp}
++        {hangCjkMarks(t.market.chooseSideHelp)}
+       </p>
+     </div>
+   );
+diff --git a/src/components/ui/empty-state.tsx b/src/components/ui/empty-state.tsx
+index 134444a82..e04b0fe99 100644
+--- a/src/components/ui/empty-state.tsx
++++ b/src/components/ui/empty-state.tsx
+@@ -18,6 +18,7 @@ import { cn } from "@/lib/utils";
+ import { useT } from "@/lib/i18n";
+ import { EMPTY_STATE_BOX, EMPTY_STATE_TITLE, EMPTY_STATE_BODY } from "./empty-state-classes";
+ import { emptyStateBody } from "./empty-state-text";
++import { hangCjkMarks } from "@/lib/cjk-marks";
+ 
+ type Kind =
+   | "markets" | "positions" | "leaderboard" | "notifications" | "audit" | "sources"
+@@ -78,8 +79,10 @@ export function EmptyState({
+       <div className="mx-auto mb-4 inline-flex items-center justify-center text-text-faint" aria-hidden>
+         {illustration ?? <DefaultIllustration kind={kind} />}
+       </div>
+-      <p className={cn(EMPTY_STATE_TITLE, "text-text")}>{title}</p>
+-      {body && <p className={cn(EMPTY_STATE_BODY, "text-text-subtle")}>{emptyStateBody(body)}</p>}
++      {/* ⭐ Both lines are centred, so a Chinese mark that ends one hangs its empty half (`hangCjkMarks`, 2026-10-09,
++          round 4, E50: "…显示在这里。" stood 4.5px left of the box's centre on tiles 427 428). Latin text is untouched. */}
++      <p className={cn(EMPTY_STATE_TITLE, "text-text")}>{hangCjkMarks(title)}</p>
++      {body && <p className={cn(EMPTY_STATE_BODY, "text-text-subtle")}>{hangCjkMarks(emptyStateBody(body))}</p>}
+       {action && <div className="mt-4">{action}</div>}
+     </div>
+   );
+diff --git a/src/components/ui/not-found-view.tsx b/src/components/ui/not-found-view.tsx
+new file mode 100644
+index 000000000..ba4e070af
+--- /dev/null
++++ b/src/components/ui/not-found-view.tsx
+@@ -0,0 +1,148 @@
++import Link from "next/link";
++import { I } from "@/components/ui/glyphs";
++import { FiftyMark } from "@/components/brand";
++import { BrandTopo } from "@/components/brand-topo";
++import { hangCjkMarks } from "@/lib/cjk-marks";
++import type { Locale } from "@/lib/i18n-dict";
++
++/**
++ * ⭐ ONE NOT-FOUND, EVERYWHERE IN THE APP (2026-10-09, the visual pass's round 4, E42–E47 E51; tiles 345–398).
++ *
++ * There were two designs. The root page (`app/not-found.tsx`, which also answers inside `/updown/[roundId]`) drew the
++ * kit frame — a kicker, icon cards, a periwinkle way out, the topographic wave — and `/markets/[id]` and
++ * `/proposals/[id]` drew plain cards in another order (Masoko · Mwanzo · Msaada) under a GOLD "404" with a GOLD link:
++ * gold on a page that pays nothing (§M3, Q5 "gold is money, and nothing else"). All three now render this view.
++ *   · THE ORDER IS DECIDED ONCE: Home · Markets · Help — the root page's, its first glyph the arrow back.
++ *   · ONE LINK COLOUR, `--brand-300`, for the one way out under the cards; a segment names its own (`way`).
++ *   · THE WORDS ARE THE ROOT PAGE'S, below, in every language — the market page used the dictionary's twin of these
++ *     sentences, whose English h1 types a straight apostrophe ("couldn't", E44; S12 owns that key).
++ *   · THE CONTENT EDGE IS THE HOUSE GUTTER, `px-3` (16px): `px-5` was 24px, so on a phone the cards stood 8px inside
++ *     the edge every other page keeps, in both shells (E51: cards x24–336 at 360).
++ *   · THE WAVE FADES OUT (E46). Clipped to this 640px column it was a hard-edged box at 1280 (x320–959, y169–823):
++ *     `.kp-nf-topo` fades it over 64px at the top and the bottom, and at the sides only where the column is narrower
++ *     than the screen — on a phone its sides are the screen's.
++ *   · THE HEADING AND THE HINT ARE BALANCED (E42): "Hatukupata ukurasa / huo" and "…that / page" left a word alone, and
++ *     the Chinese hint broke inside 选择 at 390 and left 继续。 alone at 1280. Chinese breaks only after its marks
++ *     (`keep-all`, `break-word` the floor), and every mark that ends a line hangs its empty half (`hangCjkMarks`, E50).
++ *   · `max-w-form` is the 640px tier token, so the view states no hand-typed page width (`test:measure`).
++ */
++export const NOT_FOUND_WORDS = {
++  en: {
++    notFoundCode: "404",
++    notFound: "Page not found",
++    notFoundBody: "We couldn’t find that page",
++    notFoundHint: "The link may be stale, the market may have resolved, or the URL was typed in slightly off. Pick a destination below to keep going.",
++    home: "Home",
++    markets: "Markets",
++    help: "Help",
++    browseOpenMarkets: "Browse open markets",
++  },
++  sw: {
++    notFoundCode: "404",
++    notFound: "Hakuna ukurasa",
++    notFoundBody: "Hatukupata ukurasa huo",
++    notFoundHint: "Kiungo kinaweza kuwa kimepitwa na wakati, soko linaweza kuwa limetatuliwa, au URL imeandikwa vibaya. Chagua mahali pa kwenda hapa chini.",
++    home: "Mwanzo",
++    markets: "Masoko",
++    help: "Msaada",
++    browseOpenMarkets: "Tazama masoko yaliyo wazi",
++  },
++  zh: {
++    notFoundCode: "404",
++    notFound: "页面未找到",
++    notFoundBody: "我们找不到该页面",
++    notFoundHint: "链接可能已失效，市场可能已结算，或URL输入有误。请选择以下目的地继续。",
++    home: "首页",
++    markets: "市场",
++    help: "帮助",
++    browseOpenMarkets: "浏览开放市场",
++  },
++} as const satisfies Record<Locale, Record<string, string>>;
++
++export type NotFoundWords = (typeof NOT_FOUND_WORDS)[Locale];
++
++/** The page's tab title, in its language: "Hakuna ukurasa · 404" (the root layout's template adds " · 50pick"). */
++export const notFoundTitle = (w: NotFoundWords) => `${w.notFound} · ${w.notFoundCode}`;
++
++const CARD = "group rounded-xl border border-border bg-bg-elevated p-3.5 text-left transition-all hover:border-brand-400 hover:bg-bg-overlay hover:-translate-y-0.5 hover:shadow-[var(--shadow-3)]";
++/* ⚠️ LITERALS, not `h-7 w-7` — the spacing scale is overridden (tailwind.config.ts), so `h-7` IS 40px; written as what
++   it renders, so nothing moves and `test:ui-consistency`'s numeric-size rule has nothing to baseline. */
++const PLATE = "mb-2 inline-flex h-[40px] w-[40px] items-center justify-center rounded-md bg-bg-inset text-text-subtle group-hover:text-brand-300 transition-colors";
++const LABEL = "font-display text-[13px] font-semibold text-text";
++
++export function NotFoundView({
++  words,
++  recoveryLabel,
++  way,
++}: {
++  words: NotFoundWords;
++  /** The cards' nav name (`t.error.recoveryLinks`). */
++  recoveryLabel: string;
++  /** The one way out under the cards; by default the open markets. */
++  way?: { href: string; label: string };
++}) {
++  const out = way ?? { href: "/markets", label: words.browseOpenMarkets };
++  return (
++    // Same kit frame as the shared RouteError (A3): FiftyMark 64 over a faint BrandTopo, a glyph badge, neutral chrome.
++    // A 404 is "not found", not an error — so the badge is royal/info (not the RouteError rose alert tint), and there is
++    // no gold here (404 isn't earned money).
++    <div className="kp-shortpage relative mx-auto flex min-h-[80svh] max-w-form flex-col items-center justify-center overflow-hidden px-3 py-10 text-center">
++      <div aria-hidden className="kp-nf-topo">
++        <div className="kp-nf-topo__x">
++          <BrandTopo id="notfound-topo" opacity={0.09} />
++        </div>
++      </div>
++      <div className="relative flex flex-col items-center">
++        <FiftyMark size={64} />
++        <div
++          /* ⚠️ LITERALS, not `h-11 w-11` — `h-11` renders 96px on the overridden scale, a medallion that rivalled the
++             size={64} mark above it. */
++          className="mb-3 mt-5 inline-flex h-[44px] w-[44px] items-center justify-center rounded-full border border-brand-600 bg-brand-500/10 text-brand-300"
++          style={{ boxShadow: "0 0 0 7px color-mix(in oklab, var(--brand-500) 8%, transparent)" }}
++        >
++          <I.search s={19} />
++        </div>
++        <p className="font-mono text-micro font-bold uppercase tracking-[0.20em] text-text-subtle">
++          {words.notFoundCode} · {words.notFound}
++        </p>
++        <h1 className="mt-2 font-display text-title-lg font-bold leading-tight tracking-[-0.02em] text-text text-balance">
++          {words.notFoundBody}
++        </h1>
++        <p className="mt-3 max-w-[420px] text-[13px] leading-relaxed text-text-subtle text-balance [word-break:keep-all] [overflow-wrap:break-word]">
++          {hangCjkMarks(words.notFoundHint)}
++        </p>
++        {/* 🔴 D68 · THREE ACROSS AT EVERY WIDTH, BECAUSE ONE PER ROW PUT THEM OFF THE SCREEN. At 320×640 one card per row
++            left the first 61.6% visible behind the rail and the other two entirely off-screen. The labels are one short
++            word each, so three across at 320 gives each ~90px of an ~48px word and turns 304px into one row. */}
++        <nav aria-label={recoveryLabel} className="mt-6 grid w-full max-w-[420px] grid-cols-3 gap-2.5">
++          <Link href="/" className={CARD}>
++            <span className={PLATE}>
++              <I.arrowRight s={13} style={{ transform: "rotate(180deg)" }} />
++            </span>
++            <p className={LABEL}>{words.home}</p>
++          </Link>
++          <Link href="/markets" className={CARD}>
++            <span className={PLATE}>
++              <I.chart s={13} />
++            </span>
++            <p className={LABEL}>{words.markets}</p>
++          </Link>
++          <Link href="/help" className={CARD}>
++            <span className={PLATE}>
++              <I.info s={13} />
++            </span>
++            <p className={LABEL}>{words.help}</p>
++          </Link>
++        </nav>
++        <Link
++          href={out.href as never}
++          className="mt-6 inline-flex items-center gap-2 font-mono text-caption uppercase tracking-[0.14em] text-brand-300 hover:text-brand-200"
++        >
++          <I.globe s={12} />
++          {out.label}
++          <I.arrowRight s={12} />
++        </Link>
++      </div>
++    </div>
++  );
++}
+diff --git a/src/lib/cjk-marks.tsx b/src/lib/cjk-marks.tsx
+new file mode 100644
+index 000000000..9c86454d4
+--- /dev/null
++++ b/src/lib/cjk-marks.tsx
+@@ -0,0 +1,74 @@
++import { Fragment, type ReactNode } from "react";
++
++/**
++ * ⭐ A CENTRED CHINESE LINE CENTRES ITS INK, NOT THE EMPTY HALF OF ITS LAST MARK (2026-10-09, the visual pass's round 4,
++ * E50: tiles 390 396 398 the not-found hint, 427 428 the tickets empty state, 433 434 the side picker).
++ *
++ * A full-width closing mark is a whole em wide, but Simplified Chinese faces draw its ink in the LEFT of that em (the GB
++ * placement): measured from Microsoft YaHei's own advance (GDI+, 200px), 。 inks 0.065–0.310em, ， 0.155–0.305, 、
++ * 0.065–0.300, ； ： ！ 0.155–0.315, ？ 0.085–0.470; SimSun agrees (。 0.140–0.360, ？ 0.145–0.475). An ideograph inks
++ * from 0.015em. So a centred line that ends on 。 puts its ink centre (0.015 − 0.690) / 2 = −0.34em off the box's — at
++ * 13px −4.4px, measured −4.5 (tile 427: the body line's ink 222–536 in a box centred on 384); a line ending on ？ at 17px
++ * −4.4, measured −4.0 (tile 433).
++ *
++ * ⭐ THE FIX HANGS THE EMPTY PART, AND ONLY WHERE A LINE ENDS ON IT. Each mark is set back by its trim (0.65em, ？ 0.5em —
++ * YaHei's empty part less the ideograph's 0.015 bearing, rounded DOWN to 0.05, so the ink is never cut into), and when
++ * text follows it the trim is paid back by a SPACE of exactly that width: a collapsible space, which CSS removes at the
++ * end of a line (CSS Text 3 §4.1.2) and keeps everywhere else. Mid-line the mark is a full em again, to the pixel; at
++ * the end of a line — wherever the browser broke it — the line's box stops at the mark's ink. The space is drawn in
++ * `--font-mono`, whose space is 0.6em in every weight (the repo's JetBrains Mono: 600 of 1000 units), so its width is
++ * known: `.kp-cjk-gap` adds the rest as `word-spacing`. Its line height is 0 (the line box cannot grow) and it is not
++ * selectable (a copied sentence has no stray space). After: 。 at 13px −0.16px, ？ at 17px −0.13px.
++ *
++ * ⛔ NOT `text-spacing-trim`: Chromium ships it from 123 with `space-first` / `trim-start` — the START of a line — and its
++ * `normal` halves a line-final mark only "if it does not otherwise fit"; WebKit's support is partial, and either needs
++ * the face's `halt` feature. A centred line that fits keeps its full-width mark in every engine.
++ * ⛔ LATIN TEXT IS UNTOUCHED: a string with none of these marks comes back as the same string.
++ * ⛔ Two marks in a row ("？！") are left full width but the last: compressing a mark mid-line is a different rule. A mark
++ * followed by a closing quote or bracket ("，”") is left as it is: the gap would let a line start on the closer.
++ */
++
++/** The marks, and the class that sets each back. Two trims: the dot-and-comma family 0.65em, the question mark 0.5em. */
++export const CJK_MARK_TRIM: Readonly<Record<string, "kp-cjk-mark" | "kp-cjk-mark kp-cjk-mark--q">> = {
++  "。": "kp-cjk-mark", // 。
++  "，": "kp-cjk-mark", // ，
++  "、": "kp-cjk-mark", // 、
++  "；": "kp-cjk-mark", // ；
++  "：": "kp-cjk-mark", // ：
++  "！": "kp-cjk-mark", // ！
++  "？": "kp-cjk-mark kp-cjk-mark--q", // ？
++};
++
++/** The trims in em, as the stylesheet writes them (`.kp-cjk-mark` / `--q`) — for the instruments. */
++export const CJK_TRIM_EM = { mark: 0.65, question: 0.5 } as const;
++
++const isMark = (c: string | undefined) => c !== undefined && Object.prototype.hasOwnProperty.call(CJK_MARK_TRIM, c);
++/** A closing quote or bracket after a mark (“你好，”) belongs to it: the gap would open a break between them, and a line
++ *  may not start on a closer — so a mark followed by one is left as it is. */
++const CLOSER = /^[”’」』）》】〉〕)\]}]$/u;
++
++/**
++ * The text with every full-width closing mark that ends a run set to hang (see above). A string with no such mark is
++ * returned as it came.
++ */
++export function hangCjkMarks(text: string): ReactNode {
++  const chars = Array.from(text);
++  if (!chars.some((c) => isMark(c))) return text;
++  const out: ReactNode[] = [];
++  let run = "";
++  let k = 0;
++  chars.forEach((c, i) => {
++    const next = chars[i + 1];
++    // A mark hangs at the end of the text, or before a character that is neither a mark, a closer nor white space.
++    if (!isMark(c) || isMark(next) || (next !== undefined && (/\s/.test(next) || CLOSER.test(next)))) { run += c; return; }
++    if (run) out.push(run);
++    run = "";
++    const cls = CJK_MARK_TRIM[c];
++    out.push(<span key={k++} className={cls}>{c}</span>);
++    if (next !== undefined) {
++      out.push(<span key={k++} aria-hidden="true" className={cls.endsWith("--q") ? "kp-cjk-gap kp-cjk-gap--q" : "kp-cjk-gap"}>{" "}</span>);
++    }
++  });
++  if (run) out.push(run);
++  return <Fragment>{out}</Fragment>;
++}

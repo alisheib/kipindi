@@ -1,0 +1,30 @@
+Visual pass G3: Tiketi zangu's cards whole and level, empty states without widows, the guest sheet and the market sign-in card balanced
+
+The owner's rule (2026-10-08): only perfect visual and logical results. Every item was measured on the tiles: pixel
+scans at 1x, and text widths with fontkit against the repo's own Inter and JetBrains Mono, within ~1% of the tiles.
+
+- Ticket payout words wrapped ("Matokeo / yakitoka", "When the result is / in": a 115px cell at 320, 150 at 390).
+  The stake and payout row splits 2 : 3. The stake column never narrows below its own figure, and "TZS 1,000,000" is
+  the widest (PLATFORM_MAX_STAKE). Its words are balanced. The loading ghost mirrors the split.
+- The ticket's question was clamped to two lines, so at 320 "…kutakuwa kijani…" hid "kesho?". It is now whole at every
+  width with balanced lines. The canvas draws it unclamped, and the board's Q6 clamp is for browsing cards. The card is
+  a flex column; its heading's margins were worked through, so every line lands on the same pixels.
+- Ragged 1280 rows (card bottoms 745 against 725, gaps 16 and 36) came from items-start, now removed. Cards in a row
+  share a height, and the detail block grows, so Sell rows sit level on the card floor.
+- Empty states: widows ("hapa.", "here."), a line opening with "—", and zh "显 / 示". The body is balanced, CJK words
+  stay whole (keep-all, plus break-word for an over-long run), and dashOnItsWord keeps a spaced dash with the word
+  before it. It is built with String.fromCharCode, so the source holds no invisible characters. This applies to every
+  EmptyState.
+- The Up & Down history empty card was 360px while Maswali's filled the content width. It now has fill={journey}, and
+  classic readers get today's markup.
+- The guest tickets sheet title (en 320, "tickets" alone) and the market sign-in card ("hili" alone at sw 390; zh "号。"
+  alone at 320) are balanced, and the zh note keeps its words whole.
+
+Merged with G1 on the ticket title: G3's whole, balanced heading holds G1's keepUnits words, on one line. The test pins
+that spelling (TITLE_WORDS), and G3's plant ("the full question is held to two lines again") clamps it.
+
+On the merged tree: test:journey-tickets 50/50; red:journey-tickets 103/103 caught, 207 proofs held. On the G3 tree:
+tsc 0 under the shared lock, and 62 suites green (every one that reads a touched file). The Tailwind CLI compiled every
+new class. No dictionary string changed. Browser proof on the combined branch under the lock.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>

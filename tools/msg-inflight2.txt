@@ -1,0 +1,3 @@
+docs(vodacom): A8i-2 in flight - the draft on vodacom-a8i2 (d5bf2c48), its control run on live main red exactly where predicted (W2 sold, a held Enter on Up & Down placed 13 bets), the change-set review in; A8j being revised beside it
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>

@@ -1,0 +1,19 @@
+fix(red:decomment): inject through red-anchor.mjs, not String.includes - six multi-line anchors read "not found" on a CRLF checkout though no line had moved; the unmutated tree runs first
+
+core.autocrlf=true puts CRLF in the working tree while the declared anchors are written with \n, so every anchor
+that spans a line break (mutations 1, 2, 3, 4, 7 and 9) failed to match on this PC, and red:decomment proved six of
+twelve. test:red-anchors §3 audits the same anchors through resolveAnchor and called them fine: the audit and the
+harness disagreed about one string. The harness now injects with injectDefect (the file's own line endings; refuses
+an anchor that matches twice; never returns an unchanged file). The anchors are unchanged.
+
+And the gate runs once on the UNMUTATED copy first: test:decomment §2.1 (the private-stripper ratchet) is red on main
+(24, ceiling 20), and mutation 9 targets exactly 2.1, so a plant that moved nothing would have read as caught. For a
+check the baseline already fails, the mutant must change the line the gate prints (24 -> 25 here), or it is VACUOUS
+and counts as a miss; a check green at baseline is judged as before.
+
+Proof on OMEGA-COMPILE01 (2026-10-08, main f89dcdb9): red:decomment 12/12 proven, 0 missed, 0 broken, exit 0 (6/12
+before). Negative controls on a scratch copy: a comment-only edit aimed at 2.1 reads VACUOUS; an anchor matching
+nothing or four times is refused. test:decomment itself stays red on 2.1 - four later scripts carry their own
+`//` strippers (kyc-stage, report-note-truth, the u8 opt-out drive, campaign-models) - a separate fix.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>

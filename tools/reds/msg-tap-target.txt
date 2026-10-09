@@ -1,0 +1,15 @@
+test(tap-target): 5.1 reads a class list to its own closing delimiter, and the shared date filter's dense rank is policed at its callers - test:tap-target was red on main since 24dca6aa, so red:tap-floor and red:tap-rung refused to run
+
+Two gate-side faults, no product defect (every caller of the dense rank is an admin page):
+- 5.1 cut a className literal at the FIRST quote of any kind, so `className={`btn ${size === "xs" ? "btn-xs" : "btn-sm"}`}`
+  (admin/reports/generate-button.tsx) read as `btn btn-ghost ${size ===` and the named rung was never seen. The literal
+  now ends at the delimiter that opened it.
+- 2.1 convicted ui/datetime-range-filter.tsx, which maps a caller's `rank="dense"` onto btn-xs and defaults to btn-sm
+  (40px) - the same shape as button.tsx's size="xs". It joins XS_DEFINERS, and `<DateTimeRangeFilter rank="dense">`
+  becomes a signal like `<Button size="xs">`, so a player page opting in is still convicted: red:tap-floor gains that
+  plant on the positions filter bar, and it fails 2.1.
+
+Proof on OMEGA-COMPILE01 (2026-10-08): test:tap-target 30/0 (2 failures before); red:tap-floor all cases caught
+including the new one, exit 0; red:tap-rung 4/4, exit 0 (both refused before: "HEAD is not green").
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>

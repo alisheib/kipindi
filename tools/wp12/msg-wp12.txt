@@ -1,0 +1,36 @@
+Vodacom S6 WP12: the shell's proof tools and records - qa:live holds the classic pages free of every journey trace for signed-out and signed-in players, the landmark seal gains --journey, the G1 unread-handover drive, the bell-untouched proof, and DESIGN_AUTHORITY rule 8
+
+- qa:live (scripts/pre-deploy-live-check.mjs): [E2] holds / and /markets free of every trace of the journey shell for a
+  signed-out visitor while the rollout is short of ACTIVE (any journey-* or tickets-guest-* test id, the shell mark, the
+  data-journey flag, a "new" funnel scope - in the HTML and in the RSC payload, with matcher controls), each read counted
+  only at HTTP 200 at the route named, and /account against an unmatched path (the not-found page, noindex, no trace; its
+  status printed, never judged). First, LOCALLY, a control on real bytes: / with a staff preview pass must carry the
+  journey header, tabs and shell mark through both readers. New [E3], the same for a SIGNED-IN player: locally the demo
+  player; on production the QA player mobile01 through the harness's loginOnce - one attempt, never an admin. That one
+  sign-in is the run's only production write: mobile01's session row (which ends any other mobile01 session), two audit
+  rows, lastLoginAt, and a sign-in email to its undeliverable address. CLAUDE.md's qa:live lines say so.
+- qa:landmark-seal --journey: the seal through a preview pass on every context (widths 320-1279, /account public in this
+  mode only); the pass minted locally, an Owner-issued link on production (refused until decision 7; none under ACTIVE);
+  /profile/kyc left out on production (its GET starts an identity check). Classic mode unchanged.
+- qa:journey-unread-handover (new, scripts/live/journey-unread-handover-drive.mjs): A1's G1 drive - on a shared phone A's
+  session ends through the idle path, B signs in by the journey header's link, and the Akaunti dot and the Arifa row never
+  show A's count before B's first answer; --prove-red plants it.
+- qa:bell-untouched (new, scripts/bell-untouched.mjs): A1's proof that S6 left the classic bell's bytes alone - git reads
+  only, never in predeploy.
+- DESIGN_AUTHORITY section K rule 8 (8a-8d): the journey's four kit additions - the captioned balance, the four-slot rail,
+  the hub rows, the guest Tiketi sheet - ruled as built, each beside its classic part until S15; its provenance CHANGELOG
+  entry; SHELVED gains five rows; S6-PLAN's as-built notes under WP12 and A1.
+
+The handover's change set (ALI-BLADE15: three reviews, a verifier 83/83 at 2d0f56e7 and 1be05fbf), applied here with one
+anchor moved - its CHANGELOG entry now sits above A8i's 2026-10-07 entry - rule 8's dates set to the day it lands
+(2026-10-07), and six of its statements corrected against today's code by an independent read of about 165 claims:
+rule 8c's helpline row (gone since the owner's ruling of 2026-10-06); "kept the classic components untouched" (their
+served markup is unchanged; the Wallet both looks open takes a journey prop for its door words); no overlay in a card
+(a Toggle's knob and a screen-reader count are placed absolutely); SHELVED's empty-state row (its lens exit, and
+where its labels are built) and the performance link's real words ("Angalia utendaji"); and CLAUDE.md's [E3] line (it
+signs in unless /api/health says ACTIVE, an unreadable answer included). The QA scripts' bases are unchanged since 1be05fbf. No src/, CSS or dictionary change: nothing a visitor is
+served changes.
+
+Proof on OMEGA-COMPILE01: {PROOF}
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>

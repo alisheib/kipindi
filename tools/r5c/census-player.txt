@@ -1,0 +1,697 @@
+### src/app/agent/apply/apply-client.tsx
+  195 [prop] tone="warning" :: <Callout tone="warning" size="md">{app.infoRequestNote}</Callout>
+  320 [tw] border-gold-700 :: <div className="rounded-xl border border-gold-700 p-4" style={{ background: "color-mix(in oklab, var(--gold-500) 8%, var(--bg-elevated))" }}>
+  320 [var] var(--gold-500) :: <div className="rounded-xl border border-gold-700 p-4" style={{ background: "color-mix(in oklab, var(--gold-500) 8%, var(--bg-elevated))" }}>
+  321 [tw] text-gold-300 :: <p className="font-mono text-micro uppercase eyebrow font-bold text-gold-300">{t.agent.payTitle}</p>
+  328 [tw] text-gold-300 :: <p className="mt-2 amount text-title-lg font-bold text-gold-300">{formatTzs(fee.totalTzs)}</p>
+  331 [tw] text-gold-300 :: <p className="mt-2 text-body-sm leading-relaxed text-text">{fillNodes(t.agent.payFromWalletBody, { amount: <span className="amount text-gold-300">{formatTzs(fee.totalTzs)
+  525 [tw] border-warning-500 :: : rejected ? "border-warning-500 bg-warning-500/[0.08] cursor-pointer hover:border-warning-fg"
+  525 [tw] bg-warning-500/[0.08] :: : rejected ? "border-warning-500 bg-warning-500/[0.08] cursor-pointer hover:border-warning-fg"
+  525 [tw] hover:border-warning-fg :: : rejected ? "border-warning-500 bg-warning-500/[0.08] cursor-pointer hover:border-warning-fg"
+  534 [tw] bg-warning/15 :: rejected ? "bg-warning/15 text-warning" : done ? "bg-success/15 text-success" : "bg-bg-overlay text-text-subtle border border-border"
+  534 [tw] text-warning :: rejected ? "bg-warning/15 text-warning" : done ? "bg-success/15 text-success" : "bg-bg-overlay text-text-subtle border border-border"
+  540 [tw] text-warning-500 :: <span className={`mt-0.5 block font-mono text-body-sm ${rejected ? "text-warning-500" : done ? "text-yes-300" : "text-text-subtle"}`}>{stateLabel}</span>
+### src/app/agent/invite/[token]/invite-client.tsx
+   66 [prop] tone="warning" :: <Callout tone="warning" size="md">
+   86 [prop] tone="warning" :: {error && <Callout tone="warning" size="md">{error}</Callout>}
+### src/app/agent/page.tsx
+  123 [prop] tone: "warning" :: notice = view.active ? { tone: "success", text: t.agent.stateAgent } : { tone: "warning", text: t.agent.stateAgentPaused };
+  141 [prop] tone: "warning" :: else if (view.state === "info_required") { cta = { kind: "continue" }; notice = { tone: "warning", text: t.agent.stateInfo }; }
+  144 [prop] tone: "warning" :: notice = { tone: "warning", text: view.reapplyAt ? fill(t.agent.stateCooldown, { date: fmtDate(view.reapplyAt) }) : t.agent.stateTerminal };
+  152 [prop] tone: "warning" :: else if (e.refusal === "cooldown") { cta = { kind: "none" }; notice = { tone: "warning", text: fill(t.agent.stateCooldown, { date: e.until ? fmtDate(e.until) : "" }) }; }
+  153 [prop] tone: "warning" :: else if (e.refusal === "terminal_rejection") { cta = { kind: "none" }; notice = { tone: "warning", text: t.agent.stateTerminal }; }
+  154 [prop] tone: "warning" :: else if (e.refusal === "rg_locked") { cta = { kind: "none" }; notice = { tone: "warning", text: t.agent.stateRgLocked }; }
+  157 [prop] tone: "warning" :: else { cta = { kind: "none" }; notice = { tone: "warning", text: t.agent.stateNotActive }; }
+  164 [prop] tone="warning" :: {sp.refused && <Callout tone="warning" size="md">{t.agent.applyRefused}</Callout>}
+  173 [prop] tone="gold" :: <Stat size="xl" boxed="glass" labelStyle="strong" tone="gold" className="p-4"
+  181 [prop] tone="gold" :: <Stat size="xl" boxed="glass" labelStyle="strong" tone="gold" className="p-4"
+  231 [var] var(--gold-400) :: ? { background: "linear-gradient(180deg, var(--gold-400), var(--gold-600))", color: "var(--gold-950)", border: "1px solid var(--gold-700)" }
+  231 [var] var(--gold-600) :: ? { background: "linear-gradient(180deg, var(--gold-400), var(--gold-600))", color: "var(--gold-950)", border: "1px solid var(--gold-700)" }
+  231 [var] var(--gold-950) :: ? { background: "linear-gradient(180deg, var(--gold-400), var(--gold-600))", color: "var(--gold-950)", border: "1px solid var(--gold-700)" }
+  231 [var] var(--gold-700) :: ? { background: "linear-gradient(180deg, var(--gold-400), var(--gold-600))", color: "var(--gold-950)", border: "1px solid var(--gold-700)" }
+  258 [tw] border-gold-700 :: <section className="rounded-xl border border-gold-700 p-4" style={{ background: "color-mix(in oklab, var(--gold-500) 8%, var(--bg-elevated))" }}>
+  258 [var] var(--gold-500) :: <section className="rounded-xl border border-gold-700 p-4" style={{ background: "color-mix(in oklab, var(--gold-500) 8%, var(--bg-elevated))" }}>
+  259 [tw] text-gold-300 :: <p className="font-mono text-micro uppercase eyebrow font-bold text-gold-300">{t.agent.feeTitle}</p>
+  260 [tw] text-gold-300 :: <p className="mt-2 amount text-title-lg font-bold text-gold-300">{formatTzs(fee.totalTzs)}</p>
+  269 [tw] text-gold-300 :: {fillNodes(t.agent.feeBodyWallet, { amount: <span className="amount text-gold-300">{formatTzs(fee.totalTzs)}</span> })}
+### src/app/agent/status/page.tsx
+  122 [tw] border-gold-700 :: <div className="rounded-md border border-gold-700 px-3 py-2" style={{ background: "color-mix(in oklab, var(--gold-500) 8%, transparent)" }}>
+  122 [var] var(--gold-500) :: <div className="rounded-md border border-gold-700 px-3 py-2" style={{ background: "color-mix(in oklab, var(--gold-500) 8%, transparent)" }}>
+  123 [tw] text-gold-300 :: <p className="font-mono text-body-sm tabular-nums text-gold-300">
+### src/app/api/og/market/[id]/route.tsx
+   41 [cls] gilt :: gilt: "#cba95a",
+   79 [hex] #E3BC66 :: <line x1="38.39" y1="3.43" x2="61.61" y2="96.57" stroke="#E3BC66" strokeWidth="3.5" strokeLinecap="round" />
+   80 [hex] #E3BC66 :: <circle cx="50" cy="50" r="5" fill="#E3BC66" />
+   93 [cls] gilt :: letterSpacing: "0.18em", textTransform: "uppercase", color: C.gilt,
+   97 [cls] gilt :: <div style={{ display: "flex", marginTop: 10, fontSize: 92, fontWeight: 700, letterSpacing: "-0.03em", color: C.gilt }}>
+  147 [hex] #E3BC66 :: <line x1="38.39" y1="3.43" x2="61.61" y2="96.57" stroke="#E3BC66" strokeWidth="3.5" strokeLinecap="round" />
+  148 [hex] #E3BC66 :: <circle cx="50" cy="50" r="5" fill="#E3BC66" />
+### src/app/api/og/page/route.tsx
+   42 [hex] #E3BC66 :: <line x1="38.39" y1="3.43" x2="61.61" y2="96.57" stroke="#E3BC66" strokeWidth="3.5" strokeLinecap="round" />
+   43 [hex] #E3BC66 :: <circle cx="50" cy="50" r="5" fill="#E3BC66" />
+   52 [hex] #E3BC66 :: <div style={{ marginTop: 22, width: 168, height: 2, borderRadius: 2, background: "linear-gradient(90deg, transparent, #E3BC66, transparent)" }} />
+### src/app/auth/forgot-password/page.tsx
+   86 [tw] border-warning-border :: <div role="alert" className="rounded-md border border-warning-border bg-warning-bg px-3.5 py-3 text-[13px] text-text-muted">
+   86 [tw] bg-warning-bg :: <div role="alert" className="rounded-md border border-warning-border bg-warning-bg px-3.5 py-3 text-[13px] text-text-muted">
+### src/app/auth/login/page.tsx
+  111 [prop] tone: "warning" :: tone: "warning" as const,
+  160 [prop] tone: "warning" :: tone: "warning" as const,
+  170 [prop] tone: "warning" :: tone: "warning" as const,
+  184 [prop] tone: "warning" :: tone: "warning" as const,
+  196 [prop] tone: "warning" :: tone: "warning" as const,
+  211 [prop] tone: "warning" :: tone: "warning" as const,
+  236 [prop] tone: "warning" :: tone: "warning" as const,
+  270 [tw] border-warning-border :: : "border-warning-border bg-warning-bg")
+  270 [tw] bg-warning-bg :: : "border-warning-border bg-warning-bg")
+### src/app/auth/register/page.tsx
+  151 [tw] text-gold-300 :: {t.auth.signUpAndGet} <span className="amount text-gold-300">{formatTzs(referral.newPlayerBonusTzs)}</span> {t.auth.toStart}
+  166 [tw] text-gold-300 :: <p className="text-[14px] font-bold text-text">{t.auth.claimBonus} <span className="amount text-gold-300">{formatTzs(invite.bonusAmountTzs)}</span></p>
+### src/app/auth/register/register-form.tsx
+  105 [prop] tone: "warning" :: tone: "warning" as const,
+  117 [prop] tone: "warning" :: tone: "warning" as const,
+  126 [prop] tone: "warning" :: tone: "warning" as const,
+  155 [tw] border-warning-border :: : "border-warning-border bg-warning-bg")
+  155 [tw] bg-warning-bg :: : "border-warning-border bg-warning-bg")
+### src/app/fairness/page.tsx
+   58 [cls] gilt :: function FairnessChain({ steps }: { steps: { glyph: keyof typeof I; label: string; gilt?: boolean }[] }) {
+   69 [cls] gilt :: const circleCls = s.gilt
+   70 [tw] border-gold-500 :: ? "border-2 border-gold-500 bg-gold-500/10 text-gold-300"
+   70 [tw] bg-gold-500/10 :: ? "border-2 border-gold-500 bg-gold-500/10 text-gold-300"
+   70 [tw] text-gold-300 :: ? "border-2 border-gold-500 bg-gold-500/10 text-gold-300"
+   81 [tw] text-gold-300 :: <span className={`sm:mt-2 text-balance font-mono text-micro font-semibold uppercase leading-tight eyebrow ${s.gilt ? "text-gold-300" : "text-text-muted"}`}>
+   81 [cls] gilt :: <span className={`sm:mt-2 text-balance font-mono text-micro font-semibold uppercase leading-tight eyebrow ${s.gilt ? "text-gold-300" : "text-text-muted"}`}>
+  213 [cls] gilt :: { glyph: "shieldcheck", label: t.common.fairnessStage2, gilt: true },
+### src/app/global-error.tsx
+  133 [oklch] oklch(86% 0.13 82) :: const GOLD = "oklch(86% 0.13 82)";
+  272 [oklch] oklch(72% 0.14 78) :: background: `linear-gradient(180deg, ${GOLD} 0%, oklch(72% 0.14 78) 100%)`,
+  273 [oklch] oklch(18% 0.06 76) :: color: "oklch(18% 0.06 76)",
+### src/app/leaderboard/page.tsx
+  521 [tw] border-gold-700/50 :: <span className="inline-flex items-center gap-1 rounded-pill border border-gold-700/50 bg-gold-500/10 px-2 py-0.5 font-mono text-[10px] font-bold text-gold-300">
+  521 [tw] bg-gold-500/10 :: <span className="inline-flex items-center gap-1 rounded-pill border border-gold-700/50 bg-gold-500/10 px-2 py-0.5 font-mono text-[10px] font-bold text-gold-300">
+  521 [tw] text-gold-300 :: <span className="inline-flex items-center gap-1 rounded-pill border border-gold-700/50 bg-gold-500/10 px-2 py-0.5 font-mono text-[10px] font-bold text-gold-300">
+  541 [var] var(--gold-400) :: const ring = first ? "var(--gold-400)" : "var(--text-muted)";
+  549 [tw] text-gold-300 :: <span className="mb-1 text-gold-300 podium-crown" aria-hidden><I.crown s={22} /></span>
+  561 [var] var(--gold-400) :: style={{ background: ring, boxShadow: first ? "0 0 16px color-mix(in oklab, var(--gold-400) 45%, transparent)" : "none" }}
+  568 [var] var(--gold-400) :: background: first ? "var(--gold-400)" : "var(--bg-overlay)",
+  569 [var] var(--gold-950) :: color: first ? "var(--gold-950)" : "var(--text-muted)",
+### src/app/legal/responsible-gambling/page.tsx
+   85 [tw] text-gold-300 :: <a href="/profile/responsible-gambling" className="text-gold-300 hover:text-gold-200 underline-offset-2 hover:underline">
+   85 [tw] hover:text-gold-200 :: <a href="/profile/responsible-gambling" className="text-gold-300 hover:text-gold-200 underline-offset-2 hover:underline">
+  139 [tw] text-gold-300 :: <a href="/profile/responsible-gambling" className="text-gold-300 hover:text-gold-200 underline-offset-2 hover:underline">
+  139 [tw] hover:text-gold-200 :: <a href="/profile/responsible-gambling" className="text-gold-300 hover:text-gold-200 underline-offset-2 hover:underline">
+  194 [tw] text-gold-300 :: <a href="/profile/responsible-gambling" className="whitespace-nowrap text-gold-300 hover:text-gold-200 underline-offset-2 hover:underline">
+  194 [tw] hover:text-gold-200 :: <a href="/profile/responsible-gambling" className="whitespace-nowrap text-gold-300 hover:text-gold-200 underline-offset-2 hover:underline">
+### src/app/legal/terms/page.tsx
+  222 [tw] text-gold-300 :: <a href="/profile/responsible-gambling" className="text-gold-300 hover:text-gold-200 underline-offset-2 hover:underline">Responsible Gambling</a>.
+  222 [tw] hover:text-gold-200 :: <a href="/profile/responsible-gambling" className="text-gold-300 hover:text-gold-200 underline-offset-2 hover:underline">Responsible Gambling</a>.
+  223 [tw] text-gold-300 :: See the dedicated <a href="/legal/responsible-gambling" className="text-gold-300 hover:text-gold-200 underline-offset-2 hover:underline">Responsible Gambling Policy</a>.
+  223 [tw] hover:text-gold-200 :: See the dedicated <a href="/legal/responsible-gambling" className="text-gold-300 hover:text-gold-200 underline-offset-2 hover:underline">Responsible Gambling Policy</a>.
+  378 [tw] text-gold-300 :: <a href="/profile/responsible-gambling" className="text-gold-300 hover:text-gold-200 underline-offset-2 hover:underline">Mchezo Salama</a>.
+  378 [tw] hover:text-gold-200 :: <a href="/profile/responsible-gambling" className="text-gold-300 hover:text-gold-200 underline-offset-2 hover:underline">Mchezo Salama</a>.
+  379 [tw] text-gold-300 :: Angalia <a href="/legal/responsible-gambling" className="text-gold-300 hover:text-gold-200 underline-offset-2 hover:underline">Sera ya Mchezo Salama</a> maalum.
+  379 [tw] hover:text-gold-200 :: Angalia <a href="/legal/responsible-gambling" className="text-gold-300 hover:text-gold-200 underline-offset-2 hover:underline">Sera ya Mchezo Salama</a> maalum.
+  495 [tw] text-gold-300 :: <a href="/profile/responsible-gambling" className="text-gold-300 hover:text-gold-200 underline-offset-2 hover:underline">负责任博彩</a>
+  495 [tw] hover:text-gold-200 :: <a href="/profile/responsible-gambling" className="text-gold-300 hover:text-gold-200 underline-offset-2 hover:underline">负责任博彩</a>
+  496 [tw] text-gold-300 :: 中设置充值限额、暂停游戏或自我排除。另请参阅专门的<a href="/legal/responsible-gambling" className="text-gold-300 hover:text-gold-200 underline-offset-2 hover:underline">负责任博彩政策</a>。
+  496 [tw] hover:text-gold-200 :: 中设置充值限额、暂停游戏或自我排除。另请参阅专门的<a href="/legal/responsible-gambling" className="text-gold-300 hover:text-gold-200 underline-offset-2 hover:underline">负责任博彩政策</a>。
+### src/app/live/pulse-grid.tsx
+  222 [tw] text-gold-300 :: <span className={`inline-flex items-center gap-1 font-mono text-[10px] tabular-nums ${market.selectionClosed ? "text-gold-300" : "text-text-subtle"}`}>
+### src/app/markets/[id]/page.tsx
+  532 [tw] border-warning-border :: settling ? "border-warning-border bg-warning-bg text-warning-fg" : "border-gold-500/40 bg-gold-500/10 text-gold-300"
+  532 [tw] bg-warning-bg :: settling ? "border-warning-border bg-warning-bg text-warning-fg" : "border-gold-500/40 bg-gold-500/10 text-gold-300"
+  532 [tw] text-warning-fg :: settling ? "border-warning-border bg-warning-bg text-warning-fg" : "border-gold-500/40 bg-gold-500/10 text-gold-300"
+  532 [tw] border-gold-500/40 :: settling ? "border-warning-border bg-warning-bg text-warning-fg" : "border-gold-500/40 bg-gold-500/10 text-gold-300"
+  532 [tw] bg-gold-500/10 :: settling ? "border-warning-border bg-warning-bg text-warning-fg" : "border-gold-500/40 bg-gold-500/10 text-gold-300"
+  532 [tw] text-gold-300 :: settling ? "border-warning-border bg-warning-bg text-warning-fg" : "border-gold-500/40 bg-gold-500/10 text-gold-300"
+  539 [prop] variant="resolved" :: <Chip variant="resolved" size="lg">{t.market.resolvedOutcome} · {outcomeWord(t, m.resolvedOutcome ?? "VOID", "MARKET")}</Chip>
+  684 [tw] border-warning-border :: <div className="rounded-lg border border-warning-border bg-warning-bg px-3.5 py-2.5">
+  684 [tw] bg-warning-bg :: <div className="rounded-lg border border-warning-border bg-warning-bg px-3.5 py-2.5">
+  692 [tw] text-warning-fg :: <p className="font-mono text-body-sm font-bold text-warning-fg">
+  713 [tw] border-warning-border :: <p className="mt-2 pt-2 border-t border-warning-border text-body-sm leading-snug font-semibold text-warning-fg">
+  713 [tw] text-warning-fg :: <p className="mt-2 pt-2 border-t border-warning-border text-body-sm leading-snug font-semibold text-warning-fg">
+  807 [tw] text-gold-300 :: <I.hourglassOff s={18} className="text-gold-300" />
+  809 [tw] text-gold-300 :: <p className="font-mono text-micro uppercase eyebrow font-bold text-gold-300">
+  819 [tw] border-warning-border :: <div className="rounded-xl border border-warning-border bg-warning-bg p-6 text-center">
+  819 [tw] bg-warning-bg :: <div className="rounded-xl border border-warning-border bg-warning-bg p-6 text-center">
+  820 [tw] text-warning-fg :: <p className="font-mono text-micro uppercase eyebrow font-bold text-warning-fg">
+  923 [var] var(--gold-300) :: <div className="flex items-center gap-2 text-[12.5px] font-semibold" style={{ color: "var(--gold-300)" }}>
+  971 [tw] text-gold-300 :: p.status === "OPEN" ? "text-info-fg" : p.status === "WIN" ? "text-gold-300" : p.status === "LOSS" ? "text-no-300" : "text-text-subtle"
+  985 [tw] text-gold-300 :: <span className="font-bold tabular-nums text-gold-300">{formatTzs(p.finalPayout ?? 0)}</span>
+### src/app/notifications/bulk-bar.tsx
+   49 [prop] tone="gold" :: <Dot tone="gold" />
+### src/app/positions/page.tsx
+  478 [tw] text-gold-300 :: <p className={`flex items-center gap-1.5 text-[11px] font-mono ${closed ? "text-gold-300" : "text-text-subtle"}`}>
+### src/app/positions/performance/page.tsx
+  246 [var] var(--gilt) :: className={`amount text-[34px] font-bold leading-none ${netPnl >= 0 ? "text-[var(--gilt)]" : "text-no-300"}`}
+  247 [var] var(--gilt) :: style={netPnl >= 0 ? { textShadow: "0 0 24px color-mix(in oklab, var(--gilt) 30%, transparent)" } : undefined}
+  282 [tw] border-gold-700/50 :: className="relative overflow-hidden rounded-xl border border-gold-700/50 p-5"
+  283 [oklch] oklch(40% 0.11 82 / 0.14) :: style={{ background: "radial-gradient(120% 140% at 100% 0%, oklch(40% 0.11 82 / 0.14), transparent 55%), var(--bg-elevated)" }}
+  292 [tw] border-gold-500 :: className="inline-flex h-[48px] w-[48px] shrink-0 items-center justify-center rounded-full border-2 border-gold-500 text-gold-300"
+  292 [tw] text-gold-300 :: className="inline-flex h-[48px] w-[48px] shrink-0 items-center justify-center rounded-full border-2 border-gold-500 text-gold-300"
+  293 [var] var(--gold-400) :: style={{ background: "radial-gradient(circle at 50% 30%, oklch(45% 0.12 84 / 0.35), oklch(24% 0.06 80 / 0.25))", boxShadow: "0 0 20px -4px color-mix(in oklab, var(--gold-
+  293 [oklch] oklch(45% 0.12 84 / 0.35) :: style={{ background: "radial-gradient(circle at 50% 30%, oklch(45% 0.12 84 / 0.35), oklch(24% 0.06 80 / 0.25))", boxShadow: "0 0 20px -4px color-mix(in oklab, var(--gold-
+  293 [oklch] oklch(24% 0.06 80 / 0.25) :: style={{ background: "radial-gradient(circle at 50% 30%, oklch(45% 0.12 84 / 0.35), oklch(24% 0.06 80 / 0.25))", boxShadow: "0 0 20px -4px color-mix(in oklab, var(--gold-
+  301 [tw] text-gold-300 :: <p className="amount text-[26px] lg:text-[30px] font-bold leading-none text-gold-300" style={{ textShadow: "0 0 20px color-mix(in oklab, var(--gold-400) 30%, transparent)
+  301 [var] var(--gold-400) :: <p className="amount text-[26px] lg:text-[30px] font-bold leading-none text-gold-300" style={{ textShadow: "0 0 20px color-mix(in oklab, var(--gold-400) 30%, transparent)
+  383 [var] var(--gilt) :: <p className={`text-body-sm font-bold amount ${r.pnl >= 0 ? "text-[var(--gilt)]" : "text-no-300"}`}>{formatTzsSigned(r.pnl)}</p>
+  421 [tw] text-gold-300 :: <span key={i} className={i < current ? "text-gold-300" : "text-text-subtle/30"}>
+  425 [tw] text-gold-300 :: {current > 12 && <span className="ml-0.5 font-mono text-[11px] font-bold text-gold-300 tabular-nums">+{current - 12}</span>}
+### src/app/profile/account/privacy-request-form.tsx
+   97 [tw] border-warning-border :: <p className="rounded-md border border-warning-border bg-warning-bg/15 px-3 py-2 text-label text-text-secondary">
+   97 [tw] bg-warning-bg/15 :: <p className="rounded-md border border-warning-border bg-warning-bg/15 px-3 py-2 text-label text-text-secondary">
+### src/app/profile/activity/page.tsx
+  230 [tw] bg-warning-fg :: className={cn("h-full rounded-pill transition-[width]", over ? "bg-no-500" : tone === "no" ? "bg-warning-fg" : "bg-brand-500")}
+### src/app/profile/invite/agent-dashboard.tsx
+  104 [prop] variant="warning" :: {dash.active ? <VerifiedAgentBadge label={t.agent.verifiedBadge} /> : <Chip variant="warning">{t.agent.dashPaused}</Chip>}
+  108 [prop] tone="warning" :: <Callout tone="warning" size="md">{t.agent.dashPausedBody}</Callout>
+  113 [var] var(--gold-500) :: <div aria-hidden className="pointer-events-none absolute inset-0" style={{ background: "radial-gradient(120% 90% at 100% 0%, color-mix(in oklab, var(--gold-500) 12%, tran
+  115 [tw] text-gold-300 :: <p className="font-mono text-micro uppercase eyebrow font-bold text-gold-300">{t.agent.dashRate}</p>
+  116 [tw] text-gold-300 :: <p className="mt-1 font-mono text-title-lg font-bold tabular-nums text-gold-300">{fill(t.agent.dashRateValue, { pct: String(dash.commissionPct) })}</p>
+  129 [prop] tone="gold" :: <Stat size="3xl" labelStyle="strong" boxed="glass" tone="gold" money label={t.agent.dashPaid} value={formatNumber(dash.paidTzs)} hint="TZS" icon={<I.coins s={14} />} icon
+  130 [prop] tone="gold" :: <Stat size="3xl" labelStyle="strong" boxed="glass" tone="gold" money label={t.agent.dashThisMonth} value={formatNumber(dash.thisMonthTzs)} hint="TZS" icon={<I.percent s={
+  131 [prop] tone="gold" :: {dash.pendingTzs > 0 && <Stat size="xl" labelStyle="strong" boxed="glass" tone="gold" money label={t.agent.dashPending} value={formatNumber(dash.pendingTzs)} hint="TZS" /
+  138 [var] var(--gold-700) :: <section className="relative overflow-hidden rounded-xl border p-5" style={{ background: "var(--royal-950)", borderColor: "var(--gold-700)" }}>
+  145 [tw] text-gold-300/70 :: <p className="mt-3 font-mono text-micro uppercase eyebrow font-bold text-gold-300/70">{t.agent.verifiedBadge}</p>
+  148 [tw] border-gold-700 :: <div className="mt-1 inline-block max-w-full rounded-md border border-gold-700 px-3 py-1.5" style={{ background: "color-mix(in oklab, var(--gold-500) 10%, transparent)" }
+  148 [var] var(--gold-500) :: <div className="mt-1 inline-block max-w-full rounded-md border border-gold-700 px-3 py-1.5" style={{ background: "color-mix(in oklab, var(--gold-500) 10%, transparent)" }
+  149 [tw] text-gold-300 :: <span className="block break-all font-mono text-title-sm font-bold tracking-wider text-gold-300">{dash.code}</span>
+  174 [var] var(--gold-400) :: ? { background: "linear-gradient(180deg, var(--gold-400), var(--gold-600))", color: "var(--gold-950)", border: "1px solid var(--gold-700)" }
+  174 [var] var(--gold-600) :: ? { background: "linear-gradient(180deg, var(--gold-400), var(--gold-600))", color: "var(--gold-950)", border: "1px solid var(--gold-700)" }
+  174 [var] var(--gold-950) :: ? { background: "linear-gradient(180deg, var(--gold-400), var(--gold-600))", color: "var(--gold-950)", border: "1px solid var(--gold-700)" }
+  174 [var] var(--gold-700) :: ? { background: "linear-gradient(180deg, var(--gold-400), var(--gold-600))", color: "var(--gold-950)", border: "1px solid var(--gold-700)" }
+  211 [tw] text-gold-300 :: <div className={`w-[72px] text-right font-mono text-body-sm font-semibold tabular-nums ${r.commissionTzs > 0 ? "text-gold-300" : "text-text-subtle"}`}>
+### src/app/profile/invite/page.tsx
+   68 [prop] tone = "gold" :: function EarningsRing({ value, label, tone = "gold" }: { value: number; label: string; tone?: "gold" | "royal" }) {
+   70 [var] var(--gold-400) :: const stroke = tone === "gold" ? "var(--gold-400)" : "var(--royal-400)";
+   71 [var] var(--gold-300) :: const glow = tone === "gold" ? "var(--gold-300)" : "var(--royal-300)";
+   72 [var] var(--gold-300) :: const text = tone === "gold" ? "var(--gold-300)" : "var(--royal-200)";
+  302 [tw] text-gold-300 :: <Cap className={`sm:mb-1.5 ${paid ? "!text-gold-300" : "!text-royal-300"}`}>
+  325 [tw] text-gold-300 :: className="text-gold-300"
+  326 [var] var(--gold-500) :: bg="color-mix(in oklab, var(--gold-500) 16%, transparent)"
+  352 [var] var(--gold-700) :: style={{ background: "var(--royal-950)", borderColor: paid ? "var(--gold-700)" : "var(--royal-700)" }}
+  360 [tw] text-gold-300/70 :: <p className={`mt-3 font-mono text-micro uppercase eyebrow font-bold ${paid ? "text-gold-300/70" : "text-royal-300/80"}`}>{t.common.invite}</p>
+  362 [tw] border-gold-700 :: className={`mt-1 inline-block rounded-md border px-3 py-1.5 ${paid ? "border-gold-700" : "border-royal-700"}`}
+  365 [tw] text-gold-300 :: <span className={`font-mono text-[22px] font-bold tracking-[0.1em] ${paid ? "text-gold-300" : "text-royal-200"}`}>{s.code || "—"}</span>
+  410 [prop] tone="gold" :: tone="gold"
+  446 [var] var(--gold-400) :: ? { background: "linear-gradient(180deg, var(--gold-400), var(--gold-600))", color: "var(--gold-950)", border: "1px solid var(--gold-700)" }
+  446 [var] var(--gold-600) :: ? { background: "linear-gradient(180deg, var(--gold-400), var(--gold-600))", color: "var(--gold-950)", border: "1px solid var(--gold-700)" }
+  446 [var] var(--gold-950) :: ? { background: "linear-gradient(180deg, var(--gold-400), var(--gold-600))", color: "var(--gold-950)", border: "1px solid var(--gold-700)" }
+  446 [var] var(--gold-700) :: ? { background: "linear-gradient(180deg, var(--gold-400), var(--gold-600))", color: "var(--gold-950)", border: "1px solid var(--gold-700)" }
+  548 [tw] text-gold-300 :: <div className={`w-[64px] text-right font-mono text-[12.5px] font-semibold ${r.earnedTzs > 0 ? "text-gold-300" : "text-text-subtle"}`}>
+### src/app/profile/kyc/page.tsx
+  292 [tw] border-gold-700 :: <section role="status" className="rounded-xl border border-gold-700 bg-gold-500/[0.08] p-4 lg:p-5">
+  292 [tw] bg-gold-500/[0.08] :: <section role="status" className="rounded-xl border border-gold-700 bg-gold-500/[0.08] p-4 lg:p-5">
+  295 [tw] bg-gold-500/15 :: <span className="inline-flex h-[36px] w-[36px] shrink-0 items-center justify-center rounded-full bg-gold-500/15 text-gold-300">
+  295 [tw] text-gold-300 :: <span className="inline-flex h-[36px] w-[36px] shrink-0 items-center justify-center rounded-full bg-gold-500/15 text-gold-300">
+  299 [tw] text-gold-300 :: <p className="font-display text-[14px] font-bold text-gold-300">{t.profile.kycMoreInfo}</p>
+  317 [tw] bg-gold-500/15 :: <span className="inline-flex h-7 w-7 items-center justify-center rounded-full bg-gold-500/15 text-gold-300">
+  317 [tw] text-gold-300 :: <span className="inline-flex h-7 w-7 items-center justify-center rounded-full bg-gold-500/15 text-gold-300">
+  662 [tw] border-gold-700/60 :: <section className="rounded-xl border border-gold-700/60 bg-bg-elevated p-5 lg:p-6 text-center">
+  685 [tw] border-gold-700 :: <section className="rounded-xl border border-gold-700 bg-gold-500/10 p-5 lg:p-6 text-center space-y-3">
+  685 [tw] bg-gold-500/10 :: <section className="rounded-xl border border-gold-700 bg-gold-500/10 p-5 lg:p-6 text-center space-y-3">
+  686 [tw] bg-gold-500/20 :: <div className="mx-auto inline-flex h-14 w-14 items-center justify-center rounded-full bg-gold-500/20 text-gold-300">
+  686 [tw] text-gold-300 :: <div className="mx-auto inline-flex h-14 w-14 items-center justify-center rounded-full bg-gold-500/20 text-gold-300">
+  689 [tw] text-gold-300 :: <p className="font-display text-[18px] font-bold text-gold-300">{t.profile.inReview}</p>
+  708 [tw] text-gold-300 :: className="font-display text-[13px] font-semibold text-gold-300 hover:text-gold-200 transition-colors"
+  708 [tw] hover:text-gold-200 :: className="font-display text-[13px] font-semibold text-gold-300 hover:text-gold-200 transition-colors"
+  744 [tw] border-gold-500 :: ? "border-2 border-gold-500 bg-gold-500/10 text-gold-300"
+  744 [tw] bg-gold-500/10 :: ? "border-2 border-gold-500 bg-gold-500/10 text-gold-300"
+  744 [tw] text-gold-300 :: ? "border-2 border-gold-500 bg-gold-500/10 text-gold-300"
+  749 [tw] text-gold-300 :: ? "text-gold-300"
+  761 [var] var(--gold-500) :: background: i < activeIndex ? "color-mix(in oklab, var(--gold-500) 75%, transparent)" : "var(--border)",
+### src/app/profile/page.tsx
+  111 [prop] tone: "warning" :: ? { tone: "warning", label: t.profile.kycMoreInfoPill, glyph: I.upload }
+  288 [tw] border-warning-border :: <section className="rounded-xl border border-warning-border bg-warning-bg p-5">
+  288 [tw] bg-warning-bg :: <section className="rounded-xl border border-warning-border bg-warning-bg p-5">
+  421 [tw] border-gold-700/60 :: className={`group relative flex items-center gap-3 overflow-hidden rounded-xl border bg-bg-elevated p-3.5 transition-colors ${accent ? "border-gold-700/60 hover:border-go
+  421 [tw] hover:border-gold-500 :: className={`group relative flex items-center gap-3 overflow-hidden rounded-xl border bg-bg-elevated p-3.5 transition-colors ${accent ? "border-gold-700/60 hover:border-go
+  422 [var] var(--gold-500) :: style={accent ? { background: "color-mix(in oklab, var(--gold-500) 7%, var(--bg-elevated))" } : undefined}
+  425 [var] var(--gold-400) :: <span aria-hidden className="absolute left-0 top-2 bottom-2 w-[3px] rounded-full" style={{ background: "linear-gradient(180deg, var(--gold-400), var(--gold-600))" }} />
+  425 [var] var(--gold-600) :: <span aria-hidden className="absolute left-0 top-2 bottom-2 w-[3px] rounded-full" style={{ background: "linear-gradient(180deg, var(--gold-400), var(--gold-600))" }} />
+  430 [tw] text-gold-fg :: className={`inline-flex h-[40px] w-[40px] items-center justify-center rounded-md shrink-0 transition-colors ${accent ? "text-gold-fg" : "bg-brand-500/10 text-brand-300 gr
+  431 [var] var(--gold-400) :: style={accent ? { background: "linear-gradient(180deg, var(--gold-400), var(--gold-600))" } : undefined}
+  431 [var] var(--gold-600) :: style={accent ? { background: "linear-gradient(180deg, var(--gold-400), var(--gold-600))" } : undefined}
+  439 [tw] border-gold-700/50 :: <span className="inline-flex items-center rounded-pill border border-gold-700/50 bg-gold-500/15 px-1.5 py-0.5 font-mono text-micro font-bold uppercase tracking-[0.08em] t
+  439 [tw] bg-gold-500/15 :: <span className="inline-flex items-center rounded-pill border border-gold-700/50 bg-gold-500/15 px-1.5 py-0.5 font-mono text-micro font-bold uppercase tracking-[0.08em] t
+  439 [tw] text-gold-300 :: <span className="inline-flex items-center rounded-pill border border-gold-700/50 bg-gold-500/15 px-1.5 py-0.5 font-mono text-micro font-bold uppercase tracking-[0.08em] t
+### src/app/profile/responsible-gambling/page.tsx
+  190 [tw] border-warning-border :: <div className="flex items-start gap-2.5 rounded-md border border-warning-border bg-warning-bg p-3 text-[12px]">
+  190 [tw] bg-warning-bg :: <div className="flex items-start gap-2.5 rounded-md border border-warning-border bg-warning-bg p-3 text-[12px]">
+### src/app/profile/security/security-client.tsx
+  262 [tw] border-gilt/40 :: <div className="grid grid-cols-2 gap-2 rounded-md border border-gilt/40 bg-bg-overlay/40 p-3">
+  267 [tw] border-warning-border :: <div className="flex items-start gap-2 rounded-md border border-warning-border bg-warning-bg px-3 py-2 text-[12px] text-warning-fg">
+  267 [tw] bg-warning-bg :: <div className="flex items-start gap-2 rounded-md border border-warning-border bg-warning-bg px-3 py-2 text-[12px] text-warning-fg">
+  267 [tw] text-warning-fg :: <div className="flex items-start gap-2 rounded-md border border-warning-border bg-warning-bg px-3 py-2 text-[12px] text-warning-fg">
+### src/app/profile/source-of-funds/page.tsx
+  262 [tw] border-warning-border :: <div className="flex items-start gap-2.5 rounded-md border border-warning-border bg-warning-bg p-3.5">
+  262 [tw] bg-warning-bg :: <div className="flex items-start gap-2.5 rounded-md border border-warning-border bg-warning-bg p-3.5">
+  263 [tw] text-warning-fg :: <I.fileSignature s={18} className="shrink-0 mt-0.5 text-warning-fg" />
+### src/app/proposals/new/page.tsx
+   45 [prop] tone="gold" :: <PageHeader eyebrow={t.common.submitProposal} title={t.common.suggestMarket} tone="gold" icon={<I.trophy s={18} />} />
+### src/app/proposals/page.tsx
+  202 [prop] tone="gold" :: <PageHeader tone="gold" icon={<I.trophy s={18} />} eyebrow={t.proposals.title} title={t.proposals.voteForMarkets} />
+  208 [prop] variant="gold" :: <Button variant="gold" size="md" leading={<I.plus s={15} />}>{t.proposals.create}</Button>
+  304 [prop] variant="gold" :: <Link href={"/proposals/new" as never}><Button variant="gold" size="sm" leading={<I.plus s={12} />}>{t.proposals.create}</Button></Link>
+  324 [prop] variant="gold" :: <Link href={"/proposals/new" as never}><Button variant="gold" size="sm" leading={<I.plus s={12} />}>{t.proposals.create}</Button></Link>
+  354 [tw] text-gold-300 :: {p.isMine && p.bonusGrantedTzs > 0 && <span className="flex items-center gap-1 text-gold-300"><I.coins s={12} /> +{formatNumber(p.bonusGrantedTzs)} {t.proposals.earned}</
+### src/app/proposals/[id]/page.tsx
+  117 [var] var(--gold-700) :: <section className="relative overflow-hidden rounded-xl border p-5 text-center" style={{ borderColor: "var(--gold-700)", background: "linear-gradient(160deg, var(--bg-ele
+  118 [var] var(--gold-700) :: <div aria-hidden className="pointer-events-none absolute inset-0" style={{ background: "linear-gradient(180deg, transparent, color-mix(in oklab, var(--gold-700) 16%, tran
+  120 [tw] text-gold-300 :: <p className="mb-3 font-mono text-micro uppercase tracking-[0.16em] font-bold text-gold-300">{t.common.yourProposalApproved}</p>
+### src/app/results/notable-carousel.tsx
+  151 [var] var(--gold-400) :: background: i === current ? "var(--gold-400)" : "var(--border-strong)",
+  171 [var] var(--gold-400) :: className="grid h-[44px] w-[44px] place-items-center rounded-full border transition-colors hover:bg-[color-mix(in_oklab,var(--gold-400)_14%,transparent)]"
+  172 [var] var(--gold-400) :: style={{ borderColor: "color-mix(in oklab, var(--gold-400) 55%, transparent)", color: "var(--gold-300)" }}
+  172 [var] var(--gold-300) :: style={{ borderColor: "color-mix(in oklab, var(--gold-400) 55%, transparent)", color: "var(--gold-300)" }}
+### src/app/results/page.tsx
+  340 [tw] text-gold-300 :: <span className="text-gold-300"><I.resolved s={18} /></span>
+  603 [tw] border-gold-700/40 :: className="group relative block overflow-hidden rounded-xl border border-gold-700/40 bg-bg-elevated p-5 lg:p-6"
+  604 [oklch] oklch(40% 0.10 80 / 0.10) :: style={{ background: "radial-gradient(120% 140% at 100% 0%, oklch(40% 0.10 80 / 0.10), transparent 55%), var(--bg-elevated)" }}
+  613 [prop] variant="resolved" :: : <Chip variant="resolved" size="sm">{t.market.resolvedOutcome} · {outcomeWord(t, m.resolvedOutcome ?? "VOID", m.productLine)}</Chip>}
+  614 [tw] text-gold-300 :: <span className="ml-auto inline-flex items-center gap-1.5 font-mono text-micro uppercase tracking-[0.16em] font-bold text-gold-300">
+  618 [tw] text-gold-100 :: <h2 className="mb-4 max-w-[70ch] font-display text-[18px] lg:text-[22px] font-semibold leading-tight text-text group-hover:text-gold-100">
+### src/app/updown/[roundId]/page.tsx
+  591 [cls] gilt-ink :: <p className={`mt-1 m-0 text-title-md font-bold leading-none amount${payoutStruck ? " gilt-ink" : " text-text"}`}>{formatTzs(myPosition.payout ?? 0)}</p>
+  852 [var] var(--gilt) :: <pre className="m-0 font-mono text-[10.5px] text-text-muted" style={{ ...inset, borderLeft: "2px solid color-mix(in oklab, var(--gilt) 55%, transparent)", borderRadius: "
+### src/app/wallet/deposit/deposit-confirm.tsx
+   86 [prop] variant: "warning" :: toast({ title: err, variant: "warning" });
+  111 [prop] variant: "warning" :: toast({ title: err, variant: "warning" });
+  156 [cls] btn-gold :: <button ref={buttonRef} type="button" className="btn btn-gold btn-lg w-full">
+### src/app/wallet/deposit/loading.tsx
+   81 [tw] bg-gold-500/25 :: <div className="h-[var(--h-control-lg)] w-full rounded-md bg-gold-500/25 kp-shimmer-track" />
+### src/app/wallet/wallet-client.tsx
+   56 [oklch] oklch(78% 0.13 80 / 0.3) :: border: "1px solid oklch(78% 0.13 80 / 0.3)",
+   75 [oklch] oklch(92% 0.06 84 / 0.15) :: boxShadow: "inset 0 0 0 1px oklch(92% 0.06 84 / 0.15), var(--elev-modal)",
+   82 [tw] text-gold-300 :: <div className="flex items-center gap-1.5 text-gold-300">
+  102 [tw] text-gold-300 :: className="mt-3 inline-flex items-center gap-1.5 font-mono text-caption uppercase tracking-[0.14em] text-gold-300 hover:text-gold-200 transition-colors"
+  102 [tw] hover:text-gold-200 :: className="mt-3 inline-flex items-center gap-1.5 font-mono text-caption uppercase tracking-[0.14em] text-gold-300 hover:text-gold-200 transition-colors"
+  288 [tw] text-gold-300 :: <div className="flex items-center gap-1.5 text-gold-300">
+  291 [tw] bg-gold-500/15 :: <span className="ml-auto inline-flex items-center gap-1 rounded-pill px-2 py-0.5 font-mono text-micro uppercase tracking-[0.12em] font-bold bg-gold-500/15 text-gold-200">
+  291 [tw] text-gold-200 :: <span className="ml-auto inline-flex items-center gap-1 rounded-pill px-2 py-0.5 font-mono text-micro uppercase tracking-[0.12em] font-bold bg-gold-500/15 text-gold-200">
+  311 [tw] text-gold-200/80 :: <p className="font-mono text-micro uppercase eyebrow text-gold-200/80">
+  343 [var] var(--gold-500) :: style={{ transform: `scaleX(${overallPct / 100})`, background: "linear-gradient(90deg, var(--gold-500), var(--yes-400))" }} />
+  346 [tw] text-gold-100/90 :: <p className="mt-2 text-body-sm text-gold-100/90">
+  360 [tw] bg-gold-500/[0.06] :: <div key={g.id} className={`rounded-md px-3 py-2 border ${running ? "bg-gold-500/[0.06] border-gold-700/25" : "bg-bg-overlay/40 border-border/40 opacity-70"}`}>
+  360 [tw] border-gold-700/25 :: <div key={g.id} className={`rounded-md px-3 py-2 border ${running ? "bg-gold-500/[0.06] border-gold-700/25" : "bg-bg-overlay/40 border-border/40 opacity-70"}`}>
+  362 [tw] text-gold-200/80 :: <span className="font-mono text-micro uppercase tracking-[0.1em] text-gold-200/80 flex items-center gap-1.5">
+  369 [tw] bg-warning-bg :: <span className="inline-flex items-center rounded-pill px-1.5 py-px text-[8px] font-bold bg-warning-bg border border-warning-border text-warning-fg">
+  369 [tw] border-warning-border :: <span className="inline-flex items-center rounded-pill px-1.5 py-px text-[8px] font-bold bg-warning-bg border border-warning-border text-warning-fg">
+  369 [tw] text-warning-fg :: <span className="inline-flex items-center rounded-pill px-1.5 py-px text-[8px] font-bold bg-warning-bg border border-warning-border text-warning-fg">
+  394 [var] var(--gold-400) :: <div className={`h-full w-full origin-left rounded-pill ${g.progressPct > 0 && g.progressPct < 100 ? "prog-sweep" : ""}`} style={{ transform: `scaleX(${g.progressPct / 10
+  396 [tw] text-gold-200/55 :: <div className="mt-1 flex items-center justify-between font-mono text-[9.5px] text-gold-200/55">
+  410 [tw] text-gold-200/60 :: <p className="text-center font-mono text-[10px] text-gold-200/60">+{grants.length - GRANTS_SHOWN} {grants.length - GRANTS_SHOWN > 1 ? t.common.moreBonuses : t.common.more
+  416 [tw] text-gold-200/80 :: <Link href={grantsToggleHref as never} replace scroll={false} className="font-mono text-[10px] text-gold-200/80 underline underline-offset-2 hover:text-gold-100">
+  416 [tw] hover:text-gold-100 :: <Link href={grantsToggleHref as never} replace scroll={false} className="font-mono text-[10px] text-gold-200/80 underline underline-offset-2 hover:text-gold-100">
+### src/app/wallet/withdraw/page.tsx
+  181 [tw] text-warning-fg :: <Cash className="mt-1 font-mono text-[10.5px] tabular-nums text-warning-fg block">
+  326 [tw] text-warning-fg :: <NoticeRow icon={<I.alertCircle s={15} className="text-warning-fg" />} title={t.wallet.taxNotice} body={fill(t.wallet.taxBody, { pct: pctNum(wcfg.withdrawalFeeRate) })} /
+### src/app/wallet/withdraw/withdraw-confirm.tsx
+  104 [prop] variant: "warning" :: toast({ title: err, variant: "warning" });
+  148 [prop] variant: "warning" :: toast({ title: err, variant: "warning" });
+  179 [prop] tone="warning" :: <ReceiptRow emphasis="fee" tone="warning" label={t.wallet.taxNotice} value={`−${formatTzs(fee)}`} />
+  217 [cls] btn-gold :: className="btn btn-gold btn-lg w-full"
+### src/components/agent/verified-agent-badge.tsx
+   11 [prop] variant="gold" :: <Chip variant="gold" className={className}>
+### src/components/analytics/consent-prompt.tsx
+   76 [tw] text-gold-300 :: <span className="shrink-0 mt-0.5 text-gold-300" aria-hidden><I.chart s={18} /></span>
+### src/components/auth/otp-expiry-countdown.tsx
+   47 [var] var(--gold-400) :: ? "var(--gold-400)"
+   91 [tw] text-warning-fg :: <p id="otp-hint" aria-live="polite" className={`text-[11px] tabular-nums ${expired ? "text-no-300 font-semibold" : warning ? "text-warning-fg" : "text-text-subtle"}`}>
+### src/components/badges/icons.tsx
+   18 [var] var(--gold-400) :: const gold = "var(--gold-400)";
+### src/components/brand/reward-burst.tsx
+   71 [var] var(--gold-500) :: border: "2px solid var(--gold-500)",
+   73 [var] var(--gold-300) :: "radial-gradient(circle at 42% 30%, color-mix(in oklab, var(--gold-300) 25%, transparent), color-mix(in oklab, var(--gold-500) 6%, transparent))",
+   73 [var] var(--gold-500) :: "radial-gradient(circle at 42% 30%, color-mix(in oklab, var(--gold-300) 25%, transparent), color-mix(in oklab, var(--gold-500) 6%, transparent))",
+   74 [var] var(--gold-300) :: boxShadow: "inset 0 0 0 1px color-mix(in oklab, var(--gold-300) 18%, transparent)",
+   75 [var] var(--gold-300) :: color: "var(--gold-300)",
+   85 [cls] gilt-ink :: className={cn("gilt-ink mt-4 font-bold", animate && "g-settle")}
+### src/components/brand.tsx
+  186 [oklch] oklch(78% 0.13 80) :: stroke="oklch(78% 0.13 80)"
+  192 [oklch] oklch(78% 0.13 80) :: <circle cx="6" cy="6" r="2" fill="oklch(78% 0.13 80)" />
+### src/components/charts/pnl-chart.tsx
+   78 [var] var(--gilt) :: <line x1={X0} y1={zeroY} x2={X1} y2={zeroY} stroke="var(--gilt)" strokeWidth="1" strokeDasharray="2 5" opacity="0.55" />
+   79 [var] var(--gilt) :: <text className="ud-svg-label" x={X0} y={zeroY - 5} fill="var(--gilt)" fontSize="9" letterSpacing="0.14em" opacity="0.7">{breakEvenLabel.toUpperCase()}</text>
+   81 [var] var(--gilt) :: <text className="ud-svg-label" x={X1 + 6} y={zeroY + 3} fill="var(--gilt)" fontSize="9" opacity="0.8">0</text>
+  100 [var] var(--gilt) :: <span style={{ color: "var(--gilt)" }}>{breakEvenLabel.toUpperCase()}</span>
+### src/components/chat/HelpMark.tsx
+   16 [cls] gilt :: variant?: "gilt" | "indigo" | "halo";
+### src/components/home/landing-hero.tsx
+  541 [var] var(--gilt) :: <span className="kp-proof__num" style={{ color: "var(--gilt)" }}>
+  554 [var] var(--gilt) :: <span className="kp-proof__num" style={{ color: "var(--gilt)" }}>
+### src/components/journey/journey-top-bar.tsx
+  191 [cls] gilt-metal :: className="btn gilt-metal btn-md btn-pill kp-jhdr__pill"
+### src/components/kyc/kyc-gate-panel.tsx
+   81 [tw] border-gold-700 :: action:  { ring: "border-gold-700",     ink: "text-gold-300",  wash: "bg-gold-500/10" },
+   81 [tw] text-gold-300 :: action:  { ring: "border-gold-700",     ink: "text-gold-300",  wash: "bg-gold-500/10" },
+   81 [tw] bg-gold-500/10 :: action:  { ring: "border-gold-700",     ink: "text-gold-300",  wash: "bg-gold-500/10" },
+   88 [tw] border-warning-border :: held:    { ring: "border-warning-border", ink: "text-warning-fg", wash: "bg-warning-bg" },
+   88 [tw] text-warning-fg :: held:    { ring: "border-warning-border", ink: "text-warning-fg", wash: "bg-warning-bg" },
+   88 [tw] bg-warning-bg :: held:    { ring: "border-warning-border", ink: "text-warning-fg", wash: "bg-warning-bg" },
+### src/components/layout/app-shell.tsx
+  447 [prop] tone="warning" :: tone="warning"
+  450 [prop] tone="warning" :: action={<NoticeBarAction href={endedNotice.href} tone="warning">{t.common.signIn}</NoticeBarAction>}
+### src/components/layout/avatar-menu.tsx
+  286 [tw] hover:bg-gold-500/10 :: className="group flex items-center gap-2.5 rounded-lg px-2.5 py-2.5 transition-colors hover:bg-gold-500/10"
+  287 [var] var(--gold-400) :: style={{ border: "1px solid color-mix(in oklab, var(--gold-400) 22%, transparent)", background: "color-mix(in oklab, var(--gold-500) 6%, transparent)" }}
+  287 [var] var(--gold-500) :: style={{ border: "1px solid color-mix(in oklab, var(--gold-400) 22%, transparent)", background: "color-mix(in oklab, var(--gold-500) 6%, transparent)" }}
+  289 [tw] text-gold-300 :: <span className="inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-md text-gold-300" style={{ background: "color-mix(in oklab, var(--gold-500) 12%, transpa
+  289 [var] var(--gold-500) :: <span className="inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-md text-gold-300" style={{ background: "color-mix(in oklab, var(--gold-500) 12%, transpa
+  294 [tw] text-gold-300/80 :: <span className="block font-mono text-micro uppercase tracking-[0.14em] text-gold-300/80 leading-tight mt-0.5">Staff · Internal</span>
+  302 [tw] text-gold-300/70 :: <I.arrowRight s={14} className="text-gold-300/70 transition-colors group-hover:text-gold-300" aria-hidden />
+  302 [tw] text-gold-300 :: <I.arrowRight s={14} className="text-gold-300/70 transition-colors group-hover:text-gold-300" aria-hidden />
+  435 [tw] hover:bg-gold-500/10 :: accent ? "hover:bg-gold-500/10" : "hover:bg-bg-overlay",
+  438 [tw] text-gold-300 :: <span className={accent ? "text-gold-300" : "text-text-subtle"}><Ico s={15} /></span>
+### src/components/layout/live-ticker.tsx
+   86 [var] var(--gold-400) :: <Dot color="var(--gold-400)" size={3} className="ticker-sep opacity-40 ml-2" />
+### src/components/layout/notifications-panel.tsx
+  629 [tw] bg-gold-500/[0.04] :: isUnread && "bg-gold-500/[0.04]",
+  663 [prop] tone="gold" :: {isUnread && <Dot tone="gold" size={8} className="mt-1" />}
+  709 [var] var(--gold-400) :: <circle cx="42" cy="14" r="4" fill="var(--gold-400)" stroke="none" />
+  741 [prop] tone="gold" :: {unread > 0 && <Dot tone="gold" aria-hidden />}
+### src/components/layout/top-app-bar.tsx
+  349 [cls] gilt-metal :: className="btn gilt-metal btn-md btn-pill"
+  533 [var] var(--gilt) :: borderRadius: "var(--r-pill)", background: "var(--gilt)",
+### src/components/layout/wallet-balance-pill.tsx
+  225 [var] var(--gold-300) :: ? "0 0 0 3px color-mix(in oklab, var(--gold-300) 22%, transparent), inset 0 0 0 1px var(--gold-300)"
+  225 [var] var(--gold-300) :: ? "0 0 0 3px color-mix(in oklab, var(--gold-300) 22%, transparent), inset 0 0 0 1px var(--gold-300)"
+  226 [oklch] oklch(78% 0.13 80 / 0.35) :: : "inset 0 0 0 1px oklch(78% 0.13 80 / 0.35)",
+  271 [tw] text-gold-300 :: "cursor-pointer text-gold-300 hover:text-gold-200",
+  271 [tw] hover:text-gold-200 :: "cursor-pointer text-gold-300 hover:text-gold-200",
+  407 [var] var(--gold-300) :: <span aria-hidden className="hidden h-[24px] w-px shrink-0 bg-[color-mix(in_oklab,var(--gold-300)_26%,transparent)] sm:block" />
+  432 [tw] hover:text-gold-200 :: className="inline-flex h-full w-[var(--tap-min)] shrink-0 items-center justify-center rounded-r-pill text-[var(--gold-300)] transition-colors hover:bg-[color-mix(in_oklab
+  432 [var] var(--gold-300) :: className="inline-flex h-full w-[var(--tap-min)] shrink-0 items-center justify-center rounded-r-pill text-[var(--gold-300)] transition-colors hover:bg-[color-mix(in_oklab
+  432 [var] var(--gold-300) :: className="inline-flex h-full w-[var(--tap-min)] shrink-0 items-center justify-center rounded-r-pill text-[var(--gold-300)] transition-colors hover:bg-[color-mix(in_oklab
+### src/components/layout/wallet-sheet.tsx
+  138 [cls] gilt-metal :: className="btn gilt-metal btn-lg kp-wsheet__act"
+### src/components/markets/bet-confirm-modal.tsx
+  408 [cls] btn-gold :: className="btn btn-gold btn-lg w-full"
+### src/components/markets/comments-thread.tsx
+  155 [prop] variant: "warning" :: toast({ title: ("hidden" in r && r.hidden) ? t.toast.reportedHidden : t.toast.reported, variant: "warning" });
+  212 [tw] text-warning-fg :: <span className={`font-mono text-[10.5px] tabular-nums ${remaining < 40 ? "text-warning-fg" : "text-text-subtle"}`}>
+  306 [prop] variant="warning" :: <Chip variant="warning" size="sm">{t.market.commentHidden}</Chip>
+  331 [tw] hover:text-warning-fg :: className="inline-flex items-center gap-1 min-h-[var(--tap-min)] -my-[12px] py-[12px] font-mono text-[10.5px] text-text-subtle hover:text-warning-fg transition-colors dis
+### src/components/markets/conviction-dial.tsx
+  892 [prop] variant: "warning" :: return { title: t.common.busyTitle, body: t.common.busyBody, variant: "warning", retryable: true };
+  894 [prop] variant: "warning" :: return { title: t.common.slowDown, body: t.common.tooManyAttemptsRow, variant: "warning" };
+  896 [prop] variant: "warning" :: return { title: t.common.marketClosed, body: t.common.marketStoppedPredictions, variant: "warning" };
+  911 [prop] variant: "warning" :: return { title: t.common.couldNotPlace, body: errorCopy(t, { code: "SUSPENDED", error: err }), variant: "warning" };
+ 1556 [tw] to-gold-500 :: <span aria-hidden className="inline-block h-[2px] w-5 rounded-pill bg-gradient-to-r from-yes-500 to-gold-500" />
+ 1620 [tw] to-gold-500 :: <span aria-hidden className="inline-block h-[2px] w-5 rounded-pill bg-gradient-to-r from-text-subtle to-gold-500" />
+### src/components/markets/house-lean-warning.tsx
+   46 [prop] tone="warning" :: <Callout tone="warning" className="mt-3" title={keepText(t.market.crowdedWarning)}>
+### src/components/markets/objection-dialog.tsx
+   94 [tw] border-warning-border :: className="inline-flex min-h-[44px] items-center gap-1.5 rounded-md border border-warning-border bg-warning-bg px-3 py-2 text-[12px] font-semibold text-warning-fg transit
+   94 [tw] bg-warning-bg :: className="inline-flex min-h-[44px] items-center gap-1.5 rounded-md border border-warning-border bg-warning-bg px-3 py-2 text-[12px] font-semibold text-warning-fg transit
+   94 [tw] text-warning-fg :: className="inline-flex min-h-[44px] items-center gap-1.5 rounded-md border border-warning-border bg-warning-bg px-3 py-2 text-[12px] font-semibold text-warning-fg transit
+   94 [tw] hover:bg-warning-border :: className="inline-flex min-h-[44px] items-center gap-1.5 rounded-md border border-warning-border bg-warning-bg px-3 py-2 text-[12px] font-semibold text-warning-fg transit
+  113 [prop] tone="warning" :: <Callout tone="warning">{t.market.objIntro}</Callout>
+### src/components/markets/operation-result-modal.tsx
+  141 [var] var(--warning-500) :: ...crest("var(--warning-500)", "var(--warning-500)"),
+  141 [var] var(--warning-500) :: ...crest("var(--warning-500)", "var(--warning-500)"),
+  142 [cls] btn-gold :: primaryBtn: "btn-gold",
+  159 [var] var(--gold-500) :: gold:  "linear-gradient(90deg, var(--gold-500), var(--gold-300))",
+  159 [var] var(--gold-300) :: gold:  "linear-gradient(90deg, var(--gold-500), var(--gold-300))",
+  387 [cls] btn-gold :: ? (stripTone === "gold" ? "btn-gold" : stripTone === "yes" ? "btn-yes" : stripTone === "no" ? "btn-no" : "btn-primary")
+  440 [cls] seal-commit :: variant === "success" && (stripTone === "yes" || stripTone === "no") ? " seal-commit" : ""
+### src/components/markets/position-card.tsx
+  179 [prop] tone="gold" :: tone="gold"
+### src/components/markets/position-share.tsx
+  123 [tw] border-gold-700/60 :: ? "border-gold-700/60 bg-gold-500/10 text-gold-300 hover:bg-gold-500/15"
+  123 [tw] bg-gold-500/10 :: ? "border-gold-700/60 bg-gold-500/10 text-gold-300 hover:bg-gold-500/15"
+  123 [tw] text-gold-300 :: ? "border-gold-700/60 bg-gold-500/10 text-gold-300 hover:bg-gold-500/15"
+  123 [tw] hover:bg-gold-500/15 :: ? "border-gold-700/60 bg-gold-500/10 text-gold-300 hover:bg-gold-500/15"
+### src/components/markets/resolution-panel.tsx
+  139 [tw] text-gilt :: <I.shieldcheck s={16} className="text-gilt" />
+  193 [tw] text-gilt :: <I.fileCheck s={12} className="text-gilt" />
+  196 [tw] border-gilt/60 :: <blockquote className="border-l-2 border-gilt/60 bg-bg-overlay/30 rounded-r-md px-3 py-2 text-body-sm leading-relaxed text-text-muted italic whitespace-pre-wrap break-wor
+  205 [tw] border-warning-border :: <div className="rounded-md border border-warning-border bg-warning-bg px-3 py-2 space-y-1.5 text-[12px] text-warning-fg">
+  205 [tw] bg-warning-bg :: <div className="rounded-md border border-warning-border bg-warning-bg px-3 py-2 space-y-1.5 text-[12px] text-warning-fg">
+  205 [tw] text-warning-fg :: <div className="rounded-md border border-warning-border bg-warning-bg px-3 py-2 space-y-1.5 text-[12px] text-warning-fg">
+  305 [tw] border-warning-border :: <p className="flex items-start gap-2 rounded-md border border-warning-border bg-warning-bg px-3 py-2 text-body-sm leading-relaxed text-warning-fg">
+  305 [tw] bg-warning-bg :: <p className="flex items-start gap-2 rounded-md border border-warning-border bg-warning-bg px-3 py-2 text-body-sm leading-relaxed text-warning-fg">
+  305 [tw] text-warning-fg :: <p className="flex items-start gap-2 rounded-md border border-warning-border bg-warning-bg px-3 py-2 text-body-sm leading-relaxed text-warning-fg">
+  353 [tw] text-gilt :: {win && <I.check s={12} className="text-gilt" />}
+  359 [tw] text-gilt :: strong ? "text-text" : win ? "text-gilt" : muted ? "text-text-subtle" : "text-text-muted",
+### src/components/markets/sell-confirm-modal.tsx
+  151 [prop] tone="warning" :: <Callout tone="warning" className="mt-3">
+  159 [prop] tone="warning" :: <Callout tone="warning" live className="mt-3">{t.dialog.quoteExpired}</Callout>
+  168 [cls] btn-gold :: className="btn btn-gold btn-lg w-full"
+### src/components/markets/win-celebration.tsx
+  134 [cls] seal-arrive :: <div aria-hidden className="seal-arrive relative mb-[22px] h-[132px] w-[132px]">
+  135 [cls] seal-rim :: <div className="seal-rim" />
+  136 [cls] seal-spec :: <div className="seal-spec" />
+  137 [cls] seal-enamel :: <div className="seal-enamel">
+  138 [cls] seal-mark-flip :: <span className="seal-mark-flip inline-block">
+  142 [cls] seal-band :: <div className="seal-band seal-sheen" />
+  142 [cls] seal-sheen :: <div className="seal-band seal-sheen" />
+  295 [cls] seal-cascade :: <div className="seal-cascade flex flex-col items-center px-7 pb-7 pt-10 text-center">
+  300 [tw] text-gold-300 :: className="g-settle font-mono text-micro uppercase tracking-[0.2em] font-bold text-gold-300"
+  318 [tw] text-gold-300 :: className={`g-settle mt-3 font-mono text-[38px] font-bold leading-[1.1] tabular-nums ${struck ? "gilt-ink" : "text-gold-300"}`}
+  318 [cls] gilt-ink :: className={`g-settle mt-3 font-mono text-[38px] font-bold leading-[1.1] tabular-nums ${struck ? "gilt-ink" : "text-gold-300"}`}
+  326 [tw] text-gold-300 :: className="g-settle mt-1.5 font-mono text-[13px] tabular-nums text-gold-300"
+  349 [cls] gilt-metal :: className="g-settle btn gilt-metal btn-md mt-5 w-full"
+### src/components/onboarding/first-visit-primer.tsx
+  178 [var] var(--gilt) :: <span style={{ color: "var(--gilt)" }}>{dragLabel}</span>
+  220 [var] var(--gilt) :: <span className="inline-block h-[2px] w-5 rounded-pill" style={{ background: "var(--gilt)" }} />
+  221 [var] var(--gilt) :: <span className="font-mono text-micro uppercase tracking-[0.14em]" style={{ color: "var(--gilt)" }}>{share}</span>
+  222 [var] var(--gilt) :: <span className="inline-block h-[2px] w-5 rounded-pill" style={{ background: "var(--gilt)" }} />
+  423 [var] var(--gold-500) :: background: "linear-gradient(90deg, var(--gold-500), var(--gold-300))",
+  423 [var] var(--gold-300) :: background: "linear-gradient(90deg, var(--gold-500), var(--gold-300))",
+  457 [var] var(--gold-400) :: ? "var(--gold-400)"
+  459 [var] var(--gold-300) :: ? "var(--gold-300)"
+  461 [var] var(--gold-400) :: boxShadow: i === step ? "0 0 8px color-mix(in oklab, var(--gold-400) 40%, transparent)" : "none",
+  486 [tw] text-gold-300 :: <p className="mt-4 font-mono text-micro uppercase eyebrow font-bold text-gold-300">
+  517 [var] var(--gold-300) :: background: i === step ? "var(--gold-300)" : "var(--royal-700)",
+### src/components/pay/lipa-qr-panel.tsx
+  135 [tw] text-gold-300 :: <span className="amount font-mono text-title-lg font-bold tracking-wide text-gold-300">{pretty}</span>
+  148 [tw] text-gold-300 :: <p className="amount mt-1 text-body-sm font-bold text-gold-300">{formatTzs(amountTzs)}</p>
+### src/components/positions/countdown-ring.tsx
+   60 [var] var(--gold-400) :: const urgentColor = urgentAccent ?? "var(--gold-400)";
+### src/components/positions/pnl-summary-strip.tsx
+   74 [var] var(--gilt) :: valueClass={settledNet >= 0 ? "text-[var(--gilt)]" : "text-no-300"}
+  115 [var] var(--gilt) :: stroke="var(--gilt)" strokeWidth="2.4" strokeLinecap="round"
+  119 [var] var(--gilt) :: <circle cx="22" cy="34" r="2.4" fill="var(--gilt)" />
+### src/components/profile/avatar-uploader.tsx
+  155 [tw] border-gold-500 :: <span className="inline-flex h-[32px] w-[32px] items-center justify-center rounded-pill border border-border bg-bg-elevated text-text-muted shadow-e2 transition-colors gr
+### src/components/profile/kyc-doc-uploader.tsx
+  103 [tw] border-gold-700 :: : working ? "border-gold-700 bg-gold-500/[0.06] cursor-wait"
+  103 [tw] bg-gold-500/[0.06] :: : working ? "border-gold-700 bg-gold-500/[0.06] cursor-wait"
+  105 [tw] hover:bg-gold-500/[0.06] :: : "border-border bg-bg-overlay/40 hover:border-brand-400 hover:bg-gold-500/[0.06] cursor-pointer"
+  193 [tw] border-gold-700/40 :: <div className="rounded-md border border-gold-700/40 bg-gold-500/[0.04] p-3">
+  193 [tw] bg-gold-500/[0.04] :: <div className="rounded-md border border-gold-700/40 bg-gold-500/[0.04] p-3">
+### src/components/profile/password-section.tsx
+   25 [prop] variant: "warning" :: if (next.length < 8) { toast({ title: t.toast.passwordMin8, variant: "warning" }); return; }
+   26 [prop] variant: "warning" :: if (next !== confirm) { toast({ title: t.toast.passwordsDontMatch, variant: "warning" }); return; }
+   71 [tw] hover:text-gold-300 :: className="h-[30px] px-3 rounded-md border border-border bg-bg-elevated font-mono text-[11px] font-bold text-text-muted hover:border-brand-400 hover:text-gold-300 transit
+   82 [tw] text-gold-300 :: <I.keyRound s={14} className="text-gold-300 shrink-0" />
+   83 [tw] text-gold-300 :: <p className="font-mono text-micro uppercase eyebrow font-bold text-gold-300">
+  134 [tw] border-gold-700 :: className="h-[40px] px-4 rounded-md border border-gold-700 bg-gold-500/10 font-mono text-[11px] font-bold text-gold-300 hover:bg-gold-500/20 disabled:opacity-40 transitio
+  134 [tw] bg-gold-500/10 :: className="h-[40px] px-4 rounded-md border border-gold-700 bg-gold-500/10 font-mono text-[11px] font-bold text-gold-300 hover:bg-gold-500/20 disabled:opacity-40 transitio
+  134 [tw] text-gold-300 :: className="h-[40px] px-4 rounded-md border border-gold-700 bg-gold-500/10 font-mono text-[11px] font-bold text-gold-300 hover:bg-gold-500/20 disabled:opacity-40 transitio
+  134 [tw] hover:bg-gold-500/20 :: className="h-[40px] px-4 rounded-md border border-gold-700 bg-gold-500/10 font-mono text-[11px] font-bold text-gold-300 hover:bg-gold-500/20 disabled:opacity-40 transitio
+### src/components/proposals/status-timeline.tsx
+   33 [var] var(--gold-400) :: ? "linear-gradient(180deg, var(--gold-400), var(--gold-600))"
+   33 [var] var(--gold-600) :: ? "linear-gradient(180deg, var(--gold-400), var(--gold-600))"
+   35 [var] var(--gold-500) :: ? "color-mix(in oklab, var(--gold-500) 18%, transparent)"
+   37 [var] var(--gold-600) :: border: "1.5px solid " + (done || now ? "var(--gold-600)" : "var(--border-strong)"),
+   38 [oklch] oklch(24% 0.06 85) :: color: done || now ? "var(--gold-fg, oklch(24% 0.06 85))" : "var(--text-subtle)",
+   42 [var] var(--gold-400) :: {now && <span className="h-[7px] w-[7px] rounded-full" style={{ background: "var(--gold-400)" }} />}
+   45 [var] var(--gold-600) :: <span className="w-[2px] h-[26px]" style={{ background: done ? "var(--gold-600)" : "var(--border)" }} />
+### src/components/pwa/install-invite.tsx
+  236 [tw] text-gold-300 :: <span className="shrink-0 mt-0.5 text-gold-300" aria-hidden><I.download s={18} /></span>
+### src/components/rg/limit-usage.tsx
+   38 [var] var(--warning) :: reached || pct >= 90 ? "var(--danger-500)" : pct >= 75 ? "var(--warning)" : "var(--royal-400)";
+### src/components/rg/reality-check.tsx
+  134 [var] var(--gold-500) :: <div aria-hidden className="absolute inset-x-0 top-0 h-[2px]" style={{ background: "linear-gradient(90deg, var(--gold-500), var(--gold-300), var(--gold-500))" }} />
+  134 [var] var(--gold-300) :: <div aria-hidden className="absolute inset-x-0 top-0 h-[2px]" style={{ background: "linear-gradient(90deg, var(--gold-500), var(--gold-300), var(--gold-500))" }} />
+  134 [var] var(--gold-500) :: <div aria-hidden className="absolute inset-x-0 top-0 h-[2px]" style={{ background: "linear-gradient(90deg, var(--gold-500), var(--gold-300), var(--gold-500))" }} />
+  141 [tw] text-gold-300 :: <span className="inline-flex h-[40px] w-[40px] shrink-0 items-center justify-center rounded-md bg-bg-inset border border-border text-gold-300">
+  149 [tw] text-gold-300 :: <span className="font-mono text-gold-300">{elapsedMin}</span>{" "}
+### src/components/ui/button.tsx
+   50 [cls] btn-gold :: gold:         "btn-gold",
+### src/components/ui/callout.tsx
+   46 [var] var(--warning-bg) :: bg: "var(--warning-bg)",
+   47 [var] var(--warning-border) :: border: "var(--warning-border)",
+   48 [var] var(--warning-500) :: panelBg: "color-mix(in oklab, var(--warning-500) 18%, var(--bg-elevated))",
+   49 [var] var(--warning-500) :: panelBorder: "color-mix(in oklab, var(--warning-500) 36%, var(--border))",
+   50 [var] var(--warning-500) :: fg: "var(--warning-500)",
+   95 [tw] border-gold-500/30 :: box: "border-gold-500/30 bg-gold-500/10", strongBox: "border-gold-400 bg-gold-500/15", icon: "text-gold-300", glyph: "shieldcheck",
+   95 [tw] bg-gold-500/10 :: box: "border-gold-500/30 bg-gold-500/10", strongBox: "border-gold-400 bg-gold-500/15", icon: "text-gold-300", glyph: "shieldcheck",
+   95 [tw] border-gold-400 :: box: "border-gold-500/30 bg-gold-500/10", strongBox: "border-gold-400 bg-gold-500/15", icon: "text-gold-300", glyph: "shieldcheck",
+   95 [tw] bg-gold-500/15 :: box: "border-gold-500/30 bg-gold-500/10", strongBox: "border-gold-400 bg-gold-500/15", icon: "text-gold-300", glyph: "shieldcheck",
+   95 [tw] text-gold-300 :: box: "border-gold-500/30 bg-gold-500/10", strongBox: "border-gold-400 bg-gold-500/15", icon: "text-gold-300", glyph: "shieldcheck",
+   96 [var] var(--gold-500) :: panel: { bg: "color-mix(in oklab, var(--gold-500) 10%, var(--bg-elevated))", border: "color-mix(in oklab, var(--gold-500) 30%, var(--border))" },
+   96 [var] var(--gold-500) :: panel: { bg: "color-mix(in oklab, var(--gold-500) 10%, var(--bg-elevated))", border: "color-mix(in oklab, var(--gold-500) 30%, var(--border))" },
+   97 [var] var(--gold-300) :: fg: "var(--gold-300)",
+  102 [tw] border-warning-border :: box: "border-warning-border bg-warning-bg", strongBox: "border-warning-fg bg-warning-bg", icon: "text-warning-fg", glyph: "warning",
+  102 [tw] bg-warning-bg :: box: "border-warning-border bg-warning-bg", strongBox: "border-warning-fg bg-warning-bg", icon: "text-warning-fg", glyph: "warning",
+  102 [tw] border-warning-fg :: box: "border-warning-border bg-warning-bg", strongBox: "border-warning-fg bg-warning-bg", icon: "text-warning-fg", glyph: "warning",
+  102 [tw] bg-warning-bg :: box: "border-warning-border bg-warning-bg", strongBox: "border-warning-fg bg-warning-bg", icon: "text-warning-fg", glyph: "warning",
+  102 [tw] text-warning-fg :: box: "border-warning-border bg-warning-bg", strongBox: "border-warning-fg bg-warning-bg", icon: "text-warning-fg", glyph: "warning",
+  103 [var] var(--warning-fg) :: panel: { bg: MAINTENANCE_AMBER.panelBg, border: MAINTENANCE_AMBER.panelBorder }, fg: "var(--warning-fg)",
+  144 [tw] border-warning-border :: box: "border-warning-border bg-warning-bg", strongBox: "border-warning-fg bg-warning-bg", icon: "text-warning-fg", glyph: "pause",
+  144 [tw] bg-warning-bg :: box: "border-warning-border bg-warning-bg", strongBox: "border-warning-fg bg-warning-bg", icon: "text-warning-fg", glyph: "pause",
+  144 [tw] border-warning-fg :: box: "border-warning-border bg-warning-bg", strongBox: "border-warning-fg bg-warning-bg", icon: "text-warning-fg", glyph: "pause",
+  144 [tw] bg-warning-bg :: box: "border-warning-border bg-warning-bg", strongBox: "border-warning-fg bg-warning-bg", icon: "text-warning-fg", glyph: "pause",
+  144 [tw] text-warning-fg :: box: "border-warning-border bg-warning-bg", strongBox: "border-warning-fg bg-warning-bg", icon: "text-warning-fg", glyph: "pause",
+### src/components/ui/cashback-promo.tsx
+   67 [tw] text-gold-300 :: <div className="flex items-center gap-1.5 text-gold-300">
+   70 [tw] bg-gold-500/15 :: <span className="ml-auto inline-flex items-center gap-1 rounded-pill px-2 py-0.5 font-mono text-micro uppercase tracking-[0.12em] font-bold bg-gold-500/15 text-gold-200">
+   70 [tw] text-gold-200 :: <span className="ml-auto inline-flex items-center gap-1 rounded-pill px-2 py-0.5 font-mono text-micro uppercase tracking-[0.12em] font-bold bg-gold-500/15 text-gold-200">
+   86 [cls] btn-gold :: <Link href="/wallet/deposit" className="btn btn-gold btn-sm rounded-pill mt-4 inline-flex">
+### src/components/ui/chip.tsx
+   85 [var] var(--gold-300) :: const GILT:  React.CSSProperties = { background: "oklch(72% 0.13 80 / 0.22)",  color: "var(--gold-300)",   borderColor: "oklch(80% 0.13 80 / 0.5)" };
+   85 [oklch] oklch(72% 0.13 80 / 0.22) :: const GILT:  React.CSSProperties = { background: "oklch(72% 0.13 80 / 0.22)",  color: "var(--gold-300)",   borderColor: "oklch(80% 0.13 80 / 0.5)" };
+   85 [oklch] oklch(80% 0.13 80 / 0.5) :: const GILT:  React.CSSProperties = { background: "oklch(72% 0.13 80 / 0.22)",  color: "var(--gold-300)",   borderColor: "oklch(80% 0.13 80 / 0.5)" };
+  103 [var] var(--gold-300) :: resolved:  { background: "linear-gradient(180deg, var(--gold-300), var(--gold-500))", color: "oklch(24% 0.06 80)", borderColor: "oklch(60% 0.10 78)" },
+  103 [var] var(--gold-500) :: resolved:  { background: "linear-gradient(180deg, var(--gold-300), var(--gold-500))", color: "oklch(24% 0.06 80)", borderColor: "oklch(60% 0.10 78)" },
+  103 [oklch] oklch(24% 0.06 80) :: resolved:  { background: "linear-gradient(180deg, var(--gold-300), var(--gold-500))", color: "oklch(24% 0.06 80)", borderColor: "oklch(60% 0.10 78)" },
+  103 [oklch] oklch(60% 0.10 78) :: resolved:  { background: "linear-gradient(180deg, var(--gold-300), var(--gold-500))", color: "oklch(24% 0.06 80)", borderColor: "oklch(60% 0.10 78)" },
+  105 [oklch] oklch(72% 0.13 80 / 0.18) :: paused:    { background: "oklch(72% 0.13 80 / 0.18)",                    color: "oklch(82% 0.16 80)", borderColor: "oklch(80% 0.13 80 / 0.4)" },
+  105 [oklch] oklch(82% 0.16 80) :: paused:    { background: "oklch(72% 0.13 80 / 0.18)",                    color: "oklch(82% 0.16 80)", borderColor: "oklch(80% 0.13 80 / 0.4)" },
+  105 [oklch] oklch(80% 0.13 80 / 0.4) :: paused:    { background: "oklch(72% 0.13 80 / 0.18)",                    color: "oklch(82% 0.16 80)", borderColor: "oklch(80% 0.13 80 / 0.4)" },
+  107 [oklch] oklch(72% 0.13 80 / 0.22) :: warning:   { background: "oklch(72% 0.13 80 / 0.22)",                    color: "oklch(82% 0.16 80)", borderColor: "oklch(80% 0.13 80 / 0.5)" },
+  107 [oklch] oklch(82% 0.16 80) :: warning:   { background: "oklch(72% 0.13 80 / 0.22)",                    color: "oklch(82% 0.16 80)", borderColor: "oklch(80% 0.13 80 / 0.5)" },
+  107 [oklch] oklch(80% 0.13 80 / 0.5) :: warning:   { background: "oklch(72% 0.13 80 / 0.22)",                    color: "oklch(82% 0.16 80)", borderColor: "oklch(80% 0.13 80 / 0.5)" },
+### src/components/ui/coming-soon-banner.tsx
+   35 [prop] tone = "gold" :: tone = "gold",
+### src/components/ui/countdown-pill.tsx
+  116 [tw] text-warning-fg :: <span className="font-bold text-warning-fg">{display}</span>
+### src/components/ui/dot.tsx
+   36 [var] var(--warning-500) :: warning: "var(--warning-500)",
+   39 [var] var(--gold-500) :: gold:    "var(--gold-500)",
+### src/components/ui/empty-state.tsx
+  150 [oklch] oklch(78% 0.14 86) :: const g = "oklch(78% 0.14 86)";
+### src/components/ui/identity-avatar.tsx
+   83 [oklch] oklch(86% 0.13 82) :: const g = "oklch(86% 0.13 82)";
+   95 [oklch] oklch(80% 0.13 84) :: <line x1={top.x} y1={top.y} x2={bot.x} y2={bot.y} stroke="oklch(80% 0.13 84)" strokeWidth={Math.max(2.4, su(1.5, size))} strokeLinecap="round" />
+  100 [oklch] oklch(80% 0.13 84) :: <circle cx={cx} cy={cy} r={r - 3} fill="none" stroke="oklch(80% 0.13 84)" strokeWidth={Math.max(0.8, su(1, size))} opacity="0.6" />
+  123 [oklch] oklch(80% 0.13 84) :: <path d="M0 30 A 50 50 0 0 1 100 30 L100 22 L0 22 Z" fill="oklch(80% 0.13 84)" opacity="0.16" />
+  124 [oklch] oklch(82% 0.13 84) :: <line x1="14" y1="30" x2="86" y2="30" stroke="oklch(82% 0.13 84)" strokeWidth={Math.max(0.8, su(1, size))} opacity="0.7" />
+  125 [oklch] oklch(86% 0.13 82) :: {Array.from({ length: chiefPips }).map((_, i) => { const t = (i + 1) / (chiefPips + 1); return <circle key={i} cx={14 + t * 72} cy="25" r={Math.max(1.5, su(1, size))} fil
+  130 [oklch] oklch(80% 0.13 84) :: <circle cx="50" cy="50" r="46.5" fill="none" stroke="oklch(80% 0.13 84)" strokeWidth={Math.max(1, su(1, size))} opacity="0.62" />
+  152 [oklch] oklch(82% 0.13 84) :: {!small && <path d={path} fill="none" stroke="oklch(82% 0.13 84)" strokeWidth={Math.max(0.7, su(1, size))} opacity="0.62" />}
+  161 [oklch] oklch(86% 0.10 84) :: <text x="50" y="51.5" textAnchor="middle" dominantBaseline="middle" fontFamily="Sora, sans-serif" fontWeight="700" fontSize="20" fill="oklch(86% 0.10 84)" style={{ letter
+  165 [oklch] oklch(80% 0.13 84) :: <circle cx="50" cy="50" r="46.5" fill="none" stroke="oklch(80% 0.13 84)" strokeWidth={Math.max(1, su(1, size))} opacity="0.6" />
+  186 [oklch] oklch(80% 0.13 84) :: {!small && <g stroke="oklch(80% 0.13 84)" strokeWidth={Math.max(0.7, su(1, size))} opacity="0.55" fill="none">
+  190 [oklch] oklch(86% 0.13 82) :: {!small && nodes.map((nd, i) => <circle key={i} cx={nd[0].toFixed(1)} cy={nd[1].toFixed(1)} r={i === 0 ? 2.4 : 1.6} fill="oklch(86% 0.13 82)" />)}
+  193 [oklch] oklch(86% 0.13 82) :: : <circle cx="50" cy="50" r="6" fill="oklch(86% 0.13 82)" />}
+  196 [oklch] oklch(80% 0.13 84) :: <circle cx="50" cy="50" r="46.5" fill="none" stroke="oklch(80% 0.13 84)" strokeWidth={Math.max(1, su(1, size))} opacity="0.6" />
+  234 [oklch] oklch(58% 0.09 70) :: bronze: "oklch(58% 0.09 70)", silver: "oklch(82% 0.018 268)", gold: "oklch(76% 0.068 88)",
+  234 [oklch] oklch(76% 0.068 88) :: bronze: "oklch(58% 0.09 70)", silver: "oklch(82% 0.018 268)", gold: "oklch(76% 0.068 88)",
+### src/components/ui/language-menu.tsx
+  178 [var] var(--gilt) :: <span aria-hidden style={{ width: 16, flex: "none", color: "var(--gilt)" }}>
+### src/components/ui/maintenance-badge.tsx
+   40 [var] var(--warning-500) :: color: "var(--warning-500)",
+### src/components/ui/nav-progress.tsx
+  158 [oklch] oklch(72% 0.14 78 / 0.5) :: boxShadow: "0 0 8px oklch(72% 0.14 78 / 0.5)",
+### src/components/ui/notice-bar.tsx
+   34 [tw] border-warning-border :: warning:     { bar: "border-warning-border bg-warning-bg text-warning-fg",     accent: "var(--warning-fg)" },
+   34 [tw] bg-warning-bg :: warning:     { bar: "border-warning-border bg-warning-bg text-warning-fg",     accent: "var(--warning-fg)" },
+   34 [tw] text-warning-fg :: warning:     { bar: "border-warning-border bg-warning-bg text-warning-fg",     accent: "var(--warning-fg)" },
+   34 [var] var(--warning-fg) :: warning:     { bar: "border-warning-border bg-warning-bg text-warning-fg",     accent: "var(--warning-fg)" },
+  163 [tw] border-warning-fg/40 :: warning:     "border-warning-fg/40 hover:bg-warning-fg/10",
+  163 [tw] hover:bg-warning-fg/10 :: warning:     "border-warning-fg/40 hover:bg-warning-fg/10",
+  175 [prop] tone = "warning" :: tone = "warning",
+### src/components/ui/offline-banner.tsx
+   47 [prop] tone="warning" :: <NoticeBar tone="warning" glyph="alertCircle" assertive testId="offline-notice">
+### src/components/ui/page-header.tsx
+   17 [tw] text-gold-300 :: gold: "text-gold-300",
+### src/components/ui/page-hero.tsx
+   17 [oklch] oklch(58% 0.13 80 / 0.18) :: gold: "oklch(58% 0.13 80 / 0.18)",
+### src/components/ui/password-input.tsx
+  141 [tw] bg-gold-500 :: : tone === "gold" ? "bg-gold-500"
+  145 [tw] text-gold-300 :: : tone === "gold" ? "text-gold-300"
+### src/components/ui/propose-promo.tsx
+   32 [tw] hover:border-gold-500 :: className="group flex items-center gap-3.5 rounded-xl border p-4 transition-colors hover:border-gold-500"
+   34 [var] var(--gold-500) :: borderColor: "color-mix(in oklab, var(--gold-500) 30%, var(--border))",
+   35 [var] var(--gold-500) :: background: "color-mix(in oklab, var(--gold-500) 6%, var(--bg-elevated))",
+   40 [tw] text-gold-fg :: className="text-gold-fg"
+   41 [var] var(--gold-400) :: bg="linear-gradient(180deg, var(--gold-400), var(--gold-600))"
+   41 [var] var(--gold-600) :: bg="linear-gradient(180deg, var(--gold-400), var(--gold-600))"
+### src/components/ui/receipt-row.tsx
+   55 [tw] text-gold-300 :: total:  "font-mono text-[16px] font-bold tabular-nums text-gold-300",
+   87 [tw] text-warning-fg :: tone === "warning" ? "text-warning-fg" : tone === "no" ? "text-no-300" : tone === "yes" ? "text-yes-300" : null;
+### src/components/ui/stat.tsx
+   55 [tw] text-gold-300 :: gold: "text-gold-300",
+  255 [cls] gilt-ink :: struck ? "gilt-ink" : TONE[tone],
+### src/components/ui/toast.tsx
+  527 [tw] bg-gold-500 :: bar: "bg-gold-500",
+  528 [tw] text-gold-300 :: icon: <span className="text-gold-300"><I.warning s={18} /></span>,
+  529 [cls] mat-tint-warn :: surface: "mat-tint-warn",
+  530 [tw] bg-gold-500 :: rail: "bg-gold-500",
+  543 [tw] bg-gold-500 :: bar: "bg-gold-500",
+  544 [tw] text-gold-300 :: icon: <span className="text-gold-300"><I.trophy s={18} /></span>,
+  546 [tw] bg-gold-500 :: rail: "bg-gold-500",
+### src/components/ui/toggle.tsx
+   47 [var] var(--gold-300) :: gold: "1px solid color-mix(in oklab, var(--gold-300) 40%, transparent)",
+   52 [var] var(--gold-400) :: gold: "linear-gradient(180deg, var(--gold-400), var(--gold-600))",
+   52 [var] var(--gold-600) :: gold: "linear-gradient(180deg, var(--gold-400), var(--gold-600))",
+   56 [var] var(--gold-400) :: const ring = { brand: "var(--brand-500)", gold: "var(--gold-400)", claret: "var(--claret-400)" }[tone];
+### src/components/ui/unsaved-changes.tsx
+  501 [tw] text-warning-fg :: <span className="inline-flex items-center gap-2 font-mono text-micro uppercase eyebrow text-warning-fg">
+  502 [tw] bg-warning-fg :: <span aria-hidden className="h-1.5 w-1.5 shrink-0 rounded-pill bg-warning-fg" />
+### src/components/updown/price-hero.tsx
+  234 [var] var(--gilt) :: <line x1="0" y1={openY} x2="606" y2={openY} stroke="var(--gilt)" strokeWidth="1.25" strokeDasharray="3 4" opacity="0.75" />
+  235 [var] var(--gilt) :: <text className="ud-svg-label" x="0" y={(parseFloat(openY) - 6).toFixed(1)} fill="var(--gilt)" fontFamily="var(--font-mono)" fontSize="9" fontWeight="600" letterSpacing="
+### src/components/updown/round-stake-panel.tsx
+  269 [cls] btn-gold :: className="btn btn-gold btn-lg mt-3 w-full justify-center"
+### src/lib/brand-mark.ts
+   19 [hex] #E3BC66 :: gold: "#E3BC66",
+### src/lib/marketing/campaign-estimate.ts
+  300 [prop] tone: "warning" :: if (b.kind === "unreadable") return { key: "credit", label: "SMS credit", value: "—", tone: "warning", note: unreadableNote(b) };
+  321 [prop] tone: "warning" :: key: "covers", label: "Covers", value: count(m.covers, "recipient", "recipients"), tone: "warning",
+### src/lib/notification-appearance.ts
+   62 [tw] border-gold-700 :: case "WIN":          return "border-gold-700 bg-gold-500/10 text-gold-300";
+   62 [tw] bg-gold-500/10 :: case "WIN":          return "border-gold-700 bg-gold-500/10 text-gold-300";
+   62 [tw] text-gold-300 :: case "WIN":          return "border-gold-700 bg-gold-500/10 text-gold-300";
+   73 [tw] border-warning-border :: case "WITHDRAW":     return "border-warning-border bg-warning-bg/30 text-warning-fg";
+   73 [tw] bg-warning-bg/30 :: case "WITHDRAW":     return "border-warning-border bg-warning-bg/30 text-warning-fg";
+   73 [tw] text-warning-fg :: case "WITHDRAW":     return "border-warning-border bg-warning-bg/30 text-warning-fg";
+   81 [tw] border-gold-700 :: case "AFFILIATE":    return "border-gold-700 bg-gold-500/10 text-gold-300";
+   81 [tw] bg-gold-500/10 :: case "AFFILIATE":    return "border-gold-700 bg-gold-500/10 text-gold-300";
+   81 [tw] text-gold-300 :: case "AFFILIATE":    return "border-gold-700 bg-gold-500/10 text-gold-300";
+   82 [tw] border-gold-700 :: case "PROPOSAL":     return "border-gold-700 bg-gold-500/10 text-gold-300";
+   82 [tw] bg-gold-500/10 :: case "PROPOSAL":     return "border-gold-700 bg-gold-500/10 text-gold-300";
+   82 [tw] text-gold-300 :: case "PROPOSAL":     return "border-gold-700 bg-gold-500/10 text-gold-300";
+### src/lib/offline-document.ts
+   79 [oklch] oklch(86% 0.110 84) :: "--gold-300": "oklch(86% 0.110 84)",
+   80 [var] var(--gold-300) :: "--gilt": "var(--gold-300)",
+  174 [var] var(--gilt) :: `.kp-off__rule{height:1px;max-width:var(--w-board);margin:0 auto;background:linear-gradient(90deg,transparent,var(--claret-400) 18%,var(--gilt) 50%,var(--claret-400) 82%,
+### src/lib/score-band.ts
+   40 [var] var(--warning-fg) :: warn: "var(--warning-fg)",
+   47 [var] var(--warning-fg) :: warn: "var(--warning-fg)",
+   54 [var] var(--warning-500) :: warn: "var(--warning-500)",
+### src/lib/server/email.ts
+  696 [prop] variant: "gold" :: function ctaButton(hrefOrPath: string, label: string, variant: "gold" | "primary" = "primary"): string {
+  811 [prop] accent: "gold" :: wrap(body, { ...opts, accent: "gold" });
+### src/lib/server/house-console-read.ts
+  885 [prop] tone: "warning" :: return { ...shared, tone: "warning", alert: false, meta: at(beats?.plannerFailedAtMs ?? null),
+### src/lib/server/reports/brand.ts
+   33 [cls] gilt :: gilt:       "#C39A2A",
+### src/lib/server/reports/pdf.ts
+  104 [cls] gilt :: doc.rect(0, BAND_H - 2.5, pageW, 2.5).fill(BRAND.gilt);
+  256 [cls] gilt :: doc.rect(contentX, y, contentW, 1.5).fill(BRAND.gilt);
+  310 [cls] gilt :: doc.rect(x, yy, 3, cardH).fill(BRAND.gilt);
+  402 [cls] gilt :: doc.rect(contentX, y + headerH - 1.5, contentW, 1.5).fill(BRAND.gilt);
+  445 [cls] gilt :: doc.rect(contentX, y + 1, 3, 14).fill(BRAND.gilt);
+  519 [cls] gilt :: doc.rect(contentX, y, contentW, 1.5).fill(BRAND.gilt);
+  520 [cls] gilt :: doc.rect(contentX, y + totalH - 1, contentW, 1.5).fill(BRAND.gilt);
+  550 [cls] gilt :: doc.rect(contentX, y + 1, 3, 13).fill(BRAND.gilt);
+  590 [cls] gilt :: doc.rect(contentX, y + 1, 3, 13).fill(BRAND.gilt);
+  605 [cls] gilt :: doc.rect(x, y, 3, blockH).fill(BRAND.gilt);
+  617 [cls] gilt :: doc.lineWidth(0.4).strokeColor(BRAND.gilt)
+### src/lib/server/reports/xlsx.ts
+   95 [cls] gilt :: properties: { tabColor: { argb: argb(BRAND.gilt) } },
+  168 [cls] gilt :: type: "pattern", pattern: "solid", fgColor: { argb: argb(BRAND.gilt) },
+  321 [cls] gilt :: bottom: { style: "thin", color: { argb: argb(BRAND.gilt) } },
+  375 [cls] gilt :: bottom: { style: "medium", color: { argb: argb(BRAND.gilt) } },
+  442 [cls] gilt :: top: { style: "medium", color: { argb: argb(BRAND.gilt) } },
+  443 [cls] gilt :: bottom: { style: "medium", color: { argb: argb(BRAND.gilt) } },
+### src/lib/status-tone.ts
+   59 [cls] gilt :: | "gilt"
+   84 [cls] gilt :: gilt:       "gold",
+   99 [tw] text-warning-fg :: amber: "text-warning-fg",
+  121 [cls] gilt :: RESOLVED: { player: "giltStruck", admin: "gilt", proposals: "giltStruck" },
+  187 [cls] gilt :: WIN:  { player: "gilt" },

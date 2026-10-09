@@ -1,0 +1,79 @@
+  ✗ CONTROL — the gate is GREEN on an UNMUTATED copy of everything it reads
+      Error: ENOENT: no such file or directory, open 'C:\Users\asheib\AppData\Local\Temp\contrast-red-11qElm\root\src\components\ui\chip.tsx'
+
+⛔ the harness's own copy is not green, so no verdict below would mean anything — none is given.
+   Either the gate gained an input this copy does not hold, or the tree itself is red: run `npm run test:contrast`.
+  ✗ MISS darken --text to a mid grey — body ink that cannot be read on the canvas
+         → the gate CRASHED instead of scoring — Error: ENOENT: no such file or directory, open 'C:\Users\asheib\AppData\Local\Temp\contrast-red-11qElm\root\src\components\ui\chip.tsx' — the copy is missing an input the gate reads
+  ✗ MISS revert .btn-yes fill to its pre-H10 57% — white label back to 4.05
+         → the gate CRASHED instead of scoring — Error: ENOENT: no such file or directory, open 'C:\Users\asheib\AppData\Local\Temp\contrast-red-11qElm\root\src\components\ui\chip.tsx' — the copy is missing an input the gate reads
+  ✗ MISS lighten .btn-no fill — the NO button's label stops clearing AA
+         → the gate CRASHED instead of scoring — Error: ENOENT: no such file or directory, open 'C:\Users\asheib\AppData\Local\Temp\contrast-red-11qElm\root\src\components\ui\chip.tsx' — the copy is missing an input the gate reads
+  ✗ MISS revert --danger-500 to its pre-H10 60% — white label back to 4.28
+         → the gate CRASHED instead of scoring — Error: ENOENT: no such file or directory, open 'C:\Users\asheib\AppData\Local\Temp\contrast-red-11qElm\root\src\components\ui\chip.tsx' — the copy is missing an input the gate reads
+  ✗ MISS dim --pearl-50 — every solid button label at once
+         → the gate CRASHED instead of scoring — Error: ENOENT: no such file or directory, open 'C:\Users\asheib\AppData\Local\Temp\contrast-red-11qElm\root\src\components\ui\chip.tsx' — the copy is missing an input the gate reads
+  ✗ MISS darken --gilt to 45% — money ink on the canvas (M4: money is read)
+         → the gate CRASHED instead of scoring — Error: ENOENT: no such file or directory, open 'C:\Users\asheib\AppData\Local\Temp\contrast-red-11qElm\root\src\components\ui\chip.tsx' — the copy is missing an input the gate reads
+  ✗ MISS darken --gilt-ink's deep stop to 45% — every struck money figure at once (DA-7)
+         → the gate CRASHED instead of scoring — Error: ENOENT: no such file or directory, open 'C:\Users\asheib\AppData\Local\Temp\contrast-red-11qElm\root\src\components\ui\chip.tsx' — the copy is missing an input the gate reads
+  ✗ MISS lighten --royal-950 — the proposal bonus panel goes pale under struck gold ink (DA-7)
+         → the gate CRASHED instead of scoring — Error: ENOENT: no such file or directory, open 'C:\Users\asheib\AppData\Local\Temp\contrast-red-11qElm\root\src\components\ui\chip.tsx' — the copy is missing an input the gate reads
+  ✗ MISS darken --gold-500 — .btn-gold's own dark label on its own fill
+         → the gate CRASHED instead of scoring — Error: ENOENT: no such file or directory, open 'C:\Users\asheib\AppData\Local\Temp\contrast-red-11qElm\root\src\components\ui\chip.tsx' — the copy is missing an input the gate reads
+  ✗ MISS restore .btn-primary's 60% light stop — E-119, the white label back to 4.0
+         → the gate CRASHED instead of scoring — Error: ENOENT: no such file or directory, open 'C:\Users\asheib\AppData\Local\Temp\contrast-red-11qElm\root\src\components\ui\chip.tsx' — the copy is missing an input the gate reads
+  ✗ MISS crank .btn-primary's hover brightness to 1.30 — a raster-only failure
+         → the gate CRASHED instead of scoring — Error: ENOENT: no such file or directory, open 'C:\Users\asheib\AppData\Local\Temp\contrast-red-11qElm\root\src\components\ui\chip.tsx' — the copy is missing an input the gate reads
+  ✗ MISS make one of .btn-primary's gradient stops an unscoreable color-mix()
+         → the gate CRASHED instead of scoring — Error: ENOENT: no such file or directory, open 'C:\Users\asheib\AppData\Local\Temp\contrast-red-11qElm\root\src\components\ui\chip.tsx' — the copy is missing an input the gate reads
+  ✗ MISS add an unmodelled contrast() to .btn-primary's hover filter
+         → the gate CRASHED instead of scoring — Error: ENOENT: no such file or directory, open 'C:\Users\asheib\AppData\Local\Temp\contrast-red-11qElm\root\src\components\ui\chip.tsx' — the copy is missing an input the gate reads
+  ✗ MISS raise --btn-hover-gain to 1.20 — the whole solid family loses AA on hover
+         → the gate CRASHED instead of scoring — Error: ENOENT: no such file or directory, open 'C:\Users\asheib\AppData\Local\Temp\contrast-red-11qElm\root\src\components\ui\chip.tsx' — the copy is missing an input the gate reads
+  ✗ MISS make --btn-hover-gain non-numeric — an unreadable AA input
+         → the gate CRASHED instead of scoring — Error: ENOENT: no such file or directory, open 'C:\Users\asheib\AppData\Local\Temp\contrast-red-11qElm\root\src\components\ui\chip.tsx' — the copy is missing an input the gate reads
+  ✗ MISS re-declare --btn-hover-gain a second time (INTAKE §2a, numeric)
+         → the gate CRASHED instead of scoring — Error: ENOENT: no such file or directory, open 'C:\Users\asheib\AppData\Local\Temp\contrast-red-11qElm\root\src\components\ui\chip.tsx' — the copy is missing an input the gate reads
+  ✓ RED  re-declare --bg at the top of :root instead of editing line 244 (INTAKE §2a)
+         → refused: contrast-audit: --bg has 2 declaration sites (oklch(45% 0.130 268) | oklch(6.5% 0.130 268)). INTAKE §2a: the b
+  ✓ RED  make .btn-gold's fill a color-mix() the parser cannot score
+         → refused: contrast-audit: ".btn-gold { background }: color-mix(in oklab, var(--gold-500) 90%, black)" is not a literal o
+  ✓ RED  rename --gilt out from under the gate — a token the gate names must exist
+         → refused: contrast-audit: --gilt is not declared in the corpus (C:\Users\asheib\AppData\Local\Temp\contrast-red-11qElm\r
+  ✗ MISS E-121 restored — .cm-send:hover swaps its fill to the lighter --brand-400
+         → the gate CRASHED instead of scoring — Error: ENOENT: no such file or directory, open 'C:\Users\asheib\AppData\Local\Temp\contrast-red-11qElm\root\src\components\ui\chip.tsx' — the copy is missing an input the gate reads
+  ✗ MISS .cm-send's resting fill lightened to --brand-300 — the glyph goes under 3.0
+         → the gate CRASHED instead of scoring — Error: ENOENT: no such file or directory, open 'C:\Users\asheib\AppData\Local\Temp\contrast-red-11qElm\root\src\components\ui\chip.tsx' — the copy is missing an input the gate reads
+  ✗ MISS make .cm-send's glyph #888 — the hex parser must read the VALUE, not just the shape
+         → the gate CRASHED instead of scoring — Error: ENOENT: no such file or directory, open 'C:\Users\asheib\AppData\Local\Temp\contrast-red-11qElm\root\src\components\ui\chip.tsx' — the copy is missing an input the gate reads
+  ✗ MISS make .cm-escalate's ramp unscoreable — the chat sheet gets no softer treatment
+         → the gate CRASHED instead of scoring — Error: ENOENT: no such file or directory, open 'C:\Users\asheib\AppData\Local\Temp\contrast-red-11qElm\root\src\components\ui\chip.tsx' — the copy is missing an input the gate reads
+  ✗ MISS lighten .gilt-metal's ink to near-white — the money CTA's label goes unreadable
+         → the gate CRASHED instead of scoring — Error: ENOENT: no such file or directory, open 'C:\Users\asheib\AppData\Local\Temp\contrast-red-11qElm\root\src\components\ui\chip.tsx' — the copy is missing an input the gate reads
+  ✗ MISS darken --gilt-metal's body stop to 28% — the token ramp must actually be read
+         → the gate CRASHED instead of scoring — Error: ENOENT: no such file or directory, open 'C:\Users\asheib\AppData\Local\Temp\contrast-red-11qElm\root\src\components\ui\chip.tsx' — the copy is missing an input the gate reads
+
+RED HARNESS (contrast) — 3/25 caught · 4 sheet(s) untouched
+  · darken --text to a mid grey — body ink that cannot be read on the canvas
+  · revert .btn-yes fill to its pre-H10 57% — white label back to 4.05
+  · lighten .btn-no fill — the NO button's label stops clearing AA
+  · revert --danger-500 to its pre-H10 60% — white label back to 4.28
+  · dim --pearl-50 — every solid button label at once
+  · darken --gilt to 45% — money ink on the canvas (M4: money is read)
+  · darken --gilt-ink's deep stop to 45% — every struck money figure at once (DA-7)
+  · lighten --royal-950 — the proposal bonus panel goes pale under struck gold ink (DA-7)
+  · darken --gold-500 — .btn-gold's own dark label on its own fill
+  · restore .btn-primary's 60% light stop — E-119, the white label back to 4.0
+  · crank .btn-primary's hover brightness to 1.30 — a raster-only failure
+  · make one of .btn-primary's gradient stops an unscoreable color-mix()
+  · add an unmodelled contrast() to .btn-primary's hover filter
+  · raise --btn-hover-gain to 1.20 — the whole solid family loses AA on hover
+  · make --btn-hover-gain non-numeric — an unreadable AA input
+  · re-declare --btn-hover-gain a second time (INTAKE §2a, numeric)
+  · E-121 restored — .cm-send:hover swaps its fill to the lighter --brand-400
+  · .cm-send's resting fill lightened to --brand-300 — the glyph goes under 3.0
+  · make .cm-send's glyph #888 — the hex parser must read the VALUE, not just the shape
+  · make .cm-escalate's ramp unscoreable — the chat sheet gets no softer treatment
+  · lighten .gilt-metal's ink to near-white — the money CTA's label goes unreadable
+  · darken --gilt-metal's body stop to 28% — the token ramp must actually be read

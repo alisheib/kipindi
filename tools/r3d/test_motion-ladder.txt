@@ -1,0 +1,31 @@
+﻿
+── 1383 source files scanned under ./src ──
+
+  ok   1.0 the probe actually read source (never measure an empty list)
+  ok   1.1 ⭐ no file outside the allowlist hardcodes a CSS duration or easing
+  ok   1.2 the ratchet holds no stale exemptions
+  ok   1.3 ⭐ the scan reaches src/app, src/lib AND src/components (a narrowed walk reports 0 in the same words)
+
+§2 · the corpus — stylesheets are in it, pinned by extension
+  ok   2.1 ⭐ the walk reads STYLESHEETS (it read none at all until 2026-09-03 — hole 3)
+  ok   2.2 …and still reads .tsx/.ts — the widening added a type, it did not swap one
+  ok   2.3 ⭐ src/styles/ is reached — the directory §1.3 does not name, and where the fourth motion vocabulary lived
+  ok   2.4 the ladder's own file is in the corpus (it is EXEMPT by name, which is not the same as absent)
+
+§3 · only motion.css may DECLARE a curve or a duration
+  ok   3.1 ⭐ no custom property outside motion.css hand-types a cubic-bezier or a raw duration
+  ok   3.2 the frozen-declaration list is not empty (a silent pattern-exclusion would read the same)
+
+§4 · --m-pivot is reserved for the needle and dials (§M8)
+  ok   4.1 ⭐ nothing outside the needle's own files animates on --m-pivot (§M8's reservation)
+  ok   4.2 control · --m-pivot is still declared (a renamed token would empty §4.1 silently)
+
+  (ratchet holds 4 file(s) — the list may only shrink)
+      · src/app/admin/kyc/[id]/kyc-doc-viewer.tsx
+      · src/components/layout/needle.css
+      · src/components/positions/countdown-ring.tsx
+      · src/lib/i18n.tsx
+  (exempt by name, not skipped silently: src/app/motion.css — the definition site)
+  (frozen declarations, each with a prior ruling: --dur-stage)
+
+12 passed, 0 failed

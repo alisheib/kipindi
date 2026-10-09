@@ -1,0 +1,8 @@
+docs(vodacom): IN FLIGHT - turn G proved the hydration fix in a browser; the fixes are one branch for turn H; S7 WP1 started
+
+G: on the parent 4 of 4 loads of the RG page threw "Hydration failed", on the fix 4 of 4 clean with the bounds in the
+server's HTML; the tabs tiles 271/0; the preview drive 33/33 twice (section 5's one stop was a click before hydration);
+G1 14/14; the footer's journey control caught. vodacom-wp12-fixes (ad91c6a0) holds the seven fix commits for H. S7 WP0
+rebased on 48842adb and green; WP1 (parity v3) being written.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>

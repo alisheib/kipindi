@@ -1,0 +1,39 @@
+﻿precondition: both gates are GREEN on the untouched tree
+
+   1. caught       the unique index drops the TYPE, so it is on the number alone
+   2. caught       the index is made TOTAL, so a rejected submission burns the document forever
+   3. caught       the expand migration also DROPS the deprecated column (500s the previous container mid-deploy)
+   4. caught       the duplicate read is pinned to NIDA, so a passport can be reused on a second account
+   5. caught       normalisation stops stripping separators, so `AB 123456` opens a second account on one passport
+   6. caught       somebody invents a driving-licence format TRA has never published
+   7. caught       the passport's SECONDARY shape is promoted to a hard refusal (a rumour becomes a lockout)
+   8. caught       the NIDA rule is loosened from 20 digits to 'some digits'
+   9. caught       the NIDA date check stops round-tripping, so 30 February passes as a date of birth
+  10. caught       a browser `pattern` is synthesised for the voter's card from our own sanity band
+  11. caught       the selfie is dropped for a passport — the officer's face-match attestation loses its evidence
+  12. caught       the submit gate goes back to a COUNT, so a complete two-slot passport can never be submitted
+  13. caught       an expired document is accepted-and-flagged instead of refused
+  14. caught       🔴 the age gate becomes NIDA-only — BOTH locks, because either alone still holds it
+  15. caught       the officer's document route goes back to a hand-written slot list (the passport bio page becomes unopenable)
+  16. caught       the form validates the type from the URL instead of its own field (a stale link picks the rule)
+  17. caught       a greyed example returns to the identity-number box (A-5: a placeholder becomes a value)
+  18. caught       a surface reads the DEPRECATED nida* mirror, so one fact has two homes again
+  19. caught       the deprecated column is re-added to the SCHEMA, so every KYC read names a dropped column
+  20. caught       the contract migration drops the column without re-running the backfill
+  21. caught       the contract migration drops the index AFTER the column
+  22. caught       the contract migration is not re-runnable (no IF EXISTS)
+  23. caught       a number-only duplicate read returns to the store layer
+  24. caught       a group key reading 'What to attach' returns over the ID chooser
+
+24/24 real defects caught, each on its own assertion
+tree restored byte-identically · gates green after restore: true
+RED PROOF COMPLETE
+node.exe : (node:15992) [DEP0190] DeprecationWarning: Passing args to a child process with shell option true can lead 
+to security vulnerabilities, as the arguments are not escaped, only concatenated.
+At line:1 char:1
++ & "C:\Program Files\nodejs/node.exe" "C:\Program Files\nodejs/node_mo ...
++ ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: ((node:15992) [D...y concatenated.:String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+ 
+(Use `node --trace-deprecation ...` to show where the warning was created)

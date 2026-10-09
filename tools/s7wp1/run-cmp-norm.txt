@@ -1,0 +1,4 @@
+qa:classic-shell-parity — compare — http://localhost:3041
+  tree F:\kipindi-s7wp1\ @ c37b5e47 (clean) · forks from origin/main at 48842adb · rollout OFF
+  the book's normalisers ON: none (this file's switches) · candidates: market-ids, time-left, eat-dates, relative-times, chart-paths, avatar-ids, chunk-hashes
+REFUSED — C:/Users/asheib/AppData/Local/Temp/claude/C--Users-asheib/0e745525-51fe-4451-ace7-c9987576fc15/scratchpad/s7wp1/stub-norm.json was captured with the book normalisers [market-ids], and this run uses [none]. A different set needs a NEW baseline captured under it (S7-PLAN WP1 step 4); KP_PARITY_NORMALISE can match the baseline's set for a calibration run.

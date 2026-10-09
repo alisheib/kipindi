@@ -1,0 +1,10 @@
+CSS token collision guard — reading F:\kipindi-r4k\src
+
+  PASS no motion/elevation token defined in two files
+  PASS ⭐ no token AT ALL defined in two files (E-122)
+  PASS easing tokens carry no duration (pair with --dur-*)
+  PASS no duration-less transition/animation (would resolve to 0s)
+  PASS button sizes reference --h-control-* (no literal px height)
+
+ALL PASS — 6 css files, 48 guarded tokens
+

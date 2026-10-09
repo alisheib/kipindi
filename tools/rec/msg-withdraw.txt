@@ -1,0 +1,9 @@
+withdraw: the available balance is set as an amount (mono, tabular, untracked) - DESIGN_AUTHORITY §M4
+
+WP12's tiles showed the withdraw page's "Inapatikana TZS 258,208" in the display face (font-display) while every other
+amount on a player page is mono. §M4: every amount is --font-mono, tabular-nums, never letter-spaced, and .amount is the
+mechanism. It was the only player-page amount set in the display face (grep: font-display beside tabular-nums).
+
+{PROOF}
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>

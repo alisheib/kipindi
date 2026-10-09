@@ -1,0 +1,44 @@
+Tailwind token-bridge guard
+
+  PASS parsed the colour map from tailwind.config.ts
+  PASS every colour-utility class resolves to a key in tailwind.config.ts
+  PASS text.subtle is bridged
+  PASS text.muted is bridged
+  PASS text.faint is bridged
+  PASS royal.300 is bridged
+  PASS gilt.DEFAULT is bridged
+  PASS danger.500 is bridged
+  PASS info.500 is bridged
+  PASS parsed the boxShadow map from tailwind.config.ts
+  PASS every shadow-* class resolves to a key in the boxShadow map
+  PASS boxShadow.card is bridged
+  PASS boxShadow.modal is bridged
+  PASS boxShadow.overlay is bridged
+  PASS boxShadow.overlay-up is bridged
+  PASS boxShadow.card-top is bridged
+  PASS boxShadow.e1 is bridged
+  PASS boxShadow.e5 is bridged
+  PASS found alpha-modified colour classes to probe
+  PASS every alpha-modified colour class compiles to a real rule
+  PASS the probe can still detect a non-emitting class (negative control)
+  PASS §7 collected class-shaped tokens to probe
+  PASS §7 every class-shaped colour token compiles to a real rule
+  PASS §7b the probe can detect an unknown FAMILY (negative control)
+  PASS §7b …and does not confuse it with its healthy neighbour
+  PASS §7b the probe agrees with reality on a class the app relies on
+  PASS §7c the classifier REFUSES a CSS property name
+  PASS §7c the classifier REFUSES an SVG attribute fragment
+  PASS §7c …but ACCEPTS a real class that lives outside a className attribute
+
+  (§7 probed 349 class-shaped tokens — 316 from className attributes, 33 corroborated elsewhere)
+  PASS §8.1 every `fontSize` rung in tailwind.config.ts is declared to `cn`'s twMerge
+  PASS §8.2 …and `cn` declares no rung the config does not have
+  PASS §8.3 a size and a colour survive ONE cn() together — the defect this section exists for
+  PASS §8.3b …and cn still COLLAPSES two sizes (it must not have stopped merging)
+  PASS §8.3c …and still collapses two colours
+  PASS §9.1 every app-state token globals.css defines is spellable as a utility class
+  PASS §9.2 CONTROL — the rung population is non-empty, so a pass means reachable and not unread
+  PASS §9.3 …and the rung that started this — `success-500` — is reachable
+
+PASS — 719 tsx files, 20 colour families, 17 shadow rungs, 155 alpha classes probed
+

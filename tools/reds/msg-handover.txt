@@ -1,0 +1,10 @@
+fix(red:updown-handover): no-handover-at-all re-anchored after a7da5f89 folded the settled test into roundIsSettled - test:red-anchors §3 failed on it on main
+
+The plant is unchanged: handoverClock answers phase "none" to every call (the product as it shipped, no handover).
+a7da5f89 (U35 · D36) replaced `state === "resolved" || state === "void"` with `roundIsSettled(state)`; the
+two-line anchor now names that line with the idle return under it (the first line alone occurs three times).
+
+Proof on OMEGA-COMPILE01 (2026-10-08, main f89dcdb9): red:updown-handover 19/19 caught, every file restored byte
+for byte, exit 0 (18/19 before); test:updown-handover 117/0; test:red-anchors §3 for it passes.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>

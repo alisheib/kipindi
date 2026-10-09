@@ -1,0 +1,12 @@
+const fs = require("fs");
+const p = "F:/kipindi-vdocs/docs/VODACOM-PLAN.md";
+let s = fs.readFileSync(p, "utf8");
+const t0 = /updated 2026-10-09 ~1[0-9]:[0-9]{2} EAT/;
+if (!t0.test(s)) throw new Error("timestamp anchor");
+s = s.replace(t0, "updated 2026-10-09 ~13:15 EAT");
+const anchor = "**⏳ IN FLIGHT (updated 2026-10-09 ~13:15 EAT) — OMEGA-COMPILE01 holds the whole Vodacom lane**";
+if (!s.includes(anchor)) throw new Error("heading anchor");
+const pause = "⏸ **PAUSED at Ali's word (2026-10-09 ~13:10 EAT: \"pause … clean and pause until I say proceed\").** Nothing of this lane runs: no helper, no lock turn, no server; the heavy lock is free. State: `vodacom-visual` at `e60cf75f` (round 4, the edge read's fixes R4-G/H/I/J/K and R5-F's repaired `qa:bar-geometry`, each proved on its tree), on main `a6331ca1`, NOT live; the static-cache hotfix `9cb95938` IS live. Five round-5 helpers were stopped mid-work, their edits uncommitted in `F:\\kipindi-r5b` `r5c` `r5d` `r5e` (`r5a` had made none): on \"proceed\" each is relaunched on its brief (`briefs/r5-common.md`, `briefs/review-findings.md`, the scratch triage `triage-r5.md`) told what its worktree holds, then merged; then `vodacom-visual` is rebased onto main, the final proof turns (M16a–d, rewritten for R5-F's fixture) run, round 6 is read, and it goes live only when a read finds nothing. ";
+s = s.replace(anchor, anchor + " " + pause);
+fs.writeFileSync(p, s);
+console.log("ok");

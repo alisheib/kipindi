@@ -1,0 +1,17 @@
+DotSeq: real spaces around the hidden dot — copied and read text says "A · B", not "A·B"
+
+Lock turn M7's local qa:live (on fd7a1fe6) flagged three Swahili legal pages: "no words run together after an inline
+tag" — "·</span>Imetolewa", "·</span>Yanaanza", "·</span>Zinaanza". R3-C's DotSeq (the legal header's version line,
+the hub's subtitles, the invite call) put each part's hidden dot straight against the next word. It looked right on
+screen, but the text itself read "…2026-10-07·Imetolewa" to a copy and paste, and to a reader that does not separate
+flex items.
+
+- dot-seq.tsx: one space before and one after the aria-hidden dot, as real text, so each sequence carries the
+  dictionary's own "A · B". Both spaces open a flex item, where white space collapses, so nothing moves on the screen.
+- visual-pass-r3c 9.1 pins the new markup and adds qa:live's own rule (a </span> whose last character is not a space,
+  followed by a word): the defect, put back, fails 9.1 statically.
+
+visual-pass-r3c 70/70, journey-account 85, privacy-notice 96, ui-consistency, hooks-order, dead-css. Live proof: qa:live
+on this tip in the next lock turn.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>

@@ -1,0 +1,101 @@
+  // ⭐ ONE RULE WHILE A REQUEST IS IN FLIGHT (the integrator's review): the ✕ is there exactly when the dialog's own way out
+  // is. While a request the dialog sent is in flight (its close guarded on the flag), the ✕ is withheld: a corner ✕ is not
+  // drawn (`showClose={!flag}`); a header-row ✕ is `CloseX withheld` — not drawn, not pressable, its box kept, so nothing
+  // moves. ConfirmModal withholds on `loading` alone; `confirmHeld` (busy, the way out open) keeps it live.
+  const xMarkup = (withheld: boolean) => html(h(CloseX, { onClick: () => {}, label: "Funga", className: "mt-1 -mb-1", withheld }));
+  const shown = xMarkup(false), held = xMarkup(true);
+  const boxOf = (m: string) => /class="([^"]*)"/.exec(m)?.[1].replace(/\s*\binvisible\b/, "") ?? "";
+  ok("8.12 · CloseX withheld is not drawn (`invisible`) and not pressable (`disabled`, which the focus trap skips), in the very box it has when drawn — so the row and the title never move",
+    /\bdisabled=""/.test(held) && /\binvisible\b/.test(held) && !/disabled/.test(shown) && !/\binvisible\b/.test(shown) && boxOf(held) === boxOf(shown)
+      && /\bh-8 w-8\b/.test(boxOf(held)) && /aria-label="Funga"/.test(held), show({ shown, held }));
+  /** A JSX opening tag from `at` to its closing `>`, braces and strings respected. */
+  const openingTag = (src: string, at: number) => {
+    let depth = 0, i = at, q = "";
+    for (; i < src.length; i++) {
+      const c = src[i];
+      if (q) { if (c === "\\") i++; else if (c === q) q = ""; continue; }
+      if (c === '"' || (depth > 0 && (c === "'" || c === "`"))) { q = c; continue; }
+      if (c === "{") depth++; else if (c === "}") depth--; else if (c === ">" && depth === 0) break;
+    }
+    return src.slice(at, i + 1);
+  };
+  /** One prop's value as written (`{…}` or `"…"`), or null. */
+  const propOf = (tag: string, name: string) => {
+    const m = new RegExp(`\\s${name}=`).exec(tag);
+    if (!m) return null;
+    let i = m.index + m[0].length;
+    if (tag[i] === '"') return tag.slice(i, tag.indexOf('"', i + 1) + 1);
+    let depth = 0, j = i;
+    for (; j < tag.length; j++) { if (tag[j] === "{") depth++; else if (tag[j] === "}" && --depth === 0) break; }
+    return tag.slice(i, j + 1);
+  };
+  /** A named handler's text (`const close = () => { … }` or `=> expr`), for a prop that passes it by name. */
+  const handlerOf = (src: string, value: string | null) => {
+    const name = /^\{(\w+)\}$/.exec(value ?? "")?.[1];
+    if (!name) return value ?? "";
+    const at = new RegExp(`const ${name} = (?:async )?\\([^)]*\\) => `).exec(src);
+    if (!at) return "";
+    let i = at.index + at[0].length;
+    if (src[i] !== "{") return src.slice(i, src.indexOf("\n", i));
+    let depth = 0, j = i;
+    for (; j < src.length; j++) { if (src[j] === "{") depth++; else if (src[j] === "}" && --depth === 0) break; }
+    return src.slice(i, j + 1);
+  };
+  const IN_FLIGHT = /^(?:pending|loading|inFlight|busy|awaiting|posting|submitting|running|saving)$/;
+  const flagsIn = (text: string) => [...new Set([...text.matchAll(/!\s*(\w+)\b|\b(\w+)\s*\?\s*\(/g)].map((m) => m[1] ?? m[2]).filter((f) => IN_FLIGHT.test(f)))];
+  const inFlightRule = (files: Array<[string, string]>) => {
+    const problems: string[] = [];
+    let modals = 0, confirms = 0;
+    for (const [f, s] of files) {
+      // A header-row ✕ keeps its box: never `{!flag && <CloseX …>}` / `{flag ? null : <CloseX …>}`.
+      if (/\{\s*!\s*\w+\s*&&\s*<CloseX\b|\?\s*null\s*:\s*<CloseX\b/.test(s)) problems.push(`${f}: a ✕ taken out of its row while in flight`);
+      for (const m of s.matchAll(/<(Modal|ConfirmModal)(?=[\s>])/g)) {
+        const tag = openingTag(s, m.index ?? 0);
+        const flags = flagsIn([propOf(tag, "onClose"), propOf(tag, "closeOnScrim"), propOf(tag, "closeOnEsc")].map((v) => handlerOf(s, v)).join(" "));
+        const line = s.slice(0, m.index).split("\n").length;
+        if (m[1] === "Modal") {
+          if (!flags.length) continue;
+          modals++;
+          const sc = propOf(tag, "showClose");
+          if (sc === "{false}") {
+            // Its ✕ is drawn by the dialog itself, in a header row: withheld on the same flag.
+            for (const x of s.matchAll(/<CloseX\b[^>]*\/>/g)) {
+              if (/className="absolute /.test(x[0])) continue;
+              const w = /withheld=\{([^}]*)\}/.exec(x[0])?.[1] ?? "";
+              if (!flags.some((fl) => new RegExp(`\\b${fl}\\b`).test(w))) problems.push(`${f}:${line} its header ✕ is not withheld on ${flags.join("/")}`);
+            }
+          } else if (!sc || !flags.some((fl) => new RegExp(`^\\{!${fl}\\b`).test(sc))) problems.push(`${f}:${line} its ✕ is drawn while ${flags.join("/")} (showClose=${sc})`);
+        } else {
+          // A ConfirmModal kept open across its own request — its close guarded on a flag, or closed only after the
+          // answer comes back — wears `loading`, which withholds its ✕ (and holds Cancel, the scrim and Esc).
+          const confirmBody = handlerOf(s, propOf(tag, "onConfirm"));
+          const setter = /^\{\(\) => (set\w+)\((?:false|null)\)\}$/.exec(propOf(tag, "onClose") ?? "")?.[1];
+          const awaitAt = confirmBody.search(/\bawait\b/);
+          const closesAfter = !!setter && awaitAt >= 0 && confirmBody.indexOf(`${setter}(`) > awaitAt && confirmBody.indexOf(`${setter}(`) !== -1
+            && !confirmBody.slice(0, awaitAt).includes(`${setter}(`);
+          if (!flags.length && !closesAfter) continue;
+          confirms++;
+          const loading = propOf(tag, "loading") ?? "";
+          const want = flags.length ? flags : ["pending", "loading", "busy", "posting", "awaiting"];
+          if (!want.some((fl) => new RegExp(`\\b${fl}\\b`).test(loading))) problems.push(`${f}:${line} a ConfirmModal open across its request, its ✕ not withheld (loading=${loading || "none"})`);
+        }
+      }
+    }
+    return { problems, modals, confirms };
+  };
+  const rule8 = inFlightRule(SRC);
+  ok(`8.13 · the one in-flight rule, held everywhere: ${rule8.modals} dialogs whose close waits on a request withhold their ✕ (in the corner, or in the header with its box kept), and ${rule8.confirms} confirms kept open across their request wear \`loading\``,
+    rule8.problems.length === 0 && rule8.modals >= 25 && rule8.confirms >= 4, rule8.problems.join(" | "));
+  const confirmOf = MOD.slice(MOD.indexOf("export function ConfirmModal("));
+  ok("8.13′ · ConfirmModal withholds its ✕ on `loading` alone — a held confirm (`confirmHeld`: busy, every way out open) keeps it drawn and live",
+    /<CloseX withheld=\{loading\} onClick=\{onClose\}/.test(confirmOf) && /closeOnScrim=\{!loading\}/.test(confirmOf) && /onClose=\{loading \? \(\) => \{\} : onClose\}/.test(confirmOf));
+  const plantIn = (file: string, from: string, to: string) => SRC.map(([f, s]): [string, string] => [f, f.endsWith(file) ? s.replace(from, to) : s]);
+  const plants: Array<[string, Array<[string, string]>]> = [
+    ["the sell confirm's ✕ drawn but dead again", plantIn("sell-confirm-modal.tsx", "<CloseX withheld={pending} ", "<CloseX ")],
+    ["ConfirmModal's ✕ taken out of its row again", plantIn("ui/modal.tsx", "<CloseX withheld={loading} onClick={onClose} label={t.common.close} className=\"mt-[2.8px] -mb-[12.8px] -mr-1.5 lg:-mr-3 shrink-0\" />", "{!loading && <CloseX onClick={onClose} label={t.common.close} className=\"mt-[2.8px] -mb-[12.8px] -mr-1.5 lg:-mr-3 shrink-0\" />}")],
+    ["the objection dialog's corner ✕ drawn while filing", plantIn("objection-dialog.tsx", "showClose={!pending}", "")],
+    ["the arm confirm open across its request without `loading`", plantIn("proposal-actions.tsx", "onConfirm={arm}\n        loading={pending}", "onConfirm={arm}")],
+  ];
+  const planted = plants.map(([what, files]) => [what, inFlightRule(files).problems.length] as const);
+  ok(`8.13″ PLANT · each is reported: ${planted.map(([w, n]) => `${w} (${n})`).join("; ")}`,
+    planted.every(([, n]) => n > 0) && plants.every(([, files]) => files.some(([f, s]) => SRC.find(([g]) => g === f)?.[1] !== s)));
