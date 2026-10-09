@@ -483,7 +483,8 @@ type Cell = { readonly start: number; readonly end: number; readonly text: strin
  * solidus (a date is not a number), so "Asha +254, 712 345 678" came apart: "+254" too short to be a number, "712 345 678"
  * a bare nine digits read as a Tanzanian number — a STRANGER's +255 712 345 678 staged in place of a Kenyan number. So a
  * number is read in its CELL: the number, and every digit run before it that the phone-cell rule's OWN cut joins to it
- * (`cutsCell` — a separator character, Google's colons or a separator word between them, nothing else), as a phone cell
+ * (`cutsCell` — a separator character, Google's colons or a separator word between them, nothing else; ⭐ C8c · M1 · never
+ * a word standing between two separators: "1, Asha, 0712 345 678" is a row number, a name and a number), as a phone cell
  * of a file would hold them. The ONE rule (`mobilesIn`) then reads that cell — whole first, else its COMPLETE parts (D4) —
  * so "+254, 712 345 678", "254/712345678" and "00254; 712345678" hold no Tanzanian mobile, and the staged cell is that
  * whole text, which the server's same rule refuses in its own words. A number with nothing joined to it is its own cell,

@@ -32,7 +32,8 @@ import type { ImportSection, RedPlant, SectionContext } from "../contacts-import
 import type { ImportCommitDeps } from "../../src/lib/server/contacts/import-commit.ts";
 import type { StoredContactImportRow, StoredMarketingContact } from "../../src/lib/server/store.ts";
 import {
-  SEVERAL_MOBILES_SENTENCE, cutsCell, firstMobileIn, firstMobileIndex, mobilesIn, phoneCellParts, phoneCellRefusal, type CellMobile,
+  SEVERAL_MOBILES_SENTENCE, cutsCell, firstMobileIn, firstMobileIndex, mobilesIn, phoneCellParts, phoneCellPieces, phoneCellRefusal,
+  type CellMobile,
 } from "../../src/lib/contacts/phone-cell.ts";
 import { CONTACT_LIMITS } from "../../src/lib/contacts/contact-fields.ts";
 import { parseTzNumber, readAsciiDigits } from "../../src/lib/tz-msisdn.ts";
@@ -58,6 +59,8 @@ export type PhoneCellImpl = {
   readonly mobilesIn: typeof mobilesIn;
   readonly firstMobileIn: typeof firstMobileIn;
   readonly phoneCellParts: typeof phoneCellParts;
+  /** C8c · M1 · the cut itself, every piece kept (the labels too). */
+  readonly phoneCellPieces: typeof phoneCellPieces;
   readonly firstMobileIndex: typeof firstMobileIndex;
   /** C8c · the list paste's question, asked of the cut itself. */
   readonly cutsCell: typeof cutsCell;
@@ -94,6 +97,7 @@ function real(): PhoneCellImpl {
     mobilesIn,
     firstMobileIn,
     phoneCellParts,
+    phoneCellPieces,
     firstMobileIndex,
     cutsCell,
     phoneCellRefusal,
@@ -194,7 +198,7 @@ export const L = {
   H9: "H9 · ⛔ C3b-fix · D1 — LINEAR AND BOUNDED: every function of phone-cell.ts returns within 50 ms on a cell of 2,000, 40,000 and 200,000 spaces and on Excel's longest cell (32,767 characters) of \"a a a …\" (the cut reading each run of blanks once)",
   H10: "H10 · ⛔ C3b-fix · D1b — a cell longer than the phone field's limit (CONTACT_LIMITS.phone) is NEVER split: one mobile beside a landline in exactly the limit yields the mobile, one character more yields nothing, its sentence the whole cell's — and staging refuses it for its length",
   H11: "H11 · ⛔ C3b-fix · D4 — a bare nine-digit part is never a mobile: '+254, 712 345 678', '254/712345678', '+254 / 712 345 678' and two bare numbers yield nothing (their sentence the first complete number's, else the whole cell's), a bare part beside a mobile is not a second one — while a WHOLE cell of bare nine digits keeps its reading (Excel drops a number cell's 0)",
-  H12: "H12 · ⛔ C8c · THE LIST PASTE'S QUESTION, asked of the cut itself — cutsCell is true for the text between two numbers that the rule cuts at (a comma, a solidus, a semicolon, a vertical line, an ampersand, Google's ' ::: ', 'or', 'au', 'na', 'and', blanks around any of them) and false for every gap it does not (a space alone, a dash, a full stop, a bracket, one or two colons, a letter, a name, a digit, nothing at all); firstMobileIndex reads CELLS by the one rule — a cell holding a mobile among other numbers counts, a Kenyan cell does not",
+  H12: "H12 · ⛔ C8c · THE LIST PASTE'S QUESTION, asked of the cut itself — cutsCell is true for the text between two numbers that the rule cuts at (a comma, a solidus, a semicolon, a vertical line, an ampersand, Google's ' ::: ', 'or', 'au', 'na', 'and', blanks around any of them, two separators meeting) and false for every gap it does not (a space alone, a dash, a full stop, a bracket, one or two colons, a letter, a name, a digit, nothing at all — and, M1, a WORD between two separators: ', Asha, ', ' | Asha | ', '; Asha; '); the cut keeps every piece, labels too (phoneCellPieces), and the parts are its pieces holding a digit; firstMobileIndex reads CELLS by the one rule — a cell holding a mobile among other numbers counts, a Kenyan cell does not",
 } as const;
 
 /* ══ THE RUN ════════════════════════════════════════════════════════════════════════════════════ */
@@ -331,8 +335,9 @@ async function run({ impl, ok, log }: Ctx): Promise<void> {
     ["firstMobileIn", (c) => impl.firstMobileIn(c)],
     ["phoneCellRefusal", (c) => impl.phoneCellRefusal(c)],
     ["firstMobileIndex", (c) => impl.firstMobileIndex([c])],
-    // C8c · the list paste's question is a function of phone-cell.ts too.
+    // C8c · the list paste's question is a function of phone-cell.ts too — and (M1) the cut it reads.
     ["cutsCell", (c) => impl.cutsCell(c)],
+    ["phoneCellPieces", (c) => impl.phoneCellPieces(c)],
   ];
   const slowest = (f: (cell: string) => unknown, cell: string): number => {
     let best = Number.POSITIVE_INFINITY;
@@ -373,8 +378,12 @@ async function run({ impl, ok, log }: Ctx): Promise<void> {
     `at the limit → ${atLimit?.number.msisdn ?? "none"} · past it → ${pastLimit?.number.msisdn ?? "none"} · staged ${pastStaged?.msisdn ?? "no key"} (${sentenceOf(pastClass)})`);
 
   // ── H12 · C8c · the list paste's question ──
-  const CUTS = [",", ", ", " / ", "/", ";", " | ", "&", " ::: ", " or ", " OR ", " au ", " na ", " and ", " ,  "];
-  const NO_CUT = [" ", "  ", "-", " - ", ".", ". ", "(", ")", ":", "::", " : ", " Asha ", ", Asha ", "or", " or", "x", " 1 ", "", "] Juma: "];
+  const CUTS = [",", ", ", " / ", "/", ";", " | ", "&", " ::: ", " or ", " OR ", " au ", " na ", " and ", " ,  ", ",,", " / , "];
+  // ⭐ C8c · M1 · a WORD between two separators is a piece of its own — never a cut (", Asha, " lost a pasted name).
+  const NO_CUT = [
+    " ", "  ", "-", " - ", ".", ". ", "(", ")", ":", "::", " : ", " Asha ", ", Asha ", "or", " or", "x", " 1 ", "", "] Juma: ",
+    ", Asha, ", " | Asha | ", "; Asha; ",
+  ];
   const wrongCut = CUTS.filter((g) => !impl.cutsCell(g)).map((g) => json(g));
   const wrongKept = NO_CUT.filter((g) => impl.cutsCell(g)).map((g) => json(g));
   const cellIndex = [
@@ -382,8 +391,14 @@ async function run({ impl, ok, log }: Ctx): Promise<void> {
     impl.firstMobileIndex(["254/712345678", "00254; 712345678"]),
     impl.firstMobileIndex(["712 345 678"]),
   ];
-  ok(L.H12, wrongCut.length === 0 && wrongKept.length === 0 && json(cellIndex) === json([1, -1, 0]),
-    `${wrongCut.length ? `not cut: ${wrongCut.join(" ")}` : `${CUTS.length} cuts`} · ${wrongKept.length ? `cut wrongly: ${wrongKept.join(" ")}` : `${NO_CUT.length} kept whole`} · firstMobileIndex ${json(cellIndex)}`);
+  // ⭐ M1 · the cut keeps EVERY piece (the labels, and the empty one where separators meet); the parts are its pieces that
+  // hold a digit — one cut, read two ways.
+  const PIECES_OF = "home: 0712 345 678 / ofisi, ,";
+  const pieces = impl.phoneCellPieces(PIECES_OF);
+  const piecesRight = json(pieces) === json(["home: 0712 345 678", "ofisi", "", ""])
+    && json(impl.phoneCellParts(PIECES_OF)) === json(pieces.filter((p) => /[0-9]/.test(p)));
+  ok(L.H12, wrongCut.length === 0 && wrongKept.length === 0 && json(cellIndex) === json([1, -1, 0]) && piecesRight,
+    `${wrongCut.length ? `not cut: ${wrongCut.join(" ")}` : `${CUTS.length} cuts`} · ${wrongKept.length ? `cut wrongly: ${wrongKept.join(" ")}` : `${NO_CUT.length} kept whole`} · firstMobileIndex ${json(cellIndex)} · pieces ${json(pieces)}`);
 
   // ── H8 · end to end: check, start, one commit step ──
   await inFreshStore(async () => {

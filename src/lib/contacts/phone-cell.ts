@@ -140,13 +140,16 @@ function longerThanSplitLimit(text: string): boolean {
 /* ══ THE PARTS, AND THE ONE CHOICE ═══════════════════════════════════════════════════════════════════════ */
 
 /**
- * The numbers a cell holds as written, in order: the cell cut at every separator (see the header), each piece trimmed,
- * and only the pieces holding a digit kept. One piece for a cell that holds one number — or none.
- * ⭐ THE CUT ALONE, LINEAR IN THE CELL'S LENGTH WHATEVER ITS LENGTH (D1a): each run of blanks and each run of colons is
- * read once. ⛔ It decides nothing: the functions below that choose a number never hand it a cell longer than the phone
- * field's limit (D1b) — they answer such a cell whole.
+ * ⭐ THE CUT ITSELF: a cell cut at every separator (see the header), each piece trimmed — EVERY piece kept, the labels and
+ * the words too ("home", "Asha"), an empty one where two separators meet. `phoneCellParts` keeps the pieces holding a
+ * digit; ⭐ C8c · M1 · `cutsCell` reads the pieces whole, so a word standing between two separators is a piece of its own
+ * and never vanishes into a "cut" (the review, 2026-10-09: ", Asha, " passed as a cut once the digit filter had dropped
+ * "Asha", and the paste lost the name of "1, Asha, 0712 345 678").
+ * ⭐ LINEAR IN THE CELL'S LENGTH WHATEVER ITS LENGTH (D1a): each run of blanks and each run of colons is read once.
+ * ⛔ It decides nothing: the functions below that choose a number never hand it a cell longer than the phone field's
+ * limit (D1b) — they answer such a cell whole.
  */
-export function phoneCellParts(cell: string): string[] {
+export function phoneCellPieces(cell: string): string[] {
   const s = String(cell ?? "");
   const pieces: string[] = [];
   let start = 0;
@@ -181,23 +184,33 @@ export function phoneCellParts(cell: string): string[] {
     start = i;
   }
   pieces.push(s.slice(start));
-  return pieces.map((p) => p.trim()).filter((p) => ANY_DIGIT.test(p));
+  return pieces.map((p) => p.trim());
+}
+
+/**
+ * The numbers a cell holds as written, in order: the cut's pieces (`phoneCellPieces`) holding a digit. One part for a
+ * cell that holds one number — or none.
+ */
+export function phoneCellParts(cell: string): string[] {
+  return phoneCellPieces(cell).filter((p) => ANY_DIGIT.test(p));
 }
 
 /**
  * ⭐ C8c · THE LIST PASTE'S QUESTION, ASKED OF THIS RULE'S OWN CUT (the C3b-fix builder found D4 open in the paste: the
  * paste's run reader stopped a number at a comma, so "Asha +254, 712 345 678" lost its "+254" and staged a stranger's
  * +255 712 345 678). Does `gap` — the text between two digit runs of a pasted line — CUT a phone cell in two, as this
- * module cuts one? True exactly when `phoneCellParts` splits a digit on each side of it into those two digits and nothing
- * else: blanks around a separator character, Google's three colons or a separator word — never a space alone, a dash, a
- * full stop, a bracket, a single colon, a letter or a digit. The paste then reads the runs on both sides as ONE cell
- * (`import-read.ts`, `cellOf`), and `mobilesIn` applies D4 to its parts.
+ * module cuts one? True exactly when the cut (`phoneCellPieces`) of a digit on each side of it leaves those two digits
+ * and NOTHING ELSE — the empty pieces where separators meet aside: blanks around a separator character, Google's three
+ * colons or a separator word — never a space alone, a dash, a full stop, a bracket, a single colon, a letter, a digit, or
+ * ⭐ C8c · M1 · a WORD between two separators (", Asha, ", " | Asha | ", "; Asha; " — a name, which the paste keeps as the
+ * name). The paste then reads the runs on both sides as ONE cell (`import-read.ts`, `cellOf`), and `mobilesIn` applies D4
+ * to its parts.
  */
 export function cutsCell(gap: string): boolean {
   const s = String(gap ?? "");
   if (s.length === 0 || s.length > SPLIT_MAX_CHARS || ANY_DIGIT.test(s)) return false;
-  const parts = phoneCellParts(`0${s}0`);
-  return parts.length === 2 && parts[0] === "0" && parts[1] === "0";
+  const pieces = phoneCellPieces(`0${s}0`).filter((p) => p !== "");
+  return pieces.length === 2 && pieces[0] === "0" && pieces[1] === "0";
 }
 
 /**
