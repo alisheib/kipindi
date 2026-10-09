@@ -337,8 +337,10 @@ Each is decided on Ali's standing delegation of technical calls (§0, 2026-10-02
   whatever made it — an active stop-list row of any reason (§25's `findActiveAmong`: the opt-out page's, an officer's
   Suppress) or the number's latest ledger word a WITHDRAWN (§25's `latestAmong`: the profile switch turned off, an officer's
   recorded withdrawal, the opt-out page's row), never the erasure's marker or a lapse; no new member. One number counts once,
-  dated by the later record; a number that is ERASED (`isErasedNumber`, the importer's and the Add form's ONE function) never
-  counts; attributed to the most recent campaign sent to that number before the stop.
+  dated by the later record; attributed to the most recent campaign sent to that number before the stop. ⛔ ERASURE-BLIND BY
+  DESIGN (X22, S14's review): an erasure neither adds anyone (its marker is no stop) nor takes anyone out (a stop-list row,
+  which erasure never touches, keeps counting; a ledger-only stop the marker supersedes falls as a later yes makes it fall) —
+  leaving erased people out would let a masked officer tell an erasure from a removal by this figure.
 
 ---
 
@@ -2787,8 +2789,9 @@ fixture is synthetic. Whether receipts are set up is `BLACKBALL_WEBHOOK_SECRET`'
 4. **Stopped since this campaign** (re-ruled 2026-10-09, E30) is read over this campaign's handed-over numbers (chunks of
    1,000) with `suppression.findActiveAmong` (an active stop of any reason) and `messagingConsent.latestAmong` (the latest
    ledger word a WITHDRAWN that is neither the erasure's marker nor a lapse), each made at or after `sentAt`; one number
-   once; an erased number never; a number whose stop is later than a newer campaign's message to it is not counted here.
-   (It was "stopped by link": `reason WITHDRAWN`, evidence starting `optout:`, read with `findActiveAmong` alone.)
+   once; erasure-blind (X22 — no erasure read: its marker adds nobody, and a stop it leaves standing keeps counting); a
+   number whose stop is later than a newer campaign's message to it is not counted here. (It was "stopped by link":
+   `reason WITHDRAWN`, evidence starting `optout:`, read with `findActiveAmong` alone.)
 
 **Files.** `src/lib/server/marketing/campaign-live.ts` (results), `src/lib/server/marketing/campaign-results.ts` (create —
 the reads: counts by status/failureClass/skipReason, the receipt presence, stopped since), `src/app/admin/campaigns/[id]/results-card.tsx`
@@ -2853,16 +2856,28 @@ memory, the builder), `campaign-live.ts` (`CampaignResultsView` is real; `result
   message: an active stop-list row of any reason (the opt-out page's WITHDRAWN, an officer's Suppress — OPERATOR — a complaint), or a latest
   word that is a WITHDRAWN but neither the erasure's marker nor a lapse (`isLedgerStop`: the profile switch turned off — `recordPlayerMarketingChoice`
   writes that row first, and it is the switch's only dated record — an officer's recorded withdrawal, the opt-out page's own row); a number with
-  both is dated by the LATER (a stop-list row made again keeps its first `createdAt`). ⛔ The numbers found are then asked whether they are
-  ERASED (`erasedAmong`: the ONE function `isErasedNumber` over the book's key-only presence — `msisdnsPresent` with and without the tombstone —
-  and C8a's `erasureStandsAmong`), and an erased one is never counted. Attribution (E30) asks `listByMsisdn` for each one left and drops it
-  when ANOTHER campaign handed that number a SENT/DELIVERED message after this one's and no later than the stop. Found and said (the brief
-  asked): before the ruling the walk counted ONE erased case — a link stop made after the message by a person erased later (`erase.ts` never
-  touches a stop) — and the gate files an erased number under "Withdrew consent" at send time; this figure follows neither, so a counted
-  person who is erased later leaves it, as one who turns offers back on does. ⚠️ Known limits, said: a person stopped again by an officer's
-  Suppress after being started again (no ledger row; the stop-list row keeps its first instant) may not be counted (toward fewer); a stop
-  that follows a TEST send or an invite is not told apart, and the walk is by number (a recycled number's next holder is not told apart) —
-  those two can give the campaign before a stop that something else prompted.
+  both is dated by the LATER (a stop-list row made again keeps its first `createdAt`). Attribution (E30) asks `listByMsisdn` for each one
+  found and drops it when ANOTHER campaign handed that number a SENT/DELIVERED message after this one's and no later than the stop.
+  ⛔ **ERASURE-BLIND BY DESIGN (X22 — S14's review, 2026-10-09).** The walk asks nothing of an erasure: its marker adds nobody (`isLedgerStop`),
+  and nobody is taken out for it — a stop-list row, which `erase.ts` never touches, keeps counting while the gate keeps refusing the number,
+  and a ledger-only stop the marker supersedes as the latest word falls exactly as a later GIVEN makes it fall. 🔴 The first build left erased
+  people OUT (`isErasedNumber` over every number it found stopped), and that let a masked officer tell an erasure from a removal: an officer's
+  Suppress or a complaint can never be lifted (`lift` refuses every reason but WITHDRAWN; the profile switch lifts only a stop the person
+  made), so for those stops an erasure was the only way out of the count — Suppress one ticked row (+1); the row later gone from the book: a
+  fall said erased, none said removed. It also under-counted a person who said yes again after an erasure and then stopped. Found and said
+  (the brief asked): before the ruling the walk counted an erased person's own link stop (`erase.ts` keeps it) — kept, now for every
+  stop-list row; the gate files an erased number under "Withdrew consent" at send time (its marker is a WITHDRAWN) — not followed: the
+  marker is no stop. ⚠️ **Recorded, as R6's differencing is:** a masked officer's OWN Suppress or Record a withdrawal on ONE ticked contact
+  this campaign reached moves the figure by one — or by none when that person had already stopped since (a Suppress over a stop in force
+  changes nothing it counts; `withdrawEach` writes nothing over a latest WITHDRAWN) — the OD54 split the bulk bar hides from that officer.
+  Recorded, not hidden; the owner is told in the session report. ⚠️ Known limits, said: a person stopped again by an officer's Suppress
+  after being started again (no ledger row; the stop-list row keeps its first instant) may not be counted (toward fewer) — or, when its first
+  instant falls after this campaign's message, counted here though a newer campaign's message came before the officer's stop; a stop that
+  follows a TEST send or an invite is not told apart, and the walk is by number (a recycled number's next holder is not told apart) — those
+  two can give the campaign before a stop that something else prompted. ⚠️ **Its cost:** Prisma's `latestAmong` reads every ledger row of
+  every number in the chunk and keeps the newest in code — fine at today's cap (a first campaign of at most ~1,600 people, two chunks), ~150
+  whole-history reads per walk at 150,000; owed to a later unit under §25: `messagingConsent.latestWordsAmong`, the five columns the rule reads
+  (`identifier`, `status`, `source`, `evidence`, `createdAt`) of each number's newest row alone, in one query.
   ⭐ **It is the one expensive figure, so it is bounded:** production keeps a campaign's count for 30 s (single-flight; a failed read is never
   kept) and a view waits for it at most 4 s — a slower walk says "couldn't be counted just now" this once and finishes in the memory for the
   next view. A figure that could not be read (this one, the 15-minute count) is a dash and a sentence, never a zero, and never fails the view
@@ -2893,13 +2908,14 @@ memory, the builder), `campaign-live.ts` (`CampaignResultsView` is real; `result
   off is a player's act alone — D19 / A1.1 is why it is not split). The dev seed's `?stop=` stops its people three ways in turn through the
   real writers — the opt-out page, `recordPlayerMarketingChoice` OFF, `runContactBulk` "suppress" — and answers how many landed by kind;
   `?words=` serves `stoppedTtlMs`; the drive stops three, one each way, and reads 3 under the new label, line and attribute; the admin
-  guide says "Stopped since this campaign — people this campaign reached who have stopped offers since." **Proof:** `test:campaign-visuals`
-  62 claims (R4 rewritten; R10, R11 and R12 widened; R14 — every kind, a number once, only a stop in force, never an erased person — and
-  R15 — the platform's own writers and the REAL erasure — new); the results' plants run alone (`--only=R-R`): 51 of 51 held, of 220
-  plants in all (a subset, not the proof; R-R4b–n, R-R10f–g,
-  R-R11g–h and R-R12g–h new or rewritten); `test:dal-parity` 2228, `test:campaign-models` 54, `test:dead-css` and `test:pii-logs` 15 green;
-  the seed's `?stop=` run in one process (three landed, one each way; the walk 0 → 3). The full `red:campaign-visuals`, the typecheck and
-  the drive's run are the integrator's, under the lock.
+  guide says "Stopped since this campaign — people this campaign reached who have stopped offers since." ⛔ After S14's review the figure is
+  ERASURE-BLIND BY DESIGN (X22, Decision 4 above): the first build's erasure step is gone, and its rule survives only as the suite's plant
+  R-R4l. **Proof:** `test:campaign-visuals` 62 claims (R4 rewritten; R10, R11 and R12 widened; R14 — every kind, a number once, only a stop
+  in force, erasure-blind (9) — and R15 — the platform's own writers, then the REAL erasure, which changes nothing (5 → 5) — new); the
+  results' plants run alone (`--only=R-R`): 48 of 48 held, of 217 plants in all (a subset, not the proof; R-R4b–l, R-R10f, R-R10h,
+  R-R11g–h and R-R12h new or rewritten); `test:dal-parity` 2228, `test:campaign-models` 54, `test:marketing-preflight` 36 (it reads §4.18's
+  run sheet), `test:dead-css` and `test:pii-logs` 15 green; the seed's `?stop=` run in one process (three landed, one each way; the walk
+  0 → 3). The full `red:campaign-visuals`, the typecheck and the drive's run are the integrator's, under the lock.
 
 ---
 
@@ -2925,7 +2941,9 @@ table has `@@index([campaignId, status])` (`schema.prisma:3825`) and no paged re
    session is read — `test:read-tiers` 8.11b), the viewer decided on the STORED row, the second factor, `marketing.campaign_exported`
    AWAITED before the first byte (503 and no file if it did not record), U28's CSV writer and BOM, MASKED numbers for every
    role (E26), the floor (a masked viewer gets no reason column), a keyset walk capped at the campaign's rows.
-3. Columns: `phone_masked, operator, status, reason, language, handed_over_at_eat, delivered_at_eat, stopped_by_link`.
+3. Columns: `phone_masked, operator, status, reason, language, handed_over_at_eat, delivered_at_eat, stopped_since` (it was
+   `stopped_by_link` — E30 re-ruled 2026-10-09: whether the person has stopped offers since, whichever way). ⛔ U48b decides
+   whether a masked viewer's file carries it (OD54): a per-person "stopped" is the split the bulk bar hides from a masked viewer.
 
 **Files.** `src/app/admin/campaigns/[id]/recipients-table.tsx` (create), `src/app/api/admin/campaigns/[id]/export/route.ts`
 (create), `src/lib/server/marketing/campaign-export.ts` (create), the twins + dal-parity, `scripts/campaign-visuals.test.mts`
@@ -3089,8 +3107,8 @@ A value flag is taken ONCE — a second `--test` (or `--origin`, `--sends`, …)
 
 **The evidence's expectations** — `--expect=<outcome>:<who>[,…]`, who = `test` | `control`: `sent` (SENT or DELIVERED, and a message of
 the row is on the wire) · `delivered` (a receipt moved the row) · `skipped` (SKIPPED `suppressed` with NO message on the wire;
-`skipped=<reason>` names another gate reason) · `stopped` (an active WITHDRAWN stop from the link, made after this campaign's message —
-E30) · `resumed` (that stop lifted from the link, and the newest ledger row is that yes). Also `--expect-sends=<n>` (the exact count
+`skipped=<reason>` names another gate reason) · `stopped` (an active WITHDRAWN stop from the link, made after this campaign's
+message) · `resumed` (that stop lifted from the link, and the newest ledger row is that yes). Also `--expect-sends=<n>` (the exact count
 of chargeable messages: the composer test's AND the campaign's), `--expect-audit=<marketing.* action>[,…]` (those E24 rows exist —
 ⭐ and `marketing.campaign_paused` is proven only by the OFFICER's pause, a row with an actor and the reason `officer_paused`: the
 engine writes the same action for its own pauses, a SYSTEM row with another reason, and those are named as "not it" but never counted),
@@ -3286,9 +3304,9 @@ ledger counts message rows (the engine caps a message at one segment, so a send 
   reaper heals a crash; deploy skew stops the loop honestly.
 - **R4 · Deploy order.** U43-0 must be live before U43b; U16a before U42; U33a-G before U13 and U43b. Each push checks the
   migration folder against production's.
-- **R5 · Spam complaints → a TCRA sender block → login and withdrawal codes lost** (U33a R2). Kept: stops first, the opt-out
-  link in every SMS, the window, the TZS 10,000 first cap; U14 before a second campaign; watch the `/s/` stop rate after
-  the first campaign (U48a's "Stopped since this campaign" figure — since 2026-10-09 every way a person stops, a link's among them).
+- **R5 · Spam complaints → a TCRA sender block → login and withdrawal codes lost** (U33a R2). Kept: stops first, the
+  window, the TZS 10,000 first cap; U14 before a second campaign; watch U48a's "Stopped since this campaign" figure after
+  the first campaign (since 2026-10-09 no SMS carries a stop link; it counts every way a person stops).
 - **R6 · D19 residuals.** The floor of 10 raises the bar; differencing two large filters remains possible (recorded).
 - **R7 · The evidence-based reaper** relies on `sendBatch` writing rows before the wire; pinned by a source-order check.
 - **R8 · The webhook secret** travelled in chat; until rotated, a forger who has it can mark rows delivered (no money
