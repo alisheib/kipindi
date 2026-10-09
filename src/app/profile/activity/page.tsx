@@ -157,14 +157,17 @@ export default async function ActivityPage({ searchParams }: { searchParams: Pro
               {/* ⭐ STAGE 9b — was a local `MoneyTile`; now the kit <Stat> at the `lg`
                   rung (17px, mt-1, leading-tight) in the `tile` box (rounded-lg,
                   border/60, bg-overlay/40, px-3.5 py-3) with the `wide` label (10px
-                  semibold 0.12em). Box, label, icon row and the yes/no label tint are
-                  carried across unchanged. `money` keeps the <Cash> mask this tile was
+                  semibold 0.12em). Box, label and icon row are carried across unchanged.
+                  ⭐ ONE LABEL INK FOR EVERY TILE (R5-I, 2026-10-09). Won and Net wore the YES green (Net the NO rose
+                  below zero, and the green AT zero): the betting pair on the inflow/outflow of a period, on the
+                  page that states a player's money honestly — §B2a keeps it for a stake's side, and §C4 asks a
+                  loss to be stated as calmly as a win. The figures carry their own sign. `money` keeps the <Cash> mask this tile was
                   the ONE fork that never dropped — and pins the face to mono, which
                   fixes the one thing it got wrong: it painted TZS in Sora (§M4/§T5). */}
               <Stat size="lg" labelStyle="wide" boxed="tile" money label={t.activity.deposits}    value={formatTzs(summary.deposits)}    icon={<I.arrowDown s={14} />} />
               <Stat size="lg" labelStyle="wide" boxed="tile" money label={t.activity.withdrawals} value={formatTzs(summary.withdrawals)} icon={<I.arrowUp s={14} />} />
               <Stat size="lg" labelStyle="wide" boxed="tile" money label={t.activity.staked}      value={formatTzs(summary.staked)}      icon={<I.coins s={14} />} />
-              <Stat size="lg" labelStyle="wide" boxed="tile" money label={t.activity.won}         value={formatTzs(summary.won)}         icon={<I.trophy s={14} />} labelTone="yes" />
+              <Stat size="lg" labelStyle="wide" boxed="tile" money label={t.activity.won}         value={formatTzs(summary.won)}         icon={<I.trophy s={14} />} />
               {/* ⭐ REFUNDS ARE THEIR OWN TILE SINCE 2026-09-09, and they used to be inside Won.
                   A voided market returns your stake, and counting that as WON overstated both
                   this row and the net beside it — a player who never won anything could read a
@@ -176,7 +179,7 @@ export default async function ActivityPage({ searchParams }: { searchParams: Pro
               {/* The signed net keeps its explicit "+" — <Cash> masks from the first
                   DIGIT, so the sign and the TZS prefix survive the blur exactly as they
                   did in the fork. */}
-              <Stat size="lg" labelStyle="wide" boxed="tile" money label={t.activity.net}         value={summary.net >= 0 ? `+${formatTzs(summary.net)}` : formatTzs(summary.net)} icon={<I.activity s={14} />} labelTone={summary.net >= 0 ? "yes" : "no"} />
+              <Stat size="lg" labelStyle="wide" boxed="tile" money label={t.activity.net}         value={summary.net >= 0 ? `+${formatTzs(summary.net)}` : formatTzs(summary.net)} icon={<I.activity s={14} />} />
             </div>
             <p className="mt-3 text-body-sm leading-relaxed text-text-subtle">{t.activity.netNote}</p>
           </section>

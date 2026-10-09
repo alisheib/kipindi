@@ -13,6 +13,7 @@ import { useToast } from "@/components/ui/toast";
 // ⛔ NEVER THE RAW SERVER STRING — `docs/FAILURE-INVENTORY.md` §1.5/§1.6: the server's
 // English audit prose reaching a Swahili or Chinese player at the moment something failed.
 import { errorCopy } from "@/lib/error-copy";
+import { refusalReason, refusalVariant } from "@/lib/failure-reasons";
 import { CategoryIcon, categoryLabel } from "@/components/proposals/category-icon";
 import { createProposalAction } from "../actions";
 import { useT } from "@/lib/i18n";
@@ -77,7 +78,8 @@ export function CreateProposalForm({ rateLimit, openCount, platformTz }: { rateL
         return;
       }
       if (r.ok) setDone(true);
-      else toast({ title: t.toast.couldntSubmit, description: errorCopy(t, r), variant: "danger" });
+      // §F2/§F3 (R5-I): at the registry's rank — a refusal the player can fix is the calm `factual` toast, a fault `danger`.
+      else toast({ title: t.toast.couldntSubmit, description: errorCopy(t, r), variant: refusalVariant(refusalReason(r)) });
     });
   };
 
@@ -101,7 +103,7 @@ export function CreateProposalForm({ rateLimit, openCount, platformTz }: { rateL
       </div>
 
       <Field label={<>{t.common.titleEn} <Req /></>} hint={
-        <span className={titleEn.length > 120 ? "text-no-300" : undefined}>{titleEn.length}/120</span>
+        <span className={titleEn.length > 120 ? "text-danger-fg" : undefined}>{titleEn.length}/120</span>
       }>
         <Input placeholder={t.common.titleEnPlaceholder} value={titleEn} onChange={(e) => setTitleEn(e.target.value)} maxLength={120} />
       </Field>
@@ -130,7 +132,7 @@ export function CreateProposalForm({ rateLimit, openCount, platformTz }: { rateL
         <Input type="url" inputMode="url" placeholder={t.proposals.sourceLinkPlaceholder} value={sourceUrl} onChange={(e) => setSourceUrl(e.target.value)} maxLength={500} />
         <p className="mt-1.5 text-body-sm leading-snug text-text-subtle">{t.proposals.sourceLinkHint}</p>
         {sourceUrl.trim().length > 0 && !sourceValid && (
-          <p className="mt-1 text-body-sm leading-snug text-no-300">{t.proposals.sourceLinkInvalid}</p>
+          <p className="mt-1 text-body-sm leading-snug text-danger-fg">{t.proposals.sourceLinkInvalid}</p>
         )}
       </div>
 
@@ -191,7 +193,7 @@ export function CreateProposalForm({ rateLimit, openCount, platformTz }: { rateL
         />
         <p className="mt-1.5 text-body-sm leading-snug text-text-subtle">{t.common.selectionCloseHint}</p>
         {closeDate && !closeValid && (
-          <p className="mt-1 text-body-sm leading-snug text-no-300">{t.common.selectionCloseError}</p>
+          <p className="mt-1 text-body-sm leading-snug text-danger-fg">{t.common.selectionCloseError}</p>
         )}
       </div>
 

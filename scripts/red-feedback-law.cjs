@@ -244,6 +244,29 @@ const MUTATIONS = [
     find: `          if (permission === "default") { setDismissed(true); setState("off"); return; }`,
     with: `          if (permission === "default") { setState("unconfigured"); return; }`,
   },
+  // ── §11 (R5-I, 2026-10-09) · the refusal a player can fix: no popup, no alarm ──────────────────────────────────────────
+  {
+    // 🔴 THE DIAL'S SHIPPED SHAPE: the ✗ result over EVERY refusal — a short balance, a busy moment — not only a fault.
+    name: "⭐ the old dial opens the ✗ result over a refusal the player can fix again",
+    file: "src/components/markets/conviction-dial.tsx",
+    find: `        if (mapped.variant === "danger") {
+          setResultData({`,
+    with: `        if (mapped.variant === "danger" || mapped.variant === "factual") {
+          setResultData({`,
+  },
+  {
+    // Up & Down's shipped shape: every server refusal toasted in the alarm register, a stake under the minimum too.
+    name: "Up & Down toasts every server refusal `danger` again — a slip with an error buzz",
+    file: QUICK,
+    find: `            toast({ title: copy.failed, description: fail.description, variant: fail.variant, durationMs: 0 });`,
+    with: `            toast({ title: copy.failed, description: fail.description, variant: "danger", durationMs: 0 });`,
+  },
+  {
+    name: "an empty name — a slip the player fixes by typing — alarms again",
+    file: "src/components/profile/name-editor.tsx",
+    find: `      toast({ title: t.toast.nameEmpty, variant: "factual" });`,
+    with: `      toast({ title: t.toast.nameEmpty, variant: "danger" });`,
+  },
 ];
 
 const run = () => spawnSync("npx", ["tsx", SUITE], { encoding: "utf8", shell: true });

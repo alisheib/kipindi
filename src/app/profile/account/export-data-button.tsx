@@ -6,6 +6,7 @@ import { useToast } from "@/components/ui/toast";
 // ⛔ NEVER THE RAW SERVER STRING — `docs/FAILURE-INVENTORY.md` §1.5/§1.6: the server's
 // English audit prose reaching a Swahili or Chinese player at the moment something failed.
 import { errorCopy } from "@/lib/error-copy";
+import { refusalReason, refusalVariant } from "@/lib/failure-reasons";
 import { I } from "@/components/ui/glyphs";
 import { exportDataAction } from "./actions";
 import { useT } from "@/lib/i18n";
@@ -19,7 +20,8 @@ export function ExportDataButton() {
     try {
       const result = await exportDataAction();
       if (!result.ok) {
-        toast({ title: t.common.exportFailed, description: errorCopy(t, result), variant: "danger" });
+        // §F2/§F3 (R5-I): at the registry's rank — a refusal the player can fix is the calm `factual` toast, a fault `danger`.
+        toast({ title: t.common.exportFailed, description: errorCopy(t, result), variant: refusalVariant(refusalReason(result)) });
         return;
       }
       const blob = new Blob([result.payload], { type: "application/json" });

@@ -127,13 +127,14 @@ export function SellConfirmModal({ open, pending, stake, value, positionId, onCo
         </p>
       )}
 
-      {/* DS-6 — composed from the semantic families (YES green for the free
-          window, royal for the fee'd exit), not hand-typed oklch. */}
+      {/* DS-6 — composed from the semantic families (the success green for the free
+          window, royal for the fee'd exit), not hand-typed oklch. ⭐ `--success-*`, not `--yes-*` (R5-I, 2026-10-09;
+          §B2a): "no fee" is good news about a sale, not the YES side — and the ticket being sold may be a NO one. */}
       <div
         className="rounded-lg border p-4"
         style={{
-          borderColor: isFree ? "color-mix(in oklab, var(--yes-500) 62%, transparent)" : "color-mix(in oklab, var(--royal-500) 62%, transparent)",
-          background:  isFree ? "color-mix(in oklab, var(--yes-500) 18%, transparent)" : "color-mix(in oklab, var(--royal-500) 16%, transparent)",
+          borderColor: isFree ? "color-mix(in oklab, var(--success-500) 62%, transparent)" : "color-mix(in oklab, var(--royal-500) 62%, transparent)",
+          background:  isFree ? "color-mix(in oklab, var(--success-500) 18%, transparent)" : "color-mix(in oklab, var(--royal-500) 16%, transparent)",
         }}
       >
         {/* S6 A8f · the figure is one amount and never splits. When the fee column cannot share its line, the row wraps:
@@ -151,7 +152,7 @@ export function SellConfirmModal({ open, pending, stake, value, positionId, onCo
             <p className="font-mono text-micro uppercase eyebrow text-text-subtle mb-1">{t.dialog.earlyExitFee}</p>
             <p
               className="pl-3 font-bold text-title-sm amount leading-none"
-              style={{ color: isFree ? "var(--yes-300)" : "var(--text)" }}
+              style={{ color: isFree ? "var(--success-fg)" : "var(--text)" }}
             >
               {isFree ? t.dialog.noFee : `−${formatTzs(fee)}`}
             </p>

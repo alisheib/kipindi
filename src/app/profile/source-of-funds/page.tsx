@@ -108,8 +108,10 @@ export default async function SourceOfFundsPage({ searchParams }: { searchParams
         </section>
       )}
 
+      {/* The declaration on file, in its state's own tone (§B11): accepted the success box, under review the royal one —
+          the pill inside already said "waiting" in royal while the box around it said done (R5-I, 2026-10-09). */}
       {existing && existing.reviewStatus !== "REJECTED" && (
-        <section className="rounded-xl border border-success-border bg-success-bg p-4 space-y-1.5">
+        <section className={`rounded-xl border p-4 space-y-1.5 ${existing.reviewStatus === "ACCEPTED" ? "border-success-border bg-success-bg" : "border-info-border bg-info-bg"}`}>
           <div className="flex items-center gap-2">
             <Pill tone={statusTone as "success" | "danger" | "pending"}>{statusLabel}</Pill>
             <p className="font-mono text-[11px] text-text-subtle tabular-nums">

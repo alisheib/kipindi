@@ -73,6 +73,9 @@ export function PayoutStatusNotice({
   // 📋 The real question — whether `Callout`'s `danger` edge should move to `no-700/60`
   // or the twelve sites should move to `no-500/40` — is one decision for the design
   // owner, and it is a one-line change here whichever way it goes.
+  // ⭐ R5-I (2026-10-09): THAT EDGE MOVED, SO THIS ONE FOLLOWS IT. The failure boxes this notice sits under on both pages
+  // (wallet/deposit/page.tsx · wallet/withdraw/page.tsx) are `border-danger-border` now — the app-state family, never the
+  // NO side's rose (§B2a) — so the pin's own reason (one edge for two red alerts on one screen) asks for that edge here.
   // ⛔ Never put a `/NN` modifier back on `--warning-bg`: it is already
   // `color-mix(… 18%, transparent)`, so a modifier multiplies against that 18%.
   return (
@@ -81,7 +84,7 @@ export function PayoutStatusNotice({
       size="md"
       tone={unavailable ? "danger" : "warning"}
       glyph={unavailable ? "alertCircle" : "clock"}
-      className={unavailable ? "border-no-700/60" : undefined}
+      className={unavailable ? "border-danger-border" : undefined}
       title={title}
       meta={since}
     >

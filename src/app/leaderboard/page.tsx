@@ -330,7 +330,7 @@ export default async function LeaderboardPage({ searchParams }: { searchParams: 
              disagreed, and gold marks money that was earned and nothing else (DESIGN_AUTHORITY Q5, `test:gold-is-money`,
              which now holds `page-ribbon.tsx` among the identity surfaces). A rank is identity; the metal is the badge's. */
           { label: t.leaderboard.topTier, value: tierDisplayName(rows[0]?.tier ?? "bronze") },
-          { label: t.leaderboard.bestRoi, value: `${rows[0]?.roi.toFixed(1) ?? "0"}%`, accent: "yes" },
+          { label: t.leaderboard.bestRoi, value: `${rows[0]?.roi.toFixed(1) ?? "0"}%` },
           /**
            * 🔴 THIS PRINTED THE BOARD SIZE UNDER THE LABEL "PREDICTORS". `rows` is the ranking,
            * capped at BOARD_SIZE, so a platform with a thousand ranked players advertised **50** —
@@ -479,11 +479,12 @@ export default async function LeaderboardPage({ searchParams }: { searchParams: 
                     <TierBadge tier={r.tier} t={t} />
                   </div>
                 </td>
-                <td
-                  className={`p-3 text-right font-mono tabular-nums font-bold ${
-                    r.roi >= 0 ? "text-yes-300" : "text-no-300"
-                  }`}
-                >
+                {/* ⭐ A RATE OF RETURN IN THE TEXT'S INK, its sign its own (R5-I, 2026-10-09). It was the YES green from 0% up
+                    and the NO rose below: §B2a keeps the pair for a stake's side, and a move of someone's money is read the
+                    way a price move is — one neutral ink, the sign carried by the figure (§B2a's 2026-09-27 ruling). The
+                    gold that "money earned" would ask for is the IDENTITY page's to refuse (Q5: `test:gold-is-money`
+                    holds this page). The podium's rate below, the same. */}
+                <td className="p-3 text-right font-mono tabular-nums font-bold text-text">
                   {r.roi >= 0 ? "+" : ""}{r.roi.toFixed(1)}%
                 </td>
                 <td className="p-3 hidden md:table-cell">
@@ -626,7 +627,7 @@ function Podium({ top, t }: { top: Row[]; t: Dict }) {
                 <span className="min-w-0 break-words font-medium text-text">@{r.handle}</span>
                 <TierBadge tier={r.tier} t={t} />
               </div>
-              <span className={`mt-0.5 font-mono text-[13px] font-bold tabular-nums ${r.roi >= 0 ? "text-yes-300" : "text-no-300"}`}>
+              <span className="mt-0.5 font-mono text-[13px] font-bold tabular-nums text-text">
                 {r.roi >= 0 ? "+" : ""}{r.roi.toFixed(1)}%
               </span>
               {r.streak > 0 && <span className="mt-1"><HotChip streak={r.streak} t={t} /></span>}

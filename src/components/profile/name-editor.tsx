@@ -13,6 +13,7 @@ import { useToast } from "@/components/ui/toast";
 import { useT } from "@/lib/i18n";
 import { updateProfileBasicsAction } from "@/app/profile/actions";
 import { errorCopy } from "@/lib/error-copy";
+import { refusalReason, refusalVariant } from "@/lib/failure-reasons";
 import { keepNameEnd } from "@/components/ui/keep-words";
 
 export function ProfileNameEditor({
@@ -77,7 +78,8 @@ export function ProfileNameEditor({
     if (savingRef.current) return;
     const v = value.trim();
     if (v === "") {
-      toast({ title: t.toast.nameEmpty, variant: "danger" });
+      // §F2/§F3 (R5-I): an empty name is a slip the player fixes by typing — the calm `factual` toast, no error buzz.
+      toast({ title: t.toast.nameEmpty, variant: "factual" });
       return;
     }
     if (v === (currentName ?? "")) {
@@ -101,7 +103,8 @@ export function ProfileNameEditor({
       }
       if (!r.ok) {
         savingRef.current = false;
-        toast({ title: t.toast.nameFailed, description: errorCopy(t, r), variant: "danger" });
+        // §F2/§F3 (R5-I): at the registry's rank — a refusal the player can fix is the calm `factual` toast, a fault `danger`.
+        toast({ title: t.toast.nameFailed, description: errorCopy(t, r), variant: refusalVariant(refusalReason(r)) });
         return;
       }
       toast({ title: t.toast.nameUpdated, variant: "success" });

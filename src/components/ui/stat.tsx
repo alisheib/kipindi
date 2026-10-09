@@ -146,7 +146,6 @@ export function Stat({
   hint,
   size = "xs",
   labelStyle = "micro",
-  labelTone,
   boxed,
   font,
   icon,
@@ -187,12 +186,9 @@ export function Stat({
   size?: StatSize;
   /** Label metrics. See the LABEL dictionary. Default `micro` = the kit's original. */
   labelStyle?: StatLabel;
-  /**
-   * Recolour the whole label ROW (label + icon) — the treatment `MoneyTile` used
-   * to flag an inflow green and an outflow rose. Overrides the label style's own
-   * colour; leave unset for the dictionary's.
-   */
-  labelTone?: "yes" | "no";
+  /* ⛔ `labelTone` IS GONE (R5-I, 2026-10-09; DESIGN_AUTHORITY §B2a). It recoloured the label row in the betting pair
+     to flag an inflow green and an outflow rose — the treatment of the old `MoneyTile`; an inflow is not the YES side.
+     Its one caller (/profile/activity) reads every tile in the label's own ink now. */
   /** Container. Omit for the kit's bare pair. See the BOX dictionary. */
   boxed?: StatBox;
   /** Override the rung's default face. ⛔ Ignored when `money` — M4 outranks it. */
@@ -220,7 +216,6 @@ export function Stat({
         "stat-label",
         "font-mono uppercase",
         LABEL[labelStyle],
-        labelTone === "yes" ? "text-yes-300" : labelTone === "no" ? "text-no-300" : null,
         labelClassName,
       )}
     >
@@ -235,7 +230,7 @@ export function Stat({
           className={cn(
             "flex items-center gap-1.5",
             iconAlign === "end" && "justify-between",
-            labelTone === "yes" ? "text-yes-300" : labelTone === "no" ? "text-no-300" : "text-text-subtle",
+            "text-text-subtle",
           )}
         >
           {iconAlign === "end" ? <>{labelRow}<span className="shrink-0">{icon}</span></> : <>{icon}{labelRow}</>}

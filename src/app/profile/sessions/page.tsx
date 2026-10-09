@@ -105,8 +105,9 @@ export default async function SessionsPage() {
               </p>
             </div>
           </div>
-          {/* Destructive: ends this (the only) session → ghost button with claret
-              text. Inline colour beats .btn-ghost's own `color: var(--text)`. */}
+          {/* Destructive: ends this (the only) session → ghost button with the danger
+              ink (`--danger-fg`, as the avatar menu's Sign out; it read "claret" here and painted the NO side's
+              rose — §B2a, R5-I 2026-10-09). Inline colour beats .btn-ghost's own `color: var(--text)`. */}
           {/* B-20 — the destructive sign-out finally has a pending face: a real
               server action (useFormStatus needs one — a native POST navigation
               never flips pending), and the kit SubmitButton's new icon slot,
@@ -118,7 +119,7 @@ export default async function SessionsPage() {
               size="sm"
               fullWidth={false}
               icon={<I.logOut s={13} />}
-              style={{ color: "var(--no-300)" }}
+              style={{ color: "var(--danger-fg)" }}
             />
           </form>
         </div>

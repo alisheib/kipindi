@@ -12,6 +12,7 @@ import { voteAction } from "@/app/proposals/actions";
 import { useToast } from "@/components/ui/toast";
 import { useT } from "@/lib/i18n";
 import { errorCopy } from "@/lib/error-copy";
+import { refusalReason, refusalVariant } from "@/lib/failure-reasons";
 
 type Dir = "up" | "down" | null;
 
@@ -88,7 +89,8 @@ export function VoteControl({
         // Roll back to the captured pre-click state.
         setVote(prevVote);
         setTally(prevTally);
-        toast({ title: t.toast.voteFailed, description: errorCopy(t, r), variant: "danger" });
+        // §F2/§F3 (R5-I): at the registry's rank — a refusal the player can fix is the calm `factual` toast, a fault `danger`.
+        toast({ title: t.toast.voteFailed, description: errorCopy(t, r), variant: refusalVariant(refusalReason(r)) });
       }
     });
   };

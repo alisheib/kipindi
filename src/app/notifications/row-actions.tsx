@@ -93,7 +93,7 @@ export function NotificationRowActions({
         disabled={pending}
         aria-label={dismissLabel}
         onClick={() => run(() => dismissNotifOnPageAction(id))}
-        className="inline-flex items-center justify-center min-h-[44px] min-w-[44px] rounded-md text-text-subtle hover:text-no-300 hover:bg-bg-overlay transition-colors disabled:opacity-50"
+        className="inline-flex items-center justify-center min-h-[44px] min-w-[44px] rounded-md text-text-subtle hover:text-danger-fg hover:bg-bg-overlay transition-colors disabled:opacity-50"
       >
         <I.x s={13} />
       </button>

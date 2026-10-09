@@ -2735,9 +2735,11 @@ textarea::placeholder { color: var(--text-subtle); }
    A brief ring pulse on the card + a flash on the side just tapped. Kept short so
    rapid repeat taps re-fire cleanly. Motion is removed under reduced-motion; the
    aria-live announcement carries the confirmation regardless. */
+/* ⭐ The SUCCESS green (R5-I, 2026-10-09; §B2a): "your bet is placed" is an app state — the toast it replaces is
+   `success` — and it pulsed the YES side's green on a Down bet too. The side tapped has its own flash (`ud-side-flash`). */
 @keyframes ud-place-pulse {
-  0%   { box-shadow: 0 0 0 0 color-mix(in oklab, var(--yes-500) 55%, transparent); }
-  100% { box-shadow: 0 0 0 8px color-mix(in oklab, var(--yes-500) 0%, transparent); }
+  0%   { box-shadow: 0 0 0 0 color-mix(in oklab, var(--success-500) 55%, transparent); }
+  100% { box-shadow: 0 0 0 8px color-mix(in oklab, var(--success-500) 0%, transparent); }
 }
 /* 240ms → `--t-base` (220), the nearest rung down. The ring expands and is gone —
    a one-shot arrival — so `--m-settle`, not the legacy `--ease-sink`. */
@@ -6548,8 +6550,11 @@ html[lang="zh"] .kp-udrule { word-break: keep-all; }
    and the kit's value-delta fade crossfades the two words. The amount class gives it money type. A frozen wallet
    renders none (the component). */
 .kp-jbal__delta { position: absolute; top: -2px; left: 0; right: 0; padding-block: 2px; text-align: center; background: var(--bg-inset); font-size: var(--type-micro); line-height: 1; pointer-events: none; }
-.kp-jbal__delta[data-sign="up"] { color: var(--yes-300); }
-.kp-jbal__delta[data-sign="down"] { color: var(--no-300); }
+/* ⭐ ONE INK, THE SIGN ITS OWN (R5-I, 2026-10-09; DESIGN_AUTHORITY §B2a). A balance that moved is not a side: up was the YES
+   green and down the NO rose, so a stake just placed read as a loss and a deposit as a winning side. The delta takes the
+   text's ink, as a price move does (§B2a, 2026-09-27); its "+" or "−" says which way. (The classic capsule's own delta,
+   `.wbp-delta` in wallet-balance-pill.tsx, is frozen chrome — owner item.) */
+.kp-jbal__delta[data-sign] { color: var(--text); }
 @media (min-width: 360px) { .kp-jbal__fig { font-size: 14px; } }
 @media (min-width: 1024px) { .kp-jbal { padding: 0 var(--sp-3); } }
 

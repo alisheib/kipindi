@@ -76,6 +76,13 @@ function pickBody(n: StoredNotification, locale: string): string {
 export function NotificationsPanel({ journey = false }: { journey?: boolean } = {}) {
   const unreadDot = journey ? "brand" : "gold";
   const unreadWash = journey ? "bg-brand-500/[0.04]" : "bg-gold-500/[0.04]";
+  // ⭐ R5-I (the visual pass's round 5, 2026-10-09; DESIGN_AUTHORITY §B2a) — the betting pair is not the bell's. In the
+  // journey the count badge is the brand pip the Arifa row already counts the same unread in (`unread-row.tsx`,
+  // `CountBadge tone="brand"`), and "Clear all" answers a hover in the danger ink every destructive control wears (a
+  // comment's Delete, the menu's Sign out) — both were the NO side's rose. The classic bell keeps its rose badge and hover
+  // until the owner rules (frozen chrome): the change for it is these two values with the prop dropped.
+  const countTone = journey ? "brand" : "rose";
+  const clearAllHover = journey ? "hover:text-danger-fg" : "hover:text-no-300";
   const router = useRouter();
   const [open, setOpen] = useState(false);
   const [items, setItems] = useState<StoredNotification[]>([]);
@@ -515,7 +522,7 @@ export function NotificationsPanel({ journey = false }: { journey?: boolean } = 
           count={unread}
           aria-hidden
           className="notif-badge-pulse"
-          tone="rose"
+          tone={countTone}
           size="md"
           ring="var(--bg-base)"
           // DS-24's halo now lives on the `rose` tone inside the primitive, not here — a
@@ -593,7 +600,7 @@ export function NotificationsPanel({ journey = false }: { journey?: boolean } = 
                     <button
                       type="button"
                       onClick={handleClearAll}
-                      className="h-7 px-1.5 rounded-md font-mono text-micro font-bold uppercase tracking-[0.10em] text-text-subtle hover:text-no-300 hover:bg-bg-overlay transition-colors whitespace-nowrap"
+                      className={`h-7 px-1.5 rounded-md font-mono text-micro font-bold uppercase tracking-[0.10em] text-text-subtle ${clearAllHover} hover:bg-bg-overlay transition-colors whitespace-nowrap`}
                     >
                       {t.common.clearAll}
                     </button>

@@ -411,8 +411,10 @@ export function useUpDownQuickBet(opts: {
           // This tap's entry, and only this tap's, comes back out (UD-7).
           mutateInFlight((m) => { m.delete(key); });
           // UD-3/UD-4 · the refusal, in the player's own language, presented per the §5
-          // matrix: race/transient → STICKY danger toast (a money refusal stays until
-          // read); compliance/account block → the acknowledge-modal the surface hosts.
+          // matrix: race/transient → STICKY toast (a money refusal stays until read), at the
+          // registry's rank — `danger` for a fault, `factual` for a slip the player can fix
+          // (§F2/§F3; R5-I, 2026-10-09, `fail.variant`); compliance/account block → the
+          // acknowledge-modal the surface hosts.
           const code = r && "code" in r ? (r as { code?: string }).code : undefined;
           const serverError = r && "error" in r ? (r as { error?: string }).error : undefined;
           // C2/C3 · the machine REASON and its figures, when the service emits them. This is
@@ -425,7 +427,7 @@ export function useUpDownQuickBet(opts: {
           } else {
             if (fail.lockNow) setLockedByServer(true);
             setLiveMessage(fail.description);
-            toast({ title: copy.failed, description: fail.description, variant: "danger", durationMs: 0 });
+            toast({ title: copy.failed, description: fail.description, variant: fail.variant, durationMs: 0 });
           }
         }
       } catch {

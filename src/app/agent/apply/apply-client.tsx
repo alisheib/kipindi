@@ -34,6 +34,7 @@ import { KycGatePanel } from "@/components/kyc/kyc-gate-panel";
 import type { KycGateState } from "@/lib/kyc-gate-state";
 import { useT } from "@/lib/i18n";
 import { fill, formatTzs } from "@/lib/utils";
+import { refusalVariant } from "@/lib/failure-reasons";
 import { fileToDataUrl } from "@/lib/client/kyc-image";
 import { focusFirstInvalid } from "@/lib/client/focus-first-invalid";
 import type { AgentDocType } from "@/lib/server/store";
@@ -302,7 +303,8 @@ export function ApplyClient({ app, documents, missing, kycGate, fee, lipa, walle
                   // can learn what to fix.
                   if (r.field) { setFieldErr({ name: r.field, message: said }); focusFirstInvalid(formRef.current, [r.field]); }
                   else router.refresh();
-                  toast({ title: t.toast.couldntSubmit, description: said, variant: "danger" });
+                  // §F2/§F3 (R5-I): a referee field the applicant can correct is the calm `factual` toast; anything else `danger`.
+                  toast({ title: t.toast.couldntSubmit, description: said, variant: r.field ? "factual" : "danger" });
                   return;
                 }
                 setFieldErr(null);
@@ -410,7 +412,9 @@ export function ApplyClient({ app, documents, missing, kycGate, fee, lipa, walle
                       if (r.refusal === "insufficient_balance" && r.shortfallTzs !== undefined) {
                         setBalanceTzs(Math.max(0, fee.totalTzs - r.shortfallTzs));
                       }
-                      toast({ title: t.toast.couldntSubmit, description: copy, variant: "danger", durationMs: 0 });
+                      // §F2/§F3 (R5-I): still sticky (money), at the registry's rank for each refusal — a short balance and an
+                      // unconfirmed address the applicant can fix (`factual`); a refund owed, an identity check, a wallet fault `danger`.
+                      toast({ title: t.toast.couldntSubmit, description: copy, variant: r.refusal === "insufficient_balance" ? refusalVariant("balance_insufficient") : r.refusal === "email_unverified" ? refusalVariant("email_unverified") : "danger", durationMs: 0 });
                       return;
                     }
                     setFieldErr(null);
@@ -494,17 +498,18 @@ function Slot({ docType, label, doc, infoRequired, onDone, maxMb }: {
 
   const onFile = async (f: File | null) => {
     if (!f) return;
-    if (!f.type.startsWith("image/")) { toast({ title: t.toast.uploadFailed, description: t.agent.errType, variant: "danger" }); return; }
+    // §F2/§F3 (R5-I): a file that is not a photo, or one the phone could not read, is a slip — the calm `factual` toast.
+    if (!f.type.startsWith("image/")) { toast({ title: t.toast.uploadFailed, description: t.agent.errType, variant: "factual" }); return; }
     setBusy(true);
     let dataUrl: string;
     try { dataUrl = await fileToDataUrl(f); }
-    catch { setBusy(false); toast({ title: t.toast.couldntReadImage, description: t.agent.errGeneric, variant: "danger" }); return; }
+    catch { setBusy(false); toast({ title: t.toast.couldntReadImage, description: t.agent.errGeneric, variant: "factual" }); return; }
     setPreview(dataUrl);
     start(async () => {
       const fd = new FormData(); fd.set("docType", docType); fd.set("image", dataUrl);
       let r: Awaited<ReturnType<typeof attachAgentDocumentAction>>;
       try { r = await attachAgentDocumentAction(fd); } catch { r = { ok: false, error: t.error.somethingDidntWork, failure: "generic" }; }
-      if (!r.ok) { setPreview(null); setBusy(false); toast({ title: t.toast.uploadFailed, description: failureCopy(r.failure, r.error), variant: "danger", durationMs: 0 }); return; }
+      if (!r.ok) { setPreview(null); setBusy(false); toast({ title: t.toast.uploadFailed, description: failureCopy(r.failure, r.error), variant: r.failure && r.failure !== "generic" ? "factual" : "danger", durationMs: 0 }); return; }
       onDone({ docType, uploadedAt: new Date().toISOString(), rejected: false, rejectReason: null, sizeBytes: Math.floor(dataUrl.length * 0.75), thirdParty: docType === "REFEREE_ONE_ID" || docType === "REFEREE_TWO_ID" });
       setBusy(false);
       toast({ title: t.toast.documentAttached, variant: "success" });
@@ -524,7 +529,8 @@ function Slot({ docType, label, doc, infoRequired, onDone, maxMb }: {
           locked ? "border-border bg-bg-overlay/30 cursor-not-allowed opacity-70"
           : working ? "border-brand-400 bg-bg-overlay/40 cursor-wait"
           : rejected ? "border-warning-500 bg-warning-500/[0.08] cursor-pointer hover:border-warning-fg"
-          : done ? "border-yes-700 bg-yes-500/[0.07] cursor-pointer hover:border-yes-500"
+          // An uploaded slot is the KYC uploader's done tile, the success family (§B2a; R5-I, 2026-10-09).
+          : done ? "border-success-border bg-success-500/[0.07] cursor-pointer hover:border-success-500"
           : "border-border bg-bg-overlay/40 hover:border-brand-400 cursor-pointer"
         }`}>
         {preview ? (
@@ -538,7 +544,7 @@ function Slot({ docType, label, doc, infoRequired, onDone, maxMb }: {
           </span>
         )}
         <span className="block font-display text-body-sm font-semibold text-text">{label}</span>
-        <span className={`mt-0.5 block font-mono text-body-sm ${rejected ? "text-warning-500" : done ? "text-yes-300" : "text-text-subtle"}`}>{stateLabel}</span>
+        <span className={`mt-0.5 block font-mono text-body-sm ${rejected ? "text-warning-500" : done ? "text-success-fg" : "text-text-subtle"}`}>{stateLabel}</span>
         {rejected && doc?.rejectReason && <span className="mt-1 block text-body-sm leading-snug text-text-muted">{doc.rejectReason}</span>}
         {!locked && !working && (done || rejected) && <span className="mt-1 block text-body-sm text-text-subtle">{t.agent.replace}</span>}
       </button>

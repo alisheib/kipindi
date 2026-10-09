@@ -669,6 +669,89 @@ console.log("\n§10 · The secondary stands down while the primary is up — and
     /let openCount = 0;/.test(PRESENCE) && /openCount \+\+|openCount\+\+/.test(PRESENCE));
 }
 
+// ───────────────────────────────────────────────────────────────────────────────
+console.log("\n§11 · A refusal the player can fix is never a popup, and never the alarm — the registry ranks every one");
+// ───────────────────────────────────────────────────────────────────────────────
+//
+// ⭐ R5-I (the visual pass's round 5, 2026-10-09). §F2's refusal rows — "the player can fix it: popup ⛔ never · toast ✅
+// `factual` · haptic ⛔ silent" and "a hard block or a real fault: popup ✅ when it must be acknowledged · toast ✅ `danger`"
+// — answered three ways on the three bet surfaces. The Sell button ranked its refusals by the failure registry (S6 A8h).
+// The old dial opened the ✗ result over EVERY refusal, a short balance's too, with four arms toasting the gold-struck
+// `warning`; Up & Down toasted every server refusal `danger`, a stake under the minimum included. The rank now has ONE
+// home (`refusalVariant` in `failure-reasons.ts`), and every surface reads it.
+{
+  const FR = await import("../src/lib/failure-reasons.ts");
+  const { udBetErrorCopy } = await import("../src/components/updown/updown-bet-errors.ts");
+  const reasons = Object.keys(FR.REASONS) as Array<keyof typeof FR.REASONS>;
+  ok("11.0 · control · `refusalVariant` IS the registry's rank — every `error` reason `danger`, every warning/info `factual`",
+    reasons.length > 30 && reasons.every((r) => FR.refusalVariant(r) === (FR.REASONS[r].severity === "error" ? "danger" : "factual")));
+  ok("11.0b · …and a refusal it cannot rank is `danger` — an unclassified refusal reads as a failure, never as reassurance",
+    FR.refusalVariant(null) === "danger" && FR.refusalVariant(FR.refusalReason({ error: "x" })) === "danger"
+    && FR.refusalReason({ code: "BUSY" }) === "system_busy" && FR.refusalReason({ reason: "stake_below_min", code: "INVALID" }) === "stake_below_min");
+
+  /** The dial's refusal path, as defects: an arm the registry does not rank, a gold `warning`, a popup over a slip. */
+  const dialDefects = (src: string): string[] => {
+    const d: string[] = [];
+    const code = stripComments(src);
+    const at = code.indexOf("const errorToToast = (");
+    const map = at < 0 ? "" : code.slice(at, code.indexOf("const retrySubmit", at));
+    if (!map) { d.push("errorToToast not found"); return d; }
+    if (/"warning"/.test(map)) d.push("an arm toasts the gold-struck `warning`");
+    const arms = (map.match(/variant: [^,}\n]+/g) ?? []).filter((a) => !a.includes("|"));
+    if (arms.length < 9) d.push(`only ${arms.length} arms read`);
+    for (const a of arms) if (!/^variant: (?:refusalVariant\([^)]*\)?\)|"danger")$/.test(a.trim())) d.push(`an arm the registry does not rank: ${a}`);
+    if (!/variant: refusalVariant\("balance_insufficient"\)/.test(map)) d.push("a short balance is not ranked as the registry's `balance_insufficient`");
+    const r0 = code.indexOf("const mapped = errorToToast(");
+    const refuse = r0 < 0 ? "" : code.slice(r0, code.indexOf("deferToast({", r0));
+    if (!/toast\(\{ title: mapped\.title, description: mapped\.body, variant: mapped\.variant, durationMs: 0 \}\);/.test(refuse)) d.push("the refusal toast is not the ranked, sticky one");
+    if (!/if \(mapped\.variant === "danger"\) \{\s*setResultData\(\{[\s\S]*?\}\);\s*setResultOpen\(true\);\s*\}/.test(refuse)) d.push("the ✗ result opens over a refusal the player can fix");
+    return d;
+  };
+  const DIAL = read("src/components/markets/conviction-dial.tsx");
+  ok("11.1 · the old dial: every arm ranked, a short balance `factual`, the ✗ result only for `danger`, every toast sticky",
+    dialDefects(DIAL).length === 0, dialDefects(DIAL).join("; "));
+  const plantPopup = DIAL.replace(/if \(mapped\.variant === "danger"\) \{(\s*setResultData\(\{[\s\S]*?\}\);\s*setResultOpen\(true\);\s*)\}/, "{$1}");
+  const plantGold = DIAL.replace('variant: refusalVariant(reasonForCode(code)), retryable: true', 'variant: "warning", retryable: true');
+  const plantBalance = DIAL.replace('variant: refusalVariant("balance_insufficient")', 'variant: "danger"');
+  ok("11.1b · control · the shipped shapes are reported — a popup over every refusal; a gold `warning` arm; a short balance as `danger`",
+    plantPopup !== DIAL && plantGold !== DIAL && plantBalance !== DIAL
+    && dialDefects(plantPopup).length > 0 && dialDefects(plantGold).length > 0 && dialDefects(plantBalance).length > 0);
+
+  // Up & Down — executed, not grepped: the hook's mapper is a pure function.
+  const m = { udErrSelectionClosed: "c", udErrRateLimited: "r", udErrBusy: "b", udErrNotFound: "n", udErrInvalid: "i",
+    udErrSuspendedTitle: "sT", udErrSuspendedBody: "sB", udErrRgLimitTitle: "rT", udErrRgLimitBody: "rB" };
+  const ud = (code?: string, r?: Record<string, unknown>) => {
+    const f = udBetErrorCopy(code, "x", m, r as never, { failStakeBelowMin: "min {min}", failSystemError: "e", failLossLimitDaily: "cap" }, (n: number) => `TZS ${n}`);
+    return f.kind === "transient" ? f.variant : `modal:${f.variant}`;
+  };
+  ok("11.2 · Up & Down: a stake under the minimum, busy, too many tries, selection closed → `factual` (no buzz)",
+    ud("INVALID", { reason: "stake_below_min", detail: { min: 1000 } }) === "factual" && ud("BUSY") === "factual" && ud("RATE_LIMITED") === "factual" && ud("SELECTION_CLOSED") === "factual");
+  ok("11.2b · …a fault or an unranked refusal → `danger`; the RG loss cap stays the acknowledge dialog",
+    ud("BUSY", { reason: "system_error" }) === "danger" && ud("INVALID") === "danger" && ud(undefined) === "danger" && ud("INVALID", { reason: "loss_limit_daily" }) === "modal:danger");
+  ok("11.2c · …and the hook toasts it at that rank, still sticky (a money refusal stays until read)",
+    /toast\(\{ title: copy\.failed, description: fail\.description, variant: fail\.variant, durationMs: 0 \}\);/.test(read("src/components/updown/use-quick-bet.ts")));
+
+  // Every other refusal toast on a player's surface: a slip of the player's own is `factual`.
+  const SLIP = /t\.toast\.(?:notAnImage|imageTooLarge|couldntReadImage|nameEmpty|couldntCopy)\b/;
+  const slipAlarms = (src: string) => (stripComments(src).match(/toast\(\{[^;]*?\}\)/g) ?? []).filter((c) => SLIP.test(c) && /variant: "danger"/.test(c));
+  ok("11.3 · control · the scanner reports a slip toasted as an alarm", slipAlarms('toast({ title: t.toast.nameEmpty, variant: "danger" });').length === 1
+    && slipAlarms('toast({ title: t.toast.nameEmpty, variant: "factual" });').length === 0);
+  const walkTsx = (d: string): string[] => {
+    const out: string[] = [];
+    for (const e of readdirSync(d)) {
+      const p = `${d}/${e}`;
+      if (statSync(p).isDirectory()) out.push(...walkTsx(p));
+      else if (/\.tsx?$/.test(p)) out.push(p);
+    }
+    return out;
+  };
+  const player = [...walkTsx("src/app"), ...walkTsx("src/components")].filter((f) => !f.includes("/admin/") && !f.startsWith("src/app/api/"));
+  const alarmed = player.filter((f) => slipAlarms(read(f)).length > 0);
+  ok("11.4 · no player toast alarms over a picked file, an empty name or a refused copy — the calm `factual`", alarmed.length === 0, alarmed.join(" · "));
+  const rawMsg = player.filter((f) => /toast\(\{[^;]*\(err as Error\)\.message/.test(stripComments(read(f))));
+  ok("11.5 · no refusal toast prints the browser's own error message (F4: the next step, in the reader's language)", rawMsg.length === 0, rawMsg.join(" · "));
+}
+
 // ⛔ COUNTED AFTER THE LAST ASSERTION, NOT BEFORE. Appending §10 below this line once put the
 // total — and `process.exit` — ahead of nine checks, so they printed after the verdict and
 // could not fail the run.

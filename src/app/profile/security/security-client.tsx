@@ -180,7 +180,7 @@ export function SecurityClient({ enabled, backupRemaining, hasPassword }: { enab
         <div className="flex items-start gap-3">
           {/* ⚠️ LITERALS, not `h-10 w-10` — spacing is overridden (tailwind.config.ts:200-215)
               and `h-10` renders 80px. */}
-          <span className={`inline-flex h-[40px] w-[40px] shrink-0 items-center justify-center rounded-md ${enabled ? "bg-yes-500/10 text-yes-300" : "bg-brand-500/10 text-brand-300"}`}>
+          <span className={`inline-flex h-[40px] w-[40px] shrink-0 items-center justify-center rounded-md ${enabled ? "bg-success-500/10 text-success-fg" : "bg-brand-500/10 text-brand-300"}`}>
             <I.shieldcheck s={18} />
           </span>
           <div>

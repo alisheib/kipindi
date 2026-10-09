@@ -19,6 +19,7 @@ import { useToast } from "@/components/ui/toast";
 import { useT } from "@/lib/i18n";
 import { updateAvatarAction } from "@/app/profile/actions";
 import { errorCopy } from "@/lib/error-copy";
+import { refusalReason, refusalVariant } from "@/lib/failure-reasons";
 
 const TARGET_PX = 256;
 const JPEG_QUALITY = 0.82;
@@ -66,7 +67,8 @@ export function AvatarUploader({
   const onFile = async (f: File | null) => {
     if (!f) return;
     if (!f.type.startsWith("image/")) {
-      toast({ title: t.toast.notAnImage, description: t.toast.pickJpgPng, variant: "danger" });
+      // §F2/§F3 (R5-I): a file that is not a photo is a slip the player can fix — the calm `factual` toast.
+      toast({ title: t.toast.notAnImage, description: t.toast.pickJpgPng, variant: "factual" });
       return;
     }
     try {
@@ -84,14 +86,17 @@ export function AvatarUploader({
         }
         if (!r.ok) {
           setPreview(null);
-          toast({ title: t.toast.nameFailed, description: errorCopy(t, r), variant: "danger" });
+          // §F2/§F3 (R5-I): at the registry's rank — a refusal the player can fix is the calm `factual` toast, a fault `danger`.
+        toast({ title: t.toast.nameFailed, description: errorCopy(t, r), variant: refusalVariant(refusalReason(r)) });
           return;
         }
         toast({ title: t.toast.photoUpdated, variant: "success" });
         router.refresh();
       });
     } catch (err) {
-      toast({ title: t.toast.couldntReadImage, description: (err as Error).message, variant: "danger" });
+      // §F2/§F3/§F4 (R5-I): a photo the phone could not read is a slip — the calm `factual` toast, and its next step in
+      // the reader's language (the browser's own English error message was the description).
+      toast({ title: t.toast.couldntReadImage, description: t.toast.pickJpgPng, variant: "factual" });
     }
   };
 
@@ -108,7 +113,8 @@ export function AvatarUploader({
         r = { ok: false, error: t.error.somethingDidntWork };
       }
       if (!r.ok) {
-        toast({ title: t.toast.nameFailed, description: errorCopy(t, r), variant: "danger" });
+        // §F2/§F3 (R5-I): at the registry's rank — a refusal the player can fix is the calm `factual` toast, a fault `danger`.
+        toast({ title: t.toast.nameFailed, description: errorCopy(t, r), variant: refusalVariant(refusalReason(r)) });
         return;
       }
       toast({ title: t.toast.photoRemoved, variant: "default" });
@@ -159,7 +165,9 @@ export function AvatarUploader({
         </span>
       </button>
 
-      {/* Clear button — only when an avatar exists. Same geometry as the camera, on the top-right rim. */}
+      {/* Clear button — only when an avatar exists. Same geometry as the camera, on the top-right rim. Its hover is the
+          danger ink every destructive control wears (a comment's Delete, the menu's Sign out) — not the NO side's rose
+          (§B2a; R5-I, 2026-10-09). */}
       {preview && !pending && (
         <button
           type="button"
@@ -167,7 +175,7 @@ export function AvatarUploader({
           aria-label={t.common.removeProfilePhoto}
           className="group absolute left-[85.36%] top-[14.64%] inline-flex h-[40px] w-[40px] -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-pill"
         >
-          <span className="inline-flex h-[32px] w-[32px] items-center justify-center rounded-pill border border-border bg-bg-elevated text-text-subtle shadow-e2 transition-colors group-hover:border-no-700 group-hover:text-no-300">
+          <span className="inline-flex h-[32px] w-[32px] items-center justify-center rounded-pill border border-border bg-bg-elevated text-text-subtle shadow-e2 transition-colors group-hover:border-danger-border group-hover:text-danger-fg">
             <I.trash s={11} />
           </span>
         </button>

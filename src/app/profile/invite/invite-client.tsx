@@ -110,7 +110,8 @@ export function ReferralShare({ link, shareText }: { link: string; shareText: st
       toast({ title: t.toast.linkCopied, variant: "success" });
       setTimeout(() => setCopied(false), 1800);
     } catch {
-      toast({ title: t.toast.couldntCopy, description: t.toast.longPressCopy, variant: "danger" });
+      // §F2/§F3 (R5-I): a copy the browser refused is a slip the player can fix (long-press) — the calm `factual` toast.
+      toast({ title: t.toast.couldntCopy, description: t.toast.longPressCopy, variant: "factual" });
     }
   };
 

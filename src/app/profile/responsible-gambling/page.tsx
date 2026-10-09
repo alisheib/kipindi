@@ -138,9 +138,13 @@ export default async function ResponsibleGamblingPage({ searchParams }: { search
         <Callout tone="neutral" size="md" glyph="pause">{endSentence(t.rg.breakActive, rg.coolingOffUntil)}</Callout>
       ) : null}
 
-      <PageHero glow="yes">
+      {/* ⭐ The account pages' accent (`info`), as /profile/account, /kyc, /sessions and /source-of-funds wear it. It was
+          the YES green — glow and eyebrow — on the page a player opens when gambling is hurting them: §B2a names the RG
+          support panel as the betting pair's misuse, and this hero was its last trace (R5-I, 2026-10-09). The words, the
+          glyph and every RG notice below are unchanged. */}
+      <PageHero glow="info">
         <PageHeader
-          tone="yes"
+          tone="info"
           icon={<I.shieldcheck s={14} />}
           eyebrow={t.rg.playerProtection}
           title={t.profile.responsibleGambling}

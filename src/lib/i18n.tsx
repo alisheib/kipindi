@@ -164,13 +164,16 @@ export function useT() {
  * `lcl-orbit` and `lcl-pulse` were both reported as names with NO CONSUMER —
  * which is to say, as safe to delete.
  */
+/* ⭐ THE BRAND FAMILY, NOT THE BETTING PAIR (R5-I, the visual pass's round 5, 2026-10-09). The glyphs alternated the YES
+   green and the NO rose — a decoration in the two sides' inks while a language changes (DESIGN_AUTHORITY §B2a); they
+   alternate the brand family's two text steps now, the one non-money accent (R5-C), around the brand pulse at the centre. */
 const GLYPHS = [
-  { char: "Hi",  color: "oklch(78% 0.16 152)" },    // yes-green
-  { char: "\u8BED", color: "oklch(78% 0.16 22)" },  // no-red — 语
-  { char: "Ha",  color: "oklch(78% 0.16 152)" },    // yes-green
-  { char: "\u597D", color: "oklch(78% 0.16 22)" },  // no-red — 好
-  { char: "Sw",  color: "oklch(78% 0.16 152)" },    // yes-green
-  { char: "En",  color: "oklch(78% 0.16 22)" },     // no-red
+  { char: "Hi",  color: "var(--brand-300)" },
+  { char: "\u8BED", color: "var(--brand-200)" },  // 语
+  { char: "Ha",  color: "var(--brand-300)" },
+  { char: "\u597D", color: "var(--brand-200)" },  // 好
+  { char: "Sw",  color: "var(--brand-300)" },
+  { char: "En",  color: "var(--brand-200)" },
 ] as const;
 
 export function LocaleChangeOverlay() {

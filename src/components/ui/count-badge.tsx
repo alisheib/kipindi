@@ -33,8 +33,12 @@ const TONE: Record<CountBadgeTone, React.CSSProperties> = {
   // The bell. A gradient, not a flat fill — it sits on the top bar's glass and a
   // flat rose disappears into it at the bottom edge.
   rose:  { background: "linear-gradient(180deg, var(--no-400), var(--no-600))", color: "var(--pearl-50)" },
-  // The admin nav counter — work waiting on an officer, which is chrome, never money.
-  brand: { background: "var(--brand-500)", color: "var(--pearl-50)" },
+  // The admin nav counter — work waiting on an officer, which is chrome, never money — and the journey's unread count
+  // (the Arifa row, and the journey bell's since R5-I).
+  // ⭐ `--brand-600`, the family's deeper step (R5-I, the visual pass's round 5, 2026-10-09): the pip's digits are TEXT,
+  // and pearl on `--brand-500` measured 3.48:1 — under §A1's 4.5:1 for 10–11px type. On `--brand-600` they read 5.04:1.
+  // (The classic bell's `rose` reads 2.64:1 at its gradient's light end — frozen chrome, the owner's item with its hue.)
+  brand: { background: "var(--brand-600)", color: "var(--pearl-50)" },
   // The chat bubble's inverse pip: pearl on the chat canvas.
   pearl: { background: "var(--pearl)", color: "var(--chat-canvas)" },
 };

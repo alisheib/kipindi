@@ -51,8 +51,9 @@ export function PasswordPair() {
         hint={
           dirty
             ? match
-              ? <span className="text-yes-300">{t.common.passwordsMatch}</span>
-              : <span className="text-no-300">{t.toast.passwordsDontMatch}</span>
+              // A form's verdict on its own field: the app-state pair, never the betting one (§B2a; R5-I, 2026-10-09).
+              ? <span className="text-success-fg">{t.common.passwordsMatch}</span>
+              : <span className="text-danger-fg">{t.toast.passwordsDontMatch}</span>
             : undefined
         }
       >

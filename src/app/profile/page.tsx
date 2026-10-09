@@ -147,14 +147,15 @@ export default async function ProfilePage() {
         <h1 className="sr-only">
           {t.profile.title} · {displayName}
         </h1>
-        {/* Layered background — emerald → rose tilt + mark watermark */}
+        {/* Background — the page hero every /profile page wears (`PageHero`'s `info` glow over `--hero-panel-grad`) + mark
+            watermark. ⭐ It was an emerald → rose tilt: the YES and NO inks as a wash on the player's own page, where neither
+            is a side (§B2a; R5-I, 2026-10-09) — and the one hero of the eight /profile pages that differed. */}
         <div
           className="absolute inset-0"
           aria-hidden
           style={{
             background:
-              "radial-gradient(1200px 360px at 0% 0%, oklch(40% 0.10 152 / 0.30), transparent 60%), " +
-              "radial-gradient(900px 320px at 100% 100%, oklch(45% 0.13 22 / 0.25), transparent 60%), " +
+              "radial-gradient(800px 320px at 100% 0%, oklch(45% 0.10 240 / 0.18), transparent 60%), " +
               "var(--hero-panel-grad)",
           }}
         />
@@ -265,7 +266,7 @@ export default async function ProfilePage() {
             font="mono"
             label={t.profile.openCount}
             value={String(positions.filter((p) => p.status === "OPEN").length)}
-            icon={<I.sparkle s={14} className="text-yes-300" />}
+            icon={<I.sparkle s={14} />}
             className="min-w-0 whitespace-nowrap border-border px-5 sm:border-l lg:px-6"
             labelClassName="min-w-0 whitespace-normal break-words"
           />
@@ -283,9 +284,11 @@ export default async function ProfilePage() {
         </div>
       </section>
 
-      {/* ── SoF banner when declaration is pending or rejected */}
+      {/* ── SoF banner when declaration is pending or rejected.
+          ⭐ "Under review" is WAITING — royal (§B11), as /profile/source-of-funds says the same state (R5-C) — and amber
+          only where the player must act: a declaration to resubmit (R5-I, 2026-10-09). It was amber for both. */}
       {sofNeedsBanner && (
-        <section className="rounded-xl border border-warning-border bg-warning-bg p-5">
+        <section className={`rounded-xl border p-5 ${sof!.reviewStatus === "REJECTED" ? "border-warning-border bg-warning-bg" : "border-info-border bg-info-bg"}`}>
           <div className="flex items-start gap-3">
             <I.fileSignature s={20} />
             <div className="min-w-0">
@@ -377,16 +380,17 @@ export default async function ProfilePage() {
         </div>
       </section>
 
-      {/* ── Sign out (POST to prevent CSRF — GET logout is neutered) */}
+      {/* ── Sign out (POST to prevent CSRF — GET logout is neutered). The danger ink, as the avatar menu's Sign out and
+          the sessions page's: a destructive door, never the NO side's rose (§B2a; R5-I, 2026-10-09). */}
       <form action="/auth/logout" method="POST">
         <button
           type="submit"
-          className="group inline-flex w-full items-center justify-between gap-3 rounded-xl glass-panel px-4 py-3.5 hover:border-no-700 transition-colors"
+          className="group inline-flex w-full items-center justify-between gap-3 rounded-xl glass-panel px-4 py-3.5 hover:border-danger-border transition-colors"
         >
           <span className="inline-flex items-center gap-3">
             {/* ⚠️ LITERALS, not `h-9 w-9` — spacing is overridden (tailwind.config.ts:200-215)
                 and `h-9` renders 64px, setting the whole sign-out row's height. */}
-            <span className="inline-flex h-[36px] w-[36px] items-center justify-center rounded-md bg-no-500/10 text-no-300 group-hover:bg-no-500/20 transition-colors">
+            <span className="inline-flex h-[36px] w-[36px] items-center justify-center rounded-md bg-danger-500/10 text-danger-fg group-hover:bg-danger-500/20 transition-colors">
               <I.logOut s={16} />
             </span>
             <span className="text-left">

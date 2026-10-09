@@ -74,7 +74,7 @@ export default async function ResetPasswordPage({ searchParams }: { searchParams
             </span>
 
             <AuthHeader
-              tone="no"
+              tone="danger"
               eyebrow={c.eyebrow}
               title={c.title}
               subtitle={c.body}

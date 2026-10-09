@@ -628,8 +628,12 @@ section("7 · the refusal: one of eyebrow and title, and its reason announced (E
       && /<p id=\{subtitleId\} className="mt-1\.5 text-\[13px\] text-text-muted leading-snug">/.test(ORM)
       && /aria-describedby=\{exiting \? undefined : describedBy\}/.test(read("src/components/ui/modal.tsx")));
   ok("7.4′ PLANT · the description unwired is reported", !/describedBy=\{subtitle \? subtitleId : undefined\}/.test(ORM.replace("describedBy={subtitle ? subtitleId : undefined}", "")));
+  // Re-pinned 2026-10-09 (R5-I): the dial reads the registry's rank from its one home (`refusalVariant`: `error` → danger),
+  // and opens the ✗ result only for `danger` (§F2) — the cooling-off refusal still opens it, as the alertdialog.
+  const FR = read("src/lib/failure-reasons.ts");
   ok("7.5 · a cooling-off refusal is `error` severity, so it opens as the danger (alertdialog) variant",
-    /variant: f\.severity === "error" \? "danger" : "factual"/.test(DIAL) && /cooling_off:\s*\{ severity: "error",\s*channel: "modal"/.test(read("src/lib/failure-reasons.ts")));
+    /variant: refusalVariant\(f\.reason\),/.test(DIAL) && /cooling_off:\s*\{ severity: "error",\s*channel: "modal"/.test(FR)
+      && /return reason !== null && REASONS\[reason\]\.severity !== "error" \? "factual" : "danger";/.test(FR) && /if \(mapped\.variant === "danger"\) \{/.test(DIAL));
 }
 
 /* ══ §8 · THE DEPOSIT-PAUSED NOTICE ═══════════════════════════════════════════════════════════════════════════════════ */

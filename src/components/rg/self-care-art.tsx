@@ -25,7 +25,9 @@ export function RgSunriseArt({ size = 44, className }: { size?: number; classNam
       <line x1="41.5" y1="25.5" x2="45" y2="22" />
       <line x1="12" y1="40" x2="7" y2="40" />
       <line x1="44" y1="40" x2="49" y2="40" />
-      <circle cx="28" cy="40" r="2.4" fill="var(--yes-300)" stroke="none" />
+      {/* The sun's point in the art's own ink (the support panel's success family) — it was the YES side's green, the last
+          betting ink in the panel §B2a names (R5-I, 2026-10-09). */}
+      <circle cx="28" cy="40" r="2.4" fill="currentColor" stroke="none" />
     </svg>
   );
 }

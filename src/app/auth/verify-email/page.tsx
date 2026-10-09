@@ -147,7 +147,7 @@ export default async function VerifyEmailPage({ searchParams }: { searchParams?:
           </span>
 
           <AuthHeader
-            tone={good ? "yes" : "no"}
+            tone={good ? "success" : "danger"}
             eyebrow={c.eyebrow}
             title={c.title}
             subtitle={c.body}

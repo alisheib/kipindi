@@ -114,9 +114,14 @@ type Props = {
  * DS-3 (2026-08-07) — the crest consumes the SYSTEM, not hand-typed oklch.
  * Each variant's disc is the `.mat-tint-*` recipe (colour as LIT GLASS: an even
  * tinted ring + an 18% fill composed off the semantic ramp with color-mix),
- * anchored on the same four families the toast tints use — yes / no / warning /
+ * anchored on the same families the toast tints use — success / danger / warning /
  * brand. A token retune now moves the crest, the toast ring and the buttons
  * together instead of leaving a re-typed copy behind (the one-fact rule).
+ * ⭐ R5-I (the visual pass's round 5, 2026-10-09; DESIGN_AUTHORITY §B2a): "success" and "failed" are APP STATES, and
+ * the betting pair is never borrowed for them. The crests were still the YES green and the NO rose — the toast they sit
+ * beside moved to `--success` / `--danger` on 2026-08-30 (toast.tsx, D2) and this file kept the betting ramps, so a
+ * deposit's tick wore the colour of a YES stake and a refused NO bet's ✗ the colour of its own side. A bet's SIDE stays
+ * where it is the side: the strip and the primary button of a placed bet (`stripTone` yes/no).
  */
 const crest = (ramp: string, fg: string) => ({
   fg,
@@ -127,7 +132,7 @@ const crest = (ramp: string, fg: string) => ({
 
 const TONE: Record<OperationVariant, { fg: string; bg: string; brd: string; shadow: string; primaryBtn: string }> = {
   success: {
-    ...crest("var(--yes-400)", "var(--yes-300)"),
+    ...crest("var(--success)", "var(--success-fg)"),
     // NOT btn-gold. Success is not the same thing as EARNED MONEY, and gold means
     // only the latter (RULES law 3). A deposit, a KYC approval and a submitted
     // proposal are all "success", and none of them is money the player has won.
@@ -135,8 +140,11 @@ const TONE: Record<OperationVariant, { fg: string; bg: string; brd: string; shad
     primaryBtn: "btn-primary",
   },
   danger: {
-    ...crest("var(--no-400)", "var(--no-300)"),
-    primaryBtn: "btn-no",
+    ...crest("var(--danger)", "var(--danger-fg)"),
+    // ⛔ NOT `btn-no` (R5-I, 2026-10-09; §B2a): that is the NO side's stake button — its fill, its weight, its tracking
+    // (§B2a: ".btn-yes is not .btn-primary with a different fill") — on "Close" and "Retry". The way on from a refusal is
+    // the primary action, as `warning`'s, `info`'s and `neutral`'s is; the crest and the eyebrow say it failed.
+    primaryBtn: "btn-primary",
   },
   warning: {
     ...crest("var(--warning-500)", "var(--warning-500)"),
@@ -522,8 +530,8 @@ export function OperationResultModal({
                   className="min-w-0 ml-auto text-right font-mono text-[14px] font-bold tabular-nums break-all"
                   style={{
                     color:
-                      d.tone === "good" ? "var(--yes-300)" :
-                      d.tone === "bad"  ? "var(--no-300)"  :
+                      d.tone === "good" ? "var(--success-fg)" :
+                      d.tone === "bad"  ? "var(--danger-fg)"  :
                                           "var(--text)",
                   }}
                 >

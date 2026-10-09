@@ -231,6 +231,26 @@ export const STATUS_TONE = {
   FAILED:     { player: "rose" },
   REVERSED:   { player: "slate" },
   CANCELLED:  { player: "slate" },
+  // ── A BONUS GRANT'S STATE, on the player's /wallet (R5-I, the visual pass's round 5, 2026-10-09) ────────────────────
+  /**
+   * ⭐ GRANT-SCOPED KEYS, for the reason the KYC keys below give: the namespace is FLAT, and `QUEUED`, `FULFILLED` and
+   * `PENDING_KYC` are words another family reads with another meaning (the account page shows a PENDING_KYC account as
+   * ACTIVE). Every grant word but the running one (ACTIVE draws its progress, not a chip) wore the WARNING chip — amber,
+   * struck in gilt (F3) — and amber means SOMEBODY MUST ACT (§B11). Nobody must:
+   *   · QUEUED — waiting its turn: royal, as PENDING is royal everywhere (correction 2).
+   *   · PENDING_KYC — historic since 2026-09-13 (nothing mints one; `wallet/page.tsx`): a wait, royal — the account page
+   *     ruled the same straggler "not a warning".
+   *   · FULFILLED ("Unlocked") — done, and the money is the player's: success green, as a completed payment is (item 5).
+   *     ⛔ Not gilt: the chip is a WORD, and a word is not money (R5-C's ruling on a paying friend's chip, invite/page.tsx);
+   *     gold is for an earned FIGURE, and this row's figure is no longer bonus money (E-224 suppresses it).
+   *   · EXPIRED, CANCELLED, FORFEITED — terminal and inert: slate, as EXPIRED and CANCELLED already are above.
+   */
+  GRANT_QUEUED:      { player: "royal" },
+  GRANT_PENDING_KYC: { player: "royal" },
+  GRANT_FULFILLED:   { player: "green" },
+  GRANT_EXPIRED:     { player: "slate" },
+  GRANT_CANCELLED:   { player: "slate" },
+  GRANT_FORFEITED:   { player: "slate" },
   // ── KYC STAGE on the player roster (2026-09-11, Ali's request) ────────────────────────────
   /**
    * ⚠️ KYC-SCOPED KEYS, DELIBERATELY — and the reason is three screens up, not a preference.
@@ -309,6 +329,15 @@ export function playerStatusInk(word: string): string | null {
   const entry = (STATUS_TONE as Record<string, Partial<Record<StatusSurface, StatusTone>>>)[word];
   const tone = entry?.player;
   return tone && tone in TONE_INK ? TONE_INK[tone as keyof typeof TONE_INK] : null;
+}
+
+/**
+ * A bonus grant's state (`BonusGrantStatus`) → its chip, through the grant-scoped keys (R5-I, 2026-10-09) — or null for a
+ * state with no entry: `ACTIVE`, which draws its progress rather than a word, and anything unknown. The same contract as
+ * `playerStatusChip`: the caller states its fallback where it can see it.
+ */
+export function grantStatusChip(status: string | undefined): StatusChipVariant | null {
+  return status ? playerStatusChip("GRANT_" + status) : null;
 }
 
 /**

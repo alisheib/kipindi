@@ -8,6 +8,7 @@ import { useToast } from "@/components/ui/toast";
 // ⛔ NEVER THE RAW SERVER STRING — `docs/FAILURE-INVENTORY.md` §1.5/§1.6: the server's English
 // audit prose reaching a Swahili or Chinese player at the moment something failed.
 import { errorCopy } from "@/lib/error-copy";
+import { refusalReason, refusalVariant } from "@/lib/failure-reasons";
 import { I } from "@/components/ui/glyphs";
 import { filePrivacyRequestAction } from "./actions";
 import { useT } from "@/lib/i18n";
@@ -43,7 +44,8 @@ export function PrivacyRequestForm() {
       fd.set("detail", detail);
       const result = await filePrivacyRequestAction(fd);
       if (!result.ok) {
-        toast({ title: t.error.somethingWentWrong, description: errorCopy(t, result), variant: "danger" });
+        // §F2/§F3 (R5-I): at the registry's rank — a refusal the player can fix is the calm `factual` toast, a fault `danger`.
+        toast({ title: t.error.somethingWentWrong, description: errorCopy(t, result), variant: refusalVariant(refusalReason(result)) });
         return;
       }
       // ⛔ A DUPLICATE IS A SUCCESS FROM HERE. The player asked; a request of this kind is

@@ -150,11 +150,13 @@ const FROZEN_RATCHET = new Map<string, number>([
   // still carried the BANNED teal 215 in a gradient, and whose file-wide exemption was
   // meanwhile letting the LIVE `VolumeSparkline` beside it re-type a token unguarded. Deleting
   // the dead half made the file clean and the sparkline guarded in one move.
-  ["src/lib/i18n.tsx", 6],
+  // `i18n.tsx` LEFT THIS LIST on 2026-10-09 (R5-I, the visual pass's round 5): its 6 inline values were the language-change
+  // loader's glyphs, hand-typed in the YES green and the NO rose (oklch 78% 0.16 152 / 22) — the betting pair as a
+  // decoration (DESIGN_AUTHORITY §B2a). They read the brand family's tokens (`var(--brand-300)`, `var(--brand-200)`) now.
   // `cashback-promo.tsx` LEFT THIS LIST on 2026-08-21 (D5): its 5 inline values WERE the
   // gold costume — the gradient, the gilt border, the jackpot glow and the bloom. The
   // panel picks the `.mat-raised` rung now and holds no design value of its own.
-  ["src/components/ui/page-hero.tsx", 4],                    // −1, 2026-10-09 (R5-C's gold audit): the `gold` glow left the map (a page's hero is never money)
+  ["src/components/ui/page-hero.tsx", 2],                    // −1, 2026-10-09 (R5-C's gold audit): the `gold` glow left the map (a page's hero is never money) · −2, the same day (R5-I): the `yes` and `rose` glows left it too — the betting pair names a side, never a page (§B2a)
   // ⭐ FIVE FILES LEFT THIS LIST TOGETHER on 2026-09-11, and one number fell — all from ONE
   // change: the nine hand-rolled icon plates were migrated to the `IconPlate` atom. Their
   // budgeted literals WERE the plate — an arbitrary `rounded-[7/9/10/11px]` plus an inline
@@ -167,7 +169,7 @@ const FROZEN_RATCHET = new Map<string, number>([
   //   auth/register · ui/propose-promo · admin/proposals · admin/affiliate · admin/bonuses
   //   → clean.  profile/invite 2 → 1 (its plate is gone; the --royal-950 share card remains).
   ["src/app/profile/invite/page.tsx", 1],                    // −1, 2026-09-07: the share card reads --royal-950 like its agent sibling
-  ["src/app/profile/page.tsx", 3],
+  ["src/app/profile/page.tsx", 2],                           // −1, 2026-10-09 (R5-I): the hero's emerald → rose tilt (two radials) is PageHero's one info radial
   ["src/app/markets/[id]/page.tsx", 2],
   ["src/app/wallet/loading.tsx", 1],
   // `nav-progress.tsx` LEFT THIS LIST on 2026-10-09 (R5-C's gold audit): its hand-typed gold glow, oklch(72% 0.14 78), is a

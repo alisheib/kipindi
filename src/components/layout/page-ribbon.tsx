@@ -21,11 +21,13 @@
 
 import { cn } from "@/lib/utils";
 
+/* ⛔ NO ACCENT AT ALL (R5-I, the visual pass's round 5, 2026-10-09). Its last option was the betting pair: the best rate
+   of return in the YES side's green (DESIGN_AUTHORITY §B2a — a rate is not a side), and the ribbon's every other figure
+   is the text's ink. A rank, a count, a rate: one ink. */
 export type RibbonStat = {
   label: string;
   sw?: string;
   value: string;
-  accent?: "yes" | "no" | "default";
 };
 
 export function PageRibbon({
@@ -56,12 +58,7 @@ export function PageRibbon({
             )}
           </div>
           <p
-            className={cn(
-              "font-mono text-body-lg font-bold tabular-nums whitespace-nowrap leading-none",
-              s.accent === "yes" && "text-yes-300",
-              s.accent === "no" && "text-no-300",
-              (!s.accent || s.accent === "default") && "text-text",
-            )}
+            className="font-mono text-body-lg font-bold tabular-nums whitespace-nowrap leading-none text-text"
           >
             {s.value}
           </p>

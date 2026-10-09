@@ -31,7 +31,7 @@ import { maxMultiplierFor, stakeFromPosition } from "@/lib/dial-stake";
 import { haptics, motionReduced } from "@/lib/haptics";
 import { formatTzs, formatNumber, fill, fmtRate, pctNum } from "@/lib/utils";
 import { errorCopy } from "@/lib/error-copy";
-import { renderFailure, hasReason, failureUntil, type FailureDetail } from "@/lib/failure-reasons";
+import { renderFailure, hasReason, failureUntil, refusalVariant, reasonForCode, type FailureDetail } from "@/lib/failure-reasons";
 import { formatBreakEnd } from "@/lib/break-end";
 import { dialScale } from "./dial-scale";
 import { keepText } from "@/components/ui/keep-run";
@@ -847,7 +847,7 @@ export function ConvictionDial({ marketId, yesPool, noPool, baseStake = 1_000, m
     code: string | undefined,
     err: string,
     r?: { reason?: string; detail?: FailureDetail; retryAfterSec?: number },
-  ): { title: string; body: string; variant: "danger" | "warning" | "factual"; retryable?: boolean; keep?: string[] } => {
+  ): { title: string; body: string; variant: "danger" | "factual"; retryable?: boolean; keep?: string[] } => {
     // ── C3 · THE REASON WINS, WHEN THERE IS ONE ────────────────────────────────
     //
     // ⭐ THIS IS WHAT CLOSES docs/RULES.md §2.3. The server has always named both stake
@@ -863,6 +863,10 @@ export function ConvictionDial({ marketId, yesPool, noPool, baseStake = 1_000, m
     // ⚠️ The `switch` below is NOT dead: the wallet / KYC / auth services have not been
     // converted yet (docs/FAILURE-INVENTORY.md §2.3), so a refusal from one of those still
     // arrives with a code and no reason and must keep rendering exactly as it did.
+    // ⭐ R5-I (the visual pass's round 5, 2026-10-09) · EVERY ARM IS RANKED BY THE REGISTRY, the reasoned ones and the
+    // legacy codes alike (`refusalVariant`, the Sell button's S6 A8h rule): a refusal the player can fix, or a fact, is the
+    // calm `factual` toast; a hard block or a fault `danger`. Four legacy arms were `warning` — the toast struck in GOLD
+    // (§F3: "a refusal has earned nothing") — and a short balance `danger`, F3's own textbook fixable refusal.
     if (hasReason(r)) {
       /* ⭐ R4-I (2026-10-09, tiles 036 040 044 102 106 110) · A BREAK'S END IN THE READER'S WORDS, ONE RUN. The refusal read
          "hadi 9 Oct 2026, 06:02" — the server's English formatter in every language — and the date broke across lines
@@ -875,7 +879,7 @@ export function ConvictionDial({ marketId, yesPool, noPool, baseStake = 1_000, m
         keep: end && end !== "—" ? [end] : undefined,
         title: f.severity === "error" ? t.common.couldNotPlace : t.common.checkThis,
         body: f.body,
-        variant: f.severity === "error" ? "danger" : "factual",
+        variant: refusalVariant(f.reason),
         // ⭐ C4 · BOTH `system_busy` AND `system_error` ARE RETRYABLE, and that is not a
         // compromise. `retrySubmit` REUSES `betIdempotencyKey.current`, so if the bet did
         // land before the connection dropped, retrying returns the SAME position instead of
@@ -889,12 +893,13 @@ export function ConvictionDial({ marketId, yesPool, noPool, baseStake = 1_000, m
     switch (code) {
       case "BUSY":
         // Saturation, not a refusal. The stake has not moved and the same
-        // idempotency key can be safely resubmitted.
-        return { title: t.common.busyTitle, body: t.common.busyBody, variant: "warning", retryable: true };
+        // idempotency key can be safely resubmitted. (`system_busy`: the player can fix it — tap again.)
+        return { title: t.common.busyTitle, body: t.common.busyBody, variant: refusalVariant(reasonForCode(code)), retryable: true };
       case "RATE_LIMITED":
-        return { title: t.common.slowDown, body: t.common.tooManyAttemptsRow, variant: "warning" };
+        return { title: t.common.slowDown, body: t.common.tooManyAttemptsRow, variant: refusalVariant(reasonForCode(code)) };
       case "SELECTION_CLOSED":
-        return { title: t.common.marketClosed, body: t.common.marketStoppedPredictions, variant: "warning" };
+        // The registry's row for this refusal is `selection_closed` (a fact: info); the code alone is not mapped.
+        return { title: t.common.marketClosed, body: t.common.marketStoppedPredictions, variant: refusalVariant("selection_closed") };
       case "SUSPENDED":
         // 🔴 EVERY SUSPENSION USED TO READ AS SELF-EXCLUSION. This case hardcoded
         // "Account in self-exclusion" and discarded the server's own message — but
@@ -909,9 +914,11 @@ export function ConvictionDial({ marketId, yesPool, noPool, baseStake = 1_000, m
         //
         // `errorCopy` already disambiguates all four families and is what the rest of
         // the platform uses; the dial was the one surface that bypassed it.
-        return { title: t.common.couldNotPlace, body: errorCopy(t, { code: "SUSPENDED", error: err }), variant: "warning" };
+        // All four are hard blocks the player cannot lift here (the registry ranks maintenance, a frozen wallet, a
+        // break and an exclusion `error`), so the refusal is `danger` and must be acknowledged.
+        return { title: t.common.couldNotPlace, body: errorCopy(t, { code: "SUSPENDED", error: err }), variant: "danger" };
       case "NOT_FOUND":
-        return { title: t.common.couldNotPlace, body: t.common.marketStoppedPredictions, variant: "danger" };
+        return { title: t.common.couldNotPlace, body: t.common.marketStoppedPredictions, variant: refusalVariant(reasonForCode(code)) };
       case "INVALID":
         // INVALID is overloaded (bad stake, closed market, insufficient balance,
         // RG loss limit). Balance is the common case and the only one with a
@@ -919,7 +926,8 @@ export function ConvictionDial({ marketId, yesPool, noPool, baseStake = 1_000, m
         // here, where a wrong guess costs a slightly-off hint rather than a
         // mistranslated headline.
         if (/balance|funds|salio/i.test(err)) {
-          return { title: t.common.insufficientBalance, body: t.common.topUpWallet, variant: "danger" };
+          // `balance_insufficient`: "a textbook fixable refusal" (§F3) — a fact about the wallet, not an alarm.
+          return { title: t.common.insufficientBalance, body: t.common.topUpWallet, variant: refusalVariant("balance_insufficient") };
         }
         // B-7 — the non-balance INVALID body was the raw English service string.
         // The shared mapper phrase-refines the families that change what the
@@ -1011,15 +1019,21 @@ export function ConvictionDial({ marketId, yesPool, noPool, baseStake = 1_000, m
       if (r == null) return;
       if (!r.ok) {
         const mapped = errorToToast((r as { code?: string }).code, r.error, r as { reason?: string; detail?: FailureDetail; retryAfterSec?: number });
-        // Centered failure modal — a corner toast alone is too easy to miss
-        // for a money-handling failure. Toast still fires as a secondary
-        // signal in the corner so the user has both.
-        toast({ title: mapped.title, description: mapped.body, variant: mapped.variant });
-        setResultData({
-          variant: "danger", side: q.side, stake: q.stake, payoutIfWin: 0,
-          error: mapped.body, title: mapped.title, retryable: mapped.retryable, keep: mapped.keep,
-        });
-        setResultOpen(true);
+        // ⭐ THE FEEDBACK LAW'S ONE FORM, AS THE SELL BUTTON ANSWERS (S6 A8h; R5-I, the visual pass's round 5, 2026-10-09).
+        // The refusal's toast stays until it is read (§F2, §F8: `durationMs: 0`), at the registry's rank. Only a hard
+        // block or a real fault (`danger`) also opens the centred ✗ result — the popup a refusal must be acknowledged
+        // in, with Retry where the outcome is unknown, its toast held behind it as the secondary signal (§F1). A refusal
+        // the player can fix — a stake outside its bounds, a short balance, too many tries, a busy moment, a closed
+        // market — is the calm `factual` toast alone: §F2 gives it no popup. It used to open the ✗ result over every
+        // refusal, a short balance's too, with a `warning` toast struck in gold behind four of them.
+        toast({ title: mapped.title, description: mapped.body, variant: mapped.variant, durationMs: 0 });
+        if (mapped.variant === "danger") {
+          setResultData({
+            variant: "danger", side: q.side, stake: q.stake, payoutIfWin: 0,
+            error: mapped.body, title: mapped.title, retryable: mapped.retryable, keep: mapped.keep,
+          });
+          setResultOpen(true);
+        }
         // Wipe the dial only on a TERMINAL failure. BUSY is the platform asking
         // the player to wait, not a refusal — clearing a carefully-aimed stake and
         // multiplier there would punish them for our load, and it would also
@@ -1546,9 +1560,13 @@ export function ConvictionDial({ marketId, yesPool, noPool, baseStake = 1_000, m
           */}
           {/* Range chip — replaces the tiny gray text with a kit-grade
               gradient indicator. Out-of-range states swap the gradient
-              for a no-300 chip to make the clamp un-missable. */}
+              for a chip in the field-error ink to make the clamp un-missable.
+              ⭐ THE DANGER FAMILY, NOT THE NO SIDE'S ROSE (R5-I, the visual pass's round 5, 2026-10-09; DESIGN_AUTHORITY
+              §B2a): a value outside its bounds is a form error at the field (§F3a), and every field error on the platform
+              wears `--danger-*` (`<Input error>`, `betting-ink` §6). In the NO ink it sat under a stake that may be on the
+              YES side. Both chips, the stake's and the multiplier's. */}
           {isOverMax || isUnderMin ? (
-            <span className="mt-1 inline-flex items-center gap-1 rounded-pill border border-no-700 bg-no-500/15 px-1.5 py-0.5 font-mono text-[9.5px] font-bold text-no-300 whitespace-nowrap">
+            <span className="mt-1 inline-flex items-center gap-1 rounded-pill border border-danger-border bg-danger-bg px-1.5 py-0.5 font-mono text-[9.5px] font-bold text-danger-fg whitespace-nowrap">
               {isOverMax ? `${t.common.max} ${formatNumber(maxDial)}` : `${t.common.min} ${formatNumber(minDial)}`}
             </span>
           ) : (
@@ -1615,7 +1633,7 @@ export function ConvictionDial({ marketId, yesPool, noPool, baseStake = 1_000, m
             containerClassName="ml-auto h-[44px] w-[172px]"
           />
           {isMultOverMax || isMultUnderMin ? (
-            <span className="mt-1 inline-flex items-center gap-1 rounded-pill border border-no-700 bg-no-500/15 px-1.5 py-0.5 font-mono text-[9.5px] font-bold text-no-300 whitespace-nowrap">
+            <span className="mt-1 inline-flex items-center gap-1 rounded-pill border border-danger-border bg-danger-bg px-1.5 py-0.5 font-mono text-[9.5px] font-bold text-danger-fg whitespace-nowrap">
               {isMultOverMax ? `${t.common.max} ${MULT_MAX.toFixed(2)}×` : `${t.common.min} ${MULT_MIN.toFixed(2)}×`}
             </span>
           ) : (
@@ -1687,16 +1705,20 @@ export function ConvictionDial({ marketId, yesPool, noPool, baseStake = 1_000, m
       )}
 
       {/* Inline balance warning — shown BEFORE the player taps Place so
-          they know immediately rather than seeing an error after the click. */}
+          they know immediately rather than seeing an error after the click.
+          ⭐ IN THE FACTUAL REGISTER, AS UP & DOWN'S IS (R5-I, the visual pass's round 5, 2026-10-09). A short balance is
+          the textbook refusal the player can fix (DESIGN_AUTHORITY §F3, which takes it from `use-quick-bet.ts`: "a fact
+          about the wallet, not an alarm"), and both Up & Down stake panels say it in this one form — the info glyph, the
+          faint ink, the 13px sentence. Here it was a box in the NO side's rose (§B2a: the betting pair names a side) with
+          its figures at 10px, under §T4's reading floor. The words are unchanged; the two sentences share the line. */}
       {effectiveSide !== "NEUTRAL" && balance !== undefined && stake > balance && (
-        <div className="mt-3 rounded-md border border-no-700 bg-no-500/10 px-3 py-2">
-          <p className="text-body-sm font-medium text-no-300">
-            {t.common.insufficientBalanceHint}
-          </p>
-          <p className="text-[10px] text-text-subtle mt-0.5">
+        <p className="mt-3 flex items-start gap-1 text-body-sm leading-[1.45] text-text-faint">
+          <I.info s={11} className="mt-[2px] shrink-0" />
+          <span>
+            {t.common.insufficientBalanceHint}{" · "}
             {t.market.insufficientDetail.replace("{need}", formatNumber(stake)).replace("{have}", formatNumber(balance))}
-          </p>
-        </div>
+          </span>
+        </p>
       )}
 
       {/* Compact place-bet pill — opens the confirm modal. Sits inline with

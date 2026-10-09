@@ -25,7 +25,7 @@
  * refusal's SEVERITY, and `error` covers both "we have blocked you" and "the limit you set
  * yourself has been reached". Those are opposite statements about someone's account.
  */
-import { renderFailure, hasReason, type FailureDetail, type FailureReason, type WhenFormat } from "@/lib/failure-reasons";
+import { renderFailure, hasReason, reasonForCode, refusalVariant, type FailureDetail, type FailureReason, type WhenFormat } from "@/lib/failure-reasons";
 
 /**
  * Which heading a `modal`-channel refusal gets — keyed on the REASON, never on the severity.
@@ -96,6 +96,15 @@ export type UdBetFailure =
       description: string;
       /** SELECTION_CLOSED also flips the local surface to locked — the server has spoken. */
       lockNow: boolean;
+      /**
+       * ⭐ THE TOAST'S VARIANT, AT THE REGISTRY'S RANK (`refusalVariant`; R5-I, the visual pass's round 5, 2026-10-09).
+       * DESIGN_AUTHORITY §F2/§F3: a refusal the player can fix (a stake outside its bounds, too many tries, a busy
+       * moment, a session limit) or a fact (selection closed) is the calm `factual` toast with no error buzz; only a
+       * hard block or a real fault, or a refusal the registry cannot rank, is `danger`. Every transient refusal was
+       * `danger` — the alarm register §F3 retired for slips — while the pre-flight balance check beside it was already
+       * `factual` (UD-1, F3's own precedent). The Sell button ranks its refusals the same way (S6 A8h).
+       */
+      variant: "danger" | "factual";
     }
   | {
       kind: "blocked";
@@ -172,17 +181,19 @@ export function udBetErrorCopy(
       const tone = (f.reason && MODAL_TONE_BY_REASON[f.reason]) ?? "danger";
       return { kind: "blocked", title: m[titleKey], body: f.body, variant: tone };
     }
-    return { kind: "transient", description: f.body, lockNow: f.reason === "selection_closed" };
+    return { kind: "transient", description: f.body, lockNow: f.reason === "selection_closed", variant: refusalVariant(f.reason) };
   }
+  // ⭐ R5-I · the legacy codes take the registry's rank too: the row each one names (`reasonForCode`), or — for a code
+  // the registry does not map — the row of the reason it stands for; an overloaded code (INVALID) or none is `danger`.
   switch (code) {
     case "SELECTION_CLOSED":
-      return { kind: "transient", description: m.udErrSelectionClosed, lockNow: true };
+      return { kind: "transient", description: m.udErrSelectionClosed, lockNow: true, variant: refusalVariant("selection_closed") };
     case "RATE_LIMITED":
-      return { kind: "transient", description: m.udErrRateLimited, lockNow: false };
+      return { kind: "transient", description: m.udErrRateLimited, lockNow: false, variant: refusalVariant(reasonForCode(code)) };
     case "BUSY":
-      return { kind: "transient", description: m.udErrBusy, lockNow: false };
+      return { kind: "transient", description: m.udErrBusy, lockNow: false, variant: refusalVariant(reasonForCode(code)) };
     case "NOT_FOUND":
-      return { kind: "transient", description: m.udErrNotFound, lockNow: false };
+      return { kind: "transient", description: m.udErrNotFound, lockNow: false, variant: refusalVariant(reasonForCode(code)) };
     case "SUSPENDED":
       // The legacy `SUSPENDED` arm, for services that emit no reason yet: genuinely a
       // hard operator block, so `danger` is correct here and stays explicit.
@@ -204,10 +215,10 @@ export function udBetErrorCopy(
       // as `channel: "modal"`, and the reason branch above turns a `modal` channel into exactly
       // this `kind: "blocked"` — with `m.udErrRgLimitTitle` as the heading, because the severity
       // is `error`. Same dialog, reached by a token instead of by a sentence.
-      return { kind: "transient", description: m.udErrInvalid, lockNow: false };
+      return { kind: "transient", description: m.udErrInvalid, lockNow: false, variant: "danger" };
     default:
       // No code at all → the server string is the only truth we have. Demoted to
       // fallback, exactly as UD-4 prescribes — never preferred over the dictionary.
-      return { kind: "transient", description: serverError ?? m.udErrBusy, lockNow: false };
+      return { kind: "transient", description: serverError ?? m.udErrBusy, lockNow: false, variant: "danger" };
   }
 }

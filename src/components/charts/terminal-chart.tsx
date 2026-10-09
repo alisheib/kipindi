@@ -526,7 +526,7 @@ export function TerminalChart({
         <p className="mt-1 mb-0 font-mono text-body-sm text-text-subtle">{labels.noCandles}</p>
       )}
       {feed && (
-        <p className="mt-1 mb-0 flex flex-wrap items-baseline justify-end gap-x-3 gap-y-0.5 text-right font-mono text-body-sm" style={{ color: feed.liveStale ? "var(--no-300)" : "var(--text-faint)" }}>
+        <p className="mt-1 mb-0 flex flex-wrap items-baseline justify-end gap-x-3 gap-y-0.5 text-right font-mono text-body-sm" style={{ color: feed.liveStale ? "var(--danger-fg)" : "var(--text-faint)" }}>
           {/* ⭐ R5(c) · F1 (2026-09-27) · THE LINE IS NAMED, in its own ink: "Confirmed price $63,590.62" — the band's and the
               round page's word for the newest confirmed read, which a dashed line on a canvas could not say (and which a
               screen reader never heard). Held whole; it drops with the line when the feed is stale (F20). */}

@@ -249,7 +249,8 @@ export function RoundStakePanel(props: {
             onKeyDown={(e) => { if (e.key === "Escape") bet.exitCustom(); }}
             aria-label={t.market.udCustomAmount} aria-invalid={customInvalid} error={customInvalid} placeholder="0"
           />
-          <p className={cn("mt-1 text-micro amount", customInvalid ? "text-no-300" : "text-text-subtle")}>
+          {/* An amount outside its bounds is a form error at the field: the danger ink, never the Down side's rose (§B2a). */}
+          <p className={cn("mt-1 text-micro amount", customInvalid ? "text-danger-fg" : "text-text-subtle")}>
             {customInvalid ? `${t.market.udStakeRange} · ` : ""}{formatTzs(bet.min)} – {formatTzs(bet.max)}
           </p>
         </div>

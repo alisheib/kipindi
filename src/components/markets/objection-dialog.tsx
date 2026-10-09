@@ -24,6 +24,7 @@ import { Callout } from "@/components/ui/callout";
 import { I } from "@/components/ui/glyphs";
 import { useT } from "@/lib/i18n";
 import { errorCopy } from "@/lib/error-copy";
+import { refusalReason, refusalVariant } from "@/lib/failure-reasons";
 import { fileObjectionAction } from "@/app/markets/actions";
 
 const DETAIL_MAX = 1000;
@@ -64,7 +65,8 @@ export function ObjectionDialog({ marketId, onFiled }: { marketId: string; onFil
         // FAILURE-INVENTORY.md` §1.6's documented defect on the one surface where a player is
         // formally contesting money. `errorCopy` maps the machine code to their locale, and
         // the caught-network case above already supplies a localized string to fall back to.
-        toast({ title: errorCopy(t, r), variant: "danger", durationMs: 0 });
+        // §F2/§F3 (R5-I): still sticky, at the registry's rank — a refusal the player can fix is `factual`, a fault `danger`.
+        toast({ title: errorCopy(t, r), variant: refusalVariant(refusalReason(r)), durationMs: 0 });
         return;
       }
       setOpen(false);

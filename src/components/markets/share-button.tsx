@@ -77,7 +77,8 @@ export function ShareButton({
       toast({ title: t.toast.linkCopied, description: url, variant: "default" });
       setTimeout(() => { setCopied(false); setOpen(false); }, 1500);
     } catch {
-      toast({ title: t.toast.couldntCopy, variant: "danger" });
+      // §F2/§F3 (R5-I): a copy the browser refused is a slip (the sheet's other doors stay open) — the calm `factual` toast.
+      toast({ title: t.toast.couldntCopy, variant: "factual" });
       setOpen(false);
     }
   };

@@ -138,8 +138,11 @@ export default function GlobalError({
   // and the link takes the product's link ink, `--brand-300`.
   const PRIMARY = "oklch(50% 0.20 268)";
   const LINK = "oklch(82% 0.120 262)";
-  const NO_BORDER = "oklch(44% 0.17 22)";
-  const NO_TEXT = "oklch(80% 0.14 22)";
+  // ⭐ The error mark is the app-state DANGER family, written out as every value here is (no stylesheet): `--danger-500`
+  // at the `--danger-border` 36% and `--danger-bg` 18% mixes, and `--danger-fg` — hue 25. It was the NO side's rose (hue
+  // 22): an error is not a side (DESIGN_AUTHORITY §B2a; R5-I, 2026-10-09).
+  const DANGER_BORDER = "oklch(57% 0.22 25 / 0.36)";
+  const DANGER_TEXT = "oklch(82% 0.16 25)";
   const BORDER = "oklch(34% 0.130 268)";
 
   return (
@@ -207,9 +210,9 @@ export default function GlobalError({
               width: 44,
               height: 44,
               borderRadius: 999,
-              border: `1px solid ${NO_BORDER}`,
-              background: "oklch(40% 0.13 22 / 0.15)",
-              color: NO_TEXT,
+              border: `1px solid ${DANGER_BORDER}`,
+              background: "oklch(57% 0.22 25 / 0.18)",
+              color: DANGER_TEXT,
               fontSize: 22,
               fontWeight: 700,
             }}
@@ -224,7 +227,7 @@ export default function GlobalError({
               fontWeight: 700,
               textTransform: "uppercase",
               letterSpacing: "0.20em",
-              color: NO_TEXT,
+              color: DANGER_TEXT,
               margin: 0,
             }}
           >

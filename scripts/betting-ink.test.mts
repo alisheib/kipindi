@@ -219,6 +219,70 @@ ok("§6d control · every planted copy found its target", plantWizard !== wizard
 ok("§6e control · a wizard refusal in the NO ink is reported", anySide(plantWizard).length > 0, "", anySide(plantWizard).join(", "));
 ok("§6f control · an AI poll form error in the NO ink is reported", errorLineSides(plantPoll).length > 0, "", errorLineSides(plantPoll).join(" | ").slice(0, 160));
 
+/* §7 · AN APP STATE IS NOT A SIDE (R5-I, the visual pass's round 5, 2026-10-09) ─────────────────────────────────────────
+   §B2a, read on every player surface that names no side: success, failure, destruction, a field's error, a wait, a
+   balance's move — the app-state families (`--success-*`, `--danger-*`, royal, the text's ink), never the betting pair.
+   R5-I found them in a result dialog's crests, the crash page's mark, four destructive controls, six field errors, five
+   success marks, the auth eyebrow, the RG page's hero and art, a net, a rate, a balance's ±delta, the placed pulse, the
+   bell's journey count, a loader's glyphs. The census of every remaining use, each ruled, is test:visual-pass-r5i §1. */
+console.log("\n§7 · an app state wears the app-state family — success, failure, destruction, a field's error — never a side's");
+const N = (s: string) => s.replace(/\r\n/g, "\n");
+/** Any betting ink: a utility, a token, the side buttons, a hand-typed oklch at the pair's hues. */
+const sideInk = (src: string) => (code(N(src)).match(/\b(?:[a-z-]+:)*(?:text|bg|border|ring|fill|stroke)-(?:yes|no)-\d{3}\b|var\(--(?:yes|no)-\d{3}\)|\bbtn-(?:yes|no)\b|oklch\([\d.]+%\s+[\d.]+\s+(?:22|152)\b/g) ?? []);
+/** Surfaces that name NO side at all: any betting ink in them is an app state wearing a side's colour. */
+const SIDELESS = [
+  "src/components/profile/avatar-uploader.tsx", "src/app/notifications/row-actions.tsx", "src/app/profile/sessions/page.tsx",
+  "src/app/profile/security/security-client.tsx", "src/components/markets/resolution-panel.tsx", "src/components/markets/sell-confirm-modal.tsx",
+  "src/components/auth/password-pair.tsx", "src/app/proposals/new/create-form.tsx", "src/components/auth/auth-panel.tsx",
+  "src/app/auth/verify-email/page.tsx", "src/app/auth/reset-password/page.tsx", "src/components/ui/page-header.tsx",
+  "src/components/ui/page-hero.tsx", "src/components/rg/self-care-art.tsx", "src/app/profile/responsible-gambling/page.tsx",
+  "src/app/profile/activity/page.tsx", "src/app/profile/page.tsx", "src/components/wallet/payout-status-notice.tsx",
+  "src/components/layout/page-ribbon.tsx", "src/app/leaderboard/page.tsx", "src/lib/i18n.tsx", "src/app/agent/apply/apply-client.tsx",
+  "src/app/wallet/wallet-client.tsx", "src/app/profile/source-of-funds/page.tsx",
+];
+const sideless = SIDELESS.map((f) => [f, sideInk(read(f))] as const).filter(([, hits]) => hits.length > 0);
+ok(`§7a ${SIDELESS.length} surfaces that name no side carry no betting ink`, sideless.length === 0, sideless.map(([f, x]) => `${f}: ${x.join(" ")}`).join(" | "));
+/** The places that DO name a side, read only where they say an app state. */
+function appStateDefects(orm: string, css: string, bell: string, dial: string, stakeCtl: string): string[] {
+  const d: string[] = [];
+  const o = code(N(orm));
+  const tone = o.slice(o.indexOf("const TONE: Record<OperationVariant"), o.indexOf("function CrestIcon"));
+  if (!tone) d.push("the result dialog's TONE map was not found");
+  if (sideInk(tone).length) d.push(`the result dialog's crests wear the betting pair: ${sideInk(tone).join(" ")}`);
+  if (/btn-no/.test(tone)) d.push("the failure's way out is the NO side's stake button");
+  if (!/crest\("var\(--success\)", "var\(--success-fg\)"\)/.test(tone) || !/crest\("var\(--danger\)", "var\(--danger-fg\)"\)/.test(tone)) d.push("the crests are not the app-state families");
+  const c = code(N(css));
+  const pulse = c.slice(c.indexOf("@keyframes ud-place-pulse"), c.indexOf(".ud-place-pulse"));
+  if (!pulse || sideInk(pulse).length) d.push("the placed pulse is missing or wears a side's ink");
+  const delta = (c.match(/\.kp-jbal__delta[^{]*\{[^}]*\}/g) ?? []).join("\n");
+  if (!delta || sideInk(delta).length) d.push("the journey balance's ±delta is missing or wears a side's ink");
+  const b = code(N(bell));
+  if (!/const countTone = journey \? "brand" : "rose";/.test(b) || !/const clearAllHover = journey \? "hover:text-danger-fg" : "hover:text-no-300";/.test(b)) d.push("the journey bell's count or Clear-all borrows the NO rose");
+  const k = code(N(dial));
+  const chips = k.match(/<span className="mt-1 inline-flex items-center gap-1 rounded-pill border [^"]*">/g) ?? [];
+  if (chips.length !== 2 || chips.some((x) => sideInk(x).length)) d.push("the dial's out-of-range chips are missing or wear the NO rose");
+  if (/border-no-700|bg-no-500\/10/.test(k)) d.push("the dial's short-balance line is a NO-rose box");
+  if (!/customInvalid \? "text-danger-fg"/.test(code(N(stakeCtl)))) d.push("Up & Down's out-of-range amount is not the field-error ink");
+  return d;
+}
+const ORM = read("src/components/markets/operation-result-modal.tsx"), BELL = read("src/components/layout/notifications-panel.tsx");
+const DIAL = read("src/components/markets/conviction-dial.tsx"), STAKE = read("src/components/updown/updown-stake-controls.tsx");
+ok("§7b the result's crests, the placed pulse, the balance's ±delta, the journey bell, the dial's chips, a stake out of range: app-state inks",
+  appStateDefects(ORM, css, BELL, DIAL, STAKE).length === 0, appStateDefects(ORM, css, BELL, DIAL, STAKE).join("; "));
+const plantCrest = N(ORM).replace('...crest("var(--success)", "var(--success-fg)"),', '...crest("var(--yes-400)", "var(--yes-300)"),');
+const plantNoBtn = N(ORM).replace(/(danger: \{\s*\.\.\.crest\("var\(--danger\)", "var\(--danger-fg\)"\),[\s\S]*?)primaryBtn: "btn-primary",/, '$1primaryBtn: "btn-no",');
+const plantPulse = N(css).replace("color-mix(in oklab, var(--success-500) 55%, transparent)", "color-mix(in oklab, var(--yes-500) 55%, transparent)");
+const plantDelta = N(css).replace(".kp-jbal__delta[data-sign] { color: var(--text); }", '.kp-jbal__delta[data-sign="up"] { color: var(--yes-300); }');
+const plantBell = N(BELL).replace('const countTone = journey ? "brand" : "rose";', 'const countTone = "rose";');
+const plantHover = N(read("src/components/profile/avatar-uploader.tsx")).replace("group-hover:border-danger-border group-hover:text-danger-fg", "group-hover:border-no-700 group-hover:text-no-300");
+ok("§7c control · every planted copy found its target",
+  plantCrest !== N(ORM) && plantNoBtn !== N(ORM) && plantPulse !== N(css) && plantDelta !== N(css) && plantBell !== N(BELL) && plantHover !== N(read("src/components/profile/avatar-uploader.tsx")));
+ok("§7d control · a YES-green success crest is reported", appStateDefects(plantCrest, css, BELL, DIAL, STAKE).length > 0);
+ok("§7e control · the NO side's button as a refusal's way out is reported", appStateDefects(plantNoBtn, css, BELL, DIAL, STAKE).length > 0);
+ok("§7f control · a YES-green placed pulse and a YES-green balance move are reported", appStateDefects(ORM, plantPulse, BELL, DIAL, STAKE).length > 0 && appStateDefects(ORM, plantDelta, BELL, DIAL, STAKE).length > 0);
+ok("§7g control · the journey bell's count back in the NO rose is reported", appStateDefects(ORM, css, plantBell, DIAL, STAKE).length > 0);
+ok("§7h control · a destructive hover in the NO rose is reported", sideInk(plantHover).length === 2, "", sideInk(plantHover).join(" "));
+
 console.log(`\n${fail === 0 ? "ALL PASS" : "FAILURES"} — ${pass} passed, ${fail} failed`);
 if (pass + fail < 8) { console.error(`!! only ${pass + fail} assertions ran`); process.exit(3); }
 process.exit(fail === 0 ? 0 : 1);

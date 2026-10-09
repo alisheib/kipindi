@@ -6,19 +6,20 @@ import type { ReactNode } from "react";
  *   - eyebrow: font-mono text-[11px] tracking-[0.16em] (was 10px on ~8 pages)
  *   - title:   font-display text-[28px] tracking-[-0.02em]
  *
- * `tone` colors the eyebrow to the page's accent (info = account/security, yes = protection). Longer descriptive
+ * `tone` colors the eyebrow to the page's accent (info = account/security/protection). Longer descriptive
  * paragraphs stay in the page as a sibling; `subtitle` is only for the short italic tagline.
+ * ⛔ NO `yes` (R5-I, 2026-10-09; DESIGN_AUTHORITY §B2a): its one caller was the responsible-gambling page — "protection"
+ * in the YES side's green. It takes `info` with the other account pages, and the option is gone, as `gold` went below.
  * ⛔ NO `gold` (R5-C, the second gold audit, 2026-10-09; DESIGN_AUTHORITY Q5 "gold is money, and nothing else"): an
  * eyebrow names a page and is never money. Its only callers were /proposals and /proposals/new ("MAPENDEKEZO" in gold
  * with a trophy); they take the default, the ink 191 player eyebrows already wear. It is out of the map, as R4-I took it
  * out of AuthHeader's, so no call site can ask for it again.
  */
-type Tone = "subtle" | "info" | "yes";
+type Tone = "subtle" | "info";
 
 const EYEBROW_TONE: Record<Tone, string> = {
   subtle: "text-text-subtle",
   info: "text-info-fg",
-  yes: "text-yes-300",
 };
 
 export function PageHeader({

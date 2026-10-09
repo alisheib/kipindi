@@ -151,16 +151,17 @@ export function ResolutionPanel({
         </Chip>
       </div>
 
-      {/* Attestation (only when genuinely two-officer) + timestamp + source */}
+      {/* Attestation (only when genuinely two-officer) + timestamp + source. The attestation's seal and the paid-out tick
+          are app states — the success ink, never the YES side's green, whatever the outcome (§B2a; R5-I, 2026-10-09). */}
       <div className="space-y-2">
         {twoOfficer ? (
           <p className="flex items-start gap-2 text-body-sm text-text-muted">
-            <I.sealCheck s={14} className="mt-[1px] shrink-0 text-yes-300" />
+            <I.sealCheck s={14} className="mt-[1px] shrink-0 text-success-fg" />
             <span>{t.market.resTwoOfficer}</span>
           </p>
         ) : singleOfficer ? (
           <p className="flex items-start gap-2 text-body-sm text-text-muted">
-            <I.sealCheck s={14} className="mt-[1px] shrink-0 text-yes-300" />
+            <I.sealCheck s={14} className="mt-[1px] shrink-0 text-success-fg" />
             <span>{t.market.resSingleOfficer}</span>
           </p>
         ) : correctedOnObjection ? (
@@ -221,7 +222,7 @@ export function ResolutionPanel({
         // sees their own payout under Your positions, and the operator sees the rest
         // in the admin console. Do not narrate the payout run on a public surface.
         <p className="flex items-center gap-1.5 text-body-sm text-text-subtle">
-          <I.check s={13} className="text-yes-300" />
+          <I.check s={13} className="text-success-fg" />
           {t.market.resPaidOut} <span className="font-mono tabular-nums">{formatEatDateTime(Date.parse(settledAt), serverNow, t.common.monthsShort, locale)}</span>
         </p>
       ) : (

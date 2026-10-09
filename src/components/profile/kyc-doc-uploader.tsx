@@ -17,6 +17,7 @@ import { attachDocumentAction, attachExtraDocumentAction } from "@/app/profile/k
 import { fileToDataUrl, MAX_DOC_BYTES as MAX_BYTES } from "@/lib/client/kyc-image";
 import type { KycDocSlot } from "@/lib/id-documents";
 import { errorCopy } from "@/lib/error-copy";
+import { refusalReason, refusalVariant } from "@/lib/failure-reasons";
 
 export function KycDocUploader({
   docType, label, attached, locked,
@@ -46,12 +47,13 @@ export function KycDocUploader({
 
   const onFile = async (f: File | null) => {
     if (!f) return;
-    if (!f.type.startsWith("image/")) { toast({ title: t.toast.notAnImage, description: t.toast.pickJpgPng, variant: "danger" }); return; }
+    // §F2/§F3 (R5-I): the three checks of the picked file are slips the player can fix — the calm `factual` toast.
+    if (!f.type.startsWith("image/")) { toast({ title: t.toast.notAnImage, description: t.toast.pickJpgPng, variant: "factual" }); return; }
     setBusy(true); // spinner on from the instant a file is picked
     let dataUrl: string;
     try { dataUrl = await fileToDataUrl(f); }
-    catch (err) { setBusy(false); toast({ title: t.toast.couldntReadImage, description: (err as Error).message, variant: "danger" }); return; }
-    if (dataUrl.length * 0.75 > MAX_BYTES) { setBusy(false); toast({ title: t.toast.imageTooLarge, description: t.toast.trySmallerPhoto, variant: "danger" }); return; }
+    catch { setBusy(false); toast({ title: t.toast.couldntReadImage, description: t.toast.pickJpgPng, variant: "factual" }); return; }
+    if (dataUrl.length * 0.75 > MAX_BYTES) { setBusy(false); toast({ title: t.toast.imageTooLarge, description: t.toast.trySmallerPhoto, variant: "factual" }); return; }
     setPreview(dataUrl);
     start(async () => {
       const fd = new FormData();
@@ -65,7 +67,7 @@ export function KycDocUploader({
       } catch {
         r = { ok: false, error: t.error.somethingDidntWork };
       }
-      if (!r.ok) { setPreview(null); setBusy(false); toast({ title: t.toast.uploadFailed, description: errorCopy(t, r), variant: "danger", durationMs: 0 }); return; } // DS-26 — an identity-document failure stays until read
+      if (!r.ok) { setPreview(null); setBusy(false); toast({ title: t.toast.uploadFailed, description: errorCopy(t, r), variant: refusalVariant(refusalReason(r)), durationMs: 0 }); return; } // DS-26 — an identity-document failure stays until read; §F2/§F3 (R5-I) at the registry's rank
       setDone(true);
       setBusy(false);
       toast({ title: t.toast.documentAttached, variant: "success" });
@@ -166,12 +168,13 @@ export function KycExtraDocUploader({
 
   const onFile = async (f: File | null) => {
     if (!f) return;
-    if (!f.type.startsWith("image/")) { toast({ title: t.toast.notAnImage, description: t.toast.pickJpgPng, variant: "danger" }); return; }
+    // §F2/§F3 (R5-I): the three checks of the picked file are slips the player can fix — the calm `factual` toast.
+    if (!f.type.startsWith("image/")) { toast({ title: t.toast.notAnImage, description: t.toast.pickJpgPng, variant: "factual" }); return; }
     setBusy(true);
     let dataUrl: string;
     try { dataUrl = await fileToDataUrl(f); }
-    catch (err) { setBusy(false); toast({ title: t.toast.couldntReadImage, description: (err as Error).message, variant: "danger" }); return; }
-    if (dataUrl.length * 0.75 > MAX_BYTES) { setBusy(false); toast({ title: t.toast.imageTooLarge, description: t.toast.trySmallerPhoto, variant: "danger" }); return; }
+    catch { setBusy(false); toast({ title: t.toast.couldntReadImage, description: t.toast.pickJpgPng, variant: "factual" }); return; }
+    if (dataUrl.length * 0.75 > MAX_BYTES) { setBusy(false); toast({ title: t.toast.imageTooLarge, description: t.toast.trySmallerPhoto, variant: "factual" }); return; }
     setPreview(dataUrl);
     start(async () => {
       const fd = new FormData();
@@ -184,7 +187,7 @@ export function KycExtraDocUploader({
       } catch {
         r = { ok: false, error: t.error.somethingDidntWork };
       }
-      if (!r.ok) { setPreview(null); setBusy(false); toast({ title: t.toast.uploadFailed, description: errorCopy(t, r), variant: "danger", durationMs: 0 }); return; } // DS-26 — an identity-document failure stays until read
+      if (!r.ok) { setPreview(null); setBusy(false); toast({ title: t.toast.uploadFailed, description: errorCopy(t, r), variant: refusalVariant(refusalReason(r)), durationMs: 0 }); return; } // DS-26 — an identity-document failure stays until read; §F2/§F3 (R5-I) at the registry's rank
       setDone(true);
       setBusy(false);
       toast({ title: t.toast.documentAttached, variant: "success" });

@@ -20,6 +20,7 @@ import { sideWord } from "@/lib/side-label";
 // that costs: a Swahili or Chinese player reading an English sentence at the moment something
 // failed. `errorCopy` renders THIS player's language off the machine code.
 import { errorCopy } from "@/lib/error-copy";
+import { refusalReason, refusalVariant } from "@/lib/failure-reasons";
 import { haptics } from "@/lib/haptics";
 import { Avatar } from "@/components/ui/avatar";
 import { postCommentAction, reportCommentAction, deleteCommentAction } from "@/app/markets/actions";
@@ -156,7 +157,8 @@ export function CommentsThread({
         // neither money nor an alarm: a fact (R5-C, the second gold audit, 2026-10-09).
         toast({ title: ("hidden" in r && r.hidden) ? t.toast.reportedHidden : t.toast.reported, variant: "factual" });
       } else {
-        toast({ title: errorCopy(t, r), variant: "danger" });
+        // §F2/§F3 (R5-I): at the registry's rank — a refusal the player can fix is the calm `factual` toast, a fault `danger`.
+        toast({ title: errorCopy(t, r), variant: refusalVariant(refusalReason(r)) });
       }
     });
   };
@@ -177,7 +179,8 @@ export function CommentsThread({
         haptics.confirm();
         setComments((prev) => prev.filter((c) => c.id !== id));
       } else {
-        toast({ title: errorCopy(t, r), variant: "danger" });
+        // §F2/§F3 (R5-I): at the registry's rank — a refusal the player can fix is the calm `factual` toast, a fault `danger`.
+        toast({ title: errorCopy(t, r), variant: refusalVariant(refusalReason(r)) });
       }
     });
   };

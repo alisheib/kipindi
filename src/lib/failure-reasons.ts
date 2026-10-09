@@ -618,6 +618,28 @@ export function hasReason<T extends { reason?: string }>(r: T | null | undefined
   return !!r?.reason && Object.prototype.hasOwnProperty.call(REASONS, r.reason);
 }
 
+/**
+ * ⭐ HOW LOUD A REFUSAL IS — THE FEEDBACK LAW'S ONE FORM (DESIGN_AUTHORITY §F2/§F3; R5-I, the visual pass's round 5,
+ * 2026-10-09). The rank is this registry's, never a surface's own: the reason a refusal carries, else the one its code
+ * names (`reasonForCode`). A refusal the player can fix (`warning`) or a fact (`info`) is the calm `factual` toast — no
+ * popup, no error buzz (§F2: "Refusal — the player can fix it: popup ⛔ never · toast ✅ factual · haptic ⛔ silent"). A
+ * hard block or a real fault (`error`) is `danger`, with the result dialog where it must be acknowledged — and so is a
+ * refusal this registry cannot rank, which is the safe direction: an unclassified refusal reads as a failure, never as
+ * reassurance. The Sell button ranked its refusals so first (S6 A8h); the dial and Up & Down's quick bet rank theirs
+ * through this, and every other refusal toast on a player's surface with them.
+ */
+export function refusalReason(r: unknown): FailureReason | null {
+  // `unknown`, not `{ reason?; code? }`: an action's refusal type that carries neither (`{ ok: false; error }`) is still
+  // a refusal to rank — unranked, so `danger` — and a weak type would refuse it at compile time.
+  const o = (r ?? {}) as { reason?: string; code?: string };
+  return hasReason(o) ? o.reason : reasonForCode(typeof o.code === "string" ? o.code : undefined);
+}
+
+/** The toast variant a refusal takes, from its registry rank (see `refusalReason`). */
+export function refusalVariant(reason: FailureReason | null): "danger" | "factual" {
+  return reason !== null && REASONS[reason].severity !== "error" ? "factual" : "danger";
+}
+
 export interface RenderedFailure {
   severity: Severity;
   channel: Channel;

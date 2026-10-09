@@ -142,7 +142,10 @@ const REGISTRY: Record<string, [number, string]> = {
   "src/app/proposals/page.tsx": [1, "a proposer's granted bonus (money earned)"],
   "src/app/results/page.tsx": [1, "the notable result's resolved seal (§M3 · §B11 RESOLVED = struck gilt)"],
   "src/app/updown/[roundId]/page.tsx": [1, "a won round's struck payout (§M3)"],
-  "src/app/wallet/wallet-client.tsx": [5, "the live balance card's warm edge (money, §8a) ×2 · the zero-balance Add funds DOOR (§M3a) ×2 · a dormant grant's status chip, the token's"],
+  // R5-I (2026-10-09): a positive net on /updown/history read the YES side's green; it reads as every net now (§B2a).
+  "src/app/updown/history/page.tsx": [2, "a positive settled net (money earned), the page strip's and a round group's — as /positions/performance"],
+  // R5-I (2026-10-09): −1 — the dormant grant's chip left the warning pill for the kit Chip in its §B11 tone (I-3).
+  "src/app/wallet/wallet-client.tsx": [4, "the live balance card's warm edge (money, §8a) ×2 · the zero-balance Add funds DOOR (§M3a) ×2"],
   "src/components/brand/reward-burst.tsx": [7, "the gold medallion for money earned (the proposal bonus) — `success` for an approval"],
   "src/components/journey/journey-top-bar.tsx": [1, "the journey's deposit pill — the deposit door (gilt-metal, §M3a)"],
   "src/components/journey/tickets/ticket-card.tsx": [2, "a won ticket's struck payout (§M3)"],
@@ -207,7 +210,8 @@ const REGISTRY: Record<string, [number, string]> = {
   "src/components/kyc/kyc-gate-panel.tsx": [2, "'your move' and a held wallet — somebody must act"],
   "src/components/layout/app-shell.tsx": [2, "the session-ended notice and its Sign in — the player must sign in again (OWNER: the token)"],
   "src/components/markets/comments-thread.tsx": [2, "the character counter's last 40 · the report link's hover — cautions"],
-  "src/components/markets/conviction-dial.tsx": [5, "the refusal popups (busy, slow down, closed, suspended) — retryable, the token's"],
+  // R5-I (2026-10-09): conviction-dial.tsx left this table — its four `warning` refusal arms (a toast struck in gold, F3)
+  // are ranked by the failure registry now (`refusalVariant`: a slip the player can fix `factual`, a fault `danger`).
   "src/components/markets/house-lean-warning.tsx": [1, "'the upside is thin' — the Callout's own documented warning"],
   "src/components/markets/objection-dialog.tsx": [2, "the dispute route's caution"],
   "src/components/ui/offline-banner.tsx": [1, "the offline notice (R5-D's area)"],

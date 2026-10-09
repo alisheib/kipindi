@@ -16,7 +16,8 @@ import { PaymentLogo } from "@/components/wallet/payment-logo";
 import { KycFirstDepositNotice } from "@/components/wallet/kyc-first-deposit-notice";
 import type { FirstDepositNotice } from "@/lib/kyc-notice";
 import { formatTzs, formatNumber, cn } from "@/lib/utils";
-import { playerStatusInk } from "@/lib/status-tone";
+import { grantStatusChip, playerStatusInk } from "@/lib/status-tone";
+import { Chip } from "@/components/ui/chip";
 import { formatEatDate, formatEatDateTime } from "@/lib/eat-day";
 // E-101 · one rule for "where does this ticket live", shared with the round page and the emails.
 import { positionPermalinkHref } from "@/lib/position-permalink";
@@ -375,11 +376,16 @@ function BonusWalletCard({
                           {/* EVERY state but the running one is named. It used to badge `QUEUED`
                               alone, so the four finished states would have rendered as though they
                               were still running — gilt panel, progress bar and all — the moment
-                              they became visible. */}
+                              they became visible.
+                              ⭐ EACH IN ITS §B11 TONE, FROM THE ONE DICTIONARY (R5-I, the visual pass's round 5,
+                              2026-10-09): waiting royal, unlocked success, expired/cancelled/forfeited slate
+                              (`status-tone.ts`, `grantStatusChip`). Every word was a hand-rolled WARNING pill — amber,
+                              gilt ink, "somebody must act" for states nobody acts on — at 8px; it is the kit's
+                              chip now, at the side pill's size (`sm`, `metrics="base"`: one height for every state). */}
                           {!running && word && (
-                            <span className="inline-flex items-center rounded-pill px-1.5 py-px text-[8px] font-bold bg-warning-bg border border-warning-border text-warning-fg">
+                            <Chip variant={grantStatusChip(g.status) ?? "neutral"} size="sm" metrics="base">
                               {word}
-                            </span>
+                            </Chip>
                           )}
                         </span>
                         <span className="font-mono text-[12px] font-bold text-text tabular-nums"><Cash>{formatTzs(g.remainingTzs)}</Cash></span>
@@ -486,11 +492,14 @@ function TxnRow({ tx }: { tx: Transaction }) {
     reversed: t.wallet.txnStatusReversed,
     cancelled: t.wallet.txnStatusCancelled,
   };
-  // A pending DEBIT keeps its rose plate: a withdrawal on hold has already left Available.
+  // ⭐ THE RECEIPTS ROW'S PLATE, AND ITS AMOUNT INK (R5-I, the visual pass's round 5, 2026-10-09). `receipt-list-row.tsx`
+  // decided this row on 2026-10-07 — "NO BETTING INK AND NO GOLD. Deposit and withdrawal share ONE neutral brand plate;
+  // the glyph gives the direction (§B2a)" — and named this one "the drift, not a second design". Money that moved (a
+  // settled credit, or a debit, which has left Available even while it is held) takes that brand plate; money that has
+  // not landed, or moved nothing, keeps the muted one. Direction is the arrow's, and the "+" the amount's.
   const arrowBg =
-    settledCredit ? "bg-yes-500/10 text-yes-300"
-    : isCredit || movedNothing ? "bg-bg-overlay text-text-subtle"
-    : "bg-no-500/10 text-no-300";
+    settledCredit || !(isCredit || movedNothing) ? "bg-brand-500/10 text-brand-300"
+    : "bg-bg-overlay text-text-subtle";
   return (
     /* The row's machine-readable identity — see `position-card.tsx` for the contract and why a
        driver must not parse the visible status word on a trilingual product. */
@@ -542,7 +551,7 @@ function TxnRow({ tx }: { tx: Transaction }) {
           </p>
         </div>
         <div className="text-right shrink-0">
-          <p className={`font-mono text-[14px] font-bold tabular-nums ${settledCredit ? "text-yes-300" : movedNothing ? "text-text-muted" : "text-text"}`}>
+          <p className={`font-mono text-[14px] font-bold tabular-nums ${movedNothing ? "text-text-muted" : "text-text"}`}>
             <Cash>{`${isCredit && !movedNothing ? "+" : ""}${formatTzs(Math.abs(tx.amount))}`}</Cash>
           </p>
           <p className={`mt-0.5 font-mono text-micro uppercase tracking-[0.14em] font-semibold ${statusTone}`}>
@@ -955,8 +964,10 @@ export function WalletPageClient({
                   href="/profile/responsible-gambling"
                   /* ⚠️ LITERAL, not `h-8` — the spacing scale is overridden
                      (tailwind.config.ts:200-215) so `h-8` is 48px, 8px above the
-                     40px chip language every other rail speaks. */
-                  className="inline-flex min-h-[40px] items-center px-3 rounded-pill border border-border bg-bg-overlay font-mono text-[11.5px] font-semibold text-text-muted hover:text-text hover:border-no-700 transition-colors"
+                     40px chip language every other rail speaks.
+                     The hover edge is the "Set personal limits" row's above (`--border-strong`): a door to a protective
+                     tool, never the NO side's rose (§B2a; R5-I, 2026-10-09). */
+                  className="inline-flex min-h-[40px] items-center px-3 rounded-pill border border-border bg-bg-overlay font-mono text-[11.5px] font-semibold text-text-muted hover:text-text hover:border-border-strong transition-colors"
                 >
                   {o}
                 </Link>

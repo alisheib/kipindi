@@ -12,13 +12,14 @@ import { FiftyMark } from "@/components/brand";
  * are fixed (800×320 at 100% 0%, /0.18).
  * ⛔ NO `gold` (R5-C, 2026-10-09; Q5): a page's hero is never money. Its only callers, /proposals and /proposals/new,
  * take the default `info`, the glow seven other page heroes wear.
+ * ⛔ NO `yes` AND NO `rose` EITHER (R5-I, 2026-10-09; DESIGN_AUTHORITY §B2a): the betting pair names the two sides of a
+ * stake, and a page's hero names a page. `yes` had one caller — the responsible-gambling page, now `info` with the other
+ * account pages — and `rose` none.
  */
-type Glow = "info" | "yes" | "rose" | "aqua";
+type Glow = "info" | "aqua";
 
 const GLOW: Record<Glow, string> = {
   info: "oklch(45% 0.10 240 / 0.18)",
-  yes: "oklch(45% 0.10 152 / 0.18)",
-  rose: "oklch(45% 0.13 22 / 0.18)",
   // aqua — the LIVE accent (matches the live pip / tipping / spark hue 195).
   aqua: "oklch(52% 0.10 195 / 0.18)",
 };

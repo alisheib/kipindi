@@ -42,13 +42,16 @@ import { keepText } from "@/components/ui/keep-run";
  * already pass, and `gold` is out of the map, so no call site can ask for it again.
  */
 
-/** Eyebrow colours actually in use across /auth/*. Add to the map, not at a call site. */
-export type AuthEyebrowTone = "brand" | "no" | "yes";
+/** Eyebrow colours actually in use across /auth/*. Add to the map, not at a call site.
+ *  ⭐ R5-I (2026-10-09; DESIGN_AUTHORITY §B2a): a confirmed address and an expired link are APP STATES — the success and
+ *  danger family their medallions already wear (verify-email, reset-password) — so the eyebrow says them in the same ink.
+ *  It was `yes` / `no`: the betting pair, the two sides of a stake, on a page where nothing is staked. */
+export type AuthEyebrowTone = "brand" | "danger" | "success";
 
 const EYEBROW_TONE: Record<AuthEyebrowTone, string> = {
   brand: "text-brand-300",
-  no: "text-no-300",
-  yes: "text-yes-300",
+  danger: "text-danger-fg",
+  success: "text-success-fg",
 };
 
 /** The glass card every auth screen sits in. */

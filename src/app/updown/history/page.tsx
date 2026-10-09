@@ -407,8 +407,12 @@ export default async function UpDownHistoryPage({ searchParams }: {
           <div className="mt-5 grid grid-cols-2 sm:grid-cols-3 gap-3">
             <div className="rounded-xl border border-border bg-bg-elevated p-3.5">
               <div className="font-mono text-micro uppercase eyebrow text-text-faint">{t.market.udNetReturn}</div>
+              {/* ⭐ A NET READS AS EVERY NET ON THE PLATFORM (R5-I, 2026-10-09): money earned is gilt, a loss the betting rose
+                  (Ali's LOSS ruling: "a lost bet is betting semantics"), zero the text's ink — /positions/performance's and the
+                  P&L strip's own rule (R5-C). A positive net was the YES side's green here: an Up & Down round's return is not
+                  the Up side (§B2a), and the same money read gold on one page and green on the next. */}
               <div className="mt-0.5 font-mono text-[19px] font-bold tabular-nums"
-                   style={{ color: net > 0 ? "var(--yes-300)" : net < 0 ? "var(--no-300)" : "var(--text)" }}>
+                   style={{ color: net > 0 ? "var(--gilt)" : net < 0 ? "var(--no-300)" : "var(--text)" }}>
                 {net === 0 ? formatTzs(0) : formatTzsSigned(net)}
               </div>
               {/* 🔴 D37 · THIS SUB-LINE USED TO SPILL OUT OF ITS TILE. `.amount` sets
@@ -540,7 +544,7 @@ export default async function UpDownHistoryPage({ searchParams }: {
                     <div className="text-right">
                       <div className="font-mono text-micro uppercase eyebrow text-text-faint">{t.market.udNetReturn}</div>
                       <div className="font-mono text-[15px] font-bold tabular-nums"
-                           style={{ color: g.anyOpen ? "var(--text-subtle)" : net > 0 ? "var(--yes-300)" : net < 0 ? "var(--no-300)" : "var(--text)" }}>
+                           style={{ color: g.anyOpen ? "var(--text-subtle)" : net > 0 ? "var(--gilt)" : net < 0 ? "var(--no-300)" : "var(--text)" }}>
                         {g.anyOpen ? "—" : net === 0 ? formatTzs(0) : formatTzsSigned(net)}
                       </div>
                     </div>
