@@ -17,7 +17,7 @@ import type { ReactNode } from "react";
 import { cn } from "@/lib/utils";
 import { useT } from "@/lib/i18n";
 import { EMPTY_STATE_BOX, EMPTY_STATE_TITLE, EMPTY_STATE_BODY } from "./empty-state-classes";
-import { emptyStateBody } from "./empty-state-text";
+import { emptyStateBody, type EmptyStateBody } from "./empty-state-text";
 import { hangCjkMarks } from "@/lib/cjk-marks";
 
 type Kind =
@@ -37,7 +37,8 @@ export function EmptyState({
   kind?: Kind;
   illustration?: ReactNode;
   title: string;
-  body?: string;
+  /** The words, or the words with the runs the caller put into them that must stay whole (a date: `breakSentence`). */
+  body?: EmptyStateBody;
   /** Accepted for back-compat; no longer rendered (single-language UI). */
   titleSw?: string;
   bodySw?: string;
@@ -80,9 +81,11 @@ export function EmptyState({
         {illustration ?? <DefaultIllustration kind={kind} />}
       </div>
       {/* ⭐ Both lines are centred, so a Chinese mark that ends one hangs its empty half (`hangCjkMarks`, 2026-10-09,
-          round 4, E50: "…显示在这里。" stood 4.5px left of the box's centre on tiles 427 428). Latin text is untouched. */}
+          round 4, E50: "…显示在这里。" stood 4.5px left of the box's centre on tiles 427 428). Latin text is untouched.
+          The body's held runs (its dash, its YES/NO pair, a caller's date) are nowrap spans and its marks hang inside
+          `emptyStateBody` — round 5 (H4): nothing is inserted into the words. */}
       <p className={cn(EMPTY_STATE_TITLE, "text-text")}>{hangCjkMarks(title)}</p>
-      {body && <p className={cn(EMPTY_STATE_BODY, "text-text-subtle")}>{hangCjkMarks(emptyStateBody(body))}</p>}
+      {body && <p className={cn(EMPTY_STATE_BODY, "text-text-subtle")}>{emptyStateBody(body)}</p>}
       {action && <div className="mt-4">{action}</div>}
     </div>
   );

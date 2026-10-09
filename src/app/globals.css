@@ -1711,11 +1711,14 @@ html[data-fab-idle] .cm-fab:not(.cm-fab--open):not(:focus-within) {
    says why and how it was measured). The mark is set back by its trim; the gap after it — a collapsible space, removed
    at the end of a line and kept mid-line — pays the trim back to the pixel: drawn in `--font-mono`, whose space is
    0.6em in every weight, plus `word-spacing` for the rest (0.65 − 0.6 = 0.05em; ？ 0.5 − 0.6 = −0.1em). Its line
-   height is 0, so the line box cannot grow, and it takes no part in a selection. */
+   height is 0, so the line box cannot grow, and it takes no part in a selection.
+   ⭐ Round 5 (2026-10-09): the space is GENERATED (`::after`, inheriting the gap's face and spacing) on an empty span, so
+   it is not in the page's text — a copy, a find-in-page ("，点击") and `textContent` read the dictionary's words exactly. */
 .kp-cjk-mark { margin-inline-end: -0.65em; }
 .kp-cjk-mark--q { margin-inline-end: -0.5em; }
 .kp-cjk-gap { font-family: var(--font-mono); line-height: 0; letter-spacing: 0; word-spacing: 0.05em; -webkit-user-select: none; user-select: none; }
 .kp-cjk-gap--q { word-spacing: -0.1em; }
+.kp-cjk-gap::after { content: " "; }
 
 /* 🔴 D32 · UNDER REDUCED MOTION THIS STRIP DID NOT SLOW DOWN — IT FROZE, SHOWING 24% OF ONE OF TWELVE EVENTS.
    `animation-play-state: paused` stops the marquee at frame 0, and frame 0 is not a readable state: measured
@@ -4878,7 +4881,10 @@ html[data-sheet-open] .route-enter { animation: none; }
    again — V7 in the landing gate is what re-catches it. Below 640 it clamps at three lines (U6's bound: the
    board takes whatever seven markets its ordering puts first, and one long title would otherwise run seven
    lines — a bound that matters MORE since WP9 grew the board from four rows to seven); the
-   ellipsis says the question continues, and the link — whose name is the whole question — opens it. */
+   ellipsis says the question continues, and the link — whose name is the whole question — opens it.
+   ⭐ BALANCED, AS EVERY MARKET TITLE IS (round 5, 2026-10-09, F1 F4 — see `.mcardp--featured .mcardp-q`): `pretty` is
+   Chromium's orphan rule, which re-breaks only when the last line is short and one unbreakable piece — in Chinese the
+   piece it pulls down is one character, cut from the word before a figure ("超 / 过200毫米") — and is greedy otherwise. */
 .kp-qrow__q {
   font-family: var(--font-display);
   font-weight: 700;
@@ -4887,7 +4893,7 @@ html[data-sheet-open] .route-enter { animation: none; }
   line-height: 1.25;
   color: var(--text);
   max-inline-size: 44ch;
-  text-wrap: pretty;
+  text-wrap: balance;
   display: -webkit-box;
   -webkit-box-orient: vertical;
   -webkit-line-clamp: 3;
@@ -5378,8 +5384,19 @@ html[data-sheet-open] .route-enter { animation: none; }
 /* The question. Whole from 640 — h4, then h3 from 1024 (the concept's 21–26px mapped onto the locked
    ladder). Below 640 it keeps the card's 15px and clamps at THREE lines in every language: at 360 the
    hero's first screen has ~65px left for everything WP3 adds (hero v3 §7), and the clamp paints an
-   ellipsis while the h2 keeps the whole question for a screen reader and the card's link names it. */
-.mcardp--featured .mcardp-q { -webkit-line-clamp: 3; min-height: 0; overflow-wrap: break-word; text-wrap: pretty; }
+   ellipsis while the h2 keeps the whole question for a screen reader and the card's link names it.
+   ⭐ ITS LINES ARE BALANCED, LIKE EVERY OTHER MARKET TITLE (round 5, 2026-10-09, F1 F4: tiles 029 059 074 084 097 109
+   and 023 026). It wore `text-wrap: pretty`, which Chromium (score_line_breaker.cc, `ShouldOptimize`) applies only
+   when the greedy last line is under a third of the line AND has no break opportunity inside, and then re-breaks the
+   paragraph so that line is not an orphan: at zh 320 the last line was the figure run "200毫米" (61px of 229 — one
+   unbreakable piece, kept whole by `keepFigures`), so one character came down with it — "…降雨超 / 过200毫米" (tile 029:
+   163 + 76px), the word 超过 cut; any other last line has a break inside, so `pretty` is plain greedy — en 390
+   "…exceeds 200mm / in July", 286 + 49px. So the featured question takes the card's own `text-wrap: balance`
+   (`.mcardp-q`): "达累斯萨拉姆七月 / 降雨超过200毫米", "Dar es Salaam rainfall / exceeds 200mm in July". A `-webkit-line-clamp`
+   does not stop it (Chromium suspends the scorer under a clamp only behind the experimental
+   CSSLineClampLineBreakingEllipsis). `test:visual-pass-r5e` §3 models greedy, pretty and balance from that source,
+   reproduces the tiles, and sweeps every width; §2 holds every title surface to balance. */
+.mcardp--featured .mcardp-q { -webkit-line-clamp: 3; min-height: 0; overflow-wrap: break-word; }
 @media (min-width: 640px) {
   .mcardp--featured .mcardp-q { display: block; -webkit-line-clamp: unset; overflow: visible; font-size: var(--type-h4); font-weight: 700; }
 }

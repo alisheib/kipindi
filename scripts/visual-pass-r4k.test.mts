@@ -32,6 +32,7 @@ import { NotFoundView } from "../src/components/ui/not-found-view.tsx";
 // a server file can read (`not-found-words.ts`; `test:visual-pass-r5d` §4).
 import { NOT_FOUND_WORDS, notFoundTitle } from "../src/components/ui/not-found-words.ts";
 import { hangCjkMarks, CJK_MARK_TRIM, CJK_TRIM_EM } from "../src/lib/cjk-marks.tsx";
+import { emptyStateBody } from "../src/components/ui/empty-state-text.ts";
 import twConfigModule from "../tailwind.config.ts";
 import { MUTATIONS } from "./anchors/visual-pass-r4k.anchors.mjs";
 
@@ -240,8 +241,11 @@ section("4 · a Chinese mark that ends a centred line hangs its empty part (E50;
   const end = html(h("p", null, hangCjkMarks("选择一方以设置您的信念并下注。")));
   ok("4.2 · a line-final 。 is set back and nothing follows it", end === `<p>选择一方以设置您的信念并下注<span class="kp-cjk-mark">。</span></p>`, end);
   const mid = html(h("p", null, hangCjkMarks("选择一个问题，点击")));
-  ok("4.3 · a mid-text ， is set back AND followed by the gap that pays it back",
-    mid === `<p>选择一个问题<span class="kp-cjk-mark">，</span><span aria-hidden="true" class="kp-cjk-gap"> </span>点击</p>`, mid);
+  // ⚠️ Pin moved 2026-10-09 (round 5, R5-E, review 3's doubt): the gap's space is the stylesheet's (`::after`), so the
+  // gap is an EMPTY span and the text is the dictionary's, character for character (copy, find-in-page, textContent).
+  ok("4.3 · a mid-text ， is set back AND followed by the gap that pays it back — a space the stylesheet draws, not the text",
+    mid === `<p>选择一个问题<span class="kp-cjk-mark">，</span><span aria-hidden="true" class="kp-cjk-gap"></span>点击</p>`
+      && /\.kp-cjk-gap::after\s*\{\s*content:\s*" ";\s*\}/.test(css), mid);
   const q = html(h("p", null, hangCjkMarks("它会朝哪个方向结算？")));
   ok("4.4 · ？ takes its own, smaller trim", q.endsWith(`<span class="kp-cjk-mark kp-cjk-mark--q">？</span></p>`), q);
   const pair = html(h("p", null, hangCjkMarks("真的？！")));
@@ -272,7 +276,10 @@ section("4 · a Chinese mark that ends a centred line hangs its empty part (E50;
   }
   // The helper is where the centred Chinese lines are.
   ok("4.10 · applied where the lines are centred: the empty state's title and body, the side picker's question and sub-line, the not-found hint",
-    code("src/components/ui/empty-state.tsx").includes("{hangCjkMarks(title)}") && code("src/components/ui/empty-state.tsx").includes("{hangCjkMarks(emptyStateBody(body))}")
+    // ⚠️ Pin moved 2026-10-09 (round 5, R5-E, H4): the body's marks hang inside `emptyStateBody`, which draws its held runs
+    // as spans (no character inserted), so the call is `{emptyStateBody(body)}` and the rendered body is checked here.
+    code("src/components/ui/empty-state.tsx").includes("{hangCjkMarks(title)}") && code("src/components/ui/empty-state.tsx").includes("{emptyStateBody(body)}")
+      && html(h("p", null, emptyStateBody("选择一个问题，点击“是”或“否”——您的注单会显示在这里。"))).endsWith(`显示在这里<span class="kp-cjk-mark">。</span></p>`)
       && code("src/components/markets/side-picker.tsx").includes("{hangCjkMarks(t.market.whichWay)}") && code("src/components/markets/side-picker.tsx").includes("{hangCjkMarks(t.market.chooseSideHelp)}")
       && viewMarkup.includes("{hangCjkMarks(words.notFoundHint)}"));
   ok("4.6′ PLANT · a gap with no word-spacing would leave a mid-line mark 0.05em short", Math.abs(sp + 0 - CJK_TRIM_EM.mark) > 0.01);

@@ -7,9 +7,9 @@
  *
  * ⛔ WHY NOT `text-wrap: pretty` ALONE: it chooses WHICH break to take, by a heuristic each engine sets for itself, and
  * Firefox does not ship it; a guard cannot prove what it will pick. ⛔ AND WHY NOT A NO-BREAK SPACE: it travels into the
- * copied text and the find-in-page match. ⭐ So, as `keepUnits` does for a number and its unit, the last two words go in
- * a `white-space: nowrap` span — what every engine honours — and the text itself (the accessible name, a copy, a search
- * hit) is unchanged. Every other break is left alone, so a sentence that fits on its lines wraps exactly as it did.
+ * copied text and the find-in-page match. ⭐ So, as `keepFigures` below does for a number and its unit, the last two words
+ * go in a `white-space: nowrap` span — what every engine honours — and the text itself (the accessible name, a copy, a
+ * search hit) is unchanged. Every other break is left alone, so a sentence that fits on its lines wraps exactly as it did.
  *
  * ⚠️ Only for SHORT closing words, on surfaces whose line is always wider than them (each call site says why): the pair
  * cannot break, so on a line narrower than it would overflow. ⚠️ Text with an ideograph is returned untouched — Chinese
@@ -20,12 +20,42 @@
 import type { ReactNode } from "react";
 
 const IDEOGRAPH = /[㐀-䶿一-鿿豈-﫿]/;
-/** The last two whitespace-separated words, with any trailing space. */
-const LAST_TWO = /\S+\s+\S+\s*$/;
+/**
+ * ⭐ THE WHITE SPACE A KEPT RUN MAY HOLD (round 5, 2026-10-09, review 3 H2 — one rule for every keep helper): any run of
+ * collapsible spaces, which renders as one, and at most ONE other white space (a no-break space, an ideographic space).
+ * A run held across `\s+` could hold any number of U+3000 or U+2003 — "dakika" + 37 ideographic spaces + "28:00" is one
+ * unbreakable run some 600px wide — so where the gap is wider than that the words are left to wrap as words do.
+ * `KEPT_GAP` may be empty; `KEPT_SPACE` is the same with at least one white space.
+ */
+export const KEPT_GAP = "[\\t\\n\\f\\r ]*(?:[^\\S\\t\\n\\f\\r ][\\t\\n\\f\\r ]*)?";
+export const KEPT_SPACE = `(?=\\s)${KEPT_GAP}`;
+const SPACE_KEPT = new RegExp(`^${KEPT_SPACE}$`);
+const WHITE = /\s/;
+
+/**
+ * The last two whitespace-separated words of `text` — the space between them a kept one (`KEPT_SPACE`) — as [where the
+ * first starts, where the second ends], or null. `trail` is the white space after them: `"kept"` when the caller draws it
+ * inside the span (it must be a kept space too), `"any"` when the span leaves it out.
+ * ⛔ READ FROM THE END, word by word — linear. The pattern it replaces ("word, space, word, end"), tried at every place,
+ * backtracked over every long word before it failed: quadratic, a quarter of a second on 10,000 letters (round 5).
+ */
+export function lastTwo(text: string, trail: "kept" | "any"): [number, number] | null {
+  let end = text.length;
+  while (end > 0 && WHITE.test(text[end - 1])) end--;
+  if (trail === "kept" && end < text.length && !SPACE_KEPT.test(text.slice(end))) return null;
+  let second = end;
+  while (second > 0 && !WHITE.test(text[second - 1])) second--;
+  let gap = second;
+  while (gap > 0 && WHITE.test(text[gap - 1])) gap--;
+  let first = gap;
+  while (first > 0 && !WHITE.test(text[first - 1])) first--;
+  if (second === end || first === gap || !SPACE_KEPT.test(text.slice(gap, second))) return null;
+  return [first, end];
+}
 
 export function keepLastWords(text: string): ReactNode {
   if (IDEOGRAPH.test(text)) return text;
-  const at = text.search(LAST_TWO);
+  const at = lastTwo(text, "kept")?.[0] ?? -1;
   // ⛔ `at <= 0`: the whole text is two words or fewer (or one word), so nothing can be stranded.
   if (at <= 0) return text;
   return [text.slice(0, at), <span key="last-words" className="whitespace-nowrap">{text.slice(at)}</span>];
@@ -62,16 +92,23 @@ export function keepSentences(text: string): ReactNode {
  * "Act 2022" is now one nowrap span; every other break is left alone and the text is unchanged. A year is four digits
  * (1800–2999) standing as a word — followed by a space, the end, or punctuation — so a date ("2026-10-07") and a longer
  * number ("16221") are not years. It applies inside Chinese text too: the Latin name it binds is not broken by keep-all.
+ * ⛔ Found from the year's space (where a word ends) and the word read back from it — linear (round 5: "word, space,
+ * year" tried at every place was quadratic on a long word, and a space tried at every place on a long run of spaces);
+ * the space is `KEPT_SPACE`.
  */
-const WORD_YEAR = /\S+\s+(?:1[89]|2\d)\d{2}(?=$|[\s.,;:!?)\]。，；：])/g;
+const SPACE_YEAR = new RegExp(`\\S(${KEPT_SPACE}(?:1[89]|2\\d)\\d{2})(?=$|[\\s.,;:!?)\\]。，；：])`, "g");
 
 export function keepYears(text: string): ReactNode {
   const out: ReactNode[] = [];
   let from = 0;
-  for (const m of text.matchAll(WORD_YEAR)) {
-    const at = m.index ?? 0;
-    out.push(text.slice(from, at), <span key={`y${out.length}`} className="whitespace-nowrap">{m[0]}</span>);
-    from = at + m[0].length;
+  for (const m of text.matchAll(SPACE_YEAR)) {
+    const space = (m.index ?? 0) + 1;
+    // The word before the space, never reaching into the run before it.
+    let at = space;
+    while (at > from && !WHITE.test(text[at - 1])) at--;
+    if (at === space) continue;
+    out.push(text.slice(from, at), <span key={`y${out.length}`} className="whitespace-nowrap">{text.slice(at, space + m[1].length)}</span>);
+    from = space + m[1].length;
   }
   if (out.length === 0) return text;
   out.push(text.slice(from));
@@ -82,53 +119,94 @@ export function keepYears(text: string): ReactNode {
  * A MARKET TITLE'S FIGURES STAY WHOLE (round 4 of the visual pass, 2026-10-09, edges tiles 197 199 253 255 256): a season
  * never breaks at its hyphen — the Chinese page read "辛巴俱乐部赢得2026-" / "27赛季NBC超级联赛" — and a number never parts
  * from its unit — the Swahili page read "atavunja dakika" / "28:00 kwenye 10K". Titles are data, so the words are never
- * touched: each figure run goes in a `white-space: nowrap` span (the reason `keepUnits` gives: what every engine honours,
- * and the text a reader copies or a screen reader names is unchanged).
+ * touched: each figure run goes in a `white-space: nowrap` span (what every engine honours, and the text a reader copies or
+ * a screen reader names is unchanged — no no-break space, no word joiner).
  * A RUN is a number — digits with their own separators (2,650 · 5.5 · 28:00), a currency sign before them, a range after
  * them (2026-27 · 24/7 · 2026–27), a % — together with its unit on ONE side:
- *   · a Chinese unit of one or two ideographs straight after it ("200毫米", "27赛季" — `keepUnits`' rule, kept);
- *   · a hyphenated unit ("30-day", "7-day");
+ *   · a Chinese unit straight after it, from the closed list `ZH_UNIT`, longest first ("200毫米", "15万美元", "27赛季", and
+ *     "8月1日" — a month with its day, the twin of "1 Agosti" below);
+ *   · a hyphenated unit ("30-day", "7-day", "30-Day");
  *   · a unit word after it ("28 minutes", "$5.5 bilioni") or before it ("dakika 28:00", "nyuzi 32", "TZS 10,000"), from the
  *     closed lists below — a measure noun, a magnitude, a currency code — and a month on either side of a day ("1 Agosti",
- *     "April 15"). Where a word stands on both sides, the month or the unit after wins and the word before stays plain text
- *     ("tarehe 1 Agosti" keeps "1 Agosti"), so a run is never more than one word and its number.
+ *     "April 15"; never a year — round 5: "December 2026" was kept, `DAY` below). Where a word stands on both sides, the
+ *     month or the unit after wins and the word before stays plain text ("tarehe 1 Agosti" keeps "1 Agosti"), so a run is
+ *     never more than one word and its number — except a CURRENCY CODE, which is part of the figure itself: "TZS 1
+ *     bilioni", "TZS 4,200" in "TZS 4,200以上" (round 5, H1: the code was left behind whenever a unit followed).
+ * ⭐ ROUND 5 (2026-10-09, review 3 H1): the Chinese unit was "one or two ideographs, whatever they are" (`keepUnits`' rule),
+ * so the run took the next word's first character — "[7月降]雨量", "[2026年坦]桑尼亚" (the good break 年|坦 lost),
+ * "[1日收]于", "超过[15万美]元？" (美元 cut). The closed list ends the run at the unit; `keepUnits` itself, which nothing
+ * imported any more, is gone. A lower-case unit word also opens a sentence ("Dakika 90 za mwisho", "Saa 3 usiku"): the same
+ * pair, capitalised. ⛔ NOT a Swahili word AFTER the number ("28:00 dakika"): Swahili names the unit first, and a noun after
+ * a number usually opens the next phrase ("mabao 2 siku ya mwisho"), so such a pair is left to wrap as words do.
  * A bare number with no unit and no range ("2,650", "28:00") has no break inside it to protect and stays plain text, so a
  * title without a run renders byte for byte as before. ⚠️ Proper nouns are data and are never joined ("World Athletics",
- * "NBC Premier League"). ⚠️ The lists are closed on purpose: a run cannot grow past a word and a number (≤ 20 characters in
- * every seeded title), which fits the narrowest title line on every surface, where an open rule ("a number keeps the word
- * before it") would join "ya 2,650" and "on 1" and could not promise that. ⛔ Deterministic, no lookbehind (a client
- * bundle holding one fails to parse on Safari before 16.4), CJK-safe: the unit words are Latin, the ideograph rule is
- * `keepUnits`' own.
+ * "NBC Premier League"). ⚠️ The lists are closed on purpose: a run cannot grow past a figure and its one unit, where an
+ * open rule ("a number keeps the word before it") would join "ya 2,650" and "on 1". The narrowest title line is the market
+ * page's h1 at 320 — 220px at 28px bold, about 13 characters — and `test:visual-pass-r5e` §9 measures every seeded title's
+ * runs and the platform's money phrasings against it ("TZS 2.5 bilioni" 195px, "TZS 1,000,000" 208px); a 14-character
+ * figure ("TZS 10,000,000", 229px) is wider, as a 14-letter word is (round 5's report names it). ⛔ Deterministic, no
+ * lookbehind (a client bundle holding one fails to parse on Safari before 16.4), CJK-safe: the unit words are Latin, and a
+ * Chinese unit is one of the listed words.
  */
 const MONTHS = "January|February|March|April|May|June|July|August|September|October|November|December|Januari|Februari|Machi|Aprili|Mei|Juni|Julai|Agosti|Septemba|Oktoba|Novemba|Desemba";
-const UNIT_BEFORE = `dakika|saa|sekunde|siku|wiki|mwezi|miezi|mwaka|miaka|nyuzi|asilimia|tarehe|milioni|bilioni|TZS|USD|KES|${MONTHS}`;
-const UNIT_AFTER = `minutes?|hours?|seconds?|days?|weeks?|months?|years?|degrees?|percent|million|billion|milioni|bilioni|${MONTHS}`;
-/** Groups: 1 the word before + 2 its space · 3 the number · 4 an ideograph unit · 5 a hyphenated unit · 6 a space + 7 the word after. */
+/** A lower-case unit word with its capital too ("dakika" | "Dakika"), for the one that opens a sentence. */
+const capital = (words: string) => words.split("|").map((w) => `[${w[0]}${w[0].toUpperCase()}]${w.slice(1)}`).join("|");
+const UNIT_BEFORE = `${capital("dakika|saa|sekunde|siku|wiki|mwezi|miezi|mwaka|miaka|nyuzi|asilimia|tarehe|milioni|bilioni")}|TZS|USD|KES|${MONTHS}`;
+const UNIT_AFTER = `${capital("minutes?|hours?|seconds?|days?|weeks?|months?|years?|degrees?|percent|million|billion|milioni|bilioni")}|${MONTHS}`;
+/** A currency code is part of the figure, so it stays the run's head even when a unit follows ("TZS 1 bilioni"). */
+const CURRENCY = /^(?:TZS|USD|KES)$/;
+/** A month keeps its DAY ("1 Agosti", "April 15", "Mei 31"), never a year: "December 2026" is 225px at the market page's
+ *  28px h1, wider than that h1's 220px line at 320 (test:visual-pass-r5e §9), and a month and its year read whole on two
+ *  lines as two words do. */
+const MONTH = new RegExp(`^(?:${MONTHS})$`);
+const DAY = /^(?:0?[1-9]|[12]\d|3[01])$/;
+/** The Chinese units a number keeps, longest first, so "万美元" is taken before "万" and the next word never joins. */
+const ZH_UNIT = "月\\d{1,2}[日号]|万美元|亿美元|万先令|亿先令|美元|先令|欧元|英镑|毫米|厘米|公里|千米|公斤|千克|毫升|分钟|小时|赛季|季度|百分点|摄氏度|个月|年底|年初|月底|月初|月中|[年月日号时分秒天周岁米克吨升元万亿场球届次名个度轮局倍]";
+/** Groups: 1 the word before + 2 its space · 3 the number · 4 a Chinese unit · 5 a hyphenated unit · 6 a space + 7 the word
+ *  after. The spaces are `KEPT_SPACE` (round 5, H2's rule): never an unbounded run of wide white space inside a run. */
 const FIGURE = new RegExp(
-  `(?:\\b(${UNIT_BEFORE})(\\s+))?([$€£]?\\d+(?:[.,:]\\d+)*(?:[-–/]\\d+(?:[.,:]\\d+)*)*%?)`
-    + `(?:(\\s?[㐀-䶿一-鿿豈-﫿]{1,2})|(-[a-z]+)\\b|(\\s+)(${UNIT_AFTER})\\b)?`,
+  `(?:\\b(${UNIT_BEFORE})(${KEPT_SPACE}))?([$€£]?\\d+(?:[.,:]\\d+)*(?:[-–/]\\d+(?:[.,:]\\d+)*)*%?)`
+    + `(?:(\\s?(?:${ZH_UNIT}))|(-[A-Za-z][a-z]*)\\b|(${KEPT_SPACE})(${UNIT_AFTER})\\b)?`,
   "g",
 );
 /** A break could fall inside the run: a space, a range's mark, or an ideograph (UAX #14 lets a line end before one). */
 const BREAKABLE = /[\s\-–/㐀-䶿一-鿿豈-﫿]/;
 
-export function keepFigures(text: string): ReactNode {
-  if (!/\d/.test(text)) return text;
-  const out: ReactNode[] = [];
-  let from = 0;
+/** Each figure run of `text` as a [start, end) span, in order (the rule above). */
+export function figureRanges(text: string): Array<[number, number]> {
+  const out: Array<[number, number]> = [];
+  if (!/\d/.test(text)) return out;
   for (const m of text.matchAll(FIGURE)) {
     const [, before, gap, num, ideo, hyph, space, after] = m;
-    // One side only: a unit after the number wins, and the word before then stays plain text.
-    const tail = ideo ?? hyph ?? (after !== undefined ? space + after : "");
-    const head = tail === "" && before !== undefined ? before + gap : "";
+    // A month on either side holds a day only.
+    const day = DAY.test(num);
+    const afterHeld = after !== undefined && (day || !MONTH.test(after));
+    const beforeHeld = before !== undefined && (day || !MONTH.test(before));
+    // One side only: a unit after the number wins, and the word before then stays plain text — unless it is a currency.
+    const tail = ideo ?? hyph ?? (afterHeld ? space + after : "");
+    const head = beforeHeld && (tail === "" || CURRENCY.test(before)) ? before + gap : "";
     const start = (m.index ?? 0) + (before !== undefined && head === "" ? before.length + gap.length : 0);
     const run = head + num + tail;
     // A run with no break inside it (a bare "2,650") is left as text.
-    if (!BREAKABLE.test(run)) continue;
-    out.push(text.slice(from, start), <span key={`f${out.length}`} className="whitespace-nowrap">{run}</span>);
-    from = start + run.length;
+    if (BREAKABLE.test(run)) out.push([start, start + run.length]);
   }
-  if (out.length === 0) return text;
+  return out;
+}
+
+/** The figure runs themselves — for a sentence that `keepText` draws (keep-run.tsx), which takes its runs as words. */
+export function figureRuns(text: string): string[] {
+  return figureRanges(text).map(([a, b]) => text.slice(a, b));
+}
+
+export function keepFigures(text: string): ReactNode {
+  const ranges = figureRanges(text);
+  if (ranges.length === 0) return text;
+  const out: ReactNode[] = [];
+  let from = 0;
+  for (const [a, b] of ranges) {
+    out.push(text.slice(from, a), <span key={`f${out.length}`} className="whitespace-nowrap">{text.slice(a, b)}</span>);
+    from = b;
+  }
   out.push(text.slice(from));
   return out;
 }
@@ -140,13 +218,61 @@ export function keepFigures(text: string): ReactNode {
  * space between them, if any) go in one nowrap span, so a last line holds two at least. Two characters always fit a line,
  * so this can never overflow — unlike `keepLastWords`, whose pair of words a long name could make wider than its column.
  * A name of two characters or fewer is returned untouched; the text itself is unchanged.
+ * ⭐ ROUND 5 (2026-10-09, review 3 H2 H3) · A CHARACTER IS WHAT A READER SEES, AND THE GAP IS BOUNDED:
+ *   · "two characters" were two code points, so the cut landed INSIDE one emoji — "Neema" and the technologist emoji
+ *     (👩 ZWJ 💻) drew "Neema 👩" outside the span and the ZWJ and 💻 inside it, the sequence parted by an element
+ *     boundary (an engine that shapes per element draws two glyphs). A character is now a whole extended grapheme
+ *     cluster (`CHARACTER`): a flag's two regional indicators, a letter with its marks, a skin tone, a tag sequence, a
+ *     ZWJ sequence, an Indic conjunct (Unicode 15.1's GB9c), Thai and Lao AM, Hangul jamo, a prepended mark with its
+ *     base — read LEFT TO RIGHT, so the flags of "🇹🇿🇰🇪" pair as the text does. Checked code point by code point against
+ *     ICU's own segmentation (Node 24: ICU 78, Unicode 17) the pattern never parts what ICU keeps together; where the two
+ *     differ it joins MORE (a Myanmar vowel sign, any letter after a virama), which only keeps one more character with
+ *     the end;
+ *   · the space between the two (and after the last) was any `\s`, so "AB" + 37 × U+3000 + "C" (40 units, which the
+ *     name's max(40) accepts) became one unbreakable 39-character run, ~663px in the hub. Now only collapsible spaces
+ *     (a run of them renders as one) and at most ONE other white space may stand there, so the kept end is two
+ *     characters and a gap of a few ems at most; a name whose end is wider is returned as it came.
+ * ⛔ A REGULAR EXPRESSION, NOT `Intl.Segmenter`: Firefox has it only from 125, and its clusters follow each engine's own
+ * ICU data — Node's on the server, the browser's in the client (GB9c, for one, is Unicode 15.1) — so the name editor (a
+ * client component) could draw its span in one place on the server and another in the browser, and hydration would
+ * mismatch. The pattern is the same text on both sides, and it uses only general categories and `\p{RI}` (Unicode
+ * property escapes: Chrome 64, Safari 11.1, Firefox 78), no lookbehind. `test:visual-pass-r5e` holds its cut to Node's
+ * own grapheme boundaries.
  */
-const NAME_END = /\S\s*\S\s*$/u;
+/** Marks that open a cluster: Unicode's Prepend class (Arabic number signs and their kin; U+113D1 since Unicode 16). */
+const PREPEND = "\\u0600-\\u0605\\u06DD\\u070F\\u0890\\u0891\\u08E2\\u0D4E\\u{110BD}\\u{110CD}\\u{111C2}\\u{111C3}\\u{113D1}\\u{1193F}\\u{11941}\\u{11A3A}\\u{11A84}-\\u{11A89}\\u{11D46}\\u{11F02}";
+/** The viramas that join two consonants into one conjunct (GB9c): Devanagari, Bengali, Gujarati, Oriya, Telugu, Malayalam. */
+const LINKER = "\\u094D\\u09CD\\u0ACD\\u0B4D\\u0C4D\\u0D4D";
+/** What joins the character before it: every mark, and the joiners and vowels Unicode joins that are not marks — ZWNJ
+ *  and ZWJ, Thai and Lao AM (ำ ຳ), the half-width voiced marks (ﾞ ﾟ), skin tones, emoji tags, Hangul vowel and final
+ *  jamo (and Kirat Rai's, which Unicode 16 classes with them). */
+const EXTEND = "\\p{M}\\u200C\\u200D\\u0E33\\u0EB3\\uFF9E\\uFF9F\\u{1F3FB}-\\u{1F3FF}\\u{E0020}-\\u{E007F}\\u1160-\\u11FF\\uD7B0-\\uD7FF\\u{16D63}\\u{16D67}-\\u{16D6A}";
+/** Hangul leading jamo, which join each other and the syllable after them (old Hangul). */
+const L_JAMO = "\\u1100-\\u115F\\uA960-\\uA97C";
+/** Where a cluster opens: a flag's two regional indicators, a prepended mark and its base, leading jamo and their
+ *  syllable, or any other character that is not white space. */
+const OPENER = `\\p{RI}\\p{RI}|[${PREPEND}]*(?:[${L_JAMO}]+[\\uAC00-\\uD7A3]?|\\S)`;
+/** One user-perceived character: an opener (or a white space that a mark follows), then its marks, a conjunct's next
+ *  consonant (a few marks may stand between, ≤ 4 so no input can make the pattern backtrack far), and each ZWJ with
+ *  the whole character it joins. */
+const CHARACTER = new RegExp(
+  `(?:${OPENER}|\\s(?=[${EXTEND}]))(?:[${LINKER}][\\p{M}\\u200D]{0,4}\\p{L}|\\u200D(?:${OPENER})|[${EXTEND}])*`,
+  "gu",
+);
+/** What may stand between the last two characters, and after the last: collapsible spaces and at most one other (`KEPT_GAP`). */
+const NAME_GAP = new RegExp(`^${KEPT_GAP}$`);
+
+/** Each user-perceived character of `text` as a [start, end) span, left to right — white space between them left out. */
+export function characterSpans(text: string): Array<[number, number]> {
+  return [...text.matchAll(CHARACTER)].map((m): [number, number] => [m.index ?? 0, (m.index ?? 0) + m[0].length]);
+}
 
 export function keepNameEnd(name: string): ReactNode {
-  const at = name.search(NAME_END);
-  if (at <= 0) return name;
-  return [name.slice(0, at), <span key="name-end" className="whitespace-nowrap">{name.slice(at)}</span>];
+  // The last two characters, read left to right (`characterSpans`' pattern), keeping only the last two.
+  let a: [number, number] | null = null, b: [number, number] | null = null;
+  for (const m of name.matchAll(CHARACTER)) { a = b; b = [m.index ?? 0, (m.index ?? 0) + m[0].length]; }
+  if (!a || !b || a[0] <= 0 || !NAME_GAP.test(name.slice(a[1], b[0])) || !NAME_GAP.test(name.slice(b[1]))) return name;
+  return [name.slice(0, a[0]), <span key="name-end" className="whitespace-nowrap">{name.slice(a[0])}</span>];
 }
 
 /**

@@ -19,6 +19,7 @@
 import * as React from "react";
 import { I } from "@/components/ui/glyphs";
 import { cn } from "@/lib/utils";
+import { moneyRuns } from "@/lib/fill-nodes";
 import { haptics } from "@/lib/haptics";
 import { useT } from "@/lib/i18n";
 import { subscribeResultModal } from "@/lib/result-modal-presence";
@@ -31,6 +32,7 @@ import { groupKeyFor, mergeGroup } from "@/lib/toast-group";
 type ToastVariant = "default" | "success" | "warning" | "danger" | "gold" | "factual";
 
 type ToastInput = {
+  /** Words. Every amount they state ("TZS 9,000") is drawn as an `.amount` by the toast itself (`ToastItem`, §M4). */
   title: string;
   description?: string;
   variant?: ToastVariant;
@@ -710,10 +712,15 @@ function ToastItem({ toast, exiting, onDismiss, onPause, onResume }: { toast: To
           {v.icon}
         </div>
         <div className="min-w-0 flex-1">
-          {/* Kit toast-title 13px / 600 / -2px margin */}
-          <p className="font-display text-[13px] font-semibold text-text leading-tight">{toast.title}</p>
+          {/* Kit toast-title 13px / 600 / -2px margin.
+              ⭐ EVERY AMOUNT A TOAST STATES IS AN `.amount` (DESIGN_AUTHORITY §M4: mono, untracked, never reflowed),
+              drawn here once for every toast (`moneyRuns`): "Bet placed · YES TZS 1,000", "Sold · TZS 9,000 returned", a
+              payout, a refused sale's moved price. Its `white-space: nowrap` keeps "TZS" and its digits on one line, so no
+              caller joins them with a no-break space (round 5, 2026-10-09, review 3 H4: the refused sale's toast did, a
+              character that travelled into a copy and a find-in-page) — the words stay the caller's, character for character. */}
+          <p className="font-display text-[13px] font-semibold text-text leading-tight">{moneyRuns(toast.title)}</p>
           {toast.description ? (
-            <p className="mt-0.5 text-body-sm text-text-muted leading-snug">{toast.description}</p>
+            <p className="mt-0.5 text-body-sm text-text-muted leading-snug">{moneyRuns(toast.description)}</p>
           ) : null}
         </div>
       </div>

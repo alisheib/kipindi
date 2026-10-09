@@ -37,7 +37,7 @@ import { formatEatDateTime } from "@/lib/eat-day";
 import { getGlobalConfig } from "@/lib/server/market-config";
 import { durationHours } from "@/lib/duration-phrase";
 import { EmptyState } from "@/components/ui/empty-state";
-import { keepLastWords } from "@/components/ui/keep-words";
+import { keepFigures, keepLastWords } from "@/components/ui/keep-words";
 import { getServerT } from "@/lib/i18n-server";
 import { outcomeWord } from "@/lib/side-label";
 import { pickLocalized } from "@/lib/localized";
@@ -346,7 +346,8 @@ export default async function FairnessPage({ searchParams }: { searchParams: Pro
                      which is the only way those properties are checkable in three languages. */
                   <tr key={m.id} role="row" data-row-id={m.id} className="border-b border-border last:border-b-0 align-top">
                     <td role="cell" data-th={t.common.thMarket} className="p-3 max-w-[420px]">
-                      <Link href={`/markets/${m.id}` as never} className="font-display font-semibold text-text hover:text-brand-300 line-clamp-2">{titleOf(m)}</Link>
+                      {/* A market title, set as every market title is (round 5, R5-E): balanced, its figures whole. */}
+                      <Link href={`/markets/${m.id}` as never} className="font-display font-semibold text-text hover:text-brand-300 line-clamp-2 text-balance">{keepFigures(titleOf(m))}</Link>
                     </td>
                     <td role="cell" data-th={t.common.thOutcome} className="p-3">
                       {/* §L3 — this printed the stored token, and its null arm printed the

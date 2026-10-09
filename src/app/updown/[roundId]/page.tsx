@@ -187,16 +187,18 @@ export default async function UpDownRoundPage({
     const o = decideOutcomeByTargets(heroLive, round.upTarget, round.downTarget);
     return o.voidReason === "source-failed" ? null : o.outcome === "UP" ? "up" as const : o.outcome === "DOWN" ? "down" as const : "level" as const;
   })();
-  // No-break spaces: "imenukuliwa 18:55:02 EAT" is one unit and never splits at a line end.
+  // "imenukuliwa 18:55:02 EAT" is one unit and never splits at a line end: one nowrap run. Round 5 (2026-10-09, review 3
+  // H4's sweep): it was no-break spaces — characters in the page's text, travelling into a copy and a find-in-page — and
+  // is now a span, the keep helpers' convention (keep-words.tsx); the words are the dictionary's and the formatter's.
   const quotedAt = asset.sourceQuotedAt ? fmtEAT(asset.sourceQuotedAt) : null;
-  const stamp = quotedAt ? `${t.market.udQuoted}\u00A0${quotedAt.replace(/ /g, "\u00A0")}` : null;
+  const stamp = quotedAt ? <span className="whitespace-nowrap">{t.market.udQuoted} {quotedAt}</span> : null;
   const moveText = move == null || move === 0 ? null
     : !decided && tone === "level" ? fill(t.market.udLevelBy, { amount: `$${Math.abs(move).toFixed(dec)}` })
       : `${move > 0 ? t.market.udAboveOpenBy : t.market.udBelowOpenBy} $${Math.abs(move).toFixed(dec)}`;
   // E-53 · the KIND of market, never the vendor. The class arrives already resolved from
   // the server (`publicSourceClassFor`), so the domain is not in this payload to leak.
   const source = decided
-    ? `${t.market[SOURCE_CLASS_KEY[asset.sourceClass]]}${stamp ? ` · ${stamp}` : ""}`
+    ? <>{t.market[SOURCE_CLASS_KEY[asset.sourceClass]]}{stamp && <>{" · "}{stamp}</>}</>
     : t.market[SOURCE_CLASS_KEY[asset.sourceClass]];
   // Two clauses, never split inside: the move and its quote stamp. Below 400 they stack and the "·" hides, so no
   // line ends on a dangling dot — the landing band's own rule (frame panel round 3, 2026-09-27).

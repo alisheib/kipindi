@@ -13,6 +13,7 @@ import { listPositionsForUser, getMarket } from "@/lib/server/market-service";
 import { currentSession } from "@/lib/server/auth-service";
 import { getServerT } from "@/lib/i18n-server";
 import { pickLocalized } from "@/lib/localized";
+import { keepFigures } from "@/components/ui/keep-words";
 import { sideWord } from "@/lib/side-label";
 import { PageContainer } from "@/components/layout/page-container";
 import { PerformanceBar } from "./performance-bar";
@@ -336,7 +337,8 @@ export default async function PerformancePage({
                   {bestMarket && bestTitle && (
                     <p className="mt-1.5 line-clamp-2 text-body-sm text-text-muted">
                       <Link href={`/markets/${bestMarket.marketId}` as never} className="hover:text-text transition-colors">
-                        {bestTitle}
+                        {/* The question, its figures whole as on every card (`keepFigures`, round 5, R5-E). */}
+                        {keepFigures(bestTitle)}
                       </Link>
                     </p>
                   )}

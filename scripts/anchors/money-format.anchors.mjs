@@ -112,8 +112,10 @@ export const MUTATIONS = [
     why: "The figure matcher reads digits and commas greedily, so \"…to TZS 5,000,000, needs…\" sets the sentence's own comma in mono as part of the money",
     file: "src/lib/fill-nodes.tsx",
     suite: "money-format",
-    from: `const MONEY_RUN = /TZS[\\u00a0 ]\\d+(?:,\\d{3})*(?:\\.\\d+)?[KMB]?/g;`,
-    to: `const MONEY_RUN = /TZS[\\u00a0 ]\\d[\\d,]*(?:\\.\\d+)?[KMB]?/g;`,
+    // ⚠️ Anchor moved 2026-10-09 (round 5, R5-E, review 3's doubt): the matcher also reads a signed figure whole —
+    // `formatTzs`' "TZS −4,200" and `formatTzsSigned`'s "−TZS 1,234" / "+TZS 1,234". The defect planted is the same one.
+    from: `const MONEY_RUN = /[+\\u2212]?TZS[\\u00a0 ]\\u2212?\\d+(?:,\\d{3})*(?:\\.\\d+)?[KMB]?/g;`,
+    to: `const MONEY_RUN = /[+\\u2212]?TZS[\\u00a0 ]\\u2212?\\d[\\d,]*(?:\\.\\d+)?[KMB]?/g;`,
     expect: `6: ⭐ …and a sentence's own comma after a figure stays in the sentence`,
   },
 ];

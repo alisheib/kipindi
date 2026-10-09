@@ -35,6 +35,7 @@ import { renderFailure, hasReason, failureUntil, type FailureDetail } from "@/li
 import { formatBreakEnd } from "@/lib/break-end";
 import { dialScale } from "./dial-scale";
 import { keepText } from "@/components/ui/keep-run";
+import { keepFigures } from "@/components/ui/keep-words";
 
 type Side = "YES" | "NO" | "NEUTRAL";
 
@@ -1802,7 +1803,8 @@ export function ConvictionDial({ marketId, yesPool, noPool, baseStake = 1_000, m
           title={resultData.variant === "success" ? `${sideWord(t, resultData.side, "MARKET")} · ${formatTzs(resultData.stake)}` : refusalRepeatsEyebrow ? t.common.couldNotPlaceBet : (resultData.title ?? resultData.error ?? t.error.tryAgain)}
           subtitle={
             resultData.variant === "success"
-              ? (marketTitle ?? t.common.positionOpenNotify)
+              // The question bet on, its figures whole as on every card (`keepFigures`, round 5, R5-E).
+              ? (marketTitle != null ? keepFigures(marketTitle) : t.common.positionOpenNotify)
               // 🔴 E-234 · THE REASON WAS COMPUTED AND THEN GUARANTEED UNREAD. This subtitle was
               // the constant `t.common.stakeHasntMoved`, and the failure path passes the reason
               // copy in as `error` (`error: mapped.body`) while ALSO setting `title` — so the

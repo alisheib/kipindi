@@ -38,9 +38,10 @@ import { dict as DICTS } from "../src/lib/i18n-dict.ts";
 import { fill } from "../src/lib/utils.ts";
 import { formatEatDateTime, formatEatDate } from "../src/lib/eat-day.ts";
 import {
-  breakEndParam, readBreakEndParam, formatBreakEnd, firstDateSentence, breakSentenceText, breakStateOf, breakStateFromTimers,
+  breakEndParam, readBreakEndParam, formatBreakEnd, firstDateSentence, breakSentence, breakStateOf, breakStateFromTimers,
 } from "../src/lib/break-end.ts";
 import { keepText, keptRanges, digitChoice } from "../src/components/ui/keep-run.tsx";
+import { emptyStateBody } from "../src/components/ui/empty-state-text.ts";
 import { renderFailure, failureUntil } from "../src/lib/failure-reasons.ts";
 import { accountRefusalPath } from "../src/lib/auth-landing.ts";
 import { dialScale, dialTickLabel, dialDetents, DIAL_LABEL_PX } from "../src/components/markets/dial-scale.ts";
@@ -475,8 +476,11 @@ section("5 · the bet confirm fits the screen and keeps its answers on it; its a
     /<p className="amount text-\[18px\] font-bold tabular-nums text-text leading-none">\s*TZS \{formatNumber\(Math\.round/.test(BCM)
       && /<p className="amount text-\[18px\] font-bold tabular-nums text-text leading-none">\s*TZS \{formatNumber\(estimate\)\}/.test(read("src/components/markets/conviction-dial.tsx"))
       && /\.amount\.amount \{ font-family: var\(--font-mono\);[^}]*white-space: nowrap;/.test(CSS));
+  // ⚠️ Pin moved 2026-10-09 (round 5, R5-E, F1 F4 and review 3 H1): the title also keeps its figures whole — the runs
+  // `keepFigures` keeps on every card (`figureRuns`) are its kept runs too — so the call is
+  // `keepText(marketTitle, figureRuns(marketTitle))`; the last two words are kept as before.
   ok("5.5 · the title, the exit terms (\"5 minutes\" one run), the disclosures and the footnote are kept whole",
-    /\{keepText\(marketTitle\)\}/.test(BCM) && /keepText\(freeExitBody, exitMinsRun \? \[exitMinsRun\] : \[\]\)/.test(BCM)
+    /\{keepText\(marketTitle, figureRuns\(marketTitle\)\)\}/.test(BCM) && /keepText\(freeExitBody, exitMinsRun \? \[exitMinsRun\] : \[\]\)/.test(BCM)
       && /\{keepText\(t\.dialog\.poolSharePayout\)\}/.test(BCM) && /\{keepText\(t\.dialog\.estimateDisclaimer\)\}/.test(BCM));
   const run = new RegExp(`\\S+\\s+5\\s+\\S+`).exec(fill(T.en.dialog.freeExitBodyLocked, { mins: 5, lock: 5, pct: 9 }))?.[0];
   ok(`5.5′ · the exit run is "${run}" in English, "${new RegExp(`\\S+\\s+5\\s+\\S+`).exec(fill(T.sw.dialog.freeExitBodyLocked, { mins: 5, lock: 5, pct: 9 }))?.[0]}" in Swahili`, !!run && run.includes("5 minutes"));
@@ -658,9 +662,13 @@ section("9 · during a break nothing says \"bet now\" (E19)");
     /const breakNow = firstTicket && !!breakBody;/.test(TV) && /const emptyBody = breakNow && breakBody \? breakBody/.test(TV) && /action=\{breakNow \? null : firstTicket \? \(/.test(TV));
   ok("9.5 · …and the classic /positions alike (its \"drag the conviction dial\" body and its Browse button)",
     /cause === "no-rows" && breakBody \? breakBody/.test(POS) && /browseLabel=\{cause === "no-rows" && !breakBody \? t\.positions\.browseMarkets : undefined\}/.test(POS) && /breakBody=\{breakBody\}/.test(POS));
-  const sentence = breakSentenceText(T.sw.rg.breakActive, END_ISO, NOW, T.sw.common.monthsShort, "sw");
-  ok("9.6 · the empty state's string keeps the end whole with its own no-break spaces (the EmptyState body's mechanism)",
-    sentence.includes("10 Okt, 05:05") && sentence.replace(/ /g, " ") === fill(T.sw.rg.breakActive, { date: endText("sw") }));
+  // ⚠️ Pin moved 2026-10-09 (round 5, R5-E, review 3 H4): the end is a RUN the EmptyState body keeps whole as a nowrap
+  // span (`breakSentence` → `emptyStateBody`, the keepText convention) — no longer no-break spaces in the words.
+  const sentence = breakSentence(T.sw.rg.breakActive, END_ISO, NOW, T.sw.common.monthsShort, "sw");
+  const drawn = html(emptyStateBody(sentence));
+  ok("9.6 · the empty state keeps the end whole as one run, every character the dictionary's and the formatter's",
+    sentence.text === fill(T.sw.rg.breakActive, { date: endText("sw") }) && sentence.keep.length === 1 && sentence.keep[0] === endText("sw")
+      && endText("sw") === "10 Okt, 05:05" && !/[\u00a0\u2060]/.test(drawn) && /<span class="whitespace-nowrap">[^<]*10 Okt, 05:05[^<]*<\/span>/.test(drawn), drawn);
   const MKT = read("src/app/markets/[id]/page.tsx");
   ok("9.7 · the market page: \"Tumia kidhibiti kuanza\" gives way to the break's sentence, and \"place another prediction\" is not said",
     /\{myPositions\.length === 0 && \(breakEnd && breakDate \? \(/.test(MKT) && /\{!breakEnd && <p className="mb-4 text-body-sm text-text-muted">\{t\.market\.similarMarketsBody\}<\/p>\}/.test(MKT));

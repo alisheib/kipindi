@@ -674,6 +674,7 @@
     "test:visual-pass-r4h": "tsx scripts/visual-pass-r4h.test.mts",
     "test:visual-pass-r5b": "tsx scripts/visual-pass-r5b.test.mts",
     "test:visual-pass-r5c": "tsx scripts/visual-pass-r5c.test.mts",
+    "test:visual-pass-r5e": "tsx scripts/visual-pass-r5e.test.mts",
     "red:journey-tickets": "tsx scripts/journey-tickets.test.mts --prove-red",
     "test:signoff": "tsx scripts/signoff.test.mts",
     "test:proposal-evidence-age": "tsx scripts/proposal-evidence-age.test.mts",

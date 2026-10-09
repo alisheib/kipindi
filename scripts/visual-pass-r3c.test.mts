@@ -23,7 +23,8 @@ import { createElement as h } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { keepLastWords } from "../src/components/ui/keep-words.tsx";
 import { DotSeq } from "../src/components/ui/dot-seq.tsx";
-import { dashOnItsWord, emptyStateBody, pairOnOneLine } from "../src/components/ui/empty-state-text.ts";
+import { emptyStateBody, emptyStateRanges } from "../src/components/ui/empty-state-text.ts";
+import { runAndDashRanges } from "../src/components/ui/keep-run.tsx";
 import { endClause, readableNotificationBody, roundTicketHref, ticketHref } from "../src/lib/notification-text.ts";
 import { QUERY_BAR_ROW2_CLASS } from "../src/components/ui/query-bar.tsx";
 import { cn } from "../src/lib/utils.ts";
@@ -127,19 +128,23 @@ section("2 · the empty state: a YES/NO pair on one line, and content centred in
   walk(DICTS.sw); walk(DICTS.en);
   ok("2.locate · the dictionary has YES/NO pairs to hold (the Tiketi zangu empty body among them)",
     found.some((s) => s.includes("NDIO au HAPANA")) && found.some((s) => s.includes("YES or NO")), `${found.length} found`);
-  const unbound = found.filter((s) => !/[A-Z]{2,} (au|or) [A-Z]{2,}/.test(emptyStateBody(s)));
-  ok("2.1 · emptyStateBody binds every pair with no-break spaces (\"NDIO au HAPANA\", \"YES or NO\")", unbound.length === 0, unbound.join(" | "));
-  ok("2.2 · …and keeps G3's dash rule: the space before the dash is a no-break space too",
-    emptyStateBody("Chagua swali, bonyeza NDIO au HAPANA — tiketi").includes(`NDIO${NBSP}au${NBSP}HAPANA${NBSP}—`));
+  // ⚠️ Pins moved 2026-10-09 (round 5, R5-E, review 3 H4): the pair and the dash are held by nowrap SPANS (`keepRanges`,
+  // keep-run.tsx), no longer by no-break spaces and a word joiner inserted into the words — those travelled into a copy,
+  // a find-in-page and the accessible text. The same breaks: a held run is what a no-break space held, and nothing more.
+  const held = (s: string) => emptyStateRanges(s).map(([a, b]) => s.slice(a, b));
+  const unbound = found.filter((s) => !held(s).some((r) => /[A-Z]{2,} (au|or) [A-Z]{2,}/.test(r)));
+  ok("2.1 · emptyStateBody holds every pair in one nowrap run (\"NDIO au HAPANA\", \"YES or NO\")", unbound.length === 0, unbound.join(" | "));
+  const body = renderToStaticMarkup(h("p", null, emptyStateBody("Chagua swali, bonyeza NDIO au HAPANA — tiketi")));
+  ok("2.2 · …and keeps G3's dash rule: the dash is held to the word before it, in the same run — and no character is added",
+    body === `<p>Chagua swali, bonyeza <span class="whitespace-nowrap">NDIO au HAPANA —</span> tiketi</p>` && !body.includes(NBSP), body);
   ok("2.3 CONTROL · lower-case \"au\"/\"or\" and Chinese are left to break as before",
-    pairOnOneLine("Juu au Chini, ndio au hapana") === "Juu au Chini, ndio au hapana" && pairOnOneLine("按 是 或 否") === "按 是 或 否");
+    emptyStateRanges("Juu au Chini, ndio au hapana").length === 0 && emptyStateRanges("按 是 或 否").length === 0);
   ok("2.3′ PLANT · the dash rule alone does not hold the pair — the pair rule is what does",
-    !dashOnItsWord("bonyeza NDIO au HAPANA — tiketi").includes(`NDIO${NBSP}au`));
+    !runAndDashRanges("bonyeza NDIO au HAPANA — tiketi").some(([a, b]) => "bonyeza NDIO au HAPANA — tiketi".slice(a, b).includes("NDIO au")));
   const es = read("src/components/ui/empty-state.tsx");
-  // ⚠️ Pin moved 2026-10-09 (round 4, R4-K, E50): the body now also passes through `hangCjkMarks` — a centred Chinese
-  // line hangs the empty half of the mark that ends it — so the call reads `{hangCjkMarks(emptyStateBody(body))}`.
-  // emptyStateBody is still the body's one text rule and still applied first; only the wrapper is new.
-  ok("2.4 · EmptyState renders its body through emptyStateBody", es.includes("{hangCjkMarks(emptyStateBody(body))}") && !/function dashOnItsWord/.test(es));
+  // ⚠️ Pin moved 2026-10-09 (round 4, R4-K, E50) to `{hangCjkMarks(emptyStateBody(body))}`, and again in round 5 (R5-E,
+  // H4): `emptyStateBody` now draws the spans and hangs each part's marks itself, so the call is `{emptyStateBody(body)}`.
+  ok("2.4 · EmptyState renders its body through emptyStateBody", es.includes("{emptyStateBody(body)}") && !/function dashOnItsWord/.test(es));
 
   // ⭐ EACH DRAWING'S INK TOP, COMPUTED FROM ITS OWN GEOMETRY, IS ITS ROW IN INK_TOP (floor), AND EACH SVG USES ITS ROW.
   const inkTop = INK_TOP_OF(es);

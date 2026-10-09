@@ -17,8 +17,15 @@ import { Fragment, type ReactNode } from "react";
  * end of a line (CSS Text 3 §4.1.2) and keeps everywhere else. Mid-line the mark is a full em again, to the pixel; at
  * the end of a line — wherever the browser broke it — the line's box stops at the mark's ink. The space is drawn in
  * `--font-mono`, whose space is 0.6em in every weight (the repo's JetBrains Mono: 600 of 1000 units), so its width is
- * known: `.kp-cjk-gap` adds the rest as `word-spacing`. Its line height is 0 (the line box cannot grow) and it is not
- * selectable (a copied sentence has no stray space). After: 。 at 13px −0.16px, ？ at 17px −0.13px.
+ * known: `.kp-cjk-gap` adds the rest as `word-spacing`. Its line height is 0 (the line box cannot grow). After: 。 at 13px
+ * −0.16px, ？ at 17px −0.13px.
+ * ⭐ THE SPACE IS NOT IN THE TEXT (round 5, 2026-10-09, review 3's doubt): it was a real U+0020 in an aria-hidden,
+ * unselectable span, so the DOM text read "选择一个问题， 点击" — a find-in-page for "，点击" missed it, and a copy relied on
+ * `user-select: none` (unverified on WebKit). It is now CSS generated content (`.kp-cjk-gap::after { content: " " }`) on
+ * an EMPTY span: generated text is never copied, never searched and never part of `textContent`, and a collapsible space
+ * in it still collapses at a line's end (CSS Text 3 §4.1.2 works on the formatting context's text, generated or not).
+ * The same convention as every keep helper (keep-words.tsx): the words on the page are the dictionary's, character for
+ * character — the layout is done by elements and styles, never by a character slipped into the text.
  *
  * ⛔ NOT `text-spacing-trim`: Chromium ships it from 123 with `space-first` / `trim-start` — the START of a line — and its
  * `normal` halves a line-final mark only "if it does not otherwise fit"; WebKit's support is partial, and either needs
@@ -50,15 +57,19 @@ const CLOSER = /^[”’」』）》】〉〕)\]}]$/u;
 /**
  * The text with every full-width closing mark that ends a run set to hang (see above). A string with no such mark is
  * returned as it came.
+ * `following` (round 5, 2026-10-09): the text that comes after this piece in the same paragraph, when a caller draws the
+ * paragraph in pieces (`keepRanges`: a nowrap run, then plain text). Only its first character is read, so a mark that
+ * ends a piece hangs, and pays its gap back, exactly as it would in the whole text.
  */
-export function hangCjkMarks(text: string): ReactNode {
+export function hangCjkMarks(text: string, following = ""): ReactNode {
   const chars = Array.from(text);
   if (!chars.some((c) => isMark(c))) return text;
+  const after = Array.from(following.slice(0, 2))[0];
   const out: ReactNode[] = [];
   let run = "";
   let k = 0;
   chars.forEach((c, i) => {
-    const next = chars[i + 1];
+    const next = i + 1 < chars.length ? chars[i + 1] : after;
     // A mark hangs at the end of the text, or before a character that is neither a mark, a closer nor white space.
     if (!isMark(c) || isMark(next) || (next !== undefined && (/\s/.test(next) || CLOSER.test(next)))) { run += c; return; }
     if (run) out.push(run);
@@ -66,7 +77,8 @@ export function hangCjkMarks(text: string): ReactNode {
     const cls = CJK_MARK_TRIM[c];
     out.push(<span key={k++} className={cls}>{c}</span>);
     if (next !== undefined) {
-      out.push(<span key={k++} aria-hidden="true" className={cls.endsWith("--q") ? "kp-cjk-gap kp-cjk-gap--q" : "kp-cjk-gap"}>{" "}</span>);
+      // Empty: its space is the stylesheet's (`.kp-cjk-gap::after`), so the text stays the dictionary's.
+      out.push(<span key={k++} aria-hidden="true" className={cls.endsWith("--q") ? "kp-cjk-gap kp-cjk-gap--q" : "kp-cjk-gap"} />);
     }
   });
   if (run) out.push(run);

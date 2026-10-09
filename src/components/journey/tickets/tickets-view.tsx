@@ -25,6 +25,7 @@ import { I } from "@/components/ui/glyphs";
 import { HashFocus } from "@/components/ui/hash-focus";
 import { RefreshPoller } from "@/components/ui/refresh-poller";
 import { EmptyState } from "@/components/ui/empty-state";
+import type { KeptBody } from "@/components/ui/empty-state-text";
 import { Pagination, PLAYER_PER_PAGE } from "@/components/ui/pagination";
 import { PageContainer } from "@/components/layout/page-container";
 import { PositionsBarJourney } from "@/app/positions/positions-bar";
@@ -62,7 +63,7 @@ export function TicketsView({ rows, positions, markets, prices, lens, page, serv
   t: Dict;
   /** R4-I · the reader's break, as the page words it (`rg.breakActive` with its end), or null: the first-ticket empty state
    *  then says it instead of "pick a question…", and offers no way to bet. The page reads it; this view only draws. */
-  breakBody?: string | null;
+  breakBody?: KeptBody | null;
 }) {
   const state: PortfolioState = { ...PORTFOLIO_DEFAULT_STATE, tab: lens };
   const shown = sortPortfolio(filterPortfolio(rows, state, serverNow, ANY_TEXT), state);

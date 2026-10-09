@@ -86,16 +86,17 @@ export function formatBreakEnd(end: BreakEnd | number, nowMs: number, monthsShor
 }
 
 /**
- * An approved break/exclusion sentence with its end filled in, for a surface that can only take a STRING (the kit's
- * `EmptyState` body). The date cannot be wrapped in a no-wrap box there, so its own spaces become no-break spaces — the
- * mechanism that body already uses for its dash and its YES/NO pair (`empty-state-text.ts`) — and the date stays one run.
- * Every other character of the sentence is the dictionary's. The slot is filled through a replacer, so a `$&` is inert.
+ * An approved break/exclusion sentence with its end filled in, for the kit's `EmptyState` body: the words, and the end
+ * as a run to keep whole — `EmptyState` draws it as one `white-space: nowrap` span (`emptyStateBody`), the `keepText`
+ * convention. ⭐ Round 5 (2026-10-09, review 3 H4): the date's own spaces used to become no-break spaces, the body's old
+ * mechanism, and travelled into a copy and a find-in-page; now every character of the sentence is the dictionary's and
+ * the formatter's. The slot is filled through a replacer, so a `$&` is inert.
  */
-export function breakSentenceText(
+export function breakSentence(
   template: string, untilIso: string, nowMs: number, monthsShort: readonly string[], locale: "en" | "sw" | "zh",
-): string {
-  const date = formatBreakEnd(Date.parse(untilIso), nowMs, monthsShort, locale).replace(/ /g, String.fromCharCode(0x00a0));
-  return template.replace(/\{date\}/g, () => date);
+): { text: string; keep: readonly string[] } {
+  const date = formatBreakEnd(Date.parse(untilIso), nowMs, monthsShort, locale);
+  return { text: template.replace(/\{date\}/g, () => date), keep: [date] };
 }
 
 /**

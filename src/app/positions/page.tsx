@@ -15,6 +15,7 @@ import { currentSession } from "@/lib/server/auth-service";
 import { ensureAffiliateAccount, inviteViewerFor } from "@/lib/server/affiliate-service";
 import { inviteIsLiveFor } from "@/lib/feature-state";
 import { EmptyState } from "@/components/ui/empty-state";
+import type { EmptyStateBody } from "@/components/ui/empty-state-text";
 import { SearchBox } from "@/components/ui/search-box";
 import { QUERY_SEARCH_BAND_CLASS } from "@/components/ui/query-bar";
 import { fieldNames, matchesQuery, parseQuery, POSITION_SEARCH } from "@/lib/search";
@@ -37,7 +38,7 @@ import { PageContainer } from "@/components/layout/page-container";
 import { resolveSimpleJourney } from "@/lib/server/journey-preview";
 import { TicketsView } from "@/components/journey/tickets/tickets-view";
 import { isLockedOut } from "@/lib/server/responsible-gambling";
-import { breakSentenceText, breakStateOf } from "@/lib/break-end";
+import { breakSentence, breakStateOf } from "@/lib/break-end";
 
 export async function generateMetadata() {
   const { t } = await getServerT();
@@ -271,7 +272,7 @@ export default async function PositionsPage({ searchParams }: { searchParams: Pr
     .then(breakStateOf)
     .catch(() => null);
   const breakBody = breakEnd
-    ? breakSentenceText(breakEnd.exclusion ? t.rg.exclusionActive : t.rg.breakActive, breakEnd.until, serverNow, t.common.monthsShort, locale)
+    ? breakSentence(breakEnd.exclusion ? t.rg.exclusionActive : t.rg.breakActive, breakEnd.until, serverNow, t.common.monthsShort, locale)
     : null;
   const emptyBody =
     cause === "no-rows" && breakBody ? breakBody
@@ -538,7 +539,7 @@ function Empty({
 }: {
   kind: "positions" | "default";
   title: string;
-  body?: string;
+  body?: EmptyStateBody;
   browseLabel?: string;
   /** ⛔ Each carries a REAL, cross-filtered count — never an exit to another empty page. */
   exits?: Array<{ id: string; label: string; href: string }>;

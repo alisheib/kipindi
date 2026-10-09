@@ -33,6 +33,7 @@ import { sideWord } from "@/lib/side-label";
 import { DEFAULT_CASHOUT_FEE_RATE, DEFAULT_FREE_EXIT_GRACE_MINUTES, DEFAULT_PAID_EXIT_WINDOW_MINUTES, type LeanLevel, type PollRates } from "@/lib/payout";
 import { formatTzs, formatNumber } from "@/lib/utils";
 import { keepText } from "@/components/ui/keep-run";
+import { figureRuns } from "@/components/ui/keep-words";
 
 const QUOTE_HOLD_MS = 10_000;
 /** How long a bet may wait before we explain the wait. Short enough that the
@@ -271,9 +272,11 @@ export function BetConfirmModal({
                  `overflow-hidden` exists for the gilt strip's rounded corners on a panel with no
                  fixed height. A taller title grows the panel and the container scrolls; it does
                  not push the confirm button out of reach. */
-              <p className="mt-1 font-display text-[15px] font-semibold text-text leading-snug">
-                {/* R4-I · never one word alone on its last line ("2026-27" stood alone at 1280, tile 076). */}
-                {keepText(marketTitle)}
+              <p className="mt-1 font-display text-[15px] font-semibold text-text leading-snug text-balance">
+                {/* R4-I · never one word alone on its last line ("2026-27" stood alone at 1280, tile 076). Round 5 (R5-E,
+                    F1 F4 and review 3 H1): set as every market title is — balanced, and its figures whole (`figureRuns`:
+                    "dakika 28:00", "2026-27", "200毫米" never break inside), the runs `keepFigures` keeps on every card. */}
+                {keepText(marketTitle, figureRuns(marketTitle))}
               </p>
             )}
           </div>

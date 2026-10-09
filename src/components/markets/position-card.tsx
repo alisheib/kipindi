@@ -10,6 +10,7 @@ import { Chip } from "@/components/ui/chip";
 import { Stat } from "@/components/ui/stat";
 import { I } from "@/components/ui/glyphs";
 import { useT } from "@/lib/i18n";
+import { keepFigures } from "@/components/ui/keep-words";
 import { sideWord, positionStatusWord, type LabelProductLine } from "@/lib/side-label";
 // ⭐ THE STATUS-COLOUR DICTIONARY (stage 5.3). The word comes from `side-label`, the COLOUR from
 // here — two definition sites for two different facts, neither typed at this call site. Since S6 WP9 the
@@ -130,8 +131,10 @@ export function PositionCard({ marketId, marketTitle, side, productLine, stake, 
         </span>
       </div>
       <div className="mb-3.5">
-        <p className="font-display text-[15px] font-semibold leading-tight tracking-[-0.005em] text-text line-clamp-2">
-          {marketTitle}
+        {/* The market's title, set as every market title is (round 5, R5-E — F1 F4, review 3 H1): balanced, its figures
+            whole — the journey's ticket card (`ticket-card.tsx`) sets the same question the same way. */}
+        <p className="font-display text-[15px] font-semibold leading-tight tracking-[-0.005em] text-text line-clamp-2 text-balance">
+          {keepFigures(marketTitle)}
         </p>
         <div className="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-0.5">
           {/* E-100 · the same rule as the wallet's TICKET box: an identifier must be able to

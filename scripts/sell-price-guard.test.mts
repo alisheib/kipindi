@@ -159,7 +159,9 @@ const RESULT = "src/components/markets/sell-result.tsx";
 const HOST = "src/components/markets/sell-result-host.tsx";
 const SHELL = "src/components/layout/app-shell.tsx";
 const SHELL_LAZY = "src/components/layout/shell-lazy.tsx";
-const SOURCES = [SVC, ACTIONS, BUTTON, CASHOUT_SUITE, POSITIONS, MARKET_PAGE, CARD, VIEW, RESULT, HOST, SHELL, SHELL_LAZY];
+/** Round 5 (R5-E): the toaster, which draws every amount a toast states as an `.amount` — the refused sale's figures among them. */
+const TOAST = "src/components/ui/toast.tsx";
+const SOURCES = [SVC, ACTIONS, BUTTON, CASHOUT_SUITE, POSITIONS, MARKET_PAGE, CARD, VIEW, RESULT, HOST, SHELL, SHELL_LAZY, TOAST];
 const REGISTRY = "src/lib/failure-reasons.ts";
 
 function walkSrc(dir: string, out: string[] = []): string[] {
@@ -347,7 +349,7 @@ const REFUSAL_OPEN = "if (!r.ok) {";
 const MESSAGE = "const msg = errorCopy(t, r);";
 const MOVED = `const moved = r.reason === "price_changed";`;
 /** S6 A8h — every refused sale's toast: `factual` unless the refusal is a fault (§7.loud), kept until it is read, its figures whole. */
-const TOAST_CALM = 'lastRefusalToast = toast({ title: t.toast.couldntCashOut, description: keepFiguresWhole(msg), variant: fault ? "danger" : "factual", durationMs: 0 });';
+const TOAST_CALM = 'lastRefusalToast = toast({ title: t.toast.couldntCashOut, description: msg, variant: fault ? "danger" : "factual", durationMs: 0 });';
 /** S6 A8h — a refused sale shows its result only when it is a hard block or a fault (§7). */
 const REFUSAL_SHOWN = 'if (fault) showResult({ variant: "danger", value: value, net, error: msg });';
 const REFRESH = `window.dispatchEvent(new Event("50pick:refresh"));`;
@@ -557,9 +559,15 @@ const HAND_OFF = [
   '}',
 ].join("");
 const EVENT_LINE = 'export const SELL_RESULT_EVENT = "50pick:sell-result";';
-/** The no-break space a refused sale's toast joins each figure with, and the helper that joins them. */
-const NO_BREAK_LINE = 'const NO_BREAK = String.fromCharCode(160);';
-const WHOLE = 'export const keepFiguresWhole = (sentence: string) => sentence.split("TZS ").join("TZS" + NO_BREAK);';
+/** How a refused sale's figures stay whole: the toaster draws every amount in a toast's words as one `.amount` (`moneyRuns`:
+ *  whole and mono, §M4), title and sentence. ⚠️ Pins moved 2026-10-09 (round 5, R5-E, review 3 H4's sweep): the Sell button
+ *  passed its sentence through `keepFiguresWhole` (sell-result.tsx), which joined "TZS" to its number with a no-break space —
+ *  a character in the toast's text, travelling into a copy and a find-in-page — and every other toast's figures could split
+ *  at "TZS" and were not mono. Now one rule, in the toaster, for every toast; no character is built anywhere. */
+const NO_BREAK_LINE = 'String.fromCharCode(160)';
+const TOAST_IMPORT = 'import { moneyRuns } from "@/lib/fill-nodes";';
+const TOAST_TITLE = '<p className="font-display text-[13px] font-semibold text-text leading-tight">{moneyRuns(toast.title)}</p>';
+const TOAST_WORDS = '<p className="mt-0.5 text-body-sm text-text-muted leading-snug">{moneyRuns(toast.description)}</p>';
 /** The host's listener, squashed whole: it takes the result, marks the hand-off taken, then reads the way focus goes back. */
 const LISTENER = [
   'useEffect(() => {',
@@ -688,9 +696,11 @@ function g7Result(I: Impl, W: World, ok: Ok) {
       && count(submit, DISMISS) === 1 && submit.indexOf("inFlight.current = true;") < submit.indexOf(DISMISS) && submit.indexOf(DISMISS) < submit.indexOf("start(async")
       && count(button, SLOT) === 1 && button.includes(`${LF}${SLOT}`) && button.indexOf(SLOT) < button.indexOf(COMPONENT_HEAD) && count(button, COMPONENT_HEAD) === 1,
     show({ dismiss: count(submit, DISMISS), toast: count(refusal, TOAST_CALM), slot: count(button, SLOT), topLevel: button.includes(`${LF}${SLOT}`), beforeComponent: button.indexOf(SLOT) < button.indexOf(COMPONENT_HEAD) }));
-  ok("7.whole · a refused sale's toast keeps each money figure whole: its sentence goes through keepFiguresWhole, which joins TZS to its number with a no-break space (a toast draws plain text; S6 A8f's promise for the moved price's sentence, which only the toast draws since A8h)",
-    TOAST_CALM.includes("description: keepFiguresWhole(msg)") && count(refusal, "keepFiguresWhole(msg)") === 1 && count(result, NO_BREAK_LINE) === 1 && count(result, WHOLE) === 1,
-    show({ helper: count(result, WHOLE), space: count(result, NO_BREAK_LINE) }));
+  const toastSrc = text(W, TOAST);
+  ok("7.whole · a refused sale's toast keeps each money figure whole: it hands the toast its sentence as written, and the toast draws every amount in its words as one `.amount` (moneyRuns: whole and mono, §M4) — no character inserted, here, in the result's module or in the toast (S6 A8f's promise for the moved price's sentence, which only the toast draws since A8h)",
+    TOAST_CALM.includes("description: msg,") && count(refusal, "description: msg,") === 1 && count(toastSrc, TOAST_IMPORT) === 1 && count(toastSrc, TOAST_TITLE) === 1 && count(toastSrc, TOAST_WORDS) === 1
+      && [button, result, toastSrc].every((x) => count(x, NO_BREAK_LINE) === 0) && count(result, "keepFiguresWhole") === 0 && count(button, "keepFiguresWhole") === 0,
+    show({ words: count(toastSrc, TOAST_WORDS), title: count(toastSrc, TOAST_TITLE), space: [button, result, toastSrc].map((x) => count(x, NO_BREAK_LINE)) }));
   const dialogs = squash(between(button, "const dialogs = (", "if (journey) {"));
   ok("7.fallback · the button keeps its own result only as the fallback: its dialogs draw the one definition (`SellResultModal`) from the button's own state, which only `showResult` sets once no host took the result, and the button writes no result of its own",
     count(dialogs, FALLBACK) === 1 && count(button, "<SellResultModal") === 1 && count(button, "<OperationResultModal") === 0
@@ -821,7 +831,7 @@ const sendsNet = swap(BUTTON, SEND, `fd.set("expectedValue", String(net));`);
 const sendsNothing = swap(BUTTON, SEND, "");
 const priceUnasked = swap(BUTTON, PRICE_ASK, "");
 const everyRefusalAsks = swap(BUTTON, PRICE_ASK, `setRepricing(true); ${REFRESH}`);
-const movedAlarmed = swap(BUTTON, TOAST_CALM, 'lastRefusalToast = toast({ title: t.toast.couldntCashOut, description: keepFiguresWhole(msg), variant: "danger", durationMs: 0 });');
+const movedAlarmed = swap(BUTTON, TOAST_CALM, 'lastRefusalToast = toast({ title: t.toast.couldntCashOut, description: msg, variant: "danger", durationMs: 0 });');
 const classicSaysSelling = swap(BUTTON, `${LF}            : repricing ? t.common.loading`, "");
 const journeyKeepsFigure = swap(BUTTON, JOURNEY_WAIT[3], "{lapsed ? null : (");
 const waitNeverEnds = swap(BUTTON, CLEAR, "");
@@ -851,8 +861,8 @@ const busyCalm = swap(BUTTON, FAULT, FAULT.replace('r.code === "BUSY" || ', ""))
 const shutExitLoud: Impl["reasons"] = { ...REAL.reasons, exit_window_closed: { ...REAL.reasons.exit_window_closed, severity: "error" } };
 const toastLeaves = swap(BUTTON, TOAST_CALM, TOAST_CALM.replace(", durationMs: 0 });", " });"));
 const staleToastKept = swap(BUTTON, DISMISS, "");
-const figureSplits = swap(RESULT, WHOLE, 'export const keepFiguresWhole = (sentence: string) => sentence;');
-const toastRawFigure = swap(BUTTON, "description: keepFiguresWhole(msg)", "description: msg");
+const figureSplits = swap(TOAST, TOAST_WORDS, TOAST_WORDS.replace("{moneyRuns(toast.description)}", "{toast.description}"));
+const toastNoBreak = swap(BUTTON, "description: msg,", 'description: msg.split("TZS ").join("TZS" + String.fromCharCode(160)),');
 const ownResultMarkup = swap(BUTTON, "<SellResultModal", "<OperationResultModal");
 const hostNeverAnswers = swap(HOST, "if (handOff.ack) handOff.ack.accepted = true;", "");
 const handOffAlwaysTaken = swap(RESULT, "return ack.accepted;", "return true;");
@@ -938,8 +948,8 @@ const plants: Plant[] = [
   { name: "the registry ranks a shut exit an error (its refusal turns red, with a result)", expect: ["7.loud"], impl: { reasons: shutExitLoud }, landed: shutExitLoud.exit_window_closed.severity === "error" },
   { name: "a refused sale's toast leaves after 4.5 s again (a moved price, told by its toast alone, is gone before it is read)", expect: ["7.stays"], world: toastLeaves, landed: changed(toastLeaves, BUTTON) },
   { name: "the next sale leaves the last refusal's toast up (a stale 'couldn't cash out' beside the sale's own answer)", expect: ["7.stays"], world: staleToastKept, landed: changed(staleToastKept, BUTTON) },
-  { name: "the toast's figures can split again (the helper hands the sentence back as it was)", expect: ["7.whole"], world: figureSplits, landed: changed(figureSplits, RESULT) },
-  { name: "the toast draws the raw sentence ('TZS' can end a line without its number)", expect: ["7.whole"], world: toastRawFigure, landed: changed(toastRawFigure, BUTTON) },
+  { name: "the toast draws its sentence raw again ('TZS' can end a line without its number, and the figure is not mono)", expect: ["7.whole"], world: figureSplits, landed: changed(figureSplits, TOAST) },
+  { name: "the refused sale's sentence is joined with a no-break space again (a character in the toast's text, copied and searched)", expect: ["7.whole"], world: toastNoBreak, landed: changed(toastNoBreak, BUTTON) },
   { name: "the button writes a result of its own again instead of the shared one", expect: ["7.fallback"], world: ownResultMarkup, landed: changed(ownResultMarkup, BUTTON) },
   { name: "the host never answers the hand-off (every button draws its own result as well)", expect: ["7.ack"], world: hostNeverAnswers, landed: changed(hostNeverAnswers, HOST) },
   { name: "the hand-off claims a host took the result whether or not one did (with no host, the result is lost)", expect: ["7.ack"], world: handOffAlwaysTaken, landed: changed(handOffAlwaysTaken, RESULT) },

@@ -169,7 +169,11 @@ section("3 · the round page: the stake is money, the × note hangs, the quote s
   ok("3.8 CONTROL · the premise: the stamp's word is written in lower case in sw and en (it follows \"… · \")",
     /^[a-z]/.test(DICTS.sw.market.udQuoted) && /^[a-z]/.test(DICTS.en.market.udQuoted));
   const page = code("src/app/updown/[roundId]/page.tsx");
-  ok("3.9 · the round page still composes the stamp from that word", page.includes("const stamp = quotedAt ? `${t.market.udQuoted}"));
+  // ⚠️ Pin moved 2026-10-09 (round 5, R5-E, review 3 H4's sweep): the stamp was a string whose spaces were no-break
+  // spaces (characters in the page's text, copied and searched); it is one nowrap span now, the same word first, so the
+  // capital the line opens on (3.10, 3.11: `::first-letter` reaches into an inline child) is unchanged.
+  ok("3.9 · the round page still composes the stamp from that word",
+    page.includes(`const stamp = quotedAt ? <span className="whitespace-nowrap">{t.market.udQuoted} {quotedAt}</span> : null;`));
   const hero = code("src/components/updown/price-hero.tsx");
   ok("3.10 · the hero's detail line carries `ud-cap-first`", hero.includes(`<p className="ud-cap-first mt-1.5 mb-0 text-body-sm text-text-muted">{copy.aboveBelow}</p>`));
   ok("3.11 · …whose first letter is set as a capital, and below 400 each stacked clause's is too",

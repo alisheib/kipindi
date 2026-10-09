@@ -34,6 +34,7 @@ import { RefreshPoller } from "@/components/ui/refresh-poller";
 import { formatTzsCompact } from "@/lib/utils";
 import { Ring } from "@/components/charts/ring";
 import { pickLocalized, marketCategoryLabel } from "@/lib/localized";
+import { keepFigures } from "@/components/ui/keep-words";
 import { getServerT } from "@/lib/i18n-server";
 import { outcomeWord, sideWord, type LabelProductLine } from "@/lib/side-label";
 import { PageContainer } from "@/components/layout/page-container";
@@ -622,8 +623,10 @@ function FeaturedResult({ m, t, locale }: { m: Awaited<ReturnType<typeof listMar
           <I.crown s={13} /> {t.results.notableResult}
         </span>
       </div>
-      <h2 className="mb-4 max-w-[70ch] font-display text-[18px] lg:text-[22px] font-semibold leading-tight text-text group-hover:text-brand-200">
-        {pickLocalized(locale, m.titleEn, m.titleSw, m.titleZh)}
+      {/* A market title, set as every market title is (round 5, R5-E — F1 F4, review 3 H1): its lines balanced and its
+          figures whole (`keepFigures`); this headline wrapped greedily, the featured card's "…exceeds 200mm / in July". */}
+      <h2 className="mb-4 max-w-[70ch] font-display text-[18px] lg:text-[22px] font-semibold leading-tight text-text text-balance group-hover:text-brand-200">
+        {keepFigures(pickLocalized(locale, m.titleEn, m.titleSw, m.titleZh))}
       </h2>
       {price.kind === "priced" ? (
         <TippingBar yesPct={price.yesPct} height={28} showLabels resolved={!isVoid} recastOnHover={false}

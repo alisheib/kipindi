@@ -75,7 +75,7 @@ export function PriceHero({
     downLabel?: string;     // "Down target"
     awaitingRead: string;   // "Awaiting read"
     aboveBelow: ReactNode | null; // "Above open by $4.45" — null when no live price
-    source: string | null;  // "Source: Kitco · quoted 14:34:58" — null when unknown
+    source: ReactNode | null; // "Source: Kitco · quoted 14:34:58" (its stamp one nowrap run) — null when unknown
     chartAlt: string;
   };
 }) {

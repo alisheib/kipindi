@@ -108,7 +108,7 @@ import { useDeferredToast } from "@/components/ui/toast";
 import { useT } from "@/lib/i18n";
 import { cashOutPositionAction } from "@/app/markets/actions";
 import { SellConfirmModal } from "./sell-confirm-modal";
-import { SellResultModal, handSellResult, keepFiguresWhole, type SellResultData } from "./sell-result";
+import { SellResultModal, handSellResult, type SellResultData } from "./sell-result";
 import { formatTzs, formatNumber } from "@/lib/utils";
 import { errorCopy } from "@/lib/error-copy";
 import { REASONS, hasReason, reasonForCode } from "@/lib/failure-reasons";
@@ -436,12 +436,12 @@ export function SellButton({
           // refusal, a warning or an info (a moved price, too many tries, selling shut, the ticket already sold or settled),
           // gets the calm `factual` toast alone, since §F2 gives a refusal the player can fix no popup, and focus comes back
           // to this button (`refocus`, above). Every refusal's toast stays until it is read (§F2, §F8: `durationMs: 0`),
-          // each figure in it whole (`keepFiguresWhole`), and the next sale, from any button, dismisses it. Before A8h every refusal opened
+          // each figure in it whole (the toast draws every amount as an `.amount`), and the next sale, from any button, dismisses it. Before A8h every refusal opened
           // the ✗ result over a red toast, a moved price's too, its calm toast held behind it (toast.tsx §F1).
           const moved = r.reason === "price_changed";
           const said = hasReason(r) ? r.reason : reasonForCode(r.code);
           const fault = r.code === "BUSY" || said === null || REASONS[said].severity === "error";
-          lastRefusalToast = toast({ title: t.toast.couldntCashOut, description: keepFiguresWhole(msg), variant: fault ? "danger" : "factual", durationMs: 0 });
+          lastRefusalToast = toast({ title: t.toast.couldntCashOut, description: msg, variant: fault ? "danger" : "factual", durationMs: 0 });
           if (moved) { setRepricing(true); window.dispatchEvent(new Event("50pick:refresh")); }
           if (fault) showResult({ variant: "danger", value: value, net, error: msg });
           else refocus.current = true;

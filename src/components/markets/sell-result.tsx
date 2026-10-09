@@ -19,8 +19,9 @@
  * a result is never lost. Either way it stays until the player closes it or, for a sale that went through, until its
  * own countdown ends (DESIGN_AUTHORITY §F2's shared 5 s, held while it is read), never because a row was redrawn. A
  * result is a sale that went through, or a refused sale the player cannot clear (the registry's error, or a fault:
- * §F2); every other refusal is told by its toast alone (`submit()`, in the Sell button), and `keepFiguresWhole` keeps
- * whole the figures that toast names.
+ * §F2); every other refusal is told by its toast alone (`submit()`, in the Sell button), whose figures the toast itself
+ * keeps whole (every amount a toast states is an `.amount`, toast.tsx — round 5: the sentence had a no-break space
+ * joined into it here, `keepFiguresWhole`, a character that travelled into a copy and a find-in-page).
  *
  * ⛔ ONE RESULT, ONE DEFINITION. `SellResultModal` is the only place the result's words and figures are written, moved
  * here from the Sell button unchanged; the host and the button's fallback both draw it, so the two can never drift.
@@ -57,17 +58,6 @@ export function handSellResult(handOff: Omit<SellResultHandOff, "ack">): boolean
   window.dispatchEvent(new CustomEvent<SellResultHandOff>(SELL_RESULT_EVENT, { detail: { ...handOff, ack } }));
   return ack.accepted;
 }
-
-/** A no-break space: a money figure's "TZS" never ends a line without its number. */
-const NO_BREAK = String.fromCharCode(160);
-
-/**
- * A refused sale's sentence as its toast draws it. A toast draws plain text, so each money figure in the sentence ("TZS
- * 9,000", as `formatTzs` writes one) is joined to its "TZS" by a no-break space and moves to the next line whole
- * (DESIGN_AUTHORITY §M4). Since S6 A8h a moved price is named in its toast alone, so the figure S6 A8f kept whole in the
- * result stays whole there too. Only the space inside a figure changes; every word is the dictionary's.
- */
-export const keepFiguresWhole = (sentence: string) => sentence.split("TZS ").join("TZS" + NO_BREAK);
 
 /**
  * The result of a sale, in both looks. The journey's look changes one word, the line under a refusal (a ticket where

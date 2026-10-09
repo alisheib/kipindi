@@ -14,6 +14,7 @@ import { CategoryIcon, categoryLabel } from "@/components/proposals/category-ico
 import { RewardBurst } from "@/components/brand/reward-burst";
 import { getServerT } from "@/lib/i18n-server";
 import { pickLocalized } from "@/lib/localized";
+import { keepFigures } from "@/components/ui/keep-words";
 import { formatTzsSigned } from "@/lib/utils";
 import { PageContainer } from "@/components/layout/page-container";
 import { generateMetadata as notFoundMetadata } from "@/app/not-found";
@@ -66,7 +67,8 @@ export default async function ProposalDetailPage({ params }: { params: Promise<{
           <Chip variant="neutral"><CategoryIcon category={p.category} />{categoryLabel(t, p.category)}</Chip>
           <span className="ml-auto font-mono text-[10.5px] text-text-subtle">{t.common.resolves} {p.resolutionDate}</span>
         </div>
-        <h1 className="font-display text-title-lg font-bold leading-tight tracking-[-0.02em]">{pickLocalized(locale, p.titleEn, p.titleSw, p.titleZh)}</h1>
+        {/* A question, set as every market title is (round 5, R5-E — F1 F4, review 3 H1): balanced, its figures whole. */}
+        <h1 className="font-display text-title-lg font-bold leading-tight tracking-[-0.02em] text-balance">{keepFigures(pickLocalized(locale, p.titleEn, p.titleSw, p.titleZh))}</h1>
         {p.description && <p className="mt-2 text-[13px] leading-relaxed text-text-muted">{p.description}</p>}
         <div className="mt-3.5 flex items-center gap-3">
           <VoteControl proposalId={p.id} up={p.up} down={p.down} myVote={p.myVote} horizontal disabled={!active || !open} />

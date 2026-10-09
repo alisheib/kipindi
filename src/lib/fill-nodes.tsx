@@ -43,7 +43,10 @@ export function fillNodes(template: string, vars: Record<string, ReactNode>): Re
  */
 // Thousands groups are read as groups, so a sentence's own comma after a figure ("…to TZS 5,000,000, needs…") stays
 // in the sentence and never joins the figure.
-const MONEY_RUN = /TZS[\u00a0 ]\d+(?:,\d{3})*(?:\.\d+)?[KMB]?/g;
+// ⭐ Round 5 (2026-10-09, review 3's doubt): a signed figure is read whole too, in the platform's two spellings —
+// `formatTzs` / `formatTzsCompact` put the minus after the code ("TZS −4,200", "TZS −1.2M"), `formatTzsSigned` puts its
+// sign before it ("−TZS 1,234", "+TZS 1,234"). The minus is U+2212, never a hyphen, so no hyphen of a sentence is taken.
+const MONEY_RUN = /[+\u2212]?TZS[\u00a0 ]\u2212?\d+(?:,\d{3})*(?:\.\d+)?[KMB]?/g;
 export function moneyRuns(text: string): ReactNode[] {
   const out: ReactNode[] = [];
   let last = 0;

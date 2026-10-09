@@ -21,6 +21,7 @@ import { StatusBadge } from "@/components/proposals/status-badge";
 import { CategoryIcon, categoryLabel } from "@/components/proposals/category-icon";
 import { getServerT } from "@/lib/i18n-server";
 import { pickLocalized } from "@/lib/localized";
+import { keepFigures } from "@/components/ui/keep-words";
 import { formatTzs, formatNumber } from "@/lib/utils";
 import { PageContainer } from "@/components/layout/page-container";
 import { SearchBox } from "@/components/ui/search-box";
@@ -350,7 +351,8 @@ function ProposalCard({ p, disabled, t, locale, ageStr }: { p: ProposalView; dis
           <Chip variant="neutral"><CategoryIcon category={p.category} />{categoryLabel(t, p.category)}</Chip>
           <span className="ml-auto font-mono text-[10.5px] text-text-subtle">{ageStr(p.createdAt)}</span>
         </div>
-        <p className="font-display text-[15.5px] font-semibold leading-snug tracking-[-0.01em] text-text">{pickLocalized(locale, p.titleEn, p.titleSw, p.titleZh)}</p>
+        {/* A question, set as every market title is (round 5, R5-E — F1 F4, review 3 H1): balanced, its figures whole. */}
+        <p className="font-display text-[15.5px] font-semibold leading-snug tracking-[-0.01em] text-text text-balance">{keepFigures(pickLocalized(locale, p.titleEn, p.titleSw, p.titleZh))}</p>
         {p.description && <p className="mt-1.5 text-body-sm leading-relaxed text-text-muted line-clamp-2">{p.description}</p>}
         <div className="mt-2.5 flex items-center gap-3.5 font-mono text-[11px] text-text-subtle">
           <span>{t.proposals.byProposer} {p.proposerMasked}</span>

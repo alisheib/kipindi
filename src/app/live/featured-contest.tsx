@@ -154,14 +154,18 @@ export function FeaturedContest({
             questions cannot be reached by a screen reader or by Tab. `display: none` would
             collapse the track and bring the defect straight back; `aria-hidden` alone would
             leave six focusable headings inside one link, the exact self-contradiction the dot
-            rail's note below exists to describe. */}
+            rail's note below exists to describe.
+
+            ⭐ BALANCED, AS EVERY MARKET TITLE IS (round 5, 2026-10-09, F1 F4): this heading alone wrapped greedily,
+            the featured card's "…exceeds 200mm / in July" shape. Balancing moves no line count (it narrows the lines
+            it has), so the stack's height — the tallest question's — is unchanged. */}
         <Link href={href as Route} className="group block">
           <div className="kp-slide-stack mb-4">
             {markets.map((mm, i) => (
               <h2
                 key={mm.id}
                 data-slide-active={i === idx ? "" : undefined}
-                className="font-display text-[19px] lg:text-[24px] font-semibold leading-tight text-text group-hover:text-aqua-100"
+                className="font-display text-[19px] lg:text-[24px] font-semibold leading-tight text-text text-balance group-hover:text-aqua-100"
               >
                 {keepFigures(mm.title)}
               </h2>
