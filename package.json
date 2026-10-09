@@ -1130,7 +1130,6 @@
     "live:kyc-at-withdrawal": "node scripts/live/kyc-at-withdrawal-prod.mjs",
     "live:marketing-u1-phone-key": "node scripts/live/marketing-u1-phone-key-drive.mjs",
     "live:marketing-u2-formatter": "node scripts/live/marketing-u2-formatter-drive.mjs",
-    "live:marketing-u5-helpline": "node scripts/live/marketing-u5-helpline-drive.mjs",
     "live:marketing-u6-consent-ledger": "node scripts/live/marketing-u6-consent-ledger-drive.mjs",
     "test:sms-cost-guard": "tsx scripts/sms-cost-guard.test.mts",
     "red:sms-cost-guard": "node scripts/red-sms-cost-guard.mjs",

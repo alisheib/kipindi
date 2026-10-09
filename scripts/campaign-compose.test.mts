@@ -102,10 +102,13 @@ import {
 } from "../src/lib/sms-compose.ts";
 import { smsCodingFor } from "../src/lib/server/sms-blackball.ts";
 import {
-  marketingFooter, operatorBudget, composeMarketing, shortDomain, footerMeasurementToken,
-  SENDER_IDENTITY, statutorySmsHelpline,
+  marketingFooter, operatorBudget, composeMarketing, footerMeasurementToken,
+  SENDER_IDENTITY,
   type MarketingCompose,
 } from "../src/lib/marketing/footer.ts";
+// The published helpline, in dial form — what no message may carry (§9, §12). Read where it is defined: since 2026-10-09
+// the marketing modules read no helpline at all.
+import { HELPLINE_TEL } from "../src/lib/support-config.ts";
 import {
   JINA, JINA_MAX_CHARS, CAMPAIGN_NAME_MAX_CHARS, SOURCE_PHRASE_MAX_CHARS,
   counterFor, renderForRecipient, renderBody, worstCaseJina, jinaFor, firstNameFor, scanPlaceholders,
@@ -113,7 +116,6 @@ import {
   type CampaignTemplate, type CampaignDraftFields, type CampaignVariant, type RecipientOrigin,
 } from "../src/lib/marketing/campaign-template.ts";
 import { parseTzNumber } from "../src/lib/tz-msisdn.ts";
-import { appUrl } from "../src/lib/app-url.ts";
 import { decomment } from "./lib/decomment.mts";
 import { srcFiles, REPO_ROOT } from "./lib/tracked-files.mts";
 import { endOfOpenTag } from "./lib/jsx-open-tag.mts";
@@ -322,26 +324,23 @@ function checkEnvelope(compose: Composer, log: (l: string) => void): string[] {
   /* ── §9 · NOTHING IS APPENDED — the owner's ruling of 2026-10-09 (COMPLIANCE-DECISIONS) ── */
   log("\n§9 · NOTHING IS APPENDED — the message is sent exactly as the officer wrote it (2026-10-09)");
   {
-    const footers = [marketingFooter(TOKEN, "SW"), marketingFooter(TOKEN, "EN"), marketingFooter(TOKEN, "SW", "Namba yako ipo orodhani kwetu.")];
-    ok("§9 ⭐ the footer is EMPTY in both languages and with any source phrase", footers.every((f) => f === ""), JSON.stringify(footers));
+    // ⭐ The footer takes nothing since the ruling — no token, language or phrase is left for it to print.
+    const footer = marketingFooter();
+    ok("§9 ⭐ the footer is EMPTY", footer === "", JSON.stringify(footer));
     const sent = compose("50pick: soka leo. Weka dau sasa.", TOKEN);
     ok("§9 ⭐ no stop link, no 18+, no helpline and no token in a composed message",
-      !sent.text.includes("/s/") && !sent.text.includes("18+") && !sent.text.includes(statutorySmsHelpline()) && !sent.text.includes(TOKEN)
+      !sent.text.includes("/s/") && !sent.text.includes("18+") && !sent.text.includes(HELPLINE_TEL()) && !sent.text.includes(TOKEN)
         && !sent.text.includes("Acha"), JSON.stringify(sent.text));
   }
 
-  /* ── §10 · the budget is derived from the real deployment URL ──────────── */
+  /* ── §10 · the operator's budget — the whole message's cap ─────────────── */
+  // (Until 2026-10-09 §10 also held the stop link's domain DERIVED from the real `appUrl()` — `shortDomain()`. No message
+  // prints a link since, and the function went with its last caller.)
   log("\n§10 · THE OPERATOR'S BUDGET");
   {
     const budget = operatorBudget("SW");
     ok("§10 ⭐ the budget is the whole message — 160 characters, computed, in both languages",
       budget === SMS_LIMITS.GSM7.single && operatorBudget("EN") === budget, `${budget}`);
-    // ⭐ THE DOMAIN IS NOT TYPED ANYWHERE. If `appUrl()` ever changes, this is what notices.
-    ok("§10 ⭐ the short domain is DERIVED from the real appUrl(), not typed",
-      appUrl().replace(/^https?:\/\//, "").replace(/^www\./, "") === shortDomain(),
-      `appUrl ${appUrl()} → ${shortDomain()}`);
-    ok("§10 control · the derivation actually produced something",
-      shortDomain().length > 3 && !shortDomain().includes("/"), shortDomain());
     // ⛔ The source phrase is never printed (2026-10-09), so it costs nothing.
     const withSource = operatorBudget("SW", "Umetupa namba yako 50pick.");
     ok("§10 ⛔ a source phrase costs nothing — it is never printed", withSource === budget, `${withSource}`);
@@ -799,7 +798,7 @@ function checkTemplate(impl: TemplateImpl, log: (l: string) => void): string[] {
       others.map((l) => impl.variantFor(withEn, l)).join(","));
     const enBlank = impl.renderForRecipient(tpl({ bodyEn: "" }), { variant: "EN", name: null, token: TT, origin: "account" });
     ok("§15.8 an EN recipient of a campaign with no English body is sent the SWAHILI message and its fallback (nothing appended, 2026-10-09)",
-      enBlank.ok && enBlank.text.startsWith(`50pick: Habari ${FB},`) && enBlank.text.endsWith(marketingFooter(TT, "SW")),
+      enBlank.ok && enBlank.text.startsWith(`50pick: Habari ${FB},`) && enBlank.text.endsWith(marketingFooter()),
       JSON.stringify(enBlank.text));
   }
 
@@ -3114,17 +3113,18 @@ if (!PROVE_RED) {
   type EnvPlant = { name: string; expect: RegExp; compose: Composer; landed: () => boolean; landedAs: string };
   const envPlants: EnvPlant[] = [
     {
-      // ⭐ THE OWNER'S RULING (2026-10-09): nothing is appended. A footer back on the message is a message nobody wrote.
+      // ⭐ THE OWNER'S RULING (2026-10-09): nothing is appended. A footer back on the message is a message nobody wrote —
+      // here the envelope as it stood until that day: the published helpline and the stop link on `50pick.tz`.
       name: "a footer appended again — the stop link, 18+ and the helpline back on every message",
       expect: /^§11 ⭐ the composed text IS the officer's text/,
-      compose: (body, token) => { const c = REAL(body, token); return { ...c, text: `${c.text}\n50pick 18+ ${statutorySmsHelpline()} Acha: ${shortDomain()}/s/${token}` }; },
+      compose: (body, token) => { const c = REAL(body, token); return { ...c, text: `${c.text}\n50pick 18+ ${HELPLINE_TEL()} Acha: 50pick.tz/s/${token}` }; },
       landed: () => true,
       landedAs: "a composer that appends anything sends a message the officer did not write",
     },
     {
       name: "the stop link printed again — the token appended to the officer's text",
       expect: /^§9 ⭐ no stop link, no 18\+, no helpline and no token/,
-      compose: (body, token) => { const c = REAL(body, token); return { ...c, text: `${c.text} ${shortDomain()}/s/${token}` }; },
+      compose: (body, token) => { const c = REAL(body, token); return { ...c, text: `${c.text} 50pick.tz/s/${token}` }; },
       landed: () => true,
       landedAs: "the token in the text is the stop link the owner ruled out",
     },
@@ -3198,12 +3198,13 @@ if (!PROVE_RED) {
     const published = (support.match(/nationalHelpline:\s*"([^"]+)"/) || [])[1] ?? "";
     const BOARD = "0800110051";
     const composed12 = (body: string) => composeMarketing(body, "a1b2c3d4").text;
-    /** A footer with the old envelope's line back on it, carrying `number` — what a revert of the ruling would print. */
-    const footerWith = (number: string) => (token: string, locale: "SW" | "EN") => `${marketingFooter(token, locale)}${NL15}50pick 18+ ${number}`;
+    /** A footer with the old envelope's line back on it, carrying `number` — what a revert of the ruling would print (in
+     *  the shape `checkHelpline` asks a footer for, though the shipped one takes nothing since 2026-10-09). */
+    const footerWith = (number: string): ((token: string, locale: "SW" | "EN") => string) => () => `${marketingFooter()}${NL15}50pick 18+ ${number}`;
     const cases12 = [
       { name: "the Board's 0800110051 back in the footer (the number OQ4 ruled out, on a message the owner ruled bare)", number: BOARD,
         expect: /^§12 …and the Gaming Board Code's 0800110051 appears nowhere/ },
-      { name: "the published helpline back in the footer (the statutory envelope as it stood until 2026-10-09)", number: statutorySmsHelpline(),
+      { name: "the published helpline back in the footer (the statutory envelope as it stood until 2026-10-09)", number: HELPLINE_TEL(),
         expect: /^§12 ⭐ the published helpline is printed in no footer/ },
     ];
     for (const c of cases12) {
@@ -3509,7 +3510,7 @@ if (!PROVE_RED) {
         name: "P1 · the counter sizes something other than the message sent — the old 49-septet footer still priced on top",
         expect: [/^§15[.]6 ⭐/],
         impl: { ...R, counterFor: footerStillPriced },
-        landed: () => footerStillPriced(atP, "SW", FB, PHRASE).units - counterFor(atP, "SW", FB, PHRASE).units === 49 && marketingFooter(TT, "SW") === "",
+        landed: () => footerStillPriced(atP, "SW", FB, PHRASE).units - counterFor(atP, "SW", FB, PHRASE).units === 49 && marketingFooter() === "",
         landedAs: "the counter quotes 49 septets more than the message, which carries nothing on top",
       },
       {
@@ -4747,7 +4748,7 @@ if (!PROVE_RED) {
       let token = "";
       const measured = footerMeasurementToken();
       const r = await realTest(input, officerId, { ...deps, render: (t, rc) => { if (rc.token !== measured) token = rc.token; return deps.render(t, rc); } }, options);
-      return r.ok && r.target === "typed" && token !== "" ? { ...r, text: `${r.text} ${shortDomain()}/s/${token}` } : r;
+      return r.ok && r.target === "typed" && token !== "" ? { ...r, text: `${r.text} 50pick.tz/s/${token}` } : r;
     };
     /** A.8 · no per-recipient budget. */
     const noRecipientBudget: typeof realTest = (input, officerId, deps = TEST.CAMPAIGN_TEST_DEPS, options) => realTest(input, officerId, { ...deps, rateTo: ALLOW }, options);

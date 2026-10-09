@@ -88,10 +88,6 @@ export const WORDINGS_REFUSAL_SENTENCE: Readonly<Record<Exclude<WordingsRefusal,
   history: "That save would change or remove a version already saved, so nothing was saved. Reload the page and try again.",
 };
 
-/** A fresh read of one wording: the row's newest saved version (or null — never saved, or cleared), or a read that could
- *  not answer. ⛔ `{ ok: false }` is never "nothing saved": a caller that stamps the wording refuses on it. */
-export type FreshWording = { readonly ok: true; readonly version: WordingVersion | null } | { readonly ok: false };
-
 /**
  * The WHOLE row as it is now, from ONE re-read — every wording's history (a deep copy), whether a row is stored at all,
  * and every entry that read had to leave out (M1). ⛔ `{ ok: false }` is a read that could not answer, never "nothing
@@ -111,8 +107,6 @@ export type WordingsStore = {
   readonly savedBasisWordings: () => SavedBasisWordings;
   /** ⭐ Is this ledger row a first-party import attestation under SAVED words (any saved pair)? */
   readonly isImportAttestationSaved: (row: ImportAttestationRow | null | undefined) => boolean;
-  /** ⭐ U37s · the newest SAVED version AS THE ROW HOLDS IT NOW — re-read (`reload`), never this process's cache alone. */
-  readonly freshWording: (key: WordingKey) => Promise<FreshWording>;
   /** ⭐ The ops door's read (`owner-save.ts`) — the whole row as it is now, re-read, and whether it was read in full. */
   readonly reloadHistories: () => Promise<WordingsReload>;
   /** ⛔ THE ONLY WRITER. */
@@ -242,27 +236,15 @@ function storeOver(cfg: WordingsConfig, seen: RowSeen, rules: WordingRules, merg
   };
 
   /**
-   * ⭐ U37s · A FRESH READ, for a writer that STAMPS a wording onto another record (the draft save's source line, until
-   * the owner's ruling of 2026-10-09 — no draft save stamps one since, and nothing in `src/` calls this now). The
-   * cache is this process's: it answers "nothing saved" until the boot read lands, and the version it booted with during
-   * a deploy's overlap — and a stamp written from either would quietly replace a good line with a stale one or none. So
-   * the row is re-read here (`reload` replaces the cache with what it read). ⛔ FAILS CLOSED: a read that could not
-   * answer is `{ ok: false }`, and the caller refuses — never the cached value. With no database the cache IS the store.
-   */
-  const freshWording = async (key: WordingKey): Promise<FreshWording> => {
-    if (!isWordingKey(key)) return { ok: true, version: null };
-    const read = await cfg.reload().catch(() => ({ ok: false as const }));
-    if (!read.ok) return { ok: false };
-    return { ok: true, version: currentWording(key) };
-  };
-
-  /**
    * ⭐ THE OPS DOOR'S READ (2026-10-07, `owner-save.ts`) — the whole row as it is NOW, from ONE re-read (`reload` replaces
    * the cache with what it read), so every history it answers comes from the same read: the door builds the card's own
    * request from it (each base is the count saved now), finds a wording that already reads that way, and reads its own save
-   * back. ⛔ FAILS CLOSED like `freshWording`: a read that could not answer is `{ ok: false }`. ⛔ M1 · and a read that had
-   * to leave something out NAMES it (`dropped`), so the door refuses before it records anything and its status says
-   * "read only in part" — never "not saved" for a wording this file could not read. A row that is not stored drops nothing.
+   * back. The cache is this process's — "nothing saved" until the boot read lands, and the version it booted with during
+   * a deploy's overlap — so a door that writes from what it reads re-reads the row. ⛔ FAILS CLOSED: a read that could not
+   * answer is `{ ok: false }`, never the cached value. ⛔ M1 · and a read that had to leave something out NAMES it
+   * (`dropped`), so the door refuses before it records anything and its status says "read only in part" — never "not
+   * saved" for a wording this file could not read. A row that is not stored drops nothing. (U37s's one-wording fresh read,
+   * `freshWording`, went with its only reader — the draft save's source-line stamp — after the owner's ruling of 2026-10-09.)
    */
   const reloadHistories = async (): Promise<WordingsReload> => {
     const read = await cfg.reload().catch(() => ({ ok: false as const }));
@@ -271,7 +253,7 @@ function storeOver(cfg: WordingsConfig, seen: RowSeen, rules: WordingRules, merg
   };
 
   return {
-    currentWording, wordingHistory, savedBasisWordings, isImportAttestationSaved, freshWording, reloadHistories, saveMarketingWordings,
+    currentWording, wordingHistory, savedBasisWordings, isImportAttestationSaved, reloadHistories, saveMarketingWordings,
   };
 }
 
@@ -313,13 +295,6 @@ const live = makeStore({ key: MARKETING_WORDINGS_KEY, rules: WORDING_RULES, merg
 /** ⭐ The newest SAVED version of a wording, or `null` — ⛔ a basis writer records nothing on `null` (W1). */
 export function currentWording(key: WordingKey): WordingVersion | null {
   return live.currentWording(key);
-}
-
-/** ⭐ The newest SAVED version as the ROW holds it now (re-read) — ⛔ `{ ok: false }` when the read cannot answer. Kept for a
- *  door that must not trust this process's cache; U37s's draft stamp, its first reader, is gone since the owner's ruling
- *  of 2026-10-09 (no draft takes the source line). */
-export function freshWording(key: WordingKey): Promise<FreshWording> {
-  return live.freshWording(key);
 }
 
 /** ⭐ The ops door's read — every wording's history as the ROW holds it now (one re-read), and what that read dropped

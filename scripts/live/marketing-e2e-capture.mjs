@@ -140,9 +140,11 @@ async function player(browser) {
       const p2 = await ctx2.newPage();
       const rr = await p2.goto(`${LOCAL}/auth/register`, { waitUntil: "load", timeout: 90_000 }); await sleep(1500);
       await registerTicks(p2, `local-register-ticks-${loc}-${w}`, { where: "local", loc, w, status: rr?.status() });
-      // Help FAQ helpline + privacy processors (the SMS gateway bullet, found by its own words: since the owner's decision
-      // of 2026-10-09 the public line names no gateway company — no "Blackball" to find it by) + RG §4.
-      for (const [path, find, tag] of [["/help", /0800/, "help"], ["/legal/privacy", GATEWAY_FIND[loc], "privacy"], ["/legal/responsible-gambling", /^\s*4\./, "rg"]]) {
+      // Privacy processors (the SMS gateway bullet, found by its own words: since the owner's decision of 2026-10-09 the
+      // public line names no gateway company — no "Blackball" to find it by) + RG §4. ⛔ No /help capture here any more:
+      // it looked for the FAQ's helpline ("0800"), and since the owner's ruling of 2026-10-06 no player page shows one —
+      // /help's at-risk answer (FAQ 5) is opened and photographed in `publicDetail`, found by its own question.
+      for (const [path, find, tag] of [["/legal/privacy", GATEWAY_FIND[loc], "privacy"], ["/legal/responsible-gambling", /^\s*4\./, "rg"]]) {
         const r3 = await p2.goto(`${LOCAL}${path}`, { waitUntil: "load", timeout: 90_000 }); await sleep(1200);
         const target = tag === "rg" ? p2.locator("h2", { hasText: find }) : p2.getByText(find);
         const n = await target.count().catch(() => 0);
@@ -212,6 +214,11 @@ async function consentStates(browser) {
   }
 }
 
+/** /help's at-risk answer (FAQ 5), found by its own question in each language. It answers with the limits, the break and
+ *  self-exclusion — and, since the owner's ruling of 2026-10-06, no helpline: until that day it was found by its
+ *  `tel:0800…` link, which no page prints any more. */
+const FAQ5_FIND = { en: /problem with gambling/, sw: /shida ya kucheza kupita kiasi/, zh: /博彩问题/ };
+
 // Help FAQ 5 opened, RG §3 and Privacy §1 — the zh/sw line-breaking fixes.
 async function publicDetail(browser) {
   for (const loc of ["sw", "en", "zh"]) {
@@ -219,12 +226,19 @@ async function publicDetail(browser) {
     await ctx.addCookies([{ name: "kp-locale", value: loc, url: LOCAL }]);
     const page = await ctx.newPage();
     await page.goto(`${LOCAL}/help`, { waitUntil: "load", timeout: 90_000 }); await sleep(1200);
-    const faq = page.locator("details", { has: page.locator('a[href="tel:0800110011"]') });
+    const faq = page.locator("details", { has: page.locator("summary", { hasText: FAQ5_FIND[loc] }) });
     const nf = await faq.count().catch(() => 0);
     if (nf) { await faq.first().locator("summary").click(); await sleep(600); }
     const faqText = nf ? await faq.first().innerText().catch(() => "") : "";
-    await tile(page, `local-help-faq5-${loc}-360`, nf ? faq.first().locator('a[href="tel:0800110011"]') : null);
-    note({ where: "local", page: "/help FAQ5 open", loc, found: nf, text: faqText.replace(/\s+/g, " ").slice(0, 400) });
+    await tile(page, `local-help-faq5-${loc}-360`, nf ? faq.first() : null);
+    // ⛔ No FAQ 5 found, or a helpline in its answer (a number, or the word in any of the three languages), and the shot
+    // is not what it is named: the capture is invalid.
+    const helpline = /0800|helpline|simu ya msaada|热线/i.test(faqText);
+    note({ where: "local", page: "/help FAQ5 open", loc, found: nf, helpline, text: faqText.replace(/\s+/g, " ").slice(0, 400) });
+    if (nf === 0 || helpline) {
+      badShots.push(`help faq5 ${loc}`);
+      console.log(`!! ${nf === 0 ? "FAQ 5 NOT FOUND" : "A HELPLINE IN FAQ 5'S ANSWER"}: ${loc}`);
+    }
     for (const [path, n, tag] of [["/legal/responsible-gambling", "3", "rg-s3"], ["/legal/responsible-gambling", "2", "rg-s2"], ["/legal/privacy", "1", "privacy-s1"]]) {
       await page.goto(`${LOCAL}${path}`, { waitUntil: "load", timeout: 90_000 }); await sleep(1000);
       const h = page.locator("h2", { hasText: new RegExp(`^\\s*${n}\\.`) });

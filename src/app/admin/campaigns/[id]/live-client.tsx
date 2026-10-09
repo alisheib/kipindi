@@ -363,13 +363,15 @@ export function LiveProgress() {
       </div>
       {view.floor !== null && <p className="text-body-sm text-text-secondary" data-live-floor>{view.floor}</p>}
       {/* U48a · "Not sent, by reason" is printed ONCE: by the results card, whenever the view carries results (the same list, worded
-          once). This one is the figures card's own only while there are none to carry it. */}
+          once). This one is the figures card's own only while there are none to carry it — and it wraps its labels as that card
+          does, so the protected line is never cut off at a phone's width. */}
       {view.notSentReasons !== null && view.results === null && (
         <div className="space-y-2" data-live-reasons>
           <p className="text-body-sm text-text-secondary">{LIVE_BREAKDOWN_TITLE}</p>
           <AdminBarList
             rows={view.notSentReasons.map((r) => ({ label: r.label, value: r.count, title: liveReasonTitle(r.label, r.count) }))}
             format={formatNumber}
+            wrapLabels
           />
         </div>
       )}

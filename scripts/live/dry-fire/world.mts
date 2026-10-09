@@ -31,6 +31,12 @@
  * ⛔ No number is a real person's: they are `255` + a live NDC + seven digits made up from the world's index. ⛔ This file holds
  * no backslash (an editing tool decodes them).
  */
+// house-bot: covered by L2 sweep — this seeds made-up accounts (the officer, an ADMIN; players created ACTIVE, SELF_EXCLUDED,
+// COOLED_OFF or SUSPENDED) and their responsible-gambling rows (`rgRow`, the store's own upsert) straight through the store, so no
+// in-app hook fires; the holder sweep re-reads every bot holder once a minute and applies whatever changed (04 F8, A2). It writes
+// only to the accounts it creates itself (`usr_df<run>_…` and the officer), in the memory twin or the LOOPBACK `.pgscratch`
+// Postgres the dry-fire refuses to leave (`guardEnvironment`, `assertScratchDatabase`): its world holds no house bot, so no bot
+// holder is behind any of them. Only the dry-fire's own files import it (`qa:marketing-dry-fire`, which `test:marketing-dry-fire` runs).
 import type { StoredMarketingContact, StoredResponsibleGambling, StoredSmsCampaign, StoredSuppression, StoredUser } from "../../../src/lib/server/store.ts";
 import type { ContactAudienceFilter } from "../../../src/lib/server/marketing/audience.ts";
 import type { Harness } from "./core.mts";

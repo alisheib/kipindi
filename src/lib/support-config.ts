@@ -26,9 +26,9 @@
  * ⭐ OWNER'S RULING, 2026-10-06 (`docs/COMPLIANCE-DECISIONS.md`): the Gaming Board confirmed nothing
  * obliges 50pick to show a helpline or to use a particular one — "let the admin put any numbers he
  * wants". So (1) no player surface shows the helpline any more (`test:support-contact` §15 keeps it
- * off); it stays editable here, kept on record (the marketing SMS footer that carried it is empty
- * since the owner's ruling of 2026-10-09 — `src/lib/marketing/footer.ts`: nothing is appended to a
- * marketing SMS); and (2) every number on the card saves as typed: the E-328 refusal of a helpline equal to our own desk is gone, and the
+ * off); it stays editable on the admin card — though since the owner's ruling of 2026-10-09 no marketing
+ * SMS carries it either (nothing is appended), so nothing prints the saved value; and (2) every number
+ * on the card saves as typed: the E-328 refusal of a helpline equal to our own desk is gone, and the
  * desk phone takes any number too (`toSupportDial`). The editable helpline keeps its own keys
  * (`nationalHelpline`, `nationalHelplineTel`): the stale `helpline` key in the live row is a leftover
  * of an old form, and `server/support-config.ts` `migrate` still drops it on the way in.
@@ -40,7 +40,7 @@ export type SupportConfig = {
   phone: string;
   phoneTel: string;
   /** The helpline as it is printed, e.g. `0800 11 0011` — any number the admin saves (2026-10-06). Shown
-   *  on no player page, and carried by no SMS since 2026-10-09 (the marketing footer is empty) — kept on record.
+   *  on no player page (2026-10-06), and carried by no SMS since the marketing footer was emptied (2026-10-09).
    *  ⛔ Never the key `helpline`: that key in the live row is a stale leftover of an old form (E-328). */
   nationalHelpline: string;
   /** …and as a tap DIALS it. Always `toHelplineDial(nationalHelpline)` — derived, never typed. */
@@ -177,9 +177,9 @@ export function licenceProblem(input: string): string | null {
  * 🔴 HOW A SAVED VALUE REACHES A CLIENT COMPONENT — the problem the old pinning side-stepped.
  *
  * A `"use client"` module's state is the BROWSER bundle's, which no server-side load can reach
- * (E-226), so a client component cannot read `defineConfig`. And the helpline was rendered from
- * client code — the footer, the reality-check modal, the landing hero, the sign-in shell — until the
- * owner's ruling of 2026-10-06 took it off every player surface.
+ * (E-226), so a client component cannot read `defineConfig`. And the licence is rendered from client
+ * code (the public footer) — as the helpline was, until the owner's ruling of 2026-10-06 took it off
+ * every player surface.
  *
  * ⭐ So the root layout PUBLISHES the three facts as attributes on <html>, from the server's live
  * config, and in a browser the readers below take them from there. The <html> start tag is parsed
@@ -188,11 +188,14 @@ export function licenceProblem(input: string): string | null {
  *
  * On the server, `server/support-config.ts` registers its live getter on `globalThis` when it
  * loads (the root layout imports it on every request) and the readers call that, so a server
- * component and an email read the saved row too (and the marketing SMS footer did, until it was
- * emptied on 2026-10-09).
+ * component reads the saved row too. (The marketing SMS footer did, until 2026-10-09.)
+ * ⚠️ The helpline's two readers, `HELPLINE()` and `HELPLINE_TEL()`, and its two attributes have no
+ * caller in src since then — kept as the ONE reader the guards key on: `test:support-contact` §15 and
+ * the suites that prove a page, an email or a message carries no helpline read it through them.
  *
- * ⛔ `global-error.tsx` imports nothing, so it spells these attribute names itself;
- * `test:support-contact` §15 holds the two in step.
+ * ⛔ `global-error.tsx` imports nothing and reads none of these attributes: it spelled the helpline's
+ * itself until the owner's ruling of 2026-10-06, and `test:support-contact` §15.3 now holds that it
+ * prints no helpline and reads no published one.
  */
 export const PUBLIC_FACT_ATTRS = {
   nationalHelpline: "data-kp-helpline",
