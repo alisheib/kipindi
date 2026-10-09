@@ -50,11 +50,13 @@
  *   §R (U48a, `scripts/lib/campaign-visuals-results.mts`) — THE RESULTS ON THE LIVE PAGE (ENGINE-SPEC §4.16):
  *   R1  ⭐ `accepted` is never delivered — only a receipt, through the real DLR route, moves "Delivered" (OD41);
  *   R2  the honesty line, rendered from the data — present with no receipt, gone after one; R3 the 15-minute figure counts the rows
- *       still SENT and handed over before the cutoff and nothing else (E5); R4 ⭐ stopped-by-link attribution (E30);
+ *       still SENT and handed over before the cutoff and nothing else (E5); R4 ⭐ stopped-since attribution (E30);
  *   R5  the reasons are U38b's five buckets, protected one line, for every role; R6 ⛔ E23 · the floor — no results below it;
  *   R7  whether receipts are set up is the DLR route's own rule; R8 ⛔ OD24 · the price line for a money reader only;
  *   R9  the failed split, no answer and what is left, agreeing with the figures; R10 the stop walk and its cost;
- *   R11 the card; R12 the wiring; R13 the reasons are printed once (the results card's, never the figures card's as well).
+ *   R11 the card; R12 the wiring; R13 the reasons are printed once (the results card's, never the figures card's as well);
+ *   R14 ⭐ every way a person stops counts, a number once, only a stop in force, and erasure-blind (E30 as re-ruled
+ *       2026-10-09; X22); R15 ⭐ the platform's own writers move it, and the real erasure adds nobody and takes nobody out.
  *
  * ⛔ IN-PROCESS BY CONSTRUCTION (§5.11). `--prove-red` proves the baseline green first, then plants each defect IN MEMORY
  * (a dependency handed to a service or the view, a wrapper of a service, a source text replaced in memory) and requires

@@ -830,7 +830,7 @@ export function assertSentBeforeRead(campaignId: string, before: string): void {
 export const SMS_HANDED_OVER_PAGE_MAX = 2000;
 
 /**
- * U48a · `handedOverPage` · THE STOPPED-BY-LINK WALK'S ONE READ OF A CAMPAIGN'S PEOPLE (ENGINE-SPEC E30, §4.16): the campaign
+ * U48a · `handedOverPage` · THE STOPPED-SINCE WALK'S ONE READ OF A CAMPAIGN'S PEOPLE (ENGINE-SPEC E30, §4.16): the campaign
  * named (a missing id would page every campaign's rows on Postgres), the cursor null — the first page — or the bare 255 key of
  * the last person read (a recipient row holds no other spelling, so any other matches nothing and would end the walk early as
  * if it were done), and 1 to `SMS_HANDED_OVER_PAGE_MAX` people. A refusal never repeats the number (§5.14).

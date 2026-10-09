@@ -19,5 +19,5 @@ export const LIVE_REASON_ROWS = 5;
 
 /** U48a · one row of the results card: a hairline under it and its own room — the card and its ghost draw this very box. */
 export const RESULTS_ROW_BOX = "border-b border-border-subtle py-2 last:border-b-0";
-/** How many rows a campaign's results always has (Delivered, Handed over, Failed, Not sent, Stopped by their link) — the ghost draws this many. */
+/** How many rows a campaign's results always has (Delivered, Handed over, Failed, Not sent, Stopped since this campaign) — the ghost draws this many. */
 export const RESULTS_ROW_COUNT = 5;

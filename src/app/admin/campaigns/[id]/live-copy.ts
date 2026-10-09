@@ -572,9 +572,11 @@ export const RESULTS_ROW = {
   noAnswer: { label: "No answer from the network", help: "Handed to the network with no answer back — never re-sent automatically." },
   waiting: { label: "Waiting", help: "Still to be messaged." },
   stopped: { label: "Stopped before sending", help: "The campaign was stopped before these people were messaged." },
-  stoppedByLink: {
-    label: "Stopped by their link since this campaign",
-    help: "Their opt-out link was used after this campaign's message was handed over to them. They are stopped now and will not be messaged.",
+  /* E30 · every way a person stops offers, not the link alone: since the owner's ruling of 2026-10-09 no message carries a
+     link, so a row of link stops would read 0 for ever (campaign-results.ts says what is counted, and what is not). */
+  stoppedSince: {
+    label: "Stopped since this campaign",
+    help: "People this campaign reached who have stopped offers since — on their profile, by asking us, or by a link from an older message. They will not be messaged again.",
   },
 } as const;
 

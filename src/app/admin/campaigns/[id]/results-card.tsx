@@ -19,7 +19,7 @@
  * ⭐ The reasons and the failed split are the kit's `AdminBarList` in its own ink — "not sent" is the checks working, never
  * danger (OD40) — dominant first, protected ONE line (the view's list, worded once), the five words always.
  *
- * Guard: `npm run test:campaign-visuals` §R (R1–R12) · Red: `npm run red:campaign-visuals`.
+ * Guard: `npm run test:campaign-visuals` §R (R1–R15) · Red: `npm run red:campaign-visuals`.
  */
 import type { ReactNode } from "react";
 import { Callout } from "@/components/ui/callout";
@@ -133,11 +133,12 @@ export function LiveResults() {
           </li>
         )}
         <li>
+          {/* E30 · everybody this campaign reached who has stopped offers since, whichever way — counted on the server. */}
           <Result
-            name="stoppedByLink"
-            label={RESULTS_ROW.stoppedByLink.label}
-            value={r.stoppedByLink}
-            help={RESULTS_ROW.stoppedByLink.help}
+            name="stoppedSince"
+            label={RESULTS_ROW.stoppedSince.label}
+            value={r.stoppedSince}
+            help={RESULTS_ROW.stoppedSince.help}
             box={RESULTS_ROW_BOX}
           />
         </li>

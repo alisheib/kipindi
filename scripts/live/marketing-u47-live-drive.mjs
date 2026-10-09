@@ -44,8 +44,9 @@
  *   · ⭐ U48a · THE RESULTS — a finished campaign of ten: Delivered 0 and Handed over, no receipt yet 8 with the honesty line
  *     ("No delivery receipt has arrived for this campaign yet — handed over is not delivered") and no "delivered" anywhere
  *     else on the page; receipts POSTed at the local `/api/webhooks/blackball` (three DELIVRD in one callback, then an UNDELIV)
- *     move Delivered to 3, the handed over to 4, Failed to 1 "Not delivered (receipt)", and the honesty line is GONE by itself; two
- *     of the people stop by their own link (the opt-out page's path) and "Stopped by their link since this campaign" reads 2;
+ *     move Delivered to 3, the handed over to 4, Failed to 1 "Not delivered (receipt)", and the honesty line is GONE by itself; three
+ *     of the people stop offers, one each way (a link from an older message, their profile's switch, an officer's stop) and
+ *     "Stopped since this campaign" reads 3;
  *     the staged RUNNING campaign reads Delivered 120 / Handed over 700 (680 of them over 15 minutes) / Failed 8 / Not sent 60 by
  *     reason / No answer 2 / Waiting 714, for the owner with the price line (and for GROWTH with no money word); a campaign of
  *     five shows GROWTH no results at all (the floor's sentence alone) and ADMIN every row; a stopped campaign says "Stopped
@@ -765,7 +766,7 @@ async function drivePass(vp, viewport, i, stage) {
   ok(`${name} · RESULTS (staged RUNNING) · ADMIN · Delivered 120 (receipts), Handed over, no receipt yet 700 of which 680 were handed over more than 15 minutes ago, Failed 8, Not sent 60, No answer 2, Waiting 714 — and NO honesty line (a receipt has arrived)`,
     !!ar && ar.title === W.results.title && ar.rows.delivered?.value === "120" && ar.rows.handedOver?.value === "700" && ar.rows.noReceipt?.value === "680"
       && ar.rows.failed?.value === "8" && ar.rows.notSent?.value === "60" && ar.rows.noAnswer?.value === "2" && ar.rows.waiting?.value === "714"
-      && ar.rows.stoppedByLink?.value === "0" && ar.honesty.length === 0,
+      && ar.rows.stoppedSince?.value === "0" && ar.honesty.length === 0,
     JSON.stringify(ar && { rows: Object.fromEntries(Object.entries(ar.rows).map(([k, v]) => [k, v.value])), honesty: ar.honesty }));
   ok(`${name} · RESULTS (staged RUNNING) · ADMIN · the failed split (the network refused 8, receipts 0) and the five reasons, dominant first, protected ONE line — the results card's list (the figures card's own is gone while a view has results)`,
     !!ar && ar.failed.length === 2 && ar.failed[0].label === W.results.failed.wire && ar.failed[0].count === "8" && ar.failed[1].label === W.results.failed.receipt && ar.failed[1].count === "0"
@@ -1049,7 +1050,7 @@ async function realRun(vp, viewport, i, id) {
   let rs = await readResults(page);
   ok(`${name} · RESULTS · ${seeded.expected.handedOver} messages handed over and NO receipt: Delivered 0, "${W.results.rows.handedOver.label}" ${seeded.expected.handedOver}, Failed 0, Not sent 2, and the honesty line stands (the other one, "not set up", does not: this server takes receipts)`,
     !!rs && rs.title === W.results.title && rs.rows.delivered?.value === "0" && rs.rows.handedOver?.value === String(seeded.expected.handedOver) && rs.rows.failed?.value === "0"
-      && rs.rows.notSent?.value === "2" && rs.honesty.join() === "no_receipt_yet" && rs.rows.stoppedByLink?.value === "0" && rs.spend === "",
+      && rs.rows.notSent?.value === "2" && rs.honesty.join() === "no_receipt_yet" && rs.rows.stoppedSince?.value === "0" && rs.spend === "",
     JSON.stringify(rs && { rows: Object.fromEntries(Object.entries(rs.rows).map(([k2, v]) => [k2, v.value])), honesty: rs.honesty, spend: rs.spend }));
   ok(`${name} · RESULTS · the honesty line is the spec's words and the "Delivered" row says nothing else: "${W.results.honesty.noReceiptYet}"`,
     (await textOf(page, "[data-results-honesty]")) === W.results.honesty.noReceiptYet && rs?.rows.delivered?.label === W.results.rows.delivered.label && rs?.rows.delivered?.help === W.results.rows.delivered.help);
@@ -1082,21 +1083,24 @@ async function realRun(vp, viewport, i, id) {
     postedBad.status === 200 && !!rs && rs.rows.failed?.value === "1" && rs.failed.length === 2 && rs.failed[0].label === W.results.failed.wire && rs.failed[0].count === "0"
       && rs.failed[1].label === W.results.failed.receipt && rs.failed[1].count === "1" && rs.rows.delivered?.value === "3" && rs.rows.handedOver?.value === String(seeded.expected.handedOver - 4),
     JSON.stringify(rs && { failed: rs.failed, delivered: rs.rows.delivered?.value, handedOver: rs.rows.handedOver?.value, status: postedBad.status }));
-  // two of the people stop by their own link — the opt-out page's path — and the page reads it. ⭐ The stop count is kept for a
-  // short time per campaign (the results' walk is the one expensive figure — campaign-results.ts), so the page is asked again
-  // once that time has passed; a stop is never read stale for longer.
-  const stoppedNow = await seedLive(`stop=${encodeURIComponent(seeded.campaignId)}&n=2`);
-  await wait(W.results.linkTtlMs + 1500);
+  // three of the people stop offers, one each way — a link from an older message (the opt-out page's path), the offers switch on
+  // their own profile, an officer's stop from the contact book (the seed runs each through its real writer) — and the page reads
+  // it. ⭐ The stop count is kept for a short time per campaign (the results' walk is the one expensive figure —
+  // campaign-results.ts), so the page is asked again once that time has passed; a stop is never read stale for longer.
+  const stoppedNow = await seedLive(`stop=${encodeURIComponent(seeded.campaignId)}&n=3`);
+  await wait(W.results.stoppedTtlMs + 1500);
   await page.reload({ waitUntil: "domcontentloaded" });
   await page.waitForSelector(SEL.blockResults, { timeout: 60000 }).catch(() => {});
   await wait(800);
   rs = await readResults(page);
-  ok(`${name} · RESULTS · two people stopped by their own link after the message: "${W.results.rows.stoppedByLink.label}" 2`,
-    stoppedNow.stopped === 2 && !!rs && rs.rows.stoppedByLink?.value === "2" && rs.rows.stoppedByLink.label === W.results.rows.stoppedByLink.label && !rs.rows.stoppedByLink.unread,
-    JSON.stringify({ stop: stoppedNow, row: rs?.rows.stoppedByLink }));
+  ok(`${name} · RESULTS · three people stopped offers after the message, one each way (a link, their profile, an officer): "${W.results.rows.stoppedSince.label}" 3, with its own words`,
+    stoppedNow.stopped === 3 && stoppedNow.kinds?.link === 1 && stoppedNow.kinds?.profile === 1 && stoppedNow.kinds?.staff === 1
+      && !!rs && rs.rows.stoppedSince?.value === "3" && rs.rows.stoppedSince.label === W.results.rows.stoppedSince.label
+      && rs.rows.stoppedSince.help === W.results.rows.stoppedSince.help && !rs.rows.stoppedSince.unread,
+    JSON.stringify({ stop: stoppedNow, row: rs?.rows.stoppedSince }));
   ok(`${name} · RESULTS · no money word for GROWTH on the whole page, results included`, !/TZS/.test(await mainText(page)));
   await fitCheck(page, name, "run-results-final");
-  await stateShot(page, name, "run-results-final", W.results.rows.stoppedByLink.label, SEL.blockResults);
+  await stateShot(page, name, "run-results-final", W.results.rows.stoppedSince.label, SEL.blockResults);
   // MAKE A COPY — a toast, then the composer
   await press(page, "copy");
   await page.waitForURL((u) => u.pathname === "/admin/campaigns/new", { timeout: 60000 }).catch(() => {});

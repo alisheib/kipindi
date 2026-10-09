@@ -9,9 +9,9 @@
  *   R2  the honesty line, rendered from the data — present with no receipt, gone after one (a failure's too), the not-set-up
  *       line only while this server could not take one, neither said about a campaign that handed nothing over;
  *   R3  the 15-minute figure counts the rows STILL SENT and handed over before the cutoff, and nothing else (E5);
- *   R4  ⭐ stopped-by-link attribution (E30) — a stop after this campaign's message counts; a stop before it, a stop after a
- *       NEWER campaign's message to the same number, an officer's, a lifted one and a number never handed anything do not —
- *       each stop is one campaign's, never two's; made by the REAL opt-out service the spelling is the one the walk reads;
+ *   R4  ⭐ stopped since this campaign, attributed (E30) — a stop after this campaign's message counts, on the stop list and in
+ *       the ledger alike; a stop before it, a stop after a NEWER campaign's message to the same number and a number never
+ *       handed anything do not — each stop is one campaign's, never two's, and a stop made again is dated by its own act;
  *   R5  the reasons are U38b's five buckets, protected ONE line, dominant first, for every role (the figures card's own list);
  *   R6  ⛔ E23 · the floor — below it there are NO results, and nothing on the page names a split or whether anyone was messaged;
  *   R7  whether receipts are set up is the DLR route's own rule — held equal to the route's real `authorized` over a matrix;
@@ -20,7 +20,13 @@
  *   R10 the stop walk and its cost — chunks, memory, a failure said and never a zero, nothing asked when there is nobody to ask about;
  *   R11 the card itself — the spec's titles, the words, an unread count said, no arithmetic and no money in the browser's file;
  *   R12 the wiring — the doors by identity, the module's reach, the mount and the ghost;
- *   R13 the reasons are printed ONCE — by the results card; the figures card keeps its own list only for a view with no results.
+ *   R13 the reasons are printed ONCE — by the results card; the figures card keeps its own list only for a view with no results;
+ *   R14 ⭐ every way a person stops counts — the link, the switch, an officer's Suppress and recorded withdrawal, a complaint —
+ *       a number ONCE, and only a stop in force: never a lifted stop, a switch turned back on, the erasure's marker, a lapse;
+ *       and ERASURE-BLIND (X22): a stop an erasure leaves standing keeps counting (the owner's ruling of 2026-10-09: no message
+ *       carries a link any more; S14's review: an erasure must not be told from a removal by this figure);
+ *   R15 ⭐ the platform's OWN writers move it — the opt-out page, the profile switch, the bulk bar's Suppress and Record a
+ *       withdrawal — and the REAL erasure adds nobody and takes nobody out.
  * ⛔ This file holds no backslash (an editing tool decodes them): patterns are built from character classes and codes.
  */
 import { readFileSync, readdirSync } from "node:fs";
@@ -47,6 +53,12 @@ const CARD = await import("../../src/app/admin/campaigns/[id]/results-card.tsx")
 const CLIENT = await import("../../src/app/admin/campaigns/[id]/live-client.tsx");
 const ROUTE = await import("../../src/app/api/webhooks/blackball/route.ts");
 const OPTOUT = await import("../../src/lib/server/marketing/optout-service.ts");
+// R15 · the platform's own writers of a stop — the profile switch, the contact book's bulk bar, the erasure — driven for real.
+const CONSENT = await import("../../src/lib/server/marketing/consent.ts");
+const BULK = await import("../../src/lib/server/marketing/contact-bulk.ts");
+const ERASE = await import("../../src/lib/server/marketing/erase.ts");
+const { WHOLE_BOOK } = await import("../../src/lib/server/marketing/audience.ts");
+const { ERASURE_EVIDENCE, isErasedNumber, isErasureMarker } = await import("../../src/lib/marketing/erasure-mark.ts");
 const { AppRouterContext } = await import("next/dist/shared/lib/app-router-context.shared-runtime.js");
 const { db, BULK_KEYED_READ_MAX } = await import("../../src/lib/server/store.ts");
 const { DISPATCH_TARGET_TYPE } = await import("../../src/lib/server/marketing/dispatch.ts");
@@ -58,6 +70,9 @@ type LiveViewDeps = import("../../src/lib/server/marketing/campaign-live.ts").Li
 type ResultsDeps = import("../../src/lib/server/marketing/campaign-results.ts").ResultsDeps;
 type StopWalkDeps = import("../../src/lib/server/marketing/campaign-results.ts").StopWalkDeps;
 type StoredSmsCampaignRecipient = import("../../src/lib/server/store.ts").StoredSmsCampaignRecipient;
+type StoredUser = import("../../src/lib/server/store.ts").StoredUser;
+type MessagingConsentSource = import("../../src/lib/server/store.ts").MessagingConsentSource;
+type SuppressionReason = import("../../src/lib/server/store.ts").SuppressionReason;
 
 /* ══ THE LABELS — each once, so a red case names exactly the claims it must turn red ═════════════════════════════════ */
 
@@ -65,16 +80,18 @@ export const LABELS = {
   r1: "R1 · ⭐ `accepted` IS NEVER DELIVERED (OD41, the plan's rule) — a campaign whose messages the gateway ACCEPTED (SmsMessage rows ACCEPTED, recipients SENT) reads Delivered 0 and Handed over, no receipt yet N, however many there are and whatever else is on the list; then receipts POSTed at the REAL DLR route move exactly their recipients — a DELIVRD to Delivered, an UNDELIV to Failed (not delivered) — and the figures card's Handed over stays Delivered + the rest",
   r2: "R2 · THE HONESTY LINE IS RENDERED FROM THE DATA (OD41) — with a message handed over and no receipt of any kind the card says 'No delivery receipt has arrived for this campaign yet — handed over is not delivered'; after ONE receipt (delivered, or a failure) it is gone by itself; it is never said about a campaign that handed nothing over; a server that could not take a receipt says so as well, true only while Delivered cannot move; and both are gone after a receipt",
   r3: "R3 · THE 15-MINUTE FIGURE COUNTS THE ROWS STILL SENT AND HANDED OVER BEFORE THE CUTOFF, AND NOTHING ELSE (E5) — over a list of SENT rows at 16 min, 15 min plus a millisecond, exactly 15 min, 14 min, 2 hours and none, a DELIVERED, an UNCONFIRMED and a receipt-failed row, a PENDING one: exactly the older SENT ones, the cutoff being now less 15 minutes; not asked at all when nothing is SENT; a count that fails is said as unread (a dash and its sentence), never a zero, and does not fail the view",
-  r4: "R4 · ⭐ STOPPED BY THEIR LINK, ATTRIBUTED (E30) — over two campaigns that messaged the same numbers: a link stop after this campaign's message counts; one made BEFORE it does not; one made after a NEWER campaign's message to the same number is that campaign's and counts there, once, never in both; a stop between the two messages is this campaign's; a newer FAILED message explains nothing; an officer's withdrawal (other evidence), another reason, a lifted stop, and a person who was skipped or whose message failed do not count; and the stop the REAL opt-out service writes is counted",
+  r4: "R4 · ⭐ STOPPED SINCE THIS CAMPAIGN, ATTRIBUTED (E30) — over two campaigns that messaged the same numbers: a stop after this campaign's message counts; one made BEFORE it — on the stop list, or the switch turned off — does not; one made after a NEWER campaign's message to the same number is that campaign's and counts there, once, never in both, a switch turned off as well; a stop between the two messages is this campaign's; a newer FAILED message explains nothing; a stop made AGAIN after the message is dated by its ledger row, not by the stop list's first instant — this campaign's when nothing came between, the newer campaign's when its message did; and a person who was skipped or whose message failed does not count",
   r5: "R5 · THE REASONS ARE U38b'S FIVE BUCKETS, PROTECTED ONE LINE, FOR EVERY ROLE — skipped rows across every gate reason read under Not sent in AUDIENCE_REASON_LABEL's five words (zeros too), protected ONE line, dominant first, then Can't be sent to and an unworded refusal only because there is one of each, adding up to Not sent — for a reader, a GROWTH officer and a viewer who may only look alike, the figures card's own list, and no gate reason's key anywhere in the results",
   r6: "R6 · ⛔ E23 · THE FLOOR — a masked viewer on a campaign of 9 rows has NO results and the page names no split, no reason and nothing about whether anyone was messaged (the floor's sentence stands alone); at 10 rows everything; a reader at 9 everything; a list of 9 under a confirmed 50 is floored; a campaign with nobody on its list has none for anyone; a viewer who may read money but not numbers is floored too, and gets no price",
   r7: "R7 · WHETHER A RECEIPT CAN ARRIVE IS THE DLR ROUTE'S OWN RULE — receiptsSetUp equals the route's real `authorized` over a matrix of environments (no secret in production and out of it, on the live rail and the stub; a secret one character short of the floor and at it; the rotation's previous secret alone), and the process's own environment is read as the route reads it",
   r8: "R8 · ⛔ OD24 · THE PRICE LINE FOR A VIEWER WHO MAY READ MONEY ONLY — a money reader's results carry handed over (SENT + DELIVERED) × the configured price and the card says it in exactly the spec's sentence (TZS 6 and TZS 6.50 both); a GROWTH officer and a viewer who may only look get no price, no TZS anywhere in the view or the card, and the price is not even asked; nothing is said while nothing is handed over or when the price cannot be read; below the floor a money reader gets nothing",
   r9: "R9 · THE FAILED SPLIT, NO ANSWER AND WHAT IS LEFT, AGREEING WITH THE FIGURES — failed rows split by their class (no receipt: prefix = the network refused it; a receipt: prefix = reported undelivered), every one in exactly one; no answer; waiting is PENDING + HELD, and for a stopped campaign everybody it did not message — the headline's own figure, a list that never finished included; every result adds to the figures card (Delivered + Handed over = its Handed over, Failed, Not sent, No answer, Waiting) and the view asks its ONE groupBy exactly once",
-  r10: "R10 · THE STOP WALK AND ITS COST — walked in chunks (a list of an exact multiple of the chunk ends on an empty page), each chunk's stops asked in ONE query of at most a chunk of numbers, every person once; the real chunk is 1,000 and fits the bulk read's bound; production keeps a campaign's count for a short time and shares a walk in flight — a failed walk is never kept; a count that cannot be made is unread, never a zero, and never fails the view; a view never waits longer than its budget for the walk — one that is slower says unread THIS time and the memory finds it done for the next; nothing is asked of a campaign that handed nothing over",
-  r11: "R11 · THE CARD — the spec's titles in the spec's order (Delivered · Handed over, no receipt yet · No receipt after 15 minutes · Failed with The network refused it and Not delivered (receipt) · Not sent — the checks refused them · No answer from the network · Stopped before sending · Stopped by their link since this campaign); the Delivered row prints Delivered and never Handed over (distinct numbers); the honesty and price lines are the spec's sentences; an unread count is a dash and its sentence; nothing is drawn below the floor; and the card's file does no arithmetic on a count, formats no money, reads no clock and reaches nothing of the server",
+  r10: "R10 · THE STOP WALK AND ITS COST — walked in chunks (a list of an exact multiple of the chunk ends on an empty page), each chunk's stop list and its numbers' ledger words asked in ONE query each of at most a chunk of numbers, every person once; the real chunk is 1,000 and fits the bulk read's bound; production keeps a campaign's count for a short time and shares a walk in flight — a failed walk is never kept; a count that cannot be made is unread, never a zero, and never fails the view; a view never waits longer than its budget for the walk — one that is slower says unread THIS time and the memory finds it done for the next; nothing is asked of a campaign that handed nothing over",
+  r11: "R11 · THE CARD — the spec's titles in the spec's order (Delivered · Handed over, no receipt yet · No receipt after 15 minutes · Failed with The network refused it and Not delivered (receipt) · Not sent — the checks refused them · No answer from the network · Stopped before sending · Stopped since this campaign, the owner's words under it and the link-only row's words nowhere); the Delivered row prints Delivered and never Handed over (distinct numbers); the honesty and price lines are the spec's sentences; an unread count is a dash and its sentence; nothing is drawn below the floor; and the card's file does no arithmetic on a count, formats no money, reads no clock and reaches nothing of the server",
   r12: "R12 · THE WIRING — the view's results deps frozen and wired to the REAL doors by identity and by source; the results module names no send and writes nothing; only the live view imports it; the card is imported by the page alone, which mounts it behind LiveWhenResults in its own block under the figures; the ghost has the matching block; the client exports the one hook the card reads",
   r13: "R13 · THE REASONS ARE PRINTED ONCE — over a reader's campaign above the floor the whole page (status, controls, figures and results) draws the five reasons in the results card and none in the figures card, and not the figures card's 'Not sent, by reason' title; the same view with its results taken away keeps the figures card's own list; a masked viewer on nine rows is drawn neither; the figures card's file guards its list on the view having no results",
+  r14: "R14 · ⭐ EVERY WAY A PERSON STOPS, AND ONLY A STOP IN FORCE (E30 as re-ruled 2026-10-09: no message carries a link) — after this campaign's message a stop by the link, the offers switch turned off, an officer's Suppress, an officer's recorded withdrawal and a complaint each count; a number on the stop list AND in the ledger counts ONCE; a lifted stop, a switch turned back on, the erasure's marker under an ordinary book row and a lapse do not; and the figure is ERASURE-BLIND (X22) — an officer's Suppress and then an erasure (the tombstone), a link stop under an erasure with no book row, and a stop made after a later yes reopened the ledger under a tombstone each still count, while a switch turned off that the erasure's marker then superseded does not, exactly as a later yes would make it fall",
+  r15: "R15 · ⭐ THE PLATFORM'S OWN WRITERS MOVE IT — on a campaign handed over before the writers ran: the opt-out page's stop, the profile switch turned off, an officer's Suppress and an officer's Record a withdrawal (the bulk bar's own run) each answer ok, write what the rules read, and count once — 0 before, 5 after (the four, and one more stopped by their link), a switch turned off and back on not among them; then the REAL erasure changes nothing (X22): the stopped person it erases still counts, their stop standing, and nobody it erases who never stopped is added — 5",
 } as const;
 export type ResultsLabel = (typeof LABELS)[keyof typeof LABELS];
 
@@ -109,7 +126,7 @@ export type ResultsImpl = {
   setUp: typeof RES.receiptsSetUp;
   /** The stop walk's memory (R10), and the walk with the deps its claims hand it (R4, R10). */
   memo: typeof RES.memoByKey;
-  walk: typeof RES.stoppedByLinkOf;
+  walk: typeof RES.stoppedSinceOf;
   walkDeps: StopWalkDeps;
   /** Production's results deps, as the view is wired (R10, R12). */
   production: Readonly<ResultsDeps>;
@@ -143,7 +160,7 @@ export const REAL_RESULTS: ResultsImpl = {
   renderPage: renderWhole,
   setUp: RES.receiptsSetUp,
   memo: RES.memoByKey,
-  walk: RES.stoppedByLinkOf,
+  walk: RES.stoppedSinceOf,
   walkDeps: RES.STOP_WALK_DEPS,
   production: RES.RESULTS_DEPS,
   sources: REAL_SOURCES,
@@ -225,6 +242,8 @@ const DONE = [...RUNNING, "DONE"];
 const PAUSED = [...RUNNING, "PAUSED"];
 const STOPPED = [...RUNNING, "CANCELLED"];
 const MIN = 60_000;
+/** The earliest instant there is — a plant that dates every message there finds every stop made "since" it. */
+const EPOCH = new Date(0).toISOString();
 
 /** Run `fn` with the named environment variables set (undefined: removed), and put every one of them back. */
 async function withEnv<T>(env: Record<string, string | undefined>, fn: () => Promise<T> | T): Promise<T> {
@@ -253,7 +272,7 @@ let SEQ = 0;
 function deps(impl: ResultsImpl, over: Partial<ResultsDeps> = {}): ResultsDeps {
   return {
     ...RES.RESULTS_DEPS,
-    stoppedByLink: (id: string) => impl.walk(id, impl.walkDeps),
+    stoppedSince: (id: string) => impl.walk(id, impl.walkDeps),
     receiptsSetUp: () => true,
     priceTzs: async () => 6,
     ...over,
@@ -308,6 +327,39 @@ export async function resultsClaims(impl: ResultsImpl, h: ResultsHarness): Promi
       method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ statuses }),
     })));
     return res.status;
+  };
+
+  /* ── the stops' fixtures (R4, R14): each record written straight into the memory twin, at the instant the case names ── */
+  let fx = 0;
+  const DAY = 24 * 60 * MIN;
+  /** A row on the STOP LIST — the opt-out link's unless said (WITHDRAWN, `optout:` evidence); lifted a minute later when asked. */
+  const listStop = async (n: string, at: number, o: { reason?: SuppressionReason; evidence?: string | null; lifted?: boolean } = {}): Promise<void> => {
+    fx++;
+    await db.suppression.create({
+      id: `sup_u48a_${h.run}_${fx}`, channel: "SMS", identifier: n, category: "MARKETING", reason: o.reason ?? "WITHDRAWN",
+      evidence: o.evidence === undefined ? `optout:ref${fx}` : o.evidence, recordedBy: null, createdAt: iso(at),
+      liftedAt: o.lifted === true ? iso(at + MIN) : null, liftedReason: o.lifted === true ? "optout:back" : null,
+    });
+  };
+  /** A word in the CONSENT LEDGER — the profile switch turned off unless said (WITHDRAWN, source PROFILE). */
+  const word = async (n: string, at: number, o: { status?: "GIVEN" | "WITHDRAWN"; source?: MessagingConsentSource; evidence?: string | null } = {}): Promise<void> => {
+    fx++;
+    await db.messagingConsent.create({
+      id: `lc_u48a_${h.run}_${String(fx).padStart(4, "0")}`, channel: "SMS", identifier: n, category: "MARKETING", status: o.status ?? "WITHDRAWN",
+      source: o.source ?? "PROFILE", wording: "fixture", locale: "SW", evidence: o.evidence === undefined ? "/profile/notifications" : o.evidence,
+      recordedBy: null, createdAt: iso(at),
+    });
+  };
+  /** A book row for a number — an ordinary one, or the erasure's tombstone. */
+  const bookRow = async (n: string, o: { tombstone?: boolean } = {}): Promise<void> => {
+    fx++;
+    const at = iso(T - DAY);
+    const made = await db.marketingContact.create({
+      id: `mc_u48a_${h.run}_${fx}`, msisdn: n, rawInput: n, displayName: null, email: null, ndc: n.slice(3, 5), operator: null,
+      source: "IMPORT", sourceRef: o.tombstone === true ? ERASURE_EVIDENCE : null, userId: null, consentState: "UNKNOWN",
+      suppressedAt: null, tags: [], notes: null, importId: null, createdAt: at, createdBy: null, updatedAt: at, updatedBy: null,
+    } as never);
+    if (made === null) throw new Error("fixture: a book row collided");
   };
 
   /* ── R1 · ⭐ `accepted` is never delivered ── */
@@ -430,65 +482,60 @@ export async function resultsClaims(impl: ResultsImpl, h: ResultsHarness): Promi
       `4 of 7 SENT are older (view ${v.results?.noReceiptAfter15}, card ${valueOf(html, "noReceipt")}) · the cutoff asked ${json(asked.map((a) => Date.parse(a) - T))} ms · nothing SENT: asked ${askedDone}× · a failed count: ${json(bad.results?.noReceiptAfter15)} / "${valueOf(badHtml, "noReceipt")}"`];
   });
 
-  /* ── R4 · ⭐ stopped by their link, attributed ── */
+  /* ── R4 · ⭐ stopped since this campaign, attributed ── */
   await h.claim(L.r4, async () => {
-    const A = await h.campaign("rr4a", { path: RUNNING, count: 12 });
+    const A = await h.campaign("rr4a", { path: RUNNING, count: 14 });
     const B = await h.campaign("rr4b", { path: RUNNING, count: 12 });
     const tA = T - 60 * MIN;
-    // eleven people on A: every number is the first of the shapes below, the same number on B where B messaged it
-    const people = ["n1", "n2", "n3", "n4", "n5", "n6", "n7", "n8", "n9", "n10", "n11"] as const;
+    // twelve people on A: every number is the first of the shapes below, the same number on B where B messaged it
+    const people = ["n1", "n2", "n2b", "n3", "n3b", "n4", "n7", "n8", "n9", "n10", "n12", "n13"] as const;
     const numbers = Object.fromEntries(people.map((p, i) => [p, h.key("77", h.run * 100 + i + 11)])) as Record<(typeof people)[number], string>;
     const sent = (p: (typeof people)[number], at = tA): Shape => ({ status: "SENT", sentAt: iso(at), msisdn: numbers[p] });
     await h.rows(A.id, [
-      sent("n1"), sent("n2"), sent("n3"), sent("n4"), sent("n5"), sent("n6"),
+      sent("n1"), sent("n2"), sent("n2b"), sent("n3"), sent("n3b"), sent("n4"),
       { status: "SKIPPED", skipReason: "suppressed", msisdn: numbers.n7 },
       { status: "FAILED", failureClass: "receipt:UNDELIV", sentAt: iso(tA), msisdn: numbers.n8 },
       { status: "DELIVERED", sentAt: iso(tA), msisdn: numbers.n9 },
-      sent("n10"), sent("n11"),
+      sent("n10"), sent("n12"), sent("n13"),
     ]);
     await h.rows(B.id, [
       { status: "SENT", sentAt: iso(T - 40 * MIN), msisdn: numbers.n3 },
+      { status: "SENT", sentAt: iso(T - 40 * MIN), msisdn: numbers.n3b },
       { status: "SENT", sentAt: iso(T - 10 * MIN), msisdn: numbers.n4 },
       { status: "FAILED", failureClass: "receipt:UNDELIV", sentAt: iso(T - 40 * MIN), msisdn: numbers.n10 },
+      { status: "SENT", sentAt: iso(T - 40 * MIN), msisdn: numbers.n13 },
     ]);
-    let stopSeq = 0;
-    const stop = async (n: string, at: number, o: { reason?: string; evidence?: string | null; lifted?: boolean } = {}): Promise<void> => {
-      await db.suppression.create({
-        id: `sup_u48a_${h.run}_${++stopSeq}`, channel: "SMS", identifier: n, category: "MARKETING", reason: (o.reason ?? "WITHDRAWN") as never,
-        evidence: o.evidence === undefined ? `optout:ref${stopSeq}` : o.evidence, recordedBy: null, createdAt: iso(at),
-        liftedAt: o.lifted === true ? iso(at + MIN) : null, liftedReason: o.lifted === true ? "optout:back" : null,
-      });
-    };
-    await stop(numbers.n1, T - 30 * MIN);                                   // after A's message: A's
-    await stop(numbers.n2, T - 90 * MIN);                                   // BEFORE A's message: nobody's here
-    await stop(numbers.n3, T - 20 * MIN);                                   // after B's newer message: B's
-    await stop(numbers.n4, T - 30 * MIN);                                   // between A's and B's message: A's
-    await stop(numbers.n5, T - 30 * MIN, { reason: "OPERATOR" });          // an operator's refusal, link-looking evidence
-    await stop(numbers.n6, T - 30 * MIN, { evidence: "run:officer-bulk" }); // an officer's withdrawal
-    await stop(numbers.n7, T - 30 * MIN);                                   // skipped: never handed a message
-    await stop(numbers.n8, T - 30 * MIN);                                   // failed by receipt: never reached
-    await stop(numbers.n9, T - 5 * MIN);                                    // delivered, then stopped: A's
-    await stop(numbers.n10, T - 20 * MIN);                                  // B's message FAILED: explains nothing — A's
-    await stop(numbers.n11, T - 30 * MIN, { lifted: true });               // lifted: not active
+    const PAGE = { source: "OPT_OUT_PAGE" as const, evidence: "optout:refagain" };
+    await listStop(numbers.n1, T - 30 * MIN);                     // after A's message: A's
+    await listStop(numbers.n2, T - 90 * MIN);                     // BEFORE A's message, on the stop list: nobody's here
+    await word(numbers.n2b, T - 90 * MIN);                        // BEFORE A's message, the switch turned off: nobody's here
+    await listStop(numbers.n3, T - 20 * MIN);                     // after B's newer message: B's
+    await word(numbers.n3b, T - 20 * MIN);                        // the switch turned off after B's newer message: B's
+    await listStop(numbers.n4, T - 30 * MIN);                     // between A's and B's message: A's
+    await listStop(numbers.n7, T - 30 * MIN);                     // skipped: never handed a message
+    await listStop(numbers.n8, T - 30 * MIN);                     // failed by receipt: never reached
+    await listStop(numbers.n9, T - 5 * MIN);                      // delivered, then stopped: A's
+    await listStop(numbers.n10, T - 20 * MIN);                    // B's message FAILED: explains nothing — A's
+    // n12 · stopped by the link BEFORE A's message, started again, stopped again AFTER it: the stop-list row keeps its first
+    // instant (the store's re-arm rule) and the ledger holds the act — A's
+    await listStop(numbers.n12, T - 90 * MIN);
+    await word(numbers.n12, T - 90 * MIN, PAGE);
+    await word(numbers.n12, T - 80 * MIN, { ...PAGE, status: "GIVEN" });
+    await word(numbers.n12, T - 30 * MIN, PAGE);
+    // n13 · stopped after A's message, started again, messaged by B, stopped again after B's: the act after B's message is
+    // the stop in force — B's, and not A's as the stop-list row's first instant would say
+    await listStop(numbers.n13, T - 50 * MIN);
+    await word(numbers.n13, T - 50 * MIN, PAGE);
+    await word(numbers.n13, T - 45 * MIN, { ...PAGE, status: "GIVEN" });
+    await word(numbers.n13, T - 20 * MIN, PAGE);
     const a = await results(A.id);
     const b = await results(B.id);
     const aHtml = card(a);
-    const counts = a.results?.stoppedByLink === 4 && b.results?.stoppedByLink === 1 && valueOf(aHtml, "stoppedByLink") === "4";
-    // the SAME stop is never counted by two campaigns (n3 → B only, n4 → A only)
-    const once = (a.results?.stoppedByLink ?? 0) + (b.results?.stoppedByLink ?? 0) === 5;
-    // ⭐ the stop the REAL opt-out service writes is the spelling the walk reads: a fresh number handed over 5 minutes ago
-    const C = await h.campaign("rr4c", { path: RUNNING, count: 12 });
-    const key = h.key("78", h.run * 100 + 77);
-    await h.rows(C.id, [{ status: "SENT", sentAt: iso(T - 5 * MIN), msisdn: key }, ...h.many(11, { status: "PENDING" })]);
-    const before = await results(C.id);
-    const token = await OPTOUT.ensureOptOutToken(key);
-    const made = token === null ? null : await OPTOUT.stopMarketing(token, "SW");
-    const written = await db.suppression.find({ channel: "SMS", identifier: key, category: "MARKETING" });
-    const spelled = written !== null && written.reason === RES.LINK_STOP_REASON && (written.evidence ?? "").startsWith(RES.LINK_STOP_EVIDENCE_PREFIX);
-    const after = await results(C.id);
-    const real = made !== null && made.ok && spelled && before.results?.stoppedByLink === 0 && after.results?.stoppedByLink === 1;
-    return [counts && once && real,
-      `A ${a.results?.stoppedByLink} (want 4: n1, n4, n9, n10) · B ${b.results?.stoppedByLink} (want 1: n3) · card "${valueOf(aHtml, "stoppedByLink")}" · the real service wrote reason ${written?.reason} evidence "${(written?.evidence ?? "").slice(0, 7)}…" → ${before.results?.stoppedByLink} → ${after.results?.stoppedByLink}`];
+    const counts = a.results?.stoppedSince === 5 && b.results?.stoppedSince === 3 && valueOf(aHtml, "stoppedSince") === "5";
+    // the SAME stop is never counted by two campaigns (n3, n3b and n13 → B only; n4 and n12 → A only)
+    const once = (a.results?.stoppedSince ?? 0) + (b.results?.stoppedSince ?? 0) === 8;
+    return [counts && once,
+      `A ${a.results?.stoppedSince} (want 5: n1, n4, n9, n10, n12) · B ${b.results?.stoppedSince} (want 3: n3, n3b, n13) · card "${valueOf(aHtml, "stoppedSince")}"`];
   });
 
   /* ── R5 · the reasons ── */
@@ -557,7 +604,7 @@ export async function resultsClaims(impl: ResultsImpl, h: ResultsHarness): Promi
     const text = textOf(page);
     const alone = text.includes(COPY.LIVE_FLOOR) && !page.includes("data-block=" + DQ + "live-results" + DQ) && !page.includes("data-results") && !/deliver/i.test(text)
       && !text.includes("Estimated spend") && !text.includes("No delivery receipt");
-    const noJson = !json(m9).includes("honesty") && !json(m9).includes("stoppedByLink") && !json(m9).includes("noReceiptAfter15");
+    const noJson = !json(m9).includes("honesty") && !json(m9).includes("stoppedSince") && !json(m9).includes("noReceiptAfter15");
     return [hidden && shown && none && alone && noJson && priceAsked === 0,
       `masked 9: ${m9.results === null ? "no results" : "RESULTS"} · confirmed 50 with 9 rows: ${ms.results === null ? "none" : "RESULTS"} · money without numbers at 9: ${money9.results === null ? "none" : "RESULTS"} (price asked ${priceAsked}×) · at 10: masked ${m10.results === null ? "none" : "shown"}, money-only ${money10.results === null ? "none" : "shown"} · a reader at 9: ${r9.results === null ? "none" : "shown"} · no list yet: ${me.results === null && re.results === null ? "none for anyone" : "RESULTS"} · the page alone ${alone}`];
   });
@@ -702,15 +749,19 @@ export async function resultsClaims(impl: ResultsImpl, h: ResultsHarness): Promi
     }
     const pages: Array<string | null> = [];
     const batches: number[] = [];
+    const wordBatches: number[] = [];
     const seen = new Set<string>();
     let twice = 0;
     const walkDeps: StopWalkDeps = {
       ...impl.walkDeps, chunk: 7,
       page: async (id, after, limit) => { pages.push(after); const p = await impl.walkDeps.page(id, after, limit); for (const x of p) { if (seen.has(x.msisdn)) twice++; seen.add(x.msisdn); } return p; },
       stops: async (b) => { batches.push(b.identifiers.length); return impl.walkDeps.stops(b); },
+      words: async (b) => { wordBatches.push(b.identifiers.length); return impl.walkDeps.words(b); },
     };
     const counted = await impl.walk(c.id, walkDeps);
-    const chunked = counted === 6 && pages.length === 4 && pages[0] === null && json(batches) === json([7, 7, 7]) && twice === 0 && seen.size === 21;
+    // the stop list and the ledger: ONE query each per chunk of seven, and nothing else asked of a chunk
+    const chunked = counted === 6 && pages.length === 4 && pages[0] === null && json(batches) === json([7, 7, 7]) && json(wordBatches) === json([7, 7, 7])
+      && twice === 0 && seen.size === 21;
     // (2) the real chunk: 1,000 people, and the first page the bulk read's bound allows
     const real = RES.STOP_WALK_CHUNK === 1000 && RES.STOP_WALK_DEPS.chunk === 1000 && RES.STOP_WALK_CHUNK <= BULK_KEYED_READ_MAX
       && MODEL.SMS_HANDED_OVER_PAGE_MAX === BULK_KEYED_READ_MAX;
@@ -730,8 +781,8 @@ export async function resultsClaims(impl: ResultsImpl, h: ResultsHarness): Promi
     let shared: number[] = [];
     try {
       db.smsCampaignRecipient.handedOverPage = (async (...a: Parameters<typeof handed>) => { walks++; return handed(...a); }) as typeof handed;
-      shared = await Promise.all([impl.production.stoppedByLink(pm.id), impl.production.stoppedByLink(pm.id)]);
-      shared.push(await impl.production.stoppedByLink(pm.id));
+      shared = await Promise.all([impl.production.stoppedSince(pm.id), impl.production.stoppedSince(pm.id)]);
+      shared.push(await impl.production.stoppedSince(pm.id));
     } finally {
       db.smsCampaignRecipient.handedOverPage = handed;
     }
@@ -767,37 +818,41 @@ export async function resultsClaims(impl: ResultsImpl, h: ResultsHarness): Promi
     await h.rows(slowCampaign.id, [...h.many(3, { status: "SENT", sentAt: iso(T - 60 * MIN) }), ...h.many(9, { status: "PENDING" })]);
     const slowHeld = new Map<string, import("../../src/lib/server/marketing/campaign-results.ts").Memo<number>>();
     const slowRead = impl.memo(async () => { await new Promise((r) => setTimeout(r, 150)); return 5; }, { ttlMs: 30_000, now: () => Date.now(), held: slowHeld });
-    const firstLook = await results(slowCampaign.id, READER, { stoppedByLink: slowRead, budgetMs: 20 });
+    const firstLook = await results(slowCampaign.id, READER, { stoppedSince: slowRead, budgetMs: 20 });
     const firstHtml = card(firstLook);
     await new Promise((r) => setTimeout(r, 300));
-    const secondLook = await results(slowCampaign.id, READER, { stoppedByLink: slowRead, budgetMs: 20 });
-    const budgeted = firstLook.results?.stoppedByLink === null && valueOf(firstHtml, "stoppedByLink") === "—" && secondLook.results?.stoppedByLink === 5
+    const secondLook = await results(slowCampaign.id, READER, { stoppedSince: slowRead, budgetMs: 20 });
+    const budgeted = firstLook.results?.stoppedSince === null && valueOf(firstHtml, "stoppedSince") === "—" && secondLook.results?.stoppedSince === 5
       && RES.RESULTS_READ_BUDGET_MS > 0 && RES.RESULTS_DEPS.budgetMs === RES.RESULTS_READ_BUDGET_MS && firstLook.results?.handedOver === 3;
-    // (4b) a walk that cannot move refuses, and one that never ends is cut off — each a failure the view says as unread
-    const stuck = await impl.walk("cmp_stuck", { ...impl.walkDeps, chunk: 2, page: async () => [{ msisdn: h.key("62", 1), sentAt: iso(T) }, { msisdn: h.key("62", 2), sentAt: iso(T) }], stops: async () => [] })
+    // (4b) a walk that cannot move refuses, and one that never ends is cut off — each a failure the view says as unread (the two
+    // record reads answer nothing here: these cases are about the loop's guards, never about a stop)
+    const quiet = { stops: async () => [], words: async () => [] };
+    const stuck = await impl.walk("cmp_stuck", { ...impl.walkDeps, ...quiet, chunk: 2, page: async () => [{ msisdn: h.key("62", 1), sentAt: iso(T) }, { msisdn: h.key("62", 2), sentAt: iso(T) }] })
       .then(() => false, () => true);
     let counter = 0;
-    const endless = await impl.walk("cmp_endless", { ...impl.walkDeps, chunk: 1, page: async () => [{ msisdn: h.key("62", 100 + ++counter), sentAt: iso(T) }], stops: async () => [] })
+    const endless = await impl.walk("cmp_endless", { ...impl.walkDeps, ...quiet, chunk: 1, page: async () => [{ msisdn: h.key("62", 100 + ++counter), sentAt: iso(T) }] })
       .then(() => false, () => true);
     const guarded = stuck && endless && counter === RES.STOP_WALK_PAGES_MAX;
-    // (5) unread: a walk that fails is a dash and its sentence, never a zero, and the view still comes
+    // (5) unread: a walk that fails is a dash and its sentence, never a zero, and the view still comes — and so is a walk whose
+    // ledger read fails, though its stop list answered
     const d = await h.campaign("rr10d", { path: RUNNING, count: 12 });
     await h.rows(d.id, [...h.many(3, { status: "SENT", sentAt: iso(T - 60 * MIN) }), ...h.many(9, { status: "PENDING" })]);
-    const down = await results(d.id, READER, { stoppedByLink: async () => { throw new Error("the stops list is down (fixture)"); } });
+    const down = await results(d.id, READER, { stoppedSince: async () => { throw new Error("the stops list is down (fixture)"); } });
     const downHtml = card(down);
-    const unread = down.results !== null && down.results.stoppedByLink === null && valueOf(downHtml, "stoppedByLink") === "—"
-      && helpOf(downHtml, "stoppedByLink") === COPY.RESULTS_UNREAD && down.results.handedOver === 3;
+    const ledgerDown = await impl.walk(d.id, { ...impl.walkDeps, words: async () => { throw new Error("the ledger is down (fixture)"); } }).then(() => false, () => true);
+    const unread = down.results !== null && down.results.stoppedSince === null && valueOf(downHtml, "stoppedSince") === "—"
+      && helpOf(downHtml, "stoppedSince") === COPY.RESULTS_UNREAD && down.results.handedOver === 3 && ledgerDown;
     // (6) nobody handed anything: nothing asked
     const idle = await h.campaign("rr10i", { path: RUNNING, count: 12 });
     await h.rows(idle.id, [...h.many(8, { status: "PENDING" }), ...h.many(4, { status: "SKIPPED", skipReason: "suppressed" })]);
     const asked: string[] = [];
     const iv = await results(idle.id, READER, {
-      sentBefore: async () => { asked.push("sentBefore"); return 1; }, stoppedByLink: async () => { asked.push("stoppedByLink"); return 1; },
+      sentBefore: async () => { asked.push("sentBefore"); return 1; }, stoppedSince: async () => { asked.push("stoppedSince"); return 1; },
       priceTzs: async () => { asked.push("priceTzs"); return 6; },
     });
-    const nothing = asked.length === 0 && iv.results?.stoppedByLink === 0 && iv.results.noReceiptAfter15 === 0;
+    const nothing = asked.length === 0 && iv.results?.stoppedSince === 0 && iv.results.noReceiptAfter15 === 0;
     return [chunked && real && twoPages && remembered && inside && expired && notKept && asRejection && budgeted && guarded && unread && nothing,
-      `chunks of 7 over 21: counted ${counted} (want 6), pages ${pages.length}, batches ${json(batches)}, twice ${twice} · 1,001 people → pages ${json(bigPages)} count ${bigCount} · real chunk ${real} · production: ${walks} walk(s) for 3 askers ${json(shared)} · memory: inside ${inside} expired ${expired} failure not kept ${notKept} throw-as-rejection ${asRejection} · a slow walk: first look ${json(firstLook.results?.stoppedByLink)}, the next ${json(secondLook.results?.stoppedByLink)} · a stuck walk refuses ${stuck}, an endless one is cut at ${counter} pages ${endless} · failed walk: ${json(down.results?.stoppedByLink)} "${valueOf(downHtml, "stoppedByLink")}" · nobody handed over: asked [${asked.join(",")}]`];
+      `chunks of 7 over 21: counted ${counted} (want 6), pages ${pages.length}, stop-list batches ${json(batches)}, ledger batches ${json(wordBatches)}, twice ${twice} · 1,001 people → pages ${json(bigPages)} count ${bigCount} · real chunk ${real} · production: ${walks} walk(s) for 3 askers ${json(shared)} · memory: inside ${inside} expired ${expired} failure not kept ${notKept} throw-as-rejection ${asRejection} · a slow walk: first look ${json(firstLook.results?.stoppedSince)}, the next ${json(secondLook.results?.stoppedSince)} · a stuck walk refuses ${stuck}, an endless one is cut at ${counter} pages ${endless} · failed walk: ${json(down.results?.stoppedSince)} "${valueOf(downHtml, "stoppedSince")}", a ledger that fails throws ${ledgerDown} · nobody handed over: asked [${asked.join(",")}]`];
   });
 
   /* ── R11 · the card ── */
@@ -812,23 +867,28 @@ export async function resultsClaims(impl: ResultsImpl, h: ResultsHarness): Promi
     const html = card(v, READER);
     const r = v.results;
     const text = textOf(html);
-    const order = ["delivered", "handedOver", "noReceipt", "failed", "notSent", "noAnswer", "stopped", "stoppedByLink"];
+    const order = ["delivered", "handedOver", "noReceipt", "failed", "notSent", "noAnswer", "stopped", "stoppedSince"];
     const at = order.map((n) => html.indexOf(rowTag(n)));
     const ordered = at.every((x, i) => x > 0 && (i === 0 || x > at[i - 1]));
     const TITLES = [
       "Delivered", "Handed over, no receipt yet", "No receipt after 15 minutes", "Failed", "The network refused it", "Not delivered (receipt)",
-      "Not sent — the checks refused them", "No answer from the network", "Stopped before sending", "Stopped by their link since this campaign",
+      "Not sent — the checks refused them", "No answer from the network", "Stopped before sending", "Stopped since this campaign",
     ];
     const titled = TITLES.every((t) => text.includes(t)) && !text.includes("Waiting")
       && COPY.RESULTS_ROW.delivered.label === TITLES[0] && COPY.RESULTS_ROW.handedOver.label === TITLES[1] && COPY.RESULTS_ROW.noReceipt.label === TITLES[2]
       && COPY.RESULTS_ROW.failed.label === TITLES[3] && COPY.RESULTS_FAILED.wire === TITLES[4] && COPY.RESULTS_FAILED.receipt === TITLES[5]
       && COPY.RESULTS_ROW.notSent.label === TITLES[6] && COPY.RESULTS_ROW.noAnswer.label === TITLES[7] && COPY.RESULTS_ROW.stopped.label === TITLES[8]
-      && COPY.RESULTS_ROW.stoppedByLink.label === TITLES[9];
+      && COPY.RESULTS_ROW.stoppedSince.label === TITLES[9];
     // ⭐ OD41 in the markup: distinct numbers — Delivered prints 2, Handed over prints 8; never the one for the other
     const own = r !== null && r.delivered === 2 && r.handedOver === 8 && valueOf(html, "delivered") === "2" && valueOf(html, "handedOver") === "8"
       && valueOf(html, "failed") === "2" && valueOf(html, "notSent") === "3" && valueOf(html, "noAnswer") === "2" && valueOf(html, "stopped") === "9" && valueOf(html, "noReceipt") === "7";
+    // ⭐ E30 as re-ruled (2026-10-09): the row says the owner's words — every way a person stops — and nothing of the link-only row
+    const STOPPED_SINCE_HELP = "People this campaign reached who have stopped offers since — on their profile, by asking us, or by a link from an older message. They will not be messaged again.";
+    const sinceWords = COPY.RESULTS_ROW.stoppedSince.help === STOPPED_SINCE_HELP && helpOf(html, "stoppedSince") === STOPPED_SINCE_HELP
+      && !text.includes("Stopped by their link") && !text.includes("opt-out link was used");
     const words = helpOf(html, "delivered") === COPY.RESULTS_ROW.delivered.help && helpOf(html, "handedOver") === COPY.RESULTS_ROW.handedOver.help
-      && !/delivered/i.test(COPY.RESULTS_ROW.handedOver.help.replace("Delivery is confirmed", "")) && !/delivered/i.test(COPY.RESULTS_ROW.noReceipt.help);
+      && !/delivered/i.test(COPY.RESULTS_ROW.handedOver.help.replace("Delivery is confirmed", "")) && !/delivered/i.test(COPY.RESULTS_ROW.noReceipt.help)
+      && sinceWords;
     // below the floor nothing is drawn; with no results the block is not there at all
     const masked = await h.campaign("rr11m", { path: RUNNING, count: 9 });
     await h.rows(masked.id, [...h.many(5, { status: "SENT", sentAt: iso(T - 20 * MIN) }), ...h.many(4, { status: "PENDING" })]);
@@ -837,7 +897,7 @@ export async function resultsClaims(impl: ResultsImpl, h: ResultsHarness): Promi
     const src = impl.sources.card;
     const BANNED = ["Math.", ".reduce(", "parseInt(", "parseFloat(", ".toFixed(", ".toLocaleString(", "Intl.", "Date.now(", "new Date(", "setInterval", "setTimeout", "formatTzs", "TZS", "campaignMoneyVisible"];
     const NUMBER_CALL = new RegExp("(?:^|[^A-Za-z0-9_])Number[(]");
-    const FIELD = "(?:value|max|count|total|delivered|handedOver|failed|wire|receipt|noAnswer|noReceiptAfter15|stoppedByLink|length)";
+    const FIELD = "(?:value|max|count|total|delivered|handedOver|failed|wire|receipt|noAnswer|noReceiptAfter15|stoppedSince|length)";
     const OP = "[-+*/%]";
     const after = new RegExp("[.]" + FIELD + "[)]?[ ]*" + OP + "[ ]*[A-Za-z0-9_(]");
     const before = new RegExp("[A-Za-z0-9_)][ ]*" + OP + "[ ]*[A-Za-z0-9_.]*[.]" + FIELD + "(?![A-Za-z0-9_])");
@@ -846,12 +906,12 @@ export async function resultsClaims(impl: ResultsImpl, h: ResultsHarness): Promi
     const reach = json(specs) === json(["./live-client", "./live-copy", "./live-geometry", "@/components/admin/admin-charts", "@/components/ui/callout", "@/lib/utils", "type react"].sort());
     const client = rawRead(`${DIR}results-card.tsx`).trimStart().startsWith(`${DQ}use client${DQ}`);
     // an unread count: a dash and its sentence, never a zero
-    const bad = await results(c.id, READER, { sentBefore: async () => { throw new Error("the count is down (fixture)"); }, stoppedByLink: async () => { throw new Error("the stops list is down (fixture)"); } });
+    const bad = await results(c.id, READER, { sentBefore: async () => { throw new Error("the count is down (fixture)"); }, stoppedSince: async () => { throw new Error("the stops list is down (fixture)"); } });
     const badHtml = card(bad, READER);
-    const unread = valueOf(badHtml, "noReceipt") === "—" && valueOf(badHtml, "stoppedByLink") === "—" && helpOf(badHtml, "noReceipt") === COPY.RESULTS_UNREAD
-      && helpOf(badHtml, "stoppedByLink") === COPY.RESULTS_UNREAD && valueOf(badHtml, "delivered") === "2";
+    const unread = valueOf(badHtml, "noReceipt") === "—" && valueOf(badHtml, "stoppedSince") === "—" && helpOf(badHtml, "noReceipt") === COPY.RESULTS_UNREAD
+      && helpOf(badHtml, "stoppedSince") === COPY.RESULTS_UNREAD && valueOf(badHtml, "delivered") === "2";
     return [ordered && titled && own && words && gone && unread && worked.length === 0 && reach && client,
-      `order ${ordered} · the spec's titles ${titled} · Delivered ${valueOf(html, "delivered")} / Handed over ${valueOf(html, "handedOver")} (want 2 / 8) · words ${words} · below the floor nothing ${gone} · unread said ${unread} · the file: [${worked.join(", ")}] · imports ${reach} · "use client" ${client}`];
+      `order ${ordered} · the spec's titles ${titled} · Delivered ${valueOf(html, "delivered")} / Handed over ${valueOf(html, "handedOver")} (want 2 / 8) · words ${words} (the stopped-since row's own ${sinceWords}) · below the floor nothing ${gone} · unread said ${unread} · the file: [${worked.join(", ")}] · imports ${reach} · "use client" ${client}`];
   });
 
   /* ── R12 · the wiring ── */
@@ -861,9 +921,13 @@ export async function resultsClaims(impl: ResultsImpl, h: ResultsHarness): Promi
     const R = V.results;
     const frozen = R === RES.RESULTS_DEPS && Object.isFrozen(R) && Object.isFrozen(R.rules) && Object.isFrozen(RES.STOP_WALK_DEPS) && Object.isFrozen(RES.STOP_WALK_DEPS.rules)
       && R.rules.delivered === RES.deliveredRows && R.rules.failedSplit === RES.failedSplitOf && R.rules.honesty === RES.honestyOf
-      && RES.STOP_WALK_DEPS.rules.isLinkStop === RES.isLinkStop && RES.STOP_WALK_DEPS.rules.attributedElsewhere === RES.attributedElsewhere;
+      && RES.STOP_WALK_DEPS.rules.stopsSince === RES.stopsSince && RES.STOP_WALK_DEPS.rules.attributedElsewhere === RES.attributedElsewhere;
+    // the walk's doors: the stop list and the ledger's latest word (§25), the marker's rule from erasure-mark, and the
+    // attribution's read
     const doors = s.results.includes("db.smsCampaignRecipient.countSentBefore(campaignId, before)") && s.results.includes("db.smsCampaignRecipient.handedOverPage(campaignId, after, limit)")
-      && s.results.includes("db.suppression.findActiveAmong(batch)") && s.results.includes("db.smsCampaignRecipient.listByMsisdn(msisdn, sinceIso)")
+      && s.results.includes("db.suppression.findActiveAmong(batch)") && s.results.includes("db.messagingConsent.latestAmong(batch)")
+      && s.results.includes('import { isErasureMarker } from "@/lib/marketing/erasure-mark";')
+      && s.results.includes("db.smsCampaignRecipient.listByMsisdn(msisdn, sinceIso)")
       && s.live.includes("results: RESULTS_DEPS,") && s.live.includes("campaignResults({");
     // The send names are spelled in halves: marketing-window's W6 walks every file under scripts/ for the send path's NAME as text,
     // and this is a pattern the results module is held to, not a driver of any send.
@@ -921,6 +985,137 @@ export async function resultsClaims(impl: ResultsImpl, h: ResultsHarness): Promi
     return [once && own && neither && guard,
       `the reader's page: figures-card lists ${count(page, "data-live-reasons")}, results lists ${count(page, "data-results-reasons")}, the five words once ${json(listed) === json(wanted)} (sum ${total} of ${reader.kpis.notSent}), the old title ${count(pageText, COPY.LIVE_BREAKDOWN_TITLE)}× · without results the figures card draws its own ${own} · masked: neither ${neither} · the guard in the file ${guard}`];
   });
+
+  /* ── R14 · ⭐ every way a person stops, and only a stop in force ── */
+  await h.claim(L.r14, async () => {
+    const K = await h.campaign("rr14", { path: RUNNING, count: 17 });
+    const tK = T - 60 * MIN;
+    const people = ["k1", "k2", "k3", "k4", "k5", "k6", "k7", "k8", "k9", "k10", "k11", "k12", "k13", "k14"] as const;
+    const numbers = Object.fromEntries(people.map((p, i) => [p, h.key("74", h.run * 100 + i + 11)])) as Record<(typeof people)[number], string>;
+    await h.rows(K.id, [...people.map((p): Shape => ({ status: "SENT", sentAt: iso(tK), msisdn: numbers[p] })), ...h.many(3, { status: "PENDING" })]);
+    const STAFF = "contacts-bulk:fixturerun";
+    const MARKER = { source: "OPERATOR" as const, evidence: ERASURE_EVIDENCE };
+    // ── counted: a stop made after the message, whatever made it ──
+    await listStop(numbers.k1, T - 30 * MIN);                                           // a link from an older message
+    await word(numbers.k2, T - 30 * MIN);                                               // the offers switch turned off
+    await listStop(numbers.k3, T - 30 * MIN, { reason: "OPERATOR", evidence: STAFF });  // an officer's Suppress
+    await word(numbers.k4, T - 30 * MIN, { source: "OPERATOR", evidence: STAFF });      // an officer's recorded withdrawal
+    await listStop(numbers.k5, T - 30 * MIN, { reason: "COMPLAINT", evidence: null });  // a complaint
+    await listStop(numbers.k6, T - 30 * MIN);                                           // the opt-out page writes a stop AND…
+    await word(numbers.k6, T - 30 * MIN + 1000, { source: "OPT_OUT_PAGE", evidence: "optout:refboth" }); // …a row: ONE person
+    // ── not counted: nothing in force, or no stop at all ──
+    await listStop(numbers.k7, T - 30 * MIN, { lifted: true });                         // a lifted stop
+    await word(numbers.k8, T - 30 * MIN);                                               // the switch turned off…
+    await word(numbers.k8, T - 20 * MIN, { status: "GIVEN" });                          // …and on again
+    await bookRow(numbers.k9);                                                          // an ordinary book row…
+    await word(numbers.k9, T - 30 * MIN, MARKER);                                       // …under an erasure's marker: no stop
+    await word(numbers.k10, T - 30 * MIN, { source: "RETENTION_LAPSE", evidence: null }); // a lapse: no stop
+    // ── ⛔ ERASURE-BLIND (X22): an erasure adds nobody and takes nobody out ──
+    await listStop(numbers.k11, T - 30 * MIN, { reason: "OPERATOR", evidence: STAFF }); // an officer's stop, which the erasure keeps…
+    await word(numbers.k11, T - 20 * MIN, MARKER);                                      // …then erased: the marker…
+    await bookRow(numbers.k11, { tombstone: true });                                    // …and the tombstone — still counted
+    await listStop(numbers.k12, T - 30 * MIN);                                          // a link stop, which the erasure keeps…
+    await word(numbers.k12, T - 20 * MIN, MARKER);                                      // …under an erasure with no book row — counted
+    await word(numbers.k13, T - 30 * MIN);                                              // the switch turned off, then erased: the
+    await word(numbers.k13, T - 20 * MIN, MARKER);                                      // marker is the ledger's latest word, so the
+    await bookRow(numbers.k13, { tombstone: true });                                    // switch's stop falls, as a later yes would
+    await bookRow(numbers.k14, { tombstone: true });                                    // a tombstone, and…
+    await word(numbers.k14, T - 50 * MIN, MARKER);
+    await word(numbers.k14, T - 45 * MIN, { status: "GIVEN" });                         // …a later yes reopened the ledger…
+    await word(numbers.k14, T - 30 * MIN);                                              // …and the switch was then turned off — counted
+    const v = await results(K.id);
+    const html = card(v);
+    const counted = v.results?.stoppedSince === 9 && valueOf(html, "stoppedSince") === "9";
+    // the ledger's rule beside it: of the WITHDRAWN rows, the erasure's marker and a lapse are no stop
+    const rule = RES.isLedgerStop({ status: "WITHDRAWN", source: "PROFILE", evidence: "/profile/notifications" })
+      && RES.isLedgerStop({ status: "WITHDRAWN", source: "OPERATOR", evidence: STAFF })
+      && !RES.isLedgerStop({ status: "WITHDRAWN", source: "OPERATOR", evidence: ERASURE_EVIDENCE })
+      && !RES.isLedgerStop({ status: "WITHDRAWN", source: "RETENTION_LAPSE", evidence: null })
+      && !RES.isLedgerStop({ status: "GIVEN", source: "PROFILE", evidence: "/profile/notifications" });
+    return [counted && rule,
+      `counted ${v.results?.stoppedSince} (want 9: k1 a link, k2 the switch, k3 an officer's Suppress, k4 a recorded withdrawal, k5 a complaint, k6 both records once, and — erasure-blind — k11 a Suppress then erased, k12 a link stop under an erasure, k14 a stop after a reopened ledger; not k7 lifted, k8 back on, k9 a marker, k10 a lapse, k13 a switch-off the marker superseded) · card "${valueOf(html, "stoppedSince")}" · the ledger's rule ${rule}`];
+  });
+
+  /* ── R15 · ⭐ the platform's own writers move it ── */
+  await h.claim(L.r15, async () => {
+    const P = await h.campaign("rr15", { path: RUNNING, count: 12 });
+    const people = ["p1", "p2", "p3", "p4", "p5", "p6", "p7"] as const;
+    type Who = (typeof people)[number];
+    const numbers = Object.fromEntries(people.map((p, i) => [p, h.key("75", h.run * 100 + i + 11)])) as Record<Who, string>;
+    await h.rows(P.id, [...people.map((p): Shape => ({ status: "SENT", sentAt: iso(T - 5 * MIN), msisdn: numbers[p] })), ...h.many(5, { status: "PENDING" })]);
+    const OFFICER = `usr_u48a_officer_${h.run}`;
+    const keyOf = (p: Who) => ({ channel: "SMS" as const, identifier: numbers[p], category: "MARKETING" as const });
+    /** An adult player at the number, the offers switch turned ON through its own writer — a yes, before anything stops. */
+    const playerAt = async (p: Who): Promise<string> => {
+      const id = `usr_u48a_${h.run}_${p}`;
+      const at = iso(T - DAY);
+      await db.user.create({
+        id, phoneE164: `+${numbers[p]}`, email: null, passwordHash: null, passwordSalt: null, failedLoginCount: 0, lockedUntil: null,
+        role: "PLAYER", status: "ACTIVE", locale: "SW", displayName: null, dob: "1990-01-01", region: null, acceptedTermsVersion: "v1",
+        acceptedTermsAt: at, marketingOptIn: false, twoFactorEnabled: false, avatarDataUrl: null, emailVerifiedAt: null,
+        createdAt: at, updatedAt: at, lastLoginAt: at, closedAt: null,
+      } as StoredUser);
+      const yes = await CONSENT.recordPlayerMarketingChoice({ userId: id, marketingOptIn: true, locale: "SW" });
+      if (!yes.ok) throw new Error("fixture: the switch's writer refused a yes");
+      return id;
+    };
+    /** The number's book row, made by the fixture — its id, for the bulk bar's ticked run. */
+    const contactAt = async (p: Who): Promise<string> => {
+      await bookRow(numbers[p]);
+      const row = await db.marketingContact.findByMsisdn(numbers[p]);
+      if (row === null) throw new Error("fixture: a book row is not in the store");
+      return row.id;
+    };
+    const switchTo = (userId: string, on: boolean) => CONSENT.recordPlayerMarketingChoice({ userId, marketingOptIn: on, locale: "SW" });
+    /** The contact book's bulk bar, as its action runs it: one ticked row, no typed count, the officer's own run. */
+    const bulk = (action: "suppress" | "withdraw", contactId: string) =>
+      BULK.runContactBulk({ action, audience: { ...WHOLE_BOOK, ids: [contactId] }, typed: null, tag: null, list: null }, OFFICER, true);
+    const u2 = await playerAt("p2");
+    const u5 = await playerAt("p5");
+    const u6 = await playerAt("p6");
+    const u7 = await playerAt("p7");
+    const c3 = await contactAt("p3");
+    const c4 = await contactAt("p4");
+    await bookRow(numbers.p6);
+    await bookRow(numbers.p7);
+    const before = await results(P.id);
+    // the four ways, each through its own writer — and two more people the erasure will meet
+    const t1 = await OPTOUT.ensureOptOutToken(numbers.p1);
+    const link1 = t1 === null ? null : await OPTOUT.stopMarketing(t1, "SW");
+    const off2 = await switchTo(u2, false);
+    const sup3 = await bulk("suppress", c3);
+    const wd4 = await bulk("withdraw", c4);
+    const off5 = await switchTo(u5, false);
+    const on5 = await switchTo(u5, true);
+    const t6 = await OPTOUT.ensureOptOutToken(numbers.p6);
+    const link6 = t6 === null ? null : await OPTOUT.stopMarketing(t6, "SW");
+    const acts = link1?.ok === true && off2.ok && off2.on === false && sup3.ok && sup3.changed === 1 && wd4.ok && wd4.changed === 1
+      && off5.ok && on5.ok && on5.on === true && link6?.ok === true;
+    // what each writer wrote is what the rules read: the stop list, the ledger's latest word, or both
+    const s1 = await db.suppression.find(keyOf("p1"));
+    const w1 = await db.messagingConsent.latestFor(keyOf("p1"));
+    const w2 = await db.messagingConsent.latestFor(keyOf("p2"));
+    const s3 = await db.suppression.find(keyOf("p3"));
+    const w4 = await db.messagingConsent.latestFor(keyOf("p4"));
+    const w5 = await db.messagingConsent.latestFor(keyOf("p5"));
+    const spelled = s1?.reason === "WITHDRAWN" && w1?.status === "WITHDRAWN" && w1.source === "OPT_OUT_PAGE"
+      && w2?.status === "WITHDRAWN" && w2.source === "PROFILE" && (await db.suppression.find(keyOf("p2"))) === null
+      && s3?.reason === "OPERATOR" && w4?.status === "WITHDRAWN" && w4.source === "OPERATOR" && (await db.suppression.find(keyOf("p4"))) === null
+      && w5?.status === "GIVEN";
+    const after = await results(P.id);
+    // ⛔ X22 · the REAL erasure changes nothing here: the stopped person it erases still counts — their stop stands, as the gate
+    // still refuses them — and one it erases who never stopped is not added (the marker is no stop)
+    const e6 = await ERASE.eraseMarketingFor({ userId: u6, phoneE164: `+${numbers.p6}`, officerId: OFFICER });
+    const e7 = await ERASE.eraseMarketingFor({ userId: u7, phoneE164: `+${numbers.p7}`, officerId: OFFICER });
+    const w6 = await db.messagingConsent.latestFor(keyOf("p6"));
+    const w7 = await db.messagingConsent.latestFor(keyOf("p7"));
+    const erased = e6.marketingConsentWithdrawn === 1 && e6.marketingContactsEmptied === 1 && e7.marketingConsentWithdrawn === 1
+      && w6 !== null && isErasureMarker(w6) && w7 !== null && isErasureMarker(w7) && (await db.suppression.find(keyOf("p6"))) !== null;
+    const last = await results(P.id);
+    const moved = before.results?.stoppedSince === 0 && after.results?.stoppedSince === 5 && last.results?.stoppedSince === 5;
+    return [acts && spelled && erased && moved,
+      `before ${before.results?.stoppedSince} → after the writers ${after.results?.stoppedSince} (want 5: p1 the page, p2 the switch, p3 Suppress, p4 a recorded withdrawal, p6 the page; not p5, off and on) → after two erasures ${last.results?.stoppedSince} (want 5 — erasure-blind) · the writers answered ok ${acts} · wrote what the rules read ${spelled} · erased (the markers, the tombstone, p6's stop kept) ${erased}`];
+  });
 }
 
 /** The text of the card's markup (tags out, entities decoded). */
@@ -946,6 +1141,22 @@ export function resultsPlants(phoneLabel: string): ResultsPlant[] {
     viewDeps: (d) => ({ ...d, results: { ...d.results, ...over(d) } }),
   });
   const withWalk = (over: Partial<StopWalkDeps>): { results: ResultsImpl } => withResults({ walkDeps: { ...base.walkDeps, ...over } });
+  /** R-R4l's defect — this unit's FIRST build, kept here as the plant S14's review asked for: the numbers among these on which an
+   *  erasure stands by the ONE function (`isErasedNumber`) over the book's key-only presence and C8a's grouped read. Production
+   *  asks no such thing: the figure is erasure-blind (X22). */
+  const erasedAmongFirstBuild = async (msisdns: readonly string[]): Promise<Set<string>> => {
+    const keys = [...new Set(msisdns)];
+    if (keys.length === 0) return new Set();
+    const [inBook, ordinaryInBook, standing] = await Promise.all([
+      db.marketingContact.msisdnsPresent({ msisdns: keys, excludeSourceRef: null }),
+      db.marketingContact.msisdnsPresent({ msisdns: keys, excludeSourceRef: ERASURE_EVIDENCE }),
+      db.messagingConsent.erasureStandsAmong({ channel: "SMS", category: "MARKETING", identifiers: keys }),
+    ]);
+    const present = new Set(inBook);
+    const ordinary = new Set(ordinaryInBook);
+    const stands = new Set(standing);
+    return new Set(keys.filter((m) => isErasedNumber(present.has(m) ? { sourceRef: ordinary.has(m) ? null : ERASURE_EVIDENCE } : null, stands.has(m))));
+  };
   /** The memory twin's recipient rows, for a plant that reads them directly (a fixture only). */
   const memRows = (): Map<string, StoredSmsCampaignRecipient> =>
     (globalThis as unknown as { __50PICK_STORE: { smsCampaignRecipients: Map<string, StoredSmsCampaignRecipient> } }).__50PICK_STORE.smsCampaignRecipients;
@@ -966,16 +1177,46 @@ export function resultsPlants(phoneLabel: string): ResultsPlant[] {
       impl: withDeps((d) => ({ sentBefore: async (id, before) => d.results.sentBefore(id, new Date(2 * d.now().getTime() - Date.parse(before)).toISOString()) })) },
     { name: "R-R4 · attribution ignoring a newer campaign — a stop after another campaign's message to the number is counted here as well", expect: [L.r4],
       impl: withWalk({ rules: { ...base.walkDeps.rules, attributedElsewhere: () => false } }) },
-    { name: "R-R4b · a stop made BEFORE this campaign's message counted — the createdAt rule gone", expect: [L.r4],
-      impl: withWalk({ rules: { ...base.walkDeps.rules, isLinkStop: (stop, sentAt) => RES.isLinkStop({ ...stop, createdAt: sentAt }, sentAt) } }) },
-    { name: "R-R4c · any evidence will do — an officer's bulk withdrawal counts as the person's own link", expect: [L.r4],
-      impl: withWalk({ rules: { ...base.walkDeps.rules, isLinkStop: (stop, sentAt) => RES.isLinkStop({ ...stop, evidence: `${RES.LINK_STOP_EVIDENCE_PREFIX}x` }, sentAt) } }) },
-    { name: "R-R4d · any reason will do — an operator's refusal counts as a stop by the link", expect: [L.r4],
-      impl: withWalk({ rules: { ...base.walkDeps.rules, isLinkStop: (stop, sentAt) => RES.isLinkStop({ ...stop, reason: RES.LINK_STOP_REASON as never }, sentAt) } }) },
-    { name: "R-R4e · a lifted stop counted — every stop the number ever had, not the ones still in force", expect: [L.r4],
+    { name: "R-R4b · a stop made BEFORE this campaign's message counted — the instant rule gone, for the stop list and the switch alike", expect: [L.r4],
+      impl: withWalk({ rules: { ...base.walkDeps.rules, stopsSince: (people, stops, words) => {
+        const sentAt = new Map(people.map((p) => [p.msisdn, p.sentAt] as const));
+        return RES.stopsSince(people.map((p) => ({ ...p, sentAt: EPOCH })), stops, words).map((f) => ({ ...f, sentAt: sentAt.get(f.msisdn) ?? f.sentAt }));
+      } } }) },
+    { name: "R-R4c · the ledger's answer never read — the walk counts the stop list alone, as before the ruling: the switch turned off and an officer's recorded withdrawal are nobody's (and a stop made again keeps the stop list's first instant)", expect: [L.r4, L.r14, L.r15],
+      impl: withWalk({ words: async () => [] }) },
+    { name: "R-R4d · only the person's own stops — an officer's Suppress, an officer's recorded withdrawal and a complaint are not counted", expect: [L.r14, L.r15],
+      impl: withWalk({
+        stops: async (b) => (await base.walkDeps.stops(b)).filter((s) => s.reason === "WITHDRAWN"),
+        words: async (b) => (await base.walkDeps.words(b)).filter((w) => w.source !== "OPERATOR"),
+      }) },
+    { name: "R-R4e · a lifted stop counted — every stop the number ever had, not the ones still in force", expect: [L.r14],
       impl: withWalk({ stops: async (b) => (await Promise.all(b.identifiers.map((i) => db.suppression.listFor(i)))).flat() }) },
     { name: "R-R4f · every message counts as the newer one — a failed message of another campaign explains a stop it cannot", expect: [L.r4],
       impl: withWalk({ rules: { ...base.walkDeps.rules, attributedElsewhere: (rows, o) => RES.attributedElsewhere(rows.map((r) => ({ ...r, status: "SENT" as const, sentAt: r.sentAt ?? new Date(Date.parse(o.sentAt) + 1).toISOString() })), o) } }) },
+    { name: "R-R4g · a stop dated by its FIRST record — a stop made again after a newer campaign's message is read as the older campaign's (the stop list's first instant wins over the ledger's act)", expect: [L.r4],
+      impl: withWalk({ rules: { ...base.walkDeps.rules, stopsSince: (people, stops, words) => {
+        const byList = new Map(RES.stopsSince(people, stops, []).map((f) => [f.msisdn, f] as const));
+        return RES.stopsSince(people, stops, words).map((f) => {
+          const first = byList.get(f.msisdn);
+          return first !== undefined && Date.parse(first.stopAt) < Date.parse(f.stopAt) ? first : f;
+        });
+      } } }) },
+    { name: "R-R4h · a number counted once per record — the opt-out page's stop and its ledger row are two people", expect: [L.r4, L.r14, L.r15],
+      impl: withWalk({ rules: { ...base.walkDeps.rules, stopsSince: (people, stops, words) => [...RES.stopsSince(people, stops, []), ...RES.stopsSince(people, [], words)] } }) },
+    { name: "R-R4i · a stop read as in force after a later yes — every withdrawal since the message, not the ledger's latest word", expect: [L.r14, L.r15],
+      impl: withWalk({ words: async (b) => (await Promise.all(b.identifiers.map((i) => db.messagingConsent.listFor({ channel: b.channel, identifier: i, category: b.category }))))
+        .flat().filter((w) => w.status === "WITHDRAWN") }) },
+    { name: "R-R4j · the erasure's marker read as a staff stop — any WITHDRAWN row taken for a person's no (an erasure ADDS the people it erases)", expect: [L.r14, L.r15],
+      impl: withWalk({ rules: { ...base.walkDeps.rules, stopsSince: (people, stops, words) =>
+        RES.stopsSince(people, stops, words.map((w) => (isErasureMarker(w) ? { ...w, evidence: "contacts-bulk:planted" } : w))) } }) },
+    { name: "R-R4k · a lapse read as a stop — the two-year lapse's row counted as the person's no", expect: [L.r14],
+      impl: withWalk({ rules: { ...base.walkDeps.rules, stopsSince: (people, stops, words) =>
+        RES.stopsSince(people, stops, words.map((w) => (w.source === RES.LAPSE_SOURCE ? { ...w, source: "PROFILE" as const } : w))) } }) },
+    { name: "R-R4l · an erasure takes a standing stop out — the walk leaves out every number an erasure stands on (this unit's first build, `erasedAmong`), so a masked officer could tell an erasure from a removal by the figure (X22)", expect: [L.r14, L.r15],
+      impl: withWalk({
+        stops: async (b) => { const s = await base.walkDeps.stops(b); const gone = await erasedAmongFirstBuild(s.map((x) => x.identifier)); return s.filter((x) => !gone.has(x.identifier)); },
+        words: async (b) => { const w = await base.walkDeps.words(b); const gone = await erasedAmongFirstBuild(w.map((x) => x.identifier)); return w.filter((x) => !gone.has(x.identifier)); },
+      }) },
     { name: "R-R7 · 'set up' means a secret is set — a secret one short of the floor, and the open stub, read the wrong way", expect: [L.r7],
       impl: withResults({ setUp: (r) => r.secret !== "" }) },
     { name: "R-R7b · production's 'set up' is a constant — the dep ignores the environment", expect: [L.r7],
@@ -985,22 +1226,30 @@ export function resultsPlants(phoneLabel: string): ResultsPlant[] {
     { name: "R-R9 · the failed merged — every failure the network's refusal, none reported undelivered by a receipt (R1 and R2 move a row to Failed by a receipt)", expect: [L.r1, L.r2, L.r9],
       impl: withRules({ failedSplit: (groups) => { const s = RES.failedSplitOf(groups); return { total: s.total, wire: s.total, receipt: 0 }; } }) },
     { name: "R-R10 · the walk reads the first chunk only — everyone past the first page is never asked about", expect: [L.r10],
-      impl: withResults({ walk: async (id, deps) => RES.stoppedByLinkOf(id, { ...deps, page: async (c, a, l) => (a === null ? deps.page(c, a, l) : []) }) }) },
+      impl: withResults({ walk: async (id, deps) => RES.stoppedSinceOf(id, { ...deps, page: async (c, a, l) => (a === null ? deps.page(c, a, l) : []) }) }) },
     { name: "R-R10b · production walks on every view — no memory, no shared flight", expect: [L.r10],
-      impl: withResults({ production: Object.freeze({ ...RES.RESULTS_DEPS, stoppedByLink: (id: string) => RES.stoppedByLinkOf(id) }) }) },
+      impl: withResults({ production: Object.freeze({ ...RES.RESULTS_DEPS, stoppedSince: (id: string) => RES.stoppedSinceOf(id) }) }) },
     { name: "R-R10c · the memory keeps a failure — one failed walk is the answer for the whole time", expect: [L.r10],
       impl: withResults({ memo: (read, o) => {
         const wrapped = RES.memoByKey(read, o);
         return (key) => { const p = wrapped(key); p.catch(() => { o.held.set(key, { settledAt: o.now(), promise: p }); }); return p; };
       } }) },
     { name: "R-R10d · a count that cannot be made drawn as a zero — the failed stop count reads 0", expect: [L.r10, L.r11],
-      impl: withDeps((d) => ({ stoppedByLink: async (id) => { try { return await d.results.stoppedByLink(id); } catch { return 0; } } })) },
+      impl: withDeps((d) => ({ stoppedSince: async (id) => { try { return await d.results.stoppedSince(id); } catch { return 0; } } })) },
     { name: "R-R10e · no render budget — a view waits for the stop walk as long as it takes", expect: [L.r10],
       impl: withDeps(() => ({ budgetMs: 600_000 })) },
+    { name: "R-R10f · the ledger asked one number at a time — a chunk's latest words read per person, not in one query", expect: [L.r10],
+      impl: withResults({ walk: async (id, deps) => RES.stoppedSinceOf(id, {
+        ...deps, words: async (b) => (await Promise.all(b.identifiers.map((i) => deps.words({ ...b, identifiers: [i] })))).flat(),
+      }) }) },
+    { name: "R-R10h · a ledger read that fails is taken for no words — the walk answers a count with the switch's stops missing, never unread", expect: [L.r10],
+      impl: withResults({ walk: async (id, deps) => RES.stoppedSinceOf(id, {
+        ...deps, words: async (b) => { try { return await deps.words(b); } catch { return []; } },
+      }) }) },
     { name: "R-R11 · the Delivered row prints what was handed over — the network's taking a message passes for its delivery in the browser", expect: [L.r1, L.r11],
       impl: withResults({ render: (view, o) => base.render({ ...view, results: view.results === null ? null : { ...view.results, delivered: view.results.handedOver } }, o) }) },
     { name: "R-R11b · an unread count drawn as a zero", expect: [L.r3, L.r10, L.r11],
-      impl: withResults({ render: (view, o) => base.render({ ...view, results: view.results === null ? null : { ...view.results, noReceiptAfter15: view.results.noReceiptAfter15 ?? 0, stoppedByLink: view.results.stoppedByLink ?? 0 } }, o) }) },
+      impl: withResults({ render: (view, o) => base.render({ ...view, results: view.results === null ? null : { ...view.results, noReceiptAfter15: view.results.noReceiptAfter15 ?? 0, stoppedSince: view.results.stoppedSince ?? 0 } }, o) }) },
     { name: "R-R11c · the card works a figure out in the browser — Waiting is the people less the ones that failed", expect: [L.r11],
       impl: withSources({ card: plantIn(S.card, "value={r.left.count}", "value={r.noAnswer - r.failed.total}") }) },
     { name: "R-R11d · the card formats a TZS figure itself", expect: [L.r11],
@@ -1009,6 +1258,11 @@ export function resultsPlants(phoneLabel: string): ResultsPlant[] {
       impl: withSources({ card: `import { db } from "@/lib/server/store";${NL}${S.card}` }) },
     { name: "R-R11f · the card drawn below the floor — a hidden viewer's page carries a results block", expect: [L.r11],
       impl: withResults({ render: (view, o) => (view.results === null ? `${base.render(view, o)}<div data-results>${COPY.RESULTS_HONESTY.noReceiptYet}</div>` : base.render(view, o)) }) },
+    { name: "R-R11g · the row keeps its link-only title — 'Stopped by their link since this campaign', a row that reads 0 for ever since no message carries a link", expect: [L.r11],
+      impl: withResults({ render: (view, o) => base.render(view, o).split(COPY.RESULTS_ROW.stoppedSince.label).join("Stopped by their link since this campaign") }) },
+    { name: "R-R11h · the row keeps its link-only words — 'Their opt-out link was used…', untrue of every other way a person stops", expect: [L.r11],
+      impl: withResults({ render: (view, o) => base.render(view, o).split(COPY.RESULTS_ROW.stoppedSince.help)
+        .join("Their opt-out link was used after this campaign's message was handed over to them. They are stopped now and will not be messaged.") }) },
     { name: "R-R12 · the results module names a send of its own", expect: [L.r12],
       impl: withSources({ results: plantIn(S.results, "export async function campaignResults(", "const viaWire = sendBatch;" + NL + "export async function campaignResults(") }) },
     { name: "R-R12b · the results module writes — an audit row from a read", expect: [L.r12],
@@ -1021,6 +1275,8 @@ export function resultsPlants(phoneLabel: string): ResultsPlant[] {
       impl: withSources({ live: plantIn(S.live, "results: RESULTS_DEPS,", "results: { ...RESULTS_DEPS },") }) },
     { name: "R-R12f · the browser's card imports the server module by value — the stop walk's reads reach the client's file", expect: [L.r12],
       impl: withSources({ importers: new Map([...S.importers, ["src/app/admin/campaigns/[id]/results-card.tsx", `import { campaignResults } from "@/lib/server/marketing/campaign-results";`]]) }) },
+    { name: "R-R12h · the ledger read a number at a time — the walk's words through listFor, not §25's grouped latestAmong", expect: [L.r12],
+      impl: withSources({ results: plantIn(S.results, "db.messagingConsent.latestAmong(batch)", "db.messagingConsent.listFor(batch)") }) },
     { name: "R-R13 · the figures card prints its own list beside the results' — the reasons twice (the guard on the view having no results removed from the client's file)", expect: [L.r13],
       impl: withSources({ client: plantIn(S.client, "view.notSentReasons !== null && view.results === null && (", "view.notSentReasons !== null && (") }) },
     { name: "R-R13b · the page draws the figures card's list as well as the results' — a second 'Not sent, by reason' beside the card", expect: [L.r13],

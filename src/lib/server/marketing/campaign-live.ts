@@ -24,8 +24,8 @@
  * ── U48a · THE RESULTS (`results`, filled by campaign-results.ts) ──────────────────────────────────────────────────────────
  * The receipts' half of the same rows (ENGINE-SPEC §4.16): "Delivered" is what a receipt said and nothing else, "handed over,
  * no receipt yet" is the rest of what the network took, the failed split by where they failed, "not sent" by the SAME five
- * words, "no answer", what is still to be messaged (or was not, once stopped), the people who stopped by their link since this
- * campaign — and the honesty lines rendered from the data (OD41). It reads the ONE groupBy's groups and counts, handed in, and
+ * words, "no answer", what is still to be messaged (or was not, once stopped), the people it reached who have stopped offers
+ * since — and the honesty lines rendered from the data (OD41). It reads the ONE groupBy's groups and counts, handed in, and
  * the "not sent" list this file words; it asks only the three things the groupBy cannot answer (a count of the SENT rows handed
  * over before the 15-minute cutoff, the stop walk, and — for a money reader — the price). ⛔ Below E23's floor there are NO
  * results: `null`, so the floor's sentence stands alone and nothing can name a split.
@@ -150,8 +150,10 @@ export type CampaignResultsView = {
   noAnswer: number;
   /** PENDING + HELD still to be messaged — or, once the campaign was stopped, everybody it did not message (the headline's figure). */
   left: { count: number; stopped: boolean };
-  /** E30 · people who stopped by their link since this campaign's message; null when it could not be counted. */
-  stoppedByLink: number | null;
+  /** E30 · people this campaign reached who have stopped offers since its message, whatever way (the stop list, the ledger's
+   *  latest word) — erasure-blind by design (X22: an erasure adds nobody and takes nobody out); null when it could not be
+   *  counted. */
+  stoppedSince: number | null;
   /** OD41 · which honesty lines stand, decided from the data. */
   honesty: { noReceiptYet: boolean; notSetUp: boolean };
   /** OD24 · handed over × the configured price — for a viewer who may read money ONLY, and null while nothing was handed over. */

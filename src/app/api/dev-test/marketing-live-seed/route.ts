@@ -42,8 +42,13 @@
  *                               posts. The drive POSTs it at the LOCAL `/api/webhooks/blackball` — the route's own arm moves the
  *                               rows — and reloads the page; this route writes nothing.
  *   POST ?stop=<campaign>&n=<N>
- *                             — U48a · N of the campaign's handed-over people stop by their link — through `ensureOptOutToken` +
- *                               `stopMarketing`, the opt-out page's own path — so "Stopped by their link since this campaign" moves.
+ *                             — U48a · N of the campaign's handed-over people stop offers, each a DIFFERENT way in turn, through the
+ *                               platform's own writers (`STOP_KINDS`): a link from an older message (`ensureOptOutToken` +
+ *                               `stopMarketing`, the opt-out page's path), the offers switch on their own profile turned OFF
+ *                               (`recordPlayerMarketingChoice`, the switch's one writer, for the account at the number) and an
+ *                               officer's stop from the contact book (`runContactBulk` "suppress" over the number's book row, as the
+ *                               bulk bar runs it) — so "Stopped since this campaign" moves by all three. Answers how many landed, by
+ *                               kind; a kind a person cannot be stopped by (no account, no book row) is not counted as stopped.
  *   POST ?restamp=<run>       — U48a · the staged RUNNING campaign's hand-over instants put back relative to NOW (20 of its SENT rows
  *                               two minutes ago, the rest an hour and a half ago), so "No receipt after 15 minutes" reads the
  *                               same at every width of a long drive.
@@ -58,14 +63,15 @@ import type {
 } from "@/lib/server/store";
 import { hasDatabase } from "@/lib/server/prisma";
 import { parseTzNumber } from "@/lib/tz-msisdn";
-import { recordPlayerMarketingChoice } from "@/lib/server/marketing/consent";
+import { recordPlayerMarketingChoice, userPhoneKeyFor } from "@/lib/server/marketing/consent";
 import { ensureOptOutToken, stopMarketing } from "@/lib/server/marketing/optout-service";
 import { mirrorContactCache } from "@/lib/server/marketing/contact-cache";
+import { runContactBulk } from "@/lib/server/marketing/contact-bulk";
 import { newContactRow } from "@/lib/server/contacts/contact-write";
 import { WHOLE_BOOK, contactAudienceKey } from "@/lib/server/marketing/audience";
 import { startRefusalSentence } from "@/lib/server/marketing/start-check";
 import { liveSendWindow } from "@/lib/server/marketing/dispatch";
-import { STOPPED_BY_LINK_TTL_MS } from "@/lib/server/marketing/campaign-results";
+import { STOPPED_SINCE_TTL_MS } from "@/lib/server/marketing/campaign-results";
 import { smsProviderResolution } from "@/lib/server/sms";
 import { getAdmissionLimits, setAdmissionLimits, withAdmission } from "@/lib/server/admission";
 import type { AdmissionLimits } from "@/lib/server/admission";
@@ -324,6 +330,36 @@ function dropBusy(): void {
 /** ⛔ The campaigns this seed makes are sent by the page's own driver on the server's rail: only the console stub is allowed. */
 const railIsConsole = (): boolean => smsProviderResolution() === "console";
 
+/* ── U48a · the three ways a person stops offers, each through the platform's own writer ──
+ * ⭐ So the drive sees every kind "Stopped since this campaign" counts (campaign-results.ts says which): the STOP LIST written by
+ * the opt-out page, the LEDGER written by the profile switch, and the STOP LIST written by an officer — in turn, one person each.
+ * ⛔ Nothing is hand-written: a record the writer refuses to make is a person who did not stop, and is not counted as one. */
+type StopKind = "link" | "profile" | "staff";
+const STOP_KINDS: readonly StopKind[] = ["link", "profile", "staff"];
+
+/** One person stops offers one way. Answers whether the stop landed — a way this person cannot be stopped by answers false. */
+async function stopOneWay(msisdn: string, kind: StopKind): Promise<boolean> {
+  if (kind === "link") {
+    const token = await ensureOptOutToken(msisdn);
+    return token !== null && (await stopMarketing(token, "SW")).ok;
+  }
+  if (kind === "profile") {
+    // The account at the number, through the ONE bridge between the two spellings (`+255…` on the account, `255…` here).
+    const user = await db.user.findByPhone(userPhoneKeyFor(msisdn));
+    if (!user) return false;
+    const done = await recordPlayerMarketingChoice({ userId: user.id, marketingOptIn: false, locale: "SW" });
+    return done.ok && done.on === false;
+  }
+  // An officer's Suppress over the one ticked book row: the enumerate tier (no typed count), one OPERATOR stop, one audit row.
+  const row = await db.marketingContact.findByMsisdn(msisdn);
+  if (!row) return false;
+  await ensureOfficer();
+  const done = await runContactBulk(
+    { action: "suppress", audience: { ...WHOLE_BOOK, ids: [row.id] }, typed: null, tag: null, list: null }, OFFICER_ID, false,
+  );
+  return done.ok && done.changed === 1;
+}
+
 export async function POST(req: Request) {
   if (process.env.NODE_ENV === "production") {
     return NextResponse.json({ ok: false, error: "Not available" }, { status: 404 });
@@ -381,8 +417,8 @@ export async function POST(req: Request) {
         // U48a · the results card's words, and the price line for the staged RUNNING campaign (820 handed over × TZS 6).
         results: {
           title: RESULTS_TITLE, rows: RESULTS_ROW, failed: RESULTS_FAILED, honesty: RESULTS_HONESTY, unread: RESULTS_UNREAD,
-          // how long the page keeps a campaign's stopped-by-link count (the drive asks again once it has passed)
-          linkTtlMs: STOPPED_BY_LINK_TTL_MS,
+          // how long the page keeps a campaign's stopped-since count (the drive asks again once it has passed)
+          stoppedTtlMs: STOPPED_SINCE_TTL_MS,
           spendStaged: resultsSpendLine({ tzs: 820 * 6, perSmsTzs: 6 }),
         },
       },
@@ -405,7 +441,8 @@ export async function POST(req: Request) {
     });
   }
 
-  // ⭐ U48a · N of a campaign's handed-over people stop by their own link — the opt-out page's own path, nothing hand-written.
+  // ⭐ U48a · N of a campaign's handed-over people stop offers, each a different way in turn (`STOP_KINDS`) — the platform's own
+  // writers, nothing hand-written.
   const stopParam = url.searchParams.get("stop");
   if (stopParam !== null) {
     const n = Math.max(1, Math.min(50, Math.floor(Number(url.searchParams.get("n")) || 1)));
@@ -413,14 +450,15 @@ export async function POST(req: Request) {
       .filter((r) => r.campaignId === stopParam && (r.status === "SENT" || r.status === "DELIVERED") && r.sentAt !== null)
       .sort((a, b) => (a.msisdn < b.msisdn ? -1 : a.msisdn > b.msisdn ? 1 : 0))
       .slice(0, n);
+    const kinds: Record<StopKind, number> = { link: 0, profile: 0, staff: 0 };
     let stopped = 0;
-    for (const p of people) {
-      const token = await ensureOptOutToken(p.msisdn);
-      if (token === null) continue;
-      const done = await stopMarketing(token, "SW");
-      if (done.ok) stopped++;
+    for (const [i, p] of people.entries()) {
+      const kind = STOP_KINDS[i % STOP_KINDS.length];
+      if (!(await stopOneWay(p.msisdn, kind))) continue;
+      kinds[kind]++;
+      stopped++;
     }
-    return NextResponse.json({ ok: true, asked: people.length, stopped });
+    return NextResponse.json({ ok: true, asked: people.length, stopped, kinds });
   }
 
   // ⭐ U48a · the staged RUNNING campaign's hand-over instants, relative to now again (a drive of three widths outlasts 15 minutes).
