@@ -235,7 +235,7 @@ export default async function ProposalsPage({
           sub-floor sentences this campaign wrote: the same rule was applied to its siblings in
           `adc3718f` and this one was missed, which is why `test:type-scale` §3 measured 750
           against a ratchet that commit had just lowered to 749. */}
-      <p className="font-mono text-body-sm text-text-muted">{totalProposals.toLocaleString()} {t.proposals.proposalsCount} · {totalVotes.toLocaleString()} {t.proposals.votesCount}</p>
+      <p className="font-mono text-body-sm text-text-muted">{formatNumber(totalProposals)} {t.proposals.proposalsCount} · {formatNumber(totalVotes)} {t.proposals.votesCount}</p>
 
       {/* ⛔ THE CONTROLS ARE WITHHELD ON AN EMPTY BOARD, and only then — §A5: seven pills all
           reading 0 above "no proposals yet" are seven controls that cannot act. Every other empty

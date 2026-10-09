@@ -30,6 +30,7 @@ import { useEffect, useState, type ReactNode } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { I } from "@/components/ui/glyphs";
+import { formatNumber } from "@/lib/utils";
 import { Dot } from "@/components/ui/dot";
 import { TicketsGuestSheet } from "@/components/journey/tickets-guest-sheet";
 import { useT } from "@/lib/i18n";
@@ -75,7 +76,7 @@ export function JourneyTabs({ userId }: { userId: string | null }) {
                 </span>
                 <span className="kp-rail__label kp-jtab__label">{tabLabel(t, d.label)}</span>
                 {unread !== null && unread > 0 && (
-                  <span className="sr-only">{`, ${unread === 1 ? t.notif.unreadOne : t.notif.unreadN.replace("{n}", String(unread))}`}</span>
+                  <span className="sr-only">{`, ${unread === 1 ? t.notif.unreadOne : t.notif.unreadN.replace("{n}", formatNumber(unread))}`}</span>
                 )}
               </>
             );

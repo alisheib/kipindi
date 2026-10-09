@@ -44,7 +44,7 @@ import { I } from "@/components/ui/glyphs";
 import { Chip } from "@/components/ui/chip";
 import { Reveal } from "@/components/layout/reveal";
 import { AssetMark } from "@/components/updown/asset-mark";
-import { fill } from "@/lib/utils";
+import { fill, formatNumber } from "@/lib/utils";
 import type { Dict, Locale } from "@/lib/i18n-dict";
 import type { UpdownBandRound } from "@/lib/updown-match";
 import { UpdownMatchState } from "./updown-match-state";
@@ -70,7 +70,7 @@ export function UpdownBand({ t, locale, liveCount, round }: {
       {!round && (
         <p className="kp-topic__m">
           {liveCount > 0
-            ? <span className="kp-topic__live">{liveCount === 1 ? t.home.updownRoundsLiveOne : fill(t.home.updownRoundsLive, { n: liveCount })}</span>
+            ? <span className="kp-topic__live">{liveCount === 1 ? t.home.updownRoundsLiveOne : fill(t.home.updownRoundsLive, { n: formatNumber(liveCount) })}</span>
             : t.home.updownStartsSoon}
         </p>
       )}

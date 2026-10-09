@@ -168,13 +168,14 @@ export function TimeSelect({ value, defaultValue, onChange, error, size = "md", 
           `datetime-range-filter.tsx`).
           ⛔ NOT SOLVED WITH `absolute`: at `poll-actions.tsx` and `rules-form.tsx` a helper/error
           `<p>` sits directly beneath this row, and an out-of-flow echo would land on top of it.
-          ⚠️ The placeholder is a non-breaking space, hidden from the accessibility tree — an
-          empty slot must reserve space without announcing a blank label. */}
+          ⚠️ The empty slot holds its line with no character in the page — `kp-keep-line` (globals.css) draws its
+          space (R5-J) — and it stays hidden from the accessibility tree: it must reserve space without announcing a
+          blank label. */}
       <span
-        className="mt-0.5 font-mono text-[10px] text-text-subtle tabular-nums"
+        className="kp-keep-line mt-0.5 font-mono text-[10px] text-text-subtle tabular-nums"
         aria-hidden={preview && !errored ? undefined : true}
       >
-        {preview && !errored ? `= ${preview}` : " "}
+        {preview && !errored ? `= ${preview}` : null}
       </span>
     </div>
   );

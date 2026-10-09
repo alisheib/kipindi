@@ -28,7 +28,7 @@
  */
 import { useEffect, useRef } from "react";
 import { I } from "@/components/ui/glyphs";
-import { cn } from "@/lib/utils";
+import { cn, formatNumber } from "@/lib/utils";
 
 export function MenuShell({
   label,
@@ -120,7 +120,7 @@ export function MenuShell({
             control cannot hold it and a 160px status strip at 360 in the same row. */}
         <span className="kp-menu-value min-w-0 truncate text-[13px] font-semibold text-text">{value}</span>
         {count != null && (
-          <span className="shrink-0 font-mono text-[11px] font-bold tabular-nums text-text-faint">{count}</span>
+          <span className="shrink-0 font-mono text-[11px] font-bold tabular-nums text-text-faint">{formatNumber(count)}</span>
         )}
         <I.chevronDown s={14} aria-hidden className="kp-menu-caret shrink-0 opacity-70" />
       </summary>

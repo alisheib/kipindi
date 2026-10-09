@@ -36,7 +36,7 @@
 import { useEffect, useState } from "react";
 import { NoticeBar, NoticeBarAction } from "@/components/ui/notice-bar";
 import { useT } from "@/lib/i18n";
-import { formatTzs } from "@/lib/utils";
+import { formatNumber, formatTzs } from "@/lib/utils";
 import { initPresence, subscribeReturn } from "@/lib/presence-window";
 import {
   initLedger, readAway, subscribeAway, clearAway, removeAway, summarise, type LedgerEntry,
@@ -80,7 +80,7 @@ export function AwaySummaryBar({
   if (entries.length === 0) return null;
 
   const s = summarise(entries);
-  const n = (v: number) => String(v);
+  const n = formatNumber;
 
   /* ⛔ THE FIGURE APPEARS ONLY WHEN EVERY ENTRY SHARES ONE OUTCOME — `summarise` enforces it
    * and returns `null` otherwise. A mixed set states counts and sends the player to the

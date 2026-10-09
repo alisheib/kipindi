@@ -64,6 +64,7 @@ import * as React from "react";
 import { Button } from "@/components/ui/button";
 import { I } from "@/components/ui/glyphs";
 import { useModalLock } from "@/lib/use-modal-lock";
+import { formatNumber } from "@/lib/utils";
 /* ⛔ ONE definition of the exit beat, and of the three reduced-motion gates behind it — and of the ✕ (`CloseX`). */
 import { CloseX, exitBeatMs } from "@/components/ui/modal";
 
@@ -323,7 +324,7 @@ export function FilterSheet({
             its own irrelevance, and it would sit there on the default board for ever. */}
         {count > 0 && (
           <span aria-hidden className="kp-fsheet-badge font-mono text-[11px] font-bold tabular-nums">
-            {count}
+            {formatNumber(count)}
           </span>
         )}
         {/* 🔴 THE MISSING AFFORDANCE. Every other disclosure in the product carries a caret that

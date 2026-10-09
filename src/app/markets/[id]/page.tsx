@@ -45,6 +45,7 @@ import { RefreshPoller } from "@/components/ui/refresh-poller";
 // quietly comes back. ⚠️ `fill` STAYS: `similarTimeLeft` passes it to `timeLeftLabel`, a use
 // tsc caught the moment the import was removed on the strength of a grep for `fill(`.
 import { formatTzsCompact, formatTzs, fill } from "@/lib/utils";
+import { formatNumber } from "@/lib/utils";
 // Every date this page prints is in the reader's month words on the East Africa clock (§L4): `formatDateTime` and
 // `formatDeadline` printed English months in every locale.
 import { formatEatDateTime } from "@/lib/eat-day";
@@ -910,7 +911,7 @@ export default async function MarketDetail({
                 `common.resolves` — "INATATULIWA" / "RESOLVES" / "结算于" (the Stat sets it in capitals). No new words.
                 R4-I · and "Hakuna bwawa bado" no longer leaves "bado" alone in its tile at 390 (tile 037): `keepText`. */}
             <Stat size="xl" labelStyle="widest" boxed="card" label={t.market.volume} font={freshMarket ? undefined : "mono"} value={freshMarket ? keepText(t.market.noPoolYet) : <span className="amount">{formatTzsCompact(m.yesPool + m.noPool)}</span>} icon={<I.chart s={14} />} />
-            <Stat size="xl" labelStyle="widest" boxed="card" label={t.market.predictors} font="mono" value={String(m.predictorCount)} icon={<I.users s={14} />} />
+            <Stat size="xl" labelStyle="widest" boxed="card" label={t.market.predictors} font="mono" value={formatNumber(m.predictorCount)} icon={<I.users s={14} />} />
             <Stat size="sm-plain" labelStyle="widest" boxed="card" label={t.common.resolves} value={formatEatDateTime(Date.parse(m.resolutionAt), Date.now(), t.common.monthsShort, locale)} icon={<I.calendarClock s={14} />} className="col-span-2 sm:col-span-1" />
           </div>
 

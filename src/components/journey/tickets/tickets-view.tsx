@@ -22,6 +22,7 @@
  */
 import Link from "next/link";
 import { I } from "@/components/ui/glyphs";
+import { formatNumber } from "@/lib/utils";
 import { HashFocus } from "@/components/ui/hash-focus";
 import { RefreshPoller } from "@/components/ui/refresh-poller";
 import { EmptyState } from "@/components/ui/empty-state";
@@ -111,7 +112,7 @@ export function TicketsView({ rows, positions, markets, prices, lens, page, serv
             <div className="flex flex-wrap items-center justify-center gap-2">
               {exits.map((e) => (
                 <Link key={e.id} href={buildPortfolioHref(state, e.patch) as never} replace scroll={false} className="btn btn-ghost btn-sm">
-                  {`${t.journey.ticketsExitLens} (${e.count})`}
+                  {`${t.journey.ticketsExitLens} (${formatNumber(e.count)})`}
                 </Link>
               ))}
             </div>

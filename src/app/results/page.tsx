@@ -365,9 +365,9 @@ async function ResultsContent({
               <div className="flex min-w-0 flex-col leading-tight font-mono text-[10px] font-semibold tabular-nums">
                 {linesShown.map((line) => (
                   <span key={line}>
-                    <span className="whitespace-nowrap text-yes-300">{sideWord(t, "YES", line)} {winsIn(line, "YES")}</span>
+                    <span className="whitespace-nowrap text-yes-300">{sideWord(t, "YES", line)} {formatNumber(winsIn(line, "YES"))}</span>
                     <span className="text-text-subtle"> · </span>
-                    <span className="whitespace-nowrap text-no-300">{sideWord(t, "NO", line)} {winsIn(line, "NO")}</span>
+                    <span className="whitespace-nowrap text-no-300">{sideWord(t, "NO", line)} {formatNumber(winsIn(line, "NO"))}</span>
                   </span>
                 ))}
                 {/* 🔴 D42 · THE THIRD ARC GETS ITS WORD. `OutcomeDonut` (below) divides by
@@ -387,7 +387,7 @@ async function ResultsContent({
                     languages), never a literal — and it is NOT a side, so it is not run through
                     `sideWord`: a refund has no direction (§C4). It carries the arc's own ink. */}
                 {voidCount > 0 && (
-                  <span className="whitespace-nowrap text-text-subtle">{t.market.statusVoid} {voidCount}</span>
+                  <span className="whitespace-nowrap text-text-subtle">{t.market.statusVoid} {formatNumber(voidCount)}</span>
                 )}
               </div>
             </div>
@@ -474,7 +474,7 @@ async function ResultsContent({
             <p aria-live="polite" className="mb-3 font-mono text-[11px] text-text-subtle tabular-nums">
               {totalCount === 0
                 ? `${t.results.noResultsMatch} "${qRaw}"`
-                : `${totalCount} ${totalCount === 1 ? t.results.resultMatch : t.results.resultsMatch} "${qRaw}"`}
+                : `${formatNumber(totalCount)} ${totalCount === 1 ? t.results.resultMatch : t.results.resultsMatch} "${qRaw}"`}
             </p>
           )}
 

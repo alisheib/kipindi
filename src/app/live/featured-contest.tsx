@@ -13,6 +13,7 @@ import { useState, useCallback, useEffect, useRef } from "react";
 import Link from "next/link";
 import type { Route } from "next";
 import { leanWords, sideWord } from "@/lib/side-label";
+import { formatNumber } from "@/lib/utils";
 import { TippingBar } from "@/components/brand";
 import { I } from "@/components/ui/glyphs";
 // 2026-10-08 · G1: a Chinese "200毫米" in a slide's question never breaks between the number and its unit.
@@ -114,7 +115,7 @@ export function FeaturedContest({
           <div className="flex shrink-0 items-center gap-2">
             <Arrow dir="prev" onClick={() => go(-1)} />
             <span className="font-mono text-[10.5px] tabular-nums text-text-subtle select-none">
-              {idx + 1}<span className="text-text-faint"> / {n}</span>
+              {formatNumber(idx + 1)}<span className="text-text-faint"> / {formatNumber(n)}</span>
             </span>
             <Arrow dir="next" onClick={() => go(1)} />
           </div>

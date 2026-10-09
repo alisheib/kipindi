@@ -340,7 +340,7 @@ export default async function LeaderboardPage({ searchParams }: { searchParams: 
            */
           {
             label: capped ? t.leaderboard.rankedShown : t.leaderboard.predictorsCount,
-            value: rows.length.toLocaleString("en-US"),
+            value: formatNumber(rows.length),
           },
         ]}
       />
@@ -433,7 +433,7 @@ export default async function LeaderboardPage({ searchParams }: { searchParams: 
           `test:type-scale` §3 caught it as a NEW offender the moment it was written. */}
       {capped && (
         <p className="text-body-sm text-text-subtle">
-          {fill(t.leaderboard.boardCapped, { n: String(rows.length) })}
+          {fill(t.leaderboard.boardCapped, { n: formatNumber(rows.length) })}
         </p>
       )}
 
@@ -497,7 +497,7 @@ export default async function LeaderboardPage({ searchParams }: { searchParams: 
                     <span className="inline-flex items-center gap-1"><HotChip streak={r.streak} t={t} /></span>
                   ) : "—"}
                 </td>
-                <td className="p-3 text-right font-mono tabular-nums text-text-muted">{r.resolved}</td>
+                <td className="p-3 text-right font-mono tabular-nums text-text-muted">{formatNumber(r.resolved)}</td>
               </tr>
             ))}
           </tbody>
@@ -527,7 +527,7 @@ function HotChip({ streak, t }: { streak: number; t: Dict }) {
       style={{ borderColor: "color-mix(in oklab, var(--metal-gold) 50%, transparent)", background: "color-mix(in oklab, var(--metal-gold) 10%, transparent)", color: "var(--metal-gold)" }}
     >
       <I.hot s={11} />
-      {streak} {streak > 1 ? t.leaderboard.winsLabel : t.leaderboard.winLabel}
+      {formatNumber(streak)} {streak > 1 ? t.leaderboard.winsLabel : t.leaderboard.winLabel}
     </span>
   );
 }

@@ -39,7 +39,7 @@ import {
   QuerySort,
   QueryStrip,
 } from "@/components/ui/query-bar";
-import { formatTzsCompact } from "@/lib/utils";
+import { formatNumber, formatTzsCompact } from "@/lib/utils";
 import {
   ODDS_IDS,
   POOL_FLOORS,
@@ -193,7 +193,7 @@ export function DiscoveryBar({
      ⚠️ It used to be computed here AND inlined a second time in the count element below, which
      is two definitions of one sentence sitting four lines apart. One now feeds both. */
   const resultPhrase =
-    resultCount === 1 ? t.market.oneResult : t.market.nResults.replace("{n}", String(resultCount));
+    resultCount === 1 ? t.market.oneResult : t.market.nResults.replace("{n}", formatNumber(resultCount));
   const sheetCount = sheetFilterCount(state);
 
   /* ⭐ `Opt` and the `Clear all` link left this file on 2026-09-07 — they are `QueryOption` and
@@ -298,7 +298,7 @@ export function DiscoveryBar({
           title={t.market.filtersTitle}
           ariaLabel={
             sheetCount > 0
-              ? t.market.filtersAriaN.replace("{n}", String(sheetCount))
+              ? t.market.filtersAriaN.replace("{n}", formatNumber(sheetCount))
               : t.market.filtersOpen
           }
           closeLabel={t.market.filtersClose}
@@ -400,7 +400,7 @@ export function DiscoveryBar({
             <QueryOption key={tp.id} href={href({ topic: tp.id })} on={state.topic === tp.id}
               trailing={
                 <span className="shrink-0 font-mono text-[11px] tabular-nums text-text-faint">
-                  {counts.topic[tp.id] ?? 0}
+                  {formatNumber(counts.topic[tp.id] ?? 0)}
                 </span>
               }
             >

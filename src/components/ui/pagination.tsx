@@ -9,6 +9,7 @@ import Link from "next/link";
 import type { ReactNode } from "react";
 import { I } from "@/components/ui/glyphs";
 import { LinkPending } from "@/components/ui/link-pending";
+import { formatNumber } from "@/lib/utils";
 
 /** Admin table page size. */
 export const PER_PAGE = 20;
@@ -176,8 +177,11 @@ export function Pagination({
 
   return (
     <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-2 px-4 py-3 border-t border-border">
+      {/* ⭐ The range is grouped by `formatNumber`, the platform's one count grouping (R5-J, round 5). `toLocaleString()` grouped
+          by the runtime's locale — the server's on a server page, the browser's on the wallet's client pager — so one total
+          could print two ways ("12,479" / "12.479"). The page buttons below stay bare: each names a page, `?page=1040`. */}
       <p className="font-mono text-micro tracking-[0.14em] uppercase text-text-subtle">
-        {((safePage - 1) * perPage + 1).toLocaleString()}–{Math.min(safePage * perPage, total).toLocaleString()} {ofLabel} {total.toLocaleString()}
+        {formatNumber((safePage - 1) * perPage + 1)}–{formatNumber(Math.min(safePage * perPage, total))} {ofLabel} {formatNumber(total)}
       </p>
       {/* Centred while wrapped, right-aligned once it fits on one line. `justify-end` once
           left the overflowing chevron hanging alone against the right edge, which reads as a

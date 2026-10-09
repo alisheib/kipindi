@@ -12,6 +12,7 @@
  * (`wallet-bar.tsx` states the ledger's reason) — and each row opens a receipt that prints both references in full.
  */
 import { FilterPill, FilterGroupKey } from "@/components/ui/filter-pill";
+import { formatNumber } from "@/lib/utils";
 import { FilterSheet, FilterSheetGroup } from "@/components/markets/filter-sheet";
 import {
   QUERY_BAR_CLASS,
@@ -79,7 +80,7 @@ export function ReceiptsBar({
 }) {
   const href = (patch: Partial<ReceiptQueryState>) => buildReceiptsHref(state, patch);
   const sheetCount = receiptsSheetCount(state);
-  const resultPhrase = resultCount === 1 ? t.receipts.oneResult : t.receipts.nResults.replace("{n}", String(resultCount));
+  const resultPhrase = resultCount === 1 ? t.receipts.oneResult : t.receipts.nResults.replace("{n}", formatNumber(resultCount));
 
   const clear = (
     <QueryClear href={hasActiveReceiptFilters(state) ? buildReceiptsHref(RECEIPT_DEFAULT_STATE) : null} label={t.common.clearAll} />
@@ -108,7 +109,7 @@ export function ReceiptsBar({
         <FilterSheet
           label={t.market.filtersOpen}
           title={t.receipts.filtersTitle}
-          ariaLabel={sheetCount > 0 ? t.market.filtersAriaN.replace("{n}", String(sheetCount)) : t.market.filtersOpen}
+          ariaLabel={sheetCount > 0 ? t.market.filtersAriaN.replace("{n}", formatNumber(sheetCount)) : t.market.filtersOpen}
           closeLabel={t.market.filtersClose}
           applyLabel={t.market.filtersApply.replace("{n}", resultPhrase)}
           count={sheetCount}

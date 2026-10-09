@@ -191,7 +191,7 @@ export default async function ReceiptsPage({ searchParams }: { searchParams: Pro
               <div className="flex flex-wrap items-center justify-center gap-2">
                 {exits.map((e) => (
                   <Link key={e.id} href={buildReceiptsHref(state, e.patch) as never} replace scroll={false} className="btn btn-ghost btn-sm">
-                    {`${EXIT_LABEL[e.id] ?? e.id} (${e.count})`}
+                    {`${EXIT_LABEL[e.id] ?? e.id} (${formatNumber(e.count)})`}
                   </Link>
                 ))}
               </div>

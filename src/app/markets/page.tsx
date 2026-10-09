@@ -1,5 +1,5 @@
 import { Suspense, cache } from "react";
-import { fill, formatTzsCompact } from "@/lib/utils";
+import { fill, formatNumber, formatTzsCompact } from "@/lib/utils";
 import { timeLeftLabel } from "@/lib/markets/time-left";
 import Link from "next/link";
 import { SignalPip } from "@/components/brand";
@@ -193,7 +193,7 @@ export default async function MarketsPage({ searchParams }: { searchParams: Prom
         {/* Aqua (not gilt) by design: gold is reserved for earned-money moments. */}
         <p className="flex items-center gap-1.5 whitespace-nowrap font-mono text-[12.5px] tabular-nums">
           <SignalPip size={7} className="mr-0.5" />
-          <span className="font-semibold text-text">{openMarkets.length}</span>
+          <span className="font-semibold text-text">{formatNumber(openMarkets.length)}</span>
           <span className="text-text-subtle">{t.market.liveCount}</span>
           {/* 🔴 A ZERO POOL IS NOT STATED, FOR THE SAME REASON THE TOPIC TILES STOPPED STATING IT.
               Making this header honour the topic filter was right, and it reintroduced the exact
@@ -529,7 +529,7 @@ function BoardEmptyState({
                   className={`btn btn-sm ${i === 0 ? "btn-primary" : "btn-ghost"}`}
                 >
                   {RELAX_LABEL[r.id]}
-                  <span className="ml-1.5 font-mono text-[11px] tabular-nums opacity-80">{r.count}</span>
+                  <span className="ml-1.5 font-mono text-[11px] tabular-nums opacity-80">{formatNumber(r.count)}</span>
                 </Link>
               ))}
             </div>

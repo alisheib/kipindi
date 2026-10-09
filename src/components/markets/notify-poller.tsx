@@ -55,7 +55,7 @@ import { useToast } from "@/components/ui/toast";
 import { useT } from "@/lib/i18n";
 import { positionStatusWord } from "@/lib/side-label";
 import { dispatchWinCelebration } from "@/components/markets/win-celebration";
-import { formatTzs } from "@/lib/utils";
+import { formatNumber, formatTzs } from "@/lib/utils";
 import { DWELL_RESULT_MS } from "@/lib/feedback-timing";
 import { routeOutcome } from "@/lib/outcome-announcement";
 import { isAttentive, presenceSinceMs, serverNow } from "@/lib/presence-window";
@@ -270,7 +270,7 @@ export function NotifyPoller() {
                   groupAmount: p.payout,
                   groupLabel: (n, total) => ({
                     title: t.notif.groupedReturned
-                      .replace("{n}", String(n))
+                      .replace("{n}", formatNumber(n))
                       .replace("{amount}", formatTzs(total)),
                   }),
                 });
@@ -292,7 +292,7 @@ export function NotifyPoller() {
                   groupAmount: p.stake,
                   groupLabel: (n, total) => ({
                     title: t.notif.groupedLost
-                      .replace("{n}", String(n))
+                      .replace("{n}", formatNumber(n))
                       .replace("{amount}", formatTzs(total)),
                   }),
                 });

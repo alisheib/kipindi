@@ -8,7 +8,7 @@ import { PositionCard } from "@/components/markets/position-card";
 import { PnlSummaryStrip } from "@/components/positions/pnl-summary-strip";
 import { CountdownRing } from "@/components/positions/countdown-ring";
 import { SellButton } from "@/components/markets/sell-button";
-import { formatTzsCompact } from "@/lib/utils";
+import { formatNumber, formatTzsCompact } from "@/lib/utils";
 import { formatEatDateTime } from "@/lib/eat-day";
 import { listPositionsForUser, positionCardMarkets, cashOutValue, freeExitEndsAt, isSelectionClosed } from "@/lib/server/market-service";
 import { currentSession } from "@/lib/server/auth-service";
@@ -349,7 +349,7 @@ export default async function PositionsPage({ searchParams }: { searchParams: Pr
             settledPnl: t.positions.settledPnl,
             winRate: t.positions.winRate,
             // The count's sentence word, not the tab label ("3 imekamilika", never "3 Imekamilika") — /results' tally rule (round 4).
-            ofSettled: `${settled.length} ${t.market.tickerSettled}`,
+            ofSettled: `${formatNumber(settled.length)} ${t.market.tickerSettled}`,
           }}
         />
       )}
@@ -396,7 +396,7 @@ export default async function PositionsPage({ searchParams }: { searchParams: Pr
             id: e.id,
             // ⛔ The count is REAL and cross-filtered — `portfolioExits` never offers an exit whose
             //    count is zero, so no way out here leads to another empty page.
-            label: `${EXIT_LABEL[e.id] ?? e.id} (${e.count})`,
+            label: `${EXIT_LABEL[e.id] ?? e.id} (${formatNumber(e.count)})`,
             href: buildPortfolioHref(state, e.patch),
           }))}
         />

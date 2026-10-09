@@ -18,6 +18,7 @@
  * read the list below it uses. A count can therefore never disagree with the rows it sits above.
  */
 import { FilterPill, FilterGroupKey } from "@/components/ui/filter-pill";
+import { formatNumber } from "@/lib/utils";
 import { FilterSheet, FilterSheetGroup } from "@/components/markets/filter-sheet";
 import {
   QUERY_BAR_CLASS,
@@ -123,7 +124,7 @@ export function PositionsBar({
   const dir = effectiveDir({ natural: PORTFOLIO_NATURAL_DIR }, state);
   const sheetCount = portfolioSheetCount(state);
   const resultPhrase =
-    resultCount === 1 ? t.positions.oneResult : t.positions.nResults.replace("{n}", String(resultCount));
+    resultCount === 1 ? t.positions.oneResult : t.positions.nResults.replace("{n}", formatNumber(resultCount));
 
   const clear = (
     <QueryClear
@@ -182,7 +183,7 @@ export function PositionsBar({
         <FilterSheet
           label={t.market.filtersOpen}
           title={t.positions.filtersTitle}
-          ariaLabel={sheetCount > 0 ? t.market.filtersAriaN.replace("{n}", String(sheetCount)) : t.market.filtersOpen}
+          ariaLabel={sheetCount > 0 ? t.market.filtersAriaN.replace("{n}", formatNumber(sheetCount)) : t.market.filtersOpen}
           closeLabel={t.market.filtersClose}
           applyLabel={t.market.filtersApply.replace("{n}", resultPhrase)}
           count={sheetCount}

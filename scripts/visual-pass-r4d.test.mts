@@ -271,8 +271,9 @@ section("7 · /results: the tally reads in one case (tile 172)");
   ok("7.2 · …and each result card's \"TZS 6K imekamilika\" beside \"2 watabiri\"",
     res.includes("{formatTzsCompact(m.yesPool + m.noPool)} {t.market.tickerSettled}"));
   ok("7.3 · ⛔ the tab label is no longer read for a sentence on this page", !res.includes("{t.common.settled}"));
+  // Re-pinned by R5-J (round 5, G-4): the count is grouped as every count is (`formatNumber`) — the sentence word unchanged.
   ok("7.3b · …nor for the classic Tiketi zangu's win-rate hint, which said \"3 Imekamilika\" by the same composition",
-    code("src/app/positions/page.tsx").includes("ofSettled: `${settled.length} ${t.market.tickerSettled}`,")
+    code("src/app/positions/page.tsx").includes("ofSettled: `${formatNumber(settled.length)} ${t.market.tickerSettled}`,")
       && !code("src/app/positions/page.tsx").includes("${t.common.settled}"));
   ok("7.4 CONTROL · the premise in the dictionary: the label is capitalised, the sentence word is not — in sw and en",
     /^[A-Z]/.test(DICTS.sw.common.settled) && /^[a-z]/.test(DICTS.sw.market.tickerSettled)

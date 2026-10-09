@@ -9,6 +9,7 @@ import { useEffect, useRef, useState, useTransition } from "react";
 import Link from "next/link";
 import { I } from "@/components/ui/glyphs";
 import { Spinner } from "@/components/ui/spinner";
+import { formatNumber } from "@/lib/utils";
 import { Textarea } from "@/components/ui/textarea";
 import { Chip } from "@/components/ui/chip";
 import { useToast } from "@/components/ui/toast";
@@ -200,7 +201,7 @@ export function CommentsThread({
         {/* ⛔ THE TOTAL, NOT THE PAGE. `comments.length` is what was READ (capped at 200); `total`
             is how many exist. A header counting the read while the cap notice counts the truth
             would be two numbers for one question, one line apart. */}
-        <span className="ml-auto font-mono text-[11px] text-text-subtle tabular-nums" data-result-count={total}>{total}</span>
+        <span className="ml-auto font-mono text-[11px] text-text-subtle tabular-nums" data-result-count={total}>{formatNumber(total)}</span>
       </div>
 
       {canPost ? (
@@ -215,7 +216,7 @@ export function CommentsThread({
           />
           <div className="mt-2 flex items-center justify-between">
             <span className={`font-mono text-[10.5px] tabular-nums ${remaining < 40 ? "text-warning-fg" : "text-text-subtle"}`}>
-              {remaining}
+              {formatNumber(remaining)}
             </span>
             <button
               type="button"
@@ -277,7 +278,7 @@ export function CommentsThread({
           export, /updown/history and (this stage) the player's own activity feed. */}
       {capped && (
         <p className="mb-3 text-body-sm text-text-subtle">
-          {t.market.commentsCapped.replace("{n}", String(comments.length)).replace("{total}", String(total))}
+          {t.market.commentsCapped.replace("{n}", formatNumber(comments.length)).replace("{total}", formatNumber(total))}
         </p>
       )}
 
@@ -367,7 +368,7 @@ export function CommentsThread({
           onClick={() => setShowAll(true)}
           className="mt-3 w-full rounded-md border border-border bg-bg-overlay px-3 py-2 font-mono text-caption uppercase tracking-[0.12em] text-text-subtle hover:text-text hover:border-brand-400 transition-colors"
         >
-          {t.common.showAll} ({comments.length - INITIAL_SHOW} {t.common.more})
+          {t.common.showAll} ({formatNumber(comments.length - INITIAL_SHOW)} {t.common.more})
         </button>
       )}
     </section>

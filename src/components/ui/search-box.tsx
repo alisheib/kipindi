@@ -192,9 +192,9 @@ export function SearchBox({
       <p
         role={invalidReason ? "alert" : undefined}
         aria-live="polite"
-        className={`mt-1.5 min-h-[17px] text-[11px] ${invalidReason ? "text-danger-fg" : "text-text-subtle"}`}
+        className={`mt-1.5 min-h-[17px] text-[11px] ${invalidReason ? "text-danger-fg" : "text-text-subtle"} kp-keep-line`}
       >
-        {invalidReason || described || echo || " "}
+        {invalidReason || described || echo || null}
       </p>
     </div>
   );

@@ -16,6 +16,7 @@
 import { HelpMark } from "./HelpMark";
 import { CountBadge } from "@/components/ui/count-badge";
 import { useT } from "@/lib/i18n";
+import { formatNumber } from "@/lib/utils";
 
 export function ChatBubble({
   isMobile = false,
@@ -56,7 +57,7 @@ export function ChatBubble({
         size="lg"
         ring="var(--chat-canvas)"
         lift
-        aria-label={t.chat.unread.replace("{n}", String(unread))}
+        aria-label={t.chat.unread.replace("{n}", formatNumber(unread))}
         style={{ position: "absolute", top: -2, right: -2 }}
       />
     </button>

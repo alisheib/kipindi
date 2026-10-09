@@ -271,12 +271,13 @@ check(
     /const total = yes \+ no \+ voided \|\| 1;/.test(res),
     "if the denominator loses a term the ring stops being a whole");
 
+  // Re-pinned by R5-J (round 5, G-4): the legend's count is grouped as every count is (`formatNumber`: "Batili 1,204").
   check("D42 …and the legend names the third one",
-    /\{voidCount > 0 && \(/.test(res) && /\{t\.market\.statusVoid\} \{voidCount\}/.test(res),
+    /\{voidCount > 0 && \(/.test(res) && /\{t\.market\.statusVoid\} \{formatNumber\(voidCount\)\}/.test(res),
     "an arc with no word is a part of the book the page refuses to account for");
 
   check("D42 the void word comes from the lexicon, never a literal",
-    !/>\s*(Void|Batili|已作废)\s*\{voidCount\}/.test(res),
+    !/>\s*(Void|Batili|已作废)\s*\{(?:formatNumber\()?voidCount\)?\}/.test(res),
     "a typed-out word here is the §3b defect in a new place");
 
   // ⭐ THE VOID-ONLY VIEW IS THE ONE THAT WAS EMPTY. The row must be a SIBLING of the
@@ -294,8 +295,9 @@ check(
     !/const total = yes \+ no \+ voided \|\| 1;/.test("  const total = yes + no || 1;"));
   check("D42 control · a legend with no void row IS detected",
     !/\{voidCount > 0 && \(/.test("{linesShown.map((line) => (<span key={line}>…</span>))}"));
-  check("D42 control · a typed-out void word IS detected",
-    />\s*(Void|Batili|已作废)\s*\{voidCount\}/.test('<span className="x">Void {voidCount}</span>'));
+  check("D42 control · a typed-out void word IS detected — bare or grouped",
+    />\s*(Void|Batili|已作废)\s*\{(?:formatNumber\()?voidCount\)?\}/.test('<span className="x">Void {voidCount}</span>')
+      && />\s*(Void|Batili|已作废)\s*\{(?:formatNumber\()?voidCount\)?\}/.test('<span className="x">Batili {formatNumber(voidCount)}</span>'));
 }
 
 log(`\n${fail === 0 ? "ALL PASS" : `${fail} FAILED`} — scanned ${files.length} ts/tsx files`);

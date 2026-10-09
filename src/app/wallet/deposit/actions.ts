@@ -14,6 +14,7 @@ import type { CardCheckoutContext } from "@/lib/server/payments";
 import { getServerT } from "@/lib/i18n-server";
 import { errorCopy } from "@/lib/error-copy";
 import { formatBreakEnd } from "@/lib/break-end";
+import { formatNumber } from "@/lib/utils";
 
 /** Absolute base for the URLs we hand Selcom to send the buyer back to. Must be
  *  the real public host — a relative path is meaningless to the gateway. */
@@ -69,8 +70,9 @@ export async function depositAction(formData: FormData) {
   // fills the same constants, so the message can never disagree either.
   if (!Number.isFinite(amount) || amount < DEPOSIT_MIN_TZS || amount > DEPOSIT_MAX_TZS) {
     fail(t.wallet.depositBounds
-      .replace("{min}", DEPOSIT_MIN_TZS.toLocaleString("en-US"))
-      .replace("{max}", DEPOSIT_MAX_TZS.toLocaleString("en-US")));
+      // One grouping for every figure (`formatNumber`, R5-J) — the withdraw action fills its own bounds the same way.
+      .replace("{min}", formatNumber(DEPOSIT_MIN_TZS))
+      .replace("{max}", formatNumber(DEPOSIT_MAX_TZS)));
   }
 
   // ── Rail-specific requirements, enforced HERE because the form can't ───────

@@ -15,7 +15,7 @@ import { I } from "@/components/ui/glyphs";
 import { CountBadge } from "@/components/ui/count-badge";
 import { useT } from "@/lib/i18n";
 import { useUnreadCount } from "@/lib/journey/use-unread-count";
-import { fill } from "@/lib/utils";
+import { fill, formatNumber } from "@/lib/utils";
 
 export function UnreadRow({ userId, href, label }: { userId: string | null; href: string; label: string }) {
   const { t } = useT();
@@ -28,7 +28,7 @@ export function UnreadRow({ userId, href, label }: { userId: string | null; href
         <span className="kp-hub__text">
           <span className="kp-hub__label">
             {label}
-            {n > 0 && <span className="sr-only">, {n === 1 ? t.notif.unreadOne : fill(t.notif.unreadN, { n })}</span>}
+            {n > 0 && <span className="sr-only">, {n === 1 ? t.notif.unreadOne : fill(t.notif.unreadN, { n: formatNumber(n) })}</span>}
           </span>
         </span>
         <CountBadge count={n} tone="brand" size="lg" aria-hidden />

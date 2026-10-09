@@ -238,7 +238,7 @@ export default async function InvitePage({
   const ringValue = s.recruitCount === 0 ? 0 : Math.min(100, 30 + s.recruitCount * 12);
   const ringLabel = paid
     ? (s.earnedTzs > 0 ? formatCompactNumber(s.earnedTzs) : "0")
-    : String(s.recruitCount);
+    : formatNumber(s.recruitCount);
   /** ⭐ Gold only once money WAS earned (R5-C, the second gold audit, 2026-10-09): the paid dial read a gold "0" over a
    *  gold wash before the first shilling — nothing earned, in the ink of money earned (§M3). Until then it is the royal
    *  dial the unpaid invite wears; the Earned tile below follows the same predicate. */
@@ -405,7 +405,7 @@ export default async function InvitePage({
           labelStyle="strong"
           boxed="glass"
           label={t.common.invite}
-          value={String(s.recruitCount)}
+          value={formatNumber(s.recruitCount)}
           hint={s.recruitCount > 0 ? t.common.allTime : "—"}
           icon={<I.users s={14} />}
           iconAlign="end"
@@ -535,7 +535,7 @@ export default async function InvitePage({
             genuinely differ, so nobody reads a caveat about a limit they have not reached. */}
         {s.recruitCount > s.recruits.length && (
           <p className="mb-2 text-body-sm text-text-subtle">
-            {fill(t.profile.inviteListCapped, { shown: s.recruits.length, total: s.recruitCount })}
+            {fill(t.profile.inviteListCapped, { shown: formatNumber(s.recruits.length), total: formatNumber(s.recruitCount) })}
           </p>
         )}
         {s.recruits.length > 0 ? (

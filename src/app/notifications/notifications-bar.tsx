@@ -22,6 +22,7 @@
  * to separate. It is the shared `QuerySort` now, and it gains a direction control it never had.
  */
 import { FilterPill } from "@/components/ui/filter-pill";
+import { formatNumber } from "@/lib/utils";
 import {
   QUERY_BAR_CLASS,
   QUERY_BAR_ROW1_CLASS,
@@ -66,7 +67,7 @@ export function NotificationsBar({
     oldest: t.notif.sortOldest,
   };
   const resultPhrase =
-    resultCount === 1 ? t.notif.oneNotification : t.notif.nNotifications.replace("{n}", String(resultCount));
+    resultCount === 1 ? t.notif.oneNotification : t.notif.nNotifications.replace("{n}", formatNumber(resultCount));
 
   return (
     <div data-filter-rail className={QUERY_BAR_CLASS}>

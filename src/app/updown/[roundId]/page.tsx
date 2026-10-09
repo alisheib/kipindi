@@ -34,7 +34,7 @@ import { refundReasonFor, REFUND_REASON_KEY, viewerRefundCopy } from "@/lib/updo
 import { pickLocalized } from "@/lib/localized";
 // ⛔ ONE lexicon for side words across both products — never a local ternary (test:labels §4).
 import { outcomeWord } from "@/lib/side-label";
-import { fill, formatTzs } from "@/lib/utils";
+import { fill, formatNumber, formatTzs } from "@/lib/utils";
 // R5 · the page's tone is settlement's own target rule — the landing band reads the same function.
 import { decideOutcomeByTargets } from "@/lib/server/updown-service";
 // ⭐ The kit's ONE pool-split bar, and the home of the cold-start rail (§B9) — PV-06.
@@ -622,7 +622,7 @@ export default async function UpDownRoundPage({
                   <div className="mt-3.5 border-t border-border-subtle/60 pt-3">
                     <div className="flex flex-wrap items-center justify-between gap-2">
                       <p className="m-0 font-mono text-micro uppercase eyebrow text-text-faint">
-                        {t.market.udPositionsOnRound} · {myPosition.items.length}
+                        {t.market.udPositionsOnRound} · {formatNumber(myPosition.items.length)}
                       </p>
                       {myPosition.hedged && <Chip>{t.market.udBothSides}</Chip>}
                     </div>
@@ -734,7 +734,7 @@ export default async function UpDownRoundPage({
                 <div className="text-right">
                   <p className="m-0 flex items-center justify-end gap-1.5 font-mono text-title-sm font-bold leading-[1.1] tabular-nums text-text">
                     <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="var(--text-muted)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><circle cx="12" cy="8" r="3.4" /><path d="M5.5 20c0-3.6 2.9-6 6.5-6s6.5 2.4 6.5 6" /></svg>
-                    {round.players.toLocaleString()}
+                    {formatNumber(round.players)}
                   </p>
                   <p className="mt-1 font-mono text-micro uppercase eyebrow text-text-faint">{t.market.udPlayers}</p>
                 </div>

@@ -19,6 +19,7 @@
  * computed against the SAME read the table below uses and cannot disagree with it.
  */
 import { FilterPill, FilterGroupKey } from "@/components/ui/filter-pill";
+import { formatNumber } from "@/lib/utils";
 import { FilterSheet, FilterSheetGroup } from "@/components/markets/filter-sheet";
 import {
   QUERY_BAR_CLASS_PANEL,
@@ -96,7 +97,7 @@ export function AccountActivityBar({
   const dir = effectiveDir({ natural: ACTIVITY_NATURAL_DIR }, state);
   const sheetCount = activitySheetCount(state);
   const resultPhrase =
-    resultCount === 1 ? t.profile.oneEvent : t.profile.nEvents.replace("{n}", String(resultCount));
+    resultCount === 1 ? t.profile.oneEvent : t.profile.nEvents.replace("{n}", formatNumber(resultCount));
 
   const clear = (
     <QueryClear
@@ -165,7 +166,7 @@ export function AccountActivityBar({
         <FilterSheet
           label={t.market.filtersOpen}
           title={t.profile.myAccountSub.split("·")[0].trim()}
-          ariaLabel={sheetCount > 0 ? t.market.filtersAriaN.replace("{n}", String(sheetCount)) : t.market.filtersOpen}
+          ariaLabel={sheetCount > 0 ? t.market.filtersAriaN.replace("{n}", formatNumber(sheetCount)) : t.market.filtersOpen}
           closeLabel={t.market.filtersClose}
           applyLabel={t.market.filtersApply.replace("{n}", resultPhrase)}
           count={sheetCount}

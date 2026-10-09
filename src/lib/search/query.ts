@@ -35,6 +35,7 @@
  * backtracking match per row) and V8's engine backtracks too. Without the flag,
  * `/foo/` is three ordinary characters. See prisma-where.ts for the full envelope.
  */
+import { formatNumber } from "@/lib/utils";
 
 export type SearchTerm = {
   kind: "token" | "phrase";
@@ -193,7 +194,7 @@ export function describeQuery(
   const phrases = positive.filter((t) => t.kind === "phrase");
   const fielded = positive.filter((t) => t.field);
   const plain = positive.filter((t) => t.kind === "token" && !t.field);
-  if (plain.length) parts.push(`${plain.length} ${words.words}`);
+  if (plain.length) parts.push(`${formatNumber(plain.length)} ${words.words}`);
   if (phrases.length) parts.push(words.phrase);
   if (fielded.length) parts.push(`${words.field}: ${fielded.map((t) => t.field).join(", ")}`);
   if (negative.length) parts.push(`${words.hiding} ${negative.map((t) => t.value).join(", ")}`);

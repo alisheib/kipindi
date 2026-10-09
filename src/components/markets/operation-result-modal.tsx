@@ -51,6 +51,7 @@ import { useCallback, useEffect, useId, useRef, type ReactNode } from "react";
 import { Modal } from "@/components/ui/modal";
 import { I } from "@/components/ui/glyphs";
 import { useT } from "@/lib/i18n";
+import { moneyRuns } from "@/lib/fill-nodes";
 import { useResultModalPresence } from "@/lib/result-modal-presence";
 
 const DEFAULT_AUTO_CLOSE_MS = 5_000;
@@ -98,12 +99,6 @@ type Props = {
    *  - "no"    — NO-side bet placed
    *  Defaults to "brand". Ignored for non-success variants. */
   stripTone?: "gold" | "brand" | "yes" | "no";
-  /**
-   * S6 A8f · every money figure in `title` is set as one amount (`.amount`: mono and never split, DESIGN_AUTHORITY §M4),
-   * however the words around it wrap. The Sell button's result asks for it: its figure is drawn as every other amount
-   * is, and a refusal's sentence that names a price keeps that figure whole. Without it the title is drawn as given.
-   */
-  wholeFigures?: boolean;
 };
 /* `celebrate`/`celebrateGlyph` (the A5 reward-burst swap) were DELETED 2026-08-08:
    zero call sites ever passed them, and the win moment they anticipated is the
@@ -184,20 +179,21 @@ const STRIP_GRADIENTS: Record<string, string> = {
   no:    "linear-gradient(90deg, var(--no-700), var(--no-400))",
 };
 
-/** S6 A8f · a money figure as `formatTzs` writes one ("TZS 1,500", "TZS −360"), with a minus written before it. */
-const FIGURE = /(−?TZS −?[0-9][0-9,]*)/;
-/**
- * The title with every money figure in it set as one amount: the words around a figure still wrap, and the figure moves to
- * the next line whole. A split on a group keeps each figure at an odd place.
+/*
+ * ⭐ EVERY MONEY FIGURE A RESULT STATES IS ONE AMOUNT, FOR EVERY RESULT, READ BY THE ONE READER (round 5 of the visual pass,
+ * R5-J, 2026-10-09; DESIGN_AUTHORITY §M4: mono, untracked, never split). Since S6 A8f the sale's result asked for its title's
+ * figures whole (`wholeFigures`) through a matcher of its own, `/(−?TZS −?[0-9][0-9,]*)/`: it took a sentence's comma into the
+ * figure ("TZS 5,000,000," one amount), read "TZS 1.2M" as "TZS 1" and ".2M", "TZS 2.5" as "TZS 2", missed "+TZS 1,234"'s sign
+ * and every figure the dictionary types with a no-break space between "TZS" and its digits. And it was the sale's alone: the bet
+ * receipt's "NDIO · TZS 1,000" and a refusal's "Salio lako ni TZS 500 …" drew their figures in the heading's face. Now the
+ * title, a subtitle given as words and the footnote read their figures with `moneyRuns` (fill-nodes.tsx — the reader every
+ * toast's title and sentence already go through, R5-E), so a result and its toast say an amount the same way. The words are
+ * the caller's, character for character; a subtitle handed in as nodes (a kept sentence, `keepText`) is drawn as given.
  */
-function withWholeFigures(title: string) {
-  return title.split(FIGURE).map((part, i) => (i % 2 === 1 ? <span key={i} className="amount">{part}</span> : part));
-}
-
 export function OperationResultModal({
   open, variant, eyebrow, title, subtitle, details, footnote,
   primaryLabel, secondaryLabel, onPrimary, onSecondary, onClose,
-  autoCloseMs, stripTone = "brand", wholeFigures,
+  autoCloseMs, stripTone = "brand",
 }: Props) {
   const { t } = useT();
   const closeRef = useRef(onClose);
@@ -491,11 +487,11 @@ export function OperationResultModal({
           </p>
         )}
         <h2 className="mt-1 font-display text-[22px] font-bold text-text leading-tight tracking-[-0.018em]">
-          {wholeFigures ? withWholeFigures(title) : title}
+          {moneyRuns(title)}
         </h2>
         {subtitle && (
           <p id={subtitleId} className="mt-1.5 text-[13px] text-text-muted leading-snug">
-            {subtitle}
+            {typeof subtitle === "string" ? moneyRuns(subtitle) : subtitle}
           </p>
         )}
 
@@ -576,7 +572,7 @@ export function OperationResultModal({
 
         {footnote && (
           <p className="mt-3 text-body-sm text-text-subtle">
-            {footnote}
+            {moneyRuns(footnote)}
           </p>
         )}
       </div>

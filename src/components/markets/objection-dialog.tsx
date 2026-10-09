@@ -18,6 +18,7 @@ import { useState, useTransition } from "react";
 import { Modal } from "@/components/ui/modal";
 import { Select } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
+import { formatNumber } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/components/ui/toast";
 import { Callout } from "@/components/ui/callout";
@@ -162,7 +163,7 @@ export function ObjectionDialog({ marketId, onFiled }: { marketId: string; onFil
             />
             <p id="objection-detail-hint" className="flex items-start justify-between gap-3 text-body-sm leading-relaxed text-text-subtle">
               <span>{t.market.objDetailHint}</span>
-              <span className="font-mono tabular-nums shrink-0">{detail.length}/{DETAIL_MAX}</span>
+              <span className="font-mono tabular-nums shrink-0">{formatNumber(detail.length)}/{formatNumber(DETAIL_MAX)}</span>
             </p>
           </div>
 

@@ -191,9 +191,9 @@ export async function AgentDashboard({
       </section>
 
       {/* Recruits — the AGENT-stamped book only */}
-      <p className="font-mono text-micro uppercase eyebrow font-bold text-text-subtle">{t.agent.dashRecruits} · {dash.recruitCount}</p>
+      <p className="font-mono text-micro uppercase eyebrow font-bold text-text-subtle">{t.agent.dashRecruits} · {formatNumber(dash.recruitCount)}</p>
       {dash.preAgentRecruitCount > 0 && (
-        <p className="text-body-sm leading-relaxed text-text-subtle">{fill(t.agent.dashPreAgent, { n: String(dash.preAgentRecruitCount) })}</p>
+        <p className="text-body-sm leading-relaxed text-text-subtle">{fill(t.agent.dashPreAgent, { n: formatNumber(dash.preAgentRecruitCount) })}</p>
       )}
       {/* ⛔ THE BAR IS WITHHELD ON AN EMPTY BOOK, and only then — five pills all reading 0 above
           "no recruits yet" are five controls that cannot act (§A5). Every other empty state keeps
@@ -215,7 +215,7 @@ export async function AgentDashboard({
                   <Avatar initials={r.maskedName.slice(0, 2)} size="sm" seed={r.maskedName} />
                   <div className="min-w-0 flex-1">
                     <p className="font-mono text-body-sm font-medium truncate">{r.maskedName}</p>
-                    <p className="font-mono text-body-sm text-text-subtle">{t.common.joined} {fmtDate(r.boundAt)} · {r.settlements} {t.agent.dashRecruitHint}</p>
+                    <p className="font-mono text-body-sm text-text-subtle">{t.common.joined} {fmtDate(r.boundAt)} · {formatNumber(r.settlements)} {t.agent.dashRecruitHint}</p>
                   </div>
                   <div className={`w-[72px] text-right font-mono text-body-sm font-semibold tabular-nums ${r.commissionTzs > 0 ? "text-gold-300" : "text-text-subtle"}`}>
                     {r.commissionTzs > 0 ? "+" + formatNumber(r.commissionTzs) : "—"}

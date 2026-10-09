@@ -656,10 +656,9 @@ section("6 · H4 nothing is inserted into the words — the empty state, the dat
     "src/app/legal/responsible-gambling/page.tsx": "owner-approved RG copy, authored with &nbsp; (byte-pinned legal tree)",
     "src/app/legal/rules/page.tsx": "the legal version line, authored (byte-pinned legal tree)",
     "src/lib/legal/policy-lines.ts": "models the legal pages' own &nbsp;", "src/lib/legal/kept-promises.ts": "models the legal pages' own &nbsp;",
-    "src/components/analytics/analytics-choice.tsx": "an empty slot's line box (no words) — named for the integrator",
-    "src/components/ui/search-box.tsx": "an empty slot's line box (no words) — named for the integrator",
-    "src/components/ui/time-select.tsx": "an empty slot's line box, aria-hidden (no words) — named for the integrator",
-    "src/components/home/trust-band.tsx": "an empty cell's line box, aria-hidden (no words) — named for the integrator",
+    // R5-J (round 5's follow-up, G-6): the four empty slots named here for the integrator — the analytics choice, the search
+    // box's echo, the time field's preview, a settled row's empty cell — hold none now (their line is `.kp-keep-line`'s
+    // generated space), so they left this list for 6.5′'s, where a typed space coming back fails.
     "src/components/updown/use-quick-bet.ts": "a live region's re-announce nonce (U+200B), not layout",
     "src/lib/markets/short-title.ts": "strips invisible characters from titles; the admin's form hint", "src/lib/server/ai-poll-generation.ts": "strips them from AI titles",
     "src/lib/server/ai-provider.ts": "a fixture that feeds the stripper", "src/lib/contacts/import-parse.ts": "reads them in imported numbers",
@@ -676,8 +675,9 @@ section("6 · H4 nothing is inserted into the words — the empty state, the dat
   ok(`6.5 · outside the dictionary, the admin console and the legal tree, no player code inserts a no-break space, word joiner or zero-width space for layout — the ${holders.length} files that hold one each have a reason`,
     unexplained.length === 0, unexplained.join(", "));
   const MINE = ["src/components/ui/empty-state-text.ts", "src/components/ui/empty-state.tsx", "src/lib/break-end.ts", "src/components/markets/sell-result.tsx",
-    "src/components/markets/sell-button.tsx", "src/components/ui/toast.tsx", "src/app/updown/[roundId]/page.tsx", "src/lib/cjk-marks.tsx", "src/components/ui/keep-run.tsx", "src/components/ui/keep-words.tsx"];
-  ok("6.5′ · the files round 5 cleared hold none (the empty state, the break sentence, the sell toast, the toaster, the Up & Down stamp, the CJK gap, the keep helpers)",
+    "src/components/markets/sell-button.tsx", "src/components/ui/toast.tsx", "src/app/updown/[roundId]/page.tsx", "src/lib/cjk-marks.tsx", "src/components/ui/keep-run.tsx", "src/components/ui/keep-words.tsx",
+    "src/components/analytics/analytics-choice.tsx", "src/components/ui/search-box.tsx", "src/components/ui/time-select.tsx", "src/components/home/trust-band.tsx"];
+  ok("6.5′ · the files round 5 cleared hold none (the empty state, the break sentence, the sell toast, the toaster, the Up & Down stamp, the CJK gap, the keep helpers, and R5-J's four empty slots)",
     MINE.every((f) => !ESC.test(decomment(read(f)))), MINE.filter((f) => ESC.test(decomment(read(f)))).join(", "));
   // The toaster draws every amount its words state as an `.amount` — the sell refusal's among them, every other too.
   const toast = code("src/components/ui/toast.tsx");

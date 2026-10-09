@@ -24,7 +24,7 @@ import { resolveSimpleJourney } from "@/lib/server/journey-preview";
 import { TicketsHead } from "@/components/journey/tickets/ticket-switch";
 import { eatDayWindow, isInEatDay, eatDayKey, formatEatDay } from "@/lib/eat-day";
 import { pickLocalized } from "@/lib/localized";
-import { formatTzs, formatTzsSigned } from "@/lib/utils";
+import { formatNumber, formatTzs, formatTzsSigned } from "@/lib/utils";
 import { SearchBox } from "@/components/ui/search-box";
 import { QUERY_SEARCH_BAND_CLASS } from "@/components/ui/query-bar";
 import { fieldNames, matchesQuery, parseQuery, UD_ROUND_SEARCH } from "@/lib/search";
@@ -394,7 +394,7 @@ export default async function UpDownHistoryPage({ searchParams }: {
                 <div className="flex flex-wrap items-center justify-center gap-2">
                   {exits.map((e) => (
                     <Link key={e.id} href={buildUdHref(state, e.patch) as never} replace scroll={false} className="btn btn-ghost btn-sm">
-                      {`${EXIT_LABEL[e.id] ?? e.id} (${e.count})`}
+                      {`${EXIT_LABEL[e.id] ?? e.id} (${formatNumber(e.count)})`}
                     </Link>
                   ))}
                 </div>
@@ -437,13 +437,13 @@ export default async function UpDownHistoryPage({ searchParams }: {
               <div className="font-mono text-micro uppercase eyebrow text-text-faint">{t.market.udRoundsPlayed}</div>
               {/* ⛔ THE VIEW, not the page — this tile printed a PAGED round count directly above
                   an UNPAGED bet count, so it read "Rounds 12 · 87 bets" on one card (D37). */}
-              <div className="mt-0.5 font-mono text-[19px] font-bold tabular-nums text-text">{viewRounds.length}</div>
-              <div className="font-mono text-[10px] text-text-subtle">{rows.length} {t.market.udBets}</div>
+              <div className="mt-0.5 font-mono text-[19px] font-bold tabular-nums text-text">{formatNumber(viewRounds.length)}</div>
+              <div className="font-mono text-[10px] text-text-subtle">{formatNumber(rows.length)} {t.market.udBets}</div>
             </div>
             <div className="rounded-xl border border-border bg-bg-elevated p-3.5 col-span-2 sm:col-span-1">
               <div className="font-mono text-micro uppercase eyebrow text-text-faint">{t.market.udWinRate}</div>
               <div className="mt-0.5 font-mono text-[19px] font-bold tabular-nums text-text">{winRate == null ? "—" : `${winRate}%`}</div>
-              <div className="font-mono text-[10px] text-text-subtle">{wins}/{decided} decided</div>
+              <div className="font-mono text-[10px] text-text-subtle">{formatNumber(wins)}/{formatNumber(decided)} decided</div>
             </div>
           </div>
 
@@ -452,7 +452,7 @@ export default async function UpDownHistoryPage({ searchParams }: {
           {capped && (
             <p className="mt-3 flex items-start gap-1.5 text-body-sm leading-[1.5] text-text-faint">
               <I.info s={11} className="mt-[2px] shrink-0" />
-              <span>{t.market.udHistoryCapped.replace("{n}", String(UD_HISTORY_LIMIT))}</span>
+              <span>{t.market.udHistoryCapped.replace("{n}", formatNumber(UD_HISTORY_LIMIT))}</span>
             </p>
           )}
 
@@ -529,7 +529,7 @@ export default async function UpDownHistoryPage({ searchParams }: {
                       the grid's rows auto-size, and the money block below stays inside it. */}
                   <div className="mt-2.5 flex flex-wrap items-center gap-1.5">
                     <span className="font-mono text-micro uppercase tracking-[0.10em] text-text-faint">
-                      {g.bets.length} {t.market.udBets}
+                      {formatNumber(g.bets.length)} {t.market.udBets}
                     </span>
                     {g.bets.map((b) => (
                       <Chip key={b.positionId} className="tabular-nums" variant={b.side === "UP" ? "yes" : "no"}>

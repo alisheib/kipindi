@@ -24,8 +24,8 @@ export function AnalyticsChoice() {
   const on = consent === "granted";
   return (
     <div className="mt-3 flex flex-wrap items-center gap-3" data-testid="analytics-choice" data-state={mounted ? consent : "pending"}>
-      <p className="min-w-0 text-body-sm text-text" aria-live="polite">
-        {!mounted ? " " : consent === "granted" ? t.common.consentChoiceOn : consent === "denied" ? t.common.consentChoiceOff : t.common.consentChoiceUnset}
+      <p className="kp-keep-line min-w-0 text-body-sm text-text" aria-live="polite">
+        {!mounted ? null : consent === "granted" ? t.common.consentChoiceOn : consent === "denied" ? t.common.consentChoiceOff : t.common.consentChoiceUnset}
       </p>
       <Button type="button" variant="ghost" size="sm" disabled={!mounted} onClick={() => setConsent(on ? "denied" : "granted")} data-testid="analytics-choice-toggle">
         {on ? t.common.consentTurnOff : t.common.consentTurnOn}

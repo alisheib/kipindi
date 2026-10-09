@@ -4,7 +4,7 @@ import { BackLink } from "@/components/ui/back-link";
 import { PageHeader } from "@/components/ui/page-header";
 import { I } from "@/components/ui/glyphs";
 import { GiltCorner } from "@/components/brand";
-import { formatTzsAbs, formatTzsSigned } from "@/lib/utils";
+import { formatNumber, formatTzsAbs, formatTzsSigned } from "@/lib/utils";
 import { formatEatDate } from "@/lib/eat-day";
 import { EmptyState } from "@/components/ui/empty-state";
 import { Stat } from "@/components/ui/stat";
@@ -260,7 +260,7 @@ export default async function PerformancePage({
                     same rung. (2xl = 21px mono / leading-none / mt-1.5, `caps` = 9.5px
                     semibold 0.10em) — a pixel-for-pixel mapping, nothing repainted. */}
                 <Stat size="2xl" labelStyle="caps" label={t.performance.winRate} value={`${winRate}%`} />
-                <Stat size="2xl" labelStyle="caps" label={t.performance.marketsSettled} value={String(totalBets)} />
+                <Stat size="2xl" labelStyle="caps" label={t.performance.marketsSettled} value={formatNumber(totalBets)} />
                 <Stat size="2xl" labelStyle="caps" label={t.performance.roi} value={`${roi >= 0 ? "+" : "−"}${Math.abs(roi).toFixed(1)}%`} />
               </div>
             </div>
@@ -350,13 +350,13 @@ export default async function PerformancePage({
             <div className="rounded-xl border border-border bg-bg-elevated p-5">
               <div className="flex items-baseline justify-between gap-2">
                 <p className="gilt-eyebrow" style={{ color: "var(--text-subtle)" }}>{t.performance.currentStreak}</p>
-                <p className="font-mono text-micro uppercase tracking-[0.12em] text-text-subtle tabular-nums">{t.performance.longestStreak} {longestStreak}</p>
+                <p className="font-mono text-micro uppercase tracking-[0.12em] text-text-subtle tabular-nums">{t.performance.longestStreak} {formatNumber(longestStreak)}</p>
               </div>
               <div className="mt-3 flex items-center gap-2">
                 {/* §T5 — every numeral is JetBrains Mono, "no exceptions". This one was
                     set in Sora, which also made the streak the only figure on the page
                     whose digits did not line up with the P&L above it. */}
-                <span className="font-mono text-[30px] font-bold leading-none tabular-nums text-text">{currentStreak}</span>
+                <span className="font-mono text-[30px] font-bold leading-none tabular-nums text-text">{formatNumber(currentStreak)}</span>
                 <StreakChain current={currentStreak} longest={longestStreak} />
               </div>
             </div>
@@ -378,7 +378,7 @@ export default async function PerformancePage({
             <section>
               <h2 className="mb-3 flex items-baseline gap-2">
                 <span className="font-display text-[20px] font-semibold text-text">{t.performance.recentSettled}</span>
-                <span className="ml-auto font-mono text-[12px] text-text-subtle">{recentSettled.length}</span>
+                <span className="ml-auto font-mono text-[12px] text-text-subtle">{formatNumber(recentSettled.length)}</span>
               </h2>
               <div className="rounded-xl border border-border bg-bg-elevated overflow-hidden divide-y divide-border/50">
                 {recentSettled.map((r) => (
@@ -436,7 +436,7 @@ function StreakChain({ current, longest }: { current: number; longest: number })
           <I.hot s={15} />
         </span>
       ))}
-      {current > 12 && <span className="ml-0.5 font-mono text-[11px] font-bold text-[var(--metal-gold)] tabular-nums">+{current - 12}</span>}
+      {current > 12 && <span className="ml-0.5 font-mono text-[11px] font-bold text-[var(--metal-gold)] tabular-nums">+{formatNumber(current - 12)}</span>}
     </div>
   );
 }

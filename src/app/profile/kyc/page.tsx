@@ -2,6 +2,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { I } from "@/components/ui/glyphs";
 import { BackLink } from "@/components/ui/back-link";
+import { formatNumber } from "@/lib/utils";
 import { PageHeader } from "@/components/ui/page-header";
 import { PageHero } from "@/components/ui/page-hero";
 import { FieldLegend } from "@/components/ui/field-legend";
@@ -638,7 +639,7 @@ export default async function KycPage({ searchParams }: { searchParams?: Promise
               {t.profile.tapToAttach}
             </p>
             <p className="font-mono text-[11px] font-bold tabular-nums text-text-muted">
-              {t.profile.docsAttachedCount.replace("{n}", String(attachedCount)).replace("{total}", String(requiredSlots.length))}{allAttached ? ` — ${t.profile.readyToSubmit}` : ""}
+              {t.profile.docsAttachedCount.replace("{n}", formatNumber(attachedCount)).replace("{total}", formatNumber(requiredSlots.length))}{allAttached ? ` — ${t.profile.readyToSubmit}` : ""}
             </p>
             <form action={submitKycForReviewAction}>
               {allAttached ? (

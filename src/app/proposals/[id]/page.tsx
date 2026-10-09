@@ -15,7 +15,7 @@ import { RewardBurst } from "@/components/brand/reward-burst";
 import { getServerT } from "@/lib/i18n-server";
 import { pickLocalized } from "@/lib/localized";
 import { keepFigures } from "@/components/ui/keep-words";
-import { formatTzsSigned } from "@/lib/utils";
+import { formatNumber, formatTzsSigned } from "@/lib/utils";
 import { PageContainer } from "@/components/layout/page-container";
 import { generateMetadata as notFoundMetadata } from "@/app/not-found";
 
@@ -72,7 +72,7 @@ export default async function ProposalDetailPage({ params }: { params: Promise<{
         {p.description && <p className="mt-2 text-[13px] leading-relaxed text-text-muted">{p.description}</p>}
         <div className="mt-3.5 flex items-center gap-3">
           <VoteControl proposalId={p.id} up={p.up} down={p.down} myVote={p.myVote} horizontal disabled={!active || !open} />
-          <span className="font-mono text-[11.5px] text-text-subtle">{t.proposals.byProposer} {p.proposerMasked} · {p.up + p.down} {t.proposals.votesCount}</span>
+          <span className="font-mono text-[11.5px] text-text-subtle">{t.proposals.byProposer} {p.proposerMasked} · {formatNumber(p.up + p.down)} {t.proposals.votesCount}</span>
         </div>
       </section>
 

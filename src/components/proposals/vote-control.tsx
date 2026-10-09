@@ -8,6 +8,7 @@
  */
 import { useRef, useState, useTransition } from "react";
 import { I } from "@/components/ui/glyphs";
+import { formatNumber } from "@/lib/utils";
 import { voteAction } from "@/app/proposals/actions";
 import { useToast } from "@/components/ui/toast";
 import { useT } from "@/lib/i18n";
@@ -127,7 +128,7 @@ export function VoteControl({
     >
       <Btn dir="up" color={upColor} />
       <span key={pop} className="vote-pop font-mono text-[13px] font-bold text-center" style={{ color: scoreColor, minWidth: 22 }}>
-        {score}
+        {formatNumber(score)}
       </span>
       <Btn dir="down" color={downColor} />
     </div>
