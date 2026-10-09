@@ -20,7 +20,8 @@
  * (`bigXlsxInMemory`), read in the browser to the generator's truth; the row cap and the inflate budget refuse where
  * they must. Each big read happens once per rule set (a plant that leaves the rules alone reads from the cache).
  * ⭐ THE DOOR, THE OLD BROWSER, STOP (B12–B14) through `readContactsFile` and the reader's own options; the source (B15)
- * and the copy an officer reads (B16).
+ * and the copy an officer reads (B16); and (B17) CHUNKS OF ANY SIZE — a browser's stream may cut a tag, an entity, a
+ * CRLF or a multi-byte character anywhere, so every crafted workbook is read again through 1–13-byte pieces.
  * ⭐ PROVED BY MUTATION. Every label is named by a red plant — one RULE swapped in `buildXlsxBrowserReader` (the walk
  * itself unchanged), the door's wiring, the reader's options, or a source — and the runner requires each plant's OWN
  * label among the reds.
@@ -43,6 +44,7 @@ import {
   XLSX_BROWSER_RULES,
   buildXlsxBrowserReader,
   excelSerialToDate,
+  type InflatePair,
   type XlsxBrowserOptions,
   type XlsxBrowserResult,
   type XlsxBrowserRules,
@@ -523,8 +525,34 @@ const EXCEL_HIDDEN_BOOK = bookOf({
   after: EXCEL_EXT,
 });
 
+/** B3 · B17 — text a chunk can cut anywhere: XML's five entities and a character reference, a raw CRLF inside a cell,
+ *  Arabic (two UTF-8 bytes a letter), Chinese (three), an accented name and an emoji raw (four) — over 300 rows. */
+const ARABIC = String.fromCodePoint(0x633, 0x639, 0x64a, 0x62f);
+const CHINESE = String.fromCodePoint(0x738b, 0x5c0f, 0x660e);
+const RENEE = `Ren${String.fromCodePoint(0xe9)}e`;
+const POT = String.fromCodePoint(0x1f372);
+const CHUNKY_BOOK = bookOf({
+  sheets: [{
+    name: "Wateja",
+    xml: excelSheet(
+      `<row r="1">${inline("A1", "Name")}${inline("B1", "Phone")}${inline("C1", "Notes")}</row>`
+      + `<row r="2">${inline("A2", "&lt;Kiongozi&gt; &amp; &quot;Mama&quot; &apos;J&apos;")}${inline("B2", "0757 300 161")}${inline("C2", `Mstari wa kwanza${CRLF}wa pili`)}</row>`
+      + Array.from({ length: 300 }, (_, i) => {
+        const r = i + 3;
+        return `<row r="${r}">${inline(`A${r}`, `${ARABIC} ${CHINESE} ${RENEE} ${POT} &#x1F372; ${r}`)}${inline(`B${r}`, `0757 ${400000 + r}`)}</row>`;
+      }).join(""),
+    ),
+  }],
+});
+const CHUNKY_ROWS_HEAD = [
+  { line: 1, cells: ["Name", "Phone", "Notes"] },
+  { line: 2, cells: [`<Kiongozi> & "Mama" 'J'`, "0757 300 161", `Mstari wa kwanza${LF}wa pili`] },
+  { line: 3, cells: [`${ARABIC} ${CHINESE} ${RENEE} ${POT} ${POT} 3`, "0757 400003"] },
+];
+
 /** The crafted corpus the differential reads (B3), each by name. */
 const CRAFTED: ReadonlyArray<readonly [string, Buffer]> = [
+  ["chunky-text", CHUNKY_BOOK],
   ["excel-365-cells", excelCells(false)],
   ["excel-mac-1904", excelCells(true)],
   ["excel-365-hidden-sheets", EXCEL_HIDDEN_BOOK],
@@ -635,6 +663,7 @@ export const L = {
   B14: "B14 · STOP AND THE BAR — the reader's last report is its whole total with every row element counted, its reports never move backwards, and a read stopped by the signal returns aborted, nothing read on",
   B15: "B15 · ⛔ PURE AND ONE COPY — xlsx-cells.ts and xlsx-read.ts carry no directive, import only src/lib/contacts modules, name no Buffer, Node built-in, require or DOMParser, hold no backslash and no raw control character but line ends, and are pinned in client-graph-safe; and import-xlsx.ts takes its cell rules from xlsx-cells.ts, keeping no copy of its own",
   B16: "B16 · ⛔ THE COPY — nothing at the import's entrance says an Excel file over 700 KB is refused or must be saved as CSV (its limits line names no Excel size; import-copy.ts names no XLSX_MAX_BYTES), while too_large keeps its sentence — the size, CSV and the remedy — for a direct post over the cap and an old browser",
+  B17: "B17 · ⭐ CHUNKS OF ANY SIZE — a real browser hands a stream back in pieces of any size: every crafted workbook read through an inflater that re-cuts its output into 1–13-byte pieces (tags, entities, a CRLF and multi-byte characters cut anywhere) gives exactly the file whole chunks give, and the text-laden one its literal rows",
 } as const;
 
 /* ══ THE RUN ════════════════════════════════════════════════════════════════════════════════════════════════ */
@@ -677,6 +706,22 @@ async function differential(impl: XlsxBrowserImpl, corpus: readonly Corpus[]): P
   }
   return faults;
 }
+
+/** B17 · an inflater whose output is re-cut into pieces of 1 to 13 bytes, in turn — the worst a browser's stream may do. */
+const tinyChunks = (inflater: () => InflatePair) => (): InflatePair => {
+  const pair = inflater();
+  let k = 0;
+  const cut = new TransformStream<Uint8Array, Uint8Array>({
+    transform(chunk, controller) {
+      for (let at = 0; at < chunk.length;) {
+        const n = 1 + (k++ % 13);
+        controller.enqueue(chunk.subarray(at, Math.min(chunk.length, at + n)));
+        at += n;
+      }
+    },
+  });
+  return { readable: pair.readable.pipeThrough(cut), writable: pair.writable };
+};
 
 /** The phone cells' verdicts, counted as the generator counts its truth: distinct numbers, repeats, refusals. */
 function verdicts(file: ParsedContactsFile): { readonly records: number; readonly validDistinct: number; readonly duplicateRows: number; readonly invalidRows: number } {
@@ -894,6 +939,22 @@ async function run({ impl, ok, log }: Ctx): Promise<void> {
     && !impl.sources.copy.includes("XLSX_MAX_BYTES") && !impl.sources.copy.includes("formatFileSize")
     && tooLargeAgain.includes("CSV") && tooLargeAgain.includes(PHONE_FORMAT_REMEDY) && tooLargeAgain.includes(formatFileSize(2 * XLSX_MAX_BYTES)),
     `the limits line: ${limits.split(LF).join(" ").slice(0, 160)}`);
+
+  // ── B17 · chunks of any size ──
+  const chunked = impl.build({ ...impl.rules, inflater: tinyChunks(impl.rules.inflater) });
+  const b17: string[] = [];
+  for (const [name, bytes] of [...CRAFTED, ["open-xml-sdk", SDK_BOOK], ["cdata", CDATA_BOOK]] as const) {
+    const whole = await read(blob(bytes), { fileName: fileNameOf(name) });
+    const pieces = await chunked(blob(bytes), { fileName: fileNameOf(name) });
+    const wholeOf = whole.kind === "read" ? whole.file : whole.kind === "refused" ? whole.message : whole.kind;
+    const piecesOf = pieces.kind === "read" ? pieces.file : pieces.kind === "refused" ? pieces.message : pieces.kind;
+    if (!same(wholeOf, piecesOf)) b17.push(`${name}: whole ${brief(whole)} · in pieces ${brief(pieces)}${whole.kind === "read" && pieces.kind === "read" ? ` · ${JSON.stringify(pieces.file.rows.find((r, i) => !same(r, whole.file.rows[i])) ?? null).slice(0, 160)}` : ""}`);
+  }
+  const chunky = await chunked(blob(CHUNKY_BOOK), { fileName: "chunky.xlsx" });
+  if (chunky.kind !== "read" || !same(chunky.file.rows.slice(0, 3), CHUNKY_ROWS_HEAD) || chunky.file.rows.length !== 302) {
+    b17.push(`chunky literals: ${chunky.kind === "read" ? JSON.stringify(chunky.file.rows.slice(0, 3)) : brief(chunky)}`);
+  }
+  ok(L.B17, b17.length === 0, b17.slice(0, 3).join(" | ") || `${CRAFTED.length + 2} workbooks read the same in 1–13-byte pieces as whole`);
 }
 
 /* ══ THE RED PLANTS — each a defect somebody could plausibly write, built in memory ═════════════════════════ */
@@ -1019,6 +1080,11 @@ const PLANTS: readonly RedPlant<XlsxBrowserImpl>[] = [
       ...real(),
       sources: { ...real().sources, server: `${real().sources.server}${LF}function ownNumberText(v: number): string { return String(Number(v.toPrecision(15))); }${LF}` },
     }),
+  },
+  {
+    name: "each chunk decoded on its own — a character a chunk cuts in two read as two replacement characters",
+    expect: L.B17,
+    impl: () => withRules({ decodeChunk: (decoder, chunk) => (chunk === null ? "" : decoder.decode(chunk)) }),
   },
   {
     name: "the entrance still says an Excel file can be up to 700 KB",

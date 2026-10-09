@@ -366,6 +366,8 @@ export type XlsxBrowserRules = {
   readonly strText: (text: string) => string;
   /** Is the read past the inflate budget? */
   readonly overBudget: (inflated: number, budget: number) => boolean;
+  /** One chunk of a part's bytes to text — STREAMED, so a character a chunk cuts in two is kept whole; `null` flushes. */
+  readonly decodeChunk: (decoder: TextDecoder, chunk: Uint8Array | null) => string;
   /** Is a shared string's phonetic run (`<rPh>`) part of its text? Never. */
   readonly phoneticRuns: boolean;
   /** What a formula with no saved value reads as: nothing (blank, flagged). */
@@ -411,6 +413,7 @@ export const XLSX_BROWSER_RULES: XlsxBrowserRules = {
   numberText: xlsxNumberText,
   strText: excelXmlDecode,
   overBudget: (inflated, budget) => inflated > budget,
+  decodeChunk: (decoder, chunk) => (chunk === null ? decoder.decode() : decoder.decode(chunk, { stream: true })),
   phoneticRuns: false,
   missingFormulaValue: () => undefined,
   coveredText: () => "",
@@ -969,7 +972,7 @@ async function streamPart(run: Run, entry: ZipEntry, onText: (text: string) => v
       entryBytes += chunk.byteLength;
       run.inflated += chunk.byteLength;
       if (run.rules.overBudget(run.inflated, run.rules.inflateBudget)) throw refuseWith("too_big_inflated", "bomb");
-      deliver(lines.take(decoder.decode(chunk, { stream: true })));
+      deliver(lines.take(run.rules.decodeChunk(decoder, chunk)));
       report(run, false);
       const now = run.rules.now();
       if (now - run.lastYield >= YIELD_EVERY_MS) {
@@ -977,7 +980,7 @@ async function streamPart(run: Run, entry: ZipEntry, onText: (text: string) => v
         run.lastYield = run.rules.now();
       }
     }
-    deliver(lines.take(decoder.decode()));
+    deliver(lines.take(run.rules.decodeChunk(decoder, null)));
     deliver(lines.flush());
     done = true;
   } catch (e) {
