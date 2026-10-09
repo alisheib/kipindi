@@ -129,7 +129,7 @@ export async function scale(h: Harness, n: number): Promise<Record<string, unkno
   const tokenOf = await h.reader.tokenCounts([...skippedNew.map((r) => r.msisdn), ...rows.filter((r) => r.status === "SENT").map((r) => r.msisdn)]);
   const refusedWithToken = skippedNew.filter((r) => (tokenOf.get(r.msisdn) ?? 0) > 0);
   const sentWithout = rows.filter((r) => r.status === "SENT" && (tokenOf.get(r.msisdn) ?? 0) === 0);
-  claimNow(h, "S1.tokens", "E1: the stop link is made only for a person the gate cleared — no refused person holds a token row, every person sent to holds one", refusedWithToken.length === 0 && sentWithout.length === 0,
+  claimNow(h, "S1.tokens", "E1: the stop token (for the stop page — no message prints it since 2026-10-09) is made only for a person the gate cleared — no refused person holds a token row, every person sent to holds one", refusedWithToken.length === 0 && sentWithout.length === 0,
     `${skippedNew.length} refused people checked (${refusedWithToken.length} hold a token), ${rows.filter((r) => r.status === "SENT").length} sent (${sentWithout.length} without)`);
 
   // ── mid-run stop links ──

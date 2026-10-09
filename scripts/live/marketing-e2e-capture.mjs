@@ -19,6 +19,9 @@ const UA = "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Geck
 const PROD = "https://www.50pick.tz";
 const LOCAL = "http://localhost:3043";
 const WIDTHS = [[1280, 800], [360, 780]];
+/** The privacy page's SMS gateway bullet, by words it carries in each language both as the page's default and as saved —
+ *  never by the gateway company's name, which the public line no longer carries (the owner's decision of 2026-10-09). */
+const GATEWAY_FIND = { en: /SMS gateway in Tanzania/, sw: /la SMS nchini Tanzania/, zh: /短信网关/ };
 const log = [];
 const badShots = [];
 const note = (o) => { log.push(o); console.log(JSON.stringify(o)); };
@@ -137,8 +140,9 @@ async function player(browser) {
       const p2 = await ctx2.newPage();
       const rr = await p2.goto(`${LOCAL}/auth/register`, { waitUntil: "load", timeout: 90_000 }); await sleep(1500);
       await registerTicks(p2, `local-register-ticks-${loc}-${w}`, { where: "local", loc, w, status: rr?.status() });
-      // Help FAQ helpline + privacy processors + RG §4.
-      for (const [path, find, tag] of [["/help", /0800/, "help"], ["/legal/privacy", /Blackball/i, "privacy"], ["/legal/responsible-gambling", /^\s*4\./, "rg"]]) {
+      // Help FAQ helpline + privacy processors (the SMS gateway bullet, found by its own words: since the owner's decision
+      // of 2026-10-09 the public line names no gateway company — no "Blackball" to find it by) + RG §4.
+      for (const [path, find, tag] of [["/help", /0800/, "help"], ["/legal/privacy", GATEWAY_FIND[loc], "privacy"], ["/legal/responsible-gambling", /^\s*4\./, "rg"]]) {
         const r3 = await p2.goto(`${LOCAL}${path}`, { waitUntil: "load", timeout: 90_000 }); await sleep(1200);
         const target = tag === "rg" ? p2.locator("h2", { hasText: find }) : p2.getByText(find);
         const n = await target.count().catch(() => 0);

@@ -36,11 +36,24 @@ export const RESUME_WORDING = LIB.resumeWording();
 export const SMS_WORDING = RESUME_WORDING;
 /** A ledger file that EXISTS with nothing counted — a drive after its first evidence run. (A MISSING file is NO-GO unless `--new-ledger`.) */
 export const EMPTY_LEDGER_TEXT: string = LIB.serializeLedger(LIB.emptyLedger());
-/** The saved wordings of a platform ready for the drive: a source line and the typed-number test's 18+ sentence, each saved once. */
+/**
+ * The saved wordings of a platform ready for the drive: a source line and the typed-number test's 18+ sentence, each saved once.
+ * (The pre-flight's `source` row still reads both. Since the owner's ruling of 2026-10-09 no message prints the source line and
+ * nothing is refused without one, and a typed-number test is for ADMIN and COMPLIANCE only — never the drive's GROWTH login.)
+ */
 export const SAVED_WORDINGS: Record<string, unknown> = {
   "source.phrase": [{ v: 1, text: "From the 50pick sign-up form", savedAt: "2026-10-07T08:00:00.000Z", savedBy: "ops: Claude for Ali (G5)" }],
   "adult.test": [{ v: 1, text: "I confirm that the person who uses this number is 18 or older.", savedAt: "2026-10-07T08:00:00.000Z", savedBy: "usr_owner_0001" }],
 };
+
+/**
+ * ⭐ THE DRIVE'S MESSAGE — the owner's words of 2026-10-09 for every real SMS of the drive, read from its ONE copy through the core
+ * (`marketing-u52a-message.mjs`), never typed here. Every message row this world makes is as long as a contact-book number is sent
+ * it — the Swahili body with the draft's word for `{jina}`, nothing after it — so the evidence's SENT AS WRITTEN check reads the
+ * fixtures as a clean drive; a claim that wants a footer back makes its row longer itself.
+ */
+export const DRIVE_MESSAGE = LIB.DRIVE_MESSAGE;
+export const DRIVE_LENGTH = LIB.driveLengthWindows();
 
 type Row = Record<string, unknown>;
 const d = (ms: number): Date => new Date(ms);
@@ -191,7 +204,9 @@ export function checkBinds(calls: Call[], c: BindCtx): string[] {
       case "basis": if (!(values.length === 1 && c.listIds.includes(String(values[0])))) bad.push(`basis was bound to ${show(values)}, wanted one of the member lists' ids`); break;
       case "suppression": case "person-suppression": case "person-ledger": if (!(values.length === 1 && people.includes(String(values[0])))) bad.push(`${tag} was bound to ${show(values)}, wanted the test or the control number`); break;
       case "user": wants(tag, values, [`+${c.testKey}`]); break;
-      case "campaign": case "recipients": case "recipient-counts": case "message-counts": case "test-message-counts": case "audit": wants(tag, values, [c.campaignId]); break;
+      // ⭐ the campaign read: the drive's four words (DRIVE'S MESSAGE compares the stored fields with them, in this order), then the id
+      case "campaign": wants(tag, values, [DRIVE_MESSAGE.bodySw, DRIVE_MESSAGE.bodyEn, DRIVE_MESSAGE.nameFallbackSw, DRIVE_MESSAGE.nameFallbackEn, c.campaignId]); break;
+      case "recipients": case "recipient-counts": case "message-counts": case "test-message-counts": case "audit": wants(tag, values, [c.campaignId]); break;
       case "recipient-named": if (!(values.length === 2 && values[0] === c.campaignId && people.includes(String(values[1])))) bad.push(`recipient-named was bound to ${show(values)}, wanted the campaign and a named number`); break;
       case "messages": case "test-messages": wants(tag, values, [c.testKey ?? "", c.campaignId]); break;
       case "token": wants(tag, values, [c.campaignId, c.testKey]); break;
@@ -358,7 +373,7 @@ export function recipientRow(o: Row & { key: string; id: string }): Row {
   const { key, ...rest } = o;
   return {
     msisdn: key, status: "DELIVERED", skip_reason: null, skip_detail: null, failure_class: null, error: null, attempts: 0,
-    sms_reference: null, has_token: true, locale: "SW", segments: 1, body_len: 87, cost_tzs: null, claim_token: "clm_token_one",
+    sms_reference: null, has_token: true, locale: "SW", segments: 1, body_len: DRIVE_LENGTH.SW.fallback, cost_tzs: null, claim_token: "clm_token_one",
     claimed_at: d(T0 + 2_000), sent_at: d(T0 + 4_000), delivered_at: d(T0 + 9_000), failed_at: null,
     gate_trail: [{ check: "campaign", verdict: "RUNNING", wording: null, source: CAMPAIGN }, { check: "gate", verdict: "ok", wording: null, source: "CONSENT:ledger:abc" }, { check: "dispatch", verdict: "handed_over", wording: null, source: "sms_ref" }],
     ...rest,
@@ -367,7 +382,7 @@ export function recipientRow(o: Row & { key: string; id: string }): Row {
 
 export function messageRow(o: Row & { reference: string; target_id: string }): Row {
   return {
-    to_test: true, purpose: "MARKETING", status: "DELIVERED", body_len: 87, dlr_status: "DELIVRD", dlr_desc: "Delivered", provider_msg: "Message sent",
+    to_test: true, purpose: "MARKETING", status: "DELIVERED", body_len: DRIVE_LENGTH.SW.fallback, dlr_status: "DELIVRD", dlr_desc: "Delivered", provider_msg: "Message sent",
     attempts: 0, created_at: d(T0 + 3_000), sent_at: d(T0 + 4_000), delivered_at: d(T0 + 9_000), failed_at: null, balance_tzs: "49994.00",
     ...o,
   };
@@ -382,6 +397,8 @@ export function baseEvWorld(): EvWorld {
       id: CAMPAIGN, status: "DONE", stop_reason: null, audience_count: 1, confirm_tier: "ENUMERATE", estimate_segments: 1, estimate_tzs: "6.00",
       budget_tzs: "10000.00", segments_sw: 1, segments_en: null, enqueued: true, created_by: "usr_qa_growth_0001", confirmed_by: "usr_qa_growth_0001",
       confirmed_at: d(T0 - 60_000), enqueued_at: d(T0 + 1_000), started_at: d(T0), paused_at: null, finished_at: d(T0 + 10_000), created_at: d(T0 - 600_000),
+      // DRIVE'S MESSAGE · the four stored fields compared in SQL with the drive's words: a campaign of the drive carries them all
+      drive_body_sw: true, drive_body_en: true, drive_fallback_sw: true, drive_fallback_en: true,
     },
     recipients: [], messages: [], testMessages: [],
     audit: [
@@ -466,7 +483,8 @@ export function evHandlers(w: EvWorld): Record<string, (values: unknown[]) => un
   };
   return {
     now: () => [{ now: new Date(w.now) }],
-    campaign: (v) => (w.campaign && v[0] === w.campaign.id ? [w.campaign] : []),
+    // the campaign read binds the drive's four words FIRST (its comparisons) and the id LAST
+    campaign: (v) => (w.campaign && v[v.length - 1] === w.campaign.id ? [w.campaign] : []),
     recipients: () => w.recipients.slice(0, 41),
     "recipient-named": (v) => w.recipients.filter((r) => r.msisdn === v[1]).slice(0, 1),
     "recipient-counts": recipientCounts,

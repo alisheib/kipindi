@@ -24,12 +24,18 @@
  *      not counted); the window row's margin (default 60, --min-window) follows the clock; a SECOND member on the drive list is NO-GO on
  *      test-lists alone; no saved wordings is NO-GO on source alone; a missing ledger file is NO-GO on ledger alone unless --new-ledger,
  *      which is refused over one that exists; the report says it used the DATABASE's clock and a loopback database;
- *   2  the evidence on campaign A (the composer test + one delivered send, the stop link shown once, the ledger created by
- *      --new-ledger), the stop tapped, B (SKIPPED `suppressed`, zero sends), ⭐ THE GATE REMOVED (the stopped number SENT:
- *      skipped:test FAILS, VIOLATION named, exit 1) and C (after "Start them again"): every verdict and exit code as the run sheet
- *      says; the ledger counts 4 and refuses 3 more;
+ *   2  the evidence on campaign A (one delivered send — the sheet's path makes NO composer test since 2026-10-09, the GROWTH
+ *      login's own number not being the test number — the stop link shown once, the ledger created by --new-ledger on the first
+ *      evidence run, G3's look before A's Start), the stop made on the stop link's page (no SMS carries the link: the drive opens it
+ *      from the row), B (SKIPPED `suppressed`, zero sends), ⭐ THE GATE REMOVED (the stopped number SENT: skipped:test FAILS,
+ *      VIOLATION named, exit 1) and C (after "Start them again"): every verdict and exit code as the run sheet says; the ledger
+ *      counts 3 (the sheet's own A + B + C are 2) and refuses 4 more; ⭐ SENT AS WRITTEN: every campaign carries the drive's ONE
+ *      message (`DRIVE_MESSAGE`, the owner's words of 2026-10-09) and every message row its length, and a message 49 characters
+ *      longer (the old footer) makes a look exit 1; ⭐ DRIVE'S MESSAGE: A's stored words equal the drive's (compared in SQL, bound as
+ *      values) and a campaign saved with one English word changed makes a look exit 1;
  *   3  the TYPES the tools read (booleans, Dates, numbers with no bigint, `seq` as text, jsonb as objects, the gate trail an
- *      array, the clock a Date) and ⭐ THE ORDER: the audit rows of a campaign come back in NUMERIC seq order across the 9 to 10
+ *      array, the clock a Date, the four DRIVE'S MESSAGE comparisons booleans, a composer test's read on a draft that has one) and
+ *      ⭐ THE ORDER: the audit rows of a campaign come back in NUMERIC seq order across the 9 to 10
  *      boundary, and the live switch's "newest eight" are the eight with the greatest seq (a bare ORDER BY on the aliased text would
  *      sort them as text — the probe prints what the server does with that, for the record);
  *   4  ⭐ READ ONLY: a write inside a transaction set READ ONLY is refused by the database itself (25006), a write handed to the
@@ -216,14 +222,23 @@ async function seedLedger(id: string, status: string, source: string, at: number
     [id, W.TEST.key, status, source, wording, evidence, byOfficer ? OFFICER : null, iso(at)],
   );
 }
-async function seedCampaign(id: string, startedAt: number, status = "DONE", audience = 1): Promise<void> {
+/**
+ * A campaign row, carrying the drive's ONE message (`DRIVE_MESSAGE` — the owner's words of 2026-10-09, read through the world, never
+ * typed here) and told apart by its NAME, as the run sheet's campaigns are.
+ */
+type Fields = Record<"bodySw" | "bodyEn" | "nameFallbackSw" | "nameFallbackEn", string>;
+async function seedCampaign(id: string, startedAt: number, status = "DONE", audience = 1, name = "U52a probe", message: Fields = W.DRIVE_MESSAGE as unknown as Fields): Promise<void> {
+  const m = message;
   await q(
-    `INSERT INTO "SmsCampaign" (id, name, status, "bodySw", "codingSw", "segmentsSw", "audienceFilter", "audienceCount", "confirmTier", "estimateSegments", "estimateTzs", "budgetTzs",
+    `INSERT INTO "SmsCampaign" (id, name, status, "bodySw", "bodyEn", "nameFallbackSw", "nameFallbackEn", "codingSw", "segmentsSw", "codingEn", "segmentsEn", "audienceFilter", "audienceCount", "confirmTier", "estimateSegments", "estimateTzs", "budgetTzs",
        "enqueueCursor", "enqueuedAt", "createdBy", "confirmedBy", "confirmedAt", "startedAt", "finishedAt", "createdAt")
-     VALUES ($1, 'U52a probe', $8::"SmsCampaignStatus", '50pick probe', 'GSM7', 1, 'list', $9, 'ENUMERATE', 1, 6, 10000, 'done', $2, $3, $3, $4, $5, $6, $7)`,
-    [id, iso(startedAt + 1000), OFFICER, iso(startedAt - 60_000), iso(startedAt), status === "DONE" ? iso(startedAt + 10_000) : null, iso(startedAt - 600_000), status, audience],
+     VALUES ($1, $10, $8::"SmsCampaignStatus", $11, $12, $13, $14, 'GSM7', 1, 'GSM7', 1, 'list', $9, 'ENUMERATE', 1, 6, 10000, 'done', $2, $3, $3, $4, $5, $6, $7)`,
+    [id, iso(startedAt + 1000), OFFICER, iso(startedAt - 60_000), iso(startedAt), status === "DONE" ? iso(startedAt + 10_000) : null, iso(startedAt - 600_000), status, audience,
+      name, m.bodySw, m.bodyEn, m.nameFallbackSw, m.nameFallbackEn],
   );
 }
+/** The length a contact-book number is sent the drive's Swahili message — every message and recipient row below is that long. */
+const AS_SENT = W.DRIVE_LENGTH.SW.fallback;
 async function seedAudit(targetType: string, target: string, action: string, category: string, actor: string | null, payload: unknown, at: number): Promise<void> {
   auditN += 1;
   await q(
@@ -236,24 +251,24 @@ const seedCampaignAudit = (campaign: string, action: string, category: string, a
   seedAudit("SmsCampaign", campaign, action, category, actor, payload, at);
 const seedSwitchAudit = (n: number, at: number) =>
   seedAudit("SystemConfig", SWITCH_KEY, n % 2 === 1 ? "marketing.live_switch_opened" : "marketing.live_switch_closed", "COMPLIANCE", null, { via: "ops", closesAt: iso(at + 7_200_000) }, at);
-async function seedRecipient(o: { id: string; campaign: string; status: string; ref: string | null; token: string; skip?: string; detail?: string; claimedAt: number; sentAt?: number; deliveredAt?: number }): Promise<void> {
+async function seedRecipient(o: { id: string; campaign: string; status: string; ref: string | null; token: string; skip?: string; detail?: string; claimedAt: number; sentAt?: number; deliveredAt?: number; bodyLen?: number }): Promise<void> {
   const skipped = o.status === "SKIPPED";
   await q(
     `INSERT INTO "SmsCampaignRecipient" (id, "campaignId", msisdn, status, "smsReference", "optOutToken", locale, "skipReason", "skipDetail", "claimToken", "claimedAt", attempts, segments, "bodyLen", "gateTrail", "sentAt", "deliveredAt")
      VALUES ($1, $2, $3, $4, $5, $6, 'SW', $7, $8, $9, $10, 0, $11, $12, $13::jsonb, $14, $15)`,
     [
       o.id, o.campaign, W.TEST.key, o.status, o.ref, skipped ? null : o.token, o.skip ?? null, o.detail ?? null, `clm_${o.id}`, iso(o.claimedAt),
-      skipped ? null : 1, skipped ? null : 87,
+      skipped ? null : 1, skipped ? null : (o.bodyLen ?? AS_SENT),
       json([{ check: "gate", verdict: o.skip ?? "ok", wording: null, source: o.skip ? null : "CONSENT:ledger:probe" }]),
       o.sentAt === undefined ? null : iso(o.sentAt), o.deliveredAt === undefined ? null : iso(o.deliveredAt),
     ],
   );
 }
-async function seedMessage(o: { ref: string; targetType: string; targetId: string; status: string; receipt?: string; at: number; msisdn?: string }): Promise<void> {
+async function seedMessage(o: { ref: string; targetType: string; targetId: string; status: string; receipt?: string; at: number; msisdn?: string; bodyLen?: number }): Promise<void> {
   await q(
     `INSERT INTO "SmsMessage" (reference, msisdn, purpose, provider, "senderId", "bodyLen", status, "dlrStatus", "dlrDesc", "providerMsg", attempts, "targetType", "targetId", "createdAt", "sentAt", "deliveredAt", "balanceTzs")
-     VALUES ($1, $2, 'MARKETING', 'blackball', 'probe', 87, $3, $4, $5, 'Message sent', 0, $6, $7, $8, $9, $10, 49994)`,
-    [o.ref, o.msisdn ?? W.TEST.key, o.status, o.receipt ?? null, o.receipt ? "Delivered" : null, o.targetType, o.targetId, iso(o.at), iso(o.at + 1000), o.status === "DELIVERED" ? iso(o.at + 6000) : null],
+     VALUES ($1, $2, 'MARKETING', 'blackball', 'probe', $11, $3, $4, $5, 'Message sent', 0, $6, $7, $8, $9, $10, 49994)`,
+    [o.ref, o.msisdn ?? W.TEST.key, o.status, o.receipt ?? null, o.receipt ? "Delivered" : null, o.targetType, o.targetId, iso(o.at), iso(o.at + 1000), o.status === "DELIVERED" ? iso(o.at + 6000) : null, o.bodyLen ?? AS_SENT],
   );
 }
 
@@ -420,26 +435,27 @@ try {
     for (let i = 1; i <= 8; i++) await seedSwitchAudit(i, NOW - 40 * DAY + i * 3_600_000);
   });
   const aStart = NOW - 3 * 3_600_000;
-  await seeded("campaign A: the row, the recipient, the composer test and the campaign's message, four audit rows", async () => {
-    await seedCampaign(CAMP_A, aStart);
+  // ⭐ The sheet's path (2026-10-09): NO composer test — the GROWTH login's own number is not the test number — so A is the drive's
+  // first real SMS, one send, and the first evidence run is G3's look before A's Start.
+  await seeded("campaign A: the row, the recipient and the campaign's message, three audit rows (no composer test on the sheet's path)", async () => {
+    await seedCampaign(CAMP_A, aStart, "DONE", 1, LIB.DRIVE_CAMPAIGN_NAMES.A);
     await seedRecipient({ id: "rcp_probe_a", campaign: CAMP_A, status: "DELIVERED", ref: "sms_aaaaaaaaaaaaaaaaaaaaaaaa", token: "ABCD2345", claimedAt: aStart + 2000, sentAt: aStart + 4000, deliveredAt: aStart + 9000 });
     await seedMessage({ ref: "sms_aaaaaaaaaaaaaaaaaaaaaaaa", targetType: "SmsCampaignRecipient", targetId: "rcp_probe_a", status: "DELIVERED", receipt: "DELIVRD", at: aStart + 3000 });
-    await seedMessage({ ref: "sms_tttttttttttttttttttttttt", targetType: "SmsCampaignTest", targetId: CAMP_A, status: "ACCEPTED", at: aStart - 300_000 });
-    await seedCampaignAudit(CAMP_A, "marketing.campaign_test", "ADMIN", OFFICER, { variant: "SW", outcome: "handed_over", target: "own" }, aStart - 300_000);
     await seedCampaignAudit(CAMP_A, "marketing.campaign_confirmed", "COMPLIANCE", OFFICER, { count: 1, tier: "ENUMERATE" }, aStart - 60_000);
     await seedCampaignAudit(CAMP_A, "marketing.campaign_started", "ADMIN", OFFICER, { count: 1, estimateSegments: 1, freshCount: 1, shrunkBy: 0 }, aStart);
     await seedCampaignAudit(CAMP_A, "marketing.campaign_finished", "SYSTEM", null, { DELIVERED: 1 }, aStart + 10_000);
   });
-  const argsA = [CAMP_A, `--test=${W.TEST.raw}`, "--expect=delivered:test", "--expect-sends=2", "--expect-audit=marketing.campaign_confirmed", "--expect-audit=marketing.campaign_started", "--expect-audit=marketing.campaign_finished", "--label=A", "--show-stop-link"];
-  // step 2's shape: the very first evidence run, with no ledger file yet — --new-ledger creates it, with the count
+  const argsA = [CAMP_A, `--test=${W.TEST.raw}`, "--expect=delivered:test", "--expect-sends=1", "--expect-audit=marketing.campaign_confirmed", "--expect-audit=marketing.campaign_started", "--expect-audit=marketing.campaign_finished", "--label=A", "--show-stop-link"];
+  // the sheet's first evidence run — G3's look before A's Start — with no ledger file yet: --new-ledger creates it, with the count
   const brandNew: LedgerState = { text: null };
-  const created = await runEv([...argsA, "--new-ledger"], brandNew);
+  const lookA = [CAMP_A, `--test=${W.TEST.raw}`, "--look", "--expect-audience=1"];
+  const created = await runEv([...lookA, "--new-ledger"], brandNew);
   const createdTotal = (() => { const p = LIB.parseLedger(brandNew.text); return p.ok ? LIB.ledgerTotal(p.ledger) : -1; })();
-  ok("2a-new · the FIRST evidence run, with no ledger file and --new-ledger, creates the ledger with the count (2 of 6); the same run without the flag stops (exit 2)",
-    created.code === 0 && createdTotal === 2 && (await runEv(argsA, { text: null })).code === 2, `exit ${created.code} · counted ${createdTotal}`, created.lines);
+  ok("2a-new · the FIRST evidence run (on the sheet: G3's look before A's Start), with no ledger file and --new-ledger, creates the ledger with the count (1 of 6); the same run without the flag stops (exit 2)",
+    created.code === 0 && createdTotal === 1 && (await runEv(lookA, { text: null })).code === 2, `exit ${created.code} · counted ${createdTotal}`, created.lines);
   const evA = await runEv(argsA);
-  ok("2a · campaign A on Postgres: PROVEN (delivered:test, 2 chargeable sends, the audit rows), the stop link printed once, every message 'to the test number: yes', the ledger counts 2",
-    evA.code === 0 && has(evA.lines, "RESULT: PROVEN") && evA.lines.filter((l) => l.includes("/s/ABCD2345")).length === 1 && has(evA.lines, "2 of 6 chargeable sends counted")
+  ok("2a · campaign A on Postgres: PROVEN (delivered:test, 1 chargeable send, the audit rows), the stop link printed once, every message 'to the test number: yes', the ledger counts 1",
+    evA.code === 0 && has(evA.lines, "RESULT: PROVEN") && evA.lines.filter((l) => l.includes("/s/ABCD2345")).length === 1 && has(evA.lines, "1 of 6 chargeable sends counted")
       && has(evA.lines, "to the test number: yes") && has(evA.lines, "TO THE TEST NUMBER    clear") && has(evA.lines, "ONE MESSAGE PER ROW   clear") && has(evA.lines, "NO OTHER MARKETING SMS clear")
       && has(evA.lines, "database: loopback"),
     `exit ${evA.code}`, evA.lines);
@@ -449,18 +465,18 @@ try {
   ok("2a2 · ⭐ --look --expect-audience on Postgres: A is confirmed for 1 person (exit 0, says so); expecting 2 is exit 1 with DO NOT PRESS START",
     audOk.code === 0 && has(audOk.lines, "the audience is the 1 expected") && audWrong.code === 1 && has(audWrong.lines, "DO NOT PRESS START"), `ok exit ${audOk.code} · wrong exit ${audWrong.code}`, [...audOk.lines, ...audWrong.lines]);
 
-  // the stop link tapped, after A's message
+  // the stop made on the stop link's page, after A's message (no SMS carries the link since 2026-10-09: the drive opens it from the row)
   const stopAt = NOW - 2 * 3_600_000;
   await seeded("the stop link's two acts: the stop and the withdrawal", async () => {
     await q(`INSERT INTO "Suppression" (id, channel, identifier, category, reason, evidence, "createdAt") VALUES ('sup_probe_test', 'SMS', $1, 'MARKETING', 'WITHDRAWN', 'optout:ref_probe_a', $2)`, [W.TEST.key, iso(stopAt)]);
     await seedLedger("led_probe_0002", "WITHDRAWN", "OPT_OUT_PAGE", stopAt, "optout:ref_probe_a", "Acha ofa na habari kwa SMS", false);
   });
-  const evStopped = await runEv([CAMP_A, `--test=${W.TEST.raw}`, "--expect=delivered:test", "--expect=stopped:test", "--expect-sends=2", "--label=A"]);
-  ok("2b · the stop tap, read back: A is still PROVEN and `stopped:test` holds (an active stop from the link, after A's message)", evStopped.code === 0 && has(evStopped.lines, "RESULT: PROVEN"), `exit ${evStopped.code}`, evStopped.lines);
+  const evStopped = await runEv([CAMP_A, `--test=${W.TEST.raw}`, "--expect=delivered:test", "--expect=stopped:test", "--expect-sends=1", "--label=A"]);
+  ok("2b · the stop on the link's page, read back: A is still PROVEN and `stopped:test` holds (an active stop from the link, after A's message)", evStopped.code === 0 && has(evStopped.lines, "RESULT: PROVEN"), `exit ${evStopped.code}`, evStopped.lines);
 
   const bStart = NOW - 3_600_000;
   await seeded("campaign B: the stopped number skipped, three audit rows", async () => {
-    await seedCampaign(CAMP_B, bStart);
+    await seedCampaign(CAMP_B, bStart, "DONE", 1, LIB.DRIVE_CAMPAIGN_NAMES.B);
     await seedRecipient({ id: "rcp_probe_b", campaign: CAMP_B, status: "SKIPPED", ref: null, token: "ABCD2345", skip: "suppressed", detail: "suppressed withdrawn", claimedAt: bStart + 2000 });
     await seedCampaignAudit(CAMP_B, "marketing.campaign_confirmed", "COMPLIANCE", OFFICER, { count: 1, tier: "ENUMERATE" }, bStart - 60_000);
     await seedCampaignAudit(CAMP_B, "marketing.campaign_started", "ADMIN", OFFICER, { count: 1, estimateSegments: 1, freshCount: 1, shrunkBy: 0 }, bStart);
@@ -494,7 +510,7 @@ try {
   await seeded("the resume (the stop lifted from the link, the yes written) and campaign C: delivered, paused and resumed", async () => {
     await q(`UPDATE "Suppression" SET "liftedAt" = $1, "liftedReason" = 'optout:ref_probe_c' WHERE id = 'sup_probe_test'`, [iso(resumeAt)]);
     await seedLedger("led_probe_0003", "GIVEN", "OPT_OUT_PAGE", resumeAt, "optout:ref_probe_c", W.RESUME_WORDING, false);
-    await seedCampaign(CAMP_C, cStart);
+    await seedCampaign(CAMP_C, cStart, "DONE", 1, LIB.DRIVE_CAMPAIGN_NAMES.C);
     await seedRecipient({ id: "rcp_probe_c", campaign: CAMP_C, status: "DELIVERED", ref: "sms_cccccccccccccccccccccccc", token: "ABCD2345", claimedAt: cStart + 2000, sentAt: cStart + 4000, deliveredAt: cStart + 9000 });
     await seedMessage({ ref: "sms_cccccccccccccccccccccccc", targetType: "SmsCampaignRecipient", targetId: "rcp_probe_c", status: "DELIVERED", receipt: "DELIVRD", at: cStart + 3000 });
     await seedCampaignAudit(CAMP_C, "marketing.campaign_started", "ADMIN", OFFICER, { count: 1, estimateSegments: 1, freshCount: 1, shrunkBy: 0 }, cStart);
@@ -505,9 +521,9 @@ try {
   const evC = await runEv([CAMP_C, `--test=${W.TEST.raw}`, "--expect=delivered:test", "--expect=resumed:test", "--expect-sends=1", "--expect-audit=marketing.campaign_paused", "--expect-audit=marketing.campaign_resumed", "--label=C"]);
   ok("2e · campaign C after 'Start them again': PROVEN (delivered, the stop lifted from the link, the pause and the resume in E24)", evC.code === 0 && has(evC.lines, "RESULT: PROVEN"), `exit ${evC.code}`, evC.lines);
   const table = await runEv(["--ledger"]);
-  const tooMany = await runEv(["--ledger", "--sends=3"]);
-  ok("2f · the ledger: A 2 + B 0 + X 1 (the removed gate's send is counted too) + C 1 = 4 of 6 counted; 3 more would pass the cap and exit 1",
-    table.code === 0 && has(table.lines, "counted 4") && tooMany.code === 1 && has(tooMany.lines, "REFUSED"), `table exit ${table.code} · --sends=3 exit ${tooMany.code}`, [...table.lines, ...tooMany.lines]);
+  const tooMany = await runEv(["--ledger", "--sends=4"]);
+  ok("2f · the ledger: A 1 + B 0 + X 1 (the removed gate's send is counted too) + C 1 = 3 of 6 counted (the sheet's own path: A 1 + B 0 + C 1 = 2); 4 more would pass the cap and exit 1",
+    table.code === 0 && has(table.lines, "counted 3") && tooMany.code === 1 && has(tooMany.lines, "REFUSED"), `table exit ${table.code} · --sends=4 exit ${tooMany.code}`, [...table.lines, ...tooMany.lines]);
 
   // ⭐ NOTHING ELSE IS SENDING, on the evidence side too: a recent MARKETING message to ANOTHER number turns a look of ANY campaign to exit 1
   await seeded("a marketing message to another number, one hour ago", () => seedMessage({ ref: "sms_probe_elsewhere_ev_0000", targetType: "SmsCampaignRecipient", targetId: "rcp_probe_elsewhere", status: "DELIVERED", receipt: "DELIVRD", at: NOW - 3_600_000, msisdn: W.OTHER_KEY }));
@@ -518,15 +534,51 @@ try {
     elsewhereLook.code === 1 && has(elsewhereLook.lines, "VIOLATION — 1 MARKETING message created in the last 24 hours went to a number that is NOT the test number") && has(elsewhereLook.lines, "BUT 1 VIOLATION") && elsewhereGone.code === 0,
     `with it ${elsewhereLook.code} · without ${elsewhereGone.code}`, elsewhereLook.lines);
 
+  // ⭐ SENT AS WRITTEN on Postgres (the owner's ruling of 2026-10-09): the drive's message and nothing after it, by the length the database
+  // keeps. A's messages were clear; a campaign whose one message is 49 characters longer (the old footer appended) makes a look exit 1.
+  // (On a throwaway ledger: the drive's own counts stay as 2f read them.)
+  const CAMP_F = "cmp_u52a_probe_ffff";
+  const fStart = NOW - 300_000;
+  await seeded("campaign F: one message 49 characters longer than the drive's message (the old footer appended)", async () => {
+    await seedCampaign(CAMP_F, fStart, "DONE", 1, "U52a probe F (a footer)");
+    await seedRecipient({ id: "rcp_probe_f", campaign: CAMP_F, status: "DELIVERED", ref: "sms_ffffffffffffffffffffffff", token: "ABCD2345", claimedAt: fStart + 2000, sentAt: fStart + 4000, deliveredAt: fStart + 9000, bodyLen: AS_SENT + 49 });
+    await seedMessage({ ref: "sms_ffffffffffffffffffffffff", targetType: "SmsCampaignRecipient", targetId: "rcp_probe_f", status: "DELIVERED", receipt: "DELIVRD", at: fStart + 3000, bodyLen: AS_SENT + 49 });
+  });
+  const lookF = await runEv([CAMP_F, `--test=${W.TEST.raw}`, "--look"], { text: LIB.serializeLedger(LIB.emptyLedger()) });
+  ok("2h · ⭐ SENT AS WRITTEN on Postgres: campaign A's messages read clear, and a message 49 characters longer than the drive's message (the old footer) makes a look exit 1 with the VIOLATION named",
+    evA.code === 0 && has(evA.lines, "SENT AS WRITTEN       clear") && lookF.code === 1
+      && has(lookF.lines, "VIOLATION — 1 campaign message is not as long as the drive's message with its name filled in") && has(lookF.lines, "BUT 1 VIOLATION"),
+    `A exit ${evA.code} · F look exit ${lookF.code}`, lookF.lines);
+
+  // ⭐ DRIVE'S MESSAGE on Postgres: the four stored fields compared in SQL with the drive's words BOUND as values — A's (apostrophes
+  // and all, through real parameter binding) read clear; a campaign saved with one English word changed makes a look exit 1.
+  const CAMP_G = "cmp_u52a_probe_gggg";
+  const driveFields = W.DRIVE_MESSAGE as unknown as Fields;
+  await seeded("campaign G: the drive's message with one English word changed", async () => {
+    await seedCampaign(CAMP_G, NOW - 200_000, "DONE", 1, "U52a probe G (other words)", { ...driveFields, bodyEn: driveFields.bodyEn.split("coming soon").join("coming later") });
+  });
+  const lookG = await runEv([CAMP_G, `--test=${W.TEST.raw}`, "--look"], { text: LIB.serializeLedger(LIB.emptyLedger()) });
+  ok("2i · ⭐ DRIVE'S MESSAGE on Postgres: campaign A's four stored fields equal the drive's words (compared in SQL, bound as values — the apostrophes included), and a campaign saved with one English word changed makes a look exit 1 naming the English message",
+    has(evA.lines, "DRIVE'S MESSAGE       clear") && lookG.code === 1 && has(lookG.lines, "VIOLATION — the campaign's stored English message is not the drive's") && has(lookG.lines, "BUT 1 VIOLATION"),
+    `G look exit ${lookG.code}`, lookG.lines);
+
   /* ── 3 · the types the tools read, and the order they read in ── */
   await seeded("four more live-switch audit rows (the switch now has twelve)", async () => {
     for (let i = 9; i <= 12; i++) await seedSwitchAudit(i, NOW - 40 * DAY + i * 3_600_000);
+  });
+  // ⭐ A draft with one composer test: the sheet's path makes none, but the evidence still reads composer tests, and their read's types
+  // are proven here on real Postgres (to the test number, five days ago — outside every "last day" count)
+  const CAMP_T = "cmp_u52a_probe_tttt";
+  await seeded("a draft with one composer test to the test number", async () => {
+    await seedCampaign(CAMP_T, NOW - 5 * DAY, "DRAFT", 1, "U52a probe T (a composer test)");
+    await seedMessage({ ref: "sms_tttttttttttttttttttttttt", targetType: "SmsCampaignTest", targetId: CAMP_T, status: "ACCEPTED", at: NOW - 5 * DAY });
   });
   {
     const prisma = new PrismaClient();
     try {
       const pf = await LIB.readOnlyTransaction(prisma, (tx: unknown) => PRE.readPreflightFacts(tx, { testKey: W.TEST.key, controlKey: W.CONTROL.key }));
       const ef = await LIB.readOnlyTransaction(prisma, (tx: unknown) => EV.readEvidenceFacts(tx, { campaignId: CAMP_A, testKey: W.TEST.key, controlKey: W.CONTROL.key, wantToken: true }));
+      const tf = await LIB.readOnlyTransaction(prisma, (tx: unknown) => EV.readEvidenceFacts(tx, { campaignId: CAMP_T, testKey: W.TEST.key, controlKey: W.CONTROL.key, wantToken: false }));
       const isDate = (v: unknown): boolean => v instanceof Date;
       ok("3a · the pre-flight's facts have the types the tools assume (booleans, Dates, numbers, text; no bigint; the database's clock a Date)",
         isDate(pf.now) && typeof pf.migrations[0].finished === "boolean" && isDate(pf.test.contact.created_at) && typeof pf.test.lists[0].members === "number" && isDate(pf.test.lists[0].added_at)
@@ -537,21 +589,24 @@ try {
           && typeof pf.config[LIB.KEY_SETTINGS] === "object" && typeof pf.config[LIB.KEY_OUTREACH] === "object"
           && Array.isArray(pf.inFlight) && typeof pf.elsewhere === "number",
         `${pf.migrations.length} migrations`);
-      ok("3b · the evidence's facts have the types the tools assume (seq as text, jsonb as objects, counts as numbers, stamps as Dates, to_test a boolean)",
+      const drive = ["drive_body_sw", "drive_body_en", "drive_fallback_sw", "drive_fallback_en"];
+      ok("3b · the evidence's facts have the types the tools assume (seq as text, jsonb as objects, counts as numbers, stamps as Dates, to_test and the four DRIVE'S MESSAGE comparisons booleans — true for A; a composer test's read on the draft that has one)",
         isDate(ef.now) && typeof ef.campaign.status === "string" && isDate(ef.campaign.started_at) && typeof ef.audit[0].seq === "string" && typeof ef.audit[0].payload === "object"
           && typeof ef.recipientCounts[0].n === "number" && typeof ef.messageCounts[0].n === "number" && Array.isArray(ef.recipients[0].gate_trail)
           && isDate(ef.recipients[0].claimed_at) && typeof ef.recipients[0].attempts === "number" && typeof ef.recipients[0].has_token === "boolean"
           && typeof ef.messages[0].balance_tzs === "string" && ef.stopToken === "ABCD2345" && typeof ef.people.test.suppressions[0].via_link === "boolean"
-          && typeof ef.campaign.estimate_tzs === "string" && ef.messages.every((m: { to_test: unknown }) => typeof m.to_test === "boolean") && ef.testMessages.every((m: { to_test: unknown }) => typeof m.to_test === "boolean")
+          && typeof ef.campaign.estimate_tzs === "string" && ef.messages.every((m: { to_test: unknown }) => typeof m.to_test === "boolean")
+          && drive.every((k) => ef.campaign[k] === true)
+          && tf.testMessages.length === 1 && tf.testMessages[0].to_test === true && typeof tf.testMessages[0].body_len === "number" && typeof tf.testMessageCounts[0].n === "number"
           && typeof ef.elsewhere === "number" && typeof ef.campaign.audience_count === "number",
-        `${ef.audit.length} audit rows`);
+        `${ef.audit.length} audit rows · the draft's composer tests ${tf.testMessages.length}`);
 
-      // ⭐ THE ORDER — campaign A's four rows straddle seq 9 and 10; the switch has twelve rows and the tool shows eight
+      // ⭐ THE ORDER — campaign A's three rows straddle seq 9 and 10; the switch has twelve rows and the tool shows eight
       const wantA = await numericSeqs(`"targetType" = 'SmsCampaign' AND "targetId" = $1`, [CAMP_A]);
       const gotA = (ef.audit as Array<{ seq: string }>).map((a) => Number(a.seq));
       const straddles = new Set(wantA.map((n) => String(n).length)).size > 1;
       ok("3c · ⭐ the campaign's audit rows come back in NUMERIC seq order across the 9 to 10 boundary (not text order)",
-        json(gotA) === json(wantA) && gotA.length === 4,
+        json(gotA) === json(wantA) && gotA.length === 3,
         `tool [${gotA.join(", ")}] · numeric [${wantA.join(", ")}]${straddles ? "" : " · NOTE these rows do not straddle a digit boundary on this cluster, so the check cannot tell text order from numeric order"}`);
       const allSwitch = await numericSeqs(`"targetType" = 'SystemConfig' AND "targetId" = $1`, [SWITCH_KEY]);
       const wantSwitch = [...allSwitch].sort((a, b) => b - a).slice(0, 8);

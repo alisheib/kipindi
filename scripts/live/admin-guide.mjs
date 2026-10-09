@@ -6,6 +6,11 @@
  * do, and a picture of THAT page — taken here, on a local in-memory server (zero production risk), with made-up people.
  * ⛔ Every message the guide quotes is checked against the source first: a guide that quotes a sentence the platform no
  * longer says refuses to build (naming it).
+ * ⭐ THE GUIDE'S MAIN EXAMPLE CAMPAIGN IS THE OWNER'S FIRST TEST (Ali, 2026-10-09): the draft it writes, tests, confirms and starts
+ * carries U52a's own message — both teaser bodies with {jina}, "Rafiki" and "Friend" — read from ITS one copy
+ * (`scripts/lib/marketing-u52a-message.mjs`, plain data so this plain-node script can load it), so the pictures show the very
+ * message he will send. The deliberate wrong examples (a curly quote, …) stay as they are. A marketing SMS is sent exactly as
+ * written (the owner's ruling of 2026-10-09): nothing in the pictures is appended to it.
  *
  * THREE RUNS, in this order — each on a fresh in-memory server (remove .next first: a stale .next 404s every /api/dev-test
  * route), DISABLE_ADMIN_TOTP=true, SESSION_SECRET and OTP_PEPPER set:
@@ -24,6 +29,7 @@ import http from "node:http";
 import { existsSync, mkdirSync, readFileSync, readdirSync, statSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { IMPORT_STEPS, SECTIONS, BALANCE_STATES, MESSAGES } from "./admin-guide-messages.mjs";
+import { DRIVE_MESSAGE } from "../lib/marketing-u52a-message.mjs";
 
 const PHASE = process.argv[2] || "";
 if (!["a", "b", "pdf"].includes(PHASE)) {
@@ -197,11 +203,28 @@ const SEL = {
   name: 'label[data-field="name"] input',
   bodySw: 'label[data-field="bodySw"] textarea',
   fallbackSw: 'label[data-field="nameFallbackSw"] input',
+  bodyEn: 'label[data-field="bodyEn"] textarea',
+  fallbackEn: 'label[data-field="nameFallbackEn"] input',
   save: "[data-compose-save]",
   saved: "[data-compose-saved]",
   audience: '[data-block="compose-audience"]',
   test: '[data-block="compose-test"]',
 };
+
+/**
+ * ⭐ THE GUIDE'S MAIN EXAMPLE MESSAGE — U52a's own (`DRIVE_MESSAGE`, the owner's words of 2026-10-09), typed into the composer as
+ * the officer will: the Swahili body, its word for {jina}, the English body (its word field appears once it holds {jina}), and its
+ * word. ⛔ Never retyped here: the one copy is `scripts/lib/marketing-u52a-message.mjs`.
+ */
+async function writeDriveMessage(page) {
+  await page.locator(SEL.bodySw).first().fill(DRIVE_MESSAGE.bodySw);
+  await wait(250);
+  await page.locator(SEL.fallbackSw).first().fill(DRIVE_MESSAGE.nameFallbackSw);
+  await page.locator(SEL.bodyEn).first().fill(DRIVE_MESSAGE.bodyEn);
+  await wait(250);
+  await page.locator(SEL.fallbackEn).first().fill(DRIVE_MESSAGE.nameFallbackEn);
+  await wait(250);
+}
 
 /* ═══ RUN a · production's look ═══════════════════════════════════════════════════════════════════════════════════ */
 
@@ -384,15 +407,17 @@ async function runA() {
     });
     await step("18-compose", async () => {
       await page.goto(`${BASE}/admin/campaigns/new`, { waitUntil: "networkidle" });
-      await page.locator(SEL.name).first().fill("October welcome");
-      await page.locator(SEL.bodySw).first().fill("50pick: Karibu {jina}! Bashiri mechi za wikendi.");
-      await page.locator(SEL.fallbackSw).first().fill("rafiki");
+      // A name that fits the teaser — neutral, staff-only, and not one of U52a's own (`U52a drive A`…), which name the live drive's campaigns
+      await page.locator(SEL.name).first().fill("Coming soon");
+      // ⭐ the main example: U52a's own message, both languages (the owner's first test, as he will send it)
+      await writeDriveMessage(page);
       await wait(500);
       await shoot(page, "19-compose-filled");
+      // the deliberate wrong example (a curly quote forces Unicode) — kept as it is
       await page.locator(SEL.bodySw).first().fill("50pick: Karibu {jina}! Bashiri “leo”.");
       await wait(500);
       await shoot(page, "20-compose-warning");
-      await page.locator(SEL.bodySw).first().fill("50pick: Karibu {jina}! Bashiri mechi za wikendi.");
+      await page.locator(SEL.bodySw).first().fill(DRIVE_MESSAGE.bodySw);
       await wait(400);
       await page.locator(SEL.save).first().click();
       await page.waitForSelector(SEL.saved, { timeout: 20_000 });
@@ -485,12 +510,12 @@ function eatInstant(hourEat) {
 const pinWindow = (hourEat) => post(`/api/dev-test/marketing-send-window?at=${encodeURIComponent(eatInstant(hourEat))}`);
 const seedLive = (query) => post(`/api/dev-test/marketing-live-seed?${query}`);
 /** ⭐ PRODUCTION'S OWNER SETTINGS, through the platform's own writers (`marketing-typed-test-seed`): the public policy lines
- *  (G10), the `adult.test` wording (G4), the campaign source line (G5) and licence outreach OPEN — what Ali's approvals saved
- *  on production on 2026-10-07/08. Without the source line a campaign to the contact book cannot be confirmed (STEP 54's
- *  lock turn: run b's Confirm was held by "… must carry its source line — and this campaign has none yet"). */
+ *  (G10), the `adult.test` wording (G4) and licence outreach OPEN — what Ali's approvals saved on production on 2026-10-07/08.
+ *  ⛔ No source line is seeded: since the owner's ruling of 2026-10-09 a marketing SMS carries none and nothing is refused
+ *  without one (it was seeded only because run b's Confirm was held by "… must carry its source line" — STEP 54's lock turn). */
 async function ownerWorld() {
   let last = {};
-  for (const q of ["lines=1", "adult=1", "source=1", "open=1"]) last = await post(`/api/dev-test/marketing-typed-test-seed?${q}`);
+  for (const q of ["lines=1", "adult=1", "open=1"]) last = await post(`/api/dev-test/marketing-typed-test-seed?${q}`);
   if (String(last.outreach ?? "").toUpperCase() !== "OPEN") throw new Error(`licence outreach is not open: ${JSON.stringify(last).slice(0, 300)}`);
 }
 async function openCampaign(page, id) {
@@ -540,9 +565,9 @@ async function runB() {
   await step("40-confirm", async () => {
     // The audience first (the rail's own address, as its "weekend" pill writes it), then the words, then one save.
     await page.goto(`${BASE}/admin/campaigns/new?tag=weekend`, { waitUntil: "networkidle" });
-    await page.locator(SEL.name).first().fill("Weekend offer");
-    await page.locator(SEL.bodySw).first().fill("50pick: Habari {jina}! Bashiri mechi za wikendi.");
-    await page.locator(SEL.fallbackSw).first().fill("rafiki");
+    await page.locator(SEL.name).first().fill("Coming soon (weekend list)");
+    // ⭐ the campaign the guide confirms and starts carries the same message: U52a's own, both languages
+    await writeDriveMessage(page);
     await wait(400);
     await page.locator(SEL.save).first().click();
     await page.waitForSelector(SEL.saved, { timeout: 20_000 });

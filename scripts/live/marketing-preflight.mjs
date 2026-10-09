@@ -415,7 +415,8 @@ export function judgePreflight(facts, ctx, lib = LIB) {
     ? `${holder}the gate would clear it on the ${v.branch === "account" ? "ACCOUNT" : "CONTACT"} branch (${v.basis})${later(v).length ? ` — asked again at the send, not judged here: ${later(v).join(", ")}` : ""}`
     : `${holder}the gate would refuse it: ${v.skipReason} (${v.detail})`;
   const now = lib.judgeEligibility(eligFacts);
-  // The licence-outreach record decides whether the composer may test a TYPED number (run sheet step 2), so it is said beside the verdict.
+  // The licence-outreach record decides the licence branch of this judgement (a number with no consent, cleared under the licence),
+  // so it is said beside the verdict. (It no longer decides the drive's composer test: a typed number is not the GROWTH login's.)
   add("test-consent", now.ok, `${verdict(now)} · licence outreach: ${eligFacts.outreach} · ${lib.REFEREE_SAYING}`);
   const after = lib.judgeEligibility(lib.factsAfterStopCycle(eligFacts, nowMs));
   add("test-cycle", after.ok, after.ok

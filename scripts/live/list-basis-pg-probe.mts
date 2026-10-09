@@ -109,7 +109,9 @@ const N = {
 const U1 = "probe_lb_u1";
 /** Every number the scenario asks about, in key order — the order a bulk answer comes back in. */
 const KEYS = Object.values(N).sort();
-const WORDING = "50pick reaches the numbers on this list under its Gaming Board licence; they have not agreed to it, and every message carries a stop link.";
+/** A licence-outreach basis wording, as an owner might save one. ⛔ It promises no stop link — since the owner's ruling of
+ *  2026-10-09 no message carries one (the basis default reads "…if they ask us to stop, the stop is kept for good."). */
+const WORDING = "50pick reaches the numbers on this list under its Gaming Board licence; they have not agreed to it, and if they ask us to stop, the stop is kept for good.";
 const ADULT = "Every number on this list belongs to a person aged 18 or older.";
 const NOTE = "probe: a file of numbers the officer bought from a partner";
 const OFFICER = "probe_officer";
