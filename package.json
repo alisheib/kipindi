@@ -327,6 +327,7 @@
     "qa:contacts-import": "node scripts/live/contacts-import-drive.mjs",
     "qa:contacts-import-live": "node scripts/live/contacts-import-live-check.mjs",
     "qa:contacts-import-big": "node scripts/live/contacts-import-big-drive.mjs",
+    "qa:contacts-import-roundtrip": "node scripts/live/contacts-import-roundtrip-drive.mjs",
     "qa:contacts-import-files": "tsx scripts/lib/real-world-contact-files.mts",
     "test:contacts-import": "tsx scripts/contacts-import.test.mts",
     "red:contacts-import": "tsx scripts/contacts-import.test.mts --prove-red",

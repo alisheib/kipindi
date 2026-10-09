@@ -80,7 +80,7 @@ then: "the contacts screen"):
 | C5 | Duplicate detection, seen and decided: repeats inside a file, numbers already in the book (keep · use the file's · fill blanks — readers only, S15-10), the list step | ✅ LIVE `df835bb5` — proof in §0 |
 | C3b | The readers made forgiving of real files — found by the generator's author reading the shipped readers against the 28 files (2026-10-09): **G1** a CSV with ONE broken quote is refused whole (`messy-real-life.csv`, `unterminated_quote` at its last record) → offer the rows before it, the broken record named; **G2** a workbook whose first visible sheet is a cover page finds no Phone column (`excel-multi-sheet.xlsx`) → read the sheet that holds the phones, and say which; **G3** two numbers in one phone cell (Google's ` ::: `, "0712… / 0754…") are invalid → take the first mobile, say so; **G4** Outlook's number in Business / Home / Primary while Mobile is empty is lost → fall back to the other phone columns. Proven with the generator's files | ⬜ (after C3–C5) |
 | C6 | Stress: large files at the limits, through the REAL dialog on a local server (`npm run qa:contacts-import-big`, after `qa:contacts-import-files -- --big`): a 150,000-row CSV — check exactly the generator's truth (137,806 new · 9,200 repeated · 2,994 invalid), imported whole (read 0.2 s · upload + check 5.1 s · import 29.9 s); 150,000 vCards imported whole (138,071 added; read 0.9 s · 5.6 s · 31.4 s); a 42 MB vCard with photos read in 0.4 s (streamed; photos never uploaded) and checked; one row past 200,000 REFUSED with the cap named; a 1.4 MB workbook REFUSED with the save-as-CSV remedy. Two runs at once and a crash mid-commit: proven on PostgreSQL by `test:contacts-import-db` (5c, 5d–5i) and in `qa:contacts-import` (reload → adopt → resume) | ✅ `9121d857` (local) |
-| C7 | U34b — an export read back through the importer, row for row | ⬜ |
+| C7 | U34b — an export read back through the importer, row for row (`npm run qa:contacts-import-roundtrip`): a reader's FULL export of 49 contacts (the hard cases among them — a comma and doubled quotes in a name, formula-looking names, a line break in a note) imported back: all 49 "already in the book", nothing new, repeated, invalid or unreadable; under "use the file's version" NOTHING differs (no changes listed; 0 new · 0 updated · 49 kept); the result 0 added · 0 updated · 49 kept · 0 failed. A MASKED export (GROWTH) is refused whole in words ("These numbers are masked…"), no way on | ✅ (local, this commit) |
 
 ## §2 — WHAT EXISTS TODAY (read from the code, 2026-10-09)
 
@@ -189,6 +189,7 @@ And from 2026-09-25: "it's 150k approx contacts, or VCF … it could be small an
 
 ## §3 — LOG (newest first)
 
+- **2026-10-09 ~04:35 EAT · C7** — the export round trip proven (the C7 row); the tracker's U34 row to shipped.
 - **2026-10-09 ~04:30 EAT · C6** — the big files through the browser, all green (the C6 row); the importer LIVE `df835bb5`;
   the live check on production held for Ali's go (the classifier); C3b being built (`contacts-c3b`).
 - **2026-10-09 ~04:15 EAT · the importer pushed (C3–C5)** — the review round built by both builders (`493e58bd`: S15-10
