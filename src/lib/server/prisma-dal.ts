@@ -403,6 +403,8 @@ import type {
   ListBasisCoverage,
 } from "./store";
 import { ERASURE_EVIDENCE } from "@/lib/marketing/erasure-mark";
+// C8a · the ONE "does an erasure stand?" both twins' grouped read answer through (its own line: §27.5 pins the one above).
+import { erasureStandsAmongRows } from "@/lib/marketing/erasure-mark";
 import { assertListBasisSeed, assertListBasisRevocation, assertListBasisKeys } from "@/lib/server/marketing/list-basis-model";
 
 /** ContactListBasis row -> StoredContactListBasis (marketing U33a-L). ⛔ No update member and no delete member in either
@@ -4071,6 +4073,22 @@ export const prismaDb = {
       const latest = new Map<string, StoredMessagingConsent>();
       for (const r of rows) if (!latest.has(r.identifier)) latest.set(r.identifier, toStoredMessagingConsent(r));
       return Array.from(latest.values()).sort((a, b) => (a.identifier < b.identifier ? -1 : a.identifier > b.identifier ? 1 : 0));
+    },
+    /** ⛔ C8a · the numbers among these on which an ERASURE STANDS — the ONE rule (`erasure-mark.ts`): ONE query in the
+     *  ledger's own order (`createdAt desc, id desc`, served by the [channel, identifier, category, createdAt] index), the
+     *  two columns the rule reads and the key, handed to `erasureStandsAmongRows` — the function the memory twin answers
+     *  through. ⛔ No status filter in the query: the rule alone says which rows decide (a later opt-out never lifts an
+     *  erasure; a GIVEN does), so Postgres and memory cannot disagree on it. §25's shape: through `bulkKeys`, an empty set
+     *  answered with no query. Executed on Postgres by `scripts/live/contacts-import-pg-probe.mts` section 7. */
+    erasureStandsAmong: async (q: MessagingKeyBatch): Promise<string[]> => {
+      const keys = bulkKeys(q.identifiers, "messagingConsent.erasureStandsAmong");
+      if (keys.length === 0) return [];
+      const rows = await pc().messagingConsent.findMany({
+        where: { channel: q.channel, category: q.category, identifier: { in: keys } },
+        select: { identifier: true, status: true, evidence: true },
+        orderBy: [{ createdAt: "desc" }, { id: "desc" }],
+      });
+      return erasureStandsAmongRows(keys, rows);
     },
   },
 

@@ -9,6 +9,8 @@
  * review round (2026-10-09) adds: a non-reader's start held to KEEP (S15-10), an ADMIN's view of other officers' runs
  * (S15-12), an erasure landing between a step's read and its write (R9), a step whose cache mirror and audit rows fail
  * after it landed (R10), a database deadlock answered `busy` (R11), and a new list that never outlives a lost start (R12).
+ * C8a (S15-15) adds M25: an erasure that comes to stand on a number with no book row after the check keeps the row at the
+ * commit — the step reads the check's own fact, the ONE rule, fresh.
  * Only what only the source can show is read from it (M19): what the cores import and what the action file exports.
  *
  * ⛔ IN-PROCESS. Every plant swaps one dependency of the commit (`ImportCommitDeps`) or one text the source assertion
@@ -28,7 +30,7 @@ import { adjustTally } from "../../src/lib/contacts/import-decide.ts";
 import {
   ADMIN, B, DIGEST, FIVE_THOUSAND_COUNTS, MAPPING, N, NOW, OFFICER, READER, captureAudit, captured, checkModule, commitModule, db,
   fiveThousandRows, fortyRows, holdsDigitRun, inFreshStore, keyOf, mem, runOf, seedAccount, seedFiveThousandBook, seedFortyWorld,
-  stageFile, stagedRows, truthCounts,
+  seedWord, stageFile, stagedRows, truthCounts,
 } from "../lib/contacts-import-world.mts";
 import type { StageRow } from "../lib/contacts-import-world.mts";
 import { SAMPLE_ROW_SENTENCE } from "../../src/lib/contacts/sample-sheet.ts";
@@ -99,6 +101,7 @@ export const L = {
   M22: "M22 · ⛔ R9 · the erasure race: a person erased between a step's read and its write — their staged row deleted, their number in no book row — is NOT created: the step reads its rows again, the conflict is decided once more, and the run finishes with the other rows imported",
   M23: "M23 · ⭐ R10 · after a step has LANDED its cache mirror and its audit rows cannot turn it into a refusal: a mirror that throws once and audit rows that throw leave the step done, and the run's end mirrors every created number the truth knows (N1 GIVEN, N4 stopped)",
   M24: "M24 · ⭐ R11 · a deadlock (P2034) inside a step answers busy, retryAfterSec 5, with the run's view and one audit row naming the error's code — never server_error, never a throw — the cursor unmoved; the next step lands",
+  M25: "M25 · ⛔ C8a · the commit reads the check's OWN fact, fresh at its step: an erasure that came to stand on a number with no book row AFTER the check and the start — its marker written since, alone or under an opt-out tap — keeps that row (nothing created; the row kept as the contact it reads as, chosen_keep), while the marker under a GIVEN written since still creates, and the run's other rows import",
 } as const;
 
 /* ══ HELPERS ══════════════════════════════════════════════════════════════════════════════════════════════════ */
@@ -546,6 +549,46 @@ async function run({ impl, ok, log }: Ctx): Promise<void> {
       `${threw ? `threw ${threw}` : step === null ? "no answer" : step.ok ? `${step.kind} · ${json(step.view.totals)}` : `refused ${step.reason}`} · Z in the book ${zBook} · created ${created.length}`);
   });
 
+  // ── M25 · C8a · an erasure that came to stand after the check keeps the row at the commit ──
+  await inFreshStore(async () => {
+    const E = "0757300011"; // the marker, then an opt-out tap above it — the latest word is NOT the marker
+    const F = "0757300012"; // the marker alone
+    const G = "0757300013"; // the marker, then a GIVEN — the number's next holder said yes: no erasure stands
+    const file: StageRow[] = [
+      { line: 2, cells: [N(1), "One", "", "", ""] },
+      { line: 3, cells: [E, "Erased Under A Tap", "", "", ""] },
+      { line: 4, cells: [F, "Erased Alone", "", "", ""] },
+      { line: 5, cells: [G, "Next Holder", "", "", ""] },
+    ];
+    const runId = await stageFile(OFFICER, file);
+    const { start, label } = await checkAndStart(runId, impl.deps, "KEEP", { kind: "none" });
+    // AFTER the check and the start: the ledger words land (ids in write order — one instant, the tie broken on the id).
+    await seedWord(keyOf(E), "led_m25_e1", "WITHDRAWN", ERASURE_EVIDENCE);
+    await seedWord(keyOf(E), "led_m25_e2", "WITHDRAWN", "optout:ab**");
+    await seedWord(keyOf(F), "led_m25_f1", "WITHDRAWN", ERASURE_EVIDENCE);
+    await seedWord(keyOf(G), "led_m25_g1", "WITHDRAWN", ERASURE_EVIDENCE);
+    await seedWord(keyOf(G), "led_m25_g2", "GIVEN", "optout:cd**");
+    let step: CommitStepResult | null = null;
+    let threw = "";
+    try {
+      step = await commitContactImportStep(OFFICER, { runId, fromCursor: 0 }, impl.deps);
+    } catch (e) {
+      threw = e instanceof Error ? e.name : String(e);
+    }
+    const created = bookRows().filter((c) => c.importId === runId).map((c) => c.msisdn).sort();
+    const erasedInBook = bookRows().filter((c) => c.msisdn === keyOf(E) || c.msisdn === keyOf(F)).length;
+    const rows = await stagedRows(runId);
+    const settled = (line: number): string => {
+      const r = rows.find((x) => x.line === line);
+      return r === undefined ? "gone" : `${r.outcome}:${r.outcomeReason}`;
+    };
+    ok(L.M25, threw === "" && start.ok && json(label) === json({ create: 4, update: 0, keep: 0 }) && step !== null && step.ok && step.kind === "done"
+      && json(created) === json([keyOf(N(1)), keyOf(G)].sort()) && erasedInBook === 0
+      && settled(3) === "keep:chosen_keep" && settled(4) === "keep:chosen_keep" && settled(5) === "create:null"
+      && step.view.totals.create === 2 && step.view.totals.keep === 2,
+      `${threw ? `threw ${threw}` : step === null ? "no answer" : step.ok ? `${step.kind} · ${json(step.view.totals)}` : `refused ${step.reason}`} · label ${json(label)} · created ${created.length} · erased numbers in the book ${erasedInBook} · rows ${[3, 4, 5].map(settled).join(" / ")}`);
+  });
+
   // ── M23 · R10 · a landed step's mirror and audit rows fail — the step stands, the run's end repairs the caches ──
   await inFreshStore(async () => {
     await seedFortyWorld();
@@ -906,6 +949,23 @@ const plants: readonly RedPlant<CommitImpl>[] = [
     name: "P24 · R11 · no database fault is retryable — a deadlock inside a step is a throw (server_error to the browser)",
     expect: L.M24,
     impl: () => withDeps({ retryable: () => false }),
+  },
+  {
+    name: "P25 · C8a · the commit's facts never ask whether an erasure stands — an erasure written after the check is created over",
+    expect: L.M25,
+    impl: () => withDeps({ reads: { ...REAL_DEPS.reads, erasureStands: async () => [] } }),
+  },
+  {
+    // ⭐ C8a's defect #2 inside the step: the commit decides from the ledger's LATEST word, so a tap above the marker lifts it.
+    name: "P25b · C8a · the commit reads the ledger's LATEST word as the erasure — the marker under an opt-out tap is created over",
+    expect: L.M25,
+    impl: () => withDeps({
+      reads: {
+        ...REAL_DEPS.reads,
+        erasureStands: async (msisdns) => (await REAL_DEPS.reads.latestWords(msisdns))
+          .filter((w) => w.status === "WITHDRAWN" && w.evidence === ERASURE_EVIDENCE).map((w) => w.identifier),
+      },
+    }),
   },
 ];
 

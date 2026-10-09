@@ -15,9 +15,13 @@
  * before decide() would shift every later index onto the wrong person.
  *
  * ── THE ORDER OF THE COLLAPSES (each beats everything below it, the override included) ──────────────────────
- *   1. ⛔ ERASED — the book row's `sourceRef` is `ERASURE_EVIDENCE` (U18b emptied it), or there is no row and the
- *      number's latest ledger word is the erasure withdrawal → keep. Re-importing an old spreadsheet must never
- *      write an erased person's name back (C3, X22). What a browser is told about such a row: the last section.
+ *   1. ⛔ ERASED — the book row's `sourceRef` is `ERASURE_EVIDENCE` (U18b emptied it; the row decides ALONE), or there
+ *      is no row and an erasure STANDS on the number → keep. ⭐ C8a (S15-15): "stands" is the ONE rule
+ *      (`erasure-mark.ts`, `erasureStandsOn`) — the latest of the number's ledger rows that is a GIVEN or an erasure
+ *      marker is a marker; a later opt-out's WITHDRAWN (a tap on an old /s/ link) or any other row that is not a GIVEN
+ *      does NOT lift it, a GIVEN does. The facts carry it (`erasureStands`, one grouped read — `import-check.ts`); this
+ *      file asks `isErasedNumber`, the function the Add form asks too. Re-importing an old spreadsheet must never write
+ *      an erased person's name back (C3, X22). What a browser is told about such a row: the last section.
  *   2. ⛔ ON THE STOP LIST — an ACTIVE suppression (the caller asks `db.suppression.find`, never the book's
  *      `suppressedAt` cache, which no stop or lift maintains) → keep, whatever was asked. A NEW number on the stop
  *      list is still created (owner decision 5): the collapse protects an existing contact, and the send gate
@@ -76,10 +80,11 @@
  * list hides an erased row (C3), so an officer who searches the book for that number finds nothing.
  *
  * Pure and client-safe. It imports `./contact-fields` (the tag rule, the name and notes cleaners, the tag limit) and
- * `../marketing/erasure-mark` (the one mark) and nothing else: no lib/server, no node:, no React, no directive.
+ * `../marketing/erasure-mark` (the one mark and, since C8a, the one "is this number erased?") and nothing else: no
+ * lib/server, no node:, no React, no directive.
  * Guard: `npm run test:contacts-import` (section `decide`) · red: `npm run red:contacts-import`.
  */
-import { ERASURE_EVIDENCE } from "../marketing/erasure-mark";
+import { isErasedNumber as markIsErased } from "../marketing/erasure-mark";
 import { MAX_TAGS, cleanDisplayName, cleanNotes, tagKey, type ContactDraft } from "./contact-fields";
 
 /* ══ THE CHOICES ════════════════════════════════════════════════════════════════════════════════ */
@@ -176,17 +181,24 @@ export type BookSnapshot = {
   readonly userId?: string | null;
 };
 
-/** The number's latest consent-ledger row, as decide() reads it. */
+/** The number's latest consent-ledger row, as decide() reads it — for X5's consent seam alone. ⛔ Never the erasure:
+ *  a later opt-out's WITHDRAWN sits above an erasure marker without lifting it, so "is it erased?" is `erasureStands`. */
 export type LedgerWord = { readonly status: "GIVEN" | "WITHDRAWN"; readonly evidence: string | null };
 
 /**
  * What the AUTHORITY says about one number — read by the server, never from a cache: the book row (erased rows
- * included, X22), an ACTIVE suppression, the latest ledger row, and whether a player account holds the number.
+ * included, X22), an ACTIVE suppression, the latest ledger row, whether an erasure stands on the number, and whether a
+ * player account holds the number.
  */
 export type NumberFacts = {
   readonly book: BookSnapshot | null;
   readonly suppressed: boolean;
   readonly ledgerLatest: LedgerWord | null;
+  /** ⛔ C8a · whether an erasure STANDS on the number by its ledger — the ONE rule (`erasure-mark.ts`,
+   *  `erasureStandsOn`: the latest GIVEN-or-marker row is a marker), read by the server for every number in ONE grouped
+   *  read (`messagingConsent.erasureStandsAmong`). decide() reads it only when there is NO book row: a book row decides
+   *  alone (`isErasedNumber`). */
+  readonly erasureStands: boolean;
   /** ⚠️ The server's loader no longer asks the accounts (S15, 2026-10-09: S15-1 retired the consent seam this fed, X5),
    *  so it answers false there; decide() still honours it for a caller that sets it. A book row's own link is
    *  `book.userId` (S15-11), which IS read. */
@@ -404,14 +416,13 @@ function fillBlanks(c: ImportCandidate, book: BookSnapshot): Change {
 }
 
 /**
- * 1 · ⛔ Is the number ERASED (C3)? Its book row carries the mark, or there is no row and the ledger's last word is the
- * erasure withdrawal (owner decision 4). A book row the erasure did not empty is an ordinary row, whatever its ledger.
+ * 1 · ⛔ Is the number ERASED (C3)? Its book row carries the mark, or there is no row and an erasure stands on the number
+ * (owner decision 4; C8a's ONE rule — a later opt-out never lifts it, a GIVEN does). A book row the erasure did not empty
+ * is an ordinary row, whatever its ledger. ⭐ ONE READING: this asks `erasure-mark.ts`'s `isErasedNumber`, the very
+ * function the Add form's lookup and save ask, so what the importer keeps as erased can never be added by hand.
  */
 function isErasedNumber(f: NumberFacts): boolean {
-  const book = f.book;
-  if (book !== null) return book.sourceRef === ERASURE_EVIDENCE;
-  const last = f.ledgerLatest;
-  return last !== null && last.status === "WITHDRAWN" && last.evidence === ERASURE_EVIDENCE;
+  return markIsErased(f.book, f.erasureStands);
 }
 
 type StandingReason = "suppressed" | "account" | "same_run" | "chosen_keep";

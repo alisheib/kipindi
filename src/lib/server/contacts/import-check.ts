@@ -29,8 +29,10 @@
  *
  * ⭐ THE FACTS ARE THE AUTHORITY'S, NEVER A CACHE (`loadImportFacts`): the book rows behind the numbers, erased
  * tombstones included and each row's account link (`marketingContact.snapshotsAmong`), the stops in force
- * (`suppression.findActiveAmong`) and each number's latest ledger word (`messagingConsent.latestAmong`) — §25's bulk
- * reads, a chunk of `BULK_KEYED_READ_MAX` at a time. ⚠️ No account read: the accounts behind the numbers fed only the
+ * (`suppression.findActiveAmong`), each number's latest ledger word (`messagingConsent.latestAmong`) and — C8a — whether
+ * an erasure STANDS on it (`messagingConsent.erasureStandsAmong`, the ONE rule of `erasure-mark.ts`: a later opt-out
+ * never lifts an erasure, a GIVEN does) — §25's bulk reads, a chunk of `BULK_KEYED_READ_MAX` at a time. The commit's
+ * re-decision reads the SAME loader (`import-commit.ts`). ⚠️ No account read: the accounts behind the numbers fed only the
  * consent seam S15-1 retired (X5), so `heldByPlayer` is false here (the review round's R16 — one query fewer per page);
  * a book row's own link is what keeps a player's row unchanged (S15-11). Every number asked is answered from those
  * reads; a number nobody asked about has NO facts and decide() throws on it — never a default.
@@ -90,18 +92,21 @@ export const YOU = "you";
 
 /* ═══ THE DEPENDENCIES — swappable for the suite's in-process red plants; production never passes them ═══════════ */
 
-/** §25's three bulk reads, as `loadImportFacts` asks them — the authority, never the book's caches. (R16 · the fourth,
- *  the accounts behind the numbers, is gone: it fed only the consent seam S15-1 retired.) */
+/** The bulk reads `loadImportFacts` asks — §25's three, and C8a's standing erasure — the authority, never the book's
+ *  caches. (R16 · the accounts behind the numbers are not read: they fed only the consent seam S15-1 retired.) */
 export type ImportFactsReads = {
   snapshots: (msisdns: string[]) => Promise<MarketingContactSnapshot[]>;
   activeStops: (msisdns: string[]) => Promise<StoredSuppression[]>;
   latestWords: (msisdns: string[]) => Promise<StoredMessagingConsent[]>;
+  /** ⛔ C8a · the numbers among these on which an erasure STANDS — the ONE rule (`erasure-mark.ts`), ONE grouped read. */
+  erasureStands: (msisdns: string[]) => Promise<string[]>;
 };
 
 export const IMPORT_FACTS_READS: ImportFactsReads = {
   snapshots: async (msisdns) => db.marketingContact.snapshotsAmong(msisdns),
   activeStops: async (msisdns) => db.suppression.findActiveAmong({ channel: "SMS", category: "MARKETING", identifiers: msisdns }),
   latestWords: async (msisdns) => db.messagingConsent.latestAmong({ channel: "SMS", category: "MARKETING", identifiers: msisdns }),
+  erasureStands: async (msisdns) => db.messagingConsent.erasureStandsAmong({ channel: "SMS", category: "MARKETING", identifiers: msisdns }),
 };
 
 /**
@@ -205,12 +210,14 @@ export const IMPORT_CHECK_DEPS: ImportCheckDeps = {
 /* ═══ THE FACTS — the authority's, per number ════════════════════════════════════════════════════════ */
 
 /**
- * ⭐ THE FACTS LOADER (U31-B). Every distinct number asked is answered from §25's three bulk reads, a chunk of
- * `BULK_KEYED_READ_MAX` at a time, one read after another (bets come first: never three connections at once): its book
+ * ⭐ THE FACTS LOADER (U31-B). Every distinct number asked is answered from four bulk reads, a chunk of
+ * `BULK_KEYED_READ_MAX` at a time, one read after another (bets come first: never four connections at once): its book
  * row — the erased tombstone INCLUDED, so an erased number reads as in the book (X22), and the row's account link
- * (S15-11) — whether a stop is in force, and its latest ledger word. `heldByPlayer` is false: the account read fed only
- * the consent seam S15-1 retired (R16). ⛔ A number that was not asked about is absent, and decide() throws on it: there
- * is no default.
+ * (S15-11) — whether a stop is in force, its latest ledger word, and (C8a) whether an erasure STANDS on it by the ONE
+ * rule — so a number with no book row whose marker an opt-out tap has since covered still reads erased, and a number an
+ * opted-out person is erased on carries the marker `erase.ts` now writes over an opt-out too. `heldByPlayer` is false:
+ * the account read fed only the consent seam S15-1 retired (R16). ⛔ A number that was not asked about is absent, and
+ * decide() throws on it: there is no default.
  */
 export async function loadImportFacts(msisdns: readonly string[], reads: ImportFactsReads = IMPORT_FACTS_READS): Promise<FactsByNumber> {
   const keys = Array.from(new Set(msisdns));
@@ -223,6 +230,7 @@ export async function loadImportFacts(msisdns: readonly string[], reads: ImportF
     for (const stop of await reads.activeStops(chunk)) stopped.add(stop.identifier);
     const latest = new Map<string, StoredMessagingConsent>();
     for (const word of await reads.latestWords(chunk)) latest.set(word.identifier, word);
+    const erased = new Set(await reads.erasureStands(chunk));
     for (const m of chunk) {
       const row = book.get(m);
       const word = latest.get(m);
@@ -233,6 +241,7 @@ export async function loadImportFacts(msisdns: readonly string[], reads: ImportF
         },
         suppressed: stopped.has(m),
         ledgerLatest: word === undefined ? null : { status: word.status, evidence: word.evidence },
+        erasureStands: erased.has(m),
         heldByPlayer: false,
       });
     }

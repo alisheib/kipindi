@@ -483,6 +483,11 @@ export async function mayReceiveMarketingSms(
   } else {
     // ⛔ AN ERASED RECORD IS NOT A BLANK ONE. The person asked to be forgotten; a licence basis must not quietly bring
     // them back, and a test attestation does not override it either. Only a NEW consent reaches this number again.
+    // ⚠️ C8a · the TOMBSTONE alone is asked here, and that is enough: an erasure standing on a number with NO book row (the
+    // ledger's marker — `erasure-mark.ts`'s ONE rule) always leaves the number's latest row a WITHDRAWN (the marker, or a
+    // later row that did not lift it, and only a GIVEN lifts it), and step 3's first check refused every WITHDRAWN above —
+    // as 2a and 2a' refuse one for a player. ⛔ If a WITHDRAWN that is no stop ever lands (U16b's lapse row), the
+    // branches that let it through must ask the ONE rule too.
     if (standing.row === "erased") return refuse("no_basis", ERASED_DETAIL);
     if (standing.cover) { basis = "LICENCE_LIST"; basisRef = `list-basis:${standing.cover.basisId}`; }
     else if (attestation) { basis = "LICENCE_TEST"; basisRef = `test:${attestation.attemptRef}`; }

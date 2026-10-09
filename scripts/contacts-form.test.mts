@@ -10,7 +10,8 @@
  *      from the request, the caches mirrored from the ledger and the stop list, never linked to a player, an audit row
  *      with the masked number, and ONE create builder (X6);
  *   §3 duplicates: the unique index IS the check (the race included), the lookup's three keys say nothing about a
- *      player, an ERASED number refused with no id (C3), the server refusing what the dialog might not;
+ *      player, an ERASED number refused with no id (C3) — since C8a an erasure that left NO book row too, exactly as a
+ *      tombstone is (3.4b) — the server refusing what the dialog might not;
  *   §4 the edit: four fields and the stamp, compare-and-set (C25), unknown and erased rows MISSING (A1.7);
  *   §5 the `?edit=` loader and the add reply: the erased fixture never opens the dialog (A1.7), and nothing per-number
  *      that says "player" reaches a viewer who may not read a number (A1.1).
@@ -198,6 +199,10 @@ const N = {
   playerBook: "0754 000 444",
   strangerBook: "0755 000 444",
   erased: "0766 000 001",
+  // C8a · an erasure with NO book row (the marker, an opt-out tap above it), and its two controls.
+  erasedLedger: "0766 000 002",
+  erasedLifted: "0766 000 003",
+  plainOut: "0766 000 004",
   race: "0713 000 444",
   shape: "0713 220 001",
   dup: "0713 330 001",
@@ -247,6 +252,13 @@ async function ledger(local: string, status: "GIVEN" | "WITHDRAWN", source: "IMP
     wording: "Ninakubali kupokea matangazo kwa SMS.", locale: "SW", evidence: "fixture", recordedBy: null, createdAt,
   });
 }
+/** C8a · the erasure's marker as `erase.ts` writes it: a WITHDRAWN recorded by an officer, its evidence the mark. */
+async function marker(local: string, createdAt: string) {
+  await db.messagingConsent.create({
+    id: `u22l_${++ledgerSeq}`, channel: "SMS", identifier: bare(local), category: "MARKETING", status: "WITHDRAWN", source: "OPERATOR",
+    wording: "Erasure request fulfilled — marketing consent withdrawn.", locale: "EN", evidence: ERASURE_EVIDENCE, recordedBy: null, createdAt,
+  });
+}
 const ledgerCount = (): number => memory?.messagingConsents.size ?? -1;
 
 async function seedFixtures(): Promise<void> {
@@ -270,6 +282,16 @@ async function seedFixtures(): Promise<void> {
   await db.marketingContact.create(literalRow("mc_u22_erased", N.erased, { sourceRef: ERASURE_EVIDENCE, consentState: "WITHDRAWN", rawInput: bare(N.erased) }));
   await ledger(N.erased, "GIVEN", "REGISTRATION", "2026-09-01T08:00:00.000Z");
   await ledger(N.erased, "WITHDRAWN", "IMPORT", "2026-09-05T08:00:00.000Z");
+  // ⛔ C8a · AN ERASURE THAT LEFT NO BOOK ROW: the person said yes, was erased (the marker), and a tap on an old link's Stop
+  // came after — so the ledger's LAST word is the opt-out's, not the erasure's. The form asked the tombstone row alone.
+  await ledger(N.erasedLedger, "GIVEN", "REGISTRATION", "2026-09-01T08:00:00.000Z");
+  await marker(N.erasedLedger, "2026-09-05T08:00:00.000Z");
+  await ledger(N.erasedLedger, "WITHDRAWN", "OPT_OUT_PAGE", "2026-09-06T08:00:00.000Z");
+  // …and its CONTROLS: the marker under a later GIVEN (the number's next holder said yes), and an opt-out with no erasure.
+  await marker(N.erasedLifted, "2026-09-05T08:00:00.000Z");
+  await ledger(N.erasedLifted, "GIVEN", "OPT_OUT_PAGE", "2026-09-06T08:00:00.000Z");
+  await ledger(N.plainOut, "GIVEN", "REGISTRATION", "2026-09-01T08:00:00.000Z");
+  await ledger(N.plainOut, "WITHDRAWN", "OPT_OUT_PAGE", "2026-09-05T08:00:00.000Z");
   // Rows for the edit: provenance, caches and a link-free import reference that an edit must never touch.
   await db.marketingContact.create(literalRow("mc_u22_edit", N.edit, {
     displayName: "Old name", email: "old@example.com", notes: "old notes", tags: ["old"], source: "IMPORT",
@@ -327,6 +349,7 @@ const L = {
   d2: "3.2 · the race: a row created between the lookup and the save is a refusal carrying ITS id — no throw, no second row",
   d3: "3.3 · 🔴 D19 · the lookup says nothing else: exactly three keys for every answer, and a player's number answers exactly like a stranger's, in the book and out of it",
   d4: "3.4 · ⛔ C3 · an ERASED number is refused with one sentence and NO id — by the lookup and by the save — and nothing is written",
+  d4b: "3.4b · ⛔ C8a · an erasure that left NO book row — the marker, an opt-out tap on an old link above it — is refused EXACTLY as a tombstone is: the lookup's answer and the save's answer each equal the tombstoned number's (the erased sentence, no id), nothing is written and no ledger row appended, and the form asks erasure-mark's isErasedNumber through the importer's own grouped read; CONTROLS: the marker under a later GIVEN, and an opt-out with no erasure, are free and added",
   d5: "3.5 · the server refuses what the dialog might not: 064 and a landline with parseTzNumber's own sentence, a 121-character name, a bad email, a 33-character tag and (vb5) a short name holding a phone number — told THAT, never the length sentence — each naming its field and writing nothing (CONTROL: 120 characters pass)",
   d6: "3.6 · ⛔ vb7 · the server holds the same length: a 41-character raw number is refused invalid_number on the number field in the paste sentence and nothing is written; a NUL, a tab and a zero-width space in a raw number are kept out of rawInput (cleanRawInput) while the number is still saved",
   e1: "4.1 · the edit writes ONLY the name, email, notes and tags (and the stamp): the number, source, sourceRef, link, caches, import and provenance are untouched",
@@ -576,6 +599,31 @@ async function runAssertions(impl: Impl, tag: string): Promise<void> {
         && !blob.includes("mc_u22_erased") && (await db.marketingContact.count()) === before && ledgerCount() === ledgerBefore
         && tomb !== null && tomb.displayName === null && tomb.sourceRef === ERASURE_EVIDENCE,
         blob];
+    });
+    await check(p(L.d4b), async () => {
+      const tombLooked = await impl.lookup(N.erased);
+      const looked = await impl.lookup(N.erasedLedger);
+      const before = await db.marketingContact.count();
+      const ledgerBefore = ledgerCount();
+      const tombAdded = await impl.add(req(N.erased, { displayName: "Back again" }), OFFICER, NOW);
+      const added = await impl.add(req(N.erasedLedger, { displayName: "Back again" }), OFFICER, NOW);
+      const row = await db.marketingContact.findByMsisdn(bare(N.erasedLedger));
+      const countAfter = await db.marketingContact.count();
+      const ledgerAfter = ledgerCount();
+      const blob = JSON.stringify(added) + JSON.stringify(looked);
+      // The CONTROLS: an erasure a GIVEN lifted, and an opt-out with no erasure behind it, are ordinary new numbers.
+      const lifted = { looked: await impl.lookup(N.erasedLifted), added: await impl.add(req(N.erasedLifted, { displayName: "Next holder" }), OFFICER, NOW) };
+      const plain = { looked: await impl.lookup(N.plainOut), added: await impl.add(req(N.plainOut, { displayName: "Plain" }), OFFICER, NOW) };
+      const asked = impl.sources.write.includes('import { isErasedNumber } from "@/lib/marketing/erasure-mark";')
+        && impl.sources.write.includes("erased: isErasedNumber(existing, stands)") && impl.sources.write.includes("db.messagingConsent.erasureStandsAmong(");
+      return [looked.state === "refused" && looked.sentence === CONTACT_ERASED && looked.existingId === null
+        && JSON.stringify(looked) === JSON.stringify(tombLooked)
+        && !added.ok && added.reason === "erased" && added.error === CONTACT_ERASED && !("existingId" in added) && !("id" in added)
+        && JSON.stringify(added) === JSON.stringify(tombAdded)
+        && row === null && countAfter === before && ledgerAfter === ledgerBefore
+        && lifted.looked.state === "free" && lifted.added.ok && plain.looked.state === "free" && plain.added.ok
+        && asked && !blob.includes("mc_"),
+        `lookup ${looked.state} (the tombstone's: ${tombLooked.state}) · save ${added.ok ? "ADDED" : added.reason} · row ${row === null ? "none" : "CREATED"} · CONTROLS: the marker under a GIVEN ${lifted.looked.state} / ${lifted.added.ok ? "added" : "refused"} · an opt-out alone ${plain.looked.state} / ${plain.added.ok ? "added" : "refused"} · asks the shared reading ${asked}`];
     });
     await check(p(L.d5), async () => {
       const bad = ["0641234567", "0222123456"];
@@ -1195,6 +1243,69 @@ if (!PROVE_RED) {
           return { ...r, existingId: tomb?.id ?? "" } as ContactAddResult;
         },
       },
+    },
+    {
+      // ⭐ C8a's N2 and #2 at the form, as it shipped: the lookup and the save asked the tombstone ROW alone.
+      name: "⛔ C8a · the form asks the TOMBSTONE ROW alone — a number whose erasure left only the ledger's marker is free to the lookup and added by the save",
+      expect: L.d4b,
+      impl: {
+        ...REAL,
+        lookup: async (number) => {
+          const q = parseTzNumber(number);
+          if (q.verdict !== "ok" || !q.msisdn) return { state: "refused", sentence: q.reason, existingId: null };
+          const row = await db.marketingContact.findByMsisdn(q.msisdn);
+          if (row === null) return { state: "free", sentence: null, existingId: null };
+          if (row.sourceRef === ERASURE_EVIDENCE) return { state: "refused", sentence: CONTACT_ERASED, existingId: null };
+          return { state: "duplicate", sentence: CONTACT_DUPLICATE, existingId: row.id };
+        },
+        add: async (request, officerId, now = new Date()) => {
+          const parsed = parseTzNumber(request.number);
+          if (parsed.verdict !== "ok" || !parsed.msisdn) return invalid(parsed.reason);
+          const held = await db.marketingContact.findByMsisdn(parsed.msisdn);
+          if (held !== null && held.sourceRef === ERASURE_EVIDENCE) return { ok: false, reason: "erased", field: "number", error: CONTACT_ERASED };
+          const row = newContactRow({
+            number: parsed, rawInput: request.number, displayName: request.displayName.trim() || null, email: null, tags: [], notes: null,
+            source: "OPERATOR", sourceRef: null, importId: null, officerId, at: now.toISOString(),
+          });
+          const created = await db.marketingContact.create(row);
+          return created ? { ok: true, id: created.id, consent: created.consentState } : duplicateOf(parsed.msisdn);
+        },
+      },
+    },
+    {
+      // The importer's rule before C8a, carried to the form: erased only while the ledger's LAST row is the marker.
+      name: "⛔ C8a · the form reads the ledger's LATEST word as the erasure — the marker under an opt-out tap is free and added",
+      expect: L.d4b,
+      impl: {
+        ...REAL,
+        lookup: async (number) => {
+          const q = parseTzNumber(number);
+          if (q.verdict === "ok" && q.msisdn && (await db.marketingContact.findByMsisdn(q.msisdn)) === null) {
+            const last = await db.messagingConsent.latestFor({ channel: "SMS", identifier: q.msisdn, category: "MARKETING" });
+            if (!(last?.status === "WITHDRAWN" && last.evidence === ERASURE_EVIDENCE)) return { state: "free", sentence: null, existingId: null };
+          }
+          return lookupContactNumber(number);
+        },
+        add: async (request, officerId, now = new Date()) => {
+          const q = parseTzNumber(request.number);
+          if (q.verdict === "ok" && q.msisdn && (await db.marketingContact.findByMsisdn(q.msisdn)) === null) {
+            const last = await db.messagingConsent.latestFor({ channel: "SMS", identifier: q.msisdn, category: "MARKETING" });
+            if (!(last?.status === "WITHDRAWN" && last.evidence === ERASURE_EVIDENCE)) {
+              const created = await db.marketingContact.create(newContactRow({
+                number: q, rawInput: request.number, displayName: request.displayName.trim() || null, email: null, tags: [], notes: null,
+                source: "OPERATOR", sourceRef: null, importId: null, officerId, at: now.toISOString(),
+              }));
+              return created ? { ok: true, id: created.id, consent: created.consentState } : duplicateOf(q.msisdn);
+            }
+          }
+          return addContact(request, officerId, now);
+        },
+      },
+    },
+    {
+      name: "⛔ C8a · the form stops asking the shared reading — its source no longer reads erasure-mark's isErasedNumber over the grouped read",
+      expect: L.d4b,
+      impl: { ...REAL, sources: { ...REAL_SOURCES, write: REAL_SOURCES.write.replace("erased: isErasedNumber(existing, stands)", "erased: existing !== null && existing.sourceRef === ERASURE_EVIDENCE") } },
     },
     {
       name: "vb5 · every name refusal worded as the length one (contact-write's own mapping before vb5) — a short name holding a number is told it is too long",

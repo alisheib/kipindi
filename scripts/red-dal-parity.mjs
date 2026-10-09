@@ -48,6 +48,8 @@ const FILES = [
   // in §28 or later (the importer's §29 among them) read "WRONG REASON — (no FAIL line)". Found by S15 (2026-10-09),
   // reproduced by running the gate on an UNMUTATED scratch copy (ENOENT, then 2211/0 once listed).
   "src/lib/server/marketing/referee-key-model.ts",
+  // §30 · C8a (S15, 2026-10-09) reads the ONE erasure rule's module through KP_SRC, and one case plants in it.
+  "src/lib/marketing/erasure-mark.ts",
 ];
 
 const runGate = (srcDir) => {

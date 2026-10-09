@@ -50,6 +50,8 @@ import type { ContactsFileFormat } from "@/lib/contacts/parsed-file";
 // U33a-L · THE ONE ERASURE MARK — the list-basis reads tell an emptied tombstone from a live book row by it, exactly as the
 // Prisma twin does (`test:dal-parity` §27). Its module is pure and imports nothing, so there is no cycle.
 import { ERASURE_EVIDENCE } from "@/lib/marketing/erasure-mark";
+// C8a · the ONE "does an erasure stand?" both twins' grouped read answer through (its own line: §27.5 pins the one above).
+import { erasureStandsAmongRows } from "@/lib/marketing/erasure-mark";
 // U33a-L · the list basis's ONE rule set — this twin asks it before every read or write of the table, exactly as the
 // Prisma twin does (`test:dal-parity` §27.model). It takes only TYPES back from this file, so there is no cycle.
 import { assertListBasisSeed, assertListBasisRevocation, assertListBasisKeys } from "@/lib/server/marketing/list-basis-model";
@@ -949,7 +951,9 @@ export type OutreachBasisCover = {
   recordedAt: string;
 };
 /** A number's book standing — the gate's `bookStanding` read (U33a-G): no book row · a LIVE row and its covering basis,
- *  if any · the ERASED tombstone, which covers nothing whatever its memberships say (S9). */
+ *  if any · the ERASED tombstone, which covers nothing whatever its memberships say (S9). ⚠️ C8a · a BOOK standing, so
+ *  the tombstone alone: an erasure with no book row (the ledger's marker) reads `none` here, and the gate never needs
+ *  more — such a number's latest ledger row is always a WITHDRAWN, which it refuses first (`consent.ts` step 3). */
 export type BookStanding = {
   row: "none" | "live" | "erased";
   cover: OutreachBasisCover | null;
@@ -3560,6 +3564,20 @@ const memoryDb = {
       const latest = new Map<string, StoredMessagingConsent>();
       for (const r of ordered) if (!latest.has(r.identifier)) latest.set(r.identifier, r);
       return Array.from(latest.values()).sort((a, b) => (a.identifier < b.identifier ? -1 : a.identifier > b.identifier ? 1 : 0));
+    },
+    /** ⛔ C8a · the numbers among these on which an ERASURE STANDS — the ONE rule (`erasure-mark.ts`): each number's rows
+     *  in the ledger's own order (`createdAt desc, id desc`, the tie broken as `latestFor` breaks it), handed to
+     *  `erasureStandsAmongRows`, which both twins answer through. A later opt-out never lifts an erasure; a GIVEN does.
+     *  §25's shape: through `bulkKeys`, an empty set answered with nothing; each number once, ordered; a number on which
+     *  none stands is absent. The importer's facts and the Add form read it (`test:dal-parity` §30). */
+    erasureStandsAmong: (q: MessagingKeyBatch): string[] => {
+      const keys = bulkKeys(q.identifiers, "messagingConsent.erasureStandsAmong");
+      if (keys.length === 0) return [];
+      const want = new Set(keys);
+      const rows = Array.from(store.messagingConsents.values())
+        .filter((r) => r.channel === q.channel && r.category === q.category && want.has(r.identifier));
+      rows.sort((a, b) => b.createdAt.localeCompare(a.createdAt) || b.id.localeCompare(a.id));
+      return erasureStandsAmongRows(keys, rows);
     },
   },
 
