@@ -32,7 +32,17 @@ then: "the contacts screen"):
 
 ▶ NOW (2026-10-09 ~04:15 EAT, Ali-Blade15) — where every piece is, for a session on ANY machine:
   · C1 LIVE (`28fd214e`) · C2 LIVE (`8adbdd9f`, served since 23:34 UTC 2026-10-08, health ok).
-  · THE IMPORTER (C3–C5) — PUSHED TO MAIN in the commit that carries this line (branch `contacts-import-int`). Design
+  · THE IMPORTER (C3–C5) — ✅ LIVE: `df835bb5` served on www.50pick.tz since 01:16:59 UTC 2026-10-09 (04:17 EAT),
+    /api/health ok, the database reachable and MIGRATED (`20261009120000_contact_import_target_list` applied).
+    ⏳ THE LIVE CHECK ON PRODUCTION is written and wired (`npm run qa:contacts-import-live`, LIVE_IMPORT_CHECK=1 + the
+    git-ignored secrets file): it imports `prod-check-40.csv` through the real dialog only if the check reads 34 new ·
+    0 in the book · 3 repeated · 3 invalid, then removes every contact it added through the bulk Remove. NOT RUN: the
+    session's safety classifier refused the production write (2026-10-09 ~04:30 EAT) — it waits for Ali's own go.
+    ⛔ A TEMPORARY GROWTH LOGIN EXISTS FOR IT on production — "QA Import Check (Claude)", +255 700 000 091,
+    `usr_af44b503dd3d9c18d4f905bc` (made through `ops:provision-staff`, audited `staff.provisioned`; its password only in
+    the session scratchpad's git-ignored env file) — REMOVE IT when the check is done or abandoned (Ali's rule of
+    2026-10-08: "delete them when done testing"). There is no audited door to delete a staff login yet.
+    (Was: "PUSHED TO MAIN in the commit that carries this line" —) branch `contacts-import-int`. Design
     §4 (decisions S15-1…12), contract `src/lib/contacts/import-flow.ts`. PROVEN before the push (battery 3, 2026-10-09
     ~04:10 EAT, on `87d3e319` + the plant fix `b6faaffb`): prisma generate 0 · typecheck 0 · `next build` 0 ·
     `test:contacts-import-db` 45/0 on PostgreSQL 18.3 (real concurrency, conflict rollbacks, the NULL-arm trap, the list
@@ -65,9 +75,9 @@ then: "the contacts screen"):
 |---|---|---|
 | C1 | The lane claimed and this plan written | ✅ LIVE `28fd214e` |
 | C2 | Audit of the LIVE screen — 43 viewport tiles at 360 / 768 / 1280 / 1440 (the console is English-only), GROWTH and ADMIN, the add dialog's states, bulk, the hard-case rows, the error state: no page overflow anywhere. FOUND AND FIXED: **F1** a number TYPED as `+254 712 345 678` read "a landline in Katavi, Mbeya…" (the box drops the "+") → judged as written once its digits leave +255 (`contactNumberVerdict` typedPlus; `test:contacts-form` 1.5c + plant); **F2** at 360 the sideways-scrolling table showed names only → the masked number and operator under the name below 640px, from the server's masked projection (U19's one render kept); **F3** "20 selected" broke over two lines → the count keeps its measure; **F4** the bulk note promised consent recording "which this page doesn't take yet" → true under the final rule (a list reaches a non-player). NOT CHANGED (recorded): the filter rail is long at 360 for ADMIN; the KPI tiles stack one per row at 360 (the platform's band). PROVEN: the four suites + their reds, typecheck, `next build`, the U20 drive 487/0, and 12 browser checks of F1–F4 at 360 and 1280 (C2-verify). LIVE `8adbdd9f` (served 23:34 UTC 2026-10-08). ⚠️ F2 first shipped its line at 11px (`text-micro`), which `test:type-scale` §3 counts as sub-floor reading copy (751 against 750 — a check the C2 push did not run); caught by the importer's second battery and moved to `text-body-sm` (13px) in `d9c9df5f`, §3 back at 750 | ✅ LIVE |
-| C3 | The importer, part 1 — the file, the columns, the check (U30 + U31-B): staging only, nothing written to the book | ✅ pushed (this commit) — proof in §0 |
-| C4 | The importer, part 2 — the commit loop and its bar (U32): counted by the server, resumable after a closed tab or a crash | ✅ pushed (this commit) — proof in §0 |
-| C5 | Duplicate detection, seen and decided: repeats inside a file, numbers already in the book (keep · use the file's · fill blanks — readers only, S15-10), the list step | ✅ pushed (this commit) — proof in §0 |
+| C3 | The importer, part 1 — the file, the columns, the check (U30 + U31-B): staging only, nothing written to the book | ✅ LIVE `df835bb5` — proof in §0 |
+| C4 | The importer, part 2 — the commit loop and its bar (U32): counted by the server, resumable after a closed tab or a crash | ✅ LIVE `df835bb5` — proof in §0 |
+| C5 | Duplicate detection, seen and decided: repeats inside a file, numbers already in the book (keep · use the file's · fill blanks — readers only, S15-10), the list step | ✅ LIVE `df835bb5` — proof in §0 |
 | C3b | The readers made forgiving of real files — found by the generator's author reading the shipped readers against the 28 files (2026-10-09): **G1** a CSV with ONE broken quote is refused whole (`messy-real-life.csv`, `unterminated_quote` at its last record) → offer the rows before it, the broken record named; **G2** a workbook whose first visible sheet is a cover page finds no Phone column (`excel-multi-sheet.xlsx`) → read the sheet that holds the phones, and say which; **G3** two numbers in one phone cell (Google's ` ::: `, "0712… / 0754…") are invalid → take the first mobile, say so; **G4** Outlook's number in Business / Home / Primary while Mobile is empty is lost → fall back to the other phone columns. Proven with the generator's files | ⬜ (after C3–C5) |
 | C6 | Stress: large files at the limits, a large book, two imports at once, a crash mid-commit and its resume | ⬜ |
 | C7 | U34b — an export read back through the importer, row for row | ⬜ |
