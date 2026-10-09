@@ -338,20 +338,20 @@ const both = (s: string): readonly [string, string] => [s, s];
 const START_WORDS: Readonly<Record<string, readonly [string, string]>> = {
   not_confirmed: both("Only a confirmed campaign can start."),
   confirmation_unreadable: both("This campaign's confirmation can't be read in full, so it can't start. Stop it and confirm a new copy. Nothing was sent."),
-  switch_closed: both("Marketing SMS are switched off. The owner switches them on (Admin → System → Marketing SMS sending), then you can start. Nothing was sent."),
+  switch_closed: both("Marketing SMS are switched off. The Owner switches them on (Admin → System → Marketing SMS sending), then you can start. Nothing was sent."),
   rail_dead: both("No SMS can leave this server right now — Admin → System says why. Nothing was sent."),
   // A copy carries the same stored filter and U47b's copy refuses one it cannot read: the other way out is said too.
   audience_unreadable: both("The saved audience can't be read any more. Stop this campaign and confirm a new copy — or write a new campaign if the copy is refused. Nothing was sent."),
   settings_unreadable: both("The Marketing SMS settings couldn't be read just now, so this campaign can't be checked before it starts. Try again in a moment. Nothing was sent."),
   settings_incomplete: both("The saved Marketing SMS settings can't be read in full, so this campaign can't be checked before it starts. The developer must repair them first. Nothing was sent."),
-  price_unknown: both("The price per SMS isn't known, so the budget can't be checked. The owner sets it on Admin → System → Marketing SMS. Nothing was sent."),
+  price_unknown: both("The price per SMS isn't known, so the budget can't be checked. The Owner sets it on Admin → System → Marketing SMS. Nothing was sent."),
   over_budget: [
-    "At today's price this campaign could cost more than its limit. Stop it and confirm a smaller copy, or ask the owner. Nothing was sent.",
-    "At today's price this campaign could cost TZS 10,800 — more than its limit of TZS 10,000. Stop it and confirm a smaller copy, or the owner raises the limit. Nothing was sent.",
+    "At today's price this campaign could cost more than its limit. Stop it and confirm a smaller copy, or ask the Owner. Nothing was sent.",
+    "At today's price this campaign could cost TZS 10,800 — more than its limit of TZS 10,000. Stop it and confirm a smaller copy, or the Owner raises the limit. Nothing was sent.",
   ],
   credit_unreadable: both("The SMS credit couldn't be read just now, so the campaign can't start safely. Try again in a minute. Nothing was sent."),
   credit_low: [
-    "There isn't enough SMS credit to start this campaign and still keep what login and withdrawal codes need. Ask the owner to top up. Nothing was sent.",
+    "There isn't enough SMS credit to start this campaign and still keep what login and withdrawal codes need. Ask the Owner to top up. Nothing was sent.",
     "Starting would leave less SMS credit than is kept for login and withdrawal codes — credit TZS 24,000, this campaign up to TZS 9,624, kept for codes TZS 20,000. Top up, or narrow the audience. Nothing was sent.",
   ],
   audience_uncounted: both("The audience couldn't be counted just now. Try again in a minute. Nothing was sent."),
@@ -383,16 +383,16 @@ const RESUME_WORDS: Readonly<Record<string, readonly [string, string]>> = {
   "audience_moved+reached": both(`The people on this campaign changed after it was confirmed, so it can't resume. ${AGAIN} Nobody more was messaged.`),
   audience_unreadable: both("The saved audience can't be read any more, so this campaign can't resume. Stop it and confirm a new copy — or write a new campaign if the copy is refused. Nobody more was messaged."),
   "audience_unreadable+reached": both("The saved audience can't be read any more, so this campaign can't resume. Some people on it have already been messaged, and a new campaign to the same people would message them again: stop it, and send another only if that is what you want. Nobody more was messaged."),
-  switch_closed: both("Marketing SMS are switched off. The owner switches them on (Admin → System → Marketing SMS sending), then you can resume. Nobody more was messaged."),
+  switch_closed: both("Marketing SMS are switched off. The Owner switches them on (Admin → System → Marketing SMS sending), then you can resume. Nobody more was messaged."),
   rail_dead: both("No SMS can leave this server right now — Admin → System says why. The campaign stays paused. Nobody more was messaged."),
   confirmation_unreadable: both("This campaign's confirmation can't be read in full, so what is left to send can't be checked, and it can't resume. Stop it, or ask the developer. Nobody more was messaged."),
   sizes_unreadable: both("This campaign's saved message size can't be read, so what is left to send can't be priced, and it can't resume. Stop it, or ask the developer. Nobody more was messaged."),
   settings_unreadable: both("The Marketing SMS settings couldn't be read just now, so what is left to send can't be checked. Try again in a moment. Nobody more was messaged."),
   settings_incomplete: both("The saved Marketing SMS settings can't be read in full, so what is left to send can't be checked. The developer must repair them first. Nobody more was messaged."),
-  price_unknown: both("The price per SMS isn't known, so what is left to send can't be priced. The owner sets it on Admin → System → Marketing SMS. Nobody more was messaged."),
+  price_unknown: both("The price per SMS isn't known, so what is left to send can't be priced. The Owner sets it on Admin → System → Marketing SMS. Nobody more was messaged."),
   credit_unreadable: both("The SMS credit couldn't be read just now, so the campaign can't resume safely. Try again in a minute. Nobody more was messaged."),
   credit_low: [
-    "There isn't enough SMS credit to finish this campaign and still keep what login and withdrawal codes need. Ask the owner to top up, then resume. Nobody more was messaged.",
+    "There isn't enough SMS credit to finish this campaign and still keep what login and withdrawal codes need. Ask the Owner to top up, then resume. Nobody more was messaged.",
     "Resuming would leave less SMS credit than is kept for login and withdrawal codes — credit TZS 24,000, the rest of this campaign up to TZS 9,624, kept for codes TZS 20,000. Top up, then resume. Nobody more was messaged.",
   ],
 };
@@ -1115,7 +1115,7 @@ export const F_PLANTS: ReadonlyArray<EnginePlant<FImpl>> = [
     impl: () => ({ resumeSentence: (r, v) => SC.resumeRefusalSentence("reached" in r ? { ...r, reached: false } : r, v) }),
   },
   {
-    name: "R-F13b · unreadable message sizes answered price_unknown (“the owner sets it”, which the owner cannot fix)",
+    name: "R-F13b · unreadable message sizes answered price_unknown (“the Owner sets it”, which the Owner cannot fix)",
     expect: [L.f13],
     impl: () => ({
       resume: async (c, counts, d) => {

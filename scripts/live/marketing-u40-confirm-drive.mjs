@@ -144,7 +144,7 @@ const UNFINISHED = "Couldn't confirm — the server stopped before it answered, 
 /** ⛔ GONE since the owner's ruling of 2026-10-09 (`needs_source_line` is removed) — asserted NOT on the card or in the dialog. */
 const OLD_NEEDS_SOURCE = "This audience can include people from the contact book, so the message must carry its source line — and this campaign has none yet. The owner sets it on Admin → System → Marketing wordings; then save this draft again.";
 /** The service's sentences as the CARD says them — without a refused confirmation's "Nothing was confirmed." */
-const OVER_LIMIT_GROWTH = "This campaign could cost more than one campaign may spend. Narrow the audience, or ask the owner to raise the limit.";
+const OVER_LIMIT_GROWTH = "This campaign could cost more than one campaign may spend. Narrow the audience, or ask the Owner to raise the limit.";
 const OVER_LIMIT_OWNER_HEAD = "This campaign could cost up to TZS ";
 const OVER_LIMIT_OWNER_LIMIT = "more than the TZS 100 one campaign may spend.";
 const FLOOR = "Your role sees how many people match, not who will receive it.";

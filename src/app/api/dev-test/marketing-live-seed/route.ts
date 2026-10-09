@@ -19,11 +19,15 @@
  * DRAFT → CONFIRMED, as U40a leaves them. Only the STAGED campaigns' rows are given the state a slice would have left them
  * in, directly in the memory map (U36's seed does the same).
  *
- *   POST ?run=<id>            — a campaign the engine can really run: "Live drive <id>", CONFIRMED, ten people on tag
- *                               `u47live-<id>` — eight who will receive, one who stopped by their link (SKIPPED, `suppressed`)
- *                               and one who never said yes (SKIPPED, `no_consent`). Idempotent per id. Answers the ids and
- *                               the figures the drive asserts: every campaign is a fresh Start → PREPARING → RUNNING → DONE.
- *   POST ?stages=<id>         — the states the drive photographs, as rows (idempotent per id): CONFIRMED (1,604 people —
+ *   POST ?run=<id>[&tag=<name>]
+ *                             — a campaign the engine can really run: "Live drive <id>", CONFIRMED, ten people on tag
+ *                               `u47live-<id>` (or the `&tag=` name — `tagFor`) — eight who will receive, one who stopped by
+ *                               their link (SKIPPED, `suppressed`) and one who never said yes (SKIPPED, `no_consent`). Idempotent
+ *                               per id. Answers the ids, the tag and the figures the drive asserts: every campaign is a fresh
+ *                               Start → PREPARING → RUNNING → DONE.
+ *   POST ?stages=<id>[&tag=<name>]
+ *                             — the states the drive photographs, as rows (idempotent per id), their audience the tag
+ *                               `u47live-stage-<id>` (or the `&tag=` name): CONFIRMED (1,604 people —
  *                               Start's dialog), CONFIRMED on an audience that can no longer be read (Start is refused),
  *                               PREPARING (600 of 1,604 written), RUNNING (1,604 people, every KPI, reasons
  *                               and chip), PAUSED by an engine reason, PAUSED by an officer (no audit row — the page says "an
@@ -68,6 +72,7 @@ import { ensureOptOutToken, stopMarketing } from "@/lib/server/marketing/optout-
 import { mirrorContactCache } from "@/lib/server/marketing/contact-cache";
 import { runContactBulk } from "@/lib/server/marketing/contact-bulk";
 import { newContactRow } from "@/lib/server/contacts/contact-write";
+import { parseOneTag } from "@/lib/contacts/contact-fields";
 import { WHOLE_BOOK, contactAudienceKey } from "@/lib/server/marketing/audience";
 import { startRefusalSentence } from "@/lib/server/marketing/start-check";
 import { liveSendWindow } from "@/lib/server/marketing/dispatch";
@@ -100,6 +105,23 @@ const pad = (n: number, w: number) => String(n).padStart(w, "0");
 const cleanRun = (v: string | null): string => (v ?? "").toLowerCase().replace(/[^a-z0-9]/g, "").slice(0, 8);
 /** Five digits from the run id, for the numbers (NDC 78 — no other seed uses it, so two runs never meet). */
 const digitsOf = (run: string): string => pad([...run].reduce((n, ch) => (n * 31 + ch.charCodeAt(0)) % 100_000, 7), 5);
+
+/**
+ * ⭐ THE TAG THE PEOPLE OF `?run=` CARRY, AND THE ONE THE `?stages=` AUDIENCES NAME — `u47live-<id>` and `u47live-stage-<id>`
+ * (the `fallback`), so every caller that names none (the U47 live drive, the visual sweep, `test:campaign-visuals` V16) is
+ * unchanged. `&tag=<name>` names it instead: the admin guide's (2026-10-09) — its pictures print the tag, in the audience
+ * card's rail and on the campaign page ("Audience: Tag: …"), and a unit code there is a word no manager knows.
+ * ⛔ The name is read by the writers' own one-tag rule (`parseOneTag`, the bulk bar's Tag box): the stored form (lower case,
+ * whitespace collapsed), 1–32 letters, digits, spaces, - and _, one tag, never a phone number — anything else is refused
+ * (400) in that rule's own sentence, before anything is made. ⚠️ Two runs given the same name share the tag, so a filter by
+ * it finds both runs' people: the guide names its one run on a fresh server.
+ */
+function tagFor(url: URL, fallback: string): { ok: true; tag: string } | { ok: false; error: string } {
+  const named = url.searchParams.get("tag");
+  if (named === null) return { ok: true, tag: fallback };
+  const verdict = parseOneTag(named);
+  return verdict.ok ? { ok: true, tag: verdict.tag } : { ok: false, error: `?tag= — ${verdict.sentence}` };
+}
 
 /* ── the ten people ── */
 type Kind = "will" | "stopped" | "never";
@@ -491,8 +513,10 @@ export async function POST(req: Request) {
   if (runParam !== null) {
     const run = cleanRun(runParam);
     if (run === "") return NextResponse.json({ ok: false, error: "?run= wants letters and digits" }, { status: 400 });
+    const runTag = tagFor(url, `u47live-${run}`);
+    if (!runTag.ok) return NextResponse.json({ ok: false, error: runTag.error }, { status: 400 });
     await ensureOfficer();
-    const tag = `u47live-${run}`;
+    const tag = runTag.tag;
     for (const [i, kind] of KINDS.entries()) await seedPerson(run, tag, i + 1, kind);
     const filter = contactAudienceKey({ ...WHOLE_BOOK, tags: [tag] });
     const id = idOf(run, "run");
@@ -509,8 +533,10 @@ export async function POST(req: Request) {
   if (stagesParam !== null) {
     const run = cleanRun(stagesParam);
     if (run === "") return NextResponse.json({ ok: false, error: "?stages= wants letters and digits" }, { status: 400 });
+    const stageTag = tagFor(url, `u47live-stage-${run}`);
+    if (!stageTag.ok) return NextResponse.json({ ok: false, error: stageTag.error }, { status: 400 });
     await ensureOfficer();
-    const tag = `u47live-stage-${run}`;
+    const tag = stageTag.tag;
     const filter = contactAudienceKey({ ...WHOLE_BOOK, tags: [tag] });
     const out: Array<{ key: string; id: string; name: string; status: SmsCampaignStatus; people: number; rows: number }> = [];
     for (const [slot, s] of STAGES.entries()) {
@@ -523,10 +549,10 @@ export async function POST(req: Request) {
       const rows = made ? await stageRows(run, id, slot, s.mix, s.skips) : Object.values(s.mix).reduce((n, k) => n + (k ?? 0), 0);
       out.push({ key: s.key, id, name: s.name, status: s.path[s.path.length - 1], people: s.count, rows });
     }
-    return NextResponse.json({ ok: true, run, officer: { id: OFFICER_ID, name: OFFICER_NAME }, stages: out });
+    return NextResponse.json({ ok: true, run, tag, officer: { id: OFFICER_ID, name: OFFICER_NAME }, stages: out });
   }
 
-  return NextResponse.json({ ok: false, error: "?run=<id> · ?stages=<id> · ?busy=<ms> · ?words=1" }, { status: 400 });
+  return NextResponse.json({ ok: false, error: "?run=<id>[&tag=<name>] · ?stages=<id>[&tag=<name>] · ?busy=<ms> · ?words=1" }, { status: 400 });
 }
 
 export async function GET(req: Request) {

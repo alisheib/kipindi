@@ -324,7 +324,7 @@ const STOP_REASON_SENTENCE: Readonly<Record<string, string>> = {
   list_over_confirmed_sending:
     "Paused — more people are on this campaign's list than were confirmed, found after sending had started, so nobody more is messaged. Some people may already have been messaged, and a copy would message them again. Stop this campaign.",
   live_switch_closed:
-    "Paused — marketing SMS are not switched on: the owner switched them off, the time they were switched on for ran out, or the switch couldn't be read. Once Admin → System shows them on, press Resume.",
+    "Paused — marketing SMS are not switched on: the Owner switched them off, the time they were switched on for ran out, or the switch couldn't be read. Once Admin → System shows them on, press Resume.",
   gateway_refused: "Paused — the SMS network refused the last batch, and nothing in it was charged. Check Admin → System, then Resume.",
   gateway_unanswered:
     "Paused — the SMS network gave no clear answer for the last batch (no reply, or an error page instead of its answer), so those people are counted as no answer and are never sent again by themselves. Check Admin → System, then Resume.",
@@ -339,7 +339,7 @@ const STOP_REASON_SENTENCE: Readonly<Record<string, string>> = {
   sizes_unreadable:
     "Paused — this campaign's saved message size can't be read, so what is left to send can't be priced against the credit kept for login codes. Stop it, or ask the developer.",
   price_unknown:
-    "Paused — the price per SMS isn't known, so what is left to send can't be priced against the credit kept for login codes. The owner sets it on Admin → System → Marketing SMS, then Resume.",
+    "Paused — the price per SMS isn't known, so what is left to send can't be priced against the credit kept for login codes. The Owner sets it on Admin → System → Marketing SMS, then Resume.",
   held_rows: "Paused — some people could not be checked or prepared. Resume to try them again, or Stop.",
   before_send_unanswered:
     "Paused — the last check before sending could not be made three times running, so nothing more was sent. Resume to try again.",

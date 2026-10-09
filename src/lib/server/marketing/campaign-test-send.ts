@@ -187,7 +187,7 @@ export type CampaignTestResult =
 
 /* ══ THE SENTENCES — each one the officer can act on ════════════════════════════════════════════════════════════════ */
 
-export const TEST_LIVE_SENDS_CLOSED = "Marketing SMS are not switched on yet. The owner switches them on before the first send.";
+export const TEST_LIVE_SENDS_CLOSED = "Marketing SMS are not switched on yet. The Owner switches them on before the first send.";
 export const TEST_NOT_FOUND = "This campaign was not found — save it first, then test it.";
 export const TEST_NOT_DRAFT = "This campaign is no longer a draft, so it can't be tested.";
 export const TEST_NO_ENGLISH = "This campaign has no saved English message — test the Swahili one.";
@@ -197,7 +197,7 @@ export const TEST_NO_ENGLISH = "This campaign has no saved English message — t
  *  one is the owner's call, not this sentence's. */
 export const TEST_OWN_NUMBER_UNUSABLE =
   "Your account's phone number is not a Tanzanian mobile number an SMS can reach, so no test can be sent. " +
-  "An account's number can't be changed — ask the owner, who manages staff access in Staff & roles (/admin/staff).";
+  "An account's number can't be changed — ask the Owner, who manages staff access in Staff & roles (/admin/staff).";
 export const TEST_RAIL_DEAD = "No SMS can leave this server right now — the sender line above says why.";
 /** Step 10's opt-out token (kept for the stop page) could not be made. ⛔ It names no stop link: nothing is appended to a
  *  test since the owner's ruling of 2026-10-09 (`test:campaign-compose` §16.22). */
