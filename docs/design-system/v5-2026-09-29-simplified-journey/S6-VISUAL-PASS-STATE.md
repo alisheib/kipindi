@@ -1,4 +1,4 @@
-# S6 visual pass — the state, for resuming on any machine (updated 2026-10-09 ~20:30 EAT)
+# S6 visual pass — the state, for resuming on any machine (updated 2026-10-09 ~22:10 EAT)
 
 **Why this file exists.** Ali, 2026-10-09: *"push live everything you have in case later we proceed on another machine
 … not to keep anything locked on this machine and the next machine repeats it by accident"* and *"anything not done
@@ -8,13 +8,18 @@ every question for Ali. The session's working tools and notes are on `origin/vod
 them; on OMEGA they live in the session scratchpad, written `S` in briefs).
 
 ## 1 · The branches (all on GitHub)
-- **`origin/vodacom-visual`** at `89893725` — the S6 visual pass (journey shell + shared page bodies), NOT live. Rebased
+- **`origin/vodacom-visual`** at `6f5b24c0` — the S6 visual pass (journey shell + shared page bodies), NOT live. Rebased
   on main `118fc75c`; main has moved since (S14's STEP 57 `f33909983` and docs) — rebase again before the final proof.
 - `origin/vodacom-visual-r5g-wip` (`a32c3317`) — R5-G's work before its port (superseded: R5-G is merged).
 - `origin/vodacom-visual-tools` — the working tools (lock-turn chains, merge checks, briefs, triage notes, owner lists,
   every round's mutation proof, the reviewers' evidence under `tools/review6/`).
-- Live from this lane today: the security hotfixes `9cb95938` (immutable cache only for static files) and `118fc75c`
-  (the proxy, so its security headers, runs for every page address); both read back on production.
+- **Live from this lane today (all read back on production):** `9cb95938` (immutable cache only for static files),
+  `118fc75c` (the proxy runs for every page address), `731e58f0` (every response carries the static security headers —
+  a missing file under a public folder no longer renders the signed-in not-found page unprotected) and `2cd2239e`
+  (RESPONSIBLE GAMBLING: the break and self-exclusion emails state the end in EAT with its time, a permanent exclusion
+  no date — they gave a UTC day, a day early for ends 00:00–03:00 EAT).
+- WIP branches (each a finished helper's work, being merged): `vodacom-visual-r5j-wip`, `-r5k-wip` (merged), `-r5l-wip`,
+  `-r6a-wip`, `-r6b-wip`, `-r6c-wip`, `-r5g-wip` (merged).
 
 ## 2 · Merged on `vodacom-visual` (each commit's message is the full record)
 Rounds 1–4 of the visual pass and the edge read, then round 5:
@@ -25,7 +30,10 @@ Rounds 1–4 of the visual pass and the edge read, then round 5:
   in flight; counts; the regulator's name; legal titles · **R5-I** every state in its own ink; calm refusals; grant tones
   · two red twins fixed · **R5-H** every loading ghost a client reference (/wallet/receipts 16.9 KB → 0.5 KB per refresh),
   the ghosts' bands, the journey flag and the not-found mark in the first paint · **R5-G** the journey's money pages take
-  the journey's words, a 97-door census, the regulator's name kept whole on the opt-out footer, /offline and the error page.
+  the journey's words, a 97-door census, the regulator's name kept whole on the opt-out footer, /offline and the error page
+  · **R5-K** seven loading ghosts rebuilt from their pages (receipt, deposit, return, withdraw, profile, classic positions,
+  performance) · **the route entrance** — no blink on a journey tab tap, no replay and no jump to the top at hydration
+  (proven in a browser before/after; S14's sweep had caught the jump).
 Each merge was proved on the merged tree: every suite reading a touched file, the helper's lists, the red twins, and
 every round-5 mutation proof — after R5-H, all seven green (R5-A 41, R5-B 36, R5-C 59, R5-D 27, R5-E 27, R5-H 41, R5-I
 58 planted defects caught, every file restored byte-identical; five older plants re-aimed at the code R5-H moved).
@@ -33,31 +41,28 @@ Known reds that are not the branch's: `test:orphans` (main's two landing-v3 pane
 (the legal-tree pin, green once the branch is main), `test:backup` from a junctioned worktree (the shared Prisma client
 predates main's `targetListId`), `test:house-bot-holder-lifecycle` (main's own; S14 fixing).
 
-## 3 · Running on OMEGA when this was written (start again from the brief if OMEGA is gone)
-- **R6-A** (`F:\kipindi-r6a`): the independent review's RESPONSIBLE-GAMBLING findings (HIGH, pre-existing code, live
-  today) — A1 the break and self-exclusion confirmation emails give the end as a UTC day with no time (a day early for
-  ends 00:00–03:00 EAT; English month in the Swahili line; a permanent exclusion reads "until 2126"); A2 during a break
-  the market page still offers the full bet panel and Up & Down its stakes (the server refuses only at confirm); A3 two
-  empty states (Tiketi zangu's Juu/Chini tab, /positions/performance) invite a first bet during a break. A1 is made one
-  self-contained change to go to main as a hotfix ahead of the pass. Brief: appendix H.
-- **R6-B** (`F:\kipindi-r6b`): B-1 MEDIUM keyboard focus escapes the bet and sell confirms while a request is in flight;
-  B-2 the chart's deadline doesn't make it retry sooner; B-3 three quadratic text helpers; B-4 a name's cut can differ
-  between server and an old browser (hydration); A4 (security, LOW) the proxy still skips the public folders, so a
-  missing file there renders the not-found inside the signed-in shell without security headers — one self-contained
-  change for a main hotfix; A5 ".." mended in every notice; A6 the round page's title in English only; A7 the win
-  notice's title unclipped. Brief: appendix I.
-- **R6-C** (`F:\kipindi-r6c`): reviewer C's 17 consistency findings (6 MEDIUM: the bet confirm's stake splitting
-  "TZS" from its digits on phones; Up & Down's range line clipped when the stake is invalid; the journey menu telling
-  verified players "Verify your identity"; /profile/invite's three names; an English tab title on every Up & Down round
-  page — with R6-B; journey doors still saying "positions"). Brief: appendix J.
-- **R5-J** (counts and figures), **R5-K / R5-L** (the loading ghosts that still don't match their pages) — static work
-  only until the marketing session frees the machine. Briefs: C, D. (Reviewers A, B and C have reported; their evidence
-  is under `tools/review6/` on the tools branch.)
-- **Queued after "marketing done"**: a browser probe of R5-H's proposed route-entrance patch (a fade that may blink on
-  every journey tab tap and replay at hydration, jumping the page to the top) — `wrt-chain.sh` in the tools.
+## 3 · Finished and waiting to merge (each on its WIP branch; merge in this order, proving each on the merged tree)
+- **R5-J** (`-r5j-wip`, being merged at ~22:00 EAT): every count grouped the one way and worded in lower case; one figure
+  reader for every result; no invisible placeholder characters. Merge note: classify R5-K's positions-ghost "00" slot in
+  r5j's count census (a ghost shape, as its siblings).
+- **R6-B** (`-r6b-wip`): keyboard focus kept inside busy dialogs; the chart's retry; linear text helpers; a name's cut
+  decided on the server; ".." kept in free text; the round page's title in the reader's words; the win notice clipped
+  (its proxy part is LIVE as 731e58f0).
+- **R6-A** (`-r6a-wip`): during a break no bet panel on the market page or Up & Down (the break's notice instead), no
+  empty state inviting a first bet (Tiketi zangu's Juu/Chini tab, performance, leaderboard, activity); the bell's
+  permanent exclusion without a date (its email part is LIVE as 2cd2239e).
+- **R6-C** (`-r6c-wip`): reviewer C's 17 consistency findings (the bet stake whole, the Up & Down range line, KYC and
+  invite door names, "Tiketi zangu" everywhere in the journey, grids at 320, the sign-in break notice neutral, the Needle
+  and chat ✕, the gold census's warning spellings, the bell's notices, tracked labels, pill sizes, whole questions,
+  back links to the hub, 12px button pairs). Its notes for others: R5-K's return ghost row must be gap-2; carry R5-K's
+  performance drawing into the new performance-ghost.tsx.
+- **R5-L** (`-r5l-wip`, an unfinished snapshot; the helper was asked to finish and report): the board, agent, leaderboard,
+  results, markets, live and PageLoader ghosts rebuilt from their pages (its helper ghost-kit.tsx vs R5-K's
+  ghost-text.tsx — keep one).
 
 ## 4 · How it goes live
-1. Merge R6-A, R6-B, R5-J, R5-K, R5-L and reviewer C's fixes; rebase on the latest main. Hotfix A1 and A4 to main first.
+1. Merge R5-J, R6-B, R6-A, R6-C and R5-L (§3), each proved on the merged tree; rebase on the latest main (it now carries
+   the two hotfixes 731e58f0 and 2cd2239e and S14's STEP 58).
 2. The final proof, in lock turns (`wm16a`–`wm16d` in the tools): typecheck + the whole battery with the database
    suites + every red twin the pass touches; classic-shell parity against a baseline at the new base (named
    EXPECTED_DIFFS only, never a re-baseline — the sell confirm's free-window box and its ✕ are page-body changes to
@@ -70,7 +75,7 @@ predates main's `targetListId`), `test:house-bot-holder-lifecycle` (main's own; 
    peer notice), close S6 in VODACOM-PLAN §0g/§0h/§0i.
 
 ## 5 · Questions for Ali (none blocks the pass; each has a default in place)
-58 so far: the plain list is appendix F; the full record (with the S12 word list and the S8 notes) is appendix G.
+78 so far: the plain list is appendix F; the full record (with the S12 word list and the S8 notes) is appendix G.
 
 ---
 
@@ -436,6 +441,26 @@ C · CROSS-SURFACE CONSISTENCY (visual and verbal, statically). The pass's rule:
 57. The old (classic) header's Deposit buttons still show during a break (frozen until launch). Fix at launch?
 
 58. Links use two colours (blue in most places, aqua in five). Which one should every link be?
+59. The deposit-return page's loading placeholder is shaped like a successful payment (its words are hidden). OK?
+60. The profile page's loading placeholder assumes an unverified player without email (the commonest case?). OK?
+61. The withdraw page's placeholder shows the form even for players who must verify first (it then swaps). OK?
+62. The phone filter sheet's topic grid can't fit the longest Swahili topic names with a count. One column, or wrap?
+63. Group the old (classic) bell's count like every other count when the freeze lifts?
+64. On the old bet dial, show the money in refusal sentences in the numbers font too?
+65. The objection box's character counter makes its hint re-wrap while typing. Reserve its space?
+66. During a break, the break sentence can appear twice on a market page. Shorten one of them?
+67-68. Two break/exclusion email wordings could be clearer (a shorter break inside a longer one; "until" for an exclusion
+    that never reopens by itself). New wording needed — approve a rewrite?
+69. Give the bet-column break notice a title ("Pumzika kidogo")?
+70. Emails print "Sept" where the app says "Sep". Align?
+71. Some Swahili notices don't name the market (English and Chinese do). Add it?
+72. Notices cut long market names at different lengths. Use one length?
+73. Some pages still call Up & Down "Juu au Chini". Use "Juu na Chini" everywhere?
+74. A rare technical edge on /live titles with unusual characters — fix it properly (small server change)?
+75. The old (classic) menu and footer still use the old invite/verify names. Align them at launch?
+76. Back buttons from the account hub say "‹ AKAUNTI". OK, or a generic "‹ RUDI"?
+77. Identity-verification links now say "Uthibitisho wa kitambulisho". OK?
+78. Result pop-ups that open with a big badge keep the ✕ in the corner. OK?
 #### Process
 24. A screen-checking tool was broken on main; it is repaired on the Vodacom branch (ships with it).
 5, 6. Two earlier reports (small-text work order; two unused test files).
@@ -588,6 +613,37 @@ C · CROSS-SURFACE CONSISTENCY (visual and verbal, statically). The pass's rule:
 58. (Review C) Two link colours: brand-300 (~48 sites, R5-C calls it "the link ink") and the kit aqua (--accent-400) at
     five sites (row actions, /profile/activity, the resolution panel, notification settings, the cards' "Maelezo");
     --text-link (aqua-300) has 0 uses. Which one is the link colour?
+59. (R5-K) The deposit return page's loading ghost is shaped by the PAID outcome's words, hidden from sight and from
+    screen readers (neutral bars would make the head jump 1–3 lines on landing). Acceptable on this money page?
+60. (R5-K) /profile's loading ghost draws the commonest case as "unverified, no email" — production data could confirm.
+61. (R5-K) The withdraw ghost draws the form for everyone; a KYC-gated reader sees it swap to the identity panel. Per
+    reader would need one more server read in the loading file. Keep?
+62. (R5-J) The filter sheet's two-column topic grid (148px cells) cannot hold the longest Swahili topic names with a
+    count ("Hali ya hewa" overflows from 3 digits at 360, 4 at 390): a 184px minimum (one column below 412px), or let
+    the topic group wrap like the other groups?
+63. (R5-J) The CLASSIC bell's count stays ungrouped (frozen chrome) — group it when the freeze lifts?
+64. (R5-J) The old dial's kept refusal sentence draws its figures in the sentence face — compose the keep helpers with
+    the money reader (R4-I/R5-E helpers; r4i's width model re-measured)?
+65. (R5-J) The objection counter ("0/1,000") re-wraps the hint while the player types — reserve its widest width
+    (costs 31px of hint width at rest)?
+66. (R6-A) During a break, a player with no position on a market sees the break sentence twice (the new bet-column notice and
+    R4-I's line under "Your positions"); RG notices may not be removed — cut `noBetYet` at its first full stop there?
+67. (R6-A) A shorter break taken during a running one keeps the longer end, but its email says "paused for 1 hour, until
+    <the week's end>" and its subject "Break confirmed · 1 hour". Reword (new words)?
+68. (R6-A) The exclusion email says "disabled until {date}" and its row "Unlocks", but under the 2026-08-27 ruling an
+    exclusion never reopens by itself (auth.selfExclusionUntilBody says so). Reword (new words)?
+69. (R6-A) The break notice in the bet column has no title — add the home's pair ("Pumzika kidogo" / the exclusion title)?
+70. (R6-A) Email rows print the en-GB "Sept" in September where the dictionary says "Sep" (platform-wide).
+71. (R6-B) The Swahili selection-closed and cash-out notices name no market (English and Chinese do). Should they?
+72. (R6-B) Notice quote lengths differ by family (70/70/50, 70/50/50, 60/60/60…). Unify?
+73. (R6-B) /live, /results, /fairness and new Up & Down notices still say "Juu au Chini" — use the page's words?
+74. (R6-B) Should /live hand its hyphenated-title parts down from the server (a rare hydration edge on odd Unicode)?
+75. (R6-C) Frozen classic chrome still disagrees: the classic avatar menu shows "Invite & Earn" to agents and "Verify ID"
+    to verified readers; the classic top bar, More rail and footer say "Alika marafiki" to agents and paid players.
+    Unfreeze these to the journey's rules at launch?
+76. (R6-C) The journey back link names the section ("‹ AKAUNTI") — or a generic "‹ RUDI"?
+77. (R6-C) KYC doors now say the page's tab/eyebrow ("Uthibitisho wa kitambulisho") instead of its h1. Confirm?
+78. (R6-C) Crest-first dialogs (results, win celebration) keep the corner ✕ — the one written exception. Confirm?
 #### S12 (live-word corrections, ship with S12)
 - Swahili "Arifa {n}" reads like one more chip beside "Pesa 3" on the notifications filter row (G1): "{n} arifa".
 - The guest help subtitle "Maswali ya kawaida · Simu · Barua pepe" cannot fit one line at 320/360 (73px row); a
@@ -613,6 +669,18 @@ C · CROSS-SURFACE CONSISTENCY (visual and verbal, statically). The pass's rule:
   suggest "Thibitisha kuweka pesa" for native review.
 - (R5-G) The push-settings page and the inbox share one name, "Arifa / Notifications / 通知" — the settings page needs its own.
 - (R5-G) auth.licensedByGbt uses the acronym "GBT".
+- (R5-J) pnl-summary-strip writes "3 Hai" / "3 Open" (a capitalised label after a count) — a lower-case "open" word.
+- (R5-J) pnl-summary-strip's "W · L · C" abbreviations are English in all three languages.
+- (R5-J) /updown/history writes "{wins}/{decided} decided" in English in all three languages.
+- (R5-J) The Up & Down card's player count and the market card's comment count have no word — one/many pairs.
+- (R5-J) Swahili result phrases are capitalised ("Miamala {n}", "Nafasi {n}", "Risiti {n}") while /markets writes "masoko {n}".
+- (R5-J) cash.tsx:91 aria-label "balance hidden" is English in all three languages.
+- (R6-A) The permanent-exclusion email reads "for permanent" (broken English) and its Swahili line has no word for
+  permanent — "permanently" / "kabisa", or reuse auth.selfExclusionPermanentBody; the bell's permanent notice too.
+- (R6-B) The Swahili minutes order: the chip and <title> say "15 dakika", the stored round title "dakika 15".
+- (R6-B) notifyLoss writes "Upande…" (capital) where notifyUpDownLoss writes "upande…".
+- (R6-C) "Nafasi zako" / "Your positions" on the market and round pages, "{n} positions" on the performance bar, and zh
+  help.openSettledCashOut need journey words ("Tiketi zako / Your tickets / 您的注单").
 
 #### S8 (the journey bet sheet)
 - A player on a break (or self-excluded but signed in) can open the old dial, pick a side and a stake, and is refused
