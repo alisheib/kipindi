@@ -15,6 +15,7 @@ import { updateProfileBasicsAction } from "@/app/profile/actions";
 import { errorCopy } from "@/lib/error-copy";
 import { refusalReason, refusalVariant } from "@/lib/failure-reasons";
 import { keepNameEnd } from "@/components/ui/keep-words";
+import { PROFILE_NAME_FACE } from "@/components/profile/profile-faces";
 
 export function ProfileNameEditor({
   currentName,
@@ -151,7 +152,7 @@ export function ProfileNameEditor({
           maxLength={40}
           aria-label={t.common.yourName}
           placeholder={t.common.yourName}
-          className="font-display text-[24px] md:text-[28px] font-bold leading-tight tracking-[-0.02em] text-text bg-transparent border-b border-border-control transition-colors focus:border-brand-500 focus:outline focus:outline-2 focus:outline-offset-2 focus:outline-[color:var(--brand-500)] focus:shadow-[0_0_0_4px_color-mix(in_oklab,var(--brand-500)_25%,transparent)] px-0 min-h-[40px] min-w-0 max-w-full flex-1"
+          className={`${PROFILE_NAME_FACE} text-text bg-transparent border-b border-border-control transition-colors focus:border-brand-500 focus:outline focus:outline-2 focus:outline-offset-2 focus:outline-[color:var(--brand-500)] focus:shadow-[0_0_0_4px_color-mix(in_oklab,var(--brand-500)_25%,transparent)] px-0 min-h-[40px] min-w-0 max-w-full flex-1`}
         />
         {pending && <span className="inline-flex text-text-subtle"><Spinner size={16} /></span>}
       </div>
@@ -189,7 +190,7 @@ export function ProfileNameEditor({
       className="mt-1.5 inline-flex min-h-[40px] max-w-full items-center gap-2 group text-left"
       aria-label={t.common.editDisplayName}
     >
-      <span className="min-w-0 font-display text-[24px] md:text-[28px] font-bold leading-tight tracking-[-0.02em] text-text text-balance [overflow-wrap:anywhere]">
+      <span className={`min-w-0 ${PROFILE_NAME_FACE} text-text text-balance [overflow-wrap:anywhere]`}>
         {currentName && currentName.trim() !== "" ? keepNameEnd(currentName) : (
           <span className="text-text-subtle italic">{fallbackPlaceholder}</span>
         )}

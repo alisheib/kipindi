@@ -441,7 +441,9 @@ const ghostAt = (path: string, l: Locale) => inApp(path, l, h(JourneyRouteGhost 
     ["/account", (l) => `>${dict[l].journey.tabAccount}</h1>`],
     ["/updown/history", (l) => dict[l].journey.tabTickets],
     ["/wallet/deposit", (l) => dict[l].common.deposit],
-    ["/wallet/deposit/return", () => 'class="rounded-card border border-border bg-bg-elevated p-6 space-y-4 kp-shimmer-track"'],
+    // ⚠️ MOVED IN ROUND 5'S FOLLOW-UP (R5-K): the provider's return ghost draws the page's bands now — the hero, the
+    // receipt's rows, the footnote — not the centred card; its footnote is the page's sentence, set and not shown.
+    ["/wallet/deposit/return", (l) => dict[l].wallet.returnFootnote],
     ["/markets/mkt_any", () => "lg:grid-cols-[1fr_360px]"],
     ["/help", () => 'role="status"'],
   ];

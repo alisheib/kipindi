@@ -167,7 +167,11 @@ section("2 · E24 E25 E26 a long name breaks inside its column, never one charac
 {
   const ed = read(EDITOR);
   const button = /<button\s+ref=\{triggerRef\}[\s\S]*?<\/button>/.exec(ed)?.[0] ?? "";
-  const nameRule = (b: string) => [
+  // ⚠️ MOVED IN ROUND 5'S FOLLOW-UP (R5-K): the name's face is `PROFILE_NAME_FACE` (`profile-faces.ts`), the one string the
+  // editor and /profile's loading ghost both read — resolved here, so the rule below reads the class the span renders.
+  const face = /export const PROFILE_NAME_FACE = "([^"]+)";/.exec(read("src/components/profile/profile-faces.ts"))?.[1] ?? "\u0000";
+  const resolved = (b: string) => b.replace(/className=\{`min-w-0 \$\{PROFILE_NAME_FACE\} ([^`]*)`\}/, (_, rest: string) => `className="min-w-0 ${face} ${rest}"`);
+  const nameRule = (b0: string, b = resolved(b0)) => [
     !/className="mt-1\.5 inline-flex min-h-\[40px\] max-w-full items-center gap-2 group text-left"/.test(b) && "the button may outgrow its column",
     !/<span className="min-w-0 font-display text-\[24px\] md:text-\[28px\] font-bold leading-tight tracking-\[-0\.02em\] text-text text-balance \[overflow-wrap:anywhere\]">/.test(b) && "the name has no anywhere-break, balance or min-w-0",
     !/\? keepNameEnd\(currentName\) :/.test(b) && "the name's end is not kept",
