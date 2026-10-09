@@ -396,7 +396,7 @@ export function counterFor(body: string, variant: CampaignVariant, fallback: str
     bodyUnits,
     budget: composed.budget,
     left: composed.budget - bodyUnits,
-    footerUnits: unitsIn(marketingFooter(token, v), encoding),
+    footerUnits: unitsIn(marketingFooter(), encoding),
     sourceUnits: 0,
     jinaReserve: scan.jina * unitsIn(worstCaseJina(), encoding),
     offenders,

@@ -932,16 +932,17 @@ ok("§11 no module-scope value captures a config getter", [...new Set(v11)].leng
  * the user side". Until that day this section held the OPPOSITE: the root error page's four hand-written
  * copies of the helpline had to exist and to match the default.
  *
- * ⛔ NOTHING THAT REACHES A PLAYER READS THE HELPLINE. The marketing SMS footer (`src/lib/marketing/footer.ts`)
- * printed it until the owner's ruling of 2026-10-09 emptied that footer — no SMS carries it since; `footer.ts`
- * still reads it in `statutorySmsHelpline()`, which no message prints, and stays exempt below while it does.
- * The admin card still edits it. Everything else under src/ — every page, component, email and the Help chat's
- * prompt — may not read it, may not render a dictionary label that names one, and the error page may not print one.
+ * ⛔ NOTHING UNDER src/ READS THE HELPLINE BUT ITS DEFINITIONS AND THE ADMIN CONSOLE. The marketing SMS footer
+ * (`src/lib/marketing/footer.ts`) printed it until the owner's ruling of 2026-10-09 emptied that footer; its last
+ * read — `statutorySmsHelpline()`, which no message printed — went after it, and this section's exemption for that
+ * file went with it. The admin card still edits it. Everything else under src/ — every page, component, email, the
+ * Help chat's prompt and the marketing modules — may not read it, may not render a dictionary label that names one,
+ * and the error page may not print one.
  */
 {
-  /** The files that may read the helpline: its two definitions and `footer.ts` (no SMS carries what it reads since
-   *  2026-10-09) — and the admin console. */
-  const MAY_READ = ["src/lib/support-config.ts", "src/lib/server/support-config.ts", "src/lib/marketing/footer.ts"];
+  /** The files that may read the helpline: its two definitions — and the admin console. (`footer.ts` was exempt until
+   *  its last read went, after the owner's ruling of 2026-10-09.) */
+  const MAY_READ = ["src/lib/support-config.ts", "src/lib/server/support-config.ts"];
   const isAdmin = (rel: string) => rel.startsWith("src/app/admin/");
   const READS = /\bHELPLINE(?:_TEL)?\s*\(/;
   const readers = (rel: string, src: string) => !MAY_READ.includes(rel) && !isAdmin(rel) && READS.test(src);
@@ -961,7 +962,7 @@ ok("§11 no module-scope value captures a config getter", [...new Set(v11)].leng
     if (readers(rel, src)) v15a.push(`${rel} reads the helpline`);
     if (!isAdmin(rel) && rel.endsWith(".tsx")) for (const [path, en] of labelled(src)) v15b.push(`${rel} renders ${path} = "${en}"`);
   }
-  ok("§15.1 ★ no player-facing file reads the helpline — pages, components, emails, the Help chat (only footer.ts, whose helpline no SMS carries since 2026-10-09, and the admin card may)",
+  ok("§15.1 ★ no player-facing file reads the helpline — pages, components, emails, the Help chat, the marketing SMS modules (only its definitions and the admin card may)",
     v15a.length === 0, v15a.join(" | "));
   ok("§15.2 ★ no player-facing component renders a label that names a helpline",
     v15b.length === 0, uniq(v15b).join(" | "));
@@ -970,10 +971,11 @@ ok("§11 no module-scope value captures a config getter", [...new Set(v11)].leng
   ok("§15.3 ★ the root error page prints no helpline and reads no published one", printed.length === 0, printed.join(" | "));
 
   // ⚠️ CONTROLS — each detector must fire on the shape it exists for, and pass what it must pass.
-  ok("§15.4 ⚠️ CONTROL — the readers detector flags a player file that reads the helpline, and passes footer.ts (exempt; no SMS carries its helpline since 2026-10-09) and the admin card",
+  // ⭐ Since 2026-10-09 the marketing footer is a player file like any other: a read of the helpline there is flagged.
+  ok("§15.4 ⚠️ CONTROL — the readers detector flags a player file that reads the helpline, the marketing footer's old read among them, and passes the admin card",
     readers("src/components/layout/public-footer.tsx", "<a href={`tel:${HELPLINE_TEL()}`}>{HELPLINE()}</a>")
       && readers("src/lib/server/email.ts", "Helpline ${HELPLINE()}")
-      && !readers("src/lib/marketing/footer.ts", "return HELPLINE_TEL();")
+      && readers("src/lib/marketing/footer.ts", "return HELPLINE_TEL();")
       && !readers("src/app/admin/system/page.tsx", "{HELPLINE()}"));
   ok("§15.5 ⚠️ CONTROL — the label detector flags a label that reads \"Helpline\", and passes one that does not",
     labelled("<span>{t.footer.helpline}</span>", () => "Helpline").length === 1
@@ -981,12 +983,14 @@ ok("§11 no module-scope value captures a config getter", [...new Set(v11)].leng
   ok("§15.6 ⚠️ CONTROL — the error-page detector flags the old copies and the old attribute read",
     ["helpline: \"Helpline 0800 11 0011\",", "helpline: \"\\u5e2e\\u52a9\\u70ed\\u7ebf\",", "getAttribute(\"data-kp-helpline\")"]
       .every((s) => [...s.matchAll(PRINTED)].length > 0));
-  // ⭐ The exemptions are not dead letters: each named file exists, and `footer.ts` still reads the helpline — in
-  // `statutorySmsHelpline()`, which no SMS has carried since the owner's ruling of 2026-10-09 — so an exemption that
-  // outlived its reason would show here (when that read goes, the exemption goes with it).
-  ok("§15.7 ⚠️ CONTROL — every exempted file exists, and footer.ts still reads the helpline (statutorySmsHelpline, printed in no SMS since 2026-10-09)",
-    MAY_READ.every((p) => files.some((f) => relative(ROOT, f).replace(/\\/g, "/") === p))
-      && READS.test(decomment(readFileSync(join(SRC, "lib/marketing/footer.ts"), "utf8"))));
+  // ⭐ The exemptions are not dead letters: there are exactly the two, each exists, and each still holds the reader — the
+  // client-safe half defines `HELPLINE()`, the server half re-exports it — so an exemption that outlived its reason would
+  // show here, as `footer.ts`'s did when its read went (2026-10-09).
+  const defines = /export function HELPLINE\(/.test(decomment(readFileSync(join(SRC, "lib/support-config.ts"), "utf8")));
+  const reExports = /export \{[^}]*\bHELPLINE\b[^}]*\} from "\.\.\/support-config"/.test(decomment(readFileSync(join(SRC, "lib/server/support-config.ts"), "utf8")));
+  ok("§15.7 ⚠️ CONTROL — the only exempted files are the helpline's two definitions, each exists, and each still holds its reader",
+    MAY_READ.length === 2 && MAY_READ.every((p) => files.some((f) => relative(ROOT, f).replace(/\\/g, "/") === p)) && defines && reExports,
+    `exempt [${MAY_READ.join(", ")}] · defines ${defines} · re-exports ${reExports}`);
 }
 
 // ────────────────────────────────────────────────────────────────────────────
