@@ -18,6 +18,9 @@
  * from `live-copy.ts`, handed a figure by the view for a money reader only.
  * ⭐ The reasons and the failed split are the kit's `AdminBarList` in its own ink — "not sent" is the checks working, never
  * danger (OD40) — dominant first, protected ONE line (the view's list, worded once), the five words always.
+ * ⛔ EVERY LABEL WRAPS, NONE IS CUT OFF (2026-10-09, at 360 px the protected line read "Protected (responsible gambling, age,
+ * accoun…"): a row's title already wraps beside its count, and both lists ask the kit for `wrapLabels` — the label runs onto
+ * further lines while its count stays at the right of the first, the same box at every width; the data stamps are unchanged.
  *
  * Guard: `npm run test:campaign-visuals` §R (R1–R15) · Red: `npm run red:campaign-visuals`.
  */
@@ -37,7 +40,8 @@ export function LiveWhenResults({ children }: { children: ReactNode }) {
   return view.results !== null ? <>{children}</> : null;
 }
 
-/** One result: its title and its count on one line, and under it what the count is — or that it could not be counted. */
+/** One result: its title and its count on one line — a long title wraps, its count staying at the right of the first line —
+ *  and under it what the count is, or that it could not be counted. */
 function Result({ name, label, value, help, box, children }: {
   name: string; label: string; value: number | null; help: string; box: string; children?: ReactNode;
 }) {
@@ -100,6 +104,7 @@ export function LiveResults() {
                     { label: RESULTS_FAILED.receipt, value: r.failed.receipt, title: liveReasonTitle(RESULTS_FAILED.receipt, r.failed.receipt) },
                   ]}
                   format={formatNumber}
+                  wrapLabels
                 />
               </div>
             )}
@@ -112,6 +117,7 @@ export function LiveResults() {
               <AdminBarList
                 rows={r.notSent.reasons.map((x) => ({ label: x.label, value: x.count, title: liveReasonTitle(x.label, x.count) }))}
                 format={formatNumber}
+                wrapLabels
               />
             </div>
           </Result>

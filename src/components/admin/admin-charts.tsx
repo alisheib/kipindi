@@ -572,14 +572,27 @@ export function AdminMeter({
 /* Replaces the hand-rolled distribution divs across admin. Brand fill by
    default; bars grow-in once on mount via `prog-sweep`. */
 
+/** A row's label box, both kinds written out whole (Tailwind reads source text): the default keeps a long label on its one
+ *  line and cuts it off with an ellipsis; `wrapLabels` lets it run onto further lines, every word shown. */
+const BAR_LABEL_ONE_LINE = "min-w-0 truncate text-text";
+const BAR_LABEL_WRAPS = "min-w-0 break-words text-text";
+
 export function AdminBarList({
   rows,
   colorVar = "var(--brand-500)",
   format,
+  wrapLabels = false,
 }: {
   rows: ReadonlyArray<{ label: ReactNode; value: number; title?: string }>;
   colorVar?: string;
   format?: (n: number) => string;
+  /**
+   * ⭐ A long label WRAPS onto further lines instead of being cut off, and its value stays at the right of the FIRST line —
+   * the row aligns on its first baseline — in the same box at every width. For a list whose every word is the point: a
+   * campaign's reasons ("Protected (responsible gambling, age, account status or agent referee)") at a phone's width.
+   * Off by default: every other list keeps its one-line rows, as it was drawn and measured.
+   */
+  wrapLabels?: boolean;
 }) {
   const max = Math.max(...rows.map((r) => r.value), 1);
   const fmt = format ?? formatCount;
@@ -597,7 +610,7 @@ export function AdminBarList({
         return (
           <div key={i} title={r.title}>
             <div className="mb-1 flex items-baseline justify-between gap-2 text-caption">
-              <span className="min-w-0 truncate text-text">{r.label}</span>
+              <span className={wrapLabels ? BAR_LABEL_WRAPS : BAR_LABEL_ONE_LINE}>{r.label}</span>
               <span className="shrink-0 font-mono tabular text-text">{fmt(r.value)}</span>
             </div>
             <div className="h-2 bg-bg-sunken rounded-sm relative overflow-hidden">

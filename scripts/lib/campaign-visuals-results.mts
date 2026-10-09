@@ -26,7 +26,9 @@
  *       and ERASURE-BLIND (X22): a stop an erasure leaves standing keeps counting (the owner's ruling of 2026-10-09: no message
  *       carries a link any more; S14's review: an erasure must not be told from a removal by this figure);
  *   R15 ⭐ the platform's OWN writers move it — the opt-out page, the profile switch, the bulk bar's Suppress and Record a
- *       withdrawal — and the REAL erasure adds nobody and takes nobody out.
+ *       withdrawal — and the REAL erasure adds nobody and takes nobody out;
+ *   R16 ⛔ every label WRAPS, none is cut off — each title and bar-list label beside a count that stays at the right of its
+ *       first line, the same boxes at every width (2026-10-09: the protected line was cut off at 360 px).
  * ⛔ This file holds no backslash (an editing tool decodes them): patterns are built from character classes and codes.
  */
 import { readFileSync, readdirSync } from "node:fs";
@@ -92,6 +94,7 @@ export const LABELS = {
   r13: "R13 · THE REASONS ARE PRINTED ONCE — over a reader's campaign above the floor the whole page (status, controls, figures and results) draws the five reasons in the results card and none in the figures card, and not the figures card's 'Not sent, by reason' title; the same view with its results taken away keeps the figures card's own list; a masked viewer on nine rows is drawn neither; the figures card's file guards its list on the view having no results",
   r14: "R14 · ⭐ EVERY WAY A PERSON STOPS, AND ONLY A STOP IN FORCE (E30 as re-ruled 2026-10-09: no message carries a link) — after this campaign's message a stop by the link, the offers switch turned off, an officer's Suppress, an officer's recorded withdrawal and a complaint each count; a number on the stop list AND in the ledger counts ONCE; a lifted stop, a switch turned back on, the erasure's marker under an ordinary book row and a lapse do not; and the figure is ERASURE-BLIND (X22) — an officer's Suppress and then an erasure (the tombstone), a link stop under an erasure with no book row, and a stop made after a later yes reopened the ledger under a tombstone each still count, while a switch turned off that the erasure's marker then superseded does not, exactly as a later yes would make it fall",
   r15: "R15 · ⭐ THE PLATFORM'S OWN WRITERS MOVE IT — on a campaign handed over before the writers ran: the opt-out page's stop, the profile switch turned off, an officer's Suppress and an officer's Record a withdrawal (the bulk bar's own run) each answer ok, write what the rules read, and count once — 0 before, 5 after (the four, and one more stopped by their link), a switch turned off and back on not among them; then the REAL erasure changes nothing (X22): the stopped person it erases still counts, their stop standing, and nobody it erases who never stopped is added — 5",
+  r16: "R16 · ⛔ EVERY LABEL WRAPS, NONE IS CUT OFF (2026-10-09: at 360 px the protected line read 'Protected (responsible gambling, age, accoun…') — in the rendered card every row's title and every label of its two bar lists (the failed split and the reasons, the protected line among them) is a box that shrinks and wraps beside a count that never shrinks, in a row aligned on its first baseline — so the count stays at the right of the label's first line — with no class that cuts a label off, holds it on one line or clips it, and none that holds only from some width on (the same boxes at every width); nothing in the card is cut off with an ellipsis; and the figures card's own list, drawn for a view with no results, wraps the same",
 } as const;
 export type ResultsLabel = (typeof LABELS)[keyof typeof LABELS];
 
@@ -221,6 +224,21 @@ function openingOf(html: string, name: string): string {
 const honestyIn = (html: string): { noReceiptYet: boolean; notSetUp: boolean } => ({
   noReceiptYet: html.includes(`data-results-honesty=${DQ}no_receipt_yet${DQ}`), notSetUp: html.includes(`data-results-honesty=${DQ}not_set_up${DQ}`),
 });
+/**
+ * R16 · every "label beside its count" row a piece of markup draws — a results row's title and its count, a bar-list row's
+ * label and its count — as the three class lists that decide whether the label wraps (the row's, the label's, the count's),
+ * whether it is a results row's title, and its text. ⛔ Read off the rendered markup: the property under test IS the class list.
+ */
+type LabelRow = { row: string[]; label: string[]; value: string[]; title: boolean; text: string };
+const LABEL_ROW = new RegExp(`<div class=${DQ}([^${DQ}]*)${DQ}><span class=${DQ}([^${DQ}]*)${DQ}([^>]*)>([^<]*)</span><span class=${DQ}([^${DQ}]*)${DQ}[^>]*>([^<]*)</span></div>`, "g");
+function labelRowsIn(html: string): LabelRow[] {
+  return Array.from(html.matchAll(LABEL_ROW)).map((m) => ({
+    row: m[1].split(" "), label: m[2].split(" "), value: m[5].split(" "), title: m[3].includes("data-results-label"), text: unescapeHtml(m[4]),
+  }));
+}
+/** Every class name in a piece of markup. */
+const classesIn = (html: string): string[] => Array.from(html.matchAll(new RegExp(`class=${DQ}([^${DQ}]*)${DQ}`, "g"))).flatMap((m) => m[1].split(" "));
+
 /** The reasons list's (label, count) pairs in the order drawn — read off the kit's rows' hover titles, "Label: N". */
 function reasonsIn(html: string): Array<{ label: string; count: number }> {
   const at = html.indexOf("data-results-reasons");
@@ -1116,6 +1134,45 @@ export async function resultsClaims(impl: ResultsImpl, h: ResultsHarness): Promi
     return [acts && spelled && erased && moved,
       `before ${before.results?.stoppedSince} → after the writers ${after.results?.stoppedSince} (want 5: p1 the page, p2 the switch, p3 Suppress, p4 a recorded withdrawal, p6 the page; not p5, off and on) → after two erasures ${last.results?.stoppedSince} (want 5 — erasure-blind) · the writers answered ok ${acts} · wrote what the rules read ${spelled} · erased (the markers, the tombstone, p6's stop kept) ${erased}`];
   });
+
+  /* ── R16 · ⛔ every label wraps, none is cut off ── */
+  await h.claim(L.r16, async () => {
+    const c = await h.campaign("rr16", { path: STOPPED, count: 12 });
+    await h.rows(c.id, [
+      ...h.many(2, { status: "DELIVERED", sentAt: iso(T - 90 * MIN) }), { status: "SENT", sentAt: iso(T - 20 * MIN) },
+      { status: "FAILED", failureClass: "REJECTED" }, { status: "FAILED", failureClass: "receipt:UNDELIV" },
+      ...h.many(3, { status: "SKIPPED", skipReason: "suppressed" }), { status: "UNCONFIRMED" }, ...h.many(3, { status: "PENDING" }),
+    ]);
+    const v = await results(c.id, READER);
+    const html = card(v, READER);
+    const r = v.results;
+    // A label that may not wrap: cut off with an ellipsis, held on one line, or clipped by its box.
+    const CUT = ["truncate", "text-ellipsis", "text-clip", "whitespace-nowrap", "text-nowrap", "overflow-hidden"];
+    const cut = (cls: readonly string[]): boolean => cls.some((t) => CUT.includes(t) || t.startsWith("line-clamp"));
+    // A class that holds only from some width on (sm:, md:, …): the same box at every width has none.
+    const sized = (cls: readonly string[]): boolean => cls.some((t) => t.includes(":"));
+    // ⭐ The label shrinks and wraps; the count beside it never shrinks, and the row aligns on the first baseline — so the count
+    // stays at the right of the label's FIRST line, however many lines the label takes.
+    const holds = (x: LabelRow): boolean => x.row.includes("flex") && x.row.includes("items-baseline") && x.row.includes("justify-between")
+      && x.label.includes("min-w-0") && x.label.includes("break-words") && !cut(x.label) && !cut(x.row)
+      && x.value.includes("shrink-0") && !sized(x.row) && !sized(x.label) && !sized(x.value);
+    const rows = labelRowsIn(html);
+    const titles = rows.filter((x) => x.title).length;
+    const bars = rows.length - titles;
+    const wantTitles = html.split("data-results-row=").length - 1;
+    const wantBars = r === null ? -1 : (r.failed.total > 0 ? 2 : 0) + r.notSent.reasons.length;
+    const notWrapping = rows.filter((x) => !holds(x)).map((x) => x.text.slice(0, 40));
+    const theLine = rows.some((x) => !x.title && x.text === AUDIENCE_REASON_LABEL.protected);
+    const cutAnywhere = classesIn(html).filter((t) => t === "truncate" || t === "text-ellipsis" || t.startsWith("line-clamp"));
+    // the figures card's own list — drawn only for a view with no results — wraps the same
+    const bare = impl.renderPage({ ...v, results: null }, viewerOf(READER));
+    h.see(bare);
+    const own = labelRowsIn(bare.slice(Math.max(0, bare.indexOf("data-live-reasons"))));
+    const ownNotWrapping = own.filter((x) => !holds(x)).map((x) => x.text.slice(0, 40));
+    const ownRight = bare.includes("data-live-reasons") && own.length === (v.notSentReasons?.length ?? -1) && ownNotWrapping.length === 0;
+    return [titles === wantTitles && titles >= 6 && bars === wantBars && bars >= 7 && theLine && notWrapping.length === 0 && cutAnywhere.length === 0 && ownRight,
+      `the card's rows: ${titles} titles (of ${wantTitles} rows) and ${bars} bar-list labels (want ${wantBars}), the protected line among them ${theLine} · not wrapping [${notWrapping.join(" | ")}] · cut off anywhere in the card [${cutAnywhere.join(", ")}] · the figures card's own list: ${own.length} labels (want ${v.notSentReasons?.length ?? "none"}), not wrapping [${ownNotWrapping.join(" | ")}]`];
+  });
 }
 
 /** The text of the card's markup (tags out, entities decoded). */
@@ -1127,6 +1184,10 @@ function textOf(html: string): string {
 
 type ViewPlant = (d: LiveViewDeps) => LiveViewDeps;
 export type ResultsPlant = { name: string; expect: string[]; impl: { viewDeps?: ViewPlant; results?: ResultsImpl } };
+/** R16's plants: the kit's two label boxes and a results row's title, as the markup prints them. */
+const BAR_WRAPS = `class=${DQ}min-w-0 break-words text-text${DQ}`;
+const BAR_ONE_LINE = `class=${DQ}min-w-0 truncate text-text${DQ}`;
+const TITLE_WRAPS = `class=${DQ}min-w-0 break-words text-body text-text${DQ}`;
 
 export function resultsPlants(phoneLabel: string): ResultsPlant[] {
   const L = LABELS;
@@ -1288,5 +1349,16 @@ export function resultsPlants(phoneLabel: string): ResultsPlant[] {
       impl: withResults({ renderPage: (view, o) => base.renderPage({ ...view, notSentReasons: null }, o) }) },
     { name: "R-P4 · a phone number reaches the results card", expect: [phoneLabel],
       impl: withResults({ render: (view, o) => `${base.render(view, o)}<p>+255712345678</p>` }) },
+    // ⛔ 2026-10-09 · the finding itself: the kit's list cut its labels off again — "Protected (responsible gambling, age, accoun…"
+    { name: "R-R16 · a label cut off again — the reasons' and the failed split's labels held on one line and cut with an ellipsis (the protected line at 360 px)", expect: [L.r16],
+      impl: withResults({ render: (view, o) => base.render(view, o).split(BAR_WRAPS).join(BAR_ONE_LINE) }) },
+    { name: "R-R16b · a row's title held on one line — at a phone's width it runs past the card instead of wrapping", expect: [L.r16],
+      impl: withResults({ render: (view, o) => base.render(view, o).split(TITLE_WRAPS).join(`class=${DQ}min-w-0 whitespace-nowrap text-body text-text${DQ}`) }) },
+    { name: "R-R16c · the count let shrink — a long label squeezes it off the right of the first line", expect: [L.r16],
+      impl: withResults({ render: (view, o) => base.render(view, o).split(`class=${DQ}shrink-0 font-mono tabular text-text${DQ}`).join(`class=${DQ}font-mono tabular text-text${DQ}`) }) },
+    { name: "R-R16d · a label that wraps only below a width — cut off with an ellipsis from the small breakpoint up (a different box per width)", expect: [L.r16],
+      impl: withResults({ render: (view, o) => base.render(view, o).split(BAR_WRAPS).join(`class=${DQ}min-w-0 break-words sm:truncate text-text${DQ}`) }) },
+    { name: "R-R16e · the figures card's own list cut off again — the same reasons, drawn for a view with no results", expect: [L.r16],
+      impl: withResults({ renderPage: (view, o) => base.renderPage(view, o).split(BAR_WRAPS).join(BAR_ONE_LINE) }) },
   ];
 }

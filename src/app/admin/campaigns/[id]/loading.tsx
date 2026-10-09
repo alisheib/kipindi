@@ -100,7 +100,7 @@ export default function Loading() {
                     <SkBar className="h-[18px] w-[300px] max-w-full" />
                     {i === 3 && (
                       <div className="pt-1">
-                        <AdminBarList rows={Array.from({ length: LIVE_REASON_ROWS }, () => ({ label: String.fromCharCode(160), value: 0 }))} format={() => String.fromCharCode(160)} />
+                        <AdminBarList rows={Array.from({ length: LIVE_REASON_ROWS }, () => ({ label: String.fromCharCode(160), value: 0 }))} format={() => String.fromCharCode(160)} wrapLabels />
                       </div>
                     )}
                   </div>
