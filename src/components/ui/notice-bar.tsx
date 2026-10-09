@@ -54,6 +54,7 @@ export function NoticeBar({
   onDismiss,
   dismissLabel = "Dismiss",
   testId,
+  assertive = false,
 }: {
   tone?: NoticeBarTone;
   /** Leading glyph. Omit for the plain tone dot (the broadcast-bar look). */
@@ -65,15 +66,21 @@ export function NoticeBar({
   onDismiss?: () => void;
   dismissLabel?: string;
   testId?: string;
+  /**
+   * An EVENT that just happened, announced at once (`role="alert"`) — the connection dropping (`OfflineBanner`).
+   * ⛔ Never for a standing condition: those are rendered on page load, and an alert would interrupt every load.
+   */
+  assertive?: boolean;
 }) {
   const t = TONE[tone];
   const Glyph = glyph ? I[glyph] : null;
   return (
     <div
-      // `status`/`polite`, never `alert`: these describe a standing condition, so
-      // they must not interrupt a screen-reader mid-sentence on every page load.
-      role="status"
-      aria-live="polite"
+      // `status`/`polite` by default, never `alert`: these describe a standing condition, so
+      // they must not interrupt a screen-reader mid-sentence on every page load. `assertive` is the
+      // one exception, for a bar that appears on an event (see the prop).
+      role={assertive ? "alert" : "status"}
+      aria-live={assertive ? undefined : "polite"}
       data-testid={testId}
       className={`border-b ${t.bar}`}
     >

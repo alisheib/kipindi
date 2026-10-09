@@ -661,6 +661,8 @@
     "qa:journey-funnel": "node scripts/qa-journey-funnel.cjs",
     "test:journey-shell": "tsx scripts/journey-shell.test.mts",
     "red:journey-shell": "tsx scripts/journey-shell.test.mts --prove-red",
+    "test:offline-neutral": "tsx scripts/offline-neutral.test.mts",
+    "red:offline-neutral": "tsx scripts/offline-neutral.test.mts --prove-red",
     "test:journey-account": "tsx scripts/journey-account.test.mts",
     "red:journey-account": "tsx scripts/journey-account.test.mts --prove-red",
     "test:journey-tickets": "tsx scripts/journey-tickets.test.mts",

@@ -372,7 +372,7 @@ const config: Config = {
         "date-select": "120",         // above modals on purpose: a picker in a dialog opens OVER it
         select: "130",                // above date-select on purpose
         primer: "150",                // first-visit primer — never pierced by a picker
-        banner: "200",                // offline banner
+        // (`banner: "200"` is gone, 2026-10-09 R4-G: the offline banner is a NoticeBar in the flow now, with no rung.)
         tooltip: "1600",
         celebration: "1700",          // win celebration · RG reality check
         toast: "1800",                // above modals on purpose — see operation-result-modal.tsx

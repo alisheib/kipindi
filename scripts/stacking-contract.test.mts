@@ -170,7 +170,12 @@ const ROOT_SURFACES: Surface[] = [
   //    which is the one number the old Tailwind ladder already had right — and it is
   //    deliberately absent from the §3 ordering laws for exactly that reason.
   { id: "tooltip",             file: "src/app/globals.css",                              find: /(?:^|\n)\.kp-tooltip-popover \{[\s\S]{0,1400}?z-index:\s*(\d+);/, z: 1600, note: "declared rung of the legacy inline tooltip (position:absolute — context-dependent in practice)" },
-  { id: "offline-banner",      file: "src/components/ui/offline-banner.tsx",             find: /fixed top-0 inset-x-0 z-\[(\d+)\]/,                          z:  200, note: "connectivity is a fact about the whole app, so it outranks page chrome" },
+  /* ⛔ THE OFFLINE BANNER'S ROW (z 200, "connectivity outranks page chrome") IS GONE, AND THE RUNG WITH IT (R4-G,
+     2026-10-09, edge scenario 9). Outranking the chrome was the defect: a fixed strip at the viewport's top, it lay on
+     the header of both shells and took its clicks — offline, no header control could be pressed. It is now the kit's
+     NoticeBar in AppShell's flow under the header (offline-banner.tsx), positioned nowhere and declaring no z, so it has
+     no rung; 200 left KNOWN_ROOT_RUNGS, the Tailwind ladder's `banner` and needle.css's prose table in the same commit.
+     `test:offline-neutral` §8 holds the strip in the flow. */
   { id: "first-visit-primer",  file: "src/components/onboarding/first-visit-primer.tsx", find: /zIndex=\{(\d+)\}/,                                           z:  150, note: "a Modal raised above select/date-select so the primer is never pierced" },
   { id: "select",              file: "src/components/ui/select.tsx",                     find: /fixed z-\[(\d+)\] rounded-control/,                          z:  130, note: "DELIBERATELY above modals — a Select inside a dialog must open over it" },
   { id: "date-select",         file: "src/components/ui/date-select.tsx",                find: /fixed inset-0 z-\[(\d+)\] flex items-center/,                z:  120, note: "same reason as select; below select so a Select over a calendar still wins" },
@@ -330,7 +335,6 @@ const LAWS: Array<[string, string, string]> = [
   ["toast", "win-celebration",       "even the celebration does not bury a toast"],
   ["win-celebration", "modal",       "earned money outranks whatever dialog was open"],
   ["reality-check", "modal",         "an RG interruption outranks whatever dialog was open"],
-  ["offline-banner", "first-visit-primer", "connectivity is a fact about the whole app"],
   ["first-visit-primer", "select",   "the primer must not be pierced by a dropdown behind it"],
   ["select", "date-select",          "a Select opened over a calendar still wins"],
   ["date-select", "modal",           "DELIBERATE: a picker inside a dialog must open OVER it, not inside it"],
@@ -727,7 +731,7 @@ console.log("\n§6 · the closed rung set — no new hand-typed z-index");
 const LOCAL_PLANE_MAX = 10;
 const KNOWN_ROOT_RUNGS = new Set<number>([
   11, 20, 30, 40, 45, 50, 60, 61, 70, 71, 79, 80,
-  100, 120, 130, 150, 200, 1600, 1700, 1800, 2000, 9000, 9999,
+  100, 120, 130, 150, 1600, 1700, 1800, 2000, 9000, 9999,
 ]);
 
 /** The five spellings of a z-index the sweep reads: Tailwind arbitrary and scale, an inline style, a JSX prop, CSS. */

@@ -393,6 +393,14 @@ export async function AppShell({ children }: { children: React.ReactNode }) {
           from the first byte, every overlay reads the answer right after hydrating. A classic page never carries it. */}
       {journeyShown && <span hidden id={JOURNEY_SHELL_MARK} />}
       {funnelScopeValue !== "off" && <FunnelUtm />}
+      {/* ⭐ THE OFFLINE NOTICE — IN THE FLOW, UNDER THE HEADER, FIRST OF THE NOTICES (R4-G, 2026-10-09; edge scenario 9).
+          It was a FIXED strip at the viewport's top over everything (`z-[200]`), and it lay on the header of both shells:
+          its words ran over the mark, the capsule and the pill on a phone, over the nav links at 1280, and it took their
+          clicks — offline, no header control could be pressed (the drive's 1280 tap timed out three times on the band).
+          It is now the kit's `NoticeBar` here, like the notices below it: it covers nothing and pushes the page down by
+          its own height while the browser is offline. Mounted here once, in its own boundary, still imported statically
+          (`test:journey-shell` 12.shell.offline). */}
+      <Suspense fallback={null}><OfflineBanner /></Suspense>
       <AnnouncementBanner maintenance={maintBanner} announcement={announcement} />
       {/* 🔴 E-381 · the in-place answer to a session that ended during a refresh — see the note at
           `endedReason`. Server-rendered, and its only action is a plain `<a>`. */}
@@ -494,9 +502,6 @@ export async function AppShell({ children }: { children: React.ReactNode }) {
       {session && <Suspense fallback={null}><LazySellResultHost /></Suspense>}
       <Suspense fallback={null}>
         <AuthFlash />
-      </Suspense>
-      <Suspense fallback={null}>
-        <OfflineBanner />
       </Suspense>
       <Suspense fallback={null}>
         <LazyPullToRefresh />

@@ -330,8 +330,9 @@ const CONSUMES_SYSTEM = /var\(--/;
  *     before any stylesheet exists.
  *   - a colour passed into a JS library's option object (the QR encoder) is an
  *     argument, not a style.
- *   - `env(safe-area-inset-*)` is the DEVICE's number, not ours. `offline-banner`
- *     computes its top padding from the notch; no token can express that.
+ *   - `env(safe-area-inset-*)` is the DEVICE's number, not ours: a padding computed
+ *     from the notch cannot be a token. (`offline-banner` was the example until
+ *     2026-10-09, when it became an in-flow NoticeBar with no inline style.)
  */
 const CANNOT_TOKENIZE = /\bthemeColor\b|QRCode\.|toDataURL\(|\benv\(/;
 /** A keyword is not a design value — it is the absence of one. */

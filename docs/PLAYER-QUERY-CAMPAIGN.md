@@ -1003,7 +1003,13 @@ total written in prose.
 | Journey hub | `/account` | A fixed list of doors, not a collection. Journey only: every request the journey is not shown to gets the not-found page until S15 (Vodacom plan S6 WP5, SJ-17). |
 | Public agent | `/agent` · `/agent/apply` · `/agent/status` | Static copy and a form. |
 | Legal | `/legal/terms` · `/legal/aml` · `/legal/privacy` · `/legal/responsible-gambling` · `/legal/agent-terms` · `/legal/rules` · `/legal/rules/yes-no` · `/legal/rules/up-down` | A document is read, not queried — but see the ruling below. |
-| Other | `/` · `/help` · `/offline` | See the rulings below. |
+| Other | `/` · `/help` | See the rulings below. |
+
+> ⭐ **THE OFFLINE FALLBACK LEFT THIS CENSUS ON 2026-10-09 (R4-G, the Vodacom visual pass), BECAUSE IT IS NO LONGER A
+> PAGE.** It was `src/app/offline/page.tsx`; it is now a route handler, `src/app/offline/route.ts`, answering one
+> self-contained document with no shell, no session and nothing listed — so `test:route-census`'s population
+> (`page.tsx` files) no longer holds it, and this section must not name it. Its ruling would have been "nothing", for
+> the reason it always had: one message and one retry.
 
 > 🔴 **`/auth/admin` WAS MISSING FROM THIS CENSUS UNTIL 2026-09-08, AND `test:route-census` FOUND
 > IT ON ITS FIRST RUN.** It is the staff sign-in page — a client-facing route that is NOT under

@@ -447,7 +447,9 @@ const EXPECTED: Record<string, Expect> = {
   "/auth/2fa": AUTH, "/auth/admin": AUTH, "/auth/forgot-password": AUTH, "/auth/login": AUTH, "/auth/otp": AUTH,
   "/auth/register": AUTH, "/auth/reset-password": AUTH, "/auth/verify-email": AUTH,
   "/s": OPT_OUT, "/s/[token]": OPT_OUT,
-  "/offline": { tab: null, why: "the service worker's offline fallback, a page a reader is sent to and never browses to" },
+  // `/offline` LEFT THE CENSUS ON 2026-10-09 (R4-G): it is a route handler now (`src/app/offline/route.ts`), a
+  // self-contained document with no shell and no tabs, not a page — so it is on no reader's tab bar to decide.
+  // `lib/nav/active-tab.ts` keeps its no-tab row: the path still lights nothing, whatever answers it.
 };
 /**
  * Decided before its page exists. ⛔ An entry here EXPIRES: `1.census.ahead` fails once the page is on disk, so the
@@ -1881,7 +1883,7 @@ const EXTERNAL: ReadonlyArray<{ route: string; file: string; cite: string; why: 
   { route: "/auth/verify-email", file: "src/lib/server/email-verification.ts", cite: "/auth/verify-email?token=", why: "the confirmation link, sent by email" },
   { route: "/s", file: "src/lib/marketing/footer.ts", cite: 'OPTOUT_PATH = "/s/"', why: "a marketing SMS's opt-out link that lost its token" },
   { route: "/s/[token]", file: "src/lib/marketing/footer.ts", cite: 'OPTOUT_PATH = "/s/"', why: "the opt-out link in every marketing SMS" },
-  { route: "/offline", file: "public/sw.js", cite: 'OFFLINE_URL = "/offline"', why: "the service worker's offline fallback" },
+  // (`/offline` left with its census entry, 2026-10-09: a route handler's document, not a page — see EXPECTED.)
 ];
 /**
  * A15: the four doors two tickets routes enter through — each classic page's own, which every classic reader uses, and

@@ -145,8 +145,8 @@
 /* z-index: the object must FLOAT ABOVE the app's nav chrome so it can never be hidden
    behind or trapped under a bar — the bug that made it "stick" to the bottom nav on phones
    and the top bar on desktop, and vanish on some pages. 50pick's real stack: top bar 30,
-   bottom nav 40, dropdowns 50, menus 60, popovers 90, MODALS 100, selects 120–130, banners
-   200, toasts 1800. 45 sits ABOVE both nav bars (so it passes over them, front-most) but
+   bottom nav 40, dropdowns 50, menus 60, popovers 90, MODALS 100, selects 120–130,
+   toasts 1800. 45 sits ABOVE both nav bars (so it passes over them, front-most) but
    BELOW every dropdown / menu / popover / decision and modal (a fidget must never cover
    one). DEVIATION from the playground's 900 (which assumed modals at 1000). 09-needle CHANGELOG. */
 #needle-root #needle { position: fixed; top: 0; left: 0; width: var(--nsize, 80px); height: var(--nsize, 80px); z-index: 45; pointer-events: none; }
