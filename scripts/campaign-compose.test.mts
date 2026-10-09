@@ -106,9 +106,11 @@ import {
   SENDER_IDENTITY,
   type MarketingCompose,
 } from "../src/lib/marketing/footer.ts";
-// The published helpline, in dial form — what no message may carry (§9, §12). Read where it is defined: since 2026-10-09
-// the marketing modules read no helpline at all.
-import { HELPLINE_TEL } from "../src/lib/support-config.ts";
+// The published helpline, in dial form — what no message may carry (§9, §12) and what the old envelope printed. Read where
+// it is defined, from the client-safe module (it imports nothing; the SERVER config is loaded below only once
+// DATABASE_URL is gone): since 2026-10-09 neither the marketing modules nor any reader reads it, and on this memory twin
+// the number saved is the default.
+import { SUPPORT_DEFAULTS } from "../src/lib/support-config.ts";
 import {
   JINA, JINA_MAX_CHARS, CAMPAIGN_NAME_MAX_CHARS, SOURCE_PHRASE_MAX_CHARS,
   counterFor, renderForRecipient, renderBody, worstCaseJina, jinaFor, firstNameFor, scanPlaceholders,
@@ -121,6 +123,9 @@ import { srcFiles, REPO_ROOT } from "./lib/tracked-files.mts";
 import { endOfOpenTag } from "./lib/jsx-open-tag.mts";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
+
+/** The published helpline in dial form (see its import above). */
+const PUBLISHED_HELPLINE_TEL = SUPPORT_DEFAULTS.nationalHelplineTel;
 
 process.exitCode = 1; // failure is the default
 const PROVE_RED = process.argv.includes("--prove-red");
@@ -327,7 +332,7 @@ function checkEnvelope(compose: Composer, log: (l: string) => void): string[] {
     ok("§9 ⭐ the footer is EMPTY", footer === "", JSON.stringify(footer));
     const sent = compose("50pick: soka leo. Weka dau sasa.", TOKEN);
     ok("§9 ⭐ no stop link, no 18+, no helpline and no token in a composed message",
-      !sent.text.includes("/s/") && !sent.text.includes("18+") && !sent.text.includes(HELPLINE_TEL()) && !sent.text.includes(TOKEN)
+      !sent.text.includes("/s/") && !sent.text.includes("18+") && !sent.text.includes(PUBLISHED_HELPLINE_TEL) && !sent.text.includes(TOKEN)
         && !sent.text.includes("Acha"), JSON.stringify(sent.text));
   }
 
@@ -3112,7 +3117,7 @@ if (!PROVE_RED) {
       // here the envelope as it stood until that day: the published helpline and the stop link on `50pick.tz`.
       name: "a footer appended again — the stop link, 18+ and the helpline back on every message",
       expect: /^§11 ⭐ the composed text IS the officer's text/,
-      compose: (body, token) => { const c = REAL(body, token); return { ...c, text: `${c.text}\n50pick 18+ ${HELPLINE_TEL()} Acha: 50pick.tz/s/${token}` }; },
+      compose: (body, token) => { const c = REAL(body, token); return { ...c, text: `${c.text}\n50pick 18+ ${PUBLISHED_HELPLINE_TEL} Acha: 50pick.tz/s/${token}` }; },
       landed: () => true,
       landedAs: "a composer that appends anything sends a message the officer did not write",
     },
@@ -3199,7 +3204,7 @@ if (!PROVE_RED) {
     const cases12 = [
       { name: "the Board's 0800110051 back in the footer (the number OQ4 ruled out, on a message the owner ruled bare)", number: BOARD,
         expect: /^§12 …and the Gaming Board Code's 0800110051 appears nowhere/ },
-      { name: "the published helpline back in the footer (the statutory envelope as it stood until 2026-10-09)", number: HELPLINE_TEL(),
+      { name: "the published helpline back in the footer (the statutory envelope as it stood until 2026-10-09)", number: PUBLISHED_HELPLINE_TEL,
         expect: /^§12 ⭐ the published helpline is printed in no footer/ },
     ];
     for (const c of cases12) {

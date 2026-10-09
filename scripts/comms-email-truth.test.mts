@@ -36,9 +36,11 @@
    they hydrate from `SystemConfig`. ⛔ This suite kept importing `SUPPORT_PHONE` from the client
    half and died at load with "does not provide an export named 'SUPPORT_PHONE'" — a red that
    `tsc` cannot see, because a `.mts` fixture's imports are outside the typechecker's include.
-   ⭐ The helpline readers are imported to prove NO email carries the helpline (owner's ruling, 2026-10-06). */
-import { HELPLINE, SUPPORT_DEFAULTS } from "../src/lib/support-config.ts";
-import { SUPPORT_PHONE } from "../src/lib/server/support-config.ts";
+   ⭐ The helpline — its default and the number saved now (the live config) — is read to prove NO email carries it
+   (owner's ruling, 2026-10-06). (Through its reader `HELPLINE()` until 2026-10-09, when the readers went: nothing
+   in the product read them.) */
+import { SUPPORT_DEFAULTS } from "../src/lib/support-config.ts";
+import { SUPPORT_PHONE, getSupportConfig } from "../src/lib/server/support-config.ts";
 import { readFileSync, readdirSync, statSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { dirname, join } from "node:path";
@@ -463,7 +465,7 @@ for (const r of RENDERS) {
   // ⭐ THE OWNER'S RULING OF 2026-10-06: no email carries the helpline — not its number, not the word. Until that
   // day this line asserted every template DID carry it (and before 2026-09-07 it pinned our own desk as "the
   // helpline"). §3g below proves the detector can fire.
-  ok(`${r.template}: carries no helpline`, !carriesHelpline(r.benign), HELPLINE());
+  ok(`${r.template}: carries no helpline`, !carriesHelpline(r.benign), getSupportConfig().nationalHelpline);
 
   // 3e — LINKS. A relative href is dead in an inbox.
   const hrefs = [...r.benign.matchAll(/href="([^"]+)"/g)].map((m) => m[1]);
@@ -685,7 +687,7 @@ ok("sendEmail never throws for any input",
 // our own desk. (Until 2026-10-06 this section asserted the helpline was NOT our desk; since that ruling the
 // admin may save any number as the helpline, and no email prints it at all.)
 ok("§3g ⚠️ CONTROL — the helpline detector fires on the number and the word, and passes a desk-only footer",
-   carriesHelpline(`<p>Helpline ${HELPLINE()}</p>`) && carriesHelpline("<p>Need help? Contact the Tanzania Gambling Helpline.</p>")
+   carriesHelpline(`<p>Call ${getSupportConfig().nationalHelpline}</p>`) && carriesHelpline("<p>Need help? Contact the Tanzania Gambling Helpline.</p>")
    && !carriesHelpline(`<p>18+ · Licensed by Gaming Board of Tanzania · ${SUPPORT_PHONE()}</p>`));
 
 console.log(`\ncert-c1 (email truth): ${pass} passed, ${fail} failed`);
@@ -701,7 +703,7 @@ function stripStyle(html: string): string {
 /** A body that prints the helpline — its saved number, its default, or the word (owner's ruling, 2026-10-06). */
 function carriesHelpline(html: string): boolean {
   const text = stripStyle(html);
-  return text.includes(HELPLINE()) || text.includes(SUPPORT_DEFAULTS.nationalHelpline) || /helpline|hotline/i.test(text);
+  return text.includes(getSupportConfig().nationalHelpline) || text.includes(SUPPORT_DEFAULTS.nationalHelpline) || /helpline|hotline/i.test(text);
 }
 
 /** What Postmark sends as the text part — the same transform `sendEmail` uses. */

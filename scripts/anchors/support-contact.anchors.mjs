@@ -36,6 +36,9 @@ export const MUTATIONS = [
     // ⭐ THE RULING ON EVERY PAGE: the footer is on all of them, and it is where the helpline sat.
     // ⚠️ THE EXPECTED LABEL STOPS AT THE EM-DASH, BECAUSE THAT IS WHERE THE RUNNER STOPS. It reads
     // the gate's `FAIL <label> — <detail>` line and matches on the label half.
+    // ⭐ Since 2026-10-09 the helpline's readers no longer exist (nothing read them): this and the chat's
+    // case bring one back by its old name — what a revert would restore with it — and the email's case
+    // reads the config field straight, the way a surface would bring the number back with no reader left.
     name: "public-footer.tsx — the helpline comes back to the footer of every page",
     file: "src/components/layout/public-footer.tsx",
     from: `<span className="whitespace-nowrap">{supportPhone}</span>`,
@@ -44,11 +47,11 @@ export const MUTATIONS = [
   },
   {
     // …and in the inbox: the footer of every email carried "Helpline <number>" until 2026-10-06. Single-quoted
-    // so the `${` in the source is literal.
-    name: "email.ts — the helpline comes back to the footer of every email",
+    // so the `${` in the source is literal. Read off the config itself — no reader is left to call.
+    name: "email.ts — the helpline comes back to the footer of every email, read off the config",
     file: "src/lib/server/email.ts",
     from: '      <a href="mailto:${REPLY_TO()}" style="color:${TEXT_SUBTLE};text-decoration:none">${REPLY_TO()}</a>',
-    to: '      Helpline ${HELPLINE()} · <a href="mailto:${REPLY_TO()}" style="color:${TEXT_SUBTLE};text-decoration:none">${REPLY_TO()}</a>',
+    to: '      Helpline ${getSupportConfig().nationalHelpline} · <a href="mailto:${REPLY_TO()}" style="color:${TEXT_SUBTLE};text-decoration:none">${REPLY_TO()}</a>',
     expect: `§15.1 ★ no player-facing file reads the helpline`,
   },
   {
@@ -90,19 +93,19 @@ export const MUTATIONS = [
   {
     // The browser half of the reader: a client component that stops reading <html> prints the default
     // for ever — an admin's save would look like it never landed, which is how this campaign began.
-    name: "support-config.ts — the browser reader stops reading the published <html> attributes",
+    name: "support-config.ts — the browser reader stops reading the published <html> attribute",
     file: "src/lib/support-config.ts",
     from: `    const v = window.document.documentElement.getAttribute(PUBLIC_FACT_ATTRS[name]);`,
     to: `    const v = "";`,
-    expect: "§2.5 ★ in a browser, the readers return what the layout published on <html>",
+    expect: "§2.5 ★ in a browser, the reader returns what the layout published on <html>",
   },
   {
     // And the server half of the same channel: the layout stops publishing, so every browser falls back.
-    name: "layout.tsx — the root layout stops publishing the saved facts on <html>",
+    name: "layout.tsx — the root layout stops publishing the saved licence on <html>",
     file: "src/app/layout.tsx",
     from: ` {...publicFactAttrs(getSupportConfig())} suppressHydrationWarning`,
     to: ` suppressHydrationWarning`,
-    expect: "§16.4 ★ the root layout publishes the SAVED facts on <html> (what HELPLINE() reads in a browser)",
+    expect: "§16.4 ★ the root layout publishes the SAVED licence on <html> (what LICENCE_NUMBER() reads in a browser)",
   },
   {
     // ⭐ THE OWNER'S RULE ITSELF (2026-10-03): a greyed-out box is what his admin reported as "read-only".

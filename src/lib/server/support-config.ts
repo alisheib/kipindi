@@ -29,7 +29,7 @@
 import { defineConfig } from "./define-config";
 import { SUPPORT_CONFIG_KEY, SUPPORT_DEFAULTS, toSupportDial, toHelplineDial, licenceProblem, type SupportConfig } from "../support-config";
 
-export { HELPLINE, HELPLINE_TEL, LICENCE_NUMBER, SUPPORT_CONFIG_KEY, type SupportConfig } from "../support-config";
+export { LICENCE_NUMBER, SUPPORT_CONFIG_KEY, type SupportConfig } from "../support-config";
 
 /**
  * 🔴 The persisted row predates the split and still carries `helpline` / `helplineTel` — and what
@@ -110,11 +110,12 @@ export function getSupportConfig(): SupportConfig {
   return cfg.get();
 }
 
-/* ⭐ THE SERVER-SIDE READERS' SOURCE. `HELPLINE()`, `HELPLINE_TEL()` and `LICENCE_NUMBER()` live in the
-   client-safe half, which may not import this file; on the server they call this instead. Registered at
-   load, and the root layout imports this module on every request, so it is in place before any page
-   renders. ⛔ `__defineSupportConfigForTest` below does NOT register — a test seam must never become
-   what the live readers read. */
+/* ⭐ THE SERVER-SIDE READER'S SOURCE. `LICENCE_NUMBER()` lives in the client-safe half, which may not
+   import this file; on the server it calls this instead. Registered at load, and the root layout imports
+   this module on every request, so it is in place before any page renders. (The helpline's readers,
+   `HELPLINE()` and `HELPLINE_TEL()`, called it too until 2026-10-09, when they went: nothing read them.)
+   ⛔ `__defineSupportConfigForTest` below does NOT register — a test seam must never become what the
+   live reader reads. */
 globalThis.__50PICK_SUPPORT_READ = () => cfg.get();
 
 const clean = (patch: Partial<SupportConfig>): Partial<SupportConfig> => {

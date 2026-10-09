@@ -31,13 +31,16 @@
  * to use a particular one — "let the admin put any numbers he wants"): every number saves as typed,
  * our own desk as the helpline included (§10), and NO player surface shows the helpline (§15). The
  * marketing SMS footer printed it until the owner's ruling of 2026-10-09 emptied that footer: no SMS
- * carries it since. The admin card still edits it.
+ * carries it since, and its readers (`HELPLINE()`, `HELPLINE_TEL()`) and its two <html> attributes went
+ * that day — nothing outside the config and the admin card names it (§15.1, §15.8). The admin card
+ * still edits it.
  *
  *   §1 a saved row REACHES the readers            (E-226 — the missing reader)
- *   §2 the stale `helpline` key never becomes the helpline (E-328), and a SAVED helpline and
- *      licence reach the readers on the server and in a browser (owner's rule, 2026-10-03)
+ *   §2 the stale `helpline` key never becomes the helpline (E-328), a SAVED helpline and licence
+ *      reach the config, and the licence its reader on the server and in a browser (2026-10-03)
  *   §10 the writer refuses only what is no number at all, and accepts any number (2026-10-06)
- *   §15 no player surface reads, labels or prints the helpline   (owner's ruling, 2026-10-06)
+ *   §15 no player surface reads, labels or prints the helpline, and no page's <html> carries it
+ *       (owner's ruling, 2026-10-06; the attributes since 2026-10-09)
  *   §16 every box on the admin card is editable, and the layout publishes what is saved
  *   §3 POPULATION: label says helpline => renders the helpline
  *   §4 POPULATION: no client bundle reads an operator-editable contact value
@@ -74,7 +77,7 @@ const SAVED_ROW = {
 };
 
 const {
-  __defineSupportConfigForTest, HELPLINE, HELPLINE_TEL, LICENCE_NUMBER, setSupportConfig, getSupportConfig,
+  __defineSupportConfigForTest, LICENCE_NUMBER, setSupportConfig, getSupportConfig,
 } = await import("../src/lib/server/support-config.ts");
 const { SUPPORT_DEFAULTS: DEFAULTS, publicFactAttrs, PUBLIC_FACT_ATTRS } = await import("../src/lib/support-config.ts");
 
@@ -124,41 +127,44 @@ const { SUPPORT_DEFAULTS: DEFAULTS, publicFactAttrs, PUBLIC_FACT_ATTRS } = await
       JSON.stringify({ h: g2.nationalHelpline, t: g2.nationalHelplineTel, l: g2.licenceNumber }));
   }
 
-  // §2.4 — the READERS read the live config on the server. `HELPLINE()` lives in the client-safe
+  // §2.4 — the READER reads the live config on the server. `LICENCE_NUMBER()` lives in the client-safe
   // half, which cannot import the server module; it reads the getter the server module registers on
-  // `globalThis`. A save through the real setter must move all three readers, and putting the
-  // defaults back must move them back.
+  // `globalThis`. A save through the real setter must move it — and the helpline the admin card saves
+  // must reach the config, its dial form derived — and putting the stored values back must move both
+  // back. (Until 2026-10-09 the helpline had readers of its own here, `HELPLINE()` and `HELPLINE_TEL()`;
+  // nothing read them, and they went — §15.)
   {
     ok("§2.4 the server module registered the live reader",
       typeof (globalThis as { __50PICK_SUPPORT_READ?: unknown }).__50PICK_SUPPORT_READ === "function");
     const live = getSupportConfig();
     const res = setSupportConfig({ ...live, nationalHelpline: "0800 22 3344", licenceNumber: "TEST/123" }, "officer_test");
     ok("§2.4 a helpline and licence save through the real setter is accepted", res.ok === true, JSON.stringify(res));
-    ok("§2.4 ★ HELPLINE() / HELPLINE_TEL() / LICENCE_NUMBER() return the SAVED values on the server",
-      HELPLINE() === "0800 22 3344" && HELPLINE_TEL() === "0800223344" && LICENCE_NUMBER() === "TEST/123",
-      `${HELPLINE()} / ${HELPLINE_TEL()} / ${LICENCE_NUMBER()}`);
+    const saved = getSupportConfig();
+    ok("§2.4 ★ LICENCE_NUMBER() returns the SAVED licence on the server, and the saved helpline reaches the config with its dial form",
+      LICENCE_NUMBER() === "TEST/123" && saved.nationalHelpline === "0800 22 3344" && saved.nationalHelplineTel === "0800223344",
+      `${LICENCE_NUMBER()} / ${saved.nationalHelpline} / ${saved.nationalHelplineTel}`);
     setSupportConfig({ ...live }, "officer_test");
-    ok("§2.4 …and putting the stored values back moves the readers back",
-      HELPLINE() === live.nationalHelpline && LICENCE_NUMBER() === live.licenceNumber, `${HELPLINE()} / ${LICENCE_NUMBER()}`);
+    const back = getSupportConfig();
+    ok("§2.4 …and putting the stored values back moves both back",
+      LICENCE_NUMBER() === live.licenceNumber && back.nationalHelpline === live.nationalHelpline, `${LICENCE_NUMBER()} / ${back.nationalHelpline}`);
   }
 
-  // §2.5 — and in a BROWSER the readers take the attributes the root layout publishes on <html>.
-  // Simulated with the smallest `window` the reader touches; the attributes are produced by the SAME
-  // `publicFactAttrs` the layout spreads, so the names cannot be tested apart from the ones shipped.
+  // §2.5 — and in a BROWSER the reader takes the attribute the root layout publishes on <html>.
+  // Simulated with the smallest `window` the reader touches; the attribute is produced by the SAME
+  // `publicFactAttrs` the layout spreads, so its name cannot be tested apart from the one shipped.
   {
     const g = globalThis as { window?: unknown };
     const prior = g.window;
-    const attrs = publicFactAttrs({ nationalHelpline: "0800 55 6677", nationalHelplineTel: "0800556677", licenceNumber: "TEST/456" });
+    const attrs = publicFactAttrs({ licenceNumber: "TEST/456" });
     g.window = { document: { documentElement: { getAttribute: (n: string) => attrs[n] ?? null } } };
-    const read = { h: HELPLINE(), t: HELPLINE_TEL(), l: LICENCE_NUMBER() };
+    const read = LICENCE_NUMBER();
     g.window = { document: { documentElement: { getAttribute: () => null } } };
-    const bare = { h: HELPLINE(), t: HELPLINE_TEL(), l: LICENCE_NUMBER() };
+    const bare = LICENCE_NUMBER();
     g.window = prior;
-    ok("§2.5 ★ in a browser, the readers return what the layout published on <html>",
-      read.h === "0800 55 6677" && read.t === "0800556677" && read.l === "TEST/456", JSON.stringify(read));
-    ok("§2.5 ⚠️ CONTROL — with nothing published, the browser readers fall back to the defaults, never blank",
-      bare.h === DEFAULTS.nationalHelpline && bare.t === DEFAULTS.nationalHelplineTel && bare.l === DEFAULTS.licenceNumber,
-      JSON.stringify(bare));
+    ok("§2.5 ★ in a browser, the reader returns what the layout published on <html>",
+      read === "TEST/456", JSON.stringify(read));
+    ok("§2.5 ⚠️ CONTROL — with nothing published, the browser reader falls back to the default, never blank",
+      bare === DEFAULTS.licenceNumber, JSON.stringify(bare));
     ok("§2.5 the attribute names are the declared ones",
       Object.keys(attrs).sort().join(",") === Object.values(PUBLIC_FACT_ATTRS).sort().join(","), Object.keys(attrs).join(","));
   }
@@ -291,8 +297,9 @@ for (const f of files) {
   // ── §4 ── A "use client" module cannot be hydrated: its module cache is the BROWSER
   // bundle's, which no server-side load ever touches. So an operator-editable value read
   // from a client component is stale by construction, forever, however good the server
-  // hydration is. `HELPLINE()` / `LICENCE_NUMBER()` are safe there because in a browser they read
-  // the attributes the root layout publishes on <html> (§2.5, §16) — not a module cache.
+  // hydration is. `LICENCE_NUMBER()` is safe there because in a browser it reads the attribute the
+  // root layout publishes on <html> (§2.5, §16) — not a module cache. (So were the helpline's
+  // readers, until they went with nothing left to call them, 2026-10-09.)
   //
   // ⛔ THE DIRECTIVE IS SEARCHED OVER THE WHOLE FILE, NOT THE FIRST FEW LINES — and that is
   // not a refinement, it is the bug this section was written with. The first version read the
@@ -417,7 +424,7 @@ for (const f of files) {
       v6.push(`${rel}:${lineOf(w.start)} — an operator contact is published under a ${claim} claim`);
     }
     if (AT_RISK.test(readable)) {
-      v7.push(`${rel}:${lineOf(w.start)} — an AT-RISK response names an operator contact instead of HELPLINE()`);
+      v7.push(`${rel}:${lineOf(w.start)} — an AT-RISK response names an operator contact (it points to the responsible-gambling tools, never a number)`);
     }
   }
 }
@@ -576,6 +583,7 @@ for (const f of files) {
     const span = src.slice(m.index, end);
     // ⭐ The helpline and licence readers are config reads too since 2026-10-03 — a value that captures
     // them at import keeps the old number for the life of the process (the SMS footer did, until then).
+    // (The helpline's readers went on 2026-10-09; their names stay here, so one brought back is held too.)
     for (const g of [...OPERATOR_GETTERS, ...HELPLINE_GETTERS, "LICENCE_NUMBER"]) {
       const call = span.search(new RegExp(`\\b${g}\\s*\\(`));
       if (call < 0) continue;
@@ -934,17 +942,20 @@ ok("§11 no module-scope value captures a config getter", [...new Set(v11)].leng
  *
  * ⛔ NOTHING UNDER src/ READS THE HELPLINE BUT ITS DEFINITIONS AND THE ADMIN CONSOLE. The marketing SMS footer
  * (`src/lib/marketing/footer.ts`) printed it until the owner's ruling of 2026-10-09 emptied that footer; its last
- * read — `statutorySmsHelpline()`, which no message printed — went after it, and this section's exemption for that
- * file went with it. The admin card still edits it. Everything else under src/ — every page, component, email, the
- * Help chat's prompt and the marketing modules — may not read it, may not render a dictionary label that names one,
- * and the error page may not print one.
+ * read — `statutorySmsHelpline()`, which no message printed — went after it, this section's exemption for that file
+ * with it, and then the helpline's readers (`HELPLINE()`, `HELPLINE_TEL()`) and the two <html> attributes they read
+ * (§15.8), which nothing read any more. The admin card still edits it. Everything else under src/ — every page,
+ * component, email, the Help chat's prompt and the marketing modules — may not read it, BY ANY NAME (an old reader's,
+ * or its config field's), may not render a dictionary label that names one, and the error page may not print one.
  */
 {
   /** The files that may read the helpline: its two definitions — and the admin console. (`footer.ts` was exempt until
    *  its last read went, after the owner's ruling of 2026-10-09.) */
   const MAY_READ = ["src/lib/support-config.ts", "src/lib/server/support-config.ts"];
   const isAdmin = (rel: string) => rel.startsWith("src/app/admin/");
-  const READS = /\bHELPLINE(?:_TEL)?\s*\(/;
+  /** A read of the helpline: a call of one of its old readers, or its config field named — `nationalHelpline` /
+   *  `nationalHelplineTel`, however the config was reached (`getSupportConfig().nationalHelpline`, a destructure). */
+  const READS = /\bHELPLINE(?:_TEL)?\s*\(|\bnationalHelpline(?:Tel)?\b/;
   const readers = (rel: string, src: string) => !MAY_READ.includes(rel) && !isAdmin(rel) && READS.test(src);
   /** Every `t.*` label in a source whose English names a helpline — the shape `t.footer.helpline` had. */
   const labelled = (src: string, resolve: (path: string) => string | null = resolveEn) =>
@@ -962,7 +973,7 @@ ok("§11 no module-scope value captures a config getter", [...new Set(v11)].leng
     if (readers(rel, src)) v15a.push(`${rel} reads the helpline`);
     if (!isAdmin(rel) && rel.endsWith(".tsx")) for (const [path, en] of labelled(src)) v15b.push(`${rel} renders ${path} = "${en}"`);
   }
-  ok("§15.1 ★ no player-facing file reads the helpline — pages, components, emails, the Help chat, the marketing SMS modules (only its definitions and the admin card may)",
+  ok("§15.1 ★ no player-facing file reads the helpline — by an old reader's name or its config field's: pages, components, emails, the Help chat, the marketing SMS modules (only its definitions and the admin card may)",
     v15a.length === 0, v15a.join(" | "));
   ok("§15.2 ★ no player-facing component renders a label that names a helpline",
     v15b.length === 0, uniq(v15b).join(" | "));
@@ -971,26 +982,52 @@ ok("§11 no module-scope value captures a config getter", [...new Set(v11)].leng
   ok("§15.3 ★ the root error page prints no helpline and reads no published one", printed.length === 0, printed.join(" | "));
 
   // ⚠️ CONTROLS — each detector must fire on the shape it exists for, and pass what it must pass.
-  // ⭐ Since 2026-10-09 the marketing footer is a player file like any other: a read of the helpline there is flagged.
-  ok("§15.4 ⚠️ CONTROL — the readers detector flags a player file that reads the helpline, the marketing footer's old read among them, and passes the admin card",
+  // ⭐ Since 2026-10-09 the marketing footer is a player file like any other: a read of the helpline there is flagged —
+  // and so is the config field read straight off the config, the way a page would bring it back with no reader left.
+  ok("§15.4 ⚠️ CONTROL — the readers detector flags a player file that reads the helpline, the marketing footer's old read and a read of the config field among them, and passes the admin card's",
     readers("src/components/layout/public-footer.tsx", "<a href={`tel:${HELPLINE_TEL()}`}>{HELPLINE()}</a>")
       && readers("src/lib/server/email.ts", "Helpline ${HELPLINE()}")
       && readers("src/lib/marketing/footer.ts", "return HELPLINE_TEL();")
-      && !readers("src/app/admin/system/page.tsx", "{HELPLINE()}"));
+      && readers("src/app/help/page.tsx", "<p>{getSupportConfig().nationalHelpline}</p>")
+      && readers("src/components/layout/public-footer.tsx", "const { nationalHelplineTel } = config;")
+      && !readers("src/app/admin/system/page.tsx", "{HELPLINE()}")
+      && !readers("src/app/admin/system/system-client.tsx", "defaultValue={config.nationalHelpline}")
+      && !readers("src/components/layout/public-footer.tsx", "<p>{t.footer.license}: {LICENCE_NUMBER()}</p>"));
   ok("§15.5 ⚠️ CONTROL — the label detector flags a label that reads \"Helpline\", and passes one that does not",
     labelled("<span>{t.footer.helpline}</span>", () => "Helpline").length === 1
       && labelled("<span>{t.rg.intlSupport}</span>").length === 0);
   ok("§15.6 ⚠️ CONTROL — the error-page detector flags the old copies and the old attribute read",
     ["helpline: \"Helpline 0800 11 0011\",", "helpline: \"\\u5e2e\\u52a9\\u70ed\\u7ebf\",", "getAttribute(\"data-kp-helpline\")"]
       .every((s) => [...s.matchAll(PRINTED)].length > 0));
-  // ⭐ The exemptions are not dead letters: there are exactly the two, each exists, and each still holds the reader — the
-  // client-safe half defines `HELPLINE()`, the server half re-exports it — so an exemption that outlived its reason would
-  // show here, as `footer.ts`'s did when its read went (2026-10-09).
-  const defines = /export function HELPLINE\(/.test(decomment(readFileSync(join(SRC, "lib/support-config.ts"), "utf8")));
-  const reExports = /export \{[^}]*\bHELPLINE\b[^}]*\} from "\.\.\/support-config"/.test(decomment(readFileSync(join(SRC, "lib/server/support-config.ts"), "utf8")));
-  ok("§15.7 ⚠️ CONTROL — the only exempted files are the helpline's two definitions, each exists, and each still holds its reader",
-    MAY_READ.length === 2 && MAY_READ.every((p) => files.some((f) => relative(ROOT, f).replace(/\\/g, "/") === p)) && defines && reExports,
-    `exempt [${MAY_READ.join(", ")}] · defines ${defines} · re-exports ${reExports}`);
+  // ⭐ The exemptions are not dead letters: there are exactly the two, each exists, and each still defines the helpline's
+  // config field — the client-safe half its type and default, the server half its record (`migrate` takes it by name) —
+  // so an exemption that outlived its reason would show here, as `footer.ts`'s did when its read went (2026-10-09).
+  const clientHalf = decomment(readFileSync(join(SRC, "lib/support-config.ts"), "utf8"));
+  const serverHalf = decomment(readFileSync(join(SRC, "lib/server/support-config.ts"), "utf8"));
+  const defines = /\bnationalHelpline: string;/.test(clientHalf) && /\bnationalHelpline: "/.test(clientHalf);
+  const records = /\bout\.nationalHelpline = /.test(serverHalf);
+  ok("§15.7 ⚠️ CONTROL — the only exempted files are the helpline's two definitions, each exists, and each still defines its config field",
+    MAY_READ.length === 2 && MAY_READ.every((p) => files.some((f) => relative(ROOT, f).replace(/\\/g, "/") === p)) && defines && records,
+    `exempt [${MAY_READ.join(", ")}] · the type and default ${defines} · the record ${records}`);
+
+  // ⭐ §15.8 · EVERY PAGE'S <html> — the attributes the root layout spreads, from `publicFactAttrs` itself, over a config
+  // whose helpline is a number found nowhere else. Until 2026-10-09 two of them carried the helpline (`data-kp-helpline`,
+  // `data-kp-helpline-tel`) for readers no page called any more: the number sat in every page's HTML. ⛔ Neither an
+  // attribute's name nor its value may carry it, and no attribute the module declares may be a helpline's.
+  const helplineOnHtml = (attrs: Record<string, string>, names: readonly string[], number: string, dial: string): string[] => [
+    ...Object.entries(attrs).filter(([n, v]) => /helpline/i.test(n) || v === number || v === dial).map(([n]) => `${n} is spread on <html>`),
+    ...names.filter((n) => /helpline/i.test(n)).map((n) => `${n} is declared`),
+  ];
+  const probe = { ...DEFAULTS, nationalHelpline: "0800 55 6677", nationalHelplineTel: "0800556677" };
+  const spread = publicFactAttrs(probe);
+  const onHtml = helplineOnHtml(spread, Object.values(PUBLIC_FACT_ATTRS), probe.nationalHelpline, probe.nationalHelplineTel);
+  ok("§15.8 ★ no page's <html> carries the helpline — no attribute the root layout spreads names it or holds its number, and none is declared (2026-10-09)",
+    onHtml.length === 0 && Object.keys(spread).length >= 1, onHtml.join(" | ") || `spread [${Object.keys(spread).join(", ")}]`);
+  ok("§15.9 ⚠️ CONTROL — the <html> detector flags the helpline's old attribute by its name, an attribute that carries its number, and a declared one, and passes the licence's",
+    helplineOnHtml({ ...spread, "data-kp-helpline": "0800 55 6677" }, [], probe.nationalHelpline, probe.nationalHelplineTel).length === 1
+      && helplineOnHtml({ ...spread, "data-kp-contact": "0800556677" }, [], probe.nationalHelpline, probe.nationalHelplineTel).length === 1
+      && helplineOnHtml(spread, [...Object.values(PUBLIC_FACT_ATTRS), "data-kp-helpline-tel"], probe.nationalHelpline, probe.nationalHelplineTel).length === 1
+      && helplineOnHtml({ "data-kp-licence": "TEST/456" }, ["data-kp-licence"], probe.nationalHelpline, probe.nationalHelplineTel).length === 0);
 }
 
 // ────────────────────────────────────────────────────────────────────────────
@@ -1019,7 +1056,7 @@ ok("§11 no module-scope value captures a config getter", [...new Set(v11)].leng
       && !/formData\.get\(["']helpline["']\)/.test(action));
   const layout = decomment(readFileSync(join(SRC, "app/layout.tsx"), "utf8"));
   const htmlTag = /<html[^>]*>/.exec(layout)?.[0] ?? "";
-  ok("§16.4 ★ the root layout publishes the SAVED facts on <html> (what HELPLINE() reads in a browser)",
+  ok("§16.4 ★ the root layout publishes the SAVED licence on <html> (what LICENCE_NUMBER() reads in a browser)",
     htmlTag.includes("{...publicFactAttrs(getSupportConfig())}"), htmlTag || "no <html> tag found");
 }
 
