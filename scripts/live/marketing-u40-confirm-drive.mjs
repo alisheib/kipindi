@@ -51,8 +51,10 @@
  *   · ERROR — the confirmation's request lost on the wire: a toast that never claims "nothing was confirmed" and stays on
  *     screen, the dialog STILL OPEN with "13" kept and Confirm armed for a retry.
  *   · CONFIRMING — the request held 2.5 s: the dialog busy (aria-busy), both buttons off, Escape and the scrim refused.
- *     CONFIRMED — "Audience confirmed — 13 people. Nothing has been sent.", the dialog gone, the card's confirmed line, the
- *     Message card read-only, the trigger disabled "This campaign is already confirmed."
+ *     CONFIRMED — "Audience confirmed — 13 people. Nothing has been sent.", the dialog gone, the card's confirmed line
+ *     "Confirmed — nothing has been sent. Start it from its own page." (since U47b-2 its second sentence a LINK to the
+ *     campaign's own page, /admin/campaigns/<id>), the Message card read-only, the trigger disabled "This campaign is already
+ *     confirmed."
  *   · ⛔ FOCUS — `document.activeElement` is NEVER the dialog's Confirm button when it opens or after a refusal's re-arm.
  *   · FIT — no sideways scroll, nothing past the card's or the dialog panel's edge, at both widths; and no page threw an
  *     uncaught exception at any width or role (the dev overlay is hidden from the captures, so it is asserted).
@@ -130,7 +132,9 @@ const CLOSED = {
   DONE: "This campaign has finished sending.",
 };
 const STALE = "This draft was saved elsewhere after this page loaded — reload the page to see it, then confirm.";
-const CONFIRMED_LINE = "Confirmed — nothing has been sent. Starting a campaign comes next in this release.";
+/** ⭐ The confirmed line since U47b-2 — its second sentence a LINK to the campaign's own page (`[data-confirm-start]`). */
+const CONFIRMED_START = "Start it from its own page.";
+const CONFIRMED_LINE = `Confirmed — nothing has been sent. ${CONFIRMED_START}`;
 const READ_ONLY = "This campaign is no longer a draft — its message can't change.";
 const NOT_CONFIRMED = "Not confirmed";
 const ALREADY_TITLE = "Already confirmed";
@@ -338,6 +342,16 @@ async function reopen(page, id) {
   await openComposer(page, `?draft=${encodeURIComponent(id)}`);
   await page.waitForFunction(() => new URL(location.href).searchParams.has("pop"), null, { timeout: 30000 }).catch(() => {});
   await settle(page);
+}
+
+/** The confirmed line's "Start it from its own page." is a LINK, and it points at THIS campaign's own page (the draft in the
+ *  address the composer stands at) — `/admin/campaigns/<id>`, `campaignDetailHref`'s shape. */
+async function startLink(page) {
+  const id = new URL(page.url()).searchParams.get("draft") ?? "";
+  const sel = `${S.confirmed} [data-confirm-start]`;
+  const href = await attr(page, sel, "href");
+  const words = await textOf(page, sel);
+  return { ok: id !== "" && href === `/admin/campaigns/${encodeURIComponent(id)}` && words === CONFIRMED_START, detail: `link "${words}" → ${href} · draft ${id}` };
 }
 
 /** Press the trigger (or "Count again") — the press counts — and wait for the dialog, or for the card to say why not. */
@@ -832,9 +846,10 @@ for (const role of ["GROWTH", "ADMIN"]) {
     await page.waitForFunction((s) => !document.querySelector(s), DLG, { timeout: 30000 }).catch(() => {});
     await settle(page);
     ok(`${tag} · CONFIRMED · the toast "${confirmedToast(13)}", the dialog gone`, tDone.includes(confirmedToast(13)) && !(await has(page, DLG)), tDone.slice(0, 160));
-    ok(`${tag} · CONFIRMED · the card's confirmed line, the trigger disabled "${ALREADY}", the Message card read-only`,
-      (await textOf(page, S.confirmed)) === CONFIRMED_LINE && (await cardState(page)) === "confirmed" && (await attr(page, S.trigger, "title")) === ALREADY
-        && (await textOf(page, S.readOnly)) === READ_ONLY, `${await textOf(page, S.confirmed)} · ${await cardState(page)}`);
+    const linkDone = await startLink(page);
+    ok(`${tag} · CONFIRMED · the card's confirmed line "${CONFIRMED_LINE}" — "${CONFIRMED_START}" a link to the campaign's own page — the trigger disabled "${ALREADY}", the Message card read-only`,
+      (await textOf(page, S.confirmed)) === CONFIRMED_LINE && linkDone.ok && (await cardState(page)) === "confirmed" && (await attr(page, S.trigger, "title")) === ALREADY
+        && (await textOf(page, S.readOnly)) === READ_ONLY, `${await textOf(page, S.confirmed)} · ${linkDone.detail} · ${await cardState(page)}`);
     await stateShot(page, tag, "confirmed", CONFIRMED_LINE);
     await fitCheck(page, tag, "confirmed");
     await dismissToasts(page);
@@ -932,9 +947,10 @@ for (const role of ["GROWTH", "ADMIN"]) {
     const tTwice = await toastText(page, NOT_DRAFT);
     await page.waitForFunction((s) => !document.querySelector(s), DLG, { timeout: 30000 }).catch(() => {});
     await settle(page);
-    ok(`${tag} · REFUSED · not_draft · titled "${ALREADY_TITLE}" from the row the page then reads, with the server's sentence — never "${NOT_CONFIRMED}"; the card's confirmed line`,
-      tTwice.includes(ALREADY_TITLE) && tTwice.includes(NOT_DRAFT) && !tTwice.includes(NOT_CONFIRMED) && (await textOf(page, S.confirmed)) === CONFIRMED_LINE,
-      tTwice.slice(0, 200));
+    const linkTwice = await startLink(page);
+    ok(`${tag} · REFUSED · not_draft · titled "${ALREADY_TITLE}" from the row the page then reads, with the server's sentence — never "${NOT_CONFIRMED}"; the card's confirmed line, its link to the campaign's own page`,
+      tTwice.includes(ALREADY_TITLE) && tTwice.includes(NOT_DRAFT) && !tTwice.includes(NOT_CONFIRMED) && (await textOf(page, S.confirmed)) === CONFIRMED_LINE && linkTwice.ok,
+      `${tTwice.slice(0, 160)} · ${linkTwice.detail}`);
     await stateShot(page, tag, "refused-not-draft", CONFIRMED_LINE);
     await dismissToasts(page);
 
