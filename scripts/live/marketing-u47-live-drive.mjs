@@ -1,8 +1,9 @@
 /**
  * U47b-2 · /admin/campaigns/[id] — the LIVE SMS campaign page, driven and MEASURED, every state the unit names
  * (`npm run qa:marketing-live`). ⭐ U48a extends it with THE RESULTS card (ENGINE-SPEC §4.16): receipts POSTed at the LOCAL
- * webhook route for a finished campaign move "Delivered" (and nothing else does), the honesty line before and after, the stop by
- * link, the price line for the owner, the floor as GROWTH — at 1280 and 360, every capture asserted before it is photographed.
+ * webhook route for a finished campaign move "Delivered" (and nothing else does), the honesty line before and after, the stops
+ * since this campaign (every way a person stops — the row counted link stops alone until 2026-10-09), the price line for the
+ * owner, the floor as GROWTH — at 1280 and 360, every capture asserted before it is photographed.
  *
  * WHAT THIS PROVES, at 1280x800 and 360x780 (+ reduced motion at 360), with HeadlessChrome in the UA. Every capture asserts
  * the page's heading and the sentence its state is about BEFORE it photographs (`stateShot`, the S7c lesson). ⛔ NO SMS IS EVER

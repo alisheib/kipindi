@@ -23,7 +23,8 @@
  *   W8  the wiring — the action, the card, the page and its tab, the pure module's purity, the server's live store, the
  *       client-graph pin, the scripts and predeploy (a gate outside the pipeline is not a gate);
  *   W9  ⛔ M2 · a suggestion is saved only on purpose, and that is the SERVER's rule: the card sends an unticked suggestion
- *       never, a ticked or edited one with its approval, the source line only when typed; a hand-built POST of the nine
+ *       never, a ticked or edited one with its approval, the source line only when typed (the card has had no box for it
+ *       since the owner's ruling of 2026-10-09 — only the owner door's file can type one now); a hand-built POST of the nine
  *       suggestions without approvals is refused and writes nothing;
  *   W10 m1 · a page out of date is refused, in its own words, and nothing is written;
  *   W11 m3 · a consent basis that negates its agreement after the word ("agreed to nothing") is refused, and an evidence

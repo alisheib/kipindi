@@ -19,7 +19,9 @@
  *     drive's own (`--drive-campaign=<id>`, repeated for each; steps 0 and 1 name none), and `elsewhere` - no MARKETING message created in
  *     the last day went to any number but the test number (counted in SQL, no number selected);
  *   · the SOURCE LINE: the newest saved `source.phrase` is not blank (the composer will not save a campaign without it) and, when
- *     licence outreach is open, the 18+ sentence of the typed-number test (`adult.test`) is saved too;
+ *     licence outreach is open, the 18+ sentence of the typed-number test (`adult.test`) is saved too; ⟶ 2026-10-09: the reason
+ *     in brackets is gone — since the owner's ruling nothing needs the source line (nothing is appended to a marketing SMS), so
+ *     this row's source half is owed a change in code (with `test:marketing-preflight` P1b and the U52a probe's 1h);
  *   · the receipt secret is SET (production's `/api/health` → `sms.webhookSecretSet`, a boolean, fetched with a timeout) and
  *     the real rail is configured; the SMS credit covers the cap; the build production serves (`?dpl=`, read from the home
  *     page without signing in) — equal to `--expect-dpl` when given;
@@ -300,6 +302,8 @@ export function judgePreflight(facts, ctx, lib = LIB) {
   else add("settings", true, `${st.stored ? "saved" : "defaults, nothing saved"}: ${figures}`);
 
   // source · the campaign's source line is saved; with licence outreach open, the typed-number test's 18+ sentence is too
+  // ⟶ 2026-10-09: the source half is stale (the line has no job since the owner's ruling) and its NO-GO sentence below no
+  // longer true — owed a change in code, not made here (the header's SOURCE LINE item).
   const outreachRecord = lib.readOutreach(facts.config[lib.KEY_OUTREACH]);
   const sourceLine = lib.newestWording(facts.config[lib.KEY_WORDINGS], "source.phrase");
   const adultTest = lib.newestWording(facts.config[lib.KEY_WORDINGS], "adult.test");

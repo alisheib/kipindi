@@ -2,6 +2,9 @@
  * U33w · THE MARKETING WORDINGS CARD, DRIVEN — Admin → System → Marketing wordings (`?tab=wordings`, its own tab since
  * the review's m7), at 1280 and at 360, on an in-memory dev boot (`DISABLE_ADMIN_TOTP=true`, `rm -rf .next` first).
  * What a suite cannot see:
+ *   (⟶ 2026-10-09: since the owner's ruling the source line has left the card, which lists NINE wordings — "0 of 9
+ *   wordings saved.", nine lines, a tick on each; the counts in this header and in the drive's own checks are owed that
+ *   change in code.)
  *   1280 — the card is on its own tab and no longer on Platform. Nothing saved: "0 of 10 wordings saved.", ten "Not
  *          saved — this is a suggestion" lines, an "Approve and save this wording" tick on every wording that cannot be
  *          left blank (nine; the source line may be blank), each tick naming its wording to a screen reader and each box
