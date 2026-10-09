@@ -17,7 +17,8 @@
  *      aside, to the hand-written migration — and the migrated database differs from the schema in nothing that names
  *      ContactListBasis;
  *   2  the scenario on Postgres, through `db`, against the hand-written answers — the rule set's refusals (2j) and a
- *      list's ONE standing being its newest recording (2k) among them;
+ *      list's ONE standing being its newest recording (2k) among them, and (C8b · B5, 2l) `coverageSplit`: the same
+ *      lists' figures split by the account link, its unlinked half `coveredCount`'s pair at every step;
  *   3  the same-millisecond boundary on Timestamptz(3), read back by SQL;
  *   4  RESTRICT refuses deleting a list that carries a basis — and a list without one deletes, its member cascading;
  *   5  the memory twin's transcript of the same scenario equals Postgres', answer for answer.
@@ -178,7 +179,7 @@ const REFUSAL_LABELS = [
   "refuse.idShort", "refuse.idUpper", "refuse.idDigit", "refuse.blankWording", "refuse.blankAdult", "refuse.blankNote",
   "refuse.blankOfficer", "refuse.versionZero", "refuse.versionFraction", "refuse.versionHuge", "refuse.instantUnparsable",
   "refuse.instantOtherSpelling", "refuse.nulNote", "refuse.revokeNul", "refuse.revokeBlankOfficer", "refuse.revokeBlankReason",
-  "refuse.revokeInstant", "refuse.readNul", "refuse.amongNul", "refuse.listNul", "refuse.countNul",
+  "refuse.revokeInstant", "refuse.readNul", "refuse.amongNul", "refuse.listNul", "refuse.countNul", "refuse.splitNul",
 ] as const;
 
 /* ═══ THE SCENARIO — the same calls, in the same order, on whichever twin `db` is ══════════════════════════════════ */
@@ -201,6 +202,14 @@ async function coverage(db: Db): Promise<Record<string, unknown>> {
     one: await db.contactListBasis.coveredCount(L.one), two: await db.contactListBasis.coveredCount(L.two),
     three: await db.contactListBasis.coveredCount(L.three), four: await db.contactListBasis.coveredCount(L.four),
     five: await db.contactListBasis.coveredCount(L.five),
+  };
+}
+/** C8b (B5) · the same five lists through `coverageSplit` — the figures each viewer is SHOWN. */
+async function splits(db: Db): Promise<Record<string, unknown>> {
+  return {
+    one: await db.contactListBasis.coverageSplit(L.one), two: await db.contactListBasis.coverageSplit(L.two),
+    three: await db.contactListBasis.coverageSplit(L.three), four: await db.contactListBasis.coverageSplit(L.four),
+    five: await db.contactListBasis.coverageSplit(L.five),
   };
 }
 async function scenario(db: Db): Promise<Record<string, unknown>> {
@@ -250,6 +259,7 @@ async function scenario(db: Db): Promise<Record<string, unknown>> {
     "refuse.amongNul": () => db.contactListBasis.standingAmong([N.c1, `2557${NUL}12000001`]),
     "refuse.listNul": () => db.contactListBasis.listForList(`probe${NUL}`),
     "refuse.countNul": () => db.contactListBasis.coveredCount(`probe${NUL}`),
+    "refuse.splitNul": () => db.contactListBasis.coverageSplit(`probe${NUL}`),
   };
   for (const label of REFUSAL_LABELS) t[label] = await refusal(calls[label]);
   t["list.one.afterRefusals"] = await db.contactListBasis.listForList(L.one);
@@ -258,17 +268,20 @@ async function scenario(db: Db): Promise<Record<string, unknown>> {
   t["among.initial"] = await db.contactListBasis.standingAmong(KEYS);
   t["for.initial"] = await singles(db);
   t["covered.initial"] = await coverage(db);
+  t["split.initial"] = await splits(db);
   t["list.five"] = await db.contactListBasis.listForList(L.five);
   t["revoke.first"] = await db.contactListBasis.revoke({ id: B.four, by: OFFICER, reason: "probe: the wrong file", at: T5 });
   t["revoke.second"] = await db.contactListBasis.revoke({ id: B.four, by: "probe_admin", reason: "probe: again", at: T6 });
   t["revoke.unknown"] = await db.contactListBasis.revoke({ id: UNKNOWN, by: OFFICER, reason: "probe: nobody", at: T6 });
   t["for.c6.afterRevoke"] = await db.contactListBasis.standingFor(N.c6);
   t["covered.four.afterRevoke"] = await db.contactListBasis.coveredCount(L.four);
+  t["split.four.afterRevoke"] = await db.contactListBasis.coverageSplit(L.four);
   t["list.four"] = await db.contactListBasis.listForList(L.four);
   t["create.oneAgain"] = await db.contactListBasis.create(seed(B.oneAgain, L.one, T7));
   t["among.recordedAgain"] = await db.contactListBasis.standingAmong(KEYS);
   t["for.recordedAgain"] = await singles(db);
   t["covered.one.recordedAgain"] = await db.contactListBasis.coveredCount(L.one);
+  t["split.one.recordedAgain"] = await db.contactListBasis.coverageSplit(L.one);
   t["list.one"] = await db.contactListBasis.listForList(L.one);
   t["among.dupes"] = await db.contactListBasis.standingAmong([...KEYS, N.c1, N.c4, N.absent, N.c1]);
   const big = [...KEYS, ...Array.from({ length: 2000 - KEYS.length }, (_, i) => `2557${String(13000000 + i)}`)];
@@ -287,6 +300,7 @@ async function scenario(db: Db): Promise<Record<string, unknown>> {
   t["among.revokedNewest"] = await db.contactListBasis.standingAmong(KEYS);
   t["for.revokedNewest"] = await singles(db);
   t["covered.one.revokedNewest"] = await db.contactListBasis.coveredCount(L.one);
+  t["split.one.revokedNewest"] = await db.contactListBasis.coverageSplit(L.one);
   t["list.one.revokedNewest"] = await db.contactListBasis.listForList(L.one);
   return t;
 }
@@ -433,6 +447,20 @@ async function parent(): Promise<void> {
       && eq(t["covered.one.revokedNewest"], { live: 7, covered: 0 })
       && eq(t["list.one.revokedNewest"], [ROW(B.oneAgain, L.one, T7, REVOKED_ONE_AGAIN), ROW(B.one, L.one, T1)]),
     `${canon(t["among.revokedNewest"]).slice(0, 300)} · ${json(t["covered.one.revokedNewest"])}`);
+
+  // ── 2l · C8b (B5) · coverageSplit — the same lists split by the account link ──
+  const pairOf = (live: number, covered: number) => ({ live, covered });
+  const splitOf = (u: [number, number], l: [number, number]) => ({ unlinked: pairOf(...u), linked: pairOf(...l) });
+  const covered0 = t["covered.initial"] as Record<string, unknown>;
+  const split0 = t["split.initial"] as Record<string, { unlinked: unknown; linked: unknown }>;
+  ok("2l · ⭐ C8b (B5) · coverageSplit is coveredCount's pair EXACTLY as its unlinked half, at every step, and the same two counts over the live members linked to an account as its linked half — the tombstone in neither: list one 7/6 and the account's number 1/1; lists two to five nothing linked; the revoked list four 1/0; list one recorded again 7/7 and 1/1; its newest recording revoked 7/0 and 1/0 (the older one does not come back)",
+    eq(t["split.initial"], {
+      one: splitOf([7, 6], [1, 1]), two: splitOf([2, 1], [0, 0]), three: splitOf([1, 0], [0, 0]), four: splitOf([1, 1], [0, 0]), five: splitOf([1, 1], [0, 0]),
+    }) && Object.keys(covered0).every((k) => eq(split0[k]?.unlinked, covered0[k]))
+      && eq(t["split.four.afterRevoke"], splitOf([1, 0], [0, 0])) && eq((t["split.four.afterRevoke"] as { unlinked: unknown }).unlinked, t["covered.four.afterRevoke"])
+      && eq(t["split.one.recordedAgain"], splitOf([7, 7], [1, 1])) && eq((t["split.one.recordedAgain"] as { unlinked: unknown }).unlinked, t["covered.one.recordedAgain"])
+      && eq(t["split.one.revokedNewest"], splitOf([7, 0], [1, 0])) && eq((t["split.one.revokedNewest"] as { unlinked: unknown }).unlinked, t["covered.one.revokedNewest"]),
+    `${json(t["split.initial"])} · four ${json(t["split.four.afterRevoke"])} · one again ${json(t["split.one.recordedAgain"])} · one revoked ${json(t["split.one.revokedNewest"])}`);
 
   // ── 3 · the same-millisecond boundary, on Timestamptz(3), read back by SQL ──
   const pair = async (contactId: string, basisId: string) => (await pgc.$queryRawUnsafe<Array<{ same: boolean; ms: number }>>(

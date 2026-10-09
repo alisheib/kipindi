@@ -4569,7 +4569,11 @@ const HOUSE_TS_KEYS = new Set(["dueAt", "staleAt", "deadlineAt", "claimedUntil",
   // revived a row that is no longer the tombstone, deleted the memberships outside its transaction, wrote over the
   // number's mirrored caches, re-dated a row its plan never saw, or left the linked members out of the split would be
   // green in every suite and wrong in production. This section holds the twins to ONE shape, as §30 does; their
-  // behaviour on Postgres is `scripts/live/contacts-import-pg-probe.mts` section 8.
+  // behaviour on Postgres is three probes' (db-scratch, run by the integrator): reviveTombstone in
+  // `scripts/live/contacts-import-pg-probe.mts` section 8 (and end to end through the backfill in
+  // `scripts/live/registration-contact-pg-probe.mts` 3c), coverageSplit in `scripts/live/list-basis-pg-probe.mts` 2l (the
+  // same scenario on the memory twin, answer for answer), redateAdded through its door in
+  // `scripts/live/registration-contact-pg-probe.mts` section 6 (the transaction's rollback in 6.4).
   //   · reviveTombstone (B1) — a compare-and-set FIRST (this id, this number, the erasure's mark, no link), null when it
   //     lost, then the tombstone's memberships deleted and every field of the sign-up's row written but the id, the number
   //     and the two caches — in ONE transaction on Postgres, one synchronous step in memory;
@@ -4680,6 +4684,32 @@ const HOUSE_TS_KEYS = new Set(["dueAt", "staleAt", "deadlineAt", "claimedUntil",
   ok("31.redate · ⭐ C8b (B8) · ADDED PUT RIGHT, ALL OR NOTHING — both twins ask the ONE shape rule first (added-redate-model.ts: at most ADDED_REDATE_MAX rows, each id once, every instant readable, never earlier than the one it replaces); Prisma ONE transaction (its only pc()) of conditional raw updates — createdAt set, updatedAt the greatest of its own and the new instant, where the id AND the expected createdAt — a row that counts 0 throwing inside it and answered changed; memory EVERY row compared before the first write, the later stamp kept; neither touches updatedBy",
     redateOk31(memRedate, priRedate, model31), `${priRedate.slice(0, 120)} | ${memRedate.slice(0, 120)}`);
 
+  // ── 31.callers · read over the REAL src (ROOT) — each member has its declared callers and no other ──
+  const BS31 = String.fromCharCode(92);
+  const walk31 = (dir: string): string[] => readdirSync(dir, { withFileTypes: true }).flatMap((e) =>
+    e.isDirectory() ? walk31(join(dir, e.name)) : /[.](ts|tsx)$/.test(e.name) ? [join(dir, e.name)] : []);
+  const src31 = join(ROOT, "src");
+  const rel31 = (f: string) => f.slice(src31.length + 1).split(BS31).join("/");
+  const TWINS31 = ["lib/server/store.ts", "lib/server/prisma-dal.ts"];
+  /** ⛔ THE DECLARED CALLERS, BY NAME: the revival is the registration writer's alone (`REGISTRATION_BOOK.revive`), the
+   *  re-dating the ops door's alone (`ops:contacts-added-redate`), the split the Lists card's loader and the importer's list
+   *  figures. A second caller is a second writer of a tombstone or of "Added", or a second place a viewer's figure is made. */
+  const CALLERS31: Record<string, readonly string[]> = {
+    reviveTombstone: ["lib/server/marketing/registration-contact.ts"],
+    redateAdded: ["lib/server/contacts/added-redate.ts"],
+    coverageSplit: ["app/admin/contacts/lists-loader.ts", "lib/server/contacts/import-commit.ts"],
+  };
+  const texts31 = walk31(src31).map((f) => [rel31(f), readFileSync(f, "utf8")] as const)
+    .filter(([f, raw]) => !TWINS31.includes(f) && Object.keys(CALLERS31).some((n) => raw.includes(n)))
+    .map(([f, raw]) => [f, decomment(raw)] as const);
+  const callersOf31 = (texts: ReadonlyArray<readonly [string, string]>, name: string): string[] =>
+    texts.filter(([, t]) => t.includes(`.${name}(`)).map(([f]) => f).sort();
+  const callersOk31 = (texts: ReadonlyArray<readonly [string, string]>): boolean =>
+    Object.entries(CALLERS31).every(([n, want]) => sameSet(callersOf31(texts, n), [...want]));
+  ok("31.callers · ⛔ outside the twins each new member has EXACTLY its declared callers — marketingContact.reviveTombstone the registration writer (registration-contact.ts), marketingContact.redateAdded the Added door (contacts/added-redate.ts), contactListBasis.coverageSplit the Lists card's loader and the importer's list figures (lists-loader.ts, import-commit.ts)",
+    texts31.length >= 4 && callersOk31(texts31),
+    Object.keys(CALLERS31).map((n) => `${n}: [${callersOf31(texts31, n)}]`).join(" · "));
+
   // ── CONTROLS — the REAL bodies, ONE defect planted in each, must FAIL their predicate ──
   const planted31 = (body: string, from: string, to: string): string => body.split(from).join(to);
   const controls31: Array<[string, boolean]> = [
@@ -4692,9 +4722,13 @@ const HOUSE_TS_KEYS = new Set(["dueAt", "staleAt", "deadlineAt", "claimedUntil",
     ["a Prisma re-dating without its compare", redateOk31(memRedate, priRedate, model31) && !redateOk31(memRedate, planted31(priRedate, ' and "createdAt" = ${r.expectedCreatedAt}::timestamptz', ""), model31)],
     ["a memory re-dating that writes before it has checked every row", !redateOk31(planted31(memRedate, MEM_CHECK31, ""), priRedate, model31)],
     ["a shape rule that lets one contact be named twice", !redateOk31(memRedate, priRedate, planted31(model31, 'if (seen.has(row.id)) refuse("one contact is named twice");', ""))],
+    ["a second writer of Added — a page action re-dating rows itself", callersOk31(texts31)
+      && !callersOk31([...texts31, ["app/admin/contacts/planted-actions.ts", "await db.marketingContact.redateAdded(rows);"] as const])],
+    ["the revival called from a second place — the importer reviving a tombstone", !callersOk31(texts31.map(([f, t]) =>
+      [f, f === "lib/server/contacts/import-commit.ts" ? `${t} db.marketingContact.reviveTombstone(x);` : t] as const))],
   ];
   const deaf31 = controls31.filter(([, held]) => !held).map(([name]) => name);
-  ok("31.c1 · CONTROL · every §31 matcher can fail: the REAL bodies pass, and ONE defect planted in each — a revival that does not ask the mark, deletes the memberships outside its transaction, keeps them, or writes the caches; a split that drops the linked members or counts the tombstone; a re-dating without its compare or writing before every row is checked; a shape rule that lets one contact be named twice — FAILS its predicate",
+  ok("31.c1 · CONTROL · every §31 matcher can fail: the REAL bodies pass, and ONE defect planted in each — a revival that does not ask the mark, deletes the memberships outside its transaction, keeps them, or writes the caches; a split that drops the linked members or counts the tombstone; a re-dating without its compare or writing before every row is checked; a shape rule that lets one contact be named twice; a second caller of the re-dating or the revival — FAILS its predicate",
     deaf31.length === 0, deaf31.join(" | ") || `${controls31.length} controls held`);
 }
 
