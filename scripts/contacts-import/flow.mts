@@ -36,6 +36,7 @@ import {
   ADDED_PHONE_SOURCE_NOTE,
   PASTE_LINE_NO_NUMBER,
   PASTE_LIST_NOTE,
+  PASTE_RULES,
   READ_TOO_MANY_ROWS,
   extraNumbersNote,
   isListPaste,
@@ -44,10 +45,12 @@ import {
   parsePastedText,
   previewCell,
   readContactsFile,
+  writtenAsCode,
   type FileMapping,
+  type PasteRules,
   type ReadOutcome,
 } from "../../src/lib/contacts/import-read.ts";
-import { SEVERAL_MOBILES_SENTENCE, firstMobileIn, mobilesIn, phoneCellRefusal } from "../../src/lib/contacts/phone-cell.ts";
+import { SEVERAL_MOBILES_SENTENCE, firstMobileIn, mobilesIn, phoneCellParts, phoneCellRefusal } from "../../src/lib/contacts/phone-cell.ts";
 import { CHECK, DECIDE, DONE, partsText, refusalTone, sumCutOf } from "../../src/app/admin/contacts/import/import-copy.ts";
 import { parseTzNumber } from "../../src/lib/tz-msisdn.ts";
 import {
@@ -64,7 +67,7 @@ import {
   type UploadOutcome,
 } from "../../src/lib/contacts/import-loop.ts";
 import { isParsedContactsFile, type ParsedContactsFile } from "../../src/lib/contacts/parsed-file.ts";
-import { CONTACT_MASKED_FILE, autoMapHeaders, contactExportHeader, scrubPhoneRuns, validateMapping } from "../../src/lib/contacts/contact-fields.ts";
+import { CONTACT_LIMITS, CONTACT_MASKED_FILE, autoMapHeaders, contactExportHeader, scrubPhoneRuns, validateMapping } from "../../src/lib/contacts/contact-fields.ts";
 import { maskPhone } from "../../src/lib/phone-normalize.ts";
 import { STAGE_BATCH_MAX_ROWS, stageRowsOf, type StageRowInput } from "../../src/lib/contacts/import-limits.ts";
 import { CSV_RULES, EMPTY_FILE_SENTENCE, buildCsvReader, csvRefusalSentence, parseCsv, stripBom } from "../../src/lib/contacts/import-parse.ts";
@@ -140,8 +143,9 @@ export const L = {
   P1: "P1 · ⭐ a LIST paste: each line's first number is the Phone cell and the rest of the line the Name (a chat's stamp, an enumeration and separators dropped), lines numbered as pasted, a blank line counted",
   P1b: "P1b · a pasted line with no number is listed as unreadable with its row and the reader's sentence — never dropped",
   P1c: "P1c · ⭐ S15-4 · a line with a second number keeps the FIRST, and the paste's note names that row; a foreign number yields to a Tanzanian one on its line",
-  P1d: "P1d · ⛔ C8c · D4 IN THE LIST PASTE — a pasted line's number is read in the CELL it was written in, by the ONE rule: 'Asha +254, 712 345 678' (the line the fix builder found), '254/712345678 Juma', 'Baraka 00254; 712345678' and 'Neema +254 or 712 345 678' stage their whole cell — the server's own rule reads NO mobile in it and never the stranger's 255712345678, its sentence the Kenyan or the too-long one — each name without the code; CONTROLS: 'Asha 712 345 678' and '712345678' (a whole cell of nine digits, Excel's dropped 0) still read 255712345678, and '12. 0712 345 678 Asha', '255, 0712 345 678 Asha' and '0712 345 678 / 0754 111 222 Asha' their first mobile, as before; ⭐ M1 · a word between two separators is no cut — '1, Asha, 0712 345 678' reads 255712345678 with the name '1, Asha', and '1,Asha,0712345678,Arusha' keeps both names",
-  P1e: "P1e · ⛔ C8c · m1 · D4 FOR A NUMBER STANDING ALONE — a bare nine digits after ANY digit run on its line is judged a PART, never a whole cell: 'Asha +254 (Kenya) 712 345 678', '+254: 712345678', 'Tel +254 / Mob 712 345 678' and '1, Asha, 712345678' stage the stretch from that run, which the server's one rule refuses in its own words (the Kenyan number's, or one too long) — never the stranger's 255712345678 — each name the line less the number's own cell ('1, Asha' survives); CONTROLS: 'Asha 712 345 678' (no digit before it), a chat stamp's and an enumeration's digits ('[12/03/2026, 10:15] Juma: …', '12. Asha …'), a Tanzanian code before it ('+255 (TZ) 712 345 678') and a complete number ('1, Asha, 0712 345 678') read 255712345678 as before",
+  P1d: "P1d · ⛔ C8c · D4 IN THE LIST PASTE — a pasted line's number is read in the CELL it was written in, by the ONE rule: 'Asha +254, 712 345 678' (the line the fix builder found), '254/712345678 Juma', 'Baraka 00254; 712345678' and 'Neema +254 or 712 345 678' stage their whole cell — and (the review's MAJOR-2) a number never starts inside a run right after its own code: 'Otieno +254 0712 345 678', 'Otieno +254 (0) 712 345 678', 'Otieno 254 0712345678', 'Otieno +254-0712-345-678', 'Otieno 00254 0712345678', 'Okello +256 (0) 772 123 456' and 'Okello +256 0772 123456' stage the run whole, ONE foreign number — the server's own rule reads NO mobile in any of them and never a stranger's +255 number, its sentence the foreign or the too-long one — each name without the code; CONTROLS: 'Asha 712 345 678' and '712345678' (a whole cell of nine digits, Excel's dropped 0) still read 255712345678, '12. 0712 345 678 Asha', '255, 0712 345 678 Asha', '0712 345 678 / 0754 111 222 Asha', '+254 712 345 678 0712 345 678' (a whole number before it), '12.03.2026 0712345678', '123. 0712345678' (an enumeration's digits never count) and '1 0712345678' their first mobile, and '0712 345 678 0754 111 222' and '+255 712 345 678 0754 111 222' still hold two numbers, as before; ⭐ M1 · a word between two separators is no cut — '1, Asha, 0712 345 678' reads 255712345678 with the name '1, Asha', and '1,Asha,0712345678,Arusha' keeps both names",
+  P1e: "P1e · ⛔ C8c · m1 · D4 FOR A NUMBER STANDING ALONE — a bare nine digits after a run WRITTEN AS A CODE ('+' or '00') is judged a PART, never a whole cell: 'Asha +254 (Kenya) 712 345 678', '+254: 712345678', 'Tel +254 / Mob 712 345 678', 'Okello +256: 772123456' and '00254: 712345678' stage the stretch from the code, which the server's one rule refuses in the foreign number's own words — never a stranger's +255 number — each name the line less that stretch; ⭐ the review's MAJOR-1 · CONTROLS: ANY other run before it is the row number, the date or the label live main reads — '1, Asha, 712345678', '1,Asha,712345678', '1;Asha;712345678', '12,Asha Juma,712345678', '1001,Asha,712345678', '12/03/2026,Asha,712345678', '1 Asha 712345678', '#1 Asha 712345678', '1.Asha 712345678', 'Asha Tel 1: 712345678', the 12-hour chat line '12/03/2026, 10:15 pm - Juma: 712345678' and a long name before it read 255712345678, the number its own cell and the name the line less it — with 'Asha 712 345 678', a chat stamp's and an enumeration's digits ('[12/03/2026, 10:15] Juma: …', '12. Asha …'), Tanzania's own code before it ('+255 (TZ) 712 345 678') and a complete number ('1, Asha, 0712 345 678'); ⚠️ the accepted leftover is pinned: a code written bare ('254: 712345678') reads as the bare nine digits",
+  P1f: "P1f · ⭐ C8c · the review's MAJOR-1 · A LINE'S NAME — a 12-hour phone's chat stamp is a stamp like any ('12/03/2026, 10:15 pm - Juma:', '… 10:15 PM …' after a narrow no-break space, '… 10:15:32 p.m. …', '… 10:15am …' → 'Juma'), and a round bracket a number's removal leaves stray is never part of a name ('Otieno (+254) 712 345 678' → 'Otieno', 'Asha (0712 345 678)' and 'Asha (+255 712 345 678)' → 'Asha'); CONTROLS: a bracketed word stays ('Asha (Mama Neema) 0712 345 678'), a fully bracketed name is unwrapped ('(Asha) 0712345678'), and letters that are no clock's mark keep the line's words ('12 Pam - 0712 345 678' → '12 Pam')",
   N8: "N8 · ⭐ C8c · the review's n8 · the words around #13's rows and a conflicted step's tone: refusalTone paints server_error with STEP_CONFLICT_SENTENCE as a WARNING (nothing lost, Resume in a minute) while a plain server_error stays danger, bets_busy and db_paused warnings, forbidden danger; the changes list's heading and table never say 'would change' of every row (a tags-only row changes under no choice) and its lead names both kinds; the result's tags lead says neither 'already' nor 'import again' — the way that works is the contact in the book",
   P2: "P2 · a TAB paste is an Excel copy: cells split on the tab with Excel's quoting, a blank line counted, its first row header-matched (Phone, Name; one header row)",
   P2b: "P2b · ⭐ C3b · a TAB paste whose quotation mark never closes is split by hand — every line kept, its quotation marks as typed, nothing unreadable — never cut by the CSV reader's one unreadable record (G1)",
@@ -553,23 +557,48 @@ async function run(ctx: SectionContext<FlowImpl>): Promise<void> {
 
   // ── P1d · C8c · D4 in the list paste ──
   const STRANGER = "255712345678";
+  /** A refused line's staged cell holds no mobile at all — so never a stranger's +255 number. */
+  const refusedWhole = (lines: ReadonlyArray<readonly [string, string, string, string]>): string[] => {
+    const bad: string[] = [];
+    for (const [line, cell, name, sentenceOf] of lines) {
+      const f = impl.parsePaste(line);
+      const staged = f.rows[0]?.cells[0] ?? "";
+      const stranger = mobilesIn(staged).map((m) => m.number.msisdn ?? "")[0] ?? null;
+      if (f.rows.length !== 1 || staged !== cell || f.rows[0]?.cells[1] !== name || firstMobileIn(staged) !== null || stranger !== null
+        || phoneCellRefusal(staged) !== parseTzNumber(sentenceOf).reason) {
+        bad.push(`${json(line)} → ${json(f.rows[0]?.cells ?? null)}${stranger !== null ? ` (A STRANGER: ${maskPhone(stranger)})` : ""}`);
+      }
+    }
+    return bad;
+  };
+  /** A control line reads `key`, its name `name` — and the cell staged for it is never longer than the phone field. */
+  const readsAsBefore = (lines: ReadonlyArray<readonly [string, string, string]>): string[] => {
+    const bad: string[] = [];
+    for (const [line, key, name] of lines) {
+      const f = impl.parsePaste(line);
+      const staged = f.rows[0]?.cells[0] ?? "";
+      if (f.rows.length !== 1 || firstMobileIn(staged)?.number.msisdn !== key || f.rows[0]?.cells[1] !== name || staged.length > CONTACT_LIMITS.phone) {
+        bad.push(`${json(line)} → ${json(f.rows[0]?.cells ?? null)}`);
+      }
+    }
+    return bad;
+  };
   const HOLES: ReadonlyArray<readonly [string, string, string, string]> = [
-    // the line · the cell staged whole · the name · the first part whose sentence the server gives
+    // the line · the cell staged whole · the name · the text whose sentence the server gives
     ["Asha +254, 712 345 678", "+254, 712 345 678", "Asha", "+254"],
     ["254/712345678 Juma", "254/712345678", "Juma", "254/712345678"],
     ["Baraka 00254; 712345678", "00254; 712345678", "Baraka", "00254"],
     ["Neema +254 or 712 345 678", "+254 or 712 345 678", "Neema", "+254"],
+    // ⛔ the review's MAJOR-2 · a number never starts inside a run right after its own code: the run is ONE foreign number
+    ["Otieno +254 0712 345 678", "+254 0712 345 678", "Otieno", "+254 0712 345 678"],
+    ["Otieno +254 (0) 712 345 678", "+254 (0) 712 345 678", "Otieno", "+254 (0) 712 345 678"],
+    ["Otieno 254 0712345678", "254 0712345678", "Otieno", "254 0712345678"],
+    ["Otieno +254-0712-345-678", "+254-0712-345-678", "Otieno", "+254-0712-345-678"],
+    ["Otieno 00254 0712345678", "00254 0712345678", "Otieno", "00254 0712345678"],
+    ["Okello +256 (0) 772 123 456", "+256 (0) 772 123 456", "Okello", "+256 (0) 772 123 456"],
+    ["Okello +256 0772 123456", "+256 0772 123456", "Okello", "+256 0772 123456"],
   ];
-  const holeBad: string[] = [];
-  for (const [line, cell, name, sentenceOf] of HOLES) {
-    const f = impl.parsePaste(line);
-    const staged = f.rows[0]?.cells[0] ?? "";
-    const holdsStranger = mobilesIn(staged).some((m) => m.number.msisdn === STRANGER);
-    if (f.rows.length !== 1 || staged !== cell || f.rows[0]?.cells[1] !== name || firstMobileIn(staged) !== null || holdsStranger
-      || phoneCellRefusal(staged) !== parseTzNumber(sentenceOf).reason) {
-      holeBad.push(`${json(line)} → ${json(f.rows[0]?.cells ?? null)}${holdsStranger ? " (THE STRANGER)" : ""}`);
-    }
-  }
+  const holeBad = refusedWhole(HOLES);
   const CONTROLS: ReadonlyArray<readonly [string, string, string]> = [
     ["Asha 712 345 678", STRANGER, "Asha"],
     ["712345678", STRANGER, ""],
@@ -577,14 +606,21 @@ async function run(ctx: SectionContext<FlowImpl>): Promise<void> {
     ["255, 0712 345 678 Asha", STRANGER, "Asha"],
     ["0712 345 678 / 0754 111 222 Asha", STRANGER, "Asha"],
     // ⭐ C8c · M1 · a row number and a name before the number, between commas: never one "cell" (", Asha, " is no cut) —
-    // the number read as before B1, and the name whole. (Its bare-nine-digit twin "1, Asha, 712345678" is m1's: P1e.)
+    // the number read as before B1, and the name whole. (Its bare-nine-digit twin "1, Asha, 712345678" is in P1e.)
     ["1, Asha, 0712 345 678", STRANGER, "1, Asha"],
+    // MAJOR-2's controls: a whole number before the start, a date, an enumeration and a one-digit row number still read
+    ["+254 712 345 678 0712 345 678", STRANGER, "+254 712 345 678"],
+    ["12.03.2026 0712345678", STRANGER, "12.03.2026"],
+    ["123. 0712345678", STRANGER, ""],
+    ["1 0712345678", STRANGER, "1"],
   ];
-  const controlBad: string[] = [];
-  for (const [line, key, name] of CONTROLS) {
+  const controlBad = readsAsBefore(CONTROLS);
+  // MAJOR-2 · two numbers side by side are still two — right after a number found, a number may start at once.
+  for (const line of ["0712 345 678 0754 111 222", "+255 712 345 678 0754 111 222"]) {
     const f = impl.parsePaste(line);
-    const staged = f.rows[0]?.cells[0] ?? "";
-    if (f.rows.length !== 1 || firstMobileIn(staged)?.number.msisdn !== key || f.rows[0]?.cells[1] !== name) controlBad.push(`${json(line)} → ${json(f.rows[0]?.cells ?? null)}`);
+    if (f.rows.length !== 1 || firstMobileIn(f.rows[0]?.cells[0] ?? "")?.number.msisdn !== STRANGER || !f.notes.some((n) => n.includes("more than one phone number"))) {
+      controlBad.push(`${json(line)} → ${json(f.rows[0]?.cells ?? null)} · notes ${json(f.notes)}`);
+    }
   }
   // M1 · and a name on BOTH sides of the number keeps both (B1 kept only the last).
   {
@@ -598,43 +634,74 @@ async function run(ctx: SectionContext<FlowImpl>): Promise<void> {
   ok(L.P1d, holeBad.length === 0 && controlBad.length === 0,
     [...holeBad, ...controlBad].join(" | ") || `${HOLES.length} lines staged whole and refused · ${CONTROLS.length} controls read as before`);
 
-  // ── P1e · C8c · m1 · D4 for a number standing ALONE after other digits on its line ──
+  // ── P1e · C8c · m1 · D4 for a number standing ALONE after a code on its line ──
   const ALONE: ReadonlyArray<readonly [string, string, string, string]> = [
     // the line · the stretch staged · the name · the text whose sentence the server gives
-    ["Asha +254 (Kenya) 712 345 678", "+254 (Kenya) 712 345 678", "Asha +254 (Kenya)", "+254 (Kenya) 712 345 678"],
-    ["+254: 712345678", "+254: 712345678", "+254", "+254: 712345678"],
-    ["Tel +254 / Mob 712 345 678", "+254 / Mob 712 345 678", "Tel +254 / Mob", "+254 / Mob 712 345 678"],
-    // M1's bare twin: the "1" is a digit run before the tail, so the tail is judged a part — refused, its name kept.
-    ["1, Asha, 712345678", "1, Asha, 712345678", "1, Asha", "1, Asha, 712345678"],
+    ["Asha +254 (Kenya) 712 345 678", "+254 (Kenya) 712 345 678", "Asha", "+254 (Kenya) 712 345 678"],
+    ["+254: 712345678", "+254: 712345678", "", "+254: 712345678"],
+    ["Tel +254 / Mob 712 345 678", "+254 / Mob 712 345 678", "Tel", "+254 / Mob 712 345 678"],
+    ["Okello +256: 772123456", "+256: 772123456", "Okello", "+256: 772123456"],
+    ["00254: 712345678", "00254: 712345678", "", "00254: 712345678"],
   ];
-  const aloneBad: string[] = [];
-  for (const [line, cell, name, sentenceOf] of ALONE) {
-    const f = impl.parsePaste(line);
-    const staged = f.rows[0]?.cells[0] ?? "";
-    const holdsStranger = mobilesIn(staged).some((m) => m.number.msisdn === STRANGER);
-    if (f.rows.length !== 1 || staged !== cell || f.rows[0]?.cells[1] !== name || firstMobileIn(staged) !== null || holdsStranger
-      || phoneCellRefusal(staged) !== parseTzNumber(sentenceOf).reason) {
-      aloneBad.push(`${json(line)} → ${json(f.rows[0]?.cells ?? null)}${holdsStranger ? " (THE STRANGER)" : ""}`);
-    }
-  }
+  const aloneBad = refusedWhole(ALONE);
   const ALONE_CONTROLS: ReadonlyArray<readonly [string, string, string]> = [
     // no digit run before it: Excel's dropped 0, as D4 keeps it
     ["Asha 712 345 678", STRANGER, "Asha"],
     // the digits of a chat stamp or an enumeration are the stamp's, never a number's
     ["[12/03/2026, 10:15] Juma: 712345678", STRANGER, "Juma"],
     ["12. Asha 712345678", STRANGER, "Asha"],
-    // a Tanzanian code before it spells the very number the bare reading gives
-    ["+255 (TZ) 712 345 678", STRANGER, "+255 (TZ)"],
+    // Tanzania's own code before it spells the very number the bare reading gives (the stretch staged, so no name)
+    ["+255 (TZ) 712 345 678", STRANGER, ""],
     // a complete number is never judged a part
     ["1, Asha, 0712 345 678", STRANGER, "1, Asha"],
+    // ⭐ the review's MAJOR-1 · a run NOT written as a code is the row number, the date or the label live main reads:
+    // the number is its own cell — never the "this one has 10" m1 first gave, nor a Phone cell past the field's limit
+    ["1, Asha, 712345678", STRANGER, "1, Asha"],
+    ["1,Asha,712345678", STRANGER, "1,Asha"],
+    ["1;Asha;712345678", STRANGER, "1;Asha"],
+    ["12,Asha Juma,712345678", STRANGER, "12,Asha Juma"],
+    ["1001,Asha,712345678", STRANGER, "1001,Asha"],
+    ["12/03/2026,Asha,712345678", STRANGER, "12/03/2026,Asha"],
+    ["1 Asha 712345678", STRANGER, "1 Asha"],
+    ["#1 Asha 712345678", STRANGER, "#1 Asha"],
+    ["1.Asha 712345678", STRANGER, "1.Asha"],
+    ["Asha Tel 1: 712345678", STRANGER, "Asha Tel 1"],
+    ["12/03/2026, 10:15 pm - Juma: 712345678", STRANGER, "Juma"],
+    ["1, Asha Mwanaisha Mwakalinga Abdallah Hassani, 712345678", STRANGER, "1, Asha Mwanaisha Mwakalinga Abdallah Hassani"],
+    // ⚠️ THE ACCEPTED LEFTOVER (the integrator's option A, pinned so changing it is a decision): a code written BARE and
+    // kept apart by a colon reads as the bare nine digits — a bare "254" is as often a row or a plot number.
+    ["254: 712345678", STRANGER, "254"],
   ];
-  for (const [line, key, name] of ALONE_CONTROLS) {
-    const f = impl.parsePaste(line);
-    const staged = f.rows[0]?.cells[0] ?? "";
-    if (f.rows.length !== 1 || firstMobileIn(staged)?.number.msisdn !== key || f.rows[0]?.cells[1] !== name) aloneBad.push(`${json(line)} → ${json(f.rows[0]?.cells ?? null)}`);
-  }
+  aloneBad.push(...readsAsBefore(ALONE_CONTROLS));
   ok(L.P1e, aloneBad.length === 0,
     aloneBad.join(" | ") || `${ALONE.length} lines judged a part and refused · ${ALONE_CONTROLS.length} controls read as before`);
+
+  // ── P1f · C8c · the review's MAJOR-1 · a line's name: the 12-hour chat stamp, and a bracket left stray ──
+  {
+    const NNBSP = String.fromCharCode(0x202f);
+    const NAMES: ReadonlyArray<readonly [string, string]> = [
+      ["12/03/2026, 10:15 pm - Juma: 712345678", "Juma"],
+      [`12/03/2026, 10:15${NNBSP}PM - Juma: 0712 345 678`, "Juma"],
+      ["12/03/2026, 10:15:32 p.m. - Juma: 0712345678", "Juma"],
+      ["12/03/2026, 10:15am - Juma: 0712345678", "Juma"],
+      ["Otieno (+254) 712 345 678", "Otieno"],
+      ["Asha (0712 345 678)", "Asha"],
+      ["Asha (+255 712 345 678)", "Asha"],
+      // CONTROLS: a bracketed word stays, a fully bracketed name is unwrapped, and no clock's mark is read in "Pam"
+      ["Asha (Mama Neema) 0712 345 678", "Asha (Mama Neema)"],
+      ["(Asha) 0712345678", "Asha"],
+      ["12 Pam - 0712 345 678", "12 Pam"],
+    ];
+    const nameBad: string[] = [];
+    for (const [line, name] of NAMES) {
+      const f = impl.parsePaste(line);
+      if (f.rows.length !== 1 || f.rows[0]?.cells[1] !== name) nameBad.push(`${json(line)} → ${json(f.rows[0]?.cells[1] ?? null)}`);
+    }
+    // The Kenyan line stays refused whole, its name clean.
+    const otieno = impl.parsePaste("Otieno (+254) 712 345 678").rows[0]?.cells[0] ?? "";
+    if (firstMobileIn(otieno) !== null || mobilesIn(otieno).length > 0) nameBad.push(`"Otieno (+254) 712 345 678" staged ${json(otieno)}`);
+    ok(L.P1f, nameBad.length === 0, nameBad.join(" | ") || `${NAMES.length} names as written`);
+  }
 
   // ── N8 · C8c · the review's n8 · the words around #13's rows, and a conflicted step painted as the wait it is ──
   {
@@ -1028,6 +1095,20 @@ async function run(ctx: SectionContext<FlowImpl>): Promise<void> {
 
 /* ══ THE RED PLANTS — each defect wrapped around the shipped function, in memory ═════════════════════ */
 
+/** The list paste's shipped rules with exactly ONE swapped — the real reader runs with it (`parsePastedText(t, rules)`). */
+const withRule = (rule: Partial<PasteRules>): PasteRules => ({ ...PASTE_RULES, ...rule });
+/** The start rule as it shipped before the review's MAJOR-2: any group beginning with 0 or 255 may start a number. */
+const SHIPPED_START: PasteRules["startsMidRun"] = (_line, run, at) =>
+  at === 0 || run.groups[at].digits.startsWith("0") || run.groups[at].digits.startsWith("255");
+/** The paste's cut question as B1 shipped it, before M1: asked of the DIGIT-FILTERED parts, so a word between two
+ *  separators vanished into the "cut". */
+const partsCutCell = (gap: string): boolean => {
+  const s = String(gap ?? "");
+  if (s.length === 0 || s.length > CONTACT_LIMITS.phone || /[0-9]/.test(s)) return false;
+  const parts = phoneCellParts(`0${s}0`);
+  return parts.length === 2 && parts[0] === "0" && parts[1] === "0";
+};
+
 const PLANTS: readonly RedPlant<FlowImpl>[] = [
   {
     name: "import-read.ts imports the server store",
@@ -1055,47 +1136,77 @@ const PLANTS: readonly RedPlant<FlowImpl>[] = [
       },
     }),
   },
+  // ⭐ The paste's plants below run the REAL reader with exactly ONE of its rules put back as it shipped (`PASTE_RULES`).
   {
-    // 🔴 C8c · D4's hole in the paste as it shipped: the reader stops a number at the separator and stages only what follows
-    // it — "+254, 712 345 678" becomes the bare "712 345 678", which the server reads WHOLE as a stranger's +255 number.
-    name: "the list paste stages only the number after the last separator — the country code before it is cut off",
+    // 🔴 C8c · D4's hole in the paste as it shipped: no digit run is ever joined to a number's cell, so "254/712345678"
+    // leaves the bare "712345678" standing alone, which the server reads WHOLE as a stranger's +255 number.
+    name: "the list paste joins nothing to a number's cell (cutsCell never cuts) — '254/712345678 Juma' imports a stranger",
     expect: L.P1d,
-    impl: () => ({
-      ...real(),
-      parsePaste: (t) => {
-        const f = parsePastedText(t);
-        const cut = new RegExp("[,;|&/]| or ");
-        return { ...f, rows: f.rows.map((r) => ({ ...r, cells: [(r.cells[0].split(cut).pop() ?? r.cells[0]).trim(), ...r.cells.slice(1)] })) };
-      },
-    }),
+    impl: () => ({ ...real(), parsePaste: (t) => parsePastedText(t, withRule({ cutsCell: () => false })) }),
   },
   {
     // 🔴 C8c · M1 · B1 as it shipped: the cut asked of the digit-filtered parts, so ", Asha, " read as a cut and the cell ran
-    // from the row number over the name — the name came back empty (or only what followed the number).
-    name: "C8c · M1 · a cell runs over the name between two separators — '1, Asha, 0712 345 678' loses its name",
+    // from the row number over the name — the name came back empty.
+    name: "C8c · M1 · the paste's cut asks the digit-filtered parts — '1, Asha, 0712 345 678' loses its name",
+    expect: L.P1d,
+    impl: () => ({ ...real(), parsePaste: (t) => parsePastedText(t, withRule({ cutsCell: partsCutCell })) }),
+  },
+  {
+    // 🔴 the review's MAJOR-2 · the start rule as it shipped: a number starts at ANY group beginning with 0 or 255, so the
+    // "0712 345 678" inside "+254 0712 345 678" is read as a stranger's +255 number.
+    name: "MAJOR-2 · a number starts mid-run at any trunk zero again — 'Otieno +254 0712 345 678' imports a stranger",
+    expect: L.P1d,
+    impl: () => ({ ...real(), parsePaste: (t) => parsePastedText(t, withRule({ startsMidRun: SHIPPED_START })) }),
+  },
+  {
+    // 🔴 MAJOR-2 without its bare clause: only a run written as a code is held — "254 0712345678" imports a stranger.
+    name: "MAJOR-2 · three digits written bare before a trunk zero are no code — 'Otieno 254 0712345678' imports a stranger",
     expect: L.P1d,
     impl: () => ({
       ...real(),
-      parsePaste: (t) => {
-        const f = parsePastedText(t);
-        const runsOverName = new RegExp("^[0-9]+ ?, ?[A-Za-z]+ ?, ?");
-        return { ...f, rows: f.rows.map((r) => (runsOverName.test(t) ? { ...r, cells: [r.cells[0], ""] } : r)) };
-      },
+      parsePaste: (t) => parsePastedText(t, withRule({
+        startsMidRun: (line, run, at, since) => PASTE_RULES.startsMidRun(line, run, at, since)
+          || (since === 3 && !writtenAsCode(line, run) && SHIPPED_START(line, run, at, since)),
+      })),
     }),
   },
   {
-    // 🔴 C8c · m1 undone: the bare tail standing alone is staged WHOLE again — a word, a bracket or one colon after a
-    // country code, and the stranger's +255 number is imported.
-    name: "C8c · m1 · a bare nine digits after another digit run is staged whole — '+254: 712345678' imports a stranger",
-    expect: L.P1e,
+    // 🔴 MAJOR-2 read too strictly: after a number found, a code-written run still waits for nine digits — the second of two
+    // numbers side by side is lost.
+    name: "MAJOR-2 · right after a number found, a code-written run still holds the next start — '+255 712 345 678 0754 111 222' loses its second",
+    expect: L.P1d,
     impl: () => ({
       ...real(),
-      parsePaste: (t) => {
-        const f = parsePastedText(t);
-        const tail = new RegExp("[0-9]{3} ?[0-9]{3} ?[0-9]{3}$");
-        return { ...f, rows: f.rows.map((r) => ({ ...r, cells: [tail.exec(r.cells[0])?.[0] ?? r.cells[0], ...r.cells.slice(1)] })) };
-      },
+      parsePaste: (t) => parsePastedText(t, withRule({
+        startsMidRun: (line, run, at, since) => PASTE_RULES.startsMidRun(line, run, at, since)
+          && (at === 0 || !writtenAsCode(line, run) || since >= 9),
+      })),
     }),
+  },
+  {
+    // 🔴 C8c · m1 as first shipped: ANY digit run before a bare nine digits makes it a part — "1, Asha, 712345678" refused
+    // with an untrue "this one has 10" (the review's MAJOR-1).
+    name: "MAJOR-1 · any digit run before a bare nine digits makes it a part — '1, Asha, 712345678' is refused",
+    expect: L.P1e,
+    impl: () => ({ ...real(), parsePaste: (t) => parsePastedText(t, withRule({ makesPart: () => true })) }),
+  },
+  {
+    // 🔴 C8c · m1 undone: no run makes a part — a colon after a country code, and the stranger's +255 number is imported.
+    name: "C8c · m1 · no run before a bare nine digits makes it a part — '+254: 712345678' imports a stranger",
+    expect: L.P1e,
+    impl: () => ({ ...real(), parsePaste: (t) => parsePastedText(t, withRule({ makesPart: () => false })) }),
+  },
+  {
+    // 🔴 MAJOR-1 · the chat stamp as it shipped: a 12-hour phone's "10:15 pm" is no stamp, so the name is the whole stamp.
+    name: "MAJOR-1 · a 12-hour clock's 'pm' ends no stamp — '12/03/2026, 10:15 pm - Juma:' is named by its stamp",
+    expect: L.P1f,
+    impl: () => ({ ...real(), parsePaste: (t) => parsePastedText(t, withRule({ meridiemAt: () => -1 })) }),
+  },
+  {
+    // 🔴 MAJOR-1 · a bracket the number's removal leaves stray stays in the name: "Otieno (".
+    name: "MAJOR-1 · a bracket left stray stays in the name — 'Otieno (+254) 712 345 678' is named 'Otieno ('",
+    expect: L.P1f,
+    impl: () => ({ ...real(), parsePaste: (t) => parsePastedText(t, withRule({ dropsStrayBrackets: false })) }),
   },
   {
     // 🔴 the review's n8 · the tone read off the reason alone: the conflicted step's "nothing lost, press Resume" is
