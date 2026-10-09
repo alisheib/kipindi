@@ -8,22 +8,30 @@
  * caches only as their empty values: a new row's `consentState` and `suppressedAt` come from U24's
  * `mirrorContactCache` (decision C4), which reads the ledger and the stop list themselves.
  * ⭐ THE UNIQUE INDEX IS THE DUPLICATE CHECK (OD32). `addContact` creates; a create the index refuses (`null` in both
- * twins — a race included) is a refusal carrying the existing row's id. The lookup before Save is a convenience for
- * the officer, never the decision, and there is no second way to save.
+ * twins — a race included) is a refusal. The lookup before Save is a convenience for the officer, never the decision,
+ * and there is no second way to save. ⭐ C8b · a number the book already holds — or BLOCKS — when the save reads it is
+ * answered from that one read, before any write, so a held number and a blocked one take the same path (and the same
+ * time); the index still refuses a row that lands between the read and the create.
  * ⛔ NEVER LINKED TO A PLAYER. The builder sets `userId: null` whatever number it is given, even one a player holds:
  * a link is a fact only sign-up records, and a form that linked would put "Player" on the row — D19's oracle.
  * 🔴 D19 · A PLAYER'S NUMBER ANSWERS EXACTLY LIKE A STRANGER'S. The lookup's three keys name no account, and the
  * mirrored consent leaves this module only through `contactAddReply`, which hands it to a reader alone (A1.1).
- * ⛔ ERASED ROWS (`sourceRef = "erasure"`, decision C3, amendment A1.7). Adding an erased number refuses with ONE
- * sentence and NO id — there is nothing to open — and an erased row is MISSING to the edit (`findEditableContact`),
- * so no officer can write a name back onto an erased person's number.
- * ⛔ C8a · …AND AN ERASURE WITH NO BOOK ROW. When the erased person had no book row, the erasure's only word is the
- * marker on the ledger — and the lookup and the save ask the SAME question the importer asks (`standingOf`, through
- * `erasure-mark.ts`'s `isErasedNumber` and its ONE rule: the latest of the number's GIVEN rows and erasure markers is a
- * marker), so such a number is refused with exactly a tombstoned one's answer — the same reason, the same sentence, no
- * id. A later opt-out tap never lifts the erasure; a GIVEN does (the number's next holder). ⚠️ The ledger is asked
- * BEFORE the create, while a tombstone is also refused by the unique index at the write itself: an erasure whose marker
- * lands between this check and the create is not refused — a window of milliseconds, recorded for C8, not closed here.
+ * ⭐ C8b (B1 · B2, Ali's ruling of 2026-10-09: "an erased person's number stays blocked until its holder signs up or agrees
+ * to offers again") · THE BOOK BLOCKS AN ERASED NUMBER, AND A BLOCKED NUMBER ANSWERS EXACTLY LIKE ONE ALREADY IN THE BOOK.
+ * `bookBlocks` is the ONE test, asked of one number: its tombstone (`sourceRef = "erasure"`, decision C3 — a book row
+ * decides alone), or with no book row an erasure standing on it (C8a's ONE rule, `erasure-mark.ts`: the latest of the
+ * number's GIVEN rows and erasure markers is a marker — a later opt-out tap never lifts it; a GIVEN does, and so does a
+ * NEW ACCOUNT registering the number, which revives the tombstone as its own row, `registration-contact.ts`). The lookup
+ * and the save answer such a number "already in the book" (`CONTACT_DUPLICATE`, reason `duplicate`) and write nothing —
+ * 🔴 until C8b they answered "This number can't be added to the book", the one sentence in the console that said a
+ * number's holder had asked to be erased (X22). A blocked number carries NO contact id — there is no row anybody may open
+ * — and neither does ANY answer handed to a viewer who may not read a number (`contactLookupReply`, `contactAddReply`):
+ * the "Open the existing contact" link is a READER's control, so to a masked officer an ordinary duplicate, a player's
+ * number and an erased one are the same sentence and nothing else. An erased row is MISSING to the edit
+ * (`findEditableContact`), so no officer can write a name back onto an erased person's number.
+ * ⚠️ The ledger is asked BEFORE the create, while a tombstone is also refused by the unique index at the write itself: an
+ * erasure whose marker lands between this check and the create is not refused — a window of milliseconds, recorded for
+ * C8, not closed here.
  * ⭐ THE EDIT IS COMPARE-AND-SET (`updateIfUnchanged` in both twins, decision C25): two officers editing one contact
  * cannot silently overwrite each other — the second save is refused as stale. It writes the four fields and the
  * stamp, and never the number, `sourceRef`, the link, the caches or the provenance.
@@ -82,22 +90,24 @@ export type ContactEditRequest = {
 export type ContactFormField = "number" | "displayName" | "email" | "notes" | "tags";
 
 /** ⛔ EXACTLY THREE KEYS, and none names an account, a name or a consent (D19): a player's number and a stranger's
- *  get the same answer. */
+ *  get the same answer. ⭐ C8b (B2) · a number the book BLOCKS is a `duplicate` too, with no id (there is no row anybody
+ *  may open); `existingId` is a READER's — a viewer who may not read a number gets every duplicate with none
+ *  (`contactLookupReply`). */
 export type ContactNumberLookup =
   | { state: "free"; sentence: null; existingId: null }
-  | { state: "duplicate"; sentence: string; existingId: string }
+  | { state: "duplicate"; sentence: string; existingId: string | null }
   | { state: "refused"; sentence: string; existingId: null };
 
 export type ContactAddResult =
   /** `consent` is the row's mirrored cache — it leaves the server only through `contactAddReply` (A1.1). */
   | { ok: true; id: string; consent: ContactConsentState }
   | { ok: false; reason: "invalid_number"; field: "number"; error: string }
-  | { ok: false; reason: "duplicate"; field: "number"; error: string; existingId: string }
-  /** ⛔ No id: an erased row opens nothing (A1.7). */
-  | { ok: false; reason: "erased"; field: "number"; error: string }
+  /** ⭐ C8b (B2) · `existingId` is null for a number the book BLOCKS (an erasure — nothing to open), and for every viewer
+   *  who may not read a number (`contactAddReply`). */
+  | { ok: false; reason: "duplicate"; field: "number"; error: string; existingId: string | null }
   | { ok: false; reason: "invalid_field"; field: ContactFormField; error: string };
 
-/** What the add ACTION hands the browser. `consent` is present for a reader ONLY. */
+/** What the add ACTION hands the browser. `consent` is present for a reader ONLY; a duplicate's id too. */
 export type ContactAddReply =
   | { ok: true; id: string; consent?: ContactConsentState }
   | Exclude<ContactAddResult, { ok: true }>;
@@ -113,10 +123,9 @@ export type ContactEditResult =
 
 /* ═══ THE SENTENCES THE SERVICE SAYS ═══════════════════════════════════════════════════════════ */
 
-/** ⭐ The same words for every duplicate — a player's number included (D19). */
+/** ⭐ The same words for every duplicate — a player's number included (D19) — and, since C8b (B2), for a number the book
+ *  blocks because its holder was erased (X22): one sentence, never a word about why. */
 export const CONTACT_DUPLICATE = "This number is already in the book.";
-/** ⛔ C3 · an erased number: one sentence, nothing to open, and no word about why. */
-export const CONTACT_ERASED = "This number can't be added to the book.";
 /** An edit of a row that is not there — or is erased (A1.7). The dialog's missing state says the same. */
 export const CONTACT_MISSING = "This contact isn't in the book.";
 export const CONTACT_STALE =
@@ -221,27 +230,33 @@ export function newContactRow(fields: NewContactFields, id: string = newContactI
   };
 }
 
-/* ═══ ERASED ROWS (C3, A1.7) — AND ERASED NUMBERS WITH NO ROW (C8a) ════════════════════════════════════ */
+/* ═══ ERASED ROWS (C3, A1.7) — AND ERASED NUMBERS WITH NO ROW (C8a): THE BOOK BLOCKS THEM (C8b · B1) ══════════════ */
 
 /** Is this book ROW the erased tombstone? A row decides alone (`isErasedNumber` with a row). Its callers hold a row: the
- *  edit's opener, the create the index refused, and sign-up's writer (`registration-contact.ts`). */
+ *  edit's opener, the create the index refused, and sign-up's writer (`registration-contact.ts`, which revives it). */
 export function isErasedContact(row: Pick<StoredMarketingContact, "sourceRef">): boolean {
   return isErasedNumber(row, false);
 }
 
+/** What the book holds for one number, and whether it BLOCKS it. */
+export type BookBlock = { existing: StoredMarketingContact | null; blocked: boolean };
+
 /**
- * ⭐ C8a · THE ONE ASK "WHAT DOES THE BOOK HOLD FOR THIS NUMBER, AND IS IT ERASED?" — the book row and, only when there is
- * none, whether an erasure stands on the number (the importer's own grouped read, `messagingConsent.erasureStandsAmong`,
- * asked of one key), read through `erasure-mark.ts`'s `isErasedNumber`: the very function the importer's decide() asks.
- * A row decides alone (the tombstone is erased, an ordinary row is not, whatever its ledger); with no row a standing
- * erasure refuses exactly as a tombstone does. The lookup and the save both ask this, so they cannot disagree with each
- * other or with the importer.
+ * ⭐ C8b (B1) · THE ONE TEST "DOES THE BOOK BLOCK THIS NUMBER?" — "may a name be written onto it?" — asked of one number
+ * by every writer that would add one (the Add form's lookup and its save). The number is BLOCKED when its book row is
+ * the erasure's tombstone, or — with no book row — an erasure STANDS on it (C8a's ONE rule): `erasure-mark.ts`'s
+ * `isErasedNumber`, the very function the importer's decide() asks over the same facts (`loadImportFacts` reads the book
+ * rows and `messagingConsent.erasureStandsAmong` for a whole step), so the importer and the form can never disagree. A
+ * book row decides alone — the tombstone blocks whatever the ledger says, and an ordinary row (a NEW client's, revived
+ * from the tombstone at sign-up, among them) never does. The block is lifted only by the holder's own act: a later GIVEN
+ * (the ledger), or a new account registering the number (`registration-contact.ts`).
+ * ⛔ BOTH READS FOR EVERY NUMBER, a row or none: the ledger is asked even when a row decides alone, so a number held by an
+ * ordinary row and one held by an erasure take the same reads — the answer's timing says no more than its words.
  */
-async function standingOf(msisdn: string): Promise<{ existing: StoredMarketingContact | null; erased: boolean }> {
+export async function bookBlocks(msisdn: string): Promise<BookBlock> {
   const existing = await db.marketingContact.findByMsisdn(msisdn);
-  const stands = existing === null
-    && (await db.messagingConsent.erasureStandsAmong({ channel: "SMS", category: "MARKETING", identifiers: [msisdn] })).includes(msisdn);
-  return { existing, erased: isErasedNumber(existing, stands) };
+  const stands = (await db.messagingConsent.erasureStandsAmong({ channel: "SMS", category: "MARKETING", identifiers: [msisdn] })).includes(msisdn);
+  return { existing, blocked: isErasedNumber(existing, stands) };
 }
 
 /** A contact id as the store mints them (`newContactId`; the dev seed's `mc_seed_000`). Anything else is read as
@@ -262,16 +277,28 @@ export async function findEditableContact(id: string): Promise<StoredMarketingCo
 /**
  * Before Save: is this number refused, already in the book, or free? ⛔ A convenience — `addContact`'s create is the
  * check. 🔴 D19: the answer has exactly three keys and is the same for a player's number as for a stranger's.
- * ⛔ An erased number is refused with C3's one sentence and NO id — its tombstone, or (C8a) with no book row an erasure
- * standing on it (`standingOf`, the importer's own question).
+ * ⭐ C8b (B2) · a number the book BLOCKS (`bookBlocks`: its tombstone, or with no book row an erasure standing on it) is
+ * "already in the book" too — the same state and sentence, and NO id: there is no row anybody may open. Only a READER is
+ * handed the id of a row they may open (`contactLookupReply`).
  */
 export async function lookupContactNumber(number: string): Promise<ContactNumberLookup> {
   const parsed = parseTzNumber(String(number ?? ""));
   if (parsed.verdict !== "ok" || parsed.msisdn === null) return { state: "refused", sentence: parsed.reason, existingId: null };
-  const { existing, erased } = await standingOf(parsed.msisdn);
-  if (erased) return { state: "refused", sentence: CONTACT_ERASED, existingId: null };
+  const { existing, blocked } = await bookBlocks(parsed.msisdn);
+  if (blocked) return { state: "duplicate", sentence: CONTACT_DUPLICATE, existingId: null };
   if (existing === null) return { state: "free", sentence: null, existingId: null };
   return { state: "duplicate", sentence: CONTACT_DUPLICATE, existingId: existing.id };
+}
+
+/**
+ * ⭐ C8b (B2) · WHAT THE LOOKUP ACTION HANDS THE BROWSER. A duplicate's id is the "Open the existing contact" link — a
+ * READER's control: to a viewer who may not read a number it would hand the row that holds a number they typed, and the
+ * absence of one would mark the number an erased person's. So that viewer is told every duplicate with `existingId: null`
+ * — an ordinary contact, a player's number and an erased one read the same sentence and nothing else.
+ */
+export function contactLookupReply(lookup: ContactNumberLookup, reads: boolean): ContactNumberLookup {
+  if (reads || lookup.state !== "duplicate") return lookup;
+  return { state: "duplicate", sentence: lookup.sentence, existingId: null };
 }
 
 /* ═══ ADD ════════════════════════════════════════════════════════════════════════════════════════ */
@@ -284,22 +311,27 @@ const filledFields = (f: ContactFields): string[] =>
     f.tags.length > 0 ? "tags" : null,
   ].filter((k): k is string => k !== null);
 
-/** A create the index refused: the row that holds the number, named — or, for an erased row, one sentence and no id. */
+/** The duplicate answer: the row that holds the number named for a reader — or, for a number the book BLOCKS, the same
+ *  sentence with no id (C8b · B2). */
+const duplicateOf = (existing: StoredMarketingContact | null, blocked: boolean): ContactAddResult => ({
+  ok: false, reason: "duplicate", field: "number", error: CONTACT_DUPLICATE, existingId: blocked || existing === null ? null : existing.id,
+});
+
+/** A create the index refused: the row that holds the number — answered as `duplicateOf` answers a read. */
 async function takenRefusal(msisdn: string): Promise<ContactAddResult> {
   const existing = await db.marketingContact.findByMsisdn(msisdn);
   // ⛔ A refusal with no row behind it is not a duplicate this module can name (an id collision, in theory). Say
   // nothing false: it throws, and the action answers that saving failed.
   if (existing === null) throw new Error("the book refused the contact but holds no row for its number");
-  if (isErasedContact(existing)) return { ok: false, reason: "erased", field: "number", error: CONTACT_ERASED };
-  return { ok: false, reason: "duplicate", field: "number", error: CONTACT_DUPLICATE, existingId: existing.id };
+  return duplicateOf(existing, isErasedContact(existing));
 }
 
 /**
  * One contact, added by an officer. The number is parsed HERE from the raw text (the dialog's verdict is display
- * only); the fields go through the ONE drafting rule; an erased number is refused (C3 · C8a — `standingOf`); the row is
- * built by `newContactRow` from named values — never from the request; the unique index decides duplicates;
- * `mirrorContactCache` sets the caches from the truth; and one audit row names the masked number and which fields
- * were filled.
+ * only); the fields go through the ONE drafting rule; a number the book already holds or BLOCKS (C3 · C8a · C8b —
+ * `bookBlocks`) is answered "already in the book" from that read; the row is built by `newContactRow` from named values
+ * — never from the request; the unique index decides a duplicate that lands after the read; `mirrorContactCache` sets the
+ * caches from the truth; and one audit row names the masked number and which fields were filled.
  */
 export async function addContact(request: ContactAddRequest, officerId: string, now: Date = new Date()): Promise<ContactAddResult> {
   const raw = String(request.number ?? "");
@@ -314,9 +346,11 @@ export async function addContact(request: ContactAddRequest, officerId: string, 
     displayName: request.displayName, email: request.email, notes: request.notes, tags: request.tags,
   });
   if (!fields.ok) return { ok: false, reason: "invalid_field", field: fields.field, error: fields.error };
-  // ⛔ C3 · C8a · an ERASED number is never added by hand — its tombstone, or with no book row an erasure standing on it
-  // (the importer's own question): the same answer, the same sentence, no id. A live row still meets the unique index.
-  if ((await standingOf(parsed.msisdn)).erased) return { ok: false, reason: "erased", field: "number", error: CONTACT_ERASED };
+  // ⛔ C3 · C8a · C8b · a number the book BLOCKS is never added by hand — its tombstone, or with no book row an erasure
+  // standing on it (the importer's own question) — and it answers exactly as a number already in the book: one read,
+  // one sentence, no id. A number a row already holds answers from the same read, so the two take one path.
+  const { existing, blocked } = await bookBlocks(parsed.msisdn);
+  if (blocked || existing !== null) return duplicateOf(existing, blocked);
 
   const at = now.toISOString();
   const row = newContactRow({
@@ -354,9 +388,15 @@ export async function addContact(request: ContactAddRequest, officerId: string, 
  * player's (sign-up, profile, opt-out) or an erasure's, so the consent a new row reads back answers "is this a
  * player?" for a number the officer typed. It travels to a viewer whose identity.contact cell is `read`, and to
  * nobody else — the key is absent from a masked viewer's reply, not merely hidden.
+ * ⭐ C8b (B2) · …AND A DUPLICATE'S ID IS A READER'S TOO: the masked viewer's refusal carries `existingId: null` whatever
+ * holds the number — the same reply for an ordinary contact, a player's number and an erased one (`contactLookupReply`'s
+ * rule, at Save).
  */
 export function contactAddReply(result: ContactAddResult, reads: boolean): ContactAddReply {
-  if (!result.ok) return result;
+  if (!result.ok) {
+    if (reads || result.reason !== "duplicate") return result;
+    return { ...result, existingId: null };
+  }
   return reads ? { ok: true, id: result.id, consent: result.consent } : { ok: true, id: result.id };
 }
 

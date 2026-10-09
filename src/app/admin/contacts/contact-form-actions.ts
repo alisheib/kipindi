@@ -16,6 +16,9 @@
  * 🔴 D19 / A1.1 · THE MIRRORED CONSENT TRAVELS ONLY TO A READER. `contactAddReply` drops it for a viewer whose
  * identity.contact cell is not `read`: until U33 a recorded consent can only be a player's, so a new contact reading
  * "Given" would tell a masked role that the number it typed belongs to a player.
+ * 🔴 C8b (B2) · …AND SO DOES A DUPLICATE'S CONTACT ID, at the lookup and at Save (`contactLookupReply`, `contactAddReply`):
+ * the "Open the existing contact" link is a reader's control. A masked officer reads "already in the book" — for an
+ * ordinary contact, a player's number and an erased person's alike — and is handed no row.
  * ⛔ A REFUSAL IS NOT A REVALIDATION: only a change that landed invalidates the list.
  * ⭐ vb7 · THE LOOKUP NEVER NAVIGATES FOR THE 2-STEP SIGN-IN (`softCheckStaff`): it runs by itself when the ninth digit
  * lands, so a second factor that lapsed, or was never set up, is refused in words — marked `secondFactor`, so the dialog
@@ -27,7 +30,7 @@ import { revalidatePath } from "next/cache";
 import { softCheckStaff, softRequireStaff } from "@/lib/server/rbac-guard";
 import { rateCheckAsync } from "@/lib/server/rate-limit";
 import { safeError } from "@/lib/server/safe-error";
-import { addContact, contactAddReply, editContact, lookupContactNumber } from "@/lib/server/contacts/contact-write";
+import { addContact, contactAddReply, contactLookupReply, editContact, lookupContactNumber } from "@/lib/server/contacts/contact-write";
 import type {
   ContactAddReply, ContactAddRequest, ContactEditRequest, ContactEditResult, ContactNumberLookup,
 } from "@/lib/server/contacts/contact-write";
@@ -59,7 +62,9 @@ export async function lookupContactNumberAction(number: unknown): Promise<{ ok: 
   const rate = await rateCheckAsync(g.userId, "contacts.lookup");
   if (!rate.allowed) return { ok: false, error: CONTACT_LOOKUP_RATE_LIMITED(rate.retryAfterSec) };
   try {
-    return { ok: true, lookup: await lookupContactNumber(text(number)) };
+    const lookup = await lookupContactNumber(text(number));
+    // ⛔ C8b (B2) · fails closed: a read cell that cannot be read is a masked viewer's — no id.
+    return { ok: true, lookup: contactLookupReply(lookup, await viewerReadsContacts().catch(() => false)) };
   } catch (err) {
     return { ok: false, error: safeError(err, CONTACT_LOOKUP_FALLBACK) };
   }

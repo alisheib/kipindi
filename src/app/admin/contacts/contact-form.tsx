@@ -10,13 +10,17 @@
  * 🔴 D19 / A1.1 · NOTHING PER-NUMBER SAYS "PLAYER" TO A MASKED VIEWER. The edit dialog's consent chip and source line
  * come from `contact.reader`, which the server sets to null for a viewer who may not read a number; the post-save
  * consent line is built only from a reply that carries `consent`, which the add action sends to a reader alone.
- * A player's duplicate reads the same sentence, with the same link, as any other.
+ * A player's duplicate reads the same sentence as any other. ⭐ C8b (B2) · so does a number the book BLOCKS (its holder was
+ * erased): "already in the book", never "can't be added" — and the "Open the existing contact" link is a READER's control,
+ * drawn only when the server's answer carries an id, which it does for a reader and a row they may open, never for a
+ * blocked number and never for a viewer who may not read a number (`contactLookupReply`, `contactAddReply`).
  * ⭐ THE NUMBER'S LIVE VERDICT is `contact-number.ts`'s — the operator chip at two digits from the ONE table, "4 of 9
  * digits" while typing, too-short only once the field is left, 064 refused at two digits, every sentence
  * parseTzNumber's own, and a paste judged BEFORE PhoneInput's nine-digit cap (`onPasteRaw`).
  * ⛔ THE UNIQUE INDEX IS THE DUPLICATE CHECK. The lookup on a valid number is the officer's early answer; the ONE Save
- * posts to the ONE add action, and a duplicate — found by the lookup or by the create — offers only "Open the existing
- * contact →": `?edit=<contact id>` through the ONE href builder (`contactsHref`), so a cuid travels, never a number.
+ * posts to the ONE add action, and a duplicate — found by the lookup or by the create — offers no second save: a reader
+ * gets "Open the existing contact →" when the answer carries the row's id (`?edit=<contact id>` through the ONE href
+ * builder, `contactsHref`, so a cuid travels, never a number); everyone else reads the sentence alone.
  * ⛔ THE FORM NEVER HOLDS A STORED NUMBER OR EMAIL. In edit mode both arrive as server-rendered `<Sensitive>` slots;
  * the email field starts empty, and leaving it empty KEEPS the stored address (server-side).
  * ⛔ AN ACT CONTROL: `useMayAct()` disables "Add contact" WITH its reason (`useActDisabledReason`) — never hidden — and
@@ -86,13 +90,14 @@ type Lookup =
   | { state: "idle" }
   | { state: "checking"; text: string }
   | { state: "free"; text: string }
-  | { state: "duplicate"; text: string; sentence: string; existingId: string }
+  /** `existingId` — a reader's way to the row; null for a blocked number and for a viewer who may not read one (C8b). */
+  | { state: "duplicate"; text: string; sentence: string; existingId: string | null }
   | { state: "refused"; text: string; sentence: string }
   | { state: "unknown"; text: string; sentence: string }
   | { state: "factor"; text: string; sentence: string };
 
 type Refusal = { field: ContactFormField | null; message: string; stale: boolean };
-type ActionRefusal = { ok: false; error: string; field?: string; reason?: string; existingId?: string };
+type ActionRefusal = { ok: false; error: string; field?: string; reason?: string; existingId?: string | null };
 
 /** The ONE limits table's bounds for the typed fields (C12). ⚠️ Destructured, never read as `.email`: `test:read-tiers`
  *  §7 reads `{… .email …}` in an admin .tsx as a raw email render, and the rule is kept true by construction.
@@ -260,21 +265,26 @@ function NumberVerdictLine({
       </span>
     );
   } else if (asked !== null && asked.state === "duplicate") {
-    // ⛔ THE ONLY WAY ON FROM A DUPLICATE: open the row that holds the number — never a second save.
+    // ⛔ THE ONLY WAY ON FROM A DUPLICATE: open the row that holds the number — never a second save. ⭐ C8b (B2) · a
+    // READER's way: drawn only when the server handed the row's id (a reader, a row they may open); a masked viewer — and
+    // anyone, for a number the book blocks — reads the sentence alone.
+    const openId = asked.existingId;
     line = (
       <>
         <span className="text-body-sm text-danger-fg">{asked.sentence}</span>
-        <Link
-          ref={existingRef}
-          href={contactsHref(hrefParams, { edit: asked.existingId })}
-          replace
-          scroll={false}
-          data-open-existing
-          className="inline-flex items-center min-h-[var(--tap-min)] text-body-sm text-royal-300 hover:underline"
-        >
-          {CONTACT_OPEN_EXISTING}
-          <LinkPending />
-        </Link>
+        {openId !== null && (
+          <Link
+            ref={existingRef}
+            href={contactsHref(hrefParams, { edit: openId })}
+            replace
+            scroll={false}
+            data-open-existing
+            className="inline-flex items-center min-h-[var(--tap-min)] text-body-sm text-royal-300 hover:underline"
+          >
+            {CONTACT_OPEN_EXISTING}
+            <LinkPending />
+          </Link>
+        )}
       </>
     );
     announce = asked.sentence;
@@ -373,7 +383,8 @@ function ContactForm({
   const existingRef = useRef<HTMLAnchorElement>(null);
   const keepEditingRef = useRef<HTMLButtonElement>(null);
   const pendingPaste = useRef<string | null>(null);
-  /** vb7 · where focus goes once a refused Save's answer is on screen: the existing contact's link, or the number. */
+  /** vb7 · where focus goes once a refused Save's answer is on screen: the existing contact's link (a reader's, when the
+   *  answer carries one), or the number. */
   const focusAfter = useRef<"existing" | "number" | null>(null);
 
   const isAdd = mode.kind === "add";
@@ -397,8 +408,8 @@ function ContactForm({
     };
   }, [isAdd, verdict.stage, numberText, checkRound]);
 
-  // ⭐ vb7 · after a duplicate or an erased answer to Save, focus goes to the answer — "Open the existing contact", or the
-  // number — so the next key acts on it.
+  // ⭐ vb7 · after a duplicate answer to Save, focus goes to the answer — "Open the existing contact" when the answer
+  // carries one (a reader's), else the number — so the next key acts on it.
   useEffect(() => {
     const want = focusAfter.current;
     if (want === null) return;
@@ -455,8 +466,8 @@ function ContactForm({
   const nameUsed = charCount(cleanDisplayName(name) ?? "");
   const notesUsed = charCount(cleanNotes(notes) ?? "");
   const tagsUsed = splitTags(tags).length;
-  // ⛔ THE ONE SAVE: a valid number the book did not refuse. A duplicate, an erased number or a check still running
-  // keeps it disabled — and there is no second way to save. ⭐ vb7 · and only with something to save and every field within
+  // ⛔ THE ONE SAVE: a valid number the book did not refuse. A duplicate (an erased number reads as one, C8b), a refused
+  // number or a check still running keeps it disabled — and there is no second way to save. ⭐ vb7 · and only with something to save and every field within
   // its rule: an edit with nothing changed (it used to write anyway, moving the stamp under another officer's open dialog)
   // or a field the rule refuses keeps it disabled, the first problem its stated reason.
   const canSave = !pending && mayAct && dirty && firstProblem === null && (isAdd
@@ -490,17 +501,15 @@ function ContactForm({
     onClose();
   };
 
-  /** A refusal stays in the dialog, beside what the officer typed. A duplicate or an erased number answers on the
-   *  number's own line (the existing contact's link, or nothing to open); a field refusal sits under its field; the
-   *  gate, the rate rule, a stale edit or a failure is said above the buttons. */
+  /** A refusal stays in the dialog, beside what the officer typed. A duplicate answers on the number's own line (the
+   *  existing contact's link when the answer carries one — a reader's — else the sentence alone: C8b · B2); a field
+   *  refusal sits under its field; the gate, the rate rule, a stale edit or a failure is said above the buttons. */
   const refuse = (r: ActionRefusal) => {
     const field = asField(r.field);
-    if (r.reason === "duplicate" && typeof r.existingId === "string") {
-      setLookup({ state: "duplicate", text: numberText, sentence: r.error, existingId: r.existingId });
-      focusAfter.current = "existing";
-    } else if (r.reason === "erased") {
-      setLookup({ state: "refused", text: numberText, sentence: r.error });
-      focusAfter.current = "number";
+    if (r.reason === "duplicate") {
+      const openId = typeof r.existingId === "string" ? r.existingId : null;
+      setLookup({ state: "duplicate", text: numberText, sentence: r.error, existingId: openId });
+      focusAfter.current = openId !== null ? "existing" : "number";
     } else {
       setRefusal({ field, message: r.error, stale: r.reason === "stale" });
       if (field !== null) focusFirstInvalid(formRef.current, [field]);

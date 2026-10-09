@@ -46,9 +46,11 @@ import {
   contactNumberVerdict, contactOperatorChip, contactTypingLine, governingPaste, contactNumberTooLong, CONTACT_PASTE_TOO_LONG,
 } from "../src/lib/contacts/contact-number.ts";
 import {
-  addContact, editContact, lookupContactNumber, contactAddReply, newContactRow, findEditableContact, cleanRawInput,
-  CONTACT_DUPLICATE, CONTACT_ERASED, CONTACT_MISSING, CONTACT_STALE,
+  addContact, editContact, lookupContactNumber, contactAddReply, contactLookupReply, newContactRow, findEditableContact, cleanRawInput,
+  CONTACT_DUPLICATE, CONTACT_MISSING, CONTACT_STALE,
 } from "../src/lib/server/contacts/contact-write.ts";
+/** The sentence a blocked number answered with until C8b (B2) — written HERE, never imported: it must not exist any more. */
+const OLD_ERASED_SENTENCE = "This number can't be added to the book.";
 import type { ContactAddRequest, ContactAddResult, ContactEditRequest, ContactEditResult } from "../src/lib/server/contacts/contact-write.ts";
 import { loadContactEdit, contactEditView } from "../src/app/admin/contacts/contacts-loader.ts";
 import { contactsHref, contactsLinkSp, contactsClearFiltersHref } from "../src/app/admin/contacts/contacts-query.ts";
@@ -123,13 +125,15 @@ type Impl = {
   edit: typeof editContact;
   lookup: typeof lookupContactNumber;
   reply: typeof contactAddReply;
+  /** ⭐ C8b (B2) · the lookup's reply shaper — a duplicate's id for a reader only. */
+  lookupReply: typeof contactLookupReply;
   editLoad: typeof loadContactEdit;
   href: typeof contactsHref;
   sources: Sources;
 };
 const REAL: Impl = {
   verdict: contactNumberVerdict, paste: governingPaste, add: addContact, edit: editContact, lookup: lookupContactNumber,
-  reply: contactAddReply, editLoad: loadContactEdit, href: contactsHref, sources: REAL_SOURCES,
+  reply: contactAddReply, lookupReply: contactLookupReply, editLoad: loadContactEdit, href: contactsHref, sources: REAL_SOURCES,
 };
 
 let pass = 0, fail = 0;
@@ -204,6 +208,8 @@ const N = {
   erasedLifted: "0766 000 003",
   plainOut: "0766 000 004",
   race: "0713 000 444",
+  // ⭐ C8b · a row that lands INSIDE the save, between its read and its create.
+  raceLate: "0713 000 445",
   shape: "0713 220 001",
   dup: "0713 330 001",
   dupPlus: "+255713330001",
@@ -346,10 +352,11 @@ const L = {
   c6: "2.6 · the audit row names the MASKED number and the filled field NAMES — never the digits, the name or the notes",
   c7: "2.7 · ⭐ X6 · ONE create builder: every src caller of db.marketingContact.create( builds its row with newContactRow, and the builder writes no link and empty caches whatever it is handed (CONTROL: a literal row is flagged)",
   d1: "3.1 · ⭐ THE INDEX IS THE DUPLICATE CHECK: 0713 330 001 then +255713330001 leaves ONE row, and the second is refused with that row's id",
-  d2: "3.2 · the race: a row created between the lookup and the save is a refusal carrying ITS id — no throw, no second row",
+  d2: "3.2 · the race: a row created between the lookup and the save is a refusal carrying ITS id — no throw, no second row — and (C8b) one that lands INSIDE the save, after its read, still meets the unique index: refused with its id, never a second row",
   d3: "3.3 · 🔴 D19 · the lookup says nothing else: exactly three keys for every answer, and a player's number answers exactly like a stranger's, in the book and out of it",
-  d4: "3.4 · ⛔ C3 · an ERASED number is refused with one sentence and NO id — by the lookup and by the save — and nothing is written",
-  d4b: "3.4b · ⛔ C8a · an erasure that left NO book row — the marker, an opt-out tap on an old link above it — is refused EXACTLY as a tombstone is: the lookup's answer and the save's answer each equal the tombstoned number's (the erased sentence, no id), nothing is written and no ledger row appended, and the form asks erasure-mark's isErasedNumber through the importer's own grouped read; CONTROLS: the marker under a later GIVEN, and an opt-out with no erasure, are free and added",
+  d3b: "3.3b · ⛔ C8b (B2) · A MASKED VIEWER IS HANDED NO ROW: through the reply shapers, a player's number in the book, a stranger's and an erased one answer the masked viewer IDENTICALLY — at the lookup and at Save: duplicate, \"already in the book\", existingId null — while a reader keeps the id of a row they may open, and gets none for the erased number (there is no row they may open); the lookup action hands its answer through contactLookupReply with the viewer's read cell, failing closed",
+  d4: "3.4 · ⛔ C3 · C8b (B2) · AN ERASED NUMBER (its tombstone) ANSWERS EXACTLY LIKE ONE ALREADY IN THE BOOK — \"already in the book\" (CONTACT_DUPLICATE, reason duplicate) at the lookup and at Save, with NO id, never the old \"can't be added\" (the console's one sentence that said a holder was erased, X22) — and nothing is written",
+  d4b: "3.4b · ⛔ C8a · C8b (B1) · an erasure that left NO book row — the marker, an opt-out tap on an old link above it — is BLOCKED exactly as a tombstone is: the lookup's answer and the save's answer each equal the tombstoned number's (duplicate, the one sentence, no id), nothing is written and no ledger row appended, and the form asks the ONE test bookBlocks — erasure-mark's isErasedNumber over the importer's own grouped read, the ledger asked for EVERY number — at the lookup and at Save; CONTROLS: the marker under a later GIVEN, and an opt-out with no erasure, are free and added",
   d5: "3.5 · the server refuses what the dialog might not: 064 and a landline with parseTzNumber's own sentence, a 121-character name, a bad email, a 33-character tag and (vb5) a short name holding a phone number — told THAT, never the length sentence — each naming its field and writing nothing (CONTROL: 120 characters pass)",
   d6: "3.6 · ⛔ vb7 · the server holds the same length: a 41-character raw number is refused invalid_number on the number field in the paste sentence and nothing is written; a NUL, a tab and a zero-width space in a raw number are kept out of rawInput (cleanRawInput) while the number is still saved",
   e1: "4.1 · the edit writes ONLY the name, email, notes and tags (and the stamp): the number, source, sourceRef, link, caches, import and provenance are untouched",
@@ -368,7 +375,7 @@ const L = {
   s2: "6.2 · per-officer rate rules: contacts.write and contacts.lookup are declared, and each action spends its own on the officer as a string literal, refusing in words",
   s3: "6.3 · ⛔ every field re-typed: the actions name each field (text(body.x)) — never a spread of what the browser sent — and only a landed change revalidates the list",
   s4: "6.4 · ⛔ NO CONSENT CONTROL: the form states \"Not recorded\" and the form's sentence, has no consent input of any kind, and neither request carries a consent key",
-  s5: "6.5 · ⛔ NO SAVE ANYWAY: one save path per mode, no \"anyway\" anywhere, Save disabled on a duplicate or an erased number, and the duplicate offers only the existing contact's link through contactsHref",
+  s5: "6.5 · ⛔ NO SAVE ANYWAY: one save path per mode, no \"anyway\" anywhere, Save disabled on a duplicate (an erased number reads as one) or a refused number, and the duplicate offers only the existing contact's link through contactsHref — ⭐ C8b (B2) drawn ONLY when the answer carries an id (a reader's), the old erased sentence and reason gone from the form and the service",
   s6b: "6.6b · ⛔ the dialog obeys the act gate too — Save and the email toggle are disabled for a view-only officer, each with the reason (the U22 review)",
   s6: "6.6 · the form is an act control and never names a number or an email: useMayAct and useActDisabledReason disable Add contact WITH the reason, the form is noValidate, no msisdn token and no .email accessor",
   s7: "6.7 · the page: Add contact in the head's actions, the dialog's number and email only through <Sensitive> slots, the close link the ONE builder without edit, the list's two c.msisdn reads unchanged",
@@ -572,8 +579,24 @@ async function runAssertions(impl: Impl, tag: string): Promise<void> {
       await db.marketingContact.create(literalRow("mc_u22_raced", N.race));
       const before = await db.marketingContact.count();
       const r = await impl.add(req(N.race), OFFICER, NOW);
+      // ⭐ C8b · the save reads the number once (`bookBlocks`), then creates: a row that lands between the two is the index's.
+      const ledger = db.messagingConsent as unknown as { erasureStandsAmong: (q: { identifiers: string[] }) => unknown };
+      const realStands = ledger.erasureStandsAmong;
+      ledger.erasureStandsAmong = async (q: { identifiers: string[] }) => {
+        if (q.identifiers.includes(bare(N.raceLate))) await db.marketingContact.create(literalRow("mc_u22_raced_late", N.raceLate));
+        return realStands(q as never);
+      };
+      let late: ContactAddResult;
+      try {
+        late = await impl.add(req(N.raceLate), OFFICER, NOW);
+      } finally {
+        ledger.erasureStandsAmong = realStands;
+      }
+      const lateRows = (await db.marketingContact.listAll()).filter((c) => c.msisdn === bare(N.raceLate)).length;
       return [early.state === "free" && !r.ok && r.reason === "duplicate" && "existingId" in r && r.existingId === "mc_u22_raced"
-        && (await db.marketingContact.count()) === before, `${early.state} → ${r.ok ? "ok" : r.reason}`];
+        && (await db.marketingContact.count()) === before + 1 && !late.ok && late.reason === "duplicate" && late.existingId === "mc_u22_raced_late"
+        && lateRows === 1,
+        `${early.state} → ${r.ok ? "ok" : r.reason} · inside the save: ${late.ok ? "ADDED" : `${late.reason} ${"existingId" in late ? late.existingId : ""}`}, ${lateRows} row(s)`];
     });
     await check(p(L.d3), async () => {
       const answers = [
@@ -587,6 +610,26 @@ async function runAssertions(impl: Impl, tag: string): Promise<void> {
         && answers[3].sentence === CONTACT_DUPLICATE && answers[2].existingId === "mc_u22_playerbook" && answers[3].existingId === "mc_u22_strangerbook";
       return [keysOk && outSame && inSame, answers.map((a) => Object.keys(a).sort().join("+")).join(" | ")];
     });
+    await check(p(L.d3b), async () => {
+      const looked = { player: await impl.lookup(N.playerBook), stranger: await impl.lookup(N.strangerBook), erased: await impl.lookup(N.erased) };
+      const masked = Object.values(looked).map((l) => JSON.stringify(impl.lookupReply(l, false)));
+      const reader = { player: impl.lookupReply(looked.player, true), erased: impl.lookupReply(looked.erased, true) };
+      const saved = {
+        player: await impl.add(req(N.playerBook, { displayName: "Again" }), OFFICER, NOW),
+        stranger: await impl.add(req(N.strangerBook, { displayName: "Again" }), OFFICER, NOW),
+        erased: await impl.add(req(N.erased, { displayName: "Again" }), OFFICER, NOW),
+      };
+      const maskedSaves = Object.values(saved).map((s) => JSON.stringify(impl.reply(s, false)));
+      const readerSave = impl.reply(saved.player, true);
+      const sameLooks = masked.every((m) => m === masked[0]) && JSON.parse(masked[0]).state === "duplicate" && JSON.parse(masked[0]).existingId === null;
+      const sameSaves = maskedSaves.every((m) => m === maskedSaves[0]) && !maskedSaves[0].includes("mc_");
+      const readersKeep = reader.player.existingId === "mc_u22_playerbook" && reader.erased.state === "duplicate" && reader.erased.existingId === null
+        && !readerSave.ok && readerSave.reason === "duplicate" && readerSave.existingId === "mc_u22_playerbook";
+      const wired = /const lookup = await lookupContactNumber\(text\(number\)\);/.test(actionBody(impl.sources.actions, "lookupContactNumberAction"))
+        && /contactLookupReply\(lookup, await viewerReadsContacts\(\)\.catch\(\(\) => false\)\)/.test(actionBody(impl.sources.actions, "lookupContactNumberAction"));
+      return [sameLooks && sameSaves && readersKeep && wired,
+        `masked lookups ${sameLooks ? "identical" : masked.join(" | ")} · masked saves ${sameSaves ? "identical" : maskedSaves.join(" | ")} · reader keeps ${readersKeep} · wired ${wired}`];
+    });
     await check(p(L.d4), async () => {
       const looked = await impl.lookup(N.erased);
       const before = await db.marketingContact.count();
@@ -594,9 +637,10 @@ async function runAssertions(impl: Impl, tag: string): Promise<void> {
       const added = await impl.add(req(N.erased, { displayName: "Back again" }), OFFICER, NOW);
       const tomb = await db.marketingContact.find("mc_u22_erased");
       const blob = JSON.stringify(added) + JSON.stringify(looked);
-      return [looked.state === "refused" && looked.sentence === CONTACT_ERASED && looked.existingId === null
-        && !added.ok && added.reason === "erased" && added.error === CONTACT_ERASED && !("existingId" in added) && !("id" in added)
-        && !blob.includes("mc_u22_erased") && (await db.marketingContact.count()) === before && ledgerCount() === ledgerBefore
+      return [looked.state === "duplicate" && looked.sentence === CONTACT_DUPLICATE && looked.existingId === null
+        && !added.ok && added.reason === "duplicate" && added.error === CONTACT_DUPLICATE && "existingId" in added && added.existingId === null
+        && !("id" in added) && !blob.includes("mc_u22_erased") && !blob.includes("can't be added")
+        && (await db.marketingContact.count()) === before && ledgerCount() === ledgerBefore
         && tomb !== null && tomb.displayName === null && tomb.sourceRef === ERASURE_EVIDENCE,
         blob];
     });
@@ -614,12 +658,18 @@ async function runAssertions(impl: Impl, tag: string): Promise<void> {
       // The CONTROLS: an erasure a GIVEN lifted, and an opt-out with no erasure behind it, are ordinary new numbers.
       const lifted = { looked: await impl.lookup(N.erasedLifted), added: await impl.add(req(N.erasedLifted, { displayName: "Next holder" }), OFFICER, NOW) };
       const plain = { looked: await impl.lookup(N.plainOut), added: await impl.add(req(N.plainOut, { displayName: "Plain" }), OFFICER, NOW) };
+      // ⭐ C8b (B1) · THE ONE TEST: bookBlocks reads the row AND the ledger for every number and asks isErasedNumber; the
+      // lookup and the save both ask it.
+      const test = region(impl.sources.write, "export async function bookBlocks(");
       const asked = impl.sources.write.includes('import { isErasedNumber } from "@/lib/marketing/erasure-mark";')
-        && impl.sources.write.includes("erased: isErasedNumber(existing, stands)") && impl.sources.write.includes("db.messagingConsent.erasureStandsAmong(");
-      return [looked.state === "refused" && looked.sentence === CONTACT_ERASED && looked.existingId === null
+        && test.includes("blocked: isErasedNumber(existing, stands)") && test.includes("db.messagingConsent.erasureStandsAmong(")
+        && !/existing === null\s*&&/.test(test)
+        && region(impl.sources.write, "export async function lookupContactNumber(").includes("await bookBlocks(parsed.msisdn)")
+        && region(impl.sources.write, "export async function addContact(").includes("await bookBlocks(parsed.msisdn)");
+      return [looked.state === "duplicate" && looked.sentence === CONTACT_DUPLICATE && looked.existingId === null
         && JSON.stringify(looked) === JSON.stringify(tombLooked)
-        && !added.ok && added.reason === "erased" && added.error === CONTACT_ERASED && !("existingId" in added) && !("id" in added)
-        && JSON.stringify(added) === JSON.stringify(tombAdded)
+        && !added.ok && added.reason === "duplicate" && added.error === CONTACT_DUPLICATE && "existingId" in added && added.existingId === null
+        && !("id" in added) && JSON.stringify(added) === JSON.stringify(tombAdded)
         && row === null && countAfter === before && ledgerAfter === ledgerBefore
         && lifted.looked.state === "free" && lifted.added.ok && plain.looked.state === "free" && plain.added.ok
         && asked && !blob.includes("mc_"),
@@ -871,8 +921,11 @@ async function runAssertions(impl: Impl, tag: string): Promise<void> {
     const canSave = (src.form.match(/const canSave = [\s\S]*?;\n/) ?? [""])[0];
     const blocked = /asked\.state !== "duplicate"/.test(canSave) && /asked\.state !== "refused"/.test(canSave) && /asked\.state !== "checking"/.test(canSave)
       && /disabled=\{!canSave\}/.test(src.form);
-    const link = /href=\{contactsHref\(hrefParams, \{ edit: asked\.existingId \}\)\}/.test(src.form) && src.form.includes("{CONTACT_OPEN_EXISTING}");
-    return [oneSave && !/anyway/i.test(src.form) && blocked && link, `one save ${oneSave} · blocked ${blocked} · link ${link}`];
+    const link = /const openId = asked\.existingId;/.test(src.form) && /\{openId !== null && \(\s*<Link/.test(src.form)
+      && /href=\{contactsHref\(hrefParams, \{ edit: openId \}\)\}/.test(src.form) && src.form.includes("{CONTACT_OPEN_EXISTING}");
+    // ⛔ C8b (B2) · the old erased answer is gone everywhere: no "erased" reason in the form, no such sentence in the service.
+    const oldGone = !/reason === "erased"/.test(src.form) && !src.write.includes(OLD_ERASED_SENTENCE) && !/reason: "erased"/.test(src.write);
+    return [oneSave && !/anyway/i.test(src.form) && blocked && link && oldGone, `one save ${oneSave} · blocked ${blocked} · link ${link} · old answer gone ${oldGone}`];
   });
   await check(p(L.s6), () => {
     const form = src.form;
@@ -1237,12 +1290,55 @@ if (!PROVE_RED) {
         ...REAL,
         add: async (request, officerId, now = new Date()) => {
           const r = await addContact(request, officerId, now);
-          if (r.ok || r.reason !== "erased") return r;
+          if (r.ok || r.reason !== "duplicate" || r.existingId !== null) return r;
           const q = parseTzNumber(request.number);
           const tomb = q.msisdn ? await db.marketingContact.findByMsisdn(q.msisdn) : null;
           return { ...r, existingId: tomb?.id ?? "" } as ContactAddResult;
         },
       },
+    },
+    {
+      // ⭐ The form as C8a left it: a blocked number refused with its own sentence — the one answer that said "erased".
+      name: "⛔ C8b · B2 not built — a blocked number answers \"This number can't be added to the book\" at the lookup and at Save, the erasure disclosed",
+      expect: L.d4,
+      impl: {
+        ...REAL,
+        lookup: async (number) => {
+          const real = await lookupContactNumber(number);
+          return real.state === "duplicate" && real.existingId === null ? { state: "refused", sentence: OLD_ERASED_SENTENCE, existingId: null } : real;
+        },
+        add: async (request, officerId, now = new Date()) => {
+          const r = await addContact(request, officerId, now);
+          if (r.ok || r.reason !== "duplicate" || r.existingId !== null) return r;
+          return { ok: false, reason: "erased", field: "number", error: OLD_ERASED_SENTENCE } as unknown as ContactAddResult;
+        },
+      },
+    },
+    {
+      name: "⛔ C8b · the masked viewer handed the duplicate's id at the lookup — the row a typed number belongs to, and an erased number told apart by its missing id",
+      expect: L.d3b,
+      impl: { ...REAL, lookupReply: (lookup) => lookup },
+    },
+    {
+      name: "⛔ C8b · the masked viewer handed the duplicate's id at Save — the refusal passed through as the service wrote it",
+      expect: L.d3b,
+      impl: { ...REAL, reply: (result, reads) => (result.ok ? contactAddReply(result, reads) : result) },
+    },
+    {
+      name: "⛔ C8b · the lookup action hands the browser the raw answer — no reply shaper between the service and a masked viewer",
+      expect: L.d3b,
+      impl: {
+        ...REAL,
+        sources: {
+          ...REAL_SOURCES,
+          actions: REAL_SOURCES.actions.replace("contactLookupReply(lookup, await viewerReadsContacts().catch(() => false))", "lookup"),
+        },
+      },
+    },
+    {
+      name: "⛔ C8b · the existing contact's link drawn for every duplicate — a masked viewer's, and an erased number's, with nothing behind it",
+      expect: L.s5,
+      impl: { ...REAL, sources: { ...REAL_SOURCES, form: REAL_SOURCES.form.replace("{openId !== null && (", "{openId !== undefined && (") } },
     },
     {
       // ⭐ C8a's N2 and #2 at the form, as it shipped: the lookup and the save asked the tombstone ROW alone.
@@ -1255,14 +1351,14 @@ if (!PROVE_RED) {
           if (q.verdict !== "ok" || !q.msisdn) return { state: "refused", sentence: q.reason, existingId: null };
           const row = await db.marketingContact.findByMsisdn(q.msisdn);
           if (row === null) return { state: "free", sentence: null, existingId: null };
-          if (row.sourceRef === ERASURE_EVIDENCE) return { state: "refused", sentence: CONTACT_ERASED, existingId: null };
+          if (row.sourceRef === ERASURE_EVIDENCE) return { state: "duplicate", sentence: CONTACT_DUPLICATE, existingId: null };
           return { state: "duplicate", sentence: CONTACT_DUPLICATE, existingId: row.id };
         },
         add: async (request, officerId, now = new Date()) => {
           const parsed = parseTzNumber(request.number);
           if (parsed.verdict !== "ok" || !parsed.msisdn) return invalid(parsed.reason);
           const held = await db.marketingContact.findByMsisdn(parsed.msisdn);
-          if (held !== null && held.sourceRef === ERASURE_EVIDENCE) return { ok: false, reason: "erased", field: "number", error: CONTACT_ERASED };
+          if (held !== null && held.sourceRef === ERASURE_EVIDENCE) return { ok: false, reason: "duplicate", field: "number", error: CONTACT_DUPLICATE, existingId: null };
           const row = newContactRow({
             number: parsed, rawInput: request.number, displayName: request.displayName.trim() || null, email: null, tags: [], notes: null,
             source: "OPERATOR", sourceRef: null, importId: null, officerId, at: now.toISOString(),
@@ -1305,7 +1401,14 @@ if (!PROVE_RED) {
     {
       name: "⛔ C8a · the form stops asking the shared reading — its source no longer reads erasure-mark's isErasedNumber over the grouped read",
       expect: L.d4b,
-      impl: { ...REAL, sources: { ...REAL_SOURCES, write: REAL_SOURCES.write.replace("erased: isErasedNumber(existing, stands)", "erased: existing !== null && existing.sourceRef === ERASURE_EVIDENCE") } },
+      impl: { ...REAL, sources: { ...REAL_SOURCES, write: REAL_SOURCES.write.replace("blocked: isErasedNumber(existing, stands)", "blocked: existing !== null && existing.sourceRef === ERASURE_EVIDENCE") } },
+    },
+    {
+      // C8a's reading of the ledger, kept by the one test: asked only when no row holds the number — so how long an
+      // answer takes tells a number held by an ordinary row from one held by an erasure.
+      name: "⛔ C8b · the one test asks the ledger only when there is no book row — two answers that read alike take different reads",
+      expect: L.d4b,
+      impl: { ...REAL, sources: { ...REAL_SOURCES, write: REAL_SOURCES.write.replace("const stands = (await db.messagingConsent.erasureStandsAmong(", "const stands = existing === null && (await db.messagingConsent.erasureStandsAmong(") } },
     },
     {
       name: "vb5 · every name refusal worded as the length one (contact-write's own mapping before vb5) — a short name holding a number is told it is too long",
