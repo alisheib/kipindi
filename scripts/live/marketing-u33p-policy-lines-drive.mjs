@@ -3,7 +3,9 @@
  * two public pages it edits, /legal/responsible-gambling and /legal/privacy, at 1280 and at 360, on an in-memory dev boot
  * (`DISABLE_ADMIN_TOTP=true`, `rm -rf .next` first, http://localhost — never 127.0.0.1). What a suite cannot see:
  *   BEFORE — the public pages print TODAY's text in en, sw and zh: the RG §4 marketing promise under the RG page's code
- *            version; the Privacy Notice's consent-only Blackball clause, no licence bullet, its code version. ⭐ Both code
+ *            version; the Privacy Notice's consent-only clause in its SMS gateway bullet, no licence bullet, its code
+ *            version, and ⛔ no "Blackball" anywhere on it (the owner's decision of 2026-10-09: the public line names no
+ *            gateway company — the page's default as well as a saved line). ⭐ Both code
  *            versions are read from the pages' own META in the source, and every stamp this drive expects is derived
  *            from them by the stamp rule (`nextStamp`, `nextPolicyVersion`'s rule — test:policy-lines holds the rule).
  *   1280   — the card on its own tab (not on Platform): "0 of 5 lines saved.", every line unsaved and prefilled with
@@ -18,10 +20,12 @@
  *            their units. ⭐ The review tick (review F1 · F4): today's Consent words marked reviewed — "Reviewed … the page
  *            prints today's words", the Privacy version NOT moved, the tick gone, the public page unchanged. Then the
  *            Privacy lines in ONE Save (B.3 gateway, B.4 licence, B.5 Consent — B.3 and B.4 WITHOUT the stop-link clause since
- *            the owner's ruling of 2026-10-09: "…stop at any time under Profile → Notifications…"). A second admin saves the note; the first
- *            admin's page, opened before it, is refused under the box in words, and nothing of it saved.
+ *            the owner's ruling of 2026-10-09: "…stop at any time under Profile → Notifications…"; B.3 naming no gateway
+ *            company since the owner's decision of the same day: "Our SMS gateway in Tanzania, …"). A second admin saves the
+ *            note; the first admin's page, opened before it, is refused under the box in words, and nothing of it saved.
  *   AFTER  — the public pages print the SAVED lines and the moved version, in en, sw and zh: the RG promise; the licence
- *            bullet with its label in bold; the new Blackball line, no consent-only clause anywhere, and no stop link promised.
+ *            bullet with its label in bold; the new gateway line, no consent-only clause anywhere, no stop link promised,
+ *            and ⛔ no "Blackball" anywhere on the Privacy page, in any language.
  *   360    — the card, and the sw and zh pages, with no sideways scroll.
  * Writes viewport tiles to .qa-shots/marketing-setup/u33p/ — open and read them; a pass here is not a look.
  * Usage: BASE=http://localhost:3010 node scripts/live/marketing-u33p-policy-lines-drive.mjs
@@ -104,12 +108,21 @@ const B2 = {
 };
 /* ⛔ B.3 and B.4 WITHOUT THE STOP-LINK CLAUSE (the owner's ruling of 2026-10-09: no offer carries a stop link): each reads
    "…stop at any time under Profile → Notifications…" — the English loses "with the stop link in every offer or ", the Swahili
-   "kwa kiungo cha kusimamisha kilicho katika kila ofa au ", the Chinese "通过每条优惠短信中的退订链接或". */
+   "kwa kiungo cha kusimamisha kilicho katika kila ofa au ", the Chinese "通过每条优惠短信中的退订链接或".
+   ⛔ B.3 NAMES NO GATEWAY COMPANY (the owner's decision of 2026-10-09, Ali, about 15:00 EAT: the public line must not name
+   Blackball) — its approved words, exactly: the English and the Swahili lose their opening "Blackball, " (so "Our" and "Lango"
+   take the capital), the Chinese opens "我们在坦桑尼亚的短信网关" where it read "Blackball（坦桑尼亚），我们的短信网关". */
 const B3 = {
-  en: "Blackball, our SMS gateway in Tanzania, which sends our text messages, such as one-time codes and 50pick offers and news, which you can stop at any time under Profile → Notifications: it receives your phone number and the text of each message, and tells us whether each message was delivered",
-  sw: "Blackball, lango letu la SMS nchini Tanzania, linalotuma ujumbe wetu mfupi (SMS), kama misimbo ya matumizi ya mara moja na ofa na habari za 50pick, ambazo unaweza kuzisimamisha wakati wowote kwenye Wasifu → Arifa: hupokea namba yako ya simu na maandishi ya kila ujumbe, na hutuambia kama kila ujumbe umefika",
-  zh: "Blackball（坦桑尼亚），我们的短信网关：发送我们的短信，例如一次性验证码以及 50pick 的优惠和资讯——您可随时在“个人资料 → 通知”中停止接收；接收您的电话号码和每条短信的内容，并告知我们每条短信是否已送达",
+  en: "Our SMS gateway in Tanzania, which sends our text messages, such as one-time codes and 50pick offers and news, which you can stop at any time under Profile → Notifications: it receives your phone number and the text of each message, and tells us whether each message was delivered",
+  sw: "Lango letu la SMS nchini Tanzania, linalotuma ujumbe wetu mfupi (SMS), kama misimbo ya matumizi ya mara moja na ofa na habari za 50pick, ambazo unaweza kuzisimamisha wakati wowote kwenye Wasifu → Arifa: hupokea namba yako ya simu na maandishi ya kila ujumbe, na hutuambia kama kila ujumbe umefika",
+  zh: "我们在坦桑尼亚的短信网关：发送我们的短信，例如一次性验证码以及 50pick 的优惠和资讯——您可随时在“个人资料 → 通知”中停止接收；接收您的电话号码和每条短信的内容，并告知我们每条短信是否已送达",
 };
+/** ⛔ The gateway company's name — the Privacy page may carry it NOWHERE, in any language, before or after a save (the owner's
+ *  decision of 2026-10-09). Matched without regard to case. */
+const GATEWAY_NAME = /blackball/i;
+/** Words the gateway bullet carries in each language both before a save (the page's default) and after it (B.3) — the read
+ *  is proven to hold the bullet, so its "no Blackball" can never pass on an empty read. */
+const GATEWAY_WORDS = { en: "SMS gateway in Tanzania", sw: "la SMS nchini Tanzania", zh: "短信网关" };
 const B4 = {
   en: "Our Gaming Board of Tanzania licence: 50pick offers and news by SMS, sent to adult Tanzanian mobile numbers under our licence — you can stop them at any time under Profile → Notifications, and once you stop we do not send them again unless you ask",
   sw: "Leseni yetu ya Bodi ya Michezo ya Kubahatisha Tanzania: ofa na habari za 50pick kwa SMS, zinazotumwa kwa namba za simu za Tanzania za watu wazima chini ya leseni yetu — unaweza kuzisimamisha wakati wowote kwenye Wasifu → Arifa, na ukishasimamisha hatutumi tena isipokuwa ukiomba",
@@ -161,14 +174,21 @@ async function openCard(page) {
   await page.locator(FORM).scrollIntoViewIfNeeded();
   await wait(400);
 }
-/** A legal page as a reader sees it: every bullet's words, and the whole page's words. */
+/** A legal page as a reader sees it: every bullet's words, and the whole page's words. `words` is the page's own words
+ *  only — its title and every text node of the body, a hidden one included, with no script or style: the inline payload
+ *  and the logs a dev server replays into it are not the page's words, and a name found there is not one the page prints. */
 async function readLegal(page, path) {
   await page.goto(BASE + path, { waitUntil: "domcontentloaded" });
   await page.waitForSelector("section li", { timeout: 60_000 });
   await wait(300);
   const items = await page.locator("section li").evaluateAll((els) => els.map((e) => e.textContent || ""));
   const body = (await page.locator("body").textContent().catch(() => "")) || "";
-  return { items: items.map(flat), body: flat(body) };
+  const words = (await page.evaluate(() => {
+    const copy = document.body.cloneNode(true);
+    for (const el of copy.querySelectorAll("script, style")) el.remove();
+    return `${document.title} ${copy.textContent || ""}`;
+  }).catch(() => "")) || "";
+  return { items: items.map(flat), body: flat(body), words: flat(words) };
 }
 const textOf = async (page, sel) => flat(await page.locator(sel).first().textContent().catch(() => ""));
 const overflowOf = (page) => page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
@@ -193,7 +213,9 @@ for (const l of LOCALES) {
   ok(`before · ${l} · Privacy §4 still carries today's consent-only clause`, pv.body.includes(CLAUSE[l]));
   ok(`before · ${l} · Privacy prints no licence bullet yet`, !pv.body.includes(flat(B4_LABEL[l])));
   ok(`before · ${l} · the Privacy header prints its code version ${PR_CODE}`, pv.body.includes(`${META_WORD[l]} ${PR_CODE}`));
-  if (l === "en") { await showBullet(page, "Blackball, our SMS gateway"); await tile(page, "1280-01-privacy-en-before"); }
+  ok(`before · ${l} · ⛔ the owner's decision of 2026-10-09 · the Privacy page names no "Blackball" — its title and every word on it, the SMS gateway bullet ("${GATEWAY_WORDS[l]}") read`,
+    pv.words.includes(GATEWAY_WORDS[l]) && !GATEWAY_NAME.test(pv.words), pv.words.match(GATEWAY_NAME) ? "names it" : "the gateway bullet was not read");
+  if (l === "en") { await showBullet(page, GATEWAY_WORDS.en); await tile(page, "1280-01-privacy-en-before"); }
   await ctx.close();
 }
 
@@ -362,6 +384,8 @@ for (const l of LOCALES) {
   ok(`after · ${l} · …its label in bold`, bold === B4_LABEL[l], bold);
   ok(`after · ${l} · Privacy §3 prints the saved Consent bullet`, pv.items.includes(flat(B5[l])));
   ok(`after · ${l} · Privacy §4 prints the saved gateway line`, pv.items.includes(flat(B3[l])));
+  ok(`after · ${l} · ⛔ the owner's decision of 2026-10-09 · the Privacy page names no "Blackball" — its title and every word on it, the saved gateway line ("${GATEWAY_WORDS[l]}") read`,
+    pv.words.includes(GATEWAY_WORDS[l]) && !GATEWAY_NAME.test(pv.words), pv.words.match(GATEWAY_NAME) ? "names it" : "the gateway line was not read");
   ok(`after · ${l} · …and the consent-only clause is gone from the page`, !pv.body.includes(CLAUSE[l]));
   ok(`after · ${l} · ⛔ the owner's ruling of 2026-10-09 · no line the page prints promises a stop link in an offer ("${STOP_LINK_WORDS[l]}" nowhere) — a stop is under Profile → Notifications`,
     !pv.body.includes(STOP_LINK_WORDS[l]) && pv.body.includes(flat({ en: "Profile → Notifications", sw: "Wasifu → Arifa", zh: "个人资料 → 通知" }[l])));
