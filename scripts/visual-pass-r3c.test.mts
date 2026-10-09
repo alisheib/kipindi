@@ -381,7 +381,10 @@ section("9 · a line written \"A · B\" breaks only between its parts, and its d
 {
   const two = html(h(DotSeq, { text: "Toleo 2026-10-07 · Imeoanishwa na Tanzania", mono: true }));
   ok("9.1 · two parts, two items, the second carrying its dot hidden from assistive tech, the mono gap asked for",
-    two === `<span class="kp-seq kp-seq--mono"><span class="kp-seq__item">Toleo 2026-10-07</span><span class="kp-seq__item"><span class="kp-seq__dot" aria-hidden="true">·</span>Imeoanishwa na Tanzania</span></span>`, two);
+    two === `<span class="kp-seq kp-seq--mono"><span class="kp-seq__item">Toleo 2026-10-07</span><span class="kp-seq__item"> <span class="kp-seq__dot" aria-hidden="true">·</span> Imeoanishwa na Tanzania</span></span>`
+      // …and no word fused to the dot's closing tag — qa:live's own rule (pre-deploy-live-check.mjs spanFusedIn: a </span>
+      // whose last character is not a space, followed by a word, inside running text). M7 caught "·</span>Imetolewa".
+      && !/\S<\/span>[A-Za-zÀ-ɏ]{2,}/.test(two), two);
   ok("9.2 CONTROL · a line with no \" · \" is one plain span, byte for byte", html(h(DotSeq, { text: "Wafanyakazi tu", className: "kp-hub__sub" })) === `<span class="kp-hub__sub">Wafanyakazi tu</span>`);
   ok("9.3 · the dot hangs in the gap before its part and the box clips its left edge, so a dot that would open a line is not drawn",
     /position:\s*absolute;\s*top:\s*0;\s*right:\s*100%/.test(rule(css, ".kp-seq__dot")) && /clip-path:\s*inset\(-100vmax -100vmax -100vmax 0\)/.test(rule(css, ".kp-seq"))
