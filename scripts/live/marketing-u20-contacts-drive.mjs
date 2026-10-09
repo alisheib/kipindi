@@ -136,6 +136,11 @@ const ok = (label, cond, detail = "") => {
   else { fail++; console.log(`  FAIL ${label}${detail ? " -- " + detail : ""}`); }
 };
 const wait = (ms) => new Promise((r) => setTimeout(r, ms));
+/** ⭐ THE LONGEST A STEP WAITS FOR A SERVER ROUND TRIP: a fresh dev server builds each server action on its first call —
+ *  the first reveal passed 15 s twice on 2026-10-09 (and the screenshot then hung on fonts while it built). Every context
+ *  takes it as its default; the waits that watch a passing state (the KPI skeleton, the lookup's "checking", the
+ *  "Tagging …" overlays, the optional list note) keep 15 s. */
+const SLOW = 120_000;
 const MASK = /^\+255•{4}\d{2}$/;
 /** U23 · THE SELECT COLUMN IS FIRST, so every data column moved one place right: Name 2, Number 3, Operator 4, and for a
  *  reader Consent 5 and Will receive 6 (U38b's word for the gate's yes). Named once, so no selector counts columns by hand. */
@@ -145,6 +150,7 @@ const browser = await chromium.launch();
 
 async function staffCtx(role, phone, viewport, reducedMotion = "no-preference") {
   const ctx = await browser.newContext({ viewport, reducedMotion });
+  ctx.setDefaultTimeout(SLOW);
   const page = await ctx.newPage();
   await page.goto(BASE + "/", { waitUntil: "domcontentloaded" });
   const r = await page.request.post(BASE + "/api/dev-test/seed-admin", { data: { role, phone, name: `QA ${role}` } });
@@ -258,7 +264,7 @@ const addedRecently = async (page) => Number((/Added in the last 7 days\s*([\d,]
 
 async function openAddDialog(page) {
   await page.locator('[data-block="contacts-add"]').first().click();
-  await page.waitForSelector(`${DIALOG} ${ADD_FORM}`, { timeout: 15000 });
+  await page.waitForSelector(`${DIALOG} ${ADD_FORM}`, { timeout: SLOW });
   await wait(400);
 }
 /** ⛔ BY ITS TEXT, NEVER BY ITS ROLE NAME (U23, 2026-10-02): every Modal's scrim is a button NAMED "Cancel" too
@@ -398,7 +404,7 @@ for (const vp of VIEWPORTS) {
   await page.route("**src_app_admin_contacts_page_tsx**", async (route) => { await wait(5000); await route.continue().catch(() => {}); });
   await page.goto(BASE + "/admin/bonuses", { waitUntil: "domcontentloaded" });
   await wait(2500);
-  const anchor = await page.waitForSelector('a[href="/admin/contacts"]', { state: "attached", timeout: 15000 }).catch(() => null);
+  const anchor = await page.waitForSelector('a[href="/admin/contacts"]', { state: "attached", timeout: SLOW }).catch(() => null);
   ok(`${vp.name} · the Contacts nav anchor is in the DOM`, !!anchor);
   if (anchor) {
     await page.evaluate(() => document.querySelector('a[href="/admin/contacts"]').click());
@@ -840,7 +846,7 @@ for (const vp of VIEWPORTS) {
   await railShot(adm.page, vp.name, "u21-reader-combined", ["consent", "suppressed", "op", "source", "tag"]);
   await openContacts(adm.page);
   await adm.page.locator('button[aria-label="Reveal Contact number"]').first().click();
-  await adm.page.waitForSelector('button[aria-label="Hide Contact number"]', { timeout: 15000 }).catch(() => {});
+  await adm.page.waitForSelector('button[aria-label="Hide Contact number"]', { timeout: SLOW }).catch(() => {});
   const shown = (await adm.page.locator('button[aria-label="Hide Contact number"]').first().innerText().catch(() => "")).trim();
   ok(`${vp.name} · ADMIN · the eye reveals the +255 spelling, after the audited round trip`, /^\+255[67][0-9]{8}$/.test(shown), shown);
   await shoot(adm.page, `${vp.name}-admin-reveal`, '[data-block="contacts-card"]');
@@ -918,7 +924,7 @@ for (const [vi, vp] of VIEWPORTS.entries()) {
     checking.lookup === "checking" && /Checking the book/.test(checking.text) && (await saveDisabled(page)), checking.text);
   await formShot(page, vp.name, "u22-checking", "Add a contact", "Checking the book");
   await lookupHold.release();
-  await page.waitForSelector('[data-number-lookup="free"]', { timeout: 15000 }).catch(() => {});
+  await page.waitForSelector('[data-number-lookup="free"]', { timeout: SLOW }).catch(() => {});
   ok(`${vp.name} · U22 CHECKED · a fresh number is free: the operator's sentence, and Save enabled`,
     (await verdictLine(page)).lookup === "free" && !(await saveDisabled(page)), (await verdictLine(page)).text);
   await page.locator(`${DIALOG} [data-field="displayName"] input`).first().fill(`U22 Drive ${vp.name}`);
@@ -934,8 +940,8 @@ for (const [vi, vp] of VIEWPORTS.entries()) {
     busy === "true" && saveBusy === "true" && (await page.locator(DIALOG).count()) === 1, `dialog busy=${busy} save busy=${saveBusy}`);
   await formShot(page, vp.name, "u22-saving", "Add a contact");
   await saveHold.release();
-  await page.getByText("Contact added", { exact: true }).first().waitFor({ timeout: 15000 }).catch(() => {});
-  await page.waitForSelector(DIALOG, { state: "detached", timeout: 15000 }).catch(() => {});
+  await page.getByText("Contact added", { exact: true }).first().waitFor({ timeout: SLOW }).catch(() => {});
+  await page.waitForSelector(DIALOG, { state: "detached", timeout: SLOW }).catch(() => {});
   for (let i = 0; i < 30 && (await inTheBook(page)) !== bookBefore + 1; i++) await wait(300);
   const firstRow = await textOf(page, "[data-contact-row]");
   ok(`${vp.name} · U22 SAVED · "Contact added", the dialog gone, the new row FIRST, "In the book" up by exactly one`,
@@ -951,13 +957,13 @@ for (const [vi, vp] of VIEWPORTS.entries()) {
   // ── DUPLICATE (the Accept): typed once and saved, then PASTED as +255… — one row, the sentence, the link ──
   await openAddDialog(page);
   await typeNumber(page, fresh(2));
-  await page.waitForSelector('[data-number-lookup="free"]', { timeout: 15000 }).catch(() => {});
+  await page.waitForSelector('[data-number-lookup="free"]', { timeout: SLOW }).catch(() => {});
   await page.locator(SAVE).first().click();
-  await page.waitForSelector(DIALOG, { state: "detached", timeout: 15000 }).catch(() => {});
+  await page.waitForSelector(DIALOG, { state: "detached", timeout: SLOW }).catch(() => {});
   await wait(800);
   await openAddDialog(page);
   await pasteNumber(page, `+255${fresh(2).slice(1)}`);
-  await page.waitForSelector('[data-number-lookup="duplicate"]', { timeout: 15000 }).catch(() => {});
+  await page.waitForSelector('[data-number-lookup="duplicate"]', { timeout: SLOW }).catch(() => {});
   const dup = await verdictLine(page);
   const dupText = await dialogText(page);
   // 🔴 C8b (B2) · GROWTH's answer carries NO contact id: "already in the book", and no Open link — a reader's control.
@@ -989,10 +995,10 @@ for (const [vi, vp] of VIEWPORTS.entries()) {
   await tabB.waitForSelector(`${DIALOG} ${EDIT_FORM}`, { timeout: 30000 });
   await page.locator(`${DIALOG} [data-field="displayName"] input`).first().fill("Tab A");
   await page.locator(SAVE).first().click();
-  await page.waitForSelector(DIALOG, { state: "detached", timeout: 15000 }).catch(() => {});
+  await page.waitForSelector(DIALOG, { state: "detached", timeout: SLOW }).catch(() => {});
   await tabB.locator(`${DIALOG} [data-field="displayName"] input`).first().fill("Tab B");
   await tabB.locator(SAVE).first().click();
-  await tabB.waitForSelector(`${DIALOG} [role="alert"]`, { timeout: 15000 }).catch(() => {});
+  await tabB.waitForSelector(`${DIALOG} [role="alert"]`, { timeout: SLOW }).catch(() => {});
   const staleText = await dialogText(tabB);
   ok(`${vp.name} · U22 STALE · the second tab's save is refused — nothing overwritten — and offers Reload`,
     /Someone changed this contact/.test(staleText) && (await tabB.getByRole("button", { name: "Reload", exact: true }).count()) === 1, staleText.slice(0, 160));
@@ -1021,7 +1027,7 @@ for (const [vi, vp] of VIEWPORTS.entries()) {
   await openContacts(page);
   await openAddDialog(page);
   await typeNumber(page, u22.erasedNumber || "0766000001");
-  await page.waitForSelector('[data-number-lookup="duplicate"]', { timeout: 15000 }).catch(() => {});
+  await page.waitForSelector('[data-number-lookup="duplicate"]', { timeout: SLOW }).catch(() => {});
   const erasedLine = await verdictLine(page);
   ok(`${vp.name} · U22 ERASED · C8b · the erased number reads exactly "This number is already in the book." — never "can't be added" — with NO link, Save disabled`,
     erasedLine.lookup === "duplicate" && erasedLine.text.includes("This number is already in the book.") && !erasedLine.text.includes("can't be added")
@@ -1033,10 +1039,10 @@ for (const [vi, vp] of VIEWPORTS.entries()) {
   // ── 🔴 A1.1 · GROWTH adds a seeded PLAYER's number (consent GIVEN at sign-up): no consent value anywhere ──
   await openAddDialog(page);
   await typeNumber(page, u22.players[vi] ?? "0766100000");
-  await page.waitForSelector('[data-number-lookup="free"]', { timeout: 15000 }).catch(() => {});
+  await page.waitForSelector('[data-number-lookup="free"]', { timeout: SLOW }).catch(() => {});
   await page.locator(SAVE).first().click();
-  await page.getByText("Contact added", { exact: true }).first().waitFor({ timeout: 15000 }).catch(() => {});
-  await page.waitForSelector(DIALOG, { state: "detached", timeout: 15000 }).catch(() => {});
+  await page.getByText("Contact added", { exact: true }).first().waitFor({ timeout: SLOW }).catch(() => {});
+  await page.waitForSelector(DIALOG, { state: "detached", timeout: SLOW }).catch(() => {});
   await wait(800);
   ok(`${vp.name} · U22 A1.1 · GROWTH adding a seeded player's number is told no consent value — no "Consent: Given", no consent column`,
     (await page.getByText(/Consent: /).count()) === 0 && !/consent/i.test(await page.locator('[data-block="contacts-card"] thead').innerText()),
@@ -1046,11 +1052,11 @@ for (const [vi, vp] of VIEWPORTS.entries()) {
   // ── ERROR · the add answered with HTTP 500: the danger line, the typing kept, Save available again ──
   await openAddDialog(page);
   await typeNumber(page, fresh(3));
-  await page.waitForSelector('[data-number-lookup="free"]', { timeout: 15000 }).catch(() => {});
+  await page.waitForSelector('[data-number-lookup="free"]', { timeout: SLOW }).catch(() => {});
   await page.locator(`${DIALOG} [data-field="displayName"] input`).first().fill("Kept after the error");
   const failing = await holdNextAction(page, "fail");
   await page.locator(SAVE).first().click();
-  await page.waitForSelector(`${DIALOG} [role="alert"]`, { timeout: 15000 }).catch(() => {});
+  await page.waitForSelector(`${DIALOG} [role="alert"]`, { timeout: SLOW }).catch(() => {});
   const errText = await dialogText(page);
   ok(`${vp.name} · U22 ERROR · a 500 is said in the dialog, the typing is kept, and Save is available again`,
     /Server error/.test(errText) && (await page.locator(`${DIALOG} [data-field="displayName"] input`).first().inputValue()) === "Kept after the error" && !(await saveDisabled(page)),
@@ -1069,10 +1075,10 @@ for (const [vi, vp] of VIEWPORTS.entries()) {
   await openContacts(adm.page);
   await openAddDialog(adm.page);
   await typeNumber(adm.page, u22.withdrawn[vi] ?? "0766200000");
-  await adm.page.waitForSelector('[data-number-lookup="free"]', { timeout: 15000 }).catch(() => {});
+  await adm.page.waitForSelector('[data-number-lookup="free"]', { timeout: SLOW }).catch(() => {});
   await adm.page.locator(SAVE).first().click();
-  await adm.page.getByText(/Consent: Withdrawn/).first().waitFor({ timeout: 15000 }).catch(() => {});
-  await adm.page.waitForSelector(DIALOG, { state: "detached", timeout: 15000 }).catch(() => {});
+  await adm.page.getByText(/Consent: Withdrawn/).first().waitFor({ timeout: SLOW }).catch(() => {});
+  await adm.page.waitForSelector(DIALOG, { state: "detached", timeout: SLOW }).catch(() => {});
   await wait(1000);
   const adminFirstConsent = await textOfLoc(adm.page.locator("[data-contact-row]").first().locator(`td:nth-child(${COL.consent})`));
   ok(`${vp.name} · U22 ADMIN · a reader adding a number whose ledger says WITHDRAWN is told "Consent: Withdrawn", and the new first row reads Withdrawn`,
@@ -1092,13 +1098,13 @@ for (const [vi, vp] of VIEWPORTS.entries()) {
   await openContacts(adm.page);
   await openAddDialog(adm.page);
   await pasteNumber(adm.page, `+255${fresh(2).slice(1)}`);
-  await adm.page.waitForSelector('[data-number-lookup="duplicate"]', { timeout: 15000 }).catch(() => {});
+  await adm.page.waitForSelector('[data-number-lookup="duplicate"]', { timeout: SLOW }).catch(() => {});
   const adminDup = await verdictLine(adm.page);
   const adminDupLinks = await adm.page.locator(`${DIALOG} a[data-open-existing]`).count();
   await closeDialog(adm.page);
   await openAddDialog(adm.page);
   await typeNumber(adm.page, u22.erasedNumber || "0766000001");
-  await adm.page.waitForSelector('[data-number-lookup="duplicate"]', { timeout: 15000 }).catch(() => {});
+  await adm.page.waitForSelector('[data-number-lookup="duplicate"]', { timeout: SLOW }).catch(() => {});
   const adminErased = await verdictLine(adm.page);
   const adminErasedLinks = await adm.page.locator(`${DIALOG} a[data-open-existing]`).count();
   ok(`${vp.name} · U22 ADMIN · C8b (B2) · a reader's duplicate keeps its "Open the existing contact" link; the erased number reads the same sentence with NO link, Save disabled`,
@@ -1202,7 +1208,7 @@ async function pressBulk(page, action) {
   await wait(300);
 }
 async function waitForParam(page, action) {
-  await page.waitForSelector(`${DIALOG} [data-bulk-param="${action}"]`, { timeout: 15000 }).catch(() => {});
+  await page.waitForSelector(`${DIALOG} [data-bulk-param="${action}"]`, { timeout: SLOW }).catch(() => {});
   await wait(300);
 }
 const tagBox = (page) => page.locator(`${DIALOG} [data-field="tag"] input`).first();
@@ -1317,7 +1323,7 @@ for (const [vi, vp] of VIEWPORTS.entries()) {
     page.url());
   await formShot(page, vp.name, "u23-edit-link", "Edit contact", "The number can't be changed");
   await closeDialog(page);
-  await page.waitForURL((u) => !u.searchParams.has("edit"), { timeout: 15000 }).catch(() => {});
+  await page.waitForURL((u) => !u.searchParams.has("edit"), { timeout: SLOW }).catch(() => {});
 
   // ── TICKED ACROSS PAGES — the pager is a client navigation, and the selection outlives it ──
   await openContacts(page);
