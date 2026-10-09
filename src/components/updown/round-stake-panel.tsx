@@ -19,7 +19,7 @@ import { Spinner } from "@/components/ui/spinner";
 import { cn, formatNumber, formatTzs } from "@/lib/utils";
 import { useT } from "@/lib/i18n";
 import { useUpDownQuickBet, usePlacePulse } from "./use-quick-bet";
-import { UpDownStakeControls } from "./updown-stake-controls";
+import { UpDownStakeControls, EstimateNote } from "./updown-stake-controls";
 import { UpDownBetBlockedModal } from "./updown-bet-blocked-modal";
 import { stakeChipLabel } from "./stake-math";
 import { I } from "@/components/ui/glyphs";
@@ -300,7 +300,9 @@ export function RoundStakePanel(props: {
           <span>{warnCopy}</span>
         </p>
       )}
-      <p className="mt-2 text-[10px] leading-[1.45] text-text-faint">{t.market.udEstimateNote}</p>
+      {/* The × note at the ⓘ notes' size and indent (round 4): it was 10px here, under §T4's 12.5px reading floor,
+          while the same sentence reads at 13px on the card and the two-way panel. */}
+      <EstimateNote className="mt-2" text={t.market.udEstimateNote} />
 
       <span aria-live="polite" className="sr-only">{bet.liveMessage}</span>
 

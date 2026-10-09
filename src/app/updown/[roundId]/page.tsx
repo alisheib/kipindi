@@ -777,7 +777,9 @@ export default async function UpDownRoundPage({
                   <dl className="mt-[11px] grid grid-cols-[auto_1fr] gap-x-2.5 gap-y-[5px] font-mono text-[10.5px]">
                     <dt className="text-text-faint">{t.market.udSource}</dt>
                     <dd className="m-0 text-text-muted">{t.market[SOURCE_CLASS_KEY[asset.sourceClass]]}</dd>
-                    <dt className="text-text-faint">{t.market.udQuoted}</dt>
+                    {/* The stamp's mid-sentence word used as a label opens on a capital, like "Chanzo" and "Ilionekana"
+                        around it — the hero's rule (`.ud-cap-first`, round 4); the word itself is unchanged. */}
+                    <dt className="ud-cap-first text-text-faint">{t.market.udQuoted}</dt>
                     <dd className="m-0 tabular-nums text-text-muted">{fmtEAT(quotedAt) ?? "—"}</dd>
                     <dt className="text-text-faint">{t.market.udObserved}</dt>
                     <dd className="m-0 tabular-nums text-text-muted">{fmtEAT(observedAt) ?? "—"}</dd>

@@ -115,6 +115,17 @@ export async function generateMetadata(
   };
 }
 
+/**
+ * ⭐ THE QUESTION OPENS ON THE PAGE'S EDGE (2026-10-09, the visual pass's round 4, tiles 161 and 162). Sora draws a
+ * straight-stem capital with a side bearing, so "Mvua …" began 2px inside the edge the back link, the chips and the
+ * hairline keep (M's ink from x18 at 390, x134.6 at 1280, against 16 and 132): 2.17px of 28 and 2.68px of 36, i.e.
+ * 0.0775 and 0.0744em — 0.075em, within 0.1px of each. The font's own outline agrees on the letters: at weight 700 every
+ * straight-stem capital below starts at 0.082em of the em (the rendered ink runs ~0.2px proud of the outline, as R3-A
+ * found for the headline's 800), I at 0.084. Only the h1's FIRST line is set back (`text-indent`), and only when the
+ * question starts on one of these — the letter decides, never the locale. ⛔ Measure a letter before adding it.
+ */
+const QUESTION_STEM = /^[BDEFHIKLMNPR]/u;
+
 export default async function MarketDetail({
   params,
   searchParams,
@@ -526,13 +537,18 @@ export default async function MarketDetail({
               alone, so at 390 the row broke between them: "Chanzo" stayed up with the chips and the star and SHIRIKI
               opened line 2 at the left — the star's glyph, with no visible box of its own, floating at x29–42 against
               the chips' edge at 16 and SHIRIKI's at 68. Grouped, they share the right edge on whichever line they land:
-              beside the chips at 1280 exactly as before, and together under them on a phone. */}
+              beside the chips at 1280 exactly as before, and together under them on a phone.
+              ⭐ AND THE STAR STANDS MIDWAY BETWEEN ITS NEIGHBOURS' INK (round 4, 2026-10-09, tiles 161 162). The boxes
+              were 12px apart both sides, but the `ext` glyph's ink stops short of its 12px box — its path's right edge is
+              x19 + the 0.95 half-stroke of 24, so 2.03px of air — while the star's sits centred in its 40px box. Ink to
+              ink that read 27 | 25 (x964→992, x1005→1031 at 1280). `-mr-[2px]` gives the link's box back that bearing:
+              25 | 25. The tap box is unchanged; only the gap after it closes. */}
           <div className="ml-auto flex items-center gap-2">
             <a
               href={m.sourceUrl}
               target="_blank"
               rel="noopener noreferrer"
-              className="inline-flex items-center gap-1 min-h-[var(--tap-min)] -my-[11px] py-[11px] text-[12px] font-mono text-text-muted hover:text-text"
+              className="inline-flex items-center gap-1 -mr-[2px] min-h-[var(--tap-min)] -my-[11px] py-[11px] text-[12px] font-mono text-text-muted hover:text-text"
             >
               {t.common.source}
               <I.ext s={12} />
@@ -577,7 +593,9 @@ export default async function MarketDetail({
               </span>
             );
           })()}
-          <h1 className="font-display text-title-lg md:text-display-3 font-bold leading-tight tracking-[-0.02em] text-text text-balance">{pickLocalized(locale, m.titleEn, m.titleSw, m.titleZh)}</h1>
+          <h1 data-stem={QUESTION_STEM.test(pickLocalized(locale, m.titleEn, m.titleSw, m.titleZh)) ? "" : undefined}
+            className="font-display text-title-lg md:text-display-3 font-bold leading-tight tracking-[-0.02em] text-text text-balance data-[stem]:indent-[-0.075em]"
+          >{pickLocalized(locale, m.titleEn, m.titleSw, m.titleZh)}</h1>
         </div>
       </header>
 

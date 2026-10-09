@@ -166,8 +166,9 @@ export function PriceHero({
           </div>
           {/* The band's detail, continued: "Juu ya ufunguzi kwa $18.52 · imenukuliwa 18:55:02 EAT" sits under the
               figure it dates, at the sentence floor — it was a 9.5px footnote under the chart, so the landing's
-              answer arrived here as small print (frame panel, 2026-09-27). */}
-          {copy.aboveBelow && <p className="mt-1.5 mb-0 text-body-sm text-text-muted">{copy.aboveBelow}</p>}
+              answer arrived here as small print (frame panel, 2026-09-27). `ud-cap-first`: a line the quote stamp
+              opens, it opens on a capital (globals.css, round 4) — the stamp alone reads "Imenukuliwa 04:01:21 EAT". */}
+          {copy.aboveBelow && <p className="ud-cap-first mt-1.5 mb-0 text-body-sm text-text-muted">{copy.aboveBelow}</p>}
         </div>
         <div className="ud-hero-stats text-right">
           <p className="m-0 font-mono text-micro font-semibold uppercase eyebrow text-text-faint">{copy.openLabel}</p>

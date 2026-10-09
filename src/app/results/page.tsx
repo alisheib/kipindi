@@ -402,9 +402,13 @@ async function ResultsContent({
               choice between `text-micro` (10) and `text-caption` (11) is decided by what sits
               beside it in this very flex row: the YES/NO tally at L289 is 10px and the page
               title at L279 is `text-caption`. Taking 10 puts this line level with the tally it
-              is read against, and keeps the title a step above both. */}
+              is read against, and keeps the title a step above both.
+              ⭐ ONE LINE, ONE CASE (round 4, 2026-10-09, tile 172): it read "0 imetatuliwa · TZS 0 Imekamilika" — the
+              second clause borrowed `common.settled`, the capitalised STATUS LABEL ("Settled", a tab's name), for a
+              sentence's word. The dictionary already has that word in its sentence form, the one the live ticker writes
+              after a figure ("TZS 6K imekamilika …"): `market.tickerSettled` — "settled" / "imekamilika" / "已结算". */}
           <p data-result-count={totalCount} className="hidden sm:block amount text-micro text-text-subtle whitespace-nowrap">
-            {totalCount} {t.results.resolved} · {formatTzsCompact(totalVolume)} {t.common.settled}
+            {totalCount} {t.results.resolved} · {formatTzsCompact(totalVolume)} {t.market.tickerSettled}
           </p>
         </div>
       </div>
@@ -622,7 +626,8 @@ function FeaturedResult({ m, t, locale }: { m: Awaited<ReturnType<typeof listMar
         </>
       )}
       <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-1 font-mono text-[11px] tabular-nums text-text-muted">
-        <span>{formatTzsCompact(m.yesPool + m.noPool)} {t.common.settled}</span>
+        {/* The figure's sentence word, not the tab label — the tally's rule above (round 4): "TZS 6K imekamilika". */}
+        <span>{formatTzsCompact(m.yesPool + m.noPool)} {t.market.tickerSettled}</span>
         <span className="flex items-center gap-1"><I.users s={11} /> {m.predictorCount} {t.market.predictors}</span>
       </div>
     </Link>

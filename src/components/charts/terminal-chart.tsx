@@ -299,7 +299,11 @@ export function TerminalChart({
     const ink = makeInkResolver();
     const yes = ink("--yes-400");
     const no = ink("--no-400");
-    const priceFormat = { type: "price" as const, precision: data.decimals, minMove: 1 / 10 ** data.decimals };
+    /* ⭐ THE AXIS SPEAKS THE PAGE'S PRICE (2026-10-09, the visual pass's round 4, tiles 164 and 202). The engine's own
+       "price" format printed the scale as "2896.04" — no grouping, no currency — beside the band's "$2,896.00" and the
+       line's own name below the pane, which `usd()` spells. One spelling (`@/lib/usd-price`), so the scale, the live
+       line's tag and the crosshair's label read as the page does: "$2,896.04". */
+    const priceFormat = { type: "custom" as const, minMove: 1 / 10 ** data.decimals, formatter: (p: number) => usd(p, data.decimals) };
     // The library renders raw UTC; shift to the device wall clock (F21).
     const tzShift = -new Date().getTimezoneOffset() * 60;
     // Pane-space discipline: the volume band exists only in candle mode — the

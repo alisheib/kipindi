@@ -83,7 +83,8 @@ export default async function MarketsLoading() {
           it at y=318 — the grid jumped **239px upward** as the content arrived. CLS scored that
           0.0000, because layout-shift only counts nodes present BEFORE and AFTER and the ghost
           nodes are removed rather than moved. The metric is blind here; the eye is not. */}
-      {/* 🔴 THE FOUR HOOKS BELOW ARE LOAD-BEARING AND THEY ARE WHY THIS BAR IS 76px AND NOT 172.
+      {/* 🔴 THE FOUR HOOKS BELOW ARE LOAD-BEARING AND THEY ARE WHY THIS BAR IS 76px AND NOT 172 (84px since round 4
+          gave the count line its 12px of air, 2026-10-09 — the ghost follows by the same construction).
           Under 640px in Compact, `globals.css` re-lays THIS bar as a GRID — strip | sort | filters
           on one line, with the result count spanning a second — and it gates that on
           `.kp-discovery-bar:has(> [data-bar-row])`, placing each cell by `[data-strip-autoscroll]`,

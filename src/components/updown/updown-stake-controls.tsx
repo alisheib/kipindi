@@ -85,6 +85,32 @@ type Bet = ReturnType<typeof useUpDownQuickBet>;
  */
 export const GLYPH_NO_SHRINK = "shrink-0";
 
+/**
+ * ⭐ THE × NOTE HANGS LIKE ITS ⓘ SIBLINGS (2026-10-09, the visual pass's round 4, tile 166). Under the bet buttons the
+ * empty-side note sets its `info` glyph in an 11px column with the sentence beside it, so its second line hangs at the
+ * text (x811); the multiplier note ran its "×" inline and wrapped flush under it (x796) — two indent rules, one stack.
+ * The sentence opens on the multiplier's own sign in every language ("× moves with every bet…", "× hubadilika…",
+ * "× 会随…"), so that sign takes the glyph's column and the words hang beside it: one rule for every note here, on the
+ * card, the round page and the locked-side panel. ⛔ Nothing is re-worded: the sign is read off the sentence, never
+ * typed here, and a sentence that ever stops opening on it renders whole, as before.
+ */
+const LEAD_SIGN = /^×\s+/u;
+export function EstimateNote({ text, className }: { text: string; className?: string }) {
+  const lead = LEAD_SIGN.exec(text);
+  return (
+    <p className={cn("flex items-start gap-1 text-body-sm leading-[1.45] text-text-faint break-keep [overflow-wrap:anywhere]", className)}>
+      {lead ? (
+        <>
+          <span className="w-[11px] shrink-0 text-center">×</span>
+          <span>{text.slice(lead[0].length)}</span>
+        </>
+      ) : (
+        <span>{text}</span>
+      )}
+    </p>
+  );
+}
+
 export function UpDownStakeControls({
   bet,
   pricing,
@@ -298,11 +324,14 @@ export function UpDownStakeControls({
             // and the UI must never read as failed while the request is alive.
             ? bet.pendingSlow
               ? <><span className="live-dot" /> {t.market.udStillPlacing}</>
-              : <><span className="live-dot" /> {formatTzs(bet.stake)} · {t.market.udStreaming}</>
+              // ⭐ The stake is MONEY in a sentence (§M4; round 4, tile 166: "TZS 1,000" was in the body face, its "1"
+              // 4px wide against the "0"'s 7). `.amount` sets it mono and whole, and the sentence stays ONE flex item, so
+              // the row's gap never stands in for the space beside the figure.
+              : <><span className="live-dot" /> <span><span className="amount">{formatTzs(bet.stake)}</span> · {t.market.udStreaming}</span></>
             : bet.locallyLocked
               ? <>{t.market.udErrSelectionClosed}</>
               : bet.stakeReady
-                ? <>{t.market.udTapToBet} · {formatTzs(bet.stake)}</>
+                ? <span>{t.market.udTapToBet} · <span className="amount">{formatTzs(bet.stake)}</span></span>
                 : <>{t.market.udEnterStake}</>}
         </p>
       )}
@@ -323,9 +352,7 @@ export function UpDownStakeControls({
           the surface a quick-bet is actually placed from — carried a bare "× 1.5 est." with
           nothing saying what the figure was. Now that the number moves with every later bet
           (G3), the sentence that says so has to travel with it. */}
-      {(multUp != null || multDown != null) && (
-        <p className="mt-1 text-body-sm leading-[1.45] text-text-faint break-keep [overflow-wrap:anywhere]">{t.market.udEstimateNote}</p>
-      )}
+      {(multUp != null || multDown != null) && <EstimateNote className="mt-1" text={t.market.udEstimateNote} />}
 
       {/* Screen-reader confirmation. ⛔ NOT a replacement for the toast — both, always: a
           toast is a transient region a screen reader may never voice, and this is the

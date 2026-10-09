@@ -330,7 +330,8 @@ export default async function PositionsPage({ searchParams }: { searchParams: Pr
             unrealised: t.positions.unrealised,
             settledPnl: t.positions.settledPnl,
             winRate: t.positions.winRate,
-            ofSettled: `${settled.length} ${t.common.settled}`,
+            // The count's sentence word, not the tab label ("3 imekamilika", never "3 Imekamilika") — /results' tally rule (round 4).
+            ofSettled: `${settled.length} ${t.market.tickerSettled}`,
           }}
         />
       )}

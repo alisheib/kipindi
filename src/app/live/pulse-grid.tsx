@@ -153,6 +153,15 @@ export function KeepHyphenated({ text }: { text: string }) {
 }
 
 /**
+ * ⭐ ONE TOP ROW IN EITHER STATE (2026-10-09, the visual pass's round 4, tile 178 at 1280). The Up & Down tag is a boxed
+ * chip — 2px of padding and a 1px rule above and below its 14px line, 20px — and a market's category was the bare 14px
+ * line, so a grid row holding both set its titles 724 against 719, its bars 797 against 792 and its captions 816 against
+ * 811. The bare label now takes the chip's vertical box with a clear rule, so the row is 20px either way and every row
+ * under it levels across the wall. One constant, so the two can never disagree again.
+ */
+const TAG_BOX_Y = "py-0.5 border-y";
+
+/**
  * C1e — the DENSE TippingBar-wall card that gives /live its own identity (so it
  * stops being /markets with a different URL): category + time · title · the bar ·
  * the @ prices. No spark / trader crest / KPI strip / big buttons — the point is
@@ -184,13 +193,15 @@ function PulseCard({ market, index }: { market: Market; index: number }) {
         <span className="inline-flex items-center gap-1.5 font-mono text-micro uppercase eyebrow text-text-subtle">
           {isUpDown ? (
             // The game tag — so a mixed wall reads as two games at a glance.
-            <span className="inline-flex items-center gap-1 rounded-sm px-1.5 py-0.5 font-bold tracking-[0.10em]"
+            <span className={`inline-flex items-center gap-1 rounded-sm px-1.5 ${TAG_BOX_Y} font-bold tracking-[0.10em]`}
                   style={{ background: "var(--pill-active)", border: "1px solid var(--brand-500)", color: "var(--brand-200)" }}>
               <I.trendingUp s={11} /> {t.market.udTitle}
             </span>
           ) : (
             // The translated category, never the stored id (that printed CRYPTO / SPORTS on sw and zh pages).
-            <><Cat s={13} />{marketCategoryLabel(t, market.category)}</>
+            <span className={`inline-flex items-center gap-1.5 ${TAG_BOX_Y} border-transparent`}>
+              <Cat s={13} />{marketCategoryLabel(t, market.category)}
+            </span>
           )}
         </span>
         <span className={`inline-flex items-center gap-1 font-mono text-[10px] tabular-nums ${market.selectionClosed ? "text-gold-300" : "text-text-subtle"}`}>

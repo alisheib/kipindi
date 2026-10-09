@@ -94,7 +94,11 @@ export function UpDownChartLab({
 
   return (
     <div>
-      <div className="mb-2 flex flex-wrap items-center justify-between gap-x-3 gap-y-1.5">
+      {/* ⭐ ONE RHYTHM DOWN THE CHART'S CONTROLS (2026-10-09, the visual pass's round 4, tile 202 at sw 390). Stacked on a
+          phone they read key → range rail 10px, rail → style rail 8, style rail → chart card 12 — three gaps for one
+          block. Now each is 12 (the card's own `mb-2`): the rails wrap with `gap-y-2`, and the key carries its own
+          ink-true gap below (its wrapper's note). */}
+      <div className="mb-2 flex flex-wrap items-center justify-between gap-x-3 gap-y-2">
         {/* 🔴 PLAYER-FILTERS 2026-09-09 · THIS RAIL NOW SAYS WHICH AXIS IT IS, AND THAT IS THE
             POINT OF THE WHOLE CHANGE.
             ⛔ THE COLLISION, IN THE PRODUCT'S OWN WORDS: the board's duration filter offers
@@ -124,8 +128,15 @@ export function UpDownChartLab({
             whose options are off-screen "reads as the control having done nothing" (§3 rule 9).
             Stacking the key returns the full 320px to the rail, so all seven stay visible AND
             every target keeps its 44px. */}
-        <div className="flex min-w-0 flex-col gap-1 sm:flex-row sm:items-center sm:gap-1.5">
-          <span aria-hidden="true">
+        {/* ⚠️ THE KEY'S BOX IS ITS OWN LINE, AND ITS GAP IS MEASURED TO ITS INK. As a bare `<span>` the wrapper was laid
+            out on the page's 22.4px strut, so the 10px key sat on a line 8px taller than itself and hung low: 24px under
+            the eyebrow above it, 10px over the rail, and 1px under the rail's own labels on desktop (tile 164: key ink
+            y484–491, "15M" y483–490). `flex` makes the key's 14px micro line the wrapper's whole height. That line holds
+            JetBrains Mono's baseline 3.4px above its foot — the 3.0px descender (0.300em of 10px) plus the (14 − 13.2)/2
+            half-leading, from the font's own metrics — so the box gap that leaves the block's 12px between the key's
+            ink and the rail's border is 12 − 3.4 = 8.6px. Phones only: from `sm` the key stands beside the rail. */}
+        <div className="flex min-w-0 flex-col sm:flex-row sm:items-center sm:gap-1.5">
+          <span aria-hidden="true" className="flex mb-[calc(var(--sp-3)_-_3.4px)] sm:mb-0">
             <FilterGroupKey>{labels.railAria}</FilterGroupKey>
           </span>
           <div className="pchart-ranges" role="group" aria-label={labels.railAria}>

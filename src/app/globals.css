@@ -1874,14 +1874,25 @@ html.kp-reduce-motion .ticker-pause,
   box-shadow: inset 0 0 0 1px var(--border);
   opacity: 0.55;
 }
+/* ⭐ THE CAPTION CENTRES ON THE BAR, NOT BETWEEN ITS NEIGHBOURS (2026-10-09, the visual pass's round 4, tiles 162, 177,
+   178). `space-between` put the lean word midway between the two side labels, and those are never one width
+   ("NDIO 33%" against "67% HAPANA"), so it sat 7–7.5px left of the bar's centre (162: caption centre x436, bar x443.5).
+   Two equal tracks around it put it on the bar's own centre whatever the sides say; each side keeps its edge.
+   ⚠️ WHEN THE ROW IS TIGHT, THE CAPTION GIVES WAY, NEVER THE FIGURES. A side never wraps — a figure and its side are one
+   reading — so a side wider than its track widens it and the caption moves off-centre by the difference; past that the
+   caption, centred in its own track, wraps onto a second line. `--sp-1` keeps the three apart, so they never touch
+   (the old row's free space could fall to 0 between them) and nothing ever overflows the bar's width. */
 .tipbar-labels {
-  display: flex;
-  justify-content: space-between;
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  column-gap: var(--sp-1);
   margin-top: 8px;
   font-family: var(--font-mono);
   font-size: 11px;
   letter-spacing: 0.05em;
 }
+.tipbar-labels .tb-yes { justify-self: start; white-space: nowrap; }
+.tipbar-labels .tb-no  { justify-self: end; white-space: nowrap; }
 .tipbar-labels .tb-yes { color: var(--bar-label-yes); }
 .tipbar-labels .tb-no  { color: var(--bar-label-no); }
 .tipbar-labels .tb-yes strong { color: var(--bar-label-yes-strong); font-variant-numeric: tabular-nums; }
@@ -1889,10 +1900,14 @@ html.kp-reduce-motion .ticker-pause,
 .tipbar-labels strong { font-weight: 500; }
 .tipbar-labels strong[data-lead] { font-weight: 700; }
 /* Was 9px italic — illegible on mobile. 10.5px + 500 + 0.10em reads cleanly
-   without overpowering the YES/NO percentages either side of it. */
+   without overpowering the YES/NO percentages either side of it.
+   ⛔ AND IT IS UPRIGHT (round 4, 2026-10-09, tiles 177, 178, 205). The app loads JetBrains Mono in its upright face only
+   (layout.tsx: weights 400–600, no italic style), so `italic` here was an oblique the browser SHEARED out of the upright
+   glyphs — the one slanted readout in a mono row whose figures beside it stand straight. The word is set apart by its
+   ink, size, weight and opacity, all kept. */
 .tipbar-lean {
   color: var(--bar-label-tipping);
-  font-style: italic;
+  text-align: center;
   text-transform: uppercase;
   font-size: 10.5px;
   font-weight: 500;
@@ -3494,10 +3509,14 @@ th .link-pending { --lp-inset: 0px; --lp-bottom: 8px; }
    count. Every card is the same size everywhere (markets, live, home); the grid
    simply fits as many columns as the available width allows. This is what makes
    the card SHAPE identical across pages even though /markets has a filter rail
-   and /live does not. min(...,100%) guards against overflow on tiny screens. */
+   and /live does not. min(...,100%) guards against overflow on tiny screens.
+   ⭐ THE GUTTER IS A RUNG OF THE SPACE SCALE (2026-10-09, the visual pass's round 4, tiles 178 and 196). It was a bare
+   14px — on no ladder (DESIGN_AUTHORITY §S1: layout space is `--sp-*`, applied as `gap`) and written nowhere as a
+   choice, only described after the fact — while Tiketi zangu's cards and the hub's sit 16px apart. `--sp-4` is that
+   16. The phone's Compact rung (10px, at the end of this file) is the ruled card spacing of U3 and is unchanged. */
 .market-grid {
   display: grid;
-  gap: 14px;
+  gap: var(--sp-4);
   grid-template-columns: repeat(auto-fill, minmax(min(300px, 100%), 1fr));
 }
 
@@ -7240,12 +7259,22 @@ html[lang="zh"] .kp-udrule { word-break: keep-all; }
 /* The round page's open + targets: beside the confirmed price where there is room; below 400 they wrap under it
    and read as a left-aligned list, not a column floating at the right (frame panel, 2026-09-27). */
 .ud-hero-chunk { white-space: nowrap; }
+/* ⭐ A LINE THAT OPENS ON THE QUOTE STAMP OPENS ON A CAPITAL (round 4, 2026-10-09, tiles 165 166). The stamp is the
+   dictionary's mid-sentence word — "imenukuliwa" / "quoted", written to follow "… · " — and with no move to follow
+   (an open round still at its open price) it stood alone, the one line under the price to start in lower case. The words
+   stay as written; the line's first letter is set as a capital, so the clause reads "Imenukuliwa 04:01:21 EAT" alone
+   and "… · imenukuliwa …" inside the sentence. Chinese has no case, so 报价时间 is unchanged. The settlement proof's
+   label of the same word wears it too. ⛔ A class, not Tailwind's `first-letter:uppercase`: this sets ONE capital, and
+   `test:eyebrow-roles` rightly reads every `uppercase` in a component as an all-caps site to be classified. */
+.ud-cap-first::first-letter { text-transform: uppercase; }
 @media (max-width: 399px) {
   /* density: general — the round page's figures wrapping under the price, not card spacing; both settings. */
   .ud-hero-stats { flex-basis: 100%; text-align: left; }
-  /* The move and its quote stamp stack, the "·" between them hidden — the band's own rule (round 3). */
+  /* The move and its quote stamp stack, the "·" between them hidden — the band's own rule (round 3) — so the stamp
+     opens its own line here, and opens it on a capital like the line above. */
   .ud-hero-sep { display: none; }
   .ud-hero-chunk { display: block; }
+  .ud-hero-chunk::first-letter { text-transform: uppercase; }
 }
 
 /* ── THE ASSET MARK (`asset-mark.tsx`, hoisted from the card 2026-09-27 · landing v3, R5) ─────────
@@ -7354,9 +7383,14 @@ html[lang="zh"] .kp-udrule { word-break: keep-all; }
        ⭐ It also closes D18 at these widths as a side effect: the label goes from 12/61 to 47/61 at 277. */
     align-items: center;
     column-gap: 6px;
-    row-gap: 2px;
+    /* ⭐ THE COUNT LINE HAS AIR ON BOTH SIDES (round 4, 2026-10-09, tile 195 at sw 390). At 2px and 6px the caption
+       "masoko 40 · Pesa nyingi" sat 6px under the sort pill's border and 8px over the bar's hairline — pressed against
+       both, like a footnote to the control rather than a line of its own. `--sp-2` each way puts its cap height 12px
+       under the pill (4.4px of its 17.25px line sit above the caps) and its baseline 12px over the hairline (a
+       descender's tail, 10px). The bar grows 8px. */
+    row-gap: var(--sp-2);
     padding-top: 6px;
-    padding-bottom: 6px;
+    padding-bottom: var(--sp-2);
   }
 
   /* ⛔ THIS OVERRIDE MUST COME AFTER THE RULE ABOVE, AND THE FIRST ATTEMPT DID NOT — D58, 2026-09-23.

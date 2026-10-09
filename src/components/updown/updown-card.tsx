@@ -39,7 +39,7 @@ import { fillNodes } from "@/lib/fill-nodes";
 import { valueTone, READ_TONE_TOKEN } from "@/lib/updown-match";
 import { useT } from "@/lib/i18n";
 import { useUpDownQuickBet, usePlacePulse } from "./use-quick-bet";
-import { UpDownStakeControls, GLYPH_NO_SHRINK } from "./updown-stake-controls";
+import { UpDownStakeControls, GLYPH_NO_SHRINK, EstimateNote } from "./updown-stake-controls";
 import { AssetMark } from "./asset-mark";
 import { Button } from "@/components/ui/button";
 // ⭐ The kit's ONE pool-split bar, and the home of the cold-start rail (§B9). See the pool-split
@@ -1045,9 +1045,8 @@ export function UpDownCard(props: UpDownCardProps) {
                   <span>{outEmptyCopy}</span>
                 </p>
               )}
-              {(outMultUp != null || outMultDown != null) && (
-                <p className="mt-1 text-body-sm leading-[1.45] text-text-faint break-keep [overflow-wrap:anywhere]">{t.market.udEstimateNote}</p>
-              )}
+              {/* The × note hangs like the ⓘ note above it — `EstimateNote` (round 4, tile 166). */}
+              {(outMultUp != null || outMultDown != null) && <EstimateNote className="mt-1" text={t.market.udEstimateNote} />}
             </>
           )
         ) : locked ? (
