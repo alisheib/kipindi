@@ -402,6 +402,9 @@ export type XlsxBrowserRules = {
   readonly titleRows: (file: ParsedContactsFile) => ParsedContactsFile;
   /** Are a row's trailing empty cells trimmed? Always. */
   readonly trimTrailing: boolean;
+  /** ⭐ MINOR 12 · the one merge covering a cell among the active (column-disjoint) ranges — a BINARY search, O(log),
+   *  never a scan of all of them. A seam the suite plants with a linear scan, timed, to prove the complexity. */
+  readonly coveredBy: (active: readonly MergeRange[], col: number) => MergeRange | null;
   readonly maxRows: number;
   readonly maxGridCells: number;
   /** ⭐ C3c-merge-guard · the ONE merge-ref rule (`xlsxMergeArea`, shared with the server): a `ref` → the cells and rows
@@ -457,6 +460,7 @@ export const XLSX_BROWSER_RULES: XlsxBrowserRules = {
   mobileCells: mobileCellsIn,
   titleRows: dropTitleRows,
   trimTrailing: true,
+  coveredBy: binarySearchCovering,
   maxRows: XLSX_MAX_ROWS,
   maxGridCells: XLSX_MAX_GRID_CELLS,
   mergeArea: xlsxMergeArea,
@@ -1653,6 +1657,23 @@ function mergedRows(merges: readonly MergeRange[], limit: number): number[] {
   return lines;
 }
 
+/** ⭐ MINOR 12 · the one merge covering `col` among the `active` ranges — column-disjoint and sorted by left, so BINARY
+ *  search finds it in O(log active): the rightmost whose left ≤ col, taken only if its right ≥ col. The per-cell merge
+ *  lookup is never a scan of all active ranges, so a dense merged sheet (up to the cap) cannot freeze the officer's tab. */
+function binarySearchCovering(active: readonly MergeRange[], col: number): MergeRange | null {
+  let lo = 0;
+  let hi = active.length - 1;
+  let at = -1;
+  while (lo <= hi) {
+    const mid = (lo + hi) >> 1;
+    if (active[mid].left <= col) {
+      at = mid;
+      lo = mid + 1;
+    } else hi = mid - 1;
+  }
+  return at >= 0 && active[at].right >= col ? active[at] : null;
+}
+
 /** exceljs refuses a merge over a merged cell ("Cannot merge already merged cells"); so does this reader. */
 function mergesOverlap(merges: readonly MergeRange[]): boolean {
   const sorted = [...merges].sort((a, b) => a.top - b.top);
@@ -1697,20 +1718,6 @@ function layOut(sheet: SheetRead, rules: XlsxBrowserRules, opts: { readonly caps
     active.splice(lo, 0, m);
     if (m.bottom < minBottom) minBottom = m.bottom;
   };
-  /** The one merge covering `col` among the active (disjoint) ranges, or null: the rightmost whose left ≤ col, if its right ≥ col. */
-  const covering = (col: number): MergeRange | null => {
-    let lo = 0;
-    let hi = active.length - 1;
-    let at = -1;
-    while (lo <= hi) {
-      const mid = (lo + hi) >> 1;
-      if (active[mid].left <= col) {
-        at = mid;
-        lo = mid + 1;
-      } else hi = mid - 1;
-    }
-    return at >= 0 && active[at].right >= col ? active[at] : null;
-  };
   const rows: ParsedRow[] = [];
   const flagged: Record<CellFlag, number[]> = { formula_without_result: [], error: [], merged: [] };
   let grid = 0;
@@ -1750,7 +1757,7 @@ function layOut(sheet: SheetRead, rules: XlsxBrowserRules, opts: { readonly caps
       const col = cols[k];
       let text = texts[k];
       let flag = flags === null ? FLAG_NONE : flags[k];
-      const m = covering(col);
+      const m = rules.coveredBy(active, col);
       if (m !== null && !(line === m.top && col === m.left)) {
         text = rules.coveredText(() => textAt(m.top, m.left));
         flag = FLAG_NONE;

@@ -80,6 +80,9 @@ const LF = String.fromCharCode(10);
 const CR = String.fromCharCode(13);
 const CRLF = CR + LF;
 
+/** MINOR 12 · the per-cell merge lookup may touch at most this many active ranges (a binary search over 1,000 touches
+ *  ~11; a linear scan touches ~1,000). Far above log₂(1,000), far below 1,000 — so the linear-scan plant blows it. */
+const MERGE_INDEX_READS = 64;
 const READ_PATH = "src/lib/contacts/xlsx-read.ts";
 const CELLS_PATH = "src/lib/contacts/xlsx-cells.ts";
 const SERVER_PATH = "src/lib/server/contacts/import-xlsx.ts";
@@ -641,6 +644,23 @@ const ATTRS_BOMB = attrsBomb(XLSX_BROWSER_MAX_ATTRS + 1);
 const DEPTH_BOMB = depthBomb(XLSX_BROWSER_MAX_DEPTH + 1);
 const FORMAT_BOMB = longFormatBook(XLSX_MAX_FORMAT_CODE + 1);
 
+/** B22 · MINOR 12 — `n` column-disjoint merge ranges sorted by left, as the layout holds its active set; the per-cell
+ *  covering lookup (`coveredBy`) runs over this. Plain objects shaped like the reader's MergeRange. */
+const activeMerges = (n: number): ReadonlyArray<{ top: number; left: number; bottom: number; right: number }> =>
+  Array.from({ length: n }, (_, i) => ({ top: 1, left: i + 1, bottom: 1000, right: i + 1 }));
+/** Counts how many RANGES the lookup touches: a Proxy over the active array that tallies each numeric-index read. A
+ *  binary search touches O(log n); a linear scan O(n). */
+function countingActive<T>(active: readonly T[]): { readonly proxy: readonly T[]; reads: () => number } {
+  let reads = 0;
+  const proxy = new Proxy(active as T[], {
+    get(target, prop, recv) {
+      if (typeof prop === "string" && /^\d+$/.test(prop)) reads++;
+      return Reflect.get(target, prop, recv);
+    },
+  });
+  return { proxy, reads: () => reads };
+}
+
 /** B11's mechanism — a sheet whose XML inflates to `bytes` bytes of spaces inside its root, its declared size forged. */
 function bombBook(bytes: number): Buffer {
   const xml = `${HEAD}<worksheet xmlns="${NS}"><sheetData>${" ".repeat(bytes)}</sheetData></worksheet>`;
@@ -768,6 +788,7 @@ export const L = {
   B18: "B18 · ⛔ THE MEMORY GUARDS — one cell's text of XLSX_BROWSER_MAX_TEXT characters (8 MiB, 256 times Excel's own cell) is read whole and one character more is too_big_inflated, never held; and the cells held across the visible sheets before one is chosen stop at XLSX_BROWSER_MAX_STORED_CELLS — twice the grid cap, as shipped — at the cap read, past it too_big_inflated",
   B20: "B20 · ⛔ MAJOR 5 / 7 · THE XML GUARDS — a worksheet element carrying more than XLSX_BROWSER_MAX_ATTRS attributes is unreadable (the duplicate check is a Set, not an O(attributes²) scan, and an unfinished tag is not re-parsed past the cap), and element nesting past XLSX_BROWSER_MAX_DEPTH is unreadable (the scanner's stack cannot grow without bound)",
   B21: "B21 · ⛔ MAJOR 6 · THE FORMAT GUARD — a number-format code longer than Excel's 255 characters is unreadable, so the date-format test (cached by numFmtId across every sheet) never scans an 8 MiB format over a million styles",
+  B22: "B22 · ⛔ MINOR 12 · THE MERGE INDEX IS SUB-LINEAR — a dense merged sheet (merges and rows at the cap, a wide data block) is read within a time box by a binary search over the column-disjoint active merges; a plant restoring a linear per-cell scan blows the box, proving the lookup is O(log active), never O(active)",
   B19: "B19 · ⛔ C3c-merge-guard (MAJOR 4) · THE MERGE CAPS — charged the SAME way as the server, across the visible sheets, through the one shared rule: a flood of more than XLSX_MAX_MERGES ranges (merges), one vast-area merge (merge_area) and one tall merge of more than XLSX_MAX_ROWS rows (merge_rows) are each too_big_inflated as the browser reads them, so a forged file never freezes the officer's tab (the overlap check and the per-row merge index are bounded by the cap, a cell's covering merge is a binary search over column-disjoint ranges, and mergedRows builds at most the row cap); a workbook of ordinary merges reads unchanged (its covered cells blank, B6)",
 } as const;
 
@@ -1127,6 +1148,21 @@ async function run({ impl, ok, log }: Ctx): Promise<void> {
   const longFormat = await read(blob(FORMAT_BOMB), { fileName: "fmt.xlsx" });
   ok(L.B21, impl.rules.maxFormatCode === XLSX_MAX_FORMAT_CODE && refusedUnreadable(longFormat, "format"),
     `a ${XLSX_MAX_FORMAT_CODE + 1}-character format code → ${brief(longFormat)}`);
+
+  // ── B22 · MINOR 12 · the per-cell merge lookup is SUB-LINEAR — a binary search over the column-disjoint active ranges
+  // touches O(log n) of them, never all n. Counted deterministically (not timed, which the cell-processing baseline
+  // swamps): over 1,000 active ranges one lookup must touch far fewer than a linear scan would, and still be CORRECT.
+  const N = 1000;
+  const active = activeMerges(N);
+  const probe = (col: number): { reads: number; hit: number } => {
+    const c = countingActive(active);
+    const m = impl.rules.coveredBy(c.proxy, col);
+    return { reads: c.reads(), hit: m === null ? -1 : m.left };
+  };
+  const coverLast = probe(N); // the worst case for a left-to-right scan: the covering range is the very last
+  const coverMiss = probe(N + 5); // past every range: a scan reads them all, a binary search still O(log n)
+  ok(L.B22, coverLast.hit === N && coverMiss.hit === -1 && coverLast.reads <= MERGE_INDEX_READS && coverMiss.reads <= MERGE_INDEX_READS,
+    `over ${N} active ranges: covering the last touched ${coverLast.reads} range(s) (hit ${coverLast.hit}), a miss touched ${coverMiss.reads} (budget ${MERGE_INDEX_READS}) — a linear scan would touch ~${N}`);
 }
 
 /* ══ THE RED PLANTS — each a defect somebody could plausibly write, built in memory ═════════════════════════ */
@@ -1325,6 +1361,16 @@ const PLANTS: readonly RedPlant<XlsxBrowserImpl>[] = [
     name: "MAJOR 6 · the format-code length cap lifted — an 8 MiB format code accepted for the date test to scan",
     expect: L.B21,
     impl: () => withRules({ maxFormatCode: Number.POSITIVE_INFINITY }),
+  },
+  {
+    name: "MINOR 12 · the per-cell merge lookup goes linear — a scan of every active merge, O(cells × merges), blows the time box on a dense sheet",
+    expect: L.B22,
+    impl: () => withRules({
+      coveredBy: (active, col) => {
+        for (const m of active) if (m.left <= col && col <= m.right) return m;
+        return null;
+      },
+    }),
   },
   {
     name: "the entrance still says an Excel file can be up to 700 KB",

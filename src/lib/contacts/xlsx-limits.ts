@@ -122,15 +122,18 @@ export const XLSX_MAX_ENTRIES = 1000;
  * ⭐ THREE CAPS, CHARGED THE SAME WAY BY BOTH READERS, across every VISIBLE/loaded sheet of a workbook: the summed covered
  * CELLS against `XLSX_MAX_MERGED_CELLS`, the summed spanned ROWS against `XLSX_MAX_ROWS` (exceljs allocates a Row per
  * covered row, and the import never reads more than that many rows anyway), and the COUNT of merges against
- * `XLSX_MAX_MERGES`. 10,000 is far beyond the handful of merged banners a real contact workbook carries, and small
- * enough that O(merges²) reconciliation (and this reader's own merge handling) stays well under a second (MINOR 11:
- * `mergeCountAt` is time-boxed in the suite). Past any cap a workbook is `too_big_inflated` — refused by the server's
- * pre-pass before exceljs loads it, by the browser's reader as it parses the sheet, never read on.
+ * `XLSX_MAX_MERGES`.
+ * ⛔ WHY 1,000, BY MEASUREMENT (MINOR 11): exceljs reconciles each new `<mergeCell>` against every one already read
+ * (`_mergeCellsInternal`, O(merges²)). Measured on the live reader (`readXlsxContacts`): 1,000 merges 56 ms, 2,000
+ * 214 ms, 4,000 935 ms, 10,000 6.5 s — a 6.5 s stall on the bet-taking instance. 1,000 is 56 ms (U27.md:51 calls
+ * > ~1.5 s a finding), and is still a hundredfold beyond the handful of merged banners a real contact workbook carries.
+ * `test:contacts-import` time-boxes a full read of a cap-count workbook. Past any cap a workbook is `too_big_inflated` —
+ * refused by the server's pre-pass before exceljs loads it, by the browser's reader as it parses the sheet.
  * ⛔ ONE RULE: both readers turn a `ref` into cells and rows through `xlsxMergeArea` below — the server over the `ref`
  * its attribute tokenizer lifts from the raw tag, the browser over the `ref` its XML parser lifts — so the two cannot
  * drift. (C3c-merge-guard, 2026-10-09.)
  */
-export const XLSX_MAX_MERGES = 10_000;
+export const XLSX_MAX_MERGES = 1_000;
 /** The covered-cell budget for merges — the Cell objects exceljs allocates; the same magnitude as the `<c>`-element cap. */
 export const XLSX_MAX_MERGED_CELLS = XLSX_MAX_ROWS * 5;
 

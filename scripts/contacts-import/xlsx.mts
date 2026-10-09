@@ -115,6 +115,9 @@ const LAST_COLUMN = 16384;
 const EXCEL_LAST_ROW = 1048576;
 /** BLOCKER 3 · the pre-pass must refuse a 30,000-tag merge flood well within this; the unbounded-scan plant blows it. */
 const MERGE_SCAN_BUDGET_MS = 150;
+/** MINOR 11 · a FULL read (through exceljs) of a cap-count merge workbook must stay under this — the cap is measured so
+ *  reconciliation is ~56 ms; U27.md:51 calls > ~1.5 s a finding, so 800 ms leaves room for a loaded box. */
+const MERGE_LOAD_BUDGET_MS = 800;
 /** The 40-row fixture: a header and forty contacts. */
 const FORTY_ROWS = 41;
 
@@ -1296,13 +1299,23 @@ async function run(ctx: SectionContext<XlsxImpl>): Promise<void> {
   if (!countAt.ok || countAt.mergeCount !== XLSX_MAX_MERGES) {
     x35.push(`exactly XLSX_MAX_MERGES → ${countAt.ok ? `${countAt.mergeCount} counted` : countAt.detail}`);
   }
+  // MINOR 11 · a cap-count workbook that PASSES the pre-pass is then loaded by exceljs (O(merges²) reconciliation):
+  // a full read must stay well under the finding threshold, proving the cap was chosen by measurement, not hope.
+  let loadMs = Number.POSITIVE_INFINITY;
+  const countAtB64 = base64Of(fx.mergeCountAt);
+  for (let k = 0; k < 3; k++) {
+    const t0 = performance.now();
+    await read(countAtB64);
+    loadMs = Math.min(loadMs, performance.now() - t0);
+  }
+  if (loadMs > MERGE_LOAD_BUDGET_MS) x35.push(`a ${XLSX_MAX_MERGES}-merge workbook loaded in ${loadMs.toFixed(0)} ms (budget ${MERGE_LOAD_BUDGET_MS})`);
   // An ordinary merge (the cell fixture's B12:C12): counted — one merge, two cells, one row — passes, and X20 reads it.
   const ordinary = impl.inspect(Buffer.from(fx.cells, "base64"));
   if (!ordinary.ok || ordinary.mergeCount !== 1 || ordinary.mergedCells !== 2 || ordinary.mergedRows !== 1) {
     x35.push(`the cell fixture's B12:C12 → ${ordinary.ok ? `${ordinary.mergeCount} merge(s), ${ordinary.mergedCells} cell(s), ${ordinary.mergedRows} row(s)` : ordinary.detail}`);
   }
   ok(L.X35, x35.length === 0, x35.slice(0, 4).join(" | ")
-    || `every hostile merge refused unloaded (flood ${floodMs.toFixed(1)} ms) · the cell / row / count caps pass · B12:C12 counted (1 merge, 2 cells, 1 row)`);
+    || `every hostile merge refused unloaded (flood ${floodMs.toFixed(1)} ms) · the cell / row / count caps pass · a ${XLSX_MAX_MERGES}-merge load ${loadMs.toFixed(0)} ms · B12:C12 counted (1 merge, 2 cells, 1 row)`);
 }
 
 /* ══ THE RED PLANTS — each a defect somebody could plausibly write, built in memory ═════════════════ */
