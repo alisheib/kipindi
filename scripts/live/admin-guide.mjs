@@ -48,8 +48,9 @@ const BASE = process.env.BASE || "http://localhost:3010";
 const OUT = process.env.OUT || join("docs", "guides");
 const SHOTS = join(".qa-shots", "admin-guide");
 const PDF = join(OUT, "50pick-admin-guide-contacts-and-sms-campaigns.pdf");
-/** The day the guide is printed as of, "YYYY-MM-DD" — the only stamp it carries (no version: it told a reader nothing). */
-const DATE = process.env.GUIDE_DATE || new Date().toISOString().slice(0, 10);
+/** The day the guide is printed as of, "YYYY-MM-DD" — the only stamp it carries (no version: it told a reader nothing). Today
+ *  in Dar es Salaam (EAT, UTC+3, no daylight saving), never the UTC date, which is still yesterday until 03:00 EAT. */
+const DATE = process.env.GUIDE_DATE || new Date(Date.now() + 3 * 3_600_000).toISOString().slice(0, 10);
 const VENDOR_PORT = Number(process.env.GUIDE_VENDOR_PORT || 3997);
 /** The pictures shot whole as a dialog (printed tall), kept across the three runs. */
 const DIALOG_FILE = join(SHOTS, "dialogs.json");
@@ -772,7 +773,7 @@ function buildPdfHtml() {
     header h1 { font-size: 24pt; line-height: 1.2; margin: 0; }
     header .sub { font-size: 13pt; color: #4a5160; margin: 1mm 0 0; }
     header .date { font-size: 9.5pt; color: #6b7280; margin: 1.5mm 0 0; }
-    h2 { font-size: 16pt; margin: 8mm 0 3mm; padding-bottom: 2mm; border-bottom: 2px solid #c9a227; }
+    h2 { font-size: 16pt; margin: 7mm 0 3mm; padding-bottom: 1.5mm; border-bottom: 2px solid #c9a227; }
     h3 { font-size: 12pt; margin: 0 0 1.5mm; }
     h2 .n, h3 .n { color: #c9a227; margin-right: 3mm; }
     .step { margin: 0 0 5mm; }
@@ -780,8 +781,8 @@ function buildPdfHtml() {
     .group { margin: 0 0 5mm; } .group h3 { margin: 0 0 1mm; }
     .where { margin: 0 0 1.5mm; color: #374151; font-weight: 600; }
     .lead { margin: 0 0 3mm; color: #374151; }
-    ol { margin: 0 0 3mm 5mm; padding-left: 4mm; }
-    figure { margin: 2mm 0; }
+    ol { margin: 0 0 2mm 5mm; padding-left: 4mm; }
+    figure { margin: 1.5mm 0; }
     figure img { display: block; margin: 0 auto; border: 1px solid #d1d5db; border-radius: 2mm; }
     .row { display: flex; justify-content: center; align-items: center; gap: ${ROW_GAP_MM}mm; margin: 2mm 0; } .row figure { margin: 0; }
     .beside { display: flex; gap: 6mm; align-items: flex-start; }

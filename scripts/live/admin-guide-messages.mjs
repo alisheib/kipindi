@@ -16,8 +16,9 @@
  *   · NO PICTURE THAT REPEATS ANOTHER: the contacts page is pictured once (its buttons are in that picture), and a step whose
  *     words say all there is (Export, choosing the file, the decision under the check) has none.
  *   · THE CONSOLE'S OWN NAMES: the ADMIN role is "the Owner" (the console's word, capital O, as "Compliance" and "Growth" are);
- *     the list's button is "New campaign". ⛔ The SMS company is NEVER named: the System tile names it in two of its states,
- *     so those states are described here, never quoted (BALANCE_STATES).
+ *     the list's button is "New campaign". A quoted app sentence keeps its own spelling ("until the owner switches them on"):
+ *     the quote is checked against the source, so it is never re-cased here. ⛔ The SMS company is NEVER named: the System
+ *     tile names it in two of its states, so those states are described here, never quoted (BALANCE_STATES).
  *   · TRUE TO THE OWNER'S RULINGS OF 2026-10-09: a marketing SMS is sent exactly as written — nothing is added, no stop link;
  *     the typed-number test is for the Owner and Compliance only; Results says "Stopped since this campaign".
  * Each chapter in SECTIONS is printed in order; "IMPORT" (the import chapter, IMPORT_STEPS) and "MESSAGES" (the table of
@@ -82,10 +83,10 @@ export const SECTIONS = [
         shots: ["12-filter"],
       },
       {
-        title: "Act on many contacts at once",
+        title: "Tag, list, suppress or remove contacts",
         where: "Growth → Contacts → tick rows",
         do: [
-          "Tick the rows. To take every contact the filters show, tick the whole page, then press “Select all … matching”.",
+          "Tick the rows — one or many. To take every contact the filters show, tick the whole page, then press “Select all … matching”.",
           "Choose Tag, Untag, Add to list, Record a withdrawal, Suppress or Remove.",
           "For up to 50 ticked contacts the confirmation names each one; for more, type the number it shows. Then press the action's button.",
         ],
@@ -272,8 +273,9 @@ export const SECTIONS = [
     title: "Results",
     steps: [
       {
-        where: "Growth → SMS campaigns → the campaign → Results",
+        where: "Growth → SMS campaigns → the campaign",
         do: [
+          "When nobody is left to message, the campaign says Finished. Its Results are further down the page.",
           "Delivered — a delivery receipt came back. Handed over, no receipt yet — the network took it; receipts usually come in seconds.",
           "Failed, and “Not sent — the checks refused them”, say who did not get it and why.",
           "Stopped since this campaign — people this campaign reached who have stopped offers since.",
@@ -368,7 +370,7 @@ export const IMPORT_STEPS = [
     title: "Choose what happens to numbers already in the book",
     where: "Check before importing → Numbers already in the book",
     do: [
-      "Keep what's in the book (recommended) — nothing about those contacts changes; new numbers are still added.",
+      "Keep what's in the book (recommended) — those contacts don't change; new numbers are still added.",
       "Use the file's version — the file's name, email and notes replace the book's; tags are only added. You confirm it, and there is no undo.",
       "Only fill in what's missing — only details the book doesn't have yet are filled in.",
       "A blank cell never erases anything, and numbers on the stop list and erased people are never changed. Only a role that can see phone numbers can update contacts already in the book.",
