@@ -136,6 +136,7 @@ export const L = {
   // ── C8c (2026-10-09) · the live importer's robustness round ──
   M26: "M26 · ⭐ C8c · N3 · the start's NEW list meets the case-insensitive refusal in its own words: a list another officer names in ANOTHER CASE between the start's check and its freeze → the start is refused list_name_taken with LIST_MADE_MEANWHILE_SENTENCE (never the pre-check's sentence; n2 · n3 · its words name no officer and never send the officer back to Import — 'Choose it from your lists'), the run still STAGED with no decision and no target, ONE list of that name (the other officer's) and none of this start's; the lists read again hold it, and a start naming it as an existing list freezes onto it",
   M27: "M27 · ⛔ C8c · #14a · a flood of refusals writes ONE row a minute per officer, run and reason: 200 steps with a bad cursor → one bad_request row; 50 steps on a STAGED run → one check_again row for that officer, and another officer's refusal on the same run its own row; a minute later the next bad cursor writes again, carrying repeats 199 (the refusals kept out), the first row no repeats key; the run unchanged",
+  M27c: "M27c · ⛔ C8c · the review's n4 · the refusal gate's key holds the payload's STEP (a start and a commit step refused for one reason in one minute are two rows; the same step again is kept), and a row the audit did NOT record (recorded: false — audit() never rejects) never silences the minute: the next refusal writes at once, its repeats counting the unrecorded one",
   M27b: "M27b · ⛔ C8c · #14a · a moved is NEVER written: a cancel that finds the run moved on (resumed between its pause and its cancel) is answered moved with NO refusal row at all, and the gate keeps every moved out",
   M28: "M28 · ⛔ C8c · #15 · a resume of a STAGED run is REFUSED check_again — its view STAGED, the run still STAGED with no frozen decision and no pause stamp, and a step on it refused check_again with nothing settled — while a PAUSED run's resume still carries on (COMMITTING)",
   M29: "M29 · ⭐ C8c · #14b · a persistent database fault ENDS, it does not loop: a P2028 on every step is answered busy in the DATABASE's own sentence (never the bet queue's 'bets come first'), retryAfterSec 5, four times over 35 s; the fifth, 65 s after the first, PAUSES the run (paused by NOBODY — m2: no 'Paused by you' above the database's sentence, the run's and the view's pausedBy null; one contacts.import.paused row, its actor the officer, why database, faults 5) and answers db_paused 'The database is busy — the import has paused. Resume it in a few minutes.'; five quick faults within a minute on another run do NOT pause it; a step that lands ends a streak (four faults, a landed step, a fault 70 s after the first: busy, not paused); resumed, the paused run imports to done",
@@ -780,6 +781,34 @@ async function run({ impl, ok, log }: Ctx): Promise<void> {
       `cancel ${cancelled.ok ? "ok" : cancelled.reason} · moved rows ${movedRows} · gate ${json(direct)} · run ${(await runOf(runId)).status}`);
   });
 
+  // ── M27c · C8c · the review's n4 · the step is in the key, and a row the audit did not record never silences the minute ──
+  {
+    const gate = impl.gate(() => NOW.getTime());
+    const rows: Array<Record<string, unknown>> = [];
+    let recordNext = true;
+    const audit = (async (entry: unknown) => {
+      if (!recordNext) {
+        recordNext = true;
+        return { recorded: false, unrecorded: "PERSIST_FAILED" };
+      }
+      rows.push(entry as Record<string, unknown>);
+      return { recorded: true };
+    }) as unknown as ImportCommitDeps["audit"];
+    const refuse = (step: string) =>
+      checkModule.auditImportRefusal({ audit, refusalAudit: gate }, "contacts.import.commit_refused", OFFICER, "ci_probe_gate_n4", "busy", { step });
+    await refuse("start");
+    await refuse("commit");
+    await refuse("commit");
+    const twoSteps = rows.length;
+    recordNext = false;
+    await refuse("tags_not_added");
+    await refuse("tags_not_added");
+    const tagRows = rows.filter((r) => (r.payload as { step?: unknown }).step === "tags_not_added");
+    const repeats = tagRows.length === 1 ? (tagRows[0].payload as { repeats?: unknown }).repeats : null;
+    ok(L.M27c, twoSteps === 2 && tagRows.length === 1 && repeats === 1,
+      `a start and a commit step refused for one reason in one minute: ${twoSteps} row(s) · after an unrecorded row: ${tagRows.length} row(s), repeats ${String(repeats)}`);
+  }
+
   // ── M28 · C8c · #15 · a resume of a STAGED run is refused ──
   await inFreshStore(async () => {
     await seedFortyWorld();
@@ -1348,7 +1377,31 @@ const plants: readonly RedPlant<CommitImpl>[] = [
     // 🔴 #14a as it shipped: every refusal written — 200 bad cursors are 200 rows.
     name: "P27 · C8c · #14a · the refusal gate lets every refusal through — a flood of bad cursors writes a row per call",
     expect: L.M27,
-    impl: () => ({ ...real(), gate: () => ({ admit: () => ({ write: true, repeats: 0 }), reset: () => undefined }) }),
+    impl: () => ({ ...real(), gate: () => ({ admit: () => ({ write: true, repeats: 0, undo: () => undefined }), reset: () => undefined }) }),
+  },
+  {
+    // 🔴 the review's n4 · the gate's key without the step: a start's refusal silences a commit step's for the minute.
+    name: "P27c · C8c · n4 · the refusal gate ignores the payload's step — two steps refused for one reason share one row",
+    expect: L.M27c,
+    impl: () => ({
+      ...real(),
+      gate: (now, windowMs, maxKeys) => {
+        const inner = refusalAuditModule.refusalAuditGate(now, windowMs, maxKeys);
+        return { admit: (ask) => inner.admit({ ...ask, step: undefined }), reset: inner.reset };
+      },
+    }),
+  },
+  {
+    // 🔴 …or a row the audit failed to record still counts as written: the minute is silenced and nothing is on record.
+    name: "P27d · C8c · n4 · an unrecorded refusal row is never taken back — the minute stays silenced",
+    expect: L.M27c,
+    impl: () => ({
+      ...real(),
+      gate: (now, windowMs, maxKeys) => {
+        const inner = refusalAuditModule.refusalAuditGate(now, windowMs, maxKeys);
+        return { admit: (ask) => ({ ...inner.admit(ask), undo: () => undefined }), reset: inner.reset };
+      },
+    }),
   },
   {
     // 🔴 …or it bounds the flood but writes a "moved" — normal concurrency logged as an incident.
@@ -1358,7 +1411,7 @@ const plants: readonly RedPlant<CommitImpl>[] = [
       ...real(),
       gate: (now) => {
         const inner = refusalAuditModule.refusalAuditGate(now);
-        return { admit: (ask) => (ask.reason === "moved" ? { write: true, repeats: 0 } : inner.admit(ask)), reset: inner.reset };
+        return { admit: (ask) => (ask.reason === "moved" ? { write: true, repeats: 0, undo: () => undefined } : inner.admit(ask)), reset: inner.reset };
       },
     }),
   },

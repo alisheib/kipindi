@@ -299,17 +299,24 @@ const refusal = (reason: StagingRefusalReason, message: string, view: ContactImp
 
 /** ⛔ The refusal's audit row: ids, counts and the reason — never a number, a name, a cell or the file's name (X23).
  *  ⭐ C8c · #14a · bounded by the importer's ONE gate (`refusal-audit.ts`): at most one row a minute per officer, run and
- *  reason — the next row written carries how many refusals it stands for (`repeats`). */
+ *  reason — the next row written carries how many refusals it stands for (`repeats`); ⭐ n4 · a row the audit did not
+ *  record (it resolves `recorded: false`) is taken back, so it never silences the minute. */
 async function auditRefusal(
   deps: ImportStagingDeps, officerId: string, importId: string | null, reason: StagingRefusalReason, detail: Record<string, number> = {},
 ): Promise<void> {
   const action = "contacts.import.stage_refused";
   const verdict = deps.refusalAudit.admit({ action, officerId, importId, reason });
   if (!verdict.write) return;
-  await deps.audit({
-    category: "ADMIN", action, actorId: officerId, targetType: "ContactImport",
-    targetId: importId, payload: verdict.repeats > 0 ? { reason, ...detail, repeats: verdict.repeats } : { reason, ...detail },
-  });
+  let recorded = false;
+  try {
+    const result = await deps.audit({
+      category: "ADMIN", action, actorId: officerId, targetType: "ContactImport",
+      targetId: importId, payload: verdict.repeats > 0 ? { reason, ...detail, repeats: verdict.repeats } : { reason, ...detail },
+    });
+    recorded = result?.recorded === true;
+  } finally {
+    if (!recorded) verdict.undo();
+  }
 }
 
 /** The view of a run, its totals counted from its rows now. */

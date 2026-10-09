@@ -13,8 +13,11 @@
  *   · ⛔ a "moved" is NEVER written — the cursor already advanced (another tab, an adopting admin, a reload): normal
  *     concurrency, not an event (`NEVER_AUDITED`);
  *   · any other refusal is written when no row of the same KEY was written in the last `REFUSAL_AUDIT_WINDOW_MS` (a
- *     minute); the key is the audit action, the officer, the run (or none, for a refusal before a run is opened) and the
- *     reason. ⭐ THE OFFICER IS IN THE KEY on purpose — the brief's "per run per reason" would let one officer's row
+ *     minute); the key is the audit action, the officer, the run (or none, for a refusal before a run is opened), the
+ *     reason and (the review's n4) the payload's `step` when it has one — a start and a commit step refused for one
+ *     reason are two things that happened. ⭐ A ROW THE AUDIT DID NOT RECORD NEVER SILENCES THE MINUTE (n4): `audit()`
+ *     never rejects, it resolves `recorded: false`; the writer then takes the admission back (`undo`), so the next refusal
+ *     writes and counts the unrecorded one among its `repeats`. ⭐ THE OFFICER IS IN THE KEY on purpose — the brief's "per run per reason" would let one officer's row
  *     silence ANOTHER officer's refusal on the same run in the same minute (a `not_yours` from someone poking at another
  *     officer's import), and an audit trail must never lose WHO tried. Each officer is still held to one row a minute per
  *     run and reason, so the flood above becomes one row a minute;
@@ -47,10 +50,15 @@ export type RefusalAuditAsk = {
   readonly officerId: string;
   readonly importId: string | null;
   readonly reason: string;
+  /** ⭐ The review's n4 · the payload's own `step` when it carries one ("start", "commit", "tags_not_added", a failure's
+   *  step): two steps refused for one reason are two things that happened, so they never share a minute's row. */
+  readonly step?: string;
 };
 
-/** Write a row or not — and, when writing, how many refusals of the same key the gate kept out since the last row. */
-export type RefusalAuditVerdict = { readonly write: boolean; readonly repeats: number };
+/** Write a row or not — and, when writing, how many refusals of the same key the gate kept out since the last row.
+ *  ⭐ n4 · `undo`: the write was not recorded (the audit resolved `recorded: false`, or threw) — the admission is taken
+ *  back, so the minute stays open and the next refusal writes, counting this one among its `repeats`. */
+export type RefusalAuditVerdict = { readonly write: boolean; readonly repeats: number; readonly undo: () => void };
 
 export type RefusalAuditGate = {
   readonly admit: (ask: RefusalAuditAsk) => RefusalAuditVerdict;
@@ -58,10 +66,12 @@ export type RefusalAuditGate = {
   readonly reset: () => void;
 };
 
-/** The one key: the audit action, the officer, the run (or "-") and the reason. */
+/** The one key: the audit action, the officer, the run (or "-"), the reason and (n4) the payload's step (or "-"). */
 export function refusalAuditKey(ask: RefusalAuditAsk): string {
-  return `${ask.action}|${ask.officerId}|${ask.importId ?? "-"}|${ask.reason}`;
+  return `${ask.action}|${ask.officerId}|${ask.importId ?? "-"}|${ask.reason}|${ask.step ?? "-"}`;
 }
+
+const NOTHING_TO_UNDO = (): void => undefined;
 
 /** ⭐ A gate over `now` (ms): see the header for the rule. */
 export function refusalAuditGate(
@@ -69,20 +79,25 @@ export function refusalAuditGate(
 ): RefusalAuditGate {
   const seen = new Map<string, { at: number; kept: number }>();
   const admit = (ask: RefusalAuditAsk): RefusalAuditVerdict => {
-    if (NEVER_AUDITED.includes(ask.reason)) return { write: false, repeats: 0 };
+    if (NEVER_AUDITED.includes(ask.reason)) return { write: false, repeats: 0, undo: NOTHING_TO_UNDO };
     const key = refusalAuditKey(ask);
     const t = now();
     const held = seen.get(key);
     if (held !== undefined && t - held.at < windowMs) {
       held.kept++;
-      return { write: false, repeats: 0 };
+      return { write: false, repeats: 0, undo: NOTHING_TO_UNDO };
     }
     if (held === undefined && seen.size >= maxKeys) {
       for (const [k, v] of seen) if (t - v.at >= windowMs) seen.delete(k);
       if (seen.size >= maxKeys) seen.clear();
     }
+    const kept = held === undefined ? 0 : held.kept;
     seen.set(key, { at: t, kept: 0 });
-    return { write: true, repeats: held === undefined ? 0 : held.kept };
+    // ⭐ n4 · an unrecorded write opens the minute again: the key is due at once, this refusal counted as kept.
+    const undo = (): void => {
+      seen.set(key, { at: Number.NEGATIVE_INFINITY, kept: kept + 1 });
+    };
+    return { write: true, repeats: kept, undo };
   };
   return { admit, reset: () => seen.clear() };
 }

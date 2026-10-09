@@ -501,18 +501,29 @@ export async function importRefusalOf(viewerId: string, r: StagingRefusal, deps:
 /**
  * The audit row of a refusal — ⛔ ids, counts and the reason: never a number, a name, a cell or the file's name (X23).
  * ⭐ C8c · #14a · BOUNDED (`refusal-audit.ts`): a "moved" is never written, and any other refusal at most once a minute for
- * one officer, one run and one reason — the next row written for that key carries how many it stands for (`repeats`).
+ * one officer, one run, one reason and (n4) one step — the next row written for that key carries how many it stands for
+ * (`repeats`); a row the audit did not record is taken back, so it never silences the minute.
  */
 export async function auditImportRefusal(
   deps: Pick<ImportCheckDeps, "audit" | "refusalAudit">, action: string, officerId: string, importId: string | null, reason: ImportRefusalReason,
   detail: Record<string, number | string | boolean> = {},
 ): Promise<void> {
-  const verdict = deps.refusalAudit.admit({ action, officerId, importId, reason });
+  // ⭐ n4 · the payload's own step is part of the key: a start and a commit step refused for one reason are two rows.
+  const step = typeof detail.step === "string" ? detail.step : undefined;
+  const verdict = deps.refusalAudit.admit({ action, officerId, importId, reason, step });
   if (!verdict.write) return;
-  await deps.audit({
-    category: "ADMIN", action, actorId: officerId, targetType: "ContactImport", targetId: importId,
-    payload: verdict.repeats > 0 ? { reason, ...detail, repeats: verdict.repeats } : { reason, ...detail },
-  });
+  let recorded = false;
+  try {
+    const result = await deps.audit({
+      category: "ADMIN", action, actorId: officerId, targetType: "ContactImport", targetId: importId,
+      payload: verdict.repeats > 0 ? { reason, ...detail, repeats: verdict.repeats } : { reason, ...detail },
+    });
+    recorded = result?.recorded === true;
+  } finally {
+    // ⭐ n4 · a row the audit did not record (it resolves `recorded: false`, never rejects — or a writer threw) never
+    // silences the minute: the admission is taken back, and the next refusal writes, counting this one.
+    if (!recorded) verdict.undo();
+  }
 }
 
 /** A run the officer may drive — found, and theirs or an ADMIN's (X18) — or the refusal, audited. Only a WELL-FORMED

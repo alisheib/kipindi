@@ -356,7 +356,10 @@ function stampAfter(at: string, guard: string): string {
 
 /**
  * ⛔ THE ACTIONS' CATCH: a failure the browser is told as `server_error` — never a throw, never the error's text — leaves
- * one refusal row (`contacts.import.<family>_refused`, X23) and one log line with the error's NAME and CODE only.
+ * one log line with the error's NAME and CODE only, and a refusal row (`contacts.import.<family>_refused`, X23) bounded
+ * like every refusal's (C8c · #14a, the review's n4): at most one a minute for the officer, the run, the reason and this
+ * failure's `step`, the next row carrying how many it stands for — so a failing step repeated by a loop is ONE row a
+ * minute, never one per call; a row the audit could not record never silences the minute.
  */
 export async function recordImportFailure(
   officerId: string, family: "stage" | "check" | "commit", importId: string | null, step: string, err: unknown,
