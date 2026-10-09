@@ -19,7 +19,9 @@
  * ⭐ R7 · THE DECISION LIVES IN THE DIALOG (`DecisionDraft`), not here: a check that grew stale (`check_stale`) or a book
  * that moved (`check_again`) is checked again WITHOUT losing the officer's choice, the rows set apart, the list picked
  * or the new list's name. After the re-check the changes are read through the furthest row set apart, so each is found
- * again; a row that no longer differs from the book is let go, and the panel says how many.
+ * again; a row that no longer differs from the book is let go — and (the review's m3) so is one listed only for the tags a
+ * full contact cannot take, which no choice updates and the start would refuse set apart (`exceptionsLetGo`) — and the
+ * panel says how many.
  * ⭐ THE PROMISE, ABOVE THE START: "This import: 412 new · 37 updated · 1,203 kept as they are." — computed by
  * import-decide's `adjustTally` from the check's own tally and the previews of the rows set apart, never counted any other
  * way — and it is what the start posts as `expected` (the button's `data-create/update/keep`): the server decides again,
@@ -57,6 +59,8 @@ import {
 } from "@/lib/contacts/import-decide";
 import {
   CHANGES_PAGE_ROWS,
+  exceptionsLetGo,
+  firstUpdatingChoice,
   type ChangesPageRow,
   type ChangesResult,
   type ImportListChoice,
@@ -110,9 +114,8 @@ const RECONCILE_REQUESTS_MAX = 400;
 type ChangesState = { readonly rows: ChangesPageRow[]; readonly next: number | null; readonly loading: boolean; readonly failed: boolean };
 type ListsState = { readonly state: "loading" | "ready" | "failed"; readonly options: ImportListOption[] };
 
-/** The choice under which a row in the book changes at all — the first of the one list's order, or none. */
-const firstUpdating = (row: ChangesPageRow): ImportChoice | null =>
-  IMPORT_CHOICES.find((c) => row.preview.byChoice[c].kind === "update") ?? null;
+/** The choice under which a row in the book changes at all — the contract's one rule (`firstUpdatingChoice`). */
+const firstUpdating = firstUpdatingChoice;
 
 /** What one choice does to one row, in words: each replaced value (email and notes named, never shown), the tags.
  *  ⭐ C8c · #13 · a contact full of tags whose only difference is new tags reads "Nothing to change" — and lists the tags
@@ -251,8 +254,9 @@ export function ImportDecisionPanel({
     const through = lines.length > 0 ? Math.max(...lines) : null;
     void loadChanges(0, through).then((got) => {
       if (got === null || through === null || !live.current) return;
-      const still = new Set(got.rows.map((r) => r.line));
-      const gone = lines.filter((l) => l <= got.covered && !still.has(l));
+      // ⛔ m3 · a row still on the pages only for its tags not added (#13) is let go too: no choice updates it, and the
+      // start would refuse it set apart (`exceptionsLetGo`, the contract's one rule).
+      const gone = exceptionsLetGo(lines, got.rows, got.covered);
       if (gone.length === 0) return;
       onDraft((d) => {
         const kept: Record<number, ImportChoice> = { ...d.exceptions };

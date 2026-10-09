@@ -27,7 +27,7 @@
  */
 import type { ColumnMapping } from "./contact-fields";
 import type { ContactsFileFormat, ParsedContactsFile } from "./parsed-file";
-import type { ImportChoice, ShownTally, DecisionPreview } from "./import-decide";
+import { IMPORT_CHOICES, type ImportChoice, type ShownTally, type DecisionPreview } from "./import-decide";
 
 /* ══ THE RUN, as the browser sees it ════════════════════════════════════════════════════════════ */
 
@@ -251,6 +251,24 @@ export type ChangesPage = {
 export const CHANGES_PAGE_ROWS = 50;
 export type ChangesInput = { runId: string; afterLine: number };
 export type ChangesResult = ImportAnswer<{ page: ChangesPage }>;
+
+/** The choice under which a row in the book changes at all — the first of the one list's order — or null: ⭐ C8c · #13 ·
+ *  a contact full of tags whose only difference is new tags is on the pages, and NO choice updates it. */
+export function firstUpdatingChoice(row: ChangesPageRow): ImportChoice | null {
+  return IMPORT_CHOICES.find((c) => row.preview.byChoice[c].kind === "update") ?? null;
+}
+
+/**
+ * ⭐ R7 · THE ROWS SET APART THAT A RE-CHECK LETS GO — every line set apart, up to the line the changes were read through
+ * (`covered`), that is no longer a row SOME CHOICE UPDATES: gone from the pages, or ⛔ the review's m3 · still on them
+ * only for the tags a full contact cannot take (#13). No choice updates such a row, it has no "Set apart" box, and the
+ * start refuses an exception on it (`bad_exceptions`) — so keeping it trapped the officer in a refusal and a re-check that
+ * kept it again. The decision panel lets these go and says how many.
+ */
+export function exceptionsLetGo(lines: readonly number[], rows: readonly ChangesPageRow[], covered: number): number[] {
+  const still = new Set(rows.filter((r) => firstUpdatingChoice(r) !== null).map((r) => r.line));
+  return lines.filter((l) => l <= covered && !still.has(l));
+}
 
 /* ══ 4 · THE START — the decision frozen on the run ═════════════════════════════════════════════ */
 

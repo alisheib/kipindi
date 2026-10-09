@@ -26,9 +26,11 @@ import type { ImportCommitDeps } from "../../src/lib/server/contacts/import-comm
 import type {
   ContactImportCommitBatch, StoredContactImport, StoredContactImportRow, StoredContactList, StoredMarketingContact,
 } from "../../src/lib/server/store.ts";
-import type { CommitStepResult, ImportResultResult, PreflightView, RunActResult, StartImportResult } from "../../src/lib/contacts/import-flow.ts";
+import type {
+  ChangesPageRow, CommitStepResult, ImportResultResult, PreflightView, RunActResult, StartImportResult,
+} from "../../src/lib/contacts/import-flow.ts";
 import {
-  DB_BUSY_SENTENCE, IMPORT_REFUSAL_SENTENCES, LIST_MADE_MEANWHILE_SENTENCE, STEP_CONFLICT_SENTENCE, tagsNotAddedSentence,
+  DB_BUSY_SENTENCE, IMPORT_REFUSAL_SENTENCES, LIST_MADE_MEANWHILE_SENTENCE, STEP_CONFLICT_SENTENCE, exceptionsLetGo, tagsNotAddedSentence,
 } from "../../src/lib/contacts/import-flow.ts";
 import type { ImportChoice, ShownTally } from "../../src/lib/contacts/import-decide.ts";
 import { adjustTally } from "../../src/lib/contacts/import-decide.ts";
@@ -73,6 +75,8 @@ export type CommitImpl = {
   readonly sources: Sources;
   /** ⭐ C8c · #14a · the refusal-audit gate's factory — M27/M27b build theirs over a clock they move, and a plant swaps it. */
   readonly gate: typeof refusalAuditModule.refusalAuditGate;
+  /** ⭐ C8c · m3 · the decision panel's reconcile after a re-check (the contract's `exceptionsLetGo`). */
+  readonly exceptionsLetGo: typeof exceptionsLetGo;
 };
 
 const PATHS = {
@@ -96,7 +100,7 @@ const REAL_DEPS: ImportCommitDeps = {
 let cachedSources: Sources | null = null;
 function real(): CommitImpl {
   cachedSources ??= { check: read(PATHS.check), commit: read(PATHS.commit), actions: read(PATHS.actions) };
-  return { deps: REAL_DEPS, sources: cachedSources, gate: refusalAuditModule.refusalAuditGate };
+  return { deps: REAL_DEPS, sources: cachedSources, gate: refusalAuditModule.refusalAuditGate, exceptionsLetGo };
 }
 const withDeps = (patch: Partial<ImportCommitDeps>): CommitImpl => ({ ...real(), deps: { ...REAL_DEPS, ...patch } });
 
@@ -136,6 +140,7 @@ export const L = {
   M29: "M29 · ⭐ C8c · #14b · a persistent database fault ENDS, it does not loop: a P2028 on every step is answered busy in the DATABASE's own sentence (never the bet queue's 'bets come first'), retryAfterSec 5, four times over 35 s; the fifth, 65 s after the first, PAUSES the run (paused by NOBODY — m2: no 'Paused by you' above the database's sentence, the run's and the view's pausedBy null; one contacts.import.paused row, its actor the officer, why database, faults 5) and answers db_paused 'The database is busy — the import has paused. Resume it in a few minutes.'; five quick faults within a minute on another run do NOT pause it; a step that lands ends a streak (four faults, a landed step, a fault 70 s after the first: busy, not paused); resumed, the paused run imports to done",
   M29b: "M29b · ⭐ C8c · #14b · a step whose rows keep moving ends as server_error in words the officer can act on — STEP_CONFLICT_SENTENCE, never 'something went wrong' — nothing settled and the cursor unmoved, the run still COMMITTING, and the next step decides afresh and lands (the source answers the conflict branch with that sentence)",
   M30: "M30 · ⭐ C8c · N4 · the START's re-decision walk yields to bets too: with a bet queued it reads NO staged page and waits — its own clock, inside its deadline — and once the bet has gone the start freezes the run with the label's counts",
+  M32: "M32 · ⛔ C8c · m3 · a row on the changes pages ONLY for its tags not added (a full contact whose only difference is new tags — no choice updates it, no Set-apart box) can never trap the officer: the start refuses it set apart (bad_exceptions), so the re-check's reconcile lets it go (exceptionsLetGo: row 2 let go, row 3 — TAKE_FILE renames it — kept, and row 9, past the lines the pages were read through, kept for the server to judge), and row 3 set apart is accepted",
   M31: "M31 · ⭐ C8c · #13 · the RESULT lists the tags a full contact could not take, for a reader: a TAKE_FILE import of a contact holding 20 tags whose only difference is two new tags (kept, no_change) and of one renamed with a tag that does not fit (updated) — each settled row keeps exactly its tags left out (every other row blanked, the book never past 20 tags), the result's tagsNotAdded is 2, and the failures action's tags_not_added list pages both rows in the one sentence (the failures list unchanged); a GROWTH officer's result says null and the list is refused update_needs_reader",
 } as const;
 
@@ -948,6 +953,34 @@ async function run({ impl, ok, log }: Ctx): Promise<void> {
       `reader: ${r.step.ok ? r.step.kind : r.step.reason} · rows ${[2, 3, 4].map((l) => `${l}:${row(l)?.outcome}/${json(row(l)?.tags)}`).join(" ")} · result ${r.result.ok ? r.result.result.tagsNotAdded : r.result.reason} · list ${r.tags.ok ? `${r.tags.total}: ${json(tagRows.map((x) => x.line))}` : r.tags.reason} · growth: result ${g.result.ok ? g.result.result.tagsNotAdded : g.result.reason}, list ${g.tags.ok ? "SHOWN" : g.tags.reason}`);
   }
 
+  // ── M32 · C8c · m3 · a row listed ONLY for its tags not added never traps the officer ──
+  await inFreshStore(async () => {
+    const FULL = Array.from({ length: 20 }, (_, i) => `t${String(i + 1).padStart(2, "0")}`);
+    await seedBook(bookRow("mc_full_1", "0757600001", { displayName: "Full One", tags: FULL }));
+    await seedBook(bookRow("mc_full_2", "0757600002", { displayName: "Full Two", tags: FULL }));
+    const runId = await stageFile(READER, [
+      { line: 2, cells: ["0757600001", "Full One", "", "new one, new two", ""] },
+      { line: 3, cells: ["0757600002", "Full Two Renamed", "", "vip", ""] },
+      { line: 4, cells: [N(1), "Fresh", "", "", ""] },
+    ]);
+    const rows: ChangesPageRow[] = [];
+    let after = 0;
+    for (let i = 0; i < 50; i++) {
+      const page = await contactImportChanges(READER, { runId, afterLine: after }, impl.deps);
+      if (!page.ok) break;
+      rows.push(...page.page.rows);
+      if (page.page.nextAfterLine === null) break;
+      after = page.page.nextAfterLine;
+    }
+    // Rows 2 and 3 set apart, and a row 9 the re-check's pages did not reach (read through line 4).
+    const letGo = impl.exceptionsLetGo([2, 3, 9], rows, 4);
+    const trapped = await checkAndStart(runId, impl.deps, "KEEP", { kind: "none" }, { 2: "TAKE_FILE" }, READER);
+    const kept = await checkAndStart(runId, impl.deps, "KEEP", { kind: "none" }, { 3: "TAKE_FILE" }, READER);
+    ok(L.M32, json(rows.map((r) => r.line)) === json([2, 3]) && json(letGo) === json([2])
+      && !trapped.start.ok && trapped.start.reason === "bad_exceptions" && kept.start.ok,
+      `listed ${json(rows.map((r) => r.line))} · let go ${json(letGo)} · row 2 set apart ${trapped.start.ok ? "ACCEPTED" : trapped.start.reason} · row 3 set apart ${kept.start.ok ? "accepted" : kept.start.reason}`);
+  });
+
   // ── the 5,000-row file, twice, by a reader: M2 M3 M4 M5 M17 ──
   let interrupted = { book: "", outcomes: "", totals: "", ok: false, detail: "" };
   let replayOk = false;
@@ -1309,6 +1342,19 @@ const plants: readonly RedPlant<CommitImpl>[] = [
       const inner = commitModule.dbFaultStreaks();
       return withDeps({ dbFaults: { record: inner.record, clear: () => undefined } });
     },
+  },
+  {
+    // 🔴 the review's m3 · the reconcile as #13 shipped it: every row still on the pages counts as present, so a row listed
+    // only for its tags not added stays set apart — the start refuses it, the re-check keeps it, and so on.
+    name: "P32 · C8c · m3 · the re-check keeps every row still on the changes pages set apart — a tags-only row traps the start",
+    expect: L.M32,
+    impl: () => ({
+      ...real(),
+      exceptionsLetGo: (lines, rows, covered) => {
+        const still = new Set(rows.map((r) => r.line));
+        return lines.filter((l) => l <= covered && !still.has(l));
+      },
+    }),
   },
   {
     // 🔴 the review's m2 · the database's pause is written in the officer's name: "Paused by you" above the database's
