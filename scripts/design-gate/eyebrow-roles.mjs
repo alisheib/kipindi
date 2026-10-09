@@ -255,11 +255,14 @@ export const NOT_EYEBROW = new Map([
   ["app/profile/kyc/page.tsx :: className=\"font-mono text-label uppercase tracking-[0.14em] text-text-subtle hover:text-text\" ↵ >", "CONTROL_LABEL"],
   ["app/profile/page.tsx :: <span className=\"inline-flex items-center rounded-pill border border-brand-600/50 bg-brand-500/15 px-1.5 py-0.5 font-mono text-micro font-bold uppercase tracking-[0.08em]", "STATUS_CHIP"],
   ["app/proposals/[id]/page.tsx :: <p className=\"mb-3 font-mono text-micro uppercase tracking-[0.16em] font-bold text-gold-300\">{t.common.yourProposalApproved}</p> ↵ <RewardBurst", "CELEBRATION"],
-  ["app/results/page.tsx :: <span className=\"ml-auto inline-flex items-center gap-1.5 font-mono text-micro uppercase tracking-[0.16em] font-bold text-brand-300\"> ↵ <I.crown s={13} /> {t.results.nota", "STATUS_CHIP"],
+  // Round 5 (R5-A, F19): the flag's words sit in a span of their own (`kp-track-end`, its trailing tracking taken back);
+  // its ink is R5-C's brand-300 (the second gold audit).
+  ["app/results/page.tsx :: <span className=\"ml-auto inline-flex items-center gap-1.5 font-mono text-micro uppercase tracking-[0.16em] font-bold text-brand-300\"> ↵ <I.crown s={13} /> <span className", "STATUS_CHIP"],
   ["app/updown/[roundId]/page.tsx :: <p className=\"mt-1 flex items-center gap-1.5 font-mono text-micro font-semibold uppercase tracking-[0.10em] text-text-subtle\"> ↵ {isOpen && <span className=\"live-dot\" />}", "STATUS_CHIP"],
   ["app/updown/[roundId]/page.tsx :: className=\"inline-flex items-center gap-0.5 font-mono text-micro font-semibold uppercase tracking-[0.08em]\" ↵ style={{ color: \"var(--brand-300)\" }}>", "CONTROL_LABEL"],
   ["app/updown/history/page.tsx :: <span className=\"font-mono text-micro uppercase tracking-[0.10em] text-text-faint\"> ↵ {g.bets.length} {t.market.udBets}", "OTHER"],
-  ["app/updown/page.tsx :: <span className=\"ml-auto inline-flex items-center gap-1.5 font-mono text-micro uppercase tracking-[0.10em] text-text-faint\"> ↵ <span className=\"live-dot\" /> {t.market.udS", "STATUS_CHIP"],
+  // Round 5 (R5-A, F19): the note's words sit in a span of their own (`kp-track-end`, its trailing tracking taken back).
+  ["app/updown/page.tsx :: <span className=\"ml-auto inline-flex items-center gap-1.5 font-mono text-micro uppercase tracking-[0.10em] text-text-faint\"> ↵ <span className=\"live-dot\" /> <span classNa", "STATUS_CHIP"],
   // ⭐ ONE recipe, TWO pills. The board header carried this string twice — the history link and
   // the new rules link — and a second copy of its `tracking-[0.10em]` took the arbitrary-tracking
   // ratchet 236 → 237. Hoisting it to a `HEADER_PILL` const fixed that and moved the uppercase

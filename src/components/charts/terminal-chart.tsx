@@ -51,6 +51,9 @@ export type TerminalRange = "15M" | "30M" | "1H" | "6H" | "12H" | "24H" | "7D";
 export type TerminalStyle = "line" | "candles";
 type LinePoint = { t: number; price: number | null };
 type Candle = { t: number; o: number; h: number; l: number; c: number; n?: number; v?: number | null; forming?: boolean };
+/** How long the pane may say "loading" for one request: the route's vendor read aborts at 8s; 12s leaves its own reads. */
+export const HISTORY_DEADLINE_MS = 12_000;
+
 type Feed = {
   series:
     | { mode: "line"; points: LinePoint[] }
@@ -137,6 +140,16 @@ export function TerminalChart({
     const load = async () => {
       if (document.visibilityState === "hidden") return;
       const seq = ++seqRef.current;
+      /* ⭐ "LOADING" HAS A DEADLINE (round 5 of the visual pass, 2026-10-09 — tiles 163 164 200, a card that read "Inapakia…"
+         over an empty pane). The request had none, so a window that never came — a stalled connection, a cold route — left
+         the pane saying it was loading for as long as the page stayed open. The route answers within its vendor's 8s
+         abort (`updown-terminal-vendor.ts`) and its own reads; past HISTORY_DEADLINE_MS with no answer the pane says the
+         existing honest sentence instead — `udChartError`, "Chart unavailable — retrying" — and the polling below keeps
+         retrying, so a late or a later answer still draws. A drawn chart is never replaced (F3); a VERIFIED empty
+         answer still says "no reads". */
+      const deadline = setTimeout(() => {
+        if (alive && seq === seqRef.current) setStatus((s) => (s === "loading" ? "error" : s));
+      }, HISTORY_DEADLINE_MS);
       try {
         const r = await fetch(`/api/updown/history?asset=${encodeURIComponent(assetKey)}&range=${range}&style=${style}`, {
           // no-cache (NOT no-store): the browser stores the body, sends
@@ -161,6 +174,9 @@ export function TerminalChart({
       } catch {
         if (!alive || seq !== seqRef.current) return;
         setStatus((s) => (s === "ok" ? "ok" : "error"));
+      } finally {
+        // The whole answer is in (or failed): the deadline stands down — a body that is slow to arrive is still waited for.
+        clearTimeout(deadline);
       }
     };
     rangeRef.current = range;

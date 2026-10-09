@@ -73,6 +73,8 @@ export function SettleButton({
         closeOnScrim={false}
         labelledBy="settle-title"
         maxWidth={440}
+        /* The ✕ is withheld while the settlement is in flight (round 5, F20 — the one rule, `CloseX` in modal.tsx). */
+        showClose={!pending}
       >
         <div className="space-y-4">
           <h2 id="settle-title" className="font-display text-[16px] font-semibold text-text">

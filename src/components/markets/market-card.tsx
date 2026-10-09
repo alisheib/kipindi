@@ -11,7 +11,7 @@ import { ShareButton } from "@/components/markets/share-button";
 import { Chip } from "@/components/ui/chip";
 import { keepFigures } from "@/components/ui/keep-words";
 import { STATUS_TONE, TONE_CHIP } from "@/lib/status-tone";
-import { cn, fill, formatTzs } from "@/lib/utils";
+import { cn, fill, formatNumber, formatTzs } from "@/lib/utils";
 import { useT } from "@/lib/i18n";
 import { pickLocalized, marketCategoryLabel } from "@/lib/localized";
 import { outcomeWord, sideWord, type LabelProductLine } from "@/lib/side-label";
@@ -239,7 +239,8 @@ function HowItWorks() {
         ariaLabel={t.common.howItWorks}
         maxWidth={320}
       >
-        <p className="mb-1.5 font-display text-[13px] font-bold text-text">{t.common.howItWorks}</p>
+        {/* `kp-modal-title` (round 5, F20): its first line's capitals on the corner ✕, as every dialog's title stands. */}
+        <p className="kp-modal-title mb-1.5 font-display text-[13px] font-bold text-text">{t.common.howItWorks}</p>
         <p className="text-body-sm leading-[1.55] text-text-muted">
           {t.common.howItWorksBody}
         </p>
@@ -628,7 +629,10 @@ export function MarketCard({
                 ))}
               </span>
             )}
-            <span className="t-txt" data-market-part="predictors"><b>{predictors.toLocaleString()}</b>{" "}{predictors === 1 ? t.market.predictorsCountOne : t.market.predictorsCount}</span>
+            {/* Round 5 (F12): grouped by `formatNumber`, the platform's one count grouping (the board's rows and the /results
+                spotlight write the same line) — `toLocaleString()` grouped by whatever locale the runtime held, so the
+                server's HTML and a browser set to another locale could print one count two ways. */}
+            <span className="t-txt" data-market-part="predictors"><b>{formatNumber(predictors)}</b>{" "}{predictors === 1 ? t.market.predictorsCountOne : t.market.predictorsCount}</span>
           </>
         )}
       </div>
@@ -675,8 +679,12 @@ export function MarketCard({
             `mcardp-pool` (round 4, G7): once there is a pool the featured card NAMES it, in the board row's own words
             ("Bwawa TZS 10,800", `common.pool`), the figure set as money (`.amount`) at the same 13px. A grid card's row
             also carries its countdown, so its figure keeps the row's 11px and no word (its one-line row, D35, is full at 360). */}
+        {/* Round 5 (the check on the /markets grid, 2026-10-09): a grid card's figure names itself to a screen reader in the
+            featured card's own word ("Bwawa TZS 10,800"). On screen it keeps no word: at 320 the row's worst case — a
+            7-digit pool, "dakika 59 zimebaki" and the info button — already fills 257.6 of its 258px, so even a glyph
+            (+16px) would wrap a fixed-height card; whether to give the grid card room for the word is an owner question. */}
         <span data-market-part="pool" className={fresh ? "mcardp-nopool" : featured ? "mcardp-pool" : undefined}>
-          {fresh ? t.market.noPoolYet : featured ? <>{t.common.pool}{" "}<span className="amount">{formatTzs(volume)}</span></> : formatTzs(volume)}
+          {fresh ? t.market.noPoolYet : featured ? <>{t.common.pool}{" "}<span className="amount">{formatTzs(volume)}</span></> : <><span className="sr-only">{t.common.pool}{" "}</span>{formatTzs(volume)}</>}
         </span>
         {comments != null && comments > 0 && (
           <>

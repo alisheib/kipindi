@@ -311,7 +311,7 @@ section("2 · the items — notifications, the agent page, proposals, /results, 
   const RES = read("src/app/results/page.tsx");
   const featured = RES.slice(RES.indexOf("function FeaturedResult"), RES.indexOf("function ", RES.indexOf("function FeaturedResult") + 20));
   ok("2.4 · the notable card is the product's featured card (royal edge and wash), its crown and label the brand ink",
-    /borderColor: "var\(--border-royal\)"/.test(featured) && /text-brand-300">\s*<I\.crown s=\{13\} \/> \{t\.results\.notableResult\}/.test(featured) && !/gold/.test(featured));
+    /borderColor: "var\(--border-royal\)"/.test(featured) && /text-brand-300">\s*<I\.crown s=\{13\} \/> <span className="kp-track-end kp-track-end--16">\{t\.results\.notableResult\}<\/span>/.test(featured) /* the label in R5-A's tracked span (F19), merged 2026-10-09 */ && !/gold/.test(featured));
   ok("2.4′ · the page's glyph rides in its eyebrow's ink", /<span className="text-text-subtle"><I\.resolved s=\{18\} \/><\/span>/.test(RES));
   ok("2.4″ · CONTROL · the resolved pill keeps the seal (§M3 'resolved seal'; §B11 RESOLVED = struck gilt)", /<Chip variant="resolved" size="sm">/.test(featured));
 

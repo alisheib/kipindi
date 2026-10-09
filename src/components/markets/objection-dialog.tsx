@@ -102,9 +102,14 @@ export function ObjectionDialog({ marketId, onFiled }: { marketId: string; onFil
         onClose={() => !pending && setOpen(false)}
         labelledBy="objection-title"
         maxWidth={460}
+        /* While the objection is being filed the ✕ is withheld (round 5, F20 — the one rule, `CloseX` in modal.tsx): Cancel
+           is disabled then and the close refused, and the ✕ was drawn and dead beside them. It stands in the corner, out of
+           the flow, so nothing moves. */
+        showClose={!pending}
       >
         <div className="space-y-4">
-          <h2 id="objection-title" className="font-display text-[16px] font-semibold text-text">
+          {/* `kp-modal-title` (round 5, F20): its first line's capitals on the corner ✕, as every dialog's title stands. */}
+          <h2 id="objection-title" className="kp-modal-title font-display text-[16px] font-semibold text-text">
             {t.market.objTitle}
           </h2>
 

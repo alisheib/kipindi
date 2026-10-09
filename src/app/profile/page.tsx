@@ -367,7 +367,9 @@ export default async function ProfilePage() {
               refuses a restart, so "ID document · selfie · review" offered a journey the server refuses.
               The red pill above still links to /profile/kyc, which explains the refusal. */}
           {kycLevel !== "APPROVED" && !(kycLevel === "REJECTED" && isFinalRefusal(kyc?.rejectReason)) && (
-            <SettingRow icon={I.shieldcheck}   title={t.common.verifyId}             subtitle={t.profile.verifyIdSub}            href="/profile/kyc" />
+            /* Round 5 (F17, one page, one name): the KYC page's own h1 ("Thibitisha kitambulisho / Verify your identity"),
+               as the journey's hub row and menu say since this round — the row said "Thibitisha ID / Verify ID". */
+            <SettingRow icon={I.shieldcheck}   title={t.profile.verifyIdentity}      subtitle={t.profile.verifyIdSub}            href="/profile/kyc" />
           )}
           <SettingRow icon={I.fileSignature}   title={t.profile.sourceOfFunds}       subtitle={t.profile.sourceOfFundsSub}                      href="/profile/source-of-funds" />
           <SettingRow icon={I.device}          title={t.profile.activeSessions}      subtitle={t.profile.activeSessionsSub}        href="/profile/sessions" />

@@ -81,7 +81,8 @@ export function StuckPayoutControls({ txnId, amountLabel }: { txnId: string; amo
         Return to player
       </Button>
 
-      <Modal open={open} onClose={close} ariaLabel="Return a frozen payout to the player" maxWidth={520}>
+      {/* The ✕ is withheld while the return is in flight (round 5, F20 — the one rule, `CloseX` in modal.tsx). */}
+      <Modal open={open} onClose={close} ariaLabel="Return a frozen payout to the player" maxWidth={520} showClose={!pending}>
         <div className="p-5 space-y-4">
           <div>
             <p className="font-display text-[17px] font-bold text-text">Return this payout to the player?</p>

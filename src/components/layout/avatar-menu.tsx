@@ -137,6 +137,15 @@ export function AvatarMenu({
      ⚠️ The override writes the RESOLVED label into all three locale fields on purpose — `Item`
      then picks it whichever locale it is in. A second literal per language here would be a fourth
      copy of a sentence the dictionary already owns. */
+  /* ⭐ …AND IN THE JOURNEY EVERY DOOR NAMES ITS PAGE AS THE PAGE DOES (round 5 of the visual pass, 2026-10-09, F17 — the
+     rule above for /positions, carried to the rest of this menu's journey rows). The KYC page's h1 is "Thibitisha
+     kitambulisho / Verify your identity" where this row said "Kuthibitisha kitambulisho / Verify ID"; the leaderboard
+     calls itself "Bingwa" in Swahili where this row said "Jedwali la Washindi"; the proposals page is "Mapendekezo ya
+     Masoko / Market Proposals" where this row said "Pendekeza na upate zawadi / Propose & earn". The journey's hub and
+     footer say the page's words since this round too (`hub-rows.ts`). Classic rows keep their words (frozen chrome). */
+  const journeyName: Partial<Record<string, string>> = journey
+    ? { "/profile/kyc": t.profile.verifyIdentity, "/leaderboard": t.leaderboard.title, "/proposals": t.proposals.title }
+    : {};
   const rows = MENU_ROWS
     .filter((r) => (!r.proposals || proposalsState !== "DISABLED") && (!r.invite || inviteVisible))
     .map((r) =>
@@ -144,7 +153,9 @@ export function AvatarMenu({
         ? { ...r, en: t.profile.inviteFriends, sw: t.profile.inviteFriends, zh: t.profile.inviteFriends, accent: false }
         : journey && r.href === "/positions"
           ? { ...r, icon: I.ticket, en: t.journey.tabTickets, sw: t.journey.tabTickets, zh: t.journey.tabTickets }
-          : r,
+          : journeyName[r.href]
+            ? { ...r, en: journeyName[r.href]!, sw: journeyName[r.href]!, zh: journeyName[r.href]! }
+            : r,
     )
     /* ⛔ NO GOLD ON AN INVITATION TO EARN, IN THE JOURNEY (round 4's gold audit, 2026-10-09, edge tile 209). Q5 "gold is
        money, and nothing else"; M3 "struck gold appears only where money was earned"; D5 "on an inducement, a house

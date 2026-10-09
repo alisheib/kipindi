@@ -264,8 +264,10 @@ section("6 · the market page: the star midway between its neighbours' ink; the 
 section("7 · /results: the tally reads in one case (tile 172)");
 {
   const res = code("src/app/results/page.tsx");
+  // Round 5 (R5-A, F12) moved this pin: the count before its word is grouped (`formatNumber`), as every count line is —
+  // the words are this section's, unchanged.
   ok("7.1 · \"0 imetatuliwa · TZS 0 imekamilika\" — the figure's sentence word, not the tab's label",
-    res.includes("{totalCount} {t.results.resolved} · {formatTzsCompact(totalVolume)} {t.market.tickerSettled}"));
+    res.includes("{formatNumber(totalCount)} {t.results.resolved} · {formatTzsCompact(totalVolume)} {t.market.tickerSettled}"));
   ok("7.2 · …and each result card's \"TZS 6K imekamilika\" beside \"2 watabiri\"",
     res.includes("{formatTzsCompact(m.yesPool + m.noPool)} {t.market.tickerSettled}"));
   ok("7.3 · ⛔ the tab label is no longer read for a sentence on this page", !res.includes("{t.common.settled}"));

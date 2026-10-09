@@ -423,6 +423,8 @@ export function ReviewActions({
         labelledBy={`review-title-${id}`}
         maxWidth={620}
         closeOnScrim={!pending}
+        /* The ✕ is withheld while a save or an approval is in flight (round 5, F20 — the one rule, `CloseX` in modal.tsx). */
+        showClose={!pending}
       >
         <div className="space-y-3">
           <h2 id={`review-title-${id}`} className="font-display text-[16px] font-semibold text-text">
@@ -531,6 +533,8 @@ export function ReviewActions({
         labelledBy={`reject-title-${id}`}
         maxWidth={460}
         closeOnScrim={!pending}
+        /* The ✕ is withheld while the rejection is in flight (round 5, F20 — the one rule, `CloseX` in modal.tsx). */
+        showClose={!pending}
       >
         <div ref={rejectRef} className="space-y-3">
           <h2 id={`reject-title-${id}`} className="font-display text-[16px] font-semibold text-text">
@@ -621,6 +625,10 @@ export function ArmAction({
         open={open}
         onClose={() => setOpen(false)}
         onConfirm={arm}
+        /* The chain is armed with this dialog open, so it wears the request (round 5, F20 — the one rule, `CloseX` in
+           modal.tsx): the ✕ withheld, Cancel and Arm disabled, the scrim and Esc refused — where the ✕ and Cancel closed it
+           mid-request and Arm could fire twice. */
+        loading={pending}
         title={`Start ${assetKey} ${durationMinutes}m?`}
         tone="claret"
         tier="hard"
@@ -695,6 +703,8 @@ export function DeleteProposalAction({ id }: { id: string }) {
         open={open}
         onClose={() => setOpen(false)}
         onConfirm={del}
+        /* Deleted with this dialog open, so it wears the request (round 5, F20 — the one rule, `CloseX` in modal.tsx). */
+        loading={pending}
         title="Delete this proposal?"
         tone="claret"
         confirmLabel="Delete"

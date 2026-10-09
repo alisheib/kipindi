@@ -2239,6 +2239,15 @@ html.kp-reduce-motion .ticker-pause,
 /* The wrapper carries the echo line under the box, so the cap must sit on the
    wrapper too or the hint stretches the full container width. */
 .search-box-wrap { max-width: var(--w-field); }
+/* ⭐ /markets' SEARCH STANDS 34px OVER ITS PILLS, AS EVERY BAR'S DOES (round 5 of the visual pass, 2026-10-09, R5-A — the
+   check on tile 193; R4-C's band rule, `QUERY_SEARCH_BAND_CLASS` in query-bar.tsx). /markets has no rung between its
+   search and its bar, so the box's echo row (8 + 17 = 25px) is the whole gap, plus the bar's own top: row 1's 10px from
+   640 (35px) and the compact phone bar's 6px below it (31px — tile 193: the box y268–313, the Wazi pill from y345). The
+   wrapper gives 1px back from 640, and lends 3px in the compact phone bar (the rule inside its block, further down) —
+   outside the sticky bar, so the pinned chrome is no taller — and both read 34. The Comfortable phone bar keeps the
+   desktop rows, so it takes the desktop's −1. The loading ghost's search wears the class too, so the ghost lands as the
+   page does. */
+.kp-markets-search { margin-bottom: -1px; }
 
 /* Admin AI-polls: briefly ring a poll row that was just generated/regenerated
    so the operator's eye lands on it after the list refreshes + scrolls. */
@@ -4360,8 +4369,9 @@ html[data-sheet-open] .route-enter { animation: none; }
    ⭐ THREE BLOCKS, ONE DOM, PLACED BY GRID AREAS (WP2). Below 1024 they stack in source order —
    intro (what 50pick is) → card (a live market) → act (what to do, and why to trust it) — so the
    featured market sits right after the lede on a phone, inside the first screen (V15). From 1024
-   the intro and the act share the left column and the card takes the right one, vertically centred
-   against the pair, which is the delivery's desktop composition. No `order`, no second copy.
+   the intro and the act share the left column and the card takes the right one, its top on the
+   claim's capitals (round 5, F2 — it was centred against the pair; the 1024 block below says why).
+   No `order`, no second copy.
    ⚠️ THE PHONE RUNG IS SET HERE, NOT IN A MEDIA QUERY — the 768 block overrides both values. U6
    stepped it 48/32 → 32/24 (measured −64px at 360); hero v3 (2026-09-27, spec §5) takes the top to
    20 and the gap to 20, keeping 32 at the foot: the trust rows now sit above the card, and the
@@ -4390,18 +4400,31 @@ html[data-sheet-open] .route-enter { animation: none; }
   .kp-hero__intro { gap: var(--sp-4); }
   .kp-hero__lockup { gap: var(--sp-3); }
 }
+/* ⭐ THE CARD STANDS ON THE CLAIM'S CAPITALS, NOT ON THE MIDDLE OF THE COLUMN (round 5 of the visual pass, 2026-10-09,
+   F2 — tiles 018–112 and 002–012). It was centred against the intro and the act together, so its top fell wherever that
+   column's height put it: from 2px over the claim's capitals (en 1150, a player) and 4–9px under them on a short column
+   (en 1280: card y197, capitals y193) to 66px under them on a tall one (sw held 1280: y259) — a near-miss with the
+   claim where it was close, and a card floating mid-column where it was not. ⭐ It now hangs from the grid's top line,
+   and so does the left column: the
+   intro's row is its own height and the act's row takes the rest (`auto 1fr`), so a card taller than the left column
+   grows the act's row, never the intro's, and the claim always starts on the grid's top line. The card is lowered from
+   that line to the claim's capitals: the claim is 13px JetBrains Mono at line-height 1.35, whose capitals start
+   (1.35 − 1.32)/2 + 1.02 − 0.73 = 0.305em = 3.97px under the line's top — hinted on Windows they start on that line's
+   4th pixel row (y193 under a line at y190 on every journey tile, y124 under y121 on the classic ones), so the card's
+   1px edge takes that row: 3px. Chinese has no capitals; its ideographs (the system CJK face on the same baseline)
+   start a row higher on every zh tile (y192 / y123), so there the card takes 2px. The same rule at every desktop width
+   and in both shells — the hero is a shared body. Below 1024 nothing changes: the blocks stack. */
 @media (min-width: 1024px) {
   .kp-hero__inner {
     grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    grid-template-rows: auto 1fr;
     grid-template-areas: "intro card" "act card";
     column-gap: var(--sp-12);
     row-gap: var(--sp-8);
-    align-items: center;
+    align-items: start;
   }
-  /* The left pair sits as one block beside the card: the intro rests on the row line, the act
-     hangs from it, so the two read as a column rather than as two cells centred apart. */
-  .kp-hero__intro { align-self: end; }
-  .kp-hero__act { align-self: start; }
+  .kp-hero__card { margin-top: 3px; }
+  :lang(zh) .kp-hero__card { margin-top: 2px; }
 }
 /* An empty book renders no featured market: the pitch and the act take the whole width, with no blank
    right column and no doubled gap where the card would have been. */
@@ -4488,6 +4511,25 @@ html[data-sheet-open] .route-enter { animation: none; }
 /* A wallet's name is one name: "Airtel Money" and "Mixx by Yas" broke across lines at 320–1024 in all three languages
    (WP12's tiles, 2026-10-08). The joiners between the names still let the list wrap. */
 .kp-hero__rail { color: var(--text); font-weight: 500; white-space: nowrap; }
+/* ⭐ THE GAMING BOARD'S NAME IS ONE NAME WHEREVER ITS LINE CAN HOLD IT (round 5 of the visual pass, 2026-10-09, F18 —
+   tile 307; `keepRegulator`, keep-words.tsx). The journey footer at en 1024 tore it ("Licensed by the Gaming" / "Board of
+   Tanzania.") and the hero's trust row at sw 360–390 ("Leseni ya Bodi ya Michezo" / "ya Kubahatisha Tanzania."). The name
+   is `nowrap` only where the line is at least as wide as the name, so it can never overflow: each line's box is a size
+   container and the condition is the name's own width in Inter 13px (`text-body-sm` and the trust row's
+   `--type-small`), from the font — en "Gaming Board of Tanzania." 164.7px, sw "Bodi ya Michezo ya Kubahatisha Tanzania."
+   259.3px, zh 坦桑尼亚博彩委员会 117px — plus 3px. A narrower line wraps the sentence as before (the footer's 160px column
+   at 768 holds no English name; from 768 to 1199 no footer column holds the Swahili one). The journey's footer sentence is
+   `.kp-gbt`; the hero's trust row is `.kp-gbt-row`, the ROW being the container because the loading ghost draws the
+   words' own span `fit-content`, which size containment would empty — so its widths add the row's 28px roundel and
+   12px gap. The classic footer is frozen chrome and wears neither. */
+.kp-gbt { container: kp-gbt / inline-size; }
+@container kp-gbt (min-width: 168px) { .kp-gbt-name:lang(en) { white-space: nowrap; } }
+@container kp-gbt (min-width: 263px) { .kp-gbt-name:lang(sw) { white-space: nowrap; } }
+@container kp-gbt (min-width: 120px) { .kp-gbt-name:lang(zh) { white-space: nowrap; } }
+.kp-hero__trust > li.kp-gbt-row { container: kp-gbt-row / inline-size; }
+@container kp-gbt-row (min-width: 208px) { .kp-gbt-name:lang(en) { white-space: nowrap; } }
+@container kp-gbt-row (min-width: 303px) { .kp-gbt-name:lang(sw) { white-space: nowrap; } }
+@container kp-gbt-row (min-width: 160px) { .kp-gbt-name:lang(zh) { white-space: nowrap; } }
 /* ⛔ `.kp-hero__tel` (the helpline link in row 1) was DELETED 2026-10-06 with the helpline itself —
    the owner's ruling took it off every player surface (docs/COMPLIANCE-DECISIONS.md). */
 
@@ -5136,6 +5178,25 @@ html[data-sheet-open] .route-enter { animation: none; }
 .mcardp-pct .u { font-size: 13px; color: var(--text-subtle); margin-left: 1px; }
 /* §T3 0.14em, was 0.12 — tracking in the shared eyebrow rule beside `.amount`. */
 .mcardp-pctcap { font-family: var(--font-mono); font-size: 9.5px; font-weight: 600; text-transform: uppercase; color: var(--yes-400); }
+/* ⭐ A RIGHT-ALIGNED TRACKED LABEL ENDS WHERE ITS NEIGHBOURS END (round 5 of the visual pass, 2026-10-09, F19 — tile 327;
+   R3-C's rule for the admin tables' right-aligned heads, `.admin-tbl thead th.text-right::after`, carried to every label
+   of the kind). The price caption is tracked 0.14em and right-aligned over its figure, and a browser adds the tracking
+   after the LAST letter too: "NDIO" ended at x355 while "67%", the time left, the bar and HAPANA's edge end at x357–358
+   — the trailing 1.33px (0.14 × 9.5px) and the O's own 0.84px side bearing (88/1000 of its cell). An empty inline-block
+   after the label takes the tracking back, so its last letter's advance meets the edge the figure's meets; what remains
+   (under 1px) is that letter's side bearing in its monospace cell, as R3-C left it. The same for each label of this kind:
+   the one-sided label on the card's right-aligned move line (centred or left-aligned everywhere else, where it keeps its
+   tracking), the bar's right-hand side label (tracked 0.05em) and, through `kp-track-end` on the label's own text, the
+   /results spotlight's flag (0.16em) and Up & Down's live note (0.10em). Left-aligned and centred labels are untouched.
+   ⚠️ The pseudo-element must sit inside the text's own box: on an inline-flex label it would be a flex item of its own,
+   and the label's `gap` would open in front of it — hence the text span on those two. */
+.mcardp-pctcap::after,
+.mcardp-moveline .mcardp-oneside::after,
+.tipbar-labels .tb-no::after,
+.kp-track-end::after { content: ""; display: inline-block; margin-inline-end: calc(-1 * var(--track-end, 0.14em)); }
+.tipbar-labels .tb-no { --track-end: 0.05em; }
+.kp-track-end--16 { --track-end: 0.16em; }
+.kp-track-end--10 { --track-end: 0.10em; }
 .mcardp-spark { line-height: 0; margin-top: 2px; }
 .mcardp-traders { display:flex; align-items:center; gap:7px; }
 .av-stack { display:flex; }
@@ -7150,6 +7211,17 @@ html[lang="zh"] .kp-udrule { word-break: keep-all; }
    by 0.5 while the title's baseline snapped up by 0.3. Centring the 0.6em point instead makes the margin −4px — the
    sheet's height whole again (147, two lines 172) — so phone and desktop both land within ±0.5px (predicted +0.3). */
 .kp-jsheet__title { margin: calc(var(--sp-10) - var(--sp-8) - var(--type-h3) * 0.6) 0 0; padding-right: var(--sp-12); font-family: var(--font-display); font-weight: 700; font-size: var(--type-h3); line-height: 1.25; color: var(--text); text-wrap: balance; }
+/* ⭐ EVERY DIALOG'S TITLE STANDS ON ITS CORNER ✕ THE SAME WAY (round 5 of the visual pass, 2026-10-09, F20 — the one
+   convention, `CloseX` in modal.tsx). The guest sheet's rule above, for every other Modal whose title sits beside the
+   corner ✕: Modal pins the ✕'s 48px box 16px under the panel's padding edge (`right-3 top-3`), so it centres 40px down;
+   the panel's content starts at its padding (`p-5 lg:p-6`: 24px, 32px from 1024); a Sora title in a 1.25 line centres
+   its capitals 0.6em down its first line — so the title's top margin is 40 − 24 − 0.6em (40 − 32 − 0.6em from 1024), in
+   the title's own size, and its first line's capitals stand on the ✕ at both paddings. Before (from the CSS): the
+   how-it-works title's capitals 33.4px down (✕ 6.6px under them on a phone), the share dialog's 34.15 (5.85), the
+   objection dialog's 35.6 (4.4; and 3.6px above them from 1024). The right padding keeps a title clear of the ✕, as the
+   guest sheet's does. */
+.kp-modal-title { margin-top: calc(var(--sp-10) - var(--sp-6) - 0.6em); padding-right: var(--sp-12); line-height: 1.25; }
+@media (min-width: 1024px) { .kp-modal-title { margin-top: calc(var(--sp-10) - var(--sp-8) - 0.6em); } }
 /* ⭐ TIKETI ZANGU'S CARDS SHARE THEIR ROWS, NOT ONLY THEIR HEIGHT (2026-10-09, the visual pass's round 3, tile 168 at
    1280). A pair already shares a height (the grid's stretch, `tickets-view.tsx`), but each card laid its own rows out,
    so a two-line question beside a one-line one put DAU at y714 in the first card and y694 in its neighbour, and left
@@ -7759,6 +7831,8 @@ html[lang="zh"] .kp-udrule { word-break: keep-all; }
     }
   }
   html:not([data-density="comfortable"]) .kp-discovery-bar:has(> [data-bar-row]) > [data-bar-row] { display: contents; }
+  /* /markets' search over this compact bar: see `.kp-markets-search`, beside `.search-box-wrap`. */
+  html:not([data-density="comfortable"]) .kp-markets-search { margin-bottom: 3px; }
   html:not([data-density="comfortable"]) .kp-discovery-bar:has(> [data-bar-row]) [data-strip-autoscroll] { grid-area: 1 / 1 / 2 / 2; }
   html:not([data-density="comfortable"]) .kp-discovery-bar:has(> [data-bar-row]) [data-bar-cell="sort"] { grid-area: 1 / 2 / 2 / 3; }
   html:not([data-density="comfortable"]) .kp-discovery-bar:has(> [data-bar-row]) .kp-fsheet { grid-area: 1 / 3 / 2 / 4; }

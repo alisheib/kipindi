@@ -724,11 +724,15 @@ function ToastItem({ toast, exiting, onDismiss, onPause, onResume }: { toast: To
           ) : null}
         </div>
       </div>
+      {/* ⭐ ON THE TITLE'S CAPITALS (round 5 of the visual pass, 2026-10-09, F20 — the one convention, `CloseX` in modal.tsx):
+          the 48px box stood 8px down (`top-1.5`), centring the ✕ 32px down, while the title — a 1.25 line of 13px under
+          the row's 16px (`py-3`) — centres its capitals 16 + 0.6 × 13 = 23.8px down: 8.2px under them. At the toast's top
+          edge the box centres 24px down, 0.2px from them, and a title that wraps keeps its first line there. */}
       <button
         type="button"
         onClick={onDismiss}
         data-toast-dismiss=""
-        className="absolute right-1.5 top-1.5 inline-flex h-8 w-8 items-center justify-center rounded-md text-text-subtle hover:bg-bg-overlay hover:text-text transition-colors"
+        className="absolute right-1.5 top-0 inline-flex h-8 w-8 items-center justify-center rounded-md text-text-subtle hover:bg-bg-overlay hover:text-text transition-colors"
         aria-label={t.common.dismiss}
       >
         <I.x s={14} />

@@ -126,7 +126,8 @@ export const MUTATIONS = [
   {
     name: "the featured pool loses its word and its money face (a bare \"TZS 10,800\" again)",
     file: "src/components/markets/market-card.tsx",
-    from: `          {fresh ? t.market.noPoolYet : featured ? <>{t.common.pool}{" "}<span className="amount">{formatTzs(volume)}</span></> : formatTzs(volume)}`,
+    // Round 5 (R5-A): the grid card's figure names itself to a screen reader (`sr-only`); the anchor follows the line.
+    from: `          {fresh ? t.market.noPoolYet : featured ? <>{t.common.pool}{" "}<span className="amount">{formatTzs(volume)}</span></> : <><span className="sr-only">{t.common.pool}{" "}</span>{formatTzs(volume)}</>}`,
     to: `          {fresh ? t.market.noPoolYet : formatTzs(volume)}`,
     expect: "2.18",
   },

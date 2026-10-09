@@ -368,21 +368,29 @@ section("3 · the limits page: the callout at reading size, the two forms in lin
 }
 
 /* ══ §4 · THE ✕ ON ITS HEADER'S CENTRE ════════════════════════════════════════════════════════════════════════════════ */
-section("4 · every confirm's ✕ on its header's centre, and the header no taller for it (E22 E54)");
+section("4 · every confirm's ✕ on its title's capitals, and the header no taller for it (E22 E54; round 5 F20)");
 {
   const MOD = read("src/components/ui/modal.tsx");
   const confirmOf = (src: string) => src.slice(src.indexOf("export function ConfirmModal("));
-  /** A margin utility's signed px on the overridden scale ("-mt-1" → −4, "mt-1" → 4), 0 when the class is absent. */
+  /** A margin utility's signed px — a step of the overridden scale ("-mt-1" → −4, "mt-1" → 4) or, since round 5, an
+   *  arbitrary px ("mt-[2.8px]" → 2.8) — 0 when the class is absent. */
   const margin = (cls: string, side: string) => {
-    const m = new RegExp(`(?:^|\\s)(-?)${side}-([0-9.]+)(?=\\s|$)`).exec(cls);
-    return m ? (m[1] ? -1 : 1) * twStep(m[2]) : 0;
+    const m = new RegExp(`(?:^|\\s)(-?)${side}-(?:\\[([0-9.]+)px\\]|([0-9.]+))(?=\\s|$)`).exec(cls);
+    return m ? (m[1] ? -1 : 1) * (m[2] !== undefined ? Number(m[2]) : twStep(m[3])) : 0;
   };
   const BOX = twStep("8"); // the ✕'s 48px box (h-8 w-8)
   // ConfirmModal: the medallion is 36px, 2px down; the ✕ is CloseX (48px), in the header row after the text.
   const medallionTop = twStep("0.5"), medallionCentre = medallionTop + 36 / 2;
+  // ⭐ Round 5 (R5-A, F20) moved this section's target: ONE convention for every ✕ of a panel, a sheet or a dialog — the
+  // capitals of its title's first line (R4-E's guest sheet, this file's own bet confirm below). ConfirmModal's title is
+  // under its eyebrow: the eyebrow's 14px line, `mt-0.5`, then an 18px title in a 1.25 line. The medallion's centre was
+  // R4-I's place for it (E22), level with neither text line.
+  const titleCaps = 14 + twStep("0.5") + soraCapCentreEm(1.25) * 18;
+  // Round 5 (R5-A, F20 follow-up) also moved how it is withdrawn: `withheld={loading}` keeps its box (CloseX, modal.tsx)
+  // where `{!loading && …}` took it out of the row — so the title cannot re-wrap while a request runs.
   const confirmX = (src: string) => {
     const c = confirmOf(src);
-    const cls = /\{!loading && <CloseX onClick=\{onClose\} label=\{t\.common\.close\} className="([^"]+)" \/>\}/.exec(c)?.[1];
+    const cls = /<CloseX withheld=\{loading\} onClick=\{onClose\} label=\{t\.common\.close\} className="([^"]+)" \/>/.exec(c)?.[1];
     const wired = /showClose=\{false\}/.test(c) && /className="mt-0\.5 shrink-0 inline-flex h-\[36px\] w-\[36px\]/.test(c)
       && /function CloseX\([\s\S]*?className=\{`\$\{className\} inline-flex h-8 w-8 items-center justify-center rounded-md/.test(src);
     if (!cls || !wired) return null;
@@ -391,8 +399,8 @@ section("4 · every confirm's ✕ on its header's centre, and the header no tall
     return { centre: top + BOX / 2, occupies: BOX + top + bottom, insetPhone: twStep("5") + margin(cls, "mr"), insetLg: twStep("6") - (lgRight ? twStep(lgRight[1]) : 0) };
   };
   const cx = confirmX(MOD);
-  ok(`4.1 · ConfirmModal: the ✕ centres ${cx?.centre}px down the header row — the medallion's centre (${medallionCentre}px) — at every padding`,
-    !!cx && Math.abs(cx.centre - medallionCentre) < 0.01, JSON.stringify(cx));
+  ok(`4.1 · ConfirmModal: the ✕ centres ${cx?.centre}px down the header row — on the title's capitals (${titleCaps.toFixed(2)}px), at every padding`,
+    !!cx && Math.abs(cx.centre - titleCaps) < 0.5, JSON.stringify(cx));
   ok(`4.1′ · …and takes ${cx?.occupies}px of the row, no more than the medallion's ${medallionTop + 36}: the row is as tall as it was, with or without the ✕ (it is withdrawn while a request is in flight)`,
     !!cx && cx.occupies <= medallionTop + 36);
   ok(`4.1″ · it stands ${cx?.insetPhone}px / ${cx?.insetLg}px inside the panel's right edge (phone / from 1024) — where Modal pins every other dialog's (right-3, 16px)`,
@@ -401,25 +409,32 @@ section("4 · every confirm's ✕ on its header's centre, and the header no tall
   const old = { phone: twStep("5") + medallionCentre - (twStep("3") + BOX / 2), lg: twStep("6") + medallionCentre - (twStep("3") + BOX / 2) };
   ok(`4.1‴ CONTROL · Modal's pinned ✕ stood ${old.phone}px above the header on a phone (measured on 002: ✕ y270–279, medallion y261–296) and ${old.lg}px from 1024`,
     old.phone === 4 && old.lg === 12);
-  const noRise = confirmX(MOD.replace('className="-mt-1 -mb-1.5 -mr-1.5 lg:-mr-3 shrink-0"', 'className="-mb-1.5 -mr-1.5 lg:-mr-3 shrink-0"'));
-  const grows = confirmX(MOD.replace('className="-mt-1 -mb-1.5 -mr-1.5 lg:-mr-3 shrink-0"', 'className="-mt-1 -mr-1.5 lg:-mr-3 shrink-0"'));
-  ok(`4.1⁗ PLANT · the ✕ without its 4px rise (centre ${noRise?.centre} against ${medallionCentre}) and without its bottom give-back (${grows?.occupies}px of the row) are each reported`,
-    !!noRise && Math.abs(noRise.centre - medallionCentre) >= 0.01 && !!grows && grows.occupies > medallionTop + 36);
+  const LIVE_X = 'className="mt-[2.8px] -mb-[12.8px] -mr-1.5 lg:-mr-3 shrink-0"';
+  const onMedallion = confirmX(MOD.replace(LIVE_X, 'className="-mt-1 -mb-1.5 -mr-1.5 lg:-mr-3 shrink-0"'));
+  const grows = confirmX(MOD.replace(LIVE_X, 'className="mt-[2.8px] -mr-1.5 lg:-mr-3 shrink-0"'));
+  ok(`4.1⁗ PLANT · the ✕ back on the medallion's centre (${onMedallion?.centre}px, ${(titleCaps - (onMedallion?.centre ?? 0)).toFixed(1)}px above the capitals — round 4's place) and without its bottom give-back (${grows?.occupies}px of the row) are each reported`,
+    !!onMedallion && Math.abs(onMedallion.centre - medallionCentre) < 0.01 && Math.abs(onMedallion.centre - titleCaps) >= 0.5
+      && !!grows && grows.occupies > medallionTop + 36);
 
   // BetConfirmModal: its own ✕, in the row beside the eyebrow (14px line) and the title (Sora 15px, leading-snug 1.375).
   const BCM = read("src/components/markets/bet-confirm-modal.tsx");
   const capCentre = 14 + twStep("1") + soraCapCentreEm(1.375) * 15;
+  // Round 5 (R5-A, F20 follow-up): the ✕ is no longer drawn by hand — it is the one ✕, `CloseX` (the same 48px box,
+  // modal.tsx), named "Funga" and closing through the guarded close — so its classes are read from that call.
   const betX = (src: string) => {
-    const cls = /aria-label=\{t\.common\.cancel\}\s*className="([^"]*?)\s*inline-flex h-8 w-8 items-center justify-center rounded-md text-text-subtle/.exec(src)?.[1];
+    const cls = /<CloseX withheld=\{pending\} onClick=\{\(\) => \{ if \(!pending\) onCancel\(\); \}\} label=\{t\.common\.close\} className="([^"]*)" \/>/.exec(src)?.[1];
     return cls === undefined ? null : { centre: margin(cls, "mt") + BOX / 2, occupies: BOX + margin(cls, "mt") + margin(cls, "mb") };
   };
   const bx = betX(BCM);
   ok(`4.2 · the bet confirm's ✕ centres ${bx?.centre}px down, on the title's capitals (${capCentre.toFixed(2)}px: Sora caps centre ${soraCapCentreEm(1.375).toFixed(4)}em in a 1.375 line), and still takes ${bx?.occupies}px of the row`,
     !!bx && Math.abs(bx.centre - capCentre) < 0.5 && bx.occupies === BOX, JSON.stringify(bx));
-  const betOld = betX(BCM.replace('className="mt-1 -mb-1 shrink-0 inline-flex', 'className="shrink-0 inline-flex'));
+  // Round 5 (R5-A, F20) moved these plants' anchor: the ✕ also steps out to 16px inside the panel's edge (`-mr-1.5
+  // lg:-mr-3`, as ConfirmModal's) — the vertical classes they plant on are unchanged.
+  const BET_X = 'className="mt-1 -mb-1 -mr-1.5 lg:-mr-3 shrink-0"';
+  const betOld = betX(BCM.replace(BET_X, 'className="-mr-1.5 lg:-mr-3 shrink-0"'));
   ok(`4.2′ CONTROL/PLANT · without the 4px it centres ${betOld?.centre}px, ${(capCentre - (betOld?.centre ?? 0)).toFixed(2)}px above the capitals (068: ✕ ink y64–73, the title's first line y66–78)`,
     !!betOld && Math.abs(betOld.centre - capCentre - -3.94) < 0.05);
-  const betGrows = betX(BCM.replace('className="mt-1 -mb-1 shrink-0 inline-flex', 'className="mt-1 shrink-0 inline-flex'));
+  const betGrows = betX(BCM.replace(BET_X, 'className="mt-1 -mr-1.5 lg:-mr-3 shrink-0"'));
   ok(`4.2″ PLANT · the 4px not given back (${betGrows?.occupies}px: a one-line title's row 4px taller) is reported`, !!betGrows && betGrows.occupies !== BOX);
 }
 

@@ -97,6 +97,8 @@ export function HoldButton({
         closeOnScrim={false}
         labelledBy="hold-title"
         maxWidth={480}
+        /* The ✕ is withheld while the hold is in flight (round 5, F20 — the one rule, `CloseX` in modal.tsx). */
+        showClose={!pending}
       >
         <div className="space-y-4">
           {/* ⚠️ `text-body-lg`, NOT the `text-[16px]` its neighbour `settle-button.tsx:78`

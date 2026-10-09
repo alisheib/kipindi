@@ -172,15 +172,31 @@ export function useExitPhase(open: boolean, beat: ExitBeat = "--t-quick"): { pre
 
 /**
  * The dialog's ✕ — ONE definition (R4-I, 2026-10-09). Modal pins it to the panel's corner; ConfirmModal draws it in its
- * header row, on the medallion's centre (see there). A 48px box (`h-8 w-8` on this repo's overridden scale), a 16px glyph.
+ * header row (see there), and so do the sell and bet confirms (`sell-confirm-modal.tsx`, `bet-confirm-modal.tsx`, which
+ * import it). A 48px box (`h-8 w-8` on this repo's overridden scale), a 16px glyph.
+ * ⭐ ONE CONVENTION FOR WHERE IT STANDS (round 5 of the visual pass, 2026-10-09, F20): a panel's, a sheet's or a dialog's ✕
+ * is centred on the cap band of its title's FIRST line — R4-E's guest sheet, R4-I's bet confirm — and its box stands 16px
+ * inside the panel's right edge, where Modal pins it. Sora's capitals are centred L/2 − 0.025em below the top of a line
+ * of height L (ascent 0.97, descent 0.29, cap 0.73 per em): 0.6em in a 1.25 line, 0.6625em in a 1.375 one. Where the ✕
+ * is pinned to the corner, the title comes to it (`.kp-modal-title`, `.kp-jsheet__title`, globals.css); where it stands
+ * in a header row, it goes to the title (ConfirmModal below, the bet and sell confirms, the filter sheet).
+ * ⭐ ONE RULE WHILE A REQUEST IS IN FLIGHT (round 5, 2026-10-09, F20): the ✕ is there exactly when the dialog's own way
+ * out is. While a request the dialog sent is in flight — its Cancel or keep button disabled, the scrim and Esc refused,
+ * because closing then reads as cancelled while the server goes ahead — the ✕ is WITHHELD, as twenty dialogs already
+ * withheld Modal's (`showClose={!pending}`) and ConfirmModal withheld its own. A ✕ drawn but dead was the one way out
+ * that looked live and did nothing. Pinned to the corner, Modal simply does not draw it (it stands out of the flow, so
+ * nothing moves); in a header row it is `withheld` here — not drawn (`invisible`), not pressable (`disabled`, which the
+ * focus trap skips), its box kept — so the row is as tall and the title wraps exactly as beside the ✕: the body never
+ * moves. A dialog busy with its way out still open (ConfirmModal's `confirmHeld`, a re-read) keeps its ✕ drawn and live.
  */
-function CloseX({ onClick, label, className }: { onClick: () => void; label: string; className: string }) {
+export function CloseX({ onClick, label, className, withheld = false }: { onClick: () => void; label: string; className: string; withheld?: boolean }) {
   return (
     <button
       type="button"
       onClick={onClick}
       aria-label={label}
-      className={`${className} inline-flex h-8 w-8 items-center justify-center rounded-md text-text-subtle hover:bg-bg-overlay hover:text-text transition-colors`}
+      disabled={withheld}
+      className={`${className} inline-flex h-8 w-8 items-center justify-center rounded-md text-text-subtle hover:bg-bg-overlay hover:text-text transition-colors${withheld ? " invisible" : ""}`}
     >
       <I.x s={16} />
     </button>
@@ -834,7 +850,16 @@ export function ConfirmModal({
          from the panel's right edge, where Modal draws every other dialog's. Its bottom gives back 8px (`-mb-1.5`), so it
          occupies 48 − 4 − 8 = 36px of the row, under the medallion's 38: the row is exactly as tall as it was, and stays
          so when the ✕ is withdrawn — the body below never moves. A long title now wraps before the ✕ instead of running
-         under it. While a request is in flight it is not drawn, as Modal's was not (`showClose={!loading}`). */
+         under it. While a request is in flight it is not drawn, as Modal's was not (`showClose={!loading}`).
+         ⭐ ROUND 5 (2026-10-09, F20) — ON THE TITLE'S CAPITALS, THE ONE CONVENTION (`CloseX` above). The medallion's centre
+         (20px down) is between the eyebrow and the title, level with neither line; the bet confirm, whose header is the
+         same eyebrow over a title, already stood its ✕ on the title's capitals. Here the title's first line starts
+         14 (the eyebrow's line) + 2 (`mt-0.5`) = 16px down, a 1.25 line of 18px, so its capitals centre 16 + 0.6 × 18 =
+         26.8px down: the 48px box drops to 2.8px (`mt-[2.8px]`) and gives back 12.8px under it (`-mb-[12.8px]`), so it
+         still takes 38px of the row — the medallion's 2 + 36 — and the row is as tall as it was. 16px inside the panel's
+         right edge, as before. While a request is in flight it is `withheld` (CloseX above: not drawn, its box kept), where
+         it was taken out of the row: that gave a title 56px more line on a phone (48 from 1024), so one that wrapped beside
+         the ✕ could fold back to one line while the request ran, and the body rose under it. Now nothing moves. */
       showClose={false}
     >
       <div className="mb-3 flex items-start gap-3">
@@ -860,7 +885,7 @@ export function ConfirmModal({
             {title}
           </h2>
         </div>
-        {!loading && <CloseX onClick={onClose} label={t.common.close} className="-mt-1 -mb-1.5 -mr-1.5 lg:-mr-3 shrink-0" />}
+        <CloseX withheld={loading} onClick={onClose} label={t.common.close} className="mt-[2.8px] -mb-[12.8px] -mr-1.5 lg:-mr-3 shrink-0" />
       </div>
 
       <div className="text-[13.5px] text-text-muted leading-relaxed mb-4">

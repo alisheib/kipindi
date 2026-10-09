@@ -183,7 +183,9 @@ function measureTop(panel: HTMLElement | null = null): number {
     const below = main.offsetTop + 12;
     const stack = Math.min(Math.max(below, TOP_FALLBACK), TOP_CAP);
     const bar = pinnedBarBottom(panel);
-    return bar > 0 ? Math.max(stack, bar + 12) : stack;
+    // ⭐ A WHOLE PIXEL (round 5, F20): a pinned bar's height can be fractional, and a card on a half pixel draws its
+    // border, its title's baseline and its × each snapped its own way — the × then stands off the capitals it is set on.
+    return bar > 0 ? Math.max(stack, Math.round(bar + 12)) : stack;
   } catch {
     return TOP_FALLBACK;
   }
@@ -359,11 +361,18 @@ export function ChannelsPanel({ promoSuppressed }: { promoSuppressed: boolean })
       {/* 2026-10-08 (WP12's tiles 320, 321, 323, 324) — the title row is a row like the two below it: the title is
           centred on the close control's 44px box, so the × sits on the title's line (it hung 13px under it, the
           title pinned to the top of that box), and the title's centre stands one row pitch (46px) above the first
-          row's — the list's 2px top margin is the 2px between its rows. It was 62px. */}
-      <div className="flex items-center gap-3">
+          row's — the list's 2px top margin is the 2px between its rows. It was 62px.
+          ⭐ …ON THE TITLE'S CAPITALS, NOT ITS LINE (round 5 of the visual pass, 2026-10-09, F20 — the one convention,
+          `CloseX` in modal.tsx). Measured on 320 321 323 324: "F" y229.6–240.0 (centre 234.8), the × ink y232.3–240.7
+          (centre 236.5) — the × 1.7px under the capitals. Sora centres its capitals 0.025em above the middle of a 1.25
+          line (0.35px at 14px), and the 15px glyph, centred in the 44px box, stood on a half pixel and was drawn half a
+          pixel lower. The title now stands on the row's top with its capitals' centre on the box's — 22 − 0.6 × 14 =
+          13.6px down (a top margin of 22px less 0.6em, R4-E's construction for the guest sheet) — and the glyph is the dialogs'
+          16px, which centres on a whole pixel. The row stays 44px, so the 46px pitch holds. */}
+      <div className="flex items-start gap-3">
         <p
           id="channels-panel-title"
-          className="min-w-0 flex-1 font-display text-body font-semibold leading-tight text-text"
+          className="mt-[calc(22px-0.6em)] min-w-0 flex-1 font-display text-body font-semibold leading-tight text-text"
         >
           {t.channels.title}
         </p>
@@ -374,7 +383,7 @@ export function ChannelsPanel({ promoSuppressed }: { promoSuppressed: boolean })
           data-testid="channels-panel-close"
           className="shrink-0 inline-flex h-[44px] w-[44px] items-center justify-center rounded-md text-text-subtle hover:text-text transition-colors"
         >
-          <I.x s={15} aria-hidden />
+          <I.x s={16} aria-hidden />
         </button>
       </div>
 

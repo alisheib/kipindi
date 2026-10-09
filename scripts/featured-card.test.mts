@@ -197,7 +197,9 @@ const card = decomment(read("src/components/markets/market-card.tsx"));
   const nbAt = css.indexOf("\n.mcardp-nobets {");
   const nobets = nbAt < 0 ? "" : css.slice(nbAt, css.indexOf("}", nbAt));
   // The pool slot: the no-pool words on a fresh card (round 3), the NAMED figure on the featured card (round 4, 2.18).
-  const POOL_SPAN = /<span data-market-part="pool" className=\{fresh \? "mcardp-nopool" : featured \? "mcardp-pool" : undefined\}>\s*\{fresh \? t\.market\.noPoolYet : featured \? <>\{t\.common\.pool\}\{" "\}<span className="amount">\{formatTzs\(volume\)\}<\/span><\/> : formatTzs\(volume\)\}\s*<\/span>/;
+  // Round 5 (R5-A) moved this pin: a grid card's figure names itself to a screen reader in the same word (`sr-only`),
+  // with no change on screen.
+  const POOL_SPAN = /<span data-market-part="pool" className=\{fresh \? "mcardp-nopool" : featured \? "mcardp-pool" : undefined\}>\s*\{fresh \? t\.market\.noPoolYet : featured \? <>\{t\.common\.pool\}\{" "\}<span className="amount">\{formatTzs\(volume\)\}<\/span><\/> : <><span className="sr-only">\{t\.common\.pool\}\{" "\}<\/span>\{formatTzs\(volume\)\}<\/>\}\s*<\/span>/;
   check("2.15 the empty state reads at the reading floor — no bets, be the first, and the featured no-pool words at --type-small; the no-bets line in --text-subtle on its measured 15px box",
     nobets.includes("font-size: var(--type-small);") && nobets.includes("line-height: 15px;") && nobets.includes("color: var(--text-subtle);")
       && !/letter-spacing/.test(nobets)

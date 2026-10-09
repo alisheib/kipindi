@@ -53,18 +53,44 @@ export const HUB_WORDS = [
   "journey.hubGroupProfile", "journey.hubGroupHelp", "journey.hubGroupSettings", "journey.hubGroupAgent",
   "journey.hubGroupFairnessHelp", "journey.hubGroupLegal",
   "common.wallet", "common.balanceFrozen", "journey.withdrawAction",
-  "common.results", "common.live", "common.leaderboard",
+  "common.results", "common.live", "leaderboard.title",
   "footer.setLimits", "journey.hubLimitsSub", "footer.takeABreak", "footer.selfExclude",
-  "profile.inviteFriends", "agent.dashTitle", "common.proposeEarn",
-  "common.profile", "common.verifyId", "profile.verifyIdSub", "footer.resolutionAttestation",
+  "profile.inviteFriends", "agent.dashTitle", "proposals.title",
+  "common.profile", "profile.verifyIdentity", "profile.verifyIdSub", "footer.resolutionAttestation",
   "common.help", "journey.hubHelpSub", "common.notifications", "common.search", "agent.footerLink",
-  "footer.privacyNotice", "footer.amlKyc", "footer.terms", "footer.gameRtp",
+  "common.consentMore", "footer.amlKyc", "footer.terms", "footer.gameRtp",
 ] as const;
+
+/*
+ * ⭐ ONE PAGE, ONE NAME — EVERY ROW (round 5 of the visual pass, 2026-10-09, F17; the R4-H rule of edges E4 / E33: a door
+ * names its page as the page names itself). Each row was held to the name its page gives itself — its title, the
+ * eyebrow that names it, its h1 — and four said something else; each now takes the page's own words, from keys the
+ * dictionary already has:
+ *   · Thibitisha kitambulisho / Verify your identity / 验证您的身份 — the KYC page's h1 (`profile.verifyIdentity`); the row
+ *     said "Thibitisha ID" / "Verify ID" (tile 331);
+ *   · Bingwa / Leaderboard / 排行榜 — the leaderboard's own title, its eyebrow and its <title> (`leaderboard.title`); the
+ *     row said "Jedwali la Washindi" in Swahili;
+ *   · Mapendekezo ya Masoko / Market Proposals / 市场提议 — the proposals page's own title (`proposals.title`, its eyebrow
+ *     and its h1); the row said "Pendekeza na upate zawadi / Propose & earn / 提议赚钱";
+ *   · Sera ya faragha / Privacy policy / 隐私政策 — the privacy page's title ("Sera ya Faragha / Privacy Policy / 隐私政策",
+ *     page-local, as every legal title is), in the one key that already carries those words (`common.consentMore`, the
+ *     consent prompt's link to the same page); the row said "Notisi ya faragha / Privacy notice / 隐私声明".
+ * The journey's other doors to these pages say the same since this round: its footer (`public-footer.tsx`, the journey
+ * arm), its avatar menu (`avatar-menu.tsx`, the journey's menu) and the profile page's KYC row.
+ * The rest match their page already: Matokeo, Mubashara (the live page's title and h1), Uthibitisho wa utatuzi, Msaada,
+ * Pochi, Arifa, Wasifu, Alika marafiki, Masharti ya huduma, Kuwa wakala. They differ by design where a row names an ACT on
+ * its page rather than the page — Weka mipaka, Pumzika, Jizuie (owner-approved RG doors, each landing on its own
+ * section), Tafuta — and Toa pesa is the journey's own word for its money doors (its Wallet sheet's button says the
+ * same), while the withdraw page itself says "Toa" over "Toa fedha": that page's words are the wallet's to align. They
+ * cannot match yet where no key holds the page's name: the rules page ("RTP ya mchezo na sheria" for "Kanuni za
+ * Michezo") and the Swahili AML title ("Sera ya AML / KYC" for "Sera ya Kuzuia Uoshaji wa Fedha na KYC") — both S12
+ * items, words this pass cannot add.
+ */
 export type HubWord = (typeof HUB_WORDS)[number];
 
 /** A glyph of `I` (`components/ui/glyphs.tsx`). The row renderer indexes `I` with it, so a wrong name fails the build. */
 export type HubGlyph =
-  | "wallet" | "arrowUpFromLine" | "checkCircle" | "radio" | "podium" | "shield" | "pause" | "circleStop"
+  | "wallet" | "arrowUpFromLine" | "resolved" | "radio" | "podium" | "shield" | "pause" | "circleStop"
   | "users" | "sparkle" | "user" | "idCard" | "sealCheck" | "headset" | "search" | "shieldcheck"
   | "fileText" | "tippingScales" | "info";
 
@@ -98,9 +124,12 @@ export type HubGroupKey =
 /** One card: a list named by its group word — never a navigation landmark (S6-PLAN WP5 step 2). */
 export type HubGroup = { key: HubGroupKey; label: HubWord; rows: HubRow[] };
 
-const RESULTS: HubRow = { id: "results", kind: "link", href: "/results", label: "common.results", glyph: "checkCircle" };
+/** ⭐ Matokeo wears the results page's own glyph (round 5, the check on tile 197): `checkCircle` drew the same circled check
+ *  as Uthibitisho wa utatuzi's `sealCheck` one card below, two doors under one sign. `resolved` — the check in its rays — is
+ *  the one /results' header, the classic menu's Results row and the trust band already draw. */
+const RESULTS: HubRow = { id: "results", kind: "link", href: "/results", label: "common.results", glyph: "resolved" };
 const LIVE: HubRow = { id: "live", kind: "link", href: "/live", label: "common.live", glyph: "radio" };
-const LEADERBOARD: HubRow = { id: "leaderboard", kind: "link", href: "/leaderboard", label: "common.leaderboard", glyph: "podium" };
+const LEADERBOARD: HubRow = { id: "leaderboard", kind: "link", href: "/leaderboard", label: "leaderboard.title", glyph: "podium" };
 const FAIRNESS: HubRow = { id: "fairness", kind: "link", href: "/fairness", label: "footer.resolutionAttestation", glyph: "sealCheck" };
 /** ⛔ Msaada's second line names no phone number (§0h point 10). */
 const HELP: HubRow = { id: "help", kind: "link", href: "/help", label: "common.help", sub: "journey.hubHelpSub", glyph: "headset" };
@@ -142,7 +171,7 @@ function guestGroups(): HubGroup[] {
       key: "legal",
       label: "journey.hubGroupLegal",
       rows: [
-        { id: "privacy", kind: "link", href: "/legal/privacy", label: "footer.privacyNotice", glyph: "fileText" },
+        { id: "privacy", kind: "link", href: "/legal/privacy", label: "common.consentMore", glyph: "fileText" },
         { id: "aml", kind: "link", href: "/legal/aml", label: "footer.amlKyc", glyph: "shieldcheck" },
         { id: "terms", kind: "link", href: "/legal/terms", label: "footer.terms", glyph: "tippingScales" },
         { id: "rules", kind: "link", href: "/legal/rules", label: "footer.gameRtp", glyph: "info" },
@@ -168,11 +197,11 @@ function memberGroups(v: HubMember): HubGroup[] {
     });
   }
   if (v.doors.proposalsVisible) {
-    share.push({ id: "proposals", kind: "link", href: "/proposals", label: "common.proposeEarn", glyph: "sparkle", extra: "proposals" });
+    share.push({ id: "proposals", kind: "link", href: "/proposals", label: "proposals.title", glyph: "sparkle", extra: "proposals" });
   }
 
   const profile: HubRow[] = [{ id: "profile", kind: "link", href: "/profile", label: "common.profile", glyph: "user" }];
-  if (v.kycOffered) profile.push({ id: "kyc", kind: "link", href: "/profile/kyc", label: "common.verifyId", sub: "profile.verifyIdSub", glyph: "idCard" });
+  if (v.kycOffered) profile.push({ id: "kyc", kind: "link", href: "/profile/kyc", label: "profile.verifyIdentity", sub: "profile.verifyIdSub", glyph: "idCard" });
   profile.push(FAIRNESS);
 
   // Kuwa wakala under the footer's own rule: the programme open, or the reader already inside it (§0h point 9).

@@ -24,6 +24,7 @@ import { LICENCE_NUMBER } from "@/lib/support-config";
 import { SOCIAL_LIVE } from "@/lib/social";
 import { SOCIAL_MARK } from "@/components/ui/social-marks";
 import { useT } from "@/lib/i18n";
+import { keepRegulator } from "@/components/ui/keep-words";
 import type { ProposalsState } from "@/lib/server/proposals-config";
 
 export function PublicFooter({
@@ -151,8 +152,12 @@ export function PublicFooter({
             <span className="font-display font-bold text-[14px] text-text">50pick</span>
           </div>
           {/* zh keeps its words whole (break-keep); the zh string carries zero-width break hints between its words. */}
-          <p className="text-text-muted leading-relaxed text-body-sm text-balance break-keep">
-            {t.footer.licensedByGbt}
+          {/* ⭐ …AND IN THE JOURNEY THE REGULATOR'S NAME IS ONE NAME (round 5, F18 — tile 307): at en 1024 the line read
+              "Licensed by the Gaming" / "Board of Tanzania."; it now reads "Licensed by the" / "Gaming Board of Tanzania.",
+              the name kept whole wherever the column can hold it (`keepRegulator`, keep-words.tsx; `.kp-gbt`, globals.css).
+              ⛔ The journey's footer only: the classic footer is frozen chrome and keeps main's bytes (`journeyShown`). */}
+          <p className={`text-text-muted leading-relaxed text-body-sm text-balance break-keep${journeyShown ? " kp-gbt" : ""}`}>
+            {journeyShown ? keepRegulator(t.footer.licensedByGbt) : t.footer.licensedByGbt}
           </p>
           <p className="font-mono text-[11px] text-text-subtle tabular-nums">
             {t.footer.license}: {license}
@@ -249,10 +254,15 @@ export function PublicFooter({
               at 1024, the 160px one at 768), the line breaks are balanced: "Pendekeza masoko" over "upate pesa
               INAKUJA", where a greedy break had left the flag alone on the second line.
               ⛔ For the journey's footer ONLY (2026-10-09): the classic footer is frozen chrome and keeps main's
-              greedy break, so its bytes and boxes stay main's (`journeyShown` above). */}
+              greedy break, so its bytes and boxes stay main's (`journeyShown` above). Since round 5 the journey's label
+              is the page's own name (below), and the same balance shares its lines with the flag. */}
+          {/* ⭐ ONE PAGE, ONE NAME IN THE JOURNEY (round 5, F17): its footer names /proposals, /legal/privacy and /help as
+              those pages name themselves — "Mapendekezo ya Masoko" (`proposals.title`), "Sera ya faragha / Privacy policy"
+              (the privacy page's title, `common.consentMore`), "Msaada / Help" (`common.help`) — the words the journey's hub
+              and avatar menu use since this round (`hub-rows.ts`). The classic footer keeps its words (frozen chrome). */}
           {proposalsState !== "DISABLED" && (
             <FooterLink href="/proposals" balance={journeyShown}>
-              {t.footer.proposeGetPaid}
+              {journeyShown ? t.proposals.title : t.footer.proposeGetPaid}
               <ProposalsStateBadge state={proposalsState} comingSoonLabel={t.proposals.comingSoonTag} maintenanceLabel={t.proposals.maintenanceTag} size="xs" className="ml-1.5" />
             </FooterLink>
           )}
@@ -271,11 +281,11 @@ export function PublicFooter({
           {/* The public door closes with the programme — a link to a 404 is not a door — but
               it stays open for anyone already inside it. Resolved in `app-shell.tsx`. */}
           {agentDoorVisible && <FooterLink href="/agent">{t.agent.footerLink}</FooterLink>}
-          <FooterLink href="/help">{t.footer.helpSupport}</FooterLink>
+          <FooterLink href="/help">{journeyShown ? t.common.help : t.footer.helpSupport}</FooterLink>
         </FooterCol>
 
         <FooterCol heading={t.footer.privacy}>
-          <FooterLink href="/legal/privacy">{t.footer.privacyNotice}</FooterLink>
+          <FooterLink href="/legal/privacy">{journeyShown ? t.common.consentMore : t.footer.privacyNotice}</FooterLink>
           <FooterLink href="/legal/aml">{t.footer.amlKyc}</FooterLink>
           <FooterLink href="/legal/terms">{t.footer.terms}</FooterLink>
           <FooterLink href="/profile/account">{t.footer.exportClose}</FooterLink>

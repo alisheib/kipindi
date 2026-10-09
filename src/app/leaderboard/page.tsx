@@ -7,7 +7,7 @@
  * sample data is generated for the empty demo store in non-production only.
  */
 import { ROOT_OPEN_GRAPH } from "../layout";
-import { cn, fill } from "@/lib/utils";
+import { cn, fill, formatNumber } from "@/lib/utils";
 import { db } from "@/lib/server/store";
 import Link from "next/link";
 import { I } from "@/components/ui/glyphs";
@@ -630,8 +630,10 @@ function Podium({ top, t }: { top: Row[]; t: Dict }) {
                 {r.roi >= 0 ? "+" : ""}{r.roi.toFixed(1)}%
               </span>
               {r.streak > 0 && <span className="mt-1"><HotChip streak={r.streak} t={t} /></span>}
+              {/* Round 5 (F12): a count's word is the dictionary's sentence word (`results.resolved`, "5 imetatuliwa" — the
+                  /results tally's), never a column label lower-cased in code; the count grouped by `formatNumber`. */}
               <span className="mt-1 font-mono text-[10px] text-text-subtle">
-                {r.resolved} {t.leaderboard.tableResolved.toLowerCase()}
+                {formatNumber(r.resolved)} {t.results.resolved}
               </span>
             </div>
           );

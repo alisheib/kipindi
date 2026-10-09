@@ -953,10 +953,14 @@ function run(w: World, log: (l: string) => void): string[] {
       && /initialFocus=\{primaryRef\}/.test(orm) && /if \(onPrimary\) onPrimary\(\); else onClose\(\)/.test(ormPrimary),
     JSON.stringify({ bet: betConfirm.slice(0, 80), sell: sellConfirm.slice(0, 80), orm: ormPrimary.slice(0, 80) }));
   const ormSecondary = buttonWith(orm, "if (onSecondary) onSecondary(); else onClose()") ?? "";
-  ok("2.3 · each way out is a real button with its own act — the bet's ✕ and Cancel, the Sell's keep, the result's secondary",
-    count(bet, "onClick={onCancel}") >= 2 && count(sell, "onClick={onCancel}") >= 1
+  // Round 5 (R5-A, F20, 2026-10-09): the bet's ✕ is no longer drawn by hand with `onClick={onCancel}` — it is the one ✕,
+  // `CloseX` (a real `type="button"`, modal.tsx), closing through the dialog's guarded close as the Sell's does, and
+  // withheld while a request is in flight. So the ✕ half reads that form in both money dialogs.
+  const guardedX = "<CloseX withheld={pending} onClick={() => { if (!pending) onCancel(); }}";
+  ok("2.3 · each way out is a real button with its own act — the bet's and the Sell's ✕ (CloseX, the guarded close), the bet's Cancel, the Sell's keep, the result's secondary",
+    count(bet, "onClick={onCancel}") >= 1 && count(sell, "onClick={onCancel}") >= 1 && [bet, sell].every((s) => s.includes(guardedX))
       && [bet, sell].every((s) => !/onClick=\{onConfirm\}/.test(s)) && /type="button"/.test(ormSecondary),
-    JSON.stringify({ betCancels: count(bet, "onClick={onCancel}"), sellCancels: count(sell, "onClick={onCancel}") }));
+    JSON.stringify({ betCancels: count(bet, "onClick={onCancel}"), sellCancels: count(sell, "onClick={onCancel}"), guardedX: [bet, sell].map((s) => s.includes(guardedX)) }));
 
   ok("2.5 · the rule is pure — held-key.ts imports nothing, so the guard runs the very rule the dialog runs",
     !/^\s*import\b/m.test(decomment(w.read(RULE))) && /export function swallowsHeldKey\(/.test(w.read(RULE)));

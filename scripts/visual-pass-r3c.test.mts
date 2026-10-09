@@ -427,8 +427,11 @@ section("10 · the capture waits for the unread sign it shoots, and its pointer 
   ok("10.2 · the wait outlasts one failed read's retry (21–39 s) and asks the once-reading Arifa row to read again",
     /UNREAD_WAIT_MS = 45_000/.test(drive) && /new Event\('50pick:refresh-notifications'\)/.test(drive)
       && /INBOX_CHANGED = "50pick:refresh-notifications"/.test(read("src/lib/journey/unread-count.ts")));
+  // Round 5 (R5-A, F5) moved this pin: the move is the harness's one `parkPointer` helper now (R4-G's expression, the same
+  // move to x 2 at half the viewport), which `shoot` also calls before every tile — the helper must still be that move.
   ok("10.3 · after pressing the hub's Matokeo row the pointer moves off the page's controls (the HAPANA hover fill on tile 326)",
-    /a\.kp-hub__row\[href='\/results'\]`\)\.first\(\)\.click[\s\S]{0,600}?page\.mouse\.move\(2,/.test(drive));
+    /a\.kp-hub__row\[href='\/results'\]`\)\.first\(\)\.click[\s\S]{0,600}?await parkPointer\(page\);/.test(drive)
+      && /const parkPointer = \(page\) => page\.mouse\.move\(2, /.test(drive));
 }
 
 console.log(`\nvisual-pass-r3c: ${pass} passed, ${fails.length} failed\n`);

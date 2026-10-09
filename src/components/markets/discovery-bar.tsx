@@ -39,8 +39,10 @@ import {
   QuerySort,
   QueryStrip,
 } from "@/components/ui/query-bar";
+import { formatTzsCompact } from "@/lib/utils";
 import {
   ODDS_IDS,
+  POOL_FLOORS,
   POOL_IDS,
   SORT_IDS,
   STATUS_IDS,
@@ -101,7 +103,8 @@ import { FilterSheet, FilterSheetGroup } from "./filter-sheet";
  */
 function Chip(props: {
   href: string;
-  label: string;
+  /** A word, or (the pool floors) a sum set as money — FilterPill takes either. */
+  label: React.ReactNode;
   count?: number;
   pressed: boolean;
   glyph?: React.ReactNode;
@@ -167,10 +170,18 @@ export function DiscoveryBar({
     cont: t.market.oddsCont,
     long: t.market.oddsLong,
   };
-  const POOL_LABEL: Record<PoolId, string> = {
+  /* ⭐ A POOL FLOOR IS A SUM, SO IT IS WRITTEN AS ONE (round 5 of the visual pass, 2026-10-09, F15 — /markets at 1280).
+     The chips read "TZS 10k+" / "TZS 50k+", the dictionary's own strings, in the chip's sans with a lower-case k, a few
+     centimetres from every other compact sum on the page — "TZS 49K" over the bar, the cards' "TZS 10,800" — which are
+     mono with a capital K. Each floor's label is now the floor itself (`POOL_FLOORS`, the number `matchesPool` tests the
+     rows against) through the money formatter, set as money (`.amount`): "TZS 10K+", so the label can never say a
+     different figure from the filter it names. The "+" is the floor's "or more" and stays with its figure. "Any" is a
+     word and stays the chip's word. (`market.pool10k` / `pool50k` stay in the dictionary, which this pass does not edit.) */
+  const poolFloor = (p: Exclude<PoolId, "any">) => <span className="amount">{formatTzsCompact(POOL_FLOORS[p])}+</span>;
+  const POOL_LABEL: Record<PoolId, React.ReactNode> = {
     any: t.market.poolAny,
-    "10k": t.market.pool10k,
-    "50k": t.market.pool50k,
+    "10k": poolFloor("10k"),
+    "50k": poolFloor("50k"),
   };
 
   // A signed-out player has no server-side watchlist, so the segment would always read 0.

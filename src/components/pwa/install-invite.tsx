@@ -273,9 +273,15 @@ export function InstallInvite() {
              measured by `qa:install-shown` as `div 302x137 in 298x137`, at EVERY width and in ALL
              THREE languages. ⛔ Four pixels is invisible in a screenshot; arithmetic caught it on
              the first run. A negative margin is precisely how text and controls leave their box. */
-          className="shrink-0 inline-flex h-[44px] w-[44px] items-center justify-center rounded-md text-text-subtle hover:text-text"
+          /* ⭐ ON THE TITLE'S CAPITALS (round 5 of the visual pass, 2026-10-09, F20 — the one convention, `CloseX` in
+             modal.tsx; the channels panel, this card's twin, the same). The box stood on the row's top, so the ✕ centred
+             22px down while the title — a 1.25 line of 14px on the row's top — centres its capitals 0.6 × 14 = 8.4px down:
+             13.6px under them. The box rises 13.6px — a TOP margin, into the card's own 14px padding, so it stays inside
+             the card and adds no width (the right margin the note above forbids is not touched); the row keeps its
+             height, which the text column sets. The glyph is the dialogs' 16px, centred on a whole pixel. */
+          className="-mt-[13.6px] shrink-0 inline-flex h-[44px] w-[44px] items-center justify-center rounded-md text-text-subtle hover:text-text"
         >
-          <I.x s={15} aria-hidden />
+          <I.x s={16} aria-hidden />
         </button>
       </div>
     </div>

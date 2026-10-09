@@ -246,8 +246,8 @@ const W = {
   guestPrompt: { sw: 'Ingia au jisajili ili uone pochi na tiketi zako.', en: 'Sign in or sign up to see your wallet and tickets.', zh: '登录或注册以查看您的钱包和注单。' },
   /** common.staffConsole */
   staffConsole: { sw: 'Konsoli ya wafanyakazi', en: 'Staff console', zh: '员工控制台' },
-  /** common.verifyId: the Profile card’s door to /profile/kyc */
-  verifyId: { sw: 'Thibitisha ID', en: 'Verify ID', zh: '身份验证' },
+  /** profile.verifyIdentity: the Profile card’s door to /profile/kyc — the KYC page’s own h1 since round 5 (F17) */
+  verifyId: { sw: 'Thibitisha kitambulisho', en: 'Verify your identity', zh: '验证您的身份' },
   /** notif.unreadOne and notif.unreadN: the dot’s count in words (journey-tabs.tsx, `TabUnread`’s sr-only span) */
   unreadOne: { sw: '1 haijasomwa', en: '1 unread', zh: '1 条未读' },
   unreadN: { sw: '{n} hazijasomwa', en: '{n} unread', zh: '{n} 条未读' },
@@ -898,6 +898,18 @@ async function settle(page, ms = 300) {
   await page.evaluate(() => new Promise((done) => requestAnimationFrame(() => requestAnimationFrame(() => done(true)))));
   await page.waitForTimeout(ms);
 }
+/**
+ * ⭐ THE POINTER IS PARKED BEFORE EVERY SHOT (round 5 of the visual pass, 2026-10-09, F5 — tiles 095 099 327). A tile was
+ * shot wherever the drive’s last press or scroll had left the pointer, so a hover state was photographed as the page: a
+ * desktop nav tab’s hover box and a second underline beside the active one (095 099, the held header at 1024), a featured
+ * card’s lit border (327). `shoot` now parks it first, as R4-G’s edges drive does (`parkPointer`, the same expression):
+ * on the page’s left gutter at half the viewport’s height, where nothing hovers, then a beat longer than the hover
+ * transitions (motion.css: --t-flick 90 ms, --t-quick 140 ms, --t-base 220 ms) before the Needle’s rest is awaited. The
+ * focus cells and the viewer’s soft move park it through the same helper (they each wrote the move out by hand).
+ */
+const parkPointer = (page) => page.mouse.move(2, Math.round((page.viewportSize()?.height ?? viewport(390).height) / 2)).catch(() => {});
+/** The pause after parking: longer than the slowest hover transition (`--t-base`, 220 ms). */
+const PARK_SETTLE_MS = 260;
 async function resize(page, width) {
   const now = page.viewportSize();
   if (!now || now.width !== width) await page.setViewportSize(viewport(width));
@@ -1265,7 +1277,9 @@ async function shoot(page, cell, spec, { dialog = false, dialogProblem = null } 
   }
   seq += 1;
   const file = `${[String(seq).padStart(3, '0'), cell.section, cell.route, cell.viewer, cell.state, cell.locale, cell.width].join('--')}${wrong ? '--WRONG-PAGE' : ''}.png`;
-  await settle(page, 150);
+  // F5 · no tile in a hover state the drive left behind: the pointer parked, then the hover transitions run out.
+  await parkPointer(page);
+  await settle(page, PARK_SETTLE_MS);
   // ⭐ R3-B (2026-10-09) · THE TILE SHOWS THE NEEDLE AT ITS REST, never a glide on its way there: round 3's 194 caught
   // the disc mid-flight across the /markets stat line, and a reader cannot tell a glide from a rest in one frame. A
   // Needle that has not come to rest by NEEDLE_REST_MS is a finding of its own — a rest that never comes is a chain.
@@ -1324,7 +1338,7 @@ async function noHub(vw) {
  * A box-shadow alone is never a ring: the capsule and the gilt pill wear one at rest.
  */
 async function focusStep(page, cell, step) {
-  await page.mouse.move(2, Math.round(viewport(cell.width).height / 2)).catch(() => {});
+  await parkPointer(page);
   const rest = await page.evaluate(RING_PROBE, step.sel);
   const placed = await page.evaluate(TAB_PREV, step.sel);
   let f = null;
@@ -2092,7 +2106,7 @@ async function viewerSection() {
     await page.waitForSelector('#main-content h1', { state: 'attached', timeout: 60_000 });
     // ⛔ The pointer leaves the row it pressed (round 3, 2026-10-09, tile 326): it stayed at the hub row's centre, where
     // /results draws its outcome pills, so "HAPANA 2" was shot in its HOVER fill (#03002D, x188–280) beside a bare "NDIO 3".
-    await page.mouse.move(2, Math.round(viewport(390).height / 2)).catch(() => {});
+    await parkPointer(page);
     await settle(page, 600);
     // 3 · A’s session ends: the same account signs in elsewhere (one session per account).
     await demo('', null, 'a second sign-in of the demo account, which ends A’s session');

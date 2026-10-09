@@ -138,6 +138,8 @@ export function ObjectionDecision({ objectionId, canReverse, canDecide = true }:
         closeOnScrim={false}
         labelledBy="objection-decision-title"
         maxWidth={460}
+        /* The ✕ is withheld while the decision is in flight (round 5, F20 — the one rule, `CloseX` in modal.tsx). */
+        showClose={!pending}
       >
         {copy && (
           <div ref={dialogRef} className="space-y-4">

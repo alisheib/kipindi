@@ -186,7 +186,9 @@ export default async function LivePage({
                 <PulseRing size={18} color="var(--aqua-400)">
                   <span className="block w-2 h-2 rounded-full" style={{ background: "var(--aqua-400)" }} />
                 </PulseRing>
-                <p className="font-mono text-label uppercase eyebrow font-bold text-text">{t.home.liveSection}</p>
+                {/* Round 5 (F17, one page, one name): the page's own name — its <title>, its h1, the nav's and the hub's
+                    "Mubashara" (`common.live`) — where this eyebrow said "HAI" (`home.liveSection`) in Swahili. */}
+                <p className="font-mono text-label uppercase eyebrow font-bold text-text">{t.common.live}</p>
               </div>
               {/* ⛔ `data-result-count` — §3 rule 5. The promise is published so an instrument can
                   check it against the delivery; it is the attribute `qa:count-truth` reads. And

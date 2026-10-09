@@ -151,8 +151,9 @@ export default async function UpDownPage({
             </span>
           </span>
         ))}
+        {/* Round 5 (F19): the note ends on the row's edge — its trailing 0.10em taken back (`kp-track-end`, globals.css). */}
         <span className="ml-auto inline-flex items-center gap-1.5 font-mono text-micro uppercase tracking-[0.10em] text-text-faint">
-          <span className="live-dot" /> {t.market.udStreaming}
+          <span className="live-dot" /> <span className="kp-track-end kp-track-end--10">{t.market.udStreaming}</span>
         </span>
       </div>
 

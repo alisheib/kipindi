@@ -136,7 +136,15 @@ export function RealityCheckHost({ enabled, intervalMin = DEFAULT_INTERVAL, user
           notice the neutral treatment: the sheet's own edge, the clock in the subtle ink of the disc it sits on, and the
           minutes in the heading's own ink (mono, §T5). The words and the four doors are unchanged. */}
       <div className="space-y-4">
-        <div className="flex items-center gap-2.5">
+        {/* ⭐ THE TITLE'S FIRST LINE ON THE CORNER ✕ (round 5 of the visual pass, 2026-10-09, F20 — the one convention,
+            `CloseX` in modal.tsx; a position only, no word of this RG notice changes). Modal pins the ✕ 40px under the
+            panel's padding edge; this row started at the padding (24px, 32px from 1024) and centred a one-line title on the
+            40px badge, so the title's capitals stood 43.6px down — the ✕ 3.6px above them on a phone and 11.6px from 1024
+            — and a title that wrapped lifted its first line further. The title now hangs from the badge's centre (its
+            first line centred on it, 20px less half its 1.25 line), so a second line grows downward, and the row rises to
+            put those capitals — 20 − 0.025em = 19.6px down it — on the ✕. The row keeps 48px clear of the ✕ on its right,
+            as every dialog title does (`.kp-modal-title`), so a long title wraps before it instead of running under it. */}
+        <div className="-mt-[3.6px] lg:-mt-[11.6px] flex items-start gap-2.5 pr-8">
           {/* ⛔ LITERALS, NOT `h-8 w-8` — the spacing scale is overridden
               (tailwind.config.ts:200-215) and that pair is 48×48px. 40px = --tap-min, the
               badge disc every other section heading in the product uses. */}
@@ -145,7 +153,7 @@ export function RealityCheckHost({ enabled, intervalMin = DEFAULT_INTERVAL, user
           </span>
           <h2
             id="reality-check-title"
-            className="font-display text-[15.5px] font-bold leading-tight text-text"
+            className="mt-[calc(20px-0.625em)] font-display text-[15.5px] font-bold leading-tight text-text"
           >
             {t.rg.playingFor}{" "}
             <span className="font-mono">{elapsedMin}</span>{" "}

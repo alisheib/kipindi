@@ -379,7 +379,9 @@ section("6 · E31 E33 the journey's account menu (tiles 209 213 224 228 239 243 
   // E33 · /positions by the tab's name and glyph.
   const tickets = JOURNEY_TABS.find((d) => d.key === "tickets");
   ok("6.5 · in the journey the /positions row reads the tab's own key and glyph (journey.tabTickets · ticket), as JOURNEY_TABS names that tab",
-    squash(menu).includes(`: journey && r.href === "/positions" ? { ...r, icon: I.ticket, en: t.journey.tabTickets, sw: t.journey.tabTickets, zh: t.journey.tabTickets } : r,`)
+    // Round 5 (R5-A, F17) moved this pin: the branch after it is no longer the bare `r` but the journey's other page
+    // names (`journeyName`, the KYC page, the leaderboard, the proposals page) — the /positions mapping is unchanged.
+    squash(menu).includes(`: journey && r.href === "/positions" ? { ...r, icon: I.ticket, en: t.journey.tabTickets, sw: t.journey.tabTickets, zh: t.journey.tabTickets } : journeyName[r.href] ?`)
       && tickets?.href === "/positions" && tickets.label === "journey.tabTickets" && tickets.glyph === "ticket",
     show(tickets));
   ok("6.5′ CONTROL · the two names differ in every language (Nafasi / Tiketi zangu · Positions / My tickets · 持仓 / 我的注单)",

@@ -298,8 +298,9 @@ const { dict } = await import("../src/lib/i18n-dict.ts");
   // which is what `.m-out` and every other dialog in the product already leaves on.
   ok("10: ⛔ …and the exit reuses the product's existing leave motion rather than minting one",
      exitPanel === "m-leave-out" && !/@keyframes\s+kp-fsheet/.test(css), exitPanel);
+  // Round 5 (R5-A, F20 follow-up, 2026-10-09): the sheet's ✕ is the shared `CloseX` now, imported on the same line.
   ok("10: ⛔ the exit beat comes from the shared `exitBeatMs`, not a literal",
-     /import \{ exitBeatMs \} from "@\/components\/ui\/modal"/.test(sheet) && /exitBeatMs\("--t-quick"\)/.test(sheet));
+     /import \{ (?:CloseX, )?exitBeatMs \} from "@\/components\/ui\/modal"/.test(sheet) && /exitBeatMs\("--t-quick"\)/.test(sheet));
   ok("10: ⚠️ …and a zero beat (reduced motion) closes INSTANTLY rather than holding",
      /if \(ms <= 0\) \{ finish\(\); return; \}/.test(sheet));
   // ⚠️ Re-opening mid-exit must cancel the pending close, or the timeout shuts the sheet the

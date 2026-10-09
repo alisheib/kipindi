@@ -23,7 +23,7 @@
  */
 
 import { useEffect, useRef, useState } from "react";
-import { Modal } from "@/components/ui/modal";
+import { CloseX, Modal } from "@/components/ui/modal";
 import { Callout } from "@/components/ui/callout";
 import { I } from "@/components/ui/glyphs";
 import { haptics } from "@/lib/haptics";
@@ -284,15 +284,16 @@ export function BetConfirmModal({
               row's top, so the ✕ centred 24px down while the title's first line — under the 14px eyebrow line and 4px —
               centres its capitals 18 + 0.6625 × 15 = 27.9px down (Sora: caps 0.2975–1.0275em in a 1.375 line). Measured on
               068: ✕ ink y64–73, the title's first line y66–78 — 3.5px above. `mt-1` lowers it 4px: 28 against 27.9; `-mb-1`
-              gives the 4px back, so the box still takes 48px of the row and a one-line title's row does not grow. */}
-          <button
-            type="button"
-            onClick={onCancel}
-            aria-label={t.common.cancel}
-            className="mt-1 -mb-1 shrink-0 inline-flex h-8 w-8 items-center justify-center rounded-md text-text-subtle hover:bg-bg-overlay hover:text-text transition-colors"
-          >
-            <I.x s={16} />
-          </button>
+              gives the 4px back, so the box still takes 48px of the row and a one-line title's row does not grow.
+              ⭐ ROUND 5 (F20, the one convention — `CloseX` in modal.tsx): …and 16px inside the panel's right edge, where
+              Modal pins every dialog's ✕ and ConfirmModal's stands: the body's padding put this one 24px in on a phone and
+              32px from 1024, so it steps out 8px / 16px (`-mr-1.5 lg:-mr-3`), as ConfirmModal's does.
+              ⭐ …and it is the one ✕, `CloseX` (it was drawn by hand here, the box and glyph copied): named "Funga" as every
+              ✕ is, where it said "Ghairi" — the name of the Cancel button under it, so a screen reader heard two of them —
+              and closing through the dialog's own guarded close, as the sell confirm's does. While a bet is in flight it is
+              withheld (the one rule, `CloseX`): Ghairi is disabled then, and the ✕ was drawn and dead beside it; its box
+              stays, so the title and the body never move. */}
+          <CloseX withheld={pending} onClick={() => { if (!pending) onCancel(); }} label={t.common.close} className="mt-1 -mb-1 -mr-1.5 lg:-mr-3 shrink-0" />
         </div>
 
         {/* Side + stake summary */}

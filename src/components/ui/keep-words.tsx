@@ -296,3 +296,23 @@ export function keepIdRuns(id: string): ReactNode {
     return i === 0 ? [run] : [<wbr key={`w${i}`} />, run];
   });
 }
+
+/**
+ * THE REGULATOR'S NAME IS ONE NAME, WHERE ITS LINE CAN HOLD IT (round 5 of the visual pass, 2026-10-09, F18 — tile 307):
+ * the journey footer at en 1024 read "Licensed by the Gaming" / "Board of Tanzania.", the Board's name torn in two, where
+ * "Licensed by the" / "Gaming Board of Tanzania." fits its 216px column (164.7px for the name and its full stop). The
+ * name — as `footer.licensedByGbt` writes it in each language — goes in a `.kp-gbt-name` span; the sentence's own
+ * element wears `.kp-gbt`, a size container, and the span is `nowrap` only where that container is at least as wide as
+ * the name in its language (globals.css): a column narrower than the name lets it wrap as before, so it can never
+ * overflow. The text is unchanged (the zh name keeps its zero-width break hint, which `nowrap` simply does not take).
+ * A sentence without the name is returned untouched.
+ */
+// The zh name carries the dictionary's zero-width break hint between its two words; it is matched as any format
+// character (`\p{Cf}`), so the source names no invisible character (test:visual-pass-r5e §6.5, round 5's census).
+const REGULATOR = /Gaming Board of Tanzania|Bodi ya Michezo ya Kubahatisha Tanzania|坦桑尼亚\p{Cf}?博彩委员会/u;
+
+export function keepRegulator(text: string): ReactNode {
+  const m = REGULATOR.exec(text);
+  if (!m) return text;
+  return [text.slice(0, m.index), <span key="gbt" className="kp-gbt-name">{m[0]}</span>, text.slice(m.index + m[0].length)];
+}

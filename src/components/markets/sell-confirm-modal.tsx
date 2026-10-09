@@ -23,7 +23,7 @@
  */
 
 import { useEffect, useRef, useState } from "react";
-import { Modal } from "@/components/ui/modal";
+import { CloseX, Modal } from "@/components/ui/modal";
 import { I } from "@/components/ui/glyphs";
 import { Callout } from "@/components/ui/callout";
 import { haptics } from "@/lib/haptics";
@@ -94,14 +94,28 @@ export function SellConfirmModal({ open, pending, stake, value, positionId, onCo
       closeOnScrim={!pending}
       initialFocus={confirmRef}
       safeFocus={keepRef}
+      /* ⭐ THE ✕ ON THE TITLE'S CAPITALS (round 5 of the visual pass, 2026-10-09, F20 — the one convention, `CloseX` in
+         modal.tsx). Modal pinned it to the corner, 40px down the panel: beside the eyebrow (its line is 14px), 12.6px
+         above the question's capitals on a phone and 20.6px from 1024 — the bet confirm's header is this same eyebrow
+         over a question, and its ✕ stands on the question. So it is drawn in the header row, as the bet confirm's and
+         ConfirmModal's are: the question's first line starts 14 + 4 (`mt-1`) = 18px down, a 1.375 line of 16px, so its
+         capitals centre 18 + 0.6625 × 16 = 28.6px down — the 48px box drops 4.6px and gives back 12.6px under it, taking
+         the header's own 40px; 16px inside the panel's right edge (`-mr-1.5 lg:-mr-3`), where Modal pins it. It closes
+         through the dialog's own guarded close, as the corner one did. A long question now wraps before the ✕. While a
+         sale is in flight it is withheld (the one rule, `CloseX`): the keep button is disabled then, and a ✕ drawn but
+         dead beside it was the one way out that looked live; its box stays, so the question and the body never move. */
+      showClose={false}
     >
-      <div className="mb-4 min-w-0">
-        <p className="font-mono text-micro uppercase eyebrow font-bold text-text-subtle">
-          {t.dialog.cashOutTitle}
-        </p>
-        <p className="mt-1 font-display text-[16px] font-semibold text-text leading-snug">
-          {titleLabel ?? t.dialog.sellPositionNow}
-        </p>
+      <div className="mb-4 flex items-start gap-3">
+        <div className="min-w-0 flex-1">
+          <p className="font-mono text-micro uppercase eyebrow font-bold text-text-subtle">
+            {t.dialog.cashOutTitle}
+          </p>
+          <p className="mt-1 font-display text-[16px] font-semibold text-text leading-snug">
+            {titleLabel ?? t.dialog.sellPositionNow}
+          </p>
+        </div>
+        <CloseX withheld={pending} onClick={() => { if (!pending) onCancel(); }} label={t.common.close} className="mt-[4.6px] -mb-[12.6px] -mr-1.5 lg:-mr-3 shrink-0" />
       </div>
 
       {/* E-100 · same rule again. This one sits inside a modal, which is the narrowest place

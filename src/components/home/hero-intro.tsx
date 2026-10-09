@@ -19,6 +19,8 @@ import { FIRST_LICENSED_EVIDENCE } from "@/lib/support-config";
 import { railListParts } from "@/lib/rail-list";
 import type { Dict, Locale } from "@/lib/i18n-dict";
 import { sideWord } from "@/lib/side-label";
+// A module with no directive and only React's types: it adds nothing to the root's first load (`test:visual-pass-r4j` §3.8).
+import { keepRegulator } from "@/components/ui/keep-words";
 
 /**
  * The claim — "50pick │ Tanzania's first licensed prediction market" (spec §4; R9).
@@ -123,9 +125,12 @@ export function TrustLines({ t, locale, rails }: { t: Dict; locale: Locale; rail
   const after = at < 0 ? "" : t.home.heroRails.slice(at + "{rails}".length);
   return (
     <ul className="kp-hero__trust" role="list">
-      <li>
+      {/* ⭐ The Board's name is one name wherever the row can hold it (round 5, F18's rule, as the journey's footer keeps it):
+          at sw 360–390 the balanced row read "Leseni ya Bodi ya Michezo" / "ya Kubahatisha Tanzania.", the name torn in
+          two; it now reads "Leseni ya" / "Bodi ya Michezo ya Kubahatisha Tanzania." (`keepRegulator`, `.kp-gbt-row`). */}
+      <li className="kp-gbt-row">
         <span className="kp-rg__18">{t.footer.eighteenPlus}</span>
-        <span>{t.footer.licensedByGbt}</span>
+        <span>{keepRegulator(t.footer.licensedByGbt)}</span>
       </li>
       {parts.length > 0 && (
         <li>

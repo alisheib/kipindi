@@ -1214,6 +1214,9 @@ export function ReadingMethodForm({
         open={confirmOpen}
         onClose={() => setConfirmOpen(false)}
         onConfirm={save}
+        /* Saved with this dialog open, so it wears the request (round 5, F20 — the one rule, `CloseX` in modal.tsx): the ✕
+           withheld, both buttons disabled, the scrim and Esc refused — where the ✕ and Cancel closed it mid-request. */
+        loading={pending}
         title="Switch to simulated prices?"
         tone="claret"
         tier="hard"

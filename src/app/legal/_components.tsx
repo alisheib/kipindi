@@ -11,8 +11,31 @@ import { I } from "@/components/ui/glyphs";
 import { GiltCorner } from "@/components/brand";
 import { PageHeader } from "@/components/ui/page-header";
 import { DotSeq } from "@/components/ui/dot-seq";
-import { keepYears } from "@/components/ui/keep-words";
+import { keepLastWords, keepYears } from "@/components/ui/keep-words";
 import { type Locale } from "@/lib/i18n-server";
+
+/**
+ * ⭐ A LEGAL TITLE NEVER LEAVES ITS LAST WORD ALONE BEHIND A CONNECTIVE (round 5 of the visual pass, 2026-10-09, F16 —
+ * tile 210). `PageHeader` balances its h1 "so a wrapping title never leaves one word … alone on its last line" — and for a
+ * title of three words balancing cannot keep that promise: "Kanuni za Michezo" is 256.7px against the 254px the legal
+ * header leaves its title at 390 (the 40px sigil and its 14px gap beside it), so it wraps, and the evener of its two
+ * breaks is "Kanuni za / Michezo" (133 / 118px) — the connective ending line 1 and its noun alone on line 2. Where the
+ * second-to-last word is a connective — sw ya · za · wa · la · cha · vya · kwa · na, en of · and · & — the connective and
+ * the last word break together (`keepLastWords`), which is how "Masharti / ya Huduma" already wraps: "Kanuni / za Michezo"
+ * at 320–390 sw, "Terms / of Service" at 320–360 en, "Sera / ya Faragha" at 320 sw. Every other title, every other width
+ * and Chinese are unchanged — names stay whole ("Up & Down", "Mchezo Salama"), as the plain balanced wrap keeps them.
+ * ⚠️ The pair cannot break, so it is bound only while it is short: at most 10 characters, and every current pair is
+ * measured under the narrowest title line there is (184px at 320 — "ya Huduma" is the widest, 155.6px in Sora 700 at
+ * 28px); `test:visual-pass-r5a` §3 holds both. "ya NDIO/HAPANA" (251.6px) is 14 characters and is left to wrap.
+ */
+const CONNECTIVE = /^(?:ya|za|wa|la|cha|vya|kwa|na|of|and|&)$/i;
+const KEEP_PAIR_MAX = 10;
+export function legalTitle(title: string): ReactNode {
+  const words = title.split(" ");
+  if (words.length < 3 || !CONNECTIVE.test(words[words.length - 2])) return title;
+  if (words.slice(-2).join(" ").length > KEEP_PAIR_MAX) return title;
+  return keepLastWords(title);
+}
 
 /**
  * WHICH LANGUAGE IS THE LEGALLY BINDING ONE — stated once, for every legal document.
@@ -85,7 +108,7 @@ export function LegalHeader({
             `PageHeader` has no slot for it, and adding one for a single caller would widen a
             31-site primitive to fit its 32nd. The `space-y-1` still spaces it, unchanged. */}
         <div className="min-w-0 space-y-1">
-          <PageHeader eyebrow={eyebrow} title={title} subtitle={subtitle} />
+          <PageHeader eyebrow={eyebrow} title={legalTitle(title)} subtitle={subtitle} />
           {meta && (
             // 2026-09-13: balanced so the zh line does not strand "布。" on its own row.
             // 2026-09-27: 13px, not 11px. The version line is a sentence a reader reads, so it sits on the reading floor (§T4).

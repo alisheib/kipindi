@@ -31,7 +31,7 @@ import {
 import { parseQuery, matchesQuery, fieldNames, MARKET_SEARCH } from "@/lib/search";
 import { NotableCarousel } from "./notable-carousel";
 import { RefreshPoller } from "@/components/ui/refresh-poller";
-import { formatTzsCompact } from "@/lib/utils";
+import { formatNumber, formatTzsCompact } from "@/lib/utils";
 import { Ring } from "@/components/charts/ring";
 import { pickLocalized, marketCategoryLabel } from "@/lib/localized";
 import { keepFigures } from "@/components/ui/keep-words";
@@ -410,8 +410,10 @@ async function ResultsContent({
               second clause borrowed `common.settled`, the capitalised STATUS LABEL ("Settled", a tab's name), for a
               sentence's word. The dictionary already has that word in its sentence form, the one the live ticker writes
               after a figure ("TZS 6K imekamilika …"): `market.tickerSettled` — "settled" / "imekamilika" / "已结算". */}
+          {/* Round 5 (F12): a count before its word is grouped as every count line is (`formatNumber`) — production's
+              archive holds 12,479, which read "12479 imetatuliwa". `data-result-count` stays the bare integer. */}
           <p data-result-count={totalCount} className="hidden sm:block amount text-micro text-text-subtle whitespace-nowrap">
-            {totalCount} {t.results.resolved} · {formatTzsCompact(totalVolume)} {t.market.tickerSettled}
+            {formatNumber(totalCount)} {t.results.resolved} · {formatTzsCompact(totalVolume)} {t.market.tickerSettled}
           </p>
         </div>
       </div>
@@ -435,6 +437,13 @@ async function ResultsContent({
           10px and the page's 24px between the box and the lens pills — 69px, against 34 under the bar. The band keeps the
           10px above the box and lets the echo row lie inside the gap below it, so the box sits 34 under the header row,
           the pills 34 under the box, and the grid 34 under the sort. `QUERY_SEARCH_BAND_CLASS` says how. */}
+      {/* ⛔ THE CONTROLS ARE WITHHELD ON AN EMPTY ARCHIVE, and only then (round 5 of the visual pass, 2026-10-09, R5-A —
+          from R5-F's audit of the filter bars) — §A5: a search box and a bar of pills all reading 0 above "no resolved
+          markets yet" are controls that cannot act, and every other route with a bar already withholds it on an empty
+          book (/positions, /wallet, /updown/history, /proposals, /watchlist, /fairness, /positions/performance). Every
+          other empty state keeps the bar, because there the bar is the way OUT of it: a filter or a search that matched
+          nothing in an archive that holds rows. `archiveRows` is the whole archive, before any filter or search. */}
+      {archiveRows.length > 0 && (
       <div className={QUERY_SEARCH_BAND_CLASS}>
         <Suspense>
           <SearchBox
@@ -444,6 +453,7 @@ async function ResultsContent({
           />
         </Suspense>
       </div>
+      )}
 
       {/* ⭐ THE BAR REPLACES THE SIDEBAR. `/results` carried its rails as a desktop `aside` of
           full-width pills at board width, beside `/markets` which uses the bar — a second layout
@@ -453,7 +463,7 @@ async function ResultsContent({
           different one. ⚠️ `countClassName` on `FilterPill` existed SOLELY for that sidebar's
           full-width rows and now has no consumer — left in the primitive deliberately, because
           removing a prop is a separate decision from removing its only call site. */}
-      <ResultsBar state={state} counts={counts} resultCount={totalCount} t={t} />
+      {archiveRows.length > 0 && <ResultsBar state={state} counts={counts} resultCount={totalCount} t={t} />}
 
       {/* Grid — ⛔ no `mt-*`, see the header band above (DG-P-04 · §S1). */}
       <div className="flex flex-col gap-5 lg:flex-row lg:gap-6">
@@ -619,8 +629,9 @@ function FeaturedResult({ m, t, locale }: { m: Awaited<ReturnType<typeof listMar
         {isVoid
           ? <Chip variant="pending" size="sm">{t.common.voided}</Chip>
           : <Chip variant="resolved" size="sm">{t.market.resolvedOutcome} · {outcomeWord(t, m.resolvedOutcome ?? "VOID", m.productLine)}</Chip>}
+        {/* Round 5 (F19): the flag ends on the card's edge — its trailing 0.16em taken back (`kp-track-end`, globals.css). */}
         <span className="ml-auto inline-flex items-center gap-1.5 font-mono text-micro uppercase tracking-[0.16em] font-bold text-brand-300">
-          <I.crown s={13} /> {t.results.notableResult}
+          <I.crown s={13} /> <span className="kp-track-end kp-track-end--16">{t.results.notableResult}</span>
         </span>
       </div>
       {/* A market title, set as every market title is (round 5, R5-E — F1 F4, review 3 H1): its lines balanced and its
@@ -642,7 +653,11 @@ function FeaturedResult({ m, t, locale }: { m: Awaited<ReturnType<typeof listMar
       <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-1 font-mono text-[11px] tabular-nums text-text-muted">
         {/* The figure's sentence word, not the tab label — the tally's rule above (round 4): "TZS 6K imekamilika". */}
         <span>{formatTzsCompact(m.yesPool + m.noPool)} {t.market.tickerSettled}</span>
-        <span className="flex items-center gap-1"><I.users s={11} /> {m.predictorCount} {t.market.predictors}</span>
+        {/* ⭐ …AND THE COUNT'S TOO (round 5, F12, tile 1280): "⚇ 2 Watabiri" put the capitalised COLUMN LABEL
+            (`market.predictors`, the Stat's label on the market page) in the middle of a line, where every card under this
+            one reads "2 watabiri". The count line now says it as the cards and the board's rows do — the sentence word, one
+            for one predictor (`predictorsCount` / `predictorsCountOne`), the count grouped by `formatNumber`. */}
+        <span className="flex items-center gap-1"><I.users s={11} /> {formatNumber(m.predictorCount)} {m.predictorCount === 1 ? t.market.predictorsCountOne : t.market.predictorsCount}</span>
       </div>
     </Link>
   );

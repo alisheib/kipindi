@@ -219,10 +219,12 @@ export default async function MarketsPage({ searchParams }: { searchParams: Prom
         </p>
       </div>
 
+      {/* `kp-markets-search` (round 5): 34px from the box to the bar's pills at every width, as on every other bar. */}
       <SearchBox
         placeholder={t.common.searchMarkets}
         ariaLabel={t.common.searchMarkets}
         helpFields={fieldNames(MARKET_SEARCH)}
+        className="kp-markets-search"
       />
 
       <Suspense fallback={<GridSkeleton />}>
@@ -347,7 +349,8 @@ async function DiscoveryBoard({ searchParams }: { searchParams: Promise<SP> }) {
       />
 
       {/* ⭐ `mt-5` (24px; round 4, 2026-10-09, tile 196): with the bar's own 10px the cards stand 34px under its last row,
-          as its pills stand 35 under the search (the echo row 25 + the bar's 10) — it was `mt-3`, 26. On the phone's
+          as its pills stand 34 under the search (the echo row 25 + the bar's 10, less the 1px `kp-markets-search` gives
+          back since round 5) — it was `mt-3`, 26. On the phone's
           one-line bar the cards stand 24 under its hairline (16 before). */}
       <section data-board="grid" className="market-grid mt-5">
         {paged.map((r) => {

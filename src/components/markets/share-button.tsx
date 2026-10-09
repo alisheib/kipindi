@@ -115,7 +115,8 @@ export function ShareButton({
           anchored sheet (own z-index, own ✕, no focus trap, no scroll lock).
           Chrome, a11y and the scrim recipe are all inherited now. */}
       <Modal open={open} onClose={() => setOpen(false)} ariaLabel={t.dialog.shareMarket} maxWidth={360}>
-        <p className="mb-2 font-display text-[14px] font-semibold text-text">{t.dialog.shareMarket}</p>
+        {/* `kp-modal-title` (round 5, F20): its first line's capitals on the corner ✕, as every dialog's title stands. */}
+        <p className="kp-modal-title mb-2 font-display text-[14px] font-semibold text-text">{t.dialog.shareMarket}</p>
         <div className="-mx-2">
               {hasWebShare && (
                 <button

@@ -672,6 +672,7 @@
     "test:visual-pass-r4k": "tsx scripts/visual-pass-r4k.test.mts",
     "red:visual-pass-r4k": "tsx scripts/visual-pass-r4k.test.mts --prove",
     "test:visual-pass-r4h": "tsx scripts/visual-pass-r4h.test.mts",
+    "test:visual-pass-r5a": "tsx scripts/visual-pass-r5a.test.mts",
     "test:visual-pass-r5b": "tsx scripts/visual-pass-r5b.test.mts",
     "test:visual-pass-r5c": "tsx scripts/visual-pass-r5c.test.mts",
     "test:visual-pass-r5e": "tsx scripts/visual-pass-r5e.test.mts",
