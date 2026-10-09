@@ -35,6 +35,12 @@ then: "the contacts screen"):
     THE IMPORTER (C3–C5) `df835bb5`, served since 01:16:59 UTC 2026-10-09 (04:17 EAT), the database MIGRATED
     (`20261009120000_contact_import_target_list`) · C6's big-file drive `9121d857` + `3fbceb46` · C7's export round
     trip `e47ef26e`. Each step's proof is its §1 row; the importer's is below.
+  · ⏳ WRAP-UP (Ali, 2026-10-09 ~06:45 EAT: "finish when you can and push — tokens will end"): no new work starts in this
+    session. What lands next, each only after its own battery: C8a, then C3b + C3b-fix; C3c only if its builder finishes.
+    NOT STARTED here: C8b and C8c (and C3e). Every builder's BRIEF is tracked in `docs/contacts-screen-briefs/`
+    (C3b-fix, C3c, C8a, C8b, C8c — the builder's prompt pointed at the brief, the checkout and the lock), so a session on
+    any machine re-launches a step from its brief and its branch. Briefs name Ali-Blade15's scratchpad lock script — on
+    another machine use `bash ~/heavy-node-lock.sh` (or that machine's own lock) instead.
   · IN FLIGHT (three builds; each lands only after its own battery, nothing half-done goes to main):
     1. C3b — ⛔ HELD for its review round (§1 row C3b): the fix round C3b-fix is being built on `contacts-c3b-fix`
        (checkout `C:\kipindi-c3bfix`), decisions D1–D10 in §4.6 (S15-14). Then a full battery, then C3b + C3b-fix to main.
