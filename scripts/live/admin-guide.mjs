@@ -23,9 +23,10 @@
  *
  * THREE RUNS, in this order — each on a fresh in-memory server (remove .next first: a stale .next 404s every /api/dev-test
  * route), DISABLE_ADMIN_TOTP=true, SESSION_SECRET and OTP_PEPPER set:
- *   a · PRODUCTION'S LOOK — SMS_PROVIDER=blackball, dummy keys, SMS_SENDER_ID=50pick and BLACKBALL_API_URL at this script's
- *       own stand-in (http://127.0.0.1:${GUIDE_VENDOR_PORT:-3997}/api/sms/send): its balance endpoint answers TZS 250,000 and
- *       it REFUSES every send, so nothing can leave. The contact book, the import, the System page and the composer.
+ *   a · PRODUCTION'S LOOK — SMS_PROVIDER=blackball, dummy keys, SMS_SENDER_ID=50pick.tz (production's sender since
+ *       2026-10-09) and BLACKBALL_API_URL at this script's own stand-in
+ *       (http://127.0.0.1:${GUIDE_VENDOR_PORT:-3997}/api/sms/send): its balance endpoint answers TZS 250,000 and it REFUSES
+ *       every send, so nothing can leave. The contact book, the import, the System page and the composer.
  *   b · A CAMPAIGN, DRIVEN END TO END on the console stub (SMS_PROVIDER=console: messages go to the server log, never to a
  *       phone; the live seed refuses any other rail): tag, write, confirm, start, wait, pause, resume, finish, receipts and
  *       results; the staged campaigns for the figures, a system pause, a stop and a copy.

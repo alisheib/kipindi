@@ -33,7 +33,7 @@ Wired: 2026-09-16. Code: `src/lib/server/sms-blackball.ts` (transport), `src/lib
 | | |
 |---|---|
 | Code | ✅ live on `main` |
-| Railway | ✅ **`SMS_PROVIDER=blackball`**, `BLACKBALL_CLIENT_ID`, `BLACKBALL_CLIENT_SECRET`, `BLACKBALL_WEBHOOK_SECRET`, `SMS_SENDER_ID=50pick` — verified: `/api/health` → `provider: blackball, configured: true, webhookSecretSet: true`; boot log prints no `[sms]` warning |
+| Railway | ✅ **`SMS_PROVIDER=blackball`**, `BLACKBALL_CLIENT_ID`, `BLACKBALL_CLIENT_SECRET`, `BLACKBALL_WEBHOOK_SECRET`, `SMS_SENDER_ID=50pick.tz` (since 2026-10-09 19:32 EAT, Ali's choice; `50pick` before — the account registers `50pick`, `50pick.tz` and `50picktz`; a delivered test proved it the same evening) — verified: `/api/health` → `provider: blackball, configured: true, webhookSecretSet: true`; boot log prints no `[sms]` warning |
 | Cloudflare | ✅ Configuration Rule: Browser Integrity Check **off for `/api/webhooks/*` only** (§4) — verified |
 | API configuration | ✅ `50pick-production` saved in the portal, status callback registered |
 | Sender ID | ✅ `50pick` |
@@ -678,7 +678,7 @@ Each step is independently reversible, and none of the later ones is safe withou
 3. ✅ **Live drive step 1** — `npm run live:blackball -- --step 1 --confirm`. Delivered.
 4. ✅ **Cloudflare: Browser Integrity Check off for `/api/webhooks/*`** (§4.1), and a real receipt has
    landed — 2026-09-23, settling a production row (§4.8).
-5. ✅ **Railway: credentials, `SMS_SENDER_ID=50pick`, `SMS_PROVIDER=blackball`.** Safe before step 4:
+5. ✅ **Railway: credentials, `SMS_SENDER_ID=50pick` (`50pick.tz` since 2026-10-09), `SMS_PROVIDER=blackball`.** Safe before step 4:
    measured 2026-09-16, production has **zero** phone invite entries, `bonus` is `WITHDRAWN` with no
    `FEATURE_BONUS` override (so `sendCampaign` refuses before SMS), and `OTP_ENABLED` is unset — both
    send paths are shut, so the switch made the rail *configured* without sending anything.
