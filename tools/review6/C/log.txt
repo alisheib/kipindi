@@ -127,5 +127,35 @@ C17 [CONFIRMED by code] the classic position card keeps `line-clamp-2` on the he
    whole at every width … the board's Q6 clamp is for browsing cards"); R5-E added balance+keepFigures there with the comment "the
    journey's ticket card sets the same question the same way" (133-134) — it does not (no clamp there). LOW. Fix: drop the clamp.
 
+C18 [CONFIRMED by code; not on R5-K/L's route list] the journey tickets ghost draws each card's pill row as `h-5` pills
+   (tickets-ghost.tsx ~49-50: 24px on this scale) where the ticket card's side and state pills are 18px (ticket-card.tsx 103-107:
+   Chip size="sm", state metrics="base" — G1's 18px rule), so every ghost card's question bar stands 6px below where the page's
+   question lands. LOW. Fix: h-[18px] pills.
+
+C6 sibling: the stored round title (updown-service.ts 72-74, roundTitle) names the game "Juu au Chini" / "Up or Down" where the
+   dictionary names it "Juu na Chini" / "Up & Down" (market.udTitle) and the tab "Juu/Chini" (nav.updown); it surfaces in the round's
+   <title> (C6) and /positions/performance's recent rows (performance/page.tsx 156, every product line).
+
+OWNER/DESIGN question (not a defect yet): two link inks — brand-300 (≈48 player sites) and the kit's aqua accent (--accent-400:
+   notifications/row-actions.tsx 59 restore, profile/activity 196 manage limits, resolution-panel.tsx 328 help, profile/notifications
+   107, the card's "Maelezo" link); --text-link = aqua-300 (globals.css 538) with 0 uses. R5-C names the brand family "the link ink".
+
+R5-J sibling (counts): /markets' header count `{openMarkets.length}` (markets/page.tsx 195) is bare beside its compact money.
+
+BackLink in the journey (LOW, PLAUSIBLE — depends on document.referrer): hub doors open pages whose BackLink names /profile ("‹ WASIFU":
+   notifications 175, invite 264, agent-dashboard 100, kyc 159, RG 105) or /wallet ("‹ POCHI": withdraw 160); back-link.tsx 56-60
+   router.back() when a referrer exists → lands on the hub (Akaunti) under a "Wasifu" label; with no referrer → pushes /profile.
+
 ## Checked and sound (one line each)
 - Spacing: inverted stock keys (2.5/3.5) in changed player files 199 → 192; every new-file use is a byte move (s\stock-count.mjs).
+- In-flight ✕: bet/sell confirms CloseX withheld={pending}; ConfirmModal withheld={loading}; ConfirmDialog loading = holdOpen && awaiting; objection showClose={!pending}.
+- ✕ geometry of F20's named dialogs: .kp-modal-title (40 − pad − 0.6em) meets Modal's corner (top 16 + 24); ConfirmModal/bet/sell header rows; reality check.
+- Gold census: no other spelling in player code (no amber/yellow/orange utilities, no rgb/8-digit-hex/named gold) beyond the warning family; needle.css rgba registered.
+- F15 pool chips: rail and phone sheet both use POOL_LABEL (formatTzsCompact in .amount); dictionary pool10k/50k unused.
+- Ghost words = page words: wallet, receipts, receipt, updown, updown/history, performance, leaderboard, markets, live eyebrow, classic positions, tickets.
+- Journey tabs: Tiketi zangu and Akaunti pages' <title>/h1 follow the journey; hub doors for Bingwa, fairness, help, results, live, Pochi, Arifa, Wasifu match.
+- Legal doors sentence-case vs titles title-case throughout (consistent); AML/rules door words are R5-A's S12 items.
+- Money: ReceiptRow mono; sell confirm A8f (.amount + flex-wrap); bet estimate .amount; limit meter mono nowrap; /markets header mono nowrap; result modal details wrap whole before break-all.
+- Titles: market h1, ticket, featured, board rows, /live carousel + pulse grid, /results notable, proposals, fairness, performance best line, bet dialog (keepText+figureRuns) — figures whole + balance.
+- Section rails: one journey rule for [data-section-rail]/[data-rail-ghost]; grant chips only on /wallet, all through grantStatusChip.
+- /profile KYC row + pill gated on approved/final refusal (the rule C13's menu breaks); deposit-paused notice neutral with the journey's "Toa pesa".

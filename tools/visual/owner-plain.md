@@ -77,6 +77,7 @@
 56. During a break, should the Invite and Propose doors close too?
 57. The old (classic) header's Deposit buttons still show during a break (frozen until launch). Fix at launch?
 
+58. Links use two colours (blue in most places, aqua in five). Which one should every link be?
 ## Process
 24. A screen-checking tool was broken on main; it is repaired on the Vodacom branch (ships with it).
 5, 6. Two earlier reports (small-text work order; two unused test files).

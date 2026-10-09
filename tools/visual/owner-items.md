@@ -136,6 +136,9 @@
 56. (Review A) During a break the invite and proposals doors stay open (no break gate) — close them too?
 57. (Review A) The CLASSIC chrome's deposit doors stay during a break (frozen until launch) — fix at launch?
 
+58. (Review C) Two link colours: brand-300 (~48 sites, R5-C calls it "the link ink") and the kit aqua (--accent-400) at
+    five sites (row actions, /profile/activity, the resolution panel, notification settings, the cards' "Maelezo");
+    --text-link (aqua-300) has 0 uses. Which one is the link colour?
 ## S12 (live-word corrections, ship with S12)
 - Swahili "Arifa {n}" reads like one more chip beside "Pesa 3" on the notifications filter row (G1): "{n} arifa".
 - The guest help subtitle "Maswali ya kawaida · Simu · Barua pepe" cannot fit one line at 320/360 (73px row); a
