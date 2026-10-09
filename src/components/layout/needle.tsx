@@ -30,7 +30,7 @@ import { isMoneySurface, isJourneySurface } from "@/lib/surfaces";
 import { useJourneyOn } from "@/lib/journey/journey-on";
 import { PEPSI_PATHS, PEPSI_TRANSFORM } from "@/lib/needle-art";
 import {
-  censusPad, decideRest, glideFrame, glowReach, hugs, newGlideClock, paintsNothing, railRange, reseat,
+  bubbleInk, censusPad, decideRest, glideFrame, glowReach, hugs, newGlideClock, paintsNothing, railRange, reseat, restReach,
   type Box, type Geometry, type GlideClock,
 } from "@/lib/needle-rest";
 import type { NeedleOptions } from "@/lib/needle-physics";
@@ -371,7 +371,9 @@ function mountNeedle(
      then off every control), the reseat on a viewport change and the record that stops a chained glide are
      documented there, once, and `test:needle-host` proves them on the
      vendored engine without a browser. Three triggers were added here: a check asked for mid-glide runs when the glide
-     lands, an open surface mounting or going asks for one, and a viewport change re-seats a disc on its way to a rest. */
+     lands, an open surface mounting or going asks for one, and a viewport change re-seats a disc on its way to a rest.
+     ⭐ R4-B ④ · the chat bubble goes in on its own (`bubblesInBand`), shown or faded, kept the glow's clearance away at
+     every tier; its arrival asks for a check too. */
   const INTERACTIVE = 'a[href],button,input:not([type="hidden"]),select,textarea,summary,[role="button"],[role="link"],[role="tab"],[role="switch"],[role="checkbox"],[role="menuitem"],[tabindex]:not([tabindex="-1"])';
   /* ⭐ R3-B ③ · THE OPEN FLOATING SURFACES A PARKED DISC MUST NEVER COVER (tile 321: the disc on the open channels
      panel, hiding its right border). The house's two markers — `data-needle-keepout` (the rails, the rail's coin, the
@@ -462,6 +464,33 @@ function mountNeedle(
     }
     return out;
   }
+  /* ⭐ R4-B ④ · THE CHAT BUBBLE, SHOWN OR FADED (tile 313: drawn over the disc's lower-left, 136 px of its ink hidden).
+     ChatRoot's bubble is fixed bottom-right ABOVE the Needle (z 60 over 45), so a disc under it is covered, and the
+     control census above could not hold it: it skips a control with `pointer-events: none`, which is exactly what both
+     of the bubble's fades set (globals.css: D3 while the page moves and for 250ms after, D75 after 3s untouched) — and
+     a check runs 180ms after a scroll — while a shown bubble counted as its box alone, without the pulse ring that
+     paints 5px outside it. A faded bubble is not gone: any touch brings it back, over whatever rests under it. So it is
+     read here on its own terms. Every `.cm-fab` the page lays out, measured at its painted `.cm-bubble`, unless
+     `visibility: hidden` (the house never hides it that way — globals.css rules visibility out for both fades — so only
+     a harness's clean room does), at the place it stands when SHOWN: the fade's own translate on the wrapper (8px down,
+     or the part of it a transition has reached) is taken back off. Then grown by its ring, `bubbleInk`. Opacity and
+     pointer-events are deliberately not read. */
+  const BUBBLE = ".cm-fab";
+  function bubblesInBand(band: Band) {
+    const out: Box[] = [];
+    for (const fab of document.querySelectorAll<HTMLElement>(BUBBLE)) {
+      const n = fab.querySelector<HTMLElement>(".cm-bubble") ?? fab;
+      const r = n.getBoundingClientRect();
+      if (r.width < 1 || r.height < 1 || getComputedStyle(n).visibility === "hidden") continue;
+      const t = getComputedStyle(fab).transform;
+      const m = t && t !== "none" ? new DOMMatrixReadOnly(t) : null;
+      const dx = m ? m.e : 0, dy = m ? m.f : 0;
+      const ink = bubbleInk({ left: r.left - dx, right: r.right - dx, top: r.top - dy, bottom: r.bottom - dy });
+      if (ink.right < band.left || ink.left > band.right) continue;
+      out.push(ink);
+    }
+    return out;
+  }
   /* ⭐ 2026-10-08 · G1 [193] · READABLE TEXT IS SOMETHING UNDER IT TOO. The census above counts CONTROLS only
      (the session-96 cases), so the disc rested on the /markets stat line at 390 in Swahili — "● 40 hai · TZS 49K
      katika mchezo" cut at "mche", the board's own money figure line, which is text and not a control. ⛔ The page
@@ -549,9 +578,11 @@ function mountNeedle(
     const g = glowPx();
     const pad = censusPad(g);
     const band = { left: fp.left - pad, right: fp.right + pad };
-    const reach = viewport().h / 3;
     const L = body.limits();
     const { minY, maxY } = railRange({ minX: L.minX, maxX: L.maxX, minY: L.minY, maxY: L.maxY, size: body.size });
+    const above = bubblesInBand(band);
+    // A third of the viewport — or, for a disc under the bubble, as far as the nearest height clear of it (④).
+    const reach = restReach({ fp, y: body.y, minY, maxY, above, glow: g }, viewport().h / 3);
     const here = accepted !== null && Math.abs(accepted.y - body.y) < 2
       && accepted.sx === window.scrollX && accepted.sy === window.scrollY;
     const census = controlsInBand(band);
@@ -560,6 +591,7 @@ function mountNeedle(
       controls: [...census.content, ...surfacesInBand(band)],
       frames: census.frames,
       text: textInBand(band, { top: fp.top - reach - pad, bottom: fp.bottom + reach + pad }),
+      above,
       glow: g, reach, minY, maxY, y: body.y,
       accepted: here && accepted ? accepted.tier : null,
     });
@@ -865,8 +897,12 @@ function mountNeedle(
      only triggers, and a panel opens with none of them — the channels panel, 45 s into a visit (321). A floating
      surface mounting, unmounting, or gaining or losing its marker or role asks for a check once its entrance has
      played (`.m-float-in` is --t-quick, 140ms). Filtered to those surfaces: a live ticker's re-render costs one
-     `matches` per added element. */
+     `matches` per added element.
+     ⭐ R4-B ④ · …and the chat bubble arriving or going. ChatRoot is a lazy overlay that draws nothing until it has
+     measured the viewport, so on a fresh page it can land after the Needle's first check, over a disc that check left
+     where it was — with nothing else to look again until the reader scrolls. */
   const SURFACE_SETTLE = 200;
+  const LOOK_AGAIN = `${SURFACES},${BUBBLE}`;
   const POPUP_ROLE = /^(dialog|alertdialog|menu|listbox)$/;
   const surfaceObserver = new MutationObserver((records) => {
     for (const r of records) {
@@ -881,7 +917,7 @@ function mountNeedle(
         for (const n of list) {
           if (n.nodeType !== Node.ELEMENT_NODE) continue;
           const e = n as Element;
-          if (e.matches(SURFACES) || e.querySelector(SURFACES)) { scheduleClear(SURFACE_SETTLE); return; }
+          if (e.matches(LOOK_AGAIN) || e.querySelector(LOOK_AGAIN)) { scheduleClear(SURFACE_SETTLE); return; }
         }
       }
     }

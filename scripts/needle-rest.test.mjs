@@ -32,6 +32,15 @@
  *   §8 A SCROLL MID-GLIDE — the page moves under a glide so that its target is no longer clear: the landing re-checks
  *      and the disc ends clear (257 265 273); then no further glide. `window.needle.resting()` is false while the
  *      glide is in flight and true once it has landed.
+ *   ⭐ 2026-10-09 · R4-B (round 4, tile 313: the chat bubble drawn over the parked disc's lower-left). At 320 × 780,
+ *   390 × 780 and 1024 × 900, the clean room with the chat bubble let back in (ChatRoot's own; a stand-in with its
+ *   markup and box where the chatbot is off):
+ *   §9 THE CHAT BUBBLE — a disc parked 17px into the bubble's ink (313's overlap) moves to a rest clear of the bubble's
+ *      ink — its box where it stands SHOWN, grown by the pulse ring at its widest — by the glow's 4px, with the bubble
+ *      SHOWN, FADED AT REST (D75, `data-fab-idle`) and FADED MID-SCROLL (D3, `data-scrolling`): both fades are
+ *      `pointer-events: none`, which the control census skips, and a faded bubble returns on any touch. Then no further
+ *      glide. A bubble ARRIVING over a parked disc moves it with no scroll at all (ChatRoot is a lazy overlay).
+ *      CONTROLS: a disc clear of the ink by the clearance and 2px stays; a disc on the LEFT rail at the same height stays.
  *
  * Local only (drives /auth/demo).   BASE=http://localhost:3009 node scripts/needle-rest.test.mjs
  */
@@ -151,6 +160,8 @@ const HELPERS = () => {
       return gapOf(el.getBoundingClientRect());
     },
     textRight: (sel) => { const rg = document.createRange(); rg.selectNodeContents(document.querySelector(sel)); return rg.getBoundingClientRect().right; },
+    /** The gap from the footprint to a box handed in (R4-B: the bubble's ink where it stands shown). */
+    gapBox: (r) => gapOf(r),
     storedEdge: () => { try { return JSON.parse(localStorage.getItem("50pick.needle.pos") || "null")?.edge ?? null; } catch { return null; } },
   };
   let vib = 0; const orig = navigator.vibrate?.bind(navigator);
@@ -426,6 +437,98 @@ console.log("\n[needle-rest] §8 the page moves under a glide: the landing re-ch
     await page.evaluate(() => document.dispatchEvent(new Event("scroll")));
     const again = await page.evaluate(() => window.__nr.record(900));
     ok("§8 …and the next scroll-idle does not move it again (no chain)", again.every((fr) => Math.abs(fr.y - y1) < 0.5 && !fr.parking));
+  }
+  await ctx.close();
+}
+
+// ── §9 THE CHAT BUBBLE ───────────────────────────────────────────────────────────────────────────────
+console.log("\n[needle-rest] §9 the chat bubble is cleared by the glow's 4px, shown or faded (clean room, the bubble let back in)");
+for (const [W, H] of [[320, 780], [390, 780], [1024, 900]]) {
+  const { ctx, page } = await cleanRoom(W, H);
+  const pad = (await page.evaluate(() => window.__nr.glow())) + 4;
+  const size = await page.evaluate(() => window.__needle.size);
+  // D75's own nap (3s untouched) must have come first: from then on nothing here rouses the bubble (a synthetic scroll
+  // on `document` never reaches scroll-cast's window listeners), so the states set below are the only ones in play.
+  const napped = await page.waitForFunction(() => document.documentElement.hasAttribute("data-fab-idle"), null, { timeout: 6000, polling: 100 }).then(() => true, () => false);
+  ok(`§9 ${W} · precondition · D75's fade came on its own after 3s untouched, so its timer is spent`, napped);
+  const setFades = (attrs) => page.evaluate(async (a) => {
+    const html = document.documentElement;
+    for (const k of ["data-fab-idle", "data-scrolling"]) html.toggleAttribute(k, a.includes(k));
+    await new Promise((r) => setTimeout(r, 400));   // past the fade's --t-quick transition
+    const fab = document.querySelector(".cm-fab");
+    if (!fab) return null;
+    const s = getComputedStyle(fab);
+    return { opacity: s.opacity, pointerEvents: s.pointerEvents };
+  }, attrs);
+  await setFades([]);
+  // Where the bubble stands SHOWN — ChatRoot's own, measured with neither fade on <html>; or, where the chatbot is off,
+  // ChatRoot's numbers (16px from the right, 80 above a phone's rail / 16 on a desktop; 44px / 56px) for a stand-in.
+  const house = await page.evaluate(() => !!document.querySelector(".cm-fab .cm-bubble"));
+  const side = W < 1024 ? 44 : 56, lift = W < 1024 ? 80 : 16;
+  const box = house
+    ? await page.evaluate(() => document.querySelector(".cm-fab .cm-bubble").getBoundingClientRect().toJSON())
+    : { left: W - 16 - side, right: W - 16, top: H - lift - side, bottom: H - lift };
+  // Its ink, restated here (a guard must not import what it checks): the pulse ring (chat-styles.css, `.cm-bubble::after`,
+  // inset −3px) at the peak of `cm-bubble-ring` (scale 1.08) — 5px round the 44px bubble, 5.5 round the 56px one.
+  const past = (s) => (s / 2 + 3) * 1.08 - s / 2;
+  const ink = { left: box.left - past(box.right - box.left), right: box.right + past(box.right - box.left), top: box.top - past(box.bottom - box.top), bottom: box.bottom + past(box.bottom - box.top) };
+  console.log(`  · ${W}×${H}: ${house ? "ChatRoot's bubble" : "a stand-in for the bubble (the chatbot is off here)"} at x${box.left}–${box.right} y${box.top}–${box.bottom}, its ink from y${ink.top.toFixed(1)}; the clearance is ${pad.toFixed(1)}px`);
+  const standIn = `<div class="cm-fab"><button type="button" class="cm-bubble${W < 1024 ? " cm-bubble-mobile" : ""}" aria-label="Help"></button></div>`;
+  const standInCss = { right: "16px", bottom: `${lift}px`, zIndex: "60" };
+  // 313's overlap: the disc's box from 17px above the ink's top edge, 39px into it at 320.
+  const under = ink.top - 17 + size / 2;
+
+  // A BUBBLE ARRIVING over a parked disc (the clean room still hides ChatRoot's, so the census sees none until it lands).
+  {
+    const f = await place(page, under);
+    await wait(1200);
+    const y0 = await page.evaluate(() => window.__needle.y);
+    ok(`§9 ${W} · precondition · with no bubble to see, the disc stays where it was put, 17px above the ink's top edge`, Math.abs(y0 - f.top) < 0.5, JSON.stringify({ placed: f.top, y0 }));
+    await page.evaluate(([h, c]) => window.__nr.plant(h, c), [standIn, standInCss]);
+    await wait(120);
+    const rested = await waitRest(page, 4000);
+    const end = await page.evaluate((b) => ({ y: window.__needle.y, gap: window.__nr.gapBox(b) }), ink);
+    ok(`§9 ${W} · a bubble ARRIVING over the parked disc moves it — no scroll dispatched — clear of its ink by ≥ ${pad.toFixed(1)}px`,
+      rested && Math.abs(end.y - y0) > 1 && end.gap >= pad - 0.5, JSON.stringify({ y0, ...end }));
+    await page.evaluate(() => window.__nr.unplant());
+    await wait(600);
+  }
+
+  // The bubble in view for the rest of the section: ChatRoot's let back in, or the stand-in kept.
+  if (house) await page.evaluate(() => { const s = document.createElement("style"); s.id = "nr-bubble-in"; s.textContent = ".cm-fab, .cm-fab * { visibility: visible !important; }"; document.head.appendChild(s); });
+  else await page.evaluate(([h, c]) => window.__nr.plant(h, c), [standIn, standInCss]);
+
+  for (const [label, attrs] of [["SHOWN", []], ["FADED AT REST (D75, data-fab-idle)", ["data-fab-idle"]], ["FADED MID-SCROLL (D3, data-scrolling)", ["data-scrolling"]]]) {
+    const look = await setFades(attrs);
+    const faded = attrs.length > 0;
+    ok(`§9 ${W} · precondition · the bubble is ${label}`,
+      !!look && (faded ? look.opacity === "0" && look.pointerEvents === "none" : look.opacity === "1" && look.pointerEvents !== "none"), JSON.stringify(look));
+    const f = await place(page, under);
+    await wait(80);
+    const y0 = await page.evaluate(() => window.__needle.y);
+    const rested = await kick(page);
+    const end = await page.evaluate((b) => ({ y: window.__needle.y, parked: window.__needle.parked, gap: window.__nr.gapBox(b) }), ink);
+    ok(`§9 ${W} · ${label} · a disc 17px above the bubble's ink edge, overlapping it (313), moves to a rest clear of the ink where it stands shown by ≥ ${pad.toFixed(1)}px`,
+      rested && end.parked && Math.abs(end.y - y0) > 1 && end.gap >= pad - 0.5, JSON.stringify({ placed: f.top, y0, ...end }));
+    await page.evaluate(() => document.dispatchEvent(new Event("scroll")));
+    const again = await page.evaluate(() => window.__nr.record(900));
+    ok(`§9 ${W} · ${label} · …and the next scroll-idle does not move it again (no chain)`, again.every((fr) => Math.abs(fr.y - end.y) < 0.5 && !fr.parking));
+  }
+
+  await setFades([]);
+  {
+    const f = await place(page, ink.top - pad - 2 - size / 2);
+    const y0 = await page.evaluate(() => window.__needle.y);
+    const rested = await kick(page);
+    const end = await page.evaluate((b) => ({ y: window.__needle.y, gap: window.__nr.gapBox(b) }), ink);
+    ok(`§9 ${W} · CONTROL · a disc clear of the bubble's ink by ${(pad + 2).toFixed(1)}px stays where it is`, rested && Math.abs(end.y - y0) <= 1, JSON.stringify({ placed: f.top, y0, ...end }));
+  }
+  {
+    await place(page, under, "left");
+    const y0 = await page.evaluate(() => window.__needle.y);
+    const rested = await kick(page);
+    const y1 = await page.evaluate(() => window.__needle.y);
+    ok(`§9 ${W} · CONTROL · on the LEFT rail at the same height the bubble is nothing to the disc: it stays`, rested && Math.abs(y1 - y0) <= 1, `${y0} → ${y1}`);
   }
   await ctx.close();
 }

@@ -22,6 +22,23 @@
  *     (296: borders at x373), which E-400 accepts only when no rest over nothing at all is within reach.
  *   ③ A PANEL WAS NOT A KEEP-OUT AT REST. An open floating surface (the channels panel, 321) was an obstacle to a
  *     thrown disc and nothing to a parked one. The host now hands open surfaces in with the controls, whole.
+ *
+ * ⭐ 2026-10-09 · R4-B (round 4, tile 313: the staff hub at 320 in Chinese). ④ THE CHAT BUBBLE WAS NOT AN OBSTACLE AT
+ * REST. The bubble (ChatRoot's `.cm-fab`, fixed bottom-right at z 60, over the Needle's 45 — test:stacking's "a fidget
+ * must never cover a control") was drawn over the parked disc's lower-left: 136 of the disc's 994 px of ink hidden
+ * (x293–303, y659–682, against the same disc unobstructed on tile 305), its box 39px into the bubble's ink. Two holes:
+ *   · the host's census drops a control that takes no taps (`pointer-events: none`), and BOTH of the bubble's fades set
+ *     exactly that (globals.css: D3 while the page moves and for 250ms after it stops, D75 after 3s untouched). The rest
+ *     check runs 180ms after a scroll, inside D3's 250: the drive scrolled the staff card into view, the check ran with
+ *     the bubble faded, found nothing near the disc, and left it where the last page had put it (y634, the box the
+ *     previous locale's 1280 walk saved). No earlier check on that page had counted it either (ChatRoot is a lazy
+ *     overlay that draws nothing until it has measured the viewport): had one, the disc would have left 634 for 586.
+ *   · when the bubble WAS shown at check time it counted as an ordinary control — its 44px box, at the tier's pad. That
+ *     is how the next two cells came to rest exactly the tier-0 pad above the BOX (314: 586 from 634 at 360; 315: 580
+ *     from 584 at 390), with the pulse ring, which paints 5px outside the box, inside the disc's glow.
+ * So the bubble goes in on its own (`above`): where it stands when shown, grown by its ring at its widest, kept the
+ * glow's clearance away at EVERY tier, shown or faded — a faded bubble comes back on any touch, over a disc parked
+ * under it — and a disc under it may glide past the third of the viewport to get out (`restReach`).
  */
 
 /** A box in viewport px (the DOMRect fields the rules read). */
@@ -67,7 +84,8 @@ export const FLOOR_CLEARANCE = 4;
  * `pad` is measured from the disc's box (= the rim's ink to 1.2px), in px, on all four sides. Always counted: a
  * control's content (its text, icon or field), a small control (≤ 64px either way) whole, and an open floating
  * surface whole. `frames` adds a big control's WHOLE box (a full-width card's border and padding); `text` adds visible
- * text (a painted badge's whole box) and small media.
+ * text (a painted badge's whole box) and small media. And at EVERY tier, whatever its pad, the chat bubble's ink is kept
+ * `abovePad` (the glow and GLOW_GAP) away: ④ above, `RestInput.above`.
  *   0 · NOTHING under the glow, not even a card's frame, and GLOW_GAP of air beyond it  — the rest the design means
  *   1 · every control's content and every line of text clear of the glow by GLOW_GAP     — E-400's card rule: the
  *       tucked half (28–30px visible at 360–390, past a 16px page gutter) may lie over a big card's frame and padding
@@ -84,8 +102,31 @@ export const REST_TIERS: readonly RestTier[] = [
   { name: "4px clear of all content", frames: false, text: true, pad: () => FLOOR_CLEARANCE },
   { name: "off every control", frames: false, text: false, pad: () => FLOOR_CLEARANCE },
 ];
-/** The widest pad any tier asks for — how far the host's census must reach past the disc. */
-export const censusPad = (glow: number, tiers: readonly RestTier[] = REST_TIERS) => Math.max(...tiers.map((t) => t.pad(glow)));
+/** ④ What every tier keeps between the disc's box and the chat bubble's ink: the glow, and GLOW_GAP of air past it.
+ *  No tier can accept less — the bubble paints OVER the disc, so whatever of the disc lies under it is simply hidden. */
+export const abovePad = (glow: number) => glow + GLOW_GAP;
+/** The widest pad any tier (or the bubble) asks for — how far the host's census must reach past the disc. */
+export const censusPad = (glow: number, tiers: readonly RestTier[] = REST_TIERS) => Math.max(abovePad(glow), ...tiers.map((t) => t.pad(glow)));
+
+/** ④ The chat bubble's pulse ring (`styles/chat/chat-styles.css`, `.cm-bubble::after`): `inset: -3px` round the bubble,
+ *  breathing to `scale(1.08)` (`@keyframes cm-bubble-ring`, 50%). `test:needle-host` reads both out of that file. */
+export const BUBBLE_RING_OUTSET = 3;
+export const BUBBLE_RING_BREATHE = 1.08;
+/** The chat bubble's ink, from its box: the ring at its widest, `(½·side + 3)·1.08 − ½·side` past each edge — 5px
+ *  round the 44px phone bubble, 5.5 round the 56px desktop one. Measured on tile 305 (en 320, the disc far away): the
+ *  ring's ink x256–307 × y652–703 round the box x260–304 × y656–700, 4px out at that moment of its breathe. */
+export function bubbleInk(b: Box): Box {
+  const past = (side: number) => (side / 2 + BUBBLE_RING_OUTSET) * BUBBLE_RING_BREATHE - side / 2;
+  const x = past(b.right - b.left), y = past(b.bottom - b.top);
+  return { left: b.left - x, right: b.right + x, top: b.top - y, bottom: b.bottom + y };
+}
+
+/** Whether any of `rects` comes within `pad` of the disc's box `fp` moved down by `dy`. */
+function within(rects: readonly Box[], fp: Box, pad: number, dy: number): boolean {
+  return rects.some((r) =>
+    r.left < fp.right + pad && r.right > fp.left - pad
+    && r.top < fp.bottom + dy + pad && r.bottom > fp.top + dy - pad);
+}
 
 export type RestInput = {
   /** The disc's box now, clipped to the viewport. */
@@ -96,8 +137,12 @@ export type RestInput = {
   frames: readonly Box[];
   /** Visible text (a painted badge's whole box) and small media. */
   text: readonly Box[];
+  /** ④ The chat bubble: a control painted ABOVE the disc that fades and comes back — its ink (`bubbleInk`) where it
+   *  stands when shown, whether it is shown or faded now. Every tier keeps `abovePad` from it. */
+  above: readonly Box[];
   glow: number;
-  /** How far a rest may be from where it is, in px (the host: a third of the viewport). */
+  /** How far a rest may be from where it is, in px (the host: `restReach` — a third of the viewport, or as far as the
+   *  nearest height clear of the bubble for a disc under it). */
   reach: number;
   /** The `y` range a rest may take on the rail. */
   minY: number;
@@ -113,13 +158,12 @@ export type RestOutput = { y: number | null; tier: number };
 
 /** `tiers` is a seam for `test:needle-host`, which plants the old rules in memory to show they read a touch as clear. */
 export function decideRest(q: RestInput, tiers: readonly RestTier[] = REST_TIERS): RestOutput {
-  const hits = (rects: readonly Box[], pad: number, dy: number) => rects.some((r) =>
-    r.left < q.fp.right + pad && r.right > q.fp.left - pad
-    && r.top < q.fp.bottom + dy + pad && r.bottom > q.fp.top + dy - pad);
+  const hits = (rects: readonly Box[], pad: number, dy: number) => within(rects, q.fp, pad, dy);
   const holds = (t: number, dy: number) => {
     const tier = tiers[t];
     const pad = tier.pad(q.glow);
-    return !hits(q.controls, pad, dy) && !(tier.text && hits(q.text, pad, dy)) && !(tier.frames && hits(q.frames, pad, dy));
+    return !hits(q.above, abovePad(q.glow), dy)
+      && !hits(q.controls, pad, dy) && !(tier.text && hits(q.text, pad, dy)) && !(tier.frames && hits(q.frames, pad, dy));
   };
   let now = tiers.length;
   for (let t = 0; t < tiers.length; t++) if (holds(t, 0)) { now = t; break; }
@@ -136,6 +180,27 @@ export function decideRest(q: RestInput, tiers: readonly RestTier[] = REST_TIERS
     }
   }
   return { y: null, tier: now };
+}
+
+/**
+ * ④ HOW FAR A REST MAY BE FROM WHERE IT IS. E-400 ①'s third of the viewport (`third`) — but a disc under the bubble's
+ * clearance is not waiting for the page to move: the bubble is fixed, and no scroll will ever take it off. So for that
+ * disc the reach is at least the distance to the nearest height on the rail clear of the bubble. On a short screen the
+ * third falls short of it: a phone on its side, 740 × 360, puts the bubble's ink at y231–285, and a disc at its lowest
+ * rest (y290) must rise 129px to clear it by the glow's 14 — a third of 360 is 120. Otherwise it is the third, unchanged.
+ * The host collects the page's text over this reach, so every height the search can reach is one it has read.
+ */
+export function restReach(q: { fp: Box; y: number; minY: number; maxY: number; above: readonly Box[]; glow: number }, third: number): number {
+  const pad = abovePad(q.glow);
+  if (!within(q.above, q.fp, pad, 0)) return third;
+  const span = Math.max(q.y - q.minY, q.maxY - q.y);
+  for (let d = 2; d <= span; d += 2) {
+    for (const sign of [-1, 1]) {
+      const y = q.y + sign * d;
+      if (y >= q.minY && y <= q.maxY && !within(q.above, q.fp, pad, y - q.y)) return Math.max(third, d);
+    }
+  }
+  return third;
 }
 
 /** A computed colour that paints nothing: `transparent`, `rgba(…, 0)`, or any colour function whose `/ alpha` is 0.
