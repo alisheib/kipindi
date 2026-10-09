@@ -29,8 +29,10 @@
  * text (the new contact's `rawInput`, so another person's number never rides into it), the check for the sentence of a
  * cell that yields no number (`classifyStagedRow`), the browser for the phone column it adds from a row's other phone
  * columns (G4, `import-read.ts` — it carries every distinct mobile of those columns, so this rule decides there too) and
- * for the sheet a workbook is read from (`sheet-choice.ts`), and the list paste chooses the first number on a line
- * through `firstMobileIndex`. The drafted `rawPhone` — the staged row's raw cell — keeps the whole cell; the staged key
+ * for the sheet a workbook is read from (`sheet-choice.ts`), and the list paste chooses the first mobile on a line
+ * through `firstMobileIndex` — ⭐ C8c · over the line's CELLS, each its number with the digit runs this rule's own cut
+ * joins to it (`cutsCell`), so D4 holds in the paste too ("Asha +254, 712 345 678" is a Kenyan number, never a stranger's
+ * +255 712 345 678). The drafted `rawPhone` — the staged row's raw cell — keeps the whole cell; the staged key
  * is its one mobile's.
  * ⛔ C3b-fix · D1 — THE COST IS LINEAR AND BOUNDED, on the live money server (the review, 2026-10-09: a phone cell of
  * 200,000 spaces cost about 2·10¹⁰ steps, because the word test rescanned a run of blanks from EVERY blank in it):
@@ -183,13 +185,32 @@ export function phoneCellParts(cell: string): string[] {
 }
 
 /**
- * ⭐ S15-4 · the index of the FIRST of several numbers written in order that THE ONE NUMBER RULE (`parseTzNumber`) reads
- * as a Tanzanian mobile number, or -1 when none is — the list paste's choice for a pasted line (`import-read.ts`, whose
- * own reader finds the numbers on the line). ⛔ A phone CELL is never chosen here: `firstMobileIn` takes a number out of
- * a cell only when it holds exactly one distinct mobile (D3).
+ * ⭐ C8c · THE LIST PASTE'S QUESTION, ASKED OF THIS RULE'S OWN CUT (the C3b-fix builder found D4 open in the paste: the
+ * paste's run reader stopped a number at a comma, so "Asha +254, 712 345 678" lost its "+254" and staged a stranger's
+ * +255 712 345 678). Does `gap` — the text between two digit runs of a pasted line — CUT a phone cell in two, as this
+ * module cuts one? True exactly when `phoneCellParts` splits a digit on each side of it into those two digits and nothing
+ * else: blanks around a separator character, Google's three colons or a separator word — never a space alone, a dash, a
+ * full stop, a bracket, a single colon, a letter or a digit. The paste then reads the runs on both sides as ONE cell
+ * (`import-read.ts`, `cellOf`), and `mobilesIn` applies D4 to its parts.
  */
-export function firstMobileIndex(texts: readonly string[]): number {
-  for (let i = 0; i < texts.length; i++) if (parseTzNumber(texts[i]).verdict === "ok") return i;
+export function cutsCell(gap: string): boolean {
+  const s = String(gap ?? "");
+  if (s.length === 0 || s.length > SPLIT_MAX_CHARS || ANY_DIGIT.test(s)) return false;
+  const parts = phoneCellParts(`0${s}0`);
+  return parts.length === 2 && parts[0] === "0" && parts[1] === "0";
+}
+
+/**
+ * ⭐ S15-4 · the index of the FIRST of several phone CELLS written in order — a pasted line's, each the number with the
+ * runs this rule's cut joins to it (`cutsCell`) — that holds a Tanzanian mobile by THE ONE RULE (`mobilesIn`: the whole
+ * cell first, else its COMPLETE parts — D4), or -1 when none does: the list paste's choice for a line (`import-read.ts`).
+ * ⛔ C8c · before, it asked `parseTzNumber` of each number as the paste's own reader had cut it, so a bare nine-digit part
+ * whose country code the reader had cut off read as a Tanzanian mobile. ⛔ A FILE's phone cell is never chosen here:
+ * `firstMobileIn` takes a number out of a cell only when it holds exactly one distinct mobile (D3); the list paste keeps
+ * S15-4's first mobile of a line until step C3e.
+ */
+export function firstMobileIndex(cells: readonly string[]): number {
+  for (let i = 0; i < cells.length; i++) if (mobilesIn(cells[i]).length > 0) return i;
   return -1;
 }
 

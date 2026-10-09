@@ -135,6 +135,7 @@ export const L = {
   P1: "P1 · ⭐ a LIST paste: each line's first number is the Phone cell and the rest of the line the Name (a chat's stamp, an enumeration and separators dropped), lines numbered as pasted, a blank line counted",
   P1b: "P1b · a pasted line with no number is listed as unreadable with its row and the reader's sentence — never dropped",
   P1c: "P1c · ⭐ S15-4 · a line with a second number keeps the FIRST, and the paste's note names that row; a foreign number yields to a Tanzanian one on its line",
+  P1d: "P1d · ⛔ C8c · D4 IN THE LIST PASTE — a pasted line's number is read in the CELL it was written in, by the ONE rule: 'Asha +254, 712 345 678' (the line the fix builder found), '254/712345678 Juma', 'Baraka 00254; 712345678' and 'Neema +254 or 712 345 678' stage their whole cell — the server's own rule reads NO mobile in it and never the stranger's 255712345678, its sentence the Kenyan or the too-long one — each name without the code; CONTROLS: 'Asha 712 345 678' and '712345678' (a whole cell of nine digits, Excel's dropped 0) still read 255712345678, and '12. 0712 345 678 Asha', '255, 0712 345 678 Asha' and '0712 345 678 / 0754 111 222 Asha' their first mobile, as before",
   P2: "P2 · a TAB paste is an Excel copy: cells split on the tab with Excel's quoting, a blank line counted, its first row header-matched (Phone, Name; one header row)",
   P2b: "P2b · ⭐ C3b · a TAB paste whose quotation mark never closes is split by hand — every line kept, its quotation marks as typed, nothing unreadable — never cut by the CSV reader's one unreadable record (G1)",
   P3: "P3 · a list paste maps Phone and Name with no header row, named as the field list names them — never \"Column A…\", never read as a headerless file — and U28's validateMapping passes it",
@@ -526,7 +527,9 @@ async function run(ctx: SectionContext<FlowImpl>): Promise<void> {
     "3:0754 123 456|Baraka",
     "5:0688 111 222|Neema",
     "6:0765 432 109|Juma",
-    "7:0715 000 222|Kenya or",
+    // ⭐ C8c · "or" joins the Kenyan number and the Tanzanian one into ONE phone cell (`cellOf`), so it is the cell's, not
+    // the name's — the name was "Kenya or" before.
+    "7:0715 000 222|Kenya",
   ].join(" ; ");
   ok(L.P1, isListPaste(LIST_PASTE) && list.format === "paste" && list.fileName === null && isParsedContactsFile(list)
     && rowsOf(list) === want && list.blankRows === 1 && list.notes[0] === PASTE_LIST_NOTE,
@@ -539,6 +542,41 @@ async function run(ctx: SectionContext<FlowImpl>): Promise<void> {
   ok(L.P1c, /rows 5 and 7/i.test(multiNote) && list.rows.find((r) => r.line === 7)?.cells[0] === "0715 000 222"
     && !list.rows.some((r) => r.cells[0].replace(/\D/g, "").endsWith("712345678") && !r.cells[0].startsWith("+255")),
     multiNote);
+
+  // ── P1d · C8c · D4 in the list paste ──
+  const STRANGER = "255712345678";
+  const HOLES: ReadonlyArray<readonly [string, string, string, string]> = [
+    // the line · the cell staged whole · the name · the first part whose sentence the server gives
+    ["Asha +254, 712 345 678", "+254, 712 345 678", "Asha", "+254"],
+    ["254/712345678 Juma", "254/712345678", "Juma", "254/712345678"],
+    ["Baraka 00254; 712345678", "00254; 712345678", "Baraka", "00254"],
+    ["Neema +254 or 712 345 678", "+254 or 712 345 678", "Neema", "+254"],
+  ];
+  const holeBad: string[] = [];
+  for (const [line, cell, name, sentenceOf] of HOLES) {
+    const f = impl.parsePaste(line);
+    const staged = f.rows[0]?.cells[0] ?? "";
+    const holdsStranger = mobilesIn(staged).some((m) => m.number.msisdn === STRANGER);
+    if (f.rows.length !== 1 || staged !== cell || f.rows[0]?.cells[1] !== name || firstMobileIn(staged) !== null || holdsStranger
+      || phoneCellRefusal(staged) !== parseTzNumber(sentenceOf).reason) {
+      holeBad.push(`${json(line)} → ${json(f.rows[0]?.cells ?? null)}${holdsStranger ? " (THE STRANGER)" : ""}`);
+    }
+  }
+  const CONTROLS: ReadonlyArray<readonly [string, string, string]> = [
+    ["Asha 712 345 678", STRANGER, "Asha"],
+    ["712345678", STRANGER, ""],
+    ["12. 0712 345 678 Asha", STRANGER, "Asha"],
+    ["255, 0712 345 678 Asha", STRANGER, "Asha"],
+    ["0712 345 678 / 0754 111 222 Asha", STRANGER, "Asha"],
+  ];
+  const controlBad: string[] = [];
+  for (const [line, key, name] of CONTROLS) {
+    const f = impl.parsePaste(line);
+    const staged = f.rows[0]?.cells[0] ?? "";
+    if (f.rows.length !== 1 || firstMobileIn(staged)?.number.msisdn !== key || f.rows[0]?.cells[1] !== name) controlBad.push(`${json(line)} → ${json(f.rows[0]?.cells ?? null)}`);
+  }
+  ok(L.P1d, holeBad.length === 0 && controlBad.length === 0,
+    [...holeBad, ...controlBad].join(" | ") || `${HOLES.length} lines staged whole and refused · ${CONTROLS.length} controls read as before`);
 
   const table = impl.parsePaste(TAB_PASTE);
   const tableMap = impl.mappingFor(table, { list: isListPaste(TAB_PASTE) });
@@ -923,6 +961,20 @@ const PLANTS: readonly RedPlant<FlowImpl>[] = [
       parsePaste: (t) => {
         const f = parsePastedText(t);
         return { ...f, rows: f.rows.map((r) => (r.line === 7 ? { ...r, cells: ["+254 712 345 678", r.cells[1]] } : r)) };
+      },
+    }),
+  },
+  {
+    // 🔴 C8c · D4's hole in the paste as it shipped: the reader stops a number at the separator and stages only what follows
+    // it — "+254, 712 345 678" becomes the bare "712 345 678", which the server reads WHOLE as a stranger's +255 number.
+    name: "the list paste stages only the number after the last separator — the country code before it is cut off",
+    expect: L.P1d,
+    impl: () => ({
+      ...real(),
+      parsePaste: (t) => {
+        const f = parsePastedText(t);
+        const cut = new RegExp("[,;|&/]| or ");
+        return { ...f, rows: f.rows.map((r) => ({ ...r, cells: [(r.cells[0].split(cut).pop() ?? r.cells[0]).trim(), ...r.cells.slice(1)] })) };
       },
     }),
   },

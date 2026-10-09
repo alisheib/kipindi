@@ -32,7 +32,7 @@ import type { ImportSection, RedPlant, SectionContext } from "../contacts-import
 import type { ImportCommitDeps } from "../../src/lib/server/contacts/import-commit.ts";
 import type { StoredContactImportRow, StoredMarketingContact } from "../../src/lib/server/store.ts";
 import {
-  SEVERAL_MOBILES_SENTENCE, firstMobileIn, firstMobileIndex, mobilesIn, phoneCellParts, phoneCellRefusal, type CellMobile,
+  SEVERAL_MOBILES_SENTENCE, cutsCell, firstMobileIn, firstMobileIndex, mobilesIn, phoneCellParts, phoneCellRefusal, type CellMobile,
 } from "../../src/lib/contacts/phone-cell.ts";
 import { CONTACT_LIMITS } from "../../src/lib/contacts/contact-fields.ts";
 import { parseTzNumber, readAsciiDigits } from "../../src/lib/tz-msisdn.ts";
@@ -59,6 +59,8 @@ export type PhoneCellImpl = {
   readonly firstMobileIn: typeof firstMobileIn;
   readonly phoneCellParts: typeof phoneCellParts;
   readonly firstMobileIndex: typeof firstMobileIndex;
+  /** C8c · the list paste's question, asked of the cut itself. */
+  readonly cutsCell: typeof cutsCell;
   readonly phoneCellRefusal: typeof phoneCellRefusal;
   /** Staging's ONE row builder (`import-staging.ts`). */
   readonly stagedRowFrom: typeof staging.stagedRowFrom;
@@ -93,6 +95,7 @@ function real(): PhoneCellImpl {
     firstMobileIn,
     phoneCellParts,
     firstMobileIndex,
+    cutsCell,
     phoneCellRefusal,
     stagedRowFrom: staging.stagedRowFrom,
     classify: checkModule.classifyStagedRow,
@@ -191,6 +194,7 @@ export const L = {
   H9: "H9 · ⛔ C3b-fix · D1 — LINEAR AND BOUNDED: every function of phone-cell.ts returns within 50 ms on a cell of 2,000, 40,000 and 200,000 spaces and on Excel's longest cell (32,767 characters) of \"a a a …\" (the cut reading each run of blanks once)",
   H10: "H10 · ⛔ C3b-fix · D1b — a cell longer than the phone field's limit (CONTACT_LIMITS.phone) is NEVER split: one mobile beside a landline in exactly the limit yields the mobile, one character more yields nothing, its sentence the whole cell's — and staging refuses it for its length",
   H11: "H11 · ⛔ C3b-fix · D4 — a bare nine-digit part is never a mobile: '+254, 712 345 678', '254/712345678', '+254 / 712 345 678' and two bare numbers yield nothing (their sentence the first complete number's, else the whole cell's), a bare part beside a mobile is not a second one — while a WHOLE cell of bare nine digits keeps its reading (Excel drops a number cell's 0)",
+  H12: "H12 · ⛔ C8c · THE LIST PASTE'S QUESTION, asked of the cut itself — cutsCell is true for the text between two numbers that the rule cuts at (a comma, a solidus, a semicolon, a vertical line, an ampersand, Google's ' ::: ', 'or', 'au', 'na', 'and', blanks around any of them) and false for every gap it does not (a space alone, a dash, a full stop, a bracket, one or two colons, a letter, a name, a digit, nothing at all); firstMobileIndex reads CELLS by the one rule — a cell holding a mobile among other numbers counts, a Kenyan cell does not",
 } as const;
 
 /* ══ THE RUN ════════════════════════════════════════════════════════════════════════════════════ */
@@ -327,6 +331,8 @@ async function run({ impl, ok, log }: Ctx): Promise<void> {
     ["firstMobileIn", (c) => impl.firstMobileIn(c)],
     ["phoneCellRefusal", (c) => impl.phoneCellRefusal(c)],
     ["firstMobileIndex", (c) => impl.firstMobileIndex([c])],
+    // C8c · the list paste's question is a function of phone-cell.ts too.
+    ["cutsCell", (c) => impl.cutsCell(c)],
   ];
   const slowest = (f: (cell: string) => unknown, cell: string): number => {
     let best = Number.POSITIVE_INFINITY;
@@ -365,6 +371,19 @@ async function run({ impl, ok, log }: Ctx): Promise<void> {
     && impl.phoneCellRefusal(PAST_LIMIT) === parseTzNumber(PAST_LIMIT).reason
     && pastStaged !== null && pastStaged.msisdn === null && pastClass?.kind === "invalid" && pastClass.sentence.includes(`longer than ${CONTACT_LIMITS.phone}`),
     `at the limit → ${atLimit?.number.msisdn ?? "none"} · past it → ${pastLimit?.number.msisdn ?? "none"} · staged ${pastStaged?.msisdn ?? "no key"} (${sentenceOf(pastClass)})`);
+
+  // ── H12 · C8c · the list paste's question ──
+  const CUTS = [",", ", ", " / ", "/", ";", " | ", "&", " ::: ", " or ", " OR ", " au ", " na ", " and ", " ,  "];
+  const NO_CUT = [" ", "  ", "-", " - ", ".", ". ", "(", ")", ":", "::", " : ", " Asha ", ", Asha ", "or", " or", "x", " 1 ", "", "] Juma: "];
+  const wrongCut = CUTS.filter((g) => !impl.cutsCell(g)).map((g) => json(g));
+  const wrongKept = NO_CUT.filter((g) => impl.cutsCell(g)).map((g) => json(g));
+  const cellIndex = [
+    impl.firstMobileIndex(["+254, 712 345 678", "022 211 3456; 0757 300 051"]),
+    impl.firstMobileIndex(["254/712345678", "00254; 712345678"]),
+    impl.firstMobileIndex(["712 345 678"]),
+  ];
+  ok(L.H12, wrongCut.length === 0 && wrongKept.length === 0 && json(cellIndex) === json([1, -1, 0]),
+    `${wrongCut.length ? `not cut: ${wrongCut.join(" ")}` : `${CUTS.length} cuts`} · ${wrongKept.length ? `cut wrongly: ${wrongKept.join(" ")}` : `${NO_CUT.length} kept whole`} · firstMobileIndex ${json(cellIndex)}`);
 
   // ── H8 · end to end: check, start, one commit step ──
   await inFreshStore(async () => {
@@ -645,6 +664,20 @@ const PLANTS: readonly RedPlant<PhoneCellImpl>[] = [
     name: "C3b-fix D4 undone — a bare nine-digit part read as a mobile: '+254, 712 345 678' becomes a stranger's +255 number",
     expect: L.H11,
     impl: () => ({ ...real(), ...rebuiltRule({ bare: true }) }),
+  },
+  {
+    // 🔴 C8c · the paste's question answered by a rule of its own: a gap of blanks alone "cuts", so a name's spaces would
+    // join two numbers written apart into one cell.
+    name: "C8c · the paste's cut question cuts at a space too — two numbers kept apart by blanks read as one cell",
+    expect: L.H12,
+    impl: () => ({ ...real(), cutsCell: (g) => (g.length > 0 && g.trim() === "" ? true : cutsCell(g)) }),
+  },
+  {
+    // 🔴 C8c · the list paste's choice as it shipped: parseTzNumber of each text WHOLE — a cell of a landline and a mobile
+    // (or a bare tail the reader cut off) is judged by its whole text, never by the one rule's parts.
+    name: "C8c · firstMobileIndex asks parseTzNumber of each cell whole again — a mobile beside a landline in one cell is missed",
+    expect: L.H12,
+    impl: () => ({ ...real(), firstMobileIndex: (cells) => cells.findIndex((c) => parseTzNumber(c).verdict === "ok") }),
   },
 ];
 

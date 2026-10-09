@@ -24,7 +24,9 @@
  * first phone number the Phone cell and the rest of the line the Name cell. A line with no number is listed as unreadable
  * with its row; a line with a second number keeps the first and the paste's note names those rows (S15-4). ⭐ "First" is
  * the first Tanzanian mobile number on the line, chosen by the ONE phone-cell rule (`firstMobileIndex`,
- * `phone-cell.ts` — the staging's and the check's rule too): one person, one number.
+ * `phone-cell.ts` — the staging's and the check's rule too): one person, one number. ⛔ C8c · D4 holds in the paste: each
+ * number is read in the CELL it was written in (`cellOf` — with the digit runs the phone-cell rule's own cut joins to it),
+ * so "Asha +254, 712 345 678" is a Kenyan number, never a stranger's +255 712 345 678.
  * ⭐ C3b · G4 · SEVERAL PHONE COLUMNS — as the review round decided them (C3b-fix · D2, D3, 2026-10-09). Only the
  * person's OWN phone columns are read: a strong phone heading U28 knows, Outlook's Business / Home / Other / Primary /
  * Car Phone, Google's "Phone N - Value", the Swahili "second phone" — ⛔ never Assistant's Phone, Company Main Phone,
@@ -65,7 +67,7 @@ import {
   type AutoMapResult, type ColumnMapping, type ImportFieldKey, type MappedColumn,
 } from "./contact-fields";
 import { IMPORT_MAX_ROWS } from "./import-limits";
-import { firstMobileIn, firstMobileIndex, mobilesIn, type CellMobile } from "./phone-cell";
+import { cutsCell, firstMobileIn, firstMobileIndex, mobilesIn, type CellMobile } from "./phone-cell";
 import { TZ_COUNTRY_CODE, isSendableTzNumber, readAsciiDigits } from "../tz-msisdn";
 import { maskPhone } from "../phone-normalize";
 
@@ -467,9 +469,47 @@ function numbersIn(line: string, run: Run): Found[] {
 }
 
 /** Every number in a line, in order — from its phone-shaped runs only (a date, a time or a small count is not one). */
-function numbersOf(line: string): Found[] {
+function numbersOf(line: string, runs: readonly Run[] = runsOf(line)): Found[] {
   const out: Found[] = [];
-  for (const run of runsOf(line)) if (run.digits >= NUMBER_DIGITS_MIN) out.push(...numbersIn(line, run));
+  for (const run of runs) if (run.digits >= NUMBER_DIGITS_MIN) out.push(...numbersIn(line, run));
+  return out;
+}
+
+/** The stretch of a line a number is read from, and its text. */
+type Cell = { readonly start: number; readonly end: number; readonly text: string };
+
+/**
+ * ⭐ C8c · D4 IN THE LIST PASTE — THE CELL A NUMBER WAS WRITTEN IN. The run reader above stops a number at a comma or a
+ * solidus (a date is not a number), so "Asha +254, 712 345 678" came apart: "+254" too short to be a number, "712 345 678"
+ * a bare nine digits read as a Tanzanian number — a STRANGER's +255 712 345 678 staged in place of a Kenyan number. So a
+ * number is read in its CELL: the number, and every digit run before it that the phone-cell rule's OWN cut joins to it
+ * (`cutsCell` — a separator character, Google's colons or a separator word between them, nothing else), as a phone cell
+ * of a file would hold them. The ONE rule (`mobilesIn`) then reads that cell — whole first, else its COMPLETE parts (D4) —
+ * so "+254, 712 345 678", "254/712345678" and "00254; 712345678" hold no Tanzanian mobile, and the staged cell is that
+ * whole text, which the server's same rule refuses in its own words. A number with nothing joined to it is its own cell,
+ * exactly as before (a whole cell of nine digits is Excel's dropped 0 — D4 keeps that reading).
+ */
+function cellOf(line: string, runs: readonly Run[], found: Found): Cell {
+  let start = found.start;
+  for (let k = runs.length - 1; k >= 0; k--) {
+    const run = runs[k];
+    if (run.end > start) continue;
+    if (!cutsCell(line.slice(run.end, start))) break;
+    start = run.start;
+  }
+  return { start, end: found.end, text: line.slice(start, found.end).trim() };
+}
+
+/** The cells' stretches of the line, overlapping ones merged — what the name loses (a separator between two numbers of
+ *  one cell is the cell's, never the name's). */
+function cellSpans(cells: readonly Cell[]): Array<{ readonly start: number; readonly end: number }> {
+  const sorted = [...cells].sort((a, b) => a.start - b.start);
+  const out: Array<{ start: number; end: number }> = [];
+  for (const c of sorted) {
+    const last = out[out.length - 1];
+    if (last !== undefined && c.start <= last.end) last.end = Math.max(last.end, c.end);
+    else out.push({ start: c.start, end: c.end });
+  }
   return out;
 }
 
@@ -511,7 +551,7 @@ function prefixLength(text: string): number {
 
 /** What is left of a line once its numbers are out: a leading enumeration or chat stamp dropped, separators trimmed at
  *  both ends, spaces collapsed, an emptied pair of brackets dropped and a fully bracketed remainder unwrapped. */
-function nameOf(line: string, numbers: readonly Found[]): string {
+function nameOf(line: string, numbers: ReadonlyArray<{ readonly start: number; readonly end: number }>): string {
   let text = "";
   let at = 0;
   for (const n of numbers) {
@@ -582,16 +622,20 @@ export function parsePastedText(text: string): ParsedContactsFile {
       blankRows++;
       return;
     }
-    const numbers = numbersOf(line);
+    const runs = runsOf(line);
+    const numbers = numbersOf(line, runs);
     if (numbers.length === 0) {
       unreadable.push({ line: lineNo, reason: PASTE_LINE_NO_NUMBER });
       return;
     }
-    // ⭐ S15-4 · the ONE choice (`firstMobileIndex`, phone-cell.ts): the first Tanzanian mobile on the line, else the first.
-    const at = firstMobileIndex(numbers.map((n) => n.text));
-    const first = numbers[at >= 0 ? at : 0];
+    // ⭐ C8c · D4 · each number read in the CELL it was written in (`cellOf`), and — S15-4 — the ONE choice
+    // (`firstMobileIndex`, phone-cell.ts) over those cells: the first holding a Tanzanian mobile gives that mobile as it
+    // is written; when none does, the first cell is staged whole and the server's same rule says why.
+    const cells = numbers.map((n) => cellOf(line, runs, n));
+    const at = firstMobileIndex(cells.map((c) => c.text));
+    const phone = at >= 0 ? (mobilesIn(cells[at].text)[0]?.text ?? cells[at].text) : cells[0].text;
     if (numbers.length > 1) multi.push(lineNo);
-    rows.push({ line: lineNo, cells: [first.text, nameOf(line, numbers)] });
+    rows.push({ line: lineNo, cells: [phone, nameOf(line, cellSpans(cells))] });
   });
   const notes = rows.length > 0 ? [PASTE_LIST_NOTE] : [];
   if (multi.length > 0) notes.push(multiNumberNote(multi));
