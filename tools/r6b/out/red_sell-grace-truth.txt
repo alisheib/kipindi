@@ -1,0 +1,157 @@
+PROVED                               the frozen grace is ignored (the platform default, five minutes, for every poll)
+PROVED                               the runway rule is dropped (a bet placed too late is promised a free window)
+PROVED                               no window answers with the placement instant, so a clock behind the bet reads 'free'
+PROVED                               the window is measured to resolution, not to selection close
+PROVED                               the instant ends with the PAID window (free + paid), not the free one
+PROVED                               the instant is read off the clock (now + grace) instead of the placement
+PROVED                               the market page stops passing the server's instant
+PROVED                               /positions builds the instant in JSX from the placement and a constant
+PROVED                               /positions asks the helper about an instant made at render time, not the bet's placement
+PROVED                               the market page asks the helper about a market with its frozen rates stripped
+PROVED                               the market page hands SellButton the placement again
+PROVED                               a client component renders SellButton (the instant would be computed in the browser)
+PROVED                               the market page takes its instant from another module
+PROVED                               the journey ticket card builds the instant from the placement and a constant
+PROVED                               the journey ticket card binds the instant with let (a later line could move it)
+PROVED                               the journey ticket card hands a callback's own freeUntil, a parameter that shadows the binding (read by name alone, it would pass)
+PROVED                               the journey ticket card becomes a client component (the instant would be computed in the browser)
+PROVED                               the journey ticket card stops rendering SellButton (a journey reader could no longer sell)
+PROVED                               the journey card's clock label names the selection cutoff, not the free window's end
+PROVED                               the journey card's clock label is built from the placement and a constant
+PROVED                               the journey card formats its clock label the device's way
+PROVED                               the journey card stops handing the clock label (its line would name no time)
+PROVED                               GRACE_MS comes back and gates the free state again
+PROVED                               the instant is computed client-side (the placement plus a grace the button picks)
+PROVED                               the countdown runs from the server's render time plus a window the button keeps
+PROVED                               a missing instant falls back to a window the button invents
+PROVED                               a five-minute fallback is written in as a literal
+PROVED                               an instant withdrawn while the button is mounted freezes the strip (the effect returns before zeroing it)
+PROVED                               the free/fee state consults a second clock (the device's, against the cutoff)
+PROVED                               the m:ss label reads a clock of its own
+PROVED                               the journey's free offer is read off the free instant alone (it outlives the countdown)
+PROVED                               the journey's free offer is read off the fee (a free price outlives the free window)
+PROVED                               the journey's free offer ignores the countdown (offered for as long as the page's price was free)
+PROVED                               the journey's lapse is read off the fee (a no-fee paid window would never come back)
+PROVED                               a mount flag comes back to the journey's free offer (the server's paint offers it whatever the countdown says)
+PROVED                               today's button can still be pressed over a lapsed free price
+PROVED                               today's button keeps the stale figure while it waits for the server
+PROVED                               today's button says 'Uza sasa' over a lapsed free price (nothing says it is waiting)
+PROVED                               today's button names the stale figure to a screen reader while it waits
+PROVED                               the lapse is the journey's alone again (today's button keeps a stale free price until the next refresh)
+PROVED                               the lapse effect skips today's look through the look prop, after its guard (its confirm stays open on the free price, and nothing asks the server)
+PROVED                               the lapse effect skips today's look before its guard
+PROVED                               a mount flag holds the lapse back until a commit again (the server's paint draws a lapsed free price as 'Uza sasa · TZS 3,600 −0 ada')
+PROVED                               the lapse verdict moves inside the journey's look (today's return can no longer read it)
+PROVED                               today's button waits an effect for the server's shut verdict (a bright, pressable 'Uza sasa · TZS 0' between 'Inapakia…' and 'Kuuza kumefungwa')
+PROVED                               today's button waits for its first commit for the server's shut verdict again (its server paint offers 'Uza sasa · TZS 0 −1,000 ada')
+PROVED                               today's free strip reads the phone's clock alone (it outlives the server's shut verdict for a render)
+PROVED                               today's button says 'Inauza…' while a moved price waits for the server (under a result that says nothing was sold)
+PROVED                               today's free strip keeps counting down over a price the server refused because it moved
+PROVED                               the countdown starts at 0 again (inside the free window the server paints 'Uza sasa · TZS 3,600 −0 ada', and the strip pushes the button down once the page has started)
+PROVED                               the countdown's first value reads this device's clock (the server's paint and the hydrating render disagree)
+PROVED                               the countdown's first value parses the instant again on its own (two parses that can disagree)
+PROVED                               the clock no longer re-runs on a new serverNow (a refresh's own instant never recalibrates the countdown)
+PROVED                               a price the server priced with a fee is drawn free while the countdown catches up (the free words over the paid figure, for a commit)
+PROVED                               a host that passes no flag loses its free offer (the flag read strictly where the countdown should stand alone)
+PROVED                               a restored render keeps its free offer (Back to /positions offers its old free price until the poller's next beat)
+PROVED                               a restored render's price with a fee is offered (only a free one waits for the server's answer)
+PROVED                               the record is keyed by the position alone (every fresh visit to a ticket reads as a restore: 'Inapakia…' and an ask each time)
+PROVED                               the record is written during render (a first load's own render counts itself and can read as a restore)
+PROVED                               the record moves inside the component (a new, empty record at every render: Back is never read)
+PROVED                               the record is cleared when a button unmounts (the page Back returns to finds nothing: its old prices are offered)
+PROVED                               the record forgets a render its button moves on from (a Back between two addresses of one page is never read)
+PROVED                               the record no longer counts who draws a render (a second button drawing a render on screen reads as brought back)
+PROVED                               the record keeps every render for as long as the tab is open (it grows with every refresh of every ticket)
+PROVED                               a render that hands a button already on the page an old serverNow is not read (a Back between two addresses of one page offers its old prices)
+PROVED                               a fresh render never ends a restore (the button says 'Inapakia…' for good)
+PROVED                               the answer that ends a restore re-arms nothing (an answer that is itself no offer waits for the poller)
+PROVED                               a restore asks once per button (four tickets, four refreshes queued on a 2G phone)
+PROVED                               the button that claims a restore's ask is not armed for it (after an earlier ask was answered, a Back between two addresses of one page never asks)
+PROVED                               a shut ticket claims a restore's ask and never makes it (the restore is never asked about)
+PROVED                               a ticket this phone's clock has shut claims a restore's ask and never makes it (after a Back between two addresses of one page)
+PROVED                               the claim moves below the lapse effect (each button's lapse asks before its claim can disarm it: one ask per button)
+PROVED                               the lapse no longer runs when a restore ends (an answer that is itself no offer is not asked about)
+PROVED                               /positions stops handing its classic Sell button serverNow (its countdown starts at 0, and the record never sees its renders)
+PROVED                               the journey's ticket card takes serverNow as an optional prop (a page could hand it none)
+PROVED                               /positions draws its RefreshPoller after its tickets (a restored page's one ask, made as it mounts, finds nothing listening)
+PROVED                               Tiketi zangu draws its RefreshPoller after its cards
+PROVED                               next.config.ts turns on cacheComponents (Back shows a kept page with its old props, and no render reads them)
+PROVED                               the question page stops telling its Sell button whether the price is the free window's (a lapsed free price is offered until the next refresh)
+PROVED                               /positions' classic list hands the flag loosely (any price would read as free)
+PROVED                               the question page reads its flag off the fee, not cashOutValue's verdict
+PROVED                               /positions' flag gains a clause (a paid window with no fee would read as free, and lapse into 'Inapakia…' for good)
+PROVED                               the question page's flag drops the LIVE gate /positions reads (a CLOSED question's free price would be flagged)
+PROVED                               the free note is drawn below 360 again (the Swahili free row overflows a 320 phone on /positions, as measured)
+PROVED                               the label may wrap below 360 (a legacy paid row on /positions at 320 breaks its label over two lines, the Chinese one between its glyphs)
+PROVED                               the label may wrap below 360 with Chinese kept whole (a Swahili legacy paid row on /positions at 320 breaks `Uza sasa` over two lines)
+PROVED                               the fee beside a paid price is hidden below 360 too (a price shown without its fee)
+PROVED                               the stylesheet spreads the button's letters ten times wider (the row the model reads no longer fits)
+PROVED                               a longer Swahili free word (copy the row cannot hold on one line at 320)
+PROVED                               a word the row draws is missing in Chinese (the model would measure an empty label)
+PROVED                               the holder block's row changes its padding (the model would measure a button that is not there)
+PROVED                               the question page stops asking for the stacked phone row (its one-line row runs past the button again)
+PROVED                               /positions asks for the stacked phone row too (only the holder block may)
+PROVED                               the classic button ignores the host's ask (the holder block's button is drawn the wrap and never stacks)
+PROVED                               the stacked rule takes the 48px rung (a three-line row is taller than the button)
+PROVED                               the stacked rule caps its height instead of taking the rung (a max-height: the button stays 44px and a three-line row runs out of it)
+PROVED                               the stacked rule hand-types its height (56px: no rung, so the token no longer owns it)
+PROVED                               the stacked button no longer wraps its lines (its label and figure squeeze onto one)
+PROVED                               the stacked rule's phone block ends at 360 (from 360 the holder block's one-line row runs past the button again)
+PROVED                               the stacked rule's phone block reaches 768 (past `sm`, where the holder block's row is one line)
+PROVED                               the stacked rule's phone block also asks for a hovering pointer (no touch phone stacks: its one-line row runs past the button again)
+PROVED                               the stacked rule's phone block starts at 400 (from 320 to 399 the holder block's one-line row runs past the button again)
+PROVED                               the stacked rule leaves its phone block (the holder block's button would stack at every width)
+PROVED                               the stacked lines take line-height 1.5 (a three-line row is taller than the button)
+PROVED                               the stacked lines take a 12px row gap (a three-line row is taller than the button)
+PROVED                               the figure's line cannot let its note go under it (a long fee beside its figure runs past the button at 320)
+PROVED                               the figure's line is no flex row (its wrap and gap never apply: a long fee stays beside its figure, past the button at 320)
+PROVED                               the figure's gap is hand-typed (8px, not the spacing token)
+PROVED                               the stacked label no longer takes a line of its own (the figure could ride up beside it, off the line the model lays out)
+PROVED                               the note keeps its own margin beside the figure's gap (its line runs 8px wider than the model lays out)
+PROVED                               the stacked rule's phone block loses its density reason (the card-spacing fence would refuse it)
+PROVED                               every host that does not stack draws today's one line again (the className's wrap arm dropped: the Swahili free row for TZS 1,000,000 runs past the button at 360 on /positions, the Chinese legacy paid row at 320)
+PROVED                               the wrap rule's figure no longer wraps (its note stays beside a seven-figure stake, past the button on /positions)
+PROVED                               the wrap rule's figure is no flex row (its wrap and gap never apply: a long fee stays beside its figure, past the button at 320)
+PROVED                               the wrap rule's note keeps its own margin beside the gap (its one line runs 8px wider than the model lays out)
+PROVED                               the wrap rule's lines go to the left (a note under its figure no longer ends where the one-line row does)
+PROVED                               the wrap rule's gap is hand-typed (8px, not the spacing token)
+PROVED                               the wrap rule's phone block also asks for a hovering pointer (no touch phone wraps: its big rows run past the button again)
+PROVED                               the wrap rule's phone block ends at 360 (from 360 to 383 the Swahili free row for a big stake runs past the button again)
+PROVED                               the wrap rule's phone block reaches 768 (past `sm`)
+PROVED                               the wrap rule leaves its phone block (it would apply at every width)
+PROVED                               the wrap rule's phone block loses its density reason (the card-spacing fence would refuse it)
+PROVED                               the free strip no longer wraps between its parts (the browser shrinks its Swahili parts in the holder block below 383px until the free word and the note break inside, TOKA BILA over GHARAMA)
+PROVED                               the free strip's classes go back to before A8g (the browser shrinks its Swahili parts until the free word and the note break inside)
+PROVED                               the free strip pads 64px each side (its Swahili free word, alone on its line, breaks inside in the holder block at 320)
+PROVED                               the free strip's line gap is hand-typed (2px, off the spacing scale)
+PROVED                               the free strip's free word leaves the mono face (the model would measure a face it cannot read)
+PROVED                               a phone block re-declares the stack's rung (--h-control-xl: 48px below 640: the browser draws the second declaration, a model that read the first would lay out 56)
+PROVED                               the classic button's rung drops to 36px (a note under its figure no longer fits inside the button on /positions)
+PROVED                               the free window may run 120 minutes (the strip's countdown can read 120:00, longer than the 60:00 §5 and the records lay out)
+PROVED                               the holder block's opened line runs its word and date as one text again (its date breaks inside at 320 in Swahili, as the tiles measured)
+PROVED                               /positions' card loses the date's nowrap (its date may break inside on a narrow card)
+PROVED                               the holder block's word and date become ONE nowrap unit (the line can no longer break at all and runs past the card at 320)
+PROVED                               the suite drops out of predeploy
+PROVED                               the confirm's receive row is today's again — no wrap, the figure no amount, the fee no clear space (the Swahili figure splits at 360 and 390, as a browser drew it)
+PROVED                               the receive row stops wrapping (the whole figure runs out of the box on a phone, beside the fee column)
+PROVED                               the receive figure is no amount again (its 'TZS' could end a line, held only by the wrap)
+PROVED                               the receive figure is set in the display face (the model would measure a face it cannot read)
+PROVED                               the fee column does not grow (alone on its line it would sit at the box's left, its words ragged)
+PROVED                               the fee keeps no clear space before it (beside the figure, two figures can run together)
+PROVED                               the fee is no amount ('−TZS' could end a line)
+PROVED                               the fee's note is no amount (its figure could end a line)
+PROVED                               the confirm's box pads wider (its content narrows past the whole figure on a 320 phone)
+PROVED                               the Modal's gutter widens (the confirm's box narrows past the whole figure on a 320 phone)
+PROVED                               a longer Swahili sell word (the gold button's label, with TZS 1,000,000, runs out of its button at 320)
+PROVED                               a longer Swahili keep word in the journey's look (its keep button overflows at 320)
+PROVED                               the sale's result stops asking for whole figures (a refusal's 'TZS' can end a line again, and the title's figure is drawn in a face the model cannot read)
+PROVED                               the result draws its title as given (no amount around its figure)
+PROVED                               the result's helper sets its figures in the body's face, not as amounts
+PROVED                               the figure pattern misses a minus written before the currency
+PROVED                               a detail row of the result stops wrapping (a long Swahili label squeezes the figure, and break-all breaks it)
+PROVED                               the result's title grows to 34px (its widest figure no longer fits a 320 phone's line)
+PROVED                               a word the dialogs draw is missing in Chinese (the model would measure an empty eyebrow)
+PROVED                               the eyebrow's tracking is misread in the stylesheet (the model no longer draws the boxes the browser drew)
+PROVED                               the Modal's panel pads narrower below lg (the model reads a panel the browser did not draw)
+
+155/155 caught

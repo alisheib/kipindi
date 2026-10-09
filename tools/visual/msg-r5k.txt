@@ -1,0 +1,44 @@
+Visual pass round 5 (R5-K): seven loading ghosts rebuilt from their pages — receipt, deposit, deposit return, withdraw, profile, classic positions, performance land where the page lands, band for band
+
+R5-H's follow-up list (ghosts needing a rebuild). Each ghost now renders the page's own kit parts with the page's props
+and classes, its words set but not shown (src/components/ui/ghost-text.tsx), its figures drawn as shapes (digits as
+zeros). Measured from the repo's fonts at 320/360/390/640/768/1024/1280 in sw, en and zh: every band 0px off for the
+case drawn (the residuals are data the ghost cannot know, named per route).
+- /wallet/receipt/[id]: the page's buttons landed 251.5–341.5px below the ghost (sw 320: 787.5 vs 446) — now the back
+  link, the PageHero/PageHeader head, the status Chip, the details panel at the 51px row pitch, both buttons and the
+  footnote (drawn: a completed M-Pesa deposit).
+- /wallet/deposit: the page ended 346.5–589.3px below — 86px tiles (the page's are 106.25), no quick-amount pills, the
+  amount before the providers, no phone hint, no trust strip; now `DepositFormGhost` (money-form-ghost.tsx) in the
+  page's order (drawn: mobile money, no notice above the form).
+- /wallet/deposit/return: 128–351px off — now a hero, the six receipt rows, two buttons and the footnote; nothing
+  about the outcome is visible (law 5).
+- /wallet/withdraw: a 138px spinner panel stood where the page has a 730–1,210px form — now the page's hero with the
+  balance block's box and the form ghost (rails, amount, destination, both notices, the confirm), on R5-G's
+  withdraw-ghost.tsx; a KYC-gated reader sees the form swap to the identity panel.
+- /profile: 647–1,435px off — now the 80px avatar, the name in its own face (profile-faces.ts, read by the page, the
+  name editor and the ghost), the pills, 3 kit Stats, the achievements shelf, 12 rows in the page's order, sign-out.
+- /positions (classic): up to 309px off — the head's button box, the strip in PnlSummaryStrip's own classes
+  (`PNL_STRIP`), the 14px exposure keys, the bar from the money books' parts with the page's words.
+- /positions/performance: drawn from an older page — now the net P&L panel, the chart at its 3:1 shape, the best-win and
+  streak cards, the stake tiles and five recent rows.
+One convention for all: words set but not shown (GhostText), figures as shapes, the kit components with the page's
+props, control heights from the tokens, same-pixel literals for inverted spacing keys; one drawing per shared part (the
+money forms, the receipt rows, the profile faces, PNL_STRIP, CountGhost).
+
+Guards: test:visual-pass-r5k (55 checks with controls and plants); qa:ghost-landing §D written for the lock turn (6
+routes, 360/1280, sw). Mutation proof: 29 planted, 29 caught on the named check, all restored byte-identical. Re-pins
+(each with its reason): r4h 2.1, r5d 2.8, spacing-scale 453 → 431, type-scale (subfloor 745 → 744, arbitrary sizes
+899 → 897), the ui-consistency baseline 136 → 134, eyebrow-roles (3 declarations, 1 re-key). Rebased by its author onto
+89893725 (R5-G): the withdraw hunk on withdraw-ghost.tsx, R5-G's help row word in the profile ghost.
+
+Merged onto R5-G (89893725): r5k 2.1's page-order token follows R5-G's `<DepositConfirm journey={journey} />`. On the merged
+tree: 104 suites (the reds main's own or the shared Prisma client's), the red twins, and five proofs — R5-K 29, R5-G
+30, R5-H 41, R5-D 27, R5-B 36 planted defects caught, every file restored byte-identical (R5-K's re-run after the pin).
+
+Owner items: the return ghost shaped by the PAID outcome's hidden words; /profile's commonest case; the withdraw ghost
+for a KYC-gated reader.
+
+Classic viewers see the new ghost bodies on these routes (/positions' ghost is classic-only); journey readers see the
+deposit and return drawings through the root ghost; no chrome touched; the page-side refactors render byte-identically.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>

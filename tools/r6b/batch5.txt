@@ -1,0 +1,5 @@
+test:red-anchors
+test:docs
+test:labels
+test:updown-push
+test:decomment

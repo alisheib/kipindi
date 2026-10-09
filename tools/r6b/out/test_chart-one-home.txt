@@ -1,0 +1,41 @@
+§0 · detector fixtures
+PASS 0.1 a computed-d path IS chart-shaped
+PASS 0.2 a literal-d glyph is NOT chart-shaped
+PASS 0.3 a computed dash ring IS chart-shaped
+PASS 0.4 a computed rotation across a line break IS chart-shaped
+PASS 0.5 a canvas IS chart-shaped
+PASS 0.6 a stem placed by a computed x, across a line break, IS chart-shaped
+PASS 0.7 a literal-coordinate glyph line or dot is NOT chart-shaped
+
+§1 · the corpus
+PASS 1.1 the probe actually read the corpus — 414 user-level .tsx files
+
+§3 · one home
+PASS 3.1 zero chart-shaped files outside the system — 14 chart-shaped files, all accounted for
+PASS 3.2 every exemption still matches a detector (the list may only shrink)
+PASS 3.3 every named member still exists at its pinned address
+PASS 3.4 the band's retired price line and ring stay deleted
+PASS 3.5 the match track and its playhead are members of the home
+PASS 3.6 …and the track is chart-shaped by D5 (the detector sees what it was added for)
+
+§4 · no dead members (the Sparkline/PriceChart class)
+PASS 4.x components/charts/chart-core.ts has an import site
+PASS 4.x components/charts/board-viz.tsx has an import site
+PASS 4.x components/charts/chart-toggle.tsx has an import site
+PASS 4.x components/charts/market-curve.tsx has an import site
+PASS 4.x components/charts/micro-spark.tsx has an import site
+PASS 4.x components/charts/outcome-cubes.tsx has an import site
+PASS 4.x components/charts/pnl-chart.tsx has an import site
+PASS 4.x components/charts/ring.tsx has an import site
+PASS 4.x components/charts/terminal-chart.tsx has an import site
+PASS 4.x components/charts/updown-chart-lab.tsx has an import site
+PASS 4.x components/charts/updown-match-now.tsx has an import site
+PASS 4.x components/charts/updown-match-track.tsx has an import site
+PASS 4.x components/charts/volume-spark.tsx has an import site
+
+§5 · exactly one charting library, imported only by the home
+PASS 5.1 package.json carries no charting dependency beyond the allowed one — 34 deps checked · allowed: lightweight-charts
+PASS 5.2 no user-level file imports a banned one (static or dynamic)
+PASS 5.3 the allowed library is imported ONLY under the home (static or dynamic)
+
+ALL PASS — 30 passed, 0 failed (14 chart-shaped files · 12 members in the home · 9 named exemptions)

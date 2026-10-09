@@ -1,0 +1,254 @@
+# R6-A suites (all) · 2026-10-09T17:45:22.861Z · 253 suites
+test:rg-email-end	0	1.8s	rg-email-end: 28 passed, 0 failed
+test:visual-pass-r6a	0	4.7s	visual-pass-r6a: 42 passed, 0 failed
+test:red-anchors	0	6.8s	red-anchors: 5070 passed, 0 failed
+test:decomment	0	4.6s	ALL PASS — 22 passed, 0 failed
+test:hooks-order	0	1.5s	hooks-order: 7 passed, 0 failed
+test:ui-consistency	0	2.6s	ALL PASS — no new UI-consistency drift beyond the tracked baseline.
+test:i18n	0	1.1s	ALL PASS — en=2628 sw=2628 zh=2628 keys
+test:journey-shell	0	3.3s	JOURNEY SHELL — all 434 checks passed
+test:simple-journey-flag	0	6.8s	135 passed, 0 failed
+test:eyebrow-roles	0	0.9s	✅ 639 sites, every one accounted for.
+test:type-scale	0	2.1s	ALL PASS — 1441 source files, 188 money elements.
+test:spacing-scale	0	1.4s	spacing-scale: 10 passed, 0 failed · 453 inverted usages in 165 files
+test:design-frozen	0	1.6s	PASS — design primitives are frozen
+test:css-vars-defined	0	2.1s	css-vars-defined: 299 references checked, 0 undefined.
+test:stacking	0	2.0s	137 passed, 0 failed
+test:rg-doors	0	2.5s	rg-doors: 113 passed, 0 failed
+test:rg-policy	0	1.0s	rg-policy: 23 passed, 0 failed
+test:kyc-gate	0	39.3s	kyc-gate: 96 passed, 0 failed
+test:journey-account	0	2.6s	JOURNEY ACCOUNT — all 85 checks passed
+test:feedback-law	0	1.4s	feedback-law: 160 passed, 0 failed  (of 160)
+red:rg-doors	0	105.1s	baseline · the suite is GREEN on untouched source — 113 passed
+red:feedback-law	0	51.4s	exit=0  160 passed, 0 failed
+red:kyc-gate	1	0.9s	This harness restores files to the state it found them in, so starting from an uncommitted edit would BAKE that edit in as the baseline. Commit first.
+red:journey-shell	0	28.5s	RED CONTROL — 188/188 caught · all 377 proofs held
+red:simple-journey-flag	0	9.1s	41/41 caught
+red:rg-policy	0	1.6s	RED PROOF COMPLETE
+red:journey-account	0	1.9s	RED CONTROL — 48/48 caught · all 97 proofs held
+red:css-vars-defined	0	33.9s	(Use `node --trace-deprecation ...` to show where the warning was created)
+red:journey-tickets	0	89.3s	RED CONTROL — 111/111 caught · all 223 proofs held
+test:cert-c1	0	2.1s	cert-c1 (email truth): 1237 passed, 0 failed
+test:cert-c3	0	2.0s	cert-c3 (notification truth): 1529 passed, 0 failed
+test:email-stress	0	2.1s	email-stress: 14 passed, 0 failed
+test:lifecycle-e2e	0	2.4s	poll-lifecycle-e2e: 1545 passed, 0 failed
+red:bonus-one-side	0	24.5s	tree restored · 7/7 defects caught
+red:bulk-resolve	0	86.6s	(Use `node --trace-deprecation ...` to show where the warning was created)
+red:campaign-compose	0	10.4s	[email] sendEmailToUser skipped — no email for user usr_u37b_6654… (user.email=null, phone=+25571…)
+red:cashout-price-guard	1	0.5s	REFUSING TO RUN — src/lib/server/market-service.ts differs from git HEAD. Commit or stash first.
+red:chart-one-home	0	29.7s	9/9 mutations caught
+red:chip-one-home	0	8.6s	2/2 mutations caught
+red:contrast-callsite	0	22.1s	5/5 mutations caught
+red:dal-parity	0	690.5s	(Use `node --trace-deprecation ...` to show where the warning was created)
+red:density-contract	0	1.6s	5/5 planted violations caught in all
+red:deposit-ceiling	0	105.9s	RED CONTROL — 9/9 caught
+red:failure-reasons	0	107.5s	tree restored · 20/20 defects caught
+red:house-bot-c5	1	0.7s	REFUSING TO RUN — src/lib/server/market-service.ts differs from git HEAD. Commit or stash first.
+red:house-bot-console	1	3.2s	REFUSING TO RUN — src/lib/server/market-service.ts differs from git HEAD. Commit or stash first.
+red:house-bot-engine	1	1.1s	REFUSING TO RUN — src/lib/server/market-service.ts differs from git HEAD. Commit or stash first.
+red:house-bot-money	1	0.7s	REFUSING TO RUN — src/lib/server/market-service.ts differs from git HEAD. Commit or stash first.
+red:implicit-submit	0	5.8s	RED CONTROL — 61/61 caught · 1/1 green held
+red:journey-estimate	0	1.9s	RED CONTROL — 14/14 caught
+red:layout-staleness	0	18.4s	baseline · the suite is GREEN on untouched source — 75 passed
+red:market-columns	0	14.8s	(Use `node --trace-deprecation ...` to show where the warning was created)
+red:marketing-consent	0	15.8s	§0 baseline · shipped gate: 51 passed, 0 failed
+red:marketing-engine	0	591.4s	[email] sendEmailToUser skipped — no email for user usr_t1_4773_Z… (user.email=null, phone=+25562…)
+red:marketing-window	0	3.5s	[email] sendEmailToUser skipped — no email for user usr_u13_11_1… (user.email=null, phone=+25571…)
+red:officer-hold	1	33.4s	· case 7 (law 25 · the notice names an outcome the market does not hold): gate stayed GREEN with the defect present
+red:one-sided	1	3.0s	8.5 the refund note is the card's ONE conditional sentence, withheld once settled, at the money control while open and under the rail once closed; no 'One-sided win' body
+red:payout-view	0	5.8s	tree restored · 5/5 defects caught
+red:position-permalink	0	13.0s	11/11 mutations caught — every file restored byte-for-byte.
+red:recategorise	0	22.9s	(Use `node --trace-deprecation ...` to show where the warning was created)
+red:refresh-cadence	0	10.6s	8/8 mutations caught — every file restored byte-for-byte.
+red:sell-grace-truth	0	48.8s	155/155 caught
+red:sell-price-guard	0	3.5s	RED CONTROL — sell-price-guard: 83/83 caught · all 167 proofs held
+red:share-preview	0	25.4s	(Use `node --trace-deprecation ...` to show where the warning was created)
+red:short-title-ai	0	135.1s	44/44 caught
+red:short-title-edit	0	5.0s	52/52 caught
+red:short-title-fit	0	18.1s	RED CONTROL — 19/19 caught · all 39 proofs held
+red:sms-cost-guard	0	389.5s	red:sms-cost-guard — 70/70 defects caught on their own assertion
+red:social-home	0	2.3s	1 FAILED — 18 passed, 1 failed
+red:social-promo	0	2.2s	1 FAILED — 18 passed, 1 failed
+red:social-rel	0	2.3s	1 FAILED — 18 passed, 1 failed
+red:social-token	0	2.3s	1 FAILED — 18 passed, 1 failed
+red:split-bar	0	9.5s	3/3 mutations caught — every file restored byte-for-byte.
+red:support-contact	0	82.7s	red:support-contact — 10/10 defects caught on their own assertion
+red:thin-alert	0	15.5s	tree restored · 6/6 defects caught
+red:timer-date	0	21.9s	(Use `node --trace-deprecation ...` to show where the warning was created)
+red:updown-bell	0	12.3s	tree restored + verified byte-identical · 7/7 defects caught
+red:updown-digest	0	10.7s	baseline · updown-digest (E-37 + E-43): 73 passed, 0 failed — green, so a red below is a DELTA
+red:updown-filter-sheet	0	21.0s	(Use `node --trace-deprecation ...` to show where the warning was created)
+red:updown-handover	0	23.2s	FAILURES — 115 passed, 2 failed
+red:updown-hedge-quote	0	22.1s	tree restored · 8/8 defects caught
+red:updown-history-pnl	0	8.4s	(Use `node --trace-deprecation ...` to show where the warning was created)
+red:updown-positions-visible	0	5.9s	red:updown-positions-visible: OK — every pre-fix defect is seen, and the tree is restored
+red:updown-push	1	5.0s	✗ refund-goes-silent — HARNESS ERROR: anchor not found, mutation never applied
+red:updown-result-clock	0	6.0s	4/4 mutations caught — file restored byte-for-byte.
+red:updown-result-clock-boundary	0	7.8s	5/5 mutations caught — every file restored byte-for-byte.
+red:updown-source-class	0	6.6s	tree restored · 5/5 defects caught
+red:updown-void-copy	0	13.1s	RED HARNESS — 11/11 caught
+red:visual-pass-r4k	0	14.7s	visual-pass-r4k: 77 passed, 0 failed
+red:withdraw-email-gate	1	0.6s	This harness restores files to the state it found them in, so starting from an uncommitted edit would BAKE that edit in as the baseline. Commit first.
+test:activity	0	1.8s	activity-summary: 67 passed, 0 failed
+test:agent-application-security	0	1.9s	agent-application-security: 111 passed, 0 failed
+test:agent-fee-wallet-path	0	1.5s	ALL PASS — 61 passed, 0 failed
+test:ai-source-allowlist	0	1.5s	30 passed, 0 failed
+test:aipoll-publish	0	1.6s	aipoll-publish: 33 passed, 0 failed
+test:audit-gap	0	1.3s	audit-gap: 38 passed, 0 failed, 38 assertion(s) emitted
+test:auth-email-integrity	0	6.9s	auth-email-integrity: 90 passed, 0 failed
+test:betting-ink	0	1.1s	ALL PASS — 35 passed, 0 failed
+test:board-discovery	0	1.2s	────────────────────────────────────────────────────────────────
+test:bonus-betting	0	1.6s	bonus-betting: 24 passed, 0 failed
+test:bonus-one-side	0	1.7s	bonus-one-side: 28 passed, 0 failed
+test:bonus-withdrawable	0	9.3s	bonus-withdrawable: 33 passed, 0 failed
+test:bulk-resolve	0	1.8s	ALL PASS — 224 passed, 0 failed
+test:campaign-compose	0	2.5s	[email] sendEmailToUser skipped — no email for user usr_u37b_63… (user.email=null, phone=+25571…)
+test:cashout	0	2.6s	cashout-fee: 85 passed, 0 failed
+test:cashout-lock	0	2.0s	cashout-lockout: 28 passed, 0 failed
+test:cert-c2	0	13.3s	cert-c2 (delivery resilience): 47 passed, 0 failed
+test:charged-fee	0	1.6s	charged-fee: 53 passed, 0 failed
+test:chart-one-home	0	1.1s	ALL PASS — 30 passed, 0 failed (14 chart-shaped files · 12 members in the home · 9 named exemptions)
+test:client-error-report	0	0.9s	ALL PASS — 56 passed, 0 failed
+test:concurrency	0	3.2s	concurrency: 40 passed, 0 failed
+test:contrast	0	1.3s	contrast-audit: 118 checks · 0 gate failure(s) (decorative dividers are WCAG 1.4.11-exempt)
+test:criterion-ai-publish	0	1.6s	criterion-ai-publish-e2e: 9 passed, 0 failed
+test:criterion-chain	0	1.6s	criterion-chain-e2e: 16 passed, 0 failed
+test:criterion-i18n	0	0.9s	criterion-i18n: 99 passed, 0 failed
+test:dal-parity	0	2.1s	dal-parity: 2228 passed, 0 failed
+test:density-contract	0	1.4s	ALL PASS — 36 passed, 0 failed
+test:deposit-ceiling	0	12.1s	DEPOSIT CEILING — all checks passed
+test:deposit-gate	0	39.7s	deposit-gate-return: 77 passed, 0 failed
+test:deposit-notifications	0	7.0s	deposit-notifications: 73 passed, 0 failed
+test:dsar-secrets	0	3.3s	DSAR EXPORT SECRETS: 46 passed, 0 failed
+test:duration	0	1.8s	duration-input: 58 passed, 0 failed
+test:emergency	0	3.4s	emergency-void: 34 passed, 0 failed
+test:erasure	0	3.6s	ALL PASS — 351 passed, 0 failed
+test:failure-reasons	0	5.3s	failure-reasons (with §8 + §9 + §10): 376 passed, 0 failed
+test:fee-model	0	1.9s	fee-model: 78 passed, 0 failed
+test:filter-language	0	2.4s	all green
+test:gold-is-money	0	0.9s	gold-is-money: 45 passed, 0 failed
+test:house-bot-disclosure	4	23.1s	FAILURES — house-bot-disclosure: 116 passed, 2 failed
+test:house-bot-holder-lifecycle	4	2.9s	FAILURES — house-bot-holder-lifecycle: 14 passed, 2 failed
+test:house-bot-rules	0	15.4s	ALL PASS — house-bot-rules: 577 passed, 0 failed
+test:house-bot-seam	0	2.2s	ALL PASS — house-bot-seam: 98 passed, 0 failed
+test:house-bot-surfaces	0	17.2s	ALL PASS — house-bot-surfaces: 74 passed, 0 failed
+test:implicit-submit	0	2.5s	IMPLICIT SUBMIT — all checks passed
+test:integrity	0	3.2s	content-integrity: OK — no misleading, superseded, or removed-code patterns in current-truth surfaces
+test:invite-flow	0	1.7s	invite-flow: 25 passed, 0 failed
+test:journey-estimate	0	1.4s	JOURNEY ESTIMATE — all checks passed
+test:journey-tickets	0	1.8s	JOURNEY TICKETS — all 51 checks passed
+test:kyc-approved-copy	0	1.3s	ALL PASS — 87 passed, 0 failed
+test:kyc-at-withdrawal	0	14.1s	kyc-at-withdrawal: 154 passed, 0 failed
+test:kyc-copy-truth	0	1.4s	kyc-copy-truth: 431 passed, 0 failed
+test:labels	0	3.9s	ALL PASS — 3 locales × 2 products, 1443 files scanned, 11/11 private maps
+test:late-bet	0	1.5s	late-bet: 14 passed, 0 failed
+test:layout-staleness	0	0.8s	layout-staleness: 75 passed, 0 failed
+test:login-enum	0	2.2s	ALL PASS — 15 passed, 0 failed
+test:loser-share-fee	0	1.6s	loser-share-fee: 33 passed, 0 failed
+test:loss-limit	0	1.6s	loss-limit: 7 passed, 0 failed
+test:maintenance	0	1.5s	maintenance-mode: 13 passed, 0 failed
+test:market-columns	0	0.7s	market-columns: 25 passed, 0 failed
+test:marketing-consent	0	2.3s	marketing-consent: 234 passed, 0 failed
+test:marketing-engine	0	4.6s	marketing-engine: 94 passed, 0 failed
+test:marketing-window	0	2.0s	marketing-window: 9 passed, 0 failed
+test:markets	0	1.8s	ALL MARKET-RESOLUTION SCENARIOS PASS — 24 passed, 0 failed
+test:measure	0	1.5s	ALL PASS — 736 tsx files
+test:mixed-flow	0	1.8s	mixed-unit-flow: 92 passed, 0 failed
+test:money-invariants	0	1.6s	money-invariants: 89 passed, 0 failed
+test:money-minimums	0	3.2s	money-minimums: 35 passed, 0 failed
+test:motion-ladder	0	2.0s	12 passed, 0 failed
+test:notifications-page	0	1.1s	notifications page (the door the bell cannot be) — 49 passed, 0 failed
+test:officer-conflict	0	1.5s	officer-conflict: 21 passed, 0 failed
+test:one-sided	0	2.4s	ALL PASS — one-sided markets
+test:override-scope	0	0.9s	market-override-scope: 20 passed, 0 failed
+test:payout-view	0	0.8s	E-49 · payout view — 40 passed, 0 failed
+test:pii-logs	0	2.4s	PII IN LOGS (F-06): 15 passed, 0 failed
+test:pool-residual	0	0.9s	────────────────────────────────────────────────────────────────
+test:popup-fit	0	1.1s	popup-fit: 13 passed, 0 failed
+test:position-permalink	0	0.7s	31 passed, 0 failed
+test:predictor-count	0	1.6s	predictor-count: 4 passed, 0 failed
+test:privacy-notice	0	2.0s	ALL PASS — 100 passed, 0 failed
+test:product-line	0	1.6s	product-line: 48 passed, 0 failed
+test:proof-privacy	0	0.8s	12 passed, 0 failed
+test:proposal-close	0	2.0s	proposal-selection-close: 27 passed, 0 failed
+test:push	0	2.0s	push-service: 20 passed, 0 failed
+test:read-tiers	0	2.0s	read-tiers: 83 passed, 0 failed
+test:recategorise	0	1.6s	recategorise: 30 passed, 0 failed
+test:redis-failopen	0	6.2s	redis-failopen: 94 passed, 0 failed
+test:refresh-cadence	0	0.7s	34 passed, 0 failed
+test:refused-funds	0	10.8s	refused-funds: 64 passed, 0 failed
+test:refused-funds-p1	0	6.3s	ALL PASS — 52 passed, 0 failed
+test:report-parity	0	1.6s	REPORT PARITY: 50 passed, 0 failed
+test:report-window-reads	0	1.8s	report-window-reads: 41 passed, 0 failed
+test:reset-identifier	0	2.3s	reset-identifier: 86 passed, 0 failed
+test:rg-limit-change	0	1.7s	ALL PASS — 24 passed, 0 failed
+test:rg-race	0	3.4s	rg-limit-race: 12 passed, 0 failed
+test:rule-honesty	0	1.6s	PASS — 22 passed, 0 failed
+test:scheduler	0	2.6s	ALL SCHEDULER SCENARIOS PASS — 91 passed, 0 failed
+test:section-rail	0	1.0s	✅ every rail of destinations names the one in force.
+test:selection-closed	0	1.9s	selection-closed-notify: 21 passed, 0 failed
+test:sell-grace-truth	0	3.9s	sell-grace-truth: 49 passed, 0 failed
+test:sell-price-guard	0	2.8s	SELL PRICE GUARD — all 54 checks passed
+test:sentinel-guards	0	1.6s	sentinel-strict-guards: 28 passed, 0 failed
+test:settle-atomicity	0	0.8s	────────────────────────────────────────────────────────────────
+test:settlement-gate	0	1.8s	settlement-gate: 166 passed, 0 failed
+test:share-preview	0	1.1s	ALL PASS — share preview
+test:short-title-ai	0	6.8s	167 passed, 0 failed
+test:short-title-edit	0	3.5s	short-title-edit: 194 passed, 0 failed
+test:short-title-fit	0	2.3s	SHORT-TITLE FIT — all checks passed
+test:signoff	0	0.9s	signoff: 25 passed, 0 failed
+test:sms-cost-guard	0	4.3s	sms-cost-guard: 123 passed, 0 failed
+test:social-links	0	1.4s	ALL PASS — 19 passed, 0 failed
+test:support-contact	0	6.5s	77 passed, 0 failed
+test:tax-report	0	12.7s	tax-report: 222 passed, 0 failed
+test:thin-alert	0	1.8s	thin-market-alert: 19 passed, 0 failed
+test:timer-date	0	0.9s	timer-date: 77 passed, 0 failed
+test:trilingual	0	2.7s	ALL PASS — 38 passed, 0 failed
+test:two-admin	0	1.8s	two-admin-policy: 18 passed, 0 failed
+test:unsaved-changes	0	1.4s	✅ every admin form that can lose work guards all three exits
+test:updown-adversarial	0	2.3s	updown-adversarial: 13 passed, 0 failed
+test:updown-bell	0	1.5s	Up & Down bell rows (owner decision 2026-08-22) — 105 passed, 0 failed
+test:updown-clock-guard	0	1.0s	ALL PASS — 62 passed, 0 failed
+test:updown-cutover	0	2.1s	updown-fee-cutover: 23 passed, 0 failed
+test:updown-digest	0	1.6s	updown-digest (E-37 + E-43): 73 passed, 0 failed
+test:updown-e2e-flow	0	1.9s	UP & DOWN END-TO-END: 27 passed, 0 failed
+test:updown-engine	0	1.8s	updown-engine: 98 passed, 0 failed
+test:updown-filter-sheet	0	0.9s	updown-filter-sheet: 55 passed, 0 failed
+test:updown-handover	0	0.9s	ALL PASS — 117 passed, 0 failed
+test:updown-heal	0	2.0s	ALL PASS — 164 passed, 0 failed
+test:updown-hedge-quote	0	2.1s	ALL PASS — 28 passed, 0 failed
+test:updown-history-pnl	0	1.0s	ALL PASS — 26 passed, 0 failed
+test:updown-late-close	0	2.0s	✅ late-close: 38 passed, 0 failed
+test:updown-load	0	1.9s	updown-load (in-memory locks): 6 passed, 0 failed
+test:updown-match	0	3.8s	ALL PASS — 116 passed, 0 failed
+test:updown-positions-visible	0	0.9s	updown-positions-visible: 29 passed, 0 failed
+test:updown-pricing	0	1.0s	updown-pricing: 61 passed, 0 failed
+test:updown-proposal	0	2.3s	UPDOWN PROPOSALS: 91 passed, 0 failed
+test:updown-push	0	0.9s	E-57 · Up & Down push — 34 passed, 0 failed
+test:updown-quickbet	0	2.2s	updown-quickbet: 53 passed, 0 failed
+test:updown-reporting	0	2.0s	updown-reporting: 25 passed, 0 failed
+test:updown-result-announce	0	0.9s	updown-result-announce: 39 passed, 0 failed
+test:updown-result-clock	0	0.9s	29 passed, 0 failed
+test:updown-source-class	0	0.9s	E-53 · updown source class — 40 passed, 0 failed
+test:updown-void-copy	0	0.9s	✅ updown-void-copy: 49 passed, 0 failed
+test:updown-window	0	2.0s	✅ updown-window: 49 passed, 0 failed
+test:visual-pass-r3c	0	1.4s	visual-pass-r3c: 70 passed, 0 failed
+test:visual-pass-r4d	0	2.2s	visual-pass-r4d: 63 passed, 0 failed
+test:visual-pass-r4e	0	2.0s	visual-pass-r4e: 68 passed, 0 failed
+test:visual-pass-r4h	0	1.4s	visual-pass-r4h: 81 passed, 0 failed
+test:visual-pass-r4i	0	2.7s	visual-pass-r4i: 128 passed, 0 failed
+test:visual-pass-r4k	0	1.7s	visual-pass-r4k: 77 passed, 0 failed
+test:visual-pass-r5a	0	2.7s	visual-pass-r5a: 91 passed, 0 failed
+test:visual-pass-r5b	0	3.0s	75 passed, 0 failed
+test:visual-pass-r5c	0	2.1s	visual-pass-r5c: 91 passed, 0 failed
+test:visual-pass-r5d	0	9.3s	visual-pass-r5d: 44 passed, 0 failed
+test:visual-pass-r5e	0	12.2s	visual-pass-r5e: 60 passed, 0 failed
+test:visual-pass-r5f	0	1.1s	81 passed · 0 failed
+test:visual-pass-r5g	0	2.4s	visual-pass-r5g: 61 passed, 0 failed
+test:visual-pass-r5h	0	6.0s	visual-pass-r5h: 52 passed, 0 failed
+test:visual-pass-r5i	0	1.9s	visual-pass-r5i: 112 passed, 0 failed
+test:wallet-freeze	0	5.8s	wallet-freeze: 73 passed, 0 failed
+test:watchlist	0	1.9s	watchlist-alerts: 38 passed, 0 failed
+test:win-share	0	1.8s	win-share: 25 passed, 0 failed
+test:withdraw-email-gate	0	9.9s	withdraw-email-gate: 84 passed, 0 failed
+test:withdrawn-features	0	3.2s	88 passed · 0 failed

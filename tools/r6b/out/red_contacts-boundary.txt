@@ -1,0 +1,174 @@
+PASS base:§0.1 POSITIVE · a bare specifier is seen: src/lib/server/reports/xlsx.ts reaches the package exceljs — 3 module(s) walked
+PASS base:§0.2 POSITIVE · @/ and relative resolution: every local import of page.tsx and contacts-loader.ts resolves to a file, and page.tsx reaches src/lib/server/store.ts — page: 31 local import(s), loader: 12, store reached via src/app/admin/contacts/page.tsx
+PASS base:§0.3 POSITIVE · `export * from` and `export { … } from` are followed (a virtual re-export of a module that imports exceljs reaches exceljs) — star true · named true
+PASS base:§0.4 POSITIVE · a dynamic import() and a side-effect import are followed — dynamic true · side-effect true
+PASS base:§0.5 NEGATIVE · `import type` and an all-`type` named list are erased; a mixed list is still a value import — type-only reaches false · mixed reaches true
+PASS base:§0.6 LEAF · a "use client" file importing a "use server" module is CLEAN, while the same walk with leaves ignored reaches src/lib/server — sensitive-reveal: leaf src/app/admin/players/actions.ts, raw reaches src/lib/server/audit.ts, src/lib/server/rbac.ts
+PASS base:§0.7 DIRECTIVES · ≥100 "use client" files repo-wide; a directive after a comment block under CRLF is seen (on the raw CRLF text, and once tidied), one after code or inside a comment is not — 352 "use client" files · controls true/true/true/true/true
+     owned client files (17): src/app/admin/contacts/contact-form.tsx, src/app/admin/contacts/contact-row-select.tsx, src/app/admin/contacts/contacts-bulk-bar.tsx, src/app/admin/contacts/contacts-search-box.tsx, src/app/admin/contacts/contacts-selection-provider.tsx, src/app/admin/contacts/import/contacts-import-dialog.tsx, src/app/admin/contacts/import/import-adopt-panel.tsx, src/app/admin/contacts/import/import-check-panel.tsx, src/app/admin/contacts/import/import-commit-panel.tsx, src/app/admin/contacts/import/import-decision-panel.tsx, src/app/admin/contacts/import/import-done-panel.tsx, src/app/admin/contacts/import/import-entrance.tsx, src/app/admin/contacts/import/import-mapping-panel.tsx, src/app/admin/contacts/import/import-open-runs.tsx, src/app/admin/contacts/import/import-parts.tsx, src/app/admin/contacts/lists-card.tsx, src/app/admin/contacts/sample-sheet-button.tsx
+     client islands the owned routes render (17): src/app/admin/contacts/contact-form.tsx, src/app/admin/contacts/contact-row-select.tsx, src/app/admin/contacts/contacts-bulk-bar.tsx, src/app/admin/contacts/contacts-search-box.tsx, src/app/admin/contacts/contacts-selection-provider.tsx, src/app/admin/contacts/import/contacts-import-dialog.tsx, src/app/admin/contacts/lists-card.tsx, src/components/admin/act-gate.tsx, src/components/admin/admin-crumbs.tsx, src/components/admin/admin-mobile-nav.tsx, src/components/admin/admin-sidebar-nav.tsx, src/components/admin/ai-toolkit.tsx, src/components/admin/refresh-button.tsx, src/components/brand.tsx, src/components/ui/empty-state.tsx, src/components/ui/link-pending.tsx, src/components/ui/sensitive-reveal.tsx
+     owned pure modules (17): src/lib/contacts/bulk-rules.ts, src/lib/contacts/contact-fields.ts, src/lib/contacts/contact-number.ts, src/lib/contacts/csv-write.ts, src/lib/contacts/import-decide.ts, src/lib/contacts/import-flow.ts, src/lib/contacts/import-limits.ts, src/lib/contacts/import-loop.ts, src/lib/contacts/import-parse.ts, src/lib/contacts/import-read.ts, src/lib/contacts/parsed-file.ts, src/lib/contacts/phone-cell.ts, src/lib/contacts/sample-sheet.ts, src/lib/contacts/sheet-choice.ts, src/lib/contacts/title-rows.ts, src/lib/contacts/vcard.ts, src/lib/contacts/xlsx-limits.ts
+     owned server modules (23): src/app/admin/contacts/contact-bulk-actions.ts, src/app/admin/contacts/contact-filters.tsx, src/app/admin/contacts/contact-form-actions.ts, src/app/admin/contacts/contacts-copy.ts, src/app/admin/contacts/contacts-loader.ts, src/app/admin/contacts/contacts-query.ts, src/app/admin/contacts/contacts-rail.ts, src/app/admin/contacts/import/import-actions.ts, src/app/admin/contacts/import/import-copy.ts, src/app/admin/contacts/layout.tsx, src/app/admin/contacts/list-basis-actions.ts, src/app/admin/contacts/lists-loader.ts, src/app/admin/contacts/loading.tsx, src/app/admin/contacts/page.tsx, src/app/api/admin/contacts/export/route.ts, src/lib/server/contacts/contact-write.ts, src/lib/server/contacts/export-door-deps.ts, src/lib/server/contacts/export.ts, src/lib/server/contacts/import-check.ts, src/lib/server/contacts/import-commit.ts, src/lib/server/contacts/import-staging.ts, src/lib/server/contacts/import-xlsx-run.ts, src/lib/server/contacts/import-xlsx.ts — their graph: 295 modules
+PASS base:§0.8 POPULATION · the pure modules (≥2) and the client islands the owned routes render (≥1) are not zero — pure 17 · islands 17 · owned client 17 · owned server 23
+PASS base:§0.9 every relative and @/ import in the client, pure and owned-server graphs resolves (an unresolved edge is a blind spot, not a pass) — 138 client/pure modules and 295 owned-server modules, every edge resolved
+PASS base:§1.1 no owned client file and no client island an owned route renders reaches src/lib/server/** except through a "use server" leaf — 27 entries, 117 modules, leaves: src/app/admin/contacts/contact-form-actions.ts, src/app/admin/contacts/contact-bulk-actions.ts, src/app/admin/contacts/import/import-actions.ts, src/app/admin/contacts/list-basis-actions.ts, src/app/admin/_actions/ai-toolkit.ts, src/app/admin/players/actions.ts
+PASS base:§1.2 …nor the package exceljs (its browser build would ship ~948 KB into the admin chunk with typecheck and build green)
+PASS base:§1.3 …nor a Node builtin
+PASS base:§2.1 no module under src/lib/contacts/** carries a "use client" or "use server" directive (the kycGateState shape)
+PASS base:§2.2 src/lib/contacts/** reaches no src/lib/server/**, no src/app/** (not even a leaf) and no "use client" module
+PASS base:§2.3 …and no exceljs and no Node builtin
+PASS base:§2.4 every src/lib/contacts/** module is pinned in test:client-graph-safe's PINNED
+PASS base:§2.5 the two foundations (parsed-file.ts, xlsx-limits.ts) exist and import nothing at all
+PASS base:§2.6 exactly ONE `export type ParsedContactsFile` exists in src, in parsed-file.ts (decision C15: every producer imports it) — src/lib/contacts/parsed-file.ts
+PASS base:§2.7 the phone-format remedy is spelled ONCE in src (A1.6): only xlsx-limits.ts' PHONE_FORMAT_REMEDY holds 'Number with 0 decimal places', and every other sentence interpolates it — src/lib/contacts/xlsx-limits.ts ×1
+PASS base:§3.1 the src files with a VALUE import of exceljs are exactly the report writer (plus U27b's reader once it exists) — importers: src/lib/server/contacts/import-xlsx.ts, src/lib/server/reports/xlsx.ts · allowed: src/lib/server/reports/xlsx.ts, src/lib/server/contacts/import-xlsx.ts
+PASS base:§3.2 no "use client" file anywhere in src reaches exceljs (every client walked, leaves respected) — 352 clients, 631 modules walked
+PASS base:§4.1 every edge from an owned route's server graph into a "use client" module imports only PascalCase bindings — 19 crossing(s), e.g. src/app/admin/contacts/page.tsx → src/app/admin/contacts/lists-card.tsx {ListsCard}; src/app/admin/contacts/page.tsx → src/app/admin/contacts/contact-form.tsx {AddContactButton, ContactEditDialog}
+PASS base:§4.2 RATCHET · the same over every src/app entry: no offender outside the pinned list (empty, 2026-10-01), and every edge of that graph resolves — 446 entries, 1015 server modules, 474 crossings, every edge resolved
+PASS base:§5.1 the reader modules reach no store, prisma, prisma-dal, audit, auth-service or session module — 1 reader module(s)
+PASS base:§5.2 nothing under src/lib/server/contacts/** touches the disk (no streaming WorkbookReader, no temp dir, no fs import, no file call) — 8 module(s) under src/lib/server/contacts
+PASS base:§6.1 next.config.ts sets no bodySizeLimit (OD29: the money forms inherit the global ceiling)
+PASS base:§6.2 the installed Next still defaults a server action body to '1 MB' = 1024 * 1024
+PASS base:§6.3 base64LengthFor(XLSX_MAX_BYTES) + XLSX_ENVELOPE_ALLOWANCE ≤ NEXT_ACTION_BODY_LIMIT_BYTES === 1048576 — 963928 ≤ 1048576
+PASS base:§6.4 the too_large sentence names the measured size, the cap, CSV, and the remedy clause ('Number with 0 decimal places') — This spreadsheet is 800 KB — an Excel file can be up to 700 KB here. Save it as CSV instead — a CSV has no file-size limit (up to 200,000 rows in one import). Before you save, format the phone column as Number with 0 decimal places, or Excel will shorten long numbers to 2.55713E+11.
+PASS base:§6.5 the size gate is EXACT (A1.4): the decoded size is read off the base64 length and padding, so 700 KiB passes and 700 KiB + 1 and + 2 bytes refuse, by length alone, before any decode
+PASS base:§7.1 the sniffer reads the FULL magic bytes (a CSV starting "PK" is text), and the classifier tells xlsx, ods, xls and protected apart — protected even when EncryptionInfo sits past the first 4 KB
+PASS base:§7.2 isParsedContactsFile accepts a well-formed file and refuses every malformed one (order, line, cell, blank row, width, counts, notes, unreadable)
+PASS base:§7.3 every refusal and wrong-format kind has its own sentence with no digit run, every sentence that names CSV carries PHONE_FORMAT_REMEDY, a sheet name with 7+ digits (spaced or not) is never echoed, and sizes round UP
+PASS base:§7.4 the Excel-shortened detector catches 2.55713E+11 in every spelling and never a whole number
+PASS base:§7.5 a note's row list reads "rows 4, 9 and 12" and stops at NOTE_LIST_CAP with the true count — rows 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, …46, 47, 48, 49, 50 and 10 more
+
+§0 baseline: 35 passed, 0 failed
+
+── case G1: GREEN CONTROL for R4: the dialog imports an action module that KEEPS its "use server" line
+   held green → its paired plant flips this same population
+
+── case R1: the plan's own: a client import dialog imports exceljs (typecheck and build both stay green)
+FAIL red2:§1.2 …nor the package exceljs (its browser build would ship ~948 KB into the admin chunk with typecheck and build green) — src/app/admin/contacts/contacts-import-dialog.tsx → exceljs
+FAIL red2:§3.1 the src files with a VALUE import of exceljs are exactly the report writer (plus U27b's reader once it exists) — importers: src/app/admin/contacts/contacts-import-dialog.tsx, src/lib/server/contacts/import-xlsx.ts, src/lib/server/reports/xlsx.ts · allowed: src/lib/server/reports/xlsx.ts, src/lib/server/contacts/import-xlsx.ts
+FAIL red2:§3.2 no "use client" file anywhere in src reaches exceljs (every client walked, leaves respected) — src/app/admin/contacts/contacts-import-dialog.tsx → exceljs
+   caught → §1.2 …nor the package exceljs (its browser build would ship ~948 KB into the admin chunk with typecheck and build green)
+
+── case R2: two hops: the dialog imports the shared shape, and the shape starts importing the store
+FAIL red3:§1.1 no owned client file and no client island an owned route renders reaches src/lib/server/** except through a "use server" leaf — src/app/admin/contacts/contacts-import-dialog.tsx → src/lib/contacts/parsed-file.ts → src/lib/server/store.ts | src/app/admin/contacts/contacts-import-dialog.tsx → src/lib/contacts/parsed-file.ts → src/lib/server/store.ts → src/lib/server/prisma-dal.ts | src/app/admin/contacts/contacts-import-dialog.tsx → src/lib/contacts/parsed-file.ts → src/lib/server/store.ts → src/lib/server/prisma.ts
+FAIL red3:§1.3 …nor a Node builtin — src/app/admin/contacts/contacts-import-dialog.tsx → src/lib/contacts/parsed-file.ts → src/lib/server/store.ts → src/lib/server/crypto.ts → node:crypto | src/app/admin/contacts/contacts-import-dialog.tsx → src/lib/contacts/parsed-file.ts → src/lib/server/store.ts → src/lib/server/crypto.ts → node:util
+FAIL red3:§2.2 src/lib/contacts/** reaches no src/lib/server/**, no src/app/** (not even a leaf) and no "use client" module — src/lib/contacts/parsed-file.ts → src/lib/server/store.ts | src/lib/contacts/parsed-file.ts → src/lib/server/store.ts → src/lib/server/prisma-dal.ts | src/lib/contacts/parsed-file.ts → src/lib/server/store.ts → src/lib/server/prisma.ts
+FAIL red3:§2.3 …and no exceljs and no Node builtin — src/lib/server/crypto.ts → node:crypto | src/lib/server/crypto.ts → node:util
+FAIL red3:§2.5 the two foundations (parsed-file.ts, xlsx-limits.ts) exist and import nothing at all — src/lib/contacts/parsed-file.ts: 1 import(s)
+FAIL red3:§5.1 the reader modules reach no store, prisma, prisma-dal, audit, auth-service or session module — src/lib/server/contacts/import-xlsx.ts → src/lib/contacts/parsed-file.ts → src/lib/server/store.ts | src/lib/server/contacts/import-xlsx.ts → src/lib/contacts/parsed-file.ts → src/lib/server/store.ts → src/lib/server/prisma.ts | src/lib/server/contacts/import-xlsx.ts → src/lib/contacts/parsed-file.ts → src/lib/server/store.ts → src/lib/server/prisma-dal.ts
+   caught → §2.2 src/lib/contacts/** reaches no src/lib/server/**, no src/app/** (not even a leaf) and no "use client" module
+
+── case R3: the dialog imports a server module directly
+FAIL red4:§1.1 no owned client file and no client island an owned route renders reaches src/lib/server/** except through a "use server" leaf — src/app/admin/contacts/contacts-import-dialog.tsx → src/lib/server/store.ts | src/app/admin/contacts/contacts-import-dialog.tsx → src/lib/server/store.ts → src/lib/server/prisma-dal.ts | src/app/admin/contacts/contacts-import-dialog.tsx → src/lib/server/store.ts → src/lib/server/prisma.ts
+FAIL red4:§1.3 …nor a Node builtin — src/app/admin/contacts/contacts-import-dialog.tsx → src/lib/server/store.ts → src/lib/server/crypto.ts → node:crypto | src/app/admin/contacts/contacts-import-dialog.tsx → src/lib/server/store.ts → src/lib/server/crypto.ts → node:util
+   caught → §1.1 no owned client file and no client island an owned route renders reaches src/lib/server/** except through a "use server" leaf
+
+── case R4: the dialog's action module loses its "use server" line — the leaf becomes shipped code (G1 is the same population, green)
+FAIL red5:§1.1 no owned client file and no client island an owned route renders reaches src/lib/server/** except through a "use server" leaf — src/app/admin/contacts/contacts-import-dialog.tsx → src/app/admin/contacts/import-actions.ts → src/lib/server/store.ts | src/app/admin/contacts/contacts-import-dialog.tsx → src/app/admin/contacts/import-actions.ts → src/lib/server/store.ts → src/lib/server/prisma-dal.ts | src/app/admin/contacts/contacts-import-dialog.tsx → src/app/admin/contacts/import-actions.ts → src/lib/server/store.ts → src/lib/server/prisma.ts
+FAIL red5:§1.3 …nor a Node builtin — src/app/admin/contacts/contacts-import-dialog.tsx → src/app/admin/contacts/import-actions.ts → src/lib/server/store.ts → src/lib/server/crypto.ts → node:crypto | src/app/admin/contacts/contacts-import-dialog.tsx → src/app/admin/contacts/import-actions.ts → src/lib/server/store.ts → src/lib/server/crypto.ts → node:util
+   caught → §1.1 no owned client file and no client island an owned route renders reaches src/lib/server/** except through a "use server" leaf
+
+── case R5: the kycGateState shape: an owned server module calls a function exported from a "use client" module
+FAIL red6:§4.1 every edge from an owned route's server graph into a "use client" module imports only PascalCase bindings — src/app/admin/contacts/import-preview.ts → src/app/admin/contacts/parse-thing.tsx {parseThing}
+   caught → §4.1 every edge from an owned route's server graph into a "use client" module imports only PascalCase bindings
+
+── case R6: the shared shape gains a "use client" directive
+FAIL red7:§2.1 no module under src/lib/contacts/** carries a "use client" or "use server" directive (the kycGateState shape) — src/lib/contacts/parsed-file.ts
+FAIL red7:§4.1 every edge from an owned route's server graph into a "use client" module imports only PascalCase bindings — src/lib/server/contacts/import-staging.ts → src/lib/contacts/parsed-file.ts {CONTACTS_FILE_FORMATS} | src/lib/server/contacts/import-xlsx.ts → src/lib/contacts/parsed-file.ts {formatRowList}
+FAIL red7:§4.2 RATCHET · the same over every src/app entry: no offender outside the pinned list (empty, 2026-10-01), and every edge of that graph resolves — src/lib/server/contacts/import-staging.ts → src/lib/contacts/parsed-file.ts {CONTACTS_FILE_FORMATS} | src/lib/server/contacts/import-xlsx.ts → src/lib/contacts/parsed-file.ts {formatRowList}
+   caught → §2.1 no module under src/lib/contacts/** carries a "use client" or "use server" directive (the kycGateState shape)
+
+── case R7: the walker is swapped for client-graph-safe's narrower regex (import … from only)
+FAIL red8:§0.3 POSITIVE · `export * from` and `export { … } from` are followed (a virtual re-export of a module that imports exceljs reaches exceljs) — star false · named false
+FAIL red8:§0.4 POSITIVE · a dynamic import() and a side-effect import are followed — dynamic false · side-effect false
+FAIL red8:§0.5 NEGATIVE · `import type` and an all-`type` named list are erased; a mixed list is still a value import — type-only reaches true · mixed reaches true
+   caught → §0.3 POSITIVE · `export * from` and `export { … } from` are followed (a virtual re-export of a module that imports exceljs reaches exceljs)
+
+── case R8: next.config.ts raises the server-action body limit to 10mb
+FAIL red9:§6.1 next.config.ts sets no bodySizeLimit (OD29: the money forms inherit the global ceiling)
+   caught → §6.1 next.config.ts sets no bodySizeLimit (OD29: the money forms inherit the global ceiling)
+
+── case R9: the cap is raised to 800 KiB — past what Next's 1 MB body admits as base64
+FAIL red10:§6.3 base64LengthFor(XLSX_MAX_BYTES) + XLSX_ENVELOPE_ALLOWANCE ≤ NEXT_ACTION_BODY_LIMIT_BYTES === 1048576 — 1100460 ≤ 1048576
+   caught → §6.3 base64LengthFor(XLSX_MAX_BYTES) + XLSX_ENVELOPE_ALLOWANCE ≤ NEXT_ACTION_BODY_LIMIT_BYTES === 1048576
+
+── case R10: the reader switches to exceljs's streaming WorkbookReader, which spools sheets to temp files
+FAIL red11:§5.2 nothing under src/lib/server/contacts/** touches the disk (no streaming WorkbookReader, no temp dir, no fs import, no file call) — src/lib/server/contacts/import-xlsx.ts: stream.xlsx
+   caught → §5.2 nothing under src/lib/server/contacts/** touches the disk (no streaming WorkbookReader, no temp dir, no fs import, no file call)
+
+── case R11: the reader imports the store — the parse could consult the book
+FAIL red12:§5.1 the reader modules reach no store, prisma, prisma-dal, audit, auth-service or session module — src/lib/server/contacts/import-xlsx.ts → src/lib/server/store.ts | src/lib/server/contacts/import-xlsx.ts → src/lib/server/store.ts → src/lib/server/prisma.ts | src/lib/server/contacts/import-xlsx.ts → src/lib/server/store.ts → src/lib/server/prisma-dal.ts
+   caught → §5.1 the reader modules reach no store, prisma, prisma-dal, audit, auth-service or session module
+
+── case R12: a new src/lib/contacts module is not pinned in client-graph-safe
+FAIL red13:§2.4 every src/lib/contacts/** module is pinned in test:client-graph-safe's PINNED — src/lib/contacts/unpinned-plant.ts
+   caught → §2.4 every src/lib/contacts/** module is pinned in test:client-graph-safe's PINNED
+
+── case R13: the too_large sentence drops the 0-decimal step (OD29's first wording — the remedy that destroys the digits)
+FAIL red14:§6.4 the too_large sentence names the measured size, the cap, CSV, and the remedy clause ('Number with 0 decimal places') — This spreadsheet is 800 KB — an Excel file can be up to 700 KB here. Save it as CSV instead — a CSV has no file-size limit (up to 200,000 rows in one import).
+FAIL red14:§7.3 every refusal and wrong-format kind has its own sentence with no digit run, every sentence that names CSV carries PHONE_FORMAT_REMEDY, a sheet name with 7+ digits (spaced or not) is never echoed, and sizes round UP — sends the officer to CSV without the format step: This spreadsheet is 0 KB — an Excel file can be up to 700 KB here. Save it as CSV instead — a CSV has no file-size limit (up to 200,000 rows in one import). · sends the officer to CSV without the format step: This spreadsheet is 2 MB — an Excel file can be up to 700 KB here. Save it as CSV instead — a CSV has no file-size limit (up to 200,000 rows in one import).
+   caught → §6.4 the too_large sentence names the measured size, the cap, CSV, and the remedy clause ('Number with 0 decimal places')
+
+── case R14: a producer declares its own ParsedContactsFile beside the shared one (the three-shapes conflict C15 settled)
+FAIL red15:§2.6 exactly ONE `export type ParsedContactsFile` exists in src, in parsed-file.ts (decision C15: every producer imports it) — src/lib/contacts/import-parse.ts, src/lib/contacts/parsed-file.ts
+   caught → §2.6 exactly ONE `export type ParsedContactsFile` exists in src, in parsed-file.ts (decision C15: every producer imports it)
+
+── case R15: §4.2 can fail: an app page OUTSIDE the owned trees calls a function exported from a "use client" module
+FAIL red16:§4.2 RATCHET · the same over every src/app entry: no offender outside the pinned list (empty, 2026-10-01), and every edge of that graph resolves — src/app/admin/boundary-plant/page.tsx → src/app/admin/boundary-plant/parse-thing.tsx {parseThing}
+   caught → §4.2 RATCHET · the same over every src/app entry: no offender outside the pinned list (empty, 2026-10-01), and every edge of that graph resolves
+
+── case R16: an owned server module reaches a client island by a spelling the resolver cannot map ("./plant-island.js" for .tsx) — the island and its crossing would drop out
+FAIL red17:§0.9 every relative and @/ import in the client, pure and owned-server graphs resolves (an unresolved edge is a blind spot, not a pass) — src/app/admin/contacts/plant-server.ts → ./plant-island.js
+   caught → §0.9 every relative and @/ import in the client, pure and owned-server graphs resolves (an unresolved edge is a blind spot, not a pass)
+
+── case R17: a second module spells the phone-format remedy out instead of importing PHONE_FORMAT_REMEDY (the two-remedies drift A1.6 settled)
+FAIL red18:§2.4 every src/lib/contacts/** module is pinned in test:client-graph-safe's PINNED — src/lib/contacts/hint-plant.ts
+FAIL red18:§2.7 the phone-format remedy is spelled ONCE in src (A1.6): only xlsx-limits.ts' PHONE_FORMAT_REMEDY holds 'Number with 0 decimal places', and every other sentence interpolates it — src/lib/contacts/hint-plant.ts ×1, src/lib/contacts/xlsx-limits.ts ×1
+   caught → §2.7 the phone-format remedy is spelled ONCE in src (A1.6): only xlsx-limits.ts' PHONE_FORMAT_REMEDY holds 'Number with 0 decimal places', and every other sentence interpolates it
+
+── case K1: the sniffer checks only "PK" — a CSV whose first cell starts with P and K is refused as a workbook
+FAIL red19:§7.1 the sniffer reads the FULL magic bytes (a CSV starting "PK" is text), and the classifier tells xlsx, ods, xls and protected apart — protected even when EncryptionInfo sits past the first 4 KB — a CSV starting PK, an empty zip's end record, a 3-byte head
+   caught → §7.1 the sniffer reads the FULL magic bytes (a CSV starting "PK" is text), and the classifier tells xlsx, ods, xls and protected apart — protected even when EncryptionInfo sits past the first 4 KB
+
+── case K2: the validator renumbers instead of checking order — a re-sorted grid passes
+FAIL red20:§7.2 isParsedContactsFile accepts a well-formed file and refuses every malformed one (order, line, cell, blank row, width, counts, notes, unreadable) — line 0, lines going down, a line repeated, a fractional line
+   caught → §7.2 isParsedContactsFile accepts a well-formed file and refuses every malformed one (order, line, cell, blank row, width, counts, notes, unreadable)
+
+── case K3: file sizes round to nearest — a file one byte over the cap reads "700 KB"
+FAIL red21:§7.3 every refusal and wrong-format kind has its own sentence with no digit run, every sentence that names CSV carries PHONE_FORMAT_REMEDY, a sheet name with 7+ digits (spaced or not) is never echoed, and sizes round UP — 716801 → 700 KB (want 701 KB) · 1 → 0 KB (want 1 KB)
+   caught → §7.3 every refusal and wrong-format kind has its own sentence with no digit run, every sentence that names CSV carries PHONE_FORMAT_REMEDY, a sheet name with 7+ digits (spaced or not) is never echoed, and sizes round UP
+
+── case K4: the shortened-number detector is case-sensitive — another tool's 2.55713e+11 slips through
+FAIL red22:§7.4 the Excel-shortened detector catches 2.55713E+11 in every spelling and never a whole number — missed "2.55713e+11"
+   caught → §7.4 the Excel-shortened detector catches 2.55713E+11 in every spelling and never a whole number
+
+── case K5: a note's row list has no cap — a 948-row note lists every row
+FAIL red23:§7.5 a note's row list reads "rows 4, 9 and 12" and stops at NOTE_LIST_CAP with the true count — rows 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, … 54, 55, 56, 57, 58, 59 and 60
+   caught → §7.5 a note's row list reads "rows 4, 9 and 12" and stops at NOTE_LIST_CAP with the true count
+
+── case K6: the .xls sentence goes back to its first wording — it sends the officer to CSV without the format step
+FAIL red24:§7.3 every refusal and wrong-format kind has its own sentence with no digit run, every sentence that names CSV carries PHONE_FORMAT_REMEDY, a sheet name with 7+ digits (spaced or not) is never echoed, and sizes round UP — sends the officer to CSV without the format step: This looks like an old-style Excel file (.xls). Open it in Excel and save it as an Excel Workbook (.xlsx) or as CSV, then choose it again.
+   caught → §7.3 every refusal and wrong-format kind has its own sentence with no digit run, every sentence that names CSV carries PHONE_FORMAT_REMEDY, a sheet name with 7+ digits (spaced or not) is never echoed, and sizes round UP
+
+── case K7: the sheet-name rule looks only for an unbroken run of digits — a sheet named "0712 345 678" is echoed
+FAIL red25:§7.3 every refusal and wrong-format kind has its own sentence with no digit run, every sentence that names CSV carries PHONE_FORMAT_REMEDY, a sheet name with 7+ digits (spaced or not) is never echoed, and sizes round UP — a spaced phone number in a sheet name was echoed: "0712 345 678" · a spaced phone number in a sheet name was echoed: "+255 712-345-678" · a spaced phone number in a sheet name was echoed: "0712.345.678" · a control character survived in the sheet name
+   caught → §7.3 every refusal and wrong-format kind has its own sentence with no digit run, every sentence that names CSV carries PHONE_FORMAT_REMEDY, a sheet name with 7+ digits (spaced or not) is never echoed, and sizes round UP
+
+── case K8: the validator drops the blank-row check — a producer that pushes an all-empty row instead of counting it passes
+FAIL red26:§7.2 isParsedContactsFile accepts a well-formed file and refuses every malformed one (order, line, cell, blank row, width, counts, notes, unreadable) — a blank row (every cell empty) emitted instead of counted
+   caught → §7.2 isParsedContactsFile accepts a well-formed file and refuses every malformed one (order, line, cell, blank row, width, counts, notes, unreadable)
+
+── case K9: the validator ignores `unreadable` (A1.8) — a missing list, a colliding line or an empty reason passes
+FAIL red27:§7.2 isParsedContactsFile accepts a well-formed file and refuses every malformed one (order, line, cell, blank row, width, counts, notes, unreadable) — no unreadable list, unreadable that is not a list, an unreadable line that is also a row's line, unreadable lines going down, an unreadable line 0, an unreadable record with an empty reason, an unreadable record with no reason
+   caught → §7.2 isParsedContactsFile accepts a well-formed file and refuses every malformed one (order, line, cell, blank row, width, counts, notes, unreadable)
+
+── case K10: the size gate compares the base64 LENGTH to XLSX_MAX_BASE64_CHARS — 700 KiB + 1 and + 2 bytes share that length and reach the decoder
+FAIL red28:§6.5 the size gate is EXACT (A1.4): the decoded size is read off the base64 length and padding, so 700 KiB passes and 700 KiB + 1 and + 2 bytes refuse, by length alone, before any decode — 700 KiB + 1 byte reaches the decoder · 700 KiB + 2 bytes reaches the decoder
+   caught → §6.5 the size gate is EXACT (A1.4): the decoded size is read off the base64 length and padding, so 700 KiB passes and 700 KiB + 1 and + 2 bytes refuse, by length alone, before any decode
+
+── case K11: the classifier is handed only the first 4 KB — a protected workbook whose directory sits later reads as an old .xls
+FAIL red29:§7.1 the sniffer reads the FULL magic bytes (a CSV starting "PK" is text), and the classifier tells xlsx, ods, xls and protected apart — protected even when EncryptionInfo sits past the first 4 KB — a protected workbook whose EncryptionInfo sits past the first 4 KB
+   caught → §7.1 the sniffer reads the FULL magic bytes (a CSV starting "PK" is text), and the classifier tells xlsx, ods, xls and protected apart — protected even when EncryptionInfo sits past the first 4 KB
+
+
+28/28 caught · 1/1 green control(s) held · RED PROOF COMPLETE

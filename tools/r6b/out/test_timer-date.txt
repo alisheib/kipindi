@@ -1,0 +1,79 @@
+PASS 1: the platform zone resolves to a real IANA zone — Africa/Dar_es_Salaam
+PASS 2: reader and the near deadline really are the same platform year — 2026 vs 2026
+PASS 2: and the far one really is a DIFFERENT platform year — 2026 vs 2027
+PASS 2: a same-year deadline carries NO year — 28 Oct, 23:59
+PASS 2: a cross-year deadline DOES carry its year — 10 Feb 2027, 23:59
+PASS 2: the two branches are not the same string — 28 Oct, 23:59 / 10 Feb 2027, 23:59
+PASS 2: the same-year branch IS formatDayTime — 28 Oct, 23:59 vs 28 Oct, 23:59
+PASS 2: the cross-year branch IS formatDateTime — 10 Feb 2027, 23:59 vs 10 Feb 2027, 23:59
+PASS 2: the cross-year string differs from the same-year one by the year alone — 10 Feb, 23:59
+PASS 2b: the platform clock has already turned the year at this instant — 2026 -> 2027
+PASS 2b: so the deadline carries its year, though UTC still reads 2026 — 1 Jan 2027, 00:30
+PASS 2b: and a host-clock read would have got it wrong
+PASS 3: Countdown accepts the absolute date as a prop
+PASS 3: and renders it
+PASS 3: the date is a <time> whose dateTime is the countdown's own target
+PASS 3: and it is addressable by a live driver
+PASS 3: Countdown derives no format of its own
+PASS 3: the market page renders exactly the two timers item #6 names — found 2
+PASS 3: timer to={m.selectionClosedAt} passes an absolute date — formatEatDateTime(Date.parse(m.selectionClosedAt), Date.now(), t.common.monthsShort, locale)
+PASS 3: ...in the reader's month words, through formatEatDateTime (timer to={m.selectionClosedAt}) — at=formatEatDateTime(Date.parse(m.selectionClosedAt), Date.now(), t.common.monthsShort, locale)
+PASS 3: ...and it names the SAME instant the clock counts to — at=formatEatDateTime(Date.parse(m.selectionClosedAt), Date.now(), t.common.monthsShort, locale) to=m.selectionClosedAt
+PASS 3: timer to={m.resolutionAt} passes an absolute date — formatEatDateTime(Date.parse(m.resolutionAt), Date.now(), t.common.monthsShort, locale)
+PASS 3: ...in the reader's month words, through formatEatDateTime (timer to={m.resolutionAt}) — at=formatEatDateTime(Date.parse(m.resolutionAt), Date.now(), t.common.monthsShort, locale)
+PASS 3: ...and it names the SAME instant the clock counts to — at=formatEatDateTime(Date.parse(m.resolutionAt), Date.now(), t.common.monthsShort, locale) to=m.resolutionAt
+PASS 3: markets/[id]/page.tsx dates every deadline through formatEatDateTime/formatEatDate, in the reader's month words — formatBreakEnd(Date.parse(breakEnd.until), Date.now(), t.common.monthsShort, locale) | formatEatDateTime(Date.parse(m.resolutionAt), Date.now(), t.common.monthsShort, locale) | formatEatDateTime(Date.parse(m.resolutionAt), Date.now(), t.common.monthsShort, locale) | formatEatDateTime(Date.parse(m.selectionClosedAt), Date.now(), t.common.monthsShort, locale) | formatEatDateTime(Date.parse(m.resolutionAt), Date.now(), t.common.monthsShort, locale) | formatEatDateTime(Date.parse(p.placedAt), Date.now(), t.common.monthsShort, locale)
+PASS 3: positions/page.tsx dates every deadline through formatEatDateTime/formatEatDate, in the reader's month words — formatEatDateTime(Date.parse(cutoffIso), serverNow, t.common.monthsShort, locale)
+PASS 3: journey ticket-card.tsx dates every deadline through formatEatDateTime/formatEatDate, in the reader's month words — formatEatDateTime(Date.parse(p.placedAt), serverNow, t.common.monthsShort, locale) | formatEatDateTime(Date.parse(cutoffIso), serverNow, t.common.monthsShort, locale)
+PASS 3: the journey ticket card dates both of its instants (placed, selection closes) — found 2
+PASS 3: ...its <time dateTime={p.placedAt}> names the SAME instant it formats — dateTime=p.placedAt formats p.placedAt
+PASS 3: ...its <time dateTime={cutoffIso}> names the SAME instant it formats — dateTime=cutoffIso formats cutoffIso
+PASS 3: ...and the card formats no date outside those two — 2 localized calls, English: none
+PASS 3: the journey ticket card formats on the server, never with a locale formatter of its own
+PASS 3: ...and its close line names the instant its Sell button closes at
+PASS 3: the journey ticket card hands the Sell button the clock time of THE instant it counts to — formatClock of the one binding, on the server
+PASS 3: ...and the button's journey line puts that reading in a <time> naming the same instant, beside its countdown
+PASS 3: the Sell button formats no time of its own — no locale formatter, no date helper, no Intl
+PASS 3: fence · app/markets/[id]/page.tsx uses no English date helper (formatDeadline, formatDayTime, formatDateTime, formatDayShort, formatDateTimeSafe, formatDateShort, formatDate)
+PASS 3: fence · app/markets/[id]/page.tsx dates through formatEatDateTime/formatEatDate, in the reader's month words — formatBreakEnd(Date.parse(breakEnd.until), Date.now(), t.common.monthsShort, locale) | formatEatDateTime(Date.parse(m.resolutionAt), Date.now(), t.common.monthsShort, locale) | formatEatDateTime(Date.parse(m.resolutionAt), Date.now(), t.common.monthsShort, locale) | formatEatDateTime(Date.parse(m.selectionClosedAt), Date.now(), t.common.monthsShort, locale) | formatEatDateTime(Date.parse(m.resolutionAt), Date.now(), t.common.monthsShort, locale) | formatEatDateTime(Date.parse(p.placedAt), Date.now(), t.common.monthsShort, locale)
+PASS 3: fence · app/positions/page.tsx uses no English date helper (formatDeadline, formatDayTime, formatDateTime, formatDayShort, formatDateTimeSafe, formatDateShort, formatDate)
+PASS 3: fence · app/positions/page.tsx dates through formatEatDateTime/formatEatDate, in the reader's month words — formatEatDateTime(Date.parse(cutoffIso), serverNow, t.common.monthsShort, locale)
+PASS 3: fence · components/journey/tickets/ticket-card.tsx uses no English date helper (formatDeadline, formatDayTime, formatDateTime, formatDayShort, formatDateTimeSafe, formatDateShort, formatDate)
+PASS 3: fence · components/journey/tickets/ticket-card.tsx dates through formatEatDateTime/formatEatDate, in the reader's month words — formatEatDateTime(Date.parse(p.placedAt), serverNow, t.common.monthsShort, locale) | formatEatDateTime(Date.parse(cutoffIso), serverNow, t.common.monthsShort, locale)
+PASS 3: fence · components/markets/resolution-panel.tsx uses no English date helper (formatDeadline, formatDayTime, formatDateTime, formatDayShort, formatDateTimeSafe, formatDateShort, formatDate)
+PASS 3: fence · components/markets/resolution-panel.tsx dates through formatEatDateTime/formatEatDate, in the reader's month words — formatEatDateTime(Date.parse(resolvedAt), serverNow, t.common.monthsShort, locale) | formatEatDateTime(Date.parse(objectionsClosedAt), serverNow, t.common.monthsShort, locale) | formatEatDateTime(Date.parse(settledAt), serverNow, t.common.monthsShort, locale)
+PASS 3: fence · components/markets/resolution-panel.tsx is a client file: its year rule reads the server's instant, never Date.now() — formatEatDateTime(Date.parse(resolvedAt), serverNow, t.common.monthsShort, locale) | formatEatDateTime(Date.parse(objectionsClosedAt), serverNow, t.common.monthsShort, locale) | formatEatDateTime(Date.parse(settledAt), serverNow, t.common.monthsShort, locale)
+PASS 3: fence · components/markets/position-card.tsx uses no English date helper (formatDeadline, formatDayTime, formatDateTime, formatDayShort, formatDateTimeSafe, formatDateShort, formatDate)
+PASS 3: fence · components/markets/position-card.tsx dates through formatEatDateTime/formatEatDate, in the reader's month words — formatEatDateTime(Date.parse(placedAt), serverNow, t.common.monthsShort, locale)
+PASS 3: fence · components/markets/position-card.tsx is a client file: its year rule reads the server's instant, never Date.now() — formatEatDateTime(Date.parse(placedAt), serverNow, t.common.monthsShort, locale)
+PASS 3: fence · app/profile/responsible-gambling/page.tsx uses no English date helper (formatDeadline, formatDayTime, formatDateTime, formatDayShort, formatDateTimeSafe, formatDateShort, formatDate)
+PASS 3: fence · app/profile/responsible-gambling/page.tsx dates through formatEatDateTime/formatEatDate, in the reader's month words — formatBreakEnd(Date.parse(iso), Date.now(), t.common.monthsShort, locale) | formatEatDateTime(Date.parse(c.at), Date.now(), t.common.monthsShort, locale)
+PASS 3: fence · app/watchlist/page.tsx uses no English date helper (formatDeadline, formatDayTime, formatDateTime, formatDayShort, formatDateTimeSafe, formatDateShort, formatDate)
+PASS 3: fence · app/watchlist/page.tsx dates through formatEatDateTime/formatEatDate, in the reader's month words — formatEatDateTime(Date.parse(m.resolutionAt), Date.now(), t.common.monthsShort, locale)
+PASS 3: fence · app/wallet/deposit/page.tsx uses no English date helper (formatDeadline, formatDayTime, formatDateTime, formatDayShort, formatDateTimeSafe, formatDateShort, formatDate)
+PASS 3: fence · app/wallet/deposit/page.tsx dates through formatEatDateTime/formatEatDate, in the reader's month words — formatBreakEnd(Date.parse(breakUntil), Date.now(), t.common.monthsShort, locale)
+PASS 3: fence · app/profile/sessions/page.tsx uses no English date helper (formatDeadline, formatDayTime, formatDateTime, formatDayShort, formatDateTimeSafe, formatDateShort, formatDate)
+PASS 3: fence · app/profile/sessions/page.tsx dates through formatEatDateTime/formatEatDate, in the reader's month words — formatEatDateTime(session.exp, Date.now(), t.common.monthsShort, locale)
+PASS 3: fence · app/positions/performance/page.tsx uses no English date helper (formatDeadline, formatDayTime, formatDateTime, formatDayShort, formatDateTimeSafe, formatDateShort, formatDate)
+PASS 3: fence · app/positions/performance/page.tsx dates through formatEatDateTime/formatEatDate, in the reader's month words — formatEatDate(d.getTime(), Date.now(), t.common.monthsShort, locale)
+PASS 3: fence · app/fairness/page.tsx uses no English date helper (formatDeadline, formatDayTime, formatDateTime, formatDayShort, formatDateTimeSafe, formatDateShort, formatDate)
+PASS 3: fence · app/fairness/page.tsx dates through formatEatDateTime/formatEatDate, in the reader's month words — formatEatDateTime(m.resolvedAtMs ? m.resolvedAtMs : Number.NaN, Date.now(), t.common.monthsShort, locale)
+PASS 3: fence · app/agent/page.tsx uses no English date helper (formatDeadline, formatDayTime, formatDateTime, formatDayShort, formatDateTimeSafe, formatDateShort, formatDate)
+PASS 3: fence · app/agent/page.tsx dates through formatEatDateTime/formatEatDate, in the reader's month words — formatEatDate(Date.parse(iso), Date.now(), t.common.monthsShort, locale)
+PASS 3: fence · app/agent/status/page.tsx uses no English date helper (formatDeadline, formatDayTime, formatDateTime, formatDayShort, formatDateTimeSafe, formatDateShort, formatDate)
+PASS 3: fence · app/agent/status/page.tsx dates through formatEatDateTime/formatEatDate, in the reader's month words — formatEatDate(Date.parse(iso), Date.now(), t.common.monthsShort, locale)
+PASS 3: fence · app/agent/invite/[token]/page.tsx uses no English date helper (formatDeadline, formatDayTime, formatDateTime, formatDayShort, formatDateTimeSafe, formatDateShort, formatDate)
+PASS 3: fence · app/agent/invite/[token]/page.tsx dates through formatEatDateTime/formatEatDate, in the reader's month words — formatEatDate(Date.parse(preview.expiresAt), Date.now(), t.common.monthsShort, locale)
+PASS 3: fence · app/profile/source-of-funds/page.tsx uses no English date helper (formatDeadline, formatDayTime, formatDateTime, formatDayShort, formatDateTimeSafe, formatDateShort, formatDate)
+PASS 3: fence · app/profile/source-of-funds/page.tsx dates through formatEatDateTime/formatEatDate, in the reader's month words — formatEatDate(Date.parse(existing.submittedAt), Date.now(), t.common.monthsShort, locale)
+PASS 3: fence · components/markets/comments-thread.tsx uses no English date helper (formatDeadline, formatDayTime, formatDateTime, formatDayShort, formatDateTimeSafe, formatDateShort, formatDate)
+PASS 3: fence · components/markets/comments-thread.tsx dates through formatEatDateTime/formatEatDate, in the reader's month words — formatEatDate(Date.parse(iso), Date.now(), t.common.monthsShort, locale)
+PASS 3: fence · app/wallet/wallet-client.tsx uses no English date helper (formatDeadline, formatDayTime, formatDateTime, formatDayShort, formatDateTimeSafe, formatDateShort, formatDate)
+PASS 3: fence · app/wallet/wallet-client.tsx dates through formatEatDateTime/formatEatDate, in the reader's month words — formatEatDate(Date.parse(g.expiresAt), Date.now(), t.common.monthsShort, locale) | formatEatDateTime(atMs, Date.now(), t.common.monthsShort, locale)
+PASS 3: formatDayTime survives only as formatDeadline's same-year branch — not an orphan — 1
+PASS 3: the year test reads the platform zone, never a literal
+PASS 4: formatEatDateTime of NaN reads the missing-value mark, it does not throw — —
+PASS 4: …and formatEatDate of NaN too
+PASS 4: CONTROL — a real instant still reads in the reader's month words — 8 Okt, 15:18
+
+timer-date: 77 passed, 0 failed

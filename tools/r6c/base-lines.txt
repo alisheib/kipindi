@@ -1,0 +1,66 @@
+C12 src/components/markets/bet-confirm-modal.tsx /flex items-baseline justify-between/ -> 301: <div className="flex items-baseline justify-between">
+C12 src/components/markets/bet-confirm-modal.tsx /TZS \{formatNumber\(stake\)\}/ -> 315: <p className="font-mono font-bold text-[22px] tabular-nums leading-none text-text">TZS {formatNumber(stake)}</
+C12 src/components/markets/bet-confirm-modal.tsx /\{t\.dialog\.stakeLabel\}/ -> 314: <p className="font-mono text-micro uppercase eyebrow text-text-subtle mb-1">{t.dialog.stakeLabel}</p>
+C7 src/components/updown/updown-stake-controls.tsx /udStakeRange/ -> 265: {customInvalid ? `${t.market.udStakeRange} · ` : ""}{formatTzs(bet.min)} – {formatTzs(bet.max)}
+C7 src/components/updown/round-stake-panel.tsx /udStakeRange/ -> 254: {customInvalid ? `${t.market.udStakeRange} · ` : ""}{formatTzs(bet.min)} – {formatTzs(bet.max)}
+C7 src/components/updown/round-stake-panel.tsx /formatTzs\(minStake\)/ -> 92: <p className="mt-2 amount text-micro text-text-faint">{formatTzs(minStake)} – {formatTzs(maxStake)}</p>
+C8 src/app/updown/page.tsx /minmax\(300px/ -> 294: style={{ gridTemplateColumns: "repeat(auto-fill, minmax(300px, 1fr))" }}>
+C8 src/app/updown/updown-ghost.tsx /minmax\(300px/ -> 58: <div className="mt-4 grid items-stretch gap-4" style={{ gridTemplateColumns: "repeat(auto-fill, minmax(300px, 
+C8 src/app/updown/history/page.tsx /minmax\(320px/ -> 460: <div className="mt-4 grid gap-3" style={{ gridTemplateColumns: "repeat(auto-fill, minmax(320px, 1fr))" }}>
+C8 src/app/updown/history/page.tsx /udNet|NET/ -> 412: <div className="font-mono text-micro uppercase eyebrow text-text-faint">{t.market.udNetReturn}</div> | 413: {/* ⭐ A NET READS AS EVERY NET ON THE PLATFORM (R5-I, 2026-10-09): money earned is gilt, a loss the betting ro | 548: <div className="font-mono text-micro uppercase eyebrow text-text-faint">{t.market.udNetReturn}</div>
+C13 src/components/layout/avatar-menu.tsx /"\/profile\/kyc": t\.profile\.verifyIdentity/ -> 147: ? { "/profile/kyc": t.profile.verifyIdentity, "/leaderboard": t.leaderboard.title, "/proposals": t.proposals.t
+C13 src/components/layout/avatar-menu.tsx /href: "\/profile\/kyc"/ -> 416: { href: "/profile/kyc",    icon: I.shieldcheck, en: "Verify ID",      sw: "Kuthibitisha kitambulisho", zh: "身份
+C13 src/components/layout/avatar-menu.tsx /href: "\/profile\/invite"/ -> 411: { href: "/profile/invite", icon: I.gift,        en: "Invite & Earn",  sw: "Alika na upate zawadi",     zh: "邀请
+C13 src/components/layout/avatar-menu.tsx /\.filter\(\(r\) =>/ -> 150: .filter((r) => (!r.proposals || proposalsState !== "DISABLED") && (!r.invite || inviteVisible))
+C13 src/app/profile/kyc/page.tsx /kycIdentityVerification/ -> 42: return { title: t.profile.kycIdentityVerification }; | 208: eyebrow={t.profile.kycIdentityVerification}
+C13 src/app/profile/kyc/page.tsx /<h1/ -> none
+C13 src/app/profile/kyc/page.tsx /BackLink/ -> 4: import { BackLink } from "@/components/ui/back-link"; | 159: <BackLink fallbackHref="/profile" label={t.common.profile} />
+C13 src/components/journey/account/hub-rows.ts /verifyIdentity/ -> 59: "common.profile", "profile.verifyIdentity", "profile.verifyIdSub", "footer.resolutionAttestation", | 69: *   · Thibitisha kitambulisho / Verify your identity / 验证您的身份 — the KYC page's h1 (`profile.verifyIdentity`);  | 205: if (v.kycOffered) profile.push({ id: "kyc", kind: "link", href: "/profile/kyc", label: "profile.verifyIdentity
+C13 src/components/journey/account/hub-rows.ts /inviteFriends/ -> 58: "profile.inviteFriends", "agent.dashTitle", "proposals.title", | 197: label: v.agentInStanding ? "agent.dashTitle" : "profile.inviteFriends",
+C13 src/app/profile/page.tsx /verifyIdentity|kycIdentityVerification|Verify ID/ -> 98: * `PENDING_REVIEW`; before that the pill reads "Verify ID". | 367: {/* 2026-09-13 — an APPROVED identity is not offered "Verify ID" again: the row asked a verified | 374: as the journey's hub row and menu say since this round — the row said "Thibitisha ID / Verify ID". */ | 375: <SettingRow icon={I.shieldcheck}   title={t.profile.verifyIdentity}      subtitle={t.profile.verifyIdSub}     
+C13 src/app/profile/page.tsx /inviteFriends/ -> 353: <SettingRow icon={I.users} title={t.profile.inviteFriends} subtitle={t.profile.inviteFriendsSub} href="/profil
+C1 src/components/layout/public-footer.tsx /inviteFriends/ -> 277: {inviteVisible && <FooterLink href="/profile/invite">{t.profile.inviteFriends}</FooterLink>}
+C1 src/app/profile/invite/page.tsx /title:/ -> 57: if (dashboard) return { title: t.agent.dashTitle }; | 58: return { title: payable ? t.profile.inviteEarn : t.profile.inviteFriends };
+C1 src/app/profile/invite/page.tsx /inviteEarnSub/ -> 319: <DotSeq text={paid ? t.profile.inviteEarnSub : t.profile.inviteFriendsSub} />
+C1 src/app/profile/invite/page.tsx /BackLink/ -> 5: import { BackLink } from "@/components/ui/back-link"; | 271: <BackLink fallbackHref="/profile" label={t.common.profile} />
+C1 src/app/profile/invite/page.tsx /<h1/ -> 272: <h1 className="sr-only">{paid ? t.profile.inviteEarn : t.profile.inviteFriends}</h1>
+C1 src/app/profile/invite/agent-dashboard.tsx /BackLink/ -> 4: import { BackLink } from "@/components/ui/back-link"; | 100: <BackLink fallbackHref="/profile" label={t.common.profile} />
+C1 src/app/profile/invite/agent-dashboard.tsx /dashTitle/ -> 101: <h1 className="sr-only">{t.agent.dashTitle}</h1> | 104: <p className="font-display text-title-md font-bold leading-none">{t.agent.dashTitle}</p>
+C14 src/components/markets/conviction-dial.tsx /viewPositions/ -> 1875: resultData.variant === "success" ? t.common.viewPositions
+C14 src/app/positions/performance/page.tsx /BackLink/ -> 3: import { BackLink } from "@/components/ui/back-link"; | 176: <BackLink fallbackHref="/positions" label={t.common.positions} />
+C14 src/app/positions/performance/page.tsx /eyebrow=/ -> 177: <PageHeader eyebrow={t.common.positions} title={t.performance.title} />
+C14 src/app/positions/performance/page.tsx /noPerformance/ -> 209: title={t.performance.noPerformance} | 210: body={t.performance.noPerformanceBody}
+C14 src/app/positions/performance/page.tsx /tracking-\[0\.08em\]/ -> 274: <span className="font-mono text-micro uppercase tracking-[0.08em] text-text-subtle">{t.performance.cumulativeP | 396: <p className="font-mono text-micro uppercase tracking-[0.08em] text-text-muted">{r.statusLabel}</p>
+C14 src/app/help/page.tsx /myPositions/ -> 172: title={t.help.myPositions}
+C14 src/app/updown/[roundId]/page.tsx /udOpenInPositions/ -> 684: <Link href={positionListHref("UPDOWN", myPosition.ids[0] ?? "")} className="btn btn-ghost btn-sm mt-3.5 w-full
+C4 src/app/auth/login/page.tsx /tone: "warning"/ -> 111: tone: "warning" as const, | 160: tone: "warning" as const, | 170: tone: "warning" as const, | 184: tone: "warning" as const,
+C4 src/app/auth/login/page.tsx /cooled/ -> 31: searchParams: Promise<{ phone?: string; identifier?: string; error?: string; retry?: string; next?: string; re | 159: if (sp.cooled === "1") return {
+C2 src/components/layout/needle-drawer.tsx /M6 6l12 12|M6 6 L18 18/ -> 263: <svg width="16" height="16" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18" fill="none" 
+C2 src/components/layout/needle-drawer.tsx /role="dialog"/ -> 212: role="dialog"
+C2 src/components/chat/ChatPanel.tsx /cm-close/ -> 106: className="cm-close"
+C2 src/components/chat/ChatPanel.tsx /role="dialog"/ -> 91: role="dialog"
+C2 src/styles/chat/chat-styles.css /\.cm-close/ -> 208: .cm-close { | 220: .cm-close:hover { | 225: .cm-close:focus-visible {
+C9 src/components/markets/operation-result-modal.tsx /<Modal$/ -> 413: <Modal
+C9 src/components/markets/operation-result-modal.tsx /panelClassName/ -> 421: panelClassName="overflow-hidden !p-0"
+C9 src/components/markets/win-celebration.tsx /<Modal$/ -> 286: <Modal
+C10 src/components/layout/notifications-panel.tsx /pickTitle\(n, locale\)/ -> 675: {pickTitle(n, locale)}
+C10 src/components/layout/notifications-panel.tsx /pickBody\(n, locale\)/ -> 683: {pickBody(n, locale)}
+C11 src/components/markets/sell-confirm-modal.tsx /earlyExitFee|EARLY/i -> 82: // Cash-out is an early exit, never a profit. `value` is the stake returned — | 152: <p className="font-mono text-micro uppercase eyebrow text-text-subtle mb-1">{t.dialog.earlyExitFee}</p> | 167: {isFree ? t.dialog.freeExitExplain : t.dialog.earlyExitExplain}
+C11 src/app/wallet/withdraw/page.tsx /sm:text-right/ -> 182: <div className="sm:text-right shrink-0">
+C11 src/app/wallet/withdraw/page.tsx /BackLink/ -> 5: import { BackLink } from "@/components/ui/back-link"; | 169: <BackLink fallbackHref="/wallet" label={t.wallet.title} />
+C11 src/app/wallet/wallet-client.tsx /tracking-\[0\.14em\] font-semibold/ -> 557: <p className={`mt-0.5 font-mono text-micro uppercase tracking-[0.14em] font-semibold ${statusTone}`}>
+C11 src/components/updown/price-hero.tsx /eyebrow/ -> 151: <p className="m-0 font-mono text-micro font-semibold uppercase eyebrow text-text-faint">{copy.priceLabel}</p> | 174: <p className="m-0 font-mono text-micro font-semibold uppercase eyebrow text-text-faint">{copy.openLabel}</p>
+C11 src/components/updown/round-countdown.tsx /eyebrow/ -> 380: className="m-tick font-mono text-micro font-semibold uppercase eyebrow text-text-faint" | 454: <div className="font-mono text-micro uppercase eyebrow text-text-faint">{shownLabel}</div>
+C11 src/app/updown/[roundId]/page.tsx /eyebrow[^"]*text-right|text-right[^"]*eyebrow/ -> none
+C16 src/components/markets/market-card.tsx /size="xs"/ -> 461: {/* `size="xs"` IS `.mcardp .chip`, promoted to a prop — same 9px type, 0 6px | 467: <Chip size="xs" variant={TONE_CHIP[STATUS_TONE[statusWord].player]} dot={live}> | 628: <Avatar key={uid} size="xs" seed={uid} initials={initialsFor(uid)} />
+C16 src/components/markets/market-card.tsx /aria-label=\{signal\.label\}/ -> 477: aria-label={signal.label}
+C17 src/components/markets/position-card.tsx /line-clamp-2/ -> 136: <p className="font-display text-[15px] font-semibold leading-tight tracking-[-0.005em] text-text line-clamp-2 
+C18 src/components/journey/tickets/tickets-ghost.tsx /h-5 w-\[/ -> 58: <div className="h-5 w-[64px] rounded-pill bg-bg-overlay" /> | 59: <div className="h-5 w-[96px] rounded-pill bg-bg-overlay" />
+BACK src/app/notifications/page.tsx /BackLink/ -> 33: import { BackLink } from "@/components/ui/back-link"; | 175: <BackLink fallbackHref="/profile" label={t.profile.title} />
+BACK src/app/profile/responsible-gambling/page.tsx /BackLink/ -> 6: import { BackLink } from "@/components/ui/back-link"; | 105: <BackLink fallbackHref="/profile" label={t.common.profile} />
+GAP src/app/wallet/deposit/return/page.tsx /gap-2\.5/ -> 192: <div className="flex flex-col sm:flex-row gap-2.5">
+GAP src/components/markets/side-picker.tsx /gap-2\.5/ -> 142: <div className="grid grid-cols-2 gap-2.5">
+GAP src/app/auth/reset-password/page.tsx /gap-2\.5/ -> 84: <div className="flex flex-col gap-2.5">
+GAP src/app/auth/verify-email/page.tsx /gap-2\.5/ -> 163: <div className="flex flex-col gap-2.5">
+GAP src/app/wallet/receipt/[id]/page.tsx /gap-2\b/ -> 148: <div className="flex flex-col sm:flex-row gap-2">
+GAP src/app/wallet/receipt/[id]/loading.tsx /gap-2\b/ -> 46: <div className="flex flex-col sm:flex-row gap-2" aria-hidden>

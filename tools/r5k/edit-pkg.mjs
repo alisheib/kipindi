@@ -1,0 +1,11 @@
+import { readFileSync, writeFileSync } from "node:fs";
+const p = "F:/kipindi-r5k/package.json";
+let s = readFileSync(p, "utf8");
+const eol = s.includes("\r\n") ? "\r\n" : "\n";
+const a = `    "test:visual-pass-r5h": "tsx scripts/visual-pass-r5h.test.mts",${eol}`;
+const n = s.split(a).length - 1;
+if (n !== 1) throw new Error(`anchor found ${n} times (eol ${JSON.stringify(eol)})`);
+if (s.includes('"test:visual-pass-r5k"')) throw new Error("already registered");
+s = s.replace(a, `${a}    "test:visual-pass-r5k": "tsx scripts/visual-pass-r5k.test.mts",${eol}`);
+writeFileSync(p, s);
+console.log(`registered (eol ${JSON.stringify(eol)})`);

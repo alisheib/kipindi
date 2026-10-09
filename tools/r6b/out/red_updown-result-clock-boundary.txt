@@ -1,0 +1,24 @@
+── the suite on the FIXED tree (must be green) ──
+   exit=0
+
+── mutation: pod-trusts-a-frozen-clock-again (a dead 0:00 at every close) ──
+   exit=1  failures=1  ✓ CAUGHT
+     FAIL 8.2 ⭐ …and feeds it a LIVE, server-anchored now — the CALL, not the definition — RoundCountdownPod does not call useServerNow(serverNowMs) and pass it as nowMs
+
+── mutation: pod-stops-asking-the-shared-rule (a second definition of the phase) ──
+   exit=1  failures=1  ✓ CAUGHT
+     FAIL 8.1 ⭐ the POD binds its phase to the SHARED rule rather than re-deriving it — no `const clock = … resultClock({` inside RoundCountdownPod
+
+── mutation: round-page-withholds-the-boundary (the pod cannot switch by itself) ──
+   exit=1  failures=1  ✓ CAUGHT
+     FAIL 8.4 ⭐ the round page hands the pod the BOUNDARY, so it can switch by itself — no roundClosesAtMs passed
+
+── mutation: round-page-withholds-the-captions (the stale caption survives the switch) ──
+   exit=1  failures=1  ✓ CAUGHT
+     FAIL 8.6 …and the captions for the phases it can now enter alone — no resultLabels passed — the pod would keep the stale caption
+
+── mutation: live-clock-drops-its-server-anchor (the player runs on their own device clock) ──
+   exit=1  failures=1  ✓ CAUGHT
+     FAIL 8.3 the live clock is anchored to the SERVER's instant, never to the device alone — useServerNow's own body does not offset against serverNowMs
+
+5/5 mutations caught — every file restored byte-for-byte.

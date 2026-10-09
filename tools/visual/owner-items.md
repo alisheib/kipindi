@@ -139,6 +139,40 @@
 58. (Review C) Two link colours: brand-300 (~48 sites, R5-C calls it "the link ink") and the kit aqua (--accent-400) at
     five sites (row actions, /profile/activity, the resolution panel, notification settings, the cards' "Maelezo");
     --text-link (aqua-300) has 0 uses. Which one is the link colour?
+59. (R5-K) The deposit return page's loading ghost is shaped by the PAID outcome's words, hidden from sight and from
+    screen readers (neutral bars would make the head jump 1–3 lines on landing). Acceptable on this money page?
+60. (R5-K) /profile's loading ghost draws the commonest case as "unverified, no email" — production data could confirm.
+61. (R5-K) The withdraw ghost draws the form for everyone; a KYC-gated reader sees it swap to the identity panel. Per
+    reader would need one more server read in the loading file. Keep?
+62. (R5-J) The filter sheet's two-column topic grid (148px cells) cannot hold the longest Swahili topic names with a
+    count ("Hali ya hewa" overflows from 3 digits at 360, 4 at 390): a 184px minimum (one column below 412px), or let
+    the topic group wrap like the other groups?
+63. (R5-J) The CLASSIC bell's count stays ungrouped (frozen chrome) — group it when the freeze lifts?
+64. (R5-J) The old dial's kept refusal sentence draws its figures in the sentence face — compose the keep helpers with
+    the money reader (R4-I/R5-E helpers; r4i's width model re-measured)?
+65. (R5-J) The objection counter ("0/1,000") re-wraps the hint while the player types — reserve its widest width
+    (costs 31px of hint width at rest)?
+66. (R6-A) During a break, a player with no position on a market sees the break sentence twice (the new bet-column notice and
+    R4-I's line under "Your positions"); RG notices may not be removed — cut `noBetYet` at its first full stop there?
+67. (R6-A) A shorter break taken during a running one keeps the longer end, but its email says "paused for 1 hour, until
+    <the week's end>" and its subject "Break confirmed · 1 hour". Reword (new words)?
+68. (R6-A) The exclusion email says "disabled until {date}" and its row "Unlocks", but under the 2026-08-27 ruling an
+    exclusion never reopens by itself (auth.selfExclusionUntilBody says so). Reword (new words)?
+69. (R6-A) The break notice in the bet column has no title — add the home's pair ("Pumzika kidogo" / the exclusion title)?
+70. (R6-A) Email rows print the en-GB "Sept" in September where the dictionary says "Sep" (platform-wide).
+71. (R6-B) The Swahili selection-closed and cash-out notices name no market (English and Chinese do). Should they?
+72. (R6-B) Notice quote lengths differ by family (70/70/50, 70/50/50, 60/60/60…). Unify?
+73. (R6-B) /live, /results, /fairness and new Up & Down notices still say "Juu au Chini" — use the page's words?
+74. (R6-B) Should /live hand its hyphenated-title parts down from the server (a rare hydration edge on odd Unicode)?
+75. (R6-C) Frozen classic chrome still disagrees: the classic avatar menu shows "Invite & Earn" to agents and "Verify ID"
+    to verified readers; the classic top bar, More rail and footer say "Alika marafiki" to agents and paid players.
+    Unfreeze these to the journey's rules at launch?
+76. (R6-C) The journey back link names the section ("‹ AKAUNTI") — or a generic "‹ RUDI"?
+77. (R6-C) KYC doors now say the page's tab/eyebrow ("Uthibitisho wa kitambulisho") instead of its h1. Confirm?
+78. (R6-C) Crest-first dialogs (results, win celebration) keep the corner ✕ — the one written exception. Confirm?
+79. (R5-L) Where the product's rules decide the data, the loading ghosts draw a LIVE product (an archive of 8+ results
+    with three notables, two-digit counts, six contested markets, a full leaderboard page); today's small QA board lands
+    106–162px higher on /results and 24–56px on /live phones. Keep the live-product case (recommended) or draw today's board?
 ## S12 (live-word corrections, ship with S12)
 - Swahili "Arifa {n}" reads like one more chip beside "Pesa 3" on the notifications filter row (G1): "{n} arifa".
 - The guest help subtitle "Maswali ya kawaida · Simu · Barua pepe" cannot fit one line at 320/360 (73px row); a
@@ -164,6 +198,18 @@
   suggest "Thibitisha kuweka pesa" for native review.
 - (R5-G) The push-settings page and the inbox share one name, "Arifa / Notifications / 通知" — the settings page needs its own.
 - (R5-G) auth.licensedByGbt uses the acronym "GBT".
+- (R5-J) pnl-summary-strip writes "3 Hai" / "3 Open" (a capitalised label after a count) — a lower-case "open" word.
+- (R5-J) pnl-summary-strip's "W · L · C" abbreviations are English in all three languages.
+- (R5-J) /updown/history writes "{wins}/{decided} decided" in English in all three languages.
+- (R5-J) The Up & Down card's player count and the market card's comment count have no word — one/many pairs.
+- (R5-J) Swahili result phrases are capitalised ("Miamala {n}", "Nafasi {n}", "Risiti {n}") while /markets writes "masoko {n}".
+- (R5-J) cash.tsx:91 aria-label "balance hidden" is English in all three languages.
+- (R6-A) The permanent-exclusion email reads "for permanent" (broken English) and its Swahili line has no word for
+  permanent — "permanently" / "kabisa", or reuse auth.selfExclusionPermanentBody; the bell's permanent notice too.
+- (R6-B) The Swahili minutes order: the chip and <title> say "15 dakika", the stored round title "dakika 15".
+- (R6-B) notifyLoss writes "Upande…" (capital) where notifyUpDownLoss writes "upande…".
+- (R6-C) "Nafasi zako" / "Your positions" on the market and round pages, "{n} positions" on the performance bar, and zh
+  help.openSettledCashOut need journey words ("Tiketi zako / Your tickets / 您的注单").
 
 ## S8 (the journey bet sheet)
 - A player on a break (or self-excluded but signed in) can open the old dial, pick a side and a stake, and is refused

@@ -1,0 +1,106 @@
+PROVED   the REAL tree passes every check
+PROVED   the repeat ignored — a held Enter presses the Confirm it lands on (the defect)
+PROVED   every Enter swallowed, the first press too — Enter-to-confirm broken
+PROVED   a held Enter swallowed in a textarea — new lines broken
+PROVED   a held Space on a button passes — released on Confirm, it presses it
+PROVED   a held Space swallowed in a text field — typing broken
+PROVED   a held Escape swallowed
+PROVED   the bet confirm's window Enter listener restored (Enter on "Ghairi" places the bet)
+PROVED   the Sell confirm's window Enter listener restored (Enter on the win seal sells underneath)
+PROVED   the result dialog's window Enter listener restored (Enter on "View positions" does the primary)
+PROVED   the listener restored on the document, its handler a function declaration
+PROVED   the dropdown's list takes keys pressed anywhere again (Enter on a seal opened over it picks an option)
+PROVED   the listener restored as an inline arrow on the window
+PROVED   the bet confirm opens with focus off Confirm (the keyboard path to confirm lost)
+PROVED   the Sell confirm opens with focus off its sell button
+PROVED   the result's primary click drops onPrimary (Enter and click no longer the act)
+PROVED   the bet confirm's Cancel made to confirm
+PROVED   the rule made impure (it imports)
+PROVED   the dial's Enter places the bet itself
+PROVED   keyTargetOf reads the tag in lower case (a held Space on the dial presses Confirm when it is let go)
+PROVED   keyTargetOf drops the role (a held Space on a role=switch presses it)
+PROVED   keyTargetOf answers nothing (a held Space is never swallowed)
+PROVED   keyTargetOf drops the editable flag (a held Enter in an editable region is swallowed: new lines broken)
+PROVED   the press test says everything presses (the beat would swallow a new line in a textarea)
+PROVED   the press test forgets Space (a Space behind the seal or in the beat would press)
+PROVED   the census reads Enter only as a quoted literal again (keyCode 13, Space and a helper's key test unseen)
+PROVED   the census judges every handler by the first definition of its name in its file again
+PROVED   the census passes a handler it cannot read (a cast, a member, a wrapper) as plain text again
+PROVED   the census looks only at keydown on the window and the document again
+PROVED   the census exempts any listener that returns for a key outside its own control again
+PROVED   a dialog-scoped window Enter listener in the bet confirm (Enter on Ghairi, inside the dialog, places the bet)
+PROVED   an inverted scope in the Sell confirm (Enter pressed anywhere but in the dialog sells: the A8i defect itself)
+PROVED   an unrelated early return and a contains test before the result dialog's Enter (Enter anywhere does the primary)
+PROVED   a second component in modal.tsx with an Enter handler of the same name (ConfirmModal settling on Enter, read as Modal's)
+PROVED   a cast handler in the Sell confirm (onKey as EventListener: the A8i census read the cast as text with no Enter in it)
+PROVED   the bet confirm confirming on keyCode 13
+PROVED   a keyup listener in the Sell confirm (the seal's button closes on keydown, the keyup sells underneath)
+PROVED   an onkeydown assignment in the bet confirm that confirms on Space
+PROVED   a key test moved into a helper of the Sell confirm's own file
+PROVED   a key test moved into a helper in src/lib (the pure-helper pattern held-key.ts itself uses)
+PROVED   a listener on the page body in the Sell confirm
+PROVED   a member handler on the window (the census cannot read its body: it must say so, not pass it)
+PROVED   the bet confirm's buttons wrapped in a div that confirms on Enter (Enter on Cancel reaches it through React)
+PROVED   the stack's rules import something else
+PROVED   the stack's rules read the page
+PROVED   the stack keeps a clock of its own (the beat no longer runs on the clock it is handed)
+PROVED   Space on the bet dial is no press again (a held Space's repeats there open confirm after confirm)
+PROVED   the census passes an inline handler that acts through what it calls again
+PROVED   the census stops at a namespace import again (K.isConfirmKey(e) unread)
+PROVED   an unreadable React key prop on the Sell confirm's buttons (it passed as text with no Enter in it)
+PROVED   an officer's dialog file whose React key prop acts on Enter (2.6 read only the three money dialogs)
+PROVED   the needle's keydown moved onto the window through its own helper (the census never saw it)
+PROVED   a key event named under a constant (a listener the census cannot see)
+PROVED   the key guard listens in the bubble phase (the board card's controls stop Enter before it)
+PROVED   the key guard prevents a swallowed key but does not stop it (a React handler still acts on it)
+PROVED   the key guard decides with the held-key rule alone (nothing behind the top dialog refused, and no beat)
+PROVED   the key guard swallows a composing key (an input method's Enter)
+PROVED   AppShell no longer mounts the key guard
+PROVED   Modal no longer installs the key guard (the console has none)
+PROVED   the key guard installs itself on every call (a second set of listeners)
+PROVED   a Space released anywhere presses what it lands on
+PROVED   the key guard forgets where a Space went down
+PROVED   the key guard swallows what it should let through, and lets through what it should swallow
+PROVED   the stack's decision drops the held-key rule (text: the guard built from it lets a held Enter bet on every repeat)
+PROVED   the stack's decision drops the held-key rule (the rule itself: a held Enter on UP passes with no dialog open)
+PROVED   the key guard is handed no repeat (Up & Down's UP bets on every repeat again: the 13-bet burst)
+PROVED   the key guard is handed an empty stack (a press behind the seal confirms the bet under it)
+PROVED   the key guard is told no beat is armed (W2's second Enter sells)
+PROVED   the key guard decides a Space's release by where the last key went, not the last Space
+PROVED   the stack orders by open order alone (a confirm opened after the seal would be on top of it)
+PROVED   of two dialogs at one z, the earlier is taken for the top
+PROVED   nothing is ever above the top dialog (a calendar it opened would lose its keys)
+PROVED   a covered dialog is taken for the top one (the confirm under the seal takes keys)
+PROVED   a press behind the top dialog presses (Enter meant for the seal confirms the bet under it)
+PROVED   no arming beat (a second Enter 60 ms after the seal closes sells: W2)
+PROVED   the arming beat swallows typing too (a new line in a dialog's textarea lost)
+PROVED   the arming beat never ends
+PROVED   a closing dialog always gives focus back where it was (the A8i Modal: behind the seal, or onto Uza unarmed)
+PROVED   a closing dialog never moves focus (the confirm the seal uncovers has none)
+PROVED   no hand-off (the seal closing aims focus into a confirm that has gone)
+PROVED   an arming beat shorter than the gap between two seals (200 ms)
+PROVED   two queued seals 500 ms apart, past the arming beat
+PROVED   Modal's key handler answers as a covered dialog too (one Escape closes every dialog)
+PROVED   a dialog opened beneath the seal takes focus all the same
+PROVED   an Escape on an open dropdown inside a dialog closes the dialog too
+PROVED   an Escape with a dropdown open in the dialog but focus on the page (a click in Safari) closes the dialog too
+PROVED   one Escape closes a dialog and then the one under it (its listener runs after the top one closed)
+PROVED   the open effect is passive again (a timer-opened seal is drawn before it is on the stack)
+PROVED   a dialog's first focus is not armed (a double press on the dial confirms: DD)
+PROVED   the page Modal hands to leaving moves no focus
+PROVED   Modal's layer names no way out (its safeFocus never reaches the stack)
+PROVED   a plain Tab from behind the dialog walks the page behind its scrim again
+PROVED   the leaving ghost is no longer inert (its Confirm can take focus and a key)
+PROVED   Modal gives focus back without the plan (the A8i one-liner)
+PROVED   no hand-off (the seal's close aims focus into a confirm whose quote lapsed under it: SL)
+PROVED   an uncovered confirm takes focus on its money button again (W2's second Enter, or a second seal's, sells)
+PROVED   the confirm the seal uncovers is not armed
+PROVED   what a closing dialog gives focus back to is not armed (the receipt's double Enter bets twice)
+PROVED   a seal opened with focus on the page arms the whole page when it closes
+PROVED   a covered dialog that held focus closes and nobody takes it
+PROVED   the Sell confirm names no way out (the seal's close hands focus to its sell button)
+PROVED   the bet confirm's way out is not its Cancel button
+PROVED   ConfirmModal names no way out (a seal over a withdrawal confirm hands focus back to Send funds)
+PROVED   a disabled first target is given focus all the same (focus stays behind the scrim)
+
+RED CONTROL — 103/103 caught

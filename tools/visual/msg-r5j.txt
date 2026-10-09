@@ -1,0 +1,40 @@
+Visual pass round 5 (R5-J): one way to count — every count a player reads grouped the one way and worded in lower case; one figure reader for every result; no invisible placeholder characters
+
+The follow-up to R5-A's F12 and R5-E's money reader (G-4, G-6).
+
+G-4 · production's /results printed one count two ways ("Zote 12479" in the pill, "12,479 imetatuliwa" in the tally);
+an AST census of 466 player files found 90+ count sites outside the convention in five shapes — a bare `{x.length}`, a
+`{n}` slot filled with String(count), a template string, `toLocaleString()` (the runtime's locale: the pager,
+/proposals, the Up & Down round page), and a private `Intl.NumberFormat()` in the device's locale (the Up & Down card:
+"12,345" in the server's paint, "12.345" after hydration on a German phone). 125 `formatNumber` sites in 72 files now;
+the convention is written once on formatNumber (one fixed grouping — sw, en and zh all write "12,479" — followed by the
+dictionary's lower-case word); machine attributes stay bare integers; the share card reads "1 predictor". The journey
+bell's count is grouped (the classic bell stays byte-identical, frozen chrome). Left bare, each with its reason held by
+the suite: page buttons (they name the address's page), CountBadge's capped "99+", ordinals, durations, the primer's dial
+multipliers, the ghosts' "00" shapes, the chart's price readout, the admin progress bar. Below 1,000 every output is
+byte-identical; from 1,000 a comma appears (+6.6px per pill at 11px mono); the objection counter reads "0/1,000".
+
+G-6 · the result modal's private `FIGURE` regex got five forms wrong (it took a sentence's comma, read "TZS 1" out of
+"TZS 1.2M" and "TZS 2" out of "TZS 2.5", missed no-break-space figures, left the "+" of "+TZS 1,234" outside) and the
+rule was opt-in for the sale alone. The modal now draws its title, string subtitle and footnote through `moneyRuns`
+(fill-nodes.tsx), the toaster's reader, for every result; the old dial's receipt figure is a mono `.amount` ("HAPANA ·
+TZS 1,000,000" wraps with the figure whole). A census of private figure readers fails on any new one (692 files; the
+shared readers are fill-nodes and keep-words; admin readers classified). The four empty slots (analytics choice, search
+echo, time select, trust band) render nothing and wear `kp-keep-line` — one CSS rule draws the space, so no copy, find
+or textContent carries a U+00A0 (predicted pixel-identical).
+
+Guards: test:visual-pass-r5j (54 checks: the count census with a classified list and a stale-entry check, renders under
+an emulated de-DE runtime locale, the result modal, the regex census, the slots). Mutation proof: 26 planted, 26 caught
+on the named check, all restored byte-identical. Re-pins (each with its reason): sell-grace-truth §6 (+ four plants
+re-aimed, one added; red 156/156), r4d 7.3b, r5e 6.5/6.5′, eyebrow-roles (four signatures), journey-tickets
+SELL_RESULT_MARKUP, outcome-display D42, updown-history-pnl §3e and its red twin's M5 anchor.
+
+Owner items: the filter sheet's topic grid at sw 360/390; the classic bell's count when the freeze lifts; kept refusal
+sentences' figures; the objection counter's reserved width. S12: "3 Hai / 3 Open", "W · L · C", "{wins}/{decided}
+decided", word pairs for the Up & Down player count and the comment count, capitalised sw result phrases, cash.tsx's
+English aria-label.
+
+Classic viewers: every count from 1,000 up grouped (identical below), the objection counter, result figures as amounts,
+the share card's "1 predictor"; classic chrome unchanged.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>

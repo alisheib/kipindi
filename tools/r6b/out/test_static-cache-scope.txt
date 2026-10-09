@@ -1,0 +1,30 @@
+static-cache-scope — the one-year immutable cache is for static files only
+§1 · every immutable source names a real static place
+  ok   1.locate · next.config.ts's headers() sends the immutable cache to at least the build output
+  ok   1.real · /icons/:path* is a folder under public/
+  ok   1.real · /brand/:path* is a folder under public/
+  ok   1.real · /pay/:path* is a folder under public/
+  ok   1.real · /og/:path* is a folder under public/
+  ok   1.real · /screenshots/:path* is a folder under public/
+  ok   1.real · /email-signatures/:path* is a folder under public/
+  ok   1.real · /favicon.ico is a file under public/
+  ok   1.real · /favicon.svg is a file under public/
+§2 · the static files keep their long cache
+  ok   2.1 · every file in icons, brand, pay, og, screenshots, email-signatures matches (31 files)
+  ok   2.2 · the favicons and a hashed chunk match
+  ok   2.3 · the service worker and the manifest are NOT immutable (they must revalidate)
+§3 · no page address is ever sent the immutable cache
+  ok   3.1 · none of 25 page addresses matches an immutable source
+§4 · the control and the plant
+  ok   4.1 CONTROL · the old suffix rule matches the pages production cached (/markets/x.png, /markets/mexico, /u/federico)
+  ok   4.2 PLANT · the old suffix rule put back into the list is reported by §3
+§5 · every response carries the static security headers (all but the CSP)
+  ok   5.1 · headers() sends src/lib/security-headers.ts' list on /:path* — 7 headers in development, 8 with HSTS in production — exactly
+  ok   5.2 · …and never the CSP: it stays the proxy's (it depends on the request — `upgrade-insecure-requests` only over HTTPS)
+  ok   5.3 · Next's own matcher sends that rule to all 67 addresses — every page, every static file (31), the favicons, the build output and the static folders' not-founds the proxy skips
+  ok   5.4 · src/proxy.ts sends the very same list — imported from src/lib/security-headers.ts, every header and HSTS set in withSecurityHeaders, none defined there — so the two senders cannot drift apart
+  ok   5.5 · the list holds what review 6 found missing: X-Frame-Options DENY, nosniff, Referrer-Policy, Permissions-Policy, COOP; HSTS in production
+  ok   5.6 CONTROL · without that rule (round 5's headers()), a missing file under a static folder — the proxy skips it — was sent no X-Frame-Options; with it, it is
+  ok   5.7 PLANT · the rule taken out is reported by 5.1 and 5.3; X-Frame-Options dropped from it, by 5.1
+  ok   5.8 PLANT · a CSP put into it is reported by 5.2; its source narrowed to /:path+ (no "/") by 5.3; a header of the proxy's own back in proxy.ts by 5.4
+static-cache-scope: 23 passed, 0 failed

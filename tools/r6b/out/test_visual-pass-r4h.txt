@@ -1,0 +1,110 @@
+── 1 · E27 the name editor selects in the commit that opens it (edges: saved names lost their first letters) 
+  ok   1.1 · no timer, one select() — in a layout effect on `editing`, after focus, so the field is selected before the next event
+  ok   1.1′ PLANT · the 30ms re-select put back is reported
+  ok   1.2 · selected at open (t = 0): every key lands — the three edge names are saved whole
+  ok   1.2′ CONTROL · selected 30ms later: the keys typed before it are replaced (the drive saved "wanaisha…", "anaisha…", "阳慕容…")
+
+── 2 · E24 E25 E26 a long name breaks inside its column, never one character alone; the hero cannot scroll (tiles 218 233–236) 
+  ok   2.1 · the read-mode name: the button capped at its column, the name breaking anywhere when it must, balanced, its end kept
+  ok   2.1′ PLANT · `break-word` instead of `anywhere` is reported (break-word does not lower a flex item's min-content: the 40-letter word stays 580px wide)
+  ok   2.2 · the hero section is `overflow-hidden overflow-clip` (clip after hidden in Tailwind's output) and its watermark still overhangs 32px (-right-6), the overflow a reveal scrolled
+  ok   2.2′ PLANT · the hero back on `overflow-hidden` alone is reported
+  ok   2.3 · keepNameEnd: "…百里<呼延>", "Jum<a K>", a two-character name untouched, the words unchanged
+  ok   2.4 · the hub renders keepNameEnd(viewer.name) and balances the name (anywhere-breaks kept)
+  ok   2.locate · the hub's name column is viewport − 130: 190 at 320, 230 at 360, 260 at 390 (16px gutter, 1px border, 16px padding, 52px initials, 12px gap)
+  ok   2.5 · on any engine (balance aside) the last line holds two characters at least: 11·11·11·7 at 320, 13·13·12·2 at 360, 15·15·10 at 390
+  ok   2.5′ CONTROL · the name as text broke 13·13·13·1 at 360 — the tile's lone last character
+
+── 3 · E28 the board rows' meta line breaks only between its facts (tiles 248 249 257 258 266 267) ─────
+  ok   3.1 · QuestionRow's meta line is DotSeq over closes · settles · pool · depth, each fact in its own class and V18 hook
+  ok   3.1′ PLANT · the sentence of text with its own " · " put back is reported
+  ok   3.2 · rendered: four items in one flex line (`kp-seq kp-qrow__meta`), each dot inside the item it opens, the text "A · B · C · D" for a reader
+  ok   3.2′ CONTROL · the old markup puts the dot between the facts as text, where a line may end on it
+  ok   3.3 · `.kp-seq` is the wrapping flex line with the left-edge clip, and `.kp-qrow__meta` sets no display to undo it
+
+── 4 · E29 a title's figures stay whole on every title surface (tiles 197 199 253 255 256) ─────────────
+  ok   4.1 · the runs: "2026-27" (and "2026-27赛季"), "dakika 28:00", "1 Agosti" (not "tarehe 1 Agosti": one side only), "April 15", "$5.5 bilioni", "30-day", "200毫米"
+  ok   4.2 · a title with no run is returned as the very string (byte-identical markup): bare numbers, proper nouns, "200mm", no digits
+  ok   4.3 · the words are never changed, and no run is longer than a word and its number (≤ 20 characters in the catalogue)
+  ok   4.4 · no lookbehind in keep-words.tsx (Safari before 16.4 cannot parse a bundle holding one)
+  ok   4.4′ PLANT · a lookbehind in the unit pattern is reported
+  ok   4.5 · cards (grid and featured), the board's rows, the market page h1, the journey's ticket card, /live's carousel and wall: keepFigures, no keepUnits left
+  ok   4.5′ PLANT · the market page h1 as round 4 found it (the bare title) is reported
+  ok   4.6 · /live's hyphen tokens: "30-day" and "month-end?" whole, the Chinese title NOT one token, "2026-27" left to keepFigures
+  ok   4.6′ CONTROL · the round-3 token rule took the whole Chinese title as one nowrap token (wider than any card)
+
+── 5 · E30 the card's two-line title slot is the contract (tiles 251 252): by design, with its numbers ─
+  ok   5.1 · the grid card's question clamps at two lines over a two-line minimum — every card in a row keeps its pick, bar and foot on one line, and --mcard-base (the skeleton's height) is measured with it
+  ok   5.2 · S2's budget (SJ-8: 56 code points in en/sw, 28 in zh) is what two lines hold on the narrowest card: ~58 at 320, ~68 at 360
+  ok   5.3 · the tiled title is 84 code points, 150% of the budget: it needs three lines below ~640 and is clamped by design; S2's short title is its home (report: MarketCard does not read `cardTitle` yet)
+
+── 6 · E31 E33 the journey's account menu (tiles 209 213 224 228 239 243 247) ──────────────────────────
+  ok   6.1 · only the journey's header says `journey`; the classic bar's menu takes no new prop
+  ok   6.2 · the classic arms are today's: the padded Needle wrapper with the `menu-row` variant, the bare label, MENU_ROWS' own words for /positions
+  ok   6.3 · the `menu-item` row: Item's 16px inset, 12px padding and 10px gap (gap-[10px] = gap-2.5), the 15px glyph box, a menuitem — in a `py-1` wrapper with no side padding
+  ok   6.3′ CONTROL · the classic row stood 24px in (wrapper px-2 + button px-2) against the rows' 16
+  ok   6.4.locate · both menu rows end with `menuTail`, the classic one without the overhang, its chevron's class exactly as before
+  ok   6.4 · the chevron's ink ends 0.6px from the rows' right edge (its 4.6px side bearing, overhung by -mr-1's 4px) — INAKUJA's pill ends on that edge
+  ok   6.4′ PLANT · without the overhang the ink stands 4.6px short
+  ok   6.5 · in the journey the /positions row reads the tab's own key and glyph (journey.tabTickets · ticket), as JOURNEY_TABS names that tab
+  ok   6.5′ CONTROL · the two names differ in every language (Nafasi / Tiketi zangu · Positions / My tickets · 持仓 / 我的注单)
+  ok   6.6 · every glued pair fits the label's room beside INAKUJA (~139px; the widest pair ~88px at Sora 13px)
+  ok   6.7 · "Pendekeza na" / "upate zawadi" beside the pill
+  ok   6.7′ CONTROL · as text it broke 3 · 1 — "zawadi" alone (the tile)
+  ok   6.8 · the journey's menu rows carry no accent (no gilt icon, no gold hover on Invite & Earn / Propose & earn); the classic rows keep theirs
+  ok   6.8′ PLANT · the accent let through in the journey is reported
+
+── 7 · E32 one phone, one mask in the journey and on /profile/account (tiles 209 213 vs 203 206) ───────
+  ok   7.1 · the journey's header is handed topUser with its phone through maskPhone; the classic bar keeps topUser
+  ok   7.1′ CONTROL · the classic mask is still the stars (frozen chrome until S15), so the classic menu reads as it did
+  ok   7.2 · maskPhone gives the hub's and the hero's shape, and a short value masks to dots
+  ok   7.3 · /profile/account masks through maskPhone, no hand-written stars
+  ok   7.3′ PLANT · the hand mask put back is reported
+
+── 8 · E4 the home's signed-in link names /positions by the journey tab's key ──────────────────────────
+  ok   8.1 · journey ? journey.tabTickets : home.myPositions, the flag from the one resolver, false for a visitor and by default
+  ok   8.1′ CONTROL · the two keys name the page differently (Nafasi zangu / Tiketi zangu), so the classic reader keeps today's words
+
+── 9 · E34 the journey's toaster hangs under its header (tiles 203 218 233 235) ────────────────────────
+  ok   9.1 · the toaster carries the hook as an attribute, its classes unchanged (the classic overlay census names classes, not data attributes)
+  ok   9.2 · journey-only rules: the stack starts at the header's 56px foot — the first toast at 56 + 16 = 72 on a phone, 64 from 640, where the account menu hangs (72 · 64)
+  ok   9.2′ CONTROL · the classic stack's 16px (phone) and 20px (from 640) from the viewport top fall inside the 56px header
+  ok   9.3 · (1,2,0) — :root, :has(#id), [attr] — outweighs the stack's own `top-0` / `sm:top-4` (0,1,0) whatever the order
+
+── 10 · E5 the home's tab title in the reader's language (38 sw + 37 zh tiles read English) ────────────
+  ok   10.1 · the home's metadata is generated per request: "50pick — " + the dictionary's tagline, `absolute` (the layout's template would append " · 50pick")
+  ok   10.2 · en reads exactly as before; sw "50pick — Tabiri matukio. Si bahati."; zh "50pick — 预测事件，而非运气。"
+  ok   10.2′ CONTROL · without a title of its own the home took the layout's English default in every language
+  ok   10.3 · the openGraph spread survives (share-preview §1)
+
+── 11 · E2 E3 the journey's Wallet doors and captions at 320 (tiles 488 496) ───────────────────────────
+  ok   11.locate · a door's column is 133px at 320 (the sheet's 20px padding, the pair's 12px gap, a 1px border)
+  ok   11.1 · with 12px a side every journey door holds its 16px glyph, the 8px gap and its label at 320 (Weka pesa needs ~105.5 of 109)
+  ok   11.1′ CONTROL · btn-lg's 20px left 93 at 320: the ⊕ shrank by ~12px (the tile's ~4px glyph), and Withdraw's arrow by ~3
+  ok   11.2 · the journey's captions keep their last two words together; the classic arm keeps the text
+  ok   11.3 · en 320: "Mobile money" / "or card" (134px in a 133px column)
+  ok   11.3′ CONTROL · as text it left "card" alone (the tile)
+  ok   11.4 · sw and zh stay one line at 320
+
+── 12 · E13 the card watermark is not lit behind the card's controls (tiles 160 184) ───────────────────
+  ok   12.1 · no hover rule reaches the watermark, and it keeps its resting ink (0.055, --border-strong)
+  ok   12.1′ PLANT · the round-3 lift put back is reported
+  ok   12.2 · the card still answers the pointer itself (the ring and the lift)
+
+── 13 · G20 an id breaks in whole runs of four on both receipts (S9's note: one or two characters alone at 390) 
+  ok   13.1 · runs of four, a <wbr> between them, a short tail joined to the run before; the id unchanged; ≤ 7 characters untouched
+  ok   13.2 · every id, under every label in three languages at 390, ends its last line with four characters at least (lines then balanced by text-wrap)
+  ok   13.2′ CONTROL · break-all left one or two characters alone (S9's note) — here 2 of 18 cases
+  ok   13.3 · both receipts render their two ids through keepIdRuns in a balanced block, no break-all on an id
+
+── 14 · R4-C's leftover: /live, /updown/history and /profile/account wear the search band (rung + 10 on every side) 
+  ok   14.locate · r4c's constants: band 10 over the box, echo row 25, hang 25 over a bar / 15 over anything else, the bar's 10 / 10
+  ok   14.1′ CONTROL · /live as round 4 found it: 24 over the box, 49 under it (tile 205 measured 49)
+  ok   14.2′ CONTROL · /updown/history as round 4 found it: 20 over the box, 35 to the pills
+  ok   14.2″ · the bar is still the page container's direct child (it sticks within its parent): no wrapper opens around <HistoryBar
+  ok   14.3′ CONTROL · /profile/account as round 4 found it (`py-1`): 20 over the box, 55 to the pills, 26 under the bar
+  ok   14.3″ · the panel's bar is a `kp-discovery-bar` (QUERY_BAR_CLASS_PANEL), so the band's hang applies
+  ok   14.1 · each page's gaps around its search equal its rung + 10: /live 34 · 34, /updown/history 34 · 34 · 34, /profile/account 26 · 26 · 26
+  ok   14.1′ PLANT · /live's band dropped is reported
+
+visual-pass-r4h: 81 passed, 0 failed

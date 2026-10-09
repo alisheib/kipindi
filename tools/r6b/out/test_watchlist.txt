@@ -1,0 +1,82 @@
+[audit] ADMIN market.created system Market#mkt_d7768ff01874edac23d3
+PASS not watching initially 
+PASS toggle → watching 
+PASS isWatching true 
+[audit] SYSTEM watchlist.added wl_a Market#mkt_d7768ff01874edac23d3
+PASS appears in the user's list 
+PASS toggle again → unwatched 
+PASS isWatching false 
+[audit] SYSTEM watchlist.removed wl_a Market#mkt_d7768ff01874edac23d3
+PASS gone from the list 
+[audit] ADMIN market.created system Market#mkt_37309a7280016a4c7f2d
+[audit] ADMIN market.created system Market#mkt_3faf65fdc22838c1e39e
+[audit] SYSTEM watchlist.added wl_a Market#mkt_37309a7280016a4c7f2d
+[audit] SYSTEM watchlist.added wl_b Market#mkt_37309a7280016a4c7f2d
+[audit] SYSTEM watchlist.added wl_a Market#mkt_3faf65fdc22838c1e39e
+PASS trigger alerted the closing-soon market notified=true
+PASS both watchers alerted watchers=2
+PASS wl_a got a watchlist alert 
+PASS wl_b got a watchlist alert 
+PASS far market refuses the trigger {"notified":false,"watchers":0}
+PASS far market NOT stamped 
+PASS far market's watcher got NO extra alert 
+PASS exactly 1 market stamped closing-soon store-wide stamped=1
+PASS second trigger alerts nobody (idempotent) {"notified":false,"watchers":0}
+PASS wl_a still has exactly 1 alert (no spam) 
+PASS concurrent triggers alert nobody 
+PASS still exactly 1 alert after concurrency 
+[audit] ADMIN market.created system Market#mkt_fa6cea3368ea0c9f1e65
+[audit] SYSTEM watchlist.added wl_a Market#mkt_fa6cea3368ea0c9f1e65
+[audit] SYSTEM watchlist.added wl_b Market#mkt_fa6cea3368ea0c9f1e65
+PASS exactly ONE concurrent trigger won [{"notified":true,"watchers":2},{"notified":false,"watchers":0},{"notified":false,"watchers":0}]
+PASS watchers alerted exactly once in total sum=2
+PASS wl_a got exactly 1 new alert 
+PASS wl_b got exactly 1 new alert 
+PASS race market stamped once 
+[audit] ADMIN market.created system Market#mkt_9a9cd0b99243bdbf9a3d
+[audit] SYSTEM watchlist.added wl_b Market#mkt_9a9cd0b99243bdbf9a3d
+PASS past-cutoff market refuses the trigger {"notified":false,"watchers":0}
+PASS past-cutoff market NOT stamped 
+PASS its watcher got NO alert 
+[audit] ADMIN market.created system Market#mkt_d764066912399fe3fd54
+[audit] SYSTEM watchlist.added wl_excluded Market#mkt_d764066912399fe3fd54
+[audit] SYSTEM watchlist.added wl_cooled Market#mkt_d764066912399fe3fd54
+[audit] SYSTEM watchlist.added wl_b Market#mkt_d764066912399fe3fd54
+[audit] COMPLIANCE wallet.freeze_added wl_excluded User#wl_excluded
+[audit] COMPLIANCE rg.self_exclusion.activated wl_excluded User#wl_excluded
+[audit] COMPLIANCE rg.cooling_off.activated wl_cooled User#wl_cooled
+[audit] COMPLIANCE watchlist.alert_suppressed.rg_lockout wl_excluded Market#mkt_d764066912399fe3fd54
+[audit] COMPLIANCE watchlist.alert_suppressed.rg_lockout wl_cooled Market#mkt_d764066912399fe3fd54
+PASS self-excluded watcher filtered out 
+PASS cooling-off watcher filtered out 
+PASS active watcher retained 
+[audit] COMPLIANCE push.suppressed.rg_lockout wl_excluded User#wl_excluded
+[audit] COMPLIANCE push.suppressed.rg_lockout wl_cooled User#wl_cooled
+[audit] COMPLIANCE watchlist.alert_suppressed.rg_lockout wl_excluded Market#mkt_d764066912399fe3fd54
+[audit] COMPLIANCE watchlist.alert_suppressed.rg_lockout wl_cooled Market#mkt_d764066912399fe3fd54
+PASS trigger ran for the RG market notified=true
+PASS only the active watcher was alerted watchers=1
+PASS self-excluded got NO new alert 
+PASS cooling-off got NO alert 
+PASS active watcher DID get the alert 
+PASS excluded user's star is preserved 
+[audit] ADMIN market.created system Market#mkt_666550bb96aa1edf8c09
+[audit] SYSTEM watchlist.added wl_a Market#mkt_666550bb96aa1edf8c09
+[audit] SYSTEM watchlist.added wl_b Market#mkt_666550bb96aa1edf8c09
+[audit] BET market.position.opened wl_b Position#pos_798e23bc7635e849872d
+[audit] BET market.position.opened wl_c Position#pos_6c5e52f0d2c6f0e7b4b4
+[audit] ADMIN market.adjudicated wl_officer1 Market#mkt_666550bb96aa1edf8c09
+[audit] WALLET bet.payout wl_b Position#pos_798e23bc7635e849872d
+[audit] ADMIN market.resolved system Market#mkt_666550bb96aa1edf8c09
+[audit] WALLET market.settled system Market#mkt_666550bb96aa1edf8c09
+[audit] SYSTEM affiliate.settlement_accruals system Market#mkt_666550bb96aa1edf8c09
+PASS watcher who did NOT bet got a settled alert 
+PASS watcher who DID bet got NO duplicate watchlist alert bettor gets win/loss instead
+
+watchlist-alerts: 38 passed, 0 failed
+[email] sendEmailToUser skipped — no email for user wl_excluded… (user.email=null, phone=+25594…)
+[email] sendEmailToUser skipped — no email for user wl_cooled… (user.email=null, phone=+25594…)
+[email] sendEmailToUser skipped — no email for user wl_b… (user.email=null, phone=+25594…)
+[email] sendEmailToUser skipped — no email for user wl_c… (user.email=null, phone=+25594…)
+[email] sendEmailToUser skipped — no email for user wl_b… (user.email=null, phone=+25594…)
+[email] sendEmailToUser skipped — no email for user wl_c… (user.email=null, phone=+25594…)

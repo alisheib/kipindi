@@ -1,0 +1,82 @@
+── 1 · H1 a title's figure keeps its OWN unit — a closed Chinese list, longest first — and its currency code 
+  ok   1.1 · the run ends at the unit: "[15万美元]？" (美元 whole), "[2026年]坦桑尼亚" (年|坦 free), "[7月]降雨量", "[10月]前", "[8月1日]收于", and "2,650以下" plain (以下 is no unit)
+  ok   1.1′ CONTROL · the round-4 tail ("one or two ideographs, whatever they are") takes 雨量's 降 and 美元's 美
+  ok   1.2 · a currency code is part of its figure, unit or not ("[TZS 1 bilioni]", "[TZS 4,200]以上"); any other word before stays out when a unit follows ("tarehe [1 Agosti]")
+  ok   1.3 · a unit word that opens a sentence keeps its number ("[Dakika 90]", "[Saa 3]", "[30-Day]"), as its lower-case twin does
+  ok   1.3′ CONTROL (decided) · "28:00 dakika" stays plain: Swahili names the unit first, and a noun after a number opens the next phrase ("mabao 2 siku ya mwisho")
+  ok   1.3″ · a month keeps its DAY ("[April 15]", "[Mei 31]") and never a year: "December 2026" is no run (225px at the market h1's 28px, wider than its 220px line at 320 — §9)
+  ok   1.4 · over the reviewer's own corpus (review/fix.ts, seed 5, 20,000 titles) the words are unchanged, the keys unique, and the runs are the reviewer's prototype's — but where a gap holds two or more wide spaces (8, §5) or a month stands by a number that is no day (314, 1.3″)
+  ok   1.5 · every seeded title (98) keeps its words, character for character, with unique keys
+  ok   1.6 · `figureRuns` is `keepFigures`' runs, as words (what `keepText` takes), and `figureRanges` their places
+  ok   1.7 · no lookbehind in any keep helper (a client bundle holding one fails to parse on Safari before 16.4)
+  ok   1.7′ PLANT · a lookbehind in the figure pattern is reported
+
+── 2 · F1 F4 + H1's siblings: every market title is balanced and keeps its figures whole, on every surface 
+  ok   2.1 · 12 title surfaces draw the title through keepFigures and balance its lines — the seven of round 4 and /results' notable card, the proposals board and page, the classic ticket, /fairness, the bet dialog
+  ok   2.2 · no rule sets a market title `text-wrap: pretty` (the featured card wore it — F1's mechanism, §3)
+  ok   2.2′ PLANT · the featured question back on `pretty` is reported
+  ok   2.2″ PLANT · a surface that loses its balance or its keepFigures is reported
+  ok   2.3 · the bet dialog's title keeps "dakika 28:00" whole as the cards do, and its last two words as R4-I did
+  ok   2.4 · /live's wall keeps the same runs: "[2026-27赛季]", "[dakika 28:00]"
+  ok   2.5 · every player file that names a market title (25) is classified — a surface held by 2.1, one that hands it on, or not a wrapping title
+  ok   2.6 · the two references in body text keep the figures whole too (the best market's line, the bet result's subtitle)
+
+── 3 · F1 F4 Chromium's greedy / pretty / balance, modelled from its source, reproduce the tiles and give the after 
+  ok   3.locate · the stylesheet the model reads: the card's question 15px/600 with −0.015em, h4 700 from 640, h3 from 1024
+  ok   3.1 CONTROL · `pretty` draws tile 029 (zh 320): "达累斯萨拉姆七月降雨超" / "过200毫米" — 162.5 / 75.7px against ink 163 / 76 — because the greedy last line was the one unbreakable run "200毫米", 61px of 229 (under a third)
+  ok   3.2 CONTROL · and is plain greedy in English (tile 023, 390: 287.6 / 48.5 against ink 286 / 49; tile 026, 1024: 386.0 / 65.2 against 384 / 66) — "in July" has a break inside, so the orphan rule never acts
+  ok   3.3 · balanced, the featured question reads "达累斯萨拉姆七月 / 降雨超过200毫米" at 320 (one line at 360 and 390), "Dar es Salaam rainfall / exceeds 200mm in July" at 390 and 1024, "Mvua Dar es Salaam / yazidi 200mm Julai" at 320 and 360
+  ok   3.4 · at every width from 320 to 1023 the balanced question never cuts 超过 and never ends on a line under a third wide (en, sw, zh)
+  ok   3.4′ CONTROL · pretty cuts 超过 at 10 widths (320–329), and greedy leaves a short last line at 91 widths
+       (Chinese titles cut inside a word, 16 titles × 4 widths: featured {"greedy":7,"pretty":14,"balance":2} · board row {"greedy":8,"pretty":13,"balance":1} · grid card {"greedy":6,"pretty":13,"balance":2} · /live carousel {"greedy":10,"pretty":13,"balance":6})
+  ok   3.5 · on every title surface balance cuts fewer Chinese words than greedy and than pretty — why balance, and not `:lang(zh)` greedy, is the one rule (pretty cuts the most)
+
+── 4 · H2 H3 a name ends on two whole characters — clusters as ICU cuts them — with a bounded gap ──────
+  ok   4.1 · the end is the last two user-perceived characters: "a 👩‍💻" whole, a flag's pair, a letter with its marks, Thai and Lao AM, the half-width voiced mark, old-Hangul jamo, a conjunct; and a gap of 37 ideographic spaces is never one unbreakable run
+  ok   4.1′ CONTROL · two code points cut the technologist emoji (its ZWJ and 💻 kept, 👩 left out), and their gap ran over 37 ideographic spaces
+       (Node v24.19.0, ICU 78.3, Unicode 17.0; 1165680 strings)
+  ok   4.2 · no character the pattern reads ever parts what ICU keeps together — every code point of planes 0, 1 and 14, in nine contexts (after a letter, before one, after a virama, after each Hangul jamo shape, after a ZWJ, after a lone flag letter, after a space)
+  ok   4.2′ CONTROL · code points as characters part Thai AM, a trailing ZWJ, a flag and its mark (what a one-code-point rule would cut)
+  ok   4.3 · over 4,000 fuzzed names (3255 shaped) the cut is always an ICU grapheme boundary, two visible characters at least are kept, and the words and keys are intact
+  ok   4.4 · the hub and the name editor draw keepNameEnd, balanced and free to break anywhere when they must
+  ok   4.5 · seven adversarial 20,000-unit names (marks, viramas, jamo, flag letters, joiners) take under a second together
+
+── 5 · H2's rule for every keep helper: a kept run holds at most one wide white space ──────────────────
+  ok   5.1 · every kept pattern takes its spaces from `KEPT_SPACE` / `KEPT_GAP`: keepLastWords, keepYears, keepFigures (both sides), keepNameEnd, keepText (its dash and its last two), digitChoice
+  ok   5.2 · the rule: collapsible spaces however many (they render as one), and one other white space at most
+  ok   5.3 · a figure, a year, the last two words, a dash and a digit choice hold one wide space but not two ("dakika\u00a028:00" whole, "dakika" + two U+3000 + "28:00" left to wrap)
+  ok   5.3′ CONTROL · `\s+` would hold 37 ideographic spaces in one run (~600px)
+  ok   5.4 · no dictionary string and no seeded title holds two wide spaces in one gap, so every one of them draws exactly as before
+  ok   5.5 · keepLastWords, keepYears, keepText and digitChoice are linear: six adversarial 20,000-character texts take 6ms together
+  ok   5.5′ CONTROL · the "word, space, word, end" pattern they replaced takes 235ms on 10,000 letters (the reader 0.2ms)
+
+── 6 · H4 nothing is inserted into the words — the empty state, the dates, the toasts, the stamps, the Chinese gap 
+  ok   6.1 · every dictionary sentence (7968, placeholders filled) keeps its words through the empty state's body, character for character — no U+00A0, no U+2060
+  ok   6.2 · and it breaks exactly where the round-3 rule let it: the same UAX #14 break opportunities in every dictionary sentence, no-break spaces and word joiner replaced by nowrap spans
+  ok   6.2′ CONTROL · the round-3 rule did insert them: "NDIO au HAPANA —" with three U+00A0, "否——" with a U+2060
+  ok   6.3 · Tiketi zangu's empty body: "[NDIO au HAPANA —]" one run, the zh dash held to the character before it ("[否——]") and its last 。 hung
+  ok   6.4 · a break's end is ONE nowrap run in the empty state, in sw, en and zh (zh's "2026年10月10日 05:05" no longer breaks inside), its words the formatter's
+  ok   6.5 · outside the dictionary, the admin console and the legal tree, no player code inserts a no-break space, word joiner or zero-width space for layout — the 19 files that hold one each have a reason
+  ok   6.5′ · the files round 5 cleared hold none (the empty state, the break sentence, the sell toast, the toaster, the Up & Down stamp, the CJK gap, the keep helpers)
+  ok   6.6 · the toast draws its title and its sentence through moneyRuns: every amount mono and whole (§M4), no character slipped in
+  ok   6.6′ · the toasts' figures ("Bet placed · YES TZS 1,000", "Sold · TZS 9,000 returned", a fee, a payout) are each one `.amount`
+  ok   6.7 · the Up & Down quote stamp ("imenukuliwa 18:55:02 EAT") is one nowrap span, not no-break spaces
+  ok   6.8 · a mid-line Chinese mark's gap is an EMPTY span whose space is `.kp-cjk-gap::after` — the page's text (copy, find-in-page, textContent) is the dictionary's
+  ok   6.8′ CONTROL · the round-4 gap held a real space: "，" + " " + "点击" in the text, which a find for "，点击" misses
+  ok   6.9 · the empty state's dash rule is linear: three adversarial 10,000-character bodies take 2ms together (the round-5 pattern took ~600ms on the first alone)
+  ok   6.9′ · and a spaced dash right after another dash is held to it too ("作 — — x": no line opens on the second dash)
+
+── 7 · moneyRuns reads a signed figure whole, in the platform's own spellings (review 3's doubt) ───────
+  ok   7.1 · "TZS −4,200", "TZS −1.2M" (formatTzs, formatTzsCompact: the minus after the code) and "−TZS 1,234", "+TZS 1,234" (formatTzsSigned: the sign before it) are each one amount in a sentence
+  ok   7.1′ CONTROL · a hyphen is never read as a sign ("TZS -4,200", "Juu-TZS 5" are not amounts), and a sentence's comma stays out
+
+── 8 · H5 keep-units.tsx is gone, and nothing names it as live code ────────────────────────────────────
+  ok   8.1 · src/components/ui/keep-units.tsx does not exist, nothing imports it and nothing calls keepUnits
+
+── 9 · the widest figure run fits the narrowest title line (a run is nowrap: wider, it would overflow) ─
+  ok   9.locate · the market h1: text-title-lg (28px), bold, tracking −0.02em, pr-[calc(2em+12px)]
+  ok   9.1 · every seeded title's runs (46) and the platform's phrasings of a figure fit: the widest, "TZS 100 milioni", is 213.9px at the h1's 28px, inside its 220px line at 320
+  ok   9.1′ CONTROL · "December 2026" would not (225px) — why a month keeps only its day (1.3″) — nor would an absurd figure ("TZS 10,000,000 bilioni")
+       (wider than the 220px line at 320: "TZS 10,000,000" 229.0px, "USD 100 million" 221.5px; "?" after one adds 15.2px)
+
+visual-pass-r5e: 60 passed, 0 failed

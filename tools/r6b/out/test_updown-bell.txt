@@ -1,0 +1,14 @@
+── 1 · every terminal outcome lands in the bell (E-43's law) ─────
+
+── 2 · every row deep-links to its own round (E-101) ─────────────
+
+── 3 · dedupe — distinct rounds survive, a true repeat is collapsed 
+
+── 4 · trilingual money copy, direct in every language ───────────
+
+── 5 · email stays suppressed — the half of the decision that stands 
+[audit] SYSTEM notification.deduped system Notification#ntf_4a2de78ab935ab4282d1
+
+── 6 · the push keeps its PER-ROUND key (money news must not overwrite money news) 
+
+Up & Down bell rows (owner decision 2026-08-22) — 105 passed, 0 failed

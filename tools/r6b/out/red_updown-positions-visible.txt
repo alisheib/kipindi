@@ -1,0 +1,11 @@
+RED · restoring each pre-fix defect on its own and requiring the guard to catch it
+
+  ok   baseline · the guard is green on the current tree
+
+  ok   D1 · the history card caps the chip row at two bets + a bare `+N` → guard went RED
+  ok   D2 · the 400-row read cap is silent again → guard went RED
+  ok   D3 · the round panel shows one aggregated line again → guard went RED
+  ok   D4 · myPositionFor caps across ALL rounds, then filters to this one → guard went RED
+
+red:updown-positions-visible: 4/4 defects caught
+red:updown-positions-visible: OK — every pre-fix defect is seen, and the tree is restored

@@ -1,0 +1,46 @@
+RED PROOF — label guard (DESIGN_AUTHORITY §L)
+
+  baseline: test:labels is GREEN — mutations below must each turn it RED.
+
+▶ §2 · a Chinese key carries the ASCII token YES again (the shipped defect)
+   exit=1  failing checks=1  ✓ CAUGHT
+     FAIL §2 no ASCII enum token inside a Swahili or Chinese string — zh:6315 probOverTime
+▶ §2 · player help text names the raw CASHED_OUT enum again
+   exit=1  failing checks=1  ✓ CAUGHT
+     FAIL §2 no ASCII enum token inside a Swahili or Chinese string — zh:7121 faq6a
+▶ §3 · the stored enum goes back into a translated sentence
+   exit=1  failing checks=2  ✓ CAUGHT
+     FAIL §3 no enum is interpolated into a sentence on a player surface — src\lib\server\notification-service.ts:631
+     FAIL §3d no localized NOTIFICATION field interpolates a stored side — src/lib/server/notification-service.ts:631 — a push is copy; route it through si
+▶ §3 · 🔴 ALI'S BUG — the Up & Down push speaks the poll's vocabulary again
+   exit=1  failing checks=2  ✓ CAUGHT
+     FAIL §3 no enum is interpolated into a sentence on a player surface — src\lib\server\market-service.ts:1866
+     FAIL §3d no localized NOTIFICATION field interpolates a stored side — src/lib/server/market-service.ts:1866 — a push is copy; route it through sideWor
+▶ §1 · a side resolves to no word at all
+   exit=1  failing checks=1  ✓ CAUGHT
+     FAIL §1 every enum arm resolves to a real word in all 3 locales × both products — side en/MARKET/YES → "" · outcome en/MARKET/YES → "" · side sw/MARKE
+▶ §1b · the round vocabulary collapses into the poll's — the ROOT of Ali's bug
+   exit=1  failing checks=1  ✓ CAUGHT
+     FAIL §1b the round vocabulary is genuinely different from the poll vocabulary — en/YES: both "YES" · en/NO: both "NO" · sw/YES: both "NDIO" · sw/NO: b
+▶ §4 · a further private copy of the word map appears
+   exit=1  failing checks=2  ✓ CAUGHT
+     FAIL §3 no enum is interpolated into a sentence on a player surface — src\components\markets\resolution-panel.tsx:150
+     FAIL §4 private word-maps outside the lexicon do not increase (≤ 11) — found 12: src\app\updown\[roundId]\page.tsx:614, src\components\markets\resolut
+▶ §3 · a template that is ONLY interpolations — the shape that reached production
+   exit=1  failing checks=1  ✓ CAUGHT
+     FAIL §3 no enum is interpolated into a sentence on a player surface — src\app\markets\page.tsx:448
+▶ §3b · the pick-gate types the raw enum where a player reads it (PV-04, live 2026-09-03)
+   exit=1  failing checks=1  ✓ CAUGHT
+     FAIL §3b no side/outcome token is typed out where a player reads it — src/components/markets/side-picker.tsx:148 — route it through sideWord()/outcome
+▶ §3c · a translated sentence is filled with the STORED token (the `lock` shape)
+   exit=1  failing checks=1  ✓ CAUGHT
+     FAIL §3c a {side}/{outcome}/{status} placeholder is filled from the lexicon, never from the stored token — src/components/markets/conviction-dial.tsx:
+▶ §3b · ⭐ THE PLAYER-TREE SCANNER GOES BLIND — its population filter matches nothing
+   exit=1  failing checks=2  ✓ CAUGHT
+     FAIL §3b the scanner reached the player render tree — 0 files
+     FAIL §3b the exemption list carries no file that is already clean — src/app/api/og/market/[id]/route.tsx — delete the entry so the list keeps shrinkin
+▶ §2 · ⭐ THE SCANNER GOES BLIND — the locale-block locator stops matching
+   exit=1  failing checks=1  ✓ CAUGHT
+     FAIL §2 locale block boundaries not found (en=-1 sw=-1 zh=-1 end=7733) — scanner would have covered NOTHING
+
+12/12 mutations caught — every file restored byte-for-byte.

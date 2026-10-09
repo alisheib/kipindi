@@ -1,0 +1,22 @@
+PASS empty stays empty
+PASS one item is untouched
+PASS §1 unsorted input comes back ascending — [{"time":10,"value":1},{"time":20,"value":2},{"time":30,"value":3}]
+PASS §1 nothing is lost when there are no ties
+PASS §1 the input array is not mutated
+PASS §1 a tie is collapsed — [{"time":10,"value":2},{"time":11,"value":3}]
+PASS §1 the result satisfies the library's precondition
+PASS §1 the NEWEST reading for that second wins — {"time":10,"value":2}
+PASS §2 whitespace AFTER a reading does not erase it — [{"time":60,"value":101.5}]
+PASS §2 whitespace BEFORE a reading does not erase it — [{"time":60,"value":101.5}]
+PASS §2 two whitespace slots collapse to one
+PASS §2 a candle beats a gap marker — [{"time":60,"open":1,"high":2,"low":0.5,"close":1.5}]
+PASS §2 a gap at its OWN time is kept (the outage keeps its width)
+PASS §3 the raw mapped payload DOES tie (this is the defect) — [1789720565,1789720566,1789720566]
+PASS §3 ascUnique makes it drawable — [{"time":1789720565,"value":100},{"time":1789720566,"value":102}]
+PASS §3 and keeps the newest price for the shared second — [{"time":1789720565,"value":100},{"time":1789720566,"value":102}]
+PASS §3 the reported assertion (index=1, time == prev time) cannot recur
+PASS §3 a sub-second gap filler collapses instead of throwing — [1789720565,1789720566,1789720567]
+PASS §4 the volume histogram's items keep their colour — [{"time":5,"value":20,"color":"b"},{"time":6,"value":30,"color":"c"}]
+PASS §4 volume is drawable
+
+20 passed, 0 failed

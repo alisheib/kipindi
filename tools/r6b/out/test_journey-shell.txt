@@ -1,0 +1,461 @@
+journey-shell — the new shell's decisions, pure (Vodacom plan S6, WP2)
+
+§1 · the tabs — activeTabFor over every route on disk, aria-current, the table and its guard, one definer
+  PASS 1.census · every route on disk has an expected tab or a stated reason for none
+  PASS 1.census.ghost · every decision names a route on disk (or one in AHEAD_OF_DISK)
+  PASS 1.census.ahead · every route decided ahead of its page is still absent from disk — the commit that adds the page deletes its AHEAD_OF_DISK entry
+  PASS 1.census.c · CONTROL · the glob found the real population (≥ 50 routes, / and /markets/[id] among them, nothing under /admin or /api)
+  PASS 1.route./ · questions
+  PASS 1.route./account · account
+  PASS 1.route./agent · account
+  PASS 1.route./agent/apply · account
+  PASS 1.route./agent/invite/[token] · account
+  PASS 1.route./agent/status · account
+  PASS 1.route./auth/2fa · no tab — a sign-in in progress; the header carries Ingia and Jisajili
+  PASS 1.route./auth/admin · no tab — a sign-in in progress; the header carries Ingia and Jisajili
+  PASS 1.route./auth/forgot-password · no tab — a sign-in in progress; the header carries Ingia and Jisajili
+  PASS 1.route./auth/login · no tab — a sign-in in progress; the header carries Ingia and Jisajili
+  PASS 1.route./auth/otp · no tab — a sign-in in progress; the header carries Ingia and Jisajili
+  PASS 1.route./auth/register · no tab — a sign-in in progress; the header carries Ingia and Jisajili
+  PASS 1.route./auth/reset-password · no tab — a sign-in in progress; the header carries Ingia and Jisajili
+  PASS 1.route./auth/verify-email · no tab — a sign-in in progress; the header carries Ingia and Jisajili
+  PASS 1.route./fairness · account
+  PASS 1.route./help · account
+  PASS 1.route./leaderboard · account
+  PASS 1.route./legal/agent-terms · account
+  PASS 1.route./legal/aml · account
+  PASS 1.route./legal/privacy · account
+  PASS 1.route./legal/responsible-gambling · account
+  PASS 1.route./legal/rules · account
+  PASS 1.route./legal/rules/up-down · account
+  PASS 1.route./legal/rules/yes-no · account
+  PASS 1.route./legal/terms · account
+  PASS 1.route./live · account
+  PASS 1.route./markets · questions
+  PASS 1.route./markets/[id] · questions
+  PASS 1.route./notifications · account
+  PASS 1.route./positions · tickets
+  PASS 1.route./positions/[positionId] · tickets
+  PASS 1.route./positions/performance · tickets
+  PASS 1.route./profile · account
+  PASS 1.route./profile/account · account
+  PASS 1.route./profile/activity · account
+  PASS 1.route./profile/invite · account
+  PASS 1.route./profile/kyc · account
+  PASS 1.route./profile/notifications · account
+  PASS 1.route./profile/responsible-gambling · account
+  PASS 1.route./profile/security · account
+  PASS 1.route./profile/sessions · account
+  PASS 1.route./profile/source-of-funds · account
+  PASS 1.route./proposals · account
+  PASS 1.route./proposals/[id] · account
+  PASS 1.route./proposals/new · account
+  PASS 1.route./results · account
+  PASS 1.route./s · no tab — the marketing opt-out, which has its own minimal shell and no tabs (D6)
+  PASS 1.route./s/[token] · no tab — the marketing opt-out, which has its own minimal shell and no tabs (D6)
+  PASS 1.route./updown · updown
+  PASS 1.route./updown/[roundId] · updown
+  PASS 1.route./updown/history · tickets
+  PASS 1.route./wallet · account
+  PASS 1.route./wallet/deposit · account
+  PASS 1.route./wallet/deposit/return · account
+  PASS 1.route./wallet/receipt/[id] · account
+  PASS 1.route./wallet/receipts · account
+  PASS 1.route./wallet/withdraw · account
+  PASS 1.route./watchlist · account
+  PASS 1.one.table · the resolver answers from the table's first claiming row and nothing else
+  PASS 1.segment./settings · claimed by no row — a row owns its path and the paths below it, never its letters
+  PASS 1.segment./sx/abc · claimed by no row — a row owns its path and the paths below it, never its letters
+  PASS 1.segment./s-promo · claimed by no row — a row owns its path and the paths below it, never its letters
+  PASS 1.segment./wallets · claimed by no row — a row owns its path and the paths below it, never its letters
+  PASS 1.segment./marketsx · claimed by no row — a row owns its path and the paths below it, never its letters
+  PASS 1.segment./updownx · claimed by no row — a row owns its path and the paths below it, never its letters
+  PASS 1.segment./positionsx · claimed by no row — a row owns its path and the paths below it, never its letters
+  PASS 1.segment./accounts · claimed by no row — a row owns its path and the paths below it, never its letters
+  PASS 1.segment./helpdesk · claimed by no row — a row owns its path and the paths below it, never its letters
+  PASS 1.segment./profiles · claimed by no row — a row owns its path and the paths below it, never its letters
+  PASS 1.segment./authority · claimed by no row — a row owns its path and the paths below it, never its letters
+  PASS 1.segment./offline/x · claimed by no row — a row owns its path and the paths below it, never its letters
+  PASS 1.roundtrip.questions · its own href / lights it, with aria-current="page"
+  PASS 1.roundtrip.updown · its own href /updown lights it, with aria-current="page"
+  PASS 1.roundtrip.tickets · its own href /positions lights it, with aria-current="page"
+  PASS 1.roundtrip.account · its own href /account lights it, with aria-current="page"
+  PASS 1.aria./.questions · aria-current="page"
+  PASS 1.aria./markets.questions · aria-current="true"
+  PASS 1.aria./markets/x1.questions · aria-current="true"
+  PASS 1.aria./updown.updown · aria-current="page"
+  PASS 1.aria./updown/x1.updown · aria-current="true"
+  PASS 1.aria./updown/history.tickets · aria-current="true"
+  PASS 1.aria./updown/history.updown · no aria-current
+  PASS 1.aria./positions.tickets · aria-current="page"
+  PASS 1.aria./positions/performance.tickets · aria-current="true"
+  PASS 1.aria./account.account · aria-current="page"
+  PASS 1.aria./results.account · aria-current="true"
+  PASS 1.aria./wallet/deposit.account · aria-current="true"
+  PASS 1.aria./results.questions · no aria-current
+  PASS 1.aria./auth/login.account · no aria-current
+  PASS 1.aria./s/x1.questions · no aria-current
+  PASS 1.tabs · four tabs in the deck's order — Maswali /, Juu/Chini /updown, Tiketi zangu /positions, Akaunti /account
+  PASS 1.glyphs · every tab's glyph is one the glyph set defines
+  PASS 1.table · the table is sound — every row's tab is a tab, every tab is reached, no row is shadowed, each href lights its own tab, every label exists in en/sw/zh
+  PASS 1.table.c · CONTROL · the detector flags a shadowed row, a tab no row reaches and a label missing in one language
+  PASS 1.guard · assertTabKeysResolve(dict), the exported guard, finds the shipped table sound in en, sw and zh
+  PASS 1.guard.c · CONTROL · the guard reads the dictionaries it is handed: one with no tab words is flagged once per tab
+  PASS 1.one.definer · the tabs, their table and the resolver are defined in ONE file (active-tab.ts)
+
+§2 · the journey surfaces — an exact allowlist; the two older predicates unchanged; what each decision module loads
+  PASS 2.allow./ · a journey surface
+  PASS 2.allow./positions · a journey surface
+  PASS 2.allow./updown/history · a journey surface
+  PASS 2.allow./markets/mkt_abc · a journey surface
+  PASS 2.allow./wallet/deposit · a journey surface
+  PASS 2.allow./wallet/deposit/return · a journey surface
+  PASS 2.deny.null · not a journey surface (named or nothing)
+  PASS 2.deny.(empty) · not a journey surface (named or nothing)
+  PASS 2.deny./markets · not a journey surface (named or nothing)
+  PASS 2.deny./markets/mkt_abc/x · not a journey surface (named or nothing)
+  PASS 2.deny./updown · not a journey surface (named or nothing)
+  PASS 2.deny./updown/udr_1 · not a journey surface (named or nothing)
+  PASS 2.deny./updown/history/x · not a journey surface (named or nothing)
+  PASS 2.deny./live · not a journey surface (named or nothing)
+  PASS 2.deny./results · not a journey surface (named or nothing)
+  PASS 2.deny./wallet · not a journey surface (named or nothing)
+  PASS 2.deny./wallet/withdraw · not a journey surface (named or nothing)
+  PASS 2.deny./wallet/depositx · not a journey surface (named or nothing)
+  PASS 2.deny./help · not a journey surface (named or nothing)
+  PASS 2.deny./account · not a journey surface (named or nothing)
+  PASS 2.deny./profile · not a journey surface (named or nothing)
+  PASS 2.deny./profile/kyc · not a journey surface (named or nothing)
+  PASS 2.deny./profile/responsible-gambling · not a journey surface (named or nothing)
+  PASS 2.deny./positions/performance · not a journey surface (named or nothing)
+  PASS 2.deny./positions/pos_1 · not a journey surface (named or nothing)
+  PASS 2.deny./auth/login · not a journey surface (named or nothing)
+  PASS 2.deny./s · not a journey surface (named or nothing)
+  PASS 2.golden.null · money false, commit false — as before S6
+  PASS 2.golden.(empty) · money false, commit false — as before S6
+  PASS 2.golden./ · money false, commit false — as before S6
+  PASS 2.golden./wallet · money true, commit true — as before S6
+  PASS 2.golden./wallet/ · money true, commit true — as before S6
+  PASS 2.golden./wallet/deposit · money true, commit true — as before S6
+  PASS 2.golden./wallet/deposit/return · money true, commit true — as before S6
+  PASS 2.golden./wallet/withdraw · money true, commit true — as before S6
+  PASS 2.golden./walletx · money false, commit false — as before S6
+  PASS 2.golden./markets · money false, commit false — as before S6
+  PASS 2.golden./markets/mkt_abc · money false, commit true — as before S6
+  PASS 2.golden./markets/mkt_abc/x · money false, commit true — as before S6
+  PASS 2.golden./updown · money false, commit false — as before S6
+  PASS 2.golden./updown/udr_1 · money false, commit true — as before S6
+  PASS 2.golden./updown/history · money false, commit true — as before S6
+  PASS 2.golden./proposals · money false, commit false — as before S6
+  PASS 2.golden./proposals/new · money false, commit true — as before S6
+  PASS 2.golden./proposals/new/x · money false, commit true — as before S6
+  PASS 2.golden./proposals/newer · money false, commit false — as before S6
+  PASS 2.golden./positions · money false, commit false — as before S6
+  PASS 2.golden./profile · money false, commit false — as before S6
+  PASS 2.golden./help · money false, commit false — as before S6
+  PASS 2.pure.src/lib/surfaces.ts · imports nothing, and carries no directive
+  PASS 2.pure.src/lib/nav/active-tab.ts · imports nothing, and carries no directive
+  PASS 2.pure.src/lib/journey/header-state.ts · imports nothing, and carries no directive
+  PASS 2.pure.src/lib/journey/viewer-doors.ts · imports @/lib/feature-state, @/lib/server/roles, type @/lib/server/proposals-config, and carries no directive
+  PASS 2.pure.src/lib/journey/journey-on.ts · imports react, ./shell-mark, and carries no directive
+  PASS 2.pure.src/lib/journey/shell-mark.ts · imports nothing, and carries no directive
+  PASS 2.pure.src/lib/journey/unread-count.ts · imports nothing, and carries no directive
+  PASS 2.pure.src/lib/journey/one-poller.ts · imports react, and carries no directive
+  PASS 2.anchor · the red:install-invite anchor and the two older predicates' patterns are verbatim, once each
+
+§3 · the header — journeyHeaderState's truth table
+  PASS 3.guest · a signed-out reader: no capsule, no pill, Ingia and Jisajili
+  PASS 3.guest.stray · signed out with a stray balance: still nothing of an account
+  PASS 3.known · a known balance: the capsule and the pill
+  PASS 3.zero · a balance of ZERO is still shown (Ali, 2026-09-28)
+  PASS 3.unread · a wallet that was not read: no capsule — never a zero nobody measured
+  PASS 3.unread.undefined · …and the same for an absent balance
+  PASS 3.held · a held wallet: the held capsule and NO pill (the deposit screen refuses it)
+  PASS 3.held.unread · a held wallet that was not read: no capsule, no pill
+  PASS 3.break · on a break: the balance, and NO pill (S4)
+  PASS 3.deposit · on the deposit screen: no pill to the page they are on
+  PASS 3.deposit.return · …nor on the provider's return
+  PASS 3.wallet · on /wallet: the pill shows
+  PASS 3.withdraw · on /wallet/withdraw: the pill shows
+  PASS 3.nopath · no path yet: the signed-in answer
+
+§4 · the doors — viewerDoorsFor, the classic spellings of the same rules, and no browser bundle
+  PASS 4.guest · {"inviteVisible":false,"invitePaid":false,"agentDoorVisible":true,"proposalsVisible":true,"staffConsole":false}
+  PASS 4.guest.failed · {"inviteVisible":false,"invitePaid":false,"agentDoorVisible":true,"proposalsVisible":true,"staffConsole":false}
+  PASS 4.player · {"inviteVisible":true,"invitePaid":false,"agentDoorVisible":true,"proposalsVisible":true,"staffConsole":false}
+  PASS 4.player.paid · {"inviteVisible":true,"invitePaid":true,"agentDoorVisible":true,"proposalsVisible":true,"staffConsole":false}
+  PASS 4.player.closed · {"inviteVisible":false,"invitePaid":false,"agentDoorVisible":true,"proposalsVisible":true,"staffConsole":false}
+  PASS 4.agent.standing · {"inviteVisible":true,"invitePaid":true,"agentDoorVisible":true,"proposalsVisible":true,"staffConsole":false}
+  PASS 4.agent.lapsed · {"inviteVisible":false,"invitePaid":false,"agentDoorVisible":false,"proposalsVisible":true,"staffConsole":false}
+  PASS 4.programme.closed · {"inviteVisible":true,"invitePaid":false,"agentDoorVisible":false,"proposalsVisible":true,"staffConsole":false}
+  PASS 4.proposals.DISABLED · {"inviteVisible":true,"invitePaid":false,"agentDoorVisible":true,"proposalsVisible":false,"staffConsole":false}
+  PASS 4.proposals.MAINTENANCE · {"inviteVisible":true,"invitePaid":false,"agentDoorVisible":true,"proposalsVisible":true,"staffConsole":false}
+  PASS 4.proposals.ACTIVE · {"inviteVisible":true,"invitePaid":false,"agentDoorVisible":true,"proposalsVisible":true,"staffConsole":false}
+  PASS 4.staff.ADMIN · {"inviteVisible":false,"invitePaid":false,"agentDoorVisible":true,"proposalsVisible":true,"staffConsole":true}
+  PASS 4.staff.COMPLIANCE · {"inviteVisible":false,"invitePaid":false,"agentDoorVisible":true,"proposalsVisible":true,"staffConsole":true}
+  PASS 4.staff.MODERATOR · {"inviteVisible":false,"invitePaid":false,"agentDoorVisible":true,"proposalsVisible":true,"staffConsole":true}
+  PASS 4.staff.FINANCE · {"inviteVisible":false,"invitePaid":false,"agentDoorVisible":true,"proposalsVisible":true,"staffConsole":true}
+  PASS 4.staff.GROWTH · {"inviteVisible":false,"invitePaid":false,"agentDoorVisible":true,"proposalsVisible":true,"staffConsole":true}
+  PASS 4.staff.AUDITOR · {"inviteVisible":false,"invitePaid":false,"agentDoorVisible":true,"proposalsVisible":true,"staffConsole":true}
+  PASS 4.staff.SUPPORT · {"inviteVisible":false,"invitePaid":false,"agentDoorVisible":true,"proposalsVisible":true,"staffConsole":true}
+  PASS 4.invite.withdrawn.player · {"inviteVisible":false,"invitePaid":false,"agentDoorVisible":true,"proposalsVisible":true,"staffConsole":false}
+  PASS 4.invite.withdrawn.agent · {"inviteVisible":true,"invitePaid":true,"agentDoorVisible":true,"proposalsVisible":true,"staffConsole":false}
+  PASS 4.shell.invite · app-shell.tsx still spells it the way the doors do: const inviteVisible = inviteIsLiveFor(inviteViewer);
+  PASS 4.shell.paid · app-shell.tsx still spells it the way the doors do: const invitePaid = (await invitePayableRead) || inviteViewer.agentInGoodStanding;
+  PASS 4.shell.agent · app-shell.tsx still spells it the way the doors do: const agentDoorVisible = getAgentConfig().enabled || inviteViewer.agentInGoodStanding;
+  PASS 4.shell.proposals · the classic chrome still hides the proposals doors the way the doors do: proposalsState !== "DISABLED"
+  PASS 4.source · viewer-doors.ts asks inviteIsLiveFor and isStaffRole, spells the proposals rule, and never names the console's narrower tier
+  PASS 4.server.only · viewer-doors.ts is in no browser bundle — it reads FEATURE_INVITE through inviteIsLiveFor, which a browser does not have
+  PASS 4.server.only.c · CONTROL · the walk follows a client file's value import, lets an erased import type through, and finds the Needle's surfaces.ts (not AppShell) in today's bundle
+
+§5 · the flag — useJourneyOn's parts, JourneyFlag, and who may load the hook
+  PASS 5.names · the flag is data-journey on the html element, announced as 50pick:journey-flag
+  PASS 5.server · the server snapshot is false — every server render, and the hydration that matches it, is today's page
+  PASS 5.absent · no attribute reads as off
+  PASS 5.raise · raising stamps the attribute, reads as on, and tells a subscriber once
+  PASS 5.cleanup · the cleanup removes the attribute, reads as off again, and tells the subscriber
+  PASS 5.unsubscribe · after unsubscribing, a change reaches that subscriber no more
+  PASS 5.mark · the shell's mark alone reads as on, and its absence as off — it is in the server's HTML, so an overlay that hydrates before the lazy flag lands already stands down (the WP7 drive: without it the Needle drew for 1–3 frames)
+  PASS 5.hook · useJourneyOn is useSyncExternalStore over the event, the attribute and the false server snapshot
+  PASS 5.nodirective · journey-on.ts carries no directive — it is a hook module, and its importers carry it
+  PASS 5.component · JourneyFlag is a client file that renders nothing and raises the flag in a LAYOUT effect (before the paint of the commit that mounts it) whose cleanup lowers it
+  PASS 5.importers · every file loading journey-on.ts is client code — a "use client" file, or a hook module only client code loads (7: src/app/positions/error.tsx, src/app/updown/history/error.tsx, src/components/chat/ChatRoot.tsx, src/components/journey/journey-flag.tsx, src/components/layout/needle.tsx, src/components/social/channels-panel.tsx, src/components/ui/route-transition.tsx)
+  PASS 5.importers.c · CONTROL · a hook module only a client file loads is vouched for; the same module loaded by a server file too is not
+  PASS 5.mount · JourneyFlag is mounted once, in AppShell, only behind journeyShown (WP7) — nothing renders it otherwise, so a classic page never carries data-journey
+  PASS 5.mark.mount · AppShell writes the shell's mark once, only behind journeyShown, as a plain element in the server's HTML, and the hook reads it — nothing else touches it, so a classic page never carries it
+  PASS 5.mark.pure · shell-mark.ts is pure — no import, no directive — because the server shell and the client hook both load it
+
+§11 · the overlays — what the flag stands down, for whom, and what it leaves for everybody (WP7; read beside §5, whose flag it is)
+  PASS 11.needle · the Needle hides where it hid, and for a journey viewer on a journey page — today's half verbatim with the term joined: const suppressed = hiddenPref || isMoneySurface(pathname) || (journeyOn && isJourneySurface(pathname) && !notFoundShown);
+  PASS 11.needle.deps · its gate runs again when the flag goes up or down — today's half verbatim with the term joined: }, [hiddenPref, pathname, journeyOn, notFoundShown]);
+  PASS 11.channels.eligible · the channels panel is eligible where it was, and never on a journey page for a journey viewer — today's half verbatim with the term joined: const eligible = open && !promoSuppressed && !suppressedRoute(pathname) && !journeyHidden;
+  PASS 11.channels.term · the channels panel names the term once, as journeyHidden, for its eligibility and its render
+  PASS 11.channels.render · its render refuses too, straight after the pinned route-and-break guard: if (promoSuppressed || suppressedRoute(pathname)) return null; then if (journeyHidden) return null;
+  PASS 11.chat · the chat bubble stands down straight after its HIDE_ON guard: if (pathname && HIDE_ON.test(pathname)) return null; then if (journeyOn && isJourneySurface(pathname) && !notFoundShown) return null;
+  PASS 11.chat.history · on a journey page the bubble stands down and nothing more — the panel's state and the conversation are kept; only the HIDE_ON effect clears them
+  PASS 11.reads.needle · src/components/layout/needle.tsx is client code that reads the flag once, through useJourneyOn, and asks the one journey list (surfaces.ts, §2) once — no list of its own
+  PASS 11.reads.channels · src/components/social/channels-panel.tsx is client code that reads the flag once, through useJourneyOn, and asks the one journey list (surfaces.ts, §2) once — no list of its own
+  PASS 11.reads.chat · src/components/chat/ChatRoot.tsx is client code that reads the flag once, through useJourneyOn, and asks the one journey list (surfaces.ts, §2) once — no list of its own
+  PASS 11.hideon.chat · src/components/chat/ChatRoot.tsx's HIDE_ON is the pattern other gates pin, unchanged
+  PASS 11.hideon.channels · src/components/social/channels-panel.tsx's HIDE_ON is the pattern other gates pin, unchanged
+  PASS 11.consent · the analytics consent prompt is still asked of every reader, journey or not (privacy-notice §4f), and the install invitation keeps its own switch and nothing more
+  PASS 11.emailbar · there is no email-verify bar for any reader — classic or journey (deleted 2026-10-07)
+  PASS 11.flag.lazy · the shell's lazy module alone loads JourneyFlag, through next/dynamic (WP6c), and AppShell never imports it — a classic page's first load carries none of it
+
+§6 · the unread count — the bell's question on the bell's cadence, one viewer at a time, and the classic bell apart
+  PASS 6.cadence · the counter beats on the bell's closed cadence and backs off on the bell's ladder (30 s; 1 s doubling to 30 s)
+  PASS 6.events · the dot refreshes on exactly the bell's two broadcasts — an inbox change and a pushed arrival
+  PASS 6.hook.client · use-unread-count.ts is a "use client" hook module
+  PASS 6.hook.imports · it loads only react, @/app/_actions/notifications, @/lib/journey/unread-count
+  PASS 6.hook.read · it asks the bell's own question (fetchMyNotifications, from the module the bell imports) and keeps only the server's unread total, never the list
+  PASS 6.hook.viewer · it follows the viewer in an effect keyed by the id, lets go on every change and on unmount, and shows only that viewer's count
+  PASS 6.nointerval · no interval anywhere in the counter or its hook — every beat is armed by the one before it answering
+  PASS 6.mount · only the journey's client components load the hook (src/components/journey/account/unread-row.tsx, src/components/journey/journey-tabs.tsx)
+  PASS 6.mount.core · only the hook loads the counter
+  PASS 6.mount.c · CONTROL · the rule takes a journey client component and refuses a client file outside the journey and a journey file with no directive
+  PASS 6.bell.apart · the classic bell loads neither the counter nor its hook — it keeps its own poll until S15 (A1)
+  PASS 6.poll.start · the dot reads once on its first beat, shows the viewer's count, and arms the next beat 30 s out
+  PASS 6.poll.beat · …and reads again when that beat falls due
+  PASS 6.poll.hidden · a hidden tab arms nothing and reads nothing; coming back reads at once
+  PASS 6.poll.event.50pick:refresh-notifications · the broadcast reads at once, and the count follows the answer
+  PASS 6.poll.event.50pick:sse:notification · the broadcast reads at once, and the count follows the answer
+  PASS 6.poll.yield · a beat never stacks a read on one still in flight: it yields and re-arms, and the held answer still lands
+  PASS 6.poll.fail · a failed read keeps the last count and the chain: the next beat is armed, never sooner than the ladder allows
+  PASS 6.poll.stop · letting go stops the beat and every listener
+  PASS 6.poll.jitter · a failed read re-arms 30 s ±30%: 21 s at the jitter's low end, just under 39 s at its high end
+  PASS 6.once.nointerval · the hub's row reads once when it starts and then arms nothing — not one read in ten minutes
+  PASS 6.once.changed · an action that changed the inbox reads once more, the count follows, and nothing is armed
+  PASS 6.once.arrived · a pushed arrival is not a read for the row — one request per visit, not one per notification (A1)
+  PASS 6.once.visibility · coming back to the tab is not a read, and the row listens for one thing only: an inbox change
+  PASS 6.once.hidden · a row opened in a background tab still reads once — one request, not a beat
+  PASS 6.guest.poll · a guest starts nothing — no read, no beat, no listener — and is shown nothing
+  PASS 6.guest.once · a guest starts nothing — no read, no beat, no listener — and is shown nothing
+  PASS 6.viewer.guest.empty · when B follows A (through a signed-out moment), nothing is shown at once — not A's count, not for one frame
+  PASS 6.viewer.guest.late · A's read still in flight at the switch is dropped when it lands
+  PASS 6.viewer.guest.fresh · B starts from nothing: a read at once, then B's own count, never A's
+  PASS 6.viewer.guest.one · after the switch one poller beats, not two
+  PASS 6.viewer.direct.empty · when B follows A (directly), nothing is shown at once — not A's count, not for one frame
+  PASS 6.viewer.direct.late · A's read still in flight at the switch is dropped when it lands
+  PASS 6.viewer.direct.fresh · B starts from nothing: a read at once, then B's own count, never A's
+  PASS 6.viewer.direct.one · after the switch one poller beats, not two
+  PASS 6.gate · a count is shown only to the viewer it was read for — never to the next viewer, never to a guest
+
+§7 · the header — the S4 fit rules as written, the bar's markup, its rung and the menu sealed in it (WP6a)
+  PASS 7.client · journey-top-bar.tsx is a "use client" component rendering ONE journey header, sticky on the classic bar's rung
+  PASS 7.frame · the bar is the kit's 56px opaque panel with its 1px edge, in the stylesheet — and no inline style anywhere in the bar (§0h point 6)
+  PASS 7.gutter · the row's gutter is the page's edge at every width: 16px below 1024 and 32px from it, one step and no other, the spacing tokens at those values and PageContainer still padding px-3 lg:px-6 on that scale (the owner's rule, 2026-10-08)
+  PASS 7.landing-edge · on `/` the journey's hero and bands keep the header's edge — the base rules' 16px to 1023 and 32px from 1024, one block per step, scoped by the shell's server-rendered mark so classic viewers keep their 24 (the owner's rule, 2026-10-08)
+  PASS 7.ticker-edge · from 1024 the journey's LIVE strip keeps the page's edge — 16px more each side of the label's own 16 (and of the pause glyph's own 16), inside the 1280 board, one journey-scoped block, the label's padding no longer inline (round 3, 2026-10-08)
+  PASS 7.ticker-fade · the journey's run fades in under the LIVE label as it fades out under the end cap — 16px of solid ground after the word, THEN the 24px fade, the label overlapping the run by exactly that 40px and item 1 resting 8px clear of the fade (round 3, tiles 194 198 201 202 318 322 326 327 329; round 4, tiles 321 325 330 332)
+  PASS 7.ticker-dot · the journey's separator dot sits mid-gap — the item's 8px gap plus the dot's 24px margin before it equals the item's 32px trailing padding after it (round 3, tile 145)
+  PASS 7.gap · 6px between the row's controls below 640 (A5), in the row and inside its cluster alike — no step on the row moves them before 640
+  PASS 7.steps · from 640 the classic bar's own gaps: the row's 20 / 12 / 20 at 640 / 1024 / 1280 and the cluster's 12 — the classic row and cluster still spelling those values
+  PASS 7.home · the home link stays 44px tall and borrows 9px of gutter on each side (A5) — the bar's home link wears the rule
+  PASS 7.brand · the 26px mark below 1280 and the 22px lockup from 1280 — the classic bar's own rule, so the lockup never takes the room at 1024
+  PASS 7.eighteen · the 18+ roundel is the kit's, with its text as its name (no aria-label on a plain span)
+  PASS 7.plus · the "+" is hidden below 360 and shown from 360 (A5), in a span of its own — never a width utility on the kit button
+  PASS 7.pill · + Weka pesa is the kit's gilt pill at the 44px rung, padded 12px below 360 and 12/10 from 360, named by its words
+  PASS 7.figure · the capsule's figure is 12px below 360 and 14px from 360, and its padding 10px (the capsule's own rules, WP4)
+  PASS 7.auth · a guest's Ingia and Jisajili are the 44px pills, 13px type and 14px padding at every width (E-276)
+  PASS 7.state · the bar asks journeyHeaderState once and renders its three answers: the capsule, the pill and the guest pills
+  PASS 7.desktop · from 1024 the four destinations, each lit by the one table (A12: aria-current from tabAriaCurrent, never a "page" literal), a guest's Tiketi zangu a dialog button — and no NavMore
+  PASS 7.underline · the destinations speak the kit's SECTION language: an underline that scales in, brand when current — never the filter pill's fill (§0h point 7)
+  PASS 7.cluster · the right-hand controls are ONE cluster straight after the spacer, the money first; language and the account show from 1024 only (on a phone the hub holds them), each in a wrapper span, never on a kit control
+  PASS 7.bell · the bell stands centred between the language box and the avatar (the slot's 4px answers the avatar's sm:ml-1), and its count badge hangs by its left edge 1px past the glyph's centre line, its top on the 44px controls' line, over the classic bell's inline 40px / 20px / 18px geometry it was measured against
+  PASS 7.first · every rule of the journey shell is mobile-first: no width-capping query holds one, however its block is written (nothing for the density contract to fence)
+  PASS 7.stack · test:stacking's journey-top-bar row holds: one sticky header at z=30 forming a stacking context, and the language menu sealed in it (A13)
+
+§8 · the tabs — four destinations, one unread poller per width, the guest sheet, mounted by AppShell alone, lazily (WP6a, WP6b)
+  PASS 8.root · journey-tabs.tsx is a "use client" rail: fixed to the bottom below 1024, on the rail's surface, kept clear of the Needle, named as the primary nav
+  PASS 8.tabs · exactly the four JOURNEY_TABS — every href comes from the table; no centre coin, no More, no accent dot (SJ-16)
+  PASS 8.grid · four equal tracks on the LIST (A18) — on the nav the whole list would be one cell
+  PASS 8.aria · aria-current comes from tabAriaCurrent (A12: "page" on a tab's own href, "true" on its section) and the lit pip from activeTabFor — never a "page" literal
+  PASS 8.name · a tab link carries no aria-label, so its visible label is its name and the Akaunti tab's unread words join it
+  PASS 8.guest · a guest's Tiketi zangu is a dialog button that opens the guest sheet — never a link whose navigation is cancelled
+  PASS 8.glyphs · each tab draws its glyph from the table at the rail's 20px
+  PASS 8.dot · the Akaunti dot: the bell's count from the journey's counter (mode poll), the 8px brand dot, and the count in words after the label
+  PASS 8.badge · the dot sits on the pip's corner, cut out of the glyph by a ring of the rail's own fill
+  PASS 8.label.measure · A17, measured: at 320 a label needs more than its quarter of the phone (so the wrap is earned), it fits two lines there, and from 360 every label fits one
+  PASS 8.label · below 360 a label may take a second, centred line; from 360 the classic one-line rule stands
+  PASS 8.align · while a label may wrap below 360, the journey's slots stack from the top there, so every pip shares one line; from 360 the classic centring returns
+  PASS 8.poll · one unread poller per width: the bell from 1024, the dot below it, NEITHER while the width is unknown — never both
+  PASS 8.poll.hook · the width is the browser's answer to tailwind's own lg, read through one store whose server answer is null (no poller mounts during hydration)
+  PASS 8.poll.media · a phone reads false and a desktop true, a change is heard once, and letting go stops listening
+  PASS 8.poll.bar · the header MOUNTS the bell only from 1024 — never merely hidden — and on no not-found page, in a slot that keeps its width and holds the bell's still twin until then (R4-J, E36)
+  PASS 8.poll.rail · the rail mounts the dot's counter only below 1024, for a signed-in viewer — the counter lives in the one component that guard renders
+  PASS 8.poll.loaders · only client code loads one-poller.ts — the header and the rail (src/components/journey/journey-tabs.tsx, src/components/journey/journey-top-bar.tsx)
+  PASS 8.stack · test:stacking's journey-tabs row holds: one fixed rail at z=40 forming a stacking context, ABOVE the journey header (A13)
+  PASS 8.sheet · the guest sheet: the kit's bottom sheet below 1024 (440 wide from there), titled by its H2, Jisajili first and Ingia, each returning to Tiketi zangu and closing the sheet
+  PASS 8.sheet.portal · the sheet opens through the kit Modal, which portals to the document body — so it sits on the dialog rung, not sealed in the bar or the rail (A13)
+  PASS 8.popup · every popup the journey's components and its hub render is on test:popup-fit's review record — the guest sheet among them (A13)
+  PASS 8.mount · mounted by AppShell alone (WP6b), through the shell's lazy module (WP6c): nothing else renders or loads the journey header or tabs, and no other classic layout file loads a journey component
+  PASS 8.mount.lazy · AppShell renders the journey header and tabs through the shell's lazy module, which loads each with next/dynamic (WP6c), and nothing imports the journey's components statically — a classic visitor's first-load bundle carries none of their code
+
+§9 · the route census — every route keeps an entrance, and the journey loses no door the classic chrome had (WP6b)
+  PASS 9.edges.c · CONTROL · a templated door reads as its dynamic route, a static route beats a dynamic one, an interpolated tail is cut, an API path opens nothing, and a door only in a comment is no door
+  PASS 9.reach.c · CONTROL · the walk follows doors, survives a loop, sends a guest's protected page to sign-in, and never enters a cycle nothing links to
+  PASS 9.protected · a guest's walk reads proxy.ts's own protected prefixes — the wallet, the tickets and the profile among them
+  PASS 9.population · the census walks the route census's own population (58 routes), each with its page file
+  PASS 9.tables · every door, external entrance and pin the census holds names a route on disk
+  PASS 9.chrome.src/components/layout/top-app-bar.tsx · names exactly the doors the census holds for it — none it lost, none the census does not know
+  PASS 9.chrome.src/components/layout/bottom-nav.tsx · names exactly the doors the census holds for it — none it lost, none the census does not know
+  PASS 9.chrome.src/components/layout/avatar-menu.tsx · names exactly the doors the census holds for it — none it lost, none the census does not know
+  PASS 9.chrome.src/components/layout/notifications-panel.tsx · still names the doors the census holds for it (held one way: A1 leaves the bell to other lanes until S15)
+  PASS 9.chrome.src/components/layout/nav-more.tsx · names exactly the doors the census holds for it — none it lost, none the census does not know
+  PASS 9.chrome.src/components/layout/public-footer.tsx · names exactly the doors the census holds for it — none it lost, none the census does not know
+  PASS 9.chrome.src/components/layout/wallet-sheet.tsx · names exactly the doors the census holds for it — none it lost, none the census does not know
+  PASS 9.chrome.src/components/journey/journey-top-bar.tsx · names exactly the doors the census holds for it — none it lost, none the census does not know
+  PASS 9.chrome.src/components/journey/tickets-guest-sheet.tsx · names exactly the doors the census holds for it — none it lost, none the census does not know
+  PASS 9.chrome.src/components/journey/journey-tabs.tsx · names exactly the doors the census holds for it — none it lost, none the census does not know
+  PASS 9.hub.complete · every door the hub's rows name opens a route on disk and is offered to some reader the census draws
+  PASS 9.controls.guest · the hub holds the language for a guest
+  PASS 9.controls.player · the hub holds the language, the notifications, the card size and the Needle for a player
+  PASS 9.controls.held · the hub holds the language, the notifications, the card size and the Needle for a player whose wallet is held
+  PASS 9.controls.agent · the hub holds the language, the notifications, the card size and the Needle for an agent in standing, the programme closed
+  PASS 9.controls.staff · the hub holds the language, the notifications, the card size and the Needle for a SUPPORT officer
+  PASS 9.controls.proposals.DISABLED · the hub holds the language, the notifications, the card size and the Needle for a player with proposals DISABLED
+  PASS 9.controls.invite.closed · the hub holds the language, the notifications, the card size and the Needle for a player the invite is closed to
+  PASS 9.controls.page · the hub page signs a member out, and opens the console for staff alone, as one plain link, on the doors' own answer
+  PASS 9.subset.guest · every route the classic chrome reaches for a guest, the journey's phone chrome reaches too (classic 27, journey 28)
+  PASS 9.subset.player · every route the classic chrome reaches for a player, the journey's phone chrome reaches too (classic 50, journey 51)
+  PASS 9.subset.held · every route the classic chrome reaches for a player whose wallet is held, the journey's phone chrome reaches too (classic 50, journey 51)
+  PASS 9.subset.agent · every route the classic chrome reaches for an agent in standing, the programme closed, the journey's phone chrome reaches too (classic 50, journey 51)
+  PASS 9.subset.staff · every route the classic chrome reaches for a SUPPORT officer, the journey's phone chrome reaches too (classic 50, journey 51)
+  PASS 9.subset.proposals.DISABLED · every route the classic chrome reaches for a player with proposals DISABLED, the journey's phone chrome reaches too (classic 47, journey 48)
+  PASS 9.subset.invite.closed · every route the classic chrome reaches for a player the invite is closed to, the journey's phone chrome reaches too (classic 50, journey 51)
+  PASS 9.entrance./ · a journey reader reaches it from the tabs, the header, the sheets, the hub or the footer
+  PASS 9.entrance./account · a journey reader reaches it from the tabs, the header, the sheets, the hub or the footer
+  PASS 9.entrance./agent · a journey reader reaches it from the tabs, the header, the sheets, the hub or the footer
+  PASS 9.entrance./agent/apply · a journey reader reaches it from the tabs, the header, the sheets, the hub or the footer
+  PASS 9.entrance./agent/invite/[token] · external: an officer's invitation, sent by email
+  PASS 9.entrance./agent/status · a journey reader reaches it from the tabs, the header, the sheets, the hub or the footer
+  PASS 9.entrance./auth/2fa · a journey reader reaches it from the tabs, the header, the sheets, the hub or the footer
+  PASS 9.entrance./auth/admin · a journey reader reaches it from the tabs, the header, the sheets, the hub or the footer
+  PASS 9.entrance./auth/forgot-password · a journey reader reaches it from the tabs, the header, the sheets, the hub or the footer
+  PASS 9.entrance./auth/login · a journey reader reaches it from the tabs, the header, the sheets, the hub or the footer
+  PASS 9.entrance./auth/otp · a journey reader reaches it from the tabs, the header, the sheets, the hub or the footer
+  PASS 9.entrance./auth/register · a journey reader reaches it from the tabs, the header, the sheets, the hub or the footer
+  PASS 9.entrance./auth/reset-password · external: the reset link, sent by email
+  PASS 9.entrance./auth/verify-email · external: the confirmation link, sent by email
+  PASS 9.entrance./fairness · a journey reader reaches it from the tabs, the header, the sheets, the hub or the footer
+  PASS 9.entrance./help · a journey reader reaches it from the tabs, the header, the sheets, the hub or the footer
+  PASS 9.entrance./leaderboard · a journey reader reaches it from the tabs, the header, the sheets, the hub or the footer
+  PASS 9.entrance./legal/agent-terms · a journey reader reaches it from the tabs, the header, the sheets, the hub or the footer
+  PASS 9.entrance./legal/aml · a journey reader reaches it from the tabs, the header, the sheets, the hub or the footer
+  PASS 9.entrance./legal/privacy · a journey reader reaches it from the tabs, the header, the sheets, the hub or the footer
+  PASS 9.entrance./legal/responsible-gambling · a journey reader reaches it from the tabs, the header, the sheets, the hub or the footer
+  PASS 9.entrance./legal/rules · a journey reader reaches it from the tabs, the header, the sheets, the hub or the footer
+  PASS 9.entrance./legal/rules/up-down · a journey reader reaches it from the tabs, the header, the sheets, the hub or the footer
+  PASS 9.entrance./legal/rules/yes-no · a journey reader reaches it from the tabs, the header, the sheets, the hub or the footer
+  PASS 9.entrance./legal/terms · a journey reader reaches it from the tabs, the header, the sheets, the hub or the footer
+  PASS 9.entrance./live · a journey reader reaches it from the tabs, the header, the sheets, the hub or the footer
+  PASS 9.entrance./markets · a journey reader reaches it from the tabs, the header, the sheets, the hub or the footer
+  PASS 9.entrance./markets/[id] · a journey reader reaches it from the tabs, the header, the sheets, the hub or the footer
+  PASS 9.entrance./notifications · a journey reader reaches it from the tabs, the header, the sheets, the hub or the footer
+  PASS 9.entrance./positions · a journey reader reaches it from the tabs, the header, the sheets, the hub or the footer
+  PASS 9.entrance./positions/[positionId] · external: a position's permalink, in the notifications and links a player is sent
+  PASS 9.entrance./positions/performance · a journey reader reaches it from the tabs, the header, the sheets, the hub or the footer
+  PASS 9.entrance./profile · a journey reader reaches it from the tabs, the header, the sheets, the hub or the footer
+  PASS 9.entrance./profile/account · a journey reader reaches it from the tabs, the header, the sheets, the hub or the footer
+  PASS 9.entrance./profile/activity · a journey reader reaches it from the tabs, the header, the sheets, the hub or the footer
+  PASS 9.entrance./profile/invite · a journey reader reaches it from the tabs, the header, the sheets, the hub or the footer
+  PASS 9.entrance./profile/kyc · a journey reader reaches it from the tabs, the header, the sheets, the hub or the footer
+  PASS 9.entrance./profile/notifications · a journey reader reaches it from the tabs, the header, the sheets, the hub or the footer
+  PASS 9.entrance./profile/responsible-gambling · a journey reader reaches it from the tabs, the header, the sheets, the hub or the footer
+  PASS 9.entrance./profile/security · a journey reader reaches it from the tabs, the header, the sheets, the hub or the footer
+  PASS 9.entrance./profile/sessions · a journey reader reaches it from the tabs, the header, the sheets, the hub or the footer
+  PASS 9.entrance./profile/source-of-funds · a journey reader reaches it from the tabs, the header, the sheets, the hub or the footer
+  PASS 9.entrance./proposals · a journey reader reaches it from the tabs, the header, the sheets, the hub or the footer
+  PASS 9.entrance./proposals/[id] · a journey reader reaches it from the tabs, the header, the sheets, the hub or the footer
+  PASS 9.entrance./proposals/new · a journey reader reaches it from the tabs, the header, the sheets, the hub or the footer
+  PASS 9.entrance./results · a journey reader reaches it from the tabs, the header, the sheets, the hub or the footer
+  PASS 9.entrance./s · external: a marketing SMS's opt-out link that lost its token
+  PASS 9.entrance./s/[token] · external: the opt-out link in every marketing SMS
+  PASS 9.entrance./updown · a journey reader reaches it from the tabs, the header, the sheets, the hub or the footer
+  PASS 9.entrance./updown/[roundId] · a journey reader reaches it from the tabs, the header, the sheets, the hub or the footer
+  PASS 9.entrance./updown/history · a journey reader reaches it from the tabs, the header, the sheets, the hub or the footer
+  PASS 9.entrance./wallet · a journey reader reaches it from the tabs, the header, the sheets, the hub or the footer
+  PASS 9.entrance./wallet/deposit · a journey reader reaches it from the tabs, the header, the sheets, the hub or the footer
+  PASS 9.entrance./wallet/deposit/return · external: the payment provider's return address
+  PASS 9.entrance./wallet/receipt/[id] · a journey reader reaches it from the tabs, the header, the sheets, the hub or the footer
+  PASS 9.entrance./wallet/receipts · a journey reader reaches it from the tabs, the header, the sheets, the hub or the footer
+  PASS 9.entrance./wallet/withdraw · a journey reader reaches it from the tabs, the header, the sheets, the hub or the footer
+  PASS 9.entrance./watchlist · a journey reader reaches it from the tabs, the header, the sheets, the hub or the footer
+  PASS 9.external./positions/[positionId] · src/lib/position-permalink.ts still generates it, and no journey door reaches it yet
+  PASS 9.external./wallet/deposit/return · src/app/wallet/deposit/actions.ts still generates it, and no journey door reaches it yet
+  PASS 9.external./agent/invite/[token] · src/lib/server/agent-application-service.ts still generates it, and no journey door reaches it yet
+  PASS 9.external./auth/reset-password · src/lib/server/password-reset.ts still generates it, and no journey door reaches it yet
+  PASS 9.external./auth/verify-email · src/lib/server/email-verification.ts still generates it, and no journey door reaches it yet
+  PASS 9.external./s · src/lib/marketing/footer.ts still generates it, and no journey door reaches it yet
+  PASS 9.external./s/[token] · src/lib/marketing/footer.ts still generates it, and no journey door reaches it yet
+  PASS 9.pinned./updown/history · src/app/updown/page.tsx still links it from /updown — the board's own history link, every classic reader's door
+  PASS 9.pinned./positions/performance · src/app/positions/page.tsx still links it from /positions — the classic Tiketi page's performance link, every classic reader's door
+  PASS 9.pinned./updown/history · src/components/journey/tickets/ticket-switch.tsx still links it from /positions — the Tiketi switch's Juu/Chini door, a journey phone's (WP9)
+  PASS 9.pinned./positions/performance · src/components/journey/tickets/tickets-view.tsx still links it from /positions — the journey Tiketi view's Utendaji link, a journey phone's (WP9)
+
+§10 · the header-fit gate's terms — the drives' pill rule, the red twin's leash, no witness left behind (WP6b, A6)
+  PASS 10.rules.pill · the header-fit drives ask the pill's rules exactly where journeyHeaderState draws the pill — never on the deposit screen or its return, for a guest or for a held wallet
+  PASS 10.leash.alone · red:journey-header-fit refuses, before its first write, unless --alone is on its own command line — and its package script does not pass --alone itself
+  PASS 10.leash.red-all · red:all marks every harness it starts with KP_RED_ALL, and the twin refuses, before its first write, when the mark is set
+  PASS 10.leash.witness · the stylesheet holds no red-run witness — a mutation a hard kill left behind fails here, by name
+
+§12 · the shell's deferred parts — no React lazy in AppShell, one client module of next/dynamic parts each in its own boundary, a lost chunk left out, no server module deferring a client one (WP6c)
+  PASS 12.shell.nolazy · AppShell calls no React lazy and imports none, under any name: in a server component it split nothing (VODACOM-PLAN §0h point 20)
+  PASS 12.shell.parts · every lazily loaded part AppShell renders is imported from the shell's lazy module under its table name, and rendered once (11)
+  PASS 12.shell.wrapped · every part but the journey's header, tabs and flag is the one child of its own Suspense boundary in AppShell, as before WP6c: next/dynamic adds none, so without it the part's boundary markers leave the HTML and its chunk holds up the whole page's hydration (8)
+  PASS 12.shell.bare · the journey's header and tabs stand in NO Suspense boundary: each is the journeyShown arm itself, so React 19.2 draws them in the page's first HTML instead of outlining them after the shell behind an empty box (R4-J, E36); and AppShell draws no empty header box
+  PASS 12.shell.flag · the journey flag stands in NO Suspense boundary either (round 5's follow-up, R5-H · G-3): the journeyShown arm itself, beside the header and the tabs, so a refresh that switches the journey on waits for its chunk as for theirs and mounts it in the commit that first paints them — and its layout effect raises the flag before that paint
+  PASS 12.shell.offline · the offline banner is NOT deferred: AppShell imports it statically, as its code always came, so it is ready before the connection it reports on can fail; mounted once, in its own Suspense boundary, and loaded by nothing else
+  PASS 12.shell.only · AppShell imports none of the parts' own modules, by any import: its one way to them is the shell's lazy module
+  PASS 12.module.home · AppShell alone imports the shell's lazy module
+  PASS 12.module.client · src/components/layout/shell-lazy.tsx is a "use client" module, the one client boundary AppShell renders its parts through
+  PASS 12.module.dynamic · it loads every part with next/dynamic and nothing statically: its one static import is next/dynamic, no part passes an option object (no ssr: false, no loading), and it calls no React lazy
+  PASS 12.parts.table · the module declares exactly the 11 parts of the table, each its one line: export const <name> = dynamic(() => import("<module>").then((m) => m.<component>).catch(nothingIfLost));
+  PASS 12.module.lost · a part whose code never arrives is left out, not fatal: the guard every loader ends in takes a ChunkLoadError alone (any other error is thrown on, as before WP6c), reports it to /api/client-error, and gives a stand-in that renders nothing
+  PASS 12.parts.client · every module the shell's lazy module loads is a "use client" module (11)
+  PASS 12.parts.home · the shell's lazy module is each part's one loader (a static import anywhere else puts that part's code back in that file's first load), save the three named files that import the win celebration's module for dispatchWinCelebration (a fourth is a finding)
+  PASS 12.nolazy.platform · no server module in src calls or imports React's lazy, the defect AppShell had (a client module may)
+  PASS 12.nodefer.platform · no server module in src defers a "use client" module through import(…) — React.lazy, next/dynamic or any wrapper: from a server file that module joins the first load all the same
+  PASS 12.c · CONTROL · the readers can fail: the lazy reader takes lazy(, React.lazy( and lazy<T>( and leaves makelazy( and a Lazy name alone; the import reader takes lazy by name or renamed, from react only; the list reader reads across lines, from the module named; the tag reader finds each part's element; the boundary reader takes a part alone in its boundary and nothing else; the deferral reader takes a server file's import of a client module and nothing else
+
+JOURNEY SHELL — all 434 checks passed

@@ -1,0 +1,1619 @@
+── 1. Normal poll — generate → approve → publish ──
+[audit] ADMIN aipoll.generate_started officer_lifecycle_test AIPoll#aipoll_a8c8073845960fa3a742f0d8
+  PASS 1.1 normal poll reaches PENDING_REVIEW
+  PASS 1.2 selectionClosedAt auto-computed
+  PASS 1.3 selection < resolution
+  PASS 1.4 lead time matches category config (sports)
+[audit] ADMIN aipoll.pending_review officer_lifecycle_test AIPoll#aipoll_a8c8073845960fa3a742f0d8
+  PASS 1.5 poll approved
+[audit] ADMIN aipoll.approved officer_lifecycle_test AIPoll#aipoll_a8c8073845960fa3a742f0d8
+  PASS 1.6 market created as LIVE
+  PASS 1.7 market.selectionClosedAt matches poll
+  PASS 1.8 market.resolutionAt matches poll
+[audit] ADMIN market.created officer_lifecycle_test Market#mkt_0c09135fd51de71edb9e
+  PASS 1.9 poll state is PUBLISHED
+  PASS 1.10 publishedMarketId set
+
+── 2. Controlled poll — operator dates + title override AI ──
+[audit] ADMIN aipoll.published officer_lifecycle_test AIPoll#aipoll_a8c8073845960fa3a742f0d8
+[audit] ADMIN aipoll.generate_started officer_lifecycle_test AIPoll#aipoll_76d65b015f1b07b12ae1fe28
+  PASS 2.1 controlled poll reaches PENDING_REVIEW
+  PASS 2.2 operator title preserved
+  PASS 2.3 operator resolutionAt preserved
+  PASS 2.4 operator selectionClosedAt preserved
+  PASS 2.5 sel < res for controlled poll
+[audit] ADMIN aipoll.pending_review officer_lifecycle_test AIPoll#aipoll_76d65b015f1b07b12ae1fe28
+[audit] ADMIN aipoll.approved officer_lifecycle_test AIPoll#aipoll_76d65b015f1b07b12ae1fe28
+  PASS 2.6 market carries operator's selectionClosedAt
+  PASS 2.7 market carries operator's resolutionAt
+
+── 3. Controlled poll — invalid dates are caught ──
+[audit] ADMIN market.created officer_lifecycle_test Market#mkt_9deb3e7c3cb9aae1c9ec
+[audit] ADMIN aipoll.generate_started officer_lifecycle_test AIPoll#aipoll_ae5edfcbf29c9d7e88bb9e80
+  PASS 3.1 past resolution date → FILTERED
+  PASS 3.2 past_date reason present
+[audit] ADMIN aipoll.filtered officer_lifecycle_test AIPoll#aipoll_ae5edfcbf29c9d7e88bb9e80
+[audit] ADMIN aipoll.generate_started officer_lifecycle_test AIPoll#aipoll_b3c03903789fb7df362fd56f
+  PASS 3.3 too-soon resolution → FILTERED
+[audit] ADMIN aipoll.filtered officer_lifecycle_test AIPoll#aipoll_b3c03903789fb7df362fd56f
+[audit] ADMIN aipoll.generate_started officer_lifecycle_test AIPoll#aipoll_1810f5127f9e9daaf3808144
+  PASS 3.4 sel after res auto-corrected
+
+── 4. editAIPoll — selectionClosedAt editing ──
+[audit] ADMIN aipoll.pending_review officer_lifecycle_test AIPoll#aipoll_1810f5127f9e9daaf3808144
+[audit] ADMIN aipoll.generate_started officer_lifecycle_test AIPoll#aipoll_187f94b3fd5b22a656c6f38d
+  PASS 4.1 baseline poll is PENDING_REVIEW
+[audit] ADMIN aipoll.pending_review officer_lifecycle_test AIPoll#aipoll_187f94b3fd5b22a656c6f38d
+  PASS 4.2 edited poll preserves new selectionClosedAt
+[audit] ADMIN aipoll.edited officer_lifecycle_test AIPoll#aipoll_187f94b3fd5b22a656c6f38d
+  PASS 4.3 selectionClosedAt recomputed when resolutionAt changes
+  PASS 4.4 recomputed sel < new res
+[audit] ADMIN aipoll.edited officer_lifecycle_test AIPoll#aipoll_187f94b3fd5b22a656c6f38d
+  PASS 4.5 sel after res auto-corrected on edit
+[audit] ADMIN aipoll.edited officer_lifecycle_test AIPoll#aipoll_187f94b3fd5b22a656c6f38d
+  PASS 4.6 null selectionClosedAt recomputed from category
+[audit] ADMIN aipoll.edited officer_lifecycle_test AIPoll#aipoll_187f94b3fd5b22a656c6f38d
+  PASS 4.7 edit to past date → FILTERED
+
+── 5. Selection close → bet blocking ──
+[audit] ADMIN aipoll.edited_filtered officer_lifecycle_test AIPoll#aipoll_187f94b3fd5b22a656c6f38d
+[audit] ADMIN market.created officer_lifecycle_test Market#mkt_bb0674dffe071ff0c30d
+  PASS 5.1 market is LIVE
+  PASS 5.2 isSelectionClosed() returns true
+  PASS 5.3 isClosedByTime() returns false (resolution still in future)
+  PASS 5.4 bet rejected after selection close
+  PASS 5.5 rejection code is SELECTION_CLOSED
+  PASS 5.6 legacy market: isSelectionClosed() false when resolution in future
+[audit] ADMIN market.created officer_lifecycle_test Market#mkt_d65fa49d2d8ffd97c455
+[audit] BET market.position.opened usr_e2e_player1 Position#pos_67b1172eceefd9bc6956
+  PASS 5.7 bet succeeds on open market
+
+── 6. Notification chain — selection closed trigger ──
+[audit] ADMIN market.created officer_lifecycle_test Market#mkt_483f1aef280613dc04b2
+[audit] ADMIN market.selection_closed.thin_poll system Market#mkt_483f1aef280613dc04b2
+  PASS 6.1 trigger notified this market
+  PASS 6.1b trigger reached the market's bettor
+  PASS 6.2 player got SELECTION_CLOSED bell
+  PASS 6.3 re-trigger notified nobody (idempotent)
+  PASS 6.4 market has selectionClosedNotifiedAt stamp
+
+── 7. Notification chain — resolution due trigger ──
+[audit] ADMIN market.created officer_lifecycle_test Market#mkt_2ba4516c0bfadf5deaf2
+[audit] ADMIN market.resolve_trigger.human system_auto_resolver Market#mkt_2ba4516c0bfadf5deaf2
+[email] sending "Market awaiting resolution · Resolution due market #10" → u***@admin.tz (tag=market-resolve-admin)
+[email-stub] To: u***@admin.tz | Subject: Market awaiting resolution · Resolution due market #10
+  PASS 7.1 resolve trigger took the human fallback
+  PASS 7.2 admin got resolution-due bell (PROPOSAL kind)
+  PASS 7.3 market has resolutionNotifiedAt stamp
+  PASS 7.4 resolve trigger stamped the market CLOSED
+  PASS 7.5 re-trigger is a no-op (exactly-once)
+  PASS 7.6 re-trigger left the stamp untouched
+
+── 8. computeSelectionClosedAt — per-category lead times ──
+  PASS 8.sports sel before res
+  PASS 8.sports lead >= 60min or floored
+  PASS 8.weather sel before res
+  PASS 8.weather lead >= 180min or floored
+  PASS 8.crypto sel before res
+  PASS 8.crypto lead >= 120min or floored
+  PASS 8.culture sel before res
+  PASS 8.culture lead >= 1440min or floored
+  PASS 8.tech sel before res
+  PASS 8.tech lead >= 1440min or floored
+  PASS 8.macro sel before res
+  PASS 8.macro lead >= 2880min or floored
+  PASS 8.infrastructure sel before res
+  PASS 8.infrastructure lead >= 2880min or floored
+  PASS 8.other sel before res
+  PASS 8.other lead >= 1440min or floored
+  PASS 8.fallback unknown category uses 'other' lead time
+
+── 9. Time mask — logic verification ──
+  PASS 9.derive 00:00
+  PASS 9.derive 00:01
+  PASS 9.derive 00:02
+  PASS 9.derive 00:03
+  PASS 9.derive 00:04
+  PASS 9.derive 00:05
+  PASS 9.derive 00:06
+  PASS 9.derive 00:07
+  PASS 9.derive 00:08
+  PASS 9.derive 00:09
+  PASS 9.derive 00:10
+  PASS 9.derive 00:11
+  PASS 9.derive 00:12
+  PASS 9.derive 00:13
+  PASS 9.derive 00:14
+  PASS 9.derive 00:15
+  PASS 9.derive 00:16
+  PASS 9.derive 00:17
+  PASS 9.derive 00:18
+  PASS 9.derive 00:19
+  PASS 9.derive 00:20
+  PASS 9.derive 00:21
+  PASS 9.derive 00:22
+  PASS 9.derive 00:23
+  PASS 9.derive 00:24
+  PASS 9.derive 00:25
+  PASS 9.derive 00:26
+  PASS 9.derive 00:27
+  PASS 9.derive 00:28
+  PASS 9.derive 00:29
+  PASS 9.derive 00:30
+  PASS 9.derive 00:31
+  PASS 9.derive 00:32
+  PASS 9.derive 00:33
+  PASS 9.derive 00:34
+  PASS 9.derive 00:35
+  PASS 9.derive 00:36
+  PASS 9.derive 00:37
+  PASS 9.derive 00:38
+  PASS 9.derive 00:39
+  PASS 9.derive 00:40
+  PASS 9.derive 00:41
+  PASS 9.derive 00:42
+  PASS 9.derive 00:43
+  PASS 9.derive 00:44
+  PASS 9.derive 00:45
+  PASS 9.derive 00:46
+  PASS 9.derive 00:47
+  PASS 9.derive 00:48
+  PASS 9.derive 00:49
+  PASS 9.derive 00:50
+  PASS 9.derive 00:51
+  PASS 9.derive 00:52
+  PASS 9.derive 00:53
+  PASS 9.derive 00:54
+  PASS 9.derive 00:55
+  PASS 9.derive 00:56
+  PASS 9.derive 00:57
+  PASS 9.derive 00:58
+  PASS 9.derive 00:59
+  PASS 9.derive 01:00
+  PASS 9.derive 01:01
+  PASS 9.derive 01:02
+  PASS 9.derive 01:03
+  PASS 9.derive 01:04
+  PASS 9.derive 01:05
+  PASS 9.derive 01:06
+  PASS 9.derive 01:07
+  PASS 9.derive 01:08
+  PASS 9.derive 01:09
+  PASS 9.derive 01:10
+  PASS 9.derive 01:11
+  PASS 9.derive 01:12
+  PASS 9.derive 01:13
+  PASS 9.derive 01:14
+  PASS 9.derive 01:15
+  PASS 9.derive 01:16
+  PASS 9.derive 01:17
+  PASS 9.derive 01:18
+  PASS 9.derive 01:19
+  PASS 9.derive 01:20
+  PASS 9.derive 01:21
+  PASS 9.derive 01:22
+  PASS 9.derive 01:23
+  PASS 9.derive 01:24
+  PASS 9.derive 01:25
+  PASS 9.derive 01:26
+  PASS 9.derive 01:27
+  PASS 9.derive 01:28
+  PASS 9.derive 01:29
+  PASS 9.derive 01:30
+  PASS 9.derive 01:31
+  PASS 9.derive 01:32
+  PASS 9.derive 01:33
+  PASS 9.derive 01:34
+  PASS 9.derive 01:35
+  PASS 9.derive 01:36
+  PASS 9.derive 01:37
+  PASS 9.derive 01:38
+  PASS 9.derive 01:39
+  PASS 9.derive 01:40
+  PASS 9.derive 01:41
+  PASS 9.derive 01:42
+  PASS 9.derive 01:43
+  PASS 9.derive 01:44
+  PASS 9.derive 01:45
+  PASS 9.derive 01:46
+  PASS 9.derive 01:47
+  PASS 9.derive 01:48
+  PASS 9.derive 01:49
+  PASS 9.derive 01:50
+  PASS 9.derive 01:51
+  PASS 9.derive 01:52
+  PASS 9.derive 01:53
+  PASS 9.derive 01:54
+  PASS 9.derive 01:55
+  PASS 9.derive 01:56
+  PASS 9.derive 01:57
+  PASS 9.derive 01:58
+  PASS 9.derive 01:59
+  PASS 9.derive 02:00
+  PASS 9.derive 02:01
+  PASS 9.derive 02:02
+  PASS 9.derive 02:03
+  PASS 9.derive 02:04
+  PASS 9.derive 02:05
+  PASS 9.derive 02:06
+  PASS 9.derive 02:07
+  PASS 9.derive 02:08
+  PASS 9.derive 02:09
+  PASS 9.derive 02:10
+  PASS 9.derive 02:11
+  PASS 9.derive 02:12
+  PASS 9.derive 02:13
+  PASS 9.derive 02:14
+  PASS 9.derive 02:15
+  PASS 9.derive 02:16
+  PASS 9.derive 02:17
+  PASS 9.derive 02:18
+  PASS 9.derive 02:19
+  PASS 9.derive 02:20
+  PASS 9.derive 02:21
+  PASS 9.derive 02:22
+  PASS 9.derive 02:23
+  PASS 9.derive 02:24
+  PASS 9.derive 02:25
+  PASS 9.derive 02:26
+  PASS 9.derive 02:27
+  PASS 9.derive 02:28
+  PASS 9.derive 02:29
+  PASS 9.derive 02:30
+  PASS 9.derive 02:31
+  PASS 9.derive 02:32
+  PASS 9.derive 02:33
+  PASS 9.derive 02:34
+  PASS 9.derive 02:35
+  PASS 9.derive 02:36
+  PASS 9.derive 02:37
+  PASS 9.derive 02:38
+  PASS 9.derive 02:39
+  PASS 9.derive 02:40
+  PASS 9.derive 02:41
+  PASS 9.derive 02:42
+  PASS 9.derive 02:43
+  PASS 9.derive 02:44
+  PASS 9.derive 02:45
+  PASS 9.derive 02:46
+  PASS 9.derive 02:47
+  PASS 9.derive 02:48
+  PASS 9.derive 02:49
+  PASS 9.derive 02:50
+  PASS 9.derive 02:51
+  PASS 9.derive 02:52
+  PASS 9.derive 02:53
+  PASS 9.derive 02:54
+  PASS 9.derive 02:55
+  PASS 9.derive 02:56
+  PASS 9.derive 02:57
+  PASS 9.derive 02:58
+  PASS 9.derive 02:59
+  PASS 9.derive 03:00
+  PASS 9.derive 03:01
+  PASS 9.derive 03:02
+  PASS 9.derive 03:03
+  PASS 9.derive 03:04
+  PASS 9.derive 03:05
+  PASS 9.derive 03:06
+  PASS 9.derive 03:07
+  PASS 9.derive 03:08
+  PASS 9.derive 03:09
+  PASS 9.derive 03:10
+  PASS 9.derive 03:11
+  PASS 9.derive 03:12
+  PASS 9.derive 03:13
+  PASS 9.derive 03:14
+  PASS 9.derive 03:15
+  PASS 9.derive 03:16
+  PASS 9.derive 03:17
+  PASS 9.derive 03:18
+  PASS 9.derive 03:19
+  PASS 9.derive 03:20
+  PASS 9.derive 03:21
+  PASS 9.derive 03:22
+  PASS 9.derive 03:23
+  PASS 9.derive 03:24
+  PASS 9.derive 03:25
+  PASS 9.derive 03:26
+  PASS 9.derive 03:27
+  PASS 9.derive 03:28
+  PASS 9.derive 03:29
+  PASS 9.derive 03:30
+  PASS 9.derive 03:31
+  PASS 9.derive 03:32
+  PASS 9.derive 03:33
+  PASS 9.derive 03:34
+  PASS 9.derive 03:35
+  PASS 9.derive 03:36
+  PASS 9.derive 03:37
+  PASS 9.derive 03:38
+  PASS 9.derive 03:39
+  PASS 9.derive 03:40
+  PASS 9.derive 03:41
+  PASS 9.derive 03:42
+  PASS 9.derive 03:43
+  PASS 9.derive 03:44
+  PASS 9.derive 03:45
+  PASS 9.derive 03:46
+  PASS 9.derive 03:47
+  PASS 9.derive 03:48
+  PASS 9.derive 03:49
+  PASS 9.derive 03:50
+  PASS 9.derive 03:51
+  PASS 9.derive 03:52
+  PASS 9.derive 03:53
+  PASS 9.derive 03:54
+  PASS 9.derive 03:55
+  PASS 9.derive 03:56
+  PASS 9.derive 03:57
+  PASS 9.derive 03:58
+  PASS 9.derive 03:59
+  PASS 9.derive 04:00
+  PASS 9.derive 04:01
+  PASS 9.derive 04:02
+  PASS 9.derive 04:03
+  PASS 9.derive 04:04
+  PASS 9.derive 04:05
+  PASS 9.derive 04:06
+  PASS 9.derive 04:07
+  PASS 9.derive 04:08
+  PASS 9.derive 04:09
+  PASS 9.derive 04:10
+  PASS 9.derive 04:11
+  PASS 9.derive 04:12
+  PASS 9.derive 04:13
+  PASS 9.derive 04:14
+  PASS 9.derive 04:15
+  PASS 9.derive 04:16
+  PASS 9.derive 04:17
+  PASS 9.derive 04:18
+  PASS 9.derive 04:19
+  PASS 9.derive 04:20
+  PASS 9.derive 04:21
+  PASS 9.derive 04:22
+  PASS 9.derive 04:23
+  PASS 9.derive 04:24
+  PASS 9.derive 04:25
+  PASS 9.derive 04:26
+  PASS 9.derive 04:27
+  PASS 9.derive 04:28
+  PASS 9.derive 04:29
+  PASS 9.derive 04:30
+  PASS 9.derive 04:31
+  PASS 9.derive 04:32
+  PASS 9.derive 04:33
+  PASS 9.derive 04:34
+  PASS 9.derive 04:35
+  PASS 9.derive 04:36
+  PASS 9.derive 04:37
+  PASS 9.derive 04:38
+  PASS 9.derive 04:39
+  PASS 9.derive 04:40
+  PASS 9.derive 04:41
+  PASS 9.derive 04:42
+  PASS 9.derive 04:43
+  PASS 9.derive 04:44
+  PASS 9.derive 04:45
+  PASS 9.derive 04:46
+  PASS 9.derive 04:47
+  PASS 9.derive 04:48
+  PASS 9.derive 04:49
+  PASS 9.derive 04:50
+  PASS 9.derive 04:51
+  PASS 9.derive 04:52
+  PASS 9.derive 04:53
+  PASS 9.derive 04:54
+  PASS 9.derive 04:55
+  PASS 9.derive 04:56
+  PASS 9.derive 04:57
+  PASS 9.derive 04:58
+  PASS 9.derive 04:59
+  PASS 9.derive 05:00
+  PASS 9.derive 05:01
+  PASS 9.derive 05:02
+  PASS 9.derive 05:03
+  PASS 9.derive 05:04
+  PASS 9.derive 05:05
+  PASS 9.derive 05:06
+  PASS 9.derive 05:07
+  PASS 9.derive 05:08
+  PASS 9.derive 05:09
+  PASS 9.derive 05:10
+  PASS 9.derive 05:11
+  PASS 9.derive 05:12
+  PASS 9.derive 05:13
+  PASS 9.derive 05:14
+  PASS 9.derive 05:15
+  PASS 9.derive 05:16
+  PASS 9.derive 05:17
+  PASS 9.derive 05:18
+  PASS 9.derive 05:19
+  PASS 9.derive 05:20
+  PASS 9.derive 05:21
+  PASS 9.derive 05:22
+  PASS 9.derive 05:23
+  PASS 9.derive 05:24
+  PASS 9.derive 05:25
+  PASS 9.derive 05:26
+  PASS 9.derive 05:27
+  PASS 9.derive 05:28
+  PASS 9.derive 05:29
+  PASS 9.derive 05:30
+  PASS 9.derive 05:31
+  PASS 9.derive 05:32
+  PASS 9.derive 05:33
+  PASS 9.derive 05:34
+  PASS 9.derive 05:35
+  PASS 9.derive 05:36
+  PASS 9.derive 05:37
+  PASS 9.derive 05:38
+  PASS 9.derive 05:39
+  PASS 9.derive 05:40
+  PASS 9.derive 05:41
+  PASS 9.derive 05:42
+  PASS 9.derive 05:43
+  PASS 9.derive 05:44
+  PASS 9.derive 05:45
+  PASS 9.derive 05:46
+  PASS 9.derive 05:47
+  PASS 9.derive 05:48
+  PASS 9.derive 05:49
+  PASS 9.derive 05:50
+  PASS 9.derive 05:51
+  PASS 9.derive 05:52
+  PASS 9.derive 05:53
+  PASS 9.derive 05:54
+  PASS 9.derive 05:55
+  PASS 9.derive 05:56
+  PASS 9.derive 05:57
+  PASS 9.derive 05:58
+  PASS 9.derive 05:59
+  PASS 9.derive 06:00
+  PASS 9.derive 06:01
+  PASS 9.derive 06:02
+  PASS 9.derive 06:03
+  PASS 9.derive 06:04
+  PASS 9.derive 06:05
+  PASS 9.derive 06:06
+  PASS 9.derive 06:07
+  PASS 9.derive 06:08
+  PASS 9.derive 06:09
+  PASS 9.derive 06:10
+  PASS 9.derive 06:11
+  PASS 9.derive 06:12
+  PASS 9.derive 06:13
+  PASS 9.derive 06:14
+  PASS 9.derive 06:15
+  PASS 9.derive 06:16
+  PASS 9.derive 06:17
+  PASS 9.derive 06:18
+  PASS 9.derive 06:19
+  PASS 9.derive 06:20
+  PASS 9.derive 06:21
+  PASS 9.derive 06:22
+  PASS 9.derive 06:23
+  PASS 9.derive 06:24
+  PASS 9.derive 06:25
+  PASS 9.derive 06:26
+  PASS 9.derive 06:27
+  PASS 9.derive 06:28
+  PASS 9.derive 06:29
+  PASS 9.derive 06:30
+  PASS 9.derive 06:31
+  PASS 9.derive 06:32
+  PASS 9.derive 06:33
+  PASS 9.derive 06:34
+  PASS 9.derive 06:35
+  PASS 9.derive 06:36
+  PASS 9.derive 06:37
+  PASS 9.derive 06:38
+  PASS 9.derive 06:39
+  PASS 9.derive 06:40
+  PASS 9.derive 06:41
+  PASS 9.derive 06:42
+  PASS 9.derive 06:43
+  PASS 9.derive 06:44
+  PASS 9.derive 06:45
+  PASS 9.derive 06:46
+  PASS 9.derive 06:47
+  PASS 9.derive 06:48
+  PASS 9.derive 06:49
+  PASS 9.derive 06:50
+  PASS 9.derive 06:51
+  PASS 9.derive 06:52
+  PASS 9.derive 06:53
+  PASS 9.derive 06:54
+  PASS 9.derive 06:55
+  PASS 9.derive 06:56
+  PASS 9.derive 06:57
+  PASS 9.derive 06:58
+  PASS 9.derive 06:59
+  PASS 9.derive 07:00
+  PASS 9.derive 07:01
+  PASS 9.derive 07:02
+  PASS 9.derive 07:03
+  PASS 9.derive 07:04
+  PASS 9.derive 07:05
+  PASS 9.derive 07:06
+  PASS 9.derive 07:07
+  PASS 9.derive 07:08
+  PASS 9.derive 07:09
+  PASS 9.derive 07:10
+  PASS 9.derive 07:11
+  PASS 9.derive 07:12
+  PASS 9.derive 07:13
+  PASS 9.derive 07:14
+  PASS 9.derive 07:15
+  PASS 9.derive 07:16
+  PASS 9.derive 07:17
+  PASS 9.derive 07:18
+  PASS 9.derive 07:19
+  PASS 9.derive 07:20
+  PASS 9.derive 07:21
+  PASS 9.derive 07:22
+  PASS 9.derive 07:23
+  PASS 9.derive 07:24
+  PASS 9.derive 07:25
+  PASS 9.derive 07:26
+  PASS 9.derive 07:27
+  PASS 9.derive 07:28
+  PASS 9.derive 07:29
+  PASS 9.derive 07:30
+  PASS 9.derive 07:31
+  PASS 9.derive 07:32
+  PASS 9.derive 07:33
+  PASS 9.derive 07:34
+  PASS 9.derive 07:35
+  PASS 9.derive 07:36
+  PASS 9.derive 07:37
+  PASS 9.derive 07:38
+  PASS 9.derive 07:39
+  PASS 9.derive 07:40
+  PASS 9.derive 07:41
+  PASS 9.derive 07:42
+  PASS 9.derive 07:43
+  PASS 9.derive 07:44
+  PASS 9.derive 07:45
+  PASS 9.derive 07:46
+  PASS 9.derive 07:47
+  PASS 9.derive 07:48
+  PASS 9.derive 07:49
+  PASS 9.derive 07:50
+  PASS 9.derive 07:51
+  PASS 9.derive 07:52
+  PASS 9.derive 07:53
+  PASS 9.derive 07:54
+  PASS 9.derive 07:55
+  PASS 9.derive 07:56
+  PASS 9.derive 07:57
+  PASS 9.derive 07:58
+  PASS 9.derive 07:59
+  PASS 9.derive 08:00
+  PASS 9.derive 08:01
+  PASS 9.derive 08:02
+  PASS 9.derive 08:03
+  PASS 9.derive 08:04
+  PASS 9.derive 08:05
+  PASS 9.derive 08:06
+  PASS 9.derive 08:07
+  PASS 9.derive 08:08
+  PASS 9.derive 08:09
+  PASS 9.derive 08:10
+  PASS 9.derive 08:11
+  PASS 9.derive 08:12
+  PASS 9.derive 08:13
+  PASS 9.derive 08:14
+  PASS 9.derive 08:15
+  PASS 9.derive 08:16
+  PASS 9.derive 08:17
+  PASS 9.derive 08:18
+  PASS 9.derive 08:19
+  PASS 9.derive 08:20
+  PASS 9.derive 08:21
+  PASS 9.derive 08:22
+  PASS 9.derive 08:23
+  PASS 9.derive 08:24
+  PASS 9.derive 08:25
+  PASS 9.derive 08:26
+  PASS 9.derive 08:27
+  PASS 9.derive 08:28
+  PASS 9.derive 08:29
+  PASS 9.derive 08:30
+  PASS 9.derive 08:31
+  PASS 9.derive 08:32
+  PASS 9.derive 08:33
+  PASS 9.derive 08:34
+  PASS 9.derive 08:35
+  PASS 9.derive 08:36
+  PASS 9.derive 08:37
+  PASS 9.derive 08:38
+  PASS 9.derive 08:39
+  PASS 9.derive 08:40
+  PASS 9.derive 08:41
+  PASS 9.derive 08:42
+  PASS 9.derive 08:43
+  PASS 9.derive 08:44
+  PASS 9.derive 08:45
+  PASS 9.derive 08:46
+  PASS 9.derive 08:47
+  PASS 9.derive 08:48
+  PASS 9.derive 08:49
+  PASS 9.derive 08:50
+  PASS 9.derive 08:51
+  PASS 9.derive 08:52
+  PASS 9.derive 08:53
+  PASS 9.derive 08:54
+  PASS 9.derive 08:55
+  PASS 9.derive 08:56
+  PASS 9.derive 08:57
+  PASS 9.derive 08:58
+  PASS 9.derive 08:59
+  PASS 9.derive 09:00
+  PASS 9.derive 09:01
+  PASS 9.derive 09:02
+  PASS 9.derive 09:03
+  PASS 9.derive 09:04
+  PASS 9.derive 09:05
+  PASS 9.derive 09:06
+  PASS 9.derive 09:07
+  PASS 9.derive 09:08
+  PASS 9.derive 09:09
+  PASS 9.derive 09:10
+  PASS 9.derive 09:11
+  PASS 9.derive 09:12
+  PASS 9.derive 09:13
+  PASS 9.derive 09:14
+  PASS 9.derive 09:15
+  PASS 9.derive 09:16
+  PASS 9.derive 09:17
+  PASS 9.derive 09:18
+  PASS 9.derive 09:19
+  PASS 9.derive 09:20
+  PASS 9.derive 09:21
+  PASS 9.derive 09:22
+  PASS 9.derive 09:23
+  PASS 9.derive 09:24
+  PASS 9.derive 09:25
+  PASS 9.derive 09:26
+  PASS 9.derive 09:27
+  PASS 9.derive 09:28
+  PASS 9.derive 09:29
+  PASS 9.derive 09:30
+  PASS 9.derive 09:31
+  PASS 9.derive 09:32
+  PASS 9.derive 09:33
+  PASS 9.derive 09:34
+  PASS 9.derive 09:35
+  PASS 9.derive 09:36
+  PASS 9.derive 09:37
+  PASS 9.derive 09:38
+  PASS 9.derive 09:39
+  PASS 9.derive 09:40
+  PASS 9.derive 09:41
+  PASS 9.derive 09:42
+  PASS 9.derive 09:43
+  PASS 9.derive 09:44
+  PASS 9.derive 09:45
+  PASS 9.derive 09:46
+  PASS 9.derive 09:47
+  PASS 9.derive 09:48
+  PASS 9.derive 09:49
+  PASS 9.derive 09:50
+  PASS 9.derive 09:51
+  PASS 9.derive 09:52
+  PASS 9.derive 09:53
+  PASS 9.derive 09:54
+  PASS 9.derive 09:55
+  PASS 9.derive 09:56
+  PASS 9.derive 09:57
+  PASS 9.derive 09:58
+  PASS 9.derive 09:59
+  PASS 9.derive 10:00
+  PASS 9.derive 10:01
+  PASS 9.derive 10:02
+  PASS 9.derive 10:03
+  PASS 9.derive 10:04
+  PASS 9.derive 10:05
+  PASS 9.derive 10:06
+  PASS 9.derive 10:07
+  PASS 9.derive 10:08
+  PASS 9.derive 10:09
+  PASS 9.derive 10:10
+  PASS 9.derive 10:11
+  PASS 9.derive 10:12
+  PASS 9.derive 10:13
+  PASS 9.derive 10:14
+  PASS 9.derive 10:15
+  PASS 9.derive 10:16
+  PASS 9.derive 10:17
+  PASS 9.derive 10:18
+  PASS 9.derive 10:19
+  PASS 9.derive 10:20
+  PASS 9.derive 10:21
+  PASS 9.derive 10:22
+  PASS 9.derive 10:23
+  PASS 9.derive 10:24
+  PASS 9.derive 10:25
+  PASS 9.derive 10:26
+  PASS 9.derive 10:27
+  PASS 9.derive 10:28
+  PASS 9.derive 10:29
+  PASS 9.derive 10:30
+  PASS 9.derive 10:31
+  PASS 9.derive 10:32
+  PASS 9.derive 10:33
+  PASS 9.derive 10:34
+  PASS 9.derive 10:35
+  PASS 9.derive 10:36
+  PASS 9.derive 10:37
+  PASS 9.derive 10:38
+  PASS 9.derive 10:39
+  PASS 9.derive 10:40
+  PASS 9.derive 10:41
+  PASS 9.derive 10:42
+  PASS 9.derive 10:43
+  PASS 9.derive 10:44
+  PASS 9.derive 10:45
+  PASS 9.derive 10:46
+  PASS 9.derive 10:47
+  PASS 9.derive 10:48
+  PASS 9.derive 10:49
+  PASS 9.derive 10:50
+  PASS 9.derive 10:51
+  PASS 9.derive 10:52
+  PASS 9.derive 10:53
+  PASS 9.derive 10:54
+  PASS 9.derive 10:55
+  PASS 9.derive 10:56
+  PASS 9.derive 10:57
+  PASS 9.derive 10:58
+  PASS 9.derive 10:59
+  PASS 9.derive 11:00
+  PASS 9.derive 11:01
+  PASS 9.derive 11:02
+  PASS 9.derive 11:03
+  PASS 9.derive 11:04
+  PASS 9.derive 11:05
+  PASS 9.derive 11:06
+  PASS 9.derive 11:07
+  PASS 9.derive 11:08
+  PASS 9.derive 11:09
+  PASS 9.derive 11:10
+  PASS 9.derive 11:11
+  PASS 9.derive 11:12
+  PASS 9.derive 11:13
+  PASS 9.derive 11:14
+  PASS 9.derive 11:15
+  PASS 9.derive 11:16
+  PASS 9.derive 11:17
+  PASS 9.derive 11:18
+  PASS 9.derive 11:19
+  PASS 9.derive 11:20
+  PASS 9.derive 11:21
+  PASS 9.derive 11:22
+  PASS 9.derive 11:23
+  PASS 9.derive 11:24
+  PASS 9.derive 11:25
+  PASS 9.derive 11:26
+  PASS 9.derive 11:27
+  PASS 9.derive 11:28
+  PASS 9.derive 11:29
+  PASS 9.derive 11:30
+  PASS 9.derive 11:31
+  PASS 9.derive 11:32
+  PASS 9.derive 11:33
+  PASS 9.derive 11:34
+  PASS 9.derive 11:35
+  PASS 9.derive 11:36
+  PASS 9.derive 11:37
+  PASS 9.derive 11:38
+  PASS 9.derive 11:39
+  PASS 9.derive 11:40
+  PASS 9.derive 11:41
+  PASS 9.derive 11:42
+  PASS 9.derive 11:43
+  PASS 9.derive 11:44
+  PASS 9.derive 11:45
+  PASS 9.derive 11:46
+  PASS 9.derive 11:47
+  PASS 9.derive 11:48
+  PASS 9.derive 11:49
+  PASS 9.derive 11:50
+  PASS 9.derive 11:51
+  PASS 9.derive 11:52
+  PASS 9.derive 11:53
+  PASS 9.derive 11:54
+  PASS 9.derive 11:55
+  PASS 9.derive 11:56
+  PASS 9.derive 11:57
+  PASS 9.derive 11:58
+  PASS 9.derive 11:59
+  PASS 9.derive 12:00
+  PASS 9.derive 12:01
+  PASS 9.derive 12:02
+  PASS 9.derive 12:03
+  PASS 9.derive 12:04
+  PASS 9.derive 12:05
+  PASS 9.derive 12:06
+  PASS 9.derive 12:07
+  PASS 9.derive 12:08
+  PASS 9.derive 12:09
+  PASS 9.derive 12:10
+  PASS 9.derive 12:11
+  PASS 9.derive 12:12
+  PASS 9.derive 12:13
+  PASS 9.derive 12:14
+  PASS 9.derive 12:15
+  PASS 9.derive 12:16
+  PASS 9.derive 12:17
+  PASS 9.derive 12:18
+  PASS 9.derive 12:19
+  PASS 9.derive 12:20
+  PASS 9.derive 12:21
+  PASS 9.derive 12:22
+  PASS 9.derive 12:23
+  PASS 9.derive 12:24
+  PASS 9.derive 12:25
+  PASS 9.derive 12:26
+  PASS 9.derive 12:27
+  PASS 9.derive 12:28
+  PASS 9.derive 12:29
+  PASS 9.derive 12:30
+  PASS 9.derive 12:31
+  PASS 9.derive 12:32
+  PASS 9.derive 12:33
+  PASS 9.derive 12:34
+  PASS 9.derive 12:35
+  PASS 9.derive 12:36
+  PASS 9.derive 12:37
+  PASS 9.derive 12:38
+  PASS 9.derive 12:39
+  PASS 9.derive 12:40
+  PASS 9.derive 12:41
+  PASS 9.derive 12:42
+  PASS 9.derive 12:43
+  PASS 9.derive 12:44
+  PASS 9.derive 12:45
+  PASS 9.derive 12:46
+  PASS 9.derive 12:47
+  PASS 9.derive 12:48
+  PASS 9.derive 12:49
+  PASS 9.derive 12:50
+  PASS 9.derive 12:51
+  PASS 9.derive 12:52
+  PASS 9.derive 12:53
+  PASS 9.derive 12:54
+  PASS 9.derive 12:55
+  PASS 9.derive 12:56
+  PASS 9.derive 12:57
+  PASS 9.derive 12:58
+  PASS 9.derive 12:59
+  PASS 9.derive 13:00
+  PASS 9.derive 13:01
+  PASS 9.derive 13:02
+  PASS 9.derive 13:03
+  PASS 9.derive 13:04
+  PASS 9.derive 13:05
+  PASS 9.derive 13:06
+  PASS 9.derive 13:07
+  PASS 9.derive 13:08
+  PASS 9.derive 13:09
+  PASS 9.derive 13:10
+  PASS 9.derive 13:11
+  PASS 9.derive 13:12
+  PASS 9.derive 13:13
+  PASS 9.derive 13:14
+  PASS 9.derive 13:15
+  PASS 9.derive 13:16
+  PASS 9.derive 13:17
+  PASS 9.derive 13:18
+  PASS 9.derive 13:19
+  PASS 9.derive 13:20
+  PASS 9.derive 13:21
+  PASS 9.derive 13:22
+  PASS 9.derive 13:23
+  PASS 9.derive 13:24
+  PASS 9.derive 13:25
+  PASS 9.derive 13:26
+  PASS 9.derive 13:27
+  PASS 9.derive 13:28
+  PASS 9.derive 13:29
+  PASS 9.derive 13:30
+  PASS 9.derive 13:31
+  PASS 9.derive 13:32
+  PASS 9.derive 13:33
+  PASS 9.derive 13:34
+  PASS 9.derive 13:35
+  PASS 9.derive 13:36
+  PASS 9.derive 13:37
+  PASS 9.derive 13:38
+  PASS 9.derive 13:39
+  PASS 9.derive 13:40
+  PASS 9.derive 13:41
+  PASS 9.derive 13:42
+  PASS 9.derive 13:43
+  PASS 9.derive 13:44
+  PASS 9.derive 13:45
+  PASS 9.derive 13:46
+  PASS 9.derive 13:47
+  PASS 9.derive 13:48
+  PASS 9.derive 13:49
+  PASS 9.derive 13:50
+  PASS 9.derive 13:51
+  PASS 9.derive 13:52
+  PASS 9.derive 13:53
+  PASS 9.derive 13:54
+  PASS 9.derive 13:55
+  PASS 9.derive 13:56
+  PASS 9.derive 13:57
+  PASS 9.derive 13:58
+  PASS 9.derive 13:59
+  PASS 9.derive 14:00
+  PASS 9.derive 14:01
+  PASS 9.derive 14:02
+  PASS 9.derive 14:03
+  PASS 9.derive 14:04
+  PASS 9.derive 14:05
+  PASS 9.derive 14:06
+  PASS 9.derive 14:07
+  PASS 9.derive 14:08
+  PASS 9.derive 14:09
+  PASS 9.derive 14:10
+  PASS 9.derive 14:11
+  PASS 9.derive 14:12
+  PASS 9.derive 14:13
+  PASS 9.derive 14:14
+  PASS 9.derive 14:15
+  PASS 9.derive 14:16
+  PASS 9.derive 14:17
+  PASS 9.derive 14:18
+  PASS 9.derive 14:19
+  PASS 9.derive 14:20
+  PASS 9.derive 14:21
+  PASS 9.derive 14:22
+  PASS 9.derive 14:23
+  PASS 9.derive 14:24
+  PASS 9.derive 14:25
+  PASS 9.derive 14:26
+  PASS 9.derive 14:27
+  PASS 9.derive 14:28
+  PASS 9.derive 14:29
+  PASS 9.derive 14:30
+  PASS 9.derive 14:31
+  PASS 9.derive 14:32
+  PASS 9.derive 14:33
+  PASS 9.derive 14:34
+  PASS 9.derive 14:35
+  PASS 9.derive 14:36
+  PASS 9.derive 14:37
+  PASS 9.derive 14:38
+  PASS 9.derive 14:39
+  PASS 9.derive 14:40
+  PASS 9.derive 14:41
+  PASS 9.derive 14:42
+  PASS 9.derive 14:43
+  PASS 9.derive 14:44
+  PASS 9.derive 14:45
+  PASS 9.derive 14:46
+  PASS 9.derive 14:47
+  PASS 9.derive 14:48
+  PASS 9.derive 14:49
+  PASS 9.derive 14:50
+  PASS 9.derive 14:51
+  PASS 9.derive 14:52
+  PASS 9.derive 14:53
+  PASS 9.derive 14:54
+  PASS 9.derive 14:55
+  PASS 9.derive 14:56
+  PASS 9.derive 14:57
+  PASS 9.derive 14:58
+  PASS 9.derive 14:59
+  PASS 9.derive 15:00
+  PASS 9.derive 15:01
+  PASS 9.derive 15:02
+  PASS 9.derive 15:03
+  PASS 9.derive 15:04
+  PASS 9.derive 15:05
+  PASS 9.derive 15:06
+  PASS 9.derive 15:07
+  PASS 9.derive 15:08
+  PASS 9.derive 15:09
+  PASS 9.derive 15:10
+  PASS 9.derive 15:11
+  PASS 9.derive 15:12
+  PASS 9.derive 15:13
+  PASS 9.derive 15:14
+  PASS 9.derive 15:15
+  PASS 9.derive 15:16
+  PASS 9.derive 15:17
+  PASS 9.derive 15:18
+  PASS 9.derive 15:19
+  PASS 9.derive 15:20
+  PASS 9.derive 15:21
+  PASS 9.derive 15:22
+  PASS 9.derive 15:23
+  PASS 9.derive 15:24
+  PASS 9.derive 15:25
+  PASS 9.derive 15:26
+  PASS 9.derive 15:27
+  PASS 9.derive 15:28
+  PASS 9.derive 15:29
+  PASS 9.derive 15:30
+  PASS 9.derive 15:31
+  PASS 9.derive 15:32
+  PASS 9.derive 15:33
+  PASS 9.derive 15:34
+  PASS 9.derive 15:35
+  PASS 9.derive 15:36
+  PASS 9.derive 15:37
+  PASS 9.derive 15:38
+  PASS 9.derive 15:39
+  PASS 9.derive 15:40
+  PASS 9.derive 15:41
+  PASS 9.derive 15:42
+  PASS 9.derive 15:43
+  PASS 9.derive 15:44
+  PASS 9.derive 15:45
+  PASS 9.derive 15:46
+  PASS 9.derive 15:47
+  PASS 9.derive 15:48
+  PASS 9.derive 15:49
+  PASS 9.derive 15:50
+  PASS 9.derive 15:51
+  PASS 9.derive 15:52
+  PASS 9.derive 15:53
+  PASS 9.derive 15:54
+  PASS 9.derive 15:55
+  PASS 9.derive 15:56
+  PASS 9.derive 15:57
+  PASS 9.derive 15:58
+  PASS 9.derive 15:59
+  PASS 9.derive 16:00
+  PASS 9.derive 16:01
+  PASS 9.derive 16:02
+  PASS 9.derive 16:03
+  PASS 9.derive 16:04
+  PASS 9.derive 16:05
+  PASS 9.derive 16:06
+  PASS 9.derive 16:07
+  PASS 9.derive 16:08
+  PASS 9.derive 16:09
+  PASS 9.derive 16:10
+  PASS 9.derive 16:11
+  PASS 9.derive 16:12
+  PASS 9.derive 16:13
+  PASS 9.derive 16:14
+  PASS 9.derive 16:15
+  PASS 9.derive 16:16
+  PASS 9.derive 16:17
+  PASS 9.derive 16:18
+  PASS 9.derive 16:19
+  PASS 9.derive 16:20
+  PASS 9.derive 16:21
+  PASS 9.derive 16:22
+  PASS 9.derive 16:23
+  PASS 9.derive 16:24
+  PASS 9.derive 16:25
+  PASS 9.derive 16:26
+  PASS 9.derive 16:27
+  PASS 9.derive 16:28
+  PASS 9.derive 16:29
+  PASS 9.derive 16:30
+  PASS 9.derive 16:31
+  PASS 9.derive 16:32
+  PASS 9.derive 16:33
+  PASS 9.derive 16:34
+  PASS 9.derive 16:35
+  PASS 9.derive 16:36
+  PASS 9.derive 16:37
+  PASS 9.derive 16:38
+  PASS 9.derive 16:39
+  PASS 9.derive 16:40
+  PASS 9.derive 16:41
+  PASS 9.derive 16:42
+  PASS 9.derive 16:43
+  PASS 9.derive 16:44
+  PASS 9.derive 16:45
+  PASS 9.derive 16:46
+  PASS 9.derive 16:47
+  PASS 9.derive 16:48
+  PASS 9.derive 16:49
+  PASS 9.derive 16:50
+  PASS 9.derive 16:51
+  PASS 9.derive 16:52
+  PASS 9.derive 16:53
+  PASS 9.derive 16:54
+  PASS 9.derive 16:55
+  PASS 9.derive 16:56
+  PASS 9.derive 16:57
+  PASS 9.derive 16:58
+  PASS 9.derive 16:59
+  PASS 9.derive 17:00
+  PASS 9.derive 17:01
+  PASS 9.derive 17:02
+  PASS 9.derive 17:03
+  PASS 9.derive 17:04
+  PASS 9.derive 17:05
+  PASS 9.derive 17:06
+  PASS 9.derive 17:07
+  PASS 9.derive 17:08
+  PASS 9.derive 17:09
+  PASS 9.derive 17:10
+  PASS 9.derive 17:11
+  PASS 9.derive 17:12
+  PASS 9.derive 17:13
+  PASS 9.derive 17:14
+  PASS 9.derive 17:15
+  PASS 9.derive 17:16
+  PASS 9.derive 17:17
+  PASS 9.derive 17:18
+  PASS 9.derive 17:19
+  PASS 9.derive 17:20
+  PASS 9.derive 17:21
+  PASS 9.derive 17:22
+  PASS 9.derive 17:23
+  PASS 9.derive 17:24
+  PASS 9.derive 17:25
+  PASS 9.derive 17:26
+  PASS 9.derive 17:27
+  PASS 9.derive 17:28
+  PASS 9.derive 17:29
+  PASS 9.derive 17:30
+  PASS 9.derive 17:31
+  PASS 9.derive 17:32
+  PASS 9.derive 17:33
+  PASS 9.derive 17:34
+  PASS 9.derive 17:35
+  PASS 9.derive 17:36
+  PASS 9.derive 17:37
+  PASS 9.derive 17:38
+  PASS 9.derive 17:39
+  PASS 9.derive 17:40
+  PASS 9.derive 17:41
+  PASS 9.derive 17:42
+  PASS 9.derive 17:43
+  PASS 9.derive 17:44
+  PASS 9.derive 17:45
+  PASS 9.derive 17:46
+  PASS 9.derive 17:47
+  PASS 9.derive 17:48
+  PASS 9.derive 17:49
+  PASS 9.derive 17:50
+  PASS 9.derive 17:51
+  PASS 9.derive 17:52
+  PASS 9.derive 17:53
+  PASS 9.derive 17:54
+  PASS 9.derive 17:55
+  PASS 9.derive 17:56
+  PASS 9.derive 17:57
+  PASS 9.derive 17:58
+  PASS 9.derive 17:59
+  PASS 9.derive 18:00
+  PASS 9.derive 18:01
+  PASS 9.derive 18:02
+  PASS 9.derive 18:03
+  PASS 9.derive 18:04
+  PASS 9.derive 18:05
+  PASS 9.derive 18:06
+  PASS 9.derive 18:07
+  PASS 9.derive 18:08
+  PASS 9.derive 18:09
+  PASS 9.derive 18:10
+  PASS 9.derive 18:11
+  PASS 9.derive 18:12
+  PASS 9.derive 18:13
+  PASS 9.derive 18:14
+  PASS 9.derive 18:15
+  PASS 9.derive 18:16
+  PASS 9.derive 18:17
+  PASS 9.derive 18:18
+  PASS 9.derive 18:19
+  PASS 9.derive 18:20
+  PASS 9.derive 18:21
+  PASS 9.derive 18:22
+  PASS 9.derive 18:23
+  PASS 9.derive 18:24
+  PASS 9.derive 18:25
+  PASS 9.derive 18:26
+  PASS 9.derive 18:27
+  PASS 9.derive 18:28
+  PASS 9.derive 18:29
+  PASS 9.derive 18:30
+  PASS 9.derive 18:31
+  PASS 9.derive 18:32
+  PASS 9.derive 18:33
+  PASS 9.derive 18:34
+  PASS 9.derive 18:35
+  PASS 9.derive 18:36
+  PASS 9.derive 18:37
+  PASS 9.derive 18:38
+  PASS 9.derive 18:39
+  PASS 9.derive 18:40
+  PASS 9.derive 18:41
+  PASS 9.derive 18:42
+  PASS 9.derive 18:43
+  PASS 9.derive 18:44
+  PASS 9.derive 18:45
+  PASS 9.derive 18:46
+  PASS 9.derive 18:47
+  PASS 9.derive 18:48
+  PASS 9.derive 18:49
+  PASS 9.derive 18:50
+  PASS 9.derive 18:51
+  PASS 9.derive 18:52
+  PASS 9.derive 18:53
+  PASS 9.derive 18:54
+  PASS 9.derive 18:55
+  PASS 9.derive 18:56
+  PASS 9.derive 18:57
+  PASS 9.derive 18:58
+  PASS 9.derive 18:59
+  PASS 9.derive 19:00
+  PASS 9.derive 19:01
+  PASS 9.derive 19:02
+  PASS 9.derive 19:03
+  PASS 9.derive 19:04
+  PASS 9.derive 19:05
+  PASS 9.derive 19:06
+  PASS 9.derive 19:07
+  PASS 9.derive 19:08
+  PASS 9.derive 19:09
+  PASS 9.derive 19:10
+  PASS 9.derive 19:11
+  PASS 9.derive 19:12
+  PASS 9.derive 19:13
+  PASS 9.derive 19:14
+  PASS 9.derive 19:15
+  PASS 9.derive 19:16
+  PASS 9.derive 19:17
+  PASS 9.derive 19:18
+  PASS 9.derive 19:19
+  PASS 9.derive 19:20
+  PASS 9.derive 19:21
+  PASS 9.derive 19:22
+  PASS 9.derive 19:23
+  PASS 9.derive 19:24
+  PASS 9.derive 19:25
+  PASS 9.derive 19:26
+  PASS 9.derive 19:27
+  PASS 9.derive 19:28
+  PASS 9.derive 19:29
+  PASS 9.derive 19:30
+  PASS 9.derive 19:31
+  PASS 9.derive 19:32
+  PASS 9.derive 19:33
+  PASS 9.derive 19:34
+  PASS 9.derive 19:35
+  PASS 9.derive 19:36
+  PASS 9.derive 19:37
+  PASS 9.derive 19:38
+  PASS 9.derive 19:39
+  PASS 9.derive 19:40
+  PASS 9.derive 19:41
+  PASS 9.derive 19:42
+  PASS 9.derive 19:43
+  PASS 9.derive 19:44
+  PASS 9.derive 19:45
+  PASS 9.derive 19:46
+  PASS 9.derive 19:47
+  PASS 9.derive 19:48
+  PASS 9.derive 19:49
+  PASS 9.derive 19:50
+  PASS 9.derive 19:51
+  PASS 9.derive 19:52
+  PASS 9.derive 19:53
+  PASS 9.derive 19:54
+  PASS 9.derive 19:55
+  PASS 9.derive 19:56
+  PASS 9.derive 19:57
+  PASS 9.derive 19:58
+  PASS 9.derive 19:59
+  PASS 9.derive 20:00
+  PASS 9.derive 20:01
+  PASS 9.derive 20:02
+  PASS 9.derive 20:03
+  PASS 9.derive 20:04
+  PASS 9.derive 20:05
+  PASS 9.derive 20:06
+  PASS 9.derive 20:07
+  PASS 9.derive 20:08
+  PASS 9.derive 20:09
+  PASS 9.derive 20:10
+  PASS 9.derive 20:11
+  PASS 9.derive 20:12
+  PASS 9.derive 20:13
+  PASS 9.derive 20:14
+  PASS 9.derive 20:15
+  PASS 9.derive 20:16
+  PASS 9.derive 20:17
+  PASS 9.derive 20:18
+  PASS 9.derive 20:19
+  PASS 9.derive 20:20
+  PASS 9.derive 20:21
+  PASS 9.derive 20:22
+  PASS 9.derive 20:23
+  PASS 9.derive 20:24
+  PASS 9.derive 20:25
+  PASS 9.derive 20:26
+  PASS 9.derive 20:27
+  PASS 9.derive 20:28
+  PASS 9.derive 20:29
+  PASS 9.derive 20:30
+  PASS 9.derive 20:31
+  PASS 9.derive 20:32
+  PASS 9.derive 20:33
+  PASS 9.derive 20:34
+  PASS 9.derive 20:35
+  PASS 9.derive 20:36
+  PASS 9.derive 20:37
+  PASS 9.derive 20:38
+  PASS 9.derive 20:39
+  PASS 9.derive 20:40
+  PASS 9.derive 20:41
+  PASS 9.derive 20:42
+  PASS 9.derive 20:43
+  PASS 9.derive 20:44
+  PASS 9.derive 20:45
+  PASS 9.derive 20:46
+  PASS 9.derive 20:47
+  PASS 9.derive 20:48
+  PASS 9.derive 20:49
+  PASS 9.derive 20:50
+  PASS 9.derive 20:51
+  PASS 9.derive 20:52
+  PASS 9.derive 20:53
+  PASS 9.derive 20:54
+  PASS 9.derive 20:55
+  PASS 9.derive 20:56
+  PASS 9.derive 20:57
+  PASS 9.derive 20:58
+  PASS 9.derive 20:59
+  PASS 9.derive 21:00
+  PASS 9.derive 21:01
+  PASS 9.derive 21:02
+  PASS 9.derive 21:03
+  PASS 9.derive 21:04
+  PASS 9.derive 21:05
+  PASS 9.derive 21:06
+  PASS 9.derive 21:07
+  PASS 9.derive 21:08
+  PASS 9.derive 21:09
+  PASS 9.derive 21:10
+  PASS 9.derive 21:11
+  PASS 9.derive 21:12
+  PASS 9.derive 21:13
+  PASS 9.derive 21:14
+  PASS 9.derive 21:15
+  PASS 9.derive 21:16
+  PASS 9.derive 21:17
+  PASS 9.derive 21:18
+  PASS 9.derive 21:19
+  PASS 9.derive 21:20
+  PASS 9.derive 21:21
+  PASS 9.derive 21:22
+  PASS 9.derive 21:23
+  PASS 9.derive 21:24
+  PASS 9.derive 21:25
+  PASS 9.derive 21:26
+  PASS 9.derive 21:27
+  PASS 9.derive 21:28
+  PASS 9.derive 21:29
+  PASS 9.derive 21:30
+  PASS 9.derive 21:31
+  PASS 9.derive 21:32
+  PASS 9.derive 21:33
+  PASS 9.derive 21:34
+  PASS 9.derive 21:35
+  PASS 9.derive 21:36
+  PASS 9.derive 21:37
+  PASS 9.derive 21:38
+  PASS 9.derive 21:39
+  PASS 9.derive 21:40
+  PASS 9.derive 21:41
+  PASS 9.derive 21:42
+  PASS 9.derive 21:43
+  PASS 9.derive 21:44
+  PASS 9.derive 21:45
+  PASS 9.derive 21:46
+  PASS 9.derive 21:47
+  PASS 9.derive 21:48
+  PASS 9.derive 21:49
+  PASS 9.derive 21:50
+  PASS 9.derive 21:51
+  PASS 9.derive 21:52
+  PASS 9.derive 21:53
+  PASS 9.derive 21:54
+  PASS 9.derive 21:55
+  PASS 9.derive 21:56
+  PASS 9.derive 21:57
+  PASS 9.derive 21:58
+  PASS 9.derive 21:59
+  PASS 9.derive 22:00
+  PASS 9.derive 22:01
+  PASS 9.derive 22:02
+  PASS 9.derive 22:03
+  PASS 9.derive 22:04
+  PASS 9.derive 22:05
+  PASS 9.derive 22:06
+  PASS 9.derive 22:07
+  PASS 9.derive 22:08
+  PASS 9.derive 22:09
+  PASS 9.derive 22:10
+  PASS 9.derive 22:11
+  PASS 9.derive 22:12
+  PASS 9.derive 22:13
+  PASS 9.derive 22:14
+  PASS 9.derive 22:15
+  PASS 9.derive 22:16
+  PASS 9.derive 22:17
+  PASS 9.derive 22:18
+  PASS 9.derive 22:19
+  PASS 9.derive 22:20
+  PASS 9.derive 22:21
+  PASS 9.derive 22:22
+  PASS 9.derive 22:23
+  PASS 9.derive 22:24
+  PASS 9.derive 22:25
+  PASS 9.derive 22:26
+  PASS 9.derive 22:27
+  PASS 9.derive 22:28
+  PASS 9.derive 22:29
+  PASS 9.derive 22:30
+  PASS 9.derive 22:31
+  PASS 9.derive 22:32
+  PASS 9.derive 22:33
+  PASS 9.derive 22:34
+  PASS 9.derive 22:35
+  PASS 9.derive 22:36
+  PASS 9.derive 22:37
+  PASS 9.derive 22:38
+  PASS 9.derive 22:39
+  PASS 9.derive 22:40
+  PASS 9.derive 22:41
+  PASS 9.derive 22:42
+  PASS 9.derive 22:43
+  PASS 9.derive 22:44
+  PASS 9.derive 22:45
+  PASS 9.derive 22:46
+  PASS 9.derive 22:47
+  PASS 9.derive 22:48
+  PASS 9.derive 22:49
+  PASS 9.derive 22:50
+  PASS 9.derive 22:51
+  PASS 9.derive 22:52
+  PASS 9.derive 22:53
+  PASS 9.derive 22:54
+  PASS 9.derive 22:55
+  PASS 9.derive 22:56
+  PASS 9.derive 22:57
+  PASS 9.derive 22:58
+  PASS 9.derive 22:59
+  PASS 9.derive 23:00
+  PASS 9.derive 23:01
+  PASS 9.derive 23:02
+  PASS 9.derive 23:03
+  PASS 9.derive 23:04
+  PASS 9.derive 23:05
+  PASS 9.derive 23:06
+  PASS 9.derive 23:07
+  PASS 9.derive 23:08
+  PASS 9.derive 23:09
+  PASS 9.derive 23:10
+  PASS 9.derive 23:11
+  PASS 9.derive 23:12
+  PASS 9.derive 23:13
+  PASS 9.derive 23:14
+  PASS 9.derive 23:15
+  PASS 9.derive 23:16
+  PASS 9.derive 23:17
+  PASS 9.derive 23:18
+  PASS 9.derive 23:19
+  PASS 9.derive 23:20
+  PASS 9.derive 23:21
+  PASS 9.derive 23:22
+  PASS 9.derive 23:23
+  PASS 9.derive 23:24
+  PASS 9.derive 23:25
+  PASS 9.derive 23:26
+  PASS 9.derive 23:27
+  PASS 9.derive 23:28
+  PASS 9.derive 23:29
+  PASS 9.derive 23:30
+  PASS 9.derive 23:31
+  PASS 9.derive 23:32
+  PASS 9.derive 23:33
+  PASS 9.derive 23:34
+  PASS 9.derive 23:35
+  PASS 9.derive 23:36
+  PASS 9.derive 23:37
+  PASS 9.derive 23:38
+  PASS 9.derive 23:39
+  PASS 9.derive 23:40
+  PASS 9.derive 23:41
+  PASS 9.derive 23:42
+  PASS 9.derive 23:43
+  PASS 9.derive 23:44
+  PASS 9.derive 23:45
+  PASS 9.derive 23:46
+  PASS 9.derive 23:47
+  PASS 9.derive 23:48
+  PASS 9.derive 23:49
+  PASS 9.derive 23:50
+  PASS 9.derive 23:51
+  PASS 9.derive 23:52
+  PASS 9.derive 23:53
+  PASS 9.derive 23:54
+  PASS 9.derive 23:55
+  PASS 9.derive 23:56
+  PASS 9.derive 23:57
+  PASS 9.derive 23:58
+  PASS 9.derive 23:59
+  PASS 9.hour 24 invalid
+  PASS 9.hour 99 invalid
+  PASS 9.minute 60 invalid
+  PASS 9.h single 3 → 03 advance
+  PASS 9.h single 1 → keep
+  PASS 9.h 23 valid
+  PASS 9.h 25 rejected
+  PASS 9.m single 6 → 06 advance
+  PASS 9.m 59 valid
+  PASS 9.type 2 → hh='2'
+  PASS 9.type 21 → hh='21' advance to mm
+  PASS 9.type 3 → mm='3'
+  PASS 9.type 30 → mm='30'
+  PASS 9.final '21:30'
+
+── 10. Numeric input sanitiser — strict mode ──
+  PASS 10.1 strips letters
+  PASS 10.2 cuts at the first dot in int mode — never 1234
+  PASS 10.3 strips scientific notation
+  PASS 10.4 empty string ok
+  PASS 10.5 pure digits pass
+  PASS 10.6 first dot kept
+  PASS 10.7 second dot stripped
+  PASS 10.8 negative allowed
+  PASS 10.9 negative blocked by default
+  PASS 10.10 1000-case fuzz: all outputs match numeric grammar
+
+── 11. Email templates render correctly ──
+  PASS 11.1 selection-closed email has title
+  PASS 11.2 selection-closed email states the EXACT payout (not 'waiting for results')
+  PASS 11.3 selection-closed email links to market
+  PASS 11.4 selection-closed email has bilingual text
+  PASS 11.5 no raw HTML tags leaked (XSS safe)
+  PASS 11.6 bet-placed email renders
+  PASS 11.7 bet-placed XSS safe (no raw <b>)
+
+── 12. State machine integrity ──
+[audit] ADMIN aipoll.generate_started officer_lifecycle_test AIPoll#aipoll_6472c19eca728892d8c0a0eb
+  PASS 12.1 starts at PENDING_REVIEW
+[audit] ADMIN aipoll.pending_review officer_lifecycle_test AIPoll#aipoll_6472c19eca728892d8c0a0eb
+[audit] ADMIN aipoll.generate_started officer_lifecycle_test AIPoll#aipoll_ddffb8a3be026eb5b0faa767
+[audit] ADMIN aipoll.filtered officer_lifecycle_test AIPoll#aipoll_ddffb8a3be026eb5b0faa767
+  PASS 12.2 cannot approve FILTERED
+[audit] ADMIN aipoll.generate_started officer_lifecycle_test AIPoll#aipoll_a8a37b13df06b34b87eec87d
+[audit] ADMIN aipoll.pending_review officer_lifecycle_test AIPoll#aipoll_a8a37b13df06b34b87eec87d
+  PASS 12.3 approve refused on poll with filter reasons (if present)
+
+── 13. Duplicate detection ──
+[audit] ADMIN aipoll.generate_started officer_lifecycle_test AIPoll#aipoll_254d0fe25175ac43ffca2543
+  PASS 13.1 first poll passes
+[audit] ADMIN aipoll.pending_review officer_lifecycle_test AIPoll#aipoll_254d0fe25175ac43ffca2543
+[audit] ADMIN aipoll.generate_started officer_lifecycle_test AIPoll#aipoll_4003652e66dd396b3c7ef10d
+  PASS 13.2 duplicate title → FILTERED
+  PASS 13.3 duplicate_poll reason
+
+── 14. isSelectionClosed / isClosedByTime edge cases ──
+  PASS 14.1 no selectionClosedAt, resolution future → not closed
+  PASS 14.2 no selectionClosedAt, resolution past → closed
+  PASS 14.3 selection past, resolution future → selection closed but not time-closed
+  PASS 14.4 RESOLVED → always closed
+  PASS 14.5 VOIDED → always closed
+
+════════════════════════════════════════════════════════════
+poll-lifecycle-e2e: 1545 passed, 0 failed
+════════════════════════════════════════════════════════════
+[audit] ADMIN aipoll.filtered officer_lifecycle_test AIPoll#aipoll_4003652e66dd396b3c7ef10d
+[email] sendEmailToUser withheld — money mail to an unconfirmed address for user usr_e2e_player… (user.email=p***@test.tz)
+[email] sendEmailToUser withheld — money mail to an unconfirmed address for user usr_e2e_player… (user.email=p***@test.tz)

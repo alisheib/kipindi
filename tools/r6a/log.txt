@@ -2,3 +2,108 @@ R6-A running log (fixer R6-A; worktree F:\kipindi-r6a, branch vodacom-visual-r6a
 ==========================================================================================
 2026-10-09 ~20:05 EAT  Read r5-common.md + r6a-brief.md + review6/A (notes-A.md, log.txt tail, t2/t4/t5 scripts+outputs).
                        Worktree clean at 89893725. node_modules is a junction (never delete).
+~20:20  Investigation done (read-only):
+  A1: responsible-gambling.ts:38-39 fmtDate (en-GB, no timeZone) -> :335 selfExclusionHtml endDate, :373 coolOffHtml endDate.
+      email.ts:1575-1586 selfExclusionHtml (EN+SW lines + Unlocks row all endDate), :1588-1604 coolOffHtml (SW untilIso.slice(0,10)).
+      Sibling: market-service.ts:1844 betPlacedHtml resolutionDate: market.resolutionAt.slice(0,10) -> email.ts:1093 "Resolves" row.
+      Builders also called by scripts: comms-email-truth.test.mts (226-231, 105-106, 575), comms-email-shots.mts (50,115,116),
+      email-stress.test.mts (83-84), poll-lifecycle-e2e.test.mts (558), email-preview.mts (13).
+      Dictionary: common.permanent = Permanent/Kudumu/永久; common.monthsShort; formatBreakEnd (break-end.ts).
+      Permanent = selfExclusionStandingOf(until).permanent (actions.ts:58-61 convention: never by period name).
+      Bell sibling notifySelfExclusion (notification-service.ts:1627) says "until 15 Sep 2126, 14:00" for perm -> report.
+      Re-take mismatch (coolOff 1h during a 1w break -> "paused for 1 hour, until <week end>") -> owner question.
+  A2: bet surfaces placing in place = SidePicker(+ConvictionDial) only in markets/[id]/page.tsx; UpDownCard (UpDownStakeControls)
+      only in updown/page.tsx; RoundActionPanel->RoundStakePanel only in updown/[roundId]/page.tsx. All doors (MarketCard YES/NO,
+      home kp-qrow YES/NO, featured card, updown-band Juu/Chini #stake, updown-handover next, /live, ticket/position cards)
+      lead to those pages -> gated by the page.
+  A3: updown/history/page.tsx:381-405 no-rows; positions/performance/page.tsx:202-211. Sweep: leaderboard/page.tsx:318
+      ("Place a prediction to get on the board" + Browse), profile/activity/page.tsx:143 (own comment calls it "invited to go
+      and bet") = same pattern. Excluded: watchlist (follow, not stake), live/results/markets/fairness/notifications (world),
+      wallet + receipts (deposit door already depositOpen-gated), proposals/invite (owner notes), updown board empty (world).
+~20:35  A1 RE-MEASURED (TZ=UTC, S\r6a\a1-measure.mts -> a1-before.txt): CONFIRMED.
+        24h break @9 Oct 01:30 EAT (end 10 Oct 01:30 EAT): email "until 09 Oct 2026" / sw "hadi 2026-10-09" / Resumes "09 Oct 2026";
+        bell "hadi 10 Okt, 01:30". 1h break: no time. 24h exclusion @02:10: sw "hadi 09 Oct 2026" (English month, day early).
+        Permanent: "for permanent ... until 15 Sept 2126" (EN+SW+Unlocks row). betPlacedHtml Resolves "2026-10-09" for 10 Oct 01:00 EAT.
+        DESIGN: main (origin/main) LACKS src/lib/break-end.ts -> hotfix uses eat-day's formatEatDateTime (= formatBreakEnd for an
+        instant). main's email.ts lacks R5-B's eat-day/dict imports -> branch uses R5-B's dict; a main patch file with its own
+        imports goes to S\r6a\a1-main-hotfix.patch. A1 proof = separate suite scripts/rg-email-end.test.mts (test:rg-email-end) so
+        it cherry-picks with the fix. Bell sibling (notifySelfExclusion permanent -> date) = branch-only hunk (R4-I code), tested in r6a.
+        Bet surfaces notice = ONE form: Callout neutral size md glyph lock role=status (RG page's standing notice), shared
+        component src/components/rg/bet-break-notice.tsx; market column keeps its sr-only heading.
+~20:55  A1 IMPLEMENTED: email.ts (import formatEatDateTime on R5-B's eat-day line; betPlacedHtml resolvesAt + fmtDateTime row,
+        no row if unparseable; rgEndIn helper; selfExclusionHtml {period, untilIso, permanent}; coolOffHtml {duration, untilIso});
+        responsible-gambling.ts (fmtDate removed, selfExclusionStandingOf -> permanent, periodLabel; coolOff passes untilIso);
+        market-service.ts:1844 resolvesAt: market.resolutionAt; scripts re-shaped: comms-email-truth (105-106, 227-232, 577),
+        comms-email-shots (50,115,116), email-preview (13), email-stress (83-84), poll-lifecycle-e2e (558). CRLF verified.
+        AFTER (S\r6a\a1-after.txt, TZ=UTC): 24h break -> "until 10 Oct, 01:30" / "hadi 10 Okt, 01:30" / Resumes "10 Oct, 01:30"
+        (= bell); 1h -> "9 Oct, 15:00"; exclusion sw "hadi 10 Okt, 02:10"; 6m "9 Apr 2027, 14:00"; permanent -> no date,
+        "Period Permanent"; betPlaced Resolves "10 Oct 2026, 01:00 EAT".
+~21:15  Bell sibling: notification-service.ts notifySelfExclusion -> lazy selfExclusionStandingOf, permanent drops "until" clause
+        (fails safe to the dated sentence). A2: new src/components/rg/bet-break-notice.tsx (Callout neutral md lock status,
+        keepText); markets/[id]/page.tsx (breakSentence body; aside branch `session && breakBody` with sr-only D40 heading +
+        oneSidedCallout + notice); updown/page.tsx (breakRead beside board, breakBody to every card); updown-card.tsx (prop
+        breakBody; `canQuickBet && breakBody` -> notice); updown/[roundId]/page.tsx (breakRead beside round, stakePanel.breakBody);
+        round-action-panel.tsx (bettable: authed+breakBody -> section#stake w/o card chrome + notice; stake minus breakBody to
+        RoundStakePanel). A3: updown/history (no-rows: breakBody ?? udNoHistoryBody, no button), performance (totalBets 0),
+        leaderboard (empty board, lazy currentSession+isLockedOut), activity (summary.empty, breakStateFromTimers over getRgUsage).
+        All touched files CRLF-verified. 18 modified + 1 new.
+~21:50  Suites written + registered (package.json: test:rg-email-end after test:rg-doors; test:visual-pass-r6a after r5g).
+        scripts/rg-email-end.test.mts (A1, main-compatible deps only): 28/28 exit 0.
+        scripts/visual-pass-r6a.test.mts (A2/A3/bell + censuses, executes card/panel/notice/EmptyState/bell): 42/42 exit 0
+        (fixed 3 census bugs of my own: dial classification, door regex across templates, 8-line gate window).
+        NEXT: mutation proof S\r6a\mutation-proof.cjs (30 plants), then existing suites one at a time, then main patch + report.
+~22:25  MUTATION PROOF (S\r6a\mutation-proof.cjs -> mutation-result.txt / mutation-run.log): 30 planted (12 A1 on test:rg-email-end,
+        18 A2/A3/bell/census on test:visual-pass-r6a), 30 caught on their named check, 30 restored byte-identical (sha-256).
+        Backups of every planted file in S\r6a\backup\. git status after: only R6-A's 19 modified/new files.
+~22:40  MAIN HOTFIX: S\r6a\a1-main-hotfix.patch (made by make-main-hotfix.cjs from origin/main blobs + the branch's exact A1 hunks;
+        only email.ts's import hunk differs: main gets `import { formatEatDateTime } from "@/lib/eat-day"; import { dict } ...`
+        beside its utils import). `git apply --cached --check` against origin/main (temp index): exit 0, all 10 files.
+        Full main tree (git archive origin/main) + patched files in a temp folder: test:rg-email-end 28/28, cert-c1 1237/0,
+        email-stress 14/0 — all exit 0. Temp folder removed (no junction inside).
+~22:55  Predicted notice geometry (S\r6a\predict-out.txt, Inter 13px kerned, md Callout text col = host-75px):
+        market column 285px (lg) / 283px (390): sw break 5 lines ~119px, en 4 lines ~102px, zh 3 lines ~84px; exclusion 3/3/2.
+        board card narrowest (1024, 3 cols): col ~200px -> sw/en break 7 lines ~155px; card at 1280 285px -> 5/4 lines.
+        round panel 1024 (~375px): 300px col -> sw 5, en 4 lines. Suite run (253 suites) in progress in background.
+~23:20  DRIVE ADDITION for the lock turn: S\r6a\qa-journey-edges.r6a.mjs (copy of S\edges\qa-journey-edges.mjs, original
+        untouched; node --check ok; +41/-6): scenario 1 (break) market expectation -> the notice; yes/betConfirm/betAttempt
+        BLOCKED is the pass; new cells updown, round (#stake via ?side=UP#stake), udHistory, performance, activity.
+        Suite run: red:kyc-gate REFUSES on uncommitted market-service.ts ("Commit first") — harness precondition, not run.
+~23:25  OWNER/S12 noted (not changed — approved RG copy): selfExclusionHtml says "disabled until {date}" + row "Unlocks", and the
+        bell "closed to betting and deposits until {end}", but since Ali's 2026-08-27 ruling (responsible-gambling.ts:409-427)
+        the period is a MINIMUM and the account never reopens by itself; auth.selfExclusionUntilBody already says so.
+17:50 EAT (real clock)  NOTE: the ~21:15-23:25 stamps above were my estimates and ran ahead; real time now as stamped. Suite run 27/253 green except red:kyc-gate (commit guard).
+20:50 EAT (corrected: Git Bash's date has no zone database; the line above is UTC 17:50 = 20:50 EAT).
+---- HAND-OVER STATE (if this session stops, everything below is true at this point) ----
+DONE + VERIFIED: A1 (letters + receipt row), bell sibling, A2 (market column, UD card, UD round panel + door census),
+  A3 (UD history no-rows, performance) + sweep (leaderboard, activity). Suites: test:rg-email-end 28/28, test:visual-pass-r6a
+  42/42. Mutation proof 30/30 caught + restored. Main hotfix patch verified on origin/main (apply-check + full-tree run).
+  Drive addition for the lock turn: S\r6a\qa-journey-edges.r6a.mjs.
+IN FLIGHT: S\r6a\run-suites.cjs over S\r6a\run-list.txt (253 suites, one at a time) -> suites-all.tsv / suites-all-reds.txt.
+OPEN (report): owner questions O1 duplicate break sentence on the market page (R4-I's "Your positions" line + new column
+  notice); O2 break re-take letter says "for 1 hour" while the kept end is the longer one; O3 the self-exclusion letter/bell
+  say "until/Unlocks" though an exclusion never reopens by itself (2026-08-27 ruling); O4 bet-column notice without a title
+  (RG page form, not the deposit page's stack); O5 fmtDateTime prints "Sept" (en-GB ICU) on every email row vs dict "Sep".
+  S12: permanent-exclusion letter sentence ("for permanent" grammar; no Swahili word); bell permanent sentence; O2/O3 words.
+21:35 EAT  RE-PIN test:one-sided 8.5 (scripts/one-sided.test.mts:357): {oneSidedCallout} in the aside 2 -> 3 (R6-A's break arm,
+        a third exclusive arm; + a clause pinning the break arm's heading-then-note order). Evaluated: count 3, arm true.
+        red:one-sided had refused because test:one-sided was red on my tree (that pin) -> re-run after the main pass.
+        red:officer-hold 10/13 (cases 4/5/7 uncaught: verdict-notice guards in market-service, untouched by R6-A) -> to be
+        run on a pristine HEAD archive after the main pass to prove pre-existing.
+21:45 EAT  red:updown-push 4/5: refund-goes-silent's anchor `${opts.marketTitle.en.slice(0, 70)}` is gone AT HEAD (R5-B's clipQuote,
+        notification-service.ts:535 identical at HEAD) — pre-existing harness drift, for the integrator. red:withdraw-email-gate,
+        red:house-bot-c5/console/engine/money, red:cashout-price-guard, red:kyc-gate: commit guard (not run on an uncommitted tree).
+21:55 EAT  test:house-bot-holder-lifecycle 14/16: 2.1 (scripts/live/dry-fire/world.mts undeclared) + 2.2 (35 > ceiling 34) —
+        replica census (S\r6a\census-holder.mts): 35 members at HEAD too, identical list -> PRE-EXISTING (marketing dry-fire).
+        test:house-bot-disclosure: the known red (legal byte pin). NOTE: I ran house-bot-holder-lifecycle once (3s) while the
+        runner was active — a slip against one-at-a-time; not repeated.
+22:20 EAT  FULL RUN DONE (S\r6a\suites-all.tsv): 253 suites, 241 exit 0, 12 non-zero, all classified:
+        7 commit-guard refusals (red:kyc-gate, red:cashout-price-guard, red:house-bot-c5/console/engine/money,
+        red:withdraw-email-gate) — they restore to HEAD, so they refuse an uncommitted tree: integrator runs them post-merge;
+        red:one-sided — re-run after the 8.5 re-pin: 31/31 caught, exit 0; red:officer-hold 10/13 — SAME 10/13 (cases 4/5/7)
+        on a pristine `git archive HEAD` copy -> pre-existing; red:updown-push 4/5 — anchor gone at HEAD (R5-B) -> pre-existing;
+        test:house-bot-disclosure — known red; test:house-bot-holder-lifecycle — census identical at HEAD -> pre-existing.
+        Temp copy removed.
+22:35 EAT  Mutation proof +1 (R6-19, test:one-sided 8.5's re-pin): 31 planted / 31 caught / 31 restored byte-identical overall.
+        Final re-runs (one at a time): rg-email-end 28/28, visual-pass-r6a 42/42, one-sided ALL PASS, red-anchors 5070/0,
+        decomment 22/0 — all exit 0. Main patch re-verified identical to the final A1 files. git: 20 modified + 3 new, HEAD
+        89893725 unchanged, nothing committed/stashed. REPORT next (SubagentHandback).

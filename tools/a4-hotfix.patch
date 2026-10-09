@@ -1,0 +1,354 @@
+diff --git a/next.config.ts b/next.config.ts
+index da145581f..a06d82088 100644
+--- a/next.config.ts
++++ b/next.config.ts
+@@ -1,4 +1,6 @@
+ import type { NextConfig } from "next";
++// ⛔ Relative, never "@/…": Next loads this file through its own TypeScript hook, where the app's path aliases do not exist.
++import { staticSecurityHeaders } from "./src/lib/security-headers";
+ 
+ /** The only addresses sent a one-year `immutable` cache: public/'s own static folders and files, and Next's hashed build
+  *  output. Exact folders, never a file-name suffix (see `headers()` below; `test:static-cache-scope`). */
+@@ -18,7 +20,8 @@ const config: NextConfig = {
+   reactStrictMode: true,
+   // Framework and version disclosure on every response, and the first line of
+   // most scanner reports. The security headers that must STAY are set in
+-  // src/proxy.ts — this removes one header without touching those.
++  // src/proxy.ts and, all but the CSP, by `headers()` below (one list,
++  // src/lib/security-headers.ts) — this removes one header without touching those.
+   poweredByHeader: false,
+   typedRoutes: true,
+   /**
+@@ -84,8 +87,16 @@ const config: NextConfig = {
+   // phone and balance) kept at the edge for the next visitor of the same address; and a browser kept any page whose
+   // address merely ended in those letters for a year without asking again. `test:static-cache-scope` holds every source
+   // to a real folder or file under public/ and proves, with Next's own matcher, that no page address matches.
++  // ⭐ EVERY RESPONSE CARRIES THE STATIC SECURITY HEADERS (review 6, A4 · 2026-10-09) — X-Frame-Options DENY, nosniff,
++  // Referrer-Policy, Permissions-Policy, COOP and the rest, HSTS in production: the list the proxy sends, from its one
++  // definition (`src/lib/security-headers.ts`). The proxy's matcher skips static files, and a page rendered there — the
++  // root not-found of a missing file under /icons/, /brand/, /og/…, inside the signed-in shell — went out with none of
++  // them, so another site could frame it. The CSP stays the proxy's: it depends on the request (HTTPS or not).
++  // `test:static-cache-scope` §5 holds this rule to that list and proves, with Next's own matcher, that it reaches every
++  // address — pages and static files alike.
+   async headers() {
+     return [
++      { source: "/:path*", headers: staticSecurityHeaders(process.env.NODE_ENV === "production") },
+       ...IMMUTABLE_STATIC_SOURCES.map((source) => ({
+         source,
+         headers: [{ key: "Cache-Control", value: "public, max-age=31536000, immutable" }],
+diff --git a/scripts/privacy-notice.test.mts b/scripts/privacy-notice.test.mts
+index 86efc4ab8..4d0100879 100644
+--- a/scripts/privacy-notice.test.mts
++++ b/scripts/privacy-notice.test.mts
+@@ -249,6 +249,8 @@ const cryptoSrc = code(read("src/lib/server/crypto.ts"));
+ const totpSrc = code(read("src/lib/server/totp.ts"));
+ const backupSrc = code(read("src/lib/server/backup/core.ts"));
+ const proxySrc = code(read("src/proxy.ts"));
++// The static security headers' one definition (review 6, A4): the proxy and next.config.ts both send this list.
++const headersSrc = code(read("src/lib/security-headers.ts"));
+ const RETIRED: Record<Loc, RegExp[]> = {
+   en: [/TLS 1\.2/, /1\.2\+/, /database tier/i, /SP 800-132/, /theme preference/i],
+   sw: [/TLS 1\.2/, /1\.2\+/, /tabaka la hifadhidata/i, /SP 800-132/, /mandhari/i],
+@@ -276,7 +278,13 @@ ok("§3b the code behind §8: HMAC-SHA-256 sessions, scrypt passwords and OTPs,
+   && /export async function hashOtp[\s\S]{0,200}scryptAsync\(`\$\{otpPepper\(\)\}:\$\{code\}`, salt, 32\)/.test(cryptoSrc)
+   && /createCipheriv\("aes-256-gcm", encKey\(\), iv\)/.test(cryptoSrc) && /encryptSecret\(/.test(totpSrc)
+   && /createCipheriv\("aes-256-gcm", deriveKey\(passphrase, salt\), iv\)/.test(backupSrc)
+-  && /"Strict-Transport-Security": "max-age=\d+; includeSubDomains; preload"/.test(proxySrc));
++  // Review 6, A4 (2026-10-09) moved this pin with the header: HSTS is defined ONCE, in src/lib/security-headers.ts, and
++  // the proxy sends it (production) from there — next.config.ts sends the same list on every response. (The statement
++  // that sends it is read from the RAW proxy: `code` takes the "/*" inside "https://*.googletagmanager.com" for a comment
++  // and drops the file from there to the next "*/", withSecurityHeaders with it.)
++  && /"Strict-Transport-Security": "max-age=\d+; includeSubDomains; preload"/.test(headersSrc)
++  && proxySrc.includes('import { PROD_HEADERS, SECURITY_HEADERS } from "@/lib/security-headers";')
++  && /for \(const \[k, v\] of Object\.entries\(PROD_HEADERS\)\) res\.headers\.set\(k, v\);/.test(read("src/proxy.ts")));
+ ok("§3c the ISO 27001 / pentest sentence still rests on a recorded attestation",
+   /### The ISO 27001 \/ penetration-testing claim — Ali's attestation, recorded/.test(decisionsSrc));
+ 
+diff --git a/scripts/proxy-scope.test.mts b/scripts/proxy-scope.test.mts
+index 6bb84972a..d8bb85784 100644
+--- a/scripts/proxy-scope.test.mts
++++ b/scripts/proxy-scope.test.mts
+@@ -4,15 +4,20 @@
+  * 🔴 THE DEFECT THIS EXISTS FOR (2026-10-09, found by the visual pass's code review). src/proxy.ts's matcher skipped
+  * `.*\.(?:svg|png|jpg|jpeg|gif|webp|ico)$` — any address ending in an image extension, PAGES included. A page at
+  * `/markets/x.png` (a real 200 with the signed-in reader's header) then went out with none of `withSecurityHeaders`'
+- * headers — X-Frame-Options DENY, the CSP, HSTS, nosniff, Referrer-Policy; the proxy is their only source — and no
++ * headers — X-Frame-Options DENY, the CSP, HSTS, nosniff, Referrer-Policy; the proxy was their only source — and no
+  * `x-pathname`, so it could be framed by another site. The same suffix defect next.config's immutable-cache rule had
+  * (hotfix 9cb95938, test:static-cache-scope).
++ * 🔴 AND THE FAVICONS WERE A PREFIX (review 6, A4 · 2026-10-09): `favicon.ico|favicon.svg`, an unescaped dot and no end,
++ * so `/favicon.icon`, `/favicon.ico/x`, `/faviconXico` and `/favicon.svgz` — page addresses — skipped the proxy too. They
++ * are `favicon\.ico$` and `favicon\.svg$` now. (Since the same review every response also carries the static security
++ * headers from next.config.ts — all but the CSP — so what the matcher skips is covered: test:static-cache-scope §5.)
+  *
+  * It reads the matcher from src/proxy.ts and compiles it with NEXT'S OWN `getMiddlewareMatchers` (the build's
+  * middleware analysis), so what it proves is what the server does.
+- *   §1 every page address runs the proxy — the ones the old rule skipped, and the app's own routes
++ *   §1 every page address runs the proxy — the ones the old rules skipped (an image suffix, a favicon prefix), and the
++ *      app's own routes
+  *   §2 public/'s static files, the favicons and Next's build output skip it (they need no page headers)
+- *   §3 CONTROL: the old suffix matcher DID skip those pages; a PLANT of it is reported by §1
++ *   §3 CONTROL: the old suffix matcher, and the old favicon prefix, DID skip those pages; a PLANT of each is reported by §1
+  */
+ import { readFileSync, readdirSync, statSync } from "node:fs";
+ import { join } from "node:path";
+@@ -51,6 +56,11 @@ const PAGES = [
+ ];
+ const skipped = PAGES.filter((p) => !proxy(p));
+ ok(`1.1 · all ${PAGES.length} page addresses run the proxy`, skipped.length === 0, skipped.join(" · "));
++/** Addresses that only LOOK like a favicon — each a page address (the root not-found, in the signed-in shell). */
++const FAVICON_LOOKALIKES = ["/favicon.icon", "/favicon.ico/x", "/faviconXico", "/favicon.svgz", "/favicon.ico.json", "/faviconxsvg", "/favicon.ico/", "/favicon.svg/a.png"];
++const lookalikesSkipped = FAVICON_LOOKALIKES.filter((p) => !proxy(p));
++ok(`1.2 · the ${FAVICON_LOOKALIKES.length} addresses that only look like a favicon run the proxy — the favicons are skipped by their exact names (review 6, A4)`,
++  lookalikesSkipped.length === 0, lookalikesSkipped.join(" · "));
+ 
+ console.log("§2 · static files skip it");
+ const PUBLIC = join(process.cwd(), "public");
+@@ -71,6 +81,14 @@ const oldRuns = runs(OLD);
+ ok("3.1 CONTROL · the old suffix matcher skipped pages: /markets/x.png, /positions/abc.jpg, /u/federico.svg ran no proxy",
+   ["/markets/x.png", "/positions/abc.jpg", "/u/federico.svg"].every((p) => !oldRuns(p)) && oldRuns("/markets"));
+ ok("3.2 PLANT · the old suffix matcher put back is reported by §1", PAGES.some((p) => !oldRuns(p)));
++// Round 5's matcher: static folders by name, but the favicons as an unescaped, unanchored prefix.
++const PREFIXED = "/((?!_next/static|_next/image|favicon.ico|favicon.svg|icons/|brand/|pay/|og/|screenshots/|email-signatures/).*)";
++const prefixedRuns = runs(PREFIXED);
++ok("3.3 CONTROL · the favicons as a prefix skipped page addresses: /favicon.icon, /favicon.ico/x, /faviconXico, /favicon.svgz ran no proxy (and the two real favicons skip either way)",
++  ["/favicon.icon", "/favicon.ico/x", "/faviconXico", "/favicon.svgz"].every((p) => !prefixedRuns(p)) && !prefixedRuns("/favicon.ico") && !proxy("/favicon.ico") && !proxy("/favicon.svg"));
++ok("3.4 PLANT · the favicon prefix put back is reported by 1.2", FAVICON_LOOKALIKES.some((p) => !prefixedRuns(p)));
++ok("3.5 · the matcher in src/proxy.ts names the favicons escaped and anchored (`favicon\\.ico$`, `favicon\\.svg$`) — never with a bare dot",
++  MATCHER.includes("favicon\\.ico$|favicon\\.svg$") && !/favicon\.(?:ico|svg)/.test(MATCHER), MATCHER);
+ 
+ console.log(`proxy-scope: ${pass} passed, ${fail} failed`);
+ process.exit(fail ? 1 : 0);
+diff --git a/scripts/static-cache-scope.test.mts b/scripts/static-cache-scope.test.mts
+index df901eea6..491010d97 100644
+--- a/scripts/static-cache-scope.test.mts
++++ b/scripts/static-cache-scope.test.mts
+@@ -15,16 +15,22 @@
+  *   §3 no page address matches — the addresses the old rule caught, and the app's own routes
+  *   §4 CONTROL: the old suffix rule DOES match those pages (the matcher sees what production saw), and a PLANT of it
+  *      back into the list is reported by §3
++ *   §5 EVERY RESPONSE CARRIES THE STATIC SECURITY HEADERS (review 6, A4 · 2026-10-09): headers() sends the proxy's list —
++ *      all but the CSP, HSTS in production — on `/:path*`, which Next's own matcher sends to every address, so what the
++ *      proxy's matcher skips (a missing file under /icons/, /brand/, /og/…: the root not-found, in the signed-in shell,
++ *      once frameable) carries them too; the proxy sends the very same list; CONTROL and PLANTS
+  */
+-import { readdirSync, statSync, existsSync } from "node:fs";
++import { readdirSync, readFileSync, statSync, existsSync } from "node:fs";
+ import { join } from "node:path";
+ import { createRequire } from "node:module";
+ import * as configModule from "../next.config.ts";
++import { PROD_HEADERS, SECURITY_HEADERS } from "../src/lib/security-headers.ts";
+ 
+ const require = createRequire(import.meta.url);
+ const { getPathMatch } = require("next/dist/shared/lib/router/utils/path-match.js") as {
+   getPathMatch: (path: string, options?: Record<string, unknown>) => (pathname: string) => false | Record<string, unknown>;
+ };
++const { modifyRouteRegex } = require("next/dist/lib/redirect-status.js") as { modifyRouteRegex: (regex: string, restricted?: string[]) => string };
+ 
+ let pass = 0, fail = 0;
+ const ok = (name: string, cond: boolean, detail = "") => {
+@@ -39,8 +45,10 @@ type Rule = { source: string; headers: { key: string; value: string }[] };
+ const config = ((configModule as { default?: { default?: unknown } }).default?.default ?? (configModule as { default?: unknown }).default) as { headers: () => Promise<Rule[]> };
+ const rules = (await config.headers()) ?? [];
+ const immutableSources = rules.filter((r) => r.headers.some((h) => h.key.toLowerCase() === "cache-control" && h.value === IMMUTABLE)).map((r) => r.source);
+-/** As the server compiles a header's source (custom routes: strict, unnamed params removed). */
+-const matcherOf = (source: string) => getPathMatch(source, { strict: true, removeUnnamedParams: true });
++/** As the server compiles a header's source (custom routes: strict, unnamed params removed, and the route regex
++ *  modified as `router-utils/filesystem.js` modifies it — an optional trailing slash, so `/:path*` also matches `/`;
++ *  review 6, A4: without the modifier the suite read `/` as unreached where the server reaches it). */
++const matcherOf = (source: string) => getPathMatch(source, { strict: true, removeUnnamedParams: true, regexModifier: (r: string) => modifyRouteRegex(r) });
+ const matchesAny = (sources: readonly string[], path: string) => sources.find((s) => matcherOf(s)(path) !== false) ?? null;
+ 
+ console.log("static-cache-scope — the one-year immutable cache is for static files only");
+@@ -85,5 +93,57 @@ ok("4.1 CONTROL · the old suffix rule matches the pages production cached (/mar
+ const planted = [...immutableSources, OLD];
+ ok("4.2 PLANT · the old suffix rule put back into the list is reported by §3", PAGES.some((p) => matchesAny(planted, p)));
+ 
++console.log("§5 · every response carries the static security headers (all but the CSP)");
++/** headers() as each environment reads it (it asks NODE_ENV when called): HSTS is production's alone. */
++const env = process.env as Record<string, string | undefined>;
++const rulesIn = async (mode: "development" | "production"): Promise<Rule[]> => {
++  const was = env.NODE_ENV;
++  env.NODE_ENV = mode;
++  try { return (await config.headers()) ?? []; } finally { if (was === undefined) delete env.NODE_ENV; else env.NODE_ENV = was; }
++};
++const devRules = await rulesIn("development"), prodRules = await rulesIn("production");
++const lower = (hs: { key: string; value: string }[]) => Object.fromEntries(hs.map((h) => [h.key.toLowerCase(), h.value]));
++const listFor = (production: boolean) => lower(Object.entries({ ...SECURITY_HEADERS, ...(production ? PROD_HEADERS : {}) }).map(([key, value]) => ({ key, value })));
++const sameMap = (a: Record<string, string>, b: Record<string, string>) => JSON.stringify(Object.entries(a).sort()) === JSON.stringify(Object.entries(b).sort());
++/** The rule that carries the security headers (found by its X-Frame-Options, whatever its source). */
++const securityRule = (rs: Rule[]) => rs.find((r) => r.headers.some((h) => h.key.toLowerCase() === "x-frame-options")) ?? null;
++const sendsList = (rs: Rule[], production: boolean) => { const r = securityRule(rs); return !!r && r.source === "/:path*" && sameMap(lower(r.headers), listFor(production)); };
++const withCsp = (rs: Rule[]) => rs.filter((r) => r.headers.some((h) => h.key.toLowerCase() === "content-security-policy")).map((r) => r.source);
++/** Every address a response can go to: the pages, every static file, the favicons, the build output, and the static
++ *  folders' not-founds — the ones the proxy's matcher skips (test:proxy-scope §2). */
++const ADDRESSES = [...PAGES, ...files, "/favicon.ico", "/favicon.svg", "/_next/static/chunks/main-abc123.js", "/_next/image",
++  "/icons/nope", "/icons/nope.png", "/brand/x", "/og/x", "/pay/x", "/screenshots/x", "/email-signatures/x"];
++const unreached = (rs: Rule[]) => { const r = securityRule(rs); if (!r) return ADDRESSES; const m = matcherOf(r.source); return ADDRESSES.filter((p) => m(p) === false); };
++ok(`5.1 · headers() sends src/lib/security-headers.ts' list on /:path* — ${Object.keys(SECURITY_HEADERS).length} headers in development, ${Object.keys(SECURITY_HEADERS).length + Object.keys(PROD_HEADERS).length} with HSTS in production — exactly`,
++  sendsList(devRules, false) && sendsList(prodRules, true), JSON.stringify({ dev: securityRule(devRules)?.headers.map((h) => h.key), prod: securityRule(prodRules)?.headers.map((h) => h.key) }));
++ok("5.2 · …and never the CSP: it stays the proxy's (it depends on the request — `upgrade-insecure-requests` only over HTTPS)",
++  withCsp(devRules).length === 0 && withCsp(prodRules).length === 0, [...withCsp(devRules), ...withCsp(prodRules)].join(" "));
++const missed = unreached(devRules);
++ok(`5.3 · Next's own matcher sends that rule to all ${ADDRESSES.length} addresses — every page, every static file (${files.length}), the favicons, the build output and the static folders' not-founds the proxy skips`,
++  missed.length === 0, missed.slice(0, 6).join(" · "));
++const proxySrc = readFileSync(join(process.cwd(), "src/proxy.ts"), "utf8");
++const proxyOwnHeaders = (s: string) => /\bconst\s+(?:SECURITY|PROD)_HEADERS\b/.test(s) || /["']X-Frame-Options["']\s*:/.test(s) || /["']Strict-Transport-Security["']\s*:/.test(s);
++const proxySendsList = (s: string) => s.includes('import { PROD_HEADERS, SECURITY_HEADERS } from "@/lib/security-headers";')
++  && /for \(const \[k, v\] of Object\.entries\(SECURITY_HEADERS\)\) res\.headers\.set\(k, v\);/.test(s)
++  && /for \(const \[k, v\] of Object\.entries\(PROD_HEADERS\)\) res\.headers\.set\(k, v\);/.test(s) && !proxyOwnHeaders(s);
++ok("5.4 · src/proxy.ts sends the very same list — imported from src/lib/security-headers.ts, every header and HSTS set in withSecurityHeaders, none defined there — so the two senders cannot drift apart",
++  proxySendsList(proxySrc));
++ok("5.5 · the list holds what review 6 found missing: X-Frame-Options DENY, nosniff, Referrer-Policy, Permissions-Policy, COOP; HSTS in production",
++  SECURITY_HEADERS["X-Frame-Options"] === "DENY" && SECURITY_HEADERS["X-Content-Type-Options"] === "nosniff" && !!SECURITY_HEADERS["Referrer-Policy"]
++    && !!SECURITY_HEADERS["Permissions-Policy"] && SECURITY_HEADERS["Cross-Origin-Opener-Policy"] === "same-origin" && /max-age=\d+/.test(PROD_HEADERS["Strict-Transport-Security"] ?? ""));
++/** The headers a response to `path` is sent, as Next applies every matching rule. */
++const headersAt = (rs: Rule[], path: string) => lower(rs.filter((r) => matcherOf(r.source)(path) !== false).flatMap((r) => r.headers));
++const round5 = devRules.filter((r) => r !== securityRule(devRules));
++ok("5.6 CONTROL · without that rule (round 5's headers()), a missing file under a static folder — the proxy skips it — was sent no X-Frame-Options; with it, it is",
++  !headersAt(round5, "/icons/nope")["x-frame-options"] && !headersAt(round5, "/brand/x")["x-frame-options"] && headersAt(devRules, "/icons/nope")["x-frame-options"] === "DENY");
++const plantRule = (edit: (r: Rule) => Rule) => devRules.map((r) => (r === securityRule(devRules) ? edit(r) : r));
++ok("5.7 PLANT · the rule taken out is reported by 5.1 and 5.3; X-Frame-Options dropped from it, by 5.1",
++  !sendsList(round5, false) && unreached(round5).length === ADDRESSES.length
++    && !sendsList(plantRule((r) => ({ ...r, headers: r.headers.filter((h) => h.key !== "X-Frame-Options") })), false));
++ok("5.8 PLANT · a CSP put into it is reported by 5.2; its source narrowed to /:path+ (no \"/\") by 5.3; a header of the proxy's own back in proxy.ts by 5.4",
++  withCsp(plantRule((r) => ({ ...r, headers: [...r.headers, { key: "Content-Security-Policy", value: "default-src 'self'" }] }))).length === 1
++    && unreached(plantRule((r) => ({ ...r, source: "/:path+" }))).includes("/")
++    && !proxySendsList(proxySrc.replace("// The static security headers", 'const SECURITY_HEADERS = { "X-Frame-Options": "DENY" };\n// The static security headers')));
++
+ console.log(`static-cache-scope: ${pass} passed, ${fail} failed`);
+ process.exit(fail ? 1 : 0);
+diff --git a/src/lib/security-headers.ts b/src/lib/security-headers.ts
+new file mode 100644
+index 000000000..920efbd01
+--- /dev/null
++++ b/src/lib/security-headers.ts
+@@ -0,0 +1,44 @@
++/**
++ * ⭐ THE STATIC SECURITY HEADERS — ONE DEFINITION, TWO SENDERS (review 6, A4 · 2026-10-09).
++ *
++ * 🔴 WHAT WAS LEFT OPEN. `src/proxy.ts` was the only source of these headers, and its matcher skips public/'s static
++ * folders and favicons by name (a static file needs no page headers). But a MISSING file there is a page: `/icons/nope`,
++ * `/brand/x`, `/og/x` render the root not-found inside the signed-in shell (the header's name, masked phone and balance)
++ * — and that page went out with none of them, so another site could frame it.
++ * ⭐ NOW BOTH SEND THEM. The proxy sets them on every response it handles, with the CSP (which is the proxy's alone: it
++ * depends on the request, `upgrade-insecure-requests` only over HTTPS). next.config.ts's `headers()` sets them on EVERY
++ * response (`/:path*`), so whatever the proxy's matcher skips carries them too. `test:static-cache-scope` holds the two
++ * to this one list; `test:proxy-scope` holds the matcher to static files.
++ * ⛔ No imports, no path alias: next.config.ts loads this file through Next's own TypeScript hook (`next-config-ts`),
++ * before the app's aliases exist.
++ */
++
++/** Sent on every response, in every environment. */
++export const SECURITY_HEADERS: Readonly<Record<string, string>> = {
++  "X-Frame-Options": "DENY",
++  "X-Content-Type-Options": "nosniff",
++  "Referrer-Policy": "strict-origin-when-cross-origin",
++  "X-DNS-Prefetch-Control": "on",
++  "Permissions-Policy": [
++    "accelerometer=()",
++    "autoplay=()",
++    "camera=(self)",
++    "microphone=()",
++    "geolocation=()",
++    "payment=()",
++    "usb=()",
++    "fullscreen=(self)",
++  ].join(", "),
++  "Cross-Origin-Opener-Policy": "same-origin",
++  "X-Permitted-Cross-Domain-Policies": "none",
++};
++
++/** Sent in production only: HSTS is honoured over HTTPS alone, and a local http origin must never be pinned. */
++export const PROD_HEADERS: Readonly<Record<string, string>> = {
++  "Strict-Transport-Security": "max-age=63072000; includeSubDomains; preload",
++};
++
++/** Every static security header for one environment — all but the CSP — as next.config's `headers()` lists them. */
++export function staticSecurityHeaders(production: boolean): Array<{ key: string; value: string }> {
++  return Object.entries({ ...SECURITY_HEADERS, ...(production ? PROD_HEADERS : {}) }).map(([key, value]) => ({ key, value }));
++}
+diff --git a/src/proxy.ts b/src/proxy.ts
+index 379b24450..591465e34 100644
+--- a/src/proxy.ts
++++ b/src/proxy.ts
+@@ -27,6 +27,7 @@ import { NextResponse, type NextRequest } from "next/server";
+ // Pure + client-safe by its own header (no DB, no server-only imports), so the proxy can import it without pulling server code in.
+ // Importing it rather than re-listing the staff roles here keeps ONE source of truth for "who is staff".
+ import { isStaffRole } from "@/lib/server/roles";
++import { PROD_HEADERS, SECURITY_HEADERS } from "@/lib/security-headers";
+ 
+ // Must match COOKIE_NAME in src/lib/server/session.ts
+ const SESSION_COOKIE = "kp_session";
+@@ -131,28 +132,9 @@ async function readVerifiedSession(token: string | undefined): Promise<{ role?:
+   }
+ }
+ 
+-const SECURITY_HEADERS: Record<string, string> = {
+-  "X-Frame-Options": "DENY",
+-  "X-Content-Type-Options": "nosniff",
+-  "Referrer-Policy": "strict-origin-when-cross-origin",
+-  "X-DNS-Prefetch-Control": "on",
+-  "Permissions-Policy": [
+-    "accelerometer=()",
+-    "autoplay=()",
+-    "camera=(self)",
+-    "microphone=()",
+-    "geolocation=()",
+-    "payment=()",
+-    "usb=()",
+-    "fullscreen=(self)",
+-  ].join(", "),
+-  "Cross-Origin-Opener-Policy": "same-origin",
+-  "X-Permitted-Cross-Domain-Policies": "none",
+-};
+-
+-const PROD_HEADERS: Record<string, string> = {
+-  "Strict-Transport-Security": "max-age=63072000; includeSubDomains; preload",
+-};
++// The static security headers (`SECURITY_HEADERS`, `PROD_HEADERS`) live in `@/lib/security-headers`, their one
++// definition: next.config.ts sends the same list on every response, so what this proxy's matcher skips carries them too
++// (review 6, A4). The CSP below stays here — it depends on the request.
+ 
+ // CSP: 'unsafe-inline' is required for Next.js hydration scripts and
+ // Tailwind's runtime style injection. 'unsafe-eval' is required by
+@@ -249,15 +231,16 @@ export async function proxy(req: NextRequest) {
+     // entitled to /admin, and deleting it would sign a player out of the site for visiting a URL.
+     // ⚠️ Coarse and subtractive only: it refuses an account whose own cookie says it is not staff. A demoted
+     // account's stale cookie still passes here and is caught by the per-page stored-row gate (belt 2).
+-    // ⚠️ A KNOWN GAP IN THIS BELT, STATED RATHER THAN GLOSSED, and the reason belt 2 is not redundant.
+-    // `config.matcher` (the last lines of this file) excludes `_next/static`, `_next/image`, `favicon.ico` and ANY path ending in an image
+-    // extension — so this function never runs for `/admin/players/<anything>.png`, which a dynamic `[id]` segment
+-    // happily matches. The edge is therefore skippable by URL shape alone, without any router-state trickery.
+-    // ⭐ It is not exploitable for disclosure today, and the reason is worth writing down: the id must resolve, and
+-    // `<id>.png` never does — `findById` answers null and the page answers `notFound()`. But "not exploitable
+-    // because the lookup fails" is a property of the DATA, not of the gate, and a future route whose segment is not
+-    // an id would not have it. The page's own gate (belt 2) runs regardless of this matcher, which is exactly why
+-    // every admin page carries one and why neither belt is described as sufficient alone.
++    // ⚠️ WHERE THIS BELT DOES NOT RUN, STATED RATHER THAN GLOSSED (corrected in review 6, A4 · 2026-10-09). This note
++    // said `config.matcher` skipped ANY path ending in an image extension, so `/admin/players/<anything>.png` passed the
++    // edge by URL shape alone. The matcher (the last lines of this file) now skips static files only — Next's build
++    // output and image optimiser, public/'s static folders by name and the two favicons by exact name — so this belt runs
++    // for every /admin address (`test:proxy-scope` §1 holds `/admin/players/u_1.png`). What it skips is a static file, or
++    // a missing one under those folders, which renders the root not-found (never an admin page) and carries the static
++    // security headers from next.config.ts.
++    // ⭐ Belt 2 is still not redundant: this belt reads the COOKIE's role, so a demoted account's stale cookie passes it
++    // (above), and the page's own gate runs whatever any matcher says — which is exactly why every admin page carries
++    // one and why neither belt is described as sufficient alone.
+     if (pathname.startsWith("/admin") && !isStaffRole(session.role)) {
+       const url = req.nextUrl.clone();
+       url.pathname = "/auth/admin";
+@@ -302,8 +285,12 @@ export const config = {
+   // another site. The same suffix defect next.config's immutable-cache rule had (hotfix 9cb95938). Skipped now: Next's
+   // build output and image optimiser, and public/'s own static folders and favicons — top-level names, each with its
+   // slash (`/iconsx/…` is NOT skipped). Must stay a string literal (Next reads `config` statically).
++  // ⭐ THE FAVICONS BY THEIR EXACT NAMES (review 6, A4 · 2026-10-09): they were `favicon.ico|favicon.svg` — an unescaped
++  // dot and no end — so `/favicon.icon`, `/favicon.ico/x`, `/faviconXico` and `/favicon.svgz`, page addresses all, skipped
++  // the proxy too. Now `favicon\.ico$` and `favicon\.svg$`: the two files and nothing else. (A page under a static folder,
++  // the not-found of a missing file there, still skips it: it carries the static security headers from next.config.ts.)
+   // `test:proxy-scope` compiles this with Next's own `getMiddlewareMatchers` and proves no page address is skipped.
+   matcher: [
+-    "/((?!_next/static|_next/image|favicon.ico|favicon.svg|icons/|brand/|pay/|og/|screenshots/|email-signatures/).*)",
++    "/((?!_next/static|_next/image|favicon\\.ico$|favicon\\.svg$|icons/|brand/|pay/|og/|screenshots/|email-signatures/).*)",
+   ],
+ };

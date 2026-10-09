@@ -1,0 +1,141 @@
+# R6-C running log (fixer R6-C, worktree F:\kipindi-r6c)
+# started 2026-10-09 20:14:37
+- read r5-common.md, r6c-brief.md, review6/C/log.txt, notes.md, scripts s/*
+- worktree clean at 89893725 (vodacom-visual-r6c). Copied reviewer scripts to r6c/rev/ (paths -> F:/kipindi-r6c).
+- C1 rerun (rev/c1-invite.mts): hub agent=dashTitle / player=inviteFriends; journey menu paid = literal Invite&Earn (=inviteEarn);
+  footer always inviteFriends; <title>: agent=dashTitle (R5-G fixed), player payable?inviteEarn:inviteFriends; h1 paid?inviteEarn:inviteFriends.
+  Owner item 53 (S/visual/owner-items.md:131) = open question "where may earn stand (D5)". COMPLIANCE-DECISIONS ~1399: paid wording
+  ("Invite & Earn") shows only while invites pay. DECISION: paid player -> inviteEarn (F17: door = page's own name; the page's paid
+  name is inviteEarn; avatar-menu note "row and destination cannot disagree"; /profile note "door and room cannot describe different
+  programmes"). One function in a new pure module src/lib/journey/invite-name.ts. Siblings: /profile row (shared body), classic
+  top-app-bar/bottom-nav/footer/avatar (frozen, list for integrator).
+- C13: KYC page <title>+eyebrow = profile.kycIdentityVerification; h1 state-dependent. Pages with eyebrow-name + headline h1
+  (leaderboard, fairness, help, proposals) -> doors = <title>/eyebrow. DECISION: KYC doors -> kycIdentityVerification (hub, journey
+  menu, /profile row). Journey menu KYC row gated by kycOffered: shell batch gets a journey-only KYC read
+  (journeyRead.then(j => j.journey ? db.kyc.findByUserId : null)); predicate shared with hub-viewer + /profile.
+- C12 read: bet-confirm 301 row `flex items-baseline justify-between` no wrap; 315 stake `font-mono ... TZS {formatNumber}` not .amount. A8f ref sell-confirm 142-160.
+- C7 read: updown-stake-controls 264-265 + SIBLING round-stake-panel 253-255 (same nowrap .amount sentence); round-stake-panel 92 range-only line fits.
+- C8: updown/page 294, updown-ghost 58 (300px), history 460 (320px); convention globals .market-grid min(300px,100%).
+- C4: login cooled arm tone warning -> neutral (Callout neutral box, pause glyph like RG page). Exclusion arms stay danger (hard refusal of the sign-in itself, R5-I rule) - say why.
+- C2: only ChatPanel 111 + needle-drawer 263 draw svg ✕. Bell ✕: 40px box/13px glyph = CloseX proportions (16/48) in a 44px toolbar bar; on its title line, 16px in -> classify hand ✕ with reason.
+- C9: OperationResultModal + WinCelebration keep Modal corner ✕ (no title in first band) -> exception written into a corner-✕ census in r6c.
+- C3: rerun confirms 61 uncounted warning-family paints, 4 unregistered files. Plan: extend r5c census regex + registry.
+- C5 + C15 CONFIRMED fixed at 89893725 (money-names.ts; history <title> journey ? tabTickets : udHistoryTitle) -> skipped.
+- OVERLAPS: R5-K rebuilds classic positions-ghost + performance ghost (leave positions-ghost; performance loading split minimal);
+  R6-A touches markets/[id] (SidePicker area), round-stake-panel/updown-card, updown/history, performance empty state (202-211).
+- PLAN (implementation order):
+  C12+C11a bet-confirm: row A8f (flex-wrap gap-y-2, right col grow text-right, stake .amount pl-3), STAKE eyebrow kp-track-end.
+  C7: range line plain + each figure .amount (updown-stake-controls 265, round-stake-panel 92 + 254).
+  C8: min(300px,100%) / min(320px,100%) (updown page, updown-ghost, history).
+  C13: shared kycOffered predicate (kyc-refusal.ts) -> hub-viewer, /profile, app-shell journey-only KYC read in the batch ->
+       JourneyTopBar -> AvatarMenu kycOffered (journey). KYC door words -> profile.kycIdentityVerification (hub, menu, /profile).
+  C1: src/lib/journey/invite-name.ts (pure): agent->dashTitle, paid->inviteEarn, else inviteFriends; hub-rows, journey menu,
+       journey footer, invite <title>+h1, /profile row (shared body; needs invitePaysPlayersNow read).
+  C14: dial secondary CTA useJourneyOn -> journey.tabTickets; performance back+eyebrow+empty title journey words (loading split
+       into server loading.tsx + performance-ghost.tsx); /help card journey title+ticket glyph.
+  BACK: journey -> label journey.tabAccount, fallback /account on notifications, invite (+agent dashboard), kyc, RG.
+  C4 login cooled neutral; C2 CloseX needle+chat, widen r5a census (svg paths), bell classified; C9 corner census (r6c);
+  C3 r5c census + registry; C10 bell journey renderers; C11 rest + --08; C16 signal chip xs+status; C17 drop clamp; C18 h-[18px].
+- DONE C12: bet-confirm row flex-wrap gap-y-2, right col grow text-right, stake .amount, side word pr-3 (variant B: 0 needless
+  wraps vs A8f-literal pl-3's 6 en rows at 360-412; model r6c/c12-model.mts + c12-variants.mts: before 28/64 phone cases split).
+- DONE C7: range kept one .amount span, sentence plain (updown-stake-controls 264, round-stake-panel 253). Other .amount-with-words
+  sites classified (r6c/amount-words-scan.mts): results tally (hidden <sm, deliberate one line), round result pick·stake (short),
+  round-action-panel "utapata TZS x" (fits 247<=254 at 320), sell confirm noFee/freeExitWindow labels (short) -> legit.
+- DONE C8: three grids min(300px|320px,100%).
+- DONE C11: kp-track-end on 10 labels (8 reviewer + round PLAYERS + wallet history status) + .kp-track-end--08 in globals.
+  Scan r6c/track-end-scan.mts: dial 1498 + updown-card 970 end on a glyph -> legit. Note for R5-J: round page players count uses
+  toLocaleString (738) not formatNumber.
+- DONE C13: kyc-refusal.ts kycDoorOffered (shared by hub-viewer, /profile, app-shell); app-shell batch +journey-only KYC read
+  (journeyRead.then(j => j.journey ? db.kyc.findByUserId : null)); JourneyTopBar/AvatarMenu kycOffered (journey filter).
+  KYC door words -> profile.kycIdentityVerification (hub-rows label+HUB_WORDS, avatar journeyName, /profile row). kyc/page.tsx's
+  own 2026-09-14 note: the tab is "a neutral noun, true in every state" -> confirms.
+- DONE C1: src/lib/journey/invite-name.ts (inviteNameKey/inviteName/inviteLine); hub-rows (value import now), avatar menu journey
+  arm (inviteAgent prop), footer journey arm (invitePaid/inviteAgent props), invite <title>/h1/hero line, /profile row (shared body,
+  + invitePaysPlayersNow read in Promise.all). app-shell passes inviteAgent/kycOffered (journey header) + invitePaid/inviteAgent
+  (journey footer); new header props placed BEFORE invitePaid so simple-journey-flag/journey-shell plant anchors survive.
+- DONE BACK: journey -> label journey.tabAccount, fallback /account: invite (both bodies; AgentDashboard journey prop), kyc, RG,
+  notifications (/profile holds no door to the inbox). withdraw keeps "‹ POCHI" (R5-G section convention).
+- DONE C14: dial secondary CTA useJourneyOn -> tabTickets (no market-page prop: R6-A's file); performance back/eyebrow/empty
+  title journey words + loading split (loading.tsx server + performance-ghost.tsx, generated by r6c/split-perf-ghost.mjs);
+  /help card journey title + I.ticket; round page "Open in Positions" door -> tabTickets in journey.
+  S12: "Tiketi zako" heading key (market.yourPositions / udPositionsOnRound headings), "{n} tickets" count (performance bar),
+  zh help sub 持仓中. Unreachable fallback common.positionOpenNotify (dial, marketTitle always passed).
+- RE-PINS NEEDED (to do): r5g (PAGES invite proofs, 3.5 deps inviteName, menu journeyName proof, 5.3), r5a F17 (verifyIdentity),
+  simple-journey-flag SWAP_HEADER/SWAP_FOOTER, qa-journey-shell W.verifyId, journey-account 3.invite.label? (fixture unpaid -> ok).
+- DONE C4 (login cooled neutral: Callout-neutral box + pause glyph text-text-subtle), C2 (CloseX needle -mt-[15px] mb-[7px] -mr-1
+  sm:-mr-1.5; chat self-start -mt-[13.125px]; .cm-close CSS removed; glitch-hunter -> .cm-header > button; r5a census widened to
+  svg spellings + 8.10''' control + 8.10'''' plants; bell classified by geometry), C9 (rule comments in operation-result-modal +
+  win-celebration), C3 (r5c VAR/TW widened, registry 19 counts + 4 files, plant 1.4^5), C10 (bell journey arm DotSeq+moneyRuns /
+  moneySentence; classic class strings byte-identical), C16 (both card pills size xs metrics status), C17 (clamp dropped),
+  C18 (ghost pills h-[18px]).
+- RE-PINS DONE: r5g (pages invite x3, menu doors per-line proofs, /profile invite rows, 3.5 deps inviteName, 5.3), r5a F17
+  (5.1 5.2 5.2' 5.3 5.5 5.6), simple-journey-flag SWAP_HEADER/SWAP_FOOTER, qa-journey-shell W.verifyId, journey-account 3.invite
+  (+3.invite.label.paid). Journey bar's AvatarMenu props ordered so r4h 6.1's `invitePaid={invitePaid} journey />` holds.
+- NEXT: write scripts/visual-pass-r6c.test.mts + package.json line; then run suites one at a time; then mutation proof.
+- SUITE: scripts/visual-pass-r6c.test.mts registered (package.json test:visual-pass-r6c next to r5g) — first run 80/80 exit 0.
+  CRLF fixed for the two Write-created files (r6c/crlf.mjs). C7 after (r6c/c7-after.mts): sw range on its own line at 320/360,
+  one line from 390; en own line at 320, one line from 360; zh one line everywhere.
+- BATCH 1 reds fixed: r5a 8.10 (widened census found empty-state ErrorMark circled ✕ -> classified glyph); red:journey-shell
+  plant "Akaunti tab removed" now also removes the 5 journey back links' "/account" fallback (they are real doors);
+  red-anchors withdrawn-features footer anchor re-anchored; ui-consistency baseline key moved loading.tsx -> performance-ghost.tsx;
+  eyebrow-roles 2 signatures re-signed (kp-track-end; roles unchanged).
+- COORDINATOR ITEM (R5-K): pair gap. Census r6c/pair-scan.mts: every btn-lg pair uses gap-2 (12) except deposit/return,
+  side-picker, auth/reset-password, auth/verify-email (gap-2.5 = stock 10px). All four -> gap-2. Receipt ghost already gap-2;
+  return ghost (old) draws no pair; R5-K's rebuilt return ghost's button-row line must follow gap-2. Suite §16 + 2 plants.
+- spacing-scale CEILING 453 -> 449 (4 gap-2.5 pairs -> gap-2). Re-run of the 7 red/affected suites: all OK (r6c 83/83, r5a 93,
+  red:journey-shell 188/188, red-anchors 5070, ui-consistency, eyebrow-roles 639, spacing-scale 10/10).
+- run3 started 18:24: 149 suites (141 reading touched files + required list + red twins). In progress.
+- REPORT NOTES: names for others — R5-J: round page players count toLocaleString (~738). R5-K: return ghost button row must be
+  gap-2; classic positions ghost pills h-5 (24) vs card 18. R6-A overlaps: performance empty title line, round-stake-panel range
+  line, updown/history grid + NET label. R6-B: none (imports only: CloseX, moneyRuns/moneySentence).
+  Owner: item 53 now one line (invite-name.ts); classic chrome left frozen (menu Invite&Earn for agent, Verify ID for all; top bar
+  + More rail + footer "Alika marafiki" for agent/paid); dial via useJourneyOn (prop path = R6-A's market page); back link label
+  "Akaunti" (section) vs "Rudi"; win celebration label line-clamp-2 (C17 sibling, a celebration overlay).
+  S12: "Tiketi zako" heading (market.yourPositions, udPositionsOnRound in journey); "{n} tickets" (performance bar); zh help sub 持仓中.
+
+[run3] 2026-10-09 ~18:50Z: list-all.txt wrongly held two dev-server suites (test:needle-rest, test:responsive): both need a running app on localhost (3009 / 3000) and launched headless Chromium only to fail at the first request (ECONNREFUSED) -- 49 s and 1.6 s, no leftover browser. Not mine to run (no dev server, no browser by rule): a lock turn runs them. browser-scan.mjs confirms no other remaining suite in the list touches playwright/localhost.
+- (correction: run3 ran 18:24-18:32Z, not ~18:50Z.) run3 = 149 suites: 144 OK + 5 RED. Two reds are the dev-server suites above (not
+  runnable here). Three were pins my change moved, fixed:
+  · test:visual-pass-r3c 9.4 pinned `<DotSeq text={paid ? inviteEarnSub : inviteFriendsSub} />` on the invite page -> re-pinned to
+    `<DotSeq text={inviteLine(t, { agent: false, paid })} />` + inviteLine's body in invite-name.ts (same words for a player).
+  · test:visual-pass-r4h 6.5 pinned the menu map's arm ORDER (invite-unpaid, /positions, journeyName). My reorder (journeyName
+    first) was not needed: invitePaid = payable || agentInGoodStanding, so inviteAgent implies invitePaid and the unpaid arm
+    already says inviteFriends. Restored the base order byte-for-byte (smaller hunk); r6c's run-the-code checks unchanged.
+  · test:visual-pass-r5e 2.1 pinned PositionCard's class with `line-clamp-2` -> re-pinned without it (C17).
+  C17 sibling: /fairness' resolved table keeps `line-clamp-2` (a browsing list of other markets, the board's Q6 case).
+- run4 started: 36 suites (3 re-pinned + every avatar-menu reader + required list + red twins + the 8 modal.tsx readers + r6c).
+- run4 (36 suites) ALL OK, incl. the 8 modal.tsx readers (campaign-gates OK too).
+- C17 SIBLING SWEEP (clamps on market titles in player code): win-celebration.tsx:339 `line-clamp-2` on the won market's
+  name (no tap behind it: the seal closes itself -> the end was simply lost) -> whole + text-balance + keepFigures (R5-E's
+  F1/F4 for a title that now wraps); popup-fit's CLIP_DEBT entry for it removed (its ratchet 2.2 requires a stale entry go).
+  Ruled, kept: /fairness resolved table (browsing, the name is its link), /live pulse grid (browsing, Q6), performance best-win
+  card (inside its link; the page's own tap-to-whole note), proposals description (browsing board). Performance recent rows
+  `truncate` = compact ledger row with a tap (wallet-client's compact-clips/full-wraps idiom). r6c 14.6/14.7/14.7' + plant P35.
+- run5 started: 37 suites (every win-celebration/keep-words reader + popup-fit + required list + red twins + r6c).
+- run5 (37 suites) ALL OK: r6c 86/86, popup-fit (5 clipping popups, was 6), r5e 60, red twins (enter-where-pressed 103/103,
+  journey-shell 188/188, journey-tickets 111/111, marketing-optout), the required list, dead-css OK.
+- Ghosts of the back-link pages (kyc, invite, RG, notifications loading.tsx) are generic PageLoader: no back-link words to
+  follow. Name for R5-L: a rebuilt invite/agent ghost that draws the back link reads journey.tabAccount in the journey.
+- Mutation proof started (39 plants) after hashing all 64 changed files (pre-mutation-sha.txt).
+- Mutation run 1: every plant CRASHED (cmd.exe: 'node_modules' is not recognized -- shell:true cannot start a forward-slash
+  path); all 39 files restored byte-identical; checked globally: git status identical, 64 changed files sha-identical to the
+  pre-mutation snapshot, i18n-dict.ts + share-button.tsx unmodified. Runner switched to npm run -s test:visual-pass-r6c; P1 trial
+  CAUGHT on 1.1. Mutation run 2 (all 39) started.
+- MUTATION PROOF run 2: 39/39 caught on their named checks, 0 missed, 0 not applied, 39/39 restored byte-identical (sha-256);
+  global re-check: git status identical, 64 changed files sha-identical to the snapshot, dict + share-button unmodified.
+- run6 = FINAL full pass on the final tree: 158 suites (list-all minus the 2 dev-server suites, plus the 8 modal readers and
+  3 red twins), r6c last.
+- run6 FINAL full pass (158 suites, final tree, r6c last): 158/158 exit 0 (18:45:56-18:54:31Z).
+- Cross-merge guard added after run6: r6c 16.4 -- the deposit return ghost draws no gap-2.5 and any row of two it draws is gap-2
+  (today one bar; R5-K rebuilds it). r6c now 87/87. Plant added (deposit return ghost pair on gap-2.5). Mutation run 3 (40 plants)
+  started after a fresh sha snapshot (pre-mutation3-sha.txt).
+- MUTATION PROOF run 3 (final): 40/40 caught on their named checks, 0 missed, 0 not applied, 40/40 restored byte-identical;
+  global re-check: git status identical, 64 files sha-identical, dict + share-button + return ghost unmodified.
+- r6c on the final tree: 87/87 exit 0. All 64 changed/new files CRLF.
+- AFTER models (after-models.txt): C12 -- the stake never splits; it moves under the side: 320 every row; 360 sw HAPANA all, en
+  from 10,000, sw NDIO at 1,000,000; 390 sw HAPANA from 100,000, en at 1,000,000; 412 sw HAPANA at 1,000,000; 1024 none.
+  C7 -- sw range on its own line at 320/360, one line from 390; en own line at 320; zh one line everywhere.
+  Reviewer c2: no hand-drawn dialog x left (its old-geometry readers find nothing); c3: its OLD regex copies still miss 61 by
+  construction (it prints 'copied verbatim: false' -- the suite changed); c1: hub rows run (agent = dashboard); its other
+  columns are hard-coded keys and its line-411 literal moved (crash) -- r6c 5.4 runs the real after for every reader.
+- FINAL: git diff --stat 61 files +576/-292 (src 45 +395/-230; scripts+package.json 16 +181/-62); untracked 3. Nothing committed.

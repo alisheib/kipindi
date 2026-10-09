@@ -1,0 +1,24 @@
+[audit] ADMIN config.global.updated officer_test MarketConfig#global
+[audit] ADMIN market.created test Market#mkt_180064b5cb3a6de1d19b
+[audit] BET market.position.opened ev_a Position#pos_cd57b4e594b82a7a5fbd
+[audit] BET market.position.opened ev_b Position#pos_0cc6a36d679bb6f2e9cd
+[email] sending "Bet placed · YES on "Emergency void market"" → e***@test.tz (tag=bet-placed)
+[email-stub] To: e***@test.tz | Subject: Bet placed · YES on "Emergency void market"
+[audit] BET market.position.opened ev_c Position#pos_d39ec3a9846569e2e71d
+[audit] BET market.position.opened ev_d Position#pos_36c2bb43c066086090a9
+[audit] BET market.position.opened ev_e Position#pos_af1a53603a0c04fac20b
+[audit] BET market.position.cashed_out ev_a Position#pos_cd57b4e594b82a7a5fbd
+[audit] SECURITY market.emergency_void.forbidden officer_x Market#mkt_nope
+[audit] SECURITY market.emergency_void.forbidden ev_mod Market#mkt_180064b5cb3a6de1d19b
+[audit] SECURITY market.emergency_void.forbidden officer_gbt Market#mkt_180064b5cb3a6de1d19b
+
+emergency-void: 34 passed, 0 failed
+[email] sendEmailToUser skipped — no email for user ev_a… (user.email=null, phone=+25597…)
+[email] sendEmailToUser withheld — money mail to an unconfirmed address for user ev_c… (user.email=e***@test.tz)
+[email] sendEmailToUser skipped — no email for user ev_d… (user.email=null, phone=+25597…)
+[email] sendEmailToUser skipped — no email for user ev_e… (user.email=null, phone=+25597…)
+[email] sendEmailToUser skipped — no email for user ev_a… (user.email=null, phone=+25597…)
+[email] sendEmailToUser withheld — money mail to an unconfirmed address for user ev_c… (user.email=e***@test.tz)
+[email] sendEmailToUser skipped — no email for user ev_d… (user.email=null, phone=+25597…)
+[email] sendEmailToUser skipped — no email for user ev_e… (user.email=null, phone=+25597…)
+[email] sendEmailToUser skipped — no email for user ev_mod… (user.email=null, phone=+25595…)

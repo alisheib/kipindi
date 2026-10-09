@@ -1,0 +1,55 @@
+── 1 · F1 · a failed read is the board's title in the reader's language, a missing record the not-found's, nothing throws 
+  ok   1.1 · /markets/[id]: RUN in sw, en and zh — a failed read answers the board's title in that language ("Masoko" "Markets" "市场"), a record not there the not-found's metadata, a record found its title; notFound() never called
+  ok   1.2 · /markets/[id]: the neutral title is the board's own name — src/app/markets/page.tsx is titled by the same key
+  ok   1.1 · /updown/[roundId]: RUN in sw, en and zh — a failed read answers the board's title in that language ("Juu na Chini" "Up & Down" "涨跌"), a record not there the not-found's metadata, a record found its title; notFound() never called
+  ok   1.2 · /updown/[roundId]: the neutral title is the board's own name — src/app/updown/page.tsx is titled by the same key
+  ok   1.1 · /proposals/[id]: RUN in sw, en and zh — a failed read answers the board's title in that language ("Mapendekezo ya Masoko" "Market Proposals" "市场提议"), a record not there the not-found's metadata, a record found its title; notFound() never called
+  ok   1.2 · /proposals/[id]: the neutral title is the board's own name — src/app/proposals/page.tsx is titled by the same key
+  ok   1.3 · /proposals/[id] with the board switched off (the page redirects to it): the board's title, in the reader's language
+  ok   1.1′ CONTROL · the market's shipped body (round 4): a database blip in its read calls notFound() — the real market replaced by "Hakuna ukurasa · 404" — and the judge reports it
+  ok   1.1″ CONTROL · the round's shipped body (round 4): the English "Up & Down" for a failed read in Swahili and Chinese — reported, in those two languages only
+  ok   1.4 · the census: 59 generateMetadata in src/app — none throws, redirects or calls notFound(); the record readers are exactly the three record pages, each read inside a try
+  ok   1.4′ PLANT · the market's notFound() back in its metadata is found by the census
+  ok   1.4″ · and outside a try, every generateMetadata awaits only reads that never reject (currentSession, getServerT, invitePaysPlayersNow, notFoundMetadata, resolveSimpleJourney) — the three that catch do catch
+  ok   1.4‴ PLANT · the round's read taken out of its try (a failed read would throw beside the page) is found
+  ok   1.5 · the body still reads the market with no catch and calls notFound() only for a missing row (B-1), its note no longer calls the metadata's catch "title garnish", and the market's not-found no longer says the page's metadata calls notFound()
+
+── 2 · G1 · the root loading element is a reference and the rails; every ghost is drawn in the browser, and is its page's own 
+  ok   2.1 · route-ghost.tsx is client code: the ghosts take the rails alone and read the words from the client dictionary (`useT`)
+  ok   2.1′ PLANT · the ghosts drawn by a server component again (the directive gone) is reported
+  ok   2.2 · nothing the ghosts load is server code: 33 modules from the lazy binding, no next/headers, no @/lib/server/*, no Node built-in
+  ok   2.2′ PLANT · the rails read in the ghost again (`heroRailNames` from @/lib/server/payout-rails) is reported
+  ok   2.3 · route-ghost-lazy.tsx is the shell's pattern: client code whose one static import is next/dynamic, one binding with no option object (the server render stays on, no boundary of its own), its loader ending in the lost-chunk guard
+  ok   2.4 · its lost-chunk guard is the shell's own, character for character (a ChunkLoadError leaves the ghost out and reports once; any other error is thrown on)
+  ok   2.4′ PLANT · a guard that takes every error is reported
+  ok   2.5 · the root loading file hands the lazy binding the one server answer the browser cannot read (the rails that pay out), and no words and no ghost of its own
+  ok   2.5′ PLANT · the words handed in again (the dictionary written into every payload) is reported
+  ok   2.6 · RUN for a journey reader, the root loading element is ONE client reference and the rails — sw 77 B, en 77 B, zh 77 B of Flight JSON (it was 27,349 / 27,318 / 27,310), under 200 in every language; no ghost markup in it
+  ok   2.6′ CONTROL · the same serializer on the server-drawn shape (six of the nine ghosts — the home's, the hub's and the spinner left out): 18626 B, every node of every ghost written out — the cost 2.6 holds gone
+  ok   2.7 · a classic reader is drawn the classic box as before (the brand's SectionLoader in the 1280 column), and no ghost reference rides in its payload
+  ok   2.8 · every ghost renders on React's server renderer, in sw, en and zh, inside the root layout's providers, and shows its own page in that language (9 paths × 3) — no throw (G2: it stands in the shell)
+  ok   2.8′ CONTROL · the words follow the provider's language, not the server's: the home ghost's lede in each of the three
+  ok   2.9 · the home ghost's trust rows name the rails it is handed (M-Pesa, Airtel Money, HaloPesa, Mixx by Yas)
+  ok   2.10 · one drawing: each page's own loading file, RUN for a journey reader, and the root ghost at its address write the same bytes (6 pages × 3 languages)
+  ok   2.10″ · …and where a journey reader's picture differs from a classic reader's (/positions, /updown/history) the loading file hands back the journey's own binding pinned to its own page — in every language
+  ok   2.10′ CONTROL · a classic reader's /updown/history ghost (today's two head lines) is NOT the journey's — so 2.10's equality is the drawing's, not a blank
+
+── 3 · G2 · a server render error in a part with no boundary of its own fails the document — measured, and said where it lives 
+  ok   3.1 · on the app's copy of React's server renderer: a throw in a part with NO boundary ends the shell (the document fails); in the root loading fallback — where the ghost stands — it ends the shell too
+  ok   3.1′ CONTROL · the same throw inside a boundary of its own is contained: the shell is sent, the part drawn in the browser
+  ok   3.2 · it is said where it lives: AppShell's note at the journey's header and tabs, and the ghost's own note, name the uncontained error, why no boundary is added (E36), and that neither reads anything to throw on
+
+── 4 · G1's sibling · the not-found element every payload carries is the view's reference and its words, not the page 
+  ok   4.1 · RUN in sw, en and zh, each not-found element is ONE reference, the view's, and the words it is handed — under 600 B (root sw 409, root en 394, root zh 363, market sw 409, market en 394, market zh 363, proposal sw 471, proposal en 450, proposal zh 414 B; drawn on the server it was 5,938 / 5,923 / 6,379)
+  ok   4.1′ CONTROL · the same serializer on round 4's shape (the view drawn on the server): 5938 B, the page's every node written out — the cost 4.1 holds gone
+  ok   4.2 · the view is client code and its words and title are data beside it (not-found-words.ts, no directive): the three not-found files take the view by its component name and the words from the data module
+  ok   4.3 · no server module takes anything but a component from a client module — the server graph walked from 483 src/app entries through 1008 modules, 474 imports of client modules
+  ok   4.3′ PLANT · the root not-found reading its words and title out of the (client) view again — round 4's import — is reported
+
+── 5 · F4's pattern · every useSyncExternalStore reader is classified, and a page that is left leaves the document 
+  ok   5.1 · every useSyncExternalStore reader in src (10) is classified: not-found-mark.ts — a page's mark read by the chrome — answered for the path being drawn, arrival announced in a layout effect (F4); journey-on.ts — the shell's mark and flag, layout-scoped: no soft navigation re-runs the root layout, and a refresh that swaps the shell raises the flag in the layout phase of the commit that draws the journey shell and announces its lowering once the commit that removes it is done — before either paint (R5-H, G-3; test:visual-pass-r5h §3); invitation-slot.ts — claims read beside the claimant's own in-render eligibility: a stale store can delay a card a frame, never show two; unsaved-changes.tsx — a registry whose writers and painter all stand in one page, and leave it together; nav-more.tsx — the reader's density (<html data-density>), not a page's state; card-size-row.tsx — the reader's density, not a page's state; analytics-consent.ts — the reader's consent, not a page's state; one-poller.ts — a media query, not a page's state; use-unread-count.ts — the unread feed, not a page's state; admin-crumbs.tsx — a record page's registered name for its last crumb, read by the admin header KEYED BY THE PATH BEING DRAWN (crumbNames.get(lastSegmentOf(pathname))): a page that is left cannot name the next one — F4's own principle, already
+  ok   5.1′ PLANT · a new reader (a DOM mark in a module no one has classified) is reported
+  ok   5.2 · a page that is left leaves the document: next.config turns no cacheComponents on, and without it Next keeps ONE router entry and wraps no segment in a hidden <Activity> (bfcache-state-manager.js, layout-router.js) — read from the framework, so an upgrade that changes it is noticed
+  ok   5.2′ PLANT · cacheComponents turned on is reported
+
+visual-pass-r5d: 44 passed, 0 failed

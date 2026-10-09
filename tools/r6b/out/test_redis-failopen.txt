@@ -1,0 +1,45 @@
+[audit] ADMIN market.created test Market#mkt_5f973d1ec10d515127ea
+[audit] BET market.position.opened rf_bet_0 Position#pos_d9bc2a726e197b66311b
+[audit] BET market.position.opened rf_bet_1 Position#pos_a577139045c4f5c1f5a8
+[audit] BET market.position.opened rf_bet_2 Position#pos_e1e7e78f6b985b6a30fa
+[audit] BET market.position.opened rf_bet_3 Position#pos_53b49beb37d04e16bbdd
+[audit] BET market.position.opened rf_bet_4 Position#pos_a5cba137833afaacff8d
+[audit] BET market.position.opened rf_bet_5 Position#pos_031cf95be59fa1dbb513
+[audit] BET market.position.opened rf_bet_6 Position#pos_f12190e3be99adf4992b
+[audit] BET market.position.opened rf_bet_7 Position#pos_1ab8d889a98c47a71474
+[audit] BET market.position.opened rf_bet_8 Position#pos_614d23cf6b419f190ca7
+[audit] BET market.position.opened rf_bet_9 Position#pos_a647438d96ac32a6d591
+[audit] BET market.position.opened rf_bet_10 Position#pos_88b45db642c012dab5c2
+[audit] BET market.position.opened rf_bet_11 Position#pos_d086b6ef4809631d8865
+[audit] BET market.position.opened rf_bet_12 Position#pos_2d57e3335e954f0613be
+[audit] BET market.position.opened rf_bet_13 Position#pos_1cc3c0f48d2351eb09ae
+[audit] BET market.position.opened rf_bet_14 Position#pos_d9d6e5571e28ddafd97a
+[audit] BET market.position.opened rf_bet_15 Position#pos_43944aa88fec83ddce91
+[audit] BET market.position.opened rf_bet_16 Position#pos_8b86f277be1860bdd826
+[audit] BET market.position.opened rf_bet_17 Position#pos_c1d51f1705c866246ef2
+[audit] BET market.position.opened rf_bet_18 Position#pos_57862d6a4e96d71060fd
+[audit] BET market.position.opened rf_bet_19 Position#pos_31434a7b97c1dc283004
+
+  N · ENG-42 population: 51 house-bot modules scanned across src/lib/server/house-bot + src/lib/house-bot
+
+redis-failopen: 94 passed, 0 failed
+[email] sendEmailToUser skipped — no email for user rf_bet_0… (user.email=null, phone=+25588…)
+[email] sendEmailToUser skipped — no email for user rf_bet_1… (user.email=null, phone=+25588…)
+[email] sendEmailToUser skipped — no email for user rf_bet_2… (user.email=null, phone=+25588…)
+[email] sendEmailToUser skipped — no email for user rf_bet_3… (user.email=null, phone=+25588…)
+[email] sendEmailToUser skipped — no email for user rf_bet_4… (user.email=null, phone=+25588…)
+[email] sendEmailToUser skipped — no email for user rf_bet_5… (user.email=null, phone=+25588…)
+[email] sendEmailToUser skipped — no email for user rf_bet_6… (user.email=null, phone=+25588…)
+[email] sendEmailToUser skipped — no email for user rf_bet_7… (user.email=null, phone=+25588…)
+[email] sendEmailToUser skipped — no email for user rf_bet_8… (user.email=null, phone=+25588…)
+[email] sendEmailToUser skipped — no email for user rf_bet_9… (user.email=null, phone=+25588…)
+[email] sendEmailToUser skipped — no email for user rf_bet_10… (user.email=null, phone=+25588…)
+[email] sendEmailToUser skipped — no email for user rf_bet_11… (user.email=null, phone=+25588…)
+[email] sendEmailToUser skipped — no email for user rf_bet_12… (user.email=null, phone=+25588…)
+[email] sendEmailToUser skipped — no email for user rf_bet_13… (user.email=null, phone=+25588…)
+[email] sendEmailToUser skipped — no email for user rf_bet_14… (user.email=null, phone=+25588…)
+[email] sendEmailToUser skipped — no email for user rf_bet_15… (user.email=null, phone=+25588…)
+[email] sendEmailToUser skipped — no email for user rf_bet_16… (user.email=null, phone=+25588…)
+[email] sendEmailToUser skipped — no email for user rf_bet_17… (user.email=null, phone=+25588…)
+[email] sendEmailToUser skipped — no email for user rf_bet_18… (user.email=null, phone=+25588…)
+[email] sendEmailToUser skipped — no email for user rf_bet_19… (user.email=null, phone=+25588…)

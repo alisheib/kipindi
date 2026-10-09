@@ -1,0 +1,7 @@
+css-vars-defined: read 1451 files under F:\kipindi-r6b\src
+  443 custom properties defined · 299 referenced without a fallback
+
+  standalone src/lib/offline-document.ts: 21 defined · 21 referenced without a fallback
+PASS every var() reference resolves to a definition
+
+css-vars-defined: 299 references checked, 0 undefined.

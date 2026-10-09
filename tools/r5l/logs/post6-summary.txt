@@ -1,0 +1,13 @@
+test:visual-pass-r5b exit=0 fails~=0 2s
+test:visual-pass-r5l exit=0 fails~=0 3s
+test:visual-pass-r5h exit=0 fails~=0 7s
+test:type-scale exit=0 fails~=0 2s
+test:spacing-scale exit=0 fails~=0 2s
+test:ui-consistency exit=0 fails~=0 2s
+test:design-frozen exit=0 fails~=0 1s
+test:eyebrow-roles exit=0 fails~=0 1s
+test:red-anchors exit=0 fails~=0 2s
+test:decomment exit=0 fails~=0 4s
+test:hooks-order exit=0 fails~=0 2s
+test:i18n exit=0 fails~=0 1s
+DONE post6

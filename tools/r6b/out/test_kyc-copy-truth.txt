@@ -1,0 +1,501 @@
+§1 · rule 1 — money moves without identity · the dictionary
+PASS §1 dict · en · the population is read — 2656 strings (floor 2000)
+PASS §1 dict · en · every leaf is a string
+PASS §1 dict · en · kycNotice.* is inside it (the quiet first-deposit notice)
+PASS §1 dict · en · rule 1 — no unit claims money moves without identity
+PASS §1 dict · sw · the population is read — 2656 strings (floor 2000)
+PASS §1 dict · sw · every leaf is a string
+PASS §1 dict · sw · kycNotice.* is inside it (the quiet first-deposit notice)
+PASS §1 dict · sw · rule 1 — no unit claims money moves without identity
+PASS §1 dict · zh · the population is read — 2656 strings (floor 2000)
+PASS §1 dict · zh · every leaf is a string
+PASS §1 dict · zh · kycNotice.* is inside it (the quiet first-deposit notice)
+PASS §1 dict · zh · rule 1 — no unit claims money moves without identity
+PASS §1 control.en · rule 1 REJECTS "Identity verification is not required before…"
+PASS §1 control.en · rule 1 accepts "A withdrawal is charged a 1.5% fee and nothi…"
+PASS §1 control.sw · rule 1 REJECTS "Uthibitisho wa utambulisho hauhitajiki kabla…"
+PASS §1 control.sw · rule 1 accepts "Kutoa pesa kunatozwa ada ya 1.5% pekee."
+PASS §1 control.zh · rule 1 REJECTS "提现无需身份验证。"
+PASS §1 control.zh · rule 1 accepts "提现收取 1.5% 手续费。"
+PASS §1 control.en · rule 1 accepts "Every player can verify their identity witho…"
+PASS §1 control.en · rule 1 REJECTS "You can keep playing without verifying your …"
+PASS §1 control.sw · rule 1 REJECTS "Si lazima kuthibitisha utambulisho ili kutoa…"
+PASS §1 control.sw · rule 1 REJECTS "Huhitaji kitambulisho ili kutoa pesa."
+PASS §1 control.sw · rule 1 accepts "Kitambulisho huhitajika kabla ya kutoa pesa."
+PASS §1 control.zh · rule 1 REJECTS "提现无须身份验证。"
+PASS §1 control.zh · rule 1 REJECTS "提现不用验证身份。"
+PASS §1 control.en · rule 1 accepts "Identity verification is required before you…"
+PASS §1 control.en · the LIVE 2026-09-07 sentence is rejected: "Identity verification is not required in…"
+PASS §1 control.en · the LIVE 2026-09-07 sentence is rejected: "Identity verification is offered to ever…"
+PASS §1 control.sw · the LIVE 2026-09-07 sentence is rejected: "Uthibitisho wa utambulisho hauhitajiki i…"
+PASS §1 control.sw · the LIVE 2026-09-07 sentence is rejected: "Uthibitisho wa utambulisho unapatikana k…"
+PASS §1 control.zh · the LIVE 2026-09-07 sentence is rejected: "提现无需完成身份验证。您可随时使用四种证件之一进行验证"
+PASS §1 control.zh · the LIVE 2026-09-07 sentence is rejected: "我们为每位玩家提供身份验证，但提现无需先完成验证。"
+
+§2 · the legal pages
+PASS §2 the population is every .ts/.tsx under src/app/legal — 14 files (floor 14)
+PASS §2 src/app/legal/_components.tsx · every locale block it opens also closes
+PASS §2 src/app/legal/_components.tsx · has locale blocks, or is in the reasoned skip-list
+     src/app/legal/_components.tsx · en · 1 block(s) · 1 unit(s)
+PASS §2 src/app/legal/_components.tsx · en · the locale is read
+PASS §2 src/app/legal/_components.tsx · en · rule 1 — no unit claims money moves without identity
+PASS §2 src/app/legal/_components.tsx · en · rule 2 — no unit binds identity to the entrance
+PASS §2 src/app/legal/_components.tsx · en · rule 3 — no unit gives the gaming regulator as the reason for identity
+PASS §2 src/app/legal/_components.tsx · en · rule 4 — no unit claims a new withdrawal is held or reviewed before it pays
+     src/app/legal/_components.tsx · sw · 1 block(s) · 1 unit(s)
+PASS §2 src/app/legal/_components.tsx · sw · the locale is read
+PASS §2 src/app/legal/_components.tsx · sw · rule 1 — no unit claims money moves without identity
+PASS §2 src/app/legal/_components.tsx · sw · rule 2 — no unit binds identity to the entrance
+PASS §2 src/app/legal/_components.tsx · sw · rule 3 — no unit gives the gaming regulator as the reason for identity
+PASS §2 src/app/legal/_components.tsx · sw · rule 4 — no unit claims a new withdrawal is held or reviewed before it pays
+     src/app/legal/_components.tsx · zh · 1 block(s) · 1 unit(s)
+PASS §2 src/app/legal/_components.tsx · zh · the locale is read
+PASS §2 src/app/legal/_components.tsx · zh · rule 1 — no unit claims money moves without identity
+PASS §2 src/app/legal/_components.tsx · zh · rule 2 — no unit binds identity to the entrance
+PASS §2 src/app/legal/_components.tsx · zh · rule 3 — no unit gives the gaming regulator as the reason for identity
+PASS §2 src/app/legal/_components.tsx · zh · rule 4 — no unit claims a new withdrawal is held or reviewed before it pays
+     src/app/legal/_components.tsx · outside locale blocks · 21 literal(s) and text node(s)
+PASS §2 src/app/legal/_components.tsx · outside locale blocks · rule 1 — no unit claims money moves without identity
+PASS §2 src/app/legal/_components.tsx · outside locale blocks · rule 2 — no unit binds identity to the entrance
+PASS §2 src/app/legal/_components.tsx · outside locale blocks · rule 3 — no unit gives the gaming regulator as the reason for identity
+PASS §2 src/app/legal/_components.tsx · outside locale blocks · rule 4 — no unit claims a new withdrawal is held or reviewed before it pays
+PASS §2 src/app/legal/agent-terms/page.tsx · every locale block it opens also closes
+PASS §2 src/app/legal/agent-terms/page.tsx · has locale blocks, or is in the reasoned skip-list
+     src/app/legal/agent-terms/page.tsx · en · 4 block(s) · 23 unit(s)
+PASS §2 src/app/legal/agent-terms/page.tsx · en · the locale is read
+PASS §2 src/app/legal/agent-terms/page.tsx · en · rule 1 — no unit claims money moves without identity
+PASS §2 src/app/legal/agent-terms/page.tsx · en · rule 2 — no unit binds identity to the entrance
+PASS §2 src/app/legal/agent-terms/page.tsx · en · rule 3 — no unit gives the gaming regulator as the reason for identity
+PASS §2 src/app/legal/agent-terms/page.tsx · en · rule 4 — no unit claims a new withdrawal is held or reviewed before it pays
+     src/app/legal/agent-terms/page.tsx · sw · 4 block(s) · 23 unit(s)
+PASS §2 src/app/legal/agent-terms/page.tsx · sw · the locale is read
+PASS §2 src/app/legal/agent-terms/page.tsx · sw · rule 1 — no unit claims money moves without identity
+PASS §2 src/app/legal/agent-terms/page.tsx · sw · rule 2 — no unit binds identity to the entrance
+PASS §2 src/app/legal/agent-terms/page.tsx · sw · rule 3 — no unit gives the gaming regulator as the reason for identity
+PASS §2 src/app/legal/agent-terms/page.tsx · sw · rule 4 — no unit claims a new withdrawal is held or reviewed before it pays
+     src/app/legal/agent-terms/page.tsx · zh · 4 block(s) · 23 unit(s)
+PASS §2 src/app/legal/agent-terms/page.tsx · zh · the locale is read
+PASS §2 src/app/legal/agent-terms/page.tsx · zh · rule 1 — no unit claims money moves without identity
+PASS §2 src/app/legal/agent-terms/page.tsx · zh · rule 2 — no unit binds identity to the entrance
+PASS §2 src/app/legal/agent-terms/page.tsx · zh · rule 3 — no unit gives the gaming regulator as the reason for identity
+PASS §2 src/app/legal/agent-terms/page.tsx · zh · rule 4 — no unit claims a new withdrawal is held or reviewed before it pays
+     src/app/legal/agent-terms/page.tsx · outside locale blocks · 19 literal(s) and text node(s)
+PASS §2 src/app/legal/agent-terms/page.tsx · outside locale blocks · rule 1 — no unit claims money moves without identity
+PASS §2 src/app/legal/agent-terms/page.tsx · outside locale blocks · rule 2 — no unit binds identity to the entrance
+PASS §2 src/app/legal/agent-terms/page.tsx · outside locale blocks · rule 3 — no unit gives the gaming regulator as the reason for identity
+PASS §2 src/app/legal/agent-terms/page.tsx · outside locale blocks · rule 4 — no unit claims a new withdrawal is held or reviewed before it pays
+PASS §2 src/app/legal/aml/page.tsx · every locale block it opens also closes
+PASS §2 src/app/legal/aml/page.tsx · has locale blocks, or is in the reasoned skip-list
+     src/app/legal/aml/page.tsx · en · 4 block(s) · 23 unit(s)
+PASS §2 src/app/legal/aml/page.tsx · en · the locale is read
+PASS §2 src/app/legal/aml/page.tsx · en · rule 1 — no unit claims money moves without identity
+PASS §2 src/app/legal/aml/page.tsx · en · rule 2 — no unit binds identity to the entrance
+PASS §2 src/app/legal/aml/page.tsx · en · rule 3 — no unit gives the gaming regulator as the reason for identity
+PASS §2 src/app/legal/aml/page.tsx · en · rule 4 — no unit claims a new withdrawal is held or reviewed before it pays
+     src/app/legal/aml/page.tsx · sw · 4 block(s) · 23 unit(s)
+PASS §2 src/app/legal/aml/page.tsx · sw · the locale is read
+PASS §2 src/app/legal/aml/page.tsx · sw · rule 1 — no unit claims money moves without identity
+PASS §2 src/app/legal/aml/page.tsx · sw · rule 2 — no unit binds identity to the entrance
+PASS §2 src/app/legal/aml/page.tsx · sw · rule 3 — no unit gives the gaming regulator as the reason for identity
+PASS §2 src/app/legal/aml/page.tsx · sw · rule 4 — no unit claims a new withdrawal is held or reviewed before it pays
+     src/app/legal/aml/page.tsx · zh · 4 block(s) · 23 unit(s)
+PASS §2 src/app/legal/aml/page.tsx · zh · the locale is read
+PASS §2 src/app/legal/aml/page.tsx · zh · rule 1 — no unit claims money moves without identity
+PASS §2 src/app/legal/aml/page.tsx · zh · rule 2 — no unit binds identity to the entrance
+PASS §2 src/app/legal/aml/page.tsx · zh · rule 3 — no unit gives the gaming regulator as the reason for identity
+PASS §2 src/app/legal/aml/page.tsx · zh · rule 4 — no unit claims a new withdrawal is held or reviewed before it pays
+     src/app/legal/aml/page.tsx · outside locale blocks · 5 literal(s) and text node(s)
+PASS §2 src/app/legal/aml/page.tsx · outside locale blocks · rule 1 — no unit claims money moves without identity
+PASS §2 src/app/legal/aml/page.tsx · outside locale blocks · rule 2 — no unit binds identity to the entrance
+PASS §2 src/app/legal/aml/page.tsx · outside locale blocks · rule 3 — no unit gives the gaming regulator as the reason for identity
+PASS §2 src/app/legal/aml/page.tsx · outside locale blocks · rule 4 — no unit claims a new withdrawal is held or reviewed before it pays
+PASS §2 src/app/legal/layout.tsx · every locale block it opens also closes
+PASS §2 src/app/legal/layout.tsx · has locale blocks, or is in the reasoned skip-list
+     src/app/legal/layout.tsx · en · 7 block(s) · 7 unit(s)
+PASS §2 src/app/legal/layout.tsx · en · the locale is read
+PASS §2 src/app/legal/layout.tsx · en · rule 1 — no unit claims money moves without identity
+PASS §2 src/app/legal/layout.tsx · en · rule 2 — no unit binds identity to the entrance
+PASS §2 src/app/legal/layout.tsx · en · rule 3 — no unit gives the gaming regulator as the reason for identity
+PASS §2 src/app/legal/layout.tsx · en · rule 4 — no unit claims a new withdrawal is held or reviewed before it pays
+     src/app/legal/layout.tsx · sw · 7 block(s) · 7 unit(s)
+PASS §2 src/app/legal/layout.tsx · sw · the locale is read
+PASS §2 src/app/legal/layout.tsx · sw · rule 1 — no unit claims money moves without identity
+PASS §2 src/app/legal/layout.tsx · sw · rule 2 — no unit binds identity to the entrance
+PASS §2 src/app/legal/layout.tsx · sw · rule 3 — no unit gives the gaming regulator as the reason for identity
+PASS §2 src/app/legal/layout.tsx · sw · rule 4 — no unit claims a new withdrawal is held or reviewed before it pays
+     src/app/legal/layout.tsx · zh · 7 block(s) · 7 unit(s)
+PASS §2 src/app/legal/layout.tsx · zh · the locale is read
+PASS §2 src/app/legal/layout.tsx · zh · rule 1 — no unit claims money moves without identity
+PASS §2 src/app/legal/layout.tsx · zh · rule 2 — no unit binds identity to the entrance
+PASS §2 src/app/legal/layout.tsx · zh · rule 3 — no unit gives the gaming regulator as the reason for identity
+PASS §2 src/app/legal/layout.tsx · zh · rule 4 — no unit claims a new withdrawal is held or reviewed before it pays
+     src/app/legal/layout.tsx · outside locale blocks · 19 literal(s) and text node(s)
+PASS §2 src/app/legal/layout.tsx · outside locale blocks · rule 1 — no unit claims money moves without identity
+PASS §2 src/app/legal/layout.tsx · outside locale blocks · rule 2 — no unit binds identity to the entrance
+PASS §2 src/app/legal/layout.tsx · outside locale blocks · rule 3 — no unit gives the gaming regulator as the reason for identity
+PASS §2 src/app/legal/layout.tsx · outside locale blocks · rule 4 — no unit claims a new withdrawal is held or reviewed before it pays
+PASS §2 src/app/legal/legal-nav.tsx · every locale block it opens also closes
+PASS §2 src/app/legal/legal-nav.tsx · skip-listed, and still has no locale block
+PASS §2 src/app/legal/legal-nav.tsx · skip-listed, and still renders no prose of its own
+     src/app/legal/legal-nav.tsx · outside locale blocks · 8 literal(s) and text node(s)
+PASS §2 src/app/legal/legal-nav.tsx · outside locale blocks · rule 1 — no unit claims money moves without identity
+PASS §2 src/app/legal/legal-nav.tsx · outside locale blocks · rule 2 — no unit binds identity to the entrance
+PASS §2 src/app/legal/legal-nav.tsx · outside locale blocks · rule 3 — no unit gives the gaming regulator as the reason for identity
+PASS §2 src/app/legal/legal-nav.tsx · outside locale blocks · rule 4 — no unit claims a new withdrawal is held or reviewed before it pays
+PASS §2 src/app/legal/privacy/page.tsx · every locale block it opens also closes
+PASS §2 src/app/legal/privacy/page.tsx · has locale blocks, or is in the reasoned skip-list
+     src/app/legal/privacy/page.tsx · en · 4 block(s) · 66 unit(s)
+PASS §2 src/app/legal/privacy/page.tsx · en · the locale is read
+PASS §2 src/app/legal/privacy/page.tsx · en · rule 1 — no unit claims money moves without identity
+PASS §2 src/app/legal/privacy/page.tsx · en · rule 2 — no unit binds identity to the entrance
+PASS §2 src/app/legal/privacy/page.tsx · en · rule 3 — no unit gives the gaming regulator as the reason for identity
+PASS §2 src/app/legal/privacy/page.tsx · en · rule 4 — no unit claims a new withdrawal is held or reviewed before it pays
+     src/app/legal/privacy/page.tsx · sw · 4 block(s) · 66 unit(s)
+PASS §2 src/app/legal/privacy/page.tsx · sw · the locale is read
+PASS §2 src/app/legal/privacy/page.tsx · sw · rule 1 — no unit claims money moves without identity
+PASS §2 src/app/legal/privacy/page.tsx · sw · rule 2 — no unit binds identity to the entrance
+PASS §2 src/app/legal/privacy/page.tsx · sw · rule 3 — no unit gives the gaming regulator as the reason for identity
+PASS §2 src/app/legal/privacy/page.tsx · sw · rule 4 — no unit claims a new withdrawal is held or reviewed before it pays
+     src/app/legal/privacy/page.tsx · zh · 4 block(s) · 66 unit(s)
+PASS §2 src/app/legal/privacy/page.tsx · zh · the locale is read
+PASS §2 src/app/legal/privacy/page.tsx · zh · rule 1 — no unit claims money moves without identity
+PASS §2 src/app/legal/privacy/page.tsx · zh · rule 2 — no unit binds identity to the entrance
+PASS §2 src/app/legal/privacy/page.tsx · zh · rule 3 — no unit gives the gaming regulator as the reason for identity
+PASS §2 src/app/legal/privacy/page.tsx · zh · rule 4 — no unit claims a new withdrawal is held or reviewed before it pays
+     src/app/legal/privacy/page.tsx · outside locale blocks · 10 literal(s) and text node(s)
+PASS §2 src/app/legal/privacy/page.tsx · outside locale blocks · rule 1 — no unit claims money moves without identity
+PASS §2 src/app/legal/privacy/page.tsx · outside locale blocks · rule 2 — no unit binds identity to the entrance
+PASS §2 src/app/legal/privacy/page.tsx · outside locale blocks · rule 3 — no unit gives the gaming regulator as the reason for identity
+PASS §2 src/app/legal/privacy/page.tsx · outside locale blocks · rule 4 — no unit claims a new withdrawal is held or reviewed before it pays
+PASS §2 src/app/legal/responsible-gambling/page.tsx · every locale block it opens also closes
+PASS §2 src/app/legal/responsible-gambling/page.tsx · has locale blocks, or is in the reasoned skip-list
+     src/app/legal/responsible-gambling/page.tsx · en · 4 block(s) · 27 unit(s)
+PASS §2 src/app/legal/responsible-gambling/page.tsx · en · the locale is read
+PASS §2 src/app/legal/responsible-gambling/page.tsx · en · rule 1 — no unit claims money moves without identity
+PASS §2 src/app/legal/responsible-gambling/page.tsx · en · rule 2 — no unit binds identity to the entrance
+PASS §2 src/app/legal/responsible-gambling/page.tsx · en · rule 3 — no unit gives the gaming regulator as the reason for identity
+PASS §2 src/app/legal/responsible-gambling/page.tsx · en · rule 4 — no unit claims a new withdrawal is held or reviewed before it pays
+     src/app/legal/responsible-gambling/page.tsx · sw · 4 block(s) · 27 unit(s)
+PASS §2 src/app/legal/responsible-gambling/page.tsx · sw · the locale is read
+PASS §2 src/app/legal/responsible-gambling/page.tsx · sw · rule 1 — no unit claims money moves without identity
+PASS §2 src/app/legal/responsible-gambling/page.tsx · sw · rule 2 — no unit binds identity to the entrance
+PASS §2 src/app/legal/responsible-gambling/page.tsx · sw · rule 3 — no unit gives the gaming regulator as the reason for identity
+PASS §2 src/app/legal/responsible-gambling/page.tsx · sw · rule 4 — no unit claims a new withdrawal is held or reviewed before it pays
+     src/app/legal/responsible-gambling/page.tsx · zh · 4 block(s) · 27 unit(s)
+PASS §2 src/app/legal/responsible-gambling/page.tsx · zh · the locale is read
+PASS §2 src/app/legal/responsible-gambling/page.tsx · zh · rule 1 — no unit claims money moves without identity
+PASS §2 src/app/legal/responsible-gambling/page.tsx · zh · rule 2 — no unit binds identity to the entrance
+PASS §2 src/app/legal/responsible-gambling/page.tsx · zh · rule 3 — no unit gives the gaming regulator as the reason for identity
+PASS §2 src/app/legal/responsible-gambling/page.tsx · zh · rule 4 — no unit claims a new withdrawal is held or reviewed before it pays
+     src/app/legal/responsible-gambling/page.tsx · outside locale blocks · 7 literal(s) and text node(s)
+PASS §2 src/app/legal/responsible-gambling/page.tsx · outside locale blocks · rule 1 — no unit claims money moves without identity
+PASS §2 src/app/legal/responsible-gambling/page.tsx · outside locale blocks · rule 2 — no unit binds identity to the entrance
+PASS §2 src/app/legal/responsible-gambling/page.tsx · outside locale blocks · rule 3 — no unit gives the gaming regulator as the reason for identity
+PASS §2 src/app/legal/responsible-gambling/page.tsx · outside locale blocks · rule 4 — no unit claims a new withdrawal is held or reviewed before it pays
+PASS §2 src/app/legal/rules/_content-up-down.tsx · every locale block it opens also closes
+PASS §2 src/app/legal/rules/_content-up-down.tsx · has locale blocks, or is in the reasoned skip-list
+     src/app/legal/rules/_content-up-down.tsx · en · 1 block(s) · 74 unit(s)
+PASS §2 src/app/legal/rules/_content-up-down.tsx · en · the locale is read
+PASS §2 src/app/legal/rules/_content-up-down.tsx · en · rule 1 — no unit claims money moves without identity
+PASS §2 src/app/legal/rules/_content-up-down.tsx · en · rule 2 — no unit binds identity to the entrance
+PASS §2 src/app/legal/rules/_content-up-down.tsx · en · rule 3 — no unit gives the gaming regulator as the reason for identity
+PASS §2 src/app/legal/rules/_content-up-down.tsx · en · rule 4 — no unit claims a new withdrawal is held or reviewed before it pays
+     src/app/legal/rules/_content-up-down.tsx · sw · 1 block(s) · 74 unit(s)
+PASS §2 src/app/legal/rules/_content-up-down.tsx · sw · the locale is read
+PASS §2 src/app/legal/rules/_content-up-down.tsx · sw · rule 1 — no unit claims money moves without identity
+PASS §2 src/app/legal/rules/_content-up-down.tsx · sw · rule 2 — no unit binds identity to the entrance
+PASS §2 src/app/legal/rules/_content-up-down.tsx · sw · rule 3 — no unit gives the gaming regulator as the reason for identity
+PASS §2 src/app/legal/rules/_content-up-down.tsx · sw · rule 4 — no unit claims a new withdrawal is held or reviewed before it pays
+     src/app/legal/rules/_content-up-down.tsx · zh · 1 block(s) · 74 unit(s)
+PASS §2 src/app/legal/rules/_content-up-down.tsx · zh · the locale is read
+PASS §2 src/app/legal/rules/_content-up-down.tsx · zh · rule 1 — no unit claims money moves without identity
+PASS §2 src/app/legal/rules/_content-up-down.tsx · zh · rule 2 — no unit binds identity to the entrance
+PASS §2 src/app/legal/rules/_content-up-down.tsx · zh · rule 3 — no unit gives the gaming regulator as the reason for identity
+PASS §2 src/app/legal/rules/_content-up-down.tsx · zh · rule 4 — no unit claims a new withdrawal is held or reviewed before it pays
+     src/app/legal/rules/_content-up-down.tsx · outside locale blocks · 14 literal(s) and text node(s)
+PASS §2 src/app/legal/rules/_content-up-down.tsx · outside locale blocks · rule 1 — no unit claims money moves without identity
+PASS §2 src/app/legal/rules/_content-up-down.tsx · outside locale blocks · rule 2 — no unit binds identity to the entrance
+PASS §2 src/app/legal/rules/_content-up-down.tsx · outside locale blocks · rule 3 — no unit gives the gaming regulator as the reason for identity
+PASS §2 src/app/legal/rules/_content-up-down.tsx · outside locale blocks · rule 4 — no unit claims a new withdrawal is held or reviewed before it pays
+PASS §2 src/app/legal/rules/_content-yes-no.tsx · every locale block it opens also closes
+PASS §2 src/app/legal/rules/_content-yes-no.tsx · has locale blocks, or is in the reasoned skip-list
+     src/app/legal/rules/_content-yes-no.tsx · en · 1 block(s) · 62 unit(s)
+PASS §2 src/app/legal/rules/_content-yes-no.tsx · en · the locale is read
+PASS §2 src/app/legal/rules/_content-yes-no.tsx · en · rule 1 — no unit claims money moves without identity
+PASS §2 src/app/legal/rules/_content-yes-no.tsx · en · rule 2 — no unit binds identity to the entrance
+PASS §2 src/app/legal/rules/_content-yes-no.tsx · en · rule 3 — no unit gives the gaming regulator as the reason for identity
+PASS §2 src/app/legal/rules/_content-yes-no.tsx · en · rule 4 — no unit claims a new withdrawal is held or reviewed before it pays
+     src/app/legal/rules/_content-yes-no.tsx · sw · 1 block(s) · 62 unit(s)
+PASS §2 src/app/legal/rules/_content-yes-no.tsx · sw · the locale is read
+PASS §2 src/app/legal/rules/_content-yes-no.tsx · sw · rule 1 — no unit claims money moves without identity
+PASS §2 src/app/legal/rules/_content-yes-no.tsx · sw · rule 2 — no unit binds identity to the entrance
+PASS §2 src/app/legal/rules/_content-yes-no.tsx · sw · rule 3 — no unit gives the gaming regulator as the reason for identity
+PASS §2 src/app/legal/rules/_content-yes-no.tsx · sw · rule 4 — no unit claims a new withdrawal is held or reviewed before it pays
+     src/app/legal/rules/_content-yes-no.tsx · zh · 1 block(s) · 62 unit(s)
+PASS §2 src/app/legal/rules/_content-yes-no.tsx · zh · the locale is read
+PASS §2 src/app/legal/rules/_content-yes-no.tsx · zh · rule 1 — no unit claims money moves without identity
+PASS §2 src/app/legal/rules/_content-yes-no.tsx · zh · rule 2 — no unit binds identity to the entrance
+PASS §2 src/app/legal/rules/_content-yes-no.tsx · zh · rule 3 — no unit gives the gaming regulator as the reason for identity
+PASS §2 src/app/legal/rules/_content-yes-no.tsx · zh · rule 4 — no unit claims a new withdrawal is held or reviewed before it pays
+     src/app/legal/rules/_content-yes-no.tsx · outside locale blocks · 12 literal(s) and text node(s)
+PASS §2 src/app/legal/rules/_content-yes-no.tsx · outside locale blocks · rule 1 — no unit claims money moves without identity
+PASS §2 src/app/legal/rules/_content-yes-no.tsx · outside locale blocks · rule 2 — no unit binds identity to the entrance
+PASS §2 src/app/legal/rules/_content-yes-no.tsx · outside locale blocks · rule 3 — no unit gives the gaming regulator as the reason for identity
+PASS §2 src/app/legal/rules/_content-yes-no.tsx · outside locale blocks · rule 4 — no unit claims a new withdrawal is held or reviewed before it pays
+PASS §2 src/app/legal/rules/_shared.tsx · every locale block it opens also closes
+PASS §2 src/app/legal/rules/_shared.tsx · skip-listed, and still has no locale block
+PASS §2 src/app/legal/rules/_shared.tsx · skip-listed, and still renders no prose of its own
+     src/app/legal/rules/_shared.tsx · outside locale blocks · 24 literal(s) and text node(s)
+PASS §2 src/app/legal/rules/_shared.tsx · outside locale blocks · rule 1 — no unit claims money moves without identity
+PASS §2 src/app/legal/rules/_shared.tsx · outside locale blocks · rule 2 — no unit binds identity to the entrance
+PASS §2 src/app/legal/rules/_shared.tsx · outside locale blocks · rule 3 — no unit gives the gaming regulator as the reason for identity
+PASS §2 src/app/legal/rules/_shared.tsx · outside locale blocks · rule 4 — no unit claims a new withdrawal is held or reviewed before it pays
+PASS §2 src/app/legal/rules/page.tsx · every locale block it opens also closes
+PASS §2 src/app/legal/rules/page.tsx · has locale blocks, or is in the reasoned skip-list
+     src/app/legal/rules/page.tsx · en · 7 block(s) · 10 unit(s)
+PASS §2 src/app/legal/rules/page.tsx · en · the locale is read
+PASS §2 src/app/legal/rules/page.tsx · en · rule 1 — no unit claims money moves without identity
+PASS §2 src/app/legal/rules/page.tsx · en · rule 2 — no unit binds identity to the entrance
+PASS §2 src/app/legal/rules/page.tsx · en · rule 3 — no unit gives the gaming regulator as the reason for identity
+PASS §2 src/app/legal/rules/page.tsx · en · rule 4 — no unit claims a new withdrawal is held or reviewed before it pays
+     src/app/legal/rules/page.tsx · sw · 7 block(s) · 10 unit(s)
+PASS §2 src/app/legal/rules/page.tsx · sw · the locale is read
+PASS §2 src/app/legal/rules/page.tsx · sw · rule 1 — no unit claims money moves without identity
+PASS §2 src/app/legal/rules/page.tsx · sw · rule 2 — no unit binds identity to the entrance
+PASS §2 src/app/legal/rules/page.tsx · sw · rule 3 — no unit gives the gaming regulator as the reason for identity
+PASS §2 src/app/legal/rules/page.tsx · sw · rule 4 — no unit claims a new withdrawal is held or reviewed before it pays
+     src/app/legal/rules/page.tsx · zh · 7 block(s) · 10 unit(s)
+PASS §2 src/app/legal/rules/page.tsx · zh · the locale is read
+PASS §2 src/app/legal/rules/page.tsx · zh · rule 1 — no unit claims money moves without identity
+PASS §2 src/app/legal/rules/page.tsx · zh · rule 2 — no unit binds identity to the entrance
+PASS §2 src/app/legal/rules/page.tsx · zh · rule 3 — no unit gives the gaming regulator as the reason for identity
+PASS §2 src/app/legal/rules/page.tsx · zh · rule 4 — no unit claims a new withdrawal is held or reviewed before it pays
+     src/app/legal/rules/page.tsx · outside locale blocks · 53 literal(s) and text node(s)
+PASS §2 src/app/legal/rules/page.tsx · outside locale blocks · rule 1 — no unit claims money moves without identity
+PASS §2 src/app/legal/rules/page.tsx · outside locale blocks · rule 2 — no unit binds identity to the entrance
+PASS §2 src/app/legal/rules/page.tsx · outside locale blocks · rule 3 — no unit gives the gaming regulator as the reason for identity
+PASS §2 src/app/legal/rules/page.tsx · outside locale blocks · rule 4 — no unit claims a new withdrawal is held or reviewed before it pays
+PASS §2 src/app/legal/rules/up-down/page.tsx · every locale block it opens also closes
+PASS §2 src/app/legal/rules/up-down/page.tsx · has locale blocks, or is in the reasoned skip-list
+     src/app/legal/rules/up-down/page.tsx · en · 4 block(s) · 4 unit(s)
+PASS §2 src/app/legal/rules/up-down/page.tsx · en · the locale is read
+PASS §2 src/app/legal/rules/up-down/page.tsx · en · rule 1 — no unit claims money moves without identity
+PASS §2 src/app/legal/rules/up-down/page.tsx · en · rule 2 — no unit binds identity to the entrance
+PASS §2 src/app/legal/rules/up-down/page.tsx · en · rule 3 — no unit gives the gaming regulator as the reason for identity
+PASS §2 src/app/legal/rules/up-down/page.tsx · en · rule 4 — no unit claims a new withdrawal is held or reviewed before it pays
+     src/app/legal/rules/up-down/page.tsx · sw · 4 block(s) · 4 unit(s)
+PASS §2 src/app/legal/rules/up-down/page.tsx · sw · the locale is read
+PASS §2 src/app/legal/rules/up-down/page.tsx · sw · rule 1 — no unit claims money moves without identity
+PASS §2 src/app/legal/rules/up-down/page.tsx · sw · rule 2 — no unit binds identity to the entrance
+PASS §2 src/app/legal/rules/up-down/page.tsx · sw · rule 3 — no unit gives the gaming regulator as the reason for identity
+PASS §2 src/app/legal/rules/up-down/page.tsx · sw · rule 4 — no unit claims a new withdrawal is held or reviewed before it pays
+     src/app/legal/rules/up-down/page.tsx · zh · 4 block(s) · 4 unit(s)
+PASS §2 src/app/legal/rules/up-down/page.tsx · zh · the locale is read
+PASS §2 src/app/legal/rules/up-down/page.tsx · zh · rule 1 — no unit claims money moves without identity
+PASS §2 src/app/legal/rules/up-down/page.tsx · zh · rule 2 — no unit binds identity to the entrance
+PASS §2 src/app/legal/rules/up-down/page.tsx · zh · rule 3 — no unit gives the gaming regulator as the reason for identity
+PASS §2 src/app/legal/rules/up-down/page.tsx · zh · rule 4 — no unit claims a new withdrawal is held or reviewed before it pays
+     src/app/legal/rules/up-down/page.tsx · outside locale blocks · 9 literal(s) and text node(s)
+PASS §2 src/app/legal/rules/up-down/page.tsx · outside locale blocks · rule 1 — no unit claims money moves without identity
+PASS §2 src/app/legal/rules/up-down/page.tsx · outside locale blocks · rule 2 — no unit binds identity to the entrance
+PASS §2 src/app/legal/rules/up-down/page.tsx · outside locale blocks · rule 3 — no unit gives the gaming regulator as the reason for identity
+PASS §2 src/app/legal/rules/up-down/page.tsx · outside locale blocks · rule 4 — no unit claims a new withdrawal is held or reviewed before it pays
+PASS §2 src/app/legal/rules/yes-no/page.tsx · every locale block it opens also closes
+PASS §2 src/app/legal/rules/yes-no/page.tsx · has locale blocks, or is in the reasoned skip-list
+     src/app/legal/rules/yes-no/page.tsx · en · 3 block(s) · 3 unit(s)
+PASS §2 src/app/legal/rules/yes-no/page.tsx · en · the locale is read
+PASS §2 src/app/legal/rules/yes-no/page.tsx · en · rule 1 — no unit claims money moves without identity
+PASS §2 src/app/legal/rules/yes-no/page.tsx · en · rule 2 — no unit binds identity to the entrance
+PASS §2 src/app/legal/rules/yes-no/page.tsx · en · rule 3 — no unit gives the gaming regulator as the reason for identity
+PASS §2 src/app/legal/rules/yes-no/page.tsx · en · rule 4 — no unit claims a new withdrawal is held or reviewed before it pays
+     src/app/legal/rules/yes-no/page.tsx · sw · 3 block(s) · 3 unit(s)
+PASS §2 src/app/legal/rules/yes-no/page.tsx · sw · the locale is read
+PASS §2 src/app/legal/rules/yes-no/page.tsx · sw · rule 1 — no unit claims money moves without identity
+PASS §2 src/app/legal/rules/yes-no/page.tsx · sw · rule 2 — no unit binds identity to the entrance
+PASS §2 src/app/legal/rules/yes-no/page.tsx · sw · rule 3 — no unit gives the gaming regulator as the reason for identity
+PASS §2 src/app/legal/rules/yes-no/page.tsx · sw · rule 4 — no unit claims a new withdrawal is held or reviewed before it pays
+     src/app/legal/rules/yes-no/page.tsx · zh · 3 block(s) · 3 unit(s)
+PASS §2 src/app/legal/rules/yes-no/page.tsx · zh · the locale is read
+PASS §2 src/app/legal/rules/yes-no/page.tsx · zh · rule 1 — no unit claims money moves without identity
+PASS §2 src/app/legal/rules/yes-no/page.tsx · zh · rule 2 — no unit binds identity to the entrance
+PASS §2 src/app/legal/rules/yes-no/page.tsx · zh · rule 3 — no unit gives the gaming regulator as the reason for identity
+PASS §2 src/app/legal/rules/yes-no/page.tsx · zh · rule 4 — no unit claims a new withdrawal is held or reviewed before it pays
+     src/app/legal/rules/yes-no/page.tsx · outside locale blocks · 18 literal(s) and text node(s)
+PASS §2 src/app/legal/rules/yes-no/page.tsx · outside locale blocks · rule 1 — no unit claims money moves without identity
+PASS §2 src/app/legal/rules/yes-no/page.tsx · outside locale blocks · rule 2 — no unit binds identity to the entrance
+PASS §2 src/app/legal/rules/yes-no/page.tsx · outside locale blocks · rule 3 — no unit gives the gaming regulator as the reason for identity
+PASS §2 src/app/legal/rules/yes-no/page.tsx · outside locale blocks · rule 4 — no unit claims a new withdrawal is held or reviewed before it pays
+PASS §2 src/app/legal/terms/page.tsx · every locale block it opens also closes
+PASS §2 src/app/legal/terms/page.tsx · has locale blocks, or is in the reasoned skip-list
+     src/app/legal/terms/page.tsx · en · 4 block(s) · 41 unit(s)
+PASS §2 src/app/legal/terms/page.tsx · en · the locale is read
+PASS §2 src/app/legal/terms/page.tsx · en · rule 1 — no unit claims money moves without identity
+PASS §2 src/app/legal/terms/page.tsx · en · rule 2 — no unit binds identity to the entrance
+PASS §2 src/app/legal/terms/page.tsx · en · rule 3 — no unit gives the gaming regulator as the reason for identity
+PASS §2 src/app/legal/terms/page.tsx · en · rule 4 — no unit claims a new withdrawal is held or reviewed before it pays
+     src/app/legal/terms/page.tsx · sw · 4 block(s) · 41 unit(s)
+PASS §2 src/app/legal/terms/page.tsx · sw · the locale is read
+PASS §2 src/app/legal/terms/page.tsx · sw · rule 1 — no unit claims money moves without identity
+PASS §2 src/app/legal/terms/page.tsx · sw · rule 2 — no unit binds identity to the entrance
+PASS §2 src/app/legal/terms/page.tsx · sw · rule 3 — no unit gives the gaming regulator as the reason for identity
+PASS §2 src/app/legal/terms/page.tsx · sw · rule 4 — no unit claims a new withdrawal is held or reviewed before it pays
+     src/app/legal/terms/page.tsx · zh · 4 block(s) · 41 unit(s)
+PASS §2 src/app/legal/terms/page.tsx · zh · the locale is read
+PASS §2 src/app/legal/terms/page.tsx · zh · rule 1 — no unit claims money moves without identity
+PASS §2 src/app/legal/terms/page.tsx · zh · rule 2 — no unit binds identity to the entrance
+PASS §2 src/app/legal/terms/page.tsx · zh · rule 3 — no unit gives the gaming regulator as the reason for identity
+PASS §2 src/app/legal/terms/page.tsx · zh · rule 4 — no unit claims a new withdrawal is held or reviewed before it pays
+     src/app/legal/terms/page.tsx · outside locale blocks · 8 literal(s) and text node(s)
+PASS §2 src/app/legal/terms/page.tsx · outside locale blocks · rule 1 — no unit claims money moves without identity
+PASS §2 src/app/legal/terms/page.tsx · outside locale blocks · rule 2 — no unit binds identity to the entrance
+PASS §2 src/app/legal/terms/page.tsx · outside locale blocks · rule 3 — no unit gives the gaming regulator as the reason for identity
+PASS §2 src/app/legal/terms/page.tsx · outside locale blocks · rule 4 — no unit claims a new withdrawal is held or reviewed before it pays
+PASS §2 floor · src/app/legal/terms/page.tsx · en · at least 30 units read — 41
+PASS §2 floor · src/app/legal/terms/page.tsx · sw · at least 30 units read — 41
+PASS §2 floor · src/app/legal/terms/page.tsx · zh · at least 30 units read — 41
+PASS §2 floor · src/app/legal/aml/page.tsx · en · at least 14 units read — 23
+PASS §2 floor · src/app/legal/aml/page.tsx · sw · at least 14 units read — 23
+PASS §2 floor · src/app/legal/aml/page.tsx · zh · at least 14 units read — 23
+PASS §2 floor · src/app/legal/privacy/page.tsx · en · at least 30 units read — 66
+PASS §2 floor · src/app/legal/privacy/page.tsx · sw · at least 30 units read — 66
+PASS §2 floor · src/app/legal/privacy/page.tsx · zh · at least 30 units read — 66
+PASS §2 floor · src/app/legal/responsible-gambling/page.tsx · en · at least 14 units read — 27
+PASS §2 floor · src/app/legal/responsible-gambling/page.tsx · sw · at least 14 units read — 27
+PASS §2 floor · src/app/legal/responsible-gambling/page.tsx · zh · at least 14 units read — 27
+PASS §2 floor · src/app/legal/agent-terms/page.tsx · en · at least 14 units read — 23
+PASS §2 floor · src/app/legal/agent-terms/page.tsx · sw · at least 14 units read — 23
+PASS §2 floor · src/app/legal/agent-terms/page.tsx · zh · at least 14 units read — 23
+PASS §2 floor · src/app/legal/rules/_content-yes-no.tsx · en · at least 40 units read — 62
+PASS §2 floor · src/app/legal/rules/_content-yes-no.tsx · sw · at least 40 units read — 62
+PASS §2 floor · src/app/legal/rules/_content-yes-no.tsx · zh · at least 40 units read — 62
+PASS §2 floor · src/app/legal/rules/_content-up-down.tsx · en · at least 40 units read — 74
+PASS §2 floor · src/app/legal/rules/_content-up-down.tsx · sw · at least 40 units read — 74
+PASS §2 floor · src/app/legal/rules/_content-up-down.tsx · zh · at least 40 units read — 74
+PASS §2 floor · src/app/legal/rules/page.tsx · en · at least 6 units read — 10
+PASS §2 floor · src/app/legal/rules/page.tsx · sw · at least 6 units read — 10
+PASS §2 floor · src/app/legal/rules/page.tsx · zh · at least 6 units read — 10
+PASS §2 floor · en · at least 150 <p>/<li> paragraphs read across the legal pages — 183
+PASS §2 floor · sw · at least 150 <p>/<li> paragraphs read across the legal pages — 183
+PASS §2 floor · zh · at least 150 <p>/<li> paragraphs read across the legal pages — 183
+PASS §2 control · a four-space JSX block with a bare apostrophe is read to its close
+PASS §2 control · …and its table cells are read too
+PASS §2 control · a string-array block yields one unit per item
+PASS §2 control · a template string block drops its interpolation
+PASS §2 control · a `locale === "en" && (…)` block is one paragraph
+PASS §2 control · ⛔ an unbalanced block FAILS rather than reading short — en jsx block at line 18 never closes
+PASS §2 control · ⛔ the 2026-09-07 reader's own shape was blind to a four-space block
+
+§3 · rule 2 — identity bound to the entrance
+PASS §3 dict · en · rule 2 — no unit binds identity to the entrance
+PASS §3 dict · sw · rule 2 — no unit binds identity to the entrance
+PASS §3 dict · zh · rule 2 — no unit binds identity to the entrance
+PASS §3 control.en · REJECTED: "Identity verification is required before you can…"
+PASS §3 control.en · REJECTED: "Verify your identity to add money, play and cash…"
+PASS §3 control.en · REJECTED: "Adding money, playing and cashing out all open u…"
+PASS §3 control.sw · REJECTED: "Thibitisha utambulisho wako ili kuweka pesa, kuc…"
+PASS §3 control.sw · REJECTED: "Uthibitisho wa utambulisho unahitajika kabla ya …"
+PASS §3 control.zh · REJECTED: "完成身份验证后即可充值、投注和提现。"
+PASS §3 control.zh · REJECTED: "在充值、投注或提现之前，必须先完成身份验证。"
+PASS §3 control.en · REJECTED: "Verify your identity first. Then you can deposit…"
+PASS §3 control.en · accepted by all three rules: "Verify your identity before you cash out."
+PASS §3 control.en · accepted by all three rules: "Verify your identity anytime before your first w…"
+PASS §3 control.sw · accepted by all three rules: "Thibitisha utambulisho wako kabla ya kutoa pesa."
+PASS §3 control.zh · accepted by all three rules: "提现前请先验证身份。"
+PASS §3 control.en · accepted by all three rules: "We do not run an automated screening feed agains…"
+PASS §3 control.sw · accepted by all three rules: "Hatuendeshi mfumo wa kiotomatiki wa kuchunguza o…"
+PASS §3 control.zh · accepted by all three rules: "我们不运行对照 UN、OFAC、EU 或 UK HMT 制裁名单的自动筛查系统。制裁与 PEP …"
+PASS §3 control.en · accepted by all three rules: "Confirm your email to add money and play."
+PASS §3 control.en · accepted by all three rules: "Verify your email first to deposit."
+PASS §3 control.sw · accepted by all three rules: "Thibitisha barua pepe yako ili kuweka pesa na ku…"
+PASS §3 control.zh · accepted by all three rules: "验证邮箱后即可充值和投注。"
+PASS §3 control.en · accepted by all three rules: "Every player verifies their identity once, befor…"
+
+§4 · rule 3 — the gaming regulator as the reason
+PASS §4 dict · en · rule 3 — no unit gives the gaming regulator as the reason for identity
+PASS §4 dict · sw · rule 3 — no unit gives the gaming regulator as the reason for identity
+PASS §4 dict · zh · rule 3 — no unit gives the gaming regulator as the reason for identity
+PASS §4 control · rule 3 REJECTS "The Gaming Board of Tanzania requires identity v…"
+PASS §4 control · rule 3 REJECTS "Tanzania Gaming Act requires identity verificati…"
+PASS §4 control · rule 3 REJECTS "Bodi ya Michezo ya Kubahatisha Tanzania inataka …"
+PASS §4 control · rule 3 REJECTS "坦桑尼亚博彩委员会要求每个账户完成身份验证。"
+PASS §4 control · rule 3 accepts "Licensed by the Gaming Board of Tanzania."
+PASS §4 control · rule 3 accepts "Under anti-money-laundering rules, we verify you…"
+PASS §4 control · rule 3 accepts "依据反洗钱法规，我们会在您首次提现前验证您的身份。"
+
+§5 · the allow-set
+PASS §5 the allow-set holds exactly 2 entries
+PASS §5 allow · src/app/legal/agent-terms/page.tsx · zh · rule 1 · still matches a live unit — the denial is about a fee receipt; identity is the agent application's own requirement, in another sentence
+PASS §5 allow · src/app/legal/privacy/page.tsx · sw · rule 2 · still matches a live unit — kitambulisho is a technical identifier the sentence DENIES keeping; betting and the bet slip are counted steps, not gated by identity
+
+§6 · rule 4 — a new withdrawal held or reviewed before it pays
+PASS §6 proof P1 · payments.ts · no NEW withdrawal is put in AML_REVIEW — switch false · 1 AML_REVIEW return(s), all behind it
+PASS §6 proof P2 · the held-withdrawal email and bell entry are sent only from wallet-service's held block — 1 held block(s) · 1 email call(s) · 1 notification call(s), every one inside
+PASS §6 proof P3 · notifyWithdraw has exactly one AML_REVIEW branch — one AML_REVIEW branch in notifyWithdraw
+PASS §6 proof P4 · common.withdrawalUnderReview / common.amlReviewBody render only for a withdrawal in AML_REVIEW — read only by src/app/wallet/wallet-result-modal.tsx, only behind amlHeld
+PASS §6 proof · the src/ files naming a surface were read — 6: src/app/wallet/wallet-result-modal.tsx, src/lib/i18n-dict.ts, src/lib/server/comms-registry.ts, src/lib/server/email.ts, src/lib/server/notification-service.ts, src/lib/server/wallet-service.ts
+PASS §6 proof control · P1 FAILS with the hold switched back on
+PASS §6 proof control · P1 FAILS with an AML_REVIEW return outside the switch
+PASS §6 proof control · P2 FAILS when another file sends the held-withdrawal bell entry
+PASS §6 proof control · P2 FAILS when a notifyWithdraw call passes a computed status
+PASS §6 proof control · P2 FAILS when the held-withdrawal email is sent outside the held block
+PASS §6 proof control · P3 FAILS when notifyWithdraw grows a second AML_REVIEW branch
+PASS §6 proof control · P4 FAILS when the modal shows the held copy for another status
+PASS §6 proof control · P4 FAILS when a second file reads the held copy
+PASS §6 the surface allow-list holds exactly 4 surfaces — 4 — a surface is added with its proof and this number in the same edit, never alone
+PASS §6 control · an UNPROVEN surface excuses nothing
+PASS §6 control · a surface excuses by exact key, never by wording
+PASS §6 dict · en · rule 4 — no unit claims a new withdrawal is held or reviewed before it pays
+PASS §6 dict · sw · rule 4 — no unit claims a new withdrawal is held or reviewed before it pays
+PASS §6 dict · zh · rule 4 — no unit claims a new withdrawal is held or reviewed before it pays
+     the legal pages are read under rule 4 in §2, file by file and locale by locale
+PASS §6 email.ts · the officer templates excepted are named by the registry, and each is a real template — marketCancelledAdminHtml, marketResolutionAdminHtml, agentApplicationSubmittedAdminHtml, kycSubmittedAdminHtml, amlReviewAdminHtml, staffRoleChangedHtml, proposalSubmittedAdminHtml, sentinelDownAdminHtml, aiCreditLimitAdminHtml, backupUnhealthyAdminHtml, smsCreditLowAdminHtml, kycReviewOverdueAdminHtml, houseBotErasureBlockedAdminHtml, houseBotAdminHtml
+PASS §6 email.ts · withdrawalUnderReviewHtml is registered as PLAYER mail — read, and excused only by proof
+PASS §6 house-bot/alerts.ts · houseBotAlertRecipients provably reads ADMIN accounts only — export async function houseBotAlertRecipients(): Promise<StoredUser[]> {
+  const admins = await db.user.listByRoles(["ADMIN"]);
+  return admins.filter((u) => 
+PASS §6 control · a resolver that reads every user is NOT proven
+PASS §6 notification-service.ts · every officer emitter excepted provably addresses officers (adminUserId or listByRoles) — 21 excepted
+     email.ts · 743 unit(s)
+PASS §6 email.ts · the population is read — 743 units (floor 300)
+PASS §6 email.ts · the held-withdrawal template is in the population
+PASS §6 email.ts · rule 4 — no unit claims a new withdrawal is held or reviewed before it pays
+     notification-service.ts · 1008 unit(s)
+PASS §6 notification-service.ts · the population is read — 1008 units (floor 300)
+PASS §6 notification-service.ts · notifyWithdraw's AML_REVIEW branch is in the population
+PASS §6 notification-service.ts · rule 4 — no unit claims a new withdrawal is held or reviewed before it pays
+     _actions/chat.ts · 81 unit(s)
+PASS §6 _actions/chat.ts · the population is read — 81 units (floor 35)
+PASS §6 _actions/chat.ts · the live prompt's withdrawal line is in the population
+PASS §6 _actions/chat.ts · rule 4 — no unit claims a new withdrawal is held or reviewed before it pays
+     chat/send-message.ts · 113 unit(s)
+PASS §6 chat/send-message.ts · the population is read — 113 units (floor 25)
+PASS §6 chat/send-message.ts · the offline answer's withdrawal line is in the population
+PASS §6 chat/send-message.ts · rule 4 — no unit claims a new withdrawal is held or reviewed before it pays
+PASS §6 control · a notification body alone does not trip rule 4 (so the pairing is what catches it) — Withdrawal update | Compliance review takes up to 24 hours. Tap to view.
+PASS §6 control · the title+body pairing reports the claim split across them — Withdrawal update Compliance review takes up to 24 hours. | Withdrawal update Tap to view.
+PASS §6 control · the pairing finds the live notifyWithdraw entries (it is not reading nothing)
+PASS §6 surface · dictionary common.withdrawalUnderReview · proven (P1 P2 P4) and still excusing live copy — the wallet result modal's title for a withdrawal already in AML_REVIEW — 3 excused hit(s)
+PASS §6 surface · dictionary common.amlReviewBody · proven (P1 P2 P4) and still excusing live copy — the same modal's body, same gate — 3 excused hit(s)
+PASS §6 surface · email withdrawalUnderReviewHtml · proven (P1 P2) and still excusing live copy — the email sent only from the held-withdrawal block — 3 excused hit(s)
+PASS §6 surface · notifyWithdraw AML_REVIEW branch · proven (P1 P2 P3) and still excusing live copy — the bell entry sent only from the held-withdrawal block — 4 excused hit(s)
+PASS §6 control.en · rule 4 REJECTS "Withdrawals of TZS 1,000,000 or more are held fo…"
+PASS §6 control.en · rule 4 REJECTS "Even once identity is verified, withdrawals of T…"
+PASS §6 control.en · rule 4 REJECTS "Amounts of TZS 1,000,000 or more are reviewed by…"
+PASS §6 control.en · rule 4 REJECTS "There is no fee, but a large withdrawal can take…"
+PASS §6 control.sw · rule 4 REJECTS "Kiasi cha TZS 1,000,000 au zaidi kinakaguliwa na…"
+PASS §6 control.sw · rule 4 REJECTS "Kutoa pesa kwa kiasi kikubwa kunashikiliwa kwa u…"
+PASS §6 control.zh · rule 4 REJECTS "100 万先令及以上的提现须经两名合规专员审核，最长需要 24 小时。"
+PASS §6 control.zh · rule 4 REJECTS "大额提现会被暂扣，由合规团队人工审核。"
+PASS §6 control.en · rule 4 accepts "No officer reviews a withdrawal before it is sen…"
+PASS §6 control.en · rule 4 accepts "You verify your identity once, before your first…"
+PASS §6 control.en · rule 4 accepts "We verify your identity once, before your first …"
+PASS §6 control.en · rule 4 accepts "Deposits of TZS 1,000,000 or more need a source-…"
+PASS §6 control.en · rule 4 accepts "Winnings are paid after the 24-hour objection wi…"
+PASS §6 control.sw · rule 4 accepts "Thibitisha utambulisho wako — ukaguzi ule ule un…"
+PASS §6 control.sw · rule 4 accepts "Hakuna afisa anayekagua utoaji kabla haujatumwa,…"
+PASS §6 control.zh · rule 4 accepts "验证您的身份——与首次提现前的身份审核相同。"
+PASS §6 control.zh · rule 4 accepts "无论金额大小，提现在发出前都不会经过人工审核。"
+PASS §6 control.zh · rule 4 accepts "50pick 认证代理是经过审核的业务合作伙伴，负责推荐新玩家，并从 50pick 在其投注中保…"
+PASS §6 control · the planted zh hint is reported through scan — 尚未 opens the unit and does not excuse the claim — common.pendingHoldHint: "100 万先令及以上的提现须经合规团队⟦审核⟧" [sha 439460ac4ad7f9cd]
+
+kyc-copy-truth: 431 passed, 0 failed

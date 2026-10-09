@@ -1,0 +1,86 @@
+[audit] COMPLIANCE resolution.two_admin_enabled mixed-flow-setup SystemFlag#requireTwoOfficerResolution
+
+── 0. Set mixed lead times per category ──
+
+── 1. Normal AI polls — selectionClosedAt per category ──
+[audit] ADMIN aipoll.config_updated off_mixed_test AIPollConfig#singleton
+[audit] ADMIN aipoll.generate_started off_mixed_test AIPoll#aipoll_5dfab988e14756fa1fa4542b
+[audit] ADMIN aipoll.pending_review off_mixed_test AIPoll#aipoll_5dfab988e14756fa1fa4542b
+[audit] ADMIN aipoll.generate_started off_mixed_test AIPoll#aipoll_7eb4611a2aad2fa6c4a10454
+[audit] ADMIN aipoll.pending_review off_mixed_test AIPoll#aipoll_7eb4611a2aad2fa6c4a10454
+[audit] ADMIN aipoll.generate_started off_mixed_test AIPoll#aipoll_a7ea03ce345f8a450b9618ec
+[audit] ADMIN aipoll.pending_review off_mixed_test AIPoll#aipoll_a7ea03ce345f8a450b9618ec
+[audit] ADMIN aipoll.generate_started off_mixed_test AIPoll#aipoll_86400d9ea84de97980535267
+[audit] ADMIN aipoll.pending_review off_mixed_test AIPoll#aipoll_86400d9ea84de97980535267
+[audit] ADMIN aipoll.generate_started off_mixed_test AIPoll#aipoll_0a62ba1767b71608caaa97ad
+[audit] ADMIN aipoll.pending_review off_mixed_test AIPoll#aipoll_0a62ba1767b71608caaa97ad
+[audit] ADMIN aipoll.generate_started off_mixed_test AIPoll#aipoll_404d5f0901e2b68a1033c41b
+
+── 2. Controlled polls — operator dates with minute precision ──
+[audit] ADMIN aipoll.pending_review off_mixed_test AIPoll#aipoll_404d5f0901e2b68a1033c41b
+[audit] ADMIN aipoll.generate_started off_mixed_test AIPoll#aipoll_70e1c616fd37b5d7f112b327
+[audit] ADMIN aipoll.pending_review off_mixed_test AIPoll#aipoll_70e1c616fd37b5d7f112b327
+[audit] ADMIN aipoll.generate_started off_mixed_test AIPoll#aipoll_ed2c7ea5db1479c0d3763b4f
+[audit] ADMIN aipoll.pending_review off_mixed_test AIPoll#aipoll_ed2c7ea5db1479c0d3763b4f
+[audit] ADMIN aipoll.generate_started off_mixed_test AIPoll#aipoll_d261594f8b5f3a89057094ee
+
+── 3. Edit poll — resolutionAt change recomputes selectionClosedAt ──
+[audit] ADMIN aipoll.pending_review off_mixed_test AIPoll#aipoll_d261594f8b5f3a89057094ee
+[audit] ADMIN aipoll.edited off_mixed_test AIPoll#aipoll_5dfab988e14756fa1fa4542b
+
+── 4. Publish polls → live markets with correct dates ──
+[audit] ADMIN aipoll.edited off_mixed_test AIPoll#aipoll_5dfab988e14756fa1fa4542b
+[audit] ADMIN aipoll.approved off_mixed_test AIPoll#aipoll_5dfab988e14756fa1fa4542b
+[audit] ADMIN market.created off_mixed_test Market#mkt_c1bb3b1da797e3493484
+[audit] ADMIN aipoll.published off_mixed_test AIPoll#aipoll_5dfab988e14756fa1fa4542b
+[audit] ADMIN aipoll.approved off_mixed_test AIPoll#aipoll_7eb4611a2aad2fa6c4a10454
+[audit] ADMIN market.created off_mixed_test Market#mkt_d2b534eb33856325c0d5
+[audit] ADMIN aipoll.published off_mixed_test AIPoll#aipoll_7eb4611a2aad2fa6c4a10454
+[audit] ADMIN aipoll.approved off_mixed_test AIPoll#aipoll_86400d9ea84de97980535267
+[audit] ADMIN market.created off_mixed_test Market#mkt_54113bdc83303a7a1c16
+
+── 5. Bet placement — selection close at minute precision ──
+[audit] ADMIN aipoll.published off_mixed_test AIPoll#aipoll_86400d9ea84de97980535267
+[audit] ADMIN market.created off_mixed_test Market#mkt_a2ec85a2a98386feb4a2
+[audit] BET market.position.opened usr_mf_player Position#pos_0d6fde6114d84c9a2e2f
+
+── 6. Selection-closed notification trigger (per-market) ──
+[audit] ADMIN market.created off_mixed_test Market#mkt_0ec40afa3f09f4d6f186
+[audit] BET market.position.opened usr_mf_player Position#pos_2f836bfd860e890b2cd9
+[audit] ADMIN market.selection_closed.thin_poll system Market#mkt_0ec40afa3f09f4d6f186
+
+── 7. Resolution-due officer alert ──
+[audit] ADMIN market.created off_mixed_test Market#mkt_6e1293b2760d5e99c8f8
+[audit] ADMIN market.resolve_trigger.human system_auto_resolver Market#mkt_6e1293b2760d5e99c8f8
+[email] sending "Market awaiting resolution · Resolution due mixed #12" → o***@admin.tz (tag=market-resolve-admin)
+[email-stub] To: o***@admin.tz | Subject: Market awaiting resolution · Resolution due mixed #12
+[email] sending "Market awaiting resolution · Resolution due mixed #12" → o***@admin.tz (tag=market-resolve-admin)
+[email-stub] To: o***@admin.tz | Subject: Market awaiting resolution · Resolution due mixed #12
+
+── 8. Sentinel close → two-officer dance ──
+[audit] ADMIN market.created off_mixed_test Market#mkt_9b1d326e09ff773ddd58
+[audit] BET market.position.opened usr_mf_player Position#pos_5c540549b17bbdfc9309
+[audit] ADMIN market.resolve.stage1 off_mf_alice Market#mkt_9b1d326e09ff773ddd58
+[audit] ADMIN market.adjudicated off_mf_bob Market#mkt_9b1d326e09ff773ddd58
+
+── 9. Cross-check: every category lead vs. actual computation ──
+
+  Category        Config    Actual    Match
+  ─────────────── ──────── ──────── ─────
+  sports            45m      45m      ✓
+  weather           6h       6h       ✓
+  crypto            2h       2h       ✓
+  culture           1d       1d       ✓
+  tech              1d 12h   1d 12h   ✓
+  macro             3d       3d       ✓
+  infrastructure    5d       5d       ✓
+  other             12h      12h      ✓
+
+════════════════════════════════════════════════════════════
+mixed-unit-flow: 92 passed, 0 failed
+════════════════════════════════════════════════════════════
+[audit] ADMIN aipoll.config_updated off_mixed_test AIPollConfig#singleton
+[email] sendEmailToUser withheld — money mail to an unconfirmed address for user usr_mf_player… (user.email=m***@test.tz)
+[email] sendEmailToUser withheld — money mail to an unconfirmed address for user usr_mf_player… (user.email=m***@test.tz)
+[email] sendEmailToUser withheld — money mail to an unconfirmed address for user usr_mf_player… (user.email=m***@test.tz)
+[email] sendEmailToUser withheld — money mail to an unconfirmed address for user usr_mf_player… (user.email=m***@test.tz)

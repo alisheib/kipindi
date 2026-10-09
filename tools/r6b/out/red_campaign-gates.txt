@@ -1,0 +1,92 @@
+RED CONTROL — baseline green (65 claims pass for the real code)
+RED CONTROL — the stand-in gate with no flaw is green (65 claims)
+
+RED CONTROL — each defect planted in memory must fail EXACTLY the claims it names
+
+  held  R1 (the plan's own) · the typed number checked against the count INSIDE the posted watermark
+  held  R2 · the freeze takes the shown count
+  held  R3 · the list tier skips the members key — a swapped person is confirmed
+  held  R4 · the fence ignores `unfiltered` — every small audience is listed
+  held  R5 · the confirmation is an unconditional update — status and revision ignored
+  held  R7 · the list's rows carry the msisdn
+  held  R8 · the service imports sendBatch from the SMS module
+  held  R9 · X9 · the fence counts the BOOK arm alone whenever there is one — a book ∪ players audience's players go unconfirmed
+  held  R9b · the fence's source counts through contactAudience
+  held  R10 · the members key is a plain sha256 of the members
+  held  R-2.2b · the members key without its draft (the review's MAJOR) — keyed, but the same on every draft holding the same people
+  held  R13 · the view embeds the money for every role
+  held  R-1.2 · the typed text is read with Number() before the gate
+  held  R-2.1 · the watermark is read without its seal
+  held  R-4.3 · the typed check is `>=` — a shrunk audience confirms on the old number
+  held  R-4.13 · the gate has no empty check
+  held  R-4.15 · the confirmation enqueues its first recipient
+  held  R-4.18 · the list is the reachable rows only — an unsendable person is confirmed unseen
+  held  R-G5.1 · E18's source-line gate put back (a book campaign with no source line blocked and refused needs_source_line)
+  held  R-G5.1b · U37s's stale-stamp gate put back (a stamp that is not the saved line blocked and refused unsaved)
+  held  R-G5.2 · E15's limit check removed
+  held  R-G5.2b · budgetTzs frozen as null
+  held  R-G5.2c · the over-limit sentence names the money to every role
+  held  R-G5.4 · the configured price is frozen whenever one is set — the measured one ignored
+  held  R-G5.5 · the settings fail OPEN — an unreadable row priced as the defaults
+  held  R-OD65 · a masked viewer's audience is asked of the split door — the gate is asked about the people they chose
+  held  R-OD66 · the role rule skipped — a masked viewer's book ∪ players audience is counted
+  held  R-OD67 · the fence as a reader sees it, for every role — a viewer who may not read a number gets the list, the members key and the list tier
+  held  R-4.20b · a lost reply's read-back claims any CONFIRMED row — another officer's confirmation, or a twin's, taken for this one
+  held  R-4.20c · the instant is not made unique — the same officer's twin in the same millisecond reads as this write
+  held  R-4.21 · the answer says recorded without reading the audit's result
+  held  R-G7.1 · the service asks a second officer (twoOfficerGate)
+  held  R-6.5 · the confirmation's input grows a posted count
+  held  R-6.6 · a second writer of the confirm keys (the draft save confirms)
+  held  R-6.7 · the suite drops out of predeploy
+  held  R-6.9 · the shipped confirmation reads the CACHED settings, not a fresh re-read
+  held  R-UI.1 · ⛔ A5 · the dialog opens with the focus ON CONFIRM (the medium tier's initialFocus becomes the confirm button)
+  held  R-UI.1b · the dialog RE-KEYED on a refusal instead of re-armed — a remount draws nothing for a commit: it blinks
+  held  R-UI.1c · the attempt bumped on the CONFIRMED path too — a success re-arms a dialog it is closing
+  held  R-UI.2 · ⛔ OD67 · the dialog's tier worked out from the COUNT in the browser (five or fewer is a list) — a masked viewer's three get a list dialog with no list in it, and a one-press confirm the server refuses
+  held  R-UI.2b · the card works the tier out from the count itself, beside the view's
+  held  R-UI.3 · `typedInputMode` given to the MEDIUM tier too
+  held  R-UI.3b · `armKey` made REQUIRED — every existing ConfirmModal caller stops compiling
+  held  R-UI.4 · ⛔ ruling 523 · the confirmation action's guard moved BELOW the confirmation
+  held  R-UI.4b · a second action in the confirmation's file — an orphan beside the one the card imports
+  held  R-UI.4c · ⛔ ruling 523 · the read action's guard moved BELOW the read — a count for anyone who posts
+  held  R-UI.4d · a second action in the read's file
+  held  R-UI.5 · the viewer fails OPEN — no officer reads as a reader of numbers and money
+  held  R-UI.6 · G5.3 · the read counted with money for every role — TZS in a GROWTH render
+  held  R-UI.7 · ⛔ OD67 · the read counted as a READER for every role — a viewer who may not read a number shown the list of three
+  held  R-UI.8 · the trigger opens over unsaved text — the client's own check skipped (the server sees only the saved draft)
+  held  R-UI.8b · a form whose revision is behind the page's opens anyway — another tab's save confirmed under this tab's old text
+  held  R-UI.8c · an audience the composer cannot use said as 'Save first' beside a Save refused for that very problem
+  held  R-UI.8d · 'Nothing was confirmed.' left beside a trigger that only read the audience
+  held  R-UI.9 · the confirmation's doors reach the composer's loader — and through it the send window's module
+  held  R-UI.10 · the audience on screen never compared with the saved one — a rail pick confirmed as the stored audience
+  held  R-UI.11 · ⛔ the review's MAJOR · the page counts the confirmation on its render — every navigation waits on a walk
+  held  R-UI.11b · the card asks on mount — a walk on every composer render, pressed or not
+  held  R-UI.11c · the read counts where it may not — past DRAFT, a stale revision, an audience on screen the draft does not store
+  held  R-UI.12 · the fence counts OUTSIDE the split door's slots — beside two splits, on a pool shared with bets
+  held  R-UI.13 · a refusal left on the OLD figures — no recount, no re-arm
+  held  R-UI.13b · 'no longer a draft' recounted — never read again and titled from the row, so this officer's own landed press reads 'Not confirmed'
+  held  R-UI.13c · an answer that never came back told 'nothing was confirmed'
+  held  R-UI.13d · a recount that can no longer open re-armed anyway — the dialog left open on figures it cannot confirm
+  held  R-UI.14 · a failed confirmation says 'nothing was confirmed' whatever the row reads
+  held  R-UI.3c · `confirmHeld` made REQUIRED — every existing ConfirmModal caller stops compiling
+  held  R-UI.4e · the read audited as the confirmation itself — a refused read reads as a refused confirmation
+  held  R-UI.4f · the read with no budget — a script holds both of the split door's slots for everyone
+  held  R-UI.8e · the live region back on the three lines the card swaps — each mounted already holding its words, announced unreliably
+  held  R-UI.15 · ⛔ MINOR 1 · the dialog opens on the answer alone — typed while it counted, then undone, it pops open with no press, on figures from before
+  held  R-UI.15b · an open the page can no longer show kept for later — undoing what blocked it opens the dialog by itself
+  held  R-UI.15c · the dialog shown for whatever form is on screen, not the one it was opened for
+  held  R-UI.16 · ⛔ MINOR 2 · the fence JOINS a count already running — one begun before a contact was added confirms the old number (OD27)
+  held  R-UI.17 · ⛔ MINOR 3 · the confirmation's slot waited for without limit — the dialog unclosable while the line moves
+  held  R-UI.17b · a confirmation that found no slot said as a failure — 'busy' taken for any throw
+  held  R-UI.17c · a read that found no slot said as a read that failed
+  held  R-UI.17d · the dialog unclosable while a refusal's figures are read again — `loading` held for the whole confirmation
+  held  R-UI.17e · a busy confirmation recounted — the dialog asks again into the same full house
+  held  R-UI.18 · ⛔ the read compares before the role rule — a masked viewer learns whether a hidden filter equals their guess
+  held  R-UI.4g · 'Count again' offered beside a spent read budget — a button that can only be refused again
+  held  R-UI.19 · ⛔ the read's bound charged with the count's WALK — a large audience leaves a reader's figures no bound at all
+  held  R-UI.19b · the count's WAIT never charged — the read waits twice, the count's bound and then the split's whole one
+  held  R-UI.20 · ⛔ a reader's missing figures left out in silence — the count, the list and the estimate, and not a word about who will receive it
+  held  R-UI.21 · ⛔ a bounded asker shares its count — an unbounded asker behind it inherits a 'busy' it never asked for
+
+RED CONTROL — 84 of 84 proofs held
+[admin/campaigns/new] the confirmation's view could not be read: Error

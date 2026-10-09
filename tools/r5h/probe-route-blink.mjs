@@ -96,10 +96,39 @@ try {
   const yAfter = await cold.evaluate(() => Math.round(scrollY));
   result.cold = { frames: frames.length, replay, yBefore, yAfter, jumpedToTop: yBefore > 100 && yAfter < 20 };
   await cold.close();
+
+  // 3 · a deep link with a #hash on a throttled cold load (S14's finding, 2026-10-09: /legal/privacy's §5 scrolled into
+  // view, then found at y≈4900 at capture): after hydration, is the anchor still where the reader landed?
+  const scout = await ctx.newPage();
+  await scout.goto(`${BASE}/legal/privacy`, { waitUntil: "networkidle", timeout: 300_000 });
+  const anchor = await scout.evaluate(() => {
+    const els = [...document.querySelectorAll("main [id], #main-content [id]")].filter((e) => e.getBoundingClientRect().top + scrollY > 1500);
+    return els[0]?.id ?? null;
+  });
+  await scout.close();
+  if (anchor) {
+    const deep = await ctx.newPage();
+    const cdp2 = await ctx.newCDPSession(deep);
+    await cdp2.send("Network.enable");
+    await cdp2.send("Network.emulateNetworkConditions", { offline: false, latency: 300, downloadThroughput: 200 * 1024, uploadThroughput: 100 * 1024 });
+    await deep.goto(`${BASE}/legal/privacy#${anchor}`, { waitUntil: "domcontentloaded", timeout: 300_000 });
+    const landed = await deep.evaluate(() => Math.round(scrollY));
+    await deep.waitForLoadState("networkidle", { timeout: 300_000 }).catch(() => {});
+    await deep.waitForTimeout(3000);
+    const after = await deep.evaluate((id) => {
+      const el = document.getElementById(id);
+      return { y: Math.round(scrollY), anchorTop: el ? Math.round(el.getBoundingClientRect().top) : null };
+    }, anchor);
+    result.hash = { anchor, landedY: landed, afterY: after.y, anchorTopInViewport: after.anchorTop,
+      lost: after.anchorTop === null || after.anchorTop < -50 || after.anchorTop > 400 };
+    await deep.close();
+  } else {
+    result.hash = { anchor: null, note: "no anchor below 1500px on /legal/privacy" };
+  }
   await ctx.close();
 } finally {
   await browser.close();
 }
 writeFileSync(OUT, JSON.stringify(result, null, 2));
 const blinks = result.taps.filter((x) => !x.warm && x.blink).length;
-console.log(`${LABEL}: ${result.taps.filter((x) => !x.warm).length} real tab taps, ${blinks} with a blink · cold load: replay ${result.cold?.replay ? "YES" : "no"}, jumped to top ${result.cold?.jumpedToTop ? "YES" : "no"} (y ${result.cold?.yBefore} → ${result.cold?.yAfter})`);
+console.log(`${LABEL}: ${result.taps.filter((x) => !x.warm).length} real tab taps, ${blinks} with a blink · cold load: replay ${result.cold?.replay ? "YES" : "no"}, jumped to top ${result.cold?.jumpedToTop ? "YES" : "no"} (y ${result.cold?.yBefore} → ${result.cold?.yAfter}) · #hash deep link: ${result.hash?.anchor ? (result.hash.lost ? "LOST" : "kept") + ` (#${result.hash.anchor}, y ${result.hash.landedY} → ${result.hash.afterY}, anchor at ${result.hash.anchorTopInViewport}px)` : result.hash?.note}`);

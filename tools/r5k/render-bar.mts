@@ -1,0 +1,28 @@
+import { createRequire } from "node:module";
+const req = createRequire("F:/kipindi-r5k/package.json");
+const React = req("react");
+const h = React.createElement;
+const { renderToStaticMarkup } = req("react-dom/server");
+const { I18nProvider } = req("F:/kipindi-r5k/src/lib/i18n.tsx");
+const { AppRouterContext } = req("next/dist/shared/lib/app-router-context.shared-runtime");
+const { PathnameContext } = req("next/dist/shared/lib/hooks-client-context.shared-runtime");
+const ROUTER = { push() {}, replace() {}, refresh() {}, prefetch() {}, back() {}, forward() {}, hmrRefresh() {} };
+const inApp = (path: string, l: string, el: unknown) =>
+  renderToStaticMarkup(h(AppRouterContext.Provider, { value: ROUTER }, h(PathnameContext.Provider, { value: path }, h(I18nProvider, { initial: l }, el))));
+const { dict } = req("F:/kipindi-r5k/src/lib/i18n-dict.ts");
+const { PositionsBar } = req("F:/kipindi-r5k/src/app/positions/positions-bar.tsx");
+const { parsePortfolioParams } = req("F:/kipindi-r5k/src/lib/positions/portfolio.ts");
+const { PnlSummaryStrip } = req("F:/kipindi-r5k/src/components/positions/pnl-summary-strip.tsx");
+const { ProviderRadioGrid } = req("F:/kipindi-r5k/src/components/wallet/provider-radio-grid.tsx");
+const { AmountField } = req("F:/kipindi-r5k/src/components/wallet/amount-field.tsx");
+const t = dict.sw;
+const counts = { tab: new Proxy({}, { get: () => 12 }), side: new Proxy({}, { get: () => 12 }), topic: new Proxy({}, { get: () => 12 }), when: new Proxy({}, { get: () => 12 }) };
+const bar = inApp("/positions", "sw", h(PositionsBar, { state: parsePortfolioParams({}), counts, resultCount: 12, t }));
+console.log(bar.slice(0, 3000));
+console.log("\n----\n");
+const strip = inApp("/positions", "sw", h(PnlSummaryStrip, { openCount: 2, openStake: 10000, openLiveValue: 9000, settledNet: -500, wins: 1, losses: 2, cashOuts: 0, settledCount: 3, t: { yourStanding: t.positions.yourStanding, live: t.common.live, atRisk: t.positions.atRisk, open: t.common.open, liveValueIfSettled: t.positions.liveValueIfSettled, unrealised: t.positions.unrealised, settledPnl: t.positions.settledPnl, winRate: t.positions.winRate, ofSettled: "3 imekamilika" } }));
+console.log(strip.slice(0, 2500));
+console.log("\n----\n");
+console.log(inApp("/wallet/deposit", "sw", h(ProviderRadioGrid, { providers: [{ id: "MPESA", name: "M-Pesa", hue: 152 }, { id: "CARD", name: "Kadi", hue: 200 }], unavailableLabel: "x" })).slice(0, 1500));
+console.log("\n----\n");
+console.log(inApp("/wallet/deposit", "sw", h(AmountField, { label: "Kiasi", hint: "Min TZS 1,000", quickAmounts: [1000, 5000], max: 2000000, min: 1000 })).slice(0, 2500));

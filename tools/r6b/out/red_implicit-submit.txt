@@ -1,0 +1,127 @@
+PROVED   the REAL tree passes every check
+PROVED   a refused submit is not cancelled — the browser posts the form (the defect)
+           failed: 1.1, 1.3, 1.5, 1.5b
+PROVED   a refused submit is cancelled but not stopped — React's root still hears it and marks the form pending
+           failed: 1.1
+PROVED   a refused submit is swallowed and the dialog never opens — Enter does nothing at all
+           failed: 1.1, 1.3, 1.5, 1.5b
+PROVED   every submit refused, the confirm's own too — the withdrawal can never be sent
+           failed: 1.2, 1.5b
+PROVED   the confirm's window never closes — after one confirm, Enter submits the form again
+           failed: 1.3, 1.5b
+PROVED   the guard's stop stops nothing — a dialog that has gone still refuses its form
+           failed: 1.4
+PROVED   one flag for every dialog — one dialog's confirm lets another form submit
+           failed: 1.5
+PROVED   two dialogs may guard one form — each refuses the other's confirm, and the withdrawal never leaves
+           failed: 1.5b
+PROVED   the stop leaves the form marked as guarded — a remount (React's second effect in development) is refused
+           failed: 1.5b
+PROVED   the default control drawn enabled by the server — before the page wakes, Enter posts the form
+           failed: 2.1, 2.3, 3.3
+PROVED   the default control dropped — once the page wakes Enter submits nothing, so it never opens the dialog
+           failed: 2.2, 2.3, 3.3, 3.4
+PROVED   the second text field dropped — WebKit (every iPhone) submits the form before the page wakes
+           failed: 2.1, 2.3, 2.5
+PROVED   the default control without formNoValidate — Enter meets the browser's bubble, not the kit's toast
+           failed: 2.3
+PROVED   the default control left in the tab order
+           failed: 2.3
+PROVED   the default control read out by a screen reader
+           failed: 2.3
+PROVED   the second text field left in the tab order
+           failed: 2.3
+PROVED   the default control without autocomplete=off — Firefox restores it enabled before the page wakes, and Enter posts
+           failed: 2.3
+PROVED   the second text field given a name — it posts with the form
+           failed: 2.3
+PROVED   the second text field read out by a screen reader
+           failed: 2.3
+PROVED   the additions drawn for every dialog — every other consumer's markup moves
+           failed: 2.4
+PROVED   the default control drawn rendered — WebKit before 16.4 now presses it, and the record of that engine no longer holds
+           failed: 2.3, 2.5
+PROVED   the held-open confirm calls onConfirm bare — its own submit is refused as Enter's and the withdrawal never leaves
+           failed: 3.1
+PROVED   the classic confirm calls onConfirm bare — close-account's own submit is refused as Enter's
+           failed: 3.1
+PROVED   the trigger's click opens without its pre-flight — an invalid form earns a dialog
+           failed: 3.2
+PROVED   a refused submit opens the dialog where the trigger is disabled — Enter gets past the close-account phrase
+           failed: 3.2
+PROVED   the snapshot taken before the pre-flight — a refused amount still runs onOpen (the payee lookup)
+           failed: 3.2
+PROVED   the default control enabled before the guard listens — a moment where Enter reaches a form nothing guards
+           failed: 3.3
+PROVED   a refused listen still enables the default control — the second dialog's control is what Enter presses
+           failed: 3.3
+PROVED   the cleanup forgets the stop — the guard outlives its dialog
+           failed: 3.3
+PROVED   the guard listens on the document — it would refuse every form's submit on the page
+           failed: 3.4
+PROVED   the withdraw confirm loses submitsForm — Enter in the amount box sends the money again
+           failed: 4.1, 4.6
+PROVED   the deposit confirm loses submitsForm
+           failed: 4.1, 4.6
+PROVED   the close-account confirm loses submitsForm — Enter in the phrase box closes the account again
+           failed: 4.1, 4.5, 4.6
+PROVED   the RG confirm loses submitsForm
+           failed: 4.1, 4.6
+PROVED   the hub's sign-out loses submitsForm
+           failed: 4.1, 4.5, 4.6
+PROVED   a new dialog wired to submit its form with no submitsForm (credit-controls)
+           failed: 4.1
+PROVED   a confirm that clicks the form's own Save with no submitsForm (credit-controls) — Enter presses that very Save
+           failed: 4.1
+PROVED   the withdraw confirm submits in a way the census cannot read — still required, by name
+           failed: 4.1, 4.2, 4.6
+PROVED   an onConfirm the census cannot read (a member of an object) — reported, never passed
+           failed: 4.0
+PROVED   the withdraw confirm submits through a helper the census cannot read one hop deep (its module is not in src/) — reported, never passed
+           failed: 4.0, 4.1, 4.2, 4.6
+PROVED   focusFirstInvalid made to submit the form it is handed — every confirm that calls it now submits, read one hop deep
+           failed: 4.1, 4.2
+PROVED   a ConfirmModal wired to submit a page form (the desk rules' clear)
+           failed: 4.2
+PROVED   the staff role form's submit commits directly — Enter changes a role with no confirm
+           failed: 4.3
+PROVED   the staff role form's submit calls the server action itself — Enter changes a role with no confirm
+           failed: 4.3
+PROVED   the staff role confirm made a NAMED handler that calls run(), and the form's submit calls run() itself — Enter changes a role with no confirm
+           failed: 4.3
+PROVED   the close-account confirm runs the action itself — the form's own submit (Enter) runs what the confirm confirms
+           failed: 4.1, 4.2, 4.3, 4.6
+PROVED   a confirm in one file calls withdrawAction itself, and another page draws <form action={withdrawAction}> with an amount box — Enter there withdraws with no confirm
+           failed: 4.3
+PROVED   the fee-model confirm dropped — a money-model change saves on Enter
+           failed: 4.3
+PROVED   the fee-model question asked but the save not held back (its return dropped) — it asks AND saves
+           failed: 4.3
+PROVED   the simulated-feed question asked but the save not held back — the simulated feed saves unasked
+           failed: 4.3
+PROVED   the fee-model form made to ask about every change — its exemption goes stale
+           failed: 4.4
+HELD     GREEN · the fee-model guard clause turned the other way round (the save in an if that returns, the question after it) — it still asks first, and nothing may fail
+           failed: nothing
+PROVED   a button drawn ahead of WithdrawConfirm in the withdraw form — before the page wakes, Enter presses it and posts
+           failed: 4.5
+PROVED   a kit Button of no type drawn AFTER WithdrawConfirm in the withdraw form — WebKit skips the guard's disabled control and presses it before the page wakes
+           failed: 4.5
+PROVED   a second guarded dialog in the RG break form — the two would refuse each other's confirm
+           failed: 4.5
+PROVED   DepositConfirm drawn outside every host form — its confirm submits no form at all
+           failed: 4.5
+PROVED   a new submitsForm dialog that no host row accounts for (credit-controls)
+           failed: 4.5
+PROVED   the RG confirm submits after an await — the guard refuses it as Enter's, and the held-open dialog spins
+           failed: 4.6
+PROVED   the withdraw confirm submits from a timer — refused as Enter's, and the withdrawal never leaves
+           failed: 4.6
+PROVED   this suite dropped from predeploy
+           failed: 5.1
+PROVED   its red twin undeclared
+           failed: 5.1
+PROVED   its drive undeclared
+           failed: 5.2
+
+RED CONTROL — 61/61 caught · 1/1 green held

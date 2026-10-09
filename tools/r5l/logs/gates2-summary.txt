@@ -1,0 +1,3 @@
+test:chart-one-home exit=0 fails~=0 1s
+test:pager-reach exit=0 fails~=0 2s
+DONE gates2

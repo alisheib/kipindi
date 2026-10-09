@@ -1,0 +1,82 @@
+── 1 · the Up & Down chart's price scale speaks the page's price (tiles 164 202) ───────────────────────
+  ok   1.1 · every series is formatted by the ONE usd spelling — scale, live-line tag and crosshair label
+  ok   1.2 · ⛔ …and the engine's own grouping-free "price" format is gone
+  ok   1.3 · that spelling is the band's: 2896.04 → "$2,896.04", 2895.95 → "$2,895.95"
+  ok   1.4 · the scale's ink stays --text-subtle (6.3:1 measured on tile 202; tile 164's 1.44:1 was the canvas caught mid-fade)
+  ok   1.1′ PLANT · the format as it shipped is reported
+
+── 2 · the chart's controls keep one 12px rhythm on a phone (tile 202) ─────────────────────────────────
+  ok   2.1 · the rails wrap 12px apart (`gap-y-2`) and the block stands 12px over the chart card (`mb-2`)
+  ok   2.2 · the key's wrapper is a flex box — its height is the key's 14px line, not the page's 22.4px strut
+  ok   2.3 · ⭐ 3.4px is JetBrains Mono's baseline-to-foot in the 10/14 micro line (descender 0.300em + half-leading)
+  ok   2.4 · so the key's INK stands --sp-3 (12px) over the rail's border, the same 12 as rail → rail and rail → card
+  ok   2.5 · on desktop the key's 14px line centres beside the rail, its caps level with the rail's labels (cap top inset ≈ foot inset)
+  ok   2.2′ PLANT · the shape as it shipped (a bare span on the strut, a 4px gap, 8px between the rails) is reported
+
+── 3 · the round page: the stake is money, the × note hangs, the quote stamp opens on a capital (tiles 165 166) 
+  ok   3.1 · "Gusa Juu au Chini kuweka dau · TZS 1,000": the stake is an .amount, inside ONE flex item
+  ok   3.2 · …and so is the stake on the line that streams a bet
+  ok   3.1′ PLANT · the line as it shipped — the figure in the sentence's face — is reported
+  ok   3.3.sw · the "×" sits in an 11px column and the sentence hangs beside it, every word as written
+  ok   3.3.en · the "×" sits in an 11px column and the sentence hangs beside it, every word as written
+  ok   3.3.zh · the "×" sits in an 11px column and the sentence hangs beside it, every word as written
+  ok   3.4 · the column is the ⓘ glyph's own width — the sibling notes draw `I.info s={11}`
+  ok   3.5 CONTROL · a sentence that does not open on the sign renders whole, no column
+  ok   3.6 · the two-way panel sets the note through EstimateNote
+  ok   3.6 · the board card sets the note through EstimateNote
+  ok   3.6 · the locked-side panel (was 10px) sets the note through EstimateNote
+  ok   3.7 · ⛔ no flush <p> of the note is left in the three panels
+  ok   3.7′ PLANT · the flush shape as it shipped is what 3.7 reads
+  ok   3.8 CONTROL · the premise: the stamp's word is written in lower case in sw and en (it follows "… · ")
+  ok   3.9 · the round page still composes the stamp from that word
+  ok   3.10 · the hero's detail line carries `ud-cap-first`
+  ok   3.11 · …whose first letter is set as a capital, and below 400 each stacked clause's is too
+  ok   3.12 · the settlement proof's label of the same word opens on a capital beside "Chanzo" and "Ilionekana"
+  ok   3.13 · ⛔ by the class, never Tailwind's `first-letter:uppercase` — one capital is not an all-caps site (test:eyebrow-roles)
+  ok   3.10′ PLANT · the detail line as it shipped is reported
+
+── 4 · /live: one top-row height for both tags; the grid's gutter on the space scale (tiles 178 196) ───
+  ok   4.1 · one vertical box for the tag, written once
+  ok   4.2 · the Up & Down chip wears it (with its 1px rule all round)
+  ok   4.3 · …and so does the bare category label, its rule clear
+  ok   4.4 · both boxes are 20px: the micro line 14 + 2×2 padding + 2×1 rule (the chip measured y690–709 on tile 178)
+  ok   4.3′ PLANT · the bare label as it shipped (14px, no box) is reported
+  ok   4.5 · the market grid's gutter is --sp-4 — 16px, Tiketi zangu's `gap-3` and the hub's --sp-4
+  ok   4.5′ PLANT · the bare 14px is reported
+
+── 5 · the probability bar's caption centres on the bar (tiles 162 177 178) ────────────────────────────
+  ok   5.1 · two equal tracks around the caption: `1fr auto 1fr`
+  ok   5.2 · each side keeps its edge and never wraps — a figure and its side are one reading
+  ok   5.2b · when the row is tight the CAPTION gives way: it may wrap, centred in its track, and --sp-1 keeps the three from touching
+  ok   5.3 · the bar still renders three children in that order: yes · lean · no
+  ok   5.1′ PLANT · the rule as it shipped (`flex` + `space-between`) is reported
+
+── 6 · the market page: the star midway between its neighbours' ink; the question on the page's edge (tiles 161 162) 
+  ok   6.locate · the glyphs are the ones the arithmetic reads: ext ends at x19, the star spans x3–21 (centred), stroke 1.9
+  ok   6.1 · the source link gives its glyph's 2px bearing back, so star ↔ Chanzo and star ↔ SHIRIKI are one ink gap
+  ok   6.1′ PLANT · without it the gaps differ by the bearing — the 27 | 25 the tiles measured
+  ok   6.2 · the question's stem letters are the ones measured: B D E F H I K L M N P R (Sora 700: 0.082em outline, 0.075em ink)
+  ok   6.3 · the h1 is set back on its FIRST line only, by the letter it opens on — never by the locale
+  ok   6.4 CONTROL · "Mvua Dar es Salaam…" and "NBC…" are set back; "Je, …", "Yanga…" and 是否 are not
+  ok   6.3′ PLANT · an h1 with no set-back is reported
+
+── 7 · /results: the tally reads in one case (tile 172) ────────────────────────────────────────────────
+  ok   7.1 · "0 imetatuliwa · TZS 0 imekamilika" — the figure's sentence word, not the tab's label
+  ok   7.2 · …and each result card's "TZS 6K imekamilika" beside "2 watabiri"
+  ok   7.3 · ⛔ the tab label is no longer read for a sentence on this page
+  ok   7.3b · …nor for the classic Tiketi zangu's win-rate hint, which said "3 Imekamilika" by the same composition
+  ok   7.4 CONTROL · the premise in the dictionary: the label is capitalised, the sentence word is not — in sw and en
+  ok   7.1′ PLANT · the tally as it shipped is reported
+
+── 8 · /markets on a phone: the count line has air on both sides (tile 195) ────────────────────────────
+  ok   8.1 · the Compact bar's rows stand --sp-2 apart and its foot pads --sp-2
+  ok   8.2 · its caps stand 12px under the sort pill and its baseline 12px over the hairline (was 6 and 10)
+  ok   8.locate · the count line is still 11.5px mono
+  ok   8.1′ PLANT · the rule as it shipped is reported
+
+── 9 · the lean word is upright (tiles 177 178 205) ────────────────────────────────────────────────────
+  ok   9.1 · `.tipbar-lean` sets no italic
+  ok   9.2 CONTROL · the premise: JetBrains Mono is loaded upright only — an italic there could only be sheared
+  ok   9.1′ PLANT · the rule as it shipped is reported
+
+visual-pass-r4d: 63 passed, 0 failed

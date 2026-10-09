@@ -1,0 +1,24 @@
+✓ RED  wallet-row-loses-the-reason — a no-move refund and an operator void read the same
+         → 1 failed · E94.6 · ⭐ the refund txn description is built from the map — the map being right
+  ✓ RED  decided-round-labelled-void — the chip falls through to the round's void label again
+         → 1 failed · E87.1 · ⭐ the result chip consults the refund REASON, not what is left over afte
+  ✓ RED  unmatched-checked-after-the-void-return — E-65 restored, a decided round prints a void's copy
+         → 3 failed · 1.5 · ⭐ E-65 · a DECIDED round that refunded this player reads UNMATCHED, not a 
+  ✓ RED  unknown-folded-into-no-move — a new void reason is silently mislabelled
+         → 2 failed · 1.10 · ⭐ an UNRECOGNISED void reason surfaces as unexplained — never folded into
+  ✓ RED  void-gets-a-direction — E-56, a refund rendered as an UP or a DOWN
+         → 1 failed · 2.1 · ⭐ a VOID has no direction to render
+  ✓ RED  loser-gets-a-refund-sentence — copy about money that did not come back
+         → 2 failed · 1.7 · ⭐ a player who LOST gets no refund sentence — silence, not a consolation
+  ✓ RED  card-back-to-two-branches — the shipped E-65 ternary, restored
+         → 1 failed · 4.5 · ⭐ the card branches on whether THIS viewer was refunded, not on `state ===
+  ✓ RED  round-page-back-to-two-branches — the same defect on the detail page
+         → 1 failed · 4.6 · …and so does the round page
+  ✓ RED  two-reasons-one-sentence — unmatched inherits the no-move copy
+         → 2 failed · 3.enb · ⭐ and all six are DIFFERENT sentences — not one branch wearing six names
+  ✓ RED  result-panel-shadows-the-reason — the refunded player never reaches the explanation
+         → 1 failed · 4.9 · ⭐ the RESULT panel itself carries the refund reason — a branch that exists
+  ✓ RED  board-stops-reporting-the-refund — the decided-but-refunded case becomes invisible
+         → 1 failed · 4.8 · ⭐ and the board actually COMPUTES it — a settled position paid exactly its
+
+RED HARNESS — 11/11 caught

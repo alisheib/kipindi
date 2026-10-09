@@ -1,0 +1,172 @@
+§1 · (k) A14 exit window
+PASS 1.0 · the golden file covers exactly the grid — golden 417 · grid 417
+PASS 1.1 · cashOutValue deep-equals the golden grid on all 417 rows
+PASS 1.2 · exitWindowClosesAt agrees with the golden `sellable` on every row
+PASS 1.c1 · CONTROL · the formula without `graceMs > 0` disagrees with the golden grid — 40 rows differ
+PASS 1.3 · grace 5, paid 2, an hour of runway → closes at +7:00 — {"exitCloseAtMs":1789376820000,"graceMs":300000,"hadRunway":true,"windowMs":420000}
+PASS 1.4 · grace 0 with a paid window → no runway, closes at placement — {"exitCloseAtMs":1789376400000,"graceMs":0,"hadRunway":false,"windowMs":600000}
+PASS 1.5 · runway 1 ms short of grace → no runway — {"exitCloseAtMs":1789376400000,"graceMs":300000,"hadRunway":false,"windowMs":300000}
+PASS 1.6 · an unparseable close → no runway — {"exitCloseAtMs":1789376400000,"graceMs":300000,"hadRunway":false,"windowMs":300000}
+
+§2 · BET_PATH_REASONS
+PASS 2.0 · the reader sees buyPositionInner, placeHouseBet and the house gates — 56015 + 22963 chars · 34 reasons
+PASS 2.1 · every reason the bet path emits is in BET_PATH_REASONS
+PASS 2.2 · every BET_PATH_REASONS entry is emitted by the bet path
+PASS 2.c1 · CONTROL · a planted reason literal is read
+PASS 2.c2 · CONTROL · a reason chosen by ternary is read on both arms
+PASS 2.3 · every PLAYER BET_PATH_REASONS entry has a registry row with copy (failure-reasons.ts)
+PASS 2.3b · ⛔ D19 · NO house_* reason has a row in the client-bundled failure registry (ruling 148) — 17 house reasons · registered: 
+PASS 2.3c · ⛔ D19 · the client dictionary has no failHouse*/objHouse* key in any language
+
+§3 · GATE_PARITY
+PASS 3.0 · GATE_PARITY has exactly one row per BET_PATH_REASONS entry
+[audit] ADMIN market.created usr_hb_officer Market#mkt_79149e78d7626b934988
+PASS 3.rate_limited · buyPosition and placeHouseBet refuse alike — player RATE_LIMITED/rate_limited · house RATE_LIMITED/rate_limited
+PASS 3.rate_limited.money · …and neither moved money
+[audit] ADMIN market.created usr_hb_officer Market#mkt_684b135efe962e921667
+[audit] ADMIN config.platform_updated usr_hb_officer System#platform
+[audit] ADMIN config.platform_updated usr_hb_officer System#platform
+PASS 3.maintenance · buyPosition and placeHouseBet refuse alike — player SUSPENDED/maintenance · house SUSPENDED/maintenance
+[audit] ADMIN config.platform_updated usr_hb_officer System#platform
+PASS 3.maintenance.money · …and neither moved money
+[audit] ADMIN market.created usr_hb_officer Market#mkt_3760053b65942052b06c
+[audit] COMPLIANCE wallet.freeze_added usr_hb_24180_9 User#usr_hb_24180_9
+[audit] COMPLIANCE rg.self_exclusion.activated usr_hb_24180_9 User#usr_hb_24180_9
+[audit] COMPLIANCE wallet.freeze_added usr_hb_24180_10 User#usr_hb_24180_10
+[audit] COMPLIANCE rg.self_exclusion.activated usr_hb_24180_10 User#usr_hb_24180_10
+[audit] COMPLIANCE push.suppressed.rg_lockout usr_hb_24180_9 User#usr_hb_24180_9
+[audit] COMPLIANCE push.suppressed.rg_lockout usr_hb_24180_10 User#usr_hb_24180_10
+PASS 3.self_excluded · buyPosition and placeHouseBet refuse alike — player SUSPENDED/self_excluded · house SUSPENDED/self_excluded
+PASS 3.self_excluded.money · …and neither moved money
+[audit] COMPLIANCE house_bot.auto_paused system HouseBot#hb_24180_11
+[audit] ADMIN market.created usr_hb_officer Market#mkt_8b246b331e9cc79e7eef
+[audit] COMPLIANCE rg.cooling_off.activated usr_hb_24180_13 User#usr_hb_24180_13
+[audit] COMPLIANCE rg.cooling_off.activated usr_hb_24180_14 User#usr_hb_24180_14
+[audit] COMPLIANCE push.suppressed.rg_lockout usr_hb_24180_13 User#usr_hb_24180_13
+[audit] COMPLIANCE push.suppressed.rg_lockout usr_hb_24180_14 User#usr_hb_24180_14
+PASS 3.cooling_off · buyPosition and placeHouseBet refuse alike — player SUSPENDED/cooling_off · house SUSPENDED/cooling_off
+PASS 3.cooling_off.money · …and neither moved money
+[audit] COMPLIANCE house_bot.auto_paused system HouseBot#hb_24180_15
+[audit] ADMIN market.created usr_hb_officer Market#mkt_a1ebc4931296a575dbb2
+[audit] COMPLIANCE bet.account_blocked usr_hb_24180_17 User#usr_hb_24180_17
+[audit] COMPLIANCE bet.account_blocked usr_hb_24180_18 User#usr_hb_24180_18
+PASS 3.account_suspended · buyPosition and placeHouseBet refuse alike — player SUSPENDED/account_blocked · house SUSPENDED/account_blocked
+PASS 3.account_suspended.money · …and neither moved money
+[audit] ADMIN market.created usr_hb_officer Market#mkt_04234a642a2ee7c9ccd5
+PASS 3.stake_below_min · buyPosition and placeHouseBet refuse alike — player INVALID/stake_below_min · house INVALID/stake_below_min
+PASS 3.stake_below_min.money · …and neither moved money
+[audit] ADMIN market.created usr_hb_officer Market#mkt_f70551ac1e9cc619c528
+PASS 3.stake_above_max · buyPosition and placeHouseBet refuse alike — player INVALID/stake_above_max · house INVALID/stake_above_max
+PASS 3.stake_above_max.money · …and neither moved money
+[audit] ADMIN market.created usr_hb_officer Market#mkt_2b5f47d1a1bd0bf2e6be
+PASS 3.wallet_frozen · buyPosition and placeHouseBet refuse alike — player NOT_FOUND/wallet_frozen · house NOT_FOUND/wallet_frozen
+PASS 3.wallet_frozen.money · …and neither moved money
+[audit] ADMIN market.created usr_hb_officer Market#mkt_f01d2a66e9753c5f5001
+[audit] COMPLIANCE rg.limit.changed usr_hb_24180_33 ResponsibleGambling#usr_hb_24180_33
+[audit] COMPLIANCE rg.limit.changed usr_hb_24180_34 ResponsibleGambling#usr_hb_24180_34
+[audit] COMPLIANCE bet.loss_limit_blocked usr_hb_24180_33 User#usr_hb_24180_33
+[audit] COMPLIANCE bet.loss_limit_blocked usr_hb_24180_34 User#usr_hb_24180_34
+PASS 3.loss_limit_daily · buyPosition and placeHouseBet refuse alike — player INVALID/loss_limit_daily · house INVALID/loss_limit_daily
+PASS 3.loss_limit_daily.money · …and neither moved money
+[audit] ADMIN market.created usr_hb_officer Market#mkt_a4c9f84cd4a39491212e
+[audit] COMPLIANCE bet.account_blocked usr_hb_24180_37 User#usr_hb_24180_37
+[audit] COMPLIANCE bet.account_blocked usr_hb_24180_38 User#usr_hb_24180_38
+PASS 3.account_closed · buyPosition and placeHouseBet refuse alike — player SUSPENDED/account_blocked · house SUSPENDED/account_blocked
+PASS 3.account_closed.money · …and neither moved money
+[audit] ADMIN market.created usr_hb_officer Market#mkt_36024586260c5bbfefa5
+[audit] BET market.position.opened usr_hb_24180_42 Position#pos_b1df0012ebbb1bc351a2
+[audit] BET market.position.opened usr_hb_24180_41 Position#pos_486b8087f3b670fb8700
+PASS 3.c1 · CONTROL · a healthy account on the same fixture path places on both
+
+§4 · SEAM sites
+PASS 4.0 · the reader sees the house branches — 39 branch lines
+PASS 4.1 · every ctx.kind comparison in market-service.ts sits under a SEAM: marker — unanchored at line(s) 
+PASS 4.2 · the SEAM markers are exactly SEAM_SITES, each once — markers 39 · declared 39
+PASS 4.2b · every SEAM marker's window touches house state (no marker parked where it covers nothing)
+PASS 4.c1 · CONTROL · a planted unmarked `ctx.kind === "house"` branch is reported
+PASS 4.c2 · CONTROL · literal-first, destructured, switch and intent-keyed skips are each reported
+PASS 4.c3 · CONTROL · a branch on the 4th code line under a marker is reported; on the 3rd it is not
+PASS 4.c4 · CONTROL · a commented-out branch and carried data are not branches
+PASS 4.c5 · D19c · a re-added outcome label argument (`houseStake: p.houseBotId != null`) IS reported as an unanchored house branch
+PASS 4.3 · only house-bot/fire.ts may import placeHouseBet (PLAN I1)
+
+§5 · house gates
+PASS 5.1 · houseH2's group markers are exactly H2_ORDER, in order — standing → role → consent → cash → conflicts → money → staff → rate
+PASS 5.2 · houseH2's cap literals appear in H2_CAP_SEQUENCE order — STAKE_MIN, STAKE_MAX, PER_MARKET, BALANCE_FLOOR, DAILY_STAKE, DAILY_LOSS_PROJECTED, EXPOSURE, STAFF_CHOSEN_PER_DAY, STAFF_CHOSEN_DAILY_STAKE, TARGET_ONCE, PER_MARKET_COUNT, MIN_GAP, PER_HOUR, PER_DAY
+PASS 5.3 · the house gates take no row lock (no FOR UPDATE)
+PASS 5.4 · H0 never reads the intent's status — 996 chars
+PASS 5.5 · the H3 path sums no position stakes itself — only lockedForHouse (N1 §3, N2 §3 pins) — 4050 chars
+PASS 5.6 · the untargeted COUNTER reads lockedA15; a targeted one reads locked
+PASS 5.7 · blackout.ts exports only functions returning { blocked } (InfoBlackout) — blackoutFromRow:InfoBlackout | infoBlackout:Promise<InfoBlackout>
+PASS 5.c1 · CONTROL · a planted FOR UPDATE is caught
+PASS 5.c2 · CONTROL · a status read in H0 is caught
+
+§6 · sanctioned changes
+[audit] ADMIN market.created usr_hb_officer Market#mkt_53e66d991b81d9b79f83
+PASS 6.p · a poll: a stake 1 under stakeBoundsForMarket().min is refused naming exactly those bounds — {"min":1000,"max":1000000} · {"min":1000,"max":1000000}
+[audit] ADMIN market.created usr_hb_officer Market#mkt_46117c4852abb0a6de21
+[audit] ADMIN config.market.override usr_hb_officer MarketConfig#mkt_46117c4852abb0a6de21
+PASS 6.p0 · fixture · the per-market override moved the minimum — {"min":2500,"max":1000000}
+PASS 6.p · a poll with a per-market minimum override: a stake 1 under stakeBoundsForMarket().min is refused naming exactly those bounds — {"min":2500,"max":1000000} · {"min":2500,"max":1000000}
+[audit] ADMIN market.created usr_hb_officer Market#mkt_e5b6892c9a7de1267446
+[audit] ADMIN market.reopened usr_hb_officer Market#mkt_e5b6892c9a7de1267446
+PASS 6.r · a reopen's output equals the pre-(r) reopen apart from reopenedAt and reopenCount
+PASS 6.r.c1 · CONTROL · the comparison sees a difference when one exists
+PASS 6.r2 · reopenedAt is the reopen instant and reopenCount counts from 1
+[audit] ADMIN market.reopened usr_hb_officer Market#mkt_e5b6892c9a7de1267446
+PASS 6.r3 · a second reopen counts 2 and never clears reopenedAt
+[audit] ADMIN market.created usr_hb_officer Market#mkt_83a67c7784192364a397
+[audit] BET market.position.opened usr_hb_24180_47 Position#pos_e02812ac585d30251bdd
+[audit] BET market.position.opened usr_hb_24180_48 Position#pos_e4116f33152702ee559f
+[audit] ADMIN market.adjudicated usr_hb_officer Market#mkt_83a67c7784192364a397
+PASS 6.n · fixture · a house-only holder and a player on a resolved market — {"ok":true,"data":{"positionId":"pos_e4116f33152702ee559f","balance":4999000,"payoutIfWin":5350,"placedAt":"2026-10-09T18:09:58.239Z","bonusStakeTzs":0}}
+PASS 6.n1 · a holder whose only stakes are liquidity stakes → HOUSE_STAKE_ONLY — {"eligible":false,"why":"HOUSE_STAKE_ONLY"}
+PASS 6.n2 · CONTROL · a player with their own stake is eligible (unchanged) — {"eligible":true,"closesAt":"2026-10-09T19:09:58.241Z"}
+[audit] ADMIN market.created usr_hb_officer Market#mkt_effd5cb852dd7b26081b
+[audit] BET market.position.opened usr_hb_24180_51 Position#pos_39c1f00d95408d2669e3
+[audit] BET market.position.opened usr_hb_24180_52 Position#pos_806505d3162ca04edffc
+[audit] BET market.position.opened usr_hb_24180_52 Position#pos_341e32272637405951b7
+[audit] ADMIN market.adjudicated usr_hb_officer Market#mkt_effd5cb852dd7b26081b
+PASS 6.n3 · fixture · the mixed holder has one house-marked and one own position — ok · ok · 2
+PASS 6.n4 · a holder with a liquidity stake AND their own stake is eligible — {"eligible":true,"closesAt":"2026-10-09T19:09:58.249Z"}
+PASS 6.c · buyPositionAction refuses a reserved hb: key before calling buyPosition
+PASS 6.m · postCommentAction takes its side chip from commentSideFor
+PASS 6.m1 · HB-ACC-13 · W23 kept · a liquidity stake never gives its holder a side chip — null
+PASS 6.m2 · HB-ACC-13 · a mixed holder's chip is their OWN side, not the house stake's — NO
+PASS 6.m3 · HB-ACC-13 · CONTROL · a player's own open stake on this market gives the chip (other markets ignored) — NO
+PASS 6.h1 · D19c · notifySelectionClosed carries no house option, push tag or label — 2151 chars read
+PASS 6.h1b · D19c · no outcome emitter takes a house label option or carries a liquidity word
+PASS 6.h1c · CONTROL · the removed tag line and the removed label line are both matched
+PASS 6.g · every reverseWagering call in market-service.ts is guarded by the marker — 3 of 3
+PASS 6.g1 · a house stake records no wagering: the only recordWageringLocked call is skipped for house context (H6)
+PASS 6.g2 · onRecruitBet and onRecruitSettlement return first on a marked position
+
+§7 · blackout and attribution
+PASS 7.1 · a clean LIVE poll is not blocked
+PASS 7.2 · sentinelOutcome set → blocked
+PASS 7.2 · sentinelConfidence set → blocked
+PASS 7.2 · sentinelDetermined set → blocked
+PASS 7.2 · sentinelClosedAt set → blocked
+PASS 7.2 · resolvedOutcome set → blocked
+PASS 7.2 · resolutionStage1By set → blocked
+PASS 7.2 · reopenedAt set → blocked
+PASS 7.3 · a resolve claim 9:59 old → blocked
+PASS 7.4 · a resolve claim 10:01 old → not blocked
+PASS 7.5 · a non-LIVE market is never 'blocked' (the bet path refuses it anyway)
+PASS 7.5b · countResolveClaim:false · a resolve claim 9:59 old alone → not blocked
+PASS 7.5c · …but a Sentinel stamp or a reopen still blocks with that option
+PASS 7.6 · 5,000 against 8,000 / 2,000 → 4,000 to the 80% holder, nothing to the 20% one — [{"userId":"u80","sharePct":80,"attributedTzs":4000}]
+PASS 7.7 · exactly 25% is attributed (floor) — [{"userId":"u25","sharePct":25,"attributedTzs":250}]
+PASS 7.8 · no locked money → no attribution
+PASS 8.505 · every declared `seam` mutation — from BOTH anchors files that declare one — names an assertion THIS run actually printed — {"declared":10,"otherSuites":["caps-mem:N1-1","caps-mem:N1-2","caps-mem:N1-3","caps-mem:N1-3b","money-mem:N1-4","money-mem:N1-5","money-mem:N1-6","money-pg:N1-6pg","money-mem:N1-7","caps-mem:N1-8","caps-mem:N2-M1","caps-mem:N2-M3","money-mem:H4","caps-mem:H4","money-mem:H5","money-mem:H5","money-mem:(e)","money-mem:(b)","money-mem:(j)","money-mem:I3","caps-mem:N1","caps-pg:A9","caps-mem:MC-1","caps-mem:LIE-01","money-mem:LIE-02","money-mem:LIE-02","money-mem:LIE-02","money-mem:LIE-02","money-mem:LIE-02","caps-mem:LIE-03","money-mem:MC-3","money-mem:UX-1","money-mem:UX-1","money-mem:D19-1","money-mem:D19-2","money-mem:D19-3","money-mem:D19-4","designation-mem:D19-5","money-pg:A24-pin","caps-mem:542-gate-bot","caps-mem:542-gate-all","caps-mem:542-seam-h2","caps-mem:542-seam-h4","caps-mem:542-preview","reports-mem:232-marker-cashout","reports-mem:232-marker-one-sided","reports-mem:232-marker-void","reports-mem:232-marker-win","reports-mem:232-marker-emergency","money-mem:12-loss-limit-skips-house","money-mem:12-loss-limit-is-a-wall","money-mem:12-closed-wallet-stakes","money-mem:12-settle-skips-closed"],"printedOnlyInSource":[],"stale":[],"labels":96,"match":"substring","sourceTier":true}
+PASS 8.505 · CONTROL · the roll-call reads this run's own labels and this suite's own source, so a drifted `expect` IS reported and an invented one is never found — {"labels":97,"mine":10,"firstFound":true,"sentinelRefused":true}
+
+ALL PASS — house-bot-seam: 98 passed, 0 failed
+[email] sendEmailToUser skipped — no email for user usr_hb_24180_9… (user.email=null, phone=+25577…)
+[email] sendEmailToUser skipped — no email for user usr_hb_24180_1… (user.email=null, phone=+25579…)
+[email] sendEmailToUser skipped — no email for user usr_hb_24180_1… (user.email=null, phone=+25573…)
+[email] sendEmailToUser skipped — no email for user usr_hb_24180_1… (user.email=null, phone=+25576…)
+[email] sendEmailToUser skipped — no email for user usr_hb_24180_4… (user.email=null, phone=+25573…)
+[email] sendEmailToUser skipped — no email for user usr_hb_24180_4… (user.email=null, phone=+25575…)
+[email] sendEmailToUser skipped — no email for user usr_hb_24180_5… (user.email=null, phone=+25576…)
+[email] sendEmailToUser skipped — no email for user usr_hb_24180_5… (user.email=null, phone=+25570…)

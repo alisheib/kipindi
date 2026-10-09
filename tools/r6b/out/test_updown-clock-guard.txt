@@ -1,0 +1,85 @@
+§1 · an invalid date: one formatter degrades, the other THROWS
+PASS §1a `toLocaleTimeString` does NOT throw on an invalid date
+PASS §1b …it returns a harmless string instead
+PASS §1c 🔴 `Intl.DateTimeFormat.format` DOES throw on the same value
+PASS §1d …and it is a RangeError
+
+§2 · `Date.parse` returns NaN, and NaN is not null
+PASS §2a an unreadable string parses to NaN
+PASS §2b ⭐ NaN passes a `!= null` guard
+PASS §2c …and `Number.isFinite` is the test that holds
+PASS §2d ⚠️ `!Number.isNaN` would NOT hold — it lets Infinity through
+
+§3 · an unreadable lock instant silently un-locks the round
+PASS §3a with a real lock instant the round is locked
+PASS §3b …and is NOT bettable
+PASS §3c 🔴 NaN loses the lock entirely
+PASS §3d 🔴 …and the card would still offer the bet
+PASS §3e ⭐ `msOrNull` yields null, not NaN
+PASS §3f 🔴 …and the phase answer is IDENTICAL — this change does not fix the lock
+PASS §3g ⭐ the SERVER's verdict locks it regardless
+
+§4 · the one spelling for crossing the boundary
+PASS §4a a real ISO instant survives
+PASS §4b an unreadable string is null
+PASS §4c null is null
+PASS §4d undefined is null
+PASS §4e the empty string is null
+PASS §4f the result is always finite or null
+
+§5 · the sites that produced and consumed the NaN
+PASS §5a `formatClock` exists
+PASS §5b 🔴 …and it refuses a non-finite ms before formatting
+PASS §5c …and it may answer null
+PASS §5d the board no longer hands `Date.parse` straight to the card
+PASS §5e …it goes through `msOrNull`
+PASS §5f `msOrNull` is exported from the phase module
+PASS §5g the `?d=` filter refuses a non-integer
+
+§6 · controls
+PASS §6a control · the unsafe prop spelling IS detected
+PASS §6b control · an unguarded formatClock body IS detected
+PASS §6c control · a bare `Number(sp.d)` IS detected
+PASS §6d control · `msOrNull` would fail if it returned NaN
+
+§7 · the price a surface prints for a decided round (D36)
+PASS §7a a RUNNING round prints the live read
+PASS §7b a SETTLED round prints its own close
+PASS §7c ⛔ a void round with NO close price prints NOTHING — it does not fall back to live
+PASS §7d `confirming` deliberately keeps the live read
+PASS §7e the move is derived from the price that is PRINTED: −25% from the close, not +25% from live
+PASS §7f 🔴 …so a DOWN round stays negative however far the market has since risen
+PASS §7g the move is null — never NaN, never Infinity — where it cannot be computed
+PASS §7h the same round answers DIFFERENTLY either side of settlement
+
+§7i · both surfaces call the one function
+PASS §7i the board's `livePrice` prop is still there to read
+PASS §7j …and its value is CHOSEN by `heroPrice`, not taken from the asset
+PASS §7k the board's `movePct` prop is still there to read
+PASS §7l …and its value is CHOSEN by `heroMovePct`, with no arithmetic left on the board
+PASS §7m …and both are handed the ROUND's state and close, not just the asset's price
+PASS §7n …and there is still exactly ONE <UpDownCard> call site for all of this to govern
+PASS §7o ⭐ the ROUND PAGE chooses with the SAME function, so the two cannot disagree about the PRICE
+PASS §7p the phase module holds exactly ONE spelling of `settled`
+PASS §7q src/components/updown/updown-card.tsx still hand-spells the settled test exactly 2×
+PASS §7q src/app/updown/[roundId]/page.tsx still hand-spells the settled test exactly 1×
+PASS §7q src/lib/server/updown-board.ts still hand-spells the settled test exactly 3×
+PASS §7r every state in the RoundPhaseState union has a price rule exercised above
+
+§8 · the settled pod's price pair (D52)
+PASS §8a the pod's price pair is still there to read
+PASS §8b the pair is no longer ONE loose text run
+PASS §8c ⭐ the ARROW travels with the close price, so a wrap can only put it at the START of a line
+PASS §8d …and the open price is unbreakable in its own right
+
+§8e · controls
+PASS §8e control · the old loose run IS detected
+PASS §8f control · an arrow bound to the OPEN price is NOT accepted
+
+§7s · controls
+PASS §7s control · the reverted prop spelling IS detected
+PASS §7t control · the board doing its own move arithmetic IS detected
+PASS §7u control · §7c's assertion REJECTS a `?? livePrice` helper
+PASS §7v control · a second copy of the settled spelling IS counted
+
+ALL PASS — 62 passed, 0 failed

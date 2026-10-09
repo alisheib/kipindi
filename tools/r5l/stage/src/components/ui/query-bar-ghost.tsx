@@ -60,6 +60,22 @@ export function SortGhost({ label, value }: { label: string; value: string }) {
   );
 }
 
+/** The phone's Filters button (`FilterSheet`'s trigger, its pill shape): the trigger's own geometry class
+ *  (`.kp-fsheet-trigger`, globals.css — 44px, 14px of padding, 12px gaps), the sliders' 15px, the label and the caret's
+ *  14px, in the sheet's own root (`kp-fsheet lg:hidden`) — so /markets' one-line phone bar folds its label and caret away
+ *  exactly as it folds the page's (`.kp-discovery-bar:has(> [data-bar-row]) .kp-fsheet-trigger-label`). */
+export function FiltersGhost({ label }: { label: string }) {
+  return (
+    <div className="kp-fsheet lg:hidden">
+      <span className="kp-fsheet-trigger kp-shimmer-track items-center border border-transparent bg-bg-elevated font-semibold text-transparent" data-shape="pill">
+        <span className="h-[15px] w-[15px] shrink-0" />
+        <span className="kp-fsheet-trigger-label">{label}</span>
+        <span className="kp-fsheet-caret h-[14px] w-[14px] shrink-0" />
+      </span>
+    </div>
+  );
+}
+
 /** A desktop menu (`MenuShell`'s own summary — /markets' topic): shown from `lg` as the page's (`hidden max-w-full
  *  lg:block`), its key, value, a count's room and the caret's 14px, 12px apart inside 16px of padding. */
 export function MenuGhost({ label, value }: { label: string; value: string }) {

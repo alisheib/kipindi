@@ -1,0 +1,7 @@
+red:board-discovery exit=0 fails~=0 17s
+red:featured-card exit=0 fails~=0 50s
+red:one-sided exit=0 fails~=0 89s
+red:chart-one-home exit=0 fails~=0 30s
+red:pager-reach exit=0 fails~=0 13s
+red:recategorise exit=0 fails~=0 22s
+DONE red2

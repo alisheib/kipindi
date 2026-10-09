@@ -1,0 +1,90 @@
+── 1 · E36 · the header and tabs paint without JavaScript (tiles 277–342: header band one colour, no rail) 
+  ok   1.1 · AppShell renders the journey's header and tabs as the journeyShown arms themselves, in no Suspense boundary, with no empty header box
+  ok   1.1′ PLANT · the header back in its boundary over the bar's empty box is reported
+  ok   1.1″ PLANT · the tabs back in theirs is reported
+  ok   1.2 · React 19.2: a header in NO boundary is written where it stands, before the page, in the shell's own bytes
+  ok   1.2′ CONTROL · the same header IN a boundary, in a shell past 12,800 bytes, is OUTLINED: the fallback box where the header stands, the header itself after the page in a hidden div that only the inline $RC script moves in (the E36 mechanism)
+  ok   1.2″ CONTROL · and in a shell under 12,800 bytes the same boundary is written inline — the count that outlines it is the WHOLE shell's, wherever the boundary stands
+  ok   1.3 · Next's compiled react-dom outlines by the same rule: a boundary past 500 bytes, counted against the whole shell's 12,800 (if this fails after an upgrade, re-measure E36 before trusting §1.2)
+  ok   1.4 · the bell's slot holds the bell's still twin — the live trigger's wrapper, 40px round box, ink and 20px glyph, a plain link to /notifications — until the live bell may mount (it is mounted from 1024 alone, and never on a not-found page)
+  ok   1.4′ PLANT · the empty slot of before (the live bell or nothing) is reported
+  ok   1.4″ PLANT · a twin 4px off the live bell's box is reported
+  ok   1.5 · the journey capsule is drawn MASKED by the server and the hydration that matches it — the figure arrives with the stored hide-balances choice, in one render (a reader who hid it never sees it flash)
+  ok   1.5′ PLANT · the figure drawn before the choice is read is reported
+  ok   1.6 · …and so the server's HTML paints "TZS •••••", never "TZS 100,000", with the masked ink (data-masked)
+  ok   1.6′ CONTROL · the box still holds the figure's width (its sizer), so nothing moves when the figure arrives
+
+── 2 · E37 E41 · no cross-fade of the chrome, one current destination and one lit tab (tiles 292 301 306 315 328 333 338) 
+  ok   2.1 · a journey reader's route change never starts a document View Transition (the root cross-fade took the header, the strip and the rail, 4px apart and dimmed); everybody else keeps it
+  ok   2.1′ PLANT · the journey term dropped is reported
+  ok   2.2 · the native cross-fade's rules are unchanged for everybody else (vt-fade-out −4px / vt-fade-in +4px, --t-quick)
+  ok   2.3 · the desktop destinations: the current mark changes at once — leaving and arriving — and only a hover draws its preview in (0,2,0 over the base's 0,1,0)
+  ok   2.3′ PLANT · the cut removed (two underlines for 220ms, tile 315) is reported
+  ok   2.4 · the journey rail: ink, pip and weight change together, at once (the pip half-lit on the tab being left for 140ms, tiles 301 306 333)
+  ok   2.4′ PLANT · the journey rail's cut removed is reported
+  ok   2.5 · the CLASSIC rail keeps its fades — `.kp-rail__item` and `.kp-rail__pip` are not edited (frozen chrome; the admin bar wears them too)
+
+── 3 · E38 · the journey's loading ghosts (tiles 277 280 290 293 296: one 360px box at x32–1247 for every page) 
+  ok   3.1 · the root loading file asks AppShell's own questions — not the console, not the opt-out page, the per-request resolver — and draws the journey's ghost for a journey reader alone
+  ok   3.2 · everybody else is drawn the classic box, unchanged (the classic arm is today's markup)
+  ok   3.2′ PLANT · a classic box moved is reported
+  ok   3.2″ PLANT · the journey arm without the resolver (the ghost for every reader) is reported
+  ok   3.3 · the ghost picks a page for each of the four tabs (/ /updown /positions /account) and each of the journey's own pages (surfaces.ts: /updown/history /wallet/deposit /wallet/deposit/return and a question), exactly, and draws a frameless spinner for every other page
+  ok   3.3′ PLANT · a tab without its ghost (Juu/Chini back to the box) is reported
+  ok   3.3″ PLANT · a question without its ghost is reported
+  ok   3.4 · each ghost is its page's own: Tiketi zangu's journey ghost, the hero's intro components, and every other page's own drawing — the one its loading file renders — imported, never redrawn
+  ok   3.4′ PLANT · a second copy of Juu/Chini's ghost drawn in the root ghost (the loading file's drawing no longer the one shown) is reported
+  ok   3.5 · RoutePick draws a page's ghost on that exact path, or the whole path a pattern names, only — a page below it, any other page and an inherited key all get the other
+  ok   3.5′ CONTROL · a prefix matcher is told apart (it draws Tiketi zangu's ghost on /positions/performance)
+  ok   3.6 · route-pick.tsx is a few lines of browser code that draws nothing of its own: client, usePathname, own-property lookup, whole-path patterns
+  ok   3.7 · Claim, Ask and TrustLines are defined once, in hero-intro.tsx, and the hero renders them where it did
+  ok   3.7′ PLANT · a second copy of the h1 left in the hero is reported
+  ok   3.8 · hero-intro.tsx imports only what the three parts draw with (no market card, filter pill or tipping bar into the root's first load)
+  ok   3.8′ PLANT · the market card imported there is reported
+  ok   3.9 · the home ghost is the hero's own skeleton — band, grid, intro, lockup, claim, h1, the lede's two spans, the trust rows, the card's and the act's places — in the page's order
+  ok   3.9′ PLANT · a ghost without the lede (every block under it 40px high) is reported
+  ok   3.10 · the ghost's words are the page's, set and not shown (a bar under each), and it never plays the hero's entrance — the page's blocks rise in once, over still bars
+  ok   3.11 · the /account ghost stands in the page's own column (tier reading), with the page's h1 and the page's column cut; its hiding rows hide where the page's do
+  ok   3.11′ PLANT · a ghost in the board's column (the 100px jump of E38) is reported
+  ok   3.12 · a guest is drawn a guest's hub, chosen by the header's own sign-in pills (a guest's alone, and in the first HTML since §1)
+  ok   3.12′ PLANT · the pills renamed in the header (every guest drawn a member's hub) is reported
+  ok   3.13 · /live's search ghost wears the page's search band (R4-H's request: pulse-grid.tsx wraps the box in QUERY_SEARCH_BAND_CLASS), imported, never retyped
+  ok   3.13′ PLANT · the bare box of before is reported
+
+── 4 · E40 · the rest rule on tile 269's geometry (zh 360 /markets: the disc 0–1px from "46 个市场 · 奖池最大") 
+  ok   4.1 · the caption's box holds its Chinese ink: the mono face's content area (ascent 1.02em, descent 0.30em) contains the ideographic em box (0.88 / 0.12) — box vs ink is not the hole
+  ok   4.2 · on tile 269's geometry the rule does NOT accept the disc where it was drawn (tier 4, text under the rim) and moves it below the caption, ≥ 8px clear
+  ok   4.2′ CONTROL · the same disc with the caption unread stays where it was drawn — so 4.2 is the caption's doing
+
+── 5 · the not-found mark (tiles 345–398: the market not-found stood the bubble and the Needle down, lit Maswali, and polled into 404s) 
+  ok   5.1 · not-found-mark.ts is a hook module with no directive: its server snapshot is "no mark" (null), its id, attribute and event named once, and the hook answers for the path being drawn
+  ok   5.1′ PLANT · the hook back to the span's presence (R4-J's: "not found" for the next page while the old span is up) is reported
+  ok   5.2 · NotFoundMark writes the hidden span with the path it was drawn for, announces its coming in a LAYOUT effect (before that commit's paint) and its going once that commit is done, still before its paint (the span is out by then)
+  ok   5.2′ PLANT · a mark that does not announce its going (the overlays stay up after leaving) is reported
+  ok   5.2″ PLANT · its coming announced by a passive effect again (a transition paints the not-found page with a tab lit first) is reported
+  ok   5.2‴ PLANT · a mark that names no path (presence again) is reported
+  ok   5.3 · only client code loads it (6: ChatRoot.tsx, journey-tabs.tsx, journey-top-bar.tsx, needle.tsx, channels-panel.tsx, not-found-mark.tsx)
+  ok   5.4 · the Needle stands down for a journey page that is not a not-found page: const suppressed = hiddenPref || isMoneySurface(pathname) || (journeyOn && isJourneySurface(pathname) && !notFoundShown);
+  ok   5.4 · the chat bubble stands down for a journey page that is not a not-found page: if (journeyOn && isJourneySurface(pathname) && !notFoundShown) return null;
+  ok   5.4 · the channels panel stands down for a journey page that is not a not-found page: const journeyHidden = journeyOn && isJourneySurface(pathname) && !notFoundShown;
+  ok   5.4′ PLANT · the chat's term without the mark (the market not-found loses its bubble again) is reported
+  ok   5.5 · the Needle's gate runs again when the mark comes or goes
+  ok   5.6 · the header and the rail read no path on a not-found page — no destination and no tab lit (the market not-found lit Maswali) — and close a sheet on every move
+  ok   5.6′ PLANT · the rail lighting its tab from the address again is reported
+  ok   5.7 · the Akaunti dot's counter is not mounted on a not-found page (its Server Action posted to the not-found address and logged a 404 each beat), nor the live bell (§1.4)
+  ok   5.7′ PLANT · the dot polling on a not-found page again is reported
+  ok   5.12 · until the scripts run, the server's not-found verdict (#kp-not-found, template[data-dgst="NEXT_HTTP_ERROR_FALLBACK;404"]) unlights the tab the server lit, every lit value put back to the slot's own
+  ok   5.12′ PLANT · the rail's lit pip left on a not-found page's first paint is reported
+  ok   5.12″ PLANT · the rule reading the mark alone again (R4-J's: a missing question's, round's or proposal's first paint keeps its tab lit) is reported
+  ok   5.13 · a verdict in before the shell: the HTML is the ghost and <template data-dgst="NEXT_HTTP_ERROR_FALLBACK;404">, and no mark (no class boundary runs on the server)
+  ok   5.14 · a verdict streamed in after the shell: React's inline $RX writes data-dgst="NEXT_HTTP_ERROR_FALLBACK;404" onto the ghost's template before any app script runs
+  ok   5.14′ CONTROL · a record that IS there streams its page: no 404 template anywhere
+  ok   5.15 · `isNotFoundFor`: "not found" only when the mark that is up was drawn for the path being drawn
+  ok   5.15′ CONTROL · R4-J's presence rule answers "not found" for the next page while the old span is up (the F4 frame) — the case 5.15 tells apart
+  ok   5.8 · the shared not-found view renders <NotFoundMark /> once — every not-found answer carries the mark
+  ok   5.8′ PLANT · the view without it is reported
+  ok   5.9 · every player-facing not-found page renders the shared view (3/3)
+  ok   5.10 · no other page renders the mark
+  ok   5.11 · the snapshot is the path the span was drawn for (null with no span), every coming and going is heard once, and letting go stops listening
+
+visual-pass-r4j: 79 passed, 0 failed

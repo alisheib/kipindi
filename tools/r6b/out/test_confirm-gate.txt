@@ -1,0 +1,11 @@
+PASS 1: 🔴 every ConfirmModal that can reach tier="hard" carries a typedWord
+PASS 1: …and the element reader kept up with every <ConfirmModal in the tree — 42 parsed vs 42 found
+PASS 1: …and at least one hard gate exists, so §1 is not vacuous — 14 hard elements
+PASS 2: both /admin/roles reset dialogs declare a typed word — ["RESET PERMISSIONS","RESET READ LEVELS"]
+PASS 2: ⛔ …and they are DIFFERENT words, so the wrong tab cannot be armed by muscle memory — ["RESET PERMISSIONS","RESET READ LEVELS"]
+PASS 3: the hard arm REQUIRES the word
+PASS 3: ⛔ …and the non-hard arm FORBIDS it (`typedWord?: never`)
+PASS 3: the gate FAILS CLOSED — an empty word disarms rather than waving through — armed must require a non-empty word; without this an empty typedWord arms on empty input
+PASS 3: ⛔ …and `isHard` no longer depends on the word being truthy — that expression is the original defect: a missing word silently downgraded the tier
+
+confirm-gate: 9 passed, 0 failed

@@ -1,0 +1,227 @@
+RED CONTROL — journey-tickets' defects, planted in memory
+
+  ok   baseline · the shipped view passes all 51 in-process checks before anything is planted
+  ok   PLANT LANDED · the journey view is returned for every request
+  ok     └─ fires: 1.first
+  ok   PLANT LANDED · the page decides the journey for itself instead of asking the resolver
+  ok     └─ fires: 1.ask | 1.first
+  ok   PLANT LANDED · the view is handed a read made for it alone
+  ok     └─ fires: 1.handed
+  ok   PLANT LANDED · the tab title says Tiketi zangu to every reader
+  ok     └─ fires: 1.meta
+  ok   PLANT LANDED · the history page shows the tickets' head to every reader
+  ok     └─ fires: 1.history ·
+  ok   PLANT LANDED · the history page stops scrolling to a fragment
+  ok     └─ fires: 1.history.kept
+  ok   PLANT LANDED · the history page loses its gutter wrapper
+  ok     └─ fires: 1.history.kept
+  ok   PLANT LANDED · the history page stops polling while a round is live
+  ok     └─ fires: 1.history.kept
+  ok   PLANT LANDED · an unresolved ticket is quoted a figure
+  ok     └─ fires: 2.open
+  ok   PLANT LANDED · a lost ticket shows a payout
+  ok     └─ fires: 2.final
+  ok   PLANT LANDED · the card prints a figure on an open ticket
+  ok     └─ fires: 2.render
+  ok   PLANT LANDED · the card shows the exact figure once the closing sweep has stamped the market (the classic card's rule)
+  ok     └─ fires: 2.render
+  ok   PLANT LANDED · the card gains a second link
+  ok     └─ fires: 2.title
+  ok   PLANT LANDED · the full question is held to two lines again (at 320 it hid the end of the bet's own question)
+  ok     └─ fires: 2.title
+  ok   PLANT LANDED · the question's link loses its pull-back (the card grows 24px)
+  ok     └─ fires: 2.reach
+  ok   PLANT LANDED · the journey card spells the colour rule itself
+  ok     └─ fires: 2.chip
+  ok   PLANT LANDED · the classic card goes back to its own ternary
+  ok     └─ fires: 2.chip
+  ok   PLANT LANDED · the ticket number is dropped
+  ok     └─ fires: 2.ticket
+  ok   PLANT LANDED · the cards stop sharing their rows (each lays its own out again: DAU 20px apart beside a two-line question)
+  ok     └─ fires: 2.rows
+  ok   PLANT LANDED · a sixth row joins the card under a span of five (its last row spills into the next pair's first)
+  ok     └─ fires: 2.rows
+  ok   PLANT LANDED · the Sell row is drawn only when there is something to sell (a settled card's bottom padding has no row to ride on)
+  ok     └─ fires: 2.rows
+  ok   PLANT LANDED · the list keeps its row gap (it opens inside every card's rows)
+  ok     └─ fires: 2.rows
+  ok   PLANT LANDED · the share button comes back to the journey card
+  ok     └─ fires: 2.shelved
+  ok   PLANT LANDED · the bar's journey variant grows row 2's sort again
+  ok     └─ fires: 2.shelved
+  ok   PLANT LANDED · the classic header's words (its eyebrow says “Nafasi”) come back to the journey head
+  ok     └─ fires: 2.shelved
+  ok   PLANT LANDED · a date is formatted in the browser's way
+  ok     └─ fires: 3.server
+  ok   PLANT LANDED · a date is formatted without the render's clock
+  ok     └─ fires: 3.server
+  ok   PLANT LANDED · a date goes back through the English helper (“Imewekwa 8 Oct” to a Swahili reader, §L4)
+  ok     └─ fires: 3.server
+  ok   PLANT LANDED · a date is formatted with English month words instead of the reader's
+  ok     └─ fires: 3.server
+  ok   PLANT LANDED · the journey bar names its strip with the classic word (“Kichujio cha nafasi”)
+  ok     └─ fires: 4.nafasi | 4.count
+  ok   PLANT LANDED · the journey bar draws the result count (“Nafasi {n}”)
+  ok     └─ fires: 4.count | 4.nafasi
+  ok   PLANT LANDED · a lens is dropped from the journey bar
+  ok     └─ fires: 4.lenses
+  ok   PLANT LANDED · the journey bar writes a rail hook of its own (the vacuity case's anchor turns ambiguous)
+  ok     └─ fires: 4.rail
+  ok   PLANT LANDED · the card reads a classic word that says nafasi
+  ok     └─ fires: 4.nafasi
+  ok   PLANT LANDED · the error page's journey arm reads the classic body
+  ok     └─ fires: 4.nafasi | 10.error
+  ok   PLANT LANDED · a journey word is re-worded with nafasi in Swahili
+  ok     └─ fires: 4.nafasi
+  ok   PLANT LANDED · an empty outcome lens reads the classic line again (持仓 in Chinese)
+  ok     └─ fires: 4.zh
+  ok   PLANT LANDED · a word the view reads is missing in Chinese
+  ok     └─ fires: 4.words
+  ok   PLANT LANDED · the switch's Juu/Chini becomes a button
+  ok     └─ fires: 5.rail
+  ok   PLANT LANDED · the kit's tabs grow a tab widget
+  ok     └─ fires: 5.rail
+  ok   PLANT LANDED · the switch imports the kit's Tabs statically again (its code back in every visitor's first load)
+  ok     └─ fires: 5.lazy
+  ok   PLANT LANDED · the wrapper turns the server render off (an empty band, then the rail)
+  ok     └─ fires: 5.lazy
+  ok   PLANT LANDED · the view marks Juu/Chini as the page being read
+  ok     └─ fires: 5.current
+  ok   PLANT LANDED · the history page marks Maswali as the page being read
+  ok     └─ fires: 5.current
+  ok   PLANT LANDED · the guest's sign-in forgets /positions
+  ok     └─ fires: 6.next
+  ok   PLANT LANDED · the view stops scrolling to a fragment
+  ok     └─ fires: 7.poll
+  ok   PLANT LANDED · the card loses the id a fragment names
+  ok     └─ fires: 7.anchor
+  ok   PLANT LANDED · the Utendaji link is dropped
+  ok     └─ fires: 7.performance
+  ok   PLANT LANDED · the card names a house field
+  ok     └─ fires: 8.house
+  ok   PLANT LANDED · the view reads a store itself
+  ok     └─ fires: 8.reads
+  ok   PLANT LANDED · the card builds the free-sell instant itself
+  ok     └─ fires: 9.host
+  ok   PLANT LANDED · the card asks for the classic look again (its dialogs say nafasi)
+  ok     └─ fires: 9.look
+  ok   PLANT LANDED · the card stops telling the button whether the price is the free window's (a lapsed free price would be offered)
+  ok     └─ fires: 9.look
+  ok   PLANT LANDED · the card's clock time is built from the placement and a grace
+  ok     └─ fires: 3.clock
+  ok   PLANT LANDED · the sell gate forgets the journey card
+  ok     └─ fires: 9.gate
+  ok   PLANT LANDED · the sell gate stops holding the clock label to the instant
+  ok     └─ fires: 9.gate
+  ok   PLANT LANDED · the positions loading file decides for itself instead of asking the resolver
+  ok     └─ fires: 10.loading
+  ok   PLANT LANDED · the history loading file reads the session itself
+  ok     └─ fires: 10.loading
+  ok   PLANT LANDED · the positions loading file reads the words on the server again (the drawing in every refresh)
+  ok     └─ fires: 10.loading
+  ok   PLANT LANDED · every reader is drawn the journey's ghost
+  ok     └─ fires: 10.ghost
+  ok   PLANT LANDED · a journey reader is drawn the classic ghost (“Nafasi”)
+  ok     └─ fires: 10.ghost
+  ok   PLANT LANDED · a journey reader's /positions pinned to another page's picture
+  ok     └─ fires: 10.ghost
+  ok   PLANT LANDED · today's ghost loses a block (the exposure bar)
+  ok     └─ fires: 10.ghost
+  ok   PLANT LANDED · the history ghost wears the tickets' head for every reader
+  ok     └─ fires: 10.ghost
+  ok   PLANT LANDED · Tiketi zangu's ghosts become a client boundary (a server file could load their code for every reader)
+  ok     └─ fires: 10.pick
+  ok   PLANT LANDED · today's /positions picture loads the journey's ghost (its code to every classic reader)
+  ok     └─ fires: 10.pick
+  ok   PLANT LANDED · today's /positions picture drawn on the server again (its tree in every refresh)
+  ok     └─ fires: 10.pick
+  ok   PLANT LANDED · a loading file imports a client module
+  ok     └─ fires: 10.pick
+  ok   PLANT LANDED · the error page gives every reader the tickets' words
+  ok     └─ fires: 10.error
+  ok   PLANT LANDED · the suite drops out of predeploy
+  ok     └─ fires: 11.wired
+  ok   PLANT LANDED · /positions' classic SellButton asks for the journey look
+  ok     └─ fires: 12.opt-in
+  ok   PLANT LANDED · the question page's holder block hands a clock label
+  ok     └─ fires: 12.opt-in
+  ok   PLANT LANDED · a third host, found nowhere in a list, asks for the journey look
+  ok     └─ fires: 12.opt-in
+  ok   PLANT LANDED · the classic free strip changes its padding
+  ok     └─ fires: 12.default
+  ok   PLANT LANDED · the shared result dialog changes for every reader
+  ok     └─ fires: 12.default
+  ok   PLANT LANDED · the button writes the result's words a second time, its own result in place of the shared one (S6 A8h)
+  ok     └─ fires: 12.dialogs
+  ok   PLANT LANDED · the shell's host writes a result of its own: two definitions of one result (S6 A8h)
+  ok     └─ fires: 12.dialogs
+  ok   PLANT LANDED · the result's journey word is drawn for every reader (S6 A8h)
+  ok     └─ fires: 12.dialogs
+  ok   PLANT LANDED · the host drops the look the button handed it: a journey reader is told today's line under a refusal (S6 A8h)
+  ok     └─ fires: 12.dialogs
+  ok   PLANT LANDED · the confirm's own default becomes the journey's question (every reader would see it)
+  ok     └─ fires: 12.dialogs
+  ok   PLANT LANDED · the look stops handing the keep button its word (Hifadhi nafasi again)
+  ok     └─ fires: 12.words | 12.dialogs
+  ok   PLANT LANDED · the look draws a confirm dialog of its own
+  ok     └─ fires: 12.dialogs
+  ok   PLANT LANDED · the journey's button calls the action itself, past the confirm
+  ok     └─ fires: 12.sale
+  ok   PLANT LANDED · the free button promises the stake, not the server's figure
+  ok     └─ fires: 12.free
+  ok   PLANT LANDED · the countdown loses its timer role
+  ok     └─ fires: 12.free
+  ok   PLANT LANDED · the free line is never drawn
+  ok     └─ fires: 12.free
+  ok   PLANT LANDED · the free word and the refund are keyed on the free instant, not the offer (they outlive the free window)
+  ok     └─ fires: 12.free
+  ok   PLANT LANDED · the refund line is drawn whatever the offer ('kamili' over a figure with a fee)
+  ok     └─ fires: 12.free
+  ok   PLANT LANDED · the free line is drawn on the label alone (it outlives the countdown)
+  ok     └─ fires: 12.free
+  ok   PLANT LANDED · the countdown is keyed the wrong way round (the free line never shows the time left; S6 A8e made the old plant, 0:00 on the server's paint, impossible)
+  ok     └─ fires: 12.free
+  ok   PLANT LANDED · a lapsed free price can still be pressed
+  ok     └─ fires: 12.lapse
+  ok   PLANT LANDED · a lapsed free price keeps its figure
+  ok     └─ fires: 12.lapse
+  ok   PLANT LANDED · a lapsed free price keeps the free word (nothing says the button is waiting)
+  ok     └─ fires: 12.lapse
+  ok   PLANT LANDED · a lapse never asks the server (the stale offer waits for the poller, up to 20 s)
+  ok     └─ fires: 12.lapse
+  ok   PLANT LANDED · a lapse asks on every render of the page (an answer that is still free would set off another ask)
+  ok     └─ fires: 12.lapse
+  ok   PLANT LANDED · a lapse leaves the confirm open on the free price
+  ok     └─ fires: 12.lapse
+  ok   PLANT LANDED · a sale refused because its price moved never asks the page for the new price (the button keeps the stale figure until the poller's next beat)
+  ok     └─ fires: 12.sale | 12.lapse
+  ok   PLANT LANDED · every refused sale asks the page to refresh, not only a moved price
+  ok     └─ fires: 12.sale
+  ok   PLANT LANDED · the journey's button says 'Inauza…' while a moved price waits for the server (under a result that says nothing was sold)
+  ok     └─ fires: 12.lapse
+  ok   PLANT LANDED · the journey's button keeps the refused figure while a moved price waits for the server
+  ok     └─ fires: 12.lapse
+  ok   PLANT LANDED · a paid window's fee disappears from the journey's button
+  ok     └─ fires: 12.paid
+  ok   PLANT LANDED · a price with no fee prints −0 ada
+  ok     └─ fires: 12.paid
+  ok   PLANT LANDED · a shut exit draws a button
+  ok     └─ fires: 12.closed
+  ok   PLANT LANDED · the shut words wait for the phone's clock (a shut ticket's first paint offers a sale)
+  ok     └─ fires: 12.closed
+  ok   PLANT LANDED · the journey's button takes the kit's quieter edge (under the floor on the card)
+  ok     └─ fires: 12.edge
+  ok   PLANT LANDED · the look formats the free window's end in the browser
+  ok     └─ fires: 12.arith
+  ok   PLANT LANDED · the look works the refund out on the phone
+  ok     └─ fires: 12.arith
+  ok   PLANT LANDED · a journey sell word is re-worded with nafasi in Swahili
+  ok     └─ fires: 12.words
+  ok   PLANT LANDED · a second word on the sell path says 持仓 in Chinese
+  ok     └─ fires: 12.words
+  ok   PLANT LANDED · a journey sell word takes the withdraw verb, kutoa, in Swahili
+  ok     └─ fires: 12.words
+  ok   PLANT LANDED · a word on the sell path is missing in Chinese
+  ok     └─ fires: 12.words
+
+RED CONTROL — 111/111 caught · all 223 proofs held

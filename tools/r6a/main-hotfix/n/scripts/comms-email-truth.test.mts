@@ -1,0 +1,736 @@
+/**
+ * C1 · EMAIL TRUTH — what actually lands in the player's inbox.
+ *
+ * ⚠️ WHY THIS EXISTS. 50pick ships 49 transactional templates and, until this
+ * suite, exactly FIVE of them had ever been rendered by a test — and that test
+ * only asserted they did not THROW. It even fed
+ * `welcomeHtml({ name: "<script>alert(1)</script>" })` and passed, because
+ * "did not throw" was the whole assertion. Two real defects were living inside
+ * that green tick:
+ *
+ *   1. 🔴 `heading()` did not escape, and four templates interpolate a
+ *      PLAYER-CONTROLLED display name into it (`welcomeHtml`, `kycApprovedHtml`,
+ *      `loginNotificationHtml`, `accountClosedHtml`). The payload above reached
+ *      the recipient as live markup.
+ *   2. 🔴 Three templates wrote raw HTML into `subtitle()`, which escapes — so
+ *      the player READ THE MARKUP. On `selfExclusionHtml` and `coolOffHtml`
+ *      (the two most compliance-sensitive mails the platform sends) and on
+ *      `amlRejectRefundHtml`, the mail every FAILED PAYOUT triggers:
+ *          "…contact &lt;a href=&quot;mailto:support@50pick.tz&quot;…&gt;"
+ *
+ * Neither is findable by reading the code — both were found by rendering the
+ * template and looking at the bytes. So that is what this file does: it renders
+ * EVERY template, twice (benign input and hostile input), and reads the output.
+ *
+ * ⛔ NO FIXTURE IS CAST. Every builder below is invoked with literal arguments
+ * that TypeScript checks against the real parameter type. An `as never` fixture
+ * would compile forever while the template's shape drifted underneath it.
+ *
+ * Every negative assertion here was broken on purpose and observed to go red —
+ * see the commit message.
+ */
+/* ⚠️ TWO MODULES SINCE 2026-09-10, AND THIS IMPORT HAD TO SPLIT WITH THEM (E-226/E-328).
+   `lib/support-config.ts` is the CLIENT-SAFE half and now keeps only the PINNED statutory
+   constants — the helpline and the licence number — because a `"use client"` file may not reach
+   `defineConfig`. The operator-editable getters moved to `lib/server/support-config.ts`, where
+   they hydrate from `SystemConfig`. ⛔ This suite kept importing `SUPPORT_PHONE` from the client
+   half and died at load with "does not provide an export named 'SUPPORT_PHONE'" — a red that
+   `tsc` cannot see, because a `.mts` fixture's imports are outside the typechecker's include.
+   ⭐ The helpline readers are imported to prove NO email carries the helpline (owner's ruling, 2026-10-06). */
+import { HELPLINE, SUPPORT_DEFAULTS } from "../src/lib/support-config.ts";
+import { SUPPORT_PHONE } from "../src/lib/server/support-config.ts";
+import { readFileSync, readdirSync, statSync } from "node:fs";
+import { fileURLToPath } from "node:url";
+import { dirname, join } from "node:path";
+import {
+  EMAIL_TEMPLATES, DUAL_CHROME_TEMPLATES, NO_CTA_TEMPLATES, CONFIRMED_ONLY_TEMPLATES, CONFIRMED_ONLY_EXEMPT,
+} from "../src/lib/server/comms-registry.ts";
+import * as E from "../src/lib/server/email.ts";
+
+const root = join(dirname(fileURLToPath(import.meta.url)), "..");
+const read = (p: string) => readFileSync(join(root, p), "utf8");
+
+let pass = 0, fail = 0;
+const ok = (label: string, cond: boolean, extra?: string) => {
+  if (cond) { pass++; } else { fail++; console.log(`FAIL ${label}${extra ? `\n       ${extra}` : ""}`); }
+};
+const section = (s: string) => console.log(`\n── ${s} ${"─".repeat(Math.max(0, 62 - s.length))}`);
+
+/**
+ * The hostile payload, chosen so every failure mode is unambiguous in the output:
+ *   `<b>`            — no template legitimately emits a <b>, so its presence is proof of injection
+ *   ` onmouseover="` — an unescaped double quote escaping an attribute
+ * Both survive `esc()` as harmless text (`&lt;b&gt;`, `&quot;`), so a correctly
+ * escaped template contains NEITHER raw form.
+ */
+const HOSTILE = `<b>x</b>" onmouseover="BOOM`;
+const ATTR_BREAK = ` onmouseover="`;
+
+/** A benign value containing no angle brackets, quotes or braces at all. */
+const SAFE = "Manchester United to win the derby";
+
+type Rendered = { template: string; benign: string; hostile: string };
+
+/**
+ * Every template, built from their real types.
+ *
+ * `benign` proves the template reads correctly; `hostile` proves every
+ * caller-supplied string reaches the page escaped. Where a builder takes several
+ * free-text fields the hostile render puts the payload in EVERY one of them —
+ * escaping one position and missing another is precisely the bug shape here.
+ */
+const RENDERS: Rendered[] = [
+  { template: "depositConfirmedHtml",
+    benign:  E.depositConfirmedHtml({ amount: 50_000, method: "M-Pesa", reference: "txn_a1", gatewayRef: "dep_b2", balance: 150_000 }),
+    hostile: E.depositConfirmedHtml({ amount: 50_000, method: HOSTILE, reference: HOSTILE, gatewayRef: HOSTILE, balance: 1 }) },
+  { template: "depositPendingHtml",
+    benign:  E.depositPendingHtml({ amount: 50_000, method: "Tigo Pesa", reference: "txn_a1", gatewayRef: "dep_b2" }),
+    hostile: E.depositPendingHtml({ amount: 1, method: HOSTILE, reference: HOSTILE, gatewayRef: HOSTILE }) },
+  { template: "depositFailedHtml",
+    benign:  E.depositFailedHtml({ amount: 50_000, method: "Airtel Money", reference: "txn_a1", gatewayRef: "dep_b2", reason: "Insufficient funds" }),
+    hostile: E.depositFailedHtml({ amount: 1, method: HOSTILE, reference: HOSTILE, gatewayRef: HOSTILE, reason: HOSTILE }) },
+  { template: "depositReversedHtml",
+    benign:  E.depositReversedHtml({ amount: 50_000, method: "M-Pesa", reference: "txn_a1", gatewayRef: "dep_b2" }),
+    hostile: E.depositReversedHtml({ amount: 1, method: HOSTILE, reference: HOSTILE, gatewayRef: HOSTILE }) },
+  { template: "withdrawalSentHtml",
+    benign:  E.withdrawalSentHtml({ amount: 20_000, destination: "M-Pesa", destinationPhone: "+255712345678", reference: "wdr_a1", gatewayRef: "sel_b2", railLabel: "Selcom Pesa", railNote: null }),
+    hostile: E.withdrawalSentHtml({ amount: 1, destination: HOSTILE, destinationPhone: HOSTILE, reference: HOSTILE, gatewayRef: HOSTILE, railLabel: HOSTILE, railNote: { en: HOSTILE, sw: HOSTILE } }) },
+  { template: "withdrawalUnderReviewHtml",
+    benign:  E.withdrawalUnderReviewHtml({ amount: 2_000_000, reference: "wdr_a1" }),
+    hostile: E.withdrawalUnderReviewHtml({ amount: 1, reference: HOSTILE }) },
+  { template: "amlRejectRefundHtml",
+    benign:  E.amlRejectRefundHtml({ amount: 15_000, reason: "Rail refused the payout", reference: "wdr_a1", gatewayRef: "sel_b2", railLabel: "Selcom Pesa" }),
+    hostile: E.amlRejectRefundHtml({ amount: 1, reason: HOSTILE, reference: HOSTILE, gatewayRef: HOSTILE, railLabel: HOSTILE }) },
+  { template: "betPlacedHtml",
+    // R6-A (2026-10-09): `resolvesAt` is the market's resolution INSTANT now (it was a display string, the UTC day).
+    benign:  E.betPlacedHtml({ reference: "pos_a1", side: "YES", stake: 10_000, marketTitle: SAFE, placedAt: "2026-07-31T09:00:00.000Z", resolvesAt: "2026-08-01T12:00:00.000Z", cashOutFeeRate: 0.1, freeExitGraceMinutes: 5, paidExitWindowMinutes: 0 }),
+    hostile: E.betPlacedHtml({ reference: HOSTILE, side: "NO", stake: 1, marketTitle: HOSTILE, placedAt: HOSTILE, resolvesAt: HOSTILE, cashOutFeeRate: 0.1, freeExitGraceMinutes: 5, paidExitWindowMinutes: 30 }) },
+  { template: "selectionClosedHtml",
+    benign:  E.selectionClosedHtml({ marketTitle: SAFE, closedAt: "2026-07-31T09:00:00.000Z", resolvesAt: "2026-08-01T09:00:00.000Z", marketId: "mkt_a1", payoutIfYes: 18_500, payoutIfNo: null }),
+    hostile: E.selectionClosedHtml({ marketTitle: HOSTILE, closedAt: HOSTILE, resolvesAt: HOSTILE, marketId: HOSTILE, payoutIfYes: 1, payoutIfNo: 2 }) },
+  { template: "winNotificationHtml",
+    benign:  E.winNotificationHtml({ reference: "pos_a1", payout: 18_500, stake: 10_000, marketTitle: SAFE, settledAt: "2026-07-31T09:00:00.000Z" }),
+    hostile: E.winNotificationHtml({ reference: HOSTILE, payout: 2, stake: 1, marketTitle: HOSTILE, settledAt: HOSTILE }) },
+  { template: "lossNotificationHtml",
+    benign:  E.lossNotificationHtml({ reference: "pos_a1", stake: 10_000, marketTitle: SAFE, settledAt: "2026-07-31T09:00:00.000Z" }),
+    hostile: E.lossNotificationHtml({ reference: HOSTILE, stake: 1, marketTitle: HOSTILE, settledAt: HOSTILE }) },
+  { template: "cashOutReceiptHtml",
+    benign:  E.cashOutReceiptHtml({ reference: "pos_a1", value: 9_500, stake: 10_000, marketTitle: SAFE, soldAt: "2026-07-31T09:00:00.000Z", gracePeriod: false }),
+    hostile: E.cashOutReceiptHtml({ reference: HOSTILE, value: 1, stake: 2, marketTitle: HOSTILE, soldAt: HOSTILE, gracePeriod: true }) },
+  { template: "oneSidedRefundHtml",
+    benign:  E.oneSidedRefundHtml({ reference: "pos_a1", stake: 10_000, marketTitle: SAFE, settledAt: "2026-07-31T09:00:00.000Z" }),
+    hostile: E.oneSidedRefundHtml({ reference: HOSTILE, stake: 1, marketTitle: HOSTILE, settledAt: HOSTILE }) },
+  // The Up & Down daily digest (E-37) — the ONE message a round player receives.
+  // Driven on a LOSING day on purpose: that is the branch carrying the LCCP claim.
+  { template: "updownDigestHtml",
+    benign:  E.updownDigestHtml({ dayLabel: "2 Aug", rounds: 4, wins: 1, losses: 3, refunds: 0, wonPayout: 8_700, lostStake: 15_000, refundedStake: 0, staked: 20_000, returned: 8_700, net: -11_300 }),
+    hostile: E.updownDigestHtml({ dayLabel: HOSTILE, rounds: 1, wins: 0, losses: 0, refunds: 1, wonPayout: 0, lostStake: 0, refundedStake: 1, staked: 1, returned: 1, net: 0 }) },
+  { template: "marketCancelledRefundHtml",
+    benign:  E.marketCancelledRefundHtml({ title: SAFE, reason: "Source retracted the result", amount: 10_000, reference: "pos_a1" }),
+    hostile: E.marketCancelledRefundHtml({ title: HOSTILE, reason: HOSTILE, amount: 1, reference: HOSTILE }) },
+  { template: "marketCancelledAdminHtml",
+    benign:  E.marketCancelledAdminHtml({ title: SAFE, reason: "Source retracted", refundedCount: 12, refundedTzs: 120_000 }),
+    hostile: E.marketCancelledAdminHtml({ title: HOSTILE, reason: HOSTILE, refundedCount: 0, refundedTzs: 0 }) },
+  { template: "marketResolutionAdminHtml",
+    benign:  E.marketResolutionAdminHtml({ title: SAFE, closedAt: "2026-07-31T09:00:00.000Z", reviewUrl: "/admin/resolver-queue" }),
+    hostile: E.marketResolutionAdminHtml({ title: HOSTILE, closedAt: HOSTILE, reviewUrl: "/admin/resolver-queue" }) },
+  { template: "bonusCreditedHtml",
+    benign:  E.bonusCreditedHtml({ amountTzs: 5_000, wagerRequiredTzs: 25_000, sourceLabel: "Welcome bonus" }),
+    hostile: E.bonusCreditedHtml({ amountTzs: 1, wagerRequiredTzs: 2, sourceLabel: HOSTILE }) },
+  { template: "bonusFulfilledHtml",
+    benign:  E.bonusFulfilledHtml({ amountTzs: 5_000 }),
+    hostile: E.bonusFulfilledHtml({ amountTzs: 0 }) },
+  { template: "referralRewardHtml",
+    benign:  E.referralRewardHtml({ amount: 2_000, referredName: "Asha M.", totalEarned: 12_000 }),
+    hostile: E.referralRewardHtml({ amount: 1, referredName: HOSTILE, totalEarned: 2 }) },
+  { template: "referralEarningHtml",
+    benign:  E.referralEarningHtml({ type: "COMMISSION", amountTzs: 2_000 }),
+    hostile: E.referralEarningHtml({ type: "PRIZE", amountTzs: 0 }) },
+  { template: "inviteHtml",
+    benign:  E.inviteHtml({ campaignName: "Launch week", bonusAmountTzs: 5_000, code: "ABC123", message: "Join me on 50pick" }),
+    hostile: E.inviteHtml({ campaignName: HOSTILE, bonusAmountTzs: 1, code: HOSTILE, message: HOSTILE }) },
+  { template: "kycSubmittedHtml",
+    benign:  E.kycSubmittedHtml({ name: "Asha", reference: "kyc_a1", submittedAt: "2026-07-31T09:00:00.000Z", docTypes: ["NIDA_FRONT", "SELFIE"], viewUrl: "/profile/kyc" }),
+    hostile: E.kycSubmittedHtml({ name: HOSTILE, reference: HOSTILE, submittedAt: HOSTILE, docTypes: [HOSTILE], viewUrl: "/profile/kyc" }) },
+  { template: "kycApprovedHtml",
+    benign:  E.kycApprovedHtml({ name: "Asha", reference: "kyc_a1" }),
+    hostile: E.kycApprovedHtml({ name: HOSTILE, reference: HOSTILE }) },
+  { template: "kycRejectedHtml",
+    benign:  E.kycRejectedHtml({ reason: "The ID photograph was too blurred to read", reference: "kyc_a1" }),
+    // The hostile render takes the FINAL branch, the only one that prints `reasonSw` (2026-09-14).
+    hostile: E.kycRejectedHtml({ reason: HOSTILE, reasonSw: HOSTILE, reference: HOSTILE, finalRefusal: true }) },
+  { template: "kycMoreInfoHtml",
+    benign:  E.kycMoreInfoHtml({ reason: "Please add the back of your ID", reference: "kyc_a1" }),
+    hostile: E.kycMoreInfoHtml({ reason: HOSTILE, reference: HOSTILE }) },
+  // S1 (2026-09-13) — the officer's decision on a finally-refused player's balance.
+  { template: "refusedFundsDecisionHtml",
+    benign:  E.refusedFundsDecisionHtml({ outcome: "RETURN_DEPOSITS", returnedTzs: 20_000, forfeitedTzs: 5_000, balanceTzs: 25_000, reason: "You must be 18 or older to use 50pick.", reference: "rfd_a1b2c3d4e5" }),
+    hostile: E.refusedFundsDecisionHtml({ outcome: "FORFEIT", returnedTzs: 0, forfeitedTzs: 25_000, balanceTzs: 25_000, reason: HOSTILE, reasonSw: HOSTILE, reference: HOSTILE }) },
+  // 2026-09-14 — the follow-up when a decided return's payout failed and the amount came back to the frozen wallet.
+  { template: "refusedFundsReturnFailedHtml",
+    benign:  E.refusedFundsReturnFailedHtml({ amountTzs: 20_000, forfeitedTzs: 5_000, reference: "rfd_a1b2c3d4e5" }),
+    hostile: E.refusedFundsReturnFailedHtml({ amountTzs: 1, forfeitedTzs: 0, reference: HOSTILE }) },
+  // ── Agent affiliate programme ─────────────────────────────────────────────
+  { template: "agentApprovedHtml",
+    benign:  E.agentApprovedHtml({ agentCode: "50PICK-AG-ABC234", commissionPct: 20, windowMonths: 0 }),
+    hostile: E.agentApprovedHtml({ agentCode: HOSTILE, commissionPct: 20, windowMonths: 12 }) },
+  { template: "agentRejectedHtml",
+    benign:  E.agentRejectedHtml({ reason: "DOCUMENT_NOT_LEGIBLE", note: "The Serikali letter is cropped", refundDue: true, amountTzs: 100_000, refundDays: 7, reapplyDays: 90 }),
+    hostile: E.agentRejectedHtml({ reason: HOSTILE, note: HOSTILE, refundDue: true, amountTzs: 100_000, refundDays: 7, reapplyDays: null }) },
+  { template: "agentInfoRequestedHtml",
+    benign:  E.agentInfoRequestedHtml({ reason: "A clearer copy of the second referee's ID", reference: "agp_a1" }),
+    hostile: E.agentInfoRequestedHtml({ reason: HOSTILE, reference: HOSTILE }) },
+  { template: "agentFeeRefundedHtml",
+    benign:  E.agentFeeRefundedHtml({ amountTzs: 100_000, reference: "RF-2026-0091", destinationMasked: "0769•••877" }),
+    hostile: E.agentFeeRefundedHtml({ amountTzs: 100_000, reference: HOSTILE, destinationMasked: HOSTILE }) },
+  { template: "agentApplicationSubmittedAdminHtml",
+    benign:  E.agentApplicationSubmittedAdminHtml({ reference: "agp_a1", applicantLabel: "Asha M.", submittedAt: "2026-09-07T10:00:00.000Z", reviewUrl: "https://www.50pick.tz/admin/agents/agp_a1" }),
+    hostile: E.agentApplicationSubmittedAdminHtml({ reference: HOSTILE, applicantLabel: HOSTILE, submittedAt: "2026-09-07T10:00:00.000Z", reviewUrl: "https://www.50pick.tz/admin/agents/agp_a1" }) },
+  { template: "agentInvitationHtml",
+    // ⚠️ 118_000 — the applicant-facing TOTAL under management's EXCLUSIVE VAT treatment
+    // (2026-09-08). The fee CONFIG is still 100,000; what a person is told to pay is not.
+    benign:  E.agentInvitationHtml({ link: "https://www.50pick.tz/agent/invite/tok", expiresAt: "2026-09-21T10:00:00.000Z", feeWaivable: true, feeTzs: 118_000 }),
+    hostile: E.agentInvitationHtml({ link: "https://www.50pick.tz/agent/invite/tok", expiresAt: "2026-09-21T10:00:00.000Z", feeWaivable: false, feeTzs: 118_000 }) },
+  // ⭐ The invitation's one-time code, by email since 2026-09-08. The hostile fixture drives
+  // a code full of markup: the template `esc()`s it, and this suite renders every builder
+  // twice for exactly that reason.
+  { template: "agentInviteOtpHtml",
+    benign:  E.agentInviteOtpHtml({ code: "483920", minutes: 5 }),
+    hostile: E.agentInviteOtpHtml({ code: HOSTILE, minutes: 5 }) },
+  { template: "agentDeactivatedHtml",
+    benign:  E.agentDeactivatedHtml(),
+    hostile: E.agentDeactivatedHtml() },
+  { template: "agentRevokedHtml",
+    benign:  E.agentRevokedHtml({ reapplyAt: "2026-12-06T10:00:00.000Z" }),
+    hostile: E.agentRevokedHtml({ reapplyAt: null }) },
+  { template: "agentRateChangedHtml",
+    benign:  E.agentRateChangedHtml({ beforePct: 20, afterPct: 25 }),
+    hostile: E.agentRateChangedHtml({ beforePct: null, afterPct: 25 }) },
+  { template: "agentCommissionEarnedHtml",
+    benign:  E.agentCommissionEarnedHtml({ amountTzs: 2_000 }),
+    hostile: E.agentCommissionEarnedHtml({ amountTzs: 2_000 }) },
+  { template: "agentCommissionReversedHtml",
+    benign:  E.agentCommissionReversedHtml({ amountTzs: 2_000, recoveredTzs: 2_000, marketId: "mkt_a1" }),
+    hostile: E.agentCommissionReversedHtml({ amountTzs: 2_000, recoveredTzs: 500, marketId: HOSTILE }) },
+  { template: "kycSubmittedAdminHtml",
+    benign:  E.kycSubmittedAdminHtml({ reference: "kyc_a1", phoneMasked: "+2557••••5678", name: "Asha M.", nidaMasked: "••••1234", submittedAt: "2026-07-31T09:00:00.000Z", reviewUrl: "/admin/players/u1?tab=kyc" }),
+    hostile: E.kycSubmittedAdminHtml({ reference: HOSTILE, phoneMasked: HOSTILE, name: HOSTILE, nidaMasked: HOSTILE, submittedAt: HOSTILE, reviewUrl: "/admin/players/u1?tab=kyc" }) },
+  { template: "sofSubmittedHtml",
+    benign:  E.sofSubmittedHtml(),
+    hostile: E.sofSubmittedHtml() },
+  { template: "sofDecisionHtml",
+    benign:  E.sofDecisionHtml({ status: "ACCEPTED", note: "Payslips accepted" }),
+    hostile: E.sofDecisionHtml({ status: "REJECTED", note: HOSTILE }) },
+  { template: "amlReviewAdminHtml",
+    benign:  E.amlReviewAdminHtml({ amount: 2_000_000, kind: "WITHDRAWAL", reference: "wdr_a1" }),
+    hostile: E.amlReviewAdminHtml({ amount: 1, kind: HOSTILE, reference: HOSTILE }) },
+  // R6-A (2026-10-09, A1): the two RG letters take the end's INSTANT and say it themselves (it was a pre-formatted day).
+  { template: "selfExclusionHtml",
+    benign:  E.selfExclusionHtml({ period: "6 months", untilIso: "2027-01-31T09:00:00.000Z" }),
+    hostile: E.selfExclusionHtml({ period: HOSTILE, untilIso: HOSTILE }) },
+  { template: "coolOffHtml",
+    benign:  E.coolOffHtml({ duration: "24 hours", untilIso: "2026-08-01T09:00:00.000Z" }),
+    hostile: E.coolOffHtml({ duration: HOSTILE, untilIso: HOSTILE }) },
+  { template: "welcomeHtml",
+    benign:  E.welcomeHtml({ name: "Asha" }),
+    hostile: E.welcomeHtml({ name: HOSTILE }) },
+  { template: "loginNotificationHtml",
+    benign:  E.loginNotificationHtml({ name: "Asha", time: "31 Jul 2026, 14:32 EAT", ip: "41.222.0.1" }),
+    hostile: E.loginNotificationHtml({ name: HOSTILE, time: HOSTILE, ip: HOSTILE }) },
+  { template: "emailVerifyHtml",
+    benign:  E.emailVerifyHtml({ name: "Asha", verifyUrl: "https://50pick.tz/auth/verify-email?t=abc" }),
+    hostile: E.emailVerifyHtml({ name: HOSTILE, verifyUrl: "https://50pick.tz/auth/verify-email?t=abc" }) },
+  { template: "emailChangedHtml",
+    benign:  E.emailChangedHtml({ newEmail: "asha@example.tz", time: "31 Jul 2026, 14:32 EAT" }),
+    hostile: E.emailChangedHtml({ newEmail: HOSTILE, time: HOSTILE }) },
+  { template: "passwordResetHtml",
+    benign:  E.passwordResetHtml({ resetLink: "https://50pick.tz/auth/reset-password?t=abc" }),
+    hostile: E.passwordResetHtml({ resetLink: "https://50pick.tz/auth/reset-password?t=abc" }) },
+  { template: "passwordChangedHtml",
+    benign:  E.passwordChangedHtml({ time: "31 Jul 2026, 14:32 EAT", method: "Self-service change" }),
+    hostile: E.passwordChangedHtml({ time: HOSTILE, method: HOSTILE }) },
+  { template: "accountClosedHtml",
+    benign:  E.accountClosedHtml({ name: "Asha", time: "31 Jul 2026, 14:32 EAT" }),
+    hostile: E.accountClosedHtml({ name: HOSTILE, time: HOSTILE }) },
+  { template: "staffRoleChangedHtml",
+    benign:  E.staffRoleChangedHtml({ name: "Asha", roleLabel: "COMPLIANCE", isStaff: true }),
+    hostile: E.staffRoleChangedHtml({ name: HOSTILE, roleLabel: HOSTILE, isStaff: false }) },
+  { template: "proposalSubmittedHtml",
+    benign:  E.proposalSubmittedHtml({ titleEn: SAFE, reference: "prp_a1", submittedAt: "2026-07-31T09:00:00.000Z" }),
+    hostile: E.proposalSubmittedHtml({ titleEn: HOSTILE, reference: HOSTILE, submittedAt: HOSTILE }) },
+  { template: "proposalSubmittedAdminHtml",
+    benign:  E.proposalSubmittedAdminHtml({ reference: "prp_a1", proposer: "Asha M.", titleEn: SAFE, titleSw: "Timu ipi itashinda", category: "SPORT", sourceUrl: "https://bbc.co.uk/sport", reviewUrl: "/admin/proposals" }),
+    hostile: E.proposalSubmittedAdminHtml({ reference: HOSTILE, proposer: HOSTILE, titleEn: HOSTILE, titleSw: HOSTILE, category: HOSTILE, sourceUrl: HOSTILE, reviewUrl: "/admin/proposals" }) },
+  { template: "proposalApprovedHtml",
+    benign:  E.proposalApprovedHtml({ titleEn: SAFE, amountTzs: 5_000, wagerRequiredTzs: 25_000, queued: false }),
+    hostile: E.proposalApprovedHtml({ titleEn: HOSTILE, amountTzs: 1, wagerRequiredTzs: 2, queued: true }) },
+  { template: "proposalListedHtml",
+    benign:  E.proposalListedHtml({ titleEn: SAFE, marketId: "mkt_a1" }),
+    hostile: E.proposalListedHtml({ titleEn: HOSTILE, marketId: HOSTILE }) },
+  { template: "proposalChangesHtml",
+    benign:  E.proposalChangesHtml({ titleEn: SAFE, note: "Please name the source" }),
+    hostile: E.proposalChangesHtml({ titleEn: HOSTILE, note: HOSTILE }) },
+  { template: "proposalDeclinedHtml",
+    benign:  E.proposalDeclinedHtml({ titleEn: SAFE, reason: "Not verifiable", note: "No public source" }),
+    hostile: E.proposalDeclinedHtml({ titleEn: HOSTILE, reason: HOSTILE, note: HOSTILE }) },
+  { template: "sentinelDownAdminHtml",
+    benign:  E.sentinelDownAdminHtml({ reason: "anthropic-401", errorCount: 3, sampleError: "invalid x-api-key" }),
+    hostile: E.sentinelDownAdminHtml({ reason: HOSTILE, errorCount: 0, sampleError: HOSTILE }) },
+  { template: "aiCreditLimitAdminHtml",
+    benign:  E.aiCreditLimitAdminHtml({ level: "warn", spentUsd: 40, limitUsd: 50 }),
+    hostile: E.aiCreditLimitAdminHtml({ level: "limit", spentUsd: 50, limitUsd: 50 }) },
+  // Benign is the watchdog's real "stale" shape (watchdog.ts §describeBackupAlert);
+  // hostile puts the payload in every free-text field and exercises the null
+  // branches of ageHours/destination that the stale render cannot reach.
+  { template: "backupUnhealthyAdminHtml",
+    benign:  E.backupUnhealthyAdminHtml({ kind: "stale", reason: "The last verified backup is 49 hours old — the nightly has not completed since. GitHub may be delaying, failing, or silently no longer running the schedule.", ageHours: 49, destination: "github-artifact" }),
+    hostile: E.backupUnhealthyAdminHtml({ kind: HOSTILE, reason: HOSTILE, ageHours: null, destination: HOSTILE }) },
+  // 2026-09-26 · SMS credit at the alert line. Numbers only — no caller text reaches it — so the hostile render
+  // drives the other branch (below the floor) and a zero.
+  { template: "smsCreditLowAdminHtml",
+    benign:  E.smsCreditLowAdminHtml({ tzs: 144, alertTzs: 150, floorTzs: 50 }),
+    hostile: E.smsCreditLowAdminHtml({ tzs: 0, alertTzs: 150, floorTzs: 50 }) },
+  // 2026-09-13 · an identity review past its target. The player's LABEL is the one caller string an
+  // officer's alert carries (a display name is player-controlled), so the hostile render puts the payload
+  // there and in every other free-text position.
+  { template: "kycReviewOverdueAdminHtml",
+    benign:  E.kycReviewOverdueAdminHtml({ reference: "kyc_a1", playerLabel: "Asha M.", submittedAt: "2026-09-12T08:00:00.000Z", hoursWaiting: 26, reviewUrl: "https://www.50pick.tz/admin/kyc/u1" }),
+    hostile: E.kycReviewOverdueAdminHtml({ reference: HOSTILE, playerLabel: HOSTILE, submittedAt: HOSTILE, hoursWaiting: 0, reviewUrl: "https://www.50pick.tz/admin/kyc/u1" }) },
+  // House bots (build commit 3). The officer alert puts the payload in every free-text position. (The holder letter
+  // was removed by owner ruling D19c, C4 ruling 149 — the holder receives no house-bot email.)
+  { template: "houseBotErasureBlockedAdminHtml",
+    benign:  E.houseBotErasureBlockedAdminHtml({ botId: "hb_a1b2c3d4e5f6", holder: "Player #A3F2K8", botUrl: "/admin/desk/hb_a1b2c3d4e5f6" }),
+    hostile: E.houseBotErasureBlockedAdminHtml({ botId: HOSTILE, holder: HOSTILE, botUrl: "/admin/desk/hb_a1b2c3d4e5f6" }) },
+  // House bots (build commit 4, step 9). The one parametrised admin letter: every free-text position takes the
+  // hostile payload, including a detail row's label and value, because every one of them is caller text.
+  { template: "houseBotAdminHtml",
+    benign:  E.houseBotAdminHtml({ eyebrow: "House bots · paused", heading: "A running house bot stopped", subtitle: "Player #A3F2K8 changed their 50pick password in their account settings at 14:02 EAT.", rows: [{ label: "Bot", value: "Bot A" }, { label: "Stakes cancelled", value: "2" }], cta: { href: "/admin/desk/hb_a1b2c3d4e5f6?reverify=1", label: "Enter new password" } }),
+    hostile: E.houseBotAdminHtml({ eyebrow: HOSTILE, heading: HOSTILE, subtitle: HOSTILE, rows: [{ label: HOSTILE, value: HOSTILE }], cta: { href: "/admin/desk/hb_a1b2c3d4e5f6", label: HOSTILE } }) },
+];
+
+// ── 1 · The registry is the inventory, and it matches reality ───────────────────
+section("1 · registry ↔ code — nothing unregistered, nothing phantom");
+
+const emailSrc = read("src/lib/server/email.ts");
+const exported = [...emailSrc.matchAll(/^export function ([a-zA-Z]+Html)/gm)].map((m) => m[1]);
+const registered = EMAIL_TEMPLATES.map((t) => t.template);
+
+ok("every exported *Html template is registered",
+  exported.every((n) => registered.includes(n)),
+  `unregistered: ${exported.filter((n) => !registered.includes(n)).join(", ") || "-"}`);
+ok("every registered template is actually exported",
+  registered.every((n) => exported.includes(n)),
+  `phantom: ${registered.filter((n) => !exported.includes(n)).join(", ") || "-"}`);
+ok("no template is registered twice",
+  new Set(registered).size === registered.length);
+ok("every template is rendered by this suite",
+  exported.every((n) => RENDERS.some((r) => r.template === n)),
+  `never rendered: ${exported.filter((n) => !RENDERS.some((r) => r.template === n)).join(", ") || "-"}`);
+// ⚠️ THE ARITHMETIC HERE SAID 56 WHILE THE ASSERTION SAID 61 — corrected 2026-09-10.
+// "49 certified 2026-07-31 plus the agent programme's seven (2026-09-07)" is 56, and the number
+// actually enforced one line below is 61, so the sentence explaining the count had been wrong by
+// five for as long as the count had been right. Nothing was broken; the EXPLANATION was, which is
+// the failure mode a reader trusts most. The breakdown is not restated here rather than guessed
+// at: what is true is that `exported` is DISCOVERED from the module's own exports and pinned by
+// exact equality, so adding or removing a template goes red instead of drifting.
+// ⚠️ 61 → 63 on 2026-09-13, and the pin had ALREADY drifted before that: HEAD at `ac411357` exported 62
+// (`refusedFundsDecisionHtml`, S1) against a pinned 61, so this line was red on arrival. The one added
+// since is `kycReviewOverdueAdminHtml`, an officer alert. Two player letters written earlier the same day
+// (a funded-unverified reminder and a blocked-withdrawal letter) were removed by the owner's quiet rule
+// before they shipped, so they are not in the count. Measured after that removal with
+// `grep -c "^export function [a-zA-Z]*Html" src/lib/server/email.ts` = 63, not added up.
+// ⚠️ 63 → 64 on 2026-09-14: `refusedFundsReturnFailedHtml`, the player letter when a refused-funds RETURN's
+// payout failed and the amount came back into the frozen wallet. Measured the same way after the edit = 64.
+// ⚠️ 64 → 66 on 2026-09-15 (branch house-bots, build commit 3): `houseBotOwnerHtml`, the holder's
+// designated / removed / reverified letter, and `houseBotErasureBlockedAdminHtml`, the officer alert when an
+// erasure is refused because the account is still a house bot. Measured the same way after the edit = 66.
+// ⚠️ 66 → 67 on 2026-09-16 (branch house-bots, build commit 4, step 9): `houseBotAdminHtml`, the one
+// parametrised letter behind every admin house alert that emails — pause, switch, money, alert, roster and
+// staff-chosen. One template rather than six keeps the chrome and the CTA rules in a single place. Measured the
+// same way after the edit (`grep -c "^export function [a-zA-Z]*Html" src/lib/server/email.ts`) = 67.
+// ⚠️ 67 → 66 on 2026-09-16 (branch house-bots, eighth session): `houseBotOwnerHtml` REMOVED by owner ruling D19c
+// (C4 ruling 149) — the holder receives no house-bot email at all. Measured the same way after the edit = 66.
+// ⚠️ 66 → 67 on 2026-09-26 (branch marketing-s7): `smsCreditLowAdminHtml`, the officer alert when the SMS credit
+// reaches the alert line. Measured the same way after the edit = 67.
+ok(`the inventory is 67 templates (found ${exported.length})`, exported.length === 67);
+
+// ── 2 · Every template has a real sender ───────────────────────────────────────
+section("2 · wiring — a template with no sender is a template nobody gets");
+
+for (const spec of EMAIL_TEMPLATES) {
+  const src = read(spec.trigger);
+  ok(`${spec.template} is referenced by ${spec.trigger.split("/").pop()}`, src.includes(spec.template));
+  // Static proof that the reference is a SEND, not merely an import: the builder
+  // must appear within 8 lines of a sendEmail/sendEmailToUser call.
+  //
+  // Two shapes are legitimate and both must count, or the gate rejects correct
+  // code: the builder called INLINE inside the send, and the builder assigned to
+  // a local that the send then passes (`kyc-service` does the latter, with a
+  // multi-line object literal between the two — an 8-line window missed it and
+  // reported a correctly-wired template as unwired).
+  const lines = src.split(/\r?\n/);
+  const uses = lines
+    .map((l, i) => ({ l, i }))
+    .filter(({ l }) => l.includes(spec.template) && !/^\s*import\b/.test(l) && !l.includes("} from"));
+  const nearSend = uses.some(({ i }) =>
+    lines.slice(Math.max(0, i - 10), i + 4).some((l) => /sendEmail\b|sendEmailToUser\b/.test(l)));
+  // One hop: `const html = template({…})` … later `html:` inside a send.
+  const viaLocal = uses.some(({ l }) => {
+    const bind = l.match(/(?:const|let)\s+([A-Za-z_$][\w$]*)\s*=\s*\w*\.?\s*$|(?:const|let)\s+([A-Za-z_$][\w$]*)\s*=/);
+    const name = bind?.[1] ?? bind?.[2];
+    if (!name) return false;
+    return new RegExp(`html:\\s*${name}\\b`).test(src);
+  });
+  ok(`${spec.template} sits inside a send call`, nearSend || viaLocal);
+}
+
+// ── 2b · Money mail only to a confirmed address (owner ruling 2026-10-07) ─────────
+// ⭐ A deposit asks no email since 2026-10-07, so an account can hold money with an address nobody proved is theirs. Every
+// player money template is therefore sent with `sendEmailToUser(…, { confirmedOnly: true })` — the list is DERIVED from
+// the registry (`CONFIRMED_ONLY_TEMPLATES`), never typed here — and the two refused-funds letters are exempt BY NAME
+// (Terms §3a promises them in writing). ⛔ Every call in src/ is read, not only the registered trigger: the second
+// `amlRejectRefundHtml` sender lives in `admin/aml/actions.ts`.
+section("2b · money mail — only to a confirmed address, every sender, every file");
+{
+  /** Each `sendEmailToUser(…)` call's full argument text, matched by parentheses with strings and comments skipped. */
+  const sendCalls = (s: string): string[] => {
+    const out: string[] = [];
+    for (const m of s.matchAll(/\bsendEmailToUser\s*\(/g)) {
+      if (/function\s+$/.test(s.slice(Math.max(0, (m.index ?? 0) - 20), m.index))) continue;
+      let depth = 0, end = -1;
+      for (let i = (m.index ?? 0) + m[0].length - 1; i < s.length; i++) {
+        const c = s[i], n = s[i + 1];
+        if (c === "/" && n === "/") { i = s.indexOf("\n", i); if (i < 0) break; continue; }
+        if (c === "/" && n === "*") { i = s.indexOf("*/", i + 2) + 1; if (i <= 0) break; continue; }
+        if (c === '"' || c === "'" || c === "`") { const q = c; for (i++; i < s.length && s[i] !== q; i++) if (s[i] === "\\") i++; continue; }
+        if (c === "(") depth++;
+        else if (c === ")" && --depth === 0) { end = i; break; }
+      }
+      if (end > 0) out.push(s.slice(m.index ?? 0, end + 1));
+    }
+    return out;
+  };
+  const walk = (dir: string): string[] => {
+    return readdirSync(join(root, dir)).flatMap((f) => {
+      const rel = `${dir}/${f}`;
+      return statSync(join(root, rel)).isDirectory() ? walk(rel) : /\.(ts|tsx)$/.test(f) ? [rel] : [];
+    });
+  };
+  const calls = walk("src").flatMap((f) => sendCalls(read(f)).map((c) => ({ f, c })));
+  const MONEY = new Set(CONFIRMED_ONLY_TEMPLATES);
+  const EXEMPT = new Set(CONFIRMED_ONLY_EXEMPT);
+  const moneyCalls = calls.filter(({ c }) => [...MONEY].some((t) => c.includes(`${t}(`)));
+  ok("2b.0 control · the sender census found the money sends (the registry's list, across files)",
+    moneyCalls.length >= 25 && new Set(moneyCalls.map(({ f }) => f)).size >= 8, `${moneyCalls.length} call(s)`);
+  const unflagged = moneyCalls.filter(({ c }) => !/confirmedOnly:\s*true/.test(c)).map(({ f, c }) => `${f}: ${c.slice(0, 90)}`);
+  ok("2b.1 ★ every player money template is sent with { confirmedOnly: true }", unflagged.length === 0, unflagged.join(" | "));
+  const exemptCalls = calls.filter(({ c }) => [...EXEMPT].some((t) => c.includes(`${t}(`)));
+  ok("2b.2 ⛔ the refused-funds letters are exempt in fact, not only on paper — they reach the player's written address",
+    exemptCalls.length >= 2 && exemptCalls.every(({ c }) => !/confirmedOnly/.test(c)), `${exemptCalls.length} call(s)`);
+  ok("2b.3 the list is derived from the registry: every player money template but the two letters, nothing else",
+    EMAIL_TEMPLATES.filter((t) => t.audience === "player" && t.money && !EXEMPT.has(t.template)).every((t) => MONEY.has(t.template))
+      && [...MONEY].every((t) => EMAIL_TEMPLATES.some((s) => s.template === t && s.audience === "player" && s.money)));
+  const planted = `sendEmailToUser(id, (email) => ({ to: email, subject: "x", html: depositConfirmedHtml({}), tag: "deposit" })).catch(() => {});`;
+  ok("2b.c control · a planted money send without the flag is caught by the same reader",
+    sendCalls(planted).length === 1 && !/confirmedOnly:\s*true/.test(sendCalls(planted)[0]));
+  ok("2b.4 ⛔ the confirmation mail is never flagged — it is how an address becomes confirmed",
+    calls.filter(({ c }) => /emailVerifyHtml\(/.test(c)).every(({ c }) => !/confirmedOnly/.test(c)));
+}
+
+// ── 3 · The bytes the player receives ──────────────────────────────────────────
+section("3 · rendered output — read it, do not reason about it");
+
+for (const r of RENDERS) {
+  // 3a — ESCAPED-TAG LEAKAGE. Benign inputs contain no angle brackets, so any
+  // `&lt;` in the output means the template wrote markup into an escaping helper
+  // and the player will READ the tag. This is the selfExclusion/coolOff/AML bug.
+  ok(`${r.template}: no HTML markup rendered as visible text`, !r.benign.includes("&lt;"),
+    firstEscapedTag(r.benign));
+
+  // 3b — INJECTION. `<b>` is emitted by no template, so its presence proves a
+  // caller string reached the page unescaped.
+  ok(`${r.template}: hostile input cannot inject a tag`, !r.hostile.includes("<b>"));
+  ok(`${r.template}: hostile input cannot break out of an attribute`, !r.hostile.includes(ATTR_BREAK));
+
+  // 3c — PLACEHOLDER LEAKAGE. A template that lost an argument prints the fault.
+  for (const bad of ["undefined", "[object Object]", "NaN", "${"]) {
+    ok(`${r.template}: no "${bad}" in the body`, !r.benign.includes(bad));
+  }
+  ok(`${r.template}: no unreplaced {placeholder}`, !/\{[a-zA-Z][a-zA-Z0-9_]*\}/.test(stripStyle(r.benign)));
+
+  // 3d — STRUCTURE. Every mail must be a complete document with the brand mark
+  // and the licence footer; a fragment renders as a wall of text in some clients.
+  ok(`${r.template}: is a complete HTML document`, r.benign.startsWith("<!DOCTYPE html>") && r.benign.trimEnd().endsWith("</html>"));
+  ok(`${r.template}: carries the 18+ / GBT licence footer`, r.benign.includes("18+") && r.benign.includes("Gaming Board of Tanzania"));
+  // ⭐ THE OWNER'S RULING OF 2026-10-06: no email carries the helpline — not its number, not the word. Until that
+  // day this line asserted every template DID carry it (and before 2026-09-07 it pinned our own desk as "the
+  // helpline"). §3g below proves the detector can fire.
+  ok(`${r.template}: carries no helpline`, !carriesHelpline(r.benign), HELPLINE());
+
+  // 3e — LINKS. A relative href is dead in an inbox.
+  const hrefs = [...r.benign.matchAll(/href="([^"]+)"/g)].map((m) => m[1]);
+  ok(`${r.template}: every link is absolute or mailto`, hrefs.every((h) => /^(https?:\/\/|mailto:)/.test(h)),
+    hrefs.filter((h) => !/^(https?:\/\/|mailto:)/.test(h)).join(", "));
+
+  // 3f — PLAIN-TEXT DEGRADATION. Postmark ships `stripHtml(html)` as the text
+  // part; if that is empty or still full of markup, a plain-text client shows junk.
+  const text = plain(r.benign);
+  ok(`${r.template}: degrades to readable plain text`, text.length > 40 && !text.includes("<") && !text.includes("{"),
+    text.slice(0, 90));
+
+  // 3g — NO EMOJI in player-facing copy (CLAUDE.md design rule).
+  ok(`${r.template}: no emoji in the copy`, !hasEmoji(stripStyle(r.benign)));
+}
+
+// ── 3h · The escaping helpers themselves ───────────────────────────────────────
+section("3h · helpers — every interpolation point escapes");
+
+// 🔴 Found by the red proof, not by reading: un-escaping the CTA *label* left
+// every artifact assertion GREEN, because no template passes caller data into a
+// label today. An assertion that cannot fail is not a guard — so the helper's
+// contract is pinned directly. If someone writes `ctaButton(url, playerName)`
+// tomorrow, the escaping is already there and this keeps it there.
+const cta = emailSrc.slice(emailSrc.indexOf("function ctaButton"), emailSrc.indexOf("function stripHtml"));
+ok("ctaButton escapes its href", /const href = esc\(link\(hrefOrPath\)\)/.test(cta));
+ok("ctaButton escapes its label", /const safeLabel = esc\(label\)/.test(cta));
+ok("ctaButton emits no raw ${label}", !cta.includes("${label}"));
+const hdr = emailSrc.slice(emailSrc.indexOf("function heading"), emailSrc.indexOf("/** Escape HTML entities"));
+ok("heading escapes its text", hdr.includes("${esc(text)}"));
+const eyeb = emailSrc.slice(emailSrc.indexOf("function eyebrow"), emailSrc.indexOf("function heading"));
+ok("eyebrow escapes both labels", eyeb.includes("${esc(en)}") && eyeb.includes("${esc(sw)}"));
+ok("subtitle escapes", /function subtitle\(text: string\)[\s\S]{0,240}\$\{esc\(text\)\}/.test(emailSrc));
+ok("detailRows escapes label and value",
+  /function detailRows[\s\S]{0,1400}\$\{esc\(r\.label\)\}[\s\S]{0,600}\$\{esc\(r\.value\)\}/.test(emailSrc));
+
+// ── 4 · Gold discipline — gold means money EARNED, nothing else ────────────────
+section("4 · gold discipline — the chrome must match what happened");
+
+const bodies = splitTemplates(emailSrc);
+for (const spec of EMAIL_TEMPLATES) {
+  const body = bodies[spec.template] ?? "";
+  const usesGold = /wrapGold\(/.test(body);
+  const usesRoyal = /[^d]wrap\(/.test(body);
+  if (DUAL_CHROME_TEMPLATES.includes(spec.template)) {
+    ok(`${spec.template}: branches between gold and royal (declared dual)`, usesGold && usesRoyal);
+  } else {
+    ok(`${spec.template}: chrome is ${spec.chrome} as registered`,
+      spec.chrome === "gold" ? usesGold && !usesRoyal : usesRoyal && !usesGold);
+  }
+}
+// The law itself: a mail may only be gold if money or status was EARNED.
+for (const spec of EMAIL_TEMPLATES.filter((t) => t.chrome === "gold")) {
+  ok(`${spec.template}: gold is justified (money-in or earned status)`,
+    spec.money || spec.template === "kycApprovedHtml",
+    "gold on a non-money, non-earned-status email breaks the gold budget");
+}
+// Loss and failure may NEVER be gold — the most direct form of misleading chrome.
+for (const t of ["lossNotificationHtml", "depositFailedHtml", "depositReversedHtml", "amlRejectRefundHtml", "withdrawalUnderReviewHtml"]) {
+  ok(`${t}: is NOT gold — nothing was earned`, !/wrapGold\(/.test(bodies[t] ?? "x"));
+}
+
+// ── 5 · Money-adjacent copy is compliance copy ─────────────────────────────────
+section("5 · money copy — direct language, no euphemism, no invented promise");
+
+const byName = Object.fromEntries(RENDERS.map((r) => [r.template, r.benign]));
+
+// LCCP harm-prevention: a loss must be named, plainly, with the amount.
+const lossText = plain(byName.lossNotificationHtml);
+ok("loss email says 'Bet lost' outright", /Bet lost/.test(lossText));
+ok("loss email states the amount lost", /TZS\s?10,000/.test(lossText));
+ok("loss email offers a limits route", byName.lossNotificationHtml.includes("/profile/responsible-gambling"));
+for (const euphemism of ["better luck", "unlucky", "so close", "try again to win", "win it back"]) {
+  ok(`loss email avoids the euphemism "${euphemism}"`, !lossText.toLowerCase().includes(euphemism));
+}
+
+// A failed deposit must lead with "no money was taken" — the sentence that stops
+// a player opening a card dispute over a charge that never happened.
+const failedText = plain(byName.depositFailedHtml);
+ok("failed-deposit email states no money was taken", /No money was taken/i.test(failedText));
+ok("failed-deposit email says the balance is unchanged", /balance is unchanged/i.test(failedText));
+
+// A reversed deposit must NOT invite the excluded player back into the funnel.
+ok("reversed-deposit email has no deposit CTA", !byName.depositReversedHtml.includes("/wallet/deposit"));
+ok("reversed-deposit email confirms the exclusion stands", /exclusion stays in place/i.test(plain(byName.depositReversedHtml)));
+
+// A returned withdrawal must say the money came back, and be traceable.
+const amlText = plain(byName.amlRejectRefundHtml);
+ok("returned-withdrawal email says the money is back", /returned to your wallet/i.test(amlText));
+ok("returned-withdrawal email carries our reference", amlText.includes("wdr_a1"));
+ok("returned-withdrawal email carries the gateway reference", amlText.includes("sel_b2"));
+ok("returned-withdrawal email names the rail it was attempted on", amlText.includes("Selcom Pesa"));
+
+// The one email that quotes an exact payout must say it is exact, not a forecast.
+const closedText = plain(byName.selectionClosedHtml);
+ok("selection-closed email states the figure is exact", /not an estimate/i.test(closedText));
+ok("selection-closed email prints the payout", /TZS\s?18,500/.test(closedText));
+
+// The bet receipt must NOT print a pre-close payout projection (D3 policy).
+const betText = plain(byName.betPlacedHtml);
+ok("bet-placed email prints no potential-return figure", !/potential return/i.test(betText));
+// The exit terms come from the poll's FROZEN snapshot, never a hardcoded number —
+// hardcoding "5 minutes / 9%" is how this copy started lying once. Both branches
+// are checked: with no paid tail the mail must say selling CLOSES, and with one
+// it must quote that poll's own fee rate.
+ok("bet-placed email quotes the poll's own free-exit window", betText.includes("5-min free exit"));
+ok("bet-placed email (no paid tail) says selling closes at the window",
+  /selling closes and the bet rides to settlement/i.test(betText));
+const betPaid = plain(E.betPlacedHtml({ reference: "pos_a2", side: "YES", stake: 10_000, marketTitle: SAFE, resolvesAt: "2026-08-01T12:00:00.000Z", cashOutFeeRate: 0.07, freeExitGraceMinutes: 3, paidExitWindowMinutes: 30 }));
+ok("bet-placed email (paid tail) quotes THAT poll's fee, not a constant",
+  betPaid.includes("3-min free exit") && betPaid.includes("7%") && !betPaid.includes("10%"));
+
+// ── 5b · Identity, quietly (owner, 2026-09-13) ─────────────────────────────────
+//
+// ⭐ THE QUIET RULE. A player email about identity answers something that happened in verification —
+// submitted, more needed, approved, refused, the decision on a refused balance. ⛔ A receipt says nothing
+// about it, and no letter prompts it. 🔴 Earlier the same day this section asserted the opposite: an
+// identity sentence on these three receipts, a funded-unverified reminder letter and a blocked-withdrawal
+// letter. The owner ruled all three out, so it now pins the ABSENCE, with controls proving the check can fail.
+section("5b · identity, quietly — receipts say nothing about it; verification letters say the true thing");
+{
+  /** Any identity wording. Player email is EN + SW; the ZH alternatives keep this the one pattern `test:cert-c3` §7 uses. */
+  const IDENTITY = /verif|identit|utambulisho|uthibitisho|身份|验证/i;
+  /** Words that name the ENTRANCE. The copy rule: an identity letter never names these beside identity. */
+  const ENTRANCE = /\b(deposit|add money|bet|play|stake|predict)/i;
+  const around = (s: string) => { const i = s.search(IDENTITY); return i < 0 ? "" : `…${s.slice(Math.max(0, i - 60), i + 80)}…`; };
+
+  // Controls first: the pattern fires on the removed sentence in both languages, and on a real identity
+  // letter read exactly the way the receipts below are read.
+  ok("5b control: the matcher catches the removed English sentence", IDENTITY.test("Before you withdraw, verify your identity once"));
+  ok("5b control: …and the Swahili one", IDENTITY.test("Kabla ya kutoa pesa, thibitisha utambulisho wako mara moja"));
+  ok("5b control: …and a real identity letter, as plain text", IDENTITY.test(plain(byName.kycApprovedHtml)));
+  ok("5b control: the link check can fail — a verification letter links into /profile/kyc", byName.kycMoreInfoHtml.includes("/profile/kyc"));
+
+  // ⛔ The three receipts that briefly carried an identity sentence, on every branch that renders differently.
+  for (const [name, html] of [
+    ["depositConfirmedHtml", byName.depositConfirmedHtml],
+    ["winNotificationHtml", byName.winNotificationHtml],
+    ["cashOutReceiptHtml (paid exit)", byName.cashOutReceiptHtml],
+    ["cashOutReceiptHtml (free exit)", E.cashOutReceiptHtml({ reference: "pos_a1", value: 10_000, stake: 10_000, marketTitle: SAFE, soldAt: "2026-07-31T09:00:00.000Z", gracePeriod: true })],
+  ] as const) {
+    const text = plain(html);
+    ok(`5b ⛔ ${name}: no identity sentence`, text.length > 40 && !IDENTITY.test(text), around(text));
+    ok(`5b ⛔ ${name}: no link into verification`, !html.includes("/profile/kyc"));
+  }
+
+  // S1 — a FINAL refusal cannot be restarted by the player, so its letter must not say it can.
+  const finalHtml = E.kycRejectedHtml({ reason: "We could not accept this document.", reference: "kyc_a1", finalRefusal: true });
+  ok("5b ⛔ a FINAL refusal does not invite a resubmission it cannot accept",
+    !/Resubmit|Wasilisha tena/.test(plain(finalHtml)) && !finalHtml.includes("/profile/kyc"), plain(finalHtml).slice(0, 160));
+  ok("5b …it names support as the door", finalHtml.includes("/help"));
+  ok("5b …while a recoverable refusal still offers the resubmission",
+    E.kycRejectedHtml({ reason: "The photograph was blurred", reference: "kyc_a1" }).includes("/profile/kyc"));
+
+  // Approval answers the withdrawal question from 2026-09-13 — and promises no speed.
+  const approved = plain(E.kycApprovedHtml({ name: "Asha", reference: "kyc_a1" }));
+  ok("5b the approval email says verification covers withdrawals", /covers your withdrawals/.test(approved), approved.slice(0, 160));
+  ok("5b ⛔ …and promises no speed", !/instant|immediately|right away|within \d+ (minutes|hours)/i.test(approved));
+  ok("5b ⛔ …and never names adding money or playing beside identity", !ENTRANCE.test(approved), approved.slice(0, 160));
+}
+
+// ── 5c · Four corrections of 2026-09-14, each held on the rendered bytes ───────
+section("5c · refused funds, source of funds, the break — the letter says what is true");
+{
+  const QUIET = /verif|identit|utambulisho|uthibitisho/i;
+
+  // A return whose payout failed: where the money is, that the account stays frozen, the kept part — and nothing about identity.
+  const failedReturn = plain(byName.refusedFundsReturnFailedHtml);
+  ok("5c the failed-return letter names the amount that came back", failedReturn.includes("20,000"), failedReturn.slice(0, 200));
+  ok("5c …says it is back in the account, which stays frozen, in both languages",
+    /is in your account, which stays frozen/.test(failedReturn) && /imegandishwa/.test(failedReturn), failedReturn.slice(0, 260));
+  ok("5c …names the part that will not be returned", /5,000 will not be returned/.test(failedReturn) && /hazitarudishwa/.test(failedReturn));
+  ok("5c …and says nothing about a kept part when nothing was kept",
+    !/will not be returned|hazitarudishwa|Not returned/.test(plain(E.refusedFundsReturnFailedHtml({ amountTzs: 20_000, forfeitedTzs: 0, reference: "rfd_x" }))));
+  ok("5c control · the quiet matcher fires on the decision letter, which does name identity", QUIET.test(plain(byName.refusedFundsDecisionHtml)));
+  ok("5c ⛔ …and finds no identity sentence in the failed-return letter", !QUIET.test(failedReturn), failedReturn.slice(0, 200));
+  ok("5c ⛔ …which promises no retry and no date", !/retry|try again|within \d+ (minutes|hours|days)/i.test(failedReturn));
+
+  // A hold pending appeal says how to appeal; the Swahili line carries the reason when it is given.
+  const hold = plain(E.refusedFundsDecisionHtml({ outcome: "HOLD_PENDING_APPEAL", returnedTzs: 0, forfeitedTzs: 0, balanceTzs: 25_000, reason: "This identity is already registered to another account.", reasonSw: "Utambulisho huu tayari umesajiliwa kwenye akaunti nyingine.", reference: "rfd_h1" }));
+  ok("5c a hold pending appeal says how to appeal, in English", /If you believe our refusal is wrong, contact support to appeal\./.test(hold), hold.slice(0, 260));
+  ok("5c …and in Swahili", /wasiliana na huduma kwa wateja ili kukata rufaa/.test(hold), hold.slice(0, 400));
+  ok("5c ⛔ an outcome that is not a hold carries no appeal sentence", !/to appeal|kukata rufaa/.test(plain(byName.refusedFundsDecisionHtml)));
+  ok("5c the Swahili line carries the reason when it is given",
+    hold.includes("Hatukuweza kuthibitisha utambulisho wako: Utambulisho huu tayari umesajiliwa kwenye akaunti nyingine."), hold.slice(0, 400));
+  ok("5c control · …and keeps the general sentence without it", plain(byName.refusedFundsDecisionHtml).includes("Hatukuweza kuthibitisha utambulisho wako. "));
+  const finalSw = plain(E.kycRejectedHtml({ reason: "You must be 18 or older to use 50pick.", reasonSw: "Lazima uwe na umri wa miaka 18 au zaidi ili kutumia 50pick.", reference: "kyc_a1", finalRefusal: true }));
+  ok("5c a final refusal carries the reason in Swahili when it is given",
+    finalSw.includes("Lazima uwe na umri wa miaka 18 au zaidi ili kutumia 50pick. Uthibitisho huu ulikataliwa"), finalSw.slice(0, 400));
+  ok("5c ⛔ …a recoverable refusal does not print it in front of its own instruction",
+    !plain(E.kycRejectedHtml({ reason: "The photograph was blurred", reasonSw: "Picha haikuwa wazi.", reference: "kyc_a1" })).includes("Picha haikuwa wazi."));
+
+  // Source of funds, accepted: no limit it does not raise.
+  const sof = plain(byName.sofDecisionHtml);
+  ok("5c ⛔ an accepted source of funds promises no raised limit", !/limit|vikomo/i.test(sof), sof.slice(0, 200));
+  ok("5c …it says the deposits waiting on a declaration can go through", /Deposits that needed a declaration can now go through/.test(sof), sof.slice(0, 200));
+
+  // The break: what it does not block, and nothing more.
+  const cool = plain(byName.coolOffHtml);
+  ok("5c ⛔ the break email does not promise a withdrawal at any time", !/at any time|withdraw your money/i.test(cool), cool.slice(0, 200));
+  ok("5c …it says the break does not block sign-in or withdrawals", /Your break does not block sign-in or withdrawals\./.test(cool), cool.slice(0, 200));
+  ok("5c ⛔ …and carries no identity sentence (the quiet rule)", !QUIET.test(cool), cool.slice(0, 200));
+}
+
+// ── 6 · Send-path contract ─────────────────────────────────────────────────────
+section("6 · sendEmail contract — a non-delivery must never read as a delivery");
+
+const stub1 = await E.sendEmail({ to: "someone@example.tz", subject: "s", html: "<p>x</p>" });
+ok("no provider configured → reason 'stub', never 'sent'", stub1.reason === "stub", stub1.reason);
+const none = await E.sendEmail({ to: "0712@none", subject: "s", html: "<p>x</p>" });
+ok("an address-less user is reported as 'no-address'", none.reason === "no-address", none.reason);
+ok("sendEmail never throws for any input",
+  (await E.sendEmail({ to: "", subject: "", html: "" }).then(() => true, () => false)));
+
+// ── §3g · NO HELPLINE IN ANY EMAIL (the owner's ruling, 2026-10-06) ──────────────────────────
+//
+// ⚠️ CONTROL — §3d's "carries no helpline" passes over a detector that can never fire, so the detector is
+// proved here: it flags the saved number, the default and the word, and it passes a footer that carries only
+// our own desk. (Until 2026-10-06 this section asserted the helpline was NOT our desk; since that ruling the
+// admin may save any number as the helpline, and no email prints it at all.)
+ok("§3g ⚠️ CONTROL — the helpline detector fires on the number and the word, and passes a desk-only footer",
+   carriesHelpline(`<p>Helpline ${HELPLINE()}</p>`) && carriesHelpline("<p>Need help? Contact the Tanzania Gambling Helpline.</p>")
+   && !carriesHelpline(`<p>18+ · Licensed by Gaming Board of Tanzania · ${SUPPORT_PHONE()}</p>`));
+
+console.log(`\ncert-c1 (email truth): ${pass} passed, ${fail} failed`);
+if (fail > 0) process.exit(1);
+
+/* ── helpers ─────────────────────────────────────────────────────────────── */
+
+/** Drop <style> and inline style="…" so CSS braces never read as placeholders. */
+function stripStyle(html: string): string {
+  return html.replace(/<style[\s\S]*?<\/style>/gi, "").replace(/style="[^"]*"/g, "");
+}
+
+/** A body that prints the helpline — its saved number, its default, or the word (owner's ruling, 2026-10-06). */
+function carriesHelpline(html: string): boolean {
+  const text = stripStyle(html);
+  return text.includes(HELPLINE()) || text.includes(SUPPORT_DEFAULTS.nationalHelpline) || /helpline|hotline/i.test(text);
+}
+
+/** What Postmark sends as the text part — the same transform `sendEmail` uses. */
+function plain(html: string): string {
+  return html
+    .replace(/<style[\s\S]*?<\/style>/gi, "")
+    .replace(/<[^>]+>/g, " ")
+    .replace(/\s{2,}/g, " ")
+    .trim();
+}
+
+/** Show the offending fragment so a failure is diagnosable without a debugger. */
+function firstEscapedTag(html: string): string {
+  const i = html.indexOf("&lt;");
+  return i < 0 ? "" : `…${html.slice(Math.max(0, i - 60), i + 80)}…`;
+}
+
+function hasEmoji(s: string): boolean {
+  // Pictographs and dingbats. Excludes the typographic marks the kit uses on
+  // purpose (·, —, ✓ is not used in mail) and the variation selector alone.
+  return /[\u{1F300}-\u{1FAFF}\u{2600}-\u{27BF}\u{FE0F}]/u.test(s);
+}
+
+/** Slice email.ts into { templateName: sourceBody } so chrome can be checked. */
+function splitTemplates(src: string): Record<string, string> {
+  const marks = [...src.matchAll(/^export function ([a-zA-Z]+Html)/gm)].map((m) => ({ name: m[1], at: m.index ?? 0 }));
+  const out: Record<string, string> = {};
+  marks.forEach((m, i) => { out[m.name] = src.slice(m.at, marks[i + 1]?.at ?? src.length); });
+  return out;
+}

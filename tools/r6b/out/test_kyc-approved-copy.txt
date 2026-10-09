@@ -1,0 +1,104 @@
+── 1 · every locale names withdrawals — and nothing on the way in 
+PASS en: the burst names withdrawals
+PASS en: ⛔ the burst does not name depositing or playing
+PASS en: the paused burst names withdrawals too
+PASS en: ⛔ …and does not name depositing or playing either
+PASS en: the held-wallet burst names withdrawals too
+PASS en: ⛔ …and the held-wallet burst does not name depositing or playing
+PASS sw: the burst names withdrawals
+PASS sw: ⛔ the burst does not name depositing or playing
+PASS sw: the paused burst names withdrawals too
+PASS sw: ⛔ …and does not name depositing or playing either
+PASS sw: the held-wallet burst names withdrawals too
+PASS sw: ⛔ …and the held-wallet burst does not name depositing or playing
+PASS zh: the burst names withdrawals
+PASS zh: ⛔ the burst does not name depositing or playing
+PASS zh: the paused burst names withdrawals too
+PASS zh: ⛔ …and does not name depositing or playing either
+PASS zh: the held-wallet burst names withdrawals too
+PASS zh: ⛔ …and the held-wallet burst does not name depositing or playing
+PASS control · en: the checker catches a burst that names money going in
+PASS control · sw: the checker catches a burst that names money going in
+PASS control · zh: the checker catches a burst that names money going in
+PASS en: the burst does not claim it is unrestricted
+PASS sw: the burst does not claim it is unrestricted
+PASS zh: the burst does not claim it is unrestricted
+
+── 2 · three locales, both states ──────────────────────────
+PASS en: kycApprovedBody present
+PASS en: kycApprovedPayoutsPaused present
+PASS sw: kycApprovedBody present
+PASS sw: kycApprovedPayoutsPaused present
+PASS zh: kycApprovedBody present
+PASS zh: kycApprovedPayoutsPaused present
+PASS sw: kycApprovedBody is translated, not the English string
+PASS sw: kycApprovedPayoutsPaused is translated, not the English string
+PASS zh: kycApprovedBody is translated, not the English string
+PASS zh: kycApprovedPayoutsPaused is translated, not the English string
+
+── 3 · the paused state reassures about the balance ────────
+PASS en: the paused burst says the balance is safe
+PASS sw: the paused burst says the balance is safe
+PASS zh: the paused burst says the balance is safe
+
+── 4 · the burst is bound to the live payout gate ──────────
+PASS 🔴 the dead promise is gone from the page
+PASS the page imports the payout gate
+PASS …and calls it
+PASS the burst picks its body from that gate
+PASS 🔴 a held wallet never gets the withdrawal promise — the page reads the wallet's own status
+PASS …and a failed wallet read keeps today's copy, not a claimed hold
+PASS an unreadable gate defaults to accepting, not to a claimed pause
+
+── 5 · the ladder, in the services that enforce it ─────────
+PASS control · the identity-ask detector sees a restored gate, in each shape it could come back in
+PASS control · …and does NOT fire on the record that replaced the gates
+PASS control · the deposit page source actually loaded
+PASS 🔴 the deposit page asks no identity question and draws no identity panel
+PASS ⛔ …and it draws no email door either — no gate component, no confirmation flag (2026-10-07)
+PASS control · deposit() was found and sliced
+PASS 🔴 deposit() asks no identity question
+PASS ⛔ …and asks no email question either (2026-10-07)
+PASS ⭐ …it records the email standing on deposit.initiated instead
+PASS 🔴 …in the order RG lockout → (lock) caps + SOF, with no email door between them
+PASS ⭐ …and every deposit is STAMPED with the account's identity standing — the record that replaced the gate
+PASS control · withdraw() was found and sliced
+PASS 🔴 withdraw() asks the identity gate and refuses on its reason
+PASS 🔴 …asked before any money moves — after the destination check, before the hold
+PASS ⛔ …and withdraw() is the gate's only caller in wallet-service
+PASS 🔴 the gate asks `approvedEver`, NEVER the current status alone
+PASS …and `approvedEver` is the stamp OR approved now — both halves demand an approval
+PASS ⛔ the gate carries no action parameter — no DEPOSIT or BET question left to answer 'yes' to
+PASS 🔴 …and the first-approval stamp is never cleared
+PASS 🔴 …and EVERY withdrawal is stamped with the identity status
+PASS 🔴 …and a payer not approved NOW produces an AWAITED compliance fact carrying the txn
+PASS control · buyPositionInner() was found and sliced
+PASS 🔴 play asks no identity question
+PASS …and Up & Down's own service asks none either
+PASS ⭐ the identity standing is read exactly ONCE in market-service
+PASS ⭐ …on the COMMITTED path — after the market is loaded, stamped onto market.position.opened
+
+── 6 · payoutsAcceptingRequests semantics ──────────────────
+PASS `unavailable` does not accept requests
+PASS `operational` accepts requests
+PASS `delayed` still accepts requests
+
+── 7 · the officer's confirm dialog ────────────────────────
+PASS §7.control · the approve dialog's rendered body was found
+PASS 🔴 the approve dialog says approval answers the identity half of the withdrawal gate, and nothing else
+PASS ⛔ …and never tells the officer that depositing needs a confirmed email (false since 2026-10-07)
+PASS ⛔ …and does not claim it unlocks deposits or play
+PASS ⛔ …nor that no money gate turns on it (true only from 2026-08-20 to 2026-09-05)
+PASS ⛔ …nor that depositing or playing needs an identity
+PASS control · that detector fires on the sentence it forbids
+PASS …and it still names what approval DOES do — record an identity, bind the document
+PASS §7.control · the rail source actually loaded
+
+── 8 · the approval letter and the email half of the gate ──
+PASS 8.1 ★ an unconfirmed address: the letter names the email step, in English and Swahili
+PASS 8.2 ⛔ a confirmed address: the letter says nothing about email
+PASS 8.3 ⛔ …and the step never says "first" (it returns whenever the address changes)
+PASS 8.4 the trigger hands the letter the account's standing (an address on file, never confirmed)
+PASS 8.5 ⛔ the APPROVED bell row names no email — it is stored verbatim for ever
+
+ALL PASS — 87 passed, 0 failed

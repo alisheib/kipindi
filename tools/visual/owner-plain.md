@@ -78,6 +78,28 @@
 57. The old (classic) header's Deposit buttons still show during a break (frozen until launch). Fix at launch?
 
 58. Links use two colours (blue in most places, aqua in five). Which one should every link be?
+59. The deposit-return page's loading placeholder is shaped like a successful payment (its words are hidden). OK?
+60. The profile page's loading placeholder assumes an unverified player without email (the commonest case?). OK?
+61. The withdraw page's placeholder shows the form even for players who must verify first (it then swaps). OK?
+62. The phone filter sheet's topic grid can't fit the longest Swahili topic names with a count. One column, or wrap?
+63. Group the old (classic) bell's count like every other count when the freeze lifts?
+64. On the old bet dial, show the money in refusal sentences in the numbers font too?
+65. The objection box's character counter makes its hint re-wrap while typing. Reserve its space?
+66. During a break, the break sentence can appear twice on a market page. Shorten one of them?
+67-68. Two break/exclusion email wordings could be clearer (a shorter break inside a longer one; "until" for an exclusion
+    that never reopens by itself). New wording needed — approve a rewrite?
+69. Give the bet-column break notice a title ("Pumzika kidogo")?
+70. Emails print "Sept" where the app says "Sep". Align?
+71. Some Swahili notices don't name the market (English and Chinese do). Add it?
+72. Notices cut long market names at different lengths. Use one length?
+73. Some pages still call Up & Down "Juu au Chini". Use "Juu na Chini" everywhere?
+74. A rare technical edge on /live titles with unusual characters — fix it properly (small server change)?
+75. The old (classic) menu and footer still use the old invite/verify names. Align them at launch?
+76. Back buttons from the account hub say "‹ AKAUNTI". OK, or a generic "‹ RUDI"?
+77. Identity-verification links now say "Uthibitisho wa kitambulisho". OK?
+78. Result pop-ups that open with a big badge keep the ✕ in the corner. OK?
+79. The loading placeholders are drawn for a busy, live product (many results, full boards). On today's quiet board the
+    real page lands a little higher. Keep them sized for the live product (recommended)?
 ## Process
 24. A screen-checking tool was broken on main; it is repaired on the Vodacom branch (ships with it).
 5, 6. Two earlier reports (small-text work order; two unused test files).

@@ -1,0 +1,43 @@
+── the suite on the FIXED tree (must be green) ──
+   exit=0
+
+── mutation: round-page-has-no-poller (the product as it shipped before E-102) ──
+   exit=1  failures=2  ✓ CAUGHT
+     FAIL 3.2 …driven by the rule, not by a hardcoded number — no refreshCadence( call on the round page
+     FAIL 3.3 ⭐ …and it is asked about THIS round's state — both arguments bound, neither a literal — no refreshCadence({…}) call found
+
+── mutation: settled-round-keeps-polling-forever (the waste the rule exists to stop) ──
+   exit=1  failures=5  ✓ CAUGHT
+     FAIL 2.2 ⭐ a SETTLED round stops polling — nothing about it can change again
+     FAIL 2.3 settled wins over awaiting, so a caller deriving both independently cannot poll forever
+     FAIL 5.4 ⭐ STOPS DEAD one millisecond past the bound
+
+── mutation: handover-poll-is-unbounded (the exception swallowing the rule) ──
+   exit=1  failures=1  ✓ CAUGHT
+     FAIL 5.4 ⭐ STOPS DEAD one millisecond past the bound
+
+── mutation: handover-bound-is-infinite (a ceiling that is not one) ──
+   exit=1  failures=3  ✓ CAUGHT
+     FAIL 5b.1 ⭐ over 12 input combinations the bound is always FINITE — 3 infinite
+     FAIL 5b.2 ⭐ …and never beyond the hard ceiling, however far away the successor is — 3 over ceiling
+     FAIL 5b.4 ⭐ an UNKNOWN one falls back to the settle plus the ceiling
+
+── mutation: result-phase-loses-its-tighter-cadence (a finished clock, then 20s of nothing) ──
+   exit=1  failures=2  ✓ CAUGHT
+     FAIL 1.2 ⭐ and FASTER than the board's 20s — the result lands ~92s after the boundary and the player is watching — 20000ms vs 20000ms
+     FAIL 1.4 the constant is the one the page uses
+
+── mutation: poller-ACCEPTS-enabled-but-ignores-it (the symbol without the behaviour) ──
+   exit=1  failures=1  ✓ CAUGHT
+     FAIL 3.5 ⭐ …and HONOURS it by registering no interval at all, not by polling slowly — no `if (!enabled) return` guard inside the effect
+
+── mutation: cadence-called-with-constants (one cadence for every phase, rule-shaped) ──
+   exit=1  failures=1  ✓ CAUGHT
+     FAIL 3.3 ⭐ …and it is asked about THIS round's state — both arguments bound, neither a literal — settled=false awaitingResult=false
+
+── mutation: handover-active-is-a-constant (a permanent poll wearing a new field name) ──
+   exit=1  failures=2  ✓ CAUGHT
+     FAIL 3.3b ⭐ …and so is the handover arm — `active` is derived from the round, never a literal — handover={
+     FAIL 5c.3 ⭐ and `active` is false the moment a successor is in hand
+
+8/8 mutations caught — every file restored byte-for-byte.

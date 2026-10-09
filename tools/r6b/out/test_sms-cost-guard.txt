@@ -1,0 +1,217 @@
+PASS §0 control: with no reading at all, an INVITE batch sends — refused=undefined calls=1
+PASS §0 control: an accepted reply records its balance
+[audit] SYSTEM sms.accepted system 
+[audit] SYSTEM sms.balance_low system 
+[audit] SYSTEM sms.accepted system 
+[email-stub] To: s***@test.tz | Subject: 50pick SMS credit is low (TZS 120)
+PASS §4b a first reading after a restart already at or below the alert line raises ONE alarm — 0 -> 1
+PASS §4c the alarm reaches the officers: a SECURITY bell row that links to /admin/system — SMS credit is low: TZS 120
+PASS §4c …and an email to the officer's own address — 1 email(s)
+PASS §4c ⛔ …and never to an officer whose role cannot open that page: no bell, no email for compliance — 0 bell(s), 0 email(s)
+PASS §4c the recipients are the page's own audience: the Owner for System, compliance too for a compliance page, the Owner alone for an Owner-only page — {"system":["ADMIN"],"aml":["ADMIN","COMPLIANCE","AUDITOR"],"roles":["ADMIN"]}
+[audit] SYSTEM sms.accepted system 
+PASS §4b …and a second restart inside a day does not raise it again: a restart is not a crossing — 0 -> 1
+[audit] SYSTEM sms.balance_low system 
+[audit] SYSTEM sms.accepted system 
+[email-stub] To: s***@test.tz | Subject: 50pick SMS credit is below the floor (TZS 30)
+PASS §4b …but a restart that finds it below the FLOOR after an alert-line alarm raises the floor's alarm — 0 -> 2
+PASS §1 setup: a real accepted reading under the floor — {"tzs":30,"at":1791569490921,"pendingSegments":5,"stale":false,"belowAlert":true,"belowFloor":true}
+[audit] SYSTEM sms.accepted system 
+PASS §1 under the floor, an INVITE batch is REFUSED with BALANCE_FLOOR — BALANCE_FLOOR
+PASS §1 …before any request is made — calls=0
+PASS §1 …and every message in it is reported refused, never sent
+PASS §1 ⭐ under the SAME floor, an OTP still sends — refused=undefined calls=1
+[audit] SYSTEM sms.accepted system 
+PASS §2 setup: a healthy reading of TZS 244
+[audit] SYSTEM sms.balance_recovered system 
+[audit] SYSTEM sms.accepted system 
+PASS §2 setup: the gateway refused the send
+PASS §2 ⛔ the refusal's balance 0.0 is NOT recorded — tzs=244
+PASS §2 ⛔ …so the floor is not tripped by an auth failure
+[audit] SYSTEM sms.failed system 
+PASS §2 ⛔ after the refusal, an INVITE batch still sends: no latch — refused=undefined calls=1
+PASS §2 the refused row stores NO balance rather than a false 0 — balanceTzs=null
+PASS §3 a reading older than the TTL is reported stale
+PASS §3 …and is not treated as below the floor
+[audit] SYSTEM sms.accepted system 
+[audit] SYSTEM sms.balance_recovered system 
+PASS §3 ⛔ a stale low reading does not hold a campaign after a top-up — refused=undefined calls=1
+PASS §3 …because the stale reading was replaced by a real balance read — balanceCalls=1 tzs=500
+[audit] SYSTEM sms.accepted system 
+PASS §3 control: the same reading, fresh, does hold the campaign: without a balance read
+[audit] SYSTEM sms.balance_recovered system 
+PASS §3 ⭐ a LOW reading over a minute old is re-checked before refusing: a top-up is honoured — refused=undefined calls=1 balanceCalls=1 tzs=500
+[audit] SYSTEM sms.accepted system 
+PASS §3 …and a re-check that cannot read keeps the low reading: the campaign is still held — refused=BALANCE_FLOOR calls=0 balanceCalls=1
+[audit] SYSTEM sms.balance_low system 
+PASS §6 with no reading, a campaign asks the balance endpoint first — balanceCalls=1
+PASS §6 …and is held when the true balance is under the floor — refused=BALANCE_FLOOR calls=0
+PASS §6 ⛔ an unreadable balance does NOT hold a campaign: unknown is not low — refused=undefined calls=1
+[audit] SYSTEM sms.balance_recovered system 
+[audit] SYSTEM sms.accepted system 
+PASS §6 ⭐ an OTP batch makes NO balance read and still sends — balanceCalls=0 calls=1
+[audit] SYSTEM notification.deduped system Notification#ntf_906441adea408bed4524
+[audit] SYSTEM sms.balance_low system 
+[audit] SYSTEM sms.accepted system 
+[email-stub] To: s***@test.tz | Subject: 50pick SMS credit is below the floor (TZS 30)
+[audit] SYSTEM notification.deduped system Notification#ntf_906441adea408bed4524
+[email-stub] To: s***@test.tz | Subject: 50pick SMS credit is below the floor (TZS 30)
+[audit] SYSTEM sms.balance_recovered system 
+[audit] SYSTEM sms.accepted system 
+[audit] SYSTEM sms.balance_low system 
+[audit] SYSTEM sms.accepted system 
+[audit] SYSTEM sms.accepted system 
+[audit] SYSTEM sms.accepted system 
+[email-stub] To: s***@test.tz | Subject: 50pick SMS credit is low (TZS 140)
+PASS §4 crossing the alert line writes exactly ONE alarm, not one per send — 4 -> 5
+[audit] SYSTEM sms.balance_recovered system 
+[audit] SYSTEM sms.accepted system 
+[audit] SYSTEM sms.balance_low system 
+[audit] SYSTEM sms.accepted system 
+[email-stub] To: s***@test.tz | Subject: 50pick SMS credit is low (TZS 100)
+PASS §4 recovering and crossing again re-arms it: a second alarm — 4 -> 6
+[audit] SYSTEM sms.balance_recovered system 
+[audit] SYSTEM sms.accepted system 
+[audit] SYSTEM sms.failed system 
+PASS §4 ⛔ an auth failure's balance 0.0 raises NO low-balance alarm
+[audit] SYSTEM sms.accepted system 
+[audit] SYSTEM sms.accepted system 
+[audit] SYSTEM sms.balance_low system 
+[audit] SYSTEM sms.accepted system 
+[audit] SYSTEM notification.deduped system Notification#ntf_e1e60c9bedf3392d519a
+[email-stub] To: s***@test.tz | Subject: 50pick SMS credit is low (TZS 140)
+[audit] SYSTEM sms.balance_low system 
+[audit] SYSTEM sms.accepted system 
+[audit] SYSTEM sms.accepted system 
+[email-stub] To: s***@test.tz | Subject: 50pick SMS credit is below the floor (TZS 40)
+PASS §4d crossing the FLOOR raises its own alarm once: 160, 140, 40, 34 is two alarms — 6 -> 8
+PASS §4d …and says so: the row is level floor, and the officer's email is the below-the-floor one — {"from":140,"to":40,"threshold":150,"floor":50,"level":"floor"} · 3 -> 4 floor email(s)
+[audit] SYSTEM sms.balance_recovered system 
+[audit] SYSTEM sms.accepted system 
+[audit] SYSTEM sms.balance_low system 
+[audit] SYSTEM sms.accepted system 
+[audit] SYSTEM notification.deduped system Notification#ntf_e1e60c9bedf3392d519a
+[email-stub] To: s***@test.tz | Subject: 50pick SMS credit is low (TZS 140)
+[audit] SYSTEM sms.balance_recovered system 
+[audit] SYSTEM sms.accepted system 
+[audit] SYSTEM sms.balance_low system 
+[audit] SYSTEM sms.accepted system 
+[email-stub] To: s***@test.tz | Subject: 50pick SMS credit is low (TZS 130)
+PASS §4e a new low spell after a top-up is announced even when a restart finds it — 8 -> 10
+PASS §4e …because the recovery was written down: one sms.balance_recovered row for the top-up — 8 -> 9
+PASS §5 a batch held by the floor writes no SmsMessage rows (nothing was attempted) — 30 -> 30
+[audit] SYSTEM sms.balance_recovered system 
+PASS §7 with no reading, the live read asks the balance endpoint and returns the account's figure — got {"tzs":185,"at":1791569491483,"outcome":"fresh","stale":false,"error":null,"pendingSegments":28}, 1 read(s)
+PASS §7 …and records it in the ONE snapshot the floor and the admin card both read
+PASS §7 ⛔ …and it SENDS nothing: the balance endpoint is the only request — 0 send request(s)
+PASS §7 a reading under a minute old is reused: a page render cannot hammer the vendor — 1 read(s)
+PASS §7 ⛔ a REFUSED read records nothing: its 0.0 is not the account's balance, and unknown is never low — got {"tzs":null,"at":null,"outcome":"failed","stale":false,"error":"refused","pendingSegments":0}
+PASS §7 a read that failed moments ago is not repeated: a reload cannot re-pay a failing vendor — 1 read(s), failed
+PASS §7 a refused read says REFUSED, so the card can tell wrong credentials from an outage — refused/refused
+PASS §7 no response, or the vendor's own 5xx, says UNREACHABLE: an outage never reads as wrong credentials — unreachable/unreachable
+PASS §7 control: a read that landed carries no error — {"outcome":"fresh","error":null}
+PASS §7 a moved endpoint or a reply we cannot read says UNEXPECTED, never wrong credentials — unexpected/unexpected
+PASS §7 a rate limit is an outage, never wrong credentials — unreachable
+PASS §7 ⛔ a failed read with an earlier reading returns it as STALE, with its own time — {"tzs":30,"at":1791568531485,"outcome":"failed","stale":true,"error":"refused","pendingSegments":28}
+PASS §7 two concurrent reads share ONE request — 1 read(s), fresh/fresh
+PASS §7 ⛔ a slow vendor cannot hold a render: the read returns within its budget — 101 ms, {"tzs":null,"at":null,"outcome":"pending","stale":false,"error":null,"pendingSegments":0}
+PASS §7 …and the read carries on and records the figure when it lands — tzs=170
+[audit] SYSTEM sms.balance_low system 
+[audit] SYSTEM sms.accepted system 
+PASS §7 a read that lands late never overwrites a newer reading — tzs=146
+[audit] SYSTEM sms.accepted system 
+PASS §10 control: with no option a MARKETING batch at TZS 15,000 sends as it always has, the platform floor alone judging it — refused=undefined/undefined calls=2
+[audit] SYSTEM sms.accepted system 
+PASS §10 ⭐ below the credit kept for codes a MARKETING batch is REFUSED MARKETING_FLOOR before any request, every message reported refused and no row written — refused=MARKETING_FLOOR calls=0 balanceCalls=0 rows 33 -> 33
+[audit] SYSTEM sms.accepted system 
+[email-stub] To: s***@test.tz | Subject: 50pick SMS credit is low (TZS 146)
+PASS §10 ⭐ in the SAME state an OTP batch still sends, and so does a batch carrying a login code beside marketing: the marketing floor judges only an all-MARKETING batch — otp refused=undefined reads=0 · mixed refused=undefined · calls=2
+[audit] SYSTEM sms.accepted system 
+PASS §10 a LOW reading over a minute old is re-checked before the marketing floor refuses: a top-up is honoured — refused=undefined calls=1 balanceCalls=1 tzs=30000
+[audit] SYSTEM sms.accepted system 
+PASS §10 …and a re-check that cannot read keeps the low reading: the MARKETING batch is still held — refused=MARKETING_FLOOR calls=0 balanceCalls=1
+[audit] SYSTEM sms.balance_recovered system 
+PASS §10 a missing or stale reading is asked for first, and a credit that comes back below the line holds the MARKETING batch — refused=MARKETING_FLOOR/MARKETING_FLOOR calls=0 balanceCalls=2 tzs=15000
+[audit] SYSTEM sms.accepted system 
+PASS §10 ⛔ an unreadable or a stale balance does NOT hold a MARKETING batch inside sendBatch: unknown is not low, the engine fails closed before it (E16) — refused=undefined/undefined calls=2
+[audit] SYSTEM sms.accepted system 
+[audit] SYSTEM sms.accepted system 
+PASS §10 the line itself: TZS 20,000 sends and TZS 19,999 is held, and under the platform floor the batch is still BALANCE_FLOOR — 20,000 sent · 19,999 MARKETING_FLOOR · 30 BALANCE_FLOOR · calls=1
+PASS §10 ⛔ a floor that is not a figure holds the MARKETING batch: a malformed option never opens the rail (and 0, a figure, sends) — NaN MARKETING_FLOOR · -1 MARKETING_FLOOR · text MARKETING_FLOOR · 0 sent · calls=1
+[audit] SYSTEM sms.accepted system 
+PASS §11 control: a MARKETING batch whose deadline is still ahead sends as it always has — refused=undefined calls=1
+[audit] SYSTEM sms.accepted system 
+PASS §11 ⭐ a MARKETING batch whose deadline has passed is REFUSED DEADLINE_PASSED whole: no row written and no request — refused=DEADLINE_PASSED rows +0 calls=0
+PASS §11 ⛔ a deadline that is not a figure holds the MARKETING batch: a malformed option never opens the rail — NaN DEADLINE_PASSED · text DEADLINE_PASSED · calls=0
+[audit] SYSTEM sms.accepted system 
+PASS §11 ⭐ an OTP never meets a deadline: alone, and beside marketing, a passed deadline holds nothing — otp sent · mixed sent · calls=2
+[audit] SYSTEM sms.accepted system 
+PASS §11 ⭐ a deadline that passes while the rows are written makes NO request: those rows FAILED with no receipt, each answered DEADLINE_PASSED — calls=0 codes=DEADLINE_PASSED,DEADLINE_PASSED rows=FAILED,FAILED
+PASS §11 ⭐ a batch the deadline held back counts in no SMS health figure — health {"sent":43,"failed":2,"successRate":0.9555555555555556} → {"sent":43,"failed":2,"successRate":0.9555555555555556}
+[audit] SYSTEM sms.failed system 
+PASS §12 the window is a bounded figure: 30 s by default, never above 10 minutes — 30000 · 600000
+PASS §12 ⭐ an accepted reply's figure is kept with what its batch handed over: 3 messages of one segment leave 3 not yet billed — calls=1 {"tzs":30000,"at":1791569493219,"pendingSegments":3,"stale":false,"belowAlert":false,"belowFloor":false}
+PASS §12 ⭐ a reading taken while the request is still out already counts it: 3 while in flight — pending seen inside the request: 3
+[audit] SYSTEM sms.accepted system 
+[audit] SYSTEM sms.accepted system 
+PASS §12 ⭐ every request handed over inside the window counts until it ages out: 52 more in two requests make 55, beside the last reply's figure — calls=2 {"tzs":30000,"at":1791569493219,"pendingSegments":55,"stale":false,"belowAlert":false,"belowFloor":false}
+[audit] SYSTEM sms.accepted system 
+PASS §12 a message of two segments counts two: two such messages add 4, making 59 — calls=1 {"tzs":29688,"at":1791569493219,"pendingSegments":59,"stale":false,"belowAlert":false,"belowFloor":false}
+[audit] SYSTEM sms.accepted system 
+PASS §12 ⛔ a refused request adds nothing: neither the figure nor what is not yet billed moves — calls=1 {"tzs":29688,"at":1791569493219,"pendingSegments":59,"stale":false,"belowAlert":false,"belowFloor":false}
+[audit] SYSTEM sms.failed system 
+PASS §12 ⭐ a request the gateway MAY have taken (no clear answer) counts too: one message adds 1, making 60 — calls=1 {"tzs":29688,"at":1791569493219,"pendingSegments":60,"stale":false,"belowAlert":false,"belowFloor":false}
+PASS §12 the live read hands them on: a reused reading carries the 60 not yet billed — {"tzs":29688,"at":1791569493219,"outcome":"reused","stale":false,"error":null,"pendingSegments":60}
+[audit] SYSTEM sms.failed system 
+PASS §12 ⭐ the balance endpoint's own figure may not hold them either: a fresh read a second later still counts the 60 — {"tzs":29664,"at":1791569494219,"outcome":"fresh","stale":false,"error":null,"pendingSegments":60} snapshot {"tzs":29664,"at":1791569494219,"pendingSegments":60,"stale":false,"belowAlert":false,"belowFloor":false}
+PASS §12 ⭐ once the window has passed they age out: a fresh read 32 seconds on counts 0 — {"tzs":29640,"at":1791569525219,"outcome":"fresh","stale":false,"error":null,"pendingSegments":0}
+[audit] SYSTEM sms.accepted system 
+[audit] SYSTEM sms.accepted system 
+PASS §12 ⭐ a reading reused 55 seconds on, after a lost reply, still counts the 50 it may not hold: 52 not yet billed — {"tzs":29700,"at":1791569545219,"outcome":"reused","stale":false,"error":null,"pendingSegments":52}
+[audit] SYSTEM sms.failed system 
+[audit] SYSTEM sms.accepted system 
+PASS §12 with billing at acceptance (SMS_BILLING_LAG_MS=0) the last reply holds the first request's charge: of 52 in two requests only its own 2 count — calls=2 {"tzs":30000,"at":1791569600224,"pendingSegments":2,"stale":false,"belowAlert":false,"belowFloor":false}
+[audit] SYSTEM sms.accepted system 
+PASS §8 the System page reads the balance live within its render budget
+PASS §8 …and draws the tile from smsCreditTile, with no pulse and no arrow — <AdminKpi label="SMS credit"    sw="Salio"                value={smsTile.value} tone={smsTile.tone} provenance={smsTile.provenance} note={smsTile.note} noteCode={smsTile.vars} delta={smsTile.caption} />
+PASS §8 …and tells the tile whether SMS can send at all, and how many sends failed
+PASS §8 the state sentence is prose at the reading floor in the state's ink, never the 10px chip
+PASS §8 the provenance is its own line under the figure, and a Railway name breaks only after an underscore — provenance line at 36543
+PASS §8 smsRailProblem names why SMS cannot send, and smsConfigured agrees with it — {"ok":{"rail":null,"configured":true},"noSender":{"rail":"sender-id","configured":false},"longSender":{"rail":"sender-id","configured":false},"noKeys":{"rail":"keys-not-set","configured":false},"typo":{"rail":"provider-unrecognised","configured":false}}
+PASS §8 the Audit chain tiles carry valid/broken by word and tone, never an arrow — <AdminKpi label="Audit chain"   sw="Mlolongo wa ukaguzi" value={chain.valid ? "Valid" : "BROKEN"} delta={`${auditCount.toLocaleString()} entries`} tone={chain.valid ? "success" : "danger"} pulse={!chain.valid} /> | audit tile found
+PASS §8 /api/health refreshes the balance within a short budget
+PASS §8 …and publishes when the figure was read, and whether it is stale
+PASS §8 this suite is on the predeploy chain — 6692 chars
+PASS §9 unknown: a dash and the words, never a blank or a zero — {"value":"—","tone":"warning","note":"Couldn't read the balance","caption":"0 sent since server start"}
+PASS §9 unknown says WHY: wrong credentials read differently from an outage — {"refused":"Blackball refused our keys · no SMS can send, login codes included · check both keys on Railway","down":"Couldn't read the balance — no answer from Blackball","keys":"Blackball keys not set · no SMS can send, login codes included · set both keys on Railway","odd":"Couldn't read the balance — Blackball sent a reply we couldn't read","slow":"Checking with Blackball… · reload in a few seconds","stub":"No balance read on Console (dev)","provider":"SMS provider not recognised · no SMS can send, login codes included · set SMS_PROVIDER to blackball on Railway"}
+PASS §9 refused and unset keys name BOTH real Railway variables, whole — {"refused":["BLACKBALL_CLIENT_ID","BLACKBALL_CLIENT_SECRET"],"keys":["BLACKBALL_CLIENT_ID","BLACKBALL_CLIENT_SECRET"]}
+PASS §9 a dead rail is danger, with the consequence and the fix — {"refused":"danger","keys":"danger","provider":"danger","down":"warning","odd":"warning"}
+PASS §9 a slow vendor is not called a failure: checking, and reload in a few seconds — {"refused":"Blackball refused our keys · no SMS can send, login codes included · check both keys on Railway","down":"Couldn't read the balance — no answer from Blackball","keys":"Blackball keys not set · no SMS can send, login codes included · set both keys on Railway","odd":"Couldn't read the balance — Blackball sent a reply we couldn't read","slow":"Checking with Blackball… · reload in a few seconds","stub":"No balance read on Console (dev)","provider":"SMS provider not recognised · no SMS can send, login codes included · set SMS_PROVIDER to blackball on Railway"}
+PASS §9 ⛔ an unread balance makes no claim about the amount
+PASS §9 healthy: the CREDIT is the headline, and the state names the alert line — {"value":"TZS 185","note":"Healthy · alert at TZS 150","caption":"0 sent since server start"}
+PASS §9 healthy with traffic: the counts, since server start — 1,234 sent, 1 failed since server start
+PASS §9 …and never splits inside 'N sent' or 'N failed' — 1,234 sent, 1 failed since server start
+PASS §9 ⛔ never Healthy while sends fail: the failures in words, danger when none got through — {"dark":"Sends failing — 5 of 5 failed since server start · none accepted, login codes included · check Blackball","patchy":"Sends failing — 3 of 12 failed since server start · check Blackball"}
+PASS §9 ⛔ never Healthy on a rail that cannot send: a readable balance with no sender ID is danger — {"value":"TZS 185","tone":"danger","note":"Sender ID missing or too long · no SMS can send, login codes included · check SMS_SENDER_ID on Railway","caption":"0 sent since server start"}
+PASS §9 below the alert line: the word, in warning ink — {"value":"TZS 120","tone":"warning","note":"Low — top up Blackball soon · invites pause below TZS 50","caption":"0 sent since server start"}
+PASS §9 below the floor: danger, and what is paused — {"value":"TZS 30","tone":"danger","note":"Below the TZS 50 floor — invites paused, login codes still send · top up Blackball now","caption":"0 sent since server start"}
+PASS §9 stale: a reading past the TTL is headlined as a dash, its figure in the note and its time under the dash — {"value":"—","tone":"warning","provenance":"Last read 20:51 EAT · couldn't refresh — no answer from Blackball","note":"Was TZS 185","caption":"0 sent since server start"}
+PASS §9 …a stale LOW figure keeps its word, its action and warning ink — {"value":"—","tone":"warning","provenance":"Last read 20:51 EAT · couldn't refresh — no answer from Blackball","note":"Was TZS 120, low · top up soon","caption":"0 sent since server start"}
+PASS §9 …a stale figure below the floor is danger: invites are sending again on the credit login codes need — {"value":"—","tone":"danger","provenance":"Last read 20:51 EAT · couldn't refresh — no answer from Blackball","note":"Was TZS 30, below floor · invites are sending again · top up now","caption":"0 sent since server start"}
+PASS §9 …and keeps the action: invites are sending again, top up now — Was TZS 30, below floor · invites are sending again · top up now
+PASS §9 …and while a read is still running: no claim about invites, the danger and the action stay — {"value":"—","tone":"danger","provenance":"Last read 20:51 EAT · still waiting for Blackball","note":"Was TZS 30, below floor · top up now","caption":"0 sent since server start"}
+PASS §9 …a read still in flight too: never shown as current — {"value":"TZS 185","provenance":"Last read 21:08 EAT · still waiting for Blackball","caption":"0 sent since server start"}
+PASS §9 below the floor on a figure that could not be refreshed: the state AND its time — {"value":"TZS 30","tone":"danger","provenance":"Last read 21:08 EAT · couldn't refresh","note":"Below the TZS 50 floor — invites paused, login codes still send · top up Blackball now","caption":"0 sent since server start"}
+PASS §9 the reason survives a first reading: refused keys after a good read are danger, and a stale figure says why — {"value":"TZS 185","tone":"danger","provenance":"Last read 21:08 EAT","note":"Blackball refused our keys · no SMS can send, login codes included · check both keys on Railway","vars":["BLACKBALL_CLIENT_ID","BLACKBALL_CLIENT_SECRET"],"caption":"0 sent since server start"}
+PASS §9 an unconfirmed figure says so on its own line under it: the note keeps only the state and the action — Last read 21:08 EAT · still waiting for Blackball | Last read 21:08 EAT · couldn't refresh | Last read 21:08 EAT | Last read 20:51 EAT · couldn't refresh — no answer from Blackball | Last read 20:51 EAT · couldn't refresh — no answer from Blackball | Last read 20:51 EAT · couldn't refresh — no answer from Blackball | Last read 20:51 EAT · still waiting for Blackball | Last read 20:51 EAT · was TZS 185
+PASS §9 a seven-figure credit is compacted, never clipped, and the exact figure is the line under it — {"value":"TZS 1.2M","provenance":"TZS 1,234,567","note":"Healthy · alert at TZS 150","caption":"0 sent since server start"}
+PASS §9 a reading from another day carries its date — 8 Oct 15:11 EAT
+PASS §9 the clock is East Africa Time, 24-hour, and a reading from the EAT day before carries its date — 14:02 EAT | 26 Sep 23:50 EAT | 00:00 EAT
+PASS §9 the month is the same three letters on every Node and ICU build — 15 Jan 12:00 EAT | 15 Feb 12:00 EAT | 15 Mar 12:00 EAT | 15 Apr 12:00 EAT | 15 May 12:00 EAT | 15 Jun 12:00 EAT | 15 Jul 12:00 EAT | 15 Aug 12:00 EAT | 15 Sep 12:00 EAT | 15 Oct 12:00 EAT | 15 Nov 12:00 EAT | 15 Dec 12:00 EAT
+PASS §9 no caption line can end on a separator: every dot is bound to the fact after it
+PASS §9 no amount, count or clock breaks inside
+PASS §9 ⛔ no tile claims to be live or moving
+PASS §9 every tile says its state in words, and the chip is one plain fact: no provider, no separator
+PASS §9 no tile names a Railway variable that does not exist
+
+sms-cost-guard: 123 passed, 0 failed

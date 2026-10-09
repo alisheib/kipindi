@@ -1,0 +1,46 @@
+[audit] COMPLIANCE comment.post usr_erase_subject Market#mkt_erase
+[audit] COMPLIANCE comment.post usr_erase_subject Market#mkt_erase
+
+── 1 · CONTROL — the fixtures are really there before anything is measured 
+
+── 2 · it REFUSES an account that is not closed ──────────────
+
+── 2b · it REFUSES a live house bot — before any destructive write 
+[email-stub] To: o***@example.tz | Subject: Erasure blocked · house bot hb_546671d6593b189ed3eaca53
+
+── 3 · the erasure itself — every PII column null or tombstoned 
+[audit] SECURITY totp.removed usr_erase_subject User#usr_erase_subject
+
+── 4 · money, positions and the audit chain are untouched ────
+[audit] COMPLIANCE privacy.erasure.completed system User#usr_erase_subject
+
+── 5 · 🔴 THE ASSERTION THE WHOLE ITEM EXISTS FOR — the document still collides 
+[audit] SECURITY kyc.id.duplicate_blocked usr_erase_second_account User#usr_erase_second_account
+
+── 6 · the frozen fragments — comments, and somebody else's notification 
+[audit] KYC kyc.id.accepted usr_erase_unrelated Kyc#kyc_cc8221d39d28a0318eb0
+
+── 7 · credentials, devices, and the 7-year hold on the images 
+[audit] SECURITY totp.removed usr_erase_subject User#usr_erase_subject
+[audit] COMPLIANCE privacy.erasure.completed system User#usr_erase_subject
+
+── 8 · ⭐ THE SWEEP — nothing anywhere still holds an erased identifier 
+
+── 9 · idempotent — running it again changes nothing ─────────
+[audit] SECURITY totp.removed usr_erase_subject User#usr_erase_subject
+
+── 10 · the periods agree with the published schedule ────────
+
+── 11 · the DATABASE half — what a unit run cannot execute, it can still read 
+
+── 12 · ⭐ MARKETING — the consent withdrawn, the book emptied (U18b) 
+[audit] COMPLIANCE privacy.erasure.completed system User#usr_erase_subject
+[audit] SECURITY totp.removed usr_erase_m2 User#usr_erase_m2
+[audit] COMPLIANCE privacy.erasure.completed system User#usr_erase_m2
+
+────────────────────────────────────────────────────────────────
+  Erasure destroys what no statute protects, and nothing else.
+  §5 is the one that matters: a document that was erased is still spent.
+────────────────────────────────────────────────────────────────
+
+ALL PASS — 351 passed, 0 failed

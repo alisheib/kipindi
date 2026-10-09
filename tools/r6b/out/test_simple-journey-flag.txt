@@ -1,0 +1,172 @@
+PASS 1.env.exact.WITHDRAWN · FEATURE_SIMPLEJOURNEY=WITHDRAWN sets the ceiling, from the environment
+PASS 1.env.exact.STAFF_PREVIEW · FEATURE_SIMPLEJOURNEY=STAFF_PREVIEW sets the ceiling, from the environment
+PASS 1.env.exact.ACTIVE · FEATURE_SIMPLEJOURNEY=ACTIVE sets the ceiling, from the environment
+PASS 1.env.typo · any other value (case, spaces, a dash, blank, a retired word) is the shipped STAFF_PREVIEW, from the code
+PASS 1.code · unset, the ceiling is the shipped STAFF_PREVIEW — nothing is launched by default
+PASS 2.table · ceiling × stored: ABSENT = the ceiling, SET = the lower of the two, UNREAD/MALFORMED = WITHDRAWN (18 cells)
+PASS 2.kill.beats.env · a stored kill holds even when the environment says ACTIVE (the env raises the ceiling, never overrules the Owner)
+PASS 2.unread.closed · a read that failed shows nobody anything new, under every ceiling
+PASS 2.absent.open · no record at all is no cap — a fresh database previews exactly as the code says
+PASS 2.bogus · a ceiling this function does not know composes to WITHDRAWN
+PASS 3.withdrawn · WITHDRAWN: nobody gets the journey — not even a browser holding a valid pass
+PASS 3.preview · STAFF_PREVIEW: only the pass holder gets it, and wears the marker; everyone else gets nothing new
+PASS 3.active · ACTIVE: everybody gets it, and nobody wears the marker (it is the product now)
+PASS 3.distinct · the three states are three different products (a state no consumer distinguishes would be deleted)
+PASS 3.no.pass.object · a pass object that is not exactly { valid: true } counts for nothing
+PASS 4.control · a correctly sealed record parses as SET, with its cap and its link
+PASS 4.absent · no row is ABSENT
+PASS 4.malformed.cap · cap is MALFORMED, beside a sealed control that parses
+PASS 4.malformed.cap.missing · cap.missing is MALFORMED, beside a sealed control that parses
+PASS 4.malformed.purpose · purpose is MALFORMED, beside a sealed control that parses
+PASS 4.malformed.version · version is MALFORMED, beside a sealed control that parses
+PASS 4.malformed.extra · extra is MALFORMED, beside a sealed control that parses
+PASS 4.malformed.seq · seq is MALFORMED, beside a sealed control that parses
+PASS 4.malformed.reason · reason is MALFORMED, beside a sealed control that parses
+PASS 4.malformed.link.extra · link.extra is MALFORMED, beside a sealed control that parses
+PASS 4.malformed.link.id · link.id is MALFORMED, beside a sealed control that parses
+PASS 4.malformed.link.dup · link.dup is MALFORMED, beside a sealed control that parses
+PASS 4.malformed.link.revoker · link.revoker is MALFORMED, beside a sealed control that parses
+PASS 4.malformed.unsigned · unsigned is MALFORMED, beside a sealed control that parses
+PASS 4.malformed.tampered · tampered is MALFORMED, beside a sealed control that parses
+PASS 4.malformed.row.extra · row.extra is MALFORMED, beside a sealed control that parses
+PASS 4.malformed.not.object · not.object is MALFORMED, beside a sealed control that parses
+PASS 5.roundtrip · a minted pass reads back with its kind, issuer and dates
+PASS 5.mint.cap · minting clamps the life to 24 hours whatever is asked
+PASS 5.ttl · a pass sealed with a life over 24 hours is refused on READ (exp is bounded where it is read, not only where it is made)
+PASS 5.exp.required · a pass with no expiry is refused (verifySession's 'no exp never expires' does not apply)
+PASS 5.expired · an expired pass is refused
+PASS 5.future · a pass minted more than a minute in the future is refused
+PASS 5.forged · a pass whose MAC is not the preview secret's is refused
+PASS 5.foreign · a token sealed with SESSION_SECRET (signSession) — the session, 2FA, share and reset family — is refused
+PASS 5.purpose · the link token's purpose is not a pass
+PASS 5.extra · a pass carrying one field more is refused
+PASS 5.link.id · a link pass whose issuer is not a link id is refused
+PASS 5.junk · garbage, empty and oversized tokens are refused without a throw
+PASS 5.secret.missing · in production with no JOURNEY_PREVIEW_SECRET the preview is OFF: nothing mints, nothing reads, nothing throws
+PASS 5.secret.unusable · a secret equal to SESSION_SECRET, shorter than 32, or a template placeholder is refused; a real one is used
+PASS 6.staff.all · a pass issued by ANY of the seven staff roles counts — SUPPORT included (SJ-23)
+PASS 6.not.staff.PLAYER · a pass whose issuer is a PLAYER counts for nothing
+PASS 6.not.staff.AGENT · a pass whose issuer is a AGENT counts for nothing
+PASS 6.demoted · the issuer is RE-READ on every request: the same pass counts while they are staff and stops the moment their stored role is not
+PASS 6.closed.SUSPENDED · a staff issuer whose account is SUSPENDED vouches for nothing
+PASS 6.closed.CLOSED · a staff issuer whose account is CLOSED vouches for nothing
+PASS 6.closed.SELF_EXCLUDED · a staff issuer whose account is SELF_EXCLUDED vouches for nothing
+PASS 6.closed.COOLED_OFF · a staff issuer whose account is COOLED_OFF vouches for nothing
+PASS 6.pending.kyc · a staff member with no identity check still previews (staff need no KYC)
+PASS 6.missing · a pass whose issuer does not exist counts for nothing
+PASS 6.link.live · a pass from a live link counts
+PASS 6.link.revoked · a pass from a REVOKED link stops counting
+PASS 6.link.expired · a pass from an EXPIRED link stops counting
+PASS 6.link.unknown · a pass from a link not in the record counts for nothing
+PASS 6.link.outlives · a link pass that ends AFTER its link counts for nothing
+PASS 6.link.absent.record · with no record there are no links
+PASS 6.withdrawn · under WITHDRAWN a perfectly good pass is ignored
+PASS 6.lookup.fails · a failed issuer lookup is no pass — and no throw
+PASS 7.viewers.WITHDRAWN · every viewer under WITHDRAWN: only a counting pass previews (and wears the marker), nobody is previewed on /admin, and two asks of one request agree
+PASS 7.viewers.STAFF_PREVIEW · every viewer under STAFF_PREVIEW: only a counting pass previews (and wears the marker), nobody is previewed on /admin, and two asks of one request agree
+PASS 7.viewers.ACTIVE · every viewer under ACTIVE: only a counting pass previews (and wears the marker), nobody is previewed on /admin, and two asks of one request agree
+PASS 7.absent · with no record (a fresh database) a staff pass previews under the shipped STAFF_PREVIEW
+PASS 7.env.kill · FEATURE_SIMPLEJOURNEY=WITHDRAWN hides it from a pass holder too
+PASS 7.never.throws · a resolver whose switch read throws answers 'nothing new, no marker' — it never takes the page down
+PASS 8.refuse.session · no session: 'Your session ended', nothing written
+[audit] SECURITY privilege_escalation_blocked sjf_growth Action#journey.rollout.set
+PASS 8.refuse.officer · a GROWTH officer is refused (Owner only, on the STORED role) and a SECURITY row says so
+PASS 8.refuse.totp · the Owner without the console's two-step check is refused
+PASS 8.refuse.reason · five invisible characters are not a reason
+PASS 8.refuse.to · a position that is not one of the three words is not understood
+PASS 8.refuse.seq · a page rendered on another record number is 'changed a moment ago'
+PASS 8.refused.nothing · after every refusal the store is still ABSENT
+[audit] COMPLIANCE journey.rollout.attempt sjf_owner JourneyRollout#journey.rollout.switch
+[audit] COMPLIANCE journey.rollout.set sjf_owner JourneyRollout#journey.rollout.switch
+PASS 8.kill · the Owner's Stop lands: the rollout is WITHDRAWN and a pass that counted a moment ago shows nothing
+PASS 8.attempt.first · the COMPLIANCE attempt row is on file BEFORE the outcome row, and the outcome carries reason, record number and confirmed
+PASS 8.noop · pressing Stop on a stopped switch changes nothing and says so
+[audit] COMPLIANCE journey.rollout.attempt sjf_owner JourneyRollout#journey.rollout.switch
+[audit] COMPLIANCE journey.preview.link.issued sjf_owner JourneyRollout#journey.rollout.switch
+PASS 8.issue.keeps.kill · issuing a link while stopped leaves the rollout stopped (a link act never moves the rollout)
+PASS 8.issue.url · the new link is a /preview?t=… URL whose token names that link and its 7-day end
+[audit] COMPLIANCE journey.rollout.attempt sjf_owner JourneyRollout#journey.rollout.switch
+[audit] COMPLIANCE journey.rollout.set sjf_owner JourneyRollout#journey.rollout.switch
+PASS 8.resume · Resume (no cap) brings back the shipped STAFF_PREVIEW, and the same pass counts again
+[audit] COMPLIANCE journey.rollout.attempt sjf_owner JourneyRollout#journey.rollout.switch
+[audit] COMPLIANCE journey.preview.link.revoked sjf_owner JourneyRollout#journey.rollout.switch
+PASS 8.revoke · revoking the link stops every pass minted from it (it counted a moment before)
+PASS 8.revoke.noop · revoking it again changes nothing and says so
+PASS 8.revoke.unknown · a link not in the record is refused
+PASS 8.issue.label · a one-character label is refused
+PASS 8.issue.secret · with no usable secret no link is issued (it could never open)
+[audit] COMPLIANCE journey.rollout.attempt sjf_owner JourneyRollout#journey.rollout.switch
+[audit] COMPLIANCE journey.rollout.set sjf_owner JourneyRollout#journey.rollout.switch
+PASS 8.recover · over an unreadable record (a secret rotation) the Owner can write a new one, and it reads
+[audit] COMPLIANCE journey.rollout.attempt sjf_owner JourneyRollout#journey.rollout.switch
+[audit] COMPLIANCE journey.preview.link.issued sjf_owner JourneyRollout#journey.rollout.switch
+PASS 8.issue.over.malformed · a link issued over an unreadable record keeps the rollout where it reads (WITHDRAWN)
+PASS 8.cap.full · with every slot holding a LIVE link a new one is refused, and the sentence says the links are live
+[audit] COMPLIANCE journey.rollout.attempt sjf_owner JourneyRollout#journey.rollout.switch
+[audit] COMPLIANCE journey.preview.link.revoked sjf_owner JourneyRollout#journey.rollout.switch
+[audit] COMPLIANCE journey.rollout.attempt sjf_owner JourneyRollout#journey.rollout.switch
+[audit] COMPLIANCE journey.preview.link.issued sjf_owner JourneyRollout#journey.rollout.switch
+PASS 8.cap.revoke.frees · revoking one frees its slot at once: the new link is issued, the record holds 25 and still parses, and the revoked one is the one dropped
+[audit] COMPLIANCE journey.rollout.attempt sjf_owner JourneyRollout#journey.rollout.switch
+[audit] COMPLIANCE journey.preview.link.issued sjf_owner JourneyRollout#journey.rollout.switch
+PASS 8.cap.ended · a record full of ENDED links makes room from the one that ended first
+PASS 9.on.cross-site · a cross-site POST sets nothing
+PASS 9.on.session · no session is sent to the staff sign-in, and sets nothing
+[audit] SECURITY journey.preview.refused sjf_d_player JourneyPreview#staff
+PASS 9.on.not-staff · a player cannot set a pass, and the attempt is on the SECURITY record
+PASS 9.on.totp · staff without the two-step check are sent to it, and nothing is set
+PASS 9.on.withdrawn · while the rollout is stopped no pass is set
+[audit] ADMIN journey.preview.on sjf_d_staff JourneyPreview#staff
+PASS 9.on.ok · staff get a pass that COUNTS, for at most 24 hours, land on /, and the act is on the record
+[audit] ADMIN journey.preview.off sjf_d_staff JourneyPreview#staff
+PASS 9.off · Exit always clears the pass; it lands back on /admin/journey only when asked from there, and never off-site
+[audit] ADMIN journey.preview.link.opened system JourneyPreviewLink#3333333333333333
+PASS 9.link.ok · a live link sets a pass that counts, lands on /, and the opening is recorded with the link id and no address
+PASS 9.link.revoked · a revoked link lands on / with no pass
+PASS 9.link.forged · a link token not sealed with the preview secret sets nothing
+PASS 9.link.other.issue · a token for the same id but another end (another issue of the link) sets nothing
+PASS 9.link.withdrawn · while the rollout is stopped a live link sets nothing
+[audit] ADMIN journey.preview.link.opened system JourneyPreviewLink#3333333333333333
+[audit] ADMIN journey.preview.link.opened system JourneyPreviewLink#3333333333333333
+[audit] ADMIN journey.preview.link.opened system JourneyPreviewLink#3333333333333333
+[audit] ADMIN journey.preview.link.opened system JourneyPreviewLink#3333333333333333
+[audit] ADMIN journey.preview.link.opened system JourneyPreviewLink#3333333333333333
+[audit] ADMIN journey.preview.link.opened system JourneyPreviewLink#3333333333333333
+[audit] ADMIN journey.preview.link.opened system JourneyPreviewLink#3333333333333333
+[audit] ADMIN journey.preview.link.opened system JourneyPreviewLink#3333333333333333
+[audit] ADMIN journey.preview.link.opened system JourneyPreviewLink#3333333333333333
+[audit] ADMIN journey.preview.link.opened system JourneyPreviewLink#3333333333333333
+PASS 9.link.rate · one address opening a link a dozen times is cut off after ten (link unfurlers, guessers)
+PASS 10.shell.order · AppShell asks the resolver AFTER the /admin and opt-out returns (the console is never previewed)
+PASS 10.shell.marker · the marker renders only on the resolver's `preview`
+PASS 10.shell.emailbar · there is no email-verify bar for any reader, classic or journey — the shell or anywhere else (deleted 2026-10-07)
+PASS 10.census.read · the pass cookie is read only by the one resolver, the /preview door and the admin page's own status line
+PASS 10.census.write · the pass cookie is written in ONE place, /preview
+PASS 10.census.decide · only the resolver calls simpleJourneyFor — a page that decided for itself could disagree with the shell
+PASS 10.no.grant · nothing that grants access (proxy, RBAC, 2FA, session, the admin layout) reads the pass — it opens a view, never access
+PASS 10.pass.readers · pass reading stays inside the preview modules and the admin status line
+PASS 10.route.nostore · every /preview answer is `private, no-store`
+PASS 10.route.cookie · the pass is SET HttpOnly, SameSite=Lax, Secure in production, path / (the set call itself, not the clear)
+PASS 10.route.303 · every /preview answer is a 303 to the public host (a document navigation)
+PASS 10.route.get · GET sets a pass only through the signed-link door
+PASS 10.health · /api/health reports simpleJourney { ceiling, state }
+PASS 10.page.account · /account asks the one resolver and calls notFound() before it reads a session, a word or a row
+PASS 10.shell.chrome.header · the journey header renders only in the journeyShown arm, lazily and in no Suspense boundary (no empty box in front of it), and the else arm is today's TopAppBar with today's props
+PASS 10.shell.chrome.tabs · the journey tabs render only in the journeyShown arm, lazily and in no Suspense boundary, and the else arm is today's BottomNav with today's props
+PASS 10.shell.chrome.footer · the footer's journey look rides the journeyShown arm alone: the else arm is today's PublicFooter with today's props, only the journey's footer balances the proposals link, and rendered, the classic link carries main's class string exactly and the journey's adds text-balance
+PASS 10.shell.chrome.lazy · AppShell renders the journey header and tabs through the shell's one lazy module, which declares each with next/dynamic (S6 WP6c); AppShell declares no React lazy binding and imports nothing from the journey's components statically
+PASS 10.shell.chrome.only · nothing but AppShell renders or loads the journey chrome (the shell's lazy module names it only in its next/dynamic imports, S6 WP6c), and no other classic layout component loads a journey module
+PASS 11.health · GET /api/health: simpleJourney = { ceiling STAFF_PREVIEW, state STAFF_PREVIEW } with no record
+PASS 11.health.kill · after a stored kill the probe says WITHDRAWN
+
+§12 · database mode — its own process
+PASS 12.db.absent · database mode, no row: the ceiling decides (STAFF_PREVIEW)
+PASS 12.db.other.container · a kill written by another container is read within the cache window (forced read: WITHDRAWN)
+PASS 12.db.read.fails · a read that fails is WITHDRAWN — a surprise never shows the new journey
+PASS 12.db.attempt.unrecorded · when the database refuses the attempt row, nothing is written and the Owner is told
+PASS 12.db.not.stored · a write that does not land is read back and reported — never 'done'
+PASS 12.db.kill · the Owner's Stop lands in the table as a sealed record that parses WITHDRAWN
+PASS 12.db.outcome.unrecorded · an act that LANDED but whose outcome row failed is reported as landed, with a warning
+PASS 12.db.ran · the database-mode process ran its checks and exited clean
+
+135 passed, 0 failed

@@ -1,0 +1,1719 @@
+diff --git a/next.config.ts b/next.config.ts
+index da145581f..a06d82088 100644
+--- a/next.config.ts
++++ b/next.config.ts
+@@ -1,4 +1,6 @@
+ import type { NextConfig } from "next";
++// ⛔ Relative, never "@/…": Next loads this file through its own TypeScript hook, where the app's path aliases do not exist.
++import { staticSecurityHeaders } from "./src/lib/security-headers";
+ 
+ /** The only addresses sent a one-year `immutable` cache: public/'s own static folders and files, and Next's hashed build
+  *  output. Exact folders, never a file-name suffix (see `headers()` below; `test:static-cache-scope`). */
+@@ -18,7 +20,8 @@ const config: NextConfig = {
+   reactStrictMode: true,
+   // Framework and version disclosure on every response, and the first line of
+   // most scanner reports. The security headers that must STAY are set in
+-  // src/proxy.ts — this removes one header without touching those.
++  // src/proxy.ts and, all but the CSP, by `headers()` below (one list,
++  // src/lib/security-headers.ts) — this removes one header without touching those.
+   poweredByHeader: false,
+   typedRoutes: true,
+   /**
+@@ -84,8 +87,16 @@ const config: NextConfig = {
+   // phone and balance) kept at the edge for the next visitor of the same address; and a browser kept any page whose
+   // address merely ended in those letters for a year without asking again. `test:static-cache-scope` holds every source
+   // to a real folder or file under public/ and proves, with Next's own matcher, that no page address matches.
++  // ⭐ EVERY RESPONSE CARRIES THE STATIC SECURITY HEADERS (review 6, A4 · 2026-10-09) — X-Frame-Options DENY, nosniff,
++  // Referrer-Policy, Permissions-Policy, COOP and the rest, HSTS in production: the list the proxy sends, from its one
++  // definition (`src/lib/security-headers.ts`). The proxy's matcher skips static files, and a page rendered there — the
++  // root not-found of a missing file under /icons/, /brand/, /og/…, inside the signed-in shell — went out with none of
++  // them, so another site could frame it. The CSP stays the proxy's: it depends on the request (HTTPS or not).
++  // `test:static-cache-scope` §5 holds this rule to that list and proves, with Next's own matcher, that it reaches every
++  // address — pages and static files alike.
+   async headers() {
+     return [
++      { source: "/:path*", headers: staticSecurityHeaders(process.env.NODE_ENV === "production") },
+       ...IMMUTABLE_STATIC_SOURCES.map((source) => ({
+         source,
+         headers: [{ key: "Cache-Control", value: "public, max-age=31536000, immutable" }],
+diff --git a/package.json b/package.json
+index efbffca67..1cb5ee5d0 100644
+--- a/package.json
++++ b/package.json
+@@ -678,6 +678,7 @@
+     "test:visual-pass-r5e": "tsx scripts/visual-pass-r5e.test.mts",
+     "test:visual-pass-r5i": "tsx scripts/visual-pass-r5i.test.mts",
+     "test:visual-pass-r5g": "tsx scripts/visual-pass-r5g.test.mts",
++    "test:visual-pass-r6b": "tsx scripts/visual-pass-r6b.test.mts",
+     "red:journey-tickets": "tsx scripts/journey-tickets.test.mts --prove-red",
+     "test:signoff": "tsx scripts/signoff.test.mts",
+     "test:proposal-evidence-age": "tsx scripts/proposal-evidence-age.test.mts",
+diff --git a/scripts/comms-notification-truth.test.mts b/scripts/comms-notification-truth.test.mts
+index 69978a2a6..060b9aba7 100644
+--- a/scripts/comms-notification-truth.test.mts
++++ b/scripts/comms-notification-truth.test.mts
+@@ -224,7 +224,10 @@ section("4 · dedupe — 28 byte-identical notifications shipped on production")
+ 
+   // A genuinely different event must NOT be suppressed. This is the half that
+   // matters: dedupe that eats real messages is worse than the duplicates.
+-  const c = await N.notifyWin(U, 23_349, "Ronaldo to score · pos_OTHER", "/positions");
++  // ⚠️ Review 6, A7 (2026-10-09): this call and `f` below passed a bare string where notifyWin takes a LocalizedText, so
++  // their bodies read "undefined paid out." — a different message only by accident. notifyWin now cuts its label with
++  // `clipQuote`, which reads text, so both pass the label the signature names (the same words as `a`'s, `c` another position).
++  const c = await N.notifyWin(U, 23_349, { en: "Ronaldo to score · pos_OTHER", sw: "Ronaldo afunge · pos_OTHER", zh: "C罗进球 · pos_OTHER" }, "/positions");
+   ok("a different position with the same amount IS delivered", c !== null && c.id !== a?.id);
+   const d = await N.notifyDeposit(U, { status: "CONFIRMED", amount: 50_000, provider: "Selcom", txnId: "txn_SECOND" });
+   const e = await N.notifyDeposit(U, { status: "CONFIRMED", amount: 50_000, provider: "Selcom", txnId: "txn_THIRD" });
+@@ -233,7 +236,7 @@ section("4 · dedupe — 28 byte-identical notifications shipped on production")
+ 
+   // Cross-player: one player's message must never suppress another's.
+   await mkUser("c3_other");
+-  const f = await N.notifyWin("c3_other", 23_349, "Ronaldo to score · pos_dup", "/positions");
++  const f = await N.notifyWin("c3_other", 23_349, { en: "Ronaldo to score · pos_dup", sw: "Ronaldo afunge · pos_dup", zh: "C罗进球 · pos_dup" }, "/positions");
+   ok("another player's identical message is NOT suppressed", f !== null);
+ }
+ 
+diff --git a/scripts/enter-where-pressed.test.mts b/scripts/enter-where-pressed.test.mts
+index 2ab00afd9..7630a32fc 100644
+--- a/scripts/enter-where-pressed.test.mts
++++ b/scripts/enter-where-pressed.test.mts
+@@ -1069,7 +1069,9 @@ function run(w: World, log: (l: string) => void): string[] {
+       && pageText.includes("activeElement: () => document.activeElement,") && pageText.includes("focus: (node) => { if (node instanceof HTMLElement) node.focus(); },")
+       && pageText.includes("now: () => performance.now(),") && pageText.includes("isNowhere,")
+       && focusInText.includes(TOP) && focusInText.includes("target?.focus();") && focusInText.includes("armBeat(rootRef.current, performance.now());")
+-      && squashed(modalSrc).includes("safe: () => safeFocusRef.current?.current ?? null,")
++      /* Review 6, B-1 (2026-10-09) moved this pin: the way out still reaches the stack, and one that cannot take focus
++         (disabled while the dialog's request is in flight, or gone) gives it to the panel, never nowhere. */
++      && squashed(modalSrc).includes('safe: () => { const way = safeFocusRef.current?.current ?? null; return way === null ? null : way.isConnected && !way.matches(":disabled") ? way : panelRef.current; },')
+       && keyText.includes(TOP) && keyText.indexOf(TOP) < escAt && escAt >= 0
+       && keyText.indexOf("if (e.defaultPrevented) return;") > escAt && keyText.indexOf("if (e.defaultPrevented) return;") < keyText.indexOf("onCloseRef.current()")
+       && keyText.includes("openList(") && keyText.includes("querySelector(OPEN_LIST)") && keyText.includes('"above"')
+@@ -1365,10 +1367,13 @@ if (!PROVE_RED) {
+       world: () => plantIn(MODAL, "      armBeat(rootRef.current, performance.now());" + NL, "") },
+     { name: "the page Modal hands to leaving moves no focus", expect: /^5[.]8 /,
+       world: () => plantIn(MODAL, "focus: (node) => { if (node instanceof HTMLElement) node.focus(); },", "focus: () => {},") },
++    // (Review 6, B-1 moved the next two anchors: the way out falls back to the panel, and focus ON the panel is brought
++    // to a control both ways, as focus outside it is.)
+     { name: "Modal's layer names no way out (its safeFocus never reaches the stack)", expect: /^5[.]8 /,
+-      world: () => plantIn(MODAL, "      safe: () => safeFocusRef.current?.current ?? null," + NL, "") },
++      world: () => plantIn(MODAL, "      safe: () => {" + NL + "        const way = safeFocusRef.current?.current ?? null;" + NL
++        + '        return way === null ? null : way.isConnected && !way.matches(":disabled") ? way : panelRef.current;' + NL + "      }," + NL, "") },
+     { name: "a plain Tab from behind the dialog walks the page behind its scrim again", expect: /^5[.]8 /,
+-      world: () => plantIn(MODAL, "      if (!panelRef.current?.contains(active)) {" + NL + "        e.preventDefault(); (e.shiftKey ? last : first).focus();" + NL + "      } else if (e.shiftKey && active === first) {",
++      world: () => plantIn(MODAL, "      if (!panelRef.current?.contains(active) || active === panelRef.current) {" + NL + "        e.preventDefault(); (e.shiftKey ? last : first).focus();" + NL + "      } else if (e.shiftKey && active === first) {",
+         "      if (e.shiftKey && (active === first || !panelRef.current?.contains(active))) {") },
+     { name: "the leaving ghost is no longer inert (its Confirm can take focus and a key)", expect: /^5[.]8 /,
+       world: () => plantIn(MODAL, "      inert={exiting || undefined}" + NL, "") },
+diff --git a/scripts/privacy-notice.test.mts b/scripts/privacy-notice.test.mts
+index 86efc4ab8..4d0100879 100644
+--- a/scripts/privacy-notice.test.mts
++++ b/scripts/privacy-notice.test.mts
+@@ -249,6 +249,8 @@ const cryptoSrc = code(read("src/lib/server/crypto.ts"));
+ const totpSrc = code(read("src/lib/server/totp.ts"));
+ const backupSrc = code(read("src/lib/server/backup/core.ts"));
+ const proxySrc = code(read("src/proxy.ts"));
++// The static security headers' one definition (review 6, A4): the proxy and next.config.ts both send this list.
++const headersSrc = code(read("src/lib/security-headers.ts"));
+ const RETIRED: Record<Loc, RegExp[]> = {
+   en: [/TLS 1\.2/, /1\.2\+/, /database tier/i, /SP 800-132/, /theme preference/i],
+   sw: [/TLS 1\.2/, /1\.2\+/, /tabaka la hifadhidata/i, /SP 800-132/, /mandhari/i],
+@@ -276,7 +278,13 @@ ok("§3b the code behind §8: HMAC-SHA-256 sessions, scrypt passwords and OTPs,
+   && /export async function hashOtp[\s\S]{0,200}scryptAsync\(`\$\{otpPepper\(\)\}:\$\{code\}`, salt, 32\)/.test(cryptoSrc)
+   && /createCipheriv\("aes-256-gcm", encKey\(\), iv\)/.test(cryptoSrc) && /encryptSecret\(/.test(totpSrc)
+   && /createCipheriv\("aes-256-gcm", deriveKey\(passphrase, salt\), iv\)/.test(backupSrc)
+-  && /"Strict-Transport-Security": "max-age=\d+; includeSubDomains; preload"/.test(proxySrc));
++  // Review 6, A4 (2026-10-09) moved this pin with the header: HSTS is defined ONCE, in src/lib/security-headers.ts, and
++  // the proxy sends it (production) from there — next.config.ts sends the same list on every response. (The statement
++  // that sends it is read from the RAW proxy: `code` takes the "/*" inside "https://*.googletagmanager.com" for a comment
++  // and drops the file from there to the next "*/", withSecurityHeaders with it.)
++  && /"Strict-Transport-Security": "max-age=\d+; includeSubDomains; preload"/.test(headersSrc)
++  && proxySrc.includes('import { PROD_HEADERS, SECURITY_HEADERS } from "@/lib/security-headers";')
++  && /for \(const \[k, v\] of Object\.entries\(PROD_HEADERS\)\) res\.headers\.set\(k, v\);/.test(read("src/proxy.ts")));
+ ok("§3c the ISO 27001 / pentest sentence still rests on a recorded attestation",
+   /### The ISO 27001 \/ penetration-testing claim — Ali's attestation, recorded/.test(decisionsSrc));
+ 
+diff --git a/scripts/proxy-scope.test.mts b/scripts/proxy-scope.test.mts
+index 6bb84972a..d8bb85784 100644
+--- a/scripts/proxy-scope.test.mts
++++ b/scripts/proxy-scope.test.mts
+@@ -4,15 +4,20 @@
+  * 🔴 THE DEFECT THIS EXISTS FOR (2026-10-09, found by the visual pass's code review). src/proxy.ts's matcher skipped
+  * `.*\.(?:svg|png|jpg|jpeg|gif|webp|ico)$` — any address ending in an image extension, PAGES included. A page at
+  * `/markets/x.png` (a real 200 with the signed-in reader's header) then went out with none of `withSecurityHeaders`'
+- * headers — X-Frame-Options DENY, the CSP, HSTS, nosniff, Referrer-Policy; the proxy is their only source — and no
++ * headers — X-Frame-Options DENY, the CSP, HSTS, nosniff, Referrer-Policy; the proxy was their only source — and no
+  * `x-pathname`, so it could be framed by another site. The same suffix defect next.config's immutable-cache rule had
+  * (hotfix 9cb95938, test:static-cache-scope).
++ * 🔴 AND THE FAVICONS WERE A PREFIX (review 6, A4 · 2026-10-09): `favicon.ico|favicon.svg`, an unescaped dot and no end,
++ * so `/favicon.icon`, `/favicon.ico/x`, `/faviconXico` and `/favicon.svgz` — page addresses — skipped the proxy too. They
++ * are `favicon\.ico$` and `favicon\.svg$` now. (Since the same review every response also carries the static security
++ * headers from next.config.ts — all but the CSP — so what the matcher skips is covered: test:static-cache-scope §5.)
+  *
+  * It reads the matcher from src/proxy.ts and compiles it with NEXT'S OWN `getMiddlewareMatchers` (the build's
+  * middleware analysis), so what it proves is what the server does.
+- *   §1 every page address runs the proxy — the ones the old rule skipped, and the app's own routes
++ *   §1 every page address runs the proxy — the ones the old rules skipped (an image suffix, a favicon prefix), and the
++ *      app's own routes
+  *   §2 public/'s static files, the favicons and Next's build output skip it (they need no page headers)
+- *   §3 CONTROL: the old suffix matcher DID skip those pages; a PLANT of it is reported by §1
++ *   §3 CONTROL: the old suffix matcher, and the old favicon prefix, DID skip those pages; a PLANT of each is reported by §1
+  */
+ import { readFileSync, readdirSync, statSync } from "node:fs";
+ import { join } from "node:path";
+@@ -51,6 +56,11 @@ const PAGES = [
+ ];
+ const skipped = PAGES.filter((p) => !proxy(p));
+ ok(`1.1 · all ${PAGES.length} page addresses run the proxy`, skipped.length === 0, skipped.join(" · "));
++/** Addresses that only LOOK like a favicon — each a page address (the root not-found, in the signed-in shell). */
++const FAVICON_LOOKALIKES = ["/favicon.icon", "/favicon.ico/x", "/faviconXico", "/favicon.svgz", "/favicon.ico.json", "/faviconxsvg", "/favicon.ico/", "/favicon.svg/a.png"];
++const lookalikesSkipped = FAVICON_LOOKALIKES.filter((p) => !proxy(p));
++ok(`1.2 · the ${FAVICON_LOOKALIKES.length} addresses that only look like a favicon run the proxy — the favicons are skipped by their exact names (review 6, A4)`,
++  lookalikesSkipped.length === 0, lookalikesSkipped.join(" · "));
+ 
+ console.log("§2 · static files skip it");
+ const PUBLIC = join(process.cwd(), "public");
+@@ -71,6 +81,14 @@ const oldRuns = runs(OLD);
+ ok("3.1 CONTROL · the old suffix matcher skipped pages: /markets/x.png, /positions/abc.jpg, /u/federico.svg ran no proxy",
+   ["/markets/x.png", "/positions/abc.jpg", "/u/federico.svg"].every((p) => !oldRuns(p)) && oldRuns("/markets"));
+ ok("3.2 PLANT · the old suffix matcher put back is reported by §1", PAGES.some((p) => !oldRuns(p)));
++// Round 5's matcher: static folders by name, but the favicons as an unescaped, unanchored prefix.
++const PREFIXED = "/((?!_next/static|_next/image|favicon.ico|favicon.svg|icons/|brand/|pay/|og/|screenshots/|email-signatures/).*)";
++const prefixedRuns = runs(PREFIXED);
++ok("3.3 CONTROL · the favicons as a prefix skipped page addresses: /favicon.icon, /favicon.ico/x, /faviconXico, /favicon.svgz ran no proxy (and the two real favicons skip either way)",
++  ["/favicon.icon", "/favicon.ico/x", "/faviconXico", "/favicon.svgz"].every((p) => !prefixedRuns(p)) && !prefixedRuns("/favicon.ico") && !proxy("/favicon.ico") && !proxy("/favicon.svg"));
++ok("3.4 PLANT · the favicon prefix put back is reported by 1.2", FAVICON_LOOKALIKES.some((p) => !prefixedRuns(p)));
++ok("3.5 · the matcher in src/proxy.ts names the favicons escaped and anchored (`favicon\\.ico$`, `favicon\\.svg$`) — never with a bare dot",
++  MATCHER.includes("favicon\\.ico$|favicon\\.svg$") && !/favicon\.(?:ico|svg)/.test(MATCHER), MATCHER);
+ 
+ console.log(`proxy-scope: ${pass} passed, ${fail} failed`);
+ process.exit(fail ? 1 : 0);
+diff --git a/scripts/red-labels.mjs b/scripts/red-labels.mjs
+index 582b90a81..75189d703 100644
+--- a/scripts/red-labels.mjs
++++ b/scripts/red-labels.mjs
+@@ -60,8 +60,10 @@ const MUTATIONS = [
+     // reads `opts.marketTitle.zh` — a Chinese sentence around a Chinese question rather than an
+     // English one (§7.2c). The MUTATION is unchanged: put the stored enum back in place of the
+     // dictionary word, and the scanner must see it.
+-    from: `    bodyZh: \`\${opts.marketTitle.zh.slice(0, 50)} · 结果：\${outcomeWordIn("zh", opts.outcome, "MARKET")}。\`,`,
+-    to: `    bodyZh: \`\${opts.marketTitle.zh.slice(0, 50)} · 结果：\${opts.outcome}。\`,`,
++    // ⚠️ RE-ANCHORED 2026-10-09 (review 6): R5-B's sweep cut every quoted title with `clipQuote`, where this anchor still
++    // read `.slice(0, 50)` — the mutation could not be made. Same mutation, on the line as it now reads.
++    from: `    bodyZh: \`\${clipQuote(opts.marketTitle.zh, 50)} · 结果：\${outcomeWordIn("zh", opts.outcome, "MARKET")}。\`,`,
++    to: `    bodyZh: \`\${clipQuote(opts.marketTitle.zh, 50)} · 结果：\${opts.outcome}。\`,`,
+   },
+   {
+     name: "§3 · 🔴 ALI'S BUG — the Up & Down push speaks the poll's vocabulary again",
+diff --git a/scripts/static-cache-scope.test.mts b/scripts/static-cache-scope.test.mts
+index df901eea6..491010d97 100644
+--- a/scripts/static-cache-scope.test.mts
++++ b/scripts/static-cache-scope.test.mts
+@@ -15,16 +15,22 @@
+  *   §3 no page address matches — the addresses the old rule caught, and the app's own routes
+  *   §4 CONTROL: the old suffix rule DOES match those pages (the matcher sees what production saw), and a PLANT of it
+  *      back into the list is reported by §3
++ *   §5 EVERY RESPONSE CARRIES THE STATIC SECURITY HEADERS (review 6, A4 · 2026-10-09): headers() sends the proxy's list —
++ *      all but the CSP, HSTS in production — on `/:path*`, which Next's own matcher sends to every address, so what the
++ *      proxy's matcher skips (a missing file under /icons/, /brand/, /og/…: the root not-found, in the signed-in shell,
++ *      once frameable) carries them too; the proxy sends the very same list; CONTROL and PLANTS
+  */
+-import { readdirSync, statSync, existsSync } from "node:fs";
++import { readdirSync, readFileSync, statSync, existsSync } from "node:fs";
+ import { join } from "node:path";
+ import { createRequire } from "node:module";
+ import * as configModule from "../next.config.ts";
++import { PROD_HEADERS, SECURITY_HEADERS } from "../src/lib/security-headers.ts";
+ 
+ const require = createRequire(import.meta.url);
+ const { getPathMatch } = require("next/dist/shared/lib/router/utils/path-match.js") as {
+   getPathMatch: (path: string, options?: Record<string, unknown>) => (pathname: string) => false | Record<string, unknown>;
+ };
++const { modifyRouteRegex } = require("next/dist/lib/redirect-status.js") as { modifyRouteRegex: (regex: string, restricted?: string[]) => string };
+ 
+ let pass = 0, fail = 0;
+ const ok = (name: string, cond: boolean, detail = "") => {
+@@ -39,8 +45,10 @@ type Rule = { source: string; headers: { key: string; value: string }[] };
+ const config = ((configModule as { default?: { default?: unknown } }).default?.default ?? (configModule as { default?: unknown }).default) as { headers: () => Promise<Rule[]> };
+ const rules = (await config.headers()) ?? [];
+ const immutableSources = rules.filter((r) => r.headers.some((h) => h.key.toLowerCase() === "cache-control" && h.value === IMMUTABLE)).map((r) => r.source);
+-/** As the server compiles a header's source (custom routes: strict, unnamed params removed). */
+-const matcherOf = (source: string) => getPathMatch(source, { strict: true, removeUnnamedParams: true });
++/** As the server compiles a header's source (custom routes: strict, unnamed params removed, and the route regex
++ *  modified as `router-utils/filesystem.js` modifies it — an optional trailing slash, so `/:path*` also matches `/`;
++ *  review 6, A4: without the modifier the suite read `/` as unreached where the server reaches it). */
++const matcherOf = (source: string) => getPathMatch(source, { strict: true, removeUnnamedParams: true, regexModifier: (r: string) => modifyRouteRegex(r) });
+ const matchesAny = (sources: readonly string[], path: string) => sources.find((s) => matcherOf(s)(path) !== false) ?? null;
+ 
+ console.log("static-cache-scope — the one-year immutable cache is for static files only");
+@@ -85,5 +93,57 @@ ok("4.1 CONTROL · the old suffix rule matches the pages production cached (/mar
+ const planted = [...immutableSources, OLD];
+ ok("4.2 PLANT · the old suffix rule put back into the list is reported by §3", PAGES.some((p) => matchesAny(planted, p)));
+ 
++console.log("§5 · every response carries the static security headers (all but the CSP)");
++/** headers() as each environment reads it (it asks NODE_ENV when called): HSTS is production's alone. */
++const env = process.env as Record<string, string | undefined>;
++const rulesIn = async (mode: "development" | "production"): Promise<Rule[]> => {
++  const was = env.NODE_ENV;
++  env.NODE_ENV = mode;
++  try { return (await config.headers()) ?? []; } finally { if (was === undefined) delete env.NODE_ENV; else env.NODE_ENV = was; }
++};
++const devRules = await rulesIn("development"), prodRules = await rulesIn("production");
++const lower = (hs: { key: string; value: string }[]) => Object.fromEntries(hs.map((h) => [h.key.toLowerCase(), h.value]));
++const listFor = (production: boolean) => lower(Object.entries({ ...SECURITY_HEADERS, ...(production ? PROD_HEADERS : {}) }).map(([key, value]) => ({ key, value })));
++const sameMap = (a: Record<string, string>, b: Record<string, string>) => JSON.stringify(Object.entries(a).sort()) === JSON.stringify(Object.entries(b).sort());
++/** The rule that carries the security headers (found by its X-Frame-Options, whatever its source). */
++const securityRule = (rs: Rule[]) => rs.find((r) => r.headers.some((h) => h.key.toLowerCase() === "x-frame-options")) ?? null;
++const sendsList = (rs: Rule[], production: boolean) => { const r = securityRule(rs); return !!r && r.source === "/:path*" && sameMap(lower(r.headers), listFor(production)); };
++const withCsp = (rs: Rule[]) => rs.filter((r) => r.headers.some((h) => h.key.toLowerCase() === "content-security-policy")).map((r) => r.source);
++/** Every address a response can go to: the pages, every static file, the favicons, the build output, and the static
++ *  folders' not-founds — the ones the proxy's matcher skips (test:proxy-scope §2). */
++const ADDRESSES = [...PAGES, ...files, "/favicon.ico", "/favicon.svg", "/_next/static/chunks/main-abc123.js", "/_next/image",
++  "/icons/nope", "/icons/nope.png", "/brand/x", "/og/x", "/pay/x", "/screenshots/x", "/email-signatures/x"];
++const unreached = (rs: Rule[]) => { const r = securityRule(rs); if (!r) return ADDRESSES; const m = matcherOf(r.source); return ADDRESSES.filter((p) => m(p) === false); };
++ok(`5.1 · headers() sends src/lib/security-headers.ts' list on /:path* — ${Object.keys(SECURITY_HEADERS).length} headers in development, ${Object.keys(SECURITY_HEADERS).length + Object.keys(PROD_HEADERS).length} with HSTS in production — exactly`,
++  sendsList(devRules, false) && sendsList(prodRules, true), JSON.stringify({ dev: securityRule(devRules)?.headers.map((h) => h.key), prod: securityRule(prodRules)?.headers.map((h) => h.key) }));
++ok("5.2 · …and never the CSP: it stays the proxy's (it depends on the request — `upgrade-insecure-requests` only over HTTPS)",
++  withCsp(devRules).length === 0 && withCsp(prodRules).length === 0, [...withCsp(devRules), ...withCsp(prodRules)].join(" "));
++const missed = unreached(devRules);
++ok(`5.3 · Next's own matcher sends that rule to all ${ADDRESSES.length} addresses — every page, every static file (${files.length}), the favicons, the build output and the static folders' not-founds the proxy skips`,
++  missed.length === 0, missed.slice(0, 6).join(" · "));
++const proxySrc = readFileSync(join(process.cwd(), "src/proxy.ts"), "utf8");
++const proxyOwnHeaders = (s: string) => /\bconst\s+(?:SECURITY|PROD)_HEADERS\b/.test(s) || /["']X-Frame-Options["']\s*:/.test(s) || /["']Strict-Transport-Security["']\s*:/.test(s);
++const proxySendsList = (s: string) => s.includes('import { PROD_HEADERS, SECURITY_HEADERS } from "@/lib/security-headers";')
++  && /for \(const \[k, v\] of Object\.entries\(SECURITY_HEADERS\)\) res\.headers\.set\(k, v\);/.test(s)
++  && /for \(const \[k, v\] of Object\.entries\(PROD_HEADERS\)\) res\.headers\.set\(k, v\);/.test(s) && !proxyOwnHeaders(s);
++ok("5.4 · src/proxy.ts sends the very same list — imported from src/lib/security-headers.ts, every header and HSTS set in withSecurityHeaders, none defined there — so the two senders cannot drift apart",
++  proxySendsList(proxySrc));
++ok("5.5 · the list holds what review 6 found missing: X-Frame-Options DENY, nosniff, Referrer-Policy, Permissions-Policy, COOP; HSTS in production",
++  SECURITY_HEADERS["X-Frame-Options"] === "DENY" && SECURITY_HEADERS["X-Content-Type-Options"] === "nosniff" && !!SECURITY_HEADERS["Referrer-Policy"]
++    && !!SECURITY_HEADERS["Permissions-Policy"] && SECURITY_HEADERS["Cross-Origin-Opener-Policy"] === "same-origin" && /max-age=\d+/.test(PROD_HEADERS["Strict-Transport-Security"] ?? ""));
++/** The headers a response to `path` is sent, as Next applies every matching rule. */
++const headersAt = (rs: Rule[], path: string) => lower(rs.filter((r) => matcherOf(r.source)(path) !== false).flatMap((r) => r.headers));
++const round5 = devRules.filter((r) => r !== securityRule(devRules));
++ok("5.6 CONTROL · without that rule (round 5's headers()), a missing file under a static folder — the proxy skips it — was sent no X-Frame-Options; with it, it is",
++  !headersAt(round5, "/icons/nope")["x-frame-options"] && !headersAt(round5, "/brand/x")["x-frame-options"] && headersAt(devRules, "/icons/nope")["x-frame-options"] === "DENY");
++const plantRule = (edit: (r: Rule) => Rule) => devRules.map((r) => (r === securityRule(devRules) ? edit(r) : r));
++ok("5.7 PLANT · the rule taken out is reported by 5.1 and 5.3; X-Frame-Options dropped from it, by 5.1",
++  !sendsList(round5, false) && unreached(round5).length === ADDRESSES.length
++    && !sendsList(plantRule((r) => ({ ...r, headers: r.headers.filter((h) => h.key !== "X-Frame-Options") })), false));
++ok("5.8 PLANT · a CSP put into it is reported by 5.2; its source narrowed to /:path+ (no \"/\") by 5.3; a header of the proxy's own back in proxy.ts by 5.4",
++  withCsp(plantRule((r) => ({ ...r, headers: [...r.headers, { key: "Content-Security-Policy", value: "default-src 'self'" }] }))).length === 1
++    && unreached(plantRule((r) => ({ ...r, source: "/:path+" }))).includes("/")
++    && !proxySendsList(proxySrc.replace("// The static security headers", 'const SECURITY_HEADERS = { "X-Frame-Options": "DENY" };\n// The static security headers')));
++
+ console.log(`static-cache-scope: ${pass} passed, ${fail} failed`);
+ process.exit(fail ? 1 : 0);
+diff --git a/scripts/updown-push-red.mjs b/scripts/updown-push-red.mjs
+index 7bfded8ae..dbfff86d4 100644
+--- a/scripts/updown-push-red.mjs
++++ b/scripts/updown-push-red.mjs
+@@ -44,11 +44,13 @@ const MUTATIONS = [
+     // ⚠️ RETARGETED 2026-08-22 — the copy moved to `notification-service.ts` with the
+     // emitter, so the mutation follows it there. Mutating the words rather than the call
+     // proves the suite pins what the player actually READS, not merely that a function ran.
++    // ⚠️ RE-ANCHORED 2026-10-09 (review 6): R5-B's sweep cut every quoted title with `clipQuote`, where this anchor still
++    // read `.slice(0, 70)` — the mutation could not be made, and this red twin proved nothing. Same mutation, its words.
+     name: "refund-goes-silent",
+     why: "the voided-round refund stops stating what happened, so a player whose stake came back is told nothing useful",
+     file: NS,
+-    from: "    bodyEn: `${opts.marketTitle.en.slice(0, 70)} · the round was voided and your stake came back in full.`,",
+-    to: "    bodyEn: `${opts.marketTitle.en.slice(0, 70)} · settled.`,",
++    from: "    bodyEn: `${clipQuote(opts.marketTitle.en, 70)} · the round was voided and your stake came back in full.`,",
++    to: "    bodyEn: `${clipQuote(opts.marketTitle.en, 70)} · settled.`,",
+   },
+   {
+     // ⚠️ RETARGETED 2026-08-22 — same structural mutation, re-anchored on the rewritten
+diff --git a/scripts/visual-pass-r4h.test.mts b/scripts/visual-pass-r4h.test.mts
+index 94a4eb2dd..363c7ee6a 100644
+--- a/scripts/visual-pass-r4h.test.mts
++++ b/scripts/visual-pass-r4h.test.mts
+@@ -28,6 +28,7 @@ import { createElement as h, Fragment } from "react";
+ import { renderToStaticMarkup } from "react-dom/server";
+ import { decomment, decommentCss } from "./lib/decomment.mts";
+ import { keepFigures, keepIdRuns, keepLastWords, keepNameEnd } from "../src/components/ui/keep-words.tsx";
++import { hyphenParts } from "../src/app/live/pulse-grid.tsx";
+ import { DotSeq } from "../src/components/ui/dot-seq.tsx";
+ import { maskPhone } from "../src/lib/phone-normalize.ts";
+ import { SHORT_TITLE_MAX } from "../src/lib/markets/short-title.ts";
+@@ -170,7 +171,8 @@ section("2 · E24 E25 E26 a long name breaks inside its column, never one charac
+   const nameRule = (b: string) => [
+     !/className="mt-1\.5 inline-flex min-h-\[40px\] max-w-full items-center gap-2 group text-left"/.test(b) && "the button may outgrow its column",
+     !/<span className="min-w-0 font-display text-\[24px\] md:text-\[28px\] font-bold leading-tight tracking-\[-0\.02em\] text-text text-balance \[overflow-wrap:anywhere\]">/.test(b) && "the name has no anywhere-break, balance or min-w-0",
+-    !/\? keepNameEnd\(currentName\) :/.test(b) && "the name's end is not kept",
++    // Review 6, B-4 (2026-10-09) moved this pin: the end is kept at the SERVER's cut (`nameWithEnd` + `currentNameEnd`).
++    !/\? nameWithEnd\(currentName, currentNameEnd\) :/.test(b) && "the name's end is not kept (at the server's cut)",
+   ].filter(Boolean) as string[];
+   ok("2.1 · the read-mode name: the button capped at its column, the name breaking anywhere when it must, balanced, its end kept",
+     button !== "" && nameRule(button).length === 0, nameRule(button).join(" · "));
+@@ -305,17 +307,19 @@ const CATALOGUE = [
+   ok("4.5′ PLANT · the market page h1 as round 4 found it (the bare title) is reported", !pageNoKeep.includes(SITES[2][1]));
+ 
+   // /live's KeepHyphenated: a token stops at an ideograph, and a numeric range is left to keepFigures.
++  // Review 6, B-3 (2026-10-09) moved this pin: the split is `hyphenParts` now — one linear pass that returns the old
++  // pattern's very array — so the tokens are read from the function the wall draws with, not from a pattern literal.
+   const grid = read("src/app/live/pulse-grid.tsx");
+-  const lit = /const parts = text\.split\(\/(.+)\/u\);/.exec(grid)?.[1] ?? "";
+-  const tokens = (re: RegExp, s: string) => s.split(re).filter((_, i) => i % 2 === 1);
+-  const now = new RegExp(lit, "u");
++  const drawsParts = grid.includes("const parts = hyphenParts(text);");
++  const tokens = (split: (s: string) => string[], s: string) => split(s).filter((_, i) => i % 2 === 1);
++  const now = hyphenParts;
+   const zhTitle = "辛巴俱乐部赢得2026-27赛季NBC超级联赛";
+   ok("4.6 · /live's hyphen tokens: \"30-day\" and \"month-end?\" whole, the Chinese title NOT one token, \"2026-27\" left to keepFigures",
+-    lit !== "" && show(tokens(now, "Will Ethereum hit a new 30-day high before month-end?")) === show(["30-day", "month-end?"])
++    drawsParts && show(tokens(now, "Will Ethereum hit a new 30-day high before month-end?")) === show(["30-day", "month-end?"])
+       && tokens(now, zhTitle).every((t) => t.length < 4) && tokens(now, "Simba SC wins the NBC Premier League 2026-27").length === 0,
+     show({ zh: tokens(now, zhTitle) }));
+   const oldRe = /(\S*[\p{L}\p{N}]-[\p{L}\p{N}]\S*)/u;
+-  ok("4.6′ CONTROL · the round-3 token rule took the whole Chinese title as one nowrap token (wider than any card)", show(tokens(oldRe, zhTitle)) === show([zhTitle]));
++  ok("4.6′ CONTROL · the round-3 token rule took the whole Chinese title as one nowrap token (wider than any card)", show(tokens((s) => s.split(oldRe), zhTitle)) === show([zhTitle]));
+ }
+ 
+ /* ══ §5 · E30 · THE CARD'S TITLE SLOT ═══════════════════════════════════════════════════════════════════════════ */
+diff --git a/scripts/visual-pass-r5a.test.mts b/scripts/visual-pass-r5a.test.mts
+index 37ed4208f..08ebd7849 100644
+--- a/scripts/visual-pass-r5a.test.mts
++++ b/scripts/visual-pass-r5a.test.mts
+@@ -749,10 +749,13 @@ section("11 · the checks: /markets' 34px, the hub's two glyphs, the chart's dea
+   const deadline = Number(/export const HISTORY_DEADLINE_MS = ([0-9_]+);/.exec(tc)?.[1]?.replace(/_/g, ""));
+   const vendor = Number(/AbortSignal\.timeout\(([0-9_]+)\)/.exec(read("src/lib/server/updown-terminal-vendor.ts"))?.[1]?.replace(/_/g, ""));
+   const loadOf = (src: string) => src.slice(src.indexOf("const load = async () => {"), src.indexOf("rangeRef.current = range;"));
++  // Review 6, B-2 (2026-10-09) moved this pin: the deadline also marks its request overdue (the next poll then replaces a
++  // request that never began to answer — "retrying" is true), and a settled request also leaves the in-flight slot.
++  // `test:visual-pass-r6b` §2 runs the effect itself on a virtual clock.
+   const deadlined = (src: string) => {
+     const l = loadOf(src);
+-    return /const deadline = setTimeout\(\(\) => \{\s*if \(alive && seq === seqRef\.current\) setStatus\(\(s\) => \(s === "loading" \? "error" : s\)\);\s*\}, HISTORY_DEADLINE_MS\);/.test(l)
+-      && /finally \{\s*clearTimeout\(deadline\);\s*\}/.test(l);
++    return /const deadline = setTimeout\(\(\) => \{\s*mine\.overdue = true;\s*if \(alive && seq === seqRef\.current\) setStatus\(\(s\) => \(s === "loading" \? "error" : s\)\);\s*\}, HISTORY_DEADLINE_MS\);/.test(l)
++      && /finally \{\s*clearTimeout\(deadline\);[^}]*\}/.test(l);
+   };
+   ok(`11.3 · the chart says "loading" for ${deadline / 1000}s at most (the route's vendor read aborts at ${vendor / 1000}s), then "${word("sw", "market.udChartError")}" while it keeps retrying`,
+     deadlined(tc) && deadline > vendor && vendor === 8000 && tc.includes('{status === "empty" ? labels.empty : status === "error" ? labels.error : labels.loading}')
+diff --git a/scripts/visual-pass-r5d.test.mts b/scripts/visual-pass-r5d.test.mts
+index 3d8942510..a85bb0ed7 100644
+--- a/scripts/visual-pass-r5d.test.mts
++++ b/scripts/visual-pass-r5d.test.mts
+@@ -66,6 +66,8 @@ const React = req("react") as typeof import("react");
+ const h = React.createElement;
+ const { renderToStaticMarkup } = req("react-dom/server") as typeof import("react-dom/server");
+ const { dict } = req("../src/lib/i18n-dict.ts") as { dict: Record<Locale, Record<string, Record<string, string>>> };
++// Review 6, A6 (2026-10-09): a found round is titled in its h1's words — the real rule, handed to the run below.
++const { roundName } = req("../src/lib/updown-round-name.ts") as { roundName: (t: unknown, assetName: string, minutes: number) => string };
+ 
+ /* ══ §1 · F1 · A RECORD PAGE'S METADATA NEVER DECIDES THE PAGE ═══════════════════════════════════════════════════════ */
+ section("1 · F1 · a failed read is the board's title in the reader's language, a missing record the not-found's, nothing throws");
+@@ -98,6 +100,7 @@ function runnable(fn: string, read: (id: string) => Promise<unknown>, calls: Cal
+     pickLocalized: (l: Locale, en: string, sw?: string | null, zh?: string | null) => (l === "sw" ? sw : l === "zh" ? zh : en) || en,
+     sharePreviewPrice: () => ({ kind: "none" }), sharePreviewSettled: () => null, sharePreviewDescription: () => "desc",
+     resolveWinShareToken: async () => null, formatTzs: (n: number) => `TZS ${n}`, ROOT_OPEN_GRAPH: { siteName: "50pick" },
++    roundName,
+   };
+   return new Function(...Object.keys(deps), `${js}\nreturn generateMetadata;`)(...Object.values(deps)) as
+     (a: { params: Promise<Record<string, string>>; searchParams?: Promise<Record<string, string>> }) => Promise<unknown>;
+@@ -110,7 +113,9 @@ async function outcome(fn: string, read: (id: string) => Promise<unknown>, local
+     return { result, calls };
+   } catch (e) { return { threw: e === NOT_FOUND ? "notFound()" : String(e), calls }; }
+ }
+-const RECORD = { titleEn: "Will it rain?", titleSw: "Je, mvua itanyesha?", titleZh: "会下雨吗？", yesPool: 0, noPool: 0, predictorCount: 0, status: "LIVE", resolvedOutcome: null };
++const RECORD = { titleEn: "Will it rain?", titleSw: "Je, mvua itanyesha?", titleZh: "会下雨吗？", yesPool: 0, noPool: 0, predictorCount: 0, status: "LIVE", resolvedOutcome: null,
++  // A round's own fields (review 6, A6: its <title> is its h1's words — the asset in the reader's language, its minutes).
++  asset: { nameEn: "Bitcoin", nameSw: "Bitcoin", nameZh: "比特币" }, round: { durationMinutes: 15 } };
+ const fail = async () => { throw new Error("connection terminated unexpectedly (a database blip)"); };
+ const none = async () => null;
+ const found = async () => RECORD;
+@@ -141,8 +146,10 @@ async function judgeMeta(fn: string, board: (l: Locale) => string, recordTitle:
+ const titleIn = (l: Locale) => (l === "sw" ? RECORD.titleSw : l === "zh" ? RECORD.titleZh : RECORD.titleEn);
+ for (const [route, file, board, boardFile, boardLine] of RECORD_PAGES) {
+   const fn = fnText(code(file), "export async function generateMetadata");
+-  // The round's metadata names a round by its English title (the round has no other); the others by the reader's.
+-  const wrong = await judgeMeta(fn, board, route === "/updown/[roundId]" ? () => RECORD.titleEn : titleIn);
++  // The round's metadata names a round in its h1's words — "Bitcoin Juu na Chini · 15 dakika" (review 6, A6 moved this pin:
++  // it was the stored English title in every language); the others by the reader's title.
++  const roundIn = (l: Locale) => roundName(dict[l], l === "sw" ? RECORD.asset.nameSw : l === "zh" ? RECORD.asset.nameZh : RECORD.asset.nameEn, RECORD.round.durationMinutes);
++  const wrong = await judgeMeta(fn, board, route === "/updown/[roundId]" ? roundIn : titleIn);
+   ok(`1.1 · ${route}: RUN in sw, en and zh — a failed read answers the board's title in that language (${LOCALES.map((l) => j(board(l))).join(" ")}), a record not there the not-found's metadata, a record found its title; notFound() never called`,
+     wrong.length === 0, wrong.join(" | "));
+   ok(`1.2 · ${route}: the neutral title is the board's own name — ${boardFile} is titled by the same key`, code(boardFile).includes(boardLine), boardLine);
+diff --git a/scripts/visual-pass-r5e.test.mts b/scripts/visual-pass-r5e.test.mts
+index f6ab29808..cc549a66f 100644
+--- a/scripts/visual-pass-r5e.test.mts
++++ b/scripts/visual-pass-r5e.test.mts
+@@ -549,7 +549,10 @@ section("4 · H2 H3 a name ends on two whole characters — clusters as ICU cuts
+   ok("4.4 · the hub and the name editor draw keepNameEnd, balanced and free to break anywhere when they must",
+     code("src/app/account/page.tsx").includes("<span className=\"kp-hub__name\">{keepNameEnd(viewer.name)}</span>")
+       && rulesFor(".kp-hub__name").some((b) => /text-wrap:\s*balance/.test(b) && /overflow-wrap:\s*anywhere/.test(b))
+-      && /\? keepNameEnd\(currentName\) :/.test(code("src/components/profile/name-editor.tsx")));
++      // Review 6, B-4 (2026-10-09) moved this pin: the editor, a client component, draws the SERVER's cut — `nameWithEnd`,
++      // handed `nameEndAt` by profile/page.tsx — so the browser's Unicode tables never re-derive it.
++      && /\? nameWithEnd\(currentName, currentNameEnd\) :/.test(code("src/components/profile/name-editor.tsx"))
++      && code("src/app/profile/page.tsx").includes("currentNameEnd={nameEndAt(user.displayName ?? \"\")}"));
+   // Linear time, whatever the name (a 40-unit limit holds the real ones; the pattern holds its own).
+   const t0 = performance.now();
+   for (const s of ["a".repeat(20000), "a" + "\u0301".repeat(19999), "\u0915" + "\u094d".repeat(19999), "\u1100".repeat(20000), "\u{1F1F9}".repeat(10000), "a\u200d".repeat(10000), " \u0301".repeat(10000)]) keepNameEnd(s);
+diff --git a/scripts/visual-pass-r6b.test.mts b/scripts/visual-pass-r6b.test.mts
+new file mode 100644
+index 000000000..de600e412
+--- /dev/null
++++ b/scripts/visual-pass-r6b.test.mts
+@@ -0,0 +1,586 @@
++/**
++ * ROUND 6 OF THE VISUAL PASS, FIXER B (2026-10-09) — the runtime, security and text findings two independent reviewers
++ * found and verified (review 6, B-1…B-4 and A5…A7). Every fix is held beside a control or a planted defect that proves the
++ * check can fail; where a fix is behaviour, the very code is BUILT FROM ITS TEXT (esbuild, in memory) and RUN on
++ * stand-ins, so a plant that edits the file edits what runs.
++ *
++ *   npx tsx scripts/visual-pass-r6b.test.mts            (npm run test:visual-pass-r6b)
++ *
++ * The owner's rule (Ali, 2026-10-09): consistency and perfection in each move — a finding is fixed on every surface that
++ * shares its pattern, and a sibling that legitimately differs is named with why.
++ *   §1 B-1 the in-flight focus trap: Tab never leaves a money confirm whose every control is disabled (modal.tsx's onKey,
++ *          RUN); the panel takes script focus; a way out that cannot take focus hands it to the panel (`safe`, RUN)
++ *   §2 B-2 the chart's retries (terminal-chart.tsx's data effect, RUN on a virtual clock): a hung request no longer holds
++ *          the poll; a late answer, a slow body, a drawn chart and a verified empty answer keep R5-A's rules
++ *   §3 B-3 three text readers are linear and EXACTLY what they replaced (a 30,000-string corpus; timings)
++ *   §4 B-4 a name's cut is decided once, on the server, and handed to the client that draws it again
++ *   §5 A5  the old template's ".." is mended where it put it, and nowhere else
++ *   §6 A6  an Up & Down round is named in its page's own words: its <title>, and /positions/performance's rows
++ *   §7 A7  the win notice cuts its market's name as every sibling cuts it
++ * (A4, the proxy's favicons and the static security headers on every response, is proved by test:proxy-scope and
++ * test:static-cache-scope alone, so that it can be cherry-picked onto main as one change.)
++ */
++import { readFileSync, readdirSync, statSync } from "node:fs";
++import { join } from "node:path";
++import { createElement as h, type ReactElement, type ReactNode } from "react";
++import { renderToStaticMarkup } from "react-dom/server";
++import { transformSync } from "esbuild";
++import { decomment, blankLiterals } from "./lib/decomment.mts";
++import { dict as DICTS } from "../src/lib/i18n-dict.ts";
++import { CloseX, ConfirmModal } from "../src/components/ui/modal.tsx";
++import { SellConfirmModal } from "../src/components/markets/sell-confirm-modal.tsx";
++import { BetConfirmModal } from "../src/components/markets/bet-confirm-modal.tsx";
++import { lastTwoWordsAt, moneySentence } from "../src/lib/fill-nodes.tsx";
++import { hyphenParts, KeepHyphenated } from "../src/app/live/pulse-grid.tsx";
++import { clipQuote, endClause, readableNotificationBody } from "../src/lib/notification-text.ts";
++import { keepNameEnd, nameEndAt, nameWithEnd } from "../src/components/ui/keep-words.tsx";
++import { roundName, storedRound } from "../src/lib/updown-round-name.ts";
++import { pickLocalized } from "../src/lib/localized.ts";
++
++let pass = 0;
++const fails: string[] = [];
++const ok = (name: string, cond: boolean, detail = "") => {
++  if (cond) { pass++; console.log(`  ok   ${name}`); }
++  else { fails.push(`${name}${detail ? ` — ${detail}` : ""}`); console.log(`  FAIL ${name}${detail ? ` — ${detail}` : ""}`); }
++};
++const section = (s: string) => console.log(`\n── ${s} ${"─".repeat(Math.max(0, 100 - s.length))}`);
++const read = (p: string) => readFileSync(p, "utf8").replace(/\r\n/g, "\n");
++// Source through the shared scanner (scripts/lib/decomment.mts) — never a private stripper.
++const code = (p: string) => decomment(read(p));
++const show = (x: unknown) => JSON.stringify(x);
++/** A node's markup. */
++const html = (n: unknown) => renderToStaticMarkup(h("div", null, n as never)).replace(/^<div>|<\/div>$/g, "");
++type Mod = Record<string, unknown>;
++
++/**
++ * A function's text from `start` (its `function`, its `const x =`, or its parameter list): past its parameters, through
++ * the brace that closes its body — literals blanked for the count, so a brace in a string or a template never counts.
++ * An arrow whose body is an expression ends at its line's end (its trailing comma or semicolon left out).
++ */
++function fnText(src: string, start: number): string {
++  if (start < 0) return "";
++  const blank = blankLiterals(src, { regex: true });
++  let i = blank.indexOf("(", start), depth = 0;
++  if (i < 0) return "";
++  for (; i < blank.length; i++) { if (blank[i] === "(") depth++; else if (blank[i] === ")" && --depth === 0) break; }
++  const arrow = blank.indexOf("=>", i), brace = blank.indexOf("{", i);
++  let open = brace;
++  if (arrow >= 0 && (brace < 0 || arrow < brace)) {
++    const k = arrow + 2 + blank.slice(arrow + 2).search(/\S/);
++    if (blank[k] !== "{") { const nl = src.indexOf("\n", k); return src.slice(start, nl < 0 ? src.length : nl).replace(/[,;]\s*$/, ""); }
++    open = k;
++  }
++  if (open < 0) return "";
++  depth = 0;
++  for (let p = open; p < blank.length; p++) { if (blank[p] === "{") depth++; else if (blank[p] === "}" && --depth === 0) return src.slice(start, p + 1); }
++  return "";
++}
++/** `body` (TypeScript: a function's text plus the statements that return it) built and run in memory with `env`'s names. */
++function build<T>(names: string[], body: string): (env: Record<string, unknown>) => T {
++  const js = transformSync(`function make(env) { const { ${names.join(", ")} } = env; ${body} }`, { loader: "ts", target: "es2022" }).code;
++  return new Function(`${js}; return make;`)() as (env: Record<string, unknown>) => T;
++}
++/** Runs `f`, or answers null when it throws: a planted text that cannot build or run is a failed check, never a crash. */
++function safely<T>(f: () => T): T | null { try { return f(); } catch { return null; } }
++/** One replacement that must land exactly once — a plant can never land twice or nowhere. */
++function swap(text: string, from: string | RegExp, to: string): string {
++  const n = typeof from === "string" ? text.split(from).length - 1 : (text.match(new RegExp(from.source, from.flags.includes("g") ? from.flags : from.flags + "g")) ?? []).length;
++  if (n !== 1) throw new Error(`plant anchor occurs ${n} times: ${String(from).slice(0, 80)}`);
++  return text.replace(from, to);
++}
++
++/* ══ §1 · B-1 THE IN-FLIGHT FOCUS TRAP ═══════════════════════════════════════════════════════════════════════════════ */
++section("1 · B-1 focus never leaves a money confirm while its request is in flight (modal.tsx)");
++const MODAL = "src/components/ui/modal.tsx";
++const modal = code(MODAL);
++{
++  // The trap's list, as modal.tsx defines it — and the markup scanner below models exactly that selector.
++  const SELECTOR = 'button:not([disabled]), [href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])';
++  ok("1.1 · the trap's FOCUSABLE list is the selector this suite reads markup by (so what it counts is what the trap finds)",
++    modal.includes(`const FOCUSABLE =\n  '${SELECTOR}';`));
++  const TAG = /<([a-zA-Z][a-zA-Z0-9-]*)((?:\s+[^\s=>/]+(?:="[^"]*")?)*)\s*\/?>/g;
++  const ATTR = /\s+([^\s=>/]+)(?:="([^"]*)")?/g;
++  const focusables = (markup: string) => [...markup.matchAll(TAG)].filter((m) => {
++    const tag = m[1].toLowerCase();
++    const attrs = new Map<string, string>();
++    for (const a of (m[2] ?? "").matchAll(ATTR)) attrs.set(a[1].toLowerCase(), a[2] ?? "");
++    const disabled = attrs.has("disabled");
++    return (tag === "button" && !disabled) || attrs.has("href") || (["input", "select", "textarea"].includes(tag) && !disabled)
++      || (attrs.has("tabindex") && attrs.get("tabindex") !== "-1");
++  }).length;
++  /** The REAL dialog's panel content: the component's Modal element, drawn as Modal's panel draws it (its corner ✕ when
++   *  shown, then its children) — Modal itself draws nothing on a server (it waits for a mount and a portal). */
++  function PanelOf({ C, p }: { C: (p: never) => ReactNode; p: Record<string, unknown> }) {
++    const el = C(p as never) as ReactElement<{ children?: ReactNode; showClose?: boolean; onClose: () => void }>;
++    return h("div", { "data-panel": "" },
++      el.props.showClose === false ? null : h(CloseX, { onClick: el.props.onClose, label: "Funga", className: "absolute right-3 top-3" }),
++      el.props.children);
++  }
++  const noop = () => {};
++  const panel = (C: unknown, p: Record<string, unknown>) => renderToStaticMarkup(h(PanelOf, { C: C as never, p }));
++  const sell = (pending: boolean) => panel(SellConfirmModal, { open: true, pending, stake: 5000, value: 6100, positionId: "pos_0123456789abcdef", onConfirm: noop, onCancel: noop });
++  const bet = (pending: boolean) => panel(BetConfirmModal, { open: true, pending, side: "YES", stake: 5000, multiplier: 1, lean: "fair", isOneSided: false, marketTitle: "Simba watashinda?", onConfirm: noop, onCancel: noop });
++  const confirm = (loading: boolean) => panel(ConfirmModal, { open: true, onClose: noop, onConfirm: noop, title: "Thibitisha", body: "Una uhakika?", loading });
++  const counts = { sellIdle: focusables(sell(false)), sellBusy: focusables(sell(true)), betIdle: focusables(bet(false)), betBusy: focusables(bet(true)),
++    confirmIdle: focusables(confirm(false)), confirmBusy: focusables(confirm(true)) };
++  ok(`1.2 · the condition, on the REAL panels: in flight, the Sell confirm, the bet confirm and ConfirmModal's medium tier each hold ${counts.sellBusy}/${counts.betBusy}/${counts.confirmBusy} controls the trap can focus (every one disabled, the ✕ withheld) — idle, ${counts.sellIdle}/${counts.betIdle}/${counts.confirmIdle}`,
++    counts.sellBusy === 0 && counts.betBusy === 0 && counts.confirmBusy === 0 && counts.sellIdle >= 2 && counts.betIdle >= 2 && counts.confirmIdle >= 2, show(counts));
++
++  // The trap itself: modal.tsx's onKey, built from its text and run on stand-ins.
++  const ONKEY_NAMES = ["isTopLayer", "layer", "openList", "panelRef", "OPEN_LIST", "whereIs", "openLayers", "isNowhere", "closeOnEscRef", "onCloseRef", "focusables", "document"];
++  const onKeyText = (src: string) => fnText(src, src.indexOf("const onKey = (e: KeyboardEvent) => {"));
++  type Node = { name: string; focus(): void; contains(o: unknown): boolean };
++  type Press = { prevented: boolean; to: string };
++  /** Tab (or Shift+Tab) pressed with focus on `at`, the panel holding `controls`; where focus went, and whether the
++   *  browser's own move was stopped. `where` is the dialog stack's answer for the focused node. */
++  function press(src: string, o: { controls: number; at: "panel" | "inside-disabled" | "outside" | "first" | "middle" | "last"; shift: boolean; where?: string; top?: boolean }): Press | null {
++    return safely(() => {
++      let active: Node | null = null;
++      const node = (name: string, kids: Node[] = []): Node => { const n: Node = { name, focus() { active = n; }, contains: (x) => x === n || kids.some((k) => k.contains(x)) }; return n; };
++      const controls = Array.from({ length: o.controls }, (_, i) => node(`control${i + 1}`));
++      const disabled = node("disabled-button");
++      const pnl = node("panel", [...controls, disabled]);
++      const outside = node("page-behind");
++      active = o.at === "panel" ? pnl : o.at === "inside-disabled" ? disabled : o.at === "outside" ? outside
++        : o.at === "first" ? controls[0] : o.at === "last" ? controls[controls.length - 1] : controls[1];
++      const onKey = build<(e: unknown) => void>(ONKEY_NAMES, `${onKeyText(src)}; return onKey;`)({
++        isTopLayer: () => o.top ?? true, layer: {}, openList: () => false, panelRef: { current: pnl }, OPEN_LIST: "[x]",
++        whereIs: () => o.where ?? (pnl.contains(active) ? "top" : "behind"), openLayers: () => [], isNowhere: () => false,
++        closeOnEscRef: { current: true }, onCloseRef: { current: () => {} }, focusables: () => controls,
++        document: { get activeElement() { return active; } },
++      });
++      const e = { key: "Tab", shiftKey: o.shift, defaultPrevented: false, target: active, prevented: false, preventDefault() { e.prevented = true; } };
++      onKey(e);
++      return { prevented: e.prevented, to: (active as Node | null)?.name ?? "nowhere" };
++    });
++  }
++  const P = (r: Press | null) => (r === null ? "could not run" : `${r.prevented ? "held" : "browser's"} → ${r.to}`);
++  const trapRuns = (src: string) => ({
++    busyTab: press(src, { controls: 0, at: "inside-disabled", shift: false }),
++    busyShift: press(src, { controls: 0, at: "inside-disabled", shift: true }),
++    busyNowhere: press(src, { controls: 0, at: "outside", shift: false, where: "nowhere" }),
++    busyAbove: press(src, { controls: 0, at: "outside", shift: false, where: "above" }),
++    busyCovered: press(src, { controls: 0, at: "inside-disabled", shift: false, top: false }),
++    panelTab: press(src, { controls: 3, at: "panel", shift: false }),
++    panelShift: press(src, { controls: 3, at: "panel", shift: true }),
++    outsideTab: press(src, { controls: 3, at: "outside", shift: false }),
++    outsideShift: press(src, { controls: 3, at: "outside", shift: true }),
++    lastTab: press(src, { controls: 3, at: "last", shift: false }),
++    firstShift: press(src, { controls: 3, at: "first", shift: true }),
++    middleTab: press(src, { controls: 3, at: "middle", shift: false }),
++  });
++  const held = (r: Press | null, to: string) => r !== null && r.prevented && r.to === to;
++  const free = (r: Press | null, at: string) => r !== null && !r.prevented && r.to === at;
++  const t = trapRuns(modal);
++  const inFlightHeld = (x: typeof t) => held(x.busyTab, "panel") && held(x.busyShift, "panel") && held(x.busyNowhere, "panel");
++  ok("1.3 · ★ RUN · in flight (no control can take focus), Tab and Shift+Tab stay in the dialog — the panel itself holds focus — from a disabled button inside and from nowhere alike",
++    inFlightHeld(t), `${P(t.busyTab)} · ${P(t.busyShift)} · ${P(t.busyNowhere)}`);
++  ok("1.4 · RUN · …and a surface drawn over the dialog keeps its own Tab, and a dialog covered by another answers no key (S6 A8i-2, as before)",
++    free(t.busyAbove, "page-behind") && free(t.busyCovered, "disabled-button"), `${P(t.busyAbove)} · ${P(t.busyCovered)}`);
++  ok("1.5 · RUN · from the panel itself (once the answer has come and its controls are back), Tab goes to the first control and Shift+Tab to the last — the browser's own Shift+Tab from the panel would walk out behind the scrim",
++    held(t.panelTab, "control1") && held(t.panelShift, "control3"), `${P(t.panelTab)} · ${P(t.panelShift)}`);
++  ok("1.6 · RUN · the trap as it was: focus outside is brought in both ways, the ends wrap, and a Tab between two controls is the browser's own",
++    held(t.outsideTab, "control1") && held(t.outsideShift, "control3") && held(t.lastTab, "control1") && held(t.firstShift, "control3") && free(t.middleTab, "control2"),
++    `${P(t.outsideTab)} · ${P(t.outsideShift)} · ${P(t.lastTab)} · ${P(t.firstShift)} · ${P(t.middleTab)}`);
++  const round5 = safely(() => swap(modal, "if (f.length === 0) { e.preventDefault(); panelRef.current?.focus(); return; }", "if (f.length === 0) return;"));
++  const r5 = round5 === null ? null : trapRuns(round5);
++  ok("1.7 CONTROL · round 5's trap (`if (f.length === 0) return;`): in flight, Tab was the browser's own — focus left the aria-modal dialog for the page behind the scrim (the reviewer's 0 focusables at the tip)",
++    r5 !== null && !r5.busyTab?.prevented && !inFlightHeld(r5), r5 === null ? "plant failed" : P(r5.busyTab));
++  const noPanelCase = safely(() => swap(modal, " || active === panelRef.current) {", ") {"));
++  const np = noPanelCase === null ? null : trapRuns(noPanelCase);
++  ok("1.7′ PLANT · focus on the panel treated as inside (the Shift+Tab from it the browser's) is reported by 1.5",
++    np !== null && !(held(np.panelShift, "control3")), np === null ? "plant failed" : P(np.panelShift));
++
++  // The panel takes script focus; the opening's fallback reaches it.
++  ok("1.8 · the panel is focusable from script alone (`tabIndex={-1}`: out of the Tab order and out of FOCUSABLE) and draws no ring of its own (`outline-none`, as the repo's other script-only focus targets)",
++    /ref=\{panelRef\}\s*tabIndex=\{-1\}/.test(modal) && modal.includes("mat-modal relative w-full p-5 lg:p-6 outline-none ${"));
++  ok("1.9 · the opening's own fallback (`focusIn`: its first target, else its first control, else the panel) — dead while the panel took no focus — now lands",
++    /\?\? focusables\(\)\[0\] \?\? panelRef\.current;\s*target\?\.focus\(\);/.test(modal));
++
++  // The uncovering: a way out that cannot take focus hands it to the panel.
++  const safeText = (src: string) => { const at = src.indexOf("safe: () =>"); return at < 0 ? "" : fnText(src, at + "safe: ".length); };
++  type Way = { name: string; isConnected: boolean; matches(s: string): boolean } | null;
++  const wayOf = (src: string, way: Way | undefined) => safely(() => {
++    const text = safeText(src);
++    const pnl = { name: "panel" };
++    const r = build<() => { name?: string } | null>(["safeFocusRef", "panelRef"], `return (${text});`)({
++      safeFocusRef: { current: way === undefined ? undefined : { current: way } }, panelRef: { current: pnl } })();
++    return r === null ? "none" : (r as { name: string }).name;
++  });
++  const button = (disabled: boolean, connected = true): Way => ({ name: disabled ? "disabled Cancel" : "Cancel", isConnected: connected, matches: (s) => s === ":disabled" && disabled });
++  const safeRuns = (src: string) => ({ live: wayOf(src, button(false)), disabled: wayOf(src, button(true)), gone: wayOf(src, button(false, false)), unnamed: wayOf(src, undefined), nullWay: wayOf(src, null) });
++  const s = safeRuns(modal);
++  ok("1.10 · ★ RUN · the dialog drawn over a confirm closing hands focus to the confirm's way out — and when that way out is disabled (its request in flight) or gone, to the panel: inside the dialog, never its money button, never nowhere; a dialog naming no way out is as before",
++    s.live === "Cancel" && s.disabled === "panel" && s.gone === "panel" && s.unnamed === "none" && s.nullWay === "none", show(s));
++  const oldSafe = safely(() => swap(modal, /safe: \(\) => \{[\s\S]*?panelRef\.current;\s*\},/, "safe: () => safeFocusRef.current?.current ?? null,"));
++  const os = oldSafe === null ? null : safeRuns(oldSafe);
++  ok("1.10′ CONTROL · round 5's `safe` handed focus to the disabled Cancel — a focus that goes nowhere", os !== null && os.disabled === "disabled Cancel", show(os));
++
++  // The siblings: the two other focus traps keep `if (f.length === 0) return;` — and can never reach it.
++  const notif = code("src/components/layout/notifications-panel.tsx"), sheet = code("src/components/markets/filter-sheet.tsx");
++  // The bell's ✕, the whole element (its onClick holds an arrow, so no `[^>]*` reading of the tag would do).
++  const notifClose = /<button\s+type="button"\s+aria-label=\{t\.common\.close\}[\s\S]*?<\/button>/.exec(notif)?.[0] ?? "";
++  const sheetClose = /<CloseX onClick=\{close\} label=\{closeLabel\}[^>]*\/>/.exec(sheet)?.[0] ?? "";
++  ok("1.11 · the siblings legitimately differ: the bell's panel (frozen classic chrome) and the filter sheet trap the same way, but their ✕ is never disabled nor withheld, so their list is never empty and the line is unreachable — both containers already take script focus (`tabIndex={-1}`)",
++    /if \(f\.length === 0\) return;/.test(notif) && /if \(f\.length === 0\) return;/.test(sheet) && notifClose !== "" && !/disabled/.test(notifClose)
++      && sheetClose !== "" && !/withheld|disabled/.test(sheetClose) && /tabIndex=\{-1\}/.test(notif) && /tabIndex=\{-1\}/.test(sheet),
++    show({ notifClose: notifClose.slice(0, 80), sheetClose }));
++  console.log("       browser check for the lock turn: throttle the network, press Confirm on the bet (and the Sell) confirm, press Tab —");
++  console.log("       document.activeElement stays inside [role=dialog] (on its panel), and Shift+Tab too; when the answer comes, Tab reaches its first control.");
++}
++
++/* ══ §2 · B-2 THE CHART'S RETRIES ═══════════════════════════════════════════════════════════════════════════════════ */
++section("2 · B-2 a hung request no longer holds the chart's poll (terminal-chart.tsx's data effect, run on a virtual clock)");
++{
++  const TC = "src/components/charts/terminal-chart.tsx";
++  const tc = code(TC);
++  const DEADLINE = Number(/export const HISTORY_DEADLINE_MS = ([0-9_]+);/.exec(tc)?.[1]?.replace(/_/g, ""));
++  /** The data effect's arrow, as written: the useEffect whose body opens with `let alive = true;`. */
++  const effectText = (src: string) => { const at = src.indexOf("let alive = true;"); const start = src.lastIndexOf("useEffect(() => {", at); return fnText(src, src.indexOf("() => {", start)); };
++  const NAMES = ["setTimeout", "clearTimeout", "fetch", "document", "AbortController", "setFeed", "setStatus", "seqRef", "lastRawRef", "cadenceRef",
++    "decimalsRef", "rangeRef", "HISTORY_DEADLINE_MS", "pollMs", "assetKey", "range", "style"];
++  const FEED = JSON.stringify({ series: { mode: "line", points: [{ t: 1, price: 100 }] }, livePrice: 100, sourceQuotedAt: null, liveStale: false, medianDeltaMs: null, decimals: 2 });
++  const EMPTY = JSON.stringify({ series: { mode: "line", points: [] }, livePrice: null, sourceQuotedAt: null, liveStale: false, medianDeltaMs: null, decimals: 2 });
++  type Answer = { headersAt: number; ok?: boolean; status?: number; bodyAt?: number; body?: string };
++  type Signal = { aborted: boolean; listeners: Set<() => void>; addEventListener(t: string, f: () => void): void; removeEventListener(t: string, f: () => void): void };
++  type Run = { requests: number[]; aborted: boolean[]; maxLive: number; statuses: Array<[number, string]>; status: string; feedAt: number | null;
++    effectListeners: number; midListeners: number | null; afterClose: number };
++  /** One scenario: the effect built from `src`, each request answered as `plan` says, the clock run to `until` (ms). */
++  async function scenario(src: string, plan: (i: number) => Answer, o: { until: number; closeAt?: number; probeAt?: number }): Promise<Run | null> {
++    try {
++      let now = 0, nextId = 0;
++      const timers = new Map<number, { at: number; fn: () => void }>();
++      const setT = (fn: () => void, ms: number) => { const id = ++nextId; timers.set(id, { at: now + Math.max(0, ms), fn }); return id; };
++      const clearT = (id: number | null | undefined) => { if (id != null) timers.delete(id); };
++      const settle = async () => { for (let k = 0; k < 6; k++) await new Promise((r) => setImmediate(r)); };
++      async function runUntil(end: number) {
++        for (;;) {
++          await settle();
++          let best: [number, { at: number; fn: () => void }] | null = null;
++          for (const e of timers) if (e[1].at <= end && (!best || e[1].at < best[1].at)) best = e;
++          if (!best) { now = end; await settle(); return; }
++          timers.delete(best[0]); now = best[1].at; best[1].fn();
++        }
++      }
++      const controllers: Array<{ signal: Signal }> = [];
++      class AC {
++        signal: Signal = { aborted: false, listeners: new Set(), addEventListener(_t, f) { this.listeners.add(f); }, removeEventListener(_t, f) { this.listeners.delete(f); } };
++        constructor() { controllers.push(this); }
++        abort() { if (this.signal.aborted) return; this.signal.aborted = true; for (const f of [...this.signal.listeners]) f(); }
++      }
++      const reqs: Array<{ at: number; done: boolean; aborted: boolean }> = [];
++      let live = 0, maxLive = 0;
++      const end = (r: { done: boolean }, aborted = false) => { if (r.done) return; r.done = true; live--; if (aborted) (r as { aborted: boolean }).aborted = true; };
++      const fetch = (_url: string, init: { signal: Signal }) => {
++        const a = plan(reqs.length);
++        const r = { at: now, done: false, aborted: false };
++        reqs.push(r); live++; maxLive = Math.max(maxLive, live);
++        return new Promise((resolve, reject) => {
++          const tHead = setT(() => {
++            if (a.ok === false) end(r);
++            resolve({ ok: a.ok ?? true, status: a.status ?? 200, text: () => new Promise((res2, rej2) => {
++              const tBody = setT(() => { end(r); res2(a.body ?? FEED); }, Math.max(0, (a.bodyAt ?? a.headersAt) - a.headersAt));
++              init.signal.addEventListener("abort", () => { clearT(tBody); end(r, true); rej2(new Error("aborted")); });
++            }) });
++          }, a.headersAt);
++          init.signal.addEventListener("abort", () => { clearT(tHead); end(r, true); reject(new Error("aborted")); });
++        });
++      };
++      let status = "loading", feedAt: number | null = null, closed = false, afterClose = 0;
++      const statuses: Array<[number, string]> = [];
++      const make = build<() => () => void>(NAMES, `return (${effectText(src)});`);
++      const effect = make({
++        setTimeout: setT, clearTimeout: clearT, fetch, document: { visibilityState: "visible", addEventListener() {}, removeEventListener() {} }, AbortController: AC,
++        setFeed: (v: unknown) => { if (closed) afterClose++; if (v && feedAt === null) feedAt = now; },
++        setStatus: (v: string | ((s: string) => string)) => { if (closed) afterClose++; const n = typeof v === "function" ? v(status) : v; if (n !== status) statuses.push([now, n]); status = n; },
++        seqRef: { current: 0 }, lastRawRef: { current: "" }, cadenceRef: { current: null }, decimalsRef: { current: 2 }, rangeRef: { current: "1H" },
++        HISTORY_DEADLINE_MS: DEADLINE, pollMs: 30_000, assetKey: "btc", range: "1H", style: "line",
++      });
++      const cleanup = effect();
++      let midListeners: number | null = null;
++      if (o.probeAt !== undefined) { await runUntil(o.probeAt); midListeners = controllers[0].signal.listeners.size; }
++      if (o.closeAt !== undefined) { await runUntil(o.closeAt); cleanup(); closed = true; }
++      await runUntil(o.until);
++      return { requests: reqs.map((r) => r.at / 1000), aborted: reqs.map((r) => r.aborted), maxLive, statuses, status, feedAt, effectListeners: controllers[0].signal.listeners.size, midListeners, afterClose };
++    } catch { return null; }
++  }
++  const stall: (i: number) => Answer = () => ({ headersAt: 100_000, ok: false, status: 524 }); // Cloudflare's 524 after its 100s origin timeout
++  const fast: Answer = { headersAt: 400 };
++  const runs = async (src: string) => ({
++    stall: await scenario(src, stall, { until: 299_000 }),
++    cold: await scenario(src, (i) => (i === 0 ? { headersAt: 20_000 } : fast), { until: 90_000 }),
++    drawn: await scenario(src, (i) => (i === 0 ? { headersAt: 1_000 } : { headersAt: 100_000, ok: false, status: 524 }), { until: 299_000 }),
++    empty: await scenario(src, () => ({ headersAt: 800, body: EMPTY }), { until: 20_000 }),
++    refused: await scenario(src, () => ({ headersAt: 800, ok: false, status: 524 }), { until: 20_000 }),
++    slow: await scenario(src, (i) => (i === 0 ? { headersAt: 5_000, bodyAt: 45_000 } : fast), { until: 89_000 }),
++    closed: await scenario(src, stall, { until: 200_000, closeAt: 10_000 }),
++    steady: await scenario(src, () => fast, { until: 299_000, probeAt: 200 }),
++  });
++  const R = await runs(tc);
++  const every30 = Array.from({ length: 10 }, (_, i) => i * 30);
++  const stallOk = (r: Run | null) => r !== null && show(r.requests) === show(every30) && r.maxLive === 1 && r.aborted.slice(0, -1).every(Boolean)
++    && show(r.statuses) === show([[DEADLINE, "error"]]);
++  ok(`2.1 · ★ RUN · a route that stalls 100s (Cloudflare's 524): the pane says "unavailable — retrying" at ${DEADLINE / 1000}s, and it IS retrying — a fresh request every 30s (${R.stall?.requests.join(", ")}s), each one that never began to answer aborted, never two at once`,
++    stallOk(R.stall), show(R.stall));
++  const lateOk = (r: Run | null) => r !== null && show(r.statuses) === show([[DEADLINE, "error"], [20_000, "ok"]]) && r.feedAt === 20_000;
++  ok("2.2 · RUN · a late answer still draws: a cold start that answers at 20s turns the pane from \"unavailable\" to the chart at 20s", lateOk(R.cold), show(R.cold?.statuses));
++  ok("2.3 · RUN · a drawn chart is never replaced: drawn at 1s, then every request stalls — the pane keeps the chart for five minutes (F3)",
++    R.drawn !== null && show(R.drawn.statuses) === show([[1_000, "ok"]]) && R.drawn.status === "ok", show(R.drawn?.statuses));
++  ok("2.4 · RUN · only a VERIFIED empty answer says \"no reads\"; a refused one says \"unavailable\"",
++    R.empty !== null && show(R.empty.statuses) === show([[800, "empty"]]) && R.refused !== null && show(R.refused.statuses) === show([[800, "error"]]),
++    show({ empty: R.empty?.statuses, refused: R.refused?.statuses }));
++  const slowOk = (r: Run | null) => r !== null && show(r.requests) === show([0, 60]) && !r.aborted[0] && show(r.statuses) === show([[DEADLINE, "error"], [45_000, "ok"]]);
++  ok("2.5 · RUN · a body slow to arrive (headers at 5s, the last byte at 45s, a 2G phone) is waited for — the 30s poll sends no second download beside it — and draws at 45s; the next request goes at 60s",
++    slowOk(R.slow), show({ requests: R.slow?.requests, aborted: R.slow?.aborted, statuses: R.slow?.statuses }));
++  const closedOk = (r: Run | null) => r !== null && show(r.requests) === show([0]) && r.aborted[0] === true && r.afterClose === 0;
++  ok("2.6 · RUN · closing the chart (a new window, a page left) aborts the request in flight — through the effect's abort, to which each request is chained — and nothing is set after",
++    closedOk(R.closed), show(R.closed));
++  ok("2.7 · RUN · each request leaves the effect's abort when it settles: one listener while a request is in flight, none after ten — they never pile up over hours of polling",
++    R.steady !== null && R.steady.midListeners === 1 && R.steady.effectListeners === 0 && R.steady.requests.length === 10 && R.steady.maxLive === 1, show({ mid: R.steady?.midListeners, end: R.steady?.effectListeners, n: R.steady?.requests.length }));
++  // CONTROL and PLANTS: each a text the effect is built from, run on the same clock.
++  const ROUND5_TICK = "timer = setTimeout(async () => { await load(); if (alive) paceNext(); }, wait);";
++  const plant = (from: string | RegExp, to: string) => safely(() => swap(tc, from, to));
++  const control = plant(/timer = setTimeout\(\(\) => \{\s*if \(inFlight === null[^\n]*\n\s*if \(alive\) paceNext\(\);\s*\}, wait\);/, ROUND5_TICK);
++  const cR = control === null ? null : await scenario(control, stall, { until: 299_000 });
++  ok(`2.8 CONTROL · round 5's poll (it awaited each request): against the same stall the requests went out at ${cR?.requests.join(", ")}s — the reviewer's 0, 30, 160, 290 — while the pane said "retrying"`,
++    cR !== null && show(cR.requests) === show([0, 30, 160, 290]) && !stallOk(cR), show(cR?.requests));
++  const pAnswering = plant("mine.answering = true;", "");
++  const pA = pAnswering === null ? null : await scenario(pAnswering, (i) => (i === 0 ? { headersAt: 5_000, bodyAt: 45_000 } : fast), { until: 89_000 });
++  ok("2.9 PLANT · the answer's start no longer marked (a slow body replaced at the next poll, so it never draws) is reported by 2.5", pA !== null && !slowOk(pA), show(pA?.requests));
++  const pOverdue = plant("mine.overdue = true;", "");
++  const pO = pOverdue === null ? null : await scenario(pOverdue, stall, { until: 299_000 });
++  ok("2.9′ PLANT · the deadline no longer marking its request overdue (the poll waits the stall out again) is reported by 2.1", pO !== null && !stallOk(pO), show(pO?.requests));
++  const pPrev = plant("inFlight?.abort.abort();", "");
++  const pP = pPrev === null ? null : await scenario(pPrev, stall, { until: 299_000 });
++  ok("2.9″ PLANT · a new request no longer aborting the hung one (they pile up behind the stall) is reported by 2.1", pP !== null && !stallOk(pP) && pP.maxLive > 1, show({ maxLive: pP?.maxLive }));
++  const pChain = plant('ac.signal.addEventListener("abort", chained);', "");
++  const pC = pChain === null ? null : await scenario(pChain, stall, { until: 200_000, closeAt: 10_000 });
++  ok("2.9‴ PLANT · a request no longer chained to the effect's abort (a closed chart's request runs on) is reported by 2.6", pC !== null && !closedOk(pC), show(pC?.aborted));
++}
++
++/* ══ §3 · B-3 THREE TEXT READERS, LINEAR AND EXACT ═══════════════════════════════════════════════════════════════════ */
++section("3 · B-3 moneySentence's last two words, /live's hyphen tokens and endClause: linear, and exactly what they replaced");
++{
++  const OLD_LAST_TWO = /\S+\s+\S+\s*$/;
++  const OLD_HYPHEN = /([^\s\p{Script=Han}]*(?:\p{L}-[\p{L}\p{N}]|\p{N}-\p{L})[^\s\p{Script=Han}]*)/u;
++  const oldEndClause = (text: string, stop: "." | "。") => { const t = text.trimEnd(); if (/[!?！？…]$/.test(t)) return t; return `${t.replace(/[.。]+$/, "")}${stop}`; };
++  const c = (n: number) => String.fromCodePoint(n);
++  // Built to hit the edges: letters (astral, decomposed), numbers of three kinds, hyphens and dashes, every kind of space,
++  // Han (BMP, astral, Unicode 15.1's Extension I), Chinese and Latin stops, joiners, marks, lone surrogates.
++  const TOK = ["a", "Z", "é", "e\u0301", c(0x1d400), "Ж", "1", "2026", "٣", "²", "Ⅻ", "-", "--", "‐", "–", "—", "-a", "a-", "1-", "-1",
++    " ", "  ", "\t", "\n", c(0xa0), c(0x3000), c(0x2003), c(0x202f), "中", "国", c(0x20000), c(0x2ebf0), "。", "？", ",", "?", "!", "(", ")", "/", ".", "..", "…",
++    "😀", "\u200d", "\u0301", "month-end?", "30-day", "Man-City", "2026-27", "中-a", "a-中", "1-中", "中-1", "TZS", "4,200", "dakika", "\ud800", "\udc00"];
++  let seed = 61009; const rnd = () => { seed ^= seed << 13; seed ^= seed >>> 17; seed ^= seed << 5; return ((seed >>> 0) % 1e6) / 1e6; };
++  const diffs: Record<string, string[]> = { lastTwo: [], hyphen: [], endClause: [] };
++  let n = 0;
++  for (let i = 0; i < 30_000; i++) {
++    let s = ""; const k = Math.floor(rnd() * 12);
++    for (let j = 0; j < k; j++) s += TOK[Math.floor(rnd() * TOK.length)];
++    n++;
++    if (s.search(OLD_LAST_TWO) !== lastTwoWordsAt(s)) diffs.lastTwo.push(s);
++    if (show(s.split(OLD_HYPHEN)) !== show(hyphenParts(s))) diffs.hyphen.push(s);
++    for (const stop of [".", "。"] as const) if (oldEndClause(s, stop) !== endClause(s, stop)) diffs.endClause.push(s);
++  }
++  ok(`3.1 · ★ EXACT · over ${n.toLocaleString("en")} seeded strings, lastTwoWordsAt is \`/\\S+\\s+\\S+\\s*$/\`'s search, hyphenParts is the old split's very array, and endClause cuts as \`/[.。]+$/\` did (both stops): ${diffs.lastTwo.length + diffs.hyphen.length + diffs.endClause.length} differences`,
++    diffs.lastTwo.length === 0 && diffs.hyphen.length === 0 && diffs.endClause.length === 0, show({ lastTwo: diffs.lastTwo.slice(0, 2), hyphen: diffs.hyphen.slice(0, 2), endClause: diffs.endClause.slice(0, 2) }));
++  const time = (f: () => unknown) => { const t0 = performance.now(); f(); return performance.now() - t0; };
++  const LONG = ["x".repeat(20_000), "x".repeat(20_000) + " ", "a-".repeat(10_000), "中".repeat(20_000), ".".repeat(20_000) + "x", "。".repeat(20_000)];
++  const took = time(() => { for (const s of LONG) { lastTwoWordsAt(s); hyphenParts(s); endClause(s, "."); moneySentence(s); } });
++  ok(`3.2 · linear, whatever the text: six adversarial 20,000-character texts through all three readers (and moneySentence) take ${took.toFixed(0)}ms together`, took < 300, `${took.toFixed(0)} ms`);
++  const word = "x".repeat(10_000), dots = ".".repeat(10_000) + "x";
++  const oldTook = time(() => { word.search(OLD_LAST_TWO); word.split(OLD_HYPHEN); oldEndClause(dots, "."); });
++  const newTook = time(() => { lastTwoWordsAt(word); hyphenParts(word); endClause(dots, "."); });
++  ok(`3.3 CONTROL · the three patterns they replaced take ${oldTook.toFixed(0)}ms on 10,000 characters (the readers ${newTook.toFixed(1)}ms) — the square of the length`,
++    oldTook > 10 * newTook && oldTook > 20, `${oldTook.toFixed(1)} vs ${newTook.toFixed(1)} ms`);
++  const fill = code("src/lib/fill-nodes.tsx"), grid = code("src/app/live/pulse-grid.tsx"), nt = code("src/lib/notification-text.ts");
++  ok("3.4 · the three draw through them: moneySentence reads `lastTwoWordsAt`, KeepHyphenated `hyphenParts`, endClause its backward strip — no quadratic pattern is left in any of the three",
++    fill.includes("lastTwoWordsAt(text)") && !fill.includes(".search(") && grid.includes("const parts = hyphenParts(text);") && !/text\.split\(/.test(grid)
++      && /while \(end > 0 && \(t\[end - 1\] === "\." \|\| t\[end - 1\] === "。"\)\) end--;/.test(nt) && !/\[\.。\]\+\$/.test(nt));
++  ok("3.5 · /live's wall draws as before: \"30-day\" and \"month-end?\" whole, the Chinese title in short tokens, \"2026-27\" left to keepFigures",
++    show(hyphenParts("Will Ethereum hit a new 30-day high before month-end?").filter((_, i) => i % 2 === 1)) === show(["30-day", "month-end?"])
++      && html(h(KeepHyphenated, { text: "辛巴俱乐部赢得2026-27赛季NBC超级联赛" })).includes('<span class="whitespace-nowrap">2026-27赛季</span>'));
++}
++
++/* ══ §4 · B-4 A NAME'S CUT, DECIDED ONCE ═════════════════════════════════════════════════════════════════════════════ */
++section("4 · B-4 a name's cut is decided once, on the server, and handed to the client that draws it again");
++{
++  const names = ["Neema Juma", "Juma K", "AB", "A", "", "   ", "欧阳慕容百里呼延", "Neema 👩\u200d💻", "🇹🇿🇰🇪", "a\u0301b\u0301c\u0301", "Mwanaisha Khamis",
++    "AB" + "\u3000".repeat(37) + "C", "Neema Juma\u0897", "x".repeat(40), "क्षत्रिय", "한국어", "Neema  Juma"];
++  const same = names.filter((s) => html(keepNameEnd(s)) === html(nameWithEnd(s, nameEndAt(s))));
++  ok(`4.1 · keepNameEnd is the two halves together — the cut (nameEndAt) and the drawing (nameWithEnd) — byte for byte, over ${names.length} names (marks, joiners, flags, conjuncts, jamo, a wide gap)`,
++    same.length === names.length, names.filter((s) => !same.includes(s)).map((s) => show(s)).join(" "));
++  ok("4.2 · nameWithEnd draws the name as it came for a cut that cuts nothing (−1, 0, the end, outside, not a whole index)",
++    ["Neema Juma"].every((s) => [-1, 0, s.length, s.length + 3, 2.5, Number.NaN].every((at) => nameWithEnd(s, at) === s)));
++  // The defect, as the reviewer measured it: U+0897 ARABIC PEPET is a mark from Unicode 16; an engine whose tables are
++  // older reads it as an unassigned character — exactly as this engine reads U+0378, unassigned in every version.
++  const name = "Neema Juma\u0897", older = "Neema Juma\u0378";
++  const nodeCut = nameEndAt(name), olderCut = nameEndAt(older);
++  ok(`4.3 CONTROL · the same pattern, two Unicode versions: Node cuts "Neema Juma"+U+0897 at ${nodeCut}, an engine with Unicode 15 tables at ${olderCut} — a client that re-derived the cut drew another span than the server's HTML (a hydration mismatch)`,
++    nodeCut !== olderCut && nodeCut > 0 && olderCut > 0, show({ nodeCut, olderCut }));
++  ok("4.4 · ★ …and with the cut handed down, the client draws the server's markup whatever its own tables: nameWithEnd(name, the server's cut) IS the server's keepNameEnd",
++    html(nameWithEnd(name, nodeCut)) === html(keepNameEnd(name)));
++  const editor = code("src/components/profile/name-editor.tsx"), page = code("src/app/profile/page.tsx"), hub = read("src/app/account/page.tsx");
++  const editorOk = (s: string) => /\? nameWithEnd\(currentName, currentNameEnd\) :/.test(s) && s.includes('import { nameWithEnd } from "@/components/ui/keep-words";')
++    && !/\b(?:keepNameEnd|nameEndAt|characterSpans)\b/.test(s) && /currentNameEnd: number;/.test(s);
++  ok("4.5 · /profile: the server page decides the cut (`nameEndAt`) and hands it down; the editor — a client component — draws it with `nameWithEnd` and holds no cut-deriving code at all",
++    editorOk(editor) && page.includes('currentNameEnd={nameEndAt(user.displayName ?? "")}') && !/^\s*["']use client["']/.test(page));
++  ok("4.5′ PLANT · the editor re-deriving its cut (`keepNameEnd(currentName)`, round 5) is reported",
++    !editorOk(editor.replace("nameWithEnd(currentName, currentNameEnd)", "keepNameEnd(currentName)").replace("import { nameWithEnd }", "import { keepNameEnd }")));
++  ok("4.6 · the hub keeps keepNameEnd: account/page.tsx is a server component, its name drawn once", !/^\s*["']use client["']/.test(hub) && hub.includes("{keepNameEnd(viewer.name)}"));
++  // The siblings: every client component that reads a Unicode property while it draws (a cut a browser could re-derive).
++  const SRC = "src";
++  const walk = (d: string): string[] => readdirSync(d).flatMap((x) => { const p = join(d, x); return statSync(p).isDirectory() ? walk(p) : /\.(tsx?|mts)$/.test(x) ? [p.split("\\").join("/")] : []; });
++  // A client module's first statement is its directive (comments before it go through the shared scanner — a pattern
++  // that skipped comments itself backtracked without end on a file opening with several of them).
++  const client = (s: string) => /^["']use client["']/.test(decomment(s).trimStart());
++  const CUT = /\b(?:keepNameEnd|nameEndAt|characterSpans)\(/;
++  const CLASSIFIED: Record<string, string> = {
++    "src/app/live/pulse-grid.tsx": "KeepHyphenated (hyphenParts) splits a market title by \\p{Script=Han}, \\p{L}, \\p{N}: the same mechanism, on officer- or AI-written titles in sw/en/zh — a mismatch needs a character newer than the browser's tables inside a hyphen token or at a Han boundary; named for the integrator (/live's first paint would take the server's parts)",
++    "src/app/global-error.tsx": "REGULATOR_NAME's optional \\p{Cf} between two fixed strings — the regulator's name, fixed copy: no character there is newer than any engine's tables",
++  };
++  const found = walk(SRC).filter((f) => {
++    const s = read(f);
++    if (!s.includes("\\p{") && !CUT.test(s)) return false;
++    return client(s) && (s.includes("\\p{") || CUT.test(decomment(s)));
++  });
++  const unclassified = found.filter((f) => !(f in CLASSIFIED)), stale = Object.keys(CLASSIFIED).filter((f) => !found.includes(f));
++  ok(`4.7 · the census: ${found.length} client components read a Unicode property (or derive a name's cut) while they draw, each classified — and none derives a name's cut`,
++    unclassified.length === 0 && stale.length === 0 && !found.some((f) => CUT.test(code(f))), show({ unclassified, stale }));
++  const editorRaw = read("src/components/profile/name-editor.tsx");
++  const plantedEditor = editorRaw.replace("nameWithEnd(currentName, currentNameEnd)", "keepNameEnd(currentName)");
++  ok("4.7′ PLANT · a client component deriving a name's cut again (the editor as round 5 left it) is found by the census, and is no classified exception",
++    plantedEditor !== editorRaw && client(plantedEditor) && CUT.test(decomment(plantedEditor)) && !("src/components/profile/name-editor.tsx" in CLASSIFIED));
++  for (const [f, why] of Object.entries(CLASSIFIED)) console.log(`       ${f}: ${why}`);
++}
++
++/* ══ §5 · A5 THE OLD ".." ALONE ══════════════════════════════════════════════════════════════════════════════════════ */
++section("5 · A5 the old template's doubled stop is mended where it put it, and nowhere else");
++{
++  const tile = "\"Je, S&P 500 itafungwa juu wiki hii?\" limefutwa: Dev fixture — source withdrawn before settlement.. Dau lako lote limerejeshwa kwenye pochi yako. · pos_34d10350dfa7510cfad5";
++  const mended = {
++    tile: readableNotificationBody(tile) === "\"Je, S&P 500 itafungwa juu wiki hii?\" limefutwa: Dev fixture — source withdrawn before settlement. Dau lako lote limerejeshwa kwenye pochi yako.",
++    end: readableNotificationBody("\"Kura\" — reason: Source withdrawn..") === "\"Kura\" — reason: Source withdrawn.",
++    line: readableNotificationBody("Sababu: x..\nDau") === "Sababu: x.\nDau",
++    zh: readableNotificationBody("已取消：来源已撤回.。您的本金") === "已取消：来源已撤回。您的本金",
++  };
++  ok("5.1 · the old shapes are mended: a reason's \"..\" before the next sentence's space or at the body's end, and \".。\" before the Chinese template's next sentence",
++    Object.values(mended).every(Boolean), show(mended));
++  const KEEP = ["range 1..2 here", "v1..v2", "see 4.2..4.5 inclusive", "Subiri...", "wait... ok", "ids a..b", "1..2", "x..y."];
++  const kept = KEEP.filter((s) => readableNotificationBody(s) === s);
++  ok(`5.2 · ★ free text a notice quotes keeps its dots: ${KEEP.map((s) => `"${s}"`).join(", ")} pass through unchanged`, kept.length === KEEP.length, show(KEEP.filter((s) => !kept.includes(s)).map((s) => [s, readableNotificationBody(s)])));
++  const round5 = (body: string) => body.replace(/ · pos_[A-Za-z0-9_]+(?=$|[\s.,;:!?。，])/g, "").replace(/(^|[^.])\.\.(?!\.)/g, "$1.").replace(/\.。/g, "。");
++  ok("5.3 CONTROL · round 5's rule mended \"..\" anywhere: \"range 1..2 here\" read \"range 1.2 here\"", round5("range 1..2 here") === "range 1.2 here" && round5(tile) === readableNotificationBody(tile));
++  const nt = code("src/lib/notification-text.ts");
++  ok("5.4 · the rule as written: `(^|[^.])\\.\\.(?=\\s|$)` — and both readers (the bell, /notifications) read every body through it",
++    nt.includes(".replace(/(^|[^.])\\.\\.(?=\\s|$)/g, \"$1.\")") && code("src/components/layout/notifications-panel.tsx").includes("readableNotificationBody(")
++      && code("src/app/notifications/page.tsx").includes("readableNotificationBody("));
++}
++
++/* ══ §6 · A6 A ROUND IN ITS PAGE'S WORDS ═════════════════════════════════════════════════════════════════════════════ */
++section("6 · A6 an Up & Down round is named in its page's own words — its <title>, and /positions/performance's rows");
++{
++  const LOCALES = ["sw", "en", "zh"] as const;
++  type L = (typeof LOCALES)[number];
++  const D = DICTS as unknown as Record<L, { market: { udTitle: string; udMin: string } }>;
++  // roundTitle, built from updown-service.ts's own text (the module itself opens the database).
++  const svc = code("src/lib/server/updown-service.ts");
++  const rtText = fnText(svc, svc.indexOf("export function roundTitle(")).replace(/^export /, "");
++  const roundTitle = safely(() => build<(a: Mod, d: number, l: string) => string>([], `${rtText}; return roundTitle;`)({}));
++  const ASSETS = [
++    { nameEn: "Bitcoin", nameSw: "Bitcoin", nameZh: "比特币" }, { nameEn: "Gold", nameSw: "Dhahabu", nameZh: "黄金" },
++    { nameEn: "S&P 500", nameSw: "S&P 500", nameZh: "" }, { nameEn: "Brent Oil", nameSw: "Mafuta ya Brent", nameZh: null },
++  ];
++  const MINUTES = [1, 3, 5, 15, 60];
++  const misread: string[] = [];
++  for (const a of ASSETS) for (const m of MINUTES) {
++    if (!roundTitle) break;
++    const stored = { titleEn: roundTitle(a, m, "en"), titleSw: roundTitle(a, m, "sw"), titleZh: roundTitle(a, m, "zh") };
++    const r = storedRound(stored);
++    for (const l of LOCALES) {
++      const asPage = roundName(D[l], pickLocalized(l, a.nameEn, a.nameSw, a.nameZh), m);
++      const asRead = r ? roundName(D[l], pickLocalized(l, r.nameEn, r.nameSw, r.nameZh), r.minutes) : "(not read)";
++      if (asPage !== asRead) misread.push(`${l} ${a.nameEn} ${m}: ${asRead} ≠ ${asPage}`);
++    }
++  }
++  ok(`6.1 · ★ every stored round title (roundTitle, run from its own text) reads back to the name its page gives it — ${ASSETS.length} assets × ${MINUTES.length} durations × 3 languages, an empty and a missing Chinese name among them`,
++    roundTitle !== null && misread.length === 0, misread.slice(0, 3).join(" | "));
++  ok("6.2 · …and anything else is shown as stored: a long-form question, or round titles that disagree with each other, read as no round",
++    storedRound({ titleEn: "Will Simba win the league?", titleSw: "Je, Simba itashinda ligi?", titleZh: null }) === null
++      && storedRound({ titleEn: "Bitcoin Up or Down · 15 min", titleSw: "Bitcoin Juu au Chini · dakika 5", titleZh: null }) === null
++      && storedRound({ titleEn: "Bitcoin Up or Down · 15 min", titleSw: "Kitu kingine", titleZh: null }) === null);
++  const words = LOCALES.map((l) => roundName(D[l], l === "zh" ? "比特币" : "Bitcoin", 15));
++  ok(`6.3 · the words are the page's: ${words.map((w) => `"${w}"`).join(", ")} — the h1's name and game, then its chip's minutes, as the Up & Down card names a round`,
++    words[0] === `Bitcoin ${D.sw.market.udTitle} · 15 ${D.sw.market.udMin}` && code("src/components/updown/updown-card.tsx").includes("aria-label={`${assetName} ${t.market.udTitle} · ${durationMinutes} ${t.market.udMin}`}")
++      && code("src/app/updown/[roundId]/page.tsx").includes('{name}{" "}<span className="whitespace-nowrap">{t.market.udTitle}</span>')
++      && code("src/app/updown/[roundId]/page.tsx").includes("<Chip>{round.durationMinutes} {t.market.udMin}</Chip>"));
++  const storedSw = roundTitle ? roundTitle(ASSETS[0], 15, "sw") : "";
++  ok(`6.4 CONTROL · the stored title is a third name for the game: "${storedSw}" beside the page's "${D.sw.market.udTitle}" — and round 5's <title> was the English stored title in every language`,
++    storedSw.includes("Juu au Chini") && !storedSw.includes(D.sw.market.udTitle));
++  const rp = code("src/app/updown/[roundId]/page.tsx");
++  const meta = fnText(rp, rp.indexOf("export async function generateMetadata("));
++  ok("6.5 · the round page's <title>, for a round that is there: `roundName` over the asset's name in the reader's language and the round's minutes — never the stored English title; a failed read and a missing round as R5-D left them",
++    meta.includes("return { title: roundName(t, pickLocalized(locale, d.asset.nameEn, d.asset.nameSw, d.asset.nameZh), d.round.durationMinutes) };")
++      && !/title: d\.titleEn/.test(meta) && meta.includes("catch { return { title: t.market.udTitle }; }") && meta.includes("if (!d) return notFoundMetadata();"));
++  const perf = code("src/app/positions/performance/page.tsx");
++  const perfOk = (s: string) => s.includes("const round = m.productLine === \"UPDOWN\" ? storedRound(m) : null;") && s.includes("title: m ? titleOf(m) : p.marketId.slice(0, 8),")
++    && s.includes("bestTitle = titleOf(m);") && (s.match(/pickLocalized\(locale, m\.titleEn, m\.titleSw, m\.titleZh\)/g) ?? []).length === 1;
++  ok("6.6 · /positions/performance (every product line): its recent rows and its best-win caption name a round in the page's words, through one `titleOf`; a long-form market keeps its question",
++    perfOk(perf));
++  ok("6.6′ PLANT · a recent row back on the stored title is reported", !perfOk(perf.replace("title: m ? titleOf(m) : p.marketId.slice(0, 8),", "title: m ? pickLocalized(locale, m.titleEn, m.titleSw, m.titleZh) : p.marketId.slice(0, 8),")));
++  // The siblings outside this fixer's area that still show a round's stored title: named for the integrator.
++  const NAMED = [
++    ["src/app/live/pulse-grid.tsx", "const title = pickLocalized(locale, market.titleEn, market.titleSw, market.titleZh);", "/live's wall: an Up & Down card's title (under its own \"Juu na Chini\" tag)"],
++    ["src/app/live/page.tsx", "title: pickLocalized(locale, m.titleEn, m.titleSw, m.titleZh), yesPct,", "/live's featured list"],
++    ["src/app/results/page.tsx", "title: pickLocalized(locale, m.titleEn, m.titleSw, m.titleZh),", "/results' rows (both product lines)"],
++    ["src/app/fairness/page.tsx", "const titleOf = (r: AttestationRow) => pickLocalized(locale, r.titleEn, r.titleSw, r.titleZh);", "/fairness' attestation archive (99% rounds)"],
++    ["src/lib/server/market-service.ts", "marketTitle: localizedText(m.titleEn, m.titleSw, m.titleZh),", "the Up & Down result notices (a writer: new notices quote the stored title)"],
++  ] as const;
++  const named = NAMED.filter(([f, s]) => code(f).includes(s));
++  ok(`6.7 · the siblings outside this area still read a round's stored title (named for the integrator, \`roundName\` + \`storedRound\` ready for them): ${named.length} of ${NAMED.length} found as named`,
++    named.length === NAMED.length, NAMED.filter((x) => !named.includes(x)).map(([f]) => f).join(", "));
++  for (const [f, , why] of NAMED) console.log(`       ${f}: ${why}`);
++}
++
++/* ══ §7 · A7 THE WIN NOTICE'S CUT ════════════════════════════════════════════════════════════════════════════════════ */
++section("7 · A7 the win notice cuts its market's name as every sibling cuts it");
++{
++  const ns = code("src/lib/server/notification-service.ts");
++  const win = fnText(ns, ns.indexOf("export function notifyWin("));
++  const winOk = (s: string) => s.includes("bodyEn: `${clipQuote(label.en, 70)} paid out. Tap to view.`,") && s.includes("bodySw: `${clipQuote(label.sw, 70)} kimelipa. Bonyeza kuona.`,")
++    && s.includes("bodyZh: `${clipQuote(label.zh, 50)} 已赔付。点击查看。`,") && !/\$\{label\.(?:en|sw|zh)\}/.test(s);
++  ok("7.1 · notifyWin quotes its market through clipQuote at 70 / 70 / 50 — no market title reaches a notice whole", winOk(win));
++  ok("7.1′ PLANT · the title quoted whole again (round 5) is reported", !winOk(win.replace("${clipQuote(label.sw, 70)} kimelipa", "${label.sw} kimelipa")));
++  // The rooms each emitter quotes a market title in (`opts.marketTitle` or `label`, per language).
++  const roomsOf = (fn: string, src = ns) => {
++    const body = fnText(src, src.indexOf(`export function ${fn}(`));
++    const r = (l: string) => [...new Set([...body.matchAll(new RegExp(`clipQuote\\((?:opts\\.marketTitle|label)\\.${l}, (\\d+)\\)`, "g"))].map((m) => Number(m[1])))].join("/") || "—";
++    return `${r("en")} · ${r("sw")} · ${r("zh")}`;
++  };
++  // A family is the notices one event sends, their sentences alike in length: one room each. (Across families the rooms
++  // are each family's own — the lengths R5-B kept from the old `.slice`, shorter where the sentence after the title is
++  // longer: the bet receipt's free-exit terms, the one-sided refund's explanation, the cancellation's reason.)
++  const FAMILIES: Array<[string, string[], string]> = [
++    ["a settled long-form market's result (the win, the loss, the void refund)", ["notifyWin", "notifyLoss", "notifyRefund"], "70 · 70 · 50"],
++    ["an Up & Down round's result (the win, the loss, the void and one-sided refunds)", ["notifyUpDownWin", "notifyUpDownLoss", "notifyUpDownRefund", "notifyUpDownOneSidedRefund"], "70 · 50 · 50"],
++    ["a watched market (closing soon, settled)", ["notifyWatchedClosingSoon", "notifyWatchedSettled"], "70 · 50 · 50"],
++  ];
++  const offIn = (src: string) => FAMILIES.flatMap(([, fns, want]) => fns.filter((f) => roomsOf(f, src) !== want).map((f) => `${f} ${roomsOf(f, src)} ≠ ${want}`));
++  const off = offIn(ns);
++  ok(`7.2 · ★ each family of notices quotes its market at one room per language — ${FAMILIES.map(([name, , want]) => `${name}: ${want}`).join("; ")} — the win now with its own family`,
++    off.length === 0, off.join(" | "));
++  const plantedLoss = safely(() => swap(ns, "${clipQuote(opts.marketTitle.sw, 70)} · Upande wako haukushinda.", "${clipQuote(opts.marketTitle.sw, 50)} · Upande wako haukushinda."));
++  ok("7.2′ PLANT · a family split — the loss's Swahili cut at 50 while its win and refund cut at 70 — is reported by 7.2",
++    plantedLoss !== null && offIn(plantedLoss).some((x) => x.startsWith("notifyLoss")), plantedLoss === null ? "plant failed" : offIn(plantedLoss).join(" | "));
++  for (const fn of ["notifyBetPlaced", "notifySelectionClosed", "notifyMarketCancelled", "notifyCashout", "notifyOneSidedRefund"]) console.log(`       ${fn}: ${roomsOf(fn)} (its own sentence)`);
++  const longSw = "Je, Simba SC watakuwa juu ya jedwali la NBC Premier League ifikapo raundi ya 20 ya msimu wa 2026-27?";
++  const now = `${clipQuote(longSw, 70)} kimelipa. Bonyeza kuona.`, before = `${longSw} kimelipa. Bonyeza kuona.`;
++  ok(`7.3 · the news comes before the push is cut: "kimelipa" at character ${now.indexOf("kimelipa")} (round 5: ${before.indexOf("kimelipa")}, after the whole question)`,
++    now.indexOf("kimelipa") <= 72 && before.indexOf("kimelipa") > 100 && now.includes("…"));
++}
++
++/* ══ the end ═════════════════════════════════════════════════════════════════════════════════════════════════════════ */
++console.log(`\nvisual-pass-r6b: ${pass} passed, ${fails.length} failed`);
++if (fails.length) {
++  for (const f of fails) console.error(`  · ${f}`);
++  process.exit(1);
++}
+diff --git a/src/app/live/pulse-grid.tsx b/src/app/live/pulse-grid.tsx
+index 5e9d7ac24..c5362d5ac 100644
+--- a/src/app/live/pulse-grid.tsx
++++ b/src/app/live/pulse-grid.tsx
+@@ -152,8 +152,8 @@ export function LivePulseGrid({ markets }: { markets: Market[] }) {
+ 
+ /**
+  * Renders a title with every hyphenated token ("30-day", "month-end?", "Man-City") in a nowrap span, so a balanced
+- * wrap can move the whole token but never break after its hyphen (E-400 ⑦b). `split` with a capturing group puts
+- * the tokens at odd indices and the text between them — spaces included — at even ones, so no space is added or lost.
++ * wrap can move the whole token but never break after its hyphen (E-400 ⑦b). `hyphenParts` (below) puts the tokens at
++ * odd indices and the text between them — spaces included — at even ones, so no space is added or lost.
+  * ⭐ ROUND 4 (2026-10-09, edges 197 255): a token stops at an ideograph, its hyphen touches a letter, and the text
+  * between the tokens keeps its figures whole. `\S*` ran across Chinese, which has no spaces, so
+  * "辛巴俱乐部赢得2026-27赛季NBC超级联赛" was ONE token — the whole title in one nowrap span, wider than any card. A token
+@@ -163,10 +163,45 @@ export function LivePulseGrid({ markets }: { markets: Market[] }) {
+  * figure renders as the plain text it was (a keyed fragment, no element).
+  */
+ export function KeepHyphenated({ text }: { text: string }) {
+-  const parts = text.split(/([^\s\p{Script=Han}]*(?:\p{L}-[\p{L}\p{N}]|\p{N}-\p{L})[^\s\p{Script=Han}]*)/u);
++  const parts = hyphenParts(text);
+   return <>{parts.map((part, i) => (i % 2 === 1 ? <span key={i} className="whitespace-nowrap">{part}</span> : <Fragment key={i}>{keepFigures(part)}</Fragment>))}</>;
+ }
+ 
++/* ⭐ THE SPLIT, IN ONE PASS (review 6, B-3 · 2026-10-09). It was one pattern —
++       text.split(/([^\s\p{Script=Han}]*(?:\p{L}-[\p{L}\p{N}]|\p{N}-\p{L})[^\s\p{Script=Han}]*)/u)
++   — which tried every start of a run that held no hyphen and ran to the run's end from each, so one long unbroken title
++   cost the square of its length. `hyphenParts` returns that split's very array (text, token, text, … , text), read once
++   over the code points: a token starts where the pattern's would — the first place whose run of non-space, non-Han
++   characters reaches a hyphen's core (a letter, "-", a letter or a number; or a number, "-", a letter) — takes the LAST
++   core that run reaches (the pattern's greedy start), and runs on to the end of the run after it. */
++const NOT_IN_TOKEN = /[\s\p{Script=Han}]/u;
++const LETTER = /\p{L}/u;
++const NUMBER = /\p{N}/u;
++export function hyphenParts(text: string): string[] {
++  const cp = Array.from(text);
++  const n = cp.length;
++  // runEnd[i]: where the run of non-space, non-Han characters starting at i ends (i itself when cp[i] is neither).
++  const runEnd = new Array<number>(n + 1);
++  runEnd[n] = n;
++  for (let i = n - 1; i >= 0; i--) runEnd[i] = NOT_IN_TOKEN.test(cp[i]) ? i : runEnd[i + 1];
++  const core = (i: number) => i + 2 < n && cp[i + 1] === "-"
++    && ((LETTER.test(cp[i]) && (LETTER.test(cp[i + 2]) || NUMBER.test(cp[i + 2]))) || (NUMBER.test(cp[i]) && LETTER.test(cp[i + 2])));
++  // lastCore[i]: the last place at or before i where a core starts, or −1.
++  const lastCore = new Array<number>(n + 1);
++  for (let i = 0; i <= n; i++) lastCore[i] = core(i) ? i : i > 0 ? lastCore[i - 1] : -1;
++  const parts: string[] = [];
++  let from = 0;
++  for (let q = 0; q < n; ) {
++    const at = lastCore[runEnd[q]];
++    if (at < q) { q++; continue; }
++    const end = runEnd[at + 3];
++    parts.push(cp.slice(from, q).join(""), cp.slice(q, end).join(""));
++    from = q = end;
++  }
++  parts.push(cp.slice(from).join(""));
++  return parts;
++}
++
+ /**
+  * ⭐ ONE TOP ROW IN EITHER STATE (2026-10-09, the visual pass's round 4, tile 178 at 1280). The Up & Down tag is a boxed
+  * chip — 2px of padding and a 1px rule above and below its 14px line, 20px — and a market's category was the bare 14px
+diff --git a/src/app/positions/performance/page.tsx b/src/app/positions/performance/page.tsx
+index 369db3bd9..ae29829ba 100644
+--- a/src/app/positions/performance/page.tsx
++++ b/src/app/positions/performance/page.tsx
+@@ -13,6 +13,7 @@ import { listPositionsForUser, getMarket } from "@/lib/server/market-service";
+ import { currentSession } from "@/lib/server/auth-service";
+ import { getServerT } from "@/lib/i18n-server";
+ import { pickLocalized } from "@/lib/localized";
++import { roundName, storedRound } from "@/lib/updown-round-name";
+ import { keepFigures } from "@/components/ui/keep-words";
+ import { sideWord } from "@/lib/side-label";
+ import { PageContainer } from "@/components/layout/page-container";
+@@ -132,11 +133,23 @@ export default async function PerformancePage({
+     pnlSeries.push({ label: `${d.getDate()}/${d.getMonth() + 1}`, value: cumulative });
+   }
+ 
++  /* ⭐ AN UP & DOWN ROUND IS NAMED IN ITS PAGE'S WORDS (review 6, A6 · C6 · 2026-10-09). This page lists every product
++     line, and a round's market title is its STORED one — "Bitcoin Juu au Chini · dakika 15", "Bitcoin Up or Down ·
++     15 min", a third name for the game beside the page's "Juu na Chini" — so a round is named as its own page and card
++     name it, "Bitcoin Juu na Chini · 15 dakika" (`roundName`), its asset and minutes read back from what was stored
++     (`storedRound`; display only, nothing rewritten). A long-form market keeps its question. */
++  const titleOf = (m: { productLine?: string | null; titleEn: string; titleSw: string | null; titleZh: string | null }) => {
++    const round = m.productLine === "UPDOWN" ? storedRound(m) : null;
++    return round
++      ? roundName(t, pickLocalized(locale, round.nameEn, round.nameSw, round.nameZh), round.minutes)
++      : pickLocalized(locale, m.titleEn, m.titleSw, m.titleZh);
++  };
++
+   // Best win title — B-1: deliberate degrade; a failed title lookup only drops
+   // the caption under the (real) payout figure.
+   let bestTitle = "";
+   if (bestMarket) {
+-    try { const m = await getMarket(bestMarket.marketId); if (m) bestTitle = pickLocalized(locale, m.titleEn, m.titleSw, m.titleZh); } catch { /* skip */ }
++    try { const m = await getMarket(bestMarket.marketId); if (m) bestTitle = titleOf(m); } catch { /* skip */ }
+   }
+ 
+   // Recent settled (last 5) + their market titles
+@@ -153,7 +166,7 @@ export default async function PerformancePage({
+     const d = new Date(p.settledAt ?? p.placedAt);
+     return {
+       id: p.id, marketId: p.marketId,
+-      title: m ? pickLocalized(locale, m.titleEn, m.titleSw, m.titleZh) : p.marketId.slice(0, 8),
++      title: m ? titleOf(m) : p.marketId.slice(0, 8),
+       // 🔴 §L1 · THE DEFECT ALI REPORTED, ON THE SURFACE HE NAMED — "in activity".
+       // This page is the ONE player list that does NOT filter by product line (line 28 takes
+       // every position, deliberately: a performance summary that hid half a player's book
+diff --git a/src/app/profile/page.tsx b/src/app/profile/page.tsx
+index 92571f395..6da13c45d 100644
+--- a/src/app/profile/page.tsx
++++ b/src/app/profile/page.tsx
+@@ -6,6 +6,7 @@ import { Stat } from "@/components/ui/stat";
+ import { FiftyMark } from "@/components/brand";
+ import { AvatarUploader } from "@/components/profile/avatar-uploader";
+ import { ProfileNameEditor } from "@/components/profile/name-editor";
++import { nameEndAt } from "@/components/ui/keep-words";
+ import { currentSession } from "@/lib/server/auth-service";
+ import { db } from "@/lib/server/store";
+ import { inviteViewerFor } from "@/lib/server/affiliate-service";
+@@ -176,6 +177,9 @@ export default async function ProfilePage() {
+             </p>
+             <ProfileNameEditor
+               currentName={user.displayName}
++              /* The name's kept end, decided HERE on the server and handed down: the editor (a client component) draws
++                 this cut and never re-derives it from the browser's Unicode tables (review 6, B-4 · `nameEndAt`). */
++              currentNameEnd={nameEndAt(user.displayName ?? "")}
+               fallbackPlaceholder={displayName}
+             />
+             <p className="mt-1.5 font-mono text-[12px] text-text-muted tabular-nums">
+diff --git a/src/app/updown/[roundId]/page.tsx b/src/app/updown/[roundId]/page.tsx
+index 52e33d994..c3ea42326 100644
+--- a/src/app/updown/[roundId]/page.tsx
++++ b/src/app/updown/[roundId]/page.tsx
+@@ -32,6 +32,7 @@ import { getServerT } from "@/lib/i18n-server";
+ // five chances to disagree about someone money.
+ import { refundReasonFor, REFUND_REASON_KEY, viewerRefundCopy } from "@/lib/updown-refund-reason";
+ import { pickLocalized } from "@/lib/localized";
++import { roundName } from "@/lib/updown-round-name";
+ // ⛔ ONE lexicon for side words across both products — never a local ternary (test:labels §4).
+ import { outcomeWord } from "@/lib/side-label";
+ import { fill, formatTzs } from "@/lib/utils";
+@@ -94,16 +95,20 @@ const eyebrow = "m-0 font-mono text-micro font-semibold uppercase eyebrow text-t
+  * metadata, `markets/[id]/page.tsx` has it): `t.market.udTitle`, the key `/updown` is titled by ("Juu na Chini",
+  * "涨跌"), where it was the English "Up & Down" in every language. Nothing here throws, so a failed read never decides
+  * the page.
++ * ⭐ A ROUND THAT IS THERE IS TITLED IN ITS h1's OWN WORDS (review 6, A6 · C6 · 2026-10-09): the asset in the reader's
++ * language, the game's name and the round's minutes — "Bitcoin Juu na Chini · 15 dakika", "比特币 涨跌 · 15 分钟"
++ * (`roundName`, the Up & Down card's accessible name too). It was the stored English title in every language —
++ * "Bitcoin Up or Down · 15 min", a third name for the game, beside a Swahili h1.
+  */
+ export async function generateMetadata({ params }: { params: Promise<{ roundId: string }> }): Promise<Metadata> {
+   const { roundId } = await params;
+-  const { t } = await getServerT();
++  const { t, locale } = await getServerT();
+   let d: Awaited<ReturnType<typeof getRoundDetail>> = null;
+   try {
+     d = await getRoundDetail(roundId);
+   } catch { return { title: t.market.udTitle }; }
+   if (!d) return notFoundMetadata();
+-  return { title: d.titleEn };
++  return { title: roundName(t, pickLocalized(locale, d.asset.nameEn, d.asset.nameSw, d.asset.nameZh), d.round.durationMinutes) };
+ }
+ 
+ export default async function UpDownRoundPage({
+diff --git a/src/components/charts/terminal-chart.tsx b/src/components/charts/terminal-chart.tsx
+index de576bfbd..d6ab7c61b 100644
+--- a/src/components/charts/terminal-chart.tsx
++++ b/src/components/charts/terminal-chart.tsx
+@@ -137,9 +137,28 @@ export function TerminalChart({
+     lastRawRef.current = "";
+     setFeed(null);
+     setStatus("loading");
++    /* ⭐ A HUNG REQUEST NO LONGER HOLDS THE POLL (review 6, B-2 · 2026-10-09). The deadline below says "Chart unavailable —
++       retrying" at 12s, but the poll waited for the request to settle before it paced the next one, so a stalled
++       connection — Cloudflare answers 524 only after its 100s origin timeout — held every retry: requests went out at 0,
++       30, 160 and 290s, and the pane said "retrying" while nothing was. Now each request has its own abort, chained to the
++       effect's (a new window or a close aborts it), and:
++         · a request that has not begun to answer by its deadline is presumed hung: the next poll that falls due sends a
++           fresh request (0, 30, 60…), and the fresh one aborts it — its answer would only have been discarded (`seq`: a
++           newer request owns the state), so its connection is freed instead of held;
++         · a request whose answer has begun is waited for, as before: a body slow to arrive (a 2G phone) still draws, and a
++           poll never starts a second download beside it;
++         · a late answer still draws (a cold start that answers at 20s), a drawn chart is never replaced (F3), and only a
++           VERIFIED empty answer says "no reads" — the rules below, unchanged.
++       At most one request is in flight. */
++    let inFlight: { abort: AbortController; overdue: boolean; answering: boolean } | null = null;
+     const load = async () => {
+       if (document.visibilityState === "hidden") return;
+       const seq = ++seqRef.current;
++      inFlight?.abort.abort(); // a newer request owns the state: the one before it stands down, its connection freed
++      const mine = { abort: new AbortController(), overdue: false, answering: false };
++      inFlight = mine;
++      const chained = () => mine.abort.abort();
++      ac.signal.addEventListener("abort", chained);
+       /* ⭐ "LOADING" HAS A DEADLINE (round 5 of the visual pass, 2026-10-09 — tiles 163 164 200, a card that read "Inapakia…"
+          over an empty pane). The request had none, so a window that never came — a stalled connection, a cold route — left
+          the pane saying it was loading for as long as the page stayed open. The route answers within its vendor's 8s
+@@ -148,6 +167,7 @@ export function TerminalChart({
+          retrying, so a late or a later answer still draws. A drawn chart is never replaced (F3); a VERIFIED empty
+          answer still says "no reads". */
+       const deadline = setTimeout(() => {
++        mine.overdue = true; // unanswered past its deadline: presumed hung, so the next poll replaces it (B-2, above)
+         if (alive && seq === seqRef.current) setStatus((s) => (s === "loading" ? "error" : s));
+       }, HISTORY_DEADLINE_MS);
+       try {
+@@ -157,8 +177,9 @@ export function TerminalChart({
+           // bandwidth saving the ETag was built for now reaches the phone
+           // (re-sign panel, data + graphing lenses).
+           cache: "no-cache",
+-          signal: ac.signal,
++          signal: mine.abort.signal,
+         });
++        mine.answering = true; // its answer has begun: a poll waits for it, so a slow body still draws (B-2, above)
+         if (!alive || seq !== seqRef.current) return; // a newer request owns the state
+         if (!r.ok) { setStatus((s) => (s === "ok" ? "ok" : "error")); return; } // keep a drawn chart (F3)
+         const raw = await r.text();
+@@ -177,6 +198,9 @@ export function TerminalChart({
+       } finally {
+         // The whole answer is in (or failed): the deadline stands down — a body that is slow to arrive is still waited for.
+         clearTimeout(deadline);
++        // …and this request leaves the effect's abort and the in-flight slot (B-2): a poll may send the next one.
++        ac.signal.removeEventListener("abort", chained);
++        if (inFlight === mine) inFlight = null;
+       }
+     };
+     rangeRef.current = range;
+@@ -190,7 +214,13 @@ export function TerminalChart({
+     const paceNext = () => {
+       const cadence = cadenceRef.current;
+       const wait = Math.min(Math.max(pollMs, cadence != null ? cadence / 2 : 0), 120_000);
+-      timer = setTimeout(async () => { await load(); if (alive) paceNext(); }, wait);
++      // ⭐ B-2 · the poll never waits on a request (it awaited each one, so a hung request held every retry): it sends when
++      // none is in flight, or when the one in flight is overdue and has not begun to answer (`load` aborts that one); a
++      // request still inside its deadline, or whose answer is arriving, is left to finish.
++      timer = setTimeout(() => {
++        if (inFlight === null || (inFlight.overdue && !inFlight.answering)) void load();
++        if (alive) paceNext();
++      }, wait);
+     };
+     paceNext();
+     const onReveal = () => { if (document.visibilityState === "visible") load(); };
+diff --git a/src/components/profile/name-editor.tsx b/src/components/profile/name-editor.tsx
+index be874daa8..cf14968c0 100644
+--- a/src/components/profile/name-editor.tsx
++++ b/src/components/profile/name-editor.tsx
+@@ -14,13 +14,17 @@ import { useT } from "@/lib/i18n";
+ import { updateProfileBasicsAction } from "@/app/profile/actions";
+ import { errorCopy } from "@/lib/error-copy";
+ import { refusalReason, refusalVariant } from "@/lib/failure-reasons";
+-import { keepNameEnd } from "@/components/ui/keep-words";
++import { nameWithEnd } from "@/components/ui/keep-words";
+ 
+ export function ProfileNameEditor({
+   currentName,
++  currentNameEnd,
+   fallbackPlaceholder,
+ }: {
+   currentName: string | null;
++  /** Where the name's kept end starts — `nameEndAt(currentName)`, decided by the SERVER and handed here, so this client
++   *  component draws the server's cut and never re-derives it from its own Unicode tables (review 6, B-4). −1: none. */
++  currentNameEnd: number;
+   fallbackPlaceholder: string;
+ }) {
+   const [editing, setEditing] = useState(false);
+@@ -180,7 +184,11 @@ export function ProfileNameEditor({
+      (`overflow-wrap: anywhere`, which also lets the flex item shrink below its longest word — `break-word` would not),
+      balances its lines, keeps its last two characters together (`keepNameEnd`), and the button never outgrows its
+      column (`max-w-full`). With nothing wider than the column, returning focus here after a save has nothing to reveal,
+-     so the hero has nothing to scroll sideways (the hero is `overflow-clip` as well, profile/page.tsx). */
++     so the hero has nothing to scroll sideways (the hero is `overflow-clip` as well, profile/page.tsx).
++     ⭐ THE SERVER'S CUT (review 6, B-4 · 2026-10-09): the kept end starts where the server said (`currentNameEnd`,
++     `nameEndAt` in profile/page.tsx) — the cut reads Unicode tables, and the browser's may be older than Node's, so a
++     cut re-derived here could land elsewhere and mismatch the server's HTML. A save refreshes the page (`router.refresh`),
++     which hands the new name and its cut down together. */
+   return (
+     <button
+       ref={triggerRef}
+@@ -190,7 +198,7 @@ export function ProfileNameEditor({
+       aria-label={t.common.editDisplayName}
+     >
+       <span className="min-w-0 font-display text-[24px] md:text-[28px] font-bold leading-tight tracking-[-0.02em] text-text text-balance [overflow-wrap:anywhere]">
+-        {currentName && currentName.trim() !== "" ? keepNameEnd(currentName) : (
++        {currentName && currentName.trim() !== "" ? nameWithEnd(currentName, currentNameEnd) : (
+           <span className="text-text-subtle italic">{fallbackPlaceholder}</span>
+         )}
+       </span>
+diff --git a/src/components/ui/keep-words.tsx b/src/components/ui/keep-words.tsx
+index f48f3486f..24f7d672c 100644
+--- a/src/components/ui/keep-words.tsx
++++ b/src/components/ui/keep-words.tsx
+@@ -239,6 +239,9 @@ export function keepFigures(text: string): ReactNode {
+  * mismatch. The pattern is the same text on both sides, and it uses only general categories and `\p{RI}` (Unicode
+  * property escapes: Chrome 64, Safari 11.1, Firefox 78), no lookbehind. `test:visual-pass-r5e` holds its cut to Node's
+  * own grapheme boundaries.
++ * ⚠️ THE SAME TEXT IS NOT THE SAME TABLES (review 6, B-4): `\p{M}` and `\p{L}` are each engine's Unicode version, so a
++ * character newer than the browser's tables can still be cut in two places. So the cut is decided ONCE, on the server,
++ * and handed to the client that draws the name again (`nameEndAt` / `nameWithEnd`, below) — the browser never re-derives it.
+  */
+ /** Marks that open a cluster: Unicode's Prepend class (Arabic number signs and their kin; U+113D1 since Unicode 16). */
+ const PREPEND = "\\u0600-\\u0605\\u06DD\\u070F\\u0890\\u0891\\u08E2\\u0D4E\\u{110BD}\\u{110CD}\\u{111C2}\\u{111C3}\\u{113D1}\\u{1193F}\\u{11941}\\u{11A3A}\\u{11A84}-\\u{11A89}\\u{11D46}\\u{11F02}";
+@@ -268,12 +271,32 @@ export function characterSpans(text: string): Array<[number, number]> {
+   return [...text.matchAll(CHARACTER)].map((m): [number, number] => [m.index ?? 0, (m.index ?? 0) + m[0].length]);
+ }
+ 
+-export function keepNameEnd(name: string): ReactNode {
++/**
++ * ⭐ THE CUT IS DECIDED ONCE, WHERE THE NAME IS FIRST DRAWN (review 6, B-4 · 2026-10-09). `CHARACTER`'s classes are the
++ * engine's own Unicode tables (`\p{M}`, `\p{L}`): a mark new in Unicode 16 — U+0897 ARABIC PEPET — is a mark to Node and
++ * an unassigned character to a browser whose tables are older, so the two cut "Neema Juma" + U+0897 one character apart,
++ * and the name editor — a client component, drawn on the server and again in the browser — drew its span in two places:
++ * a hydration mismatch on /profile. So the cut is a value: `nameEndAt` says where the kept end starts (−1: the name as it
++ * came); the server reads it, and a client that draws the name again is HANDED it (`nameWithEnd`) and never re-derives
++ * it. `keepNameEnd` is the two together, for a name drawn on the server alone (the hub, `account/page.tsx`).
++ */
++export function nameEndAt(name: string): number {
+   // The last two characters, read left to right (`characterSpans`' pattern), keeping only the last two.
+   let a: [number, number] | null = null, b: [number, number] | null = null;
+   for (const m of name.matchAll(CHARACTER)) { a = b; b = [m.index ?? 0, (m.index ?? 0) + m[0].length]; }
+-  if (!a || !b || a[0] <= 0 || !NAME_GAP.test(name.slice(a[1], b[0])) || !NAME_GAP.test(name.slice(b[1]))) return name;
+-  return [name.slice(0, a[0]), <span key="name-end" className="whitespace-nowrap">{name.slice(a[0])}</span>];
++  if (!a || !b || a[0] <= 0 || !NAME_GAP.test(name.slice(a[1], b[0])) || !NAME_GAP.test(name.slice(b[1]))) return -1;
++  return a[0];
++}
++
++/** The name with its last two characters kept together from `at` — `nameEndAt`'s answer, decided where the name was first
++ *  drawn: exactly `keepNameEnd`'s markup. An `at` that cuts nothing (−1, or outside the name) draws the name as it came. */
++export function nameWithEnd(name: string, at: number): ReactNode {
++  if (!Number.isInteger(at) || at <= 0 || at >= name.length) return name;
++  return [name.slice(0, at), <span key="name-end" className="whitespace-nowrap">{name.slice(at)}</span>];
++}
++
++export function keepNameEnd(name: string): ReactNode {
++  return nameWithEnd(name, nameEndAt(name));
+ }
+ 
+ /**
+diff --git a/src/components/ui/modal.tsx b/src/components/ui/modal.tsx
+index df98d9ec7..bcf6a4db4 100644
+--- a/src/components/ui/modal.tsx
++++ b/src/components/ui/modal.tsx
+@@ -419,7 +419,14 @@ export function Modal({
+       root: () => rootRef.current,
+       restoreTo,
+       focusIn,
+-      safe: () => safeFocusRef.current?.current ?? null,
++      /* ⭐ A WAY OUT THAT CANNOT TAKE FOCUS GIVES IT TO THE PANEL (review 6, B-1 · 2026-10-09). The dialog drawn over this
++         one closing hands focus to its way out (Cancel, "Hifadhi nafasi") — which is disabled while this dialog's request
++         is in flight, so the focus given went nowhere. It now lands on the panel: inside the dialog, never on its money
++         button. A dialog that names no way out is as before. */
++      safe: () => {
++        const way = safeFocusRef.current?.current ?? null;
++        return way === null ? null : way.isConnected && !way.matches(":disabled") ? way : panelRef.current;
++      },
+     };
+     openLayer(layer);
+     openLayerRef.current = layer;
+@@ -460,14 +467,19 @@ export function Modal({
+       if (e.key !== "Tab") return;
+       // Focus trap: keep Tab inside the dialog instead of leaking behind the scrim.
+       const f = focusables();
+-      if (f.length === 0) return;
+-      const first = f[0], last = f[f.length - 1];
+       const active = document.activeElement;
+       /* ⭐ S6 A8i-2 · focus outside this panel (on the scrim, on the page behind, in a dialog underneath, or nowhere) is
+          brought into it, both ways: a plain Tab from there used to walk the page behind the scrim. A surface drawn over
+          this dialog (a calendar it opened) keeps its own Tab. */
+       if (whereIs(openLayers(), active, isNowhere(active)) === "above") return;
+-      if (!panelRef.current?.contains(active)) {
++      /* ⭐ NOTHING HERE CAN TAKE FOCUS (review 6, B-1 · 2026-10-09): a request in flight disables every control and
++         withholds the ✕. This returned without a word, so the browser's own Tab left the dialog. Tab now stays: the
++         panel itself holds focus (`tabIndex={-1}`, below). */
++      if (f.length === 0) { e.preventDefault(); panelRef.current?.focus(); return; }
++      const first = f[0], last = f[f.length - 1];
++      /* …and from the panel itself (where the line above, `focusIn` or `safe` put focus), Tab goes to the first control
++         and Shift+Tab to the last: the browser's own Shift+Tab from the panel would walk out behind the scrim. */
++      if (!panelRef.current?.contains(active) || active === panelRef.current) {
+         e.preventDefault(); (e.shiftKey ? last : first).focus();
+       } else if (e.shiftKey && active === first) {
+         e.preventDefault(); last.focus();
+@@ -542,6 +554,14 @@ export function Modal({
+           with, and dropping the border here would have cost the dialog its edge. */}
+       <div
+         ref={panelRef}
++        /* ⭐ THE PANEL HOLDS FOCUS WHEN NOTHING IN IT CAN (review 6, B-1 · 2026-10-09). While a request the dialog sent is
++           in flight, every control in it is disabled and its ✕ withheld (`CloseX`), so the trap's list is empty — and Tab
++           fell through to the browser and left this aria-modal dialog for the page behind the scrim (the bet and Sell
++           confirms, ConfirmModal's medium tier). Focusable from script alone (`-1`: never in the Tab order, never in
++           FOCUSABLE), the panel is where the trap, the opening (`focusIn`) and an uncovering (`safe`) put focus then —
++           inside the dialog, on nothing pressable. `outline-none`, as the repo's other script-only focus targets: a ring
++           round the whole dialog is no control's focus ring (forced colours still draw it: the outline is transparent). */
++        tabIndex={-1}
+         /* ⭐ `data-rung` IS THE ADOPTION LEDGER, not a test hook bolted on.
+            A surface that picks a rung declares WHICH one, in the markup, so the set of
+            rung-adopting surfaces can be ENUMERATED instead of grepped for whichever
+@@ -562,7 +582,7 @@ export function Modal({
+         /* §M2: modal → `.m-dialog-in` or `.m-sheet-in` on the way in, `.m-out` on
+            the way out. The sheet's ≥sm keyframe swap goes with the entrance only —
+            `.m-out` is one exit for both variants, which is what the law names. */
+-        className={`${exiting ? "m-out" : tall ? "m-sheet-in kp-modal-sheet-lg" : sheet ? "m-sheet-in kp-modal-sheet" : "m-dialog-in"} mat-modal relative w-full p-5 lg:p-6 ${
++        className={`${exiting ? "m-out" : tall ? "m-sheet-in kp-modal-sheet-lg" : sheet ? "m-sheet-in kp-modal-sheet" : "m-dialog-in"} mat-modal relative w-full p-5 lg:p-6 outline-none ${
+           tall ? "rounded-t-modal lg:rounded-modal lg:my-auto"
+             : sheet ? "rounded-t-modal sm:rounded-modal sm:my-auto" : "my-auto rounded-modal"
+         }${anchored ? " kp-modal-anchored" : ""} ${panelClassName}`}
+diff --git a/src/lib/fill-nodes.tsx b/src/lib/fill-nodes.tsx
+index 674b04f16..b6baca9b0 100644
+--- a/src/lib/fill-nodes.tsx
++++ b/src/lib/fill-nodes.tsx
+@@ -75,9 +75,25 @@ export function moneyRuns(text: string): ReactNode[] {
+  * Chinese, and a sentence of two words or fewer, take `moneyRuns` alone (`keepLastWords`' own two rules, keep-words.tsx).
+  */
+ const IDEOGRAPH = /[㐀-䶿一-鿿豈-﫿]/;
+-const LAST_TWO = /\S+\s+\S+\s*$/;
++const SPACE = /\s/;
++/**
++ * Where the sentence's last two words start, or −1 when it has fewer than two: exactly what `/\S+\s+\S+\s*$/` finds first
++ * (`text.search`), read back from the end in one pass. ⭐ LINEAR (review 6, B-3 · 2026-10-09): that pattern tried every
++ * start and ran to the sentence's end from each, so one long unbroken word cost the square of its length.
++ */
++export function lastTwoWordsAt(text: string): number {
++  let i = text.length;
++  while (i > 0 && SPACE.test(text[i - 1])) i--; // the spaces after the last word
++  if (i === 0) return -1;
++  while (i > 0 && !SPACE.test(text[i - 1])) i--; // the last word
++  if (i === 0) return -1;
++  while (i > 0 && SPACE.test(text[i - 1])) i--; // the spaces between the two
++  if (i === 0) return -1;
++  while (i > 0 && !SPACE.test(text[i - 1])) i--; // the word before it
++  return i;
++}
+ export function moneySentence(text: string): ReactNode[] {
+-  let at = IDEOGRAPH.test(text) ? -1 : text.search(LAST_TWO);
++  let at = IDEOGRAPH.test(text) ? -1 : lastTwoWordsAt(text);
+   for (const m of text.matchAll(MONEY_RUN)) {
+     const start = m.index ?? 0;
+     if (start < at && at < start + m[0].length) at = start;
+diff --git a/src/lib/notification-text.ts b/src/lib/notification-text.ts
+index 5fa315206..c9a0383d2 100644
+--- a/src/lib/notification-text.ts
++++ b/src/lib/notification-text.ts
+@@ -25,7 +25,11 @@ import { positionAnchorId, positionPermalinkHref } from "@/lib/position-permalin
+ export function endClause(text: string, stop: "." | "。"): string {
+   const t = text.trimEnd();
+   if (/[!?！？…]$/.test(t)) return t;
+-  return `${t.replace(/[.。]+$/, "")}${stop}`;
++  // Its own closing stops dropped, read back from the end — exactly the cut `/[.。]+$/` made. ⭐ LINEAR (review 6, B-3 ·
++  // 2026-10-09): that pattern tried every stop of a run as a start and ran to the run's end from each.
++  let end = t.length;
++  while (end > 0 && (t[end - 1] === "." || t[end - 1] === "。")) end--;
++  return `${t.slice(0, end)}${stop}`;
+ }
+ 
+ /**
+@@ -87,10 +91,16 @@ export function roundTicketHref(roundHref: string, positionId: string | undefine
+  * and mend the doubled full stop the old template made (".." → ".", ".。" → "。"). A sentence written today has neither,
+  * so it passes through unchanged. ⚠️ Only those two shapes: an ellipsis ("...") is not touched, and an id the reader
+  * should see is never written this way — a receipt states its "Reference" in words.
++ * ⭐ ONLY WHERE THE OLD TEMPLATE PUT IT (review 6, A5 · 2026-10-09): ".." was mended anywhere in any body, new rows
++ * included, so free text a notice quotes lost a dot — "range 1..2" read "range 1.2". The old template doubled the stop
++ * only where a reason ENDED, before the next sentence's space or at the body's end: "…settlement.. Dau lako…",
++ * "…reason: Source withdrawn..". So ".." is mended there alone (`\.\.(?=\s|$)`); ".。" (a reason's "." before the Chinese
++ * template's "。") as before. "。。" is left as it is, as it always was: Chinese puts no space after a stop, so the old
++ * shape cannot be told from free text there, and "。。。" is an ellipsis.
+  */
+ export function readableNotificationBody(body: string): string {
+   return body
+     .replace(/ · pos_[A-Za-z0-9_]+(?=$|[\s.,;:!?。，])/g, "")
+-    .replace(/(^|[^.])\.\.(?!\.)/g, "$1.")
++    .replace(/(^|[^.])\.\.(?=\s|$)/g, "$1.")
+     .replace(/\.。/g, "。");
+ }
+diff --git a/src/lib/security-headers.ts b/src/lib/security-headers.ts
+new file mode 100644
+index 000000000..920efbd01
+--- /dev/null
++++ b/src/lib/security-headers.ts
+@@ -0,0 +1,44 @@
++/**
++ * ⭐ THE STATIC SECURITY HEADERS — ONE DEFINITION, TWO SENDERS (review 6, A4 · 2026-10-09).
++ *
++ * 🔴 WHAT WAS LEFT OPEN. `src/proxy.ts` was the only source of these headers, and its matcher skips public/'s static
++ * folders and favicons by name (a static file needs no page headers). But a MISSING file there is a page: `/icons/nope`,
++ * `/brand/x`, `/og/x` render the root not-found inside the signed-in shell (the header's name, masked phone and balance)
++ * — and that page went out with none of them, so another site could frame it.
++ * ⭐ NOW BOTH SEND THEM. The proxy sets them on every response it handles, with the CSP (which is the proxy's alone: it
++ * depends on the request, `upgrade-insecure-requests` only over HTTPS). next.config.ts's `headers()` sets them on EVERY
++ * response (`/:path*`), so whatever the proxy's matcher skips carries them too. `test:static-cache-scope` holds the two
++ * to this one list; `test:proxy-scope` holds the matcher to static files.
++ * ⛔ No imports, no path alias: next.config.ts loads this file through Next's own TypeScript hook (`next-config-ts`),
++ * before the app's aliases exist.
++ */
++
++/** Sent on every response, in every environment. */
++export const SECURITY_HEADERS: Readonly<Record<string, string>> = {
++  "X-Frame-Options": "DENY",
++  "X-Content-Type-Options": "nosniff",
++  "Referrer-Policy": "strict-origin-when-cross-origin",
++  "X-DNS-Prefetch-Control": "on",
++  "Permissions-Policy": [
++    "accelerometer=()",
++    "autoplay=()",
++    "camera=(self)",
++    "microphone=()",
++    "geolocation=()",
++    "payment=()",
++    "usb=()",
++    "fullscreen=(self)",
++  ].join(", "),
++  "Cross-Origin-Opener-Policy": "same-origin",
++  "X-Permitted-Cross-Domain-Policies": "none",
++};
++
++/** Sent in production only: HSTS is honoured over HTTPS alone, and a local http origin must never be pinned. */
++export const PROD_HEADERS: Readonly<Record<string, string>> = {
++  "Strict-Transport-Security": "max-age=63072000; includeSubDomains; preload",
++};
++
++/** Every static security header for one environment — all but the CSP — as next.config's `headers()` lists them. */
++export function staticSecurityHeaders(production: boolean): Array<{ key: string; value: string }> {
++  return Object.entries({ ...SECURITY_HEADERS, ...(production ? PROD_HEADERS : {}) }).map(([key, value]) => ({ key, value }));
++}
+diff --git a/src/lib/server/notification-service.ts b/src/lib/server/notification-service.ts
+index 5d65cdbee..42f144efe 100644
+--- a/src/lib/server/notification-service.ts
++++ b/src/lib/server/notification-service.ts
+@@ -374,9 +374,13 @@ export function notifyWin(userId: string, amount: number, label: LocalizedText,
+     titleEn: `You won ${formatTzs(amount)}`,
+     titleSw: `Umeshinda ${formatTzs(amount)}`,
+     titleZh: `您赢得 ${formatTzs(amount)}`,
+-    bodyEn: `${label.en} paid out. Tap to view.`,
+-    bodySw: `${label.sw} kimelipa. Bonyeza kuona.`,
+-    bodyZh: `${label.zh} 已赔付。点击查看。`,
++    // ⭐ THE MARKET'S NAME CUT TO ITS ROOM, AS ITS SIBLINGS CUT IT (review 6, A7 · 2026-10-09): `clipQuote` at 70 / 70 / 50
++    // — the rooms of the two other notices a settled long-form market sends, the loss and the void refund. This was the one
++    // market title R5-B's sweep did not reach (it had no `.slice`): a long question quoted whole pushed "paid out" /
++    // "kimelipa" off a phone's lock screen, where the push shows only its first lines — the sentence the notice is for.
++    bodyEn: `${clipQuote(label.en, 70)} paid out. Tap to view.`,
++    bodySw: `${clipQuote(label.sw, 70)} kimelipa. Bonyeza kuona.`,
++    bodyZh: `${clipQuote(label.zh, 50)} 已赔付。点击查看。`,
+     href,
+   });
+ }
+diff --git a/src/lib/updown-round-name.ts b/src/lib/updown-round-name.ts
+new file mode 100644
+index 000000000..acb200d20
+--- /dev/null
++++ b/src/lib/updown-round-name.ts
+@@ -0,0 +1,42 @@
++/**
++ * ⭐ AN UP & DOWN ROUND'S NAME, IN THE ROUND PAGE'S OWN WORDS (review 6, A6 · C6 · 2026-10-09).
++ *
++ * The round page names a round in its h1 — "{asset} {udTitle}" over a "{minutes} {udMin}" chip — and the Up & Down card's
++ * accessible name is that same line (`updown-card.tsx`): "Bitcoin Juu na Chini · 15 dakika", "Bitcoin Up & Down · 15 min",
++ * "比特币 涨跌 · 15 分钟". The round's STORED title (`roundTitle`, updown-service.ts) is a third name for the game —
++ * "Bitcoin Juu au Chini · dakika 15", "Bitcoin Up or Down · 15 min" — kept as written, for the audit trail and the
++ * reports, and never rewritten. A reader's surface names a round in the page's words: the page's own <title>, and the
++ * surfaces that list a round as a market (`/positions/performance`).
++ * Pure and client-safe: the words come in with the caller's dictionary.
++ */
++
++/** The two dictionary words a round's name is made of (`t.market.udTitle`, `t.market.udMin`). */
++export type RoundWords = { market: { udTitle: string; udMin: string } };
++
++/** "{asset} {udTitle} · {minutes} {udMin}" — the h1's words and the card's accessible name. */
++export function roundName(t: RoundWords, assetName: string, durationMinutes: number): string {
++  return `${assetName} ${t.market.udTitle} · ${durationMinutes} ${t.market.udMin}`;
++}
++
++/** A round's asset name in each language and its minutes, read back from its STORED titles. */
++export type StoredRound = { nameEn: string; nameSw: string | null; nameZh: string | null; minutes: number };
++
++const STORED_EN = /^(.+) Up or Down · (\d+) min$/;
++const STORED_SW = /^(.+) Juu au Chini · dakika (\d+)$/;
++const STORED_ZH = /^(.+)涨跌 · (\d+)分钟$/;
++
++/**
++ * The asset's names and the minutes, read back from the three titles `roundTitle` wrote (its shape has not changed since
++ * rounds began, 2026-07-24: `${nameEn} Up or Down · ${m} min`, `${nameSw} Juu au Chini · dakika ${m}`,
++ * `${nameZh || nameEn}涨跌 · ${m}分钟`). Null for titles of any other shape — a long-form market's question, or a title that
++ * does not agree with itself — which the caller then shows as stored. Display only: nothing stored is rewritten.
++ */
++export function storedRound(titles: { titleEn: string; titleSw: string | null; titleZh: string | null }): StoredRound | null {
++  const en = STORED_EN.exec(titles.titleEn);
++  if (!en) return null;
++  const minutes = Number(en[2]);
++  const sw = titles.titleSw ? STORED_SW.exec(titles.titleSw) : null;
++  const zh = titles.titleZh ? STORED_ZH.exec(titles.titleZh) : null;
++  if ((titles.titleSw && (!sw || Number(sw[2]) !== minutes)) || (titles.titleZh && (!zh || Number(zh[2]) !== minutes))) return null;
++  return { nameEn: en[1], nameSw: sw ? sw[1] : null, nameZh: zh ? zh[1] : null, minutes };
++}
+diff --git a/src/proxy.ts b/src/proxy.ts
+index 379b24450..591465e34 100644
+--- a/src/proxy.ts
++++ b/src/proxy.ts
+@@ -27,6 +27,7 @@ import { NextResponse, type NextRequest } from "next/server";
+ // Pure + client-safe by its own header (no DB, no server-only imports), so the proxy can import it without pulling server code in.
+ // Importing it rather than re-listing the staff roles here keeps ONE source of truth for "who is staff".
+ import { isStaffRole } from "@/lib/server/roles";
++import { PROD_HEADERS, SECURITY_HEADERS } from "@/lib/security-headers";
+ 
+ // Must match COOKIE_NAME in src/lib/server/session.ts
+ const SESSION_COOKIE = "kp_session";
+@@ -131,28 +132,9 @@ async function readVerifiedSession(token: string | undefined): Promise<{ role?:
+   }
+ }
+ 
+-const SECURITY_HEADERS: Record<string, string> = {
+-  "X-Frame-Options": "DENY",
+-  "X-Content-Type-Options": "nosniff",
+-  "Referrer-Policy": "strict-origin-when-cross-origin",
+-  "X-DNS-Prefetch-Control": "on",
+-  "Permissions-Policy": [
+-    "accelerometer=()",
+-    "autoplay=()",
+-    "camera=(self)",
+-    "microphone=()",
+-    "geolocation=()",
+-    "payment=()",
+-    "usb=()",
+-    "fullscreen=(self)",
+-  ].join(", "),
+-  "Cross-Origin-Opener-Policy": "same-origin",
+-  "X-Permitted-Cross-Domain-Policies": "none",
+-};
+-
+-const PROD_HEADERS: Record<string, string> = {
+-  "Strict-Transport-Security": "max-age=63072000; includeSubDomains; preload",
+-};
++// The static security headers (`SECURITY_HEADERS`, `PROD_HEADERS`) live in `@/lib/security-headers`, their one
++// definition: next.config.ts sends the same list on every response, so what this proxy's matcher skips carries them too
++// (review 6, A4). The CSP below stays here — it depends on the request.
+ 
+ // CSP: 'unsafe-inline' is required for Next.js hydration scripts and
+ // Tailwind's runtime style injection. 'unsafe-eval' is required by
+@@ -249,15 +231,16 @@ export async function proxy(req: NextRequest) {
+     // entitled to /admin, and deleting it would sign a player out of the site for visiting a URL.
+     // ⚠️ Coarse and subtractive only: it refuses an account whose own cookie says it is not staff. A demoted
+     // account's stale cookie still passes here and is caught by the per-page stored-row gate (belt 2).
+-    // ⚠️ A KNOWN GAP IN THIS BELT, STATED RATHER THAN GLOSSED, and the reason belt 2 is not redundant.
+-    // `config.matcher` (the last lines of this file) excludes `_next/static`, `_next/image`, `favicon.ico` and ANY path ending in an image
+-    // extension — so this function never runs for `/admin/players/<anything>.png`, which a dynamic `[id]` segment
+-    // happily matches. The edge is therefore skippable by URL shape alone, without any router-state trickery.
+-    // ⭐ It is not exploitable for disclosure today, and the reason is worth writing down: the id must resolve, and
+-    // `<id>.png` never does — `findById` answers null and the page answers `notFound()`. But "not exploitable
+-    // because the lookup fails" is a property of the DATA, not of the gate, and a future route whose segment is not
+-    // an id would not have it. The page's own gate (belt 2) runs regardless of this matcher, which is exactly why
+-    // every admin page carries one and why neither belt is described as sufficient alone.
++    // ⚠️ WHERE THIS BELT DOES NOT RUN, STATED RATHER THAN GLOSSED (corrected in review 6, A4 · 2026-10-09). This note
++    // said `config.matcher` skipped ANY path ending in an image extension, so `/admin/players/<anything>.png` passed the
++    // edge by URL shape alone. The matcher (the last lines of this file) now skips static files only — Next's build
++    // output and image optimiser, public/'s static folders by name and the two favicons by exact name — so this belt runs
++    // for every /admin address (`test:proxy-scope` §1 holds `/admin/players/u_1.png`). What it skips is a static file, or
++    // a missing one under those folders, which renders the root not-found (never an admin page) and carries the static
++    // security headers from next.config.ts.
++    // ⭐ Belt 2 is still not redundant: this belt reads the COOKIE's role, so a demoted account's stale cookie passes it
++    // (above), and the page's own gate runs whatever any matcher says — which is exactly why every admin page carries
++    // one and why neither belt is described as sufficient alone.
+     if (pathname.startsWith("/admin") && !isStaffRole(session.role)) {
+       const url = req.nextUrl.clone();
+       url.pathname = "/auth/admin";
+@@ -302,8 +285,12 @@ export const config = {
+   // another site. The same suffix defect next.config's immutable-cache rule had (hotfix 9cb95938). Skipped now: Next's
+   // build output and image optimiser, and public/'s own static folders and favicons — top-level names, each with its
+   // slash (`/iconsx/…` is NOT skipped). Must stay a string literal (Next reads `config` statically).
++  // ⭐ THE FAVICONS BY THEIR EXACT NAMES (review 6, A4 · 2026-10-09): they were `favicon.ico|favicon.svg` — an unescaped
++  // dot and no end — so `/favicon.icon`, `/favicon.ico/x`, `/faviconXico` and `/favicon.svgz`, page addresses all, skipped
++  // the proxy too. Now `favicon\.ico$` and `favicon\.svg$`: the two files and nothing else. (A page under a static folder,
++  // the not-found of a missing file there, still skips it: it carries the static security headers from next.config.ts.)
+   // `test:proxy-scope` compiles this with Next's own `getMiddlewareMatchers` and proves no page address is skipped.
+   matcher: [
+-    "/((?!_next/static|_next/image|favicon.ico|favicon.svg|icons/|brand/|pay/|og/|screenshots/|email-signatures/).*)",
++    "/((?!_next/static|_next/image|favicon\\.ico$|favicon\\.svg$|icons/|brand/|pay/|og/|screenshots/|email-signatures/).*)",
+   ],
+ };

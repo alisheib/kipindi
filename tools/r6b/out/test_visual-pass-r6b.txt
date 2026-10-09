@@ -1,0 +1,85 @@
+── 1 · B-1 focus never leaves a money confirm while its request is in flight (modal.tsx) ───────────────
+  ok   1.1 · the trap's FOCUSABLE list is the selector this suite reads markup by (so what it counts is what the trap finds)
+  ok   1.2 · the condition, on the REAL panels: in flight, the Sell confirm, the bet confirm and ConfirmModal's medium tier each hold 0/0/0 controls the trap can focus (every one disabled, the ✕ withheld) — idle, 3/3/3
+  ok   1.3 · ★ RUN · in flight (no control can take focus), Tab and Shift+Tab stay in the dialog — the panel itself holds focus — from a disabled button inside and from nowhere alike
+  ok   1.4 · RUN · …and a surface drawn over the dialog keeps its own Tab, and a dialog covered by another answers no key (S6 A8i-2, as before)
+  ok   1.5 · RUN · from the panel itself (once the answer has come and its controls are back), Tab goes to the first control and Shift+Tab to the last — the browser's own Shift+Tab from the panel would walk out behind the scrim
+  ok   1.6 · RUN · the trap as it was: focus outside is brought in both ways, the ends wrap, and a Tab between two controls is the browser's own
+  ok   1.7 CONTROL · round 5's trap (`if (f.length === 0) return;`): in flight, Tab was the browser's own — focus left the aria-modal dialog for the page behind the scrim (the reviewer's 0 focusables at the tip)
+  ok   1.7′ PLANT · focus on the panel treated as inside (the Shift+Tab from it the browser's) is reported by 1.5
+  ok   1.8 · the panel is focusable from script alone (`tabIndex={-1}`: out of the Tab order and out of FOCUSABLE) and draws no ring of its own (`outline-none`, as the repo's other script-only focus targets)
+  ok   1.9 · the opening's own fallback (`focusIn`: its first target, else its first control, else the panel) — dead while the panel took no focus — now lands
+  ok   1.10 · ★ RUN · the dialog drawn over a confirm closing hands focus to the confirm's way out — and when that way out is disabled (its request in flight) or gone, to the panel: inside the dialog, never its money button, never nowhere; a dialog naming no way out is as before
+  ok   1.10′ CONTROL · round 5's `safe` handed focus to the disabled Cancel — a focus that goes nowhere
+  ok   1.11 · the siblings legitimately differ: the bell's panel (frozen classic chrome) and the filter sheet trap the same way, but their ✕ is never disabled nor withheld, so their list is never empty and the line is unreachable — both containers already take script focus (`tabIndex={-1}`)
+       browser check for the lock turn: throttle the network, press Confirm on the bet (and the Sell) confirm, press Tab —
+       document.activeElement stays inside [role=dialog] (on its panel), and Shift+Tab too; when the answer comes, Tab reaches its first control.
+
+── 2 · B-2 a hung request no longer holds the chart's poll (terminal-chart.tsx's data effect, run on a virtual clock) 
+  ok   2.1 · ★ RUN · a route that stalls 100s (Cloudflare's 524): the pane says "unavailable — retrying" at 12s, and it IS retrying — a fresh request every 30s (0, 30, 60, 90, 120, 150, 180, 210, 240, 270s), each one that never began to answer aborted, never two at once
+  ok   2.2 · RUN · a late answer still draws: a cold start that answers at 20s turns the pane from "unavailable" to the chart at 20s
+  ok   2.3 · RUN · a drawn chart is never replaced: drawn at 1s, then every request stalls — the pane keeps the chart for five minutes (F3)
+  ok   2.4 · RUN · only a VERIFIED empty answer says "no reads"; a refused one says "unavailable"
+  ok   2.5 · RUN · a body slow to arrive (headers at 5s, the last byte at 45s, a 2G phone) is waited for — the 30s poll sends no second download beside it — and draws at 45s; the next request goes at 60s
+  ok   2.6 · RUN · closing the chart (a new window, a page left) aborts the request in flight — through the effect's abort, to which each request is chained — and nothing is set after
+  ok   2.7 · RUN · each request leaves the effect's abort when it settles: one listener while a request is in flight, none after ten — they never pile up over hours of polling
+  ok   2.8 CONTROL · round 5's poll (it awaited each request): against the same stall the requests went out at 0, 30, 160, 290s — the reviewer's 0, 30, 160, 290 — while the pane said "retrying"
+  ok   2.9 PLANT · the answer's start no longer marked (a slow body replaced at the next poll, so it never draws) is reported by 2.5
+  ok   2.9′ PLANT · the deadline no longer marking its request overdue (the poll waits the stall out again) is reported by 2.1
+  ok   2.9″ PLANT · a new request no longer aborting the hung one (they pile up behind the stall) is reported by 2.1
+  ok   2.9‴ PLANT · a request no longer chained to the effect's abort (a closed chart's request runs on) is reported by 2.6
+
+── 3 · B-3 moneySentence's last two words, /live's hyphen tokens and endClause: linear, and exactly what they replaced 
+  ok   3.1 · ★ EXACT · over 30,000 seeded strings, lastTwoWordsAt is `/\S+\s+\S+\s*$/`'s search, hyphenParts is the old split's very array, and endClause cuts as `/[.。]+$/` did (both stops): 0 differences
+  ok   3.2 · linear, whatever the text: six adversarial 20,000-character texts through all three readers (and moneySentence) take 19ms together
+  ok   3.3 CONTROL · the three patterns they replaced take 367ms on 10,000 characters (the readers 1.3ms) — the square of the length
+  ok   3.4 · the three draw through them: moneySentence reads `lastTwoWordsAt`, KeepHyphenated `hyphenParts`, endClause its backward strip — no quadratic pattern is left in any of the three
+  ok   3.5 · /live's wall draws as before: "30-day" and "month-end?" whole, the Chinese title in short tokens, "2026-27" left to keepFigures
+
+── 4 · B-4 a name's cut is decided once, on the server, and handed to the client that draws it again ───
+  ok   4.1 · keepNameEnd is the two halves together — the cut (nameEndAt) and the drawing (nameWithEnd) — byte for byte, over 17 names (marks, joiners, flags, conjuncts, jamo, a wide gap)
+  ok   4.2 · nameWithEnd draws the name as it came for a cut that cuts nothing (−1, 0, the end, outside, not a whole index)
+  ok   4.3 CONTROL · the same pattern, two Unicode versions: Node cuts "Neema Juma"+U+0897 at 8, an engine with Unicode 15 tables at 9 — a client that re-derived the cut drew another span than the server's HTML (a hydration mismatch)
+  ok   4.4 · ★ …and with the cut handed down, the client draws the server's markup whatever its own tables: nameWithEnd(name, the server's cut) IS the server's keepNameEnd
+  ok   4.5 · /profile: the server page decides the cut (`nameEndAt`) and hands it down; the editor — a client component — draws it with `nameWithEnd` and holds no cut-deriving code at all
+  ok   4.5′ PLANT · the editor re-deriving its cut (`keepNameEnd(currentName)`, round 5) is reported
+  ok   4.6 · the hub keeps keepNameEnd: account/page.tsx is a server component, its name drawn once
+  ok   4.7 · the census: 2 client components read a Unicode property (or derive a name's cut) while they draw, each classified — and none derives a name's cut
+  ok   4.7′ PLANT · a client component deriving a name's cut again (the editor as round 5 left it) is found by the census, and is no classified exception
+       src/app/live/pulse-grid.tsx: KeepHyphenated (hyphenParts) splits a market title by \p{Script=Han}, \p{L}, \p{N}: the same mechanism, on officer- or AI-written titles in sw/en/zh — a mismatch needs a character newer than the browser's tables inside a hyphen token or at a Han boundary; named for the integrator (/live's first paint would take the server's parts)
+       src/app/global-error.tsx: REGULATOR_NAME's optional \p{Cf} between two fixed strings — the regulator's name, fixed copy: no character there is newer than any engine's tables
+
+── 5 · A5 the old template's doubled stop is mended where it put it, and nowhere else ──────────────────
+  ok   5.1 · the old shapes are mended: a reason's ".." before the next sentence's space or at the body's end, and ".。" before the Chinese template's next sentence
+  ok   5.2 · ★ free text a notice quotes keeps its dots: "range 1..2 here", "v1..v2", "see 4.2..4.5 inclusive", "Subiri...", "wait... ok", "ids a..b", "1..2", "x..y." pass through unchanged
+  ok   5.3 CONTROL · round 5's rule mended ".." anywhere: "range 1..2 here" read "range 1.2 here"
+  ok   5.4 · the rule as written: `(^|[^.])\.\.(?=\s|$)` — and both readers (the bell, /notifications) read every body through it
+
+── 6 · A6 an Up & Down round is named in its page's own words — its <title>, and /positions/performance's rows 
+  ok   6.1 · ★ every stored round title (roundTitle, run from its own text) reads back to the name its page gives it — 4 assets × 5 durations × 3 languages, an empty and a missing Chinese name among them
+  ok   6.2 · …and anything else is shown as stored: a long-form question, or round titles that disagree with each other, read as no round
+  ok   6.3 · the words are the page's: "Bitcoin Juu na Chini · 15 dakika", "Bitcoin Up & Down · 15 min", "比特币 涨跌 · 15 分钟" — the h1's name and game, then its chip's minutes, as the Up & Down card names a round
+  ok   6.4 CONTROL · the stored title is a third name for the game: "Bitcoin Juu au Chini · dakika 15" beside the page's "Juu na Chini" — and round 5's <title> was the English stored title in every language
+  ok   6.5 · the round page's <title>, for a round that is there: `roundName` over the asset's name in the reader's language and the round's minutes — never the stored English title; a failed read and a missing round as R5-D left them
+  ok   6.6 · /positions/performance (every product line): its recent rows and its best-win caption name a round in the page's words, through one `titleOf`; a long-form market keeps its question
+  ok   6.6′ PLANT · a recent row back on the stored title is reported
+  ok   6.7 · the siblings outside this area still read a round's stored title (named for the integrator, `roundName` + `storedRound` ready for them): 5 of 5 found as named
+       src/app/live/pulse-grid.tsx: /live's wall: an Up & Down card's title (under its own "Juu na Chini" tag)
+       src/app/live/page.tsx: /live's featured list
+       src/app/results/page.tsx: /results' rows (both product lines)
+       src/app/fairness/page.tsx: /fairness' attestation archive (99% rounds)
+       src/lib/server/market-service.ts: the Up & Down result notices (a writer: new notices quote the stored title)
+
+── 7 · A7 the win notice cuts its market's name as every sibling cuts it ───────────────────────────────
+  ok   7.1 · notifyWin quotes its market through clipQuote at 70 / 70 / 50 — no market title reaches a notice whole
+  ok   7.1′ PLANT · the title quoted whole again (round 5) is reported
+  ok   7.2 · ★ each family of notices quotes its market at one room per language — a settled long-form market's result (the win, the loss, the void refund): 70 · 70 · 50; an Up & Down round's result (the win, the loss, the void and one-sided refunds): 70 · 50 · 50; a watched market (closing soon, settled): 70 · 50 · 50 — the win now with its own family
+  ok   7.2′ PLANT · a family split — the loss's Swahili cut at 50 while its win and refund cut at 70 — is reported by 7.2
+       notifyBetPlaced: 70 · 50 · 50 (its own sentence)
+       notifySelectionClosed: 60 · — · 50 (its own sentence)
+       notifyMarketCancelled: 60 · 60 · 60 (its own sentence)
+       notifyCashout: 60 · — · 50 (its own sentence)
+       notifyOneSidedRefund: 60 · 60 · 50 (its own sentence)
+  ok   7.3 · the news comes before the push is cut: "kimelipa" at character 68 (round 5: 101, after the whole question)
+
+visual-pass-r6b: 56 passed, 0 failed

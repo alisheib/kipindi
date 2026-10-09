@@ -1,0 +1,2661 @@
+diff --git a/package.json b/package.json
+index 150f5c1cf..1002f26d8 100644
+--- a/package.json
++++ b/package.json
+@@ -1032,6 +1032,7 @@
+     "test:visual-pass-r5f": "tsx scripts/visual-pass-r5f.test.mts",
+     "test:visual-pass-r5d": "tsx scripts/visual-pass-r5d.test.mts",
+     "test:visual-pass-r5h": "tsx scripts/visual-pass-r5h.test.mts",
++    "test:visual-pass-r5l": "tsx scripts/visual-pass-r5l.test.mts",
+     "red:notifications-page": "node scripts/notifications-page-red.mjs",
+     "red:measure": "node scripts/measure-red.mjs",
+     "red:decomment": "node scripts/decomment-red.mjs",
+diff --git a/scripts/anchors/notifications-page.anchors.mjs b/scripts/anchors/notifications-page.anchors.mjs
+index 434fb5088..ce7f40668 100644
+--- a/scripts/anchors/notifications-page.anchors.mjs
++++ b/scripts/anchors/notifications-page.anchors.mjs
+@@ -117,8 +117,10 @@ export const MUTATIONS = [
+     why: "the skeleton states a different width than the page, so every load jumps (B7 rule 3)",
+     file: LOADING,
+     suite: "notifications-page",
+-    from: '  return <PageLoader tier="reading" rows={6} />;',
+-    to: '  return <PageLoader tier="form" rows={6} />;',
++    // ⚠️ MOVED (R5-L, 2026-10-09): the loader opens on the page's back link and header now, so its call spans lines and
++    // the tier stands on a line of its own.
++    from: '      tier="reading"',
++    to: '      tier="form"',
+   },
+   {
+     // 🔴 THE DELIBERATE ABSENCE, MUTATED. Someone adding "symmetry" later would put a bulk
+diff --git a/scripts/design-gate/eyebrow-roles.mjs b/scripts/design-gate/eyebrow-roles.mjs
+index 0547ec999..1ab21768f 100644
+--- a/scripts/design-gate/eyebrow-roles.mjs
++++ b/scripts/design-gate/eyebrow-roles.mjs
+@@ -238,7 +238,7 @@ export const NOT_EYEBROW = new Map([
+   ["app/auth/otp/page.tsx :: className=\"font-mono text-label uppercase tracking-[0.14em] text-text-subtle hover:text-text transition-colors\" ↵ >", "CONTROL_LABEL"],
+   ["app/auth/reset-password/page.tsx :: className=\"inline-flex items-center gap-1.5 font-mono text-caption uppercase tracking-[0.16em] text-text-subtle hover:text-text\" ↵ >", "CONTROL_LABEL"],
+   ["app/global-error.tsx :: textTransform: \"uppercase\", ↵ letterSpacing: \"0.20em\",", "CELEBRATION"],
+-  ["app/leaderboard/loading.tsx :: <p className=\"font-mono text-caption uppercase tracking-[0.18em] text-text-muted\"> ↵ {t.common.loading}", "OTHER"],
++  // (R5-L, 2026-10-09: `app/leaderboard/loading.tsx`'s spinner caption left with the spinner box — the page has no such band.)
+   ["app/leaderboard/page.tsx :: <span className=\"inline-flex items-center rounded-pill border border-border bg-bg-overlay px-2 py-0.5 font-mono text-micro font-bold uppercase tracking-[0.10em] text-text", "STATUS_CHIP"],
+   ["app/live/pulse-grid.tsx :: <p className=\"font-mono text-micro uppercase tracking-[0.16em] text-text-subtle\"> ↵ {t.common.loadingMore}", "OTHER"],
+   ["app/markets/[id]/page.tsx :: <span className=\"closing-pill inline-flex items-center gap-1.5 rounded-full border h-[26px] px-2.5 font-mono text-caption font-bold uppercase tracking-[0.10em] tabular-nu", "STATUS_CHIP"],
+@@ -258,6 +258,9 @@ export const NOT_EYEBROW = new Map([
+   // Round 5 (R5-A, F19): the flag's words sit in a span of their own (`kp-track-end`, its trailing tracking taken back);
+   // its ink is R5-C's brand-300 (the second gold audit).
+   ["app/results/page.tsx :: <span className=\"ml-auto inline-flex items-center gap-1.5 font-mono text-micro uppercase tracking-[0.16em] font-bold text-brand-300\"> ↵ <I.crown s={13} /> <span className", "STATUS_CHIP"],
++  // R5-L (2026-10-09): the notable card's GHOST sets the same flag, its words not shown, so the chip row wraps where the
++  // page's does on a phone (the flag's 0.16em is part of its width). The same role as the page's.
++  ["app/results/loading.tsx :: <span className=\"ml-auto inline-flex items-center gap-1.5 font-mono text-micro uppercase tracking-[0.16em] font-bold\"> ↵ <span className=\"h-[13px] w-[13px] shrink-0\" /> <", "STATUS_CHIP"],
+   ["app/updown/[roundId]/page.tsx :: <p className=\"mt-1 flex items-center gap-1.5 font-mono text-micro font-semibold uppercase tracking-[0.10em] text-text-subtle\"> ↵ {isOpen && <span className=\"live-dot\" />}", "STATUS_CHIP"],
+   ["app/updown/[roundId]/page.tsx :: className=\"inline-flex items-center gap-0.5 font-mono text-micro font-semibold uppercase tracking-[0.08em]\" ↵ style={{ color: \"var(--brand-300)\" }}>", "CONTROL_LABEL"],
+   ["app/updown/history/page.tsx :: <span className=\"font-mono text-micro uppercase tracking-[0.10em] text-text-faint\"> ↵ {g.bets.length} {t.market.udBets}", "OTHER"],
+diff --git a/scripts/ghost-landing.mjs b/scripts/ghost-landing.mjs
+index 9367f9181..978aab5c9 100644
+--- a/scripts/ghost-landing.mjs
++++ b/scripts/ghost-landing.mjs
+@@ -4,6 +4,9 @@
+  *   npm run qa:ghost-landing -- https://www.50pick.tz
+  *   RED_GHOST=1 npm run qa:ghost-landing -- <base>   §A's fix is served back out
+  *   RED_STACK=1 npm run qa:ghost-landing -- <base>   §B AND §C's fix is served back out
++ *   ONLY=D npm run qa:ghost-landing -- <base>        §D alone (R5-L): every rebuilt ghost, box for box
++ *   RED_BOXES=1 ONLY=D npm run qa:ghost-landing -- <base>   §D's ghosts' word boxes broken back out
++ *   D_WIDTHS=360,390,1280 D_LOCALES=sw,en,zh …       §D's grid (default 390 and 1280, Swahili)
+  *
+  * ── §A · WHERE THE GHOST PROMISED THE CONTENT WOULD BE ───────────────────────────────────────
+  * `layout-shift` only counts a node that is present BEFORE and AFTER a frame. A skeleton is
+@@ -43,6 +46,24 @@
+  * read the metric at all — it taps every dot and asserts the BOARD BELOW does not move. A number
+  * of 0.0000 from an excluded shift is indistinguishable from a number of 0.0000 from a page that
+  * held still, and only one of those is the product working.
++ *
++ * ── §D · EVERY REBUILT GHOST, BOX FOR BOX (round 5's follow-up, R5-L) ──────────────────────────
++ * §A's 120px tolerance was set for ghosts that were typed boxes. Since R5-L the ghosts on /agent, /agent/apply,
++ * /agent/status, /leaderboard, /results, /markets and /live are built of their pages' own boxes with the pages' own
++ * words set and not shown, and the generic loaders open on their pages' own back link and header (PageLoader's rule),
++ * so the element each one promises lands on the page's pixel: §D hops to each route (a client move, so the loading file
++ * paints), records where the ghost drew a shared element — the first grid card, the table's first row, the last glass
++ * panel, the page's h1 — and where the page puts it, and fails anything more than BOX_TOL apart. §D2 does the same for
++ * the two in-page Suspense skeletons on a DOCUMENT load (/results and /markets: their fallbacks are their loading
++ * files' drawings). Signed in through the dev door (`/auth/demo`) where the route needs a player; the page a route is
++ * reached from is one that links to it. ⚠️ Not hopped: /agent/apply, /agent/status, /agent/invite/<token> and
++ * /proposals/new — each is linked only in a state the dev door does not make (an application begun, one submitted, a
++ * live invitation, proposals open), so a lock turn tiles them from a player in that state.
++ * ⚠️ A route whose element never shows in a ghost frame, or never arrives, proved nothing and is reported as such.
++ * ⚠️ And an element below a band the DATA sets (a bar's row 2, /results' carousel, /live's hero) is held only when the
++ * page is the case its ghost drew; else its delta is printed, not held — `DATA_BANDS`. Today's QA board is not
++ * /results' case (six results: one notable, no arrows, one-digit counts), nor /live's on a phone (four slides, its
++ * questions two lines where the ghost holds three): there §D holds /results' row 2 and prints those grids' deltas.
+  */
+ import { chromium } from "playwright";
+ import { localisedContext, assertLang } from "./qa-locale.mjs";
+@@ -53,14 +74,17 @@ import { localisedContext, assertLang } from "./qa-locale.mjs";
+ const BASE = process.argv[2] || process.env.BASE || "http://localhost:3001";
+ const RED_GHOST = process.env.RED_GHOST === "1";
+ const RED_STACK = process.env.RED_STACK === "1";
+-const RED = RED_GHOST || RED_STACK;
++const RED_BOXES = process.env.RED_BOXES === "1";
++const RED = RED_GHOST || RED_STACK || RED_BOXES;
++/** `ONLY=D` runs §D alone (a lock turn's budget); otherwise §A–§C run and §D after them. */
++const ONLY = (process.env.ONLY ?? "").toUpperCase();
+ 
+ /** Which sections each RED control is required to break — a control that breaks the OTHER
+  *  section proves nothing about the one it is named for.
+  *  ⭐ `RED_STACK` owns BOTH §B and §C and must break BOTH: one `.kp-slide-stack` mechanism now
+  *  serves `/live`'s timed carousel and `/results`' tapped one, so a control that reaches only
+  *  one of them would leave the other's fix unproven while reading green. */
+-const SECTION = { RED_GHOST: ["A"], RED_STACK: ["B", "C"] };
++const SECTION = { RED_GHOST: ["A"], RED_STACK: ["B", "C"], RED_BOXES: ["D"] };
+ 
+ /** How far a ghost may miss where the content lands. A card is ~180–300px, so 120 is well
+  *  inside "the reader's eye does not have to re-find the board", and both live defects were
+@@ -74,8 +98,8 @@ const failures = [];
+ const b = await chromium.launch();
+ 
+ /* ── §A ─────────────────────────────────────────────────────────────────────────────────── */
+-console.log("\n§A · does the content land where the ghost promised?");
+-for (const target of ["/live", "/markets", "/results"]) {
++if (ONLY !== "D") console.log("\n§A · does the content land where the ghost promised?");
++for (const target of ONLY === "D" ? [] : ["/live", "/markets", "/results"]) {
+   const ctx = await localisedContext(b, { locale: "sw", width: 360, height: 780, baseUrl: BASE, reducedMotion: "reduce" });
+   const p = await ctx.newPage();
+ 
+@@ -150,8 +174,8 @@ for (const target of ["/live", "/markets", "/results"]) {
+ }
+ 
+ /* ── §B ─────────────────────────────────────────────────────────────────────────────────── */
+-console.log(`\n§B · /live with MOTION ON — what moves over ${DWELL_MS / 1000}s of sitting still?`);
+-{
++if (ONLY !== "D") console.log(`\n§B · /live with MOTION ON — what moves over ${DWELL_MS / 1000}s of sitting still?`);
++if (ONLY !== "D") {
+   const ctx = await localisedContext(b, { locale: "sw", width: 360, height: 780, baseUrl: BASE, reducedMotion: "no-preference" });
+   const p = await ctx.newPage();
+ 
+@@ -232,8 +256,8 @@ console.log(`\n§B · /live with MOTION ON — what moves over ${DWELL_MS / 1000
+ }
+ 
+ /* ── §C ─────────────────────────────────────────────────────────────────────────────────── */
+-console.log("\n§C · tapping a carousel dot must not move the board below it");
+-for (const surface of [
++if (ONLY !== "D") console.log("\n§C · tapping a carousel dot must not move the board below it");
++for (const surface of ONLY === "D" ? [] : [
+   { path: "/results", dot: "Onyesha tokeo maarufu" },
+   { path: "/live", dot: "Onyesha soko" },
+ ]) {
+@@ -294,15 +318,202 @@ for (const surface of [
+   await ctx.close();
+ }
+ 
++/* ── §D ─────────────────────────────────────────────────────────────────────────────────── */
++/** How far a rebuilt ghost's element may stand from the page's: its boxes ARE the page's, so the remainder is sub-pixel
++ *  rounding and a web font's swap. Every typed box §A tolerated was 2–30× this. */
++const BOX_TOL = 4;
++const D_WIDTHS = (process.env.D_WIDTHS ?? "390,1280").split(",").map(Number).filter((n) => n > 0);
++const D_LOCALES = (process.env.D_LOCALES ?? "sw").split(",").map((x) => x.trim()).filter(Boolean);
++/** The bands a ghost draws in ONE case of the data (its note says which), found the same way in the ghost and on the
++ *  page: a bar's row 2, whose lines the counts' digits set (the ghosts hold two, "00"); the band over /results' grid,
++ *  its notable carousel — arrows and dots only for an archive of eight or more (`results/page.tsx`; one notable below
++ *  that), the card as tall as its title; and /live's hero — its stack as tall as the tallest contested question, a dot
++ *  per slide. */
++const DATA_BANDS = {
++  row2: { name: "row 2", sel: ".kp-discovery-bar .kp-qbar-row", why: "the counts' digits set its lines; the ghost holds two" },
++  overGrid: { name: "the carousel", sel: ".market-grid", prev: true, why: "arrows and dots for an archive of eight or more; the card as tall as its title" },
++  hero: { name: "the hero", sel: "main header.overflow-hidden", why: "the tallest contested question's lines; a dot per slide" },
++};
++/** Each route: where it is reached from (a page that links to it), the element measured in BOTH the ghost and the page
++ *  (`el`, the first match, or the last with `last`), and whether it needs a player.
++ *  ⚠️ `drawn`: the DATA_BANDS above the element. It is held only when the page IS the case its ghost drew — each of
++ *  those bands as tall as the ghost's; otherwise its delta is printed as the data's, not held. /results' row 2 is held
++ *  always: its top stands above every band the data sets. */
++const D_ROUTES = [
++  { target: "/live", from: "/", el: ".market-grid > *", drawn: ["hero"] },
++  { target: "/markets", from: "/", el: ".market-grid > *", drawn: ["row2"] },
++  { target: "/results", name: "/results row 2", from: "/", el: ".kp-discovery-bar .kp-qbar-row" },
++  { target: "/results", from: "/", el: ".market-grid > *", drawn: ["row2", "overGrid"] },
++  { target: "/leaderboard", from: "/account", el: "table.admin-tbl tbody tr", auth: true },
++  { target: "/agent", from: "/account", el: "main .glass-panel", last: true, auth: true },
++  { target: "/fairness", from: "/account", el: "main h1", auth: true },
++  { target: "/help", from: "/account", el: "main h1", auth: true },
++  { target: "/notifications", from: "/account", el: "main h1", auth: true },
++  { target: "/proposals", from: "/account", el: "main h1", auth: true },
++  { target: "/profile/kyc", from: "/account", el: "main h1", auth: true },
++  { target: "/profile/invite", from: "/account", el: "main .font-display", auth: true },
++  { target: "/profile/responsible-gambling", from: "/account", el: "main h1", auth: true },
++  { target: "/profile/security", from: "/profile", el: "main h1", auth: true },
++  { target: "/profile/sessions", from: "/profile", el: "main h1", auth: true },
++  { target: "/profile/source-of-funds", from: "/profile", el: "main h1", auth: true },
++  { target: "/profile/activity", from: "/profile", el: "main h1", auth: true },
++  { target: "/profile/notifications", from: "/profile", el: "main h1", auth: true },
++  { target: "/profile/account", from: "/profile", el: "main h1", auth: true },
++  { target: "/watchlist", from: "/", el: "main h1", auth: true },
++];
++/** The dev door's session cookie (qa-classic-shell-parity's `signIn`): local and preview only — never production. */
++async function demoSession() {
++  const ctx = await b.newContext({ viewport: { width: 390, height: 844 } });
++  try {
++    const p = await ctx.newPage();
++    await p.goto(`${BASE}/auth/demo`, { waitUntil: "domcontentloaded", timeout: 180000 });
++    await p.waitForTimeout(900);
++    return (await ctx.cookies(BASE)).filter((c) => c.name === "kp_session");
++  } catch { return []; } finally { await ctx.close().catch(() => {}); }
++}
++/** The heights of `bands` (DATA_BANDS entries) on the landed page — run in the page; the probes measure the ghost frame
++ *  the same way. */
++const bandHeights = (bands) => bands.map((b) => {
++  const x = document.querySelector(b.sel);
++  const e = b.prev ? x?.previousElementSibling : x;
++  return e ? Math.round(e.getBoundingClientRect().height) : null;
++});
++/** Why the page is not the case its ghost drew, or "" when it is: each band of `keys` as tall in both, within 1px. */
++function dataCase(keys, ghost, page) {
++  const why = (keys ?? []).map((k, i) => (ghost?.[i] != null && page?.[i] != null && Math.abs(page[i] - ghost[i]) <= 1 ? ""
++    : `${DATA_BANDS[k].name} is ${page?.[i]}px, the ghost's ${ghost?.[i]} (${DATA_BANDS[k].why})`)).filter(Boolean);
++  return why.length ? `not the drawn case: ${why.join("; ")}` : "";
++}
++/** Serve §D's fix back out: the ghosts' word boxes become 40px blocks, so no ghost lands where its page does. */
++async function redBoxes(p) {
++  await p.route(/\/_next\/static\/.*\.css(\?.*)?$/, async (route) => {
++    const res = await route.fetch();
++    const css = (await res.text()) + "\n[aria-hidden] .box-decoration-clone,[aria-busy] .box-decoration-clone{display:block;min-height:40px}\n";
++    await route.fulfill({ response: res, body: css, headers: { ...res.headers(), "content-length": String(Buffer.byteLength(css)) } });
++  });
++}
++if (ONLY === "D" || RED_BOXES || !RED) {
++  console.log(`\n§D · every rebuilt ghost lands box for box (±${BOX_TOL}px) — ${D_WIDTHS.join("/")} · ${D_LOCALES.join("/")}`);
++  const jar = BASE.includes("50pick.tz") ? [] : await demoSession();
++  if (!jar.length && !BASE.includes("50pick.tz")) failures.push("D no player session (the dev door answers on local and preview only) — the routes that need one were not measured");
++  if (!jar.length && BASE.includes("50pick.tz")) console.log("   (production: no dev door — the routes that need a player are not measured here)");
++  for (const r of D_ROUTES) for (const width of D_WIDTHS) for (const locale of D_LOCALES) {
++    if (r.auth && !jar.length) continue;
++    const ctx = await localisedContext(b, { locale, width, height: 900, baseUrl: BASE, reducedMotion: "reduce" });
++    if (r.auth) await ctx.addCookies(jar);
++    const p = await ctx.newPage();
++    if (RED_BOXES) await redBoxes(p);
++    const cdp = await ctx.newCDPSession(p);
++    await cdp.send("Network.emulateNetworkConditions", { offline: false, latency: 400, downloadThroughput: (400 * 1024) / 8, uploadThroughput: (400 * 1024) / 8 });
++    await cdp.send("Emulation.setCPUThrottlingRate", { rate: 4 });
++    const tag = `D ${r.name ?? r.target} @${width} ${locale}`;
++    try {
++      await p.goto(BASE + r.from, { waitUntil: "load", timeout: 180000 });
++      await p.waitForTimeout(4000);
++      const link = p.locator(`a[href="${r.target}"]:visible`).first();
++      if (!(await link.count())) { failures.push(`${tag}: no visible link from ${r.from} — nothing was measured`); continue; }
++      const bands = (r.drawn ?? []).map((k) => DATA_BANDS[k]);
++      await p.evaluate(({ t, sel, last, bands }) => {
++        window.__dsnap = null;
++        window.__dbands = null;
++        const probe = () => {
++          if (location.pathname === t && document.querySelector(".kp-shimmer-track")) {
++            const all = document.querySelectorAll(sel);
++            const e = last ? all[all.length - 1] : all[0];
++            if (e) {
++              window.__dsnap = Math.round(e.getBoundingClientRect().top + scrollY);
++              window.__dbands = bands.map((b) => {
++                const x = document.querySelector(b.sel);
++                const y = b.prev ? x?.previousElementSibling : x;
++                return y ? Math.round(y.getBoundingClientRect().height) : null;
++              });
++            }
++          }
++          requestAnimationFrame(probe);
++        };
++        requestAnimationFrame(probe);
++      }, { t: r.target, sel: r.el, last: !!r.last, bands });
++      await link.click();
++      await p.waitForURL(`**${r.target}`, { timeout: 120000 }).catch(() => {});
++      await p.waitForTimeout(9000);
++      const got = await p.evaluate(({ sel, last }) => {
++        const all = document.querySelectorAll(sel);
++        const e = last ? all[all.length - 1] : all[0];
++        return { snap: window.__dsnap, real: e ? Math.round(e.getBoundingClientRect().top + scrollY) : null, bands: window.__dbands };
++      }, { sel: r.el, last: !!r.last });
++      const pageBands = await p.evaluate(bandHeights, bands);
++      if (got.snap == null) { failures.push(`${tag}: no ghost frame was captured — this case proved nothing`); continue; }
++      if (got.real == null) { failures.push(`${tag}: ${r.el} never arrived — this case proved nothing`); continue; }
++      const delta = got.real - got.snap;
++      const other = dataCase(r.drawn, got.bands, pageBands);
++      if (!other && Math.abs(delta) > BOX_TOL) failures.push(`${tag}: the ghost drew ${r.el} at y=${got.snap}, the page put it at y=${got.real} — ${delta}px (tolerance ${BOX_TOL})`);
++      console.log(`   ${tag.slice(2).padEnd(40)} ghost y=${String(got.snap).padStart(5)}  page y=${String(got.real).padStart(5)}  ${String(delta).padStart(5)}px  ${other ? `not held — ${other}` : Math.abs(delta) > BOX_TOL ? "FAIL" : "ok"}`);
++    } catch (e) {
++      failures.push(`${tag}: ${String(e).slice(0, 120)}`);
++    } finally {
++      await ctx.close().catch(() => {});
++    }
++  }
++
++  // §D2 — the in-page skeletons, on a DOCUMENT load: the first card of the fallback against the first card of the page.
++  for (const target of ["/results", "/markets"]) for (const width of D_WIDTHS) for (const locale of D_LOCALES) {
++    const ctx = await localisedContext(b, { locale, width, height: 900, baseUrl: BASE, reducedMotion: "reduce" });
++    const p = await ctx.newPage();
++    if (RED_BOXES) await redBoxes(p);
++    const tag = `D ${target} (document) @${width} ${locale}`;
++    try {
++      const keys = target === "/results" ? ["row2", "overGrid"] : ["row2"], bands = keys.map((k) => DATA_BANDS[k]);
++      await p.addInitScript(({ t, bands }) => {
++        window.__dsnap = null;
++        window.__dbands = null;
++        const probe = () => {
++          if (location.pathname === t && document.querySelector(".kp-shimmer-track")) {
++            const e = document.querySelector(".market-grid > *");
++            if (e) {
++              window.__dsnap = Math.round(e.getBoundingClientRect().top + scrollY);
++              window.__dbands = bands.map((b) => {
++                const x = document.querySelector(b.sel);
++                const y = b.prev ? x?.previousElementSibling : x;
++                return y ? Math.round(y.getBoundingClientRect().height) : null;
++              });
++            }
++          }
++          requestAnimationFrame(probe);
++        };
++        requestAnimationFrame(probe);
++      }, { t: target, bands });
++      const cdp = await ctx.newCDPSession(p);
++      await cdp.send("Network.emulateNetworkConditions", { offline: false, latency: 400, downloadThroughput: (400 * 1024) / 8, uploadThroughput: (400 * 1024) / 8 });
++      await p.goto(BASE + target, { waitUntil: "load", timeout: 180000 });
++      await p.waitForTimeout(8000);
++      const got = await p.evaluate(() => {
++        const e = document.querySelector(".market-grid > *");
++        return { snap: window.__dsnap, real: e ? Math.round(e.getBoundingClientRect().top + scrollY) : null, bands: window.__dbands };
++      });
++      const pageBands = await p.evaluate(bandHeights, bands);
++      if (got.snap == null) { failures.push(`${tag}: the document never painted its fallback — this case proved nothing (a fast server streams the page at once)`); continue; }
++      if (got.real == null) { failures.push(`${tag}: no card arrived — this case proved nothing`); continue; }
++      const delta = got.real - got.snap;
++      const other = dataCase(keys, got.bands, pageBands);
++      if (!other && Math.abs(delta) > BOX_TOL) failures.push(`${tag}: the fallback drew the first card at y=${got.snap}, the page at y=${got.real} — ${delta}px`);
++      console.log(`   ${tag.slice(2).padEnd(40)} ghost y=${String(got.snap).padStart(5)}  page y=${String(got.real).padStart(5)}  ${String(delta).padStart(5)}px  ${other ? `not held — ${other}` : Math.abs(delta) > BOX_TOL ? "FAIL" : "ok"}`);
++    } catch (e) {
++      failures.push(`${tag}: ${String(e).slice(0, 120)}`);
++    } finally {
++      await ctx.close().catch(() => {});
++    }
++  }
++}
++
+ await b.close();
+ 
+-const label = RED_GHOST ? "RED_GHOST (§A's fix served back out)" : RED_STACK ? "RED_STACK (§B and §C's fix served back out)" : "GREEN";
++const label = RED_GHOST ? "RED_GHOST (§A's fix served back out)" : RED_STACK ? "RED_STACK (§B and §C's fix served back out)" : RED_BOXES ? "RED_BOXES (§D's word boxes broken back out)" : "GREEN";
+ console.log(`\nghost landing — ${label} — ${BASE}`);
+ if (failures.length) for (const f of failures) console.log("  FAIL " + f);
+ else console.log("  no failures");
+ 
+ if (RED) {
+-  const want = SECTION[RED_GHOST ? "RED_GHOST" : "RED_STACK"];
++  const want = SECTION[RED_GHOST ? "RED_GHOST" : RED_STACK ? "RED_STACK" : "RED_BOXES"];
+   // ⛔ EVERY section the control owns must fail. Requiring only "at least one" would let a
+   // control that reaches §B but not §C certify §C's fix while never having tested it — the
+   // shape this guard exists to refuse, one level up.
+diff --git a/scripts/spacing-scale.test.mts b/scripts/spacing-scale.test.mts
+index 3cfebf5aa..a4a158d82 100644
+--- a/scripts/spacing-scale.test.mts
++++ b/scripts/spacing-scale.test.mts
+@@ -111,7 +111,7 @@ for (const f of walk(SRC)) {
+  * ⚠️ Set from the measured tree, comments stripped. If it drops, lower it in the same commit —
+  * a ceiling above the real count stops being a ratchet.
+  */
+-const CEILING = 453;   // -1, 2026-10-09 (round 5, R5-C's gold audit): the RG page's pending-increase box left its hand-rolled warning box (`gap-2.5`) for the kit Callout — measured on the merged tree with R5-B's -1 below: 453 across 165 files. (The journey staff row's two class strings, which repeated `gap-2.5 px-2.5 py-2.5` once per arm, were folded into one `cn()` — three usages that never counted twice.) // -1, 2026-10-09 (round 5 of the visual pass, R5-B, F6): /wallet's loading rail took the kit option's own box — `px-4` (20px), the label in the body face, its underline 12px in, as `Tabs variant="line"` draws them — where it typed `px-3.5` (stock 14px) in the display face under a box-wide underline: a rendered change on purpose, so the ghost's words land where the rail's do (wallet/loading.tsx); measured 454 across 165 files. // -2, 2026-10-09 (round 4 of the visual pass, R4-K c15b3b61): the market and proposal not-found pages' hand-rolled cards (`p-3.5`) left for the one shared NotFoundView (src/components/ui/not-found-view.tsx) — measured 455 across 165 files on the merged tip; the ceiling follows in the next commit after it (R4-K's merge check did not run this suite). // -3, 2026-10-09 (round 4 of the visual pass): the `py-2.5` bands round the search on /results, /watchlist and /proposals became `QUERY_SEARCH_BAND_CLASS` (query-bar.tsx), whose 10px is the literal `pt-[10px]` — a rendered change on purpose (the band's bottom 10px left with its echo row's gap, test:visual-pass-r4c §1), and no new inverted key: the new row-1-alone class takes `pb-[10px]` too. // -3, 2026-10-07 (money doors): the deposit email door and the app-wide email bar were DELETED (owner ruling — a deposit asks no email) and took their `px-3.5`/`gap-2.5` with them; the receipt page's button row moved `gap-2.5` → `gap-2` (12px on this scale) with its new second button. // -1, 2026-10-03 (marketing validation batch 6): the player balance adjustment's hand-rolled amount box (balance-adjust-controls.tsx, the "9,500.00" -> 950,000 defect) left for the kit Field + Input, taking its `px-2.5` with it. // -9, 2026-09-30 (the Vodacom plan S1 session): THE RATCHET ARRIVED RED, 488 against 473 — fifteen inverted keys added since 2026-09-23 by other lanes (the finance and admin skeletons, the invite switch dialog, two Up & Down panels, one shell row), holding predeploy red on main. ALL 24 inverted usages in those eight files moved to SAME-PIXEL literals (w-14 -> w-[56px], w-16 -> w-[64px], w-20 -> w-[80px], w-28 -> w-[112px], gap-2.5/py-2.5/mt-2.5 -> [10px], mt-3.5 -> [14px], scroll-mt-24 -> [96px]; the root is 16px, so rem == px): ZERO rendered change, 488 -> 464. Literals, not override keys, per the per-prefix rule below (ui-consistency condemns 7-12 on w/h). // -2, 2026-09-23: PRE-EXISTING RED, and not this session's work — the same shape as the 2026-09-05 HOUSE-3 entry below. The ratchet arrived at HEAD failing check 2 at 473 against 475: two usages had been removed by earlier work that did not lower the constant. Re-measured here rather than copied — 473 across 171 files — and confirmed to predate today: `git diff 7747dffa..HEAD -- src/` adds and removes ZERO inverted keys, so nothing in this session's window moved it. ⛔ Check 2 is an EQUALITY on purpose: a ceiling above the real count has stopped being a ratchet and silently re-admits two usages. // -1, 2026-09-13 (withdrawal review removed): the admin approvals page lost its Co-sign chip and its px-2.5. // -2, 2026-09-13 (the visual pass): p-3.5 → p-[14px] on the KYC upload card and space-y-2.5 → gap-[10px] on the register consents, both same-pixel. // -75, 2026-09-10: THE RATCHET WAS RED — 561 against a ceiling of 553, eight usages added by work that landed after 2026-09-05, and it had been holding `predeploy` red. ⭐ CLEARED BY MOVING 83 USAGES OFF THE STOCK SCALE WITH ZERO RENDERED CHANGE, which is possible for exactly FOUR of the eight inverted keys: the override is all px and the stock keys leak rem, and for these four the two scales land on the SAME pixel — proven from COMPILED CSS, not assumed: `16 → 4rem → 64px == 9 → 64px`, `20 → 5rem → 80px == 10`, `24 → 6rem → 96px == 11`, `32 → 8rem → 128px == 12`. The root really is 16px (globals.css sets no html font-size; production reports 16px), which is the premise that makes rem==px here. ⛔ `2.5` (10px), `3.5` (14px), `14` (56px) and `28` (112px) have NO override equivalent — moving those is a real ±2px rendered change and NONE were touched, which is why 478 is not lower. ⚠️ SCOPED TO `loading.tsx` SKELETONS, 31 files: placeholder boxes with no text to reflow, no interactive control to displace and nothing measuring them. **The same four keys appear 35 more times in files carrying real content and were deliberately LEFT** — this file's own note warns against a sweep that spreads a problem while tidying one. 🔴 **AND THE FIRST ATTEMPT AT THE FIX TRADED THIS FAILURE FOR ANOTHER ONE, WHICH IS THE PART WORTH READING.** Swapping `w-16 → w-9` satisfies THIS guard and violates `ui-consistency`'s `numeric-size-utility`, which condemns keys 7–12 on `h`/`w`/`min-*`/`max-*` precisely BECAUSE they read from the overridden scale — 30 new findings, in the same edit that made this one green. ⭐ **Both guards are right, so the remedy is PER-PREFIX**, and the other rule's own description names it (*"use an explicit literal (h-[32px])"*): width/height/size take `w-[64px]`, while padding·margin·gap·inset take the override key. 89 of the 90 sites here were width/height, so they are literals. ⭐ HOW THE "no rendered change" CLAIM WAS CHECKED rather than asserted: the whole diff was re-derived by applying the per-prefix map to every removed line and compared to the added line — all 88 changed lines differ ONLY by that swap, and the checker carries a non-empty control because its first version passed an EMPTY diff (0 >= 0). // -1, 2026-09-05, HOUSE-3: PRE-EXISTING RED, not this session's work. The ratchet arrived at HEAD failing check 2 at 553 against a ceiling of 554 — a parallel session removed an inverted key and did not lower the constant, and check 2 is an EQUALITY on purpose: a ceiling above the real count has stopped being a ratchet and silently re-admits one usage. Re-measured here, not copied: 553 across 185 files. // -7, 2026-09-03: `layout/needle-drawer.tsx` — the Needle's theme menu shipped ELEVEN inverted keys (3× `gap-2.5`, 3× `py-2.5`, `px-2.5`, 2× `pt-3.5`, `py-3.5`, `mt-3.5`), which is what took this ratchet 561 → 565 and held `test:all` red on `main`. All eleven moved onto the scale: 2.5 (Tailwind STOCK 10px) → 2 (this product's OVERRIDDEN 12px) and 3.5 (stock 14px) → 3 (override 16px). ⚠️ EVERY MOVE IS +2px AND IS A RENDERED CHANGE, said plainly rather than folded in — a drawer menu's gaps and paddings each grow 2px, verified at 320/390 not to overflow or clip. ⭐ AND NOTE WHICH DIRECTION THE DEFECT RAN: `gap-2.5` painted 10px where `gap-2` paints 12, so the file's author had written the LARGER-looking key for the SMALLER box, four times, without any way to notice. That inversion is derived from the two scales by §0, not typed in — which is why this guard could name it. ⛔ The file belongs to a parallel session; the change is 2px of air on the product's own scale, and the eleven sites are listed here so its owner can see exactly what moved.   // -1, 2026-08-31, DG-S-03: `/admin/roles`'s hand-rolled section rail declared its height as `py-2.5` — 10px on a scale where `py-2` is 12 — and it went with the rail when the page adopted the kit `<Tabs variant="line">`, whose 44px is a declared height rather than padding. ⭐ Worth reading twice, because it is the same defect in two guards at once: `tap-target` §3 reads a DECLARED height and is structurally blind to one made of padding, so `/admin/players/[id]`'s 52px `py-3` rail has never been visible to it either. A control that states its height as padding is invisible to the tap gate AND, at a `.5` step, counted by this one.   // -59, 2026-08-30, session 82 -- the largest fall this ratchet has taken, and it is a SIDE EFFECT: DG-A-08 replaced ~24 hand-rolled admin controls with kit `<Button>`s, and every one of them took its hand-typed `px-2.5 py-1.5` inverted-key padding with it. ⛔ The matcher was NOT touched this session (`git status` on this file: clean), which is the check that separates a cleanup from a collapse -- and §3 still sees 566 usages across 188 files. # 2026-08-30: -3 (DG-A-06). `px-2.5` left three hand-rolled selection capsules as they converted to FilterPill — CardSortControl's two byte-identical copies and /admin/proposals' queue rail. ⭐ The primitive's dense rank writes `px-2.5` too, so the win is real but SMALLER than the conversion looks: the inverted key moved from three call sites into ONE definition site, which is the shape this ratchet wants. Before that — 2026-08-29: -3, AdminKpi x2 + its skeleton left p-3.5 (14px) for p-2 (12px) — DG-A-16. Then -1 on 2026-08-30 (DG-P-03): the BackLink ghost's `w-16`. ⚠️ AND THIS GUARD EARNED ITS KEEP THE SAME DAY — adopting `PageHeader` in the deposit and withdraw skeletons meant COPYING that ghost into two more files, and this suite caught it at 631 before it shipped. A ratchet's job is not only to shrink a backlog; it is to stop a sweep from spreading one while it tidies something else.
++const CEILING = 444;   // -9, 2026-10-09 (round 5's follow-up, R5-L): the two in-page Suspense skeletons left with their drawings — /markets' `GridSkeleton` (`w-16 w-20 w-24 w-32`) and /results' `ResultsSkeleton` (`w-16 w-20 w-32 h-3.5` and its header's `gap-2.5`; the page's own `gap-2.5` stays) — each page's fallback is its loading file's ghost now; the rebuilt ghosts mirror their pages' four inverted keys (`w-14`, `gap-2.5`, `mt-2.5` twice) as same-pixel literals, as every skeleton's are. Measured 444 across the tree. // -1, 2026-10-09 (round 5, R5-C's gold audit): the RG page's pending-increase box left its hand-rolled warning box (`gap-2.5`) for the kit Callout — measured on the merged tree with R5-B's -1 below: 453 across 165 files. (The journey staff row's two class strings, which repeated `gap-2.5 px-2.5 py-2.5` once per arm, were folded into one `cn()` — three usages that never counted twice.) // -1, 2026-10-09 (round 5 of the visual pass, R5-B, F6): /wallet's loading rail took the kit option's own box — `px-4` (20px), the label in the body face, its underline 12px in, as `Tabs variant="line"` draws them — where it typed `px-3.5` (stock 14px) in the display face under a box-wide underline: a rendered change on purpose, so the ghost's words land where the rail's do (wallet/loading.tsx); measured 454 across 165 files. // -2, 2026-10-09 (round 4 of the visual pass, R4-K c15b3b61): the market and proposal not-found pages' hand-rolled cards (`p-3.5`) left for the one shared NotFoundView (src/components/ui/not-found-view.tsx) — measured 455 across 165 files on the merged tip; the ceiling follows in the next commit after it (R4-K's merge check did not run this suite). // -3, 2026-10-09 (round 4 of the visual pass): the `py-2.5` bands round the search on /results, /watchlist and /proposals became `QUERY_SEARCH_BAND_CLASS` (query-bar.tsx), whose 10px is the literal `pt-[10px]` — a rendered change on purpose (the band's bottom 10px left with its echo row's gap, test:visual-pass-r4c §1), and no new inverted key: the new row-1-alone class takes `pb-[10px]` too. // -3, 2026-10-07 (money doors): the deposit email door and the app-wide email bar were DELETED (owner ruling — a deposit asks no email) and took their `px-3.5`/`gap-2.5` with them; the receipt page's button row moved `gap-2.5` → `gap-2` (12px on this scale) with its new second button. // -1, 2026-10-03 (marketing validation batch 6): the player balance adjustment's hand-rolled amount box (balance-adjust-controls.tsx, the "9,500.00" -> 950,000 defect) left for the kit Field + Input, taking its `px-2.5` with it. // -9, 2026-09-30 (the Vodacom plan S1 session): THE RATCHET ARRIVED RED, 488 against 473 — fifteen inverted keys added since 2026-09-23 by other lanes (the finance and admin skeletons, the invite switch dialog, two Up & Down panels, one shell row), holding predeploy red on main. ALL 24 inverted usages in those eight files moved to SAME-PIXEL literals (w-14 -> w-[56px], w-16 -> w-[64px], w-20 -> w-[80px], w-28 -> w-[112px], gap-2.5/py-2.5/mt-2.5 -> [10px], mt-3.5 -> [14px], scroll-mt-24 -> [96px]; the root is 16px, so rem == px): ZERO rendered change, 488 -> 464. Literals, not override keys, per the per-prefix rule below (ui-consistency condemns 7-12 on w/h). // -2, 2026-09-23: PRE-EXISTING RED, and not this session's work — the same shape as the 2026-09-05 HOUSE-3 entry below. The ratchet arrived at HEAD failing check 2 at 473 against 475: two usages had been removed by earlier work that did not lower the constant. Re-measured here rather than copied — 473 across 171 files — and confirmed to predate today: `git diff 7747dffa..HEAD -- src/` adds and removes ZERO inverted keys, so nothing in this session's window moved it. ⛔ Check 2 is an EQUALITY on purpose: a ceiling above the real count has stopped being a ratchet and silently re-admits two usages. // -1, 2026-09-13 (withdrawal review removed): the admin approvals page lost its Co-sign chip and its px-2.5. // -2, 2026-09-13 (the visual pass): p-3.5 → p-[14px] on the KYC upload card and space-y-2.5 → gap-[10px] on the register consents, both same-pixel. // -75, 2026-09-10: THE RATCHET WAS RED — 561 against a ceiling of 553, eight usages added by work that landed after 2026-09-05, and it had been holding `predeploy` red. ⭐ CLEARED BY MOVING 83 USAGES OFF THE STOCK SCALE WITH ZERO RENDERED CHANGE, which is possible for exactly FOUR of the eight inverted keys: the override is all px and the stock keys leak rem, and for these four the two scales land on the SAME pixel — proven from COMPILED CSS, not assumed: `16 → 4rem → 64px == 9 → 64px`, `20 → 5rem → 80px == 10`, `24 → 6rem → 96px == 11`, `32 → 8rem → 128px == 12`. The root really is 16px (globals.css sets no html font-size; production reports 16px), which is the premise that makes rem==px here. ⛔ `2.5` (10px), `3.5` (14px), `14` (56px) and `28` (112px) have NO override equivalent — moving those is a real ±2px rendered change and NONE were touched, which is why 478 is not lower. ⚠️ SCOPED TO `loading.tsx` SKELETONS, 31 files: placeholder boxes with no text to reflow, no interactive control to displace and nothing measuring them. **The same four keys appear 35 more times in files carrying real content and were deliberately LEFT** — this file's own note warns against a sweep that spreads a problem while tidying one. 🔴 **AND THE FIRST ATTEMPT AT THE FIX TRADED THIS FAILURE FOR ANOTHER ONE, WHICH IS THE PART WORTH READING.** Swapping `w-16 → w-9` satisfies THIS guard and violates `ui-consistency`'s `numeric-size-utility`, which condemns keys 7–12 on `h`/`w`/`min-*`/`max-*` precisely BECAUSE they read from the overridden scale — 30 new findings, in the same edit that made this one green. ⭐ **Both guards are right, so the remedy is PER-PREFIX**, and the other rule's own description names it (*"use an explicit literal (h-[32px])"*): width/height/size take `w-[64px]`, while padding·margin·gap·inset take the override key. 89 of the 90 sites here were width/height, so they are literals. ⭐ HOW THE "no rendered change" CLAIM WAS CHECKED rather than asserted: the whole diff was re-derived by applying the per-prefix map to every removed line and compared to the added line — all 88 changed lines differ ONLY by that swap, and the checker carries a non-empty control because its first version passed an EMPTY diff (0 >= 0). // -1, 2026-09-05, HOUSE-3: PRE-EXISTING RED, not this session's work. The ratchet arrived at HEAD failing check 2 at 553 against a ceiling of 554 — a parallel session removed an inverted key and did not lower the constant, and check 2 is an EQUALITY on purpose: a ceiling above the real count has stopped being a ratchet and silently re-admits one usage. Re-measured here, not copied: 553 across 185 files. // -7, 2026-09-03: `layout/needle-drawer.tsx` — the Needle's theme menu shipped ELEVEN inverted keys (3× `gap-2.5`, 3× `py-2.5`, `px-2.5`, 2× `pt-3.5`, `py-3.5`, `mt-3.5`), which is what took this ratchet 561 → 565 and held `test:all` red on `main`. All eleven moved onto the scale: 2.5 (Tailwind STOCK 10px) → 2 (this product's OVERRIDDEN 12px) and 3.5 (stock 14px) → 3 (override 16px). ⚠️ EVERY MOVE IS +2px AND IS A RENDERED CHANGE, said plainly rather than folded in — a drawer menu's gaps and paddings each grow 2px, verified at 320/390 not to overflow or clip. ⭐ AND NOTE WHICH DIRECTION THE DEFECT RAN: `gap-2.5` painted 10px where `gap-2` paints 12, so the file's author had written the LARGER-looking key for the SMALLER box, four times, without any way to notice. That inversion is derived from the two scales by §0, not typed in — which is why this guard could name it. ⛔ The file belongs to a parallel session; the change is 2px of air on the product's own scale, and the eleven sites are listed here so its owner can see exactly what moved.   // -1, 2026-08-31, DG-S-03: `/admin/roles`'s hand-rolled section rail declared its height as `py-2.5` — 10px on a scale where `py-2` is 12 — and it went with the rail when the page adopted the kit `<Tabs variant="line">`, whose 44px is a declared height rather than padding. ⭐ Worth reading twice, because it is the same defect in two guards at once: `tap-target` §3 reads a DECLARED height and is structurally blind to one made of padding, so `/admin/players/[id]`'s 52px `py-3` rail has never been visible to it either. A control that states its height as padding is invisible to the tap gate AND, at a `.5` step, counted by this one.   // -59, 2026-08-30, session 82 -- the largest fall this ratchet has taken, and it is a SIDE EFFECT: DG-A-08 replaced ~24 hand-rolled admin controls with kit `<Button>`s, and every one of them took its hand-typed `px-2.5 py-1.5` inverted-key padding with it. ⛔ The matcher was NOT touched this session (`git status` on this file: clean), which is the check that separates a cleanup from a collapse -- and §3 still sees 566 usages across 188 files. # 2026-08-30: -3 (DG-A-06). `px-2.5` left three hand-rolled selection capsules as they converted to FilterPill — CardSortControl's two byte-identical copies and /admin/proposals' queue rail. ⭐ The primitive's dense rank writes `px-2.5` too, so the win is real but SMALLER than the conversion looks: the inverted key moved from three call sites into ONE definition site, which is the shape this ratchet wants. Before that — 2026-08-29: -3, AdminKpi x2 + its skeleton left p-3.5 (14px) for p-2 (12px) — DG-A-16. Then -1 on 2026-08-30 (DG-P-03): the BackLink ghost's `w-16`. ⚠️ AND THIS GUARD EARNED ITS KEEP THE SAME DAY — adopting `PageHeader` in the deposit and withdraw skeletons meant COPYING that ghost into two more files, and this suite caught it at 631 before it shipped. A ratchet's job is not only to shrink a backlog; it is to stop a sweep from spreading one while it tidies something else.
+ 
+ ok(`1: 🔴 inverted spacing usages may only shrink (${total}, ceiling ${CEILING})`,
+   total <= CEILING,
+diff --git a/scripts/visual-pass-r4c.test.mts b/scripts/visual-pass-r4c.test.mts
+index 03d233658..432f1b2bb 100644
+--- a/scripts/visual-pass-r4c.test.mts
++++ b/scripts/visual-pass-r4c.test.mts
+@@ -164,7 +164,9 @@ const HANG_REST = restRule ? Number(restRule[1]) : NaN;
+   // The ghosts stand in with the same band, so nothing moves when the page lands.
+   const ghosts = [
+     ["src/app/results/loading.tsx", /<div className=\{QUERY_SEARCH_BAND_CLASS\} aria-hidden>\s*<div className="search-box-wrap">[\s\S]{0,260}?<p className="mt-1\.5 min-h-\[17px\]" \/>/],
+-    ["src/app/results/page.tsx", /<div className=\{QUERY_SEARCH_BAND_CLASS\} aria-hidden>\s*<div className="search-box-wrap">[\s\S]{0,260}?<p className="mt-1\.5 min-h-\[17px\]" \/>/],
++    // ⚠️ MOVED IN ROUND 5'S FOLLOW-UP (R5-L): the page's Suspense fallback IS the loading file's drawing (`ResultsGhostBands`,
++    // imported from ./loading) — one ghost for the document's first paint and a move's, so its band is the one above.
++    ["src/app/results/page.tsx", /import \{ ResultsGhostBands \} from "\.\/loading";[\s\S]*<Suspense fallback=\{<ResultsGhostBands /],
+     // ⚠️ MOVED IN ROUND 5'S FOLLOW-UP (R5-H, G-2): today's /positions picture is drawn in the browser, beside its loading file.
+     ["src/app/positions/positions-ghost.tsx", /<div className=\{QUERY_SEARCH_BAND_CLASS\} aria-hidden>\s*<div className="search-box-wrap">[\s\S]{0,260}?<p className="mt-1\.5 min-h-\[17px\]" \/>/],
+   ] as const;
+diff --git a/scripts/visual-pass-r5h.test.mts b/scripts/visual-pass-r5h.test.mts
+index fecdddc5f..429276bed 100644
+--- a/scripts/visual-pass-r5h.test.mts
++++ b/scripts/visual-pass-r5h.test.mts
+@@ -560,12 +560,15 @@ function ghostPills(html: string): string[] {
+   const { filterPillClass } = req("../src/components/ui/filter-pill.tsx") as { filterPillClass: (o: { rank?: string; on: boolean }) => string };
+   const GEOMETRY = /^(?:inline-flex|shrink-0|items-center|justify-center|gap-[\d.]+|whitespace-nowrap|rounded-pill|border|min-h-\[[^\]]+\]|text-\[\d+px\]|font-semibold|px-[\d.]+)$/;
+   const want = filterPillClass({ rank: "primary", on: false }).split(/\s+/).filter((c) => GEOMETRY.test(c));
+-  const ghost = code(BAR_GHOST);
++  // ⚠️ MOVED IN ROUND 5'S FOLLOW-UP (R5-L): the pill is `query-bar-ghost.tsx`'s `PillGhost` now — /results', /markets' and
++  // /leaderboard's ghosts draw the same pill — so its box is read there, and the money books' ghost must import it.
++  const ghost = code("src/components/ui/query-bar-ghost.tsx");
++  const imported = /import \{ PillGhost \} from "@\/components\/ui\/query-bar-ghost";/.test(code(BAR_GHOST)) && !/function PillGhost/.test(code(BAR_GHOST));
+   const pill = (s: string) => /function PillGhost[\s\S]*?<span className="([^"]+)">/.exec(s)?.[1].split(/\s+/) ?? [];
+   const has = (s: string) => want.length >= 11 && want.every((c) => pill(s).includes(c)) && pill(s).includes("text-transparent") && pill(s).includes("border-transparent");
+   const countOk = (s: string) => s.includes('<span className="font-mono text-[11px] font-bold tabular-nums">00</span>') && code("src/components/ui/filter-pill.tsx").includes('"font-mono text-[11px] font-bold tabular-nums"');
+   ok(`4.4 · each pill is the kit pill's box — every geometry class of \`filterPillClass\` (${want.join(" ")}), its 1px border transparent and its words transparent — with FilterPill's own count type: as wide as the page's pill`,
+-    has(ghost) && countOk(ghost), j({ want, got: pill(ghost) }));
++    has(ghost) && countOk(ghost) && imported, j({ want, got: pill(ghost), imported }));
+   ok("4.4′ PLANT · a pill a step narrower (`px-2.5`) is reported", !has(ghost.replace("rounded-pill border border-transparent bg-bg-overlay px-3", "rounded-pill border border-transparent bg-bg-overlay px-2.5")));
+   const html = inApp("/wallet", "sw", h(WalletGhost as never, { bonusLive: false } as never));
+   const bar = html.slice(html.indexOf('class="kp-discovery-bar'), html.indexOf('class="kp-wallet-door'));
+@@ -612,8 +615,10 @@ function ghostPills(html: string): string[] {
+ section("5 · G-2b's sweep · the bands the audit measured exactly from the classes, each held against its page");
+ {
+   // ⭐ THE BACK LINK: every ghost whose page opens on `BackLink` draws `BackLinkGhost`, the link's own 44px box. A census:
+-  // each player loading file's drawings (generic PageLoader routes aside — they draw no page's bands by design) against
+-  // the page beside it; the agent programme's shared ghost draws one unless its route says `back={false}`.
++  // each player loading file's drawings against the page beside it. Since R5-L a generic PageLoader route's own file draws
++  // its page's opening bands, so it is held here too (a server file that only hands PageLoader numbers — /proposals/[id],
++  // whose first band is its data — is passed over), and each agent route draws its own bands (the shared `AgentGhost`
++  // and its `back={false}` are gone).
+   const BL = squash(code("src/components/ui/back-link.tsx"));
+   const box = BL.includes('className="min-h-[44px] inline-flex items-center gap-1.5 text-label font-mono uppercase tracking-[0.16em]')
+     && inApp("/", "sw", h((req("../src/components/ui/back-link.tsx") as { BackLinkGhost: unknown }).BackLinkGhost as never)).startsWith('<div class="flex min-h-[44px] items-center" aria-hidden="true"><div class="h-3 w-[64px] rounded bg-bg-overlay kp-shimmer-track"></div></div>');
+@@ -626,8 +631,7 @@ section("5 · G-2b's sweep · the bands the audit measured exactly from the clas
+       if (draws.some((d) => d.endsWith("components/ui/page-loader.tsx"))) continue;
+       const pageOpens = /<BackLink\b/.test(decomment(text(page))) && !/journey \? <TicketsHead/.test(decomment(text(page)));
+       const historyClassic = f === "src/app/updown/history/loading.tsx";
+-      const agent = draws.some((d) => d.endsWith("app/agent/loading-shared.tsx"));
+-      const ghostHas = agent ? !/back=\{false\}/.test(decomment(text(f))) : draws.some((d) => /<BackLinkGhost \/>/.test(decomment(text(d))));
++      const ghostHas = draws.some((d) => /<BackLinkGhost \/>/.test(decomment(text(d))));
+       const want = historyClassic ? true : pageOpens;
+       if (ghostHas !== want) wrong.push(`${f}: page ${pageOpens ? "opens on" : "has no"} BackLink, ghost ${ghostHas ? "draws" : "does not draw"} one`);
+     }
+@@ -645,6 +649,7 @@ const sweep = (text: (p: string) => string) => {
+   const t = (p: string) => squash(decomment(text(p)));
+   const resultsPage = t("src/app/results/page.tsx"), resultsGhost = t("src/app/results/loading.tsx");
+   const mkGhost = t("src/app/markets/loading.tsx"), liveGhost = t("src/app/live/loading.tsx"), hero = t("src/components/ui/page-hero.tsx");
++  const barKit = t("src/components/ui/query-bar-ghost.tsx"), livePage = t("src/app/live/page.tsx");
+   const rcGhost = t("src/app/wallet/receipts/loading.tsx"), rcRow = t("src/components/wallet/receipt-list-row.tsx");
+   const pfPage = t("src/app/profile/page.tsx"), pfGhost = t("src/app/profile/loading.tsx");
+   const agPage = t("src/app/agent/page.tsx"), agGhost = t("src/app/agent/loading.tsx");
+@@ -659,11 +664,17 @@ const sweep = (text: (p: string) => string) => {
+     // (the page holds an emptied JSX note between its two wrappers — `{}` once decommented)
+     "5.2 results": /<div className="flex flex-col gap-5 lg:flex-row lg:gap-6"> (?:\{\} )*<div className="min-w-0 flex-1">/.test(resultsPage)
+       && resultsGhost.includes('<div className="flex flex-col gap-5 lg:flex-row lg:gap-6"> <div className="min-w-0 flex-1">')
+-      && resultsGhost.includes('<div className="mb-5 min-h-[458px]" aria-hidden>')
+-      && resultsGhost.includes('<div className="kp-shimmer-track h-[44px] w-[134px] rounded-pill bg-bg-elevated lg:hidden" />'),
++      // ⚠️ MOVED IN ROUND 5'S FOLLOW-UP (R5-L): the carousel is the notable card's own box (no 458px reservation, which was
++      // 118px too tall at 1280) and the Filters pill the trigger's own box (`lg:hidden` in its root) — `test:visual-pass-r5l` §5.
++      && resultsGhost.includes("{notable && <NotableGhost />}") && resultsGhost.includes('<div className="mb-5" aria-hidden>')
++      && resultsGhost.includes("<FiltersGhost label={t.market.filtersOpen} />") && barKit.includes('<div className="kp-fsheet lg:hidden">'),
+     "5.3 markets": mkGhost.includes('<div className="flex h-[17.25px] shrink-0 items-center" data-result-count=""><div className="kp-shimmer-track h-3 w-[80px] rounded bg-bg-elevated" /></div>')
+-      && mkGhost.includes('<div className="kp-fsheet kp-shimmer-track h-[44px] w-[170px] rounded-pill bg-bg-elevated lg:hidden" />'),
+-    "5.4 live": hero.includes('contentClassName = "relative z-10 p-5 lg:p-6"') && liveGhost.includes('<div className="relative z-10 p-5 lg:p-6">'),
++      // ⚠️ MOVED IN ROUND 5'S FOLLOW-UP (R5-L): the Filters pill is the trigger's own box with its word (`FiltersGhost`, whose
++      // root is `kp-fsheet lg:hidden`) — the 170px box pushed the phone grid past the bar's edge.
++      && mkGhost.includes("<FiltersGhost label={t.market.filtersOpen} />") && barKit.includes('<div className="kp-fsheet lg:hidden">'),
++    // ⚠️ MOVED IN ROUND 5'S FOLLOW-UP (R5-L): the hero ghost IS `PageHero`, with the page's props — its own padding by construction.
++    "5.4 live": hero.includes('contentClassName = "relative z-10 p-5 lg:p-6"') && liveGhost.includes('<PageHero glow="aqua" watermark={200}>')
++      && livePage.includes('<PageHero glow="aqua" watermark={200}>'),
+     "5.5 receipts": rcRow.includes('<p className="amount shrink-0 whitespace-nowrap font-mono text-body font-semibold text-text">') && rcRow.includes('<div className="mt-1.5 flex flex-wrap items-center justify-between gap-x-3 gap-y-1">')
+       && rcGhost.includes('<div className="flex h-[20px] items-center justify-between gap-3">') && rcGhost.includes('<div className="mt-1.5 flex h-[18px] items-center justify-between gap-3">')
+       && rcGhost.includes('<div className="h-[18px] w-[88px] rounded-pill bg-bg-overlay/60 kp-shimmer-track" />'),
+@@ -706,8 +717,8 @@ const sweep = (text: (p: string) => string) => {
+   // PLANTS — each fix undone in memory, one at a time, and its check alone reported.
+   const PLANTS: Array<[string, string, string, string]> = [
+     ["5.2 results", "src/app/results/loading.tsx", '<div className="min-w-0 flex-1">', "<div>"],
+-    ["5.3 markets", "src/app/markets/loading.tsx", 'h-[44px] w-[170px] rounded-pill bg-bg-elevated lg:hidden', "h-[44px] w-[170px] rounded-pill bg-bg-elevated"],
+-    ["5.4 live", "src/app/live/loading.tsx", '<div className="relative z-10 p-5 lg:p-6">', '<div className="relative z-10 p-5">'],
++    ["5.3 markets", "src/app/markets/loading.tsx", "<FiltersGhost label={t.market.filtersOpen} />", '<div className="kp-fsheet kp-shimmer-track h-[44px] w-[170px] rounded-pill bg-bg-elevated" />'],
++    ["5.4 live", "src/app/live/loading.tsx", '<PageHero glow="aqua" watermark={200}>', '<PageHero glow="aqua" watermark={200} contentClassName="relative z-10 p-5">'],
+     ["5.5 receipts", "src/app/wallet/receipts/loading.tsx", '<div className="h-[18px] w-[88px] rounded-pill', '<div className="h-[22px] w-[88px] rounded-pill'],
+     ["5.6 profile", "src/app/profile/loading.tsx", '<div className="grid grid-cols-1 gap-3 md:grid-cols-2">', '<div className="grid grid-cols-1 gap-2 md:grid-cols-2">'],
+     ["5.7 agent", "src/app/agent/loading.tsx", " subtitle={t.agent.heroSub} />", " />"],
+diff --git a/src/app/agent/apply/loading.tsx b/src/app/agent/apply/loading.tsx
+index 017c2e564..24143214a 100644
+--- a/src/app/agent/apply/loading.tsx
++++ b/src/app/agent/apply/loading.tsx
+@@ -1,6 +1,87 @@
+-import { AgentGhost } from "../loading-shared";
++"use client";
+ 
+-/** The form: back link, the four-step progress bar, one step panel, the persistent counter. */
++import { PageContainer } from "@/components/layout/page-container";
++import { BackLinkGhost } from "@/components/ui/back-link";
++import { Chip } from "@/components/ui/chip";
++import { I } from "@/components/ui/glyphs";
++import { ButtonGhost, CHIP_GHOST, Words } from "@/components/ui/ghost-kit";
++import { fill } from "@/lib/utils";
++import { useT } from "@/lib/i18n";
++
++/**
++ * /agent/apply — the form, as `apply-client.tsx` draws it: the back link, then the form's own column (24px apart) — the
++ * title row with the persistent counter, the step rail (the four-step bar, the step's line, the four step buttons), ONE
++ * step's panel, and the step navigation.
++ *
++ * 🔴 IT DREW A DIFFERENT FORM (R5-H's audit; round 5's follow-up, R5-L). The shared agent ghost drew no title row, a 4px
++ * bar for the whole rail (the page's rail is the 4px bar, 12px, the 14px step line, 12px and the row of 44px step buttons —
++ * 86px in all), TWO generic panels where the page shows one, and no navigation: the page's step panel landed 129px below
++ * the ghost's first panel at every width, and its navigation (706px down at 390 in Swahili) far below where the ghost's
++ * second panel stood (246). Every band below is the page's own box with the page's own words, set and not shown
++ * (`ghost-kit.tsx`), so the step buttons wrap where the page's do in every language.
++ * ⚠️ THE STEP DRAWN IS THE FIRST, "About you": the page opens on the first step with something missing, and an applicant
++ * arrives here from /agent with nothing attached. Its panel is the title, the two document slots (their own dashed box —
++ * the 40px glyph disc, the document's name, its "not attached" line), the photo hint and the identity note of an
++ * applicant who applied (an officer's invitee reads the KYC note instead, of a similar length).
++ * ⛔ No `<button>` and no `<input>`: a ghost promises a shape, never a control.
++ */
+ export default function AgentApplyLoading() {
+-  return <AgentGhost tier="form" panels={2} heading={false} steps />;
++  const { t } = useT();
++  const steps = [t.agent.stepAbout, t.agent.stepWhere, t.agent.stepReferees, t.agent.stepPayment];
++  return (
++    <PageContainer tier="form" className="space-y-5" aria-busy="true">
++      {/* The back link — the BackLink's own 44px box. */}
++      <BackLinkGhost />
++      <div className="space-y-5">
++        {/* Title row + the persistent counter — the title printed (the page's name); the counter the kit chip's box. */}
++        <div className="flex items-center justify-between gap-3">
++          <p className="font-display text-title-md font-bold leading-none">{t.agent.applyTitle}</p>
++          <Chip variant="pending" style={CHIP_GHOST} aria-hidden>{fill(t.agent.attachedCount, { n: "0", total: "0" })}</Chip>
++        </div>
++
++        {/* The rail — `SteppedProgress`'s four 4px segments, the step line, the four step buttons with their words. */}
++        <div className="text-transparent" aria-hidden>
++          <div className="flex gap-1.5">
++            {steps.map((_, i) => <div key={i} className="h-1 flex-1 rounded-pill bg-bg-overlay" />)}
++          </div>
++          <div className="mt-2 flex items-center justify-between">
++            <p className="font-mono text-micro uppercase eyebrow font-bold"><Words>{`1 / 4 · ${steps[0]}`}</Words></p>
++          </div>
++          <div className="mt-2 grid grid-cols-4 gap-1">
++            {steps.map((label, i) => (
++              <span key={i} className={`min-h-[44px] rounded-md px-1 text-center text-body-sm font-semibold leading-tight ${i === 0 ? "bg-bg-overlay kp-shimmer-track" : ""}`}>
++                <Words ink={i === 0 ? "title" : "line"}>{label}</Words>
++              </span>
++            ))}
++          </div>
++        </div>
++
++        {/* STEP 1's panel — the title, the two slots (one column on a phone), the two notes. */}
++        <section className="rounded-xl glass-panel p-4 space-y-3 text-transparent" aria-hidden>
++          <p className="font-display text-title-sm font-bold leading-tight"><Words ink="title">{t.agent.stepAbout}</Words></p>
++          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
++            {[t.agent.docCv, t.agent.docRequest].map((label, i) => (
++              <div key={i} className="relative">
++                <div className="w-full min-h-[96px] overflow-hidden rounded-md border-2 border-dashed border-border bg-bg-overlay/40 p-3 text-center">
++                  <span className="mx-auto mb-1.5 h-[40px] w-[40px] inline-flex items-center justify-center rounded-full bg-bg-overlay border border-border">
++                    <I.idCard s={14} />
++                  </span>
++                  <span className="block font-display text-body-sm font-semibold"><Words ink="title">{label}</Words></span>
++                  <span className="mt-0.5 block font-mono text-body-sm"><Words>{t.agent.slotEmpty}</Words></span>
++                </div>
++              </div>
++            ))}
++          </div>
++          <p className="text-body-sm leading-relaxed"><Words>{t.agent.docPhotoHint}</Words></p>
++          <p className="text-body-sm leading-relaxed"><Words>{t.agent.docIdNote}</Words></p>
++        </section>
++
++        {/* Step navigation — the two 44px buttons, their words and glyphs' room. */}
++        <div className="flex items-center justify-between" aria-hidden>
++          <ButtonGhost size="md" leading={14}>{t.common.back}</ButtonGhost>
++          <ButtonGhost size="md" trailing={14}>{t.common.next}</ButtonGhost>
++        </div>
++      </div>
++    </PageContainer>
++  );
+ }
+diff --git a/src/app/agent/invite/[token]/loading.tsx b/src/app/agent/invite/[token]/loading.tsx
+index f7907373e..04284850e 100644
+--- a/src/app/agent/invite/[token]/loading.tsx
++++ b/src/app/agent/invite/[token]/loading.tsx
+@@ -1,6 +1,50 @@
+-import { AgentGhost } from "../../loading-shared";
++"use client";
++
++import { PageContainer } from "@/components/layout/page-container";
++import { PageHeader } from "@/components/ui/page-header";
++import { ButtonGhost, Words } from "@/components/ui/ghost-kit";
++import { formatEatDay } from "@/lib/eat-day";
++import { fill } from "@/lib/utils";
++import { useT } from "@/lib/i18n";
++
++/**
++ * /agent/invite/[token] — no back link (the invitation opens on its header, R5-H · G-2b), then the page as it draws a
++ * valid invitation (round 5's follow-up, R5-L): its own `PageHeader` with the invitation's sentence, the "sent to" panel
++ * (the eyebrow, the masked address in the 18px mono figure, the expiry line), the identity note, and the action column.
++ *
++ * 🔴 IT WAS A 32px BAR AND ONE GENERIC PANEL (R5-H's audit): the page's header carries a subtitle (two to four lines by
++ * language and width), its panel is three lines, and the note and the actions follow — none of which the ghost drew.
++ * Every band here is the page's own box with the page's own words, set and not shown (`ghost-kit.tsx`).
++ * ⚠️ THE READER DRAWN IS THE INVITEE SIGNED IN ON THE INVITED ACCOUNT — the person the link is emailed to, opening it on
++ * the phone they play on: the "send me a code" button (48px) and the decline button (44px), 16px apart in the client's own
++ * column, as inline buttons share a line where they fit. A signed-out reader's sign-in pair stacks on a phone instead.
++ * The address is a masked email at a common domain (a phone reads `+255 ••• ••• 123`, about as wide).
++ */
++
++/** A masked address (`maskChannel`: the first character, three dots, the whole domain — `a•••@gmail.com`). */
++const ADDRESS = "a•••@gmail.com";
+ 
+-/** Header, the "sent to" panel, then the action row — and no back link: the invitation opens on its header (R5-H · G-2b). */
+ export default function AgentInviteLoading() {
+-  return <AgentGhost tier="reading" panels={1} back={false} />;
++  const { t, locale } = useT();
++  const date = formatEatDay("2026-09-28", t.common.monthsShort, locale);
++  return (
++    <PageContainer tier="reading" className="space-y-5" aria-busy="true">
++      <PageHeader eyebrow={t.agent.eyebrow} title={t.agent.inviteTitle} subtitle={t.agent.inviteBody} />
++
++      {/* Sent to — the eyebrow, the masked address, the expiry. */}
++      <section className="rounded-xl glass-panel p-4 space-y-1 text-transparent" aria-hidden>
++        <p className="font-mono text-micro uppercase eyebrow font-bold"><Words>{t.agent.inviteSentTo}</Words></p>
++        <p className="font-mono text-title-sm font-bold break-all"><Words ink="title">{ADDRESS}</Words></p>
++        <p className="text-body-sm"><Words>{fill(t.agent.inviteExpires, { date })}</Words></p>
++      </section>
++
++      <p className="text-body-sm leading-relaxed text-transparent" aria-hidden><Words ink="ground">{t.agent.inviteKycNote}</Words></p>
++
++      {/* The action column (`invite-client.tsx`): send the code, then decline — inline buttons, 16px apart. */}
++      <div className="space-y-3" aria-hidden>
++        <ButtonGhost size="lg" leading={16}>{t.agent.inviteOtpSend}</ButtonGhost>
++        <ButtonGhost size="md">{t.agent.inviteDecline}</ButtonGhost>
++      </div>
++    </PageContainer>
++  );
+ }
+diff --git a/src/app/agent/loading-shared.tsx b/src/app/agent/loading-shared.tsx
+deleted file mode 100644
+index abe1bdd20..000000000
+--- a/src/app/agent/loading-shared.tsx
++++ /dev/null
+@@ -1,32 +0,0 @@
+-"use client";
+-
+-import { PageContainer } from "@/components/layout/page-container";
+-import type { MeasureTier } from "@/components/layout/page-container";
+-import { BackLinkGhost } from "@/components/ui/back-link";
+-
+-/**
+- * The ONE ghost shape the agent programme's async routes share: a back link (where the page has one), a heading,
+- * then N panels. Each route's `loading.tsx` passes the panel count and tier it actually
+- * renders, so a skeleton can never describe a page that is not coming (§5f's lesson on
+- * `wallet/loading.tsx`).
+- * ⭐ CLIENT CODE (round 5's follow-up, R5-H · G-2): it reads nothing, so each route's loading file hands it numbers and a
+- * refresh carries its reference, not the drawn tree — `components/ui/page-loader.tsx` has the convention.
+- */
+-export function AgentGhost({ tier, panels, back = true, heading = true, steps = false }: { tier: MeasureTier; panels: number; back?: boolean; heading?: boolean; steps?: boolean }) {
+-  return (
+-    <PageContainer tier={tier} className="space-y-5" aria-busy="true">
+-      {/* The back link — the BackLink's own 44px box (R5-H · G-2b: a 20px bar stood here); `back={false}` for a page
+-          that opens on none (the invitation). */}
+-      {back && <BackLinkGhost />}
+-      {heading && <div className="h-6 w-56 rounded bg-bg-overlay/60 kp-shimmer-track" aria-hidden />}
+-      {steps && <div className="flex gap-1.5" aria-hidden>{[0, 1, 2, 3].map((i) => <div key={i} className="h-1 flex-1 rounded-pill bg-bg-overlay" />)}</div>}
+-      {Array.from({ length: panels }).map((_, i) => (
+-        <div key={i} className="rounded-xl glass-panel p-4 space-y-3" aria-hidden>
+-          <div className="h-4 w-40 rounded bg-bg-overlay/60" />
+-          <div className="h-3 w-full rounded bg-bg-overlay/40" />
+-          <div className="h-3 w-4/6 rounded bg-bg-overlay/40" />
+-        </div>
+-      ))}
+-    </PageContainer>
+-  );
+-}
+diff --git a/src/app/agent/loading.tsx b/src/app/agent/loading.tsx
+index c740430e4..2f8628afd 100644
+--- a/src/app/agent/loading.tsx
++++ b/src/app/agent/loading.tsx
+@@ -2,12 +2,20 @@
+ 
+ import { PageContainer } from "@/components/layout/page-container";
+ import { PageHeader } from "@/components/ui/page-header";
++import { Stat } from "@/components/ui/stat";
++import { I } from "@/components/ui/glyphs";
++import { ButtonGhost, Words } from "@/components/ui/ghost-kit";
++import { commissionWaterfall, type WaterfallStepId } from "@/lib/agent-commission";
++import { DEFAULT_GBT_LEVY_ON_COMMISSION_RATE, DEFAULT_OPERATOR_FEE_RATE, DEFAULT_PLATFORM_FEE_RATE, DEFAULT_TRA_TAX_ON_COMMISSION_RATE } from "@/lib/payout";
++import { MAX_DOC_BYTES } from "@/lib/id-documents";
++import { fillNodes } from "@/lib/fill-nodes";
++import { fill, formatTzs } from "@/lib/utils";
+ import { useT } from "@/lib/i18n";
++import type { Dict } from "@/lib/i18n-dict";
+ 
+ /**
+  * The page that is COMING: a header WITH its subtitle, three stat tiles in a row (one column
+- * on a phone), a CTA, then five panels and the centred terms link. Ghosted at the page's own
+- * rung heights so nothing snaps when the data lands. ⛔ Never a ghost for a card the page
++ * on a phone), a CTA, then five panels and the centred terms link. ⛔ Never a ghost for a card the page
+  * does not render — and never one card short either.
+  *
+  * 🔴 IT WAS TWO SHORT AND ONE LINE THIN. The header ghosted eyebrow + title while the page
+@@ -19,50 +27,171 @@ import { useT } from "@/lib/i18n";
+  * the two bars it replaced stood on the container's 32px rung instead of 4px under the title, and drew two lines where
+  * a phone has four (the subtitle 28px low at 1280).
+  *
+- * ⚠️ The waterfall's ghost is TALLER than the others on purpose: it is an eight-row table,
+- * so a one-panel-height ghost would under-reserve it by roughly 200px and reintroduce exactly
+- * the jump this file exists to prevent.
++ * ⭐ EVERY BAND IS THE PAGE'S OWN BOX WITH THE PAGE'S OWN WORDS, SET AND NOT SHOWN (2026-10-09, round 5's follow-up, R5-L —
++ * `components/ui/ghost-kit.tsx`). The tiles were 96px boxes against the page's `Stat` tiles of 121px at 1280 (measured on
++ * tile 196: a 14.25px label row, the 22.5px figure, the hint's two 18px lines — `cn` drops the hint's `leading-tight` for
++ * `text-body-sm`'s own 18px), and every panel was one 20px title bar over two 16px lines on 16px gaps in 20px of
++ * padding (126px) against the page's 294px how-it-works (tile 196), 352px of documents, a 193px fee panel, 198px of
++ * terms and the 647px eight-row waterfall (its ghost 326) at 1280 in Swahili — the terms link 879px below the ghost's
++ * at 1280 and 1,888px at 390 (S/r5l/measure-routes.cts, calibrated on tile 196's header, tiles and first panel). Each
++ * band below is the page's: the same `Stat` with the same props, each section's own classes, every sentence the
++ * dictionary's — so each wraps where the page's does in Swahili, English and Chinese and at every width, and the page
++ * lands where the ghost stood.
++ *
++ * ⚠️ THE PROGRAMME DRAWN IS TODAY'S, the configuration's defaults (`agent-config.ts`, `market-config.ts`, as tile 196 shows
++ * them): a 10% share, a TZS 100,000 fee with no VAT (Ali, 2026-09-09 — so no VAT hint under the fee tile and no VAT line
++ * in the fee panel), a lifetime window, no cap per recruit, a 5-day review and a 7-day refund; the waterfall at the default
++ * rates. Figures are placeholders of those digit counts (mono digits are one width). A programme set differently draws a
++ * VAT line or a different term the ghost does not: the page lands up to one line lower in that panel.
++ * ⚠️ AND THE PLAYER DRAWN IS THE ONE THIS PAGE IS FOR: signed in, verified and able to apply — one 48px "Apply" button and
++ * no state notice (tile 196). A guest's two buttons stack on a phone (+60px) and a player mid-application reads a notice.
++ *
+  * ⭐ CLIENT CODE, ITS WORDS ITS OWN (round 5's follow-up, R5-H · G-2): the words are the client dictionary's (`useT`), so
+  * a refresh of this page carries the drawing's reference, not its tree, and the server's HTML is what it was —
+  * `components/ui/page-loader.tsx` has the convention.
+  */
++
++/** Today's programme, as digit counts: a two-digit share, a six-digit fee, a one-digit review and refund. */
++const PCT = "00", DAYS = "0", REFUND_DAYS = "0", FEE = formatTzs(100_000).replace(/\d/g, "0");
++const MB = String(Math.round(MAX_DOC_BYTES / (1024 * 1024)));
++
++/** Management's waterfall at today's rates — the page reads them live from `market.config` and `agent-config`; these are
++ *  both modules' defaults (the share and the withholding are `agent-config`'s 10% and 5%). */
++const WATERFALL = commissionWaterfall(1_000_000, {
++  platformFeeRate: DEFAULT_PLATFORM_FEE_RATE,
++  operatorFeeRate: DEFAULT_OPERATOR_FEE_RATE,
++  traTaxOnCommissionRate: DEFAULT_TRA_TAX_ON_COMMISSION_RATE,
++  gbtLevyOnCommissionRate: DEFAULT_GBT_LEVY_ON_COMMISSION_RATE,
++  agentPct: 10,
++  withholdingPct: 5,
++});
++const WF_LABEL: Record<WaterfallStepId, keyof Dict["agent"]> = {
++  winnings: "wfWinnings", grossFee: "wfGrossFee", tra: "wfTra", gbt: "wfGbt",
++  netFee: "wfNetFee", agentShare: "wfAgentShare", withholding: "wfWithholding", netPayout: "wfNetPayout",
++};
++const WF_NOTE: Record<WaterfallStepId, keyof Dict["agent"]> = {
++  winnings: "wfWinningsNote", grossFee: "wfGrossFeeNote", tra: "wfTraNote", gbt: "wfGbtNote",
++  netFee: "wfNetFeeNote", agentShare: "wfAgentShareNote", withholding: "wfWithholdingNote", netPayout: "wfNetPayoutNote",
++};
++const pct = (p: number) => String(Math.round(p * 100) / 100);
++
+ export default function AgentLoading() {
+   const { t } = useT();
++  const a = t.agent as unknown as Record<string, string>;
+   return (
+     <PageContainer tier="reading" className="space-y-6" aria-busy="true">
+       {/* ⭐ THE PAGE'S OWN HEADER, SAME PROPS (R5-H · G-2b): `subtitle={t.agent.heroSub}`, 4px under the title as the page
+           draws it, so it wraps where the page's does in every language. */}
+       <PageHeader eyebrow={t.agent.eyebrow} title={t.agent.title} subtitle={t.agent.heroSub} />
++
++      {/* The three facts — the page's `Stat` tiles, same props: label row, figure, hint (the fee has none: no VAT). */}
+       <div className="grid grid-cols-1 gap-3 sm:grid-cols-3" aria-hidden>
+-        {[0, 1, 2].map((i) => <div key={i} className="h-[96px] rounded-xl border border-border bg-bg-overlay/40 kp-shimmer-track" />)}
++        <Stat size="xl" boxed="glass" labelStyle="strong" font="mono" className="p-4 kp-shimmer-track"
++          label={<Words>{t.agent.statEarn}</Words>}
++          value={<Words ink="title">{fill(t.agent.statEarnValue, { pct: PCT })}</Words>}
++          hint={<Words>{t.agent.statEarnHint}</Words>} icon={<I.percent s={14} className="text-transparent" />} iconAlign="end" />
++        <Stat size="xl" boxed="glass" labelStyle="strong" font="mono" className="p-4 kp-shimmer-track"
++          label={<Words>{t.agent.statCost}</Words>}
++          value={<Words ink="title"><span className="amount">{FEE}</span></Words>}
++          icon={<I.coins s={14} className="text-transparent" />} iconAlign="end" />
++        <Stat size="xl" boxed="glass" labelStyle="strong" font="mono" className="p-4 kp-shimmer-track"
++          label={<Words>{t.agent.statTime}</Words>}
++          value={<Words ink="title">{fill(t.agent.statTimeValue, { days: DAYS })}</Words>}
++          hint={<Words>{t.agent.statTimeHint}</Words>} icon={<I.clock s={14} className="text-transparent" />} iconAlign="end" />
++      </div>
++
++      {/* The CTA — the eligible player's one 48px button, its words and glyph's room. */}
++      <div className="flex flex-col gap-2 sm:flex-row sm:items-center" aria-hidden>
++        <div><ButtonGhost size="lg" leading={16}>{t.agent.ctaApply}</ButtonGhost></div>
+       </div>
+-      <div className="h-[48px] w-48 rounded-pill bg-bg-overlay kp-shimmer-track" aria-hidden />
+-      {[0, 1, 2, 3].map((i) => (
+-        <div key={i} className="rounded-xl glass-panel p-4 space-y-3" aria-hidden>
+-          <div className="h-4 w-40 rounded bg-bg-overlay/60" />
+-          <div className="h-3 w-full rounded bg-bg-overlay/40" />
+-          <div className="h-3 w-5/6 rounded bg-bg-overlay/40" />
++
++      {/* How it works — the title, then five steps beside their 30px numerals. */}
++      <section className="rounded-xl glass-panel p-4 text-transparent" aria-hidden>
++        <p className="font-display text-title-sm font-bold leading-tight"><Words ink="title">{t.agent.howTitle}</Words></p>
++        <ol className="mt-3 space-y-3">
++          {[t.agent.how1, t.agent.how2, t.agent.how3, t.agent.how4, t.agent.how5].map((step, i) => (
++            <li key={i} className="flex items-start gap-3">
++              <span className="h-[30px] w-[30px] shrink-0 rounded-full bg-bg-overlay/60 kp-shimmer-track" />
++              <p className="pt-1 text-body-sm leading-snug"><Words>{step}</Words></p>
++            </li>
++          ))}
++        </ol>
++      </section>
++
++      {/* The seven documents — their own boxes (two columns from 640), then the two notes. */}
++      <section className="rounded-xl glass-panel p-4 text-transparent" aria-hidden>
++        <p className="font-display text-title-sm font-bold leading-tight"><Words ink="title">{t.agent.docsTitle}</Words></p>
++        <ul className="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-2">
++          {[t.agent.docCv, t.agent.docRequest, t.agent.docSerikali, t.agent.docRefLetter1, t.agent.docRefId1, t.agent.docRefLetter2, t.agent.docRefId2].map((d, i) => (
++            <li key={i} className="flex items-center gap-2 rounded-md border border-border bg-bg-overlay/40 px-3 py-2 text-body-sm">
++              <I.idCard s={14} className="shrink-0" />
++              <span><Words ink="title">{d}</Words></span>
++            </li>
++          ))}
++        </ul>
++        <p className="mt-3 text-body-sm leading-relaxed"><Words>{t.agent.docIdNote}</Words></p>
++        <p className="mt-1 font-mono text-body-sm"><Words>{fill(t.agent.docHint, { mb: MB })}</Words></p>
++      </section>
++
++      {/* The fee — its eyebrow, the figure, the wallet sentence and the refund sentence (no VAT line: none is charged). */}
++      <section className="rounded-xl glass-panel p-4 text-transparent" aria-hidden>
++        <p className="font-mono text-micro uppercase eyebrow font-bold"><Words>{t.agent.feeTitle}</Words></p>
++        <p className="mt-2 amount text-title-lg font-bold"><Words ink="title">{FEE}</Words></p>
++        <p className="mt-3 text-body-sm leading-relaxed">
++          <Words>{fillNodes(t.agent.feeBodyWallet, { amount: <span className="amount font-semibold">{FEE}</span> })}</Words>
++        </p>
++        <p className="mt-2 text-body-sm leading-relaxed"><Words>{fill(t.agent.feeRefund, { days: REFUND_DAYS })}</Words></p>
++      </section>
++
++      {/* How you are paid — the title and the five terms (a lifetime window, no cap per recruit). */}
++      <section className="rounded-xl glass-panel p-4 space-y-2 text-transparent" aria-hidden>
++        <p className="font-display text-title-sm font-bold leading-tight"><Words ink="title">{t.agent.earnTitle}</Words></p>
++        <ul className="space-y-1.5 text-body-sm leading-snug list-disc pl-4">
++          {[t.agent.earnLifetime, t.agent.earnUncapped, t.agent.earnNoPrize, t.agent.earnSingleLevel, t.agent.recruiterOnly].map((term, i) => (
++            <li key={i}><Words>{term}</Words></li>
++          ))}
++        </ul>
++      </section>
++
++      {/* The commission waterfall — `CommissionWaterfall`'s own structure: the title row, the basis sentence, the head row,
++          eight rows of a label and its note beside the amount, then the two closing sentences. */}
++      <section className="rounded-xl glass-panel p-4 text-transparent" aria-hidden>
++        <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1">
++          <p className="font-display text-title-sm font-bold leading-tight"><Words ink="title">{t.agent.wfTitle}</Words></p>
++          <p className="font-mono text-micro uppercase eyebrow"><Words>{t.agent.wfEyebrow}</Words></p>
+         </div>
+-      ))}
+-      {/* The commission waterfall — a header row plus eight rows of two lines each. */}
+-      <div className="rounded-xl glass-panel p-4 space-y-3" aria-hidden>
+-        <div className="h-4 w-48 rounded bg-bg-overlay/60" />
+-        <div className="h-3 w-2/3 rounded bg-bg-overlay/40" />
+-        {/* ⚠️ `space-y-2`, not `2.5` — the overridden scale makes `2.5` (10px) smaller than
+-            `2` (12px). See `test:spacing-scale`. */}
+-        <div className="space-y-2 pt-1">
+-          {[0, 1, 2, 3, 4, 5, 6, 7].map((i) => (
+-            <div key={i} className="flex items-start justify-between gap-6">
+-              <div className="h-3 flex-1 max-w-[28ch] rounded bg-bg-overlay/40" />
+-              {/* ⚠️ A LITERAL, not `w-20`. On the overridden scale `w-20` and `w-10` both
+-                  paint 80px, so the key says nothing true about the size; the amount column
+-                  ghost wants ~80px and now says so. */}
+-              <div className="h-3 w-[80px] shrink-0 rounded bg-bg-overlay/40" />
++        <p className="mt-1 text-body-sm leading-relaxed">
++          <Words>{fillNodes(t.agent.wfBasis, { amount: <span className="font-mono tabular-nums">{formatTzs(1_000_000)}</span> })}</Words>
++        </p>
++        <dl className="mt-3">
++          <div className="flex items-baseline justify-between gap-4 border-b border-border pb-1.5">
++            <span className="font-mono text-micro uppercase eyebrow"><Words>{t.agent.wfColParam}</Words></span>
++            <span className="font-mono text-micro uppercase eyebrow"><Words>{t.agent.wfColAmount}</Words></span>
++          </div>
++          {WATERFALL.steps.map((s) => (
++            <div key={s.id} className={`flex items-start justify-between gap-4 ${s.id === "netPayout" ? "pt-2 pb-1 border-t border-border-strong" : "py-1.5"}`}>
++              <dt className={s.deduction ? "min-w-0 pl-3" : "min-w-0"}>
++                <span className={
++                  s.deduction ? "block text-body-sm leading-snug before:mr-1.5 before:content-['·']"
++                    : s.id === "netPayout" ? "block text-body-sm font-bold leading-snug"
++                      : s.subtotal ? "block text-body-sm font-semibold leading-snug" : "block text-body-sm leading-snug"
++                }>
++                  <Words ink="title">{s.ratePct === null ? a[WF_LABEL[s.id]] : fill(a[WF_LABEL[s.id]], { pct: pct(s.ratePct) })}</Words>
++                </span>
++                <span className="mt-0.5 block text-body-sm leading-snug"><Words>{a[WF_NOTE[s.id]]}</Words></span>
++              </dt>
++              <dd className={`amount shrink-0 tabular-nums text-right ${s.id === "netPayout" ? "text-body font-bold" : s.subtotal ? "text-body-sm font-semibold" : "text-body-sm"}`}>
++                <Words ink="title">{s.deduction ? `−${formatTzs(s.amountTzs)}` : formatTzs(s.amountTzs)}</Words>
++              </dd>
+             </div>
+           ))}
+-        </div>
+-      </div>
+-      <div className="mx-auto h-3 w-40 rounded bg-bg-overlay/40" aria-hidden />
++        </dl>
++        <p className="mt-3 text-body-sm leading-relaxed"><Words>{fill(t.agent.wfEffective, { pct: pct(WATERFALL.effectivePctOfWinnings) })}</Words></p>
++        <p className="mt-1.5 text-body-sm leading-relaxed"><Words>{t.agent.wfDisclaimer}</Words></p>
++      </section>
++
++      {/* The terms link, centred, its words. */}
++      <p className="text-center text-body-sm text-transparent" aria-hidden><Words ink="ground">{t.agent.termsLink}</Words></p>
+     </PageContainer>
+   );
+ }
+diff --git a/src/app/agent/status/loading.tsx b/src/app/agent/status/loading.tsx
+index c2da96415..0ed9a7e09 100644
+--- a/src/app/agent/status/loading.tsx
++++ b/src/app/agent/status/loading.tsx
+@@ -1,6 +1,61 @@
+-import { AgentGhost } from "../loading-shared";
++"use client";
++
++import { PageContainer } from "@/components/layout/page-container";
++import { PageHeader } from "@/components/ui/page-header";
++import { BackLinkGhost } from "@/components/ui/back-link";
++import { Chip } from "@/components/ui/chip";
++import { CHIP_GHOST, Words } from "@/components/ui/ghost-kit";
++import { formatEatDay } from "@/lib/eat-day";
++import { fill } from "@/lib/utils";
++import { useT } from "@/lib/i18n";
++
++/**
++ * /agent/status — the back link, the page's own `PageHeader` (eyebrow and title), then the application's two panels as
++ * the page draws them (round 5's follow-up, R5-L): "where you are" — the reference's eyebrow and its id beside the status
++ * chip, the date it was submitted — and "what happens next", its title and two terms.
++ *
++ * 🔴 THE HEADER WAS A 32px BAR AND THE PANELS WERE ANY PANELS (R5-H's audit). The page opens on `PageHeader` (a 15px
++ * eyebrow, 4px, the 35px title: 54px), so the ghost's bar (`h-6`, 32px on this scale) stood 22px short and every panel
++ * under it landed 22px lower than promised (57 at 320 in Swahili, where the title takes two lines); and both panels were
++ * one title bar over two lines, where the page's first is a two-line block beside a chip and a date, and its second a
++ * title over two bulleted terms. Every band here is the page's own box with the page's own
++ * words, set and not shown (`ghost-kit.tsx`), so it wraps where the page's does in every language.
++ * ⚠️ THE APPLICATION DRAWN IS ONE UNDER REVIEW — the state the form's "submitted" dialog sends an applicant here in: its
++ * chip, its submitted date, the review term and the decision term; no button (the page shows "continue" only to an
++ * application still in progress). A decided application reads its own panel.
++ */
++
++/** An application's reference: `agp_` and ten characters (`agent-application-service.ts`). */
++const REFERENCE = "agp_0000000000";
+ 
+-/** Back link, header, the status panel, then the what-happens-next panel. */
+ export default function AgentStatusLoading() {
+-  return <AgentGhost tier="reading" panels={2} />;
++  const { t, locale } = useT();
++  const date = formatEatDay("2026-09-28", t.common.monthsShort, locale);
++  return (
++    <PageContainer tier="reading" className="space-y-5" aria-busy="true">
++      <BackLinkGhost />
++      <PageHeader eyebrow={t.agent.eyebrow} title={t.agent.statusTitle} />
++
++      {/* Where you are — the reference beside the status chip, then the submitted date. */}
++      <section className="rounded-xl glass-panel p-4 space-y-3 text-transparent" aria-hidden>
++        <div className="flex items-start justify-between gap-3">
++          <div className="min-w-0">
++            <p className="font-mono text-micro uppercase eyebrow font-bold"><Words>{t.agent.statusReference}</Words></p>
++            <p className="font-mono text-body-sm break-all"><Words ink="title">{REFERENCE}</Words></p>
++          </div>
++          <Chip variant="pending" style={CHIP_GHOST}>{t.agent.statusUnderReview}</Chip>
++        </div>
++        <p className="text-body-sm"><Words>{fill(t.agent.submittedOn, { date })}</Words></p>
++      </section>
++
++      {/* What happens next — its title and the two terms. */}
++      <section className="rounded-xl glass-panel p-4 space-y-2 text-transparent" aria-hidden>
++        <p className="font-display text-title-sm font-bold leading-tight"><Words ink="title">{t.agent.nextTitle}</Words></p>
++        <ul className="space-y-1.5 text-body-sm leading-snug list-disc pl-4">
++          <li><Words>{fill(t.agent.nextReview, { days: "0" })}</Words></li>
++          <li><Words>{t.agent.nextDecision}</Words></li>
++        </ul>
++      </section>
++    </PageContainer>
++  );
+ }
+diff --git a/src/app/fairness/loading.tsx b/src/app/fairness/loading.tsx
+index 5e0382acb..9b61b959a 100644
+--- a/src/app/fairness/loading.tsx
++++ b/src/app/fairness/loading.tsx
+@@ -1,4 +1,47 @@
++"use client";
++
+ import { PageLoader } from "@/components/ui/page-loader";
+-export default function Loading() {
+-  return <PageLoader tier="reading" />;
++import { PageHero } from "@/components/ui/page-hero";
++import { PageHeader } from "@/components/ui/page-header";
++import { Words } from "@/components/ui/ghost-kit";
++import { keepLastWords } from "@/components/ui/keep-words";
++import { I } from "@/components/ui/glyphs";
++import { durationHours } from "@/lib/duration-phrase";
++import { fill } from "@/lib/utils";
++import { useT } from "@/lib/i18n";
++
++/** The objection window the lead sentence names — the configuration's default (`market-config.ts`,
++ *  `objectionWindowHours`). */
++const OBJECTION_WINDOW_HOURS = 1;
++
++/**
++ * /fairness opens on its header — the hero with the attestation's own `PageHeader`, then the lead sentence (its words set
++ * and not shown, as the page sets them: 15px, relaxed, 68ch, its last two words kept together) — on the page's 32px rung.
++ * ⚠️ The page pads 48px from 1024 (`py-6 lg:py-8`, its own container — `test:measure`'s allowlist); this loader stands in
++ * `PageContainer`'s 32, so the header band takes the other 16 (`lg:pt-3`) and lands where the page's does.
++ * ⚠️ The sentence names the objection window: drawn at the configuration's default, one hour (`market-config.ts`); a
++ * longer window is a few characters wider.
++ * The generic body below — `components/ui/page-loader.tsx` has the rule (R5-L): a loader opens on its page's own opening
++ * bands, in the page's rhythm, and its spinner panel stands where the page's first band of data begins.
++ */
++export default function FairnessLoading() {
++  const { t, locale } = useT();
++  return (
++    <PageLoader
++      tier="reading"
++      rhythm="space-y-6"
++      lead={
++        <div className="lg:pt-3">
++          <header className="space-y-3">
++            <PageHero glow="info">
++              <PageHeader eyebrow={t.common.resolutionAttestation} title={t.common.howAMarketResolves} tone="info" icon={<I.shieldcheck s={18} />} />
++            </PageHero>
++            <p className="text-[15px] leading-relaxed max-w-[68ch]" aria-hidden>
++              <Words ink="ground">{keepLastWords(fill(t.common.fairnessIntro, { hours: durationHours(locale, OBJECTION_WINDOW_HOURS) }))}</Words>
++            </p>
++          </header>
++        </div>
++      }
++    />
++  );
+ }
+diff --git a/src/app/help/loading.tsx b/src/app/help/loading.tsx
+index 5e0382acb..4be3ab559 100644
+--- a/src/app/help/loading.tsx
++++ b/src/app/help/loading.tsx
+@@ -1,4 +1,26 @@
++"use client";
++
+ import { PageLoader } from "@/components/ui/page-loader";
+-export default function Loading() {
+-  return <PageLoader tier="reading" />;
++import { PageHero } from "@/components/ui/page-hero";
++import { PageHeader } from "@/components/ui/page-header";
++import { useT } from "@/lib/i18n";
++
++/**
++ * /help opens on its hero — the page's own `PageHeader` in the info `PageHero` — on the page's 24px rung.
++ * The generic body below — `components/ui/page-loader.tsx` has the rule (R5-L): a loader opens on its page's own opening
++ * bands, in the page's rhythm, and its spinner panel stands where the page's first band of data begins.
++ */
++export default function HelpLoading() {
++  const { t } = useT();
++  return (
++    <PageLoader
++      tier="reading"
++      rhythm="space-y-5"
++      lead={
++        <PageHero glow="info">
++          <PageHeader tone="info" eyebrow={t.help.pageTitle} title={t.help.heading} />
++        </PageHero>
++      }
++    />
++  );
+ }
+diff --git a/src/app/leaderboard/loading.tsx b/src/app/leaderboard/loading.tsx
+index dec479122..8f1ee12fb 100644
+--- a/src/app/leaderboard/loading.tsx
++++ b/src/app/leaderboard/loading.tsx
+@@ -1,14 +1,37 @@
+ "use client";
+ 
+-import { BrandSpinner } from "@/components/brand";
++import { cn } from "@/lib/utils";
+ import { useT } from "@/lib/i18n";
+ import { PageContainer } from "@/components/layout/page-container";
+ import { PageHeader } from "@/components/ui/page-header";
++import { PLAYER_PER_PAGE } from "@/components/ui/pagination";
++import { QUERY_BAR_ROW2_CLASS } from "@/components/ui/query-bar";
++import { PillGhost, SortGhost } from "@/components/ui/query-bar-ghost";
++import { Words } from "@/components/ui/ghost-kit";
+ 
+ /**
+  * ⭐ CLIENT CODE, ITS WORDS ITS OWN (round 5's follow-up, R5-H · G-2): the words are the client dictionary's (`useT`), so
+  * a refresh of this page carries the drawing's reference, not its tree, and the server's HTML is what it was —
+  * `components/ui/page-loader.tsx` has the convention.
++ *
++ * ⭐ THE BOARD THAT IS COMING, BAND FOR BAND (2026-10-09, round 5's follow-up, R5-L). The ghost drew the header, then a
++ * 193px spinner box the page does not have (`p-8` is 48px here, around the 64px spinner, its 16px and its 15px word), then
++ * eight 56px boxes with no table head — where the page draws, on its 32px rung (`space-y-6`): the ribbon (51px at 1280,
++ * measured on tile 178; two lines, 80px, on a phone), the product lens (44), the sort (44), the podium (236 on tile 178)
++ * and the table with its 35px head. So the page's first row landed 313px below the ghost's at 1280 and 368px at 390 —
++ * and the table head appeared from nothing; below 768 the page's rows are 53px (no 32px sparkline), the ghost's 57.
++ * Every band below is the page's own box — `PageRibbon`'s, the kit pill's, `QuerySort`'s, the podium's columns, the
++ * `admin-tbl` table (its own CSS pads the cells: 12px over each row, 10 over the head) — with the page's own words set
++ * and not shown (`ghost-kit.tsx`, `query-bar-ghost.tsx`), so each wraps where the page's does.
++ * ⚠️ WHERE THE DATA DECIDES A HEIGHT, THE CASE DRAWN:
++ *   · the podium is the measured board's (tiles 177, 178 and 203, the one board this round read): the leader WITHOUT a
++ *     hot streak and the two beside it on one each, short handles on one line, a silver leader. A streak is the data's
++ *     (the player's latest settled prediction won), and the tallest column sets the band (`items-end`): a leader on a
++ *     streak makes the page's podium 8px taller than this one, a podium with no streak at all 18.5px shorter; a longer
++ *     handle wraps on a phone.
++ *   · the rows are a full page, twelve (`PLAYER_PER_PAGE`): they are the last band, so a shorter board (the measured one
++ *     ranks seven) moves nothing but the footer below them. The cap sentence (a board of fifty) and the pager are not
++ *     drawn — how many pages there are is the data's.
+  */
+ export default function LeaderboardLoading() {
+   const { t } = useT();
+@@ -28,24 +51,109 @@ export default function LeaderboardLoading() {
+           of defect, found the same way.) */}
+       <PageHeader eyebrow={t.leaderboard.title} title={t.leaderboard.topPredictors} />
+ 
+-      <section className="rounded-xl border border-border bg-bg-elevated p-8 grid place-items-center">
+-        <div className="flex flex-col items-center gap-3">
+-          <BrandSpinner size={48} />
+-          <p className="font-mono text-caption uppercase tracking-[0.18em] text-text-muted">
+-            {t.common.loading}
+-          </p>
+-        </div>
+-      </section>
+-
+-      <section className="rounded-xl border border-border bg-bg-elevated overflow-hidden" aria-hidden>
+-        {Array.from({ length: 8 }).map((_, i) => (
+-          <div
+-            key={i}
+-            className="border-b border-border last:border-b-0 px-4 py-3 kp-shimmer-track"
+-            style={{ height: 56 }}
+-          />
++      {/* The ribbon — `PageRibbon`'s box: three stats, each its label beside its figure, wrapping as the page's. */}
++      <div className="rounded-xl border border-border bg-bg-elevated/60 px-4 py-3 flex flex-wrap items-baseline gap-x-6 gap-y-2 text-transparent" aria-hidden>
++        {[
++          [t.leaderboard.topTier, t.leaderboard.tierSilver.split(" ")[0]],
++          [t.leaderboard.bestRoi, "00.0%"],
++          [t.leaderboard.predictorsCount, "00"],
++        ].map(([label, value], i) => (
++          <div key={i} className="flex items-baseline gap-2 min-w-0">
++            <div className="flex flex-col gap-0.5 min-w-0">
++              <p className="font-mono text-micro uppercase eyebrow font-bold whitespace-nowrap"><Words>{label}</Words></p>
++            </div>
++            <p className="font-mono text-body-lg font-bold tabular-nums whitespace-nowrap leading-none"><Words ink="title">{value}</Words></p>
++          </div>
+         ))}
+-      </section>
++      </div>
++
++      {/* The product lens — the page's three pills, their words. */}
++      <div className="flex flex-wrap items-center gap-1.5 -mx-1 px-1" aria-hidden>
++        <PillGhost label={t.common.all} />
++        <PillGhost label={t.common.markets} />
++        <PillGhost label={t.market.udTitle} />
++      </div>
++
++      {/* The sort — its own row on the page's rhythm (`py-0`, as the page's). */}
++      <div className={cn(QUERY_BAR_ROW2_CLASS, "py-0")} aria-hidden>
++        <SortGhost label={t.common.sort} value={t.leaderboard.bestRoi} />
++      </div>
++
++      <PodiumGhost />
++
++      {/* The table — the page's own `admin-tbl` in its glass scroller: the head, then the page's rows. */}
++      <div className="scrollx overflow-x-auto rounded-xl glass-panel text-transparent" aria-hidden>
++        <table className="admin-tbl min-w-[640px]">
++          <thead className="border-b border-border bg-bg-overlay">
++            <tr className="font-mono text-micro uppercase eyebrow">
++              <th className="text-left p-3 w-[56px]"><Words>#</Words></th>
++              <th className="text-left p-3"><Words>{t.leaderboard.tablePredictor}</Words></th>
++              <th className="text-right p-3"><Words>{t.leaderboard.tableRoi}</Words></th>
++              <th className="text-left p-3 hidden md:table-cell"><Words>{t.leaderboard.tableStakes}</Words></th>
++              <th className="text-right p-3 hidden md:table-cell"><Words>{t.leaderboard.tableStreak}</Words></th>
++              <th className="text-right p-3"><Words>{t.leaderboard.tableResolved}</Words></th>
++            </tr>
++          </thead>
++          <tbody>
++            {Array.from({ length: PLAYER_PER_PAGE }).map((_, i) => (
++              <tr key={i} className="border-b border-border last:border-b-0">
++                <td className="p-3 font-mono font-bold tabular-nums"><Words>{String(i + 1)}</Words></td>
++                <td className="p-3">
++                  <div className="flex items-center gap-2">
++                    {/* The 28px crest (`Avatar size="sm"`, `.crest-holder`), the handle, the 22px tier badge. */}
++                    <span className="crest-holder h-[28px] w-[28px] rounded-full bg-bg-overlay kp-shimmer-track" />
++                    <span className="font-medium"><Words ink="title">@handle</Words></span>
++                    <span className="tier-badge bg-bg-overlay" />
++                  </div>
++                </td>
++                <td className="p-3 text-right font-mono tabular-nums font-bold"><Words>+00.0%</Words></td>
++                {/* The 14-day sparkline's 32px (`VolumeSparkline height={32}`), from 768 — it sets the row there. */}
++                <td className="p-3 hidden md:table-cell"><div className="h-[32px] w-[140px] rounded-sm bg-bg-overlay/40 kp-shimmer-track" /></td>
++                <td className="p-3 text-right hidden md:table-cell font-mono tabular-nums"><Words>—</Words></td>
++                <td className="p-3 text-right font-mono tabular-nums"><Words>00</Words></td>
++              </tr>
++            ))}
++          </tbody>
++        </table>
++      </div>
+     </PageContainer>
+   );
+ }
++
++/** The podium — the page's own section, grid and columns: #2, #1 (its crown, the 56px crest; 12px raised, which moves
++ *  no box) and #3 (48px crests), each its handle and 22px tier badge (stacked below 640), the rate, a hot streak (the two
++ *  beside the leader: the measured board's — the file's note) and the resolved count. The bottoms align (`items-end`), so
++ *  the tallest column sets the band: here a neighbour's, 18.5px taller than the leader's without its streak line. */
++function PodiumGhost() {
++  return (
++    <section className="rounded-xl glass-panel px-4 pt-6 pb-4 text-transparent" aria-hidden>
++      <div className="grid grid-cols-3 items-end gap-2 sm:gap-4">
++        {[2, 1, 3].map((rank) => {
++          const first = rank === 1;
++          // The crest's own box (`.crest-holder`: inline-flex, middle-aligned, its line 0) — 56px for the leader, 48
++          // beside it.
++          const crest = first ? "h-[56px] w-[56px]" : "h-[48px] w-[48px]";
++          return (
++            <div key={rank} className={`flex min-w-0 flex-col items-center text-center ${first ? "-translate-y-3" : ""}`}>
++              <span className="mb-1 block h-[22px]" />
++              <div className="relative rounded-full" style={{ padding: 3 }}>
++                <span className={`crest-holder ${crest} rounded-full bg-bg-overlay kp-shimmer-track`} />
++              </div>
++              <div className="mt-2 flex max-w-full flex-col items-center gap-1 sm:flex-row sm:gap-1.5">
++                <span className="min-w-0 break-words font-medium"><Words ink="title">@handle</Words></span>
++                <span className="tier-badge bg-bg-overlay" />
++              </div>
++              <span className="mt-0.5 font-mono text-[13px] font-bold tabular-nums"><Words>+00.0%</Words></span>
++              {/* The streak's line, beside the leader only (the measured board): the column's 15px type on its 22.5px line
++                  box, the 21px chip inside it (1px border, 2px padding, its 10px words on their 15px line) — then the
++                  resolved count's own 15px line (10px × 1.5). One line each, so the line's box is the ghost; the words
++                  would size nothing. */}
++              {!first && <span className="mt-1 flex h-[22.5px] items-center"><span className="h-[21px] w-[72px] rounded-pill bg-bg-overlay" /></span>}
++              <span className="mt-1 flex h-[15px] items-center"><span className="h-[8px] w-[80px] rounded-sm bg-bg-overlay/40" /></span>
++            </div>
++          );
++        })}
++      </div>
++    </section>
++  );
++}
+diff --git a/src/app/live/loading.tsx b/src/app/live/loading.tsx
+index 8598ce71d..3785042a0 100644
+--- a/src/app/live/loading.tsx
++++ b/src/app/live/loading.tsx
+@@ -2,7 +2,10 @@
+ 
+ import { useT } from "@/lib/i18n";
+ import { PageContainer } from "@/components/layout/page-container";
++import { PageHero } from "@/components/ui/page-hero";
++import { ButtonGhost, Words } from "@/components/ui/ghost-kit";
+ import { QUERY_SEARCH_BAND_CLASS } from "@/components/ui/query-bar";
++import type { Dict, Locale } from "@/lib/i18n-dict";
+ 
+ /**
+  * `/live` loading skeleton — the ghost a player sees after tapping "Mubashara".
+@@ -25,78 +28,93 @@ import { QUERY_SEARCH_BAND_CLASS } from "@/components/ui/query-bar";
+  * is blind to every skeleton on the site. That is how this survived: it is on the path a
+  * player takes (tap the bottom nav) and off the path the harness took.
+  *
+- * ⭐ THE FIXED ROWS ARE STRUCTURE, NOT LITERALS. The arrows are 44px because the real arrows
+- * are; the CTA row carries the same `flex-wrap` and the same child widths, so it breaks onto a
+- * second line at the SAME width the real one does (100px at ≤360 where the dot rail wraps
+- * under the button, 44px from 414 up) without this file knowing where that width is. The
+- * tipping bar is 57px at every width — measured at 320/360/414/1280. The search box consumes
+- * `search-box-wrap` and `--h-input` rather than restating them.
+- *
+- * ⚠️ ONE NUMBER IS A JUDGEMENT AND IT IS THE QUESTION'S LINE COUNT. Six lines on a phone,
+- * three from `lg` — measured across the six featured markets at each width, and written as the
+- * arithmetic (`6 × leading-tight × 19px`) so it can be re-derived rather than re-guessed. The
+- * hero now shows the TALLEST of the six on every slide (`featured-contest.tsx` stacks them),
+- * so this is a stable target rather than whichever market happened to be up.
++ * ⭐ THE FIXED ROWS ARE STRUCTURE, NOT LITERALS. The hero is `PageHero` itself, with the page's props. The arrows are
++ * 44px because the real arrows are; the tipping bar is 57px at every width (measured at 320/360/414/1280); the search
++ * box consumes `search-box-wrap` and `--h-input` rather than restating them.
++ * ⭐ AND SINCE ROUND 5'S FOLLOW-UP (R5-L) THE TWO ROWS THAT WRAP ON WORDS CARRY THE PAGE'S WORDS:
++ *   · THE CTA ROW. Its button is the button's own box with "Open market" in it (`.btn .btn-md`), beside the dot rail's six
++ *     24px targets — so it breaks where the page's breaks. It was a 150px box: the ghost's row took two lines below 392px
++ *     where the page's takes one from 375–376 (Swahili and English) and 345 (Chinese) — at 390, the most common phone, the
++ *     hero stood 56px taller than the page's and the wall landed that much higher than promised.
++ *   · THE WALL'S CARDS. Each is the PulseCard's own stack: its 20px tag row, the title box at the page's own minimum —
++ *     three lines in Swahili, two in English and Chinese (`min-h-[4.125em]` / `min-h-[2.75em]` at 13.5px, snug) — the 9px
++ *     bar and the 18px price line. They were 180px in every language: 2.7px short in Swahili and 15.9px too tall in
++ *     English and Chinese a card (164.1px), 47.6px over the wall's first three rows.
++ * ⚠️ ONE NUMBER IS A JUDGEMENT AND IT IS THE QUESTION'S LINE COUNT. The hero shows the TALLEST of the six questions
++ * on every slide (`featured-contest.tsx` stacks them), so the stack is the tallest of six titles — since R5-L on the
++ * rule /results' notable card takes for its three: the tallest of N is the board's title at the N/(N+1) quantile, from
++ * the served fonts (S/r5l/measure-titles-steps.cts) — four lines below 359px in Swahili, three to 489 (to 421 in English
++ * and Chinese), two beyond, at 24px from 1024. Drawn on the breakpoints: four below 360 in Swahili (three in English and
++ * Chinese), three to 639, two from 640 — a line more than the judgement from 490 (422) to 639. It was six lines on a
++ * phone and three from `lg`, measured across one day's six featured markets (2026-09-24): on today's board (tiles 175
++ * and 176, whose questions take two lines at 390 and at 1280) that stood 95px over at 390 and 30 at 1280; the rule's
++ * three and two stand 24 and 0 over. Written as the arithmetic (`lines × leading-tight × px`) so it is re-derived,
++ * not re-guessed.
++ * ⚠️ The carousel drawn holds six markets (`liveContest` features at most six): six dots in the rail.
+  * ⭐ CLIENT CODE, ITS WORDS ITS OWN (round 5's follow-up, R5-H · G-2): the words are the client dictionary's (`useT`), so
+  * a refresh of this page carries the drawing's reference, not its tree, and the server's HTML is what it was —
+  * `components/ui/page-loader.tsx` has the convention.
+  */
+ export default function LiveLoading() {
+-  const { t } = useT();
++  const { t, locale } = useT();
+   return (
+     <PageContainer tier="board" className="space-y-5">
+       {/* The `<div>` wrapper is load-bearing on the real page (it pairs the `sr-only` h1 with
+           the hero so `space-y-5`, a sibling selector, counts the same children). Mirroring it
+           here keeps the ghost's rhythm identical to the content's. */}
+       <div>
+-        <header className="relative overflow-hidden rounded-xl border border-border bg-bg-elevated" aria-hidden>
+-          {/* PageHero's own content padding, `p-5 lg:p-6` (page-hero.tsx) — R5-H · G-2b: `p-5` alone made the hero 16px
+-              short from 1024, and the wall under it stood 16px high. */}
+-          <div className="relative z-10 p-5 lg:p-6">
+-            {/* Eyebrow row — pulse + LIVE + the live/tipping count. */}
+-            <div className="flex items-center justify-between gap-3">
+-              <div className="flex items-center gap-2">
+-                <span className="kp-shimmer-track block h-[18px] w-[18px] rounded-full bg-bg-overlay" />
+-                {/* The page's own eyebrow word since round 5 (`common.live`, F17), so the ghost's row is the page's. */}
+-                <p className="font-mono text-label uppercase eyebrow font-bold text-text">{t.common.live}</p>
+-              </div>
+-              <div className="kp-shimmer-track h-[13px] w-[112px] rounded bg-bg-overlay" />
++        {/* The page's own `PageHero`, the page's props (R5-L): its frame, its glow and its padding, `p-5 lg:p-6`. */}
++        <PageHero glow="aqua" watermark={200}>
++          {/* Eyebrow row — pulse + LIVE + the live/tipping count. */}
++          <div className="flex items-center justify-between gap-3">
++            <div className="flex items-center gap-2">
++              <span className="kp-shimmer-track block h-[18px] w-[18px] rounded-full bg-bg-overlay" aria-hidden />
++              {/* The page's own eyebrow word since round 5 (`common.live`, F17), so the ghost's row is the page's. */}
++              <p className="font-mono text-label uppercase eyebrow font-bold text-text">{t.common.live}</p>
+             </div>
++            <div className="kp-shimmer-track h-[13px] w-[112px] rounded bg-bg-overlay" aria-hidden />
++          </div>
+ 
+-            <div className="mt-4">
+-              {/* Contest eyebrow + the two 44px arrow controls and the `n / N` counter. */}
+-              <div className="mb-2 flex items-center justify-between gap-3">
+-                <div className="kp-shimmer-track h-3 w-40 min-w-0 rounded bg-bg-overlay" />
+-                <div className="flex shrink-0 items-center gap-2">
+-                  <div className="kp-shimmer-track h-[44px] w-[44px] rounded-full border border-border" />
+-                  {/* the `n / N` counter. ⚠️ LITERAL, not `w-7` — spacing is overridden
+-                      (tailwind.config.ts:200-215), so `w-7` is not 28px and
+-                      `test:ui-consistency` rejects the numeric utility by name. */}
+-                  <div className="kp-shimmer-track h-3 w-[32px] rounded bg-bg-overlay" />
+-                  <div className="kp-shimmer-track h-[44px] w-[44px] rounded-full border border-border" />
+-                </div>
++          <div className="mt-4" aria-hidden>
++            {/* Contest eyebrow + the two 44px arrow controls and the `n / N` counter. */}
++            <div className="mb-2 flex items-center justify-between gap-3">
++              <div className="kp-shimmer-track h-3 w-40 min-w-0 rounded bg-bg-overlay" />
++              <div className="flex shrink-0 items-center gap-2">
++                <div className="kp-shimmer-track h-[44px] w-[44px] rounded-full border border-border" />
++                {/* the `n / N` counter. ⚠️ LITERAL, not `w-7` — spacing is overridden
++                    (tailwind.config.ts:200-215), so `w-7` is not 28px and
++                    `test:ui-consistency` rejects the numeric utility by name. */}
++                <div className="kp-shimmer-track h-3 w-[32px] rounded bg-bg-overlay" />
++                <div className="kp-shimmer-track h-[44px] w-[44px] rounded-full border border-border" />
+               </div>
++            </div>
+ 
+-              <div className="max-w-[64ch]">
+-                {/* The question. `mb-4` is the real h2's margin (20px on this scale) — the same
+-                    class, not a copy of the number it resolves to. */}
+-                <div className="mb-4 min-h-[calc(6*1.25*19px)] lg:min-h-[calc(3*1.25*24px)]">
+-                  <div className="kp-shimmer-track h-[19px] w-full rounded bg-bg-overlay" />
+-                  <div className="kp-shimmer-track mt-[4.75px] h-[19px] w-full rounded bg-bg-overlay" />
+-                  <div className="kp-shimmer-track mt-[4.75px] h-[19px] w-[82%] rounded bg-bg-overlay" />
+-                </div>
+-                {/* TippingBar with labels — 57px at 320, 360, 414 and 1280 alike. */}
+-                <div className="kp-shimmer-track h-[57px] w-full rounded bg-bg-overlay" />
+-                {/* CTA + dot rail. Same wrapper, same gap, same child widths, so it wraps where
+-                    the real row wraps. `--h-control-md` is the `.btn-md` height. */}
+-                <div className="mt-4 flex flex-wrap items-center gap-3">
+-                  <div className="kp-shimmer-track h-[var(--h-control-md)] w-[150px] rounded-md bg-bg-overlay" />
+-                  <div className="h-[40px] w-[144px]" />
++            <div className="max-w-[64ch]">
++              {/* The question stack at the judgement's line count (the header) — `mb-4` is the real stack's margin (20px
++                  on this scale), the same class, not a copy of the number it resolves to. Its bars stay inside every
++                  minimum: three below 640, two from it. */}
++              <div className={`mb-4 ${locale === "sw" ? "min-h-[calc(4*1.25*19px)] xs:min-h-[calc(3*1.25*19px)]" : "min-h-[calc(3*1.25*19px)]"} sm:min-h-[calc(2*1.25*19px)] lg:min-h-[calc(2*1.25*24px)]`}>
++                <div className="kp-shimmer-track h-[19px] w-full rounded bg-bg-overlay" />
++                <div className="kp-shimmer-track mt-[4.75px] h-[19px] w-full rounded bg-bg-overlay sm:w-[82%]" />
++                <div className="kp-shimmer-track mt-[4.75px] h-[19px] w-[82%] rounded bg-bg-overlay sm:hidden" />
++              </div>
++              {/* TippingBar with labels — 57px at 320, 360, 414 and 1280 alike. */}
++              <div className="kp-shimmer-track h-[57px] w-full rounded bg-bg-overlay" />
++              {/* CTA + dot rail — the page's row: the button's own box with its words, then the rail's six 24px targets
++                  (`featured-contest.tsx`), `flex-wrap` and the same 16px gap, so it wraps where the page's row wraps. */}
++              <div className="mt-4 flex flex-wrap items-center gap-3">
++                <ButtonGhost size="md">{t.market.openMarket}</ButtonGhost>
++                <div className="flex items-center">
++                  {Array.from({ length: 6 }).map((_, i) => (
++                    <span key={i} className="grid h-[40px] w-[24px] place-items-center">
++                      <span className="block h-1.5 rounded-full bg-bg-overlay" style={{ width: i === 0 ? 18 : 6 }} />
++                    </span>
++                  ))}
+                 </div>
+               </div>
+             </div>
+           </div>
+-        </header>
++        </PageHero>
+       </div>
+ 
+       {/* Search — the real box and its echo row, by class rather than by measurement.
+@@ -110,17 +128,38 @@ export default function LiveLoading() {
+         </div>
+       </div>
+ 
+-      {/* The wall. 180px is the PulseCard, measured at 178–183 on production across four widths
+-          — the one number in this file that was already right. */}
++      {/* The wall — eight PulseCards' own stacks, in the reader's language (the title box's minimum is the locale's). */}
+       <div className="market-grid" aria-hidden>
+-        {Array.from({ length: 8 }).map((_, i) => (
+-          <div
+-            key={i}
+-            className="kp-shimmer-track rounded-lg border border-border bg-bg-elevated"
+-            style={{ height: 180 }}
+-          />
+-        ))}
++        {Array.from({ length: 8 }).map((_, i) => <PulseCardGhost key={i} t={t} locale={locale} />)}
+       </div>
+     </PageContainer>
+   );
+ }
++
++/** A PulseCard (`pulse-grid.tsx`) while it loads: its own box (`rounded-xl border p-4`, a column), the tag row — the
++ *  topic tag's 13px glyph and word in its 2px-padded, 1px-bordered box beside the time left — the title's box at the
++ *  page's own minimum for the language, the 9px bar 16px under it, and the 18px price line 10px under that. */
++function PulseCardGhost({ t, locale }: { t: Dict; locale: Locale }) {
++  return (
++    <div className="kp-shimmer-track flex flex-col rounded-xl border border-border bg-bg-elevated p-4 text-transparent">
++      <div className="mb-2 flex items-center justify-between gap-2">
++        <span className="inline-flex items-center gap-1.5 font-mono text-micro uppercase eyebrow">
++          <span className="inline-flex items-center gap-1.5 py-0.5 border-y border-transparent">
++            <span className="h-[13px] w-[13px] shrink-0" /><Words>{t.market.catSports}</Words>
++          </span>
++        </span>
++        <span className="h-[8px] w-[64px] rounded-sm bg-bg-overlay/40" />
++      </div>
++      <div className={`font-display text-[13.5px] font-semibold leading-snug ${locale === "sw" ? "min-h-[4.125em]" : "min-h-[2.75em]"}`}>
++        <div className="mt-[0.1875em] h-[1em] w-full rounded bg-bg-overlay" />
++        <div className="mt-[0.375em] h-[1em] w-3/4 rounded bg-bg-overlay" />
++      </div>
++      <div className="mt-3 h-[9px] w-full rounded-full bg-bg-overlay" />
++      {/* The price line: one 12px line (18px), its two sides at the ends. */}
++      <div className="mt-[10px] flex h-[18px] items-center justify-between">
++        <span className="h-[8px] w-[72px] rounded-sm bg-bg-overlay/40" />
++        <span className="h-[8px] w-[72px] rounded-sm bg-bg-overlay/40" />
++      </div>
++    </div>
++  );
++}
+diff --git a/src/app/markets/loading.tsx b/src/app/markets/loading.tsx
+index 2bd909d45..b45dd566d 100644
+--- a/src/app/markets/loading.tsx
++++ b/src/app/markets/loading.tsx
+@@ -8,9 +8,12 @@ import {
+   QUERY_BAR_CLASS,
+   QUERY_BAR_ROW1_CLASS,
+   QUERY_BAR_ROW2_CLASS,
+-  QUERY_GROUP_CLASS,
+   QUERY_STRIP_CLASS,
++  QueryGroupDivider,
+ } from "@/components/ui/query-bar";
++import { FiltersGhost, GroupGhost, MenuGhost, PillGhost, SortGhost } from "@/components/ui/query-bar-ghost";
++import { POOL_FLOORS } from "@/lib/markets/discovery";
++import { formatTzsCompact } from "@/lib/utils";
+ 
+ /**
+  * /markets loading skeleton.
+@@ -42,6 +45,14 @@ import {
+  * (`components/markets/card-geometry.ts`) and the count comes from `PLAYER_PER_PAGE`. That is
+  * how the two skeletons stay equal — the previous pair drifted to 220 vs 349 precisely because
+  * each carried its own literal.
++ * ⭐ AND SINCE ROUND 5'S FOLLOW-UP (R5-L) THERE IS ONE SKELETON, NOT TWO. The page's Suspense fallback was
++ * `GridSkeleton` — the skeleton a DOCUMENT load paints first — and it drew the grid alone, `mt-3`: no bar at all, so the
++ * first card stood 92px above where the page puts it on a phone (the one-line bar's 84 and the grid's 8 more) and 180px
++ * at 1280 in Swahili. The bar and the grid below are `MarketsBoardGhost`, this file's drawing and the page's fallback.
++ * ⭐ AND ROW 2 FROM `lg` CARRIES THE PAGE'S WORDS: the sort, the odds and pool groups (each behind the page's own divider,
++ * with its key and pills — `query-bar-ghost.tsx`) and the topic menu wrap where the page's do — two lines at 1024 and
++ * 1280 in Swahili and English (and at 1024 in Chinese), measured from the served fonts (S/r5l/measure-routes.cts), where
++ * five typed boxes drew one: the grid landed 56px below the ghost's promise.
+  */
+ /**
+  * The status segment widths, in `STATUS_IDS` order: open · today · new · progress · watch · all.
+@@ -79,6 +90,19 @@ export default function MarketsLoading() {
+         <p className="mt-1.5 min-h-[17px]" />
+       </div>
+ 
++      <MarketsBoardGhost />
++    </PageContainer>
++  );
++}
++
++/**
++ * The board while it loads — the bar, then the grid: this file's drawing AND `markets/page.tsx`'s Suspense fallback, so a
++ * document's first paint and a move's are one drawing (R5-L). Drawn for a board with a page of cards.
++ */
++export function MarketsBoardGhost() {
++  const { t } = useT();
++  return (
++    <>
+       {/* The discovery bar — TWO rows at the real 44px control height, so the grid below starts
+           where it will actually start. Row 1: status segments + count. Row 2: sort + direction,
+           odds, pool, topic.
+@@ -119,24 +143,33 @@ export default function MarketsLoading() {
+           <div className="flex h-[17.25px] shrink-0 items-center" data-result-count=""><div className="kp-shimmer-track h-3 w-[80px] rounded bg-bg-elevated" /></div>
+         </div>
+         <div className={QUERY_BAR_ROW2_CLASS} data-bar-row>
+-          {/* Sort + direction, and the phone's single filters button — the two controls this row
+-              renders at EVERY width. Their widths are the DESKTOP ones; under 640 the grid above
+-              sizes both from their own content, so these numbers only apply where the bar is
+-              genuinely two flex rows. */}
+-          <div className="kp-shimmer-track h-[44px] w-[210px] rounded-pill bg-bg-elevated" data-bar-cell="sort" />
+-          {/* The phone's Filters button — `lg:hidden`, as `FilterSheet` is (R5-H · G-2b: `.kp-fsheet` hides nothing at lg,
+-              so the ghost drew a 170px pill at 1280 in a row the page does not have). */}
+-          <div className="kp-fsheet kp-shimmer-track h-[44px] w-[170px] rounded-pill bg-bg-elevated lg:hidden" />
++          {/* Sort + direction, and the phone's single Filters button — the two controls this row renders below `lg`,
++              each the page's own box with its words (`query-bar-ghost.tsx`, R5-L): under 640 the phone grid places them by
++              the page's own hooks (`data-bar-cell`, `.kp-fsheet`) and folds the Filters label away as it folds the page's.
++              They were a 210px and a 170px box: wider than the page's cells, they pushed the phone grid past the bar's
++              edge. The Filters button is `lg:hidden`, as `FilterSheet` is (R5-H · G-2b). */}
++          <SortGhost label={t.common.sort} value={t.market.sortPool} />
++          <FiltersGhost label={t.market.filtersOpen} />
+           {/* ⛔ ODDS, POOL AND TOPIC ARE DESKTOP-ONLY. On a phone the real bar folds all three
+               behind the button above (`FilterSheet`), and their desktop rows carry
+               `QUERY_GROUP_CLASS`, which is `hidden … lg:flex`. Ghosting them unconditionally drew
+               four 44px pills a phone never receives. Consume the SAME visibility class rather
+-              than re-stating the breakpoint, so a change to one moves both. */}
+-          {[56, 92, 88, 84].map((w, i) => (
+-            <div key={i} className={QUERY_GROUP_CLASS}>
+-              <div className="kp-shimmer-track h-[44px] rounded-pill bg-bg-elevated" style={{ width: w }} />
+-            </div>
+-          ))}
++              than re-stating the breakpoint, so a change to one moves both.
++              ⭐ AND THEY ARE THE PAGE'S GROUPS (R5-L): each behind the page's divider (the row's 29px gap is keyed on it),
++              its key and its pills with the page's words — the pool's floors set as money, as the page sets them — then
++              the topic menu's own box. Four typed boxes drew one line where the page's row takes two. */}
++          <QueryGroupDivider />
++          <GroupGhost label={t.market.oddsKey}>
++            {[t.market.oddsAny, t.market.oddsCall, t.market.oddsCont, t.market.oddsLong].map((o) => <PillGhost key={o} label={o} />)}
++          </GroupGhost>
++          <QueryGroupDivider />
++          <GroupGhost label={t.market.poolKey}>
++            <PillGhost label={t.market.poolAny} />
++            <PillGhost label={`${formatTzsCompact(POOL_FLOORS["10k"])}+`} amount />
++            <PillGhost label={`${formatTzsCompact(POOL_FLOORS["50k"])}+`} amount />
++          </GroupGhost>
++          <QueryGroupDivider />
++          <MenuGhost label={t.common.topic} value={t.market.catAll} />
+         </div>
+       </div>
+ 
+@@ -150,6 +183,6 @@ export default function MarketsLoading() {
+           />
+         ))}
+       </div>
+-    </PageContainer>
++    </>
+   );
+ }
+diff --git a/src/app/markets/page.tsx b/src/app/markets/page.tsx
+index 3adffbd81..f3b7d3eb2 100644
+--- a/src/app/markets/page.tsx
++++ b/src/app/markets/page.tsx
+@@ -27,7 +27,7 @@ import { SearchBox } from "@/components/ui/search-box";
+ import { parseQuery, matchesQuery, fieldNames, MARKET_SEARCH } from "@/lib/search";
+ import { RefreshPoller } from "@/components/ui/refresh-poller";
+ import { DiscoveryBar, type DiscoveryCounts } from "@/components/markets/discovery-bar";
+-import { MARKET_CARD_H } from "@/components/markets/card-geometry";
++import { MarketsBoardGhost } from "./loading";
+ import {
+   ODDS_IDS,
+   POOL_IDS,
+@@ -227,7 +227,11 @@ export default async function MarketsPage({ searchParams }: { searchParams: Prom
+         className="kp-markets-search"
+       />
+ 
+-      <Suspense fallback={<GridSkeleton />}>
++      {/* ⭐ THE FALLBACK IS THE ROUTE'S OWN BOARD GHOST (round 5's follow-up, R5-L): the bar and the grid as `loading.tsx`
++          draws them — one drawing for a document's first paint and a move's, and a client reference (no drawn tree in this
++          page's payload, which every 30s refresh re-sends). It replaces `GridSkeleton`, which drew the grid alone: no bar, so
++          the first card stood 92px high on a phone and 180px at 1280 in Swahili. */}
++      <Suspense fallback={<MarketsBoardGhost />}>
+         <DiscoveryBoard searchParams={searchParams} />
+       </Suspense>
+     </PageContainer>
+@@ -539,52 +543,3 @@ function BoardEmptyState({
+     </div>
+   );
+ }
+-
+-/**
+- * THE skeleton a visitor actually sees — the grid is inside a Suspense boundary and this is
+- * what the first HTML response carries. (`loading.tsx` only paints on a client-side navigation
+- * into the route.) Height and count are pinned to the real values: `MARKET_CARD_H` is the one
+- * shared definition, and the count comes from `PLAYER_PER_PAGE` rather than being re-typed, so
+- * a page-size change moves both together.
+- */
+-function GridSkeleton() {
+-  return (
+-    <div className="market-grid mt-3" aria-hidden>
+-      {Array.from({ length: PLAYER_PER_PAGE }).map((_, i) => (
+-        <div
+-          key={i}
+-          className="kp-shimmer-track overflow-hidden rounded-md border border-border bg-bg-elevated"
+-          style={{ height: MARKET_CARD_H }}
+-        >
+-          <div className="space-y-3 p-4">
+-            <div className="flex items-center gap-2">
+-              {/* ⚠️ WIDTH IS A LITERAL, not `w-12` — spacing is overridden
+-                  (tailwind.config.ts:200-215) so `w-12` is 128px, twice any real category chip.
+-                  (`h-5` and `w-16` are NOT overridden keys and read as written.) */}
+-              <div className="h-5 w-[64px] rounded-pill bg-bg-overlay" />
+-              <div className="h-5 w-16 rounded-pill bg-bg-overlay" />
+-            </div>
+-            <div className="h-4 w-3/4 rounded bg-bg-overlay" />
+-            <div className="h-4 w-1/2 rounded bg-bg-overlay" />
+-            {/* The real card carries a probability block, the tipping bar, a trader row and the
+-                money buttons between the title and the footer. Reserving them keeps the INTERNAL
+-                rhythm honest too, not just the outer box. */}
+-            {/* ⚠️ LITERAL, not `h-8` (48px on the overridden scale) — the probability figure. */}
+-            <div className="mt-4 h-[28px] w-20 rounded bg-bg-overlay" />
+-            <div className="mt-4 h-[7px] w-full rounded-pill bg-bg-overlay" />
+-            <div className="mt-3 h-5 w-32 rounded bg-bg-overlay" />
+-            <div className="mt-3 flex gap-2">
+-              {/* ⚠️ TOKEN, not `h-9` — spacing is overridden (tailwind.config.ts:200-215) so
+-                  `h-9` drew 64px for the card's YES/NO buttons, which globals.css pins at
+-                  exactly `--tap-min` (`.mcardp-actions .btn { height: var(--tap-min) }`).
+-                  That was a 24px jump per card on every board load. Consume the SAME token. */}
+-              <div className="h-[var(--tap-min)] flex-1 rounded-md bg-bg-overlay" />
+-              <div className="h-[var(--tap-min)] flex-1 rounded-md bg-bg-overlay" />
+-            </div>
+-            <div className="mt-3 h-4 w-24 rounded bg-bg-overlay" />
+-          </div>
+-        </div>
+-      ))}
+-    </div>
+-  );
+-}
+diff --git a/src/app/notifications/loading.tsx b/src/app/notifications/loading.tsx
+index dd5c94b8c..ae34d0bb4 100644
+--- a/src/app/notifications/loading.tsx
++++ b/src/app/notifications/loading.tsx
+@@ -1,10 +1,33 @@
++"use client";
++
+ import { PageLoader } from "@/components/ui/page-loader";
++import { PageHeader } from "@/components/ui/page-header";
++import { BackLinkGhost } from "@/components/ui/back-link";
++import { I } from "@/components/ui/glyphs";
++import { useT } from "@/lib/i18n";
+ 
+ /**
++ * /notifications opens on its back link and its header (the bell, 22px, on the eyebrow's row), on the page's 24px rung.
++ *
+  * ⛔ B7 RULE 3 — a page and its loading.tsx state the SAME tier. The page is
+  * <PageContainer tier="reading">, and `reading` is 1080, so this is 1080. `/updown/[roundId]`
+  * once shipped 1232 against a 1080 skeleton: a 152px jump on every load that no test could see.
++ * The generic body below — `components/ui/page-loader.tsx` has the rule (R5-L): a loader opens on its page's own opening
++ * bands, in the page's rhythm, and its spinner panel stands where the page's first band of data begins.
+  */
+ export default function Loading() {
+-  return <PageLoader tier="reading" rows={6} />;
++  const { t } = useT();
++  return (
++    <PageLoader
++      tier="reading"
++      rows={6}
++      rhythm="space-y-5"
++      lead={
++        <>
++          <BackLinkGhost />
++          <PageHeader tone="info" icon={<I.bellRing s={22} />} eyebrow={t.notif.eyebrow} title={t.notif.title} />
++        </>
++      }
++    />
++  );
+ }
+diff --git a/src/app/profile/account/loading.tsx b/src/app/profile/account/loading.tsx
+index 5e0382acb..7511f0298 100644
+--- a/src/app/profile/account/loading.tsx
++++ b/src/app/profile/account/loading.tsx
+@@ -1,4 +1,32 @@
++"use client";
++
+ import { PageLoader } from "@/components/ui/page-loader";
++import { PageHero } from "@/components/ui/page-hero";
++import { PageHeader } from "@/components/ui/page-header";
++import { BackLinkGhost } from "@/components/ui/back-link";
++import { I } from "@/components/ui/glyphs";
++import { useT } from "@/lib/i18n";
++
++/**
++ * /profile/account opens on its back link and its hero (the page's own `PageHeader`), on the page's 24px rung. The
++ * back link's words follow `?back=` on the page; its ghost is the link's 44px box, whatever it says.
++ * The generic body below — `components/ui/page-loader.tsx` has the rule (R5-L): a loader opens on its page's own opening
++ * bands, in the page's rhythm, and its spinner panel stands where the page's first band of data begins.
++ */
+ export default function Loading() {
+-  return <PageLoader tier="reading" />;
++  const { t } = useT();
++  return (
++    <PageLoader
++      tier="reading"
++      rhythm="space-y-5"
++      lead={
++        <>
++          <BackLinkGhost />
++          <PageHero glow="info">
++            <PageHeader tone="info" icon={<I.user s={14} className="text-info-fg" />} eyebrow={t.profile.myAccount} title={t.profile.myAccount} />
++          </PageHero>
++        </>
++      }
++    />
++  );
+ }
+diff --git a/src/app/profile/activity/loading.tsx b/src/app/profile/activity/loading.tsx
+index 8414c0f4c..94522438a 100644
+--- a/src/app/profile/activity/loading.tsx
++++ b/src/app/profile/activity/loading.tsx
+@@ -1,4 +1,30 @@
++"use client";
++
+ import { PageLoader } from "@/components/ui/page-loader";
++import { PageHeader } from "@/components/ui/page-header";
++import { BackLinkGhost } from "@/components/ui/back-link";
++import { I } from "@/components/ui/glyphs";
++import { useT } from "@/lib/i18n";
++
++/**
++ * /profile/activity opens on its back link and its header (the chart glyph, 22px, on the eyebrow's row), on the page's
++ * 24px rung.
++ * The generic body below — `components/ui/page-loader.tsx` has the rule (R5-L): a loader opens on its page's own opening
++ * bands, in the page's rhythm, and its spinner panel stands where the page's first band of data begins.
++ */
+ export default function Loading() {
+-  return <PageLoader tier="reading" rows={5} />;
++  const { t } = useT();
++  return (
++    <PageLoader
++      tier="reading"
++      rows={5}
++      rhythm="space-y-5"
++      lead={
++        <>
++          <BackLinkGhost />
++          <PageHeader tone="info" icon={<I.chart s={22} />} eyebrow={t.activity.eyebrow} title={t.activity.title} />
++        </>
++      }
++    />
++  );
+ }
+diff --git a/src/app/profile/invite/loading.tsx b/src/app/profile/invite/loading.tsx
+index db77a8536..b5080ab3a 100644
+--- a/src/app/profile/invite/loading.tsx
++++ b/src/app/profile/invite/loading.tsx
+@@ -1,4 +1,32 @@
++"use client";
++
+ import { PageLoader } from "@/components/ui/page-loader";
++import { BackLinkGhost } from "@/components/ui/back-link";
++import { useT } from "@/lib/i18n";
++
++/**
++ * /profile/invite opens on its back link and its title row (19px, set solid), on the page's 24px rung. The title is
++ * the unpaid invitation's — "Invite friends" with no chip — the page every player who is not a paid agent is shown.
++ * The generic body below — `components/ui/page-loader.tsx` has the rule (R5-L): a loader opens on its page's own opening
++ * bands, in the page's rhythm, and its spinner panel stands where the page's first band of data begins.
++ */
+ export default function Loading() {
+-  return <PageLoader tier="form" rows={4} />;
++  const { t } = useT();
++  return (
++    <PageLoader
++      tier="form"
++      rows={4}
++      rhythm="space-y-5"
++      lead={
++        <>
++          <BackLinkGhost />
++          <div className="flex items-center justify-between">
++            <div>
++              <p className="font-display text-[19px] font-bold leading-none">{t.profile.inviteFriends}</p>
++            </div>
++          </div>
++        </>
++      }
++    />
++  );
+ }
+diff --git a/src/app/profile/kyc/loading.tsx b/src/app/profile/kyc/loading.tsx
+index db77a8536..a0b35735e 100644
+--- a/src/app/profile/kyc/loading.tsx
++++ b/src/app/profile/kyc/loading.tsx
+@@ -1,4 +1,40 @@
++"use client";
++
+ import { PageLoader } from "@/components/ui/page-loader";
++import { PageHero } from "@/components/ui/page-hero";
++import { PageHeader } from "@/components/ui/page-header";
++import { BackLinkGhost } from "@/components/ui/back-link";
++import { Words } from "@/components/ui/ghost-kit";
++import { I } from "@/components/ui/glyphs";
++import { KYC_REVIEW_SLA_HOURS } from "@/lib/kyc-sla";
++import { durationHours } from "@/lib/duration-phrase";
++import { useT } from "@/lib/i18n";
++
++/**
++ * /profile/kyc opens on its back link and its hero — the page's own `PageHeader` and its sentence (set and not shown,
++ * in the page's type and measure) — on the page's 24px rung. The hero is the unverified player's ("Verify your identity"
++ * and its review-time sentence), the reader this page is for; a pending, approved or refused account reads its own.
++ * The generic body below — `components/ui/page-loader.tsx` has the rule (R5-L): a loader opens on its page's own opening
++ * bands, in the page's rhythm, and its spinner panel stands where the page's first band of data begins.
++ */
+ export default function Loading() {
+-  return <PageLoader tier="form" rows={4} />;
++  const { t, locale } = useT();
++  return (
++    <PageLoader
++      tier="form"
++      rows={4}
++      rhythm="space-y-5"
++      lead={
++        <>
++          <BackLinkGhost />
++          <PageHero glow="info">
++            <PageHeader tone="info" icon={<I.shieldcheck s={14} />} eyebrow={t.profile.kycIdentityVerification} title={t.profile.verifyIdentity} />
++            <p className={`mt-2 text-[13px] leading-snug max-w-prose text-balance ${locale === "zh" ? "break-keep [overflow-wrap:anywhere]" : ""}`} aria-hidden>
++              <Words>{t.profile.verifyBody.replace("{hours}", durationHours(locale, KYC_REVIEW_SLA_HOURS))}</Words>
++            </p>
++          </PageHero>
++        </>
++      }
++    />
++  );
+ }
+diff --git a/src/app/profile/notifications/loading.tsx b/src/app/profile/notifications/loading.tsx
+index d0858ccd2..56592ef45 100644
+--- a/src/app/profile/notifications/loading.tsx
++++ b/src/app/profile/notifications/loading.tsx
+@@ -1,4 +1,30 @@
++"use client";
++
+ import { PageLoader } from "@/components/ui/page-loader";
++import { PageHeader } from "@/components/ui/page-header";
++import { BackLinkGhost } from "@/components/ui/back-link";
++import { I } from "@/components/ui/glyphs";
++import { useT } from "@/lib/i18n";
++
++/**
++ * /profile/notifications opens on its back link and its header (the bell, 22px, on the eyebrow's row), on the page's
++ * 24px rung.
++ * The generic body below — `components/ui/page-loader.tsx` has the rule (R5-L): a loader opens on its page's own opening
++ * bands, in the page's rhythm, and its spinner panel stands where the page's first band of data begins.
++ */
+ export default function Loading() {
+-  return <PageLoader tier="form" rows={3} />;
++  const { t } = useT();
++  return (
++    <PageLoader
++      tier="form"
++      rows={3}
++      rhythm="space-y-5"
++      lead={
++        <>
++          <BackLinkGhost />
++          <PageHeader tone="info" icon={<I.bellRing s={22} />} eyebrow={t.push.eyebrow} title={t.push.pageTitle} />
++        </>
++      }
++    />
++  );
+ }
+diff --git a/src/app/profile/responsible-gambling/loading.tsx b/src/app/profile/responsible-gambling/loading.tsx
+index 5e0382acb..3617f1233 100644
+--- a/src/app/profile/responsible-gambling/loading.tsx
++++ b/src/app/profile/responsible-gambling/loading.tsx
+@@ -1,4 +1,38 @@
++"use client";
++
+ import { PageLoader } from "@/components/ui/page-loader";
++import { PageHero } from "@/components/ui/page-hero";
++import { PageHeader } from "@/components/ui/page-header";
++import { BackLinkGhost } from "@/components/ui/back-link";
++import { Words } from "@/components/ui/ghost-kit";
++import { I } from "@/components/ui/glyphs";
++import { useT } from "@/lib/i18n";
++
++/**
++ * /profile/responsible-gambling opens on its back link and its hero — the page's own `PageHeader` and its sentence (set
++ * and not shown, in the page's type and measure, balanced as the page balances it) — on the page's 24px rung. Drawn for a
++ * player with no break running (the page shows a running break's notice above the hero); every RG notice, the helpline
++ * and the limit controls are the page's, drawn only when it lands.
++ * The generic body below — `components/ui/page-loader.tsx` has the rule (R5-L): a loader opens on its page's own opening
++ * bands, in the page's rhythm, and its spinner panel stands where the page's first band of data begins.
++ */
+ export default function Loading() {
+-  return <PageLoader tier="reading" />;
++  const { t } = useT();
++  return (
++    <PageLoader
++      tier="reading"
++      rhythm="space-y-5"
++      lead={
++        <>
++          <BackLinkGhost />
++          <PageHero glow="info">
++            <PageHeader tone="info" icon={<I.shieldcheck s={14} />} eyebrow={t.rg.playerProtection} title={t.profile.responsibleGambling} />
++            <p className="mt-2 text-[13px] leading-snug max-w-prose text-balance" aria-hidden>
++              <Words>{t.rg.pageDescription}</Words>
++            </p>
++          </PageHero>
++        </>
++      }
++    />
++  );
+ }
+diff --git a/src/app/profile/security/loading.tsx b/src/app/profile/security/loading.tsx
+index d0858ccd2..ca85c464c 100644
+--- a/src/app/profile/security/loading.tsx
++++ b/src/app/profile/security/loading.tsx
+@@ -1,4 +1,29 @@
++"use client";
++
+ import { PageLoader } from "@/components/ui/page-loader";
++import { PageHeader } from "@/components/ui/page-header";
++import { BackLinkGhost } from "@/components/ui/back-link";
++import { I } from "@/components/ui/glyphs";
++import { useT } from "@/lib/i18n";
++
++/**
++ * /profile/security opens on its back link and its header (the key, 22px, on the eyebrow's row), on the page's 24px rung.
++ * The generic body below — `components/ui/page-loader.tsx` has the rule (R5-L): a loader opens on its page's own opening
++ * bands, in the page's rhythm, and its spinner panel stands where the page's first band of data begins.
++ */
+ export default function Loading() {
+-  return <PageLoader tier="form" rows={3} />;
++  const { t } = useT();
++  return (
++    <PageLoader
++      tier="form"
++      rows={3}
++      rhythm="space-y-5"
++      lead={
++        <>
++          <BackLinkGhost />
++          <PageHeader tone="info" icon={<I.keyRound s={22} />} eyebrow={t.security.eyebrow} title={t.security.title} />
++        </>
++      }
++    />
++  );
+ }
+diff --git a/src/app/profile/sessions/loading.tsx b/src/app/profile/sessions/loading.tsx
+index db77a8536..85f3a957a 100644
+--- a/src/app/profile/sessions/loading.tsx
++++ b/src/app/profile/sessions/loading.tsx
+@@ -1,4 +1,37 @@
++"use client";
++
+ import { PageLoader } from "@/components/ui/page-loader";
++import { PageHero } from "@/components/ui/page-hero";
++import { PageHeader } from "@/components/ui/page-header";
++import { BackLinkGhost } from "@/components/ui/back-link";
++import { Words } from "@/components/ui/ghost-kit";
++import { I } from "@/components/ui/glyphs";
++import { useT } from "@/lib/i18n";
++
++/**
++ * /profile/sessions opens on its back link and its hero — the page's own `PageHeader` and its sentence (set and not
++ * shown) — on the page's 24px rung.
++ * The generic body below — `components/ui/page-loader.tsx` has the rule (R5-L): a loader opens on its page's own opening
++ * bands, in the page's rhythm, and its spinner panel stands where the page's first band of data begins.
++ */
+ export default function Loading() {
+-  return <PageLoader tier="form" rows={4} />;
++  const { t } = useT();
++  return (
++    <PageLoader
++      tier="form"
++      rows={4}
++      rhythm="space-y-5"
++      lead={
++        <>
++          <BackLinkGhost />
++          <PageHero glow="info">
++            <PageHeader tone="info" icon={<I.device s={14} className="text-info-fg" />} eyebrow={t.profile.activeSessions} title={t.profile.activeSessions} />
++            <p className="mt-1 text-[13px]" aria-hidden>
++              <Words>{t.profile.sessionsDescription}</Words>
++            </p>
++          </PageHero>
++        </>
++      }
++    />
++  );
+ }
+diff --git a/src/app/profile/source-of-funds/loading.tsx b/src/app/profile/source-of-funds/loading.tsx
+index db77a8536..4ceed96a9 100644
+--- a/src/app/profile/source-of-funds/loading.tsx
++++ b/src/app/profile/source-of-funds/loading.tsx
+@@ -1,4 +1,37 @@
++"use client";
++
+ import { PageLoader } from "@/components/ui/page-loader";
++import { PageHero } from "@/components/ui/page-hero";
++import { PageHeader } from "@/components/ui/page-header";
++import { BackLinkGhost } from "@/components/ui/back-link";
++import { Words } from "@/components/ui/ghost-kit";
++import { I } from "@/components/ui/glyphs";
++import { useT } from "@/lib/i18n";
++
++/**
++ * /profile/source-of-funds opens on its back link and its hero — the page's own `PageHeader` and its sentence (set and
++ * not shown, in the page's type and measure) — on the page's 24px rung.
++ * The generic body below — `components/ui/page-loader.tsx` has the rule (R5-L): a loader opens on its page's own opening
++ * bands, in the page's rhythm, and its spinner panel stands where the page's first band of data begins.
++ */
+ export default function Loading() {
+-  return <PageLoader tier="form" rows={4} />;
++  const { t } = useT();
++  return (
++    <PageLoader
++      tier="form"
++      rows={4}
++      rhythm="space-y-5"
++      lead={
++        <>
++          <BackLinkGhost />
++          <PageHero glow="info">
++            <PageHeader tone="info" icon={<I.fileSignature s={14} className="text-info-fg" />} eyebrow="AML" title={t.profile.sourceOfFunds} />
++            <p className="mt-2 text-[13px] leading-snug max-w-prose" aria-hidden>
++              <Words>{t.profile.sofDescription}</Words>
++            </p>
++          </PageHero>
++        </>
++      }
++    />
++  );
+ }
+diff --git a/src/app/proposals/loading.tsx b/src/app/proposals/loading.tsx
+index 5e0382acb..377ced570 100644
+--- a/src/app/proposals/loading.tsx
++++ b/src/app/proposals/loading.tsx
+@@ -1,4 +1,34 @@
++"use client";
++
+ import { PageLoader } from "@/components/ui/page-loader";
++import { PageHero } from "@/components/ui/page-hero";
++import { PageHeader } from "@/components/ui/page-header";
++import { StatusFlag } from "@/components/ui/status-flag";
++import { I } from "@/components/ui/glyphs";
++import { useT } from "@/lib/i18n";
++
++/**
++ * /proposals opens on its hero — the page's own `PageHeader` (the trophy, 18px) over the programme's state flag, in the
++ * hero's own content box — on the page's 32px rung. Drawn for the programme's default state, COMING_SOON
++ * (`proposals-config.ts`): the flag's box (`ComingSoonBadge`, its words not shown) and no Create button, which the page
++ * draws only while proposals are open.
++ * The generic body below — `components/ui/page-loader.tsx` has the rule (R5-L): a loader opens on its page's own opening
++ * bands, in the page's rhythm, and its spinner panel stands where the page's first band of data begins.
++ */
+ export default function Loading() {
+-  return <PageLoader tier="reading" />;
++  const { t } = useT();
++  return (
++    <PageLoader
++      tier="reading"
++      rhythm="space-y-6"
++      lead={
++        <PageHero contentClassName="relative z-10 p-5 lg:p-6 flex flex-col items-start gap-3 sm:flex-row sm:items-start sm:justify-between sm:gap-4">
++          <div className="flex flex-col items-start gap-2">
++            <PageHeader icon={<I.trophy s={18} />} eyebrow={t.proposals.title} title={t.proposals.voteForMarkets} />
++            <StatusFlag label={t.proposals.comingSoonTag} glyph="clock" size="sm" className="cs-badge" style={{ color: "transparent" }} />
++          </div>
++        </PageHero>
++      }
++    />
++  );
+ }
+diff --git a/src/app/proposals/new/loading.tsx b/src/app/proposals/new/loading.tsx
+index db77a8536..ccd636b3e 100644
+--- a/src/app/proposals/new/loading.tsx
++++ b/src/app/proposals/new/loading.tsx
+@@ -1,4 +1,38 @@
++"use client";
++
+ import { PageLoader } from "@/components/ui/page-loader";
++import { PageHero } from "@/components/ui/page-hero";
++import { PageHeader } from "@/components/ui/page-header";
++import { StatusFlag } from "@/components/ui/status-flag";
++import { BackLinkGhost } from "@/components/ui/back-link";
++import { I } from "@/components/ui/glyphs";
++import { useT } from "@/lib/i18n";
++
++/**
++ * /proposals/new opens on its back link and its hero — the page's own `PageHeader` (the trophy, 18px) over the
++ * programme's state flag — on the page's 24px rung. Drawn for the programme's default state, COMING_SOON
++ * (`proposals-config.ts`): the flag's box (`ComingSoonBadge`, its words not shown).
++ * The generic body below — `components/ui/page-loader.tsx` has the rule (R5-L): a loader opens on its page's own opening
++ * bands, in the page's rhythm, and its spinner panel stands where the page's first band of data begins.
++ */
+ export default function Loading() {
+-  return <PageLoader tier="form" rows={4} />;
++  const { t } = useT();
++  return (
++    <PageLoader
++      tier="form"
++      rows={4}
++      rhythm="space-y-5"
++      lead={
++        <>
++          <BackLinkGhost />
++          <PageHero>
++            <div className="flex flex-col items-start gap-2">
++              <PageHeader eyebrow={t.common.submitProposal} title={t.common.suggestMarket} icon={<I.trophy s={18} />} />
++              <StatusFlag label={t.proposals.comingSoonTag} glyph="clock" size="sm" className="cs-badge" style={{ color: "transparent" }} />
++            </div>
++          </PageHero>
++        </>
++      }
++    />
++  );
+ }
+diff --git a/src/app/results/loading.tsx b/src/app/results/loading.tsx
+index 018e8e268..28e86017b 100644
+--- a/src/app/results/loading.tsx
++++ b/src/app/results/loading.tsx
+@@ -2,14 +2,23 @@
+ 
+ import { PageContainer } from "@/components/layout/page-container";
+ import { MARKET_CARD_H_CLOSED } from "@/components/markets/card-geometry";
++import { Chip } from "@/components/ui/chip";
++import { I } from "@/components/ui/glyphs";
++import { CHIP_GHOST, Words } from "@/components/ui/ghost-kit";
++import { FiltersGhost, GroupGhost, PillGhost, SortGhost } from "@/components/ui/query-bar-ghost";
++import { PLAYER_PER_PAGE } from "@/components/ui/pagination";
+ import {
+   QUERY_BAR_CLASS,
+   QUERY_BAR_ROW1_CLASS,
+   QUERY_BAR_ROW2_CLASS,
+-  QUERY_GROUP_CLASS,
+   QUERY_SEARCH_BAND_CLASS,
+   QUERY_STRIP_CLASS,
++  QueryGroupDivider,
+ } from "@/components/ui/query-bar";
++import { MARKET_CATEGORIES } from "@/lib/markets/categories";
++import { categoryLabel } from "@/lib/markets/category-label";
++import { outcomeWord, sideWord } from "@/lib/side-label";
++import { useT } from "@/lib/i18n";
+ 
+ /**
+  * `/results` loading skeleton — the ghost after tapping "Matokeo".
+@@ -25,10 +34,11 @@ import {
+  *   · the notable-results carousel                          497 / 458 / 436px at 320 / 360 / 414
+  *
+  * ⚠️ THE 91 WAS ALREADY KNOWN AND ALREADY WRITTEN DOWN. `ResultsSkeleton` in `results/page.tsx`
+- * carries a note reading *"FILED, NOT FIXED (DG-P-13 / DG-A-20): this bar is 44px and the band
++ * carried a note reading *"FILED, NOT FIXED (DG-P-13 / DG-A-20): this bar is 44px and the band
+  * it stands in for renders 91px on production"* — about its own copy of this band. The finding
+  * was recorded, the fix was deferred, and the SECOND skeleton on the same route never learned
+- * about it. Two ghosts for one page is how that happens; both now consume the same classes.
++ * about it. Two ghosts for one page is how that happens — and since round 5's follow-up (R5-L) there is ONE: the page's
++ * Suspense fallback is `ResultsGhostBands` below, the very bands this file draws.
+  *
+  * ⛔ AND CLS SCORED THE WHOLE THING 0.0000. `layout-shift` counts only nodes present BEFORE and
+  * AFTER a frame, and a skeleton is REMOVED rather than moved — so ghost fidelity is invisible to
+@@ -36,21 +46,33 @@ import {
+  *
+  * ⛔ THE ROUTE WAS ALSO UNMEASURABLE UNTIL TODAY, WHICH IS WHY THE NUMBER IS NEW RATHER THAN
+  * LARGE. The grid below used a hand-rolled `grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3`
+- * instead of `.market-grid`, the class the page and `ResultsSkeleton` both use, so the guard
++ * instead of `.market-grid`, the class the page uses, so the guard
+  * could not find the board and reported "no skeleton frame was ever captured" — a vacuous pass.
+  * A ghost that does not speak the page's class names cannot be compared with the page.
+  *
+- * ⭐ EVERY BAND BELOW IS STRUCTURE, NOT A MEASUREMENT, WITH ONE EXCEPTION. The search band and
+- * the discovery bar are built from the page's own wrappers and tokens (`search-box-wrap`,
+- * `--h-input`, `QUERY_BAR_*`, `QUERY_STRIP_CLASS`, `QUERY_GROUP_CLASS`), so they compute to 91
+- * and 116 rather than being told to (56 and 120 since round 4: the search band and row 2's 12px). ⚠️ The exception is the carousel's height: its content is a
+- * market question, so no arrangement of empty boxes can derive it. It is reserved at the
+- * measured 458 and **guarded** — `qa:ghost-landing` fails this route if the board lands more
+- * than 120px from where the ghost promised, which is what makes a single measured number safe to
+- * keep here rather than a thing to remember.
+- * ⭐ CLIENT CODE THAT READS NOTHING (round 5's follow-up, R5-H · G-2): it asked the server for the words and drew none of
+- * them (R5-D found the same read in the question's skeleton) — so the read is gone, and a refresh of /results carries
+- * this drawing's reference, not its tree. `components/ui/page-loader.tsx` has the convention.
++ * ⭐ EVERY BAND BELOW IS STRUCTURE, NOT A MEASUREMENT. The search band and the bar are built from
++ * the page's own wrappers and tokens (`search-box-wrap`, `--h-input`, `QUERY_BAR_*`, `QUERY_STRIP_CLASS`,
++ * `QUERY_GROUP_CLASS` through `query-bar-ghost.tsx`), so they compute to the page's heights rather than being told to.
++ * ⭐ AND SINCE ROUND 5'S FOLLOW-UP (R5-L), THE TWO MEASURED NUMBERS ARE GONE TOO:
++ *   · ROW 2 FROM `lg` CARRIES THE PAGE'S WORDS. It drew the sort and two typed boxes in ONE line; the page lays its sort
++ *     and three groups — the game, the window, the topic with its glyphs — along a row that wraps on their words: four
++ *     lines at 1024 in Swahili and English (the topic group wraps inside itself there) and three at 1280 — three and two
++ *     in Chinese — measured from the served fonts with two-digit counts (S/r5l/measure-routes.cts; tile 170 shows two at
++ *     1280 with the QA board's one-digit counts). The grid landed 56 to 168px below the ghost's promise. Each group is now
++ *     the page's own wrapper, divider, key and pills.
++ *   · THE CAROUSEL IS THE NOTABLE CARD'S OWN BOX. It was reserved at 458px — measured at 360 on 2026-09-24, against
++ *     cards that have since lost lines — and drawn at every width: at 1280 the page's carousel is 340px (the 44px
++ *     arrows and their 12px, the card's 234 — tile 170 — and the dots' 10 + 40), so the grid landed 118px HIGHER than
++ *     promised (68px at 390). The ghost card is the card's own stack (`p-5 lg:p-6`, the chip row with the page's words,
++ *     the title, the 28px bar with its 24.5px label row, the stats line), and the title's line count is the one
++ *     judgement left: the tallest of three notable titles, on the rule /live's hero takes for its six — the tallest of
++ *     N is the board's title at the N/(N+1) quantile, here the 75th percentile, from the served fonts
++ *     (S/r5l/measure-titles-steps.cts): three lines to 401px, two to 685 (657 in English), one beyond, at 22px from
++ *     1024. Drawn on the breakpoints — three below 640, two to 767, one from 768 — it holds a line more than the
++ *     judgement from 402 to 639 and from 686 (658) to 767.
++ * ⭐ CLIENT CODE (round 5's follow-up, R5-H · G-2): a refresh of /results carries this drawing's reference, not its
++ * tree — and the page's own Suspense fallback is the same reference since R5-L. `components/ui/page-loader.tsx` has the
++ * convention.
+  */
+ export default function ResultsLoading() {
+   // Width MUST match results/page.tsx (1280) — a mismatch reflows on every route transition.
+@@ -63,98 +85,109 @@ export default function ResultsLoading() {
+        that flattens the nesting pays a different number of gaps than the page it stands in for. */
+     <PageContainer tier="board">
+       <div className="flex flex-col gap-5">
+-        {/* Header row — eyebrow left, the NDIO/HAPANA donut and counts right. Drawing only the
+-          eyebrow made this row a different height; the real one is 38px at every phone width. */}
+-        <div className="flex items-center justify-between gap-3" aria-hidden>
+-          <div className="h-3 w-[64px] rounded bg-bg-overlay kp-shimmer-track" />
+-          <div className="flex items-center gap-2">
+-            {/* The NDIO/HAPANA donut. ⚠️ 38px is what makes this row 38px tall — measured at
+-                320, 360 and 414 alike; the eyebrow and the count text beside it are only 18px, so
+-                the ring sets the height. A 26px ghost drew a 26px row and the board inherited it. */}
+-            <div className="h-[38px] w-[38px] rounded-full bg-bg-overlay kp-shimmer-track" />
+-            <div className="h-3 w-[120px] rounded bg-bg-overlay kp-shimmer-track" />
++        <ResultsGhostBands />
++      </div>
++    </PageContainer>
++  );
++}
++
++/**
++ * The bands inside the page's `flex flex-col gap-5` wrapper — this file's drawing AND the page's own Suspense fallback
++ * (`results/page.tsx`), so the first paint of a document and the first paint of a move are one drawing.
++ * The page hands it what it knows: whether the notable carousel shows (page one with no search — the move's own case,
++ * drawn by default) and whether a search's line stands over the grid.
++ * ⚠️ The board drawn is the common one, an archive of eight results or more: rows (the bar and search shown), three
++ * notable results on page one (the carousel with its arrows and dots), two-digit counts, and `PLAYER_PER_PAGE` less
++ * those three in the grid. A smaller archive is another case — today's QA board (tile 170: six results) shows one
++ * notable, a carousel without arrows or dots (106px shorter), and one-digit counts, which take row 2 a line shorter
++ * at 1280 in Swahili and English and at 1024 in English (56px): its grid lands 106 to 162px higher than this ghost
++ * promises.
++ */
++export function ResultsGhostBands({ notable = true, searching = false }: { notable?: boolean; searching?: boolean }) {
++  const { t } = useT();
++  const lenses = [t.common.all, outcomeWord(t, "YES", "MARKET"), outcomeWord(t, "NO", "MARKET"), t.common.voided];
++  const product = [t.market.catAll, `${sideWord(t, "YES", "MARKET")} / ${sideWord(t, "NO", "MARKET")}`, `${sideWord(t, "YES", "UPDOWN")} / ${sideWord(t, "NO", "UPDOWN")}`];
++  const when = [t.common.rangeToday, t.common.rangeYesterday, t.common.range7d, t.common.range30d, t.common.rangeAll];
++  const topics = [t.market.catAll, ...MARKET_CATEGORIES.map((c) => categoryLabel(t, c))];
++  return (
++    <>
++      {/* Header row — the page's eyebrow (its glyph and its word, printed: the page's name), and the 38px donut beside
++          the tally's lines. ⚠️ 38px is what makes this row 38px tall — measured at 320, 360 and 414 alike: the eyebrow
++          and the tally beside the ring are shorter, so the ring sets the height. */}
++      <div className="flex items-center justify-between gap-3">
++        <div className="flex items-center gap-[10px]">
++          <span className="text-text-subtle"><I.resolved s={18} /></span>
++          <p className="font-mono text-caption uppercase eyebrow font-bold text-text-subtle">{t.results.title}</p>
++        </div>
++        <div className="flex items-center gap-3" aria-hidden>
++          {/* The donut's 38px, the tally's lines beside it (12.5px each, shorter than the ring), the count line from 640 —
++              one line each, so their boxes are the ghost. */}
++          <div className="flex min-w-0 items-center gap-2">
++            <div className="h-[38px] w-[38px] shrink-0 rounded-full bg-bg-overlay kp-shimmer-track" />
++            <div className="flex min-w-0 flex-col gap-1">
++              <span className="h-[8px] w-[96px] rounded-sm bg-bg-elevated" />
++              <span className="h-[8px] w-[64px] rounded-sm bg-bg-elevated" />
++            </div>
+           </div>
++          <div className="hidden h-[14px] w-[176px] items-center sm:flex"><span className="h-[8px] w-full rounded-sm bg-bg-elevated" /></div>
+         </div>
++      </div>
+ 
+-        {/* The search band — the page's own class (round 4, 2026-10-09). ⛔ It is the band, not decoration: 10px over
+-          a 71px `search-box-wrap`, whose 25px echo row lies inside the gap to the bar below (`globals.css`,
+-          `.kp-search-band`), so it takes 56px of the column, as the page's does. It was `py-[10px]`, 91px. */}
+-        <div className={QUERY_SEARCH_BAND_CLASS} aria-hidden>
+-          <div className="search-box-wrap">
+-            <div className="kp-shimmer-track h-[calc(var(--h-input)+2px)] rounded-lg border border-border bg-bg-inset" />
+-            <p className="mt-1.5 min-h-[17px]" />
+-          </div>
++      {/* The search band — the page's own class (round 4, 2026-10-09). ⛔ It is the band, not decoration: 10px over
++        a 71px `search-box-wrap`, whose 25px echo row lies inside the gap to the bar below (`globals.css`,
++        `.kp-search-band`), so it takes 56px of the column, as the page's does. It was `py-[10px]`, 91px. */}
++      <div className={QUERY_SEARCH_BAND_CLASS} aria-hidden>
++        <div className="search-box-wrap">
++          <div className="kp-shimmer-track h-[calc(var(--h-input)+2px)] rounded-lg border border-border bg-bg-inset" />
++          <p className="mt-1.5 min-h-[17px]" />
+         </div>
++      </div>
+ 
+-        {/* The discovery bar. Same wrappers as the real one, so it is two rows on a phone rather
+-          than however many a re-typed `flex-wrap` would have produced. */}
+-        <div aria-hidden className={QUERY_BAR_CLASS}>
+-          <div className={QUERY_BAR_ROW1_CLASS}>
+-            <div className={QUERY_STRIP_CLASS}>
+-              {[64, 74, 96].map((w, i) => (
+-                <div
+-                  key={i}
+-                  className="kp-shimmer-track h-[44px] shrink-0 rounded-pill bg-bg-elevated"
+-                  style={{ width: w }}
+-                />
+-              ))}
+-            </div>
+-            <div className="kp-shimmer-track h-4 w-[80px] shrink-0 rounded bg-bg-elevated" />
+-          </div>
+-          <div className={QUERY_BAR_ROW2_CLASS}>
+-            {/* ⛔ 182 AND 134 ARE MEASURED, AND THE PAIR MUST FIT ON ONE LINE. The real row renders
+-              182×44 (sort) + 134×44 (filters) = 316 plus a 16px gap = 332, inside 336px of content
+-              width at 360 — by four pixels. Ghosting them at 210 and 130 overflowed that, so
+-              `flex-wrap` broke the row in two and the bar drew **172px against a real 116**,
+-              putting the board 56px too low. ⚠️ Unlike `/markets`, THIS bar does not opt into the
+-              phone grid (it carries no `data-bar-row`), so nothing rescues a row that wraps. */}
+-            <div className="kp-shimmer-track h-[44px] w-[182px] rounded-pill bg-bg-elevated" />
+-            {/* The Filters button is a phone's alone (`FilterSheet` is `lg:hidden`, filter-sheet.tsx) — R5-H · G-2b: the
+-                ghost drew it at 1280 too, a 134px pill in a row the page does not have. */}
+-            <div className="kp-shimmer-track h-[44px] w-[134px] rounded-pill bg-bg-elevated lg:hidden" />
+-            {/* ⛔ Desktop-only groups — the real ones carry `QUERY_GROUP_CLASS` (`hidden … lg:flex`),
+-              so a phone never receives them and neither does its ghost. */}
+-            {[88, 84].map((w, i) => (
+-              <div key={i} className={QUERY_GROUP_CLASS}>
+-                <div
+-                  className="kp-shimmer-track h-[44px] rounded-pill bg-bg-elevated"
+-                  style={{ width: w }}
+-                />
+-              </div>
+-            ))}
++      {/* The discovery bar — the page's wrappers and the page's words (`query-bar-ghost.tsx`). */}
++      <div aria-hidden className={QUERY_BAR_CLASS}>
++        <div className={QUERY_BAR_ROW1_CLASS}>
++          <div className={QUERY_STRIP_CLASS}>
++            {lenses.map((l) => <PillGhost key={l} label={l} />)}
+           </div>
++          {/* The count as tall as its line — `QueryResultCount`'s 11.5px × 1.5 = 17.25px (/markets' ghost's own box). */}
++          <div className="flex h-[17.25px] shrink-0 items-center"><div className="kp-shimmer-track h-3 w-[80px] rounded bg-bg-elevated" /></div>
++        </div>
++        <div className={QUERY_BAR_ROW2_CLASS}>
++          {/* The sort fills a phone's row beside the Filters button; from lg it is its own width and the three groups
++              follow it, each behind the page's divider (the row's 29px gap is keyed on it), wrapping as the page's. */}
++          <SortGhost label={t.common.sort} value={t.results.sortNewest} />
++          {/* The Filters button is a phone's alone (`FilterSheet` is `lg:hidden`, filter-sheet.tsx) — R5-H · G-2b: the
++              ghost drew it at 1280 too, a 134px pill in a row the page does not have. Since R5-L it is the trigger's own box
++              with its word, as wide as the page's in every language. */}
++          <FiltersGhost label={t.market.filtersOpen} />
++          <QueryGroupDivider />
++          <GroupGhost label={t.market.gameKey}>{product.map((p) => <PillGhost key={p} label={p} />)}</GroupGhost>
++          <QueryGroupDivider />
++          <GroupGhost label={t.common.when}>{when.map((w) => <PillGhost key={w} label={w} />)}</GroupGhost>
++          <QueryGroupDivider />
++          <GroupGhost label={t.common.topic}>{topics.map((c) => <PillGhost key={c} label={c} glyph />)}</GroupGhost>
+         </div>
++      </div>
+ 
+-        {/* ⭐ THE PAGE'S OWN TWO WRAPPERS (R5-H · G-2b): `results/page.tsx` stands the carousel and the grid in a BLOCK
+-            (`min-w-0 flex-1`) inside a `flex flex-col gap-5 lg:flex-row` row of one child, so only the carousel's own
+-            `mb-5` (24px) parts them. This was one `flex flex-col gap-5` AND the `mb-5` — 48px: the grid stood 24px low. */}
+-        <div className="flex flex-col gap-5 lg:flex-row lg:gap-6">
++      {/* ⭐ THE PAGE'S OWN TWO WRAPPERS (R5-H · G-2b): `results/page.tsx` stands the carousel and the grid in a BLOCK
++          (`min-w-0 flex-1`) inside a `flex flex-col gap-5 lg:flex-row` row of one child, so only the carousel's own
++          `mb-5` (24px) parts them. This was one `flex flex-col gap-5` AND the `mb-5` — 48px: the grid stood 24px low. */}
++      <div className="flex flex-col gap-5 lg:flex-row lg:gap-6">
+         <div className="min-w-0 flex-1">
+-          {/* The notable-results carousel: a 44px arrow row over the featured result card.
+-          ⚠️ THE ONE MEASURED NUMBER IN THIS FILE (see the header). 458px is 360's; 320 renders
+-          497 and 414 renders 436, both inside `qa:ghost-landing`'s 120px tolerance. */}
+-          <div className="mb-5 min-h-[458px]" aria-hidden>
+-            <div className="mb-2 flex items-center justify-end gap-2">
+-              <div className="kp-shimmer-track h-[44px] w-[44px] rounded-full border border-border" />
+-              <div className="kp-shimmer-track h-3 w-[32px] rounded bg-bg-overlay" />
+-              <div className="kp-shimmer-track h-[44px] w-[44px] rounded-full border border-border" />
+-            </div>
+-            <div
+-              className="kp-shimmer-track rounded-xl border border-border bg-bg-elevated"
+-              style={{ height: 370 }}
+-            />
+-          </div>
++          {/* A search's line over the grid (the page's `mb-3` 11px line), when the page says one is running. */}
++          {searching && <div className="mb-3 h-[16.5px]" aria-hidden />}
++          {notable && <NotableGhost />}
+ 
+           {/* Card grid skeleton.
+           ⛔ `.market-grid`, NOT A HAND-ROLLED `grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3`.
+           That is what stood here, and it disagreed with the real page twice over: the shared
+           class is `gap: 14px` against `gap-3`'s 16 (10px over six rows), and it tracks columns
+           with `auto-fill minmax(min(300px,100%),1fr)` rather than counting them at fixed
+-          breakpoints, so the two laid out a different number of columns on a tablet. The real
+-          `/results` grid and `ResultsSkeleton` both use `.market-grid`; this was the only one of
+-          the three that did not. ⭐ It also made the route UNMEASURABLE — see the header. */}
++          breakpoints, so the two laid out a different number of columns on a tablet.
++          ⭐ It also made the route UNMEASURABLE — see the header. The grid holds a page of results less the three the
++          carousel lifts out of it (`PLAYER_PER_PAGE`, `results/page.tsx`'s `notableList`). */}
+           <div className="market-grid" aria-hidden>
+-            {Array.from({ length: 6 }).map((_, i) => (
++            {Array.from({ length: notable ? PLAYER_PER_PAGE - 3 : PLAYER_PER_PAGE }).map((_, i) => (
+               <div
+                 key={i}
+                 className="rounded-md border border-border bg-bg-elevated p-4 kp-shimmer-track"
+@@ -182,8 +215,56 @@ export default function ResultsLoading() {
+             ))}
+           </div>
+         </div>
++      </div>
++    </>
++  );
++}
++
++/** The notable carousel (`notable-carousel.tsx`), three slides: the 44px arrows and their counter (12px over the card),
++ *  the notable card's own box, then the dot rail's 10px and 40px. The card is `FeaturedResult`'s stack in its own classes
++ *  with the page's words: the chip row (a topic, the verdict, the crown's flag — it wraps on a phone, as the page's), the
++ *  title's lines, the 28px bar and its 24.5px label row, and the stats line. */
++function NotableGhost() {
++  const { t } = useT();
++  return (
++    <div className="mb-5" aria-hidden>
++      <div className="mb-2 flex items-center justify-end gap-2">
++        <div className="kp-shimmer-track h-[44px] w-[44px] rounded-full border border-border" />
++        <div className="kp-shimmer-track h-3 w-[32px] rounded bg-bg-overlay" />
++        <div className="kp-shimmer-track h-[44px] w-[44px] rounded-full border border-border" />
++      </div>
++      <div className="relative block overflow-hidden rounded-xl border border-border bg-bg-elevated p-5 lg:p-6 kp-shimmer-track text-transparent">
++        <div className="mb-3 flex flex-wrap items-center gap-2">
++          <Chip variant="cat" size="sm" style={CHIP_GHOST}>{t.market.catSports}</Chip>
++          {/* The verdict chip's box: the `resolved` variant's status metrics (`metrics="status"`), not its gold. */}
++          <Chip variant="neutral" metrics="status" size="sm" style={CHIP_GHOST}>{t.market.resolvedOutcome} · {outcomeWord(t, "NO", "MARKET")}</Chip>
++          <span className="ml-auto inline-flex items-center gap-1.5 font-mono text-micro uppercase tracking-[0.16em] font-bold">
++            <span className="h-[13px] w-[13px] shrink-0" /> <span className="kp-track-end kp-track-end--16"><Words>{t.results.notableResult}</Words></span>
++          </span>
++        </div>
++        {/* The title: the judgement's line count (the header) — its lines' box, each line a bar 1em tall on the 1.25em
++            pitch (the third on a phone only, the second below 768). */}
++        <div className="mb-4 max-w-[70ch] font-display text-[18px] lg:text-[22px] font-semibold leading-tight min-h-[calc(3*1.25*18px)] sm:min-h-[calc(2*1.25*18px)] md:min-h-[calc(1.25*18px)] lg:min-h-[calc(1.25*22px)]">
++          <div className="mt-[0.125em] h-[1em] w-full rounded bg-bg-overlay" />
++          <div className="mt-[0.25em] h-[1em] w-full rounded bg-bg-overlay md:hidden" />
++          <div className="mt-[0.25em] h-[1em] w-3/5 rounded bg-bg-overlay sm:hidden" />
++        </div>
++        {/* `TippingBar height={28} showLabels`: the rail, then `.tipbar-labels`' 8px and its 11px line. */}
++        <div className="h-[28px] w-full rounded-full bg-bg-overlay" />
++        <div className="mt-1.5 h-[16.5px]" />
++        {/* The stats line: one 11px line (16.5px) — the pool and the predictors fit it at every width. */}
++        <div className="mt-3 flex h-[16.5px] items-center gap-4">
++          <span className="h-[8px] w-[120px] rounded-sm bg-bg-overlay/40" />
++          <span className="h-[8px] w-[88px] rounded-sm bg-bg-overlay/40" />
+         </div>
+       </div>
+-    </PageContainer>
++      <div className="mt-[10px] flex items-center justify-center">
++        {[0, 1, 2].map((i) => (
++          <span key={i} className="grid h-[40px] w-[24px] place-items-center">
++            <span className="block h-1.5 rounded-full bg-bg-overlay" style={{ width: i === 0 ? 18 : 6 }} />
++          </span>
++        ))}
++      </div>
++    </div>
+   );
+ }
+diff --git a/src/app/results/page.tsx b/src/app/results/page.tsx
+index 8d4ddcfdc..06e7839ef 100644
+--- a/src/app/results/page.tsx
++++ b/src/app/results/page.tsx
+@@ -2,7 +2,6 @@ import { Suspense } from "react";
+ import Link from "next/link";
+ import { I, categoryGlyph } from "@/components/ui/glyphs";
+ import { MarketCard } from "@/components/markets/market-card";
+-import { MARKET_CARD_H_CLOSED } from "@/components/markets/card-geometry";
+ import { Chip } from "@/components/ui/chip";
+ import { FilterPill, FilterGroupKey } from "@/components/ui/filter-pill";
+ import { TippingBar } from "@/components/brand";
+@@ -14,7 +13,7 @@ import { getCardCharts } from "@/lib/server/market-history";
+ import { EmptyState } from "@/components/ui/empty-state";
+ import { Pagination, PLAYER_PER_PAGE } from "@/components/ui/pagination";
+ import { SearchBox } from "@/components/ui/search-box";
+-import { QUERY_BAR_CLASS, QUERY_BAR_ROW1_CLASS, QUERY_BAR_ROW2_CLASS, QUERY_SEARCH_BAND_CLASS } from "@/components/ui/query-bar";
++import { QUERY_SEARCH_BAND_CLASS } from "@/components/ui/query-bar";
+ import { ResultsBar, type ArchiveCounts } from "./results-bar";
+ import {
+   archiveCounts,
+@@ -30,6 +29,7 @@ import {
+ } from "@/lib/results/archive";
+ import { parseQuery, matchesQuery, fieldNames, MARKET_SEARCH } from "@/lib/search";
+ import { NotableCarousel } from "./notable-carousel";
++import { ResultsGhostBands } from "./loading";
+ import { RefreshPoller } from "@/components/ui/refresh-poller";
+ import { formatNumber, formatTzsCompact } from "@/lib/utils";
+ import { Ring } from "@/components/charts/ring";
+@@ -127,7 +127,14 @@ export default async function ResultsPage({
+           ⛔ A `space-y-*` ON A STREAMING BOUNDARY IS A CLASS OF BUG, NOT ONE NUMBER. Swept 2026-09-24: this
+           was the only such container in `src/`. Do not reintroduce one. */}
+       <div className="flex flex-col gap-5">
+-        <Suspense fallback={<ResultsSkeleton />}>
++        {/* ⭐ THE FALLBACK IS THE ROUTE'S OWN GHOST (round 5's follow-up, R5-L): a document's first paint and a move's are
++            ONE drawing (`loading.tsx`'s `ResultsGhostBands`, a client reference — no drawn tree in this page's payload,
++            which every 60s refresh re-sends), handed what this page knows: the carousel on page one with no search, and a
++            search's line over the grid. It replaces `ResultsSkeleton`, a second drawing that had drifted from the first: a
++            24px header row against the page's 38, the phone's Filters pill beside the sort at every width (a second line at
++            320, and none of the three groups from 1024), no carousel — page one's first card landed 358 to 547px below its
++            promise — and eight cards with the open card's YES/NO buttons where the page draws nine closed ones. */}
++        <Suspense fallback={<ResultsGhostBands notable={!searching && pageNum === 1} searching={searching} />}>
+           <ResultsContent state={state} searching={searching} pageNum={pageNum} />
+         </Suspense>
+       </div>
+@@ -662,89 +669,3 @@ function FeaturedResult({ m, t, locale }: { m: Awaited<ReturnType<typeof listMar
+     </Link>
+   );
+ }
+-
+-/** Shimmer skeleton shown while the async content loads (same pattern as
+- *  /markets GridSkeleton — card-sized placeholders with shimmer tracks). */
+-function ResultsSkeleton() {
+-  return (
+-    <>
+-      {/* Header skeleton — ⛔ no `mb-*`: the fallback and the content are children of the SAME
+-          `space-y-5` wrapper, so both branches get the same rhythm and the page cannot move
+-          between them. Before DG-P-04 this branch spaced itself 20/24 and the content 32/16. */}
+-      <div className="flex items-center justify-between gap-3">
+-        <div className="flex items-center gap-2.5">
+-          <div className="h-5 w-5 rounded bg-bg-overlay kp-shimmer-track" />
+-          <div className="h-4 w-32 rounded bg-bg-overlay kp-shimmer-track" />
+-        </div>
+-        <div className="h-3.5 w-36 rounded bg-bg-overlay kp-shimmer-track" />
+-      </div>
+-
+-      {/* Search skeleton — the page's own band (round 4, 2026-10-09): `QUERY_SEARCH_BAND_CLASS` around a
+-          `search-box-wrap` of the box's height and the echo row, as `results/loading.tsx` draws it. It was a 44px bar
+-          standing in for a 91px band (DG-P-13 / DG-A-20, filed): the band now takes 56px of the column (10 + 46 + 25,
+-          less the 25 its echo row lends the gap to the bar), and the ghost takes the same. */}
+-      <div className={QUERY_SEARCH_BAND_CLASS} aria-hidden>
+-        <div className="search-box-wrap">
+-          <div className="kp-shimmer-track h-[calc(var(--h-input)+2px)] rounded-lg border border-border bg-bg-inset" />
+-          <p className="mt-1.5 min-h-[17px]" />
+-        </div>
+-      </div>
+-
+-      {/* ⭐ THE GHOST FOLLOWS THE BAR, and its classes are IMPORTED rather than retyped, so a
+-          change to the bar's padding or sticky offset moves the ghost in the same commit by
+-          construction. It drew a 208px sidebar of four stacked pills; the page no longer has one,
+-          and a ghost of a control that is not there moves everything below it on first paint. */}
+-      <div className={QUERY_BAR_CLASS} aria-hidden>
+-        <div className={QUERY_BAR_ROW1_CLASS}>
+-          <div className="flex min-w-0 flex-1 items-center gap-1 overflow-hidden">
+-            {[54, 74, 68, 82].map((w, i) => (
+-              /* ⚠️ LITERAL 44, not `h-8` — spacing is overridden (tailwind.config.ts:200-215), so
+-                 `h-8` would draw 48px for a pill that renders at FilterPill's 44. */
+-              <div key={i} className="h-[44px] shrink-0 rounded-pill bg-bg-overlay" style={{ width: w }} />
+-            ))}
+-          </div>
+-          <div className="h-3 w-20 shrink-0 rounded bg-bg-overlay" />
+-        </div>
+-        <div className={QUERY_BAR_ROW2_CLASS}>
+-          <div className="h-[44px] w-[180px] rounded-pill bg-bg-overlay" />
+-          <div className="h-[44px] w-[104px] rounded-pill bg-bg-overlay" />
+-        </div>
+-      </div>
+-
+-      {/* Grid */}
+-      <div className="flex flex-col gap-5 lg:flex-row lg:gap-6">
+-        {/* Grid skeleton */}
+-        <div className="min-w-0 flex-1">
+-          <div className="market-grid" aria-hidden>
+-            {Array.from({ length: 8 }).map((_, i) => (
+-              <div
+-                key={i}
+-                className="rounded-md border border-border bg-bg-elevated overflow-hidden kp-shimmer-track"
+-                style={{ height: MARKET_CARD_H_CLOSED }}
+-              >
+-                <div className="p-4 space-y-3">
+-                  <div className="flex items-center gap-2">
+-                    {/* ⚠️ WIDTH IS A LITERAL, not `w-12` (128px on the overridden scale). */}
+-                    <div className="h-5 w-[64px] rounded-pill bg-bg-overlay" />
+-                    <div className="h-5 w-16 rounded-pill bg-bg-overlay" />
+-                  </div>
+-                  <div className="h-4 w-3/4 rounded bg-bg-overlay" />
+-                  <div className="h-4 w-1/2 rounded bg-bg-overlay" />
+-                  <div className="h-[7px] w-full rounded-pill bg-bg-overlay mt-4" />
+-                  <div className="flex gap-2 mt-3">
+-                    {/* ⚠️ TOKEN, not `h-9` (64px on the overridden scale) — the card's YES/NO
+-                        buttons are pinned to `--tap-min` in globals.css
+-                        (`.mcardp-actions .btn`). Copy of the markets/page.tsx skeleton; the
+-                        two must stay in step. */}
+-                    <div className="h-[var(--tap-min)] flex-1 rounded-md bg-bg-overlay" />
+-                    <div className="h-[var(--tap-min)] flex-1 rounded-md bg-bg-overlay" />
+-                  </div>
+-                </div>
+-              </div>
+-            ))}
+-          </div>
+-        </div>
+-      </div>
+-    </>
+-  );
+-}
+diff --git a/src/app/wallet/money-bar-ghost.tsx b/src/app/wallet/money-bar-ghost.tsx
+index d43189b63..2fe01b26e 100644
+--- a/src/app/wallet/money-bar-ghost.tsx
++++ b/src/app/wallet/money-bar-ghost.tsx
+@@ -1,5 +1,6 @@
+ import { FilterGroupKey } from "@/components/ui/filter-pill";
+ import { QUERY_BAR_CLASS, QUERY_BAR_ROW1_WRAP_CLASS, QUERY_BAR_ROW2_CLASS, QUERY_GROUP_CLASS, QueryGroupDivider } from "@/components/ui/query-bar";
++import { PillGhost } from "@/components/ui/query-bar-ghost";
+ import type { Dict } from "@/lib/i18n-dict";
+ 
+ /**
+@@ -52,12 +53,6 @@ export function MoneyBarGhost({ t, lenses, count }: { t: Dict; lenses: readonly
+   );
+ }
+ 
+-/** A pill while it loads: `filterPillClass`'s box (its geometry, not its ink) with the label set and not shown. */
+-function PillGhost({ label }: { label: string }) {
+-  return (
+-    <span className="inline-flex min-h-[44px] shrink-0 items-center justify-center gap-1.5 whitespace-nowrap rounded-pill border border-transparent bg-bg-overlay px-3 text-[13px] font-semibold text-transparent kp-shimmer-track">
+-      {label}
+-      <span className="font-mono text-[11px] font-bold tabular-nums">00</span>
+-    </span>
+-  );
+-}
++/* The pill — `filterPillClass`'s box with the label set and not shown — is `query-bar-ghost.tsx`'s `PillGhost` since round
++   5's follow-up (R5-L): /results', /markets' and /leaderboard's ghosts draw the same pill, so it lives once, beside the
++   other parts every bar ghost draws. */
+diff --git a/src/app/watchlist/loading.tsx b/src/app/watchlist/loading.tsx
+index 6cc5c6279..1bc9514d5 100644
+--- a/src/app/watchlist/loading.tsx
++++ b/src/app/watchlist/loading.tsx
+@@ -1,4 +1,23 @@
++"use client";
++
+ import { PageLoader } from "@/components/ui/page-loader";
++import { PageHeader } from "@/components/ui/page-header";
++import { I } from "@/components/ui/glyphs";
++import { useT } from "@/lib/i18n";
++
++/**
++ * /watchlist opens on its header (the star, 22px, on the eyebrow's row), on the page's 24px rung.
++ * The generic body below — `components/ui/page-loader.tsx` has the rule (R5-L): a loader opens on its page's own opening
++ * bands, in the page's rhythm, and its spinner panel stands where the page's first band of data begins.
++ */
+ export default function Loading() {
+-  return <PageLoader tier="board" rows={4} />;
++  const { t } = useT();
++  return (
++    <PageLoader
++      tier="board"
++      rows={4}
++      rhythm="space-y-5"
++      lead={<PageHeader tone="info" icon={<I.star s={22} />} eyebrow={t.watchlist.eyebrow} title={t.watchlist.title} />}
++    />
++  );
+ }
+diff --git a/src/components/ui/page-loader.tsx b/src/components/ui/page-loader.tsx
+index eb4fda160..c540ce3cd 100644
+--- a/src/components/ui/page-loader.tsx
++++ b/src/components/ui/page-loader.tsx
+@@ -50,24 +50,44 @@
+  * link's prefetch) names it — not `next/dynamic`, which waits for the render; that suits the root's journey-only set,
+  * not a drawing every reader of the segment is shown. The chunks' sizes are a production build's to measure (a lock
+  * turn's). `test:visual-pass-r5h` §1 holds every player loading file to this and renders each one's markup.
++ *
++ * ⭐ EVERY GHOST OPENS ON THE BAND ITS PAGE OPENS ON (2026-10-09, the visual pass round 5's follow-up, R5-L) — ONE rule for
++ * every loading drawing and every in-page Suspense skeleton. This loader drew a 257px spinner box (80 + 64 + 16 + 15 + 80,
++ * and its border) where its pages open on a 44px back link or a hero, so everything the page draws first landed somewhere
++ * the ghost had not promised. So a ghost draws its page's OPENING bands with the page's own parts — the BackLink's 44px
++ * box (`BackLinkGhost`) where the page opens on one, then the page's own header (`PageHeader` with the page's eyebrow,
++ * title, subtitle, icon and tone, inside `PageHero` where the page wraps it in one; a hero's own sentence as words set and
++ * not shown, `ghost-kit.tsx`) — in the page's own rhythm (`rhythm`, the class the page's container carries), and this
++ * loader's spinner panel and rows stand where the page's first band of DATA begins. The header is printed: it is the
++ * page's name and waits for nothing. A page whose first band IS its data (a proposal's own head card) keeps the spinner
++ * first — the same rule, decided per route. Each route's loading file says which bands it draws and which case.
+  */
++import type { ReactNode } from "react";
+ import { BrandSpinner } from "@/components/brand";
+ import { PageContainer, type MeasureTier } from "@/components/layout/page-container";
+ import { useT } from "@/lib/i18n";
++import { cn } from "@/lib/utils";
+ 
+ export function PageLoader({
+   tier = "reading",
+   rows = 5,
+   rowHeight = 64,
++  lead,
++  rhythm,
+ }: {
+   /** ⛔ A TIER, never a number — B7 rule 2, and it must match the page's own. */
+   tier?: MeasureTier;
+   rows?: number;
+   rowHeight?: number;
++  /** The page's opening bands, drawn with the page's own parts (the rule above). */
++  lead?: ReactNode;
++  /** The page container's own rhythm, so the opening bands and the panel stand as far apart as the page's bands. */
++  rhythm?: "space-y-5" | "space-y-6";
+ }) {
+   const { t } = useT();
+   return (
+-    <PageContainer tier={tier} className="content-fade-in">
++    <PageContainer tier={tier} className={cn("content-fade-in", rhythm)}>
++      {lead}
+       <div className="rounded-xl border border-border bg-bg-elevated p-10 grid place-items-center">
+         <div className="flex flex-col items-center gap-3">
+           <BrandSpinner size={48} />

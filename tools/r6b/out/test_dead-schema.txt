@@ -1,0 +1,13 @@
+── 1 · the schema declares none of them ──────────────────────
+
+── 2 · and no code references any of them ────────────────────
+
+── 3 · IF the DDL exists, it obeys the contract rules ────────
+   1 migration(s) drop a dead-schema object
+
+────────────────────────────────────────────────────────────────
+  Emptiness was the symptom. Having no reader anywhere was the finding —
+  which is why Session and Otp stayed and these four did not.
+────────────────────────────────────────────────────────────────
+
+ALL PASS — 42 passed, 0 failed

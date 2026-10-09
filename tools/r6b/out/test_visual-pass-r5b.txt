@@ -1,0 +1,98 @@
+── 1 · F3 the Wallet's hairline stands in the middle of its gap (tiles 092 132–137 151–154) ────────────
+  ok   1.1 · in the journey the rule stands 16 under the content (the sheet's gap) and 16 over the row (the foot's padding)
+  ok   1.1′ CONTROL · the base rule is the classic capsule's, untouched (8 under the rule): the measured 16 | 8 of tile 132
+  ok   1.1″ PLANT · the journey's rule dropped leaves 16 | 8, and is reported
+  ok   1.2 · the filter sheet's footer: 16 above the rule (margin) and 16 below (padding) — the convention's reference
+  ok   1.3 · the bet confirm's: its last box 20 over the rule, its quote caption's capitals 20.6 under it (within 1px)
+
+── 2 · F6 the journey's section rails start on the column edge (tiles 165–168 171 172) ─────────────────
+  ok   2.1.locate · the kit's option: a 20px-padded box, its underline 12px in; the rail's rule is its border; a link rail wears `data-section-rail`
+  ok   2.1 · journey: the first label, its underline and the rule all start ON the column edge, the underline exactly the label's width
+  ok   2.1′ CONTROL · the same model without the journey rule is the tile: label 20 in, underline 12 in (390: x36 / x28 against x16)
+  ok   2.1″ PLANT · a rail that does not bleed puts the label 12px in again, and is reported
+  ok   2.2 · the bleed is drawn on screen: 12px into the 16px phone gutter (PageContainer `px-3`)
+  ok   2.3 · it is the journey header's own line-tab geometry: `.kp-jnav__link` pads 12 a side and its underline is 12 in
+  ok   2.4 · /wallet's ghost draws the rail's own geometry (both shells), and the journey's rule draws it as it draws the rail
+  ok   2.4′ PLANT · the ghost back on `px-3.5` with a box-wide underline is reported
+  ok   2.5 · the journey's line-tab strips are the kit's link rails — Tiketi zangu's (both kinds) and /wallet's — so the one rule reaches both
+
+── 3 · F7 a sheet docked to the screen's bottom draws no bottom edge (tiles 132 134 136 151 152) ───────
+  ok   3.1 · Modal marks the box that runs past the screen (its wrapper) and the sheet (its panel), by the width below which it docks
+  ok   3.2 · in the journey, below each width, the box runs 1px past the last row and the sheet drops its bottom border, its padding +1px
+  ok   3.2′ PLANT · the box left on the screen's edge (`bottom: 0`) is reported
+  ok   3.3 · the default `--dock-pb` (24) is Modal's own `p-5` (24 on this scale), so a plain docked sheet keeps its air
+  ok   3.4 · each sheet's `--dock-pb` IS its own bottom padding — the Wallet's 20 + inset, the filter sheet's inset + 16
+  ok   3.5 · the primer (`!p-0`) docks on 0, and the Needle's drawer — a sheet of its own below `sm` — carries both marks and its own padding
+  ok   3.5′ PLANT · the drawer's dock padding out of step with its own is reported
+  ok   3.6 · the chat's sheet drops its border alone below 1024: its composer paints over the light's row with an opaque fill
+  ok   3.7 · the docked Modal sheets a journey reader can open: the Wallet and the guest sheet (lg), the primer and the reality check (sm)
+
+── 4 · F8 the journey's bell pip casts no shadow (tile 225) ────────────────────────────────────────────
+  ok   4.1 · the journey's pip: `box-shadow: none`, after the lift's rule at the same (0,2,0), so it wins on order
+  ok   4.1′ CONTROL · the classic pip keeps its rose glow AND its dark drop (frozen chrome)
+  ok   4.1″ PLANT · the drop put back on the journey's pip is reported
+  ok   4.2 · the pip's separation is its own 2px ring of the bar's ground — a BORDER, which `box-shadow: none` leaves alone
+
+── 5 · F9 every moment a notice states is said in each reader's words (tile 192) ───────────────────────
+  ok   5.1 · the notifier formats no date the English way: no formatDateShort / formatDateTime / toLocale*String
+  ok   5.1′ PLANT · the old `formatDateShort(opts.reapplyAt)` put back is reported
+  ok   5.2 · one path: the verdict, the re-apply day and a break's end all go through `instantIn` with eat-day's formatters
+  ok   5.3 · the verdict's caller hands the market's own instant, not a formatted English string
+  ok   5.4 · the verdict notice: "Payout from 9 Oct, 11:53" · "Malipo kuanzia 9 Okt, 11:53" · "赔付不早于 2026年10月9日 11:53" (EAT)
+  ok   5.4′ PLANT · the old body — one English string in the Swahili sentence — is reported
+  ok   5.5 · the revoked agent's notice: "from 6 Dec" · "kuanzia 6 Des" · "您可从 2026年12月6日 起"
+  ok   5.6 · …and its letter: the English line says "from 6 Dec", the Swahili line "kuanzia 6 Des" (it printed "kuanzia 06 Dec")
+
+── 6 · F10 a title quoted in a notice is cut at a word, with "…" (tile 192) ────────────────────────────
+  ok   6.1 · a long Swahili title ends at a word, on "…", within 60 code points, the words before it unchanged
+  ok   6.1′ CONTROL · `.slice(0, 60)` — the old cut — ends inside a word ("…Ligi Kuu ya Tanza"), and so would a cut at the room (59)
+  ok   6.2 · a text that fits is returned exactly as given
+  ok   6.3 · Chinese breaks between ideographs but never inside a Latin word or a figure ("200", "NBC", "2026-27") — at any room 12…31
+  ok   6.3′ CONTROL · `.slice` would have cut inside them (at 14, 20, 26: "…20", "…NB", "…202")
+  ok   6.4 · a lone word longer than the room is cut at a character; a cut never ends on junk ("「", ", ", "...")
+  ok   6.5 · counted in code points: a pair of surrogates is never split
+  ok   6.6 · no notice cuts what it quotes with `.slice(0, n)` any more — every cut is `clipQuote` (82 of them)
+  ok   6.6′ PLANT · one `.slice(0, 70)` put back is reported
+  ok   6.7 · the email subjects that quote a title cut it the same way (bet placed, betting closed, awaiting resolution, cancelled)
+  ok   6.7′ CONTROL · the ledger's own descriptions keep their pinned shape (`red:updown-void-copy`): money records, not notices
+
+── 7 · F11 the journey's money doors say the journey's words (tiles 171 172) ───────────────────────────
+  ok   7.1 · /wallet: the header's two doors, the balance card's link and the empty account's Deposit take the journey's pair
+  ok   7.1′ PLANT · the header's Deposit back on `common.deposit` is reported
+  ok   7.2 · the page asks the one per-request resolver (after its session gate); the receipts page does too
+  ok   7.3 · the pair is the journey's own (sw "Weka pesa" / "Toa pesa"; en Deposit / Withdraw; zh 充值 / 提现) — and it is not the classic sw pair
+  ok   7.4 · every other door the journey shows already says it: the header pill, the Wallet's two doors, the hub's Withdraw, the deposit page's Withdraw
+
+── 8 · F13 /wallet's receipts door stands in the bar's rhythm (tile 172) ───────────────────────────────
+  ok   8.1.locate · the page's rung is 32 (`space-y-6`), the bar ends 10 under its pills (row 2's `pb-2.5`), the door is a 13px line in a 44px box
+  ok   8.1 · the words stand rung + 10 = 42 under the last pills and their baseline 42 over what follows (42.27 · 42.27)
+  ok   8.1′ CONTROL · without the rule the door stands on the rung both sides: 59.27 · 49.27 — the measured 59 · 49 of tile 172
+  ok   8.1″ PLANT · a door left on the page's 32 over it is reported
+  ok   8.2 · the door row wears the hook, right after the bar it follows; the selector ties `space-y-*` at (0,3,0)
+
+── 9 · F14 a count line under a bar has 12px of air on both sides (tile 171) ───────────────────────────
+  ok   9.1.locate · the wrapped row is row 1 plus the wrap, an 8px row gap, a 4px reach into row 2, one line from lg
+  ok   9.1 · its capitals 12 under the pills (8 + 4.37) and its baseline 12 over row 2's control (4.49 + 12 − 4)
+  ok   9.1′ CONTROL · the old `gap-y-1` put the capitals 8.37 under the pills — tile 171's measured 8 (y697 → y706)
+  ok   9.2 · the /markets phone bar's count line takes the same 8px each way (R4-D)
+  ok   9.3 · both money bars and the receipts ghost take the one constant; nobody retypes the wrap
+  ok   9.3′ PLANT · a bar back on its own `gap-y-1` recipe is reported
+  ok   9.4 · the ghost's count is as tall as the count's line (17.25), so row 2 lands where the page puts it
+
+── 10 · §A5 /notifications withholds its band and its bar on a genuinely empty inbox ───────────────────
+  ok   10.1 · the band and the bar stand only over something to filter; a search keeps them (its miss is the way out)
+  ok   10.1′ PLANT · the cleared rows forgotten (a player who cleared everything would lose the Cleared lens) is reported
+  ok   10.1″ PLANT · the bar drawn unconditionally again is reported
+  ok   10.2 · driven: a new player's inbox is empty (the band and bar withheld); one notice keeps them; that notice cleared still keeps them
+  ok   10.3 · the rule /notifications joins: every one of its siblings withholds its controls on an empty book
+
+── 11 · CHECKS the zero-balance lead keeps the method's name whole (079 083); the deposit pip clears the logo (067) 
+  ok   11.1 · the lead is kept by the method's own label, found in the sentence (no new words)
+  ok   11.2 · rendered: "pesa ya simu" and "mobile money" are each one unbreakable run; the sentence itself is unchanged
+  ok   11.2′ CONTROL · Chinese names it 手机钱包, not the Wallet's 移动支付: no run — `keep-all` (`.kp-mine__lead:lang(zh)`) already keeps it
+  ok   11.3 · the run fits the narrowest line it can meet (288px at 320): a kept run never overflows
+  ok   11.4 · at 1024–1280 (578px) the lead was split inside the name ("…pesa ya" / "simu…", "…mobile" / "money…") and is not now
+  ok   11.5 · the deposit pip stands 4px into the tile's corner: 7.5px clear of the logo at sw 320 (a 113px tile, a 48px plate)
+  ok   11.5′ CONTROL · at 8px in (`1.5`) it was 3.5 — tile 067's 3 clear columns (plate to x121, pip from x125)
+
+75 passed, 0 failed

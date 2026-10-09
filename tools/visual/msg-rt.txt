@@ -1,0 +1,17 @@
+The route entrance: no blink on a journey tab tap, no replay and no jump to the top at hydration (R5-H's patch, proven in a browser)
+
+route-transition.tsx re-raised the route entrance (`.route-enter`, opacity 0 → 1 over --t-move) in PASSIVE effects,
+and its [key] effect also ran at mount. Measured in a browser before and after (S/r5h/probe-route-blink.mjs: the wrapper's
+computed opacity on every frame, on a dev server, the journey at 390):
+- before: both journey tab taps painted the new route once at full opacity, then dropped it to transparent ~10 ms later
+  (/updown 134 → 143 ms, /account 184 → 198 ms) and faded it in again — a blink on every tap; a throttled cold load
+  replayed the entrance at hydration (fully visible at 0.26 s, transparent again at 3.2 s) and threw the reader from
+  y 600 to the top (S14's visual sweep caught the same jump on /legal/privacy, §5 in view, then y≈4900).
+- after: no blink on either tap; no replay; the reader's place kept (600 → 600).
+The route change now restarts the entrance in a layout effect (before the new route's first paint; a View Transition
+starts from the same DOM as before), and the [key] effect skips its mount run (a mounted ref) — pushed route changes
+still scroll to the top, back/forward still leave the position to scroll-restore.tsx. test:visual-pass-r5h 3.7/3.8
+guard both halves, each with a plant; the DOM-mark census marks the route entrance FIXED. On the patched tree:
+r4j 79/79, journey-shell 434/434, r5h 56/56, hooks-order, red-anchors, decomment.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>

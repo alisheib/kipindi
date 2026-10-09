@@ -1,0 +1,185 @@
+§1 · No native browser dialog reaches a player, on any surface
+  ok   1.0a · positive control — the scanner REJECTS a real native dialog
+  ok   1.0b · …and does NOT reject a method named confirm/alert
+  ok   1.1 · watch-star.tsx uses no native confirm()/alert()
+  ok   1.1 · position-share.tsx uses no native confirm()/alert()
+  ok   1.1 · push-settings.tsx uses no native confirm()/alert()
+  ok   1.1 · security-client.tsx uses no native confirm()/alert()
+  ok   1.1 · password-section.tsx uses no native confirm()/alert()
+  ok   1.1 · use-quick-bet.ts uses no native confirm()/alert()
+  ok   1.1 · updown-stake-controls.tsx uses no native confirm()/alert()
+  ok   1.1 · updown-bet-receipt-modal.tsx uses no native confirm()/alert()
+  ok   1.1 · updown-bet-blocked-modal.tsx uses no native confirm()/alert()
+  ok   1.1 · notifications-panel.tsx uses no native confirm()/alert()
+  ok   1.1 · conviction-dial.tsx uses no native confirm()/alert()
+  ok   1.1 · sell-button.tsx uses no native confirm()/alert()
+  ok   1.1 · sell-result.tsx uses no native confirm()/alert()
+  ok   1.1 · sell-result-host.tsx uses no native confirm()/alert()
+
+§2 · The premise the severity rule rests on: warning is GOLD, factual is not
+  ok   2.0 · the toast variant table is readable
+  ok   2.1a · `warning`'s BAR is still gold (why a refusal may not wear it)
+  ok   2.1b · …and so is its RAIL
+  ok   2.2 · `factual` carries NO tint — the plain rung is the distinction
+  ok   2.3 · `factual` uses the INFO glyph, never a tick
+  ok   2.4 · a `factual` toast fires NO haptic
+  ok   2.5 · `danger` still fires the error haptic (the alarm register still exists)
+
+§3 · Every refusal states a REASON and a NEXT STEP, in three languages
+  ok   3.1 · watch-star.tsx:toggleFailed — the refusal toast exists
+  ok   3.2 · watch-star.tsx:toggleFailed — it carries a description (the NEXT STEP)
+  ok   3.3 · watch-star.tsx:toggleFailed — at the severity §F assigns it
+  ok   3.4 · watch-star.tsx:toggleFailed — its body resolves in EN, SW and ZH
+  ok   3.5 · watch-star.tsx:toggleFailed — none is empty
+  ok   3.6 · watch-star.tsx:toggleFailed — no two languages are byte-identical
+  ok   3.1 · position-share.tsx:errGeneric — the refusal toast exists
+  ok   3.2 · position-share.tsx:errGeneric — it carries a description (the NEXT STEP)
+  ok   3.3 · position-share.tsx:errGeneric — at the severity §F assigns it
+  ok   3.4 · position-share.tsx:errGeneric — its body resolves in EN, SW and ZH
+  ok   3.5 · position-share.tsx:errGeneric — none is empty
+  ok   3.6 · position-share.tsx:errGeneric — no two languages are byte-identical
+  ok   3.1 · push-settings.tsx:errOnTitle — the refusal toast exists
+  ok   3.2 · push-settings.tsx:errOnTitle — it carries a description (the NEXT STEP)
+  ok   3.3 · push-settings.tsx:errOnTitle — at the severity §F assigns it
+  ok   3.4 · push-settings.tsx:errOnTitle — its body resolves in EN, SW and ZH
+  ok   3.5 · push-settings.tsx:errOnTitle — none is empty
+  ok   3.6 · push-settings.tsx:errOnTitle — no two languages are byte-identical
+  ok   3.1 · push-settings.tsx:errOffTitle — the refusal toast exists
+  ok   3.2 · push-settings.tsx:errOffTitle — it carries a description (the NEXT STEP)
+  ok   3.3 · push-settings.tsx:errOffTitle — at the severity §F assigns it
+  ok   3.4 · push-settings.tsx:errOffTitle — its body resolves in EN, SW and ZH
+  ok   3.5 · push-settings.tsx:errOffTitle — none is empty
+  ok   3.6 · push-settings.tsx:errOffTitle — no two languages are byte-identical
+  ok   3.1 · password-section.tsx:passwordFailed — the refusal toast exists
+  ok   3.2 · password-section.tsx:passwordFailed — it carries a description (the NEXT STEP)
+  ok   3.3 · password-section.tsx:passwordFailed — at the severity §F assigns it
+  ok   3.7 · security-client — every 2FA branch carries a body, not just a title
+  ok   3.8 · security-client — the toast renders the PAIR
+  ok   3.9 · security-client — at the severity §F assigns the account-guarding rail
+  ok   3.10 · security-client — no call site renders a bare title any more
+  ok   3.11 · security.errGenericBody resolves in EN, SW and ZH
+  ok   3.12 · security.errGenericBody — no two languages are byte-identical
+  ok   3.11 · security.errInvalidBody resolves in EN, SW and ZH
+  ok   3.12 · security.errInvalidBody — no two languages are byte-identical
+  ok   3.11 · security.errRateLimitedBody resolves in EN, SW and ZH
+  ok   3.12 · security.errRateLimitedBody — no two languages are byte-identical
+  ok   3.7 · the bare-word `failed:` title key is deleted, not merely unused
+  ok   3.13 · push-settings — a dismissed prompt (permission "default") is OFF with t.push.dismissed, never `unconfigured`
+  ok   3.14 · push-settings — `unconfigured` is set only where the VAPID key is missing
+  ok   3.15 · push.dismissed resolves in EN, SW and ZH, none byte-identical
+
+§4 · Nothing vibrates on a non-action
+  ok   4.1 · notifications-panel.tsx fires no haptic (mentions=0, statements=0)
+  ok   4.1 · notify-poller.tsx fires no haptic (mentions=0, statements=0)
+  ok   4.1 · unread-count.ts fires no haptic (mentions=0, statements=0)
+  ok   4.1 · use-unread-count.ts fires no haptic (mentions=0, statements=0)
+  ok   4.2 · bet-confirm-modal.tsx — every haptic mention is a real call (1/1)
+  ok   4.2b · bet-confirm-modal.tsx — no haptic sits behind a falsy short-circuit
+  ok   4.2 · comments-thread.tsx — every haptic mention is a real call (3/3)
+  ok   4.2b · comments-thread.tsx — no haptic sits behind a falsy short-circuit
+  ok   4.2 · conviction-dial.tsx — every haptic mention is a real call (1/1)
+  ok   4.2b · conviction-dial.tsx — no haptic sits behind a falsy short-circuit
+  ok   4.2 · sell-confirm-modal.tsx — every haptic mention is a real call (1/1)
+  ok   4.2b · sell-confirm-modal.tsx — no haptic sits behind a falsy short-circuit
+  ok   4.2 · win-celebration.tsx — every haptic mention is a real call (1/1)
+  ok   4.2b · win-celebration.tsx — no haptic sits behind a falsy short-circuit
+  ok   4.2 · feedback-settings.tsx — every haptic mention is a real call (1/1)
+  ok   4.2b · feedback-settings.tsx — no haptic sits behind a falsy short-circuit
+  ok   4.2 · modal.tsx — every haptic mention is a real call (1/1)
+  ok   4.2b · modal.tsx — no haptic sits behind a falsy short-circuit
+  ok   4.2 · toast.tsx — every haptic mention is a real call (4/4)
+  ok   4.2b · toast.tsx — no haptic sits behind a falsy short-circuit
+  ok   4.2 · use-quick-bet.ts — every haptic mention is a real call (1/1)
+  ok   4.2b · use-quick-bet.ts — no haptic sits behind a falsy short-circuit
+  ok   4.3 · `celebrate` still has ZERO callers (the physical-only rule holds)
+  ok   4.4 · …and it is still DEFINED, so restoring it stays a one-line owner decision
+
+§5 · Every consequential mutation ends in the SHARED result modal
+  ok   5.1 · the Up & Down bet surface RENDERS the receipt modal
+  ok   5.2 · …and still renders its refusal sibling
+  ok   5.3 · …keyed on the receipt nonce, so a burst coalesces instead of inheriting a stale timer
+  ok   5.4 · the receipt modal is built on the shared OperationResultModal
+  ok   5.5 · …and rolls no portal of its own
+  ok   5.4 · the blocked modal is built on the shared OperationResultModal
+  ok   5.5 · …and rolls no portal of its own
+  ok   5.6 · the receipt takes the SIDE tone, never gold (a projection is not earned money)
+  ok   5.7 · success auto-dismisses on the SHARED default (no bespoke timer)
+  ok   5.8 · the refusal does NOT auto-dismiss (LCCP informed consent) — it is never `success`
+  ok   5.8b · …and the shared modal still arms its timer ONLY for success
+  ok   5.9 · the receipt reuses `udEstimateNote` rather than writing its own disclaimer
+
+§6 · The receipt's 'way out' row is COMPUTED per bet, never a constant
+  ok   6.1 · the modal asks the shared rule
+  ok   6.2 · …and offers BOTH answers, because the row has two truthful ones
+  ok   6.3 · the minutes are interpolated, never a literal
+  ok   6.4 · `udRcExitValue` exists in three languages
+  ok   6.5 · …and every one carries the {mins} placeholder the code substitutes
+  ok   6.6 · the SERVER still gates free exit on runway, in the form the client mirrors
+  ok   6.7 · …measured to the LOCK instant, not the round's close
+  ok   6.8 · …and the client measures to the same instant
+  ok   6.9 · the SERVER still refuses a bonus-funded exit outright
+  ok   6.10 · …and the client refuses it FIRST, before consulting runway
+  ok   6.11 · `placedAt` and `bonusStakeTzs` are carried on the server's own bet result
+  ok   6.12 · the hook reads them from the reply rather than stamping its own clock
+
+§7 · A dialog that states a problem offers a way out
+  ok   7.1 · the shared modal always renders a primary action
+  ok   7.2 · a failure stays until dismissed
+  ok   7.3 · the ghost CTA owns its own dismissal (it used to fight the primary's navigation)
+  ok   7.4 · the receipt's ghost CTA is omitted when it would navigate to the current page
+  ok   7.5 · the primary CTA owns its own dismissal, and Enter is that same press (no window Enter handler)
+
+§8 · The OTHER raw-server-string channel — a ratchet on the banners
+  ok   8.0a · control · the pattern CATCHES a banner rendering the server's own sentence
+  ok   8.0b · control · …and IGNORES a banner rendering the dictionary
+  ok   8.1 · the banner channel has not grown
+  ok   8.2 · …and if it has SHRUNK, lower the ceiling in the same commit
+  ok   8.3 · control · the tree really was walked
+     (the five, recorded rather than hidden: )
+
+§9 · How long a moment stays — one definition site, and the intrusion rule
+  ok   9.0 · both dwell constants are defined in one module
+  ok   9.1 · the blocking celebration gets LESS unattended time than the corner toast
+  ok   9.2 · the celebration is a beat, not an obstruction (5s–8s)
+  ok   9.3 · the result announcement is readable but not parked (6s–10s)
+  ok   9.4 · both are longer than the values they replaced (4.5s / 6s)
+  ok   9.5 · win-celebration.tsx reads DWELL_CELEBRATION_MS
+  ok   9.6 · …and carries no hard-coded dwell literal
+  ok   9.5 · updown-result-announcer.tsx reads DWELL_RESULT_MS
+  ok   9.6 · …and carries no hard-coded dwell literal
+  ok   9.5 · notify-poller.tsx reads DWELL_RESULT_MS
+  ok   9.6 · …and carries no hard-coded dwell literal
+  ok   9.7 · updown-result-announcer.tsx times its win, loss and void the same
+  ok   9.7 · notify-poller.tsx times its win, loss and void the same
+  ok   9.8 · the bet-placed toast is untouched at 3s (Ali: keep it normal)
+  ok   9.9 · the shared modal's 5s default is untouched
+  ok   9.10 · the celebration still closes on ✕ / click-outside / Esc
+  ok   9.11 · money-path failures are still sticky (durationMs: 0), not merely long
+
+§10 · The secondary stands down while the primary is up — and NOTHING is dropped
+  ok   10.1 · the result modal registers its presence — one place, so every result popup counts
+  ok   10.2 · the toast provider SUBSCRIBES, rather than the modal reaching up to hide it
+  ok   10.3 · ⛔ the fix touches NO z-index — a confirm-dialog failure must stay readable
+  ok   10.4 · ⭐ the viewport HOLDS rather than the arrival path deciding
+  ok   10.5 · ⛔ …and a held toast is never removed from the stack — nothing to re-queue, nothing to lose
+  ok   10.6 · ⭐ countdowns PAUSE while held and resume after, so nothing expires unseen
+  ok   10.6b · ⛔ …and the release is EDGE-driven and never wakes a toast the POINTER is holding
+  ok   10.6c · ⛔ the viewport is handed the ATTRIBUTED callbacks, not the raw primitives
+  ok   10.7 · ⛔ a STICKY money-path failure has no countdown to lose in the first place
+  ok   10.8 · ⚠️ presence is released on unmount, not only on a close prop
+  ok   10.9 · …and it COUNTS rather than flags, so overlapping modals cannot clear each other
+
+§11 · A refusal the player can fix is never a popup, and never the alarm — the registry ranks every one
+  ok   11.0 · control · `refusalVariant` IS the registry's rank — every `error` reason `danger`, every warning/info `factual`
+  ok   11.0b · …and a refusal it cannot rank is `danger` — an unclassified refusal reads as a failure, never as reassurance
+  ok   11.1 · the old dial: every arm ranked, a short balance `factual`, the ✗ result only for `danger`, every toast sticky
+  ok   11.1b · control · the shipped shapes are reported — a popup over every refusal; a gold `warning` arm; a short balance as `danger`
+  ok   11.2 · Up & Down: a stake under the minimum, busy, too many tries, selection closed → `factual` (no buzz)
+  ok   11.2b · …a fault or an unranked refusal → `danger`; the RG loss cap stays the acknowledge dialog
+  ok   11.2c · …and the hook toasts it at that rank, still sticky (a money refusal stays until read)
+  ok   11.3 · control · the scanner reports a slip toasted as an alarm
+  ok   11.4 · no player toast alarms over a picked file, an empty name or a refused copy — the calm `factual`
+  ok   11.5 · no refusal toast prints the browser's own error message (F4: the next step, in the reader's language)
+
+feedback-law: 160 passed, 0 failed  (of 160)
+feedback-law: OK — one answer per class of action, and every refusal names its way out.

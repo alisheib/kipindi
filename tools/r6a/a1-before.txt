@@ -1,0 +1,23 @@
+process TZ = UTC | builders take the instant: false
+
+== 24h break taken 9 Oct 01:30 EAT · until (UTC instant) 2026-10-09T22:30:00.000Z
+   bell: sw "hadi 10 Okt, 01:30" | en "until 10 Oct, 01:30"
+   email: Betting and deposits are paused for 24 hours, until 09 Oct 2026. Your break does not block sign-in or withdrawals. Kuweka dau na amana kumesimamishwa hadi 2026-10-09. Mapumziko haya hayazuii kuingia kwenye akaunti wala kutoa pesa. Duration 24 hours Resumes 09 Oct 2026 50pick.tz · Soko la Utabiri 
+
+== 1h break taken 9 Oct 14:00 EAT · until (UTC instant) 2026-10-09T12:00:00.000Z
+   bell: sw "hadi 9 Okt, 15:00" | en "until 9 Oct, 15:00"
+   email: Betting and deposits are paused for 1 hour, until 09 Oct 2026. Your break does not block sign-in or withdrawals. Kuweka dau na amana kumesimamishwa hadi 2026-10-09. Mapumziko haya hayazuii kuingia kwenye akaunti wala kutoa pesa. Duration 1 hour Resumes 09 Oct 2026 50pick.tz · Soko la Utabiri 
+
+== 24h exclusion taken 9 Oct 02:10 EAT · until (UTC instant) 2026-10-09T23:10:00.000Z
+   bell: sw "hadi 10 Okt, 02:10" | en "until 10 Oct, 02:10"
+   email: You've locked your account for 24 hours. Betting, deposits, and login are disabled until 09 Oct 2026. This cannot be reversed. Akaunti yako imefungwa hadi 09 Oct 2026. Hii haiwezi kubatilishwa. Period 24 hours Unlocks 09 Oct 2026 50pick.tz · Soko la Utabiri 
+
+== 6m exclusion taken 9 Oct 14:00 EAT (ends next year) · until (UTC instant) 2027-04-09T11:00:00.000Z
+   bell: sw "hadi 9 Apr 2027, 14:00" | en "until 9 Apr 2027, 14:00"
+   email: You've locked your account for 6 months. Betting, deposits, and login are disabled until 09 Apr 2027. This cannot be reversed. Akaunti yako imefungwa hadi 09 Apr 2027. Hii haiwezi kubatilishwa. Period 6 months Unlocks 09 Apr 2027 50pick.tz · Soko la Utabiri 
+
+== PERMANENT exclusion taken 9 Oct 14:00 EAT · until (UTC instant) 2126-09-15T11:00:00.000Z
+   bell: sw "hadi 15 Sep 2126, 14:00" | en "until 15 Sep 2126, 14:00"
+   email: You've locked your account for permanent. Betting, deposits, and login are disabled until 15 Sept 2126. This cannot be reversed. Akaunti yako imefungwa hadi 15 Sept 2126. Hii haiwezi kubatilishwa. Period permanent Unlocks 15 Sept 2126 50pick.tz · Soko la Utabiri 
+
+== betPlacedHtml, market resolving 2026-10-09T22:00:00.000Z (10 Oct 01:00 EAT): Placed 09 Oct 2026, 12:00 EAT Resolves 2026-10-09 

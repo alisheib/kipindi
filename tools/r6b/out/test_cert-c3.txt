@@ -1,0 +1,34 @@
+── 1 · registry — every emitter declared, every declaration real ─
+
+── 2 · trilingual — the bell offers Chinese, so Chinese must exist 
+
+── 3 · sentAt — a column nobody fills is a promise, not a record ─
+
+── 4 · dedupe — 28 byte-identical notifications shipped on production 
+[audit] SYSTEM notification.deduped system Notification#ntf_73ebd532bf9b55ad4b95
+
+── 5 · fan-out — officer alerts reach officers, complete in 3 locales 
+[email-stub] To: c***@test.tz | Subject: AML review needed · TZS 2,000,000
+[email-stub] To: c***@test.tz | Subject: Market Sentinel failing — anthropic-401
+[email-stub] To: c***@test.tz | Subject: 50pick AI spend reached $50.00
+[email-stub] To: c***@test.tz | Subject: 50pick nightly backup is STALE (49h)
+[email-stub] To: c***@test.tz | Subject: 50pick SMS credit is low (TZS 144)
+[email-stub] To: c***@test.tz | Subject: 50pick SMS credit is below the floor (TZS 30)
+[email-stub] To: c***@test.tz | Subject: KYC review overdue · 26h · kyc_c3
+[email-stub] To: c***@test.tz | Subject: Erasure blocked · house bot hb_c3erasure01
+[email-stub] To: c***@test.tz | Subject: Staff-chosen house stake · Bot A NO TZS 12,000
+[email-stub] To: c***@test.tz | Subject: House bot Bot A paused — password changed
+[email-stub] To: c***@test.tz | Subject: House bots switched OFF — MANUAL
+[email-stub] To: c***@test.tz | Subject: House bot Bot A: the holder's money moved
+[email-stub] To: c***@test.tz | Subject: Settlement is blocked: house bot "Bot A" has no holder wallet · 14:07:45
+[email-stub] To: c***@test.tz | Subject: House bot Bot A · RULES_SAVED
+
+── 6 · money copy — direct in every language, no euphemism ───────
+
+── 7 · identity, quietly — no receipt sentence, no reminder, no blocked-withdrawal prompt 
+[audit] COMPLIANCE kyc.review_sla_breached system Kyc#kyc_c3_sla_old
+[email-stub] To: c***@test.tz | Subject: KYC review overdue · 26h · kyc_c3_sla_old
+[audit] COMPLIANCE kyc.review_sla_breached system Kyc#kyc_c3_sla_old
+[email-stub] To: c***@test.tz | Subject: KYC review overdue · 25h · kyc_c3_sla_old
+
+cert-c3 (notification truth): 1529 passed, 0 failed

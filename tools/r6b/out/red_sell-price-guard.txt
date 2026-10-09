@@ -1,0 +1,171 @@
+RED CONTROL — sell-price-guard's defects, planted in memory
+
+  ok   baseline · the shipped code passes all 54 in-process checks before anything is planted
+  ok   PLANT LANDED · the check is removed (the sale is paid whatever the player confirmed)
+  ok     └─ fires: 1.guard
+  ok   PLANT LANDED · the check is moved after the pool's debit (a refusal would leave the pool short)
+  ok     └─ fires: 1.place
+  ok   PLANT LANDED · the check is moved before the locks (it would read a price nothing holds still)
+  ok     └─ fires: 1.place
+  ok   PLANT LANDED · the check refuses only a figure BELOW the price (a player who confirmed more is sold for less)
+  ok     └─ fires: 1.guard
+  ok   PLANT LANDED · the check refuses only a figure ABOVE the price (the lapse case — confirmed free, charged a fee — sells)
+  ok     └─ fires: 1.guard
+  ok   PLANT LANDED · the check compares against the price, not what the sale credits (a clamped sale pays less than confirmed)
+  ok     └─ fires: 1.guard
+  ok   PLANT LANDED · a write lands before the check (a refusal would leave it behind)
+  ok     └─ fires: 1.before
+  ok   PLANT LANDED · the position read under the lock is changed before the check (the memory store's live object)
+  ok     └─ fires: 1.before
+  ok   PLANT LANDED · the refusal is audited inside the locks
+  ok     └─ fires: 1.refusal
+  ok   PLANT LANDED · the refusal names the price, not what a sale would pay
+  ok     └─ fires: 1.refusal
+  ok   PLANT LANDED · the refusal goes out under another code
+  ok     └─ fires: 1.refusal
+  ok   PLANT LANDED · the short-pool branch is dropped (a broken pool is told its price changed, and the page can never sell at it)
+  ok     └─ fires: 1.refusal | 1.emitter
+  ok   PLANT LANDED · the short-pool branch tests a shrunk fee instead of a short pool (a pool short of the stake but not of the price is refused for good)
+  ok     └─ fires: 1.refusal
+  ok   PLANT LANDED · the form's broken-figure refusal says the price changed (a second emitter)
+  ok     └─ fires: 1.emitter | 2.refuse
+  ok   PLANT LANDED · the action reads the form and calls the money path itself again (the path the suites run is no longer the one a page takes)
+  ok     └─ fires: 2.action
+  ok   PLANT LANDED · the form's path ignores a broken figure (the guard silently off for a broken client)
+  ok     └─ fires: 2.refuse
+  ok   PLANT LANDED · a broken figure spends no cash-out token (a client in a loop writes records without end)
+  ok     └─ fires: 2.refuse
+  ok   PLANT LANDED · the form's path hands the service no figure
+  ok     └─ fires: 2.hand
+  ok   PLANT LANDED · a refused price is never recorded (a broken pool or host is seen only by the player)
+  ok     └─ fires: 2.record
+  ok   PLANT LANDED · every refusal is recorded, a shut exit's too
+  ok     └─ fires: 2.record
+  ok   PLANT LANDED · the parser reads a grouped or padded figure (3,600 as 3600)
+  ok     └─ fires: 3.broken
+  ok   PLANT LANDED · the parser reads a broken figure as no figure
+  ok     └─ fires: 3.broken
+  ok   PLANT LANDED · the parser loses a good figure
+  ok     └─ fires: 3.good | 3.client
+  ok   PLANT LANDED · the client sends the formatted price (TZS 9,000)
+  ok     └─ fires: 4.send
+  ok   PLANT LANDED · the client sends the net (the fee as a negative)
+  ok     └─ fires: 4.send
+  ok   PLANT LANDED · the client stops sending the figure (the check is never asked)
+  ok     └─ fires: 4.send
+  ok   PLANT LANDED · a refusal for a moved price never asks the page for the new price
+  ok     └─ fires: 4.moved
+  ok   PLANT LANDED · every refusal asks the page to refresh and waits on it, not only a moved price
+  ok     └─ fires: 4.moved
+  ok   PLANT LANDED · the moved price is toasted as an alarm (red, role=alert, the error buzz) for a refusal one tap fixes
+  ok     └─ fires: 4.calm
+  ok   PLANT LANDED · today's button says 'Inauza…' while the server's new price is fetched (beside a toast that says nothing was sold)
+  ok     └─ fires: 4.waiting
+  ok   PLANT LANDED · the journey's button keeps the refused figure while the server's new price is fetched
+  ok     └─ fires: 4.waiting
+  ok   PLANT LANDED · the wait never ends (nothing clears it once the refreshed page is drawn)
+  ok     └─ fires: 4.waiting
+  ok   PLANT LANDED · /positions hands its buttons the stake's gross, not the price (every sale there refused for good)
+  ok     └─ fires: 4.hosts.positions
+  ok   PLANT LANDED · the question page hands its button the stake's gross, not the price
+  ok     └─ fires: 4.hosts.market
+  ok   PLANT LANDED · the question page hands its button the stake itself
+  ok     └─ fires: 4.hosts.market
+  ok   PLANT LANDED · the journey's card hands its button another figure than the price
+  ok     └─ fires: 4.hosts.card
+  ok   PLANT LANDED · the journey's view hands its cards no price
+  ok     └─ fires: 4.hosts.positions
+  ok   PLANT LANDED · the sentence is missing in Swahili (the generic line instead)
+  ok     └─ fires: 5.copy.sw
+  ok   PLANT LANDED · the sentence is missing in Chinese
+  ok     └─ fires: 5.copy.zh
+  ok   PLANT LANDED · the Swahili sentence loses the new figure
+  ok     └─ fires: 5.copy.sw
+  ok   PLANT LANDED · the short pool's sentence is missing in Swahili
+  ok     └─ fires: 5.pool.sw
+  ok   PLANT LANDED · the moved price's row turns into an error that seizes the screen
+  ok     └─ fires: 5.row
+  ok   PLANT LANDED · the moved price's row stops interpolating the new figure
+  ok     └─ fires: 5.row
+  ok   PLANT LANDED · the short pool's row calls our fault one the player can fix
+  ok     └─ fires: 5.row.pool
+  ok   PLANT LANDED · the suite drops out of predeploy
+  ok     └─ fires: 6.wired
+  ok   PLANT LANDED · test:cashout stops running the cases in memory
+  ok     └─ fires: 6.memory
+  ok   PLANT LANDED · the button never hands its result over (it draws its own in the ticket's row, and a sold ticket's result leaves with the row again)
+  ok     └─ fires: 7.handed
+  ok   PLANT LANDED · the button hands its result over AND draws its own (two results for one sale)
+  ok     └─ fires: 7.handed
+  ok   PLANT LANDED · a sale's result is handed over after the refresh is asked (the host reads a page the sold ticket may already have left)
+  ok     └─ fires: 7.calls
+  ok   PLANT LANDED · every refused sale opens its result again, a moved price's too (painted as a failure, its calm toast held behind it)
+  ok     └─ fires: 7.moved
+  ok   PLANT LANDED · every refused sale is ranked a fault (the ✗ result and the red toast for selling shut, too many tries or a moved price)
+  ok     └─ fires: 7.loud
+  ok   PLANT LANDED · the request that threw is told calmly (an unknown outcome, with no result to acknowledge)
+  ok     └─ fires: 7.loud
+  ok   PLANT LANDED · the registry ranks a shut exit an error (its refusal turns red, with a result)
+  ok     └─ fires: 7.loud
+  ok   PLANT LANDED · a refused sale's toast leaves after 4.5 s again (a moved price, told by its toast alone, is gone before it is read)
+  ok     └─ fires: 7.stays
+  ok   PLANT LANDED · the next sale leaves the last refusal's toast up (a stale 'couldn't cash out' beside the sale's own answer)
+  ok     └─ fires: 7.stays
+  ok   PLANT LANDED · the toast draws its sentence raw again ('TZS' can end a line without its number, and the figure is not mono)
+  ok     └─ fires: 7.whole
+  ok   PLANT LANDED · the refused sale's sentence is joined with a no-break space again (a character in the toast's text, copied and searched)
+  ok     └─ fires: 7.whole
+  ok   PLANT LANDED · the button writes a result of its own again instead of the shared one
+  ok     └─ fires: 7.fallback
+  ok   PLANT LANDED · the host never answers the hand-off (every button draws its own result as well)
+  ok     └─ fires: 7.ack
+  ok   PLANT LANDED · the hand-off claims a host took the result whether or not one did (with no host, the result is lost)
+  ok     └─ fires: 7.ack
+  ok   PLANT LANDED · the host listens to another event (nothing ever reaches it)
+  ok     └─ fires: 7.ack
+  ok   PLANT LANDED · the shell stops mounting the host (every result falls back to its row, and leaves with it)
+  ok     └─ fires: 7.host
+  ok   PLANT LANDED · AppShell imports the host straight from its module (its code back in every page's first download)
+  ok     └─ fires: 7.host
+  ok   PLANT LANDED · the host's part turns its server render off
+  ok     └─ fires: 7.host
+  ok   PLANT LANDED · the host takes the result and never shows it (answered, so no button draws one: every result lost)
+  ok     └─ fires: 7.draw
+  ok   PLANT LANDED · the host drops the look the button handed it (a journey reader is told today's line under a refusal)
+  ok     └─ fires: 7.draw
+  ok   PLANT LANDED · the host's close does nothing (a result that never closes, its scroll lock and focus trap stuck on)
+  ok     └─ fires: 7.draw
+  ok   PLANT LANDED · the host serves markup before any sale (a served byte for every signed-in viewer)
+  ok     └─ fires: 7.draw
+  ok   PLANT LANDED · a move to another page leaves the result up (its scrim and scroll lock over the page before, after a phone's Back)
+  ok     └─ fires: 7.away
+  ok   PLANT LANDED · focus is never given back when the result closes (the sold row gone, focus falls to the start of the page)
+  ok     └─ fires: 7.focus
+  ok   PLANT LANDED · the way back may choose a field (on a phone the keyboard rises as the result closes)
+  ok     └─ fires: 7.focus
+  ok   PLANT LANDED · the button forgets which control opened the sale (focus has nowhere near to go back to)
+  ok     └─ fires: 7.focus
+  ok   PLANT LANDED · a refused sale with no result leaves focus at the start of the page (the moved price's new figure is never announced)
+  ok     └─ fires: 7.focus
+  ok   PLANT LANDED · the button never takes focus back after a refusal with no result
+  ok     └─ fires: 7.focus
+  ok   PLANT LANDED · the host takes focus out of another open dialog when the result closes (a win seal over the result: focus lands behind its scrim, where the next Enter can open another ticket's sale unseen)
+  ok     └─ fires: 7.focus
+  ok   PLANT LANDED · the way back tries the opener alone (the sold row gone, focus falls to the start of the page)
+  ok     └─ fires: 7.focus
+  ok   PLANT LANDED · giving focus back scrolls the page (the list jumps as the result closes)
+  ok     └─ fires: 7.focus
+  ok   PLANT LANDED · the way back reads a region the shell does not draw (no neighbour is ever found)
+  ok     └─ fires: 7.focus
+  ok   PLANT LANDED · the way back remembers no neighbours (the sold row gone, focus falls to the start of the page)
+  ok     └─ fires: 7.focus
+  ok   PLANT LANDED · the way back may choose a control that is not drawn (focus is refused, and falls to the start of the page)
+  ok     └─ fires: 7.focus
+  ok   PLANT LANDED · the way back may choose a disabled control (focus is refused, and falls to the start of the page)
+  ok     └─ fires: 7.focus
+  ok   PLANT LANDED · the way back remembers no control on either side (NEAR 0)
+  ok     └─ fires: 7.focus
+  ok   PLANT LANDED · each Sell button keeps its own last refusal again (a refusal on one ticket stays beside another ticket's sale, and refusals across tickets stack)
+  ok     └─ fires: 7.stays
+
+RED CONTROL — sell-price-guard: 83/83 caught · all 167 proofs held

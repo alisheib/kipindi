@@ -1,0 +1,22 @@
+started 2026-10-09T18:15:08.424Z · 20 suites
+RED  exit=1  test:visual-pass-r5a  (3.0s)  ::  · 8.10′ PLANT · round 4's hand-drawn ✕ back in the bet confirm (a dialog CloseX serves), and a second ✕ drawn in the toast, are each reported; the census unplanted is clean — {"bet":["src/components/markets/bet-confirm-m
+OK   exit=0  test:visual-pass-r5c  (3.0s)  ::  visual-pass-r5c: 93 passed, 0 failed
+OK   exit=0  test:visual-pass-r5g  (3.2s)  ::  visual-pass-r5g: 61 passed, 0 failed
+OK   exit=0  test:journey-account  (3.8s)  ::  JOURNEY ACCOUNT — all 86 checks passed
+OK   exit=0  red:journey-account  (2.6s)  ::  RED CONTROL — 48/48 caught · all 97 proofs held
+OK   exit=0  test:simple-journey-flag  (8.9s)  ::  135 passed, 0 failed
+OK   exit=0  red:simple-journey-flag  (9.3s)  ::  41/41 caught
+OK   exit=0  test:journey-shell  (3.3s)  ::  JOURNEY SHELL — all 434 checks passed
+RED  exit=1  red:journey-shell  (27.0s)  ::  RED CONTROL — 187/188 caught · 1 of 377 proofs FAILED
+RED  exit=1  test:red-anchors  (2.8s)  ::  · 3.withdrawn-features.anchors.mjs:public-footer.tsx — the footer links to Invi · anchor resolves exactly once — src/components/layout/public-footer.tsx: anchor missing — cannot inject
+OK   exit=0  test:decomment  (4.2s)  ::  ALL PASS — 22 passed, 0 failed
+OK   exit=0  test:hooks-order  (1.2s)  ::  all green
+RED  exit=1  test:ui-consistency  (2.3s)  ::  Fix the drift (use the kit primitive), or if intentional, re-baseline with a documented reason.
+OK   exit=0  test:i18n  (1.1s)  ::  ALL PASS — en=2628 sw=2628 zh=2628 keys
+RED  exit=5  test:eyebrow-roles  (0.9s)  ::  app/wallet/wallet-client.tsx:558  tracked  <p className={`mt-0.5 font-mono text-micro uppercase tracking-[0.14em] font-semibold kp-track-end ${
+OK   exit=0  test:type-scale  (2.2s)  ::  ALL PASS — 1442 source files, 188 money elements.
+OK   exit=0  test:spacing-scale  (1.5s)  ::  spacing-scale: 10 passed, 0 failed · 453 inverted usages in 165 files
+OK   exit=0  test:design-frozen  (1.4s)  ::  PASS — design primitives are frozen
+OK   exit=0  test:css-vars-defined  (1.9s)  ::  css-vars-defined: 299 references checked, 0 undefined.
+OK   exit=0  test:stacking  (1.8s)  ::  137 passed, 0 failed
+finished 2026-10-09T18:16:33.842Z

@@ -1,0 +1,51 @@
+── the suite on the FIXED tree (must be green) ──
+   exit=0
+
+── mutation: wallet-ticket-back-to-the-list (Ali's report, exactly as reported) ──
+   exit=1  failures=1  ✓ CAUGHT
+     FAIL 4.1 the wallet's TICKET box is a link whose href is computed, not the literal "/positions" — no ticket <Link> found
+
+── mutation: updown-round-button-back-to-the-OTHER-game's-list (the guaranteed dead end) ──
+   exit=1  failures=2  ✓ CAUGHT
+     FAIL 4.2 ⭐ the Up & Down result panel no longer links into the long-form list — href="/positions" is still on the round page
+     FAIL 4.3 …it uses the shared rule to reach the Up & Down portfolio instead — no positionListHref("UPDOWN", …) call on the round page
+
+── mutation: every-email-cta-back-to-the-list (all 3 — bet placed · win · cash-out) ──
+   exit=1  failures=1  ✓ CAUGHT
+     FAIL 4.4 ⭐ no email quotes a Reference and then links to a generic list — 3 ctaButton("/positions") call(s) remain
+
+── mutation: notifyWin-default-href-restored (a default that is wrong for one of two products) ──
+   exit=1  failures=1  ✓ CAUGHT
+     FAIL 4.5 notifyWin no longer DEFAULTS to the list — notifyWin still defaults href to "/positions"
+
+── mutation: updown-position-falls-back-to-the-long-form-list (the rule itself) ──
+   exit=1  failures=2  ✓ CAUGHT
+     FAIL 2.1 ⭐ the fallback is the Up & Down portfolio, not the long-form one — got /positions#pos_e290a28e8e906b6255
+     FAIL 2.2 ⛔ still never /positions — got /positions#pos_e290a28e8e906b6255
+
+── mutation: market-card-loses-its-anchor (the deep link lands at the top of the page) ──
+   exit=1  failures=2  ✓ CAUGHT
+     FAIL 5.1 ⭐ each position card on the market page carries its own id as an anchor — no id={p.id} on the market page position card
+     FAIL 5.2 …and is offset so a fixed header does not cover the row it scrolled to — no scroll-mt on the market page
+
+── mutation: round-panel-loses-its-anchors (same, on the Up & Down side) ──
+   exit=1  failures=1  ✓ CAUGHT
+     FAIL 5.3 ⭐ the round page renders an anchor per position id the viewer holds — no per-position anchor on the round page
+
+── mutation: destination-stops-scrolling-to-the-fragment (looks deep, lands at the top) ──
+   exit=1  failures=1  ✓ CAUGHT
+     FAIL 5.5 ⭐ /markets/[id]/page.tsx scrolls to the fragment (<HashFocus />) — no <HashFocus /> rendered
+
+── mutation: resolver-drops-the-ownership-check (a permalink is guessable) ──
+   exit=1  failures=1  ✓ CAUGHT
+     FAIL 6.2 ⭐ it compares the position's owner to the viewer — no owner comparison in the resolver
+
+── mutation: journey-tickets-view-stops-scrolling-to-the-fragment (E-101b on the journey's view) ──
+   exit=1  failures=1  ✓ CAUGHT
+     FAIL 5.5 ⭐ src/components/journey/tickets/tickets-view.tsx scrolls to the fragment (<HashFocus />) — no <HashFocus /> rendered
+
+── mutation: journey-ticket-card-loses-its-anchor (the fragment names nothing on a journey phone) ──
+   exit=1  failures=1  ✓ CAUGHT
+     FAIL 5.6 ⭐ the journey's ticket card carries its own id as an anchor, ringed and offset under the header — no id={p.id} on the journey ticket card
+
+11/11 mutations caught — every file restored byte-for-byte.

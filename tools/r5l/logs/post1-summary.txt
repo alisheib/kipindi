@@ -1,0 +1,14 @@
+test:visual-pass-r5l exit=0 fails~=0 3s
+test:visual-pass-r5h exit=0 fails~=0 9s
+test:visual-pass-r4c exit=0 fails~=0 1s
+test:board-discovery exit=0 fails~=0 2s
+test:eyebrow-roles exit=0 fails~=0 2s
+test:type-scale exit=0 fails~=0 2s
+test:spacing-scale exit=0 fails~=0 2s
+test:design-frozen exit=0 fails~=0 1s
+test:measure exit=0 fails~=0 2s
+test:visual-pass-r5a exit=0 fails~=0 3s
+test:visual-pass-r5b exit=0 fails~=0 3s
+test:ui-consistency exit=0 fails~=0 3s
+test:decomment exit=0 fails~=0 4s
+DONE post1

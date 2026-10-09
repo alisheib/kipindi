@@ -1,0 +1,93 @@
+── 1 · the hub's card-size row is a two-line hub row (tile 259) ────────────────────────────────────────
+  ok   1.1 · glyph | text column (label with its value, then the hint) | switch — an ordinary hub row, the hint kept by sentence
+  ok   1.1′ PLANT · round 3's grid hook put back is reported
+  ok   1.1″ PLANT · the switch moved before the words is reported
+  ok   1.2 · no `.kp-hub__row--switch` rule remains (the grid that put the switch on the label's line)
+  ok   1.2′ · `.kp-hub__pair` is a wrapping baseline flex line with the hub's 12px gap between label and value
+  ok   1.3.locate · the hub row is flex, centred, 12px gap, 8/16px padding, the 56px rung
+  ok   1.3 · the text column is viewport − 154 (166 at 320, 206 at 360, 236 at 390)
+  ok   1.4 · two lines fit the 56px rung (8 + 20.2 + 2 + 17.55 + 8 = 55.8) and so does the 26px switch, centred
+  ok   1.5 · the hint is ONE line — a 56px row — from 360 in en and zh, and from 390 in sw
+  ok   1.5′ CONTROL · sw at 360 does not fit (224.9 against 206): there the hint breaks between its sentences and the row grows
+  ok   1.6 · every sentence fits the narrowest line (320), so "two whole lines" holds at every width it wraps
+  ok   1.7 · label and value share the first line from 360 in every language, and in en and zh at 320
+  ok   1.7′ CONTROL · at sw 320 the pair is wider than its line (171 against 166) — the value wraps under the label, the label stays whole
+  ok   1.8 · keepSentences: "<Kwa simu tu.> <Hakuna kinachofichwa.>", the text itself unchanged
+  ok   1.8′ CONTROL · Chinese is returned as written, and one sentence falls back to keepLastWords
+  ok   1.8″ · no lookbehind in keep-words.tsx (a client bundle with one fails to parse on Safari before 16.4)
+
+── 2 · the hub's Needle row draws a glyph of the row family (tiles 122–130) ────────────────────────────
+  ok   2.1 · the hub row's glyph slot holds `I.needle` at 20, not the two-tone NeedleMark
+  ok   2.1′ PLANT · NeedleMark put back in the slot is reported
+  ok   2.2 · I.needle is drawn by G (the 24 grid, one 1.9 stroke, currentColor) with the ring of globe and checkCircle, no opacity
+  ok   2.3 · the needle crosses the pivot at the mark's tilt and ends on the ring's stroke at both ends
+  ok   2.4 CONTROL · NeedleMark keeps its two tones where it is the mark (the account menu's row)
+
+── 3 · the guest tickets sheet's title centres its capitals on the × (tiles 113–121) ───────────────────
+  ok   3.locate · Sora's metrics are next's (ascent 970, descent −290, cap 730 per 1000) and the title is the display face at --type-h3 in a 1.25 line
+  ok   3.1 · the margin's factor is the cap band's centre, 0.6em down the line (not the line's middle, 0.625)
+  ok   3.2 · below 1024 and from 1024 the capitals' centre meets the ×'s centre (40px under the padding edge)
+  ok   3.3 · the sheet's height is whole (one line 147, two 172), so its top never sits on a half pixel
+  ok   3.3′ PLANT · round 3's line-box margin (−4.5px) is reported: capitals 0.5px high and a 146.5px sheet
+
+── 4 · the badge shelf's bilingual names stack, never a line on "·" (tiles 186 188) ────────────────────
+  ok   4.1 · each caption is drawn by DotSeq, stacked, each part's last two words kept
+  ok   4.1′ PLANT · the bare title back in the caption is reported
+  ok   4.2 · "First Win" over "Ushindi <wa Kwanza>": two items, the dot hidden from assistive tech and still in a copy
+  ok   4.2′ CONTROL · without `renderPart` and `stack` DotSeq renders exactly as before (round 3's markup)
+  ok   4.3 · a stacked sequence is a centred column and its dot is painted transparent
+  ok   4.4 · six bilingual names, two parts each, and every unbreakable run fits the 96px track (the widest, "Mtengeneza" or a kept pair)
+
+── 5 · one content edge per column (tiles 182 185 186 187 188) ─────────────────────────────────────────
+  ok   5.1 · /profile: the stat strip's three cells pad like the hero (24px, 32px from 1024) — px-4 merged away
+  ok   5.1′ PLANT · a cell left on the Stat box's px-4 is reported
+  ok   5.1.locate · the scale's 5 and 6 are 24 and 32, and --sp-6 and --sp-8 agree
+  ok   5.2 · RG: the help card pads sideways like the hero (px-5 lg:px-6) and its art steps back by the whole pixels of its own ink inset (4 of 4.75)
+  ok   5.2′ CONTROL · the card keeps its height: its block padding is unchanged (py-4 lg:py-5, round 3's p-4 lg:p-5)
+  ok   5.3 · RG: the sound-and-touch card pads p-5 lg:p-6 like every card in the column
+  ok   5.4 · /proposals: the notice's inline inset is the hero's (px-5 lg:px-6 over the Callout's px-4), its block inset unchanged
+  ok   5.4′ PLANT · round 3's uniform p-3.5 is reported
+
+── 6 · /profile's settings cards are 16px apart, the hub's gutter (tile 188) ───────────────────────────
+  ok   6.1 · the settings grid's gap equals the hub's card gutter (16px)
+  ok   6.1′ CONTROL · round 3's gap-2 is 12px, which is what this reports
+
+── 7 · /fairness' step numerals stand on the card's content edge (tile 190) ────────────────────────────
+  ok   7.1 · the steps are `.fairness-steps` (a list by role), no browser marker hanging into the indent
+  ok   7.2 · each numeral is its item's box at left 0, the words indented 24px (round 3's pl-5), bold, in the list's own ink (never gold)
+  ok   7.3 · Inter Bold's 1–5 start their ink within 0.25px of each other at 14px (proportional, not tabular)
+  ok   7.3′ CONTROL · tabular figures would spread them (a centred narrow 1)
+
+── 8 · the Wallet's text links wear the house focus ring (tile 154) ────────────────────────────────────
+  ok   8.1 · in the journey's Wallet: rounded, padded 4px each side and given back by a negative margin (no word moves), with the button ring's halo
+  ok   8.2 · the outline is still the catch-all's 2px --brand-500 at offset 2 (the capture's focus probe asks for 2px)
+  ok   8.2′ PLANT · a square ring (the radius dropped) is reported
+  ok   8.3 CONTROL · the classic capsule's Wallet (the same sheet, classic chrome frozen) keeps its link rule untouched — no radius, padding or margin
+
+── 9 · a <Stat> hint is balanced (tile 197) ────────────────────────────────────────────────────────────
+  ok   9.1 · the hint line is text-balance and keeps its 13px rung and its ink
+  ok   9.1′ CONTROL · cn keeps text-balance beside a colour and a size (tailwind-merge's text-wrap group, not a colour)
+
+── 10 · a year keeps the word before it in the legal version line (tile 210) ───────────────────────────
+  ok   10.1 · the legal header draws its meta line with DotSeq, mono, keeping years
+  ok   10.2 · sw: "…Protection <Act 2022> na kanuni…" — the year with the Act's name, the date and the words unchanged
+  ok   10.3 · zh keeps "Act 2022" too (a Latin name inside Chinese)
+  ok   10.3′ CONTROL · a date, a five-digit number and "Cap 423" are not years
+
+── 11 · the payment-provider grid: a short last row shares the row (tile 069) ──────────────────────────
+  ok   11.1 · four rails take `kp-provgrid--quarters`, any other count `kp-provgrid--thirds`; no Tailwind column count is left
+  ok   11.locate · two tracks on a phone, six from 640 for thirds, four from 768 for quarters, 12px apart
+  ok   11.2 · on a phone every row is full for 1–8 tiles (a lone last tile spans both columns)
+  ok   11.3 · from 640 every row is full for 1–8 tiles: rows of three; a last row of two takes three tracks each, of one the row
+  ok   11.4 · withdraw's four rails: 2 × 2 on a phone and one row of four from 768
+  ok   11.4′ PLANT · round 3's three plain columns with five tiles leave a short row (the empty third cell)
+  ok   11.4″ PLANT · the last-row-of-two rule dropped is reported (Card back in a two-track cell)
+
+── 12 · the journey capsule centres caption and figure in the box D31 reserves (tiles 072 074 076) ─────
+  ok   12.1 · the caption column, the figure's box and the delta's row all centre
+  ok   12.2 · D31 is untouched: the box is still the wider of the target figure and the mask, three cells in one
+  ok   12.3 · "TZS 0" at 320 stands 24.4px from each side of the capsule (it stood 38.8 and 10)
+  ok   12.3′ PLANT · flush-right put back is reported (the slack all on one side)
+  ok   12.4 · journey-only: the captioned capsule is the only wearer of these classes
+
+visual-pass-r4e: 68 passed, 0 failed

@@ -1,0 +1,6 @@
+§T3 EYEBROW GATE — every uppercase-and-tracked site is READ or refused
+  424 section eyebrow(s): 418 carry `.eyebrow` · 6 written inline (a class cannot reach an inline style)
+  215 site(s) in another role — control label · status chip · data value · type-to-confirm · celebration · prose
+     of which 15 carry `.row-link` — the row navigation link, a CONTROL LABEL whose case and 0.10em live in globals.css (DG-A-08)
+
+✅ 639 sites, every one accounted for.

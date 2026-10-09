@@ -1,0 +1,83 @@
+function ResultsSkeleton() {
+  return (
+    <>
+      {/* Header skeleton — ⛔ no `mb-*`: the fallback and the content are children of the SAME
+          `space-y-5` wrapper, so both branches get the same rhythm and the page cannot move
+          between them. Before DG-P-04 this branch spaced itself 20/24 and the content 32/16. */}
+      <div className="flex items-center justify-between gap-3">
+        <div className="flex items-center gap-2.5">
+          <div className="h-5 w-5 rounded bg-bg-overlay kp-shimmer-track" />
+          <div className="h-4 w-32 rounded bg-bg-overlay kp-shimmer-track" />
+        </div>
+        <div className="h-3.5 w-36 rounded bg-bg-overlay kp-shimmer-track" />
+      </div>
+
+      {/* Search skeleton — the page's own band (round 4, 2026-10-09): `QUERY_SEARCH_BAND_CLASS` around a
+          `search-box-wrap` of the box's height and the echo row, as `results/loading.tsx` draws it. It was a 44px bar
+          standing in for a 91px band (DG-P-13 / DG-A-20, filed): the band now takes 56px of the column (10 + 46 + 25,
+          less the 25 its echo row lends the gap to the bar), and the ghost takes the same. */}
+      <div className={QUERY_SEARCH_BAND_CLASS} aria-hidden>
+        <div className="search-box-wrap">
+          <div className="kp-shimmer-track h-[calc(var(--h-input)+2px)] rounded-lg border border-border bg-bg-inset" />
+          <p className="mt-1.5 min-h-[17px]" />
+        </div>
+      </div>
+
+      {/* ⭐ THE GHOST FOLLOWS THE BAR, and its classes are IMPORTED rather than retyped, so a
+          change to the bar's padding or sticky offset moves the ghost in the same commit by
+          construction. It drew a 208px sidebar of four stacked pills; the page no longer has one,
+          and a ghost of a control that is not there moves everything below it on first paint. */}
+      <div className={QUERY_BAR_CLASS} aria-hidden>
+        <div className={QUERY_BAR_ROW1_CLASS}>
+          <div className="flex min-w-0 flex-1 items-center gap-1 overflow-hidden">
+            {[54, 74, 68, 82].map((w, i) => (
+              /* ⚠️ LITERAL 44, not `h-8` — spacing is overridden (tailwind.config.ts:200-215), so
+                 `h-8` would draw 48px for a pill that renders at FilterPill's 44. */
+              <div key={i} className="h-[44px] shrink-0 rounded-pill bg-bg-overlay" style={{ width: w }} />
+            ))}
+          </div>
+          <div className="h-3 w-20 shrink-0 rounded bg-bg-overlay" />
+        </div>
+        <div className={QUERY_BAR_ROW2_CLASS}>
+          <div className="h-[44px] w-[180px] rounded-pill bg-bg-overlay" />
+          <div className="h-[44px] w-[104px] rounded-pill bg-bg-overlay" />
+        </div>
+      </div>
+
+      {/* Grid */}
+      <div className="flex flex-col gap-5 lg:flex-row lg:gap-6">
+        {/* Grid skeleton */}
+        <div className="min-w-0 flex-1">
+          <div className="market-grid" aria-hidden>
+            {Array.from({ length: 8 }).map((_, i) => (
+              <div
+                key={i}
+                className="rounded-md border border-border bg-bg-elevated overflow-hidden kp-shimmer-track"
+                style={{ height: MARKET_CARD_H_CLOSED }}
+              >
+                <div className="p-4 space-y-3">
+                  <div className="flex items-center gap-2">
+                    {/* ⚠️ WIDTH IS A LITERAL, not `w-12` (128px on the overridden scale). */}
+                    <div className="h-5 w-[64px] rounded-pill bg-bg-overlay" />
+                    <div className="h-5 w-16 rounded-pill bg-bg-overlay" />
+                  </div>
+                  <div className="h-4 w-3/4 rounded bg-bg-overlay" />
+                  <div className="h-4 w-1/2 rounded bg-bg-overlay" />
+                  <div className="h-[7px] w-full rounded-pill bg-bg-overlay mt-4" />
+                  <div className="flex gap-2 mt-3">
+                    {/* ⚠️ TOKEN, not `h-9` (64px on the overridden scale) — the card's YES/NO
+                        buttons are pinned to `--tap-min` in globals.css
+                        (`.mcardp-actions .btn`). Copy of the markets/page.tsx skeleton; the
+                        two must stay in step. */}
+                    <div className="h-[var(--tap-min)] flex-1 rounded-md bg-bg-overlay" />
+                    <div className="h-[var(--tap-min)] flex-1 rounded-md bg-bg-overlay" />
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+    </>
+  );
+}

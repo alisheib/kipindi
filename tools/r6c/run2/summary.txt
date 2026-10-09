@@ -1,0 +1,9 @@
+started 2026-10-09T18:22:58.210Z · 7 suites
+OK   exit=0  test:visual-pass-r6c  (3.0s)  ::  83 passed, 0 failed
+OK   exit=0  test:visual-pass-r5a  (2.6s)  ::  visual-pass-r5a: 93 passed, 0 failed
+OK   exit=0  red:journey-shell  (25.4s)  ::  RED CONTROL — 188/188 caught · all 377 proofs held
+OK   exit=0  test:red-anchors  (2.7s)  ::  red-anchors: 5070 passed, 0 failed
+OK   exit=0  test:ui-consistency  (2.0s)  ::  ALL PASS — no new UI-consistency drift beyond the tracked baseline.
+OK   exit=0  test:eyebrow-roles  (0.9s)  ::  ✅ 639 sites, every one accounted for.
+RED  exit=1  test:spacing-scale  (1.2s)  ::  spacing-scale: 9 passed, 1 failed · 449 inverted usages in 163 files
+finished 2026-10-09T18:23:36.019Z

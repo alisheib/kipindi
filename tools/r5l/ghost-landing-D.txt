@@ -1,0 +1,137 @@
+/* ── §D ─────────────────────────────────────────────────────────────────────────────────── */
+/** How far a rebuilt ghost's element may stand from the page's: its boxes ARE the page's, so the remainder is sub-pixel
+ *  rounding and a web font's swap. Every typed box §A tolerated was 2–30× this. */
+const BOX_TOL = 4;
+const D_WIDTHS = (process.env.D_WIDTHS ?? "390,1280").split(",").map(Number).filter((n) => n > 0);
+const D_LOCALES = (process.env.D_LOCALES ?? "sw").split(",").map((x) => x.trim()).filter(Boolean);
+/** Each route: where it is reached from (a page that links to it), the element measured in BOTH the ghost and the page
+ *  (`el`, the n-th match, or the last with `last`), and whether it needs a player. */
+const D_ROUTES = [
+  { target: "/live", from: "/", el: ".market-grid > *" },
+  { target: "/markets", from: "/", el: ".market-grid > *" },
+  { target: "/results", from: "/", el: ".market-grid > *" },
+  { target: "/leaderboard", from: "/account", el: "table.admin-tbl tbody tr", auth: true },
+  { target: "/agent", from: "/account", el: "main .glass-panel", last: true, auth: true },
+  { target: "/fairness", from: "/account", el: "main h1", auth: true },
+  { target: "/help", from: "/account", el: "main h1", auth: true },
+  { target: "/notifications", from: "/account", el: "main h1", auth: true },
+  { target: "/proposals", from: "/account", el: "main h1", auth: true },
+  { target: "/profile/kyc", from: "/account", el: "main h1", auth: true },
+  { target: "/profile/invite", from: "/account", el: "main .font-display", auth: true },
+  { target: "/profile/responsible-gambling", from: "/account", el: "main h1", auth: true },
+  { target: "/profile/security", from: "/profile", el: "main h1", auth: true },
+  { target: "/profile/sessions", from: "/profile", el: "main h1", auth: true },
+  { target: "/profile/source-of-funds", from: "/profile", el: "main h1", auth: true },
+  { target: "/profile/activity", from: "/profile", el: "main h1", auth: true },
+  { target: "/profile/notifications", from: "/profile", el: "main h1", auth: true },
+  { target: "/profile/account", from: "/profile", el: "main h1", auth: true },
+  { target: "/watchlist", from: "/", el: "main h1", auth: true },
+];
+/** The dev door's session cookie (qa-classic-shell-parity's `signIn`): local and preview only — never production. */
+async function demoSession() {
+  const ctx = await b.newContext({ viewport: { width: 390, height: 844 } });
+  try {
+    const p = await ctx.newPage();
+    await p.goto(`${BASE}/auth/demo`, { waitUntil: "domcontentloaded", timeout: 180000 });
+    await p.waitForTimeout(900);
+    return (await ctx.cookies(BASE)).filter((c) => c.name === "kp_session");
+  } catch { return []; } finally { await ctx.close().catch(() => {}); }
+}
+/** Serve §D's fix back out: the ghosts' word boxes become 40px blocks, so no ghost lands where its page does. */
+async function redBoxes(p) {
+  await p.route(/\/_next\/static\/.*\.css(\?.*)?$/, async (route) => {
+    const res = await route.fetch();
+    const css = (await res.text()) + "\n[aria-hidden] .box-decoration-clone,[aria-busy] .box-decoration-clone{display:block;min-height:40px}\n";
+    await route.fulfill({ response: res, body: css, headers: { ...res.headers(), "content-length": String(Buffer.byteLength(css)) } });
+  });
+}
+if (ONLY === "D" || RED_BOXES || !RED) {
+  console.log(`\n§D · every rebuilt ghost lands box for box (±${BOX_TOL}px) — ${D_WIDTHS.join("/")} · ${D_LOCALES.join("/")}`);
+  const jar = BASE.includes("50pick.tz") ? [] : await demoSession();
+  if (!jar.length && !BASE.includes("50pick.tz")) failures.push("D no player session (the dev door answers on local and preview only) — the routes that need one were not measured");
+  if (!jar.length && BASE.includes("50pick.tz")) console.log("   (production: no dev door — the routes that need a player are not measured here)");
+  for (const r of D_ROUTES) for (const width of D_WIDTHS) for (const locale of D_LOCALES) {
+    if (r.auth && !jar.length) continue;
+    const ctx = await localisedContext(b, { locale, width, height: 900, baseUrl: BASE, reducedMotion: "reduce" });
+    if (r.auth) await ctx.addCookies(jar);
+    const p = await ctx.newPage();
+    if (RED_BOXES) await redBoxes(p);
+    const cdp = await ctx.newCDPSession(p);
+    await cdp.send("Network.emulateNetworkConditions", { offline: false, latency: 400, downloadThroughput: (400 * 1024) / 8, uploadThroughput: (400 * 1024) / 8 });
+    await cdp.send("Emulation.setCPUThrottlingRate", { rate: 4 });
+    const tag = `D ${r.target} @${width} ${locale}`;
+    try {
+      await p.goto(BASE + r.from, { waitUntil: "load", timeout: 180000 });
+      await p.waitForTimeout(4000);
+      const link = p.locator(`a[href="${r.target}"]:visible`).first();
+      if (!(await link.count())) { failures.push(`${tag}: no visible link from ${r.from} — nothing was measured`); continue; }
+      await p.evaluate(({ t, sel, last }) => {
+        window.__dsnap = null;
+        const probe = () => {
+          if (location.pathname === t && document.querySelector(".kp-shimmer-track")) {
+            const all = document.querySelectorAll(sel);
+            const e = last ? all[all.length - 1] : all[0];
+            if (e) window.__dsnap = Math.round(e.getBoundingClientRect().top + scrollY);
+          }
+          requestAnimationFrame(probe);
+        };
+        requestAnimationFrame(probe);
+      }, { t: r.target, sel: r.el, last: !!r.last });
+      await link.click();
+      await p.waitForURL(`**${r.target}`, { timeout: 120000 }).catch(() => {});
+      await p.waitForTimeout(9000);
+      const got = await p.evaluate(({ sel, last }) => {
+        const all = document.querySelectorAll(sel);
+        const e = last ? all[all.length - 1] : all[0];
+        return { snap: window.__dsnap, real: e ? Math.round(e.getBoundingClientRect().top + scrollY) : null, ghosts: document.querySelectorAll(".kp-shimmer-track").length };
+      }, { sel: r.el, last: !!r.last });
+      if (got.snap == null) { failures.push(`${tag}: no ghost frame was captured — this case proved nothing`); continue; }
+      if (got.real == null) { failures.push(`${tag}: ${r.el} never arrived — this case proved nothing`); continue; }
+      const delta = got.real - got.snap;
+      if (Math.abs(delta) > BOX_TOL) failures.push(`${tag}: the ghost drew ${r.el} at y=${got.snap}, the page put it at y=${got.real} — ${delta}px (tolerance ${BOX_TOL})`);
+      console.log(`   ${tag.slice(2).padEnd(40)} ghost y=${String(got.snap).padStart(5)}  page y=${String(got.real).padStart(5)}  ${String(delta).padStart(5)}px  ${Math.abs(delta) > BOX_TOL ? "FAIL" : "ok"}`);
+    } catch (e) {
+      failures.push(`${tag}: ${String(e).slice(0, 120)}`);
+    } finally {
+      await ctx.close().catch(() => {});
+    }
+  }
+
+  // §D2 — the in-page skeletons, on a DOCUMENT load: the first card of the fallback against the first card of the page.
+  for (const target of ["/results", "/markets"]) for (const width of D_WIDTHS) for (const locale of D_LOCALES) {
+    const ctx = await localisedContext(b, { locale, width, height: 900, baseUrl: BASE, reducedMotion: "reduce" });
+    const p = await ctx.newPage();
+    if (RED_BOXES) await redBoxes(p);
+    const tag = `D ${target} (document) @${width} ${locale}`;
+    try {
+      await p.addInitScript((t) => {
+        window.__dsnap = null;
+        const probe = () => {
+          if (location.pathname === t && document.querySelector(".kp-shimmer-track")) {
+            const e = document.querySelector(".market-grid > *");
+            if (e) window.__dsnap = Math.round(e.getBoundingClientRect().top + scrollY);
+          }
+          requestAnimationFrame(probe);
+        };
+        requestAnimationFrame(probe);
+      }, target);
+      const cdp = await ctx.newCDPSession(p);
+      await cdp.send("Network.emulateNetworkConditions", { offline: false, latency: 400, downloadThroughput: (400 * 1024) / 8, uploadThroughput: (400 * 1024) / 8 });
+      await p.goto(BASE + target, { waitUntil: "load", timeout: 180000 });
+      await p.waitForTimeout(8000);
+      const got = await p.evaluate(() => {
+        const e = document.querySelector(".market-grid > *");
+        return { snap: window.__dsnap, real: e ? Math.round(e.getBoundingClientRect().top + scrollY) : null };
+      });
+      if (got.snap == null) { failures.push(`${tag}: the document never painted its fallback — this case proved nothing (a fast server streams the page at once)`); continue; }
+      if (got.real == null) { failures.push(`${tag}: no card arrived — this case proved nothing`); continue; }
+      const delta = got.real - got.snap;
+      if (Math.abs(delta) > BOX_TOL) failures.push(`${tag}: the fallback drew the first card at y=${got.snap}, the page at y=${got.real} — ${delta}px`);
+      console.log(`   ${tag.slice(2).padEnd(40)} ghost y=${String(got.snap).padStart(5)}  page y=${String(got.real).padStart(5)}  ${String(delta).padStart(5)}px  ${Math.abs(delta) > BOX_TOL ? "FAIL" : "ok"}`);
+    } catch (e) {
+      failures.push(`${tag}: ${String(e).slice(0, 120)}`);
+    } finally {
+      await ctx.close().catch(() => {});
+    }
+  }
+}

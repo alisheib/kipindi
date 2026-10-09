@@ -1,0 +1,48 @@
+sw break (179 ch, end "10 Okt, 16:00"):
+  market column lg (360): col 285.0px → 5 lines, box 119px
+  market column 390 (358): col 283.0px → 5 lines, box 119px
+  board card 1024 (3 cols, 306.7 − 32): col 199.7px → 7 lines, box 155px
+  board card 1280 (3 cols, 392 − 32): col 285.0px → 5 lines, box 119px
+  board card 390 (358 − 32): col 251.0px → 6 lines, box 137px
+  round panel 1024 (~375): col 300.0px → 5 lines, box 119px
+  round panel 390 (358): col 283.0px → 5 lines, box 119px
+sw exclusion (90 ch, end "10 Okt, 16:00"):
+  market column lg (360): col 285.0px → 3 lines, box 84px
+  market column 390 (358): col 283.0px → 3 lines, box 84px
+  board card 1024 (3 cols, 306.7 − 32): col 199.7px → 4 lines, box 102px
+  board card 1280 (3 cols, 392 − 32): col 285.0px → 3 lines, box 84px
+  board card 390 (358 − 32): col 251.0px → 3 lines, box 84px
+  round panel 1024 (~375): col 300.0px → 3 lines, box 84px
+  round panel 390 (358): col 283.0px → 3 lines, box 84px
+en break (175 ch, end "10 Oct, 16:00"):
+  market column lg (360): col 285.0px → 4 lines, box 102px
+  market column 390 (358): col 283.0px → 4 lines, box 102px
+  board card 1024 (3 cols, 306.7 − 32): col 199.7px → 7 lines, box 155px
+  board card 1280 (3 cols, 392 − 32): col 285.0px → 4 lines, box 102px
+  board card 390 (358 − 32): col 251.0px → 5 lines, box 119px
+  round panel 1024 (~375): col 300.0px → 4 lines, box 102px
+  round panel 390 (358): col 283.0px → 4 lines, box 102px
+en exclusion (100 ch, end "10 Oct, 16:00"):
+  market column lg (360): col 285.0px → 3 lines, box 84px
+  market column 390 (358): col 283.0px → 3 lines, box 84px
+  board card 1024 (3 cols, 306.7 − 32): col 199.7px → 4 lines, box 102px
+  board card 1280 (3 cols, 392 − 32): col 285.0px → 3 lines, box 84px
+  board card 390 (358 − 32): col 251.0px → 3 lines, box 84px
+  round panel 1024 (~375): col 300.0px → 3 lines, box 84px
+  round panel 390 (358): col 283.0px → 3 lines, box 84px
+zh break (61 ch, end "2026年10月10日 16:00"):
+  market column lg (360): col 285.0px → 3 lines, box 84px
+  market column 390 (358): col 283.0px → 3 lines, box 84px
+  board card 1024 (3 cols, 306.7 − 32): col 199.7px → 4 lines, box 102px
+  board card 1280 (3 cols, 392 − 32): col 285.0px → 3 lines, box 84px
+  board card 390 (358 − 32): col 251.0px → 3 lines, box 84px
+  round panel 1024 (~375): col 300.0px → 3 lines, box 84px
+  round panel 390 (358): col 283.0px → 3 lines, box 84px
+zh exclusion (44 ch, end "2026年10月10日 16:00"):
+  market column lg (360): col 285.0px → 2 lines, box 66px
+  market column 390 (358): col 283.0px → 2 lines, box 66px
+  board card 1024 (3 cols, 306.7 − 32): col 199.7px → 3 lines, box 84px
+  board card 1280 (3 cols, 392 − 32): col 285.0px → 2 lines, box 66px
+  board card 390 (358 − 32): col 251.0px → 2 lines, box 66px
+  round panel 1024 (~375): col 300.0px → 2 lines, box 66px
+  round panel 390 (358): col 283.0px → 2 lines, box 66px

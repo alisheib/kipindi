@@ -1,0 +1,5 @@
+test:visual-pass-r5k exit 0 (2s)
+test:visual-pass-r5h exit 0 (7s)
+test:visual-pass-r4j exit 0 (4s)
+test:visual-pass-r5d exit 0 (10s)
+DONE

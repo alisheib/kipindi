@@ -1,0 +1,125 @@
+── 1 · the betting-pair census — every use of the pair in the player's code is ruled and registered ────
+  ok   1.0 · CONTROL · the scanner reads the card's YES/NO buttons, the dial's two sides, the confirm's side plate and the mark's
+  ok   1.1 · no file uses the betting pair unruled — every one is in the registry with its ruling
+  ok   1.2 · no registered file gained a use of the pair (a new one must be RULED, then registered with its reason)
+  ok   1.3 · the registry's every entry carries its ruling
+  ok   1.4′ PLANT · a Tailwind betting ink on a hover is seen (`hover:text-no-300`, `group-hover:border-no-700`)
+  ok   1.4″ PLANT · the pair asked for by NAME is seen (`tone="yes"`, `glow="rose"`, `variant={ok ? "yes" : "no"}`)
+  ok   1.4‴ PLANT · the tokens and their aliases are seen (`var(--no-400)`, `var(--bar-fill-yes)`, `btn-no`)
+  ok   1.5′ PLANT · the pair by another spelling is seen — a hand-typed oklch at hue 22 and at 152, the mark's hex
+  ok   1.6 · CONTROL · decoys are NOT the pair: the danger family (hue 25), the success family (166), claret (15), a comment, a word
+  ok   1.7 · CONTROL · success is hue 166 against YES's 152 and danger hue 25 against NO's 22 (globals.css, D2)
+
+── 2 · I-1 · an app state wears the app-state family — the crests, the error mark, destruction, field errors, the rest 
+  ok   2.1 · the result's success crest is `--success` / `--success-fg` and its failure crest `--danger` / `--danger-fg`
+  ok   2.1′ · the failure's way out is the primary action (never `btn-no`, the NO side's stake button), as every non-success result's is
+  ok   2.1″ · a detail row's good and bad are the app-state inks; a placed bet's strip and button keep its SIDE (`stripTone` yes/no)
+  ok   2.2 · global-error's mark is the danger family at hue 25 (`--danger-500` at the border and wash mixes, `--danger-fg`), not the NO rose
+  ok   2.3 · the avatar's clear button — the danger ink
+  ok   2.3 · a notification's dismiss ✕ on /notifications — the danger ink
+  ok   2.3 · /profile's Sign out row and plate — the danger ink
+  ok   2.3 · the sessions page's Sign out — the danger ink
+  ok   2.3 · CONTROL · the avatar menu's Sign out (the convention) — the danger ink
+  ok   2.3 · CONTROL · a comment's Delete (the convention) — the danger ink
+  ok   2.3′ · …and none of the four wears the NO rose any more
+  ok   2.4 · the dial's two out-of-range chips (stake, multiplier) are the field-error family, never the NO rose
+  ok   2.4′ · Up & Down's custom stake out of range (the board card)
+  ok   2.4′ · Up & Down's custom stake out of range (the round page)
+  ok   2.4′ · a proposal's title over 120, its source link, its close date
+  ok   2.4′ · the password pair's verdict (match: success · mismatch: danger)
+  ok   2.5 · 2FA on: the shield plate — the success family
+  ok   2.5 · the resolution's attestation seals and the paid-out tick — the success family
+  ok   2.5 · the sale's free window (box and "No fee") — the success family
+  ok   2.5 · an agent's uploaded document slot (the KYC uploader's done tile) — the success family
+  ok   2.5 · CONTROL · the KYC uploader's done tile (the convention) — the success family
+  ok   2.5′ · …and none of them carries the YES green
+  ok   2.6 · the auth eyebrow's tones are brand · danger · success — no YES/NO to ask for
+  ok   2.6′ · reset-password's expired link says danger; verify-email says success or danger
+  ok   2.6″ EXECUTED · the eyebrow renders `text-danger-fg` / `text-success-fg`
+  ok   2.7 · the RG page's hero is the account pages' `info` (glow and eyebrow), its glyph and words unchanged
+  ok   2.7′ · PageHeader and PageHero offer no betting tone to ask for (`yes`, `rose` out of their maps)
+  ok   2.7″ EXECUTED · the hero's info glow is hue 240 and the eyebrow `text-info-fg`
+  ok   2.7‴ · the support panel's art takes the panel's own ink (`currentColor`), the panel the success family
+  ok   2.8 · /profile's hero is the PageHero recipe (one `info` radial over `--hero-panel-grad`), not an emerald → rose tilt
+  ok   2.8′ · the open count's glyph is its neighbours' — the Stat's own icon ink
+  ok   2.9 · /profile/activity's Won and Net take the label's own ink (no `labelTone`)
+  ok   2.9′ · Stat has no `labelTone` to ask for
+  ok   2.9″ EXECUTED · a tile's label row renders the subtle ink, no betting ink
+  ok   2.10 · the journey bell's count is the brand pip (the Arifa row's) and its "Clear all" hover the danger ink
+  ok   2.10′ EXECUTED · the brand pip paints `--brand-600` (legible digits, §5), the rose one the NO ramp
+  ok   2.11 · /updown/history's nets are the platform's net rule (gilt > 0 · LOSS rose < 0 · text at 0), as /positions/performance
+  ok   2.12 · /wallet's history row: the Receipts row's brand plate where money moved, the muted one where nothing landed; the amount neutral
+  ok   2.12′ CONTROL · the Receipts row (the decided target) draws one brand plate, neutral amount
+  ok   2.12″ · the self-exclusion doors hover on the strong border, as "Set personal limits" beside them
+  ok   2.13 · the leaderboard's rate of return is the text's ink in the table, on the podium and in the ribbon
+  ok   2.13′ · the ribbon has no accent to ask for; EXECUTED it renders the value in `text-text`
+  ok   2.14 · the payout notice's unavailable edge is `border-danger-border` — the failure box's above it on both pages
+  ok   2.15 · the terminal's stale receipt is the danger ink (an app state), its legend's move the chart grammar (kept)
+  ok   2.15′ · the quick bet's placed pulse is the success green (the toast it replaces), the side's own flash kept
+  ok   2.15″ · the journey balance's ±delta is the text's ink — its sign says which way
+  ok   2.15‴ · the language-change glyphs alternate the brand family's two text steps — no betting hue
+
+── 3 · I-2 · a refusal the player can fix is the calm `factual` toast and never a popup; a fault is `danger` 
+  ok   3.1 · CONTROL · test:feedback-law §11 holds the one form: the registry's rank (executed), the dial, Up & Down (executed), the slips
+  ok   3.1′ CONTROL · the premise: a short balance and a stake under the minimum are `warning` (fixable), a frozen wallet `error`
+  ok   3.3″ CONTROL · the Sell button (S6 A8h) is the one form: toast ranked and sticky, the ✗ result for a fault only
+  ok   3.3‴ · the dial's inline short balance is the factual line Up & Down draws (the info glyph, the faint ink, 13px), not a NO-rose box
+  ok   3.4 · export-data-button.tsx — its server refusal takes the registry's rank (1/1)
+  ok   3.4 · privacy-request-form.tsx — its server refusal takes the registry's rank (1/1)
+  ok   3.4 · create-form.tsx — its server refusal takes the registry's rank (1/1)
+  ok   3.4 · comments-thread.tsx — its server refusals take the registry's rank (2/2)
+  ok   3.4 · objection-dialog.tsx — its server refusal takes the registry's rank (1/1)
+  ok   3.4 · name-editor.tsx — its server refusal takes the registry's rank (1/1)
+  ok   3.4 · avatar-uploader.tsx — its server refusals take the registry's rank (2/2)
+  ok   3.4 · vote-control.tsx — its server refusal takes the registry's rank (1/1)
+  ok   3.4 · kyc-doc-uploader.tsx — its server refusals take the registry's rank (2/2)
+  ok   3.5 · the player's own slips are `factual` toasts — 13: the two KYC uploaders' 6, the photo's 2, the agent's unreadable photo, the empty name, the three refused copies
+  ok   3.7 · the agent application: a referee field, a short balance, an unconfirmed address and a file's own slip are `factual`; the rest `danger`
+  ok   3.8 · CONTROL · the account-security rail is left as test:feedback-law pins it (`danger`) — named in the report, not swept
+
+── 4 · I-3 · a grant's state words in their §B11 tones, read from the one dictionary; a declaration under review is royal 
+  ok   4.1 EXECUTED · waiting royal (`pending`), unlocked success, expired/cancelled/forfeited slate (`neutral`)
+  ok   4.1′ EXECUTED · no grant word is amber, and none is gilt (a word is not money — R5-C's chip ruling)
+  ok   4.1″ CONTROL · the GRANT_ words agree with the dictionary's own: EXPIRED and CANCELLED slate, PENDING royal, a completed payment green
+  ok   4.2 · the grant row's word is the kit Chip in the dictionary's tone (`grantStatusChip`), one size for every state
+  ok   4.2′ · every grant word the row can print but the running one (ACTIVE) has its tone in the dictionary
+  ok   4.2″ EXECUTED · the waiting chip renders the royal ink at the side pill's 18px
+  ok   4.3 · /profile's banner: amber only for a declaration to resubmit (the player acts); under review royal
+  ok   4.3′ · /profile/source-of-funds: the declaration's box is success when accepted, royal under review (its pill already said so)
+
+── 5 · contrast — every new ink pair measured on its worst surface (≥4.5:1 text, ≥3:1 marks) ───────────
+  ok   5 · the success crest's ink on its 18% disc (modal) — 9.55:1 (≥ 4.5)
+  ok   5 · the failure crest's ink on its 18% disc (modal) — 7.70:1 (≥ 4.5)
+  ok   5 · the dial's range chip: danger ink on its danger fill (card) — 7.68:1 (≥ 4.5)
+  ok   5 · a field error / a destructive hover: danger ink on a card — 8.22:1 (≥ 4.5)
+  ok   5 · the Sign out plate's glyph: danger ink on its 10% plate (card) — 8.02:1 (≥ 3)
+  ok   5 · a success mark: success ink on a card — 10.95:1 (≥ 4.5)
+  ok   5 · the 2FA plate: success ink on its 10% plate (card) — 10.12:1 (≥ 3)
+  ok   5 · the free window's "No fee": success ink on its 18% box (modal) — 9.55:1 (≥ 4.5)
+  ok   5 · the auth eyebrow: success / danger ink on the auth panel — 8.61:1 (≥ 4.5)
+  ok   5 · the dial's factual line: the faint ink on a card (Up & Down's own pair, 13px) — 4.65:1 (≥ 4.5)
+  ok   5 · the journey's brand pip (the bell, the Arifa row): pearl digits on `--brand-600` — 5.04:1 (≥ 4.5)
+  ok   5 · a net earned on /updown/history: gilt on the elevated tile — 11.66:1 (≥ 4.5)
+  ok   5 · the balance's ±delta: text ink on the capsule's inset fill — 19.00:1 (≥ 4.5)
+  ok   5 · the placed pulse: the success ring on the board (a mark) — 5.89:1 (≥ 3)
+  ok   5 · the language glyphs: brand-200 / brand-300 on the 90% scrim — 11.16:1 (≥ 4.5)
+  ok   5 · global-error's mark: its danger ink on its 18% disc — 8.48:1 (≥ 4.5)
+  ok   5 · the royal declaration box: muted text on `--info-bg` (card) — 8.96:1 (≥ 4.5)
+  ok   5 · the grant chip, waiting (royal `pending`), on its dimmed row — 4.62:1 (≥ 4.5)
+  ok   5 · the grant chip, unlocked (`success`), on its dimmed row — 5.41:1 (≥ 4.5)
+  ok   5 · the grant chip, expired · cancelled · forfeited (slate `neutral`), on its dimmed row — 5.54:1 (≥ 4.5)
+  ok   5′ CONTROL · the calculator is honest: white on black 21:1, a colour on itself 1:1
+  ok   5″ CONTROL · the pip's digits on `--brand-500` (the fill before) measured 3.48:1 — under 4.5, the reason the fill is `--brand-600`
+  ok   5‴ · the kit's brand pip is `--brand-600`
+
+── 6 · what must STAY — the sides keep the pair, a loss keeps the betting rose, the owner's items as they stand 
+  ok   6.1 · the side buttons are the betting pair (the card, the dial, Up & Down)
+  ok   6.2 · a placed bet's strip and button are its side (`stripTone` yes/no on both bet receipts)
+  ok   6.3 · LOSS keeps the betting rose (the owner's ruling) — the position chip and a negative net
+  ok   6.4 · the bar's sides keep their fills and the probability its YES ink
+  ok   6.5 · OWNER · the classic bell's count is still the rose pip, its "Clear all" hover the NO rose (frozen chrome; the change is written)
+  ok   6.6 · OWNER · the classic capsule's ±delta keeps its YES/NO inks (frozen chrome)
+  ok   6.7 · OWNER · `hot` still shares the NO rose with `no` in the chip (the split is the owner's call, §B2a)
+  ok   6.8 · no RG notice, helpline or limit control was touched: the RG page keeps its three neutral notices and its limits form
+
+visual-pass-r5i: 112 passed, 0 failed

@@ -1,0 +1,46 @@
+── 1 · the history card renders EVERY bet ─────────────────────────
+
+  ok   1.0 positive control · the chip row exists and is keyed per position
+  ok   1.1 the two-chip cap is gone
+  ok   1.2 no `+N` overflow chip remains
+  ok   1.3 the chip row maps the FULL bet list
+  ok   1.4 the row is not re-clipped by a scroll container or a max-height
+
+── 2 · the 400-row read cap is STATED, not silent ─────────────────
+
+  ok   2.0 positive control · the page names its own limit once
+  ok   2.1 the limit constant is what the query uses (not a second literal)
+  ok   2.2 the page computes whether the cap bit
+  ok   2.3 …and renders the notice when it did
+
+── 3 · the round panel itemises, and the aggregate survives ───────
+
+  ok   3.0 positive control · the result panel still renders the aggregate payout
+  ok   3.1 every position is rendered
+  ok   3.1a …under a predicate on the player's OWN data, not a constant
+  ok   3.1b …and no branch in this file is constant-folded dead
+  ok   3.2 a hedged holder is not quoted a single side
+  ok   3.3 the itemised list reads STORED status — it derives no result of its own
+
+── 4 · myPositionFor is scoped to the ROUND, not to a user cap ────
+
+  ok   4.0 positive control · myPositionFor still exists and still returns the aggregate
+  ok   4.1 it no longer takes the user's most-recent-N and filters by market
+  ok   4.2 it queries by market
+  ok   4.3 …and still restricts to the viewer
+  ok   4.4 it returns the itemised list
+
+── 5 · the copy exists in all three languages ─────────────────────
+
+  ok   5.x udPositionsOnRound is defined three times (en · sw · zh)
+  ok   5.x udBothSides is defined three times (en · sw · zh)
+  ok   5.x udHistoryCapped is defined three times (en · sw · zh)
+  ok   5.x udPosWon is defined three times (en · sw · zh)
+  ok   5.x udPosLost is defined three times (en · sw · zh)
+  ok   5.x udPosRefunded is defined three times (en · sw · zh)
+  ok   5.x udPosOpen is defined three times (en · sw · zh)
+  ok   5.x udPosCashedOut is defined three times (en · sw · zh)
+  ok   5.9 every udHistoryCapped translation keeps the {n} placeholder
+
+updown-positions-visible: 29 passed, 0 failed
+updown-positions-visible: OK — every position renders on both surfaces, the read cap is stated, and a hedge is not flattened to one side

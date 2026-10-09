@@ -1,0 +1,8 @@
+test:visual-pass-r4c exit=0 fails~=0 1s
+test:eyebrow-roles exit=0 fails~=0 1s
+test:type-scale exit=0 fails~=0 2s
+test:spacing-scale exit=1 fails~=1 2s
+test:design-frozen exit=0 fails~=0 1s
+test:visual-pass-r5c exit=0 fails~=0 2s
+test:notifications-page exit=0 fails~=0 1s
+DONE try2

@@ -1,0 +1,405 @@
+/**
+ * TWO THINGS `qa:cls-budget` CANNOT SEE, AND BOTH WERE LIVE.
+ *
+ *   npm run qa:ghost-landing -- https://www.50pick.tz
+ *   RED_GHOST=1 npm run qa:ghost-landing -- <base>   §A's fix is served back out
+ *   RED_STACK=1 npm run qa:ghost-landing -- <base>   §B AND §C's fix is served back out
+ *   RED_R5K=1 npm run qa:ghost-landing -- <base>     §D's ghosts are served back short (their bands collapsed)
+ *
+ * ── §A · WHERE THE GHOST PROMISED THE CONTENT WOULD BE ───────────────────────────────────────
+ * `layout-shift` only counts a node that is present BEFORE and AFTER a frame. A skeleton is
+ * REMOVED and different nodes take its place, so a ghost can be wrong by half a screen and score
+ * a perfect 0.0000. That is not a rounding artefact, it is the metric's definition — which means
+ * a CLS budget certifies nothing at all about skeleton fidelity. Measured on production
+ * 2026-09-24: `/live`'s ghost put the first market at y=160 and it arrived at y=698 (538px), and
+ * `/markets`' ghost put it at y=557 against a real y=318 (239px the other way). CLS: 0.0000 on
+ * both. So this section measures the LANDING POSITION instead of the score.
+ *
+ * ⚠️ IT MUST HOP, NOT NAVIGATE. `loading.tsx` renders only on a CLIENT-SIDE navigation; a hard
+ * `goto` streams the real page and no skeleton ever paints. Every route here is reached by
+ * clicking a visible link from `/`, which is also how a player reaches it. An instrument that
+ * opens the URL directly is blind to every `loading.tsx` in the repo, and that is exactly how
+ * both defects above survived a green board.
+ *
+ * ── §B · WHAT MOVES WHILE THE PLAYER SITS STILL ──────────────────────────────────────────────
+ * `/live`'s hero is a carousel that auto-advances every 6s, and it was exactly as tall as
+ * whichever question was showing. The hero cycled 388 ↔ 483px and took the search box and the
+ * whole grid with it — **un-input CLS 0.0796 over 45 seconds of touching nothing**, against a
+ * 0.05 budget, and climbing for as long as the page stayed open.
+ *
+ * ⛔ THE REASON NO GATE SAW IT IS THE LESSON. Every driver in this repo opens pages with
+ * `reducedMotion: "reduce"` — correct for stable screenshots — and `featured-contest.tsx`
+ * disables the auto-advance under reduced motion. The guard switched the defect OFF and then
+ * reported it could not find one. §B runs with motion ON and dwells past four advances.
+ *
+ * ── §C · WHAT MOVES WHEN THE PLAYER TAPS A CAROUSEL DOT ──────────────────────────────────────
+ * `/results`' notable carousel is `featured-contest.tsx`'s declared twin. It has no timer, so §B
+ * cannot reach it — but it hid inactive slides with the `hidden` ATTRIBUTE (`display: none`), so
+ * its box was the height of whichever slide was showing: 458 / 436 / 413px, moving the results
+ * grid 919 → 874. **45px under the finger, every time a player asks to see the next result.**
+ *
+ * ⛔ CLS SCORES THAT EXACTLY ZERO AND ALWAYS WILL, because the move lands within 500ms of the tap
+ * and `hadRecentInput` excludes it. That exclusion is right for a control whose PURPOSE is to
+ * move the page. It is wrong for one whose purpose is to swap a card in place. ⚠️ So §C does not
+ * read the metric at all — it taps every dot and asserts the BOARD BELOW does not move. A number
+ * of 0.0000 from an excluded shift is indistinguishable from a number of 0.0000 from a page that
+ * held still, and only one of those is the product working.
+ */
+import { chromium } from "playwright";
+import { localisedContext, assertLang } from "./qa-locale.mjs";
+
+// NO PRODUCTION DEFAULT (live-target-safe.test.mjs §1b). This used to fall back to the live site, so a run with no
+// target measured production without anyone choosing it. Loopback is the default now; production is reached by
+// NAMING it, as the examples at the top do.
+const BASE = process.argv[2] || process.env.BASE || "http://localhost:3001";
+const RED_GHOST = process.env.RED_GHOST === "1";
+const RED_STACK = process.env.RED_STACK === "1";
+const RED_R5K = process.env.RED_R5K === "1";
+const RED = RED_GHOST || RED_STACK || RED_R5K;
+
+/** Which sections each RED control is required to break — a control that breaks the OTHER
+ *  section proves nothing about the one it is named for.
+ *  ⭐ `RED_STACK` owns BOTH §B and §C and must break BOTH: one `.kp-slide-stack` mechanism now
+ *  serves `/live`'s timed carousel and `/results`' tapped one, so a control that reaches only
+ *  one of them would leave the other's fix unproven while reading green. */
+const SECTION = { RED_GHOST: ["A"], RED_STACK: ["B", "C"], RED_R5K: ["D"] };
+
+/** How far a ghost may miss where the content lands. A card is ~180–300px, so 120 is well
+ *  inside "the reader's eye does not have to re-find the board", and both live defects were
+ *  2–4× this. */
+const LAND_TOL = 120;
+const IDLE_BUDGET = 0.05; // §9 U25's own CLS line, applied to sitting still
+const IDLE_SINGLE = 0.02;
+const DWELL_MS = 27_000; // AUTO_ADVANCE_MS is 6000 — four advances plus slack
+
+const failures = [];
+const b = await chromium.launch();
+
+/* ── §A ─────────────────────────────────────────────────────────────────────────────────── */
+console.log("\n§A · does the content land where the ghost promised?");
+for (const target of ["/live", "/markets", "/results"]) {
+  const ctx = await localisedContext(b, { locale: "sw", width: 360, height: 780, baseUrl: BASE, reducedMotion: "reduce" });
+  const p = await ctx.newPage();
+
+  if (RED_GHOST) {
+    // Serve §A's fix back out: collapse the hero and the search wrap the ghost now reserves, so
+    // `/live`'s skeleton is the slim header it used to be.
+    await p.route(/\/_next\/static\/.*\.css(\?.*)?$/, async (route) => {
+      const res = await route.fetch();
+      const css = (await res.text()) + "\nheader[aria-hidden],.search-box-wrap[aria-hidden]{display:none}\n";
+      await route.fulfill({ response: res, body: css, headers: { ...res.headers(), "content-length": String(Buffer.byteLength(css)) } });
+    });
+  }
+
+  const cdp = await ctx.newCDPSession(p);
+  await cdp.send("Network.emulateNetworkConditions", { offline: false, latency: 400, downloadThroughput: (400 * 1024) / 8, uploadThroughput: (400 * 1024) / 8 });
+  await cdp.send("Emulation.setCPUThrottlingRate", { rate: 4 });
+
+  await p.goto(BASE + "/", { waitUntil: "load", timeout: 180000 });
+  await p.waitForTimeout(6000);
+  await assertLang(p, "sw");
+
+  const link = p.locator(`a[href="${target}"]:visible`).first();
+  if (!(await link.count())) {
+    failures.push(`A ${target} has no visible link from / — the hop could not be made, so nothing was measured`);
+    await ctx.close();
+    continue;
+  }
+
+  // remember the last frame on which a ghost was still on screen AND we were already on target
+  await p.evaluate((t) => {
+    window.__snap = null;
+    const probe = () => {
+      if (location.pathname === t && document.querySelector(".kp-shimmer-track")) {
+        const e = document.querySelector(".market-grid > *");
+        if (e) window.__snap = { y: Math.round(e.getBoundingClientRect().top + scrollY) };
+      }
+      requestAnimationFrame(probe);
+    };
+    requestAnimationFrame(probe);
+  }, target);
+
+  await link.click();
+  await p.waitForURL(`**${target}`, { timeout: 120000 }).catch(() => {});
+  await p.waitForTimeout(9000);
+
+  const r = await p.evaluate(() => {
+    const e = document.querySelector(".market-grid > *");
+    return {
+      snap: window.__snap,
+      real: e ? Math.round(e.getBoundingClientRect().top + scrollY) : null,
+      ghosts: document.querySelectorAll(".kp-shimmer-track").length,
+    };
+  });
+
+  // ⛔ VACUITY: a hop where no ghost was ever caught, or no grid ever arrived, measured nothing.
+  if (!r.snap) {
+    failures.push(`A ${target} no skeleton frame was ever captured — this route proved nothing`);
+    await ctx.close();
+    continue;
+  }
+  if (r.real == null) {
+    failures.push(`A ${target} no grid item arrived — this route proved nothing`);
+    await ctx.close();
+    continue;
+  }
+
+  const delta = r.real - r.snap.y;
+  const bad = Math.abs(delta) > LAND_TOL;
+  if (bad) failures.push(`A ${target} ghost promised the board at y=${r.snap.y}, it landed at y=${r.real} — out by ${delta}px (tolerance ${LAND_TOL})`);
+  console.log(`   ${target.padEnd(9)} ghost y=${String(r.snap.y).padStart(4)}  real y=${String(r.real).padStart(4)}  out by ${String(delta).padStart(5)}px  ${bad ? "FAIL" : "ok"}`);
+  await ctx.close();
+}
+
+/* ── §B ─────────────────────────────────────────────────────────────────────────────────── */
+console.log(`\n§B · /live with MOTION ON — what moves over ${DWELL_MS / 1000}s of sitting still?`);
+{
+  const ctx = await localisedContext(b, { locale: "sw", width: 360, height: 780, baseUrl: BASE, reducedMotion: "no-preference" });
+  const p = await ctx.newPage();
+
+  if (RED_STACK) {
+    // Serve §B's fix back out: `display: none` on the inactive questions collapses the grid
+    // track to the active one, which is precisely the pre-fix hero.
+    await p.route(/\/_next\/static\/.*\.css(\?.*)?$/, async (route) => {
+      const res = await route.fetch();
+      const css = (await res.text()) + "\n.kp-slide-stack>*:not([data-slide-active]){display:none}\n";
+      await route.fulfill({ response: res, body: css, headers: { ...res.headers(), "content-length": String(Buffer.byteLength(css)) } });
+    });
+  }
+
+  await p.addInitScript(() => {
+    window.__cls = 0;
+    window.__worst = 0;
+    window.__src = [];
+    new PerformanceObserver((l) => {
+      for (const e of l.getEntries()) {
+        if (e.hadRecentInput) continue;
+        window.__cls += e.value;
+        if (e.value > window.__worst) window.__worst = e.value;
+        for (const s of e.sources || []) {
+          const n = s.node;
+          window.__src.push({
+            v: Number(e.value.toFixed(5)),
+            el: n ? (n.tagName || "") + "." + (typeof n.className === "string" ? n.className.split(" ").slice(0, 2).join(".") : "") : "?",
+          });
+        }
+      }
+    }).observe({ type: "layout-shift", buffered: true });
+  });
+
+  await p.goto(BASE + "/live", { waitUntil: "load", timeout: 180000 });
+  await p.waitForTimeout(6000);
+  await assertLang(p, "sw");
+
+  const heroH = () =>
+    p.evaluate(() => {
+      const h = [...document.querySelectorAll("header")].find((e) => /relative overflow-hidden rounded-xl border/.test(String(e.className)));
+      const g = document.querySelector(".market-grid");
+      return {
+        h: h ? Math.round(h.getBoundingClientRect().height) : -1,
+        g: g ? Math.round(g.getBoundingClientRect().top + scrollY) : -1,
+        dots: document.querySelectorAll('button[aria-current], button[aria-label*="soko"], button[aria-label*="market"]').length,
+        carousel: !!document.querySelector("[aria-roledescription='carousel']"),
+      };
+    });
+
+  const base = await p.evaluate(() => window.__cls);
+  const seen = [];
+  const t0 = Date.now();
+  while (Date.now() - t0 < DWELL_MS) {
+    await p.waitForTimeout(1500);
+    seen.push(await heroH());
+  }
+  const r = await p.evaluate(() => ({ cls: window.__cls, worst: window.__worst, src: window.__src }));
+
+  const last = seen[seen.length - 1] || {};
+  // ⛔ VACUITY: if there is no multi-slide carousel on the page, this section tested nothing.
+  if (!last.carousel || (last.dots || 0) < 2) {
+    failures.push(`B /live has no multi-slide carousel right now (${last.dots || 0} controls) — §B proved nothing; re-run when the board has two or more contested markets`);
+  } else {
+    const hs = [...new Set(seen.map((x) => x.h))].sort((a, z) => a - z);
+    const gs = [...new Set(seen.map((x) => x.g))].sort((a, z) => a - z);
+    const hSpread = hs[hs.length - 1] - hs[0];
+    const gSpread = gs[gs.length - 1] - gs[0];
+    const drift = r.cls - base;
+    if (hSpread > 0) failures.push(`B /live hero changes height while idle: ${hs.join(" / ")}px — spread ${hSpread}px, and the grid below moves ${gSpread}px with it`);
+    if (drift > IDLE_BUDGET) failures.push(`B /live accrues ${drift.toFixed(4)} un-input CLS in ${DWELL_MS / 1000}s of sitting still (budget ${IDLE_BUDGET})`);
+    if (r.worst > IDLE_SINGLE) failures.push(`B /live single un-input shift ${r.worst.toFixed(4)} over the ${IDLE_SINGLE} limit`);
+    console.log(`   hero heights ${hs.join(" / ")}px  (spread ${hSpread}px)`);
+    console.log(`   grid top     ${gs.join(" / ")}px  (spread ${gSpread}px)`);
+    console.log(`   un-input CLS after settle ${base.toFixed(4)} -> ${r.cls.toFixed(4)}  (drift ${drift.toFixed(4)}, worst single ${r.worst.toFixed(4)})`);
+    for (const s of r.src.sort((a, z) => z.v - a.v).slice(0, 3)) console.log(`      ${String(s.v).padStart(8)}  ${s.el}`);
+  }
+  await ctx.close();
+}
+
+/* ── §C ─────────────────────────────────────────────────────────────────────────────────── */
+console.log("\n§C · tapping a carousel dot must not move the board below it");
+for (const surface of [
+  { path: "/results", dot: "Onyesha tokeo maarufu" },
+  { path: "/live", dot: "Onyesha soko" },
+]) {
+  const ctx = await localisedContext(b, { locale: "sw", width: 360, height: 780, baseUrl: BASE, reducedMotion: "reduce" });
+  const p = await ctx.newPage();
+
+  if (RED_STACK) {
+    await p.route(/\/_next\/static\/.*\.css(\?.*)?$/, async (route) => {
+      const res = await route.fetch();
+      const css = (await res.text()) + "\n.kp-slide-stack>*:not([data-slide-active]){display:none}\n";
+      await route.fulfill({ response: res, body: css, headers: { ...res.headers(), "content-length": String(Buffer.byteLength(css)) } });
+    });
+  }
+
+  await p.goto(BASE + surface.path, { waitUntil: "load", timeout: 180000 });
+  await p.waitForTimeout(6000);
+  await assertLang(p, "sw");
+
+  const probe = () =>
+    p.evaluate(() => {
+      const g = document.querySelector(".market-grid");
+      const st = document.querySelector(".kp-slide-stack");
+      return {
+        gridY: g ? Math.round(g.getBoundingClientRect().top + scrollY) : -1,
+        visible: st ? [...st.children].filter((c) => getComputedStyle(c).visibility !== "hidden" && getComputedStyle(c).display !== "none").length : -1,
+        slides: st ? st.children.length : 0,
+      };
+    });
+
+  const dots = p.locator(`button[aria-label^="${surface.dot}"]`);
+  const n = await dots.count();
+  // ⛔ VACUITY: one slide, or no dots, means nothing was exercised on this surface.
+  if (n < 2) {
+    failures.push(`C ${surface.path} has ${n} carousel dot(s) — §C proved nothing here; re-run when the board carries two or more`);
+    await ctx.close();
+    continue;
+  }
+
+  const seen = [await probe()];
+  for (let i = 2; i <= n; i++) {
+    await p.locator(`button[aria-label="${surface.dot} ${i}"]`).first().click({ timeout: 20000 }).catch(() => {});
+    await p.waitForTimeout(1200);
+    seen.push(await probe());
+  }
+
+  const ys = seen.map((x) => x.gridY).filter((y) => y > 0);
+  if (!ys.length) {
+    failures.push(`C ${surface.path} no grid was found to measure against — §C proved nothing here`);
+    await ctx.close();
+    continue;
+  }
+  const spread = Math.max(...ys) - Math.min(...ys);
+  const badVis = seen.filter((x) => x.visible !== 1).length;
+  if (spread > 0) failures.push(`C ${surface.path} the board moves ${spread}px as the carousel is tapped through its ${n} slides (${[...new Set(ys)].join(" / ")})`);
+  // ⛔ a stack showing none or several slides is a broken fix that would still score spread 0
+  if (badVis) failures.push(`C ${surface.path} ${badVis} of ${seen.length} steps showed ${seen.map((x) => x.visible).join("/")} visible slides — exactly one must be`);
+  console.log(`   ${surface.path.padEnd(9)} ${n} dots  board at ${[...new Set(ys)].join(" / ")}  spread ${spread}px  visible-per-step ${seen.map((x) => x.visible).join("/")}`);
+  await ctx.close();
+}
+
+/* ── §D ─────────────────────────────────────────────────────────────────────────────────── */
+/* ⭐ THE SIGNED-IN GHOSTS (round 5 of the visual pass, follow-up R5-K, 2026-10-09): the money pages, the receipt, the
+   profile and the classic portfolio and its performance page. Each was rebuilt band for band from its page; §D measures
+   the LANDING the way §A does — the last frame a ghost stood on the target, then the page — on two anchors per page: one
+   just under the head, one far below it, so a wrong band anywhere above the second shows as its distance.
+   ⛔ IT SIGNS IN THROUGH THE DEV SERVER'S DEMO DOOR (`/auth/demo`, as qa-classic-shell-parity does), so it runs against a
+   LOCAL server only: a scripted sign-in to production is not something this drive may do. Against any other target §D is
+   skipped and says so. ⚠️ The demo player's data are not every player's: each ghost draws its page's commonest case (the
+   ghost's own header says which), so a few pixels' difference on the second anchor can be the data — the deltas are
+   printed for a person to read, and only a miss past LAND_TOL (the old ghosts missed by 130–1,400px) fails. */
+const LOOPBACK = /^https?:\/\/(?:localhost|127\.0\.0\.1)(?::\d+)?(?:\/|$)/.test(BASE);
+if (!LOOPBACK) {
+  console.log("\n§D · SKIPPED — it signs in through a local server's demo door; " + BASE + " is not one (no scripted sign-in to production)");
+} else {
+  console.log("\n§D · the signed-in ghosts: does each page land where its ghost promised?");
+  const sc = await b.newContext({ viewport: { width: 390, height: 844 } });
+  const sp = await sc.newPage();
+  await sp.goto(BASE + "/auth/demo", { waitUntil: "domcontentloaded", timeout: 180000 });
+  await sp.locator("main").first().waitFor({ timeout: 120000 });
+  const jar = (await sc.cookies(BASE)).filter((c) => c.name === "kp_session");
+  await sc.close();
+  /** [from, the link to press there, target, anchors — [name, selector] — each present in the ghost AND the page]. */
+  const CASES = [
+    ["/wallet", 'a[href="/wallet/deposit"]:visible', "/wallet/deposit", [["form card", "main .glass-panel"], ["trust strip", "main .rounded-xl.border.bg-bg-elevated\\/60.px-4.py-3"]]],
+    ["/wallet", 'a[href="/wallet/withdraw"]:visible', "/wallet/withdraw", [["hero end", "main header.relative.overflow-hidden"], ["form card", "main .glass-panel"]]],
+    ["/wallet/receipts", 'main a[href^="/wallet/receipt/"]', null, [["details", "main dl.glass-panel"], ["footnote", "main p.leading-relaxed:last-child"]]],
+    ["/profile/activity", "main button.font-mono.uppercase", "/profile", [["achievements", "main .glass-panel"], ["settings grid", "main .grid.grid-cols-1.gap-3"]]],
+    ["/wallet", 'a[href="/positions"]:visible', "/positions", [["query bar", "main .kp-discovery-bar"], ["first card", "main .grid.items-start > *"]]],
+    ["/positions", 'a[href="/positions/performance"]:visible', "/positions/performance", [["P&L panel", "main .glass-panel"], ["stake tiles", "main section.grid.gap-3:not(.grid-cols-1)"]]],
+  ];
+  if (jar.length !== 1) failures.push("D the demo door signed nobody in — §D measured nothing");
+  else for (const [from, linkSel, target0, anchors] of CASES) for (const width of [360, 1280]) {
+    const ctx = await localisedContext(b, { locale: "sw", width, height: 900, baseUrl: BASE, reducedMotion: "reduce" });
+    await ctx.addCookies(jar);
+    const p = await ctx.newPage();
+    if (RED_R5K) {
+      // Serve §D's fix back out: collapse the ghosts' bands (their cards, their sections, their shimmering boxes), so each
+      // ghost is the short drawing it used to be and its second anchor stands far above where the page puts it.
+      await p.route(/\/_next\/static\/.*\.css(\?.*)?$/, async (route) => {
+        const res = await route.fetch();
+        const css = (await res.text()) + "\nmain [aria-hidden].glass-panel,main section[aria-hidden],main dl[aria-hidden]>*:nth-child(n+3){display:none!important}\n";
+        await route.fulfill({ response: res, body: css, headers: { ...res.headers(), "content-length": String(Buffer.byteLength(css)) } });
+      });
+    }
+    const cdp = await ctx.newCDPSession(p);
+    await cdp.send("Network.emulateNetworkConditions", { offline: false, latency: 400, downloadThroughput: (400 * 1024) / 8, uploadThroughput: (400 * 1024) / 8 });
+    await cdp.send("Emulation.setCPUThrottlingRate", { rate: 4 });
+    await p.goto(BASE + from, { waitUntil: "load", timeout: 180000 });
+    await p.waitForTimeout(6000);
+    const link = p.locator(linkSel).first();
+    // ⛔ VACUITY: the receipt, the portfolio and the performance page need a player with a deposit and positions — a fresh
+    // demo player has neither (qa-classic-shell-parity's WP10 gives it a portfolio through the real money paths first).
+    if (!(await link.count())) { failures.push(`D ${from} → ${target0 ?? "a receipt"} @${width}: no link to press (does the demo player have a deposit and positions?) — nothing measured`); await ctx.close(); continue; }
+    const target = target0 ?? new URL(await link.getAttribute("href"), BASE).pathname;
+    await p.evaluate(([t, sels]) => {
+      window.__snapD = null;
+      const probe = () => {
+        if (location.pathname === t && document.querySelector(".kp-shimmer-track")) {
+          window.__snapD = sels.map((s) => { const e = document.querySelector(s); return e ? Math.round(e.getBoundingClientRect().top + scrollY) : null; });
+        }
+        requestAnimationFrame(probe);
+      };
+      requestAnimationFrame(probe);
+    }, [target, anchors.map((a) => a[1])]);
+    await link.click();
+    await p.waitForURL(`**${target}`, { timeout: 120000 }).catch(() => {});
+    await p.waitForTimeout(9000);
+    const r = await p.evaluate((sels) => ({ snap: window.__snapD, real: sels.map((s) => { const e = document.querySelector(s); return e ? Math.round(e.getBoundingClientRect().top + scrollY) : null; }) }), anchors.map((a) => a[1]));
+    // ⛔ VACUITY, as §A: no ghost frame caught, or an anchor missing on either side, measured nothing.
+    if (!r.snap) { failures.push(`D ${target} @${width}: no skeleton frame was ever captured — this route proved nothing`); await ctx.close(); continue; }
+    anchors.forEach(([name], i) => {
+      const g = r.snap[i], real = r.real[i];
+      if (g == null || real == null) { failures.push(`D ${target} @${width} ${name}: missing in the ${g == null ? "ghost" : "page"} — nothing measured`); return; }
+      const delta = real - g;
+      const bad = Math.abs(delta) > LAND_TOL;
+      if (bad) failures.push(`D ${target} @${width} ${name}: the ghost promised y=${g}, the page put it at y=${real} — out by ${delta}px (tolerance ${LAND_TOL})`);
+      console.log(`   ${target.padEnd(24)} @${String(width).padStart(4)}  ${name.padEnd(14)} ghost y=${String(g).padStart(5)}  real y=${String(real).padStart(5)}  out by ${String(delta).padStart(5)}px  ${bad ? "FAIL" : "ok"}`);
+    });
+    await ctx.close();
+  }
+}
+
+await b.close();
+
+const label = RED_GHOST ? "RED_GHOST (§A's fix served back out)" : RED_STACK ? "RED_STACK (§B and §C's fix served back out)" : RED_R5K ? "RED_R5K (§D's ghosts served back short)" : "GREEN";
+console.log(`\nghost landing — ${label} — ${BASE}`);
+if (failures.length) for (const f of failures) console.log("  FAIL " + f);
+else console.log("  no failures");
+
+if (RED) {
+  const want = SECTION[RED_GHOST ? "RED_GHOST" : RED_STACK ? "RED_STACK" : "RED_R5K"];
+  // ⛔ EVERY section the control owns must fail. Requiring only "at least one" would let a
+  // control that reaches §B but not §C certify §C's fix while never having tested it — the
+  // shape this guard exists to refuse, one level up.
+  const silent = want.filter((sec) => !failures.some((f) => f.startsWith(sec + " ")));
+  if (silent.length) {
+    console.error(
+      `\n🔴 BROKEN HARNESS — the control was applied and §${silent.join(", §")} still PASSED.` +
+        `\n   A control that does not break every section it is named for certifies nothing about the ones it missed.` +
+        `\n   ${failures.length ? "What it DID break: §" + [...new Set(failures.map((f) => f.slice(0, 1)))].join(", §") : "Nothing failed at all."}`,
+    );
+    process.exit(2);
+  }
+  console.log(`\nRED control behaved: §${want.join(" and §")} failed, as required (${failures.length} failure(s) total).`);
+  process.exit(0);
+}
+process.exit(failures.length ? 1 : 0);

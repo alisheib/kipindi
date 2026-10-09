@@ -1,0 +1,11 @@
+test:visual-pass-r5k exit 0 (2s)
+test:visual-pass-r5h exit 0 (8s)
+test:journey-tickets exit 0 (3s)
+test:visual-pass-r4c exit 0 (1s)
+test:eyebrow-roles exit 0 (1s)
+test:type-scale exit 0 (3s)
+test:spacing-scale exit 0 (1s)
+test:ui-consistency exit 0 (2s)
+test:red-anchors exit 0 (3s)
+test:design-frozen exit 0 (2s)
+DONE

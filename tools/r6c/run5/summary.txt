@@ -1,0 +1,39 @@
+started 2026-10-09T18:38:47.417Z · 37 suites
+OK   exit=0  test:visual-pass-r6c  (2.9s)  ::  86 passed, 0 failed
+OK   exit=0  test:popup-fit  (1.4s)  ::  popup-fit: OK — 78 popups walked, 5 carry a clip and every one of those carries a reason
+OK   exit=0  test:visual-pass-r5e  (12.1s)  ::  visual-pass-r5e: 60 passed, 0 failed
+OK   exit=0  test:enter-where-pressed  (1.3s)  ::  ENTER WHERE PRESSED — all checks passed
+OK   exit=0  red:enter-where-pressed  (14.3s)  ::  RED CONTROL — 103/103 caught
+OK   exit=0  test:stacking  (1.7s)  ::  137 passed, 0 failed
+OK   exit=0  test:journey-shell  (2.5s)  ::  JOURNEY SHELL — all 434 checks passed
+OK   exit=0  red:journey-shell  (25.1s)  ::  RED CONTROL — 188/188 caught · all 377 proofs held
+OK   exit=0  test:journey-tickets  (2.1s)  ::  JOURNEY TICKETS — all 51 checks passed
+OK   exit=0  red:journey-tickets  (72.4s)  ::  RED CONTROL — 111/111 caught · all 223 proofs held
+OK   exit=0  test:visual-pass-r3c  (1.1s)  ::  visual-pass-r3c: 70 passed, 0 failed
+OK   exit=0  test:visual-pass-r4e  (1.5s)  ::  visual-pass-r4e: 68 passed, 0 failed
+OK   exit=0  test:visual-pass-r4h  (1.2s)  ::  visual-pass-r4h: 81 passed, 0 failed
+OK   exit=0  test:visual-pass-r4j  (2.3s)  ::  visual-pass-r4j: 79 passed, 0 failed
+OK   exit=0  test:visual-pass-r5a  (2.3s)  ::  visual-pass-r5a: 93 passed, 0 failed
+OK   exit=0  test:visual-pass-r5c  (2.4s)  ::  visual-pass-r5c: 93 passed, 0 failed
+OK   exit=0  test:visual-pass-r5g  (2.5s)  ::  visual-pass-r5g: 61 passed, 0 failed
+OK   exit=0  test:visual-pass-r5h  (6.7s)  ::  visual-pass-r5h: 52 passed, 0 failed
+OK   exit=0  test:feedback-law  (1.2s)  ::  feedback-law: OK — one answer per class of action, and every refusal names its way out.
+OK   exit=0  test:presence-class  (0.9s)  ::  presence-class: OK — the seal is for a win the player watched land, and nothing is marked delivered undelivered.
+OK   exit=0  test:motion-ladder  (2.1s)  ::  12 passed, 0 failed
+OK   exit=0  test:gold-is-money  (0.8s)  ::  gold-is-money: OK — identity is metallic, money is gold, and the two do not overlap.
+OK   exit=0  test:updown-handover  (1.0s)  ::  ALL PASS — 117 passed, 0 failed
+OK   exit=0  test:marketing-optout  (1.5s)  ::  [optout] refused a mint with an unusable identifier
+OK   exit=0  red:marketing-optout  (1.8s)  ::  [optout] refused a mint with an unusable identifier
+OK   exit=0  test:eyebrow-roles  (0.9s)  ::  ✅ 639 sites, every one accounted for.
+OK   exit=0  test:ui-consistency  (2.0s)  ::  ALL PASS — no new UI-consistency drift beyond the tracked baseline.
+OK   exit=0  test:type-scale  (2.0s)  ::  ALL PASS — 1442 source files, 188 money elements.
+OK   exit=0  test:spacing-scale  (1.2s)  ::  spacing-scale: 10 passed, 0 failed · 449 inverted usages in 163 files
+OK   exit=0  test:design-frozen  (1.4s)  ::  PASS — design primitives are frozen
+OK   exit=0  test:red-anchors  (2.4s)  ::  red-anchors: 5070 passed, 0 failed
+OK   exit=0  test:decomment  (3.8s)  ::  ALL PASS — 22 passed, 0 failed
+OK   exit=0  test:hooks-order  (1.0s)  ::  all green
+OK   exit=0  test:i18n  (1.0s)  ::  ALL PASS — en=2628 sw=2628 zh=2628 keys
+OK   exit=0  test:simple-journey-flag  (5.1s)  ::  135 passed, 0 failed
+OK   exit=0  test:css-vars-defined  (1.6s)  ::  css-vars-defined: 299 references checked, 0 undefined.
+OK   exit=0  test:dead-css  (4.1s)  ::  DEAD CSS — all checks passed
+finished 2026-10-09T18:41:59.105Z

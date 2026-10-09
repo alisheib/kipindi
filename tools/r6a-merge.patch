@@ -1,0 +1,1413 @@
+diff --git a/package.json b/package.json
+index efbffca67..ee4dc1283 100644
+--- a/package.json
++++ b/package.json
+@@ -76,6 +76,7 @@
+     "test:redis-failopen": "tsx scripts/redis-failopen.test.mts",
+     "test:rg-race": "tsx scripts/rg-limit-race.test.mts",
+     "test:rg-doors": "tsx scripts/rg-doors.test.mts",
++    "test:rg-email-end": "tsx scripts/rg-email-end.test.mts",
+     "test:rg-cash-incentive": "tsx scripts/rg-cash-incentive.test.mts",
+     "test:withdrawn-features": "tsx scripts/withdrawn-features.test.mts",
+     "test:dal-parity": "tsx scripts/dal-parity.test.mts",
+@@ -678,6 +679,7 @@
+     "test:visual-pass-r5e": "tsx scripts/visual-pass-r5e.test.mts",
+     "test:visual-pass-r5i": "tsx scripts/visual-pass-r5i.test.mts",
+     "test:visual-pass-r5g": "tsx scripts/visual-pass-r5g.test.mts",
++    "test:visual-pass-r6a": "tsx scripts/visual-pass-r6a.test.mts",
+     "red:journey-tickets": "tsx scripts/journey-tickets.test.mts --prove-red",
+     "test:signoff": "tsx scripts/signoff.test.mts",
+     "test:proposal-evidence-age": "tsx scripts/proposal-evidence-age.test.mts",
+diff --git a/scripts/comms-email-shots.mts b/scripts/comms-email-shots.mts
+index 40799199e..a286a57a3 100644
+--- a/scripts/comms-email-shots.mts
++++ b/scripts/comms-email-shots.mts
+@@ -47,7 +47,7 @@ const PAGES: { name: string; html: string }[] = [
+   { name: "withdrawalSentHtml", html: E.withdrawalSentHtml({ amount: 197_000, destination: "M-Pesa", destinationPhone: "+255712345678", reference: "wdr_95e5cddab0fb", gatewayRef: "sel_009c1a7c3662", railLabel: "Selcom Pesa", railNote: null }) },
+   { name: "withdrawalUnderReviewHtml", html: E.withdrawalUnderReviewHtml({ amount: 2_500_000, reference: "wdr_95e5cddab0fb" }) },
+   { name: "amlRejectRefundHtml", html: E.amlRejectRefundHtml({ amount: 15_000, reason: "The payout rail declined the destination number", reference: "wdr_95e5cddab0fb", gatewayRef: "sel_009c1a7c3662", railLabel: "Selcom Pesa" }) },
+-  { name: "betPlacedHtml", html: E.betPlacedHtml({ reference: "pos_41ab77cd", side: "YES", stake: 25_000, marketTitle: LONG, placedAt: "2026-07-31T09:00:00.000Z", resolutionDate: "30 Sep 2026", cashOutFeeRate: 0.1, freeExitGraceMinutes: 5, paidExitWindowMinutes: 0 }) },
++  { name: "betPlacedHtml", html: E.betPlacedHtml({ reference: "pos_41ab77cd", side: "YES", stake: 25_000, marketTitle: LONG, placedAt: "2026-07-31T09:00:00.000Z", resolvesAt: "2026-09-30T09:00:00.000Z", cashOutFeeRate: 0.1, freeExitGraceMinutes: 5, paidExitWindowMinutes: 0 }) },
+   { name: "selectionClosedHtml", html: E.selectionClosedHtml({ marketTitle: LONG, closedAt: "2026-07-31T09:00:00.000Z", resolvesAt: "2026-09-30T09:00:00.000Z", marketId: "mkt_41ab77cd", payoutIfYes: 46_250, payoutIfNo: 12_400 }) },
+   { name: "winNotificationHtml", html: E.winNotificationHtml({ reference: "pos_41ab77cd", payout: 46_250, stake: 25_000, marketTitle: SAFE, settledAt: "2026-07-31T09:00:00.000Z" }) },
+   { name: "lossNotificationHtml", html: E.lossNotificationHtml({ reference: "pos_41ab77cd", stake: 25_000, marketTitle: SAFE, settledAt: "2026-07-31T09:00:00.000Z" }) },
+@@ -112,8 +112,8 @@ const PAGES: { name: string; html: string }[] = [
+   { name: "sofSubmittedHtml", html: E.sofSubmittedHtml() },
+   { name: "sofDecisionHtml", html: E.sofDecisionHtml({ status: "ACCEPTED", note: "Payslips accepted" }) },
+   { name: "amlReviewAdminHtml", html: E.amlReviewAdminHtml({ amount: 2_500_000, kind: "WITHDRAWAL", reference: "wdr_95e5cddab0fb" }) },
+-  { name: "selfExclusionHtml", html: E.selfExclusionHtml({ period: "6 months", endDate: "31 January 2027" }) },
+-  { name: "coolOffHtml", html: E.coolOffHtml({ duration: "24 hours", endDate: "01 August 2026" }) },
++  { name: "selfExclusionHtml", html: E.selfExclusionHtml({ period: "6 months", untilIso: "2027-01-31T09:00:00.000Z" }) },
++  { name: "coolOffHtml", html: E.coolOffHtml({ duration: "24 hours", untilIso: "2026-08-01T09:00:00.000Z" }) },
+   { name: "welcomeHtml", html: E.welcomeHtml({ name: "Asha" }) },
+   { name: "loginNotificationHtml", html: E.loginNotificationHtml({ name: "Asha", time: "31 Jul 2026, 14:32 EAT", ip: "41.222.0.1" }) },
+   { name: "emailVerifyHtml", html: E.emailVerifyHtml({ name: "Asha", verifyUrl: "https://50pick.tz/auth/verify-email?t=abc123" }) },
+diff --git a/scripts/comms-email-truth.test.mts b/scripts/comms-email-truth.test.mts
+index 950b97a59..6d6a15da7 100644
+--- a/scripts/comms-email-truth.test.mts
++++ b/scripts/comms-email-truth.test.mts
+@@ -102,8 +102,9 @@ const RENDERS: Rendered[] = [
+     benign:  E.amlRejectRefundHtml({ amount: 15_000, reason: "Rail refused the payout", reference: "wdr_a1", gatewayRef: "sel_b2", railLabel: "Selcom Pesa" }),
+     hostile: E.amlRejectRefundHtml({ amount: 1, reason: HOSTILE, reference: HOSTILE, gatewayRef: HOSTILE, railLabel: HOSTILE }) },
+   { template: "betPlacedHtml",
+-    benign:  E.betPlacedHtml({ reference: "pos_a1", side: "YES", stake: 10_000, marketTitle: SAFE, placedAt: "2026-07-31T09:00:00.000Z", resolutionDate: "01 Aug 2026", cashOutFeeRate: 0.1, freeExitGraceMinutes: 5, paidExitWindowMinutes: 0 }),
+-    hostile: E.betPlacedHtml({ reference: HOSTILE, side: "NO", stake: 1, marketTitle: HOSTILE, placedAt: HOSTILE, resolutionDate: HOSTILE, cashOutFeeRate: 0.1, freeExitGraceMinutes: 5, paidExitWindowMinutes: 30 }) },
++    // R6-A (2026-10-09): `resolvesAt` is the market's resolution INSTANT now (it was a display string, the UTC day).
++    benign:  E.betPlacedHtml({ reference: "pos_a1", side: "YES", stake: 10_000, marketTitle: SAFE, placedAt: "2026-07-31T09:00:00.000Z", resolvesAt: "2026-08-01T12:00:00.000Z", cashOutFeeRate: 0.1, freeExitGraceMinutes: 5, paidExitWindowMinutes: 0 }),
++    hostile: E.betPlacedHtml({ reference: HOSTILE, side: "NO", stake: 1, marketTitle: HOSTILE, placedAt: HOSTILE, resolvesAt: HOSTILE, cashOutFeeRate: 0.1, freeExitGraceMinutes: 5, paidExitWindowMinutes: 30 }) },
+   { template: "selectionClosedHtml",
+     benign:  E.selectionClosedHtml({ marketTitle: SAFE, closedAt: "2026-07-31T09:00:00.000Z", resolvesAt: "2026-08-01T09:00:00.000Z", marketId: "mkt_a1", payoutIfYes: 18_500, payoutIfNo: null }),
+     hostile: E.selectionClosedHtml({ marketTitle: HOSTILE, closedAt: HOSTILE, resolvesAt: HOSTILE, marketId: HOSTILE, payoutIfYes: 1, payoutIfNo: 2 }) },
+@@ -223,12 +224,13 @@ const RENDERS: Rendered[] = [
+   { template: "amlReviewAdminHtml",
+     benign:  E.amlReviewAdminHtml({ amount: 2_000_000, kind: "WITHDRAWAL", reference: "wdr_a1" }),
+     hostile: E.amlReviewAdminHtml({ amount: 1, kind: HOSTILE, reference: HOSTILE }) },
++  // R6-A (2026-10-09, A1): the two RG letters take the end's INSTANT and say it themselves (it was a pre-formatted day).
+   { template: "selfExclusionHtml",
+-    benign:  E.selfExclusionHtml({ period: "6 months", endDate: "31 Jan 2027" }),
+-    hostile: E.selfExclusionHtml({ period: HOSTILE, endDate: HOSTILE }) },
++    benign:  E.selfExclusionHtml({ period: "6 months", untilIso: "2027-01-31T09:00:00.000Z" }),
++    hostile: E.selfExclusionHtml({ period: HOSTILE, untilIso: HOSTILE }) },
+   { template: "coolOffHtml",
+-    benign:  E.coolOffHtml({ duration: "24 hours", endDate: "01 Aug 2026" }),
+-    hostile: E.coolOffHtml({ duration: HOSTILE, endDate: HOSTILE }) },
++    benign:  E.coolOffHtml({ duration: "24 hours", untilIso: "2026-08-01T09:00:00.000Z" }),
++    hostile: E.coolOffHtml({ duration: HOSTILE, untilIso: HOSTILE }) },
+   { template: "welcomeHtml",
+     benign:  E.welcomeHtml({ name: "Asha" }),
+     hostile: E.welcomeHtml({ name: HOSTILE }) },
+@@ -572,7 +574,7 @@ ok("bet-placed email prints no potential-return figure", !/potential return/i.te
+ ok("bet-placed email quotes the poll's own free-exit window", betText.includes("5-min free exit"));
+ ok("bet-placed email (no paid tail) says selling closes at the window",
+   /selling closes and the bet rides to settlement/i.test(betText));
+-const betPaid = plain(E.betPlacedHtml({ reference: "pos_a2", side: "YES", stake: 10_000, marketTitle: SAFE, resolutionDate: "01 Aug 2026", cashOutFeeRate: 0.07, freeExitGraceMinutes: 3, paidExitWindowMinutes: 30 }));
++const betPaid = plain(E.betPlacedHtml({ reference: "pos_a2", side: "YES", stake: 10_000, marketTitle: SAFE, resolvesAt: "2026-08-01T12:00:00.000Z", cashOutFeeRate: 0.07, freeExitGraceMinutes: 3, paidExitWindowMinutes: 30 }));
+ ok("bet-placed email (paid tail) quotes THAT poll's fee, not a constant",
+   betPaid.includes("3-min free exit") && betPaid.includes("7%") && !betPaid.includes("10%"));
+ 
+diff --git a/scripts/email-preview.mts b/scripts/email-preview.mts
+index ed8c6c9c5..92a9182d5 100644
+--- a/scripts/email-preview.mts
++++ b/scripts/email-preview.mts
+@@ -10,7 +10,7 @@ const SETTLED = "2026-06-20T18:05:00.000Z";
+ const samples: Record<string, string> = {
+   welcome: welcomeHtml({ name: "Asha" }),
+   deposit: depositConfirmedHtml({ amount: 50000, method: "M-Pesa", reference: "TXN-7F3K9Q2M1A8B", balance: 1250000 }),
+-  betPlaced: betPlacedHtml({ reference: "pos_9f3k2qm1a8", side: "YES", stake: 25000, payoutIfWin: 46200, marketTitle: "Will Simba SC win the Mainland derby on Saturday?", placedAt: PLACED, resolutionDate: "2026-06-20" }),
++  betPlaced: betPlacedHtml({ reference: "pos_9f3k2qm1a8", side: "YES", stake: 25000, payoutIfWin: 46200, marketTitle: "Will Simba SC win the Mainland derby on Saturday?", placedAt: PLACED, resolvesAt: "2026-06-20T18:00:00.000Z" }),
+   win: winNotificationHtml({ reference: "pos_9f3k2qm1a8", payout: 184500, stake: 50000, marketTitle: "Will Simba SC win the Mainland derby?", settledAt: SETTLED }),
+   loss: lossNotificationHtml({ reference: "pos_7b22aa90fe", stake: 30000, marketTitle: "Will it rain in Dodoma before Friday?", settledAt: SETTLED }),
+   cashout: cashOutReceiptHtml({ reference: "pos_9f3k2qm1a8", value: 38200, stake: 25000, marketTitle: "Will Simba SC win the Mainland derby?", soldAt: PLACED }),
+diff --git a/scripts/email-stress.test.mts b/scripts/email-stress.test.mts
+index 02e777398..566628b6e 100644
+--- a/scripts/email-stress.test.mts
++++ b/scripts/email-stress.test.mts
+@@ -80,8 +80,8 @@ process.on("unhandledRejection", (r) => unhandled.push(r));
+     welcomeHtml({ name: "<script>alert(1)</script>" });
+     depositConfirmedHtml({ amount: 999_999_999_999, method: "M-Pesa", reference: "x".repeat(400), balance: 0 });
+     depositConfirmedHtml({ amount: 0, method: "", reference: "", balance: -5 });
+-    betPlacedHtml({ reference: "<b>r</b>", side: "YES", stake: 10_000, marketTitle: 'Will "${x}" win?', resolutionDate: "not-a-date" });
+-    betPlacedHtml({ reference: "r", side: "NO", stake: 1, marketTitle: "T", resolutionDate: "2026-12-31" }); // missing optionals
++    betPlacedHtml({ reference: "<b>r</b>", side: "YES", stake: 10_000, marketTitle: 'Will "${x}" win?', resolvesAt: "not-a-date" });
++    betPlacedHtml({ reference: "r", side: "NO", stake: 1, marketTitle: "T", resolvesAt: "2026-12-31T09:00:00.000Z" }); // missing optionals
+     winNotificationHtml({ reference: "r", payout: 50_000, stake: 10_000, marketTitle: "T & <em>U</em>", settledAt: "2026-01-01" });
+     inviteHtml({ campaignName: "<x>", bonusAmountTzs: 5_000, code: "ABC123", message: "Join 50pick & win!" });
+   } catch (e) { threw = (e as Error)?.message ?? String(e); }
+diff --git a/scripts/one-sided.test.mts b/scripts/one-sided.test.mts
+index da512bcde..72e7d9ad9 100644
+--- a/scripts/one-sided.test.mts
++++ b/scripts/one-sided.test.mts
+@@ -354,7 +354,11 @@ log("\n── 8 · the detail page reads the card's rule (C1)");
+     /const oneSidedNote = emptySide && !settled \? t\.market\.oneSidedNote\.replace\("\{side\}", sideWord\(t, emptySide, "MARKET"\)\) : null;/.test(detail)
+     && /const settled = !!m\.resolvedOutcome \|\| isResolved;/.test(detail)
+     && section.includes("{!bettingOpen && oneSidedCallout}")
+-    && (aside.match(/\{oneSidedCallout\}/g) ?? []).length === 2
++    // ⚠️ RE-PINNED 2 → 3 (R6-A, 2026-10-09): the open column has a THIRD exclusive arm now — a signed-in reader on a break
++    // gets the break's notice where the stake stood, and the note keeps its spot at the top of the column there, as it does
++    // for a guest. Still one placement per render: the three arms (break · signed in · guest) never draw together.
++    && (aside.match(/\{oneSidedCallout\}/g) ?? []).length === 3
++    && /session && breakBody \? \(\s*<>\s*(?:\{\s*\}\s*)*<h2 id=\{BET_PANEL_HEADING\} className="sr-only">\{t\.market\.placeYourStake\}<\/h2>\s*\{oneSidedCallout\}/.test(aside)
+     && !/oneSidedBody|oneSidedMarket/.test(detail));
+   // The picker: no price prop, the pools decide, both figures gated.
+   const picker = decomment(read("src/components/markets/side-picker.tsx"));
+diff --git a/scripts/poll-lifecycle-e2e.test.mts b/scripts/poll-lifecycle-e2e.test.mts
+index 61232fbff..a1bb3ca6d 100644
+--- a/scripts/poll-lifecycle-e2e.test.mts
++++ b/scripts/poll-lifecycle-e2e.test.mts
+@@ -555,7 +555,7 @@ section("11. Email templates render correctly");
+   ok("11.4 selection-closed email has bilingual text", selHtml.includes("limefungwa")); // "Dau limefungwa" / "Bwawa limefungwa"
+   ok("11.5 no raw HTML tags leaked (XSS safe)", !selHtml.includes("<script"));
+ 
+-  const betHtml = betPlacedHtml({ reference: "pos_test", side: "YES", stake: 5000, payoutIfWin: 9000, marketTitle: "Test <b>bold</b>", resolutionDate: ahead(180) });
++  const betHtml = betPlacedHtml({ reference: "pos_test", side: "YES", stake: 5000, payoutIfWin: 9000, marketTitle: "Test <b>bold</b>", resolvesAt: ahead(180) });
+   ok("11.6 bet-placed email renders", betHtml.includes("5,000") || betHtml.includes("5000"));
+   ok("11.7 bet-placed XSS safe (no raw <b>)", !betHtml.includes("<b>bold</b>"));
+ }
+diff --git a/scripts/rg-email-end.test.mts b/scripts/rg-email-end.test.mts
+new file mode 100644
+index 000000000..37f67d5ad
+--- /dev/null
++++ b/scripts/rg-email-end.test.mts
+@@ -0,0 +1,201 @@
++/**
++ * test:rg-email-end — THE END OF A BREAK OR AN EXCLUSION, AS ITS CONFIRMATION LETTER STATES IT (R6-A, 2026-10-09; the round-6
++ * review's A1, HIGH, responsible gambling).
++ *
++ * 🔴 WHAT WAS WRONG. `responsible-gambling.ts` formatted the end with `toLocaleDateString("en-GB")` and no time zone, and
++ *    production runs in UTC: a 24-hour break taken at 01:30 EAT on 9 Oct (it ends 01:30 on 10 Oct) was confirmed as "until
++ *    09 Oct 2026" — a day early, and no time even for a one-hour break — with a Swahili line "hadi 2026-10-09"; the
++ *    exclusion's Swahili line printed the English month; a permanent exclusion read "…disabled until 15 Sept 2126". The
++ *    bet receipt's "Resolves" row printed `resolutionAt.slice(0, 10)`, the UTC day, unformatted.
++ * ⭐ WHAT THIS HOLDS. The letters take the instant and say it on the East Africa clock with its time, each line in its own
++ *    month words (`formatEatDateTime`, as the bell says the same end); a permanent exclusion — `selfExclusionStandingOf`,
++ *    never the period's name — states no end at all; an unreadable end states none; the receipt's row is a moment in EAT.
++ *    Every rule is EXECUTED on the real builders, with a control or a plant beside it; the callers are read decommented.
++ * ⚠️ A HOTFIX-SHAPED SUITE: it reads only files `main` has too (email.ts, responsible-gambling.ts, market-service.ts, eat-day.ts,
++ *    i18n-dict.ts, decomment.mts), so it travels with the fix when A1 is cherry-picked ahead of the visual pass.
++ */
++import { readFileSync } from "node:fs";
++import { decomment } from "./lib/decomment.mts";
++
++process.env.SESSION_SECRET ??= "test-only-session-secret-32chars-aaaa";
++process.env.OTP_PEPPER ??= "test-only-otp-pepper-16chars";
++const { dict } = await import("../src/lib/i18n-dict.ts");
++const { formatEatDateTime } = await import("../src/lib/eat-day.ts");
++const E = await import("../src/lib/server/email.ts");
++const { selfExclusionStandingOf } = await import("../src/lib/server/responsible-gambling.ts");
++
++let pass = 0;
++const fails: string[] = [];
++const ok = (name: string, cond: boolean, detail = "") => {
++  if (cond) { pass++; console.log(`  ok   ${name}`); }
++  else { fails.push(`${name}${detail ? ` — ${detail}` : ""}`); console.log(`  FAIL ${name}${detail ? ` — ${detail}` : ""}`); }
++};
++const section = (s: string) => console.log(`\n── ${s} ${"─".repeat(Math.max(0, 100 - s.length))}`);
++const raw = (p: string) => readFileSync(p, "utf8").replace(/\r\n/g, "\n");
++/** Source with its comments out (the shared scanner), so a rule quoted in a note is never mistaken for the rule. */
++const read = (p: string) => decomment(raw(p));
++
++const decode = (s: string) => s.replace(/&quot;/g, '"').replace(/&#x27;/g, "'").replace(/&lt;/g, "<").replace(/&gt;/g, ">").replace(/&amp;/g, "&");
++/** The letter's English sentences (`subtitle`), its Swahili ones (`subtitleSw`) and its detail rows, as the reader reads them. */
++const enLines = (h: string) => [...h.matchAll(/<p style="margin:0 0 16px;[^"]*">([\s\S]*?)<\/p>/g)].map((m) => decode(m[1]));
++const swLines = (h: string) => [...h.matchAll(/<p style="margin:-10px 0 16px;[^"]*">([\s\S]*?)<\/p>/g)].map((m) => decode(m[1]));
++const rows = (h: string): Record<string, string> =>
++  Object.fromEntries([...h.matchAll(/<td class="sp-row-label"[^>]*>([\s\S]*?)<\/td><td class="sp-row-val"[^>]*>([\s\S]*?)<\/td>/g)].map((m) => [decode(m[1]), decode(m[2])]));
++
++const EN = dict.en.common.monthsShort, SW = dict.sw.common.monthsShort;
++const now = () => Date.now();
++const endEn = (iso: string) => formatEatDateTime(Date.parse(iso), now(), EN, "en");
++const endSw = (iso: string) => formatEatDateTime(Date.parse(iso), now(), SW, "sw");
++/** What production printed: `toLocaleDateString("en-GB")` in the server's zone, which is UTC on Railway. */
++const oldDay = (iso: string, timeZone = "UTC") => new Date(iso).toLocaleDateString("en-GB", { timeZone, day: "2-digit", month: "short", year: "numeric" });
++const MONTH_WORD = new RegExp(`\\b(${[...new Set([...EN, ...SW])].join("|")}|Sept)\\b`);
++
++// The reviewer's cases: 24 hours from 01:30 EAT on 9 Oct (ends 01:30 EAT on 10 Oct = 22:30 UTC on 9 Oct), one hour from 14:00
++// EAT, an exclusion from 02:10 EAT, one ending in another year, the stored permanent (now + 100 years) and an unreadable end.
++const BREAK24 = "2026-10-09T22:30:00.000Z";
++const BREAK1H = "2026-10-09T12:00:00.000Z";
++const EXCL24 = "2026-10-09T23:10:00.000Z";
++const NEXT_YEAR = new Date(now() + 366 * 86_400_000).toISOString();
++const PERM = new Date(now() + 100 * 365 * 86_400_000).toISOString();
++const BAD = "not-a-date";
++
++/* ══ §1 · THE BREAK'S LETTER ══════════════════════════════════════════════════════════════════════════════════════════ */
++section("1 · coolOffHtml — the break's end on the East Africa clock, with its time, each line in its own words");
++const breakOk = (h: string, iso: string) => {
++  const en = enLines(h).join(" "), sw = swLines(h).join(" ");
++  return en.includes(`, until ${endEn(iso)}.`) && sw.includes(` hadi ${endSw(iso)}.`) && rows(h).Resumes === endEn(iso);
++};
++{
++  const h = E.coolOffHtml({ duration: "24 hours", untilIso: BREAK24 });
++  const en = enLines(h).join(" "), sw = swLines(h).join(" ");
++  ok(`1.1 · EXECUTED · the 24-hour break taken at 01:30 EAT ends "until ${endEn(BREAK24)}" — the EAT day (10 Oct) and its clock`,
++    en.includes(`Betting and deposits are paused for 24 hours, until ${endEn(BREAK24)}.`) && /\b10 Oct\b/.test(endEn(BREAK24)) && endEn(BREAK24).endsWith("01:30"), en);
++  ok(`1.2 · EXECUTED · …the Swahili line says "hadi ${endSw(BREAK24)}" in Swahili month words — no English month, no ISO day`,
++    sw.includes(`Kuweka dau na amana kumesimamishwa hadi ${endSw(BREAK24)}.`) && /\b10 Okt\b/.test(endSw(BREAK24)) && !/\bOct\b|\d{4}-\d{2}-\d{2}/.test(sw), sw);
++  ok("1.3 · EXECUTED · …and the Resumes row is the English line's own value (one letter, one end, one way)", rows(h).Resumes === endEn(BREAK24), JSON.stringify(rows(h)));
++  ok("1.4 · EXECUTED · every other word is the letter's own: the duration row and both 'does not block' sentences unchanged",
++    rows(h).Duration === "24 hours" && en.includes("Your break does not block sign-in or withdrawals.")
++    && sw.includes("Mapumziko haya hayazuii kuingia kwenye akaunti wala kutoa pesa."));
++  const h1 = E.coolOffHtml({ duration: "1 hour", untilIso: BREAK1H });
++  ok(`1.5 · EXECUTED · a one-hour break states its hour: "until ${endEn(BREAK1H)}" / "hadi ${endSw(BREAK1H)}"`,
++    breakOk(h1, BREAK1H) && endEn(BREAK1H).endsWith("15:00") && endSw(BREAK1H).endsWith("15:00"), enLines(h1).join(" | "));
++  const planted = h.split(endEn(BREAK24)).join(oldDay(BREAK24)).split(endSw(BREAK24)).join(BREAK24.slice(0, 10));
++  ok(`1.5′ CONTROL · production's day for the same break is "${oldDay(BREAK24)}" (a day early, no time) — and a letter carrying it fails 1.1–1.3`,
++    oldDay(BREAK24) === "09 Oct 2026" && !breakOk(planted, BREAK24));
++}
++
++/* ══ §2 · THE EXCLUSION'S LETTER ══════════════════════════════════════════════════════════════════════════════════════ */
++section("2 · selfExclusionHtml — the same end, and a permanent exclusion that names none");
++const exclOk = (h: string, iso: string) => {
++  const en = enLines(h).join(" "), sw = swLines(h).join(" ");
++  return en.includes(`disabled until ${endEn(iso)}.`) && sw.includes(` hadi ${endSw(iso)}.`) && rows(h).Unlocks === endEn(iso);
++};
++/** A permanent letter: no date in any line or row, the dictionary's word in the Period row, the sentences otherwise whole. */
++const permanentOk = (h: string) => {
++  const all = [...enLines(h), ...swLines(h), ...Object.values(rows(h))].join(" | ");
++  return !/\d{4}|\d{1,2}:\d{2}/.test(all) && !MONTH_WORD.test(all) && !/\buntil\b|\bhadi\b/.test(all)
++    && enLines(h).join(" ").includes("Betting, deposits, and login are disabled. This cannot be reversed.")
++    && swLines(h).join(" ").includes("Akaunti yako imefungwa. Hii haiwezi kubatilishwa.")
++    && rows(h).Period === dict.en.common.permanent && !("Unlocks" in rows(h));
++};
++{
++  const h = E.selfExclusionHtml({ period: "24 hours", untilIso: EXCL24 });
++  ok(`2.1 · EXECUTED · a 24-hour exclusion from 02:10 EAT: "until ${endEn(EXCL24)}" / "hadi ${endSw(EXCL24)}" and the Unlocks row — the English month gone from the Swahili line`,
++    exclOk(h, EXCL24) && !/\bOct\b/.test(swLines(h).join(" ")) && /\b10 Okt\b/.test(endSw(EXCL24)), [...enLines(h), ...swLines(h)].join(" | "));
++  const y = E.selfExclusionHtml({ period: "6 months", untilIso: NEXT_YEAR });
++  const year = String(new Date(Date.parse(NEXT_YEAR) + 3 * 3_600_000).getUTCFullYear());
++  ok(`2.2 · EXECUTED · an end in another year carries its year in both lines ("${endEn(NEXT_YEAR)}")`,
++    exclOk(y, NEXT_YEAR) && endEn(NEXT_YEAR).includes(year) && endSw(NEXT_YEAR).includes(year));
++  const s = selfExclusionStandingOf(PERM);
++  const permanent = s.state === "serving" && s.permanent;
++  ok("2.3 CONTROL · the one definition reads the stored permanent (now + 100 years) as permanent, and a 6-month end as not",
++    permanent && (() => { const m = selfExclusionStandingOf(new Date(now() + 182 * 86_400_000).toISOString()); return m.state === "serving" && !m.permanent; })());
++  const p = E.selfExclusionHtml({ period: "permanent", untilIso: PERM, permanent });
++  ok("2.4 · EXECUTED · a PERMANENT exclusion's letter states no end — no year, no clock, no month word, no 'until'/'hadi' — and its Period row says the dictionary's own word",
++    permanentOk(p), [...enLines(p), ...swLines(p), JSON.stringify(rows(p))].join(" | "));
++  const asDated = E.selfExclusionHtml({ period: "permanent", untilIso: PERM });
++  ok("2.4′ PLANT · the same instant drawn as a dated exclusion (what the letter did) fails 2.4", !permanentOk(asDated));
++}
++
++/* ══ §3 · AN UNREADABLE END ═══════════════════════════════════════════════════════════════════════════════════════════ */
++section("3 · an end that does not parse states no end — never \"Invalid Date\", \"NaN\" or a dash");
++{
++  const c = E.coolOffHtml({ duration: "24 hours", untilIso: BAD });
++  const x = E.selfExclusionHtml({ period: "24 hours", untilIso: BAD });
++  const both = [...enLines(c), ...swLines(c), ...enLines(x), ...swLines(x), ...Object.values(rows(c)), ...Object.values(rows(x))].join(" | ");
++  ok("3.1 · EXECUTED · both letters drop only the end: no 'until'/'hadi', no Resumes/Unlocks row, no Invalid Date / NaN / —",
++    !/Invalid Date|NaN|—|\buntil\b|\bhadi\b/.test(both) && !("Resumes" in rows(c)) && !("Unlocks" in rows(x))
++    && enLines(c).join(" ").includes("Betting and deposits are paused for 24 hours. Your break does not block sign-in or withdrawals."), both);
++}
++
++/* ══ §4 · THE BET RECEIPT'S "Resolves" ROW (A1's sibling) ═════════════════════════════════════════════════════════════ */
++section("4 · betPlacedHtml — \"Resolves\" is a moment on the East Africa clock, like \"Placed\" above it");
++{
++  const AT = "2026-10-09T22:00:00.000Z"; // 01:00 EAT on 10 Oct
++  const eat = (iso: string) => new Date(iso).toLocaleString("en-GB", { timeZone: "Africa/Dar_es_Salaam", day: "2-digit", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" }) + " EAT";
++  const base = { reference: "pos_r6a", side: "YES" as const, stake: 10_000, marketTitle: "T", placedAt: "2026-10-09T09:00:00.000Z", cashOutFeeRate: 0.1, freeExitGraceMinutes: 5, paidExitWindowMinutes: 0 };
++  const r = rows(E.betPlacedHtml({ ...base, resolvesAt: AT }));
++  ok(`4.1 · EXECUTED · a market resolving at 01:00 EAT on 10 Oct reads "Resolves ${eat(AT)}" (it read "2026-10-09")`,
++    r.Resolves === eat(AT) && /\b10 Oct 2026, 01:00 EAT$/.test(r.Resolves), JSON.stringify(r));
++  ok("4.2 · EXECUTED · …in the format of the Placed row above it (one table, one clock)", r.Placed === eat(base.placedAt) && / EAT$/.test(r.Placed));
++  const bad = rows(E.betPlacedHtml({ ...base, resolvesAt: BAD }));
++  ok("4.3 · EXECUTED · an unreadable instant draws no Resolves row — never 'Invalid Date EAT'", !("Resolves" in bad) && !Object.values(bad).some((v) => /Invalid/.test(v)), JSON.stringify(bad));
++  ok("4.3′ CONTROL · the formatter alone would have printed 'Invalid Date EAT' for it", eat(BAD) === "Invalid Date EAT");
++}
++
++/* ══ §5 · THE CALLERS ═════════════════════════════════════════════════════════════════════════════════════════════════ */
++section("5 · the callers hand the instant, and decide permanence through the one definition");
++const RG = read("src/lib/server/responsible-gambling.ts");
++const EMAIL = read("src/lib/server/email.ts");
++const MS = read("src/lib/server/market-service.ts");
++const fn = (src: string, name: string) => { const at = src.indexOf(`function ${name}(`); return at < 0 ? "" : src.slice(at, src.indexOf("\nexport ", at + 10) > 0 ? src.indexOf("\nexport ", at + 10) : undefined); };
++/** No DATE is formatted (the harm detector's `Math.round(n).toLocaleString()` is a number, for an officer, and stays). */
++const rgFormatsNoDate = (src: string) => !/toLocaleDateString|toLocaleTimeString|\)\)?\.toLocaleString\("|\bfmtDate\b|\.slice\(0, 10\)/.test(src);
++{
++  ok("5.1 · responsible-gambling.ts formats no date (no toLocaleDateString / dated toLocaleString, no fmtDate, no UTC-day slice)", rgFormatsNoDate(RG));
++  ok("5.1′ PLANT · the old `fmtDate` put back is reported",
++    !rgFormatsNoDate(RG.replace("const PERIOD_LABEL", 'const fmtDate = (iso: string) => new Date(iso).toLocaleDateString("en-GB");\nconst PERIOD_LABEL')));
++  const se = fn(RG, "selfExclude");
++  const perm = /const standing = selfExclusionStandingOf\(until\);\s*const permanent = standing\.state === "serving" && standing\.permanent;/;
++  ok("5.2 · selfExclude asks selfExclusionStandingOf(until) — the one definition of permanent — and hands the letter the instant and the answer",
++    perm.test(se) && /selfExclusionHtml\(\{ period: periodLabel, untilIso: until, permanent \}\)/.test(se) && /subject: `Self-exclusion confirmed · \$\{periodLabel\}`/.test(se));
++  ok("5.2′ PLANT · permanence read from the period's name instead is reported", !perm.test(se.replace("selfExclusionStandingOf(until)", 'period === "perm" ? { state: "serving", permanent: true } : { state: "none" }')));
++  ok("5.3 · coolOff hands its letter the instant", /coolOffHtml\(\{ duration: PERIOD_LABEL\[period\] \?\? period, untilIso: until \}\)/.test(fn(RG, "coolOff")));
++  const handsInstant = (src: string) => /resolvesAt: market\.resolutionAt,/.test(src) && !/resolutionAt\.slice\(0, 10\)/.test(src);
++  ok("5.4 · market-service hands the receipt the resolution INSTANT, never its UTC day", handsInstant(MS));
++  ok("5.4′ PLANT · the UTC-day cut put back is reported",
++    !handsInstant(MS.replace("resolvesAt: market.resolutionAt,", "resolvesAt: market.resolutionAt.slice(0, 10),")));
++  const end = fn(EMAIL, "rgEndIn");
++  ok("5.5 · the letters' end is `formatEatDateTime` in each line's own month words (dict.en / dict.sw), and nothing else",
++    /en: formatEatDateTime\(at, nowMs, dict\.en\.common\.monthsShort, "en"\)/.test(end) && /sw: formatEatDateTime\(at, nowMs, dict\.sw\.common\.monthsShort, "sw"\)/.test(end)
++    && /if \(!Number\.isFinite\(at\)\) return null;/.test(end));
++  const sx = fn(EMAIL, "selfExclusionHtml"), co = fn(EMAIL, "coolOffHtml");
++  ok("5.6 · both builders take the instant (`untilIso`), read their end only from rgEndIn, and carry no pre-formatted `endDate` and no UTC-day cut",
++    /untilIso: string/.test(sx) && /untilIso: string/.test(co) && /rgEndIn\(untilIso, Date\.now\(\)\)/.test(sx) && /rgEndIn\(untilIso, Date\.now\(\)\)/.test(co)
++    && !/endDate|\.slice\(0, 10\)|toLocale/.test(sx + co));
++  ok("5.7 · a permanent letter draws no end: `permanent ? null : rgEndIn(…)` and the dictionary's word in its Period row",
++    /const end = permanent \? null : rgEndIn\(untilIso, Date\.now\(\)\);/.test(sx) && /value: permanent \? dict\.en\.common\.permanent : period/.test(sx));
++}
++
++/* ══ §6 · THE SERVER'S ZONE NO LONGER MATTERS ═════════════════════════════════════════════════════════════════════════ */
++section("6 · the letters read the same in any server zone (production runs in UTC)");
++{
++  const zones = ["UTC", "Africa/Dar_es_Salaam", "Pacific/Kiritimati", "America/Los_Angeles"];
++  const before = process.env.TZ;
++  const letters: string[] = [], old: string[] = [];
++  for (const z of zones) {
++    process.env.TZ = z;
++    letters.push(E.coolOffHtml({ duration: "24 hours", untilIso: BREAK24 }) + E.selfExclusionHtml({ period: "24 hours", untilIso: EXCL24 }));
++    old.push(new Date(BREAK24).toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" }));
++  }
++  if (before === undefined) delete process.env.TZ; else process.env.TZ = before;
++  ok(`6.1 · EXECUTED · both letters are byte-identical under ${zones.join(", ")}`, letters.every((l) => l === letters[0]));
++  ok(`6.1′ CONTROL · the zone switch is live in this process: the old formatter gave ${[...new Set(old)].join(" / ")} for the same instant`, new Set(old).size > 1, old.join(" | "));
++}
++
++console.log(`\nrg-email-end: ${pass} passed, ${fails.length} failed\n`);
++if (fails.length) {
++  for (const f of fails) console.error(`  · ${f}`);
++  process.exit(1);
++}
++process.exit(0);
+diff --git a/scripts/visual-pass-r6a.test.mts b/scripts/visual-pass-r6a.test.mts
+new file mode 100644
+index 000000000..bdf6ce2f5
+--- /dev/null
++++ b/scripts/visual-pass-r6a.test.mts
+@@ -0,0 +1,369 @@
++/**
++ * test:visual-pass-r6a — R6-A (2026-10-09): the round-6 review's HIGH responsible-gambling findings A2 and A3, and the bell's
++ * sibling of A1. (A1 itself — the confirmation letters — has its own suite, `test:rg-email-end`, so it travels with the
++ * hotfix; §0 holds that it stays registered.)
++ *
++ * A2 · during a break or a self-exclusion no surface offers a stake in place: the market page's bet column, the Up & Down
++ *      board's card and the round's panel each draw the break's own notice instead (`BetBreakNotice`: the approved sentence
++ *      with its end, the neutral box and the lock, a status), and every other door to a stake leads into one of those three.
++ * A3 · no empty state a signed-in player can see invites a first bet during a break: Tiketi zangu's Juu/Chini tab, the
++ *      performance page, and the sweep's two more (the empty leaderboard, the empty activity page) say the break's sentence
++ *      and offer no way to bet — R4-I's TicketsView rule.
++ * Bell · a permanent exclusion's notice names no end (its letter's rule, A1).
++ *
++ * Executed where it can be: the notice, the board card and the round panel are rendered (react-dom/server, the App Router
++ * and i18n contexts as `test:updown-match` renders the card), EmptyState with the pages' own bodies, and the bell notifier on
++ * the in-memory store. The server pages are read decommented. Every rule has a control or a plant beside it; the on-disk
++ * mutation proof is S\r6a\mutation-proof.cjs.
++ */
++import { readFileSync, readdirSync, statSync } from "node:fs";
++import { join } from "node:path";
++import { createElement as h } from "react";
++import { renderToStaticMarkup } from "react-dom/server";
++import { decomment } from "./lib/decomment.mts";
++
++process.env.SESSION_SECRET ??= "test-only-session-secret-32chars-aaaa";
++process.env.OTP_PEPPER ??= "test-only-otp-pepper-16chars";
++const { dict } = await import("../src/lib/i18n-dict.ts");
++const { breakSentence, formatBreakEnd } = await import("../src/lib/break-end.ts");
++const { fill } = await import("../src/lib/utils.ts");
++const { I } = await import("../src/components/ui/glyphs.tsx");
++const { Callout } = await import("../src/components/ui/callout.tsx");
++const { BetBreakNotice } = await import("../src/components/rg/bet-break-notice.tsx");
++const { EmptyState } = await import("../src/components/ui/empty-state.tsx");
++
++let pass = 0;
++const fails: string[] = [];
++const ok = (name: string, cond: boolean, detail = "") => {
++  if (cond) { pass++; console.log(`  ok   ${name}`); }
++  else { fails.push(`${name}${detail ? ` — ${detail}` : ""}`); console.log(`  FAIL ${name}${detail ? ` — ${detail}` : ""}`); }
++};
++const section = (s: string) => console.log(`\n── ${s} ${"─".repeat(Math.max(0, 100 - s.length))}`);
++const raw = (p: string) => readFileSync(p, "utf8").replace(/\r\n/g, "\n");
++/** Source with its comments out (the shared scanner), and the empty JSX braces a comment leaves (`{}`) dropped. */
++const read = (p: string) => decomment(raw(p)).replace(/\{\s*\}/g, "");
++const esc = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
++const decode = (s: string) => s.replace(/&quot;/g, '"').replace(/&#x27;/g, "'").replace(/&lt;/g, "<").replace(/&gt;/g, ">").replace(/&amp;/g, "&");
++const textOf = (markup: string) => decode(markup.replace(/<[^>]+>/g, ""));
++const LOCALES = ["sw", "en", "zh"] as const;
++type L = (typeof LOCALES)[number];
++const T = dict as unknown as Record<L, typeof dict.en>;
++
++const NOW = Date.now();
++const UNTIL = new Date(NOW + 26 * 3_600_000 + 7 * 60_000).toISOString(); // a running break, ~a day ahead
++const sentenceOf = (l: L, exclusion: boolean, until = UNTIL) =>
++  breakSentence(exclusion ? T[l].rg.exclusionActive : T[l].rg.breakActive, until, NOW, T[l].common.monthsShort, l);
++const dateOf = (l: L, until = UNTIL) => formatBreakEnd(Date.parse(until), NOW, T[l].common.monthsShort, l);
++
++/* ══ §0 · A1 TRAVELS WITH ITS OWN SUITE ═══════════════════════════════════════════════════════════════════════════════ */
++section("0 · A1's proof stays registered beside this one (it is cherry-picked onto main with the hotfix)");
++{
++  const pkg = JSON.parse(raw("package.json")) as { scripts: Record<string, string> };
++  ok("0.1 · test:rg-email-end runs scripts/rg-email-end.test.mts, and test:visual-pass-r6a runs this file",
++    pkg.scripts["test:rg-email-end"] === "tsx scripts/rg-email-end.test.mts" && pkg.scripts["test:visual-pass-r6a"] === "tsx scripts/visual-pass-r6a.test.mts");
++}
++
++/* ══ §1 · THE NOTICE ══════════════════════════════════════════════════════════════════════════════════════════════════ */
++section("1 · BetBreakNotice — the approved sentence with its end, the neutral box, the lock, a status (rendered, 3 locales × 2)");
++const LOCK = renderToStaticMarkup(h(I.lock, { s: 17 }));
++const noticeDefects = (markup: string, l: L, exclusion: boolean): string[] => {
++  const d: string[] = [];
++  const s = sentenceOf(l, exclusion), date = dateOf(l);
++  if (textOf(markup) !== fill(exclusion ? T[l].rg.exclusionActive : T[l].rg.breakActive, { date })) d.push("words are not the dictionary's sentence");
++  if (s.text !== textOf(markup)) d.push("inserted or dropped characters");
++  if (!new RegExp(`<span class="whitespace-nowrap">[^<]*${esc(date)}[^<]*</span>`).test(markup)) d.push("the end is not one unbreakable run");
++  if (!/role="status"/.test(markup)) d.push("not a status");
++  if (!/border-dashed border-border bg-bg-elevated\/40/.test(markup)) d.push("not the neutral box");
++  if (!/gap-3 rounded-xl px-4 py-3\.5/.test(markup) || !/text-body-sm leading-snug text-text-muted/.test(markup)) d.push("not the md reading rung");
++  if (!markup.includes(LOCK)) d.push("not the lock glyph");
++  if (/warning|gilt|gold|amber/.test(markup)) d.push("a warning or gold ink");
++  return d;
++};
++{
++  const all: string[] = [];
++  for (const l of LOCALES) for (const exclusion of [false, true]) {
++    const m = renderToStaticMarkup(h(BetBreakNotice, { body: sentenceOf(l, exclusion), testId: "probe" }));
++    all.push(...noticeDefects(m, l, exclusion).map((x) => `${l}/${exclusion ? "exclusion" : "break"}: ${x}`));
++    if (!/^<div data-testid="probe" data-bet-break="">/.test(m)) all.push(`${l}: no test hook`);
++  }
++  ok("1.1 · EXECUTED · every locale, break and exclusion: the dictionary's own sentence (nothing inserted), the end one nowrap run, role=status, the neutral md box, the lock, no warning or gold ink",
++    all.length === 0, all.join("; "));
++  const warn = renderToStaticMarkup(h(Callout, { tone: "warning", size: "md", glyph: "warning", role: "status" }, sentenceOf("sw", false).text));
++  ok("1.1′ CONTROL · a warning box with the bare sentence is reported (box, glyph, ink and run)", noticeDefects(warn, "sw", false).length >= 3, noticeDefects(warn, "sw", false).join("; "));
++}
++
++/* ══ §2 · THE MARKET PAGE'S BET COLUMN ════════════════════════════════════════════════════════════════════════════════ */
++section("2 · /markets/[id] — a reader on a break gets the break's notice where the bet panel stood (both shells)");
++const MARKET = read("src/app/markets/[id]/page.tsx");
++const asideOf = (src: string) => { const a = src.indexOf("<aside className=\"flex flex-col gap-3 lg:sticky"); return a < 0 ? "" : src.slice(a, src.indexOf("</aside>", a)); };
++/** The break branch: first under `bettingOpen`, the column's heading, the one-sided note, the notice — and no SidePicker. */
++const marketGateOk = (src: string) => {
++  const aside = asideOf(src);
++  const m = /\{bettingOpen \? \(\s*session && breakBody \? \(\s*<>([\s\S]*?)<\/>\s*\) : session \? \(/.exec(aside);
++  if (!m) return false;
++  const branch = m[1].replace(/\s+/g, " ").trim();
++  return branch === '<h2 id={BET_PANEL_HEADING} className="sr-only">{t.market.placeYourStake}</h2> {oneSidedCallout} <BetBreakNotice body={breakBody} testId="market-bet-break" />'
++    && (aside.match(/<SidePicker\b/g) ?? []).length === 1 && aside.indexOf("<SidePicker") > aside.indexOf(") : session ? (");
++};
++const marketReadOk = (src: string) =>
++  /const breakEnd = session\s*\? await Promise\.resolve\(\)\.then\(\(\) => isLockedOut\(session\.userId\)\)\s*\.then\(breakStateOf\)\s*\.catch\(\(\) => null\)\s*: null;/.test(src)
++  && /const breakBody = breakEnd\s*\? breakSentence\(breakEnd\.exclusion \? t\.rg\.exclusionActive : t\.rg\.breakActive, breakEnd\.until, Date\.now\(\), t\.common\.monthsShort, locale\)\s*: null;/.test(src);
++{
++  ok("2.1 · the break branch comes first under `bettingOpen`: the column's D40 heading, the one-sided note, BetBreakNotice — and the page's one SidePicker only after it, in the `session` branch",
++    marketGateOk(MARKET), asideOf(MARKET).slice(0, 300));
++  ok("2.1′ PLANT · the dial drawn inside the break branch is reported",
++    !marketGateOk(MARKET.replace('<BetBreakNotice body={breakBody} testId="market-bet-break" />', '<BetBreakNotice body={breakBody} testId="market-bet-break" /><SidePicker marketId={m.id} />')));
++  ok("2.1″ PLANT · the branch removed (the panel back for a reader on a break) is reported",
++    !marketGateOk(MARKET.replace(/session && breakBody \? \([\s\S]*?\) : session \? \(/, "session ? (")));
++  ok("2.2 · the read fails OPEN (a failed read shows the panel; the server refuses) and the sentence is `breakSentence` — the one formatter, the end one run",
++    marketReadOk(MARKET));
++  ok("2.2′ PLANT · a read that throws past the page (no catch) is reported", !marketReadOk(MARKET.replace(".then(breakStateOf)\n        .catch(() => null)", ".then(breakStateOf)")));
++  ok("2.3 · `bettingOpen` stays the market's own truth — a break is the reader's, and the closed panels would misstate the market",
++    /const bettingOpen = !isResolved && m\.status === "LIVE" && !closedByTime && !selectionClosed;/.test(MARKET) && !/bettingOpen = [^;]*break/i.test(MARKET));
++  ok("2.4 · R4-I's two break lines on the page are untouched (Your positions' sentence, Similar markets' withheld line)",
++    /\{myPositions\.length === 0 && \(breakEnd && breakDate \? \(/.test(MARKET) && /\{!breakEnd && <p className="mb-4 text-body-sm text-text-muted">\{t\.market\.similarMarketsBody\}<\/p>\}/.test(MARKET));
++}
++
++/* ══ §3 · THE UP & DOWN BOARD'S CARD ══════════════════════════════════════════════════════════════════════════════════ */
++section("3 · /updown — a bettable card offers no one-tap stake to a reader on a break (rendered)");
++const BOARD = read("src/app/updown/page.tsx");
++const CARD = read("src/components/updown/updown-card.tsx");
++const breakReadOk = (src: string) =>
++  /const breakRead = session\s*\? Promise\.resolve\(\)\.then\(\(\) => isLockedOut\(session\.userId\)\)\.then\(breakStateOf\)\.catch\(\(\) => null\)\s*: Promise\.resolve\(null\);/.test(src)
++  && /const breakEnd = await breakRead;\s*const breakBody = breakEnd\s*\? breakSentence\(breakEnd\.exclusion \? t\.rg\.exclusionActive : t\.rg\.breakActive, breakEnd\.until, Date\.now\(\), t\.common\.monthsShort, locale\)\s*: null;/.test(src);
++const { UpDownCard } = await import("../src/components/updown/updown-card.tsx");
++const { RoundActionPanel } = await import("../src/components/updown/round-action-panel.tsx");
++const { I18nProvider } = await import("../src/lib/i18n.tsx");
++const { AppRouterContext } = await import("next/dist/shared/lib/app-router-context.shared-runtime.js");
++const router = { push() {}, replace() {}, refresh() {}, back() {}, forward() {}, prefetch() {} };
++const inApp = (l: L, el: ReturnType<typeof h>) => renderToStaticMarkup(h(AppRouterContext.Provider, { value: router as never }, h(I18nProvider, { initial: l }, el)));
++const MIN = 60_000;
++const CARD_BASE = {
++  roundId: "udr_r6a", assetName: "Bitcoin", assetTicker: "BTC", assetIcon: "crypto", durationMinutes: 10, decimals: 2,
++  livePrice: 85018.52, openPrice: 85000, upTarget: 85000.02, downTarget: 84999.98, movePct: null,
++  closesAtMs: NOW + 6 * MIN, selectionClosesAtMs: NOW + 4 * MIN, serverNowMs: NOW, volumeTzs: 0, players: 0,
++  pricing: { upPool: 0, downPool: 0, rates: {}, show: false }, state: "open", sourceClass: "crypto",
++  sourceQuotedAt: new Date(NOW - 26_000).toISOString(),
++  isAuthed: true, marketId: "mkt_r6a", minStake: 1000, maxStake: 100000, walletBalance: 50000,
++};
++const card = (l: L, props: Record<string, unknown>) => inApp(l, h(UpDownCard, { ...CARD_BASE, ...props } as never));
++const act = (markup: string) => { const a = markup.indexOf('<div class="ud-act'); return a < 0 ? "" : markup.slice(a, markup.indexOf('<div class="ud-foot', a) > 0 ? markup.indexOf('<div class="ud-foot', a) : undefined); };
++const STAKES = /role="radiogroup"|btn-yes|btn-no|btn-gold/;
++{
++  ok("3.1 · the board reads its reader's lockout beside the board (failing open) and hands every card the sentence",
++    breakReadOk(BOARD) && /breakBody=\{breakBody\}/.test(BOARD));
++  ok("3.1′ PLANT · a read without its catch is reported", !breakReadOk(BOARD.replace(".then(breakStateOf).catch(() => null)", ".then(breakStateOf)")));
++  ok("3.2 · the card's break branch stands first in the bettable arm: `canQuickBet && breakBody` → the notice, then the stake controls",
++    /\{bettable \? \(\s*canQuickBet && breakBody \? \(\s*<BetBreakNotice body=\{breakBody\} testId="updown-card-break" \/>\s*\) : canQuickBet \? \(/.test(CARD));
++  const bad: string[] = [];
++  for (const l of LOCALES) for (const exclusion of [false, true]) {
++    const a = act(card(l, { breakBody: sentenceOf(l, exclusion) }));
++    if (!a.includes('data-testid="updown-card-break"')) bad.push(`${l}: no notice`);
++    if (STAKES.test(a)) bad.push(`${l}: a stake control is still drawn`);
++    if (!textOf(a).includes(sentenceOf(l, exclusion).text)) bad.push(`${l}: not the sentence`);
++  }
++  ok("3.3 · EXECUTED · a signed-in reader's bettable card on a break (3 locales × break/exclusion): the notice, the sentence, and no stake chip, side button or commit",
++    bad.length === 0, bad.join("; "));
++  const open = act(card("sw", {}));
++  ok("3.3′ CONTROL · the same card with no break draws the stake controls and no notice", STAKES.test(open) && !open.includes("updown-card-break"));
++  const locked = card("sw", { breakBody: sentenceOf("sw", false), selectionClosesAtMs: NOW - MIN });
++  ok("3.4 · EXECUTED · a LOCKED card keeps its locked presentation on a break — the notice stands only where a stake would",
++    !locked.includes("updown-card-break") && textOf(locked).includes(T.sw.market.udLockedTitle));
++  const guest = act(card("sw", { breakBody: sentenceOf("sw", false), isAuthed: false }));
++  ok("3.5 · EXECUTED · the gate is the signed-in stake path (`canQuickBet`): a guest's card is untouched", !guest.includes("updown-card-break") && /btn-yes/.test(guest));
++}
++
++/* ══ §4 · THE ROUND'S PANEL ═══════════════════════════════════════════════════════════════════════════════════════════ */
++section("4 · /updown/[roundId] — the round's stake panel gives way to the notice, in the same #stake region (rendered)");
++const ROUND = read("src/app/updown/[roundId]/page.tsx");
++const PANEL = read("src/components/updown/round-action-panel.tsx");
++const panel = (l: L, stake: Record<string, unknown>, at: { selectionClosedAt?: string } = {}) => inApp(l, h(RoundActionPanel, {
++  state: "open", selectionClosedAt: at.selectionClosedAt ?? new Date(NOW + 4 * MIN).toISOString(), closesAt: new Date(NOW + 6 * MIN).toISOString(),
++  serverNowMs: NOW, myExactPayout: null, ariaStake: T[l].market.udStake,
++  stakePanel: { marketId: "mkt_r6a", isAuthed: true, minStake: 1000, maxStake: 100000, myUpStake: 0, myDownStake: 0,
++    pricing: { upPool: 0, downPool: 0, rates: {}, show: false }, assetName: "Bitcoin", signInHref: "/auth/login?next=%2Fupdown%2Fudr_r6a",
++    lockedSide: null, walletBalance: 50000, ...stake },
++} as never));
++{
++  ok("4.1 · the round page reads its reader's lockout beside the round (failing open) and puts the sentence in the stake panel's props",
++    breakReadOk(ROUND) && /receipt: round\.receipt,\s*breakBody,\s*\}\}/.test(ROUND));
++  ok("4.2 · the panel's bettable arm: `breakBody` taken out of the stake props, the notice for a signed-in reader on a break, RoundStakePanel only otherwise",
++    /if \(bettable\) \{\s*const \{ breakBody, \.\.\.stake \} = stakePanel;\s*if \(stake\.isAuthed && breakBody\) \{/.test(PANEL) && /<RoundStakePanel\s*\{\.\.\.stake\}/.test(PANEL) && !/\{\.\.\.stakePanel\}/.test(PANEL));
++  const bad: string[] = [];
++  for (const l of LOCALES) for (const exclusion of [false, true]) {
++    const m = panel(l, { breakBody: sentenceOf(l, exclusion) });
++    if (!new RegExp(`^<section id="stake" tabindex="-1" aria-label="${esc(T[l].market.udStake)}" class="scroll-mt-\\[96px\\]"><div data-testid="updown-round-break"`).test(m)) bad.push(`${l}: not the notice in #stake`);
++    if (/updown-stake-panel|shadow-card/.test(m) || STAKES.test(m)) bad.push(`${l}: the stake card or a control is still drawn`);
++    if (!textOf(m).includes(sentenceOf(l, exclusion).text)) bad.push(`${l}: not the sentence`);
++  }
++  ok("4.3 · EXECUTED · signed in, on a break (3 locales × break/exclusion): #stake holds the notice alone — no stake card, no chip, no Confirm",
++    bad.length === 0, bad.join("; "));
++  const live = panel("sw", {});
++  ok("4.3′ CONTROL · with no break the same panel draws the stake card and its controls", /data-testid="updown-stake-panel"/.test(live) && /shadow-card/.test(live) && !live.includes("updown-round-break"));
++  const guest = panel("sw", { isAuthed: false, breakBody: sentenceOf("sw", false) });
++  ok("4.4 · EXECUTED · a guest keeps the sign-in route (the gate is the signed-in reader)", !guest.includes("updown-round-break") && textOf(guest).includes(T.sw.market.udSignInToBet));
++  const locked = panel("sw", { breakBody: sentenceOf("sw", false) }, { selectionClosedAt: new Date(NOW - MIN).toISOString() });
++  ok("4.5 · EXECUTED · a locked round keeps its locked panel on a break", !locked.includes("updown-round-break") && textOf(locked).includes(T.sw.market.udLockedTitle));
++}
++
++/* ══ §5 · EVERY PLACE A STAKE CAN BE STARTED ══════════════════════════════════════════════════════════════════════════ */
++section("5 · the census — every in-place stake control is gated, every other door leads into a gated page");
++const walk = (dir: string): string[] => readdirSync(dir).flatMap((f) => {
++  const p = join(dir, f).replace(/\\/g, "/");
++  return statSync(p).isDirectory() ? walk(p) : /\.(tsx?|mts)$/.test(p) ? [p] : [];
++});
++const SRC = walk("src").filter((p) => !p.startsWith("src/app/admin/") && !p.startsWith("src/components/admin/") && !p.startsWith("src/app/api/"));
++const SOURCES = new Map(SRC.map((p) => [p, read(p)]));
++/** Where a stake is PLACED IN PLACE, and what gates it. A new site fails until it is classified here. */
++const IN_PLACE: Record<string, string> = {
++  "src/app/markets/[id]/page.tsx": "draws <SidePicker> only after its break branch (§2)",
++  "src/components/markets/side-picker.tsx": "the dial's host — drawn only by the market page",
++  "src/components/markets/conviction-dial.tsx": "the dial, which commits through buyPositionAction — drawn only by SidePicker",
++  "src/components/updown/updown-card.tsx": "its bettable arm draws the notice first (§3)",
++  "src/components/updown/round-stake-panel.tsx": "drawn only by RoundActionPanel's non-break arm (§4)",
++  "src/components/updown/updown-stake-controls.tsx": "the shared control itself — drawn by the card and the stake panel only",
++  "src/components/updown/use-quick-bet.ts": "the shared commit hook itself",
++};
++const STAKE_SITE = /<SidePicker\b|<ConvictionDial\b|<UpDownStakeControls\b|<RoundStakePanel\b|\buseUpDownQuickBet\(|\bbuyPositionAction\b/;
++{
++  const sites = [...SOURCES].filter(([p, s]) => STAKE_SITE.test(s) && p !== "src/app/markets/actions.ts").map(([p]) => p);
++  const unclassified = sites.filter((p) => !(p in IN_PLACE) && p !== "src/components/updown/round-action-panel.tsx");
++  ok(`5.1 · every in-place stake site is classified (${sites.length}: ${sites.map((p) => p.split("/").pop()).join(", ")})`, unclassified.length === 0, unclassified.join(", "));
++  const users = (re: RegExp) => [...SOURCES].filter(([, s]) => re.test(s)).map(([p]) => p).sort().join(",");
++  ok("5.2 · each host is drawn where §2–§4 gate it: SidePicker by the market page, the board card by /updown, RoundActionPanel by the round page, RoundStakePanel by RoundActionPanel, the dial by SidePicker",
++    users(/<SidePicker\b/) === "src/app/markets/[id]/page.tsx" && users(/<UpDownCard\b/) === "src/app/updown/page.tsx"
++    && users(/<RoundActionPanel\b/) === "src/app/updown/[roundId]/page.tsx" && users(/<RoundStakePanel\b/) === "src/components/updown/round-action-panel.tsx"
++    && users(/<ConvictionDial\b/) === "src/components/markets/side-picker.tsx",
++    [users(/<SidePicker\b/), users(/<UpDownCard\b/), users(/<RoundActionPanel\b/), users(/<RoundStakePanel\b/), users(/<ConvictionDial\b/)].join(" | "));
++  // Doors: a link or a push carrying a side (`?side=`) — every one must open the market page or a round page.
++  const doors: string[] = [];
++  for (const [p, s] of SOURCES) {
++    for (const line of s.split("\n")) {
++      // Template literals first; a quoted string only where the line has no template carrying the side.
++      const tpl = [...line.matchAll(/`[^`]*\?side=[^`]*`/g)].map((m) => m[0]);
++      const quoted = tpl.length ? [] : [...line.matchAll(/"[^"`]*\?side=[^"`]*"/g)].map((m) => m[0]);
++      for (const d of [...tpl, ...quoted]) doors.push(`${p} :: ${d} :: ${line.trim()}`);
++    }
++  }
++  /** A side-carrying door opens the market page or a round page — directly, through the board's own route, or as the
++   *  sign-in `next` back to the very page it stands on (the market page's guest panel, the round page's `signInHref`). */
++  const gated = (d: string) => /:: `(\/markets\/\$\{|\/updown\/\$\{|\$\{roundHref\}\?side=)/.test(d)
++    || /:: `\?side=\$\{(side|lockedSide)\}` :: .*(betNext = "\/markets\/" \+ m\.id|\/updown\/\$\{(roundId|round\.id)\}\$\{lockedSide \?)/.test(d);
++  const elsewhere = doors.filter((d) => !gated(d));
++  ok(`5.3 · every door that carries a side (${doors.length}) opens /markets/<id> or /updown/<round> — the gated pages`, elsewhere.length === 0 && doors.length >= 5,
++    elsewhere.join(" ; "));
++  ok("5.3′ CONTROL · the door census sees the home rows, the band's picks and the card's push", /landing-hero\.tsx/.test(doors.join()) && /updown-band\.tsx/.test(doors.join()) && /market-card\.tsx/.test(doors.join()));
++}
++
++/* ══ §6 · THE EMPTY STATES ════════════════════════════════════════════════════════════════════════════════════════════ */
++section("6 · no empty state invites a first bet during a break (A3 and the sweep), rendered and read");
++const HISTORY = read("src/app/updown/history/page.tsx");
++const PERF = read("src/app/positions/performance/page.tsx");
++const LEADER = read("src/app/leaderboard/page.tsx");
++const ACTIVITY = read("src/app/profile/activity/page.tsx");
++const bodyOf = (tpl: string) => `breakSentence\\(breakEnd\\.exclusion \\? t\\.rg\\.exclusionActive : t\\.rg\\.breakActive, breakEnd\\.until, (?:nowMs|Date\\.now\\(\\)), t\\.common\\.monthsShort, locale\\)${tpl}`;
++const historyOk = (src: string) =>
++  /const breakEnd = cause === "no-rows"\s*\? await Promise\.resolve\(\)\.then\(\(\) => isLockedOut\(session\.userId\)\)\.then\(breakStateOf\)\.catch\(\(\) => null\)\s*: null;/.test(src)
++  && new RegExp(bodyOf("")).test(src)
++  && /body=\{cause === "no-rows" \? \(breakBody \?\? t\.market\.udNoHistoryBody\) : t\.market\.udHistoryBody\}/.test(src)
++  && /cause === "no-rows" \? \(\s*breakBody \? null : <Link href="\/updown" className="btn btn-primary btn-md">\{t\.market\.udTitle\}<\/Link>\s*\)/.test(src);
++const perfOk = (src: string) =>
++  /const breakEnd = totalBets === 0\s*\? await Promise\.resolve\(\)\.then\(\(\) => isLockedOut\(session\.userId\)\)\.then\(breakStateOf\)\.catch\(\(\) => null\)\s*: null;/.test(src)
++  && new RegExp(bodyOf("")).test(src)
++  && /body=\{breakBody \?\? t\.performance\.noPerformanceBody\}\s*action=\{breakBody \? null : <Link href=\{"\/markets" as never\} className="btn btn-primary btn-sm">\{t\.positions\.browseMarkets\}<\/Link>\}/.test(src);
++const leaderOk = (src: string) =>
++  /const breakEnd = rows\.length === 0\s*\? await currentSession\(\)\s*\.then\(\(s\) => \(s \? isLockedOut\(s\.userId\)\.then\(breakStateOf\) : null\)\)\s*\.catch\(\(\) => null\)\s*: null;/.test(src)
++  && new RegExp(bodyOf("")).test(src)
++  && /body=\{breakBody \?\? t\.leaderboard\.emptyBody\}\s*action=\{breakBody \? null : <Link href=\{"\/markets" as never\} className="btn btn-primary btn-sm">\{t\.positions\.browseMarkets\}<\/Link>\}/.test(src);
++const activityOk = (src: string) =>
++  /const breakEnd = summary\.empty \? breakStateFromTimers\(rg\.selfExclusionUntil, rg\.coolingOffUntil, Date\.now\(\)\) : null;/.test(src)
++  && new RegExp(bodyOf("")).test(src)
++  && /body=\{breakBody \?\? t\.activity\.emptyBody\}\s*action=\{breakBody \? null : <Link href=\{"\/markets" as never\} className="btn btn-primary btn-sm">\{t\.activity\.browseMarkets\}<\/Link>\}/.test(src);
++{
++  ok("6.1 · Tiketi zangu's Juu/Chini tab (/updown/history): on a break the no-rows state says the break and offers no 'Juu na Chini' button (read only for that state, failing open)", historyOk(HISTORY));
++  ok("6.1′ PLANT · the board door kept during a break is reported", !historyOk(HISTORY.replace("breakBody ? null : <Link href=\"/updown\"", "<Link href=\"/updown\"")));
++  ok("6.2 · /positions/performance: on a break the empty page says the break and offers no 'Browse markets'", perfOk(PERF));
++  ok("6.2′ PLANT · the invitation kept as the body during a break is reported", !perfOk(PERF.replace("body={breakBody ?? t.performance.noPerformanceBody}", "body={t.performance.noPerformanceBody}")));
++  ok("6.3 · the sweep · the empty leaderboard ('Place a prediction to get on the board.'): a signed-in reader on a break reads the break, no button; a guest's board unchanged", leaderOk(LEADER));
++  ok("6.3′ PLANT · a session read that can throw past the page is reported", !leaderOk(LEADER.replace(".then(breakStateOf) : null))\n        .catch(() => null)", ".then(breakStateOf) : null))")));
++  ok("6.4 · the sweep · the empty activity page (its own note: 'invited to go and bet'): the break from the usage row's own timers, no button", activityOk(ACTIVITY));
++  ok("6.4′ PLANT · the Browse door kept during a break is reported", !activityOk(ACTIVITY.replace("action={breakBody ? null : <Link", "action={<Link")));
++  // Rendered: the body the pages hand EmptyState, and its control.
++  const bad: string[] = [];
++  for (const l of LOCALES) for (const exclusion of [false, true]) {
++    const s = sentenceOf(l, exclusion), date = dateOf(l);
++    const m = renderToStaticMarkup(h(EmptyState, { title: T[l].market.udNoHistory, body: s, action: null }));
++    if (!textOf(m).includes(s.text)) bad.push(`${l}: not the sentence`);
++    if (!new RegExp(`<span class="whitespace-nowrap">[^<]*${esc(date)}[^<]*</span>`).test(m)) bad.push(`${l}: the end is not one run`);
++    if (/<a |<button/.test(m)) bad.push(`${l}: a door is drawn`);
++  }
++  ok("6.5 · EXECUTED · the empty state the pages draw on a break (3 locales × 2): the title, the sentence with its end one run, no link and no button", bad.length === 0, bad.join("; "));
++  const control = renderToStaticMarkup(h(EmptyState, { title: T.sw.market.udNoHistory, body: T.sw.market.udNoHistoryBody, action: h("a", { href: "/updown", className: "btn btn-primary btn-md" }, T.sw.market.udTitle) }));
++  ok("6.5′ CONTROL · off a break the same state draws its invitation and its door", textOf(control).includes(T.sw.market.udNoHistoryBody) && /<a href="\/updown"/.test(control));
++  // Census: every dictionary invitation to a FIRST BET, wherever src draws it, sits behind its page's break gate.
++  const INVITES: Record<string, { gate: RegExp; where: string }> = {
++    "t.home.picksNone": { gate: /onBreak \? null :/, where: "landing-hero.tsx (R4-I)" },
++    "t.market.noBetYet": { gate: /breakEnd && breakDate \?/, where: "markets/[id] (R4-I)" },
++    "t.positions.noOpenBody": { gate: /cause === "no-rows" && breakBody \? breakBody/, where: "positions (R4-I)" },
++    "t.journey.ticketsEmptyOpenBody": { gate: /breakNow && breakBody \? breakBody/, where: "tickets-view.tsx (R4-I)" },
++    "t.market.udNoHistoryBody": { gate: /breakBody \?\? t\.market\.udNoHistoryBody/, where: "updown/history (R6-A)" },
++    "t.performance.noPerformanceBody": { gate: /breakBody \?\? t\.performance\.noPerformanceBody/, where: "performance (R6-A)" },
++    "t.leaderboard.emptyBody": { gate: /breakBody \?\? t\.leaderboard\.emptyBody/, where: "leaderboard (R6-A)" },
++    "t.activity.emptyBody": { gate: /breakBody \?\? t\.activity\.emptyBody/, where: "activity (R6-A)" },
++  };
++  const loose: string[] = [];
++  let seen = 0;
++  for (const [key, { gate }] of Object.entries(INVITES)) {
++    for (const [p, s] of SOURCES) {
++      const lines = s.split("\n");
++      lines.forEach((line, i) => {
++        if (!line.includes(key)) return;
++        seen++;
++        // The gate stands in the same expression, at most eight lines up (R4-I's market line is a two-paragraph ternary).
++        if (!gate.test(lines.slice(Math.max(0, i - 8), i + 1).join("\n"))) loose.push(`${p}:${i + 1} ${key}`);
++      });
++    }
++  }
++  ok(`6.6 · the census · every use of the eight first-bet invitations (${seen}) sits behind its page's break gate`, loose.length === 0 && seen >= 8, loose.join("; "));
++  const enInvites = Object.keys(INVITES).map((k) => k.split(".").slice(1)).map(([sec, key]) => (dict.en as Record<string, Record<string, string>>)[sec][key]);
++  ok("6.6′ CONTROL · the eight are the dictionary's invitations to bet (each says pick / place / back / choose, or is the board's door)",
++    enInvites.every((s) => /pick|place|back a round|choose|dial|deposit or place a bet/i.test(s)), enInvites.join(" | "));
++}
++
++/* ══ §7 · THE BELL (A1's sibling, this branch only) ═══════════════════════════════════════════════════════════════════ */
++section("7 · the bell — a permanent exclusion's notice names no end, as its letter does (executed on the in-memory store)");
++{
++  const { db } = await import("../src/lib/server/store.ts");
++  const N = await import("../src/lib/server/notification-service.ts");
++  const nowIso = new Date().toISOString();
++  const mk = async (id: string) => {
++    await db.user.create({
++      id, phoneE164: `+2557899${String(Math.floor(Math.random() * 1e5)).padStart(5, "0")}`, email: `${id}@test.tz`, passwordHash: null, passwordSalt: null,
++      failedLoginCount: 0, lockedUntil: null, role: "PLAYER", status: "ACTIVE", locale: "EN", displayName: null, dob: null, region: null,
++      acceptedTermsVersion: null, acceptedTermsAt: null, marketingOptIn: false, twoFactorEnabled: false, avatarDataUrl: null,
++      createdAt: nowIso, updatedAt: nowIso, lastLoginAt: null, closedAt: null,
++    } as never);
++  };
++  await mk("r6a_perm"); await mk("r6a_6m");
++  const PERM = new Date(Date.now() + 100 * 365 * 86_400_000).toISOString();
++  const SIX = new Date(Date.now() + 182 * 86_400_000).toISOString();
++  const p = await N.notifySelfExclusion("r6a_perm", { until: PERM });
++  const s = await N.notifySelfExclusion("r6a_6m", { until: SIX });
++  ok("7.1 · EXECUTED · permanent: \"Your account is closed to betting and deposits.\" / \"…kuweka dau na amana.\" / \"…投注与充值。\" — no end, every other word the notice's own",
++    !!p && p.bodyEn === "Your account is closed to betting and deposits." && p.bodySw === "Akaunti yako imefungwa kuweka dau na amana."
++    && p.bodyZh === "您的账户已停止投注与充值。", JSON.stringify(p && [p.bodyEn, p.bodySw, p.bodyZh]));
++  const want = (l: L) => formatBreakEnd(Date.parse(SIX), Date.now(), T[l].common.monthsShort, l);
++  ok("7.1′ CONTROL · a six-month exclusion keeps its dated sentence in every language",
++    !!s && s.bodyEn === `Your account is closed to betting and deposits until ${want("en")}.` && s.bodySw === `Akaunti yako imefungwa kuweka dau na amana hadi ${want("sw")}.`
++    && s.bodyZh === `您的账户已停止投注与充值，直至 ${want("zh")}。`, JSON.stringify(s && [s.bodyEn, s.bodySw, s.bodyZh]));
++  const NS = read("src/lib/server/notification-service.ts");
++  ok("7.2 · permanence is the one definition, read lazily, and a failed read keeps the dated sentence (the notice is never lost)",
++    /const permanent = await import\("\.\/responsible-gambling"\)\s*\.then\(\(m\) => \{ const s = m\.selfExclusionStandingOf\(opts\.until\); return s\.state === "serving" && s\.permanent; \}\)\s*\.catch\(\(\) => false\);\s*const end = permanent \? null : await breakEndIn\(opts\.until\);/.test(NS));
++}
++
++console.log(`\nvisual-pass-r6a: ${pass} passed, ${fails.length} failed\n`);
++if (fails.length) {
++  for (const f of fails) console.error(`  · ${f}`);
++  process.exit(1);
++}
++process.exit(0);
+diff --git a/src/app/leaderboard/page.tsx b/src/app/leaderboard/page.tsx
+index 08b4a95b5..1ca08d7fe 100644
+--- a/src/app/leaderboard/page.tsx
++++ b/src/app/leaderboard/page.tsx
+@@ -24,6 +24,9 @@ import { RefreshPoller } from "@/components/ui/refresh-poller";
+ import { ScrollX } from "@/components/ui/scroll-x";
+ import { getServerT, type Dict } from "@/lib/i18n-server";
+ import { PageContainer } from "@/components/layout/page-container";
++import { currentSession } from "@/lib/server/auth-service";
++import { isLockedOut } from "@/lib/server/responsible-gambling";
++import { breakSentence, breakStateOf } from "@/lib/break-end";
+ import { QUERY_BAR_ROW2_CLASS, QuerySort } from "@/components/ui/query-bar";
+ import { FilterPill } from "@/components/ui/filter-pill";
+ import {
+@@ -244,7 +247,7 @@ function syntheticLeaderboard(): Row[] {
+ }
+ 
+ export default async function LeaderboardPage({ searchParams }: { searchParams: Promise<Record<string, string | string[] | undefined>> }) {
+-  const { t } = await getServerT();
++  const { t, locale } = await getServerT();
+   const sp = await searchParams;
+   const state = parseLeaderParams(sp);
+   /**
+@@ -267,6 +270,20 @@ export default async function LeaderboardPage({ searchParams }: { searchParams:
+   // board renders a genuine empty state instead.
+   const isSynthetic = real.length === 0 && process.env.NODE_ENV !== "production";
+   const rows = isSynthetic ? syntheticLeaderboard() : real;
++  /* ⭐ R6-A (2026-10-09, the sweep of reviewer A's A3) · AN EMPTY BOARD DOES NOT TELL A READER ON A BREAK TO BET. Its body
++     ends "Place a prediction to get on the board." over a primary "Browse markets" — the invitation R4-I took off /positions
++     for a reader on a break. For a signed-in reader on a break or a self-exclusion the empty board says the break's own
++     sentence with its end (`breakSentence`) and offers no way to bet; its title stays, and a guest's empty board is
++     unchanged. Read only for the empty board (this page reads no session otherwise), failing OPEN (`feature-state.ts`
++     LAW 1). Both shells (the page's body). */
++  const breakEnd = rows.length === 0
++    ? await currentSession()
++        .then((s) => (s ? isLockedOut(s.userId).then(breakStateOf) : null))
++        .catch(() => null)
++    : null;
++  const breakBody = breakEnd
++    ? breakSentence(breakEnd.exclusion ? t.rg.exclusionActive : t.rg.breakActive, breakEnd.until, Date.now(), t.common.monthsShort, locale)
++    : null;
+   // Paginate the ranking the same way every other list on the platform paginates.
+   // ⛔ `baseHref` CARRIES THE SORT. It was the bare string "/leaderboard", so turning a page
+   //    silently dropped the ordering and put the reader back on ROI without saying so.
+@@ -318,8 +335,8 @@ export default async function LeaderboardPage({ searchParams }: { searchParams:
+         <EmptyState
+           kind="leaderboard"
+           title={t.leaderboard.emptyTitle}
+-          body={t.leaderboard.emptyBody}
+-          action={<Link href={"/markets" as never} className="btn btn-primary btn-sm">{t.positions.browseMarkets}</Link>}
++          body={breakBody ?? t.leaderboard.emptyBody}
++          action={breakBody ? null : <Link href={"/markets" as never} className="btn btn-primary btn-sm">{t.positions.browseMarkets}</Link>}
+         />
+       ) : (
+         <>
+diff --git a/src/app/markets/[id]/page.tsx b/src/app/markets/[id]/page.tsx
+index 1a1005249..75f1a85f2 100644
+--- a/src/app/markets/[id]/page.tsx
++++ b/src/app/markets/[id]/page.tsx
+@@ -48,8 +48,9 @@ import { formatTzsCompact, formatTzs, fill } from "@/lib/utils";
+ // Every date this page prints is in the reader's month words on the East Africa clock (§L4): `formatDateTime` and
+ // `formatDeadline` printed English months in every locale.
+ import { formatEatDateTime } from "@/lib/eat-day";
+-import { breakStateOf, formatBreakEnd } from "@/lib/break-end";
++import { breakSentence, breakStateOf, formatBreakEnd } from "@/lib/break-end";
+ import { keepText } from "@/components/ui/keep-run";
++import { BetBreakNotice } from "@/components/rg/bet-break-notice";
+ import { isLockedOut } from "@/lib/server/responsible-gambling";
+ import { appUrl } from "@/lib/app-url";
+ import { getServerT } from "@/lib/i18n-server";
+@@ -247,6 +248,13 @@ export default async function MarketDetail({
+         .catch(() => null)
+     : null;
+   const breakDate = breakEnd ? formatBreakEnd(Date.parse(breakEnd.until), Date.now(), t.common.monthsShort, locale) : null;
++  /* ⭐ R6-A (2026-10-09, reviewer A's A2) · …AND IT GATES THE BET ITSELF. The same read left the whole bet panel — the dial,
++     the stake, the confirm — on the screen of a player on a break, under a page that said the break further down. The bet
++     column now draws the break's notice instead (`BetBreakNotice`), the same approved sentence with its end, kept one run.
++     Still failing OPEN: a failed read shows the panel, and the server refuses the bet (`cooling_off` / `self_excluded`). */
++  const breakBody = breakEnd
++    ? breakSentence(breakEnd.exclusion ? t.rg.exclusionActive : t.rg.breakActive, breakEnd.until, Date.now(), t.common.monthsShort, locale)
++    : null;
+   /**
+    * 🔴 THE SHARE BUTTON USED TO MINT A REFERRAL CODE FOR EVERY SIGNED-IN PLAYER, and the
+    * binding it produced is PERMANENT — `bindRecruit` writes `recruitedBy` once and never
+@@ -688,7 +696,17 @@ export default async function MarketDetail({
+         <div className="order-1 lg:order-2 lg:col-start-2 lg:row-start-1 lg:self-stretch">
+         <aside className="flex flex-col gap-3 lg:sticky lg:top-[72px] lg:z-10" aria-labelledby={BET_PANEL_HEADING}>
+           {bettingOpen ? (
+-            session ? (
++            session && breakBody ? (
++              <>
++              {/* ⭐ R6-A (2026-10-09, A2) · A READER ON A BREAK IS NOT OFFERED THE BET. In the stake's place, the break's own
++                  notice (`BetBreakNotice`: the approved sentence with its end, the neutral box and the lock, a status). The
++                  column keeps its heading — the signed-in panel's D40 heading, read and not seen — and the one-sided note keeps
++                  its spot at the top of the column, as for a guest. Both shells: this is the page's body. */}
++              <h2 id={BET_PANEL_HEADING} className="sr-only">{t.market.placeYourStake}</h2>
++              {oneSidedCallout}
++              <BetBreakNotice body={breakBody} testId="market-bet-break" />
++              </>
++            ) : session ? (
+               <>
+               {/* D40 · THE ONLY BRANCH WITH NO HEADING OF ITS OWN, so it gets one that is read
+                   and not seen. The other four states already name themselves in a heading; this
+diff --git a/src/app/positions/performance/page.tsx b/src/app/positions/performance/page.tsx
+index 369db3bd9..55200fa6d 100644
+--- a/src/app/positions/performance/page.tsx
++++ b/src/app/positions/performance/page.tsx
+@@ -17,6 +17,8 @@ import { keepFigures } from "@/components/ui/keep-words";
+ import { sideWord } from "@/lib/side-label";
+ import { PageContainer } from "@/components/layout/page-container";
+ import { PerformanceBar } from "./performance-bar";
++import { isLockedOut } from "@/lib/server/responsible-gambling";
++import { breakSentence, breakStateOf } from "@/lib/break-end";
+ import {
+   parsePerfParams,
+   perfCounts,
+@@ -171,6 +173,18 @@ export default async function PerformancePage({
+     };
+   });
+ 
++  /* ⭐ R6-A (2026-10-09, reviewer A's A3) · DURING A BREAK THE EMPTY PAGE DOES NOT SAY "BET". "Weka utabiri wako wa kwanza
++     kuanza kufuatilia utendaji wako" ("Place your first prediction…") stood over a primary "Browse markets" while betting
++     was paused — the very door R4-I took off /positions for a reader on a break. For that reader the empty state says the
++     break's own sentence with its end (`breakSentence`) and offers no way to bet; its title stays. Both shells (the page's
++     body). Read only for that empty state, and failing OPEN — it gates an invitation (`feature-state.ts` LAW 1). */
++  const breakEnd = totalBets === 0
++    ? await Promise.resolve().then(() => isLockedOut(session.userId)).then(breakStateOf).catch(() => null)
++    : null;
++  const breakBody = breakEnd
++    ? breakSentence(breakEnd.exclusion ? t.rg.exclusionActive : t.rg.breakActive, breakEnd.until, Date.now(), t.common.monthsShort, locale)
++    : null;
++
+   return (
+     <PageContainer tier="reading" className="space-y-6">
+       <BackLink fallbackHref="/positions" label={t.common.positions} />
+@@ -207,8 +221,8 @@ export default async function PerformancePage({
+           fill
+           kind="positions"
+           title={t.performance.noPerformance}
+-          body={t.performance.noPerformanceBody}
+-          action={<Link href={"/markets" as never} className="btn btn-primary btn-sm">{t.positions.browseMarkets}</Link>}
++          body={breakBody ?? t.performance.noPerformanceBody}
++          action={breakBody ? null : <Link href={"/markets" as never} className="btn btn-primary btn-sm">{t.positions.browseMarkets}</Link>}
+         />
+       ) : (
+         <>
+diff --git a/src/app/profile/activity/page.tsx b/src/app/profile/activity/page.tsx
+index 660c99bc7..4146b0d2d 100644
+--- a/src/app/profile/activity/page.tsx
++++ b/src/app/profile/activity/page.tsx
+@@ -22,6 +22,7 @@ import { formatTzs } from "@/lib/utils";
+ import { getServerT, type Dict } from "@/lib/i18n-server";
+ import Link from "next/link";
+ import { PageContainer } from "@/components/layout/page-container";
++import { breakSentence, breakStateFromTimers } from "@/lib/break-end";
+ 
+ // Localised tab title (POLISH-BACKLOG §1.7) — was the hard-coded English
+ // "Your activity", which a Swahili player saw in their browser tab and history.
+@@ -37,7 +38,7 @@ function isPeriod(v: string | undefined): v is ActivityPeriod {
+ }
+ 
+ export default async function ActivityPage({ searchParams }: { searchParams: Promise<{ period?: string }> }) {
+-  const { t } = await getServerT();
++  const { t, locale } = await getServerT();
+   const session = await getSession();
+   if (!session) redirect("/auth/login?next=/profile/activity");
+   const { period: rawPeriod } = await searchParams;
+@@ -65,6 +66,16 @@ export default async function ActivityPage({ searchParams }: { searchParams: Pro
+     getActivitySummary(session.userId, period),
+     getRgUsage(session.userId),
+   ]);
++  /* ⭐ R6-A (2026-10-09, the sweep of reviewer A's A3) · DURING A BREAK THE EMPTY STATE DOES NOT SEND THE PLAYER TO BET. The
++     note below already calls it what it was — "shown 'no activity yet' and invited to go and bet" — and the invitation
++     (a primary "Browse markets") stood during a break too. For a reader on a break or a self-exclusion the empty state
++     says the break's own sentence with its end (`breakSentence`) and offers no way to bet; its title stays. No second
++     read: the usage row above already carries both timers, and `breakStateFromTimers` asks them as `isLockedOut` does
++     (an exclusion first, then a break). Both shells (the page's body). */
++  const breakEnd = summary.empty ? breakStateFromTimers(rg.selfExclusionUntil, rg.coolingOffUntil, Date.now()) : null;
++  const breakBody = breakEnd
++    ? breakSentence(breakEnd.exclusion ? t.rg.exclusionActive : t.rg.breakActive, breakEnd.until, Date.now(), t.common.monthsShort, locale)
++    : null;
+ 
+   /**
+    * ⭐ PLAYER QUERY, TASK 4.13 — AND THE BOARD NAMED THE WRONG DEFECT.
+@@ -143,8 +154,8 @@ export default async function ActivityPage({ searchParams }: { searchParams: Pro
+         <EmptyState
+           kind="positions"
+           title={t.activity.emptyTitle}
+-          body={t.activity.emptyBody}
+-          action={<Link href={"/markets" as never} className="btn btn-primary btn-sm">{t.activity.browseMarkets}</Link>}
++          body={breakBody ?? t.activity.emptyBody}
++          action={breakBody ? null : <Link href={"/markets" as never} className="btn btn-primary btn-sm">{t.activity.browseMarkets}</Link>}
+         />
+       )}
+       {!summary.empty && (
+diff --git a/src/app/updown/[roundId]/page.tsx b/src/app/updown/[roundId]/page.tsx
+index 52e33d994..7c924711f 100644
+--- a/src/app/updown/[roundId]/page.tsx
++++ b/src/app/updown/[roundId]/page.tsx
+@@ -55,6 +55,8 @@ import { refreshCadence, handoverPollUntil } from "@/lib/refresh-cadence";
+ import { UpDownHandover } from "@/components/updown/updown-handover";
+ import { usd } from "@/lib/usd-price";
+ import { heroPrice, roundIsSettled } from "@/lib/updown-card-phase";
++import { isLockedOut } from "@/lib/server/responsible-gambling";
++import { breakSentence, breakStateOf } from "@/lib/break-end";
+ 
+ export const dynamic = "force-dynamic";
+ 
+@@ -120,12 +122,23 @@ export default async function UpDownRoundPage({
+   const session = await currentSession();
+   // Who is looking? The raw provider blob below is an officer tool, not player copy.
+   const viewerIsStaff = isStaffRole(session?.role ?? "");
++  /* ⭐ R6-A (2026-10-09, reviewer A's A2) · THE READER'S OWN BREAK, so the stake panel is not offered to a player who has
++     paused betting: the break's notice stands in its place (`RoundActionPanel`'s `breakBody`). Read beside the round, and
++     failing OPEN — it gates an invitation (`feature-state.ts` LAW 1): a failed read shows the panel, and the server still
++     refuses the bet. */
++  const breakRead = session
++    ? Promise.resolve().then(() => isLockedOut(session.userId)).then(breakStateOf).catch(() => null)
++    : Promise.resolve(null);
+   // ⛔ UD-15 · the `.catch(() => null)` is GONE: it turned a transient failure into a
+   // 404 — telling a player their round DOES NOT EXIST while their money is in it.
+   // `notFound()` is now strictly "the query succeeded and no such round exists";
+   // every real throw reaches this route's error.tsx with a retry.
+   const detail = await getRoundDetail(roundId, session?.userId);
+   if (!detail) notFound();
++  const breakEnd = await breakRead;
++  const breakBody = breakEnd
++    ? breakSentence(breakEnd.exclusion ? t.rg.exclusionActive : t.rg.breakActive, breakEnd.until, Date.now(), t.common.monthsShort, locale)
++    : null;
+ 
+   // ⛔ NO IDENTITY READ FOR THE STAKE PANEL SINCE 2026-09-13 — a stake asks no identity question
+   // (`kyc-gate.ts`). The play gate that replaced this round's stake control from 2026-09-05 is deleted.
+@@ -576,6 +589,8 @@ export default async function UpDownRoundPage({
+                   // UD-22 · assembled server-side on the round itself, so this page and the
+                   // board card confirm a bet with the same sentences and the same exit terms.
+                   receipt: round.receipt,
++                  // R6-A · the reader's break, as the board's cards get it: the notice stands where the stake would.
++                  breakBody,
+                 }}
+               />
+             ) : decided && myPosition && result ? (
+diff --git a/src/app/updown/history/page.tsx b/src/app/updown/history/page.tsx
+index a4552f871..dfa5fbcfb 100644
+--- a/src/app/updown/history/page.tsx
++++ b/src/app/updown/history/page.tsx
+@@ -64,6 +64,8 @@ const fmtDate = (iso: string) => {
+ };
+ import { usd } from "@/lib/usd-price"; // the ONE spelling (session 80)
+ import { roundPnl } from "@/lib/updown-history-pnl";
++import { isLockedOut } from "@/lib/server/responsible-gambling";
++import { breakSentence, breakStateOf } from "@/lib/break-end";
+ 
+ /**
+  * ⭐ `DAY_PICKER_DAYS` RETIRED 2026-09-08 WITH THE RAIL IT SIZED. Its whole reason was that a
+@@ -205,6 +207,18 @@ export default async function UpDownHistoryPage({ searchParams }: {
+ 
+   const cause = udEmptyCause(state, nowMs, matchesText, inDay, matched.length, udRows.length);
+   const exits = cause && cause !== "no-rows" ? udExits(udRows, state, nowMs, matchesText, inDay) : [];
++  /* ⭐ R6-A (2026-10-09, reviewer A's A3) · DURING A BREAK THE EMPTY LIST DOES NOT SAY "BET". A player with no round read
++     "Weka dau kwenye ubao na litaonekana hapa." ("Back a round on the board and it appears here.") over a primary "Juu na
++     Chini" button while betting was paused — on Tiketi zangu, whose Maswali tab R4-I had already quietened (`TicketsView`).
++     For a reader on a break this empty state says the break's own sentence with its end (`breakSentence`, the one
++     formatter, the end one run) and offers no way to bet; its title stays. Both shells (the page's body). Read only for that
++     empty state, and failing OPEN — it gates an invitation (`feature-state.ts` LAW 1). */
++  const breakEnd = cause === "no-rows"
++    ? await Promise.resolve().then(() => isLockedOut(session.userId)).then(breakStateOf).catch(() => null)
++    : null;
++  const breakBody = breakEnd
++    ? breakSentence(breakEnd.exclusion ? t.rg.exclusionActive : t.rg.breakActive, breakEnd.until, nowMs, t.common.monthsShort, locale)
++    : null;
+   const EXIT_LABEL: Record<string, string> = {
+     asset: t.market.udAssets, dur: t.market.udDurations, when: t.common.rangeAll,
+     q: t.common.clearSearch, tab: t.common.all,
+@@ -386,10 +400,10 @@ export default async function UpDownHistoryPage({ searchParams }: {
+               : cause === "window-miss" ? t.market.udNoRoundsThatDay
+               : t.market.udNoRoundsThatDay
+             }
+-            body={cause === "no-rows" ? t.market.udNoHistoryBody : t.market.udHistoryBody}
++            body={cause === "no-rows" ? (breakBody ?? t.market.udNoHistoryBody) : t.market.udHistoryBody}
+             action={
+               cause === "no-rows" ? (
+-                <Link href="/updown" className="btn btn-primary btn-md">{t.market.udTitle}</Link>
++                breakBody ? null : <Link href="/updown" className="btn btn-primary btn-md">{t.market.udTitle}</Link>
+               ) : exits.length > 0 ? (
+                 <div className="flex flex-wrap items-center justify-center gap-2">
+                   {exits.map((e) => (
+diff --git a/src/app/updown/page.tsx b/src/app/updown/page.tsx
+index c8f037dae..58e6104d1 100644
+--- a/src/app/updown/page.tsx
++++ b/src/app/updown/page.tsx
+@@ -30,6 +30,8 @@ import { UpDownChartLab } from "@/components/charts/updown-chart-lab";
+ import { SOURCE_CLASS_KEY } from "@/lib/updown-source-label";
+ import { heroMovePct, heroPrice, msOrNull, roundIsSettled } from "@/lib/updown-card-phase";
+ import { usd } from "@/lib/usd-price";
++import { isLockedOut } from "@/lib/server/responsible-gambling";
++import { breakSentence, breakStateOf } from "@/lib/break-end";
+ 
+ export const dynamic = "force-dynamic";
+ 
+@@ -54,6 +56,13 @@ export default async function UpDownPage({
+   const sp = await searchParams;
+   const { t, locale } = await getServerT();
+   const session = await currentSession();
++  /* ⭐ R6-A (2026-10-09, reviewer A's A2) · THE READER'S OWN BREAK. A bettable card offered its one-tap stakes to a player who
++     had paused betting (the server refused each tap); the card now draws the break's notice in their place (`breakBody`,
++     below). Read beside the board, and failing OPEN — it gates an invitation (`feature-state.ts` LAW 1): a failed read
++     shows the stakes, and the server still refuses the bet. */
++  const breakRead = session
++    ? Promise.resolve().then(() => isLockedOut(session.userId)).then(breakStateOf).catch(() => null)
++    : Promise.resolve(null);
+   // ⛔ UD-15 · NO `.catch(() => null)` HERE ANY MORE. Swallowing the read rendered a
+   // DB outage as a calm "No rounds open right now" — an empty state is a statement
+   // about the WORLD ("nothing scheduled"), not about the PLATFORM. A real throw now
+@@ -96,6 +105,11 @@ export default async function UpDownPage({
+   // and the portfolio sign, the name its page gives itself for them. The shell's own cached answer for this request.
+   const { journey } = await resolveSimpleJourney();
+   const historyName = journey ? t.journey.tabTickets : t.market.udHistoryTitle;
++  // R6-A · the break's approved sentence with its end, one kept run (`breakSentence`, the one formatter), for every card.
++  const breakEnd = await breakRead;
++  const breakBody = breakEnd
++    ? breakSentence(breakEnd.exclusion ? t.rg.exclusionActive : t.rg.breakActive, breakEnd.until, Date.now(), t.common.monthsShort, locale)
++    : null;
+ 
+   return (
+     <div className="mx-auto w-full max-w-board px-3 lg:px-6 py-6">
+@@ -358,6 +372,7 @@ export default async function UpDownPage({
+                 myUpStake={r.myUpStake}
+                 myDownStake={r.myDownStake}
+                 myRefundedStake={r.myRefundedStake}
++                breakBody={breakBody}
+               />
+             ))}
+           </div>
+diff --git a/src/components/rg/bet-break-notice.tsx b/src/components/rg/bet-break-notice.tsx
+new file mode 100644
+index 000000000..31d43ed2f
+--- /dev/null
++++ b/src/components/rg/bet-break-notice.tsx
+@@ -0,0 +1,37 @@
++/**
++ * THE BREAK'S NOTICE WHERE A STAKE WOULD BE — one form for the three places a stake is placed in place (the visual pass,
++ * round 6, helper R6-A, 2026-10-09; reviewer A's A2).
++ *
++ * 🔴 WHAT THE REVIEW FOUND. During a break or a self-exclusion the market page still offered its whole bet panel — the
++ *    dial, the stake and its confirm — and Up & Down its one-tap stakes, on the board's cards and on the round's panel.
++ *    The server refused every one (`cooling_off` / `self_excluded`), but the screen invited the very thing the player had
++ *    paused, while the same market page already said the break under "Your positions" (R4-I).
++ * ⭐ So where the stake control stands, a reader on a break gets the break's own notice: the approved sentence with its
++ *    end (`rg.breakActive` / `rg.exclusionActive`, filled by `breakSentence` — the one formatter, the end one unbreakable
++ *    run), in the kit's neutral Callout with the lock — a paused action, the deposit page's notice for the same break
++ *    (neutral, not warning: the warning ink is gilt and a break has earned nothing, R4-K) — announced as a status.
++ *    Every word is the dictionary's; nothing here composes a sentence.
++ * ⭐ ONE FORM IN ALL THREE PLACES: the RG page's own standing notice (`size="md"`, the 13px reading rung, R4-I). A 360px bet
++ *    column, a 300px board card and the round's 300px panel all hold it at the reading size; the deposit page's `stack`
++ *    form is for a notice that IS the page, and its 48px sides would leave a board card ~170px of text.
++ * ⛔ IT READS NOTHING. Each page reads its own reader's lockout (`isLockedOut` → `breakStateOf`, failing OPEN — a failed
++ *    read is "not on a break", `feature-state.ts` LAW 1, and the server still refuses the bet) and hands the sentence here.
++ * A plain module (no "use client"): the market page draws it on the server, the board card and the round panel on the
++ * client.
++ */
++import { Callout } from "@/components/ui/callout";
++import { keepText } from "@/components/ui/keep-run";
++import type { KeptBody } from "@/components/ui/empty-state-text";
++
++export function BetBreakNotice({ body, testId }: {
++  /** The approved sentence with its end, as `breakSentence` (break-end.ts) returns it. */
++  body: KeptBody;
++  /** The surface's own hook for a drive: `market-bet-break`, `updown-card-break`, `updown-round-break`. */
++  testId: string;
++}) {
++  return (
++    <div data-testid={testId} data-bet-break="">
++      <Callout tone="neutral" size="md" glyph="lock" role="status">{keepText(body.text, body.keep)}</Callout>
++    </div>
++  );
++}
+diff --git a/src/components/updown/round-action-panel.tsx b/src/components/updown/round-action-panel.tsx
+index 574b99a1d..aa4f8b19c 100644
+--- a/src/components/updown/round-action-panel.tsx
++++ b/src/components/updown/round-action-panel.tsx
+@@ -28,6 +28,8 @@ import { formatTzs } from "@/lib/utils";
+ import { useT } from "@/lib/i18n";
+ import type { UpDownPricing } from "@/lib/updown-pricing";
+ import type { UpDownReceiptInfo } from "@/lib/updown-receipt";
++import type { KeptBody } from "@/components/ui/empty-state-text";
++import { BetBreakNotice } from "@/components/rg/bet-break-notice";
+ 
+ const cardStyle = {
+   background: "var(--bg-elevated)", border: "1px solid var(--border)",
+@@ -58,6 +60,8 @@ export function RoundActionPanel(props: {
+     walletBalance: number | null;
+     /** UD-22 · the round's frozen receipt facts, for the bet-confirmation modal. */
+     receipt?: UpDownReceiptInfo;
++    /** R6-A · the viewer's running break or self-exclusion, as the page words it (`breakSentence`), or null. */
++    breakBody?: KeptBody | null;
+   };
+   /** The frozen figure for the locked presentation — server-computed, never derived here. */
+   myExactPayout: number | null;
+@@ -105,10 +109,22 @@ export function RoundActionPanel(props: {
+   }, [bettable]);
+ 
+   if (bettable) {
++    const { breakBody, ...stake } = stakePanel;
++    // ⭐ R6-A (2026-10-09, reviewer A's A2) · A SIGNED-IN READER ON A BREAK IS NOT OFFERED THE STAKE. The break's own notice
++    // stands where the stake card stands (`BetBreakNotice`, as on the board's card and in the market page's bet column), in
++    // the same named region — `#stake`, so the landing band's pick still lands on it — without the card's chrome around the
++    // notice's own box (the locked branch below draws its inset box the same way). The page reads the lockout, failing open.
++    if (stake.isAuthed && breakBody) {
++      return (
++        <section id="stake" ref={stakeRef} tabIndex={-1} aria-label={props.ariaStake} className="scroll-mt-[96px]">
++          <BetBreakNotice body={breakBody} testId="updown-round-break" />
++        </section>
++      );
++    }
+     return (
+       <section id="stake" ref={stakeRef} tabIndex={-1} aria-label={props.ariaStake} className="scroll-mt-[96px]" style={{ ...cardStyle, padding: "14px 16px 16px" }}>
+         <RoundStakePanel
+-          {...stakePanel}
++          {...stake}
+           selectionClosesAtMs={selectionClosesAtMs}
+           serverNowMs={serverNowMs}
+         />
+diff --git a/src/components/updown/updown-card.tsx b/src/components/updown/updown-card.tsx
+index 0612242b8..58f1748bd 100644
+--- a/src/components/updown/updown-card.tsx
++++ b/src/components/updown/updown-card.tsx
+@@ -63,6 +63,8 @@ import { STATUS_TONE, TONE_CHIP } from "@/lib/status-tone";
+ import { impliedMultiplier, emptySideOf, formatMultiplier, type UpDownPricing } from "@/lib/updown-pricing";
+ import type { PublicSourceClass } from "@/lib/server/updown-symbols";
+ import type { UpDownReceiptInfo } from "@/lib/updown-receipt";
++import type { KeptBody } from "@/components/ui/empty-state-text";
++import { BetBreakNotice } from "@/components/rg/bet-break-notice";
+ 
+ export type UpDownCardState = "open" | "locked" | "closing" | "confirming" | "resolved" | "void";
+ 
+@@ -189,6 +191,12 @@ export type UpDownCardProps = {
+    */
+   resolvedAtMs?: number | null;
+   successor?: RoundSuccessor;
++  /**
++   * ⭐ R6-A (2026-10-09, reviewer A's A2) · the viewer's running break or self-exclusion, as the board page words it (the
++   * approved sentence with its end, `breakSentence`), or null. A bettable card then draws the break's notice where its
++   * one-tap stakes stand (`BetBreakNotice`) — the page reads the lockout, failing open; the card only draws.
++   */
++  breakBody?: KeptBody | null;
+ };
+ 
+ 
+@@ -425,7 +433,7 @@ export function UpDownCard(props: UpDownCardProps) {
+     sourceClass, sourceQuotedAt, className,
+     selectionClosesAtMs, serverNowMs, myExactPayout, myPayoutIfUp, myPayoutIfDown, myRefundedStake,
+     marketId, isAuthed, minStake, maxStake, walletBalance, myUpStake = 0, myDownStake = 0,
+-    expectedResultAtMs = null, resolvedAtMs = null, successor, receipt,
++    expectedResultAtMs = null, resolvedAtMs = null, successor, receipt, breakBody = null,
+   } = props;
+   const { t, locale } = useT();
+   const router = useRouter();
+@@ -981,7 +989,11 @@ export function UpDownCard(props: UpDownCardProps) {
+       {/* ── The one action / status block. Exactly one renders. ────────── */}
+       <div className="ud-act">
+         {bettable ? (
+-          canQuickBet ? (
++          canQuickBet && breakBody ? (
++            // ⭐ R6-A (2026-10-09, A2) · a signed-in viewer on a break or a self-exclusion is not offered the one-tap stakes:
++            // the break's own notice stands where they stand (`BetBreakNotice`, the market page's bet column draws the same).
++            <BetBreakNotice body={breakBody} testId="updown-card-break" />
++          ) : canQuickBet ? (
+             // Authed + has its market → the shared quick-bet control (chips + custom
+             // amount + place buttons + success pulse), identical to the round page.
+             //
+diff --git a/src/lib/server/email.ts b/src/lib/server/email.ts
+index 0f57cb1eb..b188852b4 100644
+--- a/src/lib/server/email.ts
++++ b/src/lib/server/email.ts
+@@ -24,7 +24,8 @@ import { isSuppressed } from "./email-suppression";
+ import { appUrl } from "@/lib/app-url";
+ import { formatTzs } from "@/lib/utils";
+ // R5-B (2026-10-09, F9): a day a letter states, in each of its lines' own words (`agentRevokedHtml`) — the notice's rule.
+-import { formatEatDate } from "@/lib/eat-day";
++// R6-A (2026-10-09, A1): and the end of a break or an exclusion, with its time (`rgEndIn`) — the bell's rule.
++import { formatEatDate, formatEatDateTime } from "@/lib/eat-day";
+ import { dict } from "@/lib/i18n-dict";
+ import { AGENT_REJECT_REASON } from "@/lib/admin-status-lexicon";
+ // E-101 · an email that quotes a Reference must link to THAT reference, not to a list.
+@@ -1069,9 +1070,17 @@ export function withdrawalUnderReviewHtml({ amount, reference }: {
+  * The cash-out terms come from the poll's own frozen rates. They used to be a
+  * hardcoded "5 minutes" and "9%", which would have started lying the moment an
+  * admin retuned either one.
++ *
++ * ⭐ R6-A (2026-10-09, A1's sibling) · "Resolves" IS A MOMENT, SAID AS "Placed" ABOVE IT SAYS ITS OWN. The caller passed
++ * `market.resolutionAt.slice(0, 10)` — the UTC calendar day, unformatted — so a market resolving at 01:00 EAT on 10 Oct
++ * read "Resolves 2026-10-09": a day early, no time, under a "Placed" row in "09 Oct 2026, 12:00 EAT". The builder now
++ * takes the instant and says it with this file's own row formatter (`fmtDateTime`, East Africa Time, the zone stated),
++ * as `selectionClosedHtml` says its "Results expected". A value that does not parse draws no row, never "Invalid Date".
+  */
+-export function betPlacedHtml({ reference, side, stake, marketTitle, placedAt, resolutionDate, cashOutFeeRate, freeExitGraceMinutes, paidExitWindowMinutes = 0 }: {
+-  reference: string; side: "YES" | "NO"; stake: number; marketTitle: string; placedAt?: string; resolutionDate: string;
++export function betPlacedHtml({ reference, side, stake, marketTitle, placedAt, resolvesAt, cashOutFeeRate, freeExitGraceMinutes, paidExitWindowMinutes = 0 }: {
++  reference: string; side: "YES" | "NO"; stake: number; marketTitle: string; placedAt?: string;
++  /** The market's resolution instant (`resolutionAt`, ISO). */
++  resolvesAt: string;
+   cashOutFeeRate: number; freeExitGraceMinutes: number; paidExitWindowMinutes?: number;
+ }): string {
+   const mins = freeExitGraceMinutes;
+@@ -1090,7 +1099,7 @@ export function betPlacedHtml({ reference, side, stake, marketTitle, placedAt, r
+       { label: "Your pick", value: side, tone: side === "YES" ? "good" : "bad" },
+       { label: "Stake", value: formatTzs(stake) },
+       ...(placedAt ? [{ label: "Placed", value: fmtDateTime(placedAt) }] : []),
+-      { label: "Resolves", value: resolutionDate },
++      ...(Number.isFinite(Date.parse(resolvesAt)) ? [{ label: "Resolves", value: fmtDateTime(resolvesAt) }] : []),
+     ])}
+     ${subtitle("Your payout depends on how the pool ends up split. We'll email you the exact amount the moment betting closes and the pools are final.")}
+     ${subtitle(exitLine)}
+@@ -1572,33 +1581,70 @@ export function emailVerifyHtml({ name, verifyUrl }: { name?: string; verifyUrl:
+   `);
+ }
+ 
+-export function selfExclusionHtml({ period, endDate }: { period: string; endDate: string }): string {
++/**
++ * ⭐ R6-A (2026-10-09, A1) · THE END OF A BREAK OR AN EXCLUSION, IN EACH LINE'S OWN WORDS, ON THE EAST AFRICA CLOCK.
++ *
++ * 🔴 These two letters are the durable record of a player's own protective choice, and they said its end as the SERVER's
++ * calendar day with no time: `responsible-gambling.ts` built it with `toLocaleDateString("en-GB")` and no time zone, and
++ * production runs in UTC. A 24-hour break taken at 01:30 EAT on 9 Oct ends at 01:30 on 10 Oct; the letter said "until
++ * 09 Oct 2026" — a day early, and no time even for a one-hour break — and its Swahili line "hadi 2026-10-09" (the
++ * exclusion's Swahili line "hadi 09 Oct 2026", an English month). The bell's notice of the same break said "hadi 10 Okt,
++ * 01:30" (R4-I).
++ * ⭐ So each builder takes the INSTANT and says it the way the bell and every screen say a break's end: `formatEatDateTime`
++ * (the formatter `formatBreakEnd` uses for an instant) — the East Africa clock, Tanzania's own day, fixed UTC+3 — with
++ * each line's own month words from the dictionary (`common.monthsShort`, as `agentRevokedHtml` takes them): "until 10 Oct,
++ * 01:30" / "hadi 10 Okt, 01:30", the year added when it is not this one. The detail row repeats the English line's value,
++ * so one letter states one end one way. Only the month words come from the dictionary; the sentences are the letters' own.
++ * ⛔ A PERMANENT EXCLUSION STATES NO END. It is stored as now + 100 years, so the letter read "…disabled until 15 Sept
++ * 2126". The caller asks `selfExclusionStandingOf` — the one definition of permanent, never the period's name — and the
++ * letter then names no date at all: each sentence loses only its "until …" clause, and the Period row says the dictionary's
++ * own word for it (`common.permanent`). No sentence is reworded (approved responsible-gambling copy).
++ * ⚠️ A value that does not parse states no end either, as `agentRevokedHtml` states no date — never "Invalid Date".
++ */
++function rgEndIn(untilIso: string, nowMs: number): { en: string; sw: string } | null {
++  const at = Date.parse(untilIso);
++  if (!Number.isFinite(at)) return null;
++  return {
++    en: formatEatDateTime(at, nowMs, dict.en.common.monthsShort, "en"),
++    sw: formatEatDateTime(at, nowMs, dict.sw.common.monthsShort, "sw"),
++  };
++}
++
++export function selfExclusionHtml({ period, untilIso, permanent = false }: {
++  period: string;
++  /** The exclusion's end: the ISO instant `selfExclude` wrote. */
++  untilIso: string;
++  /** `selfExclusionStandingOf(untilIso)` reads it as permanent: the letter then states no end. */
++  permanent?: boolean;
++}): string {
++  const end = permanent ? null : rgEndIn(untilIso, Date.now());
+   return wrap(`
+     ${eyebrow("Self-exclusion active", "Jizuie")}
+     ${heading("Self-exclusion confirmed")}
+-    ${subtitle(`You've locked your account for ${period}. Betting, deposits, and login are disabled until ${endDate}. This cannot be reversed.`)}
+-    ${subtitleSw(`Akaunti yako imefungwa hadi ${endDate}. Hii haiwezi kubatilishwa.`)}
++    ${subtitle(`You've locked your account for ${period}. Betting, deposits, and login are disabled${end ? ` until ${end.en}` : ""}. This cannot be reversed.`)}
++    ${subtitleSw(`Akaunti yako imefungwa${end ? ` hadi ${end.sw}` : ""}. Hii haiwezi kubatilishwa.`)}
+     ${detailRows([
+-      { label: "Period", value: period },
+-      { label: "Unlocks", value: endDate },
++      { label: "Period", value: permanent ? dict.en.common.permanent : period },
++      ...(end ? [{ label: "Unlocks", value: end.en }] : []),
+     ])}
+   `);
+ }
+ 
+-export function coolOffHtml({ duration, endDate, untilIso }: { duration: string; endDate: string; /** ISO instant — the Swahili line prints its YYYY-MM-DD, never an English month name. */ untilIso?: string }): string {
++export function coolOffHtml({ duration, untilIso }: { duration: string; /** The break's end: the ISO instant `coolOff` wrote. */ untilIso: string }): string {
+   // ⛔ 2026-09-14 — this said "You can still sign in and withdraw your money at any time", which overstated: a
+   // break blocks neither, but a withdrawal keeps conditions of its own that a break does not change. The line
+   // now says only what the break does NOT block. ⛔ No identity sentence here (the quiet rule).
+   // ⭐ And the Swahili line this mail never had. It names the end date and not the duration, because the
+-  // duration label reaches this builder in English.
++  // duration label reaches this builder in English. Its end is said in Swahili month words (R6-A, above `rgEndIn`).
++  const end = rgEndIn(untilIso, Date.now());
+   return wrap(`
+     ${eyebrow("Break active", "Pumzika")}
+     ${heading("Break confirmed")}
+-    ${subtitle(`Betting and deposits are paused for ${duration}, until ${endDate}. Your break does not block sign-in or withdrawals.`)}
+-    ${subtitleSw(`Kuweka dau na amana kumesimamishwa${untilIso ? ` hadi ${untilIso.slice(0, 10)}` : ""}. Mapumziko haya hayazuii kuingia kwenye akaunti wala kutoa pesa.`)}
++    ${subtitle(`Betting and deposits are paused for ${duration}${end ? `, until ${end.en}` : ""}. Your break does not block sign-in or withdrawals.`)}
++    ${subtitleSw(`Kuweka dau na amana kumesimamishwa${end ? ` hadi ${end.sw}` : ""}. Mapumziko haya hayazuii kuingia kwenye akaunti wala kutoa pesa.`)}
+     ${detailRows([
+       { label: "Duration", value: duration },
+-      { label: "Resumes", value: endDate },
++      ...(end ? [{ label: "Resumes", value: end.en }] : []),
+     ])}
+   `);
+ }
+diff --git a/src/lib/server/market-service.ts b/src/lib/server/market-service.ts
+index a54de9903..537e47cd9 100644
+--- a/src/lib/server/market-service.ts
++++ b/src/lib/server/market-service.ts
+@@ -1841,7 +1841,8 @@ async function buyPositionInner(userId: string, opts: BuyOpts, ctx: BetContext):
+       subject: `Bet placed · ${opts.side} on "${clipQuote(market.titleEn, 40)}"`,
+       html: betPlacedHtml({
+         reference: c.positionId, side: opts.side, stake: opts.stake,
+-        marketTitle: market.titleEn, placedAt: c.placedAt, resolutionDate: market.resolutionAt.slice(0, 10),
++        // R6-A (2026-10-09) · the instant, said on the East Africa clock by the letter's own row formatter — it was the UTC day.
++        marketTitle: market.titleEn, placedAt: c.placedAt, resolvesAt: market.resolutionAt,
+         cashOutFeeRate: betRates.cashOutFeeRate, freeExitGraceMinutes: betRates.freeExitGraceMinutes,
+         paidExitWindowMinutes: betRates.paidExitWindowMinutes,
+       }),
+diff --git a/src/lib/server/notification-service.ts b/src/lib/server/notification-service.ts
+index 5d65cdbee..4e38b8c57 100644
+--- a/src/lib/server/notification-service.ts
++++ b/src/lib/server/notification-service.ts
+@@ -1625,16 +1625,24 @@ async function instantIn(
+ /** Confirmation that self-exclusion is active. Email is the durable record; this
+  *  in-app copy ensures the player sees it even with no email on file. */
+ export async function notifySelfExclusion(userId: string, opts: { until: string }) {
+-  const end = await breakEndIn(opts.until);
++  /* ⛔ R6-A (2026-10-09, the sibling of the letters' A1) · A PERMANENT EXCLUSION NAMES NO END. It is stored as now + 100
++     years, so this notice read "…until 15 Sep 2126, 14:00", as its confirmation letter read "until 15 Sept 2126". Asked
++     through `selfExclusionStandingOf` — the one definition of permanent — the notice then drops only its "until …" clause,
++     as the letter does; no word is changed. Read lazily, as this file reads its other server modules (responsible-gambling.ts
++     imports this one), and a failed read keeps the dated sentence: the notice is never lost to it. */
++  const permanent = await import("./responsible-gambling")
++    .then((m) => { const s = m.selfExclusionStandingOf(opts.until); return s.state === "serving" && s.permanent; })
++    .catch(() => false);
++  const end = permanent ? null : await breakEndIn(opts.until);
+   return notify({
+     userId,
+     kind: "RG",
+     titleEn: "Self-exclusion active",
+     titleSw: "Kujizuia kumeanza",
+     titleZh: "自我限制已生效",
+-    bodyEn: `Your account is closed to betting and deposits until ${end.en}.`,
+-    bodySw: `Akaunti yako imefungwa kuweka dau na amana hadi ${end.sw}.`,
+-    bodyZh: `您的账户已停止投注与充值，直至 ${end.zh}。`,
++    bodyEn: `Your account is closed to betting and deposits${end ? ` until ${end.en}` : ""}.`,
++    bodySw: `Akaunti yako imefungwa kuweka dau na amana${end ? ` hadi ${end.sw}` : ""}.`,
++    bodyZh: end ? `您的账户已停止投注与充值，直至 ${end.zh}。` : `您的账户已停止投注与充值。`,
+     href: "/profile/responsible-gambling",
+   });
+ }
+diff --git a/src/lib/server/responsible-gambling.ts b/src/lib/server/responsible-gambling.ts
+index cc5b4da33..e1507bc84 100644
+--- a/src/lib/server/responsible-gambling.ts
++++ b/src/lib/server/responsible-gambling.ts
+@@ -35,8 +35,10 @@ const PERIOD_LABEL: Record<string, string> = {
+   "1h": "1 hour", "24h": "24 hours", "1w": "1 week",
+   "1m": "1 month", "6m": "6 months", "perm": "permanent",
+ };
+-const fmtDate = (iso: string) =>
+-  new Date(iso).toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" });
++/* ⛔ R6-A (2026-10-09, A1) · NO DATE IS FORMATTED HERE. A `fmtDate` stood here — `toLocaleDateString("en-GB")` with no time
++   zone — and both confirmation letters printed it: the SERVER's calendar day (production runs in UTC) and no time, so a
++   break taken at 01:30 EAT read as ending a day early. The letters now receive the instant and say it themselves, on the
++   East Africa clock in each line's own words (`selfExclusionHtml` / `coolOffHtml`, email.ts). */
+ 
+ export const SELF_EXCLUSION_PERIODS_SEC = {
+   "24h":   24 * 60 * 60,
+@@ -329,10 +331,15 @@ export async function selfExclude(userId: string, period: keyof typeof SELF_EXCL
+     payload: { period, until },
+   });
+   // Confirmation email (best-effort, never blocks the freeze).
++  // ⭐ R6-A (2026-10-09, A1) · the letter gets the INSTANT, and asks the one definition of permanent (as the action's
++  // redirect does), never the period's name: a permanent exclusion's letter states no end.
++  const standing = selfExclusionStandingOf(until);
++  const permanent = standing.state === "serving" && standing.permanent;
++  const periodLabel = permanent ? PERIOD_LABEL.perm : (PERIOD_LABEL[period] ?? period);
+   sendEmailToUser(userId, (email) => ({
+     to: email,
+-    subject: `Self-exclusion confirmed · ${PERIOD_LABEL[period] ?? period}`,
+-    html: selfExclusionHtml({ period: PERIOD_LABEL[period] ?? period, endDate: fmtDate(until) }),
++    subject: `Self-exclusion confirmed · ${periodLabel}`,
++    html: selfExclusionHtml({ period: periodLabel, untilIso: until, permanent }),
+     tag: "self-exclusion",
+   }));
+   return { ok: true, data: { until } };
+@@ -370,7 +377,8 @@ export async function coolOff(userId: string, period: keyof typeof COOLING_OFF_P
+   sendEmailToUser(userId, (email) => ({
+     to: email,
+     subject: `Break confirmed · ${PERIOD_LABEL[period] ?? period}`,
+-    html: coolOffHtml({ duration: PERIOD_LABEL[period] ?? period, endDate: fmtDate(until), untilIso: new Date(until).toISOString() }),
++    // R6-A (2026-10-09, A1) · the instant; the letter says it on the East Africa clock in each line's own words.
++    html: coolOffHtml({ duration: PERIOD_LABEL[period] ?? period, untilIso: until }),
+     tag: "cool-off",
+   }));
+   // In-app mirror — parity with self-exclusion. A phone-only player with no

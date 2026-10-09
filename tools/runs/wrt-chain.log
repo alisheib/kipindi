@@ -1,7 +1,16 @@
-15:42:03 waiting for vis-r5h.done
-15:57:35 vis-r5h.done is there: exit=0
-15:57:35 queued: wait note written
-15:57:35 waiting (owner: marketing-s14 s14-contacts-prepush since 2026-10-09T15:12:31Z pid 604763; queue: asheib-c5 vodacom: wrt-chain queued since 2026-10-09T15:57:35Z)
-16:02:39 waiting (owner: marketing-s14 s14-contacts-prepush since 2026-10-09T15:12:31Z pid 604763; queue: asheib-c5 vodacom: wrt-chain queued since 2026-10-09T15:57:35Z)
-16:07:43 waiting (owner: marketing-s14 s14-contacts-prepush since 2026-10-09T15:12:31Z pid 604763; queue: asheib-c5 vodacom: wrt-chain queued since 2026-10-09T15:57:35Z)
-16:12:47 waiting (owner: marketing-s14 s14-contacts-prepush since 2026-10-09T15:12:31Z pid 604763; queue: asheib-c5 vodacom: wrt-chain queued since 2026-10-09T15:57:35Z)
+18:21:25 waiting for vis-r5h.done
+18:21:25 vis-r5h.done is there: exit=0
+18:21:25 queued: wait note written
+18:21:25 lock taken
+18:21:53 kipindi-a8i2-ctl at 89893725d · prisma generate exit=0
+18:25:21 wrt-before: exit=0 · tree same — before: 2 real tab taps, 2 with a blink · cold load: replay YES, jumped to top YES (y 600 → 0) · #hash deep link: no anchor below 1500px on /legal/privacy 
+18:25:22 patch applied:  1 file changed, 12 insertions(+), 3 deletions(-)
+18:26:47 wrt-after: exit=0 · tree same — after: 2 real tab taps, 0 with a blink · cold load: replay no, jumped to top no (y 600 → 600) · #hash deep link: no anchor below 1500px on /legal/privacy 
+18:26:56 patched test:visual-pass-r4j exit=0 — visual-pass-r4j: 79 passed, 0 failed
+18:27:00 patched test:journey-shell exit=0 — JOURNEY SHELL — all 434 checks passed
+18:27:09 patched test:visual-pass-r5h exit=0 — visual-pass-r5h: 52 passed, 0 failed
+18:27:11 patched test:hooks-order exit=0 — all green
+18:27:16 patched test:red-anchors exit=0 — red-anchors: 5070 passed, 0 failed
+18:27:17 kipindi-a8i2-ctl restored: 0 change(s) left
+18:27:17 chain end
+18:27:17 lock released

@@ -1,0 +1,26 @@
+PASS email shows market title 
+PASS email says betting is closed 
+PASS email states the EXACT payout figure 
+PASS email says the figure is exact, not an estimate 
+PASS email links to the market 
+PASS 1 market notified {"notified":1,"bettors":2}
+PASS 2 distinct bettors notified (alice once despite 2 positions) {"notified":1,"bettors":2}
+PASS the closed market is the one that fired {"notified":true,"bettors":2}
+PASS future-cutoff market refused by the trigger {"notified":false,"bettors":0}
+PASS Demo market refused by the trigger {"notified":false,"bettors":0}
+PASS alice got exactly ONE selection-closed bell got 1
+PASS bob got one selection-closed bell got 1
+PASS carol (future market) got NONE got 0
+PASS alice's bell deep-links to the market /markets/mkt_sc_1
+PASS alice's bell did NOT come from the demo market 
+PASS second fire notifies 0 markets {"notified":0,"bettors":0}
+PASS re-firing the already-notified market is a no-op {"notified":false,"bettors":0}
+PASS alice still has exactly ONE bell after re-sweep got 1
+PASS market stamped selectionClosedNotifiedAt 2026-10-09T18:11:21.413Z
+PASS carol notified once her market's window closed 1 / {"notified":1,"bettors":1}
+PASS and it was HER market that fired, for exactly 1 bettor {"notified":true,"bettors":1}
+
+selection-closed-notify: 21 passed, 0 failed
+[email] sendEmailToUser withheld — money mail to an unconfirmed address for user usr_sc_alice… (user.email=a***@test.tz)
+[email] sendEmailToUser skipped — no email for user usr_sc_bob… (user.email=null, phone=+25572…)
+[email] sendEmailToUser withheld — money mail to an unconfirmed address for user usr_sc_carol… (user.email=c***@test.tz)

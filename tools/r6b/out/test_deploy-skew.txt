@@ -1,0 +1,28 @@
+§1 · the build carries a deployment identity
+PASS §1a next.config sets `deploymentId`
+PASS §1b it is sourced from the deployment, not invented
+PASS §1c 🔴 it is NOT a timestamp or a random value
+
+§2 · the shared error boundary repairs a stale page
+PASS §2a RouteError reads the deployment id
+PASS §2b …and reloads the document
+PASS §2c the recovery is remembered per tab
+PASS §2d the stored key is the BUILD ID, not a boolean
+PASS §2e it does nothing when there is no deployment id (a laptop build)
+PASS §2f the whole thing is wrapped so the error surface can never itself throw
+PASS §2g 🔴 it does not retry the action, only the page
+
+§3 · recover once per build — proven, not asserted
+PASS §3a a stale page recovers
+PASS §3b 🔴 a genuinely broken page does NOT loop
+PASS §3c …and keeps showing the error
+PASS §3d ⭐ the NEXT deploy may still recover the same tab
+PASS §3e each path recovers independently
+PASS §3f with no deployment id nothing happens
+
+§4 · controls
+PASS §4a control · a config with no deploymentId is detected
+PASS §4b control · a boolean-keyed recovery is detected
+PASS §4c control · a Date.now() deploymentId is detected
+
+ALL PASS — 19 passed, 0 failed

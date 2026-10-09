@@ -1,0 +1,92 @@
+── §1 · no bar on the page — a defect, a page with nothing to filter, or a stale route ─────────────────
+  ok   1.1 · ⛔ rows and no bar FAILS, in the words every reader greps for
+  ok   1.2 · no rows + its empty state is NOT MEASURED (§A5 withholds the bar), never a pass, and it SKIPS the surface
+  ok   1.3 · no rows and no empty state (a COMING_SOON board) is NOT MEASURED too, and skips
+  ok   1.4 · a surface that DECLARES its bar may be withheld is NOT MEASURED with its reason, and does not skip the run
+  ok   1.5 · …but a declaration never excuses rows without a bar
+  ok   1.6 · fixture · the drive's SURFACES evaluate, and the census finds the sticky bars
+  ok   1.7 · every sticky query bar in the app is a surface of the drive (or a named exclusion)
+  ok   1.8 · …including /wallet/receipts, the one that shipped (2026-10-07, 012cccbc9) after the list was last edited
+  ok   1.9 · ⛔ no surface the drive asserts a stick on has lost its sticky bar (a stale route)
+  ok   1.10 · the two `sticky: false` declarations are true: /profile/account takes QUERY_BAR_CLASS_PANEL, /leaderboard no bar class
+  ok   1.11 · only /positions/performance declares a withheld bar, and its page still withholds it for one product
+  ok   1.12 · /wallet/receipts' floor is the data-independent count: 3 lenses + 5 states + 5 windows, every one a FilterPill link
+
+── §2 · overlap over PAINTED boxes — what a person can see, and only that ──────────────────────────────
+  ok   2.sw.1 · the logged run is reproduced: the LAYOUT boxes give exactly the 5 overlaps wbm-bar.log printed (52, 11, 44, 22, 18px)
+  ok   2.sw.2 · ⭐ over PAINTED boxes there are none: the strip clips its chips at x176, before the sort cell at x182
+  ok   2.sw.2b · the controls beside the strip are painted whole, so "none" is a measurement, not an absence
+  ok   2.sw.3 · the probe's walk: a chip past the strip's edge has nothing painted; one straddling it is cut at the edge
+  ok   2.sw.4 · exemption 2 still holds for the CLIPPED assertion: every chip lives in a strip that scrolls
+  ok   2.sw.5 · exemption 1 still holds: the Filters <summary> of a SHUT sheet is measured (its own disclosure is not "inside" it)
+  ok   2.en.1 · the logged run is reproduced: the LAYOUT boxes give exactly the 5 overlaps wbm-bar.log printed (49, 8, 44, 19, 22px)
+  ok   2.en.2 · ⭐ over PAINTED boxes there are none: the strip clips its chips at x182, before the sort cell at x188
+  ok   2.en.2b · the controls beside the strip are painted whole, so "none" is a measurement, not an absence
+  ok   2.en.3 · the probe's walk: a chip past the strip's edge has nothing painted; one straddling it is cut at the edge
+  ok   2.en.4 · exemption 2 still holds for the CLIPPED assertion: every chip lives in a strip that scrolls
+  ok   2.en.5 · exemption 1 still holds: the Filters <summary> of a SHUT sheet is measured (its own disclosure is not "inside" it)
+  ok   2.zh.1 · the logged run is reproduced: the LAYOUT boxes give exactly the 4 overlaps wbm-bar.log printed (50, 25, 15, 45px)
+  ok   2.zh.2 · ⭐ over PAINTED boxes there are none: the strip clips its chips at x189, before the sort cell at x195
+  ok   2.zh.2b · the controls beside the strip are painted whole, so "none" is a measurement, not an absence
+  ok   2.zh.3 · the probe's walk: a chip past the strip's edge has nothing painted; one straddling it is cut at the edge
+  ok   2.zh.4 · exemption 2 still holds for the CLIPPED assertion: every chip lives in a strip that scrolls
+  ok   2.zh.5 · exemption 1 still holds: the Filters <summary> of a SHUT sheet is measured (its own disclosure is not "inside" it)
+  ok   2.6 · ⛔ PLANT · the summary run across the direction button (16→206 vs 154→198) is still a 44px OVERLAP
+  ok   2.7 · ⛔ PLANT · the shipped defect (sw summary 16→255 · button 154→198) is a 44px OVERLAP
+  ok   2.8 · an in-flow control is cut by its overflow-hidden ancestor (150→200 of 150→350)
+  ok   2.9 · an ABSOLUTE control escapes a non-positioned clipper below its containing block
+  ok   2.10 · a FIXED control escapes every ancestor's clip
+  ok   2.11 · `overflow-y` alone cuts only the vertical span
+  ok   2.12 · `contain: paint` cuts both
+  ok   2.13 · an INLINE ancestor clips nothing, whatever its overflow says
+
+── §3 · the stick, measured inside its own range ───────────────────────────────────────────────────────
+  ok   3.tip.1 · the logged run is reproduced: at the page's end (559) each bar sits where its PARENT's end pushed it — 9/9 logged tops
+  ok   3.tip.2 · ⭐ where the drive now scrolls (inside each bar's range, ≥ 200px past its place) all 9 are MEASURED and on their offset
+  ok   3.main.1 · the logged run is reproduced: at the page's end (559) each bar sits where its PARENT's end pushed it — 9/9 logged tops
+  ok   3.main.2 · ⭐ where the drive now scrolls (inside each bar's range, ≥ 200px past its place) all 9 are MEASURED and on their offset
+  ok   3.1 · /markets tip sw: the drive scrolls to 398 (one pixel before its release at 399), 260px of travel — not to 1200
+  ok   3.2 · on a long page it still scrolls 1200px past the bar's place, as the old drive did
+  ok   3.3 · a parent that ends before the bar can travel 200px, with no row below it, is STICK NOT MEASURED — not a pass, not a fail
+  ok   3.4 · a page that cannot scroll is STICK NOT MEASURED (rule ①)
+  ok   3.5 · ⛔ PLANT · /updown/history's 247px wrapper (rows run on below the bar's parent) FAILS — whatever the page's length
+  ok   3.6 · ⛔ …even when the parent is long enough to pass the travel test (the rows below it are the defect)
+  ok   3.7 · ⛔ PLANT (red:bar-geometry `bar-is-not-sticky`) · a bar that is position: relative is measured and FAILS in its arm's words
+  ok   3.8 · ⛔ PLANT (`search-band-shares-the-bar-offset`) · a band stuck at the bar's offset is ANOTHER STICKY SURFACE
+  ok   3.9 · ⛔ PLANT · a sticky bar that is NOT on its offset inside its own range FAILS
+  ok   3.10 · a stuck bar within 2px of its offset passes (sub-pixel layout, nothing more)
+  ok   3.11 · a scroll that lands short of 200px of travel is NOT MEASURED, never read as a pass
+  ok   3.12 · STICK_PROBE: the bar's own position and offset, its place, and its CONTAINING block's content bottom (padding off, `display: contents` skipped)
+  ok   3.13 · STICK_PROBE counts the rows BELOW the parent's end and outside it — one here
+  ok   3.14 · BOOK_PROBE counts rows and empty states
+  ok   3.15 · STICK_AFTER_PROBE: a stuck bar at 56 under a 56px header has NO hit (they touch, they do not overlap)
+  ok   3.16 · ⛔ PLANT · …and a band stuck at the same offset IS a hit, while a 20px pip is not a band
+  ok   3.17 · the logged 'header drawn through the bar' is the bar PUSHED under it at the page's end (the old scroll), not a shared offset
+
+── §4 · the red twin — per route × shape, green AND measured, `expect` on the failure lines ────────────
+  ok   4.1 · every declared case has a CHOSEN shape (width and locale), never a default
+  ok   4.2 · ⛔ the precondition and the after-check run per route × WIDTH × LOCALE (`proofs`), not per route
+  ok   4.3 · ⛔ 'green' is exit 0 AND no NOT MEASURED line for the route
+  ok   4.4 · ⛔ `expect` is matched on the ✗ lines only
+  ok   4.5 · failLines keeps the ✗ lines and nothing else
+  ok   4.6 · ⛔ CONTROL · the old expect "stick" is satisfied by the OTHER arm's line — why it changed
+  ok   4.7 · …and the arm's own words are not
+  ok   4.8 · notMeasuredLines finds the route's own lines, and `/positions` is not `/positions/performance`
+  ok   4.9 · `bar-is-not-sticky` expects its own arm's words
+  ok   4.10 · `sort-summary-unbound` is proved on /watchlist at 360/sw (U4 made /markets' phone sort column content-sized)
+  ok   4.11 · /watchlist is a TWO-ROW bar (no `data-bar-row`), sort + Filters in row 2, and `starred` is its default sort
+  ok   4.12.desktop-group-does-not-wrap · its route is a surface of the drive, its words are words the drive prints
+  ok   4.12.bar-is-not-sticky · its route is a surface of the drive, its words are words the drive prints, and a stick arm is proved at 1280 on a sticky surface
+  ok   4.12.control-below-the-tap-floor · its route is a surface of the drive, its words are words the drive prints
+  ok   4.12.sort-summary-unbound · its route is a surface of the drive, its words are words the drive prints
+  ok   4.12.search-band-shares-the-bar-offset · its route is a surface of the drive, its words are words the drive prints, and a stick arm is proved at 1280 on a sticky surface
+
+── §5 · the drive runs the rules, builds its receipts book, and refuses a skipped run ──────────────────
+  ok   5.1 · the overlap is `findOverlaps` over `CONTROL_PROBE` — no layout-box loop left in the drive
+  ok   5.2 · ⛔ the stick is `planStick` + `judgeStick` — no fixed `scrollTo(0, 1200)` left
+  ok   5.3 · a page without a bar goes through `judgeMissingRail`
+  ok   5.4 · the sign-in builds the receipts book, and the demo route still honours it
+  ok   5.5 · ⛔ a declared surface measured nowhere exits 3 (a skipped run), after the failures and the zero check
+  ok   5.6 · NOT MEASURED is printed and summarised, never folded into `measured`
+
+81 passed · 0 failed

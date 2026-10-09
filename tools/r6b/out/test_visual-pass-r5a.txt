@@ -1,0 +1,114 @@
+── 1 · F2 · the featured card hangs from the claim's capitals at 1024–1280, both shells (tiles 018–112, 002–012) ─
+  ok   1.1 · from 1024 the intro's row is its own height and the act's takes the rest (`auto 1fr`), and every block hangs from its row's top — so the claim always starts on the grid's top line, a card taller than the column included
+  ok   1.2 · the card's edge stands 3px under the claim's line: its capitals start 3.965px down (13px mono, 1.35 line) — hinted, on that line's 4th pixel row
+  ok   1.2′ · Chinese: 2px — the CJK face's ink starts a row above the Latin capitals on every zh tile (y192 / y123)
+  ok   1.3 · on all 48 desktop home tiles the card's edge lands on the claim's first ink row (it stood -2–66px from it)
+  ok   1.3′ PLANT · the card centred on the column again (round 4's rule) is reported
+  ok   1.3″ PLANT · the unhinted 4px is reported: the edge one row under the capitals
+  ok   1.4 · the loading ghost wears the same `.kp-hero__card` box, so it lands where the page does
+
+── 2 · F12 · a count line: the grouped count and the sentence word (tile 170: "⚇ 2 Watabiri") ────────────────────
+  ok   2.1 · the /results spotlight says "2 watabiri" as the cards do: `formatNumber`, `predictorsCount` / `predictorsCountOne`
+  ok   2.2 · …and the page's tally groups its count: "12,479 imetatuliwa" (production's archive), `data-result-count` still the bare integer
+  ok   2.3 · the card's count line groups with `formatNumber`, not the runtime locale's `toLocaleString()`
+  ok   2.4 · the leaderboard's row: the sentence key (`results.resolved`), never a column label lower-cased in code
+  ok   2.4′ CONTROL · …which reads exactly as before in every language (the label lower-cased IS the sentence word)
+  ok   2.5 CONTROL · the premise: the column label is capitalised, the count words are not (sw and en)
+  ok   2.6 · not one of 529 player files writes a count followed by a capitalised label
+  ok   2.6′ PLANT · the spotlight's line as it shipped is found
+
+── 3 · F16 · a legal title never leaves its last word alone behind a connective (tile 210: "Kanuni za / Michezo") 
+  ok   3.1 · every legal title is read: 24 (8 documents × 3 languages)
+  ok   3.2 · the legal header passes its title through `legalTitle`
+  ok   3.3 · exactly the connective endings are bound — "Kanuni / za Michezo", "Terms / of Service", "Sera / ya Faragha" … — and no name is split (Up & Down, Mchezo Salama, NDIO/HAPANA stay free)
+  ok   3.4 · every bound pair is measured and fits the narrowest title line (184px): the widest, "ya Huduma", 155.6px
+  ok   3.5 CONTROL · "Kanuni za Michezo" (256.7px) is 2.7px wider than its 254px line at 390 — the wrap the tile shows — and fits at 412 (276px)
+  ok   3.5′ PLANT · binding EVERY last pair (plain keepLastWords) is reported: 6 pairs would overflow or are unmeasured (Mchezo Salama 216px, Gambling Policy 229px …)
+  ok   3.5″ PLANT · the title passed through untouched is reported ("Kanuni za / Michezo" again)
+
+── 4 · F15 · a pool floor is a sum, written as one (tile 194: "TZS 10k+" in the sans) ────────────────────────────
+  ok   4.1 · each floor's chip is the floor itself (`POOL_FLOORS`, what `matchesPool` tests) through the money formatter, set as money (`.amount`)
+  ok   4.1′ PLANT · the dictionary's own strings back on the chips are reported
+  ok   4.2 · they read TZS 10K+ / TZS 50K+ — the capital K of every compact sum ("TZS 49K" over the bar)
+  ok   4.2′ CONTROL · the premise: the dictionary writes "TZS 10k+" / "TZS 50k+", a lower-case k, in all three languages
+  ok   4.3 · `.amount` is the money face: mono, tabular, untracked, whole
+  ok   4.4 · siblings already in the convention: the deposit/withdraw quick chips ("10K", mono) and Up & Down's stake chips ("10K", mono)
+
+── 5 · F17 · one page, one name — the hub's rows and the journey's doors (tile 331: "Thibitisha ID") ─────────────
+  ok   5.1 · the four rows take their pages' words: KYC, the leaderboard, the proposals page, the privacy policy
+  ok   5.2 · …and they are the pages' own names: the KYC h1, the leaderboard's eyebrow and <title>, the proposals' eyebrow and h1, the privacy page's title (in every language)
+  ok   5.2′ CONTROL · the words did differ: "Thibitisha ID" against "Thibitisha kitambulisho", "Jedwali la Washindi" against "Bingwa", "Propose & earn" against "Market Proposals", "Privacy notice" against "Privacy policy"
+  ok   5.3 · the journey's avatar menu names the three pages the same way (classic rows keep their words)
+  ok   5.4 · the journey's footer names /proposals, /legal/privacy and /help as they name themselves (sw: "Mapendekezo ya Masoko", "Sera ya faragha", "Msaada")
+  ok   5.4′ CONTROL · the classic footer keeps its words (frozen chrome)
+  ok   5.5 · the profile page's KYC row and /live's eyebrow (page and ghost) use the page's own word
+  ok   5.5′ CONTROL · /live named itself "Mubashara" in its <title> and h1 and "Hai" in its eyebrow
+  ok   5.6 · the capture harness holds the KYC row to the page's words
+  ok   5.7 CONTROL · S12: no dictionary key yet holds "Kanuni za Michezo" / "Game Rules" / "游戏规则", so the rules row keeps "RTP ya mchezo na sheria"
+  ok   5.1′ PLANT · the KYC row's old key is reported
+
+── 6 · F18 · the Gaming Board's name is one name wherever its line can hold it (tile 307: "…the Gaming / Board of Tanzania.") 
+  ok   6.1 · `keepRegulator` finds the name in each language's sentence and changes not a character of it
+  ok   6.2 · each container keeps the name nowrap only from its width + 2px or more (en 164.7, sw 259.3, zh 116.5px); the trust row's own widths add its 40px roundel column
+  ok   6.3 · en 1024: the 216px column holds the name (164.7px) → "Licensed by the" / "Gaming Board of Tanzania."; at 768 (160px) no column can, and it wraps as before
+  ok   6.4 · the journey's footer wears it; the classic footer does not (frozen chrome, main's bytes)
+  ok   6.5 · the hero's trust row (a shared body) keeps the name the same way
+  ok   6.2′ PLANT · a threshold under the name's width (150px for English) is reported — it would overflow a 160px column
+  ok   6.4′ PLANT · the sentence plain in the journey (no name span) is reported
+
+── 7 · F19 · a right-aligned tracked label ends where its neighbours end (tile 327: NDIO x355, the rest x357–358) 
+  ok   7.1 · one take-back for the kind: the price caption, the card's one-sided label on its right-aligned move line, the bar's right side label, `kp-track-end`
+  ok   7.1′ PLANT · the price caption left out is reported
+  ok   7.2 · each takes back exactly its own tracking: 0.14em (the caption and the one-sided label), 0.05em (the bar's labels), 0.16em (the spotlight's flag), 0.10em (Up & Down's live note)
+  ok   7.3 · the one-sided label keeps its tracking where it is centred or left-aligned (the market page, /results, Up & Down)
+  ok   7.4 · "NDIO" ended at 355.83 (the tile: x355); it ends at 357.16 (x357, on the time left's and the bar's edge) — what remains is the O's own 0.84px side bearing, as R3-C left it
+
+── 8 · F20 · every close ✕ of a panel, a sheet or a dialog: on its title's first-line capitals (channels panel 1.7px off) 
+  ok   8.1 · Modal pins its ✕'s 48px box at the corner — its centre 40px under the panel's padding edge — and CloseX is the one ✕ (exported, 16px glyph)
+  ok   8.2 · how-it-works, share and objection titles wear .kp-modal-title: their capitals at 40.00/40.00, 40.00/40.00, 40.00/40.00px — the ✕'s 40
+  ok   8.2′ CONTROL · before, on a phone (a 1.5 line at the padding): 33.4, 34.1, 35.6px — the ✕ 6.6, 5.9 and 4.4px under them
+  ok   8.3 · ConfirmModal: the ✕ centres 26.8px down — the 18px title's capitals under its eyebrow (26.80) — taking 38px, the medallion's 38
+  ok   8.4 · the sell confirm: its ✕ moved from the corner (beside the eyebrow) to the header row — centred 28.6px down, on the question's capitals (28.60); 40.0px of the header's 40; 16px in
+  ok   8.5 · the bet confirm's ✕ (already on its title's capitals, R4-I) stands 16px inside the panel's edge like every dialog's: 24 − 8 on a phone, 32 − 16 from 1024
+  ok   8.5‴ · …and it is the one ✕, CloseX: named "Funga" as every ✕ is (it said "Ghairi", the name of the Cancel under it — two of them to a screen reader), closing through the dialog's guarded close as the sell confirm's does; no ✕ drawn by hand
+  ok   8.5⁗ PLANT · round 4's hand-drawn ✕ (its own <button>, "Ghairi", straight to onCancel) is reported
+  ok   8.6 · the filter sheet: ✕ centred 9.6px down the header row — the 16px title's capitals (9.6) — and the row still 44.0px (it centred 20, 10.4px low)
+  ok   8.6″ · …and it is the one ✕, CloseX (it drew its own: the same box, glyph and inks), its box 16px inside the sheet's edge — where every dialog's and the guest sheet's stands (it stood 4px in, the glyph on the heading's gutter, the one ✕ placed so)
+  ok   8.6‴ PLANT · the box back at the screen's edge (`-mr-3`: 4px in) is reported
+  ok   8.7 · the channels panel: the title's capitals on the 44px box's centre (22 − 0.6em + 0.6em = 22), an even 16px glyph, a whole-pixel top — tiles 320–324 measured the ✕ 1.70px low (cap centre 234.82, ✕ 236.52)
+  ok   8.7′ PLANT · the title centred on the box again (round 4) is reported
+  ok   8.8 · the install card: its ✕ rises 13.6px, centring on the 14px title's capitals (8.4px down the row, where it centred 22), 16px glyph
+  ok   8.9 · the reality check (a position only, no word of the notice): its title's first line hangs from the badge's centre and its capitals land at 40.01 / 40.01px — the corner ✕'s 40 (they were 43.6 / 51.6)
+  ok   8.10 · the census: 30 ✕ drawn in 24 files of src, admin too, each SITE classified — one CloseX; 8 closes drawn by hand, each named with why; no dialog's ✕ drawn by hand
+  ok   8.10′ PLANT · round 4's hand-drawn ✕ back in the bet confirm (a dialog CloseX serves), and a second ✕ drawn in the toast, are each reported; the census unplanted is clean
+  ok   8.10″ PLANT · a toast's dismiss filed as a mere glyph is reported
+  ok   8.12 · CloseX withheld is not drawn (`invisible`) and not pressable (`disabled`, which the focus trap skips), in the very box it has when drawn — so the row and the title never move
+  ok   8.13 · the one in-flight rule, held everywhere: 27 dialogs whose close waits on a request withhold their ✕ (in the corner, or in the header with its box kept), and 4 confirms kept open across their request wear `loading`
+  ok   8.13′ · ConfirmModal withholds its ✕ on `loading` alone — a held confirm (`confirmHeld`: busy, every way out open) keeps it drawn and live
+  ok   8.13″ PLANT · each is reported: the sell confirm's ✕ drawn but dead again (1); ConfirmModal's ✕ taken out of its row again (2); the objection dialog's corner ✕ drawn while filing (1); the settle dialog's corner ✕ drawn while settling (1); the arm confirm open across its request without `loading` (1)
+  ok   8.11 · a toast's ✕ centres 24px down — its 13px title's capitals under the row's 16px are 23.8 (it centred 32, 8.2px low)
+  ok   8.3′ PLANT · ConfirmModal's ✕ back on the medallion (20px, round 4) is reported: 6.8px above the capitals
+  ok   8.6′ PLANT · the filter sheet's old `-mt-1` (centre 20) is reported
+
+── 9 · F5 · the capture harness parks the pointer before every shot (tiles 095 099 327) ──────────────────────────
+  ok   9.1 · R4-G's parkPointer, the same expression as the edges drive, and every tile shot after it and a 260ms beat (> --t-base 220ms)
+  ok   9.2 · one screenshot site (shoot) and no hand-written pointer move left — the focus cells and the viewer step park through the helper
+  ok   9.1′ PLANT · a shot without the park is reported
+  ok   9.3 · `node --check` passes on the harness
+
+── 10 · §A5 · /results withholds its search and its bar over an empty archive (R5-F's audit) ─────────────────────
+  ok   10.1 · the search band and the bar render only when the archive holds a row — before any filter or search
+  ok   10.1′ PLANT · the bar drawn over an empty archive again is reported
+  ok   10.2 · …the rule its siblings keep: /positions, /watchlist and /proposals withhold theirs on an empty book
+
+── 11 · the checks: /markets' 34px, the hub's two glyphs, the chart's deadline, the grid card's pool, two by design 
+  ok   11.1 · /markets: the box stands 34px over its pills from 640 and 34px in the compact phone bar — 34, as every bar (it was 35 and 31; tile 193 measured 31)
+  ok   11.2 · the hub: Matokeo wears the results page's own sign (`resolved`), no longer the circled check Uthibitisho wa utatuzi wears (`sealCheck`)
+  ok   11.2′ CONTROL · the old pair was one sign: checkCircle and sealCheck are each a circle and a check (circle path | circle path)
+  ok   11.3 · the chart says "loading" for 12s at most (the route's vendor read aborts at 8s), then "Chati haipatikani — inajaribu tena" while it keeps retrying
+  ok   11.3′ PLANT · the load without its deadline is reported
+  ok   11.4 · a grid card names its pool to a screen reader in the featured card's word; on screen the 320 row's worst case is 257.6 of 258px, so a word (+39.6) or a glyph (+16) would wrap a fixed-height card — an owner question
+  ok   11.5 BY DESIGN · the spotlight's state chip is 20px beside the 18px category chip: status chips are 2px taller at every size (chip.tsx, the kit's metrics), centred 1px each way
+  ok   11.6 BY DESIGN · the AML title's third line is under the bottom rail's elevation shadow at that scroll (232 against 245 at most), not a gradient of its own
+
+visual-pass-r5a: 91 passed, 0 failed

@@ -1,0 +1,2708 @@
+diff --git a/package.json b/package.json
+index 150f5c1cf..a6b68ba9d 100644
+--- a/package.json
++++ b/package.json
+@@ -677,6 +677,7 @@
+     "test:visual-pass-r5c": "tsx scripts/visual-pass-r5c.test.mts",
+     "test:visual-pass-r5e": "tsx scripts/visual-pass-r5e.test.mts",
+     "test:visual-pass-r5i": "tsx scripts/visual-pass-r5i.test.mts",
++    "test:visual-pass-r5j": "tsx scripts/visual-pass-r5j.test.mts",
+     "red:journey-tickets": "tsx scripts/journey-tickets.test.mts --prove-red",
+     "test:signoff": "tsx scripts/signoff.test.mts",
+     "test:proposal-evidence-age": "tsx scripts/proposal-evidence-age.test.mts",
+diff --git a/scripts/design-gate/eyebrow-roles.mjs b/scripts/design-gate/eyebrow-roles.mjs
+index 0547ec999..e7d6e0f21 100644
+--- a/scripts/design-gate/eyebrow-roles.mjs
++++ b/scripts/design-gate/eyebrow-roles.mjs
+@@ -248,7 +248,7 @@ export const NOT_EYEBROW = new Map([
+   ["app/notifications/row-actions.tsx :: className=\"-mt-1 shrink-0 inline-flex items-center gap-1 min-h-[44px] px-2 rounded-md font-mono text-micro font-bold uppercase text-accent-400 hover:text-text hover:bg-bg", "CONTROL_LABEL"],
+   ["app/positions/page.tsx :: <div className=\"mb-1.5 flex items-center justify-between gap-2 font-mono text-micro uppercase tracking-[0.12em] tabular-nums\"> ↵ <span className=\"font-bold text-yes-300\">", "OTHER"],
+   ["app/positions/performance/page.tsx :: <p className=\"font-mono text-micro uppercase tracking-[0.08em] text-text-muted\">{r.statusLabel}</p> ↵ </div>", "STATUS_CHIP"],
+-  ["app/positions/performance/page.tsx :: <p className=\"font-mono text-micro uppercase tracking-[0.12em] text-text-subtle tabular-nums\">{t.performance.longestStreak} {longestStreak}</p> ↵ </div>", "OTHER"],
++  ["app/positions/performance/page.tsx :: <p className=\"font-mono text-micro uppercase tracking-[0.12em] text-text-subtle tabular-nums\">{t.performance.longestStreak} {formatNumber(longestStreak)}</p> ↵ </div>", "OTHER"],
+   ["app/positions/performance/page.tsx :: <span className=\"font-mono text-micro uppercase tracking-[0.08em] text-text-subtle\">{t.performance.cumulativePerSettlement}</span> ↵ </div>", "OTHER"],
+   ["app/profile/kyc/page.tsx :: <span className=\"font-mono text-micro uppercase tracking-[0.1em] text-text-subtle\">{idLabel}</span> ↵ </div>", "OTHER"],
+   ["app/profile/kyc/page.tsx :: <span className=\"inline-flex items-center gap-1 rounded-pill border border-success-border bg-success-bg px-2.5 py-0.5 font-mono text-micro font-bold uppercase tracking-[0", "STATUS_CHIP"],
+@@ -260,7 +260,7 @@ export const NOT_EYEBROW = new Map([
+   ["app/results/page.tsx :: <span className=\"ml-auto inline-flex items-center gap-1.5 font-mono text-micro uppercase tracking-[0.16em] font-bold text-brand-300\"> ↵ <I.crown s={13} /> <span className", "STATUS_CHIP"],
+   ["app/updown/[roundId]/page.tsx :: <p className=\"mt-1 flex items-center gap-1.5 font-mono text-micro font-semibold uppercase tracking-[0.10em] text-text-subtle\"> ↵ {isOpen && <span className=\"live-dot\" />}", "STATUS_CHIP"],
+   ["app/updown/[roundId]/page.tsx :: className=\"inline-flex items-center gap-0.5 font-mono text-micro font-semibold uppercase tracking-[0.08em]\" ↵ style={{ color: \"var(--brand-300)\" }}>", "CONTROL_LABEL"],
+-  ["app/updown/history/page.tsx :: <span className=\"font-mono text-micro uppercase tracking-[0.10em] text-text-faint\"> ↵ {g.bets.length} {t.market.udBets}", "OTHER"],
++  ["app/updown/history/page.tsx :: <span className=\"font-mono text-micro uppercase tracking-[0.10em] text-text-faint\"> ↵ {formatNumber(g.bets.length)} {t.market.udBets}", "OTHER"],
+   // Round 5 (R5-A, F19): the note's words sit in a span of their own (`kp-track-end`, its trailing tracking taken back).
+   ["app/updown/page.tsx :: <span className=\"ml-auto inline-flex items-center gap-1.5 font-mono text-micro uppercase tracking-[0.10em] text-text-faint\"> ↵ <span className=\"live-dot\" /> <span classNa", "STATUS_CHIP"],
+   // ⭐ ONE recipe, TWO pills. The board header carried this string twice — the history link and
+@@ -304,7 +304,7 @@ export const NOT_EYEBROW = new Map([
+   ["components/layout/avatar-menu.tsx :: <span className={journey ? \"block font-mono text-micro uppercase tracking-[0.14em] text-brand-300/80 leading-tight mt-0.5\" : \"block font-mono text-micro uppercase trackin", "CONTROL_LABEL"],
+   ["components/layout/live-ticker.tsx :: <span className=\"font-mono text-micro font-semibold uppercase tracking-[0.1em] text-[var(--live-400)]\"> ↵ {t.common.live}", "STATUS_CHIP"],
+   ["components/layout/needle-drawer.tsx :: <span className=\"font-mono text-micro uppercase tracking-[0.12em] text-text-subtle\">{shownLabel}</span> ↵ <svg width=\"14\" height=\"14\" viewBox=\"0 0 24 24\" aria-hidden=\"tru", "OTHER"],
+-  ["components/layout/notifications-panel.tsx :: <span className=\"font-mono text-micro font-bold uppercase text-text-subtle truncate\"> ↵ {unread === 1 ? t.notif.unreadOne : t.notif.unreadN.replace(\"{n}\", String(unread))", "STATUS_CHIP"],
++  ["components/layout/notifications-panel.tsx :: <span className=\"font-mono text-micro font-bold uppercase text-text-subtle truncate\"> ↵ {unread === 1 ? t.notif.unreadOne : t.notif.unreadN.replace(\"{n}\", countText(unrea", "STATUS_CHIP"],
+   ["components/layout/notifications-panel.tsx :: className={`h-7 px-1.5 rounded-md font-mono text-micro font-bold uppercase tracking-[0.10em] text-text-subtle ${clearAllHover} hover:bg-bg-overlay transition-colors white", "CONTROL_LABEL"], // R5-I (2026-10-09): the journey's "Clear all" hover (danger) — same element, role unchanged
+   ["components/layout/notifications-panel.tsx :: className=\"inline-flex items-center gap-0.5 min-h-[44px] px-2 rounded-md font-mono text-micro font-bold uppercase text-accent-400 hover:text-text hover:bg-bg-overlay tran", "CONTROL_LABEL"],
+   ["components/layout/notifications-panel.tsx :: className=\"inline-flex items-center min-h-[44px] px-2 rounded-md font-mono text-micro font-bold uppercase text-text-subtle hover:text-text hover:bg-bg-overlay transition-", "CONTROL_LABEL"],
+@@ -337,7 +337,7 @@ export const NOT_EYEBROW = new Map([
+   ["components/ui/not-found-view.tsx :: <p className=\"font-mono text-micro font-bold uppercase tracking-[0.20em] text-text-subtle\"> ↵ {words.notFoundCode} · {words.notFound}", "CELEBRATION"],
+   ["components/ui/not-found-view.tsx :: className=\"mt-6 inline-flex items-center gap-2 font-mono text-caption uppercase tracking-[0.14em] text-brand-300 hover:text-brand-200\" ↵ >", "CONTROL_LABEL"],
+   ["components/ui/page-loader.tsx :: <p className=\"font-mono text-caption uppercase tracking-[0.18em] text-text-muted\"> ↵ {t.common.loading}", "STATUS_CHIP"],
+-  ["components/ui/pagination.tsx :: <p className=\"font-mono text-micro tracking-[0.14em] uppercase text-text-subtle\"> ↵ {((safePage - 1) * perPage + 1).toLocaleString()}–{Math.min(safePage * perPage, total)", "OTHER"],
++  ["components/ui/pagination.tsx :: <p className=\"font-mono text-micro tracking-[0.14em] uppercase text-text-subtle\"> ↵ {formatNumber((safePage - 1) * perPage + 1)}–{formatNumber(Math.min(safePage * perPage", "OTHER"],
+   ["components/ui/password-input.tsx :: <p className={cn(\"mt-1 font-mono text-label sm:text-micro uppercase tracking-[0.14em] font-bold\", fgCls)}> ↵ {label}", "STATUS_CHIP"],
+   ["components/ui/progress-bar.tsx :: <p className=\"font-mono text-micro uppercase tracking-widest text-text-tertiary tabular-nums\"> ↵ {value.toLocaleString()} of {safeMax.toLocaleString()} · {pct.toFixed(0)}", "OTHER"],
+   ["components/ui/route-error.tsx :: <p className=\"font-mono text-micro font-bold uppercase tracking-[0.20em] text-danger-fg\"> ↵ {eyebrow ?? t.error.somethingWentWrong}", "CELEBRATION"],
+diff --git a/scripts/journey-tickets.test.mts b/scripts/journey-tickets.test.mts
+index 0de1cd542..0be504464 100644
+--- a/scripts/journey-tickets.test.mts
++++ b/scripts/journey-tickets.test.mts
+@@ -771,7 +771,7 @@ const SELL_DIALOGS = [
+   '</>',
+   ');',
+ ].join("");
+-/** S6 A8h — the result a sale opens, as its one module draws it (`SellResultModal`, for the shell's host and the button's fallback alike): today's words and figures, moved unchanged out of the button, the journey's word only under the look, and the money figures in its title whole since S6 A8f (`wholeFigures`, `test:sell-grace-truth` §6). Read from its tag up to the tag's close. */
++/** S6 A8h — the result a sale opens, as its one module draws it (`SellResultModal`, for the shell's host and the button's fallback alike): today's words and figures, moved unchanged out of the button, the journey's word only under the look, and the money figures in its title whole since S6 A8f — re-pinned by R5-J (round 5, G-6): the result reads every title's figures itself (`moneyRuns`, `test:sell-grace-truth` §6), so the sale's `wholeFigures` opt-in is gone and the markup ends at `stripTone`. Read from its tag up to the tag's close. */
+ const SELL_RESULT_MARKUP = [
+   '<OperationResultModal',
+   'open={open}',
+@@ -801,7 +801,6 @@ const SELL_RESULT_MARKUP = [
+   'primaryLabel={resultData.variant === "success" ? t.common.doneSawa : t.common.close}',
+   'onClose={onClose}',
+   'stripTone="brand"',
+-  'wholeFigures',
+ ].join("");
+ /** The dialogs' three words: the journey's under the look, today's (the dialog's own defaults) without it. */
+ const DIALOG_ARMS = ["titleLabel={journey ? t.journey.sellConfirmTitle : undefined}", "keepLabel={journey ? t.journey.sellKeep : undefined}",
+diff --git a/scripts/outcome-display.test.mts b/scripts/outcome-display.test.mts
+index 7d187fa18..2edf8a3da 100644
+--- a/scripts/outcome-display.test.mts
++++ b/scripts/outcome-display.test.mts
+@@ -271,12 +271,13 @@ check(
+     /const total = yes \+ no \+ voided \|\| 1;/.test(res),
+     "if the denominator loses a term the ring stops being a whole");
+ 
++  // Re-pinned by R5-J (round 5, G-4): the legend's count is grouped as every count is (`formatNumber`: "Batili 1,204").
+   check("D42 …and the legend names the third one",
+-    /\{voidCount > 0 && \(/.test(res) && /\{t\.market\.statusVoid\} \{voidCount\}/.test(res),
++    /\{voidCount > 0 && \(/.test(res) && /\{t\.market\.statusVoid\} \{formatNumber\(voidCount\)\}/.test(res),
+     "an arc with no word is a part of the book the page refuses to account for");
+ 
+   check("D42 the void word comes from the lexicon, never a literal",
+-    !/>\s*(Void|Batili|已作废)\s*\{voidCount\}/.test(res),
++    !/>\s*(Void|Batili|已作废)\s*\{(?:formatNumber\()?voidCount\)?\}/.test(res),
+     "a typed-out word here is the §3b defect in a new place");
+ 
+   // ⭐ THE VOID-ONLY VIEW IS THE ONE THAT WAS EMPTY. The row must be a SIBLING of the
+@@ -294,8 +295,9 @@ check(
+     !/const total = yes \+ no \+ voided \|\| 1;/.test("  const total = yes + no || 1;"));
+   check("D42 control · a legend with no void row IS detected",
+     !/\{voidCount > 0 && \(/.test("{linesShown.map((line) => (<span key={line}>…</span>))}"));
+-  check("D42 control · a typed-out void word IS detected",
+-    />\s*(Void|Batili|已作废)\s*\{voidCount\}/.test('<span className="x">Void {voidCount}</span>'));
++  check("D42 control · a typed-out void word IS detected — bare or grouped",
++    />\s*(Void|Batili|已作废)\s*\{(?:formatNumber\()?voidCount\)?\}/.test('<span className="x">Void {voidCount}</span>')
++      && />\s*(Void|Batili|已作废)\s*\{(?:formatNumber\()?voidCount\)?\}/.test('<span className="x">Batili {formatNumber(voidCount)}</span>'));
+ }
+ 
+ log(`\n${fail === 0 ? "ALL PASS" : `${fail} FAILED`} — scanned ${files.length} ts/tsx files`);
+diff --git a/scripts/sell-grace-truth.test.mts b/scripts/sell-grace-truth.test.mts
+index 32734f3ea..df82c1b00 100644
+--- a/scripts/sell-grace-truth.test.mts
++++ b/scripts/sell-grace-truth.test.mts
+@@ -1634,8 +1634,9 @@ async function g5Fit(W: World) {
+  *   · the confirm's figure is `.amount`, one object, and its row wraps: the fee column moves below the figure and grows to
+  *     the box's width, its words still at the right edge; beside the figure the fee keeps a clear space before it, so two
+  *     figures never run together; the fee and its note were `.amount` already;
+- *   · the result sets every money figure in its title as one amount (`wholeFigures`, which the sale's result asks for, from
+- *     its own module since S6 A8h), in the
++ *   · the result sets every money figure in its title as one amount — since R5-J (round 5, 2026-10-09) for every result, read
++ *     by the modal with the platform's one reader (`moneyRuns`, fill-nodes.tsx), where the sale's result once asked for it
++ *     (`wholeFigures`, S6 A8f) through a matcher of its own — in the
+  *     mono face the model reads — the title's own face, Sora, is not among the repo's fonts; its detail rows already wrap.
+  * Over en, sw and zh × 320, 340, 360, 390, 412, 430, 768 and 1280 × §5's stakes to the platform's maximum, free and paid at
+  * every whole percent to 30 (`cashOutValue`, the oracle), in both looks (their words differ, never their figures): each
+@@ -1645,8 +1646,10 @@ async function g5Fit(W: World) {
+  */
+ const SELL_MODAL = "src/components/markets/sell-confirm-modal.tsx";
+ const RESULT_MODAL = "src/components/markets/operation-result-modal.tsx";
+-/** S6 A8h — the result a sale opens, out of the Sell button into its own module (`SellResultModal`): what asks for whole figures. */
++/** S6 A8h — the result a sale opens, out of the Sell button into its own module (`SellResultModal`), drawn by the shared result. */
+ const SELL_RESULT = "src/components/markets/sell-result.tsx";
++/** R5-J — the platform's one reader of money in a finished sentence (`moneyRuns`), which the result reads its figures with. */
++const FILL_NODES = "src/lib/fill-nodes.tsx";
+ const DIALOG_SHELL = "src/components/ui/modal.tsx";
+ /** The panel's edge is its material's (`.mat-modal`, motion.css): read from source, outside the plantable world. */
+ const DIALOG_MATERIAL = readRaw("src/app/motion.css");
+@@ -1669,10 +1672,19 @@ const RECEIVE_FIGURE = `className="amount font-bold text-[24px] leading-none tex
+ const FEE_COLUMN = `className="grow text-right"`;
+ const FEE_FIGURE = `className="pl-3 font-bold text-title-sm amount leading-none"`;
+ const FEE_NOTE = `className="mt-1 amount text-micro text-text-subtle"`;
+-/** The result's figure pattern and helper, pinned whole as the suite squashes them, so nothing can be added to either. */
+-const FIGURE_LINE = `const FIGURE = /(${DIALOG_MINUS}?TZS ${DIALOG_MINUS}?[0-9][0-9,]*)/;`;
+-const WHOLE_FIGURES = `function withWholeFigures(title: string) {return title.split(FIGURE).map((part, i) => (i % 2 === 1 ? <span key={i} className="amount">{part}</span> : part));}`;
+-const WHOLE_TITLE = ">{wholeFigures ? withWholeFigures(title) : title}<";
++/**
++ * The result's figure pattern and helper, pinned whole as the suite squashes them, so nothing can be added to either.
++ * ⭐ MOVED BY R5-J (round 5 of the visual pass, 2026-10-09 — G-6, one figure matcher). The result had a matcher of its own,
++ * `/(−?TZS −?[0-9][0-9,]*)/` split by `withWholeFigures`, asked for by the sale's result alone (`wholeFigures`): it took a
++ * sentence's comma into the figure ("TZS 5,000,000,"), read "TZS 1.2M" as "TZS 1" and ".2M", missed "+TZS 1,234"'s sign and
++ * the dictionary's no-break space. The modal now reads every result's figures with the platform's one reader, `moneyRuns`
++ * (fill-nodes.tsx) — the reader every toast already goes through — so these pins are that reader's pattern and body, the
++ * modal's import of it, and its title drawn through it. What §6 measures is unchanged: the sale's figure as one amount.
++ */
++const FIGURE_LINE = "const MONEY_RUN = /[+\\u2212]?TZS[\\u00a0 ]\\u2212?\\d+(?:,\\d{3})*(?:\\.\\d+)?[KMB]?/g;";
++const WHOLE_FIGURES = `export function moneyRuns(text: string): ReactNode[] {const out: ReactNode[] = [];let last = 0;let i = 0;for (const m of text.matchAll(MONEY_RUN)) {const at = m.index ?? 0;if (at > last) out.push(text.slice(last, at));out.push(<span key={i++} className="amount">{m[0]}</span>);last = at + m[0].length;}if (last < text.length) out.push(text.slice(last));return out;}`;
++const READER_IMPORT = `import { moneyRuns } from "@/lib/fill-nodes";`;
++const WHOLE_TITLE = ">{moneyRuns(title)}<";
+ /** The confirm's two buttons as today's markup draws them, each with its label: the gold sell and the ghost keep. */
+ const GOLD_BUTTON = `className="btn btn-gold btn-lg w-full"`;
+ const GOLD_LABEL = "{pending ? t.dialog.selling : `${t.dialog.sellLabel} · ${formatTzs(value)}`}";
+@@ -1812,6 +1824,8 @@ function dialogFacts(W: World): DialogFacts {
+   const innerPads = (inner ?? []).filter((c) => c.startsWith("p-"));
+   const innerLg = (inner ?? []).filter((c) => c.startsWith("lg:p-"));
+   const titleWhole = rq.includes(WHOLE_TITLE);
++  // R5-J · the reader the title goes through is the platform's one (`moneyRuns`, fill-nodes.tsx), imported by the modal.
++  const fq = squash(W.files.get(FILL_NODES) ?? "");
+   const label = openBefore(rq, ">{d.label}<", "p");
+   const column = label < 0 ? -1 : rq.lastIndexOf("<div", label);
+   const result = {
+@@ -1819,17 +1833,18 @@ function dialogFacts(W: World): DialogFacts {
+     pad: innerPads.length === 1 ? sp(innerPads[0].slice(2)) : Number.NaN,
+     padLg: innerLg.length === 1 ? sp(innerLg[0].slice(5)) : Number.NaN,
+     title: classesAt(rq, openBefore(rq, titleWhole ? WHOLE_TITLE : ">{title}<", "h2")), titleWhole,
+-    figureRe: occurrences(rq, FIGURE_LINE) === 1, helper: occurrences(rq, WHOLE_FIGURES) === 1,
++    figureRe: occurrences(fq, FIGURE_LINE) === 1,
++    helper: occurrences(fq, WHOLE_FIGURES) === 1 && occurrences(rq, READER_IMPORT) === 1,
+     label: classesAt(rq, label), value: classesAt(rq, openBefore(rq, ">{d.value}<", "p")),
+     detailRow: column > 0 ? classesAt(rq, rq.lastIndexOf("<div", column - 1)) : null,
+   };
+-  // The sale's one result asks for whole figures: a bare `wholeFigures`, or `={true}`. Since S6 A8h it is drawn from its own
+-  // module (`SellResultModal`, which the shell's host and the Sell button's fallback both draw), so that is where it is read.
++  // The sale's one result is the shared result, which reads every title's figures itself since R5-J — so the sale asks for
++  // nothing (S6 A8f's `wholeFigures` is gone, and a stale one would not compile). Since S6 A8h it is drawn from its own module
++  // (`SellResultModal`, which the shell's host and the Sell button's fallback both draw), so that is where it is read.
+   const sale = squash(W.files.get(SELL_RESULT) ?? "");
+   const resultAt = sale.indexOf("<OperationResultModal");
+   const element = resultAt < 0 ? "" : sale.slice(resultAt, sale.indexOf("/>", resultAt) + 2);
+-  const asks = occurrences(sale, "<OperationResultModal") === 1 && !element.includes("wholeFigures={false}")
+-    && (element.includes("wholeFigures/>") || element.includes("wholeFigures ") || element.includes("wholeFigures={true}"));
++  const asks = occurrences(sale, "<OperationResultModal") === 1 && element.includes("title={") && !element.includes("wholeFigures");
+   return {
+     sp, lg: dialogNum(screens, `lg: "`),
+     micro: dialogNum(dialogFrom(sizes, "micro:"), `["`), microTrack: dialogNum(dialogFrom(sizes, "micro:"), `letterSpacing: "`),
+@@ -2053,7 +2068,7 @@ async function g6Dialogs(W: World) {
+   const resultBad = resultCells.filter(({ f }) => f.split || f.over || !Number.isFinite(f.room))
+     .map(({ loc, vw, p, f }) => `${loc} ${vw} TZS ${p.stake} ${f.row}: ${f.split ? "can split" : `${f.room.toFixed(1)}px`}`);
+   const leastResult = (name: string) => Math.min(...resultCells.filter((x) => x.f.row === name && x.vw === 320).map((x) => x.f.room)).toFixed(1);
+-  ok(`6.result · the result a sale opens sets every money figure in its title as one amount — the sale's result asks (wholeFigures, in its own module, sell-result.tsx, since S6 A8h), and the pinned helper wraps each figure its pattern finds, a minus before it included — and at every width the title's widest figure, TZS 1,000,000, fits the title's line (least room left at 320: ${leastResult("result.title")}px); each detail row holds its figure whole, its line wrapping before break-all could break it (least room left at 320: ${leastResult("result.returned")} and ${leastResult("result.fee")}px)`,
++  ok(`6.result · the result a sale opens sets every money figure in its title as one amount — the sale's result is the shared result (in its own module, sell-result.tsx, since S6 A8h), which draws every title through the platform's one reader (moneyRuns, fill-nodes.tsx, since R5-J), and the pinned reader wraps each figure its pattern finds, a minus before it included — and at every width the title's widest figure, TZS 1,000,000, fits the title's line (least room left at 320: ${leastResult("result.title")}px); each detail row holds its figure whole, its line wrapping before break-all could break it (least room left at 320: ${leastResult("result.returned")} and ${leastResult("result.fee")}px)`,
+     resultCells.length > 0 && resultBad.length === 0, resultBad.slice(0, 3).join(" | "));
+   // CONTROL — today's rules (the row not wrapping, the figure no amount, the fee keeping no space) on the ticket the v2 parity
+   // baseline sells in its confirm cells, a free TZS 1,500, at 360 and 390.
+@@ -2480,14 +2495,18 @@ const PLANTS: Plant[] = [
+     world: (w) => withEntry(w, "sw", "dialog", "sellLabel", "Uza tiketi yako yote sasa hivi") },
+   { name: "a longer Swahili keep word in the journey's look (its keep button overflows at 320)", expect: ["6.button"],
+     world: (w) => withEntry(w, "sw", "journey", "sellKeep", "Baki na tiketi yako hii hadi matokeo yatoke") },
+-  { name: "the sale's result stops asking for whole figures (a refusal's 'TZS' can end a line again, and the title's figure is drawn in a face the model cannot read)", expect: ["6.result"],
+-    world: (w) => inFile(w, SELL_RESULT, `${NL}      wholeFigures${NL}`, NL) },
++  // R5-J · the four plants below moved with the reader: the sale no longer asks (every result reads its figures), and the
++  // pattern and helper are the platform's one reader in fill-nodes.tsx.
++  { name: "the sale's result is drawn by a dialog of its own, not the shared result (its title's 'TZS' can end a line again, its figure in a face the model cannot read)", expect: ["6.result"],
++    world: (w) => inFile(w, SELL_RESULT, "<OperationResultModal", "<SaleOwnResultModal") },
+   { name: "the result draws its title as given (no amount around its figure)", expect: ["6.result"],
+-    world: (w) => inFile(w, RESULT_MODAL, "{wholeFigures ? withWholeFigures(title) : title}", "{title}") },
+-  { name: "the result's helper sets its figures in the body's face, not as amounts", expect: ["6.result"],
+-    world: (w) => inFile(w, RESULT_MODAL, `<span key={i} className="amount">`, `<span key={i} className="font-semibold">`) },
+-  { name: "the figure pattern misses a minus written before the currency", expect: ["6.result"],
+-    world: (w) => inFile(w, RESULT_MODAL, `/(${DIALOG_MINUS}?TZS `, "/(TZS ") },
++    world: (w) => inFile(w, RESULT_MODAL, "{moneyRuns(title)}", "{title}") },
++  { name: "the result reads its figures with a matcher of its own again (the shared reader's import dropped)", expect: ["6.result"],
++    world: (w) => inFile(w, RESULT_MODAL, READER_IMPORT, "") },
++  { name: "the reader sets its figures in the body's face, not as amounts", expect: ["6.result"],
++    world: (w) => inFile(w, FILL_NODES, `<span key={i++} className="amount">`, `<span key={i++} className="font-semibold">`) },
++  { name: "the reader's pattern misses a minus written before the currency", expect: ["6.result"],
++    world: (w) => inFile(w, FILL_NODES, "/[+\\u2212]?TZS", "/[+]?TZS") },
+   { name: "a detail row of the result stops wrapping (a long Swahili label squeezes the figure, and break-all breaks it)", expect: ["6.result"],
+     world: (w) => inFile(w, RESULT_MODAL, "px-3 py-2 flex flex-wrap items-baseline", "px-3 py-2 flex items-baseline") },
+   { name: "the result's title grows to 34px (its widest figure no longer fits a 320 phone's line)", expect: ["6.result"],
+diff --git a/scripts/updown-history-pnl-red.mjs b/scripts/updown-history-pnl-red.mjs
+index 5d7e26424..23a613b56 100644
+--- a/scripts/updown-history-pnl-red.mjs
++++ b/scripts/updown-history-pnl-red.mjs
+@@ -50,8 +50,9 @@ const MUTATIONS = [
+   {
+     label: "M5 · the Rounds tile goes back to the page count",
+     file: PAGE,
+-    from: 'tabular-nums text-text">{viewRounds.length}',
+-    to: 'tabular-nums text-text">{rounds.length}',
++    // Re-anchored by R5-J (round 5, G-4): the tile's count is grouped (`formatNumber`); the mutation is unchanged.
++    from: 'tabular-nums text-text">{formatNumber(viewRounds.length)}',
++    to: 'tabular-nums text-text">{formatNumber(rounds.length)}',
+     expect: ["§3e"],
+   },
+   {
+diff --git a/scripts/updown-history-pnl.test.mts b/scripts/updown-history-pnl.test.mts
+index 1f3d0b7bb..18212da38 100644
+--- a/scripts/updown-history-pnl.test.mts
++++ b/scripts/updown-history-pnl.test.mts
+@@ -113,8 +113,9 @@ console.log("\n§3 · the page passes the VIEW, not the page");
+     "if `rounds` became an alias for the view the pager is gone, and this guard is vacuous");
+ 
+   // The middle tile printed a PAGED count directly over an UNPAGED one — the visible tell.
++  // Re-pinned by R5-J (round 5, G-4): the count is grouped as every count is (`formatNumber`) — still the VIEW's.
+   ok("§3e the Rounds tile counts the VIEW, so it agrees with the bets line beneath it",
+-    /tabular-nums text-text">\{viewRounds\.length\}/.test(page),
++    /tabular-nums text-text">\{formatNumber\(viewRounds\.length\)\}/.test(page),
+     "`{rounds.length}` over `{rows.length} bets` is two scopes in one tile");
+   ok("§3f the poller watches the VIEW too, or an off-screen settlement leaves the money stale",
+     /const anyLive = viewRounds\.some/.test(page));
+diff --git a/scripts/visual-pass-r4d.test.mts b/scripts/visual-pass-r4d.test.mts
+index fa85d1e14..aced86aaa 100644
+--- a/scripts/visual-pass-r4d.test.mts
++++ b/scripts/visual-pass-r4d.test.mts
+@@ -271,8 +271,9 @@ section("7 · /results: the tally reads in one case (tile 172)");
+   ok("7.2 · …and each result card's \"TZS 6K imekamilika\" beside \"2 watabiri\"",
+     res.includes("{formatTzsCompact(m.yesPool + m.noPool)} {t.market.tickerSettled}"));
+   ok("7.3 · ⛔ the tab label is no longer read for a sentence on this page", !res.includes("{t.common.settled}"));
++  // Re-pinned by R5-J (round 5, G-4): the count is grouped as every count is (`formatNumber`) — the sentence word unchanged.
+   ok("7.3b · …nor for the classic Tiketi zangu's win-rate hint, which said \"3 Imekamilika\" by the same composition",
+-    code("src/app/positions/page.tsx").includes("ofSettled: `${settled.length} ${t.market.tickerSettled}`,")
++    code("src/app/positions/page.tsx").includes("ofSettled: `${formatNumber(settled.length)} ${t.market.tickerSettled}`,")
+       && !code("src/app/positions/page.tsx").includes("${t.common.settled}"));
+   ok("7.4 CONTROL · the premise in the dictionary: the label is capitalised, the sentence word is not — in sw and en",
+     /^[A-Z]/.test(DICTS.sw.common.settled) && /^[a-z]/.test(DICTS.sw.market.tickerSettled)
+diff --git a/scripts/visual-pass-r5e.test.mts b/scripts/visual-pass-r5e.test.mts
+index f6ab29808..3c3509943 100644
+--- a/scripts/visual-pass-r5e.test.mts
++++ b/scripts/visual-pass-r5e.test.mts
+@@ -656,10 +656,9 @@ section("6 · H4 nothing is inserted into the words — the empty state, the dat
+     "src/app/legal/responsible-gambling/page.tsx": "owner-approved RG copy, authored with &nbsp; (byte-pinned legal tree)",
+     "src/app/legal/rules/page.tsx": "the legal version line, authored (byte-pinned legal tree)",
+     "src/lib/legal/policy-lines.ts": "models the legal pages' own &nbsp;", "src/lib/legal/kept-promises.ts": "models the legal pages' own &nbsp;",
+-    "src/components/analytics/analytics-choice.tsx": "an empty slot's line box (no words) — named for the integrator",
+-    "src/components/ui/search-box.tsx": "an empty slot's line box (no words) — named for the integrator",
+-    "src/components/ui/time-select.tsx": "an empty slot's line box, aria-hidden (no words) — named for the integrator",
+-    "src/components/home/trust-band.tsx": "an empty cell's line box, aria-hidden (no words) — named for the integrator",
++    // R5-J (round 5's follow-up, G-6): the four empty slots named here for the integrator — the analytics choice, the search
++    // box's echo, the time field's preview, a settled row's empty cell — hold none now (their line is `.kp-keep-line`'s
++    // generated space), so they left this list for 6.5′'s, where a typed space coming back fails.
+     "src/components/updown/use-quick-bet.ts": "a live region's re-announce nonce (U+200B), not layout",
+     "src/lib/markets/short-title.ts": "strips invisible characters from titles; the admin's form hint", "src/lib/server/ai-poll-generation.ts": "strips them from AI titles",
+     "src/lib/server/ai-provider.ts": "a fixture that feeds the stripper", "src/lib/contacts/import-parse.ts": "reads them in imported numbers",
+@@ -676,8 +675,9 @@ section("6 · H4 nothing is inserted into the words — the empty state, the dat
+   ok(`6.5 · outside the dictionary, the admin console and the legal tree, no player code inserts a no-break space, word joiner or zero-width space for layout — the ${holders.length} files that hold one each have a reason`,
+     unexplained.length === 0, unexplained.join(", "));
+   const MINE = ["src/components/ui/empty-state-text.ts", "src/components/ui/empty-state.tsx", "src/lib/break-end.ts", "src/components/markets/sell-result.tsx",
+-    "src/components/markets/sell-button.tsx", "src/components/ui/toast.tsx", "src/app/updown/[roundId]/page.tsx", "src/lib/cjk-marks.tsx", "src/components/ui/keep-run.tsx", "src/components/ui/keep-words.tsx"];
+-  ok("6.5′ · the files round 5 cleared hold none (the empty state, the break sentence, the sell toast, the toaster, the Up & Down stamp, the CJK gap, the keep helpers)",
++    "src/components/markets/sell-button.tsx", "src/components/ui/toast.tsx", "src/app/updown/[roundId]/page.tsx", "src/lib/cjk-marks.tsx", "src/components/ui/keep-run.tsx", "src/components/ui/keep-words.tsx",
++    "src/components/analytics/analytics-choice.tsx", "src/components/ui/search-box.tsx", "src/components/ui/time-select.tsx", "src/components/home/trust-band.tsx"];
++  ok("6.5′ · the files round 5 cleared hold none (the empty state, the break sentence, the sell toast, the toaster, the Up & Down stamp, the CJK gap, the keep helpers, and R5-J's four empty slots)",
+     MINE.every((f) => !ESC.test(decomment(read(f)))), MINE.filter((f) => ESC.test(decomment(read(f)))).join(", "));
+   // The toaster draws every amount its words state as an `.amount` — the sell refusal's among them, every other too.
+   const toast = code("src/components/ui/toast.tsx");
+diff --git a/scripts/visual-pass-r5j.test.mts b/scripts/visual-pass-r5j.test.mts
+new file mode 100644
+index 000000000..9db91900e
+--- /dev/null
++++ b/scripts/visual-pass-r5j.test.mts
+@@ -0,0 +1,437 @@
++/**
++ * ROUND 5 OF THE VISUAL PASS, FOLLOW-UP HELPER J (2026-10-09) — one way to count, one figure matcher: every fix held beside a
++ * control or a plant that proves the check can fail.
++ *
++ *   npx tsx scripts/visual-pass-r5j.test.mts        (npm run test:visual-pass-r5j)
++ *
++ * The owner's rules (Ali): only perfect visual and logical results (2026-10-08); consistency and perfection in each move — a
++ * finding is fixed with every sibling it has (2026-10-09).
++ *   §0 the premise: the platform's one grouping (`formatNumber`) is the reader's in all three languages; a runtime-locale
++ *      formatter is not (a German phone's "12.479")
++ *   §1 G-4 · ONE WAY TO COUNT — the census: every count a player's page prints (a JSX child, a `{n}` slot, a template span,
++ *      `toLocaleString`, `Intl.NumberFormat`, `String(count)`) goes through `formatNumber`, or is a classified exception with
++ *      its reason; no exception is stale; each shape planted is found
++ *   §2 G-4 · the counts drawn: a filter pill, the pager, a bar's phrase and pills at production's 12,479, rendered as a German
++ *      phone runs them (a runtime-locale formatter shows "12.479" there); the Up & Down card; the share card; the deposit
++ *      bounds beside the withdraw bounds
++ *   §3 G-6 · ONE FIGURE MATCHER — the result modal reads every figure with `moneyRuns` (fill-nodes.tsx): its title, a subtitle
++ *      given as words and its footnote, for every result; rendered on the sentences the private matcher got wrong, beside
++ *      that matcher as the control
++ *   §4 G-6 · the census of private figure readers: every regular expression in player-visible code that reads a currency or a
++ *      thousands group is the shared reader's or classified; the share card's private grouping gone
++ *   §5 G-6 · the empty slots: no typed no-break space; one CSS rule draws the line (`.kp-keep-line:empty::before`)
++ *   §6 what classic viewers keep: the classic bell's bare count (frozen chrome) and the capped badge
++ * Where an older suite owns a pin this work moved, the pin moved there, with its reason: `test:sell-grace-truth` §6 (the
++ * result's figure reader and its plants), `test:visual-pass-r4d` 7.3b (the win-rate hint's count), `test:visual-pass-r5e` 6.5
++ * and 6.5′ (the four slots left the excused list), `test:eyebrow-roles` (two signatures).
++ * ⛔ It READS, parses and renders in memory; it writes nothing. The on-disk mutation proof is S/r5j/mutation-r5j.mjs.
++ */
++import { readFileSync, readdirSync, statSync } from "node:fs";
++import { posix } from "node:path";
++import { createRequire } from "node:module";
++import NodeModule from "node:module";
++import ts from "typescript";
++import { decomment, decommentCss } from "./lib/decomment.mts";
++import { playerRenderedFiles } from "./lib/player-surface-text.mts";
++
++const req = createRequire(import.meta.url);
++let pass = 0;
++const fails: string[] = [];
++const ok = (name: string, cond: boolean, detail = "") => {
++  if (cond) { pass++; console.log(`  ok   ${name}`); }
++  else { fails.push(`${name}${detail ? ` — ${detail}` : ""}`); console.log(`  FAIL ${name}${detail ? ` — ${detail}` : ""}`); }
++};
++const section = (s: string) => console.log(`\n── ${s} ${"─".repeat(Math.max(0, 110 - s.length))}`);
++const raw = (p: string) => readFileSync(p, "utf8").replace(/\r\n/g, "\n");
++/** Source with its comments out (the shared scanner), so a rule quoted in a note is never mistaken for the rule. */
++const code = (p: string) => decomment(raw(p));
++const squash = (s: string) => s.replace(/\s+/g, " ");
++const j = (v: unknown) => JSON.stringify(v);
++const NBSP = String.fromCharCode(0xa0);
++const walk = (d: string, out: string[] = []): string[] => {
++  for (const n of readdirSync(d)) { const p = posix.join(d, n); if (statSync(p).isDirectory()) walk(p, out); else out.push(p); }
++  return out;
++};
++
++/* ── the renderer: React's server renderer inside the root layout's providers (r5h's harness) ───────────────────────── */
++type Locale = "sw" | "en" | "zh";
++const LOCALES: Locale[] = ["sw", "en", "zh"];
++const React = req("react") as typeof import("react");
++const h = React.createElement;
++const { renderToStaticMarkup } = req("react-dom/server") as typeof import("react-dom/server");
++// The dialog's chrome is a portal, which the server renderer cannot draw: a stand-in draws the panel in place, every other
++// export of the module (the ✕, the exit beat) its own — so the result's own markup renders as the browser receives it.
++{
++  const at = req.resolve("../src/components/ui/modal.tsx");
++  const real = req(at) as Record<string, unknown>;
++  const stub = new NodeModule(at);
++  stub.filename = at; stub.loaded = true;
++  const Inline = (p: { open: boolean; children?: unknown; ariaLabel?: string; describedBy?: string; role?: string }) =>
++    p.open ? h("div", { role: p.role ?? "dialog", "aria-label": p.ariaLabel, "aria-describedby": p.describedBy }, p.children as never) : null;
++  stub.exports = { ...real, Modal: Inline };
++  (req.cache as Record<string, unknown>)[at] = stub;
++}
++const { dict } = req("../src/lib/i18n-dict.ts") as { dict: Record<Locale, Record<string, Record<string, string>>> };
++const { I18nProvider } = req("../src/lib/i18n.tsx") as { I18nProvider: (p: { initial: Locale; children: unknown }) => unknown };
++const { AppRouterContext } = req("next/dist/shared/lib/app-router-context.shared-runtime") as { AppRouterContext: import("react").Context<unknown> };
++const { PathnameContext } = req("next/dist/shared/lib/hooks-client-context.shared-runtime") as { PathnameContext: import("react").Context<string | null> };
++const ROUTER = { push() {}, replace() {}, refresh() {}, prefetch() {}, back() {}, forward() {}, hmrRefresh() {} };
++const inApp = (l: Locale, el: unknown) =>
++  renderToStaticMarkup(h(AppRouterContext.Provider, { value: ROUTER }, h(PathnameContext.Provider, { value: "/" }, h(I18nProvider as never, { initial: l } as never, el as never))));
++const textOf = (m: string) => m.replace(/<[^>]+>/g, "").replace(/&amp;/g, "&").replace(/&#x27;/g, "'").replace(/&quot;/g, '"').replace(/&lt;/g, "<").replace(/&gt;/g, ">");
++const amountsIn = (m: string) => [...m.matchAll(/<span class="amount">([^<]*)<\/span>/g)].map((x) => x[1]);
++
++const { formatNumber } = req("../src/lib/utils.ts") as { formatNumber: (n: number) => string };
++const { moneyRuns } = req("../src/lib/fill-nodes.tsx") as { moneyRuns: (s: string) => unknown[] };
++const { keepText } = req("../src/components/ui/keep-run.tsx") as { keepText: (s: string, runs?: string[]) => unknown };
++
++/* ══ §0 · THE PREMISE ══════════════════════════════════════════════════════════════════════════════════════════════ */
++section("0 · the premise: one fixed grouping is the reader's in all three languages; a runtime locale's is not");
++{
++  const N = [12479, 1234567, 999, 1000];
++  ok("0.1 CONTROL · `formatNumber` groups a count as \"12,479\" and leaves \"999\" bare",
++    formatNumber(12479) === "12,479" && formatNumber(1234567) === "1,234,567" && formatNumber(999) === "999" && formatNumber(1000) === "1,000");
++  ok("0.2 CONTROL · Swahili, English and Chinese all group as `formatNumber` does — so the one fixed grouping IS the reader's",
++    LOCALES.every((l) => N.every((n) => new Intl.NumberFormat(l).format(n) === formatNumber(n))),
++    j(LOCALES.map((l) => new Intl.NumberFormat(l).format(12479))));
++  ok("0.3 CONTROL · …and a runtime's own locale need not: a German phone groups \"12.479\", a French one with a narrow no-break space — what `toLocaleString()` and `new Intl.NumberFormat()` printed after hydration on a server-rendered client card",
++    new Intl.NumberFormat("de-DE").format(12479) === "12.479" && new Intl.NumberFormat("fr-FR").format(12479) === `12${String.fromCharCode(0x202f)}479`);
++  ok("0.4 CONTROL · a bare count is ungrouped — production's /results lens read \"Zote 12479\"", String(12479) === "12479");
++}
++
++/* ══ §1 · G-4 · THE COUNT CENSUS ═══════════════════════════════════════════════════════════════════════════════════════ */
++section("1 · G-4 · one way to count: every count a player's page prints goes through `formatNumber`");
++/** A name that holds a count: a length or a size, or a counting word as a camelCase SEGMENT of the identifier ("openCount",
++ *  "counts", "recruitCount" — never "Account" or "discount"). */
++const COUNTY = new RegExp(
++  "(?:\\.length|\\.size)\\b"
++  + "|(?:(?:^|[^A-Za-z])(?:count|total|unread|streak|remaining|settlements|players|predictors|recruits|votes)"
++  + "|[a-z0-9](?:Count|Total|Unread|Streak|Remaining|Settlements|Players|Predictors|Recruits|Votes))s?(?![a-z])"
++  + "|(?:^|[^A-Za-z.])(?:wins|losses|voids|cashOuts|resolved|score)\\b"
++  // the counts this codebase names without a counting word (the card's comment count, the home's "closing today", /live's
++  // tipping markets, the agent form's attached documents)
++  + "|(?:^|[^A-Za-z])(?:comments|closingToday|tippingMarkets|attached)(?![A-Za-z])",
++);
++/** A dictionary word (`t.proposals.votesCount` is "kura"), never a number. */
++const WORDS = /^(?:t|dict|T|copy|words|labels)\./;
++const FORMATTED = /^formatNumber\(|^formatTzs|^formatCompactNumber\(|^formatTzsCompact\(/;
++/** A local name that IS the convention in its one file (each checked in 1.5): the away bar's `n`, the bell's `countText`. */
++const ALIAS: Record<string, RegExp> = {
++  "src/components/layout/away-summary-bar.tsx": /^n\(/,
++  "src/components/layout/notifications-panel.tsx": /^countText\(/,
++};
++/** Every place `code` prints a count without the convention, as "kind :: expression". */
++function censusOf(file: string, src: string): string[] {
++  const out: string[] = [];
++  const sf = ts.createSourceFile(file, src, ts.ScriptTarget.Latest, true, /\.tsx$/.test(file) ? ts.ScriptKind.TSX : ts.ScriptKind.TS);
++  const alias = ALIAS[file];
++  const formatted = (t: string) => FORMATTED.test(t) || (alias !== undefined && alias.test(t));
++  const say = (kind: string, e: ts.Node) => out.push(`${kind} :: ${squash(e.getText(sf))}`);
++  const visit = (n: ts.Node) => {
++    if (ts.isJsxExpression(n) && n.expression && (ts.isJsxElement(n.parent) || ts.isJsxFragment(n.parent))) {
++      const e = n.expression;
++      const simple = ts.isIdentifier(e) || ts.isPropertyAccessExpression(e) || ts.isElementAccessExpression(e)
++        || (ts.isBinaryExpression(e) && /^[+\-*/]$/.test(e.operatorToken.getText(sf))) || ts.isParenthesizedExpression(e);
++      const t = e.getText(sf);
++      if (simple && COUNTY.test(t) && !formatted(t) && !WORDS.test(t)) say("jsx", e);
++    }
++    if (ts.isTemplateSpan(n)) {
++      const t = n.expression.getText(sf);
++      if (COUNTY.test(t) && !formatted(t) && !t.includes("?") && !WORDS.test(t)) say("template", n.expression);
++    }
++    if (ts.isCallExpression(n) && ts.isPropertyAccessExpression(n.expression) && n.expression.name.text === "replace" && n.arguments.length === 2
++      && ts.isStringLiteral(n.arguments[0]) && /^\{(n|total|shown|count)\}$/.test(n.arguments[0].text)) {
++      const e = n.arguments[1];
++      if (!formatted(e.getText(sf))) say(`slot ${n.arguments[0].text}`, e);
++    }
++    if (ts.isCallExpression(n) && ts.isIdentifier(n.expression) && /^fill(Nodes)?$/.test(n.expression.text) && n.arguments[1] && ts.isObjectLiteralExpression(n.arguments[1])) {
++      for (const p of n.arguments[1].properties) {
++        const key = p.name?.getText(sf) ?? "";
++        if (!/^(n|total|shown|count)$/.test(key)) continue;
++        const e = ts.isPropertyAssignment(p) ? p.initializer : p;
++        if (!formatted(e.getText(sf))) say(`slot {${key}}`, e);
++      }
++    }
++    if (ts.isCallExpression(n) && ts.isPropertyAccessExpression(n.expression) && n.expression.name.text === "toLocaleString"
++      && !/Date|date|time|Time/.test(n.expression.expression.getText(sf))) say("toLocaleString", n);
++    if (ts.isNewExpression(n) && n.expression.getText(sf) === "Intl.NumberFormat") say("Intl.NumberFormat", n);
++    if (ts.isCallExpression(n) && ts.isIdentifier(n.expression) && n.expression.text === "String" && n.arguments[0] && COUNTY.test(n.arguments[0].getText(sf))) say("String()", n);
++    n.forEachChild(visit);
++  };
++  sf.forEachChild(visit);
++  return out;
++}
++/** The player-visible modules outside the rendered population: the search echo's grammar, the share card, the card's close label. */
++const EXTRA = ["src/lib/search/query.ts", "src/app/api/og/market/[id]/route.tsx", "src/lib/markets/card-close-label.ts"];
++const POPULATION = [...playerRenderedFiles(), ...EXTRA];
++const ORDINAL = "an ordinal that NAMES a place (\"Show market 3\", a step, a citation) — a position in a short list, not a quantity";
++/** Every count a player can see that is LEFT bare, each with its reason. A site not here fails 1.1; a site here that is gone fails 1.2. */
++const LEFT: Record<string, string> = {
++  "src/app/live/featured-contest.tsx :: slot {n} :: String(i + 1)": ORDINAL,
++  "src/app/results/notable-carousel.tsx :: slot {n} :: String(i + 1)": ORDINAL,
++  "src/components/onboarding/first-visit-primer.tsx :: slot {n} :: String(i + 1)": ORDINAL,
++  "src/components/chat/messages/Primitives.tsx :: slot {n} :: String(n)": `${ORDINAL}: a source's number, matching the [n] in the answer`,
++  "src/app/updown/page.tsx :: slot {n} :: String(activeDuration)": "a duration in minutes (3–60), the time grammar's, not a count",
++  "src/lib/markets/card-close-label.ts :: slot {n} :: String(label.n)": "a duration in days (the time-left grammar), in a module pure by contract (it imports only eat-day.ts; `test:client-graph-safe`) — under 1,000 for any market under 2.7 years (production's furthest: 170)",
++  "src/components/onboarding/first-visit-primer.tsx :: slot {n} :: \"1\"": "the primer's demo dial labels, multipliers (\"1× chini\", \"200× juu\"), not counts",
++  "src/components/onboarding/first-visit-primer.tsx :: slot {n} :: \"200\"": "the primer's demo dial labels, multipliers (\"1× chini\", \"200× juu\"), not counts",
++  "src/components/onboarding/first-visit-primer.tsx :: template :: (step + 1) / CARDS.length": "a progress bar's scale (a style), not text",
++  "src/components/ui/keep-words.tsx :: template :: out.length": "a React key, not text",
++  "src/components/charts/pnl-chart.tsx :: jsx :: data[data.length - 1].label": "a label (words), not a count",
++  "src/app/wallet/money-bar-ghost.tsx :: jsx :: count": "the loading ghost's phrase drawn transparent to its width (\"Miamala 00\"), not a count — R5-K/L's ghosts",
++  "src/app/wallet/receipts/loading.tsx :: slot {n} :: \"00\"": "the loading ghost's two placeholder digits, not a count — R5-K/L's ghosts",
++  "src/app/wallet/wallet-ghost.tsx :: slot {n} :: \"00\"": "the loading ghost's two placeholder digits, not a count — R5-K/L's ghosts",
++  "src/components/charts/terminal-chart.tsx :: toLocaleString :: v.toLocaleString(locale, { minimumFractionDigits: decimalsRef.current, maximumFractionDigits: decimalsRef.current })": "a PRICE with its own decimals in the reader's language (explicit locale, never the runtime's) — `formatNumber` has no decimals",
++  "src/components/ui/progress-bar.tsx :: toLocaleString :: value.toLocaleString()": "the operator console's progress bar (no player file imports it — 1.4), English-only by the admin convention",
++  "src/components/ui/progress-bar.tsx :: toLocaleString :: safeMax.toLocaleString()": "the operator console's progress bar (no player file imports it — 1.4), English-only by the admin convention",
++  "src/app/notifications/bulk-bar.tsx :: jsx :: countLabel": "a phrase its page builds with the count already grouped (`unreadN` filled by `formatNumber` — 1.6)",
++  "src/components/updown/updown-card.tsx :: jsx :: playersText": "the count already grouped, memoised (`formatNumber(players)` — 2.4)",
++};
++{
++  const found: string[] = [];
++  for (const f of POPULATION) for (const x of censusOf(f, code(f))) found.push(`${f} :: ${x}`);
++  // A bar's apply label takes the bar's own phrase, which already holds its count grouped (1.3 holds that phrase).
++  const phraseOk = (s: string) => / :: slot \{n\} :: resultPhrase$/.test(s) && code(s.split(" :: ")[0]).includes(`.replace("{n}", formatNumber(resultCount))`);
++  const unclassified = [...new Set(found)].filter((s) => !(s in LEFT) && !phraseOk(s));
++  console.log(`     population: ${POPULATION.length} player-visible files; ${found.length} sites seen; ${Object.keys(LEFT).length} classified`);
++  ok(`1.1 · every count a player's page prints is grouped through \`formatNumber\` — over ${POPULATION.length} player-visible files, no JSX count, no {n}/{total}/{shown} slot, no template count, no \`toLocaleString\`, no \`new Intl.NumberFormat\`, no \`String(count)\` outside the ${Object.keys(LEFT).length} classified sites`,
++    POPULATION.length > 400 && unclassified.length === 0, unclassified.slice(0, 6).join(" | "));
++  const stale = Object.keys(LEFT).filter((k) => !found.includes(k));
++  ok("1.2 · no classified site is stale: each one is still where its reason says (a list that outlives its sites would excuse a new one)",
++    stale.length === 0, stale.join(" | "));
++  const BARS = ["src/app/fairness/fairness-bar.tsx", "src/app/notifications/notifications-bar.tsx", "src/app/positions/performance/performance-bar.tsx",
++    "src/app/positions/positions-bar.tsx", "src/app/profile/account/account-bar.tsx", "src/app/profile/invite/recruits-bar.tsx", "src/app/proposals/proposals-bar.tsx",
++    "src/app/results/results-bar.tsx", "src/app/updown/history/history-bar.tsx", "src/app/wallet/receipts/receipts-bar.tsx", "src/app/wallet/wallet-bar.tsx",
++    "src/app/watchlist/watchlist-bar.tsx", "src/components/markets/discovery-bar.tsx"];
++  const everyBar = POPULATION.filter((f) => code(f).includes("<QueryResultCount "));
++  ok(`1.3 · every query bar (${BARS.length}, every file drawing a \`QueryResultCount\`) builds its result phrase with the count grouped — "masoko 12,479", and the sheet's apply label and its filter count from the same`,
++    BARS.every((f) => code(f).includes(`.replace("{n}", formatNumber(resultCount))`)) && everyBar.length === BARS.length && everyBar.every((f) => BARS.includes(f)),
++    j(everyBar.filter((f) => !BARS.includes(f))));
++  const progressUsers = POPULATION.filter((f) => /from "@\/components\/ui\/progress-bar"/.test(code(f)));
++  ok("1.4 · the progress bar the census excuses is the operator console's: no player-visible file imports it", progressUsers.length === 0, j(progressUsers));
++  ok("1.5 · the two local names the census accepts are the convention: the away bar's `n` IS `formatNumber`, and the bell's `countText` groups the journey's count (the classic branch is §6.1)",
++    code("src/components/layout/away-summary-bar.tsx").includes("const n = formatNumber;")
++      && code("src/components/layout/notifications-panel.tsx").includes("const countText = (n: number) => (journey ? formatNumber(n) : String(n));"));
++  ok("1.6 · the phrase the inbox's bulk bar prints is built with its count grouped: \"1,247 hazijasomwa\"",
++    squash(code("src/app/notifications/page.tsx")).includes(`countLabel={counts.unread === 1 ? t.notif.unreadOne : t.notif.unreadN.replace("{n}", formatNumber(counts.unread))}`));
++  // PLANTS — each shape the census reads, planted in a string, is found.
++  const plant = (src: string, file = "src/app/x/page.tsx") => censusOf(file, src);
++  ok("1.1′ PLANT · a bare count in JSX (/updown/history's \"2 dau\" as it shipped) is found", plant("const a = <span>{g.bets.length} {t.market.udBets}</span>;").length === 1);
++  ok("1.1″ PLANT · a bar's phrase filled with `String(resultCount)` is found", plant(`const p = t.market.nResults.replace("{n}", String(resultCount));`).length === 2);
++  ok("1.1‴ PLANT · a `fill` slot handed a bare count (the home's topic tile as it shipped) is found", plant("const s = fill(t.home.topicLive, { n: tp.count });").length === 1);
++  ok("1.1⁗ PLANT · a template's count (/positions' win-rate hint as it shipped) is found", plant("const s = `${settled.length} ${t.market.tickerSettled}`;").length === 1);
++  ok("1.1⁵ PLANT · `toLocaleString()` and a private `new Intl.NumberFormat()` (the Up & Down card's) are found",
++    plant("const a = <p>{totalVotes.toLocaleString()}</p>; const f = new Intl.NumberFormat();").length === 2);
++  ok("1.1⁶ PLANT · a primitive's bare `{count}` (the filter pill as it shipped) is found", plant("const a = <span>{count}</span>;", "src/components/ui/filter-pill.tsx").length === 1);
++  ok("1.1⁷ CONTROL · the convention is not flagged: `formatNumber(…)` in each of those shapes",
++    plant("const a = <span>{formatNumber(g.bets.length)}</span>; const p = x.replace(\"{n}\", formatNumber(resultCount)); const s = fill(y, { n: formatNumber(tp.count) }); const q = `${formatNumber(settled.length)}`;").length === 0);
++}
++
++/* ══ §2 · G-4 · THE COUNTS DRAWN ═══════════════════════════════════════════════════════════════════════════════════════ */
++section("2 · G-4 · the counts drawn: a pill, the pager, a bar at production's 12,479 — on a German phone; the cards; the share card; the bounds");
++/**
++ * Render as a device whose locale groups otherwise would run it: a runtime default of de-DE ("12.479") for every formatter
++ * that names no locale — `toLocaleString()` and `new Intl.NumberFormat()` — while a formatter that names its locale (as
++ * `formatNumber` does, "en-US") is untouched. A count that depends on the runtime's locale shows it here; this process's own
++ * locale groups as en-US does, so without this a runtime-locale formatter would render the same and hide.
++ */
++const RealNumberFormat = Intl.NumberFormat;
++const realToLocale = Number.prototype.toLocaleString;
++function asDevice<T>(locale: string, run: () => T): T {
++  const Patched = function (this: unknown, locales?: string | string[], opts?: Intl.NumberFormatOptions) { return new RealNumberFormat(locales ?? locale, opts); } as unknown as typeof Intl.NumberFormat;
++  Object.assign(Patched, RealNumberFormat);
++  Patched.prototype = RealNumberFormat.prototype;
++  Intl.NumberFormat = Patched;
++  Number.prototype.toLocaleString = function (this: number, locales?: string | string[], opts?: Intl.NumberFormatOptions) { return new RealNumberFormat(locales ?? locale, opts).format(this); };
++  try { return run(); } finally { Intl.NumberFormat = RealNumberFormat; Number.prototype.toLocaleString = realToLocale; }
++}
++{
++  ok("2.0 CONTROL · the German phone is real: under it `(12479).toLocaleString()` and `new Intl.NumberFormat().format(12479)` print \"12.479\", and `formatNumber` still \"12,479\"",
++    asDevice("de-DE", () => (12479).toLocaleString() === "12.479" && new Intl.NumberFormat().format(12479) === "12.479" && formatNumber(12479) === "12,479")
++      && (12479).toLocaleString("en-US") === "12,479");
++  const { FilterPill } = req("../src/components/ui/filter-pill.tsx") as { FilterPill: (p: Record<string, unknown>) => unknown };
++  const pill = asDevice("de-DE", () => inApp("sw", h(FilterPill as never, { href: "/results?out=all", label: dict.sw.common.all, count: 12479, on: true, testId: "out:all" } as never)));
++  ok("2.1 · a filter pill says its count grouped (\"Zote 12,479\") and still hands the probes the bare integer (`data-count=\"12479\"`)",
++    textOf(pill) === `${dict.sw.common.all}12,479` && pill.includes('data-count="12479"') && !textOf(pill).includes("12479"), textOf(pill));
++  const { Pagination } = req("../src/components/ui/pagination.tsx") as { Pagination: (p: Record<string, unknown>) => unknown };
++  const pager = asDevice("de-DE", () => inApp("sw", h(Pagination as never, { total: 12479, page: 1040, perPage: 12, baseHref: "/results", ofLabel: dict.sw.common.of } as never)));
++  const range = /<p class="font-mono[^"]*">([^<]*)<\/p>/.exec(pager)?.[1] ?? "";
++  const buttons = [...pager.matchAll(/href="\/results\?page=(\d+)"[^>]*>(\d+)</g)].map((m) => [m[1], m[2]]);
++  ok("2.2 · the pager's range is grouped (\"12,469–12,479 kati ya 12,479\" on the archive's last page) and each page button still names its page bare (\"1040\" — the address's `?page=1040`)",
++    range === `12,469–12,479 ${dict.sw.common.of} 12,479` && buttons.length > 0 && buttons.every(([a, b]) => a === b) && buttons.some(([, b]) => b === "1040"),
++    j({ range, buttons }));
++  const { ResultsBar } = req("../src/app/results/results-bar.tsx") as { ResultsBar: (p: Record<string, unknown>) => unknown };
++  const { ARCHIVE_DEFAULT_STATE } = req("../src/lib/results/archive.ts") as { ARCHIVE_DEFAULT_STATE: Record<string, unknown> };
++  const zero = (ids: readonly string[]) => Object.fromEntries(ids.map((x) => [x, 0]));
++  const counts = { out: { all: 12479, yes: 6912, no: 5023, void: 544 }, product: { all: 12479, MARKET: 9000, UPDOWN: 3479 }, cat: { all: 12479 }, when: { ...zero(["today", "yesterday", "7d", "30d"]), all: 12479 } };
++  for (const l of LOCALES) {
++    const bar = asDevice("de-DE", () => inApp(l, h(ResultsBar as never, { state: ARCHIVE_DEFAULT_STATE, counts, resultCount: 12479, t: dict[l] } as never)));
++    const phrase = dict[l].market.nResults.replace("{n}", "12,479");
++    const pills = [...bar.matchAll(/data-count="(\d+)"[^>]*>(?:(?!<\/a>).)*?<span class="font-mono[^"]*">([^<]*)<\/span>/g)].map((m) => [m[1], m[2]]);
++    ok(`2.3 · ${l} · /results' bar at production's 12,479: the result line "${phrase}" (its \`data-result-count\` the bare integer), every pill's count grouped as its \`data-count\` reads ("6,912", "5,023")`,
++      bar.includes(`data-result-count="12479"`) && textOf(bar).includes(phrase) && pills.length >= 6 && pills.every(([d, s]) => s === formatNumber(Number(d)))
++        && !/>12479</.test(bar), j({ phrase, pills: pills.slice(0, 4) }));
++  }
++  const ud = code("src/components/updown/updown-card.tsx");
++  ok("2.4 · the Up & Down card's player count is grouped as the round page's is (`formatNumber`): its private device-locale formatter is gone, so its first paint and its hydration agree",
++    ud.includes("const playersText = useMemo(() => formatNumber(players), [players]);") && !ud.includes("new Intl.NumberFormat(") && !ud.includes("toLocaleString(")
++      && code("src/app/updown/[roundId]/page.tsx").includes("{formatNumber(round.players)}"));
++  const og = code("src/app/api/og/market/[id]/route.tsx");
++  ok("2.5 · the share card's count reads as every count does — grouped, and the dictionary's one/many pair (\"1 predictor\", where it read \"1 predictors\")",
++    og.includes("{formatNumber(m.predictorCount)} {m.predictorCount === 1 ? dict.en.market.predictorsCountOne : dict.en.market.predictorsCount}")
++      && dict.en.market.predictorsCount === "predictors" && dict.en.market.predictorsCountOne === "predictor");
++  const dep = code("src/app/wallet/deposit/actions.ts");
++  ok("2.6 · the deposit refusal fills its bounds as the withdraw refusal does (`formatNumber`), one spelling for one grouping",
++    dep.includes(`.replace("{min}", formatNumber(DEPOSIT_MIN_TZS))`) && dep.includes(`.replace("{max}", formatNumber(DEPOSIT_MAX_TZS))`) && !dep.includes("toLocaleString(")
++      && code("src/app/wallet/withdraw/actions.ts").includes("{ min: formatNumber(withdrawMin), max: formatNumber(WITHDRAW_MAX_TZS) }"));
++  const lb = code("src/app/leaderboard/page.tsx");
++  ok("2.7 · the siblings R5-A's count line left: the leaderboard table's resolved column and its hot streak (the podium already grouped), /proposals' tally, the market page's predictor tile, /results' donut legend",
++    lb.includes(">{formatNumber(r.resolved)}</td>") && lb.includes("{formatNumber(streak)} {streak > 1 ? t.leaderboard.winsLabel : t.leaderboard.winLabel}")
++      && code("src/app/proposals/page.tsx").includes("{formatNumber(totalProposals)} {t.proposals.proposalsCount} · {formatNumber(totalVotes)} {t.proposals.votesCount}")
++      && code("src/app/markets/[id]/page.tsx").includes("value={formatNumber(m.predictorCount)}")
++      && code("src/app/results/page.tsx").includes(`{sideWord(t, "YES", line)} {formatNumber(winsIn(line, "YES"))}`));
++}
++
++/* ══ §3 · G-6 · ONE FIGURE MATCHER: THE RESULT ══════════════════════════════════════════════════════════════════════════ */
++section("3 · G-6 · the result reads every figure with the one reader (`moneyRuns`), for every result");
++/** The private matcher the result had (S6 A8f), as it shipped — the control for every sentence below. */
++const OLD_FIGURE = new RegExp(`(${String.fromCharCode(0x2212)}?TZS ${String.fromCharCode(0x2212)}?[0-9][0-9,]*)`);
++const oldAmounts = (s: string) => s.split(OLD_FIGURE).filter((_, i) => i % 2 === 1);
++{
++  const orm = code("src/components/markets/operation-result-modal.tsx");
++  ok("3.1 · the result imports the platform's reader and draws its title, a subtitle given as words and its footnote through it — no matcher of its own, no opt-in prop anywhere",
++    orm.includes(`import { moneyRuns } from "@/lib/fill-nodes";`) && orm.includes("{moneyRuns(title)}")
++      && orm.includes(`{typeof subtitle === "string" ? moneyRuns(subtitle) : subtitle}`) && orm.includes("{moneyRuns(footnote)}")
++      && !/const FIGURE\b|withWholeFigures|\.split\(/.test(orm) && POPULATION.every((f) => !/\bwholeFigures\b/.test(code(f))));
++  const { OperationResultModal } = req("../src/components/markets/operation-result-modal.tsx") as { OperationResultModal: (p: Record<string, unknown>) => unknown };
++  const render = (p: Record<string, unknown>) => inApp("sw", h(OperationResultModal as never, { open: true, variant: "danger", onClose() {}, ...p } as never));
++  const titleOf = (m: string) => /<h2[^>]*>(.*?)<\/h2>/.exec(m)?.[1] ?? "";
++  const CASES: Array<[string, string, string[]]> = [
++    ["the bet receipt's stake (the dial's success title)", `${dict.sw.common.yes} · TZS 1,000`, ["TZS 1,000"]],
++    ["a sentence's comma after a figure stays the sentence's", "Kiwango cha juu ni TZS 5,000,000, kisha jaribu tena", ["TZS 5,000,000"]],
++    ["a compact figure", "Bwawa ni TZS 1.2M sasa", ["TZS 1.2M"]],
++    ["a decimal figure", "Ada ni TZS 2.5 tu", ["TZS 2.5"]],
++    ["the dictionary's no-break space", `Salio lako ni TZS${NBSP}500`, [`TZS${NBSP}500`]],
++    ["a signed figure, the sign before the code", "Faida +TZS 1,234 leo", ["+TZS 1,234"]],
++    ["a minus after the code", "Salio TZS \u22124,200", ["TZS \u22124,200"]],
++  ];
++  for (const [name, title, want] of CASES) {
++    const m = render({ title });
++    ok(`3.2 · the title: ${name} — "${title}" draws ${j(want)} as amounts, its words the caller's character for character`,
++      j(amountsIn(titleOf(m))) === j(want) && textOf(titleOf(m)) === title, j({ got: amountsIn(titleOf(m)) }));
++  }
++  const ctl = CASES.slice(1, 6).map(([, title, want]) => j(oldAmounts(title)) !== j(want));
++  ok("3.2′ CONTROL · the private matcher got each of those wrong: the comma taken (\"TZS 5,000,000,\"), \"TZS 1\" without \".2M\", \"TZS 2\" without \".5\", the no-break space missed, \"+\" left outside",
++    ctl.every(Boolean) && j(oldAmounts("Kiwango cha juu ni TZS 5,000,000, kisha")) === j(["TZS 5,000,000,"]) && j(oldAmounts("Bwawa ni TZS 1.2M")) === j(["TZS 1"])
++      && oldAmounts(`Salio TZS${NBSP}500`).length === 0 && j(oldAmounts("+TZS 1,234")) === j(["TZS 1,234"]), j(CASES.slice(1, 6).map(([, t]) => oldAmounts(t))));
++  const sub = render({ title: "Haikuwekwa dau", subtitle: "Salio lako ni TZS 500 — dau hili linahitaji TZS 1,000.", footnote: "Ada ya TZS 15 imekatwa." });
++  ok("3.3 · a refusal's subtitle given as words and the footnote read their figures too (the toast beside it already does): \"TZS 500\", \"TZS 1,000\", \"TZS 15\"",
++    j(amountsIn(sub)) === j(["TZS 500", "TZS 1,000", "TZS 15"]), j(amountsIn(sub)));
++  const kept = render({ title: "Haikuwekwa dau", subtitle: keepText("Salio lako ni TZS 500 — dau hili linahitaji TZS 1,000.") });
++  ok("3.3′ · a subtitle handed in as nodes (a kept sentence) is drawn as given — the modal adds nothing to a caller's nodes",
++    amountsIn(kept).length === 0 && textOf(kept).includes("Salio lako ni TZS 500"));
++  const plain = render({ title: "Ombi limepokelewa", variant: "success" });
++  ok("3.4 CONTROL · a title with no figure renders as plain text, as before (no element added)", titleOf(plain) === "Ombi limepokelewa", titleOf(plain));
++  const { SellResultModal } = req("../src/components/markets/sell-result.tsx") as { SellResultModal: (p: Record<string, unknown>) => unknown };
++  const sale = inApp("sw", h(SellResultModal as never, { open: true, resultData: { variant: "success", value: 9000, net: 0 }, positionId: "pos_1", journey: true, onClose() {} } as never));
++  ok("3.5 · the sale's result asks for nothing and its figure is still one amount: \"TZS 9,000 imerudishwa\" (S6 A8f's outcome, now every result's)",
++    amountsIn(titleOf(sale)).join() === "TZS 9,000" && !code("src/components/markets/sell-result.tsx").includes("wholeFigures"), titleOf(sale));
++  const dial = code("src/components/markets/conviction-dial.tsx");
++  ok("3.6 · the bet receipt's title is the one the reader now dresses: the dial still hands \"NDIO · TZS 1,000\" as words",
++    dial.includes('title={resultData.variant === "success" ? `${sideWord(t, resultData.side, "MARKET")} · ${formatTzs(resultData.stake)}`'));
++}
++
++/* ══ §4 · G-6 · PRIVATE FIGURE READERS ══════════════════════════════════════════════════════════════════════════════════ */
++section("4 · G-6 · every regular expression that reads a currency or a thousands group is the shared reader's or classified");
++{
++  const READS_FIGURE = /TZS|,\\d\{3\}|\(\\d\{3\}\)\+|\[0-9\]\[0-9,\]/;
++  const SHARED: Record<string, string> = {
++    "src/lib/fill-nodes.tsx": "THE reader of money in a finished sentence (`MONEY_RUN`, `moneyRuns`)",
++    "src/components/ui/keep-words.tsx": "THE reader of a title's figures (`FIGURE`, its currency head `CURRENCY`)",
++  };
++  const CLASSIFIED: Record<string, string> = {
++    "src/lib/markets/short-title.ts": "compares the NUMBERS a translation keeps, as a set (the operator's short-title form) — never reads a figure for display",
++    "src/lib/house-bot/rules.ts": "the operator console's house-bot rules (admin)",
++    "src/lib/contacts/vcard.ts": "the operator's contacts importer (admin)",
++    "src/lib/contacts/xlsx-limits.ts": "the operator's contacts importer (admin)",
++  };
++  const pool = walk("src").filter((f) => /\.(tsx?|m?js)$/.test(f) && !/^src\/(?:app|components)\/admin\//.test(f) && !f.startsWith("src/lib/server/") && f !== "src/lib/i18n-dict.ts"
++    && (!f.startsWith("src/app/api/") || f.startsWith("src/app/api/og/")));
++  const readers = new Map<string, string[]>();
++  for (const f of pool) {
++    const sf = ts.createSourceFile(f, raw(f), ts.ScriptTarget.Latest, true, /\.tsx$/.test(f) ? ts.ScriptKind.TSX : ts.ScriptKind.TS);
++    const visit = (n: ts.Node) => {
++      if (ts.isRegularExpressionLiteral(n) && READS_FIGURE.test(n.text)) readers.set(f, [...(readers.get(f) ?? []), n.text]);
++      if (ts.isNewExpression(n) && n.expression.getText(sf) === "RegExp" && n.arguments?.[0] && READS_FIGURE.test(n.arguments[0].getText(sf))) readers.set(f, [...(readers.get(f) ?? []), n.arguments[0].getText(sf)]);
++      n.forEachChild(visit);
++    };
++    sf.forEachChild(visit);
++  }
++  const loose = [...readers.keys()].filter((f) => !(f in SHARED) && !(f in CLASSIFIED));
++  console.log(`     ${pool.length} files read; figure readers in ${readers.size}: ${[...readers.keys()].join(", ")}`);
++  ok(`4.1 · over ${pool.length} player-visible files (and the share card), every regular expression reading a currency or a thousands group is the shared reader's (fill-nodes.tsx, keep-words.tsx) or classified (${Object.keys(CLASSIFIED).length}) — the result's private \`FIGURE\` and the share card's private grouping are gone`,
++    pool.length > 600 && loose.length === 0 && Object.keys(SHARED).every((f) => readers.has(f)), j(loose.map((f) => [f, readers.get(f)])));
++  const staleCls = Object.keys(CLASSIFIED).filter((f) => !readers.has(f));
++  ok("4.2 · no classified reader is stale", staleCls.length === 0, j(staleCls));
++  const og = code("src/app/api/og/market/[id]/route.tsx");
++  ok("4.3 · the share card writes money with the platform's one grammar (`const tzs = formatTzs;` — built in Node, which has Intl), no grouping regex of its own",
++    og.includes("const tzs = formatTzs;") && og.includes(`import { formatNumber, formatTzs } from "@/lib/utils";`) && !/\\B\(\?=/.test(og));
++  const plantSf = ts.createSourceFile("x.tsx", "const FIGURE = /(TZS [0-9][0-9,]*)/;", ts.ScriptTarget.Latest, true, ts.ScriptKind.TSX);
++  let planted = 0;
++  plantSf.forEachChild(function v(n: ts.Node) { if (ts.isRegularExpressionLiteral(n) && READS_FIGURE.test(n.text)) planted++; n.forEachChild(v); });
++  ok("4.1′ PLANT · a private money matcher (the result's, as it shipped) is read as one", planted === 1);
++}
++
++/* ══ §5 · G-6 · THE EMPTY SLOTS ═════════════════════════════════════════════════════════════════════════════════════════ */
++section("5 · G-6 · an empty slot keeps its line with no character in the page: one rule, four slots");
++{
++  const css = decommentCss(raw("src/app/globals.css"));
++  const rules = [...css.matchAll(/[^{}]*kp-keep-line[^{}]*\{[^}]*\}/g)].map((m) => squash(m[0]).trim());
++  ok("5.1 · globals.css draws the empty slot's space once, as generated content: `.kp-keep-line:empty::before { content: \"\\00a0\"; }` — no other rule names the class",
++    rules.length === 1 && rules[0] === `.kp-keep-line:empty::before { content: "\\00a0"; }`, j(rules));
++  const ESC = /\\u00[aA]0|\\u2060|\\u200[bB]|\\u202[fF]|&nbsp;|&#160;|fromCharCode\((?:160|0x00?[aA]0|0x2060|8288|0x200[bB])\)|[\u00a0\u2060\u200b\u202f]/;
++  const SLOTS: Array<[string, string]> = [
++    ["src/components/analytics/analytics-choice.tsx", `<p className="kp-keep-line min-w-0 text-body-sm text-text" aria-live="polite">{!mounted ? null : consent`],
++    ["src/components/ui/search-box.tsx", "className={`mt-1.5 min-h-[17px] text-[11px] ${invalidReason ? \"text-danger-fg\" : \"text-text-subtle\"} kp-keep-line`} >{invalidReason || described || echo || null}"],
++    ["src/components/ui/time-select.tsx", "className=\"kp-keep-line mt-0.5 font-mono text-[10px] text-text-subtle tabular-nums\" aria-hidden={preview && !errored ? undefined : true} >{preview && !errored ? `= ${preview}` : null}"],
++    ["src/components/home/trust-band.tsx", `<span className="kp-settled__amt kp-keep-line" aria-hidden />`],
++  ];
++  const tight = (s: string) => squash(s).replace(/>\s+/g, ">").replace(/\s+</g, "<");
++  ok("5.2 · the four slots hold no typed no-break space (raw or escaped), each renders nothing when empty and wears `kp-keep-line`",
++    SLOTS.every(([f, want]) => !ESC.test(code(f)) && tight(code(f)).includes(tight(want))), j(SLOTS.filter(([f, want]) => ESC.test(code(f)) || !tight(code(f)).includes(tight(want))).map(([f]) => f)));
++  const { AnalyticsChoice } = req("../src/components/analytics/analytics-choice.tsx") as { AnalyticsChoice: () => unknown };
++  const ac = inApp("sw", h(AnalyticsChoice as never));
++  const acP = /<p class="kp-keep-line[^"]*" aria-live="polite">([^<]*)<\/p>/.exec(ac);
++  ok("5.3 · the analytics choice before it mounts (the server's page): its line is an EMPTY element the rule draws — no character in the page's text",
++    acP !== null && acP[1] === "" && !ac.includes(NBSP), ac.slice(0, 160));
++  const { TimeSelect } = req("../src/components/ui/time-select.tsx") as { TimeSelect: (p: Record<string, unknown>) => unknown };
++  const tsel = inApp("en", h(TimeSelect as never, { value: "" } as never));
++  const tsSpan = /<span class="kp-keep-line[^"]*" aria-hidden="true">([^<]*)<\/span>/.exec(tsel);
++  ok("5.4 · the time field's empty preview: an empty, aria-hidden element the rule draws", tsSpan !== null && tsSpan[1] === "" && !tsel.includes(NBSP), tsel.slice(-200));
++  ok("5.5 CONTROL · the typed space WAS page text — a copy, a find-in-page and `textContent` carried it; the generated one is not in the markup at all",
++    textOf(renderToStaticMarkup(h("p", null, NBSP))) === NBSP && textOf(renderToStaticMarkup(h("p", { className: "kp-keep-line" }))) === "");
++  ok("5.6 · what stays, by design: Up & Down's live-region nonce (a zero-width space that makes a repeated message announce again) and the legal tree's authored no-break spaces (byte-pinned)",
++    /\\u200[bB]|\u200b/.test(code("src/components/updown/use-quick-bet.ts")) && raw("src/app/legal/responsible-gambling/page.tsx").includes("&nbsp;"));
++  const r5e = raw("scripts/visual-pass-r5e.test.mts");
++  ok("5.7 · the round-5 sweep no longer excuses the four slots (`test:visual-pass-r5e` 6.5) and holds them clear (6.5′): a typed space coming back fails there too",
++    SLOTS.every(([f]) => !r5e.includes(`"${f}": "an empty`) && r5e.includes(`"${f}"`)));
++}
++
++/* ══ §6 · WHAT CLASSIC VIEWERS KEEP ═══════════════════════════════════════════════════════════════════════════════════════ */
++section("6 · what classic viewers keep: the classic bell's count (frozen chrome) and the capped badge");
++{
++  const bell = code("src/components/layout/notifications-panel.tsx");
++  ok("6.1 · the classic bell's count is byte-for-byte what it was (frozen, `qa:classic-shell-parity`); only the journey's bell groups it — both through one value, the change for classic its prop dropped",
++    bell.includes("const countText = (n: number) => (journey ? formatNumber(n) : String(n));")
++      && bell.includes('aria-label={`${t.common.notifications}${unread > 0 ? ` (${countText(unread)})` : ""}`}')
++      && bell.includes('t.notif.unreadN.replace("{n}", countText(unread))') && bell.includes("export function NotificationsPanel({ journey = false }"));
++  const badge = code("src/components/ui/count-badge.tsx");
++  const caps = POPULATION.flatMap((f) => [...squash(code(f)).matchAll(/<CountBadge\b[^>]*?\bmax=\{([^}]*)\}/g)].map((m) => [f, m[1]]));
++  const lifted = caps.filter(([, v]) => !(/^\d+$/.test(v) && Number(v) <= 99));
++  ok(`6.2 · the count badge stays as it is: capped at "99+" (two digits, never a group to write) — and no caller lifts the cap (${caps.length} pass one: ${caps.map(([, v]) => v).join(", ") || "none"})`,
++    badge.includes("max = 99,") && badge.includes("{count > max ? `${max}+` : count}") && lifted.length === 0, j(lifted));
++}
++
++console.log(`\nvisual-pass-r5j: ${pass} passed, ${fails.length} failed`);
++if (pass === 0) { console.log("⛔ 0 passed — a zero-assertion run is a SKIPPED run, never a green one."); process.exit(1); }
++process.exit(fails.length ? 1 : 0);
+diff --git a/src/app/agent/apply/apply-client.tsx b/src/app/agent/apply/apply-client.tsx
+index 9543652c4..34bd50f1e 100644
+--- a/src/app/agent/apply/apply-client.tsx
++++ b/src/app/agent/apply/apply-client.tsx
+@@ -33,7 +33,7 @@ import { OperationResultModal } from "@/components/markets/operation-result-moda
+ import { KycGatePanel } from "@/components/kyc/kyc-gate-panel";
+ import type { KycGateState } from "@/lib/kyc-gate-state";
+ import { useT } from "@/lib/i18n";
+-import { fill, formatTzs } from "@/lib/utils";
++import { fill, formatNumber, formatTzs } from "@/lib/utils";
+ import { refusalVariant } from "@/lib/failure-reasons";
+ import { fileToDataUrl } from "@/lib/client/kyc-image";
+ import { focusFirstInvalid } from "@/lib/client/focus-first-invalid";
+@@ -185,7 +185,7 @@ export function ApplyClient({ app, documents, missing, kycGate, fee, lipa, walle
+       {/* Title row + the persistent counter */}
+       <div className="flex items-center justify-between gap-3">
+         <p className="font-display text-title-md font-bold leading-none">{t.agent.applyTitle}</p>
+-        <Chip variant={attached === REQUIRED.length ? "success" : "pending"}>{fill(t.agent.attachedCount, { n: String(attached), total: String(REQUIRED.length) })}</Chip>
++        <Chip variant={attached === REQUIRED.length ? "success" : "pending"}>{fill(t.agent.attachedCount, { n: formatNumber(attached), total: formatNumber(REQUIRED.length) })}</Chip>
+       </div>
+ 
+       {infoRequired && app.infoRequestNote && (
+diff --git a/src/app/api/og/market/[id]/route.tsx b/src/app/api/og/market/[id]/route.tsx
+index ad1d5d3d4..e0978026b 100644
+--- a/src/app/api/og/market/[id]/route.tsx
++++ b/src/app/api/og/market/[id]/route.tsx
+@@ -21,12 +21,16 @@ import { getMarket } from "@/lib/server/market-service";
+ // an invented "YES 50% · tipping" on one nobody had bet on, in every WhatsApp preview.
+ import { sharePreviewPrice, sharePreviewSettled } from "@/lib/markets/share-preview";
+ import { resolveWinShareToken } from "@/lib/server/share-token";
++import { formatNumber, formatTzs } from "@/lib/utils";
++import { dict } from "@/lib/i18n-dict";
+ 
+ export const runtime = "nodejs";
+ export const dynamic = "force-dynamic";
+ 
+-/** TZS with thin grouping — Satori has no Intl, so group manually. */
+-const tzs = (n: number) => "TZS " + Math.round(n).toString().replace(/\B(?=(\d{3})+(?!\d))/g, ",");
++/** TZS — the platform's one money grammar, `formatTzs` (round 5 of the visual pass, R5-J). The card's words are built here,
++ *  in Node, before Satori lays them out, and Node has Intl: the private grouping regex that stood here ("Satori has no
++ *  Intl, so group manually") was a second writer of the same figure, with a hyphen where `formatTzs` writes the minus. */
++const tzs = formatTzs;
+ 
+ // sRGB equivalents of the brand oklch palette.
+ const C = {
+@@ -232,7 +236,9 @@ export async function GET(
+                 A share card is the first thing many players ever see of this platform and the only
+                 money figure on it; printing the unit twice makes the one number on the card look
+                 like a rendering fault. Caught 2026-09-24. */}
+-            <span>{tzs(m.yesPool + m.noPool)} volume · {m.predictorCount} predictors</span>
++            {/* The count as every count reads (R5-J): grouped by `formatNumber`, its word the card's own English from the
++                dictionary's one/many pair ("1 predictor", "1,204 predictors") — it read "1 predictors". */}
++            <span>{tzs(m.yesPool + m.noPool)} volume · {formatNumber(m.predictorCount)} {m.predictorCount === 1 ? dict.en.market.predictorsCountOne : dict.en.market.predictorsCount}</span>
+           </div>
+         </div>
+       </div>
+diff --git a/src/app/fairness/fairness-bar.tsx b/src/app/fairness/fairness-bar.tsx
+index f9ec789be..2dea1b7f4 100644
+--- a/src/app/fairness/fairness-bar.tsx
++++ b/src/app/fairness/fairness-bar.tsx
+@@ -18,6 +18,7 @@
+  * anywhere: the audience includes a regulator opening the URL cold.
+  */
+ import { FilterPill, FilterGroupKey } from "@/components/ui/filter-pill";
++import { formatNumber } from "@/lib/utils";
+ import { FilterSheet, FilterSheetGroup } from "@/components/markets/filter-sheet";
+ import {
+   QUERY_BAR_CLASS,
+@@ -102,7 +103,7 @@ export function FairnessBar({
+   const dir = effectiveDir({ natural: ATTESTATION_NATURAL_DIR }, state);
+   const sheetCount = attestationSheetCount(state);
+   const resultPhrase =
+-    resultCount === 1 ? t.market.oneResult : t.market.nResults.replace("{n}", String(resultCount));
++    resultCount === 1 ? t.market.oneResult : t.market.nResults.replace("{n}", formatNumber(resultCount));
+ 
+   const clear = (
+     <QueryClear
+@@ -160,7 +161,7 @@ export function FairnessBar({
+         <FilterSheet
+           label={t.market.filtersOpen}
+           title={t.common.resolutionAttestation}
+-          ariaLabel={sheetCount > 0 ? t.market.filtersAriaN.replace("{n}", String(sheetCount)) : t.market.filtersOpen}
++          ariaLabel={sheetCount > 0 ? t.market.filtersAriaN.replace("{n}", formatNumber(sheetCount)) : t.market.filtersOpen}
+           closeLabel={t.market.filtersClose}
+           applyLabel={t.market.filtersApply.replace("{n}", resultPhrase)}
+           count={sheetCount}
+diff --git a/src/app/globals.css b/src/app/globals.css
+index a8a6ea4fe..5a6d85f0b 100644
+--- a/src/app/globals.css
++++ b/src/app/globals.css
+@@ -1720,6 +1720,15 @@ html[data-fab-idle] .cm-fab:not(.cm-fab--open):not(:focus-within) {
+ .kp-cjk-gap--q { word-spacing: -0.1em; }
+ .kp-cjk-gap::after { content: " "; }
+ 
++/* ⭐ AN EMPTY SLOT KEEPS ITS LINE WITH NO CHARACTER IN THE PAGE (round 5 of the visual pass, R5-J, 2026-10-09 — R5-E's
++   named siblings). Four slots must not change height as their words come and go: the analytics choice before it mounts,
++   the search box's echo row, the time field's preview, a settled row's empty amount cell. Each held its line with a
++   no-break space TYPED into the page, so a copy, a find-in-page and `textContent` carried a character nobody wrote. Now
++   the slot renders nothing and this rule draws the space, as the CJK gap above is drawn: generated content gives the empty
++   element the one line box its own font and line height make — the box the typed space made — and it is not in the
++   page's text. The moment the slot has words, `:empty` stops matching. */
++.kp-keep-line:empty::before { content: "\00a0"; }
++
+ /* 🔴 D32 · UNDER REDUCED MOTION THIS STRIP DID NOT SLOW DOWN — IT FROZE, SHOWING 24% OF ONE OF TWELVE EVENTS.
+    `animation-play-state: paused` stops the marquee at frame 0, and frame 0 is not a readable state: measured
+    on production at 360, the clipping window is 245px against a track of 27,440px, entry 1 alone is 1,045px, and
+diff --git a/src/app/leaderboard/page.tsx b/src/app/leaderboard/page.tsx
+index 08b4a95b5..178489bf6 100644
+--- a/src/app/leaderboard/page.tsx
++++ b/src/app/leaderboard/page.tsx
+@@ -340,7 +340,7 @@ export default async function LeaderboardPage({ searchParams }: { searchParams:
+            */
+           {
+             label: capped ? t.leaderboard.rankedShown : t.leaderboard.predictorsCount,
+-            value: rows.length.toLocaleString("en-US"),
++            value: formatNumber(rows.length),
+           },
+         ]}
+       />
+@@ -433,7 +433,7 @@ export default async function LeaderboardPage({ searchParams }: { searchParams:
+           `test:type-scale` §3 caught it as a NEW offender the moment it was written. */}
+       {capped && (
+         <p className="text-body-sm text-text-subtle">
+-          {fill(t.leaderboard.boardCapped, { n: String(rows.length) })}
++          {fill(t.leaderboard.boardCapped, { n: formatNumber(rows.length) })}
+         </p>
+       )}
+ 
+@@ -497,7 +497,7 @@ export default async function LeaderboardPage({ searchParams }: { searchParams:
+                     <span className="inline-flex items-center gap-1"><HotChip streak={r.streak} t={t} /></span>
+                   ) : "—"}
+                 </td>
+-                <td className="p-3 text-right font-mono tabular-nums text-text-muted">{r.resolved}</td>
++                <td className="p-3 text-right font-mono tabular-nums text-text-muted">{formatNumber(r.resolved)}</td>
+               </tr>
+             ))}
+           </tbody>
+@@ -527,7 +527,7 @@ function HotChip({ streak, t }: { streak: number; t: Dict }) {
+       style={{ borderColor: "color-mix(in oklab, var(--metal-gold) 50%, transparent)", background: "color-mix(in oklab, var(--metal-gold) 10%, transparent)", color: "var(--metal-gold)" }}
+     >
+       <I.hot s={11} />
+-      {streak} {streak > 1 ? t.leaderboard.winsLabel : t.leaderboard.winLabel}
++      {formatNumber(streak)} {streak > 1 ? t.leaderboard.winsLabel : t.leaderboard.winLabel}
+     </span>
+   );
+ }
+diff --git a/src/app/live/featured-contest.tsx b/src/app/live/featured-contest.tsx
+index 79883113b..ec2dd5b91 100644
+--- a/src/app/live/featured-contest.tsx
++++ b/src/app/live/featured-contest.tsx
+@@ -13,6 +13,7 @@ import { useState, useCallback, useEffect, useRef } from "react";
+ import Link from "next/link";
+ import type { Route } from "next";
+ import { leanWords, sideWord } from "@/lib/side-label";
++import { formatNumber } from "@/lib/utils";
+ import { TippingBar } from "@/components/brand";
+ import { I } from "@/components/ui/glyphs";
+ // 2026-10-08 · G1: a Chinese "200毫米" in a slide's question never breaks between the number and its unit.
+@@ -114,7 +115,7 @@ export function FeaturedContest({
+           <div className="flex shrink-0 items-center gap-2">
+             <Arrow dir="prev" onClick={() => go(-1)} />
+             <span className="font-mono text-[10.5px] tabular-nums text-text-subtle select-none">
+-              {idx + 1}<span className="text-text-faint"> / {n}</span>
++              {formatNumber(idx + 1)}<span className="text-text-faint"> / {formatNumber(n)}</span>
+             </span>
+             <Arrow dir="next" onClick={() => go(1)} />
+           </div>
+diff --git a/src/app/live/page.tsx b/src/app/live/page.tsx
+index 0ea9a4b41..fd48ad4f8 100644
+--- a/src/app/live/page.tsx
++++ b/src/app/live/page.tsx
+@@ -11,7 +11,7 @@
+  * this page.
+  */
+ import Link from "next/link";
+-import { fill } from "@/lib/utils";
++import { fill, formatNumber } from "@/lib/utils";
+ import { timeLeftLabel } from "@/lib/markets/time-left";
+ import { listMarkets, isClosedByTime, isSelectionClosed, traderSeedsByMarket } from "@/lib/server/market-service";
+ import { PulseRing } from "@/components/brand";
+@@ -199,7 +199,7 @@ export default async function LivePage({
+                 data-result-count={markets.length}
+                 className="font-mono text-[10.5px] text-text-subtle tabular-nums whitespace-nowrap"
+               >
+-                {markets.length} {t.market.liveCount}{tippingMarkets > 0 ? ` · ${tippingMarkets} ${t.market.tipping}` : ""}
++                {formatNumber(markets.length)} {t.market.liveCount}{tippingMarkets > 0 ? ` · ${formatNumber(tippingMarkets)} ${t.market.tipping}` : ""}
+               </p>
+             </div>
+             <FeaturedContest markets={topContested} eyebrow={t.market.mostContested} openLabel={t.market.openMarket} />
+diff --git a/src/app/markets/[id]/page.tsx b/src/app/markets/[id]/page.tsx
+index 1a1005249..68b9cef4c 100644
+--- a/src/app/markets/[id]/page.tsx
++++ b/src/app/markets/[id]/page.tsx
+@@ -45,6 +45,7 @@ import { RefreshPoller } from "@/components/ui/refresh-poller";
+ // quietly comes back. ⚠️ `fill` STAYS: `similarTimeLeft` passes it to `timeLeftLabel`, a use
+ // tsc caught the moment the import was removed on the strength of a grep for `fill(`.
+ import { formatTzsCompact, formatTzs, fill } from "@/lib/utils";
++import { formatNumber } from "@/lib/utils";
+ // Every date this page prints is in the reader's month words on the East Africa clock (§L4): `formatDateTime` and
+ // `formatDeadline` printed English months in every locale.
+ import { formatEatDateTime } from "@/lib/eat-day";
+@@ -910,7 +911,7 @@ export default async function MarketDetail({
+                 `common.resolves` — "INATATULIWA" / "RESOLVES" / "结算于" (the Stat sets it in capitals). No new words.
+                 R4-I · and "Hakuna bwawa bado" no longer leaves "bado" alone in its tile at 390 (tile 037): `keepText`. */}
+             <Stat size="xl" labelStyle="widest" boxed="card" label={t.market.volume} font={freshMarket ? undefined : "mono"} value={freshMarket ? keepText(t.market.noPoolYet) : <span className="amount">{formatTzsCompact(m.yesPool + m.noPool)}</span>} icon={<I.chart s={14} />} />
+-            <Stat size="xl" labelStyle="widest" boxed="card" label={t.market.predictors} font="mono" value={String(m.predictorCount)} icon={<I.users s={14} />} />
++            <Stat size="xl" labelStyle="widest" boxed="card" label={t.market.predictors} font="mono" value={formatNumber(m.predictorCount)} icon={<I.users s={14} />} />
+             <Stat size="sm-plain" labelStyle="widest" boxed="card" label={t.common.resolves} value={formatEatDateTime(Date.parse(m.resolutionAt), Date.now(), t.common.monthsShort, locale)} icon={<I.calendarClock s={14} />} className="col-span-2 sm:col-span-1" />
+           </div>
+ 
+diff --git a/src/app/markets/page.tsx b/src/app/markets/page.tsx
+index 3adffbd81..ca11d77b3 100644
+--- a/src/app/markets/page.tsx
++++ b/src/app/markets/page.tsx
+@@ -1,5 +1,5 @@
+ import { Suspense, cache } from "react";
+-import { fill, formatTzsCompact } from "@/lib/utils";
++import { fill, formatNumber, formatTzsCompact } from "@/lib/utils";
+ import { timeLeftLabel } from "@/lib/markets/time-left";
+ import Link from "next/link";
+ import { SignalPip } from "@/components/brand";
+@@ -193,7 +193,7 @@ export default async function MarketsPage({ searchParams }: { searchParams: Prom
+         {/* Aqua (not gilt) by design: gold is reserved for earned-money moments. */}
+         <p className="flex items-center gap-1.5 whitespace-nowrap font-mono text-[12.5px] tabular-nums">
+           <SignalPip size={7} className="mr-0.5" />
+-          <span className="font-semibold text-text">{openMarkets.length}</span>
++          <span className="font-semibold text-text">{formatNumber(openMarkets.length)}</span>
+           <span className="text-text-subtle">{t.market.liveCount}</span>
+           {/* 🔴 A ZERO POOL IS NOT STATED, FOR THE SAME REASON THE TOPIC TILES STOPPED STATING IT.
+               Making this header honour the topic filter was right, and it reintroduced the exact
+@@ -529,7 +529,7 @@ function BoardEmptyState({
+                   className={`btn btn-sm ${i === 0 ? "btn-primary" : "btn-ghost"}`}
+                 >
+                   {RELAX_LABEL[r.id]}
+-                  <span className="ml-1.5 font-mono text-[11px] tabular-nums opacity-80">{r.count}</span>
++                  <span className="ml-1.5 font-mono text-[11px] tabular-nums opacity-80">{formatNumber(r.count)}</span>
+                 </Link>
+               ))}
+             </div>
+diff --git a/src/app/notifications/notifications-bar.tsx b/src/app/notifications/notifications-bar.tsx
+index 42fb7848a..eaefcecd1 100644
+--- a/src/app/notifications/notifications-bar.tsx
++++ b/src/app/notifications/notifications-bar.tsx
+@@ -22,6 +22,7 @@
+  * to separate. It is the shared `QuerySort` now, and it gains a direction control it never had.
+  */
+ import { FilterPill } from "@/components/ui/filter-pill";
++import { formatNumber } from "@/lib/utils";
+ import {
+   QUERY_BAR_CLASS,
+   QUERY_BAR_ROW1_CLASS,
+@@ -66,7 +67,7 @@ export function NotificationsBar({
+     oldest: t.notif.sortOldest,
+   };
+   const resultPhrase =
+-    resultCount === 1 ? t.notif.oneNotification : t.notif.nNotifications.replace("{n}", String(resultCount));
++    resultCount === 1 ? t.notif.oneNotification : t.notif.nNotifications.replace("{n}", formatNumber(resultCount));
+ 
+   return (
+     <div data-filter-rail className={QUERY_BAR_CLASS}>
+diff --git a/src/app/notifications/page.tsx b/src/app/notifications/page.tsx
+index 7587278d7..234246491 100644
+--- a/src/app/notifications/page.tsx
++++ b/src/app/notifications/page.tsx
+@@ -49,6 +49,7 @@ import { Pagination, PLAYER_PER_PAGE } from "@/components/ui/pagination";
+ import { getSession } from "@/lib/server/session";
+ import { pageForUser } from "@/lib/server/notification-service";
+ import { getServerT } from "@/lib/i18n-server";
++import { formatNumber } from "@/lib/utils";
+ import { cn } from "@/lib/utils";
+ import { iconFor, tintFor } from "@/lib/notification-appearance";
+ import { readableNotificationBody } from "@/lib/notification-text";
+@@ -229,7 +230,7 @@ export default async function NotificationsPage({
+       <NotificationsBulkBar
+         unread={counts.unread}
+         label={t.common.readAll}
+-        countLabel={counts.unread === 1 ? t.notif.unreadOne : t.notif.unreadN.replace("{n}", String(counts.unread))}
++        countLabel={counts.unread === 1 ? t.notif.unreadOne : t.notif.unreadN.replace("{n}", formatNumber(counts.unread))}
+       />
+ 
+       {items.length === 0 ? (
+diff --git a/src/app/positions/page.tsx b/src/app/positions/page.tsx
+index d9acaa722..838086cbe 100644
+--- a/src/app/positions/page.tsx
++++ b/src/app/positions/page.tsx
+@@ -8,7 +8,7 @@ import { PositionCard } from "@/components/markets/position-card";
+ import { PnlSummaryStrip } from "@/components/positions/pnl-summary-strip";
+ import { CountdownRing } from "@/components/positions/countdown-ring";
+ import { SellButton } from "@/components/markets/sell-button";
+-import { formatTzsCompact } from "@/lib/utils";
++import { formatNumber, formatTzsCompact } from "@/lib/utils";
+ import { formatEatDateTime } from "@/lib/eat-day";
+ import { listPositionsForUser, positionCardMarkets, cashOutValue, freeExitEndsAt, isSelectionClosed } from "@/lib/server/market-service";
+ import { currentSession } from "@/lib/server/auth-service";
+@@ -349,7 +349,7 @@ export default async function PositionsPage({ searchParams }: { searchParams: Pr
+             settledPnl: t.positions.settledPnl,
+             winRate: t.positions.winRate,
+             // The count's sentence word, not the tab label ("3 imekamilika", never "3 Imekamilika") — /results' tally rule (round 4).
+-            ofSettled: `${settled.length} ${t.market.tickerSettled}`,
++            ofSettled: `${formatNumber(settled.length)} ${t.market.tickerSettled}`,
+           }}
+         />
+       )}
+@@ -396,7 +396,7 @@ export default async function PositionsPage({ searchParams }: { searchParams: Pr
+             id: e.id,
+             // ⛔ The count is REAL and cross-filtered — `portfolioExits` never offers an exit whose
+             //    count is zero, so no way out here leads to another empty page.
+-            label: `${EXIT_LABEL[e.id] ?? e.id} (${e.count})`,
++            label: `${EXIT_LABEL[e.id] ?? e.id} (${formatNumber(e.count)})`,
+             href: buildPortfolioHref(state, e.patch),
+           }))}
+         />
+diff --git a/src/app/positions/performance/page.tsx b/src/app/positions/performance/page.tsx
+index 369db3bd9..4011e494e 100644
+--- a/src/app/positions/performance/page.tsx
++++ b/src/app/positions/performance/page.tsx
+@@ -4,7 +4,7 @@ import { BackLink } from "@/components/ui/back-link";
+ import { PageHeader } from "@/components/ui/page-header";
+ import { I } from "@/components/ui/glyphs";
+ import { GiltCorner } from "@/components/brand";
+-import { formatTzsAbs, formatTzsSigned } from "@/lib/utils";
++import { formatNumber, formatTzsAbs, formatTzsSigned } from "@/lib/utils";
+ import { formatEatDate } from "@/lib/eat-day";
+ import { EmptyState } from "@/components/ui/empty-state";
+ import { Stat } from "@/components/ui/stat";
+@@ -260,7 +260,7 @@ export default async function PerformancePage({
+                     same rung. (2xl = 21px mono / leading-none / mt-1.5, `caps` = 9.5px
+                     semibold 0.10em) — a pixel-for-pixel mapping, nothing repainted. */}
+                 <Stat size="2xl" labelStyle="caps" label={t.performance.winRate} value={`${winRate}%`} />
+-                <Stat size="2xl" labelStyle="caps" label={t.performance.marketsSettled} value={String(totalBets)} />
++                <Stat size="2xl" labelStyle="caps" label={t.performance.marketsSettled} value={formatNumber(totalBets)} />
+                 <Stat size="2xl" labelStyle="caps" label={t.performance.roi} value={`${roi >= 0 ? "+" : "−"}${Math.abs(roi).toFixed(1)}%`} />
+               </div>
+             </div>
+@@ -350,13 +350,13 @@ export default async function PerformancePage({
+             <div className="rounded-xl border border-border bg-bg-elevated p-5">
+               <div className="flex items-baseline justify-between gap-2">
+                 <p className="gilt-eyebrow" style={{ color: "var(--text-subtle)" }}>{t.performance.currentStreak}</p>
+-                <p className="font-mono text-micro uppercase tracking-[0.12em] text-text-subtle tabular-nums">{t.performance.longestStreak} {longestStreak}</p>
++                <p className="font-mono text-micro uppercase tracking-[0.12em] text-text-subtle tabular-nums">{t.performance.longestStreak} {formatNumber(longestStreak)}</p>
+               </div>
+               <div className="mt-3 flex items-center gap-2">
+                 {/* §T5 — every numeral is JetBrains Mono, "no exceptions". This one was
+                     set in Sora, which also made the streak the only figure on the page
+                     whose digits did not line up with the P&L above it. */}
+-                <span className="font-mono text-[30px] font-bold leading-none tabular-nums text-text">{currentStreak}</span>
++                <span className="font-mono text-[30px] font-bold leading-none tabular-nums text-text">{formatNumber(currentStreak)}</span>
+                 <StreakChain current={currentStreak} longest={longestStreak} />
+               </div>
+             </div>
+@@ -378,7 +378,7 @@ export default async function PerformancePage({
+             <section>
+               <h2 className="mb-3 flex items-baseline gap-2">
+                 <span className="font-display text-[20px] font-semibold text-text">{t.performance.recentSettled}</span>
+-                <span className="ml-auto font-mono text-[12px] text-text-subtle">{recentSettled.length}</span>
++                <span className="ml-auto font-mono text-[12px] text-text-subtle">{formatNumber(recentSettled.length)}</span>
+               </h2>
+               <div className="rounded-xl border border-border bg-bg-elevated overflow-hidden divide-y divide-border/50">
+                 {recentSettled.map((r) => (
+@@ -436,7 +436,7 @@ function StreakChain({ current, longest }: { current: number; longest: number })
+           <I.hot s={15} />
+         </span>
+       ))}
+-      {current > 12 && <span className="ml-0.5 font-mono text-[11px] font-bold text-[var(--metal-gold)] tabular-nums">+{current - 12}</span>}
++      {current > 12 && <span className="ml-0.5 font-mono text-[11px] font-bold text-[var(--metal-gold)] tabular-nums">+{formatNumber(current - 12)}</span>}
+     </div>
+   );
+ }
+diff --git a/src/app/positions/performance/performance-bar.tsx b/src/app/positions/performance/performance-bar.tsx
+index 967c97f7e..9e6d3b0e6 100644
+--- a/src/app/positions/performance/performance-bar.tsx
++++ b/src/app/positions/performance/performance-bar.tsx
+@@ -14,6 +14,7 @@
+  * `all` that no control can reach.
+  */
+ import { FilterPill } from "@/components/ui/filter-pill";
++import { formatNumber } from "@/lib/utils";
+ import {
+   QUERY_BAR_CLASS,
+   QUERY_BAR_ROW1_CLASS,
+@@ -51,7 +52,7 @@ export function PerformanceBar({
+   t: Dict;
+ }) {
+   const resultPhrase =
+-    resultCount === 1 ? t.positions.oneResult : t.positions.nResults.replace("{n}", String(resultCount));
++    resultCount === 1 ? t.positions.oneResult : t.positions.nResults.replace("{n}", formatNumber(resultCount));
+ 
+   return (
+     <div data-filter-rail className={QUERY_BAR_CLASS}>
+diff --git a/src/app/positions/positions-bar.tsx b/src/app/positions/positions-bar.tsx
+index 9694eae59..6cb117dba 100644
+--- a/src/app/positions/positions-bar.tsx
++++ b/src/app/positions/positions-bar.tsx
+@@ -18,6 +18,7 @@
+  * read the list below it uses. A count can therefore never disagree with the rows it sits above.
+  */
+ import { FilterPill, FilterGroupKey } from "@/components/ui/filter-pill";
++import { formatNumber } from "@/lib/utils";
+ import { FilterSheet, FilterSheetGroup } from "@/components/markets/filter-sheet";
+ import {
+   QUERY_BAR_CLASS,
+@@ -123,7 +124,7 @@ export function PositionsBar({
+   const dir = effectiveDir({ natural: PORTFOLIO_NATURAL_DIR }, state);
+   const sheetCount = portfolioSheetCount(state);
+   const resultPhrase =
+-    resultCount === 1 ? t.positions.oneResult : t.positions.nResults.replace("{n}", String(resultCount));
++    resultCount === 1 ? t.positions.oneResult : t.positions.nResults.replace("{n}", formatNumber(resultCount));
+ 
+   const clear = (
+     <QueryClear
+@@ -182,7 +183,7 @@ export function PositionsBar({
+         <FilterSheet
+           label={t.market.filtersOpen}
+           title={t.positions.filtersTitle}
+-          ariaLabel={sheetCount > 0 ? t.market.filtersAriaN.replace("{n}", String(sheetCount)) : t.market.filtersOpen}
++          ariaLabel={sheetCount > 0 ? t.market.filtersAriaN.replace("{n}", formatNumber(sheetCount)) : t.market.filtersOpen}
+           closeLabel={t.market.filtersClose}
+           applyLabel={t.market.filtersApply.replace("{n}", resultPhrase)}
+           count={sheetCount}
+diff --git a/src/app/profile/account/account-bar.tsx b/src/app/profile/account/account-bar.tsx
+index 6cc69ee56..745f8639c 100644
+--- a/src/app/profile/account/account-bar.tsx
++++ b/src/app/profile/account/account-bar.tsx
+@@ -19,6 +19,7 @@
+  * computed against the SAME read the table below uses and cannot disagree with it.
+  */
+ import { FilterPill, FilterGroupKey } from "@/components/ui/filter-pill";
++import { formatNumber } from "@/lib/utils";
+ import { FilterSheet, FilterSheetGroup } from "@/components/markets/filter-sheet";
+ import {
+   QUERY_BAR_CLASS_PANEL,
+@@ -96,7 +97,7 @@ export function AccountActivityBar({
+   const dir = effectiveDir({ natural: ACTIVITY_NATURAL_DIR }, state);
+   const sheetCount = activitySheetCount(state);
+   const resultPhrase =
+-    resultCount === 1 ? t.profile.oneEvent : t.profile.nEvents.replace("{n}", String(resultCount));
++    resultCount === 1 ? t.profile.oneEvent : t.profile.nEvents.replace("{n}", formatNumber(resultCount));
+ 
+   const clear = (
+     <QueryClear
+@@ -165,7 +166,7 @@ export function AccountActivityBar({
+         <FilterSheet
+           label={t.market.filtersOpen}
+           title={t.profile.myAccountSub.split("·")[0].trim()}
+-          ariaLabel={sheetCount > 0 ? t.market.filtersAriaN.replace("{n}", String(sheetCount)) : t.market.filtersOpen}
++          ariaLabel={sheetCount > 0 ? t.market.filtersAriaN.replace("{n}", formatNumber(sheetCount)) : t.market.filtersOpen}
+           closeLabel={t.market.filtersClose}
+           applyLabel={t.market.filtersApply.replace("{n}", resultPhrase)}
+           count={sheetCount}
+diff --git a/src/app/profile/account/page.tsx b/src/app/profile/account/page.tsx
+index 6ba5ddb56..13bfe2222 100644
+--- a/src/app/profile/account/page.tsx
++++ b/src/app/profile/account/page.tsx
+@@ -2,6 +2,7 @@ import { Suspense } from "react";
+ import { redirect } from "next/navigation";
+ import { I } from "@/components/ui/glyphs";
+ import { BackLink } from "@/components/ui/back-link";
++import { formatNumber } from "@/lib/utils";
+ import { PageHeader } from "@/components/ui/page-header";
+ import { PageHero } from "@/components/ui/page-hero";
+ import { BrandTopo } from "@/components/brand-topo";
+@@ -267,7 +268,7 @@ export default async function AccountPage({ searchParams }: { searchParams?: Pro
+           <I.activity s={15} />
+           <h2 className="font-display text-[15px] font-semibold text-text">{t.profile.myAccountSub.split("·")[0].trim() /* "Activity" */}</h2>
+           <span className="ml-auto font-mono text-[11px] text-text-subtle tabular-nums">
+-            {activity.length} {t.common.events}
++            {formatNumber(activity.length)} {t.common.events}
+           </span>
+         </div>
+ 
+@@ -315,8 +316,8 @@ export default async function AccountPage({ searchParams }: { searchParams?: Pro
+         {own.truncated && (
+           <p className="text-body-sm text-text-subtle">
+             {t.profile.activityCapped
+-              .replace("{n}", String(allActivity.length))
+-              .replace("{total}", String(own.total))}
++              .replace("{n}", formatNumber(allActivity.length))
++              .replace("{total}", formatNumber(own.total))}
+           </p>
+         )}
+ 
+diff --git a/src/app/profile/invite/agent-dashboard.tsx b/src/app/profile/invite/agent-dashboard.tsx
+index 22fd647db..f44bd1cd2 100644
+--- a/src/app/profile/invite/agent-dashboard.tsx
++++ b/src/app/profile/invite/agent-dashboard.tsx
+@@ -191,9 +191,9 @@ export async function AgentDashboard({
+       </section>
+ 
+       {/* Recruits — the AGENT-stamped book only */}
+-      <p className="font-mono text-micro uppercase eyebrow font-bold text-text-subtle">{t.agent.dashRecruits} · {dash.recruitCount}</p>
++      <p className="font-mono text-micro uppercase eyebrow font-bold text-text-subtle">{t.agent.dashRecruits} · {formatNumber(dash.recruitCount)}</p>
+       {dash.preAgentRecruitCount > 0 && (
+-        <p className="text-body-sm leading-relaxed text-text-subtle">{fill(t.agent.dashPreAgent, { n: String(dash.preAgentRecruitCount) })}</p>
++        <p className="text-body-sm leading-relaxed text-text-subtle">{fill(t.agent.dashPreAgent, { n: formatNumber(dash.preAgentRecruitCount) })}</p>
+       )}
+       {/* ⛔ THE BAR IS WITHHELD ON AN EMPTY BOOK, and only then — five pills all reading 0 above
+           "no recruits yet" are five controls that cannot act (§A5). Every other empty state keeps
+@@ -215,7 +215,7 @@ export async function AgentDashboard({
+                   <Avatar initials={r.maskedName.slice(0, 2)} size="sm" seed={r.maskedName} />
+                   <div className="min-w-0 flex-1">
+                     <p className="font-mono text-body-sm font-medium truncate">{r.maskedName}</p>
+-                    <p className="font-mono text-body-sm text-text-subtle">{t.common.joined} {fmtDate(r.boundAt)} · {r.settlements} {t.agent.dashRecruitHint}</p>
++                    <p className="font-mono text-body-sm text-text-subtle">{t.common.joined} {fmtDate(r.boundAt)} · {formatNumber(r.settlements)} {t.agent.dashRecruitHint}</p>
+                   </div>
+                   <div className={`w-[72px] text-right font-mono text-body-sm font-semibold tabular-nums ${r.commissionTzs > 0 ? "text-gold-300" : "text-text-subtle"}`}>
+                     {r.commissionTzs > 0 ? "+" + formatNumber(r.commissionTzs) : "—"}
+diff --git a/src/app/profile/invite/page.tsx b/src/app/profile/invite/page.tsx
+index 3f9eac2a1..dab1e8324 100644
+--- a/src/app/profile/invite/page.tsx
++++ b/src/app/profile/invite/page.tsx
+@@ -231,7 +231,7 @@ export default async function InvitePage({
+   const ringValue = s.recruitCount === 0 ? 0 : Math.min(100, 30 + s.recruitCount * 12);
+   const ringLabel = paid
+     ? (s.earnedTzs > 0 ? formatCompactNumber(s.earnedTzs) : "0")
+-    : String(s.recruitCount);
++    : formatNumber(s.recruitCount);
+   /** ⭐ Gold only once money WAS earned (R5-C, the second gold audit, 2026-10-09): the paid dial read a gold "0" over a
+    *  gold wash before the first shilling — nothing earned, in the ink of money earned (§M3). Until then it is the royal
+    *  dial the unpaid invite wears; the Earned tile below follows the same predicate. */
+@@ -398,7 +398,7 @@ export default async function InvitePage({
+           labelStyle="strong"
+           boxed="glass"
+           label={t.common.invite}
+-          value={String(s.recruitCount)}
++          value={formatNumber(s.recruitCount)}
+           hint={s.recruitCount > 0 ? t.common.allTime : "—"}
+           icon={<I.users s={14} />}
+           iconAlign="end"
+@@ -528,7 +528,7 @@ export default async function InvitePage({
+             genuinely differ, so nobody reads a caveat about a limit they have not reached. */}
+         {s.recruitCount > s.recruits.length && (
+           <p className="mb-2 text-body-sm text-text-subtle">
+-            {fill(t.profile.inviteListCapped, { shown: s.recruits.length, total: s.recruitCount })}
++            {fill(t.profile.inviteListCapped, { shown: formatNumber(s.recruits.length), total: formatNumber(s.recruitCount) })}
+           </p>
+         )}
+         {s.recruits.length > 0 ? (
+diff --git a/src/app/profile/invite/recruits-bar.tsx b/src/app/profile/invite/recruits-bar.tsx
+index d73b2bf3b..eac20101d 100644
+--- a/src/app/profile/invite/recruits-bar.tsx
++++ b/src/app/profile/invite/recruits-bar.tsx
+@@ -14,6 +14,7 @@
+  * from the same read as the rows.
+  */
+ import { FilterPill } from "@/components/ui/filter-pill";
++import { formatNumber } from "@/lib/utils";
+ import {
+   QUERY_BAR_CLASS,
+   QUERY_BAR_ROW1_CLASS,
+@@ -76,7 +77,7 @@ export function RecruitsBar({
+   const href = (patch: Partial<RecruitState>) => buildRecruitHref(state, patch);
+   const dir = effectiveDir({ natural: RECRUIT_NATURAL_DIR }, state);
+   const resultPhrase =
+-    resultCount === 1 ? t.agent.oneRecruit : t.agent.nRecruits.replace("{n}", String(resultCount));
++    resultCount === 1 ? t.agent.oneRecruit : t.agent.nRecruits.replace("{n}", formatNumber(resultCount));
+ 
+   return (
+     <div data-filter-rail className={QUERY_BAR_CLASS}>
+diff --git a/src/app/profile/kyc/page.tsx b/src/app/profile/kyc/page.tsx
+index d52de5458..5f5b12ba0 100644
+--- a/src/app/profile/kyc/page.tsx
++++ b/src/app/profile/kyc/page.tsx
+@@ -2,6 +2,7 @@ import Link from "next/link";
+ import { redirect } from "next/navigation";
+ import { I } from "@/components/ui/glyphs";
+ import { BackLink } from "@/components/ui/back-link";
++import { formatNumber } from "@/lib/utils";
+ import { PageHeader } from "@/components/ui/page-header";
+ import { PageHero } from "@/components/ui/page-hero";
+ import { FieldLegend } from "@/components/ui/field-legend";
+@@ -638,7 +639,7 @@ export default async function KycPage({ searchParams }: { searchParams?: Promise
+               {t.profile.tapToAttach}
+             </p>
+             <p className="font-mono text-[11px] font-bold tabular-nums text-text-muted">
+-              {t.profile.docsAttachedCount.replace("{n}", String(attachedCount)).replace("{total}", String(requiredSlots.length))}{allAttached ? ` — ${t.profile.readyToSubmit}` : ""}
++              {t.profile.docsAttachedCount.replace("{n}", formatNumber(attachedCount)).replace("{total}", formatNumber(requiredSlots.length))}{allAttached ? ` — ${t.profile.readyToSubmit}` : ""}
+             </p>
+             <form action={submitKycForReviewAction}>
+               {allAttached ? (
+diff --git a/src/app/profile/notifications/page.tsx b/src/app/profile/notifications/page.tsx
+index ed9878c21..d996fe36f 100644
+--- a/src/app/profile/notifications/page.tsx
++++ b/src/app/profile/notifications/page.tsx
+@@ -2,6 +2,7 @@ import Link from "next/link";
+ import { redirect } from "next/navigation";
+ import { I } from "@/components/ui/glyphs";
+ import { BackLink } from "@/components/ui/back-link";
++import { formatNumber } from "@/lib/utils";
+ import { PageHeader } from "@/components/ui/page-header";
+ import { PushSettings } from "@/components/settings/push-settings";
+ import { getSession } from "@/lib/server/session";
+@@ -105,7 +106,7 @@ export default async function NotificationSettingsPage({
+             </div>
+           </div>
+           <span className="inline-flex items-center gap-1 shrink-0 font-mono text-body-sm tabular-nums text-accent-400 group-hover:text-text">
+-            {watched.length}
++            {formatNumber(watched.length)}
+             <I.chevronRight s={12} />
+           </span>
+         </div>
+diff --git a/src/app/profile/page.tsx b/src/app/profile/page.tsx
+index c89df2b17..602173c57 100644
+--- a/src/app/profile/page.tsx
++++ b/src/app/profile/page.tsx
+@@ -14,7 +14,7 @@ import { displayInitials } from "@/lib/display-label";
+ import { BadgeShelf } from "@/components/badges/Badge";
+ import { computeAchievementShelf } from "@/lib/server/achievements";
+ import { getServerT } from "@/lib/i18n-server";
+-import { formatTzs } from "@/lib/utils";
++import { formatNumber, formatTzs } from "@/lib/utils";
+ import { PageContainer } from "@/components/layout/page-container";
+ import { inviteIsLiveFor } from "@/lib/feature-state";
+ import { isFinalRefusal } from "@/lib/kyc-refusal";
+@@ -265,7 +265,7 @@ export default async function ProfilePage() {
+             boxed="pad"
+             font="mono"
+             label={t.profile.openCount}
+-            value={String(positions.filter((p) => p.status === "OPEN").length)}
++            value={formatNumber(positions.filter((p) => p.status === "OPEN").length)}
+             icon={<I.sparkle s={14} />}
+             className="min-w-0 whitespace-nowrap border-border px-5 sm:border-l lg:px-6"
+             labelClassName="min-w-0 whitespace-normal break-words"
+@@ -276,7 +276,7 @@ export default async function ProfilePage() {
+             boxed="pad"
+             font="mono"
+             label={t.profile.settledCount}
+-            value={String(positions.filter((p) => p.status !== "OPEN").length)}
++            value={formatNumber(positions.filter((p) => p.status !== "OPEN").length)}
+             icon={<I.check s={14} />}
+             className="min-w-0 whitespace-nowrap border-l border-border px-5 lg:px-6"
+             labelClassName="min-w-0 whitespace-normal break-words"
+diff --git a/src/app/profile/security/security-client.tsx b/src/app/profile/security/security-client.tsx
+index 431c3c267..de38c1d09 100644
+--- a/src/app/profile/security/security-client.tsx
++++ b/src/app/profile/security/security-client.tsx
+@@ -3,6 +3,7 @@
+ import { useEffect, useState, useTransition } from "react";
+ import QRCode from "qrcode";
+ import { useRouter } from "next/navigation";
++import { formatNumber } from "@/lib/utils";
+ import { I } from "@/components/ui/glyphs";
+ import { Button } from "@/components/ui/button";
+ import { Checkbox } from "@/components/ui/checkbox";
+@@ -219,7 +220,7 @@ export function SecurityClient({ enabled, backupRemaining, hasPassword }: { enab
+         <div className="space-y-3 border-t border-border pt-4">
+           <div className="flex items-center justify-between gap-3 text-[13px]">
+             <span className="text-text-muted">{t.security.backupRemaining}</span>
+-            <Chip variant={backupRemaining <= 2 ? "warning" : "neutral"} size="sm">{backupRemaining}</Chip>
++            <Chip variant={backupRemaining <= 2 ? "warning" : "neutral"} size="sm">{formatNumber(backupRemaining)}</Chip>
+           </div>
+ 
+           {disarm === null ? (
+diff --git a/src/app/proposals/[id]/page.tsx b/src/app/proposals/[id]/page.tsx
+index 0ef0204d5..5b12790ee 100644
+--- a/src/app/proposals/[id]/page.tsx
++++ b/src/app/proposals/[id]/page.tsx
+@@ -15,7 +15,7 @@ import { RewardBurst } from "@/components/brand/reward-burst";
+ import { getServerT } from "@/lib/i18n-server";
+ import { pickLocalized } from "@/lib/localized";
+ import { keepFigures } from "@/components/ui/keep-words";
+-import { formatTzsSigned } from "@/lib/utils";
++import { formatNumber, formatTzsSigned } from "@/lib/utils";
+ import { PageContainer } from "@/components/layout/page-container";
+ import { generateMetadata as notFoundMetadata } from "@/app/not-found";
+ 
+@@ -72,7 +72,7 @@ export default async function ProposalDetailPage({ params }: { params: Promise<{
+         {p.description && <p className="mt-2 text-[13px] leading-relaxed text-text-muted">{p.description}</p>}
+         <div className="mt-3.5 flex items-center gap-3">
+           <VoteControl proposalId={p.id} up={p.up} down={p.down} myVote={p.myVote} horizontal disabled={!active || !open} />
+-          <span className="font-mono text-[11.5px] text-text-subtle">{t.proposals.byProposer} {p.proposerMasked} · {p.up + p.down} {t.proposals.votesCount}</span>
++          <span className="font-mono text-[11.5px] text-text-subtle">{t.proposals.byProposer} {p.proposerMasked} · {formatNumber(p.up + p.down)} {t.proposals.votesCount}</span>
+         </div>
+       </section>
+ 
+diff --git a/src/app/proposals/new/create-form.tsx b/src/app/proposals/new/create-form.tsx
+index 94cf53083..286e60844 100644
+--- a/src/app/proposals/new/create-form.tsx
++++ b/src/app/proposals/new/create-form.tsx
+@@ -3,6 +3,7 @@
+ import { useState, useTransition } from "react";
+ import { useRouter } from "next/navigation";
+ import { I } from "@/components/ui/glyphs";
++import { formatNumber } from "@/lib/utils";
+ import { Input, Field } from "@/components/ui/input";
+ import { Textarea } from "@/components/ui/textarea";
+ import { FieldLegend } from "@/components/ui/field-legend";
+@@ -98,12 +99,12 @@ export function CreateProposalForm({ rateLimit, openCount, platformTz }: { rateL
+         </p>
+         <p className="mt-2.5 flex items-center gap-1.5 text-body-sm text-text-muted">
+           <I.info s={13} />
+-          <span className="font-mono">{openCount} / {rateLimit}</span> {t.common.openProposalsUsed}
++          <span className="font-mono">{formatNumber(openCount)} / {formatNumber(rateLimit)}</span> {t.common.openProposalsUsed}
+         </p>
+       </div>
+ 
+       <Field label={<>{t.common.titleEn} <Req /></>} hint={
+-        <span className={titleEn.length > 120 ? "text-danger-fg" : undefined}>{titleEn.length}/120</span>
++        <span className={titleEn.length > 120 ? "text-danger-fg" : undefined}>{formatNumber(titleEn.length)}/120</span>
+       }>
+         <Input placeholder={t.common.titleEnPlaceholder} value={titleEn} onChange={(e) => setTitleEn(e.target.value)} maxLength={120} />
+       </Field>
+diff --git a/src/app/proposals/page.tsx b/src/app/proposals/page.tsx
+index 466a3cde5..fe443127c 100644
+--- a/src/app/proposals/page.tsx
++++ b/src/app/proposals/page.tsx
+@@ -235,7 +235,7 @@ export default async function ProposalsPage({
+           sub-floor sentences this campaign wrote: the same rule was applied to its siblings in
+           `adc3718f` and this one was missed, which is why `test:type-scale` §3 measured 750
+           against a ratchet that commit had just lowered to 749. */}
+-      <p className="font-mono text-body-sm text-text-muted">{totalProposals.toLocaleString()} {t.proposals.proposalsCount} · {totalVotes.toLocaleString()} {t.proposals.votesCount}</p>
++      <p className="font-mono text-body-sm text-text-muted">{formatNumber(totalProposals)} {t.proposals.proposalsCount} · {formatNumber(totalVotes)} {t.proposals.votesCount}</p>
+ 
+       {/* ⛔ THE CONTROLS ARE WITHHELD ON AN EMPTY BOARD, and only then — §A5: seven pills all
+           reading 0 above "no proposals yet" are seven controls that cannot act. Every other empty
+diff --git a/src/app/proposals/proposals-bar.tsx b/src/app/proposals/proposals-bar.tsx
+index 21f4ac92d..2df967534 100644
+--- a/src/app/proposals/proposals-bar.tsx
++++ b/src/app/proposals/proposals-bar.tsx
+@@ -16,6 +16,7 @@
+  * two open states — *"a crowd signal, not a payout"* — never as a lifecycle step of its own.
+  */
+ import { FilterPill, FilterGroupKey } from "@/components/ui/filter-pill";
++import { formatNumber } from "@/lib/utils";
+ import { FilterSheet, FilterSheetGroup } from "@/components/markets/filter-sheet";
+ import {
+   QUERY_BAR_CLASS,
+@@ -110,7 +111,7 @@ export function ProposalsBar({
+   const dir = effectiveDir({ natural: BOARD_NATURAL_DIR }, state);
+   const sheetCount = boardSheetCount(state);
+   const resultPhrase =
+-    resultCount === 1 ? t.proposals.oneProposal : t.proposals.nProposals.replace("{n}", String(resultCount));
++    resultCount === 1 ? t.proposals.oneProposal : t.proposals.nProposals.replace("{n}", formatNumber(resultCount));
+ 
+   const clear = (
+     <QueryClear
+@@ -209,7 +210,7 @@ export function ProposalsBar({
+         <FilterSheet
+           label={t.market.filtersOpen}
+           title={t.proposals.title}
+-          ariaLabel={sheetCount > 0 ? t.market.filtersAriaN.replace("{n}", String(sheetCount)) : t.market.filtersOpen}
++          ariaLabel={sheetCount > 0 ? t.market.filtersAriaN.replace("{n}", formatNumber(sheetCount)) : t.market.filtersOpen}
+           closeLabel={t.market.filtersClose}
+           applyLabel={t.market.filtersApply.replace("{n}", resultPhrase)}
+           count={sheetCount}
+diff --git a/src/app/results/notable-carousel.tsx b/src/app/results/notable-carousel.tsx
+index fc1324293..0be3ef7c4 100644
+--- a/src/app/results/notable-carousel.tsx
++++ b/src/app/results/notable-carousel.tsx
+@@ -13,6 +13,7 @@ import { useState, useCallback, useRef } from "react";
+ import type { ReactNode } from "react";
+ import { I } from "@/components/ui/glyphs";
+ import { useT } from "@/lib/i18n";
++import { formatNumber } from "@/lib/utils";
+ 
+ const SWIPE_THRESHOLD = 40;
+ 
+@@ -63,7 +64,7 @@ export function NotableCarousel({
+         <div className="mb-2 flex items-center justify-end gap-2">
+           <Arrow dir="prev" onClick={() => go(-1)} label={prevLabel} />
+           <span className="font-mono text-[10.5px] tabular-nums text-text-subtle select-none">
+-            {current + 1}<span className="text-text-faint"> / {n}</span>
++            {formatNumber(current + 1)}<span className="text-text-faint"> / {formatNumber(n)}</span>
+           </span>
+           <Arrow dir="next" onClick={() => go(1)} label={nextLabel} />
+         </div>
+diff --git a/src/app/results/page.tsx b/src/app/results/page.tsx
+index 8d4ddcfdc..c3199b1e2 100644
+--- a/src/app/results/page.tsx
++++ b/src/app/results/page.tsx
+@@ -365,9 +365,9 @@ async function ResultsContent({
+               <div className="flex min-w-0 flex-col leading-tight font-mono text-[10px] font-semibold tabular-nums">
+                 {linesShown.map((line) => (
+                   <span key={line}>
+-                    <span className="whitespace-nowrap text-yes-300">{sideWord(t, "YES", line)} {winsIn(line, "YES")}</span>
++                    <span className="whitespace-nowrap text-yes-300">{sideWord(t, "YES", line)} {formatNumber(winsIn(line, "YES"))}</span>
+                     <span className="text-text-subtle"> · </span>
+-                    <span className="whitespace-nowrap text-no-300">{sideWord(t, "NO", line)} {winsIn(line, "NO")}</span>
++                    <span className="whitespace-nowrap text-no-300">{sideWord(t, "NO", line)} {formatNumber(winsIn(line, "NO"))}</span>
+                   </span>
+                 ))}
+                 {/* 🔴 D42 · THE THIRD ARC GETS ITS WORD. `OutcomeDonut` (below) divides by
+@@ -387,7 +387,7 @@ async function ResultsContent({
+                     languages), never a literal — and it is NOT a side, so it is not run through
+                     `sideWord`: a refund has no direction (§C4). It carries the arc's own ink. */}
+                 {voidCount > 0 && (
+-                  <span className="whitespace-nowrap text-text-subtle">{t.market.statusVoid} {voidCount}</span>
++                  <span className="whitespace-nowrap text-text-subtle">{t.market.statusVoid} {formatNumber(voidCount)}</span>
+                 )}
+               </div>
+             </div>
+@@ -474,7 +474,7 @@ async function ResultsContent({
+             <p aria-live="polite" className="mb-3 font-mono text-[11px] text-text-subtle tabular-nums">
+               {totalCount === 0
+                 ? `${t.results.noResultsMatch} "${qRaw}"`
+-                : `${totalCount} ${totalCount === 1 ? t.results.resultMatch : t.results.resultsMatch} "${qRaw}"`}
++                : `${formatNumber(totalCount)} ${totalCount === 1 ? t.results.resultMatch : t.results.resultsMatch} "${qRaw}"`}
+             </p>
+           )}
+ 
+diff --git a/src/app/results/results-bar.tsx b/src/app/results/results-bar.tsx
+index 7256e7d3a..6bc4c9f88 100644
+--- a/src/app/results/results-bar.tsx
++++ b/src/app/results/results-bar.tsx
+@@ -21,6 +21,7 @@
+  * name, which is a real defect the sidebar shipped.
+  */
+ import { FilterPill, FilterGroupKey } from "@/components/ui/filter-pill";
++import { formatNumber } from "@/lib/utils";
+ import { FilterSheet, FilterSheetGroup } from "@/components/markets/filter-sheet";
+ import {
+   QUERY_BAR_CLASS,
+@@ -118,7 +119,7 @@ export function ResultsBar({
+   const dir = effectiveDir({ natural: ARCHIVE_NATURAL_DIR }, state);
+   const sheetCount = archiveSheetCount(state);
+   const resultPhrase =
+-    resultCount === 1 ? t.market.oneResult : t.market.nResults.replace("{n}", String(resultCount));
++    resultCount === 1 ? t.market.oneResult : t.market.nResults.replace("{n}", formatNumber(resultCount));
+   const lenses = outcomeLensAvailable(state) ? ARCHIVE_LENSES : (["all"] as const);
+ 
+   const clear = (
+@@ -200,7 +201,7 @@ export function ResultsBar({
+         <FilterSheet
+           label={t.market.filtersOpen}
+           title={t.results.title}
+-          ariaLabel={sheetCount > 0 ? t.market.filtersAriaN.replace("{n}", String(sheetCount)) : t.market.filtersOpen}
++          ariaLabel={sheetCount > 0 ? t.market.filtersAriaN.replace("{n}", formatNumber(sheetCount)) : t.market.filtersOpen}
+           closeLabel={t.market.filtersClose}
+           applyLabel={t.market.filtersApply.replace("{n}", resultPhrase)}
+           count={sheetCount}
+diff --git a/src/app/updown/[roundId]/page.tsx b/src/app/updown/[roundId]/page.tsx
+index 52e33d994..bd3237b06 100644
+--- a/src/app/updown/[roundId]/page.tsx
++++ b/src/app/updown/[roundId]/page.tsx
+@@ -34,7 +34,7 @@ import { refundReasonFor, REFUND_REASON_KEY, viewerRefundCopy } from "@/lib/updo
+ import { pickLocalized } from "@/lib/localized";
+ // ⛔ ONE lexicon for side words across both products — never a local ternary (test:labels §4).
+ import { outcomeWord } from "@/lib/side-label";
+-import { fill, formatTzs } from "@/lib/utils";
++import { fill, formatNumber, formatTzs } from "@/lib/utils";
+ // R5 · the page's tone is settlement's own target rule — the landing band reads the same function.
+ import { decideOutcomeByTargets } from "@/lib/server/updown-service";
+ // ⭐ The kit's ONE pool-split bar, and the home of the cold-start rail (§B9) — PV-06.
+@@ -622,7 +622,7 @@ export default async function UpDownRoundPage({
+                   <div className="mt-3.5 border-t border-border-subtle/60 pt-3">
+                     <div className="flex flex-wrap items-center justify-between gap-2">
+                       <p className="m-0 font-mono text-micro uppercase eyebrow text-text-faint">
+-                        {t.market.udPositionsOnRound} · {myPosition.items.length}
++                        {t.market.udPositionsOnRound} · {formatNumber(myPosition.items.length)}
+                       </p>
+                       {myPosition.hedged && <Chip>{t.market.udBothSides}</Chip>}
+                     </div>
+@@ -734,7 +734,7 @@ export default async function UpDownRoundPage({
+                 <div className="text-right">
+                   <p className="m-0 flex items-center justify-end gap-1.5 font-mono text-title-sm font-bold leading-[1.1] tabular-nums text-text">
+                     <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="var(--text-muted)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><circle cx="12" cy="8" r="3.4" /><path d="M5.5 20c0-3.6 2.9-6 6.5-6s6.5 2.4 6.5 6" /></svg>
+-                    {round.players.toLocaleString()}
++                    {formatNumber(round.players)}
+                   </p>
+                   <p className="mt-1 font-mono text-micro uppercase eyebrow text-text-faint">{t.market.udPlayers}</p>
+                 </div>
+diff --git a/src/app/updown/history/history-bar.tsx b/src/app/updown/history/history-bar.tsx
+index 5c07ef98d..7ffd0e7f0 100644
+--- a/src/app/updown/history/history-bar.tsx
++++ b/src/app/updown/history/history-bar.tsx
+@@ -14,6 +14,7 @@
+  * delivered; keeping the RAIL as well would have been two controls for one axis.
+  */
+ import { FilterPill, FilterGroupKey } from "@/components/ui/filter-pill";
++import { formatNumber } from "@/lib/utils";
+ import { FilterSheet, FilterSheetGroup } from "@/components/markets/filter-sheet";
+ import {
+   QUERY_BAR_CLASS,
+@@ -108,7 +109,7 @@ export function HistoryBar({
+   const dir = effectiveDir({ natural: UD_NATURAL_DIR }, state);
+   const sheetCount = udSheetCount(state);
+   const resultPhrase =
+-    resultCount === 1 ? t.market.udOneRound : t.market.udNRounds.replace("{n}", String(resultCount));
++    resultCount === 1 ? t.market.udOneRound : t.market.udNRounds.replace("{n}", formatNumber(resultCount));
+ 
+   const clear = (
+     <QueryClear
+@@ -160,7 +161,7 @@ export function HistoryBar({
+         <FilterSheet
+           label={t.market.filtersOpen}
+           title={t.market.udHistoryTitle}
+-          ariaLabel={sheetCount > 0 ? t.market.filtersAriaN.replace("{n}", String(sheetCount)) : t.market.filtersOpen}
++          ariaLabel={sheetCount > 0 ? t.market.filtersAriaN.replace("{n}", formatNumber(sheetCount)) : t.market.filtersOpen}
+           closeLabel={t.market.filtersClose}
+           applyLabel={t.market.filtersApply.replace("{n}", resultPhrase)}
+           count={sheetCount}
+diff --git a/src/app/updown/history/page.tsx b/src/app/updown/history/page.tsx
+index f1804e672..4316ca3ab 100644
+--- a/src/app/updown/history/page.tsx
++++ b/src/app/updown/history/page.tsx
+@@ -24,7 +24,7 @@ import { resolveSimpleJourney } from "@/lib/server/journey-preview";
+ import { TicketsHead } from "@/components/journey/tickets/ticket-switch";
+ import { eatDayWindow, isInEatDay, eatDayKey, formatEatDay } from "@/lib/eat-day";
+ import { pickLocalized } from "@/lib/localized";
+-import { formatTzs, formatTzsSigned } from "@/lib/utils";
++import { formatNumber, formatTzs, formatTzsSigned } from "@/lib/utils";
+ import { SearchBox } from "@/components/ui/search-box";
+ import { QUERY_SEARCH_BAND_CLASS } from "@/components/ui/query-bar";
+ import { fieldNames, matchesQuery, parseQuery, UD_ROUND_SEARCH } from "@/lib/search";
+@@ -391,7 +391,7 @@ export default async function UpDownHistoryPage({ searchParams }: {
+                 <div className="flex flex-wrap items-center justify-center gap-2">
+                   {exits.map((e) => (
+                     <Link key={e.id} href={buildUdHref(state, e.patch) as never} replace scroll={false} className="btn btn-ghost btn-sm">
+-                      {`${EXIT_LABEL[e.id] ?? e.id} (${e.count})`}
++                      {`${EXIT_LABEL[e.id] ?? e.id} (${formatNumber(e.count)})`}
+                     </Link>
+                   ))}
+                 </div>
+@@ -434,13 +434,13 @@ export default async function UpDownHistoryPage({ searchParams }: {
+               <div className="font-mono text-micro uppercase eyebrow text-text-faint">{t.market.udRoundsPlayed}</div>
+               {/* ⛔ THE VIEW, not the page — this tile printed a PAGED round count directly above
+                   an UNPAGED bet count, so it read "Rounds 12 · 87 bets" on one card (D37). */}
+-              <div className="mt-0.5 font-mono text-[19px] font-bold tabular-nums text-text">{viewRounds.length}</div>
+-              <div className="font-mono text-[10px] text-text-subtle">{rows.length} {t.market.udBets}</div>
++              <div className="mt-0.5 font-mono text-[19px] font-bold tabular-nums text-text">{formatNumber(viewRounds.length)}</div>
++              <div className="font-mono text-[10px] text-text-subtle">{formatNumber(rows.length)} {t.market.udBets}</div>
+             </div>
+             <div className="rounded-xl border border-border bg-bg-elevated p-3.5 col-span-2 sm:col-span-1">
+               <div className="font-mono text-micro uppercase eyebrow text-text-faint">{t.market.udWinRate}</div>
+               <div className="mt-0.5 font-mono text-[19px] font-bold tabular-nums text-text">{winRate == null ? "—" : `${winRate}%`}</div>
+-              <div className="font-mono text-[10px] text-text-subtle">{wins}/{decided} decided</div>
++              <div className="font-mono text-[10px] text-text-subtle">{formatNumber(wins)}/{formatNumber(decided)} decided</div>
+             </div>
+           </div>
+ 
+@@ -449,7 +449,7 @@ export default async function UpDownHistoryPage({ searchParams }: {
+           {capped && (
+             <p className="mt-3 flex items-start gap-1.5 text-body-sm leading-[1.5] text-text-faint">
+               <I.info s={11} className="mt-[2px] shrink-0" />
+-              <span>{t.market.udHistoryCapped.replace("{n}", String(UD_HISTORY_LIMIT))}</span>
++              <span>{t.market.udHistoryCapped.replace("{n}", formatNumber(UD_HISTORY_LIMIT))}</span>
+             </p>
+           )}
+ 
+@@ -526,7 +526,7 @@ export default async function UpDownHistoryPage({ searchParams }: {
+                       the grid's rows auto-size, and the money block below stays inside it. */}
+                   <div className="mt-2.5 flex flex-wrap items-center gap-1.5">
+                     <span className="font-mono text-micro uppercase tracking-[0.10em] text-text-faint">
+-                      {g.bets.length} {t.market.udBets}
++                      {formatNumber(g.bets.length)} {t.market.udBets}
+                     </span>
+                     {g.bets.map((b) => (
+                       <Chip key={b.positionId} className="tabular-nums" variant={b.side === "UP" ? "yes" : "no"}>
+diff --git a/src/app/wallet/deposit/actions.ts b/src/app/wallet/deposit/actions.ts
+index b14770559..2f656a697 100644
+--- a/src/app/wallet/deposit/actions.ts
++++ b/src/app/wallet/deposit/actions.ts
+@@ -14,6 +14,7 @@ import type { CardCheckoutContext } from "@/lib/server/payments";
+ import { getServerT } from "@/lib/i18n-server";
+ import { errorCopy } from "@/lib/error-copy";
+ import { formatBreakEnd } from "@/lib/break-end";
++import { formatNumber } from "@/lib/utils";
+ 
+ /** Absolute base for the URLs we hand Selcom to send the buyer back to. Must be
+  *  the real public host — a relative path is meaningless to the gateway. */
+@@ -69,8 +70,9 @@ export async function depositAction(formData: FormData) {
+   // fills the same constants, so the message can never disagree either.
+   if (!Number.isFinite(amount) || amount < DEPOSIT_MIN_TZS || amount > DEPOSIT_MAX_TZS) {
+     fail(t.wallet.depositBounds
+-      .replace("{min}", DEPOSIT_MIN_TZS.toLocaleString("en-US"))
+-      .replace("{max}", DEPOSIT_MAX_TZS.toLocaleString("en-US")));
++      // One grouping for every figure (`formatNumber`, R5-J) — the withdraw action fills its own bounds the same way.
++      .replace("{min}", formatNumber(DEPOSIT_MIN_TZS))
++      .replace("{max}", formatNumber(DEPOSIT_MAX_TZS)));
+   }
+ 
+   // ── Rail-specific requirements, enforced HERE because the form can't ───────
+diff --git a/src/app/wallet/page.tsx b/src/app/wallet/page.tsx
+index 912b86302..443cff992 100644
+--- a/src/app/wallet/page.tsx
++++ b/src/app/wallet/page.tsx
+@@ -1,5 +1,6 @@
+ import { redirect } from "next/navigation";
+ import { pathWithQuery } from "@/lib/safe-next";
++import { formatNumber } from "@/lib/utils";
+ import { WalletPageClient } from "./wallet-client";
+ import { WalletBar, type LedgerCounts } from "./wallet-bar";
+ import { WalletResultModal } from "./wallet-result-modal";
+@@ -440,7 +441,7 @@ export default async function WalletPage({ searchParams }: { searchParams: Promi
+         }
+         emptyExits={exits.map((e) => ({
+           id: e.id,
+-          label: `${EXIT_LABEL[e.id] ?? e.id} (${e.count})`,
++          label: `${EXIT_LABEL[e.id] ?? e.id} (${formatNumber(e.count)})`,
+           href: buildLedgerHref(state, e.patch),
+         }))}
+         capped={capped}
+diff --git a/src/app/wallet/receipts/page.tsx b/src/app/wallet/receipts/page.tsx
+index 79760e62f..4ab8a0782 100644
+--- a/src/app/wallet/receipts/page.tsx
++++ b/src/app/wallet/receipts/page.tsx
+@@ -191,7 +191,7 @@ export default async function ReceiptsPage({ searchParams }: { searchParams: Pro
+               <div className="flex flex-wrap items-center justify-center gap-2">
+                 {exits.map((e) => (
+                   <Link key={e.id} href={buildReceiptsHref(state, e.patch) as never} replace scroll={false} className="btn btn-ghost btn-sm">
+-                    {`${EXIT_LABEL[e.id] ?? e.id} (${e.count})`}
++                    {`${EXIT_LABEL[e.id] ?? e.id} (${formatNumber(e.count)})`}
+                   </Link>
+                 ))}
+               </div>
+diff --git a/src/app/wallet/receipts/receipts-bar.tsx b/src/app/wallet/receipts/receipts-bar.tsx
+index f2488006a..e2e66a227 100644
+--- a/src/app/wallet/receipts/receipts-bar.tsx
++++ b/src/app/wallet/receipts/receipts-bar.tsx
+@@ -12,6 +12,7 @@
+  * (`wallet-bar.tsx` states the ledger's reason) — and each row opens a receipt that prints both references in full.
+  */
+ import { FilterPill, FilterGroupKey } from "@/components/ui/filter-pill";
++import { formatNumber } from "@/lib/utils";
+ import { FilterSheet, FilterSheetGroup } from "@/components/markets/filter-sheet";
+ import {
+   QUERY_BAR_CLASS,
+@@ -79,7 +80,7 @@ export function ReceiptsBar({
+ }) {
+   const href = (patch: Partial<ReceiptQueryState>) => buildReceiptsHref(state, patch);
+   const sheetCount = receiptsSheetCount(state);
+-  const resultPhrase = resultCount === 1 ? t.receipts.oneResult : t.receipts.nResults.replace("{n}", String(resultCount));
++  const resultPhrase = resultCount === 1 ? t.receipts.oneResult : t.receipts.nResults.replace("{n}", formatNumber(resultCount));
+ 
+   const clear = (
+     <QueryClear href={hasActiveReceiptFilters(state) ? buildReceiptsHref(RECEIPT_DEFAULT_STATE) : null} label={t.common.clearAll} />
+@@ -108,7 +109,7 @@ export function ReceiptsBar({
+         <FilterSheet
+           label={t.market.filtersOpen}
+           title={t.receipts.filtersTitle}
+-          ariaLabel={sheetCount > 0 ? t.market.filtersAriaN.replace("{n}", String(sheetCount)) : t.market.filtersOpen}
++          ariaLabel={sheetCount > 0 ? t.market.filtersAriaN.replace("{n}", formatNumber(sheetCount)) : t.market.filtersOpen}
+           closeLabel={t.market.filtersClose}
+           applyLabel={t.market.filtersApply.replace("{n}", resultPhrase)}
+           count={sheetCount}
+diff --git a/src/app/wallet/wallet-bar.tsx b/src/app/wallet/wallet-bar.tsx
+index 9f56d3f43..1483d21e8 100644
+--- a/src/app/wallet/wallet-bar.tsx
++++ b/src/app/wallet/wallet-bar.tsx
+@@ -18,6 +18,7 @@
+  * campaign gets a sort; this one is named here as the exception so nobody adds it by symmetry.
+  */
+ import { FilterPill, FilterGroupKey } from "@/components/ui/filter-pill";
++import { formatNumber } from "@/lib/utils";
+ import { FilterSheet, FilterSheetGroup } from "@/components/markets/filter-sheet";
+ import {
+   QUERY_BAR_CLASS,
+@@ -105,7 +106,7 @@ export function WalletBar({
+   const href = (patch: Partial<LedgerQueryState>) => buildLedgerHref(state, patch);
+   const sheetCount = ledgerSheetCount(state);
+   const resultPhrase =
+-    resultCount === 1 ? t.wallet.oneResult : t.wallet.nResults.replace("{n}", String(resultCount));
++    resultCount === 1 ? t.wallet.oneResult : t.wallet.nResults.replace("{n}", formatNumber(resultCount));
+ 
+   const clear = (
+     <QueryClear
+@@ -147,7 +148,7 @@ export function WalletBar({
+         <FilterSheet
+           label={t.market.filtersOpen}
+           title={t.wallet.filtersTitle}
+-          ariaLabel={sheetCount > 0 ? t.market.filtersAriaN.replace("{n}", String(sheetCount)) : t.market.filtersOpen}
++          ariaLabel={sheetCount > 0 ? t.market.filtersAriaN.replace("{n}", formatNumber(sheetCount)) : t.market.filtersOpen}
+           closeLabel={t.market.filtersClose}
+           applyLabel={t.market.filtersApply.replace("{n}", resultPhrase)}
+           count={sheetCount}
+diff --git a/src/app/wallet/wallet-client.tsx b/src/app/wallet/wallet-client.tsx
+index d2613434d..f2b09a6a6 100644
+--- a/src/app/wallet/wallet-client.tsx
++++ b/src/app/wallet/wallet-client.tsx
+@@ -424,7 +424,7 @@ function BonusWalletCard({
+                     six it drew five and said "+3 more". One constant now feeds both, so the two
+                     cannot disagree again. */}
+                 {grants.length > GRANTS_SHOWN && (
+-                  <p className="text-center font-mono text-[10px] text-text-subtle">+{grants.length - GRANTS_SHOWN} {grants.length - GRANTS_SHOWN > 1 ? t.common.moreBonuses : t.common.moreBonus}</p>
++                  <p className="text-center font-mono text-[10px] text-text-subtle">+{formatNumber(grants.length - GRANTS_SHOWN)} {grants.length - GRANTS_SHOWN > 1 ? t.common.moreBonuses : t.common.moreBonus}</p>
+                 )}
+                 {/* The way into the other five statuses. A `<Link>`, so it is a real address a
+                     player can share or come back to. */}
+diff --git a/src/app/watchlist/watchlist-bar.tsx b/src/app/watchlist/watchlist-bar.tsx
+index f30f2c515..cfc24792f 100644
+--- a/src/app/watchlist/watchlist-bar.tsx
++++ b/src/app/watchlist/watchlist-bar.tsx
+@@ -16,6 +16,7 @@
+  * `statusOpen` is not `statusLive`, and the campaign's complaint naming void separately from lost.
+  */
+ import { FilterPill, FilterGroupKey } from "@/components/ui/filter-pill";
++import { formatNumber } from "@/lib/utils";
+ import { FilterSheet, FilterSheetGroup } from "@/components/markets/filter-sheet";
+ import {
+   QUERY_BAR_CLASS,
+@@ -97,7 +98,7 @@ export function WatchlistBar({
+   const dir = effectiveDir({ natural: FOLLOW_NATURAL_DIR }, state);
+   const sheetCount = followSheetCount(state);
+   const resultPhrase =
+-    resultCount === 1 ? t.market.oneResult : t.market.nResults.replace("{n}", String(resultCount));
++    resultCount === 1 ? t.market.oneResult : t.market.nResults.replace("{n}", formatNumber(resultCount));
+ 
+   const clear = (
+     <QueryClear
+@@ -169,7 +170,7 @@ export function WatchlistBar({
+         <FilterSheet
+           label={t.market.filtersOpen}
+           title={t.watchlist.title}
+-          ariaLabel={sheetCount > 0 ? t.market.filtersAriaN.replace("{n}", String(sheetCount)) : t.market.filtersOpen}
++          ariaLabel={sheetCount > 0 ? t.market.filtersAriaN.replace("{n}", formatNumber(sheetCount)) : t.market.filtersOpen}
+           closeLabel={t.market.filtersClose}
+           applyLabel={t.market.filtersApply.replace("{n}", resultPhrase)}
+           count={sheetCount}
+diff --git a/src/components/analytics/analytics-choice.tsx b/src/components/analytics/analytics-choice.tsx
+index 38e770509..75e5d56a6 100644
+--- a/src/components/analytics/analytics-choice.tsx
++++ b/src/components/analytics/analytics-choice.tsx
+@@ -24,8 +24,8 @@ export function AnalyticsChoice() {
+   const on = consent === "granted";
+   return (
+     <div className="mt-3 flex flex-wrap items-center gap-3" data-testid="analytics-choice" data-state={mounted ? consent : "pending"}>
+-      <p className="min-w-0 text-body-sm text-text" aria-live="polite">
+-        {!mounted ? " " : consent === "granted" ? t.common.consentChoiceOn : consent === "denied" ? t.common.consentChoiceOff : t.common.consentChoiceUnset}
++      <p className="kp-keep-line min-w-0 text-body-sm text-text" aria-live="polite">
++        {!mounted ? null : consent === "granted" ? t.common.consentChoiceOn : consent === "denied" ? t.common.consentChoiceOff : t.common.consentChoiceUnset}
+       </p>
+       <Button type="button" variant="ghost" size="sm" disabled={!mounted} onClick={() => setConsent(on ? "denied" : "granted")} data-testid="analytics-choice-toggle">
+         {on ? t.common.consentTurnOff : t.common.consentTurnOn}
+diff --git a/src/components/badges/Badge.tsx b/src/components/badges/Badge.tsx
+index 638210607..5ba64b7d8 100644
+--- a/src/components/badges/Badge.tsx
++++ b/src/components/badges/Badge.tsx
+@@ -4,7 +4,7 @@
+ // Styling lives in globals.css (.badge / .badge--*), mirroring how .tier-* is
+ // driven — so badges automatically track the rest of the chord.
+ import * as React from "react";
+-import { cn } from "@/lib/utils";
++import { cn, formatNumber } from "@/lib/utils";
+ import { DotSeq } from "@/components/ui/dot-seq";
+ import { keepLastWords } from "@/components/ui/keep-words";
+ import { BADGE_ICONS, type AchievementId } from "./icons";
+@@ -54,7 +54,7 @@ export function Badge({
+ 
+       {state === "progress" && progress && !progress.tier && (
+         <span className="badge-count" style={{ position: "absolute", bottom: -16 }}>
+-          {progress.value}/{progress.max}
++          {formatNumber(progress.value)}/{formatNumber(progress.max)}
+         </span>
+       )}
+       {progress?.tier && <span className="badge-tier-pip">{progress.tier}</span>}
+diff --git a/src/components/chat/ChatBubble.tsx b/src/components/chat/ChatBubble.tsx
+index ffe21681d..915f64a96 100644
+--- a/src/components/chat/ChatBubble.tsx
++++ b/src/components/chat/ChatBubble.tsx
+@@ -16,6 +16,7 @@
+ import { HelpMark } from "./HelpMark";
+ import { CountBadge } from "@/components/ui/count-badge";
+ import { useT } from "@/lib/i18n";
++import { formatNumber } from "@/lib/utils";
+ 
+ export function ChatBubble({
+   isMobile = false,
+@@ -56,7 +57,7 @@ export function ChatBubble({
+         size="lg"
+         ring="var(--chat-canvas)"
+         lift
+-        aria-label={t.chat.unread.replace("{n}", String(unread))}
++        aria-label={t.chat.unread.replace("{n}", formatNumber(unread))}
+         style={{ position: "absolute", top: -2, right: -2 }}
+       />
+     </button>
+diff --git a/src/components/home/landing-hero.tsx b/src/components/home/landing-hero.tsx
+index 9ae8cfc9f..1b08886d1 100644
+--- a/src/components/home/landing-hero.tsx
++++ b/src/components/home/landing-hero.tsx
+@@ -354,7 +354,7 @@ export function LandingHero({ figures, t, locale, isAuthed, nowMs, cards, mine,
+                   <I.arrowRight s={16} />
+                 </Link>
+                 <Link href={"/markets" as never} className="btn btn-ghost btn-xl rounded-pill kp-hero__cta">
+-                  {fill(t.home.heroBrowseAll, { n: figures.openCount })}
++                  {fill(t.home.heroBrowseAll, { n: formatNumber(figures.openCount) })}
+                 </Link>
+               </div>
+               {/* THE SIGN-OFF — the brand line, which was the h1 until R7(3) (2026-09-27). The mark is
+@@ -682,7 +682,7 @@ export function QuestionBoard({ figures, t, locale, nowMs }: {
+             {figures.closingToday > 0 && (
+               <p className="kp-hero__eyebrow text-balance">
+                 <span className="kp-hero__tick" aria-hidden />
+-                {fill(t.home.heroBoardCloseToday, { n: figures.closingToday })}
++                {fill(t.home.heroBoardCloseToday, { n: formatNumber(figures.closingToday) })}
+               </p>
+             )}
+             {/* `text-balance` for the reason every `.kp-shead__h` carries it: without it "Chagua
+@@ -691,7 +691,7 @@ export function QuestionBoard({ figures, t, locale, nowMs }: {
+           </div>
+           {/* The board's ordering travels to /markets, so "all of them" arrives sorted as here. */}
+           <Link href={`/markets?sort=${figures.lens}` as never} className="kp-shead__link">
+-            {fill(t.home.gridSeeAll, { n: figures.openCount })}
++            {fill(t.home.gridSeeAll, { n: formatNumber(figures.openCount) })}
+             <I.chevronRight s={14} />
+           </Link>
+         </div>
+diff --git a/src/components/home/topic-tiles.tsx b/src/components/home/topic-tiles.tsx
+index 9d409c705..2dc08f4d9 100644
+--- a/src/components/home/topic-tiles.tsx
++++ b/src/components/home/topic-tiles.tsx
+@@ -24,7 +24,7 @@
+ import Link from "next/link";
+ import { I } from "@/components/ui/glyphs";
+ import { categoryLabel } from "@/lib/markets/category-label";
+-import { fill, formatTzsCompact } from "@/lib/utils";
++import { fill, formatNumber, formatTzsCompact } from "@/lib/utils";
+ import type { MarketCategory } from "@/lib/server/market-service";
+ import type { Dict } from "@/lib/i18n-dict";
+ import type { TopicAggregate } from "@/lib/markets/landing";
+@@ -80,7 +80,7 @@ export function TopicTiles({ topics, t }: { topics: TopicAggregate[]; t: Dict })
+           >
+             <span className="kp-topic__n">{categoryLabel(t, tp.id as MarketCategory)}</span>
+             <span className="kp-topic__m">
+-              <span className="kp-topic__live">{fill(t.home.topicLive, { n: tp.count })}</span>
++              <span className="kp-topic__live">{fill(t.home.topicLive, { n: formatNumber(tp.count) })}</span>
+               {/* 🔴 A ZERO POOL IS NOT STATED: 3 of the 7 tiles read "TZS 0" on production (2026-09-24),
+                   turning the band whose job is to show a live book into an advertisement that it is
+                   empty. ⛔ This is not the cold-start rule relaxed — that rule forbids INVENTING a
+diff --git a/src/components/home/trust-band.tsx b/src/components/home/trust-band.tsx
+index 111011013..78e09f73b 100644
+--- a/src/components/home/trust-band.tsx
++++ b/src/components/home/trust-band.tsx
+@@ -307,10 +307,11 @@ function SettledRow({ row, t, locale, nowMs }: { row: SettlementRow; t: Dict; lo
+         <span className="kp-settled__amt">{formatTzs(row.amountTzs)} {t.home.settledPaid}</span>
+       ) : (
+         /* 🔴 AN EMPTY CELL, NOT NO CELL — and not an EMPTY span either. Returning null removed the grid
+-           item and collapsed the row; an empty span has height 0 and held nothing. A non-breaking
+-           space gives the cell one line box at its own line-height, so the silent row keeps its
+-           tracks (measured on production 2026-09-24). `aria-hidden`: there is no figure to announce. */
+-        <span className="kp-settled__amt" aria-hidden>{"\u00a0"}</span>
++           item and collapsed the row; an empty span has height 0 and held nothing. The cell keeps one
++           line box at its own line-height, so the silent row keeps its tracks (measured on production
++           2026-09-24) — drawn by `kp-keep-line` (globals.css, R5-J), no character in the page; it used
++           to be a typed no-break space. `aria-hidden`: there is no figure to announce. */
++        <span className="kp-settled__amt kp-keep-line" aria-hidden />
+       )}
+     </li>
+   );
+diff --git a/src/components/home/updown-band.tsx b/src/components/home/updown-band.tsx
+index 61ccbda27..51a3e25c0 100644
+--- a/src/components/home/updown-band.tsx
++++ b/src/components/home/updown-band.tsx
+@@ -44,7 +44,7 @@ import { I } from "@/components/ui/glyphs";
+ import { Chip } from "@/components/ui/chip";
+ import { Reveal } from "@/components/layout/reveal";
+ import { AssetMark } from "@/components/updown/asset-mark";
+-import { fill } from "@/lib/utils";
++import { fill, formatNumber } from "@/lib/utils";
+ import type { Dict, Locale } from "@/lib/i18n-dict";
+ import type { UpdownBandRound } from "@/lib/updown-match";
+ import { UpdownMatchState } from "./updown-match-state";
+@@ -70,7 +70,7 @@ export function UpdownBand({ t, locale, liveCount, round }: {
+       {!round && (
+         <p className="kp-topic__m">
+           {liveCount > 0
+-            ? <span className="kp-topic__live">{liveCount === 1 ? t.home.updownRoundsLiveOne : fill(t.home.updownRoundsLive, { n: liveCount })}</span>
++            ? <span className="kp-topic__live">{liveCount === 1 ? t.home.updownRoundsLiveOne : fill(t.home.updownRoundsLive, { n: formatNumber(liveCount) })}</span>
+             : t.home.updownStartsSoon}
+         </p>
+       )}
+diff --git a/src/components/journey/account/unread-row.tsx b/src/components/journey/account/unread-row.tsx
+index 0e0897811..b78beec88 100644
+--- a/src/components/journey/account/unread-row.tsx
++++ b/src/components/journey/account/unread-row.tsx
+@@ -15,7 +15,7 @@ import { I } from "@/components/ui/glyphs";
+ import { CountBadge } from "@/components/ui/count-badge";
+ import { useT } from "@/lib/i18n";
+ import { useUnreadCount } from "@/lib/journey/use-unread-count";
+-import { fill } from "@/lib/utils";
++import { fill, formatNumber } from "@/lib/utils";
+ 
+ export function UnreadRow({ userId, href, label }: { userId: string | null; href: string; label: string }) {
+   const { t } = useT();
+@@ -28,7 +28,7 @@ export function UnreadRow({ userId, href, label }: { userId: string | null; href
+         <span className="kp-hub__text">
+           <span className="kp-hub__label">
+             {label}
+-            {n > 0 && <span className="sr-only">, {n === 1 ? t.notif.unreadOne : fill(t.notif.unreadN, { n })}</span>}
++            {n > 0 && <span className="sr-only">, {n === 1 ? t.notif.unreadOne : fill(t.notif.unreadN, { n: formatNumber(n) })}</span>}
+           </span>
+         </span>
+         <CountBadge count={n} tone="brand" size="lg" aria-hidden />
+diff --git a/src/components/journey/journey-tabs.tsx b/src/components/journey/journey-tabs.tsx
+index 92d080f17..2fc624753 100644
+--- a/src/components/journey/journey-tabs.tsx
++++ b/src/components/journey/journey-tabs.tsx
+@@ -30,6 +30,7 @@ import { useEffect, useState, type ReactNode } from "react";
+ import Link from "next/link";
+ import { usePathname } from "next/navigation";
+ import { I } from "@/components/ui/glyphs";
++import { formatNumber } from "@/lib/utils";
+ import { Dot } from "@/components/ui/dot";
+ import { TicketsGuestSheet } from "@/components/journey/tickets-guest-sheet";
+ import { useT } from "@/lib/i18n";
+@@ -75,7 +76,7 @@ export function JourneyTabs({ userId }: { userId: string | null }) {
+                 </span>
+                 <span className="kp-rail__label kp-jtab__label">{tabLabel(t, d.label)}</span>
+                 {unread !== null && unread > 0 && (
+-                  <span className="sr-only">{`, ${unread === 1 ? t.notif.unreadOne : t.notif.unreadN.replace("{n}", String(unread))}`}</span>
++                  <span className="sr-only">{`, ${unread === 1 ? t.notif.unreadOne : t.notif.unreadN.replace("{n}", formatNumber(unread))}`}</span>
+                 )}
+               </>
+             );
+diff --git a/src/components/journey/tickets/tickets-view.tsx b/src/components/journey/tickets/tickets-view.tsx
+index c45d78c4c..ebefda03b 100644
+--- a/src/components/journey/tickets/tickets-view.tsx
++++ b/src/components/journey/tickets/tickets-view.tsx
+@@ -22,6 +22,7 @@
+  */
+ import Link from "next/link";
+ import { I } from "@/components/ui/glyphs";
++import { formatNumber } from "@/lib/utils";
+ import { HashFocus } from "@/components/ui/hash-focus";
+ import { RefreshPoller } from "@/components/ui/refresh-poller";
+ import { EmptyState } from "@/components/ui/empty-state";
+@@ -111,7 +112,7 @@ export function TicketsView({ rows, positions, markets, prices, lens, page, serv
+             <div className="flex flex-wrap items-center justify-center gap-2">
+               {exits.map((e) => (
+                 <Link key={e.id} href={buildPortfolioHref(state, e.patch) as never} replace scroll={false} className="btn btn-ghost btn-sm">
+-                  {`${t.journey.ticketsExitLens} (${e.count})`}
++                  {`${t.journey.ticketsExitLens} (${formatNumber(e.count)})`}
+                 </Link>
+               ))}
+             </div>
+diff --git a/src/components/layout/away-summary-bar.tsx b/src/components/layout/away-summary-bar.tsx
+index 679e8cb37..6e2d83295 100644
+--- a/src/components/layout/away-summary-bar.tsx
++++ b/src/components/layout/away-summary-bar.tsx
+@@ -36,7 +36,7 @@
+ import { useEffect, useState } from "react";
+ import { NoticeBar, NoticeBarAction } from "@/components/ui/notice-bar";
+ import { useT } from "@/lib/i18n";
+-import { formatTzs } from "@/lib/utils";
++import { formatNumber, formatTzs } from "@/lib/utils";
+ import { initPresence, subscribeReturn } from "@/lib/presence-window";
+ import {
+   initLedger, readAway, subscribeAway, clearAway, removeAway, summarise, type LedgerEntry,
+@@ -80,7 +80,7 @@ export function AwaySummaryBar({
+   if (entries.length === 0) return null;
+ 
+   const s = summarise(entries);
+-  const n = (v: number) => String(v);
++  const n = formatNumber;
+ 
+   /* ⛔ THE FIGURE APPEARS ONLY WHEN EVERY ENTRY SHARES ONE OUTCOME — `summarise` enforces it
+    * and returns `null` otherwise. A mixed set states counts and sends the player to the
+diff --git a/src/components/layout/notifications-panel.tsx b/src/components/layout/notifications-panel.tsx
+index e3c9bddb0..e87c7f153 100644
+--- a/src/components/layout/notifications-panel.tsx
++++ b/src/components/layout/notifications-panel.tsx
+@@ -9,7 +9,7 @@ import { CountBadge } from "@/components/ui/count-badge";
+ import { Dot } from "@/components/ui/dot";
+ import { IconPlate } from "@/components/ui/icon-plate";
+ import { useExitPhase } from "@/components/ui/modal";
+-import { cn } from "@/lib/utils";
++import { cn, formatNumber } from "@/lib/utils";
+ import { fetchMyNotifications, markNotifReadAction, markAllReadAction, dismissNotifAction, dismissAllAction } from "@/app/_actions/notifications";
+ import type { StoredNotification } from "@/lib/server/store";
+ import { useT } from "@/lib/i18n";
+@@ -83,6 +83,10 @@ export function NotificationsPanel({ journey = false }: { journey?: boolean } =
+   // until the owner rules (frozen chrome): the change for it is these two values with the prop dropped.
+   const countTone = journey ? "brand" : "rose";
+   const clearAllHover = journey ? "hover:text-danger-fg" : "hover:text-no-300";
++  // ⭐ R5-J (the visual pass's round 5, 2026-10-09) — the journey bell says its unread count as every count reads, grouped
++  // (`formatNumber`: "1,247 unread", as the Arifa page and its row say it). The classic bell keeps its bare count until the
++  // owner rules (frozen chrome): the change for it is this value with the prop dropped. Below 1,000 the two are the same.
++  const countText = (n: number) => (journey ? formatNumber(n) : String(n));
+   const router = useRouter();
+   const [open, setOpen] = useState(false);
+   const [items, setItems] = useState<StoredNotification[]>([]);
+@@ -494,7 +498,7 @@ export function NotificationsPanel({ journey = false }: { journey?: boolean } =
+     <div ref={ref} className="relative z-10">
+       <button
+         type="button"
+-        aria-label={`${t.common.notifications}${unread > 0 ? ` (${unread})` : ""}`}
++        aria-label={`${t.common.notifications}${unread > 0 ? ` (${countText(unread)})` : ""}`}
+         aria-expanded={open ? "true" : "false"}
+         onClick={() => setOpen((v) => !v)}
+         data-unread={unread}
+@@ -757,7 +761,7 @@ export function NotificationsPanel({ journey = false }: { journey?: boolean } =
+                       COUNT is the message, so the dot is aria-hidden and the text carries it. */}
+                   {unread > 0 && <Dot tone={unreadDot} aria-hidden />}
+                   <span className="font-mono text-micro font-bold uppercase text-text-subtle truncate">
+-                    {unread === 1 ? t.notif.unreadOne : t.notif.unreadN.replace("{n}", String(unread))}
++                    {unread === 1 ? t.notif.unreadOne : t.notif.unreadN.replace("{n}", countText(unread))}
+                   </span>
+                 </span>
+                 <span className="flex items-center gap-1 shrink-0">
+diff --git a/src/components/markets/comments-thread.tsx b/src/components/markets/comments-thread.tsx
+index e19fd74f6..17aee692c 100644
+--- a/src/components/markets/comments-thread.tsx
++++ b/src/components/markets/comments-thread.tsx
+@@ -9,6 +9,7 @@ import { useEffect, useRef, useState, useTransition } from "react";
+ import Link from "next/link";
+ import { I } from "@/components/ui/glyphs";
+ import { Spinner } from "@/components/ui/spinner";
++import { formatNumber } from "@/lib/utils";
+ import { Textarea } from "@/components/ui/textarea";
+ import { Chip } from "@/components/ui/chip";
+ import { useToast } from "@/components/ui/toast";
+@@ -200,7 +201,7 @@ export function CommentsThread({
+         {/* ⛔ THE TOTAL, NOT THE PAGE. `comments.length` is what was READ (capped at 200); `total`
+             is how many exist. A header counting the read while the cap notice counts the truth
+             would be two numbers for one question, one line apart. */}
+-        <span className="ml-auto font-mono text-[11px] text-text-subtle tabular-nums" data-result-count={total}>{total}</span>
++        <span className="ml-auto font-mono text-[11px] text-text-subtle tabular-nums" data-result-count={total}>{formatNumber(total)}</span>
+       </div>
+ 
+       {canPost ? (
+@@ -215,7 +216,7 @@ export function CommentsThread({
+           />
+           <div className="mt-2 flex items-center justify-between">
+             <span className={`font-mono text-[10.5px] tabular-nums ${remaining < 40 ? "text-warning-fg" : "text-text-subtle"}`}>
+-              {remaining}
++              {formatNumber(remaining)}
+             </span>
+             <button
+               type="button"
+@@ -277,7 +278,7 @@ export function CommentsThread({
+           export, /updown/history and (this stage) the player's own activity feed. */}
+       {capped && (
+         <p className="mb-3 text-body-sm text-text-subtle">
+-          {t.market.commentsCapped.replace("{n}", String(comments.length)).replace("{total}", String(total))}
++          {t.market.commentsCapped.replace("{n}", formatNumber(comments.length)).replace("{total}", formatNumber(total))}
+         </p>
+       )}
+ 
+@@ -367,7 +368,7 @@ export function CommentsThread({
+           onClick={() => setShowAll(true)}
+           className="mt-3 w-full rounded-md border border-border bg-bg-overlay px-3 py-2 font-mono text-caption uppercase tracking-[0.12em] text-text-subtle hover:text-text hover:border-brand-400 transition-colors"
+         >
+-          {t.common.showAll} ({comments.length - INITIAL_SHOW} {t.common.more})
++          {t.common.showAll} ({formatNumber(comments.length - INITIAL_SHOW)} {t.common.more})
+         </button>
+       )}
+     </section>
+diff --git a/src/components/markets/discovery-bar.tsx b/src/components/markets/discovery-bar.tsx
+index ee6878800..3867a229d 100644
+--- a/src/components/markets/discovery-bar.tsx
++++ b/src/components/markets/discovery-bar.tsx
+@@ -39,7 +39,7 @@ import {
+   QuerySort,
+   QueryStrip,
+ } from "@/components/ui/query-bar";
+-import { formatTzsCompact } from "@/lib/utils";
++import { formatNumber, formatTzsCompact } from "@/lib/utils";
+ import {
+   ODDS_IDS,
+   POOL_FLOORS,
+@@ -193,7 +193,7 @@ export function DiscoveryBar({
+      ⚠️ It used to be computed here AND inlined a second time in the count element below, which
+      is two definitions of one sentence sitting four lines apart. One now feeds both. */
+   const resultPhrase =
+-    resultCount === 1 ? t.market.oneResult : t.market.nResults.replace("{n}", String(resultCount));
++    resultCount === 1 ? t.market.oneResult : t.market.nResults.replace("{n}", formatNumber(resultCount));
+   const sheetCount = sheetFilterCount(state);
+ 
+   /* ⭐ `Opt` and the `Clear all` link left this file on 2026-09-07 — they are `QueryOption` and
+@@ -298,7 +298,7 @@ export function DiscoveryBar({
+           title={t.market.filtersTitle}
+           ariaLabel={
+             sheetCount > 0
+-              ? t.market.filtersAriaN.replace("{n}", String(sheetCount))
++              ? t.market.filtersAriaN.replace("{n}", formatNumber(sheetCount))
+               : t.market.filtersOpen
+           }
+           closeLabel={t.market.filtersClose}
+@@ -400,7 +400,7 @@ export function DiscoveryBar({
+             <QueryOption key={tp.id} href={href({ topic: tp.id })} on={state.topic === tp.id}
+               trailing={
+                 <span className="shrink-0 font-mono text-[11px] tabular-nums text-text-faint">
+-                  {counts.topic[tp.id] ?? 0}
++                  {formatNumber(counts.topic[tp.id] ?? 0)}
+                 </span>
+               }
+             >
+diff --git a/src/components/markets/filter-sheet.tsx b/src/components/markets/filter-sheet.tsx
+index e1e447fc1..66323d3b6 100644
+--- a/src/components/markets/filter-sheet.tsx
++++ b/src/components/markets/filter-sheet.tsx
+@@ -64,6 +64,7 @@ import * as React from "react";
+ import { Button } from "@/components/ui/button";
+ import { I } from "@/components/ui/glyphs";
+ import { useModalLock } from "@/lib/use-modal-lock";
++import { formatNumber } from "@/lib/utils";
+ /* ⛔ ONE definition of the exit beat, and of the three reduced-motion gates behind it — and of the ✕ (`CloseX`). */
+ import { CloseX, exitBeatMs } from "@/components/ui/modal";
+ 
+@@ -323,7 +324,7 @@ export function FilterSheet({
+             its own irrelevance, and it would sit there on the default board for ever. */}
+         {count > 0 && (
+           <span aria-hidden className="kp-fsheet-badge font-mono text-[11px] font-bold tabular-nums">
+-            {count}
++            {formatNumber(count)}
+           </span>
+         )}
+         {/* 🔴 THE MISSING AFFORDANCE. Every other disclosure in the product carries a caret that
+diff --git a/src/components/markets/market-card.tsx b/src/components/markets/market-card.tsx
+index 2a580061f..d1c17a45e 100644
+--- a/src/components/markets/market-card.tsx
++++ b/src/components/markets/market-card.tsx
+@@ -689,7 +689,7 @@ export function MarketCard({
+         {comments != null && comments > 0 && (
+           <>
+             <span className="dot" />
+-            <span className="inline-flex items-center gap-1"><I.comment s={10} />{comments}</span>
++            <span className="inline-flex items-center gap-1"><I.comment s={10} />{formatNumber(comments)}</span>
+           </>
+         )}
+         <span className="mcardp-meta-right">
+diff --git a/src/components/markets/menu-shell.tsx b/src/components/markets/menu-shell.tsx
+index 5ead2d490..45a33b7d4 100644
+--- a/src/components/markets/menu-shell.tsx
++++ b/src/components/markets/menu-shell.tsx
+@@ -28,7 +28,7 @@
+  */
+ import { useEffect, useRef } from "react";
+ import { I } from "@/components/ui/glyphs";
+-import { cn } from "@/lib/utils";
++import { cn, formatNumber } from "@/lib/utils";
+ 
+ export function MenuShell({
+   label,
+@@ -120,7 +120,7 @@ export function MenuShell({
+             control cannot hold it and a 160px status strip at 360 in the same row. */}
+         <span className="kp-menu-value min-w-0 truncate text-[13px] font-semibold text-text">{value}</span>
+         {count != null && (
+-          <span className="shrink-0 font-mono text-[11px] font-bold tabular-nums text-text-faint">{count}</span>
++          <span className="shrink-0 font-mono text-[11px] font-bold tabular-nums text-text-faint">{formatNumber(count)}</span>
+         )}
+         <I.chevronDown s={14} aria-hidden className="kp-menu-caret shrink-0 opacity-70" />
+       </summary>
+diff --git a/src/components/markets/notify-poller.tsx b/src/components/markets/notify-poller.tsx
+index 3f3dd992b..47e7ef810 100644
+--- a/src/components/markets/notify-poller.tsx
++++ b/src/components/markets/notify-poller.tsx
+@@ -55,7 +55,7 @@ import { useToast } from "@/components/ui/toast";
+ import { useT } from "@/lib/i18n";
+ import { positionStatusWord } from "@/lib/side-label";
+ import { dispatchWinCelebration } from "@/components/markets/win-celebration";
+-import { formatTzs } from "@/lib/utils";
++import { formatNumber, formatTzs } from "@/lib/utils";
+ import { DWELL_RESULT_MS } from "@/lib/feedback-timing";
+ import { routeOutcome } from "@/lib/outcome-announcement";
+ import { isAttentive, presenceSinceMs, serverNow } from "@/lib/presence-window";
+@@ -270,7 +270,7 @@ export function NotifyPoller() {
+                   groupAmount: p.payout,
+                   groupLabel: (n, total) => ({
+                     title: t.notif.groupedReturned
+-                      .replace("{n}", String(n))
++                      .replace("{n}", formatNumber(n))
+                       .replace("{amount}", formatTzs(total)),
+                   }),
+                 });
+@@ -292,7 +292,7 @@ export function NotifyPoller() {
+                   groupAmount: p.stake,
+                   groupLabel: (n, total) => ({
+                     title: t.notif.groupedLost
+-                      .replace("{n}", String(n))
++                      .replace("{n}", formatNumber(n))
+                       .replace("{amount}", formatTzs(total)),
+                   }),
+                 });
+diff --git a/src/components/markets/objection-dialog.tsx b/src/components/markets/objection-dialog.tsx
+index e4b7686fa..e6d4d252b 100644
+--- a/src/components/markets/objection-dialog.tsx
++++ b/src/components/markets/objection-dialog.tsx
+@@ -18,6 +18,7 @@ import { useState, useTransition } from "react";
+ import { Modal } from "@/components/ui/modal";
+ import { Select } from "@/components/ui/select";
+ import { Textarea } from "@/components/ui/textarea";
++import { formatNumber } from "@/lib/utils";
+ import { Button } from "@/components/ui/button";
+ import { useToast } from "@/components/ui/toast";
+ import { Callout } from "@/components/ui/callout";
+@@ -162,7 +163,7 @@ export function ObjectionDialog({ marketId, onFiled }: { marketId: string; onFil
+             />
+             <p id="objection-detail-hint" className="flex items-start justify-between gap-3 text-body-sm leading-relaxed text-text-subtle">
+               <span>{t.market.objDetailHint}</span>
+-              <span className="font-mono tabular-nums shrink-0">{detail.length}/{DETAIL_MAX}</span>
++              <span className="font-mono tabular-nums shrink-0">{formatNumber(detail.length)}/{formatNumber(DETAIL_MAX)}</span>
+             </p>
+           </div>
+ 
+diff --git a/src/components/markets/operation-result-modal.tsx b/src/components/markets/operation-result-modal.tsx
+index cc933773d..951ac1a9d 100644
+--- a/src/components/markets/operation-result-modal.tsx
++++ b/src/components/markets/operation-result-modal.tsx
+@@ -51,6 +51,7 @@ import { useCallback, useEffect, useId, useRef, type ReactNode } from "react";
+ import { Modal } from "@/components/ui/modal";
+ import { I } from "@/components/ui/glyphs";
+ import { useT } from "@/lib/i18n";
++import { moneyRuns } from "@/lib/fill-nodes";
+ import { useResultModalPresence } from "@/lib/result-modal-presence";
+ 
+ const DEFAULT_AUTO_CLOSE_MS = 5_000;
+@@ -98,12 +99,6 @@ type Props = {
+    *  - "no"    — NO-side bet placed
+    *  Defaults to "brand". Ignored for non-success variants. */
+   stripTone?: "gold" | "brand" | "yes" | "no";
+-  /**
+-   * S6 A8f · every money figure in `title` is set as one amount (`.amount`: mono and never split, DESIGN_AUTHORITY §M4),
+-   * however the words around it wrap. The Sell button's result asks for it: its figure is drawn as every other amount
+-   * is, and a refusal's sentence that names a price keeps that figure whole. Without it the title is drawn as given.
+-   */
+-  wholeFigures?: boolean;
+ };
+ /* `celebrate`/`celebrateGlyph` (the A5 reward-burst swap) were DELETED 2026-08-08:
+    zero call sites ever passed them, and the win moment they anticipated is the
+@@ -184,20 +179,21 @@ const STRIP_GRADIENTS: Record<string, string> = {
+   no:    "linear-gradient(90deg, var(--no-700), var(--no-400))",
+ };
+ 
+-/** S6 A8f · a money figure as `formatTzs` writes one ("TZS 1,500", "TZS −360"), with a minus written before it. */
+-const FIGURE = /(−?TZS −?[0-9][0-9,]*)/;
+-/**
+- * The title with every money figure in it set as one amount: the words around a figure still wrap, and the figure moves to
+- * the next line whole. A split on a group keeps each figure at an odd place.
++/*
++ * ⭐ EVERY MONEY FIGURE A RESULT STATES IS ONE AMOUNT, FOR EVERY RESULT, READ BY THE ONE READER (round 5 of the visual pass,
++ * R5-J, 2026-10-09; DESIGN_AUTHORITY §M4: mono, untracked, never split). Since S6 A8f the sale's result asked for its title's
++ * figures whole (`wholeFigures`) through a matcher of its own, `/(−?TZS −?[0-9][0-9,]*)/`: it took a sentence's comma into the
++ * figure ("TZS 5,000,000," one amount), read "TZS 1.2M" as "TZS 1" and ".2M", "TZS 2.5" as "TZS 2", missed "+TZS 1,234"'s sign
++ * and every figure the dictionary types with a no-break space between "TZS" and its digits. And it was the sale's alone: the bet
++ * receipt's "NDIO · TZS 1,000" and a refusal's "Salio lako ni TZS 500 …" drew their figures in the heading's face. Now the
++ * title, a subtitle given as words and the footnote read their figures with `moneyRuns` (fill-nodes.tsx — the reader every
++ * toast's title and sentence already go through, R5-E), so a result and its toast say an amount the same way. The words are
++ * the caller's, character for character; a subtitle handed in as nodes (a kept sentence, `keepText`) is drawn as given.
+  */
+-function withWholeFigures(title: string) {
+-  return title.split(FIGURE).map((part, i) => (i % 2 === 1 ? <span key={i} className="amount">{part}</span> : part));
+-}
+-
+ export function OperationResultModal({
+   open, variant, eyebrow, title, subtitle, details, footnote,
+   primaryLabel, secondaryLabel, onPrimary, onSecondary, onClose,
+-  autoCloseMs, stripTone = "brand", wholeFigures,
++  autoCloseMs, stripTone = "brand",
+ }: Props) {
+   const { t } = useT();
+   const closeRef = useRef(onClose);
+@@ -491,11 +487,11 @@ export function OperationResultModal({
+           </p>
+         )}
+         <h2 className="mt-1 font-display text-[22px] font-bold text-text leading-tight tracking-[-0.018em]">
+-          {wholeFigures ? withWholeFigures(title) : title}
++          {moneyRuns(title)}
+         </h2>
+         {subtitle && (
+           <p id={subtitleId} className="mt-1.5 text-[13px] text-text-muted leading-snug">
+-            {subtitle}
++            {typeof subtitle === "string" ? moneyRuns(subtitle) : subtitle}
+           </p>
+         )}
+ 
+@@ -576,7 +572,7 @@ export function OperationResultModal({
+ 
+         {footnote && (
+           <p className="mt-3 text-body-sm text-text-subtle">
+-            {footnote}
++            {moneyRuns(footnote)}
+           </p>
+         )}
+       </div>
+diff --git a/src/components/markets/sell-button.tsx b/src/components/markets/sell-button.tsx
+index a3d34df89..1e7b10dfd 100644
+--- a/src/components/markets/sell-button.tsx
++++ b/src/components/markets/sell-button.tsx
+@@ -531,7 +531,7 @@ export function SellButton({
+   // ⭐ THE TWO DIALOGS ARE ONE PAIR FOR BOTH LOOKS — the confirm and the result, wired to the one `submit` above. The
+   // journey's look changes three of their words, each a ticket where today's says a position (S6 A7): the question, the
+   // keep button, and the line under a sale that failed. Without the look they are today's words. Since S6 A8f the result
+-  // sets each money figure in its title as one amount (`wholeFigures`), and the confirm keeps its own figures whole and
++  // sets each money figure in its title as one amount (`moneyRuns`, R5-J), and the confirm keeps its own figures whole and
+   // reflows its receive row (`test:sell-grace-truth` §6). Since S6 A8h the result is `SellResultModal` (`sell-result.tsx`),
+   // the one place its words are written: the shell's host draws it, and this button only when no host took the result
+   // (`showResult`, above).
+diff --git a/src/components/markets/sell-result.tsx b/src/components/markets/sell-result.tsx
+index 624e6f786..a6dd6a794 100644
+--- a/src/components/markets/sell-result.tsx
++++ b/src/components/markets/sell-result.tsx
+@@ -61,7 +61,8 @@ export function handSellResult(handOff: Omit<SellResultHandOff, "ack">): boolean
+ 
+ /**
+  * The result of a sale, in both looks. The journey's look changes one word, the line under a refusal (a ticket where
+- * today's says a position, S6 A7); since S6 A8f the money figures in its title are whole (`wholeFigures`).
++ * today's says a position, S6 A7). Its title's money figures are whole — since round 5 (R5-J) for every result, read by the
++ * modal itself with the one reader (`moneyRuns`), so this caller asks for nothing.
+  */
+ export function SellResultModal({
+   open,
+@@ -106,7 +107,6 @@ export function SellResultModal({
+       primaryLabel={resultData.variant === "success" ? t.common.doneSawa : t.common.close}
+       onClose={onClose}
+       stripTone="brand"
+-      wholeFigures
+     />
+   );
+ }
+diff --git a/src/components/positions/pnl-summary-strip.tsx b/src/components/positions/pnl-summary-strip.tsx
+index 02d308eba..e98a80bf5 100644
+--- a/src/components/positions/pnl-summary-strip.tsx
++++ b/src/components/positions/pnl-summary-strip.tsx
+@@ -13,7 +13,7 @@
+  *    fabricated inside this component.
+  */
+ 
+-import { formatTzsAbs, formatTzsSigned } from "@/lib/utils";
++import { formatNumber, formatTzsAbs, formatTzsSigned } from "@/lib/utils";
+ 
+ type Props = {
+   openCount: number;
+@@ -61,7 +61,7 @@ export function PnlSummaryStrip({
+       </div>
+       <div className="gilt-rule" style={{ margin: "10px 0 14px" }} />
+       <div className="grid gap-x-0 gap-y-4" style={{ gridTemplateColumns: "repeat(auto-fit, minmax(158px, 1fr))" }}>
+-        <Cell label={t.atRisk} value={formatTzsAbs(openStake)} sub={`${openCount} ${t.open}`} />
++        <Cell label={t.atRisk} value={formatTzsAbs(openStake)} sub={`${formatNumber(openCount)} ${t.open}`} />
+         <Cell
+           label={t.liveValueIfSettled}
+           value={formatTzsAbs(openLiveValue)}
+@@ -73,7 +73,7 @@ export function PnlSummaryStrip({
+           // Gold = earned money only; losses in rose, stated calmly — and a zero is neither (R5-C, 2026-10-09: "TZS 0"
+           // was gilt; nothing was earned, §M3), so it takes the text's own ink, as /positions/performance does.
+           valueClass={settledNet > 0 ? "text-[var(--gilt)]" : settledNet < 0 ? "text-no-300" : "text-text"}
+-          sub={`${wins}W \u00b7 ${losses}L \u00b7 ${cashOuts}C`}
++          sub={`${formatNumber(wins)}W \u00b7 ${formatNumber(losses)}L \u00b7 ${formatNumber(cashOuts)}C`}
+         />
+         <div className="pl-3.5 pt-0.5" style={{ borderLeft: "1px solid color-mix(in oklab, var(--border) 60%, transparent)" }}>
+           <p className="m-0 font-mono text-micro font-semibold uppercase eyebrow text-text-subtle">{t.winRate}</p>
+diff --git a/src/components/proposals/vote-control.tsx b/src/components/proposals/vote-control.tsx
+index 29ab805c6..3728f8444 100644
+--- a/src/components/proposals/vote-control.tsx
++++ b/src/components/proposals/vote-control.tsx
+@@ -8,6 +8,7 @@
+  */
+ import { useRef, useState, useTransition } from "react";
+ import { I } from "@/components/ui/glyphs";
++import { formatNumber } from "@/lib/utils";
+ import { voteAction } from "@/app/proposals/actions";
+ import { useToast } from "@/components/ui/toast";
+ import { useT } from "@/lib/i18n";
+@@ -127,7 +128,7 @@ export function VoteControl({
+     >
+       <Btn dir="up" color={upColor} />
+       <span key={pop} className="vote-pop font-mono text-[13px] font-bold text-center" style={{ color: scoreColor, minWidth: 22 }}>
+-        {score}
++        {formatNumber(score)}
+       </span>
+       <Btn dir="down" color={downColor} />
+     </div>
+diff --git a/src/components/ui/filter-pill.tsx b/src/components/ui/filter-pill.tsx
+index b73629821..45d844275 100644
+--- a/src/components/ui/filter-pill.tsx
++++ b/src/components/ui/filter-pill.tsx
+@@ -32,7 +32,7 @@
+  * failure that is really an instrument break. `data-count` must stay a bare integer.
+  */
+ import Link from "next/link";
+-import { cn } from "@/lib/utils";
++import { cn, formatNumber } from "@/lib/utils";
+ import { LinkPending } from "@/components/ui/link-pending";
+ 
+ /**
+@@ -251,7 +251,9 @@ export function FilterPill({
+             countClassName,
+           )}
+         >
+-          {count}
++          {/* ⭐ Grouped as every count a player reads is (R5-J, round 5): production's /results lens read "Zote 12479" while
++              the page's own tally read "12,479 imetatuliwa". `data-count` above stays the bare integer the probes parse. */}
++          {formatNumber(count)}
+         </span>
+       )}
+       {/* ⭐ A pressed chip whose rows are still on their way says so — `link-pending.tsx`. It renders
+diff --git a/src/components/ui/pagination.tsx b/src/components/ui/pagination.tsx
+index 6d5983fa7..2a44955ac 100644
+--- a/src/components/ui/pagination.tsx
++++ b/src/components/ui/pagination.tsx
+@@ -9,6 +9,7 @@ import Link from "next/link";
+ import type { ReactNode } from "react";
+ import { I } from "@/components/ui/glyphs";
+ import { LinkPending } from "@/components/ui/link-pending";
++import { formatNumber } from "@/lib/utils";
+ 
+ /** Admin table page size. */
+ export const PER_PAGE = 20;
+@@ -176,8 +177,11 @@ export function Pagination({
+ 
+   return (
+     <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-2 px-4 py-3 border-t border-border">
++      {/* ⭐ The range is grouped by `formatNumber`, the platform's one count grouping (R5-J, round 5). `toLocaleString()` grouped
++          by the runtime's locale — the server's on a server page, the browser's on the wallet's client pager — so one total
++          could print two ways ("12,479" / "12.479"). The page buttons below stay bare: each names a page, `?page=1040`. */}
+       <p className="font-mono text-micro tracking-[0.14em] uppercase text-text-subtle">
+-        {((safePage - 1) * perPage + 1).toLocaleString()}–{Math.min(safePage * perPage, total).toLocaleString()} {ofLabel} {total.toLocaleString()}
++        {formatNumber((safePage - 1) * perPage + 1)}–{formatNumber(Math.min(safePage * perPage, total))} {ofLabel} {formatNumber(total)}
+       </p>
+       {/* Centred while wrapped, right-aligned once it fits on one line. `justify-end` once
+           left the overflowing chevron hanging alone against the right edge, which reads as a
+diff --git a/src/components/ui/search-box.tsx b/src/components/ui/search-box.tsx
+index 29f9210da..a77951153 100644
+--- a/src/components/ui/search-box.tsx
++++ b/src/components/ui/search-box.tsx
+@@ -192,9 +192,9 @@ export function SearchBox({
+       <p
+         role={invalidReason ? "alert" : undefined}
+         aria-live="polite"
+-        className={`mt-1.5 min-h-[17px] text-[11px] ${invalidReason ? "text-danger-fg" : "text-text-subtle"}`}
++        className={`mt-1.5 min-h-[17px] text-[11px] ${invalidReason ? "text-danger-fg" : "text-text-subtle"} kp-keep-line`}
+       >
+-        {invalidReason || described || echo || " "}
++        {invalidReason || described || echo || null}
+       </p>
+     </div>
+   );
+diff --git a/src/components/ui/time-select.tsx b/src/components/ui/time-select.tsx
+index d2e1fca13..28584d66e 100644
+--- a/src/components/ui/time-select.tsx
++++ b/src/components/ui/time-select.tsx
+@@ -168,13 +168,14 @@ export function TimeSelect({ value, defaultValue, onChange, error, size = "md",
+           `datetime-range-filter.tsx`).
+           ⛔ NOT SOLVED WITH `absolute`: at `poll-actions.tsx` and `rules-form.tsx` a helper/error
+           `<p>` sits directly beneath this row, and an out-of-flow echo would land on top of it.
+-          ⚠️ The placeholder is a non-breaking space, hidden from the accessibility tree — an
+-          empty slot must reserve space without announcing a blank label. */}
++          ⚠️ The empty slot holds its line with no character in the page — `kp-keep-line` (globals.css) draws its
++          space (R5-J) — and it stays hidden from the accessibility tree: it must reserve space without announcing a
++          blank label. */}
+       <span
+-        className="mt-0.5 font-mono text-[10px] text-text-subtle tabular-nums"
++        className="kp-keep-line mt-0.5 font-mono text-[10px] text-text-subtle tabular-nums"
+         aria-hidden={preview && !errored ? undefined : true}
+       >
+-        {preview && !errored ? `= ${preview}` : " "}
++        {preview && !errored ? `= ${preview}` : null}
+       </span>
+     </div>
+   );
+diff --git a/src/components/updown/updown-card.tsx b/src/components/updown/updown-card.tsx
+index 0612242b8..d3c716c26 100644
+--- a/src/components/updown/updown-card.tsx
++++ b/src/components/updown/updown-card.tsx
+@@ -31,7 +31,7 @@ import Link from "next/link";
+ import { I } from "@/components/ui/glyphs";
+ import { Chip } from "@/components/ui/chip";
+ import { Dot } from "@/components/ui/dot";
+-import { cn, formatTzs } from "@/lib/utils";
++import { cn, formatNumber, formatTzs } from "@/lib/utils";
+ import { priceState } from "@/lib/markets/price-state";
+ import { usd } from "@/lib/usd-price";
+ import { fillNodes } from "@/lib/fill-nodes";
+@@ -198,18 +198,14 @@ export type UpDownCardProps = {
+ // one-home sprint exists to kill. The device-cost story (forty Intl constructions a second
+ // on an eight-card board) and the USD-vs-TZS confusability rule moved with it.
+ 
+-/**
+- * The player count, in the DEVICE's own locale — exactly what `players.toLocaleString()` gave,
+- * built once instead of once per render. ⛔ Not `formatNumber` from `@/lib/utils`: that one is
+- * pinned to `en-US`, and swapping the locale under a rendered figure is a copy change wearing a
+- * performance label.
+- * ⚠️ Lazy, so importing this module does not pay for a formatter a page may never draw.
++/*
++ * ⭐ THE PLAYER COUNT IS GROUPED AS EVERY COUNT IS — `formatNumber` (round 5 of the visual pass, R5-J, 2026-10-09). It had a
++ * formatter of its own in the DEVICE's locale (`new Intl.NumberFormat()`, once `players.toLocaleString()`), and the note
++ * here kept it on purpose: swapping the locale under a rendered figure is a copy change. This is that copy change, made
++ * deliberately — one way to count. The card is a client component the server renders first, so a device whose locale
++ * groups otherwise drew "12,345" in the first paint and "12.345" (de) or "12 345" (fr) after hydration: a mismatch, and a
++ * grouping no other surface writes. The round page beside it, the cards and the bars all write "12,345".
+  */
+-let COUNT_FORMAT: Intl.NumberFormat | null = null;
+-function formatCount(n: number): string {
+-  if (COUNT_FORMAT === null) COUNT_FORMAT = new Intl.NumberFormat();
+-  return COUNT_FORMAT.format(n);
+-}
+ 
+ /**
+  * The wall-clock time the lock happened, in the player's own locale, from one formatter.
+@@ -644,7 +640,7 @@ export function UpDownCard(props: UpDownCardProps) {
+     // has no direction, the three-state rule this card taught the charts.
+     move: movePct == null ? null : `${movePct > 0 ? "+" : movePct < 0 ? "−" : ""}${Math.abs(movePct).toFixed(2)}%`,
+   }), [livePrice, openPrice, closePrice, upTarget, downTarget, decimals, movePct]);
+-  const playersText = useMemo(() => formatCount(players), [players]);
++  const playersText = useMemo(() => formatNumber(players), [players]);
+   /* 2026-09-14 — East Africa Time with the zone stated, the same `fmtEAT` the round page and the
+      chart use. A private UTC helper printed "quoted 22:54:00" for a 01:54 EAT quote, so a live
+      round read as three hours stale to a player in Tanzania. */
+diff --git a/src/components/updown/updown-result-announcer.tsx b/src/components/updown/updown-result-announcer.tsx
+index f4bc0549e..3d99343de 100644
+--- a/src/components/updown/updown-result-announcer.tsx
++++ b/src/components/updown/updown-result-announcer.tsx
+@@ -46,7 +46,7 @@ import { useEffect, useRef } from "react";
+ import { useToast } from "@/components/ui/toast";
+ import { dispatchWinCelebration } from "@/components/markets/win-celebration";
+ import { useT } from "@/lib/i18n";
+-import { formatTzs } from "@/lib/utils";
++import { formatNumber, formatTzs } from "@/lib/utils";
+ import { DWELL_RESULT_MS } from "@/lib/feedback-timing";
+ import { routeOutcome } from "@/lib/outcome-announcement";
+ import { isAttentive, presenceSinceMs, serverNow } from "@/lib/presence-window";
+@@ -155,7 +155,7 @@ export function UpDownResultAnnouncer({ rounds }: { rounds: AnnounceableRound[]
+           groupAmount: res.payout,
+           groupLabel: (n, total) => ({
+             title: t.notif.groupedReturned
+-              .replace("{n}", String(n))
++              .replace("{n}", formatNumber(n))
+               .replace("{amount}", formatTzs(total)),
+           }),
+         });
+@@ -181,7 +181,7 @@ export function UpDownResultAnnouncer({ rounds }: { rounds: AnnounceableRound[]
+           groupAmount: res.stake,
+           groupLabel: (n, total) => ({
+             title: t.notif.groupedLost
+-              .replace("{n}", String(n))
++              .replace("{n}", formatNumber(n))
+               .replace("{amount}", formatTzs(total)),
+           }),
+         });
+diff --git a/src/lib/search/query.ts b/src/lib/search/query.ts
+index ec52cca72..58b58b608 100644
+--- a/src/lib/search/query.ts
++++ b/src/lib/search/query.ts
+@@ -35,6 +35,7 @@
+  * backtracking match per row) and V8's engine backtracks too. Without the flag,
+  * `/foo/` is three ordinary characters. See prisma-where.ts for the full envelope.
+  */
++import { formatNumber } from "@/lib/utils";
+ 
+ export type SearchTerm = {
+   kind: "token" | "phrase";
+@@ -193,7 +194,7 @@ export function describeQuery(
+   const phrases = positive.filter((t) => t.kind === "phrase");
+   const fielded = positive.filter((t) => t.field);
+   const plain = positive.filter((t) => t.kind === "token" && !t.field);
+-  if (plain.length) parts.push(`${plain.length} ${words.words}`);
++  if (plain.length) parts.push(`${formatNumber(plain.length)} ${words.words}`);
+   if (phrases.length) parts.push(words.phrase);
+   if (fielded.length) parts.push(`${words.field}: ${fielded.map((t) => t.field).join(", ")}`);
+   if (negative.length) parts.push(`${words.hiding} ${negative.map((t) => t.value).join(", ")}`);
+diff --git a/src/lib/utils.ts b/src/lib/utils.ts
+index a4a6efb9c..e91614d7c 100644
+--- a/src/lib/utils.ts
++++ b/src/lib/utils.ts
+@@ -214,6 +214,20 @@ export function formatTzsSigned(value: number): string {
+   return `${value >= 0 ? "+" : "−"}${formatTzsAbs(value)}`;
+ }
+ 
++/**
++ * ⭐ THE ONE COUNT GROUPING — every count a player reads goes through this (round 5 of the visual pass, R5-A and R5-J,
++ * 2026-10-09): a count line, a pill's count, a bar's "masoko 12", a pager's range, a stat tile, a toast's "{n}" — "12,479",
++ * never "12479" and never a grouping the runtime picks. A count is followed by the dictionary's lower-case word for what
++ * was counted, its one/many pair where it has one ("1 mtabiri", "2 watabiri") — never a capitalised label lower-cased in code.
++ * ⛔ NOT `toLocaleString()` or `new Intl.NumberFormat()` with no locale: they group by whatever locale the RUNTIME holds —
++ * the server's on a server page, the device's on a client one — so one count printed two ways, and a client component's
++ * first paint disagreed with its hydration ("12,345" → "12.345" on a German phone). Swahili, English and Chinese all group
++ * as "12,479", so this one fixed grouping IS the reader's.
++ * Left bare, each with its reason (`test:visual-pass-r5j` §1 holds the census): a machine attribute (`data-count`,
++ * `data-result-count`), a page button (it names `?page=`), a capped badge ("99+"), an ordinal that names a place (a
++ * carousel's "Show market 3", a step, a citation's number), a duration (the time grammar's minutes and days), a price with
++ * decimals of its own, and the classic bell's count (frozen chrome).
++ */
+ export function formatNumber(value: number): string {
+   return TZ_NUMBER.format(value);
+ }

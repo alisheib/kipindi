@@ -1,0 +1,17 @@
+── 1 · the bell and the page render one row, from one place ────
+
+── 2 · every lens returns the rows it claims (driven, not read) 
+
+── 3 · every pill's count equals what its page returns ─────────
+
+── 4 · paging drops nothing and repeats nothing ────────────────
+
+── 5 · restore is the undo for CLEAR ALL, and it is owner-scoped 
+
+── 6 · the unread count cannot saturate at the list cap ────────
+
+── 7 · B7 — the page states its width once, and its skeleton agrees 
+
+── 8 · the page can act in bulk — and cannot bulk-hide ─────────
+
+notifications page (the door the bell cannot be) — 49 passed, 0 failed

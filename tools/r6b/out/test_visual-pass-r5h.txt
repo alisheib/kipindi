@@ -1,0 +1,63 @@
+── 1 · G-2 · every player loading file is a reference and the server's answers — never the drawn tree ──
+  ok   1.1 · the sweep: 100 loading files in src/app — the root's (R5-D's binding), 37 a player reaches (each held below), 61 of the console's (left: the officer console: staff only, behind its own layout and English-pinned provider (a drawing reading its words in the browser would change their language), never polled (it refreshes after an officer's action, not on a beat), and held by its own lane's suites), and the opt-out page's (left: the SMS opt-out page: outside the app — AppShell draws no ch…)
+  ok   1.2 · RUN for a journey and a classic reader in sw, en and zh, each of the 37 player loading elements is client references and their props — no host element, at most 100 B of Flight JSON (src/app/updown/history/loading.tsx sw journey), under 128 every time; 21 client modules named
+  ok   1.2′ CONTROL · the same serializer on the server-drawn shape: /wallet/receipts' drawing 13261 B and /wallet's 14969 B, every node written out — in every refresh of /wallet/receipts both (R5-H measured 16,868 → 541 B per refresh with the root's two elements)
+  ok   1.3 · the words are the browser's: no player loading file reads the request itself (getServerT, cookies, headers, i18n-server), a server loading file asks only @/lib/server/journey-preview, @/lib/server/payout-rails, @/lib/feature-state and renders client drawings, and nothing a drawing loads is server code or the feature seam
+  ok   1.3′ PLANT · today's /positions picture reading the words on the server again (`getServerT` imported into the drawing) is reported
+  ok   1.3″ PLANT · a server loading file drawing a server component again (its tree back in every refresh) is reported
+  ok   1.4 · /wallet's one server answer is handed in: RUN with the bonus programme forced on and off, the loading file renders the drawing with bonusLive {"ACTIVE":true,"WITHDRAWN":false}; the drawing ghosts the second (royal) card only when told
+  ok   1.4′ · …and no client file in src imports the feature seam (its own rule: it reads the server's env)
+  ok   1.5 · the words a drawing reads in the browser are the server's: the root layout hands the provider the language it reads from the kp-locale cookie with `localeOrDefault`, the very expression `getServerT` used — so the transport moves no pixel (S/r5h/ghost-markup.cts, at the transport-only state: 222 of 234 renders byte-identical, the 12 others /wallet's and /wallet/receipts' G-2b bands alone; §4 and §5 then change the swept ghosts' bands on purpose)
+  ok   1.6 · RUN on React's server renderer, every player ghost renders in sw, en and zh for both readers: the 31 with words draw them in the provider's language, the 6 without (agent/apply, agent/invite/[token], agent/status, markets/[id], results, wallet/deposit/return) draw the same bytes in all three
+  ok   1.6′ CONTROL · the same 31 ghosts with the provider held at one language, whatever the server's cookie says, draw one render each — so 1.6's difference is the provider's doing, not the server's
+  ok   1.7 · no player loading file or segment drawing defers itself (no next/dynamic, no React lazy): the browser fetches a segment's drawing as soon as a payload or a link's prefetch names it
+
+── 2 · G-2 · a journey reader is handed the journey's route ghost pinned to the page; a classic reader gets no journey code 
+  ok   2.1 · RUN: /positions' and /updown/history's loading files hand a journey reader the journey's route ghost pinned to their own page (`at`, with the rails), and everybody else today's drawing with no props — in every language
+  ok   2.2 · the pinned picture is the one the root's ghost picks at that address — byte for byte, in every language (`test:visual-pass-r5d` 2.10 holds it against the loading file too)
+  ok   2.2′ CONTROL · why it is pinned: /positions' boundary also stands over /positions/performance while a move there loads — pinned, Tiketi zangu's picture as before; picked by the address it would be the spinner
+  ok   2.3 · a classic reader is sent no script for the journey's picture: today's /positions and /updown/history drawings reach nothing under components/journey/, and Tiketi zangu's ghosts are loaded by the journey's route ghost alone (a server file's client imports join its segment's first load for every reader)
+  ok   2.3′ PLANT · the history drawing importing the journey's head again (R5-D's shape) is reported
+
+── 3 · G-3 · the journey flag and the not-found mark, up and down before the paint of the commit that changes them 
+  ok   3.1 · React 19.2, as Next ships it: a removed function component's layout cleanup runs BEFORE the host nodes after it are removed; a commit asks for a paint and the scheduler yields for it before the next task (a transition's passive effects run after the paint); an update scheduled from outside React is rendered in a microtask — before the browser paints
+  ok   3.2 · the flag rises in a LAYOUT effect, from a mount standing bare beside the journey's header and tabs (so it lands in the commit that first paints them); its lowering is announced at once AND once the commit is done; the not-found mark comes in a layout effect and its going is announced once the commit is done
+  ok   3.2′ PLANT · the flag back in a passive effect, or back in a boundary of its own, is reported
+  ok   3.3 · REPLAY, React's order: switching on, the reader reads "on" in the commit's own layout phase (true); switching off, the cleanup's own word still reads the mark (true), and the word sent once the commit is done reads "off" (false) — before the next task, so before the paint
+  ok   3.3′ CONTROL · the lowering announced in the cleanup alone (R5-D's phase, run in a layout cleanup) leaves the reader on "on" after the commit — the frame of the old answer the second word removes
+  ok   3.4 · REPLAY: the not-found mark's going is announced once the commit that takes the span out is done (nothing is said while it is still in: true), and the store then reads no mark (null) — before the next task
+  ok   3.4′ CONTROL · announced in the layout cleanup itself, the going reads the old path (the span is still in) — why it waits for the commit
+  ok   3.5 · every file outside the console that writes a DOM mark is classified (17): the phase it writes in and why that is right for what reads it — the journey flag and the strip's edges fixed here, the route entrance named to the integrator
+  ok   3.5′ PLANT · a new writer of a DOM mark (a toast stamping the html element) is reported until it is classified
+  ok   3.6 · the strip's edge fade is marked in the layout phase (and the framing effect still marks it again after it scrolls)
+  ok   3.6′ PLANT · the layout pass removed (the first frame after a move faded at the end of a strip that fits) is reported
+
+── 4 · G-2b · /wallet's ghost draws the page's bar, door and section; the bar is the money books' one ghost, word for word 
+  ok   4.1 · /wallet's ghost stands in the page's band order — header, balance grid, the rail, the BAR, the receipts door, then the spark and the list as ONE section — each band once, as the page draws them (the bar the page passes in is WalletBar)
+  ok   4.1′ PLANT · R5-B's finding back (no bar), the door off the bar's rhythm (no `.kp-wallet-door`), or the spark and list two blocks on the 32px rung again — each is reported
+  ok   4.2 · the band the ghost now draws, from the bar's own constants: 141.25px on a phone (row 1 10 + 44 + 8 + 17.25 − 4, row 2 12 + 44 + 10) — the list landed that much plus a rung lower than the ghost promised; and the door lies in the bar's rhythm by the page's own rule (15px over it, −7 under it)
+  ok   4.3 · the bar ghost's words are the page's bars' own — /wallet's eight lenses (`lensLabel` over a player's lenses), /wallet/receipts' three, then the five states and five windows in the bars' order (their `stateLabel`, `whenLabel`), the two group keys and the count's noun — in sw, en and zh, set and not shown
+  ok   4.4 · each pill is the kit pill's box — every geometry class of `filterPillClass` (inline-flex shrink-0 items-center justify-center gap-1.5 whitespace-nowrap rounded-pill border min-h-[44px] text-[13px] font-semibold px-3), its 1px border transparent and its words transparent — with FilterPill's own count type: as wide as the page's pill
+  ok   4.4′ PLANT · a pill a step narrower (`px-2.5`) is reported
+  ok   4.5 · the bar ghost promises a shape and nothing else: no link, no live region, no `data-result-count` (`qa:count-truth` reads that one), hidden from a screen reader
+  ok   4.7 · row 2 is the page's: one Filters button for a phone, and from lg the two groups each in the bar's own wrapper with its divider (the row's 29px gap is keyed on it) and its key — {"wrappers":2,"keys":2,"phone":1}, the page's bar writing 2 such wrappers
+  ok   4.7′ PLANT · the groups drawn without their divider (the row's gap back to 12px: a different wrap) is reported
+  ok   4.6 · measured from the repo's fonts, the page's state and window groups take two lines at 1024 and 1280 in Swahili and English (sw@960: page 2, fixed 1 · sw@1016: page 2, fixed 1 · en@960: page 2, fixed 1 · en@1016: page 2, fixed 1 · zh@960: page 2, fixed 1 · zh@1016: page 1, fixed 1): the word-sized ghost wraps with them; R5-B's twelve fixed boxes drew one line there
+
+── 5 · G-2b's sweep · the bands the audit measured exactly from the classes, each held against its page 
+  ok   5.1 · the back link: every ghost whose page opens on a BackLink draws `BackLinkGhost` — the link's own 44px box (`min-h-[44px]`, its 16px label line centred) — and the invitation's, whose page has none, draws none (nine drew a 16–20px bar, the receipt's none)
+  ok   5.1′ PLANT · the deposit ghost back on its 20px bar is reported
+  ok   5.2 · /results: the carousel and the grid in the page's own block (only the carousel's 24px `mb-5` parts them — the ghost paid 48), and the Filters pill a phone's alone (`lg:hidden`, as `FilterSheet`)
+  ok   5.3 · /markets: the count's line 17.25px (a 20px bar made the phone grid's count row 2.75px taller), and the Filters pill `lg:hidden`
+  ok   5.4 · /live: the hero ghost on PageHero's own padding, `p-5 lg:p-6` (16px short from 1024)
+  ok   5.5 · /wallet/receipts: each row on the row's own lines — the amount's 20px `text-body` line, 8px, the 18px date and `sm` chip line: 79px, not 83
+  ok   5.6 · /profile: the settings grid on the page's own gap
+  ok   5.7 · /agent: the page's own PageHeader, same eyebrow, title and subtitle (the two bars stood on the 32px rung, 28px low at 1280)
+  ok   5.8 · /updown (and the journey's Juu/Chini tab): the page's own header with its tagline; a phone's one 48px field trigger, the pill rows from `sm`; 44px durations; the BoardViz band (50px toggle row, 12, 18px cubes)
+  ok   5.9 · /updown/[roundId]: two columns from `lg` as the page (`xl` stacked them from 1024 to 1279), the action panel before the pool
+  ok   5.10 · /markets/[id]: the header's own bands — the 40px row of chips and buttons, the 1px hairline (neutral), the question's 35/45px line — and no subtitle the page does not have
+  ok   5.11 · Tiketi zangu's rail ghost carries R5-B's `data-rail-ghost`, so the journey's rail rule draws it as the page's rail (12px into the gutter)
+  ok   5.12 · /updown/history: the page's search band (`mt-5 pb-5`) and its bar's two rows before the strip, the strip's tiles 89.5px
+  ok   5.13 PLANT · each of the 11 fixes undone in memory, one at a time, is reported by its own check and by no other
+
+visual-pass-r5h: 52 passed, 0 failed

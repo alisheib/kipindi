@@ -1,0 +1,47 @@
+── 1 · a filter bar: the search and its bar one band, rung + 10 on every side, rows 12px apart (tiles 171 172 174 193 194 196) 
+  ok   1.locate · the scale reads the overridden keys (2 → 12, 5 → 24, 6 → 32) and the halo reaches 11px (12px of blur, −1 spread)
+  ok   1.1 · row 2 stands 12px under row 1 (pt-2), the gap its own wrapped lines keep (gap-2), and the selected pill's 11px halo clears it
+  ok   1.1′ PLANT · round 3's pt-1.5 put back (8px: /markets' chips → PANGA 8 against PANGA → BWAWA 12, the halo on PANGA's border) is reported
+  ok   1.2 · the search band pads 10px over the box — the bar's own 10px over its pills (row 1's pt-2.5), as the literal pt-[10px] (2.5 is an inverted key, test:spacing-scale) — and is the CSS hook kp-search-band
+  ok   1.3 · the echo row (mt-1.5 + min-h-[17px] = 25px) lies inside the gap below the box: −25px over a query bar, whose 10px top padding is the clearance; −15px over anything else
+  ok   1.4 · the band's rules weigh (0,3,0), as much as space-y's later-sibling rule that zeroes a child's margin-bottom, and come after the utilities, so they win
+  ok   1.4′ PLANT · the same rule with one class (0,2,0) loses to space-y and is reported
+  ok   1.5 · on every page with a search over its bar the box sits rung + 10 under the block above it, the pills rung + 10 under the box, the next block rung + 10 under the sort — 34 · 34 · 34 on a 24px rung, 42 · 42 · 42 on 32
+  ok   1.5′ CONTROL · /results as round 4 found it (no band, `py-2.5` round the box) puts 69px between the box and the pills (tiles 171 172), and /notifications 59
+  ok   1.6 · the three ghosts of a banded search draw the band — the box's height and its echo row in a search-box-wrap — over the bar's ghost
+  ok   1.7 · /markets wears no band (no rung between its search and its bar: 25 + 10 = 35 to the pills) and its cards stand 34 under the bar (pb 10 + mt-5), its ghost's grid likewise (tile 196 read 26)
+  ok   1.7′ CONTROL · its old mt-3 left 26 under the bar against 35 over it
+  ok   1.8 · Tiketi zangu's bar (row 1 alone) pads 10 under its pills as over them, so the tab rule stands 42 over the pills and the first ticket 42 under them (tiles 169 170 214–228 read 42 / 44)
+  ok   1.8′ PLANT · the hand-typed pb-2 put back (12px) leaves 42 over and 44 under, and is reported
+  ok   1.9 · /fairness' record section spaces itself by its gap alone: no mb under the heading, no py round the exits, no mt over the pager
+
+── 2 · the group divider stands in the middle of the gap the eye sees (tile 196, row 3: 31 | 1 | 14) ───
+  ok   2.locate · the row's column gap is 29px, the rule 1px at 14px into it, and an unselected pill's ink stops 17px inside its box (border 1 + px-3 16)
+  ok   2.1 · after a selected (bordered) last pill the rule stands 14 | 1 | 14 between the boxes, clear of the pill's 11px halo
+  ok   2.2 · after an UNSELECTED last pill it moves to the middle of the 46px from that pill's ink to the next box: 22 | 1 | 23 (the half pixel cannot be split without blurring a 1px rule)
+  ok   2.2′ CONTROL · without the move the same rule stands 31 | 1 | 14 from what the eye sees (tile 196: x412 after ink to x380, box from x427)
+  ok   2.3 · the rule is keyed on the group's own last pill (`:has(> .kp-fchip:last-child:not([data-on]))`) — never on the bar's row class, which globals.css may style only through the divider's :has (test:density-contract 4q)
+
+── 3 · notifications: a figure whole and mono, a body's last two words together, the actions on the icon's line (tiles 193 194) 
+  ok   3.1 · the title is two items — "Soko limefutwa" and "TZS 4,200 imerejeshwa" — so it breaks between them, never after its dot, and its figure is one .amount (mono, untracked, nowrap)
+  ok   3.1′ CONTROL · without renderPart DotSeq is byte for byte what it was (round 3's 9.1 shape), and a title with no dot is one span
+  ok   3.2 · a body's last two words move to the next line together: "…kwenye" / "pochi yako." (tile 194 ended on "yako." alone)
+  ok   3.3 · …never cutting a figure: when the last two words would split "TZS 4,200", the kept end starts at its TZS
+  ok   3.4 · Chinese, and a text of two words or fewer, take moneyRuns alone (keepLastWords' own rules)
+  ok   3.5 · the kept end is an INLINE BLOCK, never a nowrap span: a pair wider than the 100px column at 320 wraps inside itself instead of running under the ✓
+  ok   3.6 · /notifications draws both title branches through DotSeq + moneyRuns and the body through moneySentence
+  ok   3.6′ PLANT · the bare title put back is reported
+  ok   3.7 · the ✓ and × centre on the leading icon: a 44px control lifted 4px (−mt-1) has its middle 18px down, the plate's middle (2 + 16) — and Restore likewise
+  ok   3.7′ CONTROL · unlifted, the controls' middle sat 22px down — 4px under the icon's 18 (tile 194: glyph y674 against the plate's 669.5)
+
+── 4 · the capture waits for the demo player's unread sign on the tickets tiles too (217 218 219) ──────
+  ok   4.1 · each tickets tile of the demo player waits for the counter mounted at its width before it is judged and shot — the tab tiles' rule, logged and never failed
+  ok   4.2 · …and unreadLanded still only says a missing sign (§3 of the drive judges the counts)
+  ok   4.1′ PLANT · the wait taken out of the tickets loop is reported
+  ok   4.3 · shoot() waits for every chart canvas to arrive before the screenshot, and only SAYS one that has not (an empty or failed feed is the chart's own state)
+  ok   4.3′ CONTROL · a wait, not an override: the capture never emulates reduced motion and never restyles the chart
+  ok   4.4 · …and finds the terminal chart's canvas container: the role="img" box's child whose inline style fades on --dur-arrive (terminal-chart.tsx), as React serialises it
+  ok   4.5 · the probe holds a canvas caught mid-fade (computed 0.25, tile 164's) and one with no feed yet, and lets an arrived one (1) or a page with no chart through
+  ok   4.5′ PLANT · a probe that reads the INLINE target (1 from the first frame of the fade) lets tile 164's mid-fade canvas through, and is reported
+
+visual-pass-r4c: 38 passed, 0 failed

@@ -1,0 +1,81 @@
+Up & Down · D2 — the multiplier is the pool's, and an empty side says so
+
+§0 · the slices this suite reasons over (refuse to measure an empty one)
+  ok   0.1 `toBoardRound`'s body is locatable
+  ok   0.2 …and is substantial
+  ok   0.3 the card's code survives comment-stripping
+  ok   0.4 the controls' code survives comment-stripping
+  ok   0.5 the panel's code survives comment-stripping
+
+§1 · the multiplier is computed, not configured — and it equals what settlement pays
+  ok   1.1 backing the FAT side of a one-sided round returns EXACTLY the stake (× 1.00)
+  ok   1.2 …while the EMPTY side of the same round pays 16.66×
+  ok   1.3 …so the two sides of one round DISAGREE, which the flat constant could never do
+  ok   1.4 a 90/10 pool pays the thin side 7.52× and the fat side 1.09×
+  ok   1.5 …and NEITHER is the flat 1.5 the card used to print
+  ok   1.6 an untouched round is 1.00× on BOTH sides — the honest 'your stake comes back'
+  ok   1.7 across 400 pool/stake/side/model combinations the shown figure IS payoutFor's
+  ok   1.8 …and not one of them quotes a winner below their own stake
+  ok   1.9 …and `projectedReturn` is the same call, so the panel and the button cannot differ
+  ok   1.10 `show: false` hides the multiplier entirely rather than printing a default
+  ok   1.11 a zero / non-finite stake yields null, never `× 0` or `× Infinity`
+  ok   1.12 over 210 hostile pool/rate/stake combinations it never throws
+  ok   1.13 …and never returns NaN, Infinity or a non-positive multiple
+
+§2 · an empty side is named — and the player FILLING it is not warned about it
+  ok   2.1 UP 36,000 / DOWN 0 ⇒ the empty side is DOWN
+  ok   2.2 UP 0 / DOWN 36,000 ⇒ the empty side is UP
+  ok   2.3 an untouched round ⇒ BOTH
+  ok   2.4 a two-sided round ⇒ no empty side at all
+  ok   2.5 on UP 36,000 / DOWN 0 the UP backer IS warned that DOWN must fill
+  ok   2.6 …and the DOWN backer — who is filling it — is NOT warned
+  ok   2.7 an untouched round warns whichever side you take
+  ok   2.8 a two-sided round warns nobody
+  ok   2.9 `show: false` still names the empty side — it gates the estimate, not the truth
+
+§3 · the printed figure floors — a payout estimate is never rounded UP
+  ok   3.1 1.996 prints 1.99, not 2.00
+  ok   3.2 16.66 prints 16.6 (one decimal past ten)
+  ok   3.3 187.9 prints 187 (whole numbers past a hundred)
+  ok   3.4 1.03 prints 1.03 — binary float does not steal the last shilling
+  ok   3.5 exactly 1 prints 1.00, so 'your stake back' is legible as a number
+  ok   3.6 a non-finite figure prints an em-dash, never NaN
+  ok   3.7 …and over 4,000 values not one printed figure exceeds the real one
+
+§4 · the board ships the RAW pools and the round's FROZEN rates
+  ok   4.1 `BoardRound` declares `pricing`
+  ok   4.2 `toBoardRound` fills it from the market's own pools
+  ok   4.3 …with the round's FROZEN snapshot, never live config
+  ok   4.4 …and the operator's display switch is carried through, not assumed
+  ok   4.5 the board no longer derives a multiplier from `estimatedWinningsRate`
+
+§5 · card, quick-bet controls and round panel all read the same one function
+  ok   5.1a the card carries no `estMultiplier` any more
+  ok   5.2a the controls carries no `estMultiplier` any more
+  ok   5.3a the panel carries no `estMultiplier` any more
+  ok   5.5 the card computes a multiplier PER SIDE (the two buttons can now differ)
+  ok   5.6 the shared controls render both buttons from it
+  ok   5.7 the card's signed-out buttons render from it too
+  ok   5.8 the round page's stake panel projects the return from the POOL, not a rate
+  ok   5.9 the empty-side sentence is on the board card
+  ok   5.10 …and on the shared quick-bet controls
+  ok   5.11 …and on the round page's stake panel, scoped to the side the player locked
+  ok   5.12 both pages hand the surfaces the server's pricing object
+  ok   5.13 no surface re-implements the fee — they all call the shared module
+
+§6 · trilingual, and the disclaimer stops claiming something that was not true
+  ok   6.1 `udNobodyBacked` is defined in EN, SW and ZH
+  ok   6.2 `udNobodyBackedEither` is defined in EN, SW and ZH
+  ok   6.3 the empty-side sentence names the side through a placeholder, so grammar survives SW/ZH
+  ok   6.4 …and it states the consequence, not merely the fact
+  ok   6.5 the estimate note tells the player the figure moves with every later bet
+  ok   6.6 …and that the lock replaces it with the exact payout
+
+§7 · G5 — a large multiplier means the other side is THIN; nothing may celebrate it
+  ok   7.1 no gold anywhere near the multiplier
+  ok   7.2 the multiplier keeps the muted 12.5px it always had — no size escalation, no bold, no gold on the span itself
+  ok   7.3 the empty-side line is faint informational ink, not an alarm and not a celebration
+  ok   7.4 no surface brands a big multiplier — no 'big win', 'jackpot' or 'boost' copy
+
+updown-pricing: 61 passed, 0 failed
+✓ the multiplier a player is shown is the one the money path would pay.

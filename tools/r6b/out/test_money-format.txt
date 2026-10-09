@@ -1,0 +1,73 @@
+Money compaction grammar
+
+PASS formatTzsCompact(0) === "TZS 0"
+PASS formatTzsCompact(999) === "TZS 999"
+PASS formatTzsCompact(1,000) === "TZS 1K"
+PASS formatTzsCompact(1,499) === "TZS 1K"
+PASS formatTzsCompact(1,500) === "TZS 2K"
+PASS formatTzsCompact(999,499) === "TZS 999K"
+PASS formatTzsCompact(999,500) === "TZS 1.0M"
+PASS formatTzsCompact(999,999) === "TZS 1.0M"
+PASS formatTzsCompact(1,000,000) === "TZS 1.0M"
+PASS formatTzsCompact(9,949,999) === "TZS 9.9M"
+PASS formatTzsCompact(9,950,000) === "TZS 10M"
+PASS formatTzsCompact(9,999,999) === "TZS 10M"
+PASS formatTzsCompact(10,000,000) === "TZS 10M"
+PASS formatTzsCompact(999,499,999) === "TZS 999M"
+PASS formatTzsCompact(999,500,000) === "TZS 1.0B"
+PASS formatTzsCompact(999,999,999) === "TZS 1.0B"
+PASS formatTzsCompact(1,000,000,000) === "TZS 1.0B"
+PASS formatTzsCompact(-999,500) === "TZS −1.0M"
+PASS formatTzsCompact(-999,500,000) === "TZS −1.0B"
+PASS the minus is U+2212, never a hyphen — TZS −5K
+PASS 2: ⭐ no value in the contract's domain compacts to a mantissa of 1000 or more
+PASS 2: …and the sweep actually probed something — 10905 values
+PASS 2: ⛔ …and the last band's ceiling is where the doc says it is — TZS 999.9B then TZS 1000.0B
+PASS 3: the widest POSITIVE output is 10 characters — "TZS 100.0B" (10)
+PASS 3: …and it is a B-band figure, not the M-band string the doc used to claim — TZS 100.0B
+PASS 3: the widest SIGNED output is 11 characters — "TZS −100.0B" (11)
+PASS 3: the doc block states both maxima in the form this check reads — 2 found — the contract lines have drifted from the doc
+PASS 3: ⭐ the doc's positive exemplar "TZS 999.9B" is a string this function can EMIT — unreachable — exactly the defect the old 'TZS 999.9M' contract had
+PASS 3: …and its stated character count is right — 10 vs 10
+PASS 3: …and it matches the MEASURED positive maximum — doc says 10, measured 10
+PASS 3: ⭐ the doc's signed exemplar "TZS −999.9B" is a string this function can EMIT — unreachable — exactly the defect the old 'TZS 999.9M' contract had
+PASS 3: …and its stated character count is right — 11 vs 11
+PASS 3: …and it matches the MEASURED signed maximum — doc says 11, measured 11
+PASS 4: the sibling shares the K→M seam — 1.0M
+PASS 4: …and the M→B seam — 1.0B
+PASS 4: …and the 0-dp step at 10M — 10M
+PASS 4: it emits NO currency prefix — 1.5M
+PASS 4: ⛔ K is UPPERCASE — lowercase 'k' is not this grammar — 17K
+PASS 4: negatives carry U+2212, not an ASCII hyphen — −17K
+PASS 4: small values keep their digits instead of collapsing to '0k' — 400
+PASS 4: an explicit plus is available for signed axes — +400
+PASS 4: …and zero takes no sign — 0
+PASS 4: sub-1 ticks keep enough decimals that two ticks cannot collapse — 0.25
+PASS 4: …and a step of 0 or more than 1 does not trigger it — 2
+PASS 5: 🔴 no file re-adds the TZS prefix formatTzsCompact already emits
+PASS 5: …and the handed-over counts have not grown
+PASS 5: ⛔ the matcher still recognises the template form it was written for — the regex has drifted from the JSX it polices
+PASS 5: ⛔ …and the JSX-TEXT form, where `TZS ` sits bare before the brace — finance:202's shape — the one that looks done when only the .replace() is deleted
+PASS 5: ⭐ …and it does NOT match the deliberate bare strip — players/[id]:248 renders 'limit 50K/day'; flagging it would force a suppression, and a suppressed line is one someone deletes later
+PASS 5: the live tree is clean of the shape
+PASS 5: …and the DELIBERATE bare strip is not caught by it — 1 bare strip(s)
+PASS 6: sw wallet.amountHint — every figure is one .amount, "TZS" and digits together (2) — ["TZS 1,015","TZS 5,000,000"]
+PASS 6: …sw wallet.amountHint — no figure is left in the words, and nothing is lost or reworded — []
+PASS 6: sw common.depositAmountHint — every figure is one .amount, "TZS" and digits together (4) — ["TZS 1,015","TZS 5,000,000","TZS 1,000,000","TZS 5,000,000"]
+PASS 6: …sw common.depositAmountHint — no figure is left in the words, and nothing is lost or reworded — []
+PASS 6: en wallet.amountHint — every figure is one .amount, "TZS" and digits together (2) — ["TZS 1,015","TZS 5,000,000"]
+PASS 6: …en wallet.amountHint — no figure is left in the words, and nothing is lost or reworded — []
+PASS 6: en common.depositAmountHint — every figure is one .amount, "TZS" and digits together (4) — ["TZS 1,015","TZS 5,000,000","TZS 1,000,000","TZS 5,000,000"]
+PASS 6: …en common.depositAmountHint — no figure is left in the words, and nothing is lost or reworded — []
+PASS 6: zh wallet.amountHint — every figure is one .amount, "TZS" and digits together (2) — ["TZS 1,015","TZS 5,000,000"]
+PASS 6: …zh wallet.amountHint — no figure is left in the words, and nothing is lost or reworded — []
+PASS 6: zh common.depositAmountHint — every figure is one .amount, "TZS" and digits together (4) — ["TZS 1,015","TZS 5,000,000","TZS 1,000,000","TZS 5,000,000"]
+PASS 6: …zh common.depositAmountHint — no figure is left in the words, and nothing is lost or reworded — []
+PASS 6: ⭐ a sentence with no figure comes back as itself
+PASS 6: ⭐ …and a compact figure is read whole
+PASS 6: ⭐ …and a sentence's own comma after a figure stays in the sentence
+PASS 6: AmountField's hint goes through moneyRuns
+PASS 6: …and its example is written as the platform writes a figure (formatNumber), never a bare digit run
+PASS 6: ⭐ CONTROL — the raw-example matcher still sees the shape that shipped
+
+money-format: 69 passed, 0 failed

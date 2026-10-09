@@ -1,0 +1,183 @@
+§0 · every population derived from disk, and the complement no guard was reading
+PASS 0.pop.1 · the src walk is real: every .ts/.tsx/.js/.cjs/.mjs file under src/, read from disk, ≥ 1,000 of them, with the console's own page and the platform's owner book both in it — src files 1447
+PASS 0.pop.2 · the feature's HOMES are derived from the tree (a `house-bot` directory segment, a `house-bot`/`house-console` file prefix), ≥ 40 of them, holding the DAL, the constants and the one console door — homes 53
+PASS 0.pop.3 · the console section is derived from CONSOLE_ROUTE read out of console-routes.ts — not typed here — and it is ruling 453's own population — CONSOLE_ROUTE=/admin/desk · console files 21
+PASS 0.pop.4 · the ADMIN SURFACE population is derived the same way and holds every admin page, admin component AND officer route handler outside the console: ≥ 200 files, the four witnesses among them, the officers' own `src/app/api/admin/**` handlers among them too, and not one console file — surfaces 387
+PASS 0.re · the directive detector is LINEAR: 450 leading comments decide in under 100 ms, and a directive after code or inside a comment is not one — first=true afterCode=false inComment=false single=true 1ms
+PASS 0.pop.5 · the client graph re-derived here agrees with the floor `test:house-bot-disclosure` 1.0 pins on its own walk — ≥ 200 client entries, ≥ 300 modules reached, the dictionary and the failure registry among them — so the complement below is computed against a walker that works — entries 352 · reached 573
+  POPULATIONS · src 1447 · homes 53 · console 21 · admin surfaces 387 · client graph 573
+  PRIOR ·  573  test:house-bot-disclosure §1 · the client graph
+  PRIOR ·   22  test:house-bot-console 4.453 · the console section + the gate
+  PRIOR ·   11  test:house-bot-reports 0.197.2 · src/app/admin/kyc/**
+  PRIOR ·    1  test:house-bot-reports 0.197.1 · the KYC read
+  PRIOR ·    2  test:house-bot-reports 0.198.3 · the two player surfaces
+  PRIOR ·    3  test:house-bot-reports 0.198.2 · the five notifier declarations
+  COMPLEMENT · 847 of 1447 src files were read by NO house-word guard
+     266  server module
+     228  admin surface
+     138  player route
+      84  lib module
+      78  route handler
+      51  component
+       2  other
+PASS 0.pop.6 · ⛔ THE COMPLEMENT IS REAL AND IT IS LARGE: ≥ 400 files under src/ are inside NO house-word population, ≥ 150 of them admin surfaces, and the page L52's own lesson names — /admin/system, which paints this feature's name in two languages — is one of them, beside the finance page that names two house identifiers — {"complement":847,"adminSurfacesUnscanned":246,"witnesses":[{"f":"src/app/admin/system/page.tsx","coveredBefore":[]},{"f":"src/app/admin/finance/page.tsx","coveredBefore":[]}]}
+PASS 0.pop.c1 · CONTROL · the complement measure is a measure and not an empty predicate: the console page, a KYC module, the KYC read and a player surface are each reported as COVERED by the guard that owns them, and the dictionary is reported covered by the client graph — {"desk":["test:house-bot-console 4.453 · the console section + the gate"],"kyc":["test:house-bot-reports 0.197.2 · src/app/admin/kyc/**"]}
+
+§1 · ⛔ D19 · no admin surface outside the console paints a house word
+PASS 1.words.1 · ⛔ D19 · not one admin surface outside the console PAINTS a house word — every string literal, template part and JSX text of every page, layout, action, component and officer route handler under src/app/admin/, src/components/admin/ and src/app/api/admin/ is read from disk, with only the audience-gated engine card registered — {"population":387,"problems":[]}
+PASS 1.words.2 · the register may only SHRINK: every registered word is still printed by the file it was registered for, so an exemption cannot outlive the copy it was written for and cannot be pre-widened for a word not yet shipped — {"register":{"src/app/admin/system/page.tsx":["HOUSE_BOT","house-bot","House bot","boti za nyumba"]},"stale":[]}
+PASS 1.words.3 · ⛔ THE EXEMPTION IS HELD TO ITS GATE · every house word /admin/system prints lives inside `HouseEngineCard` or the refusal map that only that card reads; the card has exactly ONE render site and it is behind `houseEngine &&`, whose value is `houseEngineHealthFor`'s answer — `null` for every account outside the house-alert audience (ruling 354(a), behaviour pinned by test:house-bot-reports 0.354a) — {"scopes":2,"renderSites":1,"outside":[]}
+PASS 1.words.c0 · CONTROL · the gate pin reports BOTH shapes the register cannot see: the card's own heading lifted OUT of the component onto the page body is reported as a word outside the gated scope, and dropping the `houseEngine &&` guard from the one render site is reported as an ungated card — {"movedOut":["House bot"],"guardStillFound":false}
+PASS 1.words.c1 · CONTROL · S4-M55 ITSELF · the word "Liquidity" planted as an officer-facing string on the REAL KYC case page is REPORTED — the mutation whose own register entry reads "0.198.3's word scan is PLAYER surfaces only and ruling 453's lexicon is the console subtree only, /admin/kyc is NEITHER" — ["src/app/admin/kyc/[id]/page.tsx: Liquidity"]
+PASS 1.words.c2 · CONTROL · a house word written as JSX TEXT — element content, not an attribute — is reported. Ruling 453's own lexicon once missed 17 JSX prose strings on a single page because `ts.isStringLiteral` does not match a JsxText node — ["src/app/admin/house/page.tsx: House stake"]
+PASS 1.words.c3 · CONTROL · the Swahili and Chinese words are found as written — a scan that reads a non-ASCII word as an escape sees neither, which is how esbuild's default charset once hid a planted 流动性 from the disclosure walker — ["src/app/admin/house/page.tsx: boti za nyumba","src/app/admin/house/page.tsx: 平台机器人"]
+PASS 1.words.c4 · CONTROL · four house words in a COMMENT on a real admin page are NOT reported, and neither is a module specifier naming the feature's own directory — this section's claim is about what a page PAINTS, and prose about code has made three guards on this branch red for nothing — {"comment":[],"specifier":[]}
+PASS 1.words.c5 · CONTROL · THE ACCEPT SIDE · the platform's OWN owner book at /admin/house is clean as it stands, and stays clean with every benign look-alike planted into it — HOUSE_FEE, the /admin/house path, "House edge" and "including household costs". A guard that reddens the owner's own book is a guard the next session switches off — {"live":[],"benign":[]}
+PASS 1.words.c6 · CONTROL · the population of this control is DERIVED from the vocabulary, not maintained beside it: EVERY shared word sample, planted one at a time into a real admin page, is reported — so a sample deleted from the module cannot make this sweep pass over a shorter list — []
+
+§2 · ⛔ D19 · the SHAPE family: no admin surface names a house identifier outside the console's one door
+PASS 2.ids.2 · the accept side is DERIVED, not listed: the console's one door module exports ≥ 60 names, ≥ 12 of them house-shaped, including the audience question and the audit gate every admin page must call — {"exports":114,"houseShaped":18}
+PASS 2.ids.1 · ⛔ D19 · not one admin surface outside the console names a `house<Capital>` identifier that is neither an export of the console's one door nor a registered name of the platform's own owner book — the SHAPE is what is matched, so a name nobody thought to list is still seen — {"population":387,"problems":[]}
+PASS 2.ids.3 · the identifier register may only SHRINK: every registered name is still used by the file it was registered for — {"register":{"src/app/admin/finance/page.tsx":["houseAccountBalances","houseBalances"],"src/app/admin/house/page.tsx":["houseFee","housePosition"],"src/app/admin/retention/purge-chain-card.tsx":["housePoolEntries"],"src/app/admin/system/page.tsx":["houseEngine","houseEngineHealthFor"]},"stale":[]}
+PASS 2.ids.c1 · CONTROL · S4-M56 ITSELF, AND THE POINT OF THE WHOLE SECTION · `houseBetCount` planted on the REAL client decision rail is REPORTED by the shape family — while `houseHits`, the instrument every other absence guard reaches its verdict through, finds NOTHING in the same text. A right population with a wrong pattern is exactly as blind as a wrong population — {"reported":["src/app/admin/kyc/[id]/kyc-decision-rail.tsx: houseBetCount"],"houseHitsOnThePlant":[]}
+PASS 2.ids.c2 · CONTROL · S4-M76's shape · a "use server" admin action exporting the other struck KYC figure (`houseStakedTzs`) is reported too — a server action is a surface, because its module is walked from disk like any other — ["src/app/admin/kyc/[id]/kyc-actions.ts: houseFigures","src/app/admin/kyc/[id]/kyc-actions.ts: houseStakedTzs"]
+PASS 2.ids.c3 · CONTROL · THE SWEEP IS LIVE AND THE ALLOWANCE IS DOING WORK · with the derived door list emptied, the same sweep over the same real files reports ≥ 14 legitimate call sites of the console's gate. A protection guard on this branch once swept in so much that all thirteen of its assertions passed HARDER while its feature was broken; this is the measurement that 2.ids.1's zero is a clean population and not a dead predicate — 16 reported with the door emptied
+PASS 2.ids.c4 · CONTROL · the two struck names written in a COMMENT are NOT reported, and the same name written as a STRING KEY is — a serialised payload key is spelt as a string and is the same disclosure as a property name, which is why this section decomments but deliberately does not blank literals — {"comment":[],"string":["src/app/admin/house/page.tsx: houseBetCount"]}
+PASS 2.ids.c5 · CONTROL · BOTH SIDES OF THE SHAPE · every shape sample planted one at a time into a real admin page is reported, and every benign look-alike planted together is not — `household`, `HouseBot` (a capital H), `house_bot` (a separator), `warehouseBin` (no word boundary) and the bare word `house` — {"missed":[],"benign":[]}
+
+§2J · ⛔ THE JOIN · a compound the lexicon knows in one spelling must be known in every join spelling
+PASS 2.join.1 · ⛔ THE CLOSURE · every compound word sample, re-spelled under EVERY join in the family — space, kebab, snake, dotted, namespaced, slashed, camelCased and bare-concatenated — is still found by the WORDS FAMILY ALONE. This is the assertion `"HOUSE_STAKE_ONLY"` escaped: a lexicon that knows a compound in one spelling and not another is blind by exactly one character, and it does not matter which character — {"compounds":14,"variants":111,"missed":[]}
+PASS 2.join.2 · CONTROL · THE ACCEPT SIDE OF THE WIDENING · every benign look-alike, AND every join re-spelling of each one, is still NOT a word hit — `HOUSE_FEE`, `/admin/house`, "House edge", a raw `hb_` nonce and "including household costs" (whose `\b` is the only thing keeping `including house` off `household`). A join family widened without this half is a guard that cries wolf and gets switched off — {"planted":69,"matched":[]}
+PASS 2.join.3 · ⛔ THE RULE THAT MAKES IT STICK · not one alternative of `HOUSE_WORD_SOURCE` spells a separator of its own — every compound writes its join as the shared `HOUSE_JOIN`. This is what a spelling list cannot do: whatever word is added next month, and whatever separator its author forgets, the forgetting is what goes red — {"alternatives":12,"handTyped":[]}
+PASS 2.join.c1 · CONTROL · THE ORIGINAL DEFECT, REPLANTED · restoring the exact alternative `house[ -]?stakes?` reddens the closure — `house_stake` and `HOUSE_STAKE` are reported unmatched — AND is reported as a hand-typed separator, while the market page's real string is a `HOUSE_STAKE` word hit under the shipped source and was NOT one under the narrowed one. Both halves of the finding, asserted rather than described — {"missed":["house stake → house_stake , house.stake , house:stake , house/stake","House stakes → House_stakes , House.stakes , House:stakes , House/stakes"],"handTyped":["house[ -]?stakes?"]}
+PASS 2.join.c2 · CONTROL · EVERY JOIN IS LOAD-BEARING · dropping each join character from the class one at a time reddens the closure every time, so the family is a measure and not a decoration: no character is in it because it looked plausible — [{"ch":" ","missed":14},{"ch":"_","missed":14},{"ch":".","missed":14},{"ch":":","missed":14},{"ch":"/","missed":14},{"ch":"-","missed":14}]
+PASS 2.join.c3 · CONTROL · THE SPLIT IS LIVE, INCLUDING ON THE LOCALES A TANZANIAN PLAYER READS · a camel name, a snake name and a three-word Swahili phrase each split into their halves, while a single-word sample and both Chinese samples split into ONE and so generate no variants — a splitter that shredded 平台机器人 would silently empty this whole section — [{"s":"HouseBot","halves":["House","Bot"]},{"s":"house_bot","halves":["house","bot"]},{"s":"boti za nyumba","halves":["boti","za","nyumba"]},{"s":"liquidity","halves":["liquidity"]},{"s":"流动性","halves":["流动性"]},{"s":"平台机器人","halves":["平台机器人"]}]
+
+§3 · ⛔ L52 · the modules an admin surface imports directly, and the words they can paint through it
+PASS 3.hop.1 · the painter population is DERIVED from the surfaces' own imports — ≥ 100 modules, resolved through the @/ alias and relative paths — and `src/lib/server/rate-limit.ts` is inside it: the module L52's house word actually lived in, painted verbatim on /admin/system by a page in another section — painters 274
+PASS 3.hop.2 · ⛔ L52 · not one module an admin surface imports prints a house word outside the register — so a NEW server module that paints the feature's name into an admin page goes red the day it is imported, which is the half L52 had nobody watching — {"population":274,"problems":[]}
+PASS 3.hop.3 · the painter register may only SHRINK: every registered word is still printed by the module it was registered for — {"files":7,"stale":[]}
+PASS 3.hop.c1 · CONTROL · a house word the register does not hold, added to the most house-heavy painter there is, is reported — the register pins WORDS and not files, so a file already on it cannot absorb a new one — ["src/lib/server/notification-service.ts: Ukwasi","src/lib/server/notification-service.ts: 流动性"]
+PASS 3.hop.c2 · CONTROL · L52 REBUILT · a house word planted as a rate-limit label in the REAL rate-limit module — the file, and the shape, of the defect that shipped live for weeks — is reported. This sweep would have gone red on the branch that carried it — ["src/lib/server/rate-limit.ts: house bots"]
+PASS 3.hop.c3 · CONTROL · the feature's own homes are NOT in this population and were never meant to be — `src/lib/house-bot/alert-copy.ts` names the feature in three languages by design, and ruling 453 and the client-graph walk own it. A population that swallowed them would have to allowlist the whole feature, which is how a guard becomes a list — {"inPainters":false,"words":14}
+
+§4 · ⛔ D19 · the PUBLIC population — player routes, route handlers and the components they share
+  PUBLIC POPULATION · 532 files · 196 player routes · 73 route handlers · 263 shared components
+  of which inside NO prior house-word population: 249
+PASS 4.pop.1 · the PUBLIC population is derived from disk the same way §1's is — everything under src/app/ and src/components/ that is not an admin folder, not the console section and not one of the feature's own homes — ≥ 400 files, with 0.198.3's WHOLE population (both named player surfaces) inside it, beside /positions and the public health endpoint, and not one admin or console file — public 532 · player routes 196 · handlers 73 · components 263
+PASS 4.pop.2 · ⛔ AND IT IS THE COMPLEMENT §0 PRINTS: ≥ 200 of those files were inside NO house-word population before this section — the public health endpoint and /positions among them, both SERVER modules the client-graph walk cannot reach by construction — while the two files 0.198.3 does read are reported as covered, so this is a measure and not an empty predicate — {"publics":532,"unscanned":249,"health":[],"marketPage":["test:house-bot-reports 0.198.3 · the two player surfaces"]}
+PASS 4.words.1 · ⛔ D19 · not one PUBLIC file prints a house-shaped string — every string literal, template part and JSX text of every player route, route handler and shared component, read from disk, against all three vocabulary families AND the `house<Capital>` shape — outside the two registered strings, each held to its own claim below — {"population":532,"problems":[]}
+PASS 4.words.2 · the public register may only SHRINK: every registered string is still printed by the file it was registered for, so neither exemption can outlive the code it was written for — {"register":{"src/app/api/health/route.ts":["house-bot"],"src/app/markets/[id]/page.tsx":["HOUSE_STAKE_ONLY"]},"stale":[]}
+PASS 4.words.3 · ⛔ THE HEALTH EXEMPTION IS HELD TO ITS CLAIM (C5-SPEC ruling 171) · every house-shaped string /api/health prints sits inside a `console.*` argument — the operator's log — and NONE sits inside any response this public endpoint returns: not `NextResponse.json`, not a `new NextResponse` header bag, not a redirect — {"log":["house-bot"],"response":[],"loose":[],"responseArgs":6}
+PASS 4.words.4 · ⛔ THE MARKET-PAGE EXEMPTION IS HELD TO ITS CLAIM (owner ruling D19c, ruling 146) · the public market page prints EXACTLY ONE house-shaped string — one printed node in the whole file, and it is the reason `HOUSE_STAKE_ONLY` itself — that string is the operand of an `===`, and the branch that comparison selects is built from LITERALS and names nothing. So `objectionEligibility`'s server-side reason is mapped to a neutral state and never handed to the panel, whether as a word or as a value — {"problems":[],"nodes":["HOUSE_STAKE_ONLY"],"hits":["HOUSE_STAKE","HOUSE_STAKE_ONLY"]}
+PASS 4.body.1 · ⛔ D19 · not one PUBLIC route handler returns a house shape: every argument of every NextResponse.json / Response.json / new Response / new NextResponse in the population is read — strings, template parts, property names and identifiers alike — and none carries a house word, a house identifier, a bounded house id or a `house<Capital>` name outside the one dev-only registered pair — {"handlers":73,"responseArguments":411,"problems":[]}
+PASS 4.body.2 · the body register may only SHRINK: every registered name is still returned by the handler it was registered for — {"register":{"src/app/api/dev-test/stress-money/route.ts":["houseBefore","houseAfter"]},"stale":[]}
+PASS 4.c1 · CONTROL · a house line planted as JSX TEXT on a REAL player page is reported — element content, not an attribute, which is the node `ts.isStringLiteral` does not match and which ruling 453's own lexicon once missed seventeen of — ["src/app/help/page.tsx: House stake"]
+PASS 4.c2 · CONTROL · the Swahili and Chinese words planted on a REAL player page are found as written — the locale a Tanzanian player actually reads is the one a scan that mangles non-ASCII would miss — ["src/app/help/page.tsx: boti za nyumba","src/app/help/page.tsx: 平台机器人"]
+PASS 4.c3 · CONTROL · five house words in a COMMENT on a real player page are NOT reported, and neither is a module specifier naming the feature's own directory — this section's claim is about what a page PAINTS, and one guard on this branch was red for weeks because a script name sat inside backticks in a docblock — {"comment":[],"specifier":[]}
+PASS 4.c4 · CONTROL · THE ACCEPT SIDE · a real player page is clean as it stands and STAYS clean with every benign look-alike planted into it — HOUSE_FEE, the /admin/house path, "House edge", a raw hb_ nonce, an over-long id and "including household costs". A guard that reddens the platform's own vocabulary is a guard the next session switches off — {"live":[],"benign":[]}
+PASS 4.c5 · CONTROL · the refuse side is DERIVED from the vocabulary, not maintained beside it: EVERY shared sample of all three families AND of the shape family — planted one at a time as a real string on a real player page — is reported, so a sample deleted from the module cannot make this sweep pass over a shorter list — []
+PASS 4.c6 · CONTROL · THE HEALTH CLAIM, BOTH WAYS · a house word planted into the REAL public body of /api/health is reported as sitting INSIDE a response, ADDING to whatever that file's live reading is — while the word the live file already prints, in its `console.error`, is reported as a log. The register alone cannot tell those two apart, which is the whole reason 4.words.3 exists — {"planted":["house bot"],"live":{"log":["house-bot"],"response":[],"loose":[]}}
+PASS 4.c7 · CONTROL · RULING 146 REBUILT, IN BOTH SHAPES · on the REAL market page, forwarding the server's reason as a STRING is reported, and forwarding it as a VALUE — `{ state: elig.why }`, which carries no house-shaped text at all and which a word scan and a register are both blind to — is reported too — {"leakWord":["src/app/markets/[id]/page.tsx: the branch \"HOUSE_STAKE_ONLY\" selects yields house-shaped text [\"HOUSE_STAKE\",\"HOUSE_STAKE_ONLY\"]","src/app/markets/[id]/page.tsx: \"HOUSE_STAKE_ONLY\" is printable, not a comparison operand"],"leakValue":["src/app/markets/[id]/page.tsx: the branch \"HOUSE_STAKE_ONLY\" selects is not literal-only — [\"elig.why\"]"]}
+PASS 4.c8 · CONTROL · the body sweep is LIVE over real handlers · a `houseBotId` key planted into the REAL health response is reported, and the sweep it is reported by visited ≥ 100 response arguments across ≥ 40 handlers of the live tree — a sweep over zero passes — {"planted":["src/app/api/health/route.ts: houseBot","src/app/api/health/route.ts: houseBotId"],"responseArguments":411}
+
+§5 · ⛔ D19 · the SHAPE family in public code, and the one crossing that puts it in a browser
+PASS 5.ids.1 · ⛔ D19 · not one PUBLIC file names a `house<Capital>` identifier outside the eight registered files — the SHAPE is what is matched, so a name nobody thought to list is still seen, and `houseBetCount` on a player route would be caught by the pattern that could not see it on an admin one — {"population":532,"problems":[]}
+PASS 5.ids.2 · the public identifier register may only SHRINK: every registered name is still used by the file it was registered for — {"files":8,"stale":[]}
+PASS 5.ids.3 · ⛔ THE CROSSING · not one house-shaped name appears inside a JSX ATTRIBUTE anywhere in the public population — not as a prop name, not inside a prop's expression. NO REGISTER AND NO EXEMPTION: a prop is how a server component hands a value to a browser, and `/markets/[id]` and `/positions` both read `houseBotId` a few lines above JSX they render — {"tsxFiles":416,"attributeSites":9019,"problems":[]}
+PASS 5.ids.4 · ⛔ THE DEV-TEST EXEMPTIONS ARE HELD TO THEIR DOOR · every HTTP handler each registered dev-test route exports refuses in production as its FIRST statement — `if (process.env.NODE_ENV === "production") return …` — so the house-shaped code below it is unreachable on the live platform, which is the entire claim those five register entries rest on — {"routes":5,"problems":[]}
+PASS 5.ids.5 · the two player pages that read `houseBotId` are SERVER modules: neither declares "use client", and §0's own client-graph walk — the walk `test:house-bot-disclosure` §1 reaches its verdict through — does not reach either of them, while it DOES reach the resolution panel beside them, so this is a measurement and not a dead reach test — {"marketPage":false,"positions":false,"panel":true}
+PASS 5.c1 · CONTROL · THE CROSSING ITSELF, AND THE POINT OF THE SECTION · on the REAL /positions page — which already reads a house name four lines from its own JSX — `houseBotId` planted as a JSX PROP is reported, and so is `houseBetCount`, which `houseHits` (the instrument every other absence guard reaches its verdict through) cannot see at all: the planted text carries exactly as many houseHits as the live file — {"reported":["houseBotId"],"blindReported":["houseBetCount"],"houseHitsDelta":0}
+PASS 5.c2 · CONTROL · the two struck names written in a COMMENT on a real player page are NOT reported, and the same name written as a STRING KEY is — a serialised payload key is spelt as a string and is the same disclosure as a property name — {"comment":[],"string":["src/app/help/page.tsx: houseBetCount"]}
+PASS 5.c3 · CONTROL · BOTH SIDES OF THE SHAPE, ON A REAL PLAYER PAGE · every shape sample planted one at a time is reported, and every benign look-alike planted together is not — `household`, `HouseBot` (a capital H), `house_bot` (a separator), `warehouseBin` (no word boundary) and the bare word `house` — {"missed":[],"benign":[]}
+PASS 5.c4 · CONTROL · THE SWEEP IS LIVE AND THE REGISTER IS DOING WORK · with the register ignored, the same sweep over the same real files reports EVERY ONE of the eight registered public files by name, ten names between them. On this branch a protection guard once swept in so much that all thirteen of its assertions passed HARDER while its feature was broken — 10 names across 8 files with the register ignored
+PASS 5.c5 · CONTROL · BOTH PINS MEASURED AGAINST REAL CODE · removing the production door from the REAL dev-test route is reported by 5.ids.4, and the SAME attribute sweep that reports nothing across 8,000 public attribute sites reports the admin surfaces' own three house props — so 5.ids.3's zero is a measurement, not a scan that never fires — {"undoored":["src/app/api/dev-test/affiliate-e2e/route.ts: POST does not refuse in production as its first statement — if (false) { return NextResponse.json({ ok: false, error: \"Not available\" }, { status: 404"],"adminAttrs":["src/app/admin/house/page.tsx: houseFee","src/app/admin/retention/purge-chain-card.tsx: housePoolEntries","src/app/admin/system/page.tsx: houseEngine"]}
+
+§6 · ⛔ L52 · the modules a PUBLIC route imports directly, and the words they can paint through it
+PASS 6.hop.1 · the public painter population is DERIVED from the public population's own imports — ≥ 150 modules, resolved through the @/ alias, relative paths and `import()` — and it holds the lifecycle ticker and the market service, neither of which is a feature home, a console file or an admin surface — public painters 264
+PASS 6.hop.2 · ⛔ L52 ON THE PLAYER'S SIDE · not one module a public route or component imports prints a house word outside the register — so a NEW server module that paints the feature's name and is pulled into a player page goes red the day it is imported, which is the half L52 had nobody watching and the half that faces a player rather than an officer — {"population":264,"problems":[]}
+PASS 6.hop.3 · the painter register is ONE list and it may only SHRINK: every registered word is still printed by its module, and the public register is §3's plus exactly one module — the lifecycle ticker, which no admin surface imports directly — {"stale":[],"delta":["src/lib/server/lifecycle.ts"]}
+PASS 6.hop.4 · ⛔ THE ONE PUBLIC-ONLY PAINTER IS HELD TO ITS CLAIM · every house-shaped string the lifecycle ticker prints sits inside a `console.*` argument — the sweep it logs when it runs — and none of it sits in a value a caller could render. The `import()` of the feature's own holder hook is a specifier, not a painted word, and is excluded by construction — {"log":["house-bot","house-bot"],"response":[],"loose":[]}
+PASS 6.hop.5 · ⛔ RULING 146 HELD AT ITS SOURCE, NOT ONLY AT ITS SINK · the module that MINTS `HOUSE_STAKE_ONLY` is a one-hop painter on BOTH sides of the tree — §2J's join is what made it readable at all — and its reason has exactly ONE caller in all of `src/`: the market page, whose mapping `4.words.4` holds to a literal-only branch. A second reader would be a second place the server's own reason could escape, and this is the assertion that would see it — {"callers":["src/app/markets/[id]/page.tsx"],"words":["HOUSE_STAKE"]}
+PASS 1.reg.c1 · CONTROL · BOTH SIDES OF THE SUBSTRING ALLOWANCE · a register holding `HOUSE_STAKE_ONLY` covers the `HOUSE_STAKE` the join now also matches from that same literal, and covers NOTHING else: the differently-cased, differently-joined `house stake` is still reported, and so is a longer NEW string that merely contains the registered one. An allowance that could swallow a string nobody registered would be a widening, and this is the measurement that it cannot — ["x.ts: house stake","x.ts: HOUSE_STAKE_LEAKED"]
+PASS 6.c1 · CONTROL · L52 REBUILT ON THE PUBLIC SIDE · a house word planted as a label in a REAL config module that player routes import — the shape of the defect that sat live on /admin/system for weeks, moved to the side of the tree a player reads — is reported — ["src/lib/server/market-config.ts: house stake"]
+PASS 6.c2 · CONTROL · THE SWEEP IS LIVE AND THE REGISTER IS DOING WORK · with the register ignored, the same sweep over the same real modules reports ≥ 20 house words across ≥ 7 of them, the notifier and the lifecycle ticker among them — so 6.hop.2's zero is a clean population and not a dead predicate — 25 words across 8 modules with the register ignored
+PASS 6.c3 · CONTROL · the feature's own homes are NOT in this population and were never meant to be — `src/lib/house-bot/alert-copy.ts` names the feature in three languages by design and the disclosure walk owns it — and neither is the console's one read door, which ruling 453 owns — {"alertCopy":false,"door":false}
+  NOW ·  573  test:house-bot-disclosure §1 · the client graph
+  NOW ·   22  test:house-bot-console 4.453 · the console section + the gate
+  NOW ·   11  test:house-bot-reports 0.197.2 · src/app/admin/kyc/**
+  NOW ·    1  test:house-bot-reports 0.197.1 · the KYC read
+  NOW ·    2  test:house-bot-reports 0.198.3 · the two player surfaces
+  NOW ·    3  test:house-bot-reports 0.198.2 · the five notifier declarations
+  NOW ·  387  test:house-bot-surfaces §1/§2 · admin surfaces
+  NOW ·  274  test:house-bot-surfaces §3 · admin one-hop painters
+  NOW ·  532  test:house-bot-surfaces §4/§5 · the public population
+  NOW ·  264  test:house-bot-surfaces §6 · public one-hop painters
+  NOW ·   74  the feature's own homes · ruling 453 and the disclosure walk
+  REMAINING COMPLEMENT · 60 of 1447 src files are STILL inside no house-word population
+      41  server module
+      17  lib module
+       2  other
+      src/instrumentation.ts
+      src/lib/exit-window.ts
+      src/lib/journey/pending-bet.ts
+      src/lib/marketing/campaign-estimate.ts
+      src/lib/marketing/consent-wording.ts
+      src/lib/marketing/credit-guard.ts
+      src/lib/marketing/engine-rules.ts
+      src/lib/markets/card-close-label.ts
+      src/lib/markets/estimate.ts
+      src/lib/needle-haptics.d.ts
+      src/lib/needle-physics.d.ts
+      src/lib/payout-destination.ts
+      src/lib/query/counts.ts
+      src/lib/query/empty.ts
+      src/lib/query/href.ts
+      src/lib/security-headers.ts
+      src/lib/server/ai-cycle-dal.ts
+      src/lib/server/ai-provider-claude.ts
+      src/lib/server/ai-usage-dal.ts
+      src/lib/server/audit-drain.ts
+      src/lib/server/audit-reconcile.ts
+      src/lib/server/audit-ticket.ts
+      src/lib/server/backup/core.ts
+      src/lib/server/backup/watchdog.ts
+      src/lib/server/backup-codes.ts
+      src/lib/server/boot-checks.ts
+      src/lib/server/comms-registry.ts
+      src/lib/server/contacts/import-xlsx.ts
+      src/lib/server/define-config.ts
+      src/lib/server/email-map.ts
+      src/lib/server/erasure.ts
+      src/lib/server/journey-preview-secret.ts
+      src/lib/server/kyc-gate.ts
+      src/lib/server/lock-key.ts
+      src/lib/server/marketing/dsar.ts
+      src/lib/server/marketing/engine.ts
+      src/lib/server/marketing/enqueue.ts
+      src/lib/server/marketing/erase.ts
+      src/lib/server/marketing/list-basis-model.ts
+      src/lib/server/marketing/owner-save.ts
+      src/lib/server/marketing/referee-exclusion.ts
+      src/lib/server/marketing/referee-key-model.ts
+      src/lib/server/marketing/rg.ts
+      src/lib/server/money-busy.ts
+      src/lib/server/money-chores.d.ts
+      src/lib/server/nida.ts
+      src/lib/server/password-policy.ts
+      src/lib/server/prisma-dal.ts
+      src/lib/server/purge-protected.ts
+      src/lib/server/reauth.ts
+      src/lib/server/reports/finance-window.ts
+      src/lib/server/reports/house-report-ids.ts
+      src/lib/server/retention.ts
+      src/lib/server/sms-blackball.ts
+      src/lib/server/updown-digest.ts
+      src/lib/server/updown-oracle.ts
+      src/lib/server/updown-terminal-vendor.ts
+      src/lib/updown-movement.ts
+      src/lib/updown-playbook.ts
+      src/proxy.ts
+PASS 6.gap.1 · ⛔ WHAT IS STILL OPEN, MEASURED AND PRINTED RATHER THAN LEFT TO BE FOUND · the complement §0 printed has shrunk by ≥ 400 files, and NOT ONE of the ≥ 700 files under src/app/ or src/components/ is left in it: every admin page, player route, officer and public route handler, layout, action and component is now inside a house-word population. What remains is internal modules that neither a surface nor a public file imports DIRECTLY — §3 and §6 are ONE HOP by construction, so a two-hop painter is inside no population on either side, and that is the next lane rather than a claim made here — {"before":847,"after":60,"appTree":940,"buckets":{"other":2,"lib module":17,"server module":41}}
+
+ALL PASS — house-bot-surfaces: 74 passed, 0 failed

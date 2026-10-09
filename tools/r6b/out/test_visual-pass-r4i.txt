@@ -1,0 +1,179 @@
+── 1 · one formatter for every break end, the end carried where the page did not know it (E9 E16 E17 E52 E55) 
+  ok   1.1 · the end reads date and time on the East Africa clock, in the reader's month words: sw "10 Okt, 05:05", en "10 Oct, 05:05", zh "2026年10月10日 05:05"
+  ok   1.1′ · it IS the deposit page's and the limits callout's formatter (formatEatDateTime), so one end reads one way everywhere
+  ok   1.1″ CONTROL · the raw URL value it replaces carried no time and no month word
+  ok   1.2 · `?until=` reads back the canonical instant (with its time) and a bare day from an older link (without)
+  ok   1.2′ · anything else is printed as no date at all: a rolled-over day, an hour of 25, a non-canonical instant, prose
+  ok   1.2″ · `breakEndParam` writes the canonical instant (and nothing for a value that is not one)
+  ok   1.3 · EXECUTED · accountRefusalPath carries the exclusion's instant
+  ok   1.4 · every redirect to the sign-in page carries the end as the instant
+  ok   1.4′ PLANT · the UTC-day cut put back is reported
+  ok   1.5 · the sign-in page reads `?until=` through readBreakEndParam and says it with formatBreakEnd
+  ok   1.5′ · the exclusion panel fills auth.selfExclusionUntilBody; the break panel fills rg.breakActive (its own approved sentence), each falling back to its dateless sentence
+  ok   1.5″ · the break panel now names its end in every language ("…hadi 10 Okt, 05:05…"); the sentence it replaces named none
+  ok   1.6 · EXECUTED · the refusal reads "hadi 10 Okt, 05:05" in Swahili and "至 2026年10月10日 05:05" in Chinese — no English month
+  ok   1.6′ CONTROL · without the surface's formatter it prints the server's English string, as before (the defect's shape)
+  ok   1.6″ · failureUntil: the instant through `when`, else `until`, else "—"
+  ok   1.7 · the betting gate and the deposit gate send the instant (`untilAt`) on both refusals
+  ok   1.8 · every player surface that renders a break refusal hands its reader's formatter in
+  ok   1.8′ PLANT · the dial's formatter dropped is reported
+  ok   1.9 · breakStateOf / breakStateFromTimers: an exclusion first, then a break; nothing when neither runs
+
+── 2 · the end one run, no line opening on a dash, no last word alone — and every kept run fits its line (E17 E20 E55 E56 E57) 
+  ok   2.1 · the text is unchanged, character for character
+  ok   2.2 · the end is one unbreakable run ("2026- / 10-10" and "9 / Okt," split it)
+  ok   2.3 · the dash is held to the word before it, so no line opens on "—"
+  ok   2.4 · the last two words break together ("utuombe." stood alone)
+  ok   2.5 · Chinese: "——" held to the character before it, and the last two characters with their stop ("现。" stood alone)
+  ok   2.6 CONTROL · plain text without these marks is returned as given
+  ok   2.7 · the phone hint keeps "6 au 7" whole ("…starting with 6 / or 7")
+  ok   2.7′ · the heading model is calibrated on the tiles: "Karibu tena" 165px (ink 158), "Welcome back" 212px (ink 208) — never narrower than ink + 2px, within 6%
+  ok   2.8 · every kept run fits its narrowest line, in every language (widest: auth heading (320) sw "kwenye 50pick" 218/224px)
+  ok   2.8′ PLANT · a run wider than the line is reported
+  ok   2.9 · the sentences the tiles caught are drawn through keepText
+
+── 3 · the limits page: the callout at reading size, the two forms in line, the dialog names the period (E16 E21 E56) 
+  ok   3.1 · the break and exclusion callouts take the md rung: 13px body, over the 12.5px floor (they were sm: 11px, caps 8px)
+  ok   3.1′ CONTROL · the sm rung they wore is under the floor
+  ok   3.1″ PLANT · the break callout back on the sm rung is reported
+  ok   3.2 · the legends measure as the tile does: "UREFU WA MAPUMZIKO" 133px, "KIPINDI CHA KUJIZUIA" 148px (tile 001: x41–173, x41–188)
+  ok   3.3 · both fields take one width per language — sw 148px, en 143px, zh 117px — every legend and option fits it
+  ok   3.4 · both forms' fields wear that width, so both buttons start at x41 + W + 12 (sw at 390: x201, where they stood at x186 and x201)
+  ok   3.4′ PLANT · one form back on its legend's width is reported (x186 against x201)
+  ok   3.5 · the confirm reads the picked option when it opens, by the form field's value, and shows the form's own legend over it
+  ok   3.6 · both forms hand their field, legend and options in (Pumzika: "Urefu wa mapumziko" · "Saa 1"; Jizuie its own)
+  ok   3.6′ PLANT · a dialog without the snapshot is reported
+  ok   3.7 · EXECUTED · the break's trigger reads "Pumzika" alone (its text, its name, what a drive's has-text finds), and holds "Jizuie" only as an aria-hidden, invisible strut's generated content in the same grid cell
+  ok   3.7′ CONTROL · without `widthOf` the trigger draws its icon and label as before, no strut
+  ok   3.7″ · both forms pass the other's label, so the two are one width in every language and wrap at one screen width (band {"sw":0,"en":0,"zh":0}px)
+  ok   3.7‴ CONTROL · with the labels' own widths the forms part for 17.5px of screen width in Swahili (337–354), 0.9 in English
+  ok   3.7⁗ PLANT · Jizuie's trigger without its reserve is reported (the Swahili band is back)
+
+── 4 · every confirm's ✕ on its title's capitals, and the header no taller for it (E22 E54; round 5 F20) 
+  ok   4.1 · ConfirmModal: the ✕ centres 26.8px down the header row — on the title's capitals (26.80px), at every padding
+  ok   4.1′ · …and takes 38px of the row, no more than the medallion's 38: the row is as tall as it was, with or without the ✕ (it is withdrawn while a request is in flight)
+  ok   4.1″ · it stands 16px / 16px inside the panel's right edge (phone / from 1024) — where Modal pins every other dialog's (right-3, 16px)
+  ok   4.1‴ CONTROL · Modal's pinned ✕ stood 4px above the header on a phone (measured on 002: ✕ y270–279, medallion y261–296) and 12px from 1024
+  ok   4.1⁗ PLANT · the ✕ back on the medallion's centre (20px, 6.8px above the capitals — round 4's place) and without its bottom give-back (50.8px of the row) are each reported
+  ok   4.2 · the bet confirm's ✕ centres 28px down, on the title's capitals (27.94px: Sora caps centre 0.6625em in a 1.375 line), and still takes 48px of the row
+  ok   4.2′ CONTROL/PLANT · without the 4px it centres 24px, 3.94px above the capitals (068: ✕ ink y64–73, the title's first line y66–78)
+  ok   4.2″ PLANT · the 4px not given back (52px: a one-line title's row 4px taller) is reported
+
+── 5 · the bet confirm fits the screen and keeps its answers on it; its amount is an amount (E18 E53) ──
+  ok   5.1 · the panel is a column no taller than the screen less Modal's wrapper padding (py-4: 40px) — cap 40px
+  ok   5.1′ PLANT · a cap that ignores the wrapper's 20px (100dvh − 32px: the wrapper scrolls 8px, the panel 12px from the bottom, 20 from the top) is reported
+  ok   5.2 · the disclosures scroll in the body; the quote clock, Confirm, Ghairi and the footnote stand in the footer, always in view
+  ok   5.3 · at 360×780 the footer is at most 40% of the 740px panel and the disclosures keep ≥ 440px (sw 250, en 232, zh 232px)
+  ok   5.3′ PLANT · the panel's cap removed is reported (it grows past the screen and Ghairi leaves it)
+  ok   5.4 · "Possible winnings TZS 1,500" is an amount (mono, tabular, never split) in the dialog and in the dial
+  ok   5.5 · the title, the exit terms ("5 minutes" one run), the disclosures and the footnote are kept whole
+  ok   5.5′ · the exit run is "within 5 minutes" in English, "dakika 5 upate" in Swahili
+  ok   5.6 · the market title's season never stands alone ("League 2026-27" one run; zh "联赛2026-27")
+
+── 6 · the old dial: a legible scale, the label beside the pill, the readout, the caption over the button (E18 E53) 
+  ok   6.1 · every figure renders at 10px, clear of the resting thumb and of its neighbour, at 320 / 360 / 390 / 1280 — every detent keeps its tick
+  ok   6.1′ CONTROL · the old scale overlapped ("50K"/"100K" at 360) and rendered 5.8px
+  ok   6.1″ · the grammar is unchanged (S-14): %-exact, uppercase K/M
+  ok   6.2 · the dial draws dialScale's figures in the subtle ink at full strength, at its size
+  ok   6.3 · the figures read at 6.67:1 on the panel (≥ 4.5)
+  ok   6.4 · "UAMUZI WAKO" stands on the pill's line at the left, clear of the pill in every language and both states (tightest 2.6px, sw at 320)
+  ok   6.4′ CONTROL · centred, as it was, it ran under the pill at 1280 (tile 042)
+  ok   6.5 · "YOU ARE PICKING" on one line, beside the right-aligned "Stake ⓘ" with ≥ 76px between them; the side word centred on the 44px stake box (both 22px under their eyebrows)
+  ok   6.5′ CONTROL · it needed 111px and had 94 (360) / 104 (1280) in its own column
+  ok   6.6 · the Multiplier label centres on its 44px box (it stood ~11px under it, 067)
+  ok   6.7 · the caption asks 12rem or a line of its own: every phone and 1280 give it its own line, read in ≤ 2 lines (sw 2, en 2, zh 1)
+  ok   6.7′ CONTROL · beside the button it had 41–99px: one word a line (034)
+
+── 7 · the refusal: one of eyebrow and title, and its reason announced (E52) ───────────────────────────
+  ok   7.1 CONTROL · in Chinese the two keys are one phrase ("无法下注" over "无法下注")
+  ok   7.2 · a refusal titled "Could not place" drops the eyebrow and takes the fuller phrase as its heading; any other keeps both
+  ok   7.3 · the result dialog draws no eyebrow line when given none, and the heading then stands the crest's 20px under it (mt-4), not 4px
+  ok   7.4 · the refusal is an alertdialog DESCRIBED by its reason (aria-describedby → the subtitle), so a reader hears why when focus moves in
+  ok   7.4′ PLANT · the description unwired is reported
+  ok   7.5 · a cooling-off refusal is `error` severity, so it opens as the danger (alertdialog) variant
+
+── 8 · the deposit-paused notice: the card's width, the way to Withdraw, one inset above and below (E57) 
+  ok   8.1 · EXECUTED · a stack Callout with `bodyWidth="full"` drops the 42ch measure; the default keeps it
+  ok   8.2 · the break notice takes the card's width, and a cooling-off gets the Withdraw door in the shell's own words (none for an exclusion)
+  ok   8.3 · the button's edge closes the card as the plate's opens it: 32/32px on a phone, 48/48px from 640 (a text last line left 36px under its ink: 38 measured)
+  ok   8.4 · the sentence: one end, no dash opening a line ("——您仍可登录"), no last character alone
+
+── 9 · during a break nothing says "bet now" (E19) ─────────────────────────────────────────────────────
+  ok   9.1 · the home's lead ("Bado huna chaguo. Chagua upande…") and the empty-balance call are withheld on a break, as for a held wallet
+  ok   9.2 · …and the break's own notice speaks in its place (auth.coolingOff over rg.breakActive with its end, kept one run)
+  ok   9.3 · the home reads the break in its own batch, fails open (an invitation, never a refusal), and says its end once, by the one formatter
+  ok   9.3′ PLANT · the lead back for a player on a break is reported
+  ok   9.4 · Tiketi zangu: during a break the first-ticket call and its "Tazama maswali" go; the break's sentence is the body
+  ok   9.5 · …and the classic /positions alike (its "drag the conviction dial" body and its Browse button)
+  ok   9.6 · the empty state keeps the end whole as one run, every character the dictionary's and the formatter's
+  ok   9.7 · the market page: "Tumia kidhibiti kuanza" gives way to the break's sentence, and "place another prediction" is not said
+  ok   9.7′ CONTROL · those three sentences do tell the player to bet now
+
+── 10 · the journey Wallet says why there is no Deposit; Pumzika states the running break (E58) ────────
+  ok   10.1 · the sheet shows "Deposits paused" over the break's sentence when it withholds Deposit for a break
+  ok   10.2 · the shell hands the end to the JOURNEY bar only, derived from the row it holds; every offer still reads the one boolean
+  ok   10.3 · EXECUTED · Pumzika's second line states the running break: "Mapumziko yanaendelea hadi 10 Okt, 06:02." (zh "休息期至 … 结束。")
+  ok   10.3′ CONTROL · with no break running the row is as it was
+  ok   10.4 · the status is the FIRST SENTENCE of the approved paragraph, cut at its own stop — never re-worded
+  ok   10.5 · EXECUTED · loadHubViewer: a running break reaches the row; a failed read shows none; a guest is read nothing
+
+── 11 · the auth pages: the rail on the header's edges, the wordmark once; widows; the recovery link; the panel glyph (E10 E11 E12 E14) 
+  ok   11.1 · from 1024 the grid takes the header's box (max-w-board, 32px sides): the rail starts on the header's edge at 1024, 1280 and 1440 (x32, x32, x112)
+  ok   11.1′ CONTROL · the old 1152px grid put the rail at x64 at 1280 (the header at x32)
+  ok   11.2 · the rail's wordmark is not drawn from 1280, where the header draws the lockup (the journey and the classic bar alike)
+  ok   11.3 · EXECUTED · "Karibu kwenye 50pick" keeps "kwenye 50pick" together; the subtitle keeps "your account."
+  ok   11.4 · the phone hint keeps "6 or 7" whole
+  ok   11.5 · the recovery link reads at 13px (≥ 12.5) in the brand ink, with a 40px tap height (it was 10px mono capitals, caps 8px) — and its row stays one 18px line (18px), so the form does not grow
+  ok   11.5′ PLANT · the microlabel recipe back, and the tap height left to grow the row (40px for an 18px line), are each reported
+  ok   11.6 · the sign-in panel's glyph centres 8px down: 0.0px from a Chinese title's ink and -0.6px from the Latin capitals (it stood 2 and 1.5 under)
+  ok   11.6′ CONTROL · with mt-0.5 it centred 10px down: 2px under the Chinese ink (129)
+
+── 12 · the market's resolution tile says "resolves" in every language (E23) ───────────────────────────
+  ok   12.1 · the tile's value is the RESULT time and its label the word for resolving: "INATATULIWA" / "RESOLVES" / "结算于"
+  ok   12.1′ CONTROL · the key it wore said "it ends" in Swahili, which a player reads as the end of picking
+  ok   12.2 · and "Hakuna bwawa bado" keeps "bwawa bado" together in its tile
+
+── 13 · E35 — a self-excluded person cannot register again with the same phone or email (in-process, the memory store) 
+[audit] SYSTEM contacts.contact.registered usr_d3b1f4e4a9958b0f6d7895c9 MarketingContact#mc_mnqwlfukcbryfocy
+[audit] AUTH user.registered usr_d3b1f4e4a9958b0f6d7895c9 User#usr_d3b1f4e4a9958b0f6d7895c9
+[email-stub] To: e***@50pick.tz | Subject: Welcome to 50pick · Karibu
+[email] sending "Confirm your email · 50pick" → e***@50pick.tz (tag=email-verify)
+[email-stub] To: e***@50pick.tz | Subject: Confirm your email · 50pick
+  ok   13.0 CONTROL · the person registers
+[audit] COMPLIANCE wallet.freeze_added usr_d3b1f4e4a9958b0f6d7895c9 User#usr_d3b1f4e4a9958b0f6d7895c9
+  ok   13.1 · they self-exclude (status SELF_EXCLUDED, a running end)
+[audit] COMPLIANCE rg.self_exclusion.activated usr_d3b1f4e4a9958b0f6d7895c9 User#usr_d3b1f4e4a9958b0f6d7895c9
+[audit] AUTH register.duplicate_phone system Phone#+25571*****01
+[email] sending "Self-exclusion confirmed · 24 hours" → e***@50pick.tz (tag=self-exclusion)
+[email-stub] To: e***@50pick.tz | Subject: Self-exclusion confirmed · 24 hours
+[audit] AUTH register.duplicate_phone system Phone#+25571*****01
+[audit] SECURITY register.duplicate_email system User#usr_d3b1f4e4a9958b0f6d7895c9
+[audit] COMPLIANCE push.suppressed.rg_lockout usr_d3b1f4e4a9958b0f6d7895c9 User#usr_d3b1f4e4a9958b0f6d7895c9
+[audit] SECURITY register.duplicate_email system User#usr_d3b1f4e4a9958b0f6d7895c9
+  ok   13.2 · EXECUTED · the same phone is refused (ALREADY_EXISTS), written either way (+255… or 07…)
+  ok   13.3 · EXECUTED · the same email is refused (EMAIL_EXISTS), whatever its case
+  ok   13.4 · what they are told: the phone's "account already exists — sign in" panel, marking the phone, with a sign-in link
+[audit] COMPLIANCE auth.blocked_self_excluded usr_d3b1f4e4a9958b0f6d7895c9 User#usr_d3b1f4e4a9958b0f6d7895c9
+  ok   13.5 · EXECUTED · and signing in is refused with the serving panel and its END (the instant), not a generic block
+[audit] SYSTEM contacts.contact.registered usr_1048e15ddab72498fdff3fc5 MarketingContact#mc_kbdzdpmdxnitgpiz
+[audit] AUTH user.registered usr_1048e15ddab72498fdff3fc5 User#usr_1048e15ddab72498fdff3fc5
+[email-stub] To: b***@50pick.tz | Subject: Welcome to 50pick · Karibu
+[email] sending "Confirm your email · 50pick" → b***@50pick.tz (tag=email-verify)
+[email-stub] To: b***@50pick.tz | Subject: Confirm your email · 50pick
+  ok   13.6 · NOTE (owner) · a NEW phone and a NEW email still register: nothing at sign-up ties a person to their excluded account (KYC is asked at withdrawal)
+
+── 14 · gold is money and nothing else — the auth pages, the paused deposit, a running break (R4-K's audit; DESIGN_AUTHORITY Q5 §M3 F3) 
+  ok   14.1 · EXECUTED · the auth eyebrow is the brand's ink by default, and gold is out of its map
+  ok   14.2 · the sign-in, sign-up, recovery and reset pages carry no gold: the warning glyph muted, the call to action in the brand's ink, the link's lifetime muted
+  ok   14.2′ PLANT · one gold ink back on any of them is reported
+  ok   14.3 · the register page's bonus cards: gold only on the two money figures (.amount), the cards neutral
+  ok   14.4 · the deposit-paused tiles (a break, a held wallet) are neutral, the lock kept — the warning tone is struck in gilt
+  ok   14.5 · the code page masks the phone with the platform's one mask ("+255••••84", as the hub and the hero)
+  ok   14.5′ PLANT · a gilt card back is reported
+
+── 15 · the bell's RG notices carry the end as every screen says it (E9 E16 — the same defect, in the inbox) 
+  ok   15.1 · EXECUTED · the break's notice ends on the end in each reader's words, date and time: "…hadi 10 Okt, 05:05." / "…until 10 Oct, 05:05." / "…直至 2026年10月10日 05:05。"
+  ok   15.2 · EXECUTED · …and so does the exclusion's
+  ok   15.2′ CONTROL · what they printed — the UTC day — carried no time and no month word
+
+visual-pass-r4i: 128 passed, 0 failed

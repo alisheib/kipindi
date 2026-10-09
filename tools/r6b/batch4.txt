@@ -1,0 +1,5 @@
+test:visual-pass-r6b
+test:proxy-scope
+test:static-cache-scope
+test:privacy-notice
+test:enter-where-pressed

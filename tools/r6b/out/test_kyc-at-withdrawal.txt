@@ -1,0 +1,273 @@
+§A · register → deposit and play → verify identity → confirm email → withdraw
+[audit] SYSTEM contacts.contact.registered usr_9b7d5ba626368d68aa9f89e1 MarketingContact#mc_jmrmqgvoojdcoiqt
+[audit] AUTH user.registered usr_9b7d5ba626368d68aa9f89e1 User#usr_9b7d5ba626368d68aa9f89e1
+[email-stub] To: l***@t.tz | Subject: Welcome to 50pick · Karibu
+[email] sending "Confirm your email · 50pick" → l***@t.tz (tag=email-verify)
+[email-stub] To: l***@t.tz | Subject: Confirm your email · 50pick
+PASS A.1 registration creates the account — ended at: `cookies` was called outside a request scope. Read more: https://nextjs.org/docs/messages/next-dynamic-api-wrong-context
+PASS A.1b …and the only step it could not take outside a request is the session cookie — `cookies` was called outside a request scope. Read more: https://nextjs.org/docs/messages/next-dynamic-api-wrong-context
+PASS A.2 the new account is ACTIVE — not PENDING_KYC — ACTIVE · PLAYER
+PASS A.3 …with NO identity row at all
+PASS A.4 …and an ACTIVE wallet
+[audit] WALLET deposit.initiated usr_9b7d5ba626368d68aa9f89e1 Transaction#txn_9862b7b6debc235af325a2d9
+[audit] WALLET deposit.dispatch usr_9b7d5ba626368d68aa9f89e1 User#usr_9b7d5ba626368d68aa9f89e1
+[audit] WALLET deposit.confirmed usr_9b7d5ba626368d68aa9f89e1 Transaction#txn_9862b7b6debc235af325a2d9
+PASS A.5 ★ the first deposit goes through with an UNCONFIRMED email and no identity row — {"ok":true,"data":{"txnId":"txn_9862b7b6debc235af325a2d9","status":"CONFIRMED","balance":50000}}
+PASS A.5b …a transaction was written, no deposit was ever refused for the email, and the row records the address as unconfirmed — deposit txns 1 · email_unverified_blocked row false · {"provider":"MPESA","amount":50000,"kycStatus":"NOT_STARTED","everApproved":false,"hasEmail":true,"emailConfirmed":false}
+PASS A.6 fixture · registration sent the confirmation link (it is opened at A.15c, when a withdrawal needs it) — Confirm your email · 50pick
+[audit] WALLET deposit.initiated usr_9b7d5ba626368d68aa9f89e1 Transaction#txn_14395b1aa297836291dd7868
+[audit] WALLET deposit.dispatch usr_9b7d5ba626368d68aa9f89e1 User#usr_9b7d5ba626368d68aa9f89e1
+[audit] WALLET deposit.confirmed usr_9b7d5ba626368d68aa9f89e1 Transaction#txn_14395b1aa297836291dd7868
+PASS A.7 ★ the deposit goes through with no identity row — {"ok":true,"data":{"txnId":"txn_14395b1aa297836291dd7868","status":"CONFIRMED","balance":100000}}
+PASS A.8 deposit.initiated carries the identity standing as a record (NOT_STARTED / never approved) — {"provider":"MPESA","amount":50000,"kycStatus":"NOT_STARTED","everApproved":false,"hasEmail":true,"emailConfirmed":false}
+[audit] ADMIN market.created test Market#mkt_f6591c21d27e917f534b
+[audit] BET market.position.opened usr_9b7d5ba626368d68aa9f89e1 Position#pos_fd97c9ccaac2c6c42684
+PASS A.9 ★ the bet is accepted with no identity row — {"ok":true,"data":{"positionId":"pos_fd97c9ccaac2c6c42684","balance":95000,"payoutIfWin":5000,"placedAt":"2026-10-09T18:10:31.149Z","bonusStakeTzs":0}}
+PASS A.10 market.position.opened carries the same record — {"marketId":"mkt_f6591c21d27e917f534b","side":"YES","stake":5000,"payoutIfWin":5000,"kycStatus":"NOT_STARTED","everApproved":false}
+[audit] COMPLIANCE withdraw.kyc_blocked usr_9b7d5ba626368d68aa9f89e1 User#usr_9b7d5ba626368d68aa9f89e1
+PASS A.11 ★ the withdrawal is refused as kyc_not_verified — {"ok":false,"error":"Identity not verified (NOT_STARTED).","code":"INVALID","reason":"kyc_not_verified"}
+PASS A.12 …recorded as withdraw.kyc_blocked, citing the 2026-09-13 ruling — {"kycStatus":"NOT_STARTED","reason":"kyc_not_verified","everApproved":false,"onBehalfOf":"usr_9b7d5ba626368d68aa9f89e1","operatorInitiated":false,"amount":20000,"instruction":"Owner ruling 2026-09-13 · identity is required before withdrawal only"}
+PASS A.13 …and nothing moved — 95000→95000 · hold 0
+[audit] KYC kyc.started usr_9b7d5ba626368d68aa9f89e1 Kyc#kyc_946018ef0d3a8a4b9ee6
+[audit] KYC nida.check.requested usr_9b7d5ba626368d68aa9f89e1 User#usr_9b7d5ba626368d68aa9f89e1
+[audit] KYC nida.check.format_accepted usr_9b7d5ba626368d68aa9f89e1 User#usr_9b7d5ba626368d68aa9f89e1
+[audit] KYC kyc.id.accepted usr_9b7d5ba626368d68aa9f89e1 Kyc#kyc_946018ef0d3a8a4b9ee6
+[audit] KYC kyc.document.uploaded usr_9b7d5ba626368d68aa9f89e1 Kyc#kyc_946018ef0d3a8a4b9ee6
+[audit] KYC kyc.document.uploaded usr_9b7d5ba626368d68aa9f89e1 Kyc#kyc_946018ef0d3a8a4b9ee6
+[audit] KYC kyc.document.uploaded usr_9b7d5ba626368d68aa9f89e1 Kyc#kyc_946018ef0d3a8a4b9ee6
+[audit] KYC kyc.submitted usr_9b7d5ba626368d68aa9f89e1 Kyc#kyc_946018ef0d3a8a4b9ee6
+[kyc] no admin notify recipients resolved — admin email skipped
+PASS A.14 the player verifies through the real steps: start, identity, three documents, submit — {"ok":true,"data":{"kycId":"kyc_946018ef0d3a8a4b9ee6"}} · {"ok":true,"data":{"verified":true}} · [{"ok":true},{"ok":true},{"ok":true}] · {"ok":true}
+[email] sending "Documents received · verification pending" → l***@t.tz (tag=kyc-submitted)
+[email-stub] To: l***@t.tz | Subject: Documents received · verification pending
+[audit] KYC kyc.approved usr_kaw_officer User#usr_9b7d5ba626368d68aa9f89e1
+PASS A.15 the officer approves — and the player's chosen handle is NOT replaced by the legal name — {"ok":true} · LadderFox
+[email] sending "Identity verified · You're fully verified" → l***@t.tz (tag=kyc-approved)
+[email-stub] To: l***@t.tz | Subject: Identity verified · You're fully verified
+[audit] COMPLIANCE withdraw.email_unverified_blocked usr_9b7d5ba626368d68aa9f89e1 User#usr_9b7d5ba626368d68aa9f89e1
+PASS A.15b ★ approved, but the email is unconfirmed: the withdrawal is refused on the EMAIL — {"ok":false,"error":"Confirm your email address before you withdraw. Open the link we sent you, then try again.","code":"EMAIL_UNVERIFIED","reason":"email_unverified"}
+PASS A.15b2 …nothing moved, and the refusal is recorded citing the 2026-10-07 ruling — 95000→95000 · hold 0 · {"hasEmail":true,"onBehalfOf":"usr_9b7d5ba626368d68aa9f89e1","operatorInitiated":false,"amount":20000,"provider":"MPESA","instruction":"Owner ruling 2026-10-07 · a confirmed email is required before withdrawal"}
+[audit] COMPLIANCE user.email.verified usr_9b7d5ba626368d68aa9f89e1 User#usr_9b7d5ba626368d68aa9f89e1
+PASS A.15c confirming the email through the real token — {"status":"verified"}
+[audit] WALLET withdraw.initiated usr_9b7d5ba626368d68aa9f89e1 Transaction#txn_01d930fdfac0d4a05adb4896
+[audit] WALLET withdraw.dispatch usr_9b7d5ba626368d68aa9f89e1 User#usr_9b7d5ba626368d68aa9f89e1
+[audit] WALLET withdraw.confirmed usr_9b7d5ba626368d68aa9f89e1 Transaction#txn_01d930fdfac0d4a05adb4896
+PASS A.16 ★ the same withdrawal now goes through — {"ok":true,"data":{"txnId":"txn_01d930fdfac0d4a05adb4896","status":"CONFIRMED","fee":300,"net":19700}}
+[audit] COMPLIANCE kyc.force_reverify usr_kaw_officer User#usr_9b7d5ba626368d68aa9f89e1
+[email] sending "Withdrawal sent · TZS 19,700" → l***@t.tz (tag=withdrawal)
+[email-stub] To: l***@t.tz | Subject: Withdrawal sent · TZS 19,700
+[email] sending "Action needed · Please re-verify your identity" → l***@t.tz (tag=kyc-more-info)
+[email-stub] To: l***@t.tz | Subject: Action needed · Please re-verify your identity
+[audit] WALLET withdraw.initiated usr_9b7d5ba626368d68aa9f89e1 Transaction#txn_b3bddcdc199937b40fa6d404
+[audit] COMPLIANCE withdraw.unverified_payer usr_9b7d5ba626368d68aa9f89e1 Transaction#txn_b3bddcdc199937b40fa6d404
+[audit] WALLET withdraw.dispatch usr_9b7d5ba626368d68aa9f89e1 User#usr_9b7d5ba626368d68aa9f89e1
+[audit] WALLET withdraw.confirmed usr_9b7d5ba626368d68aa9f89e1 Transaction#txn_b3bddcdc199937b40fa6d404
+PASS A.17 ★ a force-reverified account that was approved still withdraws — {"ok":true} · {"ok":true,"data":{"txnId":"txn_b3bddcdc199937b40fa6d404","status":"CONFIRMED","fee":75,"net":4925}}
+     sign-up literal redirect targets: (none) · landingAfterAuth calls: 1
+PASS A.18 control · the sign-up action was found, and it lands through the one rule exactly once — 1378 chars · 1 landingAfterAuth call(s)
+PASS A.19 a new account lands by the ONE rule — landingAfterAuth, kind new
+PASS A.19b ⛔ …and no literal sign-up redirect target names /wallet/deposit and its email door
+[email] sending "Withdrawal sent · TZS 4,925" → l***@t.tz (tag=withdrawal)
+[email-stub] To: l***@t.tz | Subject: Withdrawal sent · TZS 4,925
+PASS A.20 ⭐ EXECUTED · the one rule: a new or returning player lands where they were going, greeted before any #fragment, or on the market board — and a next that IS the deposit page still lands there
+PASS A.21 ⛔ no sign-up redirect sends a new player to identity verification
+PASS A.21b control · the extractor catches the old destination
+PASS A.21c control · …and the 2026-09-13 one
+     one-time-code door literal redirect targets: `/auth/login?excluded=${standing}${until}${safeNext ? ` · `/auth/login?error=blocked${safeNext ? ` · `/auth/otp?${params.toString()}`
+PASS A.22 control · the one-time-code sign-in action was found — 2060 chars
+PASS A.23 the code door lands by the one rule (kind back — it signs existing accounts in only), and no isNew branch survives in the sign-in actions
+PASS A.24 ⛔ the one-time-code SIGN-UP is gone (no startRegisterOtpAction), and no literal target of the code door names /wallet/deposit or the identity form — `/auth/login?excluded=${standing}${until}${safeNext ? ` · `/auth/login?error=blocked${safeNext ? ` · `/auth/otp?${params.toString()}`
+     AuthFlash effect deps: [welcome]
+PASS A.25 control · AuthFlash's effect and its dependency list were found — 1 effect(s)
+PASS A.26 the greeting runs when the landing's `welcome` arrives, not once on mount — [welcome]
+PASS A.26b control · the matcher catches the mount-only shape
+PASS A.27 the param is cleared in place (history.replaceState) — never by a router navigation that re-requests the landing
+PASS A.28 every sign-in door — password, two-step and code — lands through landingAfterAuth — all three
+PASS A.28b ⛔ no door keeps a private landing copy: neither `safeNext || "/?welcome=back"` nor `qs.set("welcome"` in the sign-in or sign-up actions
+PASS A.28c control · the matcher fires on both retired shapes
+PASS A.30 ⭐ EXECUTED · staff land on an /admin next, else /admin; a player's /admin next is dropped (home, greeted) — never a loop to the staff form
+PASS A.31 C-X1 · a refused sign-up carries its registry reason — a breach-list password_weak, password_mismatch, email_invalid — code INVALID unchanged — [{"ok":false,"error":"That password is in the public breach list. Pick something less common.","code":"INVALID","reason":"password_weak"},{"ok":false,"error":"Passwords do not match. · Nenosiri hazilingani.","code":"INVALID","reason":"password_mismatch"},{"ok":false,"error":"Enter a valid email address","code":"INVALID","reason":"email_invalid"}]
+PASS A.31b …and none of the three refused sign-ups created an account
+
+     population: 1445 source files under src/
+
+§B1 · the withdraw panel appears only where money leaves (and in the agent application)
+PASS B1.0 control · the walk covered the tree — 1445
+     <KycGatePanel mounted in: src/app/agent/apply/apply-client.tsx, src/app/wallet/withdraw/page.tsx
+PASS B1.1 ⛔ <KycGatePanel is mounted nowhere else
+PASS B1.2 control · both allowed places really mount it
+PASS B1.3 the withdraw screen's panel speaks for the payout, the application's for the agent — ["payout"] · ["agent","agent"]
+PASS B1.4 control · a planted mount is found, and a mention inside a JSX comment is not
+
+§B2 · the first-deposit notice appears only on /wallet and the deposit return page
+     <KycFirstDepositNotice mounted in: src/app/wallet/deposit/return/page.tsx, src/app/wallet/wallet-client.tsx
+PASS B2.1 ⛔ <KycFirstDepositNotice is mounted nowhere else
+PASS B2.2 control · it IS mounted on /wallet and on the deposit return page — src/app/wallet/deposit/return/page.tsx, src/app/wallet/wallet-client.tsx
+PASS B2.3 every mount renders only on the server's decision
+PASS B2.4 the one predicate decides for both pages, and nobody else asks it — src/app/wallet/deposit/return/page.tsx, src/app/wallet/page.tsx
+PASS B2.5 ⛔ neither page re-derives who is due
+PASS B2.6 control · a page that re-derives it is caught
+PASS B2.7 both pages hand the RAW cookie to the one predicate — neither decides whose dismissal it is
+PASS B2.7c control · the matcher rejects the old unbound comparison
+PASS B2.8 ★ the return page hands its notice the per-player value
+PASS B2.9 ★ /wallet scopes the per-player value around the client tree that mounts the notice
+PASS B2.10 the notice writes exactly one value — the one it was handed — and never without it — ["value"]
+PASS B2.11 ⛔ nothing under src/ compares to or writes the unbound legacy value
+PASS B2.11c control · the matcher catches the old constant and the old literal
+
+§B3 · no app-wide identity bar
+     prose mentions (comments, not asserted): 0
+PASS B3.1 ⛔ the banner file does not exist
+PASS B3.2 ⛔ no source references it
+PASS B3.3 control · the matcher catches the import it forbids
+
+§B4 · the removed nudges are defined nowhere in the comms layer
+PASS B4.notification-service.ts control · the file is real and the matcher finds `runKycReviewSlaAlerts` in it
+PASS B4.notification-service.ts ⛔ defines and references none of the removed nudges
+PASS B4.email.ts control · the file is real and the matcher finds `kycReviewOverdueAdminHtml` in it
+PASS B4.email.ts ⛔ defines and references none of the removed nudges
+PASS B4.lifecycle.ts control · the file is real and the matcher finds `maybeWatchKycReviewSla` in it
+PASS B4.lifecycle.ts ⛔ defines and references none of the removed nudges
+PASS B4.c control · the matcher catches a definition, and not a longer name
+
+§B5 · the notice's words are read by the notice alone
+     kycNotice read by: src/components/wallet/kyc-first-deposit-notice.tsx
+PASS B5.1 ⛔ only the notice component reads kycNotice.* — src/components/wallet/kyc-first-deposit-notice.tsx
+PASS B5.2 control · the dictionary defines the block in all three languages
+PASS B5.3 control · the matcher sees `t.kycNotice.body` and ignores `kycNoticeStateDue`
+
+§B6 · a never-approved player's deposit, win, cash-out and refused withdrawal say nothing about identity
+PASS B6.0 control · the matcher catches a real verification row, and the removed receipt sentence
+[audit] WALLET deposit.initiated usr_kaw_quiet Transaction#txn_f5e8eda371c2cc25271e8578
+[audit] WALLET deposit.dispatch usr_kaw_quiet User#usr_kaw_quiet
+[audit] WALLET deposit.confirmed usr_kaw_quiet Transaction#txn_f5e8eda371c2cc25271e8578
+[email] sending "Deposit confirmed · TZS 100,000" → u***@t.tz (tag=deposit)
+[email-stub] To: u***@t.tz | Subject: Deposit confirmed · TZS 100,000
+     deposit: bell [Deposit confirmed · TZS 100,000] · email [Deposit confirmed · TZS 100,000]
+PASS B6.deposit control · the instruments see the event's own receipt (bell AND email) — 1 row(s) · 1 email(s)
+PASS B6.deposit ⛔ ZERO identity-worded notification rows
+PASS B6.deposit ⛔ ZERO identity-worded emails
+PASS B6.deposit fixture · the deposit was confirmed — {"ok":true,"data":{"txnId":"txn_f5e8eda371c2cc25271e8578","status":"CONFIRMED","balance":100000}}
+[audit] ADMIN market.created test Market#mkt_a28c055985022d993ec2
+[audit] BET market.position.opened usr_kaw_quiet Position#pos_895e4de31f022b30cbf6
+[email] sending "Bet placed · YES on "Quiet win market"" → u***@t.tz (tag=bet-placed)
+[email-stub] To: u***@t.tz | Subject: Bet placed · YES on "Quiet win market"
+[audit] BET market.position.opened usr_kaw_co_no Position#pos_6e8b82e6db1ea691ceee
+PASS B6.win fixture · both sides staked — {"ok":true,"data":{"positionId":"pos_895e4de31f022b30cbf6","balance":90000,"payoutIfWin":10000,"placedAt":"2026-10-09T18:10:39.019Z","bonusStakeTzs":0}} · {"ok":true,"data":{"positionId":"pos_6e8b82e6db1ea691ceee","balance":490000,"payoutIfWin":18700,"placedAt":"2026-10-09T18:10:39.021Z","bonusStakeTzs":0}}
+[email] sending "Bet placed · NO on "Quiet win market"" → u***@t.tz (tag=bet-placed)
+[email-stub] To: u***@t.tz | Subject: Bet placed · NO on "Quiet win market"
+[audit] ADMIN market.adjudicated usr_kaw_officer Market#mkt_a28c055985022d993ec2
+[audit] WALLET bet.payout usr_kaw_quiet Position#pos_895e4de31f022b30cbf6
+[audit] ADMIN market.resolved system Market#mkt_a28c055985022d993ec2
+[email] sending "You won · TZS 18,700" → u***@t.tz (tag=win)
+[email-stub] To: u***@t.tz | Subject: You won · TZS 18,700
+[email] sending "Bet lost · TZS 10,000" → u***@t.tz (tag=loss)
+[email-stub] To: u***@t.tz | Subject: Bet lost · TZS 10,000
+[audit] WALLET market.settled system Market#mkt_a28c055985022d993ec2
+[audit] SYSTEM affiliate.settlement_accruals system Market#mkt_a28c055985022d993ec2
+     win: bell [Result recorded: YES | You won TZS 18,700] · email [You won · TZS 18,700]
+PASS B6.win control · the instruments see the event's own receipt (bell AND email) — 2 row(s) · 1 email(s)
+PASS B6.win ⛔ ZERO identity-worded notification rows
+PASS B6.win ⛔ ZERO identity-worded emails
+PASS B6.win fixture · the market settled and the player was paid — {"r":{"ok":true,"data":{"stage":"complete","settlesAt":"2026-10-09T19:10:39.024Z"}},"s":{"ok":true,"data":{"winnersPaid":18700,"positionsSettled":2}}} · 90000→108700
+[audit] ADMIN market.created test Market#mkt_e36d33ea5a5adb204d76
+[audit] BET market.position.opened usr_kaw_quiet Position#pos_26cd5e365201a3dbbb11
+[email] sending "Bet placed · YES on "Quiet cash-out market"" → u***@t.tz (tag=bet-placed)
+[email-stub] To: u***@t.tz | Subject: Bet placed · YES on "Quiet cash-out market"
+[audit] BET market.position.opened usr_kaw_co_yes Position#pos_cb3e68ce159427977edc
+[email] sending "Bet placed · YES on "Quiet cash-out market"" → u***@t.tz (tag=bet-placed)
+[email-stub] To: u***@t.tz | Subject: Bet placed · YES on "Quiet cash-out market"
+[audit] BET market.position.opened usr_kaw_co_no Position#pos_c4b22fa138896999ea0c
+[email] sending "Bet placed · NO on "Quiet cash-out market"" → u***@t.tz (tag=bet-placed)
+[email-stub] To: u***@t.tz | Subject: Bet placed · NO on "Quiet cash-out market"
+[audit] BET market.position.cashed_out usr_kaw_quiet Position#pos_26cd5e365201a3dbbb11
+[email] sending "Position sold · TZS 5,000" → u***@t.tz (tag=cashout)
+[email-stub] To: u***@t.tz | Subject: Position sold · TZS 5,000
+     cash-out: bell [Free exit · TZS 5,000] · email [Position sold · TZS 5,000]
+PASS B6.cash-out control · the instruments see the event's own receipt (bell AND email) — 1 row(s) · 1 email(s)
+PASS B6.cash-out ⛔ ZERO identity-worded notification rows
+PASS B6.cash-out ⛔ ZERO identity-worded emails
+PASS B6.cash-out fixture · the position was cashed out — {"ok":true,"data":{"value":5000,"balance":108700}}
+[audit] COMPLIANCE withdraw.kyc_blocked usr_kaw_quiet User#usr_kaw_quiet
+     refused withdrawal: bell [] · email []
+PASS B6.refused withdrawal ⛔ ZERO identity-worded notification rows
+PASS B6.refused withdrawal ⛔ ZERO identity-worded emails
+PASS B6.refused withdrawal fixture · refused for identity — {"ok":false,"error":"Identity not verified (NOT_STARTED).","code":"INVALID","reason":"kyc_not_verified"}
+PASS B6.fixture · the player was never approved throughout
+
+§B7 · who sees the first-deposit notice — the one server predicate, over every identity state
+PASS B7.no_row_funded → SHOWN — got true
+PASS B7.started_no_docs_funded → SHOWN — got true
+PASS B7.uploaded_funded → SHOWN — got true
+PASS B7.no_row_no_deposit → hidden — got false
+PASS B7.uploaded_no_deposit → hidden — got false
+PASS B7.no_row_only_unconfirmed_deposits → hidden — got false
+PASS B7.pending_review → hidden — got false
+PASS B7.more_info → hidden — got false
+PASS B7.rejected → hidden — got false
+PASS B7.refused_final → hidden — got false
+PASS B7.refused_final_after_approval → hidden — got false
+PASS B7.approved → hidden — got false
+PASS B7.reverifying_after_approval → hidden — got false
+PASS B7.c control · the cases include both answers, so neither can be a constant
+PASS B7.w.identity_only → identity — got identity
+PASS B7.w.email_only → email — got email
+PASS B7.w.no_address → email — got email
+PASS B7.w.both → both — got both
+PASS B7.w.email_under_review → email — got email
+PASS B7.w.email_no_deposit → none — got null
+PASS B7.w.nothing_owed → none — got null
+PASS B7.w.missing · a missing account row owes NO email (nothing says it is unconfirmed) — identity alone
+PASS B7.w.read-fails · ⛔ a failed account read is NO notice — never an identity or email prompt on a failed query — null
+PASS B7.value · ★ two players get two different dismiss values, each stable and in the documented shape — d:c0109a69191f9379 · d:424861ff809a5550
+PASS B7.dismissed · this player's own dismissal hides it
+PASS B7.shared-phone · ⛔ ANOTHER player's dismissal in the same browser does not hide it
+PASS B7.legacy · ⛔ the old unbound `dismissed` is NOT a dismissal (that browser sees it once more)
+PASS B7.empty · control · an empty cookie is not a dismissal either
+PASS B7.in-hand · the caller's own rows answer the deposit question both ways
+PASS B7.failed-kyc-read · control · the read really fails for this account — simulated KYC read failure
+PASS B7.failed-kyc-read · ⛔ a failed identity read shows nothing — false
+PASS B7.failed-deposit-read · ⛔ a failed deposit read shows nothing — false
+PASS B7.failed-read control · with the reads restored the same account is shown again
+
+B8 · ⛔ THE DEPOSIT SCREEN SAYS NOTHING ABOUT IDENTITY — the quiet rule, on the page it is easiest to break
+PASS B8.population · the deposit screen's files and dictionary keys were read — 6 files · 45 keys
+PASS B8.en · ★ no string the deposit screen renders mentions identity — 45 keys clean
+PASS B8.en control · the matcher fires on the withdraw page's line that used to be shown here
+PASS B8.sw · ★ no string the deposit screen renders mentions identity — 45 keys clean
+PASS B8.sw control · the matcher fires on the withdraw page's line that used to be shown here
+PASS B8.zh · ★ no string the deposit screen renders mentions identity — 45 keys clean
+PASS B8.zh control · the matcher fires on the withdraw page's line that used to be shown here
+PASS B8.wiring · the deposit footer reads its own line
+
+§B9 · a FINAL refusal outranks an earlier approval — the precedence `kycGateState` answers with
+PASS B9.1 ★ approved once, then refused SANCTIONED → refused_final, not null — refused_final
+PASS B9.2 …and the same for UNDERAGE — refused_final
+PASS B9.2 …and the same for DUPLICATE_IDENTITY — refused_final
+PASS B9.3 control · approved once, refused on a RECOVERABLE code → null: the form stays — null
+PASS B9.4 control · approved once, re-verifying → null: money already earned stays reachable — null
+PASS B9.5 control · APPROVED → null, and a never-approved final refusal → refused_final — null
+PASS B9.6 the first-deposit notice is still not due for a final refusal after approval
+PASS B9.6c control · …while it IS due for an account that has sent nothing
+
+§B10 · a wallet that is not ACTIVE is never given the withdraw form
+     withdraw page: withdrawPanel = walletHeld && withdrawGateState !== "refused_final" ? "frozen" : withdrawGateState ?? (emailOwed ? "email" : null) · walletHeld = !!wallet && wallet.status !== "ACTIVE"
+PASS B10.0 control · the withdraw page was read and still holds the form and the panel
+PASS B10.1 ★ the form bound to withdrawAction is not rendered when the wallet is not ACTIVE — withdrawPanel = walletHeld && withdrawGateState !== "refused_final" ? "frozen" : withdrawGateState ?? (emailOwed ? "email" : null) · walletHeld = !!wallet && wallet.status !== "ACTIVE"
+PASS B10.2 …and a FINAL refusal keeps its own panel: `frozen` is not chosen over refused_final — walletHeld && withdrawGateState !== "refused_final" ? "frozen" : withdrawGateState ?? (emailOwed ? "email" : null)
+PASS B10.2e ★ …identity settled and the address unconfirmed, the panel IS the email step; on an identity state it carries it — walletHeld && withdrawGateState !== "refused_final" ? "frozen" : withdrawGateState ?? (emailOwed ? "email" : null)
+PASS B10.2f control · a page that never chooses the email panel is caught
+PASS B10.c1 control · the page as shipped before the fix (form over any wallet) is caught — withdrawGateState never becomes "frozen": "not_started"
+PASS B10.c2 control · a `frozen` that never reads the wallet's status is caught — withdrawPanel does not read the wallet's status: withdrawGateState ?? "frozen"
+PASS B10.c3 control · a second, unguarded form bound to withdrawAction is caught — 2 form(s) bound to withdrawAction
+PASS B10.c4 control · a correct planted page passes, so the matcher is not constant — panel = held ? "frozen" : gate · held = !!wallet && wallet.status !== "ACTIVE"
+PASS B10.3 the panel's frozen variant: support is its only step, and it reads its own four words
+PASS B10.4 kycGate.frozenEyebrow is written in en, sw and zh — never English inside sw or zh — ["Withdrawals paused","Kutoa pesa kumesitishwa","提现已暂停"]
+PASS B10.4 kycGate.frozenTitle is written in en, sw and zh — never English inside sw or zh — ["Your wallet is frozen","Pochi yako imegandishwa","您的钱包已被冻结"]
+PASS B10.4 kycGate.frozenBody is written in en, sw and zh — never English inside sw or zh — ["Contact support and our team will explain what happens next.","Wasiliana na msaada na timu yetu itakueleza kinachofuata.","请联系客服，我们的团队会向您说明后续安排。"]
+PASS B10.4 kycGate.frozenCta is written in en, sw and zh — never English inside sw or zh — ["Contact support","Wasiliana na msaada","联系客服"]
+
+kyc-at-withdrawal: 154 passed, 0 failed
+[email] sendEmailToUser withheld — money mail to an unconfirmed address for user usr_9b7d5ba626… (user.email=l***@t.tz)
+[email] sendEmailToUser withheld — money mail to an unconfirmed address for user usr_9b7d5ba626… (user.email=l***@t.tz)
+[email] sendEmailToUser withheld — money mail to an unconfirmed address for user usr_9b7d5ba626… (user.email=l***@t.tz)

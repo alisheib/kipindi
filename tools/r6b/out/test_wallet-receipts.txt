@@ -1,0 +1,74 @@
+── §1 · the store read
+PASS 1.1 ★ only this player's rows
+PASS 1.2 ★ only deposits and withdrawals — no stake, bonus or fee rides in
+PASS 1.3 all four of this player's receipts, newest first
+PASS 1.4 the limit is kept
+PASS 1.5 the cap is answered by the extra row, never guessed from length === cap
+
+── §2 · what has a receipt, and the status a player is shown
+PASS 2.1 a deposit and a withdrawal have receipts
+PASS 2.2 ⛔ nothing else does (S10-02: a bonus read "Deposit", a house fee "Withdrawal")
+PASS 2.3 ★ a deposit held for return (AML_REVIEW) reads REVERSED — never "in review", never in flight
+PASS 2.4 …a withdrawal in review keeps its own word
+PASS 2.5 every other status passes through unchanged (no return mark)
+PASS 2.6 ★ a held deposit an officer has RETURNED (FAILED, mark kept) still reads REVERSED
+PASS 2.7 control · a FAILED deposit without the mark stays FAILED; a withdrawal with a mark-like reason stays FAILED
+PASS 2.8 ★ refundAmlRejection keeps a held deposit's mark before the officer's reason, and the row still reads REVERSED
+PASS 2.9 the card return reads the same rule: a held deposit is REVERSED there, never FAILED ("nothing was taken")
+
+── §3 · the URL contract
+PASS 3.1 a bare URL is the default view
+PASS 3.2 junk falls back to the defaults, never a crash
+PASS 3.3 a real choice is read
+PASS 3.4 a clean view has a clean URL (defaults omitted)
+PASS 3.5 a filter change carries the filters and starts again at page 1
+PASS 3.5b …while a pager link on a filtered view keeps its filters AND its page
+PASS 3.6 the filter badge counts the sheet's axes only (state, window — the lens stays on the bar)
+
+── §4 · filters, cross-filtered counts, empty states
+PASS 4.1 the Deposits lens shows deposits only
+PASS 4.2 the Withdrawals lens shows withdrawals only
+PASS 4.3 the state lens is the wallet's: failed = FAILED + CANCELLED
+PASS 4.4 the window is the EAT day boundary (today = since 00:00 EAT)
+PASS 4.5 ★ counts are cross-filtered: each lens count respects the OTHER axes (30 days)
+PASS 4.6 …and each state count respects the lens and window
+PASS 4.7 an empty book is "no rows" — and offers no exits
+PASS 4.8 ★ "no withdrawals yet" is a HEALTHY empty, not a failure of the page
+PASS 4.9 a filtered-empty view names a cause and offers exits that lead somewhere (real counts)
+PASS 4.10 the page re-reads itself only while something is in flight
+
+── §5 · the words, in all three languages
+PASS 5.1.en · every receipts.* key is written
+PASS 5.1.sw · every receipts.* key is written
+PASS 5.1.zh · every receipts.* key is written
+PASS 5.2 ⛔ no English left inside the Swahili or Chinese list words
+PASS 5.3 the count templates carry {n}
+PASS 5.4 ★ a card reads Card / Kadi / 银行卡 — a WORD, translated
+PASS 5.5 …a brand stays a brand, and nothing reads as "—"
+PASS 5.6 every one of the seven statuses has a word in every language
+PASS 5.7 the type words and lens labels resolve in every language
+
+── §6 · the doors
+PASS 6.1 ★ the profile holds ONE row to /wallet/receipts
+PASS 6.2 the wallet's list holds ONE "All receipts" link
+PASS 6.3 ★ "View receipt" asks the STORED type (tx.hasReceipt), never the folded token
+PASS 6.4 …and the wallet page sets it from the stored type
+PASS 6.5 the list reads CAP + 1 through the typed store read (the type filter is in the store)
+PASS 6.6 ⛔ a money read is never swallowed: no try/catch around the list read
+PASS 6.7 the signed-out visitor is sent to sign in and brought back to THIS view
+
+── §7 · the single receipt
+PASS 7.1 ★ not found, not yours and not a receipt are the SAME 404
+PASS 7.2 the type is named from the STORED type, never the sign of the amount
+PASS 7.3 the status tone is the shared dictionary's (§B11)
+PASS 7.4 ⛔ no betting ink and no gold on a payment (§B2a, §M3a D1)
+PASS 7.5 the amount is the headline in the money face
+PASS 7.6 the way back says "Back" and falls back to the list of receipts
+PASS 7.7 ★ every figure on the receipt is masked by the privacy eye (`<Cash>`)
+PASS 7.8 …and on the card-return page, which also names a held deposit as reversed and offers no new deposit for it
+
+── §8 · the two store twins agree
+PASS 8.1 the Prisma read filters by type and orders createdAt desc, then id desc
+PASS 8.2 the in-memory twin exists with the same signature
+
+wallet-receipts: 57 passed, 0 failed

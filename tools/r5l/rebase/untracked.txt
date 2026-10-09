@@ -1,0 +1,3 @@
+scripts/visual-pass-r5l.test.mts
+src/components/ui/ghost-kit.tsx
+src/components/ui/query-bar-ghost.tsx

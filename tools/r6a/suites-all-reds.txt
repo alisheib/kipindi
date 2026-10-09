@@ -1,0 +1,134 @@
+===== red:kyc-gate (exit 1, 0.9s)
+REFUSING TO RUN — src/lib/server/market-service.ts differs from git HEAD.
+This harness restores files to the state it found them in, so starting from an uncommitted edit would BAKE that edit in as the baseline. Commit first.
+
+===== red:cashout-price-guard (exit 1, 0.5s)
+REFUSING TO RUN — src/lib/server/market-service.ts differs from git HEAD. Commit or stash first.
+
+===== red:house-bot-c5 (exit 1, 0.7s)
+REFUSING TO RUN — src/lib/server/market-service.ts differs from git HEAD. Commit or stash first.
+
+===== red:house-bot-console (exit 1, 3.2s)
+REFUSING TO RUN — src/lib/server/market-service.ts differs from git HEAD. Commit or stash first.
+
+===== red:house-bot-engine (exit 1, 1.1s)
+REFUSING TO RUN — src/lib/server/market-service.ts differs from git HEAD. Commit or stash first.
+
+===== red:house-bot-money (exit 1, 0.7s)
+REFUSING TO RUN — src/lib/server/market-service.ts differs from git HEAD. Commit or stash first.
+
+===== red:officer-hold (exit 1, 33.4s)
+precondition: gate is GREEN on the untouched tree
+
+   1. caught  🔴 the seal stops calling the notice — every gate stays green and no player is told
+   2. caught  the fan-out messages POSITIONS instead of PLAYERS (a hedged holder is told twice)
+   3. caught  🔴 the notice reaches players who never staked on the market
+   4. NOT CAUGHT   the notice is sent for a market that has no payout deadline to name
+   5. NOT CAUGHT   🔴 the notice is sent about money that has ALREADY been paid
+   6. caught  🔴 the panel tells a player an UNPAID verdict is final
+   7. NOT CAUGHT   law 25 · the notice names an outcome the market does not hold
+   8. caught  the role gate is gone — any signed-in player can freeze a payout
+   9. caught  the hold inherits the player's stake requirement, so it helps exactly nobody
+  10. caught  the settled wall is gone — a hold is accepted on money that has already moved
+  11. caught  the one-per-officer rule is gone — a double-click manufactures two frozen cases
+  12. caught  c5-s4:S4-M65 · the one-per-officer rule widens to `>= 0` — the hold now refuses EVERY officer, including the first
+  13. caught  the officer is timed out by the player's window — exactly when the timer is lagging
+
+red:officer-hold — 10/13 defects caught on their own assertion
+
+
+PROBLEMS:
+  · case 4 (the notice is sent for a market that has no payout deadline to name): gate stayed GREEN with the defect present
+  · case 5 (🔴 the notice is sent about money that has ALREADY been paid): gate stayed GREEN with the defect present
+  · case 7 (law 25 · the notice names an outcome the market does not hold): gate stayed GREEN with the defect present
+
+===== red:one-sided (exit 1, 3.0s)
+REFUSING: test:one-sided is already RED on the untouched tree.
+8.5 the refund note is the card's ONE conditional sentence, withheld once settled, at the money control while open and under the rail once closed; no 'One-sided win' body
+
+===== red:updown-push (exit 1, 5.0s)
+✓ RED  only-wins-push — E-43's exact shape — the win is announced, the LOSS goes silent, so we only reach the player with good news
+  ✓ RED  gate-loses-its-else — the refund gate's else is severed into a dead `if` — the announcement still reads as a statement, but no branch of the gate can ever reach it
+  ✓ RED  results-share-the-bet-tag — outcomes collapse under the bet's key, so a win is silently replaced on the device by a later loss
+  ✓ RED  push-writes-an-inbox-row — pushOnly starts recording notifications, rebuilding the forty-rows-an-hour problem the digest prevents
+
+tree restored · 4/5 defects caught
+
+  ✗ refund-goes-silent — HARNESS ERROR: anchor not found, mutation never applied
+
+===== red:withdraw-email-gate (exit 1, 0.6s)
+REFUSING TO RUN — src/lib/server/email.ts differs from git HEAD.
+This harness restores files to the state it found them in, so starting from an uncommitted edit would BAKE that edit in as the baseline. Commit first.
+
+===== test:house-bot-disclosure (exit 4, 23.1s)
+PASS 5.2.c6b · ⛔ CONTROL · THE SAME TOKEN IN AN UNREGISTERED FILE IS REPORTED — planted into a copy of the home page, `HOUSE_STAKE_ONLY` is a hit, because the register is keyed by FILE and not by SHAPE. ⚠️ The shape exemption this replaces returned ZERO here, across all ~394 player-rendered files, which is the defect this line exists to make impossible to reintroduce silently — {"hits":["words:HOUSE_STAKE","words:HOUSE_STAKE"]}
+PASS 5.2.c6c · ⛔ CONTROL · a SCREAMING_SNAKE house token in a genuinely PRINTED position — JSX text and an `aria-label` a screen reader speaks — is reported. This is the axis `printedTexts` cannot distinguish from an operand (it joins every string literal and JSX text and discards the AST), which is precisely why the exemption must be keyed by file rather than by the shape of the token — {"hits":["words:HOUSE_BOT","words:HOUSE_STAKES"]}
+PASS 5.2.c6d · CONTROL · every readable spelling is still reported in an unregistered file — `house stake`, `House stakes` and the lower-case `house_stakes` — so closing the shape hole did not cost the case-and-separator coverage `§2J · THE JOIN` bought — {"hits":["words:house stake","words:House stakes","words:house_stakes"]}
+  note  5.2.n1 · the composite-id gap (DEFERRED row 79) is STILL OPEN and is reported, not asserted: a planted "pos_house_<24hex>" printed as JSX text yields [] — no words hit (the family has no bare "house") and no ids hit (the family needs an "hb_" prefix)
+
+§8 · the Gaming Board draft is STRUCK (owner ruling 2026-09-20), and the dormant recorder stays dormant
+PASS 8.1 · ⛔ `docs/BOARD-DISCLOSURE-HOUSE-BOTS.md` does not exist and is not tracked — the owner ruled on 2026-09-20 that the Gaming Board needs nothing, and under D20 the statutory figures the Board receives are identical whichever account placed the stake — {"onDisk":false,"tracked":[]}
+PASS 8.2.0 · POPULATION · every tracked file was read and the citations were FOUND: at least 7 files and at least 9 lines name the struck draft. A scan that found none would pass 8.2 over nothing — {"files":7,"lines":9,"where":["docs/COMPLIANCE-DECISIONS.md","docs/HOUSE-BOTS.md","plans/house-bots/01-scenario-register.md","plans/house-bots/04-amendments.md","plans/house-bots/C5-D20-REPLAN.md","plans/house-bots/PLAN.md","plans/house-bots/PROGRESS.md"]}
+PASS 8.2 · ⛔ every one of the 9 citations across 7 files carries the dated strike note `STRUCK 2026-09-20` ON THE CITING LINE — nine documents named this draft as a live authority, and a reader who meets any one of them without the note rebuilds a file the owner struck — []
+PASS 8.2b · POSITIVE CONTROL · the three REAL Board documents are untouched by this strike: each is on disk, each is cited in live documents of record, and NONE of those citations is reported or asked for a strike note. The guard is scoped to the struck draft's own name, not to the words "board disclosure" — [{"name":"BOARD-DISCLOSURE-KYC-AT-WITHDRAWAL","exists":true,"citingFiles":8,"reported":0},{"name":"BOARD-DISCLOSURE-B-E","exists":true,"citingFiles":18,"reported":0},{"name":"BOARD-DISCLOSURE-KYC-FIRST","exists":true,"citingFiles":7,"reported":0}]
+PASS 8.2.c1 · CONTROL · the SAME measure over a copy of the citation list with the note stripped from one real line reports exactly that line; a NEWLY planted citation with no note — the shape a future session actually produces, an instruction to write the file — is reported; and the same planted citation WITH the note is not — {"stripped":["docs/COMPLIANCE-DECISIONS.md:2412"],"planted":["plans/house-bots/NEXT-SESSION.md"],"plantedMarked":0}
+PASS 8.3 · ⛔ `BOARD_DISCLOSURE_SECTIONS` exists nowhere under `src/` — the constant existed only to be checked against the draft's section headings, and the owner ruling that struck the draft struck it with the draft. The pre-ruling Commit 6 extract that told a builder to add it was deleted 2026-09-26 as spent, but git history still carries that instruction, which is what this pin is for — {"src":1446,"found":[]}
+PASS 8.4 · ⛔ the dormant recorder is DECLARED and UNWRITTEN: with comments stripped first, `BOARD_DISCLOSURE_RECORDED` occurs exactly TWICE in `constants.ts` (the event kind and its audit classification) and in NO source file anywhere under `src/` except the console label pinned at 8.4a — so nothing writes such an event and no action can emit one — {"src":1446,"sites":[{"rel":"src/lib/house-bot/constants.ts","n":2},{"rel":"src/lib/server/house-console-read.ts","n":1}],"elsewhere":[]}
+PASS 8.4a · ⛔ the ONE occurrence outside `constants.ts` is the owner console's `CONSOLE_EVENT_WORD` label and nothing else: exactly once in `house-console-read.ts`, of the shape `KIND: "sentence"`, with no `kind:` argument and no `createEvent` naming the recorder anywhere in that file. A label is not a writer — {"label":true,"noWrite":true}
+PASS 8.4b · POSITIVE CONTROL · …and it is STILL DECLARED where production needs it. The migration is APPLIED on production, so the Postgres enum holds the value; `constants.ts` mirrors it, and the table's CHECK is built from that list. A guard that demanded the NAME be absent would push the next session to delete a value the live database has, and the table's CHECK would stop matching the code — {"migration":true,"inMigration":true}
+PASS 8.4.c1 · CONTROL · an event WRITE planted into a copy of the real house seam is reported by 8.4's own measure as a SECOND file, a planted `BOARD_DISCLOSURE_SECTIONS` declaration is reported by 8.3's, and a COMMENT naming the recorder in the same place is reported by NEITHER — documentation standing in for enforcement is the defect this lane just repaired, and three guards here have been fooled by prose about code — {"write":["src/lib/house-bot/constants.ts×2","src/lib/server/house-bot/seam.ts×1","src/lib/server/house-console-read.ts×1"],"comment":["src/lib/house-bot/constants.ts","src/lib/server/house-console-read.ts"],"sections":["src/lib/house-bot/constants.ts"]}
+
+§docs · accepted risks 8–12 and 21 in both registers, risk 21's premise measured live, and the condition still unsatisfied
+PASS §docs.0 · POPULATION · both registers were read and both accepted-risk slices were located and are substantial — the previous pass that 'discovered' risk 21 missing had read the numbered LIST only, and a slice that resolved to nothing would let every assertion below pass over an empty string — {"compliance":16352,"houseBots":19285}
+PASS d.1 · ⛔ accepted risk 21 is in BOTH registers and the two copies are the SAME TEXT (whitespace normalised) — it existed in full in `COMPLIANCE-DECISIONS.md` with its dated ruling-503 correction and nowhere in `HOUSE-BOTS.md` §13, while §13's own preamble claimed the two files carry the same text — {"complianceChars":1616,"houseBotsChars":1616,"equal":true,"firstDivergence":null}
+PASS d.2 · risks 1–20 are present by number in both registers — 8–12 (04 S5) arrived 2026-09-26 where a placeholder stood, risk 21 beside them, and none displaced another — {"compliance":[1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20],"houseBots":[1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20]}
+PASS d.3 · the three do-not-restore lines are in `HOUSE-BOTS.md` §13's own section and are not weakened by risk 21's insertion — []
+PASS d.4 · ⛔ risk 21's PREMISE is true TODAY, read out of the published rulebooks rather than recalled: all three sentences are present in what those pages PRINT — the one-account-per-person rule with its forfeiture clause, the yes/no rulebook's bots prohibition, and the up-down rulebook's prohibited-conduct line. A carve-out for house accounts would turn this red, and a carve-out a player can read is what D19 forbids — {"files":["src/app/legal/rules/_content-yes-no.tsx:22934","src/app/legal/rules/_content-up-down.tsx:23667"],"missing":[]}
+PASS d.4.c1 · CONTROL · the same measure over a COPY of the yes-no rulebook with the bots sentence deleted reports it, and a copy with the sentence reworded ("may be used") reports it too — presence is asserted on the WORDS, so a reversal that keeps the shape is caught — the deleted and the reworded copies are both reported
+PASS d.5 · ⛔ F6 §5 condition 1 is UNCHANGED and still reads "waived by owner ruling D1, not satisfied". The 2026-09-20 ruling is the owner reporting what a regulator told him; it satisfies no condition that asks for WRITTEN approval, and the one sentence a later reader could misread is pinned here word for word — {"found":true,"condition":"condition 1 (written GBT approval) is waived by owner ruling D1, not satisfied"}
+PASS d.5.c1 · CONTROL · a copy of that line with "not satisfied" changed to "satisfied" no longer contains the pinned sentence, while it still contains "condition 1 (written GBT approval)" — so the pin is shown to be on the WHOLE clause and not on a prefix that survives the flip, which is the only version of this control worth having — {"flippedStillHasPrefix":true,"flippedHasClause":false}
+PASS d.6 · the 2026-09-20 ruling is written in the register's OWN verbal-report form — it says Ali reports what he was told, says no document is on file, and never implies a paper from the regulator. A stranger reading it in a year cannot mistake it for a document the Board issued — {"chars":3043,"shape":true,"head":"### Owner ruling D21 (Ali, 2026-09-20) — the Gaming Board needs nothing, and the private d"}
+PASS d.6.c1 · POSITIVE CONTROL · the shape test is the register's own, not one invented for this entry: D19a's existing sentence passes it unchanged, and a fabricated "a signed letter from the Gaming Board is attached" fails it — {"d19a":true,"fabricated":false}
+PASS d.7 · ⛔ accepted risks 8–12 are in BOTH registers as the SAME TEXT, risk by risk (whitespace folded), each ONE line carrying its dated check against the code, in one unbroken list 7 → 13 — owed since build commit 8 (04 S5) and written 2026-09-26; risks 13, 15 and 20 show what two copies written apart become — {"risks":[{"n":8,"compliance":1665,"houseBots":1665,"same":true,"checked":true},{"n":9,"compliance":1838,"houseBots":1838,"same":true,"checked":true},{"n":10,"compliance":1395,"houseBots":1395,"same":true,"checked":true},{"n":11,"compliance":1019,"houseBots":1019,"same":true,"checked":true},{"n":12,"compliance":3531,"houseBots":3531,"same":true,"checked":true}],"contiguous":{"compliance":true,"houseBots":true},"once":["8:1/1","9:1/1","10:1/1","11:1/1","12:1/1"]}
+PASS d.7b · the "⏳ never added" placeholder is gone from BOTH accepted-risk sections — a register that lists risks 8–12 AND says they are missing contradicts itself — {"compliance":false,"houseBots":false}
+PASS d.1.c1 · CONTROL · risk 21 DELETED from a copy of §13 is reported, and so is a copy in which one word of it is changed — d.1 is a text equality, not a presence check, so a paraphrase that drifts from the register is caught too — {"deleted":0,"reworded":true}
+PASS d.2.c1 · CONTROL · one risk number deleted from a copy of either slice is reported by d.2's measure — 9 and 12 from the range 8–12 that arrived on 2026-09-26, as 15 and 20 from 13–20 — {"compliance":[19,19],"houseBots":[19,19]}
+PASS d.7.c1 · CONTROL · each way the two copies can part is reported by d.7's or d.7b's own measure: one word changed in ONE copy of risk 10 ("fails closed" → "fails open"), risk 11's line deleted from a copy of the compliance register, a blank line opened after risk 8 in a copy of §13, and the placeholder written back into a copy — and the registers themselves are never edited — {"reworded":true,"cut":true,"opened":true,"replanted":true}
+
+FAILURES — house-bot-disclosure: 116 passed, 2 failed
+
+fatal: path 'src/app/legal-does-not-exist/page.tsx' does not exist in 'origin/main'
+fatal: path 'src/lib/terms-version.tsx' does not exist in 'origin/main'
+
+!! FLOOR — test:house-bot-disclosure ran 116 assertion(s), fewer than the 118 a green run printed. Cases that stop running are not cases that pass.
+
+===== test:house-bot-holder-lifecycle (exit 4, 2.9s)
+1 · every writer of an A2 fact calls the holder hook
+PASS 1.1 · ⭐ every writer of passwordHash, role, status, phoneE164, twoFactorEnabled, email or closedAt — and of a responsible-gambling row, a wallet hold or a data-rights request — either calls the hook or is a named exemption — -
+PASS 1.2 · the writer population is shrink-only (33 found, ceiling 33) — 33 writers in 18 files
+PASS 1.3 · the hook is wired at a real population, not at one site — 21 hooked
+PASS 1.4 · every exemption used carries a reason — 12 exemptions used
+
+2 · F8 · a script that writes an account fact says the sweep covers it
+FAIL 2.1 · ⭐ every script that writes an account fact is a suite, or carries the comment that says the L2 sweep covers it — scripts/live/dry-fire/world.mts
+FAIL 2.2 · the script population is shrink-only (35 found, ceiling 34) — scripts/agent-application-security.test.mts · scripts/agent-eligibility.test.mts · scripts/campaign-audience.test.mts · scripts/deposit-ceiling.test.mts · scripts/dsar-export-secrets.test.mts · scripts/erasure.test.mts
+
+3 · the wiring itself
+PASS 3.1 · the call sites' entry point exists and binds the production channel
+PASS 3.2 · ruling 129 · the L2 sweep is the lifecycle ticker's LAST chore, one line, after the identity-review target — sla@14050 sweep@14157
+PASS 3.3 · the sweep runs whatever HOUSE_BOT_ENGINE says (R6): the chore reads no engine env
+PASS 3.4 · ruling 46 · the engine starts with its alert channel, and every tick gets the same one
+PASS 3.5 · ⭐ EVERY hook leaves its caller's lock first (C4-SPEC §2's trap) — not only the sites whose callers are known to hold one — -
+
+4 · CONTROL · a planted writer with no hook is caught
+PASS 4.1 · ⭐ a planted status writer with NO hook is found and reported unhooked — [{"file":"src/lib/server/planted.ts","line":3,"text":"await db.user.update(userId, { status: \"SUSPENDED\" });","why":"db.user.update with status","hooked":false}]
+PASS 4.2 · ⭐ CONTROL · the same writer WITH the hook beside it passes — [{"file":"src/lib/server/planted.ts","line":3,"text":"await db.user.update(userId, { status: \"SUSPENDED\" });","why":"db.user.update with status","hooked":true}]
+PASS 4.3 · ⭐ a planted raw-SQL password write in a script with no declaration is caught
+PASS 4.4 · CONTROL · the same script with the declaration passes
+PASS 4.5 · CONTROL · a write of a field A2 does not read is not a writer
+
+FAILURES — house-bot-holder-lifecycle: 14 passed, 2 failed
+
+
+!! FLOOR — test:house-bot-holder-lifecycle ran 14 assertion(s), fewer than the 16 a green run printed. Cases that stop running are not cases that pass.
+

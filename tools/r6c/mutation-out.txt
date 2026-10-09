@@ -1,0 +1,200 @@
+P1 CRASHED on (expected 1.1; failed: none) · restored byte-identical · the bet stake mono but not `.amount` again (it splits "TZS" / "1,000")
+
+'node_modules' is not recognized as an internal or external command,
+operable program or batch file.
+
+P2 CRASHED on (expected 1.2; failed: none) · restored byte-identical · the bet confirm's side | stake row that cannot wrap
+
+'node_modules' is not recognized as an internal or external command,
+operable program or batch file.
+
+P3 CRASHED on (expected 1.3; failed: none) · restored byte-identical · the side word without its 16px (the two values may touch)
+
+'node_modules' is not recognized as an internal or external command,
+operable program or batch file.
+
+P4 CRASHED on (expected 2.1; failed: none) · restored byte-identical · the board card's range line one whole `.amount` again
+
+'node_modules' is not recognized as an internal or external command,
+operable program or batch file.
+
+P5 CRASHED on (expected 2.1′; failed: none) · restored byte-identical · the round page's range line one whole `.amount` again
+
+'node_modules' is not recognized as an internal or external command,
+operable program or batch file.
+
+P6 CRASHED on (expected 2.3; failed: none) · restored byte-identical · a new sentence in an `.amount` (the signed-out range line)
+
+'node_modules' is not recognized as an internal or external command,
+operable program or batch file.
+
+P7 CRASHED on (expected 3.1/3.2; failed: none) · restored byte-identical · the Up & Down board's 300px track floor unguarded again
+
+'node_modules' is not recognized as an internal or external command,
+operable program or batch file.
+
+P8 CRASHED on (expected 3.1; failed: none) · restored byte-identical · the round history's 320px track floor unguarded again
+
+'node_modules' is not recognized as an internal or external command,
+operable program or batch file.
+
+P9 CRASHED on (expected 4.5; failed: none) · restored byte-identical · the journey menu's KYC row offered to every reader again
+
+'node_modules' is not recognized as an internal or external command,
+operable program or batch file.
+
+P10 CRASHED on (expected 4.6; failed: none) · restored byte-identical · the journey menu's KYC row back on the h1's words
+
+'node_modules' is not recognized as an internal or external command,
+operable program or batch file.
+
+P11 CRASHED on (expected 4.3; failed: none) · restored byte-identical · the shell reading the KYC row for every reader (a query on every classic page)
+
+'node_modules' is not recognized as an internal or external command,
+operable program or batch file.
+
+P12 CRASHED on (expected 4.2; failed: none) · restored byte-identical · the hub's reader spelling its own KYC predicate (a verified-only copy)
+
+'node_modules' is not recognized as an internal or external command,
+operable program or batch file.
+
+P13 CRASHED on (expected 4.1; failed: none) · restored byte-identical · the one KYC question forgetting a final refusal
+
+'node_modules' is not recognized as an internal or external command,
+operable program or batch file.
+
+P14 CRASHED on (expected 5.4; failed: none) · restored byte-identical · the hub's invite row back to "never a paid word"
+
+'node_modules' is not recognized as an internal or external command,
+operable program or batch file.
+
+P15 CRASHED on (expected 5.4; failed: none) · restored byte-identical · the journey footer's invite link back to "Alika marafiki" for everybody
+
+'node_modules' is not recognized as an internal or external command,
+operable program or batch file.
+
+P16 CRASHED on (expected 5.4; failed: none) · restored byte-identical · the journey menu's invite row back to the classic literal ("Invite & Earn" for an agent)
+
+'node_modules' is not recognized as an internal or external command,
+operable program or batch file.
+
+P17 CRASHED on (expected 5.2; failed: none) · restored byte-identical · the invite page's tab without the agent's name
+
+'node_modules' is not recognized as an internal or external command,
+operable program or batch file.
+
+P18 CRASHED on (expected 5.1; failed: none) · restored byte-identical · the one rule forgetting the paid page
+
+'node_modules' is not recognized as an internal or external command,
+operable program or batch file.
+
+P19 CRASHED on (expected 5.5; failed: none) · restored byte-identical · /profile's invite row back to "Alika marafiki" for a paid player
+
+'node_modules' is not recognized as an internal or external command,
+operable program or batch file.
+
+P20 CRASHED on (expected 6.1/6.6; failed: none) · restored byte-identical · the dial's result door back to "Tazama nafasi" in the journey
+
+'node_modules' is not recognized as an internal or external command,
+operable program or batch file.
+
+P21 CRASHED on (expected 6.3/6.6; failed: none) · restored byte-identical · the performance ghost's eyebrow back to "NAFASI" for a journey reader
+
+'node_modules' is not recognized as an internal or external command,
+operable program or batch file.
+
+P22 CRASHED on (expected 6.4/6.6; failed: none) · restored byte-identical · /help's card back to "Madau yangu" in the journey
+
+'node_modules' is not recognized as an internal or external command,
+operable program or batch file.
+
+P23 CRASHED on (expected 7.1/7.2; failed: none) · restored byte-identical · the KYC page's back link back to "‹ WASIFU" in the journey
+
+'node_modules' is not recognized as an internal or external command,
+operable program or batch file.
+
+P24 CRASHED on (expected 8.1; failed: none) · restored byte-identical · the sign-in break panel amber again
+
+'node_modules' is not recognized as an internal or external command,
+operable program or batch file.
+
+P25 CRASHED on (expected 9.1; failed: none) · restored byte-identical · the Needle drawer's ✕ not risen to the capitals
+
+'node_modules' is not recognized as an internal or external command,
+operable program or batch file.
+
+P26 CRASHED on (expected 9.2; failed: none) · restored byte-identical · the chat panel's ✕ centred on the header again
+
+'node_modules' is not recognized as an internal or external command,
+operable program or batch file.
+
+P27 CRASHED on (expected 10.1; failed: none) · restored byte-identical · a titled dialog's title off the corner ✕ (the share dialog)
+
+'node_modules' is not recognized as an internal or external command,
+operable program or batch file.
+
+P28 CRASHED on (expected 10.1; failed: none) · restored byte-identical · the crest-first result dialog losing the corner ✕ it keeps
+
+'node_modules' is not recognized as an internal or external command,
+operable program or batch file.
+
+P29 CRASHED on (expected 11.1; failed: none) · restored byte-identical · the gold census back to `--warning-fg` alone
+
+'node_modules' is not recognized as an internal or external command,
+operable program or batch file.
+
+P30 CRASHED on (expected 12.1; failed: none) · restored byte-identical · the journey bell's title cut to one plain line again
+
+'node_modules' is not recognized as an internal or external command,
+operable program or batch file.
+
+P31 CRASHED on (expected 13.1; failed: none) · restored byte-identical · the bet confirm's STAKE label keeping its trailing tracking
+
+'node_modules' is not recognized as an internal or external command,
+operable program or batch file.
+
+P32 CRASHED on (expected 13.2; failed: none) · restored byte-identical · the 0.08em label taking back 0.14em
+
+'node_modules' is not recognized as an internal or external command,
+operable program or batch file.
+
+P33 CRASHED on (expected 14.1; failed: none) · restored byte-identical · the board card's signal pill back at the default size
+
+'node_modules' is not recognized as an internal or external command,
+operable program or batch file.
+
+P34 CRASHED on (expected 14.3; failed: none) · restored byte-identical · the classic held question clamped at two lines again
+
+'node_modules' is not recognized as an internal or external command,
+operable program or batch file.
+
+P35 CRASHED on (expected 14.6/14.7; failed: none) · restored byte-identical · the win seal's market name clamped at two lines again
+
+'node_modules' is not recognized as an internal or external command,
+operable program or batch file.
+
+P36 CRASHED on (expected 14.4; failed: none) · restored byte-identical · the tickets ghost's first pill 24px again
+
+'node_modules' is not recognized as an internal or external command,
+operable program or batch file.
+
+P37 CRASHED on (expected 16.1/16.2; failed: none) · restored byte-identical · the deposit return's pair 10px apart again (`gap-2.5`)
+
+'node_modules' is not recognized as an internal or external command,
+operable program or batch file.
+
+P38 CRASHED on (expected 16.1; failed: none) · restored byte-identical · the market page's two sides 10px apart again
+
+'node_modules' is not recognized as an internal or external command,
+operable program or batch file.
+
+P39 CRASHED on (expected 15.1; failed: none) · restored byte-identical · a dictionary word changed
+
+'node_modules' is not recognized as an internal or external command,
+operable program or batch file.
+
+
+MUTATION PROOF r6c — 0/39 caught on their named check, 39 missed, 0 not applied; 39/39 files restored byte-identical (sha-256)
+(node:26784) [DEP0190] DeprecationWarning: Passing args to a child process with shell option true can lead to security vulnerabilities, as the arguments are not escaped, only concatenated.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+exit=1

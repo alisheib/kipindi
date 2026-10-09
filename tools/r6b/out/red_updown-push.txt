@@ -1,0 +1,7 @@
+✓ RED  only-wins-push — E-43's exact shape — the win is announced, the LOSS goes silent, so we only reach the player with good news
+  ✓ RED  refund-goes-silent — the voided-round refund stops stating what happened, so a player whose stake came back is told nothing useful
+  ✓ RED  gate-loses-its-else — the refund gate's else is severed into a dead `if` — the announcement still reads as a statement, but no branch of the gate can ever reach it
+  ✓ RED  results-share-the-bet-tag — outcomes collapse under the bet's key, so a win is silently replaced on the device by a later loss
+  ✓ RED  push-writes-an-inbox-row — pushOnly starts recording notifications, rebuilding the forty-rows-an-hour problem the digest prevents
+
+tree restored · 5/5 defects caught

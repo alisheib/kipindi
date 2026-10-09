@@ -1,0 +1,30 @@
+PASS email template shows the market title 
+PASS email template links to the resolver queue 
+PASS email template has a Resolve-now CTA 
+PASS real due market → human fallback fired status=closed-human
+PASS admin got 'Market awaiting resolution' 
+PASS compliance got it too 
+PASS player did NOT get it 
+PASS notification deep-links to resolver queue 
+PASS admin WITH an email was emailed the resolution nudge mailed=["mkt-admin@test.tz"]
+PASS player was NOT emailed 
+PASS resolutionNotifiedAt stamped 
+PASS market closed to bets (LIVE → CLOSED) status=CLOSED
+PASS no outcome sealed without the ceremony 
+PASS second fire → no re-notify status=skipped
+PASS exactly one alert per market count=1
+PASS no second email dispatched 
+PASS future market not alerted status=early-noop
+PASS future market left LIVE 
+PASS future market trigger not consumed 
+PASS no extra officer alert raised 
+[audit] ADMIN market.resolved.demo_auto system_demo_auto Market#mkt_demo_1
+[audit] ADMIN market.resolved system_demo_auto Market#mkt_demo_1
+[audit] WALLET market.settled system_demo_auto Market#mkt_demo_1
+PASS demo market auto-resolved resolved=1
+PASS demo market now RESOLVED 
+PASS real market only CLOSED, never auto-RESOLVED (manual) 
+PASS demo did not alert officers 
+
+ALL MARKET-RESOLUTION SCENARIOS PASS — 24 passed, 0 failed
+[email] sendEmailToUser skipped — no email for user usr_mkt_comp1… (user.email=null, phone=+25571…)

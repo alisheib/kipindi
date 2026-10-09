@@ -1,0 +1,24 @@
+[admin-action-gate] §1 every exported admin server action gates before it reads or writes
+  ✓ §1 ratchet · 46 "use server" files under src/app/admin, 204 exported functions scanned
+  ✓ §1 every exported admin action calls a gate before its first data access
+
+[admin-action-gate] §4 an action that is admin-gated today may not quietly stop being
+  ✓ §4 ratchet · 68 "use server" files under src/app, 7 gated actions discovered outside the admin tree
+  ✓ §4 every action pinned as admin-gated still has its gate
+  ✓ §4 no admin-gated action outside the admin tree is unpinned (add it to PINNED_GATED deliberately)
+
+[admin-action-gate] §2 the scanner understands both export shapes
+  ✓ §2 `export async function` is parsed
+  ✓ §2 `export const … = async (…) =>` is parsed
+
+[admin-action-gate] §3 CONTROL · the scanner catches what it exists to catch
+  ✓ §3 an action with NO gate is caught
+  ✓ §3 an action whose gate runs AFTER the read is caught
+  ✓ §3 a correctly gated action is NOT flagged
+  ✓ §3 an action that touches no data is NOT flagged
+  ✓ §3 CONTROL · vb7 · an action that opens with softCheckStaff is gated — it is NOT flagged
+  ✓ §3 CONTROL · a DESTRUCTURED parameter does not hide the body (bodyBrace skipped the param list)
+  ✓ §3 CONTROL · an annotated RETURN TYPE does not hide the body
+  ✓ §3 CONTROL · a bare `role === "ADMIN"` AFTER the read is not mistaken for a gate
+
+ALL PASS — admin-action-gate: 15 passed, 0 failed

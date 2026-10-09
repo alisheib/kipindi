@@ -1,0 +1,141 @@
+test:timer-date	app/positions/performance/page.tsx, app/profile/responsible-gambling/page.tsx, app/wallet/wallet-client.tsx, components/markets/position-card.tsx
+test:payments	app/wallet/withdraw/page.tsx
+test:client-graph-safe	components/layout/notifications-panel.tsx
+test:read-tiers	components/layout/app-shell.tsx
+test:cashback-hidden	app/wallet/wallet-client.tsx
+test:sell-grace-truth	app/globals.css, components/markets/operation-result-modal.tsx, components/markets/position-card.tsx, components/markets/sell-confirm-modal.tsx
+test:sell-price-guard	components/layout/app-shell.tsx
+test:enter-where-pressed	components/layout/app-shell.tsx, components/markets/bet-confirm-modal.tsx, components/markets/conviction-dial.tsx, components/markets/operation-result-modal.tsx, components/markets/sell-confirm-modal.tsx, components/markets/win-celebration.tsx
+test:implicit-submit	app/profile/responsible-gambling/page.tsx, app/wallet/withdraw/page.tsx
+test:rg-doors	app/auth/login/page.tsx
+test:withdrawn-features	app/profile/invite/page.tsx, app/wallet/wallet-client.tsx
+test:dal-parity	components/markets/position-card.tsx
+test:marketing-consent	lib/kyc-refusal.ts
+test:marketing-optout	components/layout/app-shell.tsx
+test:contrast	app/globals.css, app/positions/performance/page.tsx, components/markets/market-card.tsx, components/updown/updown-stake-controls.tsx, styles/chat/chat-styles.css
+test:tokens	app/globals.css
+test:css-vars-defined	app/globals.css
+test:ui-consistency	app/globals.css, components/layout/avatar-menu.tsx, components/layout/needle-drawer.tsx, components/layout/notifications-panel.tsx, components/markets/market-card.tsx
+test:type-scale	app/globals.css, app/profile/responsible-gambling/page.tsx, components/markets/conviction-dial.tsx, components/updown/price-hero.tsx, components/updown/updown-stake-controls.tsx
+test:needle-host	app/globals.css, styles/chat/chat-styles.css
+test:integrity	app/globals.css
+test:erasure	app/profile/page.tsx, components/layout/app-shell.tsx
+test:rg-policy	components/layout/public-footer.tsx
+test:updown-quickbet	app/updown/page.tsx
+test:privacy-notice	components/layout/app-shell.tsx
+test:betting-ink	app/auth/reset-password/page.tsx, app/auth/verify-email/page.tsx, app/globals.css, app/profile/page.tsx, app/profile/responsible-gambling/page.tsx, app/wallet/wallet-client.tsx, components/layout/notifications-panel.tsx, components/markets/conviction-dial.tsx, components/markets/market-card.tsx, components/markets/operation-result-modal.tsx, components/markets/sell-confirm-modal.tsx, components/updown/round-countdown.tsx, components/updown/updown-stake-controls.tsx
+test:kyc-gate-state-table	lib/kyc-refusal.ts
+test:labels	components/markets/conviction-dial.tsx, components/markets/market-card.tsx, components/markets/side-picker.tsx
+test:bonus-relock	app/wallet/wallet-client.tsx
+test:referral	app/auth/login/page.tsx
+test:contacts-boundary	components/layout/app-shell.tsx
+test:responsive	app/globals.css, components/layout/avatar-menu.tsx
+test:card-return-order	app/wallet/deposit/return/page.tsx
+test:wallet-receipts	app/profile/page.tsx, app/wallet/deposit/return/page.tsx, app/wallet/wallet-client.tsx
+test:money-minimums	app/wallet/withdraw/page.tsx
+test:needle-rest	styles/chat/chat-styles.css
+test:house-bot-surfaces	app/help/page.tsx
+test:kyc-at-withdrawal	app/wallet/deposit/return/page.tsx, app/wallet/wallet-client.tsx, app/wallet/withdraw/page.tsx
+test:wallet-freeze	app/wallet/wallet-client.tsx, app/wallet/withdraw/page.tsx, components/layout/app-shell.tsx
+test:auth-email-integrity	app/auth/verify-email/page.tsx, app/profile/kyc/page.tsx
+test:outcome	components/markets/market-card.tsx
+test:history	components/markets/market-card.tsx
+test:bridge	app/globals.css
+test:stacking	app/globals.css, components/journey/journey-top-bar.tsx, components/layout/app-shell.tsx, components/layout/avatar-menu.tsx, components/layout/needle-drawer.tsx, components/layout/notifications-panel.tsx, components/markets/operation-result-modal.tsx, components/markets/win-celebration.tsx
+test:tap-target	app/globals.css
+test:design-frozen	app/globals.css, app/positions/performance/page.tsx, app/profile/invite/page.tsx, app/profile/page.tsx, app/updown/[roundId]/page.tsx, app/wallet/wallet-client.tsx, components/layout/avatar-menu.tsx, components/layout/needle-drawer.tsx, components/layout/notifications-panel.tsx, components/markets/bet-confirm-modal.tsx, components/markets/conviction-dial.tsx, components/markets/operation-result-modal.tsx, components/markets/sell-confirm-modal.tsx, components/updown/price-hero.tsx, components/updown/round-countdown.tsx, components/updown/round-stake-panel.tsx, styles/chat/chat-styles.css
+test:design-one-door	app/globals.css
+test:money-format	app/globals.css
+test:spacing-scale	app/globals.css, components/layout/needle-drawer.tsx
+test:dial-stake	components/markets/conviction-dial.tsx
+test:card-share	app/globals.css, components/markets/market-card.tsx
+test:chat-focus-ring	app/globals.css, styles/chat/chat-styles.css
+test:share-link-readable	app/globals.css
+test:msisdn-prefill	app/wallet/withdraw/page.tsx
+test:updown-filter-sheet	app/globals.css, app/updown/page.tsx
+test:market-columns	components/markets/position-card.tsx
+test:measure	app/globals.css, app/help/page.tsx, app/updown/history/page.tsx, app/updown/page.tsx, app/updown/updown-ghost.tsx, app/wallet/wallet-client.tsx, components/layout/app-shell.tsx
+test:id-documents	app/profile/kyc/page.tsx
+test:kyc-honesty	app/profile/kyc/page.tsx
+test:kyc-reject-reason	app/profile/kyc/page.tsx
+test:kyc-approved-copy	app/profile/kyc/page.tsx
+test:tz-msisdn	app/wallet/withdraw/page.tsx
+test:cert-f1	app/wallet/withdraw/page.tsx
+test:cert-d1	app/profile/kyc/page.tsx, lib/kyc-refusal.ts
+test:updown-window	app/updown/[roundId]/page.tsx
+test:updown-result-clock	app/updown/[roundId]/page.tsx, components/updown/round-countdown.tsx
+test:rule-honesty	app/updown/[roundId]/page.tsx
+test:updown-digest	app/updown/history/page.tsx
+test:updown-source-class	app/updown/[roundId]/page.tsx, app/updown/page.tsx
+test:simple-journey-flag	components/journey/journey-top-bar.tsx, components/layout/app-shell.tsx, components/layout/public-footer.tsx
+test:journey-funnel	components/layout/app-shell.tsx, components/markets/conviction-dial.tsx, components/markets/side-picker.tsx, components/updown/round-stake-panel.tsx, components/updown/updown-stake-controls.tsx
+test:journey-shell	app/globals.css, app/help/page.tsx, app/notifications/page.tsx, app/profile/invite/agent-dashboard.tsx, app/profile/invite/page.tsx, app/profile/kyc/page.tsx, app/profile/page.tsx, app/profile/responsible-gambling/page.tsx, app/updown/page.tsx, components/journey/account/hub-rows.ts, components/journey/journey-top-bar.tsx, components/layout/app-shell.tsx, components/layout/avatar-menu.tsx, components/layout/notifications-panel.tsx, components/layout/public-footer.tsx, components/markets/win-celebration.tsx
+test:offline-neutral	app/globals.css, components/journey/journey-top-bar.tsx, components/layout/app-shell.tsx
+test:journey-account	app/profile/responsible-gambling/page.tsx, components/journey/account/hub-rows.ts, lib/server/hub-viewer.ts, lib/journey/invite-name.ts
+test:journey-tickets	app/globals.css, app/updown/history/page.tsx, components/journey/tickets/tickets-ghost.tsx, components/markets/position-card.tsx, components/markets/sell-confirm-modal.tsx, components/markets/side-picker.tsx
+test:visual-pass-r3c	app/globals.css, app/notifications/page.tsx, app/profile/invite/page.tsx, app/profile/responsible-gambling/page.tsx, components/layout/app-shell.tsx, components/layout/needle-drawer.tsx, components/layout/notifications-panel.tsx
+test:visual-pass-r4d	app/globals.css, app/updown/[roundId]/page.tsx, components/updown/price-hero.tsx, components/updown/round-stake-panel.tsx, components/updown/updown-stake-controls.tsx
+test:visual-pass-r4e	app/globals.css, app/profile/page.tsx, app/profile/responsible-gambling/page.tsx, components/layout/needle-drawer.tsx
+test:visual-pass-r4k	app/globals.css, app/updown/[roundId]/page.tsx, components/markets/side-picker.tsx
+test:visual-pass-r4h	app/globals.css, app/profile/page.tsx, app/updown/history/page.tsx, app/wallet/deposit/return/page.tsx, components/journey/journey-top-bar.tsx, components/layout/app-shell.tsx, components/layout/avatar-menu.tsx, components/layout/needle-drawer.tsx, components/markets/market-card.tsx, lib/server/hub-viewer.ts
+test:visual-pass-r5a	app/globals.css, app/profile/kyc/page.tsx, app/profile/page.tsx, app/updown/page.tsx, components/chat/ChatPanel.tsx, components/journey/account/hub-rows.ts, components/layout/avatar-menu.tsx, components/layout/needle-drawer.tsx, components/layout/notifications-panel.tsx, components/layout/public-footer.tsx, components/markets/bet-confirm-modal.tsx, components/markets/market-card.tsx, components/markets/sell-confirm-modal.tsx, components/updown/round-stake-panel.tsx
+test:visual-pass-r5b	app/globals.css, app/notifications/page.tsx, app/positions/performance/page.tsx, app/updown/history/page.tsx, app/wallet/wallet-client.tsx, components/journey/account/hub-rows.ts, components/journey/journey-top-bar.tsx, components/layout/needle-drawer.tsx, components/markets/bet-confirm-modal.tsx, styles/chat/chat-styles.css
+test:visual-pass-r5c	app/auth/login/page.tsx, app/globals.css, app/positions/performance/page.tsx, app/profile/invite/agent-dashboard.tsx, app/profile/invite/page.tsx, app/profile/kyc/page.tsx, app/profile/page.tsx, app/profile/responsible-gambling/page.tsx, app/updown/[roundId]/page.tsx, app/updown/history/page.tsx, app/wallet/wallet-client.tsx, app/wallet/withdraw/page.tsx, components/journey/journey-top-bar.tsx, components/layout/app-shell.tsx, components/layout/avatar-menu.tsx, components/layout/notifications-panel.tsx, components/markets/bet-confirm-modal.tsx, components/markets/conviction-dial.tsx, components/markets/operation-result-modal.tsx, components/markets/position-card.tsx, components/markets/sell-confirm-modal.tsx, components/markets/win-celebration.tsx, components/updown/price-hero.tsx, components/updown/round-stake-panel.tsx
+test:visual-pass-r5e	app/globals.css, app/notifications/page.tsx, app/positions/performance/page.tsx, app/updown/[roundId]/page.tsx, components/layout/notifications-panel.tsx, components/markets/bet-confirm-modal.tsx, components/markets/conviction-dial.tsx, components/markets/market-card.tsx, components/markets/position-card.tsx, components/markets/side-picker.tsx
+test:visual-pass-r5i	app/auth/reset-password/page.tsx, app/auth/verify-email/page.tsx, app/globals.css, app/positions/performance/page.tsx, app/profile/page.tsx, app/profile/responsible-gambling/page.tsx, app/updown/[roundId]/page.tsx, app/updown/history/page.tsx, app/wallet/wallet-client.tsx, components/layout/avatar-menu.tsx, components/layout/notifications-panel.tsx, components/markets/bet-confirm-modal.tsx, components/markets/conviction-dial.tsx, components/markets/market-card.tsx, components/markets/operation-result-modal.tsx, components/markets/position-card.tsx, components/markets/sell-confirm-modal.tsx, components/markets/side-picker.tsx, components/updown/price-hero.tsx, components/updown/round-stake-panel.tsx, components/updown/updown-stake-controls.tsx
+test:visual-pass-r5g	app/auth/login/page.tsx, app/globals.css, app/help/page.tsx, app/notifications/page.tsx, app/profile/invite/agent-dashboard.tsx, app/profile/invite/page.tsx, app/profile/kyc/page.tsx, app/profile/page.tsx, app/profile/responsible-gambling/page.tsx, app/updown/history/page.tsx, app/updown/page.tsx, app/wallet/deposit/return/page.tsx, app/wallet/wallet-client.tsx, app/wallet/withdraw/page.tsx, components/journey/account/hub-rows.ts, components/journey/journey-top-bar.tsx, components/layout/app-shell.tsx, components/layout/avatar-menu.tsx, components/layout/notifications-panel.tsx, components/layout/public-footer.tsx, components/updown/round-stake-panel.tsx, components/updown/updown-stake-controls.tsx, lib/journey/invite-name.ts
+test:visual-pass-r6c	app/auth/login/page.tsx, app/globals.css, app/help/page.tsx, app/notifications/page.tsx, app/positions/performance/loading.tsx, app/positions/performance/page.tsx, app/profile/invite/agent-dashboard.tsx, app/profile/invite/page.tsx, app/profile/kyc/page.tsx, app/profile/page.tsx, app/profile/responsible-gambling/page.tsx, app/updown/[roundId]/page.tsx, app/updown/history/page.tsx, app/updown/page.tsx, app/updown/updown-ghost.tsx, app/wallet/deposit/return/page.tsx, app/wallet/wallet-client.tsx, app/wallet/withdraw/page.tsx, components/chat/ChatPanel.tsx, components/journey/account/hub-rows.ts, components/journey/journey-top-bar.tsx, components/journey/tickets/tickets-ghost.tsx, components/layout/app-shell.tsx, components/layout/avatar-menu.tsx, components/layout/needle-drawer.tsx, components/layout/notifications-panel.tsx, components/layout/public-footer.tsx, components/markets/bet-confirm-modal.tsx, components/markets/conviction-dial.tsx, components/markets/market-card.tsx, components/markets/operation-result-modal.tsx, components/markets/position-card.tsx, components/markets/sell-confirm-modal.tsx, components/markets/win-celebration.tsx, components/updown/price-hero.tsx, components/updown/round-countdown.tsx, components/updown/round-stake-panel.tsx, components/updown/updown-stake-controls.tsx, lib/kyc-refusal.ts, lib/server/hub-viewer.ts, styles/chat/chat-styles.css, app/positions/performance/performance-ghost.tsx, lib/journey/invite-name.ts
+test:wallet-reach	app/globals.css, components/journey/journey-top-bar.tsx
+test:landing-mine	app/globals.css
+test:visual-pass-r4i	app/auth/login/page.tsx, app/auth/reset-password/page.tsx, app/globals.css, app/profile/responsible-gambling/page.tsx, components/journey/journey-top-bar.tsx, components/layout/app-shell.tsx, components/markets/bet-confirm-modal.tsx, components/markets/conviction-dial.tsx, components/markets/operation-result-modal.tsx, components/updown/round-stake-panel.tsx, lib/server/hub-viewer.ts
+test:grid-paging	app/globals.css
+test:chart-one-home	app/updown/[roundId]/page.tsx, components/layout/needle-drawer.tsx, components/markets/conviction-dial.tsx, components/updown/price-hero.tsx
+test:chip-contract	app/globals.css
+test:proof-privacy	app/updown/[roundId]/page.tsx
+test:updown-void-copy	app/updown/[roundId]/page.tsx
+test:updown-chart	components/updown/price-hero.tsx
+test:position-permalink	app/globals.css, app/updown/[roundId]/page.tsx, app/updown/history/page.tsx, app/wallet/wallet-client.tsx
+test:refresh-cadence	app/updown/[roundId]/page.tsx, app/updown/page.tsx
+test:feedback-law	components/layout/notifications-panel.tsx, components/markets/bet-confirm-modal.tsx, components/markets/conviction-dial.tsx, components/markets/operation-result-modal.tsx, components/markets/sell-confirm-modal.tsx, components/markets/win-celebration.tsx, components/updown/updown-stake-controls.tsx
+test:presence-class	app/globals.css, components/markets/win-celebration.tsx
+test:shell-boundary	components/journey/account/hub-rows.ts, components/layout/app-shell.tsx, components/layout/avatar-menu.tsx
+test:layout-staleness	app/auth/login/page.tsx, components/journey/journey-top-bar.tsx, components/layout/app-shell.tsx
+test:install-invite	components/layout/app-shell.tsx
+test:popup-fit	components/chat/ChatPanel.tsx, components/layout/avatar-menu.tsx, components/layout/needle-drawer.tsx, components/layout/notifications-panel.tsx, components/markets/bet-confirm-modal.tsx, components/markets/conviction-dial.tsx, components/markets/market-card.tsx, components/markets/operation-result-modal.tsx, components/markets/sell-confirm-modal.tsx, components/markets/win-celebration.tsx
+test:updown-result-announce	app/updown/[roundId]/page.tsx, app/updown/page.tsx
+test:updown-pricing	app/updown/[roundId]/page.tsx, app/updown/page.tsx, components/updown/round-stake-panel.tsx, components/updown/updown-stake-controls.tsx
+test:updown-positions-visible	app/updown/[roundId]/page.tsx, app/updown/history/page.tsx
+test:motion-ladder	app/globals.css, components/markets/operation-result-modal.tsx, components/markets/win-celebration.tsx, components/updown/round-countdown.tsx, styles/chat/chat-styles.css
+test:m1-light	app/globals.css, app/wallet/wallet-client.tsx
+test:reduce-motion	app/globals.css, components/markets/operation-result-modal.tsx
+test:keyframes	app/globals.css, components/markets/operation-result-modal.tsx
+test:dead-css	app/globals.css, styles/chat/chat-styles.css
+test:market-result-announce	components/markets/conviction-dial.tsx
+test:gold-is-money	app/globals.css, components/markets/win-celebration.tsx
+test:board-discovery	components/markets/market-card.tsx
+test:discovery-contract	components/markets/market-card.tsx
+test:hero-copy	app/globals.css, app/wallet/withdraw/page.tsx
+test:eyebrow-roles	app/globals.css
+test:cn-collision	components/layout/avatar-menu.tsx
+test:admin-charts	app/globals.css
+test:ticker-honesty	app/globals.css, components/layout/app-shell.tsx
+test:updown-match	app/updown/page.tsx, components/updown/price-hero.tsx, components/updown/updown-stake-controls.tsx
+test:one-sided	app/globals.css, app/updown/[roundId]/page.tsx, app/updown/page.tsx, components/markets/market-card.tsx, components/markets/side-picker.tsx
+test:featured-card	app/globals.css, components/markets/market-card.tsx
+test:filter-language	app/globals.css, app/profile/kyc/page.tsx
+test:density-contract	app/globals.css, components/markets/market-card.tsx
+test:failure-reasons	components/markets/conviction-dial.tsx
+test:updown-handover	app/updown/[roundId]/page.tsx, app/updown/page.tsx, components/markets/win-celebration.tsx, components/updown/round-countdown.tsx
+test:notifications-page	app/notifications/page.tsx, components/layout/notifications-panel.tsx
+test:visual-pass-r4c	app/globals.css, app/notifications/page.tsx, components/journey/tickets/tickets-ghost.tsx
+test:visual-pass-r4j	app/globals.css, app/updown/updown-ghost.tsx, components/journey/journey-top-bar.tsx, components/journey/tickets/tickets-ghost.tsx, components/layout/app-shell.tsx, components/layout/notifications-panel.tsx, components/markets/market-card.tsx
+test:visual-pass-r5f	app/positions/performance/page.tsx
+test:visual-pass-r5d	app/updown/[roundId]/page.tsx, app/updown/page.tsx, app/updown/updown-ghost.tsx, components/journey/tickets/tickets-ghost.tsx, components/layout/app-shell.tsx
+test:visual-pass-r5h	app/globals.css, app/profile/page.tsx, app/updown/[roundId]/page.tsx, app/updown/history/page.tsx, app/updown/page.tsx, app/updown/updown-ghost.tsx, app/wallet/wallet-client.tsx, components/journey/tickets/tickets-ghost.tsx, components/layout/app-shell.tsx, components/markets/market-card.tsx, components/markets/win-celebration.tsx
+test:reset-identifier	app/auth/reset-password/page.tsx
+test:support-contact	app/help/page.tsx, components/chat/ChatPanel.tsx, components/layout/public-footer.tsx
+test:social-links	components/layout/public-footer.tsx
+test:social-panel	components/layout/app-shell.tsx
+test:wallet-empty-escape	app/wallet/wallet-client.tsx
+test:updown-clock-guard	app/updown/[roundId]/page.tsx, app/updown/page.tsx
+test:updown-history-pnl	app/updown/history/page.tsx

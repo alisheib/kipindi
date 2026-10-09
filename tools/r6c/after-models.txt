@@ -1,0 +1,51 @@
+===== c12-after.mts
+320 (box 198px) · sw NDIO: under from 1,000 · sw HAPANA: under from 1,000 · en YES: under from 1,000 · en NO: under from 1,000
+360 (box 238px) · sw NDIO: under from 1,000,000 · sw HAPANA: under from 1,000 · en YES: under from 10,000 · en NO: under from 10,000
+390 (box 268px) · sw NDIO: beside · sw HAPANA: under from 100,000 · en YES: under from 1,000,000 · en NO: under from 1,000,000
+412 (box 290px) · sw NDIO: beside · sw HAPANA: under from 1,000,000 · en YES: beside · en NO: beside
+1024 (box 334px) · sw NDIO: beside · sw HAPANA: beside · en YES: beside · en NO: beside
+===== c7-after.mts
+[sw] sentence 163.8px + range 150px → 320: the range on a line of its own (314 vs 256) · 360: the range on a line of its own (314 vs 296) · 390: one line (314 vs 326) · 412: one line (314 vs 348)
+[en] sentence 132.3px + range 150px → 320: the range on a line of its own (282 vs 256) · 360: one line (282 vs 296) · 390: one line (282 vs 326) · 412: one line (282 vs 348)
+[zh] sentence 68.5px + range 150px → 320: one line (219 vs 256) · 360: one line (219 vs 296) · 390: one line (219 vs 326) · 412: one line (219 vs 348)
+===== rev/c2-closes.mjs (reviewer's, after)
+
+needle drawer: header row "flex items-start gap-2 mb-4"; title "font-display text-[15px] font-bold text-text leading-tight" -> caps centre 9px down the row; the ✕ box "undefined" centres 20px down: 11px below the caps
+needle drawer: panel "left-0 right-0 bottom-0 rounded-t-modal px-4 pt-4" + "sm:p-5" -> the ✕ box stands 20px (phone) / 24px (>=640) inside the panel's right edge (convention: 16); box 40px rounded-lg (CloseX: 48px h-8 w-8, rounded-md)
+file:///C:/Users/asheib/AppData/Local/Temp/claude/C--Users-asheib/0e745525-51fe-4451-ace7-c9987576fc15/scratchpad/r6c/rev/c2-closes.mjs:32
+console.log(`chat panel: .cm-header {${hdr.slice(0, 100)}…}\n            .cm-close {${close.slice(0, 70)}…} — a 32px box centred on the 36px mark and the two-line title block`);
+                                                                                            ^
+
+TypeError: Cannot read properties of undefined (reading 'slice')
+    at file:///C:/Users/asheib/AppData/Local/Temp/claude/C--Users-asheib/0e745525-51fe-4451-ace7-c9987576fc15/scratchpad/r6c/rev/c2-closes.mjs:32:93
+    at ModuleJob.run (node:internal/modules/esm/module_job:439:25)
+    at async node:internal/modules/esm/loader:643:26
+    at async asyncRunEntryPointWithESMLoader (node:internal/modules/run_main:101:5)
+
+Node.js v24.19.0
+===== rev/c3-warning-gold.mjs (reviewer's, after: its regex copies are the OLD census)
+registered   src/components/rg/limit-usage.tsx  29:var(--warning)
+registered   src/components/ui/callout.tsx  52:var(--warning-bg) 53:var(--warning-border) 54:var(--warning-500) 55:var(--warning-500) 56:var(--warning-500) 105:border-warning-border 105:bg-warning-bg 105:bg-warning-bg 142:border-warning-border 142:bg-warning-bg 142:bg-warning-bg
+registered   src/components/ui/dot.tsx  36:var(--warning-500)
+registered   src/components/ui/maintenance-badge.tsx  40:var(--warning-500)
+registered   src/components/ui/notice-bar.tsx  34:border-warning-border 34:bg-warning-bg
+registered   src/components/ui/password-input.tsx  144:bg-warning
+registered   src/lib/score-band.ts  54:var(--warning-500)
+warning-family paints the census does not count: 61
+===== rev/c1-invite.mts (reviewer's, after: its hub rows are RUN; its quoted line numbers are the old file's)
+
+[zh]
+  APPROVED AGENT  hub="代理面板"  menu(invitePaid)="邀请赚钱"  footer="邀请朋友"  <title>="邀请赚钱"  h1="代理面板"
+  PAID PLAYER     hub="邀请朋友"  menu(invitePaid)="邀请赚钱"  footer="邀请朋友"  <title>="邀请赚钱"  h1="邀请赚钱"
+  UNPAID PLAYER   hub="邀请朋友"  menu="邀请朋友"  footer="邀请朋友"  <title>="邀请朋友"  h1="邀请朋友"
+C:\Users\asheib\AppData\Local\Temp\claude\C--Users-asheib\0e745525-51fe-4451-ace7-c9987576fc15\scratchpad\r6c\rev\c1-invite.mts:36
+console.log(`\nmenu literal (avatar-menu.tsx:411) en/sw/zh = ${lit.slice(1).join(" | ")}; equals profile.inviteEarn: ${lit[1] === dict.en.profile.inviteEarn && lit[2] === dict.sw.profile.inviteEarn && lit[3] === dict.zh.profile.inviteEarn}`);
+                                                                   ^
+
+TypeError: Cannot read properties of null (reading 'slice')
+    at <anonymous> (C:\Users\asheib\AppData\Local\Temp\claude\C--Users-asheib\0e745525-51fe-4451-ace7-c9987576fc15\scratchpad\r6c\rev\c1-invite.mts:36:68)
+    at ModuleJob.run (node:internal/modules/esm/module_job:439:25)
+    at async node:internal/modules/esm/loader:643:26
+    at async asyncRunEntryPointWithESMLoader (node:internal/modules/run_main:101:5)
+
+Node.js v24.19.0

@@ -167,15 +167,18 @@ if (!only || only === "leaderboard") {
     const stats = [stat(t.leaderboard.topTier, t.leaderboard.tierSilver.split(" ")[0]), stat(t.leaderboard.bestRoi, "54.1%"), stat(t.leaderboard.predictorsCount, "41")];
     let rl = 1, x = 0; for (const s of stats) { if (x > 0 && x + 32 + s > room - 42) { rl++; x = s; } else x = x ? x + 32 + s : s; }
     const ribbon = 2 + 32 + rl * 17 + (rl - 1) * 12;
-    // Podium: the tallest column — the leader's crest (62), its handle row (stacked below 640: 22.5 + 4 + 22), the rate,
-    // the streak line (22.5) and the resolved line.
+    // Podium: the tallest column (bottoms aligned) — a column is the crown's room (22 + 4), the crest in its 3px ring
+    // (56 or 48, + 6), 12, the handle row (stacked below 640: 22.5 + 4 + 22), 2 + the rate's 19.5, the streak line where
+    // the player is on one (4 + 22.5) and the resolved line (4 + 15).
     const handleRow = vw >= 640 ? 22.5 : 48.5;
-    const leader = 22 + 4 + 62 + 12 + handleRow + 2 + 19.5 + 4 + 22.5 + 4 + 15;
-    const podium = 2 + 32 + 20 + leader;
+    const column = (crest: number, streak: boolean) => 22 + 4 + crest + 6 + 12 + handleRow + 2 + 19.5 + (streak ? 4 + 22.5 : 0) + 4 + 15;
+    // The measured board (tiles 177, 178, 203): the leader without a streak, its two neighbours on one each.
+    const podium = 2 + 32 + 20 + Math.max(column(56, false), column(48, true));
+    const podiumLeaderStreak = 2 + 32 + 20 + column(56, true), podiumNone = 2 + 32 + 20 + Math.max(column(56, false), column(48, false));
     const rowH = (vw >= 768 ? 56 : 52) + 1;
     const firstRow = head + 32 + ribbon + 32 + 44 + 32 + 44 + 32 + podium + 32 + 1 + 35.25;
     const oldFirst = head + 32 + 193 + 32 + 1;
-    say(`${l}@${vw}: ribbon ${r2(ribbon)} (${rl} line${rl > 1 ? "s" : ""}), podium ${r2(podium)}, row ${rowH} — the first row at +${r2(firstRow)} vs the old ghost's +${r2(oldFirst)} (${r2(firstRow - oldFirst)}); old rows 57 against ${rowH}`);
+    say(`${l}@${vw}: ribbon ${r2(ribbon)} (${rl} line${rl > 1 ? "s" : ""}), podium ${r2(podium)} (a leader on a streak ${r2(podiumLeaderStreak)}, no streak at all ${r2(podiumNone)}), row ${rowH} — the first row at +${r2(firstRow)} vs the old ghost's +${r2(oldFirst)} (${r2(firstRow - oldFirst)}); old rows 57 against ${rowH}`);
   }
 }
 
@@ -236,11 +239,11 @@ if (!only || only === "results") {
       const px = vw >= 1024 ? 22 : 18, lh = px * 1.25;
       const box = Math.min(inner, 70 * width("0", SORA(px, 600)));
       const counts = titles[l].map((s) => n(s, SORA(px, 600), box)).sort((a, b) => a - b);
-      const p80 = counts[Math.floor(counts.length * 0.8)];
+      const p80 = counts[Math.floor(counts.length * 0.75)]; // the tallest of three: the N/(N+1) quantile (p75)
       const chips = width(dict[l].market.resolvedOutcome + " · " + dict[l].common.no, SANS(10, 700)) + 14 + 2 + 90 + 12 + 12 + width(dict[l].results.notableResult.toUpperCase(), MONO(10, 700, 1.6)) + 19;
       const chipRow = chips <= inner ? 20 : 46;
       const card = (k: number) => 2 + pad + chipRow + 16 + lh * k + 20 + 52.5 + 16 + 16.5;
-      cells.push(`@${vw} lines ${counts[0]}–${counts[counts.length - 1]} (p80 ${p80}) carousel ${r2(56 + card(p80) + 50)} vs the ghost's 458 (${r2(458 - (56 + card(p80) + 50))})`);
+      cells.push(`@${vw} lines ${counts[0]}–${counts[counts.length - 1]} (p75 ${p80}) carousel ${r2(56 + card(p80) + 50)} vs the ghost's 458 (${r2(458 - (56 + card(p80) + 50))})`);
     }
     say(`${l}: ${cells.join(" · ")}`);
   }

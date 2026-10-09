@@ -1,0 +1,72 @@
+Type-scale guard (DESIGN_AUTHORITY §T · §M4)
+
+§0 — self-test: the scanners can see, and can fail
+  PASS 0a size scanner reads plain, cn() and template-literal class lists
+  PASS 0b floor rule blesses an UPPERCASE tracked microlabel below 12.5px
+  PASS 0b floor rule condemns reading copy at the same size
+  PASS 0c money scanner matches a text-only money element
+  PASS 0c §1 can produce a failure (font-display over an amount)
+  PASS 0c §2 can produce a failure (tracking over an amount, via cn())
+  PASS 0c money scanner attributes the call to the INNERMOST element
+  PASS 0d the money formatters §1/§2 search for still exist by name
+  PASS 0f sub-floor class scanner matches text-caption prose
+  PASS 0f …and the SAME class is exempt when it is a blessed microlabel
+  PASS 0f …and it reads variants and cn() the way scanSizes does
+  PASS 0f ⛔ CONTROL · text-body-sm (13px) is NOT counted — it is the prescribed fix
+  PASS 0f …and `.eyebrow` blesses the same size — the role marker, not the dressing
+  PASS 0f ⛔ CONTROL · without a blessing the SAME size is still counted
+  PASS 0i §3's prose population is wired to the §T3 role read, and counted exactly
+  PASS 0i ⛔ CONTROL · every prose declaration is still found in its file, at its count
+  PASS 0i ⛔ CONTROL · the role read and §T4's floor agree about every prose site
+  PASS 0g the sub-floor keys still measure what §3 assumes (micro 10 · caption 11 · label 12)
+  PASS 0g ⛔ CONTROL · body-sm is above the floor and label is below it, or the advice is wrong
+  PASS 0h a className holding a `>=` comparison still yields its tokens (not a vacuous pass)
+  PASS 0h …and §2 therefore FAILS it, which is the whole point
+  PASS 0h ⛔ CONTROL · an `onClick={() => …}` element still yields its tokens
+  PASS 0h ⛔ CONTROL · a plain element is unaffected and is NOT reported as tracked
+  PASS 0e scanner reach: 1442 source files (floor 700)
+  PASS 0e scanner reach: 103200 class-list groups (floor 20000)
+  PASS 0e scanner reach: 188 isolable money elements (floor 60)
+
+§1/§2 — money type (§T5 · §M4)
+  PASS §1/§2 no money element sets a non-mono family or letter-spacing on itself
+         ✓ 2 recorded money violation(s) fixed — delete from RATCHET_MONEY:
+             non-mono-family::src/app/profile/responsible-gambling/page.tsx
+             tracked-money::src/app/auth/register/page.tsx
+         (188 isolable money elements scanned, 6 recorded violations)
+  PASS §2b every money TABLE CELL carries the money treatment (mono + tabular figures)
+
+§3 — the 12.5px reading floor (§T4 · §T3)
+  PASS §3 reading copy below the 12.5px floor — 742 (ratchet 745)
+         ✓ 3 fewer than the ratchet. Lock it in: set RATCHET_SUBFLOOR = 742 in scripts/type-scale.test.mts.
+         441 written as text-[Npx], 301 as text-micro/caption/label
+         heaviest files: src/app/admin/ai-usage/page.tsx (32), src/app/admin/ai-polls/poll-actions.tsx (29), src/app/admin/ai-polls/page.tsx (22), src/app/admin/players/[id]/page.tsx (22), src/app/admin/proposals/admin-proposals-client.tsx (22)
+           e.g. src/app/admin/affiliate/affiliate-admin-client.tsx  "mb-1.5 text-[12px] font-semibold text-text"
+           e.g. src/app/admin/affiliate/affiliate-admin-client.tsx  "text-[11px]"
+           e.g. src/app/admin/2fa/setup/page.tsx  "text-caption text-text-secondary space-y-1"
+           e.g. src/app/admin/2fa/setup/setup-client.tsx  "text-caption text-text-tertiary"
+
+§4 — hand-typed sizes (§T1)
+  PASS §4 arbitrary text-[Npx] — 861 (ratchet 899)
+         ✓ 38 fewer than the ratchet. Lock it in: set RATCHET_ARBITRARY_SIZE = 861 in scripts/type-scale.test.mts.
+  PASS §4 inline literal style={{ fontSize: N }} — 32 (at the ratchet)
+
+§5/§6 — the closed sets (§T1)
+  PASS §5 no NEW hand-typed size joins the 29 that exist
+  PASS §6 no NEW hand-typed tracking value joins the 17 that exist
+  PASS §6 arbitrary tracking-[…] — 232 (ratchet 238)
+         ✓ 6 fewer than the ratchet. Lock it in: set RATCHET_ARBITRARY_TRACKING = 232 in scripts/type-scale.test.mts.
+         ✓ retired sizes (delete from KNOWN_SIZES): 8px
+  PASS §7 both ladders still parse (12 --type-* · 12 fontSize)
+  PASS §7 the colliding-name set is exactly the five §T7 freezes — a SIXTH is a failure
+  PASS §7 no frozen collision has DRIFTED to a new pair of values
+  PASS §7 CONTROL · `text-micro` is still 10px — the rung §T7 puts the 10px eyebrow on
+
+§8 — the <Stat>'s hint and its Chinese label (§T4 · §T3)
+  PASS §8 every <Stat> rung sets its hint on the reading floor (text-body-sm) — a hint is a sentence wherever words are passed
+  PASS §8 a Chinese <Stat> label leaves the sub-micro tier for --type-micro (11px) and drops its tracking, on the label's own hook
+  PASS §8 ⭐ CONTROL — the hint reader sees a sub-floor hint where one is written
+
+  Ladder adoption: 2300 semantic vs 861 arbitrary (72.8% on the scale). DONE = every ratchet at 0.
+
+ALL PASS — 1442 source files, 188 money elements.
