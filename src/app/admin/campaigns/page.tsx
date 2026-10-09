@@ -78,7 +78,7 @@ export default async function AdminCampaignsPage(props: { searchParams: Promise<
 const COLS = 7;
 
 async function AdminCampaignsContent({ searchParams }: { searchParams: Promise<CampaignsParams> }) {
-  // ⛔ D19 · ruling 259 (`test:house-bot-c5` 0.434) · this page imports from an audit reader whose ROWS are handed on
+  // ⛔ D19 · ruling 259 (`red:house-bot-c5` 0.434) · this page imports from an audit reader whose ROWS are handed on
   // (`campaign-live.ts`: the live page's "Paused by <officer>"), so it decides its audience on the viewer's STORED role before it
   // reads anything — whatever the section's layout painted. `null` is the answer `/admin/kyc/refused` gives.
   const session = await currentSession();
