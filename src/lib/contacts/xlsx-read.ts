@@ -95,6 +95,7 @@
 import type { ParsedContactsFile, ParsedRow } from "./parsed-file";
 import {
   ODS_MIMETYPE,
+  XLSX_MAX_DEPTH,
   XLSX_MAX_ENTRIES,
   XLSX_MAX_FORMAT_CODE,
   XLSX_MAX_GRID_CELLS,
@@ -168,9 +169,9 @@ export const XLSX_BROWSER_MAX_TEXT = 8 * 1024 * 1024;
  *  `<workbook a0="" a1="" …>` of a million attributes is `unreadable` after 256, never an O(attributes²) scan or a
  *  re-parsed unfinished tag that grows to the token limit. */
 export const XLSX_BROWSER_MAX_ATTRS = 256;
-/** ⭐ MAJOR 7 · the deepest element nesting — OOXML nests about eight deep — so `<a><a><a>…` cannot grow the scanner's
- *  stack without bound; past it the workbook is `unreadable`. */
-export const XLSX_BROWSER_MAX_DEPTH = 256;
+/** ⭐ MAJOR 7 / NIT 1 · the deepest element nesting — the ONE shared cap (`XLSX_MAX_DEPTH`, 64), so both readers refuse
+ *  the same depth bomb; OOXML nests about eight deep, so `<a><a><a>…` cannot grow the scanner's stack without bound. */
+export const XLSX_BROWSER_MAX_DEPTH = XLSX_MAX_DEPTH;
 /** A central directory larger than this is no workbook's: refused before it is read. */
 const DIRECTORY_MAX_BYTES = 64 * 1024 * 1024;
 /** How often (ms) the bar is told; the last report always arrives. */

@@ -64,6 +64,7 @@ import { readContactsFile, type ReadOutcome } from "../../src/lib/contacts/impor
 import {
   PHONE_FORMAT_REMEDY,
   XLSX_MAX_BYTES,
+  XLSX_MAX_DEPTH,
   XLSX_MAX_FORMAT_CODE,
   XLSX_MAX_GRID_CELLS,
   XLSX_MAX_MERGED_CELLS,
@@ -786,7 +787,7 @@ export const L = {
   B16: "B16 · ⛔ THE COPY — nothing at the import's entrance says an Excel file over 700 KB is refused or must be saved as CSV (its limits line names no Excel size; import-copy.ts names no XLSX_MAX_BYTES), while too_large keeps its sentence — the size, CSV and the remedy — for a direct post over the cap and an old browser",
   B17: "B17 · ⭐ CHUNKS OF ANY SIZE — a real browser hands a stream back in pieces of any size: every crafted workbook read through an inflater that re-cuts its output into 1–13-byte pieces (tags, entities, a CRLF and multi-byte characters cut anywhere) gives exactly the file whole chunks give, and the text-laden one its literal rows",
   B18: "B18 · ⛔ THE MEMORY GUARDS — one cell's text of XLSX_BROWSER_MAX_TEXT characters (8 MiB, 256 times Excel's own cell) is read whole and one character more is too_big_inflated, never held; and the cells held across the visible sheets before one is chosen stop at XLSX_BROWSER_MAX_STORED_CELLS — twice the grid cap, as shipped — at the cap read, past it too_big_inflated",
-  B20: "B20 · ⛔ MAJOR 5 / 7 · THE XML GUARDS — a worksheet element carrying more than XLSX_BROWSER_MAX_ATTRS attributes is unreadable (the duplicate check is a Set, not an O(attributes²) scan, and an unfinished tag is not re-parsed past the cap), and element nesting past XLSX_BROWSER_MAX_DEPTH is unreadable (the scanner's stack cannot grow without bound)",
+  B20: "B20 · ⛔ MAJOR 5 / 7 · THE XML GUARDS — a worksheet element carrying more than XLSX_BROWSER_MAX_ATTRS attributes is unreadable (the duplicate check is a Set, not an O(attributes²) scan, and an unfinished tag is not re-parsed past the cap), and element nesting past the ONE shared cap (XLSX_MAX_DEPTH = 64, NIT 1 — the server refuses the same) is unreadable (the scanner's stack cannot grow without bound), while the same workbook nested exactly at the cap reads",
   B21: "B21 · ⛔ MAJOR 6 · THE FORMAT GUARD — a number-format code longer than Excel's 255 characters is unreadable, so the date-format test (cached by numFmtId across every sheet) never scans an 8 MiB format over a million styles",
   B22: "B22 · ⛔ MINOR 12 · THE MERGE INDEX IS SUB-LINEAR — a dense merged sheet (merges and rows at the cap, a wide data block) is read within a time box by a binary search over the column-disjoint active merges; a plant restoring a linear per-cell scan blows the box, proving the lookup is O(log active), never O(active)",
   B19: "B19 · ⛔ C3c-merge-guard (MAJOR 4) · THE MERGE CAPS — charged the SAME way as the server, across the visible sheets, through the one shared rule: a flood of more than XLSX_MAX_MERGES ranges (merges), one vast-area merge (merge_area) and one tall merge of more than XLSX_MAX_ROWS rows (merge_rows) are each too_big_inflated as the browser reads them, so a forged file never freezes the officer's tab (the overlap check and the per-row merge index are bounded by the cap, a cell's covering merge is a binary search over column-disjoint ranges, and mergedRows builds at most the row cap); a workbook of ordinary merges reads unchanged (its covered cells blank, B6)",
@@ -893,11 +894,15 @@ async function run({ impl, ok, log }: Ctx): Promise<void> {
   // the server's pre-pass that is malformed XML the browser's parser refuses differently, reader-specific by design).
   // ⭐ C3c-merge-guard (MAJOR 4) · the WELL-FORMED merge bombs ARE here: both readers charge them through the ONE shared
   // rule (`xlsxMergeArea`) and refuse too_big_inflated identically — the proof the two guards cannot drift.
+  // ⭐ MAJOR 9a (re-review) · `benignFormatText` (a formatCode=" in CELL TEXT) reads the same through both — the server's
+  // scoped guard does not false-refuse what the browser reads. NIT 1 · `depthAtCap` (read) / `depthOverCap` (refused)
+  // prove the ONE shared depth cap refuses the same nesting in both readers.
   const sectionCorpus: Corpus[] = ([
     "cells", "a13", "lines", "sheets", "coverFirst", "coverDigits", "noPhoneSheet", "staffThenTitled", "twoPhoneSheets",
     "headerOnlyFirst", "allHidden", "empty", "forty", "wide", "rowPast", "xlsb", "odsLate", "strict", "docx", "zip64Maxed",
     "zip64Locator", "encrypted", "method12", "duplicate", "nameMismatch", "unresolvedName", "folderWithData", "trailing",
     "sizeMismatch", "broken", "rowsOver", "mergeBomb", "mergeNaN", "mergeDecoy", "mergeAreaOver", "mergeRowsOver", "mergeCountOver",
+    "benignFormatText", "depthAtCap", "depthOverCap",
   ] as const).map((name) => ({ name: `xlsx-section-${name}`, bytes: fromBase64(fx[name]) }));
   sectionCorpus.push({ name: "xlsx-section-exact", bytes: fromBase64(fx.exact.field) });
   const b2 = await differential(impl, sectionCorpus);
@@ -1140,9 +1145,15 @@ async function run({ impl, ok, log }: Ctx): Promise<void> {
     r.kind === "refused" && r.refusal === "unreadable" && r.detail === detail && r.message === xlsxRefusalSentence("unreadable");
   const manyAttrs = await read(blob(ATTRS_BOMB), { fileName: "attrs.xlsx" });
   const deep = await read(blob(DEPTH_BOMB), { fileName: "deep.xlsx" });
+  // NIT 1 · the SAME fixtures the server reads (X36): nesting exactly at the ONE shared cap reads, one past it is refused.
+  const nestAt = await read(blob(fromBase64(fx.depthAtCap)), { fileName: "deep.xlsx" });
+  const nestPast = await read(blob(fromBase64(fx.depthOverCap)), { fileName: "deep.xlsx" });
   ok(L.B20, impl.rules.maxAttrs === XLSX_BROWSER_MAX_ATTRS && impl.rules.maxDepth === XLSX_BROWSER_MAX_DEPTH
-    && refusedUnreadable(manyAttrs, "attributes") && refusedUnreadable(deep, "depth"),
-    `${XLSX_BROWSER_MAX_ATTRS + 1} attributes → ${brief(manyAttrs)} · ${XLSX_BROWSER_MAX_DEPTH + 1} deep → ${brief(deep)}`);
+    && XLSX_BROWSER_MAX_DEPTH === XLSX_MAX_DEPTH && XLSX_MAX_DEPTH === 64
+    && refusedUnreadable(manyAttrs, "attributes") && refusedUnreadable(deep, "depth")
+    && nestAt.kind === "read" && nestAt.file.rows.length >= 1 && refusedUnreadable(nestPast, "depth"),
+    `${XLSX_BROWSER_MAX_ATTRS + 1} attributes → ${brief(manyAttrs)} · ${XLSX_BROWSER_MAX_DEPTH + 1} deep → ${brief(deep)}`
+      + ` · at the shared cap ${XLSX_MAX_DEPTH} → ${brief(nestAt)} · ${XLSX_MAX_DEPTH + 1} → ${brief(nestPast)}`);
 
   // ── B21 · MAJOR 6 · the format guard: a format code past Excel's 255 characters ──
   const longFormat = await read(blob(FORMAT_BOMB), { fileName: "fmt.xlsx" });

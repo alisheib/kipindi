@@ -96,6 +96,7 @@ import {
   ODS_MIMETYPE,
   XLSX_MAX_BYTES,
   XLSX_MAX_ENTRIES,
+  XLSX_MAX_DEPTH,
   XLSX_MAX_FORMAT_CODE,
   XLSX_MAX_GRID_CELLS,
   XLSX_MAX_INFLATED_BYTES,
@@ -244,13 +245,14 @@ const WORST_MERGE = { cells: XLSX_MAX_MERGED_CELLS + 1, rows: XLSX_MAX_ROWS + 1 
 /** How far past `<mergeCell` to look for the tag's closing `>`: a real merge tag is tens of bytes, never a kilobyte.
  *  Bounding the scan keeps a part of `"<mergeCell ".repeat(N)` (no `>` at all) from being O(content) per element. */
 const MERGE_TAG_WINDOW = 1024;
-/** ⭐ MAJOR 9b · the deepest element nesting the pre-pass admits. saxes keeps a tag object per open element, so 48 MiB
- *  of `<a>` ≈ 16M objects ≈ 2 GB; a real worksheet nests about eight deep, so 64 is generous and cheap to enforce. */
-const SERVER_MAX_DEPTH = 64;
-const FORMATCODE_OPEN = Buffer.from('formatCode="', "latin1");
+/** ⭐ MAJOR 9b · the deepest element nesting the pre-pass admits — the ONE shared cap (NIT 1). saxes keeps a tag object
+ *  per open element, so 48 MiB of `<a>` ≈ 16M objects ≈ 2 GB; a real worksheet nests about eight deep. */
+const NUMFMT_OPEN = Buffer.from("<numFmt", "latin1");
 const COMMENT_CLOSE = Buffer.from("-->", "latin1");
 const CDATA_CLOSE = Buffer.from("]]>", "latin1");
 const PI_CLOSE = Buffer.from("?>", "latin1");
+/** exceljs reads the workbook's number formats from this part; the format-code guard is scoped to it (MAJOR 9a). */
+const STYLES_XML = "xl/styles.xml";
 
 /**
  * ⚠️ PROVISIONAL, like the caps in xlsx-limits.ts (the suite asserts it is at least twice the densest realistic
@@ -492,18 +494,45 @@ function scanMergeCells(content: Buffer): { readonly count: number; readonly cel
   return { count, cells, rows };
 }
 
+/** The index just past a tag's unquoted `>`, from `from` (just past the element name), or -1 if the tag never closes.
+ *  Quoted stretches are skipped, so a `>` inside an attribute value (an Excel conditional format like `[>100]`) is not
+ *  mistaken for the tag's end. */
+function tagEnd(content: Buffer, from: number): number {
+  let i = from;
+  const len = content.length;
+  while (i < len) {
+    const c = content[i];
+    if (c === 0x22 || c === 0x27) {
+      const close = content.indexOf(c, i + 1);
+      if (close === -1) return -1;
+      i = close + 1;
+    } else if (c === GT) return i + 1;
+    else i++;
+  }
+  return -1;
+}
+
 /**
- * ⭐ MAJOR 9a · does any `formatCode="…"` run past Excel's `max` characters? exceljs runs its date-format test over the
- * whole code for every styled cell, so a forged 8 MiB format over a million styles is an O(format × cells) hang. A
- * code with no closing quote, or one longer than `max`, is forged — refuse. Bounded: the close is sought no further
- * than `max + 1` past the opener, and the scan resumes after it.
+ * ⭐ MAJOR 9a (re-review) · a forged number format, SCOPED to styles.xml's `<numFmt>` tags and TOKENISED like the merge
+ * tokeniser (`tagAttr`): the `formatCode` attribute is read whether it is double- OR single-quoted and whatever the
+ * whitespace around `=`, to its matching quote (so a `>` inside the format, and the whole 8 MiB of a forged value, are
+ * read correctly). A value longer than `max`, or a `<numFmt>` whose tag never closes, is forged — exceljs would run its
+ * date-format test over it for every styled cell (O(format × cells)). Scoped so a `formatCode="…"` in CELL TEXT or a
+ * shared string is NOT mistaken for a format (the browser reads such a workbook; so must the server — no divergence).
  */
-function hasLongFormatCode(content: Buffer, max: number): boolean {
-  for (let at = content.indexOf(FORMATCODE_OPEN); at !== -1; at = content.indexOf(FORMATCODE_OPEN, at + FORMATCODE_OPEN.length)) {
-    const start = at + FORMATCODE_OPEN.length;
-    const close = content.indexOf(0x22, start);
-    if (close === -1 || close - start > max) return true;
-    at = close;
+function stylesHasForgedFormat(content: Buffer, max: number): boolean {
+  for (let at = content.indexOf(NUMFMT_OPEN); at !== -1;) {
+    const after = content[at + NUMFMT_OPEN.length];
+    // `<numFmt` must be the element itself (a boundary byte follows), not the `<numFmts>` container.
+    if (!(after === 0x20 || after === 0x09 || after === 0x0a || after === 0x0d || after === 0x2f || after === GT)) {
+      at = content.indexOf(NUMFMT_OPEN, at + NUMFMT_OPEN.length);
+      continue;
+    }
+    const end = tagEnd(content, at + NUMFMT_OPEN.length);
+    if (end === -1) return true; // the tag never closes → forged
+    const code = tagAttr(content, at, end, "formatCode");
+    if (code !== null && code.length > max) return true; // a value past Excel's limit → forged
+    at = content.indexOf(NUMFMT_OPEN, end);
   }
   return false;
 }
@@ -624,15 +653,23 @@ function sheetsFanOut(workbookXml: Buffer | null, relsXml: Buffer | null): boole
  * (XLSX_MAX_MERGES; the covered cells against XLSX_MAX_MERGED_CELLS, the covered rows against XLSX_MAX_ROWS). Each merge
  * ref is read through the ONE shared rule `xlsxMergeArea` — a 1 KiB-windowed, attribute-tokenised scan that charges a
  * malformed, decoy or out-of-grid ref the worst area and stops the moment a cap is passed — see xlsx-limits.ts.
- * ⭐ MAJOR 9 · THE SAME DoS FAMILY, caught here too: a numFmt `formatCode` past Excel's 255 characters (exceljs's date
- * test would scan it per styled cell), element nesting past `SERVER_MAX_DEPTH` (saxes keeps a tag object per level), and
+ * ⭐ MAJOR 9 · THE SAME DoS FAMILY, caught here too: a numFmt `formatCode` past Excel's 255 characters (scoped to
+ * styles.xml, quote- and whitespace-tolerant, so exceljs's per-cell date test cannot be reached and a `formatCode="…"`
+ * in cell text is not a false positive), element nesting past `XLSX_MAX_DEPTH` (saxes keeps a tag object per level), and
  * two `<sheet>`s resolving to ONE worksheet part (exceljs would reconcile it once per sheet) are each `unreadable`
  * before the load.
  */
 /** The merge scan is a seam (default `scanMergeCells`) so the suite can plant the pre-fix quadratic/NaN/decoy versions. */
 export type MergeScan = (content: Buffer) => { readonly count: number; readonly cells: number; readonly rows: number };
+/** The format-code guard is a seam (default `stylesHasForgedFormat`) so the suite can plant the pre-fix byte scan. */
+export type FormatForged = (stylesContent: Buffer, max: number) => boolean;
 
-export function inspectXlsxZip(bytes: Uint8Array, measure: MeasureEntry = measureZipEntry, scanMerges: MergeScan = scanMergeCells): XlsxInspection {
+export function inspectXlsxZip(
+  bytes: Uint8Array,
+  measure: MeasureEntry = measureZipEntry,
+  scanMerges: MergeScan = scanMergeCells,
+  formatForged: FormatForged = stylesHasForgedFormat,
+): XlsxInspection {
   const walked = walkZip(bytes);
   if (!walked.ok) return { ok: false, refusal: walked.refusal, kind: walked.kind, detail: walked.detail, entries: 0, inflatedBytes: 0 };
   const entries = walked.entries;
@@ -656,6 +693,7 @@ export function inspectXlsxZip(bytes: Uint8Array, measure: MeasureEntry = measur
   let strict = false;
   let workbookXml: Buffer | null = null;
   let relsXml: Buffer | null = null;
+  let stylesXml: Buffer | null = null;
   for (const e of entries) {
     const measured = measure(e, bytes.subarray(e.dataStart, e.dataStart + e.compressedSize), XLSX_MAX_INFLATED_BYTES - used);
     if (measured.kind === "over") return refused("too_big_inflated", "bomb", null, used);
@@ -671,20 +709,22 @@ export function inspectXlsxZip(bytes: Uint8Array, measure: MeasureEntry = measur
     mergeCount = Math.min(mergeCount + merges.count, XLSX_MAX_MERGES + 1);
     mergedCells = Math.min(mergedCells + merges.cells, XLSX_MAX_MERGED_CELLS + 1);
     mergedRows = Math.min(mergedRows + merges.rows, XLSX_MAX_ROWS + 1);
-    // ⭐ MAJOR 9a · a format code past Excel's 255 characters would make exceljs's date test an O(format × cells) hang;
-    // ⭐ MAJOR 9b · nesting deeper than saxes should ever stack is a tag-object bomb. Both refuse before the load.
-    if (hasLongFormatCode(content, XLSX_MAX_FORMAT_CODE)) return refused("unreadable", "format", null, used);
-    if (maxElementDepth(content) > SERVER_MAX_DEPTH) return refused("unreadable", "depth", null, used);
+    // ⭐ MAJOR 9b · nesting deeper than saxes should ever stack is a tag-object bomb — refused before the load, per part.
+    if (maxElementDepth(content) > XLSX_MAX_DEPTH) return refused("unreadable", "depth", null, used);
     if (loweredName(e) === MIMETYPE_ENTRY && content.subarray(0, ODS_MIMETYPE.length).toString("latin1") === ODS_MIMETYPE) ods = true;
     if (partName(e) === WORKBOOK_XML) {
       if (content.indexOf(STRICT_NAMESPACE) !== -1) strict = true;
       workbookXml = content;
     }
     if (partName(e) === WORKBOOK_RELS) relsXml = content;
+    if (partName(e) === STYLES_XML) stylesXml = content;
   }
   if (ods) return refused("wrong_format", "ods", "ods", used);
   if (!hasWorkbook) return refused("wrong_format", "not_a_workbook", "other", used);
   if (strict) return refused("wrong_format", "strict", "strict", used);
+  // ⭐ MAJOR 9a · a forged number format (over-long, scoped to styles.xml's <numFmt>) would make exceljs's date test an
+  // O(format × cells) hang — refused before the load; a `formatCode="…"` anywhere else (cell text) is not a format.
+  if (stylesXml !== null && formatForged(stylesXml, XLSX_MAX_FORMAT_CODE)) return refused("unreadable", "format", null, used);
   if (rowElements > XLSX_MAX_ROWS) return refused("too_many_rows", "rows", null, used);
   if (cellElements > XLSX_MAX_CELL_ELEMENTS) return refused("too_big_inflated", "cells", null, used);
   // ⭐ C3c-merge-guard · too many merge elements (O(merges²) on load), or merge rectangles covering more cells or more

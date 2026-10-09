@@ -142,6 +142,11 @@ export const XLSX_MAX_MERGED_CELLS = XLSX_MAX_ROWS * 5;
  *  styles. 255 is the documented Excel maximum; a real custom format is a few dozen characters. */
 export const XLSX_MAX_FORMAT_CODE = 255;
 
+/** ⭐ The deepest element nesting EITHER reader admits (NIT 1 · ONE cap for both: the server's saxes keeps a tag object
+ *  per open element, the browser's scanner a stack entry). A real worksheet nests about eight deep, so 64 is generous;
+ *  past it the workbook is `unreadable` (detail `depth`) in both readers, so `<a><a><a>…` cannot grow memory without end. */
+export const XLSX_MAX_DEPTH = 64;
+
 /** Excel's own grid: columns A..XFD (16,384) by 1..1,048,576 rows — the most any cell address or merge corner can name. */
 export const EXCEL_MAX_COLUMN = 16384;
 export const EXCEL_MAX_ROW = 1048576;
