@@ -2729,15 +2729,19 @@ function grouped(n: number): string {
 type Maker = () => Built | Promise<Built>;
 
 /**
- * ⭐ C3c · THE WORKBOOKS IN MEMORY — every ZIP the small makers build (the four .xlsx files and the .ods), exactly as
- * `writeRealWorldFiles` builds them, each with its truth checked as it is there — and never written: the xlsx-browser
- * section of `test:contacts-import` reads each through BOTH workbook readers (the differential), and a section makes no
- * file-changing call.
+ * ⭐ C3c · THE WORKBOOKS IN MEMORY — every ZIP the small makers build (`SMALL_MAKERS`, in its order: the four .xlsx files
+ * and the .ods today), exactly as `writeRealWorldFiles` builds them, each with its truth checked as it is there — and
+ * never written: the xlsx-browser section of `test:contacts-import` reads each through BOTH workbook readers (the
+ * differential), and a section makes no file-changing call. ⭐ A ZIP IS KNOWN BY ITS FIRST FOUR BYTES (the local-header
+ * signature every .xlsx and .ods opens with), never by its name: `renamed-csv.xlsx` is CSV text and stays out, and a
+ * workbook maker added to `SMALL_MAKERS` joins the differential by itself.
  */
 export async function realWorldWorkbooks(): Promise<ReadonlyArray<{ readonly name: string; readonly data: Buffer; readonly truth: FileTruth }>> {
   const out: Array<{ readonly name: string; readonly data: Buffer; readonly truth: FileTruth }> = [];
-  for (const make of [makeExcelBasic, makeExcelNumberCells, makeExcelMultiSheet, makeOds, makeProdXlsx] as const) {
+  const isZip = (data: Buffer): boolean => data.length >= 4 && data[0] === 0x50 && data[1] === 0x4b && data[2] === 0x03 && data[3] === 0x04;
+  for (const make of SMALL_MAKERS) {
     const built = await make();
+    if (!isZip(built.data)) continue;
     const truth = settle(built);
     const problems = checkFileTruth(truth);
     if (problems.length > 0) throw new Error(`real-world-files: ${built.name} — its truth disagrees with the code it describes: ${problems.slice(0, 5).join(" | ")}`);

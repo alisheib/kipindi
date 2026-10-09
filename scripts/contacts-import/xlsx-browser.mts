@@ -7,11 +7,15 @@
  * the SERVER's reader (`readXlsxContacts`, exceljs, called directly — every corpus file is within its 700 KB cap) and by
  * the BROWSER's reader on the very same bytes, and the two must give the identical `ParsedContactsFile` — headers, every
  * row's line and cells, the unreadable list, the notes — or the identical refusal (the same refusal, wrong format and
- * sentence). The corpus: the generator's own workbooks (`realWorldWorkbooks()`, in memory), the xlsx section's own
- * fixtures (exceljs-written and hostile zips, shared through `xlsxSectionFixtures()`), and workbooks CRAFTED here as raw
- * XML parts in a zip this file assembles, written the way each real writer writes them (Excel 365, a Mac 1904 workbook,
- * Apache POI SXSSF, a phone's contacts-to-Excel app, LibreOffice, Google Sheets) and the zip mechanics real archivers
- * use (stored entries, data descriptors, a comment, absolute targets, macOS local extra fields).
+ * sentence) and the same D8 word (`noMobileSheet`). The corpus: EVERY workbook the generator builds
+ * (`realWorldWorkbooks()`: every zip among its small files, in memory — a workbook added to the generator joins by
+ * itself), the xlsx section's own fixtures (exceljs-written and hostile zips, and C3b-fix's D6/D7 workbooks — a staff
+ * sheet before customers under a title row, two tied sheets, a header-only sheet — shared through
+ * `xlsxSectionFixtures()`), and workbooks CRAFTED here as raw XML parts in a zip this file assembles, written the way
+ * each real writer writes them (Excel 365, a Mac 1904 workbook, Apache POI SXSSF, a phone's contacts-to-Excel app,
+ * LibreOffice, Google Sheets) and the zip mechanics real archivers use (stored entries, data descriptors, a comment,
+ * absolute targets, macOS local extra fields). The shared rules (`chooseSheet`, `dropTitleRows`, `mobileCellsIn`) are
+ * seams of the browser's reader too: a plant swaps one in the BROWSER alone, and the differential sees it.
  * ⭐ LITERALS (B4–B8). A defect in a SHARED rule (`xlsx-cells.ts`) moves both readers alike, so the differential cannot
  * see it: the cell semantics, the merges, the hidden sheets and the lines are also held to rows TYPED HERE, never
  * computed by the code under test. B4 pins the recorded divergence: what exceljs refuses (the Open XML SDK's x: prefixes,
@@ -19,9 +23,12 @@
  * ⭐ BIG (B9–B11). The generator's own big-50k.xlsx and big-150k.xlsx, built in memory by exceljs's streaming writer
  * (`bigXlsxInMemory`), read in the browser to the generator's truth; the row cap and the inflate budget refuse where
  * they must. Each big read happens once per rule set (a plant that leaves the rules alone reads from the cache).
- * ⭐ THE DOOR, THE OLD BROWSER, STOP (B12–B14) through `readContactsFile` and the reader's own options; the source (B15)
- * and the copy an officer reads (B16); and (B17) CHUNKS OF ANY SIZE — a browser's stream may cut a tag, an entity, a
- * CRLF or a multi-byte character anywhere, so every crafted workbook is read again through 1–13-byte pieces.
+ * ⭐ THE DOOR, THE OLD BROWSER, STOP (B12–B14) through `readContactsFile` and the reader's own options — the door
+ * carrying D8's word for a big workbook too (the columns step's sheet hint is shown on it alone); the source (B15) and
+ * the copy an officer reads (B16); (B17) CHUNKS OF ANY SIZE — a browser's stream may cut a tag, an entity, a CRLF or a
+ * multi-byte character anywhere, so every crafted workbook is read again through 1–13-byte pieces; and (B18) THE MEMORY
+ * GUARDS the reader keeps for the officer's own tab — one text past `XLSX_BROWSER_MAX_TEXT`, and the cells held before a
+ * sheet is chosen past `XLSX_BROWSER_MAX_STORED_CELLS`, each `too_big_inflated`.
  * ⭐ PROVED BY MUTATION. Every label is named by a red plant — one RULE swapped in `buildXlsxBrowserReader` (the walk
  * itself unchanged), the door's wiring, the reader's options, or a source — and the runner requires each plant's OWN
  * label among the reds.
@@ -41,6 +48,8 @@ import { xlsxSectionFixtures, type XlsxSectionFixtures } from "./xlsx.mts";
 import { readXlsxContacts, type XlsxReadInput, type XlsxReadResult } from "../../src/lib/server/contacts/import-xlsx.ts";
 import {
   XLSX_BROWSER_INFLATE_BUDGET,
+  XLSX_BROWSER_MAX_STORED_CELLS,
+  XLSX_BROWSER_MAX_TEXT,
   XLSX_BROWSER_RULES,
   buildXlsxBrowserReader,
   excelSerialToDate,
@@ -50,7 +59,14 @@ import {
   type XlsxBrowserRules,
 } from "../../src/lib/contacts/xlsx-read.ts";
 import { readContactsFile, type ReadOutcome } from "../../src/lib/contacts/import-read.ts";
-import { PHONE_FORMAT_REMEDY, XLSX_MAX_BYTES, XLSX_MAX_ROWS, formatFileSize, xlsxRefusalSentence } from "../../src/lib/contacts/xlsx-limits.ts";
+import {
+  PHONE_FORMAT_REMEDY,
+  XLSX_MAX_BYTES,
+  XLSX_MAX_GRID_CELLS,
+  XLSX_MAX_ROWS,
+  formatFileSize,
+  xlsxRefusalSentence,
+} from "../../src/lib/contacts/xlsx-limits.ts";
 import { isParsedContactsFile, type ParsedContactsFile } from "../../src/lib/contacts/parsed-file.ts";
 import { parseTzNumber } from "../../src/lib/tz-msisdn.ts";
 
@@ -602,9 +618,45 @@ function bigDocx(): Buffer {
   ]);
 }
 
+/** B13 — a workbook past the upload cap that holds NO mobile at all (names and towns), its sheet STORED so that 7,000
+ *  rows pass 700 KB: the door must carry the reader's D8 word for it. Built once, on first use. */
+let noMobileOnce: Buffer | null = null;
+function noMobileBig(): Buffer {
+  if (noMobileOnce !== null) return noMobileOnce;
+  const rows: string[] = [`<row r="1">${inline("A1", "Jina")}${inline("B1", "Mahali")}</row>`];
+  for (let r = 2; r <= 7_000; r++) rows.push(`<row r="${r}">${inline(`A${r}`, `Mnunuzi ${r}`)}${inline(`B${r}`, "Arusha")}</row>`);
+  noMobileOnce = bookOf({
+    sheets: [{ name: "Wateja", xml: `${HEAD}<worksheet xmlns="${NS}"><sheetData>${rows.join("")}</sheetData></worksheet>` }],
+    zip: { stored: true },
+  });
+  return noMobileOnce;
+}
+
+/** B18 — a contact whose notes cell is one inline string `chars` characters long (it deflates to a few KB). */
+const longCellBooks = new Map<number, Buffer>();
+function longCellBook(chars: number): Buffer {
+  const known = longCellBooks.get(chars);
+  if (known !== undefined) return known;
+  const book = bookOf({
+    sheets: [{
+      name: "Wateja",
+      xml: `${HEAD}<worksheet xmlns="${NS}"><sheetData><row r="1">${inline("A1", "Name")}${inline("B1", "Phone")}${inline("C1", "Notes")}</row>`
+        + `<row r="2">${inline("A2", "Asha")}${inline("B2", "0757 300 171")}${inline("C2", "a".repeat(chars))}</row></sheetData></worksheet>`,
+    }],
+  });
+  longCellBooks.set(chars, book);
+  return book;
+}
+
 /* ══ ONCE PER PROCESS — the server's readings, the generator's workbooks, the big files ═════════════════════ */
 
 type Corpus = { readonly name: string; readonly bytes: Uint8Array };
+
+/** B1 — the generator's workbooks the differential must always find among `realWorldWorkbooks()`: a maker dropped
+ *  from the generator, or a workbook no longer built as a zip, is seen here — while a new one joins by itself. */
+const GENERATOR_WORKBOOKS: readonly string[] = [
+  "excel-basic.xlsx", "excel-number-cells.xlsx", "excel-multi-sheet.xlsx", "libreoffice.ods", "prod-check-40.xlsx",
+];
 /** The file name both readers are handed for a corpus file: its own name, given an extension when it has none. */
 const fileNameOf = (name: string): string => (/[.](xlsx|ods)$/.test(name) ? name : `${name}.xlsx`);
 
@@ -647,8 +699,8 @@ function bigRead(impl: XlsxBrowserImpl, name: string, bytes: Uint8Array): Promis
 /* ══ THE LABELS ═════════════════════════════════════════════════════════════════════════════════════════════ */
 
 export const L = {
-  B1: "B1 · ⭐ THE DIFFERENTIAL · the generator's own workbooks (excel-basic, excel-number-cells, excel-multi-sheet, prod-check-40.xlsx, and libreoffice.ods) read by the server's reader and the browser's reader on the SAME bytes give the identical ParsedContactsFile — or the identical refusal — and every read keeps each non-blank record of the generator's truth on its own line",
-  B2: "B2 · ⭐ THE DIFFERENTIAL · the xlsx section's own workbooks — every cell type exceljs writes, A1.3, lines, hidden and cover sheets, an empty sheet, the grid and the row caps, and every hostile zip (zip64 twice, encrypted, .xlsb, an .ods, Strict, not a workbook, an unknown method, a duplicate name, a renamed local header, an unresolved name, a folder holding data, trailing bytes, a size mismatch, a broken sheet, 200,001 row elements) — read or refused identically",
+  B1: "B1 · ⭐ THE DIFFERENTIAL · every workbook the generator builds — every zip among its small files: excel-basic, excel-number-cells, excel-multi-sheet, prod-check-40.xlsx and libreoffice.ods at the least, and any it gains — read by the server's reader and the browser's reader on the SAME bytes give the identical ParsedContactsFile and D8 word — or the identical refusal — and every read keeps each non-blank record of the generator's truth on its own line",
+  B2: "B2 · ⭐ THE DIFFERENTIAL · the xlsx section's own workbooks — every cell type exceljs writes, A1.3, lines, hidden and cover sheets, the sheet chosen by the mobiles its first rows hold (a staff sheet before the customers, two tied sheets, a header-only sheet — C3b-fix D6), a title row above the column names (D7), a workbook with no mobile anywhere (D8's word), an empty sheet, the grid and the row caps, and every hostile zip (zip64 twice, encrypted, .xlsb, an .ods, Strict, not a workbook, an unknown method, a duplicate name, a renamed local header, an unresolved name, a folder holding data, trailing bytes, a size mismatch, a broken sheet, 200,001 row elements) — read or refused identically",
   B3: "B3 · ⭐ THE DIFFERENTIAL · workbooks crafted as real writers write them — Excel 365 (shared strings, rich text with a phonetic run, _x000D_, dates by a built-in and a custom format, a formula's cached text decoded twice as exceljs does, a hyperlinked formula, hidden and very hidden sheets), a Mac 1904 workbook, Apache POI SXSSF (inline strings, a Java double), a phone's contacts-to-Excel app (no styles, no shared strings, an emoji), LibreOffice, Google Sheets, merges, lines, a cover page, every sheet hidden, and the zip mechanics (stored entries, data descriptors, a zip comment, absolute targets, macOS local extra fields) — identical",
   B4: "B4 · ⭐ BEYOND THE SERVER · the Open XML SDK's x:-prefixed parts with rows and cells that carry no r (a placeholder cell keeping its column) and a CDATA name read in the browser to their literal rows — while the server's exceljs refuses that workbook as unreadable and reads a CDATA cell blank: the recorded divergence, both sides asserted",
   B5: "B5 · ⭐ THE CELL RULES, LITERALLY — dates by a built-in and a custom format as ISO and the SAME serials 1,462 days later under date1904, TRUE and FALSE, a 12-digit phone stored as a NUMBER as its digits, 255713000000 as 2.55713E+11 and that text verbatim, rich runs joined WITHOUT the phonetic run, _x000D_ as a carriage return, spaces kept, a formula's cached 0 as 0, a cached text decoded twice (R&D), a text-format number as itself, and an error and a value-less formula blank with ONE note each naming its row (a hyperlinked value-less formula unflagged)",
@@ -659,11 +711,12 @@ export const L = {
   B10: "B10 · ⛔ THE ROW CAP — a workbook of XLSX_MAX_ROWS + 1 rows is refused too_many_rows in the copy table's words (never sent to CSV), the read stopped at the first row past the cap; exactly XLSX_MAX_ROWS rows are read whole",
   B11: "B11 · ⛔ THE INFLATE BUDGET — 1 GiB of inflated bytes across every part read is the shipped budget, and a sheet that inflates past the budget — its declared size forged to 1 KB — is too_big_inflated by what it inflated to, never read on",
   B12: "B12 · ⛔ AN OLD BROWSER — a DecompressionStream without deflate-raw (its constructor throws) gets today's too_large answer with the file's size, CSV and the remedy clause, before a byte is inflated — from the reader, and through readContactsFile",
-  B13: "B13 · ⭐ THE DOOR — readContactsFile reads a workbook past 700 KB in the browser: parsed, format xlsx, the reader's rows, the sha-256 of its exact bytes, extraNumbers 0; a big zip the reader refuses comes back refused in the copy table's words; a workbook within the cap still goes to the server as base64",
+  B13: "B13 · ⭐ THE DOOR — readContactsFile reads a workbook past 700 KB in the browser: parsed, format xlsx, the reader's rows, the sha-256 of its exact bytes, extraNumbers 0, and the reader's D8 word (a big workbook holding no mobile says so, big-50k does not); a big zip the reader refuses comes back refused in the copy table's words; a workbook within the cap still goes to the server as base64",
   B14: "B14 · STOP AND THE BAR — the reader's last report is its whole total with every row element counted, its reports never move backwards, and a read stopped by the signal returns aborted, nothing read on",
   B15: "B15 · ⛔ PURE AND ONE COPY — xlsx-cells.ts and xlsx-read.ts carry no directive, import only src/lib/contacts modules, name no Buffer, Node built-in, require or DOMParser, hold no backslash and no raw control character but line ends, and are pinned in client-graph-safe; and import-xlsx.ts takes its cell rules from xlsx-cells.ts, keeping no copy of its own",
   B16: "B16 · ⛔ THE COPY — nothing at the import's entrance says an Excel file over 700 KB is refused or must be saved as CSV (its limits line names no Excel size; import-copy.ts names no XLSX_MAX_BYTES), while too_large keeps its sentence — the size, CSV and the remedy — for a direct post over the cap and an old browser",
   B17: "B17 · ⭐ CHUNKS OF ANY SIZE — a real browser hands a stream back in pieces of any size: every crafted workbook read through an inflater that re-cuts its output into 1–13-byte pieces (tags, entities, a CRLF and multi-byte characters cut anywhere) gives exactly the file whole chunks give, and the text-laden one its literal rows",
+  B18: "B18 · ⛔ THE MEMORY GUARDS — one cell's text of XLSX_BROWSER_MAX_TEXT characters (8 MiB, 256 times Excel's own cell) is read whole and one character more is too_big_inflated, never held; and the cells held across the visible sheets before one is chosen stop at XLSX_BROWSER_MAX_STORED_CELLS — twice the grid cap, as shipped — at the cap read, past it too_big_inflated",
 } as const;
 
 /* ══ THE RUN ════════════════════════════════════════════════════════════════════════════════════════════════ */
@@ -743,9 +796,11 @@ async function run({ impl, ok, log }: Ctx): Promise<void> {
   const read = impl.build(impl.rules);
   const blob = (bytes: Uint8Array): Blob => new Blob([bytes]);
 
-  // ── B1 · the generator's workbooks ──
+  // ── B1 · every workbook the generator builds (the five named here at the least) ──
   const books = await generatorBooks();
   const b1 = await differential(impl, books.map((b) => ({ name: b.name, bytes: b.data })));
+  const unseen = GENERATOR_WORKBOOKS.filter((name) => !books.some((b) => b.name === name));
+  if (unseen.length > 0) b1.push(`the generator handed over no ${unseen.join(", ")}`);
   for (const b of books) {
     if (b.truth.format !== "xlsx") continue;
     const r = await read(blob(b.data), { fileName: b.name });
@@ -753,15 +808,20 @@ async function run({ impl, ok, log }: Ctx): Promise<void> {
     const got = r.kind === "read" ? r.file.rows.slice(1).map((row) => row.line) : [];
     if (!same(got, want)) b1.push(`${b.name}: lines ${JSON.stringify(got).slice(0, 80)} · truth ${JSON.stringify(want).slice(0, 80)}`);
   }
-  ok(L.B1, b1.length === 0 && books.length === 5, b1.slice(0, 4).join(" | ") || `${books.length} workbooks, every one the same through both readers`);
+  ok(L.B1, b1.length === 0, b1.slice(0, 4).join(" | ") || `${books.length} workbooks (${books.map((b) => b.name).join(", ")}), every one the same through both readers`);
 
   // ── B2 · the xlsx section's fixtures ──
   const fx: XlsxSectionFixtures = await xlsxSectionFixtures();
   const fromBase64 = (field: string): Uint8Array => new Uint8Array(Buffer.from(field, "base64"));
+  // ⛔ Not here, on purpose: the xlsx section's bombs (`bomb`, `forged`, `cellsOver` — the SERVER's 48 MiB inflate
+  // cap and its cell-element cap, guards of the money server's own memory that a workbook past 700 KB never meets: the
+  // browser's budget is B11's, its memory guards B18's) and the files that are no zip (`xls`, `protectedCfb`,
+  // `odsHead`, `text` — the door's format check refuses them before any workbook reader sees a byte).
   const sectionCorpus: Corpus[] = ([
-    "cells", "a13", "lines", "sheets", "coverFirst", "coverDigits", "noPhoneSheet", "allHidden", "empty", "forty", "wide", "rowPast",
-    "xlsb", "odsLate", "strict", "docx", "zip64Maxed", "zip64Locator", "encrypted", "method12", "duplicate", "nameMismatch",
-    "unresolvedName", "folderWithData", "trailing", "sizeMismatch", "broken", "rowsOver",
+    "cells", "a13", "lines", "sheets", "coverFirst", "coverDigits", "noPhoneSheet", "staffThenTitled", "twoPhoneSheets",
+    "headerOnlyFirst", "allHidden", "empty", "forty", "wide", "rowPast", "xlsb", "odsLate", "strict", "docx", "zip64Maxed",
+    "zip64Locator", "encrypted", "method12", "duplicate", "nameMismatch", "unresolvedName", "folderWithData", "trailing",
+    "sizeMismatch", "broken", "rowsOver",
   ] as const).map((name) => ({ name: `xlsx-section-${name}`, bytes: fromBase64(fx[name]) }));
   sectionCorpus.push({ name: "xlsx-section-exact", bytes: fromBase64(fx.exact.field) });
   const b2 = await differential(impl, sectionCorpus);
@@ -882,11 +942,20 @@ async function run({ impl, ok, log }: Ctx): Promise<void> {
   const refusedDoor = await impl.readFile(new File([bigDocx()], "barua.xlsx"), { onProgress: () => undefined });
   const small = books.find((b) => b.name === "excel-basic.xlsx");
   const smallDoor = small === undefined ? null : await impl.readFile(new File([small.data], small.name), { onProgress: () => undefined });
+  // ⭐ D8 at the door: the dialog shows the columns step's sheet hint on `noMobileSheet` alone, so a big workbook with
+  // no mobile anywhere must come back saying so — and big-50k, whose sheet is all phones, must not.
+  const namesOnly = noMobileBig();
+  const noMobileDoor = await impl.readFile(new File([namesOnly], "majina.xlsx"), { onProgress: () => undefined });
   ok(L.B13, viaDoor.kind === "parsed" && viaDoor.file.format === "xlsx" && viaDoor.digest === sha(bigBook) && viaDoor.extraNumbers === 0
     && direct.kind === "read" && same(viaDoor.file.rows, direct.file.rows) && viaDoor.file.fileName === "big-50k.xlsx"
+    && viaDoor.noMobileSheet === false
+    && namesOnly.length > XLSX_MAX_BYTES && noMobileDoor.kind === "parsed" && noMobileDoor.noMobileSheet === true
+    && noMobileDoor.file.rows.length === 7_000
     && refusedDoor.kind === "refused" && refusedDoor.sentence === xlsxRefusalSentence("wrong_format", { kind: "other" })
     && smallDoor !== null && smallDoor.kind === "xlsx" && small !== undefined && smallDoor.base64 === base64Of(small.data),
-    `big: ${viaDoor.kind === "parsed" ? `${viaDoor.file.rows.length} rows, digest ${viaDoor.digest.slice(0, 12)}…` : viaDoor.kind === "refused" ? viaDoor.sentence.slice(0, 90) : viaDoor.kind} · a big docx: ${refusedDoor.kind} · a small workbook: ${smallDoor?.kind ?? "-"}`);
+    `big: ${viaDoor.kind === "parsed" ? `${viaDoor.file.rows.length} rows, digest ${viaDoor.digest.slice(0, 12)}…, noMobileSheet ${String(viaDoor.noMobileSheet)}` : viaDoor.kind === "refused" ? viaDoor.sentence.slice(0, 90) : viaDoor.kind}`
+      + ` · a big workbook of names only (${namesOnly.length} bytes): ${noMobileDoor.kind === "parsed" ? `${noMobileDoor.file.rows.length} rows, noMobileSheet ${String(noMobileDoor.noMobileSheet)}` : noMobileDoor.kind}`
+      + ` · a big docx: ${refusedDoor.kind} · a small workbook: ${smallDoor?.kind ?? "-"}`);
 
   // ── B14 · Stop and the bar ──
   const reports: Array<readonly [number, number | null, number]> = [];
@@ -956,6 +1025,24 @@ async function run({ impl, ok, log }: Ctx): Promise<void> {
     b17.push(`chunky literals: ${chunky.kind === "read" ? JSON.stringify(chunky.file.rows.slice(0, 3)) : brief(chunky)}`);
   }
   ok(L.B17, b17.length === 0, b17.slice(0, 3).join(" | ") || `${CRAFTED.length + 2} workbooks read the same in 1–13-byte pieces as whole`);
+
+  // ── B18 · the memory guards: one text at its cap and one past it, as shipped; the stored cells by a lowered cap
+  // (the shipped one, eight million cells, is asserted as a value — a file that reaches it is a forgery, never built
+  // here) ──
+  const atText = await read(blob(longCellBook(XLSX_BROWSER_MAX_TEXT)), { fileName: "notes.xlsx" });
+  const pastText = await read(blob(longCellBook(XLSX_BROWSER_MAX_TEXT + 1)), { fileName: "notes.xlsx" });
+  const fewCells = impl.build({ ...impl.rules, maxStoredCells: 50 });
+  const atCells = await fewCells(blob(rowsBook(50)), { fileName: "cells.xlsx" });
+  const pastCells = await fewCells(blob(rowsBook(51)), { fileName: "cells.xlsx" });
+  ok(L.B18, impl.rules.maxText === XLSX_BROWSER_MAX_TEXT && XLSX_BROWSER_MAX_TEXT === 8 * 1024 * 1024
+    && atText.kind === "read" && atText.file.rows.length === 2 && atText.file.rows[1]?.cells[2]?.length === XLSX_BROWSER_MAX_TEXT
+    && pastText.kind === "refused" && pastText.refusal === "too_big_inflated" && pastText.detail === "text"
+    && pastText.message === xlsxRefusalSentence("too_big_inflated")
+    && impl.rules.maxStoredCells === XLSX_BROWSER_MAX_STORED_CELLS && XLSX_BROWSER_MAX_STORED_CELLS === 2 * XLSX_MAX_GRID_CELLS
+    && atCells.kind === "read" && atCells.file.rows.length === 50
+    && pastCells.kind === "refused" && pastCells.refusal === "too_big_inflated" && pastCells.detail === "cells",
+    `a cell of ${XLSX_BROWSER_MAX_TEXT} characters → ${brief(atText)} · of ${XLSX_BROWSER_MAX_TEXT + 1} → ${brief(pastText)}`
+      + ` · the stored-cells cap ${impl.rules.maxStoredCells} (twice the grid's ${XLSX_MAX_GRID_CELLS}) · under a cap of 50: 50 cells → ${brief(atCells)} · 51 → ${brief(pastCells)}`);
 }
 
 /* ══ THE RED PLANTS — each a defect somebody could plausibly write, built in memory ═════════════════════════ */
@@ -981,6 +1068,21 @@ const PLANTS: readonly RedPlant<XlsxBrowserImpl>[] = [
     name: "exceljs's isDateFmt not replicated — every date-formatted serial read as its number",
     expect: L.B2,
     impl: () => withRules({ isDateFormat: () => false }),
+  },
+  {
+    name: "the title rule bypassed in the browser alone — a title above the column names kept as the header row (C3b-fix D7 not applied)",
+    expect: L.B2,
+    impl: () => withRules({ titleRows: (file) => file }),
+  },
+  {
+    name: "D8's word lost in the browser alone — a workbook no visible sheet of which holds a mobile said to hold one, so the columns step never shows its sheet hint",
+    expect: L.B2,
+    impl: () => withRules({ mobileCells: () => 1 }),
+  },
+  {
+    name: "the grid cap not applied in the browser — a sheet laid out past XLSX_MAX_GRID_CELLS read whole",
+    expect: L.B2,
+    impl: () => withRules({ maxGridCells: Number.POSITIVE_INFINITY }),
   },
   {
     name: "a t=str value decoded once — exceljs's second decoding not replicated",
@@ -1016,6 +1118,11 @@ const PLANTS: readonly RedPlant<XlsxBrowserImpl>[] = [
     name: "a hidden sheet read — every sheet taken as visible",
     expect: L.B7,
     impl: () => withRules({ isVisible: () => true }),
+  },
+  {
+    name: "the sheet chosen by tab order in the browser alone — the first visible sheet read, the shared chooseSheet bypassed (the cover page read in place of the contacts)",
+    expect: L.B7,
+    impl: () => withRules({ chooseSheet: (sheets) => ({ index: sheets.findIndex((s) => s.visible), note: null }) }),
   },
   {
     name: "trailing cells not trimmed",
@@ -1059,6 +1166,19 @@ const PLANTS: readonly RedPlant<XlsxBrowserImpl>[] = [
     }),
   },
   {
+    name: "D8's word dropped at the door — a big workbook comes back without noMobileSheet, so the dialog never shows the sheet hint for one that holds no mobile",
+    expect: L.B13,
+    impl: () => ({
+      ...real(),
+      readFile: async (f, o) => {
+        const out = await readContactsFile(f, o);
+        return out.kind === "parsed"
+          ? { kind: "parsed", file: out.file, digest: out.digest, extraNumbers: out.extraNumbers, unclosed: out.unclosed }
+          : out;
+      },
+    }),
+  },
+  {
     name: "the reader deaf to Stop and silent on the bar",
     expect: L.B14,
     impl: () => ({
@@ -1086,6 +1206,16 @@ const PLANTS: readonly RedPlant<XlsxBrowserImpl>[] = [
     name: "each chunk decoded on its own — a character a chunk cuts in two read as two replacement characters",
     expect: L.B17,
     impl: () => withRules({ decodeChunk: (decoder, chunk) => (chunk === null ? "" : decoder.decode(chunk)) }),
+  },
+  {
+    name: "the text guard lifted — a cell of more than 8 MiB held whole in the officer's tab",
+    expect: L.B18,
+    impl: () => withRules({ maxText: Number.POSITIVE_INFINITY }),
+  },
+  {
+    name: "the stored-cells guard lifted — every cell of every visible sheet held before one is chosen, however many a forged file carries",
+    expect: L.B18,
+    impl: () => withRules({ maxStoredCells: Number.POSITIVE_INFINITY }),
   },
   {
     name: "the entrance still says an Excel file can be up to 700 KB",
