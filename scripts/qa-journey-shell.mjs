@@ -878,6 +878,21 @@ const NEEDLE_RESTING = () => {
 /** The rest check waits 180–900 ms, a glide settles in under 1.5 s, and one more check may follow it: 6 s is a chain. */
 const NEEDLE_REST_MS = 6_000;
 
+/**
+ * ⭐ ROUND 4 (2026-10-09) · A CHART IS SHOT AFTER ITS CANVAS HAS ARRIVED, never during its fade. R4-D measured Up & Down's
+ * tile 164 shot ~26% into the terminal chart's 520 ms arrival (`opacity var(--dur-arrive)` on the canvas's container,
+ * terminal-chart.tsx), so every ink on it read at a quarter of tile 202's. That container is the `role="img"` box's child
+ * whose inline style carries the `--dur-arrive` transition; it states 1 once a feed is drawn (0 while it loads), so the
+ * picture has arrived when its COMPUTED opacity is 1. ⛔ A wait, never a style override and never reduced motion: the
+ * tile shows the page's own motion, finished. A canvas that has not arrived after CHART_ARRIVE_MS (a feed that is empty,
+ * failed or slow — the chart's own state, judged elsewhere) is SAID, never failed, as `unreadLanded` does.
+ */
+const CHART_CANVAS = '[role="img"] > [style*="--dur-arrive"]';
+const CHART_ARRIVED = (sel) => [...document.querySelectorAll(sel)].every((el) => getComputedStyle(el).opacity === '1');
+const CHART_OPACITIES = (sel) => [...document.querySelectorAll(sel)].map((el) => getComputedStyle(el).opacity).join(', ');
+/** The fade is 520 ms; 5 s lets a feed's first read land as well. */
+const CHART_ARRIVE_MS = 5_000;
+
 /** Two frames and a beat: a resize’s layout, and what mounts on it, have landed. */
 async function settle(page, ms = 300) {
   await page.evaluate(() => new Promise((done) => requestAnimationFrame(() => requestAnimationFrame(() => done(true)))));
@@ -1256,6 +1271,9 @@ async function shoot(page, cell, spec, { dialog = false, dialogProblem = null } 
   // Needle that has not come to rest by NEEDLE_REST_MS is a finding of its own — a rest that never comes is a chain.
   const rested = await page.waitForFunction(NEEDLE_RESTING, null, { timeout: NEEDLE_REST_MS, polling: 100 }).then(() => true, () => false);
   if (!rested) problems.push(`the Needle had not come to rest ${NEEDLE_REST_MS / 1000} s after the page settled`);
+  // Round 4: an Up & Down chart's canvas at its full ink, its 520 ms arrival over (CHART_ARRIVED, above). Said, not failed.
+  const arrived = await page.waitForFunction(CHART_ARRIVED, CHART_CANVAS, { timeout: CHART_ARRIVE_MS, polling: 50 }).then(() => true, () => false);
+  if (!arrived) say(`  · ${file}: a chart's canvas had not arrived ${CHART_ARRIVE_MS / 1000} s after the page settled (computed opacity ${await page.evaluate(CHART_OPACITIES, CHART_CANVAS)})`);
   try {
     await page.screenshot({ path: join(OUT, file), fullPage: false, caret: 'initial', timeout: 30_000 });
     count.tiles += 1;
@@ -1447,6 +1465,9 @@ async function ticketState(v, viewer, st) {
     for (const width of widths) {
       await resize(page, width);
       await toTop(page);
+      // The demo player's tickets tiles owe the same unread sign as its tab tiles (round 4, 2026-10-09: no Akaunti dot on
+      // 217 and 218, no bell "25" on 219, while every other player tile had one) — the same wait, the same logged miss.
+      if (viewer === 'player') await unreadLanded(page, width);
       const cell = { section: 'tickets', route: st.route, pathname: st.path.split('?')[0], viewer, state: st.id, locale, width };
       await checkShell(page, cell, { journey: true });
       await shoot(page, cell, HEAD.tickets);

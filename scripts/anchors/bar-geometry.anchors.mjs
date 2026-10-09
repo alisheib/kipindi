@@ -232,8 +232,10 @@ export const MUTATIONS = [
      */
     name: "search-band-shares-the-bar-offset",
     file: "src/app/proposals/page.tsx",
-    from: '          <div className="py-2.5">',
-    to: '          <div className="sticky top-[56px] z-20 py-2.5">',
+    // ⚠️ RE-ANCHORED 2026-10-09 (round 4 of the visual pass): the band is `QUERY_SEARCH_BAND_CLASS` now (10px over the box
+    // and its echo row inside the gap to the bar, query-bar.tsx). The defect is unchanged — the band stuck at the bar's offset.
+    from: '          <div className={QUERY_SEARCH_BAND_CLASS}>',
+    to: '          <div className={`sticky top-[56px] z-20 ${QUERY_SEARCH_BAND_CLASS}`}>',
     expect: "ANOTHER STICKY SURFACE IS DRAWN THROUGH THE BAR",
     route: "/proposals",
   },

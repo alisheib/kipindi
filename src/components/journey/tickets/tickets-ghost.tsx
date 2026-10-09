@@ -11,7 +11,7 @@
  */
 import { PageContainer } from "@/components/layout/page-container";
 import { PageHeader } from "@/components/ui/page-header";
-import { QUERY_BAR_CLASS, QUERY_BAR_ROW1_CLASS } from "@/components/ui/query-bar";
+import { QUERY_BAR_CLASS, QUERY_BAR_ROW1_ALONE_CLASS } from "@/components/ui/query-bar";
 import type { Dict } from "@/lib/i18n-dict";
 
 /** The seven lenses, at widths near their labels' (a row of identical boxes reads as a loading bar, not a strip). */
@@ -36,7 +36,7 @@ export function TicketsGhost({ t }: { t: Dict }) {
     <PageContainer tier="reading" className="space-y-6">
       <TicketsHeadGhost t={t} />
       <div className={QUERY_BAR_CLASS} aria-hidden>
-        <div className={`${QUERY_BAR_ROW1_CLASS} pb-2`}>
+        <div className={QUERY_BAR_ROW1_ALONE_CLASS}>
           <div className="flex min-w-0 flex-1 items-center gap-1 overflow-hidden">
             {LENS_WIDTHS.map((w, i) => (
               <div key={i} className={`h-[44px] ${w} shrink-0 rounded-pill bg-bg-overlay`} />

@@ -40,6 +40,9 @@ import { EmptyState } from "@/components/ui/empty-state";
 import { IconPlate } from "@/components/ui/icon-plate";
 import { Suspense } from "react";
 import { SearchBox } from "@/components/ui/search-box";
+import { QUERY_SEARCH_BAND_CLASS } from "@/components/ui/query-bar";
+import { DotSeq } from "@/components/ui/dot-seq";
+import { moneyRuns, moneySentence } from "@/lib/fill-nodes";
 import { fieldNames, NOTIFICATION_SEARCH } from "@/lib/search";
 import { NotificationsBar } from "./notifications-bar";
 import { Pagination, PLAYER_PER_PAGE } from "@/components/ui/pagination";
@@ -165,12 +168,16 @@ export default async function NotificationsPage({
       />
 
       {/* ⭐ SEARCH — the last player lens surface without one, and the one that needed it most:
-          this is where a player comes to find ONE receipt among a year of round results. */}
+          this is where a player comes to find ONE receipt among a year of round results.
+          ⭐ ONE BAND WITH THE BAR (round 4, 2026-10-09, tiles 193 194): the empty echo row and the page's 24px stood
+          between the box and the lens pills — 59–60px, against 34 under the bar. In the band the box sits 34 under the
+          header and the pills 34 under the box (`QUERY_SEARCH_BAND_CLASS`). */}
       <Suspense>
         <SearchBox
           placeholder={t.notif.searchNotifications}
           ariaLabel={t.notif.searchNotifications}
           helpFields={fieldNames(NOTIFICATION_SEARCH)}
+          className={QUERY_SEARCH_BAND_CLASS}
         />
       </Suspense>
 
@@ -261,7 +268,11 @@ export default async function NotificationsPage({
                     {n.href ? (
                       <Link href={n.href as never} className="block group">
                         <p className="font-display text-body-sm font-semibold text-text leading-tight group-hover:underline underline-offset-2">
-                          {pickTitle(n)}
+                          {/* ⭐ Round 4, 2026-10-09 (tiles 193 194): the money is `moneyRuns`' — "TZS 4,200" whole, in the
+                              mono face (§M4), where it was display sans and broke "TZS" / "4,200" at 390 — and the title's
+                              " · " is `DotSeq`'s, so it breaks between "Soko limefutwa" and "TZS 4,200 imerejeshwa" and
+                              never ends a line on its dot. */}
+                          <DotSeq text={pickTitle(n)} renderPart={moneyRuns} />
                           {/* §A4 — colour is never the only signal, so the unread state is
                               also a word a screen reader can reach. */}
                           {isUnread && <span className="sr-only"> · {t.notif.unread}</span>}
@@ -269,11 +280,13 @@ export default async function NotificationsPage({
                       </Link>
                     ) : (
                       <p className="font-display text-body-sm font-semibold text-text leading-tight">
-                        {pickTitle(n)}
+                        <DotSeq text={pickTitle(n)} renderPart={moneyRuns} />
                         {isUnread && <span className="sr-only"> · {t.notif.unread}</span>}
                       </p>
                     )}
-                    <p className="mt-1 text-label text-text-muted leading-snug break-words">{pickBody(n)}</p>
+                    {/* Its figures whole and its last two words together (`moneySentence`, round 4): at 1280 the body
+                        ended "…kwenye pochi" / "yako." (tile 194). */}
+                    <p className="mt-1 text-label text-text-muted leading-snug break-words">{moneySentence(pickBody(n))}</p>
                     <p className="mt-1.5 font-mono text-micro text-text-subtle tabular-nums">
                       {relTime(n.createdAt, t)}
                     </p>

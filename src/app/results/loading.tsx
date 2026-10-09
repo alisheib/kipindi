@@ -6,6 +6,7 @@ import {
   QUERY_BAR_ROW1_CLASS,
   QUERY_BAR_ROW2_CLASS,
   QUERY_GROUP_CLASS,
+  QUERY_SEARCH_BAND_CLASS,
   QUERY_STRIP_CLASS,
 } from "@/components/ui/query-bar";
 
@@ -18,7 +19,7 @@ import {
  * header and the grid it renders three bands this ghost did not have at all:
  *
  *   · header row (eyebrow + the NDIO/HAPANA donut and counts)      38px at 320, 360 and 414
- *   · the STICKY search band — `py-2.5` around the search box      91px  (not 44)
+ *   · the STICKY search band — `py-2.5` around the search box      91px  (not 44; 56 since round 4, see below)
  *   · the discovery bar — lens strip + sort/filter, two rows      116px
  *   · the notable-results carousel                          497 / 458 / 436px at 320 / 360 / 414
  *
@@ -41,7 +42,7 @@ import {
  * ⭐ EVERY BAND BELOW IS STRUCTURE, NOT A MEASUREMENT, WITH ONE EXCEPTION. The search band and
  * the discovery bar are built from the page's own wrappers and tokens (`search-box-wrap`,
  * `--h-input`, `QUERY_BAR_*`, `QUERY_STRIP_CLASS`, `QUERY_GROUP_CLASS`), so they compute to 91
- * and 116 rather than being told to. ⚠️ The exception is the carousel's height: its content is a
+ * and 116 rather than being told to (56 and 120 since round 4: the search band and row 2's 12px). ⚠️ The exception is the carousel's height: its content is a
  * market question, so no arrangement of empty boxes can derive it. It is reserved at the
  * measured 458 and **guarded** — `qa:ghost-landing` fails this route if the board lands more
  * than 120px from where the ghost promised, which is what makes a single measured number safe to
@@ -72,9 +73,10 @@ export default async function ResultsLoading() {
           </div>
         </div>
 
-        {/* The STICKY search band. ⛔ `py-2.5` is the band, not decoration: it is the 20px that
-          turns a 71px `search-box-wrap` into the 91px the page actually reserves. */}
-        <div className="py-[10px]" aria-hidden>
+        {/* The search band — the page's own class (round 4, 2026-10-09). ⛔ It is the band, not decoration: 10px over
+          a 71px `search-box-wrap`, whose 25px echo row lies inside the gap to the bar below (`globals.css`,
+          `.kp-search-band`), so it takes 56px of the column, as the page's does. It was `py-[10px]`, 91px. */}
+        <div className={QUERY_SEARCH_BAND_CLASS} aria-hidden>
           <div className="search-box-wrap">
             <div className="kp-shimmer-track h-[calc(var(--h-input)+2px)] rounded-lg border border-border bg-bg-inset" />
             <p className="mt-1.5 min-h-[17px]" />

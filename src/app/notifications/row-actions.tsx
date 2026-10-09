@@ -56,7 +56,7 @@ export function NotificationRowActions({
         /* ≥44px tap target on a player surface (`test:tap-target`). The label is text, not a
            bare glyph, because "what does this arrow do" is not a question to ask someone
            about their own money history. */
-        className="shrink-0 inline-flex items-center gap-1 min-h-[44px] px-2 rounded-md font-mono text-micro font-bold uppercase text-accent-400 hover:text-text hover:bg-bg-overlay transition-colors disabled:opacity-50"
+        className="-mt-1 shrink-0 inline-flex items-center gap-1 min-h-[44px] px-2 rounded-md font-mono text-micro font-bold uppercase text-accent-400 hover:text-text hover:bg-bg-overlay transition-colors disabled:opacity-50"
       >
         <I.rotateCcw s={12} />
         {restoreLabel}
@@ -69,9 +69,14 @@ export function NotificationRowActions({
      and both are icon-only with an `aria-label`, matching the bell's own ✕.
      ⛔ Dismiss is offered on the ARCHIVE only because it is reversible: it stamps
      `dismissedAt`, and the **Cleared** lens plus Restore are the way back. Without that
-     lens this control would be a delete button wearing a tidy-up label. */
+     lens this control would be a delete button wearing a tidy-up label.
+     ⭐ THE COLUMN STANDS ON THE ROW'S LEADING ICON (round 4, 2026-10-09, tile 194). The row is `items-start`, so the 44px
+     controls began at the content's top and their glyphs sat on y674 against the 32px plate's centre at y669.5 (card 2:
+     795 / 790.5) — 4–5px low. The plate is 2px under the content's top (`mt-0.5`), its centre 18px down; a 44px control
+     centred there starts 4px ABOVE the top: `-mt-1`, here and on Restore. The glyphs then centre on the icon, as a list
+     row's trailing control does on its leading one. */
   return (
-    <span className="shrink-0 inline-flex items-center gap-0.5">
+    <span className="-mt-1 shrink-0 inline-flex items-center gap-0.5">
       {unread && (
         <button
           type="button"

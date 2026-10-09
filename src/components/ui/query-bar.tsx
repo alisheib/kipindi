@@ -82,6 +82,14 @@ export const QUERY_BAR_CLASS_PANEL =
 /** Row 1 — the lens strip and the result count. Row 2 — sort, then filters. */
 export const QUERY_BAR_ROW1_CLASS = "flex items-center gap-x-3 pt-2.5";
 /**
+ * Row 1 DRAWN ALONE — a bar with no row 2 (Tiketi zangu's, `PositionsBarJourney`, and its ghost): row 2's bottom padding
+ * (10px) moves onto it, so the bar is 10px over and under its pills, like every bar. It wrote `pb-2` (12px) by hand: on
+ * the page's 32px rung the tab rule stood 42px over the pills and the first ticket 44px under them (round 4, 2026-10-09,
+ * tiles 169 170 214–228). Now 42 and 42. ⚠️ `pb-[10px]`, not `pb-2.5`: the stock 2.5 is an inverted key on this scale
+ * (`test:spacing-scale`), and the literal is the same pixel.
+ */
+export const QUERY_BAR_ROW1_ALONE_CLASS = `${QUERY_BAR_ROW1_CLASS} pb-[10px]`;
+/**
  * 🔴 PLAYER-FILTERS 2026-09-09 · `gap-x-2` BECAME `gap-2`, BECAUSE THIS ROW WRAPS AND HAD NO
  * ROW GAP AT ALL.
  *
@@ -98,8 +106,34 @@ export const QUERY_BAR_ROW1_CLASS = "flex items-center gap-x-3 pt-2.5";
  * phone/Swahili case gains the 12px (`tailwind.config.ts:215`) that makes two rows two rows.
  * ⛔ Guarded by `qa:tap-truth`'s DISJOINT/ATREST arms, which measure rendered boxes rather than
  * class strings — the reason this survived every source-scanning gate the repo already had.
+ *
+ * ⭐ 2026-10-09 · round 4 [171 172 174 193 194 196] · ROW 2 STANDS 12px UNDER ROW 1, THE SAME 12px AS ITS OWN
+ * WRAPPED LINES (`pt-2`, was `pt-1.5`). At 8px the bar's rhythm was 8 between the lens strip and the sort and 12
+ * between row 2's own lines (/markets at 1280: chips → PANGA 8, PANGA → BWAWA 12; /wallet: 8 / 12), and the selected
+ * pill's halo (`--glow-selected`, 11px of reach) lay on the sort control's border — PANGA's top edge on the 9th of its
+ * 11 pixels. 12 is the row gap the bar already uses and clears the halo by a pixel. The /markets phone bar
+ * (rows `display: contents`) and /leaderboard's sort row (`py-0`) are untouched.
  */
-export const QUERY_BAR_ROW2_CLASS = "kp-qbar-row flex flex-wrap items-center gap-2 pb-2.5 pt-1.5";
+export const QUERY_BAR_ROW2_CLASS = "kp-qbar-row flex flex-wrap items-center gap-2 pb-2.5 pt-2";
+
+/**
+ * ⭐ THE SEARCH BOX OVER A QUERY BAR — one band with the bar under it (2026-10-09, round 4, tiles 171 172 193 194).
+ *
+ * 🔴 THE EMPTY BAND UNDER THE SEARCH. `SearchBox` reserves its echo row (8 + 17 = 25px) under the box even when it is
+ * empty, so a reader typing never moves the page. On `/markets` that row IS the gap to the bar (25 + the bar's 10px =
+ * 35, as measured), but every other page put its own rung between the search and the bar as well: /results 25 + its
+ * band's 10 + 24 + 10 = 69px (tiles 171 172), /notifications 25 + 24 + 10 = 59–60 (193 194), /watchlist 69, /proposals
+ * and the classic /positions 67–77 — against 34 under the bar.
+ * ⭐ So this band carries the page's rung + the bar's 10px on both sides, and its echo row lies INSIDE the gap below it
+ * (`globals.css`, `.kp-search-band`: a 25px negative margin when a query bar follows, so the bar's own 10px top padding
+ * is the clearance; 15px over anything else, which keeps 10 of it). `pt-[10px]` is the bar's own 10px (row 1's `pt-2.5`)
+ * above the box, written as the literal because the stock 2.5 is an inverted key on this scale (`test:spacing-scale`). A
+ * page with a 24px rung reads 34 · 34 · 34 around the search and its bar, a 32px rung 42 · 42 · 42.
+ * ⛔ A box whose echo shows still pushes the bar down: the margin is a constant, so a two-line echo moves everything
+ * under it by its second line and nothing is drawn under the bar's opaque band.
+ * ⛔ NOT on `/markets`: its search and bar have no rung between them, so the echo row is already the whole gap.
+ */
+export const QUERY_SEARCH_BAND_CLASS = "kp-search-band pt-[10px]";
 
 /**
  * The LENS strip — rank-primary pills, scrolling below `lg`, wrapping above it.

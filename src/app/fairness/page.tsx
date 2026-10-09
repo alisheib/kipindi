@@ -19,6 +19,7 @@ import { Pagination, PLAYER_PER_PAGE } from "@/components/ui/pagination";
 import { Suspense } from "react";
 import { FilterPill } from "@/components/ui/filter-pill";
 import { SearchBox } from "@/components/ui/search-box";
+import { QUERY_SEARCH_BAND_CLASS } from "@/components/ui/query-bar";
 import { parseQuery, matchesQuery, fieldNames, MARKET_SEARCH } from "@/lib/search";
 import { FairnessBar, type AttestationCounts } from "./fairness-bar";
 import {
@@ -232,15 +233,21 @@ export default async function FairnessPage({ searchParams }: { searchParams: Pro
         </ol>
       </section>
 
-      {/* Resolved markets table */}
-      <section>
-        <h2 className="font-display text-[20px] font-semibold text-text mb-3">{t.common.recentlyResolved}</h2>
+      {/* Resolved markets table.
+          ⭐ ONE RHYTHM, ITS `gap` (round 4 of the visual pass, 2026-10-09). The section spaced itself element by element —
+          `mb-3` under the heading, `pb-2` under the search, nothing under the bar, `py-2` round the exits, `mt-4` over the
+          pager — so the search's empty echo row and its 12px stood 47px between the box and the lens pills, and the table
+          began 10px under the sort. Now 24 between blocks (§S1, `--rh-tight`: a heading and what it labels), the search
+          and its bar one band (`QUERY_SEARCH_BAND_CLASS`): heading → box 34, box → pills 34, sort → table 34, as on
+          /results. */}
+      <section className="flex flex-col gap-5">
+        <h2 className="font-display text-[20px] font-semibold text-text">{t.common.recentlyResolved}</h2>
 
         {/* ⛔ THE CONTROLS ARE WITHHELD ONLY WHEN THE RECORD IS GENUINELY EMPTY. Every other empty
             state keeps the bar, because there the bar is the way OUT of the empty state. */}
         {rows.length > 0 && (
           <>
-            <div className="pb-2">
+            <div className={QUERY_SEARCH_BAND_CLASS}>
               <Suspense>
                 <SearchBox
                   placeholder={t.common.searchMarkets}
@@ -254,7 +261,7 @@ export default async function FairnessPage({ searchParams }: { searchParams: Pro
         )}
 
         {totalCount === 0 && exits.length > 0 && (
-          <div className="flex flex-wrap items-center gap-1.5 py-2">
+          <div className="flex flex-wrap items-center gap-1.5">
             {exits.map((e) => (
               <FilterPill
                 key={e.id}
@@ -394,7 +401,7 @@ export default async function FairnessPage({ searchParams }: { searchParams: Pro
           </ScrollX>
         )}
         {totalPages > 1 && (
-          <div className="mt-4 rounded-lg border border-border bg-bg-elevated/40 overflow-hidden">
+          <div className="rounded-lg border border-border bg-bg-elevated/40 overflow-hidden">
             {/* ⛔ `totalCount`, THE SAME VARIABLE THE BAR PUBLISHES — never recomputed, or the
                 pager counts a different population from the number above it. And `baseHref` now
                 carries the state: it was the bare string "/fairness", so a page turn dropped the

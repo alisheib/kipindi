@@ -1,7 +1,7 @@
 import { getServerT } from "@/lib/i18n-server";
 import { PageContainer } from "@/components/layout/page-container";
 import { PageHeader } from "@/components/ui/page-header";
-import { QUERY_BAR_CLASS, QUERY_BAR_ROW1_CLASS, QUERY_BAR_ROW2_CLASS } from "@/components/ui/query-bar";
+import { QUERY_BAR_CLASS, QUERY_BAR_ROW1_CLASS, QUERY_BAR_ROW2_CLASS, QUERY_SEARCH_BAND_CLASS } from "@/components/ui/query-bar";
 import { resolveSimpleJourney } from "@/lib/server/journey-preview";
 import { TicketsGhost } from "@/components/journey/tickets/tickets-ghost";
 
@@ -75,9 +75,15 @@ export default async function PositionsLoading() {
         <div className="h-2.5 w-full rounded-pill bg-bg-overlay" />
       </div>
 
-      {/* The search box — ⚠️ 44px, the control floor, written as a literal: this repo overrides
-          Tailwind's spacing scale, so `h-11` is not 44 here. */}
-      <div className="h-[44px] w-full rounded-lg border border-border-control bg-bg-inset kp-shimmer-track" aria-hidden />
+      {/* The search band — the page's own class (round 4, 2026-10-09): 10px over a `search-box-wrap` of the box's
+          height (`--h-input` + its border) and its 25px echo row, which lies inside the gap to the bar
+          (`QUERY_SEARCH_BAND_CLASS`). It was a bare 44px box standing in for a 71px search. */}
+      <div className={QUERY_SEARCH_BAND_CLASS} aria-hidden>
+        <div className="search-box-wrap">
+          <div className="h-[calc(var(--h-input)+2px)] w-full rounded-lg border border-border-control bg-bg-inset kp-shimmer-track" />
+          <p className="mt-1.5 min-h-[17px]" />
+        </div>
+      </div>
 
       {/* The query bar — two rows, the same classes the real bar wears.
           ⛔ CAPSULES, NOT AN UNDERLINE RAIL. The lens strip is `FilterPill`s at 44px; a ghost

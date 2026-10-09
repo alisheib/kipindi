@@ -3677,8 +3677,28 @@ th .link-pending { --lp-inset: 0px; --lp-bottom: 8px; }
       width: 1px; height: 24px; margin-top: -12px;
       background: var(--border); pointer-events: none;
     }
+    /* ⭐ 2026-10-09 · round 4 [196] · …CENTRED ON THE GAP THE EYE SEES. The 14px above is measured from the pill BOXES,
+       and an unselected pill's box is invisible (`border-transparent`, `px-3`): its ink stops 17px inside it, so a
+       group ending on one put its rule 31px after that ink and 14px before the next box — /markets at 1280, row 3,
+       "TZS 50k+ 0" ink to x380, the rule at x412, MADA's box from x427. When the group before ends on an UNSELECTED
+       pill the rule moves 9px left, to the middle of the 46px from its ink to the next box (22 | 1 | 23; the
+       half-pixel cannot be split without blurring a 1px rule). A selected last pill draws its border, so the box IS
+       the edge and the rule stays at 14 | 1 | 14, clear of its 11px halo. The group after always opens on a key or a
+       bordered control, whose box is its visible edge. */
+    :has(> .kp-fchip:last-child:not([data-on])) + .kp-qdiv + *::before { left: -24px; }
   }
 }
+
+/* ⭐ 2026-10-09 · round 4 [171 172 193 194 204] · THE SEARCH BOX OVER A QUERY BAR (`QUERY_SEARCH_BAND_CLASS`,
+   query-bar.tsx, which says why). Its echo row — `mt-1.5 min-h-[17px]` in search-box.tsx, 8 + 17 = 25px, reserved
+   even when empty — lies inside the gap below it instead of adding to it: −25px when a query bar follows (the bar's
+   own 10px top padding keeps the echo clear of its opaque band), −15px over anything else (10px of it stays). So the
+   gap from the box to the bar's pills is the page's rung + 10, as under the bar.
+   ⛔ DOUBLED, as `.amount.amount` is: (0,3,0) ties `space-y-*`'s `> :not([hidden]) ~ :not([hidden])`, which sets every
+   later child's margin-bottom to 0, and this file is emitted after the utilities, so it wins; in a `gap` container
+   (/results) the negative margin simply subtracts from the gap. */
+.kp-search-band.kp-search-band:has(+ .kp-discovery-bar) { margin-bottom: -25px; }
+.kp-search-band.kp-search-band:not(:has(+ .kp-discovery-bar)) { margin-bottom: -15px; }
 
 /* The sort/topic menus are <details>, so they open with no JavaScript. The native marker is
    replaced by the caret glyph inside the summary.

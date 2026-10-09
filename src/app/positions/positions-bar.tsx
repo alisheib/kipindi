@@ -21,6 +21,7 @@ import { FilterPill, FilterGroupKey } from "@/components/ui/filter-pill";
 import { FilterSheet, FilterSheetGroup } from "@/components/markets/filter-sheet";
 import {
   QUERY_BAR_CLASS,
+  QUERY_BAR_ROW1_ALONE_CLASS,
   QUERY_BAR_ROW1_CLASS,
   QUERY_BAR_ROW2_CLASS,
   QUERY_GROUP_CLASS,
@@ -279,12 +280,13 @@ function PositionsRail({ children }: { children: ReactNode }) {
  * window groups are row 2's, which this variant does not draw (WP9 step 5; §0h point 23).
  * ⭐ A SIBLING OF `PositionsBar`, NOT A PROP ON IT: the classic bar computes and draws exactly what it did, and this one is
  * handed nothing it does not draw. Row 1's class has no bottom padding of its own (row 2 supplies it on the classic
- * bar), so the strip adds the scale's `pb-2`.
+ * bar), so the row drawn alone takes row 2's (`QUERY_BAR_ROW1_ALONE_CLASS`, 10px; it was a hand-typed `pb-2`, 12px,
+ * which put the first ticket 44px under the pills against the tab rule's 42 over them — round 4, 2026-10-09).
  */
 export function PositionsBarJourney({ state, t }: { state: PortfolioState; t: Dict }) {
   return (
     <PositionsRail>
-      <div className={`${QUERY_BAR_ROW1_CLASS} pb-2`}>
+      <div className={QUERY_BAR_ROW1_ALONE_CLASS}>
         <QueryStrip ariaLabel={t.journey.ticketsFilterAria}>
           {POSITION_LENSES.map((l) => (
             <FilterPill

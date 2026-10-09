@@ -14,7 +14,7 @@ import { getCardCharts } from "@/lib/server/market-history";
 import { EmptyState } from "@/components/ui/empty-state";
 import { Pagination, PLAYER_PER_PAGE } from "@/components/ui/pagination";
 import { SearchBox } from "@/components/ui/search-box";
-import { QUERY_BAR_CLASS, QUERY_BAR_ROW1_CLASS, QUERY_BAR_ROW2_CLASS } from "@/components/ui/query-bar";
+import { QUERY_BAR_CLASS, QUERY_BAR_ROW1_CLASS, QUERY_BAR_ROW2_CLASS, QUERY_SEARCH_BAND_CLASS } from "@/components/ui/query-bar";
 import { ResultsBar, type ArchiveCounts } from "./results-bar";
 import {
   archiveCounts,
@@ -428,7 +428,11 @@ async function ResultsContent({
           and `/updown/history` all render `SearchBox` unstuck; the BAR is the control worth
           pinning, because it is how a player changes the view. Seven of seven routes now agree,
           and one fewer number is derived from another element's height. */}
-      <div className="py-2.5">
+      {/* ⭐ ONE BAND WITH THE BAR (round 4, 2026-10-09, tiles 171 172): `py-2.5` put the search's empty echo row, its own
+          10px and the page's 24px between the box and the lens pills — 69px, against 34 under the bar. The band keeps the
+          10px above the box and lets the echo row lie inside the gap below it, so the box sits 34 under the header row,
+          the pills 34 under the box, and the grid 34 under the sort. `QUERY_SEARCH_BAND_CLASS` says how. */}
+      <div className={QUERY_SEARCH_BAND_CLASS}>
         <Suspense>
           <SearchBox
             placeholder={t.common.searchResults}
@@ -650,14 +654,16 @@ function ResultsSkeleton() {
         <div className="h-3.5 w-36 rounded bg-bg-overlay kp-shimmer-track" />
       </div>
 
-      {/* Search skeleton.
-          ⚠️ FILED, NOT FIXED (DG-P-13 / DG-A-20): this bar is **44px** and the band it stands
-          in for renders **91px** on production — a sticky wrapper (`py-2.5`) around a real
-          `SearchBox` with its echo row. So the grid below still lands ~47px out when the
-          fallback is replaced. That is a skeleton-SHAPE defect, not a rhythm one; DG-P-04 fixes
-          the gaps and leaves the height with a measured number rather than a complaint.
-          `markets/loading.tsx` already has the right shape to copy (`search-box-wrap`). */}
-      <div className="h-[44px] rounded-md bg-bg-overlay kp-shimmer-track" style={{ maxWidth: 460 }} />
+      {/* Search skeleton — the page's own band (round 4, 2026-10-09): `QUERY_SEARCH_BAND_CLASS` around a
+          `search-box-wrap` of the box's height and the echo row, as `results/loading.tsx` draws it. It was a 44px bar
+          standing in for a 91px band (DG-P-13 / DG-A-20, filed): the band now takes 56px of the column (10 + 46 + 25,
+          less the 25 its echo row lends the gap to the bar), and the ghost takes the same. */}
+      <div className={QUERY_SEARCH_BAND_CLASS} aria-hidden>
+        <div className="search-box-wrap">
+          <div className="kp-shimmer-track h-[calc(var(--h-input)+2px)] rounded-lg border border-border bg-bg-inset" />
+          <p className="mt-1.5 min-h-[17px]" />
+        </div>
+      </div>
 
       {/* ⭐ THE GHOST FOLLOWS THE BAR, and its classes are IMPORTED rather than retyped, so a
           change to the bar's padding or sticky offset moves the ghost in the same commit by

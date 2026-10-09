@@ -57,3 +57,31 @@ export function moneyRuns(text: string): ReactNode[] {
   if (last < text.length) out.push(text.slice(last));
   return out;
 }
+
+/**
+ * A FINISHED SENTENCE WITH ITS FIGURES WHOLE (`moneyRuns`) AND ITS LAST TWO WORDS ON ONE LINE — for a column that can be
+ * narrower than those two words (round 4 of the visual pass, 2026-10-09: /notifications at 1280, tile 194, ended a body
+ * "…kwenye pochi" / "yako.").
+ *
+ * ⭐ AN INLINE BLOCK, NOT `keepLastWords`' nowrap span. A notice's body is a stored sentence that ends however its template
+ * or its market ends it, in a column 100px wide at 320 (the row's ✓ and × take 90 of it); a nowrap pair wider than the
+ * column would run out of it, under the ✓. An inline block moves to the next line whole when the pair fits on one, and
+ * wraps inside itself when it does not, so it can never overflow. ⛔ An inline block takes no text decoration from its
+ * parent, so this is for plain text (a body), never a link that underlines on hover.
+ * ⭐ A figure is never cut: when the last two words would split a "TZS 4,200", the kept end starts at its "TZS".
+ * Chinese, and a sentence of two words or fewer, take `moneyRuns` alone (`keepLastWords`' own two rules, keep-words.tsx).
+ */
+const IDEOGRAPH = /[㐀-䶿一-鿿豈-﫿]/;
+const LAST_TWO = /\S+\s+\S+\s*$/;
+export function moneySentence(text: string): ReactNode[] {
+  let at = IDEOGRAPH.test(text) ? -1 : text.search(LAST_TWO);
+  for (const m of text.matchAll(MONEY_RUN)) {
+    const start = m.index ?? 0;
+    if (start < at && at < start + m[0].length) at = start;
+  }
+  if (at <= 0) return moneyRuns(text);
+  return [
+    ...moneyRuns(text.slice(0, at)),
+    <span key="end" className="inline-block max-w-full">{moneyRuns(text.slice(at))}</span>,
+  ];
+}

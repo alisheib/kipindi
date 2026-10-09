@@ -277,8 +277,9 @@ section("4 · /leaderboard: the tier is not gold, the sort keeps the page's rhyt
   const row = cn(QUERY_BAR_ROW2_CLASS, "py-0");
   ok("4.3 · the sort row is the bar's row with its padding handed back (py-0): 32px above and below, like every gap on the page",
     lb.includes(`<div className={cn(QUERY_BAR_ROW2_CLASS, "py-0")}>`) && /\bpy-0\b/.test(row) && !/\bp[tb]-/.test(row), row);
-  ok("4.3′ CONTROL · the bar's own row carries 8px over and 10px under (pt-1.5, pb-2.5) — the 40/42px gaps this removes",
-    /\bpt-1\.5\b/.test(QUERY_BAR_ROW2_CLASS) && /\bpb-2\.5\b/.test(QUERY_BAR_ROW2_CLASS));
+  // Round 4 (2026-10-09) moved the bar's row 2 to 12px under row 1 (pt-2, test:visual-pass-r4c §1); the control follows it.
+  ok("4.3′ CONTROL · the bar's own row carries 12px over and 10px under (pt-2, pb-2.5) — the 44/42px gaps this removes",
+    /(?:^|\s)pt-2(?:\s|$)/.test(QUERY_BAR_ROW2_CLASS) && /\bpb-2\.5\b/.test(QUERY_BAR_ROW2_CLASS));
   const after = rule(css, ".admin-tbl thead th.text-right::after");
   const track = /\.mcardp-pctcap\s*\{\s*letter-spacing:\s*([0-9.]+)em/.exec(css)?.[1];
   const back = /margin-right:\s*-([0-9.]+)em/.exec(after)?.[1];

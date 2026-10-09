@@ -20,18 +20,28 @@
  * to a copy and paste, and to a reader that does not separate flex items. One space before and one after the hidden dot
  * make the text the dictionary wrote, "A · B". Both sit at the start of a flex item, where white space collapses, so
  * nothing moves on the screen.
+ * ⭐ `renderPart` (round 4, 2026-10-09, the notifications' titles, tiles 193 194): a part can be dressed — a notice's
+ * "Soko limefutwa · TZS 4,200 imerejeshwa" sets its figure through `moneyRuns`, whole and in the mono face. Without it
+ * each part is its own text, byte for byte as before.
  */
+import type { ReactNode } from "react";
 import { cn } from "@/lib/utils";
 
-export function DotSeq({ text, className, mono = false }: { text: string; className?: string; mono?: boolean }) {
+export function DotSeq({ text, className, mono = false, renderPart }: {
+  text: string;
+  className?: string;
+  mono?: boolean;
+  renderPart?: (part: string) => ReactNode;
+}) {
   const parts = text.split(" · ");
-  if (parts.length < 2) return <span className={className}>{text}</span>;
+  const draw = (part: string) => (renderPart ? renderPart(part) : part);
+  if (parts.length < 2) return <span className={className}>{draw(text)}</span>;
   return (
     <span className={cn("kp-seq", mono && "kp-seq--mono", className)}>
       {parts.map((part, i) => (
         <span key={i} className="kp-seq__item">
           {i > 0 && <>{" "}<span className="kp-seq__dot" aria-hidden>·</span>{" "}</>}
-          {part}
+          {draw(part)}
         </span>
       ))}
     </span>

@@ -29,6 +29,7 @@ import { FilterPill } from "@/components/ui/filter-pill";
 import { MarketCard } from "@/components/markets/market-card";
 import { Pagination, PLAYER_PER_PAGE } from "@/components/ui/pagination";
 import { SearchBox } from "@/components/ui/search-box";
+import { QUERY_SEARCH_BAND_CLASS } from "@/components/ui/query-bar";
 import { getSession } from "@/lib/server/session";
 import { listWatchedMarketIds } from "@/lib/server/watchlist-service";
 import { playerMarketsByIds, isClosedByTime, isSelectionClosed } from "@/lib/server/market-service";
@@ -178,8 +179,10 @@ export default async function WatchlistPage({
       {rows.length > 0 && (
         <>
           {/* ⛔ NOT STICKY — see `/results/page.tsx`'s note. `QUERY_BAR_CLASS` already sticks at
-              `top-[56px]`, so a second sticky band at the same offset overlaps it by 91px. */}
-          <div className="py-2.5">
+              `top-[56px]`, so a second sticky band at the same offset overlaps it by 91px.
+              ⭐ One band with the bar (round 4, 2026-10-09, `QUERY_SEARCH_BAND_CLASS`): `py-2.5` left 69px between the box
+              and the lens pills, as on /results (tiles 171 172); the band leaves 34, as under the bar. */}
+          <div className={QUERY_SEARCH_BAND_CLASS}>
             <Suspense>
               <SearchBox
                 placeholder={t.common.searchMarkets}

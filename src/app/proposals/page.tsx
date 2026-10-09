@@ -24,6 +24,7 @@ import { pickLocalized } from "@/lib/localized";
 import { formatTzs, formatNumber } from "@/lib/utils";
 import { PageContainer } from "@/components/layout/page-container";
 import { SearchBox } from "@/components/ui/search-box";
+import { QUERY_SEARCH_BAND_CLASS } from "@/components/ui/query-bar";
 import { parseQuery, matchesQuery, fieldNames, BOARD_PROPOSAL_SEARCH } from "@/lib/search";
 import { ProposalsBar, type BoardCounts } from "./proposals-bar";
 import {
@@ -237,8 +238,10 @@ export default async function ProposalsPage({
       {rows.length > 0 && (
         <>
           {/* ⛔ NOT STICKY — see `/results/page.tsx`'s note. `QUERY_BAR_CLASS` already sticks at
-              `top-[56px]`, so a second sticky band at the same offset overlaps it by 91px. */}
-          <div className="py-2.5">
+              `top-[56px]`, so a second sticky band at the same offset overlaps it by 91px.
+              ⭐ One band with the bar (round 4, 2026-10-09, `QUERY_SEARCH_BAND_CLASS`): `py-2.5` left 77px between the box
+              and the lens pills on this page's 32px rung; the band leaves 42, as under the bar. */}
+          <div className={QUERY_SEARCH_BAND_CLASS}>
             <Suspense>
               <SearchBox
                 placeholder={t.proposals.searchProposals}

@@ -16,6 +16,7 @@ import { ensureAffiliateAccount, inviteViewerFor } from "@/lib/server/affiliate-
 import { inviteIsLiveFor } from "@/lib/feature-state";
 import { EmptyState } from "@/components/ui/empty-state";
 import { SearchBox } from "@/components/ui/search-box";
+import { QUERY_SEARCH_BAND_CLASS } from "@/components/ui/query-bar";
 import { fieldNames, matchesQuery, parseQuery, POSITION_SEARCH } from "@/lib/search";
 import { PositionsBar, type PortfolioCounts } from "./positions-bar";
 import {
@@ -355,11 +356,14 @@ export default async function PositionsPage({ searchParams }: { searchParams: Pr
       {positions.length > 0 && (
         <>
           {/* ⭐ Search sits OUTSIDE the sheet at every width — a player who can see the box knows
-              the page is searchable. `helpFields` teaches the grammar by clickable example. */}
+              the page is searchable. `helpFields` teaches the grammar by clickable example.
+              ⭐ One band with the bar (round 4, 2026-10-09, `QUERY_SEARCH_BAND_CLASS`): the empty echo row and the page's
+              32px left 67px between the box and the lens pills; the band leaves 42, as above it and under the bar. */}
           <SearchBox
             placeholder={t.positions.searchPlaceholder}
             ariaLabel={t.positions.searchPlaceholder}
             helpFields={fieldNames(POSITION_SEARCH)}
+            className={QUERY_SEARCH_BAND_CLASS}
           />
           <PositionsBar state={state} counts={counts} resultCount={matched.length} t={t} />
         </>

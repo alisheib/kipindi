@@ -571,7 +571,8 @@ const CLASSIC_GHOST = [
   `<PageHeader eyebrow={t.common.positions} title={t.positions.headline} subtitle={t.positions.headlineBody} />`,
   `<div className="glass-panel px-5 pt-4 pb-[18px] kp-shimmer-track" aria-hidden>`,
   `<div className="rounded-lg border border-border bg-bg-elevated/60 p-3 kp-shimmer-track" aria-hidden>`,
-  `<div className="h-[44px] w-full rounded-lg border border-border-control bg-bg-inset kp-shimmer-track" aria-hidden />`,
+  // The search: the page's own band since round 4 of the visual pass (2026-10-09; it was a bare 44px box).
+  `<div className={QUERY_SEARCH_BAND_CLASS} aria-hidden>`,
   "<div className={QUERY_BAR_ROW2_CLASS}>",
   "{Array.from({ length: 6 }).map((_, i) => (",
 ];

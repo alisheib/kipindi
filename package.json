@@ -1015,6 +1015,7 @@
     "ops:updown-bell-live-check": "tsx scripts/ops-updown-bell-live-check.mts",
     "ops:preflight-notification-idx": "tsx scripts/ops-preflight-notification-idx.mts",
     "test:notifications-page": "tsx scripts/notifications-page.test.mts",
+    "test:visual-pass-r4c": "tsx scripts/visual-pass-r4c.test.mts",
     "red:notifications-page": "node scripts/notifications-page-red.mjs",
     "red:measure": "node scripts/measure-red.mjs",
     "red:decomment": "node scripts/decomment-red.mjs",

@@ -129,7 +129,8 @@ export default async function MarketsLoading() {
         </div>
       </div>
 
-      <div className="market-grid mt-3" aria-hidden>
+      {/* `mt-5`, the page's own margin over its grid (round 4, 2026-10-09). */}
+      <div className="market-grid mt-5" aria-hidden>
         {Array.from({ length: PLAYER_PER_PAGE }).map((_, i) => (
           <div
             key={i}
