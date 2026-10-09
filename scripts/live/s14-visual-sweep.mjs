@@ -54,19 +54,29 @@
  *              gate still asking for one shows here as "source line" and fails): the typed number field, the 18+ box in
  *              the saved words, the typed preview with the officer's own word for {jina}, the note "The name is your word
  *              for {jina}, never the person's own.", Send on. ⛔ NO TEST IS EVER SENT: Send is read, never pressed.
+ *              stale-line (GROWTH, last) — a source line saved AFTER the draft (the typed seed's `?source=1`; skipped, and
+ *              said, once the seed can save none): since the ruling the line is printed nowhere, so U37s's note ("This
+ *              draft's source line isn't the one saved now…") is gone and Save stays quiet with nothing to save.
+ *              Every Test card also reads its `data-test-typed-offered` — "no" for GROWTH, "yes" for the other two.
  *   wordings · card · licence (ADMIN, Admin → System → Marketing wordings) — the licence basis's suggestion "…if they ask
- *              us to stop, the stop is kept for good." (never "every message carries a stop link").
+ *              us to stop, the stop is kept for good." (never "every message carries a stop link"); when the card no longer
+ *              draws a source-line box (item B4 of the plain-SMS round, optional), "source line" may appear nowhere on it.
  *   live     · results-growth · results-admin — a staged DONE campaign's live page (no driver steps a finished campaign):
- *              the results row "Stopped since this campaign" with its help and the two stops made after its message, the
- *              price line for the money reader only.
+ *              the results row "Stopped since this campaign" (`data-results-row="stoppedSince"`) with its help, reading
+ *              exactly the stop the seed made after its message; the price line for the money reader only.
  *   contacts · list · added (GROWTH) — the masked book: the two-tile KPI band, no Consent / Will receive / Source column,
- *              every "Added" a date (the table scrolled to it). search-in · search-out — a whole-number search answers a
- *              presence line ONLY, no row (C8b · B3). added-new — the importer's new contacts read "Added" today (B8).
+ *              every "Added" a date (the table scrolled to it), and the u30 world's sign-up row (a player's number, its row
+ *              by the ONE registration writer) reading "Added" TODAY — C8b · B8, never the account's sign-up day.
+ *              search-in · search-out — a whole-number search answers a presence line ONLY ("This number is in the book."
+ *              / "…is not in the book."), no row and no export link (C8b · B3), the line readable inside the table's
+ *              sideways scroller. added-new — the contacts the list import added read "Added" today.
  *   import   · paste · paste-columns · paste-check — a pasted chat list (with C3b-fix D4's "Asha +254, 712 345 678",
  *              which must never stage a stranger's +255 number); title-columns — a hand-typed CSV whose bare title lines
  *              sit above its column names (D7, the unpadded shape); big-columns · big-check — a 40,000-row Excel
- *              workbook past the 700 KB upload cap, read IN THE BROWSER (C3c), checked, then discarded; list-done — a
- *              GROWTH import onto a new list (C8b · B4): two added, the one already in the book kept.
+ *              workbook past the 700 KB upload cap, read IN THE BROWSER (C3c), checked, then discarded; list-check ·
+ *              list-done — a GROWTH import onto a new list (C8b · B4): "Only the contacts this import adds join the list —
+ *              numbers already in the book stay as they are." before the start, then two added, the one already in the
+ *              book kept, the list's members owed their basis, and no reader's "with a 50pick account" line.
  *
  * ⭐ DECISIONS, AND THE GUARD THAT HOLDS EACH:
  *   · ONE PAGE PER STATE, RESIZED THROUGH THE SIX WIDTHS — the state is built once at 1280 and photographed at 320 → 1280,
@@ -235,15 +245,17 @@ const WORDINGS = {
   licenceLabel: `Basis ${MID} Outreach under our licence`,
   licenceDefault: "50pick may send this person offers and news by SMS as outreach under its Gaming Board of Tanzania licence. The person has not agreed to receive them; if they ask us to stop, the stop is kept for good.",
 };
-/** ⭐ The owner's item B4 of 2026-10-09 ("the source line may leave the Marketing wordings card"), if it lands: then the
- *  card draws no source-line box and says "source line" nowhere. Set from what the builder's checkout renders. */
-const SOURCE_LINE_LEFT_THE_CARD = false;
-const WORDINGS_OLD = ["every message carries a stop link", "stop link", ...(SOURCE_LINE_LEFT_THE_CARD ? ["source line"] : [])];
+/** No wording on the card may still promise a stop link in every message (the licence basis's suggestion did). ⭐ Item B4
+ *  of the plain-SMS round ("the source line may leave the Marketing wordings card", only if it can be done cleanly) is
+ *  read off the page: when the card draws no source-line box, "source line" may appear nowhere on it either. */
+const WORDINGS_OLD = ["every message carries a stop link", "stop link"];
 
 /** The live page's results card (`src/app/admin/campaigns/[id]/live-copy.ts`, the row renamed on 2026-10-09). */
 const RESULTS_TITLE = "Results";
 const STOPPED_SINCE = "Stopped since this campaign";
 const STOPPED_SINCE_HELP = "People this campaign reached who have stopped offers since — on their profile, by asking us, or by a link from an older message. They will not be messaged again.";
+/** The row's name in the data (`results-card.tsx`, renamed from stoppedByLink on 2026-10-09 — one name per thing). */
+const STOPPED_SINCE_NAME = "stoppedSince";
 const STOPPED_OLD = ["Stopped by their link", "opt-out link was used", "stop link"];
 
 /** The contact book as a masked officer reads it (`contacts-copy.ts`, `page.tsx`; C8b · B3). */
@@ -276,7 +288,15 @@ const IMPORT = {
   nothingWritten: "Nothing has been written to the book yet.",
   everyRow: " — every row of your file is counted once.",
   finished: "Import finished",
+  /** DECIDE.keptOnly — a viewer who may not update the book keeps every number already in it (S15-10). */
+  keptOnly: "Numbers already in the book are kept as they are.",
+  /** LIST.createdOnly (C8b · B4) — said to a viewer who may not read numbers once a list is picked. */
+  createdOnly: "Only the contacts this import adds join the list — numbers already in the book stay as they are.",
+  /** LIST.owed */
+  listOwed: "People added to a list are covered for offers only once its basis is recorded again on the Lists card, after the import.",
 };
+/** DONE.listOwed — the result's list line for a new list, whose basis is not recorded yet. */
+const listOwedSentence = (name) => `Added to the list ${name}. The new members aren't covered for offers yet — record the list's basis and 18+ confirmation again on the Lists card.`;
 const IMPORT_OLD = ["an Excel file can be up to", "this spreadsheet is", "700 KB"];
 /** xlsx-limits.ts `XLSX_MAX_BYTES`: a workbook past it is read in the browser (C3c), never uploaded. */
 const XLSX_MAX_BYTES = 700 * 1024;
@@ -698,13 +718,27 @@ function installSweepLib() {
       out.counts.push({ label: c.label, sel: c.sel, want: c.n, got: n, ok: n === c.n });
     }
 
-    // 4 · the sentence the tile is FOR is inside the screen
+    // 4 · the sentence the tile is FOR is inside the screen — and inside the visible part of every box that scrolls or
+    //     clips around it (a table's sideways scroller, a dialog's root): "on the tile" means an officer can read it there
     for (const s of a.inView || []) {
       const r = findRange(root, s);
       if (r === null) { out.offscreen.push({ text: s, why: "not on the page" }); continue; }
       const b = r.getBoundingClientRect();
       const inside = b.width > 0 && b.top >= -1 && b.bottom <= vh + 1 && b.left >= -1 && b.right <= vw + 1;
-      if (!inside) out.offscreen.push({ text: s, why: `drawn at ${r1(b.top)}–${r1(b.bottom)} of a ${vh}px screen` });
+      if (!inside) { out.offscreen.push({ text: s, why: `drawn at ${r1(b.left)}–${r1(b.right)} × ${r1(b.top)}–${r1(b.bottom)} of a ${vw}×${vh} screen` }); continue; }
+      const start = r.startContainer.nodeType === 1 ? r.startContainer : r.startContainer.parentElement;
+      for (let e = start; e !== null && e !== de; e = e.parentElement) {
+        const st = L.cs(e);
+        const x = st.overflowX !== "visible";
+        const y = st.overflowY !== "visible";
+        if (!x && !y) continue;
+        const eb = L.box(e);
+        const left = eb.left + e.clientLeft;
+        const top = eb.top + e.clientTop;
+        const cutX = x && (b.left < left - 1 || b.right > left + e.clientWidth + 1);
+        const cutY = y && (b.top < top - 1 || b.bottom > top + e.clientHeight + 1);
+        if (cutX || cutY) { out.offscreen.push({ text: s, why: `cut off by ${describe(e)} (its visible box ${r1(left)}–${r1(left + e.clientWidth)} × ${r1(top)}–${r1(top + e.clientHeight)})` }); break; }
+      }
     }
 
     // 5 · per screen: a sentence in its own numbered section, a results row, a table's columns and dates
@@ -729,8 +763,9 @@ function installSweepLib() {
       const helpEl = el.querySelector("[data-results-help]");
       const value = valueEl ? shown(valueEl) : "";
       const help = helpEl ? shown(helpEl) : "";
-      const ok = (rw.value === undefined || value === rw.value) && (rw.help === undefined || help === sq(rw.help));
-      out.rows.push({ label: rw.label, ok, got: `value "${value}" · help "${help}" · data-results-row="${el.getAttribute("data-results-row")}"` });
+      const name = el.getAttribute("data-results-row");
+      const ok = (rw.value === undefined || value === rw.value) && (rw.help === undefined || help === sq(rw.help)) && (rw.name === undefined || name === rw.name);
+      out.rows.push({ label: rw.label, ok, got: `value "${value}" · help "${help}" · data-results-row="${name}"` });
     }
     if (a.headers) {
       const ths = Array.from(root.querySelectorAll("thead th")).map((th) => shown(th));
@@ -973,6 +1008,7 @@ const typedClosedSpec = (who) => ({
   want: [TEST_LEGEND, ownLine(who.phone), TEST_TO_TYPED, TYPED_CLOSED],
   old: COMPOSER_OLD, previewOld: PREVIEW_OLD, inView: [TYPED_CLOSED],
   exact: [
+    { label: "the server offers this role a test to a typed number (`typedOffered`, its stored role)", sel: "[data-test-card]", attr: ["data-test-typed-offered", "yes"] },
     { label: "the officer's own number is offered", sel: '[data-test-choice="own"]', eq: ownLine(who.phone) },
     { label: '"Another number" is offered to this role, and off while licence outreach is closed', sel: '[data-test-choice="typed"] input', disabled: true },
     { label: '"Another number" says why it is off', sel: '[data-test-choice-why="typed"]', eq: TYPED_CLOSED },
@@ -986,6 +1022,7 @@ const typedReadySpec = (who) => ({
   want: [TEST_LEGEND, TEST_TO_TYPED, NUMBER_LABEL, ADULT_LABEL, PREVIEW_TYPED_HEAD, TYPED_NOTE],
   old: COMPOSER_OLD, previewOld: PREVIEW_OLD, inView: [ADULT_LABEL],
   exact: [
+    { label: "the server offers this role a test to a typed number (`typedOffered`, its stored role)", sel: "[data-test-card]", attr: ["data-test-typed-offered", "yes"] },
     { label: "the 18+ box reads the saved wording, word for word", sel: '[data-test-typed] label:has(input[type="checkbox"])', eq: ADULT_LABEL },
     { label: "the typed preview is the officer's text with their word for {jina} — nothing added", sel: '[data-test-preview="SW"]', eq: sentAs(FALLBACK_SW) },
     { label: "the note under it names no stop link", sel: "[data-test-typed-note]", eq: TYPED_NOTE },
@@ -1050,6 +1087,7 @@ async function composerScreen(people, world) {
   console.log(`${NL}[composer] /admin/campaigns/new — GROWTH, then ADMIN and COMPLIANCE`);
   const { growth, admin, compliance } = people;
   const g = growth.page;
+  const drafts = {};
 
   // ── GROWTH: blank · unicode · over-cap · test-own (one page, one draft) ──
   let reached = await attempt(async () => {
@@ -1058,7 +1096,7 @@ async function composerScreen(people, world) {
   });
   await sweep(g, {
     ...COMPOSER, state: "blank", role: growth.role, view: { sel: '[data-variant="SW"]' },
-    want: [AS_WRITTEN], old: COMPOSER_OLD, inView: [AS_WRITTEN],
+    want: [AS_WRITTEN], old: [...COMPOSER_OLD, TEST_TO_TYPED], inView: [AS_WRITTEN],
     exact: [
       { label: "the counter has the whole message to spend — nothing kept back", sel: '[data-counter="SW"] [data-counter-line]', eq: COUNTER_BLANK },
       { label: 'the counter says "Sent exactly as written — nothing is added to it."', sel: '[data-counter="SW"] [data-counter-as-written]', eq: AS_WRITTEN },
@@ -1075,7 +1113,7 @@ async function composerScreen(people, world) {
   });
   await sweep(g, {
     ...COMPOSER, state: "unicode", role: growth.role, view: { sel: '[data-variant="SW"]' },
-    want: [UNICODE_SENTENCE, UNICODE_FORCED, AS_WRITTEN], old: [...COMPOSER_OLD, "Unicode leaves no room"], inView: [UNICODE_SENTENCE],
+    want: [UNICODE_SENTENCE, UNICODE_FORCED, AS_WRITTEN], old: [...COMPOSER_OLD, TEST_TO_TYPED, "Unicode leaves no room"], inView: [UNICODE_SENTENCE],
     exact: [
       { label: "the field says ONE sentence: what to replace, and the 70 characters Unicode leaves", sel: 'label[data-field="bodySw"] [id$="-error"]', eq: UNICODE_SENTENCE },
       { label: "the counter line prices the message in Unicode", sel: '[data-counter="SW"] [data-counter-line]', eq: COUNTER_UNICODE },
@@ -1093,7 +1131,7 @@ async function composerScreen(people, world) {
   });
   await sweep(g, {
     ...COMPOSER, state: "over-cap", role: growth.role, view: { sel: '[data-variant="SW"]' },
-    want: [AS_WRITTEN], old: COMPOSER_OLD, inView: [COUNTER_OVER],
+    want: [AS_WRITTEN], old: [...COMPOSER_OLD, TEST_TO_TYPED], inView: [COUNTER_OVER],
     exact: [
       { label: "the counter line says how far over, in two messages, against the limit of one", sel: '[data-counter="SW"] [data-counter-line]', eq: COUNTER_OVER },
       { label: "the counter refuses the second message", sel: '[data-counter="SW"]', attr: ["data-counter-state", "over"] },
@@ -1102,8 +1140,8 @@ async function composerScreen(people, world) {
   }, reached);
 
   reached = await attempt(async () => {
-    const id = await writeAndSave(g, `Derby ${LETTERS} growth`);
-    return `GROWTH's draft ${id}, saved`;
+    drafts.growth = await writeAndSave(g, `Derby ${LETTERS} growth`);
+    return `GROWTH's draft ${drafts.growth}, saved`;
   });
   await sweep(g, {
     ...COMPOSER, state: "test-own", role: growth.role, view: { sel: C.test, block: "start" },
@@ -1111,10 +1149,12 @@ async function composerScreen(people, world) {
     old: [...COMPOSER_OLD, TEST_TO_TYPED], previewOld: PREVIEW_OLD, inView: [ownLine(growth.phone), sentAs(growth.first)],
     exact: [
       { label: "the saved line says nothing was sent and invites the test below", sel: C.saved, re: SAVED_RE },
+      { label: "the server offers GROWTH no test to a typed number (`typedOffered`, its stored role)", sel: "[data-test-card]", attr: ["data-test-typed-offered", "no"] },
       { label: "GROWTH is offered its own number ALONE", sel: '[data-test-choice="own"]', eq: ownLine(growth.phone) },
       { label: "the preview is the officer's text, exactly as written", sel: '[data-test-preview="SW"]', eq: sentAs(growth.first) },
       { label: "the Swahili test can be sent (read, never pressed: no SMS)", sel: '[data-test-send="SW"]', disabled: false },
     ],
+    present: ['[data-test-to="own"]'],
     absent: ['[data-test-choice="typed"]', "[data-test-to-choice]", `${C.test} input[type="radio"]`, "[data-test-typed]", "[data-test-typed-note]"],
   }, reached);
 
@@ -1130,7 +1170,6 @@ async function composerScreen(people, world) {
   });
   setup("the typed world starts CLOSED (licence outreach)", before.ok, before.detail);
 
-  const drafts = {};
   reached = await attempt(async () => {
     await openComposer(admin.page);
     drafts.admin = await writeAndSave(admin.page, `Derby ${LETTERS} owner`);
@@ -1167,6 +1206,38 @@ async function composerScreen(people, world) {
   await sweep(admin.page, typedReadySpec(admin), reached);
   reached = !grant.ok ? { ok: false, detail: "COMPLIANCE has no growth grant" } : await attempt(() => reachTypedReady(compliance, drafts.compliance));
   await sweep(compliance.page, typedReadySpec(compliance), reached);
+
+  // ── U37s · a source line saved AFTER a draft was. Since the ruling a stamped line is printed nowhere, so the draft is
+  //    not "out of date": no note, Save quiet (nothing to save), the preview the officer's text alone. Before it, this was
+  //    U37s's stale state — "This draft's source line isn't the one saved now…", Save offered with nothing typed. (Taken
+  //    last on this screen: it saves a wording no state above may meet.) ──
+  let saved = null;
+  const later = await attempt(async () => {
+    saved = await post("/api/dev-test/marketing-typed-test-seed?source=1");
+    if (saved.source !== undefined && saved.source.ok !== true) throw new Error(JSON.stringify(saved).slice(0, 240));
+    return saved.source === undefined ? "the typed-test seed saves no source line any more" : "the source line saved through the wordings writer";
+  });
+  if (later.ok && saved !== null && saved.source === undefined) {
+    setup("U37s · no source line can be saved any more (the typed-test seed dropped ?source=1) — the stale state has nothing to compare, so it is not swept", true, later.detail);
+  } else {
+    setup("U37s · a source line saved AFTER GROWTH's draft (the typed-test seed's ?source=1)", later.ok, later.detail);
+    reached = !later.ok ? later : await attempt(async () => {
+      if (!drafts.growth) throw new Error("GROWTH has no saved draft to reopen");
+      await openComposer(g, `?draft=${encodeURIComponent(drafts.growth)}`);
+      await g.waitForSelector('[data-test-card="ready"]', { timeout: 60_000 });
+      await settle(g, 400);
+      return "GROWTH's draft, reopened after the line was saved";
+    });
+    await sweep(g, {
+      ...COMPOSER, state: "stale-line", role: growth.role, view: { sel: C.save },
+      want: [AS_WRITTEN], old: [...COMPOSER_OLD, TEST_TO_TYPED], previewOld: PREVIEW_OLD,
+      exact: [
+        { label: "U37s gone · nothing to save — a line saved since is no reason to save the draft again", sel: C.save, disabled: true },
+        { label: "the preview is still the officer's text alone — the line is printed nowhere", sel: '[data-test-preview="SW"]', eq: sentAs(growth.first) },
+      ],
+      absent: ["[data-compose-source-stale]", "[data-counter-source]"],
+    }, reached);
+  }
 }
 
 /* ═══ 3 · ADMIN → SYSTEM → MARKETING WORDINGS ═══════════════════════════════════════════════════════════════════════ */
@@ -1181,11 +1252,14 @@ async function wordingsScreen(admin) {
     await settle(a, 600);
     return "the Marketing wordings card";
   });
+  const sourceBox = reached.ok ? await a.locator(WORDINGS.source).count() : 1;
+  setup(sourceBox === 0
+    ? 'the source line has LEFT the Marketing wordings card (B4) — so the card may say "source line" nowhere'
+    : `the source line's box is still on the Marketing wordings card (B4, "if it can be done cleanly", has not landed — allowed)`, true);
   const base = {
     screen: "wordings", role: admin.role, root: "main#main-content", cards: [WORDINGS.form], values: true,
-    want: [WORDINGS.title, WORDINGS.lead, WORDINGS.licenceLabel], old: WORDINGS_OLD,
+    want: [WORDINGS.title, WORDINGS.lead, WORDINGS.licenceLabel], old: sourceBox === 0 ? [...WORDINGS_OLD, "source line"] : WORDINGS_OLD,
     exact: [{ label: "the licence basis suggests how a stop is honoured — no stop link in any message", sel: `${WORDINGS.licence} textarea`, value: WORDINGS.licenceDefault }],
-    absent: SOURCE_LINE_LEFT_THE_CARD ? [WORDINGS.source] : [],
   };
   await sweep(a, { ...base, state: "card", view: { sel: WORDINGS.form, block: "start" } }, reached);
   await sweep(a, { ...base, state: "licence", view: { sel: WORDINGS.licence }, inView: [WORDINGS.licenceLabel] }, reached);
@@ -1210,16 +1284,19 @@ async function liveScreen(people) {
   console.log(`${NL}[live] /admin/campaigns/<id> — a finished campaign's results, GROWTH and ADMIN`);
   let done = null;
   let stopped = null;
+  // ⚖️ ONE stop: the seed stops person k the (k mod 3)-th way — a link from an older message, the profile switch, an
+  // officer's stop — and a staged campaign's people have no account and no book row, so only the link can land on them.
+  // The row must then read exactly what landed.
   const built = await attempt(async () => {
     const st = await post(`/api/dev-test/marketing-live-seed?stages=sw${RUN}`);
     done = (st.stages ?? []).find((s) => s.key === "done") ?? null;
     if (!done) throw new Error(`no staged DONE campaign: ${JSON.stringify(st).slice(0, 200)}`);
-    const s = await post(`/api/dev-test/marketing-live-seed?stop=${encodeURIComponent(done.id)}&n=2`);
+    const s = await post(`/api/dev-test/marketing-live-seed?stop=${encodeURIComponent(done.id)}&n=1`);
     stopped = typeof s.stopped === "number" ? s.stopped : null;
-    if (stopped !== 2) throw new Error(`the stops after the message: ${JSON.stringify(s)}`);
-    return `the staged DONE campaign of ${done.people}, two of its handed-over people stopped since (the opt-out page's own path)`;
+    if (stopped !== 1) throw new Error(`the stop after the message: ${JSON.stringify(s)}`);
+    return `the staged DONE campaign of ${done.people}; one person it reached stopped since, by a link from an older message (the opt-out page's own path)`;
   });
-  setup("the live page's world: the staged campaigns, and two stops after the DONE campaign's message", built.ok, built.detail);
+  setup("the live page's world: the staged campaigns, and a stop made after the DONE campaign's message", built.ok, built.detail);
   for (const who of [people.growth, people.admin]) {
     const reached = !built.ok ? built : await attempt(async () => {
       await openLive(who.page, done.id);
@@ -1230,7 +1307,7 @@ async function liveScreen(people) {
       cards: ['[data-block="live-status"]', '[data-block="live-controls"]', '[data-block="live-progress"]', '[data-block="live-results"]'],
       view: { text: STOPPED_SINCE },
       want: [RESULTS_TITLE, STOPPED_SINCE, STOPPED_SINCE_HELP], old: STOPPED_OLD, inView: [STOPPED_SINCE],
-      rows: [{ label: STOPPED_SINCE, value: stopped === null ? undefined : String(stopped), help: STOPPED_SINCE_HELP }],
+      rows: [{ label: STOPPED_SINCE, name: STOPPED_SINCE_NAME, value: stopped === null ? undefined : String(stopped), help: STOPPED_SINCE_HELP }],
       present: ['[data-live-status="DONE"]', "[data-results]", ...(who.role === "ADMIN" ? ["[data-results-spend]"] : [])],
       absent: who.role === "ADMIN" ? [] : ["[data-results-spend]"],
     }, reached);
@@ -1291,8 +1368,9 @@ async function contactsScreen(growth) {
   });
   await sweep(p, {
     ...CONTACTS, state: "search-in", role: growth.role, view: { text: PRESENCE.inBook },
-    want: [PRESENCE.inBook, PRESENCE.body], old: [PRESENCE.notInBook], inView: [PRESENCE.inBook],
+    want: [PRESENCE.inBook, PRESENCE.body], old: [PRESENCE.notInBook], inView: [PRESENCE.inBook, PRESENCE.body],
     counts: [{ label: "no row is drawn for a whole number — a presence line only", sel: "[data-contact-row]", n: 0 }],
+    absent: ['[data-block="contacts-export"]'],
   }, reached);
   reached = await attempt(async () => {
     await openContacts(p, `?q=${NOT_IN_BOOK}`);
@@ -1300,8 +1378,9 @@ async function contactsScreen(growth) {
   });
   await sweep(p, {
     ...CONTACTS, state: "search-out", role: growth.role, view: { text: PRESENCE.notInBook },
-    want: [PRESENCE.notInBook, PRESENCE.notInBookBody], old: [PRESENCE.inBook], inView: [PRESENCE.notInBook],
+    want: [PRESENCE.notInBook, PRESENCE.notInBookBody], old: [PRESENCE.inBook], inView: [PRESENCE.notInBook, PRESENCE.notInBookBody],
     counts: [{ label: "no row is drawn for a whole number — a presence line only", sel: "[data-contact-row]", n: 0 }],
+    absent: ['[data-block="contacts-export"]'],
   }, reached);
 }
 
@@ -1387,6 +1466,13 @@ async function importScreen(growth) {
   console.log(`${NL}[import] the import dialog — GROWTH`);
   const p = growth.page;
   const DIALOG_STATE = { screen: "import", role: growth.role, root: PANEL, cards: [PANEL, DIALOG] };
+  // The book the list import meets (idempotent — the contacts screen may have seeded it already): its first contact is
+  // the number the list file holds as "already in the book".
+  const seeded = await attempt(async () => {
+    const r = await post("/api/dev-test/marketing-contacts-seed?count=45");
+    return `the book holds ${r.total} contacts`;
+  });
+  setup("the import's world: the 45-contact book (one of its numbers is in the list file)", seeded.ok, seeded.detail);
 
   // ── a pasted chat list: the paste box, its columns, its check (then discarded) ──
   let reached = await attempt(async () => {
@@ -1486,7 +1572,8 @@ async function importScreen(growth) {
     setup("the big workbook's check discarded (the book unchanged)", bigDiscard.ok, bigDiscard.detail);
   }
 
-  // ── C8b · B4 · a GROWTH import onto a new list: two new numbers, one already in the book ──
+  // ── C8b · B4 · a GROWTH import onto a new list: two new numbers, one already in the book — the check with the list
+  //    named (only the contacts it ADDS join the list, said to this viewer), then the result ──
   reached = await attempt(async () => {
     await closeDialog(p);
     await openImport(p);
@@ -1495,7 +1582,22 @@ async function importScreen(growth) {
     await p.waitForSelector('[data-import-list-option="new"]', { timeout: 60_000 });
     await p.locator('[data-import-list-option="new"]').first().click();
     await p.locator('[data-field="listName"] input').first().fill(LIST_NAME);
-    await settle(p, 300);
+    await p.waitForSelector("[data-import-list-created-only]", { timeout: 15_000 });
+    await settle(p, 400);
+    return "the check, a new list named";
+  });
+  const check = (key, n, label) => ({ label, sel: `[data-block="import-preflight"] [data-import-tile="${key}"]`, attr: ["data-value", String(n)] });
+  await sweep(p, {
+    ...DIALOG_STATE, state: "list-check", view: { sel: "[data-import-list-created-only]" },
+    want: [IMPORT.keptOnly, IMPORT.createdOnly, IMPORT.listOwed], old: IMPORT_OLD, inView: [IMPORT.createdOnly],
+    exact: [
+      check("new", 2, "two numbers new to the book"),
+      check("inBook", 1, "one number already in the book"),
+      { label: "the start is on — the list is named", sel: '[data-block="import-apply"]', disabled: false },
+    ],
+    absent: ["[data-import-choice]"],
+  }, reached);
+  reached = !reached.ok ? reached : await attempt(async () => {
     await p.locator('[data-block="import-apply"]').first().click();
     if ((await p.waitForSelector(CONFIRM, { timeout: 2_500 }).catch(() => null)) !== null) await p.locator(`${CONFIRM} button[type="submit"]`).first().click();
     await p.waitForSelector('[data-block="import-done"]', { timeout: 300_000 });
@@ -1506,13 +1608,15 @@ async function importScreen(growth) {
   const tile = (key, n, label) => ({ label, sel: `[data-block="import-done"] [data-import-tile="${key}"]`, attr: ["data-value", String(n)] });
   await sweep(p, {
     ...DIALOG_STATE, state: "list-done", view: { sel: '[data-block="import-done"]', block: "start" },
-    want: [IMPORT.finished, `Added to the list ${LIST_NAME}`], old: IMPORT_OLD,
+    want: [IMPORT.finished, listOwedSentence(LIST_NAME)], old: IMPORT_OLD,
     exact: [
       tile("create", 2, "two contacts added"),
       tile("update", 0, "nothing updated — a masked officer keeps the book as it is"),
       tile("keep", 1, "the number already in the book kept as it is"),
       tile("fail", 0, "nothing failed"),
+      { label: "the new list's members are not covered for offers yet", sel: "[data-import-list-result]", attr: ["data-import-list-result", "owed"] },
     ],
+    absent: ["[data-import-list-with-account]"],
   }, reached);
   await closeDialog(p).catch(() => {});
 
