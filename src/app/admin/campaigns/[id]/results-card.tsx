@@ -133,11 +133,12 @@ export function LiveResults() {
           </li>
         )}
         <li>
+          {/* E30 · everybody this campaign reached who has stopped offers since, whichever way — counted on the server. */}
           <Result
-            name="stoppedByLink"
-            label={RESULTS_ROW.stoppedByLink.label}
-            value={r.stoppedByLink}
-            help={RESULTS_ROW.stoppedByLink.help}
+            name="stoppedSince"
+            label={RESULTS_ROW.stoppedSince.label}
+            value={r.stoppedSince}
+            help={RESULTS_ROW.stoppedSince.help}
             box={RESULTS_ROW_BOX}
           />
         </li>

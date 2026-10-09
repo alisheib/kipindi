@@ -2871,7 +2871,7 @@ const HOUSE_TS_KEYS = new Set(["dueAt", "staleAt", "deadlineAt", "claimedUntil",
   // ══ 26.u48a · THE RESULTS' TWO READS (U48a, S14 2026-10-08 — ENGINE-SPEC §4.16, E5 and E30) ═════════════════════════════
   // ⭐ WHY THEY ARE HELD HERE. The live page's results ask two things its one groupBy cannot: how many of a campaign's SENT
   // rows were handed over before a cutoff (`countSentBefore` — "no receipt after 15 minutes"), and the campaign's handed-over
-  // people by number (`handedOverPage` — the stopped-by-link walk's pages, each asked of §25's `findActiveAmong`).
+  // people by number (`handedOverPage` — the stopped-since walk's pages, each asked of §25's `findActiveAmong` and `latestAmong`).
   // `test:campaign-visuals` R3/R4/R10 drive the MEMORY twin; a Prisma twin that loses its half is green in memory and wrong
   // — or slow — live: a count without the campaign (every campaign's SENT rows as this one's), the rows read and counted in
   // JavaScript (every recipient of a 150,000-person campaign on every poll), a page that selects whole rows (a token, a

@@ -12,13 +12,15 @@
  * Only THREE figures need a read of their own, because the groupBy cannot answer them — and each is a fixed, bounded cost:
  *   · E5 · "no receipt after 15 minutes" — ONE count of the rows still SENT and handed over before the cutoff
  *     (`countSentBefore`), asked only when some row is SENT;
- *   · E30 · "stopped by their link since this campaign" — a keyset walk of the campaign's handed-over people in chunks of
- *     1,000 (`handedOverPage`), each chunk's active stops in ONE query (§25's `findActiveAmong`, no new member), then the
- *     attribution below for the few that stopped. It is the one expensive figure, so production asks it through a
- *     single-flight memory of `STOPPED_BY_LINK_TTL_MS` per campaign (a 150,000-person campaign is not walked on every
- *     step and every watcher's poll; a read that failed is never kept) — and a view waits for it at most
- *     `RESULTS_READ_BUDGET_MS`: a walk still running says "couldn't be counted just now" this once and goes on without the
- *     view, so the next view finds it done (the page never hangs on the biggest list);
+ *   · E30 · "stopped since this campaign" — a keyset walk of the campaign's handed-over people in chunks of 1,000
+ *     (`handedOverPage`), each chunk's stops in force in TWO queries side by side — the stop list's (§25's
+ *     `findActiveAmong`) and each number's latest word in the consent ledger (§25's `latestAmong`), no new member — then,
+ *     for the few that stopped only, whether an erasure stands on them (three grouped reads, `erasedAmong`) and the
+ *     attribution below. It is the one expensive figure, so production asks it through a single-flight memory of
+ *     `STOPPED_SINCE_TTL_MS` per campaign (a 150,000-person campaign is not walked on every step and every watcher's poll;
+ *     a read that failed is never kept) — and a view waits for it at most `RESULTS_READ_BUDGET_MS`: a walk still running
+ *     says "couldn't be counted just now" this once and goes on without the view, so the next view finds it done (the page
+ *     never hangs on the biggest list);
  *   · the configured price — for a viewer who may read money only.
  * ⛔ A READ THAT FAILS IS SAID, NEVER A ZERO: the two counts above come back `null` and the card says "couldn't be counted
  * just now" — an auxiliary figure never stops the page or its driver (a thrown call stops the driver for good).
@@ -36,18 +38,46 @@
  * (`receiptsSetUp` — the DLR route's own rule, below), "Delivered will stay at zero" is said as well. Neither is said about a
  * campaign that handed nothing over, and neither is ever said to a viewer below E23's floor.
  *
- * ── STOPPED BY THEIR LINK (E30) ─────────────────────────────────────────────────────────────────────────────────────────
- * A number counts when it is among this campaign's handed-over people AND holds an ACTIVE stop whose reason is WITHDRAWN,
- * whose evidence starts `optout:` (what the opt-out link writes, `optout-service.ts`; an officer's bulk withdrawal or a
- * complaint carries other evidence) and which was created at or after this campaign's message to it (`sentAt`).
- * ⭐ ATTRIBUTED TO THE MOST RECENT CAMPAIGN BEFORE THE STOP: one number holds one link whatever campaign messaged it, so a
- * stop made after a NEWER campaign's message to the same number is that campaign's, not this one's — counted here only when
- * no other campaign handed the number a message between this one's and the stop. A stop BEFORE this campaign's message is not
- * this campaign's; a lifted stop is not active; a message that was never handed over (SKIPPED, FAILED) carries no link.
- * ⚠️ KNOWN LIMITS, said rather than hidden: a stop's `createdAt` is when the person FIRST said no (a stop lifted and made
- * again keeps its first instant, only its evidence moves on), so someone who stopped, resumed and stopped again by this
- * campaign's link may not be counted; and a stop by the link of a TEST send or an invite is not told apart from a campaign's.
- * Both err toward fewer, never toward a stop this campaign did not earn.
+ * ── STOPPED SINCE THIS CAMPAIGN (E30, as the owner re-ruled it on 2026-10-09) ────────────────────────────────────────────
+ * 🔴 WHY IT IS NOT "STOPPED BY THEIR LINK" ANY MORE. Since COMPLIANCE-DECISIONS § "2026-10-09 · Privacy v2026-10-09 — a
+ * marketing SMS is sent exactly as the officer wrote it: no stop link, no 18+, no helpline, no source line (owner ruling)" no
+ * message carries a stop link, and production had sent none before it: a row that counted only the link's stops would read 0
+ * for ever, and its words would be untrue. ⭐ It counts EVERY WAY A PERSON STOPS OFFERS, whatever made the stop.
+ * A number counts when it is among this campaign's handed-over people AND a stop is IN FORCE on it now that was made at or
+ * after this campaign's message to it (`sentAt`) — on one of the two records the send-time gate refuses on (`consent.ts`):
+ *   · THE STOP LIST — an ACTIVE row (`findActiveAmong`: a lifted row is not active), whatever its reason: the opt-out page's
+ *     own stop (`stopMarketing`, WITHDRAWN), an officer's Suppress from the contact book (`contact-bulk.ts`, OPERATOR), a
+ *     complaint. Dated by the row's `createdAt`.
+ *   · THE CONSENT LEDGER'S LATEST WORD — the number's newest row (`latestAmong`, the gate's own `latestFor` asked of a set) is
+ *     a WITHDRAWN: the offers switch turned OFF on Profile → Notifications (`recordPlayerMarketingChoice`, source PROFILE — it
+ *     writes that row FIRST and clears the switch only once it has landed, so the row IS the switch's record; the account's
+ *     `marketingOptIn` carries no instant, and `syncPlayerToggle` only follows a stop made through the link or an officer,
+ *     each with its own row), an officer's "Record a withdrawal" (`contact-bulk.ts`, source OPERATOR), and the opt-out page's
+ *     own row beside its stop (source OPT_OUT_PAGE). A later GIVEN — the switch turned back on, "start them again" — is the
+ *     latest word instead, and nothing is in force. ⛔ TWO WITHDRAWN ROWS ARE NO STOP (`isLedgerStop`): the ERASURE'S MARKER
+ *     (`erase.ts`: "a LEDGER row, never a stop") and a LAPSE (`RETENTION_LAPSE`, a row nobody writes yet — `consent.ts`: "it
+ *     must not be read as a stop"). The two-year lapse itself clears the switch and writes no row, and is reached on the
+ *     licence: never a stop. (The Add and Edit contact forms write neither record — they only mirror the book's cache.)
+ *   ⛔ ONE NUMBER, ONE STOP (`stopsSince`): a number with both — the opt-out page writes a stop-list row AND a ledger row — is
+ *     counted once, dated by the LATER instant: a stop-list row made again keeps its first `createdAt` (the store's re-arm
+ *     rule), so where the ledger holds the act it is the truer date.
+ *   ⛔ AN ERASED PERSON IS NEVER COUNTED. A number that is erased by the ONE function the importer and the Add form ask
+ *     (`isErasedNumber`, `erasure-mark.ts`: a book row decides alone — the erasure's tombstone is erased — and with no row the
+ *     ledger's ONE rule) is left out whatever stop it holds (`erasedAmong`, asked only of the numbers a chunk found stopped).
+ *     Found while building this, and said: the walk before counted ONE erased case — a person whose own link stop was made
+ *     after the message and who was erased later (`erase.ts` never touches a stop, so the row stood and passed) — and at send
+ *     time the gate files an erased number under "Withdrew consent" (its marker is a WITHDRAWN). This figure follows
+ *     neither. ⚠️ So a person counted here who is erased later leaves the count — as one who turns offers back on does: the
+ *     fall does not single out an erasure (X22).
+ * ⭐ ATTRIBUTED TO THE MOST RECENT CAMPAIGN BEFORE THE STOP: a stop made after a NEWER campaign's message to the same number is
+ * that campaign's, not this one's — counted here only when no other campaign handed the number a message between this one's and
+ * the stop. A stop BEFORE this campaign's message is not this campaign's; a message that was never handed over (SKIPPED,
+ * FAILED) reached nobody.
+ * ⚠️ KNOWN LIMITS, said rather than hidden: a stop-list row made again keeps its FIRST instant, so a person who stopped, was
+ * started again and was then stopped by an officer's Suppress (which writes no ledger row) after this campaign's message may
+ * not be counted; a stop that follows a TEST send or an invite is not told apart from one that follows the campaign before it;
+ * and the walk is by number, as every figure here is — a recycled number's next holder is not told apart. The first two err
+ * toward fewer.
  *
  * ── WHO SEES WHAT ───────────────────────────────────────────────────────────────────────────────────────────────────────
  * ⛔ E23 · THE FLOOR — a viewer below it (`hidden`: may not read a number, fewer than 10 rows) gets NO results at all, so
@@ -57,18 +87,19 @@
  * ⛔ No phone number in the view: the people are counts; the walk reads numbers and keeps none.
  *
  * ⛔ IT READS AND WRITES NOTHING ELSE: no transition, no audit row, no claim, no send.
- * Guard: `npm run test:campaign-visuals` §R (R1–R12) · Red: `npm run red:campaign-visuals` (in memory).
+ * Guard: `npm run test:campaign-visuals` §R (R1–R15) · Red: `npm run red:campaign-visuals` (in memory).
  */
 import { db } from "@/lib/server/store";
 import type {
-  MessagingKeyBatch, SmsCampaignHandedOver, SmsCampaignRecipientOutcomeCount, SmsCampaignRecipientStatusCounts, SmsCampaignStatus,
-  StoredSmsCampaignRecipient, StoredSuppression,
+  MessagingConsentSource, MessagingKeyBatch, SmsCampaignHandedOver, SmsCampaignRecipientOutcomeCount, SmsCampaignRecipientStatusCounts,
+  SmsCampaignStatus, StoredMessagingConsent, StoredSmsCampaignRecipient, StoredSuppression,
 } from "@/lib/server/store";
 import { smsProviderResolution } from "@/lib/server/sms";
 import type { SmsProviderResolution } from "@/lib/server/sms";
 import { reloadMarketingSmsSettings } from "@/lib/server/marketing/sms-settings";
 import { WEBHOOK_SECRET_MIN_CHARS } from "@/lib/server/webhook-secret-floor";
 import { RECEIPT_CLASS_PREFIX } from "@/lib/marketing/engine-rules";
+import { ERASURE_EVIDENCE, isErasedNumber, isErasureMarker } from "@/lib/marketing/erasure-mark";
 import { outstandingRows, recipientRows } from "@/lib/marketing/campaign-status";
 import type { CampaignResultsView } from "@/lib/server/marketing/campaign-live";
 
@@ -77,22 +108,23 @@ import type { CampaignResultsView } from "@/lib/server/marketing/campaign-live";
 /** E5 · a message handed over this long ago with no receipt is worth saying (receipts usually come in seconds — BLACKBALL-SMS
  *  §3a measured eleven). STRICTLY older: at exactly this age it is not yet "after 15 minutes". */
 export const NO_RECEIPT_AFTER_MS = 15 * 60_000;
-/** E30 · the people read per chunk of the stop walk — and so the keys one `findActiveAmong` takes (it refuses above 2,000). */
+/** E30 · the people read per chunk of the stop walk — and so the most keys any of its grouped reads takes (each refuses above
+ *  2,000): the stop list's and the ledger's for the whole chunk, the erasure's for the ones it found stopped. */
 export const STOP_WALK_CHUNK = 1000;
 /** A walk that has not ended after this many chunks (two million people) is not a walk: it refuses, and the figure is unread. */
 export const STOP_WALK_PAGES_MAX = 2000;
-/** How long production keeps a campaign's stopped-by-link count before it walks again (the header). */
-export const STOPPED_BY_LINK_TTL_MS = 30_000;
+/** How long production keeps a campaign's stopped-since count before it walks again (the header). */
+export const STOPPED_SINCE_TTL_MS = 30_000;
 /** Memory entries kept per process before settled ones past their time are swept. */
 const MEMO_MAX = 500;
 /** The longest ONE view waits for the stop walk. A walk that is slower is not abandoned — the single-flight memory keeps
  *  running it, and a later view reads its answer — the view just does not hang on it (a first look at a very large list). */
 export const RESULTS_READ_BUDGET_MS = 4_000;
 
-/** What the opt-out link writes as a stop's reason and the start of its evidence (`stopMarketing`, optout-service.ts) — the
- *  suite's R4 makes a stop through the REAL service and holds these to it. */
-export const LINK_STOP_REASON = "WITHDRAWN";
-export const LINK_STOP_EVIDENCE_PREFIX = "optout:";
+/** ⛔ The source of a WITHDRAWN row that is still no stop: the two-year lapse's (`retention.ts` clears the switch and writes no
+ *  row today; U16b owes it one, and `consent.ts` says it "must not be read as a stop"). The erasure's marker is the other such
+ *  row, told by its evidence (`isErasureMarker`). Typed, so the ledger's source list cannot lose the name unseen. */
+export const LAPSE_SOURCE: MessagingConsentSource = "RETENTION_LAPSE";
 
 /* ══ WHETHER A RECEIPT CAN ARRIVE AT ALL — the DLR route's own rule ═════════════════════════════════════════════════════ */
 
@@ -168,14 +200,49 @@ export function honestyOf(i: HonestyInput): ResultsHonesty {
   return { noReceiptYet, notSetUp: noReceiptYet && !i.setUp };
 }
 
-/** E30 · is this stop a person's own link stop, made at or after this campaign's message to them? An active stop whose
- *  reason is the link's (WITHDRAWN) and whose evidence is the link's (`optout:`), created no earlier than `sentAt`. */
-export function isLinkStop(stop: Pick<StoredSuppression, "reason" | "evidence" | "createdAt">, sentAt: string): boolean {
-  if (stop.reason !== LINK_STOP_REASON) return false;
-  if (typeof stop.evidence !== "string" || !stop.evidence.startsWith(LINK_STOP_EVIDENCE_PREFIX)) return false;
-  const stopMs = Date.parse(stop.createdAt);
-  const sentMs = Date.parse(sentAt);
-  return Number.isFinite(stopMs) && Number.isFinite(sentMs) && stopMs >= sentMs;
+/** E30 · is this word of the consent ledger a STOP? A WITHDRAWN that is neither the erasure's marker (`erase.ts`: a ledger row,
+ *  never a stop) nor a lapse (`LAPSE_SOURCE`). The switch turned off, an officer's recorded withdrawal and the opt-out page's
+ *  own row all are. */
+export function isLedgerStop(word: Pick<StoredMessagingConsent, "status" | "source" | "evidence">): boolean {
+  return word.status === "WITHDRAWN" && !isErasureMarker(word) && word.source !== LAPSE_SOURCE;
+}
+
+/** One person the walk found stopped: their bare key, this campaign's hand-over instant to them, and the stop's instant. */
+export type StopFound = { msisdn: string; sentAt: string; stopAt: string };
+/** What `stopsSince` reads of a stop-list row: whose, and when it was made (being active is the read's own question). */
+export type ListStop = Pick<StoredSuppression, "identifier" | "createdAt">;
+/** What `stopsSince` reads of a number's latest ledger word: whose, what it says, and when. */
+export type LedgerWord = Pick<StoredMessagingConsent, "identifier" | "status" | "source" | "evidence" | "createdAt">;
+
+/**
+ * ⭐ E30 · WHICH OF THESE PEOPLE HOLD A STOP IN FORCE MADE AT OR AFTER THIS CAMPAIGN'S MESSAGE — ONE ENTRY PER NUMBER (the
+ * header). `stops` are a chunk's ACTIVE stop-list rows, whatever their reason; `words` each number's LATEST ledger row, which
+ * counts only when it is a stop (`isLedgerStop`). Either counts when it was made no earlier than the person's `sentAt`,
+ * compared as instants (an instant that does not parse counts for nothing). ⛔ A number with both is ONE entry, dated by the
+ * LATER instant, and a number is never entered twice. A row about a number not among `people` is nobody's here. In the order
+ * of `people`.
+ */
+export function stopsSince(people: readonly SmsCampaignHandedOver[], stops: readonly ListStop[], words: readonly LedgerWord[]): StopFound[] {
+  const sentMs = new Map<string, number>();
+  for (const p of people) sentMs.set(p.msisdn, Date.parse(p.sentAt));
+  const latest = new Map<string, { ms: number; at: string }>();
+  const consider = (msisdn: string, at: string): void => {
+    const messaged = sentMs.get(msisdn);
+    const ms = Date.parse(at);
+    if (messaged === undefined || !Number.isFinite(messaged) || !Number.isFinite(ms) || ms < messaged) return;
+    const held = latest.get(msisdn);
+    if (held === undefined || ms > held.ms) latest.set(msisdn, { ms, at });
+  };
+  for (const s of stops) consider(s.identifier, s.createdAt);
+  for (const w of words) if (isLedgerStop(w)) consider(w.identifier, w.createdAt);
+  const found: StopFound[] = [];
+  for (const p of people) {
+    const stop = latest.get(p.msisdn);
+    if (stop === undefined) continue;
+    found.push({ msisdn: p.msisdn, sentAt: p.sentAt, stopAt: stop.at });
+    latest.delete(p.msisdn);
+  }
+  return found;
 }
 
 /** What the attribution reads of another message to the same number: which campaign, whether it reached the wire, when. */
@@ -185,7 +252,7 @@ export type MessageRef = Pick<StoredSmsCampaignRecipient, "campaignId" | "status
  * ⭐ E30 · IS THIS STOP ANOTHER CAMPAIGN'S? — true when a DIFFERENT campaign handed this number a message strictly after this
  * campaign's (`sentAt`) and no later than the stop (`stopAt`): the stop then follows that newer message, and is attributed to
  * the most recent campaign sent to the number before it. Only a message that reached the wire counts (SENT or DELIVERED, with
- * its instant) — a newer campaign's failed or skipped message carried no link to tap.
+ * its instant) — a newer campaign's failed or skipped message reached nobody, so nothing of it can be what they stopped after.
  */
 export function attributedElsewhere(rows: readonly MessageRef[], o: { campaignId: string; sentAt: string; stopAt: string }): boolean {
   const sentMs = Date.parse(o.sentAt);
@@ -200,49 +267,83 @@ export function attributedElsewhere(rows: readonly MessageRef[], o: { campaignId
 
 /* ══ THE STOP WALK (E30) ════════════════════════════════════════════════════════════════════════════════════════════ */
 
+/**
+ * ⛔ THE NUMBERS AMONG THESE THAT ARE ERASED — by the ONE function the importer and the Add form ask (`isErasedNumber`,
+ * `erasure-mark.ts`): a number's book row decides alone (the erasure's tombstone is erased, an ordinary row is not), and with no
+ * book row the ledger's ONE rule does (C8a's grouped read, `erasureStandsAmong`). ⭐ The book is read KEY-ONLY, twice
+ * (`msisdnsPresent` with the tombstone and without it): a number present only with it is the tombstone — no name, e-mail or
+ * note of a book row ever leaves the store for this. Three grouped reads side by side, each of at most a chunk of keys; each
+ * number once, in code-unit order. The walk asks it only of the numbers a chunk found stopped.
+ */
+export async function erasedAmong(msisdns: readonly string[]): Promise<string[]> {
+  const keys = [...new Set(msisdns)];
+  if (keys.length === 0) return [];
+  const [inBook, ordinaryInBook, standing] = await Promise.all([
+    db.marketingContact.msisdnsPresent({ msisdns: keys, excludeSourceRef: null }),
+    db.marketingContact.msisdnsPresent({ msisdns: keys, excludeSourceRef: ERASURE_EVIDENCE }),
+    db.messagingConsent.erasureStandsAmong({ channel: "SMS", category: "MARKETING", identifiers: keys }),
+  ]);
+  const present = new Set(inBook);
+  const ordinary = new Set(ordinaryInBook);
+  const stands = new Set(standing);
+  return keys
+    .filter((m) => isErasedNumber(present.has(m) ? { sourceRef: ordinary.has(m) ? null : ERASURE_EVIDENCE } : null, stands.has(m)))
+    .sort();
+}
+
 /** Every read and rule the walk makes — swappable for the suite's in-process plants; production passes none. */
 export type StopWalkDeps = {
   /** A keyset page of the campaign's handed-over people (`handedOverPage`, both twins). */
   page: (campaignId: string, after: string | null, limit: number) => Promise<SmsCampaignHandedOver[]>;
-  /** §25 · the stops still in force among one chunk's numbers — ONE query (`findActiveAmong`). */
+  /** §25 · the stops still in force ON THE STOP LIST among one chunk's numbers — ONE query (`findActiveAmong`). */
   stops: (batch: MessagingKeyBatch) => Promise<StoredSuppression[]>;
+  /** §25 · each of one chunk's numbers' LATEST word in the consent ledger — ONE query (`latestAmong`). */
+  words: (batch: MessagingKeyBatch) => Promise<StoredMessagingConsent[]>;
+  /** ⛔ The numbers among these that are erased (`erasedAmong`) — asked only of the ones a chunk found stopped. */
+  erased: (msisdns: string[]) => Promise<string[]>;
   /** The campaigns' messages to ONE number from an instant on (U16a's `listByMsisdn`), newest first. */
   messages: (msisdn: string, sinceIso: string) => Promise<MessageRef[]>;
   /** The people per chunk. */
   chunk: number;
-  rules: { isLinkStop: typeof isLinkStop; attributedElsewhere: typeof attributedElsewhere };
+  rules: { stopsSince: typeof stopsSince; attributedElsewhere: typeof attributedElsewhere };
 };
 
 /** Frozen: production's walk — nothing may reassign a member in-process (a suite hands in its own copy instead). */
 export const STOP_WALK_DEPS: Readonly<StopWalkDeps> = Object.freeze({
   page: async (campaignId: string, after: string | null, limit: number) => db.smsCampaignRecipient.handedOverPage(campaignId, after, limit),
   stops: async (batch: MessagingKeyBatch) => db.suppression.findActiveAmong(batch),
+  words: async (batch: MessagingKeyBatch) => db.messagingConsent.latestAmong(batch),
+  erased: async (msisdns: string[]) => erasedAmong(msisdns),
   messages: async (msisdn: string, sinceIso: string) => db.smsCampaignRecipient.listByMsisdn(msisdn, sinceIso),
   chunk: STOP_WALK_CHUNK,
-  rules: Object.freeze({ isLinkStop, attributedElsewhere }),
+  rules: Object.freeze({ stopsSince, attributedElsewhere }),
 });
 
 /**
- * ⭐ HOW MANY OF THIS CAMPAIGN'S PEOPLE STOPPED BY THEIR LINK SINCE ITS MESSAGE (E30, the header): walk the handed-over people
- * by number in chunks, ask each chunk's active stops in one query, keep the link stops made at or after the message, and drop
- * those another campaign's newer message to the same number explains. A read that fails THROWS (the caller says "unread");
- * a walk that does not move refuses rather than loop. Reads numbers, keeps none, returns a count.
+ * ⭐ HOW MANY OF THIS CAMPAIGN'S PEOPLE HAVE STOPPED OFFERS SINCE ITS MESSAGE (E30, the header): walk the handed-over people by
+ * number in chunks; ask each chunk's stop list and its numbers' latest ledger words, one query each, side by side; keep ONE stop
+ * per number made at or after the message (`stopsSince`); leave out the erased (asked of those alone); and drop the stops another
+ * campaign's newer message to the same number explains. A read that fails THROWS (the caller says "unread"); a walk that does
+ * not move refuses rather than loop. Reads numbers, keeps none, returns a count.
  */
-export async function stoppedByLinkOf(campaignId: string, deps: StopWalkDeps = STOP_WALK_DEPS): Promise<number> {
+export async function stoppedSinceOf(campaignId: string, deps: StopWalkDeps = STOP_WALK_DEPS): Promise<number> {
   let after: string | null = null;
   let stopped = 0;
   for (let pages = 0; ; pages++) {
     if (pages >= STOP_WALK_PAGES_MAX) throw new Error("[campaign-results] the stop walk did not end — refusing to go on");
     const page = await deps.page(campaignId, after, deps.chunk);
     if (page.length === 0) return stopped;
-    const sentAt = new Map<string, string>(page.map((p) => [p.msisdn, p.sentAt] as const));
-    const stops = await deps.stops({ channel: "SMS", category: "MARKETING", identifiers: [...sentAt.keys()] });
-    for (const stop of stops) {
-      const messagedAt = sentAt.get(stop.identifier);
-      if (messagedAt === undefined || !deps.rules.isLinkStop(stop, messagedAt)) continue;
-      const rows = await deps.messages(stop.identifier, messagedAt);
-      if (deps.rules.attributedElsewhere(rows, { campaignId, sentAt: messagedAt, stopAt: stop.createdAt })) continue;
-      stopped++;
+    const batch: MessagingKeyBatch = { channel: "SMS", category: "MARKETING", identifiers: [...new Set(page.map((p) => p.msisdn))] };
+    const [stops, words] = await Promise.all([deps.stops(batch), deps.words(batch)]);
+    const found = deps.rules.stopsSince(page, stops, words);
+    if (found.length > 0) {
+      const erased = new Set(await deps.erased(found.map((f) => f.msisdn)));
+      for (const f of found) {
+        if (erased.has(f.msisdn)) continue;
+        const rows = await deps.messages(f.msisdn, f.sentAt);
+        if (deps.rules.attributedElsewhere(rows, { campaignId, sentAt: f.sentAt, stopAt: f.stopAt })) continue;
+        stopped++;
+      }
     }
     if (page.length < deps.chunk) return stopped;
     const last = page[page.length - 1].msisdn;
@@ -303,7 +404,7 @@ export function withinBudget<T>(read: Promise<T>, ms: number): Promise<T | null>
 
 declare global {
   // eslint-disable-next-line no-var
-  var __50PICK_RESULTS_LINK: Map<string, Memo<number>> | undefined;
+  var __50PICK_RESULTS_STOPPED: Map<string, Memo<number>> | undefined;
 }
 
 /* ══ THE DOORS ══════════════════════════════════════════════════════════════════════════════════════════════════════ */
@@ -312,8 +413,9 @@ declare global {
 export type ResultsDeps = {
   /** E5 · the campaign's rows still SENT and handed over strictly before the instant (`countSentBefore`, both twins). */
   sentBefore: (campaignId: string, before: string) => Promise<number>;
-  /** E30 · the people who stopped by their link since this campaign's message (production: kept for `STOPPED_BY_LINK_TTL_MS`). */
-  stoppedByLink: (campaignId: string) => Promise<number>;
+  /** E30 · the people this campaign reached who have stopped offers since its message (production: kept for
+   *  `STOPPED_SINCE_TTL_MS`). */
+  stoppedSince: (campaignId: string) => Promise<number>;
   /** Can this server take a receipt? (`receiptsSetUp` over the process's environment.) */
   receiptsSetUp: () => boolean;
   /** The owner's price per SMS as configured (the settings, read fresh), or null when it cannot be read in full — asked for a
@@ -331,10 +433,10 @@ export type ResultsDeps = {
 /** Frozen: production's results — nothing may reassign a member in-process (a suite hands in its own copy instead). */
 export const RESULTS_DEPS: Readonly<ResultsDeps> = Object.freeze({
   sentBefore: async (campaignId: string, before: string) => db.smsCampaignRecipient.countSentBefore(campaignId, before),
-  stoppedByLink: memoByKey<number>((campaignId) => stoppedByLinkOf(campaignId), {
-    ttlMs: STOPPED_BY_LINK_TTL_MS,
+  stoppedSince: memoByKey<number>((campaignId) => stoppedSinceOf(campaignId), {
+    ttlMs: STOPPED_SINCE_TTL_MS,
     now: () => Date.now(),
-    held: (globalThis.__50PICK_RESULTS_LINK ??= new Map<string, Memo<number>>()),
+    held: (globalThis.__50PICK_RESULTS_STOPPED ??= new Map<string, Memo<number>>()),
   }),
   receiptsSetUp: () => receiptsSetUp(receiptRouteNow()),
   priceTzs: async () => {
@@ -391,16 +493,16 @@ export async function campaignResults(i: ResultsInput, deps: ResultsDeps): Promi
     : Promise.resolve()
       .then(() => deps.sentBefore(i.campaignId, new Date(i.nowMs - NO_RECEIPT_AFTER_MS).toISOString()))
       .catch((err) => readFailed("the count of messages with no receipt after 15 minutes", err));
-  const stoppedByLink = c.SENT + c.DELIVERED === 0
+  const stoppedSince = c.SENT + c.DELIVERED === 0
     ? Promise.resolve<number | null>(0)
-    : withinBudget(Promise.resolve().then(() => deps.stoppedByLink(i.campaignId)), deps.budgetMs)
-      .catch((err) => readFailed("the count of people who stopped by their link", err));
+    : withinBudget(Promise.resolve().then(() => deps.stoppedSince(i.campaignId)), deps.budgetMs)
+      .catch((err) => readFailed("the count of people who stopped offers since this campaign", err));
   const price = i.money && c.SENT + c.DELIVERED > 0
     ? Promise.resolve()
       .then(() => deps.priceTzs())
       .catch((err) => readFailed("the configured price", err))
     : Promise.resolve<number | null>(null);
-  const [noReceipt, stopped, perSms] = await Promise.all([noReceiptAfter15, stoppedByLink, price]);
+  const [noReceipt, stopped, perSms] = await Promise.all([noReceiptAfter15, stoppedSince, price]);
 
   const stoppedCampaign = i.status === "CANCELLED";
   const honesty = deps.rules.honesty({
@@ -414,7 +516,7 @@ export async function campaignResults(i: ResultsInput, deps: ResultsDeps): Promi
     notSent: { total: c.SKIPPED, reasons: i.notSentReasons.map((r) => ({ label: r.label, count: r.count })) },
     noAnswer: c.UNCONFIRMED,
     left: { count: stoppedCampaign ? i.stoppedBeforeSending : outstandingRows(c), stopped: stoppedCampaign },
-    stoppedByLink: stopped,
+    stoppedSince: stopped,
     honesty,
     // ⛔ OD24 · an estimate, and said as one: handed over (SENT + DELIVERED, the figures card's own "Handed over") × the price
     // the owner configured. Whole shillings and pence both survive — the sentence formats it.
