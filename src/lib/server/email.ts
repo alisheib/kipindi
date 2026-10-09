@@ -23,6 +23,9 @@ import { resolvePhoneEmail } from "./email-map";
 import { isSuppressed } from "./email-suppression";
 import { appUrl } from "@/lib/app-url";
 import { formatTzs, formatDateShort } from "@/lib/utils";
+// R6-A (2026-10-09, A1): the end of a break or an exclusion, with its time, in each line's own month words (`rgEndIn`).
+import { formatEatDateTime } from "@/lib/eat-day";
+import { dict } from "@/lib/i18n-dict";
 import { AGENT_REJECT_REASON } from "@/lib/admin-status-lexicon";
 // E-101 · an email that quotes a Reference must link to THAT reference, not to a list.
 import { positionPermalinkHref } from "@/lib/position-permalink";
@@ -1066,9 +1069,17 @@ export function withdrawalUnderReviewHtml({ amount, reference }: {
  * The cash-out terms come from the poll's own frozen rates. They used to be a
  * hardcoded "5 minutes" and "9%", which would have started lying the moment an
  * admin retuned either one.
+ *
+ * ⭐ R6-A (2026-10-09, A1's sibling) · "Resolves" IS A MOMENT, SAID AS "Placed" ABOVE IT SAYS ITS OWN. The caller passed
+ * `market.resolutionAt.slice(0, 10)` — the UTC calendar day, unformatted — so a market resolving at 01:00 EAT on 10 Oct
+ * read "Resolves 2026-10-09": a day early, no time, under a "Placed" row in "09 Oct 2026, 12:00 EAT". The builder now
+ * takes the instant and says it with this file's own row formatter (`fmtDateTime`, East Africa Time, the zone stated),
+ * as `selectionClosedHtml` says its "Results expected". A value that does not parse draws no row, never "Invalid Date".
  */
-export function betPlacedHtml({ reference, side, stake, marketTitle, placedAt, resolutionDate, cashOutFeeRate, freeExitGraceMinutes, paidExitWindowMinutes = 0 }: {
-  reference: string; side: "YES" | "NO"; stake: number; marketTitle: string; placedAt?: string; resolutionDate: string;
+export function betPlacedHtml({ reference, side, stake, marketTitle, placedAt, resolvesAt, cashOutFeeRate, freeExitGraceMinutes, paidExitWindowMinutes = 0 }: {
+  reference: string; side: "YES" | "NO"; stake: number; marketTitle: string; placedAt?: string;
+  /** The market's resolution instant (`resolutionAt`, ISO). */
+  resolvesAt: string;
   cashOutFeeRate: number; freeExitGraceMinutes: number; paidExitWindowMinutes?: number;
 }): string {
   const mins = freeExitGraceMinutes;
@@ -1087,7 +1098,7 @@ export function betPlacedHtml({ reference, side, stake, marketTitle, placedAt, r
       { label: "Your pick", value: side, tone: side === "YES" ? "good" : "bad" },
       { label: "Stake", value: formatTzs(stake) },
       ...(placedAt ? [{ label: "Placed", value: fmtDateTime(placedAt) }] : []),
-      { label: "Resolves", value: resolutionDate },
+      ...(Number.isFinite(Date.parse(resolvesAt)) ? [{ label: "Resolves", value: fmtDateTime(resolvesAt) }] : []),
     ])}
     ${subtitle("Your payout depends on how the pool ends up split. We'll email you the exact amount the moment betting closes and the pools are final.")}
     ${subtitle(exitLine)}
@@ -1569,33 +1580,70 @@ export function emailVerifyHtml({ name, verifyUrl }: { name?: string; verifyUrl:
   `);
 }
 
-export function selfExclusionHtml({ period, endDate }: { period: string; endDate: string }): string {
+/**
+ * ⭐ R6-A (2026-10-09, A1) · THE END OF A BREAK OR AN EXCLUSION, IN EACH LINE'S OWN WORDS, ON THE EAST AFRICA CLOCK.
+ *
+ * 🔴 These two letters are the durable record of a player's own protective choice, and they said its end as the SERVER's
+ * calendar day with no time: `responsible-gambling.ts` built it with `toLocaleDateString("en-GB")` and no time zone, and
+ * production runs in UTC. A 24-hour break taken at 01:30 EAT on 9 Oct ends at 01:30 on 10 Oct; the letter said "until
+ * 09 Oct 2026" — a day early, and no time even for a one-hour break — and its Swahili line "hadi 2026-10-09" (the
+ * exclusion's Swahili line "hadi 09 Oct 2026", an English month). The bell's notice of the same break said "hadi 10 Okt,
+ * 01:30" (R4-I).
+ * ⭐ So each builder takes the INSTANT and says it the way the bell and every screen say a break's end: `formatEatDateTime`
+ * (the formatter `formatBreakEnd` uses for an instant) — the East Africa clock, Tanzania's own day, fixed UTC+3 — with
+ * each line's own month words from the dictionary (`common.monthsShort`, as `agentRevokedHtml` takes them): "until 10 Oct,
+ * 01:30" / "hadi 10 Okt, 01:30", the year added when it is not this one. The detail row repeats the English line's value,
+ * so one letter states one end one way. Only the month words come from the dictionary; the sentences are the letters' own.
+ * ⛔ A PERMANENT EXCLUSION STATES NO END. It is stored as now + 100 years, so the letter read "…disabled until 15 Sept
+ * 2126". The caller asks `selfExclusionStandingOf` — the one definition of permanent, never the period's name — and the
+ * letter then names no date at all: each sentence loses only its "until …" clause, and the Period row says the dictionary's
+ * own word for it (`common.permanent`). No sentence is reworded (approved responsible-gambling copy).
+ * ⚠️ A value that does not parse states no end either, as `agentRevokedHtml` states no date — never "Invalid Date".
+ */
+function rgEndIn(untilIso: string, nowMs: number): { en: string; sw: string } | null {
+  const at = Date.parse(untilIso);
+  if (!Number.isFinite(at)) return null;
+  return {
+    en: formatEatDateTime(at, nowMs, dict.en.common.monthsShort, "en"),
+    sw: formatEatDateTime(at, nowMs, dict.sw.common.monthsShort, "sw"),
+  };
+}
+
+export function selfExclusionHtml({ period, untilIso, permanent = false }: {
+  period: string;
+  /** The exclusion's end: the ISO instant `selfExclude` wrote. */
+  untilIso: string;
+  /** `selfExclusionStandingOf(untilIso)` reads it as permanent: the letter then states no end. */
+  permanent?: boolean;
+}): string {
+  const end = permanent ? null : rgEndIn(untilIso, Date.now());
   return wrap(`
     ${eyebrow("Self-exclusion active", "Jizuie")}
     ${heading("Self-exclusion confirmed")}
-    ${subtitle(`You've locked your account for ${period}. Betting, deposits, and login are disabled until ${endDate}. This cannot be reversed.`)}
-    ${subtitleSw(`Akaunti yako imefungwa hadi ${endDate}. Hii haiwezi kubatilishwa.`)}
+    ${subtitle(`You've locked your account for ${period}. Betting, deposits, and login are disabled${end ? ` until ${end.en}` : ""}. This cannot be reversed.`)}
+    ${subtitleSw(`Akaunti yako imefungwa${end ? ` hadi ${end.sw}` : ""}. Hii haiwezi kubatilishwa.`)}
     ${detailRows([
-      { label: "Period", value: period },
-      { label: "Unlocks", value: endDate },
+      { label: "Period", value: permanent ? dict.en.common.permanent : period },
+      ...(end ? [{ label: "Unlocks", value: end.en }] : []),
     ])}
   `);
 }
 
-export function coolOffHtml({ duration, endDate, untilIso }: { duration: string; endDate: string; /** ISO instant — the Swahili line prints its YYYY-MM-DD, never an English month name. */ untilIso?: string }): string {
+export function coolOffHtml({ duration, untilIso }: { duration: string; /** The break's end: the ISO instant `coolOff` wrote. */ untilIso: string }): string {
   // ⛔ 2026-09-14 — this said "You can still sign in and withdraw your money at any time", which overstated: a
   // break blocks neither, but a withdrawal keeps conditions of its own that a break does not change. The line
   // now says only what the break does NOT block. ⛔ No identity sentence here (the quiet rule).
   // ⭐ And the Swahili line this mail never had. It names the end date and not the duration, because the
-  // duration label reaches this builder in English.
+  // duration label reaches this builder in English. Its end is said in Swahili month words (R6-A, above `rgEndIn`).
+  const end = rgEndIn(untilIso, Date.now());
   return wrap(`
     ${eyebrow("Break active", "Pumzika")}
     ${heading("Break confirmed")}
-    ${subtitle(`Betting and deposits are paused for ${duration}, until ${endDate}. Your break does not block sign-in or withdrawals.`)}
-    ${subtitleSw(`Kuweka dau na amana kumesimamishwa${untilIso ? ` hadi ${untilIso.slice(0, 10)}` : ""}. Mapumziko haya hayazuii kuingia kwenye akaunti wala kutoa pesa.`)}
+    ${subtitle(`Betting and deposits are paused for ${duration}${end ? `, until ${end.en}` : ""}. Your break does not block sign-in or withdrawals.`)}
+    ${subtitleSw(`Kuweka dau na amana kumesimamishwa${end ? ` hadi ${end.sw}` : ""}. Mapumziko haya hayazuii kuingia kwenye akaunti wala kutoa pesa.`)}
     ${detailRows([
       { label: "Duration", value: duration },
-      { label: "Resumes", value: endDate },
+      ...(end ? [{ label: "Resumes", value: end.en }] : []),
     ])}
   `);
 }

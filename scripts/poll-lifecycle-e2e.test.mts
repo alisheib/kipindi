@@ -555,7 +555,7 @@ section("11. Email templates render correctly");
   ok("11.4 selection-closed email has bilingual text", selHtml.includes("limefungwa")); // "Dau limefungwa" / "Bwawa limefungwa"
   ok("11.5 no raw HTML tags leaked (XSS safe)", !selHtml.includes("<script"));
 
-  const betHtml = betPlacedHtml({ reference: "pos_test", side: "YES", stake: 5000, payoutIfWin: 9000, marketTitle: "Test <b>bold</b>", resolutionDate: ahead(180) });
+  const betHtml = betPlacedHtml({ reference: "pos_test", side: "YES", stake: 5000, payoutIfWin: 9000, marketTitle: "Test <b>bold</b>", resolvesAt: ahead(180) });
   ok("11.6 bet-placed email renders", betHtml.includes("5,000") || betHtml.includes("5000"));
   ok("11.7 bet-placed XSS safe (no raw <b>)", !betHtml.includes("<b>bold</b>"));
 }

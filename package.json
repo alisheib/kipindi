@@ -76,6 +76,7 @@
     "test:redis-failopen": "tsx scripts/redis-failopen.test.mts",
     "test:rg-race": "tsx scripts/rg-limit-race.test.mts",
     "test:rg-doors": "tsx scripts/rg-doors.test.mts",
+    "test:rg-email-end": "tsx scripts/rg-email-end.test.mts",
     "test:rg-cash-incentive": "tsx scripts/rg-cash-incentive.test.mts",
     "test:withdrawn-features": "tsx scripts/withdrawn-features.test.mts",
     "test:dal-parity": "tsx scripts/dal-parity.test.mts",

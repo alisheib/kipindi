@@ -1837,7 +1837,8 @@ async function buyPositionInner(userId: string, opts: BuyOpts, ctx: BetContext):
       subject: `Bet placed · ${opts.side} on "${market.titleEn.slice(0, 40)}"`,
       html: betPlacedHtml({
         reference: c.positionId, side: opts.side, stake: opts.stake,
-        marketTitle: market.titleEn, placedAt: c.placedAt, resolutionDate: market.resolutionAt.slice(0, 10),
+        // R6-A (2026-10-09) · the instant, said on the East Africa clock by the letter's own row formatter — it was the UTC day.
+        marketTitle: market.titleEn, placedAt: c.placedAt, resolvesAt: market.resolutionAt,
         cashOutFeeRate: betRates.cashOutFeeRate, freeExitGraceMinutes: betRates.freeExitGraceMinutes,
         paidExitWindowMinutes: betRates.paidExitWindowMinutes,
       }),

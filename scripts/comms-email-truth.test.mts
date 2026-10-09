@@ -104,8 +104,9 @@ const RENDERS: Rendered[] = [
     benign:  E.amlRejectRefundHtml({ amount: 15_000, reason: "Rail refused the payout", reference: "wdr_a1", gatewayRef: "sel_b2", railLabel: "Selcom Pesa" }),
     hostile: E.amlRejectRefundHtml({ amount: 1, reason: HOSTILE, reference: HOSTILE, gatewayRef: HOSTILE, railLabel: HOSTILE }) },
   { template: "betPlacedHtml",
-    benign:  E.betPlacedHtml({ reference: "pos_a1", side: "YES", stake: 10_000, marketTitle: SAFE, placedAt: "2026-07-31T09:00:00.000Z", resolutionDate: "01 Aug 2026", cashOutFeeRate: 0.1, freeExitGraceMinutes: 5, paidExitWindowMinutes: 0 }),
-    hostile: E.betPlacedHtml({ reference: HOSTILE, side: "NO", stake: 1, marketTitle: HOSTILE, placedAt: HOSTILE, resolutionDate: HOSTILE, cashOutFeeRate: 0.1, freeExitGraceMinutes: 5, paidExitWindowMinutes: 30 }) },
+    // R6-A (2026-10-09): `resolvesAt` is the market's resolution INSTANT now (it was a display string, the UTC day).
+    benign:  E.betPlacedHtml({ reference: "pos_a1", side: "YES", stake: 10_000, marketTitle: SAFE, placedAt: "2026-07-31T09:00:00.000Z", resolvesAt: "2026-08-01T12:00:00.000Z", cashOutFeeRate: 0.1, freeExitGraceMinutes: 5, paidExitWindowMinutes: 0 }),
+    hostile: E.betPlacedHtml({ reference: HOSTILE, side: "NO", stake: 1, marketTitle: HOSTILE, placedAt: HOSTILE, resolvesAt: HOSTILE, cashOutFeeRate: 0.1, freeExitGraceMinutes: 5, paidExitWindowMinutes: 30 }) },
   { template: "selectionClosedHtml",
     benign:  E.selectionClosedHtml({ marketTitle: SAFE, closedAt: "2026-07-31T09:00:00.000Z", resolvesAt: "2026-08-01T09:00:00.000Z", marketId: "mkt_a1", payoutIfYes: 18_500, payoutIfNo: null }),
     hostile: E.selectionClosedHtml({ marketTitle: HOSTILE, closedAt: HOSTILE, resolvesAt: HOSTILE, marketId: HOSTILE, payoutIfYes: 1, payoutIfNo: 2 }) },
@@ -225,12 +226,13 @@ const RENDERS: Rendered[] = [
   { template: "amlReviewAdminHtml",
     benign:  E.amlReviewAdminHtml({ amount: 2_000_000, kind: "WITHDRAWAL", reference: "wdr_a1" }),
     hostile: E.amlReviewAdminHtml({ amount: 1, kind: HOSTILE, reference: HOSTILE }) },
+  // R6-A (2026-10-09, A1): the two RG letters take the end's INSTANT and say it themselves (it was a pre-formatted day).
   { template: "selfExclusionHtml",
-    benign:  E.selfExclusionHtml({ period: "6 months", endDate: "31 Jan 2027" }),
-    hostile: E.selfExclusionHtml({ period: HOSTILE, endDate: HOSTILE }) },
+    benign:  E.selfExclusionHtml({ period: "6 months", untilIso: "2027-01-31T09:00:00.000Z" }),
+    hostile: E.selfExclusionHtml({ period: HOSTILE, untilIso: HOSTILE }) },
   { template: "coolOffHtml",
-    benign:  E.coolOffHtml({ duration: "24 hours", endDate: "01 Aug 2026" }),
-    hostile: E.coolOffHtml({ duration: HOSTILE, endDate: HOSTILE }) },
+    benign:  E.coolOffHtml({ duration: "24 hours", untilIso: "2026-08-01T09:00:00.000Z" }),
+    hostile: E.coolOffHtml({ duration: HOSTILE, untilIso: HOSTILE }) },
   { template: "welcomeHtml",
     benign:  E.welcomeHtml({ name: "Asha" }),
     hostile: E.welcomeHtml({ name: HOSTILE }) },
@@ -574,7 +576,7 @@ ok("bet-placed email prints no potential-return figure", !/potential return/i.te
 ok("bet-placed email quotes the poll's own free-exit window", betText.includes("5-min free exit"));
 ok("bet-placed email (no paid tail) says selling closes at the window",
   /selling closes and the bet rides to settlement/i.test(betText));
-const betPaid = plain(E.betPlacedHtml({ reference: "pos_a2", side: "YES", stake: 10_000, marketTitle: SAFE, resolutionDate: "01 Aug 2026", cashOutFeeRate: 0.07, freeExitGraceMinutes: 3, paidExitWindowMinutes: 30 }));
+const betPaid = plain(E.betPlacedHtml({ reference: "pos_a2", side: "YES", stake: 10_000, marketTitle: SAFE, resolvesAt: "2026-08-01T12:00:00.000Z", cashOutFeeRate: 0.07, freeExitGraceMinutes: 3, paidExitWindowMinutes: 30 }));
 ok("bet-placed email (paid tail) quotes THAT poll's fee, not a constant",
   betPaid.includes("3-min free exit") && betPaid.includes("7%") && !betPaid.includes("10%"));
 
