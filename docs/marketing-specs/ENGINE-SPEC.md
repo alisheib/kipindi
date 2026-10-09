@@ -46,7 +46,7 @@ push → proof live (`?dpl=` + the deploy log for the migration). Owner waits an
 | 15 | **U47b** | The live campaign page `/admin/campaigns/[id]`: Start · Pause · Resume · Stop · Make a copy, the page driver, the states and the yields in words. Built as **U47b-1** (services + view-model, no action, 6–9 h) then **U47b-2** (page, actions, driver, drive, 8–13 h) — §4.15 | U43b · U49a · U42 | Start needs the switch open (G1) | 14–22 | — |
 | 16 | **U48a** | Results on the live page: delivered (receipts), failed, not sent by reason, no answer, stopped by link, the honesty lines | U47b · U46a | read-only | 5–8 | — |
 | 17 | **U48b** | The recipients table (server-paged, masked) and the CSV export | U48a | read-only | 7–12 | — |
-| 18 | **U52a** | The live drive on production: ≤ 6 chargeable sends to the approved test number, discrimination, receipts, the stop link on the handset | all above · the whole predeploy chain once | — | 4–8 (+ owner waits) | — |
+| 18 | **U52a** | The live drive on production: ≤ 6 chargeable sends to the approved test number, discrimination, receipts, the stop link's page (since 2026-10-09 opened from the recipient row — no SMS carries the link) | all above · the whole predeploy chain once | — | 4–8 (+ owner waits) | — |
 
 **Total: about 119–196 focused hours** (U48b may follow G2: 112–184 to G2). With two static builders running on the
 disjoint sets below and ONE serial battery, roughly **9–15 working days of lead time**, plus the owner's acts. This sits
@@ -2965,11 +2965,54 @@ and after it — G2.
 deletes them when testing is done. So the clicks of decision 2 are made by Claude, signed in as its own staff login **"QA Growth
 (Claude)"** (role GROWTH — never Ali's, never Jay's, never an ADMIN's). The SMS still go **only to the approved test number**
 (+255 772 619 619, a real phone nobody needs to touch). The "tap" on the stop link is made by opening the stop link's URL in a
-browser (`/s/<token>` is public — no sign-in), the URL read from the test number's row by the evidence tool. The suppressed
+browser (`/s/<token>` is public — no sign-in), the URL read from the test number's row by the evidence tool — since the owner's
+ruling of 2026-10-09 the ONLY way to it: no SMS carries the link (see "What changed on 2026-10-09", below). The suppressed
 **control** is §7 Q4's fallback ("If none"): there is no second number, and the refusal is proven on the test number itself —
 **sent while eligible (A) · refused after its stop (B) · sent again after "Start them again" (C)** — one number, one message, one
 list; the only thing that changed between A and B is the stop. The same-run control is recorded as NOT done. Wherever decision 2
 says "Jay", read "the test number"; its eight steps keep their order.
+
+**What changed on 2026-10-09 (Ali, in the session — COMPLIANCE-DECISIONS § "2026-10-09 · Privacy v2026-10-09 — a marketing SMS is
+sent exactly as the officer wrote it: no stop link, no 18+, no helpline, no source line (owner ruling)").** The engine appends
+NOTHING to a campaign SMS or a test: the text sent is the officer's message with `{jina}` filled in. Every recipient row still gets
+its opt-out token, and `/s/<token>` still works — stop, and "Start them again" — it is only never printed in a message.
+1. **The stop steps keep their shape (decided by S14, the least change that still proves a stop is obeyed).** Step 3's evidence
+   prints the test number's link from its OWN recipient row (`--show-stop-link`, as since 2026-10-08), step 4 opens that page and
+   stops, step 6 presses "Start them again" on the same page, and B and C prove the gate obeyed both. *Why not the offers switch on
+   Profile → Notifications:* the tools, the flags, the ledger and every count stay as they are; the page is the very opt-out a
+   person holding a link sent before the ruling uses, and it writes the same `Suppression` row the gate refuses; the test number
+   is a contact-book number, which has no profile unless an account holds it; and the switch would need a sign-in to production
+   as that player (each one approved by Ali himself) and a second evidence path. ⛔ **The owner's number never ends the drive
+   stopped:** if the drive stops for ANY reason after step 4 and before step 6 — a NO-GO, an evidence run that is not proven, the
+   window or the switch closing — open the same `/s/<token>` page and press "Anza kupokea tena" ("Start them again") FIRST (it
+   sends nothing and moves no ledger), read it back with the evidence of the last campaign (`--expect=resumed:test`), and only
+   then stop and tell Ali.
+2. **The drive's message — the owner's words of 2026-10-09 ("make the test SMS say something not like we are live", "in a nice
+   way"), held ONCE in `scripts/lib/marketing-u52a-message.mjs` (`DRIVE_MESSAGE`), which this sheet, the stand-in world, the
+   scratch probe and the admin guide all read.** Every campaign draft of the drive and the composer test carry exactly:
+   - Swahili message:
+     `50pick: Habari {jina}! Mambo makubwa yanakuja hivi karibuni, na kilichofichwa kitafichuka. Kaa nasi, hutataka kukosa!`
+   - Swahili word for {jina}: `Rafiki`
+   - English message:
+     `50pick: Hello {jina}! Big things are coming soon, and what's hidden will be revealed. Stay tuned, you won't want to miss it!`
+   - English word for {jina}: `Friend`
+
+   Typed exactly — plain GSM-7, straight apostrophes, no dash, no curly quote. A contact-book number is sent the Swahili body
+   with "Rafiki"; an account is greeted by its own first name, or by its language's word when its name cannot be printed. The
+   campaigns are told apart by their NAME, never by the text: `U52a drive A`, `U52a drive B`, `U52a drive C` — a retry
+   `U52a drive D`.
+3. **Sent as written, read back.** At step 2 the Test card's "The exact text sent:" is the Swahili message exactly as the card's
+   preview filled it (the QA login's own first name, or "Rafiki") — nothing after "kukosa!". Every evidence run prints **SENT AS
+   WRITTEN**: no message body is stored, so every message on the wire must be as long as the drive's message with its name filled
+   in (Swahili 112 to 123 characters, English 119 to 130 — `driveLengthWindows`) and no longer. A VIOLATION there (exit 1, on a
+   look as on a verdict) means something was appended or other words were sent: stop at once and tell Ali.
+4. **The composer test's route.** A test to a TYPED number is for ADMIN and COMPLIANCE only (Ali, 2026-10-09): the QA Growth login
+   is offered "My own number" alone. Step 2 is made only when the masked own number shown is the test number's mask; otherwise it
+   is NOT made (the spare grows to four) and the drive says so.
+5. **The pre-flight's `source` row is unchanged for now.** It still asks for a saved `source.phrase` (and, while licence outreach
+   is open, `adult.test`); since the ruling the app neither prints nor requires either, so the row guards nothing the drive does.
+   Its removal is owed and waits for the owner's approval. Both wordings were saved on production with the owner's approvals of
+   2026-10-07/08, so the row reads GO; a NO-GO there is a question for Ali, never cleared by saving a wording.
 
 **The tools** (both read-only, both exit non-zero unless what they were asked is true):
 
@@ -3117,6 +3160,8 @@ never writes a count down by hand, and takes no further step before it does.
    the gate clears, and one that SURVIVES the stop link's two acts (`test-cycle`). The list's name is the drive's own and PLAIN (letters,
    digits, spaces, `.` `_` `:` `#` `-`, up to 40 characters — the tool will not print any other, and then the row is NO-GO); its numbers are its own.
 6. **The source line is saved** (`source`): the newest `source.phrase` is not blank — and, while licence outreach is open, `adult.test`.
+   (Since 2026-10-09 neither is printed or required by the app; the row is kept until its removal is approved — "What changed on
+   2026-10-09", item 5.)
 7. **The composer test's route is decided** (decision point, below).
 8. **The receipt secret is set** (`webhook`) and Ali or Jay can read the Blackball portal's Out SMS `COUNT` (segments) before and
    after, for the comparison.
@@ -3153,23 +3198,21 @@ before each Start (steps 3, 5 and 7) and before ANY retry run G1, G2 and G3 — 
 |---|---|---|---|---|---|---|
 | 0 | before anything is opened | the lead | — | — | `railway run --service 50pick npm run -s ops:marketing-preflight -- --test=+255772619619 --origin=https://www.50pick.tz --expect-dpl=<sha> --new-ledger` → **RESULT: GO — 19 of 19 rows (1 not applicable)** (`control` n/a); `test-lists` names the drive list; `in-flight` and `elsewhere` are GO with no campaign named | 0 |
 | 1 | switch opened for 2 h | the lead through the audited ops door on Ali's G1 word — or Ali on the card. **Never the QA login** (opening is owner-only) | Admin → System, the "Marketing SMS sending" card ("Switch on…" → duration → "Switch on"); or `railway run --service 50pick npm run -s ops:marketing-live-switch -- open --minutes 120 --by "Claude for Ali (G1)" --reason "U52a live drive"` | the card: "On until HH:MM EAT"; the door: `DONE: ON — opened at … it switches itself off at …` | `railway run --service 50pick npm run -s ops:marketing-preflight -- --test=+255772619619 --origin=https://www.50pick.tz --expect-switch=open --new-ledger` → the `switch` row GO (20+ min left) | 0 |
-| 2 | the composer test — **send 1** | QA Growth | **Gate G1 and G2 first** (with `--new-ledger`). `/admin/campaigns/new` → Message card: name, Swahili message (it must begin "50pick", lower case; one segment) → "Save draft" → Test send card → "Send the test to" → the route below → "Send the Swahili test" | "Handed to the network at HH:MM — check your phone." (own) / "… ask the person to check their phone." (typed) — ⛔ never "delivered" | `railway run --service 50pick npm run -s ops:marketing-campaign-evidence -- <A> --test=+255772619619 --expect-sends=1 --expect-audit=marketing.campaign_test --label=T --new-ledger` → writes the ledger (1 of 6); "to the test number: yes" on the message | 1 |
-| 3 | **Campaign A** — send 2 | QA Growth | the same draft: Audience card → Who "Contact book" → List "<the drive list the pre-flight named>" → "Save draft" → Confirm card "Confirm audience…" → dialog "Confirm this person?" → "Confirm audience" ("Confirmed — nothing has been sent. Start it from its own page.") → `/admin/campaigns/<A>` → **Gates G1, G2 and G3 (`<X>` = `<A>`)** → "Start…" → dialog "Start sending to up to 1 person?" → "Start sending". **Keep the page open.** | "Preparing the list — 0 of 1 people written." → "Sending — 0 of 1 done." → "Finished — nobody on this campaign is left to message."; "Handed over 1"; the receipt moves the chip to "Delivered" in seconds | `railway run --service 50pick npm run -s ops:marketing-campaign-evidence -- <A> --test=+255772619619 --expect=delivered:test --expect-sends=2 --expect-audit=marketing.campaign_confirmed --expect-audit=marketing.campaign_started --expect-audit=marketing.campaign_finished --label=A --show-stop-link` (a `SENT` row before the receipt: wait a minute, run it again; no receipt after 15 minutes is a finding, not a retry) | 2 |
-| 4 | **the stop tap** | QA Growth's browser (no sign-in) | open `https://www.50pick.tz` + the `/s/<token>` line the step-3 command printed → "Acha ofa na habari kwa SMS" ("Stop offers and news by SMS" in English) | heading "Ofa na habari kwa SMS zimesimamishwa" / "Offers and news by SMS stopped"; "Imekamilika. Hutapokea tena …" / "Done. You will not get offers and news by SMS from 50pick again." | `railway run --service 50pick npm run -s ops:marketing-campaign-evidence -- <A> --test=+255772619619 --expect=delivered:test --expect=stopped:test --expect-sends=2 --label=A` | 2 |
-| 5 | **Campaign B** — zero sends | QA Growth | `/admin/campaigns/<A>` → "Make a copy" ("A copy was made as a new draft.") → the composer → "Confirm audience…" → "Confirm audience" → `/admin/campaigns/<B>` → **Gates G1, G2 and G3 (`<X>` = `<B>`)** → "Start…" → "Start sending" | "Finished — nobody on this campaign is left to message."; "Not sent (checks) 1" under "Stopped (on the stop list)" (if the login may read numbers) | `railway run --service 50pick npm run -s ops:marketing-campaign-evidence -- <B> --test=+255772619619 --expect=skipped:test --expect=stopped:test --expect-sends=0 --expect-audit=marketing.campaign_confirmed --expect-audit=marketing.campaign_started --expect-audit=marketing.campaign_finished --label=B` | 2 |
+| 2 | the composer test — **send 1** | QA Growth | **Gate G1 and G2 first** (with `--new-ledger`). `/admin/campaigns/new` → Message card: Campaign name `U52a drive A`, Swahili message, Swahili word for {jina}, English message and English word for {jina} — each EXACTLY the drive's message ("What changed on 2026-10-09", item 2; the counter reads one GSM-7 message) → "Save draft" → Test send card → "Send the test to" → "My own number" (decision point 1 — the only route the GROWTH login is offered) → "Send the Swahili test" | "Handed to the network at HH:MM — check your phone." — ⛔ never "delivered" — and "The exact text sent:" is the drive's Swahili message with {jina} as the card's preview filled it, nothing after "kukosa!" | `railway run --service 50pick npm run -s ops:marketing-campaign-evidence -- <A> --test=+255772619619 --expect-sends=1 --expect-audit=marketing.campaign_test --label=T --new-ledger` → writes the ledger (1 of 6); "to the test number: yes" on the message | 1 |
+| 3 | **Campaign A** — send 2 | QA Growth | the same draft: Audience card → Who "Contact book" → List "<the drive list the pre-flight named>" → "Save draft" → Confirm card "Confirm audience…" → dialog "Confirm this person?" → "Confirm audience" ("Confirmed — nothing has been sent. Start it from its own page.") → `/admin/campaigns/<A>` → **Gates G1, G2 and G3 (`<X>` = `<A>`)** → "Start…" → dialog "Start sending to up to 1 person?" → "Start sending". **Keep the page open.** | "Preparing the list — 0 of 1 people written." → "Sending — 0 of 1 done." → "Finished — nobody on this campaign is left to message."; "Handed over 1"; the receipt moves the chip to "Delivered" in seconds; the evidence's SENT AS WRITTEN line reads clear | `railway run --service 50pick npm run -s ops:marketing-campaign-evidence -- <A> --test=+255772619619 --expect=delivered:test --expect-sends=2 --expect-audit=marketing.campaign_confirmed --expect-audit=marketing.campaign_started --expect-audit=marketing.campaign_finished --label=A --show-stop-link` (a `SENT` row before the receipt: wait a minute, run it again; no receipt after 15 minutes is a finding, not a retry) | 2 |
+| 4 | **the stop** — on the stop link's page (no SMS carries the link since 2026-10-09) | QA Growth's browser (no sign-in) | open `https://www.50pick.tz` + the `/s/<token>` line the step-3 command printed — the test number's link, read from its own recipient row → "Acha ofa na habari kwa SMS" ("Stop offers and news by SMS" in English). ⛔ From here until step 6 a drive that stops for any reason starts the number again FIRST ("What changed on 2026-10-09", item 1) | heading "Ofa na habari kwa SMS zimesimamishwa" / "Offers and news by SMS stopped"; "Imekamilika. Hutapokea tena …" / "Done. You will not get offers and news by SMS from 50pick again." | `railway run --service 50pick npm run -s ops:marketing-campaign-evidence -- <A> --test=+255772619619 --expect=delivered:test --expect=stopped:test --expect-sends=2 --label=A` | 2 |
+| 5 | **Campaign B** — zero sends | QA Growth | `/admin/campaigns/<A>` → "Make a copy" ("A copy was made as a new draft.") → the composer → Campaign name `U52a drive B` (the message stays the drive's, word for word) → "Save draft" → "Confirm audience…" → "Confirm audience" → `/admin/campaigns/<B>` → **Gates G1, G2 and G3 (`<X>` = `<B>`)** → "Start…" → "Start sending" | "Finished — nobody on this campaign is left to message."; "Not sent (checks) 1" under "Stopped (on the stop list)" (if the login may read numbers) | `railway run --service 50pick npm run -s ops:marketing-campaign-evidence -- <B> --test=+255772619619 --expect=skipped:test --expect=stopped:test --expect-sends=0 --expect-audit=marketing.campaign_confirmed --expect-audit=marketing.campaign_started --expect-audit=marketing.campaign_finished --label=B` | 2 |
 | 6 | **"Start them again"** | QA Growth's browser | the same `/s/<token>` page → "Anza kupokea tena" ("Start them again") | "Umechagua kupokea ofa na habari kwa SMS tena" / "You chose to get offers and news by SMS again"; "The stop on offers and news by SMS to this number is lifted, and your choice is recorded." | `railway run --service 50pick npm run -s ops:marketing-campaign-evidence -- <B> --test=+255772619619 --expect=skipped:test --expect=resumed:test --expect-sends=0 --label=B` | 2 |
-| 7 | **Campaign C** — send 3 | QA Growth | "Make a copy" of A or B → "Confirm audience…" → "Confirm audience" → `/admin/campaigns/<C>` → **Gates G1, G2 and G3 (`<X>` = `<C>`)** → "Start…" → "Start sending" → **"Pause" the moment the headline reads "Preparing the list" or "Sending — 0 of 1 done"** (a one-person run is over in seconds) → "Resume" → finish | "Paused — nothing new starts sending until you resume. A group already being sent may still go out." → "Sending again." → "Finished — …" | `railway run --service 50pick npm run -s ops:marketing-campaign-evidence -- <C> --test=+255772619619 --expect=delivered:test --expect=resumed:test --expect-sends=1 --expect-audit=marketing.campaign_started --expect-audit=marketing.campaign_paused --expect-audit=marketing.campaign_resumed --expect-audit=marketing.campaign_finished --label=C` | 3 |
+| 7 | **Campaign C** — send 3 | QA Growth | "Make a copy" of A or B → the composer → Campaign name `U52a drive C` → "Save draft" → "Confirm audience…" → "Confirm audience" → `/admin/campaigns/<C>` → **Gates G1, G2 and G3 (`<X>` = `<C>`)** → "Start…" → "Start sending" → **"Pause" the moment the headline reads "Preparing the list" or "Sending — 0 of 1 done"** (a one-person run is over in seconds) → "Resume" → finish | "Paused — nothing new starts sending until you resume. A group already being sent may still go out." → "Sending again." → "Finished — …" | `railway run --service 50pick npm run -s ops:marketing-campaign-evidence -- <C> --test=+255772619619 --expect=delivered:test --expect=resumed:test --expect-sends=1 --expect-audit=marketing.campaign_started --expect-audit=marketing.campaign_paused --expect-audit=marketing.campaign_resumed --expect-audit=marketing.campaign_finished --label=C` | 3 |
 | 8 | the switch closed and read back | the lead through the ops door, or Ali on the card ("Switch off now") | `railway run --service 50pick npm run -s ops:marketing-live-switch -- close --by "Claude for Ali (G1)" --reason "U52a drive done"`, then `railway run --service 50pick npm run -s ops:marketing-live-switch -- status` | `DONE: switched off …` then `OFF (absent)` | `railway run --service 50pick npm run -s ops:marketing-campaign-evidence -- --ledger` (the table: A sent · B refused · C sent; 3 of 6) and, for the switch row alone, `railway run --service 50pick npm run -s ops:marketing-preflight -- --test=+255772619619 --origin=https://www.50pick.tz --expect-switch=closed` (its other rows mean nothing after the drive — `test-fresh` is NO-GO by then) | 3 |
 
-**Spare:** three sends for ONE retry of any step (a retried step is a new campaign id and a new label: D; the gate is run again before
-it). **Decision points and traps, read before step 2:**
-1. **The composer test's route.** The test card sends to "My own number — +255••••NN" (the QA login's ACCOUNT phone) or to "Another
-   number" (typed; it needs the 18+ box ticked — "the person who uses this number is 18 or older" — the licence-outreach record OPEN
-   (the pre-flight prints it beside `test-consent`), the saved `adult.test` wording and the campaign's source line set; it is
-   refused up front while any of them is missing). **Press "My own number" only if the masked number shown equals the test
-   number's mask.** If neither route reaches the test number without texting anyone else, step 2 is NOT made (the spare grows to
-   four) and the drive says so. Whichever route is pressed, step 2's evidence prints "to the test number: yes/no" for the test message,
-   and a "no" is a VIOLATION.
+**Spare:** three sends for ONE retry of any step (a retried step is a new campaign id and a new label: D, named `U52a drive D`; the
+gate is run again before it). **Decision points and traps, read before step 2:**
+1. **The composer test's route.** The test card sends to "My own number — +255••••NN" (the QA login's ACCOUNT phone). ⛔ Since the
+   owner's answer of 2026-10-09 a test to a TYPED number ("Another number") is for ADMIN and COMPLIANCE only, so the QA Growth login
+   is offered no such choice — and the sheet's clicks are never an ADMIN's. **Press "My own number" only if the masked number shown
+   equals the test number's mask.** If it does not, step 2 is NOT made (the spare grows to four) and the drive says so. Step 2's
+   evidence prints "to the test number: yes/no" for the test message, and a "no" is a VIOLATION.
 2. **The 18+ trap** (above): a NO-GO on `test-cycle` is fixed BEFORE the switch is opened — by a covering list basis (U33b-L), or by
    the number being an account's — never by skipping C.
 3. **The Pause in C is a race** with a one-person run. If the page finished before the press, `--expect-audit=…campaign_paused`
@@ -3185,10 +3228,12 @@ it). **Decision points and traps, read before step 2:**
 
 **Stop at once, and tell Ali,** on: a NO-GO you did not expect (a `ledger` NO-GO for a missing file, an `in-flight` or `elsewhere` NO-GO
 included); an evidence run that is NOT PROVEN or says VIOLATION (a message after a stop, a double send, a message to another number,
-marketing going anywhere else — also on a `--look`); a `--look --expect-audience` that says `DO NOT PRESS START`; `LEDGER REFUSES`;
-`LEDGER NOT WRITTEN` (run the same evidence again until the ledger took the count; take no step before it does); an SMS to any number
-but the test number; a campaign that pauses for a reason the page states (read it; do not Resume blind); the window closing; the switch
-reading closed while a step is open; a tool that prints nothing at all (it is never silent: run it from the real checkout directory).
+a message not SENT AS WRITTEN, marketing going anywhere else — also on a `--look`); a `--look --expect-audience` that says `DO NOT
+PRESS START`; `LEDGER REFUSES`; `LEDGER NOT WRITTEN` (run the same evidence again until the ledger took the count; take no step before
+it does); an SMS to any number but the test number; a campaign that pauses for a reason the page states (read it; do not Resume
+blind); the window closing; the switch reading closed while a step is open; a tool that prints nothing at all (it is never silent:
+run it from the real checkout directory). ⛔ A stop between steps 4 and 6 is made only after the test number has been started again
+on its stop link's page ("What changed on 2026-10-09", item 1): the owner's number never ends the drive stopped.
 
 **After the drive.** (a) The ledger's total against the portal's `COUNT` for the same window (the portal also counts login codes —
 say so when comparing); (b) delete Claude's QA test users when done (Ali's permission) — the recipient and message rows stay (they

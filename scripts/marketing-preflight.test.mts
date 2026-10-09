@@ -50,6 +50,11 @@
  *   database-class word; P2/P5 the scrub residue; B1 isMain by REAL path, run through a junction made in the temporary directory;
  *   E8/E9 chargeable-only double sends, the standing marketing-elsewhere check, --expect-audience, the officer's pause; L1/L3 the
  *   ledger rename's retry and a write that throws; every value flag is taken once.
+ *   The owner's ruling of 2026-10-09 (a marketing SMS is sent exactly as the officer wrote it) and his words for the drive: D1 the
+ *   drive's ONE message (`DRIVE_MESSAGE`, `scripts/lib/marketing-u52a-message.mjs`) is exactly his, passes the composer's own
+ *   verdict and renderer, one GSM-7 SMS each, and its length windows are the renderer's; E10 ⭐ the evidence's standing SENT AS
+ *   WRITTEN check — no body is stored, so every message on the wire is held to those windows, and the old footer's 49 characters
+ *   appended again are a violation by themselves; the stand-in world's rows are built at the drive's own length.
  *
  * ⛔ IN-PROCESS BY CONSTRUCTION (§5.11). `--prove-red` FIRST PROVES THE BASELINE GREEN, then plants each defect IN MEMORY (a
  * function of the shared core, the judge, the verdict parts, the transaction helper, a source text, or the TEXT of a tool or of the
@@ -85,6 +90,9 @@ const SETTINGS_SERVER = await import("../src/lib/server/marketing/sms-settings.t
 const WORDINGS_SERVER = await import("../src/lib/server/marketing/wordings.ts");
 const GATE = await import("../src/lib/server/marketing/consent.ts");
 const PURE_SETTINGS = await import("../src/lib/marketing/sms-settings.ts");
+// The composer's own verdict and renderer, and the SMS sizer — the drive's message is held to these (D1).
+const TPL = await import("../src/lib/marketing/campaign-template.ts");
+const SMS = await import("../src/lib/sms-compose.ts");
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..");
 const CR = String.fromCharCode(13);
@@ -121,7 +129,7 @@ const L = {
   p6f: "P6f · ⭐ THE OFFICER'S-PAUSE PROOF IS THE APP'S — the evidence's rule for `--expect-audit=marketing.campaign_paused` is run on the app's own constants (CAMPAIGN_PAUSED_ACTION and OFFICER_PAUSED of campaign-control.ts): a row of that action with an actor and that reason holds, the same row with another reason, or with no actor, does not (a renamed reason in the app would otherwise make the officer's real Pause fail the proof, or the engine's own pause pass it)",
   p7: "P7 · ⭐ THE SQL, NOT ONLY ITS NAMES — every table and column the tools' SQL names exists in schema.prisma (or is _prisma_migrations's own); every statement in the sources was run by this suite; every statement keeps its CONTRACT (the filters, the equalities, the ORDER BY and its direction: newest first where 'newest' is meant, the table-qualified seq); ⭐ every statement keeps its SELECT LIST exactly (a column dropped is a field the tool reads as undefined in production, and the stand-in cannot see it), and the rows the stand-in answers with carry exactly those output names; no bare ORDER BY name equals an AS alias of its own SELECT (PostgreSQL would read it as the OUTPUT column); and every call was BOUND to the right values (the number with its plus, the campaign asked about, the member lists' ids)",
   p8: "P8 · the migration list is held to the folder — each named migration is a directory of prisma/migrations, and every migration whose SQL names a marketing table is in the list",
-  p9: "P9 · the wiring — ops:marketing-preflight and ops:marketing-campaign-evidence run their scripts through tsx, test:/red:marketing-preflight resolve to this suite, none of the four is on the predeploy chain, both tools exist, neither names a production address to default to, and the ledger lives at .qa-shots/marketing-setup/U52a/ledger.json which .gitignore keeps out; ⭐ run through npm exactly as the sheet prints them (npm run -s) a key prints no banner and no line that names a number; ⭐ every npm command of the spec's run sheet is `npm run -s` (npm's banner echoes the arguments, the typed number with them)",
+  p9: "P9 · the wiring — ops:marketing-preflight and ops:marketing-campaign-evidence run their scripts through tsx, test:/red:marketing-preflight resolve to this suite, none of the four is on the predeploy chain, both tools exist, neither names a production address to default to, and the ledger lives at .qa-shots/marketing-setup/U52a/ledger.json which .gitignore keeps out; ⭐ run through npm exactly as the sheet prints them (npm run -s) a key prints no banner and no line that names a number; ⭐ every npm command of the spec's run sheet is `npm run -s` (npm's banner echoes the arguments, the typed number with them); ⭐ the run sheet quotes the drive's message (DRIVE_MESSAGE: both bodies and both words, character for character) and its four campaign names, keeps the rule that the owner's number never ends the drive stopped, and offers the GROWTH login its own number alone",
   e0: "E0 · CONTROLS — a good campaign A (the composer test + one delivered send) is PROVEN on --expect=delivered:test --expect-sends=2 and exits 0 with the ledger taking 2; a look has no verdict (exit 0, LOOK ONLY); no expectation and no look is exit 2; a campaign that is not there exits 1; a --label that holds a number (a run of five digits, or anything the number wall would change) is a usage error that names no digit; the masks print as +255••••NN",
   e1: "E1 · ⭐ THE DISCRIMINATION VERDICT AND ITS EXIT CODE (the plan's RED) — a good B (skipped suppressed, nothing on the wire) is PROVEN; with the GATE REMOVED (the stopped test number SENT) skipped:test FAILS and the exit is 1; a control SENT fails skipped:control; no row at all is not a refusal; a skip for another reason proves nothing; a refusal with a message on the wire fails; an unconfirmed or undelivered row fails sent / delivered; a wrong --expect-sends fails; the original pair sent:test + skipped:control passes only when both hold",
   e2: "E2 · ⛔ A MESSAGE HANDED TO A NUMBER AFTER ITS STOP WAS IN FORCE is a violation by itself — exit 1 though the asker expected sent, and exit 1 on a --look too (the RESULT line says VIOLATION); a stop made after the message, and one lifted before it, are not; stopInForceAt reads the ledger's newest row at the instant and the Suppression row's interval; an UNCONFIRMED row, or a message on a row that is not SENT, counts as handed over; `stopped` needs an active WITHDRAWN stop from the link made after the campaign's message, `resumed` needs the newest ledger row to be that yes",
@@ -131,6 +139,8 @@ const L = {
   e6: "E6 · ⛔ THE STOP LINK ONLY UNDER ITS FLAG — without --show-stop-link no line holds the token or /s/ and no statement selects it; with it exactly one /s/<token> line for the test number, with its warning; the flag needs --test",
   e7: "E7 · ⛔ THE AUDIT ROWS THROUGH AN ALLOW-LIST — the officer's id shown, a name or free text hidden; and no statement of either tool selects ip, userAgent, a name, an e-mail, a hash, a message body or a note",
   e8: "E8 · ⛔ THE STANDING CHECKS, asked or not — a recipient row with more than one message is a double send, and with --test given a message of the campaign or a composer test to a number that is NOT the test number is a violation (the SQL computes a yes/no, never the number): each is printed as VIOLATION, fails the proof and turns a look's exit to 1; a clean campaign prints both checks as clear",
+  d1: "D1 · ⭐ THE DRIVE'S MESSAGE IS THE OWNER'S, AND THE COMPOSER'S — DRIVE_MESSAGE holds exactly the owner's two bodies and two words of 2026-10-09 (an independent copy is written here) and four campaign names; the composer's own verdict passes the draft with no problem; each body is plain ASCII (no curly quote, no dash, no emoji), begins with 50pick, carries {jina} once and is ONE GSM-7 SMS with the name's 12-character reserve; the renderer sends a contact-book number exactly the body with the word for {jina} and nothing after it, and an account its own first name; and driveLengthWindows is exactly the renderer's lengths — a 1-letter and a 12-letter name at its edges, the word at `fallback` — each window narrower than the old footer's 49 characters",
+  e10: "E10 · ⭐ SENT AS WRITTEN, ASKED OR NOT (the owner's ruling of 2026-10-09) — a campaign message and a composer test as long as the drive's message with its name are clear, at both edges of the window, and the line says so with the windows; a campaign message 49 characters longer (the old footer appended), one a character past or short of its window, a composer test 49 longer, and a Swahili row's message of the longest English length are each a VIOLATION by themselves: the verdict is NOT PROVEN and a look exits 1, with --test or without; an English row is judged in the English window",
   e9: "E9 · ⭐ THE LAST CHECKS BEFORE A START — `--look --expect-audience=<n>` judges the campaign's CONFIRMED count: the one expected is exit 0 and says so, another number (or a campaign never confirmed) is exit 1 with 'DO NOT PRESS START', on a look and on a verdict alike; `--expect-audit=marketing.campaign_paused` proves the OFFICER's pause - a row with an actor and the reason officer_paused - not the engine's own pause (the same action, a SYSTEM row with another reason, or no actor), which is named but not counted; the gate's `agent_referee` is a skip reason the evidence can be asked for (`skipped=agent_referee:test`) and explains when a row is skipped for it",
   l1: "L1 · ⭐ THE LEDGER — the cap is six; a seventh is REFUSED: the ledger is not updated, the evidence says LEDGER REFUSES and exits 1; a re-run of the same campaign counts nothing twice and a lower later count never shrinks the entry; a ledger file that is not JSON, names another cap or holds a bad entry stops the run (exit 2) and is never reset; the file is written atomically at the gitignored path",
   l2: "L2 · the pre-send check — the pre-flight's ledger row refuses a step whose sends would pass the cap (--sends, default 1) and --ledger [--sends=n] prints the table and exits 1 when they would not fit; it needs no database; the pre-flight only READS the ledger — not one write in any of its runs",
@@ -1466,6 +1476,15 @@ async function runAssertions(impl: Impl): Promise<void> {
     }
     if (!sheet.includes("and before ANY retry run G1, G2 and G3")) wrong.push("the run sheet no longer gates a retry");
     if (!sheet.includes("RESULT: GO — 19 of 19 rows (1 not applicable)")) wrong.push("the run sheet's step 0 no longer reads 19 of 19 rows");
+    // ⭐ THE DRIVE'S MESSAGE, QUOTED (the owner's words of 2026-10-09): the sheet holds the ONE constant's four fields character for
+    // character, each in code quotes, and names the campaigns as the constant does — the drive never tells them apart by their text
+    const tick = String.fromCharCode(96);
+    const driveWords = impl.lib.DRIVE_MESSAGE as unknown as Record<string, string>;
+    for (const [field, words] of Object.entries(driveWords)) if (!sheet.includes(`${tick}${words}${tick}`)) wrong.push(`the run sheet does not quote the drive's ${field} exactly`);
+    for (const name of Object.values(impl.lib.DRIVE_CAMPAIGN_NAMES as unknown as Record<string, string>)) if (!sheet.includes(`${tick}${name}${tick}`)) wrong.push(`the run sheet does not name the campaign ${name}`);
+    // ⛔ the owner's number never ends the drive stopped, and the GROWTH login is offered its own number alone
+    if (!(sheet.includes("never ends the drive") && sheet.includes("Anza kupokea tena") && sheet.includes("--expect=resumed:test"))) wrong.push("the run sheet no longer starts the owner's number again before a drive that stops");
+    if (!(sheet.includes("is for ADMIN and COMPLIANCE only") && sheet.includes("My own number"))) wrong.push("the run sheet no longer says the GROWTH login is offered its own number alone");
     return [wrong.length === 0, `wrong [${wrong.join("; ")}] · without -s the banner names the number: ${bannerShowsNumber}`];
   });
 
@@ -1851,6 +1870,101 @@ async function runAssertions(impl: Impl): Promise<void> {
     if (asked.code !== 0 || !has(asked.lines, "SKIPPED agent_referee") || !has(asked.lines, "RESULT: PROVEN")) wrong.push(`a row skipped agent_referee, asked for by name: exit ${asked.code}`);
     const notStop = await ev(impl, referee, W.evArgv(W.CAMPAIGN, [`--test=${W.TEST.raw}`, "--expect=skipped:test"]));
     if (notStop.code !== 1 || !has(notStop.lines, "agent applicant's referee") || !has(notStop.lines, "cannot be the drive's test number") || !has(notStop.lines, "proves nothing about the stop")) wrong.push(`a referee's skip taken for the stop: exit ${notStop.code}`);
+    return [wrong.length === 0, `wrong [${wrong.join("; ")}]`];
+  });
+
+  /* ── D1 · the drive's message (the owner's words of 2026-10-09) ── */
+  await claim(L.d1, async () => {
+    const wrong: string[] = [];
+    const lib = impl.lib as typeof LIB;
+    const msg = lib.DRIVE_MESSAGE as unknown as Record<"bodySw" | "bodyEn" | "nameFallbackSw" | "nameFallbackEn", string>;
+    // ⭐ AN INDEPENDENT COPY of the owner's words, typed here and NOT read from the constant: a body retyped, a word lost, a quote
+    // curled or a word changed in `marketing-u52a-message.mjs` fails this line, never passes it.
+    const OWNER = {
+      bodySw: "50pick: Habari {jina}! Mambo makubwa yanakuja hivi karibuni, na kilichofichwa kitafichuka. Kaa nasi, hutataka kukosa!",
+      bodyEn: "50pick: Hello {jina}! Big things are coming soon, and what's hidden will be revealed. Stay tuned, you won't want to miss it!",
+      nameFallbackSw: "Rafiki",
+      nameFallbackEn: "Friend",
+    };
+    if (json(msg) !== json(OWNER)) wrong.push("DRIVE_MESSAGE is not exactly the owner's words");
+    const names = lib.DRIVE_CAMPAIGN_NAMES as unknown as Record<string, string>;
+    if (json(names) !== json({ A: "U52a drive A", B: "U52a drive B", C: "U52a drive C", D: "U52a drive D" })) wrong.push(`the campaign names are ${json(names)}`);
+    // the composer's own verdict, as the save and the renderer run it
+    const fields = { name: names.A ?? "", bodySw: msg.bodySw, bodyEn: msg.bodyEn, nameFallbackSw: msg.nameFallbackSw, nameFallbackEn: msg.nameFallbackEn };
+    const verdict = TPL.validateCampaignTemplate(fields as never, "");
+    if (!verdict.ok || Object.keys(verdict.problems).length > 0) wrong.push(`the composer refuses the drive's draft: ${json(verdict.problems).slice(0, 160)}`);
+    const tpl = { ...fields, sourcePhrase: "" };
+    const render = (variant: "SW" | "EN", name: string | null, origin: "book" | "account") => TPL.renderForRecipient(tpl as never, { variant, name, token: "ABCD2345", origin } as never);
+    const windows = lib.driveLengthWindows(lib.DRIVE_MESSAGE) as unknown as Record<"SW" | "EN", { min: number; max: number; fallback: number }>;
+    for (const [v, body, word] of [["SW", msg.bodySw, msg.nameFallbackSw], ["EN", msg.bodyEn, msg.nameFallbackEn]] as const) {
+      // plain ASCII, printable: no curly quote, no dash, no emoji — every character one GSM-7 septet
+      if (![...body].every((ch) => ch.charCodeAt(0) >= 32 && ch.charCodeAt(0) <= 126)) wrong.push(`${v}: a character outside plain ASCII`);
+      if (!body.startsWith("50pick")) wrong.push(`${v}: does not begin with 50pick`);
+      if (body.split(TPL.JINA).length !== 2) wrong.push(`${v}: {jina} is not there exactly once`);
+      const counter = TPL.counterFor(body, v, word, "");
+      if (counter.encoding !== "GSM7" || counter.segments !== 1 || counter.left < 0 || counter.problems.length > 0) wrong.push(`${v}: the counter reads ${json({ e: counter.encoding, s: counter.segments, left: counter.left, p: counter.problems })}`);
+      const book = render(v, null, "book");
+      if (!book.ok || book.text !== body.split(TPL.JINA).join(word)) wrong.push(`${v}: a contact-book number is not sent exactly the body with "${word}" for {jina}`);
+      const own = render(v, "Asha", "account");
+      if (!own.ok || own.text !== body.split(TPL.JINA).join("Asha")) wrong.push(`${v}: an account is not sent the body with its own first name`);
+      const longest = render(v, "W".repeat(TPL.JINA_MAX_CHARS), "account");
+      const shortest = render(v, "A", "account");
+      const sized = SMS.sizeSms(longest.text);
+      if (!longest.ok || sized.segments !== 1 || sized.encoding !== "GSM7") wrong.push(`${v}: the longest name makes it more than one GSM-7 SMS`);
+      const wv = windows[v];
+      if (!wv || !(wv.min === shortest.text.length && wv.max === longest.text.length && wv.fallback === book.text.length)) wrong.push(`${v}: the window ${json(wv)} is not the renderer's ${shortest.text.length} to ${longest.text.length} (the word: ${book.text.length})`);
+      else if (!(wv.max - wv.min < 49)) wrong.push(`${v}: the window could hold the old footer's 49 characters`);
+    }
+    return [wrong.length === 0, `wrong [${wrong.join("; ")}]`];
+  });
+
+  /* ── E10 · SENT AS WRITTEN ── */
+  await claim(L.e10, async () => {
+    const wrong: string[] = [];
+    const base = [`--test=${W.TEST.raw}`, "--expect=delivered:test"];
+    const SW = W.DRIVE_LENGTH.SW;
+    const EN = W.DRIVE_LENGTH.EN;
+    const clean = await ev(impl, W.evA(), W.evArgv(W.CAMPAIGN, base));
+    if (clean.code !== 0 || !has(clean.lines, "SENT AS WRITTEN       clear") || !has(clean.lines, `Swahili ${SW.min} to ${SW.max} characters, English ${EN.min} to ${EN.max}`)) wrong.push(`a clean campaign: exit ${clean.code}`);
+    // a world whose test row's message (and, if asked, its composer test) is `len` long
+    const sized = (len: number, o: { locale?: string; test?: number } = {}): ReturnType<typeof W.evA> => {
+      const w = W.evA();
+      w.recipients[0] = { ...w.recipients[0], ...(o.locale ? { locale: o.locale } : {}) };
+      w.messages[0] = { ...w.messages[0], body_len: len };
+      if (o.test !== undefined) w.testMessages[0] = { ...w.testMessages[0], body_len: o.test };
+      return w;
+    };
+    const verdictOn = async (name: string, w: ReturnType<typeof W.evA>, wantClear: boolean, saying?: string) => {
+      const r = await ev(impl, w, W.evArgv(W.CAMPAIGN, base));
+      const clear = r.code === 0 && has(r.lines, "SENT AS WRITTEN       clear") && !has(r.lines, "VIOLATION — ");
+      const flagged = r.code === 1 && has(r.lines, "RESULT: NOT PROVEN") && has(r.lines, saying ?? "is not as long as the drive's message with its name filled in");
+      if (wantClear ? !clear : !flagged) wrong.push(`${name}: exit ${r.code}${wantClear ? " (wanted clear)" : " (wanted a VIOLATION)"}`);
+      return r;
+    };
+    // at both edges of the Swahili window, and at the contact-book length: clear
+    await verdictOn("the shortest Swahili message (a one-letter name)", sized(SW.min), true);
+    await verdictOn("the longest Swahili message (a twelve-letter name)", sized(SW.max), true);
+    await verdictOn("a contact-book number's Swahili message", sized(SW.fallback), true);
+    // ⭐ THE OLD FOOTER APPENDED AGAIN — 49 characters more — and one character past or short of the window: a violation by itself
+    const footer = await verdictOn("the Swahili message with the old footer's 49 characters after it", sized(SW.fallback + 49), false, "VIOLATION — 1 campaign message is not as long as the drive's message with its name filled in");
+    if (!has(footer.lines, "something was added to it, or other words were sent")) wrong.push("the footer's violation does not say what it means");
+    await verdictOn("one character past the Swahili window", sized(SW.max + 1), false);
+    await verdictOn("one character short of the Swahili window", sized(SW.min - 1), false);
+    // a composer test 49 longer is a violation of its own
+    await verdictOn("a composer test with the old footer after it", sized(SW.fallback, { test: SW.fallback + 49 }), false, "VIOLATION — 1 composer test message is not as long");
+    // ⭐ the row's own language decides the window: an English row at the English contact-book length is clear; a SWAHILI row at the longest English length is not
+    await verdictOn("an English row's English message", sized(EN.fallback, { locale: "EN" }), true);
+    if (EN.max > SW.max) await verdictOn("a Swahili row's message of the longest English length", sized(EN.max), false);
+    else wrong.push("the English window does not reach past the Swahili one - the language check cannot be seen");
+    // a LOOK exits 1 on it, with --test and without (the check needs no number)
+    const footered = sized(SW.fallback + 49);
+    const lookTest = await ev(impl, footered, W.evArgv(W.CAMPAIGN, [`--test=${W.TEST.raw}`, "--look"]));
+    if (lookTest.code !== 1 || !has(lookTest.lines, "BUT 1 VIOLATION") || !has(lookTest.lines, "a message not sent as written")) wrong.push(`a look with --test at a footered message: exit ${lookTest.code}`);
+    const lookBare = await ev(impl, footered, W.evArgv(W.CAMPAIGN, ["--look"]));
+    if (lookBare.code !== 1 || !has(lookBare.lines, "BUT 1 VIOLATION")) wrong.push(`a look without --test at a footered message: exit ${lookBare.code}`);
+    // the rule itself: a length that is not a whole number is never a drive length
+    const isLen = impl.lib.isDriveLength as typeof LIB.isDriveLength;
+    if (isLen(null as never) || isLen(String(SW.fallback) as never) || isLen(SW.fallback + 0.5) || !isLen(SW.fallback) || !isLen(EN.fallback, "EN") || isLen(EN.max, "SW")) wrong.push("isDriveLength answers wrongly for null, text, a fraction, or a language");
     return [wrong.length === 0, `wrong [${wrong.join("; ")}]`];
   });
 
@@ -2802,6 +2916,22 @@ if (!PROVE_RED) {
       impl: () => withEvText('payloadOf(r)?.reason === "officer_paused"', 'payloadOf(r)?.reason === "officer_pause"') },
     { name: "R-M10 · a SystemConfig value stored as text is parsed into an object (a row the engine refuses reads fine)", expect: [L.p1b],
       impl: { judge: (f: { config: Record<string, unknown> }, c: unknown, l: unknown) => PRE_.judgePreflight({ ...f, config: Object.fromEntries(Object.entries(f.config).map(([k, v]) => { if (typeof v === "string") { try { return [k, JSON.parse(v)]; } catch { return [k, v]; } } return [k, v]; })) }, c, l) } },
+
+    /* ══ FIX ROUND 3 · the owner's ruling of 2026-10-09 (a marketing SMS is sent exactly as written) and his words for the drive ══ */
+    { name: "R-AW1 · the SENT AS WRITTEN check finds nothing (a footer appended again goes by unseen)", expect: [L.e10],
+      impl: { parts: { ...EV.PARTS, standingFindings: (f: unknown, a: unknown, l: unknown) => (EV.PARTS.standingFindings as (x: unknown, y: unknown, z: unknown) => Array<{ kind: string }>)(f, a, l).filter((s) => s.kind !== "as_written") } } },
+    { name: "R-AW2 · the length windows are widened by the old footer's 49 characters (a footered message reads as written)", expect: [L.d1, L.e10],
+      impl: withLib({ driveLengthWindows: (m?: unknown) => { const w = (LIB.driveLengthWindows as (x?: unknown) => Record<"SW" | "EN", { min: number; max: number; fallback: number }>)(m); return { SW: { ...w.SW, max: w.SW.max + 49 }, EN: { ...w.EN, max: w.EN.max + 49 } }; } }) },
+    { name: "R-AW3 · a campaign message is judged in either window, whatever its row's language (a Swahili row may carry the English length)", expect: [L.e10],
+      impl: withLib({ isDriveLength: (n: unknown, _locale: unknown, w?: unknown) => (LIB.isDriveLength as (a: unknown, b: unknown, c?: unknown) => boolean)(n, null, w) }) },
+    { name: "R-DM1 · the drive's Swahili body loses two words (the constant no longer holds the owner's words, nor the words the run sheet quotes)", expect: [L.d1, L.p9],
+      impl: withLib({ DRIVE_MESSAGE: { ...(LIB.DRIVE_MESSAGE as unknown as Record<string, string>), bodySw: (LIB.DRIVE_MESSAGE as unknown as Record<string, string>).bodySw.split(" hivi karibuni").join("") } }) },
+    { name: "R-DM2 · the drive's campaigns lose their names (they could only be told apart by their words)", expect: [L.d1],
+      impl: withLib({ DRIVE_CAMPAIGN_NAMES: { A: "U52a drive A" } }) },
+    { name: "R-W27 · the run sheet's Swahili message is retyped with two words lost (the sheet no longer quotes the one constant)", expect: [L.p9],
+      impl: () => withSources({ spec: plantIn(REAL_SOURCES.spec, (LIB.DRIVE_MESSAGE as unknown as Record<string, string>).bodySw, (LIB.DRIVE_MESSAGE as unknown as Record<string, string>).bodySw.split(" hivi karibuni").join("")) }) },
+    { name: "R-W28 · the run sheet drops the rule that the owner's number is started again before a drive that stops", expect: [L.p9],
+      impl: () => withSources({ spec: REAL_SOURCES.spec.split("never ends the drive").join("may end the drive") }) },
   ];
 
   console.log(`RED CONTROL — each defect planted in memory must fail EXACTLY the claims it names${NL}`);

@@ -18,6 +18,8 @@
  *     in `unjudged` - see `REFEREE_UNJUDGED`);
  *   · the ledger (decision 6): every chargeable send counted, and a refusal to count beyond the cap of six - written through a
  *     temporary file and a rename that waits out a file Windows holds for a moment (`renameWithRetry`);
+ *   · ⭐ THE DRIVE'S MESSAGE (`DRIVE_MESSAGE`, the owner's words of 2026-10-09, kept in `marketing-u52a-message.mjs`) and the
+ *     lengths it can have on the wire (`driveLengthWindows`) — what the evidence's SENT AS WRITTEN check holds every message to;
  *   · the private-host guard and the one-word database class, defined with the boot module and re-exported here, and `isCampaignId`.
  *
  * ⛔ NOTHING HERE WRITES TO A DATABASE, SENDS AN SMS OR READS A SECRET. The only file it writes is the gitignored ledger.
@@ -38,6 +40,8 @@ import {
   MARKETING_SMS_SETTINGS_DEFAULTS, SETTINGS_FIELDS, marketingSmsSettingsProblems,
 } from "../../src/lib/marketing/sms-settings.ts";
 import { ageOnPlatformDate, MIN_AGE_YEARS } from "../../src/lib/id-documents.ts";
+import { JINA, JINA_MAX_CHARS } from "../../src/lib/marketing/campaign-template.ts";
+import { DRIVE_MESSAGE, DRIVE_CAMPAIGN_NAMES } from "./marketing-u52a-message.mjs";
 
 /* ══ THE CAP, THE LEDGER'S HOME, THE EXIT CODES ══════════════════════════════════════════════════════════════════════ */
 
@@ -47,6 +51,38 @@ export const SEND_CAP = 6;
 export const LEDGER_REL = ".qa-shots/marketing-setup/U52a/ledger.json";
 /** 0 done and proven / all GO · 1 a refusal is missing, a NO-GO, or the ledger refused · 2 not run (usage, no database). */
 export const EXIT = Object.freeze({ ok: 0, fail: 1, notRun: 2 });
+
+/* ══ THE DRIVE'S MESSAGE, AND THE LENGTHS IT CAN HAVE ON THE WIRE ════════════════════════════════════════════════════ */
+
+/** The owner's words for every real SMS of the drive, and the campaigns' names — ONE copy, in `marketing-u52a-message.mjs`. */
+export { DRIVE_MESSAGE, DRIVE_CAMPAIGN_NAMES };
+
+/**
+ * ⭐ SENT AS WRITTEN, AS THE DATABASE CAN SEE IT. No message body is ever stored — `SmsMessage` and the recipient row keep only
+ * its LENGTH (`bodyLen`, the text's own length) — so the length is what the evidence can hold the wire to: one of the drive's
+ * two bodies with `{jina}` filled as the renderer fills it (a usable first name of 1 to `JINA_MAX_CHARS` letters — the account's
+ * own — or the draft's word for a contact-book number), and NOTHING after it. Per language: `{ min, max, fallback }`, `fallback`
+ * the length a contact-book number is sent. Until the owner's ruling of 2026-10-09 the engine appended 49 characters or more
+ * (the stop link, "18+", the helpline; with a source line, more), which no length in these windows can hold.
+ * ⚠️ What a length cannot prove: OTHER words of a length inside a window would pass. The length proves nothing was ADDED; the
+ * composer test's own card ("The exact text sent:", run sheet step 2) shows the words. `JINA` and `JINA_MAX_CHARS` are the
+ * renderer's own (`campaign-template.ts`), imported, so the windows cannot drift from what it prints.
+ */
+export function driveLengthWindows(message = DRIVE_MESSAGE) {
+  const windowOf = (body, fallback) => {
+    const holes = body.split(JINA).length - 1;
+    const base = body.length - holes * JINA.length;
+    return { min: base + holes, max: base + holes * JINA_MAX_CHARS, fallback: base + holes * fallback.length };
+  };
+  return Object.freeze({ SW: windowOf(message.bodySw, message.nameFallbackSw), EN: windowOf(message.bodyEn, message.nameFallbackEn) });
+}
+
+/** Is `n` a length one of the drive's messages can have — in `locale`'s window when it is known (a recipient row's), else in either? */
+export function isDriveLength(n, locale = null, windows = driveLengthWindows()) {
+  if (typeof n !== "number" || !Number.isInteger(n)) return false;
+  const inside = (w) => n >= w.min && n <= w.max;
+  return locale === "SW" || locale === "EN" ? inside(windows[locale]) : inside(windows.SW) || inside(windows.EN);
+}
 
 /**
  * The migrations the marketing engine's tables and enum values come from, BY NAME (spec decision 1: "the U43-0 migration row is
