@@ -61,6 +61,9 @@
  *   ⛔ ONE NUMBER, ONE STOP (`stopsSince`): a number with both — the opt-out page writes a stop-list row AND a ledger row — is
  *     counted once, dated by the LATER instant: a stop-list row made again keeps its first `createdAt` (the store's re-arm
  *     rule), so where the ledger holds the act it is the truer date.
+ *   ⛔ ONE FIGURE, NEVER SPLIT BY KIND: the switch turned off is an account holder's act alone, so "how many stopped which way"
+ *     would tell a masked viewer that somebody on the list holds an account (D19 / A1.1 — the contact book's bulk bar hides its
+ *     own split for the same reason). The row says how many, never which way.
  *   ⛔ AN ERASED PERSON IS NEVER COUNTED. A number that is erased by the ONE function the importer and the Add form ask
  *     (`isErasedNumber`, `erasure-mark.ts`: a book row decides alone — the erasure's tombstone is erased — and with no row the
  *     ledger's ONE rule) is left out whatever stop it holds (`erasedAmong`, asked only of the numbers a chunk found stopped).
@@ -75,9 +78,9 @@
  * FAILED) reached nobody.
  * ⚠️ KNOWN LIMITS, said rather than hidden: a stop-list row made again keeps its FIRST instant, so a person who stopped, was
  * started again and was then stopped by an officer's Suppress (which writes no ledger row) after this campaign's message may
- * not be counted; a stop that follows a TEST send or an invite is not told apart from one that follows the campaign before it;
- * and the walk is by number, as every figure here is — a recycled number's next holder is not told apart. The first two err
- * toward fewer.
+ * not be counted (toward fewer); a stop that follows a TEST send or an invite is not told apart from one that follows the
+ * campaign before it, and the walk is by number, as every figure here is — a recycled number's next holder is not told apart:
+ * those two can give the campaign before a stop that something else prompted, which this figure cannot see.
  *
  * ── WHO SEES WHAT ───────────────────────────────────────────────────────────────────────────────────────────────────────
  * ⛔ E23 · THE FLOOR — a viewer below it (`hidden`: may not read a number, fewer than 10 rows) gets NO results at all, so
