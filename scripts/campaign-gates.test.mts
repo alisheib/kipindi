@@ -434,6 +434,9 @@ const DRAFT_REL = "src/lib/server/marketing/campaign-draft.ts";
 const MODAL_REL = "src/components/ui/modal.tsx";
 const NEW_DIR = "src/app/admin/campaigns/new/";
 const CARD_REL = `${NEW_DIR}campaign-confirm.tsx`;
+/** S15's import dialog (2026-10-09) passes the kit Modal's optional `refocusKey` to move focus as its steps change — a NEW caller
+ *  of the additive prop, not a changed one (UI.3 holds that every OTHER file stays a stranger to these keys). */
+const IMPORT_DIALOG_REL = "src/app/admin/contacts/import/contacts-import-dialog.tsx";
 const ACTIONS_REL = `${NEW_DIR}confirm-actions.ts`;
 const VIEW_ACTIONS_REL = `${NEW_DIR}confirm-view-actions.ts`;
 const DOORS_REL = `${NEW_DIR}confirm-doors.ts`;
@@ -1365,7 +1368,7 @@ async function runAssertions(impl: Impl): Promise<void> {
       // The re-arm keys and the held Confirm: optional, and the kit's own focusIn does the focusing.
       armOptional: m.includes("armKey?: string | number;") && m.includes("refocusKey?: string | number;") && m.includes("confirmHeld?: boolean;"),
       armThroughFocusIn: m.includes("const refocusSeen = React.useRef(refocusKey);") && m.includes("refocusKey={loading ? undefined : armKey}"),
-      armCallers: json(impl.sources.armKeyHolders) === json([CARD_REL, MODAL_REL].sort()),
+      armCallers: json(impl.sources.armKeyHolders) === json([CARD_REL, IMPORT_DIALOG_REL, MODAL_REL].sort()),
       heldCallers: json(impl.sources.heldHolders) === json([CARD_REL, MODAL_REL].sort()),
     };
     return [Object.values(checks).every(Boolean),
