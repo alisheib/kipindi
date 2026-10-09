@@ -321,21 +321,71 @@ export const SECTIONS = [
   },
 ];
 
-/** ⭐ The import chapter — `admin-guide.mjs` puts it where `SECTIONS` holds the "IMPORT" placeholder.
- *  ⛔ 2026-10-09 · the lane split (docs/CONTACTS-SCREEN-PLAN.md): the importer is S15's and NOT live yet, so the chapter says so
- *  and gives the plan for the first imports. When it lands, its steps are written here from the live dialog, with the pictures
- *  `importShots` takes (i1…i6, by the data-block names S15 builds the dialog to). */
+/** ⭐ The import chapter — `admin-guide.mjs` puts it where `SECTIONS` holds the "IMPORT" placeholder. Written from S15's LIVE
+ *  importer (2026-10-09; its words are `src/app/admin/contacts/import/import-copy.ts`'s, its limits `xlsx-limits.ts`'s), with
+ *  the pictures `importShots` takes by the data-block names S15 built the dialog to. */
 export const IMPORT_STEPS = [
   {
-    title: "Importing a file is not live yet",
+    title: "Before a big import",
     where: "Growth → Contacts",
     do: [
-      "The Import button arrives in a coming update. Until then, add contacts one at a time with Add contact (chapter 2).",
-      "Your first import: a test file of 20 to 50 contacts. Open a few of them in the book before importing more.",
-      "Then import files of at most 2,000 rows, one at a time, checking each result before the next.",
-      "Press Export CSV before every import, so you keep a copy of the book as it was.",
+      "First a test file of 20 to 50 contacts. Check the result and open a few of them in the book.",
+      "Then files of up to 5,000 rows, one import at a time, checking each result before the next. Once you trust your files, bigger ones are fine — one import takes up to 200,000 rows.",
+      "Press Export CSV first, so you keep a copy of the book as it was.",
       "Never import while a campaign is being confirmed or started — new people in its audience stop it from starting.",
     ],
+  },
+  {
+    title: "Choose the file",
+    where: "Growth → Contacts → Import contacts",
+    do: [
+      "Drop or choose an Excel file (.xlsx), a CSV, or a phone's contacts file (.vcf) — or press Paste instead and paste cells from Excel or a chat.",
+      "An Excel file can be up to 700 KB; a CSV or a contacts file has no size limit. Old .xls, .ods, Numbers, PDFs and pictures can't be read — save the list as .xlsx or CSV first.",
+      "If the window closes or the page reloads, open Import contacts again: an unfinished import carries on from where it stopped.",
+    ],
+    shots: ["i1-import-button"],
+  },
+  {
+    title: "Check the columns",
+    where: "Import contacts → The columns",
+    do: [
+      "Each column shows its first values and what it will be read as — Phone, Name, Email, Tags, Notes or Not used. Press Change on any that is wrong.",
+      "A file that starts with a contact instead of column names is recognised; make sure the phone column is the right one.",
+      "Press Next. The rows are uploaded — nothing is in the contact book yet.",
+    ],
+    shots: ["i2-columns"],
+  },
+  {
+    title: "Read the check",
+    where: "Import contacts → Check before importing",
+    do: [
+      "Five boxes add up to your file: New to the book, Already in the book, Repeated in this file, Can't be imported as written, Could not be read.",
+      "A number repeated in the file is imported once — its first row. Each problem row is listed with its row number in your file and the reason.",
+      "Nothing has been written to the book yet. If many rows can't be used, fix the file and start again.",
+    ],
+    shots: ["i3-check"],
+  },
+  {
+    title: "Choose what happens to numbers already in the book",
+    where: "Import contacts → Numbers already in the book",
+    do: [
+      "Keep what's in the book (recommended) — nothing about those contacts changes; new numbers are still added.",
+      "Use the file's version — the file's name, email and notes replace the book's; tags are only added. You confirm it, and there is no undo.",
+      "Only fill in what's missing — only details the book doesn't have yet are filled in.",
+      "A blank cell never erases anything, and numbers on the stop list and erased people are never changed. Only a role that can see phone numbers can update contacts already in the book.",
+      "To send these people offers, add them to a list here; a list is ready for offers once its basis and 18+ confirmation are recorded on the Lists card.",
+    ],
+    shots: ["i4-decision"],
+  },
+  {
+    title: "Import, and read the result",
+    where: "Import contacts → Import",
+    do: [
+      "The line above the button says what will happen — for example “This import: 37 new · 0 updated · 3 kept as they are.” Then press Import.",
+      "The bar counts the rows as the server writes them. You can stop and resume; a closed window carries on when you open Import contacts again.",
+      "The result counts Added, Updated, Kept as they were and Couldn't be imported — each failure with its row and reason.",
+    ],
+    shots: ["i5-importing", "i6-done"],
   },
 ];
 
