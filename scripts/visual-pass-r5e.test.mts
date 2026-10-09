@@ -549,7 +549,10 @@ section("4 · H2 H3 a name ends on two whole characters — clusters as ICU cuts
   ok("4.4 · the hub and the name editor draw keepNameEnd, balanced and free to break anywhere when they must",
     code("src/app/account/page.tsx").includes("<span className=\"kp-hub__name\">{keepNameEnd(viewer.name)}</span>")
       && rulesFor(".kp-hub__name").some((b) => /text-wrap:\s*balance/.test(b) && /overflow-wrap:\s*anywhere/.test(b))
-      && /\? keepNameEnd\(currentName\) :/.test(code("src/components/profile/name-editor.tsx")));
+      // Review 6, B-4 (2026-10-09) moved this pin: the editor, a client component, draws the SERVER's cut — `nameWithEnd`,
+      // handed `nameEndAt` by profile/page.tsx — so the browser's Unicode tables never re-derive it.
+      && /\? nameWithEnd\(currentName, currentNameEnd\) :/.test(code("src/components/profile/name-editor.tsx"))
+      && code("src/app/profile/page.tsx").includes("currentNameEnd={nameEndAt(user.displayName ?? \"\")}"));
   // Linear time, whatever the name (a 40-unit limit holds the real ones; the pattern holds its own).
   const t0 = performance.now();
   for (const s of ["a".repeat(20000), "a" + "\u0301".repeat(19999), "\u0915" + "\u094d".repeat(19999), "\u1100".repeat(20000), "\u{1F1F9}".repeat(10000), "a\u200d".repeat(10000), " \u0301".repeat(10000)]) keepNameEnd(s);

@@ -1069,7 +1069,9 @@ function run(w: World, log: (l: string) => void): string[] {
       && pageText.includes("activeElement: () => document.activeElement,") && pageText.includes("focus: (node) => { if (node instanceof HTMLElement) node.focus(); },")
       && pageText.includes("now: () => performance.now(),") && pageText.includes("isNowhere,")
       && focusInText.includes(TOP) && focusInText.includes("target?.focus();") && focusInText.includes("armBeat(rootRef.current, performance.now());")
-      && squashed(modalSrc).includes("safe: () => safeFocusRef.current?.current ?? null,")
+      /* Review 6, B-1 (2026-10-09) moved this pin: the way out still reaches the stack, and one that cannot take focus
+         (disabled while the dialog's request is in flight, or gone) gives it to the panel, never nowhere. */
+      && squashed(modalSrc).includes('safe: () => { const way = safeFocusRef.current?.current ?? null; return way === null ? null : way.isConnected && !way.matches(":disabled") ? way : panelRef.current; },')
       && keyText.includes(TOP) && keyText.indexOf(TOP) < escAt && escAt >= 0
       && keyText.indexOf("if (e.defaultPrevented) return;") > escAt && keyText.indexOf("if (e.defaultPrevented) return;") < keyText.indexOf("onCloseRef.current()")
       && keyText.includes("openList(") && keyText.includes("querySelector(OPEN_LIST)") && keyText.includes('"above"')
@@ -1365,10 +1367,13 @@ if (!PROVE_RED) {
       world: () => plantIn(MODAL, "      armBeat(rootRef.current, performance.now());" + NL, "") },
     { name: "the page Modal hands to leaving moves no focus", expect: /^5[.]8 /,
       world: () => plantIn(MODAL, "focus: (node) => { if (node instanceof HTMLElement) node.focus(); },", "focus: () => {},") },
+    // (Review 6, B-1 moved the next two anchors: the way out falls back to the panel, and focus ON the panel is brought
+    // to a control both ways, as focus outside it is.)
     { name: "Modal's layer names no way out (its safeFocus never reaches the stack)", expect: /^5[.]8 /,
-      world: () => plantIn(MODAL, "      safe: () => safeFocusRef.current?.current ?? null," + NL, "") },
+      world: () => plantIn(MODAL, "      safe: () => {" + NL + "        const way = safeFocusRef.current?.current ?? null;" + NL
+        + '        return way === null ? null : way.isConnected && !way.matches(":disabled") ? way : panelRef.current;' + NL + "      }," + NL, "") },
     { name: "a plain Tab from behind the dialog walks the page behind its scrim again", expect: /^5[.]8 /,
-      world: () => plantIn(MODAL, "      if (!panelRef.current?.contains(active)) {" + NL + "        e.preventDefault(); (e.shiftKey ? last : first).focus();" + NL + "      } else if (e.shiftKey && active === first) {",
+      world: () => plantIn(MODAL, "      if (!panelRef.current?.contains(active) || active === panelRef.current) {" + NL + "        e.preventDefault(); (e.shiftKey ? last : first).focus();" + NL + "      } else if (e.shiftKey && active === first) {",
         "      if (e.shiftKey && (active === first || !panelRef.current?.contains(active))) {") },
     { name: "the leaving ghost is no longer inert (its Confirm can take focus and a key)", expect: /^5[.]8 /,
       world: () => plantIn(MODAL, "      inert={exiting || undefined}" + NL, "") },

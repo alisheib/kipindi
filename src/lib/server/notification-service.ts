@@ -374,9 +374,13 @@ export function notifyWin(userId: string, amount: number, label: LocalizedText, 
     titleEn: `You won ${formatTzs(amount)}`,
     titleSw: `Umeshinda ${formatTzs(amount)}`,
     titleZh: `您赢得 ${formatTzs(amount)}`,
-    bodyEn: `${label.en} paid out. Tap to view.`,
-    bodySw: `${label.sw} kimelipa. Bonyeza kuona.`,
-    bodyZh: `${label.zh} 已赔付。点击查看。`,
+    // ⭐ THE MARKET'S NAME CUT TO ITS ROOM, AS ITS SIBLINGS CUT IT (review 6, A7 · 2026-10-09): `clipQuote` at 70 / 70 / 50
+    // — the rooms of the two other notices a settled long-form market sends, the loss and the void refund. This was the one
+    // market title R5-B's sweep did not reach (it had no `.slice`): a long question quoted whole pushed "paid out" /
+    // "kimelipa" off a phone's lock screen, where the push shows only its first lines — the sentence the notice is for.
+    bodyEn: `${clipQuote(label.en, 70)} paid out. Tap to view.`,
+    bodySw: `${clipQuote(label.sw, 70)} kimelipa. Bonyeza kuona.`,
+    bodyZh: `${clipQuote(label.zh, 50)} 已赔付。点击查看。`,
     href,
   });
 }

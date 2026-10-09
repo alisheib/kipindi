@@ -1,4 +1,6 @@
 import type { NextConfig } from "next";
+// ⛔ Relative, never "@/…": Next loads this file through its own TypeScript hook, where the app's path aliases do not exist.
+import { staticSecurityHeaders } from "./src/lib/security-headers";
 
 /** The only addresses sent a one-year `immutable` cache: public/'s own static folders and files, and Next's hashed build
  *  output. Exact folders, never a file-name suffix (see `headers()` below; `test:static-cache-scope`). */
@@ -18,7 +20,8 @@ const config: NextConfig = {
   reactStrictMode: true,
   // Framework and version disclosure on every response, and the first line of
   // most scanner reports. The security headers that must STAY are set in
-  // src/proxy.ts — this removes one header without touching those.
+  // src/proxy.ts and, all but the CSP, by `headers()` below (one list,
+  // src/lib/security-headers.ts) — this removes one header without touching those.
   poweredByHeader: false,
   typedRoutes: true,
   /**
@@ -84,8 +87,16 @@ const config: NextConfig = {
   // phone and balance) kept at the edge for the next visitor of the same address; and a browser kept any page whose
   // address merely ended in those letters for a year without asking again. `test:static-cache-scope` holds every source
   // to a real folder or file under public/ and proves, with Next's own matcher, that no page address matches.
+  // ⭐ EVERY RESPONSE CARRIES THE STATIC SECURITY HEADERS (review 6, A4 · 2026-10-09) — X-Frame-Options DENY, nosniff,
+  // Referrer-Policy, Permissions-Policy, COOP and the rest, HSTS in production: the list the proxy sends, from its one
+  // definition (`src/lib/security-headers.ts`). The proxy's matcher skips static files, and a page rendered there — the
+  // root not-found of a missing file under /icons/, /brand/, /og/…, inside the signed-in shell — went out with none of
+  // them, so another site could frame it. The CSP stays the proxy's: it depends on the request (HTTPS or not).
+  // `test:static-cache-scope` §5 holds this rule to that list and proves, with Next's own matcher, that it reaches every
+  // address — pages and static files alike.
   async headers() {
     return [
+      { source: "/:path*", headers: staticSecurityHeaders(process.env.NODE_ENV === "production") },
       ...IMMUTABLE_STATIC_SOURCES.map((source) => ({
         source,
         headers: [{ key: "Cache-Control", value: "public, max-age=31536000, immutable" }],

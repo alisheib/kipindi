@@ -44,11 +44,13 @@ const MUTATIONS = [
     // ⚠️ RETARGETED 2026-08-22 — the copy moved to `notification-service.ts` with the
     // emitter, so the mutation follows it there. Mutating the words rather than the call
     // proves the suite pins what the player actually READS, not merely that a function ran.
+    // ⚠️ RE-ANCHORED 2026-10-09 (review 6): R5-B's sweep cut every quoted title with `clipQuote`, where this anchor still
+    // read `.slice(0, 70)` — the mutation could not be made, and this red twin proved nothing. Same mutation, its words.
     name: "refund-goes-silent",
     why: "the voided-round refund stops stating what happened, so a player whose stake came back is told nothing useful",
     file: NS,
-    from: "    bodyEn: `${opts.marketTitle.en.slice(0, 70)} · the round was voided and your stake came back in full.`,",
-    to: "    bodyEn: `${opts.marketTitle.en.slice(0, 70)} · settled.`,",
+    from: "    bodyEn: `${clipQuote(opts.marketTitle.en, 70)} · the round was voided and your stake came back in full.`,",
+    to: "    bodyEn: `${clipQuote(opts.marketTitle.en, 70)} · settled.`,",
   },
   {
     // ⚠️ RETARGETED 2026-08-22 — same structural mutation, re-anchored on the rewritten

@@ -239,6 +239,9 @@ export function keepFigures(text: string): ReactNode {
  * mismatch. The pattern is the same text on both sides, and it uses only general categories and `\p{RI}` (Unicode
  * property escapes: Chrome 64, Safari 11.1, Firefox 78), no lookbehind. `test:visual-pass-r5e` holds its cut to Node's
  * own grapheme boundaries.
+ * ⚠️ THE SAME TEXT IS NOT THE SAME TABLES (review 6, B-4): `\p{M}` and `\p{L}` are each engine's Unicode version, so a
+ * character newer than the browser's tables can still be cut in two places. So the cut is decided ONCE, on the server,
+ * and handed to the client that draws the name again (`nameEndAt` / `nameWithEnd`, below) — the browser never re-derives it.
  */
 /** Marks that open a cluster: Unicode's Prepend class (Arabic number signs and their kin; U+113D1 since Unicode 16). */
 const PREPEND = "\\u0600-\\u0605\\u06DD\\u070F\\u0890\\u0891\\u08E2\\u0D4E\\u{110BD}\\u{110CD}\\u{111C2}\\u{111C3}\\u{113D1}\\u{1193F}\\u{11941}\\u{11A3A}\\u{11A84}-\\u{11A89}\\u{11D46}\\u{11F02}";
@@ -268,12 +271,32 @@ export function characterSpans(text: string): Array<[number, number]> {
   return [...text.matchAll(CHARACTER)].map((m): [number, number] => [m.index ?? 0, (m.index ?? 0) + m[0].length]);
 }
 
-export function keepNameEnd(name: string): ReactNode {
+/**
+ * ⭐ THE CUT IS DECIDED ONCE, WHERE THE NAME IS FIRST DRAWN (review 6, B-4 · 2026-10-09). `CHARACTER`'s classes are the
+ * engine's own Unicode tables (`\p{M}`, `\p{L}`): a mark new in Unicode 16 — U+0897 ARABIC PEPET — is a mark to Node and
+ * an unassigned character to a browser whose tables are older, so the two cut "Neema Juma" + U+0897 one character apart,
+ * and the name editor — a client component, drawn on the server and again in the browser — drew its span in two places:
+ * a hydration mismatch on /profile. So the cut is a value: `nameEndAt` says where the kept end starts (−1: the name as it
+ * came); the server reads it, and a client that draws the name again is HANDED it (`nameWithEnd`) and never re-derives
+ * it. `keepNameEnd` is the two together, for a name drawn on the server alone (the hub, `account/page.tsx`).
+ */
+export function nameEndAt(name: string): number {
   // The last two characters, read left to right (`characterSpans`' pattern), keeping only the last two.
   let a: [number, number] | null = null, b: [number, number] | null = null;
   for (const m of name.matchAll(CHARACTER)) { a = b; b = [m.index ?? 0, (m.index ?? 0) + m[0].length]; }
-  if (!a || !b || a[0] <= 0 || !NAME_GAP.test(name.slice(a[1], b[0])) || !NAME_GAP.test(name.slice(b[1]))) return name;
-  return [name.slice(0, a[0]), <span key="name-end" className="whitespace-nowrap">{name.slice(a[0])}</span>];
+  if (!a || !b || a[0] <= 0 || !NAME_GAP.test(name.slice(a[1], b[0])) || !NAME_GAP.test(name.slice(b[1]))) return -1;
+  return a[0];
+}
+
+/** The name with its last two characters kept together from `at` — `nameEndAt`'s answer, decided where the name was first
+ *  drawn: exactly `keepNameEnd`'s markup. An `at` that cuts nothing (−1, or outside the name) draws the name as it came. */
+export function nameWithEnd(name: string, at: number): ReactNode {
+  if (!Number.isInteger(at) || at <= 0 || at >= name.length) return name;
+  return [name.slice(0, at), <span key="name-end" className="whitespace-nowrap">{name.slice(at)}</span>];
+}
+
+export function keepNameEnd(name: string): ReactNode {
+  return nameWithEnd(name, nameEndAt(name));
 }
 
 /**

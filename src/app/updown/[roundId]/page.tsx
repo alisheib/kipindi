@@ -32,6 +32,7 @@ import { getServerT } from "@/lib/i18n-server";
 // five chances to disagree about someone money.
 import { refundReasonFor, REFUND_REASON_KEY, viewerRefundCopy } from "@/lib/updown-refund-reason";
 import { pickLocalized } from "@/lib/localized";
+import { roundName } from "@/lib/updown-round-name";
 // ⛔ ONE lexicon for side words across both products — never a local ternary (test:labels §4).
 import { outcomeWord } from "@/lib/side-label";
 import { fill, formatTzs } from "@/lib/utils";
@@ -94,16 +95,20 @@ const eyebrow = "m-0 font-mono text-micro font-semibold uppercase eyebrow text-t
  * metadata, `markets/[id]/page.tsx` has it): `t.market.udTitle`, the key `/updown` is titled by ("Juu na Chini",
  * "涨跌"), where it was the English "Up & Down" in every language. Nothing here throws, so a failed read never decides
  * the page.
+ * ⭐ A ROUND THAT IS THERE IS TITLED IN ITS h1's OWN WORDS (review 6, A6 · C6 · 2026-10-09): the asset in the reader's
+ * language, the game's name and the round's minutes — "Bitcoin Juu na Chini · 15 dakika", "比特币 涨跌 · 15 分钟"
+ * (`roundName`, the Up & Down card's accessible name too). It was the stored English title in every language —
+ * "Bitcoin Up or Down · 15 min", a third name for the game, beside a Swahili h1.
  */
 export async function generateMetadata({ params }: { params: Promise<{ roundId: string }> }): Promise<Metadata> {
   const { roundId } = await params;
-  const { t } = await getServerT();
+  const { t, locale } = await getServerT();
   let d: Awaited<ReturnType<typeof getRoundDetail>> = null;
   try {
     d = await getRoundDetail(roundId);
   } catch { return { title: t.market.udTitle }; }
   if (!d) return notFoundMetadata();
-  return { title: d.titleEn };
+  return { title: roundName(t, pickLocalized(locale, d.asset.nameEn, d.asset.nameSw, d.asset.nameZh), d.round.durationMinutes) };
 }
 
 export default async function UpDownRoundPage({

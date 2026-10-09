@@ -224,7 +224,10 @@ section("4 · dedupe — 28 byte-identical notifications shipped on production")
 
   // A genuinely different event must NOT be suppressed. This is the half that
   // matters: dedupe that eats real messages is worse than the duplicates.
-  const c = await N.notifyWin(U, 23_349, "Ronaldo to score · pos_OTHER", "/positions");
+  // ⚠️ Review 6, A7 (2026-10-09): this call and `f` below passed a bare string where notifyWin takes a LocalizedText, so
+  // their bodies read "undefined paid out." — a different message only by accident. notifyWin now cuts its label with
+  // `clipQuote`, which reads text, so both pass the label the signature names (the same words as `a`'s, `c` another position).
+  const c = await N.notifyWin(U, 23_349, { en: "Ronaldo to score · pos_OTHER", sw: "Ronaldo afunge · pos_OTHER", zh: "C罗进球 · pos_OTHER" }, "/positions");
   ok("a different position with the same amount IS delivered", c !== null && c.id !== a?.id);
   const d = await N.notifyDeposit(U, { status: "CONFIRMED", amount: 50_000, provider: "Selcom", txnId: "txn_SECOND" });
   const e = await N.notifyDeposit(U, { status: "CONFIRMED", amount: 50_000, provider: "Selcom", txnId: "txn_THIRD" });
@@ -233,7 +236,7 @@ section("4 · dedupe — 28 byte-identical notifications shipped on production")
 
   // Cross-player: one player's message must never suppress another's.
   await mkUser("c3_other");
-  const f = await N.notifyWin("c3_other", 23_349, "Ronaldo to score · pos_dup", "/positions");
+  const f = await N.notifyWin("c3_other", 23_349, { en: "Ronaldo to score · pos_dup", sw: "Ronaldo afunge · pos_dup", zh: "C罗进球 · pos_dup" }, "/positions");
   ok("another player's identical message is NOT suppressed", f !== null);
 }
 

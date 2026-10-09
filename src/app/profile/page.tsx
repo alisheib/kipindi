@@ -6,6 +6,7 @@ import { Stat } from "@/components/ui/stat";
 import { FiftyMark } from "@/components/brand";
 import { AvatarUploader } from "@/components/profile/avatar-uploader";
 import { ProfileNameEditor } from "@/components/profile/name-editor";
+import { nameEndAt } from "@/components/ui/keep-words";
 import { currentSession } from "@/lib/server/auth-service";
 import { db } from "@/lib/server/store";
 import { inviteViewerFor } from "@/lib/server/affiliate-service";
@@ -176,6 +177,9 @@ export default async function ProfilePage() {
             </p>
             <ProfileNameEditor
               currentName={user.displayName}
+              /* The name's kept end, decided HERE on the server and handed down: the editor (a client component) draws
+                 this cut and never re-derives it from the browser's Unicode tables (review 6, B-4 · `nameEndAt`). */
+              currentNameEnd={nameEndAt(user.displayName ?? "")}
               fallbackPlaceholder={displayName}
             />
             <p className="mt-1.5 font-mono text-[12px] text-text-muted tabular-nums">

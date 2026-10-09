@@ -13,6 +13,7 @@ import { listPositionsForUser, getMarket } from "@/lib/server/market-service";
 import { currentSession } from "@/lib/server/auth-service";
 import { getServerT } from "@/lib/i18n-server";
 import { pickLocalized } from "@/lib/localized";
+import { roundName, storedRound } from "@/lib/updown-round-name";
 import { keepFigures } from "@/components/ui/keep-words";
 import { sideWord } from "@/lib/side-label";
 import { PageContainer } from "@/components/layout/page-container";
@@ -132,11 +133,23 @@ export default async function PerformancePage({
     pnlSeries.push({ label: `${d.getDate()}/${d.getMonth() + 1}`, value: cumulative });
   }
 
+  /* ⭐ AN UP & DOWN ROUND IS NAMED IN ITS PAGE'S WORDS (review 6, A6 · C6 · 2026-10-09). This page lists every product
+     line, and a round's market title is its STORED one — "Bitcoin Juu au Chini · dakika 15", "Bitcoin Up or Down ·
+     15 min", a third name for the game beside the page's "Juu na Chini" — so a round is named as its own page and card
+     name it, "Bitcoin Juu na Chini · 15 dakika" (`roundName`), its asset and minutes read back from what was stored
+     (`storedRound`; display only, nothing rewritten). A long-form market keeps its question. */
+  const titleOf = (m: { productLine?: string | null; titleEn: string; titleSw: string | null; titleZh: string | null }) => {
+    const round = m.productLine === "UPDOWN" ? storedRound(m) : null;
+    return round
+      ? roundName(t, pickLocalized(locale, round.nameEn, round.nameSw, round.nameZh), round.minutes)
+      : pickLocalized(locale, m.titleEn, m.titleSw, m.titleZh);
+  };
+
   // Best win title — B-1: deliberate degrade; a failed title lookup only drops
   // the caption under the (real) payout figure.
   let bestTitle = "";
   if (bestMarket) {
-    try { const m = await getMarket(bestMarket.marketId); if (m) bestTitle = pickLocalized(locale, m.titleEn, m.titleSw, m.titleZh); } catch { /* skip */ }
+    try { const m = await getMarket(bestMarket.marketId); if (m) bestTitle = titleOf(m); } catch { /* skip */ }
   }
 
   // Recent settled (last 5) + their market titles
@@ -153,7 +166,7 @@ export default async function PerformancePage({
     const d = new Date(p.settledAt ?? p.placedAt);
     return {
       id: p.id, marketId: p.marketId,
-      title: m ? pickLocalized(locale, m.titleEn, m.titleSw, m.titleZh) : p.marketId.slice(0, 8),
+      title: m ? titleOf(m) : p.marketId.slice(0, 8),
       // 🔴 §L1 · THE DEFECT ALI REPORTED, ON THE SURFACE HE NAMED — "in activity".
       // This page is the ONE player list that does NOT filter by product line (line 28 takes
       // every position, deliberately: a performance summary that hid half a player's book
