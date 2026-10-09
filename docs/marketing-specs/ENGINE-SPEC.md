@@ -3114,7 +3114,10 @@ named number after a stop was in force when the engine took them up; a recipient
 engine sends one per row; a first attempt the gateway refused — FAILED, no receipt, so it never left — and the engine's retry of it are not
 two); a message — the composer's tests included — to any number that is not the test number** (computed in SQL as a yes/no; the number
 is never selected); **and, with `--test`, any MARKETING message created in the last 24 hours to a number but the test number, of ANY
-campaign** (the standing line `NO OTHER MARKETING SMS`; one COUNT in SQL, and a count that was not read is a violation too). With the gate removed, B's `skipped:test` FAILS because the row is SENT (the plan's RED). The evidence says
+campaign** (the standing line `NO OTHER MARKETING SMS`; one COUNT in SQL, and a count that was not read is a violation too); ⭐ **and
+(since the owner's ruling of 2026-10-09) a message that is not SENT AS WRITTEN** — every campaign message and composer test as long as
+the drive's message with its name filled in, and no longer (the standing line `SENT AS WRITTEN`, `driveLengthWindows`; no body is
+stored, so the length is the database's word for the text). With the gate removed, B's `skipped:test` FAILS because the row is SENT (the plan's RED). The evidence says
 plainly that **the engine records no gate or send milliseconds** (the slice's `gateMs`/`sendMs` go to the page's driver and are not
 stored); what it prints is what the rows' own stamps give — people per claim, claim → hand-over, the gap between claims.
 
