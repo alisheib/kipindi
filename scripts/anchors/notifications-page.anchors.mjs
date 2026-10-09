@@ -117,8 +117,10 @@ export const MUTATIONS = [
     why: "the skeleton states a different width than the page, so every load jumps (B7 rule 3)",
     file: LOADING,
     suite: "notifications-page",
-    from: '  return <PageLoader tier="reading" rows={6} />;',
-    to: '  return <PageLoader tier="form" rows={6} />;',
+    // ⚠️ MOVED (R5-L, 2026-10-09): the loader opens on the page's back link and header now, so its call spans lines and
+    // the tier stands on a line of its own.
+    from: '      tier="reading"',
+    to: '      tier="form"',
   },
   {
     // 🔴 THE DELIBERATE ABSENCE, MUTATED. Someone adding "symmetry" later would put a bulk

@@ -1,5 +1,6 @@
 import { FilterGroupKey } from "@/components/ui/filter-pill";
 import { QUERY_BAR_CLASS, QUERY_BAR_ROW1_WRAP_CLASS, QUERY_BAR_ROW2_CLASS, QUERY_GROUP_CLASS, QueryGroupDivider } from "@/components/ui/query-bar";
+import { CountGhost, PillGhost } from "@/components/ui/query-bar-ghost";
 import type { Dict } from "@/lib/i18n-dict";
 
 /**
@@ -52,20 +53,6 @@ export function MoneyBarGhost({ t, lenses, count }: { t: Dict; lenses: readonly 
   );
 }
 
-/** A pill while it loads: `filterPillClass`'s box (its geometry, not its ink) with the label set and not shown.
- *  ⭐ Exported (round 5's follow-up, R5-K): /positions' bar ghost draws its lenses and groups with it — one pill ghost
- *  for every bar ghost, as there is one pill. */
-export function PillGhost({ label }: { label: string }) {
-  return (
-    <span className="inline-flex min-h-[44px] shrink-0 items-center justify-center gap-1.5 whitespace-nowrap rounded-pill border border-transparent bg-bg-overlay px-3 text-[13px] font-semibold text-transparent kp-shimmer-track">
-      {label}
-      <span className="font-mono text-[11px] font-bold tabular-nums">00</span>
-    </span>
-  );
-}
-
-/** The result count while it loads (`QueryResultCount`'s type: 11.5px mono on its 17.25px line), the phrase's own width
- *  set and not shown — exported with `PillGhost` for /positions' bar ghost (R5-K). */
-export function CountGhost({ count }: { count: string }) {
-  return <p className="shrink-0 font-mono text-[11.5px] tabular-nums text-transparent"><span className="rounded bg-bg-overlay">{count}</span></p>;
-}
+/* The pill — `filterPillClass`'s box with the label set and not shown — and the result count are `query-bar-ghost.tsx`'s
+   `PillGhost` and `CountGhost` since round 5's follow-up (R5-L, R5-K): /results', /markets', /leaderboard's and
+   /positions' ghosts draw the same pill and count, so each lives once, beside the other parts every bar ghost draws. */

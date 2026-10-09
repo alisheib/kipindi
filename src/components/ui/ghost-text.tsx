@@ -59,3 +59,29 @@ export function ChipGhost({
     </Chip>
   );
 }
+
+/** The glyph's room a button keeps beside its label (the page passes a 14–16px glyph as `leading` / `trailing`). */
+const glyphRoom = (s: number) => <span className="shrink-0" style={{ width: s, height: s }} />;
+
+/**
+ * THE KIT BUTTON WHILE ITS PAGE LOADS (R5-L) — the button's own box: `.btn` and its size rung (height, padding, gap,
+ * type, radius, the 1px border) with its label set and not shown and its glyph's room, so a row of inline buttons wraps
+ * where the page's row does (/live's "Open market" beside the dots, /agent's CTA, the invitation's actions). A
+ * full-width button's height is its rung alone, so a box of that height stands for it as well.
+ */
+export function ButtonGhost({ size, children, leading, trailing, className }: {
+  size: "md" | "lg";
+  children: ReactNode;
+  /** The px size of the glyph the page's button leads with (`leading={<I.x s={16} />}`), if any. */
+  leading?: number;
+  trailing?: number;
+  className?: string;
+}) {
+  return (
+    <span className={cn("btn", size === "lg" ? "btn-lg" : "btn-md", "pointer-events-none select-none bg-bg-overlay text-transparent kp-shimmer-track", className)} aria-hidden>
+      {leading ? glyphRoom(leading) : null}
+      {children}
+      {trailing ? glyphRoom(trailing) : null}
+    </span>
+  );
+}

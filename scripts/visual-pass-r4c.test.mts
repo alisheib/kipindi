@@ -164,7 +164,9 @@ const HANG_REST = restRule ? Number(restRule[1]) : NaN;
   // The ghosts stand in with the same band, so nothing moves when the page lands.
   const ghosts = [
     ["src/app/results/loading.tsx", /<div className=\{QUERY_SEARCH_BAND_CLASS\} aria-hidden>\s*<div className="search-box-wrap">[\s\S]{0,260}?<p className="mt-1\.5 min-h-\[17px\]" \/>/],
-    ["src/app/results/page.tsx", /<div className=\{QUERY_SEARCH_BAND_CLASS\} aria-hidden>\s*<div className="search-box-wrap">[\s\S]{0,260}?<p className="mt-1\.5 min-h-\[17px\]" \/>/],
+    // ⚠️ MOVED IN ROUND 5'S FOLLOW-UP (R5-L): the page's Suspense fallback IS the loading file's drawing (`ResultsGhostBands`,
+    // imported from ./loading) — one ghost for the document's first paint and a move's, so its band is the one above.
+    ["src/app/results/page.tsx", /import \{ ResultsGhostBands \} from "\.\/loading";[\s\S]*<Suspense fallback=\{<ResultsGhostBands /],
     // ⚠️ MOVED IN ROUND 5'S FOLLOW-UP (R5-H, G-2): today's /positions picture is drawn in the browser, beside its loading file.
     ["src/app/positions/positions-ghost.tsx", /<div className=\{QUERY_SEARCH_BAND_CLASS\} aria-hidden>\s*<div className="search-box-wrap">[\s\S]{0,260}?<p className="mt-1\.5 min-h-\[17px\]" \/>/],
   ] as const;

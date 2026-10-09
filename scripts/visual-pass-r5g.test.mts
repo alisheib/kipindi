@@ -699,6 +699,7 @@ const NAME: Record<Loc, string> = Object.fromEntries(LOCALES.map((l) => [l, regu
     "src/app/api/og/market/[id]/route.tsx": "never splits: a fixed 1200×630 image, one 14px mono row of 1080px holding 613px",
     "src/lib/server/email.ts": "never splits: 231px of 11px Inter in a 300px column on a 320 phone (mail clients have no container queries)",
     "src/components/agent/commission-waterfall.tsx": "never splits where its line can hold it: the name STARTS the label, so a greedy line breaks inside it only when the line is narrower than the name",
+    "src/app/agent/loading.tsx": "the agent page's loading ghost (R5-L, merged 2026-10-09): the waterfall's GBT row set and not shown, in the waterfall's own classes — it breaks where the waterfall's line does",
     "src/components/auth/auth-shell.tsx": "the acronym (\"18+ · Licensed by GBT\"): nothing to split — the name's form is an S12/owner item",
     "src/app/legal/privacy/page.tsx": "legal prose (D19a: the published legal text is origin/main's own, byte for byte; a policy version ships any change) — and a list item that begins with the name",
     "src/app/legal/terms/page.tsx": "legal prose (D19a), running text: a held 25–40 character name would leave a hole of most of a phone line in the paragraph",

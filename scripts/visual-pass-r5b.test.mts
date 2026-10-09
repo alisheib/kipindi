@@ -393,8 +393,11 @@ section("9 · F14 a count line under a bar has 12px of air on both sides (tile 1
   // ⚠️ MOVED IN ROUND 5'S FOLLOW-UP (R5-H, G-2b): the count is set in `QueryResultCount`'s own type with its words not shown —
   // the line is the count's by construction (17.25 = 11.5 × 1.5), and its width the phrase's, which decides where row 1 wraps
   // from lg.
+  // ⚠️ MOVED IN ROUND 5'S FOLLOW-UP (R5-K, R5-L): the count ghost is the bar kit's `CountGhost` (`query-bar-ghost.tsx`, one
+  // for every bar ghost — the money books' and /positions'), which the money books' ghost draws.
   ok("9.4 · the ghost's count is as tall as the count's line (17.25), so row 2 lands where the page puts it",
-    /<p className="shrink-0 font-mono text-\[11\.5px\] tabular-nums text-transparent"><span className="rounded bg-bg-overlay">\{count\}<\/span><\/p>/.test(users[2][1])
+    /<p className="shrink-0 font-mono text-\[11\.5px\] tabular-nums text-transparent"><span className="rounded bg-bg-overlay">\{count\}<\/span><\/p>/.test(read("src/components/ui/query-bar-ghost.tsx"))
+      && users[2][1].includes("<CountGhost count={count} />")
       && /className="shrink-0 font-mono text-\[11\.5px\] tabular-nums text-text-subtle"/.test(read("src/components/ui/query-bar.tsx")) && 11.5 * 1.5 === 17.25);
 }
 

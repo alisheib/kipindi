@@ -50,24 +50,44 @@
  * link's prefetch) names it — not `next/dynamic`, which waits for the render; that suits the root's journey-only set,
  * not a drawing every reader of the segment is shown. The chunks' sizes are a production build's to measure (a lock
  * turn's). `test:visual-pass-r5h` §1 holds every player loading file to this and renders each one's markup.
+ *
+ * ⭐ EVERY GHOST OPENS ON THE BAND ITS PAGE OPENS ON (2026-10-09, the visual pass round 5's follow-up, R5-L) — ONE rule for
+ * every loading drawing and every in-page Suspense skeleton. This loader drew a 257px spinner box (80 + 64 + 16 + 15 + 80,
+ * and its border) where its pages open on a 44px back link or a hero, so everything the page draws first landed somewhere
+ * the ghost had not promised. So a ghost draws its page's OPENING bands with the page's own parts — the BackLink's 44px
+ * box (`BackLinkGhost`) where the page opens on one, then the page's own header (`PageHeader` with the page's eyebrow,
+ * title, subtitle, icon and tone, inside `PageHero` where the page wraps it in one; a hero's own sentence as words set and
+ * not shown, `GhostText`) — in the page's own rhythm (`rhythm`, the class the page's container carries), and this
+ * loader's spinner panel and rows stand where the page's first band of DATA begins. The header is printed: it is the
+ * page's name and waits for nothing. A page whose first band IS its data (a proposal's own head card) keeps the spinner
+ * first — the same rule, decided per route. Each route's loading file says which bands it draws and which case.
  */
+import type { ReactNode } from "react";
 import { BrandSpinner } from "@/components/brand";
 import { PageContainer, type MeasureTier } from "@/components/layout/page-container";
 import { useT } from "@/lib/i18n";
+import { cn } from "@/lib/utils";
 
 export function PageLoader({
   tier = "reading",
   rows = 5,
   rowHeight = 64,
+  lead,
+  rhythm,
 }: {
   /** ⛔ A TIER, never a number — B7 rule 2, and it must match the page's own. */
   tier?: MeasureTier;
   rows?: number;
   rowHeight?: number;
+  /** The page's opening bands, drawn with the page's own parts (the rule above). */
+  lead?: ReactNode;
+  /** The page container's own rhythm, so the opening bands and the panel stand as far apart as the page's bands. */
+  rhythm?: "space-y-5" | "space-y-6";
 }) {
   const { t } = useT();
   return (
-    <PageContainer tier={tier} className="content-fade-in">
+    <PageContainer tier={tier} className={cn("content-fade-in", rhythm)}>
+      {lead}
       <div className="rounded-xl border border-border bg-bg-elevated p-10 grid place-items-center">
         <div className="flex flex-col items-center gap-3">
           <BrandSpinner size={48} />
