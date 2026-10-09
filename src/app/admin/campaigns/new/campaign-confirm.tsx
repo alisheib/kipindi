@@ -74,7 +74,7 @@ import type { AudienceSplitView } from "./audience-view-model";
 import { AUDIENCE_COUNT_AGAIN, AUDIENCE_FIGURE, AUDIENCE_NO_OPERATOR, AUDIENCE_SAMPLE_LEAD } from "./audience-copy";
 import {
   COMPOSE_CONFIRM_ACT, COMPOSE_CONFIRM_CHECK_AGAIN, COMPOSE_CONFIRM_COUNTING, COMPOSE_CONFIRM_HONESTY, COMPOSE_CONFIRM_LIST_LEAD,
-  COMPOSE_CONFIRM_REFUSED, COMPOSE_CONFIRM_SPLIT_UNREAD, COMPOSE_CONFIRM_TRIGGER, COMPOSE_CONFIRMED, COMPOSE_CONFIRMED_NEXT,
+  COMPOSE_CONFIRM_REFUSED, COMPOSE_CONFIRM_SPLIT_UNREAD, COMPOSE_CONFIRM_TRIGGER, COMPOSE_CONFIRMED,
   COMPOSE_CONFIRMED_START, afterRecount, composeConfirmSegments, composeConfirmTitle, composeNotDraftTitle,
   confirmAnswerRetry, confirmGate, confirmOpensOn, confirmOutcome, confirmTriggerBlocked,
 } from "./composer-copy";
@@ -369,13 +369,14 @@ export function CampaignConfirm() {
         <ConfirmLineSizer />
         {status === "CONFIRMED" ? (
           <p className={`${CONFIRM_LINE_CELL} text-success-fg`} data-confirm-confirmed>
-            {COMPOSE_CONFIRMED}{" "}
-            {CAMPAIGN_SCREENS.detail && form.pageDraftId !== null ? (
-              <Link href={campaignDetailHref(form.pageDraftId) as Route} className="underline underline-offset-2" data-confirm-start>
-                {COMPOSE_CONFIRMED_START}
-              </Link>
-            ) : (
-              COMPOSE_CONFIRMED_NEXT
+            {COMPOSE_CONFIRMED}
+            {CAMPAIGN_SCREENS.detail && form.pageDraftId !== null && (
+              <>
+                {" "}
+                <Link href={campaignDetailHref(form.pageDraftId) as Route} className="underline underline-offset-2" data-confirm-start>
+                  {COMPOSE_CONFIRMED_START}
+                </Link>
+              </>
             )}
           </p>
         ) : reason !== null ? (

@@ -303,10 +303,11 @@ export const COMPOSE_CONFIRM_UNFINISHED =
   "Couldn't confirm — the server stopped before it answered, so this campaign may already be confirmed. Nothing has been sent. Try again: a campaign is never confirmed twice.";
 /** ⭐ ruling 543 · the confirmation landed and its record did not — said, never hidden (the live switch's own words). */
 export const COMPOSE_CONFIRM_UNRECORDED = "The record of this confirmation couldn't be written — tell the developer.";
-/** ⭐ THE CONFIRMED LINE (decision 4): the campaign's own page once `CAMPAIGN_SCREENS.detail` is on (U47b), else what is next. */
+/** ⭐ THE CONFIRMED LINE (decision 4): the sentence, then a link to the campaign's own page while `CAMPAIGN_SCREENS.detail` is on
+ *  (U47b — live since STEP 54); were it ever off, the sentence alone. ("Starting a campaign comes next in this release" went
+ *  with U47b-2: it had become untrue.) */
 export const COMPOSE_CONFIRMED = "Confirmed — nothing has been sent.";
 export const COMPOSE_CONFIRMED_START = "Start it from its own page.";
-export const COMPOSE_CONFIRMED_NEXT = "Starting a campaign comes next in this release.";
 
 /** The dialog's title — "Confirm these 3 people?" for a list, "Confirm 5,912 people?" to type. */
 export function composeConfirmTitle(count: number, listed: boolean): string {

@@ -42,7 +42,7 @@ const ROWS = [
   },
   {
     category: "Marketing opt-out links", swahili: "Acha ofa na habari kwa SMS", chip: "7y",
-    trigger: "From the last message that carried the link", legal: "GN 478T reg 51(1); PDPA 2022 §15",
+    trigger: "From the last message sent to the number", legal: "GN 478T reg 51(1); PDPA 2022 §15",
     storage: "Postgres (policy — no purge before 2033)",
   },
 ];
