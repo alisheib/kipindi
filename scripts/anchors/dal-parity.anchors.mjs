@@ -635,12 +635,12 @@ export const MUTATIONS = [
     expect: `19.listci.prisma · the Prisma list create still turns P2002 into null and does NOT upsert - the lower(name) index raises the very code the exact-case index did`,
   },
   {
-    // 🔴 …and the lookup goes back to the exact-case unique key, so "is there a list called this?" disagrees with the index.
+    // 🔴 …and the lookup goes back to the exact-case column, so "is there a list called this?" disagrees with the index.
     name: "prisma-dal.ts — the Prisma list lookup by name is exact-case again",
     file: "src/lib/server/prisma-dal.ts",
-    from: `        where: { name: { equals: name, mode: "insensitive" } },`,
-    to: `        where: { name },`,
-    expect: `19.listci.find · findByName reads a name in ANY CASE in both twins - the memory twin lower-cases both sides, the Prisma twin asks mode: insensitive and never findUnique - so the lookup agrees with the key`,
+    from: `         where lower("name") = lower(\${name})`,
+    to: `         where "name" = \${name}`,
+    expect: `19.listci.find · findByName reads a name in ANY CASE in both twins - the memory twin lower-cases both sides, the Prisma twin asks the index's own expression lower("name") = lower($1), oldest first, and never mode: insensitive (ILIKE's wildcards - m8) nor findUnique - so the lookup agrees with the key`,
   },
   {
     // 🔴 C8c · N3 · the importer's freeze compares its new list's name exact-case again: in the memory twin a list another

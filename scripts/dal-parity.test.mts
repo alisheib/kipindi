@@ -1605,9 +1605,14 @@ const HOUSE_TS_KEYS = new Set(["dueAt", "staleAt", "deadlineAt", "claimedUntil",
     listMemCreate19.split(NL19).map((l) => l.trim()).join(" ").slice(0, 170));
   ok("19.listci.prisma · the Prisma list create still turns P2002 into null and does NOT upsert - the lower(name) index raises the very code the exact-case index did",
     lCreate.includes("P2002") && lCreate.includes("return null") && !mentions(lCreate, "upsert"));
-  ok("19.listci.find · findByName reads a name in ANY CASE in both twins - the memory twin lower-cases both sides, the Prisma twin asks mode: insensitive and never findUnique - so the lookup agrees with the key",
+  // ⭐ C8c · the review's m8 · the Prisma twin reads the index's OWN expression - never mode: "insensitive", which Postgres
+  // may run as ILIKE, where a "_" or a "%" in a name matches as a wildcard ("Race_1" answered by "RaceX1").
+  const LOOKUP_SQL19 = 'where lower("name") = lower(${name})';
+  const LOOKUP_ORDER19 = 'order by "createdAt" asc, "id" asc';
+  ok("19.listci.find · findByName reads a name in ANY CASE in both twins - the memory twin lower-cases both sides, the Prisma twin asks the index's own expression lower(\"name\") = lower($1), oldest first, and never mode: insensitive (ILIKE's wildcards - m8) nor findUnique - so the lookup agrees with the key",
     listMemFind19.includes("const key = name.toLowerCase();") && listMemFind19.includes(listCompare19)
-      && listPriFind19.includes('equals: name, mode: "insensitive"') && !listPriFind19.includes("findUnique"),
+      && listPriFind19.includes(LOOKUP_SQL19) && listPriFind19.includes(LOOKUP_ORDER19)
+      && !listPriFind19.includes('mode: "insensitive"') && !listPriFind19.includes("findUnique"),
     listPriFind19.split(NL19).map((l) => l.trim()).join(" ").slice(0, 170));
   ok("19.listci.freeze · ⭐ the importer's freeze refuses its NEW list's name IN ANY CASE in the memory twin too - the name lower-cased once, every held list compared by the same key, BEFORE the freeze writes anything (Postgres: the same lower(name) index refuses the insert inside the freeze's transaction)",
     freezeMem19.includes(FREEZE_KEY19) && freezeMem19.includes(FREEZE_COMPARE19)
@@ -1631,9 +1636,10 @@ const HOUSE_TS_KEYS = new Set(["dueAt", "staleAt", "deadlineAt", "claimedUntil",
     `folders ${listMigDirs19.length} · ${listMigCode19.slice(0, 140)}`);
   ok("19.listci.schema · schema.prisma is UNCHANGED for the list name - the model keeps its exact-case @unique (an expression index cannot be declared there, and a generated migration will always list this one as drift: test:migration-ownership stops it being dropped)",
     schemaModel(prismaSchemaSrc, "ContactList").split(NL19).some((l) => l.trim().split(" ").filter(Boolean).join(" ") === "name String @unique"));
-  ok("19.c8 · CONTROL · the old exact-case comparison, a findUnique lookup, an index on the bare column, a migration that also drops and an exact-case freeze are each reported by 19.listci.*",
+  ok("19.c8 · CONTROL · the old exact-case comparison, a findUnique lookup, an ILIKE lookup (mode: insensitive), an index on the bare column, a migration that also drops and an exact-case freeze are each reported by 19.listci.*",
     !"for (const l of store.contactLists.values()) if (l.name === row.name) return null;".includes(listCompare19)
       && "const row = await pc().contactList.findUnique({ where: { name } });".includes("findUnique")
+      && !'where: { name: { equals: name, mode: "insensitive" } },'.includes(LOOKUP_SQL19)
       && !sqlCode19('CREATE UNIQUE INDEX IF NOT EXISTS "ContactList_name_lower_key" ON "ContactList" ("name");').includes(LIST_INDEX_SQL19)
       && listMigBad19(sqlCode19(['DROP INDEX "ContactList_name_key";', LIST_INDEX_SQL19].join(NL19)))
       && !listMigBad19(sqlCode19(["-- a comment that says DROP and CONCURRENTLY", LIST_INDEX_SQL19].join(NL19)))

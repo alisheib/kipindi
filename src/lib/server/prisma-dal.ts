@@ -4635,13 +4635,18 @@ export const prismaDb = {
       const row = await pc().contactList.findUnique({ where: { id } });
       return row ? toStoredContactList(row) : null;
     },
-    /** The list holding this name in ANY case — the unique key's own reading (the oldest, were a legacy pair to exist). */
+    /** The list holding this name in ANY case — the unique key's own reading, `lower("name") = lower($1)` (the index's own
+     *  expression, so the index answers it), the oldest were a legacy pair to exist. ⛔ The review's m8 · never Prisma's
+     *  `mode: "insensitive"`, which Postgres may run as ILIKE: a "_", a "%" or a backslash in a name would match as a
+     *  wildcard, and oldest-first would then hand back ANOTHER list ("Race_1" answered by "RaceX1"). */
     findByName: async (name: string): Promise<StoredContactList | null> => {
-      const row = await pc().contactList.findFirst({
-        where: { name: { equals: name, mode: "insensitive" } },
-        orderBy: [{ createdAt: "asc" }, { id: "asc" }],
-      });
-      return row ? toStoredContactList(row) : null;
+      const rows = await pc().$queryRaw<ContactListRow[]>`
+        select "id", "name", "description", "createdAt", "createdBy", "updatedAt", "updatedBy"
+          from "ContactList"
+         where lower("name") = lower(${name})
+         order by "createdAt" asc, "id" asc
+         limit 1`;
+      return rows.length > 0 ? toStoredContactList(rows[0]) : null;
     },
     listAll: async (): Promise<StoredContactList[]> => {
       const rows = await pc().contactList.findMany({

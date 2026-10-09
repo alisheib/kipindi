@@ -304,8 +304,15 @@ if (whole.ok) {
     names.join("|") === "Race list|Race list 2", names.join("|"));
   const found = await db.contactList.findByName("rACE lIST");
   const none = await db.contactList.findByName("Race list 3");
-  ok("7.4 · findByName reads a name in ANY case on Postgres (mode: insensitive) and answers the first officer's list; a name held in no case is null",
-    found?.id === "probe_list_ci_1" && none === null, `${found?.id} · ${none === null ? "null" : none.id}`);
+  // ⛔ the review's m8 · "_" and "%" are LETTERS in a list's name, never ILIKE's wildcards: with "RaceX1" made FIRST (the
+  // oldest), "Race_1" finds its own list, and "Race%" finds none.
+  const wildX = await db.contactList.create(list("probe_list_ci_6", "RaceX1", 25));
+  const wildU = await db.contactList.create(list("probe_list_ci_7", "Race_1", 26));
+  const underscore = await db.contactList.findByName("race_1");
+  const percent = await db.contactList.findByName("Race%");
+  ok("7.4 · findByName reads a name in ANY case on Postgres (lower(name) = lower($1), the index's own expression) and answers the first officer's list; a name held in no case is null; ⛔ m8 · '_' and '%' are letters, never wildcards — 'race_1' answers Race_1 though RaceX1 is older, and 'Race%' answers nothing",
+    found?.id === "probe_list_ci_1" && none === null && wildX !== null && wildU !== null && underscore?.id === "probe_list_ci_7" && percent === null,
+    `${found?.id} · ${none === null ? "null" : none.id} · race_1 → ${underscore?.id ?? "null"} · Race% → ${percent?.id ?? "null"}`);
   const defs = await raw.$queryRawUnsafe<Array<{ indexname: string; indexdef: string }>>(
     `select indexname, indexdef from pg_indexes where tablename = 'ContactList' and indexname in ('ContactList_name_lower_key', 'ContactList_name_key') order by indexname`);
   const lowerDef = defs.find((d) => d.indexname === "ContactList_name_lower_key")?.indexdef ?? "";
