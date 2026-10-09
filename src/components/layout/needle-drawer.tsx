@@ -59,7 +59,12 @@ function DiscSwatch({ theme, size = 34 }: { theme: NeedleTheme; size?: number })
   );
 }
 
-/** The 50pick mark in miniature — a disc with the needle on its pivot. */
+/**
+ * The 50pick mark in miniature — a disc with the needle on its pivot. Two tones: the disc at half ink, the needle at
+ * full, so the needle reads first, as on the real disc. That is right where it stands as the MARK (the account menu's
+ * row, the drawer's header and its "Manage" button); in a list of row glyphs it is not one of them, and the hub's row
+ * draws `I.needle` instead (round 4, 2026-10-09).
+ */
 function NeedleMark({ size = 16, className }: { size?: number; className?: string }) {
   return (
     <svg width={size} height={size} viewBox="0 0 100 100" aria-hidden="true" className={className}>
@@ -136,11 +141,15 @@ export function NeedleControlsDrawer({ variant = "menu-row" }: { variant?: "menu
          menu's row inside a padded list item, so it was built unlike every row around it: its chevron 2px left and 8–10px
          tall against the hub's 11–12, its mark 2px right, its value in mono capitals 2px short of the column, the row 55px
          against 56. It now wears the hub's own row, word for word: the 56px rung, the 20px glyph slot in the glyph ink, the
-         body label, the value in the value's type, the hub's 18px chevron. The mark at 20px strokes 1.6px, as the hub's
-         glyphs do (1.9 on 24); its state is the value's word, as the language row's is. `.kp-hub__*` are the hub's classes
-         (globals.css), and this branch is the only place outside the hub's own files that wears them. */
+         body label, the value in the value's type, the hub's 18px chevron. Its state is the value's word, as the language
+         row's is. `.kp-hub__*` are the hub's classes (globals.css), and this branch is the only place outside the hub's own
+         files that wears them.
+         ⭐ ITS GLYPH IS THE ROW FAMILY'S (round 4, 2026-10-09, tiles 122–130): `NeedleMark` paints its disc at half ink and
+         rings it at r42 of 100 — 18.4px at 20 against the family's 16.6 — so beside globe, check-circle and search it read
+         at half their ink (ring peak 102,107,163 against 198,209,236) and 2px wider. `I.needle` is the mark's geometry on
+         the family's grid, ink and stroke. */
       <button type="button" onClick={() => setOpen(true)} aria-haspopup="dialog" className="kp-hub__row">
-        <span className="kp-hub__glyph" aria-hidden><NeedleMark size={20} /></span>
+        <span className="kp-hub__glyph" aria-hidden><I.needle s={20} /></span>
         <span className="kp-hub__text"><span className="kp-hub__label">{t("The Needle", "Sindano", "指针玩具")}</span></span>
         <span className="kp-hub__value">{shownLabel}</span>
         <I.chevronRight s={18} className="kp-hub__chev" aria-hidden />

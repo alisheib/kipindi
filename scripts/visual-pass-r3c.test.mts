@@ -75,40 +75,37 @@ section("1 · a short sentence never ends on one word alone");
   const cardRow = read("src/components/journey/account/card-size-row.tsx");
   const wallet = read("src/components/layout/wallet-sheet.tsx");
   const fair = read("src/app/fairness/page.tsx");
-  ok("1.3 · the hub's card-size hint (tiles 124 127 256 264 294 295 298 302 306 331) is kept and sits under the whole row",
-    cardRow.includes("{keepLastWords(t.nav.cardSpacingHint)}") && /className="kp-hub__sub kp-hub__row-hint"/.test(cardRow)
-      && /className="kp-hub__row kp-hub__row--switch"/.test(cardRow));
+  // ⚠️ ROUND 4 (2026-10-09, tile 259) moved the card-size hint back into the text column, so the row is an ordinary
+  // two-line hub row (its switch on the row's centre, 56px where the hint fits), and keeps the hint's SENTENCES whole —
+  // the widow this section was written for cannot return. The row's geometry is test:visual-pass-r4e §1.
+  ok("1.3 · the hub's card-size hint (tiles 124 127 256 264 294 295 298 302 306 331) never leaves a word alone: its sentences are kept whole",
+    cardRow.includes("{keepSentences(t.nav.cardSpacingHint)}") && /<span id=\{hintId\} className="kp-hub__sub">/.test(cardRow)
+      && /className="kp-hub__row"/.test(cardRow));
   ok("1.4 · the held Wallet's notice (tile 092) keeps its last two words together", wallet.includes("{keepLastWords(t.kycGate.frozenBody)}"));
   ok("1.5 · the fairness lead (tiles 187 204) keeps its last two words together", /\{keepLastWords\(fill\(t\.common\.fairnessIntro/.test(fair));
 
-  // The row's grid: the hint spans the label's column to the row's end, on the second line.
-  const sw2 = rule(css, ".kp-hub__row--switch");
-  const hintRule = rule(css, ".kp-hub__row--switch > .kp-hub__row-hint");
-  const glyphRule = rule(css, ".kp-hub__row--switch > .kp-hub__glyph");
-  ok("1.6 · .kp-hub__row--switch is a 4-column grid, the hint on row 2 from the label's column to the end, the glyph over both rows",
-    /display:\s*grid/.test(sw2) && /grid-template-columns:\s*auto minmax\(0, 1fr\) auto auto/.test(sw2)
-      && /grid-column:\s*2 \/ -1/.test(hintRule) && /grid-row:\s*2/.test(hintRule) && /grid-row:\s*1 \/ span 2/.test(glyphRule),
-    `${sw2} | ${hintRule} | ${glyphRule}`);
-  const plantGrid = hintRule.replace("grid-column: 2 / -1", "grid-column: 2 / 3");
-  ok("1.6′ PLANT · a hint held to the label's column (back beside the value and the switch) is reported", !/grid-column:\s*2 \/ -1/.test(plantGrid));
+  // The round-3 grid is gone (round 4): no rule hangs the hint under the switch's column any more.
+  ok("1.6 · no .kp-hub__row--switch grid remains — the switch no longer sits on the label's line (round 4, tile 259)",
+    !/\.kp-hub__row--switch/.test(css) && !/kp-hub__row--switch|kp-hub__row-hint/.test(cardRow));
+  ok("1.6′ PLANT · the round-3 grid rule put back is reported", /\.kp-hub__row--switch/.test(`${css}\n.kp-hub__row--switch { display: grid; }`));
 
   // ⭐ THE WIDTH MODEL — the repo's own Inter (src/lib/server/reports/fonts), advances with kerning, as G3 measured (within
-  // ~1% of the tiles). The hint's line under the row: viewport − 2×16 gutter − 2×1 card border − 2×16 row padding − 20
-  // glyph − 12 gap = viewport − 98: 222 at 320, 262 at 360, 292 at 390.
+  // ~1% of the tiles). Round 4: the hint keeps to the text column beside the switch — viewport − 2×16 gutter − 2×1 card
+  // border − 2×16 row padding − 20 glyph − 12 gap − 12 gap − 44 switch = viewport − 154: 166 at 320, 206 at 360, 236 at 390.
   const fontkit = createRequire(import.meta.url)("fontkit") as { openSync: (p: string) => { layout: (s: string) => { positions: { xAdvance: number }[] }; unitsPerEm: number } };
   const inter = fontkit.openSync("src/lib/server/reports/fonts/Inter-Regular.ttf");
   const width = (s: string, size: number) => inter.layout(s).positions.reduce((a, p) => a + p.xAdvance, 0) / inter.unitsPerEm * size;
   const rowPad = rule(css, ".kp-hub__row");
   ok("1.7.locate · the hub row's padding and gap are the ones the model assumes (8/16px, 12px gap) and the sub-line is 13px",
     /padding:\s*var\(--sp-2\) var\(--sp-4\)/.test(rowPad) && /gap:\s*var\(--sp-3\)/.test(rowPad) && px("--type-small") === 13, rowPad);
-  const line = (vw: number) => vw - 98;
-  ok("1.7 · from 360 the hint is ONE line in sw and en (≤ 262px) and in zh (14 ideographs at 1em)",
-    width(sw.nav.cardSpacingHint, 13) <= line(360) && width(en.nav.cardSpacingHint, 13) <= line(360) && [...zh.nav.cardSpacingHint].length * 13 <= line(360),
-    `sw ${width(sw.nav.cardSpacingHint, 13).toFixed(1)} en ${width(en.nav.cardSpacingHint, 13).toFixed(1)} vs ${line(360)}`);
-  const pair = sw.nav.cardSpacingHint.slice(sw.nav.cardSpacingHint.search(/\S+\s+\S+\s*$/));
-  ok("1.8 · at 320 the kept pair fits its 222px line, so sw breaks between its sentences: \"Kwa simu tu.\" / \"Hakuna kinachofichwa.\"",
-    width(pair, 13) <= line(320) && width(sw.nav.cardSpacingHint, 13) > line(320), `pair ${width(pair, 13).toFixed(1)} · whole ${width(sw.nav.cardSpacingHint, 13).toFixed(1)} vs ${line(320)}`);
-  ok("1.8′ CONTROL · beside the value and the switch (the old 113px at 320, 183 at 390) the same hint could not hold \"Hakuna kinachofichwa.\" on a line at 320",
+  const line = (vw: number) => vw - 154;
+  ok("1.7 · the hint is ONE line from 360 in en (≤ 206px) and zh (14 ideographs at 1em), from 390 in sw (≤ 236)",
+    width(en.nav.cardSpacingHint, 13) <= line(360) && [...zh.nav.cardSpacingHint].length * 13 <= line(360) && width(sw.nav.cardSpacingHint, 13) <= line(390),
+    `sw ${width(sw.nav.cardSpacingHint, 13).toFixed(1)} en ${width(en.nav.cardSpacingHint, 13).toFixed(1)} vs ${line(360)} / ${line(390)}`);
+  ok("1.8 · where it wraps (sw below 390, every language at 320) each sentence fits its line, so it breaks between them: \"Kwa simu tu.\" / \"Hakuna kinachofichwa.\"",
+    width("Hakuna kinachofichwa.", 13) <= line(320) && width("Nothing is hidden.", 13) <= line(320) && width(sw.nav.cardSpacingHint, 13) > line(360),
+    `${width("Hakuna kinachofichwa.", 13).toFixed(1)} vs ${line(320)}`);
+  ok("1.8′ CONTROL · beside the value AND the switch (round 2's 113px at 320) the same sentence could not hold a line at 320",
     width("Hakuna kinachofichwa.", 13) > 113);
 
   // The two leads on /profile/responsible-gambling (tile 179) are balanced.
@@ -322,14 +319,17 @@ section("6 · the guest tickets sheet's title stands on the ×'s line (tiles 113
   const title = rule(css, ".kp-jsheet__title");
   const sheet = rule(css, ".kp-wsheet");
   const grab = rule(css, ".kp-wsheet__grab");
-  const mt = /margin:\s*calc\(var\((--sp-\d+)\) - var\((--sp-\d+)\) - var\((--type-h3)\) \* 1\.25 \/ 2\) 0 0/.exec(title);
-  const margin = mt ? px(mt[1]) - px(mt[2]) - px(mt[3]) * 1.25 / 2 : NaN;
+  // ⚠️ Round 4 (2026-10-09, tiles 113–121) centres the title's CAPITALS rather than its line box — Sora's cap band sits
+  // 0.6em down a 1.25em line, 0.5px above the middle at 20px — so the margin's factor is 0.6, not 1.25 / 2, and the line
+  // box stands 0.5px under the ×'s centre. The derivation from the font's metrics is test:visual-pass-r4e §3.
+  const mt = /margin:\s*calc\(var\((--sp-\d+)\) - var\((--sp-\d+)\) - var\((--type-h3)\) \* ([0-9.]+)\) 0 0/.exec(title);
+  const margin = mt ? px(mt[1]) - px(mt[2]) - px(mt[3]) * Number(mt[4]) : NaN;
   const lh = /line-height:\s*1\.25/.test(title) ? px("--type-h3") * 1.25 : NaN;
   const below1024 = px(/padding:\s*var\((--sp-\d+)\)/.exec(sheet)?.[1] ?? "") + Number(/height:\s*([0-9]+)px/.exec(grab)?.[1]) + px(/gap:\s*var\((--sp-\d+)\)/.exec(sheet)?.[1] ?? "");
   const from1024 = step("6"); // the panel's lg:p-6, the grab hidden
   const centre = (top: number) => top + margin + lh / 2;
-  ok("6.1 · below 1024 (12 + 4 + 16 = 32px down) and from 1024 (32px of padding) the title's first line is centred on the ×'s 40px",
-    Math.abs(centre(below1024) - xCentre) < 0.01 && Math.abs(centre(from1024) - xCentre) < 0.01 && /p-5 lg:p-6/.test(modal),
+  ok("6.1 · below 1024 (12 + 4 + 16 = 32px down) and from 1024 (32px of padding) the title's first line stands on the ×'s 40px (within the 0.5px its capitals ask)",
+    Math.abs(centre(below1024) - xCentre) <= 0.5 && Math.abs(centre(from1024) - xCentre) <= 0.5 && Math.abs(centre(below1024) - centre(from1024)) < 0.01 && /p-5 lg:p-6/.test(modal),
     `margin ${margin} · below ${centre(below1024)} · from ${centre(from1024)}`);
   ok("6.1′ PLANT · with no margin the line is centred 44.5px down, 4.5px under the × — reported", Math.abs(below1024 + lh / 2 - xCentre) > 4);
 }
@@ -392,7 +392,7 @@ section("9 · a line written \"A · B\" breaks only between its parts, and its d
       && /--seq-gap:\s*3ch/.test(rule(css, ".kp-seq--mono")) && !/kp-hub__seq/.test(css));
   ok("9.4 · the hub's second lines, the legal header's version line and the invite page's call all draw it",
     /<DotSeq text=\{text\} className="kp-hub__sub" \/>/.test(read("src/components/journey/account/hub-row.tsx"))
-      && /<DotSeq text=\{meta\} mono \/>/.test(read("src/app/legal/_components.tsx"))
+      && /<DotSeq text=\{meta\} mono(?: renderPart=\{keepYears\})? \/>/.test(read("src/app/legal/_components.tsx"))
       && /<DotSeq text=\{paid \? t\.profile\.inviteEarnSub : t\.profile\.inviteFriendsSub\} \/>/.test(read("src/app/profile/invite/page.tsx")));
   const inv = read("src/app/profile/invite/page.tsx");
   ok("9.5 · on a phone the invite's call takes the card's width under the dial and its caption; from sm the row is as it was",

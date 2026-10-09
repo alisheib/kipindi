@@ -183,6 +183,11 @@ const Ibase = {
   /* aliases — map lucide naming to kit naming */
   listChecks: (p: GlyphProps) => <G {...p}><path d="M3 6h2.5M3 12h2.5M3 18h2.5M8 6h13M8 12h13M8 18h13" /><path d="M1 5.5l1 1 2-2M1 11.5l1 1 2-2M1 17.5l1 1 2-2" /></G>,
   layoutGrid: (p: GlyphProps) => <G {...p}><rect x="3" y="3" width="7" height="7" rx="1" /><rect x="14" y="3" width="7" height="7" rx="1" /><rect x="3" y="14" width="7" height="7" rx="1" /><rect x="14" y="14" width="7" height="7" rx="1" /></G>,
+  /* The Needle as a ROW GLYPH (round 4, 2026-10-09, tiles 122–130): the brand mark's own geometry — a disc and the needle
+     across it on its pivot, tilted as the mark's (38,8)→(62,92) is — on this family's grid: the disc is `globe`'s and
+     `checkCircle`'s r9 ring, the needle reaches the ring's centre line at both ends, one ink and one 1.9 stroke.
+     `NeedleMark` (needle-drawer.tsx) keeps its half-ink disc for the account menu and the drawer, where it is the mark. */
+  needle: (p: GlyphProps) => <G {...p}><circle cx="12" cy="12" r="9" /><path d="M9.43 3l5.14 18" /></G>,
   radio: (p: GlyphProps) => <G {...p}><circle cx="12" cy="12" r="2.5" fill="currentColor" stroke="none" /><path d="M7.5 7.5a6 6 0 0 0 0 9M16.5 7.5a6 6 0 0 1 0 9M5 5a9 9 0 0 0 0 14M19 5a9 9 0 0 1 0 14" /></G>,
   pause: (p: GlyphProps) => <G {...p}><rect x="7" y="5" width="3" height="14" rx="1" /><rect x="14" y="5" width="3" height="14" rx="1" /></G>,
   /* Play without the ring — `pause`'s partner in a toggle. `play` above sits in a circle and

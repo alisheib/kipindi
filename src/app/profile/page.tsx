@@ -221,6 +221,10 @@ export default async function ProfilePage() {
             its own row and the two counts share the second; from sm up it is three across again.
             The value never wraps (TZS stays with its figure); a label may wrap, never clip. The
             dividers are explicit borders because a sibling divider cannot follow a wrapped row. */}
+        {/* ONE CONTENT EDGE PER COLUMN (round 4, 2026-10-09, tiles 187 188): the cells pad like the hero above them,
+            `px-5 lg:px-6` over the Stat box's px-4 — SALIO and HAI started at x37 under the avatar's x41 at 390, and at
+            x153 under x165 at 1280 (20px against 24 and 32). The narrowest cell, a third at 640, keeps 154px for its
+            figure ("TZS 1,000,000" in the 18px mono face needs ~140). */}
         <div className="relative z-10 grid grid-cols-2 sm:grid-cols-3 border-t border-border">
           {/* ⭐ STAGE 9b — the kit <Stat>, and the face is the fix, not a side effect.
               This strip's local fork set its values in SORA. §T5 has no exception for
@@ -244,7 +248,7 @@ export default async function ProfilePage() {
             label={t.profile.balance}
             value={wallet ? formatTzs(wallet.balance) : "—"}
             icon={<I.wallet s={14} />}
-            className="col-span-2 min-w-0 whitespace-nowrap border-b border-border sm:col-span-1 sm:border-b-0"
+            className="col-span-2 min-w-0 whitespace-nowrap border-b border-border px-5 sm:col-span-1 sm:border-b-0 lg:px-6"
             labelClassName="min-w-0 whitespace-normal break-words"
           />
           <Stat
@@ -255,7 +259,7 @@ export default async function ProfilePage() {
             label={t.profile.openCount}
             value={String(positions.filter((p) => p.status === "OPEN").length)}
             icon={<I.sparkle s={14} className="text-yes-300" />}
-            className="min-w-0 whitespace-nowrap border-border sm:border-l"
+            className="min-w-0 whitespace-nowrap border-border px-5 sm:border-l lg:px-6"
             labelClassName="min-w-0 whitespace-normal break-words"
           />
           <Stat
@@ -266,7 +270,7 @@ export default async function ProfilePage() {
             label={t.profile.settledCount}
             value={String(positions.filter((p) => p.status !== "OPEN").length)}
             icon={<I.check s={14} />}
-            className="min-w-0 whitespace-nowrap border-l border-border"
+            className="min-w-0 whitespace-nowrap border-l border-border px-5 lg:px-6"
             labelClassName="min-w-0 whitespace-normal break-words"
           />
         </div>
@@ -314,7 +318,10 @@ export default async function ProfilePage() {
           <I.settings s={13} />
           {t.profile.account}
         </h2>
-        <div className="grid grid-cols-1 gap-2 md:grid-cols-2">
+        {/* 16px between the cards (gap-3 on the overridden scale; round 4, 2026-10-09, tile 188): the Akaunti hub's own
+            gutter (`.kp-hub__grid`, var(--sp-4)), so the two doors to the same settings space their cards alike. It was
+            gap-2, 12px — no rule chose it. */}
+        <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
           {/* 🔴 THIS ROW POINTED AT ONE HREF WEARING THE AGENT DASHBOARD'S WORDS, because while
               invite was WITHDRAWN the only viewer who could see it WAS an approved agent. Opening
               the unpaid player invite (2026-09-25) breaks that identity: an ordinary player would

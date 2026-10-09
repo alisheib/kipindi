@@ -37,10 +37,14 @@ export function ProviderRadioGrid({
   // 2026-09-13 · COLUMNS FOLLOW THE COUNT. Withdraw passes four rails and drew 3 + 1 (Mixx by Yas
   // alone on a second row) at 768 and 1280. Four is 2 by 2 on a phone and four across from md;
   // not from sm, because at 640 a quarter of the form leaves "Airtel Money" too little room.
-  // Deposit passes five (the four plus Card) and keeps the 2 then 3 grid it has always had.
-  const cols = providers.length === 4 ? "grid-cols-2 md:grid-cols-4" : "grid-cols-2 sm:grid-cols-3";
+  // Deposit passes five (the four plus Card): two columns on a phone, three from sm.
+  // ⭐ A SHORT LAST ROW SHARES THE ROW (round 4, 2026-10-09, tile 069): five in three columns left an empty third cell
+  // beside Card at 1280 (x733–894), and five in two left Card alone in a half-width cell on a phone. `.kp-provgrid`
+  // (globals.css) lets the last row's tiles take its width — a lone last tile spans the row; from sm, the three-column
+  // grid is six tracks, so a last row of two takes three tracks each. Pure CSS on the count, no client state.
+  const cols = providers.length === 4 ? "kp-provgrid kp-provgrid--quarters" : "kp-provgrid kp-provgrid--thirds";
   return (
-    <div className={`grid ${cols} gap-2`}>
+    <div className={cols}>
       {providers.map((p, i) => {
         const checked = defaultProvider ? p.id === defaultProvider : i === firstSelectable;
         // §A3 — the real control is `sr-only`, and `sr-only` clips to a 1×1 box, so the

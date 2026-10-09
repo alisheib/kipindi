@@ -4682,6 +4682,36 @@ html[data-sheet-open] .route-enter { animation: none; }
   .fairness-tbl td[data-th] .line-clamp-2 { -webkit-line-clamp: 4; }
 }
 
+/* ── /fairness · THE FIVE STEPS' NUMERALS ON THE CARD'S CONTENT EDGE (round 4, 2026-10-09, tile 190) ──────────────────
+   The list drew the browser's outside markers into its 24px indent, so "1." started at x172–173, wherever its own width
+   put it, while the card's heading — the column's edge — stood at x165/166. The numeral is now the item's own box at
+   that edge (a counter, left 0) and the words keep their 24px indent (x189, unchanged). The digits stay proportional:
+   left-aligned, Inter Bold's 1–5 put their ink 0.64–0.75px in at 14px, where tabular figures centre a narrow "1" 1.2px
+   in. The look is the old marker's: bold, in the same gold. `role="list"` on the <ol> keeps the list a list where the
+   browser's own markers are off. */
+.fairness-steps { counter-reset: fairness-step; }
+.fairness-steps > li { position: relative; padding-left: var(--sp-6); counter-increment: fairness-step; }
+.fairness-steps > li::before { content: counter(fairness-step) "."; position: absolute; top: 0; left: 0; font-weight: 700; color: var(--gold-300); }
+
+/* ── /wallet/deposit and /wallet/withdraw · THE PROVIDER TILES (`ProviderRadioGrid`, round 4, 2026-10-09, tile 069) ────
+   A short last row shares the row's width instead of leaving empty cells: five rails in three columns left a blank
+   third cell beside Card at 1280 (x733–894, y570–675), and five in two left Card alone in a half cell on a phone.
+   · Two columns (every phone): a lone last tile spans the row.
+   · Three columns (deposit from 640): six tracks, each tile two of them; a last row of two takes three each, a last
+     row of one the whole row. The phone rule is undone here first, so a lone tile that ends a full row of three
+     (three rails) is not stretched.
+   · Four columns (withdraw from 768, four rails, one row): nothing is short.
+   Counted with :nth-child / :nth-last-child on the tiles themselves, so it holds for any count and needs no state. */
+.kp-provgrid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--sp-3); }
+.kp-provgrid > :nth-child(odd):last-child { grid-column: 1 / -1; }
+@media (min-width: 640px) {
+  .kp-provgrid--thirds { grid-template-columns: repeat(6, minmax(0, 1fr)); }
+  .kp-provgrid--thirds > *, .kp-provgrid--thirds > :nth-child(odd):last-child { grid-column: span 2; }
+  .kp-provgrid--thirds > :nth-child(3n+1):nth-last-child(2), .kp-provgrid--thirds > :nth-child(3n+2):last-child { grid-column: span 3; }
+  .kp-provgrid--thirds > :nth-child(3n+1):last-child { grid-column: 1 / -1; }
+}
+@media (min-width: 768px) { .kp-provgrid--quarters { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
+
 /* ── The question board (landing v3 · WP4) ─────────────────────────────────────────────────────────
    A LIST of rows, each three SIBLING zones — the title link, the reading (price · time left · 6px bar), the
    two side links — never one link (WP17). Written mobile-first: phone = title, meta, reading, then the
@@ -6222,6 +6252,15 @@ html[lang="zh"] .kp-udrule { word-break: keep-all; }
 .kp-wsheet__links { display: flex; flex-wrap: wrap; column-gap: var(--sp-4); }
 .kp-wsheet__link { display: inline-flex; align-items: center; min-height: var(--h-control-md); font-weight: 600; font-size: var(--type-small); color: var(--text); text-decoration: underline; text-decoration-color: var(--border-strong); text-underline-offset: 4px; }
 .kp-wsheet__link:hover { text-decoration-color: currentColor; }
+/* ⭐ In the journey's Wallet the links take the house focus ring, as the buttons beside them do (round 4, 2026-10-09,
+   tile 154): §A3's 2px --brand-500 outline at offset 2 PLUS its 4px 25% halo (`.btn:focus-visible`), on a rounded box.
+   The catch-all drew the outline alone, square, 2–3px from the words (ring x603–604 / 693–694 around "Weka mipaka" at
+   x608–690), beside the rounded, haloed ring of "Toa pesa". The box gains 4px each side, given back by a negative
+   margin, so no word moves: the ring stands 6–7px clear of the ink, its corners on the --r-sm curve.
+   ⚠️ Journey-only, like the held/masked ink above: the classic capsule opens this same sheet, and classic chrome is
+   frozen until S15 (the classic capsule's Wallet keeps the catch-all's square ring). */
+:root:has(#kp-journey-shell) .kp-wsheet__link { margin-inline: calc(-1 * var(--sp-1)); padding-inline: var(--sp-1); border-radius: var(--r-sm); }
+:root:has(#kp-journey-shell) .kp-wsheet__link:focus-visible { box-shadow: 0 0 0 4px oklch(63% 0.18 262 / 0.25); }
 
 /* ── S6 · THE CAPTIONED BALANCE (SJ-15) — the journey header's wallet door ──────────────────────────────────
    "Salio" over "TZS 2,000": one 44px button that opens the Wallet above. Only the journey header renders it
@@ -6241,9 +6280,16 @@ html[lang="zh"] .kp-udrule { word-break: keep-all; }
 .kp-jbal { display: inline-flex; flex-shrink: 0; align-items: center; gap: var(--sp-2); height: var(--h-control-md); padding: 0 10px; border-radius: var(--r-pill); background: var(--bg-inset); box-shadow: inset 0 0 0 1px color-mix(in oklab, var(--gold-300) 35%, transparent); color: var(--text); cursor: pointer; transition: box-shadow var(--t-base) var(--m-glide); }
 .kp-jbal[data-flash] { box-shadow: 0 0 0 3px color-mix(in oklab, var(--gold-300) 22%, transparent), inset 0 0 0 1px var(--gold-300); }
 .kp-jbal__lock { flex-shrink: 0; color: var(--text-muted); }
-.kp-jbal__col { position: relative; display: inline-flex; flex-direction: column; align-items: flex-end; gap: 3px; }
+/* ⭐ CAPTION AND FIGURE ARE CENTRED IN THE RESERVED BOX (round 4, 2026-10-09, tiles 072 074 076). Rule 8a / D31 decides
+   the box — the wider of figure and mask, so masking moves nothing — and says nothing of where the words sit in it. The
+   S4 frame drew them flush right in a capsule that hugged its figure, 10px each side; once the box was reserved, flush
+   right put all of its slack on the left: "TZS 0" at 320 stood 39px from the capsule's left edge and 10 from its right,
+   "TZS 9.9M" 17 and 10. Centred, the slack splits (24/25 and 13.6/13.6); a figure that fills its box (from TZS 10,000,
+   or masked) sits exactly where it did. The caption is centred too, so it never moves — not with the mask, not with the
+   roll — as it never moved flush right; and the ±delta that covers its row is centred like it. Journey-only rules. */
+.kp-jbal__col { position: relative; display: inline-flex; flex-direction: column; align-items: center; gap: 3px; }
 .kp-jbal__cap { font-size: var(--type-micro); line-height: 1; white-space: nowrap; color: var(--text-subtle); }
-.kp-jbal__fig { display: inline-grid; justify-items: end; font-weight: 700; font-size: 12px; line-height: 1.1; color: var(--gold-300); transition: color var(--t-base) var(--m-glide); }
+.kp-jbal__fig { display: inline-grid; justify-items: center; font-weight: 700; font-size: 12px; line-height: 1.1; color: var(--gold-300); transition: color var(--t-base) var(--m-glide); }
 /* Three cells in one: two invisible sizers and the painted value, so the box is the wider of figure and mask (D31). */
 .kp-jbal__fig > span { grid-area: 1 / 1; }
 .kp-jbal__sizer { visibility: hidden; }
@@ -6253,10 +6299,11 @@ html[lang="zh"] .kp-udrule { word-break: keep-all; }
 /* ⭐ THE ±DELTA TAKES THE CAPTION'S ROW FOR A MOMENT; IT NEVER SHARES IT. The plan set it at the row's left end,
    and the widths refuse it: at 320 the figure box is 64.8px (nine mono characters at 12px), "Balance" takes
    about 40 of it and "+1,000" needs 34, so English would overprint, and a frozen caption is wider than the box.
-   So it spans the whole row, right-aligned like the caption, on the capsule's own fill and at the caption's own
-   rung, with 2px of bleed above and below so no glyph edge shows through, and the kit's value-delta fade
-   crossfades the two words. The amount class gives it money type. A frozen wallet renders none (the component). */
-.kp-jbal__delta { position: absolute; top: -2px; left: 0; right: 0; padding-block: 2px; text-align: right; background: var(--bg-inset); font-size: var(--type-micro); line-height: 1; pointer-events: none; }
+   So it spans the whole row, centred like the caption (round 4; it was right-aligned while the caption was), on the
+   capsule's own fill and at the caption's own rung, with 2px of bleed above and below so no glyph edge shows through,
+   and the kit's value-delta fade crossfades the two words. The amount class gives it money type. A frozen wallet
+   renders none (the component). */
+.kp-jbal__delta { position: absolute; top: -2px; left: 0; right: 0; padding-block: 2px; text-align: center; background: var(--bg-inset); font-size: var(--type-micro); line-height: 1; pointer-events: none; }
 .kp-jbal__delta[data-sign="up"] { color: var(--yes-300); }
 .kp-jbal__delta[data-sign="down"] { color: var(--no-300); }
 @media (min-width: 360px) { .kp-jbal__fig { font-size: 14px; } }
@@ -6301,14 +6348,13 @@ html[lang="zh"] .kp-udrule { word-break: keep-all; }
 .kp-hub__card :where(a, button, summary):focus-visible { outline-offset: -2px; }
 .kp-hub__row { display: flex; align-items: center; gap: var(--sp-3); width: 100%; min-height: var(--h-control-xl); padding: var(--sp-2) var(--sp-4); border: 0; background: transparent; color: var(--text); font: inherit; text-align: left; text-decoration: none; cursor: pointer; }
 .kp-hub__row:hover { background: var(--bg-overlay); }
-/* The card-size switch row (`card-size-row.tsx`, round 3, 2026-10-09) is laid out as the rail menu's row it copies: glyph,
-   label, value and switch on the first line, the hint under the last three. The hint shared the first line with the value
-   and the switch and had 113–183px, so it left a word alone at every phone width; under them it has the row's width less
-   the glyph slot — 222px at 320, 292 at 390 — and reads on one line from 360 in every language. The glyph spans both
-   lines, centred on the row as every two-line row's glyph is. */
-.kp-hub__row--switch { display: grid; grid-template-columns: auto minmax(0, 1fr) auto auto; align-items: center; column-gap: var(--sp-3); row-gap: 2px; }
-.kp-hub__row--switch > .kp-hub__glyph { grid-row: 1 / span 2; }
-.kp-hub__row--switch > .kp-hub__row-hint { grid-column: 2 / -1; grid-row: 2; }
+/* The card-size switch row (`card-size-row.tsx`) is an ordinary hub row (round 4, 2026-10-09, tile 259): glyph, text
+   column, switch, all centred on the row. Round 3's grid hung its hint under the switch's column as well, which put the
+   26px switch on the label's line — 10px above the glyph and 61px tall against the 56px rung. A switch centred on a 56px
+   row overlaps both text lines, so the hint keeps to the text column (viewport − 154: 206px at 360, 236 at 390) and the
+   label's value shares the label's line, as the rail menu's row keeps label and value together (`.kp-hub__pair`). The
+   pair wraps — the value under the label — only where both do not fit (sw at 320: 171px against 166). */
+.kp-hub__pair { display: flex; flex-wrap: wrap; align-items: baseline; gap: 2px var(--sp-3); min-width: 0; }
 /* The card clips its rows to its rounded corners, so a square ring on the first or last row lost its corners there
    (WP12's tiles, 2026-10-08: the "Pochi" row's ring broke open at both top corners). An outline follows the element's
    radius, so the end rows take the card's inner curve and the ring stays whole. */
@@ -6337,6 +6383,12 @@ html[lang="zh"] .kp-udrule { word-break: keep-all; }
 .kp-seq--mono { --seq-gap: 3ch; }
 .kp-seq__item, .mcardp-src__part { position: relative; min-width: 0; }
 .kp-seq__dot, .mcardp-src__dot { position: absolute; top: 0; right: 100%; width: var(--seq-gap, var(--sp-3)); text-align: center; }
+/* A CENTRED sequence stacks (`DotSeq stack`, round 4, 2026-10-09, the badge shelf on /profile, tiles 186 188): one part per
+   line, each centred. A centred line leaves room on its left, where the clip above cannot reach, so a dot there would
+   show; and at 1280 "First Win · Ushindi wa" / "Kwanza" and "First Prediction ·" / "Ubashiri wa Kwanza" are what the
+   wrapping line did. Stacked, no line ends or opens on "·"; the dot stays in the text for a copy, painted transparent. */
+.kp-seq--stack { flex-direction: column; align-items: center; }
+.kp-seq--stack .kp-seq__dot { opacity: 0; }
 /* The proposals row's flag rides its label (WP12's tiles 124, 255, 297, 2026-10-08). In the row's trailing slot it took
    84px from the label, and "Pendekeza na upate zawadi" folded in two at 390 though the label alone fits. Now the two
    share one wrapping line: side by side, the flag at the row's end as before, where both fit (English and Chinese at
@@ -6848,8 +6900,16 @@ html[lang="zh"] .kp-udrule { word-break: keep-all; }
    grab hidden, from 1024) and its 25px line is centred 44.5px down — the × stood 4–4.5px above the title's line at every
    width and in every language (1280: × ink y409–418, title cap y410–424). The title rises by the difference — the top
    margin below, -4.5px — the channels panel's fix (G2: its title centred on its close control's box): the first line's
-   centre meets the ×'s centre, and a title that wraps keeps its first line there. Everything under it moves up with it. */
-.kp-jsheet__title { margin: calc(var(--sp-10) - var(--sp-8) - var(--type-h3) * 1.25 / 2) 0 0; padding-right: var(--sp-12); font-family: var(--font-display); font-weight: 700; font-size: var(--type-h3); line-height: 1.25; color: var(--text); text-wrap: balance; }
+   centre meets the ×'s centre, and a title that wraps keeps its first line there. Everything under it moves up with it.
+   ⭐ …ON ITS CAPITALS, NOT ITS LINE BOX (round 4, 2026-10-09, tiles 113–121): the × stood 1–1.5px under the title's cap
+   band on a phone (sw 320: × ink y670–679, "I" y666–680) and 0–0.5px at 1280. Two causes, both measured. (1) Sora's cap
+   band is not centred in its line: ascent 970, descent 290, cap 730 per 1000 (next's capsize metrics), so in a 1.25em
+   line the content box overhangs by 0.005em each side, the baseline sits 0.965em down and the caps span 0.235–0.965em —
+   centred 0.6em down, 0.5px above the line's middle at 20px. (2) The margin was −4.5px, so the sheet was 146.5px tall
+   and, docked to the bottom of a whole-pixel viewport, its top sat on a half pixel: the border and the × snapped down
+   by 0.5 while the title's baseline snapped up by 0.3. Centring the 0.6em point instead makes the margin −4px — the
+   sheet's height whole again (147, two lines 172) — so phone and desktop both land within ±0.5px (predicted +0.3). */
+.kp-jsheet__title { margin: calc(var(--sp-10) - var(--sp-8) - var(--type-h3) * 0.6) 0 0; padding-right: var(--sp-12); font-family: var(--font-display); font-weight: 700; font-size: var(--type-h3); line-height: 1.25; color: var(--text); text-wrap: balance; }
 /* ⭐ TIKETI ZANGU'S CARDS SHARE THEIR ROWS, NOT ONLY THEIR HEIGHT (2026-10-09, the visual pass's round 3, tile 168 at
    1280). A pair already shares a height (the grid's stretch, `tickets-view.tsx`), but each card laid its own rows out,
    so a two-line question beside a one-line one put DAU at y714 in the first card and y694 in its neighbour, and left

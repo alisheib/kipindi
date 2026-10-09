@@ -42,7 +42,9 @@ export function FeedbackSettings() {
   };
 
   return (
-    <section className="rounded-xl border border-border bg-bg-elevated p-5">
+    // p-5 lg:p-6, the padding of every card in the responsible-gambling page's column (round 4, 2026-10-09, tile 182):
+    // at 1280 its heading stood at x157 under the hero's x165. That page is its only caller.
+    <section className="rounded-xl border border-border bg-bg-elevated p-5 lg:p-6">
       <h2 className="mb-1 font-display text-[15px] font-bold text-text">
         {t.common.soundFeedback}
       </h2>

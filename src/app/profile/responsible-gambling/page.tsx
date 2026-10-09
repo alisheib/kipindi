@@ -131,8 +131,13 @@ export default async function ResponsibleGamblingPage({ searchParams }: { search
 
       {/* C2h — self-care sunrise line-art + yes-toned support callout, surfaced
           early so anyone seeking help sees it immediately (no gambling imagery). */}
-      <section className="flex items-start gap-3.5 rounded-xl border border-success-border bg-success/[0.08] p-4 lg:p-5">
-        <RgSunriseArt size={44} className="shrink-0 text-success-fg" />
+      {/* ONE CONTENT EDGE PER COLUMN (round 4, 2026-10-09, tile 182): the card pads sideways like the hero, px-5 lg:px-6
+          (its height is unchanged), and the art is drawn 4.75px inside its own box — the leftmost stroke, the line at x7
+          of 56 less its round cap, at 44px — so it steps back the whole 4px of that (-ml-1; a fractional step would be
+          snapped with the svg's box) and its ink's first pixel is the column's: x41 at 390 (as before) and x165 at 1280,
+          where it stood at x162 under the hero's x165. */}
+      <section className="flex items-start gap-3.5 rounded-xl border border-success-border bg-success/[0.08] px-5 py-4 lg:px-6 lg:py-5">
+        <RgSunriseArt size={44} className="-ml-1 shrink-0 text-success-fg" />
         <div className="min-w-0">
           <p className="font-display text-[14px] font-semibold text-success-fg">{t.rg.supportAvailable}</p>
           {/* text-balance (round 3, 2026-10-09, tile 179): the link stood alone on line 2, "Msaada wa kimataifa kupitia" /

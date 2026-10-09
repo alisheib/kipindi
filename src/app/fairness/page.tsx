@@ -214,7 +214,8 @@ export default async function FairnessPage({ searchParams }: { searchParams: Pro
             { glyph: "wallet",      label: t.common.fairnessSettlement },
           ]}
         />
-        <ol className="space-y-3 text-[14px] text-text-muted list-decimal pl-5 marker:text-gold-300 marker:font-bold">
+        {/* The numerals on the content edge, the words indented as before (`.fairness-steps`, round 4, tile 190). */}
+        <ol role="list" className="fairness-steps space-y-3 text-[14px] text-text-muted">
           <li>
             <strong className="text-text">{t.common.fairnessCreated}</strong> — {t.common.fairnessCreatedBody}
           </li>

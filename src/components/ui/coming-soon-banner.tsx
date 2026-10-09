@@ -22,9 +22,12 @@ import { Callout } from "@/components/ui/callout";
  * swap the typeface on a live player surface, which is a design decision and not a refactor's to
  * take. `leading-normal` restates the 1.5 the title would otherwise lose to `leading-snug`.
  *
- * ⚠️ `p-3.5` (14px) is the box's uniform inset and is INHERITED, not introduced: the `md` rung is
+ * ⚠️ `py-3.5` (14px) is the box's block inset and is INHERITED, not introduced: the `md` rung is
  * 20px/14px, and this value shipped on the proposals banner with that reason written beside it.
  * It is now one use in one file, which is the only reason it is defensible at all.
+ * ⭐ ITS INLINE INSET IS THE PAGE HERO'S, `px-5 lg:px-6` (round 4, 2026-10-09, tiles 185 186): one content edge per
+ * column. At a uniform 14px the glyph stood at x32 under the /proposals hero's x41 at 390 (x148 under x165 at 1280);
+ * now the box's edge is the hero's, 24px and 32px in, and the glyph keeps its own 1.45px side bearing.
  */
 export function FeatureStateBanner({
   title,
@@ -39,7 +42,7 @@ export function FeatureStateBanner({
   glyph?: "clock" | "pause";
 }) {
   return (
-    <Callout role="status" size="md" surface="panel" tone={tone} glyph={glyph} className="p-3.5">
+    <Callout role="status" size="md" surface="panel" tone={tone} glyph={glyph} className="px-5 py-3.5 lg:px-6">
       <p className="text-[13px] font-bold leading-normal text-text">{title}</p>
       <p className="mt-1 text-body-sm leading-relaxed text-text-muted">{body}</p>
     </Callout>

@@ -11,6 +11,7 @@ import { I } from "@/components/ui/glyphs";
 import { GiltCorner } from "@/components/brand";
 import { PageHeader } from "@/components/ui/page-header";
 import { DotSeq } from "@/components/ui/dot-seq";
+import { keepYears } from "@/components/ui/keep-words";
 import { type Locale } from "@/lib/i18n-server";
 
 /**
@@ -91,7 +92,9 @@ export function LegalHeader({
             // as `DotSeq` parts, so a line breaks between them and never on the "·": at 390 the privacy line read
             // "Toleo 2026-10-07 ·" over "Imeoanishwa na…". It now reads "Toleo 2026-10-07" over the rest, balanced, and on
             // a line wide enough for both it is the same text, the dot in a 3ch gap ( " · " in the mono face).
-            <p className="font-mono text-body-sm tabular-nums text-text-subtle text-balance"><DotSeq text={meta} mono /></p>
+            // Round 4 (2026-10-09, tile 210): inside a part a year keeps the word before it (`keepYears`) — the privacy
+            // line read "…Personal Data Protection Act" / "2022 na kanuni…", the Act's name split from its year.
+            <p className="font-mono text-body-sm tabular-nums text-text-subtle text-balance"><DotSeq text={meta} mono renderPart={keepYears} /></p>
           )}
         </div>
       </div>

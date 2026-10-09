@@ -20,24 +20,32 @@
  * to a copy and paste, and to a reader that does not separate flex items. One space before and one after the hidden dot
  * make the text the dictionary wrote, "A · B". Both sit at the start of a flex item, where white space collapses, so
  * nothing moves on the screen.
- * ⭐ `renderPart` (round 4, 2026-10-09, the notifications' titles, tiles 193 194): a part can be dressed — a notice's
- * "Soko limefutwa · TZS 4,200 imerejeshwa" sets its figure through `moneyRuns`, whole and in the mono face. Without it
+ * ⭐ `renderPart` (round 4, 2026-10-09) dresses or shapes the words INSIDE each part, the words unchanged: `moneyRuns`
+ * on the notifications' titles (tiles 193 194 — "Soko limefutwa · TZS 4,200 imerejeshwa" sets its figure whole, in
+ * the mono face), `keepYears` on the legal version line ("Act 2022" on one line, tile 210), `keepLastWords` on the
+ * badge names (never "Kwanza" alone, tiles 186 188) — so a part that wraps inside itself still breaks well. Without it
  * each part is its own text, byte for byte as before.
+ * ⭐ `stack` (round 4) is for a CENTRED line: one part per line, centred. The left-edge clip that hides a line-opening
+ * dot cannot work when lines are centred — a centred second line has free room on its left, so its dot would show
+ * there ("· Ushindi wa Kwanza"), and CSS cannot ask which item opens a line. So a stacked sequence never shares a
+ * line: every part opens its own, and the dot is drawn transparent (still in a copy, still `aria-hidden`). The
+ * badge shelf's bilingual names read "First Win" over "Ushindi wa Kwanza", and no line ends or opens on "·".
  */
 import type { ReactNode } from "react";
 import { cn } from "@/lib/utils";
 
-export function DotSeq({ text, className, mono = false, renderPart }: {
+export function DotSeq({ text, className, mono = false, stack = false, renderPart }: {
   text: string;
   className?: string;
   mono?: boolean;
+  stack?: boolean;
   renderPart?: (part: string) => ReactNode;
 }) {
   const parts = text.split(" · ");
   const draw = (part: string) => (renderPart ? renderPart(part) : part);
   if (parts.length < 2) return <span className={className}>{draw(text)}</span>;
   return (
-    <span className={cn("kp-seq", mono && "kp-seq--mono", className)}>
+    <span className={cn("kp-seq", mono && "kp-seq--mono", stack && "kp-seq--stack", className)}>
       {parts.map((part, i) => (
         <span key={i} className="kp-seq__item">
           {i > 0 && <>{" "}<span className="kp-seq__dot" aria-hidden>·</span>{" "}</>}

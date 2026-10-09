@@ -15,7 +15,7 @@
 import { useId, useSyncExternalStore } from "react";
 import { I } from "@/components/ui/glyphs";
 import { Toggle } from "@/components/ui/toggle";
-import { keepLastWords } from "@/components/ui/keep-words";
+import { keepSentences } from "@/components/ui/keep-words";
 import { useT } from "@/lib/i18n";
 import { applyCardSpacing, currentCardSpacing, subscribeCardSpacing } from "@/lib/card-spacing";
 
@@ -36,20 +36,29 @@ export function CardSizeRow() {
         aria-label={`${t.journey.hubCardSize}: ${t.nav.densityCompact}`}
         aria-describedby={hintId}
         onClick={() => applyCardSpacing(compact ? "comfortable" : "compact")}
-        className="kp-hub__row kp-hub__row--switch"
+        className="kp-hub__row"
       >
-        {/* ⭐ THE RAIL ROW'S LAYOUT, AS ITS HEADER PROMISES (round 3, 2026-10-09, tiles 124 127 256 264 294 295 298 302 306
-            331): label and value beside the switch, the hint under all three. The hint used to share its line with the
-            value and the switch, so it had 183px at 390 and 113px at 320 and left a word alone at every phone width —
-            "Kwa simu tu. Hakuna" / "kinachofichwa.", "Phones only. Nothing is" / "hidden.", and three lines at 320. Under
-            the whole row it has 222px at 320 and 292px at 390 (the hub's row less its glyph slot): one line at 360 and up
-            in every language, and at sw 320 "Kwa simu tu." / "Hakuna kinachofichwa." — the last two words kept together
-            (`keepLastWords`), so it breaks between its sentences and not before its last word. */}
+        {/* ⭐ A TWO-LINE HUB ROW LIKE EVERY OTHER (round 4, 2026-10-09, tile 259): the glyph and the trailing control
+            centred on the row, the words in the text column — the label with its value on the first line, the hint on
+            the second. Round 3 hung the hint under the switch's column too, which put the 26px switch on the LABEL's
+            line: it sat 10px above the glyph (146.5 against 156.5) and grew the row to 61px against every hub row's 56.
+            ⚠️ A switch centred on a 56px row overlaps both text lines (y15–41 of 56; the lines are about 8–28 and 30–48),
+            so neither line may run under it: each has the row less the glyph slot and the switch's — viewport − 154,
+            166px at 320, 206 at 360, 236 at 390. The hint is one line wherever it fits (en and zh from 360, sw from 390,
+            row 56px); where it does not it breaks between its two sentences (`keepSentences`: "Kwa simu tu." /
+            "Hakuna kinachofichwa.", "Phones only." / "Nothing is hidden.") and the row grows, as the hub's rule allows.
+            The value rides the label as the rail menu's row has it (`nav-more.tsx`: label and value in one column, the
+            switch beside them); at sw 320 the pair is 171px against 166, so the value drops under the label rather than
+            split "Ukubwa wa / kadi". */}
         <span className="kp-hub__glyph" aria-hidden><I.layoutGrid s={20} /></span>
-        <span className="kp-hub__label">{t.journey.hubCardSize}</span>
-        <span className="kp-hub__value">{compact ? t.nav.densityCompact : t.nav.densityComfortable}</span>
+        <span className="kp-hub__text">
+          <span className="kp-hub__pair">
+            <span className="kp-hub__label">{t.journey.hubCardSize}</span>
+            <span className="kp-hub__value">{compact ? t.nav.densityCompact : t.nav.densityComfortable}</span>
+          </span>
+          <span id={hintId} className="kp-hub__sub">{keepSentences(t.nav.cardSpacingHint)}</span>
+        </span>
         <Toggle on={compact} decorative />
-        <span id={hintId} className="kp-hub__sub kp-hub__row-hint">{keepLastWords(t.nav.cardSpacingHint)}</span>
       </button>
     </li>
   );

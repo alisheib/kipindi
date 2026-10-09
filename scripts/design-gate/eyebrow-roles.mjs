@@ -248,7 +248,7 @@ export const NOT_EYEBROW = new Map([
   ["app/not-found.tsx :: <p className=\"font-mono text-micro font-bold uppercase tracking-[0.20em] text-text-subtle\"> ↵ {d.notFoundCode} · {d.notFound}", "CELEBRATION"],
   ["app/not-found.tsx :: className=\"mt-6 inline-flex items-center gap-2 font-mono text-caption uppercase tracking-[0.14em] text-brand-300 hover:text-brand-200\" ↵ >", "CONTROL_LABEL"],
   ["app/notifications/bulk-bar.tsx :: <span className=\"font-mono text-micro font-bold uppercase text-text-subtle truncate\"> ↵ {countLabel}", "STATUS_CHIP"],
-  ["app/notifications/row-actions.tsx :: className=\"shrink-0 inline-flex items-center gap-1 min-h-[44px] px-2 rounded-md font-mono text-micro font-bold uppercase text-accent-400 hover:text-text hover:bg-bg-overl", "CONTROL_LABEL"],
+  ["app/notifications/row-actions.tsx :: className=\"-mt-1 shrink-0 inline-flex items-center gap-1 min-h-[44px] px-2 rounded-md font-mono text-micro font-bold uppercase text-accent-400 hover:text-text hover:bg-bg", "CONTROL_LABEL"],
   ["app/positions/page.tsx :: <div className=\"mb-1.5 flex items-center justify-between gap-2 font-mono text-micro uppercase tracking-[0.12em] tabular-nums\"> ↵ <span className=\"font-bold text-yes-300\">", "OTHER"],
   ["app/positions/performance/page.tsx :: <p className=\"font-mono text-micro uppercase tracking-[0.08em] text-text-muted\">{r.statusLabel}</p> ↵ </div>", "STATUS_CHIP"],
   ["app/positions/performance/page.tsx :: <p className=\"font-mono text-micro uppercase tracking-[0.12em] text-text-subtle tabular-nums\">{t.performance.longestStreak} {longestStreak}</p> ↵ </div>", "OTHER"],

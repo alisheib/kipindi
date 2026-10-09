@@ -5,6 +5,8 @@
 // driven — so badges automatically track the rest of the chord.
 import * as React from "react";
 import { cn } from "@/lib/utils";
+import { DotSeq } from "@/components/ui/dot-seq";
+import { keepLastWords } from "@/components/ui/keep-words";
 import { BADGE_ICONS, type AchievementId } from "./icons";
 
 type BadgeState = "locked" | "unlocked" | "progress";
@@ -80,7 +82,13 @@ export function BadgeShelf({
       {items.map((it) => (
         <figure key={it.achievement} className="flex flex-col items-center gap-2 text-center">
           <Badge achievement={it.achievement} state={it.state} progress={it.progress} size="md" title={it.title} />
-          <figcaption className="text-body-sm leading-tight text-text-muted">{it.title}</figcaption>
+          {/* The bilingual names ("First Win · Ushindi wa Kwanza", data until S12 gives them a key per locale) are drawn
+              as their two parts, one per line, each part's last two words kept together (round 4, 2026-10-09, tiles
+              186 188): the wrapping line left "Kwanza" alone and ended four names on "·" ("First Prediction ·").
+              `DotSeq stack` says why a centred line stacks rather than wraps. */}
+          <figcaption className="w-full text-body-sm leading-tight text-text-muted">
+            <DotSeq text={it.title} stack renderPart={keepLastWords} />
+          </figcaption>
         </figure>
       ))}
     </div>

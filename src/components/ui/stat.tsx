@@ -261,8 +261,12 @@ export function Stat({
         {money ? <Cash>{value}</Cash> : value}
       </p>
 
+      {/* Balanced (round 4, 2026-10-09, tile 197): at 13px the agent tile's hint wrapped one word short and left
+          "uliowaleta" alone under "kwa kila dau lililofungwa la wachezaji". Balanced, a two-line hint reads as two even
+          lines ("kwa kila dau lililofungwa" / "la wachezaji uliowaleta"); a hint that fits one line is unchanged.
+          Chromium 114, Firefox 121 and Safari 17.5 balance; an older engine wraps as it did. */}
       {hint ? (
-        <p className={cn("mt-0.5 font-mono leading-tight text-text-subtle", sz.hint)}>{hint}</p>
+        <p className={cn("mt-0.5 font-mono leading-tight text-text-subtle text-balance", sz.hint)}>{hint}</p>
       ) : null}
     </div>
   );

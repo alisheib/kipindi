@@ -61,8 +61,8 @@ export const MUTATIONS = [
     expect: "figure",
     file: CSS,
     suite: "journey-header-fit",
-    from: ".kp-jbal__fig { display: inline-grid; justify-items: end; font-weight: 700; font-size: 12px;",
-    to: `.kp-jbal__fig { display: inline-grid; justify-items: end; font-weight: 700; font-size: 14px; ${witness("figure-14-below-360")}`,
+    from: ".kp-jbal__fig { display: inline-grid; justify-items: center; font-weight: 700; font-size: 12px;",
+    to: `.kp-jbal__fig { display: inline-grid; justify-items: center; font-weight: 700; font-size: 14px; ${witness("figure-14-below-360")}`,
   },
   {
     name: "gap-6-becomes-8",

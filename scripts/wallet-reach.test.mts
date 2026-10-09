@@ -401,9 +401,11 @@ const { dict } = await import("../src/lib/i18n-dict.ts");
      delta at the row's left end beside the caption; by the font metrics that overprints "Balance" at 320 on any
      move of 1,000 or more, and covers a frozen caption at every width. So the delta covers the whole row, on the
      capsule's own fill and at the caption's size, and a frozen wallet shows none. */
+  // ⚠️ Round 4 (2026-10-09, tiles 072 074 076): caption and figure are centred in the box D31 reserves, so the delta that
+  // covers the caption's row is centred as the caption is (it was right-aligned while the caption was flush right).
   const deltaRule = ruleBody(".kp-jbal__delta");
-  ok("8.18 the ±delta TAKES the caption's row for a moment, never shares it — the whole row, right-aligned, on the capsule's own fill, at the caption's size",
-     deltaRule.includes("left: 0; right: 0;") && deltaRule.includes("text-align: right")
+  ok("8.18 the ±delta TAKES the caption's row for a moment, never shares it — the whole row, aligned as the caption is (centred), on the capsule's own fill, at the caption's size",
+     deltaRule.includes("left: 0; right: 0;") && deltaRule.includes("text-align: center") && ruleBody(".kp-jbal__col").includes("align-items: center")
      && deltaRule.includes("background: var(--bg-inset)") && ruleBody(".kp-jbal").includes("background: var(--bg-inset)")
      && deltaRule.includes("font-size: var(--type-micro)") && ruleBody(".kp-jbal__cap").includes("font-size: var(--type-micro)")
      && cap.includes('<span aria-hidden className="kp-jbal__delta value-delta amount"'),

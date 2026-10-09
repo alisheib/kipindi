@@ -225,7 +225,7 @@ export const MUTATIONS = [
     why: "⭐ THE PLAN'S FIRST PLACEMENT, RESTORED: the delta pinned to the left end of the caption row with no fill of its own. It looks fine in Swahili at 360, where a drive would look first, and by the font metrics it overprints Balance in English at 320 on any move of 1,000 or more, and a frozen caption at every width",
     file: CSS,
     suite: "wallet-reach",
-    from: `left: 0; right: 0; padding-block: 2px; text-align: right; background: var(--bg-inset);`,
+    from: `left: 0; right: 0; padding-block: 2px; text-align: center; background: var(--bg-inset);`,
     to: `left: 0;`,
     expect: "8.18 the ±delta TAKES the caption's row",
   },
