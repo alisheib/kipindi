@@ -450,7 +450,6 @@ export function ComposerMessage() {
   const c = useComposer();
   const { view, fields, verdict } = c;
   const off = c.saving || view.readOnly || !c.mayAct;
-  const phraseSet = view.sourcePhrase.trim() !== "";
   const swJina = scanPlaceholders(fields.bodySw).jina > 0;
   const enWritten = fields.bodyEn.trim() !== "";
   const enJina = enWritten && scanPlaceholders(fields.bodyEn).jina > 0;
@@ -501,7 +500,6 @@ export function ComposerMessage() {
           </Field>
           <ComposerCounter
             counter={verdict.counters.SW}
-            phraseSet={phraseSet}
             disabled={off}
             onFold={() => c.setField("bodySw", foldToGsm7(fields.bodySw))}
           />
@@ -533,7 +531,6 @@ export function ComposerMessage() {
             <>
               <ComposerCounter
                 counter={verdict.counters.EN}
-                phraseSet={phraseSet}
                 disabled={off}
                 onFold={() => c.setField("bodyEn", foldToGsm7(fields.bodyEn))}
               />

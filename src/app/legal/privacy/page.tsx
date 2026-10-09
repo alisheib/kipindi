@@ -68,7 +68,9 @@ const TITLE: Record<Locale, string> = {
 // (`src/lib/legal/privacy-referees.ts`, ONE constant) keep that promise — the final-rule gate's referee exclusion, kept
 // with a coded form of each such number that §5's new referee bullet states and §9 explains, whose cutoff is the instant
 // the re-worded §9 first went live — and referees named after it are told management's two sentences ("50pick may send
-// you offers by SMS." "You can stop them at any time with the link in every offer."). ⛔ §9 names the version by its
+// you offers by SMS." — and, until 2026-10-09, "You can stop them at any time with the link in every offer."). 2026-10-09
+// (Privacy v2026-10-09, the owner's ruling that a marketing SMS is sent exactly as written): no offer carries a stop link
+// any more, so §9's stop sentence and §5's "the stop link it carried" are gone, in every language. ⛔ §9 names the version by its
 // LABEL, never "this version": a later version would move a relative phrase and with it the promise. ⛔ §9 calls the coded
 // form "not the number itself", NEVER "it cannot be turned back into the number": it is an HMAC under the server's
 // pepper, and whoever holds the pepper can hash every Tanzanian mobile number and compare (`test:privacy-notice` §4k
@@ -79,9 +81,9 @@ const TITLE: Record<Locale, string> = {
 // (`profile.privacyRequestErasureNote`); `test:privacy-notice` §4j pins every one of these texts and ties them to the
 // code, and §4k holds §9.
 const META: Record<Locale, string> = {
-  en: "Version 2026-10-07 · Aligned with the Tanzania Personal Data Protection Act 2022 and EU GDPR principles.",
-  sw: "Toleo 2026-10-07 · Imeoanishwa na Tanzania Personal Data Protection Act 2022 na kanuni za EU GDPR.",
-  zh: "版本 2026-10-07 · 符合 Tanzania Personal Data Protection Act 2022 及 EU GDPR 原则。",
+  en: "Version 2026-10-09 · Aligned with the Tanzania Personal Data Protection Act 2022 and EU GDPR principles.",
+  sw: "Toleo 2026-10-09 · Imeoanishwa na Tanzania Personal Data Protection Act 2022 na kanuni za EU GDPR.",
+  zh: "版本 2026-10-09 · 符合 Tanzania Personal Data Protection Act 2022 及 EU GDPR 原则。",
 };
 
 /**
@@ -152,7 +154,7 @@ function content(): Record<Locale, React.ReactNode> { return {
           <li>Prediction and transaction history: at least 7 years</li>
           <li>Audit log entries: at least 7 years</li>
           <li>Marketing consent: until you withdraw it, close your account, or 2 years pass without you signing in</li>
-          <li>Records of marketing text messages (offers and news by SMS): at least 7 years. For each message they hold the number it was sent to, the message, what happened to it and the stop link it carried. If you ask us to erase a closed account, we remove which account they belonged to and keep the rest</li>
+          <li>Records of marketing text messages (offers and news by SMS): at least 7 years. For each message they hold the number it was sent to, the message and what happened to it. If you ask us to erase a closed account, we remove which account they belonged to and keep the rest</li>
           <li>A coded form of the phone number of each agent referee named before version {REFEREE_PROMISE_REWORDED_IN}: kept for as long as 50pick sends marketing messages, so that we never contact them for marketing (§9)</li>
           <li>Visit counts, daily totals that identify no one: 400 days</li>
           <li>Journey counts, daily totals that identify no one: 400 days</li>
@@ -215,7 +217,6 @@ function content(): Record<Locale, React.ReactNode> { return {
           marketing messages; asking us to destroy your information removes everything else, but
           not this coded form, because without it we could not keep the promise. If you are named
           as a referee after that: 50pick may send you offers by SMS.
-          You can stop them at any time with the link in every offer.
         </p>
       </LegalSection>
     </>
@@ -275,7 +276,7 @@ function content(): Record<Locale, React.ReactNode> { return {
           <li>Historia ya utabiri na miamala: angalau miaka 7</li>
           <li>Maingizo ya kumbukumbu za ukaguzi (audit log): angalau miaka 7</li>
           <li>Ridhaa ya matangazo: hadi utakapoiondoa, kufunga akaunti yako, au miaka 2 ipite bila kuingia</li>
-          <li>Kumbukumbu za SMS za ofa na habari: angalau miaka 7. Kwa kila ujumbe tunahifadhi namba ya simu, maandishi ya ujumbe, kilichotokea kwa ujumbe huo na kiungo cha “Acha” kilichokuwa ndani yake. Ukituomba kufuta akaunti iliyofungwa, uhusiano wa kumbukumbu hizo na akaunti yako huondolewa, na sehemu iliyobaki huhifadhiwa</li>
+          <li>Kumbukumbu za SMS za ofa na habari: angalau miaka 7. Kwa kila ujumbe tunahifadhi namba ya simu, maandishi ya ujumbe na kilichotokea kwa ujumbe huo. Ukituomba kufuta akaunti iliyofungwa, uhusiano wa kumbukumbu hizo na akaunti yako huondolewa, na sehemu iliyobaki huhifadhiwa</li>
           <li>Namba ya simu ya kila mdhamini wa wakala aliyetajwa kabla ya toleo la {REFEREE_PROMISE_REWORDED_IN} la sera hii, ikiwa imegeuzwa kuwa msimbo: huhifadhiwa kwa muda wote ambao 50pick inatuma ujumbe wa matangazo, ili tusiwasiliane naye kamwe kwa matangazo (§9)</li>
           <li>Hesabu za matembeleo, jumla za kila siku zisizomtambulisha mtu yeyote: siku 400</li>
           <li>Hesabu za safari, jumla za kila siku zisizomtambulisha mtu yeyote: siku 400</li>
@@ -340,7 +341,6 @@ function content(): Record<Locale, React.ReactNode> { return {
           kila kitu kingine huondolewa, lakini si msimbo huu, kwa sababu bila huo tusingeweza
           kutimiza ahadi hiyo. Kama umetajwa kuwa mdhamini baada ya hapo:
           50pick inaweza kukutumia ofa kwa SMS.
-          Unaweza kuzisimamisha wakati wowote kwa kiungo cha kusimamisha kilicho katika kila ofa.
         </p>
       </LegalSection>
     </>
@@ -400,7 +400,7 @@ function content(): Record<Locale, React.ReactNode> { return {
           <li>预测与交易历史：至少 7 年</li>
           <li>审计日志条目：至少 7 年</li>
           <li>营销同意：直至您撤回、注销账户，或连续 2 年未登录</li>
-          <li>短信优惠与资讯的记录：至少 7 年。我们为每条短信保存所发往的号码、短信内容、发送结果，以及短信中用于停止接收的链接。如您要求删除已注销的账户，我们将删除这些记录与您账户的关联，其余内容予以保留</li>
+          <li>短信优惠与资讯的记录：至少 7 年。我们为每条短信保存所发往的号码、短信内容和发送结果。如您要求删除已注销的账户，我们将删除这些记录与您账户的关联，其余内容予以保留</li>
           <li>本政策 {REFEREE_PROMISE_REWORDED_IN} 版之前被提名的每位代理推荐人的电话号码（编码形式）：只要 50pick 仍在发送营销信息即予保留，以确保我们绝不会为营销目的联系他们（见第 9 条）</li>
           <li>访问计数（不识别任何人的每日总数）：400 天</li>
           <li>使用流程计数（不识别任何人的每日总数）：400 天</li>
@@ -437,7 +437,7 @@ function content(): Record<Locale, React.ReactNode> { return {
           当有人申请成为 50pick 代理时，会向我们提供两位推荐人的姓名、联系方式及国民身份证扫描件，并确认每位推荐人均已同意。若您是此类推荐人：我们仅为核实该申请而保存您的信息（以及如下文所述，您号码的一种编码形式）；身份证扫描件在决定作出后 {AGENT_REFEREE_DOC_HOLD_DAYS} 天销毁，申请被拒绝时立即销毁；您也可以写信给第 1 条所列的数据控制者，要求提前销毁您的信息——无需拥有账户。
         </p>
         <p>
-          在本政策 {REFEREE_PROMISE_REWORDED_IN} 版之前，我们曾告知每位推荐人：我们绝不会为营销目的联系他们。若您在此之前被提名为推荐人，这一承诺依然有效：我们绝不会为营销目的联系您。为了信守这一承诺，只要 50pick 仍在发送营销信息，我们就会保留您电话号码的一种编码形式（并非号码本身）；如您要求我们销毁您的信息，其他所有信息都会删除，但这一编码形式不会删除，因为没有它我们就无法信守这一承诺。若您在此之后被提名为推荐人：50pick 可能会通过短信向您发送优惠。您可随时通过每条优惠短信中的退订链接停止接收。
+          在本政策 {REFEREE_PROMISE_REWORDED_IN} 版之前，我们曾告知每位推荐人：我们绝不会为营销目的联系他们。若您在此之前被提名为推荐人，这一承诺依然有效：我们绝不会为营销目的联系您。为了信守这一承诺，只要 50pick 仍在发送营销信息，我们就会保留您电话号码的一种编码形式（并非号码本身）；如您要求我们销毁您的信息，其他所有信息都会删除，但这一编码形式不会删除，因为没有它我们就无法信守这一承诺。若您在此之后被提名为推荐人：50pick 可能会通过短信向您发送优惠。
         </p>
       </LegalSection>
     </>
