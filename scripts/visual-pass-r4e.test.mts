@@ -344,8 +344,11 @@ section("10 · a year keeps the word before it in the legal version line (tile 2
   const privacy = raw("src/app/legal/privacy/page.tsx");
   const meta = (l: string) => new RegExp(`${l}: "([^"]+)"`).exec(privacy.slice(privacy.indexOf("const META")))?.[1] ?? "";
   const out = html(h(DotSeq, { text: meta("sw"), mono: true, renderPart: keepYears }));
+  // The version date is read from the page, not pinned here: it moves with every policy version (2026-10-07 →
+  // 2026-10-09, Privacy v2026-10-09 on main). What 10.2 holds is that keepYears leaves it whole and unchanged.
+  const version = /Toleo (\d{4}-\d{2}-\d{2})/.exec(meta("sw"))?.[1] ?? "";
   ok("10.2 · sw: \"…Protection <Act 2022> na kanuni…\" — the year with the Act's name, the date and the words unchanged",
-    out.includes(`Protection <span class="whitespace-nowrap">Act 2022</span> na kanuni`) && out.includes("Toleo 2026-10-07</span>") && out.replace(/<[^>]+>/g, "") === meta("sw"), out);
+    out.includes(`Protection <span class="whitespace-nowrap">Act 2022</span> na kanuni`) && version !== "" && out.includes(`Toleo ${version}</span>`) && out.replace(/<[^>]+>/g, "") === meta("sw"), out);
   const zhOut = html(h("p", null, keepYears(meta("zh"))));
   ok("10.3 · zh keeps \"Act 2022\" too (a Latin name inside Chinese)", zhOut.includes(`<span class="whitespace-nowrap">Act 2022</span>`), zhOut);
   ok("10.3′ CONTROL · a date, a five-digit number and \"Cap 423\" are not years",
