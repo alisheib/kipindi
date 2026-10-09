@@ -39,7 +39,7 @@
 - **An erased person's number stays blocked** until its holder signs up or agrees to offers again; an old spreadsheet
   never brings the name back. [D-1009b item 1 · [`erasure-mark.ts`](../src/lib/marketing/erasure-mark.ts)]
 - **One message per number per campaign**, and no per-person frequency cap — management decides each campaign's
-  audience and timing. [D-1007b item 2]
+  audience and timing. [D-1007b item 2 · `prisma/schema.prisma` `SmsCampaignRecipient`: `@@unique([campaignId, msisdn])`]
 
 ## 3 · Sending — the confirmation, the switch, the window, the money
 
