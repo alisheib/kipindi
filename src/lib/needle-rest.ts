@@ -34,6 +34,10 @@ export type Pose = { x: number; y: number };
  *  Restated, not imported: the engine is a lazy chunk (needle.tsx loads it on mount) and this module is not.
  *  `test:needle-host` holds the two equal. */
 export const EDGE_MARGIN = 14;
+/** = the engine's `CONST.SUBSTEP` (it integrates in fixed 1000/120 ms steps) and `CONST.MAX_SUBSTEPS`, restated for
+ *  the same reason; `test:needle-host` holds both equal. */
+export const ENGINE_SUBSTEP = 1000 / 120;
+export const ENGINE_MAX_SUBSTEPS = 6;
 
 /** The peak of the wake halo's breathe — `needle.css`, `@keyframes needle-wake-breathe`, 50%: `scale(1.06)`.
  *  `test:needle-host` reads it out of needle.css. */
@@ -147,6 +151,37 @@ export function paintsNothing(c: string): boolean {
  *  paragraph's own box does not hug its text, so it never stands in for it. */
 export function hugs(box: Box, text: Box): boolean {
   return box.bottom - box.top <= text.bottom - text.top + 24 && box.right - box.left <= text.right - text.left + 48;
+}
+
+/**
+ * ⭐ M7 (2026-10-09) · A REST GLIDE ADVANCES BY WHOLE SUBSTEPS PER DISPLAYED FRAME.
+ * The engine integrates in fixed 8.33 ms substeps and carries the remainder in an accumulator, and the host fed it each
+ * frame's real interval. At 60 fps that is two substeps a frame ON AVERAGE — but when the accumulator's phase sits on a
+ * substep boundary, an interval a few tenths of a millisecond long or short tips one frame to THREE substeps and the
+ * next to ONE. At a glide's peak speed (3.34 px a substep for the 158 px glide M7 drove) the step jumps 3.3 → 10.0 px:
+ * `test:needle-rest` §1 read a change of step of 6.50 against its 6, beside a max step of 10.03 — exactly three
+ * substeps at peak. An even 60 fps stream gives that glide 2.96 at most (the spring's start, and its ≤ 3.6 px landing
+ * snap), and the artefact grows with the glide — twice a substep's travel at peak, past 6 px from about 142 px on — so
+ * the longer rests R3-B's clearance asks for crossed it where the old 4px rests did not. `test:needle-host` §5 replays
+ * both on the engine.
+ * So for the HOST'S OWN glide only (a player's throw keeps the engine's real-time stepping, untouched): its first frame
+ * is the time base — nothing simulated, the accumulator set to half a substep — and every frame after it advances
+ * `round(min(this interval, the last one) / SUBSTEP)` whole substeps: two at 60 fps, one at 120, whatever the jitter.
+ * The `min` keeps a single dropped frame from being caught up in one jump; the glide takes a frame longer instead.
+ * ⚠️ Cost: where the display's rate is not a multiple of 60 the glide's duration bends (90 Hz: one substep a frame, so
+ * a 246 px glide takes 1.11 s instead of 0.83 s) — still smooth, still inside `test:needle-rest`'s 1.5 s.
+ */
+export type GlideClock = { first: boolean; prev: number };
+export const newGlideClock = (): GlideClock => ({ first: true, prev: 1000 / 60 });
+/** The engine time to advance for one displayed frame of a rest glide, and (its first frame only) the accumulator. */
+export function glideFrame(clock: GlideClock, rawDt: number): { dt: number; acc: number | null } {
+  if (clock.first) {
+    clock.first = false;
+    return { dt: 0, acc: ENGINE_SUBSTEP / 2 };
+  }
+  const n = Math.min(ENGINE_MAX_SUBSTEPS, Math.max(1, Math.round(Math.min(rawDt, clock.prev) / ENGINE_SUBSTEP)));
+  clock.prev = rawDt;
+  return { dt: n * ENGINE_SUBSTEP, acc: null };
 }
 
 /** The `y` range a parked disc may take on the rail of a travel box (the engine's `parkPose` clamp). */

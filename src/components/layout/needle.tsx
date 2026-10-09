@@ -29,7 +29,10 @@ import { getPrefs, type NeedleTheme } from "@/lib/haptics";
 import { isMoneySurface, isJourneySurface } from "@/lib/surfaces";
 import { useJourneyOn } from "@/lib/journey/journey-on";
 import { PEPSI_PATHS, PEPSI_TRANSFORM } from "@/lib/needle-art";
-import { censusPad, decideRest, glowReach, hugs, paintsNothing, railRange, reseat, type Box, type Geometry } from "@/lib/needle-rest";
+import {
+  censusPad, decideRest, glideFrame, glowReach, hugs, newGlideClock, paintsNothing, railRange, reseat,
+  type Box, type Geometry, type GlideClock,
+} from "@/lib/needle-rest";
 import type { NeedleOptions } from "@/lib/needle-physics";
 import "./needle.css";
 
@@ -380,6 +383,8 @@ function mountNeedle(
   const SURFACES = "[data-needle-keepout],[data-invitation],[role=dialog],[role=alertdialog],[role=menu],[role=listbox],dialog[open]";
   const MARKED = "[data-needle-keepout],[data-invitation]";
   let gliding = false;
+  /** The glide's frame clock (`glideFrame`, needle-rest.ts): set when a glide starts, read only while it is in flight. */
+  let glideClock: GlideClock | null = null;
   let glideQuietUntil = 0;
   let clearTimer: number | null = null;
   /* ⭐ R3-B · A CHECK ASKED FOR WHILE A GLIDE IS IN FLIGHT IS NOT DROPPED. It was: `clearRestY` answered "not
@@ -574,6 +579,7 @@ function mountNeedle(
       return;
     }
     gliding = true;
+    glideClock = newGlideClock();
     body.parked = false;
     body.parking = true;
     body.target = { x: body.x, y };
@@ -583,7 +589,8 @@ function mountNeedle(
     if (clearTimer !== null) window.clearTimeout(clearTimer);
     clearTimer = window.setTimeout(settleClear, delay);
   }
-  /** A glide that ends without its own park (a viewport change re-seated it): quiet, and nothing owed on landing. */
+  /** A glide that ends without its own park (a viewport change re-seated it, or the player took the disc): quiet, and
+      nothing owed on landing. */
   function endGlide() {
     if (gliding) { gliding = false; glideQuietUntil = performance.now() + 2000; }
     recheckOnLand = false;
@@ -682,6 +689,13 @@ function mountNeedle(
     const tick = (t: number) => {
       let dt = t - last; last = t;
       if (dt > 50) dt = 50;
+      // ⭐ M7 · the host's own rest glide steps by whole engine substeps per displayed frame (`glideFrame`,
+      // needle-rest.ts, has the measurement); a player's throw keeps the engine's real-time stepping.
+      if (gliding && glideClock && body.parking && !body.held) {
+        const f = glideFrame(glideClock, dt);
+        if (f.acc !== null) body.acc = f.acc;
+        dt = f.dt;
+      }
       if (body.held) applyDrag();
       body.advance(dt);
       paint(dt);
@@ -698,6 +712,7 @@ function mountNeedle(
      swept wall collisions + restitution do the bouncing; it settles to the logo, ready for
      the next tap. No grab/drag in this mode: every press repels. */
   function bounceFrom(px: number, py: number) {
+    endGlide();   // the player's move now, not the host's glide
     body.held = null; body.parking = false; body.parked = false; body.target = null;
     let dx = body.cx - px, dy = body.cy - py;
     let d = Math.hypot(dx, dy);
@@ -718,6 +733,7 @@ function mountNeedle(
     if (pid !== null) return;
     if (mode === "bounce") { e.preventDefault(); bounceFrom(e.clientX, e.clientY); return; }
     pid = e.pointerId;
+    endGlide();   // a grab mid-glide makes it the player's: their park after it is theirs (haptic, rest check)
     wasParked = body.parked || body.parking;
     down = { x: e.clientX, y: e.clientY, t: performance.now() };
     body.hold(wasParked ? "move" : body.grabKind(e.clientX, e.clientY));
@@ -769,7 +785,7 @@ function mountNeedle(
 
   on(hit, "keydown", ((e: KeyboardEvent) => {
     const step = e.shiftKey ? 48 : 12;
-    if (e.key === "Escape") { e.preventDefault(); body.held = null; body.parkTo(body.nearestEdge()); start(); return; }
+    if (e.key === "Escape") { e.preventDefault(); endGlide(); body.held = null; body.parkTo(body.nearestEdge()); start(); return; }
     if (mode === "bounce" && (e.key === " " || e.key === "Enter")) {
       // Keyboard equivalent of a repel — bounce away along the current angle.
       e.preventDefault();
@@ -779,12 +795,13 @@ function mountNeedle(
     }
     if (e.key === " " || e.key === "Enter") {
       e.preventDefault();
+      endGlide();
       if (body.parked || body.parking) body.wake(); else body.flick(1.7);
       start();
       return;
     }
     const map: Record<string, [number, number]> = { ArrowLeft: [-step, 0], ArrowRight: [step, 0], ArrowUp: [0, -step], ArrowDown: [0, step] };
-    if (map[e.key]) { e.preventDefault(); body.unpark(); body.dragBy(map[e.key][0], map[e.key][1]); start(); }
+    if (map[e.key]) { e.preventDefault(); endGlide(); body.unpark(); body.dragBy(map[e.key][0], map[e.key][1]); start(); }
   }) as EventListener);
 
   on(hit, "pointerenter", ((e: PointerEvent) => {

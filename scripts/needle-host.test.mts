@@ -14,14 +14,16 @@
  *   §2 ① A VIEWPORT CHANGE RE-SEATS A DISC ON ITS WAY TO A REST — tiles 295 296 299 304 307 315.
  *   §3 ② THE CLEARANCE TIERS — tiles 194 257 265 273 296 301 309 310; ③ AN OPEN SURFACE IS A KEEP-OUT — tile 321.
  *   §4 the host wires the rules in (source, comments stripped): the census, the triggers, the probe.
+ *   §5 M7 · A REST GLIDE'S FRAMES — `test:needle-rest` §1's change-of-step measure, replayed on the engine under real
+ *      frame timing (50–144 Hz, jitter, a dropped frame): the host before M7 is the plant.
  */
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { decomment } from "./lib/decomment.mts";
 import { NeedleBody, CONST } from "../src/lib/needle-physics.js";
 import {
-  EDGE_MARGIN, HALO_BREATHE, GLOW_GAP, RIM_CLEARANCE, FLOOR_CLEARANCE, REST_TIERS,
-  censusPad, decideRest, glowReach, hugs, paintsNothing, railRange, reseat,
+  EDGE_MARGIN, ENGINE_MAX_SUBSTEPS, ENGINE_SUBSTEP, HALO_BREATHE, GLOW_GAP, RIM_CLEARANCE, FLOOR_CLEARANCE, REST_TIERS,
+  censusPad, decideRest, glideFrame, glowReach, hugs, newGlideClock, paintsNothing, railRange, reseat,
   type Box, type Geometry, type RestInput, type RestTier,
 } from "../src/lib/needle-rest.ts";
 
@@ -51,6 +53,9 @@ const vh = (w: number) => (w < 1024 ? 780 : 900);
 console.log("\n§1 · the module's constants agree with the files they restate");
 {
   ok("1.1 EDGE_MARGIN is the engine's CONST.EDGE_MARGIN", EDGE_MARGIN === CONST.EDGE_MARGIN, `${EDGE_MARGIN} vs ${CONST.EDGE_MARGIN}`);
+  ok("1.1b ENGINE_SUBSTEP and ENGINE_MAX_SUBSTEPS are the engine's CONST.SUBSTEP and CONST.MAX_SUBSTEPS",
+    ENGINE_SUBSTEP === CONST.SUBSTEP && ENGINE_MAX_SUBSTEPS === CONST.MAX_SUBSTEPS,
+    `${ENGINE_SUBSTEP} / ${CONST.SUBSTEP} · ${ENGINE_MAX_SUBSTEPS} / ${CONST.MAX_SUBSTEPS}`);
   const css = rd("src/components/layout/needle.css");
   const breathe = /@keyframes needle-wake-breathe \{[\s\S]*?50%[^}]*scale\(([\d.]+)\)/.exec(css);
   ok("1.2 HALO_BREATHE is the peak of needle.css's `needle-wake-breathe` (its 50% scale)",
@@ -400,6 +405,92 @@ console.log("\n§4 · the host wires the rules in (needle.tsx, comments stripped
   const planted = settle.replace("if (gliding) { recheckOnLand = true; return; }", "").replace("const y = clearRestY();", "const y = clearRestY();\n    if (gliding) { recheckOnLand = true; return; }");
   ok("4.1 PLANT · the deferral planted AFTER the decision is not read as the rule",
     !/clearTimer = null;\s*if \(gliding\) \{ recheckOnLand = true; return; \}\s*const y = clearRestY\(\);/.test(planted));
+}
+
+// ── §5 · a rest glide's frames ─────────────────────────────────────────────────────────────────────────────────────────
+console.log("\n§5 · M7 · a rest glide's frames, on the engine, under real frame timing (test:needle-rest §1's measure)");
+{
+  type Mode = "real-time" | "frame-locked";
+  /** One rest glide of `d` px at 360 × 740 (§1's viewport) shown on a rAF stream of `period` ms ± `jitter`, recorded as
+   *  §1 records it: the engine's y once per displayed frame. `real-time` is the host before M7 (each frame's real
+   *  interval, the accumulator's phase wherever start() left it); `frame-locked` is `glideFrame`. */
+  const glide = (d: number, period: number, jitter: number, seed: number, mode: Mode, drop = -1) => {
+    let s = seed;
+    const rnd = () => { s = (s * 1103515245 + 12345) & 0x7fffffff; return s / 0x7fffffff; };
+    const b = new NeedleBody({ size: diameter(360, 740), bounds: () => ({ w: 360, h: 740, insets: NO_INS }) });
+    b.y = 117.75; b.snapPark("right");
+    b.parked = false; b.parking = true; b.target = { x: b.x, y: 117.75 + d };   // settleClear
+    const clock = newGlideClock();
+    const t0 = 1000 + rnd() * period;                   // start(): last = performance.now(), somewhere inside a frame
+    let last = t0, frameT = Math.ceil(t0 / period) * period, k = 0;
+    const ys = [b.y], ts = [frameT];
+    while (b.parking && k < 400) {
+      if (k === drop) frameT += period;                 // a frame the browser never drew
+      const t = frameT + (rnd() * 2 - 1) * jitter;
+      let dt = t - last; last = t; if (dt > 50) dt = 50;
+      if (mode === "frame-locked") { const f = glideFrame(clock, dt); if (f.acc !== null) b.acc = f.acc; dt = f.dt; }
+      b.advance(dt);
+      ys.push(b.y); ts.push(t); k++; frameT += period;
+    }
+    const steps = ys.slice(1).map((y, i) => y - ys[i]);
+    const changes = steps.slice(1).map((x, i) => Math.abs(x - steps[i]));
+    const end = ys[ys.length - 1];
+    return {
+      change: Math.max(...changes), step: Math.max(...steps.map(Math.abs)), ms: ts[ts.length - 1] - ts[0],
+      overshoot: Math.max(0, ...ys.map((y) => (y - end) * Math.sign(d))), off: Math.abs(end - (117.75 + d)),
+    };
+  };
+  const RATES: Array<[number, string]> = [[1000 / 60, "60 Hz"], [2200 / 133, "M7's 16.54 ms"], [16.8, "16.80 ms"], [1000 / 90, "90 Hz"],
+    [1000 / 120, "120 Hz"], [1000 / 144, "144 Hz"], [20, "50 Hz"]];
+  const sweep = (mode: Mode, d: number) => {
+    let change = 0, step = 0, ms = 0, overshoot = 0, off = 0, over = 0, runs = 0, where = "";
+    for (const [period, label] of RATES) for (const jitter of [0.3, 1, 2]) for (let seed = 1; seed <= 120; seed++) {
+      const r = glide(d, period, jitter, seed * 7919, mode);
+      runs++;
+      if (r.change > change) { change = r.change; where = `${label} ±${jitter} ms, seed ${seed}`; }
+      step = Math.max(step, r.step); ms = Math.max(ms, r.ms); overshoot = Math.max(overshoot, r.overshoot); off = Math.max(off, r.off);
+      if (r.change > 6) over++;
+    }
+    return { change, step, ms, overshoot, off, over, runs, where };
+  };
+  // 5.1 · the motion profile itself: an even 60 fps stream.
+  const even = glide(158, 1000 / 60, 0, 1, "real-time");
+  ok("5.1 the spring's own profile: on an even 60 fps stream a 158px glide's step changes by ≤ 3px (its start, and its ≤ 3.6px landing snap)",
+    even.change <= 3, `change ${even.change.toFixed(2)}, peak step ${even.step.toFixed(2)} (two substeps), ${even.ms.toFixed(0)} ms`);
+  // 5.2 · PLANT: the host before M7, on M7's glide.
+  const old = sweep("real-time", 158);
+  ok("5.2 PLANT · the host before M7 (each frame's real interval): some 158px glides change step by over 6px — M7's 6.50, beside a step of three substeps at peak (10.03)",
+    old.over > 0 && Math.abs(old.step - 1.5 * even.step) < 0.2,
+    `${old.over}/${old.runs} runs over 6px, worst ${old.change.toFixed(2)} (${old.where}), worst step ${old.step.toFixed(2)}`);
+  // 5.3 · the fix, across rates, jitter and the longest glide §1 allows (a third of 740).
+  for (const d of [158, 246]) {
+    const r = sweep("frame-locked", d);
+    ok(`5.3 ${d}px · frame-locked: no change of step over 6px at 50–144 Hz with up to ±2 ms jitter (§1's limit)`, r.over === 0 && r.change <= 6,
+      `worst ${r.change.toFixed(2)} (${r.where}) over ${r.runs} runs`);
+    ok(`5.3 ${d}px · …and §1's other limits hold: settles under 1.5 s, overshoot ≤ 3px, lands on its rest`,
+      r.ms < 1500 && r.overshoot <= 3 && r.off < 0.5, `longest ${r.ms.toFixed(0)} ms, overshoot ${r.overshoot.toFixed(2)}, ${r.off.toFixed(3)}px off`);
+  }
+  // 5.4 · one dropped frame, anywhere in the glide.
+  let dropped = 0, droppedOld = 0;
+  for (const d of [158, 246]) for (let at = 1; at < 48; at++) {
+    dropped = Math.max(dropped, glide(d, 1000 / 60, 0.3, 11, "frame-locked", at).change);
+    droppedOld = Math.max(droppedOld, glide(d, 1000 / 60, 0.3, 11, "real-time", at).change);
+  }
+  ok("5.4 a dropped frame is not caught up in one jump: the step changes by ≤ 6px wherever the frame is lost",
+    dropped <= 6, `frame-locked worst ${dropped.toFixed(2)} · the host before M7 ${droppedOld.toFixed(2)}`);
+  // 5.5 · the host wires it in.
+  const host = code(rd("src/components/layout/needle.tsx"));
+  ok("5.5 the host's tick steps ONLY its own glide by `glideFrame` (gliding, parking, not held), and each glide starts a fresh clock",
+    /if \(gliding && glideClock && body\.parking && !body\.held\) \{\s*const f = glideFrame\(glideClock, dt\);\s*if \(f\.acc !== null\) body\.acc = f\.acc;\s*dt = f\.dt;\s*\}\s*if \(body\.held\) applyDrag\(\);\s*body\.advance\(dt\);/.test(host)
+    && /gliding = true;\s*glideClock = newGlideClock\(\);/.test(host));
+  ok("5.6 the player taking the disc ends the host's glide (a grab, a bounce tap, Escape, Space/Enter, the arrows), so a throw is never frame-locked",
+    /pid = e\.pointerId;\s*endGlide\(\);/.test(host) && /function bounceFrom\(px: number, py: number\) \{\s*endGlide\(\);/.test(host)
+    && (host.match(/e\.preventDefault\(\); endGlide\(\);/g) ?? []).length === 2
+    && /e\.preventDefault\(\);\s*endGlide\(\);\s*if \(body\.parked \|\| body\.parking\) body\.wake\(\)/.test(host));
+  // PLANT for 5.5: the lock widened to every frame (a throw frame-locked too) no longer reads as the rule.
+  const widened = host.replace("if (gliding && glideClock && body.parking && !body.held) {", "if (glideClock) {");
+  ok("5.5 PLANT · the lock widened to every frame is not read as the rule",
+    !/if \(gliding && glideClock && body\.parking && !body\.held\) \{/.test(widened));
 }
 
 console.log(`\n[needle-host] ${pass} passed, ${failures.length} failed`);

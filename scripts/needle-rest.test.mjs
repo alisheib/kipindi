@@ -10,7 +10,8 @@
  *   §1 GLIDE, frame by frame — placed over a control, a scroll-idle starts a glide that: stays on the rail (x fixed),
  *      never jumps (per-frame step and step-change bounded), never overshoots its rest by more than 3px, settles in
  *      under 1.5 s, travels at most a third of the viewport, ends with nothing under it and no control within 4px,
- *      vibrates nothing, and does not move again on the next scroll-idle.
+ *      vibrates nothing, and does not move again on the next scroll-idle. (M7: the change-of-step detail names the two
+ *      frame intervals around its worst value, so a dropped frame reads apart from uneven stepping.)
  *   §2 LEAVE IT ALONE — clear of everything by the glow's 4px (a clean room): a scroll-idle does not move it.
  *   §3 REDUCED MOTION — the same move is a one-frame snap, with no parking frames.
  *   §4 THE SWEEP — five pages × four scroll positions at 360 and 768, the session-96 population: after scroll-idle,
@@ -218,9 +219,16 @@ console.log("\n[needle-rest] §1 the glide, frame by frame (360×740)");
     ok("§1 it stays on the rail (x never changes)", frames.every((f) => Math.abs(f.x - x0) < 0.5), `dx max=${Math.max(...frames.map((f) => Math.abs(f.x - x0))).toFixed(2)}`);
     const steps = frames.slice(1).map((f, i) => f.y - frames[i].y);
     const maxStep = Math.max(...steps.map(Math.abs));
-    const maxJerk = Math.max(...steps.slice(1).map((s, i) => Math.abs(s - steps[i])));
+    const jerks = steps.slice(1).map((s, i) => Math.abs(s - steps[i]));
+    const maxJerk = Math.max(...jerks);
+    // M7 (2026-10-09): the limit is unchanged; the detail now names the two steps and the two frame intervals around the
+    // worst change, so a frame the browser dropped (an interval near 33 ms) reads apart from uneven stepping on even
+    // frames (the 3-substeps-then-1 the host's glide had before M7; `test:needle-host` §5 replays both).
+    const at = jerks.indexOf(maxJerk);
+    const gaps = frames.slice(1).map((f, i) => f.t - frames[i].t);
     ok("§1 no frame jumps (per-frame step ≤ 24 px)", maxStep <= 24, `max=${maxStep.toFixed(2)}`);
-    ok("§1 no teleport (change of step between frames ≤ 6 px)", maxJerk <= 6, `max=${maxJerk.toFixed(2)}`);
+    ok("§1 no teleport (change of step between frames ≤ 6 px)", maxJerk <= 6,
+      `max=${maxJerk.toFixed(2)} (steps ${steps[at]?.toFixed(2)} → ${steps[at + 1]?.toFixed(2)} px over frames of ${gaps[at]?.toFixed(1)} → ${gaps[at + 1]?.toFixed(1)} ms)`);
     const rest = frames[frames.length - 1].y;
     const dir = Math.sign(rest - before.y);
     const overshoot = Math.max(0, ...frames.map((f) => (f.y - rest) * dir));
