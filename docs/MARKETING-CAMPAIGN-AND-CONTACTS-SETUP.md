@@ -58,11 +58,10 @@ in flight on OMEGA-COMPILE01 (§0), continuing S13's handover. First real campai
    or pushes the other's units.
 
 ```
-▶ NEXT: the plain SMS (Ali's ruling of 2026-10-09) and S15's leftovers (C8b, C8c, C3c, the typed test for Admin and
-  Compliance) merged, checked under the lock and pushed (⏳ above); the G4 and G10 words re-saved on production after Ali
-  sees them; then ⛔ U52a's live drive on production (at most 6 real SMS to the approved test number) — Ali approves its
-  sign-in. Then the owed items (◐ HALF-DONE), and U48b (the recipients table and its CSV) if Ali wants it. Since
-  2026-10-09 ~10:00 EAT the campaign path AND the contacts screen with its importer are this lane's (S14).
+▶ NEXT: the FIRST REAL CAMPAIGN — Ali picks its words and its audience (management's pilot of about 200 players) and
+  opens the switch on the owner card; the officer writes, confirms and starts it as the admin guide shows
+  (docs/guides). Then the owed items (◐ HALF-DONE), and U48b (the recipients table and its CSV) if Ali wants it. The
+  rules in force are one page: docs/MARKETING-RULES.md.
   WHAT IS LEFT TO THE FIRST REAL CAMPAIGN — each its own unit, commit and live proof (hours: the spec's estimates; what
   is left of a built unit is review, fixes and verification):
      1. U43a  ✅ LIVE (STEP 47, `89775271`, served as `0f1b143c`) — the recipient doors: claim, settle, find the stranded, requeue
@@ -97,7 +96,7 @@ WHERE THE PROGRAMME STANDS (the board, §1, is the authority): 17/52 units ✅ �
 ⏳ IN FLIGHT: S14 — 2026-10-07 from ~10:00 EAT, OMEGA-COMPILE01 (`F:\kipindi-m14`, branch `marketing-s14` cut from
   `origin/main` at `9352de7c`), continuing S13's HANDOVER below (Ali, to this PC: "please proceed with the sms campaign
   plan … another machine was working earlier today"). ⛔ Another session must not start or push a unit named
-  here. NOW (16:11 EAT · 2026-10-09) — where each piece is, for a session on ANY machine (another PC: every commit
+  here. NOW (18:35 EAT · 2026-10-09) — where each piece is, for a session on ANY machine (another PC: every commit
   below is on origin as a backup branch, `origin/backup/marketing-s14-*`). Ali, 2026-10-09: "today the whole SMS campaign is
   done"; "we need today the whole development and campaign sealed and done and delivered, cleanups done on the repo and our
   PDF provided to start using".
@@ -114,12 +113,20 @@ WHERE THE PROGRAMME STANDS (the board, §1, is the authority): 17/52 units ✅ �
     114/114 (six widths, three languages), the scratch-PostgreSQL probes (U52a 38/0, list basis 22/0, models 58/0, privacy
     9/0) and the dry-fire on PostgreSQL PASS. G4 (the licence basis wording) saved on production 2026-10-09 15:20 EAT;
     G10 (the two privacy lines, approved by Ali ~15:00 EAT) and U52a's two real SMS follow this push.
-  · ⏳ IN FLIGHT — S15's LEFTOVERS, GIVEN TO S14 by Ali (2026-10-09 ~10:00 EAT; S15 on Ali-Blade15 has left): C8b (B1–B8,
-    with Ali's three answers, all option (a) — COMPLIANCE-DECISIONS 2026-10-09), C8c with C3b-fix's three open finds, C3c
-    (big workbooks read in the browser) — each built, independently reviewed and being fixed on `s14-c8b`,
-    `s14-importer-robust`, `s14-c3c`; they land in the NEXT push (the contacts push), with the lane's clean-up (`s14-cleanup`).
-    B8's re-date of the 54 back-filled contacts runs on production only with Ali's approval; Ali removes the "QA Import
-    Check (Claude)" staff access.
+  · ✅ STEP 57 — THE CONTACTS PUSH, PUSHED 2026-10-09 (S15's leftovers, given to S14 by Ali ~10:00 EAT): C8b — B1–B8 with
+    Ali's three answers (an erased number stays blocked and a new holder's sign-up makes a FRESH row; a masked officer's
+    whole-number search answers "in the book / not", and any officer can "Select this number" to record a stop or a
+    withdrawal; a masked creator's or starter's import lists only what it created; list figures by viewer; sign-up rows in
+    the feed for compliance readers; no tag or list from a protected filter; "Added" is when the row entered the book);
+    C8c with C3b-fix's finds — a list's name unique in any case (migration `20261009180000`, expand-only), the check and
+    the changes page yield to bets, bounded refusal records, a database pause, tags not added listed, and the list
+    paste reading every real Tanzanian line while a foreign number written with its trunk zero is never a stranger's
+    +255; C3c — a big Excel workbook read in the officer's browser, with the server's and the browser's guards against a
+    forged file (merges, formats, nesting, sheet fan-out); the lane's clean-up (docs/MARKETING-RULES.md, dated notes on
+    every overtaken design record, the five builder briefs marked done); the live-switch door's proxy fixed; the results
+    labels wrap at 360. Every branch independently reviewed twice and fixed. Under the lock: typecheck 0 and next build ok on the merged tree; every light suite green (contacts-import 382/0, dal-parity 2245/0, red-anchors 5019/0, the contacts, campaign and privacy suites); the browser drives, the visual sweep, the big and round-trip imports and the scratch-PostgreSQL probes run right after this push, on Ali's word ("push live now … then continue your checks … if you find anything fix and push live again").
+    B8's re-date of the back-filled contacts runs on production only with Ali's approval (the ops door
+    `ops:contacts-added-redate`, status then apply).
   · ✅ ALI'S TEXTS SAVED ON PRODUCTION (G5, G4, G10, 2026-10-08) — the PC's clock fixed first (w32tm → time.google.com, within
     ~1 s; it had synced from the office server, ~98 s behind), then the owner door's apply ran inside its 20 s rule.
   · ✅ LICENCE OUTREACH OPENED by Ali on the owner card (2026-10-08).
@@ -133,13 +140,17 @@ WHERE THE PROGRAMME STANDS (the board, §1, is the authority): 17/52 units ✅ �
     the real one does. It found TWO money-check defects, both FIXED and held strict since: F-1 a slice priced a whole slice
     for nobody (`ce2a5f8a`); F-2 a send reply's pre-charge figure let one slice go into the credit kept for login codes —
     every reading now counts what was handed over within the billing window (`SMS_BILLING_LAG_MS`, 30 s; `fb409371`).
-  · ⛔ U52a (the live drive: at most 6 real SMS, all to the approved test number) — the tools are in this push; their run
-    sheet is being rewritten for the plain SMS (no link in a message any more). The drive WAITS ON ALI: auto mode's
-    classifier refused Claude's scripted sign-in to production as "QA Growth (Claude)", so Ali approves that step himself.
-    The QA Growth login STAYS until the drive is done, then is deleted.
-  · ✅ THE ADMIN GUIDE v2 — in this push: `docs/guides/50pick-admin-guide-contacts-and-sms-campaigns.pdf`, a copy on Ali's
-    Desktop, every picture taken from the app, the import chapter from the live importer's own dialog. It is re-captured
-    for the plain SMS (the counter's words, the test card) in the next push.
+  · ✅ U52a — THE LIVE DRIVE PASSED on production, 2026-10-09 16:32–16:49 EAT (the plain SMS live): the switch opened by
+    the ops door on Ali's word ("Yes, open for 2 hours") and closed, read back OFF; 2 of 6 real SMS to the approved test
+    number — A delivered (16:38:59), B skipped on the stop list, C delivered (16:48:51) with Pause and Resume; every
+    message exactly the owner's teaser, nothing to any other number (SENT AS WRITTEN, DRIVE'S MESSAGE, TO THE TEST
+    NUMBER, NO OTHER MARKETING SMS all clear). G4 (the licence basis) saved 15:20 EAT, G10 (the two privacy lines, the
+    gateway naming no company) saved 16:23 EAT and redeployed; the privacy page read back with no "Blackball" and no stop
+    sentence. ⛔ Ali demotes "QA Growth (Claude)" and "QA Import Check (Claude)" to Player on /admin/staff (Claude never
+    signs in as the Owner).
+  · ✅ THE ADMIN GUIDE, FINAL (STEP 57): `docs/guides/50pick-admin-guide-contacts-and-sms-campaigns.pdf` — lean (about 20
+    pages: no cover, no repeated pictures, no code words, the SMS company never named), every picture re-captured from
+    the app as it now is, its quoted messages checked against the source; a copy on Ali's Desktop for management.
   · Owed: `REFEREE_NEW_WORDS_LIVE_AT` (rebase test:marketing-consent G22, G23, R8 and test:privacy-notice §5ap, §5ar on a
     set cutoff, then set it); the whole `red:house-bot-console` and `red:house-bot-c5` in a quiet turn.
   · THE LOCK: the Vodacom and money-doors sessions run beside this one on the same PC. Every heavy job (tsc, builds,
