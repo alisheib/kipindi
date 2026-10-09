@@ -217,7 +217,7 @@ touched. `qa:sse-edge` takes `SSE_RESOLVE=<ip>` for exactly this; `curl` takes `
 - **Staying as-is (Ali's call):** `DISABLE_ADMIN_TOTP=true` (2FA later).
 - **SMS — live (corrected 2026-09-25; the old "`SMS_PROVIDER=console`, launching without SMS" call
   was reversed):** `SMS_PROVIDER=blackball` since 2026-09-16, with `BLACKBALL_CLIENT_ID` /
-  `BLACKBALL_CLIENT_SECRET`, `BLACKBALL_WEBHOOK_SECRET` and `SMS_SENDER_ID=50pick`. Delivery
+  `BLACKBALL_CLIENT_SECRET`, `BLACKBALL_WEBHOOK_SECRET` and `SMS_SENDER_ID=50pick.tz` (`50pick` until 2026-10-09). Delivery
   receipts proven end to end 2026-09-23. Phone-code login stays off on purpose (`OTP_ENABLED`
   unset). Marketing/bulk SMS needs no Gaming Board approval (Ali, 2026-09-26, OQ1 in
   [`MARKETING-CAMPAIGN-AND-CONTACTS-SETUP.md`](MARKETING-CAMPAIGN-AND-CONTACTS-SETUP.md)); it waits only

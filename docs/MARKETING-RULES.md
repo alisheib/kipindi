@@ -115,7 +115,8 @@
 A **masked officer** is a role whose `identity.contact` cell is not `read` — in practice GROWTH. The rules behind every
 line below: a masked viewer learns no player fact (D19), a browser never learns a number was erased (X22), and a stop per
 row is a player signal (OD54). [CONTACTS-SCREEN-PLAN §4.7 · D-1009b]
-⏳ B1–B8 are **landing 2026-10-09 with S14's contacts push** (C8b); until then the live screen does not yet do all of them.
+✅ B1–B8 are **live since 2026-10-09** (S14's contacts push, `f3390998` — C8b); B8's re-date of the 54 back-filled rows was
+applied on production the same evening.
 
 - **B1** · One test decides whether a number may be written: a number is blocked when its row was emptied by an erasure
   or an erasure stands on it; only the holder's own act lifts it (a new consent, or a new account at that number).

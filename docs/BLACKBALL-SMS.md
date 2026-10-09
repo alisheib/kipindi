@@ -21,8 +21,8 @@ Wired: 2026-09-16. Code: `src/lib/server/sms-blackball.ts` (transport), `src/lib
 > condition since the owner's final rule of 2026-10-07, and since 2026-10-09 nothing is added to a marketing
 > SMS: the rules in force are [`MARKETING-RULES.md`](MARKETING-RULES.md).
 >
-> **Left with the vendor, none of it blocking:** the three whitelisted sender-ID strings with TCRA
-> confirmation, the interval between their 5 retries, and the `CODE` values that accompany failure
+> **Left with the vendor, none of it blocking:** whether the sender IDs are case-sensitive (the three strings are known
+> since 2026-10-09: the portal lists `50pick`, `50pick.tz` and `50picktz`, licensed — Ali; `50pick.tz` is in use), the interval between their 5 retries, and the `CODE` values that accompany failure
 > tokens (only `DELIVRD` has ever arrived); since 2026-09-26 also where they store message data (the
 > Privacy notice says "in Tanzania") and whether the account has an inbound number (§8). **Owner item:** the webhook secret travelled through chat and
 > WhatsApp while this was being fixed — rotate it when convenient (new value in Railway, new URL to them,
@@ -36,7 +36,7 @@ Wired: 2026-09-16. Code: `src/lib/server/sms-blackball.ts` (transport), `src/lib
 | Railway | ✅ **`SMS_PROVIDER=blackball`**, `BLACKBALL_CLIENT_ID`, `BLACKBALL_CLIENT_SECRET`, `BLACKBALL_WEBHOOK_SECRET`, `SMS_SENDER_ID=50pick.tz` (since 2026-10-09 19:32 EAT, Ali's choice; `50pick` before — the account registers `50pick`, `50pick.tz` and `50picktz`; a delivered test proved it the same evening) — verified: `/api/health` → `provider: blackball, configured: true, webhookSecretSet: true`; boot log prints no `[sms]` warning |
 | Cloudflare | ✅ Configuration Rule: Browser Integrity Check **off for `/api/webhooks/*` only** (§4) — verified |
 | API configuration | ✅ `50pick-production` saved in the portal, status callback registered |
-| Sender ID | ✅ `50pick` |
+| Sender ID | ✅ `50pick.tz` (since 2026-10-09; `50pick` before) |
 | Live sends | ✅ **one from PRODUCTION itself, 2026-09-23 — the end-to-end proof (§4.8)** · ✅ step 1 DELIVRD / Success in 2 s (received on the handset); ✅ step 2 batch of two accepted in one request, TZS 12; ✅ step 3 (2026-09-17 09:30 UTC) one good + one unroutable msisdn **accepted whole** ("Successfully submitted 2 message(s)"), TZS 6 charged; ✅ step 4 five times (2026-09-21 08:58 and 13:58, 2026-09-22 06:55, 08:28 and 09:12 UTC) — **10 of 10** drive sends used; the ceiling went 6 → 7 → 8 → 9 → 10 on Ali's instructions to validate the vendor's successive claims (`TOTAL_SEND_CEILING` in `scripts/live/blackball-drive.mts`). ⭐ Ali confirms the handset RECEIVES every one of them |
 | Delivery callback | ✅ **WORKING, PROVEN END TO END 2026-09-23** — a production-issued OTP was DELIVERED and its receipt settled the real row in **11 seconds** (`applied: 1`), after the vendor's first automatic batch at 03:46 (§4.7, §4.8) |
 | Phone-code login | ⏸ `OTP_ENABLED` unset — deliberately (§7, step 6) |
@@ -67,7 +67,7 @@ is wrong" into one opaque transport error.
 ```
 
 Enforced **before** authentication, so an over-long sender ID fails every send with a complaint
-about a *field*. `senderIdProblem()` catches it at boot. `50pick` is 6.
+about a *field*. `senderIdProblem()` catches it at boot. `50pick.tz` (in use since 2026-10-09) is 9.
 
 ### 1.3 🔴 `data` is an array on a schema error, `null` on an auth error, `null` on success
 
@@ -648,7 +648,7 @@ the 15-minute TTL.
 | Variable | Notes |
 |---|---|
 | `SMS_PROVIDER` | `console` or `blackball`. ⛔ Anything else is a FAILED choice — nothing sends, nothing is marked sent |
-| `SMS_SENDER_ID` | `50pick` · ⛔ max 12 characters |
+| `SMS_SENDER_ID` | `50pick.tz` (since 2026-10-09; `50pick` before) · ⛔ max 12 characters |
 | `BLACKBALL_CLIENT_ID` / `BLACKBALL_CLIENT_SECRET` | portal → Configurations → API Configurations |
 | `BLACKBALL_API_URL` | defaults to the live send endpoint; the balance endpoint is derived from its host |
 | `BLACKBALL_TIMEOUT_MS` | default 8000 |
@@ -757,7 +757,8 @@ callback was enabled and claimed "no callback POST ever reached us" two days aft
 3. Must `reference` be **unique forever** on the account; what does a duplicate do?
 4. Any **rate limit** on `/api/sms/send`.
 5. The **exact strings of the three whitelisted sender IDs**, confirmation they are **TCRA-registered**, and
-   whether they are case-sensitive.
+   whether they are case-sensitive. ✅ The strings, 2026-10-09: `50pick`, `50pick.tz`, `50picktz` (the portal's sender list;
+   licensed — Ali). Case-sensitivity is still unconfirmed.
 6. The **interval** between the 5 callback retries.
 7. **Where Blackball stores and processes message data** (numbers and texts). Privacy §4 calls the gateway
    "our SMS gateway in Tanzania" — by its role alone since 2026-10-09: no public text names the company
