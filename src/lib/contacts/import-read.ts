@@ -60,7 +60,7 @@ import {
 } from "./import-parse";
 import { createVcardReader } from "./vcard";
 import { XLSX_MAX_BYTES, spreadsheetHeadKind, xlsxRefusalSentence, type XlsxRefusal } from "./xlsx-limits";
-import { readXlsxInBrowser, type XlsxBrowserOptions, type XlsxBrowserResult } from "./xlsx-read";
+import { readXlsxInBrowser } from "./xlsx-read";
 import {
   CONTACT_FIELDS, CONTACT_LIMITS, autoMapFile, matchHeader, normaliseHeader, scrubPhoneRuns,
   type AutoMapResult, type ColumnMapping, type ImportFieldKey, type MappedColumn,
@@ -261,9 +261,6 @@ function decodedText(file: Blob, encoding: TextEncodingLabel, onBytes: (n: numbe
 /** The refusals of a big workbook that are about its SIZE (the dialog's cause), the rest being about its format. */
 const SIZE_REFUSALS: ReadonlySet<XlsxRefusal> = new Set<XlsxRefusal>(["too_large", "too_big_inflated", "too_many_rows"]);
 
-/** The browser's workbook reader, as `readBigWorkbook` calls it — a seam the suite plants a defect through. */
-export type BigWorkbookReader = (file: Blob, opts: XlsxBrowserOptions) => Promise<XlsxBrowserResult>;
-
 /**
  * ⭐ C3c · A WORKBOOK PAST THE UPLOAD CAP, READ IN THE BROWSER (`xlsx-read.ts`): `parsed` exactly as a CSV is — the digest
  * over the exact bytes (read once more, whole: `crypto.subtle` has no incremental digest), and `extraNumbers` 0, as the
@@ -271,8 +268,8 @@ export type BigWorkbookReader = (file: Blob, opts: XlsxBrowserOptions) => Promis
  * one the server's reader is handed for a small workbook, so the same File reads the same whichever reader reads it. A
  * refusal is the copy table's sentence; a Stop is `aborted`, nothing kept.
  */
-export async function readBigWorkbook(file: File, name: string | null, opts: ReadOptions, read: BigWorkbookReader = readXlsxInBrowser): Promise<ReadOutcome> {
-  const out = await read(file, { fileName: name ?? "workbook.xlsx", onProgress: opts.onProgress, signal: opts.signal });
+export async function readBigWorkbook(file: File, name: string | null, opts: ReadOptions): Promise<ReadOutcome> {
+  const out = await readXlsxInBrowser(file, { fileName: name ?? "workbook.xlsx", onProgress: opts.onProgress, signal: opts.signal });
   if (out.kind === "aborted") return { kind: "aborted" };
   if (out.kind === "refused") return refused(out.message, SIZE_REFUSALS.has(out.refusal) ? "size" : "format");
   if (opts.signal?.aborted) return { kind: "aborted" };
