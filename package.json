@@ -427,6 +427,7 @@
     "test:card-deposit": "tsx scripts/card-deposit.test.mts",
     "test:card-return-order": "tsx scripts/card-return-order.test.mts",
     "test:static-cache-scope": "tsx scripts/static-cache-scope.test.mts",
+    "test:proxy-scope": "tsx scripts/proxy-scope.test.mts",
     "red:card-return-order": "tsx scripts/card-return-order.test.mts --prove-red",
     "test:deposit-gate": "tsx scripts/deposit-gate-return.test.mts",
     "test:kyc-gate": "tsx scripts/kyc-gate.test.mts",

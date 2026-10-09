@@ -295,7 +295,15 @@ export async function proxy(req: NextRequest) {
 }
 
 export const config = {
+  // ⛔ STATIC FOLDERS BY NAME, NEVER A FILE-NAME SUFFIX (2026-10-09, hotfix). This skipped `.*\.(?:svg|png|jpg|jpeg|gif|
+  // webp|ico)$` — ANY address ending in an image extension, pages included: a page at `/markets/x.png` (a real 200 with
+  // the reader's header) went out with none of `withSecurityHeaders`' headers (X-Frame-Options DENY, the CSP, HSTS,
+  // nosniff, Referrer-Policy — their only source) and no `x-pathname`, so a signed-in page there could be framed by
+  // another site. The same suffix defect next.config's immutable-cache rule had (hotfix 9cb95938). Skipped now: Next's
+  // build output and image optimiser, and public/'s own static folders and favicons — top-level names, each with its
+  // slash (`/iconsx/…` is NOT skipped). Must stay a string literal (Next reads `config` statically).
+  // `test:proxy-scope` compiles this with Next's own `getMiddlewareMatchers` and proves no page address is skipped.
   matcher: [
-    "/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp|ico)$).*)",
+    "/((?!_next/static|_next/image|favicon.ico|favicon.svg|icons/|brand/|pay/|og/|screenshots/|email-signatures/).*)",
   ],
 };
