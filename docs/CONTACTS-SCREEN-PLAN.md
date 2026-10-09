@@ -79,7 +79,7 @@ then: "the contacts screen"):
 | C4 | The importer, part 2 — the commit loop and its bar (U32): counted by the server, resumable after a closed tab or a crash | ✅ LIVE `df835bb5` — proof in §0 |
 | C5 | Duplicate detection, seen and decided: repeats inside a file, numbers already in the book (keep · use the file's · fill blanks — readers only, S15-10), the list step | ✅ LIVE `df835bb5` — proof in §0 |
 | C3b | The readers made forgiving of real files — found by the generator's author reading the shipped readers against the 28 files (2026-10-09): **G1** a CSV with ONE broken quote is refused whole (`messy-real-life.csv`, `unterminated_quote` at its last record) → offer the rows before it, the broken record named; **G2** a workbook whose first visible sheet is a cover page finds no Phone column (`excel-multi-sheet.xlsx`) → read the sheet that holds the phones, and say which; **G3** two numbers in one phone cell (Google's ` ::: `, "0712… / 0754…") are invalid → take the first mobile, say so; **G4** Outlook's number in Business / Home / Primary while Mobile is empty is lost → fall back to the other phone columns. Proven with the generator's files | ⬜ (after C3–C5) |
-| C6 | Stress: large files at the limits, a large book, two imports at once, a crash mid-commit and its resume | ⬜ |
+| C6 | Stress: large files at the limits, through the REAL dialog on a local server (`npm run qa:contacts-import-big`, after `qa:contacts-import-files -- --big`): a 150,000-row CSV — check exactly the generator's truth (137,806 new · 9,200 repeated · 2,994 invalid), imported whole (read 0.2 s · upload + check 5.1 s · import 29.9 s); 150,000 vCards imported whole (138,071 added; read 0.9 s · 5.6 s · 31.4 s); a 42 MB vCard with photos read in 0.4 s (streamed; photos never uploaded) and checked; one row past 200,000 REFUSED with the cap named; a 1.4 MB workbook REFUSED with the save-as-CSV remedy. Two runs at once and a crash mid-commit: proven on PostgreSQL by `test:contacts-import-db` (5c, 5d–5i) and in `qa:contacts-import` (reload → adopt → resume) | ✅ `9121d857` (local) |
 | C7 | U34b — an export read back through the importer, row for row | ⬜ |
 
 ## §2 — WHAT EXISTS TODAY (read from the code, 2026-10-09)
@@ -189,6 +189,8 @@ And from 2026-09-25: "it's 150k approx contacts, or VCF … it could be small an
 
 ## §3 — LOG (newest first)
 
+- **2026-10-09 ~04:30 EAT · C6** — the big files through the browser, all green (the C6 row); the importer LIVE `df835bb5`;
+  the live check on production held for Ali's go (the classifier); C3b being built (`contacts-c3b`).
 - **2026-10-09 ~04:15 EAT · the importer pushed (C3–C5)** — the review round built by both builders (`493e58bd`: S15-10
   readers alone update in-book contacts, S15-11 an account's row is never changed, S15-12 stuck runs end after 14 idle
   days and an admin reaches them; the cursor shown only from the server; cancel's true numbers; busy waits without giving
