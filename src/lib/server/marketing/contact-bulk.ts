@@ -13,6 +13,17 @@
  * withdrawn") is itself a consent signal, and a suppression's ("already suppressed") a stop signal (OD54), so the action
  * layer hands either split to a reader alone (`contactBulkReply`). An officer may still suppress: a masked one is told
  * the total.
+ * 🔴 C8b (B3) · AND A MASKED VIEWER'S WHOLE-NUMBER SEARCH IS NO AUDIENCE: the page answers such a search with whether the
+ * book holds the number and nothing else (`number-search.ts`), so a forged post that searches a whole number is refused
+ * `number_search` here too, before any count — a write or a preview over it would hand back the row the page withholds.
+ * ⛔ C8b (B7) · NO SHARED LABEL FROM A PROTECTED FILTER, FOR ANY VIEWER. A READER may filter by consent, the stop list,
+ * the source or the player link, which a masked officer may not (`roleRefusal`). A TAG or a LIST built from such a filter
+ * hands that filter to the masked officer: they filter by the tag, or open the list, and read who is a player or under a
+ * stop. So "tag" and "add to a list" over an audience that uses any of those four axes are refused `protected_label` for
+ * EVERY viewer (`sharedLabelRefusal`, this file's own rule — `audience.ts`'s `roleRefusal` and
+ * `campaignAudienceRefusal`, which the campaign path asks, are unchanged), its sentence naming the way on: tick the
+ * contacts by hand — a reader's own audited choice, allowed — or filter by something else. Untag, remove, a withdrawal
+ * and a suppression build no label and are not refused by it.
  * ⭐ TAG, UNTAG, ADD TO A LIST AND REMOVE ARE SET-BASED, over the where the count reads (`contactAudienceWrites`,
  * audience.ts — the only door to the store's `…Where` members). A tag goes through U28's ONE rule (C11).
  * ⛔ vb7 · OVER A FILTER, A SET-BASED WRITE IS BOUND TO THE CONFIRMED ROWS: they are walked before any write and refused
@@ -57,6 +68,7 @@ import { ledgerStamp } from "@/lib/server/marketing/ledger-stamp";
 import { mirrorContactCache } from "@/lib/server/marketing/contact-cache";
 import { syncPlayerToggle } from "@/lib/server/marketing/optout-service";
 import { CONTACT_LIMITS } from "@/lib/contacts/contact-fields";
+import { maskedNumberSearchRefusal } from "@/lib/server/contacts/number-search";
 import {
   BULK_PER_ROW_MAX, BULK_SAMPLE, LIST_NONE, bulkConfirmTier, isContactBulkAction, isPerRowAction, listNameKey, parseBulkTag,
   parseListName,
@@ -93,7 +105,31 @@ export const BULK_SENTENCES = {
   noList: LIST_NONE,
   noSuchList: "That list isn't in the book any more. Choose another, or name a new one.",
   listExists: (name: string) => `A list called “${name}” already exists — two names that differ only in capitals are one list. Choose it instead.`,
+  /** C8b (B7) · a tag or a list from a filter some staff may not use — said for each of the two actions, with the way on. */
+  protectedLabel: (action: "tag" | "addToList", param: string) =>
+    `A ${action === "tag" ? "tag" : "list"} made from the “${param}” filter would let staff who may not use that filter find these contacts by it. `
+    + `${action === "tag" ? "Tag these" : "Add these to a list"} by ticking them by hand, or filter by something else.`,
 } as const;
+
+/* ═══ C8b (B7) · NO SHARED LABEL FROM A PROTECTED FILTER ═══════════════════════════════════════════════ */
+
+/** The filter axes only a reader may use (`roleRefusal`'s four), by the parameter names its refusals say. */
+const PROTECTED_LABEL_AXES: ReadonlyArray<readonly [keyof ContactAudienceFilter, string]> = [
+  ["player", "player"], ["sources", "source"], ["consent", "consent"], ["suppressed", "suppressed"],
+];
+
+/**
+ * ⛔ C8b (B7) · A TAG OR A LIST BUILT FROM A PROTECTED FILTER, FOR EVERY VIEWER — refused, naming the axis; null when the
+ * action builds no shared label (anything but tag and add-to-list) or the audience uses none of the four axes. ⭐ A
+ * selection of ticked rows alone is the officer's own audited choice and is never refused by it (`isTicksOnly`); a filter
+ * beside ticked rows is a filter (and only a forged post makes one).
+ */
+export function sharedLabelRefusal(req: Pick<ContactBulkRequest, "action" | "audience">): { param: string } | null {
+  if (req.action !== "tag" && req.action !== "addToList") return null;
+  if (isTicksOnly(req.audience)) return null;
+  for (const [axis, param] of PROTECTED_LABEL_AXES) if (req.audience[axis] !== null) return { param };
+  return null;
+}
 
 /* ═══ THE REQUEST — named keys only ═══════════════════════════════════════════════════════════════ */
 
@@ -206,6 +242,10 @@ export type ContactBulkDeps = {
   tier: typeof bulkConfirmTier;
   /** D19 / A1.1 — the ONE role rule (`audience.ts`). */
   roleRefusal: typeof roleRefusal;
+  /** C8b (B3) — a masked viewer's whole-number search is no audience (`number-search.ts`). */
+  numberSearch: typeof maskedNumberSearchRefusal;
+  /** C8b (B7) — no shared label from a protected filter, for any viewer (`sharedLabelRefusal`). */
+  labelRefusal: typeof sharedLabelRefusal;
   /** The ONE audit describer (`audience.ts`). */
   describe: typeof auditContactAudience;
   /** The officer's stop: OPERATOR, which nobody can lift (C23). */
@@ -227,6 +267,8 @@ export const CONTACT_BULK_DEPS: ContactBulkDeps = {
   count: (f) => contactAudience(f).count(),
   tier: bulkConfirmTier,
   roleRefusal,
+  numberSearch: maskedNumberSearchRefusal,
+  labelRefusal: sharedLabelRefusal,
   describe: auditContactAudience,
   suppressionReason: "OPERATOR",
   perRowMax: BULK_PER_ROW_MAX,
@@ -284,6 +326,11 @@ export async function previewContactBulk(
 ): Promise<BulkPreview | BulkRefusal> {
   const role = deps.roleRefusal(req.audience, viewerReads);
   if (role !== null) return refuse("role", BULK_SENTENCES.role(role.param));
+  // ⛔ C8b · B3 then B7 — both before anything is counted.
+  const numberSearch = deps.numberSearch(req.audience, viewerReads);
+  if (numberSearch !== null) return refuse("number_search", numberSearch.reason);
+  const label = deps.labelRefusal(req);
+  if (label !== null && (req.action === "tag" || req.action === "addToList")) return refuse("protected_label", BULK_SENTENCES.protectedLabel(req.action, label.param));
   const params = await resolveParams(req);
   if (!params.ok) return params;
   const count = await deps.count(req.audience);
@@ -419,7 +466,8 @@ const AUDIT_VERB: Record<ContactBulkAction, string> = {
 };
 
 /**
- * One run. ⛔ THE ORDER IS THE CONTRACT: the role rule → the parameters → the RECOUNT → empty → the per-number cap → the
+ * One run. ⛔ THE ORDER IS THE CONTRACT: the role rule → (C8b) a masked whole-number search (B3) and a shared label from a
+ * protected filter (B7) → the parameters → the RECOUNT → empty → the per-number cap → the
  * tier from the recount → the typed count (missing: `confirm_required`; different: `confirm_mismatch`, with the new count)
  * → the write → ONE audit row → the server-counted outcome. Nothing is written on any refusal.
  */
@@ -431,6 +479,11 @@ export async function runContactBulk(
 ): Promise<BulkOutcome | BulkRefusal> {
   const role = deps.roleRefusal(req.audience, viewerReads);
   if (role !== null) return refuse("role", BULK_SENTENCES.role(role.param));
+  // ⛔ C8b · B3 (a masked viewer's whole-number search is no audience) then B7 (no shared label from a protected filter).
+  const numberSearch = deps.numberSearch(req.audience, viewerReads);
+  if (numberSearch !== null) return refuse("number_search", numberSearch.reason);
+  const label = deps.labelRefusal(req);
+  if (label !== null && (req.action === "tag" || req.action === "addToList")) return refuse("protected_label", BULK_SENTENCES.protectedLabel(req.action, label.param));
   const params = await resolveParams(req);
   if (!params.ok) return params;
   // ⭐ THE RECOUNT — never the preview's count, never anything the browser posted.

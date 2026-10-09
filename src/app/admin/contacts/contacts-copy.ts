@@ -47,6 +47,16 @@ export const CONTACTS_NO_MATCH = {
   numberBody: (reason: string) => `Nothing in the book matches this search. ${reason}`,
 } as const;
 
+/** 🔴 C8b (B3) · a masked viewer's WHOLE-NUMBER search: one answer about the whole book, never a row — the Add form's own
+ *  answer ("already in the book" covers a number the book holds for any reason). */
+export const CONTACTS_NUMBER_PRESENCE = {
+  inBook: "This number is in the book.",
+  notInBook: "This number is not in the book.",
+  body: "For your role a whole number shows only whether it is in the book — the other filters don't apply to it. Search by name, or filter the list, to see contacts.",
+  /** The way on from "not in the book": the page head's own Add contact. */
+  notInBookBody: "For your role a whole number shows only whether it is in the book. Add it with Add contact, or search by name to see contacts.",
+} as const;
+
 /** U24 · filters (not a search) that match nothing. U21 · the rail stays on screen above this row, so the sentence
  *  can point at it: each axis's "Any" removes that one filter, and Clear filters removes them all. */
 export const CONTACTS_NO_MATCH_FILTERED = {
@@ -564,6 +574,8 @@ export const CONTACTS_EXPORT_REFUSED = {
   selection: CONTACTS_EXPORT.noSelection,
   unreadable_filter: "A filter in this address can't be read, so nothing was exported. Clear it, then export again.",
   role: "A filter in this address isn't available to your role, so nothing was exported.",
+  // C8b (B3) · a masked viewer's whole-number search — the page says only whether the number is in the book.
+  number_search: "For your role a whole number shows only whether it is in the book, so nothing was exported. Clear the search, or search by name, then export again.",
   too_many: "Too many contacts match for one file, so nothing was exported. Narrow the filter, then export again.",
   unrecorded: CONTACTS_EXPORT.unrecorded,
   read_failed: CONTACTS_EXPORT.readFailed,

@@ -66,6 +66,7 @@ import { parseTzNumber } from "../src/lib/tz-msisdn.ts";
 import { maskPhone } from "../src/lib/phone-normalize.ts";
 import { CONTACT_LIMITS, TAG_HAS_PHONE_SENTENCE, splitTags } from "../src/lib/contacts/contact-fields.ts";
 import { ERASURE_EVIDENCE } from "../src/lib/marketing/erasure-mark.ts";
+import { MASKED_NUMBER_SEARCH_REASON } from "../src/lib/server/contacts/number-search.ts";
 
 const PROVE_RED = process.argv.includes("--prove-red");
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..");
@@ -310,6 +311,8 @@ const L = {
   b12: "B12 · ⭐ ONE AUDIT ROW PER RUN, through U24's describer: action contacts.bulk.tag, the officer, the counts; a whole-number search is +255••••78 and the payload holds neither the nine digits nor the 255 key; ticked ids are a COUNT, never listed",
   b13: "B13 · ⛔ the parser builds a NEW request from named keys: a posted count, tier, officer and matched are never read — the request's keys are action, audience, list, tag and typed — and an unknown audience key refuses",
   b14: "B14 · 🔴 D19 / A1.1 · a masked role's POSTed sources, consent or player audience is refused role BEFORE any count — the preview and the run both, the store's count never asked; a reader gets the count",
+  b23: "B23 · ⛔ C8b (B7) · NO SHARED LABEL FROM A PROTECTED FILTER: a READER's tag and add-to-list over a consent, stop, source or player filter are refused protected_label — the preview and the run, BEFORE any count, nothing written, no list made — the sentence naming the axis and the way on (tick them by hand, or filter by something else); CONTROLS: that reader's untag over the same filter previews, their TICKED rows are tagged and listed, and a tag over a name search previews",
+  b24: "B24 · ⛔ C8b (B3) · A MASKED VIEWER'S WHOLE-NUMBER SEARCH IS NO AUDIENCE: every action's preview and run over it is refused number_search BEFORE any count, in the one sentence; CONTROLS: a masked NAME search previews, and a reader's whole-number search previews its one row",
   b14b: "B14b · 🔴 A1.1 · a withdrawal's split is a consent signal: a masked viewer's reply carries the total only (changed and unchanged null) and the line says the total; a reader's carries the split; a tag's reply is untouched",
   b14c: "B14c · 🔴 OD54 · a masked role's POSTed suppressed audience — true, false, or beside an operator — is refused role BEFORE any count, the preview and the run both, naming “suppressed”; a reader gets the count of the stopped rows and the audience in words",
   b14d: "B14d · 🔴 OD54 · a suppression's split is a stop signal: a masked officer may still suppress, its preview is the TOTAL (no split key) and its reply carries the total only (changed and unchanged null), the line saying “A stop is on record for N contacts” — never “already suppressed”; a reader's carries the split",
@@ -601,8 +604,65 @@ async function runAssertions(impl: Impl, tag: string): Promise<void> {
       if (pre.ok || pre.reason !== "role" || r.ok || r.reason !== "role") allRole = false;
     }
     const maskedCounts = counted;
-    const reader = await preview({ action: "tag", tag: "probe", audience: { sources: ["REGISTRATION"] }, typed: null }, true, counting);
+    // ⭐ C8b (B7) · the reader's control is an UNTAG — a tag from a protected filter is refused for every viewer now (B23).
+    const reader = await preview({ action: "untag", tag: "probe", audience: { sources: ["REGISTRATION"] }, typed: null }, true, counting);
     return [allRole && maskedCounts === 0 && reader.ok && reader.count === 1, `${answers.join(" · ")} · masked counts asked ${maskedCounts} · reader ${outcome(reader)}`];
+  });
+  await fresh(L.b23, async () => {
+    // ⛔ C8b (B7) · a READER builds no tag and no list from a filter a masked officer may not use.
+    let counted = 0;
+    const counting: ContactBulkDeps = { ...impl.deps, count: async (f) => { counted++; return impl.deps.count(f); } };
+    const axes: Array<[string, Record<string, unknown>]> = [
+      ["consent", { consent: ["GIVEN"] }], ["suppressed", { suppressed: true }], ["source", { sources: ["REGISTRATION"] }], ["player", { player: true }],
+    ];
+    const before = await bookSnapshot();
+    const listsBefore = (await db.contactList.listAll()).length;
+    const refused: string[] = [];
+    let allRefused = true;
+    for (const [param, audience] of axes) {
+      for (const body of [
+        { action: "tag", tag: "probe", audience },
+        { action: "addToList", newListName: `Probe ${param}`, audience },
+      ]) {
+        const pre = await preview({ ...body, typed: null }, true, counting);
+        const r = await run({ ...body, typed: "1" }, true, counting);
+        const sentence = BULK_SENTENCES.protectedLabel(body.action as "tag" | "addToList", param);
+        refused.push(`${body.action}/${param} ${pre.ok ? "PREVIEWED" : pre.reason} ${r.ok ? "RAN" : r.reason}`);
+        if (pre.ok || pre.reason !== "protected_label" || pre.error !== sentence || r.ok || r.reason !== "protected_label") allRefused = false;
+      }
+    }
+    const nothing = counted === 0 && (await bookSnapshot()) === before && (await db.contactList.listAll()).length === listsBefore;
+    const words = BULK_SENTENCES.protectedLabel("tag", "consent").includes("ticking them by hand, or filter by something else")
+      && BULK_SENTENCES.protectedLabel("addToList", "player").startsWith("A list made from the “player” filter");
+    // CONTROLS: the same reader's untag over a protected filter still previews; their TICKED rows are tagged and listed
+    // (an audited choice); a tag over a filter that uses no protected axis (a name search) previews.
+    const untag = await preview({ action: "untag", tag: "probe", audience: { consent: ["GIVEN"] }, typed: null }, true);
+    const ticked = await run({ action: "tag", tag: "handpicked", audience: { ids: ["mc_b_player", "mc_b_stranger"] }, typed: null }, true);
+    const tickedList = await run({ action: "addToList", newListName: "Handpicked", audience: { ids: ["mc_b_player"] }, typed: null }, true);
+    const byName = await preview({ action: "tag", tag: "probe", audience: { q: "Asha" }, typed: null }, true);
+    return [allRefused && nothing && words && untag.ok && ticked.ok && ticked.changed === 2 && tickedList.ok && tickedList.changed === 1 && byName.ok && byName.count === 3,
+      `${refused.join(" · ")} · counts asked ${counted} · book ${nothing ? "untouched" : "WRITTEN"} · untag ${outcome(untag)} · ticked ${outcome(ticked)} · listed ${outcome(tickedList)} · by name ${byName.ok ? `previews ${byName.count}` : outcome(byName)}`];
+  });
+  await fresh(L.b24, async () => {
+    // ⛔ C8b (B3) · a masked viewer's whole-number search is no audience — every action, preview and run.
+    let counted = 0;
+    const counting: ContactBulkDeps = { ...impl.deps, count: async (f) => { counted++; return impl.deps.count(f); } };
+    const audience = { q: bare(N.known) };
+    const answers: string[] = [];
+    let allRefused = true;
+    for (const action of ["tag", "untag", "addToList", "withdraw", "suppress", "remove"]) {
+      const body = { action, tag: "probe", newListName: "Probe", audience };
+      const pre = await preview({ ...body, typed: null }, false, counting);
+      const r = await run({ ...body, typed: "1" }, false, counting);
+      answers.push(`${action} ${pre.ok ? "PREVIEWED" : pre.reason}/${r.ok ? "RAN" : r.reason}`);
+      if (pre.ok || pre.reason !== "number_search" || pre.error !== MASKED_NUMBER_SEARCH_REASON || r.ok || r.reason !== "number_search") allRefused = false;
+    }
+    const maskedCounts = counted;
+    // CONTROLS: a masked NAME search previews; a reader's whole-number search previews its row.
+    const byName = await preview({ action: "tag", tag: "probe", audience: { q: "Asha" }, typed: null }, false);
+    const reader = await preview({ action: "tag", tag: "probe", audience, typed: null }, true);
+    return [allRefused && maskedCounts === 0 && byName.ok && reader.ok && reader.count === 1,
+      `${answers.join(" · ")} · masked counts asked ${maskedCounts} · by name ${byName.ok ? `previews ${byName.count}` : outcome(byName)} · reader ${outcome(reader)}`];
   });
   await fresh(L.b14c, async () => {
     // 🔴 OD54 · the stop axis asked through the bulk door's body — the address's question, refused the same way.
@@ -1090,6 +1150,28 @@ if (!PROVE_RED) {
       name: "R7 · 🔴 D19 · a masked role's POSTed sources audience is answered with a count — the role rule skipped",
       expect: L.b14,
       impl: () => ({ ...REAL, deps: { ...TEST_DEPS, roleRefusal: () => null } }),
+    },
+    {
+      name: "R-B23 · ⛔ C8b · B7 not built — a reader tags and lists from a consent, stop, source or player filter, and the masked officer filters by the label",
+      expect: L.b23,
+      impl: () => ({ ...REAL, deps: { ...TEST_DEPS, labelRefusal: () => null } }),
+    },
+    {
+      name: "R-B23b · ⛔ C8b · the label rule refuses ticked rows too — a reader's own audited, hand-picked choice taken away",
+      expect: L.b23,
+      impl: () => ({
+        ...REAL,
+        deps: {
+          ...TEST_DEPS,
+          labelRefusal: (req) => (req.action === "tag" || req.action === "addToList") && (req.audience.ids !== null || req.audience.consent !== null
+            || req.audience.suppressed !== null || req.audience.sources !== null || req.audience.player !== null) ? { param: "consent" } : null,
+        },
+      }),
+    },
+    {
+      name: "R-B24 · ⛔ C8b · B3 not built at the bulk door — a masked viewer's forged whole-number audience is previewed and written, the row handed back",
+      expect: L.b24,
+      impl: () => ({ ...REAL, deps: { ...TEST_DEPS, numberSearch: () => null } }),
     },
 
     /* ── and the rest of the unit, each on its own assertion ── */

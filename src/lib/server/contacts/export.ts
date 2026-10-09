@@ -9,7 +9,11 @@
  * ⭐ THE FILTER, NEVER A LIST (decision X27). The address is read by U24's ONE parser (`parseContactAudienceParams`):
  * an unknown value REFUSES (C2), and a ticked selection cannot travel in an address at all. A viewer who may not read a
  * number is refused every filter U24's ONE role rule keeps for a reader (`roleRefusal`, D19 / A1.1 — consent, source,
- * player, and any it adds), in that rule's own words, before anything is counted. The export's OWN instant is the Added window's upper bound (X7 — `addedBefore`, no DAL change):
+ * player, and any it adds), in that rule's own words, before anything is counted. ⛔ C8b (B3) · …and a WHOLE-NUMBER search
+ * (`maskedNumberSearchRefusal`, `number-search.ts`): for that viewer the page answers such a search with whether the book
+ * holds the number and nothing else, so a typed or forged export address that searches one is refused `number_search`
+ * before anything is counted — a file of its one row would hand back what the page withholds. A name search is unchanged.
+ * The export's OWN instant is the Added window's upper bound (X7 — `addedBefore`, no DAL change):
  * a contact added while the file streams is in neither the count nor the file. Erased rows are in no audience
  * (C3 — `toAudienceWhere` leaves the tombstone out of every count and walk).
  * ⭐ ROWS COME FROM THE RESOLVER'S KEYSET WALK by id, a step at a time, and NEVER MORE THAN THE COUNT THE AUDIT
@@ -80,6 +84,7 @@ import {
   CONSENT_LABEL, CONTACTS_EXPORT, CONTACTS_FILTER_NOT_FOR_ROLE, SOURCE_LABEL, contactsExportTooMany, isContactsExportRefusal,
 } from "@/app/admin/contacts/contacts-copy";
 import type { ContactsExportRefusal } from "@/app/admin/contacts/contacts-copy";
+import { maskedNumberSearchRefusal } from "@/lib/server/contacts/number-search";
 
 /* ═══ THE CONSTANTS ════════════════════════════════════════════════════════════════════════════════ */
 
@@ -292,6 +297,8 @@ export type ContactsExportDeps = {
   /** U24's ONE address parser and ONE role rule (C2, D19 / A1.1). */
   parse: typeof parseContactAudienceParams;
   roleRefusal: typeof roleRefusal;
+  /** C8b (B3) · a masked viewer's whole-number search refused before anything is counted (`number-search.ts`). */
+  numberSearch: typeof maskedNumberSearchRefusal;
   /** U24's ONE audit describer (C6). */
   describe: typeof auditContactAudience;
   /** The columns a cell carries, and one row's cells. */
@@ -311,6 +318,7 @@ export const CONTACTS_EXPORT_DEPS: ContactsExportDeps = {
   audience: (f) => contactAudience(f),
   parse: parseContactAudienceParams,
   roleRefusal,
+  numberSearch: maskedNumberSearchRefusal,
   describe: auditContactAudience,
   keys: contactExportKeys,
   row: contactExportRow,
@@ -448,6 +456,11 @@ export async function exportContactsCsv(req: ContactsExportRequest, deps: Contac
   const role = deps.roleRefusal(parsed.filter, reads);
   if (role !== null) {
     return refuse(403, `${CONTACTS_FILTER_NOT_FOR_ROLE.body(role.param, role.reason)} ${CONTACTS_EXPORT.nothingSent}`, { reason: "role", param: knownParam(role.param) }, "role");
+  }
+  // ⛔ C8b (B3) · a masked viewer's whole-number search is no audience: refused before anything is counted.
+  const numberSearch = deps.numberSearch(parsed.filter, reads);
+  if (numberSearch !== null) {
+    return refuse(403, `${numberSearch.reason} ${CONTACTS_EXPORT.nothingSent}`, { reason: "number_search", param: "q" }, "number_search");
   }
 
   // ── the count, at the export's own instant (X7) ──

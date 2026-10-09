@@ -13,6 +13,11 @@
  * ⛔ AN UNREADABLE FILTER IS REFUSED, NEVER DROPPED (decision C2): `?op=NOKIA` is `{ kind: "refused" }` naming the
  * parameter, and the page shows no rows — a silently widened table is exactly what a bulk action or an export
  * would then act on.
+ * 🔴 C8b (B3, Ali's ruling of 2026-10-09) · A MASKED VIEWER'S WHOLE-NUMBER SEARCH IS `{ kind: "presence" }`: whether the
+ * book holds the number — a row, or a number the book blocks because its holder was erased (`bookHoldsNumber`, the Add
+ * form's own answer) — and NO ROWS, whatever else the address holds (`number-search.ts`). Asked before any page is read,
+ * so the row's name, lists, tags, "Added" and edit link never reach that viewer. A reader's whole-number search and
+ * everyone's name search list rows as before.
  * ⭐ U21 · THE RAIL'S OPTIONS are read here too, in BOTH answers: every list, and the book's tags most-carried first
  * (`contactTagCounts`, the resolver's own tag reader — U24/M8). Like the KPIs they are WHOLE-BOOK facts, so a masked
  * viewer gets them as well: a count over the book is not a per-number answer (A1.1). The rail itself is built by the
@@ -35,6 +40,7 @@ import {
 } from "@/lib/server/marketing/audience";
 import type { ContactAudienceFilter } from "@/lib/server/marketing/audience";
 import { findEditableContact, CONTACT_MISSING } from "@/lib/server/contacts/contact-write";
+import { bookHoldsNumber, wholeNumberOf } from "@/lib/server/contacts/number-search";
 import { PER_PAGE } from "@/components/admin/admin-pagination";
 import { parseSort } from "@/components/admin/admin-sort";
 import { formatDate } from "@/lib/utils";
@@ -81,6 +87,12 @@ export type ContactsView =
       refusal: "unreadable" | "role";
       param: string;
       reason: string;
+    })
+  | (ContactsBase & {
+      /** 🔴 C8b (B3) · a masked viewer's WHOLE-NUMBER search: one bit about the whole book, and no rows. */
+      kind: "presence";
+      /** The book holds the number — a row, or an erased holder's block — exactly as Add contact would say. */
+      present: boolean;
     });
 
 export type ContactsDeps = {
@@ -88,6 +100,8 @@ export type ContactsDeps = {
   reads?: () => Promise<boolean>;
   /** The load's ONE clock (epoch ms) — injected by a script so its seven days are a fixed window. The page gets the real one. */
   now?: () => number;
+  /** C8b (B3) · whether the book holds a number (`bookHoldsNumber`) — swapped by a script's red plants only. */
+  presence?: (msisdn: string) => Promise<boolean>;
 };
 
 /**
@@ -135,6 +149,10 @@ export async function loadContacts(sp: ContactsParams, deps: ContactsDeps = {}):
   // suppressed.
   const role = roleRefusal(parsed.filter, viewerReads);
   if (role !== null) return { ...base, kind: "refused", refusal: "role", param: role.param, reason: role.reason };
+  // 🔴 C8b (B3) · a masked viewer's whole-number search answers whether the book holds the number — before, and instead
+  // of, any page of rows.
+  const number = viewerReads ? null : wholeNumberOf(parsed.filter);
+  if (number !== null) return { ...base, kind: "presence", present: await (deps.presence ?? bookHoldsNumber)(number) };
 
   const result = await contactAudience(parsed.filter).page({ sort, dir, page: firstParam(sp.page), perPage: PER_PAGE });
   return {

@@ -65,6 +65,7 @@ import { contactSearchEcho, contactSearchNumber, SEARCH_WHOLE_NUMBER } from "../
 import { CONTACTS_NO_MATCH, CONTACTS_EXPORT, CONTACTS_EXPORT_REFUSED, contactsExportRefusalSentence } from "../src/app/admin/contacts/contacts-copy.ts";
 import { CONTACT_SEARCH, fieldNames } from "../src/lib/search/index.ts";
 import { DAY_MS } from "../src/lib/query/windows.ts";
+import { ERASURE_EVIDENCE } from "../src/lib/marketing/erasure-mark.ts";
 
 const PROVE_RED = process.argv.includes("--prove-red");
 
@@ -215,7 +216,7 @@ const U21 = {
 const VB7 = {
   echo: "19 · ⭐ vb7 · THE SEARCH BOX SAYS WHAT IT WILL DO: a whole number in any spelling echoes \"Whole number — matched exactly\" (never \"3 words\"), a number attempt the parser refuses echoes ITS sentence (a 10-digit typo is told it has ten), a name or a year echoes the grammar's own words (EXECUTED) — and the box is a client wrapper handing the kit SearchBox that reading and the grammar's one field, which the kit puts in its echo row before the word count",
   empty: "19b · ⭐ vb7 · a refused number attempt that finds nobody says the parser's sentence in the empty state, never \"part of a number is not searched\" — EXECUTED: the 10-digit typo is read by the loader as a name search that finds no row, and the page builds the body from contactSearchNumber (a whole number that finds nobody keeps the general sentence)",
-  banner: "20 · ⭐ vb7 · A REFUSED EXPORT COMES BACK TO THE PAGE: ?export=<reason> is said above the list for each of the export's seven reasons, anything else (an unknown word, constructor, nothing) says nothing, and the page renders it in a Callout with a Dismiss link that is the ONE href builder's — no link carries export=",
+  banner: "20 · ⭐ vb7 · A REFUSED EXPORT COMES BACK TO THE PAGE: ?export=<reason> is said above the list for each of the export's eight reasons (C8b's number_search among them), anything else (an unknown word, constructor, nothing) says nothing, and the page renders it in a Callout with a Dismiss link that is the ONE href builder's — no link carries export=",
 } as const;
 
 /** 🔴 OD54's labels, ONCE — "D19 covers SUPPRESSION too" (S10): until the importer goes live a stop is a player's own
@@ -226,6 +227,8 @@ const OD54 = {
   axis: "13b · 🔴 OD54 · roleRefusal refuses suppressed — yes and no alike — to a masked viewer with the ROLE_REFUSAL_REASON and allows it to a reader; the loader refuses a masked ?suppressed=yes and ?op=HONORA&suppressed=no by role with NO row read, a reader gets the stopped row and the rest, and a masked viewer's \"Showing contacts:\" line names no stop",
 } as const;
 
+/** 🔴 C8b (B3) · the masked viewer's whole-number search — named once, so its red cases expect exactly what the run says. */
+const L1D = "1d · ⛔ C8b (B3) · A MASKED VIEWER'S WHOLE-NUMBER SEARCH IS ONE ANSWER, NEVER ROWS: each spelling of a number the book holds answers presence \"in the book\" — with no page of rows read — a number it does not hold \"not in the book\", a list and a window beside the number change nothing (the answer is the whole book's), an ERASED person's number — its tombstone, and a marker on the ledger with no row — reads \"in the book\" exactly like a held one (the Add form's own answer, bookHoldsNumber), and a masked NAME search lists rows as before";
 /** U33r · the referee's Will receive word — named once, so its red case expects exactly what the run says. */
 const L9R = "9r · ⛔ U33r · MINOR-5 · a number promised no marketing as an agent applicant's referee reads ONLY 'Not reachable', exactly like every protected reason — never named apart, to a reader or anybody else (the split's ONE protected line, here too)";
 
@@ -234,17 +237,54 @@ async function runAssertions(impl: Impl, tag: string): Promise<void> {
 
   ok(p("0 · CONTROL · the four fixtures are in the book"), (await db.marketingContact.count()) === 4);
 
-  // ── 1 · A WHOLE NUMBER, IN ANY SPELLING, IS ONE PERSON ─────────────────────────────────────────
+  // ── 1 · A WHOLE NUMBER, IN ANY SPELLING, IS ONE PERSON (a READER's search — C8b's B3 keeps a masked viewer from rows) ──
   const spellings = ["0712 345 678", "712345678", "+255712345678", "255712345678"];
   const found: string[] = [];
-  for (const q of spellings) found.push(ids(await impl.load({ q })));
-  ok(p("1 · ⭐ the four spellings of one number each find EXACTLY that contact (EXECUTED)"),
+  for (const q of spellings) found.push(ids(await impl.load({ q }, true)));
+  ok(p("1 · ⭐ the four spellings of one number each find EXACTLY that contact for a reader (EXECUTED)"),
     found.every((f) => f === A.id), found.join(" | "));
-  ok(p("1b · CONTROL · a different WHOLE number finds nothing"), ids(await impl.load({ q: "0712 999 999" })) === "");
+  ok(p("1b · CONTROL · a different WHOLE number finds nothing"), ids(await impl.load({ q: "0712 999 999" }, true)) === "");
   // ⭐ vb3 · the trunk zero written after the country code is the same person — never a name search that finds nobody.
-  const trunk = ids(await impl.load({ q: "+255 0712 345 678" }));
+  const trunk = ids(await impl.load({ q: "+255 0712 345 678" }, true));
   ok(p("1c · ⭐ vb3 · '+255 0712 345 678' — the trunk zero written after the country code — finds EXACTLY that contact, never a name search that finds nobody (EXECUTED)"),
     trunk === A.id, trunk);
+  // ── 1d · 🔴 C8b (B3) · a MASKED viewer's whole-number search: one answer about the whole book, never a row ──
+  {
+    const masked = await readsDuring(async () => {
+      const held: string[] = [];
+      for (const q of spellings) {
+        const v = await impl.load({ q }, false);
+        held.push(v.kind === "presence" ? (v.present ? "in" : "out") : `ROWS:${ids(v)}`);
+      }
+      const out = await impl.load({ q: "0712 999 999" }, false);
+      const narrowed = await impl.load({ q: "0712 345 678", list: "cl_t_dar", from: "2026-09-08" }, false);
+      return { held, out, narrowed };
+    });
+    // The number of an erased person, two ways: its tombstone, and a marker on the ledger with no book row — each in the
+    // book exactly as a held number is, asked of the ONE presence the loader asks. Put in for this check and taken out.
+    const mem = (globalThis as unknown as { __50PICK_STORE: Record<string, Map<string, unknown>> }).__50PICK_STORE;
+    const keep = ["marketingContacts", "contactsByMsisdn", "messagingConsents"].map((k) => [k, new Map(mem[k])] as const);
+    let erased = { tomb: false, marker: false, free: true };
+    try {
+      const tomb = row("mc_t_tomb", "0754 600 001", null, "WITHDRAWN", 6);
+      await db.marketingContact.create({ ...tomb, sourceRef: ERASURE_EVIDENCE, rawInput: tomb.msisdn });
+      await db.messagingConsent.create({
+        id: "ledger_t_marker", channel: "SMS", identifier: "255754600002", category: "MARKETING", status: "WITHDRAWN",
+        source: "OPERATOR", wording: "fixture", locale: "EN", evidence: ERASURE_EVIDENCE, recordedBy: null, createdAt: "2026-09-06T10:00:00.000Z",
+      });
+      const viewOf = async (q: string) => { const v = await impl.load({ q }, false); return v.kind === "presence" && v.present; };
+      erased = { tomb: await viewOf("0754 600 001"), marker: await viewOf("0754 600 002"), free: await viewOf("0754 600 003") };
+    } finally {
+      for (const [k, saved] of keep) { mem[k].clear(); for (const [key, v] of saved) mem[k].set(key, v); }
+    }
+    const nameRows = ids(await impl.load({ q: "baraka" }, false));
+    const v = masked.value;
+    ok(p(L1D),
+      v.held.every((h) => h === "in") && v.out.kind === "presence" && !v.out.present && v.narrowed.kind === "presence" && v.narrowed.present
+        && masked.pageCalls === 0 && erased.tomb && erased.marker && !erased.free && nameRows === B.id
+        && /if \(number !== null\) return \{ \.\.\.base, kind: "presence", present: await \(deps\.presence \?\? bookHoldsNumber\)\(number\) \};/.test(impl.sources.loader),
+      `spellings ${v.held.join(",")} · other number ${v.out.kind === "presence" ? (v.out.present ? "in" : "out") : "ROWS"} · beside a list and a window ${v.narrowed.kind === "presence" ? (v.narrowed.present ? "in" : "out") : "ROWS"} · page reads ${masked.pageCalls} · erased: tombstone ${erased.tomb}, marker ${erased.marker}, free ${erased.free} · by name ${nameRows}`);
+  }
 
   // ── 2 · ⛔ A PART OF A NUMBER IS NEVER A NUMBER SEARCH ─────────────────────────────────────────
   const part = impl.search("0712345");
@@ -707,7 +747,7 @@ async function runAssertions(impl: Impl, tag: string): Promise<void> {
   const silent = [contactsExportRefusalSentence("nope"), contactsExportRefusalSentence("constructor"), contactsExportRefusalSentence(undefined),
     contactsExportRefusalSentence(["nope", "role"])];
   ok(p(VB7.banner),
-    reasons.length === 7 && said.every((x, i) => x === CONTACTS_EXPORT_REFUSED[reasons[i]] && typeof x === "string" && x.length > 20)
+    reasons.length === 8 && said.every((x, i) => x === CONTACTS_EXPORT_REFUSED[reasons[i]] && typeof x === "string" && x.length > 20)
       && silent.every((x) => x === null) && contactsExportRefusalSentence(["role", "nope"]) === CONTACTS_EXPORT_REFUSED.role
       && CONTACTS_EXPORT_REFUSED.selection === CONTACTS_EXPORT.noSelection && CONTACTS_EXPORT_REFUSED.unknown_param === CONTACTS_EXPORT.stray
       && page.includes("const exportRefused = contactsExportRefusalSentence(sp.export);")
@@ -857,6 +897,40 @@ if (!PROVE_RED) {
       name: "vb7 · a refused export is never said on the page — the route sends the officer back to a list that says nothing",
       expect: VB7.banner,
       impl: { ...REAL, sources: { ...REAL_SOURCES, page: REAL_SOURCES.page.replace("const exportRefused = contactsExportRefusalSentence(sp.export);", "const exportRefused: string | null = null;") } },
+    },
+    {
+      // 🔴 The page before C8b: a masked viewer's whole-number search listed the number's row, its name, lists and Added.
+      name: "⛔ C8b · B3 not built — a masked viewer's whole-number search lists the row a reader would see",
+      expect: L1D,
+      impl: {
+        ...REAL,
+        load: async (sp, reads = false, now) => {
+          const v = await realLoad(sp, reads, now);
+          return v.kind === "presence" ? { ...(await realLoad(sp, true, now)), viewerReads: false } : v;
+        },
+      },
+    },
+    {
+      name: "⛔ C8b · the presence asks the book's ROW alone — an erased person whose erasure left only the ledger's marker reads \"not in the book\" while Add contact says it is",
+      expect: L1D,
+      impl: {
+        ...REAL,
+        load: (sp, reads = false, now) => loadContacts(sp, {
+          reads: async () => reads, ...(now === undefined ? {} : { now: () => now }),
+          presence: async (m) => (await db.marketingContact.findByMsisdn(m)) !== null,
+        }),
+      },
+    },
+    {
+      name: "⛔ C8b · the presence narrowed by the other filters — a list or a window beside the number answers for the row behind it",
+      expect: L1D,
+      impl: {
+        ...REAL,
+        load: async (sp, reads = false, now) => {
+          const v = await realLoad(sp, reads, now);
+          return v.kind === "presence" && (sp.list !== undefined || sp.from !== undefined) ? { ...v, present: false } : v;
+        },
+      },
     },
 
     /* ── U21 · the plan's RED line, each in memory ─────────────────────────────────────────────── */

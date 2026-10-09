@@ -130,10 +130,13 @@ export type ContactBulkPost = {
 };
 
 /** Why nothing was written. ⭐ `error` alone means a run may have STARTED before it failed; every other reason is a
- *  refusal that wrote nothing — the gate (`forbidden`), the per-officer rate rule (`rate_limited`) and the service's own. */
+ *  refusal that wrote nothing — the gate (`forbidden`), the per-officer rate rule (`rate_limited`) and the service's own.
+ *  ⭐ C8b · `protected_label` (B7): a tag or a list built from a filter some viewers may not use, refused for EVERY viewer;
+ *  `number_search` (B3): a masked viewer's audience searching a whole number. */
 export type BulkRefusalReason =
   | "forbidden" | "rate_limited" | "bad_request" | "bad_audience" | "too_many_ids" | "role" | "empty"
-  | "too_many_for_per_row" | "confirm_required" | "confirm_mismatch" | "bad_tag" | "bad_list" | "list_exists" | "error";
+  | "too_many_for_per_row" | "confirm_required" | "confirm_mismatch" | "bad_tag" | "bad_list" | "list_exists"
+  | "protected_label" | "number_search" | "error";
 
 /** A refusal: a reason the bar can branch on, one sentence for the officer, the field it names, and — for the two
  *  confirmation refusals and the cap — the SERVER's count now. */

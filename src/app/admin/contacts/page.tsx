@@ -37,6 +37,9 @@
  * number belongs to a player. 🔴 OD54 · and so does a STOP: until the importer goes live it is a player's own
  * opt-out or an officer's, so the one place a row says "Suppressed" — the Will receive cell, the gate's own answer — is a
  * reader's, this page reads no `suppressedAt` cache for any row, and a masked viewer's KPI band carries no stop count.
+ * 🔴 C8b (B3) · A MASKED VIEWER'S WHOLE-NUMBER SEARCH LISTS NO ROW: the loader answers it `presence` — "This number is in
+ * the book" or "…is not in the book", the Add form's own answer, about the whole book — and the table holds that one line
+ * (no rows, so no export link and no "select all"); the bulk bar and the export refuse such an audience too.
  * ⭐ U24 · every read goes through the ONE audience resolver (`contacts-loader.ts` → `contactAudience`). A filter
  * in force is said in words above the table ("Showing contacts: …"), and every link is built by ONE href builder
  * (`contactsHref`) that carries them. ⛔ A filter that cannot be read is REFUSED — no rows, the parameter named, a
@@ -80,6 +83,7 @@ import {
   CONTACTS_EXPORT, contactsExportTooMany, contactsExportRefusalSentence,
   CONTACTS_EMPTY, CONTACTS_NO_MATCH, CONTACTS_NO_MATCH_FILTERED, CONTACTS_FILTERED_LEAD,
   CONTACTS_FILTER_UNREADABLE, CONTACTS_FILTER_NOT_FOR_ROLE, CONSENT_LABEL, SOURCE_LABEL, CONTACTS_BULK, CONTACTS_KPI_RECENT,
+  CONTACTS_NUMBER_PRESENCE,
 } from "./contacts-copy";
 import { operatorBrand, contactsHref, contactsClearFiltersHref, contactsLinkSp } from "./contacts-query";
 import { loadContacts, loadContactEdit, viewerReadsContacts } from "./contacts-loader";
@@ -190,9 +194,11 @@ async function AdminContactsContent({ searchParams }: { searchParams: Promise<Co
   const summary = view?.summary ?? null;
   // 🔴 OD54 · the masked band's second fact (the loader asks it for that viewer alone; null for a reader).
   const recent = view?.addedRecently ?? null;
-  // ⭐ U24 · the loader's two answers: the list ("ok"), or a filter it would not read ("refused").
+  // ⭐ U24 · the loader's answers: the list ("ok"), a filter it would not read ("refused") — and, 🔴 C8b (B3), a masked
+  // viewer's whole-number search ("presence": whether the book holds the number, and no rows).
   const listed = view?.kind === "ok" ? view : null;
   const refused = view?.kind === "refused" ? view : null;
+  const presence = view?.kind === "presence" ? view : null;
   const result = listed?.result ?? null;
   const page = listed?.page ?? 1;
   const sort = view?.sort ?? "added";
@@ -379,6 +385,16 @@ async function AdminContactsContent({ searchParams }: { searchParams: Promise<Co
                   />
                 ) : emptyBook ? (
                   <AdminTableEmpty colSpan={cols} title={CONTACTS_EMPTY.title} body={CONTACTS_EMPTY.body} />
+                ) : presence ? (
+                  // 🔴 C8b (B3) · ONE ANSWER ABOUT THE WHOLE BOOK, never a row: the number's name, lists, tags, "Added" and
+                  // edit link stay with the readers. "In the book" is the Add form's own answer — a number the book blocks
+                  // because its holder was erased says it too.
+                  <AdminTableEmpty
+                    colSpan={cols}
+                    title={presence.present ? CONTACTS_NUMBER_PRESENCE.inBook : CONTACTS_NUMBER_PRESENCE.notInBook}
+                    body={presence.present ? CONTACTS_NUMBER_PRESENCE.body : CONTACTS_NUMBER_PRESENCE.notInBookBody}
+                    action={<a href={clearSearchHref} className="btn btn-ghost btn-sm">Clear search</a>}
+                  />
                 ) : rows.length === 0 ? (
                   <AdminTableEmpty
                     colSpan={cols}
