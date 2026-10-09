@@ -37,8 +37,10 @@
  * contact, not a masked export's header), the vote reads the NEXT non-blank record instead — up to `voteRecordsMax`
  * records (the first and `TITLE_ROWS_LOOKAHEAD` more, D7's own bound) — and decides on the first record a candidate
  * appears in. A first record holding a candidate decides at once, and a bare first record that is a contact (a
- * single-column list of numbers) still means one column: nothing else changes. The title stays a row of the file (one
- * cell), and D7 takes it out with its note, its line numbers real.
+ * single-column list of numbers) still means one column: nothing else changes. ⛔ The review's m4 · nor does a record met
+ * while looking that is ITSELF a contact (`voteStopsAt` = `readsAsContact`, S15-5's test — D7's "a contact is never a
+ * title"): no column names follow that title, so the FIRST record's verdict stands — one column, as before C8c. The title
+ * stays a row of the file (one cell), and D7 takes it out with its note, its line numbers real.
  *
  * ── WHAT A FILE BECOMES ───────────────────────────────────────────────────────────────────────────────
  *   · each row's `line` is the record as Excel numbers it: the `sep=` line hidden, a quoted line break inside one
@@ -79,7 +81,7 @@
  * Guard: `npm run test:contacts-import` (the `csv` section) · red: `npm run red:contacts-import`.
  */
 import { formatRowList, type ParsedContactsFile, type ParsedRow, type UnreadableRecord } from "./parsed-file";
-import { TITLE_ROWS_LOOKAHEAD, mayBeTitleRow } from "./title-rows";
+import { TITLE_ROWS_LOOKAHEAD, mayBeTitleRow, readsAsContact } from "./title-rows";
 import { looksLikeVcard } from "./vcard";
 import { PHONE_FORMAT_REMEDY, spreadsheetHeadKind, xlsxRefusalSentence } from "./xlsx-limits";
 
@@ -324,6 +326,9 @@ export type CsvRules = {
   readonly voteLooksPast: (cells: readonly string[]) => boolean;
   /** ⭐ C8c · the most non-blank records the vote reads: the first, and at most `TITLE_ROWS_LOOKAHEAD` after it. */
   readonly voteRecordsMax: number;
+  /** ⛔ C8c · the review's m4 · is a record the vote looked past to ITSELF A CONTACT (`readsAsContact`, S15-5's test)?
+   *  Then no column names follow the title, the look-past has nothing to find, and the FIRST record's verdict stands. */
+  readonly voteStopsAt: (cells: readonly string[]) => boolean;
 };
 
 /* ══ THE TOKENIZER — one pass, its state carried across chunks ══════════════════════════════════════════ */
@@ -643,6 +648,8 @@ export const CSV_RULES: CsvRules = {
   // ⭐ C8c · D7's own first-row test, and its own lookahead: a bare title never decides "one column" for the file.
   voteLooksPast: mayBeTitleRow,
   voteRecordsMax: 1 + TITLE_ROWS_LOOKAHEAD,
+  // ⛔ m4 · …and D7's own "a contact is never a title": a data row met while looking never decides the separator.
+  voteStopsAt: readsAsContact,
 };
 
 type Candidate = { readonly delimiter: CsvDelimiter; readonly scan: CandidateScan; chars: number };
@@ -664,6 +671,10 @@ const NO_COUNTS: Readonly<Record<CsvDelimiter, number>> = { comma: 0, semicolon:
  * the next non-blank record, up to `rules.voteRecordsMax` records in all, and the first record on which a candidate appears
  * decides as before. A first record with a candidate decides at once, exactly as before (a header row is never looked
  * past); a bare record that is a contact — a single-column list of numbers — decides "one column", exactly as before.
+ * ⛔ The review's m4 · a record met while looking past that is ITSELF A CONTACT (`rules.voteStopsAt`, S15-5's test — D7's
+ * "a contact is never a title") never decides: no column names follow the title, so the look-past had nothing to find
+ * and the FIRST record's verdict stands — one column, as before C8c ("Wateja", then "0712 345 678, 0754 111 222": each row
+ * keeps its two numbers in ONE cell, which D3 refuses, never split into two columns on a data row's comma).
  * Lines keep their real numbers: each round's scans count from 1, and the rounds before it are added back.
  */
 function makeVoter(rules: CsvRules): Voter {
@@ -674,6 +685,9 @@ function makeVoter(rules: CsvRules): Voter {
   }));
   let candidates = startRound();
   let rounds = 1;
+  /** ⛔ m4 · the FIRST record's verdict, kept when the vote looks past it — and whether a contact sent the vote back to it. */
+  let firstVote: DelimiterVote | null = null;
+  let backToFirst = false;
   /** The lines the rounds looked past took, and the characters their scans read (all candidates together). */
   let lineOffset = 0;
   let charsBefore = 0;
@@ -694,6 +708,17 @@ function makeVoter(rules: CsvRules): Voter {
       && c.chars === first.chars && c.scan.pendingLine === first.scan.pendingLine);
     return alike && rules.voteLooksPast(cells);
   };
+  /** ⛔ m4 · a looked-past round's record, read by any candidate, is itself a contact. */
+  const atContact = (): boolean =>
+    rounds > 1 && candidates.some((c) => c.scan.done && c.scan.cells !== undefined && rules.voteStopsAt(c.scan.cells));
+  /** The round's record is complete: does the vote end here — on it, or (m4) back on the first record — or look past it? */
+  const ends = (): boolean => {
+    if (atContact()) {
+      backToFirst = true;
+      return true;
+    }
+    return !looksPast();
+  };
   return {
     feed: (text) => {
       const base = handed;
@@ -708,12 +733,14 @@ function makeVoter(rules: CsvRules): Voter {
             roundStart++;
           }
         }
-        if (from >= text.length) return complete() && !looksPast();
+        if (from >= text.length) return complete() && ends();
         const part = from === 0 ? text : text.slice(from);
         for (const c of candidates) if (!c.scan.done) c.chars += c.scan.feed(part, 0);
         if (!complete()) return false;
-        if (!looksPast()) return true;
-        // ⭐ C8c · the record was a bare title: the next round reads on from right after it.
+        if (ends()) return true;
+        // ⭐ C8c · the record was a bare title: the next round reads on from right after it — the first record's own
+        // verdict kept, should a contact send the vote back to it (m4).
+        if (rounds === 1) firstVote = decideVote(candidates, true, lineOffset, charsBefore);
         const used = candidates[0]?.chars ?? 0;
         lineOffset += (candidates[0]?.scan.pendingLine ?? 1) - 1;
         for (const c of candidates) charsBefore += c.chars;
@@ -727,8 +754,18 @@ function makeVoter(rules: CsvRules): Voter {
     finish: () => {
       for (const c of candidates) c.scan.finish();
       finished = true;
+      // ⛔ m4 · a looked-past record the text's end closed is asked the same question.
+      if (atContact()) backToFirst = true;
     },
-    result: () => decideVote(candidates, complete(), lineOffset, charsBefore),
+    result: () => {
+      if (backToFirst && firstVote !== null) {
+        // The first record's verdict, and every character the vote read to reach it.
+        let read = charsBefore;
+        for (const c of candidates) read += c.chars;
+        return { ...firstVote, chars: read };
+      }
+      return decideVote(candidates, complete(), lineOffset, charsBefore);
+    },
   };
 }
 

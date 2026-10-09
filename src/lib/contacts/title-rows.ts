@@ -62,6 +62,17 @@ export function mayBeTitleRow(cells: readonly string[]): boolean {
   return !(read.refusal !== null && read.columns.some((c) => c.status === "notImported" && c.note === read.refusal));
 }
 
+/**
+ * ⭐ IS THIS ROW ITSELF A CONTACT? S15-5's test (`autoMapHeaders().headerless`: a cell reads as a Tanzanian number) — the
+ * ONE answer to "a contact is never a title": `dropTitleRows` stops its search at such a row, and (the review's m4) the
+ * CSV reader's vote, looking past a bare title, stops there too and keeps the first record's verdict, so a one-column
+ * list under a title ("Wateja", then "0712 345 678, 0754 111 222") is never split on a data row's comma — each row keeps
+ * its two numbers in ONE cell, which D3 refuses ("more than one mobile").
+ */
+export function readsAsContact(cells: readonly string[]): boolean {
+  return autoMapHeaders(cells).headerless;
+}
+
 /** ⭐ The ONE note for the rows a title took — rows named, never what they hold. */
 export function titleRowsNote(first: number, last: number): string {
   return first === last
@@ -87,7 +98,7 @@ export function dropTitleRows(file: ParsedContactsFile): ParsedContactsFile {
       return { ...file, rows: kept, width, notes: [...file.notes, titleRowsNote(rows[0].line, rows[k - 1].line)] };
     }
     // ⛔ A contact is never a title: a row that is itself a contact ends the search.
-    if (autoMapHeaders(cells).headerless) return file;
+    if (readsAsContact(cells)) return file;
   }
   return file;
 }
