@@ -14,6 +14,7 @@
 import { formatNumber } from "@/lib/utils";
 import type { ImportChoice, ShownKeepReason } from "@/lib/contacts/import-decide";
 import { IMPORT_REFUSAL_SENTENCES, type PreflightBucket } from "@/lib/contacts/import-flow";
+import { IMPORT_MAX_ROWS } from "@/lib/contacts/import-limits";
 import { formatFileSize, PHONE_FORMAT_REMEDY, XLSX_MAX_BYTES } from "@/lib/contacts/xlsx-limits";
 
 /* ══ PARTS — a sentence with figures in it ═══════════════════════════════════════════════════════ */
@@ -79,7 +80,13 @@ export const ENTRANCE = {
   choose: "Choose a file",
   fileLabel: "Contacts file",
   reads: "Excel (.xlsx) · CSV with any separator · a phone's contacts (.vcf) from iPhone, Android or Google",
-  limits: `An Excel file can be up to ${formatFileSize(XLSX_MAX_BYTES)}; a CSV or a contacts file has no size limit.`,
+  /** ⛔ C3b · said precisely: a CSV or a contacts file has no FILE-SIZE limit, and one import takes at most the run's row
+   *  cap — the figure drawn from `IMPORT_MAX_ROWS`, never typed. */
+  limits: [
+    `An Excel file can be up to ${formatFileSize(XLSX_MAX_BYTES)}; a CSV or a contacts file has no file-size limit — up to `,
+    fig(IMPORT_MAX_ROWS),
+    " rows in one import.",
+  ] as readonly Part[],
   cannot: "Old Excel files (.xls), OpenDocument (.ods), Apple Numbers, PDFs and pictures can't be read — save the list as .xlsx or CSV first.",
   pasteOpen: "Paste instead",
   pasteClose: "Choose a file instead",
@@ -162,7 +169,8 @@ export const MAPPING = {
   noValues: "Empty",
   unnamed: "No column name",
   pickPhone: "Or use Change on the column that holds the phone numbers.",
-  sheetHint: "An Excel file is read from its first visible sheet. If the contacts are on another sheet, move that sheet to the front or hide the sheets before it, save, and choose the file again.",
+  /** ⭐ C3b · G2 · shown only when NO visible sheet has a phone column — the reader then reads the first visible one. */
+  sheetHint: "No visible sheet in this workbook has a column named for phone numbers, so its first visible sheet was read. If the contacts are on another sheet, name their phone column Phone (or Simu), save, and choose the file again.",
   nameWins: "The Name column is used, so this one is not read.",
   cannotRead: "This column can't be read.",
   tableLabel: "The file's columns",

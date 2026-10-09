@@ -752,7 +752,8 @@ async function runAssertions(impl: Impl, tag: string): Promise<void> {
     const writes = /db\.(?:marketingContact|messagingConsent|suppression|contactList|contactListMember)\.(?:create|update|updateIfUnchanged|add|remove|lift|\w+Where)\s*\(/.exec(svc);
     return [!/^\s*["']use (?:client|server)["']/m.test(svc) && sends.length === 0 && writes === null
       && !/export\s+(?:async\s+)?function\s+\w+Action(?![\w$])/.test(svc) && SRC.serviceRaw.startsWith("/**")
-      && imports.includes("@/lib/server/store") && imports.includes("@/lib/contacts/contact-fields") && imports.includes("@/lib/tz-msisdn"),
+      // C3b · G3 · the key is derived through the ONE phone-cell rule (`firstMobileIn`), which reads tz-msisdn itself.
+      && imports.includes("@/lib/server/store") && imports.includes("@/lib/contacts/contact-fields") && imports.includes("@/lib/contacts/phone-cell"),
       `imports [${imports.join(", ")}]${writes ? ` · writes ${writes[0]}` : ""}`];
   });
 

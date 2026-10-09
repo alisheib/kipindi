@@ -22,7 +22,7 @@
  *                                 2.55712E+11 / 7.12346E+08 (digits gone, never repaired) — two different numbers that
  *                                 shortened to the SAME text.
  *  5 google-contacts.csv ........ Google Contacts' export: the name in parts, "* myContacts ::: …" labels, two numbers
- *                                 joined by " ::: " in one cell, a mobile in the column nobody maps.
+ *                                 joined by " ::: " in one cell, a mobile only in the second phone column (Phone 2).
  *  6 outlook-contacts.csv ....... Outlook's export: 92 quoted columns, ANSI bytes, numbers spread over Mobile /
  *                                 Business / Home / Primary / Car, a note with a line break, empty dates as 0/0/00.
  *  7 numbers-only.csv ........... A bare list out of a bulk-SMS tool: no header, 1,000 lines, ~5% repeats, blank lines.
@@ -197,7 +197,8 @@ export type PhoneTruth = {
   readonly source?: string;
   /** XLSX only: how the cell stores it. */
   readonly cell?: "text" | "number" | "formula";
-  /** A cell that holds more than one number (refused as too long): the keys of the numbers inside it. */
+  /** A cell that holds more than one number (parseTzNumber refuses it whole as too long; since C3b · G3 the importer
+   *  takes the FIRST Tanzanian mobile in it — `phone-cell.ts`): the keys of the numbers inside it, in the order written. */
   readonly holds?: readonly string[];
   /** `excel_scientific` only: the key Excel shortened away — what the file can no longer say. */
   readonly lost?: string;
@@ -519,7 +520,8 @@ function noNumber(word: string): PhoneDraft {
   return { written: word, key: null, kind: "none" };
 }
 
-/** Two numbers in one cell, joined as offices join them (" / ") or as Google does (" ::: "): one value, too long. */
+/** Two numbers in one cell, joined as offices join them (" / ") or as Google does (" ::: "): one value, too long for
+ *  parseTzNumber — the importer reads its first mobile (C3b · G3), the first of `holds`. */
 function twoInOneCell(n1: string, s1: Spelling, n2: string, s2: Spelling, joiner: string): PhoneDraft {
   return { written: spell(n1, s1) + joiner + spell(n2, s2), key: null, kind: "long", holds: [keyOf(n1), keyOf(n2)] };
 }
@@ -1417,9 +1419,9 @@ function makeGoogleCsv(): Built {
     header: GOOGLE_HEADER,
     notes: [
       "The mapped columns: First Name + Last Name (no Name column — the name is composed), E-mail 1 - Value, Phone 1 - Value, Notes.",
-      "Phone 2 - Value is no alias, so it is not read; Labels is Google's label column — recognised and not read (A1.5).",
-      `Lines ${TWO_IN_ONE.map((i) => i + 1).join(" and ")}: two numbers joined by " ::: " in Phone 1 - Value — one cell, too long; holds names both.`,
-      `Line ${MOBILE_IN_COLUMN_2 + 1}: a landline in Phone 1, the mobile only in Phone 2. Line ${NO_PHONE + 1}: no phone at all.`,
+      "Phone 2 - Value is no alias of its own: since C3b (G4) the browser reads it through ONE added column, Phone (first mobile of: Phone 1 - Value, Phone 2 - Value), mapped as Phone. Labels is Google's label column — recognised and not read (A1.5).",
+      `Lines ${TWO_IN_ONE.map((i) => i + 1).join(" and ")}: two numbers joined by " ::: " in Phone 1 - Value — one cell, too long for parseTzNumber; holds names both, and since C3b (G3) the first is imported.`,
+      `Line ${MOBILE_IN_COLUMN_2 + 1}: a landline in Phone 1, the mobile only in Phone 2 (imported since C3b, G4). Line ${NO_PHONE + 1}: no phone at all.`,
       `Line ${REPEAT_AT + 1} repeats line ${REPEAT_OF + 1}'s number in another spelling.`,
     ],
     lead: csvLine(GOOGLE_HEADER, EXCEL_COMMA),
@@ -1531,7 +1533,7 @@ function makeOutlook(): Built {
     delimiter: "comma",
     header: OUTLOOK_HEADER,
     notes: [
-      "Only Mobile Phone is a phone alias: numbers in Business, Home, Primary, Car and Other Phone are not auto-mapped.",
+      "Only Mobile Phone is a phone alias: since C3b (G4) the browser adds ONE column, Phone (first mobile of: Mobile Phone, …), mapped as Phone — each row's first Tanzanian mobile among the phone columns, Mobile Phone first.",
       "Line 2's first name has an e-acute (byte 0xE9) inside the first 4 KB, so the sniff chooses windows-1252.",
       "Line 5: the mobile is only in Business Phone. Line 8: a Home Phone landline beside the mobile. Line 11: only in Primary Phone. " +
         "Line 14: a Kenyan mobile. Line 20: a Car Phone mobile beside a different Mobile Phone one. Lines 3, 9, 15 and 21 add a landline written +255 2… in Business Phone.",
@@ -1717,14 +1719,14 @@ function makeMessy(): Built {
     delimiter: "comma",
     header,
     notes: [
-      `⛔ Line ${at2.broken} opens a quotation mark that never closes: the CSV reader refuses the WHOLE file (unterminated_quote, naming line ${at2.broken}). ` +
-        "Cut the bytes at brokenAtByte to read every record above it.",
+      `Line ${at2.broken} opens a quotation mark that never closes: since C3b (G1) the CSV reader keeps every record above it and lists line ${at2.broken} ` +
+        "— with everything it swallowed — as ONE unreadable record. The bytes before brokenAtByte are a complete file.",
       "Namba (column 1) is the row serial — a WEAK phone alias; Simu ya Mkononi (column 3) is a STRONG one and must win. " +
         "Mkoa and Kiasi (TSh) are not contact fields; the last two columns have no header.",
       `Line ${at2.blank} is empty and line ${at2.spaces} holds only spaces: both blank.`,
       `Refused numbers: foreign lines ${at2.kenya}, ${at2.uganda}, ${at2.usa}; landline ${at2.landline}; toll-free ${at2.tollfree}; too short ${at2.short}; ` +
         `too long ${at2.long}; a letter for a digit ${at2.letters}; unallocated ${at2.withdrawn} (${WITHDRAWN_NDCS.length > 0 ? `the withdrawn 0${WITHDRAWN_NDCS[0]}` : "011"}) and ${at2.unplanned} (011); no digits ${at2.none}.`,
-      `Line ${at2.two} holds two numbers in one cell. Lines ${at2.hyperlink}–${at2.minus} have formula names (= + @ -). Line ${at2.longName}'s name is ${LONG_NAME.length} characters.`,
+      `Line ${at2.two} holds two numbers in one cell (since C3b, G3, the first is imported). Lines ${at2.hyperlink}–${at2.minus} have formula names (= + @ -). Line ${at2.longName}'s name is ${LONG_NAME.length} characters.`,
       `Line ${at2.lineBreak}'s Maelezo cell holds a line break inside quotes: one record, two physical lines. Line ${at2.badEmail}: an email with no dot in its domain. ` +
         `Line ${at2.fortyTags}: ${FORTY_TAGS.length} tags in one cell.`,
       `Line ${at2.repeat} repeats line ${at2.first}'s number; line ${at2.guard}'s number carries the export's leading apostrophe ('+255…); line ${at2.empty} has no number.`,
@@ -1988,8 +1990,8 @@ async function makeExcelMultiSheet(): Promise<Built> {
     header,
     "Wateja",
     [
-      "people describes the SECOND sheet, Wateja. ⛔ The shipped reader reads the FIRST VISIBLE sheet — Maelezo, a title and two notes — " +
-        "so as the file stands the import finds no Phone column; the officer must move Wateja first.",
+      "people describes the SECOND sheet, Wateja. Since C3b (G2) the reader reads the first VISIBLE sheet whose header row has a phone column — " +
+        "Wateja, not the cover page Maelezo — and says so in a note naming it (sheet 2 of 3).",
       `Hesabu is hidden. Line ${REPEAT_AT + 1} of Wateja repeats line ${REPEAT_OF + 1}'s number.`,
     ],
     settlePeople(drafts, 2),

@@ -28,8 +28,14 @@ import type { ParsedContactsFile } from "@/lib/contacts/parsed-file";
 import { ENTRANCE, MAPPING } from "./import-copy";
 import { ActionsRow, ButtonText, ImportAlert, Parts, SectionHeading, type ImportAlertState } from "./import-parts";
 
-/** What the officer settled on: the mapping, the header row it was made against, and how many rows are column names. */
-export type MappingChoice = { readonly mapping: ColumnMapping; readonly headers: string[]; readonly headerRows: 0 | 1 };
+/** What the officer settled on: the mapping, the header row it was made against, how many rows are column names, and
+ *  (C3b · G4) the file AS THE READING STAGES IT — the file itself, or with its one first-mobile column added. */
+export type MappingChoice = {
+  readonly mapping: ColumnMapping;
+  readonly headers: string[];
+  readonly headerRows: 0 | 1;
+  readonly file: ParsedContactsFile;
+};
 
 /** The file the panel reads: its parsed shape, its name (null for a paste), and whether it is a list paste. */
 export type MappingSource = { readonly file: ParsedContactsFile; readonly name: string | null; readonly list: boolean };
@@ -65,7 +71,9 @@ export function ImportMappingPanel({
   const [mapping, setMapping] = useState<ColumnMapping>(initial.mapping);
   const [open, setOpen] = useState<number | null>(null);
 
-  const file = source.file;
+  // ⭐ C3b · G4 · the file AS THIS READING STAGES IT (a first-mobile column may be added): its samples, its counts, and the
+  // rows Next stages. A new reading is always made from the file as read (`source.file`), never from this one.
+  const file = reading.file;
   const headerRows = reading.headerRows;
   const dataRows = Math.max(0, file.rows.length - headerRows);
   const total = dataRows + file.unreadable.length;
@@ -81,7 +89,7 @@ export function ImportMappingPanel({
 
   /** The officer's word on the first row: the columns are read again from it, and the mapping starts over. */
   const turnFirstRow = (asContact: boolean) => {
-    const next = mappingFor(file, { list: source.list, firstRow: asContact ? "contact" : "header" });
+    const next = mappingFor(source.file, { list: source.list, firstRow: asContact ? "contact" : "header" });
     setReading(next);
     setMapping(next.mapping);
     setOpen(null);
@@ -121,8 +129,9 @@ export function ImportMappingPanel({
         </Callout>
       )}
       {file.format === "vcard" && <p className="text-body-sm text-text-secondary">{MAPPING.vcard}</p>}
-      {/* ⭐ A workbook whose first visible sheet holds no phone column (a cover sheet): the reader read that sheet, and
-          the officer is told which one is read and how to put the contacts first. */}
+      {/* ⭐ C3b · G2 · a workbook none of whose visible sheets has a phone column: the reader read its first visible sheet
+          (a cover page before the contacts is passed over when a later sheet has one), and the officer is told so and
+          how to name the phone column. */}
       {file.format === "xlsx" && noPhone && !reading.headerless && reading.refusal === null && (
         <Callout tone="warning" role="status">{MAPPING.sheetHint}</Callout>
       )}
@@ -265,7 +274,7 @@ export function ImportMappingPanel({
           loading={busy}
           disabled={!mayAct || held !== null}
           title={nextReason ?? undefined}
-          onClick={() => onNext({ mapping, headers: [...reading.headers], headerRows })}
+          onClick={() => onNext({ mapping, headers: [...reading.headers], headerRows, file: reading.file })}
           data-block="import-mapping-next"
         >
           <ButtonText>{total > 0 ? <Parts parts={MAPPING.next(total)} /> : MAPPING.nextPlain}</ButtonText>

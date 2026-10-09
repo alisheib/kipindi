@@ -185,6 +185,10 @@ console.log("\n[client-graph-safe] \u00a71 client-reachable modules stay clear o
     // They import only src/lib/contacts modules, tz-msisdn.ts and phone-normalize.ts, all pinned here.
     "lib/contacts/import-read.ts",
     "lib/contacts/import-loop.ts",
+    // ⭐ ADDED 2026-10-09 (S15 · C3b, decision M3). The ONE phone-cell rule — the first Tanzanian mobile among the numbers a
+    // cell holds: the browser's reader (the list paste, the first-mobile column) and the server's staging, check and commit
+    // all ask it. It imports only tz-msisdn.ts, pinned here.
+    "lib/contacts/phone-cell.ts",
     // ⭐ ADDED 2026-10-01 (marketing S10, the pure engines): client-safe src/lib/marketing modules the composer, the
     // estimate and the confirmation will import into client components — each must stay free of the Prisma client.
     "lib/marketing/erasure-mark.ts",

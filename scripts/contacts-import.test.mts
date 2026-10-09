@@ -108,6 +108,8 @@ const REGISTRY: readonly Registered[] = [
   { file: "contacts-import/check.mts", owner: "S15", covers: "src/lib/server/contacts/import-check.ts — the check's five boxes, the labels, the changes pages, the facts loader" },
   { file: "contacts-import/commit.mts", owner: "S15", covers: "src/lib/server/contacts/import-commit.ts + import-actions.ts — the start, the commit step, pause · resume · cancel, the failures, the result" },
   { file: "contacts-import/flow.mts", owner: "S15", covers: "src/lib/contacts/{import-read,import-loop}.ts — the browser's reader and the one loop driver" },
+  // S15 · C3b (2026-10-09) · G3 — the ONE phone-cell rule and its server callers (staging's key, the check's sentence, the commit's raw text).
+  { file: "contacts-import/phone-cell.mts", owner: "S15", covers: "src/lib/contacts/phone-cell.ts — the first Tanzanian mobile of a several-number cell, its sentence, and its three server callers" },
 ];
 
 /* ══ THE HARNESS ════════════════════════════════════════════════════════════════════════════════ */

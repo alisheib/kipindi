@@ -15,8 +15,9 @@
  * on line 4 and again on line 31,000 is "repeated" whatever page each falls on, and an invalid or unreadable first
  * occurrence never claims a number (`firstLines`' own rule, import-decide.ts).
  *   · unreadable — the record carries a read error (X19);
- *   · invalid — a field problem (X20), a number `parseTzNumber` refuses (its sentence), or one of the sample sheet's
- *     example numbers (`SAMPLE_ROW_SENTENCE`, M2) — ⛔ the sentence never repeats the cell;
+ *   · invalid — a field problem (X20), a cell that yields no Tanzanian mobile (`phoneCellRefusal` — `parseTzNumber`'s
+ *     sentence; for a cell of several numbers none of which is a mobile, its first number's — C3b · G3), or one of the
+ *     sample sheet's example numbers (`SAMPLE_ROW_SENTENCE`, M2) — ⛔ the sentence never repeats the cell;
  *   · repeated — a decidable row whose number an EARLIER decidable row carries;
  *   · new — decide() creates it; in the book — anything else decide() reads (a player's number, a stopped one, an
  *     erased one disguised as the ordinary contact it reads as — X22) — ⭐ S15-2: there is NO "has an account" box.
@@ -57,7 +58,7 @@ import { audit } from "@/lib/server/audit";
 import { mayReveal } from "@/lib/server/rbac";
 import { IMPORT_STAGING_DEPS, STAGING_SENTENCES, isImportRunId, mayDriveImport } from "./import-staging";
 import type { ContactImportView, StagingRefusal } from "./import-staging";
-import { parseTzNumber } from "@/lib/tz-msisdn";
+import { phoneCellRefusal } from "@/lib/contacts/phone-cell";
 import { maskPhone } from "@/lib/phone-normalize";
 import { SAMPLE_ROW_SENTENCE, isSampleMsisdn } from "@/lib/contacts/sample-sheet";
 import { cleanDisplayName, holdsPhoneRun } from "@/lib/contacts/contact-fields";
@@ -248,15 +249,17 @@ export type StagedRowClass =
 
 /**
  * ⭐ THE ONE CLASSIFIER — the check's buckets and the commit's `fail('invalid')` read it, so the two cannot disagree.
- * A read error (X19) → unreadable; a field problem (X20) → invalid with its sentence; no number → invalid with
- * `parseTzNumber`'s sentence for the cell; a sample-sheet number (M2) → invalid with `SAMPLE_ROW_SENTENCE`; else
- * decidable. ⛔ Every sentence names the problem, never the cell.
+ * A read error (X19) → unreadable; a field problem (X20) → invalid with its sentence; no number → invalid with the
+ * ONE phone-cell rule's sentence for the cell (`phoneCellRefusal`: `parseTzNumber`'s, or — C3b · G3 — for a cell of
+ * several numbers none of which is a Tanzanian mobile, its first number's); a sample-sheet number (M2) → invalid with
+ * `SAMPLE_ROW_SENTENCE`; else decidable. ⛔ Every sentence names the problem, never the cell. The key itself is staging's
+ * (`stagedRowFrom`, through the same rule's `firstMobileIn`) — never derived again here.
  */
 export function classifyStagedRow(row: StoredContactImportRow, isSample: (msisdn: string) => boolean): StagedRowClass {
   if (row.readError !== null) return { kind: "unreadable", line: row.line, sentence: row.readError };
   const problem = row.problems[0];
   if (problem !== undefined) return { kind: "invalid", line: row.line, sentence: problem.sentence };
-  if (row.msisdn === null || row.msisdn === "") return { kind: "invalid", line: row.line, sentence: parseTzNumber(row.rawPhone).reason };
+  if (row.msisdn === null || row.msisdn === "") return { kind: "invalid", line: row.line, sentence: phoneCellRefusal(row.rawPhone) };
   if (isSample(row.msisdn)) return { kind: "invalid", line: row.line, sentence: SAMPLE_ROW_SENTENCE };
   return {
     kind: "decidable",

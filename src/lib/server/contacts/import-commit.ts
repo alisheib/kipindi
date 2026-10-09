@@ -74,6 +74,7 @@ import {
 } from "./import-check";
 import type { ImportCheckDeps } from "./import-check";
 import { parseTzNumber } from "@/lib/tz-msisdn";
+import { firstMobileIn } from "@/lib/contacts/phone-cell";
 import { SAMPLE_ROW_SENTENCE } from "@/lib/contacts/sample-sheet";
 import { compareListsByName, listNameKey, parseListName } from "@/lib/contacts/bulk-rules";
 import {
@@ -473,8 +474,11 @@ async function planStep(
   decisions.forEach((d, i) => {
     const { row, candidate } = decidable[i];
     if (d.kind === "create") {
+      // ⛔ C3b · G3 · the new contact keeps the number AS WRITTEN — the part of a several-number cell that was read, never
+      // the whole cell: another person's number never rides into this contact's raw text (and past an erasure of it).
       const born = deps.newRow({
-        number: parseTzNumber(candidate.msisdn), rawInput: row.rawPhone, displayName: candidate.displayName, email: candidate.email,
+        number: parseTzNumber(candidate.msisdn), rawInput: firstMobileIn(row.rawPhone)?.text ?? row.rawPhone,
+        displayName: candidate.displayName, email: candidate.email,
         tags: candidate.tags, notes: candidate.notes, source: "IMPORT", sourceRef: run.id, importId: run.id, officerId, at,
       });
       plan.creates.push({ ordinal: row.ordinal, row: born });

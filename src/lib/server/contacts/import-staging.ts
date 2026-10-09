@@ -10,8 +10,10 @@
  * The pre-flight (U30) and the commit (U32) read the staged rows; ⛔ this module writes no contact.
  *
  * ⛔ THE SERVER DERIVES, THE BROWSER ONLY POSTS. Every record is drafted HERE, from its cells, by U28's `draftContactRow`
- * with the run's STORED mapping, and its key comes from `parseTzNumber` on the drafted phone — a posted key, verdict or
- * outcome is never read (`stagedRowFrom` builds a new row from named keys alone). A field over its limit is REPORTED,
+ * with the run's STORED mapping, and its key comes from the drafted phone through `firstMobileIn` (C3b · G3: the whole
+ * cell when `parseTzNumber` reads it as one number, else the FIRST Tanzanian mobile among the numbers a cell holds —
+ * `src/lib/contacts/phone-cell.ts`, the one rule) — a posted key, verdict or outcome is never read (`stagedRowFrom`
+ * builds a new row from named keys alone). A field over its limit is REPORTED,
  * never clipped (X20): the row's `problems` name the field and U30 counts the row invalid. Each record the reader could
  * not read is staged too, with its one sentence (X19), so a record is never lost between "read" and "shown".
  * ⛔ NO STORED COUNTER (OD26): every total is counted from the rows (`db.contactImport.totals`).
@@ -35,7 +37,7 @@ import { randomBytes } from "node:crypto";
 import { db, CONTACT_IMPORT_ROW_PAGE_MAX } from "@/lib/server/store";
 import type { ContactImportStatus, ContactImportTotals, StoredContactImport, StoredContactImportRow } from "@/lib/server/store";
 import { audit } from "@/lib/server/audit";
-import { parseTzNumber } from "@/lib/tz-msisdn";
+import { firstMobileIn } from "@/lib/contacts/phone-cell";
 import { CONTACT_FIELDS, charCount, draftContactRow, validateMapping } from "@/lib/contacts/contact-fields";
 import type { ColumnMapping } from "@/lib/contacts/contact-fields";
 import { CONTACTS_FILE_FORMATS } from "@/lib/contacts/parsed-file";
@@ -182,8 +184,9 @@ function cleanReadError(raw: string): string | null {
  * ⭐ THE ONE ROW BUILDER — a posted record to the row staged for it, built NEW from named keys (`line`, then `cells` or
  * `readError`, exactly one): whatever else a request carries — a key, a verdict, an outcome — is never read. A readable
  * record is drafted by U28's `draftContactRow` with the run's STORED mapping, every field kept whole and every
- * over-limit or malformed one REPORTED in `problems` (X20); its key is `parseTzNumber`'s, set only for a sendable mobile
- * number. An unreadable record keeps its sentence, cleaned. Null for a record of neither shape.
+ * over-limit or malformed one REPORTED in `problems` (X20); its key is set only for a sendable mobile number — the
+ * phone cell's, or (C3b · G3) the FIRST Tanzanian mobile among the numbers the cell holds (`firstMobileIn`), while
+ * `rawPhone` keeps the whole cell. An unreadable record keeps its sentence, cleaned. Null for a record of neither shape.
  */
 /**
  * ⛔ ONE BAD BYTE MUST NEVER WEDGE A RUN (review F2). Postgres text cannot hold NUL (0x00) and refuses the whole batch
@@ -214,13 +217,14 @@ export function stagedRowFrom(raw: unknown, ordinal: number, run: StagingRunCont
   const cells = raw.cells;
   if (!Array.isArray(cells) || cells.length > COLUMNS_MAX || !cells.every((c) => typeof c === "string")) return null;
   const draft = draftContactRow((cells as string[]).map(storableCell), run.mapping);
-  const number = parseTzNumber(draft.rawPhone);
+  // ⭐ C3b · G3 · ONE number per person: the cell's own, or the first Tanzanian mobile among the numbers it holds.
+  const mobile = firstMobileIn(draft.rawPhone);
   return {
     importId: run.id,
     ordinal,
     line,
     rawPhone: draft.rawPhone,
-    msisdn: number.verdict === "ok" ? number.msisdn : null,
+    msisdn: mobile === null ? null : mobile.number.msisdn,
     displayName: draft.displayName,
     email: draft.email,
     tags: [...draft.tags],
