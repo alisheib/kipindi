@@ -321,7 +321,9 @@ async function runA() {
       await openAdd(page);
       await page.locator(NUMBER).first().focus();
       await paste(page, "0754 321 987");
-      await wait(1200);
+      // The book's answer before the picture: Save is enabled once "Checking the book…" has settled. A fresh dev server
+      // compiles the check on its first call (52 s on a busy machine, 2026-10-09) — the picture must never show it.
+      await page.waitForFunction((sel) => { const b = document.querySelector(sel); return !!b && !b.disabled; }, SAVE, { timeout: 180_000 });
       await field(page, "displayName").fill("Neema Mushi");
       await field(page, "email").fill("neema@example.com");
       await field(page, "tags").fill("vip, dar");
