@@ -33,13 +33,15 @@
  *       unreadable one said as the database out of reach), no writer or reader of its own;
  *   O17 the wiring — the scripts and predeploy (a gate outside the pipeline is not a gate);
  *   O18 check writes nothing and prints the words exactly as stored, the previews and the exact apply line;
- *   O19 ⭐ ALI'S APPROVALS OF 2026-10-07, AS COMMITTED (`docs/marketing-approvals/2026-10-07/`) — every text word for word
- *       what he approved (G5 his sentence, G4 the code's suggestions, G10 spec Appendix B.2–B.6, read here — never by the
- *       door), every digest in the door's header the file's own, and each file applied on the memory twin in one save;
+ *   O19 ⭐ ALI'S APPROVALS, AS COMMITTED BY DAY (`docs/marketing-approvals/<day>/`) — every text word for word what he
+ *       approved (G5 his sentence, G4 the code's suggestions, G10 spec Appendix B.2–B.6, read here — never by the door),
+ *       the 2026-10-09 files the 2026-10-07 words less exactly the stop-link clause, every digest in the door's header its
+ *       file's own (and no apply of an applied day offered again), and all five applied on the memory twin in order;
  *   O20 U13 · the RG line judged against the send window AS READ, as the writer judges it — refused before the record.
- *   ⚠️ O19 compares with the suggestions and the spec AS THEY STAND. The 2026-10-07 files are evidence and never change:
- *   when a later commit re-words a suggestion or an Appendix B line (the stop link's written confirmation will), it files
- *   new approval files in a new dated folder and points O19 at them.
+ *   ⚠️ O19 compares with the suggestions and the spec AS THEY STAND. A dated folder's files are evidence and never change:
+ *   when a later commit re-words a suggestion or an Appendix B line, it files new approval files in a new dated folder and
+ *   points O19 at them — as the owner's ruling of 2026-10-09 (no stop link in any message) did, in
+ *   `docs/marketing-approvals/2026-10-09/`.
  *
  * ⛔ `--prove-red` FIRST PROVES THE BASELINE GREEN, then PLANTS EACH DEFECT IN MEMORY — a wrapper around the real door, one
  * rule of its bundle, one source string — and requires the claim that NAMES it to turn red. No file is written, no database is
@@ -104,7 +106,7 @@ const L = {
   o16: "O16 · the door's source — the CLI rewrites Railway's private host to the public proxy before it loads any src module (it statically names only node:fs — no import from, bare import or export from of anything else), refuses without a database before it loads one, checks production's environment (with its audit secret) before check and apply but not status, refuses both when the database's clock cannot be read — saying the database could not be reached, never to sync this PC — then refuses an apply on the clock and only warns a check, hands the door the audit log's durable reader and writes nothing itself; owner-save.ts imports no config store, names no audit-row reader and none of the card's suggestions, records before it calls the writers and calls them only through its deps as 'ops: <by>'; no src file imports the door",
   o17: "O17 · the wiring — test:/red:/ops:marketing-owner-save resolve to this suite and the door, and predeploy runs the suite once, in the Marketing SMS block: right after test:marketing-window, which follows test:marketing-settings (both of whose neighbours other suites pin)",
   o18: "O18 · check writes nothing and prints, for every text, its words exactly as they will be stored, the page versions it would stamp and the opening checks, and the exact apply line with every digest",
-  o19: "O19 · ⭐ ALI'S APPROVALS OF 2026-10-07, AS COMMITTED — the three files are UTF-8 with no byte-order mark and no escape, read by the door's own reader as exactly their gate's keys and approvedOn 2026-10-07: G5 is his sentence (the one the decisions log quotes), G4 the nine wordings word for word the code's suggestions, G10 the five lines word for word spec Appendix B.2–B.6 in all three languages; every --expect in the door's header is the file's own digests; and on the memory twin each checks clean and applies in one save (G10 stamping each page once, every public opening check passing after it)",
+  o19: "O19 · ⭐ ALI'S APPROVALS, AS COMMITTED BY DAY — the five files (2026-10-07's G5, G4 and G10; 2026-10-09's G4 and G10) are UTF-8 with no byte-order mark and no escape, read by the door's own reader as exactly their gate's keys and their own day: G5 is his sentence (the one the decisions log quotes); 2026-10-07's G4 the nine wordings as the code suggested them that day, and 2026-10-09's the licence basis alone, re-worded in exactly its stop-link clause to the code's suggestion now; 2026-10-07's G10 the five lines of spec Appendix B.2–B.6 as he approved them, and 2026-10-09's the two privacy lines alone, each the 2026-10-07 line less exactly the stop-link clause — word for word Appendix B.3–B.4 now, in all three languages, and the dev typed-test seed's copies; the door's header gives status, then check and apply for each 2026-10-09 file with its own digests, ONE redeploy after the last, and never an apply of a 2026-10-07 file again; and on the memory twin all five check clean and apply in order (one save per G10 file, each page moved once per save, every public opening check passing after)",
   o20: "O20 · U13 · THE SEND WINDOW — the RG line is judged against the hours AS READ (the writer's own reader): a time the window does not use is refused invalid before the record in the card's words; under a 09:00–19:00 window '20:00' is refused while the default window passes it; hours that cannot be read refuse window_unreadable before the record with nothing written (check too), while a file without the RG line never asks; check prints the window it judged against",
 } as const;
 
@@ -150,11 +152,32 @@ const LONG_LINE = "Umepokea hii kwa sababu namba yako ipo kwenye orodha yetu.";
 /** The spec whose Appendix B.2–B.6 Ali approved as G10 (the decisions log names it), and the log itself. */
 const SPEC_PATH = "docs/marketing-specs/U33a-U37c-OD58.md";
 const DECISIONS_PATH = "docs/COMPLIANCE-DECISIONS.md";
-/** ⭐ The committed approvals of 2026-10-07 — the files the door's header applies. */
-const APPROVALS_DIR = "docs/marketing-approvals/2026-10-07";
-const GATES = ["G5", "G4", "G10"] as const;
-type Gate = (typeof GATES)[number];
-const approvalPath = (g: Gate): string => `${APPROVALS_DIR}/approval-${g}.json`;
+type Gate = "G5" | "G4" | "G10";
+/**
+ * ⭐ THE COMMITTED APPROVALS, BY DAY (`docs/marketing-approvals/<day>/approval-<gate>.json`) — evidence; a file never changes.
+ *   2026-10-07 · Ali's three — APPLIED on production on 2026-10-07/08, and never offered to run again.
+ *   2026-10-09 · the owner's ruling of that day (a marketing SMS is sent exactly as the officer wrote it, no stop link): the
+ *                licence basis's suggestion re-worded (G4) and the two privacy lines less the stop-link clause (G10) — the
+ *                files the door's header applies, once Ali approves them.
+ * In the order they are applied.
+ */
+const APPROVALS = [
+  { day: "2026-10-07", gate: "G5" }, { day: "2026-10-07", gate: "G4" }, { day: "2026-10-07", gate: "G10" },
+  { day: "2026-10-09", gate: "G4" }, { day: "2026-10-09", gate: "G10" },
+] as const satisfies ReadonlyArray<{ readonly day: string; readonly gate: Gate }>;
+type Approval = (typeof APPROVALS)[number];
+type ApprovalId = `${Approval["day"]}/${Approval["gate"]}`;
+const approvalId = (a: Approval): ApprovalId => `${a.day}/${a.gate}` as ApprovalId;
+const approvalPath = (a: Approval): string => `docs/marketing-approvals/${a.day}/approval-${a.gate}.json`;
+/** The day whose files the header applies; every earlier day's are applied, and the header offers no apply of them. */
+const NEWEST_DAY = "2026-10-09";
+/** O19 · the database's clock on the day the newest approvals are carried out — an odd millisecond, as `T_WRITE`. */
+const O19_NOW = Date.parse("2026-10-09T09:37:00.789Z");
+/** ⭐ What the owner's ruling of 2026-10-09 took out of `privacy.smsGateway` and `privacy.lawfulLicence` — the stop-link
+ *  clause, in each language — and the licence basis's one re-worded clause, before and after. */
+const STOP_LINK_CLAUSE: PolicyTexts = { en: "with the stop link in every offer or ", sw: "kwa kiungo cha kusimamisha kilicho katika kila ofa au ", zh: "通过每条优惠短信中的退订链接或" };
+const LICENCE_CLAUSE_WAS = "every message carries a stop link, and a stop is kept for good.";
+const LICENCE_CLAUSE_NOW = "if they ask us to stop, the stop is kept for good.";
 
 /** Appendix B's sections and the line each one drafts. */
 const APPENDIX_SECTIONS: ReadonlyArray<readonly [string, string]> = [
@@ -408,6 +431,8 @@ const SRC = {
   page: "src/app/admin/system/page.tsx",
   wForm: "src/app/admin/system/marketing-wordings-form.tsx",
   pForm: "src/app/admin/system/policy-lines-form.tsx",
+  /** O19 · the dev typed-test seed, whose copies of the two re-worded privacy lines must be the newest approval's words. */
+  seed: "src/app/api/dev-test/marketing-typed-test-seed/route.ts",
 } as const;
 
 /* Every STATIC module specifier a (decommented) source names — `import … from "…"`, a bare `import "…"`, and
@@ -468,9 +493,9 @@ type Impl = {
   readonly sources: Readonly<Record<string, string>>;
   readonly importers: { readonly files: number; readonly importers: readonly string[] };
   readonly pkg: string;
-  /** ⭐ O19 · the committed approval files, as bytes on disk; the CLI as written (its header carries the operator's lines);
-   *  the spec and the decisions log the approvals are held to. */
-  readonly approvals: Readonly<Record<Gate, Uint8Array>>;
+  /** ⭐ O19 · the committed approval files, by day and gate, as bytes on disk; the CLI as written (its header carries the
+   *  operator's lines); the spec and the decisions log the approvals are held to. */
+  readonly approvals: Readonly<Record<ApprovalId, Uint8Array>>;
   readonly cliRaw: string;
   readonly spec: string;
   readonly decisions: string;
@@ -488,7 +513,7 @@ const REAL: Impl = {
   sources: Object.fromEntries(Object.values(SRC).map((rel) => [rel, decomment(read(rel))])),
   importers: doorImporters(),
   pkg: read("package.json"),
-  approvals: Object.fromEntries(GATES.map((g) => [g, new Uint8Array(readFileSync(join(ROOT, approvalPath(g))))])) as Record<Gate, Uint8Array>,
+  approvals: Object.fromEntries(APPROVALS.map((a) => [approvalId(a), new Uint8Array(readFileSync(join(ROOT, approvalPath(a))))])) as Record<ApprovalId, Uint8Array>,
   cliRaw: read(SRC.cli),
   spec: read(SPEC_PATH),
   decisions: read(DECISIONS_PATH),
@@ -1145,94 +1170,166 @@ async function runAssertions(impl: Impl, prefix: string): Promise<void> {
     });
   });
 
-  // ── O19 · ⭐ ALI'S APPROVALS OF 2026-10-07, AS COMMITTED ───────────────────────────────────────────────────────────
-  // ⛔ What he approved is read HERE — his sentence, the code's suggestions, the spec's Appendix — and never by the door
-  // (O16 holds it to that): the door saves the file, this claim proves the file is his approval.
+  // ── O19 · ⭐ ALI'S APPROVALS, AS COMMITTED BY DAY ─────────────────────────────────────────────────────────────────
+  // ⛔ What he approved is read HERE — his sentence, the code's suggestions, the spec's Appendix, the 2026-10-07 files
+  // themselves — and never by the door (O16 holds it to that): the door saves a file, this claim proves the file is his.
   await claim(p(L.o19), async () => {
     const nine = WPURE.WORDING_KEYS.filter((k) => k !== "source.phrase");
     const sameKeys = (a: readonly string[], b: readonly string[]): boolean => [...a].sort().join("|") === [...b].sort().join("|");
     const samePT = (a: PolicyTexts | null, b: PolicyTexts | undefined): boolean =>
       a !== null && b !== undefined && a.en === b.en && a.sw === b.sw && a.zh === b.zh;
-    const readings = Object.fromEntries(GATES.map((g) => [g, impl.readApproval(impl.approvals[g], DB_NOW)])) as Record<Gate, Reading>;
-    const wordingsIn = (g: Gate) => { const r = readings[g]; return r.ok && r.approval.record === "wordings" ? r.approval.wordings : null; };
-    const linesIn = (g: Gate) => { const r = readings[g]; return r.ok && r.approval.record === "policy" ? r.approval.lines : null; };
-    const g5 = wordingsIn("G5");
-    const g4 = wordingsIn("G4");
-    const g10 = linesIn("G10");
+    const readings = Object.fromEntries(APPROVALS.map((a) => [approvalId(a), impl.readApproval(impl.approvals[approvalId(a)], O19_NOW)])) as Record<ApprovalId, Reading>;
+    const wordingsIn = (id: ApprovalId) => { const r = readings[id]; return r.ok && r.approval.record === "wordings" ? r.approval.wordings : null; };
+    const linesIn = (id: ApprovalId) => { const r = readings[id]; return r.ok && r.approval.record === "policy" ? r.approval.lines : null; };
+    const g5 = wordingsIn("2026-10-07/G5");
+    const g4 = wordingsIn("2026-10-07/G4");
+    const g10 = linesIn("2026-10-07/G10");
+    const g4Now = wordingsIn("2026-10-09/G4");
+    const g10Now = linesIn("2026-10-09/G10");
     const appendix = appendixB(impl.spec);
+    /** The two lines the owner's ruling of 2026-10-09 re-worded. */
+    const REWORDED: readonly string[] = ["privacy.smsGateway", "privacy.lawfulLicence"];
+    /** ⭐ A 2026-10-07 line less EXACTLY the stop-link clause — found once in each language, and nothing else touched. */
+    const lessTheClause = (t: PolicyTexts | null): PolicyTexts | null =>
+      t !== null && (["en", "sw", "zh"] as const).every((l) => t[l].split(STOP_LINK_CLAUSE[l]).length === 2)
+        ? { en: t.en.replace(STOP_LINK_CLAUSE.en, ""), sw: t.sw.replace(STOP_LINK_CLAUSE.sw, ""), zh: t.zh.replace(STOP_LINK_CLAUSE.zh, "") }
+        : null;
+    const licenceThen = g4?.find((x) => x.key === "basis.LICENCE_OUTREACH")?.asTyped ?? null;
+    const licenceNow = WPURE.WORDING_DEFAULTS["basis.LICENCE_OUTREACH"];
+    /** The dev typed-test seed's copy of one policy line (`PASSING_LINES`), read from its source — null when it is not there. */
+    const seedLine = (key: string): PolicyTexts | null => {
+      const src = impl.sources[SRC.seed] ?? "";
+      const at = src.indexOf(`"${key}": {`);
+      if (at < 0) return null;
+      const end = src.indexOf("},", at);
+      const block = src.slice(at, end < 0 ? undefined : end);
+      const text = (l: string): string | null => {
+        const open = block.indexOf(`${l}: "`);
+        if (open < 0) return null;
+        const close = block.indexOf(`",`, open + l.length + 3);
+        return close < 0 ? null : block.slice(open + l.length + 3, close);
+      };
+      const en = text("en"), sw = text("sw"), zh = text("zh");
+      return en === null || sw === null || zh === null ? null : { en, sw, zh };
+    };
     // The file's digests, computed HERE from what the record will store — the operator's lines must name exactly these.
-    const digestsOf = (g: Gate): string | null => {
-      const w = wordingsIn(g);
+    const digestsOf = (id: ApprovalId): string | null => {
+      const w = wordingsIn(id);
       if (w !== null) return w.map((x) => `${x.key}=${shaOf(WPURE.normalizeWording(x.asTyped))}`).join(",");
-      const l = linesIn(g);
+      const l = linesIn(id);
       return l === null ? null : l.map((x) => {
         // A review digests today's words (no text of the file's is stored); new words digest the file's, as stored.
         const texts = PPURE.normalizedPolicyTexts(x.key, x.review ? PPURE.POLICY_LINE_DEFAULTS[x.key] : (x.asTyped ?? { en: "", sw: "", zh: "" }));
         return `${x.key}=${lineShaOf(texts, x.review)}`;
       }).join(",");
     };
-    const headerLines = GATES.filter((g) => {
-      const digests = digestsOf(g);
-      const file = approvalPath(g);
-      return digests !== null && impl.cliRaw.includes(`-- check --file ${file}${LF}`)
-        && impl.cliRaw.includes(`-- apply --file ${file} --by "Claude for Ali (${g})" --reason "${REASON}" --expect "${digests}"${LF}`);
-    });
+    // ⭐ The header's operator lines: the NEWEST day's files — status, then check before apply for each, with the file's own
+    // digests, and ONE redeploy after the last — and no apply of an earlier day's file, ever again (an applied 2026-10-07
+    // G4 or G10 run after 2026-10-09's would save the stop-link words back as a newer version).
+    const newestFiles = APPROVALS.filter((a) => a.day === NEWEST_DAY);
+    const earlierFiles = APPROVALS.filter((a) => a.day !== NEWEST_DAY);
+    const at = (needle: string): number => impl.cliRaw.indexOf(needle);
+    const checkAt = (a: Approval): number => at(`-- check --file ${approvalPath(a)}${LF}`);
+    const applyAt = (a: Approval): number => {
+      const d = digestsOf(approvalId(a));
+      return d === null ? -1 : at(`-- apply --file ${approvalPath(a)} --by "Claude for Ali (${a.gate})" --reason "${REASON}" --expect "${d}"${LF}`);
+    };
+    const statusAt = impl.cliRaw.lastIndexOf(`ops:marketing-owner-save -- status${LF}`);
+    const REDEPLOY = `railway redeploy --service 50pick${LF}`;
+    const lastApplyAt = Math.max(...newestFiles.map(applyAt));
+    const header = {
+      eachNewestFileCheckedThenApplied: newestFiles.every((a) => checkAt(a) >= 0 && applyAt(a) > checkAt(a)),
+      statusFirst: statusAt >= 0 && newestFiles.every((a) => statusAt < checkAt(a)),
+      oneRedeployAfterTheLast: impl.cliRaw.split(REDEPLOY).length === 2 && at(REDEPLOY) > lastApplyAt,
+      noEarlierDayOfferedAgain: earlierFiles.every((a) => !impl.cliRaw.includes(`-- apply --file ${approvalPath(a)}`)),
+    };
 
-    // ⭐ Each file carried out on the memory twin, as the header orders them: check clean, apply, one save per gate.
-    const w = world();
+    // ⭐ All five carried out on ONE memory twin, in their order, on the newest day's clock: check clean, apply, one save each.
+    const w = world({ clock: () => O19_NOW });
     const ran: string[] = [];
-    const checks: Partial<Record<Gate, Outcome>> = {};
-    for (const g of GATES) {
-      const digests = digestsOf(g);
-      const c = await impl.check({ fileBytes: impl.approvals[g], filePath: approvalPath(g) }, w.deps);
-      checks[g] = c;
-      if (c.code !== "checked" || c.lines.some((l) => l.includes("✗"))) ran.push(`${g} check ${c.code}`);
-      const o = await apply(w, impl.approvals[g], digests ?? "", BY(`approval ${g}`));
-      if (o.code !== "done") ran.push(`${g} apply ${o.code}`);
+    const checks: Partial<Record<ApprovalId, Outcome>> = {};
+    for (const a of APPROVALS) {
+      const id = approvalId(a);
+      const c = await impl.check({ fileBytes: impl.approvals[id], filePath: approvalPath(a) }, w.deps);
+      checks[id] = c;
+      if (c.code !== "checked" || c.lines.some((l) => l.includes("✗"))) ran.push(`${id} check ${c.code}`);
+      const o = await apply(w, impl.approvals[id], digestsOf(id) ?? "", BY(`approval ${a.gate}`));
+      if (o.code !== "done") ran.push(`${id} apply ${o.code}`);
     }
     const wRow = w.wRow.row() ?? {};
     const pRow = w.pRow.row() ?? {};
-    const newest = (row: Record<string, unknown>, k: string): Record<string, unknown> | undefined => {
+    const history = (row: Record<string, unknown>, k: string): Array<Record<string, unknown>> => {
       const list = row[k];
-      return Array.isArray(list) && list.length === 1 ? (list[0] as Record<string, unknown>) : undefined;
+      return Array.isArray(list) ? (list as Array<Record<string, unknown>>) : [];
+    };
+    const samePolicy = (v: Record<string, unknown> | undefined, k: string, t: PolicyTexts | null): boolean => {
+      if (v === undefined || t === null) return false;
+      const want = PPURE.normalizedPolicyTexts(k as "rg.marketing", t);
+      return v.en === want.en && v.sw === want.sw && v.zh === want.zh;
     };
     const policyCalls = w.calls.filter((c) => c.record === "policy").length;
     const rgCode = PPURE.POLICY_PAGES.rg.codeVersion;
     const prCode = PPURE.POLICY_PAGES.privacy.codeVersion;
+    // The privacy page moves once per save of new words: by 2026-10-07's G10, then again by 2026-10-09's.
+    const prFirst = PPURE.nextPolicyVersion(prCode, O19_NOW);
+    const prSecond = PPURE.nextPolicyVersion(PPURE.printedPolicyVersion(prCode, { stamp: prFirst, base: prCode }), O19_NOW);
     const record = PPURE.readPolicyLines(pRow);
     const rgHints = PPURE.policyLineProblems("rg.marketing", B2, PPURE.POLICY_LINE_DEFAULTS["rg.marketing"]).hints;
     return verdict({
-      utf8NoBomNoEscape: GATES.every((g) => {
-        const b = impl.approvals[g];
+      utf8NoBomNoEscape: APPROVALS.every((a) => {
+        const b = impl.approvals[approvalId(a)];
         const text = new TextDecoder("utf-8", { fatal: true }).decode(b);
         return !(b[0] === 0xef && b[1] === 0xbb && b[2] === 0xbf) && !text.includes(BACKSLASH);
       }),
-      readByTheDoorAsTheirGate: GATES.every((g) => {
-        const r = readings[g];
-        return r.ok && r.approval.gate === g && r.approval.approvedOn === DAY && r.notes.length === 0;
+      readByTheDoorAsTheirGateAndDay: APPROVALS.every((a) => {
+        const r = readings[approvalId(a)];
+        return r.ok && r.approval.gate === a.gate && r.approval.approvedOn === a.day && r.notes.length === 0;
       }),
       g5IsHisSentence: g5 !== null && g5.length === 1 && g5[0].key === "source.phrase" && g5[0].asTyped === SOURCE_LINE
         && impl.decisions.includes(`**G5 · the source line** "${SOURCE_LINE}" — approved as written.`),
-      g4IsTheCodesSuggestions: g4 !== null && sameKeys(g4.map((x) => x.key), nine)
-        && g4.every((x) => x.asTyped === WPURE.WORDING_DEFAULTS[x.key])
+      // 2026-10-07's G4 — the nine as the code suggested them THAT day: the eight it still suggests, word for word, and the
+      // licence basis that 2026-10-09 re-words in exactly its one clause.
+      g4ThenIsThatDaysSuggestions: g4 !== null && sameKeys(g4.map((x) => x.key), nine)
+        && g4.every((x) => x.key === "basis.LICENCE_OUTREACH" || x.asTyped === WPURE.WORDING_DEFAULTS[x.key])
+        && licenceThen !== null && licenceThen.split(LICENCE_CLAUSE_WAS).length === 2
+        && licenceThen.replace(LICENCE_CLAUSE_WAS, LICENCE_CLAUSE_NOW) === licenceNow
         && impl.decisions.includes("the texts the code offers as suggestions today, word for word"),
-      g10IsAppendixB: appendix !== null && g10 !== null && sameKeys(g10.map((x) => x.key), PPURE.POLICY_LINE_KEYS)
-        && g10.every((x) => !x.review && samePT(x.asTyped, appendix[x.key]))
+      // 2026-10-09's G4 — the licence basis ALONE, the code's suggestion now.
+      g4NowIsTheLicenceBasisAlone: g4Now !== null && g4Now.length === 1 && g4Now[0].key === "basis.LICENCE_OUTREACH"
+        && g4Now[0].asTyped === licenceNow,
+      // 2026-10-07's G10 — the five lines of Appendix B as he approved them: three word for word Appendix B now, and the two
+      // the ruling re-worded each Appendix B now once the stop-link clause is taken out.
+      g10ThenIsAppendixBAsApproved: appendix !== null && g10 !== null && sameKeys(g10.map((x) => x.key), PPURE.POLICY_LINE_KEYS)
+        && g10.every((x) => !x.review && samePT(REWORDED.includes(x.key) ? lessTheClause(x.asTyped) : x.asTyped, appendix[x.key]))
         && impl.decisions.includes(`spec ${BACKTICK}U33a-U37c-OD58.md${BACKTICK} Appendix B.2–B.6`),
-      theHeadersLinesAreTheFiles: headerLines.length === GATES.length,
+      // 2026-10-09's G10 — the two re-worded lines ALONE, each the 2026-10-07 line less exactly the clause: Appendix B.3–B.4.
+      g10NowIsTheTwoLinesLessTheClause: appendix !== null && g10 !== null && g10Now !== null && sameKeys(g10Now.map((x) => x.key), REWORDED)
+        && g10Now.every((x) => !x.review && samePT(lessTheClause(g10.find((y) => y.key === x.key)?.asTyped ?? null), x.asTyped ?? undefined)
+          && samePT(x.asTyped, appendix[x.key])),
+      // …and the dev seed that saves them for the drives says the same words, word for word.
+      theDevSeedSaysTheNewestWords: g10Now !== null && g10Now.length === REWORDED.length
+        && g10Now.every((x) => samePT(seedLine(x.key), x.asTyped ?? undefined)),
+      ...header,
       appliedOnTheTwin: ran.length === 0,
-      g5Saved: newest(wRow, "source.phrase")?.text === SOURCE_LINE,
-      g4Saved: nine.every((k) => newest(wRow, k)?.text === WPURE.WORDING_DEFAULTS[k]),
-      g10InOneSaveEachPageOnce: policyCalls === 1
+      g5Saved: history(wRow, "source.phrase").map((v) => v.text).join("|") === SOURCE_LINE,
+      g4Saved: nine.every((k) => {
+        const texts = history(wRow, k).map((v) => v.text);
+        return k === "basis.LICENCE_OUTREACH"
+          ? texts.length === 2 && texts[0] === licenceThen && texts[1] === licenceNow
+          : texts.length === 1 && texts[0] === WPURE.WORDING_DEFAULTS[k];
+      }),
+      g10SavedOncePerFile: policyCalls === 2
         && PPURE.POLICY_LINE_KEYS.every((k) => {
-          const v = newest(pRow, k);
-          const want = PPURE.normalizedPolicyTexts(k, FIVE[k]);
-          return v !== undefined && v.en === want.en && v.sw === want.sw && v.zh === want.zh;
-        })
-        && sameValue(pRow["version.rg"], { stamp: PPURE.nextPolicyVersion(rgCode, T_WRITE), base: rgCode })
-        && sameValue(pRow["version.privacy"], { stamp: PPURE.nextPolicyVersion(prCode, T_WRITE), base: prCode }),
+          const h = history(pRow, k);
+          const then = g10?.find((y) => y.key === k)?.asTyped ?? null;
+          return REWORDED.includes(k)
+            ? h.length === 2 && samePolicy(h[0], k, then) && samePolicy(h[1], k, FIVE[k])
+            : h.length === 1 && samePolicy(h[0], k, FIVE[k]);
+        }),
+      eachPageMovedOncePerSave: sameValue(pRow["version.rg"], { stamp: PPURE.nextPolicyVersion(rgCode, O19_NOW), base: rgCode })
+        && sameValue(pRow["version.privacy"], { stamp: prSecond, base: prCode }),
       everyOpeningCheckPassesAfter: PPURE.policyOpeningProblems(record).length === 0,
-      aliHearsTheNote: rgHints.length > 0 && rgHints.every((h) => (checks.G10?.lines ?? []).includes(`    note: ${h}`)),
+      aliHearsTheNote: rgHints.length > 0 && rgHints.every((h) => (checks["2026-10-07/G10"]?.lines ?? []).includes(`    note: ${h}`)),
     });
   });
 
@@ -1563,26 +1660,42 @@ if (!PROVE_RED) {
   const drifted: Impl["opsDoorName"] = (stamp) => (stamp.startsWith("ops: ") ? `the ops door: ${stamp.slice(5)}` : null);
 
   /* O19 · a committed approval file that is no longer what Ali approved — each planted as the bytes on disk would be. */
-  const realText = (g: Gate): string => decode(REAL.approvals[g]);
-  const edited = (g: Gate, from: string, to: string): Uint8Array => enc(realText(g).split(from).join(to));
-  const approvalsWith = (g: Gate, bytes: Uint8Array): Impl["approvals"] => ({ ...REAL.approvals, [g]: bytes });
-  /** R-O19a · the licence basis saved without its last words — no longer the code's suggestion. */
-  const G4_DRIFT = edited("G4", "and a stop is kept for good.", "and a stop is kept.");
-  /** R-O19b · one Swahili word of the Blackball line (B.3) changed — no longer Appendix B. */
-  const G10_DRIFT = edited("G10", "na hutuambia kama kila ujumbe umefika", "na hutuambia kama kila ujumbe ulifika");
+  const realText = (id: ApprovalId): string => decode(REAL.approvals[id]);
+  const edited = (id: ApprovalId, from: string, to: string): Uint8Array => enc(realText(id).split(from).join(to));
+  const approvalsWith = (id: ApprovalId, bytes: Uint8Array): Impl["approvals"] => ({ ...REAL.approvals, [id]: bytes });
+  /** R-O19a · 2026-10-09's licence basis without its last words — no longer the code's suggestion. */
+  const G4_DRIFT = edited("2026-10-09/G4", "the stop is kept for good.", "the stop is kept.");
+  /** R-O19b · one Swahili word of 2026-10-09's Blackball line (B.3) changed — no longer Appendix B. */
+  const G10_DRIFT = edited("2026-10-09/G10", "na hutuambia kama kila ujumbe umefika", "na hutuambia kama kila ujumbe ulifika");
   /** R-O19c · another source line than Ali's sentence. */
-  const G5_DRIFT = edited("G5", SOURCE_LINE, "Namba yako iko orodhani kwetu.");
-  /** R-O19d · a G4 file holding eight of the nine — the bought-list notice left out. */
+  const G5_DRIFT = edited("2026-10-07/G5", SOURCE_LINE, "Namba yako iko orodhani kwetu.");
+  /** R-O19d · 2026-10-07's G4 holding eight of the nine — the bought-list notice left out. */
   const G4_EIGHT = (() => {
-    const o = JSON.parse(realText("G4")) as { wordings: Record<string, string> };
+    const o = JSON.parse(realText("2026-10-07/G4")) as { wordings: Record<string, string> };
     delete o.wordings["notice.thirdParty"];
     return enc(JSON.stringify(o, null, 2));
   })();
-  /** R-O19e · the header's G10 apply line naming a stale digest for the RG line. */
-  const RG_DIGEST = /rg[.]marketing=([0-9a-f]{12})/.exec(REAL.cliRaw)?.[1] ?? "";
-  const CLI_STALE = REAL.cliRaw.split(`rg.marketing=${RG_DIGEST}`).join(`rg.marketing=${"0".repeat(12)}`);
+  /** R-O19e · the header's 2026-10-09 G10 apply line naming a stale digest for the Blackball line. */
+  const GATEWAY_DIGEST = /privacy[.]smsGateway=([0-9a-f]{12})/.exec(REAL.cliRaw)?.[1] ?? "";
+  const CLI_STALE = REAL.cliRaw.split(`privacy.smsGateway=${GATEWAY_DIGEST}`).join(`privacy.smsGateway=${"0".repeat(12)}`);
   /** R-O19f · Ali's sentence written with an escape — every reader of the file sees the escape, not the space. */
-  const G5_ESCAPED = enc(realText("G5").split("Namba yako").join(`Namba${BACKSLASH}u0020yako`));
+  const G5_ESCAPED = enc(realText("2026-10-07/G5").split("Namba yako").join(`Namba${BACKSLASH}u0020yako`));
+  /** R-O19g · the stop-link clause put back into 2026-10-09's Blackball line — the words the owner ruled out. */
+  const G10_LINK_BACK = edited("2026-10-09/G10", "stop at any time under Profile → Notifications: it receives",
+    "stop at any time with the stop link in every offer or under Profile → Notifications: it receives");
+  /** R-O19h · 2026-10-07's Blackball line changed beyond the clause — the evidence no longer what he approved. */
+  const G10_THEN_DRIFT = edited("2026-10-07/G10", "na hutuambia kama kila ujumbe umefika", "na hutuambia kama kila ujumbe ulifika");
+  /** R-O19i · 2026-10-09's G4 carrying another basis too — more than the ruling re-worded. */
+  const G4_NOW_TWO = (() => {
+    const o = JSON.parse(realText("2026-10-09/G4")) as { wordings: Record<string, string> };
+    o.wordings["basis.THIRD_PARTY"] = WPURE.WORDING_DEFAULTS["basis.THIRD_PARTY"];
+    return enc(JSON.stringify(o, null, 2));
+  })();
+  /** R-O19k · the dev seed's English Blackball line with the stop-link clause back. */
+  const SEED_GATEWAY_NOW = "which you can stop at any time under Profile → Notifications: it receives";
+  const SEED_GATEWAY_THEN = "which you can stop at any time with the stop link in every offer or under Profile → Notifications: it receives";
+  /** R-O19j · the header offering 2026-10-07's G10 apply again — it would save the stop-link words back over 2026-10-09's. */
+  const CLI_OLD_AGAIN = `${REAL.cliRaw} *   railway run --service 50pick npm run ops:marketing-owner-save -- apply --file docs/marketing-approvals/2026-10-07/approval-G10.json --by "Claude for Ali (G10)" --reason "${REASON}" --expect "x"${LF}`;
 
   /** O20 · the door's rules judging the RG line against the DEFAULT window, whatever the hours read. */
   const NO_HOURS: Rules = {
@@ -1832,19 +1945,32 @@ if (!PROVE_RED) {
     { name: "R-O18 · check printing words as typed, not as stored", claim: "O18 ·",
       impl: { ...REAL, check: async (input, deps) => { const o = await DOOR.checkOwnerSave(input, deps); return { ...o, lines: o.lines.map((l) => l.split(NBSP).join(" ")) }; } },
       landed: () => PPURE.normalizedPolicyTexts("rg.marketing", B2).sw.includes(NBSP), landedAs: "the RG line's bound numbers print as plain spaces" },
-    { name: "R-O19a · the G4 file's licence basis no longer the code's suggestion", claim: "O19 ·", impl: { ...REAL, approvals: approvalsWith("G4", G4_DRIFT) },
-      landed: () => DOOR.readApproval(G4_DRIFT, DB_NOW).ok && decode(G4_DRIFT) !== realText("G4"), landedAs: "a valid G4 file with other words" },
-    { name: "R-O19b · one Swahili word of the G10 Blackball line no longer Appendix B.3", claim: "O19 ·", impl: { ...REAL, approvals: approvalsWith("G10", G10_DRIFT) },
-      landed: () => DOOR.readApproval(G10_DRIFT, DB_NOW).ok && decode(G10_DRIFT) !== realText("G10"), landedAs: "a valid G10 file with other words" },
-    { name: "R-O19c · the G5 file holding another source line than Ali's sentence", claim: "O19 ·", impl: { ...REAL, approvals: approvalsWith("G5", G5_DRIFT) },
-      landed: () => DOOR.readApproval(G5_DRIFT, DB_NOW).ok && decode(G5_DRIFT) !== realText("G5"), landedAs: "a valid G5 file with another line" },
-    { name: "R-O19d · the G4 file holding eight of the nine", claim: "O19 ·", impl: { ...REAL, approvals: approvalsWith("G4", G4_EIGHT) },
-      landed: () => { const r = DOOR.readApproval(G4_EIGHT, DB_NOW); return r.ok && r.approval.record === "wordings" && r.approval.wordings.length === 8; },
+    { name: "R-O19a · 2026-10-09's licence basis no longer the code's suggestion", claim: "O19 ·", impl: { ...REAL, approvals: approvalsWith("2026-10-09/G4", G4_DRIFT) },
+      landed: () => DOOR.readApproval(G4_DRIFT, O19_NOW).ok && decode(G4_DRIFT) !== realText("2026-10-09/G4"), landedAs: "a valid G4 file with other words" },
+    { name: "R-O19b · one Swahili word of 2026-10-09's Blackball line no longer Appendix B.3", claim: "O19 ·", impl: { ...REAL, approvals: approvalsWith("2026-10-09/G10", G10_DRIFT) },
+      landed: () => DOOR.readApproval(G10_DRIFT, O19_NOW).ok && decode(G10_DRIFT) !== realText("2026-10-09/G10"), landedAs: "a valid G10 file with other words" },
+    { name: "R-O19c · the G5 file holding another source line than Ali's sentence", claim: "O19 ·", impl: { ...REAL, approvals: approvalsWith("2026-10-07/G5", G5_DRIFT) },
+      landed: () => DOOR.readApproval(G5_DRIFT, O19_NOW).ok && decode(G5_DRIFT) !== realText("2026-10-07/G5"), landedAs: "a valid G5 file with another line" },
+    { name: "R-O19d · 2026-10-07's G4 holding eight of the nine", claim: "O19 ·", impl: { ...REAL, approvals: approvalsWith("2026-10-07/G4", G4_EIGHT) },
+      landed: () => { const r = DOOR.readApproval(G4_EIGHT, O19_NOW); return r.ok && r.approval.record === "wordings" && r.approval.wordings.length === 8; },
       landedAs: "a valid G4 file one wording short" },
-    { name: "R-O19e · the header's G10 apply line naming a stale digest", claim: "O19 ·", impl: { ...REAL, cliRaw: CLI_STALE },
-      landed: () => RG_DIGEST !== "" && CLI_STALE !== REAL.cliRaw, landedAs: "the operator's line carries a digest no file has" },
-    { name: "R-O19f · Ali's sentence committed with an escape", claim: "O19 ·", impl: { ...REAL, approvals: approvalsWith("G5", G5_ESCAPED) },
+    { name: "R-O19e · the header's 2026-10-09 G10 apply line naming a stale digest", claim: "O19 ·", impl: { ...REAL, cliRaw: CLI_STALE },
+      landed: () => GATEWAY_DIGEST !== "" && CLI_STALE !== REAL.cliRaw, landedAs: "the operator's line carries a digest no file has" },
+    { name: "R-O19f · Ali's sentence committed with an escape", claim: "O19 ·", impl: { ...REAL, approvals: approvalsWith("2026-10-07/G5", G5_ESCAPED) },
       landed: () => decode(G5_ESCAPED).includes(BACKSLASH), landedAs: "the file holds a backslash" },
+    { name: "R-O19g · the stop-link clause put back into 2026-10-09's Blackball line", claim: "O19 ·", impl: { ...REAL, approvals: approvalsWith("2026-10-09/G10", G10_LINK_BACK) },
+      landed: () => DOOR.readApproval(G10_LINK_BACK, O19_NOW).ok && decode(G10_LINK_BACK).includes("with the stop link in every offer or under Profile"),
+      landedAs: "a valid G10 file saying the stop link again" },
+    { name: "R-O19h · 2026-10-07's Blackball line changed beyond the clause", claim: "O19 ·", impl: { ...REAL, approvals: approvalsWith("2026-10-07/G10", G10_THEN_DRIFT) },
+      landed: () => DOOR.readApproval(G10_THEN_DRIFT, O19_NOW).ok && decode(G10_THEN_DRIFT) !== realText("2026-10-07/G10"), landedAs: "the evidence file with other words" },
+    { name: "R-O19i · 2026-10-09's G4 carrying another basis too", claim: "O19 ·", impl: { ...REAL, approvals: approvalsWith("2026-10-09/G4", G4_NOW_TWO) },
+      landed: () => { const r = DOOR.readApproval(G4_NOW_TWO, O19_NOW); return r.ok && r.approval.record === "wordings" && r.approval.wordings.length === 2; },
+      landedAs: "a valid G4 file holding two wordings" },
+    { name: "R-O19j · the header offering 2026-10-07's G10 apply again", claim: "O19 ·", impl: { ...REAL, cliRaw: CLI_OLD_AGAIN },
+      landed: () => CLI_OLD_AGAIN.includes("-- apply --file docs/marketing-approvals/2026-10-07/approval-G10.json"), landedAs: "an apply line for an applied day's file" },
+    { name: "R-O19k · the dev seed's Blackball line still saying the stop link", claim: "O19 ·",
+      impl: { ...REAL, sources: withSource(SRC.seed, (t) => t.split(SEED_GATEWAY_NOW).join(SEED_GATEWAY_THEN)) },
+      landed: () => has(SRC.seed, SEED_GATEWAY_NOW), landedAs: "the seed's English Blackball line carries the stop-link clause again" },
     { name: "R-O20a · the RG line judged against the default window, not the hours read", claim: "O20 ·", impl: { ...REAL, rules: NO_HOURS },
       landed: () => {
         const v = NO_HOURS.policyLineProblems("rg.marketing", AT20["rg.marketing"], undefined, WINDOW_9_TO_7.ok ? WINDOW_9_TO_7.hours : null);

@@ -425,7 +425,7 @@ async function runAssertions(impl: Impl, tag: string): Promise<void> {
       { name: "a consent basis that never says agreed", key: "basis.OWN_EVENT", text: "This person gave their number to 50pick staff at a 50pick event and asked about 50pick offers by SMS.", codes: "consent_not_stated", sentence: WORDING_SENTENCE.consentNotStated },
       { name: "a consent basis that says agreed only in a denial", key: "basis.OWN_EVENT", text: "This person gave their number to 50pick staff at a 50pick shop but never agreed to receive offers by SMS.", codes: "consent_negated", sentence: WORDING_SENTENCE.consentNegated },
       { name: "a bought list that never denies an agreement", key: "basis.THIRD_PARTY", text: "This number came from a bought list, and 50pick may message the person about offers.", codes: "not_agreed_missing", sentence: WORDING_SENTENCE.notAgreedThirdParty },
-      { name: "the licence basis without the licence", key: "basis.LICENCE_OUTREACH", text: "50pick may send this person offers by SMS as outreach. The person has not agreed to receive them; every message carries a stop link.", codes: "licence_missing", sentence: WORDING_SENTENCE.licence },
+      { name: "the licence basis without the licence", key: "basis.LICENCE_OUTREACH", text: "50pick may send this person offers by SMS as outreach. The person has not agreed to receive them; a stop is kept for good.", codes: "licence_missing", sentence: WORDING_SENTENCE.licence },
       { name: "the licence basis without the stop", key: "basis.LICENCE_OUTREACH", text: "50pick may send this person offers by SMS under its Gaming Board of Tanzania licence. The person has not agreed to receive them.", codes: "stop_missing", sentence: WORDING_SENTENCE.stop },
       { name: "an 18+ sentence without 18", key: "adult.consent", text: "They told us they are adults.", codes: "eighteen_missing", sentence: WORDING_SENTENCE.eighteen },
       { name: "a basis without 50pick", key: "basis.THIRD_PARTY", text: "This number came from a bought or third-party list; the person never agreed to hear from us.", codes: "brand_missing", sentence: WORDING_SENTENCE.brand },
@@ -503,24 +503,24 @@ async function runAssertions(impl: Impl, tag: string): Promise<void> {
     const LIC: WordingKey = "basis.LICENCE_OUTREACH";
     const claims = [
       "50pick may send this person offers and news by SMS under its Gaming Board of Tanzania licence because they agreed to receive them; a stop is kept for good.",
-      "50pick may send this person offers by SMS under its licence. The person consented to receive them, and every message carries a stop link.",
+      "50pick may send this person offers by SMS under its licence. The person consented to receive them, and a stop is kept for good.",
       "50pick may send this person offers by SMS under its licence. The person has not agreed to receive them, but agreed to hear from us; a stop ends it.",
-      "50pick may send this person offers by SMS under its licence; the person hasn't agreed, and every message carries a stop link.",
+      "50pick may send this person offers by SMS under its licence; the person hasn't agreed, and a stop is kept for good.",
       // m3 · every other way of saying they agreed, beside a plain denial.
-      "50pick may send this person offers by SMS under its licence. The person has not agreed to receive them, but opted in to our list; every message carries a stop link.",
-      "50pick may send this person offers by SMS under its licence. The person has not agreed, but gave us permission to write; every message carries a stop link.",
-      "50pick may send this person offers by SMS under its licence. The person has not agreed, but accepted our terms; every message carries a stop link.",
-      "50pick may send this person offers by SMS under its licence. The person has not agreed, but signed up at a stand; every message carries a stop link.",
-      "50pick may send this person offers by SMS under its licence. The person has not agreed, but asked for offers; every message carries a stop link.",
-      "50pick may send this person offers by SMS under its licence. The person has not agreed, but subscribed to our news; every message carries a stop link.",
-      "50pick may send this person offers by SMS under its licence. The person has not agreed, but consented by phone; every message carries a stop link.",
+      "50pick may send this person offers by SMS under its licence. The person has not agreed to receive them, but opted in to our list; a stop is kept for good.",
+      "50pick may send this person offers by SMS under its licence. The person has not agreed, but gave us permission to write; a stop is kept for good.",
+      "50pick may send this person offers by SMS under its licence. The person has not agreed, but accepted our terms; a stop is kept for good.",
+      "50pick may send this person offers by SMS under its licence. The person has not agreed, but signed up at a stand; a stop is kept for good.",
+      "50pick may send this person offers by SMS under its licence. The person has not agreed, but asked for offers; a stop is kept for good.",
+      "50pick may send this person offers by SMS under its licence. The person has not agreed, but subscribed to our news; a stop is kept for good.",
+      "50pick may send this person offers by SMS under its licence. The person has not agreed, but consented by phone; a stop is kept for good.",
     ];
     const denials = [
       impl.defaults[LIC],
-      "50pick may message this person by SMS as outreach under its Gaming Board of Tanzania licence; the person never agreed to it, and a stop link ends it.",
-      "Under its licence, 50pick may send this person offers by SMS. The person did not agree to them; every message carries a stop link.",
+      "50pick may message this person by SMS as outreach under its Gaming Board of Tanzania licence; the person never agreed to it, and a stop ends it.",
+      "Under its licence, 50pick may send this person offers by SMS. The person did not agree to them; a stop is kept for good.",
       // m3 · a NEGATED permission is a denial too, not a claim.
-      "50pick may message this person by SMS as outreach under its Gaming Board of Tanzania licence; the person never agreed to it and gave no permission, and a stop link ends it.",
+      "50pick may message this person by SMS as outreach under its Gaming Board of Tanzania licence; the person never agreed to it and gave no permission, and a stop ends it.",
     ];
     const claimed = claims.filter((t) => !impl.problems(LIC, t).some((x) => x.code === "not_agreed_missing"));
     const deniedButRefused = denials.filter((t) => impl.problems(LIC, t).length > 0);

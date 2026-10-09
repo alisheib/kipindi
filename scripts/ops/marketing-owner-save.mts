@@ -33,16 +33,21 @@
  * G4 holds any of the nine wordings other than the source line, G5 the source line alone, G10 any of the five public lines.
  * An approval is carried out within seven days of its `approvedOn` (EAT); after that Ali is asked again.
  *
- * ⭐ ALI'S APPROVALS OF 2026-10-07, COMMITTED (`docs/marketing-approvals/2026-10-07/`; `test:marketing-owner-save` O19 holds
- * every text to what he approved: G5 his sentence, G4 the code's suggestions as they stood, G10 spec Appendix B.2–B.6, and
- * every digest below to the file's own). In order — status first, one apply per gate, ONE redeploy after the last:
+ * ⭐ ALI'S APPROVALS, COMMITTED BY DAY (`docs/marketing-approvals/<day>/`; `test:marketing-owner-save` O19 holds every text to
+ * what he approved, and every digest below to its file's own):
+ *   · 2026-10-07 — G5 his sentence, G4 the code's suggestions as they stood that day, G10 spec Appendix B.2–B.6 as he
+ *     approved it. APPLIED on production on 2026-10-07/08, and kept as evidence: ⛔ never run again — an apply of that
+ *     day's G4 or G10 after 2026-10-09's would save the stop-link words back as a newer version.
+ *   · 2026-10-09 — the owner's ruling of that day (a marketing SMS is sent exactly as the officer wrote it: no stop link).
+ *     G4 holds the licence basis's suggestion re-worded ("…if they ask us to stop, the stop is kept for good."); G10 the
+ *     two privacy lines, `privacy.smsGateway` and `privacy.lawfulLicence`, each the 2026-10-07 words less the stop-link
+ *     clause, every other word kept. ⛔ Shown to Ali, and applied only once he approves them (`approvedOn` is that day —
+ *     another day is a new file). In order — status first, one apply per gate, ONE redeploy after the last:
  *   railway run --service 50pick npm run ops:marketing-owner-save -- status
- *   railway run --service 50pick npm run ops:marketing-owner-save -- check --file docs/marketing-approvals/2026-10-07/approval-G5.json
- *   railway run --service 50pick npm run ops:marketing-owner-save -- apply --file docs/marketing-approvals/2026-10-07/approval-G5.json --by "Claude for Ali (G5)" --reason "approved by Ali in the Claude session" --expect "source.phrase=b03365bb662d"
- *   railway run --service 50pick npm run ops:marketing-owner-save -- check --file docs/marketing-approvals/2026-10-07/approval-G4.json
- *   railway run --service 50pick npm run ops:marketing-owner-save -- apply --file docs/marketing-approvals/2026-10-07/approval-G4.json --by "Claude for Ali (G4)" --reason "approved by Ali in the Claude session" --expect "basis.OWN_FORM=7a5a7212539a,basis.OWN_EVENT=c4e5678c30bc,basis.AGENT_ROSTER=a53eb11a4216,basis.THIRD_PARTY=a9aaf894b6d0,basis.LICENCE_OUTREACH=21a0f7eb9ad1,adult.consent=aaabdeaff2f3,adult.list=01df570c14a2,adult.test=bb4cc37b1ea9,notice.thirdParty=f48bd1ce46e1"
- *   railway run --service 50pick npm run ops:marketing-owner-save -- check --file docs/marketing-approvals/2026-10-07/approval-G10.json
- *   railway run --service 50pick npm run ops:marketing-owner-save -- apply --file docs/marketing-approvals/2026-10-07/approval-G10.json --by "Claude for Ali (G10)" --reason "approved by Ali in the Claude session" --expect "rg.marketing=29ea9954bca0,privacy.lawfulConsent=c0880cd63613,privacy.lawfulLicence=082567c7b754,privacy.smsGateway=575eb299ec57,profile.outreachNote=626c5731268c"
+ *   railway run --service 50pick npm run ops:marketing-owner-save -- check --file docs/marketing-approvals/2026-10-09/approval-G4.json
+ *   railway run --service 50pick npm run ops:marketing-owner-save -- apply --file docs/marketing-approvals/2026-10-09/approval-G4.json --by "Claude for Ali (G4)" --reason "approved by Ali in the Claude session" --expect "basis.LICENCE_OUTREACH=734a90eecf04"
+ *   railway run --service 50pick npm run ops:marketing-owner-save -- check --file docs/marketing-approvals/2026-10-09/approval-G10.json
+ *   railway run --service 50pick npm run ops:marketing-owner-save -- apply --file docs/marketing-approvals/2026-10-09/approval-G10.json --by "Claude for Ali (G10)" --reason "approved by Ali in the Claude session" --expect "privacy.lawfulLicence=35bbe7134230,privacy.smsGateway=ad36a53b7683"
  *   railway redeploy --service 50pick
  *
  * Exit: 0 done or nothing to do · 1 refused or not confirmed (the reason is printed) · 2 not run (usage, no database, not
@@ -62,8 +67,9 @@ const USAGE = [
   "usage: npm run ops:marketing-owner-save -- status",
   "       npm run ops:marketing-owner-save -- check --file <approval.json>",
   '       npm run ops:marketing-owner-save -- apply --file <approval.json> --by "<who>" --reason "<why>" --expect "<key>=<sha12>,…"',
-  "Ali's approvals of 2026-10-07 are docs/marketing-approvals/2026-10-07/approval-G5.json, -G4.json and -G10.json; the exact",
-  "check and apply lines for each, with every digest, are in this door's header (scripts/ops/marketing-owner-save.mts).",
+  "Ali's approvals are filed by day under docs/marketing-approvals/ (2026-10-07: applied, never run again; 2026-10-09: G4 and",
+  "G10, the stop-link clause out). The exact check and apply lines of the files to apply, with every digest, are in this",
+  "door's header (scripts/ops/marketing-owner-save.mts).",
 ].join(LF);
 
 /** The flags each command takes — each once, every one required, nothing else. */
