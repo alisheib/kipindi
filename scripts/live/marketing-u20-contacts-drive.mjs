@@ -8,7 +8,8 @@
  *   · POPULATED — a page of 20, every number masked `+255••••NN` for GROWTH with NO eye and NO copy;
  *   · SEARCH — 🔴 C8b (B3) · GROWTH's whole number, in two spellings, answers "This number is in the book." and lists NO
  *     row (a reader's finds exactly the one row — the ADMIN block); ⭐ (the C8b review's MINOR 1) "Select this number"
- *     selects it alone, Suppress and Record a withdrawal offered, and a number not in the book offers nothing to select;
+ *     selects it alone, Suppress and Record a withdrawal its ONLY enabled actions (the other four disabled with their
+ *     reason, the count line saying the number — the re-review's MN-1), and a number not in the book offers nothing;
  *     a PART of a number is no-match (with the clear action), never a number search — and (vb7) the no-match row says
  *     the parser's own sentence;
  *   · PAGE CLAMP — page 4 of a 5-row result renders the 5 rows;
@@ -59,6 +60,8 @@
  *       MISSING — `?edit=mc_nope` AND `?edit=` of the ERASED fixture read the same refusal (A1.7), and Close drops `edit`;
  *       ERASED — 🔴 C8b (B1 · B2) · adding the erased number answers exactly "This number is already in the book." with
  *         no link and Save disabled — for GROWTH and for ADMIN alike (the book blocks it; nothing to open; C3 · X22);
+ *         ⭐ (the re-review's NIT 9) ADMIN SEARCHING it lists no row, answers "This number is in the book." and offers
+ *         "Select this number", the bar taking Suppress and Record a withdrawal alone;
  *       A1.1 — GROWTH adding a seeded PLAYER's number (ledger GIVEN) is told no consent value at all, while ADMIN adding a
  *         number whose ledger says WITHDRAWN reads "Withdrawn" (the mirror);
  *       ERROR — the add fulfilled with HTTP 500: the danger line, the typing kept, Save available again;
@@ -514,9 +517,15 @@ for (const vp of VIEWPORTS) {
       mode: await attrOf(page, bar, "data-bulk-mode"),
       count: Number((await attrOf(page, bar, "data-bulk-count")) ?? "-1"),
       offered: await page.$$eval(`${bar} [data-bulk-action]`, (els) => els.filter((e) => !e.hasAttribute("disabled")).map((e) => e.getAttribute("data-bulk-action") || "")),
+      // ⭐ C8b re-review (MN-1) · the four that can never act on a number are disabled WITH their reason, and the count
+      // line says the number as itself.
+      refusedTitles: await page.$$eval(`${bar} [data-bulk-action][disabled]`, (els) => els.map((e) => e.getAttribute("title") || "")),
+      line: await textOf(page, `${bar} [data-bulk-line]`),
     };
-    ok(`${vp.name} · SEARCH · C8b review (MINOR 1) · "Select this number" selects the number ALONE for GROWTH — the bar in matching mode with ONE contact, Suppress and Record a withdrawal offered`,
-      selectOffered && picked.mode === "matching" && picked.count === 1 && picked.offered.includes("suppress") && picked.offered.includes("withdraw"),
+    ok(`${vp.name} · SEARCH · C8b review (MINOR 1 · re-review MN-1) · "Select this number" selects the number ALONE for GROWTH — the bar in matching mode with ONE contact, ONLY Suppress and Record a withdrawal enabled (the other four disabled with "Only Suppress and Record a withdrawal act on a searched number"), the count line "This number is selected — …"`,
+      selectOffered && picked.mode === "matching" && picked.count === 1 && [...picked.offered].sort().join(",") === "suppress,withdraw"
+        && picked.refusedTitles.length === 4 && picked.refusedTitles.every((t) => t === "Only Suppress and Record a withdrawal act on a searched number")
+        && picked.line === "This number is selected — only Suppress and Record a withdrawal act on it.",
       JSON.stringify(picked));
     await shoot(page, `${vp.name}-search-presence-selected`);
     if ((await page.locator(`${bar} [data-bulk-clear]`).count()) > 0) await page.locator(`${bar} [data-bulk-clear]`).first().click();
@@ -1099,6 +1108,30 @@ for (const [vi, vp] of VIEWPORTS.entries()) {
     `${adminDup.lookup} (${adminDupLinks} link) · ${adminErased.lookup} (${adminErasedLinks} link)`);
   await formShot(adm.page, vp.name, "u22-erased-admin", "Add a contact", "already in the book");
   await closeDialog(adm.page);
+  // ⭐ C8b re-review (NIT 9) · the erased number SEARCHED by a reader lists no row (the tombstone is in no audience), so it
+  // answers "This number is in the book." with "Select this number" — and the bar offers that selection Suppress and Record
+  // a withdrawal alone, as it does GROWTH's presence. Nothing is pressed past the selection: no stop is written.
+  {
+    const bar = '[data-block="contacts-bulk-bar"]';
+    await openContacts(adm.page, `?q=${encodeURIComponent(u22.erasedNumber || "0766000001")}`);
+    const said = await mainText(adm.page);
+    const offeredSelect = (await adm.page.locator('[data-number-presence="blocked"] [data-number-select]').count()) === 1;
+    const listedRows = await adm.page.locator("[data-contact-row]").count();
+    if (offeredSelect) await adm.page.locator("[data-number-select]").first().click();
+    await wait(300);
+    const picked = {
+      mode: await attrOf(adm.page, bar, "data-bulk-mode"),
+      count: Number((await attrOf(adm.page, bar, "data-bulk-count")) ?? "-1"),
+      offered: await adm.page.$$eval(`${bar} [data-bulk-action]`, (els) => els.filter((e) => !e.hasAttribute("disabled")).map((e) => e.getAttribute("data-bulk-action") || "")),
+      line: await textOf(adm.page, `${bar} [data-bulk-line]`),
+    };
+    ok(`${vp.name} · ADMIN · C8b re-review (NIT 9) · the erased number searched by a READER lists no row and answers "This number is in the book." with "Select this number" — the number alone selected, Suppress and Record a withdrawal its only actions`,
+      listedRows === 0 && said.includes("This number is in the book.") && offeredSelect && picked.mode === "matching" && picked.count === 1
+        && [...picked.offered].sort().join(",") === "suppress,withdraw" && picked.line === "This number is selected — only Suppress and Record a withdrawal act on it.",
+      `${listedRows} row(s) · ${JSON.stringify(picked)} · ${said.slice(0, 120)}`);
+    await shoot(adm.page, `${vp.name}-admin-blocked-number-selected`);
+    if ((await adm.page.locator(`${bar} [data-bulk-clear]`).count()) > 0) await adm.page.locator(`${bar} [data-bulk-clear]`).first().click();
+  }
   await adm.ctx.close();
 }
 

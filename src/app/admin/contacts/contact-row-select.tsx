@@ -2,7 +2,8 @@
 
 /**
  * U23 · THE SELECT COLUMN — one row's tick box, and the header's tri-state box for the whole page — and (C8b) the one
- * selection a masked officer's whole-number search offers: the number itself (`ContactNumberSelect`).
+ * selection a whole-number search that lists no row offers (a masked officer's, or a reader's of a number the book
+ * blocks): the number itself (`ContactNumberSelect`).
  *                                                                                          (S10, 2026-10-02)
  *
  * ⛔ THE ROW IT IS HANDED IS THE SERVER'S PROJECTION (`{ id, name, masked }`, `contactSelectionRow`): no number reaches
@@ -33,9 +34,11 @@ export function ContactRowSelect({ row }: { row: ContactSelectionRow }) {
 
 /**
  * ⭐ C8b · B3's ONE EXCEPTION — a masked officer's whole-number search lists no row, so a number the book holds is selected
- * here: the page hands the selection the whole number ALONE (counted one, the presence bit), and the bar's Suppress and
- * Record a withdrawal act on it — a stop given by phone is still honoured. The bar's other actions are refused over it by
- * the server, in words. No server action here either: selecting is a read affordance.
+ * here: the page hands the selection the whole number ALONE (counted one, the presence bit, `numberOnly`), and the bar's
+ * Suppress and Record a withdrawal act on it — a stop given by phone is still honoured. The bar disables its other four
+ * actions for that selection, and the server refuses them, in words (the re-review's MN-1). ⭐ (NIT 9) The same control
+ * answers a READER's whole number that the book blocks, which lists no row either. No server action here either:
+ * selecting is a read affordance.
  */
 export function ContactNumberSelect() {
   const s = useContactsSelection();

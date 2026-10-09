@@ -23,7 +23,10 @@
  * RECORD A WITHDRAWAL act on that NUMBER — held by a row or blocked by an erasure, exactly as this presence reads it
  * (`bookHoldsNumber`), so the two can never disagree and a blocked number answers as a held one does (X22) — and tell
  * the officer the total alone (A1.1 · OD54): its one or none is the presence bit already accepted. Tag, untag, add to a
- * list, remove and the export stay refused.
+ * list, remove and the export stay refused — and the bar disables those four for that selection (the re-review's MN-1).
+ * ⭐ C8b re-review (NIT 9) · …FOR A READER TOO: a reader's whole number alone that the book BLOCKS lists no row (the
+ * tombstone is in no audience), so the page offers that reader the same selection, and the same two actions act on the
+ * number for every viewer (`contact-bulk.ts`).
  * ⛔ The search box keeps a whole number as its bare key (`audience.ts`, the filter's `q`), so a whole number is read here
  * by the ONE numbering table (`parseTzNumber`) — exactly the reading the resolver gives the box — never by naming the
  * resolver's own search (`test:contacts-audience` 1.5 keeps that translation in audience.ts alone).
@@ -31,6 +34,7 @@
  * Guard: `test:contacts-page` (the presence answer), `test:contacts-bulk` and `test:contacts-export` (the refusals).
  */
 import { parseTzNumber } from "@/lib/tz-msisdn";
+import { contactAudienceKey, WHOLE_BOOK } from "@/lib/server/marketing/audience";
 import type { ContactAudienceFilter } from "@/lib/server/marketing/audience";
 import { bookBlocks } from "@/lib/server/contacts/contact-write";
 
@@ -43,19 +47,19 @@ export function wholeNumberOf(f: Pick<ContactAudienceFilter, "q">): string | nul
 
 /**
  * ⭐ The bare key of an audience that is a whole number and NOTHING ELSE — no other filter, no ticked rows, no population —
- * else null. The one audience a masked officer may record a stop or a withdrawal over (see the header).
+ * else null. The one audience a stop or a withdrawal acts on as a NUMBER (see the header).
+ * ⭐ C8b re-review (NIT) · "nothing else" is the canonical audience key's own answer — the audience keys exactly as the
+ * whole number alone does (`contactAudienceKey`, U24's one key) — never a hand list of the other axes, which a new axis
+ * would slip past.
  */
 export function numberAloneOf(f: ContactAudienceFilter): string | null {
   const number = wholeNumberOf(f);
   if (number === null) return null;
-  const rest: readonly unknown[] = [
-    f.consent, f.suppressed, f.operators, f.lists, f.tags, f.sources, f.player, f.importId, f.addedFrom, f.addedBefore, f.ids,
-    f.population,
-  ];
-  return rest.every((v) => v === null) ? number : null;
+  return contactAudienceKey(f) === contactAudienceKey({ ...WHOLE_BOOK, q: f.q }) ? number : null;
 }
 
-/** ⛔ The one sentence the bulk bar and the export say to a masked viewer's whole-number audience. */
+/** ⛔ The one sentence the export says to a masked viewer's whole-number audience (the bulk bar says its own, naming the
+ *  two actions that still act on the number — `BULK_SENTENCES.numberSearch`). */
 export const MASKED_NUMBER_SEARCH_REASON =
   "For your role a whole number shows only whether it is in the book — clear the search, or search by name, to act on contacts.";
 

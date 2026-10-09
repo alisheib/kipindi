@@ -20,7 +20,13 @@
  * whole number ALONE act on that NUMBER (`stopNumberOf`) — counted 1 when the book holds it, by a row or by an erasure's
  * block, exactly as the presence answer reads it (`holdsNumber`), else empty — never on a walked row: no sample, no row
  * read, the masked reply the total alone. So a blocked number answers as a held one does (X22), and the page's "in the
- * book" and this count can never disagree. Tag, untag, add to a list and remove stay refused.
+ * book" and this count can never disagree. Tag, untag, add to a list and remove stay refused, in a sentence that names
+ * the two actions that still act on the number (`BULK_SENTENCES.numberSearch`, the re-review's MN-1).
+ * ⭐ C8b re-review (NIT 9) · THE SAME TWO ACTIONS ACT ON THE NUMBER FOR A READER: a reader's whole number alone that the
+ * book BLOCKS lists no row — the tombstone is in no audience — so until now a reader could not record a stop given by
+ * phone for it while a masked officer could. A stop or a withdrawal over the whole number alone acts on the NUMBER for
+ * every viewer (`stopNumberOf` asks no role): for a number a live row holds it writes exactly what the row's walk wrote
+ * (that row's number, once), and a reader keeps the split (`contactBulkReply`).
  * ⛔ C8b (B7) · NO SHARED LABEL FROM A PROTECTED FILTER, FOR ANY VIEWER. A READER may filter by consent, the stop list,
  * the source or the player link, which a masked officer may not (`roleRefusal`). A TAG or a LIST built from such a filter
  * hands that filter to the masked officer: they filter by the tag, or open the list, and read who is a player or under a
@@ -110,6 +116,9 @@ export const BULK_SENTENCES = {
   noList: LIST_NONE,
   noSuchList: "That list isn't in the book any more. Choose another, or name a new one.",
   listExists: (name: string) => `A list called “${name}” already exists — two names that differ only in capitals are one list. Choose it instead.`,
+  /** C8b re-review (MN-1) · a masked viewer's whole-number audience refused for an action that is not a stop — the
+   *  sentence names the two actions that still act on the number, as the bar's disabled buttons do. */
+  numberSearch: "For your role a whole number shows only whether it is in the book, so only Suppress and Record a withdrawal act on it — clear the search, or search by name, to tag, list or remove contacts.",
   /** C8b (B7) · a tag or a list from a filter some staff may not use — said for each of the two actions, with the way on. */
   protectedLabel: (action: "tag" | "addToList", param: string) =>
     `A ${action === "tag" ? "tag" : "list"} made from the “${param}” filter would let staff who may not use that filter find these contacts through that ${action === "tag" ? "tag" : "list"}. `
@@ -247,8 +256,11 @@ export type ContactBulkDeps = {
   /** C8b (B3) — a masked viewer's whole-number search is no audience (`number-search.ts`). */
   numberSearch: typeof maskedNumberSearchRefusal;
   /** C8b (B3's one exception) — does the book hold this number, as the page's presence answer reads it
-   *  (`bookHoldsNumber`): the count of a masked officer's stop or withdrawal over the whole number alone. */
+   *  (`bookHoldsNumber`): the count of a stop or withdrawal over the whole number alone. */
   holdsNumber: (msisdn: string) => Promise<boolean>;
+  /** C8b review · the number a stop or a withdrawal over this audience acts on, or null (`stopNumberOf`) — asked for
+   *  EVERY viewer (the re-review's NIT 9); `viewerReads` rides along for a red case to plant a masked-only rule. */
+  stopNumber: (req: Pick<ContactBulkRequest, "action" | "audience">, viewerReads: boolean) => string | null;
   /** C8b (B7) — no shared label from a protected filter, for any viewer (`sharedLabelRefusal`). */
   labelRefusal: typeof sharedLabelRefusal;
   /** The ONE audit describer (`audience.ts`). */
@@ -274,6 +286,7 @@ export const CONTACT_BULK_DEPS: ContactBulkDeps = {
   roleRefusal,
   numberSearch: maskedNumberSearchRefusal,
   holdsNumber: bookHoldsNumber,
+  stopNumber: (req) => stopNumberOf(req),
   labelRefusal: sharedLabelRefusal,
   describe: auditContactAudience,
   suppressionReason: "OPERATOR",
@@ -333,10 +346,10 @@ export async function previewContactBulk(
   const role = deps.roleRefusal(req.audience, viewerReads);
   if (role !== null) return refuse("role", BULK_SENTENCES.role(role.param));
   // ⛔ C8b · B3 then B7 — both before anything is counted. ⭐ B3's one exception: a stop or a withdrawal over the whole
-  // number ALONE acts on that NUMBER, counted as the presence answer reads it (`stopNumberOf`).
+  // number ALONE acts on that NUMBER, counted as the presence answer reads it — for every viewer (`stopNumber`, NIT 9).
   const numberSearch = deps.numberSearch(req.audience, viewerReads);
-  const stopNumber = numberSearch !== null ? stopNumberOf(req) : null;
-  if (numberSearch !== null && stopNumber === null) return refuse("number_search", numberSearch.reason);
+  const stopNumber = deps.stopNumber(req, viewerReads);
+  if (numberSearch !== null && stopNumber === null) return refuse("number_search", BULK_SENTENCES.numberSearch);
   const label = deps.labelRefusal(req);
   if (label !== null && (req.action === "tag" || req.action === "addToList")) return refuse("protected_label", BULK_SENTENCES.protectedLabel(req.action, label.param));
   const params = await resolveParams(req);
@@ -398,10 +411,12 @@ async function audienceIds(f: ContactAudienceFilter): Promise<string[]> {
 const keyOf = (identifier: string): MessagingKey => ({ channel: "SMS", identifier, category: "MARKETING" });
 
 /**
- * ⭐ C8b · B3'S ONE EXCEPTION — the number a masked officer's stop or withdrawal acts on: `withdraw` or `suppress` over the
- * whole number ALONE (`numberAloneOf`), else null. Such a run acts on the NUMBER, held by a row or blocked by an erasure,
- * counted by `holdsNumber` exactly as the page's presence answer is — so "in the book" and this count never disagree, and
- * a blocked number answers 1 as a held one does (X22). The masked reply is the total alone (`contactBulkReply`).
+ * ⭐ C8b · B3'S ONE EXCEPTION — the number a stop or a withdrawal acts on: `withdraw` or `suppress` over the whole number
+ * ALONE (`numberAloneOf`), else null — for EVERY viewer (the re-review's NIT 9: a reader's search of a number the book
+ * blocks lists no row, and this is how they record a stop given by phone). Such a run acts on the NUMBER, held by a row or
+ * blocked by an erasure, counted by `holdsNumber` exactly as the page's presence answer is — so "in the book" and this
+ * count never disagree, and a blocked number answers 1 as a held one does (X22). A masked reply is the total alone
+ * (`contactBulkReply`); a reader keeps the split.
  */
 function stopNumberOf(req: Pick<ContactBulkRequest, "action" | "audience">): string | null {
   if (req.action !== "withdraw" && req.action !== "suppress") return null;
@@ -501,10 +516,11 @@ export async function runContactBulk(
   const role = deps.roleRefusal(req.audience, viewerReads);
   if (role !== null) return refuse("role", BULK_SENTENCES.role(role.param));
   // ⛔ C8b · B3 (a masked viewer's whole-number search is no audience — but for B3's one exception, a stop or a withdrawal
-  // over the whole number alone, which acts on that NUMBER: `stopNumberOf`) then B7 (no shared label from a protected filter).
+  // over the whole number alone, which acts on that NUMBER for every viewer: `stopNumber`) then B7 (no shared label from a
+  // protected filter).
   const numberSearch = deps.numberSearch(req.audience, viewerReads);
-  const stopNumber = numberSearch !== null ? stopNumberOf(req) : null;
-  if (numberSearch !== null && stopNumber === null) return refuse("number_search", numberSearch.reason);
+  const stopNumber = deps.stopNumber(req, viewerReads);
+  if (numberSearch !== null && stopNumber === null) return refuse("number_search", BULK_SENTENCES.numberSearch);
   const label = deps.labelRefusal(req);
   if (label !== null && (req.action === "tag" || req.action === "addToList")) return refuse("protected_label", BULK_SENTENCES.protectedLabel(req.action, label.param));
   const params = await resolveParams(req);

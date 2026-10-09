@@ -56,6 +56,9 @@ export const CONTACTS_NUMBER_PRESENCE = {
   body: "For your role a whole number shows only whether it is in the book — the other filters don't apply to it — but you can still record a stop or a withdrawal for it: select it, then choose Suppress or Record a withdrawal. Search by name, or filter the list, to see contacts.",
   /** The way on from "not in the book": the page head's own Add contact. */
   notInBookBody: "For your role a whole number shows only whether it is in the book. Add it with Add contact, or search by name to see contacts.",
+  /** ⭐ C8b re-review (NIT 9) · a READER's whole number that the book blocks lists no row (the tombstone is in no
+   *  audience): the in-book title, and this body — the same selection, so a stop given by phone can be recorded. */
+  blockedBody: "There is no contact you can open for it — but you can still record a stop or a withdrawal for it: select it, then choose Suppress or Record a withdrawal.",
   /** The selection control a number in the book offers — the bar's Suppress and Record a withdrawal act on it. */
   select: "Select this number",
   /** C8b review (MINOR 7) · the Add form's number-check bucket was spent: its own sentence follows, and no answer. */
@@ -456,6 +459,10 @@ export const CONTACTS_BULK = {
   busyTitle: "Wait — the last action is still running.",
   selectAllMatching: (n: number) => `Select all ${formatNumber(n)} matching`,
   allMatching: (n: number) => `All ${formatNumber(n)} matching selected`,
+  /** ⭐ C8b re-review (MN-1) · the count line when the selection is a searched whole number alone (`numberOnly`). */
+  numberSelected: "This number is selected — only Suppress and Record a withdrawal act on it.",
+  /** …and the hover line of the four actions that cannot act on it. */
+  numberOnlyTitle: "Only Suppress and Record a withdrawal act on a searched number",
   filterChanged: "The filter changed, so the selection of every matching contact was cleared.",
   tickCap: (max: number) => `A selection holds at most ${formatNumber(max)} ticked contacts — use Select all matching for more.`,
   perRowCap: (max: number) => `A withdrawal or a suppression writes one record per number, so it takes at most ${formatNumber(max)} contacts at a time.`,
@@ -496,10 +503,13 @@ export const CONTACTS_BULK = {
  */
 export function bulkActionState(
   action: ContactBulkAction,
-  s: { mayAct: boolean; actReason: string | undefined; count: number; perRowMax: number; busy: boolean },
+  s: { mayAct: boolean; actReason: string | undefined; count: number; perRowMax: number; busy: boolean; numberOnly?: boolean },
 ): { disabled: boolean; title: string } {
   if (!s.mayAct) return { disabled: true, title: s.actReason ?? CONTACT_ROLE_REFUSAL };
   if (s.count === 0) return { disabled: true, title: CONTACTS_BULK.noneTitle };
+  // ⭐ C8b re-review (MN-1) · a searched whole number alone takes the two actions that act on a number, and no other: the
+  // server refuses the four (`BULK_SENTENCES.numberSearch`), so the bar never offers them.
+  if (s.numberOnly === true && !isPerRowAction(action)) return { disabled: true, title: CONTACTS_BULK.numberOnlyTitle };
   if (isPerRowAction(action) && s.count > s.perRowMax) return { disabled: true, title: CONTACTS_BULK.perRowCap(s.perRowMax) };
   // A disabled button always says why — even for the moment a request is in flight (review nit, 2026-10-02).
   if (s.busy) return { disabled: true, title: CONTACTS_BULK.busyTitle };

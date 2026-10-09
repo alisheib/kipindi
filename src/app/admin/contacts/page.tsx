@@ -42,7 +42,9 @@
  * number-check bucket — and the table holds that one line (no rows, so no export link). The export and the bulk bar
  * refuse such an audience, but for ONE exception: a number in the book can be SELECTED here (`ContactNumberSelect` — the
  * whole number alone, counted one), so a stop or a withdrawal given by phone is still recorded through the bar's Suppress
- * and Record a withdrawal, which act on the number (`contact-bulk.ts`).
+ * and Record a withdrawal, which act on the number (`contact-bulk.ts`) — and the bar offers that selection those two
+ * actions alone (`numberOnly`, the re-review's MN-1). ⭐ (NIT 9) A READER's whole number that the book blocks lists no row
+ * either (the tombstone is in no audience): it answers "in the book" with the same selection (`blockedNumber`).
  * ⭐ U24 · every read goes through the ONE audience resolver (`contacts-loader.ts` → `contactAudience`). A filter
  * in force is said in words above the table ("Showing contacts: …"), and every link is built by ONE href builder
  * (`contactsHref`) that carries them. ⛔ A filter that cannot be read is REFUSED — no rows, the parameter named, a
@@ -231,10 +233,14 @@ async function AdminContactsContent({ searchParams }: { searchParams: Promise<Co
   // every minute), and decides "the filter changed"; `key` is what a run posts (review F6).
   // ⭐ C8b · B3's one exception: a number the book holds is the selection a stop or a withdrawal acts on — the whole number
   // ALONE, counted one (the presence bit itself); the bar's other actions are refused over it, in words, by the server.
+  // ⭐ C8b re-review (MN-1 · NIT 9) · the number alone is a `numberOnly` selection — the bar offers it Suppress and Record a
+  // withdrawal only — for a masked viewer's presence and for a reader's search of a number the book blocks alike.
   const matching = listed !== null
-    ? { key: contactFilterAudienceKey(listed.filter), identity: contactFilterIdentity(listed.filter, sp), total: listed.result.total }
+    ? (listed.blockedNumber
+      ? { key: contactFilterAudienceKey(listed.filter), identity: contactFilterIdentity(listed.filter, sp), total: 1, numberOnly: true }
+      : { key: contactFilterAudienceKey(listed.filter), identity: contactFilterIdentity(listed.filter, sp), total: listed.result.total })
     : presence !== null && presence.present === true
-      ? { key: contactFilterAudienceKey(presence.filter), identity: contactFilterIdentity(presence.filter, {}), total: 1 }
+      ? { key: contactFilterAudienceKey(presence.filter), identity: contactFilterIdentity(presence.filter, {}), total: 1, numberOnly: true }
       : null;
   const selectable = !failed && !emptyBook;
   // ⛔ D19: the gate is not even asked for a viewer who may not see its answer.
@@ -407,6 +413,21 @@ async function AdminContactsContent({ searchParams }: { searchParams: Promise<Co
                     action={(
                       <span className="flex flex-wrap justify-center gap-2" data-number-presence={presence.present === null ? "limited" : presence.present ? "in" : "out"}>
                         {presence.present === true && <ContactNumberSelect />}
+                        <a href={clearSearchHref} className="btn btn-ghost btn-sm">Clear search</a>
+                      </span>
+                    )}
+                  />
+                ) : listed !== null && listed.blockedNumber ? (
+                  // ⭐ C8b re-review (NIT 9) · a READER's whole number that the book BLOCKS lists no row (the tombstone is in
+                  // no audience): "in the book", as the Add form says it, and the same selection a masked viewer's presence
+                  // offers — so a stop given by phone can be recorded for it by a reader too.
+                  <AdminTableEmpty
+                    colSpan={cols}
+                    title={CONTACTS_NUMBER_PRESENCE.inBook}
+                    body={CONTACTS_NUMBER_PRESENCE.blockedBody}
+                    action={(
+                      <span className="flex flex-wrap justify-center gap-2" data-number-presence="blocked">
+                        <ContactNumberSelect />
                         <a href={clearSearchHref} className="btn btn-ghost btn-sm">Clear search</a>
                       </span>
                     )}

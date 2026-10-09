@@ -312,12 +312,14 @@ const L = {
   b13: "B13 · ⛔ the parser builds a NEW request from named keys: a posted count, tier, officer and matched are never read — the request's keys are action, audience, list, tag and typed — and an unknown audience key refuses",
   b14: "B14 · 🔴 D19 / A1.1 · a masked role's POSTed sources, consent or player audience is refused role BEFORE any count — the preview and the run both, the store's count never asked; a reader gets the count",
   b23: "B23 · ⛔ C8b (B7) · NO SHARED LABEL FROM A PROTECTED FILTER: a READER's tag and add-to-list over a consent, stop, source or player filter are refused protected_label — the preview and the run, BEFORE any count, nothing written, no list made — the sentence naming the axis and the way on (tick them by hand, or filter by something else); ⭐ (C8b review) \"protected\" IS THE ONE ROLE RULE'S: over every single-axis audience the label rule refuses exactly what roleRefusal refuses a masked viewer, and its source asks roleRefusal(audience, false) with no axis list of its own; CONTROLS: that reader's untag over the same filter previews, their TICKED rows are tagged and listed, and a tag over a name search previews",
-  b24: "B24 · ⛔ C8b (B3) · A MASKED VIEWER'S WHOLE-NUMBER SEARCH IS NO AUDIENCE — tag, untag, add to a list and remove over it are refused number_search BEFORE any count, the preview and the run, in the one sentence — ⭐ BUT FOR A STOP (the integrator's ruling): suppress and record a withdrawal over the whole number ALONE act on that NUMBER — a number a row holds, the erased tombstone's and one with only an erasure marker each preview ONE (typed tier, NO sample) and run to the stop or withdrawal recorded for that number, the masked reply the total alone, the same answers for all three (X22); a number not in the book is empty, and the whole number beside another filter is refused number_search; CONTROLS: a masked NAME search previews, and a reader's whole-number search previews its one row",
+  b24: "B24 · ⛔ C8b (B3) · A MASKED VIEWER'S WHOLE-NUMBER SEARCH IS NO AUDIENCE — tag, untag, add to a list and remove over it are refused number_search BEFORE any count, the preview and the run, in the bar's own sentence naming the two actions that still act on the number (the re-review's MN-1) — ⭐ BUT FOR A STOP (the integrator's ruling): suppress and record a withdrawal over the whole number ALONE act on that NUMBER — a number a row holds, the erased tombstone's and one with only an erasure marker each preview ONE (typed tier, NO sample) and run to the stop or withdrawal recorded for that number, the masked reply the total alone, the same answers for all three (X22); a number not in the book is empty, and the whole number beside another filter is refused number_search; CONTROLS: a masked NAME search previews, and a reader's whole-number search previews its one row",
   b14b: "B14b · 🔴 A1.1 · a withdrawal's split is a consent signal: a masked viewer's reply carries the total only (changed and unchanged null) and the line says the total; a reader's carries the split; a tag's reply is untouched",
   b14c: "B14c · 🔴 OD54 · a masked role's POSTed suppressed audience — true, false, or beside an operator — is refused role BEFORE any count, the preview and the run both, naming “suppressed”; a reader gets the count of the stopped rows and the audience in words",
   b14d: "B14d · 🔴 OD54 · a suppression's split is a stop signal: a masked officer may still suppress, its preview is the TOTAL (no split key) and its reply carries the total only (changed and unchanged null), the line saying “A stop is on record for N contacts” — never “already suppressed”; a reader's carries the split",
   b15: "B15 · ⭐ the selection row is the SERVER's projection: exactly id, name and masked, the number +255••••NN — and the preview's sample is the same projection, twenty named of thirty, \"and 10 more\"",
   b16: "B16 · \"select all matching\" stores the FILTER: the page's canonical key reads back through U24's JSON parser to the same filter and carries no ids; ticks-only is ids alone, and a filter beside ids is a filter",
+  b25: "B25 · ⭐ C8b re-review (NIT 9) · A READER RECORDS A STOP GIVEN BY PHONE FOR A NUMBER THE BOOK BLOCKS: over the whole number ALONE, the erased tombstone's and a marker's number each preview ONE (typed tier, no sample) for suppress and for record a withdrawal, and run to the stop or withdrawal recorded for that number — the reader handed the split (a marker's number, already withdrawn, reads unchanged) — as a number a live row holds does; a reader's TAG over the blocked number is empty (the number path is a stop's alone), and the same stop beside another filter counts the live rows (empty)",
+  b26: "B26 · ⭐ C8b re-review (MN-1) · THE BAR OFFERS A SEARCHED NUMBER ALONE SUPPRESS AND RECORD A WITHDRAWAL ONLY: with the selection numberOnly, tag, untag, add to a list and remove are DISABLED with the reason \"Only Suppress and Record a withdrawal act on a searched number\" while the two stay enabled with their own hints — and without it all six are enabled (EXECUTED); the provider exposes numberOnly from the CHOSEN selection, the bar hands it to bulkActionState and says the number as itself on its count line (never \"All 1 matching selected\"), and the page marks the presence selection and a reader's blocked number numberOnly",
   s1: "S1 · ⛔ THE ACTIONS ARE GATED: the file opens \"use server\", exports exactly the two actions, each opens with softRequireStaff(\"growth\", …) before its rate rule and the parser, reads the body only through parseBulkRequest, never a count from it; only a landed run revalidates, and the reply goes through contactBulkReply",
   s2: "S2 · the bar is an act control that never hides: useMayAct and useActDisabledReason at the top, every action button's disabled AND title from bulkActionState (EXECUTED: every action, every state, a reason said)",
   s3: "S3 · ⭐ the confirmation is the SERVER's tier: the ConfirmModal spreads tier and typedWord together from p.tier — no typed word built from the selection — and the run posts back the preview's own word",
@@ -669,8 +671,12 @@ async function runAssertions(impl: Impl, tag: string): Promise<void> {
       const pre = await preview({ ...body, typed: null }, false, counting);
       const r = await run({ ...body, typed: "1" }, false, counting);
       answers.push(`${action} ${pre.ok ? "PREVIEWED" : pre.reason}/${r.ok ? "RAN" : r.reason}`);
-      if (pre.ok || pre.reason !== "number_search" || pre.error !== MASKED_NUMBER_SEARCH_REASON || r.ok || r.reason !== "number_search") allRefused = false;
+      if (pre.ok || pre.reason !== "number_search" || pre.error !== BULK_SENTENCES.numberSearch || r.ok || r.reason !== "number_search") allRefused = false;
     }
+    // ⭐ The re-review's MN-1 · the refusal names the two actions that still act on the number — never the export's
+    // general sentence — in both the preview and the run.
+    const sentence = BULK_SENTENCES.numberSearch.includes("only Suppress and Record a withdrawal act on it") && BULK_SENTENCES.numberSearch !== MASKED_NUMBER_SEARCH_REASON
+      && impl.sources.service.split('return refuse("number_search", BULK_SENTENCES.numberSearch);').length - 1 === 2;
     const maskedCounts = counted;
     // ⭐ B3's ONE EXCEPTION (the integrator's ruling): a stop given by phone. Suppress and record a withdrawal over the whole
     // number ALONE act on that NUMBER — a held one, the erased tombstone's, and one with only an erasure marker on the
@@ -700,9 +706,60 @@ async function runAssertions(impl: Impl, tag: string): Promise<void> {
     // CONTROLS: a masked NAME search previews; a reader's whole-number search previews its row.
     const byName = await preview({ action: "tag", tag: "probe", audience: { q: "Asha" }, typed: null }, false);
     const reader = await preview({ action: "tag", tag: "probe", audience, typed: null }, true);
-    return [allRefused && maskedCounts === 0 && stopsAlike && !absent.ok && absent.reason === "empty" && !beside.ok && beside.reason === "number_search"
+    return [allRefused && sentence && maskedCounts === 0 && stopsAlike && !absent.ok && absent.reason === "empty" && !beside.ok && beside.reason === "number_search"
       && byName.ok && reader.ok && reader.count === 1,
-      `${answers.join(" · ")} · masked counts asked ${maskedCounts} · ${stops.join(" · ")} · not in the book ${outcome(absent)} · beside a filter ${outcome(beside)} · by name ${byName.ok ? `previews ${byName.count}` : outcome(byName)} · reader ${outcome(reader)}`];
+      `${answers.join(" · ")} · the sentence ${sentence ? "names the two" : "WRONG"} · masked counts asked ${maskedCounts} · ${stops.join(" · ")} · not in the book ${outcome(absent)} · beside a filter ${outcome(beside)} · by name ${byName.ok ? `previews ${byName.count}` : outcome(byName)} · reader ${outcome(reader)}`];
+  });
+  await fresh(L.b25, async () => {
+    // ⭐ C8b re-review (NIT 9) · a READER's whole number that the book blocks lists no row — and a stop given by phone is
+    // recorded for it all the same, on the NUMBER, exactly as for a masked officer (and as for a number a row holds).
+    const MARKER = "0713600003";
+    await db.messagingConsent.create({
+      id: "u23l_marker_r", channel: "SMS", identifier: bare(MARKER), category: "MARKETING", status: "WITHDRAWN", source: "OPERATOR",
+      wording: "fixture", locale: "EN", evidence: ERASURE_EVIDENCE, recordedBy: null, createdAt: "2026-09-10T08:00:00.000Z",
+    });
+    const stops: string[] = [];
+    let readerStops = true;
+    for (const [label, local] of [["tombstone", N.erased], ["marker", MARKER], ["held", N.known]] as const) {
+      for (const action of ["suppress", "withdraw"] as const) {
+        const body = { action, audience: { q: bare(local) } };
+        const pre = await preview({ ...body, typed: null }, true);
+        const r = impl.reply(await run({ ...body, typed: "1" }, true), true);
+        const recorded = action === "suppress"
+          ? (await db.suppression.find(mkey(local)))?.reason === "OPERATOR"
+          : (await db.messagingConsent.latestFor(mkey(local)))?.status === "WITHDRAWN";
+        stops.push(`${label}/${action} ${pre.ok ? `${pre.count}/${pre.tier.kind}/${pre.sample.length}` : pre.reason} ${r.ok ? `ran ${r.matched}/${r.changed}+${r.unchanged}` : r.reason} ${recorded ? "recorded" : "NOT RECORDED"}`);
+        if (!pre.ok || pre.count !== 1 || pre.tier.kind !== "typed" || pre.sample.length !== 0 || !r.ok || r.matched !== 1
+          || r.changed === null || r.unchanged === null || r.changed + r.unchanged !== 1 || !recorded) readerStops = false;
+      }
+    }
+    // The number path is a STOP's alone: a reader's tag over the blocked number counts its live rows (none).
+    const tag = await preview({ action: "tag", tag: "probe", audience: { q: bare(N.erased) }, typed: null }, true);
+    // …and beside another filter it is no number alone: the live rows again (none).
+    const beside = await preview({ action: "suppress", audience: { q: bare(N.erased), operators: ["VODACOM"] }, typed: null }, true);
+    return [readerStops && !tag.ok && tag.reason === "empty" && !beside.ok && beside.reason === "empty",
+      `${stops.join(" · ")} · a tag over it ${outcome(tag)} · beside a filter ${outcome(beside)}`];
+  });
+  await check(p(L.b26), () => {
+    // ⭐ C8b re-review (MN-1) · the selection is the searched number alone: two actions act on it, and four never can.
+    const base = { mayAct: true, actReason: undefined, count: 1, perRowMax: BULK_PER_ROW_MAX, busy: false };
+    const four = ["tag", "untag", "addToList", "remove"] as const;
+    const offNumber = CONTACT_BULK_ACTIONS.map((a) => ({ a, s: impl.actionState(a, { ...base, numberOnly: true }) }));
+    const offNumberOk = offNumber.every(({ a, s }) => (four.includes(a as (typeof four)[number])
+      ? s.disabled && s.title === CONTACTS_BULK.numberOnlyTitle
+      : !s.disabled && s.title === BULK_COPY[a].hint));
+    const plain = CONTACT_BULK_ACTIONS.every((a) => !impl.actionState(a, { ...base, numberOnly: false }).disabled);
+    const bar = impl.sources.bar;
+    const provider = impl.sources.provider;
+    const page = impl.sources.page;
+    const wired = bar.includes("const state = bulkActionState(a, { mayAct, actReason, count: s.count, perRowMax: BULK_PER_ROW_MAX, busy: pending, numberOnly: s.numberOnly });")
+      && bar.includes('s.mode === "matching" ? (s.numberOnly ? CONTACTS_BULK.numberSelected : CONTACTS_BULK.allMatching(s.count))')
+      && provider.includes("const numberOnly = chosen !== null && chosen.numberOnly === true;")
+      && page.split("total: 1, numberOnly: true }").length - 1 === 2;
+    const words = CONTACTS_BULK.numberSelected.includes("only Suppress and Record a withdrawal act on it")
+      && CONTACTS_BULK.numberOnlyTitle === "Only Suppress and Record a withdrawal act on a searched number";
+    return [offNumberOk && plain && wired && words,
+      `${offNumber.map(({ a, s }) => `${a} ${s.disabled ? "off" : "on"}`).join(" · ")} · without it all on ${plain} · wired ${wired} · words ${words}`];
   });
   await fresh(L.b14c, async () => {
     // 🔴 OD54 · the stop axis asked through the bulk door's body — the address's question, refused the same way.
@@ -847,7 +904,7 @@ async function runAssertions(impl: Impl, tag: string): Promise<void> {
   await check(p(L.s2), () => {
     const bar = src.bar;
     const shape = /\bconst mayAct = useMayAct\(\);/.test(bar) && /\bconst actReason = useActDisabledReason\(\);/.test(bar)
-      && /const state = bulkActionState\(a, \{ mayAct, actReason, count: s\.count, perRowMax: BULK_PER_ROW_MAX, busy: pending \}\);/.test(bar)
+      && /const state = bulkActionState\(a, \{ mayAct, actReason, count: s\.count, perRowMax: BULK_PER_ROW_MAX, busy: pending, numberOnly: s\.numberOnly \}\);/.test(bar)
       && /<Button key=\{a\} type="button" size="sm" variant="ghost" disabled=\{state\.disabled\} title=\{state\.title\}/.test(bar)
       && /from "\.\/contact-bulk-actions"/.test(bar) && src.barRaw.startsWith("\"use client\";");
     const REASON = "Read-only: the AUDITOR role can view Growth & marketing but not change it.";
@@ -1251,6 +1308,62 @@ if (!PROVE_RED) {
       name: "R-B24c · ⛔ C8b review · the stop's exception not built — a masked officer can no longer record a stop given by phone for a number they searched",
       expect: L.b24,
       impl: () => ({ ...REAL, deps: { ...TEST_DEPS, holdsNumber: async () => false } }),
+    },
+    {
+      name: "R-B24d · ⛔ C8b re-review (NIT) · the number read with the OTHER filters ignored — a stop over the whole number beside a filter acts on the number, the filter dropped",
+      expect: L.b24,
+      impl: () => ({
+        ...REAL,
+        deps: {
+          ...TEST_DEPS,
+          stopNumber: (req) => {
+            if (req.action !== "withdraw" && req.action !== "suppress") return null;
+            const q = req.audience.q;
+            const n = q === null ? null : parseTzNumber(q);
+            return n !== null && n.verdict === "ok" ? n.msisdn : null;
+          },
+        },
+      }),
+    },
+    {
+      name: "R-B24e · ⛔ C8b re-review (MN-1) · the refusal back to the export's general sentence — it names none of the actions that still act on the number",
+      expect: L.b24,
+      impl: () => ({
+        ...REAL,
+        sources: {
+          ...REAL_SOURCES,
+          service: REAL_SOURCES.service.split('return refuse("number_search", BULK_SENTENCES.numberSearch);').join('return refuse("number_search", numberSearch.reason);'),
+        },
+      }),
+    },
+    {
+      name: "R-B25 · ⛔ C8b re-review (NIT 9) · the number path asked for a MASKED viewer only — a reader cannot record a stop given by phone for a number the book blocks",
+      expect: L.b25,
+      impl: () => ({ ...REAL, deps: { ...TEST_DEPS, stopNumber: (req, viewerReads) => (viewerReads ? null : CONTACT_BULK_DEPS.stopNumber(req, viewerReads)) } }),
+    },
+    {
+      name: "R-B26 · ⛔ C8b re-review (MN-1) · the bar's action rule blind to the searched number — all six actions offered, four of them refused by the server",
+      expect: L.b26,
+      impl: () => ({
+        ...REAL,
+        actionState: (a, s) => bulkActionState(a, { ...s, numberOnly: false }),
+      }),
+    },
+    {
+      name: "R-B26b · ⛔ C8b re-review (MN-1) · the count line says \"All 1 matching selected\" over a searched number",
+      expect: L.b26,
+      impl: () => ({
+        ...REAL,
+        sources: { ...REAL_SOURCES, bar: REAL_SOURCES.bar.replace("(s.numberOnly ? CONTACTS_BULK.numberSelected : CONTACTS_BULK.allMatching(s.count))", "CONTACTS_BULK.allMatching(s.count)") },
+      }),
+    },
+    {
+      name: "R-B26c · ⛔ C8b re-review (MN-1 · NIT 9) · the page hands the presence selection without numberOnly — the bar treats a searched number as any matching set",
+      expect: L.b26,
+      impl: () => ({
+        ...REAL,
+        sources: { ...REAL_SOURCES, page: REAL_SOURCES.page.split("total: 1, numberOnly: true }").join("total: 1 }") },
+      }),
     },
 
     /* ── and the rest of the unit, each on its own assertion ── */

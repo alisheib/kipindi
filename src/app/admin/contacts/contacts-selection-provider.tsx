@@ -26,11 +26,15 @@ import { CONTACTS_BULK } from "./contacts-copy";
 
 /** The page's filter, as the server built it: its canonical key (U24's audience JSON, serialised — what a run posts), its
  *  IDENTITY (the filter as the address wrote it — a preset's name, not the minute it resolved to — which decides "the
- *  filter changed"; review F6) and its match count. */
-export type ContactsMatching = { key: string; identity: string; total: number };
+ *  filter changed"; review F6) and its match count. ⭐ C8b re-review (MN-1) · `numberOnly`: the selection is a searched
+ *  whole number ALONE — a masked viewer's presence answer, or a reader's search of a number the book blocks — on which
+ *  only Suppress and Record a withdrawal act (the bar disables the other four and says so). */
+export type ContactsMatching = { key: string; identity: string; total: number; numberOnly?: boolean };
 
 type Ctx = {
   mode: "rows" | "matching";
+  /** ⭐ C8b re-review (MN-1) · the chosen selection is a searched whole number alone (`ContactsMatching.numberOnly`). */
+  numberOnly: boolean;
   /** Rows mode: the ticked rows, by id. Empty in matching mode. */
   rows: Map<string, ContactSelectionRow>;
   /** How many contacts the selection holds: the ticked rows, or the filter's count. */
@@ -88,6 +92,7 @@ export function ContactsSelectionProvider({
 
   const pageIds = React.useMemo(() => pageRows.map((r) => r.id), [pageRows]);
   const mode: Ctx["mode"] = chosen !== null ? "matching" : "rows";
+  const numberOnly = chosen !== null && chosen.numberOnly === true;
   const isOn = React.useCallback((id: string) => chosen !== null || rows.has(id), [chosen, rows]);
 
   const toggle = React.useCallback((row: ContactSelectionRow) => {
@@ -163,8 +168,8 @@ export function ContactsSelectionProvider({
   const someOnPage = !allOnPage && pageIds.some((id) => isOn(id));
 
   const value = React.useMemo<Ctx>(
-    () => ({ mode, rows, count, offPage, allOnPage, someOnPage, matching, note, isOn, toggle, setPage, selectAllMatching, clear, audience }),
-    [mode, rows, count, offPage, allOnPage, someOnPage, matching, note, isOn, toggle, setPage, selectAllMatching, clear, audience],
+    () => ({ mode, numberOnly, rows, count, offPage, allOnPage, someOnPage, matching, note, isOn, toggle, setPage, selectAllMatching, clear, audience }),
+    [mode, numberOnly, rows, count, offPage, allOnPage, someOnPage, matching, note, isOn, toggle, setPage, selectAllMatching, clear, audience],
   );
 
   return <SelectionCtx.Provider value={value}>{children}</SelectionCtx.Provider>;
