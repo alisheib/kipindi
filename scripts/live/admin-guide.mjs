@@ -407,7 +407,8 @@ async function runA() {
     });
     await step("18-compose", async () => {
       await page.goto(`${BASE}/admin/campaigns/new`, { waitUntil: "networkidle" });
-      await page.locator(SEL.name).first().fill("October welcome");
+      // A name that fits the teaser — neutral, staff-only, and not one of U52a's own (`U52a drive A`…), which name the live drive's campaigns
+      await page.locator(SEL.name).first().fill("Coming soon");
       // ⭐ the main example: U52a's own message, both languages (the owner's first test, as he will send it)
       await writeDriveMessage(page);
       await wait(500);
@@ -564,7 +565,7 @@ async function runB() {
   await step("40-confirm", async () => {
     // The audience first (the rail's own address, as its "weekend" pill writes it), then the words, then one save.
     await page.goto(`${BASE}/admin/campaigns/new?tag=weekend`, { waitUntil: "networkidle" });
-    await page.locator(SEL.name).first().fill("Weekend offer");
+    await page.locator(SEL.name).first().fill("Coming soon (weekend list)");
     // ⭐ the campaign the guide confirms and starts carries the same message: U52a's own, both languages
     await writeDriveMessage(page);
     await wait(400);
