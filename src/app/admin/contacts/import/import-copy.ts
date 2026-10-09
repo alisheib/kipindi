@@ -366,7 +366,8 @@ export const LIST = {
     fig(n), ` ${plural(n, "member", "members")}`,
     ...(withAccount !== null && withAccount > 0 ? [" · ", fig(withAccount), " more with a 50pick account"] : []),
   ],
-  /** ⭐ C8b (B4) · a viewer who may not read numbers: their import puts on the list ONLY the contacts it adds. */
+  /** ⭐ C8b (B4, and the review's M1) · a run whose CREATOR or STARTER may not read numbers puts on the list ONLY the
+   *  contacts it adds — said to whoever starts it, an ADMIN taking over a masked officer's run included. */
   createdOnly: "Only the contacts this import adds join the list — numbers already in the book stay as they are.",
   /** The list's NEWEST basis recording is in force — for its members today (`owed` says what the import's new ones need).
    *  Both are short chip labels; where the basis is recorded is `lead`'s sentence above the cards. */

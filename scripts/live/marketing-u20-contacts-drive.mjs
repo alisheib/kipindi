@@ -7,8 +7,10 @@
  *     (`loading.tsx` explains why the rows below cannot be equal by construction);
  *   · POPULATED — a page of 20, every number masked `+255••••NN` for GROWTH with NO eye and NO copy;
  *   · SEARCH — 🔴 C8b (B3) · GROWTH's whole number, in two spellings, answers "This number is in the book." and lists NO
- *     row (a reader's finds exactly the one row — the ADMIN block); a PART of a number is no-match (with the clear
- *     action), never a number search — and (vb7) the no-match row says the parser's own sentence;
+ *     row (a reader's finds exactly the one row — the ADMIN block); ⭐ (the C8b review's MINOR 1) "Select this number"
+ *     selects it alone, Suppress and Record a withdrawal offered, and a number not in the book offers nothing to select;
+ *     a PART of a number is no-match (with the clear action), never a number search — and (vb7) the no-match row says
+ *     the parser's own sentence;
  *   · PAGE CLAMP — page 4 of a 5-row result renders the 5 rows;
  *   · ERROR — a failed read is "Couldn't load the contact book", never a zero;
  *   · ADMIN — the role that may reveal gets the eye AND Copy on every row, and the eye shows `+255…`;
@@ -499,6 +501,34 @@ for (const vp of VIEWPORTS) {
   }
   ok(`${vp.name} · SEARCH · the tiles still read the whole book`, /In the book\s*45/i.test(await mainText(page)));
   await shoot(page, `${vp.name}-search-presence`);
+  // ⭐ C8b review (MINOR 1) · the number in the book is the ONE selection a stop or a withdrawal acts on: "Select this
+  // number" selects it ALONE — the bar in matching mode, one contact — with Suppress and Record a withdrawal offered (the
+  // server refuses the bar's other actions over it, in words). ⚠️ The bar's helpers are declared further down (`BAR`),
+  // after this loop runs, so its selector is written out here. Nothing is pressed past the selection: no stop is written.
+  {
+    const bar = '[data-block="contacts-bulk-bar"]';
+    const selectOffered = (await page.locator('[data-number-presence="in"] [data-number-select]').count()) === 1;
+    if (selectOffered) await page.locator("[data-number-select]").first().click();
+    await wait(300);
+    const picked = {
+      mode: await attrOf(page, bar, "data-bulk-mode"),
+      count: Number((await attrOf(page, bar, "data-bulk-count")) ?? "-1"),
+      offered: await page.$$eval(`${bar} [data-bulk-action]`, (els) => els.filter((e) => !e.hasAttribute("disabled")).map((e) => e.getAttribute("data-bulk-action") || "")),
+    };
+    ok(`${vp.name} · SEARCH · C8b review (MINOR 1) · "Select this number" selects the number ALONE for GROWTH — the bar in matching mode with ONE contact, Suppress and Record a withdrawal offered`,
+      selectOffered && picked.mode === "matching" && picked.count === 1 && picked.offered.includes("suppress") && picked.offered.includes("withdraw"),
+      JSON.stringify(picked));
+    await shoot(page, `${vp.name}-search-presence-selected`);
+    if ((await page.locator(`${bar} [data-bulk-clear]`).count()) > 0) await page.locator(`${bar} [data-bulk-clear]`).first().click();
+    await wait(200);
+    // …and a whole number NOT in the book offers nothing to select (076 3 is a block no seed uses).
+    await openContacts(page, `?q=${encodeURIComponent("+255763999999")}`);
+    const outSaid = await mainText(page);
+    ok(`${vp.name} · SEARCH · C8b · a whole number NOT in the book answers "This number is not in the book." for GROWTH — no row, nothing to select`,
+      (await rows.count()) === 0 && outSaid.includes("This number is not in the book.") && (await page.locator("[data-number-select]").count()) === 0
+        && (await page.locator('[data-number-presence="out"]').count()) === 1,
+      outSaid.slice(0, 160));
+  }
   await openContacts(page, `?q=${encodeURIComponent("0711000")}`);
   const nm = await mainText(page);
   ok(`${vp.name} · NO MATCH · a PART of a number finds nothing, and the no-match row says the parser's own sentence ("this one has 6", cut-off digits — vb7), never "part of a number is not searched"`,
