@@ -33,6 +33,11 @@
  *     onto an erased person's number (C3 / A1.7), an erased row counts as present (X22), and a number outlives its holder
  *     — the next owner is a NEW person, reached as a PLAYER by the campaign's player arm (U38a walks the account; its
  *     book arm leaves the tombstone out). "Not a contact" never means "unreachable".
+ *     ⚠️ C8a · the TOMBSTONE alone is asked here, on purpose: with NO book row, a sign-up writes the new account's own
+ *     row even where an erasure stands on the number (the ledger's marker, `erasure-mark.ts`'s ONE rule). A sign-up is
+ *     the account holder's own act and its row carries only what they gave at sign-up — never the erased person's name,
+ *     email, notes or tags — so nothing erased comes back; and the marker still refuses the number at the gate until a
+ *     GIVEN lifts it. The writers that would bring OLD data back — the importer and the Add form — ask the ONE rule.
  *   · ⛔ A ROW LINKED TO ANOTHER ACCOUNT → KEPT (U18b, `erase.ts`: "a row found by number that is linked to a different
  *     account is not this person's and is not touched"). Re-pointing it would hand that person's row — their name, their
  *     email — to this account's own data export (`dsar.ts` lists every LINKED row).

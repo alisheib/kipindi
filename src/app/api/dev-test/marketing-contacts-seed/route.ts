@@ -35,6 +35,11 @@
  *                        its book row through the ONE registration writer — 004 ERASED (an emptied row, `sourceRef` the
  *                        erasure mark, the person's last word WITHDRAWN), and 010 and 011 NOT in the book: a previous drive's
  *                        import added them, so they are taken out again through the resolver's one write door
+ *
+ * ⚠️ C8a · EVERY "ERASED" THIS ROUTE DECIDES IS A BOOK ROW'S, and the tombstone alone is enough for each: its erased
+ * fixtures ARE tombstones (`sourceRef` the erasure mark — a row decides alone, whatever its ledger), and its counts and its
+ * removals walk book rows (a tombstone is in no export and is never removed). The ledger's rule (`erasure-mark.ts`,
+ * `erasureStandsOn` — an erasure with no book row) is asked only where a number has NO row: the importer and the Add form.
  */
 import { NextResponse } from "next/server";
 import { db } from "@/lib/server/store";
