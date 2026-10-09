@@ -113,6 +113,8 @@ const REGISTRY: readonly Registered[] = [
   // S15 · C3b-fix (2026-10-09) · D6 and D7 — the two pure rules every workbook and CSV reader shares (the server's and C3c's).
   { file: "contacts-import/sheet-choice.mts", owner: "S15", covers: "src/lib/contacts/sheet-choice.ts — the sheet a workbook is read from, chosen by the mobile numbers its first rows hold, and its note" },
   { file: "contacts-import/title-rows.mts", owner: "S15", covers: "src/lib/contacts/title-rows.ts — a title above the column names leaves the data, said in a note" },
+  // S15 · C3c (2026-10-09) — a workbook past 700 KB read in the browser, held to the server's reader by a differential.
+  { file: "contacts-import/xlsx-browser.mts", owner: "S15", covers: "src/lib/contacts/{xlsx-read,xlsx-cells}.ts + readContactsFile's big branch — the browser's Excel reader, the cell rules it shares with the server's, the differential, the big files, the caps" },
 ];
 
 /* ══ THE HARNESS ════════════════════════════════════════════════════════════════════════════════ */

@@ -140,7 +140,7 @@ export const L = {
   E1: "E1 · ⭐ S15-4 said for cells and columns too (C3b): extraNumbersOf counts the rows whose person had another number that is not imported — a second number in the phone cell (G3), a number in another phone column beside the one read (G4) — never a serial or an extension, and the result's sentence counts rows; a plain file counts none",
   R1: "R1 · a CSV File is STREAMED into the reader: its rows read, its digest the sha-256 of its exact bytes, progress reported in bytes",
   R2: "R2 · an old .xls is refused before anything is uploaded, in xlsx-limits' own sentence",
-  R3: "R3 · ⛔ an Excel file over the cap is refused BEFORE it is uploaded, its size named (too_large)",
+  R3: "R3 · ⭐ C3c · an Excel file over the upload cap is NEVER uploaded and never refused for its size: it is read in the browser — a broken one refused in the copy table's own unreadable sentence, never the old too_large",
   R4: "R4 · an empty file is refused with the empty-file sentence",
   R5: "R5 · ⭐ S15-4 · a vCard card with two numbers yields one row, the count of such cards, and the note that says it",
   R6: "R6 · an aborted read comes back aborted — nothing kept",
@@ -468,6 +468,8 @@ async function run(ctx: SectionContext<FlowImpl>): Promise<void> {
   const readAllowed = new Set([
     "./parsed-file", "./import-parse", "./vcard", "./xlsx-limits", "./contact-fields", "./import-limits", "./phone-cell", "../tz-msisdn",
     "../phone-normalize",
+    // C3c · the browser's reader of a workbook past the upload cap.
+    "./xlsx-read",
   ]);
   const loopAllowed = new Set(["./import-limits", "./import-flow"]);
   const readSpecs = specs(impl.sources.read);
@@ -604,7 +606,9 @@ async function run(ctx: SectionContext<FlowImpl>): Promise<void> {
     const big = new Uint8Array(XLSX_MAX_BYTES + 1);
     big.set([0x50, 0x4b, 0x03, 0x04]);
     const r3 = await readOne(impl, new File([big], "big.xlsx"));
-    ok(L.R3, r3.out.kind === "refused" && r3.out.sentence === xlsxRefusalSentence("too_large", { bytes: XLSX_MAX_BYTES + 1 }), JSON.stringify(r3.out).slice(0, 160));
+    // C3c · a zip head and zeros past the cap: read in the browser, whose zip walk finds no end record.
+    ok(L.R3, r3.out.kind === "refused" && r3.out.sentence === xlsxRefusalSentence("unreadable")
+      && r3.out.sentence !== xlsxRefusalSentence("too_large", { bytes: XLSX_MAX_BYTES + 1 }), JSON.stringify(r3.out).slice(0, 160));
 
     const r4 = await readOne(impl, new File([], "empty.csv"));
     ok(L.R4, r4.out.kind === "refused" && r4.out.sentence === EMPTY_FILE_SENTENCE, JSON.stringify(r4.out).slice(0, 160));

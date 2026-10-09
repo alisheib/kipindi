@@ -15,7 +15,7 @@ import { formatNumber } from "@/lib/utils";
 import type { ImportChoice, ShownKeepReason } from "@/lib/contacts/import-decide";
 import { IMPORT_REFUSAL_SENTENCES, type PreflightBucket } from "@/lib/contacts/import-flow";
 import { IMPORT_MAX_ROWS } from "@/lib/contacts/import-limits";
-import { formatFileSize, PHONE_FORMAT_REMEDY, XLSX_MAX_BYTES } from "@/lib/contacts/xlsx-limits";
+import { PHONE_FORMAT_REMEDY } from "@/lib/contacts/xlsx-limits";
 
 /* ══ PARTS — a sentence with figures in it ═══════════════════════════════════════════════════════ */
 
@@ -80,10 +80,12 @@ export const ENTRANCE = {
   choose: "Choose a file",
   fileLabel: "Contacts file",
   reads: "Excel (.xlsx) · CSV with any separator · a phone's contacts (.vcf) from iPhone, Android or Google",
-  /** ⛔ C3b · said precisely: a CSV or a contacts file has no FILE-SIZE limit, and one import takes at most the run's row
-   *  cap — the figure drawn from `IMPORT_MAX_ROWS`, never typed. */
+  /** ⛔ Said precisely: no file has a FILE-SIZE limit — C3c (2026-10-09): an Excel file past the 700 KB upload cap is read
+   *  in the browser, as a CSV or a contacts file always was — and one import takes at most the run's row cap, the figure
+   *  drawn from `IMPORT_MAX_ROWS`, never typed. ⛔ Never again "an Excel file can be up to 700 KB": its remedy, saving
+   *  as CSV, loses the last digits of every 12-digit General number. */
   limits: [
-    `An Excel file can be up to ${formatFileSize(XLSX_MAX_BYTES)}; a CSV or a contacts file has no file-size limit — up to `,
+    "No file-size limit for Excel, CSV or a phone's contacts file — up to ",
     fig(IMPORT_MAX_ROWS),
     " rows in one import.",
   ] as readonly Part[],

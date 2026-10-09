@@ -87,6 +87,7 @@ import {
   ODS_MIMETYPE,
   XLSX_MAX_BYTES,
   XLSX_MAX_ENTRIES,
+  XLSX_MAX_GRID_CELLS,
   XLSX_MAX_INFLATED_BYTES,
   XLSX_MAX_ROWS,
   base64DecodedBytes,
@@ -450,11 +451,11 @@ export function xlsxCellText(cell: XlsxCellLike, numberText: NumberText = xlsxNu
 /* ══ THE RULES — every step a seam ═══════════════════════════════════════════════════════════════ */
 
 /**
- * ⚠️ The most cells the read sheet may span, counted to each row's LAST non-empty cell: twenty columns a row across
- * XLSX_MAX_ROWS. A row with one cell in the last column (16,384) spans 16,384, and the grid is laid out densely, so
- * without it 700 KB of far-right cells would ask for gigabytes. Real contact sheets are far inside it.
+ * ⚠️ The most cells the read sheet may span, counted to each row's LAST non-empty cell (see its comment in
+ * xlsx-limits.ts). ⭐ C3c · the constant moved to the client-safe copy table, so the browser's reader lays a sheet out
+ * under the SAME cap; re-exported here, where this reader's rules and its suite read it.
  */
-export const XLSX_MAX_GRID_CELLS = XLSX_MAX_ROWS * 20;
+export { XLSX_MAX_GRID_CELLS };
 
 /** Every base64 character, and at most two `=` of padding. */
 const BASE64_SHAPE = /^[A-Za-z0-9+/]*={0,2}$/;

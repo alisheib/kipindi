@@ -668,6 +668,11 @@ async function buildFixtures(): Promise<Fixtures> {
 let fixturesOnce: Promise<Fixtures> | null = null;
 const fixtures = (): Promise<Fixtures> => (fixturesOnce ??= buildFixtures());
 
+/** C3c · the fixtures above, shared with the xlsx-browser section's differential (the browser's reader on the very same
+ *  bytes) — built once per process, whichever section asks first. */
+export type XlsxSectionFixtures = Fixtures;
+export const xlsxSectionFixtures = (): Promise<XlsxSectionFixtures> => fixtures();
+
 /* ══ THE LITERAL EXPECTATIONS ═══════════════════════════════════════════════════════════════════ */
 
 /** The cell fixture, row by row — typed here as LITERALS, never computed by the code under test. */

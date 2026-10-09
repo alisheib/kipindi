@@ -15,13 +15,19 @@
  * ⭐ THE GATE IS EXACT (A1.4). 716,800, 716,801 and 716,802 bytes all encode to the same 955,736 base64 characters,
  * so a length compare lets two over-cap sizes reach the decoder. `xlsxBase64OverCap` reads the decoded size off the
  * length and the padding (3·len/4 − padding) and refuses anything above 716,800 bytes before a byte is decoded.
+ * ⭐ C3c (2026-10-09) · THE CAP IS THE UPLOAD'S, NO LONGER THE OFFICER'S. A workbook past XLSX_MAX_BYTES is never
+ * uploaded: the import dialog reads it in the browser (`xlsx-read.ts`, the same cell rules as the server's reader —
+ * `xlsx-cells.ts` — and the same caps here) and stages its rows like a CSV's. So `too_large` is said only to a direct
+ * post over the cap (the server action's own gate) and to an old browser that cannot inflate a zip (no
+ * `DecompressionStream("deflate-raw")`), whose only way on is still CSV.
  *
  * ⭐ ONE SNIFFER, ONE COPY TABLE (decision C18). The CSV reader's format check (U25's detectFormat), the import
  * dialog (before it posts) and the server's reader all decide "is this a spreadsheet, and which kind" HERE, and
  * every refusal an officer reads about a spreadsheet comes from `xlsxRefusalSentence`. A second ".xls" sentence
  * anywhere else is the drift this file exists to prevent.
  *
- * ⛔ THE REMEDY CARRIES ITS OWN WARNING. "Save it as CSV" is the way past the cap — but Excel writes a 12-digit
+ * ⛔ THE REMEDY CARRIES ITS OWN WARNING. "Save it as CSV" was the way past the cap until C3c, and is still the way past
+ * a workbook too large to inflate here or an old browser — but Excel writes a 12-digit
  * number in General format to CSV as its DISPLAY, `2.55713E+11`, and the last digits are gone for good. So every
  * sentence here that sends an officer to CSV also carries the format step, `PHONE_FORMAT_REMEDY` — ONE clause
  * (A1.6), which the Phone column's hint and the shortened-number sentence read too, so the officer is never told
@@ -93,6 +99,15 @@ export function xlsxBase64OverCap(base64: string): boolean {
  */
 export const XLSX_MAX_INFLATED_BYTES = 48 * 1024 * 1024;
 export const XLSX_MAX_ROWS = 200_000;
+
+/**
+ * ⚠️ The most cells the read sheet may span, counted to each row's LAST non-empty cell: twenty columns a row across
+ * XLSX_MAX_ROWS. A row with one cell in the last column (16,384) spans 16,384, and the grid is laid out densely, so
+ * without it a few hundred KB of far-right cells would ask for gigabytes. Real contact sheets are far inside it.
+ * ⭐ C3c · ONE constant for both workbook readers — the server's (U27b, where it was born) and the browser's for a
+ * workbook past `XLSX_MAX_BYTES` (`xlsx-read.ts`), which lays the chosen sheet out by the same rule.
+ */
+export const XLSX_MAX_GRID_CELLS = XLSX_MAX_ROWS * 20;
 
 /** The most zip entries a workbook may carry; a real contact sheet has a few dozen. */
 export const XLSX_MAX_ENTRIES = 1000;

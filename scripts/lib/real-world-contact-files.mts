@@ -50,9 +50,12 @@
  * PASTE
  * 22 paste-whatsapp.txt ......... What an officer pastes out of a chat.
  * BIG — only with --big
- * 23 big-150k.csv · 24 big-row-cap.csv (IMPORT_MAX_ROWS + 1 records) · 25 big-50k.xlsx (streamed) ·
+ * 23 big-150k.csv · 24 big-row-cap.csv (IMPORT_MAX_ROWS + 1 records) · 25 big-50k.xlsx and big-150k.xlsx (streamed,
+ *    each past the 700 KB upload cap: since C3c read in the officer's browser, never refused) ·
  * 26 big-150k-cards.vcf and big-photos.vcf (5,000 cards with ~8 KB photos, ~40 MB — the file that rules out a direct
  *    upload). Aggregates only: records = validDistinct + duplicateRows + invalidRows.
+ * ⭐ C3c · `realWorldWorkbooks()` and `bigXlsxInMemory()` hand the same workbooks over IN MEMORY, never written — for the
+ *    xlsx-browser section of `test:contacts-import` (the two workbook readers on the same bytes).
  * PRODUCTION-SAFE — for a live check that is deleted afterwards
  * 27 prod-check-40.csv · prod-check-40.vcf · prod-check-40.xlsx — see the pattern below.
  *
@@ -95,8 +98,9 @@
  *       (default outDir: .qa-shots/contacts-screen/files under the repo root; manifest.json is written beside them)
  */
 import { Buffer } from "node:buffer";
-import { closeSync, mkdirSync, openSync, readFileSync, writeFileSync, writeSync } from "node:fs";
+import { closeSync, mkdirSync, openSync, writeFileSync, writeSync } from "node:fs";
 import { dirname, join, relative, resolve, sep } from "node:path";
+import { Writable } from "node:stream";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import ExcelJS from "exceljs";
 import {
@@ -2657,11 +2661,23 @@ function writeBigVcards(dir: string, name: string, cards: number, withPhotos: bo
   return bigTruth(spec, bytes, stream.aggregate(), notes);
 }
 
-async function writeBigXlsx(dir: string, name: string, rows: number): Promise<FileTruth> {
-  const path = join(dir, name);
+/**
+ * ⭐ A BIG WORKBOOK, IN MEMORY — exceljs's STREAMING writer (each row committed and released, so 150,000 rows never sit
+ * in memory as a workbook; archiver writes every entry with a data descriptor), its zip collected from a memory sink and
+ * its clock pinned: the very bytes `writeBigXlsx` writes. C3c · exported so `test:contacts-import`'s xlsx-browser
+ * section reads the big workbooks through the browser's reader without writing a file (a section makes no file-changing
+ * call), its counts held to this truth.
+ */
+export async function bigXlsxInMemory(name: string, rows: number): Promise<{ readonly data: Buffer; readonly truth: FileTruth }> {
   const stream = new BigStream(name);
-  // exceljs's STREAMING writer: each row is committed and released, so 50,000 rows never sit in memory as a workbook.
-  const wb = new ExcelJS.stream.xlsx.WorkbookWriter({ filename: path, useSharedStrings: true, useStyles: false });
+  const chunks: Buffer[] = [];
+  const sink = new Writable({
+    write(chunk: Buffer, _encoding, done) {
+      chunks.push(chunk);
+      done();
+    },
+  });
+  const wb = new ExcelJS.stream.xlsx.WorkbookWriter({ stream: sink, useSharedStrings: true, useStyles: false });
   wb.creator = "Ofisi ya Masoko";
   wb.created = WORKBOOK_DATE;
   wb.modified = WORKBOOK_DATE;
@@ -2674,15 +2690,23 @@ async function writeBigXlsx(dir: string, name: string, rows: number): Promise<Fi
   }
   ws.commit();
   await wb.commit();
-  const pinned = pinZipTimes(readFileSync(path));
-  writeFileSync(path, pinned);
+  const pinned = pinZipTimes(Buffer.concat(chunks));
   const over = pinned.length > XLSX_MAX_BYTES;
   const spec: BigSpec = { name, format: "xlsx", mimics: `${grouped(rows)} rows streamed into one sheet: Phone, Name, Tags.`, encoding: "binary", lineEnding: "none", delimiter: null, header: BIG_HEADER, sheet: "Sheet1" };
-  return bigTruth(spec, pinned.length, stream.aggregate(), [
+  const truth = bigTruth(spec, pinned.length, stream.aggregate(), [
     `${grouped(pinned.length)} bytes against XLSX_MAX_BYTES (${grouped(XLSX_MAX_BYTES)}): ` +
-      (over ? "OVER — the XLSX path refuses it as too_large, the case that sends an officer to CSV." : "within the cap."),
+      (over
+        ? "OVER — since C3c read in the officer's browser (src/lib/contacts/xlsx-read.ts), never uploaded; before C3c it was refused with the save-as-CSV remedy."
+        : "within the cap — read by the server's reader."),
     "Phones are text cells in every spelling; ~6% repeat an earlier number, ~2% are refused.",
   ]);
+  return { data: pinned, truth };
+}
+
+async function writeBigXlsx(dir: string, name: string, rows: number): Promise<FileTruth> {
+  const { data, truth } = await bigXlsxInMemory(name, rows);
+  writeFileSync(join(dir, name), data);
+  return truth;
 }
 
 /* ══ THE ONE ENTRY POINT ══════════════════════════════════════════════════════════════════════════════════════════ */
@@ -2699,6 +2723,24 @@ function grouped(n: number): string {
 
 type Maker = () => Built | Promise<Built>;
 
+/**
+ * ⭐ C3c · THE WORKBOOKS IN MEMORY — every ZIP the small makers build (the four .xlsx files and the .ods), exactly as
+ * `writeRealWorldFiles` builds them, each with its truth checked as it is there — and never written: the xlsx-browser
+ * section of `test:contacts-import` reads each through BOTH workbook readers (the differential), and a section makes no
+ * file-changing call.
+ */
+export async function realWorldWorkbooks(): Promise<ReadonlyArray<{ readonly name: string; readonly data: Buffer; readonly truth: FileTruth }>> {
+  const out: Array<{ readonly name: string; readonly data: Buffer; readonly truth: FileTruth }> = [];
+  for (const make of [makeExcelBasic, makeExcelNumberCells, makeExcelMultiSheet, makeOds, makeProdXlsx] as const) {
+    const built = await make();
+    const truth = settle(built);
+    const problems = checkFileTruth(truth);
+    if (problems.length > 0) throw new Error(`real-world-files: ${built.name} — its truth disagrees with the code it describes: ${problems.slice(0, 5).join(" | ")}`);
+    out.push({ name: built.name, data: built.data, truth });
+  }
+  return out;
+}
+
 /** The small files, in the order the brief lists them. */
 const SMALL_MAKERS: readonly Maker[] = [
   makeExcelCsvUtf8, makeSemicolon1252, makeSepHint, makeShortened, makeGoogleCsv, makeOutlook, makeNumbersOnly,
@@ -2710,7 +2752,7 @@ const SMALL_MAKERS: readonly Maker[] = [
 /**
  * ⭐ Writes every file into `outDir` (created if missing) and returns the truth for each, in order. A small file is
  * checked against the code it describes BEFORE it is written (`checkFileTruth`); a big one value by value as it streams.
- * Either way a disagreement stops the run with the file, the line and the value. `big` adds the five big files.
+ * Either way a disagreement stops the run with the file, the line and the value. `big` adds the six big files.
  */
 export async function writeRealWorldFiles(outDir: string, opts: RealWorldOptions = {}): Promise<FileTruth[]> {
   const dir = resolve(outDir);
@@ -2735,6 +2777,8 @@ export async function writeRealWorldFiles(outDir: string, opts: RealWorldOptions
         `${grouped(IMPORT_MAX_ROWS + 1)} records: one more than IMPORT_MAX_ROWS (${grouped(IMPORT_MAX_ROWS)}, import-limits.ts) — the row-cap refusal.`,
       ]),
       await writeBigXlsx(dir, "big-50k.xlsx", 50_000),
+      // C3c · 150,000 rows in one workbook — Ali's own figure, now read in the browser and imported whole.
+      await writeBigXlsx(dir, "big-150k.xlsx", 150_000),
       writeBigVcards(dir, "big-150k-cards.vcf", 150_000, false, "A whole phone book exported as vCard 3.0: 150,000 cards, no photos.", [
         "150,000 cards, one TEL each: ~6% repeat an earlier number, ~2% are refused. Aggregates only.",
       ]),
@@ -2770,7 +2814,7 @@ async function main(): Promise<void> {
   for (const f of files) {
     console.log(`${f.name.padEnd(width)}  ${grouped(f.bytes).padStart(12)} bytes  ${grouped(f.aggregate.records).padStart(9)} records`);
   }
-  console.log(`manifest: ${writeManifest(outDir, files, big)} · ${files.length} files${big ? "" : " (add --big for the five big ones)"}`);
+  console.log(`manifest: ${writeManifest(outDir, files, big)} · ${files.length} files${big ? "" : " (add --big for the six big ones)"}`);
 }
 
 // ⛔ Compared as URLs, never by glueing a path onto "file://" (ops-updown-profile.mts: that never matched on Windows).

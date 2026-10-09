@@ -13,9 +13,15 @@
  * same path, and the bar moves on bytes actually read. A CSV the reader has already refused stops being read at once.
  * ⛔ A RECORD COUNT PAST THE RUN'S CAP STOPS THE READ (crash control): a file of a million rows is not held in the
  * browser only for the server to refuse it — `READ_TOO_MANY_ROWS` says so, and how to split the file.
- * ⛔ AN EXCEL FILE OVER THE CAP IS REFUSED BEFORE A BYTE IS UPLOADED, in xlsx-limits' own words (C18), and so is every
- * file no reader takes (an old .xls, an .ods, a protected workbook, a PDF, a picture, an Apple Numbers file) — each
- * sentence names the format and the way to save it as .xlsx or CSV. CONTENT BEATS THE NAME (`detectFormat`).
+ * ⭐ C3c (2026-10-09) · AN EXCEL FILE OVER THE UPLOAD CAP (`XLSX_MAX_BYTES`, 700 KB) IS READ HERE, in the browser, by
+ * `xlsx-read.ts` — streamed, the reading bar on its inflated bytes, Stop heard — and comes back `parsed` exactly like a
+ * CSV, its digest over the exact bytes. It used to be refused with "save it as CSV", the remedy that loses the last
+ * digits of every 12-digit General number. A workbook within the cap still goes to the server's exceljs reader,
+ * unchanged. A big workbook the reader refuses is said in the copy table's own words; an old browser that cannot
+ * inflate gets today's answer, the size refusal with its CSV remedy (the reader's own fallback).
+ * ⛔ Every file no reader takes (an old .xls, an .ods, a protected workbook, a PDF, a picture, an Apple Numbers file) is
+ * refused before a byte is uploaded — each sentence names the format and the way to save it as .xlsx or CSV (C18).
+ * CONTENT BEATS THE NAME (`detectFormat`).
  *
  * ⭐ THE PASTE (U30). Text holding a tab is an Excel or Sheets copy: read by U25's own reader with the tab as the
  * separator (quoted cells and line breaks inside them as Excel writes them), the first row header-matched like any file
@@ -47,7 +53,8 @@
 import { formatRowList, type ParsedContactsFile, type ParsedRow, type UnreadableRecord } from "./parsed-file";
 import { DECODE_OPTIONS, createCsvReader, detectFormat, parseCsv, stripBom, type TextEncodingLabel } from "./import-parse";
 import { createVcardReader } from "./vcard";
-import { XLSX_MAX_BYTES, spreadsheetHeadKind, xlsxRefusalSentence } from "./xlsx-limits";
+import { XLSX_MAX_BYTES, spreadsheetHeadKind, xlsxRefusalSentence, type XlsxRefusal } from "./xlsx-limits";
+import { readXlsxInBrowser, type XlsxBrowserOptions, type XlsxBrowserResult } from "./xlsx-read";
 import {
   CONTACT_FIELDS, autoMapFile, matchHeader, normaliseHeader, scrubPhoneRuns,
   type AutoMapResult, type ColumnMapping, type ImportFieldKey, type MappedColumn,
@@ -272,11 +279,33 @@ function decodedText(file: Blob, encoding: TextEncodingLabel, onBytes: (n: numbe
   );
 }
 
+/** The refusals of a big workbook that are about its SIZE (the dialog's cause), the rest being about its format. */
+const SIZE_REFUSALS: ReadonlySet<XlsxRefusal> = new Set<XlsxRefusal>(["too_large", "too_big_inflated", "too_many_rows"]);
+
+/** The browser's workbook reader, as `readBigWorkbook` calls it — a seam the suite plants a defect through. */
+export type BigWorkbookReader = (file: Blob, opts: XlsxBrowserOptions) => Promise<XlsxBrowserResult>;
+
+/**
+ * ⭐ C3c · A WORKBOOK PAST THE UPLOAD CAP, READ IN THE BROWSER (`xlsx-read.ts`): `parsed` exactly as a CSV is — the digest
+ * over the exact bytes (read once more, whole: `crypto.subtle` has no incremental digest), and `extraNumbers` 0, as the
+ * CSV path returns it (S15-4's count of a file's rows is the columns step's, never the reader's). Its file name is the
+ * one the server's reader is handed for a small workbook, so the same File reads the same whichever reader reads it. A
+ * refusal is the copy table's sentence; a Stop is `aborted`, nothing kept.
+ */
+export async function readBigWorkbook(file: File, name: string | null, opts: ReadOptions, read: BigWorkbookReader = readXlsxInBrowser): Promise<ReadOutcome> {
+  const out = await read(file, { fileName: name ?? "workbook.xlsx", onProgress: opts.onProgress, signal: opts.signal });
+  if (out.kind === "aborted") return { kind: "aborted" };
+  if (out.kind === "refused") return refused(out.message, SIZE_REFUSALS.has(out.refusal) ? "size" : "format");
+  if (opts.signal?.aborted) return { kind: "aborted" };
+  const digest = await sha256Hex(new Uint8Array(await file.arrayBuffer()));
+  return { kind: "parsed", file: out.file, digest, extraNumbers: 0 };
+}
+
 /**
  * ⭐ READ ONE FILE. The format from its bytes (`detectFormat` over the whole file up to the Excel cap — a protected
  * workbook's marker can sit past the first 4 KB), then: a workbook within the cap comes back as base64 for the server's
- * reader; a CSV or a vCard is streamed into its reader; anything else is refused with its sentence. The digest is over
- * the file's exact bytes.
+ * reader, and (C3c) a workbook past it is read here (`readBigWorkbook`); a CSV or a vCard is streamed into its reader;
+ * anything else is refused with its sentence. The digest is over the file's exact bytes.
  */
 export async function readContactsFile(file: File, opts: ReadOptions): Promise<ReadOutcome> {
   const signal = opts.signal;
@@ -299,8 +328,8 @@ export async function readContactsFile(file: File, opts: ReadOptions): Promise<R
 
   if (detected.kind === "xlsx") {
     if (namedNumbers(name)) return refused(xlsxRefusalSentence("wrong_format", { kind: "other" }));
-    // ⛔ OVER THE CAP: refused here, before a byte is uploaded — the server would answer 413 in Next's own words.
-    if (size > XLSX_MAX_BYTES) return refused(xlsxRefusalSentence("too_large", { bytes: size }), "size");
+    // ⭐ C3c · OVER THE CAP: never uploaded (the server would answer 413 in Next's own words) — READ HERE, in the browser.
+    if (size > XLSX_MAX_BYTES) return readBigWorkbook(file, name, opts);
     opts.onProgress(size, size, 0);
     return { kind: "xlsx", base64: bytesToBase64(head), digest: await sha256Hex(head), fileName: name ?? "workbook.xlsx" };
   }
