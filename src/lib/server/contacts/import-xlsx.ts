@@ -96,6 +96,7 @@ import {
   ODS_MIMETYPE,
   XLSX_MAX_BYTES,
   XLSX_MAX_ENTRIES,
+  XLSX_MAX_FORMAT_CODE,
   XLSX_MAX_GRID_CELLS,
   XLSX_MAX_INFLATED_BYTES,
   XLSX_MAX_MERGED_CELLS,
@@ -227,6 +228,8 @@ const METHOD_DEFLATED = 8;
 const METHOD_AES = 99;
 /** exceljs reads the workbook part by this exact name, after dropping one leading slash. */
 const WORKBOOK_XML = "xl/workbook.xml";
+/** The workbook's relationships — where a `<sheet r:id>` resolves to its worksheet part (MAJOR 9c). */
+const WORKBOOK_RELS = "xl/_rels/workbook.xml.rels";
 /** Where Excel's binary workbook keeps its workbook part. */
 const WORKBOOK_BIN = "xl/workbook.bin";
 const MIMETYPE_ENTRY = "mimetype";
@@ -241,6 +244,13 @@ const WORST_MERGE = { cells: XLSX_MAX_MERGED_CELLS + 1, rows: XLSX_MAX_ROWS + 1 
 /** How far past `<mergeCell` to look for the tag's closing `>`: a real merge tag is tens of bytes, never a kilobyte.
  *  Bounding the scan keeps a part of `"<mergeCell ".repeat(N)` (no `>` at all) from being O(content) per element. */
 const MERGE_TAG_WINDOW = 1024;
+/** ⭐ MAJOR 9b · the deepest element nesting the pre-pass admits. saxes keeps a tag object per open element, so 48 MiB
+ *  of `<a>` ≈ 16M objects ≈ 2 GB; a real worksheet nests about eight deep, so 64 is generous and cheap to enforce. */
+const SERVER_MAX_DEPTH = 64;
+const FORMATCODE_OPEN = Buffer.from('formatCode="', "latin1");
+const COMMENT_CLOSE = Buffer.from("-->", "latin1");
+const CDATA_CLOSE = Buffer.from("]]>", "latin1");
+const PI_CLOSE = Buffer.from("?>", "latin1");
 
 /**
  * ⚠️ PROVISIONAL, like the caps in xlsx-limits.ts (the suite asserts it is at least twice the densest realistic
@@ -483,6 +493,129 @@ function scanMergeCells(content: Buffer): { readonly count: number; readonly cel
 }
 
 /**
+ * ⭐ MAJOR 9a · does any `formatCode="…"` run past Excel's `max` characters? exceljs runs its date-format test over the
+ * whole code for every styled cell, so a forged 8 MiB format over a million styles is an O(format × cells) hang. A
+ * code with no closing quote, or one longer than `max`, is forged — refuse. Bounded: the close is sought no further
+ * than `max + 1` past the opener, and the scan resumes after it.
+ */
+function hasLongFormatCode(content: Buffer, max: number): boolean {
+  for (let at = content.indexOf(FORMATCODE_OPEN); at !== -1; at = content.indexOf(FORMATCODE_OPEN, at + FORMATCODE_OPEN.length)) {
+    const start = at + FORMATCODE_OPEN.length;
+    const close = content.indexOf(0x22, start);
+    if (close === -1 || close - start > max) return true;
+    at = close;
+  }
+  return false;
+}
+
+/**
+ * ⭐ MAJOR 9b · the deepest element nesting in one part, as saxes would stack it — comments, CDATA and processing
+ * instructions skipped, self-closing tags counted flat. A conservative scan over OOXML (whose attribute values hold no
+ * `<` or `>`): it exists only to catch a `<a><a>…` depth bomb, so a slight miscount of exotic content is harmless.
+ */
+function maxElementDepth(content: Buffer): number {
+  let depth = 0;
+  let max = 0;
+  let i = 0;
+  const len = content.length;
+  while (i < len) {
+    const lt = content.indexOf(0x3c, i); // '<'
+    if (lt === -1 || lt + 1 >= len) break;
+    const c = content[lt + 1];
+    if (c === 0x21) { // '<!' — a comment, CDATA, or DOCTYPE
+      const cdata = content[lt + 2] === 0x5b; // '['
+      const comment = content[lt + 2] === 0x2d && content[lt + 3] === 0x2d; // '--'
+      const closer = comment ? COMMENT_CLOSE : cdata ? CDATA_CLOSE : undefined;
+      const end = closer ? content.indexOf(closer, lt + 2) : content.indexOf(0x3e, lt + 2);
+      i = end === -1 ? len : end + (closer ? closer.length : 1);
+      continue;
+    }
+    if (c === 0x3f) { // '<?' — a processing instruction
+      const end = content.indexOf(PI_CLOSE, lt + 2);
+      i = end === -1 ? len : end + PI_CLOSE.length;
+      continue;
+    }
+    const gt = content.indexOf(0x3e, lt + 1);
+    if (gt === -1) break;
+    if (c === 0x2f) depth--; // '</' — a close
+    else if (content[gt - 1] !== 0x2f) { // not a '/>' self-close
+      depth++;
+      if (depth > max) max = depth;
+    }
+    i = gt + 1;
+  }
+  return max;
+}
+
+const SHEET_OPEN = Buffer.from("<sheet", "latin1");
+const RELATIONSHIP_OPEN = Buffer.from("<Relationship", "latin1");
+/** The attribute value named exactly `name` in one element tag (bytes `start`..`end`), or null — a small, saxes-faithful
+ *  tokeniser (name = "value"), reused for `<sheet r:id>` and `<Relationship Id/Target>`. */
+function tagAttr(content: Buffer, start: number, end: number, name: string): string | null {
+  let i = start;
+  const space = (c: number): boolean => c === 0x20 || c === 0x09 || c === 0x0a || c === 0x0d;
+  // skip the element name
+  while (i < end && !space(content[i]) && content[i] !== GT && content[i] !== 0x2f) i++;
+  for (;;) {
+    while (i < end && space(content[i])) i++;
+    if (i >= end || content[i] === GT || content[i] === 0x2f) return null;
+    const nameStart = i;
+    while (i < end && !space(content[i]) && content[i] !== 0x3d && content[i] !== GT && content[i] !== 0x2f) i++;
+    const attrName = content.toString("latin1", nameStart, i);
+    while (i < end && space(content[i])) i++;
+    if (i >= end || content[i] !== 0x3d) return null;
+    i++;
+    while (i < end && space(content[i])) i++;
+    const quote = i < end ? content[i] : -1;
+    if (quote !== 0x22 && quote !== 0x27) return null;
+    const close = content.indexOf(quote, i + 1);
+    if (close === -1 || close >= end) return null;
+    if (attrName === name) return content.toString("latin1", i + 1, close);
+    i = close + 1;
+  }
+}
+
+/** The part name a workbook relationship Target resolves to, normalised as exceljs does. */
+function normalisedTarget(target: string): string {
+  return `xl/${target.replace(/^(\s|\/xl\/)+/, "")}`;
+}
+
+/**
+ * ⭐ MAJOR 9c · do two `<sheet>`s resolve to the SAME worksheet part? Several sheets sharing one r:id, or several
+ * relationships pointing at one Target, make exceljs load and reconcile that part once per sheet — O(sheets × part). The
+ * pre-pass reads the `<sheet r:id>`s from workbook.xml and the `Id → Target` map from its rels, resolves each (as
+ * exceljs normalises a Target), and refuses when any part is the target of more than one sheet.
+ */
+function sheetsFanOut(workbookXml: Buffer | null, relsXml: Buffer | null): boolean {
+  if (workbookXml === null) return false;
+  const rels = new Map<string, string>();
+  if (relsXml !== null) {
+    for (let at = relsXml.indexOf(RELATIONSHIP_OPEN); at !== -1; at = relsXml.indexOf(RELATIONSHIP_OPEN, at + 1)) {
+      const gt = relsXml.indexOf(0x3e, at);
+      if (gt === -1) break;
+      const id = tagAttr(relsXml, at, gt, "Id");
+      const target = tagAttr(relsXml, at, gt, "Target");
+      if (id !== null && target !== null) rels.set(id, normalisedTarget(target));
+    }
+  }
+  const parts = new Set<string>();
+  for (let at = workbookXml.indexOf(SHEET_OPEN); at !== -1; at = workbookXml.indexOf(SHEET_OPEN, at + 1)) {
+    const after = workbookXml[at + SHEET_OPEN.length];
+    if (!(after === 0x20 || after === 0x09 || after === 0x0a || after === 0x0d || after === 0x2f || after === GT)) continue; // not <sheets>
+    const gt = workbookXml.indexOf(0x3e, at);
+    if (gt === -1) break;
+    const rId = tagAttr(workbookXml, at, gt, "r:id");
+    const part = rId === null ? null : rels.get(rId);
+    if (part !== undefined && part !== null) {
+      if (parts.has(part)) return true; // two sheets → one part
+      parts.add(part);
+    }
+    at = gt;
+  }
+  return false;
+}
+
+/**
  * ⭐ THE PRE-PASS (step 6). Walks the zip, refuses .xlsb and a zip that is no workbook by name, inflates EVERY entry for
  * real under one budget for the whole workbook — counting row and cell elements, and (C3c-merge-guard) the `<mergeCell>`
  * ranges with the cells AND rows they cover, across every entry, whatever it is named, because exceljs's own sheet
@@ -491,6 +624,10 @@ function scanMergeCells(content: Buffer): { readonly count: number; readonly cel
  * (XLSX_MAX_MERGES; the covered cells against XLSX_MAX_MERGED_CELLS, the covered rows against XLSX_MAX_ROWS). Each merge
  * ref is read through the ONE shared rule `xlsxMergeArea` — a 1 KiB-windowed, attribute-tokenised scan that charges a
  * malformed, decoy or out-of-grid ref the worst area and stops the moment a cap is passed — see xlsx-limits.ts.
+ * ⭐ MAJOR 9 · THE SAME DoS FAMILY, caught here too: a numFmt `formatCode` past Excel's 255 characters (exceljs's date
+ * test would scan it per styled cell), element nesting past `SERVER_MAX_DEPTH` (saxes keeps a tag object per level), and
+ * two `<sheet>`s resolving to ONE worksheet part (exceljs would reconcile it once per sheet) are each `unreadable`
+ * before the load.
  */
 /** The merge scan is a seam (default `scanMergeCells`) so the suite can plant the pre-fix quadratic/NaN/decoy versions. */
 export type MergeScan = (content: Buffer) => { readonly count: number; readonly cells: number; readonly rows: number };
@@ -517,6 +654,8 @@ export function inspectXlsxZip(bytes: Uint8Array, measure: MeasureEntry = measur
   let mergedRows = 0;
   let ods = false;
   let strict = false;
+  let workbookXml: Buffer | null = null;
+  let relsXml: Buffer | null = null;
   for (const e of entries) {
     const measured = measure(e, bytes.subarray(e.dataStart, e.dataStart + e.compressedSize), XLSX_MAX_INFLATED_BYTES - used);
     if (measured.kind === "over") return refused("too_big_inflated", "bomb", null, used);
@@ -532,8 +671,16 @@ export function inspectXlsxZip(bytes: Uint8Array, measure: MeasureEntry = measur
     mergeCount = Math.min(mergeCount + merges.count, XLSX_MAX_MERGES + 1);
     mergedCells = Math.min(mergedCells + merges.cells, XLSX_MAX_MERGED_CELLS + 1);
     mergedRows = Math.min(mergedRows + merges.rows, XLSX_MAX_ROWS + 1);
+    // ⭐ MAJOR 9a · a format code past Excel's 255 characters would make exceljs's date test an O(format × cells) hang;
+    // ⭐ MAJOR 9b · nesting deeper than saxes should ever stack is a tag-object bomb. Both refuse before the load.
+    if (hasLongFormatCode(content, XLSX_MAX_FORMAT_CODE)) return refused("unreadable", "format", null, used);
+    if (maxElementDepth(content) > SERVER_MAX_DEPTH) return refused("unreadable", "depth", null, used);
     if (loweredName(e) === MIMETYPE_ENTRY && content.subarray(0, ODS_MIMETYPE.length).toString("latin1") === ODS_MIMETYPE) ods = true;
-    if (partName(e) === WORKBOOK_XML && content.indexOf(STRICT_NAMESPACE) !== -1) strict = true;
+    if (partName(e) === WORKBOOK_XML) {
+      if (content.indexOf(STRICT_NAMESPACE) !== -1) strict = true;
+      workbookXml = content;
+    }
+    if (partName(e) === WORKBOOK_RELS) relsXml = content;
   }
   if (ods) return refused("wrong_format", "ods", "ods", used);
   if (!hasWorkbook) return refused("wrong_format", "not_a_workbook", "other", used);
@@ -546,6 +693,8 @@ export function inspectXlsxZip(bytes: Uint8Array, measure: MeasureEntry = measur
   if (mergeCount > XLSX_MAX_MERGES) return refused("too_big_inflated", "merges", null, used);
   if (mergedCells > XLSX_MAX_MERGED_CELLS) return refused("too_big_inflated", "merge_area", null, used);
   if (mergedRows > XLSX_MAX_ROWS) return refused("too_big_inflated", "merge_rows", null, used);
+  // ⭐ MAJOR 9c · two sheets resolving to ONE part make exceljs load and reconcile it once per sheet — refuse the fan-out.
+  if (sheetsFanOut(workbookXml, relsXml)) return refused("unreadable", "sheet_fanout", null, used);
   return { ok: true, entries: entries.length, inflatedBytes: used, rowElements, cellElements, mergeCount, mergedCells, mergedRows };
 }
 
