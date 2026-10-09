@@ -2,14 +2,22 @@
 
 import { PageContainer } from "@/components/layout/page-container";
 import { MARKET_CARD_H_CLOSED } from "@/components/markets/card-geometry";
+import { I } from "@/components/ui/glyphs";
+import { ChipGhost, GhostText } from "@/components/ui/ghost-text";
+import { FiltersGhost, GroupGhost, PillGhost, SortGhost } from "@/components/ui/query-bar-ghost";
+import { PLAYER_PER_PAGE } from "@/components/ui/pagination";
 import {
   QUERY_BAR_CLASS,
   QUERY_BAR_ROW1_CLASS,
   QUERY_BAR_ROW2_CLASS,
-  QUERY_GROUP_CLASS,
   QUERY_SEARCH_BAND_CLASS,
   QUERY_STRIP_CLASS,
+  QueryGroupDivider,
 } from "@/components/ui/query-bar";
+import { MARKET_CATEGORIES } from "@/lib/markets/categories";
+import { categoryLabel } from "@/lib/markets/category-label";
+import { outcomeWord, sideWord } from "@/lib/side-label";
+import { useT } from "@/lib/i18n";
 
 /**
  * `/results` loading skeleton — the ghost after tapping "Matokeo".
@@ -25,10 +33,11 @@ import {
  *   · the notable-results carousel                          497 / 458 / 436px at 320 / 360 / 414
  *
  * ⚠️ THE 91 WAS ALREADY KNOWN AND ALREADY WRITTEN DOWN. `ResultsSkeleton` in `results/page.tsx`
- * carries a note reading *"FILED, NOT FIXED (DG-P-13 / DG-A-20): this bar is 44px and the band
+ * carried a note reading *"FILED, NOT FIXED (DG-P-13 / DG-A-20): this bar is 44px and the band
  * it stands in for renders 91px on production"* — about its own copy of this band. The finding
  * was recorded, the fix was deferred, and the SECOND skeleton on the same route never learned
- * about it. Two ghosts for one page is how that happens; both now consume the same classes.
+ * about it. Two ghosts for one page is how that happens — and since round 5's follow-up (R5-L) there is ONE: the page's
+ * Suspense fallback is `ResultsGhostBands` below, the very bands this file draws.
  *
  * ⛔ AND CLS SCORED THE WHOLE THING 0.0000. `layout-shift` counts only nodes present BEFORE and
  * AFTER a frame, and a skeleton is REMOVED rather than moved — so ghost fidelity is invisible to
@@ -36,21 +45,33 @@ import {
  *
  * ⛔ THE ROUTE WAS ALSO UNMEASURABLE UNTIL TODAY, WHICH IS WHY THE NUMBER IS NEW RATHER THAN
  * LARGE. The grid below used a hand-rolled `grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3`
- * instead of `.market-grid`, the class the page and `ResultsSkeleton` both use, so the guard
+ * instead of `.market-grid`, the class the page uses, so the guard
  * could not find the board and reported "no skeleton frame was ever captured" — a vacuous pass.
  * A ghost that does not speak the page's class names cannot be compared with the page.
  *
- * ⭐ EVERY BAND BELOW IS STRUCTURE, NOT A MEASUREMENT, WITH ONE EXCEPTION. The search band and
- * the discovery bar are built from the page's own wrappers and tokens (`search-box-wrap`,
- * `--h-input`, `QUERY_BAR_*`, `QUERY_STRIP_CLASS`, `QUERY_GROUP_CLASS`), so they compute to 91
- * and 116 rather than being told to (56 and 120 since round 4: the search band and row 2's 12px). ⚠️ The exception is the carousel's height: its content is a
- * market question, so no arrangement of empty boxes can derive it. It is reserved at the
- * measured 458 and **guarded** — `qa:ghost-landing` fails this route if the board lands more
- * than 120px from where the ghost promised, which is what makes a single measured number safe to
- * keep here rather than a thing to remember.
- * ⭐ CLIENT CODE THAT READS NOTHING (round 5's follow-up, R5-H · G-2): it asked the server for the words and drew none of
- * them (R5-D found the same read in the question's skeleton) — so the read is gone, and a refresh of /results carries
- * this drawing's reference, not its tree. `components/ui/page-loader.tsx` has the convention.
+ * ⭐ EVERY BAND BELOW IS STRUCTURE, NOT A MEASUREMENT. The search band and the bar are built from
+ * the page's own wrappers and tokens (`search-box-wrap`, `--h-input`, `QUERY_BAR_*`, `QUERY_STRIP_CLASS`,
+ * `QUERY_GROUP_CLASS` through `query-bar-ghost.tsx`), so they compute to the page's heights rather than being told to.
+ * ⭐ AND SINCE ROUND 5'S FOLLOW-UP (R5-L), THE TWO MEASURED NUMBERS ARE GONE TOO:
+ *   · ROW 2 FROM `lg` CARRIES THE PAGE'S WORDS. It drew the sort and two typed boxes in ONE line; the page lays its sort
+ *     and three groups — the game, the window, the topic with its glyphs — along a row that wraps on their words: four
+ *     lines at 1024 in Swahili and English (the topic group wraps inside itself there) and three at 1280 — three and two
+ *     in Chinese — measured from the served fonts with two-digit counts (S/r5l/measure-routes.cts; tile 170 shows two at
+ *     1280 with the QA board's one-digit counts). The grid landed 56 to 168px below the ghost's promise. Each group is now
+ *     the page's own wrapper, divider, key and pills.
+ *   · THE CAROUSEL IS THE NOTABLE CARD'S OWN BOX. It was reserved at 458px — measured at 360 on 2026-09-24, against
+ *     cards that have since lost lines — and drawn at every width: at 1280 the page's carousel is 340px (the 44px
+ *     arrows and their 12px, the card's 234 — tile 170 — and the dots' 10 + 40), so the grid landed 118px HIGHER than
+ *     promised (68px at 390). The ghost card is the card's own stack (`p-5 lg:p-6`, the chip row with the page's words,
+ *     the title, the 28px bar with its 24.5px label row, the stats line), and the title's line count is the one
+ *     judgement left: the tallest of three notable titles, on the rule /live's hero takes for its six — the tallest of
+ *     N is the board's title at the N/(N+1) quantile, here the 75th percentile, from the served fonts
+ *     (S/r5l/measure-titles-steps.cts): three lines to 401px, two to 685 (657 in English), one beyond, at 22px from
+ *     1024. Drawn on the breakpoints — three below 640, two to 767, one from 768 — it holds a line more than the
+ *     judgement from 402 to 639 and from 686 (658) to 767.
+ * ⭐ CLIENT CODE (round 5's follow-up, R5-H · G-2): a refresh of /results carries this drawing's reference, not its
+ * tree — and the page's own Suspense fallback is the same reference since R5-L. `components/ui/page-loader.tsx` has the
+ * convention.
  */
 export default function ResultsLoading() {
   // Width MUST match results/page.tsx (1280) — a mismatch reflows on every route transition.
@@ -63,98 +84,109 @@ export default function ResultsLoading() {
        that flattens the nesting pays a different number of gaps than the page it stands in for. */
     <PageContainer tier="board">
       <div className="flex flex-col gap-5">
-        {/* Header row — eyebrow left, the NDIO/HAPANA donut and counts right. Drawing only the
-          eyebrow made this row a different height; the real one is 38px at every phone width. */}
-        <div className="flex items-center justify-between gap-3" aria-hidden>
-          <div className="h-3 w-[64px] rounded bg-bg-overlay kp-shimmer-track" />
-          <div className="flex items-center gap-2">
-            {/* The NDIO/HAPANA donut. ⚠️ 38px is what makes this row 38px tall — measured at
-                320, 360 and 414 alike; the eyebrow and the count text beside it are only 18px, so
-                the ring sets the height. A 26px ghost drew a 26px row and the board inherited it. */}
-            <div className="h-[38px] w-[38px] rounded-full bg-bg-overlay kp-shimmer-track" />
-            <div className="h-3 w-[120px] rounded bg-bg-overlay kp-shimmer-track" />
-          </div>
-        </div>
+        <ResultsGhostBands />
+      </div>
+    </PageContainer>
+  );
+}
 
-        {/* The search band — the page's own class (round 4, 2026-10-09). ⛔ It is the band, not decoration: 10px over
-          a 71px `search-box-wrap`, whose 25px echo row lies inside the gap to the bar below (`globals.css`,
-          `.kp-search-band`), so it takes 56px of the column, as the page's does. It was `py-[10px]`, 91px. */}
-        <div className={QUERY_SEARCH_BAND_CLASS} aria-hidden>
-          <div className="search-box-wrap">
-            <div className="kp-shimmer-track h-[calc(var(--h-input)+2px)] rounded-lg border border-border bg-bg-inset" />
-            <p className="mt-1.5 min-h-[17px]" />
-          </div>
+/**
+ * The bands inside the page's `flex flex-col gap-5` wrapper — this file's drawing AND the page's own Suspense fallback
+ * (`results/page.tsx`), so the first paint of a document and the first paint of a move are one drawing.
+ * The page hands it what it knows: whether the notable carousel shows (page one with no search — the move's own case,
+ * drawn by default) and whether a search's line stands over the grid.
+ * ⚠️ The board drawn is the common one, an archive of eight results or more: rows (the bar and search shown), three
+ * notable results on page one (the carousel with its arrows and dots), two-digit counts, and `PLAYER_PER_PAGE` less
+ * those three in the grid. A smaller archive is another case — today's QA board (tile 170: six results) shows one
+ * notable, a carousel without arrows or dots (106px shorter), and one-digit counts, which take row 2 a line shorter
+ * at 1280 in Swahili and English and at 1024 in English (56px): its grid lands 106 to 162px higher than this ghost
+ * promises.
+ */
+export function ResultsGhostBands({ notable = true, searching = false }: { notable?: boolean; searching?: boolean }) {
+  const { t } = useT();
+  const lenses = [t.common.all, outcomeWord(t, "YES", "MARKET"), outcomeWord(t, "NO", "MARKET"), t.common.voided];
+  const product = [t.market.catAll, `${sideWord(t, "YES", "MARKET")} / ${sideWord(t, "NO", "MARKET")}`, `${sideWord(t, "YES", "UPDOWN")} / ${sideWord(t, "NO", "UPDOWN")}`];
+  const when = [t.common.rangeToday, t.common.rangeYesterday, t.common.range7d, t.common.range30d, t.common.rangeAll];
+  const topics = [t.market.catAll, ...MARKET_CATEGORIES.map((c) => categoryLabel(t, c))];
+  return (
+    <>
+      {/* Header row — the page's eyebrow (its glyph and its word, printed: the page's name), and the 38px donut beside
+          the tally's lines. ⚠️ 38px is what makes this row 38px tall — measured at 320, 360 and 414 alike: the eyebrow
+          and the tally beside the ring are shorter, so the ring sets the height. */}
+      <div className="flex items-center justify-between gap-3">
+        <div className="flex items-center gap-[10px]">
+          <span className="text-text-subtle"><I.resolved s={18} /></span>
+          <p className="font-mono text-caption uppercase eyebrow font-bold text-text-subtle">{t.results.title}</p>
         </div>
-
-        {/* The discovery bar. Same wrappers as the real one, so it is two rows on a phone rather
-          than however many a re-typed `flex-wrap` would have produced. */}
-        <div aria-hidden className={QUERY_BAR_CLASS}>
-          <div className={QUERY_BAR_ROW1_CLASS}>
-            <div className={QUERY_STRIP_CLASS}>
-              {[64, 74, 96].map((w, i) => (
-                <div
-                  key={i}
-                  className="kp-shimmer-track h-[44px] shrink-0 rounded-pill bg-bg-elevated"
-                  style={{ width: w }}
-                />
-              ))}
+        <div className="flex items-center gap-3" aria-hidden>
+          {/* The donut's 38px, the tally's lines beside it (12.5px each, shorter than the ring), the count line from 640 —
+              one line each, so their boxes are the ghost. */}
+          <div className="flex min-w-0 items-center gap-2">
+            <div className="h-[38px] w-[38px] shrink-0 rounded-full bg-bg-overlay kp-shimmer-track" />
+            <div className="flex min-w-0 flex-col gap-1">
+              <span className="h-[8px] w-[96px] rounded-sm bg-bg-elevated" />
+              <span className="h-[8px] w-[64px] rounded-sm bg-bg-elevated" />
             </div>
-            <div className="kp-shimmer-track h-4 w-[80px] shrink-0 rounded bg-bg-elevated" />
           </div>
-          <div className={QUERY_BAR_ROW2_CLASS}>
-            {/* ⛔ 182 AND 134 ARE MEASURED, AND THE PAIR MUST FIT ON ONE LINE. The real row renders
-              182×44 (sort) + 134×44 (filters) = 316 plus a 16px gap = 332, inside 336px of content
-              width at 360 — by four pixels. Ghosting them at 210 and 130 overflowed that, so
-              `flex-wrap` broke the row in two and the bar drew **172px against a real 116**,
-              putting the board 56px too low. ⚠️ Unlike `/markets`, THIS bar does not opt into the
-              phone grid (it carries no `data-bar-row`), so nothing rescues a row that wraps. */}
-            <div className="kp-shimmer-track h-[44px] w-[182px] rounded-pill bg-bg-elevated" />
-            {/* The Filters button is a phone's alone (`FilterSheet` is `lg:hidden`, filter-sheet.tsx) — R5-H · G-2b: the
-                ghost drew it at 1280 too, a 134px pill in a row the page does not have. */}
-            <div className="kp-shimmer-track h-[44px] w-[134px] rounded-pill bg-bg-elevated lg:hidden" />
-            {/* ⛔ Desktop-only groups — the real ones carry `QUERY_GROUP_CLASS` (`hidden … lg:flex`),
-              so a phone never receives them and neither does its ghost. */}
-            {[88, 84].map((w, i) => (
-              <div key={i} className={QUERY_GROUP_CLASS}>
-                <div
-                  className="kp-shimmer-track h-[44px] rounded-pill bg-bg-elevated"
-                  style={{ width: w }}
-                />
-              </div>
-            ))}
-          </div>
+          <div className="hidden h-[14px] w-[176px] items-center sm:flex"><span className="h-[8px] w-full rounded-sm bg-bg-elevated" /></div>
         </div>
+      </div>
 
-        {/* ⭐ THE PAGE'S OWN TWO WRAPPERS (R5-H · G-2b): `results/page.tsx` stands the carousel and the grid in a BLOCK
-            (`min-w-0 flex-1`) inside a `flex flex-col gap-5 lg:flex-row` row of one child, so only the carousel's own
-            `mb-5` (24px) parts them. This was one `flex flex-col gap-5` AND the `mb-5` — 48px: the grid stood 24px low. */}
-        <div className="flex flex-col gap-5 lg:flex-row lg:gap-6">
+      {/* The search band — the page's own class (round 4, 2026-10-09). ⛔ It is the band, not decoration: 10px over
+        a 71px `search-box-wrap`, whose 25px echo row lies inside the gap to the bar below (`globals.css`,
+        `.kp-search-band`), so it takes 56px of the column, as the page's does. It was `py-[10px]`, 91px. */}
+      <div className={QUERY_SEARCH_BAND_CLASS} aria-hidden>
+        <div className="search-box-wrap">
+          <div className="kp-shimmer-track h-[calc(var(--h-input)+2px)] rounded-lg border border-border bg-bg-inset" />
+          <p className="mt-1.5 min-h-[17px]" />
+        </div>
+      </div>
+
+      {/* The discovery bar — the page's wrappers and the page's words (`query-bar-ghost.tsx`). */}
+      <div aria-hidden className={QUERY_BAR_CLASS}>
+        <div className={QUERY_BAR_ROW1_CLASS}>
+          <div className={QUERY_STRIP_CLASS}>
+            {lenses.map((l) => <PillGhost key={l} label={l} />)}
+          </div>
+          {/* The count as tall as its line — `QueryResultCount`'s 11.5px × 1.5 = 17.25px (/markets' ghost's own box). */}
+          <div className="flex h-[17.25px] shrink-0 items-center"><div className="kp-shimmer-track h-3 w-[80px] rounded bg-bg-elevated" /></div>
+        </div>
+        <div className={QUERY_BAR_ROW2_CLASS}>
+          {/* The sort fills a phone's row beside the Filters button; from lg it is its own width and the three groups
+              follow it, each behind the page's divider (the row's 29px gap is keyed on it), wrapping as the page's. */}
+          <SortGhost label={t.common.sort} value={t.results.sortNewest} />
+          {/* The Filters button is a phone's alone (`FilterSheet` is `lg:hidden`, filter-sheet.tsx) — R5-H · G-2b: the
+              ghost drew it at 1280 too, a 134px pill in a row the page does not have. Since R5-L it is the trigger's own box
+              with its word, as wide as the page's in every language. */}
+          <FiltersGhost label={t.market.filtersOpen} />
+          <QueryGroupDivider />
+          <GroupGhost label={t.market.gameKey}>{product.map((p) => <PillGhost key={p} label={p} />)}</GroupGhost>
+          <QueryGroupDivider />
+          <GroupGhost label={t.common.when}>{when.map((w) => <PillGhost key={w} label={w} />)}</GroupGhost>
+          <QueryGroupDivider />
+          <GroupGhost label={t.common.topic}>{topics.map((c) => <PillGhost key={c} label={c} glyph />)}</GroupGhost>
+        </div>
+      </div>
+
+      {/* ⭐ THE PAGE'S OWN TWO WRAPPERS (R5-H · G-2b): `results/page.tsx` stands the carousel and the grid in a BLOCK
+          (`min-w-0 flex-1`) inside a `flex flex-col gap-5 lg:flex-row` row of one child, so only the carousel's own
+          `mb-5` (24px) parts them. This was one `flex flex-col gap-5` AND the `mb-5` — 48px: the grid stood 24px low. */}
+      <div className="flex flex-col gap-5 lg:flex-row lg:gap-6">
         <div className="min-w-0 flex-1">
-          {/* The notable-results carousel: a 44px arrow row over the featured result card.
-          ⚠️ THE ONE MEASURED NUMBER IN THIS FILE (see the header). 458px is 360's; 320 renders
-          497 and 414 renders 436, both inside `qa:ghost-landing`'s 120px tolerance. */}
-          <div className="mb-5 min-h-[458px]" aria-hidden>
-            <div className="mb-2 flex items-center justify-end gap-2">
-              <div className="kp-shimmer-track h-[44px] w-[44px] rounded-full border border-border" />
-              <div className="kp-shimmer-track h-3 w-[32px] rounded bg-bg-overlay" />
-              <div className="kp-shimmer-track h-[44px] w-[44px] rounded-full border border-border" />
-            </div>
-            <div
-              className="kp-shimmer-track rounded-xl border border-border bg-bg-elevated"
-              style={{ height: 370 }}
-            />
-          </div>
+          {/* A search's line over the grid (the page's `mb-3` 11px line), when the page says one is running. */}
+          {searching && <div className="mb-3 h-[16.5px]" aria-hidden />}
+          {notable && <NotableGhost />}
 
           {/* Card grid skeleton.
           ⛔ `.market-grid`, NOT A HAND-ROLLED `grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3`.
           That is what stood here, and it disagreed with the real page twice over: the shared
           class is `gap: 14px` against `gap-3`'s 16 (10px over six rows), and it tracks columns
           with `auto-fill minmax(min(300px,100%),1fr)` rather than counting them at fixed
-          breakpoints, so the two laid out a different number of columns on a tablet. The real
-          `/results` grid and `ResultsSkeleton` both use `.market-grid`; this was the only one of
-          the three that did not. ⭐ It also made the route UNMEASURABLE — see the header. */}
+          breakpoints, so the two laid out a different number of columns on a tablet.
+          ⭐ It also made the route UNMEASURABLE — see the header. The grid holds a page of results less the three the
+          carousel lifts out of it (`PLAYER_PER_PAGE`, `results/page.tsx`'s `notableList`). */}
           <div className="market-grid" aria-hidden>
-            {Array.from({ length: 6 }).map((_, i) => (
+            {Array.from({ length: notable ? PLAYER_PER_PAGE - 3 : PLAYER_PER_PAGE }).map((_, i) => (
               <div
                 key={i}
                 className="rounded-md border border-border bg-bg-elevated p-4 kp-shimmer-track"
@@ -182,8 +214,56 @@ export default function ResultsLoading() {
             ))}
           </div>
         </div>
+      </div>
+    </>
+  );
+}
+
+/** The notable carousel (`notable-carousel.tsx`), three slides: the 44px arrows and their counter (12px over the card),
+ *  the notable card's own box, then the dot rail's 10px and 40px. The card is `FeaturedResult`'s stack in its own classes
+ *  with the page's words: the chip row (a topic, the verdict, the crown's flag — it wraps on a phone, as the page's), the
+ *  title's lines, the 28px bar and its 24.5px label row, and the stats line. */
+function NotableGhost() {
+  const { t } = useT();
+  return (
+    <div className="mb-5" aria-hidden>
+      <div className="mb-2 flex items-center justify-end gap-2">
+        <div className="kp-shimmer-track h-[44px] w-[44px] rounded-full border border-border" />
+        <div className="kp-shimmer-track h-3 w-[32px] rounded bg-bg-overlay" />
+        <div className="kp-shimmer-track h-[44px] w-[44px] rounded-full border border-border" />
+      </div>
+      <div className="relative block overflow-hidden rounded-xl border border-border bg-bg-elevated p-5 lg:p-6 kp-shimmer-track text-transparent">
+        <div className="mb-3 flex flex-wrap items-center gap-2">
+          <ChipGhost size="sm">{t.market.catSports}</ChipGhost>
+          {/* The verdict chip's box: the `resolved` variant's status metrics (`metrics="status"`), not its gold. */}
+          <ChipGhost size="sm" metrics="status">{t.market.resolvedOutcome} · {outcomeWord(t, "NO", "MARKET")}</ChipGhost>
+          <span className="ml-auto inline-flex items-center gap-1.5 font-mono text-micro uppercase tracking-[0.16em] font-bold">
+            <span className="h-[13px] w-[13px] shrink-0" /> <span className="kp-track-end kp-track-end--16"><GhostText>{t.results.notableResult}</GhostText></span>
+          </span>
+        </div>
+        {/* The title: the judgement's line count (the header) — its lines' box, each line a bar 1em tall on the 1.25em
+            pitch (the third on a phone only, the second below 768). */}
+        <div className="mb-4 max-w-[70ch] font-display text-[18px] lg:text-[22px] font-semibold leading-tight min-h-[calc(3*1.25*18px)] sm:min-h-[calc(2*1.25*18px)] md:min-h-[calc(1.25*18px)] lg:min-h-[calc(1.25*22px)]">
+          <div className="mt-[0.125em] h-[1em] w-full rounded bg-bg-overlay" />
+          <div className="mt-[0.25em] h-[1em] w-full rounded bg-bg-overlay md:hidden" />
+          <div className="mt-[0.25em] h-[1em] w-3/5 rounded bg-bg-overlay sm:hidden" />
+        </div>
+        {/* `TippingBar height={28} showLabels`: the rail, then `.tipbar-labels`' 8px and its 11px line. */}
+        <div className="h-[28px] w-full rounded-full bg-bg-overlay" />
+        <div className="mt-1.5 h-[16.5px]" />
+        {/* The stats line: one 11px line (16.5px) — the pool and the predictors fit it at every width. */}
+        <div className="mt-3 flex h-[16.5px] items-center gap-4">
+          <span className="h-[8px] w-[120px] rounded-sm bg-bg-overlay/40" />
+          <span className="h-[8px] w-[88px] rounded-sm bg-bg-overlay/40" />
         </div>
       </div>
-    </PageContainer>
+      <div className="mt-[10px] flex items-center justify-center">
+        {[0, 1, 2].map((i) => (
+          <span key={i} className="grid h-[40px] w-[24px] place-items-center">
+            <span className="block h-1.5 rounded-full bg-bg-overlay" style={{ width: i === 0 ? 18 : 6 }} />
+          </span>
+        ))}
+      </div>
+    </div>
   );
 }

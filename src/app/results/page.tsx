@@ -2,7 +2,6 @@ import { Suspense } from "react";
 import Link from "next/link";
 import { I, categoryGlyph } from "@/components/ui/glyphs";
 import { MarketCard } from "@/components/markets/market-card";
-import { MARKET_CARD_H_CLOSED } from "@/components/markets/card-geometry";
 import { Chip } from "@/components/ui/chip";
 import { FilterPill, FilterGroupKey } from "@/components/ui/filter-pill";
 import { TippingBar } from "@/components/brand";
@@ -14,7 +13,7 @@ import { getCardCharts } from "@/lib/server/market-history";
 import { EmptyState } from "@/components/ui/empty-state";
 import { Pagination, PLAYER_PER_PAGE } from "@/components/ui/pagination";
 import { SearchBox } from "@/components/ui/search-box";
-import { QUERY_BAR_CLASS, QUERY_BAR_ROW1_CLASS, QUERY_BAR_ROW2_CLASS, QUERY_SEARCH_BAND_CLASS } from "@/components/ui/query-bar";
+import { QUERY_SEARCH_BAND_CLASS } from "@/components/ui/query-bar";
 import { ResultsBar, type ArchiveCounts } from "./results-bar";
 import {
   archiveCounts,
@@ -30,6 +29,7 @@ import {
 } from "@/lib/results/archive";
 import { parseQuery, matchesQuery, fieldNames, MARKET_SEARCH } from "@/lib/search";
 import { NotableCarousel } from "./notable-carousel";
+import { ResultsGhostBands } from "./loading";
 import { RefreshPoller } from "@/components/ui/refresh-poller";
 import { formatNumber, formatTzsCompact } from "@/lib/utils";
 import { Ring } from "@/components/charts/ring";
@@ -127,7 +127,14 @@ export default async function ResultsPage({
           ⛔ A `space-y-*` ON A STREAMING BOUNDARY IS A CLASS OF BUG, NOT ONE NUMBER. Swept 2026-09-24: this
           was the only such container in `src/`. Do not reintroduce one. */}
       <div className="flex flex-col gap-5">
-        <Suspense fallback={<ResultsSkeleton />}>
+        {/* ⭐ THE FALLBACK IS THE ROUTE'S OWN GHOST (round 5's follow-up, R5-L): a document's first paint and a move's are
+            ONE drawing (`loading.tsx`'s `ResultsGhostBands`, a client reference — no drawn tree in this page's payload,
+            which every 60s refresh re-sends), handed what this page knows: the carousel on page one with no search, and a
+            search's line over the grid. It replaces `ResultsSkeleton`, a second drawing that had drifted from the first: a
+            24px header row against the page's 38, the phone's Filters pill beside the sort at every width (a second line at
+            320, and none of the three groups from 1024), no carousel — page one's first card landed 358 to 547px below its
+            promise — and eight cards with the open card's YES/NO buttons where the page draws nine closed ones. */}
+        <Suspense fallback={<ResultsGhostBands notable={!searching && pageNum === 1} searching={searching} />}>
           <ResultsContent state={state} searching={searching} pageNum={pageNum} />
         </Suspense>
       </div>
@@ -660,91 +667,5 @@ function FeaturedResult({ m, t, locale }: { m: Awaited<ReturnType<typeof listMar
         <span className="flex items-center gap-1"><I.users s={11} /> {formatNumber(m.predictorCount)} {m.predictorCount === 1 ? t.market.predictorsCountOne : t.market.predictorsCount}</span>
       </div>
     </Link>
-  );
-}
-
-/** Shimmer skeleton shown while the async content loads (same pattern as
- *  /markets GridSkeleton — card-sized placeholders with shimmer tracks). */
-function ResultsSkeleton() {
-  return (
-    <>
-      {/* Header skeleton — ⛔ no `mb-*`: the fallback and the content are children of the SAME
-          `space-y-5` wrapper, so both branches get the same rhythm and the page cannot move
-          between them. Before DG-P-04 this branch spaced itself 20/24 and the content 32/16. */}
-      <div className="flex items-center justify-between gap-3">
-        <div className="flex items-center gap-2.5">
-          <div className="h-5 w-5 rounded bg-bg-overlay kp-shimmer-track" />
-          <div className="h-4 w-32 rounded bg-bg-overlay kp-shimmer-track" />
-        </div>
-        <div className="h-3.5 w-36 rounded bg-bg-overlay kp-shimmer-track" />
-      </div>
-
-      {/* Search skeleton — the page's own band (round 4, 2026-10-09): `QUERY_SEARCH_BAND_CLASS` around a
-          `search-box-wrap` of the box's height and the echo row, as `results/loading.tsx` draws it. It was a 44px bar
-          standing in for a 91px band (DG-P-13 / DG-A-20, filed): the band now takes 56px of the column (10 + 46 + 25,
-          less the 25 its echo row lends the gap to the bar), and the ghost takes the same. */}
-      <div className={QUERY_SEARCH_BAND_CLASS} aria-hidden>
-        <div className="search-box-wrap">
-          <div className="kp-shimmer-track h-[calc(var(--h-input)+2px)] rounded-lg border border-border bg-bg-inset" />
-          <p className="mt-1.5 min-h-[17px]" />
-        </div>
-      </div>
-
-      {/* ⭐ THE GHOST FOLLOWS THE BAR, and its classes are IMPORTED rather than retyped, so a
-          change to the bar's padding or sticky offset moves the ghost in the same commit by
-          construction. It drew a 208px sidebar of four stacked pills; the page no longer has one,
-          and a ghost of a control that is not there moves everything below it on first paint. */}
-      <div className={QUERY_BAR_CLASS} aria-hidden>
-        <div className={QUERY_BAR_ROW1_CLASS}>
-          <div className="flex min-w-0 flex-1 items-center gap-1 overflow-hidden">
-            {[54, 74, 68, 82].map((w, i) => (
-              /* ⚠️ LITERAL 44, not `h-8` — spacing is overridden (tailwind.config.ts:200-215), so
-                 `h-8` would draw 48px for a pill that renders at FilterPill's 44. */
-              <div key={i} className="h-[44px] shrink-0 rounded-pill bg-bg-overlay" style={{ width: w }} />
-            ))}
-          </div>
-          <div className="h-3 w-20 shrink-0 rounded bg-bg-overlay" />
-        </div>
-        <div className={QUERY_BAR_ROW2_CLASS}>
-          <div className="h-[44px] w-[180px] rounded-pill bg-bg-overlay" />
-          <div className="h-[44px] w-[104px] rounded-pill bg-bg-overlay" />
-        </div>
-      </div>
-
-      {/* Grid */}
-      <div className="flex flex-col gap-5 lg:flex-row lg:gap-6">
-        {/* Grid skeleton */}
-        <div className="min-w-0 flex-1">
-          <div className="market-grid" aria-hidden>
-            {Array.from({ length: 8 }).map((_, i) => (
-              <div
-                key={i}
-                className="rounded-md border border-border bg-bg-elevated overflow-hidden kp-shimmer-track"
-                style={{ height: MARKET_CARD_H_CLOSED }}
-              >
-                <div className="p-4 space-y-3">
-                  <div className="flex items-center gap-2">
-                    {/* ⚠️ WIDTH IS A LITERAL, not `w-12` (128px on the overridden scale). */}
-                    <div className="h-5 w-[64px] rounded-pill bg-bg-overlay" />
-                    <div className="h-5 w-16 rounded-pill bg-bg-overlay" />
-                  </div>
-                  <div className="h-4 w-3/4 rounded bg-bg-overlay" />
-                  <div className="h-4 w-1/2 rounded bg-bg-overlay" />
-                  <div className="h-[7px] w-full rounded-pill bg-bg-overlay mt-4" />
-                  <div className="flex gap-2 mt-3">
-                    {/* ⚠️ TOKEN, not `h-9` (64px on the overridden scale) — the card's YES/NO
-                        buttons are pinned to `--tap-min` in globals.css
-                        (`.mcardp-actions .btn`). Copy of the markets/page.tsx skeleton; the
-                        two must stay in step. */}
-                    <div className="h-[var(--tap-min)] flex-1 rounded-md bg-bg-overlay" />
-                    <div className="h-[var(--tap-min)] flex-1 rounded-md bg-bg-overlay" />
-                  </div>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      </div>
-    </>
   );
 }

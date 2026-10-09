@@ -7,7 +7,7 @@ import { FilterGroupKey } from "@/components/ui/filter-pill";
 import { GhostText, AMOUNT_SHAPE } from "@/components/ui/ghost-text";
 import { QUERY_BAR_CLASS, QUERY_BAR_ROW1_CLASS, QUERY_BAR_ROW2_CLASS, QUERY_GROUP_CLASS, QUERY_SEARCH_BAND_CLASS, QueryGroupDivider } from "@/components/ui/query-bar";
 import { PNL_STRIP } from "@/components/positions/pnl-summary-strip";
-import { CountGhost, PillGhost } from "@/app/wallet/money-bar-ghost";
+import { CountGhost, PillGhost } from "@/components/ui/query-bar-ghost";
 import { categoryLabel } from "@/lib/markets/category-label";
 import { MARKET_CATEGORIES } from "@/lib/markets/categories";
 import { useT } from "@/lib/i18n";
