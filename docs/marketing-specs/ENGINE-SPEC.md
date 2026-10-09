@@ -15,7 +15,10 @@
 > decides only the name and the language). Every recipient row still gets its opt-out token (E1 stands), and
 > `/s/<token>` keeps working for every link sent before. Every passage below that prints, prices or proves a footer, a
 > stop link or a source line in a message describes the design before that ruling; the code holds the present
-> (`test:campaign-compose` §9–§13, `test:marketing-engine` S1/S6/S23, the dry-fire's S1.messages).
+> (`test:campaign-compose` §9–§13, `test:marketing-engine` S1/S6/S23, the dry-fire's S1.messages). E18 is gone with it
+> (F13, §0.3 item 1, U40a's and U49a's `needs_source_line`, and U37s's stamp): a campaign that can reach the contact
+> book confirms and starts with no source line, and no draft takes one (`test:campaign-gates` G5.1 · G5.1b,
+> `test:marketing-engine` F1, `test:campaign-compose` §17.13–§17.20).
 
 | Field | Value |
 |---|---|
@@ -90,7 +93,7 @@ U13 and U43b.
 ### 0.3 The owner's acts, in the order the path needs them (not units)
 
 1. Save the wordings and policy lines (G4/G10, the U33a track's), the source line (G5) — U40a refuses a book audience
-   without it.
+   without it. ⟶ 2026-10-09: no longer — no message prints the line and U40a asks for none (the owner's ruling).
 2. Read the Marketing SMS card's defaults (U49s): price TZS 6 (G9), credit kept for codes TZS 20,000, per-campaign
    limit TZS 10,000 (G3) — change any by saving the card.
 3. Name the approved test number(s) for U52a (default: Jay Kaba, +255 772 619 619, signed in as himself — G7) and the
@@ -310,6 +313,9 @@ Each is decided on Ali's standing delegation of technical calls (§0, 2026-10-02
   Swahili) — never by the walk's row kind (F5).
 - **E18 · A campaign that can reach the contact book needs its source line.** Population `null` (book) or `both` with a blank
   `sourcePhrase` is refused at the confirmation and again at Start (G5); a players-only campaign needs none.
+  ⟶ 2026-10-09 · GONE (the owner's ruling: nothing is appended, so no line is printed or required). A campaign to
+  contact-book numbers confirms and starts with no source line; `needs_source_line` is no refusal of either door
+  (`test:campaign-gates` G5.1 · G5.1b, `test:marketing-engine` F1).
 - **E19 · OD28 runs at Start, and the enqueue caps continuously.** Start counts the population fresh
   (`campaignAudienceCount`) and, for an enumerated confirmation, its keyed members, through `startAudienceVerdict`; the
   enqueue never writes more rows than `audienceCount` and reports any overflow.

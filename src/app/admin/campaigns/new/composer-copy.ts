@@ -59,9 +59,7 @@ export const COMPOSE_FORCED = "Forced to Unicode by:";
 export const COMPOSE_FOLD = "Replace with plain characters";
 export const COMPOSE_SAVE = "Save draft";
 export const COMPOSE_NO_CHANGES = "Nothing to save — no changes since the last save.";
-/** U37s · a DRAFT stamped with another line than the one saved now: only a save brings it up to date (`sourceLineStale`). */
-export const COMPOSE_SOURCE_LINE_STALE =
-  "This draft's source line isn't the one saved now on Admin → System → Marketing wordings — save the draft to bring it up to date.";
+/* (U37s's stale-line note is gone since the owner's ruling of 2026-10-09: no draft carries a line that matters.) */
 export const COMPOSE_SAVE_FAILED = "Couldn't save — your text is still here. Try again.";
 /** The save stopped ON THE SERVER after it was handed the text — it may have written the row, so: check, never retry blind. */
 export const COMPOSE_SAVE_UNFINISHED =

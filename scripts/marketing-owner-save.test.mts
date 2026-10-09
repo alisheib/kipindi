@@ -27,7 +27,8 @@
  *   O12 a row that does not read back as the approval is `_failed` (step read_back);
  *   O13 NOTHING TO DO writes and records nothing; approve only where the history is empty; a review only of today's words;
  *   O14 ⛔ the factory's ADMIN row flushed, found and named by the applied record — or the save is not confirmed, each of
- *       DONE's conditions held by itself; DONE ends with the redeploy instruction, and a G5 apply names older drafts;
+ *       DONE's conditions held by itself; DONE ends with the redeploy instruction, and a G5 apply says the line is kept
+ *       as history only (since the owner's ruling of 2026-10-09 nothing uses it);
  *   O15 the display rule — "through the ops door (…)", never "by an admin", one rule with the live switch card;
  *   O16 the door's source — the proxy before ANY static specifier names src, production's environment, the clock (an
  *       unreadable one said as the database out of reach), no writer or reader of its own;
@@ -101,7 +102,7 @@ const L = {
   o11: "O11 · a writer that refuses (a card save landing between the door's read and its write: stale) is recorded _refused with the writer's own reason, sentence and per-key problem, the operator's reason kept, and the card's version stands alone — and when that _refused record is lost, the door says so; a writer that throws is writer_failed, recorded _failed with the outcome unknown — never as a refusal; ⛔ a not_saved answer is decided by a FRESH read: over a write that landed (the factory's read-back failed after it committed) it goes down the applied path, recorded _applied with the writer's answer and never confirmed (done_unconfirmed, the save said landed), wordings and policy lines alike; over a write that did not show it is save_unconfirmed, recorded _failed with the outcome unknown, the operator sent to status — never 'nothing was written'; and both unknown outcomes (the throw, save_unconfirmed) record AND print the write's own instant and ops: <by>, and end 'Do not run apply again: run status, and tell the developer.' — the factory's 'please try again' kept in the record, never shown",
   o12: "O12 · a row that does not read back as Ali's words after the writer said saved is read_back_mismatch, recorded _failed (step read_back) with what was found",
   o13: "O13 · NOTHING TO DO — the same file applied twice writes and records nothing the second time (exit 0); a file holding one saved and one new wording sends only the new one; today's words given to a never-saved line are nothing to do (and check says to approve review instead); a review twice is nothing to do; a review of a line that prints saved words is refused review_not_possible with nothing built, recorded or written",
-  o14: "O14 · ⛔ THE FACTORY'S ADMIN ROW — after DONE nothing is pending, the door found THIS save's ADMIN row (author 'ops: <by>', changes exactly the keys moved — G10's page stamps included) and the applied record names it with the versions and the page versions; DONE ends with the redeploy instruction, and a G5 apply also says drafts saved before the line carry none (a G10 apply does not); each of DONE's conditions is held by itself — a reader that finds no such row, a lost _applied record, and an audit row still pending each end done_unconfirmed, exit 1, in their own words",
+  o14: "O14 · ⛔ THE FACTORY'S ADMIN ROW — after DONE nothing is pending, the door found THIS save's ADMIN row (author 'ops: <by>', changes exactly the keys moved — G10's page stamps included) and the applied record names it with the versions and the page versions; DONE ends with the redeploy instruction, and a G5 apply also says the line is kept as history only — no message, draft or campaign uses it since 2026-10-09 (a G10 apply does not); each of DONE's conditions is held by itself — a reader that finds no such row, a lost _applied record, and an audit row still pending each end done_unconfirmed, exit 1, in their own words",
   o15: "O15 · the display rule — a version saved by 'ops: <by>' reads 'the ops door (<by>)' in its history and 'through the ops door (<by>)' in its status line, never 'by an admin'; a by that could be a number reads just 'the ops door'; a staff id reads its name, or 'an admin'; the live switch card names the door by the SAME rule; the page asks no user row for a door stamp and hands both cards the words; the two forms print them",
   o16: "O16 · the door's source — the CLI rewrites Railway's private host to the public proxy before it loads any src module (it statically names only node:fs — no import from, bare import or export from of anything else), refuses without a database before it loads one, checks production's environment (with its audit secret) before check and apply but not status, refuses both when the database's clock cannot be read — saying the database could not be reached, never to sync this PC — then refuses an apply on the clock and only warns a check, hands the door the audit log's durable reader and writes nothing itself; owner-save.ts imports no config store, names no audit-row reader and none of the card's suggestions, records before it calls the writers and calls them only through its deps as 'ops: <by>'; no src file imports the door",
   o17: "O17 · the wiring — test:/red:/ops:marketing-owner-save resolve to this suite and the door, and predeploy runs the suite once, in the Marketing SMS block: right after test:marketing-window, which follows test:marketing-settings (both of whose neighbours other suites pin)",
@@ -1622,7 +1623,7 @@ if (!PROVE_RED) {
     const o = await real(input, deps);
     return { ...o, lines: o.lines.filter((l) => l !== DOOR.OWNER_SAVE_SENTENCE.redeploy) };
   };
-  /** R-O14e · a G5 apply that never says drafts saved before the line carry none. */
+  /** R-O14e · a G5 apply that never says the line is kept as history only. */
   const noDraftsLine: ApplyFn = async (input, deps) => {
     const o = await real(input, deps);
     return { ...o, lines: o.lines.filter((l) => !l.includes(DOOR.OWNER_SAVE_SENTENCE.draftsKeepNone)) };
@@ -1911,9 +1912,9 @@ if (!PROVE_RED) {
     { name: "R-O14d · DONE without the redeploy instruction", claim: "O14 ·", impl: { ...REAL, apply: noRedeploy },
       landed: async () => { const o = await noRedeploy(G5_IN("plant"), fresh().deps); return o.code === "done" && !o.lines.includes(DOOR.OWNER_SAVE_SENTENCE.redeploy); },
       landedAs: "production's cached copy is never mentioned" },
-    { name: "R-O14e · a G5 apply without the drafts line", claim: "O14 ·", impl: { ...REAL, apply: noDraftsLine },
+    { name: "R-O14e · a G5 apply without the history-only line", claim: "O14 ·", impl: { ...REAL, apply: noDraftsLine },
       landed: async () => { const o = await noDraftsLine(G5_IN("plant"), fresh().deps); return o.code === "done" && !o.lines.some((l) => l.includes(DOOR.OWNER_SAVE_SENTENCE.draftsKeepNone)); },
-      landedAs: "drafts made before the line are never mentioned" },
+      landedAs: "the apply never says the line is kept as history only" },
     { name: "R-O15a · a door save shown as an admin's", claim: "O15 ·", impl: { ...REAL, savedByView: asAnAdmin },
       landed: () => asAnAdmin("ops: Claude for Ali (G4)", new Map()).words === "by an admin", landedAs: "the door reads 'by an admin'" },
     { name: "R-O15b · the door's by shown unscreened", claim: "O15 ·", impl: { ...REAL, savedByView: unscreened },

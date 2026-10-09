@@ -314,7 +314,9 @@ export function currentWording(key: WordingKey): WordingVersion | null {
   return live.currentWording(key);
 }
 
-/** ⭐ U37s · the newest SAVED version as the ROW holds it now (re-read) — ⛔ `{ ok: false }` when the read cannot answer. */
+/** ⭐ The newest SAVED version as the ROW holds it now (re-read) — ⛔ `{ ok: false }` when the read cannot answer. Kept for a
+ *  door that must not trust this process's cache; U37s's draft stamp, its first reader, is gone since the owner's ruling
+ *  of 2026-10-09 (no draft takes the source line). */
 export function freshWording(key: WordingKey): Promise<FreshWording> {
   return live.freshWording(key);
 }

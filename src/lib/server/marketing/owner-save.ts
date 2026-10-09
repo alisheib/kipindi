@@ -843,7 +843,10 @@ export const OWNER_SAVE_SENTENCE = Object.freeze({
   unconfirmed: "Saved, but its audit row was not confirmed — tell the developer.",
   redeploy:
     "⚠️ Production's container still holds its cached copy — run `railway redeploy --service 50pick` once, after the LAST apply (it re-runs the current build; about 60 s of overlap), then read back: the public pages over HTTP (twice — the first request to the new container can still print the old words while it loads), and the wordings with status.",
-  draftsKeepNone: "Drafts saved before this line carry none until they are saved again in the composer; a confirmed campaign keeps the line it was confirmed with.",
+  /** ⭐ G5's last word (the owner's ruling of 2026-10-09): the line is kept as history — no message prints it, no draft
+   *  takes it and no confirmation or Start asks for it. (Until then: "Drafts saved before this line carry none until
+   *  they are saved again in the composer; a confirmed campaign keeps the line it was confirmed with.") */
+  draftsKeepNone: "This line is kept as history only: since the owner's ruling of 2026-10-09 no message prints it, no draft takes it and no campaign needs it.",
 });
 
 const blockCode = (blocks: readonly OwnerSaveBlock[]): OwnerSaveCode =>

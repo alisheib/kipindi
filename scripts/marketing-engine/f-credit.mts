@@ -84,7 +84,7 @@ export type EngineSection<I> = {
 
 const L = {
   f0: "F0 · CONTROLS — the fixture filters read back at the campaign's door, the listed key is 32 hex for the confirmed row's own draft, 1,604 people at today's TZS 6 cost TZS 9,624 (the frozen estimate, priced at TZS 5, is 8,020), and the fixture world STARTS (1,600 counted now, shrunkBy 4, costTzs 9,624) with startRefusal, the spec's API, agreeing with checkStart both ways",
-  f1: "F1 · ⭐ EVERY START REFUSAL IS REACHED BY EXACTLY ITS FIXTURE, IN THE DOCUMENTED ORDER — a draft or a paused row is not_confirmed; a confirmation missing its tier or budget, whose frozen segments disagree, or a list whose members key is corrupt or missing is confirmation_unreadable; an off, expired or unreadable switch is switch_closed; no keys is rail_dead; the book or both with a blank source line is needs_source_line (players-only starts); a filter that is not JSON is audience_unreadable; settings unanswered or thrown are settings_unreadable and half-read settings_incomplete; no price is price_unknown; 1,800 at today's TZS 6 is over_budget (TZS 10,800 over 10,000 — frozen at TZS 5 it would have been 9,000; landing on the limit starts); a failed credit read is credit_unreadable and TZS 24,000 is credit_low; a fence that cannot count is audience_uncounted; 1,610 is audience_moved; a swapped person on a list is members_changed and a list the walk cannot name members_unverified — and with every later step broken too, the earliest still answers",
+  f1: "F1 · ⭐ EVERY START REFUSAL IS REACHED BY EXACTLY ITS FIXTURE, IN THE DOCUMENTED ORDER — a draft or a paused row is not_confirmed; a confirmation missing its tier or budget, whose frozen segments disagree, or a list whose members key is corrupt or missing is confirmation_unreadable; an off, expired or unreadable switch is switch_closed; no keys is rail_dead; the book or both with no source line STARTS, as players-only does (④ is gone — the owner's ruling of 2026-10-09: nothing is appended, so no line is required); a filter that is not JSON is audience_unreadable; settings unanswered or thrown are settings_unreadable and half-read settings_incomplete; no price is price_unknown; 1,800 at today's TZS 6 is over_budget (TZS 10,800 over 10,000 — frozen at TZS 5 it would have been 9,000; landing on the limit starts); a failed credit read is credit_unreadable and TZS 24,000 is credit_low; a fence that cannot count is audience_uncounted; 1,610 is audience_moved; a swapped person on a list is members_changed and a list the walk cannot name members_unverified — and with every later step broken too, the earliest still answers",
   f2: "F2 · ⭐ THE PLAN'S RED — a projection above the live credit minus the credit kept for codes refuses at Start, priced at TODAY's price (TZS 6, never the confirmation's frozen TZS 5): TZS 24,000 of credit, TZS 9,624 for this campaign and TZS 20,000 kept is credit_low with exactly those figures (TZS 40,000 starts; 29,624 lands on the line and starts; 29,623 refuses) — and NOTHING IS WRITTEN: the row handed in is unchanged, no audit row and no SMS row appears for the campaign, and start-check.ts names no writer",
   f3: "F3 · ⛔ AN UNREADABLE BALANCE REFUSES (FAIL CLOSED) — a refused, unanswered, unfinished, unavailable or stale read, and a read that throws, are each credit_unreadable with no figure in the refusal (a kept TZS 517 never leaks); creditVerdict: on the line goes ahead, a shilling under is credit_low with its three figures, and an unreadable credit, a cost or a credit that is not a figure of 0 or more, or a reserve that is not a figure ABOVE 0 (NaN, negative, 0) is credit_unreadable",
   f4: "F4 · ⭐ OD28 AT START, THROUGH THE ONE FENCE — typed: the confirmed 1,604 again starts (shrunkBy 0), 1,600 starts reporting shrunkBy 4, 1,605 refuses audience_moved (1,605 over 1,604, the book); listed (3): the same three start, a swapped person, one fewer and nobody are members_changed, a fourth is audience_moved; a watermark keyed for the revision before is members_changed; a walk that cannot name the people it counted is members_unverified, never members_changed; a list whose stored watermark is not a members key is confirmation_unreadable, never members_changed",
@@ -330,7 +330,7 @@ const MOVED = (population: "book" | "players" | "both"): StartRefusal =>
   ({ reason: "audience_moved", freshCount: 1_610, confirmedCount: 1_604, population });
 const EVERY_START_REFUSAL: StartRefusal[] = [
   { reason: "not_confirmed" }, { reason: "confirmation_unreadable" }, { reason: "switch_closed" }, { reason: "rail_dead", rail: "keys-not-set" },
-  { reason: "needs_source_line" }, { reason: "audience_unreadable" }, { reason: "settings_unreadable" }, { reason: "settings_incomplete" },
+  { reason: "audience_unreadable" }, { reason: "settings_unreadable" }, { reason: "settings_incomplete" },
   { reason: "price_unknown" }, OVER, { reason: "credit_unreadable" }, LOW, { reason: "audience_uncounted" }, MOVED("book"),
   { reason: "members_unverified" }, { reason: "members_changed" },
 ];
@@ -340,7 +340,6 @@ const START_WORDS: Readonly<Record<string, readonly [string, string]>> = {
   confirmation_unreadable: both("This campaign's confirmation can't be read in full, so it can't start. Stop it and confirm a new copy. Nothing was sent."),
   switch_closed: both("Marketing SMS are switched off. The owner switches them on (Admin → System → Marketing SMS sending), then you can start. Nothing was sent."),
   rail_dead: both("No SMS can leave this server right now — Admin → System says why. Nothing was sent."),
-  needs_source_line: both("This campaign can reach people from the contact book, and its message has no source line. Stop it and confirm a copy once the owner has set the source line. Nothing was sent."),
   // A copy carries the same stored filter and U47b's copy refuses one it cannot read: the other way out is said too.
   audience_unreadable: both("The saved audience can't be read any more. Stop this campaign and confirm a new copy — or write a new campaign if the copy is refused. Nothing was sent."),
   settings_unreadable: both("The Marketing SMS settings couldn't be read just now, so this campaign can't be checked before it starts. Try again in a moment. Nothing was sent."),
@@ -444,10 +443,11 @@ async function runSectionF(impl: FImpl, ok: Check): Promise<void> {
     await expect("a switch past its closing time", withW({ live: { ...OPEN, closesAt: iso(NOW - 1) } }), "switch_closed");
     await expect("a switch that cannot be read", withW({ live: { state: "closed", why: "unreadable" } }), "switch_closed");
     await expect("no keys", withW({ rail: "keys-not-set" }), "rail_dead", (c) => !c.ok && c.refusal.reason === "rail_dead" && c.refusal.rail === "keys-not-set");
-    await expect("the book with no source line", withW({ row: confirmed({ sourcePhrase: null }) }), "needs_source_line");
-    await expect("the book with a blank one", withW({ row: confirmed({ sourcePhrase: "   " }) }), "needs_source_line");
-    await expect("book and players with none", withW({ row: confirmed({ audienceFilter: BOTH, sourcePhrase: null }) }), "needs_source_line");
-    await expect("players alone with none (control)", withW({ row: confirmed({ audienceFilter: PLAYERS, sourcePhrase: null }) }), "START");
+    // ⭐ ④ GONE (the owner's ruling of 2026-10-09): a campaign that can reach the contact book starts with no source line.
+    await expect("the book with no source line", withW({ row: confirmed({ sourcePhrase: null }) }), "START");
+    await expect("the book with a blank one", withW({ row: confirmed({ sourcePhrase: "   " }) }), "START");
+    await expect("book and players with none", withW({ row: confirmed({ audienceFilter: BOTH, sourcePhrase: null }) }), "START");
+    await expect("players alone with none", withW({ row: confirmed({ audienceFilter: PLAYERS, sourcePhrase: null }) }), "START");
     await expect("a filter that is not JSON", withW({ row: confirmed({ audienceFilter: "{not json" }) }), "audience_unreadable");
     await expect("settings that did not answer", withW({ settings: SETTINGS_DOWN }), "settings_unreadable");
     await expect("a settings read that throws", withW({ settings: "throws" }), "settings_unreadable");
@@ -471,7 +471,6 @@ async function runSectionF(impl: FImpl, ok: Check): Promise<void> {
       { reason: "confirmation_unreadable", apply: (w) => ({ ...w, row: { ...w.row, confirmTier: null } }) },
       { reason: "switch_closed", apply: (w) => ({ ...w, live: CLOSED }) },
       { reason: "rail_dead", apply: (w) => ({ ...w, rail: "keys-not-set" }) },
-      { reason: "needs_source_line", apply: (w) => ({ ...w, row: { ...w.row, sourcePhrase: null } }) },
       { reason: "audience_unreadable", apply: (w) => ({ ...w, row: { ...w.row, audienceFilter: "{not json" } }) },
       { reason: "settings_unreadable", apply: (w) => ({ ...w, settings: SETTINGS_DOWN }) },
       { reason: "price_unknown", apply: (w) => ({ ...w, cost: { kind: "unknown", reason: "no-sends" } }) },
@@ -482,11 +481,7 @@ async function runSectionF(impl: FImpl, ok: Check): Promise<void> {
     const order: string[] = [];
     for (let i = 0; i < STEPS.length; i++) {
       let w = W0();
-      for (let j = i; j < STEPS.length; j++) {
-        // ④ is judged on a filter that can be read, so it is never broken beside ⑤'s unreadable one.
-        if (STEPS[i].reason === "needs_source_line" && STEPS[j].reason === "audience_unreadable") continue;
-        w = STEPS[j].apply(w);
-      }
+      for (let j = i; j < STEPS.length; j++) w = STEPS[j].apply(w);
       order.push(said((await startIn(impl, w)).check));
     }
     const want = STEPS.map((s) => s.reason);
@@ -936,9 +931,20 @@ export const F_PLANTS: ReadonlyArray<EnginePlant<FImpl>> = [
     }),
   },
   {
-    name: "R-F1b · E18 skipped at Start (a book campaign with no source line starts)",
+    // ⭐ The owner's ruling of 2026-10-09 undone: ④ back, refusing a campaign that can reach the contact book while its
+    // message carries no source line — F1's book fixtures, which now START, are refused again.
+    name: "R-F1b · E18 put back at Start (a book campaign with no source line refused needs_source_line)",
     expect: [L.f1],
-    impl: () => ({ start: (c, d) => SC.checkStart({ ...c, sourcePhrase: "a planted source line" }, d) }),
+    impl: () => ({
+      start: async (c, d) => {
+        const read = readCampaignAudience(c.audienceFilter);
+        const blank = (typeof c.sourcePhrase === "string" ? c.sourcePhrase.trim() : "") === "";
+        if (c.status === "CONFIRMED" && read.ok && read.filter.population !== "players" && blank) {
+          return { ok: false, refusal: { reason: "needs_source_line" } as unknown as StartRefusal };
+        }
+        return SC.checkStart(c, d);
+      },
+    }),
   },
   {
     name: "R-F1c · a confirmation that cannot be read whole answered “Only a confirmed campaign can start”",

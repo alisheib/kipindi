@@ -239,8 +239,9 @@ export type MarketingWordingsActionResult =
  * ⭐ The author and the time are the server's: the session's officer, and its clock — nothing in the request names them.
  * ⭐ DG-S-05 · a refusal about words names the first box to fix (`wordingFieldName`, the ONE spelling the card renders
  * too) and carries every problem of every wording, so the card shows each one under its own box at once.
- * ⭐ Three pages read these words, and each is revalidated: this one; the composer (the source line, once U37s stamps
- * it into drafts); and the contacts page (a list's basis and its 18+ confirmation, U33b-L).
+ * ⭐ Three pages read these words, and each is revalidated: this one; the composer (the 18+ confirmation of a test to
+ * another number — no source line since the owner's ruling of 2026-10-09); and the contacts page (a list's basis and
+ * its 18+ confirmation, U33b-L).
  */
 export async function saveMarketingWordingsAction(formData: FormData): Promise<MarketingWordingsActionResult> {
   const session = await requireAdmin();

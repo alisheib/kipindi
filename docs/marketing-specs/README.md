@@ -19,7 +19,9 @@ a test's — is sent exactly as the officer wrote it. Nothing is appended: no so
 "Acha:" stop link; the counter's room is the whole message (160 GSM-7 characters, 70 in Unicode). Every recipient row
 still gets its opt-out token, and `/s/<token>` keeps working for every link sent before. Every passage in these files
 that prints, prices or proves a footer, a stop link, "50pick 18+", the helpline or a source line in a message describes
-the design before that ruling — the code, its suites and the tracker hold the present. `ENGINE-SPEC.md`,
-`U33a-U37c-OD58.md` and `U37.md` carry the same note at their head, and `DECISIONS-U29-U40.md` at M5 and G5.
+the design before that ruling — the code, its suites and the tracker hold the present. E18 (a contact-book campaign's
+source line at confirm and Start) and U37s (the line stamped on drafts, its stale flag, its box on the wordings card)
+went with it. `ENGINE-SPEC.md`, `U33a-U37c-OD58.md` and `U37.md` carry the same note at their head, and
+`DECISIONS-U29-U40.md` at M5 and G5.
 
 Moved here from a session's scratch folder on 2026-10-03: until then they existed on one laptop only.

@@ -662,7 +662,8 @@ async function AdminSystemContent({ searchParams }: SystemProps) {
         {tab === "wordings" && (<>
         {/* ⭐ U33w · THE MARKETING WORDINGS (OD57 · OD58 · S14 — the owner rule of 2026-10-03, "admins can change
             everything"), on a tab of their own (m7). The words that say why 50pick may message a person, the 18+
-            confirmations, the bought-list notice and the source line, each with its saved history. ⛔ A box nobody saved
+            confirmations and the bought-list notice, each with its saved history (the source line has no box since the
+            owner's ruling of 2026-10-09 — its versions stay in the record as history). ⛔ A box nobody saved
             holds a SUGGESTION and nothing is recorded under it (W1); a save appends a version and never rewrites one. The
             `key` is every wording's version count, so a save that lands remounts the card from the row — the Support
             contacts lesson on the Platform tab. */}

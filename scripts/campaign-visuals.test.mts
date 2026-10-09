@@ -172,7 +172,7 @@ const L = {
   t5: "T5 · ⭐ RESUME'S RE-QUEUE (E8), INSIDE THE STEP FLIGHT (the U47b-1 review) — a paused campaign whose list finished, holding 3 HELD rows: ONE move to RUNNING (stopReason cleared), THEN they start over (PENDING, attempts 0, the hold's class cleared), ONE ADMIN marketing.campaign_resumed row { requeuedHeld: 3, to: RUNNING } and 'Sending again.'; a step asked while Resume works answers busy and runs nothing; a Resume while another step holds the flight is refused busy with nothing read or changed; a Resume that loses its race to a Stop touches no row; a re-queue that fails still answers the Resume that landed (requeuedHeld null) and says the held people stay parked; a Stop landing between the move and the re-queue is said (resumed, then stopped), never 'Sending again.'; a list that never finished resumes to PREPARING with its own toast; ⭐ the check of 980e2ee7: a Pause or the end landing after the move is said in its own words (resumed, then paused · resumed and finished); a read after the move that fails still answers the Resume that landed, in its own words; the held people's failure is said only when some are HELD, and below the floor as a condition for HELD and none alike (E23) — the plain words at ten rows",
   t6: "T6 · ⭐ RESUME'S COUNT-BASED REFUSALS — U49a's refusal fed the store's COUNTS: a list longer than confirmed under an OFFICER's pause is refused list_over_confirmed (the switch closed and the console stub alike) with nothing re-queued, the campaign still PAUSED and no resumed row; with someone already messaged its words say a copy would message them again; ⛔ E23 · a masked viewer below the floor reads the SAME conditional words whether or not anybody was messaged; an engine's copy-only pause (audience_moved) is refused first, before the switch; a list within its count resumes",
   t7: "T7 · STOP (E25) — CONFIRMED, PREPARING, RUNNING and PAUSED each → CANCELLED officer_stopped with finishedAt, ONE ADMIN marketing.campaign_stopped row { outstanding } = what was left (resumeOutstanding), the answer LIVE_DONE.stop for a campaign that had begun sending (RUNNING, or PAUSED after its list was finished) and LIVE_DONE.stopBeforeSending — no group to warn of — for one that had not (the U47b-2 review's NIT), and EVERY row untouched; DONE, CANCELLED and a DRAFT refused with no row",
-  t8: "T8 · ⭐ MAKE A COPY — a NEW DRAFT by the officer through the composer's one save: the same message, the same audience (the same canonical key), the name '<name> (copy)', ONE marketing.campaign_created and ONE marketing.campaign_copied { from, to }, the composer's address; once anybody was messaged its answer says the copy messages them again; REFUSED in its own words with NOTHING made for an audience no address can write and for a masked viewer on both populations; a DRAFT refused; ⭐ the name at the composer's 80 characters — one that fits takes ' (copy)', one that would not keeps itself, an untitled one reads 'Untitled campaign (copy)'; the draft door's refusal of the MESSAGE (message_cannot_travel, its problem in words) and a source line it could not read (source_unreadable, the door's words) each make nothing",
+  t8: "T8 · ⭐ MAKE A COPY — a NEW DRAFT by the officer through the composer's one save: the same message, the same audience (the same canonical key), the name '<name> (copy)', ONE marketing.campaign_created and ONE marketing.campaign_copied { from, to }, the composer's address; once anybody was messaged its answer says the copy messages them again; REFUSED in its own words with NOTHING made for an audience no address can write and for a masked viewer on both populations; a DRAFT refused; ⭐ the name at the composer's 80 characters — one that fits takes ' (copy)', one that would not keeps itself, an untitled one reads 'Untitled campaign (copy)'; the draft door's refusal of the MESSAGE (message_cannot_travel, its problem in words) and any other answer of the door (in the door's own words) each make nothing — and no copy is refused for a source line (the owner's ruling of 2026-10-09: the door reads none)",
   t9: "T9 · THE LOST RACES AND THE RECORD — a Start that loses to another officer's Start says it was started a moment ago, one that loses to a Stop says it was stopped (each ONE start_refused row { reason: not_confirmed }, no started row); a Pause that loses to the engine's own pause says already paused and writes no row; a Stop that loses to another Stop says it has already finished or stopped and writes no row; a Start of a campaign that is not there writes ONE start_refused row with NO target; and ruling 543 — a Pause whose audit row cannot be written (the door throws, or answers not recorded) still lands, answered recorded false with LIVE_NOT_RECORDED beside its sentence",
   d1: "D1 · THE STEP DISPATCHER (§3.3) — PREPARING: the reaper, then ONE enqueue chunk; RUNNING: ONE slice; PAUSED, CANCELLED, DONE: the reaper alone (kind reaped); DRAFT and CONFIRMED: nothing (idle); each answer carries the view of that campaign, and a wait carries its own sentence",
   d2: "D2 · ⭐ SINGLE-FLIGHT PER CAMPAIGN (decision 1 as amended) — two steps of one PREPARING campaign at once never overlap: the second answers waiting busy and its enqueue never runs; ⭐ the same for a RUNNING campaign's slice and a PAUSED campaign's reap; two DIFFERENT campaigns step at once; the flight is released after a step and after a step that throws; a flight older than ten minutes, or dated ten minutes AHEAD, no longer holds — a fresh one, or one a minute ahead, does; and production's flights live on globalThis",
@@ -1024,7 +1024,7 @@ async function runAssertions(impl: Impl): Promise<void> {
     const c = await campaign(w, "t2", { path: ["CONFIRMED"], count: 1604, estimateTzs: 9624 });
     const REFUSALS: StartRefusal[] = [
       { reason: "not_confirmed" }, { reason: "confirmation_unreadable" }, { reason: "switch_closed" }, { reason: "rail_dead", rail: "keys-not-set" },
-      { reason: "needs_source_line" }, { reason: "audience_unreadable" }, { reason: "settings_unreadable" }, { reason: "settings_incomplete" },
+      { reason: "audience_unreadable" }, { reason: "settings_unreadable" }, { reason: "settings_incomplete" },
       { reason: "price_unknown" }, { reason: "over_budget", costTzs: 10_800, budgetTzs: 10_000 }, { reason: "credit_unreadable" },
       { reason: "credit_low", balanceTzs: 24_000, costTzs: 9624, reserveTzs: 20_000 }, { reason: "audience_uncounted" },
       { reason: "audience_moved", freshCount: 1610, confirmedCount: 1604, population: "both" }, { reason: "members_unverified" },
@@ -1365,14 +1365,16 @@ async function runAssertions(impl: Impl): Promise<void> {
     };
     const names = { fits: await named("t8l", n73), long: await named("t8m", n75), blank: await named("t8u", "") };
     const namesOk = names.fits === `${n73} (copy)` && names.long === n75 && names.blank === `${LIST_COPY.CAMPAIGNS_UNTITLED} (copy)`;
-    // ⭐ the draft door's OTHER refusals: the message (its problem in words) and a source line it could not read — nothing made
+    // ⭐ the draft door's OTHER refusals: the message (its problem in words) and any other answer (one only an edit can
+    // meet, said in the door's own words) — nothing made. (Until the owner's ruling of 2026-10-09 the door also refused a
+    // source line it could not read, `source_unreadable`; it reads none now, and the copy has no such reason.)
     const made4 = mem().smsCampaigns.size;
     const PROBLEM = "the Swahili message is longer than its limit";
-    const SOURCE = "The source line couldn't be read just now — try again in a moment.";
+    const OTHER = "Someone else saved this draft at 14:02 — reload to see their version before changing it.";
     const pm = seen(await impl.copy(k.id, reader, ctrlDeps(impl, { saveDraft: async () => ({ ok: false, reason: "invalid", error: PROBLEM, problems: { bodySw: [PROBLEM] } }) as never })));
-    const su = seen(await impl.copy(k.id, reader, ctrlDeps(impl, { saveDraft: async () => ({ ok: false, reason: "source_unreadable", error: SOURCE }) })));
+    const su = seen(await impl.copy(k.id, reader, ctrlDeps(impl, { saveDraft: async () => ({ ok: false, reason: "stale", error: OTHER }) })));
     const door = !pm.ok && pm.reason === "message_cannot_travel" && pm.message === COPY.copyMessageRefusedSentence(PROBLEM)
-      && !su.ok && su.reason === "source_unreadable" && su.message === SOURCE && mem().smsCampaigns.size === made4
+      && !su.ok && su.reason === "message_cannot_travel" && su.message === OTHER && mem().smsCampaigns.size === made4
       && (await auditOf(CTRL.CAMPAIGN_COPIED_ACTION, k.id)).length === 1;
     return [made && again && refused && namesOk && door,
       `made ${made} (${r.ok ? copy?.name : r.message}) · reached ${again} · refused ${refused} · ${json([o, b, x].map((y) => (y.ok ? "ok" : y.reason)))} · names: fits ${names.fits.length} chars, long ${names.long === n75 ? "kept" : names.long.slice(0, 20)}, untitled "${names.blank}" · the door's refusals ${door} (${json([pm, su].map((y) => (y.ok ? "ok" : y.reason)))})`];
@@ -1877,11 +1879,15 @@ if (!PROVE_RED) {
       impl: withCtrl((d) => ({ ...d, reach: (c, counts) => LIVE.liveReach(c, counts, true) })) },
     { name: "R-T8 · the copy widens to the whole book — the audience never travels, the address is empty", expect: [L.t8],
       impl: withCtrl((d) => ({ ...d, travel: () => ({ ok: true, params: {}, filter: AUD.WHOLE_BOOK }) })) },
-    { name: "R-T8b · the draft door's refusals said as the audience's — the message's own problem and the unread source line lost", expect: [L.t8],
+    { name: "R-T8b · the draft door's refusals said as the audience's — the message's own problem and the door's other words lost", expect: [L.t8],
       impl: { copy: async (id, a, d) => {
         const r = await CTRL.copyCampaign(id, a, d);
-        return !r.ok && (r.reason === "message_cannot_travel" || r.reason === "source_unreadable") ? { ok: false, reason: "audience_cannot_travel", message: COPY.copyCantTravelSentence("none") } : r;
+        return !r.ok && r.reason === "message_cannot_travel" ? { ok: false, reason: "audience_cannot_travel", message: COPY.copyCantTravelSentence("none") } : r;
       } } },
+    // ⭐ The owner's ruling of 2026-10-09 undone at the copy: the draft door reads the source line again and cannot — every
+    // copy refused for a line no message prints.
+    { name: "R-T8d · 2026-10-09 · the copy refused again for a source line it could not read", expect: [L.t8],
+      impl: withCtrl((d) => ({ ...d, saveDraft: async () => ({ ok: false, reason: "source_unreadable", error: "The campaign's source line couldn't be read just now, so the draft wasn't saved — try again in a moment." }) as never })) },
     { name: "R-T8c · ' (copy)' added whatever the length — the copy of a 75-character name runs past the composer's 80", expect: [L.t8],
       impl: withCtrl((d) => ({ ...d, saveDraft: (input, officer, options) => d.saveDraft({ ...input, name: input.name.endsWith(" (copy)") ? input.name : `${input.name} (copy)` }, officer, options) })) },
     { name: "R-T9 · a lost Start said in U49a's not_confirmed words — the officer never learns the campaign moved on", expect: [L.t9],

@@ -13,7 +13,7 @@
  * subtracts a figure; this file only says whether "Who" was chosen and which words describe it.
  *
  * ⭐ THE COUNTER IS THE RENDERER'S. Each variant's live counter is `validateCampaignTemplate` → `counterFor` — the ONE
- * worst-case counter in `campaign-template.ts` (the reserved name, the source line or its room, the statutory footer) —
+ * worst-case counter in `campaign-template.ts` (the reserved name; nothing is appended since the owner's ruling of 2026-10-09) —
  * and nothing in this directory sizes a message itself (`test:campaign-compose` §16.2). The server re-validates on
  * save and stores ITS figures; the screen is a preview of that verdict, never a substitute for it.
  * ⛔ OD45 · NO SENDER INPUT: the sender line is the server's, read-only. ⛔ NO NUMBER INPUT: the test card names the
@@ -65,7 +65,6 @@ import {
   COMPOSE_AUDIENCE_CLEAR, COMPOSE_AUDIENCE_LEAD, COMPOSE_BODY_SW_HINT,
   COMPOSE_DISCARD_BODY, COMPOSE_DISCARD_CANCEL, COMPOSE_DISCARD_CONFIRM, COMPOSE_DISCARD_TITLE, COMPOSE_EN_NONE,
   COMPOSE_EN_RULE, COMPOSE_FIELD, COMPOSE_NO_CHANGES, COMPOSE_READ_ONLY, COMPOSE_RELOAD, COMPOSE_SAVE, COMPOSE_SAVE_AS_NEW,
-  COMPOSE_SOURCE_LINE_STALE,
   COMPOSE_SAVE_AS_NEW_AUDIENCE, COMPOSE_SAVE_FAILED, COMPOSE_TEST_BUDGET, COMPOSE_TEST_CONSENT_LINK, COMPOSE_TEST_EXACT,
   COMPOSE_TEST_NOT_DRAFT, COMPOSE_TEST_PREVIEW, COMPOSE_TEST_SAVE_FIRST, COMPOSE_TEST_SEND,
   COMPOSE_TEST_UPDATING, COMPOSE_TRY_AGAIN, composeSaveBlocked, composeSaved, composeTestHandedOver,
@@ -83,11 +82,12 @@ type Problems = Partial<Record<CampaignDraftField, string[]>>;
 type Saved = { id: string; draftRevision: number; savedAt: string | null; fields: Fields };
 /**
  * A refusal, by its reason. `failed` is a save lost in transit (no reason came back): the text is kept and Try again
- * offered — and so for `source_unreadable` (U37s: the source line's fresh read did not answer; nothing was saved).
- * `role`, `rate_limited` and `unfinished` are the actions' own — printed alone, with no retry that cannot work.
+ * offered. (U37s's `source_unreadable` — the source line's fresh read did not answer — is gone since the owner's ruling
+ * of 2026-10-09: the save reads no line.) `role`, `rate_limited` and `unfinished` are the actions' own — printed alone,
+ * with no retry that cannot work.
  */
 type Refusal = {
-  kind: "invalid" | "not_found" | "not_draft" | "stale" | "source_unreadable" | "failed" | "role" | "rate_limited" | "unfinished";
+  kind: "invalid" | "not_found" | "not_draft" | "stale" | "failed" | "role" | "rate_limited" | "unfinished";
   message: string;
   /** A stale save (or a draft confirmed since): the stored draft's own address, which "Reload" goes to. */
   href?: string;
@@ -270,7 +270,8 @@ export function ComposerProvider({ view, children }: { view: ReadyView; children
     setServerProblems({});
   }
 
-  const verdict = validateCampaignTemplate(fields, view.sourcePhrase);
+  // ⛔ No source line is handed to the verdict (the owner's ruling of 2026-10-09) — the save's own call hands none either.
+  const verdict = validateCampaignTemplate(fields, "");
   const dirty = saved === null ? !sameFields(fields, EMPTY) : !sameFields(fields, saved.fields);
 
   /** What a field shows: the server's refusal after a save, else the live verdict once there is something to judge. */
@@ -301,10 +302,10 @@ export function ComposerProvider({ view, children }: { view: ReadyView; children
               field: firstKey !== null && ON_PAGE.has(firstKey) ? firstKey : null,
             }
           : null;
-  // ⭐ U37s · a draft carrying another line than the one saved now is never "no changes": only a save re-stamps it.
-  // ⭐ Nor is an audience on screen that the draft does not store (a rail pick): only a save keeps it (`audience.unsaved`) —
-  // and the Confirm card (U40b) will not open on it, since a confirmation freezes the STORED audience.
-  const blocked = shared ?? (saved !== null && !dirty && !view.sourceLineStale && !view.audience.unsaved ? { reason: COMPOSE_NO_CHANGES, field: null } : null);
+  // ⭐ An audience on screen that the draft does not store (a rail pick) is never "no changes": only a save keeps it
+  // (`audience.unsaved`) — and the Confirm card (U40b) will not open on it, since a confirmation freezes the STORED
+  // audience. (U37s's stale source line no longer counts as a change: no draft's line matters since 2026-10-09.)
+  const blocked = shared ?? (saved !== null && !dirty && !view.audience.unsaved ? { reason: COMPOSE_NO_CHANGES, field: null } : null);
   const saveBlocked: string | null = blocked?.reason ?? null;
   const blockedField: CampaignDraftField | null = blocked?.field ?? null;
   const canSave = saveBlocked === null && !saving;
@@ -592,7 +593,7 @@ export function ComposerMessage() {
             && c.saveAsNewBlocked !== null && c.saveAsNewBlocked !== c.saveBlocked && (
             <span className="mt-1 block text-body-sm" data-compose-save-new-reason>{c.saveAsNewBlocked}</span>
           )}
-          {(c.refusal.kind === "failed" || c.refusal.kind === "source_unreadable") && (
+          {c.refusal.kind === "failed" && (
             <span className="mt-2 block">
               <Button type="button" size="sm" variant="ghost" onClick={c.save} disabled={!c.canSave}>{COMPOSE_TRY_AGAIN}</Button>
             </span>
@@ -601,9 +602,6 @@ export function ComposerMessage() {
       )}
       {c.refusal !== null && c.refusal.kind === "invalid" && (
         <p className="text-body-sm text-danger-fg" role="alert" data-compose-refusal="invalid">{c.refusal.message}</p>
-      )}
-      {view.sourceLineStale && !view.readOnly && (
-        <p className="text-body-sm text-text-secondary" data-compose-source-stale>{COMPOSE_SOURCE_LINE_STALE}</p>
       )}
 
       <div className="flex flex-wrap items-center gap-x-3 gap-y-2 pt-1">

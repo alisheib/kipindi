@@ -86,7 +86,7 @@ const L = {
   w5: "W5 · ⛔ basis.LICENCE_OUTREACH can never be saved claiming consent — without 'has not agreed' (or 'never agreed' / 'did not agree') it is refused, so is a denial beside an agreement, an opt-in, permission, acceptance, a sign-up, a request or a subscription (m3), and the store writes nothing; the bought-list basis is held to the same plain denial in its own words",
   w6: "W6 · isImportAttestationSaved is true for every SAVED pair of a first-party basis version and an adult.consent version — and false for an unsaved default, a near copy, the adult sentence alone, THIRD_PARTY or LICENCE with it glued on, recordedBy null, a source other than IMPORT; a new row composes the newest pair",
   w7: "W7 · a process that never loaded the row refuses the save — nothing written, no audit row — and its readers answer null and recognise nothing (it fails closed)",
-  w8: "W8 · the wiring — the action asks requireAdmin first, reads its form with patchFromForm, saves through the verified setter, names a box per refusal and revalidates three pages; the card validates live, builds its request with wordingsToSave and wordingsPostEntries, ticks on edit with approvesOnEdit, never holds a save silently (m4), names each tick's wording and links each status line; the page renders it on its own tab and reads its rows only there (m7); the pure module is pure and pinned; the server's live store is makeStore over WORDING_RULES, queued, refusing a partly read row (M1) and re-checking the record it writes (m2); the suite and its red run in predeploy, right after test:marketing-consent",
+  w8: "W8 · the wiring — the action asks requireAdmin first, reads its form with patchFromForm, saves through the verified setter, names a box per refusal and revalidates three pages; the card validates live, builds its request with wordingsToSave and wordingsPostEntries, ticks on edit with approvesOnEdit, never holds a save silently (m4), names each tick's wording and links each status line, and shows no source-line box since the owner's ruling of 2026-10-09 (its boxes, list and count are CARD_KEYS — every wording but source.phrase); the page renders it on its own tab and reads its rows only there (m7); the pure module is pure and pinned; the server's live store is makeStore over WORDING_RULES, queued, refusing a partly read row (M1) and re-checking the record it writes (m2); the suite and its red run in predeploy, right after test:marketing-consent",
   w9: "W9 · ⛔ M2 · a suggestion is saved only on purpose, and the SERVER holds the rule — the card never sends an unticked suggestion, sends a ticked or edited one with approve.<key>=1, the source line only when typed, a saved wording only when changed, each with its version count; a hand-built POST of the nine suggestions with no approval field is refused key by key in its own words and writes nothing, and the same POST approved saves all nine",
   w10: "W10 · m1 · a page out of date is refused — a save built on a version count that is not the count saved now (behind or ahead) is refused under its box ('Someone saved this wording since you opened the page — reload to see it.'), nothing is written, and the same save from the current count is version 2",
   w11: "W11 · m3 · a consent basis that negates its agreement AFTER the word ('agreed to nothing', 'agreed to no offers', 'agreed, but not to SMS') is refused in its own words while the suggestions and an accented consent still pass, and a basis or 18+ wording holding a letter from another alphabet (a Cyrillic or Greek look-alike of a Latin letter) is refused in plain words — by the store too, writing nothing",
@@ -613,7 +613,13 @@ async function runAssertions(impl: Impl, tag: string): Promise<void> {
       && src.form.includes("wordingsToSave(cardState)") && src.form.includes("wordingsPostEntries(sending)")
       && src.form.includes("approvesOnEdit(key, versionsOf(key).length)") && neverSilent
       && src.form.includes("ariaLabel={`${APPROVE_LABEL}: ${WORDING_COPY[key].label}`}")
-      && (src.form.match(/aria-describedby=[{]statusId[}]/g) ?? []).length === 2 && src.form.includes("id={statusId}");
+      && (src.form.match(/aria-describedby=[{]statusId[}]/g) ?? []).length === 1 && src.form.includes("id={statusId}");
+    // ⭐ 2026-10-09 · THE SOURCE LINE HAS NO BOX (the owner's ruling: nothing is appended, so nothing reads the line). The
+    // card's boxes, its read-only list and its count run over CARD_KEYS — every wording but `source.phrase` — and nothing
+    // on the card runs a box loop over every key again. (One status link above: the one-line box went with the line.)
+    const noSourceBox = src.form.includes('const CARD_KEYS: readonly CardKey[] = WORDING_KEYS.filter((k): k is CardKey => k !== "source.phrase");')
+      && (src.form.match(/[{]CARD_KEYS[.]map[(][(]key[)] => [{]/g) ?? []).length === 2 && !src.form.includes("{WORDING_KEYS.map((key) => {")
+      && src.form.includes("{savedCount} of {CARD_KEYS.length} wordings saved.") && !src.form.includes('"source.phrase": {');
     const groupAt = src.page.indexOf('{tab === "wordings" && (<>');
     const groupEnd = groupAt < 0 ? -1 : src.page.indexOf("</>)}", groupAt);
     const cardAt = src.page.indexOf("<MarketingWordingsForm");
@@ -648,7 +654,7 @@ async function runAssertions(impl: Impl, tag: string): Promise<void> {
       && scripts["red:marketing-wordings"] === "tsx scripts/marketing-wordings.test.mts --prove-red"
       && chain.filter((x) => x === "npm run test:marketing-wordings").length === 1
       && atSuite > 0 && chain[atSuite - 1] === "npm run test:marketing-consent";
-    const conds = { actionOk, cardOk, neverSilent, pageOk, pureOk, serverOk, partRead, recheck, pinOk, wired };
+    const conds = { actionOk, cardOk, neverSilent, noSourceBox, pageOk, pureOk, serverOk, partRead, recheck, pinOk, wired };
     ok(p(L.w8), Object.values(conds).every(Boolean), `${JSON.stringify(conds)} · the pure module loads [${specs.join(", ")}]`);
   }
 
@@ -1062,6 +1068,13 @@ function cases(problems: string[]): Array<{ name: string; expect: string; impl: 
       name: "W8 · the card stops validating as the admin types (wordingProblems no longer called)",
       expect: L.w8,
       impl: srcPlant({ form: REAL_SOURCES.form.split("wordingProblems(").join("(() => [])(") }),
+    },
+    {
+      // ⭐ The owner's ruling of 2026-10-09 undone on the card: the boxes run over every wording again, the source line's
+      // among them — a box for a line no message prints.
+      name: "W8 · 2026-10-09 · the source line's box back on the card (the boxes over every wording again)",
+      expect: L.w8,
+      impl: srcPlant({ form: REAL_SOURCES.form.split("{CARD_KEYS.map((key) => {").join("{WORDING_KEYS.map((key) => {") }),
     },
     {
       name: "m4 · the card's own submit holds a blocked save silently again (Enter in a box does nothing)",

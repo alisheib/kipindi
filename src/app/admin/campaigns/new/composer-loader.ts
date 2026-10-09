@@ -42,7 +42,7 @@ import type { AudienceParse, ContactAudienceFilter } from "@/lib/server/marketin
 import { audienceSplit, audienceWalkCount } from "@/lib/server/marketing/audience-split";
 import { audienceCountView, audienceSplitView } from "./audience-view-model";
 import type { AudienceSplitView } from "./audience-view-model";
-import { wholeNumberAudienceProblem, CAMPAIGN_AUDIENCE_UNREADABLE, savedSourcePhrase } from "@/lib/server/marketing/campaign-draft";
+import { wholeNumberAudienceProblem, CAMPAIGN_AUDIENCE_UNREADABLE } from "@/lib/server/marketing/campaign-draft";
 import {
   TEST_OWN_NUMBER_UNUSABLE, TEST_TYPED_OUTREACH_CLOSED, TEST_TYPED_NO_ATTESTATION_WORDING, TEST_TEMPLATE_INVALID,
 } from "@/lib/server/marketing/campaign-test-send";
@@ -161,12 +161,9 @@ export type ComposeView =
       kind: "ready";
       draft: ComposeDraftView | null;
       readOnly: boolean;
-      /** M5 · U37s · the line handed to the template's verdict (`composerSourcePhrase`) — which, since the owner's ruling
-       *  of 2026-10-09, neither prints, prices nor judges it. */
-      sourcePhrase: string;
-      /** U37s · this DRAFT carries a different line than the one saved now (none, an older one, or one since cleared) —
-       *  so Save is offered even with nothing typed, and the screen says why (`composerSourceLineStale`). */
-      sourceLineStale: boolean;
+      /* ⛔ No source line in the view (the owner's ruling of 2026-10-09): U37s's `sourcePhrase` (the line the counter
+         priced) and `sourceLineStale` (a draft stamped with another line than the one saved, offered a Save and a note)
+         are gone — no line is printed, priced, stamped or required, so a draft's old one can never matter. */
       audience: ComposeAudienceView;
       sender: ComposeSenderView;
       test: ComposeTestView;
@@ -186,28 +183,10 @@ function fieldsOf(c: StoredSmsCampaign): CampaignDraftFields {
   };
 }
 
-/**
- * ⭐ U37s · THE LINE HANDED TO THE VERDICT IS THE LINE THE SAVE WILL STAMP — the SAVED line (`savedSourcePhrase`) for a
- * new composer and a DRAFT (a draft's next save re-stamps it), the line frozen on a campaign past DRAFT, blank ("") while
- * nothing is saved. Until the owner's ruling of 2026-10-09 the counter priced this line (and reserved the longest one
- * allowed while it was blank); since then nothing is appended, so `counterFor` and `validateCampaignTemplate` take it
- * and ignore it — it moves no number on the screen.
- */
-export function composerSourcePhrase(draft: StoredSmsCampaign | null, saved: string | null): string {
-  if (draft !== null && draft.status !== "DRAFT") return draft.sourcePhrase ?? "";
-  return saved ?? "";
-}
-
-/**
- * ⭐ U37s · A DRAFT WHOSE STAMP IS NOT THE SAVED LINE — saved before the line existed (every draft before U37s stores
- * none), stamped with a line changed since, or carrying a line since cleared. Only a save re-stamps it, and with nothing
- * typed the screen would otherwise refuse that save as "no changes" while its counter, which prices the saved line, reads
- * "set". ⛔ Never true past DRAFT: a confirmed campaign keeps its own line by design.
- */
-export function composerSourceLineStale(draft: StoredSmsCampaign | null, saved: string | null): boolean {
-  if (draft === null || draft.status !== "DRAFT") return false;
-  return (draft.sourcePhrase ?? null) !== (saved ?? null);
-}
+/* ⛔ U37s's two deciders are gone (the owner's ruling of 2026-10-09): `composerSourcePhrase` (the line the counter priced,
+   the SAVED one for a draft) and `composerSourceLineStale` (a draft whose stamp was not the saved line). Nothing is
+   appended to a marketing SMS, the draft save stamps no line, and no confirmation or Start asks for one — so this loader
+   reads no `source.phrase` wording at all (`test:campaign-compose` §17.19 · §17.20). */
 
 function templateOf(c: StoredSmsCampaign): CampaignTemplate {
   const f = fieldsOf(c);
@@ -530,7 +509,6 @@ export async function loadComposer(sp: ComposeParams): Promise<ComposeView> {
   }
 
   const live = marketingLiveGate(smsProviderResolution(), await readMarketingLiveSwitch());
-  const savedLine = savedSourcePhrase();
 
   return {
     kind: "ready",
@@ -538,8 +516,6 @@ export async function loadComposer(sp: ComposeParams): Promise<ComposeView> {
       id: draft.id, draftRevision: draft.draftRevision, status: draft.status, updatedAt: draft.updatedAt, fields: fieldsOf(draft),
     },
     readOnly: draft !== null && draft.status !== "DRAFT",
-    sourcePhrase: composerSourcePhrase(draft, savedLine),
-    sourceLineStale: composerSourceLineStale(draft, savedLine),
     audience: composeAudienceView(sp, draft, await viewerReadsContacts()),
     sender: senderView(),
     test: {

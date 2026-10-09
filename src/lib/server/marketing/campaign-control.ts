@@ -22,7 +22,7 @@
  *                    ⛔ E25 · STOP REWRITES NOTHING: the rows still owed a message stay PENDING / HELD; "stopped before
  *                    sending" is a count (`resumeOutstanding`, the ONE definition of what is left), recorded on the row.
  *   copyCampaign   — a NEW DRAFT through the composer's one save (`saveCampaignDraft` — the server's verdict on the message,
- *                    the source line stamped fresh, the draft door's role rule on the audience) with the stored message
+ *                    no source line since 2026-10-09, the draft door's role rule on the audience) with the stored message
  *                    and the stored audience written as the composer's address (`campaignAudienceParams`). ⛔ REFUSED when
  *                    the audience cannot travel (`copyTravel`: unreadable, not writable as an address, or a filter this
  *                    viewer's role may not post — OD66 again) — never a copy that silently widens to the whole book.
@@ -119,7 +119,7 @@ export type PauseControlRefusal = "not_found" | "draft" | "already_paused" | "no
 /** `busy`: another step of the campaign held its flight just then (Resume runs inside it). */
 export type ResumeControlRefusal = ResumeRefusal["reason"] | "not_found" | "draft" | "not_paused" | "role" | "busy";
 export type StopControlRefusal = "not_found" | "draft" | "finished" | "role";
-export type CopyControlRefusal = "not_found" | "draft" | "audience_cannot_travel" | "message_cannot_travel" | "source_unreadable" | "role";
+export type CopyControlRefusal = "not_found" | "draft" | "audience_cannot_travel" | "message_cannot_travel" | "role";
 
 /** What an act answers: done (and whether its audit row landed — ruling 543), or refused — each in the sentence the page
  *  prints. ⛔ No refusal object, and no figure the viewer may not read, ever reaches an answer. */
@@ -570,8 +570,10 @@ export async function copyCampaign(campaignId: string, actor: ControlActor, deps
         ? { ok: false, reason: "audience_cannot_travel", message: copyCantTravelSentence(reach) }
         : { ok: false, reason: "message_cannot_travel", message: copyMessageRefusedSentence(saved.error) };
     }
-    // A new draft is refused nothing else but a source line that could not be read just now — retryable, in its own words.
-    return { ok: false, reason: saved.reason === "source_unreadable" ? "source_unreadable" : "message_cannot_travel", message: saved.error };
+    // A new draft is refused nothing but its verdict (above): the door's other reasons (`not_found`, `not_draft`, `stale`)
+    // belong to an edit, and one that came anyway is said in the door's own words. (Until the owner's ruling of 2026-10-09
+    // a source line that could not be read refused the copy too, `source_unreadable`; no line is read now.)
+    return { ok: false, reason: "message_cannot_travel", message: saved.error };
   }
   const recorded = await recordedBy(deps, {
     category: "ADMIN", action: CAMPAIGN_COPIED_ACTION, actorId: officer, targetType: "SmsCampaign", targetId: c.id,

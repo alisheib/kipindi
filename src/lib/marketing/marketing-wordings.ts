@@ -9,6 +9,9 @@
  * the bought-list notice and the campaign source line were code constants an engineer had to change (owner gates G4
  * and G5). They are now persisted, validated, audited config (`marketing.wordings`), edited on one card. Code keeps the
  * KEYS, the RULES and the DEFAULTS; an admin's save is what makes a wording real — and the save IS the approval (G4).
+ * ⭐ 2026-10-09 (the owner's ruling: nothing is appended to a marketing SMS): the source line has no box on the card any
+ * more and nothing reads it — it stays a key, so its saved versions read whole as history, and the owner door's G5
+ * still saves it.
  * ⭐ 2026-10-07 (Ali's ruling): he may instead approve a wording IN THE CLAUDE SESSION, and Claude saves it for him through
  * the audited ops door (`src/lib/server/marketing/owner-save.ts`) — never with his login. The door records his approval
  * (COMPLIANCE `marketing.owner_save_applying`) BEFORE it saves, builds the request with this file's own `wordingsToSave`
@@ -54,8 +57,10 @@ import { sourcePhraseProblems } from "./campaign-template";
 
 /* ══ THE KEYS ═══════════════════════════════════════════════════════════════════════════════════════════════════ */
 
-/** ⭐ ONE KEY PER WORDING THE CARD EDITS, in the card's order. ⛔ Identifiers, never shown to staff (the card has its own
- *  labels). A basis key is `basis.` and the catalogue key, exactly — W0 holds the two lists to each other. */
+/** ⭐ ONE KEY PER WORDING, in the card's order — the card edits every one but `source.phrase` (no box since the owner's
+ *  ruling of 2026-10-09; it stays a key so its saved versions read whole). ⛔ Identifiers, never shown to staff (the
+ *  card has its own labels). A basis key is `basis.` and the catalogue key, exactly — W0 holds the two lists to each
+ *  other. */
 export const WORDING_KEYS = [
   "basis.OWN_FORM", "basis.OWN_EVENT", "basis.AGENT_ROSTER", "basis.THIRD_PARTY", "basis.LICENCE_OUTREACH",
   "adult.consent", "adult.list", "adult.test",
