@@ -145,6 +145,7 @@
     "qa:marketing-live": "node scripts/live/marketing-u47-live-drive.mjs",
     "qa:marketing-e2e-capture": "node scripts/live/marketing-e2e-capture.mjs",
     "qa:marketing-empty-centre": "node scripts/live/marketing-empty-centre-probe.mjs",
+    "qa:s14-visual-sweep": "node scripts/live/s14-visual-sweep.mjs",
     "qa:validation-phone-paste": "node scripts/live/validation-vb3-phone-paste-drive.mjs",
     "qa:validation-money-fields": "node scripts/live/validation-vb6-money-fields-drive.mjs",
     "qa:validation-staff-invites": "node scripts/live/validation-vb8-staff-invites-drive.mjs",
