@@ -112,8 +112,9 @@ then: "the contacts screen"):
        (checkout `C:\kipindi-c3bfix`), decisions D1–D10 in §4.6 (S15-14). Then a full battery, then C3b + C3b-fix to main.
     2. C3c — big workbooks read in the browser, being built on `contacts-c3c` (checkout `C:\kipindi-s15`), design §4.5
        (S15-13); it merges C3b-fix's shared sheet choice and title-row rule before its own battery.
-    3. C8 — S14's importer review (`docs/marketing-specs/S14-IMPORTER-REVIEW.md` on `origin/backup/marketing-s14-import`,
-       fifteen findings against S14's own importer, "S15's design meets the same questions") CHECKED against this live
+    3. C8 — S14's importer review (`docs/marketing-specs/S14-IMPORTER-REVIEW.md` on the branch `backup/marketing-s14-import` —
+       deleted from GitHub at S14's close, 2026-10-09, after every finding was settled here; kept as a verified git bundle,
+       `F:\kipindi-archive\backup-marketing-s14-import.bundle` on OMEGA-COMPILE01, tip `d1669119`), fifteen findings against S14's own importer, "S15's design meets the same questions") CHECKED against this live
        importer (2026-10-09 ~06:00 EAT, read-only): 4, 6, 7, 8, 9, 10 and 11 do not apply; what applies, with four new
        finds, is §1 row C8 — the gravest: an ERASED person with no book row is re-created by a later import (or the Add
        form) once an old /s/ link adds a later ledger row, or at once when they had opted out before the erasure.
