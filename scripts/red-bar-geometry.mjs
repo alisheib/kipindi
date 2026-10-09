@@ -32,6 +32,21 @@
  * ⛔ Needs the dev server up — the same precondition as the driver.
  *   `rm -rf .next/dev && npx next dev -p 3031`   (⛔ never `next start`: the store refuses the
  *   in-memory fallback in production, so local visual work runs on `next dev`.)
+ * ⛔ AND THE DRIVER'S FIXTURE, built once on that server BEFORE this harness:  `npm run fixture:player -- <baseUrl>`.
+ *   Two cases need `/proposals` ACTIVE and seeded, one needs stars on `/watchlist`; without them the precondition below
+ *   refuses and names what it could not measure, rather than crediting a mutation with a bar that was never drawn.
+ *
+ * ── ROUND 5 OF THE VISUAL PASS (R5-F, 2026-10-09) · THREE WAYS THIS HARNESS COULD CREDIT A CATCH IT NEVER MADE ──────
+ *   ① THE PRECONDITION WAS PER ROUTE, AND THE PROOFS ARE PER ROUTE × SHAPE. `/markets` was checked at 1280/sw only (the
+ *     shape of its FIRST case), while `sort-summary-unbound` was proved there at 360/sw — where the untouched driver read
+ *     five OVERLAP lines of its own (the U4 strip). So that case would have reported "caught → OVERLAP" for a mutation
+ *     that changes nothing on that bar. ⭐ Every distinct route × width × locale is now checked before and after.
+ *   ② "GREEN" WAS EXIT 0, AND EXIT 0 CAN HOLD A NOT MEASURED. A route whose bar was never drawn (no fixture) or whose
+ *     stick the page was too short to pose is not a baseline a mutation can be measured against. ⭐ The precondition now
+ *     needs exit 0 AND no NOT MEASURED line for the route.
+ *   ③ `expect` WAS MATCHED AGAINST THE WHOLE OUTPUT. "stick" is in "sticky" — in the OTHER arm's failure line, and in a
+ *     🔶 line — so `bar-is-not-sticky` could be "caught" by the wrong arm. ⭐ `expect` is matched on the ✗ lines only,
+ *     and that case expects its own arm's words (`anchors/bar-geometry.anchors.mjs`).
  *
  * Run: npm run red:bar-geometry
  */
@@ -39,6 +54,7 @@ import { readFileSync, writeFileSync } from "node:fs";
 import { execFileSync } from "node:child_process";
 import { injectDefect } from "./red-anchor.mjs";
 import { MUTATIONS } from "./anchors/bar-geometry.anchors.mjs";
+import { failLines, notMeasuredLines } from "./live/bar-geometry-rules.mjs";
 
 const BASE = process.argv.find((a) => a.startsWith("http")) || "http://localhost:3031";
 const DRIVER = "scripts/live/bar-geometry-drive.mjs";
@@ -51,6 +67,8 @@ const DRIVER = "scripts/live/bar-geometry-drive.mjs";
  * would look like the defect.
  */
 const SHAPE = {
+  // ⚠️ On `/watchlist` since R5-F (2026-10-09), not `/markets`: below 640 the reference bar is U4's one-line grid, whose
+  // sort column is sized toward its content, so at 360 an unbound summary has a pixel or two to run. See the case's note.
   "sort-summary-unbound": { widths: "360", locales: "sw" },
   "desktop-group-does-not-wrap": { widths: "1280", locales: "sw" },
   "bar-is-not-sticky": { widths: "1280", locales: "sw" },
@@ -96,18 +114,33 @@ const settle = async (route) => {
  * ⭐ WHAT MATTERS IS THAT THE ROUTE UNDER MUTATION IS GREEN BEFORE IT IS MUTATED. That is the
  * claim "this mutation caused this failure" rests on, and it is now checked for each case
  * individually, at the width and locale that case is proved at.
+ * 🔴 R5-F (2026-10-09): "for each case individually" was the intent and not the code — the loop ran once per ROUTE, at
+ * its first case's shape. It now runs once per route × shape (`proofs`), and "green" means green AND measured.
  */
-const routesUnderProof = [...new Set(MUTATIONS.map((c) => c.route))];
-for (const route of routesUnderProof) {
-  const shape = SHAPE[MUTATIONS.find((c) => c.route === route).name] ?? {};
-  const b = runDriver(route, shape);
-  if (b.code !== 0) {
-    console.error(`REFUSING: qa:bar-geometry is already RED on ${route} (untouched tree) — fix that first, or a mutation there cannot be shown to cause anything.`);
-    console.error(b.out.split("\n").filter((l) => l.includes("✗")).slice(0, 6).join("\n"));
+const shapeOf = (c) => SHAPE[c.name] ?? {};
+const keyOf = (c) => `${c.route} @ ${shapeOf(c).widths ?? "default"}/${shapeOf(c).locales ?? "default"}`;
+/** One representative case per route × width × locale — the unit a precondition and an after-check are about. */
+const proofs = [...new Map(MUTATIONS.map((c) => [keyOf(c), c])).values()];
+/** ⛔ Green AND measured: exit 0, and not one NOT MEASURED line for the route. A bar never drawn is no baseline. */
+const baseline = (c) => {
+  const b = runDriver(c.route, shapeOf(c));
+  const unposed = notMeasuredLines(b.out, c.route);
+  return { ...b, unposed, ok: b.code === 0 && unposed.length === 0 };
+};
+for (const c of proofs) {
+  const b = baseline(c);
+  if (!b.ok) {
+    console.error(`REFUSING: qa:bar-geometry is not green-and-measured on ${keyOf(c)} (untouched tree, exit ${b.code}) — fix that first, or a mutation there cannot be shown to cause anything.`);
+    const why = [
+      ...failLines(b.out),
+      ...b.unposed,
+      ...b.out.split("\n").filter((l) => /SKIPPED SURFACE|ZERO controls|could not sign in/.test(l)).map((l) => l.trim()),
+    ];
+    console.error(why.slice(0, 8).map((l) => `  ${l}`).join("\n"));
     process.exit(1);
   }
 }
-console.log(`precondition: the driver is GREEN on every route under proof (${routesUnderProof.join(", ")})\n`);
+console.log(`precondition: the driver is GREEN, with nothing unmeasured, on every route × shape under proof (${proofs.map(keyOf).join(" · ")})\n`);
 
 const originals = new Map();
 for (const f of new Set(MUTATIONS.map((c) => c.file))) originals.set(f, readFileSync(f, "utf8"));
@@ -138,8 +171,9 @@ for (const [i, c] of MUTATIONS.entries()) {
   } else if (r.code === 0) {
     problems.push(`case ${i + 1} (${c.name}): stayed GREEN at ${shape.widths ?? "default"}/${shape.locales ?? "default"}`);
     console.log(`  ${i + 1}. NOT CAUGHT   ${c.name}`);
-  } else if (!r.out.includes(c.expect)) {
-    const lines = r.out.split("\n").filter((l) => l.includes("✗")).slice(0, 3).map((l) => l.trim());
+  } else if (!failLines(r.out).some((l) => l.includes(c.expect))) {
+    // ⛔ On the ✗ lines only — see the R5-F note in the header (③).
+    const lines = failLines(r.out).slice(0, 3);
     problems.push(`case ${i + 1} (${c.name}): red, but no failure mentioned "${c.expect}" — got ${lines.join(" | ") || "(no ✗ line)"}`);
     console.log(`  ${i + 1}. WRONG REASON ${c.name}`);
   } else {
@@ -152,10 +186,9 @@ for (const [i, c] of MUTATIONS.entries()) {
 //    reasoning that left a payout gate disabled; the question gets its own answer.
 const unrestored = [...originals].filter(([f, original]) => readFileSync(f, "utf8") !== original).map(([f]) => f);
 for (const f of unrestored) problems.push(`${f} NOT RESTORED — the working tree is dirty`);
-// ⚠️ The after-check is per-route too, for the same reason the precondition is.
-for (const route of routesUnderProof) {
-  const shape = SHAPE[MUTATIONS.find((c) => c.route === route).name] ?? {};
-  if (runDriver(route, shape).code !== 0) problems.push(`the driver is RED on ${route} after restore`);
+// ⚠️ The after-check is per route × shape too, and asks the same question the precondition did.
+for (const c of proofs) {
+  if (!baseline(c).ok) problems.push(`the driver is RED (or no longer measures) on ${keyOf(c)} after restore`);
 }
 const after = { code: problems.some((p) => p.includes("after restore")) ? 1 : 0 };
 

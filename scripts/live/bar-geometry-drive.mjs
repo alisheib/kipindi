@@ -21,8 +21,8 @@
  * (its parent `<details>` is a plain block). `w-full` is what binds it. **Re-measure, never
  * re-reason.**
  *
- * ── THREE ASSERTIONS, PER SURFACE × WIDTH × LOCALE ───────────────────────────────────────────
- *   1 · NO OVERLAP  — no two visible controls on the same visual row share pixels.
+ * ── FOUR ASSERTIONS, PER SURFACE × WIDTH × LOCALE ────────────────────────────────────────────
+ *   1 · NO OVERLAP  — no two visible controls on the same visual row share PAINTED pixels.
  *   2 · NO CLIPPING — no control runs past the viewport, unless it lives in a strip that scrolls.
  *   3 · NO SHORT CONTROL — every one reaches the 44px tap floor.
  *   4 · THE BAR ACTUALLY STICKS, AND NOTHING IS DRAWN THROUGH IT. Two defects, one measurement,
@@ -47,13 +47,53 @@
  *   2 · A control inside a horizontally SCROLLING strip is not clipped when it runs past the
  *       viewport — that is what the strip is FOR. Measure against the scroll container.
  *
+ * ── ROUND 5 OF THE VISUAL PASS (R5-F, 2026-10-09) · THE DRIVE WAS RED ON MAIN, AND EVERY LINE WAS THE INSTRUMENT ──
+ * 🔴 88 failures at main a6331ca1 (92 on the visual-pass tip), so its red twin refused to run and for a round neither
+ * proved anything. Three causes, each now a rule in `bar-geometry-rules.mjs` (shared with the red twin and pinned by
+ * `test:visual-pass-r5f`):
+ *   ① NO FIXTURE (63 lines, "NO [data-filter-rail]"). Seven routes withhold their bar on an EMPTY book by design (§A5 —
+ *     every guard dates from 2026-09-08, the day those routes were declared below), and the run had no rows: a fresh
+ *     in-memory store, no `npm run fixture:player`. ⭐ Rows and no bar is still a failure; NO ROWS AND NO BAR is the
+ *     third outcome — BAR NOT MEASURED, printed and named — and a declared surface measured NOWHERE makes the whole run a
+ *     SKIPPED one (exit 3), never a green one.
+ *   ② OVERLAP OF THINGS NOBODY CAN SEE (14 lines, /markets at 360). Since U4 (2c9380e00, 2026-09-23) the phone bar is
+ *     one grid line — the lens strip, `overflow-x: auto` and masked, beside sort and Filters — and a chip past the strip's
+ *     edge is scrolled away: clipped, unpainted, untappable there. ⭐ Assertion 1 now compares PAINTED boxes (each layout
+ *     box cut by every ancestor that clips its overflow — `clip.mjs`'s reach rule, applied to sight). Exemption 2 still
+ *     covers clipping by the viewport; this is the same fact about the strip, asked by the overlap instead.
+ *   ③ A STICK MEASURED PAST ITS OWN RANGE (11 lines at 1280 on main, 15 on the tip). `scrollTo(0, 1200)` on a thin page
+ *     lands on the page's end,
+ *     where each bar's PARENT has already ended and pushed the bar up under the header — correct sticky behaviour, read
+ *     as "did not stick" and "header drawn through the bar" (measured: bar bottom = parent content bottom on /markets,
+ *     /results and /notifications, `S/runs/wm16e-stick-*.log`). ⭐ Assertion 4 now scrolls INSIDE the range where the
+ *     bar must sit on its own offset, or reports STICK NOT MEASURED; and rows below the bar's parent fail it outright.
+ *
+ * ⛔ THE FIXTURE IS A PRECONDITION, NOT A FORMALITY. Build it once per fresh server, BEFORE this driver:
+ *     npm run fixture:player -- <baseUrl>
+ *   (positions, Up & Down bets, stars, an ACTIVE proposals board, a settled archive — `scripts/live/up-fixture.mjs`). The
+ *   receipts book `/wallet` and `/wallet/receipts` need is built by this driver's own sign-in (`/auth/demo?receipts=1`,
+ *   idempotent: fifteen receipts once, through the real deposit and withdraw doors).
+ *
  * ⭐ RUN IT AGAINST THE REFERENCE FIRST. If `/markets` fails, the instrument is the defect.
  *
  *   node scripts/live/bar-geometry-drive.mjs [baseUrl] [--only=/watchlist] [--widths=360,768,1280]
  *                                            [--locales=sw,en,zh] [--shots=<dir>]
+ *   exit 0 green where measured (🔶 lines name what was not) · 1 a failure · 3 a skipped run (nothing measured, or a
+ *   declared surface measured nowhere — build the fixture)
  */
 import { chromium } from "playwright";
 import { mkdirSync } from "node:fs";
+import {
+  BOOK_PROBE,
+  CONTROL_PROBE,
+  STICK_AFTER_PROBE,
+  STICK_PROBE,
+  findOverlaps,
+  judgeMissingRail,
+  judgeStick,
+  overlapLine,
+  planStick,
+} from "./bar-geometry-rules.mjs";
 
 const BASE = process.argv.find((a) => a.startsWith("http")) || "http://localhost:3031";
 if (!/^https?:\/\/(localhost|127\.0\.0\.1)[:/]/.test(BASE)) {
@@ -95,6 +135,17 @@ const SURFACES = [
   { id: "/results", path: "/results", minControls: 12 },
   { id: "/positions", path: "/positions", minControls: 8 },
   { id: "/wallet", path: "/wallet", minControls: 8 },
+  /**
+   * DECLARED 2026-10-09 (round 5 of the visual pass, R5-F). ⛔ THE ONE STICKY QUERY BAR NO LIVE GATE MEASURED: it shipped
+   * on 2026-10-07 (012cccbc9) with `QUERY_BAR_CLASS` — `sticky top-[56px]`, the wallet's own arrangement — and this list
+   * was last edited on 2026-09-10, so the route list no longer matched the app.
+   * ⭐ `minControls: 13` IS COUNTED FROM THE MARKUP, NOT FROM A FIXTURE: 3 lens pills (all · in · out) + 5 state pills +
+   * 5 window pills, every one a `<FilterPill>`, which renders a `<Link>` whatever its count (`aria-disabled` when blocked,
+   * never a removed href). ⚠️ Reasoned, so the first lock-turn run re-measures it — the `/leaderboard` note below is what
+   * a floor written from a guess looks like when the vacuity control catches it.
+   * Its rows come from the sign-in's receipts book (`/auth/demo?receipts=1`); `fixture:player` makes none.
+   */
+  { id: "/wallet/receipts", path: "/wallet/receipts", minControls: 13 },
   { id: "/updown/history", path: "/updown/history", minControls: 8 },
   { id: "/proposals", path: "/proposals", minControls: 10 },
   { id: "/notifications", path: "/notifications", minControls: 6 },
@@ -125,8 +176,19 @@ const SURFACES = [
   { id: "/fairness", path: "/fairness", minControls: 8 },
   /* DECLARED 2026-09-08 (PLAYER QUERY, task 4.10). Three pills and no second row — the smallest
      bar in this list, and worth measuring precisely because it is small: a three-pill strip has
-     nowhere to hide a collision. */
-  { id: "/positions/performance", path: "/positions/performance", minControls: 3 },
+     nowhere to hide a collision.
+     ⚠️ `withheld` (R5-F, 2026-10-09) — THE ONE BAR THIS FIXTURE MAY LEGITIMATELY NOT DRAW. The page withholds it unless
+     the player has SETTLED positions in two products (`positions/performance/page.tsx:191`, `lenses.length > 2`), and a
+     local store settles no Up & Down round (`up-fixture.mjs` records why: no price feed). The page renders no
+     `[data-row-id]` either, so a withheld bar and a missing one look alike here: it is reported BAR NOT MEASURED with this
+     reason and does not make the run a skipped one. Its presence is held by `test:filter-language`, which declares
+     `performance-bar.tsx`. */
+  {
+    id: "/positions/performance",
+    path: "/positions/performance",
+    minControls: 3,
+    withheld: "the page draws its product lens only when the player has settled positions in two products (positions/performance/page.tsx:191), and this store settles no Up & Down round",
+  },
   /**
    * DECLARED 2026-09-09 (PLAYER QUERY §12 ①). `/leaderboard`'s FIRST filter — a product lens, on a
    * page whose own source used to say in writing that it must never declare a rail because a sort
@@ -171,7 +233,19 @@ const problems = [];
  * loudly, counted separately, never added to `measured`, and named in the summary.
  */
 const notMeasured = [];
+const notMeasure = (tag, why) => {
+  console.log(`  🔶 ${tag}: ${why}`);
+  notMeasured.push(`${tag}: ${why}`);
+};
+/** ⛔ A declared surface measured at no width and in no locale is a SKIPPED surface — see the exit below. */
+const measuredSurfaces = new Set();
 let measured = 0;
+
+/**
+ * ⭐ `?receipts=1` — the receipts book (fifteen deposits and withdrawals through the real doors), so `/wallet/receipts`
+ * has rows to filter. Idempotent: an account that already holds fifteen is left alone (`auth/demo/route.ts`).
+ */
+const SIGN_IN = `${BASE}/auth/demo?receipts=1`;
 
 const browser = await chromium.launch();
 for (const locale of LOCALES) {
@@ -182,7 +256,7 @@ for (const locale of LOCALES) {
     });
     await ctx.addCookies([{ name: "kp-locale", value: locale, url: BASE }]);
     const page = await ctx.newPage();
-    const auth = await page.goto(`${BASE}/auth/demo`, { waitUntil: "domcontentloaded", timeout: 60_000 }).catch(() => null);
+    const auth = await page.goto(SIGN_IN, { waitUntil: "domcontentloaded", timeout: 60_000 }).catch(() => null);
     if (!auth || auth.status() >= 400) {
       console.error("🔴 could not sign in at /auth/demo — a run asked to sign in and unable to has measured nothing.");
       await browser.close();
@@ -190,84 +264,49 @@ for (const locale of LOCALES) {
     }
 
     for (const s of surfaces) {
+      const tag = `${s.id} ${locale} ${width}`;
       await page.goto(`${BASE}${s.path}`, { waitUntil: "domcontentloaded", timeout: 40_000 });
-      const rail = await page.waitForSelector("[data-filter-rail]", { timeout: 20_000 }).catch(() => null);
-      if (!rail) { problems.push(`${s.id} ${locale} ${width}: NO [data-filter-rail]`); continue; }
+      // ⭐ The page settles on ONE of three things — its bar, its rows, or its empty state. Wait for any, then ask for
+      //    the bar: an empty book no longer costs twenty seconds per width and locale, and a bar that arrives late still
+      //    gets its own wait.
+      await page.waitForSelector("[data-filter-rail], [data-row-id], [data-empty-state]", { timeout: 20_000 }).catch(() => null);
+      const rail = await page.waitForSelector("[data-filter-rail]", { timeout: 3_000 }).catch(() => null);
+      if (!rail) {
+        const verdict = judgeMissingRail(await page.evaluate(BOOK_PROBE), s);
+        if (verdict.kind === "fail") problems.push(`${tag}: ${verdict.why}`);
+        else notMeasure(tag, verdict.why);
+        continue;
+      }
       await page.waitForTimeout(400);
 
       // ⛔ Refuse the wrong language rather than shoot it — evidence that LOOKS right is worse
       //    than none. Same rule as `player-query-shots.mjs`.
       const lang = await page.getAttribute("html", "lang");
-      if (lang !== LANG[locale]) { problems.push(`${s.id} ${locale} ${width}: <html lang="${lang}">`); continue; }
+      if (lang !== LANG[locale]) { problems.push(`${tag}: <html lang="${lang}">`); continue; }
 
       await rail.screenshot({ path: `${SHOTS}/${s.id.replace(/\W+/g, "-").replace(/^-|-$/g, "")}-${width}-${locale}.png` });
 
+      // `CONTROL_PROBE` (bar-geometry-rules.mjs) carries both exemptions and the painted box. ⛔ A real function, never a
+      // string — `clip.mjs` records what a string `pageFunction` silently returns.
       const boxes = await page.$$eval(
         "[data-filter-rail] a, [data-filter-rail] button, [data-filter-rail] summary",
-        (els) =>
-          els.map((e) => {
-            const r = e.getBoundingClientRect();
-            const cs = getComputedStyle(e);
-            // EXEMPTION 1 — inside a SHUT disclosure. Its own <summary> is not inside it.
-            //
-            // 🔴 AND FOR A DAY IT WAS, WHICH BLINDED THE ASSERTION THIS DRIVER WAS BUILT FOR.
-            // The walk began at `e.parentElement`, and a <summary>'s parent IS the <details> it
-            // opens — so every summary on every bar (the sort control AND the `Filters` trigger)
-            // was exempted from all three measurements. The line above has always claimed the
-            // opposite; the code did not implement it. ⛔ The cost was exact: assertion 1 (NO
-            // OVERLAP) was structurally incapable of failing on the sort summary — the very
-            // control whose 44px collision with the direction button is the reason this driver
-            // exists — and the red mutation written to prove it kept reporting NOT CAUGHT while
-            // the mutation was working perfectly. A guard that exempts what it polices.
-            //
-            // ⚠️ The walk still starts ABOVE that one disclosure rather than skipping the rule:
-            // a sort menu nested inside a shut `Filters` sheet must stay exempt, because Chrome
-            // lays a closed <details> out and neither paints nor hit-tests it.
-            let n = e.tagName === "SUMMARY" ? (e.parentElement && e.parentElement.parentElement) : e.parentElement;
-            let inClosed = false;
-            while (n) {
-              if (n.tagName === "DETAILS" && !n.open) { inClosed = true; break; }
-              n = n.parentElement;
-            }
-            // EXEMPTION 2 — the nearest ancestor that actually scrolls horizontally is the frame
-            // this control must fit inside; only with none does the viewport apply.
-            let sc = e.parentElement, scrolls = false;
-            while (sc) {
-              const st = getComputedStyle(sc);
-              if (/(auto|scroll)/.test(st.overflowX) && sc.scrollWidth > sc.clientWidth + 1) { scrolls = true; break; }
-              sc = sc.parentElement;
-            }
-            return {
-              text: (e.textContent || "").trim().slice(0, 24),
-              x: Math.round(r.x), y: Math.round(r.y), w: Math.round(r.width), h: Math.round(r.height),
-              inClosed, scrolls,
-              vis: cs.visibility !== "hidden" && cs.display !== "none" && r.width > 0 && r.height > 0,
-            };
-          }),
+        CONTROL_PROBE,
       );
       const vis = boxes.filter((b) => b.vis && !b.inClosed);
       if (vis.length < s.minControls && width >= 1280) {
-        problems.push(`${s.id} ${locale} ${width}: only ${vis.length} visible controls, floor ${s.minControls} — a rail is missing and every check below is vacuous`);
+        problems.push(`${tag}: only ${vis.length} visible controls, floor ${s.minControls} — a rail is missing and every check below is vacuous`);
         continue;
       }
       measured += vis.length;
+      measuredSurfaces.add(s.id);
 
-      for (let i = 0; i < vis.length; i++) {
-        for (let j = i + 1; j < vis.length; j++) {
-          const a = vis[i], b = vis[j];
-          // Same visual row: their vertical spans genuinely intersect by more than a hair.
-          const vOv = Math.min(a.y + a.h, b.y + b.h) - Math.max(a.y, b.y);
-          const hOv = Math.min(a.x + a.w, b.x + b.w) - Math.max(a.x, b.x);
-          if (vOv > Math.min(a.h, b.h) / 2 && hOv > 1) {
-            problems.push(`${s.id} ${locale} ${width}: OVERLAP ${hOv}px "${a.text}"(${a.x}→${a.x + a.w}) vs "${b.text}"(${b.x}→${b.x + b.w})`);
-          }
-        }
-      }
+      // 1 · NO OVERLAP, over PAINTED boxes — see the R5-F note in the header and `findOverlaps`.
+      for (const o of findOverlaps(vis)) problems.push(`${tag}: ${overlapLine(o)}`);
       for (const b of vis) {
         if (!b.scrolls && (b.x < -1 || b.x + b.w > width + 1)) {
-          problems.push(`${s.id} ${locale} ${width}: CLIPPED "${b.text}" ${b.x}→${b.x + b.w} vs viewport ${width}`);
+          problems.push(`${tag}: CLIPPED "${b.text}" ${b.x}→${b.x + b.w} vs viewport ${width}`);
         }
-        if (b.h < 44) problems.push(`${s.id} ${locale} ${width}: SHORT ${b.h}px "${b.text}"`);
+        if (b.h < 44) problems.push(`${tag}: SHORT ${b.h}px "${b.text}"`);
       }
 
       /**
@@ -285,6 +324,10 @@ for (const locale of LOCALES) {
        * stick" — a defect invented by the instrument out of a thin fixture. `/notifications`
        * reported `top 237` for exactly this reason. ⚠️ It is reported as NOT MEASURED rather than
        * skipped silently: an unexercisable assertion that prints nothing reads as a pass.
+       * 🔴 ①b (R5-F, 2026-10-09) — AND A PAGE THAT SCROLLS PAST THE BAR'S OWN RANGE CANNOT PROVE ONE EITHER. On a thin
+       * page `1200` clamps to the page's end, where the bar's PARENT has already ended and pushed it up — correct sticky
+       * behaviour, reported as "did not stick" and as the header "drawn through" it. `planStick` scrolls INSIDE the range
+       * where the bar must sit on its own `top` (rows below its parent fail it outright: the 247px-wrapper shape).
        *
        * 🔴 ② NOT EVERY BAR PROMISES A PAGE-LEVEL OFFSET. `/profile/account`'s rail filters ONE
        * table inside one of five panels; a sticky band there would follow the reader down and
@@ -293,44 +336,21 @@ for (const locale of LOCALES) {
        * bars that DO promise the offset, instead of being loosened for all of them.
        */
       if (width >= 1280 && s.sticky !== false) {
-        await page.evaluate(() => window.scrollTo(0, 1200));
-        await page.waitForTimeout(450);
-        const scrolled = await page.evaluate(() => Math.round(window.scrollY));
-        if (scrolled < 200) {
-          console.log(`  🔶 ${s.id} ${locale} ${width}: STICK NOT MEASURED — the page scrolled ${scrolled}px, so nothing was proved. Seed more rows.`);
-          notMeasured.push(`${s.id} ${locale} ${width} (page scrolled only ${scrolled}px)`);
-          await page.evaluate(() => window.scrollTo(0, 0));
-          continue;
+        await page.evaluate(() => window.scrollTo({ top: 0, behavior: "instant" }));
+        await page.waitForTimeout(150);
+        const g = await page.evaluate(STICK_PROBE);
+        if (!g) { problems.push(`${tag}: THE BAR DID NOT STICK — the bar was gone from the page before the scroll`); continue; }
+        const plan = planStick(g);
+        if (plan.kind === "fail") problems.push(`${tag}: ${plan.why}`);
+        else if (plan.kind === "not-measured") notMeasure(tag, plan.why);
+        else {
+          await page.evaluate((y) => window.scrollTo({ top: y, behavior: "instant" }), plan.y);
+          await page.waitForTimeout(450);
+          const verdict = judgeStick(g, plan, await page.evaluate(STICK_AFTER_PROBE));
+          for (const p of verdict.problems) problems.push(`${tag}: ${p}`);
+          if (verdict.notMeasured) notMeasure(tag, verdict.notMeasured);
         }
-        const stuck = await page.evaluate(() => {
-          const bar = document.querySelector("[data-filter-rail]");
-          if (!bar) return null;
-          const rb = bar.getBoundingClientRect();
-          const hits = [];
-          for (const e of document.querySelectorAll("body *")) {
-            if (e === bar || bar.contains(e) || e.contains(bar)) continue;
-            const cs = getComputedStyle(e);
-            if (cs.position !== "sticky" && cs.position !== "fixed") continue;
-            const r = e.getBoundingClientRect();
-            if (r.width < 200 || r.height < 8) continue;
-            const v = Math.min(rb.bottom, r.bottom) - Math.max(rb.top, r.top);
-            const h = Math.min(rb.right, r.right) - Math.max(rb.left, r.left);
-            if (v > 2 && h > 2) hits.push(`${e.tagName.toLowerCase()}.${String(e.className).trim().split(/\s+/).slice(0, 2).join(".")} by ${Math.round(v)}px`);
-          }
-          return { top: Math.round(rb.top), hits };
-        });
-        if (stuck) {
-          // ⚠️ A bar ABOVE the viewport has scrolled away — it did not stick. The tolerance is
-          //    generous (0 ≤ top ≤ 200) because the exact offset is the shell's business, not this
-          //    driver's; what is being asserted is that the bar is still ON SCREEN.
-          if (stuck.top < 0 || stuck.top > 200) {
-            problems.push(`${s.id} ${locale} ${width}: THE BAR DID NOT STICK — after scrolling it sits at top ${stuck.top}. A sticky element only sticks within its PARENT's box; check the wrapper's height.`);
-          }
-          for (const h of stuck.hits) {
-            problems.push(`${s.id} ${locale} ${width}: ANOTHER STICKY SURFACE IS DRAWN THROUGH THE BAR — ${h}. Two sticky surfaces cannot share one offset.`);
-          }
-        }
-        await page.evaluate(() => window.scrollTo(0, 0));
+        await page.evaluate(() => window.scrollTo({ top: 0, behavior: "instant" }));
       }
     }
     await ctx.close();
@@ -339,17 +359,31 @@ for (const locale of LOCALES) {
 await browser.close();
 
 console.log(`\n${measured} control box${measured === 1 ? "" : "es"} measured across ${surfaces.length} surface(s) × ${WIDTHS.length} width(s) × ${LOCALES.length} locale(s) → ${SHOTS}`);
+// ⚠️ NAMED IN THE SUMMARY, not swallowed — an unexercisable assertion that prints nothing reads as one that passed.
+if (notMeasured.length) {
+  console.log(`\n🔶 ${notMeasured.length} assertion(s) NOT MEASURED — the fixture could not pose them, and green does not cover them:`);
+  notMeasured.forEach((n) => console.log("   " + n));
+}
+/** ⛔ A SKIPPED SURFACE IS NOT A PASS: declared, asked for, and measured at no width in no locale (and not one that
+ *  declares its bar may be withheld on this fixture). The usual cause is a run without `npm run fixture:player`.
+ *  ⚠️ A surface that already FAILED is not listed here too — its ✗ line says what is wrong, and "build the fixture"
+ *  beside it would send the reader to the wrong place. Every ✗ line opens with its surface's id. */
+const failed = new Set(problems.map((p) => p.split(" ")[0]));
+const skipped = surfaces.filter((s) => !s.withheld && !measuredSurfaces.has(s.id) && !failed.has(s.id)).map((s) => s.id);
+const skippedLine = `🔴 SKIPPED SURFACE(S) — ${skipped.join(", ")}: no bar measured at any width or locale. A skipped surface is not a pass; build the fixture first:  npm run fixture:player -- ${BASE}`;
 if (problems.length) {
   console.error("\n🔴 problems:");
   problems.forEach((p) => console.error("  ✗ " + p));
+  if (skipped.length) console.error("\n" + skippedLine);
   process.exit(1);
 }
 // ⛔ Zero boxes is a skipped run, not a pass.
-if (measured === 0) { console.error("🔴 ZERO controls measured — a skipped run, not a pass."); process.exit(3); }
-// ⚠️ NAMED IN THE SUMMARY, not swallowed — an unexercisable assertion that prints nothing reads
-//    as one that passed.
-if (notMeasured.length) {
-  console.log(`\n🔶 ${notMeasured.length} stick assertion(s) NOT MEASURED — the fixture could not pose them:`);
-  notMeasured.forEach((n) => console.log("   " + n));
+if (measured === 0) {
+  console.error("🔴 ZERO controls measured — a skipped run, not a pass.");
+  if (skipped.length) console.error(skippedLine);
+  process.exit(3);
 }
-console.log("✅ no two controls overlap, nothing is clipped, nothing is under 44px.");
+if (skipped.length) { console.error("\n" + skippedLine); process.exit(3); }
+console.log(notMeasured.length
+  ? "✅ where measured: no two controls overlap, nothing is clipped, nothing is under 44px, every bar sticks — 🔶 the lines above were not measured."
+  : "✅ no two controls overlap, nothing is clipped, nothing is under 44px, and every sticky bar holds its offset.");

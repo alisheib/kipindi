@@ -135,7 +135,14 @@ export const MUTATIONS = [
     file: "src/components/ui/query-bar.tsx",
     from: '  "kp-discovery-bar sticky top-[56px] z-20 -mx-3 bg-bg-base px-3 lg:-mx-6 lg:px-6";',
     to: '  "kp-discovery-bar relative z-20 -mx-3 bg-bg-base px-3 lg:-mx-6 lg:px-6";',
-    expect: "stick",
+    /**
+     * ⚠️ THE ARM'S OWN WORDS, NOT "stick" (R5-F, 2026-10-09). "stick" is inside "sticky", so it also matched the OTHER
+     * arm's line ("ANOTHER STICKY SURFACE … Two sticky surfaces …") and the driver's 🔶 lines: this case could be
+     * credited by the wrong arm. The red twin now matches `expect` on ✗ lines only, and this is the line the mutation
+     * must produce — measured by the driver's non-sticky branch (`judgeStick`: "it is position: relative, so it left
+     * with the page").
+     */
+    expect: "THE BAR DID NOT STICK",
     route: "/markets",
   },
   {
@@ -202,7 +209,30 @@ export const MUTATIONS = [
     from: '        className="w-full min-w-[var(--tap-min)] rounded-l-pill rounded-r-none border-r-0"',
     to: '        className="min-w-[var(--tap-min)] rounded-l-pill rounded-r-none border-r-0"',
     expect: "OVERLAP",
-    route: "/markets",
+    /**
+     * ⚠️ RE-POINTED 2026-10-09 (R5-F) FROM `/markets` TO `/watchlist` — THE DEFECT IS THE SAME, THE REFERENCE BAR'S
+     * PHONE LAYOUT IS NOT. Since U4 (2c9380e00, 2026-09-23) `/markets` below 640 is ONE grid line,
+     * `minmax(160px, 1fr) auto auto` (globals.css, [COMPACT]): the sort cell sits in an `auto` track sized toward the
+     * summary's own max-content, and its value is hidden there (the key "Panga" and the caret are all it shows) —
+     * measured 67px at 360 sw with the strip on its 160px floor (`S/runs/wbm-bar.log`: summary 182→249, strip edge 176).
+     * So an unbound summary has a pixel or two to run at 360: under the driver's 1px threshold, or a coin toss on it —
+     * never the 44px shape this case restores. (At 320 the track IS squeezed — D79's 27px summary, 40px since its
+     * floor — and the plant would bite; 320 is outside the driver's matrix, so the case moves to a bar where the default
+     * matrix poses it.)
+     * 🔴 AND ITS FAILURE WOULD HAVE BEEN HIDDEN BY THE HARNESS: the precondition checked `/markets` at 1280 only, while
+     * the untouched driver read five OVERLAP lines of its own at 360 (the U4 strip's scrolled-away chips), so
+     * "caught → OVERLAP" was on offer for a mutation that changed next to nothing.
+     * ⭐ `/watchlist` IS WHERE THE ORIGINAL MECHANISM STILL LIVES, AT ITS WORST: a two-row bar whose row 2 is sort + the
+     * Filters trigger at 360, and whose DEFAULT sort is the longest default value on any two-row bar —
+     * "Yaliyoongezwa karibuni" (watchlist-bar.tsx: `starred` is first and the default). Below `lg` the summary is its
+     * value + 40px (1px borders, 8px padding each side, an 8px gap, the 14px caret); the cell left beside a ~134px
+     * trigger is ~182px, the details ~138px, so the value is ellipsised today and, unbound, the summary runs to its
+     * ~190px max-content — straight across the 44px direction button, the 2026-09-08 shape (16→206 vs 154→198).
+     * ⚠️ Reasoned from the markup and the CSS, not measured: the red twin's first run is the measurement, and if it
+     * reports NOT CAUGHT the label arithmetic above is what to re-measure. Its rows need `npm run fixture:player`
+     * (stars) — the precondition refuses without them.
+     */
+    route: "/watchlist",
   },
   {
     /**
