@@ -277,7 +277,8 @@ export async function readBigWorkbook(file: File, name: string | null, opts: Rea
   if (out.kind === "refused") return refused(out.message, SIZE_REFUSALS.has(out.refusal) ? "size" : "format");
   if (opts.signal?.aborted) return { kind: "aborted" };
   const digest = await sha256Hex(new Uint8Array(await file.arrayBuffer()));
-  return { kind: "parsed", file: out.file, digest, extraNumbers: 0 };
+  // A workbook has no unclosed CSV quote (C3b-fix · D5's `unclosed` is a CSV reader's alone).
+  return { kind: "parsed", file: out.file, digest, extraNumbers: 0, unclosed: null };
 }
 
 /**
