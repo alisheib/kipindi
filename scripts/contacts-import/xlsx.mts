@@ -14,7 +14,8 @@
  * the zip pre-pass before exceljs loads — zip64, encryption, .xlsb, .ods, Strict, a bomb, a forged size, the caps,
  * parity (§X4–§X11); one typed cell switch — integers exact, float noise rounded, decimals kept, a Date as ISO, a
  * formula as its cached result (§X14–§X19); Excel's numeric shortened form and its Accept (A1.3 — §X13); C15's
- * shape with format xlsx (§X20); 1-based sheet rows (§X21); the first VISIBLE sheet (§X22); the measured caps
+ * shape with format xlsx (§X20); 1-based sheet rows (§X21); the first VISIBLE sheet (§X22) — since C3b · G2 the first
+ * visible sheet whose header row has a phone column, said in a note, never a hidden one (§X32, its control §X33); the measured caps
  * (§X24); M6 — the reader flags nothing and the detector exists once (§X25, §X26); server-only and in memory (§X27);
  * one read in flight and a counts-only audit row (§X28, §X29); §5.14 (§X30); and the ONE remedy clause on every
  * refusal that sends the officer to CSV (A1.6 — §X31).
@@ -445,6 +446,12 @@ type Fixtures = {
   readonly a13: string;
   readonly lines: string;
   readonly sheets: string;
+  /** C3b · G2 · a cover page, a HIDDEN sheet with a phone column, the contacts, and a later sheet with a phone column. */
+  readonly coverFirst: string;
+  /** C3b · G2 · a cover page, then the contacts on a sheet whose NAME is a phone number. */
+  readonly coverDigits: string;
+  /** C3b · G2 · a cover page and a sheet with no phone column either: the first visible sheet is read, as before. */
+  readonly noPhoneSheet: string;
   readonly allHidden: string;
   readonly empty: string;
   readonly forty: string;
@@ -551,6 +558,39 @@ async function buildFixtures(): Promise<Fixtures> {
     contacts.getCell("B2").value = 712345678;
     wb.addWorksheet("Later").getCell("A1").value = "Baadaye";
   });
+  /** C3b · G2 · the cover page first; a hidden sheet WITH a phone column before the contacts (never read); the contacts on
+   *  sheet 3 of 4; a later visible sheet with a phone column too (passed over: the FIRST one with a phone column wins). */
+  const coverFirst = await workbookBytes((wb) => {
+    const cover = wb.addWorksheet("Jalada");
+    cover.getCell("A1").value = "Orodha ya wateja";
+    cover.getCell("A3").value = "Imeandaliwa na ofisi ya masoko";
+    const hidden = wb.addWorksheet("Hesabu", { state: "hidden" });
+    hidden.addRow(["Phone", "Name"]);
+    hidden.addRow(["0757 300 041", "Kificho"]);
+    const contacts = wb.addWorksheet("Wateja");
+    contacts.addRow(["Jina", "Simu"]);
+    contacts.addRow(["Amani", "0757 300 042"]);
+    contacts.addRow(["Bahati", "0757 300 043"]);
+    const later = wb.addWorksheet("Mengine");
+    later.addRow(["Name", "Phone"]);
+    later.addRow(["Chiku", "0757 300 044"]);
+  });
+  /** C3b · G2 · the contacts' sheet is named for a phone number: the note says its place, never its name. */
+  const coverDigits = await workbookBytes((wb) => {
+    wb.addWorksheet("Jalada").getCell("A1").value = "Orodha ya wateja";
+    const contacts = wb.addWorksheet("0757 300 045");
+    contacts.addRow(["Jina", "Simu"]);
+    contacts.addRow(["Amani", "0757 300 046"]);
+  });
+  /** C3b · G2 · no visible sheet has a phone column: the first visible one is read, with the note it always had. */
+  const noPhoneSheet = await workbookBytes((wb) => {
+    const cover = wb.addWorksheet("Jalada");
+    cover.getCell("A1").value = "Orodha ya wateja";
+    cover.getCell("A3").value = "Imeandaliwa na ofisi ya masoko";
+    const data = wb.addWorksheet("Data");
+    data.addRow(["Jina", "Mahali"]);
+    data.addRow(["Amani", "Arusha"]);
+  });
   const allHidden = await workbookBytes((wb) => {
     wb.addWorksheet("One", { state: "hidden" }).getCell("A1").value = "Siri";
     wb.addWorksheet("Two", { state: "hidden" }).getCell("A1").value = "Siri";
@@ -588,6 +628,9 @@ async function buildFixtures(): Promise<Fixtures> {
     a13: base64Of(a13),
     lines: base64Of(lines),
     sheets: base64Of(sheets),
+    coverFirst: base64Of(coverFirst),
+    coverDigits: base64Of(coverDigits),
+    noPhoneSheet: base64Of(noPhoneSheet),
     allHidden: base64Of(allHidden),
     empty: base64Of(empty),
     forty: base64Of(forty),
@@ -651,6 +694,16 @@ const SHEETS_ROWS = [
   { line: 2, cells: ["Asha", "712345678"] },
 ];
 const SHEETS_NOTE = "This workbook has 3 other sheets (2 hidden); only the first visible sheet was read.";
+/** C3b · G2 — the cover-page workbook's rows (sheet 3 of 4, "Wateja") and its ONE note — LITERALS. */
+const COVER_ROWS = [
+  { line: 1, cells: ["Jina", "Simu"] },
+  { line: 2, cells: ["Amani", "0757 300 042"] },
+  { line: 3, cells: ["Bahati", "0757 300 043"] },
+];
+const COVER_NOTE = "Read the sheet “Wateja” — the first sheet with a phone column (sheet 3 of 4).";
+const COVER_DIGITS_NOTE = "Read sheet 2 of 2 — the first sheet with a phone column.";
+const NO_PHONE_ROWS = [{ line: 1, cells: ["Orodha ya wateja"] }, { line: 3, cells: ["Imeandaliwa na ofisi ya masoko"] }];
+const NO_PHONE_NOTE = "This workbook has 1 other sheet; only the first visible sheet was read.";
 /** Text the fixtures carry that no note and no refusal may ever repeat. */
 const CELL_STRINGS = ["Asha", "Baraka", "Neema", "Mwakalinga", "Juma", "Siri", "Baadaye", "Mteja", "255712345678", "712345678", "kitabu"];
 
@@ -667,7 +720,7 @@ function specifiers(src: string): string[] {
   for (const form of IMPORT_FORMS) for (const m of src.matchAll(form)) out.push(m[1]);
   return out;
 }
-const READER_IMPORTS = ["exceljs", "node:zlib", "@/lib/contacts/parsed-file", "@/lib/contacts/xlsx-limits"];
+const READER_IMPORTS = ["exceljs", "node:zlib", "@/lib/contacts/parsed-file", "@/lib/contacts/xlsx-limits", "@/lib/contacts/contact-fields"];
 const RUN_IMPORTS = ["@/lib/server/audit", "./import-xlsx", "@/lib/contacts/xlsx-limits"];
 const DIRECTIVE = /^\s*["']use (?:client|server)["']/;
 const NEVER_IN_READER = ["WorkbookReader", "stream.xlsx", "readFile", "console."];
@@ -704,15 +757,17 @@ export const L = {
   X20: "X20 · ⭐ C15's shape — a valid ParsedContactsFile, format xlsx, the file name passed through, every row non-blank with its trailing empty cells trimmed, width the widest row — and the cell fixture reads to its literal rows, blank count and notes",
   X21: "X21 · ⭐ lines are the 1-based SHEET rows of the unfiltered grid: data from row 3 with row 5 blank reads lines 3, 4 and 6 with 3 blank rows counted — never renumbered",
   X22: "X22 · ⭐ the FIRST VISIBLE sheet is read — a hidden and a very hidden sheet before it skipped, with one note counting the others — and a workbook whose every sheet is hidden is no_visible_sheet",
+  X32: "X32 · ⭐ C3b · G2 — a workbook whose first visible sheet is a cover page is read from the FIRST VISIBLE sheet whose header row has a phone column (Wateja, sheet 3 of 4) — the hidden sheet before it with a phone column never read, the later visible one with a phone column passed over — with ONE note naming the sheet and its place; a sheet named for a phone number is never echoed (its place alone is said)",
+  X33: "X33 · ⛔ CONTROL · G2 — a one-sheet workbook reads with no sheet note, the workbook whose first visible sheet has the phone column keeps its old note, and one with no phone column on any visible sheet is read from its first visible sheet, with the note it always had",
   X23: "X23 · a visible sheet with nothing to read is refused empty with the sentence that names it",
   X24: "X24 · the 40-row fixture and the realistic and densest ~690 KB fixtures read to their EXACT row counts, and XLSX_MAX_INFLATED_BYTES, XLSX_MAX_ROWS and XLSX_MAX_CELL_ELEMENTS are each at least twice the densest measurement",
   X25: "X25 · ⛔ M6 — the reader flags nothing itself: no note speaks of a shortened number, and import-xlsx.ts names neither looksExcelShortened nor excelShortenedSentence",
   X26: "X26 · ⛔ ONE DETECTOR (M6, C18) — no src file but xlsx-limits.ts defines looksExcelShortened or holds a shortened-number pattern",
-  X27: "X27 · ⛔ SERVER-ONLY AND IN MEMORY — import-xlsx.ts imports exactly exceljs, node:zlib and the two contacts foundations, loads with xlsx.load (no streaming reader, no file read, no console) and carries no directive; the officer wrapper imports no exceljs",
+  X27: "X27 · ⛔ SERVER-ONLY AND IN MEMORY — import-xlsx.ts imports exactly exceljs, node:zlib, the two contacts foundations and (C3b · G2) U28's field list for the header match, loads with xlsx.load (no streaming reader, no file read, no console) and carries no directive; the officer wrapper imports no exceljs",
   X28: "X28 · ONE READ IN FLIGHT — of two concurrent officer reads exactly one is busy and never decoded, and the slot is free again after a read, a refusal and a reader that throws",
   X29: "X29 · ⛔ ONE AUDIT ROW PER ASK, COUNTS ONLY — every officer call, busy included, writes exactly one ContactImport row (xlsx_read or xlsx_refused) whose payload is counts and fixed words: no file name, no sheet name, no cell",
   X30: "X30 · ⛔ §5.14 — no note and no refusal holds a run of 7+ digits or any cell's text, though the fixtures are full of phone numbers",
-  X31: "X31 · ⛔ A1.6 — every refusal that sends the officer to CSV carries PHONE_FORMAT_REMEDY (too_large, too_big_inflated, too_many_rows, unreadable and wrong_format all observed)",
+  X31: "X31 · ⛔ A1.6 — every refusal that sends the officer to CSV carries PHONE_FORMAT_REMEDY (too_large, too_big_inflated, unreadable and wrong_format all observed) — and (C3b) too_many_rows sends no one to CSV, whose import takes no more rows: it says to split the list",
 } as const;
 
 /* ══ THE ASSERTIONS ═════════════════════════════════════════════════════════════════════════════ */
@@ -934,6 +989,20 @@ async function run(ctx: SectionContext<XlsxImpl>): Promise<void> {
   ok(L.X23, refusedAs(emptied, "empty", "no_rows") && !emptied.ok && emptied.message === xlsxRefusalSentence("empty", { sheet: "Contacts" })
     && emptied.message.includes('"Contacts"'), `${brief(emptied)} · said: ${emptied.ok ? "" : emptied.message}`);
 
+  // ── X32–X33 · C3b · G2 — THE SHEET THAT HOLDS THE PHONES ────────────────────────────────────
+  const cover = await read(fx.coverFirst);
+  const coverDigits = await read(fx.coverDigits);
+  ok(L.X32, cover.ok && same(cover.file.rows, COVER_ROWS) && same(cover.file.notes, [COVER_NOTE])
+    && coverDigits.ok && coverDigits.file.rows.length === 2 && same(coverDigits.file.notes, [COVER_DIGITS_NOTE]),
+    `${brief(cover)}${cover.ok ? ` · notes ${JSON.stringify(cover.file.notes)}` : ""} · named for a number: ${brief(coverDigits)}${coverDigits.ok ? ` · notes ${JSON.stringify(coverDigits.file.notes)}` : ""}`);
+  const oneSheet = await read(fx.forty);
+  const noPhone = await read(fx.noPhoneSheet);
+  const firstHasPhone = await read(fx.sheets);
+  ok(L.X33, oneSheet.ok && same(oneSheet.file.notes, []) && oneSheet.file.rows.length === FORTY_ROWS
+    && firstHasPhone.ok && same(firstHasPhone.file.notes, [SHEETS_NOTE])
+    && noPhone.ok && same(noPhone.file.rows, NO_PHONE_ROWS) && same(noPhone.file.notes, [NO_PHONE_NOTE]),
+    `one sheet: ${oneSheet.ok ? JSON.stringify(oneSheet.file.notes) : brief(oneSheet)} · first sheet with the phones: ${firstHasPhone.ok ? JSON.stringify(firstHasPhone.file.notes) : brief(firstHasPhone)} · no phone column anywhere: ${brief(noPhone)}${noPhone.ok ? ` · ${JSON.stringify(noPhone.file.notes)}` : ""}`);
+
   // ── X24 · THE ROW COUNTS, AND THE CAPS AGAINST THE DENSEST FIXTURE ──────────────────────────
   const x24: string[] = [];
   const fortyRead = await read(fx.forty);
@@ -1053,11 +1122,18 @@ async function run(ctx: SectionContext<XlsxImpl>): Promise<void> {
   const csvRefusals = seen.filter(isRefused).filter((r) => /\bCSV\b/.test(r.message));
   const withoutRemedy = csvRefusals.filter((r) => !r.message.includes(PHONE_FORMAT_REMEDY));
   const observed = new Set(csvRefusals.map((r) => r.refusal));
-  const needed: readonly XlsxRefusal[] = ["too_large", "too_big_inflated", "too_many_rows", "unreadable", "wrong_format"];
+  const needed: readonly XlsxRefusal[] = ["too_large", "too_big_inflated", "unreadable", "wrong_format"];
   const unobserved = needed.filter((n) => !observed.has(n));
-  ok(L.X31, withoutRemedy.length === 0 && unobserved.length === 0 && csvRefusals.length >= 10,
-    [...withoutRemedy.map((r) => `${r.refusal} without the remedy: ${r.message}`), ...unobserved.map((n) => `${n} never observed`)].slice(0, 3).join(" | ")
-      || `${csvRefusals.length} refusal(s) sending the officer to CSV, every one with the remedy (${[...observed].join(", ")})`);
+  // C3b · a workbook refused for its ROWS is never sent to CSV — one import of a CSV takes no more rows than this.
+  const rowRefusals = seen.filter(isRefused).filter((r) => r.refusal === "too_many_rows");
+  const rowsToCsv = rowRefusals.filter((r) => /\bCSV\b/.test(r.message) || !r.message.includes("split the list"));
+  ok(L.X31, withoutRemedy.length === 0 && unobserved.length === 0 && csvRefusals.length >= 10 && rowRefusals.length >= 2 && rowsToCsv.length === 0,
+    [
+      ...withoutRemedy.map((r) => `${r.refusal} without the remedy: ${r.message}`), ...unobserved.map((n) => `${n} never observed`),
+      ...rowsToCsv.map((r) => `too_many_rows sends to CSV or never says to split: ${r.message}`),
+      rowRefusals.length >= 2 ? "" : `${rowRefusals.length} too_many_rows refusal(s) observed`,
+    ].filter((x) => x !== "").slice(0, 3).join(" | ")
+      || `${csvRefusals.length} refusal(s) sending the officer to CSV, every one with the remedy (${[...observed].join(", ")}) · ${rowRefusals.length} too_many_rows, none sent to CSV`);
 }
 
 /* ══ THE RED PLANTS — each a defect somebody could plausibly write, built in memory ═════════════════ */
@@ -1290,6 +1366,45 @@ const PLANTS: readonly RedPlant<XlsxImpl>[] = [
     impl: () => withRules({ pickSheet: (sheets) => sheets[0] }),
   },
   {
+    name: "C3b G2 undone — the first visible sheet read, whatever its columns (the cover page read, no Phone column found)",
+    expect: L.X32,
+    impl: () => withRules({ pickSheet: (sheets) => sheets.find((sheet) => sheet.state === "visible") }),
+  },
+  {
+    name: "a hidden sheet with a phone column read before the visible contacts",
+    expect: L.X32,
+    impl: () => withRules({ pickSheet: (sheets, hasPhone) => sheets.find(hasPhone) ?? sheets.find((sheet) => sheet.state === "visible") }),
+  },
+  {
+    name: "the LAST visible sheet with a phone column read",
+    expect: L.X32,
+    impl: () => withRules({
+      pickSheet: (sheets, hasPhone) => {
+        const visible = sheets.filter((sheet) => sheet.state === "visible");
+        return [...visible].reverse().find(hasPhone) ?? visible[0];
+      },
+    }),
+  },
+  {
+    name: "the sheet read past the cover page is never said",
+    expect: L.X32,
+    impl: () => withOutput((r) => (r.ok ? { ...r, file: { ...r.file, notes: r.file.notes.filter((n) => !n.startsWith("Read ")) } } : r)),
+  },
+  {
+    name: "the note echoes a sheet named for a phone number",
+    expect: L.X32,
+    impl: () => withOutput((r) => (r.ok
+      ? { ...r, file: { ...r.file, notes: r.file.notes.map((n) => (n === COVER_DIGITS_NOTE ? "Read the sheet “0757 300 045” — the first sheet with a phone column (sheet 2 of 2)." : n)) } }
+      : r)),
+  },
+  {
+    name: "a sheet-choice note on every workbook, the first visible sheet read or not",
+    expect: L.X33,
+    impl: () => withOutput((r) => (r.ok && !r.file.notes.some((n) => n.startsWith("Read "))
+      ? { ...r, file: { ...r.file, notes: [...r.file.notes, "Read the sheet “Contacts” — the first sheet with a phone column (sheet 1 of 1)."] } }
+      : r)),
+  },
+  {
     name: "the empty sheet's refusal loses the sheet's name",
     expect: L.X23,
     impl: () => withOutput((r) => (!r.ok && r.refusal === "empty" ? { ...r, message: xlsxRefusalSentence("empty") } : r)),
@@ -1366,7 +1481,17 @@ const PLANTS: readonly RedPlant<XlsxImpl>[] = [
     name: "a too_large sentence of the reader's own, without the remedy (A1.6)",
     expect: L.X31,
     impl: () => withOutput((r) =>
-      !r.ok && r.refusal === "too_large" ? { ...r, message: "This spreadsheet is too large for an Excel upload. Save it as CSV instead: there is no size limit on CSV." } : r),
+      !r.ok && r.refusal === "too_large"
+        ? { ...r, message: "This spreadsheet is too large for an Excel upload. Save it as CSV instead — a CSV has no file-size limit (up to 200,000 rows in one import)." }
+        : r),
+  },
+  {
+    name: "too_many_rows sends the officer to CSV again — whose import of the same rows is refused too",
+    expect: L.X31,
+    impl: () => withOutput((r) =>
+      !r.ok && r.refusal === "too_many_rows"
+        ? { ...r, message: `This spreadsheet has more than 200,000 rows — the most an Excel file can hold here. Save it as CSV instead — a CSV has no file-size limit (up to 200,000 rows in one import). Before you save, ${PHONE_FORMAT_REMEDY}, or Excel will shorten long numbers to 2.55713E+11.` }
+        : r),
   },
 ];
 

@@ -26,8 +26,11 @@
  * sentence here that sends an officer to CSV also carries the format step, `PHONE_FORMAT_REMEDY` — ONE clause
  * (A1.6), which the Phone column's hint and the shortened-number sentence read too, so the officer is never told
  * two different fixes for one problem. `test:contacts-boundary` §7.3 fails on a CSV sentence without it, and §2.7
- * on the clause spelled out anywhere else in the contacts code. "There is no size limit on CSV" is a PROMISE: the
- * CSV path (U25, U29) must never add one.
+ * on the clause spelled out anywhere else in the contacts code. ⛔ "A CSV has no file-size limit" is a PROMISE, said
+ * PRECISELY (C3b, 2026-10-09): a CSV has no byte cap — the CSV path (U25, U29) must never add one — but one import
+ * takes at most `XLSX_MAX_ROWS` rows (X28: `IMPORT_MAX_ROWS` IS this constant), and the sentence says that number,
+ * formatted from the constant. So a workbook refused for its ROWS is never sent to CSV (a CSV of the same rows is
+ * refused too): it is told to delete the empty rows or split the list.
  *
  * ⛔ PURE AND CLIENT-SAFE, AND IT IMPORTS NOTHING: the dialog shows the same sentence before posting that the
  * server would return after. No sentence ever quotes a cell; a sheet name is echoed only when it carries fewer
@@ -228,7 +231,9 @@ const groupThousands = (n: number): string => String(Math.trunc(n)).replace(/\B(
 export const PHONE_FORMAT_REMEDY = "format the phone column as Number with 0 decimal places";
 
 const SHORTENS = "or Excel will shorten long numbers to 2.55713E+11.";
-const SAVE_AS_CSV = "Save it as CSV instead: there is no size limit on CSV.";
+/** ⭐ The way past the BYTE cap, said precisely: a CSV has no file-size limit, and one import takes at most XLSX_MAX_ROWS
+ *  rows (X28's IMPORT_MAX_ROWS is that constant) — the number formatted from the constant, never typed. */
+const SAVE_AS_CSV = `Save it as CSV instead — a CSV has no file-size limit (up to ${groupThousands(XLSX_MAX_ROWS)} rows in one import).`;
 /** For a refusal whose ONLY way forward is CSV. */
 const KEEP_EVERY_DIGIT = `Before you save, ${PHONE_FORMAT_REMEDY}, ${SHORTENS}`;
 /** For a refusal that offers CSV as one of two ways forward (.xlsx being the other, which keeps every digit). */
@@ -294,7 +299,8 @@ export function xlsxRefusalSentence(r: XlsxRefusal, ctx: XlsxRefusalContext = {}
     case "too_big_inflated":
       return `This spreadsheet holds more data than an Excel file can carry here. ${SAVE_AS_CSV} ${KEEP_EVERY_DIGIT}`;
     case "too_many_rows":
-      return `This spreadsheet has more than ${groupThousands(XLSX_MAX_ROWS)} rows — the most an Excel file can hold here. ${SAVE_AS_CSV} ${KEEP_EVERY_DIGIT}`;
+      // ⛔ C3b · never "save it as CSV": a CSV of the same rows is refused too (X28 — one import's row cap IS this one).
+      return `This spreadsheet has more than ${groupThousands(XLSX_MAX_ROWS)} rows — the most one import can take. Delete any empty rows below the contacts, or split the list into files of at most ${groupThousands(XLSX_MAX_ROWS)} rows, then save it and choose it again.`;
     case "not_base64":
       return "The file didn't arrive in one piece. Choose it again.";
     case "wrong_format":
@@ -322,6 +328,20 @@ export function xlsxRefusalSentence(r: XlsxRefusal, ctx: XlsxRefusalContext = {}
 /** A new refusal added to the union without a sentence fails to compile here; a stray value at runtime reads as unreadable. */
 function unknownRefusal(_r: never): string {
   return xlsxRefusalSentence("unreadable");
+}
+
+/**
+ * ⭐ C3b · G2 · THE NOTE for a workbook read from a sheet that is NOT its first visible one — the first visible sheet whose
+ * header row has a phone column (a cover page before the contacts): the sheet named through the ONE sheet-name rule
+ * (`sheetLabel` — a name carrying seven or more digits is never echoed, and then only its place is said), and where it
+ * sits among ALL the workbook's sheets, hidden ones counted.
+ */
+export function xlsxChosenSheetNote(sheet: string | undefined, position: number, total: number): string {
+  const label = sheetLabel(sheet);
+  const where = `sheet ${position} of ${total}`;
+  return label !== null
+    ? `Read the sheet “${label}” — the first sheet with a phone column (${where}).`
+    : `Read ${where} — the first sheet with a phone column.`;
 }
 
 // ── EXCEL'S SHORTENED NUMBERS (decision M6) ──────────────────────────────────────────────────────────────────

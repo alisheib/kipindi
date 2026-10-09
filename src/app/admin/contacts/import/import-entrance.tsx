@@ -230,7 +230,7 @@ export function ImportEntrance({
 
       <div className="space-y-1 rounded-md border border-border-subtle p-3 text-body-sm text-text-secondary" data-import-formats>
         <p className="text-text">{ENTRANCE.reads}</p>
-        <p>{ENTRANCE.limits}</p>
+        <p><Parts parts={ENTRANCE.limits} /></p>
         <p>{ENTRANCE.cannot}</p>
       </div>
 

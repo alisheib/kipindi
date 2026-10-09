@@ -9,6 +9,11 @@
  *     workbooks (read by the server), an iPhone and an Android vCard and a truncated one, and a WhatsApp list through the
  *     PASTE box — each: the entrance, the columns, the upload, the check (its five boxes ADD UP), and at 1280 the import
  *     to its result (four tiles), at 360 a Discard from the check (nothing written);
+ *   · ⭐ C3b · THE FOUR READER GAPS, CLOSED — each asserted against the generator's ground truth (`c3bExpectations`, the
+ *     rule restated over the manifest, never read back): messy-real-life.csv reads, its one broken quote ONE record "could
+ *     not be read" with its row and its way out (G1); excel-multi-sheet.xlsx reads its contacts sheet past the cover page,
+ *     the note naming it (G2); a second number in a phone cell (G3) and a mobile in another phone column (G4 — ONE added
+ *     column read as Phone) are never listed invalid in google-contacts.csv, outlook-contacts.csv and the messy file;
  *   · THE REFUSALS — an old .xls, an .ods, an empty file, a file that is not a CSV, a renamed file — each said at the
  *     entrance with its fix, never a dead end (a file whose CONTENT is readable is read: content beats the name);
  *   · NUMBERS ALREADY IN THE BOOK (the `?u30=1` world): S15-10 · GROWTH (not a reader) sees no choices and no changes —
@@ -96,11 +101,66 @@ const truthOf = (name) => MANIFEST.find((e) => e.name === name) ?? null;
 const ALL_FILES = [...new Set([...READABLE, ...REFUSED, ...MANIFEST.map((e) => e.name)])];
 /** The file must be refused whole at the entrance (`format: "unsupported"` or a `refusal` kind in the manifest). */
 const mustRefuse = (name, truth) => (truth ? truth.format === "unsupported" || truth.refusal !== null : REFUSED.includes(name) && name !== "renamed-csv.xlsx");
-/** ⚠️ A KNOWN READER GAP the dialog must lead through, not hide: a CSV with a broken record (a quotation mark never
- *  closed) is refused WHOLE by U25's reader — the reader's sentence and the dialog's way on are what is checked. */
-const mayRefuseWhole = (truth) => truth !== null && truth.format === "csv" && truth.brokenAtByte !== null;
+/** ⭐ C3b · G1 · a CSV is refused WHOLE for a broken record (a quotation mark never closed) only when NOTHING before it
+ *  was a record — no header row, and the broken record the file's first. Any other broken record costs that record alone:
+ *  the file reads, and the check lists the record "could not be read" (asserted below). */
+const mayRefuseWhole = (truth) => {
+  if (truth === null || truth.format !== "csv" || truth.brokenAtByte === null || truth.header !== null) return false;
+  const first = (Array.isArray(truth.people) ? truth.people : []).find((p) => p && !p.blank);
+  return first !== undefined && first.broken === true;
+};
 /** The records the generator built — what the check's five boxes must add up to. */
 const recordsOf = (truth) => (truth && truth.aggregate && typeof truth.aggregate.records === "number" ? truth.aggregate.records : null);
+
+/* ═══ C3b · THE FOUR READER GAPS, CLOSED — what the ground truth says the importer now reads ═══════════════════ */
+
+/** The files C3b changed what is importable in, and the column each one names as THE phone (G4's main column). */
+const C3B_FILES = new Map([
+  ["messy-real-life.csv", null],
+  ["excel-multi-sheet.xlsx", null],
+  ["google-contacts.csv", "Phone 1 - Value"],
+  ["outlook-contacts.csv", "Mobile Phone"],
+]);
+/** Files whose ground truth holds a record C3b makes importable through G3 (two numbers in a cell) or G4 (another phone
+ *  column) — the "never listed invalid" assertion must not be vacuous for them. */
+const C3B_IMPROVES = new Set(["messy-real-life.csv", "google-contacts.csv", "outlook-contacts.csv"]);
+
+/**
+ * ⭐ THE RULE RESTATED OVER THE GROUND TRUTH — never read back from the importer: a record's phone values in COLUMN order,
+ * the main Phone column first (G4); the first value that IS a Tanzanian mobile (`key`), or a cell holding one (`holds`,
+ * G3 — its first), is the record's number. A record with neither must be listed "not a mobile"; a record whose number
+ * comes through G3 or G4 must NOT be; the broken records (G1) are exactly the "could not be read" list. (A record with a
+ * number may still be invalid for another field — a bad email, a 300-character name — so only these two lists are held.)
+ */
+function c3bExpectations(truth, main) {
+  if (!truth || !Array.isArray(truth.people)) return null;
+  const header = Array.isArray(truth.header) ? truth.header : [];
+  const rank = (ph) => (ph.source === undefined || ph.source === main ? -1 : header.indexOf(ph.source));
+  const isMain = (ph) => ph.source === undefined || ph.source === main;
+  const mustBeInvalid = [];
+  const improved = [];
+  const unreadable = [];
+  for (const person of truth.people) {
+    if (!person || person.blank) continue;
+    if (person.broken) {
+      unreadable.push(person.line);
+      continue;
+    }
+    let via = null;
+    for (const ph of [...(person.phones ?? [])].sort((a, b) => rank(a) - rank(b))) {
+      if (typeof ph.key === "string") via = isMain(ph) ? "main" : "g4";
+      else if (Array.isArray(ph.holds) && ph.holds.length > 0) via = isMain(ph) ? "g3" : "g4";
+      if (via !== null) break;
+    }
+    if (via === null) mustBeInvalid.push(person.line);
+    else if (via !== "main") improved.push(person.line);
+  }
+  return { mustBeInvalid, improved, unreadable };
+}
+
+/** The rows a check list names, by its `data-import-row` stamps. */
+const listedRows = (page, list) =>
+  page.$$eval(`${block("import-preflight")} [data-import-list="${list}"] [data-import-row]`, (els) => els.map((e) => Number(e.getAttribute("data-import-row"))));
 
 /* ═══ SESSIONS AND THE WORLD (copied from the U20 drive) ═══════════════════════════════════════════════════ */
 
@@ -276,6 +336,21 @@ for (const vp of VIEWPORTS) {
       }
       const values = await textOf(page, "[data-import-columns]");
       ok(`${vp.name} · ${name} · no phone number is shown whole in the columns`, !/(?:\+?255|0)[67]\d{8}/.test(values.replace(/[\s().-]/g, "")), values.slice(0, 160));
+      // ⭐ C3b · what the columns now say for the four files whose readers changed.
+      if (C3B_FILES.get(name) !== undefined && C3B_FILES.get(name) !== null) {
+        const phoneRow = await textOf(page, '[data-import-columns] tr[data-read-as="phone"]');
+        ok(`${vp.name} · ${name} · C3b · G4 · ONE added column, "Phone (first mobile of: …)", is read as Phone`, /Phone \(first mobile of: /.test(phoneRow)
+          && (await count(page, '[data-import-columns] tr[data-read-as="phone"]')) === 1, phoneRow.slice(0, 160));
+      }
+      if (name === "excel-multi-sheet.xlsx") {
+        const notes = await textOf(page, "[data-import-notes]");
+        ok(`${vp.name} · ${name} · C3b · G2 · the workbook is read from the sheet with the phones, and the note names it`,
+          /Read the sheet .Wateja. — the first sheet with a phone column/.test(notes), notes.slice(0, 200));
+      }
+      if (truth !== null && truth.format === "csv" && truth.brokenAtByte !== null) {
+        const said = await textOf(page, "[data-import-summary]");
+        ok(`${vp.name} · ${name} · C3b · G1 · one broken quote costs ONE record, said on the columns — never the file`, /1 record couldn.t be read/.test(said), said.slice(0, 200));
+      }
       if (vp.name === "360") {
         ok(`${vp.name} · ${name} · no horizontal page overflow on the columns`, (await overflowOf(page)) === 0);
         ok(`${vp.name} · ${name} · nothing sticks out of the dialog sideways on the columns (V1)`, (await dialogOverflow(page)) === 0,
@@ -286,8 +361,10 @@ for (const vp of VIEWPORTS) {
         record.outcome = "held at the columns";
         record.held = await textOf(page, "[data-import-held]");
         ok(`${vp.name} · ${name} · Next is held WITH its reason on screen`, record.held.length > 0, record.held);
+        // ⭐ C3b · G2 · a workbook is held here only when NO visible sheet has a phone column (the reader then reads the first
+        // visible one) — never the cover-page workbook, whose contacts sheet is found and read.
+        ok(`${vp.name} · ${name} · C3b · held at the columns only when no visible sheet has a phone column`, !C3B_FILES.has(name), record.held);
         if (/[.]xlsx$/i.test(name) && /Phone column/.test(record.held)) {
-          // ⚠️ A KNOWN READER GAP: the server reads the FIRST visible sheet (a cover sheet here) — said, with the way on.
           ok(`${vp.name} · ${name} · a workbook read from a sheet with no phone column says which sheet is read and how to fix it`,
             /first visible sheet/.test(await textOf(page, block("import-mapping"))));
         }
@@ -311,6 +388,33 @@ for (const vp of VIEWPORTS) {
       ok(`${vp.name} · ${name} · "Nothing has been written to the book yet."`, (await count(page, "[data-import-nothing-written]")) === 1);
       const statedRows = recordsOf(truth);
       if (statedRows !== null) ok(`${vp.name} · ${name} · the check counts every record the generator wrote`, sum === statedRows, `${sum} vs ${statedRows}`);
+      // ⭐ C3b · the four gaps, asserted against the ground truth (`c3bExpectations` — the rule restated, never read back).
+      if (C3B_FILES.has(name)) {
+        const expect = c3bExpectations(truth, C3B_FILES.get(name) ?? null);
+        if (expect === null) {
+          ok(`${vp.name} · ${name} · C3b · the generator's ground truth lists the file's records`, false, "manifest entry or its people missing");
+        } else {
+          const invalidRows = await listedRows(page, "invalid");
+          const unreadableRows = await listedRows(page, "unreadable");
+          record.c3b = { ...expect, invalidRows, unreadableRows };
+          const missing = expect.mustBeInvalid.filter((l) => !invalidRows.includes(l));
+          ok(`${vp.name} · ${name} · C3b · every record with no Tanzanian mobile in any phone cell is listed "not a mobile"`,
+            missing.length === 0 && check.invalid >= expect.mustBeInvalid.length, `missing ${JSON.stringify(missing)} · listed ${JSON.stringify(invalidRows)}`);
+          const wronglyListed = expect.improved.filter((l) => invalidRows.includes(l));
+          ok(`${vp.name} · ${name} · C3b · G3/G4 · no record whose mobile is now read — a second number in its cell, another phone column — is listed invalid`,
+            wronglyListed.length === 0 && (!C3B_IMPROVES.has(name) || expect.improved.length > 0),
+            `improved ${JSON.stringify(expect.improved)} · listed invalid ${JSON.stringify(wronglyListed)}`);
+          ok(`${vp.name} · ${name} · C3b · G1 · "could not be read" lists exactly the broken records`,
+            JSON.stringify(unreadableRows) === JSON.stringify(expect.unreadable) && check.unreadable === expect.unreadable.length,
+            `listed ${JSON.stringify(unreadableRows)} · the truth ${JSON.stringify(expect.unreadable)} · box ${check.unreadable}`);
+          if (expect.unreadable.length > 0) {
+            const sentence = await textOf(page, `${block("import-preflight")} [data-import-list="unreadable"] [data-import-row="${expect.unreadable[0]}"]`);
+            ok(`${vp.name} · ${name} · C3b · G1 · the broken record's sentence names its row and the way out, never a cell`,
+              new RegExp(`Row ${expect.unreadable[0]} opens a quote`).test(sentence) && /Close or remove that quote, or delete the row/.test(sentence) && !/\d{9}/.test(sentence.replace(/\s/g, "")),
+              sentence.slice(0, 220));
+          }
+        }
+      }
       await shoot(page, dir, `${vp.name}-3-check`, block("import-preflight"), "Check before importing", block("import-preflight"));
       await shoot(page, dir, `${vp.name}-4-decision`, block("import-apply"), "Check before importing", block("import-decision"));
       if (vp.name === "360") {

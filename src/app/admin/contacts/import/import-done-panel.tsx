@@ -21,7 +21,7 @@ import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Callout } from "@/components/ui/callout";
 import { ScrollX } from "@/components/ui/scroll-x";
-import { extraNumbersNote } from "@/lib/contacts/import-read";
+import { extraNumbersNote, type ExtraNumbersUnit } from "@/lib/contacts/import-read";
 import type { FailuresResult, ImportResultView } from "@/lib/contacts/import-flow";
 import { contactsHref } from "../contacts-query";
 import { CHECK, DONE, IMPORT_CLOSE, IMPORT_TRY_AGAIN, LIST } from "./import-copy";
@@ -44,7 +44,7 @@ export function ImportDonePanel({
   notImported: number | null;
   /** S15-4 · people with another number not imported, as this tab read the file (0 when it did not read it). */
   extraNumbers: number;
-  extraUnit: "card" | "line";
+  extraUnit: ExtraNumbersUnit;
   loadFailures: (runId: string, afterLine: number) => Promise<FailuresResult>;
   onClose: () => void;
   onOpenLists: () => void;

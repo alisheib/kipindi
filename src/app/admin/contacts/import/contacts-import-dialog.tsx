@@ -57,12 +57,14 @@ import {
 } from "@/lib/contacts/import-flow";
 import { isDeploySkewError, runCommit, runUpload, type BusyState } from "@/lib/contacts/import-loop";
 import {
+  extraNumbersOf,
   isListPaste,
   mappingFor,
   parsePastedText,
   pasteExtraNumbers,
   readContactsFile,
   textDigest,
+  type ExtraNumbersUnit,
   type ReadOutcome,
 } from "@/lib/contacts/import-read";
 import {
@@ -225,14 +227,15 @@ export function ImportContactsButton() {
 
 /* ═══ THE DIALOG ═══════════════════════════════════════════════════════════════════════════════════ */
 
-/** A file read and ready for its columns: the parsed shape, its digest and name, and S15-4's count. */
+/** A file read and ready for its columns: the parsed shape, its digest and name, and S15-4's count — the reader's for a
+ *  vCard's cards and a list paste's lines; for any other file it is counted from the columns chosen (C3b, `openRun`). */
 type Ready = {
   readonly file: ParsedContactsFile;
   readonly digest: string;
   readonly name: string | null;
   readonly list: boolean;
   readonly extraNumbers: number;
-  readonly extraUnit: "card" | "line";
+  readonly extraUnit: ExtraNumbersUnit;
 };
 
 /** Which loop a stopped run was in — where the officer is told it stopped. */
@@ -288,7 +291,7 @@ function ImportDialog({ open, onClose }: { open: boolean; onClose: () => void })
   /** The rows this tab staged from, and the file they came from — so an interrupted upload resumes without a re-read. */
   const staging = useRef<{ digest: string; rows: readonly StageRowInput[] } | null>(null);
   /** S15-4 · the count of people with another number, for the run this tab read the file for. */
-  const extra = useRef<{ runId: string | null; count: number; unit: "card" | "line" }>({ runId: null, count: 0, unit: "line" });
+  const extra = useRef<{ runId: string | null; count: number; unit: ExtraNumbersUnit }>({ runId: null, count: 0, unit: "line" });
 
   const go = useCallback((next: Phase, nextAlert: ImportAlertState | null = null) => {
     if (!alive.current) return;
@@ -528,13 +531,14 @@ function ImportDialog({ open, onClose }: { open: boolean; onClose: () => void })
     const auto = mappingFor(ready.file, { list: ready.list });
     const tries: ReadonlyArray<0 | 1> = auto.headerRows === 1 ? [1, 0] : [0, 1];
     for (const headerRows of tries) {
-      const rows = stageRowsOf(ready.file, resume.mapping, headerRows);
-      const figures = stageFigures(rows);
-      if (figures.totalRows !== resume.totalRows || figures.unreadable !== resume.unreadable) continue;
       const reading = headerRows === auto.headerRows
         ? auto
         : mappingFor(ready.file, { list: ready.list, firstRow: headerRows === 1 ? "header" : "contact" });
-      void openRun(ready, { mapping: resume.mapping, headers: headersCovering(reading.headers, resume.mapping), headerRows }, rows, resume);
+      // ⭐ C3b · G4 · the rows come from the file AS THE READING STAGES IT — its first-mobile column included, as before.
+      const rows = stageRowsOf(reading.file, resume.mapping, headerRows);
+      const figures = stageFigures(rows);
+      if (figures.totalRows !== resume.totalRows || figures.unreadable !== resume.unreadable) continue;
+      void openRun(ready, { mapping: resume.mapping, headers: headersCovering(reading.headers, resume.mapping), headerRows, file: reading.file }, rows, resume);
       return;
     }
     go({ at: "entrance", resume, mode: IDLE }, { tone: "danger", text: RESUME_FILE.differently, actions: [discardWay] });
@@ -579,7 +583,14 @@ function ImportDialog({ open, onClose }: { open: boolean; onClose: () => void })
       return;
     }
     staging.current = { digest: ready.digest, rows };
-    extra.current = { runId: r.answer.view.id, count: ready.extraNumbers, unit: ready.extraUnit };
+    // ⭐ S15-4 · C3b · a vCard's cards and a list paste's lines were counted by their readers; any other file's rows are
+    // counted from the columns chosen — a second number in the phone cell (G3), or in another phone column (G4).
+    const counted = ready.list || ready.file.format === "vcard";
+    extra.current = {
+      runId: r.answer.view.id,
+      count: counted ? ready.extraNumbers : extraNumbersOf(choice),
+      unit: counted ? ready.extraUnit : "row",
+    };
     await upload(r.answer.view);
   };
 
@@ -1012,7 +1023,7 @@ function ImportDialog({ open, onClose }: { open: boolean; onClose: () => void })
               source={phase.ready}
               alert={alert}
               busy={phase.busy}
-              onNext={(choice) => void openRun(phase.ready, choice, stageRowsOf(phase.ready.file, choice.mapping, choice.headerRows), null)}
+              onNext={(choice) => void openRun(phase.ready, choice, stageRowsOf(choice.file, choice.mapping, choice.headerRows), null)}
               onBack={() => go({ at: "entrance", resume: null, mode: IDLE })}
               focusRef={buttonFocus}
             />
