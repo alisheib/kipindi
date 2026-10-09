@@ -6709,8 +6709,15 @@ html[lang="zh"] .kp-udrule { word-break: keep-all; }
    "99+" (30px) ends 5px short of the avatar's ring at rest and 1px short at the pulse's peak.
    ⛔ `!important`, AND IT IS EARNED (the E-101c rule above `.ticket-target`): the classic position is an INLINE style,
    which beats every selector without it, and that file is the classic bell every live player has, which S6 does not
-   touch (A1, `qa:bell-untouched`). The selector names the journey's slot, so the classic bar is served what it was. */
-.kp-jhdr__bell .count-badge { top: -2px !important; right: auto !important; left: 21px !important; }
+   touch (A1, `qa:bell-untouched`). The selector names the journey's slot, so the classic bar is served what it was.
+   ⭐ …AND IT CLEARS THE DOME, NOT ONLY LEAVES IT (round 4, 2026-10-09, tiles 268 269 276 277 278). At top −2 the ring
+   still touched the dome's top-right shoulder (no gap at 1024: red x919–938 y8–21 against the dome's x911–921 y22–31),
+   and the rose lift's 8px glow (`.count-badge[data-lift="rose"]`) dyed the shoulder's stroke (x918–921 y21–24). The
+   pip rises 1px (−3), which opens a 1px gap between its ring and the dome. It cannot move right: "99+" at the pulse's
+   peak already ends 1px from the avatar. In this slot it also drops the glow and keeps the lift's dark drop: the glow is
+   there because the classic bar is GLASS, where a flat drop disappears (the lift's own note), and the journey's bar
+   is an opaque panel (7.frame). Classic pips keep both. */
+.kp-jhdr__bell .count-badge { top: -3px !important; right: auto !important; left: 21px !important; box-shadow: 0 2px 4px color-mix(in oklab, var(--royal-950) 40%, transparent); }
 @media (min-width: 360px) { .kp-jhdr__plus { display: inline-flex; } }
 @media (min-width: 360px) { .kp-jhdr__pill { padding: 0 12px 0 10px; } }
 @media (min-width: 640px) { .kp-jhdr__row { gap: var(--sp-5); } }

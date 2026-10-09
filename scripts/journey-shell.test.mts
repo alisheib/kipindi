@@ -1493,7 +1493,9 @@ function g7Header(W: World, ok: Ok) {
   const bellFacts = {
     slot: bellSlot.includes("margin-left: var(--sp-1)") && tokenValue(css, "sp-1") === "4px",
     avatarApart: text(W, AVATAR).includes(`<div ref={ref} className="relative sm:ml-1">`) && W.tailwind.includes(`"1": "4px"`),
-    pip: pip.includes("top: -2px !important") && pip.includes("right: auto !important") && pip.includes("left: 21px !important"),
+    pip: pip.includes("top: -3px !important") && pip.includes("right: auto !important") && pip.includes("left: 21px !important")
+      // round 4: no rose glow in the journey's slot (the lift's glow dyed the dome) — the dark drop only.
+      && pip.includes("box-shadow: 0 2px 4px color-mix(in oklab, var(--royal-950) 40%, transparent);") && !/box-shadow:[^;]*8px/.test(pip),
     controls: tokenValue(css, "h-control-sm") === "40px" && tokenValue(css, "h-control-md") === "44px",
     classic: classicBell.includes(`"relative inline-flex h-7 w-7 items-center justify-center rounded-full transition-colors"`)
       && classicBell.includes("<I.bell s={20} />") && classicBell.includes(`size="md"`)
@@ -2762,7 +2764,8 @@ ${s}`);
     // the `!important` an inline style needs, and the two premises move under it — the avatar's gap and the classic pip.
     const bellOffCentre = withCss(inRule(".kp-jhdr__bell", " margin-left: var(--sp-1);", ""));
     const pipOverDome = withCss(inRule(".kp-jhdr__bell .count-badge", "right: auto !important; left: 21px !important;", "right: 1px !important;"));
-    const pipInlineWins = withCss(inRule(".kp-jhdr__bell .count-badge", "top: -2px !important;", "top: -2px;"));
+    const pipInlineWins = withCss(inRule(".kp-jhdr__bell .count-badge", "top: -3px !important;", "top: -3px;"));
+    const pipGlowBack = withCss(inRule(".kp-jhdr__bell .count-badge", "box-shadow: 0 2px 4px color-mix(in oklab, var(--royal-950) 40%, transparent);", "box-shadow: 0 0 8px var(--no-500), 0 2px 4px color-mix(in oklab, var(--royal-950) 40%, transparent);"));
     const avatarFlush = withFile(WORLD, "src/components/layout/avatar-menu.tsx", (s) => s.replace(`className="relative sm:ml-1"`, `className="relative"`));
     const classicPipMoves = withFile(WORLD, BELL, (s) => s.replace("top: 3,", "top: 1,"));
     const tabsAt30 = withFile(WORLD, JTABS, (s) => s.replace("bottom-0 z-40 kp-rail kp-rail--journey", "bottom-0 z-30 kp-rail kp-rail--journey"));
@@ -3137,6 +3140,8 @@ ${s}`);
         world: pipOverDome, landed: cssChanged(pipOverDome), landedAs: "\"25\" filled over the bell's dome, only the rim and clapper showing" },
       { name: "the badge override loses its !important", expect: at("7.bell ·"),
         world: pipInlineWins, landed: cssChanged(pipInlineWins), landedAs: "the classic inline position wins and the override paints nothing" },
+      { name: "the rose glow comes back to the journey bell's pip", expect: at("7.bell ·"),
+        world: pipGlowBack, landed: cssChanged(pipGlowBack), landedAs: "the 8px rose halo dyes the dome's shoulder again (round 4, tiles 268–278)" },
       { name: "the avatar drops the 4px the bell's slot answers", expect: at("7.bell ·"),
         world: avatarFlush, landed: changed(avatarFlush, "src/components/layout/avatar-menu.tsx"), landedAs: "the bell 4px off-centre the other way" },
       { name: "the classic bell moves its badge under the override", expect: at("7.bell ·"),
