@@ -249,6 +249,8 @@ const cryptoSrc = code(read("src/lib/server/crypto.ts"));
 const totpSrc = code(read("src/lib/server/totp.ts"));
 const backupSrc = code(read("src/lib/server/backup/core.ts"));
 const proxySrc = code(read("src/proxy.ts"));
+// The static security headers' one definition (review 6, A4): the proxy and next.config.ts both send this list.
+const headersSrc = code(read("src/lib/security-headers.ts"));
 const RETIRED: Record<Loc, RegExp[]> = {
   en: [/TLS 1\.2/, /1\.2\+/, /database tier/i, /SP 800-132/, /theme preference/i],
   sw: [/TLS 1\.2/, /1\.2\+/, /tabaka la hifadhidata/i, /SP 800-132/, /mandhari/i],
@@ -276,7 +278,13 @@ ok("§3b the code behind §8: HMAC-SHA-256 sessions, scrypt passwords and OTPs, 
   && /export async function hashOtp[\s\S]{0,200}scryptAsync\(`\$\{otpPepper\(\)\}:\$\{code\}`, salt, 32\)/.test(cryptoSrc)
   && /createCipheriv\("aes-256-gcm", encKey\(\), iv\)/.test(cryptoSrc) && /encryptSecret\(/.test(totpSrc)
   && /createCipheriv\("aes-256-gcm", deriveKey\(passphrase, salt\), iv\)/.test(backupSrc)
-  && /"Strict-Transport-Security": "max-age=\d+; includeSubDomains; preload"/.test(proxySrc));
+  // Review 6, A4 (2026-10-09) moved this pin with the header: HSTS is defined ONCE, in src/lib/security-headers.ts, and
+  // the proxy sends it (production) from there — next.config.ts sends the same list on every response. (The statement
+  // that sends it is read from the RAW proxy: `code` takes the "/*" inside "https://*.googletagmanager.com" for a comment
+  // and drops the file from there to the next "*/", withSecurityHeaders with it.)
+  && /"Strict-Transport-Security": "max-age=\d+; includeSubDomains; preload"/.test(headersSrc)
+  && proxySrc.includes('import { PROD_HEADERS, SECURITY_HEADERS } from "@/lib/security-headers";')
+  && /for \(const \[k, v\] of Object\.entries\(PROD_HEADERS\)\) res\.headers\.set\(k, v\);/.test(read("src/proxy.ts")));
 ok("§3c the ISO 27001 / pentest sentence still rests on a recorded attestation",
   /### The ISO 27001 \/ penetration-testing claim — Ali's attestation, recorded/.test(decisionsSrc));
 

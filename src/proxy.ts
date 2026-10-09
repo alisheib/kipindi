@@ -27,6 +27,7 @@ import { NextResponse, type NextRequest } from "next/server";
 // Pure + client-safe by its own header (no DB, no server-only imports), so the proxy can import it without pulling server code in.
 // Importing it rather than re-listing the staff roles here keeps ONE source of truth for "who is staff".
 import { isStaffRole } from "@/lib/server/roles";
+import { PROD_HEADERS, SECURITY_HEADERS } from "@/lib/security-headers";
 
 // Must match COOKIE_NAME in src/lib/server/session.ts
 const SESSION_COOKIE = "kp_session";
@@ -131,28 +132,9 @@ async function readVerifiedSession(token: string | undefined): Promise<{ role?: 
   }
 }
 
-const SECURITY_HEADERS: Record<string, string> = {
-  "X-Frame-Options": "DENY",
-  "X-Content-Type-Options": "nosniff",
-  "Referrer-Policy": "strict-origin-when-cross-origin",
-  "X-DNS-Prefetch-Control": "on",
-  "Permissions-Policy": [
-    "accelerometer=()",
-    "autoplay=()",
-    "camera=(self)",
-    "microphone=()",
-    "geolocation=()",
-    "payment=()",
-    "usb=()",
-    "fullscreen=(self)",
-  ].join(", "),
-  "Cross-Origin-Opener-Policy": "same-origin",
-  "X-Permitted-Cross-Domain-Policies": "none",
-};
-
-const PROD_HEADERS: Record<string, string> = {
-  "Strict-Transport-Security": "max-age=63072000; includeSubDomains; preload",
-};
+// The static security headers (`SECURITY_HEADERS`, `PROD_HEADERS`) live in `@/lib/security-headers`, their one
+// definition: next.config.ts sends the same list on every response, so what this proxy's matcher skips carries them too
+// (review 6, A4). The CSP below stays here — it depends on the request.
 
 // CSP: 'unsafe-inline' is required for Next.js hydration scripts and
 // Tailwind's runtime style injection. 'unsafe-eval' is required by
@@ -249,15 +231,16 @@ export async function proxy(req: NextRequest) {
     // entitled to /admin, and deleting it would sign a player out of the site for visiting a URL.
     // ⚠️ Coarse and subtractive only: it refuses an account whose own cookie says it is not staff. A demoted
     // account's stale cookie still passes here and is caught by the per-page stored-row gate (belt 2).
-    // ⚠️ A KNOWN GAP IN THIS BELT, STATED RATHER THAN GLOSSED, and the reason belt 2 is not redundant.
-    // `config.matcher` (the last lines of this file) excludes `_next/static`, `_next/image`, `favicon.ico` and ANY path ending in an image
-    // extension — so this function never runs for `/admin/players/<anything>.png`, which a dynamic `[id]` segment
-    // happily matches. The edge is therefore skippable by URL shape alone, without any router-state trickery.
-    // ⭐ It is not exploitable for disclosure today, and the reason is worth writing down: the id must resolve, and
-    // `<id>.png` never does — `findById` answers null and the page answers `notFound()`. But "not exploitable
-    // because the lookup fails" is a property of the DATA, not of the gate, and a future route whose segment is not
-    // an id would not have it. The page's own gate (belt 2) runs regardless of this matcher, which is exactly why
-    // every admin page carries one and why neither belt is described as sufficient alone.
+    // ⚠️ WHERE THIS BELT DOES NOT RUN, STATED RATHER THAN GLOSSED (corrected in review 6, A4 · 2026-10-09). This note
+    // said `config.matcher` skipped ANY path ending in an image extension, so `/admin/players/<anything>.png` passed the
+    // edge by URL shape alone. The matcher (the last lines of this file) now skips static files only — Next's build
+    // output and image optimiser, public/'s static folders by name and the two favicons by exact name — so this belt runs
+    // for every /admin address (`test:proxy-scope` §1 holds `/admin/players/u_1.png`). What it skips is a static file, or
+    // a missing one under those folders, which renders the root not-found (never an admin page) and carries the static
+    // security headers from next.config.ts.
+    // ⭐ Belt 2 is still not redundant: this belt reads the COOKIE's role, so a demoted account's stale cookie passes it
+    // (above), and the page's own gate runs whatever any matcher says — which is exactly why every admin page carries
+    // one and why neither belt is described as sufficient alone.
     if (pathname.startsWith("/admin") && !isStaffRole(session.role)) {
       const url = req.nextUrl.clone();
       url.pathname = "/auth/admin";
@@ -302,8 +285,12 @@ export const config = {
   // another site. The same suffix defect next.config's immutable-cache rule had (hotfix 9cb95938). Skipped now: Next's
   // build output and image optimiser, and public/'s own static folders and favicons — top-level names, each with its
   // slash (`/iconsx/…` is NOT skipped). Must stay a string literal (Next reads `config` statically).
+  // ⭐ THE FAVICONS BY THEIR EXACT NAMES (review 6, A4 · 2026-10-09): they were `favicon.ico|favicon.svg` — an unescaped
+  // dot and no end — so `/favicon.icon`, `/favicon.ico/x`, `/faviconXico` and `/favicon.svgz`, page addresses all, skipped
+  // the proxy too. Now `favicon\.ico$` and `favicon\.svg$`: the two files and nothing else. (A page under a static folder,
+  // the not-found of a missing file there, still skips it: it carries the static security headers from next.config.ts.)
   // `test:proxy-scope` compiles this with Next's own `getMiddlewareMatchers` and proves no page address is skipped.
   matcher: [
-    "/((?!_next/static|_next/image|favicon.ico|favicon.svg|icons/|brand/|pay/|og/|screenshots/|email-signatures/).*)",
+    "/((?!_next/static|_next/image|favicon\\.ico$|favicon\\.svg$|icons/|brand/|pay/|og/|screenshots/|email-signatures/).*)",
   ],
 };
