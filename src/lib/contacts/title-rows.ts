@@ -64,10 +64,10 @@ export function mayBeTitleRow(cells: readonly string[]): boolean {
 
 /**
  * ⭐ IS THIS ROW ITSELF A CONTACT? S15-5's test (`autoMapHeaders().headerless`: a cell reads as a Tanzanian number) — the
- * ONE answer to "a contact is never a title": `dropTitleRows` stops its search at such a row, and (the review's m4) the
- * CSV reader's vote, looking past a bare title, stops there too and keeps the first record's verdict, so a one-column
- * list under a title ("Wateja", then "0712 345 678, 0754 111 222") is never split on a data row's comma — each row keeps
- * its two numbers in ONE cell, which D3 refuses ("more than one mobile").
+ * ONE answer to "a contact is never a title": `dropTitleRows` stops its search at such a row. The CSV reader's vote asks
+ * it of each cell alone (`numbersAlone`, import-parse.ts — the review's m4 as the re-review's MINOR-3 narrowed it): a
+ * record of numbers alone met while looking past a bare title keeps the first record's verdict, so a one-column list
+ * under a title ("Wateja", then "0712 345 678, 0754 111 222") is never split on a data row's comma.
  */
 export function readsAsContact(cells: readonly string[]): boolean {
   return autoMapHeaders(cells).headerless;

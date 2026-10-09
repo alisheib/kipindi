@@ -69,6 +69,7 @@ import {
   type TextEncodingLabel,
 } from "../../src/lib/contacts/import-parse.ts";
 import { isParsedContactsFile, type ParsedContactsFile, type ParsedRow } from "../../src/lib/contacts/parsed-file.ts";
+import { readsAsContact } from "../../src/lib/contacts/title-rows.ts";
 import { ODS_MIMETYPE, PHONE_FORMAT_REMEDY, xlsxRefusalSentence } from "../../src/lib/contacts/xlsx-limits.ts";
 import { unguardCell } from "../../src/lib/contacts/csv-write.ts";
 import { SEVERAL_MOBILES_SENTENCE, phoneCellRefusal } from "../../src/lib/contacts/phone-cell.ts";
@@ -475,7 +476,7 @@ export const L = {
   C3g: "C3g · a header whose first cell is quoted across a line break completes the vote across it",
   C3h: "C3h · a manual delimiter beats sep= and the vote, and the sep= line stays hidden",
   C3i: "C3i · self-consistency: for every fixture without sep= or a manual choice, the reader's delimiter and vote line are voteDelimiter's, and the vote line is the first row's",
-  C3l: "C3l · ⛔ C8c · the review's m4 · A CONTACT MET WHILE LOOKING PAST A TITLE NEVER DECIDES THE SEPARATOR: 'Wateja', then one-column rows of two numbers ('0712 345 678, 0754 111 222') — the record after the title is itself a contact (S15-5's test), so the FIRST record's verdict stands: ONE column (no vote line), whole and one character at a time alike, voteDelimiter agreeing, and when the text's own end closes that record too — each row keeps its two numbers in one cell, which D3 refuses ('more than one mobile'), never split into two columns on a data row's comma",
+  C3l: "C3l · ⛔ C8c · the review's m4 · A ROW OF NUMBERS ALONE MET WHILE LOOKING PAST A TITLE NEVER DECIDES THE SEPARATOR: 'Wateja', then one-column rows of two numbers ('0712 345 678, 0754 111 222') — every cell of the record after the title is itself a number (numbersAlone), so the FIRST record's verdict stands: ONE column (no vote line), whole and one character at a time alike, voteDelimiter agreeing, and when the text's own end closes that record too — each row keeps its two numbers in one cell, which D3 refuses ('more than one mobile'), never split into two columns on a data row's comma; ⭐ the re-review's MINOR-3 · CONTROL: a name beside the number ('Wateja Oktoba', then 'Asha,0712345678', 'Juma,0754111222') is a contact WITH columns — read comma-separated on line 2 as C8c made it, whole and one character at a time alike, so no contact is created nameless",
   C3k: "C3k · ⭐ C8c · AN UNPADDED TITLE NEVER DECIDES 'ONE COLUMN' (C3b-fix's open find 2): a hand-typed CSV opening with a bare title ('Contacts October', a blank line, the column names on line 3, CRLF) is read COMMA-separated — the vote looks past the title to line 3, its real line, the title kept as a one-cell row 1 — whole and one character at a time alike, voteDelimiter agreeing; two bare titles over a semicolon header the same (line 3); a title alone stays one column; and ⛔ a single-column list of NUMBERS whose third row holds a comma still reads one column (a contact first decides, as before)",
   C4a: "C4a · ⭐ STREAMING — every two-chunk split and 1-character chunks of every sweep fixture read exactly as one push (rows, lines, notes, refusals and every count but the work counter), and parseCsv is that one push",
   C4b: "C4b · ⭐ ACCEPT — each character is tokenized ONCE, by the reader's own counter: the 40-row fixture in 1-character chunks and the 150,000-row corpus in 4,093-character chunks tokenize exactly their length, and the vote reads only the header",
@@ -760,13 +761,21 @@ function run(ctx: SectionContext<CsvImpl>): void {
     const v = impl.vote(TITLED_LIST);
     const noEnd = readChunks(impl, [TITLED_NO_END]);
     const second = whole.result.ok ? whole.result.file.rows[1]?.cells[0] ?? "" : "";
+    // ⭐ MINOR-3 · a titled list WITH a name beside each number: the vote looks past the title and decides on line 2.
+    const NAMED_LIST = ["Wateja Oktoba", "Asha,0712345678", "Juma,0754111222"].join(LF) + LF;
+    const named = readChunks(impl, [NAMED_LIST]);
+    const namedByChar = readChunks(impl, [...NAMED_LIST]);
+    const namedRow = named.result.ok ? named.result.file.rows[1]?.cells ?? [] : [];
     // One column has no vote line (no candidate won on any record) — as for any one-column file.
     ok(L.C3l, whole.stats.delimiter === null && whole.stats.voteLine === null && shapeOf(whole.result) === "[[1,1],[2,1],[3,1]]"
       && second === "0712 345 678, 0754 111 222" && phoneCellRefusal(second) === SEVERAL_MOBILES_SENTENCE
       && byChar.stats.delimiter === null && shapeOf(byChar.result) === shapeOf(whole.result)
       && v.delimiter === null && v.line === null
-      && noEnd.stats.delimiter === null && shapeOf(noEnd.result) === "[[1,1],[2,1]]",
-      `titled list ${whole.stats.delimiter ?? "one column"} on ${whole.stats.voteLine ?? "-"} ${shapeOf(whole.result)} · row 2 ${phoneCellRefusal(second) === SEVERAL_MOBILES_SENTENCE ? "refused: more than one mobile" : "NOT refused as two mobiles"} · by character ${shapeOf(byChar.result)} · vote ${v.delimiter ?? "one column"}/${v.line ?? "-"} · no final line end ${noEnd.stats.delimiter ?? "one column"} ${shapeOf(noEnd.result)}`);
+      && noEnd.stats.delimiter === null && shapeOf(noEnd.result) === "[[1,1],[2,1]]"
+      && named.stats.delimiter === "comma" && named.stats.voteLine === 2 && shapeOf(named.result) === "[[1,1],[2,2],[3,2]]"
+      && namedRow[0] === "Asha" && namedRow[1] === "0712345678"
+      && namedByChar.stats.delimiter === "comma" && shapeOf(namedByChar.result) === shapeOf(named.result),
+      `titled list ${whole.stats.delimiter ?? "one column"} on ${whole.stats.voteLine ?? "-"} ${shapeOf(whole.result)} · row 2 ${phoneCellRefusal(second) === SEVERAL_MOBILES_SENTENCE ? "refused: more than one mobile" : "NOT refused as two mobiles"} · by character ${shapeOf(byChar.result)} · vote ${v.delimiter ?? "one column"}/${v.line ?? "-"} · no final line end ${noEnd.stats.delimiter ?? "one column"} ${shapeOf(noEnd.result)} · named list ${named.stats.delimiter ?? "one column"} on ${named.stats.voteLine ?? "-"} ${shapeOf(named.result)} (by character ${shapeOf(namedByChar.result)})`);
   }
 
   // ── C4 · STREAMING, BOTH ENDS ──────────────────────────────────────────────────────────────────
@@ -1784,9 +1793,17 @@ const PLANTS: readonly RedPlant<CsvImpl>[] = [
   {
     // 🔴 the review's m4 · the look-past decides on the first record holding a candidate, a DATA row included: a titled
     // one-column list of two numbers a row is split into two columns, and D3 never sees the row's two mobiles together.
-    name: "C8c · m4 · a contact met while looking past a title decides the separator",
+    name: "C8c · m4 · a row of numbers alone met while looking past a title decides the separator",
     expect: L.C3l,
     impl: () => withRules({ voteStopsAt: () => false }),
+  },
+  {
+    // 🔴 the re-review's MINOR-3 · m4's stop as it first shipped: ANY record that reads as a contact stops the look-past —
+    // a name beside the number included — so a titled list of names and numbers is read as one column, its contacts
+    // created nameless.
+    name: "MINOR-3 · m4 stops at any contact — 'Wateja Oktoba', then 'Asha,0712345678' is read as one column",
+    expect: L.C3l,
+    impl: () => withRules({ voteStopsAt: readsAsContact }),
   },
 ];
 

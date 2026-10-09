@@ -38,9 +38,12 @@
  * records (the first and `TITLE_ROWS_LOOKAHEAD` more, D7's own bound) — and decides on the first record a candidate
  * appears in. A first record holding a candidate decides at once, and a bare first record that is a contact (a
  * single-column list of numbers) still means one column: nothing else changes. ⛔ The review's m4 · nor does a record met
- * while looking that is ITSELF a contact (`voteStopsAt` = `readsAsContact`, S15-5's test — D7's "a contact is never a
- * title"): no column names follow that title, so the FIRST record's verdict stands — one column, as before C8c. The title
- * stays a row of the file (one cell), and D7 takes it out with its note, its line numbers real.
+ * while looking that is NUMBERS ALONE — two or more cells, every one itself a number (`voteStopsAt` = `numbersAlone`,
+ * S15-5's test cell by cell): that is a one-column list of two numbers a row read on its comma, so the FIRST record's
+ * verdict stands — one column, as before C8c, and D3 refuses each row's two mobiles. ⭐ The re-review's MINOR-3: a record
+ * with a NAME beside its number ("Wateja Oktoba", then "Asha,0712345678") is a contact WITH columns — the vote decides
+ * on it, as C8c does, and D7 then drops the title. The title stays a row of the file (one cell), and D7 takes it out
+ * with its note, its line numbers real.
  *
  * ── WHAT A FILE BECOMES ───────────────────────────────────────────────────────────────────────────────
  *   · each row's `line` is the record as Excel numbers it: the `sep=` line hidden, a quoted line break inside one
@@ -326,10 +329,21 @@ export type CsvRules = {
   readonly voteLooksPast: (cells: readonly string[]) => boolean;
   /** ⭐ C8c · the most non-blank records the vote reads: the first, and at most `TITLE_ROWS_LOOKAHEAD` after it. */
   readonly voteRecordsMax: number;
-  /** ⛔ C8c · the review's m4 · is a record the vote looked past to ITSELF A CONTACT (`readsAsContact`, S15-5's test)?
-   *  Then no column names follow the title, the look-past has nothing to find, and the FIRST record's verdict stands. */
+  /** ⛔ C8c · the review's m4 · is a record the vote looked past to NUMBERS ALONE (`numbersAlone`: two or more cells,
+   *  each itself a number)? Then it is a one-column list of two numbers a row, and the FIRST record's verdict stands. */
   readonly voteStopsAt: (cells: readonly string[]) => boolean;
 };
+
+/**
+ * ⛔ The review's m4, as the re-review's MINOR-3 narrowed it — the ONE record a look-past never decides on: two or more
+ * non-empty cells, EVERY one itself a number (S15-5's test asked of the cell alone, `readsAsContact`) — a one-column list
+ * of two numbers a row, read on its comma ("0712 345 678, 0754 111 222"). A record with a NAME beside its number
+ * ("Asha,0712345678") is a contact WITH columns: the vote decides on it, as C8c does.
+ */
+export function numbersAlone(cells: readonly string[]): boolean {
+  const filled = cells.map((c) => c.trim()).filter((c) => c !== "");
+  return filled.length >= 2 && filled.every((c) => readsAsContact([c]));
+}
 
 /* ══ THE TOKENIZER — one pass, its state carried across chunks ══════════════════════════════════════════ */
 
@@ -648,8 +662,9 @@ export const CSV_RULES: CsvRules = {
   // ⭐ C8c · D7's own first-row test, and its own lookahead: a bare title never decides "one column" for the file.
   voteLooksPast: mayBeTitleRow,
   voteRecordsMax: 1 + TITLE_ROWS_LOOKAHEAD,
-  // ⛔ m4 · …and D7's own "a contact is never a title": a data row met while looking never decides the separator.
-  voteStopsAt: readsAsContact,
+  // ⛔ m4 · …and a row of numbers alone met while looking never decides the separator (MINOR-3: a name beside a number
+  // is a contact WITH columns, and decides).
+  voteStopsAt: numbersAlone,
 };
 
 type Candidate = { readonly delimiter: CsvDelimiter; readonly scan: CandidateScan; chars: number };
@@ -671,10 +686,11 @@ const NO_COUNTS: Readonly<Record<CsvDelimiter, number>> = { comma: 0, semicolon:
  * the next non-blank record, up to `rules.voteRecordsMax` records in all, and the first record on which a candidate appears
  * decides as before. A first record with a candidate decides at once, exactly as before (a header row is never looked
  * past); a bare record that is a contact — a single-column list of numbers — decides "one column", exactly as before.
- * ⛔ The review's m4 · a record met while looking past that is ITSELF A CONTACT (`rules.voteStopsAt`, S15-5's test — D7's
- * "a contact is never a title") never decides: no column names follow the title, so the look-past had nothing to find
- * and the FIRST record's verdict stands — one column, as before C8c ("Wateja", then "0712 345 678, 0754 111 222": each row
- * keeps its two numbers in ONE cell, which D3 refuses, never split into two columns on a data row's comma).
+ * ⛔ The review's m4 · a record met while looking past that is NUMBERS ALONE (`rules.voteStopsAt` = `numbersAlone`: two or
+ * more cells, each itself a number) never decides: it is a one-column list of two numbers a row, so the FIRST record's
+ * verdict stands — one column, as before C8c ("Wateja", then "0712 345 678, 0754 111 222": each row keeps its two numbers
+ * in ONE cell, which D3 refuses, never split into two columns on a data row's comma). A record with a name beside its
+ * number decides as C8c made it (the re-review's MINOR-3: "Wateja Oktoba", then "Asha,0712345678" — two columns).
  * Lines keep their real numbers: each round's scans count from 1, and the rounds before it are added back.
  */
 function makeVoter(rules: CsvRules): Voter {
@@ -685,7 +701,8 @@ function makeVoter(rules: CsvRules): Voter {
   }));
   let candidates = startRound();
   let rounds = 1;
-  /** ⛔ m4 · the FIRST record's verdict, kept when the vote looks past it — and whether a contact sent the vote back to it. */
+  /** ⛔ m4 · the FIRST record's verdict, kept when the vote looks past it — and whether numbers alone sent the vote back
+   *  to it. */
   let firstVote: DelimiterVote | null = null;
   let backToFirst = false;
   /** The lines the rounds looked past took, and the characters their scans read (all candidates together). */
@@ -708,12 +725,12 @@ function makeVoter(rules: CsvRules): Voter {
       && c.chars === first.chars && c.scan.pendingLine === first.scan.pendingLine);
     return alike && rules.voteLooksPast(cells);
   };
-  /** ⛔ m4 · a looked-past round's record, read by any candidate, is itself a contact. */
-  const atContact = (): boolean =>
+  /** ⛔ m4 · a looked-past round's record, read by any candidate, is numbers alone. */
+  const atNumbersAlone = (): boolean =>
     rounds > 1 && candidates.some((c) => c.scan.done && c.scan.cells !== undefined && rules.voteStopsAt(c.scan.cells));
   /** The round's record is complete: does the vote end here — on it, or (m4) back on the first record — or look past it? */
   const ends = (): boolean => {
-    if (atContact()) {
+    if (atNumbersAlone()) {
       backToFirst = true;
       return true;
     }
@@ -739,7 +756,7 @@ function makeVoter(rules: CsvRules): Voter {
         if (!complete()) return false;
         if (ends()) return true;
         // ⭐ C8c · the record was a bare title: the next round reads on from right after it — the first record's own
-        // verdict kept, should a contact send the vote back to it (m4).
+        // verdict kept, should a row of numbers alone send the vote back to it (m4).
         if (rounds === 1) firstVote = decideVote(candidates, true, lineOffset, charsBefore);
         const used = candidates[0]?.chars ?? 0;
         lineOffset += (candidates[0]?.scan.pendingLine ?? 1) - 1;
@@ -755,7 +772,7 @@ function makeVoter(rules: CsvRules): Voter {
       for (const c of candidates) c.scan.finish();
       finished = true;
       // ⛔ m4 · a looked-past record the text's end closed is asked the same question.
-      if (atContact()) backToFirst = true;
+      if (atNumbersAlone()) backToFirst = true;
     },
     result: () => {
       if (backToFirst && firstVote !== null) {
