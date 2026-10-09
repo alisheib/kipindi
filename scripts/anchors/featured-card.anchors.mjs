@@ -101,4 +101,40 @@ export const MUTATIONS = [
     to: `.mcardp-traders .mcardp-befirst { color: var(--brand-300); }`,
     expect: "2.15",
   },
+  // Round 4 (2026-10-09): the top row's two facts, the cold-start pair's centre, the named pool.
+  {
+    name: "the tail's column gap goes back to the row's 5px (\"UCHUMI masaa 1 yamebaki\" at sw 390)",
+    file: "src/app/globals.css",
+    from: `.mcardp-tail { display: flex; flex-wrap: wrap; align-items: center; gap: 5px var(--sp-4); flex: 1 1 auto; min-width: 0; }`,
+    to: `.mcardp-tail { display: flex; flex-wrap: wrap; align-items: center; gap: 5px; flex: 1 1 auto; min-width: 0; }`,
+    expect: "2.16",
+  },
+  {
+    name: "the no-bets line stops being lowered (the pair back at 18 over 28, and the card 4.8px short)",
+    file: "src/app/globals.css",
+    from: `.mcardp-nobets:has(+ .mcardp-traders .mcardp-befirst) { margin-top: calc(6px + var(--mcard-empty-drop)); }`,
+    to: `.mcardp-nobets:has(+ .mcardp-traders .mcardp-befirst) { margin-top: 6px; }`,
+    expect: "2.17",
+  },
+  {
+    name: "the drop's constant drifts from the metrics it was derived from (the pair off-centre again)",
+    file: "src/app/globals.css",
+    from: `  --mcard-empty-drop: calc((var(--mcard-traders-h) / 2 + var(--mcard-act-mt) - 13.4px) / 2);`,
+    to: `  --mcard-empty-drop: calc((var(--mcard-traders-h) / 2 + var(--mcard-act-mt) - 8px) / 2);`,
+    expect: "2.17",
+  },
+  {
+    name: "the featured pool loses its word and its money face (a bare \"TZS 10,800\" again)",
+    file: "src/components/markets/market-card.tsx",
+    from: `          {fresh ? t.market.noPoolYet : featured ? <>{t.common.pool}{" "}<span className="amount">{formatTzs(volume)}</span></> : formatTzs(volume)}`,
+    to: `          {fresh ? t.market.noPoolYet : formatTzs(volume)}`,
+    expect: "2.18",
+  },
+  {
+    name: "the featured pool drops the row's line box (a selection-closed featured card grows 3px)",
+    file: "src/app/globals.css",
+    from: `.mcardp--featured .mcardp-meta > .mcardp-pool { font-size: var(--type-small); line-height: 16.5px; }`,
+    to: `.mcardp--featured .mcardp-meta > .mcardp-pool { font-size: var(--type-small); }`,
+    expect: "2.18",
+  },
 ];

@@ -196,14 +196,76 @@ const card = decomment(read("src/components/markets/market-card.tsx"));
   // measured base (`--mcard-base`) was taken with, so the card and its skeleton keep their height.
   const nbAt = css.indexOf("\n.mcardp-nobets {");
   const nobets = nbAt < 0 ? "" : css.slice(nbAt, css.indexOf("}", nbAt));
+  // The pool slot: the no-pool words on a fresh card (round 3), the NAMED figure on the featured card (round 4, 2.18).
+  const POOL_SPAN = /<span data-market-part="pool" className=\{fresh \? "mcardp-nopool" : featured \? "mcardp-pool" : undefined\}>\s*\{fresh \? t\.market\.noPoolYet : featured \? <>\{t\.common\.pool\}\{" "\}<span className="amount">\{formatTzs\(volume\)\}<\/span><\/> : formatTzs\(volume\)\}\s*<\/span>/;
   check("2.15 the empty state reads at the reading floor — no bets, be the first, and the featured no-pool words at --type-small; the no-bets line in --text-subtle on its measured 15px box",
     nobets.includes("font-size: var(--type-small);") && nobets.includes("line-height: 15px;") && nobets.includes("color: var(--text-subtle);")
       && !/letter-spacing/.test(nobets)
       && css.includes("\n.mcardp-traders .mcardp-befirst { font-size: var(--type-small); }")
       && css.includes("\n.mcardp--featured .mcardp-meta > .mcardp-nopool { font-size: var(--type-small); }")
-      && /<span data-market-part="pool" className=\{fresh \? "mcardp-nopool" : undefined\}>\{fresh \? t\.market\.noPoolYet : formatTzs\(volume\)\}<\/span>/.test(card),
+      && POOL_SPAN.test(card),
     nobets.replace(/\s+/g, " ").slice(0, 200));
   check("2.15-control the no-bets rule is found (its slice holds the line's own centring)", nobets.includes("text-align: center;"));
+
+  // Round 4 (2026-10-09) — three more measured tile defects on the featured card.
+  // 2.16 · G1: at sw 390 the tail fitted the chips' line with "UCHUMI" and "masaa 1 yamebaki" 9px apart (tiles 045 077 089 102)
+  // — a word space and 2px, one phrase. The tail's COLUMN gap is the scale's 16, so the time keeps 16px from its category or
+  // the whole tail takes the next line; its ROW gap stays the row's 5px (the D65 stack); the time is still pushed right.
+  const ruleOf = (src: string, sel: string) => { const at = src.indexOf(`\n${sel} {`); return at < 0 ? "" : src.slice(at + 1, src.indexOf("}", at) + 1); };
+  const tailOk = (src: string) => {
+    const tail = ruleOf(src, ".mcardp-tail");
+    return tail.includes("gap: 5px var(--sp-4);") && tail.includes("flex-wrap: wrap;") && (src.match(/\n\.mcardp-tail \{/g) ?? []).length === 1
+      && ruleOf(src, ".mcardp-closes").includes("margin-left: auto;") && /--sp-4: 16px;/.test(src);
+  };
+  check("2.16 the featured card's time keeps at least 16px from its category — the tail's column gap is --sp-4 (16px), its row gap the row's 5px, the time still pushed right, and the glyph, word and time still one tail",
+    tailOk(css) && /<span className="mcardp-tail">\s*<span className="mcardp-catgrp">/.test(card), ruleOf(css, ".mcardp-tail"));
+  check("2.16-control the round-3 tail (5px both ways) IS detected", !tailOk(css.replace("gap: 5px var(--sp-4);", "gap: 5px;")));
+
+  // 2.17 · G5: "Hakuna dau bado" / "Kuwa wa kwanza kutabiri" sat 18px under the rail and 28px over YES/NO from 640 (tile 020:
+  // bar to y369, ink 388–425, buttons y454), 14 / 18 in Compact (013 015). The pair is lowered by --mcard-empty-drop, derived
+  // from the density's own tokens, and the row under it gives the same back (the card does not move). Re-derived here from the
+  // stylesheet's own numbers and the face's metrics at 13px — the cap top 2.7px into the 15px no-bets box, the invitation's
+  // baseline 4.7px below its row's middle — the space above the pair's ink and below it agree within half a pixel, both densities.
+  const pairRules = (src: string) => src.includes("\n.mcardp-nobets:has(+ .mcardp-traders .mcardp-befirst) { margin-top: calc(6px + var(--mcard-empty-drop)); }")
+    && src.includes("\n.mcardp-nobets + .mcardp-traders:has(.mcardp-befirst) { margin-bottom: calc(-1 * var(--mcard-empty-drop)); }");
+  const DROP = /\n {2}--mcard-empty-drop: calc\(\(var\(--mcard-traders-h\) \/ 2 \+ var\(--mcard-act-mt\) - (\d+(?:\.\d+)?)px\) \/ 2\);/;
+  const tok = (src: string, name: string, from: number) => Number(new RegExp(`--${name}: (\\d+(?:\\.\\d+)?)px;`).exec(src.slice(from))?.[1] ?? NaN);
+  const centred = (src: string) => {
+    const k = Number(DROP.exec(src)?.[1] ?? NaN);
+    const nbMt = Number(/margin-top: (\d+)px;/.exec(ruleOf(src, ".mcardp-nobets"))?.[1] ?? NaN);
+    const compactAt = src.indexOf('html:not([data-density="comfortable"]) {\n    --mcard-pt:');
+    const CAP_IN = 2.7, BASE_DROP = 4.7;
+    const at = (from: number) => {
+      const gap = tok(src, "mcard-gap", from), actMt = tok(src, "mcard-act-mt", from), th = tok(src, "mcard-traders-h", from);
+      const drop = (th / 2 + actMt - k) / 2;
+      return { drop, above: gap + nbMt + CAP_IN + drop, below: th / 2 - BASE_DROP + gap + actMt - drop };
+    };
+    const comfortable = at(0), compact = compactAt < 0 ? null : at(compactAt);
+    const ok = nbMt === 6 && compact !== null && [comfortable, compact].every((p) => p.drop > 0 && Math.abs(p.above - p.below) <= 0.5);
+    return { ok, k, nbMt, comfortable, compact };
+  };
+  const pair = centred(css);
+  check("2.17 the cold-start pair sits mid-way between the rail and the pick — lowered by --mcard-empty-drop (from the density's own tokens), the row under it giving the same back, so the space above and below its ink agrees within 0.5px in Comfortable and in Compact and the card keeps its height",
+    pairRules(css) && (css.match(/--mcard-empty-drop:/g) ?? []).length === 1 && pair.ok, JSON.stringify(pair));
+  check("2.17-control round 3's geometry (no drop: 18 over 28) IS detected, and so is a lost pair rule",
+    !centred(css.replace("+ var(--mcard-act-mt) - 13.4px) / 2);", "+ var(--mcard-act-mt) - 23.4px) / 2);")).ok
+      && !pairRules(css.replace("margin-top: calc(6px + var(--mcard-empty-drop));", "margin-top: 6px;")));
+
+  // 2.18 · G7: once there is a pool the featured card printed "TZS 10,800" at the row's 11px (cap 8px), in --text-subtle and
+  // with no word (tiles 141 142 145) — smaller than the "Hakuna bwawa bado" round 3 gave the same slot, and nothing said what
+  // the money was. It is NAMED in the board row's own word for it, the figure set as money, at the words' 13px.
+  const poolRule = "\n.mcardp--featured .mcardp-meta > .mcardp-pool { font-size: var(--type-small); line-height: 16.5px; }";
+  const poolInk = "\n.mcardp-pool > .amount { color: var(--text); font-weight: 600; }";
+  const poolWords = (["en", "sw", "zh"] as const).map((l) => (dict[l] as { common: Record<string, string> }).common.pool);
+  const heroRow = decomment(read("src/components/home/landing-hero.tsx"));
+  check("2.18 the featured card NAMES its pool — the board row's own word (`common.pool`: Pool / Bwawa / 奖池) before the figure set as money (`.amount`: mono, tabular), at the words' 13px in the card's figure ink (the count's --text, 600), on the row's own 16.5px line box; a grid card keeps its bare 11px figure",
+    POOL_SPAN.test(card) && css.includes(poolRule) && css.includes(poolInk)
+      && css.includes("\n.amount.amount { font-family: var(--font-mono); font-variant-numeric: tabular-nums;")
+      && /\{t\.common\.pool\}\{" "\}\{formatTzs\(row\.pool\)\}/.test(heroRow)
+      && JSON.stringify(poolWords) === JSON.stringify(["Pool", "Bwawa", "奖池"]),
+    JSON.stringify(poolWords));
+  check("2.18-control the round-3 bare figure IS detected",
+    !POOL_SPAN.test('<span data-market-part="pool" className={fresh ? "mcardp-nopool" : undefined}>{fresh ? t.market.noPoolYet : formatTzs(volume)}</span>'));
 }
 
 // ── §3 · call sites ────────────────────────────────────────────────────────────────────────────────

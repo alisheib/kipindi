@@ -882,6 +882,10 @@
   --mcard-base-closed: 160px;
   --mcard-h: calc(var(--mcard-base) + var(--mcard-pt) + 8 * var(--mcard-gap) + var(--mcard-act-mt) + var(--mcard-act-mb) + var(--mcard-traders-h) + var(--mcard-meta-mb));
   --mcard-h-closed: calc(var(--mcard-base-closed) + var(--mcard-pt) + 6 * var(--mcard-gap) + var(--mcard-act-mt) + var(--mcard-act-mb) + var(--mcard-traders-h) + var(--mcard-meta-mb));
+  /* How far the cold-start pair ("No bets yet" / "Be the first to predict") is lowered to sit mid-way between the rail and
+     the pick — derived from the two tokens that differ between the densities, like --mcard-h, so Compact gets its own
+     (4.8px Comfortable, 1.8px Compact). It moves the pair, never the card: see `.mcardp-nobets` below. */
+  --mcard-empty-drop: calc((var(--mcard-traders-h) / 2 + var(--mcard-act-mt) - 13.4px) / 2);
   /* UP & DOWN CARD RHYTHM (U3). The round card is a `.mcardp` too, so it already follows
      --mcard-gap and --mcard-pt. These four are the spacing INSIDE it, which the market card
      has no equivalent of. The values are the ones the card shipped with, moved out of the TSX
@@ -1494,7 +1498,7 @@ body {
    ① THE LEADING EDGE FADES LIKE THE TRAILING ONE. The run was clipped hard at the viewport's left edge, right after the
       label, so a glyph stood cut at full ink there (x115 on tiles 198 201 202 318 322 326 327 329 at 390; 194 at 1280),
       while the end cap fades the run's last 40px. The label's trailing 24px now lies OVER the run (the cap's own
-      overlap, mirrored): solid to the end of the word, fading to nothing across the padding, and the viewport starts
+      overlap, mirrored): solid to the end of the word (16px past it since round 4, ④), fading to nothing across the padding, and the viewport starts
       under it with 24px more padding, so item 1 still rests 8px clear of the fade and nothing moves at rest or in motion.
    ② THE SEPARATOR SITS MID-GAP. Each item ends `gap 8 + dot margin 12` before its dot and `pr-8`'s 48 after it, so the
       dot read 19px from one item and 47px from the next (tile 145: "Saturday?" ends 413, dot 433–436, "TZS 8K" 484). The
@@ -1503,9 +1507,15 @@ body {
    ③ FROM 1024 THE STRIP'S CONTENT KEEPS THE PAGE'S EDGE — 32px, and inside the 1280 board on a wider screen — as the
       header's row does (`.kp-jhdr__row`: `--w-board`, 32px from 1024). The label is 16px in and the pause glyph's ink
       ends 16px from the strip's end, so the strip pads 16 more each side: on tile 145 (1280) "LIVE" began at x16 and
-      the pause glyph ended at x1263 under a header running 33–1247. Below 1024 both already sit on the 16px edge. */
-:root:has(#kp-journey-shell) .ticker-label { margin-right: calc(-1 * var(--sp-6)); background: linear-gradient(90deg, var(--bg-inset) 0%, var(--bg-inset) calc(100% - var(--sp-6)), oklch(11% 0.11 268 / 0) 100%); }
-:root:has(#kp-journey-shell) .ticker-viewport { padding-left: calc(8px + var(--sp-6)); }
+      the pause glyph ended at x1263 under a header running 33–1247. Below 1024 both already sit on the 16px edge.
+   ④ CLEAR GROUND BEFORE THE FADE (round 4, 2026-10-09 · G12 [321 325 330 332]). ① faded the run in from the word's very
+      end, so a faded glyph stood 1px after the label (sw 390: "MUBASHARA" ink ends x89, the run's ink from x91, full again
+      at x112–114) and read "MUBASHARAsiku" — where round 3's strip had ~20px of plain background. The label's
+      trailing ground is now 16px of solid (`--sp-4`, the clear the end cap keeps before the pause glyph) and THEN the 24px
+      fade (`--sp-6`): 40px over the run, as the end cap's own 40. The run's ink can show no closer than 16px after the
+      word, a glyph is still never cut at full ink, and item 1 rests 8px clear of the fade as before — 16px further right. */
+:root:has(#kp-journey-shell) .ticker-label { padding-right: calc(var(--sp-4) + var(--sp-6)); margin-right: calc(-1 * (var(--sp-4) + var(--sp-6))); background: linear-gradient(90deg, var(--bg-inset) 0%, var(--bg-inset) calc(100% - var(--sp-6)), oklch(11% 0.11 268 / 0) 100%); }
+:root:has(#kp-journey-shell) .ticker-viewport { padding-left: calc(8px + var(--sp-4) + var(--sp-6)); }
 :root:has(#kp-journey-shell) .ticker-item { padding-right: var(--sp-8); }
 :root:has(#kp-journey-shell) .ticker-sep { margin-left: var(--sp-6); }
 @media (min-width: 1024px) {
@@ -4919,12 +4929,19 @@ html[data-sheet-open] .route-enter { animation: none; }
    line 2; at 360–412 the time left stood alone on a right-aligned line. `.mcardp-catgrp` binds the glyph
    to its word (they never part); `.mcardp-tail` carries that pair and the time, so the tail either fits on
    the chips' line or drops to the next one WHOLE — category left, time right (`margin-left: auto` below).
-   The gaps are the row's own 5px, so a row that fitted before (English, Chinese, every width ≥ 768) still
-   fits, at the same widths, to the pixel. The tail wraps inside itself only if it cannot fit a line on its
+   The gaps were the row's own 5px, so a row that fitted before (English, Chinese, every width ≥ 768) still
+   fitted, at the same widths, to the pixel (the column gap is 16 since round 4, below). The tail wraps inside itself only if it cannot fit a line on its
    own (large Android text, D65): then the category keeps its line and the time takes the next.
    ⭐ The glyph's 2px nudge is now the margin of whatever precedes the tail: it separates the glyph from the
-   chip before it exactly as before, and it no longer indents the glyph when the tail starts a line. */
-.mcardp-tail { display: flex; flex-wrap: wrap; align-items: center; gap: 5px; flex: 1 1 auto; min-width: 0; }
+   chip before it exactly as before, and it no longer indents the glyph when the tail starts a line.
+   2026-10-09 · round 4, G1 [045 077 089 102] · THE CATEGORY AND THE TIME ARE TWO FACTS, NEVER ONE PHRASE. With the
+   row's 5px between them the tail fitted the chips' line at sw 390 with 9px of ink between "UCHUMI" and "masaa 1
+   yamebaki" — one word space plus 2px, so it read as one phrase (31px at 412, 124 in English at 390). The tail's
+   COLUMN gap is now the scale's 16 (`--sp-4`): it holds the line only while the time can stand at least 16px clear of
+   the category (~18px of ink), and otherwise drops down whole, as at 320–360 — category left, time right. Its ROW gap
+   stays the row's 5px, so the D65 stack (time under its category) is unchanged. Only the featured card's tail has two
+   items, so no other card can move. */
+.mcardp-tail { display: flex; flex-wrap: wrap; align-items: center; gap: 5px var(--sp-4); flex: 1 1 auto; min-width: 0; }
 .mcardp-catgrp { display: flex; align-items: center; gap: 5px; min-width: 0; }
 .mcardp-top > :has(+ .mcardp-tail) { margin-right: 2px; }
 /* §T3 0.14em, was 0.12 — tracking in the shared eyebrow rule beside `.amount`. */
@@ -5132,6 +5149,18 @@ html[data-sheet-open] .route-enter { animation: none; }
    13px in the row's own 1.5 is 19.5px, inside the row's 24px (22px Compact) `--mcard-traders-h`, so nothing moves. */
 .mcardp-befirst { color: var(--brand-300); }
 .mcardp-traders .mcardp-befirst { font-size: var(--type-small); }
+/* ⭐ THE PAIR SITS MID-WAY BETWEEN THE RAIL AND THE PICK (round 4, 2026-10-09 · G5 [002 013 015 017 018 020]). "Hakuna dau
+   bado" / "Kuwa wa kwanza kutabiri" sat 18px under the rail and 28px over YES/NO from 640 (bar ends y369, ink 388–425,
+   buttons y454 on tile 020), 14 / 18 in Compact (013, 015) — the same in English and Chinese. Measured ink to ink: the
+   first line's cap top is 2.7px into its 15px box (JetBrains Mono's 13px content area is 17.2px), the invitation's
+   baseline 4.7px below its row's middle, so
+     above = gap + 6 + 2.7            below = traders-h / 2 − 4.7 + gap + act-mt
+   and lowering the pair by half the difference, `--mcard-empty-drop` = (traders-h / 2 + act-mt − 13.4) / 2, makes them
+   equal: 23.5 / 23.5 from 640, 16.5 / 16.5 in Compact. The no-bets line takes that much more top margin and the row under
+   it gives the same back below, so every row past the pair, the card and its skeleton (`--mcard-base`) stay where they
+   were. Only this pair: the no-bets line alone, or over a predictor count, is a different shape and keeps its place. */
+.mcardp-nobets:has(+ .mcardp-traders .mcardp-befirst) { margin-top: calc(6px + var(--mcard-empty-drop)); }
+.mcardp-nobets + .mcardp-traders:has(.mcardp-befirst) { margin-bottom: calc(-1 * var(--mcard-empty-drop)); }
 
 /* ── One-sided (landing v3 · WP6, 2026-09-27) ─────────────────────────────────
    Money on ONE side has no price (MOBILE-VISUAL ruling 13): the card keeps the
@@ -5223,6 +5252,16 @@ html[data-sheet-open] .route-enter { animation: none; }
    countdown — "masaa 21 yamebaki", 112px — and at 360 the words at 13px would need 302 of 296px, so its one-line meta
    row (`.mcardp-meta`, D35) would wrap and the card would grow a row. The row is 44px tall either way. */
 .mcardp--featured .mcardp-meta > .mcardp-nopool { font-size: var(--type-small); }
+/* ⭐ …AND THE POOL ITSELF, ONCE THERE IS ONE (round 4, 2026-10-09 · G7 [141 142 145]). "TZS 10,800" stood in that slot as the
+   row's 11px figure (cap height 8px), in --text-subtle and with no word: nothing said it was the pool, and the words that
+   replaced it on a fresh card read larger than the money. It now says what the money is in the landing board's own words
+   for it ("Bwawa TZS 10,800", `common.pool`, the row under this card — one thing, one wording on a page), at the same
+   13px as the words, the label in the row's ink and the figure as money (`.amount`: mono, tabular, untracked, whole) in
+   the card's figure ink — the predictor count's --text and 600. The row is 44px tall beside the info button, but a
+   selection-closed featured card has no button, so the line box stays the row's own 16.5px (11px × the body's 1.5) and
+   that card keeps its height too. Width: 16 characters at 7.8px, 125px (+ 7 + 44 against 256 at 320). */
+.mcardp--featured .mcardp-meta > .mcardp-pool { font-size: var(--type-small); line-height: 16.5px; }
+.mcardp-pool > .amount { color: var(--text); font-weight: 600; }
 @media (min-width: 640px) {
   .mcardp-src--featured { order: 0; max-inline-size: 60ch; }
   .mcardp--featured > .mcardp-meta,

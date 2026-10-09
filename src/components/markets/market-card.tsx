@@ -486,7 +486,8 @@ export function MarketCard({
             glyph and its word are one unit that never parts (`.mcardp-catgrp`), and that unit plus the time
             are the tail (`.mcardp-tail`): it stays on the chips' line while it fits and otherwise moves down
             WHOLE, the category on the left and the time on the right — the row's own design on its own line.
-            DOM order (status, signal, category, time) is unchanged. */}
+            DOM order (status, signal, category, time) is unchanged. Round 4 (G1): the time keeps at least 16px from
+            the category, or the tail takes the next line — "UCHUMI masaa 1 yamebaki" read as one phrase at 9px. */}
         <span className="mcardp-tail">
           <span className="mcardp-catgrp">
             <span className="mcardp-catico"><CatIco /></span>
@@ -669,8 +670,13 @@ export function MarketCard({
       )}
 
       <div className="mcardp-meta">
-        {/* `mcardp-nopool`: the words, not a figure — read at 13px on the featured card (globals.css, round 3). */}
-        <span data-market-part="pool" className={fresh ? "mcardp-nopool" : undefined}>{fresh ? t.market.noPoolYet : formatTzs(volume)}</span>
+        {/* `mcardp-nopool`: the words, not a figure — read at 13px on the featured card (globals.css, round 3).
+            `mcardp-pool` (round 4, G7): once there is a pool the featured card NAMES it, in the board row's own words
+            ("Bwawa TZS 10,800", `common.pool`), the figure set as money (`.amount`) at the same 13px. A grid card's row
+            also carries its countdown, so its figure keeps the row's 11px and no word (its one-line row, D35, is full at 360). */}
+        <span data-market-part="pool" className={fresh ? "mcardp-nopool" : featured ? "mcardp-pool" : undefined}>
+          {fresh ? t.market.noPoolYet : featured ? <>{t.common.pool}{" "}<span className="amount">{formatTzs(volume)}</span></> : formatTzs(volume)}
+        </span>
         {comments != null && comments > 0 && (
           <>
             <span className="dot" />

@@ -1381,12 +1381,14 @@ function g7Header(W: World, ok: Ok) {
     strip.edge.length === 1 && strip.edge[0] === `${SHELL_SCOPE} .ticker-strip { padding-inline: calc(max(0px, (100% - var(--w-board)) / 2) + var(--sp-4)); }`
       && strip.label.includes("padding-left: 16px;") && strip.sp4 === "16px" && strip.board === "1280px" && strip.labelMarkup,
     show(strip));
-  // ① The leading edge fades like the trailing one: the label's 24px of trailing padding lies OVER the run (solid to the
-  // word's end, then nothing), and the run starts 24px further under it, so item 1 still rests 8px clear of the fade.
-  ok("7.ticker-fade · the journey's run fades in under the LIVE label's trailing 24px as it fades out under the end cap — the label overlaps the run by exactly its padding and the run's rest position does not move (round 3, tiles 194 198 201 202 318 322 326 327 329)",
-    strip.label.includes("padding-right: 24px;") && strip.label.includes("var(--bg-inset) 70%,") && strip.sp6 === "24px"
-      && strip.fade === `${SHELL_SCOPE} .ticker-label { margin-right: calc(-1 * var(--sp-6)); background: linear-gradient(90deg, var(--bg-inset) 0%, var(--bg-inset) calc(100% - var(--sp-6)), oklch(11% 0.11 268 / 0) 100%); }`
-      && strip.viewport.includes("padding-left: 8px;") && strip.runPad === `${SHELL_SCOPE} .ticker-viewport { padding-left: calc(8px + var(--sp-6)); }`,
+  // ① The leading edge fades like the trailing one: the label's trailing ground lies OVER the run, and the run starts that
+  // much further under it, so item 1 still rests 8px clear of the fade. ④ Round 4 (2026-10-09): that ground is 16px of
+  // SOLID after the word and THEN the 24px fade — round 3 faded from the word's very end, and a faded glyph stood 1px after
+  // "MUBASHARA" (tiles 321 325 330 332: label ink to x89, the run's from x91). The classic label keeps its 24px and 70%.
+  ok("7.ticker-fade · the journey's run fades in under the LIVE label as it fades out under the end cap — 16px of solid ground after the word, THEN the 24px fade, the label overlapping the run by exactly that 40px and item 1 resting 8px clear of the fade (round 3, tiles 194 198 201 202 318 322 326 327 329; round 4, tiles 321 325 330 332)",
+    strip.label.includes("padding-right: 24px;") && strip.label.includes("var(--bg-inset) 70%,") && strip.sp4 === "16px" && strip.sp6 === "24px"
+      && strip.fade === `${SHELL_SCOPE} .ticker-label { padding-right: calc(var(--sp-4) + var(--sp-6)); margin-right: calc(-1 * (var(--sp-4) + var(--sp-6))); background: linear-gradient(90deg, var(--bg-inset) 0%, var(--bg-inset) calc(100% - var(--sp-6)), oklch(11% 0.11 268 / 0) 100%); }`
+      && strip.viewport.includes("padding-left: 8px;") && strip.runPad === `${SHELL_SCOPE} .ticker-viewport { padding-left: calc(8px + var(--sp-4) + var(--sp-6)); }`,
     show(strip));
   // ② The separator sits mid-gap: gap 8 + the dot's 24 before it, the item's 32 after it (it read 19 and 47 on tile 145).
   ok("7.ticker-dot · the journey's separator dot sits mid-gap — the item's 8px gap plus the dot's 24px margin before it equals the item's 32px trailing padding after it (round 3, tile 145)",
@@ -2727,8 +2729,16 @@ ${s}`);
     const tickerEdgeUnscoped = withCss((s) => s.replace(`${HOME_SCOPE} .ticker-strip {`, ".ticker-strip {"));
     const tickerEdgeLost = withCss((s) => s.replace(`${HOME_SCOPE} .ticker-strip { padding-inline: calc(max(0px, (100% - var(--w-board)) / 2) + var(--sp-4)); }`, ""));
     const tickerInline = withFile(WORLD, TICKER, (s) => s.replace(`<div className="ticker-label">`, `<div className="ticker-label" style={{ paddingLeft: 16 }}>`));
-    const tickerFadeLost = withCss((s) => s.replace(`${HOME_SCOPE} .ticker-label { margin-right: calc(-1 * var(--sp-6));`, `${HOME_SCOPE} .ticker-label { margin-right: 0;`));
-    const tickerRestMoves = withCss((s) => s.replace(`${HOME_SCOPE} .ticker-viewport { padding-left: calc(8px + var(--sp-6)); }`, `${HOME_SCOPE} .ticker-viewport { padding-left: 8px; }`));
+    const TICKER_GROUND = `${HOME_SCOPE} .ticker-label { padding-right: calc(var(--sp-4) + var(--sp-6)); margin-right: calc(-1 * (var(--sp-4) + var(--sp-6)));`;
+    const tickerFadeLost = withCss((s) => s.replace(TICKER_GROUND, `${HOME_SCOPE} .ticker-label { padding-right: calc(var(--sp-4) + var(--sp-6)); margin-right: 0;`));
+    const tickerRestMoves = withCss((s) => s.replace(`${HOME_SCOPE} .ticker-viewport { padding-left: calc(8px + var(--sp-4) + var(--sp-6)); }`, `${HOME_SCOPE} .ticker-viewport { padding-left: 8px; }`));
+    // Round 4 (G12): the fade touches the label again — round 3's own geometry put back whole (24px of fade from the word's
+    // end, the run 24px under it), and the solid stop pulled back to the word inside today's 40px.
+    const tickerFadeAtWord = withCss((s) => s
+      .replace(TICKER_GROUND, `${HOME_SCOPE} .ticker-label { margin-right: calc(-1 * var(--sp-6));`)
+      .replace(`${HOME_SCOPE} .ticker-viewport { padding-left: calc(8px + var(--sp-4) + var(--sp-6)); }`, `${HOME_SCOPE} .ticker-viewport { padding-left: calc(8px + var(--sp-6)); }`));
+    const tickerSolidLost = withCss((s) => s.replace(`${TICKER_GROUND} background: linear-gradient(90deg, var(--bg-inset) 0%, var(--bg-inset) calc(100% - var(--sp-6)),`,
+      `${TICKER_GROUND} background: linear-gradient(90deg, var(--bg-inset) 0%, var(--bg-inset) calc(100% - var(--sp-4) - var(--sp-6)),`));
     const tickerDotOff = withCss((s) => s.replace(`${HOME_SCOPE} .ticker-sep { margin-left: var(--sp-6); }`, `${HOME_SCOPE} .ticker-sep { margin-left: var(--sp-5); }`));
     const figure14 = withCss(inRule(".kp-jbal__fig", "font-size: 12px", "font-size: 14px"));
     const gap8 = withCss(inRule(".kp-jhdr__row", "gap: 6px;", "gap: 8px;"));
@@ -3093,9 +3103,13 @@ ${s}`);
       { name: "the LIVE label's padding goes back inline", expect: at("7.ticker-edge ·"),
         world: tickerInline, landed: changed(tickerInline, TICKER), landedAs: "an inline style no journey rule can reach" },
       { name: "the label stops overlapping the run", expect: at("7.ticker-fade ·"),
-        world: tickerFadeLost, landed: cssChanged(tickerFadeLost), landedAs: "a glyph cut at full ink right after LIVE again" },
+        world: tickerFadeLost, landed: cssChanged(tickerFadeLost), landedAs: "a glyph cut at full ink after LIVE again" },
       { name: "the run starts under the label without its extra padding", expect: at("7.ticker-fade ·"),
-        world: tickerRestMoves, landed: cssChanged(tickerRestMoves), landedAs: "item 1 rests under the fade, 24px left of where it was" },
+        world: tickerRestMoves, landed: cssChanged(tickerRestMoves), landedAs: "item 1 rests under the label's solid ground, 40px left of where it was" },
+      { name: "the fade touches the label again (round 3's 24px from the word's end)", expect: at("7.ticker-fade ·"),
+        world: tickerFadeAtWord, landed: cssChanged(tickerFadeAtWord), landedAs: "a faded glyph 1px after MUBASHARA — \"MUBASHARAsiku\"" },
+      { name: "the label's solid ground is lost inside its 40px (the fade starts at the word)", expect: at("7.ticker-fade ·"),
+        world: tickerSolidLost, landed: cssChanged(tickerSolidLost), landedAs: "a 40px fade from the word's end, its first glyph ~2px after the label" },
       { name: "the separator dot's margin leaves the scale's 24", expect: at("7.ticker-dot ·"),
         world: tickerDotOff, landed: cssChanged(tickerDotOff), landedAs: "28px before the dot and 32 after it" },
       { name: "a 14px figure below 360", expect: at("7.figure ·"),
