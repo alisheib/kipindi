@@ -528,6 +528,7 @@ async function consolePass() {
     ok(`${vp.name} · BLANK · ⛔ no number field and NO "Another number" for this GROWTH officer (a test to a typed number is for ADMIN and COMPLIANCE only — Ali, 2026-10-09) — no tel input, nothing named phone, msisdn, number or to — and ⛔ OD24 no TZS on the page`,
       (await page.locator('main#main-content input[type="tel"], main#main-content [inputmode="tel"], main#main-content input[name="phone"], main#main-content input[name="msisdn"], main#main-content input[name="number"], main#main-content input[name="to"]').count()) === 0
         && !(await has(page, '[data-test-choice="typed"]')) && !(await has(page, '[data-test-choice-why="typed"]'))
+        && (await attr(page, "[data-test-card]", "data-test-typed-offered")) === "no"
         && !(await textOf(page, SEL.test)).includes("Another number")
         && !/TZS/.test(await mainText(page)),
       `typed choice ${await has(page, '[data-test-choice="typed"]')} · "${(await textOf(page, SEL.test)).slice(0, 120)}"`);
@@ -1191,7 +1192,8 @@ async function typedPass() {
       const ownChecked = await page.locator(T.own).first().isChecked().catch(() => null);
       ok(`${key} · STATE 1 · "Send the test to": my own number, masked, is chosen by default, with "Another number" beside it`,
         /^cmp_/.test(s.draft) && ownChecked === true && (await textOf(page, `${T.choice} legend`)) === TYPED.legend
-          && (await textOf(page, '[data-test-choice="own"]')) === `My own number — ${maskedFor(s.phone)}` && (await has(page, T.typed)),
+          && (await textOf(page, '[data-test-choice="own"]')) === `My own number — ${maskedFor(s.phone)}` && (await has(page, T.typed))
+          && (await attr(page, "[data-test-card]", "data-test-typed-offered")) === "yes",
         `${await textOf(page, T.choice)}`);
       ok(`${key} · STATE 2 · "Another number" is DISABLED with its reason beside it — licence outreach is closed — and no number field is drawn`,
         (await isDisabled(page, T.typed)) === true && (await textOf(page, T.typedWhy)) === TYPED.closed && !(await has(page, T.number)),
@@ -1256,7 +1258,8 @@ async function typedPass() {
     await waitReady(growth.page);
     ok("1280-growth · ⛔ a test to a typed number is for ADMIN and COMPLIANCE only (Ali, 2026-10-09) — with licence outreach open and adult.test saved, GROWTH is offered \"My own number\" alone: no \"Another number\", no number field",
       (await textOf(growth.page, '[data-test-choice="own"]')) === `My own number — ${maskedFor(growthPhone)}` && !(await has(growth.page, T.typed))
-        && !(await has(growth.page, '[data-test-choice="typed"]')) && !(await has(growth.page, T.number)) && !(await textOf(growth.page, SEL.test)).includes("Another number"),
+        && !(await has(growth.page, '[data-test-choice="typed"]')) && !(await has(growth.page, T.number)) && !(await textOf(growth.page, SEL.test)).includes("Another number")
+        && (await attr(growth.page, "[data-test-card]", "data-test-typed-offered")) === "no" && (await attr(growth.page, "[data-test-card]", "data-test-target")) === "own",
       await textOf(growth.page, SEL.test));
     await fitCheck(growth.page, "1280-growth", "typed-growth-own-only");
     await stateShot(growth.page, "1280-growth", "typed-growth-own-only", `My own number — ${maskedFor(growthPhone)}`, SEL.test);
