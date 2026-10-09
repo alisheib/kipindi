@@ -57,7 +57,8 @@ export type Person = {
   name: string | null;
   locale: "SW" | "EN";
   expect: Expect;
-  /** A stop-link token minted before the run (an earlier campaign's message) — what lets the person "tap stop" mid-run. */
+  /** A stop-link token minted before the run (an earlier campaign's message, sent before the ruling of 2026-10-09 stopped
+   *  printing links) — what lets the person "tap stop" mid-run. */
   oldToken: string | null;
   /** Set when a stop landed mid-run: the person is refused from that instant. */
   lateStopAt: number | null;
@@ -101,6 +102,8 @@ const NAMES = [
   "Mwajuma", "Omari", "Upendo", "Chausiku", "Gaudence", "Kassim", "Lulu", "Mussa", "Nuru",
 ] as const;
 
+/** The campaign's stored source phrase — still campaign data, never printed since the owner's ruling of 2026-10-09 (S1.messages
+ *  holds every message to that: it is stored here so its absence from the wire means something). */
 export const SOURCE_LINE = "Kutoka orodha ya 50pick.";
 export const BODY_SW = "50pick: Habari {jina}, ofa ya leo.";
 export const BODY_EN = "50pick: Hi {jina}, today's offer.";
@@ -481,7 +484,8 @@ export async function confirmedCampaign(h: Harness, spec: CampaignSpec): Promise
  * ⭐ SOME PEOPLE TAP THEIR STOP LINK WHILE THE CAMPAIGN RUNS — through the REAL opt-out service (the suppression row, the ledger
  * row, the toggle). Victims are chosen among those who hold an old link AND are still waiting unclaimed on this campaign, so the
  * oracle is crisp: from this instant each is refused (`suppressed`) and must have no message on the wire, before or after. Returns
- * how many stopped.
+ * how many stopped. ⭐ An OLD link — one a message sent before the owner's ruling of 2026-10-09 carried: since the ruling no
+ * message prints a link (S1.messages proves this run's carry none), and the stop page still obeys every link already sent.
  */
 export async function applyLateStops(h: Harness, world: World, campaignId: string, k: number): Promise<number> {
   const rows = await h.reader.recipients(campaignId);
