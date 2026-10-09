@@ -65,6 +65,8 @@ export const ENGINE_MIGRATIONS = Object.freeze([
   "20261004120000_contact_list_basis",
   "20261004140000_sms_recipient_unconfirmed",
   "20261008120000_sms_recipient_outcome_index",
+  // S15's importer (2026-10-09): ContactImport.targetListId references "ContactList" — the list an import adds its contacts to.
+  "20261009120000_contact_import_target_list",
 ]);
 
 /** The SystemConfig keys the tools read (never write). ⭐ `test:marketing-preflight` P6e holds each to the APP's own constant
