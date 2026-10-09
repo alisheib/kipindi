@@ -1149,8 +1149,11 @@ export async function resultsClaims(impl: ResultsImpl, h: ResultsHarness): Promi
     // A label that may not wrap: cut off with an ellipsis, held on one line, or clipped by its box.
     const CUT = ["truncate", "text-ellipsis", "text-clip", "whitespace-nowrap", "text-nowrap", "overflow-hidden"];
     const cut = (cls: readonly string[]): boolean => cls.some((t) => CUT.includes(t) || t.startsWith("line-clamp"));
-    // A class that holds only from some width on (sm:, md:, …): the same box at every width has none.
-    const sized = (cls: readonly string[]): boolean => cls.some((t) => t.includes(":"));
+    // A class that holds only from some width (or state) on — `sm:`, `md:`, `min-[400px]:` …: the same box at every width
+    // has none. A colon inside square brackets is an arbitrary property (`[overflow-wrap:anywhere]`, a wrapping rule /help
+    // uses), not a variant, so it is read with its brackets taken out.
+    const outsideBrackets = (t: string): string => t.split("[").map((p, i) => (i === 0 ? p : p.slice(p.indexOf("]") + 1))).join("");
+    const sized = (cls: readonly string[]): boolean => cls.some((t) => outsideBrackets(t).includes(":"));
     // ⭐ The label shrinks and wraps; the count beside it never shrinks, and the row aligns on the first baseline — so the count
     // stays at the right of the label's FIRST line, however many lines the label takes.
     const holds = (x: LabelRow): boolean => x.row.includes("flex") && x.row.includes("items-baseline") && x.row.includes("justify-between")
@@ -1345,7 +1348,9 @@ export function resultsPlants(phoneLabel: string): ResultsPlant[] {
         const html = base.renderPage(view, o);
         return view.results === null ? html : `${html}<div data-live-reasons><p>${COPY.LIVE_BREAKDOWN_TITLE}</p></div>`;
       } }) },
-    { name: "R-R13c · the figures card never draws its list — not even for a viewer whose view has no results", expect: [L.r13],
+    // ⭐ R16 fails with it, and is meant to: it holds the figures card's own list to wrap, and refuses to pass on a list
+    // that is not there (a check with nothing to look at is not a check).
+    { name: "R-R13c · the figures card never draws its list — not even for a viewer whose view has no results (and R16 finds no list of its to hold to wrap)", expect: [L.r13, L.r16],
       impl: withResults({ renderPage: (view, o) => base.renderPage({ ...view, notSentReasons: null }, o) }) },
     { name: "R-P4 · a phone number reaches the results card", expect: [phoneLabel],
       impl: withResults({ render: (view, o) => `${base.render(view, o)}<p>+255712345678</p>` }) },
