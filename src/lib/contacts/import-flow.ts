@@ -332,8 +332,10 @@ export type ImportResultView = {
    *  "covers N of N", N above 0): members the import added joined after any earlier recording, so it reads false until
    *  the basis is recorded again on the Lists card. ⭐ C8b (B5) · "every live member" as the VIEWER may count them — the
    *  Lists card's own rule — and `withAccount` a reader's figure alone (null for anyone else): the members linked to a
-   *  50pick account, whom a list basis never reaches. */
-  list: { id: string; name: string; covered: boolean; withAccount: number | null } | null;
+   *  50pick account, whom a list basis never reaches. ⭐ C8b review (MINOR 2) · `joined` is how many contacts THIS run put
+   *  on the list (`contactListMember.joinedFromImport`) — the result says when it is none — and `createdOnly` whether the
+   *  run could only add the contacts it created (B4), which is why it may be none. */
+  list: { id: string; name: string; covered: boolean; withAccount: number | null; joined: number; createdOnly: boolean } | null;
 };
 export type ImportResultResult = ImportAnswer<{ result: ImportResultView }>;
 

@@ -4607,9 +4607,13 @@ const HOUSE_TS_KEYS = new Set(["dueAt", "staleAt", "deadlineAt", "claimedUntil",
   const priRedate = flat31(memberOf31(priBook31, "redateAdded"));
   const memSplit = flat31(memberOf31(memBasis31, "coverageSplit"));
   const priSplit = flat31(memberOf31(priBasis31, "coverageSplit"));
+  const memMembers31 = region(storeSrc, `${NL31}  contactListMember: {`);
+  const priMembers31 = region(dalSrc, `${NL31}  contactListMember: {`);
+  const memJoined = flat31(memberOf31(memMembers31, "joinedFromImport"));
+  const priJoined = flat31(memberOf31(priMembers31, "joinedFromImport"));
   const model31 = decomment(readFileSync(join(SRC, "lib/server/contacts/added-redate-model.ts"), "utf8"));
 
-  // ── 31.0 · the three members, named, in both twins ──
+  // ── 31.0 · the four members, named, in both twins ──
   const SIGS31: Array<[string, string]> = [
     [memRevive, "reviveTombstone: (revival: ContactTombstoneRevival): ContactTombstoneRevived | null =>"],
     [priRevive, "reviveTombstone: async (revival: ContactTombstoneRevival): Promise<ContactTombstoneRevived | null> =>"],
@@ -4617,8 +4621,10 @@ const HOUSE_TS_KEYS = new Set(["dueAt", "staleAt", "deadlineAt", "claimedUntil",
     [priRedate, "redateAdded: async (rows: ContactAddedRedate[]): Promise<ContactAddedRedateResult> =>"],
     [memSplit, "coverageSplit: (listId: string): ListBasisCoverageSplit =>"],
     [priSplit, "coverageSplit: async (listId: string): Promise<ListBasisCoverageSplit> =>"],
+    [memJoined, "joinedFromImport: (q: ContactListJoinedQuery): number =>"],
+    [priJoined, "joinedFromImport: async (q: ContactListJoinedQuery): Promise<number> =>"],
   ];
-  ok("31.0 · both twins implement marketingContact.reviveTombstone, marketingContact.redateAdded and contactListBasis.coverageSplit, each NAMED (ContactTombstoneRevival → ContactTombstoneRevived | null · ContactAddedRedate[] → ContactAddedRedateResult · a list id → ListBasisCoverageSplit), and §19's and §27's member parity hold the namespaces equal",
+  ok("31.0 · both twins implement marketingContact.reviveTombstone, marketingContact.redateAdded, contactListBasis.coverageSplit and (the C8b review's MINOR 2) contactListMember.joinedFromImport, each NAMED (ContactTombstoneRevival → ContactTombstoneRevived | null · ContactAddedRedate[] → ContactAddedRedateResult · a list id → ListBasisCoverageSplit · ContactListJoinedQuery → a count), and §19's and §27's member parity hold the namespaces equal",
     SIGS31.every(([body, sig]) => body.includes(sig) && body.length > 200), SIGS31.map(([b]) => b.length).join("/"));
 
   // ── 31.revive · B1 — the compare first, the memberships in the same step, the caches never written ──
@@ -4684,6 +4690,25 @@ const HOUSE_TS_KEYS = new Set(["dueAt", "staleAt", "deadlineAt", "claimedUntil",
   ok("31.redate · ⭐ C8b (B8) · ADDED PUT RIGHT, ALL OR NOTHING — both twins ask the ONE shape rule first (added-redate-model.ts: at most ADDED_REDATE_MAX rows, each id once, every instant readable, never earlier than the one it replaces); Prisma ONE transaction (its only pc()) of conditional raw updates — createdAt set, updatedAt the greatest of its own and the new instant, where the id AND the expected createdAt — a row that counts 0 throwing inside it and answered changed; memory EVERY row compared before the first write, the later stamp kept; neither touches updatedBy",
     redateOk31(memRedate, priRedate, model31), `${priRedate.slice(0, 120)} | ${memRedate.slice(0, 120)}`);
 
+  // ── 31.joined · the C8b review's MINOR 2 — how many contacts an import put on its list ──
+  const PRI_WINDOW31 = 'and m."addedAt" >= ${q.sinceIso}::timestamptz and m."addedAt" <= ${q.untilIso}::timestamptz';
+  const PRI_TOMB_J31 = 'and c."sourceRef" is distinct from ${ERASURE_EVIDENCE}::text';
+  const PRI_OURS31 = 'and (c."importId" = ${q.importId}';
+  const PRI_ONLY31 = 'or (${q.createdOnly}::boolean = false and exists (';
+  const PRI_FILED31 = 'where r."importId" = ${q.importId} and r."msisdn" = c."msisdn" and r."outcome"::text in (' + "'update', 'keep')";
+  const MEM_WINDOW31 = "if (added < since || added > until) continue;";
+  const MEM_TOMB_J31 = "if (c === undefined || c.sourceRef === ERASURE_EVIDENCE) continue;";
+  const MEM_OURS31 = "if (c.importId === q.importId || filed.has(c.msisdn)) joined++;";
+  const MEM_ONLY31 = "if (!q.createdOnly) {";
+  const MEM_FILED31 = 'if (r.msisdn !== null && (r.outcome === "update" || r.outcome === "keep")) filed.add(r.msisdn);';
+  const joinedOk31 = (m: string, p: string): boolean =>
+    p.includes(PRI_WINDOW31) && p.includes(PRI_TOMB_J31) && p.includes(PRI_OURS31) && p.includes(PRI_ONLY31) && p.includes(PRI_FILED31)
+      && count31(p, "pc()") === 1
+      && m.includes(MEM_WINDOW31) && m.includes(MEM_TOMB_J31) && m.includes(MEM_OURS31) && m.includes(MEM_ONLY31) && m.includes(MEM_FILED31)
+      && before31(m, MEM_ONLY31, MEM_FILED31);
+  ok("31.joined · ⭐ C8b review (MINOR 2) · HOW MANY CONTACTS AN IMPORT PUT ON ITS LIST, ALIKE IN BOTH TWINS — the memberships added between the run's two instants, the tombstone left out NULL-SAFELY, whose contact the run created (its importId) or — only when the run is not created-only — whose number one of the run's own rows updated or kept; Prisma ONE statement (its only pc()), memory one pass",
+    joinedOk31(memJoined, priJoined), `${priJoined.slice(0, 120)} | ${memJoined.slice(0, 120)}`);
+
   // ── 31.callers · read over the REAL src (ROOT) — each member has its declared callers and no other ──
   const BS31 = String.fromCharCode(92);
   const walk31 = (dir: string): string[] => readdirSync(dir, { withFileTypes: true }).flatMap((e) =>
@@ -4698,6 +4723,8 @@ const HOUSE_TS_KEYS = new Set(["dueAt", "staleAt", "deadlineAt", "claimedUntil",
     reviveTombstone: ["lib/server/marketing/registration-contact.ts"],
     redateAdded: ["lib/server/contacts/added-redate.ts"],
     coverageSplit: ["app/admin/contacts/lists-loader.ts", "lib/server/contacts/import-commit.ts"],
+    // C8b review (MINOR 2) · the import's result, alone.
+    joinedFromImport: ["lib/server/contacts/import-commit.ts"],
   };
   const texts31 = walk31(src31).map((f) => [rel31(f), readFileSync(f, "utf8")] as const)
     .filter(([f, raw]) => !TWINS31.includes(f) && Object.keys(CALLERS31).some((n) => raw.includes(n)))
@@ -4726,9 +4753,13 @@ const HOUSE_TS_KEYS = new Set(["dueAt", "staleAt", "deadlineAt", "claimedUntil",
       && !callersOk31([...texts31, ["app/admin/contacts/planted-actions.ts", "await db.marketingContact.redateAdded(rows);"] as const])],
     ["the revival called from a second place — the importer reviving a tombstone", !callersOk31(texts31.map(([f, t]) =>
       [f, f === "lib/server/contacts/import-commit.ts" ? `${t} db.marketingContact.reviveTombstone(x);` : t] as const))],
+    ["a Prisma join count without its window — every member the run's numbers ever had counted as joined", joinedOk31(memJoined, priJoined)
+      && !joinedOk31(memJoined, planted31(priJoined, PRI_WINDOW31, ""))],
+    ["a memory join count that counts the tombstone", !joinedOk31(planted31(memJoined, MEM_TOMB_J31, "if (c === undefined) continue;"), priJoined)],
+    ["a memory join count that ignores created-only — a masked run's kept rows counted", !joinedOk31(planted31(memJoined, MEM_ONLY31, "if (true) {"), priJoined)],
   ];
   const deaf31 = controls31.filter(([, held]) => !held).map(([name]) => name);
-  ok("31.c1 · CONTROL · every §31 matcher can fail: the REAL bodies pass, and ONE defect planted in each — a revival that does not ask the mark, deletes the memberships outside its transaction, keeps them, or writes the caches; a split that drops the linked members or counts the tombstone; a re-dating without its compare or writing before every row is checked; a shape rule that lets one contact be named twice; a second caller of the re-dating or the revival — FAILS its predicate",
+  ok("31.c1 · CONTROL · every §31 matcher can fail: the REAL bodies pass, and ONE defect planted in each — a revival that does not ask the mark, deletes the memberships outside its transaction, keeps them, or writes the caches; a split that drops the linked members or counts the tombstone; a re-dating without its compare or writing before every row is checked; a shape rule that lets one contact be named twice; a second caller of the re-dating or the revival; a join count without its window, counting the tombstone, or blind to created-only — FAILS its predicate",
     deaf31.length === 0, deaf31.join(" | ") || `${controls31.length} controls held`);
 }
 

@@ -68,8 +68,8 @@ import { db, CONTACT_IMPORT_OPEN_RUNS_MAX } from "@/lib/server/store";
 import type {
   ContactImportCommitBatch, ContactImportCommitCreate, ContactImportCommitOutcome, ContactImportCommitResult,
   ContactImportCommitUpdate, ContactImportFailSentence, ContactImportFailedPage, ContactImportFailedQuery,
-  ContactImportFreeze, ContactImportKeptCount, ContactImportOthersQuery, ContactImportTransition, ListBasisCoverageSplit,
-  StoredContactImport, StoredContactImportRow, StoredContactList, StoredContactListBasis,
+  ContactImportFreeze, ContactImportKeptCount, ContactImportOthersQuery, ContactImportTransition, ContactListJoinedQuery,
+  ListBasisCoverageSplit, StoredContactImport, StoredContactImportRow, StoredContactList, StoredContactListBasis,
 } from "@/lib/server/store";
 import { listFiguresFor } from "./list-figures";
 import { admissionSnapshot } from "@/lib/server/admission";
@@ -134,6 +134,8 @@ export type ImportListStore = {
   /** ⭐ C8b (B5) · the Lists card's own figures, split by the account link (`contactListBasis.coverageSplit`) — each viewer
    *  is shown them through the ONE rule (`listFiguresFor`). */
   split: (listId: string) => Promise<ListBasisCoverageSplit>;
+  /** ⭐ C8b review (MINOR 2) · how many contacts the run put on the list (`contactListMember.joinedFromImport`). */
+  joined: (q: ContactListJoinedQuery) => Promise<number>;
   /** The list's ONE standing: its newest basis recording, revoked or not (U33a-L, M1). */
   newestBasis: (listId: string) => Promise<StoredContactListBasis | null>;
 };
@@ -253,6 +255,7 @@ export const IMPORT_COMMIT_DEPS: ImportCommitDeps = {
     all: async () => db.contactList.listAll(),
     find: async (id) => db.contactList.find(id),
     split: async (listId) => db.contactListBasis.coverageSplit(listId),
+    joined: async (q) => db.contactListMember.joinedFromImport(q),
     newestBasis: async (listId) => (await db.contactListBasis.listForList(listId))[0] ?? null,
   },
   openRuns: async (q) => db.contactImport.listOpenByOthers(q),
@@ -891,6 +894,10 @@ export function keptSplitOf(counts: readonly ContactImportKeptCount[]): Exclude<
  * members a list basis can reach — with how many more have a 50pick account beside it (`withAccount`) — and anyone
  * else's is every live member, linked or not, with no such figure: the coverage sentence never tells a masked officer
  * whether a member is a player's.
+ * ⭐ C8b review (MINOR 2) · AND HOW MANY CONTACTS THE RUN PUT ON THE LIST (`joined`, `contactListMember.joinedFromImport` —
+ * the memberships added between the run's start and its end whose contact the run created, or, unless the run is
+ * created-only, whose number its rows updated or kept): a masked officer's import of numbers ALL already in the book now
+ * puts nobody on its list (B4), and the result says so instead of "Added to the list".
  */
 export async function contactImportResult(officerId: string, runId: unknown, deps: ImportCommitDeps = IMPORT_COMMIT_DEPS): Promise<ImportResultResult> {
   const opened = await openImportRun(officerId, runId, deps, COMMIT_REFUSED);
@@ -904,7 +911,14 @@ export async function contactImportResult(officerId: string, runId: unknown, dep
   let list: ImportResultView["list"] = null;
   if (row !== null) {
     const figures = listFiguresFor(await deps.lists.split(row.id), reads);
-    list = { id: row.id, name: row.name, covered: figures.live > 0 && figures.covered === figures.live, withAccount: figures.withAccount };
+    const createdOnly = await listCreatedOnly(run, deps);
+    const joined = run.decisionConfirmedAt === null ? 0 : await deps.lists.joined({
+      listId: row.id, importId: run.id, sinceIso: run.decisionConfirmedAt, untilIso: run.finishedAt ?? deps.now().toISOString(), createdOnly,
+    });
+    list = {
+      id: row.id, name: row.name, covered: figures.live > 0 && figures.covered === figures.live, withAccount: figures.withAccount,
+      joined, createdOnly,
+    };
   }
   return { ok: true, result: { view, kept, list } };
 }

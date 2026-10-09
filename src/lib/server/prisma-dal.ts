@@ -540,6 +540,7 @@ import type {
 // C8b · the revival (B1), the list figures by viewer (B5) and the "Added" re-dating (B8) — named, as dal-parity needs.
 import type {
   ContactTombstoneRevival, ContactTombstoneRevived, ListBasisCoverageSplit, ContactAddedRedate, ContactAddedRedateResult,
+  ContactListJoinedQuery,
 } from "./store";
 import { assertAddedRedates } from "@/lib/server/contacts/added-redate-model";
 
@@ -4755,6 +4756,23 @@ export const prismaDb = {
         orderBy: [{ addedAt: "desc" }, { listId: "desc" }],
       });
       return rows.map(toStoredContactListMember);
+    },
+    /** C8b review (MINOR 2) · how many of the list's live members the import put on it (`ContactListJoinedQuery`), in ONE
+     *  statement: the memberships added between the run's two instants whose contact is not the tombstone (NULL-SAFELY)
+     *  and is the run's — created by it, or (unless created-only) a number one of its rows updated or kept, asked of the
+     *  run's own rows by `(importId, msisdn)`. ⚠️ `::int`, not bigint. The memory twin mirrors it; `test:dal-parity` §31. */
+    joinedFromImport: async (q: ContactListJoinedQuery): Promise<number> => {
+      const rows = await pc().$queryRaw<Array<{ joined: number }>>`
+        select count(*)::int as joined
+          from "ContactListMember" m
+          join "MarketingContact" c on c."id" = m."contactId"
+         where m."listId" = ${q.listId} and c."sourceRef" is distinct from ${ERASURE_EVIDENCE}::text
+           and m."addedAt" >= ${q.sinceIso}::timestamptz and m."addedAt" <= ${q.untilIso}::timestamptz
+           and (c."importId" = ${q.importId}
+                or (${q.createdOnly}::boolean = false and exists (
+                      select 1 from "ContactImportRow" r
+                       where r."importId" = ${q.importId} and r."msisdn" = c."msisdn" and r."outcome"::text in ('update', 'keep'))))`;
+      return Number(rows[0]?.joined ?? 0);
     },
   },
 

@@ -476,9 +476,16 @@ export const DONE = {
   failuresLoading: "Loading the rows that couldn't be imported…",
   failuresFailed: "The rows that couldn't be imported didn't load. Try again.",
   showAdded: "Show the contacts this import added",
-  listReady: (name: string): string => `Added to the list ${name} — every member is covered for offers.`,
-  listOwed: (name: string): string =>
-    `Added to the list ${name}. The new members aren't covered for offers yet — record the list's basis and 18+ confirmation again on the Lists card.`,
+  /** ⭐ C8b review (MINOR 2 · 4a) · how many contacts THIS import put on the list — never "added" over nobody — and, for a
+   *  reader whose list holds members with a 50pick account, which members the coverage is about. */
+  listReady: (name: string, joined: number, reachOnly: boolean): string =>
+    `${formatNumber(joined)} ${plural(joined, "contact", "contacts")} joined the list ${name} — every member${reachOnly ? " a list basis can reach" : ""} is covered for offers.`,
+  listOwed: (name: string, joined: number): string =>
+    `${formatNumber(joined)} ${plural(joined, "contact", "contacts")} joined the list ${name}. The new members aren't covered for offers yet — record the list's basis and 18+ confirmation again on the Lists card.`,
+  /** C8b review (MINOR 2) · nobody joined — now usual for a masked officer's import of numbers already in the book (B4). */
+  listNone: (name: string, createdOnly: boolean): string => (createdOnly
+    ? `No contact joined the list ${name} — only the contacts an import adds join its list.`
+    : `No contact joined the list ${name} with this import.`),
   /** ⭐ C8b (B5) · a READER's line alone: the list's members linked to a 50pick account, beside the ones a basis reaches. */
   listWithAccount: (n: number): Part[] => [
     fig(n), ` more ${plural(n, "member has", "members have")} a 50pick account — a list basis never reaches them.`,

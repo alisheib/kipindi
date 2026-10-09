@@ -35,6 +35,9 @@
  *      8  C8b (B1) · marketingContact.reviveTombstone — the compare refuses another number and a live row with nothing
  *         written; the revival writes the sign-up's row over the tombstone (its id, number and caches kept) and deletes
  *         its list memberships in ONE transaction; a second revival racing the first answers null;
+ *      9  C8b review (MINOR 2) · contactListMember.joinedFromImport — the memberships a run put on its list, in ONE
+ *         statement: inside its window, its created contacts and (unless created-only) the numbers its rows updated or
+ *         kept, never the tombstone, the edges inclusive;
  *   S  a second FRESH process stages 20,000 rows and settles them in 500-row steps — p50/p95 per call printed, every
  *      row settled exactly once asserted.
  * Every expectation is written HERE BY HAND — an oracle independent of either twin.
@@ -981,6 +984,39 @@ async function phaseC(): Promise<void> {
       const second = await db.marketingContact.reviveTombstone({ id: tomb.id, msisdn: V.tomb, row: signup("probe_rv_second", "Second Comer") });
       ok("8.3 · ⛔ THE RACE ON POSTGRES · a second revival of the same tombstone — another account's sign-up, a moment later — answers null and the first comer's row is byte-identical",
         second === null && firstText !== null && (await textOf("MarketingContact", tomb.id)) === firstText, `${json(second)}`);
+    });
+
+    /* ── 9 · C8b review (MINOR 2) · contactListMember.joinedFromImport — how many contacts a run put on its list ── */
+    await section("9", async () => {
+      const J = { made: num("571", 1), kept: num("571", 2), upd: num("571", 3), before: num("571", 4), other: num("571", 5), tomb: num("571", 6), late: num("571", 7) };
+      const LJ = "cl_probe_joined";
+      await K.mustList(LJ);
+      const run = await K.stagedRun("ci_probe_joined", [
+        { line: 2, msisdn: J.kept }, { line: 3, msisdn: J.upd }, { line: 4, msisdn: J.before }, { line: 5, msisdn: J.tomb },
+      ]);
+      // The run's own outcomes, by SQL: the kept, the one already on the list and the tombstone's number kept; one updated.
+      await exec(`update "ContactImportRow" set outcome = 'keep' where "importId" = $1 and line in (2, 4, 5)`, run.id);
+      await exec(`update "ContactImportRow" set outcome = 'update' where "importId" = $1 and line = 3`, run.id);
+      await K.mustContact(contactOf("mc_probe_jn_made", J.made, { source: "IMPORT", sourceRef: run.id, importId: run.id }));
+      await K.mustContact(contactOf("mc_probe_jn_late", J.late, { source: "IMPORT", sourceRef: run.id, importId: run.id }));
+      for (const [id, n] of [["mc_probe_jn_kept", J.kept], ["mc_probe_jn_upd", J.upd], ["mc_probe_jn_before", J.before], ["mc_probe_jn_other", J.other]] as const) {
+        await K.mustContact(contactOf(id, n));
+      }
+      await K.mustContact(contactOf("mc_probe_jn_tomb", J.tomb, { sourceRef: ERASURE_EVIDENCE, rawInput: J.tomb }));
+      // The run's window is at(10) → at(20): five memberships inside it, one before it, one after it.
+      const inside = at(15);
+      for (const contactId of ["mc_probe_jn_made", "mc_probe_jn_kept", "mc_probe_jn_upd", "mc_probe_jn_other", "mc_probe_jn_tomb"]) {
+        await db.contactListMember.add({ listId: LJ, contactId, addedAt: inside, addedBy: OFFICER });
+      }
+      await db.contactListMember.add({ listId: LJ, contactId: "mc_probe_jn_before", addedAt: at(5), addedBy: OFFICER });
+      await db.contactListMember.add({ listId: LJ, contactId: "mc_probe_jn_late", addedAt: at(25), addedBy: OFFICER });
+      const q = { listId: LJ, importId: run.id, sinceIso: at(10), untilIso: at(20) };
+      const everyone = await counted(() => db.contactListMember.joinedFromImport({ ...q, createdOnly: false }));
+      const createdOnly = await db.contactListMember.joinedFromImport({ ...q, createdOnly: true });
+      const atEdges = await db.contactListMember.joinedFromImport({ ...q, sinceIso: inside, untilIso: inside, createdOnly: false });
+      ok("9.1 · ⭐ C8b review (MINOR 2) ON POSTGRES · joinedFromImport counts, in ONE statement, the memberships added inside the run's window whose contact the run CREATED or whose number one of its rows UPDATED or KEPT — 3: the created one, the kept one, the updated one; NOT the member that joined before the window, the run's created contact that joined after it, another contact, or the tombstone whose number the run kept — and a created-only run counts its created contact alone (1); the window's ends are inclusive",
+        everyone.value === 3 && everyone.queries.length === 1 && createdOnly === 1 && atEdges === 3,
+        `${everyone.value} in ${everyone.queries.length} statement(s) · created-only ${createdOnly} · at the edges ${atEdges}`);
     });
   } catch (e) {
     ok("C · the phase ran to its end", false, errText(e));

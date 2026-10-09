@@ -902,6 +902,24 @@ export type StoredContactListMember = {
 /** A DAL parameter, named for the same reason `MessagingKey` is. */
 export type ContactListKey = { listId: string; contactId: string };
 
+/**
+ * C8b review (MINOR 2) · HOW MANY CONTACTS AN IMPORT PUT ON ITS LIST (`contactListMember.joinedFromImport`) — the list's
+ * live members (never the tombstone) whose membership was added between the run's start and its end and whose contact is
+ * the run's: one it CREATED (`importId` the run), or — unless the run was created-only (B4) — one whose number a row of
+ * the file UPDATED or KEPT. ⭐ A membership the contact already held keeps its first `addedAt` (the deduplication), so a
+ * contact that was on the list before the run is never counted. The import's result says this number, and says it when
+ * it is NONE — never "added to the list" over nobody.
+ */
+export type ContactListJoinedQuery = {
+  listId: string;
+  importId: string;
+  /** The run's start (`decisionConfirmedAt`) and its end (`finishedAt`, or now for a run still going), as ISO instants. */
+  sinceIso: string;
+  untilIso: string;
+  /** C8b (B4) · a created-only run: only the contacts it created count. */
+  createdOnly: boolean;
+};
+
 /* ═══ U33a-L · THE LIST BASIS — `ContactListBasis` (OD57 · OD58; docs/marketing-specs/U33a-U37c-OD58.md §4.2) ═══════════
  * ⛔ NEVER A CONSENT. An officer recorded, for a whole list at one instant, why 50pick may message its members under its
  * Gaming Board licence without their consent, that every member is 18 or older, and where the numbers came from. The
@@ -4129,6 +4147,32 @@ const memoryDb = {
       Array.from(store.contactListMembers.values())
         .filter((m) => m.contactId === contactId)
         .sort((a, b) => b.addedAt.localeCompare(a.addedAt) || b.listId.localeCompare(a.listId)),
+    /** C8b review (MINOR 2) · how many of the list's live members the import put on it (`ContactListJoinedQuery`): ONE
+     *  pass over the memberships, the run's own updated and kept numbers read once. An instant that cannot be read THROWS,
+     *  as the Prisma twin's cast does. The Prisma twin is ONE statement; `test:dal-parity` §31 holds the pair. */
+    joinedFromImport: (q: ContactListJoinedQuery): number => {
+      const since = Date.parse(q.sinceIso);
+      const until = Date.parse(q.untilIso);
+      if (!Number.isFinite(since) || !Number.isFinite(until)) {
+        throw new Error("contactListMember.joinedFromImport: an instant cannot be read — nothing was counted.");
+      }
+      const filed = new Set<string>();
+      if (!q.createdOnly) {
+        for (const r of (store.contactImportRows.get(q.importId) ?? new Map<number, StoredContactImportRow>()).values()) {
+          if (r.msisdn !== null && (r.outcome === "update" || r.outcome === "keep")) filed.add(r.msisdn);
+        }
+      }
+      let joined = 0;
+      for (const m of store.contactListMembers.values()) {
+        if (m.listId !== q.listId) continue;
+        const added = Date.parse(m.addedAt);
+        if (added < since || added > until) continue;
+        const c = store.marketingContacts.get(m.contactId);
+        if (c === undefined || c.sourceRef === ERASURE_EVIDENCE) continue;
+        if (c.importId === q.importId || filed.has(c.msisdn)) joined++;
+      }
+      return joined;
+    },
   },
 
   /* ═══ U33a-L · THE LIST BASIS (OD57 · OD58) ══════════════════════════════════════════════════════════════════════════
