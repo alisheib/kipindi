@@ -859,6 +859,7 @@ async function runSurface(f: Fixtures): Promise<void> {
     `${taken?.identifier} → ${after?.identifier}`);
 
   // ── THE FOOTER'S LINK AND THIS ROUTE ARE THE SAME PLACE ─────────────────────────────────
+  // (⟶ 2026-10-09: no message prints the link since the owner's ruling; every link sent before still lands here.)
   ok("S15 · ⭐ the SMS footer's path and this route agree, because both come from ONE constant",
     OPTOUT_PATH === "/s/" && live.startsWith(OPTOUT_PATH));
   ok("S16 · the token length the footer measures is the length this page accepts",

@@ -5,7 +5,9 @@
  * `NODE_ENV` is not `production`, which on this platform means a developer's own machine.
  *
  * ⭐ WHY THIS EXISTS AT ALL. Nothing mints an opt-out token yet — that is U42, far downstream —
- * so `/s/<token>` has no valid state to photograph without one. ⛔ And the token is minted
+ * so `/s/<token>` has no valid state to photograph without one. (⟶ 2026-10-09: the send engine and
+ * the test send mint them now — `ensureOptOutToken` — though no message prints one since the owner's
+ * ruling; a bare dev box still has none until something is sent, so the drive keeps this route.) ⛔ And the token is minted
  * through `mintOptOutToken`, the SAME function production will call: a drive that hand-built a
  * row would be a picture of a page resolving a fixture, which proves nothing about the page
  * resolving a real link.

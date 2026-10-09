@@ -9,6 +9,12 @@ Ali's instruction: "remove the stales that confuse developers, keep a clean plan
 > for — the traps, the review findings, the measurements behind each ✅ — and because a future audit may need to know
 > why a thing is the way it is. Read it for the WHY; never act on a "▶ NEXT", a "RESUME HERE" or a builder named in it:
 > each of those was true on the day it was written and has since been done, superseded or abandoned.
+>
+> ⟶ **2026-10-09 · the rules quoted here are history too.** Since the owner's FINAL rule of 2026-10-07 consent is no
+> condition while licence outreach is open, and since his rulings of 2026-10-09 nothing is appended to a marketing SMS
+> (no footer, source line, "50pick 18+", helpline or stop link), a test to a typed number is for the Owner and
+> Compliance only, and no public text names the SMS company — `docs/COMPLIANCE-DECISIONS.md`, its 2026-10-07 and
+> 2026-10-09 entries, and [`MARKETING-RULES.md`](MARKETING-RULES.md) for the rules in force.
 
 What it holds, newest first, exactly as §0 carried it:
 

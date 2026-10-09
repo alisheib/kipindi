@@ -1,3 +1,6 @@
+✅ DONE — landing 2026-10-09 with S14's contacts push (branch `s14-c3c`); kept as the design record. ("Today" below is
+before C3c: once it lands an .xlsx over 700 KB is read in the officer's browser, and 700 KB stays only the server
+action's own upload cap.)
 # C3c — big Excel workbooks read in the officer's browser (brief for the builder)
 
 ## Why

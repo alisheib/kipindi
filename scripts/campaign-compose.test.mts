@@ -305,7 +305,9 @@ function check(size: Sizer, log: (l: string) => void): string[] {
 
 /* ══ U4 — THE STATUTORY ENVELOPE ════════════════════════════════════════════
  * Separate from `check` because these assertions are about the FOOTER, and the red control plants a
- * different thing here: a composer that sizes the body instead of the message. */
+ * different thing here: a composer that sizes the body instead of the message.
+ * ⟶ 2026-10-09: the envelope is EMPTY (the owner's ruling — nothing is appended to a marketing SMS); the checks
+ * below now prove that nothing is. */
 
 type Composer = (body: string, token: string) => MarketingCompose;
 
@@ -529,7 +531,8 @@ const REAL_TEMPLATE: TemplateImpl = {
 const TT = "a1b2c3d4";
 /** §10's realistic phrase — a TEST string. ⛔ The real wording is owner gate G5's (OQ3), never this suite's. */
 const PHRASE = "Umetupa namba yako 50pick.";
-/** The room a BLANK phrase keeps, restated BY HAND (the longest phrase, one septet a letter), as `worstTyped` restates the name's. */
+/** The room a BLANK phrase kept until 2026-10-09 (M5: the longest phrase, one septet a letter), restated BY HAND as
+ *  `worstTyped` restates the name's — nothing is reserved since the owner's ruling, so it no longer moves the room. */
 const RESERVE = "W".repeat(SOURCE_PHRASE_MAX_CHARS);
 /** A phrase of exactly the longest length — §10's fixture padded with x's. A TEST string, never wording. */
 const MAX_PHRASE = PHRASE + "x".repeat(Math.max(0, SOURCE_PHRASE_MAX_CHARS - unitsIn(PHRASE, "GSM7")));
@@ -947,7 +950,8 @@ function checkTemplate(impl: TemplateImpl, log: (l: string) => void): string[] {
     const v15 = impl.validate(draft({ bodySw: UNI15 }), "");
     const seven15 = [0x2018, 0x2019, 0x201C, 0x201D, 0x2013, 0x2014, 0x2026].map((x) => cc(x)).join(" ");
     const many15 = impl.counterFor(`50pick ${seven15}`, "SW", FB, "");
-    // A six-letter source line leaves Unicode some room: the sentence then quotes it, and it is positive.
+    // A six-letter source line (priced until 2026-10-09, it changes nothing since): Unicode keeps its room, the sentence
+    // quotes it, and it is positive.
     const room15 = impl.counterFor(UNI15, "SW", FB, "Chanzo");
     const negatives = [...c15.problems, ...many15.problems, ...room15.problems, ...(v15.problems.bodySw ?? [])].filter((p) => NEG_NUMBER.test(p));
     const first15 = c15.problems[0] ?? "";
@@ -2032,7 +2036,8 @@ async function checkTestSend(impl: ComposeImpl, log: (l: string) => void): Promi
     const n = key.slice(3);
     return { local: `0${n.slice(0, 3)} ${n.slice(3, 6)} ${n.slice(6)}`, intl: `+255 ${n.slice(0, 3)} ${n.slice(3, 6)} ${n.slice(6)}` };
   };
-  /** A saved DRAFT carrying a source line (§10's fixture phrase), as U37s stamps one. */
+  /** A saved DRAFT carrying a source line (§10's fixture phrase), as U37s stamped one until 2026-10-09 (history only:
+   *  nothing stamps or reads it now). */
   const phrasedDraft = async (): Promise<string> => {
     const id = await u37bDraft();
     const set = await db.smsCampaign.update(id, { sourcePhrase: PHRASE }, { draftRevision: 0 }, new Date().toISOString());
@@ -3272,11 +3277,13 @@ if (!PROVE_RED) {
 
   /* ── §15's plants: the renderer and the worst-case counter (U37a) ───────── */
   {
-    /** At the room with NO source line yet — the counter keeps the longest phrase's there (M5). */
+    /** At the room with NO source line — M5 kept the longest phrase's room there until 2026-10-09; since the owner's
+     *  ruling it is the whole message's, like the two below. */
     const atB = fillTo(HEAD, operatorBudget("SW", RESERVE));
     /** At the room with §10's phrase. */
     const atP = fillTo(HEAD, operatorBudget("SW", PHRASE));
-    /** At the room with NO phrase priced at all — what a counter that forgot M5 would offer. */
+    /** At the room with NO phrase priced at all — what a counter that forgot M5 would have offered; since 2026-10-09
+     *  the real counter's. */
     const atNone = fillTo(HEAD, operatorBudget("SW"));
     /** §15.13's stored body: 3 over in the worst case, though a short name's own message fits. */
     const over13 = tpl({ bodySw: `${atP}aaa`, sourcePhrase: PHRASE });

@@ -18,9 +18,10 @@ import { optOutClientKey } from "./client-key";
  * never re-typed: a second definition of either is a link that resolves in a test and 404s in
  * somebody's hand.
  *
- * ⛔ NO LOGIN, AND THAT IS A LEGAL REQUIREMENT RATHER THAN A CONVENIENCE. ETA s.32(1)(c)
- * requires an opt-out in EVERY message; an opt-out that first demands a password is one a
- * person without an account — an imported contact — can never use. `/s` is deliberately
+ * ⛔ NO LOGIN. It was set as a legal requirement while every message carried the link (ETA
+ * s.32(1)(c) — an opt-out in EVERY message); since the owner's ruling of 2026-10-09 no message
+ * prints it, and every link already sent must still work for a person without an account — an
+ * imported contact — who could never use an opt-out that first demands a password. `/s` is deliberately
  * absent from `PROTECTED_PREFIXES` (`proxy.ts:40`) and `test:marketing-optout` asserts it
  * stays absent, because adding it would break the promise silently and at the edge, where no
  * page test would see it.
@@ -32,7 +33,7 @@ import { optOutClientKey } from "./client-key";
  * hazard for `/agent/invite`.
  *
  * ⭐ D6 (2026-09-26) · A MINIMAL SHELL. `app-shell.tsx` gives `/s` the logo, the language menu and the
- * footer's licence and helpline lines only — no sign-in or sign-up, no nav, no rail, no chat, no
+ * footer's licence line only (its helpline line went with the owner's ruling of 2026-10-06) — no sign-in or sign-up, no nav, no rail, no chat, no
  * first-visit primer, no "propose markets and get paid". Somebody who came to leave is not sold to.
  * Bare `/s` (a link that lost its token) has its own page, the same refusal (`../page.tsx`).
  */

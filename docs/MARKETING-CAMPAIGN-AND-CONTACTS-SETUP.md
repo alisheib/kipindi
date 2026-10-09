@@ -17,13 +17,25 @@ in flight on OMEGA-COMPILE01 (§0), continuing S13's handover. First real campai
 > test:marketing-setup-plan` refuses a ✅ that cannot show a real commit, a measured before → after, a
 > guard key that resolves to a script that exists **with a red control beside it**, and a live date.
 
+> ⟶ **2026-10-09 · Read the plan's body (§0a down) against the owner's later rulings** — the final rule of 2026-10-07
+> (`COMPLIANCE-DECISIONS.md` § "2026-10-07 · Marketing SMS go to anyone with a phone — consent is not a condition (the
+> owner's FINAL rule), and his approvals given in the session") and the two entries of 2026-10-09 at the log's top. Since
+> them: nothing is appended to a marketing SMS — no footer, source line, "50pick 18+", helpline or stop link — and the
+> room is the whole message (160 GSM-7 characters, 70 in Unicode); consent is no condition while licence outreach is
+> open; a test to a typed number is for the Owner and Compliance only; the results row is "Stopped since this campaign"
+> (every way a person stops); and no public text names the SMS company. Every passage below that prints, prices,
+> requires or proves a footer, a stop link, 18+, the helpline or a source line in a message, gives GROWTH a typed test,
+> counts link stops alone or makes consent the only basis is the design before those rulings: the code and its suites
+> hold the present, and the dated notes in §1a, §4, §4a, §5 and §9 mark what changed. An Excel workbook over 700 KB is
+> read in the officer's browser once C3c lands (2026-10-09, with S14's contacts push).
+
 | | |
 |---|---|
 | **Opened** | 2026-09-16 (session S0 — planning only, no product code; committed 2026-09-17) |
 | **Owner instruction** | Ali, 2026-09-16: *"a page for contacts, with all its features, bulk and normal contact import, duplication detection, everything perfect, progress bars, loading systems, rendering perfection. Also campaign for broadcast SMS sending page… for Tanzanian numbers, the right formats, input validation"* · *"take decisions based on what you think is perfect and compatible with our platform… make it fully functional, a perfect version, you decide"* · *"save the plan and the prompt and push it, naming it the marketing campaign and contacts setup"* · *"make it perfectly working for 50pick, perfect design and logic"* |
 | **Scope** | `/admin/contacts` (the address book: single + bulk import, duplicate detection, pre-flight, determinate progress, export) and `/admin/campaigns` (broadcast SMS: compose, audience, confirm, send, results) — plus the permission layer neither can lawfully exist without |
 | **Repo / branch** | Your 50pick checkout — find it with `hostname && git rev-parse --show-toplevel && git worktree list`; ⛔ never copy a path from a doc (the office PC uses `F:\`, Ali-Blade15 `C:\`, and each has worktrees). Work lands on `main`: a checkout on another branch, or carrying another session's edits, means your own worktree off `origin/main`, pushed with `HEAD:main`. ⛔ Push to `main` is a LIVE deploy. ⛔ Never the House Bots checkout, which runs its own programme in parallel |
-| **Live state rule** | ✅ **No Gaming Board approval gate** — Ali, 2026-09-26: the Board says marketing SMS is not part of its approval (OQ1, `COMPLIANCE-DECISIONS.md` § "2026-09-26 · Marketing SMS rulings"). Broadcast opens as soon as the engine is BUILT and every message passes the consent/suppression/RG/age gate; the law that remains is consent (ETA s.32, EPOCA reg 7(4)) and no promotion to the self-excluded (GN 478T reg 49(3)) |
+| **Live state rule** | ✅ **No Gaming Board approval gate** — Ali, 2026-09-26: the Board says marketing SMS is not part of its approval (OQ1, `COMPLIANCE-DECISIONS.md` § "2026-09-26 · Marketing SMS rulings"). Broadcast opens as soon as the engine is BUILT and every message passes the consent/suppression/RG/age gate; the law that remains is consent (ETA s.32, EPOCA reg 7(4)) and no promotion to the self-excluded (GN 478T reg 49(3)). ⟶ 2026-10-07/09: consent is no condition (the owner's FINAL rule) — every message passes the one gate's stop, RG and age checks — and nothing sends while the owner's live switch is closed; no promotion to the self-excluded stands |
 | **Evidence** | `.qa-shots/marketing-setup/<unit>/…` (gitignored). ⛔ A `shots/…png` path may only be written into a doc in the commit that also commits the PNG |
 | **Tracker guard** | `npm run test:marketing-setup-plan` · red control `npm run red:marketing-setup-plan` (the same file, `--prove-red`, plants in memory) |
 | **Cadence** | **TWO units per session** (Ali's standing cadence). 52 units → 27 sessions (S5 closed U8's carried-over half, §10) |
@@ -810,7 +822,9 @@ a Guard key that resolves to a script on disk, `yes` plus the backticked `red:` 
 3. `predeploy` green, and `test:all` shows no suite red that is not already red on clean `main`.
 4. A real campaign has been sent on production to the ledger-capped test number and **read on a handset**.
 5. The provider's own `COUNT` (portal export) equals this platform's segment arithmetic for that send.
-6. Opt-out has been exercised end-to-end from the handset, and the number is suppressed on production.
+6. Opt-out has been exercised end-to-end from the handset, and the number is suppressed on production. ⟶ 2026-10-09: no
+   SMS carries the stop link any more, so U52a opens the number's own stop page from its recipient row
+   (`marketing-specs/ENGINE-SPEC.md` U52a); a person stops under Profile → Notifications.
 7. Every one of the eleven questions in §4a is either answered by Ali or carries a default he has confirmed.
 8. `/legal/responsible-gambling` §4 and `/legal/privacy` are re-read and agree with what the engine does.
 9. `HOW-TO-SEND-A-CAMPAIGN.md` exists and an operator who is not its author has followed it once.
@@ -1052,6 +1066,15 @@ the same code path, chosen by measured size, never a second implementation.
 
 *"Take decisions based on what you think is perfect and compatible with our platform… you decide."* Each
 is decided, with what it rules out. They are not questions.
+
+⟶ **2026-10-09 · Decisions below that the owner's later rulings overtook** (`COMPLIANCE-DECISIONS.md`, the 2026-10-07
+final rule and the two 2026-10-09 entries): OD7, OD8 and OD9's consent as the only way in, and the "consent" in OD17's
+list — consent is no condition while licence outreach is open (a non-member is reached through a list's recorded licence
+basis and 18+ confirmation; a stop still refuses); OD43's "the footer is composed BEFORE the message is sized", OD44's
+footer (the body still BEGINS with `50pick`, checked), OD48's source-line rules and OD49 entire — nothing is appended to
+a marketing SMS, the room is the whole message (160 / 70) and no book contact is refused for a missing phrase; and
+OD29's "save it as CSV" past 700 KB — a bigger workbook is read in the officer's browser once C3c lands (2026-10-09,
+with S14's contacts push). OD61 stands, and since 2026-10-09 only the Owner and Compliance may type a test number.
 
 **Shape and scope**
 
@@ -1444,17 +1467,17 @@ is decided, with what it rules out. They are not questions.
 
 | Id | Question for Ali + a lawyer | Safe default shipping meanwhile |
 |---|---|---|
-| OQ1 | Does 50pick hold a Gaming Board advertising approval, does it cover SMS (Code cl. 2.2.6 requires PRIOR WRITTEN approval), and has our own advertising code of practice been submitted (GN 478T reg 56(2))? | ✅ **ANSWERED by Ali, 2026-09-26: the Board says marketing SMS is not part of its approval** — read as "we can send … as long as we have [an] SMS gateway" (his words as typed are in `COMPLIANCE-DECISIONS.md` § "2026-09-26 · Marketing SMS rulings"). No approval record is required; OD17 and §5.3 are withdrawn. Consent and the RG gates stay (they are other law) |
+| OQ1 | Does 50pick hold a Gaming Board advertising approval, does it cover SMS (Code cl. 2.2.6 requires PRIOR WRITTEN approval), and has our own advertising code of practice been submitted (GN 478T reg 56(2))? | ✅ **ANSWERED by Ali, 2026-09-26: the Board says marketing SMS is not part of its approval** — read as "we can send … as long as we have [an] SMS gateway" (his words as typed are in `COMPLIANCE-DECISIONS.md` § "2026-09-26 · Marketing SMS rulings"). No approval record is required; OD17 and §5.3 are withdrawn. Consent and the RG gates stay (they are other law). ⟶ 2026-10-07: consent is no condition (the owner's FINAL rule); the RG gates stay |
 | OQ2 | Is 50pick registered with the Personal Data Protection Commission (PDPA s.14(1))? | ✅ **ANSWERED by Ali, 2026-09-26: not needed.** He typed "pdf is not needed", read as PDPA registration (the only open question it could answer; `COMPLIANCE-DECISIONS.md` § "2026-09-26 · Marketing SMS rulings" keeps the words as typed apart from the reading). The contacts import does not wait on a registration reference |
-| OQ3 | How must ETA s.31(c)'s "source of the personal information" be given inside a 160-character SMS? | For any non-account source the footer carries a short source phrase and the opt-out page states the particulars in full. If the answer is "in the body", it costs a second segment — priced in §9 U4. *(Since 2026-09-26 the cap is ONE segment (`SMS_MAX_SEGMENTS` = 1, §9 U3), so the phrase costs operator budget instead — 111 → about 85 GSM-7 characters with a realistic phrase, counted with its trailing space.)* |
-| OQ4 | Which helpline is correct — our `0800 11 0011` or the Gaming Board code's `0800110051`? | ✅ **ANSWERED by Ali, 2026-09-26: "the right helpline is ours"** — recorded as: the helpline 50pick already publishes, `0800 11 0011`, is the right one. ⛔ Not a claim that 50pick runs it: the site labels it the national helpline (RG §5, `support-config.ts`). The marketing footer reads `support-config.ts`'s number; `test:campaign-compose` §12 asserts ONE helpline, and since 2026-09-26 `red:campaign-compose` carries a plant that puts the Board's number back into the footer (§12 had none); D6 closed |
+| OQ3 | How must ETA s.31(c)'s "source of the personal information" be given inside a 160-character SMS? | For any non-account source the footer carries a short source phrase and the opt-out page states the particulars in full. If the answer is "in the body", it costs a second segment — priced in §9 U4. *(Since 2026-09-26 the cap is ONE segment (`SMS_MAX_SEGMENTS` = 1, §9 U3), so the phrase costs operator budget instead — 111 → about 85 GSM-7 characters with a realistic phrase, counted with its trailing space.)* ⟶ 2026-10-09: no SMS carries a footer or a source phrase (the owner's ruling) — the room is the whole message, and `source.phrase` is kept as history only |
+| OQ4 | Which helpline is correct — our `0800 11 0011` or the Gaming Board code's `0800110051`? | ✅ **ANSWERED by Ali, 2026-09-26: "the right helpline is ours"** — recorded as: the helpline 50pick already publishes, `0800 11 0011`, is the right one. ⛔ Not a claim that 50pick runs it: the site labels it the national helpline (RG §5, `support-config.ts`). The marketing footer reads `support-config.ts`'s number; `test:campaign-compose` §12 asserts ONE helpline, and since 2026-09-26 `red:campaign-compose` carries a plant that puts the Board's number back into the footer (§12 had none); D6 closed. ⟶ 2026-10-09: no SMS carries a footer, so none carries the helpline — `test:campaign-compose` §9–§13 fail any appended text |
 | OQ5 | Are there lawful quiet hours for promotional SMS? (Nothing found imposes any; the 6am–2pm blackout is radio/TV only) | 08:00–20:00 EAT, self-imposed, documented AS ours, ONE named constant (`SEND_WINDOW_EAT`) — the answer is a one-line change to it |
 | OQ6 | `/legal/responsible-gambling` §4 promises no marketing to "players under 25 in vulnerability segments" — build the segment, or re-version the page? | ✅ **ANSWERED 2026-09-26 on Ali's delegation (U12, COMPLIANCE-DECISIONS § "2026-09-26 · RG Policy v2026-09-26"):** BOTH — the segment is defined and built (under 25 + a self-exclusion or break ever on record, refused until 25), and §4 re-versioned v2026-09-26 to name only what the gate runs; the late-night bullet cut |
 | OQ7 | Does marketing suppression follow the player's chosen self-exclusion period or GN 478T reg 48(3)'s six months? | Six months minimum, and permanent absent a fresh post-restoration consent |
-| OQ8 | Does the Blackball account have an inbound number for STOP keywords, and what is the payload? | Link-based opt-out only (`/s/<token>`, U8 — built). ⚠️ Inbound STOP is **NOT built**: a reply reaches nothing today and the person stays marketable. §9 U46 owns it. ⛔ No reply keyword is printed in any message until it is live. *(This cell said inbound STOP was "specified and built behind a guard"; nothing inbound existed — corrected 2026-09-26.)* |
-| OQ9 | What is the authorised wording of the "condensed responsible gaming message"? (The Code uses the term four times and defines it nowhere) | Shipped: `18+` and the published helpline (OQ4) — no compressed RG sentence is carried; adding one re-prices the 49-septet footer (§9 U4). ⛔ No new Swahili sentence is invented |
-| OQ10 | Is an operator attestation ("collected on our form, holder is 18+") sufficient evidence of consent for an imported contact? | Yes, recorded verbatim with a proof note, and marketable only on a first-party basis — everything else is stored and never marketed |
-| OQ11 | Do opt-ins given before the SMS-naming wording shipped (the 2026-09-26 audit-fix pass) under "Send me product updates" / "Product news" / "Nipe matangazo" / "Habari za bidhaa" — none of which names SMS — cover promotional SMS, or must those players consent again under the SMS-naming wording? (Raised by the 2026-09-26 audit; OD8) | **Not covered — BUILT.** A player is marketable only with `marketingOptIn === true` AND a latest GIVEN ledger row whose wording is one of the pinned SMS-naming sentences (`src/lib/marketing/consent-wording.ts`, append-only); an older "yes" is `no_consent`, detail "consent predates the SMS wording". No backfill: the player is asked again (register box, profile toggle, or the opt-out page's resume). ⛔ Only Ali may relax it |
+| OQ8 | Does the Blackball account have an inbound number for STOP keywords, and what is the payload? | Link-based opt-out only (`/s/<token>`, U8 — built). ⚠️ Inbound STOP is **NOT built**: a reply reaches nothing today and the person stays marketable. §9 U46 owns it. ⛔ No reply keyword is printed in any message until it is live. *(This cell said inbound STOP was "specified and built behind a guard"; nothing inbound existed — corrected 2026-09-26.)* ⟶ 2026-10-09: no SMS prints the link any more — a person stops under Profile → Notifications or by an officer's Suppress, and a link sent before still works |
+| OQ9 | What is the authorised wording of the "condensed responsible gaming message"? (The Code uses the term four times and defines it nowhere) | Shipped: `18+` and the published helpline (OQ4) — no compressed RG sentence is carried; adding one re-prices the 49-septet footer (§9 U4). ⛔ No new Swahili sentence is invented. ⟶ 2026-10-09: no SMS carries `18+` or the helpline any more — nothing is appended |
+| OQ10 | Is an operator attestation ("collected on our form, holder is 18+") sufficient evidence of consent for an imported contact? | Yes, recorded verbatim with a proof note, and marketable only on a first-party basis — everything else is stored and never marketed. ⟶ 2026-10-07: a contact on a list whose licence basis and 18+ confirmation are recorded is reached too (OD57/OD58, the owner's FINAL rule) |
+| OQ11 | Do opt-ins given before the SMS-naming wording shipped (the 2026-09-26 audit-fix pass) under "Send me product updates" / "Product news" / "Nipe matangazo" / "Habari za bidhaa" — none of which names SMS — cover promotional SMS, or must those players consent again under the SMS-naming wording? (Raised by the 2026-09-26 audit; OD8) | **Not covered — BUILT.** A player is marketable only with `marketingOptIn === true` AND a latest GIVEN ledger row whose wording is one of the pinned SMS-naming sentences (`src/lib/marketing/consent-wording.ts`, append-only); an older "yes" is `no_consent`, detail "consent predates the SMS wording". No backfill: the player is asked again (register box, profile toggle, or the opt-out page's resume). ⛔ Only Ali may relax it. ⟶ 2026-10-07: it governs only while licence outreach is closed — with it open, consent is no condition (the owner's FINAL rule); the register box was removed the same day |
 
 ---
 
@@ -1464,18 +1487,26 @@ is decided, with what it rules out. They are not questions.
 forbid unsolicited commercial SMS without the recipient's consent. PDPA Cap 44 s.23(1) requires personal
 data to be collected **directly from the data subject**, and Tanzania has **no legitimate-interests
 ground** (50pick's own recorded position, `docs/COMPLIANCE-DECISIONS.md`, 2026-09-15). ⛔ No soft opt-in
-audience is built anywhere.
+audience is built anywhere. ⟶ **Superseded 2026-10-07** by the owner's FINAL rule (`COMPLIANCE-DECISIONS.md` §
+"2026-10-07 · Marketing SMS go to anyone with a phone — consent is not a condition (the owner's FINAL rule), and his
+approvals given in the session"): consent is no condition — anyone with a Tanzanian mobile may be sent offers under the
+licence while licence outreach is open; consent is still recorded when given.
 
 **5.2 · Every marketing SMS: identity and purpose at the START, opt-out in EVERY message, the condensed
 responsible-gaming message (`18+` plus the published helpline) at the END.** ETA s.32(1)(b)–(c), s.32(2)(d);
 GBT Code cl. 3.7.1–3.7.2 (the Code names `0800110051`; on 2026-09-26 Ali ruled the right helpline is the
 one 50pick already publishes, `0800 11 0011` from `support-config.ts` — OQ4). Engine-composed,
 un-removable, counted in the segment arithmetic; `test:campaign-compose` §12 refuses a second number.
+⟶ **Superseded 2026-10-09** by the owner's ruling (`COMPLIANCE-DECISIONS.md` § "2026-10-09 · Privacy v2026-10-09 — a
+marketing SMS is sent exactly as the officer wrote it: no stop link, no 18+, no helpline, no source line (owner
+ruling)"): nothing is appended. The message still BEGINS with `50pick` — the officer's own text, checked — and carries
+no opt-out link, no `18+` and no helpline; `test:campaign-compose` §9–§13 fail any appended text.
 
 **5.3 · ~~A gaming advertisement needs the Board's approval; unsolicited SMS needs its PRIOR WRITTEN
 approval.~~** ⛔ **Withdrawn 2026-09-26 on Ali's ruling (OQ1):** the Board told him marketing SMS is not part of
 its approval. The regulation text (GN 478T reg 56(1), Code cl. 2.2.6) is left cited here as the reason the
 question was asked; the Board's own reading is the one 50pick acts on. §5.1, §5.2 and §5.4 are other law and stand.
+(⟶ 2026-10-07 / 2026-10-09: the owner's later rulings overtook §5.1 and §5.2 — see their notes; §5.4 stands.)
 
 **5.4 · No promotional material to a self-excluded player during the exclusion period.** GN 478T reg
 49(3), and 50pick's own published §4. The predicate is `selfExclusionStanding`, never `isLockedOut`.
@@ -1491,6 +1522,10 @@ final identity refusal) → frequency cap → dispatch`. A per-person refusal is
 Somebody who opts out in minute two must not receive minute four's message. *(Rewritten 2026-09-26: this
 put the window after the per-person gates and still listed the withdrawn Board approval, while ▶ NEXT and
 U43 need the window slice-wide, and it omitted the shipped under-25 and account-status steps.)*
+⟶ 2026-10-07: the step after the stop list asks a promised agent referee first (U33r), and "consent" became the BASIS —
+a recorded consent, or the licence while licence outreach is open (a withdrawal still refuses); and no frequency cap is
+built (management's answers, `COMPLIANCE-DECISIONS.md` § "2026-10-07 · Management's answers for the first marketing
+campaign — …", item 2). The gate's own order is `src/lib/server/marketing/consent.ts`.
 
 **5.7 · Consent wording is stored VERBATIM, in the language the person SAW, and never re-rendered from
 current strings.** The register form and the profile switch post the language they were DRAWN in (the
@@ -1522,6 +1557,8 @@ own planted-key control.
 **5.12 · `test:cert-c1`/`c3` do NOT cover campaign bodies** — `comms-registry.ts` places SMS outside the
 module. The registry declares the ENVELOPE (sender, purpose, footer, consent gate, no `Notification`
 row); marketing gets its own verbatim-wording assertion. ⛔ Do not aim a gate that cannot fail.
+⟶ 2026-10-09: there is no footer to declare — the envelope is the sender (the body's own `50pick` start), the purpose,
+the one gate (consent no condition since 2026-10-07) and no `Notification` row.
 
 **5.13 · Swahili is the default player language**; admin chrome is English with copied glosses only.
 
@@ -1648,6 +1685,15 @@ for `visual` units — a **States:** line naming at least six states to build an
 `error` among them. ⛔ Suites are named by
 key only (e.g. `test:tz-msisdn`); each lives at `scripts/<key without the prefix>.test.mts` and is created
 in the commit that first names it in code (§11a.1).
+
+⟶ **2026-10-09 · A unit below is its design as built**, and the owner's later rulings overtook parts of several (the
+head of this file): U3's and U4's footer arithmetic (49 septets, a room of 111 or 21) and U4's engine-appended footer,
+U5's footer helpline, U8's link printed in every message, U22's and U33b's "never sent" for an unconsented contact, U27's
+and U30b's "save it as CSV" past 700 KB (C3c, landing 2026-10-09), U33w's source-line box, and U37's source phrase (M5, U37s)
+and typed test (U37c — since 2026-10-09 for the Owner and Compliance only). Nothing is appended to a marketing SMS,
+consent is no condition while licence outreach is open, and a person stops under Profile → Notifications; where a unit
+below says otherwise it describes the code before those rulings — the code and its suites hold the present. The
+results row a campaign shows is "Stopped since this campaign" (every way a person stops).
 
 ### Phase A — foundations and permission (U1–U16)
 
@@ -3439,7 +3485,9 @@ STOP was "specified and built behind a guard". Nothing inbound exists: no route 
 no unit owned one (the S0 review called it "specified-but-unclaimed", §13), and the schema's note that a
 "keyword" writes WITHDRAWN names a writer that does not exist. **A reply of STOP or ACHA to a marketing SMS
 reaches nothing today, and the person stays marketable.** The only opt-out is the `/s/` link (U8) — and
-the footer's `Acha: 50pick.tz/s/…` may read to a feature-phone user as "reply Acha". This unit owns the
+the footer's `Acha: 50pick.tz/s/…` may read to a feature-phone user as "reply Acha". (⟶ 2026-10-09: no SMS prints the
+link or "Acha" any more — the owner's ruling; a person stops under Profile → Notifications or by an officer's
+Suppress, and a link sent before still works.) This unit owns the
 fix because it is the vendor's other inbound rail: answer OQ8 first (does the Blackball account have an
 inbound number, and what is the payload); then a receiver authenticated like the DLR route (secret token,
 refusals recorded, `srcIp` discriminated — §3b lessons 2–3) that maps STOP / ACHA, case-folded, by msisdn
@@ -3586,6 +3634,9 @@ secret — without it DELIVERED is structurally zero and the report reads as "no
 actions registered: `marketing.campaign_created|started|paused|cancelled|slice`, `marketing.optout`,
 `marketing.suppressed`, `contacts.imported|exported`, `pii.revealed`.
 **Guard:** `test:cert-c1`, `test:cert-c3`, `test:audit`. **RED:** send a body with no footer → red.
+⟶ 2026-10-09: there is no footer (the owner's ruling) — the "footer" in this envelope and this RED are void;
+`test:campaign-compose` §9–§13 already fail a body with anything appended, and consent is no condition since
+2026-10-07 (§5.12's note).
 
 **U51 · The operator's guide** — `docs/HOW-TO-SEND-A-CAMPAIGN.md` + updates (OD46)
 Plain words, for Ali: what a campaign costs, what "handed over" means and why DELIVERED lags it by seconds
@@ -3600,7 +3651,8 @@ stuck on is fixed in the doc.
 `live:marketing` drives a real campaign of **≤6 chargeable sends to +255772619619 only**, with its own
 ledger file (gitignored), proving by **discrimination**: a suppressed number is refused while an eligible
 one is sent in the same run; the opt-out link is tapped on the handset and the next send to that number is
-refused; the provider's own portal `COUNT` is compared against `planSms`; the slice budget and batch size
+refused (⟶ 2026-10-09: no SMS carries the link, so U52a's stop step opens the number's own stop page from its
+recipient row — `marketing-specs/ENGINE-SPEC.md` U52a); the provider's own portal `COUNT` is compared against `planSms`; the slice budget and batch size
 are re-derived from the measured latency; and the session confirms it is on the new build by `?dpl=<sha>`
 on a `_next/static` asset or the preload `Link` header (⚠️ `<html data-dpl-id>` is absent on some routes —
 a fallback only).

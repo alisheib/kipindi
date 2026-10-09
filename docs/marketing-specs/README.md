@@ -24,4 +24,18 @@ source line at confirm and Start) and U37s (the line stamped on drafts, its stal
 went with it. `ENGINE-SPEC.md`, `U33a-U37c-OD58.md` and `U37.md` carry the same note at their head, and
 `DECISIONS-U29-U40.md` at M5 and G5.
 
+⟶ **2026-10-09 · four more things these records predate.** (1) A test to a typed number is for the Owner and Compliance
+only — GROWTH and every other role test on their own phone (`docs/COMPLIANCE-DECISIONS.md` § "2026-10-09 · An erased
+number stays blocked, a test SMS to a typed number is for Admin and Compliance, …", item 2), so "the test send to any
+typed number" (OD59) above and every typed test offered to any officer below is the design before it. (2) A campaign's
+results row is "Stopped since this campaign" — every way a person stops, not their link alone (ENGINE-SPEC's E30, re-ruled
+the same day). (3) No public text names the SMS gateway's company: Privacy §4 calls it by its role (the top entry, item
+5). (4) An Excel workbook over 700 KiB is read in the officer's browser (C3c, `docs/CONTACTS-SCREEN-PLAN.md` §4.5,
+landing 2026-10-09 with S14's contacts push): a refusal of a bigger workbook, or "save it as CSV" as the way past the cap,
+is the design before it — 700 KiB stays only the server action's own upload cap. And since the owner's FINAL rule of
+2026-10-07 (§ "2026-10-07 · Marketing SMS go to anyone with a phone — …") consent is no condition while licence outreach
+is open: where a spec has the gate refuse a number for want of a consent, it is the gate before that rule and OD57/OD58.
+`U22.md`, `U27.md`, `U28.md`, `U33.md`, `U38.md`, `U39.md` and `CRITIC-U29-U40.md` carry the part that concerns them at
+their head; the `reviews/` records are left as returned.
+
 Moved here from a session's scratch folder on 2026-10-03: until then they existed on one laptop only.

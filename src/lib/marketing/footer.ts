@@ -53,12 +53,15 @@ import { HELPLINE_TEL } from "@/lib/support-config";
 /** The opt-out path's token length. ⛔ The route itself is plan U8; this is the length it must mint. */
 export const OPTOUT_TOKEN_CHARS = 8;
 
-/** The opt-out path. `50pick.tz/s/<token>` — short because every character is a septet. */
+/** The opt-out path. `50pick.tz/s/<token>` — short because every character was a septet in the message that printed
+ *  it (until 2026-10-09); a link already sent keeps working here. */
 export const OPTOUT_PATH = "/s/";
 
 /** OURS — the number `support-config.ts` publishes, in dial form (OQ4, answered 2026-09-26).
  *  ⛔ A FUNCTION, NOT A CONSTANT: since 2026-10-03 the helpline is editable in /admin/system, and a
- *  value captured at import would keep the old number for the life of the process. */
+ *  value captured at import would keep the old number for the life of the process.
+ *  ⟶ 2026-10-09: no message carries it (the footer is empty); nothing in `src/` calls this — only
+ *  `test:campaign-compose` §12, which proves the number reaches no message. */
 export function statutorySmsHelpline(): string {
   return HELPLINE_TEL();
 }
@@ -70,6 +73,8 @@ export type MarketingLocale = "SW" | "EN";
 
 /**
  * ⭐ THE SHORT DOMAIN IS DERIVED FROM `appUrl()`, NEVER TYPED.
+ * ⟶ 2026-10-09: no message prints the link since the owner's ruling (the footer is empty), so nothing in `src/` calls
+ * this — `test:campaign-compose` alone does. What follows is why it was derived while the link was printed.
  *
  * 🔴 A TYPED DOMAIN IS A BILL WAITING TO HAPPEN. If the deployment's public URL ever changes to
  * something longer, a typed `50pick.tz` would keep printing a link that no longer resolves, and a

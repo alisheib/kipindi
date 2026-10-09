@@ -82,6 +82,8 @@ erasure's own promise. **Kept by** the C8b suites and the typed-test door's role
 
 ## 2026-10-07 · Privacy v2026-10-07 — §5 states the 7-year record of marketing text messages and the coded referee numbers, §9 keeps the referee promise only for referees already given it, and the sign-up box is removed
 
+⟶ superseded on 2026-10-09 by § "2026-10-09 · Privacy v2026-10-09 — a marketing SMS is sent exactly as the officer wrote it: no stop link, no 18+, no helpline, no source line (owner ruling)" — in part: §5's record, the data-rights sentence and the note under "Erase my data" no longer name a stop link, and §9 no longer tells a referee named after the cutoff that the link in every offer stops them.
+
 **Authority.** Ali's approvals of 2026-10-07, recorded in § "2026-10-07 · Marketing SMS go to anyone with a phone —
 consent is not a condition (the owner's FINAL rule), and his approvals given in the session": *"The 7-year campaign
 record, said publicly — approved"* (the §5 bullet, the erasure clause's "except as stated below", the data-rights file's
@@ -331,6 +333,8 @@ in this repository; Ali was told.
 
 ## 2026-10-07 · Management's answers for the first marketing campaign — a small pilot, no frequency cap, two-step sign-in off, and the stop link (owner rulings, put to Ali in the session)
 
+⟶ superseded on 2026-10-09 by § "2026-10-09 · Privacy v2026-10-09 — a marketing SMS is sent exactly as the officer wrote it: no stop link, no 18+, no helpline, no source line (owner ruling)" — in part: item 7's stop link went without waiting for the written confirmation (no offer carries a link; the players' offers switch stays), and item 4's stop sentence went with it.
+
 **Authority.** Ali, for 50pick management, 2026-10-07, answering questions put to him one round at a time in the Claude
 session (marketing S14, OMEGA-COMPILE01) — *"ask me now the management questions … and save result forever so we don't
 have any missing points"*; *"management doesn't want 2FA now, keep off even during campaign"*; and on stopping: *"we
@@ -383,6 +387,8 @@ item 7. ⛔ Never remove: the self-exclusion, under-18 and responsible-gambling 
 
 
 ## 2026-10-07 · Marketing SMS go to anyone with a phone — consent is not a condition (the owner's FINAL rule), and his approvals given in the session
+
+⟶ superseded on 2026-10-09 by § "2026-10-09 · Privacy v2026-10-09 — a marketing SMS is sent exactly as the officer wrote it: no stop link, no 18+, no helpline, no source line (owner ruling)" — in part: no message keeps a stop link (a person's own stop is still honoured), the G5 source line is printed in no message, and Privacy §4's gateway bullet names no company.
 
 **Authority.** Ali, 2026-10-07, in the Claude session (marketing S13, ALI-BLADE15): *"let us send to anyone, don't care
 consent, no consent. GBT said it's not our business, so we can just send. And if a user is annoyed he can contact his
@@ -459,6 +465,8 @@ the self-exclusion, under-18 and responsible-gambling refusals.
 
 ## 2026-10-06 · No helpline on any player surface, and every number on the Support contacts card saves as typed — RG Policy v2026-10-06 (owner ruling)
 
+⟶ superseded on 2026-10-09 by § "2026-10-09 · Privacy v2026-10-09 — a marketing SMS is sent exactly as the officer wrote it: no stop link, no 18+, no helpline, no source line (owner ruling)" — in part: item 2's marketing SMS footer is gone, so no SMS carries the helpline (it stays editable on Admin → System).
+
 **Authority.** Ali, 2026-10-06 (spelling normalised): *"remove any rules that prevent us from changing the helpline number
 or set it to a certain value, and remove the helpline line from the website — keep it in admin if you want, but we don't
 want to display it anymore on the user side … make all numbers changeable"*; then *"we got the licence from GBT — they said
@@ -494,6 +502,8 @@ trust row's helpline, and the 2026-10-01 account hub's helpline row.
 ⛔ Do not restore: putting the helpline back on a player page, or refusing a number an admin types, reverses this ruling.
 
 ## 2026-10-05 · Marketing outreach rulings — Ali answered twelve questions and three gates, put to him one at a time
+
+⟶ superseded on 2026-10-09 by § "2026-10-09 · Privacy v2026-10-09 — a marketing SMS is sent exactly as the officer wrote it: no stop link, no 18+, no helpline, no source line (owner ruling)" — in part: G5 / Q6's source line is printed in no message and refuses no recipient (`source.phrase` is kept as history).
 
 **Authority.** Ali, 2026-10-05, asked for the owner points to be put to him directly and answered each in the session.
 Eleven of the twelve questions CONFIRM the default the plan had already built, so most of this entry changes no code —
@@ -623,6 +633,8 @@ optional-toggle precedent — never a hard lock.
 
 ## 2026-10-04 · The public policy lines are editable on Admin → System, and how a saved line is kept true (decided under Ali's delegation; G4 · G10)
 
+⟶ superseded on 2026-10-09 by § "2026-10-09 · Privacy v2026-10-09 — a marketing SMS is sent exactly as the officer wrote it: no stop link, no 18+, no helpline, no source line (owner ruling)" — in part (its item 5): the SMS gateway line names the gateway by its role, never its company; the rules no longer require the name (`SMS_GATEWAY_WORDS`), and `test:privacy-notice` §2e refuses it.
+
 **Authority.** Ali's owner rule of 2026-10-03 ("all changeable" — § "2026-10-03 · Every public fact is editable by
 admins"), his rulings OD57 and OD58 (outreach under the Gaming Board licence), and his standing delegation of technical
 calls. G4 and G10 — approving what the public pages say — stay HIS act, performed by saving the lines on the card.
@@ -666,6 +678,8 @@ save that skips `KEPT_PROMISES`, or a consent-only Blackball clause printed whil
 ---
 
 ## 2026-10-04 · The marketing consent wordings are approved by saving them on Admin → System, every version kept (decided under Ali's delegation; G4)
+
+⟶ superseded on 2026-10-09 by § "2026-10-09 · Privacy v2026-10-09 — a marketing SMS is sent exactly as the officer wrote it: no stop link, no 18+, no helpline, no source line (owner ruling)" — in part: the campaign source line is printed in no message and has left the Marketing wordings card (`source.phrase` is kept as history).
 
 **Authority.** Ali's owner rule of 2026-10-03 ("all changeable"), his rulings OD57 and OD58 (outreach under the Gaming
 Board licence), and his standing delegation of technical calls. G4 — approving the words — stays HIS act, performed by
@@ -723,6 +737,8 @@ the brought-forward term each reverses this ruling.
 
 
 ## 2026-10-03 · Every public fact is editable by admins — the national helpline and the licence number are no longer pinned (owner ruling)
+
+⟶ superseded on 2026-10-09 by § "2026-10-09 · Privacy v2026-10-09 — a marketing SMS is sent exactly as the officer wrote it: no stop link, no 18+, no helpline, no source line (owner ruling)" — in part: no SMS footer reads the saved helpline any more (nothing is appended to a marketing SMS).
 
 **Authority.** Ali, 2026-10-03, after his admin reported that the Support contacts card in `/admin/system` was
 read-only: *"everything should be changeable … admins can change anything please — licence, numbers, everything — they
@@ -1281,6 +1297,8 @@ same commit — never editing or removing an entry, which would disqualify peopl
 
 ## 2026-09-26 · Privacy v2026-09-26 — §4 names Blackball, the SMS gateway
 
+⟶ superseded on 2026-10-09 by § "2026-10-09 · Privacy v2026-10-09 — a marketing SMS is sent exactly as the officer wrote it: no stop link, no 18+, no helpline, no source line (owner ruling)" — its item 5: §4 names the SMS gateway by its role alone, never the company, and `test:privacy-notice` §2e now refuses the name in every language.
+
 **Authority.** Ali's delegation of 2026-09-26 (above), on an audit finding: the Privacy notice named every processor
 except the SMS gateway. Blackball has carried this platform's SMS since 2026-09-16 (one-time codes among them) and
 would carry every marketing text a player consents to (entry above) — it receives the player's phone number and the text of each
@@ -1663,6 +1681,8 @@ account has switched the desk ON — changes no ruling, it makes the code keep o
 ---
 
 ## 2026-09-26 · Marketing SMS rulings — no Gaming Board approval, no PDPA registration, and the helpline is the one 50pick already publishes (owner rulings on OQ1, OQ2, OQ4)
+
+⟶ superseded on 2026-10-09 by § "2026-10-09 · Privacy v2026-10-09 — a marketing SMS is sent exactly as the officer wrote it: no stop link, no 18+, no helpline, no source line (owner ruling)" — in part: no marketing SMS carries a footer, so OQ4's helpline, the 18+ and the stop link are in none.
 
 **Owner instruction (Ali, 2026-09-26), as typed:** *"gaming board said they done tcar eit snor part of their approbla we
 cans end anythgina s logn as we have sms gaetway. pdf is not needed as well . the right helpline is ours."* Read as:

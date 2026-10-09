@@ -87,6 +87,8 @@ export const SMS_ARITHMETIC_VERIFIED_AGAINST_BILLER = false;
  * 🔴 RECONCILED 2026-09-26: this said 2 ("the composer stops here") while the composer refused anything
  * over 1, so a screen reading `withinCap` and the composer disagreed about a two-segment message. The
  * stricter, shipped refusal won — the single-segment budget (160 − footer) is what the plan prices.
+ * ⟶ 2026-10-09: the footer is empty (the owner's ruling — nothing is appended to a marketing SMS), so the budget
+ * is the whole segment: 160 in the GSM alphabet, 70 in Unicode.
  */
 export const SMS_MAX_SEGMENTS = 1;
 
@@ -164,9 +166,10 @@ function costsOf(text: string, encoding: SmsEncoding): number[] {
 }
 
 /**
- * The units `text` occupies when sent in `encoding` — for sizing a fixed part (the footer) inside a
- * message whose encoding the REST of the text decides. ⭐ A GSM-7 footer inside a UCS-2 message costs
- * its UTF-16 length, not its septets: that is why a single curly quote shrinks the body's room to 21.
+ * The units `text` occupies when sent in `encoding` — for sizing one part inside a message whose
+ * encoding the REST of the text decides. ⭐ A GSM-7 part inside a UCS-2 message costs its UTF-16 length,
+ * not its septets: that is why, until the owner's ruling of 2026-10-09 emptied the marketing footer, a
+ * single curly quote shrank the body's room to 21.
  */
 export function unitsIn(text: string, encoding: SmsEncoding): number {
   let units = 0;

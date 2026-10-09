@@ -43,6 +43,8 @@
  *   The review's fixes (S14, 2026-10-08): P1d the drive list holds the test number ALONE; P7 the SQL's contract, no bare ORDER BY name
  *   equal to an AS alias, every call bound to the right values; P9 run through npm as the sheet prints it (`npm run -s`) a key prints
  *   no banner; P1b the source line and the database's clock; E2 the judgements one by one; P2/P5 the output filter ALONE.
+ *   (⟶ 2026-10-09: the source line has no job since the owner's ruling — nothing is appended to a marketing SMS — so P1b's
+ *   source half, and the pre-flight's own "source" row it holds, are owed a change in code; the clock half stands.)
  *   The second review's fixes and the merge with U33r (the same day): P6d the REFEREE dimension (1,056 more scenarios) and the
  *   agent-referee exclusion said to be NOT judged; P6e the four SystemConfig keys are the app's; P7 every SELECT list exactly, with the
  *   stand-in rows carrying exactly those names; P1b the saved window and its 60-minute margin; P1d a list of two, a hidden name; P1f

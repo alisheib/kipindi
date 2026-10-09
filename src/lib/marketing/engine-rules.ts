@@ -58,7 +58,8 @@
  *   the next slice meets the refusal again and pauses ONCE. ⛔ Every case where the wire may have been reached stays
  *   UNCONFIRMED — and so does a message whose own record cannot be read whole (an ACCEPTED row with no hand-over instant,
  *   a status this table does not know): the reaper never re-sends on evidence it cannot read. ⭐ A row that reached the
- *   wire keeps the opt-out token its message carried — the number's one reused token, read back by the engine (E30).
+ *   wire keeps the number's one reused opt-out token, read back by the engine for the access export — the token its
+ *   message carried until the owner's ruling of 2026-10-09; no message prints it since.
  *
  * ── THE SLICE SIZE (E11, `adaptSliceSize`) ─────────────────────────────────────────────────────────────────────────────
  * Start at `SLICE_START`, never above `SLICE_MAX` (= one `sendBatch` chunk, `BATCH_MAX`), never below `SLICE_MIN`, aimed

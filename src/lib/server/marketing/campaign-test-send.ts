@@ -1,6 +1,7 @@
 /**
  * U37b · THE OFFICER'S TEST SEND — one saved draft, rendered and sent to ONE number: the officer's own (the one-tap
- * default), or — U37c — a number the officer TYPES, with their 18+ confirmation (decisions X14 · M9 · M12 · S23–S25;
+ * default), or — U37c — a number the officer TYPES, with their 18+ confirmation, which since the owner's ruling of
+ * 2026-10-09 only the Owner and Compliance may do (see "A TEST TO A TYPED NUMBER" below) (decisions X14 · M9 · M12 · S23–S25;
  * plan §9 U37b · U37c, spec `docs/marketing-specs/U33a-U37c-OD58.md` §3.7).
  *
  * ⛔ IT TAKES (campaignId, variant, recipient) AND NOTHING ELSE. No body: the text is the STORED draft's, rendered by THE
@@ -10,8 +11,9 @@
  * recipient is the officer's own number (an old page's two-argument post, deploy skew).
  *
  * ⛔ IT GOES THROUGH THE ONE GATE. `dispatchSlice` asks `mayReceiveMarketingSms` for the number immediately before the
- * send — no bypass (a bypass is D15's second, ungated send path). So an officer needs a recorded SMS consent and a date
- * of birth on their own account, exactly as any recipient does, and the screen names the remedy.
+ * send — no bypass (a bypass is D15's second, ungated send path). So the officer's own number must clear the gate
+ * exactly as any recipient's does — a recorded SMS consent, or the licence while licence outreach is open (the owner's
+ * FINAL rule of 2026-10-07), and a date of birth on their account — and the screen names the remedy.
  *
  * ⭐ U37c · A TYPED NUMBER IS A CONTACT-BOOK RECIPIENT, AND THE CONFIRMATION IS NEVER A BYPASS. It renders as a book
  * recipient — the `{jina}` fallback, never the holder's own first name (and, since the owner's ruling of 2026-10-09,
@@ -48,8 +50,9 @@
  *
  * ⛔ S24 · TWO MORE BUDGETS FOR TYPED TESTS, spent only after the number-independent checks (so a closed record drains
  * neither): per officer (`marketing.testSendTyped`) and per recipient (`marketing.testSendTo`, keyed by a hash of the
- * gate's key — no digit of the number). Without the first, an officer could run a quiet campaign to strangers through
- * "tests", outside the confirmation and the frequency cap.
+ * gate's key — no digit of the number). Without the first, an officer who may type a number (the Owner or Compliance,
+ * since 2026-10-09) could run a quiet campaign to strangers through "tests", outside the confirmation. (No frequency cap
+ * is built — management, 2026-10-07.)
  *
  * ⛔ X14 · THE ONE LIVE SWITCH. With `marketing.sms.live` absent (CLOSED) a real carrier is refused `live_sends_closed`
  * BEFORE anything is minted, written or handed over: no opt-out token, no `SmsMessage` row, no transport call — for a

@@ -19,6 +19,8 @@
  *              harm_marker      a player whose deposits trip the harm detector           → SKIPPED rg_harm_marker
  *              minor            an account whose date of birth is under 18               → SKIPPED age_minor
  *              suspended        an account that is not marketable                        → SKIPPED account_status
+ *   (⟶ 2026-10-07: these refusals are the CLOSED licence-outreach record's — this harness never opens it. With it open,
+ *   the owner's FINAL rule reaches `player_toggle_off` on the licence, and `contact_nocons` once a list's basis covers it.)
  *   UNWRITTEN  unusable         a contact whose number the numbering plan refuses (a dead NDC) → counted `unusable`, never a row
  *   AND        duplicates       a second contact row holding an already-listed number in another spelling (the trunk zero after
  *                               the country code, a legacy dirty row) → the second seed is skipped by the unique key

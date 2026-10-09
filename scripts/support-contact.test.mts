@@ -29,8 +29,9 @@
  * so the stale `helpline` value of an old form is never read back (§2.1).
  * ⭐ AND SINCE 2026-10-06 (Ali: the Gaming Board confirmed nothing obliges us to show a helpline or
  * to use a particular one — "let the admin put any numbers he wants"): every number saves as typed,
- * our own desk as the helpline included (§10), and NO player surface shows the helpline (§15). It is
- * still read in one place — the marketing SMS footer — and the admin card still edits it.
+ * our own desk as the helpline included (§10), and NO player surface shows the helpline (§15). It was
+ * still read in one place — the marketing SMS footer — until the owner's ruling of 2026-10-09 emptied that
+ * footer (no SMS carries it since); the admin card still edits it.
  *
  *   §1 a saved row REACHES the readers            (E-226 — the missing reader)
  *   §2 the stale `helpline` key never becomes the helpline (E-328), and a SAVED helpline and
@@ -931,13 +932,16 @@ ok("§11 no module-scope value captures a config getter", [...new Set(v11)].leng
  * the user side". Until that day this section held the OPPOSITE: the root error page's four hand-written
  * copies of the helpline had to exist and to match the default.
  *
- * ⛔ THE HELPLINE IS STILL READ IN EXACTLY ONE PLACE THAT REACHES A PLAYER: the marketing SMS footer
- * (`src/lib/marketing/footer.ts`), which the marketing lane owns and the ruling left alone. The admin card
+ * ⛔ THE HELPLINE WAS STILL READ IN EXACTLY ONE PLACE THAT REACHES A PLAYER: the marketing SMS footer
+ * (`src/lib/marketing/footer.ts`), which the marketing lane owns and the ruling left alone. ⟶ 2026-10-09: the
+ * owner's ruling emptied that footer — nothing that reaches a player reads the helpline now; `footer.ts` keeps
+ * `statutorySmsHelpline()` only for `test:campaign-compose` §12's proof that no message carries it. The admin card
  * still edits it. Everything else under src/ — every page, component, email and the Help chat's prompt —
  * may not read it, may not render a dictionary label that names one, and the error page may not print one.
  */
 {
-  /** The files that may read the helpline: its two definitions and the SMS footer — and the admin console. */
+  /** The files that may read the helpline: its two definitions and `footer.ts` (whose footer is empty since 2026-10-09)
+   *  — and the admin console. */
   const MAY_READ = ["src/lib/support-config.ts", "src/lib/server/support-config.ts", "src/lib/marketing/footer.ts"];
   const isAdmin = (rel: string) => rel.startsWith("src/app/admin/");
   const READS = /\bHELPLINE(?:_TEL)?\s*\(/;
@@ -978,8 +982,9 @@ ok("§11 no module-scope value captures a config getter", [...new Set(v11)].leng
   ok("§15.6 ⚠️ CONTROL — the error-page detector flags the old copies and the old attribute read",
     ["helpline: \"Helpline 0800 11 0011\",", "helpline: \"\\u5e2e\\u52a9\\u70ed\\u7ebf\",", "getAttribute(\"data-kp-helpline\")"]
       .every((s) => [...s.matchAll(PRINTED)].length > 0));
-  // ⭐ The exemptions are not dead letters: each named file exists, and the SMS footer — the one place the helpline
-  // still goes out — still reads it, so an exemption that outlived its reason would show here.
+  // ⭐ The exemptions are not dead letters: each named file exists, and `footer.ts` still reads it — through
+  // `statutorySmsHelpline()`, which no SMS has carried since the owner's ruling of 2026-10-09 (it serves
+  // `test:campaign-compose` §12's absence proof), so when that function goes this exemption goes with it.
   ok("§15.7 ⚠️ CONTROL — every exempted file exists, and the SMS footer still reads the helpline",
     MAY_READ.every((p) => files.some((f) => relative(ROOT, f).replace(/\\/g, "/") === p))
       && READS.test(decomment(readFileSync(join(SRC, "lib/marketing/footer.ts"), "utf8"))));

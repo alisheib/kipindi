@@ -47,7 +47,8 @@ import { SMS_RECIPIENTS_BY_NUMBER_MAX } from "@/lib/server/marketing/campaign-mo
  * ⛔ An erased account's `phoneE164` is a tombstone (`erased:usr_…`), never a key: `marketingKeyOf`
  * refuses it, so its digits cannot be read as some stranger's number.
  * ⭐ THE CAMPAIGN RECORDS (U16a — live BEFORE the first recipient row is written, M9). A campaign recipient row holds the
- * number a person was messaged at, what became of the message and the opt-out link in its footer, and it is kept seven
+ * number a person was messaged at, what became of the message and the number's opt-out token (printed in the message's
+ * footer only before the owner's ruling of 2026-10-09), and it is kept seven
  * years (DATA-RETENTION) — so it is something we hold about them. Three sections, over the SAME numbers as the ledger
  * above, each number read through the DAL's ONE question — rows CREATED OR SENT since the account's creation (D12: a row
  * put on a campaign for the number's previous holder but sent after it passed to this person reached THEIR phone) —
@@ -68,9 +69,10 @@ import { SMS_RECIPIENTS_BY_NUMBER_MAX } from "@/lib/server/marketing/campaign-mo
  *     (`at: null`), as an old stop is: the previous holder's campaign date is not this person's to receive;
  *   · `optOutLinks` — the links minted for those numbers, by reference only (`optOutTokenRef`: two characters, then
  *     stars), with when each was minted. A link minted BEFORE the account counts only when one of this person's own
- *     messages carried it — the mint reuses a number's newest link, so a recycled number's new holder is sent the old
- *     holder's — and then undated, as an old stop is. On ANY OTHER number of theirs, a link counts ONLY when one of
- *     their own messages carried it (D11 again: the stranger now holding that number has links of their own).
+ *     campaign rows records it ("carried" below: until 2026-10-09 the row's message printed it) — the mint reuses a
+ *     number's newest link, so a recycled number's new holder's rows record the old holder's — and then undated, as an
+ *     old stop is. On ANY OTHER number of theirs, a link counts ONLY when one of their own campaign rows records it (D11
+ *     again: the stranger now holding that number has links of their own).
  * ⛔ Withheld, every one: campaign and recipient ids, the campaign's staff-only name, the officer, the gate's trail and
  * the refusal's detail, the provider's reference, the cost and the live token.
  * ⚠️ OWED (U43b + U16b): a message sent under a LICENCE basis is listed without its basis, and `outreach` above says so
@@ -114,7 +116,8 @@ export type MarketingDsarSection = {
   /** U16a · the campaign rows that sent nothing, newest first — `at` is when the person was put on the campaign;
    *  `at: null` — that was before this account existed (the row was SENT since, D12), so the date is withheld. */
   notSent: Array<{ at: string | null; reason: string }>;
-  /** U16a · `createdAt: null` — minted before this account existed (listed because one of their own messages carried it). */
+  /** U16a · `createdAt: null` — minted before this account existed (listed because one of their own campaign rows
+   *  records it). */
   optOutLinks: Array<{ ref: string; createdAt: string | null }>;
   /** D10 · null when every campaign row is listed; otherwise `CAMPAIGN_HISTORY_CUT`, the sentence saying the oldest are not. */
   campaignHistoryCut: string | null;
@@ -325,10 +328,11 @@ export async function marketingDsarView(
       const ownNumber = identifier === accountNumber;
       for (const t of await Promise.resolve(db.marketingOptOutToken.listFor(identifier))) {
         if (t.channel !== "SMS" || t.category !== "MARKETING") continue;
-        // An unreadable mint date reads as BEFORE the account — listed only when carried, and undated (do not disclose).
+        // An unreadable mint date reads as BEFORE the account — listed only when carried (recorded on one of their own
+        // campaign rows), and undated (do not disclose).
         const mintedBefore = !(Date.parse(t.createdAt) >= createdMs);
-        // The account's own number: a link minted since the account, or one their own message carried. D11 · another
-        // number of theirs: ONLY a link their own message carried — the stranger holding it now has links of their own.
+        // The account's own number: a link minted since the account, or one their own campaign row records. D11 ·
+        // another number of theirs: ONLY a link their own row records — the stranger holding it now has links of their own.
         if (!carried.has(t.token) && (mintedBefore || !ownNumber)) continue;
         optOutLinks.push({ ref: optOutTokenRef(t.token), createdAt: mintedBefore ? null : t.createdAt });
       }

@@ -5,7 +5,8 @@
  * only where `NODE_ENV` is not `production`, which on this platform means a developer's own machine.
  *
  * ⭐ WHY THIS EXISTS. A test to a typed number is offered only once licence outreach is OPEN and `adult.test` is SAVED — two
- * owner acts (until the owner's ruling of 2026-10-09 the draft also had to carry a source line). A drive cannot reach any
+ * owner acts (until the owner's ruling of 2026-10-09 the draft also had to carry a source line) — and, since that ruling,
+ * only to the Owner and Compliance (`mayTestTypedNumber`, `campaign-test-send.ts`). A drive cannot reach any
  * of the Test card's typed states without them, and each "disabled, because …" state needs the world one step short of
  * open. ⭐ EVERY STEP GOES THROUGH
  * THE PLATFORM'S OWN WRITER — `savePolicyLines`, `saveMarketingWordings`, `openLicenceOutreach` / `closeLicenceOutreach`,

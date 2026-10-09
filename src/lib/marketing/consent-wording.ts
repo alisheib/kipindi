@@ -7,6 +7,9 @@
  * so") was false. ⭐ Built default, on Ali's delegation (D3): a player is marketable only when the LATEST
  * ledger row is GIVEN and its wording is one of the sentences below. A "yes" given under the old
  * wording is not a yes to SMS marketing, and nothing backfills it — the player is asked again.
+ * ⟶ 2026-10-07: this decides whether a player CONSENTED — since the owner's FINAL rule consent is no
+ * condition while licence outreach is open, and a player with none is reached under the licence
+ * (`src/lib/server/marketing/consent.ts`, step 2a′); a stop or a withdrawal still refuses.
  *
  * ⛔ LITERAL STRINGS, NEVER A READ OF TODAY'S DICTIONARY. Deriving this list from `i18n-dict.ts` would
  * make every future rewording silently re-qualify (or disqualify) every consent ever given. The ledger

@@ -865,7 +865,8 @@ const nbspNote = (t: string): string => {
   return n > 0 ? `, ${n} no-break space${n === 1 ? "" : "s"}` : "";
 };
 
-/** How long a wording is, by its own rule: septets as printed for the source line, characters for the rest. */
+/** How long a wording is, by its own rule: septets for the source line (as it would print — no message prints it since
+ *  the owner's ruling of 2026-10-09), characters for the rest. */
 function wordingLength(key: WordingKey, text: string): string {
   if (key === "source.phrase") {
     return encodingFor(text) === "GSM7"

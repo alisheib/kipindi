@@ -242,7 +242,8 @@ function storeOver(cfg: WordingsConfig, seen: RowSeen, rules: WordingRules, merg
   };
 
   /**
-   * ⭐ U37s · A FRESH READ, for a writer that STAMPS a wording onto another record (the draft save's source line). The
+   * ⭐ U37s · A FRESH READ, for a writer that STAMPS a wording onto another record (the draft save's source line, until
+   * the owner's ruling of 2026-10-09 — no draft save stamps one since, and nothing in `src/` calls this now). The
    * cache is this process's: it answers "nothing saved" until the boot read lands, and the version it booted with during
    * a deploy's overlap — and a stamp written from either would quietly replace a good line with a stale one or none. So
    * the row is re-read here (`reload` replaces the cache with what it read). ⛔ FAILS CLOSED: a read that could not

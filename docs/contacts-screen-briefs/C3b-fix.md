@@ -1,3 +1,4 @@
+✅ DONE — landed in `e8111962` (`contacts-c3b-int`, pushed to main with C3b), 2026-10-09; kept as the design record. (Its three open finds — D4 in the list paste, D7 under an unpadded title, the generator's four files and their drive checks — are landing 2026-10-09 with S14's contacts push, in C8c.)
 # C3b-fix — the review round for C3b (brief for the builder)
 
 ## Context

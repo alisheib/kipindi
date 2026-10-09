@@ -1,6 +1,13 @@
 /**
  * LIVE PROOF FOR MARKETING U5 — the statutory helpline, read off production.
  *
+ * ⟶ 2026-10-09 · ⛔ STALE — DO NOT RUN AS A PROOF. Three owner rulings overtook what this drive asserts: the helpline is
+ * editable, not pinned (2026-10-03); NO player surface shows a helpline (2026-10-06 — `test:support-contact` §15 now
+ * holds its ABSENCE, the error page's copies included); and no marketing SMS carries one (2026-10-09 — nothing is
+ * appended). Its controls look for helpline-labelled `tel:` links these pages no longer print, so they cannot pass on
+ * today's production; the "PINNED constant" and §15 sentences below are history.
+ * Retiring it, or rewriting it as an absence check, is owed in code (the integrator's call).
+ *
  * ⭐ THE DISCRIMINATION IS A DEFECT THAT WAS REALLY TRUE HERE FOR THREE WEEKS. An operator saved
  * their own desk number into the support row's `helpline` field and the readers took it, so the
  * national problem-gambling helpline on a gambling site was the gambling site's own sales line. This

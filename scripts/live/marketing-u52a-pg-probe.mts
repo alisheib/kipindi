@@ -205,7 +205,9 @@ async function seedBook(): Promise<void> {
     [BASIS, LIST, OFFICER, iso(NOW - 3_600_000)],
   );
 }
-/** The saved wordings of a platform ready for the drive: the source line and the typed-number test's 18+ sentence (jsonb). */
+/** The saved wordings of a platform ready for the drive: the source line and the typed-number test's 18+ sentence (jsonb).
+ *  (⟶ 2026-10-09: the source line is history only since the owner's ruling; it is seeded because the pre-flight's
+ *  "source" row still asks for it — owed a change in code.) */
 const seedWordings = (): Promise<unknown> =>
   q(`INSERT INTO "SystemConfig" (key, value, "updatedAt") VALUES ($1, $2::jsonb, now())`, [WORDINGS_KEY, json(W.SAVED_WORDINGS)]);
 /** ⭐ The SAVED Marketing SMS settings (jsonb): not the defaults - a price of 7, a reserve of 21,000, a limit of 11,000 and the widest window (07:00-21:00). */
