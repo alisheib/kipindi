@@ -465,12 +465,12 @@ const phasesOf = (t: (p: string) => string) => ({
     "src/components/markets/win-celebration.tsx": "reads the motion class; writes no mark",
     "src/components/markets/market-card.tsx": "a tapped button's press animation (press-pop), in its click handler",
     "src/components/layout/needle.tsx": "the Needle's own engine (its root's suppressed and wake classes), run from its own gate; R4-J's and R5-D's notes hold its first frame (the shell's mark in the server's HTML)",
-    "src/components/ui/route-transition.tsx": "the route entrance (route-enter), re-raised in PASSIVE effects after a route change's first paint (the page painted, then made transparent and faded in — every tab tap in the journey, and every move in a browser without View Transitions), and replayed at hydration — NAMED TO THE INTEGRATOR, not changed here: it changes every navigation in both shells and needs a browser's frame capture (S/r5h/route-transition.r5h.patch has the change and the lock-turn check)",
+    "src/components/ui/route-transition.tsx": "the route entrance (route-enter): restarted in the layout phase of a route change, before the new route's first paint, and never at mount — FIXED (R5-H's patch, proven in a browser 2026-10-09; 3.7, 3.8)",
   };
   const PATTERN = /document\.documentElement\.(?:setAttribute|removeAttribute|classList|dataset)|document\.body\.(?:style|dataset|classList|setAttribute)|\.setAttribute\("data-|\.classList\.(?:add|remove|toggle)\(|body\.dataset\.|body\.style\./;
   const writers = (text: (p: string) => string) => walk("src").filter((p) => /\.tsx?$/.test(p) && !p.startsWith("src/app/admin/") && PATTERN.test(decomment(text(p)))).sort();
   const now = writers(raw);
-  ok(`3.5 · every file outside the console that writes a DOM mark is classified (${now.length}): the phase it writes in and why that is right for what reads it — the journey flag and the strip's edges fixed here, the route entrance named to the integrator`,
+  ok(`3.5 · every file outside the console that writes a DOM mark is classified (${now.length}): the phase it writes in and why that is right for what reads it — the journey flag, the strip's edges and the route entrance fixed`,
     j(now) === j(Object.keys(MARK_WRITERS).sort()), j(now.filter((f) => !(f in MARK_WRITERS))) + " / " + j(Object.keys(MARK_WRITERS).filter((f) => !now.includes(f))));
   const planted = writers((p) => (p === "src/components/ui/toast.tsx" ? `${raw(p)}\nexport const markToast = () => document.documentElement.setAttribute("data-toast", "");` : raw(p)));
   ok("3.5′ PLANT · a new writer of a DOM mark (a toast stamping the html element) is reported until it is classified", planted.includes("src/components/ui/toast.tsx"));
@@ -478,6 +478,15 @@ const phasesOf = (t: (p: string) => string) => ({
   const stripOk = (s: string) => s.includes('useLayoutEffect(() => { for (const rail of Array.from(document.querySelectorAll<HTMLElement>("[data-strip-autoscroll]"))) markEdges(rail); });');
   ok("3.6 · the strip's edge fade is marked in the layout phase (and the framing effect still marks it again after it scrolls)", stripOk(strip) && count(strip, "markEdges(rail);") >= 4);
   ok("3.6′ PLANT · the layout pass removed (the first frame after a move faded at the end of a strip that fits) is reported", !stripOk(strip.replace("useLayoutEffect(() => { for", "useEffect(() => { for")));
+  // ⭐ THE ROUTE ENTRANCE (R5-H's patch, proven in a browser 2026-10-09 — S\r5h\probe-route-blink.mjs: before, every
+  // journey tab tap blinked and a cold load replayed the entrance at hydration and jumped to the top; after, none).
+  const rt = squash(code("src/components/ui/route-transition.tsx"));
+  const routeOk = (s: string) => s.includes("useLayoutEffect(() => { if (pathname !== key) {");
+  const mountOk = (s: string) => /const mountedRef = useRef\(false\); useLayoutEffect\(\(\) => \{ if \(!mountedRef\.current\) \{ mountedRef\.current = true; return; \}/.test(s);
+  ok("3.7 · a route change restarts the entrance in the LAYOUT phase, before the new route's first paint (no painted frame at full opacity, then transparent)", routeOk(rt));
+  ok("3.7′ PLANT · the route change back in a passive effect (the blink on every journey tab tap) is reported", !routeOk(rt.replace("useLayoutEffect(() => { if (pathname !== key) {", "useEffect(() => { if (pathname !== key) {")));
+  ok("3.8 · the entrance and the scroll to the top do NOT run at mount (hydration replays nothing and keeps the reader's place)", mountOk(rt));
+  ok("3.8′ PLANT · the mount guard removed (the entrance replayed at hydration, the page thrown to the top) is reported", !mountOk(rt.replace("if (!mountedRef.current) { mountedRef.current = true; return; }", "")));
 }
 
 /* ══ §4 · G-2b · THE MONEY BOOKS' BAR GHOST ══════════════════════════════════════════════════════════════════════════ */

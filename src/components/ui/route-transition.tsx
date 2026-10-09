@@ -1,7 +1,7 @@
 "use client";
 
 import { usePathname } from "next/navigation";
-import { useRef, useEffect, useState } from "react";
+import { useRef, useEffect, useLayoutEffect, useState } from "react";
 import { journeyFlagSnapshot } from "@/lib/journey/journey-on";
 
 /**
@@ -93,7 +93,14 @@ export function RouteTransition({ children }: { children: React.ReactNode }) {
     return () => window.removeEventListener("popstate", onPop);
   }, []);
 
-  useEffect(() => {
+  // ⭐ BEFORE THE NEW ROUTE'S FIRST PAINT (round 5's follow-up, R5-H · G-3's sibling sweep; PROVEN in a browser 2026-10-09:
+  // before, both journey tab taps painted the new route once at full opacity and dropped it to transparent ~10 ms later;
+  // after, none — S\r5h\probe-route-blink.mjs, test:visual-pass-r5h 3.7). A passive effect
+  // runs after a transition's paint, so the new route was painted once at full opacity (the wrapper's entrance long
+  // finished) before the key changed and the `[key]` effect below made it transparent to fade it in — a blink on every
+  // journey tab tap and every move in a browser without View Transitions. In the layout phase the key changes, and the
+  // entrance restarts, before that paint; a View Transition starts from the same DOM as before.
+  useLayoutEffect(() => {
     if (pathname !== key) {
       const doc = document as Document & {
         startViewTransition?: (cb: () => void) => { finished: Promise<void> };
@@ -113,7 +120,13 @@ export function RouteTransition({ children }: { children: React.ReactNode }) {
     }
   }, [pathname, key]);
 
-  useEffect(() => {
+  // ⭐ NOT AT MOUNT (R5-H; PROVEN 2026-10-09: before, a throttled cold load replayed the entrance at hydration — transparent
+  // again at 3.2 s — and threw the reader from y 600 to the top, which S14's visual sweep also caught on /legal/privacy;
+  // after, neither — test:visual-pass-r5h 3.8): the server's HTML played the entrance at its first paint; replaying it at hydration
+  // made the page the reader was already reading go transparent and fade in again, and scrolled it to the top.
+  const mountedRef = useRef(false);
+  useLayoutEffect(() => {
+    if (!mountedRef.current) { mountedRef.current = true; return; }
     // Scroll to top on PUSHED route changes only, so deep-linked pages don't
     // land mid-scroll — never on back/forward, where scroll-restore.tsx owns
     // the position (B-19).
