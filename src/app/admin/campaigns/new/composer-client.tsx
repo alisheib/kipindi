@@ -811,7 +811,7 @@ export function ComposerTest() {
   // ⛔ 2026-10-09 · "ANOTHER NUMBER" ONLY WHERE THE DOOR WOULD TAKE IT: a test to a typed number is for ADMIN and COMPLIANCE
   // alone, and the server says which this viewer is (`typedOffered`, from their STORED role — the door's own decider).
   // Not offered: the card's one way is the officer's own number, said, never a choice — and the target is own, whatever
-  // was picked before the page was read again.
+  // was picked before the page was read again. Guard: `test:campaign-compose` §16.21.
   const offered = t.typedOffered;
   // ⛔ U37c-2 · THE TYPED NUMBER LIVES HERE, AND NOWHERE ELSE — never the address, never storage, never the provider:
   // this card holds the digits, posts them once with the test, and the server re-types them.

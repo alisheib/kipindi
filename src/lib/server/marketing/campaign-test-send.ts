@@ -141,7 +141,8 @@ const MAY_TYPE_A_NUMBER: Readonly<Record<Role, boolean>> = {
 };
 
 /** ⭐ 2026-10-09 · THE ONE DECIDER — this door refuses a typed test by it (step 3) and the composer's loader decides by it
- *  whether the Test card offers "Another number" at all (`typedOffered`): each asks it of the officer's STORED role. */
+ *  whether the Test card offers "Another number" at all (`typedOffered`): each asks it of the officer's STORED role.
+ *  Guard: `test:campaign-compose` §18.37 (every role, at the door) · §18.38 (asked first; the full record) · §18.39. */
 export function mayTestTypedNumber(role: string | null | undefined): boolean {
   return typeof role === "string" && Object.prototype.hasOwnProperty.call(MAY_TYPE_A_NUMBER, role) && MAY_TYPE_A_NUMBER[role as Role] === true;
 }

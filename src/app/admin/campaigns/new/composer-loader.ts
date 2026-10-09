@@ -257,6 +257,7 @@ export function composeTypedView(
  * nothing to show: not allowed, no reason (the card does not offer the choice at all, so there is nothing to explain
  * beside it), no preview and no 18+ words. `composeTypedView` is never asked for them: whatever the record, the words or
  * the draft, the door refuses their typed test (`typed_role`). Frozen — one value, never edited in place.
+ * Guard: `test:campaign-compose` §18.39 (the loader's decision and this value) · §16.21 (the card).
  */
 export const TYPED_NOT_OFFERED: ComposeTypedView = Object.freeze({ allowed: false, why: null, preview: null, attestation: null });
 
