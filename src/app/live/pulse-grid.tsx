@@ -152,8 +152,8 @@ export function LivePulseGrid({ markets }: { markets: Market[] }) {
 
 /**
  * Renders a title with every hyphenated token ("30-day", "month-end?", "Man-City") in a nowrap span, so a balanced
- * wrap can move the whole token but never break after its hyphen (E-400 ⑦b). `split` with a capturing group puts
- * the tokens at odd indices and the text between them — spaces included — at even ones, so no space is added or lost.
+ * wrap can move the whole token but never break after its hyphen (E-400 ⑦b). `hyphenParts` (below) puts the tokens at
+ * odd indices and the text between them — spaces included — at even ones, so no space is added or lost.
  * ⭐ ROUND 4 (2026-10-09, edges 197 255): a token stops at an ideograph, its hyphen touches a letter, and the text
  * between the tokens keeps its figures whole. `\S*` ran across Chinese, which has no spaces, so
  * "辛巴俱乐部赢得2026-27赛季NBC超级联赛" was ONE token — the whole title in one nowrap span, wider than any card. A token
@@ -163,8 +163,43 @@ export function LivePulseGrid({ markets }: { markets: Market[] }) {
  * figure renders as the plain text it was (a keyed fragment, no element).
  */
 export function KeepHyphenated({ text }: { text: string }) {
-  const parts = text.split(/([^\s\p{Script=Han}]*(?:\p{L}-[\p{L}\p{N}]|\p{N}-\p{L})[^\s\p{Script=Han}]*)/u);
+  const parts = hyphenParts(text);
   return <>{parts.map((part, i) => (i % 2 === 1 ? <span key={i} className="whitespace-nowrap">{part}</span> : <Fragment key={i}>{keepFigures(part)}</Fragment>))}</>;
+}
+
+/* ⭐ THE SPLIT, IN ONE PASS (review 6, B-3 · 2026-10-09). It was one pattern —
+       text.split(/([^\s\p{Script=Han}]*(?:\p{L}-[\p{L}\p{N}]|\p{N}-\p{L})[^\s\p{Script=Han}]*)/u)
+   — which tried every start of a run that held no hyphen and ran to the run's end from each, so one long unbroken title
+   cost the square of its length. `hyphenParts` returns that split's very array (text, token, text, … , text), read once
+   over the code points: a token starts where the pattern's would — the first place whose run of non-space, non-Han
+   characters reaches a hyphen's core (a letter, "-", a letter or a number; or a number, "-", a letter) — takes the LAST
+   core that run reaches (the pattern's greedy start), and runs on to the end of the run after it. */
+const NOT_IN_TOKEN = /[\s\p{Script=Han}]/u;
+const LETTER = /\p{L}/u;
+const NUMBER = /\p{N}/u;
+export function hyphenParts(text: string): string[] {
+  const cp = Array.from(text);
+  const n = cp.length;
+  // runEnd[i]: where the run of non-space, non-Han characters starting at i ends (i itself when cp[i] is neither).
+  const runEnd = new Array<number>(n + 1);
+  runEnd[n] = n;
+  for (let i = n - 1; i >= 0; i--) runEnd[i] = NOT_IN_TOKEN.test(cp[i]) ? i : runEnd[i + 1];
+  const core = (i: number) => i + 2 < n && cp[i + 1] === "-"
+    && ((LETTER.test(cp[i]) && (LETTER.test(cp[i + 2]) || NUMBER.test(cp[i + 2]))) || (NUMBER.test(cp[i]) && LETTER.test(cp[i + 2])));
+  // lastCore[i]: the last place at or before i where a core starts, or −1.
+  const lastCore = new Array<number>(n + 1);
+  for (let i = 0; i <= n; i++) lastCore[i] = core(i) ? i : i > 0 ? lastCore[i - 1] : -1;
+  const parts: string[] = [];
+  let from = 0;
+  for (let q = 0; q < n; ) {
+    const at = lastCore[runEnd[q]];
+    if (at < q) { q++; continue; }
+    const end = runEnd[at + 3];
+    parts.push(cp.slice(from, q).join(""), cp.slice(q, end).join(""));
+    from = q = end;
+  }
+  parts.push(cp.slice(from).join(""));
+  return parts;
 }
 
 /**

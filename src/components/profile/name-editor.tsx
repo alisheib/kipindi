@@ -14,14 +14,18 @@ import { useT } from "@/lib/i18n";
 import { updateProfileBasicsAction } from "@/app/profile/actions";
 import { errorCopy } from "@/lib/error-copy";
 import { refusalReason, refusalVariant } from "@/lib/failure-reasons";
-import { keepNameEnd } from "@/components/ui/keep-words";
+import { nameWithEnd } from "@/components/ui/keep-words";
 import { PROFILE_NAME_FACE } from "@/components/profile/profile-faces";
 
 export function ProfileNameEditor({
   currentName,
+  currentNameEnd,
   fallbackPlaceholder,
 }: {
   currentName: string | null;
+  /** Where the name's kept end starts — `nameEndAt(currentName)`, decided by the SERVER and handed here, so this client
+   *  component draws the server's cut and never re-derives it from its own Unicode tables (review 6, B-4). −1: none. */
+  currentNameEnd: number;
   fallbackPlaceholder: string;
 }) {
   const [editing, setEditing] = useState(false);
@@ -179,9 +183,13 @@ export function ProfileNameEditor({
      An unbroken 40-letter name had no break rule: the button ran 141..722 at 360, its pencil off the card and its focus
      ring cut, while the hub breaks the same name cleanly. Now the name may break anywhere when it must
      (`overflow-wrap: anywhere`, which also lets the flex item shrink below its longest word — `break-word` would not),
-     balances its lines, keeps its last two characters together (`keepNameEnd`), and the button never outgrows its
+     balances its lines, keeps its last two characters together (`nameWithEnd`, at the cut the server decided — R6-B), and the button never outgrows its
      column (`max-w-full`). With nothing wider than the column, returning focus here after a save has nothing to reveal,
-     so the hero has nothing to scroll sideways (the hero is `overflow-clip` as well, profile/page.tsx). */
+     so the hero has nothing to scroll sideways (the hero is `overflow-clip` as well, profile/page.tsx).
+     ⭐ THE SERVER'S CUT (review 6, B-4 · 2026-10-09): the kept end starts where the server said (`currentNameEnd`,
+     `nameEndAt` in profile/page.tsx) — the cut reads Unicode tables, and the browser's may be older than Node's, so a
+     cut re-derived here could land elsewhere and mismatch the server's HTML. A save refreshes the page (`router.refresh`),
+     which hands the new name and its cut down together. */
   return (
     <button
       ref={triggerRef}
@@ -191,7 +199,7 @@ export function ProfileNameEditor({
       aria-label={t.common.editDisplayName}
     >
       <span className={`min-w-0 ${PROFILE_NAME_FACE} text-text text-balance [overflow-wrap:anywhere]`}>
-        {currentName && currentName.trim() !== "" ? keepNameEnd(currentName) : (
+        {currentName && currentName.trim() !== "" ? nameWithEnd(currentName, currentNameEnd) : (
           <span className="text-text-subtle italic">{fallbackPlaceholder}</span>
         )}
       </span>

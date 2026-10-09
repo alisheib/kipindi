@@ -28,6 +28,7 @@ import { createElement as h, Fragment } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { decomment, decommentCss } from "./lib/decomment.mts";
 import { keepFigures, keepIdRuns, keepLastWords, keepNameEnd } from "../src/components/ui/keep-words.tsx";
+import { hyphenParts } from "../src/app/live/pulse-grid.tsx";
 import { DotSeq } from "../src/components/ui/dot-seq.tsx";
 import { maskPhone } from "../src/lib/phone-normalize.ts";
 import { SHORT_TITLE_MAX } from "../src/lib/markets/short-title.ts";
@@ -174,7 +175,8 @@ section("2 · E24 E25 E26 a long name breaks inside its column, never one charac
   const nameRule = (b0: string, b = resolved(b0)) => [
     !/className="mt-1\.5 inline-flex min-h-\[40px\] max-w-full items-center gap-2 group text-left"/.test(b) && "the button may outgrow its column",
     !/<span className="min-w-0 font-display text-\[24px\] md:text-\[28px\] font-bold leading-tight tracking-\[-0\.02em\] text-text text-balance \[overflow-wrap:anywhere\]">/.test(b) && "the name has no anywhere-break, balance or min-w-0",
-    !/\? keepNameEnd\(currentName\) :/.test(b) && "the name's end is not kept",
+    // Review 6, B-4 (2026-10-09) moved this pin: the end is kept at the SERVER's cut (`nameWithEnd` + `currentNameEnd`).
+    !/\? nameWithEnd\(currentName, currentNameEnd\) :/.test(b) && "the name's end is not kept (at the server's cut)",
   ].filter(Boolean) as string[];
   ok("2.1 · the read-mode name: the button capped at its column, the name breaking anywhere when it must, balanced, its end kept",
     button !== "" && nameRule(button).length === 0, nameRule(button).join(" · "));
@@ -309,17 +311,19 @@ const CATALOGUE = [
   ok("4.5′ PLANT · the market page h1 as round 4 found it (the bare title) is reported", !pageNoKeep.includes(SITES[2][1]));
 
   // /live's KeepHyphenated: a token stops at an ideograph, and a numeric range is left to keepFigures.
+  // Review 6, B-3 (2026-10-09) moved this pin: the split is `hyphenParts` now — one linear pass that returns the old
+  // pattern's very array — so the tokens are read from the function the wall draws with, not from a pattern literal.
   const grid = read("src/app/live/pulse-grid.tsx");
-  const lit = /const parts = text\.split\(\/(.+)\/u\);/.exec(grid)?.[1] ?? "";
-  const tokens = (re: RegExp, s: string) => s.split(re).filter((_, i) => i % 2 === 1);
-  const now = new RegExp(lit, "u");
+  const drawsParts = grid.includes("const parts = hyphenParts(text);");
+  const tokens = (split: (s: string) => string[], s: string) => split(s).filter((_, i) => i % 2 === 1);
+  const now = hyphenParts;
   const zhTitle = "辛巴俱乐部赢得2026-27赛季NBC超级联赛";
   ok("4.6 · /live's hyphen tokens: \"30-day\" and \"month-end?\" whole, the Chinese title NOT one token, \"2026-27\" left to keepFigures",
-    lit !== "" && show(tokens(now, "Will Ethereum hit a new 30-day high before month-end?")) === show(["30-day", "month-end?"])
+    drawsParts && show(tokens(now, "Will Ethereum hit a new 30-day high before month-end?")) === show(["30-day", "month-end?"])
       && tokens(now, zhTitle).every((t) => t.length < 4) && tokens(now, "Simba SC wins the NBC Premier League 2026-27").length === 0,
     show({ zh: tokens(now, zhTitle) }));
   const oldRe = /(\S*[\p{L}\p{N}]-[\p{L}\p{N}]\S*)/u;
-  ok("4.6′ CONTROL · the round-3 token rule took the whole Chinese title as one nowrap token (wider than any card)", show(tokens(oldRe, zhTitle)) === show([zhTitle]));
+  ok("4.6′ CONTROL · the round-3 token rule took the whole Chinese title as one nowrap token (wider than any card)", show(tokens((s) => s.split(oldRe), zhTitle)) === show([zhTitle]));
 }
 
 /* ══ §5 · E30 · THE CARD'S TITLE SLOT ═══════════════════════════════════════════════════════════════════════════ */

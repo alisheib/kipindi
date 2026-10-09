@@ -66,6 +66,8 @@ const React = req("react") as typeof import("react");
 const h = React.createElement;
 const { renderToStaticMarkup } = req("react-dom/server") as typeof import("react-dom/server");
 const { dict } = req("../src/lib/i18n-dict.ts") as { dict: Record<Locale, Record<string, Record<string, string>>> };
+// Review 6, A6 (2026-10-09): a found round is titled in its h1's words — the real rule, handed to the run below.
+const { roundName } = req("../src/lib/updown-round-name.ts") as { roundName: (t: unknown, assetName: string, minutes: number) => string };
 
 /* ══ §1 · F1 · A RECORD PAGE'S METADATA NEVER DECIDES THE PAGE ═══════════════════════════════════════════════════════ */
 section("1 · F1 · a failed read is the board's title in the reader's language, a missing record the not-found's, nothing throws");
@@ -98,6 +100,7 @@ function runnable(fn: string, read: (id: string) => Promise<unknown>, calls: Cal
     pickLocalized: (l: Locale, en: string, sw?: string | null, zh?: string | null) => (l === "sw" ? sw : l === "zh" ? zh : en) || en,
     sharePreviewPrice: () => ({ kind: "none" }), sharePreviewSettled: () => null, sharePreviewDescription: () => "desc",
     resolveWinShareToken: async () => null, formatTzs: (n: number) => `TZS ${n}`, ROOT_OPEN_GRAPH: { siteName: "50pick" },
+    roundName,
   };
   return new Function(...Object.keys(deps), `${js}\nreturn generateMetadata;`)(...Object.values(deps)) as
     (a: { params: Promise<Record<string, string>>; searchParams?: Promise<Record<string, string>> }) => Promise<unknown>;
@@ -110,7 +113,9 @@ async function outcome(fn: string, read: (id: string) => Promise<unknown>, local
     return { result, calls };
   } catch (e) { return { threw: e === NOT_FOUND ? "notFound()" : String(e), calls }; }
 }
-const RECORD = { titleEn: "Will it rain?", titleSw: "Je, mvua itanyesha?", titleZh: "会下雨吗？", yesPool: 0, noPool: 0, predictorCount: 0, status: "LIVE", resolvedOutcome: null };
+const RECORD = { titleEn: "Will it rain?", titleSw: "Je, mvua itanyesha?", titleZh: "会下雨吗？", yesPool: 0, noPool: 0, predictorCount: 0, status: "LIVE", resolvedOutcome: null,
+  // A round's own fields (review 6, A6: its <title> is its h1's words — the asset in the reader's language, its minutes).
+  asset: { nameEn: "Bitcoin", nameSw: "Bitcoin", nameZh: "比特币" }, round: { durationMinutes: 15 } };
 const fail = async () => { throw new Error("connection terminated unexpectedly (a database blip)"); };
 const none = async () => null;
 const found = async () => RECORD;
@@ -141,8 +146,10 @@ async function judgeMeta(fn: string, board: (l: Locale) => string, recordTitle: 
 const titleIn = (l: Locale) => (l === "sw" ? RECORD.titleSw : l === "zh" ? RECORD.titleZh : RECORD.titleEn);
 for (const [route, file, board, boardFile, boardLine] of RECORD_PAGES) {
   const fn = fnText(code(file), "export async function generateMetadata");
-  // The round's metadata names a round by its English title (the round has no other); the others by the reader's.
-  const wrong = await judgeMeta(fn, board, route === "/updown/[roundId]" ? () => RECORD.titleEn : titleIn);
+  // The round's metadata names a round in its h1's words — "Bitcoin Juu na Chini · 15 dakika" (review 6, A6 moved this pin:
+  // it was the stored English title in every language); the others by the reader's title.
+  const roundIn = (l: Locale) => roundName(dict[l], l === "sw" ? RECORD.asset.nameSw : l === "zh" ? RECORD.asset.nameZh : RECORD.asset.nameEn, RECORD.round.durationMinutes);
+  const wrong = await judgeMeta(fn, board, route === "/updown/[roundId]" ? roundIn : titleIn);
   ok(`1.1 · ${route}: RUN in sw, en and zh — a failed read answers the board's title in that language (${LOCALES.map((l) => j(board(l))).join(" ")}), a record not there the not-found's metadata, a record found its title; notFound() never called`,
     wrong.length === 0, wrong.join(" | "));
   ok(`1.2 · ${route}: the neutral title is the board's own name — ${boardFile} is titled by the same key`, code(boardFile).includes(boardLine), boardLine);
