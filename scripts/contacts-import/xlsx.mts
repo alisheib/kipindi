@@ -720,7 +720,8 @@ function specifiers(src: string): string[] {
   for (const form of IMPORT_FORMS) for (const m of src.matchAll(form)) out.push(m[1]);
   return out;
 }
-const READER_IMPORTS = ["exceljs", "node:zlib", "@/lib/contacts/parsed-file", "@/lib/contacts/xlsx-limits", "@/lib/contacts/contact-fields"];
+/** C3c · `xlsx-cells.ts` joined the list: the cell rules and the notes moved there, shared with the browser's reader. */
+const READER_IMPORTS = ["exceljs", "node:zlib", "@/lib/contacts/parsed-file", "@/lib/contacts/xlsx-limits", "@/lib/contacts/contact-fields", "@/lib/contacts/xlsx-cells"];
 const RUN_IMPORTS = ["@/lib/server/audit", "./import-xlsx", "@/lib/contacts/xlsx-limits"];
 const DIRECTIVE = /^\s*["']use (?:client|server)["']/;
 const NEVER_IN_READER = ["WorkbookReader", "stream.xlsx", "readFile", "console."];
@@ -763,7 +764,7 @@ export const L = {
   X24: "X24 · the 40-row fixture and the realistic and densest ~690 KB fixtures read to their EXACT row counts, and XLSX_MAX_INFLATED_BYTES, XLSX_MAX_ROWS and XLSX_MAX_CELL_ELEMENTS are each at least twice the densest measurement",
   X25: "X25 · ⛔ M6 — the reader flags nothing itself: no note speaks of a shortened number, and import-xlsx.ts names neither looksExcelShortened nor excelShortenedSentence",
   X26: "X26 · ⛔ ONE DETECTOR (M6, C18) — no src file but xlsx-limits.ts defines looksExcelShortened or holds a shortened-number pattern",
-  X27: "X27 · ⛔ SERVER-ONLY AND IN MEMORY — import-xlsx.ts imports exactly exceljs, node:zlib, the two contacts foundations and (C3b · G2) U28's field list for the header match, loads with xlsx.load (no streaming reader, no file read, no console) and carries no directive; the officer wrapper imports no exceljs",
+  X27: "X27 · ⛔ SERVER-ONLY AND IN MEMORY — import-xlsx.ts imports exactly exceljs, node:zlib, the two contacts foundations, (C3b · G2) U28's field list for the header match and (C3c) the shared cell rules of xlsx-cells.ts, loads with xlsx.load (no streaming reader, no file read, no console) and carries no directive; the officer wrapper imports no exceljs",
   X28: "X28 · ONE READ IN FLIGHT — of two concurrent officer reads exactly one is busy and never decoded, and the slot is free again after a read, a refusal and a reader that throws",
   X29: "X29 · ⛔ ONE AUDIT ROW PER ASK, COUNTS ONLY — every officer call, busy included, writes exactly one ContactImport row (xlsx_read or xlsx_refused) whose payload is counts and fixed words: no file name, no sheet name, no cell",
   X30: "X30 · ⛔ §5.14 — no note and no refusal holds a run of 7+ digits or any cell's text, though the fixtures are full of phone numbers",

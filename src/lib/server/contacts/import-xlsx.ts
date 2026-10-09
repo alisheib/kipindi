@@ -46,6 +46,10 @@
  * Date reads as ISO; rich text is joined; a hyperlink reads its display text; a boolean reads TRUE or FALSE; an
  * error value, a formula whose saved value is empty or missing, and the covered cells of a merge read blank, with a
  * note naming their rows.
+ * ⭐ C3c (2026-10-09) · THOSE RULES LIVE ONCE, IN `src/lib/contacts/xlsx-cells.ts` (`xlsxValueText`, `xlsxNumberText`,
+ * the notes): a workbook past 700 KB is read in the officer's browser by `xlsx-read.ts`, which imports the same
+ * functions, and `test:contacts-import`'s xlsx-browser section reads a corpus through both readers and requires the
+ * identical file. This reader's own steps — the size gate, the pre-pass, exceljs, the sheet — are unchanged.
  *
  * 🔴 EXCEL'S NUMERIC SHORTENED FORM (A1.3). A CSV holding Excel's display of a 12-digit number, re-saved as .xlsx,
  * stores the NUMBER 255713000000 — a valid-looking number that belongs to a stranger. So a NUMERIC value that is an
@@ -65,9 +69,20 @@
  */
 import ExcelJS from "exceljs";
 import { inflateRawSync } from "node:zlib";
-import { formatRowList } from "@/lib/contacts/parsed-file";
 import type { ParsedContactsFile, ParsedRow } from "@/lib/contacts/parsed-file";
 import { autoMapHeaders } from "@/lib/contacts/contact-fields";
+// ⭐ C3c · the cell rules and the notes live ONCE in the client-safe `xlsx-cells.ts`: the browser's reader of a workbook
+// past 700 KB (`xlsx-read.ts`) imports the very same functions, and `test:contacts-import`'s xlsx-browser section holds
+// the two readers to one reading of the same bytes.
+import {
+  xlsxCellNotes,
+  xlsxNumberText,
+  xlsxOtherSheetsNote,
+  xlsxValueText,
+  type CellFlag,
+  type CellRead,
+  type NumberText,
+} from "@/lib/contacts/xlsx-cells";
 import {
   ODS_MIMETYPE,
   XLSX_MAX_BYTES,
@@ -412,72 +427,24 @@ export function inspectXlsxZip(bytes: Uint8Array, measure: MeasureEntry = measur
  */
 export type XlsxCellLike = { readonly type: number; readonly value: unknown; readonly result?: unknown; readonly text: string };
 
-/** Why a cell read as blank although it held something — each becomes a note naming its rows. */
-export type CellFlag = "formula_without_result" | "error" | "merged";
-
-export type CellRead = { readonly text: string; readonly flag: CellFlag | null };
-
-export type NumberText = (v: number) => string;
-
-/** Excel holds 15 significant digits; whatever a double carries past them is binary noise, never data. */
-const EXCEL_DIGITS = 15;
-
-/**
- * A number as text: an integer exactly; float noise past Excel's 15 significant digits rounded away (712345678.0000001
- * reads 712345678, 0.1 + 0.2 reads 0.3); a genuine decimal kept (3.5). 🔴 A1.3 — an integer of at least 1e11 that is
- * divisible by 1e6 is written as Excel's scientific text, so U28's one detector refuses it: it is what a re-saved
- * `2.55713E+11` becomes, and as digits it reads as a stranger's valid number.
- */
-export function xlsxNumberText(v: number): string {
-  if (!Number.isFinite(v)) return "";
-  const n = Number.isInteger(v) ? v : Number(v.toPrecision(EXCEL_DIGITS));
-  if (!Number.isInteger(n)) return String(n);
-  if (n >= 1e11 && n % 1e6 === 0) return n.toExponential().toUpperCase();
-  return Number.isSafeInteger(n) ? String(n) : BigInt(n).toString();
-}
-
-/** A Date as ISO: the day alone at midnight, else the day and the time (exceljs reads the serial as UTC wall time). */
-function dateText(d: Date): string {
-  if (!Number.isFinite(d.getTime())) return "";
-  const iso = d.toISOString();
-  return iso.endsWith("T00:00:00.000Z") ? iso.slice(0, 10) : iso.slice(0, 19);
-}
-
-const BLANK: CellRead = { text: "", flag: null };
-
-const runText = (run: unknown): string =>
-  typeof run === "object" && run !== null && typeof (run as { text?: unknown }).text === "string" ? (run as { text: string }).text : "";
-
-function readValue(v: unknown, numberText: NumberText): CellRead {
-  if (v === null || v === undefined) return BLANK;
-  if (typeof v === "number") return { text: numberText(v), flag: null };
-  if (typeof v === "string") return { text: v, flag: null };
-  if (typeof v === "boolean") return { text: v ? "TRUE" : "FALSE", flag: null };
-  if (v instanceof Date) return { text: dateText(v), flag: null };
-  if (typeof v !== "object") return BLANK;
-  const o = v as Record<string, unknown>;
-  if ("error" in o) return { text: "", flag: "error" };
-  if (Array.isArray(o.richText)) return { text: o.richText.map(runText).join(""), flag: null };
-  if ("hyperlink" in o) return readValue(o.text, numberText);
-  if ("formula" in o || "sharedFormula" in o) {
-    return o.result === undefined || o.result === null ? { text: "", flag: "formula_without_result" } : readValue(o.result, numberText);
-  }
-  return BLANK;
-}
+// ⭐ C3c · the shared rules, re-exported where the server's callers and `test:contacts-import`'s xlsx section import them.
+export { xlsxNumberText };
+export type { CellFlag, CellRead, NumberText };
 
 /**
  * ⭐ THE switch — one cell to its text. A covered merge cell is blank (its value is the first cell's, and repeating it
  * would put one number on two lines); a formula is its CACHED result, read from `result` because exceljs's `value`
- * copy drops a result of 0; everything else by the shape of its value. A string is kept verbatim — never trimmed,
- * never "repaired": `2.55713E+11` stays exactly that, for U28's one detector.
+ * copy drops a result of 0; everything else by the shape of its value, through the ONE value rule both readers share
+ * (`xlsxValueText`, xlsx-cells.ts). A string is kept verbatim — never trimmed, never "repaired": `2.55713E+11` stays
+ * exactly that, for U28's one detector.
  */
 export function xlsxCellText(cell: XlsxCellLike, numberText: NumberText = xlsxNumberText): CellRead {
   if (cell.type === ExcelJS.ValueType.Merge) return { text: "", flag: "merged" };
   if (cell.type === ExcelJS.ValueType.Formula) {
     const result = cell.result;
-    return result === undefined || result === null ? { text: "", flag: "formula_without_result" } : readValue(result, numberText);
+    return result === undefined || result === null ? { text: "", flag: "formula_without_result" } : xlsxValueText(result, numberText);
   }
-  return readValue(cell.value, numberText);
+  return xlsxValueText(cell.value, numberText);
 }
 
 /* ══ THE RULES — every step a seam ═══════════════════════════════════════════════════════════════ */
@@ -560,31 +527,11 @@ function stripDataUrl(field: string): string | null {
   return field.slice(5, comma).toLowerCase().endsWith(";base64") ? field.slice(comma + 1) : null;
 }
 
-const capital = (s: string): string => s.charAt(0).toUpperCase() + s.slice(1);
-
-/**
+/*
  * The notes name ROWS — never a cell's value, and a sheet's title only in G2's note, through the copy table's one
- * sheet-name rule (`xlsxChosenSheetNote` — §5.14). ⚠️ exceljs cannot tell a formula
- * whose saved value is an empty text (`=IF(A2="","",A2)`, written `<v></v>`) from one never calculated (a file
- * written by a library), so the sentence names both and makes the re-save conditional.
+ * sheet-name rule (`xlsxChosenSheetNote` — §5.14). ⭐ C3c · their sentences live in `xlsx-cells.ts` (`xlsxCellNotes`,
+ * `xlsxOtherSheetsNote`), shared with the browser's reader, so a workbook says the same thing whichever reader read it.
  */
-function formulaNote(lines: readonly number[]): string {
-  const one = lines.length === 1;
-  return `${capital(formatRowList(lines))} ${one ? "has a formula whose saved value is" : "have formulas whose saved values are"} empty or missing, so ${one ? "it was" : "they were"} read as blank. If ${one ? "it" : "they"} should hold something, open the file in Excel, save it, and choose it again.`;
-}
-
-function errorNote(lines: readonly number[]): string {
-  const one = lines.length === 1;
-  return `${capital(formatRowList(lines))} ${one ? "holds an error value" : "hold error values"} (like #N/A), so ${one ? "it was" : "they were"} read as blank.`;
-}
-
-function mergedNote(lines: readonly number[]): string {
-  return `${capital(formatRowList(lines))} ${lines.length === 1 ? "has" : "have"} merged cells; only the first cell of each merge holds its value, so the others were read as blank.`;
-}
-
-function sheetsNote(others: number, hidden: number): string {
-  return `This workbook has ${others} other ${others === 1 ? "sheet" : "sheets"}${hidden > 0 ? ` (${hidden} hidden)` : ""}; only the first visible sheet was read.`;
-}
 
 /**
  * ⭐ C3b · G2 · a sheet's HEADER ROW as U28 needs it to tell a contacts sheet from a cover page: the texts of its first row
@@ -691,11 +638,9 @@ export function buildXlsxReader(rules: XlsxReaderRules): (input: XlsxReadInput) 
       if (sheet !== sheets.find((s) => s.state === "visible")) {
         notes.push(xlsxChosenSheetNote(sheet.name, sheets.indexOf(sheet) + 1, sheets.length));
       } else if (sheets.length > 1) {
-        notes.push(sheetsNote(sheets.length - 1, sheets.filter((s) => s !== sheet && s.state !== "visible").length));
+        notes.push(xlsxOtherSheetsNote(sheets.length - 1, sheets.filter((s) => s !== sheet && s.state !== "visible").length));
       }
-      if (flagged.formula_without_result.length > 0) notes.push(formulaNote(flagged.formula_without_result));
-      if (flagged.error.length > 0) notes.push(errorNote(flagged.error));
-      if (flagged.merged.length > 0) notes.push(mergedNote(flagged.merged));
+      notes.push(...xlsxCellNotes(flagged));
 
       const blankRows = rows[rows.length - 1].line - rows.length;
       const width = rows.reduce((widest, r) => Math.max(widest, r.cells.length), 0);
