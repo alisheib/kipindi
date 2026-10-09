@@ -407,6 +407,8 @@ export async function syncPlayerToggle(identifier: string, on: boolean, actor: P
  * ⛔ BOUNDED. An unbounded loop against a table that can only fill up is an outage that looks
  * like a hang. Six attempts at ≈1% each is a failure probability no campaign will ever meet,
  * and a caller that gets null must refuse to enqueue rather than send a message with no way out.
+ * ⟶ 2026-10-09: no message prints the link since the owner's ruling (nothing is appended to a marketing SMS); every
+ * row still gets its token for `/s/<token>` and the record, and a null still refuses — the reason above is history.
  */
 export const OPTOUT_MINT_ATTEMPTS = 6;
 
@@ -442,10 +444,11 @@ export async function mintOptOutToken(raw: string): Promise<string | null> {
 }
 
 /**
- * U37b · REUSE, ELSE MINT — the opt-out token a number's next marketing SMS carries.
+ * U37b · REUSE, ELSE MINT — the opt-out token kept for a number that is sent a marketing SMS (printed in the message
+ * until the owner's ruling of 2026-10-09; in none since — `/s/<token>` still works for every link sent before).
  *
  * ⭐ ONE NUMBER, ONE LINK. The link never expires (OD43), so a number that already holds a token gets the SAME one back:
- * every message it is ever sent offers the one link its owner may already have used, and a second test to the same
+ * every message it was sent offered the one link its owner may already have used, and a second test to the same
  * officer adds no row. Only a number with no token is minted one (`mintOptOutToken`, with its retry and its
  * normalisation). ⛔ An unusable number gets null — a caller that gets null sends nothing, exactly as after a failed mint.
  * ⚠️ Two first sends to one number at the same instant can each mint one; both links work for ever, so the cost is a
@@ -463,10 +466,11 @@ export async function ensureOptOutToken(raw: string): Promise<string | null> {
 }
 
 /**
- * U43b-2 review · THE TOKEN A NUMBER'S MESSAGES CARRY NOW — the one `ensureOptOutToken` reuses (the newest), READ and never
+ * U43b-2 review · THE TOKEN A NUMBER HOLDS NOW — the one `ensureOptOutToken` reuses (the newest), READ and never
  * minted: null for a number that holds none, and for an unusable number. ⭐ The campaign engine's reaper gives a row whose
- * message reached the wire this token (E30, the access export) — ONE number, ONE link, so it is the link that message
- * offered. ⛔ Never a mint: E1 — a permanent link is made only for a number the gate has just cleared.
+ * message reached the wire this token (the access export; E30's row reads none since 2026-10-09) — ONE number, ONE link,
+ * so it is the link that message offered while messages printed it (until the owner's ruling of 2026-10-09).
+ * ⛔ Never a mint: E1 — a permanent link is made only for a number the gate has just cleared.
  */
 export async function currentOptOutToken(raw: string): Promise<string | null> {
   const identifier = toMsisdn255(raw);

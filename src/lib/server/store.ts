@@ -453,7 +453,8 @@ export type StoredSmsCampaign = {
   segmentsEn: number | null;
   nameFallbackSw: string | null;
   nameFallbackEn: string | null;
-  /** M5 · OQ3's phrase for every non-account recipient; null until G5 supplies the wording. */
+  /** M5 · OQ3's source phrase — history only since the owner's ruling of 2026-10-09: no message prints it and no draft
+   *  save stamps it (a new draft stores null; a row saved before keeps its value). */
   sourcePhrase: string | null;
   /** ⭐ THE ONE OPTIMISTIC MECHANISM (X12): every draft save compares it and moves it on by one. */
   draftRevision: number;
@@ -501,9 +502,10 @@ export type StoredSmsCampaignRecipient = {
   status: SmsCampaignRecipientStatus;
   /** The reference handed to the gateway. Nullable-unique. */
   smsReference: string | null;
-  /** U8's token in this person's footer — ensured at SEND, only after the gate clears (E1): reused, else minted, so a
-   *  person the gate refuses gets no permanent link. The seed carries none; the settle writes it. ⛔ A message is never
-   *  rendered without one. */
+  /** U8's opt-out token for this person's number — ensured at SEND, only after the gate clears (E1): reused, else
+   *  minted, so a person the gate refuses gets no permanent link. The seed carries none; the settle writes it. ⛔ A
+   *  message is never rendered without one — though since the owner's ruling of 2026-10-09 no message prints it: the
+   *  row keeps it for `/s/<token>` and the access export. */
   optOutToken: string | null;
   /** Which OD42 variant went out — written at send time. */
   locale: MessagingLocale | null;
@@ -707,7 +709,8 @@ export type SmsRecipientSendRecord = {
   claimToken: string;
   /** E20's trail, as the lost patch carried it. */
   gateTrail: SmsCampaignGateTrail;
-  /** The token in the message's footer (E1). */
+  /** The number's opt-out token, recorded on the row (E1) — printed in no message since the owner's ruling of
+   *  2026-10-09. */
   optOutToken: string | null;
   /** The OD42 variant that went out. */
   locale: MessagingLocale | null;

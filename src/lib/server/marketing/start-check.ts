@@ -3,6 +3,8 @@
  * may not send again, checked in ONE order and said in ONE sentence each (ENGINE-SPEC §4.12 decision 3 and its "as built"
  * note; E15 · E16 · E18 · E19 · OD28 · OD63 · OD65 · OD66).
  *
+ * ⟶ 2026-10-09: U47b's Start and Resume call it now, through `campaign-control.ts` — the "nothing calls this yet"
+ * below is the state it shipped in.
  * ⛔ NOTHING CALLS THIS YET. Its callers are U47b's Start (`checkStart`/`startRefusal` → `transition(CONFIRMED →
  * PREPARING)` → the started row) and Resume (`resumeRefusal` → the held rows re-queued → `transition(PAUSED → …)`), and
  * neither exists, so the module ships inert. ⛔ IT READS AND DECIDES — IT WRITES NOTHING: no transition, no audit row, no

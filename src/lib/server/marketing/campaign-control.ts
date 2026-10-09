@@ -55,6 +55,7 @@
  * ⛔ No phone number in any row, answer or error.
  *
  * ⛔ NOTHING REACHES THIS FILE YET: no `*Action`, no page, no route (U47b-2 adds them, each with its caller in the same push).
+ * ⟶ 2026-10-09: U47b-2 added them — `src/app/admin/campaigns/[id]/actions.ts` and the step route reach this file now.
  * ⛔ NO SMS LEAVES FROM HERE: the only way to the wire is the engine's own (`runCampaignSlice` → `engineSend`); nothing here
  * names `sendBatch`, `dispatchSlice` or a transport. SERVER-ONLY.
  *

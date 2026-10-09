@@ -26,8 +26,9 @@
  * ⭐ OWNER'S RULING, 2026-10-06 (`docs/COMPLIANCE-DECISIONS.md`): the Gaming Board confirmed nothing
  * obliges 50pick to show a helpline or to use a particular one — "let the admin put any numbers he
  * wants". So (1) no player surface shows the helpline any more (`test:support-contact` §15 keeps it
- * off); it stays editable here because the marketing SMS footer still carries it; and (2) every number
- * on the card saves as typed: the E-328 refusal of a helpline equal to our own desk is gone, and the
+ * off); it stays editable here, kept on record (the marketing SMS footer that carried it is empty
+ * since the owner's ruling of 2026-10-09 — `src/lib/marketing/footer.ts`: nothing is appended to a
+ * marketing SMS); and (2) every number on the card saves as typed: the E-328 refusal of a helpline equal to our own desk is gone, and the
  * desk phone takes any number too (`toSupportDial`). The editable helpline keeps its own keys
  * (`nationalHelpline`, `nationalHelplineTel`): the stale `helpline` key in the live row is a leftover
  * of an old form, and `server/support-config.ts` `migrate` still drops it on the way in.
@@ -39,7 +40,7 @@ export type SupportConfig = {
   phone: string;
   phoneTel: string;
   /** The helpline as it is printed, e.g. `0800 11 0011` — any number the admin saves (2026-10-06). Shown
-   *  on no player page; the marketing SMS footer carries it.
+   *  on no player page, and carried by no SMS since 2026-10-09 (the marketing footer is empty) — kept on record.
    *  ⛔ Never the key `helpline`: that key in the live row is a stale leftover of an old form (E-328). */
   nationalHelpline: string;
   /** …and as a tap DIALS it. Always `toHelplineDial(nationalHelpline)` — derived, never typed. */
@@ -176,8 +177,9 @@ export function licenceProblem(input: string): string | null {
  * 🔴 HOW A SAVED VALUE REACHES A CLIENT COMPONENT — the problem the old pinning side-stepped.
  *
  * A `"use client"` module's state is the BROWSER bundle's, which no server-side load can reach
- * (E-226), so a client component cannot read `defineConfig`. And the helpline is rendered from
- * client code: the footer, the reality-check modal, the landing hero, the sign-in shell.
+ * (E-226), so a client component cannot read `defineConfig`. And the helpline was rendered from
+ * client code — the footer, the reality-check modal, the landing hero, the sign-in shell — until the
+ * owner's ruling of 2026-10-06 took it off every player surface.
  *
  * ⭐ So the root layout PUBLISHES the three facts as attributes on <html>, from the server's live
  * config, and in a browser the readers below take them from there. The <html> start tag is parsed
@@ -186,7 +188,8 @@ export function licenceProblem(input: string): string | null {
  *
  * On the server, `server/support-config.ts` registers its live getter on `globalThis` when it
  * loads (the root layout imports it on every request) and the readers call that, so a server
- * component, an email and an SMS footer all read the saved row too.
+ * component and an email read the saved row too (and the marketing SMS footer did, until it was
+ * emptied on 2026-10-09).
  *
  * ⛔ `global-error.tsx` imports nothing, so it spells these attribute names itself;
  * `test:support-contact` §15 holds the two in step.

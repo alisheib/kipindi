@@ -108,7 +108,8 @@ type TypedTestRecipient = { kind: "typed"; number: string; adultAttested: boolea
 
 const EMPTY: Fields = { name: "", bodySw: "", bodyEn: "", nameFallbackSw: "", nameFallbackEn: "" };
 const FIELD_ORDER: CampaignDraftField[] = ["name", "bodySw", "nameFallbackSw", "bodyEn", "nameFallbackEn", "sourcePhrase", "audience"];
-/** The fields this page renders a `data-field` for — the source line is the server's, so a reason about it has no place to go. */
+/** The fields this page renders a `data-field` for — not the source line, which no verdict names since the owner's ruling
+ *  of 2026-10-09 (`sourcePhrase` stays in the field type and the order above only). */
 const ON_PAGE: ReadonlySet<CampaignDraftField> = new Set(["name", "bodySw", "nameFallbackSw", "bodyEn", "nameFallbackEn", "audience"]);
 /** The refusals whose remedy is the officer's own consent switch, on their own profile. */
 const CONSENT_REASONS = ["no_consent", "consent_withdrawn", "suppressed"];
