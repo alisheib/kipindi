@@ -85,23 +85,27 @@ WHERE THE PROGRAMME STANDS (the board, §1, is the authority): 17/52 units ✅ �
 ⏳ IN FLIGHT: S14 — 2026-10-07 from ~10:00 EAT, OMEGA-COMPILE01 (`F:\kipindi-m14`, branch `marketing-s14` cut from
   `origin/main` at `9352de7c`), continuing S13's HANDOVER below (Ali, to this PC: "please proceed with the sms campaign
   plan … another machine was working earlier today"). ⛔ Another session must not start or push a unit named
-  here. NOW (11:41 EAT · 2026-10-09) — where each piece is, for a session on ANY machine (another PC: every commit
+  here. NOW (16:11 EAT · 2026-10-09) — where each piece is, for a session on ANY machine (another PC: every commit
   below is on origin as a backup branch, `origin/backup/marketing-s14-*`). Ali, 2026-10-09: "today the whole SMS campaign is
   done"; "we need today the whole development and campaign sealed and done and delivered, cleanups done on the repo and our
   PDF provided to start using".
   · ✅ STEP 54 — THE LIVE CAMPAIGN PAGE AND ITS RESULTS (U47b-2 + U48a), U52a's TOOLS, THE ENGINE'S DRY-FIRE WITH ITS TWO
     CREDIT FIXES AND THE ADMIN GUIDE v2 — PUSHED 2026-10-09 (see STEP 54 below). Nothing sends until the owner's switch is opened.
-  · ⏳ IN FLIGHT — THE PLAIN SMS (Ali's ruling, 2026-10-09 ~10:35 EAT, COMPLIANCE-DECISIONS § "2026-10-09 · Privacy
+  · ✅ STEP 56 — THE PLAIN SMS, PUSHED 2026-10-09 (Ali's ruling ~10:35 EAT, COMPLIANCE-DECISIONS § "2026-10-09 · Privacy
     v2026-10-09 — a marketing SMS is sent exactly as the officer wrote it: no stop link, no 18+, no helpline, no source line
-    (owner ruling)"): the engine adds NOTHING to a campaign or test SMS. Done on branch `s14-no-footer` (`8bdf5f06d`, NOT
-    pushed): the empty footer, the composer's words, Privacy v2026-10-09 (en/sw/zh), the suites (13 light suites green).
-    Building now: the remaining words and the source-line gates (`s14-no-footer`), the drives and U52a's run sheet
-    (`s14-plain-drives`). Then, after Ali sees the words: the licence basis wording (G4) and the two policy lines (G10) that
-    still say "with the stop link in every offer" are re-saved on production through the owner door (2026-10-09 files).
+    (owner ruling)"): the engine adds NOTHING to a campaign or test SMS; Privacy v2026-10-09 (en/sw/zh, the gateway line
+    names no company); the source line has no job (no gate, no note, not on the wordings card); a test to a typed number is
+    for the Owner and Compliance only; the results row "Stopped since this campaign" counts every way a person stops; the
+    drives, U52a's run sheet (the owner's teaser text, `DRIVE_MESSAGE`) and the guide PDF re-captured. Each branch reviewed
+    independently and fixed; under the lock on the merged tree: typecheck 0, next build ok, the composer 421/0 (five
+    passes), confirm 342/0, live 522/0, policy lines 98/0, retention 30/0, gates 21/0, the visual sweep's campaign tiles
+    114/114 (six widths, three languages), the scratch-PostgreSQL probes (U52a 38/0, list basis 22/0, models 58/0, privacy
+    9/0) and the dry-fire on PostgreSQL PASS. G4 (the licence basis wording) saved on production 2026-10-09 15:20 EAT;
+    G10 (the two privacy lines, approved by Ali ~15:00 EAT) and U52a's two real SMS follow this push.
   · ⏳ IN FLIGHT — S15's LEFTOVERS, GIVEN TO S14 by Ali (2026-10-09 ~10:00 EAT; S15 on Ali-Blade15 has left): C8b (B1–B8,
     with Ali's three answers, all option (a) — COMPLIANCE-DECISIONS 2026-10-09), C8c with C3b-fix's three open finds, C3c
-    (big workbooks read in the browser) landed, a typed-number test for Admin and Compliance only — building on
-    `s14-c8b`, `s14-importer-robust`, `s14-c3c`, `s14-typed-test`, merged here and checked under the lock before one push.
+    (big workbooks read in the browser) — each built, independently reviewed and being fixed on `s14-c8b`,
+    `s14-importer-robust`, `s14-c3c`; they land in the NEXT push (the contacts push), with the lane's clean-up (`s14-cleanup`).
     B8's re-date of the 54 back-filled contacts runs on production only with Ali's approval; Ali removes the "QA Import
     Check (Claude)" staff access.
   · ✅ ALI'S TEXTS SAVED ON PRODUCTION (G5, G4, G10, 2026-10-08) — the PC's clock fixed first (w32tm → time.google.com, within
