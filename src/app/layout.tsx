@@ -206,14 +206,14 @@ export default async function RootLayout({ children }: { children: React.ReactNo
   // places, so both are set. See that comment for WHY this product blocks machine translation
   // at all, and `dom-translation-guard.ts` for what protects us when a translator ignores both.
   return (
-    /* ⭐ THE PUBLIC FACTS RIDE ON <html> (owner's rule 2026-10-03: the helpline and the licence are
-       editable). Client components cannot read the server config (E-226), so the saved helpline and
-       licence are published here, from the live row, and `HELPLINE()` / `LICENCE_NUMBER()` read them back
-       in the browser. The start tag is parsed before any script runs, so the first client render already
-       agrees with the server HTML. See `@/lib/support-config` "HOW A SAVED VALUE REACHES A CLIENT COMPONENT".
-       ⚠️ The helpline is an ATTRIBUTE here, never rendered text — no player page shows it since the owner's
-       ruling of 2026-10-06, and since his ruling of 2026-10-09 the marketing footer is empty, so the admin SMS
-       composer no longer reads it to size one. */
+    /* ⭐ THE PUBLIC FACT RIDES ON <html> (owner's rule 2026-10-03: the licence is editable). Client components
+       cannot read the server config (E-226), so the saved licence is published here, from the live row, and
+       `LICENCE_NUMBER()` reads it back in the browser. The start tag is parsed before any script runs, so the
+       first client render already agrees with the server HTML. See `@/lib/support-config` "HOW A SAVED VALUE
+       REACHES A CLIENT COMPONENT".
+       ⛔ The helpline is NOT published here since 2026-10-09: no player page shows it (the owner's ruling of
+       2026-10-06), and once the marketing footer was emptied that day nothing read it — it sat in every page's
+       HTML for no reader. `test:support-contact` §15.8 holds it off. */
     <html lang={lang} translate="no" data-density={density} {...publicFactAttrs(getSupportConfig())} suppressHydrationWarning className={`notranslate ${sora.variable} ${inter.variable} ${jbm.variable}`}>
       <body className="font-sans antialiased">
         {/* ⛔ FIRST IN THE BODY, DELIBERATELY. Makes `removeChild`/`insertBefore` tolerant of a
