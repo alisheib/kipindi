@@ -56,10 +56,13 @@
  * `dropTitleRows` (title-rows.ts), on the file as read — rows only, the real line numbers kept, one note.
  * ⭐ THE CAPS, the server's own: `XLSX_MAX_ROWS` (a sheet past that many row elements stops being read at once, and a
  * non-blank row past it refuses — `too_many_rows`), `XLSX_MAX_GRID_CELLS` (the chosen sheet laid out densely — the
- * server's grid rule, `too_big_inflated`), `XLSX_MAX_ENTRIES`, and `XLSX_MAX_MERGES` (C3c-merge-guard: a sheet past that
- * many `<mergeCell>` ranges is `too_big_inflated` as it is read — the overlap check and the per-row merge index below
- * stay bounded, so a forged merge flood cannot freeze the officer's tab; the per-cell merge lookup is a binary search
- * over column-disjoint ranges, never a scan of all of them). Two more of this reader's own, each a guard of WORK or MEMORY:
+ * server's grid rule, `too_big_inflated`), `XLSX_MAX_ENTRIES`, and (C3c-merge-guard) the THREE merge caps charged the
+ * same way as the server, across the VISIBLE sheets, as each `<mergeCell>` is read (`addMerge`, through the ONE shared
+ * rule `xlsxMergeArea`): `XLSX_MAX_MERGES` ranges, `XLSX_MAX_MERGED_CELLS` covered cells, and `XLSX_MAX_ROWS` spanned
+ * rows — past any, `too_big_inflated`, before the overlap check, the merge index or `mergedRows` ever runs. So a vast
+ * `A1:XFD1048576`, a tall `A1:A1048576`, an out-of-grid corner or a flood of merges cannot freeze the officer's tab;
+ * `mergedRows` then builds at most the row cap, once, in milliseconds, and the per-cell merge lookup is a binary search
+ * over column-disjoint ranges, never a scan of all of them. Two more of this reader's own, each a guard of WORK or MEMORY:
  *   · ⭐ THE INFLATE BUDGET, `XLSX_BROWSER_INFLATE_BUDGET` = 1 GiB of inflated bytes across EVERY part read (the
  *     workbook, its relationships, the styles, the shared strings, every visible sheet). WHY 1 GiB: the largest
  *     legitimate workbook this reader can be asked for is bounded by the import's own caps — 200,000 rows and 4,000,000
@@ -94,8 +97,10 @@ import {
   ODS_MIMETYPE,
   XLSX_MAX_ENTRIES,
   XLSX_MAX_GRID_CELLS,
+  XLSX_MAX_MERGED_CELLS,
   XLSX_MAX_MERGES,
   XLSX_MAX_ROWS,
+  xlsxMergeArea,
   xlsxRefusalSentence,
   type WrongFormatKind,
   type XlsxRefusal,
@@ -390,9 +395,14 @@ export type XlsxBrowserRules = {
   readonly trimTrailing: boolean;
   readonly maxRows: number;
   readonly maxGridCells: number;
-  /** ⭐ C3c-merge-guard · the most `<mergeCell>` ranges one sheet may carry (XLSX_MAX_MERGES): past it the sheet is
-   *  `too_big_inflated`. It bounds the overlap check and the per-row merge index below, so a forged flood cannot freeze the tab. */
+  /** ⭐ C3c-merge-guard · the ONE merge-ref rule (`xlsxMergeArea`, shared with the server): a `ref` → the cells and rows
+   *  it covers, always finite, worst-cased for a bad or out-of-grid ref. A seam the suite plants to prove the charge. */
+  readonly mergeArea: (ref: string) => { readonly cells: number; readonly rows: number };
+  /** ⭐ C3c-merge-guard · the caps a merge is charged against, across the VISIBLE sheets: the ranges (XLSX_MAX_MERGES —
+   *  past it exceljs's O(merges²) and this reader's merge handling would run away), the covered cells (XLSX_MAX_MERGED_CELLS)
+   *  and the covered rows (maxRows). Past any one the read is `too_big_inflated`, so a forged flood cannot freeze the tab. */
   readonly maxMerges: number;
+  readonly maxMergedCells: number;
   readonly maxStoredCells: number;
   readonly inflateBudget: number;
   readonly maxText: number;
@@ -434,7 +444,9 @@ export const XLSX_BROWSER_RULES: XlsxBrowserRules = {
   trimTrailing: true,
   maxRows: XLSX_MAX_ROWS,
   maxGridCells: XLSX_MAX_GRID_CELLS,
+  mergeArea: xlsxMergeArea,
   maxMerges: XLSX_MAX_MERGES,
+  maxMergedCells: XLSX_MAX_MERGED_CELLS,
   maxStoredCells: XLSX_BROWSER_MAX_STORED_CELLS,
   inflateBudget: XLSX_BROWSER_INFLATE_BUDGET,
   maxText: XLSX_BROWSER_MAX_TEXT,
@@ -908,6 +920,11 @@ type Run = {
   total: number | null;
   rowElements: number;
   storedCells: number;
+  /** ⭐ C3c-merge-guard · the merges read across the VISIBLE sheets so far, and the cells and rows their rectangles cover
+   *  (the Cell and Row objects exceljs would allocate) — charged against their caps as each `<mergeCell>` is read. */
+  mergeCount: number;
+  mergedCells: number;
+  mergedRows: number;
   lastReport: number;
   lastYield: number;
 };
@@ -1417,6 +1434,20 @@ class SheetPart implements XmlHandler {
   }
 
   private addMerge(ref: string): void {
+    // ⭐ C3c-merge-guard (MAJOR 4) · charge this merge the SAME way the server does, through the ONE shared rule
+    // (`xlsxMergeArea`), across every VISIBLE sheet of the run: the cells and rows exceljs would allocate, and the
+    // count. Past any cap the read stops at once (too_big_inflated) — so a vast `A1:XFD1048576`, a tall `A1:A1048576`
+    // (MAJOR 10: a Row bomb), a flood of merges, or an out-of-grid corner never reaches the layout or freezes the tab.
+    const extent = this.run.rules.mergeArea(ref);
+    const run = this.run;
+    run.mergeCount = Math.min(run.mergeCount + 1, run.rules.maxMerges + 1);
+    run.mergedCells = Math.min(run.mergedCells + extent.cells, run.rules.maxMergedCells + 1);
+    run.mergedRows = Math.min(run.mergedRows + extent.rows, run.rules.maxRows + 1);
+    if (run.mergeCount > run.rules.maxMerges) throw refuseWith("too_big_inflated", "merges");
+    if (run.mergedCells > run.rules.maxMergedCells) throw refuseWith("too_big_inflated", "merge_area");
+    if (run.mergedRows > run.rules.maxRows) throw refuseWith("too_big_inflated", "merge_rows");
+    // The rectangle for layout: built only for an in-grid ref (an out-of-grid one is refused above), so these decode to
+    // finite, in-grid corners; `one` keeps a degenerate corner at 1.
     const parts = ref.split(":");
     const a = parts[0] ?? "";
     const b = parts.length > 1 ? parts[1] : a;
@@ -1431,9 +1462,6 @@ class SheetPart implements XmlHandler {
       bottom: one(Math.max(rowA, rowB)),
       right: one(Math.max(colA, colB)),
     });
-    // ⭐ C3c-merge-guard · a sheet past the merge cap stops being read at once: exceljs's O(merges²) reconciliation and
-    // this reader's overlap check and per-row merge index all stay bounded, so a forged flood never freezes the tab.
-    if (this.sheet.merges.length > this.run.rules.maxMerges) throw refuseWith("too_big_inflated", "merges");
   }
 
   private isDateStyle(styleId: number): boolean {
@@ -1544,8 +1572,11 @@ type Laid = {
   readonly flagged: Record<CellFlag, number[]>;
 };
 
-/** The rows holding a cell a merge covers, in order: a merge's covered cells are all but its first. */
-function mergedRows(merges: readonly MergeRange[]): number[] {
+/** The rows holding a cell a merge covers, in order: a merge's covered cells are all but its first. ⭐ C3c-merge-guard
+ *  (MAJOR 4) · BOUNDED: the merge-row guard (`addMerge`) has already refused any workbook whose merges span more than
+ *  `limit` (= XLSX_MAX_ROWS) rows, so this list can never exceed `limit`; the `n > limit` stop is a belt that keeps a
+ *  future change from ever materialising more than the row cap synchronously (never the 10^11 of an unbounded ref). */
+function mergedRows(merges: readonly MergeRange[], limit: number): number[] {
   const spans = merges
     .map((m) => (m.right > m.left ? [m.top, m.bottom] : m.bottom > m.top ? [m.top + 1, m.bottom] : null))
     .filter((s): s is number[] => s !== null)
@@ -1553,8 +1584,9 @@ function mergedRows(merges: readonly MergeRange[]): number[] {
   const lines: number[] = [];
   let upTo = 0;
   for (const [from, to] of spans) {
-    for (let n = Math.max(from, upTo + 1); n <= to; n++) lines.push(n);
+    for (let n = Math.max(from, upTo + 1); n <= to && lines.length <= limit; n++) lines.push(n);
     if (to > upTo) upTo = to;
+    if (lines.length > limit) break;
   }
   return lines;
 }
@@ -1685,7 +1717,7 @@ function layOut(sheet: SheetRead, rules: XlsxBrowserRules, opts: { readonly caps
     } else rows.push({ line, cells: found.map(([, text]) => text) }); // a sample: the non-empty texts alone
     if (rows.length >= opts.limit) break;
   }
-  if (opts.caps) flagged.merged = mergedRows(sheet.merges);
+  if (opts.caps) flagged.merged = mergedRows(sheet.merges, rules.maxRows);
   return { rows, flagged };
 }
 
@@ -1719,7 +1751,8 @@ export function buildXlsxBrowserReader(rules: XlsxBrowserRules): (file: Blob, op
     const tally = { entries: 0, rows: 0, blankRows: 0, width: 0, sheets: 0 };
     const run: Run = {
       file, rules, signal: opts.signal, onProgress: opts.onProgress,
-      inflated: 0, total: null, rowElements: 0, storedCells: 0, lastReport: 0, lastYield: started,
+      inflated: 0, total: null, rowElements: 0, storedCells: 0,
+      mergeCount: 0, mergedCells: 0, mergedRows: 0, lastReport: 0, lastYield: started,
     };
     const stats = (): XlsxBrowserStats => ({ bytes: file.size, inflatedBytes: run.inflated, ...tally, ms: rules.now() - started });
     const refused = (refusal: XlsxRefusal, detail: string, ctx: XlsxRefusalContext = {}): XlsxBrowserResult => ({

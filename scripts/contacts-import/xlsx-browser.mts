@@ -63,6 +63,7 @@ import {
   PHONE_FORMAT_REMEDY,
   XLSX_MAX_BYTES,
   XLSX_MAX_GRID_CELLS,
+  XLSX_MAX_MERGED_CELLS,
   XLSX_MAX_MERGES,
   XLSX_MAX_ROWS,
   formatFileSize,
@@ -603,6 +604,19 @@ function mergeFloodBook(n: number): Buffer {
 }
 /** Built once: one range past the cap (refused as shipped; read only with the cap lifted — the B19 plant). */
 const MERGE_FLOOD_OVER = mergeFloodBook(XLSX_MAX_MERGES + 1);
+/** B19 · one vast merge (cells over the cap) and one tall merge (rows over the cap), a mobile row above so the sheet is
+ *  chosen — each too_big_inflated as the browser reads it, charged through the SAME shared rule as the server (MAJOR 4). */
+const mergeOneBook = (ref: string): Buffer => bookOf({
+  sheets: [{
+    name: "Wateja",
+    xml: excelSheet(
+      `<row r="1">${inline("A1", "Name")}${inline("B1", "Phone")}</row><row r="2">${inline("A2", "Asha")}${inline("B2", "0757 300 212")}</row>`,
+      `<mergeCells count="1"><mergeCell ref="${ref}"/></mergeCells>`,
+    ),
+  }],
+});
+const MERGE_AREA_BOMB = mergeOneBook("E1:XFD1048576");
+const MERGE_ROWS_BOMB = mergeOneBook(`E1:E${XLSX_MAX_ROWS + 1}`);
 
 /** B11's mechanism — a sheet whose XML inflates to `bytes` bytes of spaces inside its root, its declared size forged. */
 function bombBook(bytes: number): Buffer {
@@ -729,7 +743,7 @@ export const L = {
   B16: "B16 · ⛔ THE COPY — nothing at the import's entrance says an Excel file over 700 KB is refused or must be saved as CSV (its limits line names no Excel size; import-copy.ts names no XLSX_MAX_BYTES), while too_large keeps its sentence — the size, CSV and the remedy — for a direct post over the cap and an old browser",
   B17: "B17 · ⭐ CHUNKS OF ANY SIZE — a real browser hands a stream back in pieces of any size: every crafted workbook read through an inflater that re-cuts its output into 1–13-byte pieces (tags, entities, a CRLF and multi-byte characters cut anywhere) gives exactly the file whole chunks give, and the text-laden one its literal rows",
   B18: "B18 · ⛔ THE MEMORY GUARDS — one cell's text of XLSX_BROWSER_MAX_TEXT characters (8 MiB, 256 times Excel's own cell) is read whole and one character more is too_big_inflated, never held; and the cells held across the visible sheets before one is chosen stop at XLSX_BROWSER_MAX_STORED_CELLS — twice the grid cap, as shipped — at the cap read, past it too_big_inflated",
-  B19: "B19 · ⛔ C3c-merge-guard · THE MERGE FLOOD — a sheet of more than XLSX_MAX_MERGES `<mergeCell>` ranges is too_big_inflated as it is read, so a forged flood never freezes the officer's tab (the overlap check and the per-row merge index are bounded by the cap, and a cell's covering merge is a binary search over column-disjoint ranges, never a scan of all of them); a workbook of ordinary merges reads unchanged (its covered cells blank, B6)",
+  B19: "B19 · ⛔ C3c-merge-guard (MAJOR 4) · THE MERGE CAPS — charged the SAME way as the server, across the visible sheets, through the one shared rule: a flood of more than XLSX_MAX_MERGES ranges (merges), one vast-area merge (merge_area) and one tall merge of more than XLSX_MAX_ROWS rows (merge_rows) are each too_big_inflated as the browser reads them, so a forged file never freezes the officer's tab (the overlap check and the per-row merge index are bounded by the cap, a cell's covering merge is a binary search over column-disjoint ranges, and mergedRows builds at most the row cap); a workbook of ordinary merges reads unchanged (its covered cells blank, B6)",
 } as const;
 
 /* ══ THE RUN ════════════════════════════════════════════════════════════════════════════════════════════════ */
@@ -828,13 +842,16 @@ async function run({ impl, ok, log }: Ctx): Promise<void> {
   const fromBase64 = (field: string): Uint8Array => new Uint8Array(Buffer.from(field, "base64"));
   // ⛔ Not here, on purpose: the xlsx section's bombs (`bomb`, `forged`, `cellsOver` — the SERVER's 48 MiB inflate
   // cap and its cell-element cap, guards of the money server's own memory that a workbook past 700 KB never meets: the
-  // browser's budget is B11's, its memory guards B18's) and the files that are no zip (`xls`, `protectedCfb`,
-  // `odsHead`, `text` — the door's format check refuses them before any workbook reader sees a byte).
+  // browser's budget is B11's, its memory guards B18's); the files that are no zip (`xls`, `protectedCfb`, `odsHead`,
+  // `text` — the door's format check refuses them first); and the merge FLOOD (`mergeFlood` — a byte-scan exploit of
+  // the server's pre-pass that is malformed XML the browser's parser refuses differently, reader-specific by design).
+  // ⭐ C3c-merge-guard (MAJOR 4) · the WELL-FORMED merge bombs ARE here: both readers charge them through the ONE shared
+  // rule (`xlsxMergeArea`) and refuse too_big_inflated identically — the proof the two guards cannot drift.
   const sectionCorpus: Corpus[] = ([
     "cells", "a13", "lines", "sheets", "coverFirst", "coverDigits", "noPhoneSheet", "staffThenTitled", "twoPhoneSheets",
     "headerOnlyFirst", "allHidden", "empty", "forty", "wide", "rowPast", "xlsb", "odsLate", "strict", "docx", "zip64Maxed",
     "zip64Locator", "encrypted", "method12", "duplicate", "nameMismatch", "unresolvedName", "folderWithData", "trailing",
-    "sizeMismatch", "broken", "rowsOver",
+    "sizeMismatch", "broken", "rowsOver", "mergeBomb", "mergeNaN", "mergeDecoy", "mergeAreaOver", "mergeRowsOver", "mergeCountOver",
   ] as const).map((name) => ({ name: `xlsx-section-${name}`, bytes: fromBase64(fx[name]) }));
   sectionCorpus.push({ name: "xlsx-section-exact", bytes: fromBase64(fx.exact.field) });
   const b2 = await differential(impl, sectionCorpus);
@@ -1057,14 +1074,18 @@ async function run({ impl, ok, log }: Ctx): Promise<void> {
     `a cell of ${XLSX_BROWSER_MAX_TEXT} characters → ${brief(atText)} · of ${XLSX_BROWSER_MAX_TEXT + 1} → ${brief(pastText)}`
       + ` · the stored-cells cap ${impl.rules.maxStoredCells} (twice the grid's ${XLSX_MAX_GRID_CELLS}) · under a cap of 50: 50 cells → ${brief(atCells)} · 51 → ${brief(pastCells)}`);
 
-  // ── B19 · the merge flood: a sheet past the merge cap is refused as it is read; ordinary merges read unchanged ──
+  // ── B19 · the merge caps: a flood of ranges, a vast-area merge and a tall-row merge are each refused as the browser
+  // reads them (charged through the shared rule, across the visible sheets); ordinary merges read unchanged ──
   const flood = await read(blob(MERGE_FLOOD_OVER), { fileName: "merges.xlsx" });
+  const areaBomb = await read(blob(MERGE_AREA_BOMB), { fileName: "merges.xlsx" });
+  const rowsBomb = await read(blob(MERGE_ROWS_BOMB), { fileName: "merges.xlsx" });
   const ordinaryMerges = await read(blob(MERGES_BOOK), { fileName: "merges.xlsx" });
-  ok(L.B19, impl.rules.maxMerges === XLSX_MAX_MERGES
-    && flood.kind === "refused" && flood.refusal === "too_big_inflated" && flood.detail === "merges"
-    && flood.message === xlsxRefusalSentence("too_big_inflated")
+  const refusedInflated = (r: XlsxBrowserResult, detail: string): boolean =>
+    r.kind === "refused" && r.refusal === "too_big_inflated" && r.detail === detail && r.message === xlsxRefusalSentence("too_big_inflated");
+  ok(L.B19, impl.rules.maxMerges === XLSX_MAX_MERGES && impl.rules.maxMergedCells === XLSX_MAX_MERGED_CELLS
+    && refusedInflated(flood, "merges") && refusedInflated(areaBomb, "merge_area") && refusedInflated(rowsBomb, "merge_rows")
     && ordinaryMerges.kind === "read" && same(ordinaryMerges.file.rows, MERGES_ROWS),
-    `${XLSX_MAX_MERGES + 1} merges → ${brief(flood)} · ordinary merges → ${brief(ordinaryMerges)}`);
+    `${XLSX_MAX_MERGES + 1} merges → ${brief(flood)} · vast area → ${brief(areaBomb)} · tall rows → ${brief(rowsBomb)} · ordinary → ${brief(ordinaryMerges)}`);
 }
 
 /* ══ THE RED PLANTS — each a defect somebody could plausibly write, built in memory ═════════════════════════ */
@@ -1240,9 +1261,14 @@ const PLANTS: readonly RedPlant<XlsxBrowserImpl>[] = [
     impl: () => withRules({ maxStoredCells: Number.POSITIVE_INFINITY }),
   },
   {
-    name: "the browser's merge cap lifted — a flood of merge elements read, the overlap check and the per-row index free to freeze the tab",
+    name: "the browser's merge count cap lifted — a flood of merge elements read, the overlap check and the per-row index free to freeze the tab",
     expect: L.B19,
     impl: () => withRules({ maxMerges: Number.POSITIVE_INFINITY }),
+  },
+  {
+    name: "C3c-merge-guard (MAJOR 4) · the browser's merge-cell cap lifted — a vast-area merge the server refuses is read here, the two readers drift",
+    expect: L.B2,
+    impl: () => withRules({ maxMergedCells: Number.POSITIVE_INFINITY }),
   },
   {
     name: "the entrance still says an Excel file can be up to 700 KB",

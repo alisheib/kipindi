@@ -113,19 +113,73 @@ export const XLSX_MAX_GRID_CELLS = XLSX_MAX_ROWS * 20;
 export const XLSX_MAX_ENTRIES = 1000;
 
 /**
- * ⚠️ The most `<mergeCell>` ranges a workbook may carry, across every sheet. A merge is NOT free: exceljs materialises a
- * Cell object for EVERY cell a merge rectangle covers (`getCell` over the whole rectangle, `doc/worksheet.js`
+ * ⚠️ THE MERGE GUARD'S CAPS AND ITS ONE RULE — a merge is NOT free: exceljs materialises a Cell object for EVERY cell a
+ * merge rectangle covers AND a Row object for every row it spans (`getCell` over the whole rectangle, `doc/worksheet.js`
  * `_mergeCellsInternal`), and reconciles each new merge against every merge already read — O(merges²). So a few-KB
- * workbook carrying one vast `<mergeCell ref="A1:XFD1048576"/>`, or a flood of tiny merge elements, can exhaust the live
- * money server (the server reader) or freeze the officer's tab (the browser reader) before a single contact row is read.
- * ⭐ TWO GUARDS, SHARED BY BOTH READERS. The SUMMED AREA of every merge rectangle is charged against `XLSX_MAX_CELL_ELEMENTS`
- * (the covered cells exceljs would allocate, a malformed/reversed/unbounded ref charged its worst possible area), and the
- * COUNT of merges against this cap. 10,000 is far beyond the handful of merged banners a real contact workbook carries,
- * and small enough that O(merges²) reconciliation (and this reader's own merge handling) stays trivial. Past either, a
- * workbook is `too_big_inflated` — refused by the server's pre-pass before exceljs loads it, by the browser's reader as
- * it parses the sheet, never read on. (C3c-merge-guard, 2026-10-09.)
+ * workbook carrying one vast `<mergeCell ref="A1:XFD1048576"/>`, a tall `A1:A1048576`, or a flood of tiny merges, can
+ * exhaust the live money server (the server reader) or freeze the officer's tab (the browser reader) before a single
+ * contact row is read.
+ * ⭐ THREE CAPS, CHARGED THE SAME WAY BY BOTH READERS, across every VISIBLE/loaded sheet of a workbook: the summed covered
+ * CELLS against `XLSX_MAX_MERGED_CELLS`, the summed spanned ROWS against `XLSX_MAX_ROWS` (exceljs allocates a Row per
+ * covered row, and the import never reads more than that many rows anyway), and the COUNT of merges against
+ * `XLSX_MAX_MERGES`. 10,000 is far beyond the handful of merged banners a real contact workbook carries, and small
+ * enough that O(merges²) reconciliation (and this reader's own merge handling) stays well under a second (MINOR 11:
+ * `mergeCountAt` is time-boxed in the suite). Past any cap a workbook is `too_big_inflated` — refused by the server's
+ * pre-pass before exceljs loads it, by the browser's reader as it parses the sheet, never read on.
+ * ⛔ ONE RULE: both readers turn a `ref` into cells and rows through `xlsxMergeArea` below — the server over the `ref`
+ * its attribute tokenizer lifts from the raw tag, the browser over the `ref` its XML parser lifts — so the two cannot
+ * drift. (C3c-merge-guard, 2026-10-09.)
  */
 export const XLSX_MAX_MERGES = 10_000;
+/** The covered-cell budget for merges — the Cell objects exceljs allocates; the same magnitude as the `<c>`-element cap. */
+export const XLSX_MAX_MERGED_CELLS = XLSX_MAX_ROWS * 5;
+
+/** Excel's own grid: columns A..XFD (16,384) by 1..1,048,576 rows — the most any cell address or merge corner can name. */
+export const EXCEL_MAX_COLUMN = 16384;
+export const EXCEL_MAX_ROW = 1048576;
+/** ⭐ The worst a missing, partial, malformed, reversed or OUT-OF-GRID merge ref could mean: the whole grid. Always a
+ *  finite number (never NaN/Infinity), so a hostile ref is charged big and refused, never admitted as small. */
+export const XLSX_FULL_GRID_CELLS = EXCEL_MAX_COLUMN * EXCEL_MAX_ROW;
+
+/** One A1 corner — upper-case letters (the column), then digits (the row), `$` skipped — or null unless BOTH are present,
+ *  nothing else follows, and each is inside Excel's grid (so `xlsxMergeArea` is always finite, never NaN). */
+function mergeCorner(s: string): { readonly col: number; readonly row: number } | null {
+  let i = 0;
+  let col = 0;
+  let row = 0;
+  let sawCol = false;
+  let sawRow = false;
+  while (i < s.length) {
+    const c = s.charCodeAt(i);
+    if (c === 36) { i++; continue; }
+    if (c >= 65 && c <= 90) { col = col * 26 + (c - 64); sawCol = true; i++; if (col > EXCEL_MAX_COLUMN) return null; } else break;
+  }
+  while (i < s.length) {
+    const c = s.charCodeAt(i);
+    if (c === 36) { i++; continue; }
+    if (c >= 48 && c <= 57) { row = row * 10 + (c - 48); sawRow = true; i++; if (row > EXCEL_MAX_ROW) return null; } else break;
+  }
+  return sawCol && sawRow && i === s.length && col >= 1 && row >= 1 ? { col, row } : null;
+}
+
+/**
+ * ⭐ THE ONE MERGE-REF RULE, shared by both Excel readers: a `ref` string → the cells it covers and the rows it spans.
+ * A single cell (no colon) is 1×1; a range is width×height with reversed corners taken by min/max; a missing, partial,
+ * malformed or out-of-grid ref is charged the WORST it could mean (the whole grid). ⛔ Always FINITE — a corner past the
+ * grid returns null from `mergeCorner`, so the result is never NaN or Infinity (which would slip under a `>` cap, A1.NaN).
+ */
+export function xlsxMergeArea(ref: string): { readonly cells: number; readonly rows: number } {
+  const whole = { cells: XLSX_FULL_GRID_CELLS, rows: EXCEL_MAX_ROW };
+  const r = typeof ref === "string" ? ref.trim() : "";
+  if (r === "") return whole;
+  const colon = r.indexOf(":");
+  if (colon < 0) return mergeCorner(r) === null ? whole : { cells: 1, rows: 1 };
+  const a = mergeCorner(r.slice(0, colon));
+  const b = mergeCorner(r.slice(colon + 1));
+  if (a === null || b === null) return whole;
+  const rows = Math.abs(a.row - b.row) + 1;
+  return { cells: (Math.abs(a.col - b.col) + 1) * rows, rows };
+}
 
 // ── THE SNIFFER ──────────────────────────────────────────────────────────────────────────────────────────────
 

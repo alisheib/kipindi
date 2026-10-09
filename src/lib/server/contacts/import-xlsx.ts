@@ -98,11 +98,13 @@ import {
   XLSX_MAX_ENTRIES,
   XLSX_MAX_GRID_CELLS,
   XLSX_MAX_INFLATED_BYTES,
+  XLSX_MAX_MERGED_CELLS,
   XLSX_MAX_MERGES,
   XLSX_MAX_ROWS,
   base64DecodedBytes,
   spreadsheetHeadKind,
   xlsxBase64OverCap,
+  xlsxMergeArea,
   xlsxRefusalSentence,
 } from "@/lib/contacts/xlsx-limits";
 import type { SpreadsheetHeadKind, WrongFormatKind, XlsxRefusal, XlsxRefusalContext } from "@/lib/contacts/xlsx-limits";
@@ -190,10 +192,11 @@ export type XlsxInspection =
       readonly inflatedBytes: number;
       readonly rowElements: number;
       readonly cellElements: number;
-      /** C3c-merge-guard · the number of `<mergeCell>` ranges, and the cells their rectangles cover (exceljs allocates one
-       *  Cell per covered cell) — both bounded against their caps before this returns ok. */
+      /** C3c-merge-guard · the number of `<mergeCell>` ranges, and the cells and rows their rectangles cover (exceljs
+       *  allocates one Cell per covered cell and one Row per covered row) — all three bounded before this returns ok. */
       readonly mergeCount: number;
       readonly mergedCells: number;
+      readonly mergedRows: number;
     }
   | {
       readonly ok: false;
@@ -232,10 +235,12 @@ const STRICT_NAMESPACE = "purl.oclc.org/ooxml/spreadsheetml/main";
 const ROW_OPEN = Buffer.from("<row", "latin1");
 const CELL_OPEN = Buffer.from("<c", "latin1");
 const MERGECELL_OPEN = Buffer.from("<mergeCell", "latin1");
-/** Excel's own grid: 16,384 columns (XFD) by 1,048,576 rows. The worst area a malformed or unbounded merge ref can mean. */
-const EXCEL_LAST_COLUMN = 16384;
-const EXCEL_LAST_ROW = 1048576;
-const FULL_GRID_AREA = EXCEL_LAST_COLUMN * EXCEL_LAST_ROW;
+const GT = 0x3e;
+/** The worst a `<mergeCell>` tag can mean when its `ref` cannot be read: the whole grid (always finite). */
+const WORST_MERGE = { cells: XLSX_MAX_MERGED_CELLS + 1, rows: XLSX_MAX_ROWS + 1 };
+/** How far past `<mergeCell` to look for the tag's closing `>`: a real merge tag is tens of bytes, never a kilobyte.
+ *  Bounding the scan keeps a part of `"<mergeCell ".repeat(N)` (no `>` at all) from being O(content) per element. */
+const MERGE_TAG_WINDOW = 1024;
 
 /**
  * ⚠️ PROVISIONAL, like the caps in xlsx-limits.ts (the suite asserts it is at least twice the densest realistic
@@ -402,88 +407,95 @@ function countElements(content: Buffer, open: Buffer): number {
   return count;
 }
 
-/** One A1 corner — leading letters (the column, A→1, XFD→16384), then digits (the row); `$` skipped — or null if it is
- *  not exactly that. A letter beyond upper-case, anything after the digits, or a missing half, is null (a worst-case ref). */
-function mergeCorner(s: string): { readonly col: number; readonly row: number } | null {
-  let i = 0;
-  let col = 0;
-  let sawCol = false;
-  while (i < s.length) {
-    const c = s.charCodeAt(i);
-    if (c === 0x24) { i++; continue; }
-    if (c >= 65 && c <= 90) { col = col * 26 + (c - 64); sawCol = true; i++; } else break;
+/**
+ * ⭐ C3c-merge-guard · BLOCKER 2 — the `ref` attribute of one `<mergeCell …>` tag, as the cells/rows it covers
+ * (`xlsxMergeArea`, the ONE shared rule). The tag is TOKENIZED the way saxes reads attributes — name, `=`, a quoted
+ * value — and ONLY the attribute named EXACTLY `ref` is taken, so a decoy `x:ref`, `_ref`, `a-ref` or a `ref` buried in
+ * another value never fools it. ⛔ No `ref`, a SECOND `ref`, a value not closed inside the tag, or any malformed
+ * attribute → the WORST area (the whole grid), so a hostile tag is refused, never admitted as small. `start` is the
+ * index of the `<`; `limit` the exclusive end of the 1 KiB window (BLOCKER 3). Returns the ref and where to resume.
+ */
+function mergeTagExtent(content: Buffer, start: number, limit: number): { readonly cells: number; readonly rows: number; readonly next: number } {
+  let i = start + MERGECELL_OPEN.length;
+  let refValue: string | null = null;
+  let seenRef = false;
+  const bad = (next: number) => ({ cells: WORST_MERGE.cells, rows: WORST_MERGE.rows, next });
+  const space = (c: number): boolean => c === 0x20 || c === 0x09 || c === 0x0a || c === 0x0d;
+  for (;;) {
+    while (i < limit && space(content[i])) i++;
+    if (i >= limit) return bad(limit); // no closing '>' within the window
+    const c = content[i];
+    if (c === GT) { i++; break; }
+    if (c === 0x2f) { // '/>' (or a stray '/')
+      i++;
+      continue;
+    }
+    // an attribute: name = "value"
+    const nameStart = i;
+    while (i < limit && !space(content[i]) && content[i] !== 0x3d && content[i] !== GT && content[i] !== 0x2f) i++;
+    if (i >= limit || i === nameStart) return bad(limit);
+    const name = content.toString("latin1", nameStart, i);
+    while (i < limit && space(content[i])) i++;
+    if (i >= limit || content[i] !== 0x3d) return bad(limit); // a bare attribute with no value — malformed
+    i++;
+    while (i < limit && space(content[i])) i++;
+    const quote = i < limit ? content[i] : -1;
+    if (quote !== 0x22 && quote !== 0x27) return bad(limit);
+    const close = content.indexOf(quote, i + 1);
+    if (close === -1 || close >= limit) return bad(limit); // value not closed inside the window
+    if (name === "ref") {
+      if (seenRef) return bad(close + 1); // a second ref — saxes would keep the last; we refuse
+      seenRef = true;
+      refValue = content.toString("latin1", i + 1, close);
+    }
+    i = close + 1;
   }
-  let row = 0;
-  let sawRow = false;
-  while (i < s.length) {
-    const c = s.charCodeAt(i);
-    if (c === 0x24) { i++; continue; }
-    if (c >= 48 && c <= 57) { row = row * 10 + (c - 48); sawRow = true; i++; } else break;
-  }
-  return sawCol && sawRow && i === s.length ? { col, row } : null;
+  if (refValue === null) return bad(i); // no ref attribute at all
+  const area = xlsxMergeArea(refValue);
+  return { cells: area.cells, rows: area.rows, next: i };
 }
 
 /**
- * The cells a merge rectangle covers, from its `ref`. A single cell (no colon) covers 1; a two-corner range its width ×
- * height, reversed corners taken by min/max. ⛔ A missing, partial or malformed ref (a reader cannot know how big it is)
- * is charged the WORST it could mean — the whole grid — so it is refused, never quietly admitted.
+ * ⭐ C3c-merge-guard · every `<mergeCell>` in one part's inflated content: how many, and the cells/rows their rectangles
+ * cover (the Cell and Row objects exceljs allocates on load). ⛔ `<mergeCell` only — never the `<mergeCells>` container
+ * (its next byte is `s`). BLOCKER 3: the tag's `>` is sought only within a 1 KiB window (none → the worst area), the
+ * scan resumes AFTER the tag, and it STOPS the moment the count or either extent passes its cap — so a part of
+ * `"<mergeCell ".repeat(4_000_000)` costs a constant, not O(content²). Counts and extents saturate at cap + 1.
  */
-function mergeRefArea(ref: string): number {
-  const r = ref.trim();
-  if (r === "") return FULL_GRID_AREA;
-  const colon = r.indexOf(":");
-  if (colon < 0) return mergeCorner(r) === null ? FULL_GRID_AREA : 1;
-  const a = mergeCorner(r.slice(0, colon));
-  const b = mergeCorner(r.slice(colon + 1));
-  if (a === null || b === null) return FULL_GRID_AREA;
-  return (Math.abs(a.col - b.col) + 1) * (Math.abs(a.row - b.row) + 1);
-}
-
-/** The `ref="…"` of one `<mergeCell>` tag (its text up to `>`), as its covered-cell count; no ref → the worst area. */
-function mergeTagArea(tag: string): number {
-  let p = tag.indexOf("ref=");
-  while (p > 0) {
-    const before = tag.charCodeAt(p - 1);
-    const letterOrDigit = (before >= 65 && before <= 90) || (before >= 97 && before <= 122) || (before >= 48 && before <= 57);
-    if (!letterOrDigit) break;
-    p = tag.indexOf("ref=", p + 4);
-  }
-  if (p < 0) return FULL_GRID_AREA;
-  const quote = tag.charCodeAt(p + 4);
-  if (quote !== 0x22 && quote !== 0x27) return FULL_GRID_AREA;
-  const close = tag.indexOf(String.fromCharCode(quote), p + 5);
-  return close < 0 ? FULL_GRID_AREA : mergeRefArea(tag.slice(p + 5, close));
-}
-
-/**
- * ⭐ C3c-merge-guard · every `<mergeCell>` in one part's inflated content: how many, and the cells their rectangles
- * cover (the extra Cell objects exceljs allocates on load). ⛔ `<mergeCell` only — never the `<mergeCells>` container
- * (its next byte is `s`). The count saturates at XLSX_MAX_MERGES + 1 and the area at XLSX_MAX_CELL_ELEMENTS + 1, so a
- * flood of merges can never overflow the running total; either, over its cap, refuses the workbook.
- */
-function scanMergeCells(content: Buffer): { readonly count: number; readonly area: number } {
+function scanMergeCells(content: Buffer): { readonly count: number; readonly cells: number; readonly rows: number } {
   let count = 0;
-  let area = 0;
-  for (let at = content.indexOf(MERGECELL_OPEN); at !== -1; at = content.indexOf(MERGECELL_OPEN, at + MERGECELL_OPEN.length)) {
+  let cells = 0;
+  let rows = 0;
+  let at = content.indexOf(MERGECELL_OPEN);
+  while (at !== -1 && count <= XLSX_MAX_MERGES && cells <= XLSX_MAX_MERGED_CELLS && rows <= XLSX_MAX_ROWS) {
     const after = content[at + MERGECELL_OPEN.length];
-    if (!(after === 0x20 || after === 0x09 || after === 0x0a || after === 0x0d || after === 0x2f || after === 0x3e)) continue;
-    count = Math.min(count + 1, XLSX_MAX_MERGES + 1);
-    const gt = content.indexOf(0x3e, at + MERGECELL_OPEN.length);
-    const tag = content.toString("latin1", at, gt === -1 ? content.length : gt + 1);
-    area = Math.min(area + mergeTagArea(tag), XLSX_MAX_CELL_ELEMENTS + 1);
+    if (after === 0x20 || after === 0x09 || after === 0x0a || after === 0x0d || after === 0x2f || after === GT) {
+      count = Math.min(count + 1, XLSX_MAX_MERGES + 1);
+      const extent = mergeTagExtent(content, at, Math.min(content.length, at + MERGE_TAG_WINDOW));
+      cells = Math.min(cells + extent.cells, XLSX_MAX_MERGED_CELLS + 1);
+      rows = Math.min(rows + extent.rows, XLSX_MAX_ROWS + 1);
+      at = content.indexOf(MERGECELL_OPEN, Math.max(extent.next, at + MERGECELL_OPEN.length));
+    } else {
+      at = content.indexOf(MERGECELL_OPEN, at + MERGECELL_OPEN.length);
+    }
   }
-  return { count, area };
+  return { count, cells, rows };
 }
 
 /**
  * ⭐ THE PRE-PASS (step 6). Walks the zip, refuses .xlsb and a zip that is no workbook by name, inflates EVERY entry for
  * real under one budget for the whole workbook — counting row and cell elements, and (C3c-merge-guard) the `<mergeCell>`
- * ranges and the cells they cover, across every entry, whatever it is named, because exceljs's own sheet pattern is
- * unanchored — and then reads .ods and Strict Open XML off the content. A workbook with too many merges, or merge
- * rectangles covering more cells than exceljs may allocate, is too_big_inflated before the load (XLSX_MAX_MERGES; the
- * covered cells against XLSX_MAX_CELL_ELEMENTS) — see xlsx-limits.ts for why a merge is not free.
+ * ranges with the cells AND rows they cover, across every entry, whatever it is named, because exceljs's own sheet
+ * pattern is unanchored — and then reads .ods and Strict Open XML off the content. A workbook with too many merges, or
+ * merge rectangles covering more cells or more rows than exceljs may allocate, is too_big_inflated before the load
+ * (XLSX_MAX_MERGES; the covered cells against XLSX_MAX_MERGED_CELLS, the covered rows against XLSX_MAX_ROWS). Each merge
+ * ref is read through the ONE shared rule `xlsxMergeArea` — a 1 KiB-windowed, attribute-tokenised scan that charges a
+ * malformed, decoy or out-of-grid ref the worst area and stops the moment a cap is passed — see xlsx-limits.ts.
  */
-export function inspectXlsxZip(bytes: Uint8Array, measure: MeasureEntry = measureZipEntry): XlsxInspection {
+/** The merge scan is a seam (default `scanMergeCells`) so the suite can plant the pre-fix quadratic/NaN/decoy versions. */
+export type MergeScan = (content: Buffer) => { readonly count: number; readonly cells: number; readonly rows: number };
+
+export function inspectXlsxZip(bytes: Uint8Array, measure: MeasureEntry = measureZipEntry, scanMerges: MergeScan = scanMergeCells): XlsxInspection {
   const walked = walkZip(bytes);
   if (!walked.ok) return { ok: false, refusal: walked.refusal, kind: walked.kind, detail: walked.detail, entries: 0, inflatedBytes: 0 };
   const entries = walked.entries;
@@ -502,6 +514,7 @@ export function inspectXlsxZip(bytes: Uint8Array, measure: MeasureEntry = measur
   let cellElements = 0;
   let mergeCount = 0;
   let mergedCells = 0;
+  let mergedRows = 0;
   let ods = false;
   let strict = false;
   for (const e of entries) {
@@ -513,11 +526,12 @@ export function inspectXlsxZip(bytes: Uint8Array, measure: MeasureEntry = measur
     const content = Buffer.from(measured.bytes.buffer, measured.bytes.byteOffset, measured.bytes.byteLength);
     rowElements += countElements(content, ROW_OPEN);
     cellElements += countElements(content, CELL_OPEN);
-    // ⭐ C3c-merge-guard · the merges exceljs will reconcile (O(merges²)) and the cells they make it allocate, summed
-    // across every entry (its sheet pattern is unanchored, so count everywhere the rows and cells are counted).
-    const merges = scanMergeCells(content);
+    // ⭐ C3c-merge-guard · the merges exceljs will reconcile (O(merges²)) and the cells and rows they make it allocate,
+    // summed across every entry (its sheet pattern is unanchored, so count everywhere the rows and cells are counted).
+    const merges = scanMerges(content);
     mergeCount = Math.min(mergeCount + merges.count, XLSX_MAX_MERGES + 1);
-    mergedCells = Math.min(mergedCells + merges.area, XLSX_MAX_CELL_ELEMENTS + 1);
+    mergedCells = Math.min(mergedCells + merges.cells, XLSX_MAX_MERGED_CELLS + 1);
+    mergedRows = Math.min(mergedRows + merges.rows, XLSX_MAX_ROWS + 1);
     if (loweredName(e) === MIMETYPE_ENTRY && content.subarray(0, ODS_MIMETYPE.length).toString("latin1") === ODS_MIMETYPE) ods = true;
     if (partName(e) === WORKBOOK_XML && content.indexOf(STRICT_NAMESPACE) !== -1) strict = true;
   }
@@ -526,12 +540,13 @@ export function inspectXlsxZip(bytes: Uint8Array, measure: MeasureEntry = measur
   if (strict) return refused("wrong_format", "strict", "strict", used);
   if (rowElements > XLSX_MAX_ROWS) return refused("too_many_rows", "rows", null, used);
   if (cellElements > XLSX_MAX_CELL_ELEMENTS) return refused("too_big_inflated", "cells", null, used);
-  // ⭐ C3c-merge-guard · too many merge elements (O(merges²) on load), or merge rectangles that cover more cells than
-  // exceljs may allocate — the covered cells count toward the SAME ceiling as the `<c>` elements, as exceljs builds a
-  // Cell for each. Both refuse before the load, in the copy table's own too_big_inflated words.
+  // ⭐ C3c-merge-guard · too many merge elements (O(merges²) on load), or merge rectangles covering more cells or more
+  // rows than exceljs may allocate (a Cell per covered cell, a Row per covered row) — all three refuse before the load,
+  // in the copy table's own too_big_inflated words (MAJOR 10: a tall merge is a Row bomb as much as a Cell bomb).
   if (mergeCount > XLSX_MAX_MERGES) return refused("too_big_inflated", "merges", null, used);
-  if (cellElements + mergedCells > XLSX_MAX_CELL_ELEMENTS) return refused("too_big_inflated", "merge_area", null, used);
-  return { ok: true, entries: entries.length, inflatedBytes: used, rowElements, cellElements, mergeCount, mergedCells };
+  if (mergedCells > XLSX_MAX_MERGED_CELLS) return refused("too_big_inflated", "merge_area", null, used);
+  if (mergedRows > XLSX_MAX_ROWS) return refused("too_big_inflated", "merge_rows", null, used);
+  return { ok: true, entries: entries.length, inflatedBytes: used, rowElements, cellElements, mergeCount, mergedCells, mergedRows };
 }
 
 /* ══ THE ONE CELL SWITCH ═════════════════════════════════════════════════════════════════════════ */
