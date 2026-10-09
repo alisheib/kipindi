@@ -163,11 +163,16 @@ const paste = (page, text) => page.evaluate((t) => {
 }, text);
 /** On every page: the dev badge hidden (it is not on the live site), and the guide's red outline. */
 const GUIDE_CSS = "nextjs-portal{display:none !important} .kp-guide-mark{outline:3px solid #ff3b30 !important;outline-offset:3px !important;border-radius:8px}";
+/** ⭐ THE LONGEST A STEP WAITS FOR THE APP: a fresh dev server compiles each page part and server action on its first
+ *  use — 52 s for the Add form's number check on a busy machine (2026-10-09), past the 10–60 s the steps allowed. Only
+ *  how long a step may wait changes, never what a picture shows; every context opens with it as its default. */
+const SLOW = 120_000;
 /** ⭐ EVERY CONTEXT THE GUIDE OPENS READS ENGLISH — the `kp-locale` cookie the language menu writes (`i18n-server.ts`), set
  *  before the first request. Without it the sign-in picture's public header was Swahili ("Masoko", "Ingia") in an English
  *  guide; the console is English either way. */
 async function englishContext(options = {}) {
   const ctx = await browser.newContext(options);
+  ctx.setDefaultTimeout(SLOW);
   await ctx.addCookies([{ name: "kp-locale", value: "en", url: BASE }]);
   return ctx;
 }
@@ -237,11 +242,11 @@ async function closeDialog(page) {
   await textButton(page, DIALOG, "Cancel").click().catch(() => {});
   const ask = page.locator(inDialog("[data-discard-ask]"));
   if (await ask.isVisible().catch(() => false)) await textButton(page, DIALOG, "Discard").click().catch(() => {});
-  await page.waitForSelector(DIALOG, { state: "detached", timeout: 10_000 }).catch(() => {});
+  await page.waitForSelector(DIALOG, { state: "detached", timeout: SLOW }).catch(() => {});
 }
 async function openAdd(page) {
   await page.locator('[data-block="contacts-add"]').first().click();
-  await page.waitForSelector(inDialog(ADD_FORM), { timeout: 15_000 });
+  await page.waitForSelector(inDialog(ADD_FORM), { timeout: SLOW });
   await wait(300);
 }
 const field = (page, key) => page.locator(`${inDialog(`[data-field="${key}"] input`)}, ${inDialog(`[data-field="${key}"] textarea`)}`).first();
@@ -323,14 +328,14 @@ async function runA() {
       await paste(page, "0754 321 987");
       // The book's answer before the picture: Save is enabled once "Checking the book…" has settled. A fresh dev server
       // compiles the check on its first call (52 s on a busy machine, 2026-10-09) — the picture must never show it.
-      await page.waitForFunction((sel) => { const b = document.querySelector(sel); return !!b && !b.disabled; }, SAVE, { timeout: 180_000 });
+      await page.waitForFunction((sel) => { const b = document.querySelector(sel); return !!b && !b.disabled; }, SAVE, { timeout: SLOW });
       await field(page, "displayName").fill("Neema Mushi");
       await field(page, "email").fill("neema@example.com");
       await field(page, "tags").fill("vip, dar");
       await wait(300);
       await shootTall(page, "05-add-filled");
       await page.locator(SAVE).first().click();
-      await page.waitForSelector(DIALOG, { state: "detached", timeout: 20_000 });
+      await page.waitForSelector(DIALOG, { state: "detached", timeout: SLOW });
       await wait(700);
     });
     await step("08-form-errors", async () => {
@@ -351,7 +356,7 @@ async function runA() {
     await step("09-edit", async () => {
       await clearToasts(page);
       await page.locator("[data-contact-row] a[data-edit-contact]").first().click();
-      await page.waitForSelector(inDialog('[data-contact-form="edit"]'), { timeout: 15_000 });
+      await page.waitForSelector(inDialog('[data-contact-form="edit"]'), { timeout: SLOW });
       await wait(400);
       await shootTall(page, "09-edit");
       await closeDialog(page);
@@ -369,7 +374,7 @@ async function runA() {
       await page.goto(`${BASE}/admin/contacts`, { waitUntil: "networkidle" });
       const boxes = page.locator('[data-contact-row] td:first-child input[type="checkbox"]');
       for (let i = 0; i < 3; i++) await boxes.nth(i).check({ force: true });
-      await page.waitForSelector('[data-block="contacts-bulk-bar"]', { timeout: 10_000 });
+      await page.waitForSelector('[data-block="contacts-bulk-bar"]', { timeout: SLOW });
       await wait(300);
       await mark(page, '[data-block="contacts-bulk-bar"]');
       await shoot(page, "13-bulk-bar");
@@ -380,7 +385,7 @@ async function runA() {
       await wait(1200);
       // The confirmation alone (the kit's ConfirmModal, an alertdialog), as every other dialog of the guide — not a dark, blurred
       // contacts page around a small box.
-      await page.waitForSelector('[role="alertdialog"][aria-modal="true"] [data-bulk-confirm]', { timeout: 15_000 });
+      await page.waitForSelector('[role="alertdialog"][aria-modal="true"] [data-bulk-confirm]', { timeout: SLOW });
       await shootTall(page, "14-bulk-confirm", '[role="alertdialog"][aria-modal="true"]');
       await page.locator('[role="alertdialog"], [role="dialog"]').last().locator("button", { hasText: /^Tag/ }).last().click().catch(() => {});
       await wait(1500);
@@ -413,12 +418,12 @@ async function runA() {
       await shootPart(page, "30-marketing-card", "[data-live-switch]", ".glass-panel", 10);
       await unmark(page);
       await page.locator("[data-live-switch-on]").first().click();
-      await page.waitForSelector("[data-live-switch-dialog='on']", { timeout: 10_000 });
+      await page.waitForSelector("[data-live-switch-dialog='on']", { timeout: SLOW });
       await wait(400);
       await shootTall(page, "31-switch-on");
       // Cancel — the guide never switches anything on.
       await textButton(page, DIALOG, "Cancel").click().catch(() => {});
-      await page.waitForSelector(DIALOG, { state: "detached", timeout: 10_000 }).catch(() => {});
+      await page.waitForSelector(DIALOG, { state: "detached", timeout: SLOW }).catch(() => {});
     });
     await step("32-marketing-settings", async () => {
       await page.goto(`${BASE}/admin/system?tab=marketing-sms`, { waitUntil: "networkidle" });
@@ -452,7 +457,7 @@ async function runA() {
       await page.locator(SEL.bodySw).first().fill(DRIVE_MESSAGE.bodySw);
       await wait(400);
       await page.locator(SEL.save).first().click();
-      await page.waitForSelector(SEL.saved, { timeout: 20_000 });
+      await page.waitForSelector(SEL.saved, { timeout: SLOW });
       await wait(500);
       await clearToasts(page);
       await mark(page, `${SEL.save}, ${SEL.saved}`);
@@ -497,17 +502,17 @@ async function importShots(page) {
   await step("i2-columns", async () => {
     await page.goto(`${BASE}/admin/contacts`, { waitUntil: "networkidle" });
     await page.locator('[data-block="contacts-import"]').first().click();
-    await page.waitForSelector('[data-block="import-entrance"], [data-block="import-adopt"], [data-block="import-preflight"]', { timeout: 30_000 });
+    await page.waitForSelector('[data-block="import-entrance"], [data-block="import-adopt"], [data-block="import-preflight"]', { timeout: SLOW });
     await wait(400);
     await page.setInputFiles('input[data-block="import-file"]', { name: "contacts-october.csv", mimeType: "text/csv", buffer: Buffer.from(IMPORT_CSV, "utf8") });
-    await page.waitForSelector('[data-block="import-mapping"]', { timeout: 30_000 });
+    await page.waitForSelector('[data-block="import-mapping"]', { timeout: SLOW });
     await wait(500);
     await shootTall(page, "i2-columns");
   });
   await step("i3-check", async () => {
     await page.locator('[data-block="import-mapping-next"]').first().click();
-    await page.waitForSelector('[data-block="import-preflight"]', { timeout: 60_000 });
-    await page.waitForSelector('[data-block="import-apply"]', { timeout: 60_000 });
+    await page.waitForSelector('[data-block="import-preflight"]', { timeout: SLOW });
+    await page.waitForSelector('[data-block="import-apply"]', { timeout: SLOW });
     await wait(600);
     await page.locator('[data-block="import-preflight"]').first().evaluate((n) => n.scrollIntoView({ block: "start" }));
     await wait(300);
@@ -521,18 +526,18 @@ async function importShots(page) {
     await page.waitForSelector('[data-block="import-done"]', { timeout: 120_000 });
     // The rows that couldn't be imported load after the result: the picture waits for them (the dropped "importing" shot's
     // time used to cover this wait), so it never shows "Loading the rows that couldn't be imported…".
-    await page.waitForFunction(() => !(document.querySelector('[data-block="import-done"]')?.textContent ?? "").includes("Loading the rows"), null, { timeout: 30_000 }).catch(() => {});
+    await page.waitForFunction(() => !(document.querySelector('[data-block="import-done"]')?.textContent ?? "").includes("Loading the rows"), null, { timeout: SLOW }).catch(() => {});
     await wait(600);
     await shootTall(page, "i6-done");
   });
   await page.keyboard.press("Escape").catch(() => {});
-  await page.waitForSelector(DIALOG, { state: "detached", timeout: 10_000 }).catch(() => {});
+  await page.waitForSelector(DIALOG, { state: "detached", timeout: SLOW }).catch(() => {});
 }
 
 /* ═══ RUN b · a campaign driven end to end (the console stub) ═════════════════════════════════════════════════════ */
 
 const ctl = (act) => `[data-live-control="${act}"]`;
-const statusIs = (page, status, timeout = 45_000) =>
+const statusIs = (page, status, timeout = SLOW) =>
   page.waitForSelector(`[data-live-status="${status}"]`, { timeout }).then(() => true).catch(() => false);
 /** The send window judged at a fixed instant on this server: 12:00 EAT (open) or 22:00 EAT (shut), today. */
 function eatInstant(hourEat) {
@@ -557,7 +562,7 @@ async function ownerWorld() {
 }
 async function openCampaign(page, id) {
   await page.goto(`${BASE}/admin/campaigns/${encodeURIComponent(id)}`, { waitUntil: "networkidle" });
-  await page.waitForSelector("[data-live-status]", { timeout: 30_000 });
+  await page.waitForSelector("[data-live-status]", { timeout: SLOW });
   await wait(600);
 }
 /** A staged campaign's id by its name, from the campaigns list. */
@@ -609,14 +614,14 @@ async function runB() {
     await writeDriveMessage(page);
     await wait(400);
     await page.locator(SEL.save).first().click();
-    await page.waitForSelector(SEL.saved, { timeout: 20_000 });
+    await page.waitForSelector(SEL.saved, { timeout: SLOW });
     await wait(800);
     draftUrl = page.url();
     // The audience card with its counts, scrolled to the top (the message card above it names this server's console rail).
     await clearToasts(page);
     await page.locator(SEL.audience).first().evaluate((n) => n.scrollIntoView({ block: "start" }));
     await page.evaluate(() => window.scrollBy(0, -90));
-    await page.waitForFunction(() => !/counts appear once you choose|Counting who will receive/.test(document.querySelector('[data-block="compose-audience"]')?.textContent ?? ""), null, { timeout: 30_000 }).catch(() => {});
+    await page.waitForFunction(() => !/counts appear once you choose|Counting who will receive/.test(document.querySelector('[data-block="compose-audience"]')?.textContent ?? ""), null, { timeout: SLOW }).catch(() => {});
     await wait(500);
     await mark(page, SEL.audience);
     await shoot(page, "21-audience");
@@ -624,7 +629,7 @@ async function runB() {
     await clearToasts(page);
     await page.locator("[data-confirm-trigger]").first().scrollIntoViewIfNeeded();
     await page.locator("[data-confirm-trigger]").first().click();
-    await page.waitForSelector(`${inDialog("[data-confirm-figures]")}, ${inDialog("[data-confirm-body]")}`, { timeout: 30_000 });
+    await page.waitForSelector(`${inDialog("[data-confirm-figures]")}, ${inDialog("[data-confirm-body]")}`, { timeout: SLOW });
     await wait(600);
     // ⭐ More than five people: the dialog asks for the number typed first (the kit's hard tier) — the word to type is the
     //    input's own placeholder. The picture is taken with the number in the box, as the officer will see it before pressing.
@@ -635,7 +640,7 @@ async function runB() {
     }
     await shootTall(page, "40-confirm-dialog");
     await page.locator(DIALOG).getByRole("button", { name: "Confirm audience", exact: true }).first().click();
-    await page.waitForSelector("[data-confirm-confirmed]", { timeout: 30_000 });
+    await page.waitForSelector("[data-confirm-confirmed]", { timeout: SLOW });
     await wait(600);
     await clearToasts(page);
     await page.locator("[data-confirm-confirmed]").first().scrollIntoViewIfNeeded();
@@ -648,24 +653,24 @@ async function runB() {
   let campaignId = null;
   await step("42-start", async () => {
     await page.locator("[data-confirm-start]").first().click();
-    await page.waitForSelector("[data-live-status]", { timeout: 30_000 });
+    await page.waitForSelector("[data-live-status]", { timeout: SLOW });
     campaignId = decodeURIComponent((page.url().match(/[/]admin[/]campaigns[/]([^/?#]+)/) ?? [])[1] ?? "");
     await pinWindow(22);
     await wait(600);
     await page.locator(ctl("start")).first().click();
-    await page.waitForSelector(DIALOG, { timeout: 10_000 });
+    await page.waitForSelector(DIALOG, { timeout: SLOW });
     await wait(500);
     await shootTall(page, "42-start-dialog");
     await page.getByRole("button", { name: "Start sending" }).first().click();
     await statusIs(page, "RUNNING");
-    await page.waitForFunction(() => (document.querySelector("[data-live-wait]")?.textContent ?? "").length > 0, null, { timeout: 30_000 });
+    await page.waitForFunction(() => (document.querySelector("[data-live-wait]")?.textContent ?? "").length > 0, null, { timeout: SLOW });
     await wait(800);
     await clearToasts(page);
     await shoot(page, "44-waiting");
   });
   await step("46-pause", async () => {
     await page.locator(ctl("pause")).first().click();
-    await statusIs(page, "PAUSED", 20_000);
+    await statusIs(page, "PAUSED");
     await wait(1200);
     await clearToasts(page);
     await shoot(page, "46-paused");
@@ -675,7 +680,7 @@ async function runB() {
     // already, and that second picture under 7.2 left half a page empty (the owner's "nothing unnecessary", 2026-10-09).
     await pinWindow(12);
     await page.locator(ctl("resume")).first().click();
-    await statusIs(page, "RUNNING", 20_000);
+    await statusIs(page, "RUNNING");
     if (!(await statusIs(page, "DONE", 90_000))) throw new Error("the campaign did not finish");
     await wait(1200);
     await clearToasts(page);
@@ -706,17 +711,17 @@ async function runB() {
     await shoot(page, "45-running-figures");
     // ── stop it for good, then make a copy
     await page.locator(ctl("stop")).first().click();
-    await page.waitForSelector(DIALOG, { timeout: 10_000 });
+    await page.waitForSelector(DIALOG, { timeout: SLOW });
     await wait(500);
     await shootTall(page, "49-stop-dialog");
     await page.getByRole("button", { name: "Stop campaign" }).first().click();
-    await statusIs(page, "CANCELLED", 20_000);
+    await statusIs(page, "CANCELLED");
     await wait(1000);
     await clearToasts(page);
     await page.evaluate(() => window.scrollTo(0, 0));
     await shoot(page, "50-stopped");
     await page.locator(ctl("copy")).first().click();
-    await page.waitForURL((u) => u.pathname.endsWith("/admin/campaigns/new"), { timeout: 30_000 }).catch(() => {});
+    await page.waitForURL((u) => u.pathname.endsWith("/admin/campaigns/new"), { timeout: SLOW }).catch(() => {});
     await page.waitForLoadState("networkidle");
     await wait(900);
     await shoot(page, "51-copy");
