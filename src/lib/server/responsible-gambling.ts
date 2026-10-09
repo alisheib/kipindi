@@ -35,8 +35,10 @@ const PERIOD_LABEL: Record<string, string> = {
   "1h": "1 hour", "24h": "24 hours", "1w": "1 week",
   "1m": "1 month", "6m": "6 months", "perm": "permanent",
 };
-const fmtDate = (iso: string) =>
-  new Date(iso).toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" });
+/* ⛔ R6-A (2026-10-09, A1) · NO DATE IS FORMATTED HERE. A `fmtDate` stood here — `toLocaleDateString("en-GB")` with no time
+   zone — and both confirmation letters printed it: the SERVER's calendar day (production runs in UTC) and no time, so a
+   break taken at 01:30 EAT read as ending a day early. The letters now receive the instant and say it themselves, on the
+   East Africa clock in each line's own words (`selfExclusionHtml` / `coolOffHtml`, email.ts). */
 
 export const SELF_EXCLUSION_PERIODS_SEC = {
   "24h":   24 * 60 * 60,
@@ -329,10 +331,15 @@ export async function selfExclude(userId: string, period: keyof typeof SELF_EXCL
     payload: { period, until },
   });
   // Confirmation email (best-effort, never blocks the freeze).
+  // ⭐ R6-A (2026-10-09, A1) · the letter gets the INSTANT, and asks the one definition of permanent (as the action's
+  // redirect does), never the period's name: a permanent exclusion's letter states no end.
+  const standing = selfExclusionStandingOf(until);
+  const permanent = standing.state === "serving" && standing.permanent;
+  const periodLabel = permanent ? PERIOD_LABEL.perm : (PERIOD_LABEL[period] ?? period);
   sendEmailToUser(userId, (email) => ({
     to: email,
-    subject: `Self-exclusion confirmed · ${PERIOD_LABEL[period] ?? period}`,
-    html: selfExclusionHtml({ period: PERIOD_LABEL[period] ?? period, endDate: fmtDate(until) }),
+    subject: `Self-exclusion confirmed · ${periodLabel}`,
+    html: selfExclusionHtml({ period: periodLabel, untilIso: until, permanent }),
     tag: "self-exclusion",
   }));
   return { ok: true, data: { until } };
@@ -370,7 +377,8 @@ export async function coolOff(userId: string, period: keyof typeof COOLING_OFF_P
   sendEmailToUser(userId, (email) => ({
     to: email,
     subject: `Break confirmed · ${PERIOD_LABEL[period] ?? period}`,
-    html: coolOffHtml({ duration: PERIOD_LABEL[period] ?? period, endDate: fmtDate(until), untilIso: new Date(until).toISOString() }),
+    // R6-A (2026-10-09, A1) · the instant; the letter says it on the East Africa clock in each line's own words.
+    html: coolOffHtml({ duration: PERIOD_LABEL[period] ?? period, untilIso: until }),
     tag: "cool-off",
   }));
   // In-app mirror — parity with self-exclusion. A phone-only player with no

@@ -354,7 +354,11 @@ log("\n── 8 · the detail page reads the card's rule (C1)");
     /const oneSidedNote = emptySide && !settled \? t\.market\.oneSidedNote\.replace\("\{side\}", sideWord\(t, emptySide, "MARKET"\)\) : null;/.test(detail)
     && /const settled = !!m\.resolvedOutcome \|\| isResolved;/.test(detail)
     && section.includes("{!bettingOpen && oneSidedCallout}")
-    && (aside.match(/\{oneSidedCallout\}/g) ?? []).length === 2
+    // ⚠️ RE-PINNED 2 → 3 (R6-A, 2026-10-09): the open column has a THIRD exclusive arm now — a signed-in reader on a break
+    // gets the break's notice where the stake stood, and the note keeps its spot at the top of the column there, as it does
+    // for a guest. Still one placement per render: the three arms (break · signed in · guest) never draw together.
+    && (aside.match(/\{oneSidedCallout\}/g) ?? []).length === 3
+    && /session && breakBody \? \(\s*<>\s*(?:\{\s*\}\s*)*<h2 id=\{BET_PANEL_HEADING\} className="sr-only">\{t\.market\.placeYourStake\}<\/h2>\s*\{oneSidedCallout\}/.test(aside)
     && !/oneSidedBody|oneSidedMarket/.test(detail));
   // The picker: no price prop, the pools decide, both figures gated.
   const picker = decomment(read("src/components/markets/side-picker.tsx"));

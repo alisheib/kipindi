@@ -1629,16 +1629,24 @@ async function instantIn(
 /** Confirmation that self-exclusion is active. Email is the durable record; this
  *  in-app copy ensures the player sees it even with no email on file. */
 export async function notifySelfExclusion(userId: string, opts: { until: string }) {
-  const end = await breakEndIn(opts.until);
+  /* ⛔ R6-A (2026-10-09, the sibling of the letters' A1) · A PERMANENT EXCLUSION NAMES NO END. It is stored as now + 100
+     years, so this notice read "…until 15 Sep 2126, 14:00", as its confirmation letter read "until 15 Sept 2126". Asked
+     through `selfExclusionStandingOf` — the one definition of permanent — the notice then drops only its "until …" clause,
+     as the letter does; no word is changed. Read lazily, as this file reads its other server modules (responsible-gambling.ts
+     imports this one), and a failed read keeps the dated sentence: the notice is never lost to it. */
+  const permanent = await import("./responsible-gambling")
+    .then((m) => { const s = m.selfExclusionStandingOf(opts.until); return s.state === "serving" && s.permanent; })
+    .catch(() => false);
+  const end = permanent ? null : await breakEndIn(opts.until);
   return notify({
     userId,
     kind: "RG",
     titleEn: "Self-exclusion active",
     titleSw: "Kujizuia kumeanza",
     titleZh: "自我限制已生效",
-    bodyEn: `Your account is closed to betting and deposits until ${end.en}.`,
-    bodySw: `Akaunti yako imefungwa kuweka dau na amana hadi ${end.sw}.`,
-    bodyZh: `您的账户已停止投注与充值，直至 ${end.zh}。`,
+    bodyEn: `Your account is closed to betting and deposits${end ? ` until ${end.en}` : ""}.`,
+    bodySw: `Akaunti yako imefungwa kuweka dau na amana${end ? ` hadi ${end.sw}` : ""}.`,
+    bodyZh: end ? `您的账户已停止投注与充值，直至 ${end.zh}。` : `您的账户已停止投注与充值。`,
     href: "/profile/responsible-gambling",
   });
 }

@@ -28,6 +28,8 @@ import { formatTzs } from "@/lib/utils";
 import { useT } from "@/lib/i18n";
 import type { UpDownPricing } from "@/lib/updown-pricing";
 import type { UpDownReceiptInfo } from "@/lib/updown-receipt";
+import type { KeptBody } from "@/components/ui/empty-state-text";
+import { BetBreakNotice } from "@/components/rg/bet-break-notice";
 
 const cardStyle = {
   background: "var(--bg-elevated)", border: "1px solid var(--border)",
@@ -58,6 +60,8 @@ export function RoundActionPanel(props: {
     walletBalance: number | null;
     /** UD-22 · the round's frozen receipt facts, for the bet-confirmation modal. */
     receipt?: UpDownReceiptInfo;
+    /** R6-A · the viewer's running break or self-exclusion, as the page words it (`breakSentence`), or null. */
+    breakBody?: KeptBody | null;
   };
   /** The frozen figure for the locked presentation — server-computed, never derived here. */
   myExactPayout: number | null;
@@ -105,10 +109,22 @@ export function RoundActionPanel(props: {
   }, [bettable]);
 
   if (bettable) {
+    const { breakBody, ...stake } = stakePanel;
+    // ⭐ R6-A (2026-10-09, reviewer A's A2) · A SIGNED-IN READER ON A BREAK IS NOT OFFERED THE STAKE. The break's own notice
+    // stands where the stake card stands (`BetBreakNotice`, as on the board's card and in the market page's bet column), in
+    // the same named region — `#stake`, so the landing band's pick still lands on it — without the card's chrome around the
+    // notice's own box (the locked branch below draws its inset box the same way). The page reads the lockout, failing open.
+    if (stake.isAuthed && breakBody) {
+      return (
+        <section id="stake" ref={stakeRef} tabIndex={-1} aria-label={props.ariaStake} className="scroll-mt-[96px]">
+          <BetBreakNotice body={breakBody} testId="updown-round-break" />
+        </section>
+      );
+    }
     return (
       <section id="stake" ref={stakeRef} tabIndex={-1} aria-label={props.ariaStake} className="scroll-mt-[96px]" style={{ ...cardStyle, padding: "14px 16px 16px" }}>
         <RoundStakePanel
-          {...stakePanel}
+          {...stake}
           selectionClosesAtMs={selectionClosesAtMs}
           serverNowMs={serverNowMs}
         />
