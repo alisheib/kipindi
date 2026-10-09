@@ -1,5 +1,19 @@
 import type { NextConfig } from "next";
 
+/** The only addresses sent a one-year `immutable` cache: public/'s own static folders and files, and Next's hashed build
+ *  output. Exact folders, never a file-name suffix (see `headers()` below; `test:static-cache-scope`). */
+const IMMUTABLE_STATIC_SOURCES = [
+  "/icons/:path*",
+  "/brand/:path*",
+  "/pay/:path*",
+  "/og/:path*",
+  "/screenshots/:path*",
+  "/email-signatures/:path*",
+  "/favicon.ico",
+  "/favicon.svg",
+  "/_next/static/:path*",
+] as const;
+
 const config: NextConfig = {
   reactStrictMode: true,
   // Framework and version disclosure on every response, and the first line of
@@ -60,22 +74,22 @@ const config: NextConfig = {
     formats: ["image/webp", "image/avif"],
     minimumCacheTTL: 60 * 60 * 24 * 30, // 30 days
   },
-  // Long-lived cache for static assets (fonts, images, JS chunks).
-  // Next.js auto-hashes _next/static paths, so 1-year immutable is safe.
+  // Long-lived cache for STATIC FILES ONLY: the folders and files under public/, and Next's hashed build output
+  // (fonts come from next/font, under /_next/static/media). `IMMUTABLE_STATIC_SOURCES` is the list.
+  // ⛔ NEVER A SUFFIX MATCH (2026-10-09, hotfix). This was one rule, `/:all*(svg|jpg|jpeg|png|webp|avif|ico|woff|woff2)`,
+  // and a path-to-regexp group needs no dot, so it matched PAGES too — `/markets/x.png`, `/markets/mexico`,
+  // `/u/federico` — and sent their HTML `public, max-age=31536000, immutable`. Measured on production the same day:
+  // `/markets/<anything>.png` answered 200 text/html with that header, and Cloudflare stored it (`cf-cache-status: HIT`
+  // on the second request) — so a signed-in reader sent such a link could have their page (the header's name, masked
+  // phone and balance) kept at the edge for the next visitor of the same address; and a browser kept any page whose
+  // address merely ended in those letters for a year without asking again. `test:static-cache-scope` holds every source
+  // to a real folder or file under public/ and proves, with Next's own matcher, that no page address matches.
   async headers() {
     return [
-      {
-        source: "/:all*(svg|jpg|jpeg|png|webp|avif|ico|woff|woff2)",
-        headers: [
-          { key: "Cache-Control", value: "public, max-age=31536000, immutable" },
-        ],
-      },
-      {
-        source: "/_next/static/:path*",
-        headers: [
-          { key: "Cache-Control", value: "public, max-age=31536000, immutable" },
-        ],
-      },
+      ...IMMUTABLE_STATIC_SOURCES.map((source) => ({
+        source,
+        headers: [{ key: "Cache-Control", value: "public, max-age=31536000, immutable" }],
+      })),
     ];
   },
 };

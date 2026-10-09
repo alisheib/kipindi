@@ -425,6 +425,7 @@
     "test:float-guard": "tsx scripts/test-float-guard.test.mts",
     "test:card-deposit": "tsx scripts/card-deposit.test.mts",
     "test:card-return-order": "tsx scripts/card-return-order.test.mts",
+    "test:static-cache-scope": "tsx scripts/static-cache-scope.test.mts",
     "red:card-return-order": "tsx scripts/card-return-order.test.mts --prove-red",
     "test:deposit-gate": "tsx scripts/deposit-gate-return.test.mts",
     "test:kyc-gate": "tsx scripts/kyc-gate.test.mts",
