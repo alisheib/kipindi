@@ -1392,8 +1392,8 @@ function u37bKey(): string {
 type OfficerFixture = { id: string; key: string; phone: string };
 /** Every role `roles.ts` names — §18.37 asks the door with each. */
 type FixtureRole = "PLAYER" | "AGENT" | "MODERATOR" | "ADMIN" | "COMPLIANCE" | "SUPPORT" | "FINANCE" | "GROWTH" | "AUDITOR";
-/** An officer's own account — a GROWTH user unless `role` says (2026-10-09: a test to a typed number needs ADMIN or
- *  COMPLIANCE) — with consent given the way a person gives it (the profile switch's writer). */
+/** An officer's own account — a GROWTH user unless `role` says (2026-10-09: a test to a typed number needs the Owner's
+ *  role, `ADMIN`, or Compliance's) — with consent given the way a person gives it (the profile switch's writer). */
 async function u37bOfficer(opts: { consent?: boolean; dob?: string | null; displayName?: string | null; phone?: string; role?: FixtureRole } = {}): Promise<OfficerFixture> {
   const key = u37bKey();
   const phone = opts.phone ?? `+${key}`;
@@ -1412,7 +1412,7 @@ async function u37bOfficer(opts: { consent?: boolean; dob?: string | null; displ
   }
   return { id, key: opts.phone ? phone.replace(/[^0-9]/g, "") : key, phone };
 }
-/** ⛔ 2026-10-09 · an officer who may type a number — the Owner (ADMIN); the ruling admits COMPLIANCE too (§18.37). */
+/** ⛔ 2026-10-09 · an officer who may type a number — the Owner (`ADMIN`); the ruling admits Compliance too (§18.37). */
 const u37bTypist = (opts: Parameters<typeof u37bOfficer>[0] = {}): Promise<OfficerFixture> => u37bOfficer({ ...opts, role: "ADMIN" });
 
 const U37B_SAVER = "usr_u37b_saver";
@@ -1995,8 +1995,8 @@ async function checkTestSend(impl: ComposeImpl, log: (l: string) => void): Promi
   let cmp = "";
   let cmp2 = "";
   try {
-    // ⛔ 2026-10-09 · the Owner (ADMIN): the typed claims below send as `o`, and a test to a typed number is for ADMIN and
-    // COMPLIANCE only (§18.37) — the own-number claims are the same for every role.
+    // ⛔ 2026-10-09 · the Owner (`ADMIN`): the typed claims below send as `o`, and a test to a typed number is for the Owner
+    // and Compliance only (§18.37) — the own-number claims are the same for every role.
     o = await officer({ role: "ADMIN" });
     cmp = await u37bDraft();
     cmp2 = await u37bDraft();
@@ -2515,7 +2515,7 @@ async function checkTestSend(impl: ComposeImpl, log: (l: string) => void): Promi
   await claim("§18.23 ⛔ U37c · S24 · THE TYPED BUDGETS — five typed tests to one number from three officers pass and the sixth is refused typed_rate_limited with the recipient's sentence, while another number is still allowed and the bucket key holds no digit run of the number; one officer's eleventh typed test to eleven numbers is refused typed_rate_limited with the officer's sentence while their own-number test still passes; and a refusal before the gate spends neither budget", async () => {
     const id = await phrasedDraft();
     const k = u37bKey();
-    // 2026-10-09 · officers who may type a number: the Owner and two COMPLIANCE officers.
+    // 2026-10-09 · officers who may type a number: the Owner and two Compliance officers.
     const three = [await officer({ role: "ADMIN" }), await officer({ role: "COMPLIANCE" }), await officer({ role: "COMPLIANCE" })];
     const { send: spy } = u37bSpy();
     const real = { rateTyped: impl.testDeps.rateTyped, rateTo: impl.testDeps.rateTo, send: spy };
@@ -2692,7 +2692,7 @@ async function checkTestSend(impl: ComposeImpl, log: (l: string) => void): Promi
   });
 
   await claim("§18.33 ⛔ U13 · M12 · THE TEST SEND OBEYS THE SEND WINDOW — outside it (03:00 EAT) the officer's own test and a typed one are each refused 'held' with the window's sentence, word for word, before a token, a row or the wire: no token minted, no SmsMessage row, the gate never asked, and the masked audit row says held: quiet_hours; a window that closes between that check and the send still holds the test, with no row", async () => {
-    // 2026-10-09 · a COMPLIANCE officer: the typed half needs a role that may type a number.
+    // 2026-10-09 · a Compliance officer: the typed half needs a role that may type a number.
     const o33 = await officer({ role: "COMPLIANCE" });
     const id = await phrasedDraft();
     const QUIET ="It's outside the send window (08:00–20:00 EAT), so no test can be sent now — try again at 08:00.";
@@ -2790,7 +2790,7 @@ async function checkTestSend(impl: ComposeImpl, log: (l: string) => void): Promi
       `REJECTED: ${reasonOf(refused)} "${words(refused)}" · UNKNOWN: ${reasonOf(prewire)} "${words(prewire)}"`];
   });
 
-  /* ══ §18.37–§18.39 · THE OWNER'S RULING OF 2026-10-09 — A TEST TO A TYPED NUMBER IS FOR ADMIN AND COMPLIANCE ONLY ══ */
+  /* ══ §18.37–§18.39 · THE OWNER'S RULING OF 2026-10-09 — A TEST TO A TYPED NUMBER IS FOR THE OWNER AND COMPLIANCE ONLY ══ */
   await claim(S18_37, async () => {
     const id = await phrasedDraft();
     const start = audits.length;
@@ -2846,7 +2846,7 @@ async function checkTestSend(impl: ComposeImpl, log: (l: string) => void): Promi
     // ⭐ GROWTH's own test still goes — "My own number", the one way its card offers.
     const { send: ownSpy, spy: ownWire } = u37bSpy();
     const own = await send({ campaignId: id, variant: "SW" }, growth.id, { send: ownSpy });
-    // ⭐ ADMIN (the Owner) and COMPLIANCE, as before: through the ONE gate to the wire.
+    // ⭐ The Owner and Compliance, as before: through the ONE gate to the wire.
     const { send: okSpy, spy: okWire } = u37bSpy();
     const allowed = [
       await sendTyped(id, `+${u37bKey()}`, (await officer({ role: "ADMIN" })).id, { over: { send: okSpy } }),
@@ -2861,18 +2861,23 @@ async function checkTestSend(impl: ComposeImpl, log: (l: string) => void): Promi
     const quiet = numbers.every((k) => !json.includes(k) && !json.includes(k.slice(3))) && !/(?<![0-9])255[0-9]{9}(?![0-9])/.test(json)
       && !/[0-9]/.test(TEST.TEST_TYPED_ROLE_REFUSED);
     const untouched = Object.values(n).every((x) => x === 0) && wire.calls === 0 && (await tokenCount(stranger)) === 0;
+    // ⭐ The ONE sentence, word for word — and in the console's own labels for the two roles (roles.ts ROLE_LABEL), so it
+    // names them as Staff & roles does.
+    const ROLE_SENTENCE = "Tests to another number are for the Owner and Compliance only — send yourself a test.";
+    const sentence = TEST.TEST_TYPED_ROLE_REFUSED === ROLE_SENTENCE
+      && ROLE_SENTENCE.includes(`for the ${ROLES.ROLE_LABEL.ADMIN} and ${ROLES.ROLE_LABEL.COMPLIANCE} only`);
     // The decider, of every role roles.ts names and of values that are none of them.
     const every: string[] = [...ROLES.STAFF_ROLES, "PLAYER", "AGENT"];
     const admitted = every.filter((r) => TEST.mayTestTypedNumber(r)).sort().join(",");
     const strays = [null, undefined, "", "admin", "Admin", "OWNER", " ADMIN", "__proto__", "constructor", "toString"]
       .filter((r) => TEST.mayTestTypedNumber(r as string | null | undefined));
     return [refused && asRole(posted) && asRole(nobody) && own.ok && own.target === "own" && ownWire.calls === 1
-      && allowed.every((r) => r.ok && r.target === "typed") && okWire.calls === 2 && rowsOk && quiet && untouched
+      && allowed.every((r) => r.ok && r.target === "typed") && okWire.calls === 2 && rowsOk && quiet && untouched && sentence
       && new Set(every).size === 9 && admitted === "ADMIN,COMPLIANCE" && strays.length === 0,
-      JSON.stringify({ said, posted: reasonOf(posted), nobody: reasonOf(nobody), own: reasonOf(own), allowed: allowed.map(reasonOf), rows: rows.length, rowsOk, quiet, n, wire: wire.calls, admitted, strays })];
+      JSON.stringify({ said, posted: reasonOf(posted), nobody: reasonOf(nobody), own: reasonOf(own), allowed: allowed.map(reasonOf), rows: rows.length, rowsOk, quiet, sentence, n, wire: wire.calls, admitted, strays })];
   });
 
-  await claim("§18.38 ⛔ 2026-10-09 · THE ROLE IS ASKED FIRST, OF THE STORED ROW, BY THE ONE DECIDER — in sendCampaignTest the typed role check (mayTestTypedNumber(officer?.role), refused typed_role in TEST_TYPED_ROLE_REFUSED) sits right after the officer's stored read (deps.users.findById(officerId)) and before the typed number is parsed (parseTzNumber(recipient.number)), masked (maskPhone(key)) or set beside the officer's own (key === ownKey); the door asks it once and reads no role from the request; and the decider is a full record over every role, ADMIN and COMPLIANCE alone true", async () => {
+  await claim("§18.38 ⛔ 2026-10-09 · THE ROLE IS ASKED FIRST, OF THE STORED ROW, BY THE ONE DECIDER — in sendCampaignTest the typed role check (mayTestTypedNumber(officer?.role), refused typed_role in TEST_TYPED_ROLE_REFUSED) sits right after the officer's stored read (deps.users.findById(officerId)) and before the typed number is parsed (parseTzNumber(recipient.number)), masked (maskPhone(key)) or set beside the officer's own (key === ownKey); the door asks it once and reads no role from the request; and the decider is a full record over every role, the Owner's ADMIN and Compliance's COMPLIANCE alone true", async () => {
     const src = impl.testSendSource.split(CR17).join("");
     const fnAt = src.indexOf("export async function sendCampaignTest(");
     const fn = fnAt < 0 ? "" : src.slice(fnAt);
@@ -2916,7 +2921,7 @@ async function checkTestSend(impl: ComposeImpl, log: (l: string) => void): Promi
   return failed;
 }
 /** 2026-10-09 · §18.37's claim — named once, so its red cases expect exactly what the run says. */
-const S18_37 = "§18.37 ⛔ 2026-10-09 · A TEST TO A TYPED NUMBER IS FOR ADMIN AND COMPLIANCE ONLY, BY THE STORED ROLE — GROWTH, FINANCE, SUPPORT, AUDITOR, MODERATOR, PLAYER, AGENT and an officer with no row are each refused typed_role in ONE sentence that names no number, before anything about the number is read: a malformed number is never parsed (not bad_number), their own number in another spelling is never compared (not the own path), a reader's options change nothing, and nothing reaches the rail, the switch, the window, the record, the typed budgets, the gate, the floor, the token store or the wire; each attempt writes ONE masked marketing.campaign_test row (typed_role, target typed, the campaign named, the stored role, no to, no digit run of a number); a role posted beside the recipient is never read; GROWTH's own test still goes; ADMIN (the Owner) and COMPLIANCE are handed over as before; and the decider admits exactly those two of every role roles.ts names, and nothing that is none of them";
+const S18_37 = "§18.37 ⛔ 2026-10-09 · A TEST TO A TYPED NUMBER IS FOR THE OWNER AND COMPLIANCE ONLY, BY THE STORED ROLE — GROWTH, FINANCE, SUPPORT, AUDITOR, MODERATOR, PLAYER, AGENT and an officer with no row are each refused typed_role in ONE sentence that names no number — 'Tests to another number are for the Owner and Compliance only — send yourself a test.', in the console's own labels for the two roles — before anything about the number is read: a malformed number is never parsed (not bad_number), their own number in another spelling is never compared (not the own path), a reader's options change nothing, and nothing reaches the rail, the switch, the window, the record, the typed budgets, the gate, the floor, the token store or the wire; each attempt writes ONE masked marketing.campaign_test row (typed_role, target typed, the campaign named, the stored role, no to, no digit run of a number); a role posted beside the recipient is never read; GROWTH's own test still goes; the Owner (ADMIN) and Compliance are handed over as before; and the decider admits exactly those two of every role roles.ts names, and nothing that is none of them";
 /** U33r · §18.36's claim — named once, so its red case expects exactly what the run says. */
 const S18_36 = "§18.36 ⛔ U33r · A PROMISED AGENT REFEREE IS NEVER SENT A TEST — a typed test to a number an applicant gave as a referee is refused through the ONE gate: a viewer who may not read numbers gets typed_refused and its ONE sentence, a reader gets the ONE protected reason and sentence (MINOR-5: collapsed for readers too, as the split collapses it), the audit row ALONE records agent_referee, for both; zero transport calls and zero tokens; and an officer whose OWN number is a referee's is told it is protected, in the own-number words";
 
@@ -4719,7 +4724,7 @@ if (!PROVE_RED) {
     const GATE_CALL = "mayReceiveMarketingSms(m, deps.now(), deps.gateReads, { testAttestation })";
     const standInGate = R.testSendSource.split(GATE_CALL).join("allowTypedTest(m, testAttestation)");
 
-    /* ── 2026-10-09 · the owner's ruling (a test to a typed number is for ADMIN and COMPLIANCE only): each lands on its own,
+    /* ── 2026-10-09 · the owner's ruling (a test to a typed number is for the Owner and Compliance only): each lands on its own,
      *    then must fire its claim ── */
     /** The role check removed — every officer's stored role passes it, as if the check were not there. */
     const everyoneTypes: typeof realTest = (input, officerId, deps = TEST.CAMPAIGN_TEST_DEPS, options) => realTest(input, officerId, {
@@ -5316,7 +5321,7 @@ if (!PROVE_RED) {
         },
         landedAs: "the real test says an UNKNOWN failure couldn't be handed to the network, and the plant's says the network refused it",
       },
-      /* ── 2026-10-09 · the owner's ruling: a test to a typed number is for ADMIN and COMPLIANCE only ── */
+      /* ── 2026-10-09 · the owner's ruling: a test to a typed number is for the Owner and Compliance only ── */
       {
         name: "2026-10-09 · the role check removed — a GROWTH officer's typed test sent",
         expect: [/^§18[.]37 ⛔/], impl: { ...R, test: everyoneTypes },

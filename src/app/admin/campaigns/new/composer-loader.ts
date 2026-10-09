@@ -144,8 +144,8 @@ export type ComposeTestView = {
   /** U37c · a test to ANOTHER number — offered only once its three number-independent checks pass. */
   typed: ComposeTypedView;
   /**
-   * ⛔ 2026-10-09 · MAY THIS VIEWER SEND A TEST TO A TYPED NUMBER AT ALL? The owner's ruling: ADMIN (the Owner) and
-   * COMPLIANCE only — asked of the door's own decider (`mayTestTypedNumber`) with the officer's STORED role, the row the
+   * ⛔ 2026-10-09 · MAY THIS VIEWER SEND A TEST TO A TYPED NUMBER AT ALL? The owner's ruling: the Owner and Compliance
+   * only — asked of the door's own decider (`mayTestTypedNumber`) with the officer's STORED role, the row the
    * door re-reads for every test, so the card offers the choice only to a viewer the door would take it from. False: the
    * Test card shows "My own number" alone — no "Another number", no reason beside it — and `typed` is `TYPED_NOT_OFFERED`,
    * carrying no preview and no 18+ words this viewer could use.
