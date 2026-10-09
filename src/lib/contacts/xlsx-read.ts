@@ -98,7 +98,7 @@ import {
   type XlsxRefusalContext,
 } from "./xlsx-limits";
 import { xlsxCellNotes, xlsxNumberText, xlsxValueText, type CellFlag, type NumberText } from "./xlsx-cells";
-import { SHEET_SAMPLE_ROWS, chooseSheet, type SheetChoice, type SheetSample } from "./sheet-choice";
+import { SHEET_SAMPLE_ROWS, chooseSheet, mobileCellsIn, type SheetChoice, type SheetSample } from "./sheet-choice";
 import { dropTitleRows } from "./title-rows";
 
 /* ══ CHARACTERS — by code, never typed ════════════════════════════════════════════════════════════════════════ */
@@ -180,7 +180,9 @@ export type XlsxBrowserStats = {
  * the wrong format when that is the refusal, `detail` a fixed word for the suite (never shown); or a read Stop ended.
  */
 export type XlsxBrowserResult =
-  | { readonly kind: "read"; readonly file: ParsedContactsFile; readonly stats: XlsxBrowserStats }
+  /** `noMobileSheet` (C3b-fix · D8, the server's own word): no visible sheet's first rows hold a Tanzanian mobile, so the
+   *  first visible sheet was read — the columns step shows its sheet hint on this alone. */
+  | { readonly kind: "read"; readonly file: ParsedContactsFile; readonly stats: XlsxBrowserStats; readonly noMobileSheet: boolean }
   | {
       readonly kind: "refused";
       readonly refusal: XlsxRefusal;
@@ -376,6 +378,8 @@ export type XlsxBrowserRules = {
   readonly coveredText: (master: () => string) => string;
   /** ⭐ THE sheet choice — `chooseSheet` (sheet-choice.ts), the ONE function both readers call. */
   readonly chooseSheet: (sheets: ReadonlyArray<SheetSample>) => SheetChoice;
+  /** How many cells of a sample yield a mobile — `mobileCellsIn` (sheet-choice.ts): 0 for the sheet read is D8's word. */
+  readonly mobileCells: (sample: ReadonlyArray<ReadonlyArray<string>>) => number;
   /** ⭐ A title above the column names — `dropTitleRows` (title-rows.ts), the ONE rule every reader's file goes through. */
   readonly titleRows: (file: ParsedContactsFile) => ParsedContactsFile;
   /** Are a row's trailing empty cells trimmed? Always. */
@@ -418,6 +422,7 @@ export const XLSX_BROWSER_RULES: XlsxBrowserRules = {
   missingFormulaValue: () => undefined,
   coveredText: () => "",
   chooseSheet,
+  mobileCells: mobileCellsIn,
   titleRows: dropTitleRows,
   trimTrailing: true,
   maxRows: XLSX_MAX_ROWS,
@@ -1786,6 +1791,8 @@ export function buildXlsxBrowserReader(rules: XlsxBrowserRules): (file: Blob, op
       const choice = rules.chooseSheet(samples);
       const chosen = choice.index >= 0 && choice.index < read.length ? read[choice.index] : null;
       if (chosen === null) return refused("no_visible_sheet", "all_hidden");
+      // ⭐ D8 · the sheet read holds the most mobiles of all, so none in its sample means none in any visible sheet's.
+      const noMobileSheet = rules.mobileCells(samples[choice.index].sample) === 0;
 
       // 9 · the chosen sheet's rows, the server's caps applied as it applies them
       if (chosen.over) return refused("too_many_rows", "rows");
@@ -1803,7 +1810,7 @@ export function buildXlsxBrowserReader(rules: XlsxBrowserRules): (file: Blob, op
       tally.rows = parsed.rows.length;
       tally.blankRows = parsed.blankRows;
       tally.width = parsed.width;
-      return { kind: "read", file: parsed, stats: stats() };
+      return { kind: "read", file: parsed, stats: stats(), noMobileSheet };
     } catch (e) {
       if (e instanceof ReadStop) {
         if (e.why === "aborted") return { kind: "aborted" };

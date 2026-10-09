@@ -240,6 +240,8 @@ type Ready = {
   readonly extraUnit: ExtraNumbersUnit;
   /** C3b-fix · D5 · a CSV whose quotation mark never closed: its row and the lines it swallowed — null for any other file. */
   readonly unclosed: CsvUnclosedQuote | null;
+  /** C3b-fix · D8 · the server's reader said no visible sheet of the workbook holds a mobile — false for any other file. */
+  readonly noMobileSheet: boolean;
 };
 
 /** Which loop a stopped run was in — where the officer is told it stopped. */
@@ -482,7 +484,10 @@ function ImportDialog({ open, onClose }: { open: boolean; onClose: () => void })
       return go({ at: "entrance", resume, mode: IDLE }, { tone: "danger", text, actions: [] });
     }
     if (out.kind === "parsed") {
-      prepare({ file: out.file, digest: out.digest, name: file.name || null, list: false, extraNumbers: out.extraNumbers, extraUnit: "card", unclosed: out.unclosed }, resume);
+      prepare({
+        file: out.file, digest: out.digest, name: file.name || null, list: false, extraNumbers: out.extraNumbers, extraUnit: "card",
+        unclosed: out.unclosed, noMobileSheet: false,
+      }, resume);
       return;
     }
     // ⭐ An Excel workbook: read by the server (U27b), checked here before a single row is shown.
@@ -502,7 +507,11 @@ function ImportDialog({ open, onClose }: { open: boolean; onClose: () => void })
       go({ at: "entrance", resume, mode: IDLE }, { tone: "danger", text: ENTRANCE.xlsxGarbled, actions: [] });
       return;
     }
-    prepare({ file: r.answer.file, digest: workbook.digest, name: file.name || null, list: false, extraNumbers: 0, extraUnit: "line", unclosed: null }, resume);
+    // ⭐ C3b-fix · D8 · the reader's own word on the sheets — the only thing the columns step's sheet hint is shown on.
+    prepare({
+      file: r.answer.file, digest: workbook.digest, name: file.name || null, list: false, extraNumbers: 0, extraUnit: "line",
+      unclosed: null, noMobileSheet: r.answer.noMobileSheet === true,
+    }, resume);
   };
 
   const onPaste = async (text: string, resume: ImportRunView | null): Promise<void> => {
@@ -516,7 +525,7 @@ function ImportDialog({ open, onClose }: { open: boolean; onClose: () => void })
       return;
     }
     if (!alive.current) return;
-    prepare({ file, digest, name: null, list, extraNumbers: list ? pasteExtraNumbers(text) : 0, extraUnit: "line", unclosed: null }, resume);
+    prepare({ file, digest, name: null, list, extraNumbers: list ? pasteExtraNumbers(text) : 0, extraUnit: "line", unclosed: null, noMobileSheet: false }, resume);
   };
 
   /** A file read: an empty one is said so; a resumed upload goes straight on; anything else shows its columns. */

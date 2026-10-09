@@ -15,6 +15,7 @@ import { formatNumber } from "@/lib/utils";
 import type { ImportChoice, ShownKeepReason } from "@/lib/contacts/import-decide";
 import { IMPORT_REFUSAL_SENTENCES, type PreflightBucket } from "@/lib/contacts/import-flow";
 import { IMPORT_MAX_ROWS } from "@/lib/contacts/import-limits";
+import { SHEET_SAMPLE_ROWS } from "@/lib/contacts/sheet-choice";
 import { PHONE_FORMAT_REMEDY } from "@/lib/contacts/xlsx-limits";
 
 /* ══ PARTS — a sentence with figures in it ═══════════════════════════════════════════════════════ */
@@ -203,8 +204,10 @@ export const MAPPING = {
   noValues: "Empty",
   unnamed: "No column name",
   pickPhone: "Or use Change on the column that holds the phone numbers.",
-  /** ⭐ C3b · G2 · shown only when NO visible sheet has a phone column — the reader then reads the first visible one. */
-  sheetHint: "No visible sheet in this workbook has a column named for phone numbers, so its first visible sheet was read. If the contacts are on another sheet, name their phone column Phone (or Simu), save, and choose the file again.",
+  /** ⭐ C3b-fix · D6/D8 · shown only when the READER says no visible sheet's first rows hold a Tanzanian mobile (the sheet is
+   *  chosen by what it holds, never by a column's name) — it then read the first visible one. The sample's size is the
+   *  chooser's own constant; the format step is the ONE remedy clause (A1.6), interpolated. */
+  sheetHint: `No visible sheet in this workbook holds a Tanzanian mobile number in its first ${SHEET_SAMPLE_ROWS} rows, so its first visible sheet was read. If the contacts are on a hidden sheet, unhide it; if their numbers show like 2.55713E+11, ${PHONE_FORMAT_REMEDY} — then save, and choose the file again.`,
   nameWins: "The Name column is used, so this one is not read.",
   cannotRead: "This column can't be read.",
   tableLabel: "The file's columns",

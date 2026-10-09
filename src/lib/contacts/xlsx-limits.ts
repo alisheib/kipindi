@@ -345,20 +345,6 @@ function unknownRefusal(_r: never): string {
   return xlsxRefusalSentence("unreadable");
 }
 
-/**
- * ⭐ C3b · G2 · THE NOTE for a workbook read from a sheet that is NOT its first visible one — the first visible sheet whose
- * header row has a phone column (a cover page before the contacts): the sheet named through the ONE sheet-name rule
- * (`sheetLabel` — a name carrying seven or more digits is never echoed, and then only its place is said), and where it
- * sits among ALL the workbook's sheets, hidden ones counted.
- */
-export function xlsxChosenSheetNote(sheet: string | undefined, position: number, total: number): string {
-  const label = sheetLabel(sheet);
-  const where = `sheet ${position} of ${total}`;
-  return label !== null
-    ? `Read the sheet “${label}” — the first sheet with a phone column (${where}).`
-    : `Read ${where} — the first sheet with a phone column.`;
-}
-
 /** A sheet a note names: its name as the workbook stores it, and its place among the workbook's VISIBLE sheets (from 1). */
 export type NotedSheet = { readonly name: string; readonly position: number };
 

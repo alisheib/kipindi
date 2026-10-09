@@ -30,13 +30,19 @@
  *      and the cell cap — the inflate cap bounds bytes, and exceljs builds an object for every styled cell.
  *   7. exceljs `xlsx.load`, in memory, in a try. A workbook it cannot parse is "unreadable" with the FIXED sentence —
  *      exceljs's own message can quote the file, and it is never surfaced.
- *   8. ⭐ C3b · G2 · THE SHEET: the FIRST VISIBLE sheet, in tab order, whose header row — its first row with anything in
- *      it, read through the one cell switch — U28 maps a Phone column in (`autoMapHeaders`: a phone heading, or a first
- *      row that is itself a contact); else the first visible sheet, as before. A cover page before the contacts is
- *      passed over and the note names the sheet read and its place (`xlsxChosenSheetNote`). ⛔ A hidden sheet is never
- *      read, whatever its columns. Every sheet hidden is `no_visible_sheet`.
+ *   8. ⭐ C3b · G2 · THE SHEET, chosen by its CONTENT (C3b-fix · D6 — C3b's header-row rule read a header-only sheet or a
+ *      small staff list ahead of the customers): each VISIBLE sheet's first `SHEET_SAMPLE_ROWS` non-empty rows are
+ *      sampled through the one cell switch (`sheetSample`) and handed, with every sheet's name and visibility in tab
+ *      order, to `chooseSheet` (`src/lib/contacts/sheet-choice.ts` — the ONE function the browser's reader for big
+ *      workbooks calls too): the visible sheet holding the most cells that yield a Tanzanian mobile is read, a tie the
+ *      earliest, none anywhere the first visible; its note names the sheet read, its place among the VISIBLE sheets, and
+ *      every other visible sheet holding mobiles as not read. ⛔ A hidden sheet is never sampled and never read. Every
+ *      sheet hidden is `no_visible_sheet`. ⭐ D8 · when the sheet read holds no mobile in its sample (so none does),
+ *      the read says so (`noMobileSheet`) and the columns step shows its sheet hint — never from a column choice.
  *   9. The rows: ONE typed switch per cell (`xlsxCellText`), the 1-based SHEET row as `line`, blank rows counted,
- *      trailing empty cells trimmed, the sheet's grid capped — both caps before a row's cells are laid out.
+ *      trailing empty cells trimmed, the sheet's grid capped — both caps before a row's cells are laid out. ⭐ C3b-fix ·
+ *      D7 · then a title above the column names leaves the data (`dropTitleRows`, the ONE rule every reader calls),
+ *      said in a note that names rows only; the lines stay the sheet's own.
  *
  * ⭐ ONE TYPED SWITCH, NEVER `cell.text` (§9 U27's premise was false). exceljs 4.4.0's `cell.text` of a number IS
  * exact, but it renders a Date as `Thu Oct 01 2026 …` and drops a formula result of 0 (`model.result ? … : ''`), and
@@ -61,8 +67,8 @@
  *
  * ⛔ NOTHING HERE QUOTES THE FILE (§5.14). Every refusal is `xlsxRefusalSentence`, the ONE copy table, whose CSV
  * sentences all carry the ONE phone-format remedy (A1.6); a note names rows, never what was in them — and a sheet's
- * title only in G2's note, through the copy table's one sheet-name rule (seven or more digits are never echoed).
- * `XlsxReadStats` is counts only — the audit row is built from it.
+ * title only in the sheet note (`chooseSheet` through the copy table's `xlsxSheetChoiceNote`: seven or more digits are
+ * never echoed). `XlsxReadStats` is counts only — the audit row is built from it.
  *
  * ⭐ EVERY STEP IS A SEAM (`XLSX_READER_RULES`). `test:contacts-import`'s `xlsx` section plants its in-memory red
  * defects by swapping ONE rule in `buildXlsxReader`, the walk itself unchanged.
@@ -70,14 +76,14 @@
 import ExcelJS from "exceljs";
 import { inflateRawSync } from "node:zlib";
 import type { ParsedContactsFile, ParsedRow } from "@/lib/contacts/parsed-file";
-import { autoMapHeaders } from "@/lib/contacts/contact-fields";
+import { SHEET_SAMPLE_ROWS, chooseSheet, mobileCellsIn, type SheetChoice, type SheetSample } from "@/lib/contacts/sheet-choice";
+import { dropTitleRows } from "@/lib/contacts/title-rows";
 // ⭐ C3c · the cell rules and the notes live ONCE in the client-safe `xlsx-cells.ts`: the browser's reader of a workbook
 // past 700 KB (`xlsx-read.ts`) imports the very same functions, and `test:contacts-import`'s xlsx-browser section holds
 // the two readers to one reading of the same bytes.
 import {
   xlsxCellNotes,
   xlsxNumberText,
-  xlsxOtherSheetsNote,
   xlsxValueText,
   type CellFlag,
   type CellRead,
@@ -93,7 +99,6 @@ import {
   base64DecodedBytes,
   spreadsheetHeadKind,
   xlsxBase64OverCap,
-  xlsxChosenSheetNote,
   xlsxRefusalSentence,
 } from "@/lib/contacts/xlsx-limits";
 import type { SpreadsheetHeadKind, WrongFormatKind, XlsxRefusal, XlsxRefusalContext } from "@/lib/contacts/xlsx-limits";
@@ -126,7 +131,9 @@ export const XLSX_ZERO_STATS: XlsxReadStats = { bytes: 0, inflatedBytes: 0, entr
  * the wrong format, when that is the refusal; `detail` is a fixed word for the audit row and the suite — never shown.
  */
 export type XlsxReadResult =
-  | { readonly ok: true; readonly file: ParsedContactsFile; readonly stats: XlsxReadStats }
+  /** `noMobileSheet` (C3b-fix · D8): no visible sheet's sample holds a Tanzanian mobile, so the first visible sheet was
+   *  read — the columns step's sheet hint is shown on this word alone. */
+  | { readonly ok: true; readonly file: ParsedContactsFile; readonly stats: XlsxReadStats; readonly noMobileSheet: boolean }
   | {
       readonly ok: false;
       readonly refusal: XlsxRefusal;
@@ -478,15 +485,14 @@ export type XlsxReaderRules = {
   readonly inspect: (bytes: Uint8Array, measure: MeasureEntry) => XlsxInspection;
   readonly measureEntry: MeasureEntry;
   readonly load: (bytes: Buffer) => Promise<ExcelJS.Workbook>;
-  /** The sheet that is read, from the sheets in tab order — ⭐ C3b · G2: `hasPhone` says whether a sheet's header row maps
-   *  a Phone column (`hasPhoneColumn` over the sheet's first row with anything in it). */
-  readonly pickSheet: (
-    sheets: readonly ExcelJS.Worksheet[],
-    hasPhone: (sheet: ExcelJS.Worksheet) => boolean,
-  ) => ExcelJS.Worksheet | undefined;
-  /** ⭐ C3b · G2 · does this header row map a Phone column? U28's own reading (`autoMapHeaders`): a phone heading, or a
-   *  first row that is itself a contact (S15-5). */
-  readonly hasPhoneColumn: (header: readonly string[]) => boolean;
+  /** ⭐ C3b-fix · D6 · the sheet that is read, from every sheet in tab order (`chooseSheet`, the ONE shared choice). */
+  readonly chooseSheet: (sheets: readonly SheetSample[]) => SheetChoice;
+  /** How many non-empty rows of a visible sheet are sampled for it (`SHEET_SAMPLE_ROWS`). */
+  readonly sampleRows: number;
+  /** ⭐ D8 · the cells of a sample that yield a mobile (`mobileCellsIn`) — none for the sheet read: the reader says so. */
+  readonly mobileCells: (sample: ReadonlyArray<ReadonlyArray<string>>) => number;
+  /** ⭐ C3b-fix · D7 · a title above the column names leaves the data (`dropTitleRows`, the ONE rule). */
+  readonly dropTitleRows: (file: ParsedContactsFile) => ParsedContactsFile;
   readonly cellText: (cell: XlsxCellLike, numberText: NumberText) => CellRead;
   readonly numberText: NumberText;
   readonly maxGridCells: number;
@@ -503,15 +509,11 @@ export const XLSX_READER_RULES: XlsxReaderRules = {
   inspect: inspectXlsxZip,
   measureEntry: measureZipEntry,
   load: loadWorkbookInMemory,
-  // ⭐ C3b · G2 · the first VISIBLE sheet whose header row maps a Phone column, else the first visible one; never a hidden one.
-  pickSheet: (sheets, hasPhone) => {
-    const visible = sheets.filter((sheet) => sheet.state === "visible");
-    return visible.find(hasPhone) ?? visible[0];
-  },
-  hasPhoneColumn: (header) => {
-    const read = autoMapHeaders(header);
-    return read.mapping.phone !== undefined || read.headerless;
-  },
+  // ⭐ C3b-fix · D6 · the visible sheet whose sample holds the most mobiles — the ONE choice the browser's reader makes too.
+  chooseSheet,
+  sampleRows: SHEET_SAMPLE_ROWS,
+  mobileCells: mobileCellsIn,
+  dropTitleRows,
   cellText: xlsxCellText,
   numberText: xlsxNumberText,
   maxGridCells: XLSX_MAX_GRID_CELLS,
@@ -529,29 +531,31 @@ function stripDataUrl(field: string): string | null {
 }
 
 /*
- * The notes name ROWS — never a cell's value, and a sheet's title only in G2's note, through the copy table's one
- * sheet-name rule (`xlsxChosenSheetNote` — §5.14). ⭐ C3c · their sentences live in `xlsx-cells.ts` (`xlsxCellNotes`,
- * `xlsxOtherSheetsNote`), shared with the browser's reader, so a workbook says the same thing whichever reader read it.
+ * The notes name ROWS — never a cell's value, and a sheet's title only in the sheet note, through the copy table's one
+ * sheet-name rule (`chooseSheet` → `xlsxSheetChoiceNote` — §5.14). ⭐ C3c · the cell notes' sentences live in
+ * `xlsx-cells.ts` (`xlsxCellNotes` — a formula with no saved value, an error, a merge), shared with the browser's reader,
+ * so a workbook says the same thing whichever reader read it.
  */
 
 /**
- * ⭐ C3b · G2 · a sheet's HEADER ROW as U28 needs it to tell a contacts sheet from a cover page: the texts of its first row
- * with anything in it, each cell through the ONE switch, in column order. Whether a Phone column is among them is all
- * that is asked, so the empty cells are left out — ⛔ no row is laid out densely (a cell in column XFD would otherwise
- * ask for 16,384 slots on every sheet), and the work stays inside the pre-pass's row and cell caps.
+ * ⭐ C3b-fix · D6 · a visible sheet's SAMPLE as `chooseSheet` reads it: its first `rules.sampleRows` non-empty rows, each as
+ * the texts of its non-empty cells through the ONE switch — the text the sheet would import. Only the cells that yield
+ * a mobile are counted, never their places, so the empty cells are left out — ⛔ no row is laid out densely (a cell in
+ * column XFD would otherwise ask for 16,384 slots on every sheet), and the work stays inside the pre-pass's row and cell
+ * caps. exceljs walks every row it holds; the rows past the sample cost one comparison each.
  */
-function headerRowOf(sheet: ExcelJS.Worksheet, rules: XlsxReaderRules): string[] {
-  const found: { header: string[] | null } = { header: null };
+function sheetSample(sheet: ExcelJS.Worksheet, rules: XlsxReaderRules): string[][] {
+  const sample: string[][] = [];
   sheet.eachRow((row) => {
-    if (found.header !== null) return;
+    if (sample.length >= rules.sampleRows) return;
     const texts: string[] = [];
     row.eachCell((cell) => {
       const text = rules.cellText(cell, rules.numberText).text;
       if (text !== "") texts.push(text);
     });
-    if (texts.length > 0) found.header = texts;
+    if (texts.length > 0) sample.push(texts);
   });
-  return found.header ?? [];
+  return sample;
 }
 
 /** A reader built from `rules`. ⛔ It never throws: anything unforeseen is the FIXED unreadable sentence. */
@@ -591,12 +595,19 @@ export function buildXlsxReader(rules: XlsxReaderRules): (input: XlsxReadInput) 
       } catch (error) {
         return refuse("unreadable", {}, "load", rules.loadFailure(error));
       }
-      // 8 · ⭐ C3b · G2 — the first VISIBLE sheet whose header row maps a Phone column, else the first visible one
+      // 8 · ⭐ C3b-fix · D6 — the VISIBLE sheet whose sample holds the most mobiles (`chooseSheet`); a hidden one never
       const sheets = workbook.worksheets;
       tally.sheets = sheets.length;
       if (sheets.length === 0) return refuse("empty", {}, "no_sheets");
-      const sheet = rules.pickSheet(sheets, (candidate) => rules.hasPhoneColumn(headerRowOf(candidate, rules)));
-      if (sheet === undefined) return refuse("no_visible_sheet", {}, "all_hidden");
+      const samples: SheetSample[] = sheets.map((candidate) => {
+        const visible = candidate.state === "visible";
+        return { name: candidate.name, visible, sample: visible ? sheetSample(candidate, rules) : [] };
+      });
+      const choice = rules.chooseSheet(samples);
+      const sheet = choice.index >= 0 ? sheets[choice.index] : undefined;
+      if (sheet === undefined || sheet.state !== "visible") return refuse("no_visible_sheet", {}, "all_hidden");
+      // ⭐ D8 · the sheet read holds the most mobiles of all, so none in its sample means none in any visible sheet's.
+      const noMobileSheet = rules.mobileCells(samples[choice.index].sample) === 0;
       // 9 · the rows — sheet rows in order, each cell through the ONE switch
       const rows: ParsedRow[] = [];
       const flagged: Record<CellFlag, number[]> = { formula_without_result: [], error: [], merged: [] };
@@ -635,22 +646,20 @@ export function buildXlsxReader(rules: XlsxReaderRules): (input: XlsxReadInput) 
       if (rows.length === 0) return refuse("empty", { sheet: sheet.name }, "no_rows");
 
       const notes: string[] = [];
-      // ⭐ C3b · G2 · a sheet past the first visible one was read (a cover page before it): the note names it and its place.
-      if (sheet !== sheets.find((s) => s.state === "visible")) {
-        notes.push(xlsxChosenSheetNote(sheet.name, sheets.indexOf(sheet) + 1, sheets.length));
-      } else if (sheets.length > 1) {
-        notes.push(xlsxOtherSheetsNote(sheets.length - 1, sheets.filter((s) => s !== sheet && s.state !== "visible").length));
-      }
+      // ⭐ C3b-fix · D6 · the sheet read, its place among the visible sheets, and the visible sheets with mobiles not read.
+      if (choice.note !== null) notes.push(choice.note);
+      // ⭐ C3c · the cell notes, in their one order, from the rules both readers share.
       notes.push(...xlsxCellNotes(flagged));
 
       const blankRows = rows[rows.length - 1].line - rows.length;
       const width = rows.reduce((widest, r) => Math.max(widest, r.cells.length), 0);
-      tally.rows = rows.length;
-      tally.blankRows = blankRows;
-      tally.width = width;
       const fileName = typeof input.fileName === "string" && input.fileName.trim() !== "" ? input.fileName : null;
-      const file: ParsedContactsFile = { format: "xlsx", fileName, rows, width, blankRows, notes, unreadable: [] };
-      return { ok: true, file, stats: stats() };
+      // ⭐ C3b-fix · D7 · a title above the column names leaves the data, said in a note; the lines stay the sheet's.
+      const file = rules.dropTitleRows({ format: "xlsx", fileName, rows, width, blankRows, notes, unreadable: [] });
+      tally.rows = file.rows.length;
+      tally.blankRows = file.blankRows;
+      tally.width = file.width;
+      return { ok: true, file, stats: stats(), noMobileSheet };
     } catch {
       return refuse("unreadable", {}, "reader");
     }

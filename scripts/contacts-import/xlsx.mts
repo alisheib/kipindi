@@ -14,8 +14,9 @@
  * the zip pre-pass before exceljs loads — zip64, encryption, .xlsb, .ods, Strict, a bomb, a forged size, the caps,
  * parity (§X4–§X11); one typed cell switch — integers exact, float noise rounded, decimals kept, a Date as ISO, a
  * formula as its cached result (§X14–§X19); Excel's numeric shortened form and its Accept (A1.3 — §X13); C15's
- * shape with format xlsx (§X20); 1-based sheet rows (§X21); the first VISIBLE sheet (§X22) — since C3b · G2 the first
- * visible sheet whose header row has a phone column, said in a note, never a hidden one (§X32, its control §X33); the measured caps
+ * shape with format xlsx (§X20); 1-based sheet rows (§X21); a VISIBLE sheet (§X22) — since C3b-fix · D6 the one whose
+ * first rows hold the most mobile numbers (`chooseSheet`), said in a note counting the visible sheets only, never a hidden
+ * one (§X32, its control and D8's flag §X33), and D7's title above the column names left out (§X34); the measured caps
  * (§X24); M6 — the reader flags nothing and the detector exists once (§X25, §X26); server-only and in memory (§X27);
  * one read in flight and a counts-only audit row (§X28, §X29); §5.14 (§X30); and the ONE remedy clause on every
  * refusal that sends the officer to CSV (A1.6 — §X31).
@@ -87,6 +88,8 @@ import {
   type XlsxRefusal,
 } from "../../src/lib/contacts/xlsx-limits.ts";
 import { isParsedContactsFile } from "../../src/lib/contacts/parsed-file.ts";
+import { chooseSheet, mobileCellsIn } from "../../src/lib/contacts/sheet-choice.ts";
+import { dropTitleRows } from "../../src/lib/contacts/title-rows.ts";
 import { autoMapFile, draftContactRow } from "../../src/lib/contacts/contact-fields.ts";
 import { firstLines } from "../../src/lib/contacts/import-decide.ts";
 import { parseTzNumber } from "../../src/lib/tz-msisdn.ts";
@@ -452,6 +455,12 @@ type Fixtures = {
   readonly coverDigits: string;
   /** C3b · G2 · a cover page and a sheet with no phone column either: the first visible sheet is read, as before. */
   readonly noPhoneSheet: string;
+  /** C3b-fix · D6 + D7 · a small staff sheet first, then the customers under a title row (and a blank row). */
+  readonly staffThenTitled: string;
+  /** C3b-fix · D6 · two sheets holding as many mobiles as each other. */
+  readonly twoPhoneSheets: string;
+  /** C3b-fix · D6 · a sheet whose header names a Phone column and holds nothing under it, before the data. */
+  readonly headerOnlyFirst: string;
   readonly allHidden: string;
   readonly empty: string;
   readonly forty: string;
@@ -591,6 +600,36 @@ async function buildFixtures(): Promise<Fixtures> {
     data.addRow(["Jina", "Mahali"]);
     data.addRow(["Amani", "Arusha"]);
   });
+  /** C3b-fix · D6 + D7 · three staff with their mobiles on the first sheet; the customers on the second, under a title in
+   *  row 1 and a blank row 2 — their column names on row 3, ten customers below. */
+  const staffThenTitled = await workbookBytes((wb) => {
+    const staff = wb.addWorksheet("Staff");
+    staff.addRow(["Jina", "Simu", "Cheo"]);
+    for (let i = 1; i <= 3; i++) staff.addRow([`Mfanyakazi ${i}`, `0757 300 0${50 + i}`, "Mhasibu"]);
+    const customers = wb.addWorksheet("Wateja");
+    customers.getCell("A1").value = "Orodha ya wateja wa Oktoba";
+    customers.getCell("A3").value = "Jina";
+    customers.getCell("B3").value = "Simu";
+    for (let i = 1; i <= 10; i++) {
+      customers.getCell(3 + i, 1).value = `Mnunuzi ${i}`;
+      customers.getCell(3 + i, 2).value = `0757 300 ${String(60 + i).padStart(3, "0")}`;
+    }
+  });
+  /** C3b-fix · D6 · two sheets of five mobiles each — the earlier one is read, the later named with both ways. */
+  const twoPhoneSheets = await workbookBytes((wb) => {
+    for (const [name, from] of [["Mauzo", 71], ["Mengine", 81]] as const) {
+      const ws = wb.addWorksheet(name);
+      ws.addRow(["Jina", "Simu"]);
+      for (let i = 0; i < 5; i++) ws.addRow([`Mnunuzi ${from + i}`, `0757 300 0${from + i}`]);
+    }
+  });
+  /** C3b-fix · D6 · a header naming Phone with nothing under it (C3b's header rule read it), then the data. */
+  const headerOnlyFirst = await workbookBytes((wb) => {
+    wb.addWorksheet("Contacts").addRow(["Phone", "Name", "Email"]);
+    const data = wb.addWorksheet("Data");
+    data.addRow(["Name", "Phone"]);
+    for (let i = 1; i <= 4; i++) data.addRow([`Mnunuzi ${90 + i}`, `0757 300 0${90 + i}`]);
+  });
   const allHidden = await workbookBytes((wb) => {
     wb.addWorksheet("One", { state: "hidden" }).getCell("A1").value = "Siri";
     wb.addWorksheet("Two", { state: "hidden" }).getCell("A1").value = "Siri";
@@ -631,6 +670,9 @@ async function buildFixtures(): Promise<Fixtures> {
     coverFirst: base64Of(coverFirst),
     coverDigits: base64Of(coverDigits),
     noPhoneSheet: base64Of(noPhoneSheet),
+    staffThenTitled: base64Of(staffThenTitled),
+    twoPhoneSheets: base64Of(twoPhoneSheets),
+    headerOnlyFirst: base64Of(headerOnlyFirst),
     allHidden: base64Of(allHidden),
     empty: base64Of(empty),
     forty: base64Of(forty),
@@ -698,17 +740,25 @@ const SHEETS_ROWS = [
   { line: 1, cells: ["Name", "Phone"] },
   { line: 2, cells: ["Asha", "712345678"] },
 ];
-const SHEETS_NOTE = "This workbook has 3 other sheets (2 hidden); only the first visible sheet was read.";
-/** C3b · G2 — the cover-page workbook's rows (sheet 3 of 4, "Wateja") and its ONE note — LITERALS. */
+/** C3b-fix · D6 — every sheet note and row set below is a LITERAL, decided by hand: the sheet read, its place among the
+ *  VISIBLE sheets, the visible sheets with mobiles left unread and the way that works, the hidden ones counted. */
+const SHEETS_NOTE = "Read the sheet “Contacts” (sheet 1 of 2). The workbook's 2 hidden sheets were not read.";
+/** The cover-page workbook (Jalada, a hidden Hesabu, Wateja, Mengine): Wateja holds the most — sheet 2 of 3 VISIBLE. */
 const COVER_ROWS = [
   { line: 1, cells: ["Jina", "Simu"] },
   { line: 2, cells: ["Amani", "0757 300 042"] },
   { line: 3, cells: ["Bahati", "0757 300 043"] },
 ];
-const COVER_NOTE = "Read the sheet “Wateja” — the first sheet with a phone column (sheet 3 of 4).";
-const COVER_DIGITS_NOTE = "Read sheet 2 of 2 — the first sheet with a phone column.";
+const COVER_NOTE = "Read the sheet “Wateja” (sheet 2 of 3). The sheet “Mengine” also holds mobile numbers and was not read: to import it, save it as its own file. The workbook's hidden sheet was not read.";
+const COVER_DIGITS_NOTE = "Read sheet 2 of 2.";
 const NO_PHONE_ROWS = [{ line: 1, cells: ["Orodha ya wateja"] }, { line: 3, cells: ["Imeandaliwa na ofisi ya masoko"] }];
-const NO_PHONE_NOTE = "This workbook has 1 other sheet; only the first visible sheet was read.";
+const NO_PHONE_NOTE = "Read the sheet “Jalada” (sheet 1 of 2).";
+/** The staff sheet first, the titled customers second: the customers read, from their column names on row 3. */
+const STAFF_NOTE = "Read the sheet “Wateja” (sheet 2 of 2). The sheet “Staff” also holds mobile numbers and was not read: to import it, save it as its own file.";
+const TITLE_NOTE = "Row 1, above the column names, was not read — a title.";
+const TITLED_LINES = [3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13];
+const TWINS_NOTE = "Read the sheet “Mauzo” (sheet 1 of 2). The sheet “Mengine” holds as many mobile numbers and was not read: to import it, move it to the first place in Excel, or save it as its own file.";
+const HEADER_ONLY_NOTE = "Read the sheet “Data” (sheet 2 of 2).";
 /** Text the fixtures carry that no note and no refusal may ever repeat. */
 const CELL_STRINGS = ["Asha", "Baraka", "Neema", "Mwakalinga", "Juma", "Siri", "Baadaye", "Mteja", "255712345678", "712345678", "kitabu"];
 
@@ -726,7 +776,10 @@ function specifiers(src: string): string[] {
   return out;
 }
 /** C3c · `xlsx-cells.ts` joined the list: the cell rules and the notes moved there, shared with the browser's reader. */
-const READER_IMPORTS = ["exceljs", "node:zlib", "@/lib/contacts/parsed-file", "@/lib/contacts/xlsx-limits", "@/lib/contacts/contact-fields", "@/lib/contacts/xlsx-cells"];
+const READER_IMPORTS = [
+  "exceljs", "node:zlib", "@/lib/contacts/parsed-file", "@/lib/contacts/xlsx-limits", "@/lib/contacts/sheet-choice", "@/lib/contacts/title-rows",
+  "@/lib/contacts/xlsx-cells",
+];
 const RUN_IMPORTS = ["@/lib/server/audit", "./import-xlsx", "@/lib/contacts/xlsx-limits"];
 const DIRECTIVE = /^\s*["']use (?:client|server)["']/;
 const NEVER_IN_READER = ["WorkbookReader", "stream.xlsx", "readFile", "console."];
@@ -762,14 +815,15 @@ export const L = {
   X19: "X19 · a merged range keeps its value in its first cell only — the covered cell is blank, never the value repeated — with a note naming the row",
   X20: "X20 · ⭐ C15's shape — a valid ParsedContactsFile, format xlsx, the file name passed through, every row non-blank with its trailing empty cells trimmed, width the widest row — and the cell fixture reads to its literal rows, blank count and notes",
   X21: "X21 · ⭐ lines are the 1-based SHEET rows of the unfiltered grid: data from row 3 with row 5 blank reads lines 3, 4 and 6 with 3 blank rows counted — never renumbered",
-  X22: "X22 · ⭐ the FIRST VISIBLE sheet is read — a hidden and a very hidden sheet before it skipped, with one note counting the others — and a workbook whose every sheet is hidden is no_visible_sheet",
-  X32: "X32 · ⭐ C3b · G2 — a workbook whose first visible sheet is a cover page is read from the FIRST VISIBLE sheet whose header row has a phone column (Wateja, sheet 3 of 4) — the hidden sheet before it with a phone column never read, the later visible one with a phone column passed over — with ONE note naming the sheet and its place; a sheet named for a phone number is never echoed (its place alone is said)",
-  X33: "X33 · ⛔ CONTROL · G2 — a one-sheet workbook reads with no sheet note, the workbook whose first visible sheet has the phone column keeps its old note, and one with no phone column on any visible sheet is read from its first visible sheet, with the note it always had",
+  X22: "X22 · ⭐ C3b-fix · D6 — a VISIBLE sheet is read, chosen by what it holds: a hidden and a very hidden sheet before it (one holding a mobile) never read, the note naming the sheet read as sheet 1 of the 2 VISIBLE ones and counting the hidden — and a workbook whose every sheet is hidden is no_visible_sheet",
+  X32: "X32 · ⭐ C3b-fix · D6 through the reader — the visible sheet holding the MOST mobiles is read: the customers after a small staff sheet (the staff sheet named, not read, with the way that works), the earlier of two sheets holding as many (the other named: move it first, or save it alone), the data after a sheet whose Phone header holds nothing (C3b's header rule read that one), the contacts after a cover page and a HIDDEN sheet never counted in \"sheet N of M\" (2 of 3), and a sheet named for a phone number never echoed (its place alone)",
+  X33: "X33 · ⛔ CONTROL · D6 and ⭐ D8 — a one-sheet workbook reads with no sheet note; a workbook with no mobile on any visible sheet is read from its FIRST visible sheet, says so in its note, and the READ carries noMobileSheet (the columns step's hint is shown on it alone), while every read that found a sheet of mobiles carries it false",
+  X34: "X34 · ⭐ C3b-fix · D7 through the reader — the customers' title (row 1, a blank row 2 under it) leaves the data: the rows begin at their column names on row 3 with the sheet's own line numbers, ONE note says \"Row 1, above the column names, was not read — a title.\" after the sheet note, the blank row stays counted, and the stats count the rows read",
   X23: "X23 · a visible sheet with nothing to read is refused empty with the sentence that names it",
   X24: "X24 · the 40-row fixture and the realistic and densest ~690 KB fixtures read to their EXACT row counts, and XLSX_MAX_INFLATED_BYTES, XLSX_MAX_ROWS and XLSX_MAX_CELL_ELEMENTS are each at least twice the densest measurement",
   X25: "X25 · ⛔ M6 — the reader flags nothing itself: no note speaks of a shortened number, and import-xlsx.ts names neither looksExcelShortened nor excelShortenedSentence",
   X26: "X26 · ⛔ ONE DETECTOR (M6, C18) — no src file but xlsx-limits.ts defines looksExcelShortened or holds a shortened-number pattern",
-  X27: "X27 · ⛔ SERVER-ONLY AND IN MEMORY — import-xlsx.ts imports exactly exceljs, node:zlib, the two contacts foundations, (C3b · G2) U28's field list for the header match and (C3c) the shared cell rules of xlsx-cells.ts, loads with xlsx.load (no streaming reader, no file read, no console) and carries no directive; the officer wrapper imports no exceljs",
+  X27: "X27 · ⛔ SERVER-ONLY AND IN MEMORY — import-xlsx.ts imports exactly exceljs, node:zlib, the two contacts foundations, (C3b-fix · D6, D7) the two shared reading rules, sheet-choice and title-rows, and (C3c) the shared cell rules of xlsx-cells.ts, loads with xlsx.load (no streaming reader, no file read, no console) and carries no directive; the officer wrapper imports no exceljs",
   X28: "X28 · ONE READ IN FLIGHT — of two concurrent officer reads exactly one is busy and never decoded, and the slot is free again after a read, a refusal and a reader that throws",
   X29: "X29 · ⛔ ONE AUDIT ROW PER ASK, COUNTS ONLY — every officer call, busy included, writes exactly one ContactImport row (xlsx_read or xlsx_refused) whose payload is counts and fixed words: no file name, no sheet name, no cell",
   X30: "X30 · ⛔ §5.14 — no note and no refusal holds a run of 7+ digits or any cell's text, though the fixtures are full of phone numbers",
@@ -995,19 +1049,33 @@ async function run(ctx: SectionContext<XlsxImpl>): Promise<void> {
   ok(L.X23, refusedAs(emptied, "empty", "no_rows") && !emptied.ok && emptied.message === xlsxRefusalSentence("empty", { sheet: "Contacts" })
     && emptied.message.includes('"Contacts"'), `${brief(emptied)} · said: ${emptied.ok ? "" : emptied.message}`);
 
-  // ── X32–X33 · C3b · G2 — THE SHEET THAT HOLDS THE PHONES ────────────────────────────────────
+  // ── X32–X34 · C3b-fix · D6, D7, D8 — THE SHEET THAT HOLDS THE MOBILES, ITS TITLE, THE READER'S WORD ──────
+  const notesOf = (r: XlsxReadResult): string => (r.ok ? JSON.stringify(r.file.notes) : brief(r));
+  const staffFirst = await read(fx.staffThenTitled);
+  const twins = await read(fx.twoPhoneSheets);
+  const headerOnly = await read(fx.headerOnlyFirst);
   const cover = await read(fx.coverFirst);
   const coverDigits = await read(fx.coverDigits);
-  ok(L.X32, cover.ok && same(cover.file.rows, COVER_ROWS) && same(cover.file.notes, [COVER_NOTE])
+  const firstCells = (r: XlsxReadResult): string[] => (r.ok ? r.file.rows.map((row) => row.cells.join("|")) : []);
+  ok(L.X32, staffFirst.ok && staffFirst.file.notes[0] === STAFF_NOTE && firstCells(staffFirst)[0] === "Jina|Simu"
+    && twins.ok && same(twins.file.notes, [TWINS_NOTE]) && firstCells(twins)[1] === "Mnunuzi 71|0757 300 071"
+    && headerOnly.ok && same(headerOnly.file.notes, [HEADER_ONLY_NOTE]) && headerOnly.file.rows.length === 5
+    && cover.ok && same(cover.file.rows, COVER_ROWS) && same(cover.file.notes, [COVER_NOTE])
     && coverDigits.ok && coverDigits.file.rows.length === 2 && same(coverDigits.file.notes, [COVER_DIGITS_NOTE]),
-    `${brief(cover)}${cover.ok ? ` · notes ${JSON.stringify(cover.file.notes)}` : ""} · named for a number: ${brief(coverDigits)}${coverDigits.ok ? ` · notes ${JSON.stringify(coverDigits.file.notes)}` : ""}`);
+    `staff first: ${notesOf(staffFirst)} · twins: ${notesOf(twins)} · header only first: ${notesOf(headerOnly)} · cover: ${notesOf(cover)} · named for a number: ${notesOf(coverDigits)}`);
   const oneSheet = await read(fx.forty);
   const noPhone = await read(fx.noPhoneSheet);
-  const firstHasPhone = await read(fx.sheets);
+  const flagOf = (r: XlsxReadResult): boolean | null => (r.ok ? r.noMobileSheet : null);
+  const flags = [oneSheet, noPhone, staffFirst, twins, headerOnly, cover, coverDigits, sheeted].map(flagOf);
   ok(L.X33, oneSheet.ok && same(oneSheet.file.notes, []) && oneSheet.file.rows.length === FORTY_ROWS
-    && firstHasPhone.ok && same(firstHasPhone.file.notes, [SHEETS_NOTE])
-    && noPhone.ok && same(noPhone.file.rows, NO_PHONE_ROWS) && same(noPhone.file.notes, [NO_PHONE_NOTE]),
-    `one sheet: ${oneSheet.ok ? JSON.stringify(oneSheet.file.notes) : brief(oneSheet)} · first sheet with the phones: ${firstHasPhone.ok ? JSON.stringify(firstHasPhone.file.notes) : brief(firstHasPhone)} · no phone column anywhere: ${brief(noPhone)}${noPhone.ok ? ` · ${JSON.stringify(noPhone.file.notes)}` : ""}`);
+    && noPhone.ok && same(noPhone.file.rows, NO_PHONE_ROWS) && same(noPhone.file.notes, [NO_PHONE_NOTE])
+    && same(flags, [false, true, false, false, false, false, false, false]),
+    `one sheet: ${notesOf(oneSheet)} · no mobile anywhere: ${brief(noPhone)} ${notesOf(noPhone)} · noMobileSheet ${JSON.stringify(flags)}`);
+  const titledLines = staffFirst.ok ? staffFirst.file.rows.map((row) => row.line) : [];
+  ok(L.X34, staffFirst.ok && same(staffFirst.file.notes, [STAFF_NOTE, TITLE_NOTE]) && same(titledLines, TITLED_LINES)
+    && staffFirst.file.blankRows === 1 && staffFirst.file.width === 2 && isParsedContactsFile(staffFirst.file)
+    && staffFirst.stats.rows === TITLED_LINES.length && !staffFirst.file.notes.some((n) => n.includes("Orodha")),
+    `lines ${JSON.stringify(titledLines)} · notes ${notesOf(staffFirst)} · blank ${staffFirst.ok ? staffFirst.file.blankRows : "-"} · stats ${staffFirst.stats.rows}`);
 
   // ── X24 · THE ROW COUNTS, AND THE CAPS AGAINST THE DENSEST FIXTURE ──────────────────────────
   const x24: string[] = [];
@@ -1369,46 +1437,78 @@ const PLANTS: readonly RedPlant<XlsxImpl>[] = [
   {
     name: "the first sheet read, whatever its state",
     expect: L.X22,
-    impl: () => withRules({ pickSheet: (sheets) => sheets[0] }),
+    impl: () => withRules({ chooseSheet: (sheets) => ({ index: sheets.length > 0 ? 0 : -1, note: null }) }),
   },
   {
-    name: "C3b G2 undone — the first visible sheet read, whatever its columns (the cover page read, no Phone column found)",
+    name: "C3b-fix D6 undone — the first visible sheet read, whatever it holds (the staff sheet, the cover page, the empty Phone header)",
     expect: L.X32,
-    impl: () => withRules({ pickSheet: (sheets) => sheets.find((sheet) => sheet.state === "visible") }),
+    impl: () => withRules({ chooseSheet: (sheets) => ({ ...chooseSheet(sheets), index: sheets.findIndex((s) => s.visible) }) }),
   },
   {
-    name: "a hidden sheet with a phone column read before the visible contacts",
-    expect: L.X32,
-    impl: () => withRules({ pickSheet: (sheets, hasPhone) => sheets.find(hasPhone) ?? sheets.find((sheet) => sheet.state === "visible") }),
-  },
-  {
-    name: "the LAST visible sheet with a phone column read",
+    name: "C3b's header rule restored — the first visible sheet whose header row names Phone, a header with nothing under it included",
     expect: L.X32,
     impl: () => withRules({
-      pickSheet: (sheets, hasPhone) => {
-        const visible = sheets.filter((sheet) => sheet.state === "visible");
-        return [...visible].reverse().find(hasPhone) ?? visible[0];
+      chooseSheet: (sheets) => {
+        const choice = chooseSheet(sheets);
+        const named = sheets.findIndex((s) => s.visible && autoMapFile("csv", [...(s.sample[0] ?? [])]).mapping.phone !== undefined);
+        return named < 0 ? choice : { ...choice, index: named };
       },
     }),
   },
   {
-    name: "the sheet read past the cover page is never said",
+    name: "a tie goes to the LAST of the sheets holding the most",
     expect: L.X32,
-    impl: () => withOutput((r) => (r.ok ? { ...r, file: { ...r.file, notes: r.file.notes.filter((n) => !n.startsWith("Read ")) } } : r)),
+    impl: () => withRules({
+      chooseSheet: (sheets) => {
+        const choice = chooseSheet(sheets);
+        if (choice.index < 0) return choice;
+        const most = mobileCellsIn(sheets[choice.index].sample);
+        let last = choice.index;
+        sheets.forEach((s, i) => {
+          if (s.visible && mobileCellsIn(s.sample) === most) last = i;
+        });
+        return { ...choice, index: last };
+      },
+    }),
+  },
+  {
+    name: "the sheet read and the sheets left unread are never said",
+    expect: L.X32,
+    impl: () => withRules({ chooseSheet: (sheets) => ({ ...chooseSheet(sheets), note: null }) }),
   },
   {
     name: "the note echoes a sheet named for a phone number",
     expect: L.X32,
     impl: () => withOutput((r) => (r.ok
-      ? { ...r, file: { ...r.file, notes: r.file.notes.map((n) => (n === COVER_DIGITS_NOTE ? "Read the sheet “0757 300 045” — the first sheet with a phone column (sheet 2 of 2)." : n)) } }
+      ? { ...r, file: { ...r.file, notes: r.file.notes.map((n) => (n === COVER_DIGITS_NOTE ? "Read the sheet “0757 300 045” (sheet 2 of 2)." : n)) } }
       : r)),
   },
   {
-    name: "a sheet-choice note on every workbook, the first visible sheet read or not",
+    name: "a sheet note on every workbook, a one-sheet workbook included",
     expect: L.X33,
     impl: () => withOutput((r) => (r.ok && !r.file.notes.some((n) => n.startsWith("Read "))
-      ? { ...r, file: { ...r.file, notes: [...r.file.notes, "Read the sheet “Contacts” — the first sheet with a phone column (sheet 1 of 1)."] } }
+      ? { ...r, file: { ...r.file, notes: [...r.file.notes, "Read the sheet “Contacts” (sheet 1 of 1)."] } }
       : r)),
+  },
+  {
+    name: "C3b-fix D8 undone — the reader never says that no sheet holds a mobile (the hint left to the column choice)",
+    expect: L.X33,
+    impl: () => withOutput((r) => (r.ok ? { ...r, noMobileSheet: false } : r)),
+  },
+  {
+    name: "the reader says no sheet holds a mobile on every read",
+    expect: L.X33,
+    impl: () => withOutput((r) => (r.ok ? { ...r, noMobileSheet: true } : r)),
+  },
+  {
+    name: "C3b-fix D7 undone in the reader — the customers' title read as their column names",
+    expect: L.X34,
+    impl: () => withRules({ dropTitleRows: (file) => file }),
+  },
+  {
+    name: "the title leaves the data unsaid — no note names its row",
+    expect: L.X34,
+    impl: () => withRules({ dropTitleRows: (file) => { const out = dropTitleRows(file); return { ...out, notes: [...file.notes] }; } }),
   },
   {
     name: "the empty sheet's refusal loses the sheet's name",

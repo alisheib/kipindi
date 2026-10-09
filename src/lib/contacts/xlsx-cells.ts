@@ -46,9 +46,6 @@ export type CellRead = { readonly text: string; readonly flag: CellFlag | null }
 /** A number to its text — `xlsxNumberText` in production; a seam the suites plant a defect through. */
 export type NumberText = (v: number) => string;
 
-/** Every flag, in the order its note is written. */
-export const CELL_FLAGS: readonly CellFlag[] = ["formula_without_result", "error", "merged"];
-
 /** Excel holds 15 significant digits; whatever a double carries past them is binary noise, never data. */
 const EXCEL_DIGITS = 15;
 
@@ -130,11 +127,6 @@ export function xlsxErrorNote(lines: readonly number[]): string {
 /** Rows with cells covered by a merge: only a merge's first cell holds its value. */
 export function xlsxMergedNote(lines: readonly number[]): string {
   return `${capital(formatRowList(lines))} ${lines.length === 1 ? "has" : "have"} merged cells; only the first cell of each merge holds its value, so the others were read as blank.`;
-}
-
-/** A workbook with more than one sheet, read from its FIRST visible one: how many others it has, hidden ones counted. */
-export function xlsxOtherSheetsNote(others: number, hidden: number): string {
-  return `This workbook has ${others} other ${others === 1 ? "sheet" : "sheets"}${hidden > 0 ? ` (${hidden} hidden)` : ""}; only the first visible sheet was read.`;
 }
 
 /** ⭐ The cell notes of a read sheet, in their ONE order — formulas, errors, merges — each only when it names a row. */
