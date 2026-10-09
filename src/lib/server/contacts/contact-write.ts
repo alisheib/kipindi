@@ -17,6 +17,11 @@
  * ⛔ ERASED ROWS (`sourceRef = "erasure"`, decision C3, amendment A1.7). Adding an erased number refuses with ONE
  * sentence and NO id — there is nothing to open — and an erased row is MISSING to the edit (`findEditableContact`),
  * so no officer can write a name back onto an erased person's number.
+ * ⛔ C8a · …AND AN ERASURE WITH NO BOOK ROW. When the erased person had no book row, the erasure's only word is the
+ * marker on the ledger — and the lookup and the save ask the SAME question the importer asks (`standingOf`, through
+ * `erasure-mark.ts`'s `isErasedNumber` and its ONE rule: the latest of the number's GIVEN rows and erasure markers is a
+ * marker), so such a number is refused exactly as a tombstoned one is — the same answer, the same sentence, no id. A
+ * later opt-out tap never lifts the erasure; a GIVEN does (the number's next holder).
  * ⭐ THE EDIT IS COMPARE-AND-SET (`updateIfUnchanged` in both twins, decision C25): two officers editing one contact
  * cannot silently overwrite each other — the second save is refused as stale. It writes the four fields and the
  * stamp, and never the number, `sourceRef`, the link, the caches or the provenance.
@@ -37,7 +42,7 @@ import { db } from "@/lib/server/store";
 import type { ContactConsentState, ContactEditPatch, ContactSource, StoredMarketingContact } from "@/lib/server/store";
 import { audit } from "@/lib/server/audit";
 import { mirrorContactCache } from "@/lib/server/marketing/contact-cache";
-import { ERASURE_EVIDENCE } from "@/lib/marketing/erasure-mark";
+import { isErasedNumber } from "@/lib/marketing/erasure-mark";
 import { parseTzNumber } from "@/lib/tz-msisdn";
 import type { TzNumber } from "@/lib/tz-msisdn";
 import { maskPhone } from "@/lib/phone-normalize";
@@ -214,10 +219,27 @@ export function newContactRow(fields: NewContactFields, id: string = newContactI
   };
 }
 
-/* ═══ ERASED ROWS (C3, A1.7) ═════════════════════════════════════════════════════════════════════ */
+/* ═══ ERASED ROWS (C3, A1.7) — AND ERASED NUMBERS WITH NO ROW (C8a) ════════════════════════════════════ */
 
+/** Is this book ROW the erased tombstone? A row decides alone (`isErasedNumber` with a row). Its callers hold a row: the
+ *  edit's opener, the create the index refused, and sign-up's writer (`registration-contact.ts`). */
 export function isErasedContact(row: Pick<StoredMarketingContact, "sourceRef">): boolean {
-  return row.sourceRef === ERASURE_EVIDENCE;
+  return isErasedNumber(row, false);
+}
+
+/**
+ * ⭐ C8a · THE ONE ASK "WHAT DOES THE BOOK HOLD FOR THIS NUMBER, AND IS IT ERASED?" — the book row and, only when there is
+ * none, whether an erasure stands on the number (the importer's own grouped read, `messagingConsent.erasureStandsAmong`,
+ * asked of one key), read through `erasure-mark.ts`'s `isErasedNumber`: the very function the importer's decide() asks.
+ * A row decides alone (the tombstone is erased, an ordinary row is not, whatever its ledger); with no row a standing
+ * erasure refuses exactly as a tombstone does. The lookup and the save both ask this, so they cannot disagree with each
+ * other or with the importer.
+ */
+async function standingOf(msisdn: string): Promise<{ existing: StoredMarketingContact | null; erased: boolean }> {
+  const existing = await db.marketingContact.findByMsisdn(msisdn);
+  const stands = existing === null
+    && (await db.messagingConsent.erasureStandsAmong({ channel: "SMS", category: "MARKETING", identifiers: [msisdn] })).includes(msisdn);
+  return { existing, erased: isErasedNumber(existing, stands) };
 }
 
 /** A contact id as the store mints them (`newContactId`; the dev seed's `mc_seed_000`). Anything else is read as
@@ -238,14 +260,15 @@ export async function findEditableContact(id: string): Promise<StoredMarketingCo
 /**
  * Before Save: is this number refused, already in the book, or free? ⛔ A convenience — `addContact`'s create is the
  * check. 🔴 D19: the answer has exactly three keys and is the same for a player's number as for a stranger's.
- * ⛔ An erased row is refused with C3's one sentence and NO id.
+ * ⛔ An erased number is refused with C3's one sentence and NO id — its tombstone, or (C8a) with no book row an erasure
+ * standing on it (`standingOf`, the importer's own question).
  */
 export async function lookupContactNumber(number: string): Promise<ContactNumberLookup> {
   const parsed = parseTzNumber(String(number ?? ""));
   if (parsed.verdict !== "ok" || parsed.msisdn === null) return { state: "refused", sentence: parsed.reason, existingId: null };
-  const existing = await db.marketingContact.findByMsisdn(parsed.msisdn);
+  const { existing, erased } = await standingOf(parsed.msisdn);
+  if (erased) return { state: "refused", sentence: CONTACT_ERASED, existingId: null };
   if (existing === null) return { state: "free", sentence: null, existingId: null };
-  if (isErasedContact(existing)) return { state: "refused", sentence: CONTACT_ERASED, existingId: null };
   return { state: "duplicate", sentence: CONTACT_DUPLICATE, existingId: existing.id };
 }
 
@@ -271,9 +294,10 @@ async function takenRefusal(msisdn: string): Promise<ContactAddResult> {
 
 /**
  * One contact, added by an officer. The number is parsed HERE from the raw text (the dialog's verdict is display
- * only); the fields go through the ONE drafting rule; the row is built by `newContactRow` from named values — never
- * from the request; the unique index decides duplicates; `mirrorContactCache` sets the caches from the truth; and
- * one audit row names the masked number and which fields were filled.
+ * only); the fields go through the ONE drafting rule; an erased number is refused (C3 · C8a — `standingOf`); the row is
+ * built by `newContactRow` from named values — never from the request; the unique index decides duplicates;
+ * `mirrorContactCache` sets the caches from the truth; and one audit row names the masked number and which fields
+ * were filled.
  */
 export async function addContact(request: ContactAddRequest, officerId: string, now: Date = new Date()): Promise<ContactAddResult> {
   const raw = String(request.number ?? "");
@@ -288,6 +312,9 @@ export async function addContact(request: ContactAddRequest, officerId: string, 
     displayName: request.displayName, email: request.email, notes: request.notes, tags: request.tags,
   });
   if (!fields.ok) return { ok: false, reason: "invalid_field", field: fields.field, error: fields.error };
+  // ⛔ C3 · C8a · an ERASED number is never added by hand — its tombstone, or with no book row an erasure standing on it
+  // (the importer's own question): the same answer, the same sentence, no id. A live row still meets the unique index.
+  if ((await standingOf(parsed.msisdn)).erased) return { ok: false, reason: "erased", field: "number", error: CONTACT_ERASED };
 
   const at = now.toISOString();
   const row = newContactRow({
