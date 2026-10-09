@@ -2,8 +2,9 @@ import { headers } from "next/headers";
 import QRCode from "qrcode";
 import { I } from "@/components/ui/glyphs";
 import { BackLink } from "@/components/ui/back-link";
-import { FiftyMark, GiltCorner } from "@/components/brand";
+import { FiftyMark } from "@/components/brand";
 import { Chip } from "@/components/ui/chip";
+import { playerStatusChip } from "@/lib/status-tone";
 import { Avatar } from "@/components/ui/avatar";
 import { EmptyState } from "@/components/ui/empty-state";
 import { Stat } from "@/components/ui/stat";
@@ -101,19 +102,24 @@ export async function AgentDashboard({
 
       <div className="flex items-center justify-between gap-3">
         <p className="font-display text-title-md font-bold leading-none">{t.agent.dashTitle}</p>
-        {dash.active ? <VerifiedAgentBadge label={t.agent.verifiedBadge} /> : <Chip variant="warning">{t.agent.dashPaused}</Chip>}
+        {/* ⭐ A PAUSED AGENT READS THE DICTIONARY (R5-C, the second gold audit, 2026-10-09): `DEACTIVATED` is slate to the
+            agent — "inert, nothing to do" (§B11) — and it was the gilt-family `warning` chip and callout, whose
+            `--warning-fg` IS `--gilt` (F3). The callout is the neutral box for the same reason. */}
+        {dash.active ? <VerifiedAgentBadge label={t.agent.verifiedBadge} /> : <Chip variant={playerStatusChip("DEACTIVATED") ?? "neutral"}>{t.agent.dashPaused}</Chip>}
       </div>
 
       {!dash.active && (
-        <Callout tone="warning" size="md">{t.agent.dashPausedBody}</Callout>
+        <Callout tone="neutral" size="md">{t.agent.dashPausedBody}</Callout>
       )}
 
-      {/* The terms — THEIR rate, from THEIR programme */}
+      {/* The terms — THEIR rate, from THEIR programme. ⛔ Not gold (R5-C, 2026-10-09): a commission RATE is a promise,
+          not money earned (§M3, Q5) — the wash is the royal one the invite card wears for a promise, and the rate is
+          the text's ink. The money this agent HAS earned is gold, in the tiles below. */}
       <section className="relative overflow-hidden rounded-xl border border-border-strong p-5" style={{ background: "linear-gradient(150deg, var(--bg-elevated), var(--royal-950))" }}>
-        <div aria-hidden className="pointer-events-none absolute inset-0" style={{ background: "radial-gradient(120% 90% at 100% 0%, color-mix(in oklab, var(--gold-500) 12%, transparent), transparent 60%)" }} />
+        <div aria-hidden className="pointer-events-none absolute inset-0" style={{ background: "radial-gradient(120% 90% at 100% 0%, color-mix(in oklab, var(--royal-500) 12%, transparent), transparent 60%)" }} />
         <div className="relative">
-          <p className="font-mono text-micro uppercase eyebrow font-bold text-gold-300">{t.agent.dashRate}</p>
-          <p className="mt-1 font-mono text-title-lg font-bold tabular-nums text-gold-300">{fill(t.agent.dashRateValue, { pct: String(dash.commissionPct) })}</p>
+          <p className="font-mono text-micro uppercase eyebrow font-bold text-text-subtle">{t.agent.dashRate}</p>
+          <p className="mt-1 font-mono text-title-lg font-bold tabular-nums text-text">{fill(t.agent.dashRateValue, { pct: String(dash.commissionPct) })}</p>
           <ul className="mt-3 space-y-1.5 text-body-sm text-text-muted leading-snug list-disc pl-4">
             <li>{t.agent.dashPaidAs}</li>
             <li>{t.agent.dashNoWagering}</li>
@@ -124,10 +130,11 @@ export async function AgentDashboard({
         </div>
       </section>
 
-      {/* The money — gold, mono, tabular */}
+      {/* The money — gold, mono, tabular — gold only when there IS commission (R5-C, 2026-10-09): a "0" in gold says money
+          was earned when none was (§M3). The rows below already say it per referral (`commissionTzs > 0`). */}
       <div className="grid grid-cols-2 gap-2">
-        <Stat size="3xl" labelStyle="strong" boxed="glass" tone="gold" money label={t.agent.dashPaid} value={formatNumber(dash.paidTzs)} hint="TZS" icon={<I.coins s={14} />} iconAlign="end" />
-        <Stat size="3xl" labelStyle="strong" boxed="glass" tone="gold" money label={t.agent.dashThisMonth} value={formatNumber(dash.thisMonthTzs)} hint="TZS" icon={<I.percent s={14} />} iconAlign="end" />
+        <Stat size="3xl" labelStyle="strong" boxed="glass" tone={dash.paidTzs > 0 ? "gold" : "default"} money label={t.agent.dashPaid} value={formatNumber(dash.paidTzs)} hint="TZS" icon={<I.coins s={14} />} iconAlign="end" />
+        <Stat size="3xl" labelStyle="strong" boxed="glass" tone={dash.thisMonthTzs > 0 ? "gold" : "default"} money label={t.agent.dashThisMonth} value={formatNumber(dash.thisMonthTzs)} hint="TZS" icon={<I.percent s={14} />} iconAlign="end" />
         {dash.pendingTzs > 0 && <Stat size="xl" labelStyle="strong" boxed="glass" tone="gold" money label={t.agent.dashPending} value={formatNumber(dash.pendingTzs)} hint="TZS" />}
         {dash.reversedTzs > 0 && <Stat size="xl" labelStyle="strong" boxed="glass" tone="muted" money label={t.agent.dashReversed} value={formatNumber(dash.reversedTzs)} hint={t.agent.dashReversedHint} />}
       </div>
@@ -135,18 +142,20 @@ export async function AgentDashboard({
       {/* The share card + link — ONLY while active. A paused agent has no code to share. */}
       {dash.active && (
         <>
-          <section className="relative overflow-hidden rounded-xl border p-5" style={{ background: "var(--royal-950)", borderColor: "var(--gold-700)" }}>
-            <GiltCorner size={38} rotate={0} style={{ position: "absolute", top: 6, left: 6 }} />
-            <GiltCorner size={38} rotate={180} style={{ position: "absolute", bottom: 6, right: 6 }} />
+          {/* ⭐ THE SHARE CARD IS THE ROYAL CARD (R5-C, the second gold audit, 2026-10-09). It is the visual an agent SENDS:
+              a gilt frame and gilt corners round a code tell its receiver "there is money in this", on a card that is
+              an invitation, never a payout — §M3a D5: "on an inducement, a house colour becomes a marketing claim".
+              Exactly the frame /profile/invite already draws for the unpaid invite: the royal edge, eyebrow and code. */}
+          <section className="relative overflow-hidden rounded-xl border p-5" style={{ background: "var(--royal-950)", borderColor: "var(--royal-700)" }}>
             <div className="relative flex items-center gap-4">
               <div className="min-w-0 flex-1">
                 <FiftyMark size={38} />
                 <p className="mt-3 font-display text-title-md font-bold leading-tight text-text">{t.common.youveBeenInvited}</p>
-                <p className="mt-3 font-mono text-micro uppercase eyebrow font-bold text-gold-300/70">{t.agent.verifiedBadge}</p>
+                <p className="mt-3 font-mono text-micro uppercase eyebrow font-bold text-royal-300/80">{t.agent.verifiedBadge}</p>
                 {/* The code WRAPS: `50PICK-AG-XXXXXX` is 16 mono characters at 22px, wider than a
                     360 card's inner width. `break-all` keeps it readable instead of clipped. */}
-                <div className="mt-1 inline-block max-w-full rounded-md border border-gold-700 px-3 py-1.5" style={{ background: "color-mix(in oklab, var(--gold-500) 10%, transparent)" }}>
-                  <span className="block break-all font-mono text-title-sm font-bold tracking-wider text-gold-300">{dash.code}</span>
+                <div className="mt-1 inline-block max-w-full rounded-md border border-royal-700 px-3 py-1.5" style={{ background: "color-mix(in oklab, var(--royal-500) 10%, transparent)" }}>
+                  <span className="block break-all font-mono text-title-sm font-bold tracking-wider text-royal-200">{dash.code}</span>
                 </div>
               </div>
               {qrDataUrl && (
@@ -169,10 +178,10 @@ export async function AgentDashboard({
         <div className="mt-3 space-y-3">
           {[t.agent.dashHow1, t.agent.dashHow2, fill(t.agent.dashHow3, { pct: String(dash.commissionPct) })].map((label, i) => (
             <div key={i} className="flex items-center gap-3">
+              {/* One numeral for every step (R5-C, 2026-10-09): the third ("you earn {pct}%") was a gold disc, a promise in
+                  the money ink (§M3, Q5). /agent's "How it works" draws the same five royal discs. */}
               <span className="grid h-[30px] w-[30px] shrink-0 place-items-center rounded-full font-mono text-body-sm font-bold"
-                style={i === 2
-                  ? { background: "linear-gradient(180deg, var(--gold-400), var(--gold-600))", color: "var(--gold-950)", border: "1px solid var(--gold-700)" }
-                  : { background: "color-mix(in oklab, var(--royal-500) 18%, transparent)", color: "var(--royal-200)", border: "1px solid color-mix(in oklab, var(--royal-500) 36%, transparent)" }}>
+                style={{ background: "color-mix(in oklab, var(--royal-500) 18%, transparent)", color: "var(--royal-200)", border: "1px solid color-mix(in oklab, var(--royal-500) 36%, transparent)" }}>
                 {i + 1}
               </span>
               <p className="text-body-sm font-semibold">{label}</p>

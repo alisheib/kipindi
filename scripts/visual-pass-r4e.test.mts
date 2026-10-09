@@ -292,9 +292,12 @@ section("7 · /fairness' step numerals stand on the card's content edge (tile 19
   const list = /<ol role="list" className="fairness-steps [^"]*">/.test(fair) && !/list-decimal/.test(fair) && !/marker:/.test(fair);
   ok("7.1 · the steps are `.fairness-steps` (a list by role), no browser marker hanging into the indent", list);
   const li = rule(CSS, ".fairness-steps > li"), before = rule(CSS, ".fairness-steps > li::before");
-  ok("7.2 · each numeral is its item's box at left 0, the words indented 24px (round 3's pl-5), bold, in the old marker's gold",
+  // ⚠️ RE-PINNED by R5-C's gold audit (2026-10-09): "in the old marker's gold" → in the list's own ink. A step number is not
+  // money (DESIGN_AUTHORITY Q5), so the marker no longer names a colour and inherits the <ol>'s muted ink; the geometry and
+  // the bold proportional face this section measured are unchanged.
+  ok("7.2 · each numeral is its item's box at left 0, the words indented 24px (round 3's pl-5), bold, in the list's own ink (never gold)",
     /counter-reset:\s*fairness-step/.test(rule(CSS, ".fairness-steps")) && /padding-left:\s*var\(--sp-6\)/.test(li) && px("--sp-6") === twStep("5")
-      && /position:\s*absolute/.test(before) && /left:\s*0/.test(before) && /content:\s*counter\(fairness-step\) "\."/.test(before) && /font-weight:\s*700/.test(before) && /color:\s*var\(--gold-300\)/.test(before), `${li} | ${before}`);
+      && /position:\s*absolute/.test(before) && /left:\s*0/.test(before) && /content:\s*counter\(fairness-step\) "\."/.test(before) && /font-weight:\s*700/.test(before) && !/gold|gilt|color:/.test(before), `${li} | ${before}`);
   // Proportional digits, left-aligned: their ink starts within a few hundredths of a pixel of each other.
   const bold = F("Inter-Bold");
   const lsb = ["1", "2", "3", "4", "5"].map((d) => bold.layout(`${d}.`).glyphs[0].bbox.minX / bold.unitsPerEm * 14);

@@ -260,7 +260,8 @@ let deposited = false;
   // ⛔ THE SUBMIT IS A ConfirmDialog, NOT A SUBMIT BUTTON: "Confirm deposit" opens it and "Deposit"
   // inside it commits. A drive that looks for `button[type=submit]` finds nothing and reports a
   // working screen as broken.
-  await player.locator("form button.btn-gold", { hasText: /confirm deposit/i }).first().click().catch(() => {});
+  // The trigger is found by its WORDS, not its tone: it was `.btn-gold` until R5-C's gold audit made it `.btn-primary` (D1).
+  await player.locator("form button.btn", { hasText: /confirm deposit/i }).first().click().catch(() => {});
   const commit = player.locator('[role="alertdialog"] button, [role="dialog"] button').filter({ hasText: /^\s*Deposit\s*$/ }).first();
   await commit.waitFor({ state: "visible", timeout: 10_000 }).catch(() => {});
   ok("4.0 · the deposit confirm dialog opened", await commit.count() > 0);

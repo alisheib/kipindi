@@ -167,9 +167,10 @@ export function Stat({
    * DA-7 · strike this figure as gold TYPE (`.gilt-ink`) rather than colour it gold.
    *
    * ⛔ OPT-IN, AND DELIBERATELY NOT A CHANGE TO `tone="gold"`. M3 reserves struck gold for
-   * money that was EARNED — a payout, a celebration, a resolved seal. Three of `gold`'s
-   * call sites are not that: `position-card.tsx:111` paints `payoutIfWin` at betting-close
-   * (frozen arithmetic, not yet earned) and the admin fee simulator paints a simulation.
+   * money that was EARNED — a payout, a celebration, a resolved seal. Some of `gold`'s
+   * call sites are not that: the admin fee simulator paints a simulation. (`position-card`'s
+   * `payoutIfWin` at betting-close was one — frozen arithmetic, not yet earned — and it left
+   * gold altogether in R5-C's gold audit, 2026-10-09: flat gold claims earnings too, §B12.)
    * Blanket-striking the tone would put earned-money ink on figures nobody has won, which
    * is precisely the violation M3 exists to prevent. So the caller opts in per figure.
    *

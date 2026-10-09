@@ -101,7 +101,8 @@ export function WithdrawConfirm({ feeRate }: { feeRate: number }) {
     if (!form) return false;
     const err = validate(form);
     if (err) {
-      toast({ title: err, variant: "warning" });
+      // F3 — a slip the player can fix is the `factual` toast; `warning` is struck in gold (R5-C, 2026-10-09).
+      toast({ title: err, variant: "factual" });
       return false;
     }
     return true;
@@ -145,7 +146,7 @@ export function WithdrawConfirm({ feeRate }: { feeRate: number }) {
     // correctness — native bubbles are suppressed (V-3).
     const err = validate(form);
     if (err) {
-      toast({ title: err, variant: "warning" });
+      toast({ title: err, variant: "factual" });
       return false;
     }
     form.noValidate = true;
@@ -171,9 +172,13 @@ export function WithdrawConfirm({ feeRate }: { feeRate: number }) {
               the Amount line, which moves 15px/semibold → 16px/bold (`emphasis="amount"`)
               to match the deposit confirm. That convergence is the point of the exercise,
               not a side effect: one label, one meaning, one rendering. The hierarchy here
-              survives it — YOU RECEIVE stays the loudest line because it is the only GOLD
-              one, and gold is legitimate there (M3: money about to be received, not a
-              projection). */}
+              survives it — YOU RECEIVE is the bottom line: the divider above it, the last
+              figure, at the amount's size and weight.
+              ⛔ NOT GOLD (R5-C, the second gold audit, 2026-10-09). It was "the only GOLD one …
+              money about to be received" — but it is the player's OWN money leaving their
+              wallet, and D1 says of exactly that: "moving your own money into or out of your
+              own wallet earns nothing, so gold overstates it" (DESIGN_AUTHORITY §M3a; §M3:
+              struck gold appears only where money was EARNED). `total` takes the text's ink. */}
           <ReceiptBox className="mb-3">
             <ReceiptRow emphasis="amount" label={t.common.amountLabel} value={formatTzs(summary.amount)} />
             <ReceiptRow emphasis="fee" tone="warning" label={t.wallet.taxNotice} value={`−${formatTzs(fee)}`} />
@@ -210,11 +215,14 @@ export function WithdrawConfirm({ feeRate }: { feeRate: number }) {
          browser submits on Enter, and before the page woke the same Enter posted it as plain HTML. Now it opens this
          dialog, exactly as the button does (in WebKit before Safari 16.4 it does nothing at all: see `submitsForm`). */
       submitsForm
+      /* ⭐ D1 FOR THE TRIGGER TOO (R5-C, the second gold audit, 2026-10-09): "Confirm withdrawal" is the commit's first
+         press and it was GOLD while the dialog's own button is brand under D1 ("a deposit or a withdrawal commit is brand
+         — not gold", DESIGN_AUTHORITY §M3a). One action, one ink — the deposit confirm's twin. */
       trigger={
         <button
           ref={buttonRef}
           type="button"
-          className="btn btn-gold btn-lg w-full"
+          className="btn btn-primary btn-lg w-full"
         >
           {t.common.confirmWithdrawal}
         </button>

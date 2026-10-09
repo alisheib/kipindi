@@ -159,18 +159,26 @@ export const FiftyFavicon = ({ size = 32 }: { size?: number }) => (
 /* ── GiltCorner — the kit's heraldic L-bracket ──────────────────────────── */
 /* Decorative gilt corner used to frame Banner heroes / regulator letters /
    palette specimens. Rotation values: 0 = top-left, 90 = top-right,
-   -90 = bottom-left, 180 = bottom-right. Direct port of kit/banners.jsx. */
+   -90 = bottom-left, 180 = bottom-right. Direct port of kit/banners.jsx.
+   ⛔ GILT ONLY WHERE MONEY WAS EARNED (R5-C, the second gold audit, 2026-10-09). DESIGN_AUTHORITY §M3: "a decorative
+   element wearing [gold] is a violation, not a style choice"; Q5: gold is money and nothing else. Its one gilt use is
+   the best-win crest on /positions/performance (a payout). The legal header frames a document "like an official
+   regulator letter", and regulator chrome is CLARET (§B4: "regulator/footer crest"), so it passes `ink`. Every other
+   frame goes without the corners (the share cards, the onboarding sheet). */
 
 export function GiltCorner({
   size = 64,
   rotate = 0,
   className,
   style,
+  ink = "oklch(78% 0.13 80)",
 }: {
   size?: number;
   rotate?: 0 | 90 | -90 | 180;
   className?: string;
   style?: React.CSSProperties;
+  /** The bracket's ink. Gilt by default — for an earned-money crest only (see above). */
+  ink?: string;
 }) {
   return (
     <svg
@@ -183,13 +191,13 @@ export function GiltCorner({
     >
       <g
         transform={`rotate(${rotate} ${size / 2} ${size / 2})`}
-        stroke="oklch(78% 0.13 80)"
+        stroke={ink}
         fill="none"
         strokeLinecap="round"
       >
         <line x1="6" y1="6" x2={size * 0.55} y2="6" strokeWidth="0.5" />
         <line x1="6" y1="6" x2="6" y2={size * 0.55} strokeWidth="0.5" />
-        <circle cx="6" cy="6" r="2" fill="oklch(78% 0.13 80)" />
+        <circle cx="6" cy="6" r="2" fill={ink} />
       </g>
     </svg>
   );

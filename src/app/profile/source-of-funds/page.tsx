@@ -55,10 +55,12 @@ export default async function SourceOfFundsPage({ searchParams }: { searchParams
   const prevBand = sp.band ?? existing?.declaredAnnualIncomeBand ?? "";
   const prevEmp = sp.emp ?? existing?.declaredEmployer ?? "";
   const prevOther = sp.other ?? existing?.declaredOther ?? "";
+  // "Under review" is WAITING, and §B11 decides waiting once: royal (PENDING · In review) — the `pending` chip. It was
+  // `warning`, the gilt-struck family (F3), on a declaration nobody has to act on (R5-C, the second gold audit, 2026-10-09).
   const statusTone =
     existing?.reviewStatus === "ACCEPTED" ? "success"
     : existing?.reviewStatus === "REJECTED" ? "danger"
-    : "warning";
+    : "pending";
   // Humanize the raw enums before showing them to the player.
   const STATUS_LABEL: Record<string, string> = { PENDING: t.common.underReview, ACCEPTED: t.common.accepted, REJECTED: t.profile.rejected };
   const statusLabel = existing ? (STATUS_LABEL[existing.reviewStatus] ?? existing.reviewStatus) : "";
@@ -109,7 +111,7 @@ export default async function SourceOfFundsPage({ searchParams }: { searchParams
       {existing && existing.reviewStatus !== "REJECTED" && (
         <section className="rounded-xl border border-success-border bg-success-bg p-4 space-y-1.5">
           <div className="flex items-center gap-2">
-            <Pill tone={statusTone as "success" | "danger" | "warning"}>{statusLabel}</Pill>
+            <Pill tone={statusTone as "success" | "danger" | "pending"}>{statusLabel}</Pill>
             <p className="font-mono text-[11px] text-text-subtle tabular-nums">
               {t.common.submitted} {formatEatDate(Date.parse(existing.submittedAt), Date.now(), t.common.monthsShort, locale)}
             </p>
@@ -305,6 +307,6 @@ function Field({
 }
 
 // Thin adapter to the canonical <Chip> so status pills match the rest of the app.
-function Pill({ tone, children }: { tone: "success" | "danger" | "warning"; children: React.ReactNode }) {
+function Pill({ tone, children }: { tone: "success" | "danger" | "pending"; children: React.ReactNode }) {
   return <Chip variant={tone} size="md">{children}</Chip>;
 }

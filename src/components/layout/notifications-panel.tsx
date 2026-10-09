@@ -65,7 +65,17 @@ function pickBody(n: StoredNotification, locale: string): string {
   return readableNotificationBody(n.bodyEn);
 }
 
-export function NotificationsPanel() {
+/**
+ * ⭐ `journey` (R5-C, the second gold audit, 2026-10-09). The journey's header (from 1024) mounts this same bell, and
+ * there its unread signs take the journey's own unread ink — the brand family of the rail's dot and the Arifa count
+ * (DESIGN_AUTHORITY §8b, §8c) — not gold, which is money (Q5). The CLASSIC bell is frozen chrome (S6/S7,
+ * `qa:classic-shell-parity`), so it keeps its gold row wash and dots until the owner rules: the change for it is these
+ * same two tones with the prop dropped (named in the visual pass's owner items). Absent, the panel is byte-for-byte what
+ * the classic bar has always mounted.
+ */
+export function NotificationsPanel({ journey = false }: { journey?: boolean } = {}) {
+  const unreadDot = journey ? "brand" : "gold";
+  const unreadWash = journey ? "bg-brand-500/[0.04]" : "bg-gold-500/[0.04]";
   const router = useRouter();
   const [open, setOpen] = useState(false);
   const [items, setItems] = useState<StoredNotification[]>([]);
@@ -626,7 +636,7 @@ export function NotificationsPanel() {
                     key={n.id}
                     className={cn(
                       "flex items-start border-b border-border last:border-b-0 hover:bg-bg-overlay transition-colors",
-                      isUnread && "bg-gold-500/[0.04]",
+                      isUnread && unreadWash,
                     )}
                   >
                     <button
@@ -660,7 +670,7 @@ export function NotificationsPanel() {
                           {/* Stage 9b — kit <Dot>. `h-1.5 w-1.5` is 8px on this project's
                               OVERRIDDEN spacing scale, not 6px, so the size is stated in
                               pixels here where it cannot be misread. */}
-                          {isUnread && <Dot tone="gold" size={8} className="mt-1" />}
+                          {isUnread && <Dot tone={unreadDot} size={8} className="mt-1" />}
                         </div>
                         <p className="mt-0.5 text-label text-text-muted leading-snug">
                           {pickBody(n, locale)}
@@ -738,7 +748,7 @@ export function NotificationsPanel() {
                 <span className="inline-flex items-center gap-1.5 min-w-0">
                   {/* ⛔ Colour is never the only signal (§A4) — the dot is decorative and the
                       COUNT is the message, so the dot is aria-hidden and the text carries it. */}
-                  {unread > 0 && <Dot tone="gold" aria-hidden />}
+                  {unread > 0 && <Dot tone={unreadDot} aria-hidden />}
                   <span className="font-mono text-micro font-bold uppercase text-text-subtle truncate">
                     {unread === 1 ? t.notif.unreadOne : t.notif.unreadN.replace("{n}", String(unread))}
                   </span>

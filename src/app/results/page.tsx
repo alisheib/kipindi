@@ -337,7 +337,9 @@ async function ResultsContent({
           wrapper in the parent, and a margin here would be a second definition of it. */}
       <div className="flex items-center justify-between gap-3">
         <div className="flex items-center gap-2.5">
-          <span className="text-gold-300"><I.resolved s={18} /></span>
+          {/* The page's glyph rides in its eyebrow's ink (R5-C, the second gold audit, 2026-10-09): it was gold beside a
+              subtle "MATOKEO" — a page mark is not a market's resolved seal (§M3) and not money (Q5). */}
+          <span className="text-text-subtle"><I.resolved s={18} /></span>
           <p className="font-mono text-caption uppercase eyebrow font-bold text-text-subtle">{t.results.title}</p>
         </div>
         <div className="flex items-center gap-3">
@@ -600,8 +602,13 @@ function FeaturedResult({ m, t, locale }: { m: Awaited<ReturnType<typeof listMar
          promised 8, delivered 5. */
       data-row-id={m.id}
       href={`/markets/${m.id}` as never}
-      className="group relative block overflow-hidden rounded-xl border border-gold-700/40 bg-bg-elevated p-5 lg:p-6"
-      style={{ background: "radial-gradient(120% 140% at 100% 0%, oklch(40% 0.10 80 / 0.10), transparent 55%), var(--bg-elevated)" }}
+      /* ⭐ "NOTABLE" IS THE PRODUCT'S FEATURED CARD, NOT A GOLD ONE (R5-C, the second gold audit, 2026-10-09; tiles r5-4,
+         r5-6). A market's prominence is not money (Q5) — its resolved seal (the chip) is the gold this card owns, §M3.
+         It wore a gold edge and a gold wash; it wears what `.mcardp--featured` decides for a featured card once — the
+         royal edge (`--border-royal`) and the royal wash (`--bg-royal-soft`) — and its "MATOKEO MASHUHURI" + crown are
+         the brand family's ink, the one non-money accent. */
+      className="group relative block overflow-hidden rounded-xl border bg-bg-elevated p-5 lg:p-6"
+      style={{ borderColor: "var(--border-royal)", background: "radial-gradient(120% 140% at 100% 0%, var(--bg-royal-soft) 0%, transparent 55%), var(--bg-elevated)" }}
     >
       <div className="mb-3 flex flex-wrap items-center gap-2">
         {/* §L3 · the translated topic, never the stored enum ("SPORTS" on a Swahili page) — as the grid card. */}
@@ -611,11 +618,11 @@ function FeaturedResult({ m, t, locale }: { m: Awaited<ReturnType<typeof listMar
         {isVoid
           ? <Chip variant="pending" size="sm">{t.common.voided}</Chip>
           : <Chip variant="resolved" size="sm">{t.market.resolvedOutcome} · {outcomeWord(t, m.resolvedOutcome ?? "VOID", m.productLine)}</Chip>}
-        <span className="ml-auto inline-flex items-center gap-1.5 font-mono text-micro uppercase tracking-[0.16em] font-bold text-gold-300">
+        <span className="ml-auto inline-flex items-center gap-1.5 font-mono text-micro uppercase tracking-[0.16em] font-bold text-brand-300">
           <I.crown s={13} /> {t.results.notableResult}
         </span>
       </div>
-      <h2 className="mb-4 max-w-[70ch] font-display text-[18px] lg:text-[22px] font-semibold leading-tight text-text group-hover:text-gold-100">
+      <h2 className="mb-4 max-w-[70ch] font-display text-[18px] lg:text-[22px] font-semibold leading-tight text-text group-hover:text-brand-200">
         {pickLocalized(locale, m.titleEn, m.titleSw, m.titleZh)}
       </h2>
       {price.kind === "priced" ? (

@@ -288,15 +288,19 @@ export default async function KycPage({ searchParams }: { searchParams?: Promise
         </section>
       )}
 
+      {/* ⭐ "MORE INFORMATION NEEDED" IS THE AMBER FAMILY, NOT THE MONEY RAMP (R5-C, the second gold audit, 2026-10-09).
+          §B11 decides this word once — `ADDITIONAL_INFO_REQUIRED` is player amber: the applicant must act — and amber is
+          the `--warning-*` family. This box was `--gold-700`/`--gold-500`/`--gold-300`, the tokens money owns (Q5). It
+          still reads warm while `--warning-fg` IS `--gilt`; that token is the owner's to re-hue (F3). */}
       {needsInfo && (
-        <section role="status" className="rounded-xl border border-gold-700 bg-gold-500/[0.08] p-4 lg:p-5">
+        <section role="status" className="rounded-xl border border-warning-border bg-warning-bg p-4 lg:p-5">
           <div className="flex items-start gap-3">
             {/* ⚠️ LITERALS — see the rejected-medallion note above. `h-9` is 64px here. */}
-            <span className="inline-flex h-[36px] w-[36px] shrink-0 items-center justify-center rounded-full bg-gold-500/15 text-gold-300">
+            <span className="inline-flex h-[36px] w-[36px] shrink-0 items-center justify-center rounded-full bg-warning-bg text-warning-fg">
               <I.info s={18} />
             </span>
             <div className="min-w-0">
-              <p className="font-display text-[14px] font-bold text-gold-300">{t.profile.kycMoreInfo}</p>
+              <p className="font-display text-[14px] font-bold text-warning-fg">{t.profile.kycMoreInfo}</p>
               {/* zh sets sentences with no joining space; a space there reads as a typo.
                   2026-09-14 — and in zh each sentence is ONE unit (inline-block), so the line breaks at the full stop
                   and never inside a word: balanced at 1280 it split a two-character word across the break. A sentence
@@ -314,7 +318,7 @@ export default async function KycPage({ searchParams }: { searchParams?: Promise
       {needsInfo && extraRequests.length > 0 && (
         <section className="rounded-xl glass-panel p-5 lg:p-6 space-y-3">
           <div className="flex items-center gap-2">
-            <span className="inline-flex h-7 w-7 items-center justify-center rounded-full bg-gold-500/15 text-gold-300">
+            <span className="inline-flex h-7 w-7 items-center justify-center rounded-full bg-warning-bg text-warning-fg">
               <I.fileSignature s={15} />
             </span>
             <h2 className="font-display text-[15px] font-semibold text-text">{t.profile.kycRequestedDocs}</h2>
@@ -341,8 +345,8 @@ export default async function KycPage({ searchParams }: { searchParams?: Promise
       {!rejected && (
         <>
         {/* C1b — 4-node verification rail (ID → documents → review → verified) with a
-            gilt fill up to the current node; done nodes read the app-state success tone
-            (§B2a, never the betting YES ink), the live node carries the gilt ring. */}
+            brand fill up to the current node; done nodes read the app-state success tone
+            (§B2a, never the betting YES ink), the live node carries the brand ring (R5-C). */}
         <ProgressRail
           nodes={[
             // ⛔ The first node is named after the document the player actually chose.
@@ -658,9 +662,12 @@ export default async function KycPage({ searchParams }: { searchParams?: Promise
       )}
 
       {submitted && kyc?.status === "APPROVED" && (
-        // Earned-peak crest (remade 2026-08-08 — no rays, M3) — KYC verified is an earned-status peak, so gold is legitimate here.
-        <section className="rounded-xl border border-gold-700/60 bg-bg-elevated p-5 lg:p-6 text-center">
-          <RewardBurst glyph="shieldcheck" caption={t.profile.idVerified} />
+        // The verified crest (remade 2026-08-08 — no rays, M3), in SUCCESS, not gold (R5-C, the second gold audit,
+        // 2026-10-09): it was "an earned-status peak, so gold is legitimate" — but §B11's first correction is exactly this
+        // word: "APPROVED is success-green everywhere … an approval is not money, it is permission" (and Q5). The rail's
+        // done nodes above are already success; the crest says the same.
+        <section className="rounded-xl border border-success-border bg-bg-elevated p-5 lg:p-6 text-center">
+          <RewardBurst glyph="shieldcheck" tone="success" caption={t.profile.idVerified} />
           {/* 2026-09-14 — balanced (en left "on." alone at 768/1280), and a held wallet is told the truth first. */}
           <p className="mt-3 text-[13px] text-text-muted leading-snug max-w-[400px] mx-auto text-balance">
             {walletHeld ? t.profile.kycApprovedWalletHeld : payoutsAccepting ? t.profile.kycApprovedBody : t.profile.kycApprovedPayoutsPaused}
@@ -681,12 +688,14 @@ export default async function KycPage({ searchParams }: { searchParams?: Promise
           )}
         </section>
       )}
+      {/* "In review" is WAITING, and §B11 decides waiting once: royal (UNDER_REVIEW and PENDING, to the player). It was
+          the gold ramp, the money ink (Q5; R5-C, 2026-10-09) — the royal `info` box, as /profile's own "in review" pill. */}
       {submitted && kyc?.status !== "APPROVED" && (
-        <section className="rounded-xl border border-gold-700 bg-gold-500/10 p-5 lg:p-6 text-center space-y-3">
-          <div className="mx-auto inline-flex h-14 w-14 items-center justify-center rounded-full bg-gold-500/20 text-gold-300">
+        <section className="rounded-xl border border-info-border bg-info-bg p-5 lg:p-6 text-center space-y-3">
+          <div className="mx-auto inline-flex h-14 w-14 items-center justify-center rounded-full bg-info-bg text-info">
             <I.clock s={28} />
           </div>
-          <p className="font-display text-[18px] font-bold text-gold-300">{t.profile.inReview}</p>
+          <p className="font-display text-[18px] font-bold text-info-fg">{t.profile.inReview}</p>
           <p className="text-[13px] text-text-muted leading-snug max-w-[400px] mx-auto text-balance">
             {t.profile.kycReviewingBody.replace("{hours}", durationHours(locale, KYC_REVIEW_SLA_HOURS))}
           </p>
@@ -705,7 +714,8 @@ export default async function KycPage({ searchParams }: { searchParams?: Promise
         </Link>
         <Link
           href="/wallet"
-          className="font-display text-[13px] font-semibold text-gold-300 hover:text-gold-200 transition-colors"
+          /* A link is a control, never money: the product's link ink (brand-300, as R4-K's not-found link), not gold (R5-C). */
+          className="font-display text-[13px] font-semibold text-brand-300 hover:text-brand-200 transition-colors"
         >
           {t.common.wallet} →
         </Link>
@@ -715,11 +725,15 @@ export default async function KycPage({ searchParams }: { searchParams?: Promise
 }
 
 // C1b verification rail — 4 nodes (ID → documents → review → verified) on a single
-// connected track. The gilt "fill" runs the connectors up to the current node
+// connected track. The brand "fill" runs the connectors up to the current node
 // (first not-yet-done step); done nodes read the app-state success tone — the Chip
 // success recipe, 2026-09-14, never the betting YES ink (§B2a) — the current node
-// carries the gilt ring, future nodes are muted line-art. Purely presentational —
+// carries the brand ring, future nodes are muted line-art. Purely presentational —
 // reflects server-derived `done` flags, no motion.
+// ⭐ THE CURRENT STEP IS BRAND, NOT GOLD (R5-C, the second gold audit, 2026-10-09; tiles r5-6: "NIDA" ring + label in
+// the capsule's gold). "You are here" is the product's one non-money highlight — the selected pill, the current tab's
+// underline, the rail's unread dot are the brand family — and gold is money and nothing else (Q5). The proposal
+// timeline and the /fairness chain's highlighted node read this same recipe.
 //
 // ⚠️ 2026-09-13 — EQUAL FLEXIBLE COLUMNS, CONNECTORS DRAWN BETWEEN CENTRES. The columns were a
 // fixed 64px with the connectors as flex siblings, so a long Swahili label ("IMETHIBITISHWA",
@@ -741,12 +755,12 @@ function ProgressRail({ nodes, tightLabels = false }: { nodes: { label: string; 
         const circleCls = node.done
           ? "border border-success-border bg-success-bg text-success-fg"
           : isActive
-            ? "border-2 border-gold-500 bg-gold-500/10 text-gold-300"
+            ? "border-2 border-brand-500 bg-brand-500/10 text-brand-300"
             : "border border-border bg-bg-overlay text-text-subtle";
         const labelCls = node.done
           ? "text-text"
           : isActive
-            ? "text-gold-300"
+            ? "text-brand-300"
             : "text-text-subtle";
         return (
           <div key={i} className="relative flex min-w-0 flex-1 flex-col items-center">
@@ -758,7 +772,7 @@ function ProgressRail({ nodes, tightLabels = false }: { nodes: { label: string; 
                 style={{
                   left: "calc(50% + 24px)",
                   right: "calc(-50% + 24px)",
-                  background: i < activeIndex ? "color-mix(in oklab, var(--gold-500) 75%, transparent)" : "var(--border)",
+                  background: i < activeIndex ? "color-mix(in oklab, var(--brand-500) 75%, transparent)" : "var(--border)",
                 }}
               />
             )}

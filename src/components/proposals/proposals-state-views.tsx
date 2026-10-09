@@ -11,7 +11,8 @@ import type { ProposalsState } from "@/lib/server/proposals-config";
  * Player-facing views for the non-ACTIVE proposals states. Presentational only
  * (no hooks) so they render inside the server page trees; every string is passed
  * in already-localized. The aesthetic split is the whole point:
- *   COMING_SOON → gilt  (aspirational — it's on its way)
+ *   COMING_SOON → royal `info` (waiting — it's on its way; gilt until R5-C's gold audit, 2026-10-09: §B11
+ *                 "waiting is royal", Q5 "gold is money, and nothing else")
  *   MAINTENANCE → amber `--warning` (temporary — back shortly, never NO-rose)
  *   DISABLED    → muted neutral (honest "not available", guided elsewhere)
  *
@@ -24,8 +25,8 @@ import type { ProposalsState } from "@/lib/server/proposals-config";
  * (`MAINTENANCE_AMBER` in callout.tsx → `--warning-*` in globals.css).
  * ⚠️ That is a rendered change on MAINTENANCE only: fill 14% → 18%, edge
  * 38% → 36%. It matches the move `MaintenanceBadge` already made and exists so a
- * third value can never be reintroduced. COMING_SOON's gilt is unchanged — its
- * 10%/30% pair is byte-identical to the kit's `gold` panel.
+ * third value can never be reintroduced. COMING_SOON wore the kit's gilt panel
+ * (10%/30%) until R5-C's gold audit; it is the `info` panel now (18%/36%).
  */
 
 /**
@@ -97,7 +98,7 @@ export function ProposalsBlockedComposer({
       layout="stack"
       surface="panel"
       titleAs="h2"
-      tone={comingSoon ? "gold" : "maintenance"}
+      tone={comingSoon ? "info" : "maintenance"}
       glyph={comingSoon ? "clock" : "pause"}
       title={title}
       badge={<ProposalsStateBadge state={state} comingSoonLabel={comingSoonLabel} maintenanceLabel={maintenanceLabel} />}

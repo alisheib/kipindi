@@ -278,20 +278,26 @@ export function AvatarMenu({
                 exactly session 21's unexplained observation, "/admin/updown served the
                 signed-out player shell to a freshly signed-in ADMIN". Same root cause as Ali's
                 missing navbar, mirrored. 🔒 `npm run test:shell-boundary`. */}
+            {/* ⭐ THE JOURNEY'S STAFF ROW IS THE BRAND FAMILY, NOT GOLD (R5-C, the second gold audit, 2026-10-09): "set apart
+                as staff" is a highlight, and the product's one non-money accent is brand (DESIGN_AUTHORITY Q5 "gold is
+                money, and nothing else"). The classic bar's row is frozen chrome and keeps its gold until the owner rules
+                — the change for it is the brand ink below with the `journey` arm dropped. */}
             {isAdmin && (
               <div className="border-t border-border px-2 py-2">
                 <a
                   href="/admin"
                   role="menuitem"
-                  className="group flex items-center gap-2.5 rounded-lg px-2.5 py-2.5 transition-colors hover:bg-gold-500/10"
-                  style={{ border: "1px solid color-mix(in oklab, var(--gold-400) 22%, transparent)", background: "color-mix(in oklab, var(--gold-500) 6%, transparent)" }}
+                  className={cn("group flex items-center gap-2.5 rounded-lg px-2.5 py-2.5 transition-colors", journey ? "hover:bg-brand-500/10" : "hover:bg-gold-500/10")}
+                  style={journey
+                    ? { border: "1px solid color-mix(in oklab, var(--brand-400) 22%, transparent)", background: "color-mix(in oklab, var(--brand-500) 6%, transparent)" }
+                    : { border: "1px solid color-mix(in oklab, var(--gold-400) 22%, transparent)", background: "color-mix(in oklab, var(--gold-500) 6%, transparent)" }}
                 >
-                  <span className="inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-md text-gold-300" style={{ background: "color-mix(in oklab, var(--gold-500) 12%, transparent)" }}>
+                  <span className={cn("inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-md", journey ? "text-brand-300" : "text-gold-300")} style={{ background: journey ? "color-mix(in oklab, var(--brand-500) 12%, transparent)" : "color-mix(in oklab, var(--gold-500) 12%, transparent)" }}>
                     <I.shieldcheck s={15} aria-hidden />
                   </span>
                   <span className="min-w-0 flex-1">
                     <span className="block font-display text-body-sm font-semibold text-text leading-tight">{t.common.staffConsole}</span>
-                    <span className="block font-mono text-micro uppercase tracking-[0.14em] text-gold-300/80 leading-tight mt-0.5">Staff · Internal</span>
+                    <span className={journey ? "block font-mono text-micro uppercase tracking-[0.14em] text-brand-300/80 leading-tight mt-0.5" : "block font-mono text-micro uppercase tracking-[0.14em] text-gold-300/80 leading-tight mt-0.5"}>Staff · Internal</span>
                   </span>
                   {/* ⛔ §M5 — "icons respond, they do not perform". This arrow carried
                       `transition-transform group-hover:translate-x-0.5`, i.e. a glyph moving
@@ -299,7 +305,7 @@ export function AvatarMenu({
                       (mount, data change and state change are the three that are allowed).
                       The COLOUR response stays: hover is still answered, on the channel §M5
                       leaves open. */}
-                  <I.arrowRight s={14} className="text-gold-300/70 transition-colors group-hover:text-gold-300" aria-hidden />
+                  <I.arrowRight s={14} className={journey ? "text-brand-300/70 transition-colors group-hover:text-brand-300" : "text-gold-300/70 transition-colors group-hover:text-gold-300"} aria-hidden />
                 </a>
               </div>
             )}

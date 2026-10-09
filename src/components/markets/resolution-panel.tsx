@@ -135,8 +135,12 @@ export function ResolutionPanel({
     <section className="glass-panel p-5 space-y-4">
       {/* Header — title + outcome chip */}
       <div className="flex items-center justify-between gap-3">
+        {/* ⛔ The SEAL is the chip beside this heading (§M3: "resolved seal"; §B11 RESOLVED = struck gilt) and the winning
+            pool's row below — and only those. The heading's glyph, the evidence label's glyph and the quote's rule were
+            gilt too; a mark is not the seal and not money (Q5). They take the subtle ink of the market page's own section
+            glyphs and the border of its own quoted criterion (R5-C, the second gold audit, 2026-10-09). */}
         <h2 className="font-display text-[16px] font-semibold text-text flex items-center gap-2">
-          <I.shieldcheck s={16} className="text-gilt" />
+          <I.shieldcheck s={16} className="text-text-subtle" />
           {t.market.resTitle}
         </h2>
         {/* PV-13c (2026-09-03) — was `<span className={cn("chip", ...)}>`, the legacy CSS
@@ -190,10 +194,10 @@ export function ResolutionPanel({
       {evidenceText && (
         <div className="space-y-1.5">
           <p className="flex items-center gap-1.5 font-mono text-micro font-bold uppercase eyebrow text-text-subtle">
-            <I.fileCheck s={12} className="text-gilt" />
+            <I.fileCheck s={12} />
             {t.market.resEvidence}
           </p>
-          <blockquote className="border-l-2 border-gilt/60 bg-bg-overlay/30 rounded-r-md px-3 py-2 text-body-sm leading-relaxed text-text-muted italic whitespace-pre-wrap break-words">
+          <blockquote className="border-l-2 border-border/60 bg-bg-overlay/30 rounded-r-md px-3 py-2 text-body-sm leading-relaxed text-text-muted italic whitespace-pre-wrap break-words">
             {evidenceText}
           </blockquote>
         </div>

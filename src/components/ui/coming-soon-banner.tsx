@@ -32,13 +32,18 @@ import { Callout } from "@/components/ui/callout";
 export function FeatureStateBanner({
   title,
   body,
-  tone = "gold",
+  tone = "info",
   glyph = "clock",
 }: {
   title: string;
   body: string;
-  /** `gold` = coming soon (aspirational) · `maintenance` = temporarily unavailable. */
-  tone?: "gold" | "maintenance";
+  /**
+   * `info` = coming soon · `maintenance` = temporarily unavailable.
+   * ⛔ Coming soon is no longer gilt (R5-C, the second gold audit, 2026-10-09; DESIGN_AUTHORITY Q5): a feature that is
+   * not open yet is WAITING, and §B11 decides that once — "waiting is royal". The Callout's `info` tone is that royal
+   * box (its own doc: "neutral explanation"), so the banner says "on its way" without the money ink.
+   */
+  tone?: "info" | "maintenance";
   glyph?: "clock" | "pause";
 }) {
   return (
@@ -51,8 +56,8 @@ export function FeatureStateBanner({
 
 /**
  * The coming-soon state, named. Every "not open yet" surface renders this rather than choosing a
- * tone at the call site — so the gilt/clock pairing is stated once and cannot drift feature to
- * feature. (`proposals-state-views.tsx`'s header: *"COMING_SOON → gilt, aspirational"*.)
+ * tone at the call site — so the royal/clock pairing is stated once and cannot drift feature to
+ * feature. (It was gilt until R5-C's gold audit, 2026-10-09: waiting is royal, §B11.)
  */
 export function ComingSoonBanner({ title, body }: { title: string; body: string }) {
   return <FeatureStateBanner title={title} body={body} />;

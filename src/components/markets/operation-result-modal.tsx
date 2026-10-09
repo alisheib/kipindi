@@ -55,7 +55,8 @@ import { useResultModalPresence } from "@/lib/result-modal-presence";
 
 const DEFAULT_AUTO_CLOSE_MS = 5_000;
 
-export type OperationVariant = "success" | "danger" | "warning" | "info";
+/** `neutral` (R5-C, 2026-10-09) — slate: a terminal, inert result, money that came back or never left. See its TONE row. */
+export type OperationVariant = "success" | "danger" | "warning" | "info" | "neutral";
 
 export type OperationDetail = { label: string; sw?: string; value: string; tone?: "default" | "good" | "bad" };
 
@@ -139,10 +140,23 @@ const TONE: Record<OperationVariant, { fg: string; bg: string; brd: string; shad
   },
   warning: {
     ...crest("var(--warning-500)", "var(--warning-500)"),
-    primaryBtn: "btn-gold",
+    // ⛔ NOT btn-gold either (R5-C, the second gold audit, 2026-10-09). The warning result is a REFUSAL the player can
+    // retry ("busy", "slow down", "market closed") — DESIGN_AUTHORITY F3: "a refusal has earned nothing", and gold
+    // means only earned money (§M3, Q5). Its way on is the primary action, as `info`'s is. (The crest's amber is the
+    // `--warning-*` family, whose `--warning-fg: var(--gilt)` is the owner's to re-hue.)
+    primaryBtn: "btn-primary",
   },
   info: {
     ...crest("var(--brand-400)", "var(--brand-300)"),
+    primaryBtn: "btn-primary",
+  },
+  // ⭐ SLATE — a TERMINAL, INERT result (R5-C, the second gold audit, 2026-10-09). DESIGN_AUTHORITY §B11 item 5 decides the
+  // payment words once: "Reversed and Cancelled are slate — terminal and inert, the money is back or never left", and §C4:
+  // "VOID / refunded is NEUTRAL — never an error treatment". This modal had no slate, so the wallet's result said
+  // "Reversed" in the gilt-family `warning` (a deposit held for return) or in `danger` (a reversed or cancelled one). The
+  // crest is the subtle ink's ring with the info glyph; like every non-success result it stays until dismissed.
+  neutral: {
+    ...crest("var(--text-subtle)", "var(--text-muted)"),
     primaryBtn: "btn-primary",
   },
 };

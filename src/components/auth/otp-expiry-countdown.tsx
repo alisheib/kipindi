@@ -38,14 +38,14 @@ export function OtpExpiryCountdown({ initialRemainingSec }: { initialRemainingSe
   const min = Math.floor(remaining / 60);
   const sec = remaining % 60;
   const expired = remaining <= 0;
-  const warning = remaining <= 60;
   const pct = (remaining / OTP_TTL_SEC) * 100;
 
-  const barColor = expired
-    ? "var(--no-500)"
-    : warning
-      ? "var(--gold-400)"
-      : "var(--brand-400)";
+  /* ⭐ THE LAST MINUTE KEEPS ITS INK (R5-C, the second gold audit, 2026-10-09). The bar turned `--gold-400` and the
+     line `--warning-fg` (= `--gilt`) for the final 60 s: money's ink on a clock (Q5), and DESIGN_AUTHORITY §B2a rules
+     this exact case — "a countdown's last seconds … are app state … the text keeps its neutral ink" (R4-K moved the
+     market clock's labels, the countdown pill its figure). The draining bar is the urgency. And an EXPIRED code is a
+     failed app state, so it takes the app-state danger family, never the betting NO ink it wore (§B2a). */
+  const barColor = expired ? "var(--danger-500)" : "var(--brand-400)";
 
   return (
     <div className="mt-1.5 space-y-1">
@@ -88,7 +88,7 @@ export function OtpExpiryCountdown({ initialRemainingSec }: { initialRemainingSe
           style={{ transform: `scaleX(${pct / 100})`, background: barColor }}
         />
       </div>
-      <p id="otp-hint" aria-live="polite" className={`text-[11px] tabular-nums ${expired ? "text-no-300 font-semibold" : warning ? "text-warning-fg" : "text-text-subtle"}`}>
+      <p id="otp-hint" aria-live="polite" className={`text-[11px] tabular-nums ${expired ? "text-danger-fg font-semibold" : "text-text-subtle"}`}>
         {expired ? (
           t.auth.codeExpired
         ) : (

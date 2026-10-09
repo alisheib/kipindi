@@ -259,7 +259,8 @@ function BackupCodes({ codes, onDone, t, toast }: { codes: string[]; onDone: () 
         <p className="gilt-eyebrow mb-1">{t.security.backupTitle}</p>
         <p className="text-[13px] text-text-muted">{t.security.backupBody}</p>
       </div>
-      <div className="grid grid-cols-2 gap-2 rounded-md border border-gilt/40 bg-bg-overlay/40 p-3">
+      {/* The codes' frame is the plain edge: a backup code is a key, never money (Q5; R5-C, 2026-10-09 — it was `--gilt`). */}
+      <div className="grid grid-cols-2 gap-2 rounded-md border border-border bg-bg-overlay/40 p-3">
         {codes.map((c) => (
           <code key={c} className="select-all text-center font-mono text-[13px] tracking-[0.06em] text-text">{c}</code>
         ))}

@@ -116,11 +116,20 @@ export default async function AgentProgrammePage({ searchParams }: { searchParam
   // ── The one CTA, decided by state ─────────────────────────────────────────
   type Cta = { kind: "signin" } | { kind: "kyc" } | { kind: "apply" } | { kind: "continue" } | { kind: "status" } | { kind: "dashboard" } | { kind: "none" };
   let cta: Cta = { kind: "none" };
-  let notice: { tone: "info" | "warning" | "success"; text: string } | null = null;
+  /**
+   * ⭐ AMBER ONLY WHERE SOMEBODY MUST ACT (R5-C, the second gold audit, 2026-10-09). Seven states wore `warning`, whose
+   * `--warning-fg` IS `--gilt` (DESIGN_AUTHORITY F3) — gold on a page where nothing is earned. §B11 gives amber one
+   * meaning, "somebody must act", and decides these words once: a paused agent is DEACTIVATED, slate to the agent;
+   * a final decision and a cooling-off date are terminal or inert; an RG lock is the neutral box R4-I gave every RG
+   * notice; a refusal says "not available" — the Callout's `neutral` ("honest 'not available', guided elsewhere").
+   * Only "an officer has asked for one more thing" stays amber: the applicant must act. (Its gilt is the token's,
+   * the owner's to re-hue.)
+   */
+  let notice: { tone: "info" | "warning" | "success" | "neutral"; text: string } | null = null;
   if (!session) cta = { kind: "signin" };
   else if (view?.state === "agent") {
     cta = { kind: "dashboard" };
-    notice = view.active ? { tone: "success", text: t.agent.stateAgent } : { tone: "warning", text: t.agent.stateAgentPaused };
+    notice = view.active ? { tone: "success", text: t.agent.stateAgent } : { tone: "neutral", text: t.agent.stateAgentPaused };
   } else if (view?.state === "invited") {
     /**
      * ⭐ A STATE MUST NAME ITS NEXT STEP. This read only "You have an invitation waiting" — true,
@@ -141,7 +150,7 @@ export default async function AgentProgrammePage({ searchParams }: { searchParam
     else if (view.state === "info_required") { cta = { kind: "continue" }; notice = { tone: "warning", text: t.agent.stateInfo }; }
     else if (view.state === "rejected") {
       cta = view.reapplyAt && new Date(view.reapplyAt).getTime() <= Date.now() ? { kind: "apply" } : { kind: "status" };
-      notice = { tone: "warning", text: view.reapplyAt ? fill(t.agent.stateCooldown, { date: fmtDate(view.reapplyAt) }) : t.agent.stateTerminal };
+      notice = { tone: "neutral", text: view.reapplyAt ? fill(t.agent.stateCooldown, { date: fmtDate(view.reapplyAt) }) : t.agent.stateTerminal };
       if (view.reapplyAt && new Date(view.reapplyAt).getTime() <= Date.now()) notice = { tone: "info", text: t.agent.stateRejected };
     } else { cta = { kind: "apply" }; }
   } else if (view?.state === "none") {
@@ -149,40 +158,45 @@ export default async function AgentProgrammePage({ searchParams }: { searchParam
     if (e.ok) cta = { kind: "apply" };
     else if (e.refusal === "kyc_required") { cta = { kind: "kyc" }; notice = { tone: "info", text: t.agent.stateKyc }; }
     else if (e.refusal === "staff") { cta = { kind: "none" }; notice = { tone: "info", text: t.agent.stateStaff }; }
-    else if (e.refusal === "cooldown") { cta = { kind: "none" }; notice = { tone: "warning", text: fill(t.agent.stateCooldown, { date: e.until ? fmtDate(e.until) : "" }) }; }
-    else if (e.refusal === "terminal_rejection") { cta = { kind: "none" }; notice = { tone: "warning", text: t.agent.stateTerminal }; }
-    else if (e.refusal === "rg_locked") { cta = { kind: "none" }; notice = { tone: "warning", text: t.agent.stateRgLocked }; }
+    else if (e.refusal === "cooldown") { cta = { kind: "none" }; notice = { tone: "neutral", text: fill(t.agent.stateCooldown, { date: e.until ? fmtDate(e.until) : "" }) }; }
+    else if (e.refusal === "terminal_rejection") { cta = { kind: "none" }; notice = { tone: "neutral", text: t.agent.stateTerminal }; }
+    else if (e.refusal === "rg_locked") { cta = { kind: "none" }; notice = { tone: "neutral", text: t.agent.stateRgLocked }; }
     else if (e.refusal === "already_agent") { cta = { kind: "dashboard" }; notice = { tone: "success", text: t.agent.stateAgent }; }
     else if (e.refusal === "programme_disabled") { cta = { kind: "none" }; notice = { tone: "info", text: t.agent.stateDisabled }; }
-    else { cta = { kind: "none" }; notice = { tone: "warning", text: t.agent.stateNotActive }; }
+    else { cta = { kind: "none" }; notice = { tone: "neutral", text: t.agent.stateNotActive }; }
   }
 
   return (
     <PageContainer tier="reading" className="space-y-6">
       <PageHeader eyebrow={t.agent.eyebrow} title={t.agent.title} subtitle={t.agent.heroSub} />
 
-      {sp.refused && <Callout tone="warning" size="md">{t.agent.applyRefused}</Callout>}
+      {sp.refused && <Callout tone="neutral" size="md">{t.agent.applyRefused}</Callout>}
       {notice && <Callout tone={notice.tone} size="md">{notice.text}</Callout>}
 
-      {/* ⭐ THE THREE FACTS A PARTNER DECIDES ON, above the fold, from config. Gold + mono on the
-          two money tiles only (§M3); the time tile is neutral.
+      {/* ⭐ THE THREE FACTS A PARTNER DECIDES ON, above the fold, from config — ONE treatment (R5-C, the second gold audit,
+          2026-10-09; tiles r5-4). They were three: a gold mono sentence ("10% ya ada halisi"), a gold mono amount
+          ("GHARAMA TZS 100,000") and a white display sentence ("siku 5 za kazi"). None of the three is money earned:
+          a commission RATE is a promise, and the fee is money the applicant PAYS — §M3a D1, "moving your own money …
+          earns nothing, so gold overstates it"; Q5, "gold is money, and nothing else". So all three are the text's own
+          ink, and all three are mono (§T5: every numeral is mono, a data sentence's included); the fee keeps `.amount`
+          (§M4: money is never letter-spaced).
           ⭐ ON THE PAGE'S CONTENT EDGE (2026-10-09, the visual pass's round 3, tiles 195 and 196): the `glass` box pads
           14px and every section below it pads 20 (`p-4`), so these tiles' words stood at x147 over the sections' x153 at
           1280 and x31 over x37 at 390. `p-4` here, so one column keeps one edge. */}
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
-        <Stat size="xl" boxed="glass" labelStyle="strong" tone="gold" className="p-4"
+        <Stat size="xl" boxed="glass" labelStyle="strong" font="mono" className="p-4"
           label={t.agent.statEarn}
-          value={<span className="amount">{fill(t.agent.statEarnValue, { pct: String(cfg.defaultCommissionPct) })}</span>}
+          value={fill(t.agent.statEarnValue, { pct: String(cfg.defaultCommissionPct) })}
           hint={t.agent.statEarnHint} icon={<I.percent s={14} />} iconAlign="end" />
         {/* ⛔ THE HINT NAMES THE TREATMENT, IT DOES NOT ASSERT ONE. It read "VAT inclusive"
             unconditionally, so management's 2026-09-08 flip to EXCLUSIVE would have left the
             public page stating the opposite of what the applicant is charged. The figure
             above it is `fee.totalTzs` either way — what an applicant owes, never the net. */}
-        <Stat size="xl" boxed="glass" labelStyle="strong" tone="gold" className="p-4"
+        <Stat size="xl" boxed="glass" labelStyle="strong" font="mono" className="p-4"
           label={t.agent.statCost}
           value={<span className="amount">{formatTzs(fee.totalTzs)}</span>}
           hint={vatHint} icon={<I.coins s={14} />} iconAlign="end" />
-        <Stat size="xl" boxed="glass" labelStyle="strong" className="p-4"
+        <Stat size="xl" boxed="glass" labelStyle="strong" font="mono" className="p-4"
           label={t.agent.statTime}
           value={fill(t.agent.statTimeValue, { days: String(cfg.reviewSlaDays) })}
           hint={t.agent.statTimeHint} icon={<I.clock s={14} />} iconAlign="end" />
@@ -225,11 +239,11 @@ export default async function AgentProgrammePage({ searchParams }: { searchParam
         <ol className="mt-3 space-y-3">
           {[t.agent.how1, t.agent.how2, t.agent.how3, t.agent.how4, t.agent.how5].map((step, i) => (
             <li key={i} className="flex items-start gap-3">
+              {/* Five steps, one numeral. The fifth ("… you earn") was a gold disc: a promise of commission is not money
+                  earned (§M3, Q5; R5-C, 2026-10-09), so it is the royal disc of the four before it. */}
               <span
                 className="grid h-[30px] w-[30px] shrink-0 place-items-center rounded-full font-mono text-body-sm font-bold"
-                style={i === 4
-                  ? { background: "linear-gradient(180deg, var(--gold-400), var(--gold-600))", color: "var(--gold-950)", border: "1px solid var(--gold-700)" }
-                  : { background: "color-mix(in oklab, var(--royal-500) 18%, transparent)", color: "var(--royal-200)", border: "1px solid color-mix(in oklab, var(--royal-500) 36%, transparent)" }}
+                style={{ background: "color-mix(in oklab, var(--royal-500) 18%, transparent)", color: "var(--royal-200)", border: "1px solid color-mix(in oklab, var(--royal-500) 36%, transparent)" }}
               >
                 {i + 1}
               </span>
@@ -254,10 +268,11 @@ export default async function AgentProgrammePage({ searchParams }: { searchParam
         <p className="mt-1 font-mono text-body-sm text-text-subtle">{fill(t.agent.docHint, { mb: String(mb) })}</p>
       </section>
 
-      {/* The fee — gold + mono, money only */}
-      <section className="rounded-xl border border-gold-700 p-4" style={{ background: "color-mix(in oklab, var(--gold-500) 8%, var(--bg-elevated))" }}>
-        <p className="font-mono text-micro uppercase eyebrow font-bold text-gold-300">{t.agent.feeTitle}</p>
-        <p className="mt-2 amount text-title-lg font-bold text-gold-300">{formatTzs(fee.totalTzs)}</p>
+      {/* The fee — mono, and the text's own ink: money the applicant PAYS is not money earned (§M3a D1 "earns nothing,
+          so gold overstates it"; Q5). The section is the glass panel its two siblings above are (R5-C, 2026-10-09). */}
+      <section className="rounded-xl glass-panel p-4">
+        <p className="font-mono text-micro uppercase eyebrow font-bold text-text-subtle">{t.agent.feeTitle}</p>
+        <p className="mt-2 amount text-title-lg font-bold text-text">{formatTzs(fee.totalTzs)}</p>
         {vatLine ? <p className="mt-0.5 font-mono text-body-sm text-text-subtle">{vatLine}</p> : null}
         <p className="mt-3 text-body-sm leading-relaxed text-text">
           {/* NO DESTINATION ACCOUNT. The rail is the applicant own wallet (Ali, 2026-09-10),
@@ -266,7 +281,7 @@ export default async function AgentProgrammePage({ searchParams }: { searchParam
               than reworded. Passing the destination into a rendered template here also published
               it to every anonymous visitor: PSC-02 visible half, the flight-payload half being
               the gated panel below. */}
-          {fillNodes(t.agent.feeBodyWallet, { amount: <span className="amount text-gold-300">{formatTzs(fee.totalTzs)}</span> })}
+          {fillNodes(t.agent.feeBodyWallet, { amount: <span className="amount font-semibold">{formatTzs(fee.totalTzs)}</span> })}
         </p>
         <p className="mt-2 text-body-sm leading-relaxed text-text-muted">{fill(t.agent.feeRefund, { days: String(cfg.refundDeadlineDays) })}</p>
       </section>

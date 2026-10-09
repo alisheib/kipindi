@@ -6,7 +6,7 @@ import type { Dict } from "@/lib/i18n-dict";
 
 /**
  * B-29 / V-2 — the skeleton mirrors the FORM the page actually renders
- * (amount field → provider grid → phone field → gold confirm), instead of the
+ * (amount field → provider grid → phone field → confirm), instead of the
  * old centered spinner panel that repainted into a completely different shape.
  * ⭐ ONE DRAWING, TWO READERS (2026-10-09, the visual pass round 5, review G1): `loading.tsx` (this folder) draws it
  * with the words it reads on the server, and the journey's root loading state (`components/journey/route-ghost.tsx`)
@@ -77,10 +77,10 @@ export function DepositGhost({ t }: { t: Dict }) {
           <div className="h-[var(--h-input)] w-full rounded-lg border border-border bg-bg-inset kp-shimmer-track" />
         </div>
 
-        {/* Gold confirm CTA */}
-        {/* ⚠️ TOKEN, not `h-12` (128px on the overridden scale) — the gold confirm is a
+        {/* The confirm CTA — brand, as the button it stands for (D1: a deposit commit is brand, never gold; R5-C, 2026-10-09). */}
+        {/* ⚠️ TOKEN, not `h-12` (128px on the overridden scale) — the confirm is a
             `btn-lg`, whose height is --h-control-lg (48px). */}
-        <div className="h-[var(--h-control-lg)] w-full rounded-md bg-gold-500/25 kp-shimmer-track" />
+        <div className="h-[var(--h-control-lg)] w-full rounded-md bg-brand-500/25 kp-shimmer-track" />
       </div>
     </PageContainer>
   );

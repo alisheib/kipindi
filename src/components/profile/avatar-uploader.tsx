@@ -149,10 +149,12 @@ export function AvatarUploader({
         disabled={pending}
         aria-label={t.common.changeProfilePhoto}
         /* ⛔ LITERALS, NOT the numeric keys — the spacing scale is overridden
-           (tailwind.config.ts:200-215), so the numeric pair renders ~double. Both badges match. */
+           (tailwind.config.ts:200-215), so the numeric pair renders ~double. Both badges match.
+           The hover edge is the brand's, as on every control in the product (`hover:border-brand-400`) — it was
+           `--gold-500`, money's ink on a camera button (R5-C, the second gold audit, 2026-10-09; Q5). */
         className="group absolute left-[85.36%] top-[85.36%] inline-flex h-[40px] w-[40px] -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-pill disabled:opacity-50"
       >
-        <span className="inline-flex h-[32px] w-[32px] items-center justify-center rounded-pill border border-border bg-bg-elevated text-text-muted shadow-e2 transition-colors group-hover:border-gold-500 group-hover:text-text">
+        <span className="inline-flex h-[32px] w-[32px] items-center justify-center rounded-pill border border-border bg-bg-elevated text-text-muted shadow-e2 transition-colors group-hover:border-brand-400 group-hover:text-text">
           {pending ? <Spinner size={13} /> : <I.camera s={13} />}
         </span>
       </button>

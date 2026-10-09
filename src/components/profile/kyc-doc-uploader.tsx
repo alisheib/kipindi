@@ -98,11 +98,14 @@ export function KycDocUploader({
         disabled={working || locked}
         aria-busy={working ? "true" : "false"}
         aria-label={done ? t.profile.docAttachedReplace.replace("{label}", label) : t.profile.docAttach.replace("{label}", label)}
+        /* ⛔ NO GOLD ON AN UPLOAD TILE (R5-C, the second gold audit, 2026-10-09). An identity document is not money (Q5):
+           the idle tile's hover was a brand edge over a GOLD wash, and the working tile gold. Both are the brand family
+           now — the hover's edge and wash, and the working tile HOLDS that look (it is the tile the player just tapped). */
         className={`flex h-full w-full flex-col items-center justify-start overflow-hidden rounded-md border-2 border-dashed p-[14px] text-center transition-colors ${
           locked ? "border-border bg-bg-overlay/30 cursor-not-allowed opacity-70"
-          : working ? "border-gold-700 bg-gold-500/[0.06] cursor-wait"
+          : working ? "border-brand-400 bg-brand-500/[0.06] cursor-wait"
           : done ? "border-success-border bg-success-500/[0.07] cursor-pointer hover:border-success-500"
-          : "border-border bg-bg-overlay/40 hover:border-brand-400 hover:bg-gold-500/[0.06] cursor-pointer"
+          : "border-border bg-bg-overlay/40 hover:border-brand-400 hover:bg-brand-500/[0.06] cursor-pointer"
         }`}
       >
         {showThumb ? (
@@ -190,7 +193,9 @@ export function KycExtraDocUploader({
   };
 
   return (
-    <div className="rounded-md border border-gold-700/40 bg-gold-500/[0.04] p-3">
+    /* The row is the idle upload tile's own neutral box (R5-C, 2026-10-09): it was a gold edge and wash — the money ramp
+       on an officer's request (Q5). The request is stated once, by the section's amber heading on /profile/kyc. */
+    <div className="rounded-md border border-border bg-bg-overlay/40 p-3">
       <input
         ref={inputRef}
         type="file"

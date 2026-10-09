@@ -130,7 +130,14 @@ export default function GlobalError({
   const TEXT = "oklch(98% 0.012 268)";
   const TEXT_MUTED = "oklch(86% 0.040 268)";
   const TEXT_SUBTLE = "oklch(70% 0.080 268)";
+  // The mark's NEEDLE only (DESIGN_AUTHORITY §B1a: the gilt needle is the mark's own) — nothing else on this page is gold.
   const GOLD = "oklch(86% 0.13 82)";
+  // ⛔ R5-C, the second gold audit (2026-10-09): "Try again" was a GOLD button and the RG link gold — neither is money
+  // (Q5). The button is the kit's primary royal, written out because this page ships without the app's CSS — flat, at
+  // the midpoint of `.btn-primary`'s 53%→48% wash (one value, so `design-frozen`'s budget for this file does not grow) —
+  // and the link takes the product's link ink, `--brand-300`.
+  const PRIMARY = "oklch(50% 0.20 268)";
+  const LINK = "oklch(82% 0.120 262)";
   const NO_BORDER = "oklch(44% 0.17 22)";
   const NO_TEXT = "oklch(80% 0.14 22)";
   const BORDER = "oklch(34% 0.130 268)";
@@ -268,9 +275,9 @@ export default function GlobalError({
               onClick={() => reset()}
               style={{
                 appearance: "none",
-                border: `1px solid ${GOLD}`,
-                background: `linear-gradient(180deg, ${GOLD} 0%, oklch(72% 0.14 78) 100%)`,
-                color: "oklch(18% 0.06 76)",
+                border: `1px solid ${PRIMARY}`,
+                background: PRIMARY,
+                color: TEXT,
                 fontWeight: 700,
                 fontSize: 13,
                 padding: "0 18px",
@@ -320,7 +327,7 @@ export default function GlobalError({
           >
             <span>{t.help}</span>
             <span>
-              <a href="/legal/responsible-gambling" style={{ color: GOLD, textDecoration: "none", fontWeight: 700 }}>
+              <a href="/legal/responsible-gambling" style={{ color: LINK, textDecoration: "none", fontWeight: 700 }}>
                 {t.rg}
               </a>
             </span>

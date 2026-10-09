@@ -124,7 +124,8 @@ try {
   await B.locator("#amount").pressSequentially("50000", { delay: 10 });
   await shot(B, "B-deposit-form");
   // ⛔ The deposit commits through a ConfirmDialog: "Confirm deposit" opens it, "Deposit" inside commits.
-  await B.locator("form button.btn-gold", { hasText: /confirm deposit/i }).first().click();
+  // By its words, not its tone (`.btn-gold` → `.btn-primary`, R5-C's gold audit, D1).
+  await B.locator("form button.btn", { hasText: /confirm deposit/i }).first().click();
   await B.locator('[role="alertdialog"] button, [role="dialog"] button').filter({ hasText: /^\s*Deposit\s*$/ }).first().click({ timeout: 10000 });
   await B.waitForURL((u) => u.pathname === "/wallet", { timeout: 20000 }).catch(() => {});
   await B.waitForTimeout(800);

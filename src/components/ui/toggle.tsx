@@ -7,7 +7,8 @@
  * ⭐ `tone` — the ON fill, and the ONLY thing a caller may vary. Added 2026-08-21,
  * replacing a `gold` boolean that had ZERO call sites.
  *   · "brand"  (default) royal — the normal switch
- *   · "gold"   master money-lever
+ *   · ("gold", a "master money-lever" with ZERO call sites, is gone — R5-C, the second gold audit, 2026-10-09: a switch
+ *      is a control, never money, DESIGN_AUTHORITY Q5. Out of the union so no lever can ask for it.)
  *   · "claret" ON MEANS STOPPED. `/admin/system`'s maintenance lever is the case:
  *              switching it ON pauses new bets and deposits, so a royal "on" would
  *              read as healthy while the platform is halted.
@@ -31,7 +32,7 @@ export function Toggle({
 }: {
   on: boolean;
   onClick?: () => void;
-  tone?: "brand" | "gold" | "claret";
+  tone?: "brand" | "claret";
   disabled?: boolean;
   /**
    * The switch's PICTURE only — a non-interactive `<span aria-hidden>` inside a row that IS the control
@@ -44,16 +45,14 @@ export function Toggle({
 }) {
   const onBorder = {
     brand: "1px solid color-mix(in oklab, var(--brand-400) 40%, transparent)",
-    gold: "1px solid color-mix(in oklab, var(--gold-300) 40%, transparent)",
     claret: "1px solid color-mix(in oklab, var(--claret-400) 40%, transparent)",
   }[tone];
   const onFill = {
     brand: "var(--brand-500)",
-    gold: "linear-gradient(180deg, var(--gold-400), var(--gold-600))",
     claret: "var(--claret-500)",
   }[tone];
   // The focus ring follows the tone so it never reads as a different control's ring.
-  const ring = { brand: "var(--brand-500)", gold: "var(--gold-400)", claret: "var(--claret-400)" }[tone];
+  const ring = { brand: "var(--brand-500)", claret: "var(--claret-400)" }[tone];
   // ONE thumb for both branches, so the switch and its picture can never drift apart.
   const thumb = (
     <span

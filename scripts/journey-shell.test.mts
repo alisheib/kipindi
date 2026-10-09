@@ -1494,7 +1494,8 @@ function g7Header(W: World, ok: Ok) {
     count(bar, `<div className="kp-jhdr__cluster">`) === 1
       && flat.includes(`<div className="flex-1" /><div className="kp-jhdr__cluster">{state.capsule !== "none" && (`)
       && flat.includes(`</span></>)}</div></div>{!user.isAuthed && <TicketsGuestSheet`)
-      && count(bar, "<LanguageMenu") === 1 && bar.includes(`<span className="hidden lg:inline-flex"><LanguageMenu /></span>`)
+      // ⚠️ `<LanguageMenu journey />` since R5-C's gold audit (2026-10-09): the journey's current-language tick is the brand ink.
+      && count(bar, "<LanguageMenu") === 1 && bar.includes(`<span className="hidden lg:inline-flex"><LanguageMenu journey /></span>`)
       && count(bar, "<AvatarMenu") === 1 && flat.includes(`<span className="hidden lg:inline-flex"><AvatarMenu`));
   // 2026-10-09 (the visual pass's round 3, tiles 038, 048 and 162): the bell stands centred between the language box
   // and the avatar — the avatar's own `sm:ml-1` set it 4px further off, so the bell's ink stood 25px from one and 29px
@@ -1672,7 +1673,8 @@ function g8Tabs(I: Impl, W: World, G: Graph, ok: Ok) {
   });
   ok("8.poll.bar · the header MOUNTS the bell only from 1024 — never merely hidden — and on no not-found page, in a slot that keeps its width and holds the bell's still twin until then (R4-J, E36)",
     bar.includes("const pollers = pollersAt(useLgUp());") && count(bar, "<NotificationsPanel") === 1
-      && bar.includes(`<span className="hidden lg:inline-flex kp-jhdr__bell">{pollers.bell && !notFoundShown ? <NotificationsPanel /> : <BellStill label={t.common.notifications} />}</span>`)
+      // ⚠️ `<NotificationsPanel journey />` since R5-C's gold audit (2026-10-09): the journey bell's unread signs are the brand ink.
+      && bar.includes(`<span className="hidden lg:inline-flex kp-jhdr__bell">{pollers.bell && !notFoundShown ? <NotificationsPanel journey /> : <BellStill label={t.common.notifications} />}</span>`)
       && baseRule(css, ".kp-jhdr__bell").includes("min-width: var(--h-control-sm)"));
   ok("8.poll.rail · the rail mounts the dot's counter only below 1024, for a signed-in viewer — the counter lives in the one component that guard renders",
     rail.includes("const pollers = pollersAt(useLgUp());") && count(rail, "<TabUnread") === 1
@@ -2793,9 +2795,9 @@ ${s}`);
     const lockupAtLg = withFile(WORLD, JHDR, (s) => s.replace("mark-flip-i inline-flex xl:hidden", "mark-flip-i inline-flex lg:hidden"));
     const headerNotSticky = withFile(WORLD, JHDR, (s) => s.replace("sticky top-0 z-30 app-topbar kp-jhdr", "top-0 z-30 app-topbar kp-jhdr"));
     const sectionSaysPage = withFile(WORLD, JHDR, (s) => s.replace("aria-current={tabAriaCurrent(pathname, d.key)}", `aria-current={active === d.key ? "page" : undefined}`));
-    const languageOnPhones = withFile(WORLD, JHDR, (s) => s.replace(`<span className="hidden lg:inline-flex"><LanguageMenu /></span>`, "<LanguageMenu />"));
+    const languageOnPhones = withFile(WORLD, JHDR, (s) => s.replace(`<span className="hidden lg:inline-flex"><LanguageMenu journey /></span>`, "<LanguageMenu journey />"));
     const inlineHeight = withFile(WORLD, JHDR, (s) => s.replace(`data-testid="journey-top-bar"`, `data-testid="journey-top-bar" style={{ height: 64 }}`));
-    const bellEverywhere = withFile(WORLD, JHDR, (s) => s.replace("{pollers.bell && !notFoundShown ? <NotificationsPanel /> : <BellStill label={t.common.notifications} />}", "<NotificationsPanel />"));
+    const bellEverywhere = withFile(WORLD, JHDR, (s) => s.replace("{pollers.bell && !notFoundShown ? <NotificationsPanel journey /> : <BellStill label={t.common.notifications} />}", "<NotificationsPanel journey />"));
     // 7.bell's plants (2026-10-09): the slot loses its 4px, the pip hangs by its right edge again, the override loses
     // the `!important` an inline style needs, and the two premises move under it — the avatar's gap and the classic pip.
     const bellOffCentre = withCss(inRule(".kp-jhdr__bell", " margin-left: var(--sp-1);", ""));

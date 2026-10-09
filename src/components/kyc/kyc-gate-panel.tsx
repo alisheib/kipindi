@@ -77,8 +77,11 @@ const TONE = {
   neutral: { ring: "border-brand-600/60", ink: "text-brand-300", wash: "bg-brand-500/10" },
   /** We are the ones they are waiting on. Calm, informational, explicitly reassuring. */
   waiting: { ring: "border-royal-600/60", ink: "text-royal-300", wash: "bg-royal-500/10" },
-  /** Their move, and a specific one. Amber says "your turn" without claiming a fault. */
-  action:  { ring: "border-gold-700",     ink: "text-gold-300",  wash: "bg-gold-500/10" },
+  /** Their move, and a specific one. Amber says "your turn" without claiming a fault.
+   *  ⛔ AMBER IS THE WARNING FAMILY, NOT THE MONEY RAMP (R5-C, the second gold audit, 2026-10-09): this read `--gold-700`
+   *  / `--gold-300` / `--gold-500`, the tokens money owns (Q5). It is `held`'s family below and the Callout's warning —
+   *  §B11's amber, "somebody must act". (Its `--warning-fg` IS `--gilt` until the owner re-hues the family, F3.) */
+  action:  { ring: "border-warning-border", ink: "text-warning-fg", wash: "bg-warning-bg" },
   /** A decision went against them. Honest in red — the CTA names the next step.
    *  ⛔ The APP-STATE danger family (the kit Callout's danger tone, verbatim), never the betting NO
    *  red — DESIGN_AUTHORITY §B2a keeps that ink for the NO side of a stake (2026-09-13). */

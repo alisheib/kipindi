@@ -120,14 +120,14 @@ const BY_DESIGN = new Set<string>([
  */
 const FROZEN_RATCHET = new Map<string, number>([
   // ── Player surfaces still to canonicalize (the real backlog) ──────────────
-  ["src/app/global-error.tsx", 24],                          // ships without app CSS
+  ["src/app/global-error.tsx", 23],                          // ships without app CSS. −1, 2026-10-09 (R5-C's gold audit): the gold "Try again" (a gold stop and a dark-gold ink) became the flat primary royal and the RG link the link ink — two literals in, three out
   ["src/components/onboarding/first-visit-primer.tsx", 19],
   ["src/components/markets/conviction-dial.tsx", 15],
   ["src/components/ui/chip.tsx", 13],                       // −1, PV-13c 2026-09-03: the `signal` variant stopped hand-typing its aqua oklch and now reads the brand ramp through `color-mix()` — see the drift note in chip.tsx
   // ⚠️ 15, not the 13 the first pass of the rebuild measured. Two of them sit on lines
   // carrying a `${…}` binding — `fill="oklch(50% 0.14 152)"` beside a computed SVG path —
   // and every previous rule skipped a line the moment it saw a binding anywhere on it.
-  ["src/components/brand.tsx", 15],                          // non-TippingBar marks
+  ["src/components/brand.tsx", 14],                          // non-TippingBar marks. −1, 2026-10-09 (R5-C): GiltCorner's ink is one `ink` default now, not a stroke and a fill
   // ⭐ 10 — AND THEY ARE NOT OURS TO TOKENISE. Five Instagram gradient stops, three TikTok
   // fills, and WhatsApp's bubble + handset. This is `brand.tsx`'s exception ("brand identity
   // ≠ theme tokens"), only
@@ -154,7 +154,7 @@ const FROZEN_RATCHET = new Map<string, number>([
   // `cashback-promo.tsx` LEFT THIS LIST on 2026-08-21 (D5): its 5 inline values WERE the
   // gold costume — the gradient, the gilt border, the jackpot glow and the bloom. The
   // panel picks the `.mat-raised` rung now and holds no design value of its own.
-  ["src/components/ui/page-hero.tsx", 5],
+  ["src/components/ui/page-hero.tsx", 4],                    // −1, 2026-10-09 (R5-C's gold audit): the `gold` glow left the map (a page's hero is never money)
   // ⭐ FIVE FILES LEFT THIS LIST TOGETHER on 2026-09-11, and one number fell — all from ONE
   // change: the nine hand-rolled icon plates were migrated to the `IconPlate` atom. Their
   // budgeted literals WERE the plate — an arbitrary `rounded-[7/9/10/11px]` plus an inline
@@ -170,7 +170,8 @@ const FROZEN_RATCHET = new Map<string, number>([
   ["src/app/profile/page.tsx", 3],
   ["src/app/markets/[id]/page.tsx", 2],
   ["src/app/wallet/loading.tsx", 1],
-  ["src/components/ui/nav-progress.tsx", 2],
+  // `nav-progress.tsx` LEFT THIS LIST on 2026-10-09 (R5-C's gold audit): its hand-typed gold glow, oklch(72% 0.14 78), is a
+  // glow mixed off `--brand-500` now (§E4) — the file holds no design value of its own.
   ["src/components/ui/toggle.tsx", 2],
   ["src/components/ui/checkbox.tsx", 1],
   ["src/components/ui/empty-state.tsx", 1],
@@ -224,7 +225,8 @@ const FROZEN_RATCHET = new Map<string, number>([
   // their sites went (the ratchet shrinking as designed).
   ["src/app/admin/live/page.tsx", 1],
   ["src/app/admin/payments/control-plane.tsx", 1],
-  ["src/app/results/page.tsx", 1],
+  // `results/page.tsx` LEFT THIS LIST on 2026-10-09 (R5-C's gold audit): its one literal was the notable card's gold wash,
+  // `oklch(40% 0.10 80 / 0.10)`; the card reads `--border-royal` and `--bg-royal-soft` now, the featured card's own pair.
   ["src/components/admin/admin-charts.tsx", 1],
   ["src/components/markets/bet-confirm-modal.tsx", 1],
   ["src/components/markets/countdown.tsx", 1],

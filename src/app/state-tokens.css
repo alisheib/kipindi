@@ -92,37 +92,40 @@
 /* 220ms IS `--t-base` exactly — the literal was the rung, written the long way. */
 .contest-fade { animation: contest-fade var(--t-base) var(--m-settle) both; }
 
-/* Market-detail hero (C1a) — a slim gilt hairline "seal of the real": 1px of
-   gold-deep at 40%, edge-faded, framing the market question. Sanctioned gilt
-   exception (§C1a refinement spec): ~2% of surface, frames the real market, not
-   a CTA — so it does not breach the earned-money gold discipline. */
+/* Market-detail hero (C1a) — a slim hairline framing the market question: 1px,
+   edge-faded. ⛔ It was "gold-deep at 40%, a sanctioned gilt exception (§C1a
+   refinement spec)" — but that spec is record, not rule (DESIGN_AUTHORITY §0), and
+   the rulebook's Q5 is "gold is money, and nothing else": a frame is not money.
+   It draws the border's own line now (R5-C, the second gold audit, 2026-10-09). */
 .gilt-hairline { height: 1px; width: 100%;
   background: linear-gradient(90deg,
     transparent,
-    color-mix(in oklab, var(--gold-600) 40%, transparent) 12%,
-    color-mix(in oklab, var(--gold-600) 40%, transparent) 88%,
+    var(--border) 12%,
+    var(--border) 88%,
     transparent); }
 
-/* Closing-soon pill (C1a, <1h to the next deadline) — pulses aqua→gold to signal
-   urgency. Base (and reduced-motion) state is the gold end of the pulse so the
-   "urgent" meaning survives with the animation off.
+/* Closing-soon pill (C1a, <1h to the next deadline) — breathes to signal urgency.
+   ⛔ IN NEUTRAL INK (R5-C, the second gold audit, 2026-10-09). It pulsed aqua→gold:
+   gold is money and nothing else (Q5), aqua is never semantic (§B4), and §B2a
+   rules this exact case — a countdown's last stretch is app state, "urgency is
+   carried by motion … the text keeps its neutral ink" (R4-K moved the clock's
+   labels the same way). So the words and the hourglass say "closing soon" in the
+   text's ink, and the BREATH carries the urgency: the edge swells from the strong
+   border to the subtle ink and back. With motion off the pill rests on its base
+   and its words still say it.
    ⚠️ 2.4s STAYS RAW and that is the rule, not an exception: ambient loops sit
    OUTSIDE the ladder by design (the frozen census in `motion.css`), and this one is
    named there. What changes is the CURVE — `ease-in-out` becomes `--m-breathe`, the
    token whose entire job is "symmetric loops", so the pill breathes on the same
    curve as `.live-dot`, `.m-live-pip` and `.mark-pending` instead of a bare
    keyword that happens to look like it. */
-.closing-pill { color: var(--gold-300);
-  border-color: color-mix(in oklab, var(--gold-500) 55%, transparent);
-  background: color-mix(in oklab, var(--gold-500) 15%, transparent);
+.closing-pill { color: var(--text);
+  border-color: var(--border-strong);
+  background: var(--bg-overlay);
   animation: closing-pulse 2.4s var(--m-breathe) infinite; }
 @keyframes closing-pulse {
-  0%, 100% { color: var(--aqua-300);
-    border-color: color-mix(in oklab, var(--aqua-400) 55%, transparent);
-    background: color-mix(in oklab, var(--aqua-500) 14%, transparent); }
-  50%      { color: var(--gold-300);
-    border-color: color-mix(in oklab, var(--gold-500) 55%, transparent);
-    background: color-mix(in oklab, var(--gold-500) 16%, transparent); }
+  0%, 100% { border-color: var(--border-strong); }
+  50%      { border-color: var(--text-subtle); }
 }
 
 /* Dial "Unlock" button attention pulse — fired when a player taps the LOCKED

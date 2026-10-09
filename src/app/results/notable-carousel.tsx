@@ -144,11 +144,14 @@ export function NotableCarousel({
               aria-label={t.market.showResultN.replace("{n}", String(i + 1))} /* V-7 */
               className="grid h-[40px] w-[24px] place-items-center rounded-md"
             >
+              {/* The current slide is "this one": the brand family's pip (`--brand-400`, the journey rail's dot), never gold
+                  — a carousel's place is not money (Q5; R5-C, the second gold audit, 2026-10-09). The /live twin
+                  (`featured-contest.tsx`) reads the same ink, so two carousels agree. */}
               <span
                 className="block h-1.5 rounded-full transition-all"
                 style={{
                   width: i === current ? 18 : 6,
-                  background: i === current ? "var(--gold-400)" : "var(--border-strong)",
+                  background: i === current ? "var(--brand-400)" : "var(--border-strong)",
                 }}
               />
             </button>
@@ -168,8 +171,9 @@ function Arrow({ dir, onClick, label }: { dir: "prev" | "next"; onClick: () => v
       aria-label={label}
       /* ⚠️ LITERALS, not `h-11 w-11` — spacing is overridden (tailwind.config.ts:200-215),
          so `h-11` was a 96px round button holding a 16px chevron. 44px = A2's mobile tap size. */
-      className="grid h-[44px] w-[44px] place-items-center rounded-full border transition-colors hover:bg-[color-mix(in_oklab,var(--gold-400)_14%,transparent)]"
-      style={{ borderColor: "color-mix(in oklab, var(--gold-400) 55%, transparent)", color: "var(--gold-300)" }}
+      /* The arrows are controls, in the brand family (R5-C, 2026-10-09) — the /live twin's arrows read the same. */
+      className="grid h-[44px] w-[44px] place-items-center rounded-full border transition-colors hover:bg-[color-mix(in_oklab,var(--brand-400)_14%,transparent)]"
+      style={{ borderColor: "color-mix(in oklab, var(--brand-400) 55%, transparent)", color: "var(--brand-300)" }}
     >
       <Icon s={16} />
     </button>

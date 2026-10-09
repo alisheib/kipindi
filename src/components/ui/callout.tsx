@@ -12,12 +12,18 @@
  *
  *   warning — the poll is lopsided, your upside is thin. NOT "you may lose".
  *   info    — neutral explanation (how the fee works, one-sided refunds)
- *   brand   — a promise we're making (the winner floor, the free-exit window)
+ *   brand   — a promise we're making (the winner floor, the free-exit window): `info`'s royal box with the shield
  *   danger  — an actual problem/failure
  *
  * Usage:
  *   <Callout tone="warning">Upside is thin — the other side is small.</Callout>
  *   <Callout tone="brand" title="You can't lose on a correct call">…</Callout>
+ *
+ * ⛔ THERE IS NO GILT BOX (R5-C, the second gold audit, 2026-10-09). `brand` and `gold` were ONE object, a gilt panel,
+ * and every caller was a promise, an explanation or a "coming soon" — none of them money (DESIGN_AUTHORITY Q5 "gold is
+ * money, and nothing else"; §M3 "struck gold appears only where money was earned"). `gold` is out of the union (its
+ * callers, the coming-soon banners, are `info`: waiting is royal, §B11). `brand` is now what its name says, the brand
+ * family's royal box: `info`'s paint by construction (so the two cannot drift) with the promise's shield glyph.
  */
 
 import { I, type GlyphKey } from "@/components/ui/glyphs";
@@ -52,11 +58,9 @@ export const MAINTENANCE_AMBER = {
 
 export type CalloutTone =
   | "warning" | "info" | "brand" | "danger" | "success"
-  /* ⭐ ADDED 2026-08-21. `gold` is the HONEST name for what `brand` already was —
-   * a gilt box, not a royal one — so the two share one object and `brand` stays
-   * as a documented alias; renaming the call sites is a separate, reviewable
-   * change. `maintenance` and `neutral` arrive from proposals-state-views. */
-  | "gold" | "maintenance" | "neutral";
+  /* `maintenance` and `neutral` arrive from proposals-state-views. (`gold`, added 2026-08-21 as the honest name of the
+   * gilt box `brand` then was, left with that box — R5-C, 2026-10-09; see the header.) */
+  | "maintenance" | "neutral";
 
 // `strongBox` is NOT just "the same but 2px". The normal borders are deliberately
 // low-opacity so an inline note sits quietly inside content — and at 2px that
@@ -70,8 +74,8 @@ export type CalloutTone =
 // the designed 18% tint on both emphases; the box/strongBox distinction is
 // carried by the BORDER (`-border` vs `-fg`), which is what the note above
 // already argues. ⛔ Never re-add a modifier to a pre-mixed token — reach for a
-// second token instead. brand/danger/success below sit on OPAQUE tokens
-// (`--gold-500`, `--danger-500`, `--success`), so their modifiers are correct.
+// second token instead. danger/success below sit on OPAQUE tokens
+// (`--danger-500`, `--success`), so their modifiers are correct.
 //
 // `panel` is the OPAQUE form of the same tone — the tint mixed against
 // `--bg-elevated` instead of composited over whatever happens to be behind. A
@@ -89,12 +93,11 @@ type ToneSpec = {
   fg: string;
 };
 
-// The gilt box. `brand` and `gold` are ONE object so the alias can never drift
-// from the name it aliases.
-const GILT: ToneSpec = {
-  box: "border-gold-500/30 bg-gold-500/10", strongBox: "border-gold-400 bg-gold-500/15", icon: "text-gold-300", glyph: "shieldcheck",
-  panel: { bg: "color-mix(in oklab, var(--gold-500) 10%, var(--bg-elevated))", border: "color-mix(in oklab, var(--gold-500) 30%, var(--border))" },
-  fg: "var(--gold-300)",
+// The royal box. `brand` is `info`'s paint with the promise's shield, built FROM it, so the two can never drift.
+const INFO: ToneSpec = {
+  box: "border-info-border bg-info-bg", strongBox: "border-info-fg bg-info-bg", icon: "text-info", glyph: "info",
+  panel: { bg: "color-mix(in oklab, var(--info-500) 18%, var(--bg-elevated))", border: "color-mix(in oklab, var(--info-500) 36%, var(--border))" },
+  fg: "var(--info)",
 };
 
 const TONE: Record<CalloutTone, ToneSpec> = {
@@ -102,13 +105,8 @@ const TONE: Record<CalloutTone, ToneSpec> = {
     box: "border-warning-border bg-warning-bg", strongBox: "border-warning-fg bg-warning-bg", icon: "text-warning-fg", glyph: "warning",
     panel: { bg: MAINTENANCE_AMBER.panelBg, border: MAINTENANCE_AMBER.panelBorder }, fg: "var(--warning-fg)",
   },
-  info: {
-    box: "border-info-border bg-info-bg", strongBox: "border-info-fg bg-info-bg", icon: "text-info", glyph: "info",
-    panel: { bg: "color-mix(in oklab, var(--info-500) 18%, var(--bg-elevated))", border: "color-mix(in oklab, var(--info-500) 36%, var(--border))" },
-    fg: "var(--info)",
-  },
-  brand: GILT,
-  gold: GILT,
+  info: INFO,
+  brand: { ...INFO, glyph: "shieldcheck" },
   // 🔴 D2 (2026-08-21, owner ruling) — THESE TWO USED TO BE THE BETTING PAIR.
   // `danger` was `--no-500` and `success` was `--yes-500`, so a Callout reading
   // "We couldn't verify that document" was painted in the ink that means A LOST

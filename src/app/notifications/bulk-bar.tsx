@@ -45,8 +45,12 @@ export function NotificationsBulkBar({
     <div className="flex items-center justify-between gap-2 rounded-xl glass-panel px-3 py-2">
       <span className="inline-flex items-center gap-1.5 min-w-0">
         {/* §A4 — colour is never the only signal, so the dot is decorative and the COUNT
-            carries the message. `Dot` is `aria-hidden` by construction. */}
-        <Dot tone="gold" />
+            carries the message. `Dot` is `aria-hidden` by construction.
+            ⭐ BRAND, THE JOURNEY RAIL'S OWN UNREAD DOT (R5-C, the second gold audit, 2026-10-09; tiles r5-4): it was gold
+            (198,158,72 — `--gold-500`) while the rail's unread dot and the hub's Arifa count are the brand family
+            (DESIGN_AUTHORITY §8b "its picture is the kit's brand `Dot`", §8c "CountBadge in brand"). Unread is not
+            money (Q5), so the page says it in the one accent the rail does. */}
+        <Dot tone="brand" />
         <span className="font-mono text-micro font-bold uppercase text-text-subtle truncate">
           {countLabel}
         </span>

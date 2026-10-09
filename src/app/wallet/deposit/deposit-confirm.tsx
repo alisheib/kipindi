@@ -83,7 +83,8 @@ export function DepositConfirm() {
     if (!form) return false;
     const err = validate(form);
     if (err) {
-      toast({ title: err, variant: "warning" });
+      // F3 — a slip the player can fix is the `factual` toast; `warning` is struck in gold (R5-C, 2026-10-09).
+      toast({ title: err, variant: "factual" });
       return false;
     }
     return true;
@@ -108,7 +109,7 @@ export function DepositConfirm() {
     // native bubbles are suppressed (V-3).
     const err = validate(form);
     if (err) {
-      toast({ title: err, variant: "warning" });
+      toast({ title: err, variant: "factual" });
       return false;
     }
     form.noValidate = true;
@@ -152,8 +153,13 @@ export function DepositConfirm() {
          count; Enter now opens this dialog, exactly as the button does (in WebKit before Safari 16.4 it still does
          nothing: see `submitsForm`). */
       submitsForm
+      /* ⭐ D1 FOR THE TRIGGER TOO (R5-C, the second gold audit, 2026-10-09). This button reads "Confirm deposit" and is
+         the commit's first press; it stayed GOLD ("money-in → gold trigger", a micro-spec — record, not rule, §0) while
+         the dialog's own button became brand under D1: "a deposit or a withdrawal commit is brand — not gold … moving
+         your own money … earns nothing, so gold overstates it" (DESIGN_AUTHORITY §M3a). One action, one ink, at the
+         money-commit footprint (`btn-lg`). The deposit DOOR (the header pill, the rail's coin) keeps its gold. */
       trigger={
-        <button ref={buttonRef} type="button" className="btn btn-gold btn-lg w-full">
+        <button ref={buttonRef} type="button" className="btn btn-primary btn-lg w-full">
           {t.common.confirmDeposit}
         </button>
       }

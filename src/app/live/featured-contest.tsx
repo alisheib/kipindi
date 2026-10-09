@@ -227,11 +227,14 @@ export function FeaturedContest({
                   aria-current={i === idx ? "true" : undefined}
                   aria-label={t.market.showMarketN.replace("{n}", String(i + 1))}
                 >
+                  {/* The current slide's pip is the brand family, as its twin's (R5-C, 2026-10-09): the twin was gold and
+                      this one aqua — two carousels, two answers. "This one" is the brand accent; aqua is "never …
+                      anything semantic" (DESIGN_AUTHORITY §B4) and gold is money and nothing else (Q5). */}
                   <span
                     className="block h-1.5 rounded-full transition-all"
                     style={{
                       width: i === idx ? 18 : 6,
-                      background: i === idx ? "var(--aqua-400)" : "var(--border-strong)",
+                      background: i === idx ? "var(--brand-400)" : "var(--border-strong)",
                     }}
                   />
                 </button>
@@ -254,8 +257,8 @@ function Arrow({ dir, onClick }: { dir: "prev" | "next"; onClick: () => void }) 
       aria-label={dir === "prev" ? t.market.prevMarket : t.market.nextMarket}
       /* ⚠️ LITERALS, not `h-11 w-11` — spacing is overridden (tailwind.config.ts:200-215),
          so `h-11` was 96px. Twin of results/notable-carousel.tsx — keep the two in step. */
-      className="grid h-[44px] w-[44px] place-items-center rounded-full border transition-colors hover:bg-[color-mix(in_oklab,var(--aqua-400)_14%,transparent)]"
-      style={{ borderColor: "color-mix(in oklab, var(--aqua-400) 55%, transparent)", color: "var(--aqua-300)" }}
+      className="grid h-[44px] w-[44px] place-items-center rounded-full border transition-colors hover:bg-[color-mix(in_oklab,var(--brand-400)_14%,transparent)]"
+      style={{ borderColor: "color-mix(in oklab, var(--brand-400) 55%, transparent)", color: "var(--brand-300)" }}
     >
       <Icon s={16} />
     </button>

@@ -73,7 +73,9 @@ export function ConsentPrompt() {
       className="fixed left-3 right-3 bottom-[calc(148px_+_env(safe-area-inset-bottom))] lg:bottom-6 z-50 lg:right-auto lg:left-6 lg:max-w-[380px] rounded-xl glass-panel border border-border p-3 shadow-lg"
     >
       <div className="flex items-start gap-3">
-        <span className="shrink-0 mt-0.5 text-gold-300" aria-hidden><I.chart s={18} /></span>
+        {/* The card's glyph is its accent, in the brand's ink — the product's one non-money accent; it was gold, money's
+            ink, on a question about analytics (R5-C, the second gold audit, 2026-10-09; Q5). InstallInvite's twin. */}
+        <span className="shrink-0 mt-0.5 text-brand-300" aria-hidden><I.chart s={18} /></span>
         {/* ⛔ min-w-0 is load-bearing, and there is no truncate or clamp: the box grows, the words stay whole. */}
         <div className="min-w-0 flex-1">
           <p id="consent-prompt-title" className="font-display text-body font-semibold leading-tight text-text">

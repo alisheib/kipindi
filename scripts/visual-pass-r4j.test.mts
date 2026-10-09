@@ -159,7 +159,8 @@ function bellTwin(bar: string, panel: string, tw: string): { ok: boolean; why: s
   const want = `${live[1]} ${live[2]}`.split(" ").map((c) => (/^[hw]-\d+$/.test(c) ? `${c[0]}-[${step(c.slice(2))}px]` : c)).sort();
   const got = still[2].split(" ").sort();
   const wrapper = /<div ref=\{ref\} className="([^"]+)">/.exec(panel)?.[1];
-  const slot = bar.includes('<span className="hidden lg:inline-flex kp-jhdr__bell">{pollers.bell && !notFoundShown ? <NotificationsPanel /> : <BellStill label={t.common.notifications} />}</span>');
+  // ⚠️ `<NotificationsPanel journey />` since R5-C's gold audit (2026-10-09): the journey bell's unread signs are the brand ink.
+  const slot = bar.includes('<span className="hidden lg:inline-flex kp-jhdr__bell">{pollers.bell && !notFoundShown ? <NotificationsPanel journey /> : <BellStill label={t.common.notifications} />}</span>');
   return {
     ok: JSON.stringify(want) === JSON.stringify(got) && still[1] === wrapper && slot && panel.includes("<I.bell s={20} />"),
     why: JSON.stringify({ want, got, wrapper, stillWrapper: still[1], slot }),
@@ -170,7 +171,7 @@ function bellTwin(bar: string, panel: string, tw: string): { ok: boolean; why: s
   const now = bellTwin(bar, panel, tw);
   ok("1.4 · the bell's slot holds the bell's still twin — the live trigger's wrapper, 40px round box, ink and 20px glyph, a plain link to /notifications — until the live bell may mount (it is mounted from 1024 alone, and never on a not-found page)", now.ok, now.why);
   ok("1.4′ PLANT · the empty slot of before (the live bell or nothing) is reported",
-    !bellTwin(bar.replace("{pollers.bell && !notFoundShown ? <NotificationsPanel /> : <BellStill label={t.common.notifications} />}", "{pollers.bell && <NotificationsPanel />}"), panel, tw).ok);
+    !bellTwin(bar.replace("{pollers.bell && !notFoundShown ? <NotificationsPanel journey /> : <BellStill label={t.common.notifications} />}", "{pollers.bell && <NotificationsPanel journey />}"), panel, tw).ok);
   ok("1.4″ PLANT · a twin 4px off the live bell's box is reported", !bellTwin(bar.replace("h-[40px] w-[40px]", "h-[44px] w-[44px]"), panel, tw).ok);
 }
 
@@ -454,7 +455,7 @@ section("5 · the not-found mark (tiles 345–398: the market not-found stood th
   ok("5.6′ PLANT · the rail lighting its tab from the address again is reported", !chrome(tabs.replace("const pathname = notFoundShown ? null : route;", "const pathname = route;")));
   const dot = (s: string) => s.includes('const content = d.key === "account" && userId !== null && pollers.dot && !notFoundShown');
   ok("5.7 · the Akaunti dot's counter is not mounted on a not-found page (its Server Action posted to the not-found address and logged a 404 each beat), nor the live bell (§1.4)",
-    dot(tabs) && bar.includes("{pollers.bell && !notFoundShown ? <NotificationsPanel /> : <BellStill"));
+    dot(tabs) && bar.includes("{pollers.bell && !notFoundShown ? <NotificationsPanel journey /> : <BellStill"));
   ok("5.7′ PLANT · the dot polling on a not-found page again is reported", !dot(tabs.replace(" && pollers.dot && !notFoundShown", " && pollers.dot")));
 }
 {

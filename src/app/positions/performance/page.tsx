@@ -242,9 +242,11 @@ export default async function PerformancePage({
                     page is a size call §T4 does not decide — so it needs the 360 screenshot this
                     machine cannot take. Ship the law, record the taste: 34 stands as a known
                     above-floor exception until a player credential exists. Same for L198. */}
+                {/* Gold only on a GAIN (R5-C, the second gold audit, 2026-10-09): "TZS 0" was gilt with a glow — nothing was
+                    earned (§M3) — so a zero net is the text's own ink, a loss its calm rose. */}
                 <p
-                  className={`amount text-[34px] font-bold leading-none ${netPnl >= 0 ? "text-[var(--gilt)]" : "text-no-300"}`}
-                  style={netPnl >= 0 ? { textShadow: "0 0 24px color-mix(in oklab, var(--gilt) 30%, transparent)" } : undefined}
+                  className={`amount text-[34px] font-bold leading-none ${netPnl > 0 ? "text-[var(--gilt)]" : netPnl < 0 ? "text-no-300" : "text-text"}`}
+                  style={netPnl > 0 ? { textShadow: "0 0 24px color-mix(in oklab, var(--gilt) 30%, transparent)" } : undefined}
                 >
                   {formatTzsSigned(netPnl)}
                 </p>
@@ -274,23 +276,28 @@ export default async function PerformancePage({
             </section>
           )}
 
-          {/* ── C2d highlights: best-win gilt crest + streak pip-chain ─
-              (earned money / earned standing — gold is legitimate here) ── */}
+          {/* ── C2d highlights: best-win crest + streak pip-chain ─
+              The best win is EARNED money, so its crest is gold — but only when there IS one (R5-C, the second gold audit,
+              2026-10-09). With no winning payout the card printed a gold "—" in a gold frame under a gold trophy: gold on
+              nothing earned (§M3), the same slip as the "TZS 0" net above. With no win it is the streak card's own box,
+              the trophy and the dash in the subtle ink. The streak is STANDING, not money: identity metal (Q5). ── */}
           <section className="grid grid-cols-1 gap-3 md:grid-cols-2">
-            {/* Best-win gilt crest */}
+            {/* Best-win crest — gold only on a win */}
             <div
-              className="relative overflow-hidden rounded-xl border border-gold-700/50 p-5"
-              style={{ background: "radial-gradient(120% 140% at 100% 0%, oklch(40% 0.11 82 / 0.14), transparent 55%), var(--bg-elevated)" }}
+              className={`relative overflow-hidden rounded-xl border p-5 ${bestMarket ? "border-gold-700/50" : "border-border"}`}
+              style={{ background: bestMarket ? "radial-gradient(120% 140% at 100% 0%, oklch(40% 0.11 82 / 0.14), transparent 55%), var(--bg-elevated)" : "var(--bg-elevated)" }}
             >
-              <GiltCorner size={40} rotate={90} className="absolute right-1.5 top-1.5 opacity-60" />
+              {bestMarket && <GiltCorner size={40} rotate={90} className="absolute right-1.5 top-1.5 opacity-60" />}
               <p className="gilt-eyebrow">{t.performance.bestWin}</p>
               <div className="mt-3 flex items-center gap-3.5">
                 <span
                   /* ⚠️ LITERALS, not `h-12 w-12` — spacing is overridden (tailwind.config.ts:200-215),
                      so `h-12` was a 128px gilt disc beside a ~30px money figure: the ornament
                      outweighed the earned-money number it decorates (gold-budget inversion). */
-                  className="inline-flex h-[48px] w-[48px] shrink-0 items-center justify-center rounded-full border-2 border-gold-500 text-gold-300"
-                  style={{ background: "radial-gradient(circle at 50% 30%, oklch(45% 0.12 84 / 0.35), oklch(24% 0.06 80 / 0.25))", boxShadow: "0 0 20px -4px color-mix(in oklab, var(--gold-400) 55%, transparent)" }}
+                  className={`inline-flex h-[48px] w-[48px] shrink-0 items-center justify-center rounded-full border-2 ${bestMarket ? "border-gold-500 text-gold-300" : "border-border text-text-subtle"}`}
+                  style={bestMarket
+                    ? { background: "radial-gradient(circle at 50% 30%, oklch(45% 0.12 84 / 0.35), oklch(24% 0.06 80 / 0.25))", boxShadow: "0 0 20px -4px color-mix(in oklab, var(--gold-400) 55%, transparent)" }
+                    : { background: "var(--bg-overlay)" }}
                 >
                   <I.trophy s={22} />
                 </span>
@@ -298,7 +305,10 @@ export default async function PerformancePage({
                   {/* DG-A-12 · §M4 — `.amount` for the best-win figure; the size stays for the
                       reason given on the net-P&L hero above (authed route, no player credential,
                       and 26/30 → 22/28 is a taste call that needs a screenshot). */}
-                  <p className="amount text-[26px] lg:text-[30px] font-bold leading-none text-gold-300" style={{ textShadow: "0 0 20px color-mix(in oklab, var(--gold-400) 30%, transparent)" }}>
+                  <p
+                    className={`amount text-[26px] lg:text-[30px] font-bold leading-none ${bestMarket ? "text-gold-300" : "text-text-subtle"}`}
+                    style={bestMarket ? { textShadow: "0 0 20px color-mix(in oklab, var(--gold-400) 30%, transparent)" } : undefined}
+                  >
                     {bestMarket ? formatTzsAbs(bestMarket.payout) : "—"}
                   </p>
                   {/* 🔴 DG-P-08 · THE ONE CLIPPED MARKET TITLE ON THIS PAGE THAT WAS NOT A LINK.
@@ -380,7 +390,7 @@ export default async function PerformancePage({
                       <p className="mt-0.5 font-mono text-[10px] text-text-muted">{r.side ? <>{r.side} &middot; </> : null}{formatTzsAbs(r.stake)} &middot; {r.date}</p>
                     </div>
                     <div className="shrink-0 text-right">
-                      <p className={`text-body-sm font-bold amount ${r.pnl >= 0 ? "text-[var(--gilt)]" : "text-no-300"}`}>{formatTzsSigned(r.pnl)}</p>
+                      <p className={`text-body-sm font-bold amount ${r.pnl > 0 ? "text-[var(--gilt)]" : r.pnl < 0 ? "text-no-300" : "text-text"}`}>{formatTzsSigned(r.pnl)}</p>
                       <p className="font-mono text-micro uppercase tracking-[0.08em] text-text-muted">{r.statusLabel}</p>
                     </div>
                   </Link>
@@ -411,18 +421,20 @@ export default async function PerformancePage({
  * horizontally and no type size, weight or colour changes.
  */
 
-/** C2d streak pip-chain — filled gilt `hot` flames up to the current streak,
- *  muted pips out to the longest streak (your run vs your best). */
+/** C2d streak pip-chain — filled metal `hot` pips up to the current streak,
+ *  muted pips out to the longest streak (your run vs your best).
+ *  ⛔ METAL, NOT MONEY (R5-C, the second gold audit, 2026-10-09): a run of wins is standing — identity — and Q5 lets
+ *  identity be METALLIC but never `--gold-300…500`; the leaderboard's streak chip wears the same `--metal-gold`. */
 function StreakChain({ current, longest }: { current: number; longest: number }) {
   const len = Math.min(Math.max(longest, current, 5), 12);
   return (
     <div className="flex flex-wrap items-center gap-1" role="img" aria-label={`${current} / ${longest}`}>
       {Array.from({ length: len }).map((_, i) => (
-        <span key={i} className={i < current ? "text-gold-300" : "text-text-subtle/30"}>
+        <span key={i} className={i < current ? "text-[var(--metal-gold)]" : "text-text-subtle/30"}>
           <I.hot s={15} />
         </span>
       ))}
-      {current > 12 && <span className="ml-0.5 font-mono text-[11px] font-bold text-gold-300 tabular-nums">+{current - 12}</span>}
+      {current > 12 && <span className="ml-0.5 font-mono text-[11px] font-bold text-[var(--metal-gold)] tabular-nums">+{current - 12}</span>}
     </div>
   );
 }

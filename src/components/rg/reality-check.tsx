@@ -130,15 +130,17 @@ export function RealityCheckHost({ enabled, intervalMin = DEFAULT_INTERVAL, user
       labelledBy="reality-check-title"
       panelClassName="overflow-hidden"
     >
-      {/* Gold rail at top */}
-      <div aria-hidden className="absolute inset-x-0 top-0 h-[2px]" style={{ background: "linear-gradient(90deg, var(--gold-500), var(--gold-300), var(--gold-500))" }} />
-
+      {/* ⛔ NO GOLD ON THE REALITY CHECK (R5-C, the second gold audit, 2026-10-09). It wore a gold rail across its top, a
+          gold clock and the minutes in gold: the ink of money earned (DESIGN_AUTHORITY §M3; Q5 "gold is money, and nothing
+          else") on the one prompt whose job is to make a player stop and think. It is an RG notice, and R4-I gave every RG
+          notice the neutral treatment: the sheet's own edge, the clock in the subtle ink of the disc it sits on, and the
+          minutes in the heading's own ink (mono, §T5). The words and the four doors are unchanged. */}
       <div className="space-y-4">
         <div className="flex items-center gap-2.5">
           {/* ⛔ LITERALS, NOT `h-8 w-8` — the spacing scale is overridden
               (tailwind.config.ts:200-215) and that pair is 48×48px. 40px = --tap-min, the
               badge disc every other section heading in the product uses. */}
-          <span className="inline-flex h-[40px] w-[40px] shrink-0 items-center justify-center rounded-md bg-bg-inset border border-border text-gold-300">
+          <span className="inline-flex h-[40px] w-[40px] shrink-0 items-center justify-center rounded-md bg-bg-inset border border-border text-text-subtle">
             <I.clock s={18} />
           </span>
           <h2
@@ -146,7 +148,7 @@ export function RealityCheckHost({ enabled, intervalMin = DEFAULT_INTERVAL, user
             className="font-display text-[15.5px] font-bold leading-tight text-text"
           >
             {t.rg.playingFor}{" "}
-            <span className="font-mono text-gold-300">{elapsedMin}</span>{" "}
+            <span className="font-mono">{elapsedMin}</span>{" "}
             {elapsedMin === 1 ? t.rg.minute : t.rg.minutes}
           </h2>
         </div>

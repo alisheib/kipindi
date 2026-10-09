@@ -49,13 +49,17 @@ export async function generateMetadata() {
 export const dynamic = "force-dynamic";
 
 // C1d provably-fair chain — a horizontal 5-node process diagram in the glyph
-// idiom. Gilt lands only on the attestation seal (the sanctioned earned/verified
-// exception); the other nodes are royal. Static (no motion → reduced-motion safe).
+// idiom. The attestation seal is the HIGHLIGHTED node; the others are brand line-art.
+// Static (no motion → reduced-motion safe).
+// ⭐ THE HIGHLIGHT IS BRAND, NOT GILT (R5-C, the second gold audit, 2026-10-09; tiles r5-4). It claimed "the sanctioned
+// earned/verified exception", which the rulebook never grants: §M3 gives struck gold to money EARNED — a payout, a
+// celebration, a market's resolved seal — and Q5 says gold is money and nothing else. A step of an explainer diagram is
+// none of those. It is drawn as the KYC rail's current step is: the 2px brand ring and the brand label.
 // 2026-09-14 — below the sm breakpoint the five steps STACK (each circle beside its label,
 // joined by a short vertical rule), so a phone shows every step whole: the fixed-width row
 // cut the third step to "OF" at 360 with no sign it scrolled. From sm up it is the row.
 // The overflow-x-auto wrapper stays only as a safety net.
-function FairnessChain({ steps }: { steps: { glyph: keyof typeof I; label: string; gilt?: boolean }[] }) {
+function FairnessChain({ steps }: { steps: { glyph: keyof typeof I; label: string; highlight?: boolean }[] }) {
   return (
     <div
       className="overflow-x-auto -mx-1 px-1 rounded-md focus-visible:outline focus-visible:outline-2 focus-visible:outline-[color:var(--brand-400)]"
@@ -66,8 +70,8 @@ function FairnessChain({ steps }: { steps: { glyph: keyof typeof I; label: strin
       <ol className="flex flex-col sm:flex-row sm:items-start sm:min-w-[540px]">
         {steps.map((s, i) => {
           const Glyph = I[s.glyph];
-          const circleCls = s.gilt
-            ? "border-2 border-gold-500 bg-gold-500/10 text-gold-300"
+          const circleCls = s.highlight
+            ? "border-2 border-brand-500 bg-brand-500/10 text-brand-300"
             : "border border-brand-600 bg-brand-500/10 text-brand-300";
           return (
             <li key={i} className="contents">
@@ -78,7 +82,7 @@ function FairnessChain({ steps }: { steps: { glyph: keyof typeof I; label: strin
                   <Glyph s={19} />
                 </span>
                 {/* text-balance: "OFFICER SIGN-OFF" broke at its hyphen, leaving "OFF" alone in the 104px column. */}
-                <span className={`sm:mt-2 text-balance font-mono text-micro font-semibold uppercase leading-tight eyebrow ${s.gilt ? "text-gold-300" : "text-text-muted"}`}>
+                <span className={`sm:mt-2 text-balance font-mono text-micro font-semibold uppercase leading-tight eyebrow ${s.highlight ? "text-brand-300" : "text-text-muted"}`}>
                   {s.label}
                 </span>
               </div>
@@ -200,8 +204,8 @@ export default async function FairnessPage({ searchParams }: { searchParams: Pro
           <h2 className="font-display text-[20px] font-semibold text-text">{t.common.fairnessHowItWorks}</h2>
           <span className="font-mono text-caption eyebrow uppercase text-text-subtle">FATF R.10 · POCA Cap 423 §16</span>
         </div>
-        {/* C1d — 5-step provably-fair chain (glyph idiom, gilt only on the
-            two-officer attestation seal). Labels live in HTML, not the SVG.
+        {/* C1d — 5-step provably-fair chain (glyph idiom, the two-officer attestation
+            seal highlighted in brand). Labels live in HTML, not the SVG.
             Aligned to this page's existing compliance-reviewed 5-step model
             (rather than rewriting the regulatory copy to the spec's literal
             step names) so the chain and the detail list below stay one story. */}
@@ -210,7 +214,7 @@ export default async function FairnessPage({ searchParams }: { searchParams: Pro
             { glyph: "flag",        label: t.common.fairnessCreated },
             { glyph: "coins",       label: t.common.fairnessStake },
             { glyph: "user",        label: t.common.fairnessStage1 },
-            { glyph: "shieldcheck", label: t.common.fairnessStage2, gilt: true },
+            { glyph: "shieldcheck", label: t.common.fairnessStage2, highlight: true },
             { glyph: "wallet",      label: t.common.fairnessSettlement },
           ]}
         />

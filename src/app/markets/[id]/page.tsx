@@ -543,10 +543,13 @@ export default async function MarketDetail({
               {t.market.closingSoon} · {minsToDeadline} {t.common.minsUnit}
             </span>
           )}
+          {/* ⭐ CLOSED IS ROYAL ON THE PLAYER'S OWN MARKET PAGE (R5-C, the second gold audit, 2026-10-09). DESIGN_AUTHORITY
+              §B11 names this exact pill as its third correction running backwards: "markets/[id]/page.tsx paints CLOSED in
+              the gilt family (--warning-fg resolves to --gilt) … while that market's card renders CLOSED royal". Both of
+              its states — closed and waiting, closed and settling — are CLOSED, so both wear the royal chip's paint
+              (`Chip variant="pending"`, the dictionary's royal: brand-600/26%, brand-500/55%, brand-300). */}
           {heroState === "waiting" && (
-            <span className={`inline-flex items-center gap-1.5 rounded-full border h-[26px] px-2.5 font-mono text-caption font-bold uppercase tracking-[0.10em] ${
-              settling ? "border-warning-border bg-warning-bg text-warning-fg" : "border-gold-500/40 bg-gold-500/10 text-gold-300"
-            }`}>
+            <span className="inline-flex items-center gap-1.5 rounded-full border h-[26px] px-2.5 font-mono text-caption font-bold uppercase tracking-[0.10em] border-brand-500/[0.55] bg-brand-600/[0.26] text-brand-300">
               <I.hourglassOff s={13} />
               {settling ? t.market.closedAwaitingSettlement : t.market.selectionClosedWaiting}
             </span>
@@ -818,11 +821,15 @@ export default async function MarketDetail({
               </>
             )
           ) : selectionClosed && !closedByTime ? (
+            /* ⭐ THE TWO CLOSED PANELS ARE ONE PANEL (R5-C, the second gold audit, 2026-10-09): the calm card, the state word
+               and its glyph in the dictionary's royal word ink (`TONE_INK.royal`, brand-300 — §B11: CLOSED is royal to the
+               player). This one was gold, its sibling below the warning box with a gilt eyebrow; neither state is money
+               (Q5) and nobody must act on either (§B11's amber). */
             <div className="rounded-xl border border-border bg-bg-elevated p-6 text-center">
               <div className="flex items-center justify-center gap-2 mb-2">
-                <I.hourglassOff s={18} className="text-gold-300" />
+                <I.hourglassOff s={18} className="text-brand-300" />
               </div>
-              <p className="font-mono text-micro uppercase eyebrow font-bold text-gold-300">
+              <p className="font-mono text-micro uppercase eyebrow font-bold text-brand-300">
                 {t.market.selectionClosedBadge}
               </p>
               <h2 id={BET_PANEL_HEADING} className="mt-1.5 font-display text-[15px] font-bold text-text">{t.market.waitingForResultsAside}</h2>
@@ -832,8 +839,8 @@ export default async function MarketDetail({
               </p>
             </div>
           ) : closedByTime ? (
-            <div className="rounded-xl border border-warning-border bg-warning-bg p-6 text-center">
-              <p className="font-mono text-micro uppercase eyebrow font-bold text-warning-fg">
+            <div className="rounded-xl border border-border bg-bg-elevated p-6 text-center">
+              <p className="font-mono text-micro uppercase eyebrow font-bold text-brand-300">
                 {t.market.closedAwaitingSettlement}
               </p>
               <h2 id={BET_PANEL_HEADING} className="mt-1.5 font-display text-[15px] font-bold text-text">{t.market.noMoreBets}</h2>
@@ -935,8 +942,10 @@ export default async function MarketDetail({
               {m.selectionClosedAt && !isSelectionClosed(m) && (
                 <Countdown to={m.selectionClosedAt} label={t.market.selectionClosesIn} serverNow={Date.now()} at={formatEatDateTime(Date.parse(m.selectionClosedAt), Date.now(), t.common.monthsShort, locale)} />
               )}
+              {/* CLOSED, in the dictionary's royal word ink (§B11; R5-C, 2026-10-09) — it was `--gold-300` beside the two
+                  clocks R4-K moved off gilt. */}
               {m.selectionClosedAt && isSelectionClosed(m) && m.status === "LIVE" && (
-                <div className="flex items-center gap-2 text-[12.5px] font-semibold" style={{ color: "var(--gold-300)" }}>
+                <div className="flex items-center gap-2 text-[12.5px] font-semibold text-brand-300">
                   <I.hourglassOff s={14} />
                   {t.market.selectionClosedWaiting}
                 </div>
@@ -995,10 +1004,14 @@ export default async function MarketDetail({
                       </div>
                       <span className="font-bold tabular-nums text-text">{formatTzs(p.stake)}</span>
                     </div>
+                    {/* ⭐ GOLD ONLY ON A WIN'S PAYOUT (R5-C, the second gold audit, 2026-10-09). The line was gold for every
+                        settled ticket — "Paid TZS 0" on a loss, a refund on a void — and §M3 gives gold to money EARNED
+                        (§C4: "VOID / refunded is NEUTRAL"; §M7: a loss gets the receipt). The journey's ticket card already
+                        draws it so (`ticket-card.tsx`: gold and struck only when won). */}
                     {p.status !== "OPEN" && (
                       <div className="flex items-center justify-between font-mono text-[11px]">
                         <span className="text-text-muted">{t.market.paidLabel}</span>
-                        <span className="font-bold tabular-nums text-gold-300">{formatTzs(p.finalPayout ?? 0)}</span>
+                        <span className={`font-bold tabular-nums ${p.status === "WIN" ? "text-gold-300" : "text-text"}`}>{formatTzs(p.finalPayout ?? 0)}</span>
                       </div>
                     )}
                     <div className="flex flex-wrap items-center gap-x-3 gap-y-0.5">

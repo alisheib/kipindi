@@ -15,9 +15,10 @@ import { EmptyState } from "@/components/ui/empty-state";
 import { Cash } from "@/components/ui/cash";
 import { Stat } from "@/components/ui/stat";
 import { FilterPill } from "@/components/ui/filter-pill";
+import { limitUsageFill } from "@/components/rg/limit-usage";
 import { getSession } from "@/lib/server/session";
 import { getActivitySummary, getRgUsage, type ActivityPeriod } from "@/lib/server/activity-summary";
-import { formatTzs, cn } from "@/lib/utils";
+import { formatTzs } from "@/lib/utils";
 import { getServerT, type Dict } from "@/lib/i18n-server";
 import Link from "next/link";
 import { PageContainer } from "@/components/layout/page-container";
@@ -196,7 +197,7 @@ export default async function ActivityPage({ searchParams }: { searchParams: Pro
         <LimitMeter label={t.activity.depositDaily}   used={rg.dailyDeposit.used}   limit={rg.dailyDeposit.limit}   t={t} />
         <LimitMeter label={t.activity.depositWeekly}  used={rg.weeklyDeposit.used}  limit={rg.weeklyDeposit.limit}  t={t} />
         <LimitMeter label={t.activity.depositMonthly} used={rg.monthlyDeposit.used} limit={rg.monthlyDeposit.limit} t={t} />
-        <LimitMeter label={t.activity.lossDaily}      used={rg.dailyLoss.used}      limit={rg.dailyLoss.limit}      t={t} tone="no" />
+        <LimitMeter label={t.activity.lossDaily}      used={rg.dailyLoss.used}      limit={rg.dailyLoss.limit}      t={t} />
       </section>
     </PageContainer>
   );
@@ -210,8 +211,14 @@ export default async function ActivityPage({ searchParams }: { searchParams: Pro
  * "Used X of Y" meter. No cap set → shows the used figure with a "no limit set"
  * hint (encourages setting one, RG-positive) and no bar. Over-cap → clamped bar
  * in the danger tone. Personal money wrapped in <Cash>.
+ * ⭐ ONE METER FOR EVERY LIMIT (R5-C, the second gold audit, 2026-10-09). The loss meter took a `tone="no"` that painted
+ * its fill `--warning-fg`, which IS `--gilt` — a player's LOSSES drawn in the ink of money earned (Q5; §M7: a loss is
+ * bookkeeping, never gilt) — and the reached state was the betting NO rose (`--no-500`), which §B2a keeps for a stake's
+ * side. Now the RG kit's own reading, LITERALLY: `limitUsageFill` from `rg/limit-usage.tsx`, the one ramp the limits page's
+ * meters draw — royal, the warning step from 75%, the APP-STATE danger from 90% or at the cap. (It first read "brand, then
+ * danger at the cap", which was a second ramp under the same claim.) The label says which limit it is.
  */
-function LimitMeter({ label, used, limit, t, tone = "brand" }: { label: string; used: number; limit: number | null; t: Dict; tone?: "brand" | "no" }) {
+function LimitMeter({ label, used, limit, t }: { label: string; used: number; limit: number | null; t: Dict }) {
   const hasLimit = limit !== null && limit > 0;
   const pct = hasLimit ? Math.min(100, Math.round((used / limit!) * 100)) : 0;
   const over = hasLimit && used >= limit!;
@@ -227,8 +234,8 @@ function LimitMeter({ label, used, limit, t, tone = "brand" }: { label: string; 
       {hasLimit && (
         <div className="h-2.5 w-full overflow-hidden rounded-pill bg-bg-inset" role="progressbar" aria-valuenow={pct} aria-valuemin={0} aria-valuemax={100} aria-label={label}>
           <div
-            className={cn("h-full rounded-pill transition-[width]", over ? "bg-no-500" : tone === "no" ? "bg-warning-fg" : "bg-brand-500")}
-            style={{ width: `${Math.max(2, pct)}%` }}
+            className="h-full rounded-pill transition-[width]"
+            style={{ width: `${Math.max(2, pct)}%`, background: limitUsageFill(pct, over) }}
           />
         </div>
       )}

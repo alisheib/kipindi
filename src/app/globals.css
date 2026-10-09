@@ -106,6 +106,13 @@
   --gold-800: oklch(46% 0.078 84);
   --gold-900: oklch(36% 0.062 84);
   --gold-950: oklch(26% 0.046 84);
+  /* ⭐ THE METAL IDENTITY MAY WEAR — NOT THE MONEY INK (R5-C, the second gold audit, 2026-10-09). DESIGN_AUTHORITY Q5:
+     "a tier or asset may be METALLIC; it may not wear --gilt, --gilt-metal, --gilt-ink, --gilt-strong or
+     --gold-300…500". This is the tier ladder's own gold rim (`.tier-gold`'s border, which reads it; `TIER_RING.gold` in
+     identity-avatar.tsx mirrors the value — change both): half the money ramp's chroma (0.068 against 0.110–0.114) at
+     hue 88, a brass that reads "medal", not "paid". The achievement coins (`.badge*`, badges/icons.tsx) wear it; they
+     wore `--gilt`, `--border-gold`, `--glow-gold` and `--gold-400`. */
+  --metal-gold: oklch(76% 0.068 88);
 
   /* Claret — heraldic burgundy (hue 15). Editorial weight only:
      Politics chip, Sovereign tier, regulator/footer crest, archival chrome.
@@ -1111,9 +1118,14 @@ body {
 
 .gilt        { color: var(--gilt); }
 
+/* ⛔ THE NAME IS HISTORY, THE INK IS NOT GOLD (R5-C, the second gold audit, 2026-10-09). This rule sits under the
+   "NET P&L · SETTLED" heads (performance, Juu/Chini's round, the positions strip) whatever the figure says — over a loss
+   too — and a divider is never money (DESIGN_AUTHORITY Q5 "gold is money, and nothing else"; §M7: a loss gets the
+   receipt, no gilt). It draws the strong border's line with the same fade. Renaming it would move three call sites
+   for no pixel; do not "restore" the gilt the name suggests. */
 .gilt-rule {
   height: 1px;
-  background: linear-gradient(90deg, transparent, var(--gilt) 8%, var(--gilt) 92%, transparent);
+  background: linear-gradient(90deg, transparent, var(--border-strong) 8%, var(--border-strong) 92%, transparent);
   margin-block: 16px;
   opacity: 0.85;
 }
@@ -1134,13 +1146,17 @@ body {
     repeating-linear-gradient(-45deg, transparent 0 22px, color-mix(in oklab, var(--pearl-50) 2%, transparent) 22px 23px);
 }
 
+/* ⛔ THE NAME IS HISTORY, THE INK IS THE EYEBROW'S (R5-C, the second gold audit, 2026-10-09). Its eight consumers name
+   blocks — "NET P&L · SETTLED", "BEST WIN", "MONEY", "LIMITS", the two-step setup, the backup codes — and an eyebrow
+   is never money (Q5; R4-K and R4-I moved the market clock's, the guest panel's and the auth eyebrows off gold the same
+   way). It takes the ink 191 player eyebrows wear. The figures under them keep their own money ink. */
 .gilt-eyebrow {
   font-family: var(--font-mono);
   font-size: 10px;
   font-weight: 600;
   text-transform: uppercase;
   /* letter-spacing: §T3's 0.14em — in the shared eyebrow rule beside `.amount`. */
-  color: var(--gilt);
+  color: var(--text-subtle);
 }
 
 /* ===========================================================================
@@ -1757,11 +1773,22 @@ html.kp-reduce-motion .ticker-pause,
    was a bright gilt pill with a constant glinting sweep — players reported it as
    visually distracting (it pulled the eye on a loop). Redesigned as a quiet muted
    tag: a soft warm-neutral surface, muted text, no gradient, no animation. It now
-   reads as a status note, not an attention-grabbing promo. */
+   reads as a status note, not an attention-grabbing promo.
+   ⛔ AND THE WARMTH IS GOLD (R5-C, the second gold audit, 2026-10-09): its fill and edge are `--gold-500` at 9% and 22% —
+   the money ramp on a feature that is not open yet (Q5). In PAGE BODIES (inside `#main-content`, both shells) and
+   everywhere in the JOURNEY the flag is the plain inset and edge; the clock and the words carry it. The base rule below
+   stays as it was ONLY because the classic header's, rail's and avatar menu's "coming soon" tags wear it, and classic
+   chrome is frozen (S6/S7, `qa:classic-shell-parity`): the owner's change is to drop the scope and let the neutral
+   override below apply everywhere. */
 .cs-badge {
   color: var(--text-subtle);
   background: color-mix(in oklab, var(--gold-500) 9%, var(--bg-inset));
   border: 1px solid color-mix(in oklab, var(--gold-500) 22%, var(--border));
+}
+#main-content .cs-badge,
+:root:has(#kp-journey-shell) .cs-badge {
+  background: var(--bg-inset);
+  border-color: var(--border);
 }
 
 /* 🔴 THE `.pbar*` PROBABILITY BAR WAS DELETED HERE 2026-09-07 — 9 rules and a keyframe,
@@ -2321,7 +2348,7 @@ textarea::placeholder { color: var(--text-subtle); }
    `--gilt` / `--gilt-metal` / `--gold-3xx-5xx`. A ladder named bronze→silver→gold→diamond
    →sovereign with the warmth stripped out would be meaningless, which is not an improvement.
    ⚠️ Mirrored by `TIER_RING` in `identity-avatar.tsx` — change one, change both. */
-.tier-gold    { background: oklch(38% 0.045 88);  color: oklch(94% 0.030 88);   border-color: oklch(76% 0.068 88); }
+.tier-gold    { background: oklch(38% 0.045 88);  color: oklch(94% 0.030 88);   border-color: var(--metal-gold); }
 /* `diamond` moved furthest, and it was the worst offender nobody had questioned: its rim was
    oklch(78% 0.13 80) — MORE saturated than money gold, at almost the same hue. Icy cyan is
    both lawful and what a diamond actually looks like. */
@@ -2453,7 +2480,11 @@ textarea::placeholder { color: var(--text-subtle); }
 /* ===========================================================================
    Selection + scrollbar
    =========================================================================== */
-::selection { background: color-mix(in oklab, var(--gilt) 35%, transparent); color: oklch(15% 0.06 268); }
+/* ⭐ A SELECTION IS A HIGHLIGHT, AND A HIGHLIGHT IS NOT MONEY (R5-C, the second gold audit, 2026-10-09). Every run of
+   text a player selected turned `--gilt` — the money ink on whatever they dragged across, a rule or a refusal included
+   (DESIGN_AUTHORITY Q5). It is the brand family now, the one accent for "this one" (the selected pill's halo
+   `--glow-selected`, the focus ring), and the ink stays the page's text: dark ink on a 40% brand wash would sink. */
+::selection { background: color-mix(in oklab, var(--brand-500) 40%, transparent); color: var(--text); }
 ::-webkit-scrollbar { width: 8px; height: 8px; }
 ::-webkit-scrollbar-track { background: transparent; }
 ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 999px; border: 2px solid transparent; background-clip: padding-box; }
@@ -2978,30 +3009,36 @@ textarea::placeholder { color: var(--text-subtle); }
    §2  BADGES & ACHIEVEMENTS  (sibling system to .tier-*)
    --------------------------------------------------------------------------- */
 
-/* The badge "coin": a round heraldic medallion on royal, gilt rim, line-art
+/* The badge "coin": a round heraldic medallion on royal, a metal rim, line-art
    icon inside. Mirrors how .tier-badge is structured but larger, since these
-   are display objects on the profile shelf — not inline rank pips. */
+   are display objects on the profile shelf — not inline rank pips.
+   ⭐ METAL, NOT MONEY (R5-C, the second gold audit, 2026-10-09; DESIGN_AUTHORITY Q5). An achievement is identity — what
+   a player has done — exactly the case Q5 ruled for the tier ladder this file calls its sibling: "a tier or asset may be
+   METALLIC; it may not wear --gilt …". The coin wore `--gilt`, `--border-gold` and `--glow-gold`; it wears the tier
+   ladder's metal (`--metal-gold`) now, and the unlocked coin keeps its rim and no bloom (§M3: "No bloom"). The progress
+   ring and its "5 / 20" are PROGRESS, which the product draws in the brand family everywhere (the KYC rail, the
+   proposal timeline, the primer): `--brand-500` and `--brand-300`. */
 .badge {
   position: relative;
   display: inline-grid;
   place-items: center;
   border-radius: 50%;
-  color: var(--gilt);                          /* drives the line-art stroke via currentColor */
+  color: var(--metal-gold);                    /* drives the line-art stroke via currentColor */
   background:
     radial-gradient(circle at 50% 32%, oklch(30% 0.165 268) 0%, oklch(20% 0.140 268) 70%, oklch(15% 0.130 268) 100%);
-  border: 1.5px solid var(--border-gold);
+  border: 1.5px solid var(--metal-gold);
   box-shadow:
-    0 0 0 1px color-mix(in oklab, var(--gilt) 26%, transparent) inset,
+    0 0 0 1px color-mix(in oklab, var(--metal-gold) 26%, transparent) inset,
     var(--shadow-3);
   flex-shrink: 0;
   -webkit-tap-highlight-color: transparent;
 }
-.badge::after {                                /* gilt inner hairline ring — the heraldic "coin edge" */
+.badge::after {                                /* the metal inner hairline ring — the heraldic "coin edge" */
   content: "";
   position: absolute;
   inset: 5px;
   border-radius: 50%;
-  border: 0.5px solid color-mix(in oklab, var(--gilt) 40%, transparent);
+  border: 0.5px solid color-mix(in oklab, var(--metal-gold) 40%, transparent);
   pointer-events: none;
 }
 .badge-sm { width: 44px; height: 44px; }
@@ -3009,12 +3046,12 @@ textarea::placeholder { color: var(--text-subtle); }
 .badge-lg { width: 92px; height: 92px; }
 .badge svg { width: 58%; height: 58%; display: block; }
 
-/* — State: UNLOCKED (full gilt) — the resting state above is already the
-   unlocked look; this just adds the earned glow + a subtle conduct breathe
-   that you can opt into on the freshly-unlocked coin. */
-.badge--unlocked { box-shadow: 0 0 0 1px color-mix(in oklab, var(--gilt) 30%, transparent) inset, var(--shadow-3), var(--glow-gold); }
+/* — State: UNLOCKED (full metal) — the resting state above is already the
+   unlocked look; this just firms the inner ring. (It added `--glow-gold`, the
+   money ramp's bloom, until R5-C's gold audit: an achievement is not paid.) */
+.badge--unlocked { box-shadow: 0 0 0 1px color-mix(in oklab, var(--metal-gold) 30%, transparent) inset, var(--shadow-3); }
 
-/* — State: LOCKED (ghosted outline) — desaturated, no gilt, reads as "not yet". */
+/* — State: LOCKED (ghosted outline) — desaturated, no metal, reads as "not yet". */
 .badge--locked {
   color: var(--text-subtle);
   background: var(--bg-overlay);
@@ -3025,9 +3062,10 @@ textarea::placeholder { color: var(--text-subtle); }
 .badge--locked::after { border-color: color-mix(in oklab, var(--text-subtle) 22%, transparent); }
 .badge--locked .badge-gold-accent { stroke: var(--text-subtle) !important; fill: var(--text-subtle) !important; }
 
-/* — State: IN-PROGRESS — locked coin wrapped in a gilt progress ring.
+/* — State: IN-PROGRESS — locked coin wrapped in a brand progress ring.
    The ring is an SVG (`.badge-ring`) the component renders; here we style
-   the count chip ("3 / 5") that sits under it. */
+   the count chip ("3 / 5") that sits under it. Progress, not money: the
+   brand family, as every progress fill in the product (R5-C, 2026-10-09). */
 .badge--progress {
   color: var(--royal-ink-2);
   background: var(--bg-overlay);
@@ -3036,13 +3074,13 @@ textarea::placeholder { color: var(--text-subtle); }
 }
 .badge-ring-track { stroke: var(--border); fill: none; }
 .badge-ring-arc {
-  stroke: var(--gilt);
+  stroke: var(--brand-500);
   fill: none;
   stroke-linecap: round;
   transform: rotate(-90deg);
   transform-origin: center;
   transition: stroke-dashoffset var(--dur-stage) var(--ease-conduct);
-  filter: drop-shadow(0 0 3px color-mix(in oklab, var(--gilt) 45%, transparent));
+  filter: drop-shadow(0 0 3px color-mix(in oklab, var(--brand-500) 45%, transparent));
 }
 
 /* Progress / tier count chip shared by badges + streaks. */
@@ -3052,7 +3090,7 @@ textarea::placeholder { color: var(--text-subtle); }
   font-size: 10px;
   font-weight: 600;
   letter-spacing: 0.02em;
-  color: var(--gilt);
+  color: var(--brand-300);
 }
 
 /* Tiered-badge ribbon (Connector 1/5/25 etc.) — a tiny roman-numeral mono
@@ -3069,7 +3107,7 @@ textarea::placeholder { color: var(--text-subtle); }
   letter-spacing: 0.04em;
   background: var(--claret-700);
   color: var(--claret-100);
-  border: 1px solid var(--gilt);
+  border: 1px solid var(--metal-gold);         /* the coin's own metal, not `--gilt` (Q5; R5-C, 2026-10-09) */
 }
 
 /* — Badge unlock moment — "seal stamped" beat. Reuses celebrate-pop on the
@@ -4503,12 +4541,16 @@ html[data-sheet-open] .route-enter { animation: none; }
   margin: var(--sp-3) 0 0;
 }
 
-/* Eyebrow — the 2×14 gilt tick leans on the same axis as the needle, mirrored. */
+/* Eyebrow — the 2×14 tick leans on the same axis as the needle, mirrored.
+   ⛔ IN THE BRAND'S MARK INK, NOT GILT (R5-C, the second gold audit, 2026-10-09). It is an eyebrow's ACCENT on five landing
+   bands, and the product's one non-money accent is the brand family (`--brand-400`, the "this one" mark the rail's dot and
+   every pip wear): gold is money and nothing else (DESIGN_AUTHORITY Q5), and an eyebrow is never money. Only the mark
+   itself keeps the gilt needle (§B1a) — this tick echoes its angle, not its metal. */
 .kp-hero__tick {
   display: inline-block;
   width: 2px;
   height: 14px;
-  background: var(--gilt);
+  background: var(--brand-400);
   transform: rotate(14deg);
   flex: none;
 }
@@ -4750,7 +4792,10 @@ html[data-sheet-open] .route-enter { animation: none; }
    browser's own markers are off. */
 .fairness-steps { counter-reset: fairness-step; }
 .fairness-steps > li { position: relative; padding-left: var(--sp-6); counter-increment: fairness-step; }
-.fairness-steps > li::before { content: counter(fairness-step) "."; position: absolute; top: 0; left: 0; font-weight: 700; color: var(--gold-300); }
+/* The numeral is the list's own ink (the `<ol>`'s muted) — never gold: a step number is not money (R5-C, the second gold
+   audit, 2026-10-09; Q5 — it was `--gold-300`). Its face stays R4-E's measured one: the list's own Inter Bold, PROPORTIONAL,
+   so the five numerals' ink starts within 0.25px (tabular figures centre a narrow "1" and spread them — visual-pass-r4e §7). */
+.fairness-steps > li::before { content: counter(fairness-step) "."; position: absolute; top: 0; left: 0; font-weight: 700; }
 
 /* ── /wallet/deposit and /wallet/withdraw · THE PROVIDER TILES (`ProviderRadioGrid`, round 4, 2026-10-09, tile 069) ────
    A short last row shares the row's width instead of leaving empty cells: five rails in three columns left a blank
@@ -5952,7 +5997,9 @@ textarea::-webkit-resizer {
   font-size: var(--type-small);
   font-weight: 700;
   letter-spacing: 0.2em;
-  color: var(--gilt);
+  /* A step's number, in the step list's body ink — never gold (R5-C, the second gold audit, 2026-10-09; Q5 "gold is
+     money, and nothing else"): the same reading the /fairness and Lipa step numerals take. */
+  color: var(--text-muted);
 }
 .kp-step__h {
   font-family: var(--font-display);
@@ -6616,7 +6663,9 @@ html[lang="zh"] .kp-udrule { word-break: keep-all; }
   .kp-trust > * { padding-right: var(--sp-6); }
   .kp-trust > * + * { border-left: 1px solid var(--border); padding-left: var(--sp-6); }
 }
-.kp-trust__glyph { display: flex; color: var(--gilt); }
+/* Each fact's glyph is an ACCENT, and the product's one non-money accent is the brand family (R5-C, the second gold audit,
+   2026-10-09; Q5 "gold is money, and nothing else"): it was `--gilt` on three claims about how a result is checked. */
+.kp-trust__glyph { display: flex; color: var(--brand-300); }
 .kp-trust__h {
   font-family: var(--font-display);
   font-weight: 600;

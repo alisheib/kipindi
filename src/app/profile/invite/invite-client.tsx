@@ -81,7 +81,12 @@ function LinkField({ value, label }: { value: string; label: string }) {
 
 /**
  * Referral link + share controls. Client-only: clipboard + Web Share API.
- * Primary CTA is gold on the PAID promo (brand rule); secondary share buttons are ghost.
+ * The primary CTA is the kit's primary button in EVERY state; secondary share buttons are ghost.
+ * ⛔ IT IS NEVER GOLD NOW (R5-C, the second gold audit, 2026-10-09). The `paid` prop below kept a gold
+ * button for the PAID invite — but sharing a link earns nothing at the moment of the tap: it is a
+ * promise, as the commission RATE is, and the card it sends is the royal invitation in every state
+ * (§M3a D5, "on an inducement, a house colour becomes a marketing claim"; Q5). The money a referrer
+ * earns is gold where it is earned — the dial and the Earned figure on /profile/invite. `paid` is gone.
  *
  * 🔴 `paid` ARRIVED 2026-09-25 BECAUSE A SCREENSHOT CAUGHT WHAT EVERY TEXT CHECK MISSED. With the
  * unpaid invite live, this was still rendering a full-width GOLD button — the largest, loudest
@@ -93,7 +98,7 @@ function LinkField({ value, label }: { value: string; label: string }) {
  * ⭐ Threaded as a prop rather than read here: this is `"use client"`, and the product state lives
  * on the server (`app-shell.tsx` does the same for the nav).
  */
-export function ReferralShare({ link, shareText, paid = false }: { link: string; shareText: string; paid?: boolean }) {
+export function ReferralShare({ link, shareText }: { link: string; shareText: string }) {
   const { toast } = useToast();
   const { t } = useT();
   const [copied, setCopied] = useState(false);
@@ -148,7 +153,7 @@ export function ReferralShare({ link, shareText, paid = false }: { link: string;
           {copied ? t.common.copied : t.common.copy}
         </button>
       </div>
-      <Button variant={paid ? "gold" : "primary"} size="lg" fullWidth leading={<I.share s={17} />} onClick={share}>
+      <Button variant="primary" size="lg" fullWidth leading={<I.share s={17} />} onClick={share}>
         {t.profile.shareWithFriends}
       </Button>
       {/* 2-up on phones (3-up won't fit "Copy link" at 320), 3-up from sm.

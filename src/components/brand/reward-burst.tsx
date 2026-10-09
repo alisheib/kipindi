@@ -25,6 +25,12 @@
  *
  * HARD RULE for callers: only ever mount this AFTER the server has confirmed
  * the state (approval, verification) — never optimistically on money.
+ *
+ * ⭐ `tone` (R5-C, the second gold audit, 2026-10-09). The gilt medallion is for MONEY EARNED — the proposal bonus, which
+ * is why it stays the default. KYC VERIFIED is not money: §B11's first correction decides "APPROVED is success-green
+ * everywhere … an approval is not money, it is permission", and Q5 says gold is money and nothing else. So the verified
+ * crest takes `tone="success"`, the app-state family the KYC rail's done nodes already wear — the same medallion, its
+ * ring, face and glyph in success.
  */
 
 import * as React from "react";
@@ -33,8 +39,27 @@ import { cn } from "@/lib/utils";
 
 export type RewardGlyph = "trophy" | "shieldcheck" | "resolved" | "star";
 
+/** The medallion's paint per tone. `gold` = money earned (the default); `success` = an approval (§B11). */
+const MEDALLION = {
+  gold: {
+    border: "2px solid var(--gold-500)",
+    background:
+      "radial-gradient(circle at 42% 30%, color-mix(in oklab, var(--gold-300) 25%, transparent), color-mix(in oklab, var(--gold-500) 6%, transparent))",
+    boxShadow: "inset 0 0 0 1px color-mix(in oklab, var(--gold-300) 18%, transparent)",
+    color: "var(--gold-300)",
+  },
+  success: {
+    border: "2px solid var(--success)",
+    background:
+      "radial-gradient(circle at 42% 30%, color-mix(in oklab, var(--success-fg) 25%, transparent), color-mix(in oklab, var(--success) 6%, transparent))",
+    boxShadow: "inset 0 0 0 1px color-mix(in oklab, var(--success-fg) 18%, transparent)",
+    color: "var(--success-fg)",
+  },
+} as const;
+
 export function RewardBurst({
   glyph = "shieldcheck",
+  tone = "gold",
   amount,
   caption,
   captionSub,
@@ -44,6 +69,8 @@ export function RewardBurst({
 }: {
   /** Context glyph inside the medallion. */
   glyph?: RewardGlyph;
+  /** `gold` for money earned (the proposal bonus); `success` for an approval (KYC verified). See the header. */
+  tone?: keyof typeof MEDALLION;
   /** Earned amount line, pre-formatted — e.g. "+TZS 20,000". Optional. */
   amount?: string;
   /** Sora caption — e.g. "Approved" / "Verified" (localized by the caller). */
@@ -61,18 +88,14 @@ export function RewardBurst({
 
   return (
     <div className={cn("inline-flex flex-col items-center text-center", className)}>
-      {/* The medallion — a gilt ring on a quiet gold-tinted face. No rays, no
+      {/* The medallion — a ring on a quiet tinted face, in its tone. No rays, no
           brackets, no cast of its own: it sits IN its section, not above it. */}
       <div
         className={cn("grid place-items-center rounded-full", animate && "m-in-lift")}
         style={{
           width: size,
           height: size,
-          border: "2px solid var(--gold-500)",
-          background:
-            "radial-gradient(circle at 42% 30%, color-mix(in oklab, var(--gold-300) 25%, transparent), color-mix(in oklab, var(--gold-500) 6%, transparent))",
-          boxShadow: "inset 0 0 0 1px color-mix(in oklab, var(--gold-300) 18%, transparent)",
-          color: "var(--gold-300)",
+          ...MEDALLION[tone],
         }}
       >
         <span className={cn("inline-flex", animate && "g-settle")}>

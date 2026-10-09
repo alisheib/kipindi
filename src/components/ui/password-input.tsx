@@ -128,21 +128,24 @@ export const PasswordInput = React.forwardRef<HTMLInputElement, Props>(function 
 });
 
 /**
- * Strength meter — three-bar segmented gauge using the kit's yes / gold
+ * Strength meter — three-bar segmented gauge using the kit's success / warning
  * / danger tones. Heuristic: length + character class diversity.
+ * ⛔ The middle step is the WARNING family, not the gold ramp (R5-C, the second gold audit, 2026-10-09): "OK, could be
+ * stronger" is a caution, and a password is never money (DESIGN_AUTHORITY Q5). It read `bg-gold-500` / `text-gold-300`,
+ * the money tokens. What it paints still leans gold while `--warning-fg` IS `--gilt` — that token is the owner's (F3).
  */
 function PasswordStrength({ value }: { value: string }) {
   const { t } = useT();
   const score = scorePassword(value);   // 0 / 1 / 2 / 3
-  const tone = score >= 3 ? "yes" : score === 2 ? "gold" : "danger";
+  const tone = score >= 3 ? "yes" : score === 2 ? "warning" : "danger";
   const label = score >= 3 ? t.common.strong : score === 2 ? t.common.ok : score === 1 ? t.common.weak : t.common.tooShort;
   const fillCls =
     tone === "yes" ? "bg-success"
-    : tone === "gold" ? "bg-gold-500"
+    : tone === "warning" ? "bg-warning"
     : "bg-danger";
   const fgCls =
     tone === "yes" ? "text-success-fg"
-    : tone === "gold" ? "text-gold-300"
+    : tone === "warning" ? "text-warning-fg"
     : "text-danger-fg";
 
   return (

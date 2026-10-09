@@ -150,9 +150,12 @@ export default async function ProposalDetailPage({ params }: { params: Promise<{
           <p className="mb-3 font-mono text-micro uppercase eyebrow font-bold text-text-subtle">{t.common.statusLabel}</p>
           <StatusTimeline current={timelineStep(p)} />
           {open && <p className="mt-1 text-body-sm text-text-subtle">{t.common.officerReviewsNext}</p>}
+          {/* One way to the market in both states (R5-C, the second gold audit, 2026-10-09): it turned GOLD once the market
+              resolved — but a link to a market is a control, not the market's resolved seal (that is the chip on its page,
+              §M3), and the proposer's money is the crest above (Q5). */}
           {p.publishedMarketId && (
             <Link href={`/markets/${p.publishedMarketId}` as never}>
-              <Button variant={p.status === "RESOLVED" ? "gold" : "ghost"} size="md" fullWidth className="mt-3" trailing={<I.arrowRight s={15} />}>
+              <Button variant="ghost" size="md" fullWidth className="mt-3" trailing={<I.arrowRight s={15} />}>
                 {p.status === "RESOLVED" ? t.common.viewResolvedMarket : t.common.viewLiveMarket}
               </Button>
             </Link>

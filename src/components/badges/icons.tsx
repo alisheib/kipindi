@@ -1,7 +1,9 @@
 /**
  * Achievement badge line-art icons + metadata — heraldic engraved medal language.
  * viewBox 0 0 56 56, stroke=currentColor, 2.2px, round caps/joins.
- * Single gold accent per badge via `.badge-gold-accent` (desaturates when locked).
+ * Single metal accent per badge via `.badge-gold-accent` (desaturates when locked).
+ * ⛔ The accent is the coin's METAL, `--metal-gold`, not `--gold-400` (R5-C, the second gold audit, 2026-10-09;
+ * DESIGN_AUTHORITY Q5: identity "may be METALLIC; it may not wear … --gold-300…500"). The class keeps its old name.
  */
 import type { ReactNode } from "react";
 
@@ -15,7 +17,7 @@ const wrap = (inner: ReactNode): ReactNode => (
   </svg>
 );
 
-const gold = "var(--gold-400)";
+const gold = "var(--metal-gold)";
 
 export const BADGE_ICONS: Record<AchievementId, ReactNode> = {
   /* Viewfinder locking onto the point — your first committed call. */

@@ -155,7 +155,9 @@ export function NavProgress() {
         className="h-full origin-left"
         style={{
           background: "linear-gradient(90deg, var(--brand-500), var(--aqua-400))",
-          boxShadow: "0 0 8px oklch(72% 0.14 78 / 0.5)",
+          // The glow mixes off the brand (DESIGN_AUTHORITY §E4: "Glows mix off --brand-500, so they track the brand"). It was
+          // a hand-typed gold, oklch(72% 0.14 78), under a bar that measures a page load — never money (Q5; R5-C, 2026-10-09).
+          boxShadow: "0 0 8px color-mix(in oklab, var(--brand-500) 50%, transparent)",
           transform: "scaleX(0)",
           willChange: "transform",
         }}

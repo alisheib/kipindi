@@ -117,10 +117,12 @@ export default async function AgentStatusPage() {
                   <p className="mt-1 text-body-sm leading-relaxed text-text">{view.app.rejectNote}</p>
                 </div>
               )}
-              {/* The money — gold + mono */}
+              {/* The money — mono, NEUTRAL: a refunded fee is the applicant's own money coming back, and DESIGN_AUTHORITY §C4
+                  says it in as many words — "VOID / refunded is NEUTRAL"; gold is money earned and nothing else (§M3, Q5).
+                  The plain inset box (R5-C, the second gold audit, 2026-10-09). */}
               {view.refund && view.refund.amountTzs !== null && (
-                <div className="rounded-md border border-gold-700 px-3 py-2" style={{ background: "color-mix(in oklab, var(--gold-500) 8%, transparent)" }}>
-                  <p className="font-mono text-body-sm tabular-nums text-gold-300">
+                <div className="rounded-md border border-border bg-bg-overlay/40 px-3 py-2">
+                  <p className="font-mono text-body-sm tabular-nums text-text">
                     {view.refund.refundedAt
                       ? fillNodes(t.agent.refunded, { amount: <span className="amount">{formatTzs(view.refund.amountTzs)}</span>, date: d(view.refund.refundedAt), ref: view.refund.reference ?? "—" })
                       : fillNodes(t.agent.refundDue, { amount: <span className="amount">{formatTzs(view.refund.amountTzs)}</span>, date: view.refund.dueAt ? d(view.refund.dueAt) : "—" })}

@@ -21,9 +21,11 @@ import { cn } from "@/lib/utils";
  * ⚠️ ONE RENDERED CHANGE FALLS OUT OF THAT, and it is the point of the exercise
  * rather than a side effect: on the withdraw confirm the Amount row moves from
  * 15px/semibold to `emphasis="amount"` = 16px/bold, matching deposit. Withdraw's
- * hierarchy survives it — the you-receive total stays the loudest line because it
- * is the only GOLD one, and gold is legitimate there (M3: it is the money the
- * player is about to receive, not a projection).
+ * hierarchy survives it — the you-receive total is the bottom line under its divider.
+ * ⛔ It was "the only GOLD one … the money the player is about to receive" until R5-C's
+ * gold audit (2026-10-09): its only caller is the WITHDRAW confirm, where that money is the
+ * player's own, leaving — and §M3a D1 says moving your own money "earns nothing, so gold
+ * overstates it". `total` is the text's ink now; no confirm box carries gold.
  *
  * ⛔ WHAT THIS DOES NOT ABSORB. The bet and sell confirms lay their figures out
  * as a two-column stat PAIR (a side + a stake, a value + a fee), not as a stacked
@@ -51,8 +53,8 @@ const VALUE: Record<ReceiptEmphasis, string> = {
   // A deduction. Colour comes from the ROW (see `tone`), not from here, so the
   // label and the figure are unmistakably one statement.
   fee:    "font-mono text-[13px] font-semibold tabular-nums",
-  // The bottom line — what actually lands. The only gold in the box.
-  total:  "font-mono text-[16px] font-bold tabular-nums text-gold-300",
+  // The bottom line — what actually lands. The divider above it sets it apart; never gold (D1, R5-C).
+  total:  "font-mono text-[16px] font-bold tabular-nums text-text",
   // A row that is still resolving ("checking…").
   muted:  "font-mono text-[12px] text-text-subtle",
 };

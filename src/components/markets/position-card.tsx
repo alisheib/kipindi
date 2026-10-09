@@ -171,12 +171,15 @@ export function PositionCard({ marketId, marketTitle, side, productLine, stake, 
         // computed by the same function that will settle it. Not an estimate, and we
         // say so, because "you'll get about X" and "you will get X" are different
         // promises and we are making the second one.
+        // ⛔ IN THE TEXT'S INK, NOT GOLD (R5-C, the second gold audit, 2026-10-09). The note above already refused to
+        // STRIKE this figure because it "has not been won" — and flat gold says the same thing in a quieter voice:
+        // DESIGN_AUTHORITY §B12, "a gold data line would claim earnings the round has not decided"; §M3, gold appears
+        // only where money was EARNED. Exact is not earned. The settled WIN above is gold, struck.
         <div className="grid grid-cols-2 gap-3">
           <Stat label={t.dialog.stakeLabel} value={formatTzs(stake)} money />
           <Stat
             label={t.market.payoutIfWin}
             value={formatTzs(payout)}
-            tone="gold"
             money
             hint={t.market.payoutExactNote}
           />

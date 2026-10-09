@@ -44,8 +44,14 @@ export function CashbackPromo({
        at once (a TZS 0 bonus, this promo, three Deposit CTAs) while the player's REAL
        balance sat in the quietest box on the screen. On an RG-licensed product that is not
        a style question.
-       ⭐ It keeps its gold TEXT — the eyebrow, the ON REQUEST tag, the coins motif — so it
-       still reads as the money-in column; it simply stops outshouting the balance.
+       ⛔ AND NOW THE WORDS TOO (R5-C, the second gold audit, 2026-10-09). That pass kept gold
+       TEXT — the eyebrow, the ON REQUEST tag — "so it still reads as the money-in column", but
+       D5 says it of the CARD: an inducement to deposit "must not wear the ink this platform uses
+       to say *you won this*" (DESIGN_AUTHORITY §M3a), and an eyebrow is never money (Q5). The
+       eyebrow and tag take the neutral pair the bonus card beside it wears, and "Deposit now" is
+       the primary action: §M3a gives the deposit door's gold to an ENTRY whose amount the player
+       named — "so it is not an inducement card" — and this card is exactly one. (The panel
+       renders only while the bonus feature is live — `bonus: WITHDRAWN` today.)
        ⛔ The byte-identical twin this panel used to share with `wallet-client.tsx`'s bonus
        card is gone: BOTH were converted in the same change, which is the only way a
        two-file recipe stops drifting. */
@@ -64,10 +70,10 @@ export function CashbackPromo({
           financial texture." It was the jackpot-glow half of the costume D5 removes. */}
 
       <div className={cn("relative z-10", compact ? "p-4" : "p-5 lg:p-6")}>
-        <div className="flex items-center gap-1.5 text-gold-300">
+        <div className="flex items-center gap-1.5 text-text-subtle">
           <I.coins s={13} />
           <p className="font-mono text-micro uppercase eyebrow font-bold">{t.common.cashback}</p>
-          <span className="ml-auto inline-flex items-center gap-1 rounded-pill px-2 py-0.5 font-mono text-micro uppercase tracking-[0.12em] font-bold bg-gold-500/15 text-gold-200">
+          <span className="ml-auto inline-flex items-center gap-1 rounded-pill px-2 py-0.5 font-mono text-micro uppercase tracking-[0.12em] font-bold bg-bg-inset text-text-subtle">
             {isRequest ? t.common.onRequest : t.common.everyDeposit}
           </span>
         </div>
@@ -83,7 +89,7 @@ export function CashbackPromo({
         </p>
 
         {cta && !isRequest && (
-          <Link href="/wallet/deposit" className="btn btn-gold btn-sm rounded-pill mt-4 inline-flex">
+          <Link href="/wallet/deposit" className="btn btn-primary btn-sm rounded-pill mt-4 inline-flex">
             <I.coins s={13} />
             {t.common.depositNow}
           </Link>

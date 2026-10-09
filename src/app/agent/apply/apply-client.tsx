@@ -314,30 +314,31 @@ export function ApplyClient({ app, documents, missing, kycGate, fee, lipa, walle
         </section>
       )}
 
-      {/* STEP 4 · Payment — gold + mono, money only */}
+      {/* STEP 4 · Payment — mono, in the text's own ink: the fee is money the applicant PAYS, which earns nothing (§M3a
+          D1), and gold is money earned and nothing else (Q5). The same box as /agent's fee (R5-C, 2026-10-09). */}
       {step === 3 && (
         <section className="space-y-3">
-          <div className="rounded-xl border border-gold-700 p-4" style={{ background: "color-mix(in oklab, var(--gold-500) 8%, var(--bg-elevated))" }}>
-            <p className="font-mono text-micro uppercase eyebrow font-bold text-gold-300">{t.agent.payTitle}</p>
+          <div className="rounded-xl glass-panel p-4">
+            <p className="font-mono text-micro uppercase eyebrow font-bold text-text-subtle">{t.agent.payTitle}</p>
             {app.feeWaived ? (
               <p className="mt-2 text-body-sm leading-relaxed text-text">{t.agent.payWaived}</p>
             ) : feeSettled ? (
               <p className="mt-2 text-body-sm leading-relaxed text-text">{t.agent.payPaidFromWallet}</p>
             ) : (
               <>
-                <p className="mt-2 amount text-title-lg font-bold text-gold-300">{formatTzs(fee.totalTzs)}</p>
+                <p className="mt-2 amount text-title-lg font-bold text-text">{formatTzs(fee.totalTzs)}</p>
                 {/* NO BANK INSTRUCTION. The rail is the applicant own wallet (Ali, 2026-09-10),
                     so there is no destination account to quote and nothing to upload. */}
-                <p className="mt-2 text-body-sm leading-relaxed text-text">{fillNodes(t.agent.payFromWalletBody, { amount: <span className="amount text-gold-300">{formatTzs(fee.totalTzs)}</span> })}</p>
+                <p className="mt-2 text-body-sm leading-relaxed text-text">{fillNodes(t.agent.payFromWalletBody, { amount: <span className="amount font-semibold">{formatTzs(fee.totalTzs)}</span> })}</p>
                 <p className="mt-3 font-mono text-body-sm text-text-subtle">
                   {t.agent.payWalletBalance}: <span className="amount text-text">{formatTzs(balanceTzs)}</span>
                 </p>
               </>
             )}
           </div>
-          {/* The gold block above says WHAT is owed; this says HOW to pay it without
-              typing an account number. Deliberately not gold: two gold money blocks
-              stacked read as two separate charges. Renders itself away when the fee is
+          {/* The block above says WHAT is owed; this says HOW to pay it without
+              typing an account number. Two money blocks stacked in one emphasis
+              read as two separate charges. Renders itself away when the fee is
               waived, when the operator has switched the QR off, or when the fee
               destination is not the Lipa number the QR encodes. */}
           {/* GATED AT THE CALL SITE -- PSC-02, same reasoning as /agent/page.tsx. The panel

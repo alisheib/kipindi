@@ -31,7 +31,14 @@ export const LANGS: Locale[] = ["en", "sw", "zh"];
 const CODES: Record<Locale, string> = { en: "EN", sw: "SW", zh: "ZH" };
 export const NAMES: Record<Locale, string> = { en: "English", sw: "Kiswahili", zh: "中文" };
 
-export function LanguageMenu() {
+/**
+ * ⭐ `journey` (R5-C, the second gold audit, 2026-10-09): the current language's tick in the journey is the brand ink of
+ * the row it marks (that row's fill is `--pill-active`, the brand family's "this one"), not `--gilt` — a selection is
+ * never money (DESIGN_AUTHORITY Q5). The classic header's menu is frozen chrome (S6/S7) and keeps its gilt tick until
+ * the owner rules: the change for it is this same ink with the prop dropped. Absent, the markup is what it always was.
+ */
+export function LanguageMenu({ journey = false }: { journey?: boolean } = {}) {
+  const tickInk = journey ? "var(--brand-300)" : "var(--gilt)";
   const { locale, setLocale, t } = useT();
   const ref = useRef<HTMLDetailsElement>(null);
   const panelRef = useRef<HTMLDivElement>(null);
@@ -175,7 +182,7 @@ export function LanguageMenu() {
             >
               {/* A FIXED 16px tick column, so the three rows' labels line up whether or not a row
                   is the current one — a tick that shifts its neighbours reads as a layout bug. */}
-              <span aria-hidden style={{ width: 16, flex: "none", color: "var(--gilt)" }}>
+              <span aria-hidden style={{ width: 16, flex: "none", color: tickInk }}>
                 {active ? <I.check s={14} /> : null}
               </span>
               <span className="min-w-0 flex-1 truncate">{NAMES[code]}</span>

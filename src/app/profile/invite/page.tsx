@@ -8,7 +8,7 @@ import { db } from "@/lib/server/store";
 import { getPlayerReferralSummary, inviteViewerFor, getAgentDashboard, referralRewardDestination } from "@/lib/server/affiliate-service";
 import { AgentDashboard } from "./agent-dashboard";
 import QRCode from "qrcode";
-import { FiftyMark, GiltCorner } from "@/components/brand";
+import { FiftyMark } from "@/components/brand";
 import { Chip } from "@/components/ui/chip";
 import { DotSeq } from "@/components/ui/dot-seq";
 import { Avatar } from "@/components/ui/avatar";
@@ -232,6 +232,10 @@ export default async function InvitePage({
   const ringLabel = paid
     ? (s.earnedTzs > 0 ? formatCompactNumber(s.earnedTzs) : "0")
     : String(s.recruitCount);
+  /** ⭐ Gold only once money WAS earned (R5-C, the second gold audit, 2026-10-09): the paid dial read a gold "0" over a
+   *  gold wash before the first shilling — nothing earned, in the ink of money earned (§M3). Until then it is the royal
+   *  dial the unpaid invite wears; the Earned tile below follows the same predicate. */
+  const earnedGold = paid && s.earnedTzs > 0;
   const shareText = t.profile.shareText;
 
   // Build the referral link from the ACTUAL request host so it always matches
@@ -287,7 +291,7 @@ export default async function InvitePage({
         <div
           aria-hidden
           className="pointer-events-none absolute inset-0"
-          style={{ background: `radial-gradient(120% 90% at 100% 0%, color-mix(in oklab, var(--${paid ? "gold" : "royal"}-500) 12%, transparent), transparent 60%)` }}
+          style={{ background: `radial-gradient(120% 90% at 100% 0%, color-mix(in oklab, var(--${earnedGold ? "gold" : "royal"}-500) 12%, transparent), transparent 60%)` }}
         />
         {/* ⭐ THE CALL HAS THE CARD'S WIDTH ON A PHONE (round 3, 2026-10-09, tile 181). Beside the 96px dial the 19px call
             had 191px at 390 (121 at 320), so "Shiriki kiungo chako · uone wanaojiunga" broke as "Shiriki kiungo" / "chako ·
@@ -297,9 +301,11 @@ export default async function InvitePage({
             its two phrases (`DotSeq`): "Shiriki kiungo chako" over "uone wanaojiunga" at every phone width, and on one
             line, as before, wherever both fit. From `sm` the row is the one it was: dial, then caption over call. */}
         <div className="relative grid grid-cols-[auto_minmax(0,1fr)] items-center gap-x-4 gap-y-3 sm:flex">
-          <EarningsRing value={ringValue} label={ringLabel} tone={paid ? "gold" : "royal"} />
+          <EarningsRing value={ringValue} label={ringLabel} tone={earnedGold ? "gold" : "royal"} />
           <div className="contents sm:block sm:min-w-0 sm:flex-1">
-            <Cap className={`sm:mb-1.5 ${paid ? "!text-gold-300" : "!text-royal-300"}`}>
+            {/* The caption NAMES the dial; the money is on the dial (R5-C, the second gold audit, 2026-10-09: a label is
+                never money, Q5 — one royal caption for both product states). */}
+            <Cap className="sm:mb-1.5 !text-royal-300">
               {paid ? t.profile.inviteEarn : t.profile.friendsJoined}
             </Cap>
             <p className="col-span-2 font-display text-[19px] font-bold leading-tight text-balance">
@@ -320,10 +326,11 @@ export default async function InvitePage({
                         a fifth arbitrary radius on top of the four that note enumerates. Found by
                         searching for the PATTERN rather than by reading the note's own list, which
                         is the only way a list-of-eight could ever have been checked. */}
+                    {/* A promise's glyph is an accent, never money (R5-C, 2026-10-09; Q5): the brand plate every door row and
+                        the propose promo carry. */}
                     <IconPlate
                       size={26}
-                      className="text-gold-300"
-                      bg="color-mix(in oklab, var(--gold-500) 16%, transparent)"
+                      className="bg-brand-500/10 text-brand-300"
                     >
                       <PIcon s={14} />
                     </IconPlate>
@@ -341,28 +348,26 @@ export default async function InvitePage({
 
       {/* A9 share-card — the visual a referrer sends: FiftyMark, headline, the
           CODE in a frame, QR bottom-right. Shows the code, never a balance.
-          ⭐ THE FRAME FOLLOWS THE MONEY. Gold was principled here on one premise, stated in this
-          comment and now conditional: *the invite pays the referrer*. It does not any more, so on
-          the unpaid card the gilt corners come off and the frame is royal. ⛔ This is the §M3 rule
-          applied to the one surface on the page that is designed to be SCREENSHOTTED and sent —
-          a gilt card is the strongest "there is money in this" the product can say, and it would
-          be saying it to someone who is not being offered any. */}
+          ⭐ THE FRAME IS ROYAL IN EVERY STATE (R5-C, the second gold audit, 2026-10-09). It followed the money — gilt
+          corners and frame while the invite pays the referrer — but the card goes to the person INVITED, who is offered
+          an invitation, not a payout: on an inducement "a house colour becomes a marketing claim" (§M3a D5), and gold is
+          money earned and nothing else (Q5). The referrer's earnings are gold where they are earned — the dial above. The
+          agent's share card is the same royal card. ⛔ This is the one surface on the page designed to be SCREENSHOTTED
+          and sent, which is why it must not say "there is money in this". */}
       <section
         className="relative overflow-hidden rounded-xl border p-5"
-        style={{ background: "var(--royal-950)", borderColor: paid ? "var(--gold-700)" : "var(--royal-700)" }}
+        style={{ background: "var(--royal-950)", borderColor: "var(--royal-700)" }}
       >
-        {paid && <GiltCorner size={38} rotate={0} style={{ position: "absolute", top: 6, left: 6 }} />}
-        {paid && <GiltCorner size={38} rotate={180} style={{ position: "absolute", bottom: 6, right: 6 }} />}
         <div className="relative flex items-center gap-4">
           <div className="min-w-0 flex-1">
             <FiftyMark size={38} />
             <p className="mt-3 font-display text-[20px] font-bold leading-tight text-text">{t.common.youveBeenInvited}</p>
-            <p className={`mt-3 font-mono text-micro uppercase eyebrow font-bold ${paid ? "text-gold-300/70" : "text-royal-300/80"}`}>{t.common.invite}</p>
+            <p className="mt-3 font-mono text-micro uppercase eyebrow font-bold text-royal-300/80">{t.common.invite}</p>
             <div
-              className={`mt-1 inline-block rounded-md border px-3 py-1.5 ${paid ? "border-gold-700" : "border-royal-700"}`}
-              style={{ background: `color-mix(in oklab, var(--${paid ? "gold" : "royal"}-500) 10%, transparent)` }}
+              className="mt-1 inline-block rounded-md border border-royal-700 px-3 py-1.5"
+              style={{ background: "color-mix(in oklab, var(--royal-500) 10%, transparent)" }}
             >
-              <span className={`font-mono text-[22px] font-bold tracking-[0.1em] ${paid ? "text-gold-300" : "text-royal-200"}`}>{s.code || "—"}</span>
+              <span className="font-mono text-[22px] font-bold tracking-[0.1em] text-royal-200">{s.code || "—"}</span>
             </div>
           </div>
           {qrDataUrl && (
@@ -376,7 +381,7 @@ export default async function InvitePage({
 
       {/* Referral link + share (client) */}
       <div id="referral-share">
-        <ReferralShare link={shareLink} shareText={shareText} paid={paid} />
+        <ReferralShare link={shareLink} shareText={shareText} />
       </div>
 
       {/* Stat tiles.
@@ -402,12 +407,15 @@ export default async function InvitePage({
             balance and the fork rendered it as a bare numeral, outside the <Cash>
             privacy mask that covers every other personal figure in the product.
             `tone="gold"` stays FLAT rather than `struck` — M3's struck gilt is a
-            separate, visible decision and is not smuggled in by a consolidation. */}
+            separate, visible decision and is not smuggled in by a consolidation.
+            ⭐ GOLD ONLY WHEN SOMETHING WAS EARNED (R5-C, the second gold audit, 2026-10-09): a "0" was gold too — nothing
+            earned, in the ink of money earned (§M3). The rows below already said it per friend (`earnedTzs > 0`); the
+            headline figure says it the same way, as the net P&L and the settled strip do. */}
         <Stat
           size="3xl"
           labelStyle="strong"
           boxed="glass"
-          tone="gold"
+          tone={s.earnedTzs > 0 ? "gold" : "default"}
           money
           label={t.proposals.earned}
           value={formatNumber(s.earnedTzs)}
@@ -439,13 +447,11 @@ export default async function InvitePage({
             t.proposals.earned,
           ].map((label, i) => (
             <div key={i} className="flex items-center gap-3">
+              {/* One numeral for every step (R5-C, 2026-10-09): the third ("Earned") was a gold disc — a step of a promise,
+                  not money earned (§M3, Q5). The same royal disc as /agent's and the agent dashboard's steps. */}
               <span
                 className="grid h-[30px] w-[30px] shrink-0 place-items-center rounded-full font-mono text-[14px] font-bold"
-                style={
-                  i === 2
-                    ? { background: "linear-gradient(180deg, var(--gold-400), var(--gold-600))", color: "var(--gold-950)", border: "1px solid var(--gold-700)" }
-                    : { background: "color-mix(in oklab, var(--royal-500) 18%, transparent)", color: "var(--royal-200)", border: "1px solid color-mix(in oklab, var(--royal-500) 36%, transparent)" }
-                }
+                style={{ background: "color-mix(in oklab, var(--royal-500) 18%, transparent)", color: "var(--royal-200)", border: "1px solid color-mix(in oklab, var(--royal-500) 36%, transparent)" }}
               >
                 {i + 1}
               </span>
@@ -543,7 +549,11 @@ export default async function InvitePage({
                     "Signed up" and the chip becomes a column of identical words that looks like a
                     stalled process. The amount column is "—" for the same reason. A row that says
                     who joined and when is the whole truth the unpaid programme has. */}
-                {paid && <Chip variant={r.earnedTzs > 0 ? "resolved" : "pending"}>{r.status}</Chip>}
+                {/* The chip NAMES the friend's rung; the money is the figure beside it (R5-C, the second gold audit,
+                    2026-10-09). "Earning" wore the RESOLVED seal — struck gilt, a market's settled outcome (§B11) — on a
+                    label, doubling the gold the "+X" already carries (a label is never money, Q5). A rung that pays is
+                    success; one that waits is royal. The agent dashboard's rows carry the figure alone. */}
+                {paid && <Chip variant={r.earnedTzs > 0 ? "success" : "pending"}>{r.status}</Chip>}
                 {paid && (
                   <div className={`w-[64px] text-right font-mono text-[12.5px] font-semibold ${r.earnedTzs > 0 ? "text-gold-300" : "text-text-subtle"}`}>
                     {r.earnedTzs > 0 ? "+" + formatNumber(r.earnedTzs) : "—"}
@@ -560,8 +570,9 @@ export default async function InvitePage({
             action={
               <a href="#referral-share">
                 {/* ⛔ `variant="gold"` IS A MONEY TOKEN (§M3) — the primary royal button is the kit's
-                    ordinary call to action, and sharing a link is an ordinary action. */}
-                <Button variant={paid ? "gold" : "primary"} size="md" leading={<I.share s={14} />}>
+                    ordinary call to action, and sharing a link is an ordinary action — in BOTH product states (R5-C,
+                    the second gold audit, 2026-10-09: the paid invite kept a gold button here; ReferralShare's twin). */}
+                <Button variant="primary" size="md" leading={<I.share s={14} />}>
                   {t.profile.shareWithFriends}
                 </Button>
               </a>

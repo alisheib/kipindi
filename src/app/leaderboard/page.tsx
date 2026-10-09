@@ -514,19 +514,28 @@ export default async function LeaderboardPage({ searchParams }: { searchParams: 
   );
 }
 
-/** Hot-streak chip — flame glyph + win count. Gold is principled on the
- *  leaderboard (earned standing). */
+/** Hot-streak chip — flame glyph + win count.
+ *  ⛔ METAL, NOT MONEY (R5-C, the second gold audit, 2026-10-09). It said "gold is principled on the leaderboard
+ *  (earned standing)" — but standing is IDENTITY, and DESIGN_AUTHORITY Q5 rules identity once: "a tier or asset may be
+ *  METALLIC; it may not wear --gilt … or --gold-300…500". Round 3 took the money ink off this page's ribbon for the same
+ *  reason (`test:gold-is-money`). The chip wears the tier ladder's metal, `--metal-gold` (the gold tier's own rim). */
 function HotChip({ streak, t }: { streak: number; t: Dict }) {
   return (
-    <span className="inline-flex items-center gap-1 rounded-pill border border-gold-700/50 bg-gold-500/10 px-2 py-0.5 font-mono text-[10px] font-bold text-gold-300">
+    <span
+      className="inline-flex items-center gap-1 rounded-pill border px-2 py-0.5 font-mono text-[10px] font-bold"
+      style={{ borderColor: "color-mix(in oklab, var(--metal-gold) 50%, transparent)", background: "color-mix(in oklab, var(--metal-gold) 10%, transparent)", color: "var(--metal-gold)" }}
+    >
       <I.hot s={11} />
       {streak} {streak > 1 ? t.leaderboard.winsLabel : t.leaderboard.winLabel}
     </span>
   );
 }
 
-/** A10 top-3 podium. Order [#2, #1, #3] so #1 sits center-raised; gilt ring +
- *  crown on #1, muted-ink rings on #2/#3. Avatars rise in staggered (kp-rise). */
+/** A10 top-3 podium. Order [#2, #1, #3] so #1 sits center-raised; a metal ring +
+ *  crown on #1, muted-ink rings on #2/#3. Avatars rise in staggered (kp-rise).
+ *  ⛔ The #1 honours ring, its crown and its rank disc are the tier ladder's METAL (`--metal-gold`, which is
+ *  `TIER_RING.gold`), not `--gold-400`/`--gold-300` — a place on a leaderboard is identity, not money (Q5; R5-C, the
+ *  second gold audit, 2026-10-09). The disc's figure is the dark navy ink the light fills take (`--text-on-brand`). */
 function Podium({ top, t }: { top: Row[]; t: Dict }) {
   const slots: { r: Row; rank: 1 | 2 | 3 }[] = [
     { r: top[1], rank: 2 },
@@ -538,7 +547,7 @@ function Podium({ top, t }: { top: Row[]; t: Dict }) {
       <div className="grid grid-cols-3 items-end gap-2 sm:gap-4">
         {slots.map(({ r, rank }, i) => {
           const first = rank === 1;
-          const ring = first ? "var(--gold-400)" : "var(--text-muted)";
+          const ring = first ? "var(--metal-gold)" : "var(--text-muted)";
           return (
             <div
               key={r.userId}
@@ -546,7 +555,7 @@ function Podium({ top, t }: { top: Row[]; t: Dict }) {
               style={{ animationDelay: `${i * 60}ms` }}
             >
               {first ? (
-                <span className="mb-1 text-gold-300 podium-crown" aria-hidden><I.crown s={22} /></span>
+                <span className="mb-1 text-[var(--metal-gold)] podium-crown" aria-hidden><I.crown s={22} /></span>
               ) : (
                 <span className="mb-1 block h-[22px]" aria-hidden />
               )}
@@ -558,15 +567,15 @@ function Podium({ top, t }: { top: Row[]; t: Dict }) {
                 <span
                   aria-hidden
                   className="crest-ring-reveal absolute inset-0 rounded-full"
-                  style={{ background: ring, boxShadow: first ? "0 0 16px color-mix(in oklab, var(--gold-400) 45%, transparent)" : "none" }}
+                  style={{ background: ring, boxShadow: first ? "0 0 16px color-mix(in oklab, var(--metal-gold) 45%, transparent)" : "none" }}
                 />
                 <Avatar className="crest-arrive relative" initials={r.handle.slice(0, 2)} size={first ? "xl" : "lg"} seed={r.userId} />
                 <span
                   className="absolute -bottom-1 -right-1 grid place-items-center rounded-full font-mono text-[10px] font-bold"
                   style={{
                     width: 18, height: 18,
-                    background: first ? "var(--gold-400)" : "var(--bg-overlay)",
-                    color: first ? "var(--gold-950)" : "var(--text-muted)",
+                    background: first ? "var(--metal-gold)" : "var(--bg-overlay)",
+                    color: first ? "var(--text-on-brand)" : "var(--text-muted)",
                     border: "1px solid var(--border-strong)",
                   }}
                 >

@@ -55,12 +55,13 @@ export function LegalHeader({
 }) {
   const Glyph = glyph ? I[glyph] : null;
   return (
-    // Framed like an official regulator letter — the GiltCorner is the kit's
-    // sanctioned "seal" (its documented use is framing regulator letters), the
-    // single gilt note; glyph + eyebrow stay neutral chrome (gold = money only).
+    // Framed like an official regulator letter — the kit's heraldic corners (their documented use is framing regulator
+    // letters); glyph + eyebrow stay neutral chrome. ⛔ The corners are CLARET, not gilt (R5-C, the second gold audit,
+    // 2026-10-09): gold is money and nothing else (Q5; a decorative gilt element is "a violation, not a style choice",
+    // §M3), and §B4 gives regulator chrome to claret — "editorial weight only … regulator/footer crest".
     <header className="relative overflow-hidden rounded-xl border border-border bg-bg-elevated/50 px-5 py-4 lg:px-6 lg:py-5">
-      <GiltCorner size={54} rotate={0} className="absolute left-1 top-1" />
-      <GiltCorner size={54} rotate={180} className="absolute right-1 bottom-1" />
+      <GiltCorner size={54} rotate={0} ink="var(--claret-400)" className="absolute left-1 top-1" />
+      <GiltCorner size={54} rotate={180} ink="var(--claret-400)" className="absolute right-1 bottom-1" />
       <div className="relative z-10 flex items-start gap-3.5">
         {Glyph && (
           /* ⚠️ LITERALS, not `h-10 w-10` — spacing is overridden (tailwind.config.ts:200-215),

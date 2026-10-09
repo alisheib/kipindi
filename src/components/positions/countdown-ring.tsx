@@ -1,11 +1,16 @@
 "use client";
 
 /**
- * C2c — mini countdown-ring for open position cards. A depleting arc (aqua →
- * gold when < 1h) over the position's window (placed → deadline), with a compact
- * remaining label in the centre. Ticks client-side; seeded with the server's
- * `now` so SSR and first client render match (no hydration mismatch). The
- * depleting arc is a value, not decoration, so it needs no reduced-motion gate.
+ * C2c — mini countdown-ring for open position cards. A depleting arc over the
+ * position's window (placed → deadline), with a compact remaining label in the
+ * centre. Ticks client-side; seeded with the server's `now` so SSR and first
+ * client render match (no hydration mismatch). The depleting arc is a value, not
+ * decoration, so it needs no reduced-motion gate.
+ * ⛔ THE LAST HOUR KEEPS THE ARC'S INK (R5-C, the second gold audit, 2026-10-09). It turned `--gold-400` under an
+ * hour: money's ink on a clock (DESIGN_AUTHORITY Q5), and §B2a rules the case — "a countdown's last seconds … are
+ * app state … the text keeps its neutral ink", urgency carried by the clock itself (here, the arc running out). So an
+ * urgent arc is the running arc unless a caller asks otherwise (`urgentAccent`); the admin resolver's aqua pair is
+ * unchanged.
  */
 import { useEffect, useState } from "react";
 
@@ -33,9 +38,9 @@ export function CountdownRing({
   serverNow: number;
   size?: number;
   ariaLabel?: string;
-  /** Override the running arc colour. Defaults to aqua. Admin surfaces pass
-   *  aqua for both to keep gold reserved for the resolved seal. */
+  /** Override the running arc colour. Defaults to aqua. */
   accent?: string;
+  /** The arc's ink in the last hour. Defaults to the running arc's (§B2a — see the header). */
   urgentAccent?: string;
 }) {
   const [now, setNow] = useState(serverNow);
@@ -57,7 +62,7 @@ export function CountdownRing({
   const r = size / 2 - sw / 2 - 1;
   const c = 2 * Math.PI * r;
   const runColor = accent ?? "var(--aqua-400)";
-  const urgentColor = urgentAccent ?? "var(--gold-400)";
+  const urgentColor = urgentAccent ?? runColor;
   const stroke = closed ? "var(--text-subtle)" : urgent ? urgentColor : runColor;
 
   return (

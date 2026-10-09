@@ -219,7 +219,8 @@ function PulseCard({ market, index }: { market: Market; index: number }) {
             </span>
           )}
         </span>
-        <span className={`inline-flex items-center gap-1 font-mono text-[10px] tabular-nums ${market.selectionClosed ? "text-gold-300" : "text-text-subtle"}`}>
+        {/* A closed selection is CLOSED — royal (§B11), the dictionary's word ink, never gold (Q5; R5-C, 2026-10-09). */}
+        <span className={`inline-flex items-center gap-1 font-mono text-[10px] tabular-nums ${market.selectionClosed ? "text-brand-300" : "text-text-subtle"}`}>
           {market.selectionClosed && <I.hourglassOff s={11} />}
           {market.timeLeft}
         </span>

@@ -854,7 +854,9 @@ export default async function UpDownRoundPage({
                   {t.market.udEvidenceExcerpt}
                   <span className="ml-2 normal-case tracking-normal text-text-faint">· staff only</span>
                 </p>
-                <pre className="m-0 font-mono text-[10.5px] text-text-muted" style={{ ...inset, borderLeft: "2px solid color-mix(in oklab, var(--gilt) 55%, transparent)", borderRadius: "var(--r-sm)", padding: "11px 13px", lineHeight: 1.65, whiteSpace: "pre-wrap", overflowWrap: "break-word" }}>{evidence}</pre>
+                {/* The quote's rule is the market page's own (`border-l-2 border-border/60`), not gilt: a source excerpt is
+                    not money (R5-C, the second gold audit, 2026-10-09; Q5) — the resolution panel's evidence reads the same. */}
+                <pre className="m-0 font-mono text-[10.5px] text-text-muted" style={{ ...inset, borderLeft: "2px solid color-mix(in oklab, var(--border) 60%, transparent)", borderRadius: "var(--r-sm)", padding: "11px 13px", lineHeight: 1.65, whiteSpace: "pre-wrap", overflowWrap: "break-word" }}>{evidence}</pre>
               </div>
             )}
 

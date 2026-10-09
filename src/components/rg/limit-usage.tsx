@@ -19,6 +19,15 @@ import { formatTzs } from "@/lib/utils";
  * gate's list in globals.css §6 governs `infinite` animations, which a one-shot
  * transition is not. With motion off the bar renders at its final length instantly.
  */
+/**
+ * THE ONE RAMP for every limit meter in the product (R5-C, the second gold audit, 2026-10-09): `/profile/activity`'s
+ * meters read it too, so the two pages that show a player their limits cannot draw the same usage two ways. Neutral
+ * royal, the warning step from 75% (a caution — its amber is the `--warning-*` family, whose paint is the owner's token,
+ * DESIGN_AUTHORITY F3), the app-state danger from 90% or once the cap is reached — never the betting pair (§B2a), never gilt.
+ */
+export const limitUsageFill = (pct: number, reached: boolean): string =>
+  reached || pct >= 90 ? "var(--danger-500)" : pct >= 75 ? "var(--warning)" : "var(--royal-400)";
+
 export function LimitUsageMeter({
   label,
   used,
@@ -34,8 +43,7 @@ export function LimitUsageMeter({
   const pct = cap > 0 ? (used / cap) * 100 : 0;
   const clamped = Math.max(0, Math.min(100, pct));
   const reached = used >= cap;
-  const fill =
-    reached || pct >= 90 ? "var(--danger-500)" : pct >= 75 ? "var(--warning)" : "var(--royal-400)";
+  const fill = limitUsageFill(pct, reached);
 
   return (
     <div>

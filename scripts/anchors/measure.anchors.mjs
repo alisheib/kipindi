@@ -134,8 +134,12 @@ export const MUTATIONS = [
     file: "src/app/agent/page.tsx",
     suite: "measure",
     check: "8. /agent: the three fact tiles pad as the sections under them do",
-    from: `        <Stat size="xl" boxed="glass" labelStyle="strong" className="p-4"`,
-    to: `        <Stat size="xl" boxed="glass" labelStyle="strong"`,
+    // ⚠️ RE-ANCHORED by R5-C's gold audit (2026-10-09): the three tiles are ONE treatment now (`font="mono"`, no tone), so
+    // their opening lines are identical and the anchor takes the third tile's label line too, to land exactly once.
+    from: `        <Stat size="xl" boxed="glass" labelStyle="strong" font="mono" className="p-4"
+          label={t.agent.statTime}`,
+    to: `        <Stat size="xl" boxed="glass" labelStyle="strong" font="mono"
+          label={t.agent.statTime}`,
   },
   {
     name: "back-link-chevron-inset",

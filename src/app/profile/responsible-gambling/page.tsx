@@ -186,9 +186,14 @@ export default async function ResponsibleGamblingPage({ searchParams }: { search
         <p className="text-body-sm text-text-muted leading-snug">
           {t.rg.limitsDescription}
         </p>
+        {/* ⭐ THE NEUTRAL NOTICE, AT READING SIZE (R5-C, the second gold audit, 2026-10-09). The last RG notice on this page
+            still wore the warning box — `--warning-*` fill and edge, a warning triangle — at 12px, under the 12.5px floor.
+            A limit change waiting out its cooling-off asks nothing of anyone and has earned nothing: the warning tone is
+            struck in gilt (`--warning-fg` IS `--gilt`, DESIGN_AUTHORITY F3; Q5), and §B11 keeps amber for "somebody must
+            act". It is R4-I's RG notice now, as the break and the exclusion above: the kit `Callout`, `neutral`, `md`
+            (13px), with the clock that says it is waiting. The words, the date and their order are unchanged. */}
         {hasPendingIncrease && (
-          <div className="flex items-start gap-2.5 rounded-md border border-warning-border bg-warning-bg p-3 text-[12px]">
-            <I.warning s={14} />
+          <Callout tone="neutral" size="md" glyph="clock">
             <div className="space-y-1.5">
               {await Promise.all(pendingChanges.map(async (c) => (
                 <div key={c.label}>
@@ -204,7 +209,7 @@ export default async function ResponsibleGamblingPage({ searchParams }: { search
                 </div>
               )))}
             </div>
-          </div>
+          </Callout>
         )}
         <form action={setLimitsAction} className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <Field name="dailyDepositLimit"        label={t.rg.dailyDeposit}      defaultValue={rg.dailyDepositLimit}        placeholder={t.rg.egDay} />

@@ -70,7 +70,11 @@ export const tintFor = (k: Kind) => {
        the neighbours: every other non-gold tone on this list reads
        `border-<family>-border bg-<family>-bg/30 text-<family>-fg`. */
     case "DEPOSIT":      return "border-success-border bg-success-bg/30 text-success-fg";
-    case "WITHDRAW":     return "border-warning-border bg-warning-bg/30 text-warning-fg";
+    /* ⛔ NOT AMBER (R5-C, the second gold audit, 2026-10-09). A withdrawal is the player's own money moving (§M3a D1:
+       "earns nothing"), and nobody must act on it — amber's one meaning (§B11) — so the warning family, whose
+       `--warning-fg` IS `--gilt`, claimed both alarm and gold. It reads the informational tone its account-side
+       neighbours read (KYC, RG); the payment's own status keeps the §B11 words on the row it opens. */
+    case "WITHDRAW":     return "border-info-border bg-info-bg/30 text-info-fg";
     case "KYC":          return "border-info-border bg-info-bg/30 text-info-fg";
     case "RG":           return "border-info-border bg-info-bg/30 text-info-fg";
     /* 🔴 §B2a — and a SECURITY notice is not a lost bet. `--no-*` is the ink that means *your
@@ -78,8 +82,11 @@ export const tintFor = (k: Kind) => {
        `danger` is the app-state family for "something needs your attention now", same recipe. */
     case "SECURITY":     return "border-danger-border bg-danger-bg/30 text-danger-fg";
     case "MATCH_START":  return "border-border bg-bg-overlay text-text-muted";
-    case "AFFILIATE":    return "border-gold-700 bg-gold-500/10 text-gold-300";
-    case "PROPOSAL":     return "border-gold-700 bg-gold-500/10 text-gold-300";
+    /* ⛔ The header above says it: "A WIN IS THE ONLY MONEY OUTCOME THAT IS GOLD". An affiliate notice (a friend joined,
+       a code shared) and a proposal notice (reviewed, approved, listed) are KINDS, mostly not money — and an approval
+       is permission, not money (§B11). They were the gold plate; they read the informational tone (R5-C, 2026-10-09). */
+    case "AFFILIATE":    return "border-info-border bg-info-bg/30 text-info-fg";
+    case "PROPOSAL":     return "border-info-border bg-info-bg/30 text-info-fg";
     // Informational, never a "bet now" nudge → royal/info, never gold.
     case "WATCHLIST":    return "border-info-border bg-info-bg/30 text-info-fg";
     default:             return "border-border bg-bg-overlay text-text-muted";

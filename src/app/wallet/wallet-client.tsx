@@ -81,7 +81,10 @@ function BalanceCard({
         <FiftyMark size={220} />
       </div>
       <div className="relative z-10 p-5 lg:p-6">
-        <div className="flex items-center gap-1.5 text-gold-300">
+        {/* The eyebrow and its glyph take the ink every player eyebrow wears (R5-C, the second gold audit, 2026-10-09): it
+            was gold — over a FROZEN balance too — and an eyebrow names the money, it is not the money (Q5; R4-K and R4-I
+            moved the market's, the guest panel's and the auth eyebrows the same way). The card's edge stays warm. */}
+        <div className="flex items-center gap-1.5 text-text-subtle">
           <I.wallet s={13} />
           {/* A held wallet can neither spend nor withdraw, so its money is never called "Available". */}
           <p className="font-mono text-micro uppercase eyebrow font-bold">{held ? t.common.balanceFrozen : t.common.available2}</p>
@@ -287,10 +290,16 @@ function BonusWalletCard({
       </div>
 
       <div className="relative z-10 p-5 lg:p-6">
-        <div className="flex items-center gap-1.5 text-gold-300">
+        {/* ⛔ D5, APPLIED TO THE WORDS AS WELL (R5-C, the second gold audit, 2026-10-09). The 2026-08-21 pass took the gold
+            costume off this panel and "returned the gold to the words" — but D5 says it of the card as a whole: a bonus
+            balance (TZS 0, or credit locked behind play) "must not wear the ink this platform uses to say *you won
+            this*" (DESIGN_AUTHORITY §M3a). The eyebrow and its tag are the quiet neutral pair the "coming soon" flag
+            wears, the unlock bars are PROGRESS (the brand family, as every progress fill), the notes the subtle ink and the
+            toggle the link ink. (The panel renders only while the bonus feature is live — `bonus: WITHDRAWN` today.) */}
+        <div className="flex items-center gap-1.5 text-text-subtle">
           <I.gift s={13} />
           <p className="font-mono text-micro uppercase eyebrow font-bold">{t.common.bonus}</p>
-          <span className="ml-auto inline-flex items-center gap-1 rounded-pill px-2 py-0.5 font-mono text-micro uppercase tracking-[0.12em] font-bold bg-gold-500/15 text-gold-200">
+          <span className="ml-auto inline-flex items-center gap-1 rounded-pill px-2 py-0.5 font-mono text-micro uppercase tracking-[0.12em] font-bold bg-bg-inset text-text-subtle">
             {t.common.playToUnlock}
           </span>
         </div>
@@ -310,7 +319,7 @@ function BonusWalletCard({
           <>
             <div className="mt-4">
               <div className="flex items-center justify-between gap-2 mb-1.5">
-                <p className="font-mono text-micro uppercase eyebrow text-gold-200/80">
+                <p className="font-mono text-micro uppercase eyebrow text-text-subtle">
                   {t.common.unlockProgress}
                 </p>
                 <p className="font-mono text-[12px] font-bold text-text tabular-nums">{overallPct}%</p>
@@ -342,10 +351,10 @@ function BonusWalletCard({
                   `[data-motion="minimal"]`, exactly as it did for the width transition. */}
               <div className="h-2.5 w-full rounded-pill overflow-hidden bg-bg-sunken/70">
                 <div className={`h-full w-full origin-left rounded-pill transition-transform duration-500 ${overallPct > 0 && overallPct < 100 ? "prog-sweep" : ""}`}
-                  style={{ transform: `scaleX(${overallPct / 100})`, background: "linear-gradient(90deg, var(--gold-500), var(--yes-400))" }} />
+                  style={{ transform: `scaleX(${overallPct / 100})`, background: "linear-gradient(90deg, var(--brand-500), var(--brand-300))" }} />
               </div>
               {totalRemainingWager > 0 && (
-                <p className="mt-2 text-body-sm text-gold-100/90">
+                <p className="mt-2 text-body-sm text-text-muted">
                   <span className="font-mono font-bold text-text"><Cash>{formatTzs(totalRemainingWager)}</Cash></span>
                   {" — "}{t.common.playMoreToUnlock}
                 </p>
@@ -359,9 +368,9 @@ function BonusWalletCard({
                   const running = g.status === "ACTIVE";
                   const word = grantStatusWord(t, g.status);
                   return (
-                    <div key={g.id} className={`rounded-md px-3 py-2 border ${running ? "bg-gold-500/[0.06] border-gold-700/25" : "bg-bg-overlay/40 border-border/40 opacity-70"}`}>
+                    <div key={g.id} className={`rounded-md px-3 py-2 border bg-bg-overlay/40 border-border/40 ${running ? "" : "opacity-70"}`}>
                       <div className="flex items-center justify-between gap-2">
-                        <span className="font-mono text-micro uppercase tracking-[0.1em] text-gold-200/80 flex items-center gap-1.5">
+                        <span className="font-mono text-micro uppercase tracking-[0.1em] text-text-subtle flex items-center gap-1.5">
                           {BONUS_SOURCE_LABEL[g.source] ?? g.source}
                           {/* EVERY state but the running one is named. It used to badge `QUEUED`
                               alone, so the four finished states would have rendered as though they
@@ -388,14 +397,14 @@ function BonusWalletCard({
                               ⚠️ Honest scope: this one never had a transition, so the swap
                               buys no animation frames. What it removes is the LAYOUT that a
                               percentage width forces on every wallet refresh, once per
-                              listed grant. `.prog-sweep` and the solid `--gold-400` compose
+                              listed grant. `.prog-sweep` and the solid `--brand-500` compose
                               with the scale exactly as described above; there is no gradient
                               and no child here, and the 3px radius on this 6px bar means the
                               moving edge's squash is sub-pixel. */}
                           <div className="mt-1.5 h-1.5 w-full rounded-pill overflow-hidden bg-bg-sunken/70">
-                            <div className={`h-full w-full origin-left rounded-pill ${g.progressPct > 0 && g.progressPct < 100 ? "prog-sweep" : ""}`} style={{ transform: `scaleX(${g.progressPct / 100})`, background: "var(--gold-400)" }} />
+                            <div className={`h-full w-full origin-left rounded-pill ${g.progressPct > 0 && g.progressPct < 100 ? "prog-sweep" : ""}`} style={{ transform: `scaleX(${g.progressPct / 100})`, background: "var(--brand-500)" }} />
                           </div>
-                          <div className="mt-1 flex items-center justify-between font-mono text-[9.5px] text-gold-200/55">
+                          <div className="mt-1 flex items-center justify-between font-mono text-[9.5px] text-text-subtle">
                             <span>{formatTzs(g.wageredTzs)} / {formatTzs(g.wagerRequiredTzs)} {t.common.played}</span>
                             {g.expiresAt && <span>{t.common.exp} {formatEatDate(Date.parse(g.expiresAt), Date.now(), t.common.monthsShort, locale)}</span>}
                           </div>
@@ -409,13 +418,13 @@ function BonusWalletCard({
                     six it drew five and said "+3 more". One constant now feeds both, so the two
                     cannot disagree again. */}
                 {grants.length > GRANTS_SHOWN && (
-                  <p className="text-center font-mono text-[10px] text-gold-200/60">+{grants.length - GRANTS_SHOWN} {grants.length - GRANTS_SHOWN > 1 ? t.common.moreBonuses : t.common.moreBonus}</p>
+                  <p className="text-center font-mono text-[10px] text-text-subtle">+{grants.length - GRANTS_SHOWN} {grants.length - GRANTS_SHOWN > 1 ? t.common.moreBonuses : t.common.moreBonus}</p>
                 )}
                 {/* The way into the other five statuses. A `<Link>`, so it is a real address a
                     player can share or come back to. */}
                 {grantsToggleHref && (
                   <p className="text-center">
-                    <Link href={grantsToggleHref as never} replace scroll={false} className="font-mono text-[10px] text-gold-200/80 underline underline-offset-2 hover:text-gold-100">
+                    <Link href={grantsToggleHref as never} replace scroll={false} className="font-mono text-[10px] text-brand-300 underline underline-offset-2 hover:text-brand-200">
                       {showAllGrants ? t.wallet.grantsShowLive : t.wallet.grantsShowAll}
                     </Link>
                   </p>

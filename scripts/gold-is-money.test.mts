@@ -30,10 +30,22 @@ const IDENTITY_SURFACES = [
   // 2026-10-09 (round 3, tiles 177 178 203): the leaderboard's ribbon struck its top TIER in `text-gold-300` — "Fedha",
   // silver, in the money ink. The ribbon states ranks, counts and rates; its gold accent is gone, and this keeps it gone.
   "src/components/layout/page-ribbon.tsx",
+  // 2026-10-09 (round 5, R5-C's gold audit, tiles r5-4): the leaderboard PAGE itself — the podium's #1 honours ring, its
+  // crown and rank disc in `--gold-400`/`--gold-300`, and the hot-streak chip in the gold ramp ("gold is principled on
+  // the leaderboard (earned standing)" — standing IS identity). They wear the tier ladder's metal, `--metal-gold`, now.
+  "src/app/leaderboard/page.tsx",
+  // …and the ACHIEVEMENT icons: each coin's one accent was `--gold-400`. An achievement is what a player has done — the
+  // tier ladder's sibling, which globals.css's own badge note calls it — so it takes the same metal.
+  "src/components/badges/icons.tsx",
 ];
 
-/** The tokens the money surfaces own. Matching `--gold-N` covers the aliases' targets too. */
-const MONEY_INK = /var\(\s*--(gilt|gilt-metal|gilt-ink|gilt-strong|gilt-reeding|gold-(300|400|500))\s*\)/g;
+/**
+ * The tokens the money surfaces own. Matching `--gold-N` covers the aliases' TARGETS — but an identity surface can name
+ * an ALIAS instead, and the alias is the money ink by another name: `--border-gold`, `--glow-gold`, `--glow-jackpot`,
+ * `--g-gold`, `--gold`, `--bet-jackpot`… (R5-C, 2026-10-09: the achievement coin wore `--border-gold` and `--glow-gold`
+ * and this list could not see either). And `--warning-fg` IS `--gilt` (DESIGN_AUTHORITY F3), so it is here too.
+ */
+const MONEY_INK = /var\(\s*--(gilt|gilt-metal|gilt-ink|gilt-strong|gilt-reeding|gilt-metal-edge|gilt-sheen|gold-(300|400|500)|gold|gold-(?:hover|active|fg|subtle|subtle-hover)|border-gold|glow-gold|glow-jackpot|g-gold|g-jackpot|bet-jackpot|bet-streak|warning-fg)\s*\)/g;
 
 /**
  * 🔴 THE SAME TOKENS AS TAILWIND CLASSES (2026-09-14, session 97). `MONEY_INK` matches `var(--gold-300)` and nothing
@@ -46,6 +58,11 @@ const MONEY_CLASS = /\b(?:text|bg|border|ring|fill|stroke|from|via|to|shadow|out
 
 /** CSS rules that paint a RANK badge — same law, other side of the wire. */
 const TIER_RULES = [".tier-bronze", ".tier-silver", ".tier-gold", ".tier-diamond", ".tier-sovereign"];
+
+/** CSS rules that paint an ACHIEVEMENT coin — the tier ladder's sibling (R5-C, 2026-10-09). The coin, its edge ring, the
+ *  unlocked state and the tier ribbon are identity METAL (`--metal-gold`); the progress ring and its count are PROGRESS
+ *  (the brand family). None of them may wear the money ink. */
+const BADGE_RULES = [".badge", ".badge::after", ".badge--unlocked", ".badge-ring-arc", ".badge-count", ".badge-tier-pip"];
 
 let pass = 0;
 const fails: string[] = [];
@@ -78,6 +95,14 @@ for (const f of IDENTITY_SURFACES) {
   ok("1b.control · `border-gilt` and `bg-gold/15` are caught", hit('<i className="border-gilt bg-gold/15" />').length === 2);
   ok("1b.control · `text-goldenrod`-like and `gold-600` tokens are not money ink", hit('<i className="text-golden bg-gold-600" />').length === 0);
 }
+// ⭐ CONTROLS for the aliases (R5-C) — an alias of the money ink is caught; the identity metal is not money ink.
+{
+  const hit = (src: string) => [...strip(src).matchAll(MONEY_INK)].map((m) => m[0]);
+  ok("1c.control · a planted `var(--border-gold)` / `var(--glow-gold)` / `var(--warning-fg)` is caught",
+    hit('<i style={{ border: "1px solid var(--border-gold)", boxShadow: "var(--glow-gold)", color: "var(--warning-fg)" }} />').length === 3);
+  ok("1c.control · the identity metal `var(--metal-gold)` and `var(--gold-950)` are not money ink",
+    hit('<i style={{ color: "var(--metal-gold)", background: "var(--gold-950)" }} />').length === 0);
+}
 
 console.log("\n── 2 · the rank ladder is metallic, not monetary ────────────────");
 const css = read("src/app/globals.css");
@@ -89,6 +114,32 @@ for (const sel of TIER_RULES) {
   const body = css.slice(open + 1, css.indexOf("}", open));
   const hits = [...body.matchAll(MONEY_INK)].map((m) => m[0]);
   ok(`2 · ${sel} wears no money-ink token`, hits.length === 0, hits.join(", "));
+}
+
+console.log("\n── 2b · the achievement coins are metallic, not monetary (R5-C, 2026-10-09) ──");
+{
+  /** The body of the rule whose selector is EXACTLY `sel` (not a longer selector that starts with it). */
+  const ruleBody = (src: string, sel: string): string | null => {
+    const re = new RegExp(`\\n${sel.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}\\s*\\{`);
+    const m = re.exec(src);
+    if (!m) return null;
+    const open = m.index + m[0].length;
+    return src.slice(open, src.indexOf("}", open));
+  };
+  const cssCode = strip(css);
+  for (const sel of BADGE_RULES) {
+    const body = ruleBody(cssCode, sel);
+    ok(`2b.locate · ${sel} exists in globals.css`, body !== null);
+    if (body === null) continue;
+    const hits = [...body.matchAll(MONEY_INK)].map((m) => m[0]);
+    ok(`2b · ${sel} wears no money-ink token`, hits.length === 0, hits.join(", "));
+  }
+  // ⭐ THE CONTROL — the coin is still METAL (the law is satisfied by the metal, not by an empty rule), and a planted gilt
+  // rim back on the coin is caught by the same reading.
+  const coin = ruleBody(cssCode, ".badge") ?? "";
+  ok("2b.control · the coin's rim and stroke are the tier ladder's metal (`--metal-gold`)", /border:\s*1\.5px solid var\(--metal-gold\)/.test(coin) && /color:\s*var\(--metal-gold\)/.test(coin));
+  const planted = cssCode.replace(/(\n\.badge\s*\{[^}]*?)border:\s*1\.5px solid var\(--metal-gold\)/, "$1border: 1.5px solid var(--border-gold)");
+  ok("2b.control · a planted `--border-gold` rim on the coin is caught", [...(ruleBody(planted, ".badge") ?? "").matchAll(MONEY_INK)].length === 1);
 }
 
 console.log("\n── 3 · …and the law is still WORTH enforcing (a live consumer exists) ──");

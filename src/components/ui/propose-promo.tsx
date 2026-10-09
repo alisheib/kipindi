@@ -7,14 +7,20 @@ import { getProposalsConfig, isProposalsActive } from "@/lib/server/proposals-co
 import { formatTzs } from "@/lib/utils";
 
 /**
- * ProposePromo — the single gold-accented "propose markets & get paid" promo.
+ * ProposePromo — the single "propose markets & get paid" promo.
  * Whole card is the CTA; `href` sets the destination (markets → /proposals,
  * proposals board → /proposals/new).
+ *
+ * ⛔ NOT GOLD (R5-C, the second gold audit, 2026-10-09). DESIGN_AUTHORITY §M3a D5: a promotional card "must not wear
+ * the ink this platform uses to say *you won this* — on an inducement, a house colour becomes a marketing claim", and
+ * Q5: gold is money, and nothing else. This card asks a player to propose for a prize nobody has won yet, so it is a
+ * door like the profile's own rows: the neutral edge with the brand hover, and the brand plate those rows carry
+ * (`profile/page.tsx` SettingRow). The prize figure keeps its words; it was never coloured.
  *
  * Feature-state aware:
  *   • DISABLED     → renders nothing (the entry point is removed everywhere).
  *   • ACTIVE       → normal CTA to `href`, prize amount shown.
- *   • COMING_SOON  → gilt "coming soon" badge, routes to the board (never the
+ *   • COMING_SOON  → the quiet "coming soon" badge, routes to the board (never the
  *                    composer, which is blocked); prize hidden until it opens.
  *   • MAINTENANCE  → amber "temporarily unavailable" badge, routes to the board.
  */
@@ -29,16 +35,11 @@ export async function ProposePromo({ href }: { href: string }) {
   return (
     <Link
       href={target as never}
-      className="group flex items-center gap-3.5 rounded-xl border p-4 transition-colors hover:border-gold-500"
-      style={{
-        borderColor: "color-mix(in oklab, var(--gold-500) 30%, var(--border))",
-        background: "color-mix(in oklab, var(--gold-500) 6%, var(--bg-elevated))",
-      }}
+      className="group flex items-center gap-3.5 rounded-xl border border-border bg-bg-elevated p-4 transition-colors hover:border-brand-400"
     >
       <IconPlate
         size={42}
-        className="text-gold-fg"
-        bg="linear-gradient(180deg, var(--gold-400), var(--gold-600))"
+        className="bg-brand-500/10 text-brand-300 transition-colors group-hover:bg-brand-500/15"
       >
         <I.trophy s={22} />
       </IconPlate>

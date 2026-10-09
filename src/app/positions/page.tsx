@@ -475,7 +475,9 @@ export default async function PositionsPage({ searchParams }: { searchParams: Pr
                         size={40}
                         ariaLabel={closed ? t.positions.selectionClosed : t.positions.selectionCloses}
                       />
-                      <p className={`flex items-center gap-1.5 text-[11px] font-mono ${closed ? "text-gold-300" : "text-text-subtle"}`}>
+                      {/* "Selection closed" is CLOSED — royal to the player (§B11), in the dictionary's word ink (brand-300),
+                          never gold (Q5; R5-C, the second gold audit, 2026-10-09). The market page says it the same way. */}
+                      <p className={`flex items-center gap-1.5 text-[11px] font-mono ${closed ? "text-brand-300" : "text-text-subtle"}`}>
                         <I.calendarClock s={11} />
                         {closed
                           ? t.positions.selectionClosed

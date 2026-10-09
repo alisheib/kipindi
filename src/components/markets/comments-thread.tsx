@@ -152,7 +152,9 @@ export function CommentsThread({
             ? prev.filter((c) => c.id !== id || c.mine) // hidden for non-authors
             : prev.map((c) => (c.id === id ? { ...c, reportedByMe: true, reports: c.reports + 1 } : c)),
         );
-        toast({ title: ("hidden" in r && r.hidden) ? t.toast.reportedHidden : t.toast.reported, variant: "warning" });
+        // `factual`, never `warning` — the warning toast is struck in GOLD (DESIGN_AUTHORITY F3), and a report filed is
+        // neither money nor an alarm: a fact (R5-C, the second gold audit, 2026-10-09).
+        toast({ title: ("hidden" in r && r.hidden) ? t.toast.reportedHidden : t.toast.reported, variant: "factual" });
       } else {
         toast({ title: errorCopy(t, r), variant: "danger" });
       }
@@ -302,8 +304,11 @@ export function CommentsThread({
                     </Chip>
                   )}
                   <span className="font-mono text-[10.5px] text-text-subtle">{relTime(c.createdAt, t, locale)}</span>
+                  {/* A hidden comment is a moderation OUTCOME — terminal and inert, nobody must act — so it is slate, the
+                      neutral chip "under review" beside it already wears (§B11: amber means "somebody must act", and its
+                      paint is the gilt family, F3). R5-C, the second gold audit, 2026-10-09. */}
                   {c.hidden ? (
-                    <Chip variant="warning" size="sm">{t.market.commentHidden}</Chip>
+                    <Chip variant="neutral" size="sm">{t.market.commentHidden}</Chip>
                   ) : c.reports > 0 && !c.mine ? (
                     <Chip variant="neutral" size="sm">{t.common.underReview}</Chip>
                   ) : null}

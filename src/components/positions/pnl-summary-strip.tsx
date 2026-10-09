@@ -70,8 +70,9 @@ export function PnlSummaryStrip({
         <Cell
           label={t.settledPnl}
           value={formatTzsSigned(settledNet)}
-          // Gold = earned money only; losses in rose, stated calmly.
-          valueClass={settledNet >= 0 ? "text-[var(--gilt)]" : "text-no-300"}
+          // Gold = earned money only; losses in rose, stated calmly — and a zero is neither (R5-C, 2026-10-09: "TZS 0"
+          // was gilt; nothing was earned, §M3), so it takes the text's own ink, as /positions/performance does.
+          valueClass={settledNet > 0 ? "text-[var(--gilt)]" : settledNet < 0 ? "text-no-300" : "text-text"}
           sub={`${wins}W \u00b7 ${losses}L \u00b7 ${cashOuts}C`}
         />
         <div className="pl-3.5 pt-0.5" style={{ borderLeft: "1px solid color-mix(in oklab, var(--border) 60%, transparent)" }}>

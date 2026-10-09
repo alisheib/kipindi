@@ -10,11 +10,12 @@ import { FiftyMark } from "@/components/brand";
  *
  * `glow` tints the single radial to the page accent; the shape/position/alpha
  * are fixed (800×320 at 100% 0%, /0.18).
+ * ⛔ NO `gold` (R5-C, 2026-10-09; Q5): a page's hero is never money. Its only callers, /proposals and /proposals/new,
+ * take the default `info`, the glow seven other page heroes wear.
  */
-type Glow = "gold" | "info" | "yes" | "rose" | "aqua";
+type Glow = "info" | "yes" | "rose" | "aqua";
 
 const GLOW: Record<Glow, string> = {
-  gold: "oklch(58% 0.13 80 / 0.18)",
   info: "oklch(45% 0.10 240 / 0.18)",
   yes: "oklch(45% 0.10 152 / 0.18)",
   rose: "oklch(45% 0.13 22 / 0.18)",

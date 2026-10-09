@@ -1553,7 +1553,10 @@ export function ConvictionDial({ marketId, yesPool, noPool, baseStake = 1_000, m
           ) : (
             <span className="mt-1 inline-flex items-center gap-1 font-mono text-[9.5px] text-text-subtle whitespace-nowrap" data-testid="stake-range-chip">
               <span data-testid="stake-range-min" className="tabular-nums font-bold text-text-muted">{formatNumber(minDial)}</span>
-              <span aria-hidden className="inline-block h-[2px] w-5 rounded-pill bg-gradient-to-r from-yes-500 to-gold-500" />
+              {/* The range's "to" is a plain rule (`--border-strong`), as the multiplier's below (R5-C, the second gold audit,
+                  2026-10-09): it ran from the betting YES green to gold — a side's ink and money's ink on a dash between two
+                  limits, which is neither a side (§B2a) nor money (Q5). */}
+              <span aria-hidden className="inline-block h-[2px] w-5 rounded-pill bg-border-strong" />
               <span data-testid="stake-range-max" className="tabular-nums font-bold text-text-muted">{formatNumber(maxDial)}</span>
             </span>
           )}
@@ -1617,7 +1620,7 @@ export function ConvictionDial({ marketId, yesPool, noPool, baseStake = 1_000, m
           ) : (
             <span className="mt-1 inline-flex items-center gap-1 font-mono text-[9.5px] text-text-subtle whitespace-nowrap" data-testid="mult-range-chip">
               <span data-testid="mult-range-min" className="tabular-nums font-bold text-text-muted">{MULT_MIN.toFixed(2)}×</span>
-              <span aria-hidden className="inline-block h-[2px] w-5 rounded-pill bg-gradient-to-r from-text-subtle to-gold-500" />
+              <span aria-hidden className="inline-block h-[2px] w-5 rounded-pill bg-border-strong" />
               <span data-testid="mult-range-max" className="tabular-nums font-bold text-text-muted">{MULT_MAX.toFixed(2)}×</span>
             </span>
           )}

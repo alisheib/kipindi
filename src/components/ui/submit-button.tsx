@@ -11,10 +11,13 @@
  * Also disables itself while pending so a double-click cannot fire two
  * register / login / withdraw / deposit submissions.
  *
- * Gold-discipline (micro-spec §1): gold is money-in / earned-money ONLY.
- * The default is therefore **primary** (royal) — auth, KYC, RG, source-of-funds
- * and other navigation-grade submits are royal. Only genuine money-in surfaces
- * (deposit) opt into `variant="gold"`.
+ * Gold-discipline: the default is **primary** (royal) — auth, KYC, RG, source-of-funds
+ * and other navigation-grade submits are royal.
+ * ⛔ THERE IS NO `gold` (R5-C, the second gold audit, 2026-10-09). It was offered for
+ * "genuine money-in surfaces (deposit)" — a micro-spec's reading (record, not rule) that
+ * DESIGN_AUTHORITY §M3a D1 overturned: "a deposit or a withdrawal commit is brand — not
+ * gold". It had ZERO call sites; out of the union, as Toggle's `gold` went, so no submit
+ * can ask for it. A bet or a sell commits through its own confirm, never through this atom.
  */
 
 import { useFormStatus } from "react-dom";
@@ -24,7 +27,7 @@ import { Spinner } from "./spinner";
 type Props = {
   label: string;
   pendingLabel?: string;
-  variant?: "gold" | "claret" | "primary" | "ghost";
+  variant?: "claret" | "primary" | "ghost";
   size?: "sm" | "md" | "lg" | "xl";
   className?: string;
   /** Refuse the action outright, independently of the pending state — e.g. withdraw while

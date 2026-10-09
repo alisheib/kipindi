@@ -6,15 +6,17 @@ import type { ReactNode } from "react";
  *   - eyebrow: font-mono text-[11px] tracking-[0.16em] (was 10px on ~8 pages)
  *   - title:   font-display text-[28px] tracking-[-0.02em]
  *
- * `tone` colors the eyebrow to the page's accent (gold = money, info =
- * account/security, yes = protection). Longer descriptive paragraphs stay
- * in the page as a sibling; `subtitle` is only for the short italic tagline.
+ * `tone` colors the eyebrow to the page's accent (info = account/security, yes = protection). Longer descriptive
+ * paragraphs stay in the page as a sibling; `subtitle` is only for the short italic tagline.
+ * ⛔ NO `gold` (R5-C, the second gold audit, 2026-10-09; DESIGN_AUTHORITY Q5 "gold is money, and nothing else"): an
+ * eyebrow names a page and is never money. Its only callers were /proposals and /proposals/new ("MAPENDEKEZO" in gold
+ * with a trophy); they take the default, the ink 191 player eyebrows already wear. It is out of the map, as R4-I took it
+ * out of AuthHeader's, so no call site can ask for it again.
  */
-type Tone = "subtle" | "gold" | "info" | "yes";
+type Tone = "subtle" | "info" | "yes";
 
 const EYEBROW_TONE: Record<Tone, string> = {
   subtle: "text-text-subtle",
-  gold: "text-gold-300",
   info: "text-info-fg",
   yes: "text-yes-300",
 };

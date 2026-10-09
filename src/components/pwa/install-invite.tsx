@@ -233,7 +233,8 @@ export function InstallInvite() {
       className="fixed left-3 right-3 bottom-[calc(148px_+_env(safe-area-inset-bottom))] lg:bottom-6 z-50 lg:right-auto lg:left-6 lg:max-w-[380px] rounded-xl glass-panel border border-border p-3.5 shadow-lg"
     >
       <div className="flex items-start gap-3">
-        <span className="shrink-0 mt-0.5 text-gold-300" aria-hidden><I.download s={18} /></span>
+        {/* The brand's ink, as ConsentPrompt's twin glyph: an invitation to install is not money (R5-C, 2026-10-09; Q5). */}
+        <span className="shrink-0 mt-0.5 text-brand-300" aria-hidden><I.download s={18} /></span>
         {/* ⛔ min-w-0 IS LOAD-BEARING. Without it this flex child will not shrink and the copy
             runs past the card at 360 — the measured shape of every clipping bug on this
             platform, and the reason `min-w-0` sits on the breadcrumb wrapper too. */}

@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { useToast } from "@/components/ui/toast";
 import { useT } from "@/lib/i18n";
 import { I } from "@/components/ui/glyphs";
+import { Button } from "@/components/ui/button";
 import { PasswordInput } from "@/components/ui/password-input";
 import { FieldLegend } from "@/components/ui/field-legend";
 import { changePasswordAction } from "@/app/profile/account/actions";
@@ -22,8 +23,10 @@ export function PasswordSection({ hasPassword }: { hasPassword: boolean }) {
 
   const submit = () => {
     if (pending) return;
-    if (next.length < 8) { toast({ title: t.toast.passwordMin8, variant: "warning" }); return; }
-    if (next !== confirm) { toast({ title: t.toast.passwordsDontMatch, variant: "warning" }); return; }
+    // FEEDBACK LAW F3 — a slip the player can fix is the `factual` toast, never `warning`, which is struck in GOLD
+    // (`bg-gold-500`; DESIGN_AUTHORITY F3: "a refusal has earned nothing"). R5-C, the second gold audit, 2026-10-09.
+    if (next.length < 8) { toast({ title: t.toast.passwordMin8, variant: "factual" }); return; }
+    if (next !== confirm) { toast({ title: t.toast.passwordsDontMatch, variant: "factual" }); return; }
     start(async () => {
       const fd = new FormData();
       fd.set("current", current);
@@ -68,7 +71,7 @@ export function PasswordSection({ hasPassword }: { hasPassword: boolean }) {
         <button
           type="button"
           onClick={() => setOpen(true)}
-          className="h-[30px] px-3 rounded-md border border-border bg-bg-elevated font-mono text-[11px] font-bold text-text-muted hover:border-brand-400 hover:text-gold-300 transition-colors whitespace-nowrap inline-flex items-center"
+          className="h-[30px] px-3 rounded-md border border-border bg-bg-elevated font-mono text-[11px] font-bold text-text-muted hover:border-brand-400 hover:text-text transition-colors whitespace-nowrap inline-flex items-center"
         >
           {hasPassword ? t.common.change : t.common.setPassword}
         </button>
@@ -78,9 +81,13 @@ export function PasswordSection({ hasPassword }: { hasPassword: boolean }) {
 
   return (
     <div className="space-y-3">
+      {/* ⛔ NOT GOLD (R5-C, the second gold audit, 2026-10-09). A password is never money (DESIGN_AUTHORITY Q5): the open
+          form's key and eyebrow were gold, its Save a hand-rolled gold button and the closed row's hover gold. The eyebrow
+          and its key take the ink every player eyebrow wears, the hover the text's own, and the two actions are the kit
+          pair the e-mail editor beside this section already uses — primary Save, ghost Cancel, both `sm` (40px, §A2). */}
       <div className="flex items-center gap-2.5">
-        <I.keyRound s={14} className="text-gold-300 shrink-0" />
-        <p className="font-mono text-micro uppercase eyebrow font-bold text-gold-300">
+        <I.keyRound s={14} className="text-text-subtle shrink-0" />
+        <p className="font-mono text-micro uppercase eyebrow font-bold text-text-subtle">
           {hasPassword ? t.common.updatePassword : t.common.setPassword}
         </p>
       </div>
@@ -124,24 +131,12 @@ export function PasswordSection({ hasPassword }: { hasPassword: boolean }) {
         />
       </div>
       <div className="flex items-center gap-2">
-        <button
-          type="button"
-          onClick={submit}
-          disabled={pending || next.length < 8}
-          /* ⛔ LITERAL, NOT `h-9` — the spacing scale is overridden
-             (tailwind.config.ts:200-215) and `h-9` renders 64px. 40px = --tap-min, the
-             §A2 floor these two hand-rolled buttons must still clear. */
-          className="h-[40px] px-4 rounded-md border border-gold-700 bg-gold-500/10 font-mono text-[11px] font-bold text-gold-300 hover:bg-gold-500/20 disabled:opacity-40 transition-colors"
-        >
+        <Button type="button" variant="primary" size="sm" onClick={submit} disabled={pending || next.length < 8}>
           {pending ? t.common.saving : hasPassword ? t.common.updatePassword : t.common.setPassword}
-        </button>
-        <button
-          type="button"
-          onClick={() => { setOpen(false); setCurrent(""); setNext(""); setConfirm(""); }}
-          className="h-[40px] px-4 rounded-md border border-border font-mono text-[11px] text-text-subtle hover:text-text transition-colors"
-        >
+        </Button>
+        <Button type="button" variant="ghost" size="sm" onClick={() => { setOpen(false); setCurrent(""); setNext(""); setConfirm(""); }}>
           {t.common.cancel}
-        </button>
+        </Button>
       </div>
     </div>
   );

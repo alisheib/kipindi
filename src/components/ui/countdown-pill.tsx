@@ -113,7 +113,9 @@ export function CountdownPill({
       ) : (
         <span className="inline-flex items-center gap-1 font-mono text-[11px] tabular-nums" aria-hidden>
           {prefix && <span className="text-text-subtle">{prefix}</span>}
-          <span className="font-bold text-warning-fg">{display}</span>
+          {/* The figure in the text's own ink, never `--warning-fg` (= `--gilt`) — R5-C's gold audit, 2026-10-09: a wait is
+              time, and time keeps its neutral ink (DESIGN_AUTHORITY §B2a; R4-K moved the market clock's labels the same way). */}
+          <span className="font-bold text-text">{display}</span>
           {suffix && <span className="text-text-subtle">{suffix}</span>}
         </span>
       )}

@@ -15,7 +15,7 @@ import { useEffect, useState } from "react";
 import { usePathname } from "next/navigation";
 import { Modal } from "@/components/ui/modal";
 import { I } from "@/components/ui/glyphs";
-import { FiftyMark, TippingBar, GiltCorner } from "@/components/brand";
+import { FiftyMark, TippingBar } from "@/components/brand";
 import { sideWord } from "@/lib/side-label";
 import { useT } from "@/lib/i18n";
 
@@ -174,8 +174,10 @@ function VisualDial({ dragLabel, yes, no, minLabel, maxLabel }: {
         <span>{minLabel}</span>
         {/* Was the hardcoded English "drag to commit", rendered to Swahili and Chinese players
             alike — inside an SVG annotation row, where no i18n sweep was looking. The two
-            multiplier bounds either side of it were exactly the same defect, left behind. */}
-        <span style={{ color: "var(--gilt)" }}>{dragLabel}</span>
+            multiplier bounds either side of it were exactly the same defect, left behind.
+            ⭐ The instruction is the row's HIGHLIGHT, in the brand's ink — the product's one non-money accent (R5-C, the
+            second gold audit, 2026-10-09): it was `--gilt`, money's ink, on a word that says "drag" (Q5). */}
+        <span style={{ color: "var(--brand-300)" }}>{dragLabel}</span>
         <span>{maxLabel}</span>
       </div>
     </div>
@@ -216,10 +218,12 @@ function VisualPools({ caption, poolYes, poolNo, share, barLabels, barAria }: {
           <p className="font-mono text-micro uppercase eyebrow font-bold" style={{ color: "oklch(70% 0.12 152)" }}>{poolYes}</p>
           <p className="font-display text-[15px] font-bold text-text">TZS 12k</p>
         </div>
+        {/* The hinge of the explainer ("share") is its highlight — the brand family's mark and ink, as the dial card's
+            "drag" above (R5-C, 2026-10-09). It was `--gilt`: two pools nobody has won, in the ink of money earned (§M3). */}
         <div className="flex flex-col items-center gap-0.5">
-          <span className="inline-block h-[2px] w-5 rounded-pill" style={{ background: "var(--gilt)" }} />
-          <span className="font-mono text-micro uppercase tracking-[0.14em]" style={{ color: "var(--gilt)" }}>{share}</span>
-          <span className="inline-block h-[2px] w-5 rounded-pill" style={{ background: "var(--gilt)" }} />
+          <span className="inline-block h-[2px] w-5 rounded-pill" style={{ background: "var(--brand-400)" }} />
+          <span className="font-mono text-micro uppercase tracking-[0.14em]" style={{ color: "var(--brand-300)" }}>{share}</span>
+          <span className="inline-block h-[2px] w-5 rounded-pill" style={{ background: "var(--brand-400)" }} />
         </div>
         <div className="rounded-lg border border-no-700/40 bg-no-500/[0.08] px-3 py-2 text-center">
           <p className="font-mono text-micro uppercase eyebrow font-bold" style={{ color: "oklch(70% 0.14 22)" }}>{poolNo}</p>
@@ -386,20 +390,19 @@ export function FirstVisitPrimer() {
          at 640, so the 789px card still scrolls and stays reachable. Caught by an audit of this
          session’s own commits, measuring both phone sizes rather than the one the fix was aimed at.
          `overflow-x` stays hidden, which is what the previous
-         `overflow-hidden` was really buying: the gilt corners clipped to the rounded edge.
+         `overflow-hidden` was really buying (the gilt corners clipped to the rounded edge; the
+         progress strip still runs to the sheet's edge).
          ⭐ R5-B (2026-10-09, F7): docked in the journey the sheet draws no bottom edge and runs 1px past the screen's last
          row (`[data-dock]`, globals.css), its padding taking that 1px back — from the 0 this panel has (`--dock-pb`). */
       panelClassName="!p-0 [--dock-pb:0px] max-h-[calc(100dvh-48px)] overflow-y-auto overflow-x-hidden"
     >
-        {/* Gilt corners — heraldic framing from the brand kit */}
-        <div className="pointer-events-none absolute top-0 left-0" aria-hidden>
-          <GiltCorner size={40} rotate={0} />
-        </div>
-        <div className="pointer-events-none absolute top-0 right-0" aria-hidden>
-          <GiltCorner size={40} rotate={90} />
-        </div>
+        {/* ⛔ NO GILT CORNERS (R5-C, the second gold audit, 2026-10-09). Two heraldic gilt brackets framed the first screen
+            a new player sees — decoration in money's ink, which §M3 calls "a violation, not a style choice" (Q5). They are
+            gone, as from the invite share cards; the sheet's own edge and the brand progress strip frame it. */}
 
-        {/* Gold progress strip at top.
+        {/* The progress strip at top — in the BRAND family, as every progress fill in the product (the KYC rail, the
+            proposal timeline, the achievement ring). It was a gold ramp until R5-C's gold audit (2026-10-09): a step
+            through an explainer is not money (DESIGN_AUTHORITY Q5); `--brand-500` → `--brand-300` is the same ramp shape.
             THE STRIP SCALES; IT DOES NOT WIDEN. `transition-all` on a `width` animated
             a LAYOUT property for 500ms on every step change, inside a sheet that is the
             first thing a new player ever sees — on the cheapest phone in the funnel.
@@ -409,7 +412,7 @@ export function FirstVisitPrimer() {
             it to be re-checked: the strip carries NO border-radius (so there is no cap
             to distort) and NO child (so there is no label to squeeze). The one thing
             scaleX does reshape is the `90deg` gradient — and it reshapes it exactly the
-            way `width` did, compressing the full gold-500 → gold-300 ramp into the
+            way `width` did, compressing the full brand-500 → brand-300 ramp into the
             drawn length. Same picture, one less reflow.
             §M6 · this is a transition, so all three gates already hold: motion.css's
             universal clamp zeroes `transition-duration` for the OS query,
@@ -422,7 +425,7 @@ export function FirstVisitPrimer() {
             className="h-full w-full origin-left transition-transform duration-500"
             style={{
               transform: `scaleX(${(step + 1) / CARDS.length})`,
-              background: "linear-gradient(90deg, var(--gold-500), var(--gold-300))",
+              background: "linear-gradient(90deg, var(--brand-500), var(--brand-300))",
             }}
           />
         </div>
@@ -453,14 +456,16 @@ export function FirstVisitPrimer() {
                 className="block h-[3px] w-full rounded-pill transition-all duration-300"
                 // DS-13 — UI chrome composes from tokens (the SVG brand art keeps
                 // its literals; chrome must not).
+                // Progress in the brand family (R5-C, 2026-10-09; Q5): a passed step `--brand-500`, the current one
+                // `--brand-400` (the "this one" mark every pip and pager dot wears) with its halo mixed off the brand (§E4).
                 style={{
                   background:
                     i < step
-                      ? "var(--gold-400)"
+                      ? "var(--brand-500)"
                       : i === step
-                        ? "var(--gold-300)"
+                        ? "var(--brand-400)"
                         : "var(--royal-700)",
-                  boxShadow: i === step ? "0 0 8px color-mix(in oklab, var(--gold-400) 40%, transparent)" : "none",
+                  boxShadow: i === step ? "0 0 8px color-mix(in oklab, var(--brand-500) 40%, transparent)" : "none",
                 }}
               />
             </button>
@@ -484,8 +489,8 @@ export function FirstVisitPrimer() {
             {c.visual()}
           </div>
 
-          {/* Eyebrow */}
-          <p className="mt-4 font-mono text-micro uppercase eyebrow font-bold text-gold-300">
+          {/* Eyebrow — the ink every player eyebrow wears (R5-C, 2026-10-09: it was gold; an eyebrow is never money, Q5). */}
+          <p className="mt-4 font-mono text-micro uppercase eyebrow font-bold text-text-subtle">
             {c.eyebrow}
           </p>
 
@@ -516,7 +521,7 @@ export function FirstVisitPrimer() {
                   key={i}
                   className="inline-block h-[5px] w-[5px] rounded-full transition-all duration-300"
                   style={{
-                    background: i === step ? "var(--gold-300)" : "var(--royal-700)", /* DS-13 */
+                    background: i === step ? "var(--brand-400)" : "var(--royal-700)", /* DS-13 · the brand "this one" dot (R5-C) */
                     transform: i === step ? "scale(1.4)" : "scale(1)",
                   }}
                 />

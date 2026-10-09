@@ -129,10 +129,13 @@ export function LipaQrPanel({
             <p className="mt-1 text-body-sm font-bold leading-snug text-text">{l.merchantName}</p>
           </div>
 
+          {/* ⛔ NEITHER LINE IS GOLD (R5-C, the second gold audit, 2026-10-09). The Lipa number is an IDENTIFIER, and the
+              amount is the fee the applicant PAYS — "moving your own money … earns nothing, so gold overstates it"
+              (DESIGN_AUTHORITY §M3a D1; Q5). Both take the text's own ink, as /agent's fee box above this panel does. */}
           <div>
             <p className="font-mono text-micro uppercase eyebrow font-bold text-text-tertiary">{t.lipa.numberLabel}</p>
             <div className="mt-1 flex flex-wrap items-center gap-2">
-              <span className="amount font-mono text-title-lg font-bold tracking-wide text-gold-300">{pretty}</span>
+              <span className="amount font-mono text-title-lg font-bold tracking-wide text-text">{pretty}</span>
               {/* `md` (44px), not `sm` (40px). Both clear `test:tap-target`, but 40 is the
                   ONE legal step below the bar and this is a money control on a phone —
                   taking the minimum here would be spending the exemption for nothing. */}
@@ -145,7 +148,7 @@ export function LipaQrPanel({
           {amountTzs != null && (
             <div>
               <p className="font-mono text-micro uppercase eyebrow font-bold text-text-tertiary">{t.lipa.amountLabel}</p>
-              <p className="amount mt-1 text-body-sm font-bold text-gold-300">{formatTzs(amountTzs)}</p>
+              <p className="amount mt-1 text-body-sm font-bold text-text">{formatTzs(amountTzs)}</p>
             </div>
           )}
 

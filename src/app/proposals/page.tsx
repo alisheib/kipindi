@@ -197,21 +197,25 @@ export default async function ProposalsPage({
           looked WITHIN a file. That h1 is a `<p>` now, matching `ui/empty-state.tsx:53`, and
           the sentence above is true. ⛔ A page's h1 count is the page PLUS everything it
           renders. */}
-      <PageHero glow="gold" contentClassName="relative z-10 p-5 lg:p-6 flex flex-col items-start gap-3 sm:flex-row sm:items-start sm:justify-between sm:gap-4">
+      {/* ⭐ NO GOLD ON THE PAGE'S OWN FRAME (R5-C, the second gold audit, 2026-10-09; DESIGN_AUTHORITY Q5 "gold is money,
+          and nothing else"): proposing a market is not money. The hero and its eyebrow take the page defaults (info glow,
+          subtle eyebrow — the trophy rides in that ink), and "Create" is the primary action every other page's own action
+          is. The gold left here is money: a proposer's granted bonus on its row. */}
+      <PageHero contentClassName="relative z-10 p-5 lg:p-6 flex flex-col items-start gap-3 sm:flex-row sm:items-start sm:justify-between sm:gap-4">
         <div className="flex flex-col items-start gap-2">
-          <PageHeader tone="gold" icon={<I.trophy s={18} />} eyebrow={t.proposals.title} title={t.proposals.voteForMarkets} />
-          {/* Gilt "coming soon" here, amber "maintenance" here, nothing when active. */}
+          <PageHeader icon={<I.trophy s={18} />} eyebrow={t.proposals.title} title={t.proposals.voteForMarkets} />
+          {/* A quiet neutral "coming soon" here, amber "maintenance" here, nothing when active. */}
           <ProposalsStateBadge state={state} comingSoonLabel={t.proposals.comingSoonTag} maintenanceLabel={t.proposals.maintenanceTag} />
         </div>
         {active && (
           <Link href={"/proposals/new" as never} className="shrink-0">
-            <Button variant="gold" size="md" leading={<I.plus s={15} />}>{t.proposals.create}</Button>
+            <Button variant="primary" size="md" leading={<I.plus s={15} />}>{t.proposals.create}</Button>
           </Link>
         )}
       </PageHero>
 
       {/* Reward promo — shown only when the feature is live (the state banner
-          carries the message otherwise, so this gold CTA isn't redundant). */}
+          carries the message otherwise, so this CTA isn't redundant). */}
       {active && <ProposePromo href="/proposals/new" />}
 
       {/* Guided state banner — gilt (coming soon) / amber (maintenance). */}
@@ -301,7 +305,7 @@ export default async function ProposalsPage({
           title={t.proposals.noProposalsYet}
           body={`${t.proposals.noProposalsBody} ${t.proposals.noProposalsReward} ${formatTzs(cfg.prizeTzs)}.`}
           action={
-            <Link href={"/proposals/new" as never}><Button variant="gold" size="sm" leading={<I.plus s={12} />}>{t.proposals.create}</Button></Link>
+            <Link href={"/proposals/new" as never}><Button variant="primary" size="sm" leading={<I.plus s={12} />}>{t.proposals.create}</Button></Link>
           }
         />
       ) : (
@@ -321,7 +325,7 @@ export default async function ProposalsPage({
             : t.market.filterMissBody
           }
           action={
-            <Link href={"/proposals/new" as never}><Button variant="gold" size="sm" leading={<I.plus s={12} />}>{t.proposals.create}</Button></Link>
+            <Link href={"/proposals/new" as never}><Button variant="primary" size="sm" leading={<I.plus s={12} />}>{t.proposals.create}</Button></Link>
           }
         />
       )}

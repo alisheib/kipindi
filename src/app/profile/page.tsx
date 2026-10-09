@@ -338,9 +338,10 @@ export default async function ProfilePage() {
               ⭐ ONE PREDICATE DECIDES BOTH THE ROW AND ITS WORDS, read once: `agentInGoodStanding`
               is the same fact `/profile/invite` uses to choose between the two bodies, so the door
               and the room cannot describe different programmes.
-              ⛔ `accent` (gilt) AND the "New" badge STAY WITH THE AGENT. §M3 — the gold belongs to
+              ⛔ `accent` AND the "New" badge STAY WITH THE AGENT: the highlight belongs to
               the commission dashboard, not to a share link; and the badge announced a programme
-              being launched, which the player invite is not. */}
+              being launched, which the player invite is not. (The accent is brand, not gilt, since
+              R5-C's gold audit — see SettingRow.) */}
           {inviteIsLiveFor(inviteViewer) && (
             inviteViewer.agentInGoodStanding ? (
               <SettingRow icon={I.shieldcheck} title={t.agent.dashTitle} subtitle={t.agent.dashSubtitle} href="/profile/invite" accent
@@ -414,21 +415,28 @@ function Pill({ tone, children }: { tone: "success" | "danger" | "info" | "warni
   );
 }
 
+/**
+ * ⭐ THE ACCENT ROW IS THE BRAND FAMILY, NOT GOLD (R5-C, the second gold audit, 2026-10-09). `accent` marks the one row
+ * set apart from its siblings — the agent's dashboard — and "set apart" is a highlight, which the product says in its one
+ * non-money accent (the selected pill, the current step, the unread dot). A door is not money (Q5): the only door the
+ * rulebook gilds is the deposit door (§M3a). The commission it leads to is gold where it is EARNED, on that page. So the
+ * edge, the wash, the side bar, the plate and the "NEW" pill are the brand family; the plate's glyph is the on-brand ink.
+ */
 function SettingRow({ icon: Icon, title, subtitle, href, accent, badge }: { icon: (typeof I)[keyof typeof I]; title: string; subtitle: string; href: string; accent?: boolean; badge?: string }) {
   return (
     <Link
       href={href as never}
-      className={`group relative flex items-center gap-3 overflow-hidden rounded-xl border bg-bg-elevated p-3.5 transition-colors ${accent ? "border-gold-700/60 hover:border-gold-500" : "border-border hover:border-brand-400"} hover:bg-bg-overlay`}
-      style={accent ? { background: "color-mix(in oklab, var(--gold-500) 7%, var(--bg-elevated))" } : undefined}
+      className={`group relative flex items-center gap-3 overflow-hidden rounded-xl border bg-bg-elevated p-3.5 transition-colors ${accent ? "border-brand-600/60 hover:border-brand-500" : "border-border hover:border-brand-400"} hover:bg-bg-overlay`}
+      style={accent ? { background: "color-mix(in oklab, var(--brand-500) 7%, var(--bg-elevated))" } : undefined}
     >
       {accent && (
-        <span aria-hidden className="absolute left-0 top-2 bottom-2 w-[3px] rounded-full" style={{ background: "linear-gradient(180deg, var(--gold-400), var(--gold-600))" }} />
+        <span aria-hidden className="absolute left-0 top-2 bottom-2 w-[3px] rounded-full" style={{ background: "linear-gradient(180deg, var(--brand-400), var(--brand-600))" }} />
       )}
       <span
         /* ⚠️ LITERALS, not `h-10 w-10` — the overridden scale (tailwind.config.ts:200-215)
            makes `h-10` 80px, which is what set every profile menu row's height. */
-        className={`inline-flex h-[40px] w-[40px] items-center justify-center rounded-md shrink-0 transition-colors ${accent ? "text-gold-fg" : "bg-brand-500/10 text-brand-300 group-hover:bg-brand-500/15"}`}
-        style={accent ? { background: "linear-gradient(180deg, var(--gold-400), var(--gold-600))" } : undefined}
+        className={`inline-flex h-[40px] w-[40px] items-center justify-center rounded-md shrink-0 transition-colors ${accent ? "" : "bg-brand-500/10 text-brand-300 group-hover:bg-brand-500/15"}`}
+        style={accent ? { background: "linear-gradient(180deg, var(--brand-400), var(--brand-600))", color: "var(--text-on-brand)" } : undefined}
       >
         <Icon s={17} />
       </span>
@@ -436,7 +444,7 @@ function SettingRow({ icon: Icon, title, subtitle, href, accent, badge }: { icon
         <p className="font-display text-[13.5px] font-semibold text-text leading-tight flex items-center gap-2">
           {title}
           {badge && (
-            <span className="inline-flex items-center rounded-pill border border-gold-700/50 bg-gold-500/15 px-1.5 py-0.5 font-mono text-micro font-bold uppercase tracking-[0.08em] text-gold-300">
+            <span className="inline-flex items-center rounded-pill border border-brand-600/50 bg-brand-500/15 px-1.5 py-0.5 font-mono text-micro font-bold uppercase tracking-[0.08em] text-brand-300">
               {badge}
             </span>
           )}

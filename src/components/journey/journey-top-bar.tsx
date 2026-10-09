@@ -206,10 +206,12 @@ export function JourneyTopBar({
           )}
 
           {/* From 1024 only: on a phone, Akaunti holds the language control, the notifications and the account. */}
-          <span className="hidden lg:inline-flex"><LanguageMenu /></span>
+          {/* `journey` on both (R5-C, the second gold audit, 2026-10-09): the current language's tick and the bell's unread
+              signs are the journey's brand ink, not gold (Q5); the classic bar mounts the same two without it, unchanged. */}
+          <span className="hidden lg:inline-flex"><LanguageMenu journey /></span>
           {user.isAuthed && (
             <>
-              <span className="hidden lg:inline-flex kp-jhdr__bell">{pollers.bell && !notFoundShown ? <NotificationsPanel /> : <BellStill label={t.common.notifications} />}</span>
+              <span className="hidden lg:inline-flex kp-jhdr__bell">{pollers.bell && !notFoundShown ? <NotificationsPanel journey /> : <BellStill label={t.common.notifications} />}</span>
               <span className="hidden lg:inline-flex">
                 <AvatarMenu
                   initials={user.initials}
