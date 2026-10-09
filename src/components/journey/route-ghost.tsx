@@ -98,7 +98,7 @@ export function JourneyRouteGhost({ rails, at }: { rails: readonly string[]; at?
     "/positions": <TicketsGhost t={t} />,
     "/account": <AccountGhost t={t} />,
     "/updown/history": <UpDownHistoryGhost journeyHead={<TicketsHeadGhost t={t} />} />,
-    "/wallet/deposit": <DepositGhost />,
+    "/wallet/deposit": <DepositGhost journey />,
     "/wallet/deposit/return": <DepositReturnLoading />,
   };
   if (at) return routes[at];

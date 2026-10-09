@@ -440,7 +440,9 @@ const ghostAt = (path: string, l: Locale) => inApp(path, l, h(JourneyRouteGhost 
     ["/positions", (l) => dict[l].journey.tabTickets],
     ["/account", (l) => `>${dict[l].journey.tabAccount}</h1>`],
     ["/updown/history", (l) => dict[l].journey.tabTickets],
-    ["/wallet/deposit", (l) => dict[l].common.deposit],
+    // ⚠️ MOVED IN ROUND 5 (R5-G, G-1): a journey reader's deposit screen names itself as its doors do, "Weka pesa"
+    // (`journey.depositAction`, `money-names.ts`) — so its ghost's h1 does; it read "Amana" (`common.deposit`) in Swahili.
+    ["/wallet/deposit", (l) => `>${dict[l].journey.depositAction}</h1>`],
     ["/wallet/deposit/return", () => 'class="rounded-card border border-border bg-bg-elevated p-6 space-y-4 kp-shimmer-track"'],
     ["/markets/mkt_any", () => "lg:grid-cols-[1fr_360px]"],
     ["/help", () => 'role="status"'],

@@ -51,6 +51,7 @@
  */
 import { dict, DEFAULT_LOCALE, type Dict, type Locale } from "@/lib/i18n-dict";
 import { markInnerSvg } from "@/lib/brand-mark";
+import { regulatorSplit } from "@/lib/regulator-name";
 
 /** The path the document is served at — the service worker's `OFFLINE_URL` names the same. */
 export const OFFLINE_PATH = "/offline";
@@ -120,12 +121,33 @@ export const OFFLINE_GLYPHS = {
   rotateCcw: '<path d="M3 12a9 9 0 1 0 2.6-6.3L3 8"/><path d="M3 3.5V8h4.5"/>',
 } as const;
 
-const esc = (s: string) => s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#39;");
+/**
+ * ⭐ THE REGULATOR'S NAME IS ONE NAME HERE TOO (R5-G, 2026-10-09, G-5 — R5-A's F18 rule, as the journey's footer and the
+ * opt-out shell's footer keep it). The licence line is the row less the 18+ roundel and its gap (vw − 70 below 1024), so
+ * at en 320–334 it read "Licensed by the Gaming" / "Board of Tanzania." and at sw 333–390 "Leseni ya Bodi ya Michezo" /
+ * "ya Kubahatisha Tanzania." (in Inter's widths). Each language's name is now a `.kp-gbt-name` span (`regulator-name.ts`,
+ * the pattern `keepRegulator` reads), the line is a size container, and the name is `nowrap` only from these widths —
+ * globals.css's own for `.kp-gbt` (the name and its full stop in Inter 13px, plus 3px; `test:visual-pass-r5g` §4 holds
+ * the two equal).
+ * A line narrower than the name (sw under 333) wraps as before, so it never overflows. CSS only: the document's two
+ * scripts are untouched. The document names Inter first and falls back to the system face; Roboto, Segoe UI, Helvetica
+ * and Noto Sans all set Latin narrower than Inter (Next's capsize table: average widths 0.445, 0.443, 0.450, 0.474 of an
+ * em against Inter's 0.478), so a width that holds the name in Inter holds it in each of them.
+ */
+export const OFFLINE_GBT_FROM: Readonly<Record<Locale, number>> = { en: 168, sw: 263, zh: 120 };
+
+const esc =(s: string) => s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#39;");
 /** A value for an inline script: JSON, with every `<` escaped so no string can close the element it sits in. */
 const js = (v: unknown) => JSON.stringify(v).replace(/</g, "\\u003c").replace(/\u2028/g, "\\u2028").replace(/\u2029/g, "\\u2029");
 const tFor = (l: Locale) => dict[l] as Dict;
 /** One phrase in every language, each in a span the stylesheet shows only under its own `<html lang>`. */
 const say = (pick: (t: Dict) => string) => OFFLINE_LOCALES.map((l) => `<span class="l" lang="${l}">${esc(pick(tFor(l)))}</span>`).join("");
+/** …and the licence sentence, its words the same, with the regulator's name in a `.kp-gbt-name` span in each language. */
+const sayLicence = (pick: (t: Dict) => string) => OFFLINE_LOCALES.map((l) => {
+  const s = pick(tFor(l));
+  const cut = regulatorSplit(s);
+  return `<span class="l" lang="${l}">${cut ? `${esc(cut[0])}<span class="kp-gbt-name">${esc(cut[1])}</span>${esc(cut[2])}` : esc(s)}</span>`;
+}).join("");
 /** A 24-grid line glyph, drawn as `glyphs.tsx`'s `G` draws it. */
 const glyph = (inner: string, s: number) =>
   `<svg viewBox="0 0 24 24" width="${s}" height="${s}" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${inner}</svg>`;
@@ -176,7 +198,9 @@ function stylesheet(): string {
     `.kp-off__rg-row{display:flex;align-items:center;gap:10px}`,
     `.kp-off__18{flex:none;display:inline-flex;align-items:center;justify-content:center;width:28px;height:28px;border:2px solid var(--text-subtle);border-radius:var(--r-pill);font-family:var(--font-display);font-weight:700;font-size:var(--type-micro);color:var(--text)}`,
     `.kp-off__rg p{margin:0;font-size:13px;line-height:18px;letter-spacing:-0.05px;text-wrap:balance;word-break:keep-all}`,
-    `.kp-off__rg .kp-off__gbt{color:var(--text-muted);line-height:1.625}`,
+    // The licence line takes the row's remainder (a size container has no width of its own to give a flex row).
+    `.kp-off__rg .kp-off__gbt{color:var(--text-muted);line-height:1.625;flex:1 1 0%;min-width:0;container:kp-gbt/inline-size}`,
+    ...OFFLINE_LOCALES.map((l) => `@container kp-gbt (min-width:${OFFLINE_GBT_FROM[l]}px){.kp-gbt-name:lang(${l}){white-space:nowrap}}`),
     `.kp-off__lic{font-family:var(--font-mono);font-variant-numeric:tabular-nums;color:var(--text-subtle)}`,
     `.kp-off__stop{font-style:italic;color:var(--text-subtle)}`,
     `@media (min-width:1024px){.kp-off__rg-in{padding-left:32px;padding-right:32px}}`,
@@ -217,7 +241,7 @@ export function offlineDocument({ licenceNumber }: { licenceNumber: string }): s
     + `<footer class="kp-off__rg">`
     + `<div class="kp-off__rule" aria-hidden="true"></div>`
     + `<div class="kp-off__rg-in">`
-    + `<div class="kp-off__rg-row"><span class="kp-off__18">${say((t) => t.footer.eighteenPlus)}</span><p class="kp-off__gbt">${say((t) => t.footer.licensedByGbt)}</p></div>`
+    + `<div class="kp-off__rg-row"><span class="kp-off__18">${say((t) => t.footer.eighteenPlus)}</span><p class="kp-off__gbt">${sayLicence((t) => t.footer.licensedByGbt)}</p></div>`
     + `<p class="kp-off__lic">${say((t) => t.footer.license)}: ${esc(licenceNumber)}</p>`
     + `<p class="kp-off__stop">${say((t) => t.footer.stopGambling)}</p>`
     + "</div>"

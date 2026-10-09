@@ -60,6 +60,7 @@ import { Needle } from "./needle";
 import { HeaderScrollCast } from "./scroll-cast";
 import { LanguageMenu } from "@/components/ui/language-menu";
 import { FiftyLockup } from "@/components/brand";
+import { keepRegulator } from "@/components/ui/keep-words";
 import { LICENCE_NUMBER } from "@/lib/support-config";
 import { isOptOutPath } from "@/lib/marketing/optout";
 import type { Dict } from "@/lib/i18n-server";
@@ -664,8 +665,15 @@ function OptOutShell({ t, children }: { t: Dict; children: React.ReactNode }) {
           <div className="flex items-center gap-[10px]">
             {/* No aria-label: "18+" is the text, and ARIA prohibits a label on a generic span (public-footer.tsx). */}
             <span className="kp-rg__18">{t.footer.eighteenPlus}</span>
-            {/* zh keeps its words whole (break-keep); the zh string carries zero-width break hints. */}
-            <p className="text-text-muted leading-relaxed text-body-sm text-balance break-keep">{t.footer.licensedByGbt}</p>
+            {/* zh keeps its words whole (break-keep); the zh string carries zero-width break hints.
+                ⭐ THE REGULATOR'S NAME IS ONE NAME HERE TOO (R5-G, 2026-10-09, G-5 — R5-A's F18 rule, `keepRegulator` and the
+                `.kp-gbt` size container, as the journey's footer wears them). This line is the row's width less the 18+
+                roundel and its gap (vw − 70 below 1024): "Licensed by the Gaming" / "Board of Tanzania." at en 320–334 and
+                "Leseni ya Bodi ya Michezo" / "ya Kubahatisha Tanzania." at sw 333–390 now read "Licensed by the" / "Gaming
+                Board of Tanzania." and "Leseni ya" / "Bodi ya Michezo ya Kubahatisha Tanzania."; a line narrower than the
+                name (sw under 333) wraps as before. `flex-1`: a size container has no width of its own to give a flex row,
+                so the line takes the row's remainder — the width it wrapped in before; left-aligned, no glyph moves. */}
+            <p className="kp-gbt flex-1 text-text-muted leading-relaxed text-body-sm text-balance break-keep">{keepRegulator(t.footer.licensedByGbt)}</p>
           </div>
           {/* 13px, not the full footer's 11px: a licence line is read, and 11px is under the reading floor (type-scale §3). */}
           <p className="font-mono text-body-sm text-text-subtle tabular-nums">{t.footer.license}: {LICENCE_NUMBER()}</p>

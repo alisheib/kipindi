@@ -255,8 +255,11 @@ async function run(W: World, log: (l: string) => void): Promise<string[]> {
     ok("3.page · /offline is not a page: no `page.tsx`, so the root layout (and AppShell) never wraps it", !W.pageExists, F.page);
     ok("3.handler · the route answers GET with a Response built by `offlineDocument`, taking no request at all",
       /export\s+(?:async\s+)?function\s+GET\s*\(\s*\)/.test(route) && /offlineDocument\(/.test(route), squash(route.slice(0, 400)));
-    ok("3.imports · the route imports only the document and the public licence number; the document only the dictionary and the mark",
-      j(importsOf(route).sort()) === j(["@/lib/offline-document", "@/lib/server/support-config"]) && j(importsOf(mod).sort()) === j(["@/lib/brand-mark", "@/lib/i18n-dict"]),
+    // ⚠️ MOVED IN ROUND 5 (R5-G, G-5, 2026-10-09): the document keeps the Gaming Board's name whole in its licence line, so
+    // it reads the name's one pattern (`regulator-name.ts`, pure, the one `keepRegulator` reads) — a pattern, nothing about
+    // whoever asks; the route is unchanged.
+    ok("3.imports · the route imports only the document and the public licence number; the document only the dictionary, the mark and the regulator's name pattern",
+      j(importsOf(route).sort()) === j(["@/lib/offline-document", "@/lib/server/support-config"]) && j(importsOf(mod).sort()) === j(["@/lib/brand-mark", "@/lib/i18n-dict", "@/lib/regulator-name"]),
       j({ route: importsOf(route), doc: importsOf(mod) }));
     ok("3.reads · neither file reads a cookie, a header or a session", !READS.test(route) && !READS.test(mod),
       (route.match(READS) ?? mod.match(READS) ?? [""])[0]);
@@ -305,9 +308,18 @@ async function run(W: World, log: (l: string) => void): Promise<string[]> {
       ok(`4.words.${name} · the ${name} is the dictionary's own words, one span per language, and nothing else`, at >= 0 && body.startsWith(spans + (name === "retry" ? "</span></button>" : name === "title" ? "</h1>" : "</p>")),
         at < 0 ? `no ${open}` : body.slice(0, 160));
     }
-    const footer = [(t: Dict) => t.footer.licensedByGbt, (t: Dict) => t.footer.stopGambling, (t: Dict) => t.footer.license];
-    const regulator = footer.every((pick) => LOCALES.every((l) => W.doc.includes(`<span class="l" lang="${l}">${htmlEsc(pick(T(l)))}</span>`)));
-    ok("4.footer · the regulator lines (licensed by the Gaming Board, the licence, the stop line) are the footer's own words in every language", regulator);
+    const footer = [(t: Dict) => t.footer.stopGambling, (t: Dict) => t.footer.license];
+    const plain = footer.every((pick) => LOCALES.every((l) => W.doc.includes(`<span class="l" lang="${l}">${htmlEsc(pick(T(l)))}</span>`)));
+    // ⚠️ MOVED IN ROUND 5 (R5-G, G-5, 2026-10-09): the licence sentence keeps the Gaming Board's name whole (R5-A's F18 rule),
+    // so in each language its span holds the dictionary's own words with the name — the name alone — in a `.kp-gbt-name`
+    // span. Still nothing typed: the three parts put together are the dictionary's sentence, character for character.
+    const NAME = /^(?:Gaming Board of Tanzania|Bodi ya Michezo ya Kubahatisha Tanzania|坦桑尼亚\p{Cf}?博彩委员会)$/u;
+    const licence = LOCALES.every((l) => {
+      const m = new RegExp(`<span class="l" lang="${l}">([^<]*)<span class="kp-gbt-name">([^<]*)</span>([^<]*)</span>`).exec(W.doc);
+      return !!m && NAME.test(m[2]) && m[1] + m[2] + m[3] === htmlEsc(T(l).footer.licensedByGbt);
+    });
+    ok("4.footer · the regulator lines (licensed by the Gaming Board, the licence, the stop line) are the footer's own words in every language — the Board's name in its keep span", plain && licence,
+      j({ plain, licence }));
   }
 
   log("§5 · the look's sources");

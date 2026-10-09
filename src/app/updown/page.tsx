@@ -19,6 +19,7 @@ import { I } from "@/components/ui/glyphs";
 import { getBoard } from "@/lib/server/updown-board";
 import { currentSession } from "@/lib/server/auth-service";
 import { getServerT } from "@/lib/i18n-server";
+import { resolveSimpleJourney } from "@/lib/server/journey-preview";
 import { pickLocalized } from "@/lib/localized";
 import { UpDownCard } from "@/components/updown/updown-card";
 import { UpDownResultAnnouncer } from "@/components/updown/updown-result-announcer";
@@ -89,7 +90,12 @@ export default async function UpDownPage({
   // ⛔ NO IDENTITY READ ON THE BOARD SINCE 2026-09-13 — a stake asks no identity question
   // (`kyc-gate.ts`), so quick-bet is armed for every signed-in player. The `kycBlocked` read and prop
   // that switched it off from 2026-09-05 are deleted; do not restore them.
-
+  // ⭐ ONE PAGE, ONE NAME (R5-G, 2026-10-09, G-1's sweep): for a journey request the history pill opens Tiketi zangu's
+  // Up & Down kind, whose h1 and tab say "Tiketi zangu" (`updown/history/page.tsx`), so the pill names that page and wears
+  // its sign — the ticket the Tiketi zangu tab draws (`JOURNEY_TABS`); everybody else's pill keeps "Juu na Chini zako"
+  // and the portfolio sign, the name its page gives itself for them. The shell's own cached answer for this request.
+  const { journey } = await resolveSimpleJourney();
+  const historyName = journey ? t.journey.tabTickets : t.market.udHistoryTitle;
 
   return (
     <div className="mx-auto w-full max-w-board px-3 lg:px-6 py-6">
@@ -125,11 +131,11 @@ export default async function UpDownPage({
           {/* This game's own portfolio — separate from the long-form Bets page. */}
           <Link
             href="/updown/history"
-            aria-label={t.market.udHistoryTitle}
+            aria-label={historyName}
             className={HEADER_PILL}
           >
-            <I.portfolio s={13} />
-            <span className="hidden sm:inline">{t.market.udHistoryTitle}</span>
+            {journey ? <I.ticket s={13} /> : <I.portfolio s={13} />}
+            <span className="hidden sm:inline">{historyName}</span>
             <I.chevronRight s={11} />
           </Link>
         </div>

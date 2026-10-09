@@ -277,10 +277,10 @@ const PAGE_HEADINGS = {
   '/updown': H('eq', 'Juu na Chini', 'Up & Down', '涨跌'),
   /** wallet/wallet-client.tsx, its PageHeader: common.yourFunds */
   '/wallet': H('eq', 'Pesa zako', 'Your funds', '您的资金'),
-  /** wallet/deposit/page.tsx, its PageHeader: common.deposit */
-  '/wallet/deposit': H('eq', 'Amana', 'Deposit', '充值'),
-  /** wallet/withdraw/page.tsx, its PageHeader: wallet.moveFundsOut */
-  '/wallet/withdraw': H('eq', 'Toa fedha', 'Move funds out', '转出资金'),
+  /** wallet/deposit/page.tsx, its PageHeader for a journey reader: journey.depositAction (`money-names.ts`, R5-G) */
+  '/wallet/deposit': H('eq', 'Weka pesa', 'Deposit', '充值'),
+  /** wallet/withdraw/page.tsx, its PageHeader for a journey reader: journey.withdrawAction (`money-names.ts`, R5-G) */
+  '/wallet/withdraw': H('eq', 'Toa pesa', 'Withdraw', '提现'),
   /** results/page.tsx, its sr-only h1: results.title */
   '/results': H('eq', 'Matokeo', 'Results', '结果'),
   /** live/page.tsx, its sr-only h1: common.live then common.markets */

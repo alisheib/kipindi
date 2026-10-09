@@ -68,11 +68,18 @@ type Props = {
    *  rather than a button the server is about to refuse. */
   walletPay: { balanceTzs: number; kycApproved: boolean; emailVerified: boolean };
   limits: { maxMb: number; refereeHoldDays: number; reviewSlaDays: number };
+  /**
+   * The shell's own answer for this request (`resolveSimpleJourney`, `page.tsx`). ⭐ ONE ACTION, ONE NAME (R5-G, 2026-10-09,
+   * G-1's sweep — R5-B's F11): a journey reader's header carries "Weka pesa" to the deposit screen, which names itself
+   * "Weka pesa" too, so the shortfall's own door to that screen says it as well — not "Ongeza fedha kwenye pochi yangu"
+   * beside it. Everybody else keeps that sentence.
+   */
+  journey: boolean;
 };
 
 const REQUIRED: AgentDocType[] = ["CV", "REQUEST_LETTER", "SERIKALI_LETTER", "REFEREE_ONE_LETTER", "REFEREE_ONE_ID", "REFEREE_TWO_LETTER", "REFEREE_TWO_ID"];
 
-export function ApplyClient({ app, documents, missing, kycGate, fee, lipa, walletPay, limits }: Props) {
+export function ApplyClient({ app, documents, missing, kycGate, fee, lipa, walletPay, limits, journey }: Props) {
   const { t } = useT();
   const router = useRouter();
   const { toast } = useToast();
@@ -389,7 +396,7 @@ export function ApplyClient({ app, documents, missing, kycGate, fee, lipa, walle
                   </p>
                   <p className="text-body-sm leading-relaxed text-text-muted">{t.agent.payTopUpHint}</p>
                   <Button type="button" variant="primary" size="md" onClick={() => router.push("/wallet/deposit" as never)}>
-                    {t.agent.payTopUp}
+                    {journey ? t.journey.depositAction : t.agent.payTopUp}
                   </Button>
                 </div>
               ) : (

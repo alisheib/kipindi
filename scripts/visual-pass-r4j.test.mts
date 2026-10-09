@@ -258,10 +258,12 @@ section("3 · E38 · the journey's loading ghosts (tiles 277 280 290 293 296: on
   // ⚠️ MOVED IN ROUND 5'S FOLLOW-UP (R5-H, G-2): the shared drawings read their own words (`useT`), so neither the root
   // ghost nor the loading file hands them any; the round history takes the journey's head as `journeyHead` (its module
   // loads nothing of the journey's), and a journey reader's /positions is the root ghost pinned to the page.
+  // ⚠️ …AND THE DEPOSIT DRAWING TAKES THE JOURNEY ANSWER (R5-G, G-1): its head is the page's own for either reader
+  // (`money-names.ts`) — the root ghost (a journey reader's alone) hands it `journey`, its loading file the per-request one.
   const own: Array<[string, string, string, string]> = [
     ['"/updown": <UpDownGhost />', 'import { UpDownGhost } from "@/app/updown/updown-ghost";', "src/app/updown/loading.tsx", "return <UpDownGhost />;"],
     ['"/updown/history": <UpDownHistoryGhost journeyHead={<TicketsHeadGhost t={t} />} />', 'import { UpDownHistoryGhost } from "@/app/updown/history/history-ghost";', "src/app/updown/history/loading.tsx", "return <UpDownHistoryGhost />;"],
-    ['"/wallet/deposit": <DepositGhost />', 'import { DepositGhost } from "@/app/wallet/deposit/deposit-ghost";', "src/app/wallet/deposit/loading.tsx", "return <DepositGhost />;"],
+    ['"/wallet/deposit": <DepositGhost journey />', 'import { DepositGhost } from "@/app/wallet/deposit/deposit-ghost";', "src/app/wallet/deposit/loading.tsx", "return <DepositGhost journey={journey} />;"],
     ['"/wallet/deposit/return": <DepositReturnLoading />', 'import DepositReturnLoading from "@/app/wallet/deposit/return/loading";', "src/app/wallet/deposit/return/loading.tsx", "export default function DepositReturnLoading() {"],
     ['["^/markets/[^/]+$", <MarketDetailLoading />]', 'import MarketDetailLoading from "@/app/markets/[id]/loading";', "src/app/markets/[id]/loading.tsx", "export default function MarketDetailLoading() {"],
   ];

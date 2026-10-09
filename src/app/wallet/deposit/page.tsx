@@ -31,14 +31,18 @@ import { fill } from "@/lib/utils";
 import { formatBreakEnd } from "@/lib/break-end";
 import { keepText } from "@/components/ui/keep-run";
 import { resolveSimpleJourney } from "@/lib/server/journey-preview";
+import { depositNames } from "@/lib/journey/money-names";
 import { readFlash } from "@/lib/server/flash-message";
 import { pathWithQuery } from "@/lib/safe-next";
 
 // Localised tab title (POLISH-BACKLOG §1.7) — was the hard-coded English
 // "Deposit", which a Swahili player saw in their browser tab and history.
+// ⭐ THE TAB TITLE FOLLOWS THE PAGE (R5-G, 2026-10-09, G-1 — the precedent is `positions/page.tsx`): a journey reader's
+// screen is "Weka pesa", the word on every journey door that opens it, and the tab says so; everybody else's says
+// "Amana" as before. One function names the tab, the h1 and the ghost (`money-names.ts`).
 export async function generateMetadata() {
-  const { t } = await getServerT();
-  return { title: t.common.deposit };
+  const [{ t }, { journey }] = await Promise.all([getServerT(), resolveSimpleJourney()]);
+  return { title: depositNames(t, journey).title };
 }
 
 const ADMIN_TEST_ROLES = new Set(["ADMIN", "COMPLIANCE", "MODERATOR"]);
@@ -128,6 +132,9 @@ export default async function DepositPage({ searchParams }: { searchParams: Prom
   // R4-I · the break's end, said once by the one formatter; and which shell's words the notice's Withdraw door wears.
   const breakEndText = breakUntil ? formatBreakEnd(Date.parse(breakUntil), Date.now(), t.common.monthsShort, locale) : null;
   const { journey } = await resolveSimpleJourney();
+  // ⭐ ONE PAGE, ONE NAME (R5-G, G-1): the journey's doors say "Weka pesa", so its screen does — h1, tab and commit — under
+  // the Wallet's eyebrow; a classic reader's keeps "Amana" under "WEKA PESA" (`money-names.ts`).
+  const names = depositNames(t, journey);
   const adminTest = !!user && ADMIN_TEST_ROLES.has(user.role) && process.env.NODE_ENV !== "production" && process.env.ADMIN_TEST_DEPOSITS !== "false";
   const maxAmount = adminTest ? 1_000_000_000 : DEPOSIT_MAX_TZS;
   const quickAmounts = adminTest ? [100_000, 1_000_000, 5_000_000, 20_000_000, 100_000_000] : QUICK_AMOUNTS;
@@ -150,8 +157,8 @@ export default async function DepositPage({ searchParams }: { searchParams: Prom
       <PageHero>
         <PageHeader
           icon={<I.arrowDownToLine s={14} className="text-text-subtle" />}
-          eyebrow={t.common.addFunds}
-          title={t.common.deposit}
+          eyebrow={names.eyebrow}
+          title={names.heading}
           subtitle={t.wallet.mobileMoney}
         />
       </PageHero>
@@ -328,7 +335,7 @@ export default async function DepositPage({ searchParams }: { searchParams: Prom
 
           {/* Deposit confirms before dispatch (audit M9), matching bet + withdraw.
               Money-in → gold trigger (micro-spec §1). */}
-          <DepositConfirm />
+          <DepositConfirm journey={journey} />
         </div>
       </form>
       )}

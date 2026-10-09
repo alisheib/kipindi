@@ -78,10 +78,11 @@ export const HUB_WORDS = [
  * The journey's other doors to these pages say the same since this round: its footer (`public-footer.tsx`, the journey
  * arm), its avatar menu (`avatar-menu.tsx`, the journey's menu) and the profile page's KYC row.
  * The rest match their page already: Matokeo, Mubashara (the live page's title and h1), Uthibitisho wa utatuzi, Msaada,
- * Pochi, Arifa, Wasifu, Alika marafiki, Masharti ya huduma, Kuwa wakala. They differ by design where a row names an ACT on
- * its page rather than the page — Weka mipaka, Pumzika, Jizuie (owner-approved RG doors, each landing on its own
- * section), Tafuta — and Toa pesa is the journey's own word for its money doors (its Wallet sheet's button says the
- * same), while the withdraw page itself says "Toa" over "Toa fedha": that page's words are the wallet's to align. They
+ * Pochi, Arifa, Wasifu, Alika marafiki, Masharti ya huduma, Kuwa wakala — and Toa pesa, the journey's own word for its
+ * money doors (its Wallet sheet's button says the same), which the withdraw page names itself for a journey reader since
+ * R5-G (G-1: its tab and h1, `money-names.ts`; it said "Toa" over "Toa fedha"). They differ by design where a row names
+ * an ACT on its page rather than the page — Weka mipaka, Pumzika, Jizuie (owner-approved RG doors, each landing on its
+ * own section), Tafuta. They
  * cannot match yet where no key holds the page's name: the rules page ("RTP ya mchezo na sheria" for "Kanuni za
  * Michezo") and the Swahili AML title ("Sera ya AML / KYC" for "Sera ya Kuzuia Uoshaji wa Fedha na KYC") — both S12
  * items, words this pass cannot add.
