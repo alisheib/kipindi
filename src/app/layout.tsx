@@ -212,7 +212,8 @@ export default async function RootLayout({ children }: { children: React.ReactNo
        in the browser. The start tag is parsed before any script runs, so the first client render already
        agrees with the server HTML. See `@/lib/support-config` "HOW A SAVED VALUE REACHES A CLIENT COMPONENT".
        ⚠️ The helpline is an ATTRIBUTE here, never rendered text — no player page shows it since the owner's
-       ruling of 2026-10-06; the admin SMS composer reads it in the browser to size the marketing footer. */
+       ruling of 2026-10-06, and since his ruling of 2026-10-09 the marketing footer is empty, so the admin SMS
+       composer no longer reads it to size one. */
     <html lang={lang} translate="no" data-density={density} {...publicFactAttrs(getSupportConfig())} suppressHydrationWarning className={`notranslate ${sora.variable} ${inter.variable} ${jbm.variable}`}>
       <body className="font-sans antialiased">
         {/* ⛔ FIRST IN THE BODY, DELIBERATELY. Makes `removeChild`/`insertBefore` tolerant of a

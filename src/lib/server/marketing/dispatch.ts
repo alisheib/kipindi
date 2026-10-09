@@ -102,9 +102,9 @@ export type MarketingGateAllow = Extract<MarketingGateVerdict, { ok: true }>;
 
 /**
  * U43b-1 · E1 · E17 · WHAT A `prepare` LEARNED MAKING ONE PERSON'S MESSAGE (the engine's — ENGINE-SPEC §4.13 Decision 2):
- * the OD42 variant that went out (the recipient's `locale` column), the size the wire was given, the opt-out token in its
- * footer, and whom it was rendered for (E17: an account's own name and no source line, or the book's fallback and the
- * source line). ⛔ `dispatchSlice` never reads it: it rides untouched onto every outcome after the prepare, so the settle
+ * the OD42 variant that went out (the recipient's `locale` column), the size the wire was given, the opt-out token made for
+ * the person (kept for the stop page — no message prints it since the owner's ruling of 2026-10-09), and whom it was
+ * rendered for (E17: an account's own name, or the book's fallback). ⛔ `dispatchSlice` never reads it: it rides untouched onto every outcome after the prepare, so the settle
  * writes what was sent and the gate trail names the render without asking anything twice.
  */
 export type SliceMeta = {

@@ -1992,7 +1992,7 @@ async function checkTestSend(impl: ComposeImpl, log: (l: string) => void): Promi
     return [v.ok && row !== null && row.status === "DRAFT" && row.bodyEn === null && row.sourcePhrase === null, JSON.stringify(v)];
   });
 
-  await claim("§18.1 ⭐ HAPPY PATH (the console stub, the switch absent) — handed over via the stub, and EXACTLY ONE SmsMessage row: purpose MARKETING, target SmsCampaignTest / the campaign id, to the officer's own key — the text THE ONE renderer's for the stored draft, the officer's first name and their own new token, ending in the statutory footer, and the number masked", async () => {
+  await claim("§18.1 ⭐ HAPPY PATH (the console stub, the switch absent) — handed over via the stub, and EXACTLY ONE SmsMessage row: purpose MARKETING, target SmsCampaignTest / the campaign id, to the officer's own key — the text THE ONE renderer's for the stored draft and the officer's first name, with nothing appended (their new token is made, for the stop page, and printed nowhere — 2026-10-09), and the number masked", async () => {
     const before = await tokenCount(o.key);
     const r = await send({ campaignId: cmp, variant: "SW" }, o.id, { send: TEST.CAMPAIGN_TEST_DEPS.send });
     const rows = smsRowsFor(cmp);
@@ -2003,7 +2003,7 @@ async function checkTestSend(impl: ComposeImpl, log: (l: string) => void): Promi
     return [r.ok && r.outcome === "handed_over" && r.via === "stub" && rows.length === 1 && rows[0].purpose === "MARKETING"
       && rows[0].targetType === TEST.CAMPAIGN_TEST_TARGET_TYPE && rows[0].targetId === cmp && rows[0].msisdn === o.key
       && before === 0 && tokens.length === 1 && token.length === 8 && expected !== null && expected.ok && r.text === expected.text
-      && r.text.startsWith("50pick: Habari Asha,") && r.text.endsWith(marketingFooter(token, "SW")) && r.maskedTo === maskPhone(o.key)
+      && r.text.startsWith("50pick: Habari Asha,") && !r.text.includes(token) && r.maskedTo === maskPhone(o.key)
       && r.maskedTo.includes(MASK_DOTS) && !r.maskedTo.includes(o.key.slice(5)),
       `${reasonOf(r)}${r.ok ? ` via ${r.via}` : `: ${r.error}`} · rows ${rows.length} [${rows.map((m) => `${m.purpose}/${m.targetType}`).join(",")}] · tokens ${before} → ${tokens.length}`];
   });

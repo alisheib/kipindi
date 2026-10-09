@@ -120,7 +120,9 @@ export async function updateSupportConfigAction(
   const patch: { email: string; phone: string; phoneTel: string; nationalHelpline?: string; licenceNumber?: string } = { email, phone, phoneTel };
   if (formData.has("nationalHelpline")) {
     const nationalHelpline = String(formData.get("nationalHelpline") ?? "").trim();
-    if (!nationalHelpline) return fieldError("support-helpline", "The helpline is required — the footer of every marketing SMS carries it.");
+    // ⛔ No reason is given about SMS: since the owner's ruling of 2026-10-09 nothing is appended to a marketing SMS, so no
+    // message carries the helpline — it is kept on record, and still required.
+    if (!nationalHelpline) return fieldError("support-helpline", "The helpline is required.");
     if (!toHelplineDial(nationalHelpline)) {
       return fieldError("support-helpline", `"${nationalHelpline}" is not a phone number. Type digits (3 to 15) with no letters.`);
     }

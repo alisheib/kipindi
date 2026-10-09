@@ -76,8 +76,9 @@ const validate = (c: SupportConfig): { ok: true } | { ok: false; reason: string 
   if (!toSupportDial(c.phoneTel || c.phone)) {
     return { ok: false, reason: `"${c.phone}" is not a phone number (3 to 15 digits, no letters), so the tel: link would be dead.` };
   }
-  // ── The helpline (editable since 2026-10-03; any number since 2026-10-06, our own desk included). ──
-  if (!(c.nationalHelpline ?? "").trim()) return { ok: false, reason: "The helpline cannot be blank — the footer of every marketing SMS carries it." };
+  // ── The helpline (editable since 2026-10-03; any number since 2026-10-06, our own desk included). Kept on record and
+  //    still required — though since the owner's ruling of 2026-10-09 no marketing SMS carries it (nothing is appended). ──
+  if (!(c.nationalHelpline ?? "").trim()) return { ok: false, reason: "The helpline cannot be blank." };
   if (!toHelplineDial(c.nationalHelpline) || c.nationalHelplineTel !== toHelplineDial(c.nationalHelpline)) {
     return { ok: false, reason: `"${c.nationalHelpline}" is not a phone number (3 to 15 digits, no letters), so its tel: link would be dead.` };
   }

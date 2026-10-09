@@ -70,8 +70,9 @@
  *
  * ── E1 · E17 · THE PREPARE ─────────────────────────────────────────────────────────────────────────────────────────────
  * Run by `dispatchSlice` right after THAT row's clear, under the gate's key. WHO HOLDS THE NUMBER NOW decides the origin
- * (E17), never the row's kind (F5): an account → `account` (its own first name may print, no source line, its language
- * through OD42's `variantFor`); otherwise `book` (the fallback, the source line, Swahili). The opt-out token is ensured
+ * (E17), never the row's kind (F5): an account → `account` (its own first name may print, its language through OD42's
+ * `variantFor`); otherwise `book` (the fallback, Swahili). Nothing is appended for either since the owner's ruling of
+ * 2026-10-09 — no source line, no stop link. The opt-out token is ensured
  * here and only here (E1: reused, else minted) — a refused person never gets a permanent link. A token that cannot be made
  * holds the row `prepare:token_unavailable`; a message the renderer refuses holds it `prepare:template_invalid`, its first
  * problem scrubbed (DC-5). Either is about one person (E8).

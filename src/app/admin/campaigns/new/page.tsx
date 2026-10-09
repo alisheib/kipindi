@@ -18,7 +18,7 @@
  * its stored filter (`canonicalHref`), so the rail and the window control start from it.
  *
  * ⭐ ONE COUNTER, THE RENDERER'S (U37a): the live counter, the server's save and the test send all size and render
- * through `campaign-template.ts` — the worst-case name, the source line or its reserved room, and the statutory footer.
+ * through `campaign-template.ts` — the worst-case name, and nothing appended (the owner's ruling of 2026-10-09).
  * ⛔ OD45: the sender is the server's `SMS_SENDER_ID`, a line of text, never a control. ⛔ OD24: no money on this page.
  * ⛔ X14: a test is refused `live_sends_closed` while the ONE live switch (`marketing.sms.live`) is absent — before any
  * token, row or transport call; opening it is the owner's act (G1).
