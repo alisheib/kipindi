@@ -712,7 +712,7 @@ function buildPdfHtml() {
     .cover { height: 250mm; display: flex; flex-direction: column; justify-content: center; }
     .cover h1 { font-size: 30pt; margin: 0 0 6mm; } .cover .sub { font-size: 14pt; color: #4a5160; }
     .cover .meta { margin-top: 12mm; color: #6b7280; font-size: 10pt; }
-    h2 { font-size: 16pt; margin: 9mm 0 3mm; padding-bottom: 2mm; border-bottom: 2px solid #c9a227; page-break-after: avoid; }
+    h2 { font-size: 16pt; margin: 9mm 0 3mm; padding-bottom: 2mm; border-bottom: 2px solid #c9a227; break-after: avoid; page-break-after: avoid; }
     h3 { font-size: 12pt; margin: 0 0 2mm; } h3 .n { display: inline-block; min-width: 7mm; color: #c9a227; }
     .step { margin: 0 0 6mm; } h3 { break-after: avoid; page-break-after: avoid; }
     .where, ol, figure, .note, .lead-block { break-inside: avoid; page-break-inside: avoid; }
@@ -721,7 +721,8 @@ function buildPdfHtml() {
     figure img { max-width: 72%; max-height: 104mm; border: 1px solid #d1d5db; border-radius: 2mm; }
     figure.dialog img { max-width: 62%; max-height: 205mm; }
     .note { background: #fdf8e7; border-left: 3px solid #c9a227; padding: 2mm 3mm; margin: 2mm 0; }
-    .lead { color: #374151; } .missing { padding: 8mm; border: 1px dashed #b91c1c; color: #b91c1c; }
+    /* A chapter's lead stays with its first step: STEP 54's PDF left "9 · Your first campaigns" and its lead alone at a page's foot. */
+    .lead { color: #374151; break-after: avoid; page-break-after: avoid; } .missing { padding: 8mm; border: 1px dashed #b91c1c; color: #b91c1c; }
     table { width: 100%; border-collapse: collapse; font-size: 9pt; page-break-inside: auto; }
     th, td { border: 1px solid #d1d5db; padding: 1.6mm 2mm; vertical-align: top; text-align: left; }
     th { background: #f3f4f6; } tr { page-break-inside: avoid; } td.msg { font-style: italic; }
