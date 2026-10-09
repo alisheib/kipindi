@@ -38,12 +38,17 @@
  *   · warnings become `notes`, one sentence per kind, naming rows through `formatRowList` (the first 50, with the
  *     true count beside them) and never a cell (§5.14 — the file is personal data);
  *   · ⭐ C3b · G1 — ONE BROKEN QUOTE NO LONGER COSTS THE FILE. A record that opens a quotation mark never closed has
- *     swallowed the rest of the text into one cell; when rows came before it, every one of them is kept and that record
- *     — with everything after it — is ONE `unreadable` record on its own line, its sentence naming the row and the way
- *     out (`csvUnclosedQuoteReason`), never a cell. The check's "Could not be read" box lists it;
- *   · ⛔ a FATAL problem is a REFUSAL naming its row, never a file: a quotation mark never closed when NOTHING before it
- *     was a record (only blank lines, or none), a cell over 32,767 characters (a quote that swallowed more than a cell
- *     can hold), a first record that does not end within 1 MiB;
+ *     swallowed the rest of the text into one cell; when at least one DATA row came before it (the first row may be the
+ *     header, so two rows — C3b-fix · D5e), every one of them is kept and that record — with everything after it — is
+ *     ONE `unreadable` record on its own line, never a cell. ⭐ C3b-fix · D5 · ITS COUNTS ARE HONEST: the physical lines
+ *     it swallowed are counted as it is read (the line breaks inside the open quote, a final line end starting no line),
+ *     its sentence says "Row N opens a quote (") that is never closed, so it and the M lines after it could not be read"
+ *     with the way out (`csvUnclosedQuoteReason`), ONE note says it on the columns step (`csvUnclosedQuoteNote`), and the
+ *     reader's stats carry it (`unclosed`) for the check's and the result's sum lines, which then never claim every row
+ *     of the file was counted. The check's "Could not be read" box lists the record;
+ *   · ⛔ a FATAL problem is a REFUSAL naming its row, never a file: a quotation mark never closed when no DATA row came
+ *     before it (nothing, blank lines, or the header row alone), a cell over 32,767 characters (a quote that swallowed
+ *     more than a cell can hold), a first record that does not end within 1 MiB;
  *   · `unreadable` holds at most that one record: any other CSV record is a row, a blank, or the reason for a refusal.
  *
  * ── FROM BYTES TO TEXT ────────────────────────────────────────────────────────────────────────────────
@@ -292,9 +297,11 @@ export type CsvRules = {
   readonly maxFieldChars: number;
   /** The most text the vote holds; a first record that has not ended by then refuses the file. */
   readonly maxHeaderChars: number;
-  /** C3b · G1 · a record whose quotation mark never closes, given how many rows came before it: ONE unreadable record
-   *  (the rows before it kept), or the whole file refused. */
+  /** C3b · G1 · a record whose quotation mark never closes, given how many rows (the header row included) came before
+   *  it: ONE unreadable record (the rows before it kept), or the whole file refused. */
   readonly unclosedQuote: (rowsBefore: number) => "unreadable" | "refuse";
+  /** C3b-fix · D5a · the physical lines a quotation mark never closed swallowed, from the text inside it. */
+  readonly countSwallowed: (inside: string) => number;
 };
 
 /* ══ THE TOKENIZER — one pass, its state carried across chunks ══════════════════════════════════════════ */
@@ -311,10 +318,21 @@ type TokenSink = {
   readonly stray: (line: number) => void;
   /** A byte-order mark at the start of the record on `line`, dropped (the record is not the first). */
   readonly innerBom: (line: number) => void;
-  /** The text ended inside the quotation mark the record on `line` opened. True: the reader took that record as ONE
-   *  unreadable record (C3b · G1); false: the read is refused. */
-  readonly unclosed: (line: number) => boolean;
+  /** The text ended inside the quotation mark the record on `line` opened, after swallowing `swallowed` physical lines.
+   *  True: the reader took that record as ONE unreadable record (C3b · G1); false: the read is refused. */
+  readonly unclosed: (line: number, swallowed: number) => boolean;
 };
+
+/**
+ * ⭐ C3b-fix · D5a · the physical lines a quotation mark never closed swallowed, from the text inside it — every line
+ * break there (a CRLF, a lone CR or a LF, each already kept as ONE LF) begins a line, except one that ends the text,
+ * which begins none. Read once, at the end: the swallowed text is at most one cell (`maxFieldChars`).
+ */
+function swallowedLines(inside: string): number {
+  let breaks = 0;
+  for (let i = 0; i < inside.length; i++) if (inside.charCodeAt(i) === LF) breaks++;
+  return breaks > 0 && inside.charCodeAt(inside.length - 1) === LF ? breaks - 1 : breaks;
+}
 
 type Tokenizer = {
   readonly feed: (text: string, from: number) => number;
@@ -505,8 +523,9 @@ function makeTokenizer(code: number, rules: CsvRules, sink: TokenSink, voting: b
     afterCr = false;
     if (state === IN_QUOTES) {
       // ⭐ C3b · G1 · the record on `line` opened a quotation mark the text never closed: the reader keeps it as ONE
-      // unreadable record when rows came before it (`sink.unclosed`), and only otherwise is the read refused.
-      if (!voting && !sink.unclosed(line)) fatal = { problem: "unterminated_quote", line };
+      // unreadable record when a data row came before it (`sink.unclosed`), and only otherwise is the read refused.
+      // ⭐ C3b-fix · D5a · `field` holds everything inside that quotation mark, so the lines it swallowed are counted here.
+      if (!voting && !sink.unclosed(line, rules.countSwallowed(field))) fatal = { problem: "unterminated_quote", line };
       stopped = true;
       return;
     }
@@ -590,8 +609,10 @@ export const CSV_RULES: CsvRules = {
   isBlankRecord,
   maxFieldChars: MAX_FIELD_CHARS,
   maxHeaderChars: MAX_HEADER_CHARS,
-  // ⭐ C3b · G1 · the whole file is refused only when NOTHING before the broken quote was a record.
-  unclosedQuote: (rowsBefore) => (rowsBefore > 0 ? "unreadable" : "refuse"),
+  // ⭐ C3b · G1 · C3b-fix · D5e · the whole file is refused unless at least ONE DATA row came before the broken quote —
+  // the first row may be the header, so that is two rows: a header alone keeps nothing worth a file.
+  unclosedQuote: (rowsBefore) => (rowsBefore >= 2 ? "unreadable" : "refuse"),
+  countSwallowed: swallowedLines,
 };
 
 type Candidate = { readonly delimiter: CsvDelimiter; readonly scan: CandidateScan; chars: number };
@@ -675,6 +696,10 @@ export type CsvReadResult =
 /** Where the separator came from. `single_column`: the vote found no candidate. */
 export type CsvDelimiterSource = "override" | "sep" | "vote" | "single_column";
 
+/** ⭐ C3b-fix · D5 · a quotation mark never closed: the row whose record opened it (read as ONE unreadable record) and the
+ *  physical lines after that row's first line it swallowed (0 when the record was the file's last line). */
+export type CsvUnclosedQuote = { readonly line: number; readonly lines: number };
+
 export type CsvStats = {
   /** The text began with a byte-order mark, which `stripBom` removed. */
   readonly hadBom: boolean;
@@ -691,6 +716,9 @@ export type CsvStats = {
   readonly tie: boolean;
   /** Every record read — the blank ones and C3b's one unreadable record included, the `sep=` line not. */
   readonly records: number;
+  /** ⭐ C3b-fix · D5 · the record a quotation mark never closed was read as ONE unreadable record from: its row, and the
+   *  physical lines after it the quote swallowed — or null. The sum lines say it; the note and the record's sentence too. */
+  readonly unclosed: CsvUnclosedQuote | null;
   readonly rows: number;
   readonly blankRows: number;
   /** The TRUE number of warnings, however few rows the notes name. */
@@ -739,8 +767,10 @@ export function buildCsvReader(rules: CsvRules): CsvBuild {
     const fileName = typeof named === "string" ? named : null;
     const manual = delimiterOfName(options?.delimiter);
     const rows: ParsedRow[] = [];
-    /** C3b · G1 · at most ONE: the record whose quotation mark never closed, when rows came before it. */
+    /** C3b · G1 · at most ONE: the record whose quotation mark never closed, when a data row came before it. */
     const unreadable: UnreadableRecord[] = [];
+    /** C3b-fix · D5 · that record's row and the lines it swallowed — the note's, the stats' and the sum lines'. */
+    let unclosedAt: CsvUnclosedQuote | null = null;
     const strays: number[] = [];
     const innerBoms: number[] = [];
     const spread: number[] = [];
@@ -788,10 +818,11 @@ export function buildCsvReader(rules: CsvRules): CsvBuild {
       innerBom: (line) => {
         innerBoms.push(line);
       },
-      unclosed: (line) => {
+      unclosed: (line, swallowed) => {
         if (rules.unclosedQuote(rows.length) !== "unreadable") return false;
         records++;
-        unreadable.push({ line, reason: csvUnclosedQuoteReason(line) });
+        unreadable.push({ line, reason: csvUnclosedQuoteReason(line, swallowed) });
+        unclosedAt = { line, lines: swallowed };
         return true;
       },
     };
@@ -901,6 +932,8 @@ export function buildCsvReader(rules: CsvRules): CsvBuild {
       if (innerBoms.length > 0) notes.push(rowsNote(innerBoms, "begins", "begin", INNER_BOM_TAIL));
       if (spread.length > 0) notes.push(singleColumnNote(spread));
       if (replaced.length > 0) notes.push(rowsNote(replaced, "holds", "hold", replacementTail()));
+      // ⭐ C3b-fix · D5c · the quotation mark never closed, said on the columns step in one line.
+      if (unclosedAt !== null) notes.push(csvUnclosedQuoteNote(unclosedAt.line, unclosedAt.lines));
       return notes;
     };
 
@@ -933,11 +966,12 @@ export function buildCsvReader(rules: CsvRules): CsvBuild {
       voteLine: vote === null ? null : vote.line,
       tie: vote !== null && vote.tie,
       records,
+      unclosed: unclosedAt,
       rows: rows.length,
       blankRows,
       warnings:
         (sepUnsupported ? 1 : 0) + (vote !== null && vote.tie ? 1 : 0) +
-        strays.length + innerBoms.length + spread.length + replaced.length,
+        strays.length + innerBoms.length + spread.length + replaced.length + (unclosedAt !== null ? 1 : 0),
       replacementRows: replaced.length,
       charsInput,
       charsTokenized: tokenizer === null ? 0 : tokenizer.tokenized(),
@@ -1016,13 +1050,37 @@ function tieNote(line: number, tied: readonly CsvDelimiter[], winner: CsvDelimit
   return `Row ${line} has the same number of ${list}, so the file was read as ${DELIMITER_WORDS[winner].separated}; if its columns look wrong, choose the separator.`;
 }
 
+/** The lines a quotation mark swallowed, as a sentence says them — "the line after it", "the 12 lines after it". */
+const linesAfterIt = (lines: number): string => (lines === 1 ? "the line after it" : `the ${grouped(lines)} lines after it`);
+
 /**
- * ⭐ C3b · G1 · the ONE sentence for the record whose quotation mark never closed, when rows came before it and the file
- * is read without it: its row, what happened to it and to everything after it, and the way out — never a cell. The mark
- * itself is built from its code.
+ * ⭐ The digits a staged reason may carry: staging withholds a read error holding SEVEN or more digits (a number must
+ * never ride into a staged row's reason — `cleanReadError`, import-staging.ts), so a sentence the server must keep stays
+ * under them.
  */
-export function csvUnclosedQuoteReason(line: number): string {
-  return `Row ${line} opens a quote (${QUOTE_TEXT}) that is never closed, so it and everything after it could not be read. Close or remove that quote, or delete the row, and import again.`;
+const STAGED_REASON_DIGITS_MAX = 6;
+
+/**
+ * ⭐ C3b · G1 · C3b-fix · D5b · the ONE sentence for the record whose quotation mark never closed, when a data row came
+ * before it and the file is read without it: its row, the physical lines after it the quote swallowed (D5a — counted,
+ * never "everything"), and the way out — never a cell. ⛔ It is STAGED as the record's read error, so its digits stay
+ * within `STAGED_REASON_DIGITS_MAX`: when the row and the count would pass it together, the count is said in words —
+ * "every line after it" (the swallowed lines run to the file's end) — and the note and the sum lines still give the
+ * figure. The mark itself is built from its code.
+ */
+export function csvUnclosedQuoteReason(line: number, lines: number): string {
+  const digits = String(line).length + (lines > 0 ? String(lines).length : 0);
+  const what = lines <= 0 ? "it" : digits > STAGED_REASON_DIGITS_MAX ? "it and every line after it" : `it and ${linesAfterIt(lines)}`;
+  return `Row ${line} opens a quote (${QUOTE_TEXT}) that is never closed, so ${what} could not be read. Close or remove that quote, or delete the row, and import again.`;
+}
+
+/**
+ * ⭐ C3b-fix · D5c · the READER NOTE for it, on the columns step, in one line: the row and the lines not read. It is
+ * never staged, so it always gives the figure.
+ */
+export function csvUnclosedQuoteNote(line: number, lines: number): string {
+  const what = lines <= 0 ? "it was" : `it and ${linesAfterIt(lines)} were`;
+  return `Row ${line} opens a quote (${QUOTE_TEXT}) that is never closed, so ${what} not read.`;
 }
 
 /** ⭐ The ONE sentence for each refusal, naming its row — never a code, never a cell. */

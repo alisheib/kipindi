@@ -31,12 +31,16 @@
  * with its row; a line with a second number keeps the first and the paste's note names those rows (S15-4). ⭐ "First" is
  * the first Tanzanian mobile number on the line, chosen by the ONE phone-cell rule (`firstMobileIndex`,
  * `phone-cell.ts` — the staging's and the check's rule too): one person, one number.
- * ⭐ C3b · G4 · SEVERAL PHONE COLUMNS. A file whose header carries two or more phone columns — any U28 reads as Phone,
- * Outlook's Business / Home / Primary / Car / Other Phone, Google's Phone 2 - Value — and in which some row holds its
- * Tanzanian mobile ONLY outside the main Phone column gains ONE column, "Phone (first mobile of: …)", read as Phone:
- * each row's first cell among those columns (the main one first) that holds a Tanzanian mobile (`firstMobileIn`), else
- * the main column's own cell, so a row with no mobile anywhere reads exactly as before. The original columns stay on the
- * panel as "Not used", each saying why; the server stays unchanged — the new column is one more cell (`mappingFor`).
+ * ⭐ C3b · G4 · SEVERAL PHONE COLUMNS — as the review round decided them (C3b-fix · D2, D3, 2026-10-09). Only the
+ * person's OWN phone columns are read: a strong phone heading U28 knows, Outlook's Business / Home / Other / Primary /
+ * Car Phone, Google's "Phone N - Value", the Swahili "second phone" — ⛔ never Assistant's Phone, Company Main Phone,
+ * Callback, Pager, a Fax, Telex, TTY/TDD, ISDN or Radio Phone, and never a weak alias ("Namba", "Contact") unless it is
+ * the column mapped as Phone (D2). They are read ONLY for a row whose main phone cell yields no mobile, and only through
+ * ONE added column, "Phone (read from: …)", read as Phone, which carries the row's mobile from them — or, when they hold
+ * two or more DISTINCT mobiles, all of them, so the server's ONE phone-cell rule refuses the row in its own words (D3:
+ * one person, one number; another person's number is never taken). A row whose main cell yields a mobile, or whose other
+ * columns hold none, reads exactly as before. The original columns stay on the panel as "Not used", each saying why; the
+ * server stays unchanged — the new column is one more cell (`mappingFor`).
  * ⭐ S15-5 · A FILE WITH NO HEADER ROW IS READ, NOT REFUSED. When the first row reads as a contact (`headerless`),
  * `mappingFor` names the columns "Column A", "Column B"… (the letters the officer's spreadsheet shows them by), finds the
  * phone column — the one whose cells most often parse as a Tanzanian mobile number — and the name and email columns by
@@ -51,17 +55,19 @@
  * Guard: `scripts/contacts-import/flow.mts` (section "flow").
  */
 import { formatRowList, type ParsedContactsFile, type ParsedRow, type UnreadableRecord } from "./parsed-file";
-import { DECODE_OPTIONS, createCsvReader, detectFormat, parseCsv, stripBom, type TextEncodingLabel } from "./import-parse";
+import {
+  DECODE_OPTIONS, createCsvReader, detectFormat, parseCsv, stripBom, type CsvUnclosedQuote, type TextEncodingLabel,
+} from "./import-parse";
 import { createVcardReader } from "./vcard";
 import { XLSX_MAX_BYTES, spreadsheetHeadKind, xlsxRefusalSentence, type XlsxRefusal } from "./xlsx-limits";
 import { readXlsxInBrowser, type XlsxBrowserOptions, type XlsxBrowserResult } from "./xlsx-read";
 import {
-  CONTACT_FIELDS, autoMapFile, matchHeader, normaliseHeader, scrubPhoneRuns,
+  CONTACT_FIELDS, CONTACT_LIMITS, autoMapFile, matchHeader, normaliseHeader, scrubPhoneRuns,
   type AutoMapResult, type ColumnMapping, type ImportFieldKey, type MappedColumn,
 } from "./contact-fields";
 import { IMPORT_MAX_ROWS } from "./import-limits";
-import { firstMobileIn, firstMobileIndex, phoneCellParts } from "./phone-cell";
-import { isSendableTzNumber, parseTzNumber, readAsciiDigits } from "../tz-msisdn";
+import { firstMobileIn, firstMobileIndex, mobilesIn, type CellMobile } from "./phone-cell";
+import { TZ_COUNTRY_CODE, isSendableTzNumber, parseTzNumber } from "../tz-msisdn";
 import { maskPhone } from "../phone-normalize";
 
 /* ══ CHARACTERS — by code, never typed ════════════════════════════════════════════════════════════ */
@@ -124,13 +130,10 @@ export const PASTE_LINE_NO_NUMBER = "This line has no phone number in it, so it 
 export const PASTE_LIST_NOTE =
   "Each line was read as one contact: its first phone number as the phone, and the rest of the line as the name.";
 
-/** Where S15-4's count was taken: a vCard's cards, a list paste's lines, or (C3b) a file's rows — its phone cell and its
- *  other phone columns. */
-export type ExtraNumbersUnit = "card" | "line" | "row";
-/** The fewest digits a part of a phone cell needs to count as a number of its own (any country's number has more). */
-const PHONE_LIKE_DIGITS = 7;
-/** Every character that is not an ASCII digit — module-level, used only with `replace`. */
-const NOT_A_DIGIT = /[^0-9]/g;
+/** Where S15-4's count was taken: a vCard's cards, or a list paste's lines. ⛔ Never a file's rows (C3b-fix · D3): a CSV,
+ *  a workbook or a pasted table takes a number out of several only when the row holds exactly ONE distinct mobile, and a
+ *  row holding two or more is refused with its sentence — no mobile is ever left out silently, so there is none to count. */
+export type ExtraNumbersUnit = "card" | "line";
 
 /** ⭐ S15-4 · how many people in this file had another number that is not imported — counts, never a value. */
 export function extraNumbersNote(count: number, unit: ExtraNumbersUnit): string | null {
@@ -138,39 +141,7 @@ export function extraNumbersNote(count: number, unit: ExtraNumbersUnit): string 
   if (unit === "card") {
     return `${grouped(count)} ${count === 1 ? "card holds" : "cards hold"} more than one phone number. One number per person is imported — the mobile number where there is one — and the others are not.`;
   }
-  if (unit === "row") {
-    return `${grouped(count)} ${count === 1 ? "row holds" : "rows hold"} more than one phone number. One number per person is imported — the first mobile number — and the others are not.`;
-  }
   return `${grouped(count)} ${count === 1 ? "line holds" : "lines hold"} more than one phone number. The first number on each line is imported, and the others are not.`;
-}
-
-/**
- * ⭐ S15-4 · C3b · how many of a reading's data rows held more than one phone number — the person's other numbers are not
- * imported, and the result says how many people that was (`extraNumbersNote(…, "row")`). A row counts when its phone cell
- * holds several numbers (G3, `phoneCellParts`), or — when Phone is the first-mobile column (G4) — when the phone columns
- * it reads hold more than one number between them. A part counts as a number only with seven digits or more (a serial
- * "3" or an "ext 12" is none). Counts only: no number is read out.
- */
-export function extraNumbersOf(reading: {
-  readonly file: ParsedContactsFile;
-  readonly headers: readonly string[];
-  readonly mapping: ColumnMapping;
-  readonly headerRows: 0 | 1;
-}): number {
-  const phoneAt = reading.mapping.phone;
-  if (phoneAt === undefined) return 0;
-  const firstMobile = (reading.headers[phoneAt] ?? "").startsWith(FIRST_MOBILE_HEADER_START);
-  const columns = firstMobile
-    ? reading.headers.slice(0, phoneAt).flatMap((h, i) => (isPhoneColumnHeader(h) ? [i] : []))
-    : [phoneAt];
-  const phoneLike = (part: string): boolean => readAsciiDigits(part).replace(NOT_A_DIGIT, "").length >= PHONE_LIKE_DIGITS;
-  let extra = 0;
-  for (const row of reading.file.rows.slice(reading.headerRows)) {
-    let numbers = 0;
-    for (const i of columns) numbers += phoneCellParts(row.cells[i] ?? "").filter(phoneLike).length;
-    if (numbers > 1) extra++;
-  }
-  return extra;
 }
 
 /** The list paste's rows with a second number, named by the one shared list ("rows 4, 9 and 12"). */
@@ -220,7 +191,15 @@ export type ReadOptions = { readonly onProgress: ReadProgress; readonly signal?:
 export type ReadRefusalCause = "format" | "csv" | "size";
 
 export type ReadOutcome =
-  | { readonly kind: "parsed"; readonly file: ParsedContactsFile; readonly digest: string; readonly extraNumbers: number }
+  /** `unclosed` (C3b-fix · D5): the CSV record a quotation mark never closed was read as one unreadable record from, and
+   *  the lines it swallowed — the check's and the result's sum lines say them; null for every other file. */
+  | {
+      readonly kind: "parsed";
+      readonly file: ParsedContactsFile;
+      readonly digest: string;
+      readonly extraNumbers: number;
+      readonly unclosed: CsvUnclosedQuote | null;
+    }
   | { readonly kind: "xlsx"; readonly base64: string; readonly digest: string; readonly fileName: string }
   | { readonly kind: "refused"; readonly sentence: string; readonly cause: ReadRefusalCause }
   /** The caller's signal stopped the read (the officer pressed Stop, or closed the dialog). Nothing is kept. */
@@ -391,6 +370,7 @@ export async function readContactsFile(file: File, opts: ReadOptions): Promise<R
 
   let parsed: ParsedContactsFile;
   let extraNumbers = 0;
+  let unclosed: CsvUnclosedQuote | null = null;
   if (cardReader !== null) {
     const card = cardReader.end();
     extraNumbers = cardReader.stats().extraPhones;
@@ -400,6 +380,8 @@ export async function readContactsFile(file: File, opts: ReadOptions): Promise<R
     const result = csvReader.end();
     if (!result.ok) return refused(result.sentence, "csv");
     parsed = result.file;
+    // ⭐ C3b-fix · D5 · a quotation mark never closed: its row and the lines it swallowed travel with the file.
+    unclosed = csvReader.stats().unclosed;
   } else {
     return refused(xlsxRefusalSentence("wrong_format", { kind: "other" }));
   }
@@ -409,7 +391,7 @@ export async function readContactsFile(file: File, opts: ReadOptions): Promise<R
   // incremental digest, and a second read of the same File is the same bytes.
   if (signal?.aborted) return { kind: "aborted" };
   const digest = await sha256Hex(new Uint8Array(await file.arrayBuffer()));
-  return { kind: "parsed", file: parsed, digest, extraNumbers };
+  return { kind: "parsed", file: parsed, digest, extraNumbers, unclosed };
 }
 
 /* ══ parsePastedText — the paste box ══════════════════════════════════════════════════════════════ */
@@ -665,9 +647,10 @@ export type FileMapping = {
   readonly phoneProblem: string | null;
   /** Each column as the panel first draws it: its status and U28's note. */
   readonly columns: readonly MappedColumn[];
-  /** ⭐ C3b · G4 · the file AS THIS READING STAGES IT: the file itself — or, when it has several phone columns, the file
-   *  with ONE more column, "Phone (first mobile of: …)", on every row. The panel's samples and the staged rows come from
-   *  this file (`stageRowsOf(reading.file, …)`); a reading is always made from the file AS READ, never from this one. */
+  /** ⭐ C3b · G4 · the file AS THIS READING STAGES IT: the file itself — or, when the person's other phone columns are
+   *  read (D2, D3), the file with ONE more column, "Phone (read from: …)", on every row. The panel's samples and the staged
+   *  rows come from this file (`stageRowsOf(reading.file, …)`); a reading is always made from the file AS READ, never
+   *  from this one. */
   readonly file: ParsedContactsFile;
 };
 
@@ -762,41 +745,49 @@ function columnsFor(headers: readonly string[], mapping: ColumnMapping): MappedC
   });
 }
 
-/* ══ C3b · G4 — SEVERAL PHONE COLUMNS: the first mobile among them, as ONE column ═══════════════════ */
+/* ══ C3b · G4 — SEVERAL PHONE COLUMNS: the person's OWN phone columns, read as ONE added column ════════════ */
 
-/** Outlook's and Google's other phone columns and the Swahili "second phone", as `normaliseHeader` writes them. ⛔ Each
- *  is read ONLY into the first-mobile column, never mapped on its own: a person's number may sit in any of them. */
-const OTHER_PHONE_HEADERS: ReadonlySet<string> = new Set([
-  "business phone", "business phone 2", "home phone", "home phone 2", "primary phone", "other phone", "car phone",
-  "company main phone", "assistant's phone", "radio phone", "callback", "simu ya pili", "simu nyingine", "namba ya pili",
+/**
+ * ⭐ C3b-fix · D2 · the person's OWN phone columns beside the one mapped as Phone, as `normaliseHeader` writes them:
+ * Outlook's Business Phone (and 2), Home Phone (and 2), Other Phone, Primary Phone and Car Phone, and the Swahili
+ * "second phone" and "other phone" (beside the strong headings U28 knows, Google's "Phone N - Value" and a numbered strong
+ * heading, which `isPhoneColumnHeader` reads by rule). ⛔ NEVER Assistant's Phone, Company Main Phone, Callback, Pager,
+ * any Fax, Telex, TTY/TDD, ISDN or Radio Phone — another person's line, or a shared one — and never a WEAK alias
+ * ("Number", "Namba", "Nambari", "Contact", "Contacts", or "Namba ya pili" built on one): a weak column is a phone column
+ * only when it is the one mapped as Phone.
+ */
+const OWN_PHONE_HEADERS: ReadonlySet<string> = new Set([
+  "business phone", "business phone 2", "home phone", "home phone 2", "other phone", "primary phone", "car phone",
+  "simu ya pili", "simu nyingine",
 ]);
 const DIGITS_ONLY = /^[0-9]+$/;
 
-/** ⭐ The first-mobile column's header begins so — and a file that already carries one is never extended again. */
-export const FIRST_MOBILE_HEADER_START = "Phone (first mobile of: ";
+/** ⭐ The added phone column's header begins so — and a file that already carries one is never extended again. */
+export const ADDED_PHONE_HEADER_START = "Phone (read from: ";
 /** How many phone columns the header names before it says how many more. */
-const FIRST_MOBILE_HEADER_NAMES = 3;
-/** The note under each phone column the first-mobile column reads — why it says "Not used". */
-export const FIRST_MOBILE_SOURCE_NOTE =
-  "One number per person: the last column takes the first mobile number among the phone columns, so this one is not read on its own.";
+const ADDED_PHONE_HEADER_NAMES = 3;
+/** The note under each phone column the added column reads — why it says "Not used". */
+export const ADDED_PHONE_SOURCE_NOTE =
+  "One number per person: the last column takes the row's mobile from its main phone column — or, when that holds none, from its other phone columns if they hold just one between them — so this column is not read on its own.";
 
-/** The first-mobile column's header, naming the phone columns it reads — the file's own names, the main one first. */
-export function firstMobileHeader(names: readonly string[]): string {
-  const shown = names.slice(0, FIRST_MOBILE_HEADER_NAMES);
+/** The added phone column's header, naming the phone columns it reads — the file's own names, the main one first. */
+export function addedPhoneHeader(names: readonly string[]): string {
+  const shown = names.slice(0, ADDED_PHONE_HEADER_NAMES);
   const more = names.length - shown.length;
-  return `${FIRST_MOBILE_HEADER_START}${shown.join(", ")}${more > 0 ? ` and ${more} more` : ""})`;
+  return `${ADDED_PHONE_HEADER_START}${shown.join(", ")}${more > 0 ? ` and ${more} more` : ""})`;
 }
 
 /**
- * Is this header one of a person's phone columns? Any header U28 reads as Phone (a strong spelling or a weak one —
- * `autoMapHeaders`' phone-ish columns), Outlook's and Google's other phone columns, and a numbered phone column ("Phone
- * 2", "Simu 2", Google's "Phone 2 - Value").
+ * ⭐ D2 · Is this header one of the person's OWN phone columns? A STRONG phone heading U28 knows ("Phone", "Mobile
+ * Phone", "Simu"…), a numbered one ("Phone 2", "Simu 2", Google's "Phone 2 - Value"), or one of `OWN_PHONE_HEADERS`.
+ * ⛔ Never a weak alias, never a column recognised in order not to be read, never another person's or a shared line.
  */
 export function isPhoneColumnHeader(header: string): boolean {
   const match = matchHeader(header);
-  if (match.kind === "field" && match.field === "phone") return true;
+  if (match.kind === "field") return match.field === "phone" && match.strength === "strong";
+  if (match.kind !== "unknown") return false;
   const normal = normaliseHeader(header);
-  if (OTHER_PHONE_HEADERS.has(normal)) return true;
+  if (OWN_PHONE_HEADERS.has(normal)) return true;
   const words = normal.split(" ");
   if (words.length === 3 && words[0] === "phone" && DIGITS_ONLY.test(words[1]) && words[2] === "value") return true;
   if (words.length < 2 || !DIGITS_ONLY.test(words[words.length - 1])) return false;
@@ -804,7 +795,37 @@ export function isPhoneColumnHeader(header: string): boolean {
   return base.kind === "field" && base.field === "phone" && base.strength === "strong";
 }
 
-type FirstMobileReading = {
+/**
+ * ⭐ D3 · what the added column carries for a row whose phone column yields no mobile while its other phone columns hold
+ * one: EVERY distinct Tanzanian mobile of its phone columns (`mobilesIn`, the ONE rule), in column order, the main one
+ * first. One → that mobile as written, which the server reads whole. Two or more → their compact national spellings
+ * ("0" and nine digits) joined by " / ", as many as the phone field's limit holds (three — a longer cell is never split,
+ * D1b, and would be refused for its length instead): the server's ONE rule then refuses the row in its own words
+ * (`SEVERAL_MOBILES_SENTENCE`), never taking one of two people's numbers.
+ */
+function carriedMobiles(cells: readonly string[]): string {
+  const seen = new Set<string>();
+  const found: CellMobile[] = [];
+  for (const cell of cells) {
+    for (const m of mobilesIn(cell)) {
+      const key = m.number.msisdn ?? "";
+      if (seen.has(key)) continue;
+      seen.add(key);
+      found.push(m);
+    }
+  }
+  if (found.length === 1) return found[0].text;
+  let carried = "";
+  for (const m of found) {
+    const compact = `0${(m.number.msisdn ?? "").slice(TZ_COUNTRY_CODE.length)}`;
+    const next = carried === "" ? compact : `${carried} / ${compact}`;
+    if (carried !== "" && next.length > CONTACT_LIMITS.phone) break;
+    carried = next;
+  }
+  return carried;
+}
+
+type AddedPhoneReading = {
   readonly file: ParsedContactsFile;
   readonly headers: string[];
   readonly mapping: ColumnMapping;
@@ -812,32 +833,32 @@ type FirstMobileReading = {
 };
 
 /**
- * ⭐ C3b · G4 · the header reading with ONE more column — or null when it would add nothing. The phone columns are the one
- * U28 maps as Phone (the MAIN one, first) and every other phone column, left to right (`isPhoneColumnHeader`). Each data
- * row's new cell is the first of their cells that holds a Tanzanian mobile (`firstMobileIn` — the ONE phone-cell rule),
- * else the main column's own cell, so a row with no mobile anywhere reads exactly as it did. ⛔ The column is added only
- * when some row holds its mobile OUTSIDE the main column (or nothing was mapped as Phone at all): a serial "Namba" beside
- * a "Simu" never adds a column that would change nothing.
+ * ⭐ C3b · G4 under D2 and D3 · the header reading with ONE more column, read as Phone — or null when it would add
+ * nothing. The phone columns are the one U28 maps as Phone (the MAIN one, first) and the person's other OWN phone
+ * columns, left to right (`isPhoneColumnHeader`, D2). Each data row's new cell is the MAIN column's own cell when it
+ * yields a mobile (`firstMobileIn`: exactly one distinct) — the other columns are then not read at all — and also when
+ * the other columns hold no mobile, so such a row reads exactly as it did. Only a row whose main cell yields none while
+ * its other phone columns hold a mobile is carried from them (`carriedMobiles`): its one mobile, or all of them, refused
+ * by the server's one rule. ⛔ The column is added only when some row is carried so (or nothing was mapped as Phone at
+ * all): a file whose every mobile sits in its Phone column gains no column.
  */
-function withFirstMobileColumn(file: ParsedContactsFile, headers: readonly string[], auto: AutoMapResult): FirstMobileReading | null {
-  if (file.rows.length < 2 || headers.some((h) => h.startsWith(FIRST_MOBILE_HEADER_START))) return null;
-  const phoneColumns = headers.flatMap((h, i) => (isPhoneColumnHeader(h) ? [i] : []));
-  const main = auto.mapping.phone ?? phoneColumns[0];
-  if (main === undefined) return null;
-  const order = [main, ...phoneColumns.filter((i) => i !== main)];
-  if (order.length < 2) return null;
+function withAddedPhoneColumn(file: ParsedContactsFile, headers: readonly string[], auto: AutoMapResult): AddedPhoneReading | null {
+  if (file.rows.length < 2 || headers.some((h) => h.startsWith(ADDED_PHONE_HEADER_START))) return null;
+  const main = auto.mapping.phone ?? headers.findIndex((h) => isPhoneColumnHeader(h));
+  if (main < 0) return null;
+  const others = headers.flatMap((h, i) => (i !== main && isPhoneColumnHeader(h) ? [i] : []));
+  if (others.length === 0) return null;
+  const order = [main, ...others];
   const holding = new Set<number>([main]);
   let adds = auto.mapping.phone === undefined;
   const picks = file.rows.slice(1).map((row) => {
-    let pick: number | null = null;
-    for (const i of order) {
-      const cell = row.cells[i] ?? "";
-      if (cell.trim() === "") continue;
-      holding.add(i);
-      if (pick === null && firstMobileIn(cell) !== null) pick = i;
-    }
-    if (pick !== null && pick !== main) adds = true;
-    return row.cells[pick ?? main] ?? "";
+    for (const i of order) if ((row.cells[i] ?? "").trim() !== "") holding.add(i);
+    const own = row.cells[main] ?? "";
+    // ⭐ D3 · the other phone columns are read only when the phone column yields no mobile.
+    if (firstMobileIn(own) !== null) return own;
+    if (!others.some((i) => mobilesIn(row.cells[i] ?? "").length > 0)) return own;
+    adds = true;
+    return carriedMobiles(order.map((i) => row.cells[i] ?? ""));
   });
   if (!adds) return null;
   const width = headers.length;
@@ -845,7 +866,7 @@ function withFirstMobileColumn(file: ParsedContactsFile, headers: readonly strin
     const named = (auto.columns[i]?.header ?? headers[i] ?? "").trim();
     return named === "" ? syntheticHeader(i) : named;
   };
-  const header = firstMobileHeader(order.filter((i) => holding.has(i)).map(nameOf));
+  const header = addedPhoneHeader(order.filter((i) => holding.has(i)).map(nameOf));
   const padTo = (cells: readonly string[]): string[] => Array.from({ length: width }, (_, i) => cells[i] ?? "");
   const rows: ParsedRow[] = file.rows.map((row, r) => ({ line: row.line, cells: [...padTo(row.cells), r === 0 ? header : picks[r - 1]] }));
   const sources = new Set(order);
@@ -855,7 +876,7 @@ function withFirstMobileColumn(file: ParsedContactsFile, headers: readonly strin
     mapping: { ...auto.mapping, phone: width },
     columns: [
       ...auto.columns.map((c): MappedColumn =>
-        (sources.has(c.index) ? { index: c.index, header: c.header, status: "unused", field: "phone", note: FIRST_MOBILE_SOURCE_NOTE } : c)),
+        (sources.has(c.index) ? { index: c.index, header: c.header, status: "unused", field: "phone", note: ADDED_PHONE_SOURCE_NOTE } : c)),
       { index: width, header, status: "mapped", field: "phone", note: null },
     ],
   };
@@ -865,10 +886,11 @@ function withFirstMobileColumn(file: ParsedContactsFile, headers: readonly strin
  * ⭐ THE MAPPING PANEL'S STARTING POINT, for a whole parsed file. A list paste: Phone and Name, no header row. A vCard:
  * U28's fixed grid (A1.2). Anything else: U28's header match over the first row, padded to the widest row
  * (`autoMapFile`) — and, S15-5, when that row reads as a contact, synthetic "Column A…" headers, the phone, email and
- * name columns found from the cells, and no header row; and, C3b · G4, when the header carries several phone columns
- * and a row's mobile sits outside the main one, ONE more column read as Phone (`withFirstMobileColumn` — its `file` is
- * the one staged). A masked export stays refused (`refusal`); a missing phone column is NOT a refusal here — the officer
- * picks it on the panel, and `validateMapping` holds Next until one is chosen.
+ * name columns found from the cells, and no header row; and, C3b · G4 (D2, D3), when the header carries the person's
+ * own phone columns beside the main one and a row's main cell yields no mobile while those hold one, ONE more column
+ * read as Phone (`withAddedPhoneColumn` — its `file` is the one staged). A masked export stays refused (`refusal`); a
+ * missing phone column is NOT a refusal here — the officer picks it on the panel, and `validateMapping` holds Next
+ * until one is chosen.
  */
 export function mappingFor(file: ParsedContactsFile, opts: MappingOptions = {}): FileMapping {
   if (opts.list === true && file.format === "paste") {
@@ -904,12 +926,12 @@ export function mappingFor(file: ParsedContactsFile, opts: MappingOptions = {}):
       file,
     };
   }
-  // ⭐ C3b · G4 · several phone columns, and a mobile outside the main one: ONE more column, read as Phone.
-  const firstMobile = hard === null ? withFirstMobileColumn(file, padded, auto) : null;
-  if (firstMobile !== null) {
+  // ⭐ C3b · G4 (D2, D3) · the person's own phone columns, read where the phone column yields none: ONE more column.
+  const added = hard === null ? withAddedPhoneColumn(file, padded, auto) : null;
+  if (added !== null) {
     return {
-      headers: firstMobile.headers, mapping: firstMobile.mapping, headerRows: 1, headerless: false, synthetic: false, refusal: null,
-      phoneProblem: null, columns: firstMobile.columns, file: firstMobile.file,
+      headers: added.headers, mapping: added.mapping, headerRows: 1, headerless: false, synthetic: false, refusal: null,
+      phoneProblem: null, columns: added.columns, file: added.file,
     };
   }
   // U28's "no Phone column" sentence, kept as the reason Next waits — never its headerless sentence, which only reads
