@@ -24,6 +24,9 @@ import { RefreshPoller } from "@/components/ui/refresh-poller";
 import { ScrollX } from "@/components/ui/scroll-x";
 import { getServerT, type Dict } from "@/lib/i18n-server";
 import { PageContainer } from "@/components/layout/page-container";
+import { currentSession } from "@/lib/server/auth-service";
+import { isLockedOut } from "@/lib/server/responsible-gambling";
+import { breakSentence, breakStateOf } from "@/lib/break-end";
 import { QUERY_BAR_ROW2_CLASS, QuerySort } from "@/components/ui/query-bar";
 import { FilterPill } from "@/components/ui/filter-pill";
 import {
@@ -244,7 +247,7 @@ function syntheticLeaderboard(): Row[] {
 }
 
 export default async function LeaderboardPage({ searchParams }: { searchParams: Promise<Record<string, string | string[] | undefined>> }) {
-  const { t } = await getServerT();
+  const { t, locale } = await getServerT();
   const sp = await searchParams;
   const state = parseLeaderParams(sp);
   /**
@@ -267,6 +270,20 @@ export default async function LeaderboardPage({ searchParams }: { searchParams: 
   // board renders a genuine empty state instead.
   const isSynthetic = real.length === 0 && process.env.NODE_ENV !== "production";
   const rows = isSynthetic ? syntheticLeaderboard() : real;
+  /* ⭐ R6-A (2026-10-09, the sweep of reviewer A's A3) · AN EMPTY BOARD DOES NOT TELL A READER ON A BREAK TO BET. Its body
+     ends "Place a prediction to get on the board." over a primary "Browse markets" — the invitation R4-I took off /positions
+     for a reader on a break. For a signed-in reader on a break or a self-exclusion the empty board says the break's own
+     sentence with its end (`breakSentence`) and offers no way to bet; its title stays, and a guest's empty board is
+     unchanged. Read only for the empty board (this page reads no session otherwise), failing OPEN (`feature-state.ts`
+     LAW 1). Both shells (the page's body). */
+  const breakEnd = rows.length === 0
+    ? await currentSession()
+        .then((s) => (s ? isLockedOut(s.userId).then(breakStateOf) : null))
+        .catch(() => null)
+    : null;
+  const breakBody = breakEnd
+    ? breakSentence(breakEnd.exclusion ? t.rg.exclusionActive : t.rg.breakActive, breakEnd.until, Date.now(), t.common.monthsShort, locale)
+    : null;
   // Paginate the ranking the same way every other list on the platform paginates.
   // ⛔ `baseHref` CARRIES THE SORT. It was the bare string "/leaderboard", so turning a page
   //    silently dropped the ordering and put the reader back on ROI without saying so.
@@ -318,8 +335,8 @@ export default async function LeaderboardPage({ searchParams }: { searchParams: 
         <EmptyState
           kind="leaderboard"
           title={t.leaderboard.emptyTitle}
-          body={t.leaderboard.emptyBody}
-          action={<Link href={"/markets" as never} className="btn btn-primary btn-sm">{t.positions.browseMarkets}</Link>}
+          body={breakBody ?? t.leaderboard.emptyBody}
+          action={breakBody ? null : <Link href={"/markets" as never} className="btn btn-primary btn-sm">{t.positions.browseMarkets}</Link>}
         />
       ) : (
         <>

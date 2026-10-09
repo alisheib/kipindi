@@ -55,6 +55,8 @@ import { refreshCadence, handoverPollUntil } from "@/lib/refresh-cadence";
 import { UpDownHandover } from "@/components/updown/updown-handover";
 import { usd } from "@/lib/usd-price";
 import { heroPrice, roundIsSettled } from "@/lib/updown-card-phase";
+import { isLockedOut } from "@/lib/server/responsible-gambling";
+import { breakSentence, breakStateOf } from "@/lib/break-end";
 
 export const dynamic = "force-dynamic";
 
@@ -120,12 +122,23 @@ export default async function UpDownRoundPage({
   const session = await currentSession();
   // Who is looking? The raw provider blob below is an officer tool, not player copy.
   const viewerIsStaff = isStaffRole(session?.role ?? "");
+  /* ⭐ R6-A (2026-10-09, reviewer A's A2) · THE READER'S OWN BREAK, so the stake panel is not offered to a player who has
+     paused betting: the break's notice stands in its place (`RoundActionPanel`'s `breakBody`). Read beside the round, and
+     failing OPEN — it gates an invitation (`feature-state.ts` LAW 1): a failed read shows the panel, and the server still
+     refuses the bet. */
+  const breakRead = session
+    ? Promise.resolve().then(() => isLockedOut(session.userId)).then(breakStateOf).catch(() => null)
+    : Promise.resolve(null);
   // ⛔ UD-15 · the `.catch(() => null)` is GONE: it turned a transient failure into a
   // 404 — telling a player their round DOES NOT EXIST while their money is in it.
   // `notFound()` is now strictly "the query succeeded and no such round exists";
   // every real throw reaches this route's error.tsx with a retry.
   const detail = await getRoundDetail(roundId, session?.userId);
   if (!detail) notFound();
+  const breakEnd = await breakRead;
+  const breakBody = breakEnd
+    ? breakSentence(breakEnd.exclusion ? t.rg.exclusionActive : t.rg.breakActive, breakEnd.until, Date.now(), t.common.monthsShort, locale)
+    : null;
 
   // ⛔ NO IDENTITY READ FOR THE STAKE PANEL SINCE 2026-09-13 — a stake asks no identity question
   // (`kyc-gate.ts`). The play gate that replaced this round's stake control from 2026-09-05 is deleted.
@@ -576,6 +589,8 @@ export default async function UpDownRoundPage({
                   // UD-22 · assembled server-side on the round itself, so this page and the
                   // board card confirm a bet with the same sentences and the same exit terms.
                   receipt: round.receipt,
+                  // R6-A · the reader's break, as the board's cards get it: the notice stands where the stake would.
+                  breakBody,
                 }}
               />
             ) : decided && myPosition && result ? (

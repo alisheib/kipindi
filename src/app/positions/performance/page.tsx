@@ -17,6 +17,8 @@ import { keepFigures } from "@/components/ui/keep-words";
 import { sideWord } from "@/lib/side-label";
 import { PageContainer } from "@/components/layout/page-container";
 import { PerformanceBar } from "./performance-bar";
+import { isLockedOut } from "@/lib/server/responsible-gambling";
+import { breakSentence, breakStateOf } from "@/lib/break-end";
 import {
   parsePerfParams,
   perfCounts,
@@ -171,6 +173,18 @@ export default async function PerformancePage({
     };
   });
 
+  /* ⭐ R6-A (2026-10-09, reviewer A's A3) · DURING A BREAK THE EMPTY PAGE DOES NOT SAY "BET". "Weka utabiri wako wa kwanza
+     kuanza kufuatilia utendaji wako" ("Place your first prediction…") stood over a primary "Browse markets" while betting
+     was paused — the very door R4-I took off /positions for a reader on a break. For that reader the empty state says the
+     break's own sentence with its end (`breakSentence`) and offers no way to bet; its title stays. Both shells (the page's
+     body). Read only for that empty state, and failing OPEN — it gates an invitation (`feature-state.ts` LAW 1). */
+  const breakEnd = totalBets === 0
+    ? await Promise.resolve().then(() => isLockedOut(session.userId)).then(breakStateOf).catch(() => null)
+    : null;
+  const breakBody = breakEnd
+    ? breakSentence(breakEnd.exclusion ? t.rg.exclusionActive : t.rg.breakActive, breakEnd.until, Date.now(), t.common.monthsShort, locale)
+    : null;
+
   return (
     <PageContainer tier="reading" className="space-y-6">
       <BackLink fallbackHref="/positions" label={t.common.positions} />
@@ -207,8 +221,8 @@ export default async function PerformancePage({
           fill
           kind="positions"
           title={t.performance.noPerformance}
-          body={t.performance.noPerformanceBody}
-          action={<Link href={"/markets" as never} className="btn btn-primary btn-sm">{t.positions.browseMarkets}</Link>}
+          body={breakBody ?? t.performance.noPerformanceBody}
+          action={breakBody ? null : <Link href={"/markets" as never} className="btn btn-primary btn-sm">{t.positions.browseMarkets}</Link>}
         />
       ) : (
         <>

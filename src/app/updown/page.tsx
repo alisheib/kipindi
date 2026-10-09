@@ -30,6 +30,8 @@ import { UpDownChartLab } from "@/components/charts/updown-chart-lab";
 import { SOURCE_CLASS_KEY } from "@/lib/updown-source-label";
 import { heroMovePct, heroPrice, msOrNull, roundIsSettled } from "@/lib/updown-card-phase";
 import { usd } from "@/lib/usd-price";
+import { isLockedOut } from "@/lib/server/responsible-gambling";
+import { breakSentence, breakStateOf } from "@/lib/break-end";
 
 export const dynamic = "force-dynamic";
 
@@ -54,6 +56,13 @@ export default async function UpDownPage({
   const sp = await searchParams;
   const { t, locale } = await getServerT();
   const session = await currentSession();
+  /* ⭐ R6-A (2026-10-09, reviewer A's A2) · THE READER'S OWN BREAK. A bettable card offered its one-tap stakes to a player who
+     had paused betting (the server refused each tap); the card now draws the break's notice in their place (`breakBody`,
+     below). Read beside the board, and failing OPEN — it gates an invitation (`feature-state.ts` LAW 1): a failed read
+     shows the stakes, and the server still refuses the bet. */
+  const breakRead = session
+    ? Promise.resolve().then(() => isLockedOut(session.userId)).then(breakStateOf).catch(() => null)
+    : Promise.resolve(null);
   // ⛔ UD-15 · NO `.catch(() => null)` HERE ANY MORE. Swallowing the read rendered a
   // DB outage as a calm "No rounds open right now" — an empty state is a statement
   // about the WORLD ("nothing scheduled"), not about the PLATFORM. A real throw now
@@ -96,6 +105,11 @@ export default async function UpDownPage({
   // and the portfolio sign, the name its page gives itself for them. The shell's own cached answer for this request.
   const { journey } = await resolveSimpleJourney();
   const historyName = journey ? t.journey.tabTickets : t.market.udHistoryTitle;
+  // R6-A · the break's approved sentence with its end, one kept run (`breakSentence`, the one formatter), for every card.
+  const breakEnd = await breakRead;
+  const breakBody = breakEnd
+    ? breakSentence(breakEnd.exclusion ? t.rg.exclusionActive : t.rg.breakActive, breakEnd.until, Date.now(), t.common.monthsShort, locale)
+    : null;
 
   return (
     <div className="mx-auto w-full max-w-board px-3 lg:px-6 py-6">
@@ -358,6 +372,7 @@ export default async function UpDownPage({
                 myUpStake={r.myUpStake}
                 myDownStake={r.myDownStake}
                 myRefundedStake={r.myRefundedStake}
+                breakBody={breakBody}
               />
             ))}
           </div>

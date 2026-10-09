@@ -48,8 +48,9 @@ import { formatTzsCompact, formatTzs, fill } from "@/lib/utils";
 // Every date this page prints is in the reader's month words on the East Africa clock (§L4): `formatDateTime` and
 // `formatDeadline` printed English months in every locale.
 import { formatEatDateTime } from "@/lib/eat-day";
-import { breakStateOf, formatBreakEnd } from "@/lib/break-end";
+import { breakSentence, breakStateOf, formatBreakEnd } from "@/lib/break-end";
 import { keepText } from "@/components/ui/keep-run";
+import { BetBreakNotice } from "@/components/rg/bet-break-notice";
 import { isLockedOut } from "@/lib/server/responsible-gambling";
 import { appUrl } from "@/lib/app-url";
 import { getServerT } from "@/lib/i18n-server";
@@ -247,6 +248,13 @@ export default async function MarketDetail({
         .catch(() => null)
     : null;
   const breakDate = breakEnd ? formatBreakEnd(Date.parse(breakEnd.until), Date.now(), t.common.monthsShort, locale) : null;
+  /* ⭐ R6-A (2026-10-09, reviewer A's A2) · …AND IT GATES THE BET ITSELF. The same read left the whole bet panel — the dial,
+     the stake, the confirm — on the screen of a player on a break, under a page that said the break further down. The bet
+     column now draws the break's notice instead (`BetBreakNotice`), the same approved sentence with its end, kept one run.
+     Still failing OPEN: a failed read shows the panel, and the server refuses the bet (`cooling_off` / `self_excluded`). */
+  const breakBody = breakEnd
+    ? breakSentence(breakEnd.exclusion ? t.rg.exclusionActive : t.rg.breakActive, breakEnd.until, Date.now(), t.common.monthsShort, locale)
+    : null;
   /**
    * 🔴 THE SHARE BUTTON USED TO MINT A REFERRAL CODE FOR EVERY SIGNED-IN PLAYER, and the
    * binding it produced is PERMANENT — `bindRecruit` writes `recruitedBy` once and never
@@ -688,7 +696,17 @@ export default async function MarketDetail({
         <div className="order-1 lg:order-2 lg:col-start-2 lg:row-start-1 lg:self-stretch">
         <aside className="flex flex-col gap-3 lg:sticky lg:top-[72px] lg:z-10" aria-labelledby={BET_PANEL_HEADING}>
           {bettingOpen ? (
-            session ? (
+            session && breakBody ? (
+              <>
+              {/* ⭐ R6-A (2026-10-09, A2) · A READER ON A BREAK IS NOT OFFERED THE BET. In the stake's place, the break's own
+                  notice (`BetBreakNotice`: the approved sentence with its end, the neutral box and the lock, a status). The
+                  column keeps its heading — the signed-in panel's D40 heading, read and not seen — and the one-sided note keeps
+                  its spot at the top of the column, as for a guest. Both shells: this is the page's body. */}
+              <h2 id={BET_PANEL_HEADING} className="sr-only">{t.market.placeYourStake}</h2>
+              {oneSidedCallout}
+              <BetBreakNotice body={breakBody} testId="market-bet-break" />
+              </>
+            ) : session ? (
               <>
               {/* D40 · THE ONLY BRANCH WITH NO HEADING OF ITS OWN, so it gets one that is read
                   and not seen. The other four states already name themselves in a heading; this

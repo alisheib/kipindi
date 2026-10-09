@@ -64,6 +64,8 @@ const fmtDate = (iso: string) => {
 };
 import { usd } from "@/lib/usd-price"; // the ONE spelling (session 80)
 import { roundPnl } from "@/lib/updown-history-pnl";
+import { isLockedOut } from "@/lib/server/responsible-gambling";
+import { breakSentence, breakStateOf } from "@/lib/break-end";
 
 /**
  * ⭐ `DAY_PICKER_DAYS` RETIRED 2026-09-08 WITH THE RAIL IT SIZED. Its whole reason was that a
@@ -205,6 +207,18 @@ export default async function UpDownHistoryPage({ searchParams }: {
 
   const cause = udEmptyCause(state, nowMs, matchesText, inDay, matched.length, udRows.length);
   const exits = cause && cause !== "no-rows" ? udExits(udRows, state, nowMs, matchesText, inDay) : [];
+  /* ⭐ R6-A (2026-10-09, reviewer A's A3) · DURING A BREAK THE EMPTY LIST DOES NOT SAY "BET". A player with no round read
+     "Weka dau kwenye ubao na litaonekana hapa." ("Back a round on the board and it appears here.") over a primary "Juu na
+     Chini" button while betting was paused — on Tiketi zangu, whose Maswali tab R4-I had already quietened (`TicketsView`).
+     For a reader on a break this empty state says the break's own sentence with its end (`breakSentence`, the one
+     formatter, the end one run) and offers no way to bet; its title stays. Both shells (the page's body). Read only for that
+     empty state, and failing OPEN — it gates an invitation (`feature-state.ts` LAW 1). */
+  const breakEnd = cause === "no-rows"
+    ? await Promise.resolve().then(() => isLockedOut(session.userId)).then(breakStateOf).catch(() => null)
+    : null;
+  const breakBody = breakEnd
+    ? breakSentence(breakEnd.exclusion ? t.rg.exclusionActive : t.rg.breakActive, breakEnd.until, nowMs, t.common.monthsShort, locale)
+    : null;
   const EXIT_LABEL: Record<string, string> = {
     asset: t.market.udAssets, dur: t.market.udDurations, when: t.common.rangeAll,
     q: t.common.clearSearch, tab: t.common.all,
@@ -386,10 +400,10 @@ export default async function UpDownHistoryPage({ searchParams }: {
               : cause === "window-miss" ? t.market.udNoRoundsThatDay
               : t.market.udNoRoundsThatDay
             }
-            body={cause === "no-rows" ? t.market.udNoHistoryBody : t.market.udHistoryBody}
+            body={cause === "no-rows" ? (breakBody ?? t.market.udNoHistoryBody) : t.market.udHistoryBody}
             action={
               cause === "no-rows" ? (
-                <Link href="/updown" className="btn btn-primary btn-md">{t.market.udTitle}</Link>
+                breakBody ? null : <Link href="/updown" className="btn btn-primary btn-md">{t.market.udTitle}</Link>
               ) : exits.length > 0 ? (
                 <div className="flex flex-wrap items-center justify-center gap-2">
                   {exits.map((e) => (

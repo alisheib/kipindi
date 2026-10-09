@@ -63,6 +63,8 @@ import { STATUS_TONE, TONE_CHIP } from "@/lib/status-tone";
 import { impliedMultiplier, emptySideOf, formatMultiplier, type UpDownPricing } from "@/lib/updown-pricing";
 import type { PublicSourceClass } from "@/lib/server/updown-symbols";
 import type { UpDownReceiptInfo } from "@/lib/updown-receipt";
+import type { KeptBody } from "@/components/ui/empty-state-text";
+import { BetBreakNotice } from "@/components/rg/bet-break-notice";
 
 export type UpDownCardState = "open" | "locked" | "closing" | "confirming" | "resolved" | "void";
 
@@ -189,6 +191,12 @@ export type UpDownCardProps = {
    */
   resolvedAtMs?: number | null;
   successor?: RoundSuccessor;
+  /**
+   * ⭐ R6-A (2026-10-09, reviewer A's A2) · the viewer's running break or self-exclusion, as the board page words it (the
+   * approved sentence with its end, `breakSentence`), or null. A bettable card then draws the break's notice where its
+   * one-tap stakes stand (`BetBreakNotice`) — the page reads the lockout, failing open; the card only draws.
+   */
+  breakBody?: KeptBody | null;
 };
 
 
@@ -425,7 +433,7 @@ export function UpDownCard(props: UpDownCardProps) {
     sourceClass, sourceQuotedAt, className,
     selectionClosesAtMs, serverNowMs, myExactPayout, myPayoutIfUp, myPayoutIfDown, myRefundedStake,
     marketId, isAuthed, minStake, maxStake, walletBalance, myUpStake = 0, myDownStake = 0,
-    expectedResultAtMs = null, resolvedAtMs = null, successor, receipt,
+    expectedResultAtMs = null, resolvedAtMs = null, successor, receipt, breakBody = null,
   } = props;
   const { t, locale } = useT();
   const router = useRouter();
@@ -981,7 +989,11 @@ export function UpDownCard(props: UpDownCardProps) {
       {/* ── The one action / status block. Exactly one renders. ────────── */}
       <div className="ud-act">
         {bettable ? (
-          canQuickBet ? (
+          canQuickBet && breakBody ? (
+            // ⭐ R6-A (2026-10-09, A2) · a signed-in viewer on a break or a self-exclusion is not offered the one-tap stakes:
+            // the break's own notice stands where they stand (`BetBreakNotice`, the market page's bet column draws the same).
+            <BetBreakNotice body={breakBody} testId="updown-card-break" />
+          ) : canQuickBet ? (
             // Authed + has its market → the shared quick-bet control (chips + custom
             // amount + place buttons + success pulse), identical to the round page.
             //
