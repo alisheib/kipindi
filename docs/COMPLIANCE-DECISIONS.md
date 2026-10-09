@@ -35,6 +35,24 @@ in Tanzania is different, no such compliance on marketing"; "make sure everywher
    (`privacy.smsGateway`, `privacy.lawfulLicence`, en/sw/zh — Appendix B's words, G10) still say an offer can be stopped
    "with the stop link in every offer or under Profile → Notifications"; they are re-worded to "under Profile →
    Notifications" and saved through the owner door once Ali approves the new words.
+   ✅ **Approved by Ali, 2026-10-09 ~15:00 EAT, in the session** (to S14): `privacy.lawfulLicence` (en/sw/zh) and the
+   licence basis's suggestion `basis.LICENCE_OUTREACH`, exactly as filed in `docs/marketing-approvals/2026-10-09/`
+   (`approval-G10.json`, `approval-G4.json`). `privacy.smsGateway` NOT as filed: *"we can't mention Blackball, they won't
+   allow it … just tell them they can stop, but no need to mention Blackball, they don't want it"* — so it names the
+   gateway by its role alone, every other word as filed, and is approved as:
+   - en: "Our SMS gateway in Tanzania, which sends our text messages, such as one-time codes and 50pick offers and news,
+     which you can stop at any time under Profile → Notifications: it receives your phone number and the text of each
+     message, and tells us whether each message was delivered"
+   - sw: "Lango letu la SMS nchini Tanzania, linalotuma ujumbe wetu mfupi (SMS), kama misimbo ya matumizi ya mara moja na
+     ofa na habari za 50pick, ambazo unaweza kuzisimamisha wakati wowote kwenye Wasifu → Arifa: hupokea namba yako ya
+     simu na maandishi ya kila ujumbe, na hutuambia kama kila ujumbe umefika"
+   - zh: "我们在坦桑尼亚的短信网关：发送我们的短信，例如一次性验证码以及 50pick 的优惠和资讯——您可随时在“个人资料 → 通知”中停止接收；接收您的电话号码和每条短信的内容，并告知我们每条短信是否已送达"
+
+   No public text names the gateway's company since: the code's own §4 bullet (the page as it ships with licence outreach
+   closed) lost the name the same way and keeps its consent-only clause, `SMS_GATEWAY_WORDS` no longer requires it, and
+   `test:privacy-notice` §2e refuses it in every language (staff screens — Admin → System, the SMS credit alerts — still
+   name the provider). The files are carried out through the owner door as its header sets out: status → check → apply
+   each → ONE redeploy.
 
 **Kept by** `test:campaign-compose` §9–§13 (a plant that appends any footer fails), §15.9, §15.13, §18.9, §18.21;
 `test:privacy-notice` §1 and §4k; the dry-fire's S1.messages.

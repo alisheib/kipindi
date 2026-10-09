@@ -41,13 +41,14 @@
  *   · 2026-10-09 — the owner's ruling of that day (a marketing SMS is sent exactly as the officer wrote it: no stop link).
  *     G4 holds the licence basis's suggestion re-worded ("…if they ask us to stop, the stop is kept for good."); G10 the
  *     two privacy lines, `privacy.smsGateway` and `privacy.lawfulLicence`, each the 2026-10-07 words less the stop-link
- *     clause, every other word kept. ⛔ Shown to Ali, and applied only once he approves them (`approvedOn` is that day —
- *     another day is a new file). In order — status first, one apply per gate, ONE redeploy after the last:
+ *     clause, every other word kept — and the gateway line less the company's name too ("Our SMS gateway in Tanzania, …":
+ *     "we can't mention Blackball, they won't allow it"). ✅ APPROVED by Ali on 2026-10-09 ~15:00 EAT, in the session (the
+ *     decisions log, the top entry's item 5). In order — status first, one apply per gate, ONE redeploy after the last:
  *   railway run --service 50pick npm run ops:marketing-owner-save -- status
  *   railway run --service 50pick npm run ops:marketing-owner-save -- check --file docs/marketing-approvals/2026-10-09/approval-G4.json
  *   railway run --service 50pick npm run ops:marketing-owner-save -- apply --file docs/marketing-approvals/2026-10-09/approval-G4.json --by "Claude for Ali (G4)" --reason "approved by Ali in the Claude session" --expect "basis.LICENCE_OUTREACH=734a90eecf04"
  *   railway run --service 50pick npm run ops:marketing-owner-save -- check --file docs/marketing-approvals/2026-10-09/approval-G10.json
- *   railway run --service 50pick npm run ops:marketing-owner-save -- apply --file docs/marketing-approvals/2026-10-09/approval-G10.json --by "Claude for Ali (G10)" --reason "approved by Ali in the Claude session" --expect "privacy.lawfulLicence=35bbe7134230,privacy.smsGateway=ad36a53b7683"
+ *   railway run --service 50pick npm run ops:marketing-owner-save -- apply --file docs/marketing-approvals/2026-10-09/approval-G10.json --by "Claude for Ali (G10)" --reason "approved by Ali in the Claude session" --expect "privacy.lawfulLicence=35bbe7134230,privacy.smsGateway=0b8617f59ee8"
  *   railway redeploy --service 50pick
  *
  * Exit: 0 done or nothing to do · 1 refused or not confirmed (the reason is printed) · 2 not run (usage, no database, not
