@@ -320,7 +320,7 @@ const L = {
   b16: "B16 · \"select all matching\" stores the FILTER: the page's canonical key reads back through U24's JSON parser to the same filter and carries no ids; ticks-only is ids alone, and a filter beside ids is a filter",
   b25: "B25 · ⭐ C8b re-review (NIT 9) · A READER RECORDS A STOP GIVEN BY PHONE FOR A NUMBER THE BOOK BLOCKS: over the whole number ALONE, the erased tombstone's and a marker's number each preview ONE (typed tier, no sample) for suppress and for record a withdrawal, and run to the stop or withdrawal recorded for that number — the reader handed the split (a marker's number, already withdrawn, reads unchanged) — as a number a live row holds does; a reader's TAG over the blocked number is empty (the number path is a stop's alone), and the same stop beside another filter counts the live rows (empty)",
   b26: "B26 · ⭐ C8b re-review (MN-1) · THE BAR OFFERS A SEARCHED NUMBER ALONE SUPPRESS AND RECORD A WITHDRAWAL ONLY: with the selection numberOnly, tag, untag, add to a list and remove are DISABLED with the reason \"Only Suppress and Record a withdrawal act on a searched number\" while the two stay enabled with their own hints — and without it all six are enabled (EXECUTED); the provider exposes numberOnly from the CHOSEN selection, the bar hands it to bulkActionState and says the number as itself on its count line (never \"All 1 matching selected\"), and the page marks the presence selection and a reader's blocked number numberOnly",
-  s1: "S1 · ⛔ THE ACTIONS ARE GATED: the file opens \"use server\", exports exactly the two actions, each opens with softRequireStaff(\"growth\", …) before its rate rule and the parser, reads the body only through parseBulkRequest, never a count from it; only a landed run revalidates, and the reply goes through contactBulkReply",
+  s1: "S1 · ⛔ THE ACTIONS ARE GATED: the file opens \"use server\", exports exactly the two actions, each opens with softRequireStaff(\"growth\", …) before its rate rule and the parser, reads the body only through parseBulkRequest, never a count from it; only a landed run revalidates, and the reply goes through contactBulkReply; ⭐ (C8b re-review) each rate rule refuses in its bucket's ONE sentence — the preview the check bucket's (CONTACT_LOOKUP_RATE_LIMITED, which the Add form's lookup and the masked search say too), the run the write bucket's",
   s2: "S2 · the bar is an act control that never hides: useMayAct and useActDisabledReason at the top, every action button's disabled AND title from bulkActionState (EXECUTED: every action, every state, a reason said)",
   s3: "S3 · ⭐ the confirmation is the SERVER's tier: the ConfirmModal spreads tier and typedWord together from p.tier — no typed word built from the selection — and the run posts back the preview's own word",
   s4: "S4 · ⛔ no raw number reaches the client: msisdn and phoneE164 appear in none of the bar, the provider or the row box; the page projects its rows through contactSelectionRow, which masks",
@@ -898,8 +898,13 @@ async function runAssertions(impl: Impl, tag: string): Promise<void> {
     });
     const runBody = actionBody(src.actions, "runContactBulkAction");
     const revalidates = /if \(result\.ok\) \{\s*try \{ revalidatePath\("\/admin\/contacts"\);/.test(runBody) && /return contactBulkReply\(result, reads\);/.test(runBody);
-    return [src.actionsRaw.startsWith("\"use server\";") && exported === [...ACTIONS].sort().join(",") && bad.length === 0 && revalidates,
-      `exported [${exported}] failing [${bad}] revalidates ${revalidates}`];
+    // ⭐ C8b re-review (NIT) · ONE BUCKET, ONE SENTENCE: the preview spends the check bucket the Add form's lookup and the
+    // masked search spend, so it refuses in that bucket's sentence; the run, the write bucket's.
+    const previewBody = actionBody(src.actions, "previewContactBulkAction");
+    const sentences = previewBody.includes("error: CONTACT_LOOKUP_RATE_LIMITED(rate.retryAfterSec)") && !previewBody.includes("CONTACT_RATE_LIMITED(")
+      && runBody.includes("error: CONTACT_RATE_LIMITED(rate.retryAfterSec)");
+    return [src.actionsRaw.startsWith("\"use server\";") && exported === [...ACTIONS].sort().join(",") && bad.length === 0 && revalidates && sentences,
+      `exported [${exported}] failing [${bad}] revalidates ${revalidates} · each bucket's sentence ${sentences}`];
   });
   await check(p(L.s2), () => {
     const bar = src.bar;
@@ -1381,6 +1386,19 @@ if (!PROVE_RED) {
       name: "R10 · the raw number reaches the client — the projection carries the stored number",
       expect: L.b15,
       impl: () => ({ ...REAL, project: (c) => ({ id: c.id, name: c.displayName, masked: c.msisdn }) }),
+    },
+    {
+      name: "R-S1 · ⛔ C8b re-review (NIT) · the preview spends the check bucket but refuses in the write bucket's sentence — one limit, two sentences",
+      expect: L.s1,
+      impl: () => ({
+        ...REAL,
+        sources: {
+          ...REAL_SOURCES,
+          actions: REAL_SOURCES.actions.replace(
+            'if (!rate.allowed) return { ok: false, reason: "rate_limited", error: CONTACT_LOOKUP_RATE_LIMITED(rate.retryAfterSec) };',
+            'if (!rate.allowed) return { ok: false, reason: "rate_limited", error: CONTACT_RATE_LIMITED(rate.retryAfterSec) };'),
+        },
+      }),
     },
     {
       name: "R11 · an ungated bulk action — runContactBulkAction loses its softRequireStaff",

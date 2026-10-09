@@ -61,8 +61,10 @@ export const CONTACTS_NUMBER_PRESENCE = {
   blockedBody: "There is no contact you can open for it — but you can still record a stop or a withdrawal for it: select it, then choose Suppress or Record a withdrawal.",
   /** The selection control a number in the book offers — the bar's Suppress and Record a withdrawal act on it. */
   select: "Select this number",
-  /** C8b review (MINOR 7) · the Add form's number-check bucket was spent: its own sentence follows, and no answer. */
-  limitedTitle: "Too many number checks",
+  /** C8b review (MINOR 7) · the Add form's number-check bucket was spent: the bucket's ONE sentence follows as the body
+   *  (`CONTACT_LOOKUP_RATE_LIMITED`), and no answer. ⛔ The re-review's NIT: the title says what happened, never the body's
+   *  own words again. */
+  limitedTitle: "This number wasn't checked",
 } as const;
 
 /** U24 · filters (not a search) that match nothing. U21 · the rail stays on screen above this row, so the sentence
@@ -330,13 +332,16 @@ function waitWords(retryAfterSec: number): string {
   const s = Math.max(1, Math.ceil(Number.isFinite(retryAfterSec) ? retryAfterSec : 60));
   return s < 60 ? `${s} second${s === 1 ? "" : "s"}` : `${Math.ceil(s / 60)} minute${Math.ceil(s / 60) === 1 ? "" : "s"}`;
 }
-/** The per-officer rate rule refused a save or a bulk action (`contacts.write` / `contacts.lookup`). */
+/** The per-officer write bucket refused a save or a bulk run (`contacts.write`). */
 export function CONTACT_RATE_LIMITED(retryAfterSec: number): string {
   return `Too many contacts in a short time. Wait ${waitWords(retryAfterSec)}, then try again.`;
 }
-/** vb7 · the number lookup's own rate refusal (`contacts.lookup`) — it checks numbers, it adds no contact. */
+/** ⭐ THE CHECK BUCKET'S ONE SENTENCE (`contacts.lookup`) — vb7's number lookup, and since C8b the masked search's presence
+ *  answer and the bulk bar's count all spend that one bucket, so they refuse in one sentence (the re-review's NIT): the
+ *  limit an officer meets in one place is the limit they meet in the others, said the same way. It checks the book; it
+ *  adds no contact. */
 export function CONTACT_LOOKUP_RATE_LIMITED(retryAfterSec: number): string {
-  return `Too many number checks — wait ${waitWords(retryAfterSec)}, then try again.`;
+  return `Too many checks against the book — wait ${waitWords(retryAfterSec)}, then try again.`;
 }
 /** vb7 · the actions' failures, each with the next step (`safeError` keeps the error's own text in the server log). */
 export const CONTACT_LOOKUP_FALLBACK = "Checking the number failed — you can still save; the book refuses a duplicate.";
