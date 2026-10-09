@@ -1,3 +1,5 @@
+"use client";
+
 /**
  * THE JOURNEY'S LOADING STATE, PAGE BY PAGE (2026-10-09, the Vodacom visual pass round 4, R4-J; E38) — what the ROOT
  * loading file draws for a journey reader: the ghost of the page being opened, in that page's own column, so the page
@@ -13,27 +15,49 @@
  * And /positions never showed the Tiketi zangu ghost its own loading file draws: the root's box stood in front of it.
  *
  * ⭐ WHAT EACH PAGE GETS, picked in the browser by the path (`RoutePick`: the root's loading element is drawn once, with
- * the document, and kept), every node drawn here on the server:
+ * the document, and kept), every node drawn here — in the browser since round 5 (below), and on the server for the
+ * document's own first paint:
  *   /           the hero's own band and grid, its claim, h1, lede and trust rows set in the page's own words (from
  *               `hero-intro.tsx`, the very components the page renders) but not shown — each line a bar — so every
  *               block stands where the page puts it in every language; the featured card and the act as blocks.
  *               ⛔ Not shown, because the hero's blocks rise in as they arrive (`kp-rise`): readable words in the
  *               ghost would vanish and fade back in, identical, the moment the page lands.
- *   /updown     Juu/Chini's ghost, `updown/loading.tsx` itself (one drawing for both shells, and the tab's page), so a
- *               tap on the tab shows the board it opens, not a box.
+ *   /updown     Juu/Chini's ghost, the drawing `updown/loading.tsx` renders (`updown-ghost.tsx`: one drawing for both
+ *               shells, and the tab's page), so a tap on the tab shows the board it opens, not a box.
  *   /positions  Tiketi zangu's ghost, the one `positions/loading.tsx` draws for a journey reader, so the two are one.
  *   /account    the hub's column, h1 and identity card (a guest's prompt instead, chosen by the header's own sign-in
  *               pills), and its cards cut into the page's two columns by the page's own rule (`hubColumnCut`), for the
  *               rows a plain signed-in player is shown (a guest's, for a guest).
  *   the journey's other pages — the ones `surfaces.ts` lists as the journey's own (`JOURNEY_ROUTE`): a question
  *               (`/markets/<id>`, the one pattern), Tiketi zangu's Up & Down list, the deposit screen and the provider's
- *               return — each its own loading file itself, which already draws a journey reader's ghost where it differs
- *               (the Up & Down list's), so the root's state and the page's are one drawing.
+ *               return — each the drawing its own loading file renders (the file itself where it reads nothing: the
+ *               question's and the return's; the drawing it hands its words to where it reads them: the list's
+ *               `history-ghost.tsx`, a journey reader's head, and the deposit's `deposit-ghost.tsx`), so the root's state
+ *               and the page's are one drawing.
  *   any other   the brand's spinner in a block as tall as the classic box, and no frame: a framed box promises a
  *               column, and the pages behind this branch use several; each page's own loading file (if it has one)
  *               draws its column as soon as the page starts to arrive.
- * ⚠️ THE COST: every node is drawn into this element's data, which a journey document carries whichever page it opens —
- * a few kilobytes before compression, so the set stays the four tabs and the journey's own pages.
+ *
+ * ⭐ A CHUNK OF ITS OWN, DRAWN IN THE BROWSER (2026-10-09, the visual pass round 5, review G1). Drawn on the server, every
+ * node of every ghost was written into the root loading element's data — 27,349 bytes of Flight JSON (3,083 gzipped; the
+ * /account ghost 8,162, both its member and guest sets) — and Next 16 sends the root segment's loading element again with
+ * every RSC payload rendered from the root: every journey document, and every `router.refresh()` (the RefreshPoller's
+ * beat, 15 s on a question and on /live, 20 s on Tiketi zangu, Juu/Chini, the wallet and the round history, and after
+ * each bet) — about 109 KB a minute of data to parse on a question page. So this module is client code, loaded by
+ * `next/dynamic` from `route-ghost-lazy.tsx` (the shell's pattern, `shell-lazy.tsx`): the element's data is now one
+ * reference and the rail names it is handed — 77 bytes of Flight JSON in every language, and one ~200-byte import row
+ * naming the chunk (`test:visual-pass-r5d` §2 builds the element and holds it under 200 bytes). The words come from the
+ * client dictionary (`useT`), which every page already carries, so a language changed in the browser is the ghost's
+ * language too. The server still draws the ghost the document opens on, in its first HTML (the dynamic part renders on
+ * the server; its chunk is preloaded in the head). The chunk itself is fetched once and kept: its size is a production
+ * build's to measure (the lock turn's).
+ * ⚠️ WHAT IT CANNOT DO IN THE BROWSER: read the server. The rails that pay out are read on the server (`heroRailNames`)
+ * and handed in; nothing else here is read at all.
+ * ⚠️ AND A THROW HERE STILL FAILS THE DOCUMENT (review G2). The server renders this ghost inside the root loading
+ * boundary's fallback, which is part of the shell, and React's server renderer contains a throw only in a Suspense
+ * boundary BELOW it — a boundary here would be outlined behind the shell (R4-J's E36), so there is none. It draws from
+ * the words and the rail names alone, and `test:visual-pass-r5d` §2 renders every ghost in every language on React's
+ * server renderer; a chunk that never arrives in the browser leaves the ghost out (`route-ghost-lazy.tsx`).
  * ⛔ A JOURNEY READER ONLY. `app/loading.tsx` returns this from its journey arm, which asks the shell's own two answers
  * (the console and the opt-out page are never the journey; the per-request resolver); everybody else is served the
  * classic SectionLoader, byte for byte. `/account` keeps no loading file of its own (A3): its ghost is here, behind the
@@ -45,26 +69,27 @@ import { BrandSpinner } from "@/components/brand";
 import { PageContainer } from "@/components/layout/page-container";
 import { RoutePick } from "@/components/ui/route-pick";
 import { TicketsGhost } from "@/components/journey/tickets/tickets-ghost";
-import UpDownLoading from "@/app/updown/loading";
-import UpDownHistoryLoading from "@/app/updown/history/loading";
+import { UpDownGhost } from "@/app/updown/updown-ghost";
+import { UpDownHistoryGhost } from "@/app/updown/history/history-ghost";
 import MarketDetailLoading from "@/app/markets/[id]/loading";
-import DepositLoading from "@/app/wallet/deposit/loading";
+import { DepositGhost } from "@/app/wallet/deposit/deposit-ghost";
 import DepositReturnLoading from "@/app/wallet/deposit/return/loading";
 import { Ask, Claim, TrustLines } from "@/components/home/hero-intro";
 import { hubColumnCut, hubRowsFor, wideRowCount, type HubGroup, type HubMember, type HubRow } from "@/components/journey/account/hub-rows";
-import { heroRailNames } from "@/lib/server/payout-rails";
+import { useT } from "@/lib/i18n";
 import type { Dict, Locale } from "@/lib/i18n-dict";
 
-export function JourneyRouteGhost({ t, locale }: { t: Dict; locale: Locale }) {
+export function JourneyRouteGhost({ rails }: { rails: readonly string[] }) {
+  const { t, locale } = useT();
   return (
     <RoutePick
       routes={{
-        "/": <HomeGhost t={t} locale={locale} />,
-        "/updown": <UpDownLoading />,
+        "/": <HomeGhost t={t} locale={locale} rails={rails} />,
+        "/updown": <UpDownGhost t={t} />,
         "/positions": <TicketsGhost t={t} />,
         "/account": <AccountGhost t={t} />,
-        "/updown/history": <UpDownHistoryLoading />,
-        "/wallet/deposit": <DepositLoading />,
+        "/updown/history": <UpDownHistoryGhost t={t} journey />,
+        "/wallet/deposit": <DepositGhost t={t} />,
         "/wallet/deposit/return": <DepositReturnLoading />,
       }}
       patterns={[["^/markets/[^/]+$", <MarketDetailLoading />]]}
@@ -78,8 +103,9 @@ export function JourneyRouteGhost({ t, locale }: { t: Dict; locale: Locale }) {
  * spans as the page writes them; the trust rows name every rail that pays out (the page drops a paused one: a row a word
  * shorter, below the h1). The featured card is the live card's height (`--mcard-h`) and the act one control tall — enough
  * that from 1024 the left column stays the taller one, as on the page, so the intro sits on the band's padding there too.
+ * The rails are the server's answer (`heroRailNames(null)`, read by `app/loading.tsx`): this module runs in the browser.
  */
-function HomeGhost({ t, locale }: { t: Dict; locale: Locale }) {
+function HomeGhost({ t, locale, rails }: { t: Dict; locale: Locale; rails: readonly string[] }) {
   return (
     <section className="kp-hero" aria-hidden="true">
       <div className="kp-hero__inner kp-hghost">
@@ -92,7 +118,7 @@ function HomeGhost({ t, locale }: { t: Dict; locale: Locale }) {
             <span className="kp-hero__lede-l">{t.home.heroLedeAct}</span>{" "}
             <span className="kp-hero__lede-l kp-hero__lede-l--pay">{t.home.heroLedePay}</span>
           </p>
-          <TrustLines t={t} locale={locale} rails={heroRailNames(null)} />
+          <TrustLines t={t} locale={locale} rails={rails} />
         </div>
         <div className="kp-hero__card">
           <div className="kp-hghost__card kp-shimmer-track" />

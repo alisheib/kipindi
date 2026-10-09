@@ -60,18 +60,33 @@ import { pickLocalized, pickCriterion, marketCategoryLabel } from "@/lib/localiz
 import { PageContainer } from "@/components/layout/page-container";
 import { signoffOf } from "@/lib/markets/signoff";
 import { objectionRulings } from "@/lib/server/reversals";
+import { generateMetadata as notFoundMetadata } from "@/app/not-found";
 
 
 export const dynamic = "force-dynamic";
 
+/**
+ * ⭐ THE METADATA NEVER DECIDES WHAT THE PAGE IS (2026-10-09, the visual pass's round 5, review F1). This read used to
+ * swallow a failure and then call `notFound()` on the empty result — and Next 16 renders a `notFound()` thrown here as
+ * the segment's not-found page: `MetadataOutlet` stands beside the page, under the page's own boundaries, and throws the
+ * metadata's error there (next/dist/esm/lib/metadata/metadata.js, `MetadataOutlet`; app-render's create-component-tree
+ * renders it with the page). So one database blip in this read, while the body's own read succeeded, served a REAL
+ * market — perhaps holding the reader's money — as "Hakuna ukurasa · 404" with `noindex, nofollow`: what B-1 forbids the
+ * body (at its read, below).
+ * ⭐ ONE RULE FOR EVERY RECORD PAGE'S METADATA (here, `/updown/[roundId]` and `/proposals/[id]`): a FAILED read answers
+ * the section's title in the reader's language — the key its board page is titled by (`t.market.title`, "Masoko") —
+ * and says nothing about the record; a read that SUCCEEDED and found nothing answers the not-found page's own metadata
+ * (its title and `noindex`); nothing here throws. The body's read alone decides the page: the market, the error page
+ * with its retry, or the not-found page.
+ */
 export async function generateMetadata(
   { params, searchParams }: { params: Promise<{ id: string }>; searchParams: Promise<{ w?: string }> },
 ): Promise<Metadata> {
   const { id } = await params;
+  const { t, locale } = await getServerT();
   let m: Awaited<ReturnType<typeof getMarket>> | null = null;
-  try { m = await getMarket(id); } catch { /* graceful */ }
-  if (!m) notFound();
-  const { locale } = await getServerT();
+  try { m = await getMarket(id); } catch { return { title: t.market.title }; }
+  if (!m) return notFoundMetadata();
   // ⭐ The share preview's words come from the SAME rule as its image (`share-preview.ts`, landing v3
   // WP14b): "YES 62% · NO 38%" only where both sides hold money; "One side only." / "No bets yet." where
   // there is no price. It used to print "YES 100% · NO 0%" and an invented "YES 50% · NO 50%".
@@ -145,7 +160,8 @@ export default async function MarketDetail({
   // B-1 — no swallow on the PRIMARY read: a failed query must throw to
   // markets/error.tsx (retry), never 404 a market that may be holding money.
   // notFound() fires only when the query succeeded and the row is absent.
-  // (generateMetadata's own catch above deliberately stays — title garnish.)
+  // ⛔ THIS read is the only one that decides the page. generateMetadata reads the market too, and its catch answers the
+  // board's neutral title, never "missing" (round 5, F1: a notFound() there replaced the page — its note has why).
   const m = await getMarket(id);
   if (!m) notFound();
 

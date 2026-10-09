@@ -23,6 +23,13 @@
  *   §9 THE LAST RESORT SPEAKS ALL THREE LANGUAGES. The worker's own fallback (when even the document was never
  *      cached) was English and Swahili only; its words are held to the dictionary and its scripts are RUN as in §4/§7.
  *   §10 PUSH AND THE STATIC-ASSET STRATEGY ARE UNTOUCHED, by running their handlers.
+ *   §11 THE STATIC RULE KEEPS ONLY AN IMAGE OR A FONT (round 5, review F2 — the worker's half of hotfix 9cb95938). It
+ *      matched by the address's file name and kept whatever answered, so a signed-in reader's page at `/markets/x.png`
+ *      was stored and answered first to the next visitor of that address on the same phone. A navigation never reaches
+ *      it now, and only an image or a font is stored: run here for a page, the router's data and a login redirect.
+ *   §12 THE OFFLINE DOCUMENT STAYS FRESH (round 5, review F3). It was fetched at install only, so a licence change or a
+ *      fix to the document never reached a phone that held it, and a failed precache was never retried. A navigation
+ *      the network answered now refreshes it, cookieless, at most one look per worker wake, when missing or a day old.
  *
  * ⛔ IN-PROCESS BY CONSTRUCTION: it reads files, builds the document in memory and runs scripts in a `vm` sandbox; it
  * opens nothing for writing (so `test:red-anchors` §4 counts its red twin as in-process).
@@ -77,9 +84,15 @@ const T = (l: keyof typeof dict) => dict[l] as Dict;
 const j = (v: unknown) => JSON.stringify(v);
 const squash = (s: string) => s.replace(/\s+/g, " ").trim();
 const htmlEsc = (s: string) => s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#39;");
-/** Every name a cache that held the old "/offline" page could have had: the worker's names up to v4. */
-const TAINTED = new Set(["50pick-v1", "50pick-v2", "50pick-v3", "50pick-v4"]);
+/**
+ * Every name a cache that may hold a person's page could have had: the worker's names up to v4 (the old "/offline" page,
+ * R4-G), and v5 too (round 5, review F2: every name up to v5 ran the static rule that kept whatever answered an address
+ * ending in ".png" — `/markets/x.png`, a page).
+ */
+const TAINTED = new Set(["50pick-v1", "50pick-v2", "50pick-v3", "50pick-v4", "50pick-v5"]);
 const ORIGIN = "https://50pick.tz";
+/** The offline document's key in the worker's cache: the route's path. */
+const OFFLINE_KEY = OD.OFFLINE_PATH;
 
 /* ── the service worker, run in a sandbox ──────────────────────────────────────────────────────────────────────── */
 
@@ -90,18 +103,24 @@ class FakeRequest {
   }
 }
 class FakeResponse {
-  body: string; status: number; ok: boolean; headers: Record<string, string>;
+  body: string; status: number; ok: boolean; headers: Headers;
   constructor(body: string, init: { status?: number; headers?: Record<string, string> } = {}) {
-    this.body = body; this.status = init.status ?? 200; this.ok = this.status >= 200 && this.status < 300; this.headers = init.headers ?? {};
+    this.body = body; this.status = init.status ?? 200; this.ok = this.status >= 200 && this.status < 300; this.headers = new Headers(init.headers ?? {});
   }
   clone() { return this; }
 }
 const keyOf = (r: unknown) => (typeof r === "string" ? r : (r as { url: string }).url).replace(ORIGIN, "");
 
-function loadSw(src: string, seed: Record<string, Record<string, string>> = {}) {
+/**
+ * The worker in a sandbox. `net` answers the worker's own `fetch` (offline — a TypeError — unless given); `addNet` answers
+ * what `cache.add` fetches (a precache that always lands, unless given: then `cache.add` keeps only an ok answer, as the
+ * real one does, and rejects otherwise). A seed entry is a body, or a FakeResponse with its headers.
+ */
+type SwNet = (r: FakeRequest | string) => Promise<FakeResponse>;
+function loadSw(src: string, seed: Record<string, Record<string, string | FakeResponse>> = {}, opts: { net?: SwNet; addNet?: SwNet } = {}) {
   const handlers: Record<string, (e: unknown) => unknown> = {};
   const store = new Map<string, Map<string, FakeResponse>>();
-  for (const [name, entries] of Object.entries(seed)) store.set(name, new Map(Object.entries(entries).map(([u, b]) => [u, new FakeResponse(b)])));
+  for (const [name, entries] of Object.entries(seed)) store.set(name, new Map(Object.entries(entries).map(([u, b]) => [u, typeof b === "string" ? new FakeResponse(b) : b])));
   const added: Array<{ cache: string; req: unknown }> = [];
   const shown: Array<{ title: string; options: Record<string, unknown> }> = [];
   const fetched: string[] = [];
@@ -110,7 +129,13 @@ function loadSw(src: string, seed: Record<string, Record<string, string>> = {}) 
       if (!store.has(name)) store.set(name, new Map());
       const m = store.get(name)!;
       return {
-        add: async (r: unknown) => { added.push({ cache: name, req: r }); m.set(keyOf(r), new FakeResponse(`<precached ${keyOf(r)}>`)); },
+        add: async (r: unknown) => {
+          added.push({ cache: name, req: r });
+          if (!opts.addNet) { m.set(keyOf(r), new FakeResponse(`<precached ${keyOf(r)}>`)); return; }
+          const res = await opts.addNet(r as FakeRequest);
+          if (!res.ok) throw new TypeError(`cache.add: ${res.status}`);
+          m.set(keyOf(r), res);
+        },
         match: async (r: unknown) => m.get(keyOf(r)),
         put: async (r: unknown, res: FakeResponse) => { m.set(keyOf(r), res); },
       };
@@ -128,7 +153,7 @@ function loadSw(src: string, seed: Record<string, Record<string, string>> = {}) 
   };
   const ctx = vm.createContext({
     self, caches, Request: FakeRequest, Response: FakeResponse, URL, Promise, Object, JSON, console,
-    fetch: async (r: unknown) => { fetched.push(keyOf(r)); throw new TypeError("Failed to fetch (offline)"); },
+    fetch: async (r: unknown) => { fetched.push(keyOf(r)); if (opts.net) return opts.net(r as FakeRequest); throw new TypeError("Failed to fetch (offline)"); },
   });
   vm.runInContext(src, ctx, { filename: "sw.js" });
   const event = (extra: Record<string, unknown>) => {
@@ -136,7 +161,14 @@ function loadSw(src: string, seed: Record<string, Record<string, string>> = {}) 
     let answer: Promise<unknown> | undefined;
     // A rejected answer (an uncached asset with the network down) is "no answer", never a throw out of the check.
     const e = { ...extra, waitUntil: (p: Promise<unknown>) => { waits.push(Promise.resolve(p).catch(() => undefined)); }, respondWith: (p: Promise<unknown>) => { answer = Promise.resolve(p).catch(() => undefined); } };
-    return { e, settle: async () => { await Promise.all(waits); return answer ? await answer : undefined; } };
+    // Settled to the end: the answer, then every `waitUntil` — including one registered inside the answer's own chain
+    // (the navigation's offline refresh, round 5), which the event's lifetime covers as the browser's does.
+    const settle = async () => {
+      const a = answer ? await answer : undefined;
+      for (let n = -1; n !== waits.length;) { n = waits.length; await Promise.all(waits); }
+      return a;
+    };
+    return { e, settle };
   };
   const fire = async (type: string, extra: Record<string, unknown> = {}) => {
     const h = handlers[type];
@@ -196,7 +228,7 @@ async function run(W: World, log: (l: string) => void): Promise<string[]> {
   log("§2 · every cache that may hold a person's page is deleted, and none is read");
   {
     const name = loadSw(W.sw).get("CACHE_NAME") as string | undefined;
-    ok("2.name · the cache name is past every name that cached a page (50pick-v1…v4)", typeof name === "string" && !TAINTED.has(name) && /^50pick-v\d+$/.test(name), String(name));
+    ok("2.name · the cache name is past every name that may have cached a page (50pick-v1…v5)", typeof name === "string" && !TAINTED.has(name) && /^50pick-v\d+$/.test(name), String(name));
     const sw = loadSw(W.sw, { "50pick-v4": { "/offline": "<PERSON: Salio TZS 100,000>" }, "50pick-v3": { "/offline": "<PERSON>" }, "someone-else": {} });
     await sw.fire("install");
     await sw.fire("activate");
@@ -388,15 +420,109 @@ async function run(W: World, log: (l: string) => void): Promise<string[]> {
     api.handlers.fetch?.({ request: new FakeRequest(`${ORIGIN}/api/wallet`), respondWith: () => { answered = true; }, waitUntil: () => undefined });
     ok("10.api · an API request is never answered by the worker", !answered);
     const src = decomment(W.sw);
-    ok("10.static.rule · the static rule and its stale-while-revalidate are as they were",
+    // ⚠️ MOVED IN ROUND 5 (review F2): the copy is refreshed through `keepable` (§11), no longer for any ok answer.
+    ok("10.static.rule · the static rule and its stale-while-revalidate are as they were, the copy refreshed through `keepable` (§11)",
       src.includes('url.pathname.startsWith("/icons/")') && src.includes('url.pathname.startsWith("/brand/")') && src.includes('url.pathname.startsWith("/hero/")')
-        && src.includes("url.pathname.match(/\\.(woff2?|ttf|otf|svg|png|jpg|webp|ico)$/)") && src.includes("if (response.ok) cache.put(request, response.clone());")
+        && src.includes("url.pathname.match(/\\.(woff2?|ttf|otf|svg|png|jpg|webp|ico)$/)") && src.includes("if (keepable(response)) cache.put(request, response.clone());")
         && src.includes("if (cached) { event.waitUntil(network.catch(() => undefined)); return cached; }"));
     await sw.fire("push", { data: { json: () => ({ title: "Dau limepotea", body: "b", tag: "updown-1", url: "/updown" }), text: () => "" } });
     const n = sw.shown[0];
     ok("10.push · a push still shows its notification with its tag, renotify and the address it opens",
       !!n && n.title === "Dau limepotea" && n.options.tag === "updown-1" && n.options.renotify === true && j(n.options.data) === j({ url: "/updown" }), j(n));
     ok("10.click · a notification click still opens or focuses the app", typeof sw.handlers.notificationclick === "function");
+  }
+
+  log("§11 · the static rule keeps only an image or a font (round 5, review F2 — the worker's half of hotfix 9cb95938)");
+  {
+    // What the network answers, as production did on 2026-10-09: `/markets/<anything>.png` is a PAGE — the market
+    // not-found inside the app shell of whoever asked (their header, their balance) — and the router's data for a move
+    // to it is text/x-component. A sign-in wall answering at a static file's address is a page too.
+    const PAGE = "<!doctype html><header>Salio TZS 188,888 · Asha M.</header><main>404</main>";
+    const page = () => new FakeResponse(PAGE, { headers: { "content-type": "text/html; charset=utf-8" } });
+    const net: SwNet = async (r) => {
+      const u = new URL(typeof r === "string" ? r : r.url, ORIGIN);
+      if (u.searchParams.has("_rsc")) return new FakeResponse('0:["$","header",null,{"children":"Salio TZS 188,888"}]', { headers: { "content-type": "text/x-component" } });
+      if (u.pathname.startsWith("/markets/") || u.pathname === "/brand/behind-a-wall.png") return page();
+      if (u.pathname.endsWith(".woff2")) return new FakeResponse("<woff2>", { headers: { "content-type": "font/woff2" } });
+      return new FakeResponse("<png>", { headers: { "content-type": "image/png" } });
+    };
+    const sw = loadSw(W.sw, {}, { net });
+    await sw.fire("install");
+    const name = sw.get("CACHE_NAME") as string;
+    const kept = () => [...(sw.store.get(name)?.keys() ?? [])];
+    const bodyOf = (r: { answer: unknown }) => (r.answer as FakeResponse | undefined)?.body;
+    const signedIn = await sw.fire("fetch", { request: new FakeRequest(`${ORIGIN}/markets/x.png`, { mode: "navigate", credentials: "include" }) });
+    const nextVisitor = await sw.fire("fetch", { request: new FakeRequest(`${ORIGIN}/markets/x.png`, { mode: "navigate" }) });
+    ok("11.navigate · a navigation to an address ending in \".png\" is a page: the network answers it, nothing is stored, and the next visitor of that address is answered by the network again",
+      bodyOf(signedIn) === PAGE && bodyOf(nextVisitor) === PAGE && !kept().some((k) => k.startsWith("/markets/")) && sw.fetched.filter((f) => f === "/markets/x.png").length === 2,
+      j({ kept: kept(), fetched: sw.fetched }));
+    const move = await sw.fire("fetch", { request: new FakeRequest(`${ORIGIN}/markets/x.png?_rsc=1x2y3`) });
+    ok("11.rsc · a move inside the app to that address (the router's data for the page, text/x-component) is passed through, never stored",
+      (move.answer as FakeResponse | undefined)?.headers.get("content-type") === "text/x-component" && !kept().some((k) => k.startsWith("/markets/")), j(kept()));
+    const wall = await sw.fire("fetch", { request: new FakeRequest(`${ORIGIN}/brand/behind-a-wall.png`) });
+    ok("11.html · a page answering at a static file's own address (a sign-in wall, a not-found) is passed through, never stored",
+      bodyOf(wall) === PAGE && !kept().includes("/brand/behind-a-wall.png"), j(kept()));
+    await sw.fire("fetch", { request: new FakeRequest(`${ORIGIN}/icons/icon-192.png`) });
+    await sw.fire("fetch", { request: new FakeRequest(`${ORIGIN}/_next/static/media/inter-latin.woff2`) });
+    ok("11.keep · CONTROL — an image and a font are still stored, so the rule still does its job",
+      kept().includes("/icons/icon-192.png") && kept().includes("/_next/static/media/inter-latin.woff2"), j(kept()));
+    const keep = sw.get("keepable") as ((r: FakeResponse) => boolean) | undefined;
+    const TYPES: Array<[string, boolean]> = [["image/png", true], ["image/svg+xml", true], ["image/x-icon", true], ["image/webp", true], ["font/woff2", true],
+      ["text/html; charset=utf-8", false], ["text/x-component", false], ["application/json", false], ["application/octet-stream", false], ["", false]];
+    const wrong = typeof keep !== "function" ? ["no keepable"] : TYPES.filter(([t, want]) => keep(new FakeResponse("", { headers: t ? { "content-type": t } : {} })) !== want).map(([t]) => t || "(none)");
+    ok("11.types · `keepable` says yes to an ok image or font and to nothing else — a page, the router's data, JSON, an untyped body, an image that is not ok",
+      wrong.length === 0 && keep!(new FakeResponse("", { status: 404, headers: { "content-type": "image/png" } })) === false, wrong.join(", "));
+    // Offline, with a page planted at that address in the worker's own cache (what an older rule stored): the navigation
+    // is answered by the offline document, never by the page.
+    const planted = loadSw(W.sw, { [name]: { "/offline": "<offline doc>", "/markets/x.png": "<PERSON: Salio TZS 188,888>" } });
+    const offline = await planted.fire("fetch", { request: new FakeRequest(`${ORIGIN}/markets/x.png`, { mode: "navigate" }) });
+    ok("11.offline · offline, a navigation to that address is answered by the offline document — never by a page kept there",
+      bodyOf(offline) === "<offline doc>", String(bodyOf(offline)).slice(0, 80));
+  }
+
+  log("§12 · the offline document stays fresh (round 5, review F3)");
+  {
+    const DAY = 24 * 60 * 60 * 1000;
+    const keptDoc = (age: number | null, body = "<offline doc v1>") => new FakeResponse(body, { headers: age === null ? {} : { date: new Date(Date.now() - age).toUTCString() } });
+    const newDoc = async () => new FakeResponse("<offline doc v2>", { headers: { "content-type": "text/html; charset=utf-8", date: new Date().toUTCString() } });
+    const okPage: SwNet = async () => new FakeResponse("<page>", { headers: { "content-type": "text/html; charset=utf-8" } });
+    const nav = (sw: ReturnType<typeof loadSw>, path = "/positions") => sw.fire("fetch", { request: new FakeRequest(`${ORIGIN}${path}`, { mode: "navigate" }) });
+    const refreshes = (sw: ReturnType<typeof loadSw>) => sw.added.filter((a) => keyOf(a.req) === OFFLINE_KEY);
+    const docIn = (sw: ReturnType<typeof loadSw>) => sw.store.get(sw.get("CACHE_NAME") as string)?.get(OFFLINE_KEY)?.body;
+    const name = loadSw(W.sw).get("CACHE_NAME") as string;
+
+    // A precache that failed at install: nothing kept. The next page the network answers fetches it.
+    const lost = loadSw(W.sw, {}, { net: okPage, addNet: newDoc });
+    await nav(lost);
+    const req = refreshes(lost)[0]?.req as { credentials?: string; cache?: string } | string | undefined;
+    ok("12.retry · a precache that failed at install is fetched by the next page the network answers — with the precache's own request (no cookie, no HTTP-cache copy)",
+      refreshes(lost).length === 1 && typeof req === "object" && req.credentials === "omit" && req.cache === "reload" && docIn(lost) === "<offline doc v2>",
+      j({ refreshes: refreshes(lost).length, req, kept: docIn(lost) }));
+    const old = loadSw(W.sw, { [name]: { [OFFLINE_KEY]: keptDoc(DAY + 3_600_000) } }, { net: okPage, addNet: newDoc });
+    await nav(old);
+    ok("12.stale · a copy older than a day is replaced (the licence number and any fix reach the phone)", refreshes(old).length === 1 && docIn(old) === "<offline doc v2>", j({ kept: docIn(old) }));
+    const undated = loadSw(W.sw, { [name]: { [OFFLINE_KEY]: keptDoc(null) } }, { net: okPage, addNet: newDoc });
+    await nav(undated);
+    ok("12.undated · a copy with no date of its own is replaced", refreshes(undated).length === 1 && docIn(undated) === "<offline doc v2>", j({ kept: docIn(undated) }));
+    const recent = loadSw(W.sw, { [name]: { [OFFLINE_KEY]: keptDoc(3_600_000) } }, { net: okPage, addNet: newDoc });
+    await nav(recent);
+    ok("12.fresh · a copy from the last day is left alone: no request", refreshes(recent).length === 0 && docIn(recent) === "<offline doc v1>", j({ refreshes: refreshes(recent).length }));
+    // One look per worker wake: the answer here never carries a date, so without the guard every page would fetch again.
+    const undatedAnswer: SwNet = async () => new FakeResponse("<offline doc, undated>", { headers: { "content-type": "text/html; charset=utf-8" } });
+    const wake = loadSw(W.sw, { [name]: { [OFFLINE_KEY]: keptDoc(null) } }, { net: okPage, addNet: undatedAnswer });
+    await nav(wake); await nav(wake, "/updown"); await nav(wake, "/wallet");
+    ok("12.wake · three pages in one worker wake look once — one request, however the copy is dated", refreshes(wake).length === 1, j({ refreshes: refreshes(wake).length }));
+    const down = loadSw(W.sw, { [name]: { [OFFLINE_KEY]: keptDoc(null) } }, { addNet: newDoc });
+    const offlineNav = await nav(down);
+    ok("12.offline · a page the network could not answer refreshes nothing (it is answered by the kept copy)",
+      refreshes(down).length === 0 && (offlineNav.answer as FakeResponse | undefined)?.body === "<offline doc v1>", j({ refreshes: refreshes(down).length }));
+    const serverError = loadSw(W.sw, { [name]: { [OFFLINE_KEY]: keptDoc(null) } }, { net: async () => new FakeResponse("<500>", { status: 500 }), addNet: newDoc });
+    await nav(serverError);
+    ok("12.not-ok · a page the server answered with an error refreshes nothing", refreshes(serverError).length === 0, j({ refreshes: refreshes(serverError).length }));
+    const refused = loadSw(W.sw, { [name]: { [OFFLINE_KEY]: keptDoc(2 * DAY) } }, { net: okPage, addNet: async () => new FakeResponse("<503>", { status: 503 }) });
+    await nav(refused);
+    ok("12.keeps · a refresh the server refuses leaves the kept copy as it was — the phone is never left without its offline document",
+      refreshes(refused).length === 1 && docIn(refused) === "<offline doc v1>", j({ kept: docIn(refused) }));
   }
   return failed;
 }
@@ -454,9 +580,32 @@ const PLANTS: Plant[] = [
   { name: "the last resort in English and Swahili only (no Chinese)", expect: /^9\.words /,
     world: swap("sw", /\n\s*zh: \{ offline: "[^"]*", hint: "[^"]*", retry: "[^"]*" \},/, ""), needs: has("sw", /\n\s*zh: \{ offline:/) },
   { name: "the static rule stops refreshing its copy", expect: /^10\.static\.rule /,
-    world: swap("sw", "if (response.ok) cache.put(request, response.clone());", ""), needs: has("sw", "if (response.ok) cache.put(request, response.clone());") },
+    world: swap("sw", "if (keepable(response)) cache.put(request, response.clone());", ""), needs: has("sw", "if (keepable(response)) cache.put(request, response.clone());") },
   { name: "a push loses its tag", expect: /^10\.push /,
     world: swap("sw", 'tag: payload.tag || "50pick-notification",', 'tag: "50pick-notification",'), needs: has("sw", 'tag: payload.tag || "50pick-notification",') },
+  // Round 5 (R5-D) — review F2 and F3.
+  { name: "the cache name kept at v5 (a name whose static rule could keep a page)", expect: /^2\.name /,
+    world: swap("sw", /const CACHE_NAME = "[^"]+";/, 'const CACHE_NAME = "50pick-v5";'), needs: has("sw", /const CACHE_NAME = "[^"]+";/) },
+  { name: "an image-like address's navigation handed to the static rule again (as before round 5)", expect: /^11\.(navigate|offline) /,
+    world: swap("sw", 'if (request.mode === "navigate") {', 'if (request.mode === "navigate" && !/\\.(woff2?|ttf|otf|svg|png|jpg|webp|ico)$/.test(url.pathname)) {'),
+    needs: has("sw", 'if (request.mode === "navigate") {') },
+  { name: "the static rule keeps any ok answer again (a page, the router's data)", expect: /^11\.(rsc|html) /,
+    world: swap("sw", "if (keepable(response)) cache.put(request, response.clone());", "if (response.ok) cache.put(request, response.clone());"),
+    needs: has("sw", "if (keepable(response)) cache.put(request, response.clone());") },
+  { name: "`keepable` lets text through", expect: /^11\.types /,
+    world: swap("sw", "const KEEPABLE_TYPE = /^(?:image|font)\\//i;", "const KEEPABLE_TYPE = /^(?:image|font|text)\\//i;"), needs: has("sw", "const KEEPABLE_TYPE = /^(?:image|font)\\//i;") },
+  { name: "a page the network answered no longer refreshes the offline document (install-only, as before)", expect: /^12\.(retry|stale|undated) /,
+    world: swap("sw", "if (response.ok) event.waitUntil(refreshOffline());", ""), needs: has("sw", "if (response.ok) event.waitUntil(refreshOffline());") },
+  { name: "the refresh sends the session cookie (`cache.add(url)`)", expect: /^12\.retry /,
+    world: swap("sw", "return cache.add(precacheRequest(OFFLINE_URL));", "return cache.add(OFFLINE_URL);"), needs: has("sw", "return cache.add(precacheRequest(OFFLINE_URL));") },
+  { name: "every page refetches the offline document (no one look per worker wake)", expect: /^12\.wake /,
+    world: swap("sw", "if (offlineLooked) return Promise.resolve();", ""), needs: has("sw", "if (offlineLooked) return Promise.resolve();") },
+  { name: "a copy from the last day refetched anyway (no age)", expect: /^12\.fresh /,
+    world: swap("sw", "if (age < OFFLINE_REFRESH_MS) return undefined;", ""), needs: has("sw", "if (age < OFFLINE_REFRESH_MS) return undefined;") },
+  { name: "a refresh tried when the network failed too", expect: /^12\.offline /,
+    world: swap("sw", "}, () => offlineResponse()),", "}, () => { event.waitUntil(refreshOffline()); return offlineResponse(); }),"), needs: has("sw", "}, () => offlineResponse()),") },
+  { name: "a refresh on a server error too (any answer)", expect: /^12\.not-ok /,
+    world: swap("sw", "if (response.ok) event.waitUntil(refreshOffline());", "event.waitUntil(refreshOffline());"), needs: has("sw", "if (response.ok) event.waitUntil(refreshOffline());") },
 ];
 
 if (!PROVE_RED) {

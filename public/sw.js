@@ -1,9 +1,9 @@
 /**
  * 50pick Service Worker — offline fallback + push notification support.
  *
- * Strategy: network-first for pages (always fresh), cache-first for static
- * assets (fonts, icons, images). Push notifications display even when the
- * app is closed.
+ * Strategy: network-first for pages (always fresh), stale-while-revalidate for
+ * static files (fonts, icons, images) — and only an image or a font is ever
+ * kept. Push notifications display even when the app is closed.
  *
  * Registered from src/lib/register-sw.ts (client-side, lazy).
  */
@@ -21,8 +21,14 @@
 // copy was the header of whoever was signed in at install — their balance, their avatar, the staff preview strip —
 // shown offline to anybody on that phone afterwards. The name is bumped so `activate` below deletes those caches on
 // every device that already holds one; the new copy is fetched with no cookie (`precacheRequest`) and is a document
-// that reads nothing from its request (`src/app/offline/route.ts`). ⛔ Never reuse a name up to v4.
-const CACHE_NAME = "50pick-v5";
+// that reads nothing from its request (`src/app/offline/route.ts`).
+// 🔴 v5 → v6 (2026-10-09, round 5, review F2 · the static rule's half of hotfix 9cb95938): EVERY NAME UP TO v5 RAN A
+// STATIC RULE THAT COULD KEEP A PAGE. It matched by the address's file name alone and kept whatever answered, so a
+// signed-in reader's page at `/markets/x.png` (a not-found inside their app shell) was stored and answered first to the
+// next visitor of that address on the same phone (a sandbox run of this worker). The rule now never takes a navigation
+// and keeps only an image or a font (`keepable`, below); the name moves so `activate` drops what an older one stored.
+// v5 itself never reached production (main ran v4), so devices there go v4 → v6. ⛔ Never reuse a name up to v5.
+const CACHE_NAME = "50pick-v6";
 // C2j — dedicated branded offline route (precached below) instead of falling
 // back to the data-heavy home page. Since R4-G a self-contained document, not a page: `src/lib/offline-document.ts`.
 const OFFLINE_URL = "/offline";
@@ -104,6 +110,40 @@ function offlineResponse() {
   ));
 }
 
+/**
+ * ⭐ THE OFFLINE DOCUMENT IS KEPT FRESH BY THE NAVIGATIONS THAT SUCCEED (2026-10-09, round 5, review F3). It was fetched
+ * at install and never again: a phone kept that copy for the cache's whole life — the licence number the route bakes in,
+ * and any later fix to `offline-document.ts`, never reached it — and a precache that failed at install was never tried
+ * again, so that phone had only the last resort above. Now a navigation the network answered also refreshes it, in the
+ * background (`event.waitUntil`), with the precache's own cookieless request: at most one look per worker wake, and a
+ * fetch only when the kept copy is missing or not from the last day by its own `date` header (which the cache keeps),
+ * so browsing costs one small request a day. `cache.add` writes only a response that is ok, so a failed refresh leaves
+ * the kept copy as it was.
+ */
+const OFFLINE_REFRESH_MS = 24 * 60 * 60 * 1000;
+let offlineLooked = false;
+function refreshOffline() {
+  if (offlineLooked) return Promise.resolve();
+  offlineLooked = true;
+  return caches.open(CACHE_NAME).then((cache) => cache.match(OFFLINE_URL).then((kept) => {
+    const age = kept ? Math.abs(Date.now() - Date.parse(kept.headers.get("date") || "")) : NaN;
+    if (age < OFFLINE_REFRESH_MS) return undefined;
+    return cache.add(precacheRequest(OFFLINE_URL));
+  })).catch(() => undefined);
+}
+
+/**
+ * ⛔ ONLY AN IMAGE OR A FONT IS KEPT (round 5, review F2; see the v6 note above). The static rule below picks requests by
+ * the address, and an address can end in ".png" without naming a file — `/markets/x.png` is a page. Navigations never
+ * reach that rule (the navigation branch comes first), and what the network answers is stored only when it says it is
+ * an image or a font: never a page (`text/html`), and never the router's data for one (`text/x-component`, which a move
+ * inside the app to such an address fetches).
+ */
+const KEEPABLE_TYPE = /^(?:image|font)\//i;
+function keepable(response) {
+  return response.ok && KEEPABLE_TYPE.test(response.headers.get("content-type") || "");
+}
+
 // Activate: clean old caches
 self.addEventListener("activate", (event) => {
   event.waitUntil(
@@ -114,7 +154,7 @@ self.addEventListener("activate", (event) => {
   self.clients.claim();
 });
 
-// Fetch: network-first for navigation, cache-first for static assets
+// Fetch: network-first for navigation, stale-while-revalidate for static files
 self.addEventListener("fetch", (event) => {
   const { request } = event;
   const url = new URL(request.url);
@@ -125,7 +165,23 @@ self.addEventListener("fetch", (event) => {
   // API routes — always network, never cache
   if (url.pathname.startsWith("/api/")) return;
 
-  // Static assets (fonts, images, icons) — cache-first
+  // Navigation — network-first, offline fallback.
+  // ⛔ FIRST, BEFORE THE STATIC RULE (round 5, review F2): a navigation is a page whatever its address ends in
+  // (`/markets/x.png`), and it is never stored.
+  if (request.mode === "navigate") {
+    // ⛔ E-381 §6 item 13 · `caches.match` resolves to `undefined` when the page was never cached, and
+    // `respondWith(undefined)` throws — the player got the browser's own network-error page instead of ours.
+    // ⭐ A page the network answered also keeps the offline document fresh, in the background (`refreshOffline`).
+    event.respondWith(
+      fetch(request).then((response) => {
+        if (response.ok) event.waitUntil(refreshOffline());
+        return response;
+      }, () => offlineResponse()),
+    );
+    return;
+  }
+
+  // Static files (fonts, images, icons) — stale-while-revalidate
   if (
     url.pathname.startsWith("/icons/") ||
     url.pathname.startsWith("/brand/") ||
@@ -134,25 +190,16 @@ self.addEventListener("fetch", (event) => {
   ) {
     // Stale-while-revalidate: answer from the cache at once when we can, and refresh the entry in the background,
     // so a replaced logo at the same URL reaches the player on their next visit (it used to need a CACHE_NAME bump).
+    // ⛔ Only an image or a font is stored (`keepable`), so only an image or a font can ever answer from here.
     event.respondWith(
       caches.open(CACHE_NAME).then((cache) => cache.match(request).then((cached) => {
         const network = fetch(request).then((response) => {
-          if (response.ok) cache.put(request, response.clone());
+          if (keepable(response)) cache.put(request, response.clone());
           return response;
         });
         if (cached) { event.waitUntil(network.catch(() => undefined)); return cached; }
         return network;
       })),
-    );
-    return;
-  }
-
-  // Navigation — network-first, offline fallback
-  if (request.mode === "navigate") {
-    // ⛔ E-381 §6 item 13 · `caches.match` resolves to `undefined` when the page was never cached, and
-    // `respondWith(undefined)` throws — the player got the browser's own network-error page instead of ours.
-    event.respondWith(
-      fetch(request).catch(() => offlineResponse()),
     );
     return;
   }

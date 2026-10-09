@@ -1,8 +1,11 @@
-import { getServerT } from "@/lib/i18n-server";
 import { PageContainer } from "@/components/layout/page-container";
 
-export default async function MarketDetailLoading() {
-  const { t } = await getServerT();
+/**
+ * ⭐ IT READS NOTHING (2026-10-09, the visual pass round 5, review G1): it asked for the words and drew none of them, and
+ * that read was all that kept this file off the browser. The journey's root loading state
+ * (`components/journey/route-ghost.tsx`) now draws this very skeleton there, on a move to a question.
+ */
+export default function MarketDetailLoading() {
   // Width MUST match markets/[id]/page.tsx (1080). It was 1100, so every navigation
   // to a market detail page reflowed by 20px the moment the real page took over.
   return (

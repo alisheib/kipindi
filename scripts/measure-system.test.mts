@@ -180,11 +180,13 @@ log(`  (ratchet holds ${RAW_WIDTH_ALLOWLIST.size} file(s) — the list may only 
    cleanly — and `px-4` is **20px** on this repo's overridden scale (tailwind.config.ts:216),
    which was the whole of D45. The gutter needs its own assertion or the fix is
    one edit away from silently coming back. */
+// ⚠️ Round 5 (review G1, R5-D): the two loading files' drawings moved, byte for byte, into the ghost modules beside them
+// (the journey's root loading state draws them in the browser); the loading files render them, so the wrapper is read there.
 const HOUSE_GUTTER_ROUTES = [
   "src/app/updown/page.tsx",
-  "src/app/updown/loading.tsx",
+  "src/app/updown/updown-ghost.tsx",
   "src/app/updown/history/page.tsx",
-  "src/app/updown/history/loading.tsx",
+  "src/app/updown/history/history-ghost.tsx",
 ];
 for (const rel of HOUSE_GUTTER_ROUTES) {
   const src = decomment(readFileSync(join(ROOT, rel), "utf8"));

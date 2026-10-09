@@ -27,7 +27,10 @@ import { createElement as h } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { decomment, decommentCss } from "./lib/decomment.mts";
 import { dict as DICTS } from "../src/lib/i18n-dict.ts";
-import { NotFoundView, NOT_FOUND_WORDS, notFoundTitle } from "../src/components/ui/not-found-view.tsx";
+import { NotFoundView } from "../src/components/ui/not-found-view.tsx";
+// ⚠️ MOVED IN ROUND 5 (R5-D, review G1's sibling): the view is client code, so its words and title live in a data module
+// a server file can read (`not-found-words.ts`; `test:visual-pass-r5d` §4).
+import { NOT_FOUND_WORDS, notFoundTitle } from "../src/components/ui/not-found-words.ts";
 import { hangCjkMarks, CJK_MARK_TRIM, CJK_TRIM_EM } from "../src/lib/cjk-marks.tsx";
 import twConfigModule from "../tailwind.config.ts";
 import { MUTATIONS } from "./anchors/visual-pass-r4k.anchors.mjs";
@@ -140,20 +143,25 @@ section("2 · the not-found's title in the page's language, noindex in the head 
     ok(`2.3 · ${p} exports the root's metadata — the not-found convention reads the DEEPEST not-found's, and these had none`,
       c.includes(`import { generateMetadata as notFoundMetadata } from "@/app/not-found";`) && /export async function generateMetadata\(\) \{\s*return notFoundMetadata\(\);\s*\}/.test(c));
   }
+  // ⚠️ 2.4–2.6 MOVED IN ROUND 5 (review F1, R5-D): the market's metadata no longer calls notFound() — Next renders a
+  // notFound() thrown in generateMetadata as the not-found PAGE, so a failed read there 404'd a real market. All three
+  // record pages now answer the not-found's metadata for a missing record, the board's title in the reader's language
+  // for a failed read, and throw nothing (`test:visual-pass-r5d` §1 holds the rule with its plants).
   const market = code("src/app/markets/[id]/page.tsx");
   const mMeta = market.slice(market.indexOf("export async function generateMetadata"), market.indexOf("export default async function"));
-  ok("2.4 · the market page's metadata still calls notFound() for a missing market — that is what sends Next to the not-found's",
-    /let m: [^;]+= null;\s*try \{ m = await getMarket\(id\); \} catch \{[^}]*\}\s*if \(!m\) notFound\(\);/.test(mMeta));
+  ok("2.4 · the market page's metadata answers the not-found's own metadata for a missing market (the deepest not-found's, 2.3, the same words) — and never throws notFound() (round 5, F1)",
+    /let m: [^;]+= null;\s*try \{ m = await getMarket\(id\); \} catch \{ return \{ title: t\.market\.title \}; \}\s*if \(!m\) return notFoundMetadata\(\);/.test(mMeta)
+      && !/\bnotFound\(\)/.test(mMeta) && market.includes(`import { generateMetadata as notFoundMetadata } from "@/app/not-found";`));
   const ud = code("src/app/updown/[roundId]/page.tsx");
   const udMeta = ud.slice(ud.indexOf("export async function generateMetadata"), ud.indexOf("export default async function"));
-  ok("2.5 · /updown/[roundId]: a round the read did not find is titled by the not-found; a FAILED read keeps ‘Up & Down’",
-    /try \{\s*d = await getRoundDetail\(roundId\);\s*\} catch \{ return \{ title: "Up & Down" \}; \}\s*if \(!d\) return notFoundMetadata\(\);/.test(udMeta)
+  ok("2.5 · /updown/[roundId]: a round the read did not find is titled by the not-found; a FAILED read keeps the board's neutral title, in the reader's language (round 5: was the English ‘Up & Down’)",
+    /try \{\s*d = await getRoundDetail\(roundId\);\s*\} catch \{ return \{ title: t\.market\.udTitle \}; \}\s*if \(!d\) return notFoundMetadata\(\);/.test(udMeta)
       && !/\.catch\(\(\) => null\)/.test(udMeta) && ud.includes(`import { generateMetadata as notFoundMetadata } from "@/app/not-found";`));
   const pr = code("src/app/proposals/[id]/page.tsx");
   const prMeta = pr.slice(pr.indexOf("export async function generateMetadata"), pr.indexOf("export default async function"));
-  ok("2.6 · /proposals/[id]: the same — the not-found's title for a proposal that does not exist (unless proposals are DISABLED, when the page redirects)",
-    /if \(!p\) return getProposalsConfig\(\)\.state === "DISABLED" \? \{ title: "Proposal" \} : notFoundMetadata\(\);/.test(prMeta)
-      && /\} catch \{ return \{ title: "Proposal" \}; \}/.test(prMeta));
+  ok("2.6 · /proposals/[id]: the same — the not-found's title for a proposal that does not exist (unless proposals are DISABLED, when the page redirects), the board's title in the reader's language otherwise (round 5: was the English ‘Proposal’)",
+    /if \(!p\) return getProposalsConfig\(\)\.state === "DISABLED" \? \{ title: t\.proposals\.title \} : notFoundMetadata\(\);/.test(prMeta)
+      && /\} catch \{ return \{ title: t\.proposals\.title \}; \}/.test(prMeta));
   ok("2.5′ PLANT · the shipped updown metadata (‘Up & Down’ for a missing round) is reported",
     !/if \(!d\) return notFoundMetadata\(\);/.test(`const d = await getRoundDetail(roundId).catch(() => null);\n  return { title: d?.titleEn ?? "Up & Down" };`));
 }

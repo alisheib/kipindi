@@ -1,5 +1,6 @@
 import { getServerT } from "@/lib/i18n-server";
-import { NOT_FOUND_WORDS, NotFoundView } from "@/components/ui/not-found-view";
+import { NotFoundView } from "@/components/ui/not-found-view";
+import { NOT_FOUND_WORDS } from "@/components/ui/not-found-words";
 import { generateMetadata as notFoundMetadata } from "@/app/not-found";
 
 /**
@@ -15,9 +16,11 @@ import { generateMetadata as notFoundMetadata } from "@/app/not-found";
  * (app-render.js:1894–1897). ⛔ Do not buy a 404 by deleting a `loading.tsx` (every async route keeps one); the head
  * says `noindex` through the metadata below, which is what a crawler acts on.
  *
- * ⭐ THE TITLE IS THE NOT-FOUND'S, IN THE PAGE'S LANGUAGE (E47). `generateMetadata` on the page calls `notFound()` for a
- * missing market; Next then resolves metadata again under the not-found convention, and that reads the DEEPEST
- * not-found's — this file's. With no export here the tab kept the root's English default.
+ * ⭐ THE TITLE IS THE NOT-FOUND'S, IN THE PAGE'S LANGUAGE (E47). Whenever Next resolves this segment's metadata under
+ * the not-found convention it reads the DEEPEST not-found's — this file's; with no export here the tab kept the root's
+ * English default. ⚠️ CORRECTED IN ROUND 5 (review F1): the page's own metadata no longer calls `notFound()` (thrown
+ * there, it replaced a REAL market with this page whenever its read failed) — for a market the read did not find, it
+ * answers this same metadata itself, so the tab says the same either way.
  */
 export async function generateMetadata() {
   return notFoundMetadata();

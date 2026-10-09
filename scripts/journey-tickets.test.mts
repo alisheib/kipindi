@@ -96,6 +96,8 @@ const LOADING = "src/app/positions/loading.tsx";
 const ERROR = "src/app/positions/error.tsx";
 const HISTORY = "src/app/updown/history/page.tsx";
 const HISTORY_LOADING = "src/app/updown/history/loading.tsx";
+/** Round 5 (review G1): the history loading file hands its answer to this drawing, which the journey's root ghost also draws. */
+const HISTORY_GHOST = "src/app/updown/history/history-ghost.tsx";
 const HISTORY_ERROR = "src/app/updown/history/error.tsx";
 const TICKETS_DIR = "src/components/journey/tickets/";
 const VIEW = `${TICKETS_DIR}tickets-view.tsx`;
@@ -121,7 +123,7 @@ const SELL_HOST = "src/components/markets/sell-result-host.tsx";
 const MARKET_PAGE = "src/app/markets/[id]/page.tsx";
 /** The journey's own Tiketi files, each held whole. */
 const JOURNEY_FILES = [VIEW, CARD, SWITCH, RAIL, GHOST, RULE];
-const SOURCES = [PAGE, BAR, LOADING, ERROR, HISTORY, HISTORY_LOADING, HISTORY_ERROR, ...JOURNEY_FILES,
+const SOURCES = [PAGE, BAR, LOADING, ERROR, HISTORY, HISTORY_LOADING, HISTORY_GHOST, HISTORY_ERROR, ...JOURNEY_FILES,
   CLASSIC_CARD, TONE, SIDE_LABEL, TABS, GUEST_SHEET, PROXY, SELL_GATE, TW_CONFIG, SELL_BUTTON, SELL_MODAL, SELL_RESULT, SELL_HOST, MARKET_PAGE];
 
 type World = {
@@ -622,13 +624,15 @@ function g10Loading(W: World, ok: Ok) {
   const early = body.indexOf(JOURNEY_GHOST_RETURN);
   const classic = body.indexOf(CLASSIC_RETURN);
   const lost = CLASSIC_GHOST.filter((b) => !(count(loading, b) === 1 && body.indexOf(b) > classic));
-  const historyHead = siblingTernaries(hloading, HISTORY_GHOST_OPEN, "{journey ? null : ");
+  // ⚠️ MOVED IN ROUND 5 (review G1, R5-D): the two head lines are in the drawing the loading file hands its answer to.
+  const hghost = text(W, HISTORY_GHOST);
+  const historyHead = siblingTernaries(hghost, HISTORY_GHOST_OPEN, "{journey ? null : ");
   ok("10.ghost · each loading file returns ONE ghost by the answer: /positions Tiketi zangu's for a journey request, BEFORE its one classic return, which keeps every block of today's; /updown/history swaps only its two head lines, each a sibling ternary where it stood",
     asked > 0 && early > asked && classic > early && count(loading, JOURNEY_GHOST_RETURN) === 1 && count(loading, CLASSIC_RETURN) === 1
       && count(loading, "<TicketsGhost") === 1 && lost.length === 0
-      && historyHead === HISTORY_GHOST_HEAD && count(hloading, "<TicketsHeadGhost") === 1,
+      && historyHead === HISTORY_GHOST_HEAD && count(hghost, "<TicketsHeadGhost") === 1 && count(hloading, "return <UpDownHistoryGhost t={t} journey={journey} />;") === 1,
     lost.length > 0 ? `today's ghost lost: ${lost.join(" · ")}` : historyHead.slice(0, 200));
-  const pickers = [LOADING, HISTORY_LOADING, GHOST];
+  const pickers = [LOADING, HISTORY_LOADING, HISTORY_GHOST, GHOST];
   const inBrowser = pickers.filter((f) => isClient(text(W, f)) || text(W, f).includes("useJourneyOn"));
   const clientLoads = pickers.flatMap((f) => loadsOf(W, f).filter((l) => isClient(textOf(W, l))).map((l) => `${f} loads ${l}`));
   const tiketi = ticketFiles();
@@ -1087,7 +1091,7 @@ const sessionRead = swap(HISTORY_LOADING, ASK_BOTH, `${ASK_BOTH}${LF}  await cur
 const journeyForAll = swap(LOADING, JOURNEY_GHOST_RETURN, "return <TicketsGhost t={t} />;");
 const classicForJourney = swap(LOADING, JOURNEY_GHOST_RETURN, "");
 const classicBlockLost = swap(LOADING, CLASSIC_GHOST[3], "<div aria-hidden>");
-const historyGhostForAll = swap(HISTORY_LOADING, HISTORY_GHOST_OPEN, "{true ? <TicketsHeadGhost");
+const historyGhostForAll = swap(HISTORY_GHOST, HISTORY_GHOST_OPEN, "{true ? <TicketsHeadGhost");
 const ghostsInBrowser = withFile(GHOST, (s) => `"use client";${LF}${s}`);
 const clientImport = withFile(LOADING, (s) => `import { TicketSwitchRail } from "@/components/journey/tickets/ticket-switch-rail";${LF}${s}`);
 const errorForAll = swap(ERROR, "body={journeyOn ? t.journey.ticketsErrorBody : t.error.positionsSafe}", "body={t.journey.ticketsErrorBody}");
@@ -1206,7 +1210,7 @@ const plants: Plant[] = [
   { name: "every reader is drawn the journey's ghost", expect: ["10.ghost"], world: journeyForAll, landed: changed(journeyForAll, LOADING) },
   { name: "a journey reader is drawn the classic ghost (“Nafasi”)", expect: ["10.ghost"], world: classicForJourney, landed: changed(classicForJourney, LOADING) },
   { name: "today's ghost loses a block (the exposure bar)", expect: ["10.ghost"], world: classicBlockLost, landed: changed(classicBlockLost, LOADING) },
-  { name: "the history ghost wears the tickets' head for every reader", expect: ["10.ghost"], world: historyGhostForAll, landed: changed(historyGhostForAll, HISTORY_LOADING) },
+  { name: "the history ghost wears the tickets' head for every reader", expect: ["10.ghost"], world: historyGhostForAll, landed: changed(historyGhostForAll, HISTORY_GHOST) },
   { name: "the ghosts become client code (picked in the browser again)", expect: ["10.pick"], world: ghostsInBrowser, landed: changed(ghostsInBrowser, GHOST) },
   { name: "a loading file imports a client module", expect: ["10.pick"], world: clientImport, landed: changed(clientImport, LOADING) },
   { name: "the error page gives every reader the tickets' words", expect: ["10.error"], world: errorForAll, landed: changed(errorForAll, ERROR) },

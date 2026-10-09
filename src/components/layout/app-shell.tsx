@@ -415,6 +415,12 @@ export async function AppShell({ children }: { children: React.ReactNode }) {
           in the page's head (next/dynamic's PreloadChunks) and fetched beside the page's own scripts. And a chunk that
           never arrives leaves its part out (`nothingIfLost`) as before, but the server's markup then has no client
           twin, so React renders the whole page again in the browser, without that part, instead of that part alone.
+          ⚠️ AND A SERVER RENDER ERROR IN EITHER PART IS NO LONGER CONTAINED (round 5, review G2). React's server
+          renderer contains a throw only in a Suspense boundary above it (its boundary drew the fallback and let the page
+          through); with none, the throw ends the shell and the whole document fails — a 500 for the page that was asked.
+          Neither part throws today: each draws from the props computed above and reads nothing of its own on the server.
+          Kept that way on purpose — a boundary to contain it would outline the part behind the shell again (E36). The
+          root loading file's journey ghost stands in the shell the same way (`components/journey/route-ghost.tsx`).
           Classic visitors are untouched: these two arms are the journey's. */}
       {journeyShown ? <LazyJourneyTopBar user={journeyUser} onBreak={promoSuppressed} breakEnd={journeyBreak} proposalsState={proposalsState} inviteVisible={inviteVisible} invitePaid={invitePaid} /> : <TopAppBar user={topUser} proposalsState={proposalsState} inviteVisible={inviteVisible} invitePaid={invitePaid} />}
       {/* ⭐ THE PREVIEW MARKER — first under the bar, so whoever holds this browser knows at once that they are

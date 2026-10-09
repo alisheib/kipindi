@@ -1,9 +1,11 @@
+"use client";
+
 import Link from "next/link";
 import { I } from "@/components/ui/glyphs";
 import { FiftyMark } from "@/components/brand";
 import { BrandTopo } from "@/components/brand-topo";
 import { hangCjkMarks } from "@/lib/cjk-marks";
-import type { Locale } from "@/lib/i18n-dict";
+import type { NotFoundWords } from "@/components/ui/not-found-words";
 // ⭐ R4-J (2026-10-09): every not-found answer says so to what stands outside the page (`lib/not-found-mark.ts`).
 import { NotFoundMark } from "@/components/ui/not-found-mark";
 
@@ -16,8 +18,8 @@ import { NotFoundMark } from "@/components/ui/not-found-mark";
  * gold on a page that pays nothing (§M3, Q5 "gold is money, and nothing else"). All three now render this view.
  *   · THE ORDER IS DECIDED ONCE: Home · Markets · Help — the root page's, its first glyph the arrow back.
  *   · ONE LINK COLOUR, `--brand-300`, for the one way out under the cards; a segment names its own (`way`).
- *   · THE WORDS ARE THE ROOT PAGE'S, below, in every language — the market page used the dictionary's twin of these
- *     sentences, whose English h1 types a straight apostrophe ("couldn't", E44; S12 owns that key).
+ *   · THE WORDS ARE THE ROOT PAGE'S, in every language (`not-found-words.ts`) — the market page used the dictionary's
+ *     twin of these sentences, whose English h1 types a straight apostrophe ("couldn't", E44; S12 owns that key).
  *   · THE CONTENT EDGE IS THE HOUSE GUTTER, `px-3` (16px): `px-5` was 24px, so on a phone the cards stood 8px inside
  *     the edge every other page keeps, in both shells (E51: cards x24–336 at 360).
  *   · THE WAVE FADES OUT (E46). Clipped to this 640px column it was a hard-edged box at 1280 (x320–959, y169–823):
@@ -27,44 +29,17 @@ import { NotFoundMark } from "@/components/ui/not-found-mark";
  *     the Chinese hint broke inside 选择 at 390 and left 继续。 alone at 1280. Chinese breaks only after its marks
  *     (`keep-all`, `break-word` the floor), and every mark that ends a line hangs its empty half (`hangCjkMarks`, E50).
  *   · `max-w-form` is the 640px tier token, so the view states no hand-typed page width (`test:measure`).
+ *
+ * ⭐ CLIENT CODE, SO A PAYLOAD CARRIES A REFERENCE, NOT THE PAGE (2026-10-09, the visual pass's round 5, R5-D — review
+ * G1's sibling). Next hands each segment's not-found element to that segment's router (create-component-tree.js,
+ * `notFound`), so the root's rides in EVERY payload rendered from the root — each document and each `router.refresh()`,
+ * for every reader in both shells — and the question's in every question page's (its RefreshPoller beats every 15 s).
+ * Drawn on the server, every node of this view was written into each: 5,938 bytes of Flight JSON in Swahili (5,923 en,
+ * 6,379 zh), so a question page's refresh carried two copies. As client code the element is this view's reference and
+ * the words it is handed (`test:visual-pass-r5d` §4 measures it and holds it small). Nothing a reader sees changes: the
+ * server still picks the language and draws the page into the first HTML (a client component renders there too).
+ * ⛔ The words and the title live in `not-found-words.ts`: a server file cannot read a value out of this module.
  */
-export const NOT_FOUND_WORDS = {
-  en: {
-    notFoundCode: "404",
-    notFound: "Page not found",
-    notFoundBody: "We couldn’t find that page",
-    notFoundHint: "The link may be stale, the market may have resolved, or the URL was typed in slightly off. Pick a destination below to keep going.",
-    home: "Home",
-    markets: "Markets",
-    help: "Help",
-    browseOpenMarkets: "Browse open markets",
-  },
-  sw: {
-    notFoundCode: "404",
-    notFound: "Hakuna ukurasa",
-    notFoundBody: "Hatukupata ukurasa huo",
-    notFoundHint: "Kiungo kinaweza kuwa kimepitwa na wakati, soko linaweza kuwa limetatuliwa, au URL imeandikwa vibaya. Chagua mahali pa kwenda hapa chini.",
-    home: "Mwanzo",
-    markets: "Masoko",
-    help: "Msaada",
-    browseOpenMarkets: "Tazama masoko yaliyo wazi",
-  },
-  zh: {
-    notFoundCode: "404",
-    notFound: "页面未找到",
-    notFoundBody: "我们找不到该页面",
-    notFoundHint: "链接可能已失效，市场可能已结算，或URL输入有误。请选择以下目的地继续。",
-    home: "首页",
-    markets: "市场",
-    help: "帮助",
-    browseOpenMarkets: "浏览开放市场",
-  },
-} as const satisfies Record<Locale, Record<string, string>>;
-
-export type NotFoundWords = (typeof NOT_FOUND_WORDS)[Locale];
-
-/** The page's tab title, in its language: "Hakuna ukurasa · 404" (the root layout's template adds " · 50pick"). */
-export const notFoundTitle = (w: NotFoundWords) => `${w.notFound} · ${w.notFoundCode}`;
 
 const CARD = "group rounded-xl border border-border bg-bg-elevated p-3.5 text-left transition-all hover:border-brand-400 hover:bg-bg-overlay hover:-translate-y-0.5 hover:shadow-[var(--shadow-3)]";
 /* ⚠️ LITERALS, not `h-7 w-7` — the spacing scale is overridden (tailwind.config.ts), so `h-7` IS 40px; written as what

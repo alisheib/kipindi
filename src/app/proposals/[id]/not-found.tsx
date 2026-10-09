@@ -1,5 +1,6 @@
 import { getServerT } from "@/lib/i18n-server";
-import { NOT_FOUND_WORDS, NotFoundView } from "@/components/ui/not-found-view";
+import { NotFoundView } from "@/components/ui/not-found-view";
+import { NOT_FOUND_WORDS } from "@/components/ui/not-found-words";
 import { generateMetadata as notFoundMetadata } from "@/app/not-found";
 
 /**

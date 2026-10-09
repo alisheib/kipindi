@@ -10,6 +10,10 @@
  * the page being drawn. The nodes themselves are drawn on the server and handed in — `routes` keyed by exact path, and
  * `patterns` for a page with a parameter (a question), each an anchored expression's source, `^…$` — so this module is a
  * few lines of browser code and draws nothing of its own.
+ * ⚠️ CORRECTED IN ROUND 5 (review G1): the nodes are no longer drawn on the server. Drawn there, every node of every ghost
+ * was written into the root loading element, which rides in every payload rendered from the root; the journey's ghost
+ * (`components/journey/route-ghost.tsx`) is now a client chunk that draws them in the browser — and on the server for
+ * the document's first HTML — and hands them in here as before. This module is unchanged: it still only picks.
  * ⛔ Exact paths and whole-path patterns only: a prefix would hand one page's ghost to every page below it.
  */
 import type { ReactNode } from "react";

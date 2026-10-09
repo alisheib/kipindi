@@ -89,14 +89,19 @@ const eyebrow = "m-0 font-mono text-micro font-semibold uppercase eyebrow text-t
  * ⭐ A ROUND THAT DOES NOT EXIST IS TITLED AS THE NOT-FOUND IT RENDERS (2026-10-09, the visual pass's round 4, E47): the
  * not-found page's own metadata — "Hakuna ukurasa · 404", in the page's language, with `noindex` — where the tab used to
  * read "Up & Down · 50pick" over a page that said the round was not there. Only when the read SUCCEEDED and found
- * nothing (the page's own rule, UD-15); a failed read keeps the neutral "Up & Down", as the page sends it to error.tsx.
+ * nothing (the page's own rule, UD-15); a failed read keeps the neutral title, as the page sends it to error.tsx.
+ * ⭐ THE NEUTRAL TITLE IS THE BOARD'S, IN THE READER'S LANGUAGE (round 5, review F1 — one rule for every record page's
+ * metadata, `markets/[id]/page.tsx` has it): `t.market.udTitle`, the key `/updown` is titled by ("Juu na Chini",
+ * "涨跌"), where it was the English "Up & Down" in every language. Nothing here throws, so a failed read never decides
+ * the page.
  */
 export async function generateMetadata({ params }: { params: Promise<{ roundId: string }> }): Promise<Metadata> {
   const { roundId } = await params;
+  const { t } = await getServerT();
   let d: Awaited<ReturnType<typeof getRoundDetail>> = null;
   try {
     d = await getRoundDetail(roundId);
-  } catch { return { title: "Up & Down" }; }
+  } catch { return { title: t.market.udTitle }; }
   if (!d) return notFoundMetadata();
   return { title: d.titleEn };
 }

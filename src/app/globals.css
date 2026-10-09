@@ -6953,18 +6953,30 @@ html[lang="zh"] .kp-udrule { word-break: keep-all; }
    (the weight does not transition). On the journey's rail the lit state changes at once, ink, pip and weight together.
    ⛔ The classic rules are not edited: the classic rail and the admin pending-changes bar keep their fades. */
 .kp-rail--journey .kp-rail__item, .kp-rail--journey .kp-rail__pip { transition: none; }
-/* ⭐ A NOT-FOUND PAGE LIGHTS NO DESTINATION, FROM ITS FIRST PAINT (2026-10-09, the visual pass round 4, R4-J; tiles
+/* ⭐ A NOT-FOUND PAGE LIGHTS NO DESTINATION, BEFORE THE SCRIPTS RUN (2026-10-09, the visual pass round 4, R4-J; tiles
    372–398). The journey's chrome reads the not-found mark once it hydrates (`lib/not-found-mark.ts`) and then lights
    nothing; but the server draws the chrome BEFORE the page finds out it is a not-found, so the first HTML lit the tab its
-   address names (Maswali on a missing question, Juu/Chini on a missing round). The mark is in that same HTML, so until
-   the scripts run it unlights the lit tab here: each lit value put back to the slot's own (`test:visual-pass-r4j` §5
-   holds them equal to the base rules). ⛔ Journey classes only: the classic rail's rules, which the journey rail wears,
-   are not edited, and a classic page carries no journey rail. */
-:root:has(#kp-not-found) .kp-rail--journey .kp-rail__item[data-on] { color: var(--text-subtle); }
-:root:has(#kp-not-found) .kp-rail--journey .kp-rail__item[data-on] .kp-rail__pip { background: none; box-shadow: none; }
-:root:has(#kp-not-found) .kp-rail--journey .kp-rail__item[data-on] .kp-rail__label { font-weight: 600; }
-:root:has(#kp-not-found) .kp-jnav__link:is([aria-current], [data-on]) { color: var(--text-muted); }
-:root:has(#kp-not-found) .kp-jnav__link:is([aria-current], [data-on])::after { transform: scaleX(0); }
+   address names (Maswali on a missing question, Juu/Chini on a missing round). Until the scripts run, this rule unlights
+   the lit tab: each lit value put back to the slot's own (`test:visual-pass-r4j` §5 holds them equal to the base rules).
+   ⚠️ WHAT IT CAN READ, CORRECTED IN ROUND 5 (review F5). The mark (`#kp-not-found`) is in the server's HTML only where the
+   server draws the not-found page itself — an address no route matches. A question, a round or a proposal that is not
+   there is found missing INSIDE a loading boundary, and React 19.2's server renderer runs no class error boundary, so
+   that HTML is the page's loading ghost with NO mark: R4-J's "from the first paint" never held for them. What that HTML
+   does carry is React's own record of the verdict, on the boundary's template: `data-dgst="NEXT_HTTP_ERROR_FALLBACK;404"`
+   (Next's digest for `notFound()`), written by the server when the verdict is in before the shell is sent, and by React's
+   inline `$RX` script the moment it streams in later. The rule reads both, so the tab rests from the moment the verdict
+   is in the document; the ghost stands until the scripts draw the not-found page, which brings the mark (the template
+   goes with the ghost). Deciding "missing" before the stream instead would need the record read above the root loading
+   boundary — on every question page, ahead of its ghost (`test:visual-pass-r4j` §5 has the framework's lines).
+   ⚠️ It assumes a page that is left leaves the document with its mark: Next keeps left pages in a hidden <Activity> only
+   with `cacheComponents` on, which this app does not turn on (`test:visual-pass-r5d` §5 pins it).
+   ⛔ Journey classes only: the classic rail's rules, which the journey rail wears, are not edited, and a classic page
+   carries no journey rail. */
+:root:has(#kp-not-found, template[data-dgst="NEXT_HTTP_ERROR_FALLBACK;404"]) .kp-rail--journey .kp-rail__item[data-on] { color: var(--text-subtle); }
+:root:has(#kp-not-found, template[data-dgst="NEXT_HTTP_ERROR_FALLBACK;404"]) .kp-rail--journey .kp-rail__item[data-on] .kp-rail__pip { background: none; box-shadow: none; }
+:root:has(#kp-not-found, template[data-dgst="NEXT_HTTP_ERROR_FALLBACK;404"]) .kp-rail--journey .kp-rail__item[data-on] .kp-rail__label { font-weight: 600; }
+:root:has(#kp-not-found, template[data-dgst="NEXT_HTTP_ERROR_FALLBACK;404"]) .kp-jnav__link:is([aria-current], [data-on]) { color: var(--text-muted); }
+:root:has(#kp-not-found, template[data-dgst="NEXT_HTTP_ERROR_FALLBACK;404"]) .kp-jnav__link:is([aria-current], [data-on])::after { transform: scaleX(0); }
 /* The guest Tiketi sheet's title: the display face, kept clear of the close button the Modal pins top-right.
    ⭐ Balanced (2026-10-08, the visual pass, tile 116): at en 320 its 232px measure holds "Sign in to see your" (188px)
    and left "tickets" alone on line 2; balanced, it reads "Sign in to see / your tickets". A title that fits on one

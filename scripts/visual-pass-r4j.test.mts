@@ -17,7 +17,9 @@
  *            hero's intro is ONE module both draw; /live's search ghost wears the page's band
  *   §4  E40 · the Needle's rest rule clears a Chinese caption of tile 269's geometry, and the caption's box holds its ink
  *   §5  the not-found mark: the overlays stop standing down, and the chrome stops lighting a tab and polling, on any
- *            not-found page
+ *            not-found page — and (round 5, R5-D, review F4/F5) for the path being drawn only, in every frame, and before
+ *            the scripts run wherever the server's HTML carries the verdict (the mark, or the loading boundary's 404
+ *            template, measured on React's own server renderer)
  * ⛔ It READS and renders in memory. Nothing here writes a file; the mutation proof (S/r4j/mutation-r4j.mjs) is the one
  * thing that plants defects in the real sources, and it restores them byte for byte.
  */
@@ -58,6 +60,13 @@ function rule(src: string, selector: string): string {
   return m ? m[1] : "";
 }
 const hasDirective = (s: string, d: string) => new RegExp(`^\\s*["']${d}["'];?`).test(s);
+/** Next's digest for `notFound()` — `HTTP_ERROR_FALLBACK_ERROR_CODE` and the 404 status — read from the framework itself. */
+const HAF = createRequire(import.meta.url)("next/dist/client/components/http-access-fallback/http-access-fallback") as {
+  HTTP_ERROR_FALLBACK_ERROR_CODE: string; HTTPAccessErrorStatus: { NOT_FOUND: number };
+};
+const NEXT_404 = `${HAF.HTTP_ERROR_FALLBACK_ERROR_CODE};${HAF.HTTPAccessErrorStatus.NOT_FOUND}`;
+/** The server's verdict "this record is missing", as React leaves it in the HTML of a loading boundary (round 5, F5). */
+const VERDICT = `template[data-dgst="${NEXT_404}"]`;
 
 const SHELL = "src/components/layout/app-shell.tsx";
 const JHDR = "src/components/journey/journey-top-bar.tsx";
@@ -214,8 +223,10 @@ section("2 · E37 E41 · no cross-fade of the chrome, one current destination an
 section("3 · E38 · the journey's loading ghosts (tiles 277 280 290 293 296: one 360px box at x32–1247 for every page)");
 {
   const loading = read(LOADING), shell = read(SHELL);
+  // ⚠️ MOVED IN ROUND 5 (review G1, R5-D): the arm renders the ghosts' lazy client binding with the one server answer
+  // the browser cannot read (the rails); the words are the client dictionary's (`test:visual-pass-r5d` §2).
   const journeyArm = (s: string) => squash(s).includes(
-    'const pathname = (await headers()).get("x-pathname") ?? ""; if (!pathname.startsWith("/admin") && !isOptOutPath(pathname) && (await resolveSimpleJourney()).journey) { const { t, locale } = await getServerT(); return <JourneyRouteGhost t={t} locale={locale} />; }');
+    'const pathname = (await headers()).get("x-pathname") ?? ""; if (!pathname.startsWith("/admin") && !isOptOutPath(pathname) && (await resolveSimpleJourney()).journey) { return <LazyJourneyRouteGhost rails={heroRailNames(null)} />; }');
   const classicArm = (s: string) => squash(s).includes('return ( <div className="mx-auto max-w-[1280px] px-3 lg:px-6 py-10"> <SectionLoader height={360} /> </div> );');
   ok("3.1 · the root loading file asks AppShell's own questions — not the console, not the opt-out page, the per-request resolver — and draws the journey's ghost for a journey reader alone",
     journeyArm(loading) && shell.includes('if (pathname.startsWith("/admin")) {') && shell.includes("if (isOptOutPath(pathname)) {") && shell.includes("const journeyRead = resolveSimpleJourney();"));
@@ -239,18 +250,24 @@ section("3 · E38 · the journey's loading ghosts (tiles 277 280 290 293 296: on
     JSON.stringify({ keys, patterns }));
   ok("3.3′ PLANT · a tab without its ghost (Juu/Chini back to the box) is reported", !covers(keys.filter((k) => k !== "/updown"), patterns));
   ok("3.3″ PLANT · a question without its ghost is reported", !covers(keys, []));
-  const own: Array<[string, string, string]> = [
-    ['"/updown": <UpDownLoading />', "UpDownLoading", "@/app/updown/loading"],
-    ['"/updown/history": <UpDownHistoryLoading />', "UpDownHistoryLoading", "@/app/updown/history/loading"],
-    ['"/wallet/deposit": <DepositLoading />', "DepositLoading", "@/app/wallet/deposit/loading"],
-    ['"/wallet/deposit/return": <DepositReturnLoading />', "DepositReturnLoading", "@/app/wallet/deposit/return/loading"],
-    ['["^/markets/[^/]+$", <MarketDetailLoading />]', "MarketDetailLoading", "@/app/markets/[id]/loading"],
+  // ⚠️ MOVED IN ROUND 5 (review G1, R5-D): the root ghost is drawn in the browser now, so it imports each page's DRAWING —
+  // the loading file itself where it reads nothing (a question's, the provider's return), else the drawing the loading
+  // file hands its words to (Juu/Chini's, the round history's, the deposit's) — and each loading file renders that same
+  // drawing: one drawing, never redrawn. [the ghost's use, its import, the page's loading file, what that file renders]
+  const own: Array<[string, string, string, string]> = [
+    ['"/updown": <UpDownGhost t={t} />', 'import { UpDownGhost } from "@/app/updown/updown-ghost";', "src/app/updown/loading.tsx", "return <UpDownGhost t={t} />;"],
+    ['"/updown/history": <UpDownHistoryGhost t={t} journey />', 'import { UpDownHistoryGhost } from "@/app/updown/history/history-ghost";', "src/app/updown/history/loading.tsx", "return <UpDownHistoryGhost t={t} journey={journey} />;"],
+    ['"/wallet/deposit": <DepositGhost t={t} />', 'import { DepositGhost } from "@/app/wallet/deposit/deposit-ghost";', "src/app/wallet/deposit/loading.tsx", "return <DepositGhost t={t} />;"],
+    ['"/wallet/deposit/return": <DepositReturnLoading />', 'import DepositReturnLoading from "@/app/wallet/deposit/return/loading";', "src/app/wallet/deposit/return/loading.tsx", "export default function DepositReturnLoading() {"],
+    ['["^/markets/[^/]+$", <MarketDetailLoading />]', 'import MarketDetailLoading from "@/app/markets/[id]/loading";', "src/app/markets/[id]/loading.tsx", "export default function MarketDetailLoading() {"],
   ];
-  ok("3.4 · each ghost is its page's own: Tiketi zangu's journey ghost, the hero's intro components, and every other page's own loading file, imported, never redrawn",
+  const oneDrawing = (g: string) => own.filter(([use, imp, file, renders]) => !(g.includes(use) && g.includes(imp) && read(file).includes(renders)));
+  ok("3.4 · each ghost is its page's own: Tiketi zangu's journey ghost, the hero's intro components, and every other page's own drawing — the one its loading file renders — imported, never redrawn",
     ghost.includes('"/positions": <TicketsGhost t={t} />') && ghost.includes('import { TicketsGhost } from "@/components/journey/tickets/tickets-ghost";')
-      && read("src/app/positions/loading.tsx").includes("if (journey) return <TicketsGhost t={t} />;")
-      && own.every(([use, name, spec]) => ghost.includes(use) && ghost.includes(`import ${name} from "${spec}";`)),
-    JSON.stringify(own.filter(([use, name, spec]) => !(ghost.includes(use) && ghost.includes(`import ${name} from "${spec}";`))).map((o) => o[1])));
+      && read("src/app/positions/loading.tsx").includes("if (journey) return <TicketsGhost t={t} />;") && oneDrawing(ghost).length === 0,
+    JSON.stringify(oneDrawing(ghost).map((o) => o[2])));
+  ok("3.4′ PLANT · a second copy of Juu/Chini's ghost drawn in the root ghost (the loading file's drawing no longer the one shown) is reported",
+    oneDrawing(ghost.replace('"/updown": <UpDownGhost t={t} />', '"/updown": <div className="mx-auto w-full max-w-board px-3 lg:px-6 py-6" aria-busy="true" />')).length === 1);
 }
 {
   // RoutePick, rendered: exact paths only, and never a key the object inherits.
@@ -289,7 +306,8 @@ section("3 · E38 · the journey's loading ghosts (tiles 277 280 290 293 296: on
       && ["<Claim t={t} />", "<Ask t={t} />", "<TrustLines t={t} locale={locale} rails={rails} />"].every((j) => hr.includes(j));
   ok("3.7 · Claim, Ask and TrustLines are defined once, in hero-intro.tsx, and the hero renders them where it did", introOk(intro, hero));
   ok("3.7′ PLANT · a second copy of the h1 left in the hero is reported", !introOk(intro, `${hero}\nfunction Ask({ t }: { t: Dict }) { return null; }`));
-  // ⛔ The ghost is drawn by the ROOT loading file: whatever client module it reaches joins every page's first load.
+  // ⛔ The ghost is drawn by the ROOT loading file: whatever module it reaches rides with it — into every page's first
+  // load while it was drawn on the server, into its own chunk since round 5 (G1) — so the intro stays lean either way.
   const importsOf = (s: string) => [...s.matchAll(/^import [^;]*? from "([^"]+)";/gm)].map((m) => m[1]);
   const ALLOWED = ["@/components/ui/glyphs", "@/components/brand", "@/lib/utils", "@/lib/support-config", "@/lib/rail-list", "@/lib/i18n-dict", "@/lib/side-label"];
   const lean = (s: string) => importsOf(s).every((m) => ALLOWED.includes(m)) && !hasDirective(s, "use client");
@@ -379,14 +397,30 @@ section("4 · E40 · the rest rule on tile 269's geometry (zh 360 /markets: the 
 section("5 · the not-found mark (tiles 345–398: the market not-found stood the bubble and the Needle down, lit Maswali, and polled into 404s)");
 {
   const lib = read(MARK_LIB), mark = read(MARK);
-  ok("5.1 · not-found-mark.ts is a hook module with no directive: its server snapshot is false, its id and event named once",
-    !hasDirective(lib, "use client") && !hasDirective(lib, "use server") && NF.notFoundServerSnapshot() === false
-      && lib.includes('export const NOT_FOUND_MARK = "kp-not-found";') && lib.includes("return useSyncExternalStore(subscribeNotFound, notFoundSnapshot, notFoundServerSnapshot);"));
-  const markOk = (s: string) => hasDirective(s, "use client") && squash(s).includes("useEffect(() => { announceNotFound(); return announceNotFound; }, []);")
-    && s.includes("return <span hidden id={NOT_FOUND_MARK} />;");
-  ok("5.2 · NotFoundMark writes the hidden span into the page and announces it when it comes and when it goes", markOk(mark)
-    && renderToStaticMarkup(h(NotFoundMark)) === '<span hidden="" id="kp-not-found"></span>');
-  ok("5.2′ PLANT · a mark that does not announce its going (the overlays stay up after leaving) is reported", !markOk(mark.replace("return announceNotFound;", "")));
+  // ⚠️ 5.1, 5.2 and 5.11 MOVED IN ROUND 5 (review F4, R5-D): the mark carries the path it was drawn for and the answer is
+  // "the mark's path is the path being drawn" — presence alone answered "not found" for the NEXT page while the router
+  // drew it (the old span still in the document), and a transition's commit paints before a passive cleanup runs.
+  const hookOk = (s: string) => squash(s).includes("export function useNotFoundShown(): boolean { const path = usePathname() ?? \"\"; const markPath = useSyncExternalStore(subscribeNotFound, notFoundSnapshot, notFoundServerSnapshot); return isNotFoundFor(markPath, path); }")
+    && squash(s).includes("export function isNotFoundFor(markPath: string | null, path: string): boolean { return markPath !== null && markPath === path; }")
+    && s.includes('import { usePathname } from "next/navigation";');
+  ok("5.1 · not-found-mark.ts is a hook module with no directive: its server snapshot is \"no mark\" (null), its id, attribute and event named once, and the hook answers for the path being drawn",
+    !hasDirective(lib, "use client") && !hasDirective(lib, "use server") && NF.notFoundServerSnapshot() === null
+      && lib.includes('export const NOT_FOUND_MARK = "kp-not-found";') && lib.includes('export const NOT_FOUND_PATH_ATTR = "data-path";') && hookOk(lib));
+  ok("5.1′ PLANT · the hook back to the span's presence (R4-J's: \"not found\" for the next page while the old span is up) is reported",
+    !hookOk(lib.replace("return isNotFoundFor(markPath, path);", "return markPath !== null;")));
+  const markOk = (s: string) => hasDirective(s, "use client") && s.includes('const path = usePathname() ?? "";')
+    && squash(s).includes("useLayoutEffect(() => { announceNotFound(); }, [path]);") && squash(s).includes("useEffect(() => announceNotFound, []);")
+    && s.includes("return <span hidden id={NOT_FOUND_MARK} data-path={path} />;");
+  const { PathnameContext: PathCtx } = createRequire(import.meta.url)("next/dist/shared/lib/hooks-client-context.shared-runtime") as {
+    PathnameContext: import("react").Context<string | null>;
+  };
+  const drawnAt = renderToStaticMarkup(h(PathCtx.Provider, { value: "/markets/mkt_gone" }, h(NotFoundMark)));
+  ok("5.2 · NotFoundMark writes the hidden span with the path it was drawn for, announces its coming in a LAYOUT effect (before that commit's paint) and its going in a passive cleanup (after the span is out)",
+    markOk(mark) && drawnAt === '<span hidden="" id="kp-not-found" data-path="/markets/mkt_gone"></span>', drawnAt);
+  ok("5.2′ PLANT · a mark that does not announce its going (the overlays stay up after leaving) is reported", !markOk(mark.replace("useEffect(() => announceNotFound, []);", "")));
+  ok("5.2″ PLANT · its coming announced by a passive effect again (a transition paints the not-found page with a tab lit first) is reported",
+    !markOk(mark.replace("useLayoutEffect(() => { announceNotFound(); }, [path]);", "useEffect(() => { announceNotFound(); }, [path]);")));
+  ok("5.2‴ PLANT · a mark that names no path (presence again) is reported", !markOk(mark.replace(" data-path={path} />", " />")));
   // Only client code may load the hook module (journey-on.ts's rule, for its reason).
   const files: string[] = [];
   const walk = (d: string) => { for (const n of readdirSync(d)) { const p = join(d, n).replace(/\\/g, "/"); if (statSync(p).isDirectory()) walk(p); else if (/\.(tsx?|mts)$/.test(n)) files.push(p); } };
@@ -424,9 +458,10 @@ section("5 · the not-found mark (tiles 345–398: the market not-found stood th
   ok("5.7′ PLANT · the dot polling on a not-found page again is reported", !dot(tabs.replace(" && pollers.dot && !notFoundShown", " && pollers.dot")));
 }
 {
-  // Before the scripts run: the server lit the tab the address names; the mark in the same HTML unlights it, by CSS,
-  // each lit value put back to the slot's own base value.
-  const id = `#${NF.NOT_FOUND_MARK}`;
+  // Before the scripts run: the server lit the tab the address names; the server's verdict in the same HTML unlights it,
+  // by CSS, each lit value put back to the slot's own base value. ⚠️ MOVED IN ROUND 5 (review F5): the verdict is the
+  // mark (an unmatched address) OR the boundary's 404 template (a record found missing inside a loading boundary).
+  const id = `#${NF.NOT_FOUND_MARK}, ${VERDICT}`;
   const unlit = (css: string) => {
     const at = (sel: string) => rule(css, `:root:has(${id}) ${sel}`);
     const decl = (body: string, prop: string) => new RegExp(`(?:^|;)\\s*${esc(prop)}:\\s*([^;]+);`).exec(body)?.[1].trim();
@@ -443,9 +478,66 @@ section("5 · the not-found mark (tiles 345–398: the market not-found stood th
     return { ok: keys.every((k) => got[k] !== undefined && got[k] === base[k]) && base.after === "scaleX(0)", base, got };
   };
   const now = unlit(CSS);
-  ok(`5.12 · until the scripts run, the not-found mark (${id}) unlights the tab the server lit, every lit value put back to the slot's own`, now.ok, JSON.stringify({ base: now.base, got: now.got }));
+  ok(`5.12 · until the scripts run, the server's not-found verdict (${id}) unlights the tab the server lit, every lit value put back to the slot's own`, now.ok, JSON.stringify({ base: now.base, got: now.got }));
   ok("5.12′ PLANT · the rail's lit pip left on a not-found page's first paint is reported",
     !unlit(CSS.replace(`:root:has(${id}) .kp-rail--journey .kp-rail__item[data-on] .kp-rail__pip { background: none; box-shadow: none; }`, "")).ok);
+  ok("5.12″ PLANT · the rule reading the mark alone again (R4-J's: a missing question's, round's or proposal's first paint keeps its tab lit) is reported",
+    !unlit(CSS.split(`:root:has(${id})`).join(`:root:has(#${NF.NOT_FOUND_MARK})`)).ok);
+}
+{
+  // ⭐ ROUND 5 (review F5) · WHAT THE SERVER'S HTML OF A MISSING RECORD CARRIES, on React's own server renderer — Next's
+  // compiled copy, the one the app renders with. A record found missing inside a loading boundary: no class error
+  // boundary runs on the server, so no not-found page and no mark — the ghost, and the boundary's template with Next's
+  // digest; written in the HTML when the verdict is in before the shell is sent, and by React's inline `$RX` script when
+  // it streams in after. If an upgrade changes any of it, 5.12's selector reads nothing: re-measure before trusting it.
+  const req = createRequire(import.meta.url);
+  const R = req("next/dist/compiled/react") as typeof import("react");
+  const { renderToPipeableStream: fizz } = req("next/dist/compiled/react-dom/server.node.js") as typeof import("react-dom/server");
+  const notFoundError = () => Object.assign(new Error(NEXT_404), { digest: NEXT_404 });
+  class Boundary extends R.Component<{ children?: import("react").ReactNode }, { nf: boolean }> {
+    state = { nf: false };
+    static getDerivedStateFromError() { return { nf: true }; }
+    render() { return this.state.nf ? R.createElement("span", { hidden: true, id: NF.NOT_FOUND_MARK }) : this.props.children; }
+  }
+  const render = (Page: () => never, late: () => void) => new Promise<string>((resolve) => {
+    let out = "";
+    const sink = new Writable({ write(c, _e, cb) { out += c.toString(); cb(); } });
+    const doc = R.createElement("html", null, R.createElement("body", null, R.createElement("header", null, "chrome"),
+      R.createElement(R.Suspense, { fallback: R.createElement("div", { id: "ghost" }, "ghost") }, R.createElement(Boundary, null, R.createElement(Page)))));
+    const s = fizz(doc, { onError: (e) => (e as { digest?: string }).digest, onShellReady() { s.pipe(sink); late(); } });
+    setTimeout(() => resolve(out), 150);
+  });
+  const early = await render(() => { throw notFoundError(); }, () => undefined);
+  ok(`5.13 · a verdict in before the shell: the HTML is the ghost and <template data-dgst="${NEXT_404}">, and no mark (no class boundary runs on the server)`,
+    // (a development build adds data-msg and data-stck after the digest; production writes the digest alone)
+    new RegExp(`<template data-dgst="${esc(NEXT_404)}"[^>]*></template>`).test(early) && early.includes('<div id="ghost">ghost</div>') && !early.includes(NF.NOT_FOUND_MARK), early.slice(0, 300));
+  let ready = false, go = () => undefined as void;
+  const wait = new Promise<void>((r) => { go = () => { ready = true; r(); }; });
+  const streamed = await render(() => { if (!ready) throw wait; throw notFoundError(); }, () => { setTimeout(go, 20); });
+  const call = /\$RX\("([^"]+)","([^"]+)"/.exec(streamed);
+  const rx = /\$RX=(function\([^)]*\)\{[\s\S]*?\});/.exec(streamed)?.[1];
+  const tpl = { dataset: {} as Record<string, string>, previousSibling: { data: "$?" } };
+  if (call && rx) new Function("document", `var $RX=${rx};$RX(${JSON.stringify(call[1])},${JSON.stringify(call[2])});`)({ getElementById: (i: string) => (i === call[1] ? tpl : null) });
+  ok(`5.14 · a verdict streamed in after the shell: React's inline $RX writes data-dgst="${NEXT_404}" onto the ghost's template before any app script runs`,
+    !!call && streamed.includes(`<template id="${call[1]}"></template>`) && tpl.dataset.dgst === NEXT_404 && !streamed.includes(NF.NOT_FOUND_MARK), JSON.stringify({ call: call?.slice(1), dgst: tpl.dataset.dgst }));
+  ok("5.14′ CONTROL · a record that IS there streams its page: no 404 template anywhere",
+    !(await render(() => R.createElement("main", null, "the question") as never, () => undefined)).includes("data-dgst"));
+}
+{
+  // ⭐ ROUND 5 (review F4) · THE ONE DECISION, for the path being drawn. Leaving a not-found page the router draws the next
+  // page while the old span is still in the document; moving between two missing records the new span is not in yet.
+  const CASES: Array<[string | null, string, boolean, string]> = [
+    [null, "/markets", false, "no mark up"],
+    ["/markets/mkt_gone", "/markets/mkt_gone", true, "the not-found page itself"],
+    ["/markets/mkt_gone", "/markets", false, "leaving it: the next page drawn while the old span is up"],
+    ["/markets/mkt_gone", "/markets/mkt_other", false, "a move to another address, before its own mark lands"],
+    ["/updown/rnd_gone", "/updown/rnd_gone", true, "a missing round"],
+  ];
+  const wrong = CASES.filter(([m, p, want]) => NF.isNotFoundFor(m, p) !== want).map(([, , , why]) => why);
+  ok("5.15 · `isNotFoundFor`: \"not found\" only when the mark that is up was drawn for the path being drawn", wrong.length === 0, wrong.join(" | "));
+  const presence = (m: string | null) => m !== null;
+  ok("5.15′ CONTROL · R4-J's presence rule answers \"not found\" for the next page while the old span is up (the F4 frame) — the case 5.15 tells apart",
+    presence("/markets/mkt_gone") === true && NF.isNotFoundFor("/markets/mkt_gone", "/markets") === false);
 }
 {
   // The shared view (R4-K) renders the mark, so every not-found answer carries it and nothing else can.
@@ -465,24 +557,24 @@ section("5 · the not-found mark (tiles 345–398: the market not-found stood th
   ok("5.10 · no other page renders the mark", elsewhere.length === 0, JSON.stringify(elsewhere));
 }
 {
-  // The hook's answer, in a stand-in browser: the span's presence, heard through the event.
+  // The hook's answer, in a stand-in browser: the path the span was drawn for, heard through the event.
   const target = new EventTarget();
-  const present = new Set<string>();
+  const present = new Map<string, string>();
   const g = globalThis as unknown as { window?: unknown; document?: unknown };
   const before = { window: g.window, document: g.document };
   g.window = { addEventListener: target.addEventListener.bind(target), removeEventListener: target.removeEventListener.bind(target), dispatchEvent: target.dispatchEvent.bind(target) };
-  g.document = { getElementById: (id: string) => (present.has(id) ? {} : null) };
+  g.document = { getElementById: (id: string) => (present.has(id) ? { getAttribute: (a: string) => (a === NF.NOT_FOUND_PATH_ATTR ? present.get(id)! : null) } : null) };
   try {
     let told = 0;
     const leave = NF.subscribeNotFound(() => { told++; });
     const a = NF.notFoundSnapshot();
-    present.add(NF.NOT_FOUND_MARK); NF.announceNotFound();
+    present.set(NF.NOT_FOUND_MARK, "/markets/mkt_gone"); NF.announceNotFound();
     const b = NF.notFoundSnapshot();
     present.delete(NF.NOT_FOUND_MARK); NF.announceNotFound();
     const c = NF.notFoundSnapshot();
     leave(); NF.announceNotFound();
-    ok("5.11 · the snapshot is the span's presence, every coming and going is heard once, and letting go stops listening",
-      a === false && b === true && c === false && told === 2, JSON.stringify({ a, b, c, told }));
+    ok("5.11 · the snapshot is the path the span was drawn for (null with no span), every coming and going is heard once, and letting go stops listening",
+      a === null && b === "/markets/mkt_gone" && c === null && told === 2, JSON.stringify({ a, b, c, told }));
   } finally {
     g.window = before.window;
     g.document = before.document;

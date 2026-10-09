@@ -25,15 +25,18 @@ export const dynamic = "force-dynamic";
 // ⭐ 2026-10-09 (the visual pass's round 4, E47): a proposal that does not exist is titled as the not-found it renders —
 // the not-found page's own metadata, in the page's language, with `noindex` — never the English "Proposal". Only when
 // the read SUCCEEDED and found nothing; a failed read keeps the neutral default, as the page sends it to error.tsx.
+// ⭐ THE NEUTRAL DEFAULT IS THE BOARD'S TITLE, IN THE READER'S LANGUAGE (round 5, review F1 — one rule for every record
+// page's metadata, `markets/[id]/page.tsx` has it): `t.proposals.title`, the key `/proposals` is titled by, where it was
+// the English "Proposal" in every language. Nothing here throws, so a failed read never decides the page.
 export async function generateMetadata({ params }: { params: Promise<{ id: string }> }): Promise<Metadata> {
   const { id } = await params;
-  const { locale } = await getServerT();
+  const { t, locale } = await getServerT();
   let p: Awaited<ReturnType<typeof getProposalDetail>> = null;
   try {
     p = await getProposalDetail(id, null);
-  } catch { return { title: "Proposal" }; }
+  } catch { return { title: t.proposals.title }; }
   // DISABLED: the page redirects to the board, so this address names no proposal page either way.
-  if (!p) return getProposalsConfig().state === "DISABLED" ? { title: "Proposal" } : notFoundMetadata();
+  if (!p) return getProposalsConfig().state === "DISABLED" ? { title: t.proposals.title } : notFoundMetadata();
   return { title: pickLocalized(locale, p.titleEn, p.titleSw, p.titleZh) };
 }
 

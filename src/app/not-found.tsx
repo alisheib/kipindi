@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { getServerT } from "@/lib/i18n-server";
-import { NOT_FOUND_WORDS, NotFoundView, notFoundTitle } from "@/components/ui/not-found-view";
+import { NotFoundView } from "@/components/ui/not-found-view";
+import { NOT_FOUND_WORDS, notFoundTitle } from "@/components/ui/not-found-words";
 
 /**
  * The page's title and robots, in the visitor's language — the visitor's chosen language (the `kp-locale` cookie), else

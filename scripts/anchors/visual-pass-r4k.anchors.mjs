@@ -12,6 +12,8 @@
 /** @typedef {{ name: string, file: string, from: string, to: string, expect: string }} RedMutation */
 
 const VIEW = "src/components/ui/not-found-view.tsx";
+// ⚠️ ROUND 5 (R5-D, review G1's sibling): the view is client code, so its words live in a data module of their own.
+const WORDS = "src/components/ui/not-found-words.ts";
 
 /** @type {RedMutation[]} */
 export const MUTATIONS = [
@@ -20,7 +22,7 @@ export const MUTATIONS = [
   { name: "the column's gutter back to px-5 (24px)", file: VIEW, from: "overflow-hidden px-3 py-10", to: "overflow-hidden px-5 py-10", expect: "6.1" },
   { name: "the cards back in the market page's order (Markets first)", file: VIEW, from: "<Link href=\"/\" className={CARD}>", to: "<Link href=\"/markets\" className={CARD}>", expect: "1.2" },
   { name: "the heading unbalanced", file: VIEW, from: "tracking-[-0.02em] text-text text-balance\">", to: "tracking-[-0.02em] text-text\">", expect: "3.1" },
-  { name: "the English apostrophe straight", file: VIEW, from: "We couldn’t find that page", to: "We couldn't find that page", expect: "1.5" },
+  { name: "the English apostrophe straight", file: WORDS, from: "We couldn’t find that page", to: "We couldn't find that page", expect: "1.5" },
   { name: "the Chinese hint free to break inside a word again", file: VIEW, from: "text-balance [word-break:keep-all] [overflow-wrap:break-word]\">", to: "text-balance\">", expect: "3.2" },
   { name: "the gap with no word-spacing", file: "src/app/globals.css", from: "letter-spacing: 0; word-spacing: 0.05em;", to: "letter-spacing: 0; word-spacing: 0;", expect: "4.6" },
   { name: "the helper drops the gap", file: "src/lib/cjk-marks.tsx", from: "    if (next !== undefined) {\n", to: "    if (next === \"never\") {\n", expect: "4.3" },
