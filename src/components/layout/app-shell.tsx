@@ -456,7 +456,11 @@ export async function AppShell({ children }: { children: React.ReactNode }) {
       {/* `supportEmail` is resolved HERE for the third time on this line's own logic (E-226):
           the footer is `"use client"`, so a `SUPPORT_EMAIL()` call inside it reads the browser
           bundle's module default and can never show the address an officer saved. */}
-      <PublicFooter proposalsState={proposalsState} agentDoorVisible={agentDoorVisible} inviteVisible={inviteVisible} supportEmail={SUPPORT_EMAIL()} supportPhone={SUPPORT_PHONE()} supportPhoneTel={SUPPORT_PHONE_TEL()} />
+      {/* ⭐ THE FOOTER'S TWO ARMS (2026-10-09, the visual pass), as the header's and the rail's: the else arm is today's
+          element with today's props, so a request the resolver does not show the journey to is served main's footer —
+          its markup and boxes (`qa:classic-shell-parity`) and its props in the page's RSC data. The journey arm alone
+          says `journeyShown`, which balances the proposals link (`test:simple-journey-flag` 10.shell.chrome.footer). */}
+      {journeyShown ? <PublicFooter proposalsState={proposalsState} agentDoorVisible={agentDoorVisible} inviteVisible={inviteVisible} supportEmail={SUPPORT_EMAIL()} supportPhone={SUPPORT_PHONE()} supportPhoneTel={SUPPORT_PHONE_TEL()} journeyShown /> : <PublicFooter proposalsState={proposalsState} agentDoorVisible={agentDoorVisible} inviteVisible={inviteVisible} supportEmail={SUPPORT_EMAIL()} supportPhone={SUPPORT_PHONE()} supportPhoneTel={SUPPORT_PHONE_TEL()} />}
       {/* DG-P-11 — the rail's `More` needs the feature state for the same two reasons the bar
           and the footer already take it: DISABLED hides every proposals entry point, and the
           state flag (coming-soon / maintenance) must read the same on a phone as on a laptop. */}

@@ -15,7 +15,8 @@
  *   §10 the wiring, read from source: ONE resolver, ONE reader and ONE writer of the cookie, the shell's order and its
  *       swap (S6 WP6b: the journey header and tabs only in the `journeyShown` arms, as lazy bindings in their own
  *       Suspense, since WP6c `next/dynamic` parts of the shell's one lazy module, today's bar and rail in the else arms,
- *       and nothing else rendering or loading them), the
+ *       and nothing else rendering or loading them; and since the visual pass, 2026-10-09, today's footer in the
+ *       footer's else arm, the journey's alone balancing its proposals link, rendered both ways), the
  *       Akaunti hub's gate (S6 WP5: /account asks the resolver and calls notFound() before any read),
  *       the email-verify bar (S6 WP7; deleted 2026-10-07 — 10.shell.emailbar now pins its absence), no-store,
  *       the health block, and nothing that grants access ever reading the pass.
@@ -133,6 +134,24 @@ const { db } = await import("../src/lib/server/store.ts");
 const { getAuditPage, auditFlush } = await import("../src/lib/server/audit.ts");
 const { mkFixtureUser } = await import("./lib/agent-fixtures.mts");
 const { decomment } = await import("./lib/decomment.mts");
+const { createElement } = await import("react");
+const { renderToStaticMarkup } = await import("react-dom/server");
+const { PublicFooter } = await import("../src/components/layout/public-footer.tsx");
+
+/** §10 · the shell's footer (10.shell.chrome.footer), and the class main's footer writes on its proposals link — the
+ *  string `qa:classic-shell-parity`'s main baseline captured in every cell. */
+const FOOTER_FILE = "src/components/layout/public-footer.tsx";
+const FOOTER_PROPOSALS_CLASS = "border-b border-transparent group-hover:border-text-subtle transition-colors";
+/** The footer as each arm of the shell renders it — the classic arm's props, and the journey arm's — read at its
+ *  proposals link: that link's label class, in each. */
+const FOOTER_RENDERED = (() => {
+  const props = { proposalsState: "COMING_SOON" as const, agentDoorVisible: true, inviteVisible: true, supportEmail: "desk@example.test", supportPhone: "0700000000", supportPhoneTel: "+255700000000" };
+  const labelClass = (html: string) => html.match(/<a [^>]*href="\/proposals"[^>]*><span class="([^"]*)"/)?.[1] ?? null;
+  return {
+    classic: labelClass(renderToStaticMarkup(createElement(PublicFooter, props))),
+    journey: labelClass(renderToStaticMarkup(createElement(PublicFooter, { ...props, journeyShown: true }))),
+  };
+})();
 
 type RolloutState = import("../src/lib/feature-state.ts").RolloutState;
 type Stored = import("../src/lib/server/simple-journey-switch.ts").StoredJourneySwitch;
@@ -690,6 +709,32 @@ function g10Wiring(W: World) {
   ok("10.shell.chrome.tabs · the journey tabs render only in the journeyShown arm, lazily, and the else arm is today's BottomNav with today's props",
     tally(SWAP_RAIL) === 1 && tally("<LazyJourneyTabs") === 1 && tally("<BottomNav") === 1,
     j({ swap: tally(SWAP_RAIL), journey: tally("<LazyJourneyTabs"), classic: tally("<BottomNav") }));
+  // ⭐ THE FOOTER'S TWO ARMS (2026-10-09, the visual pass). The classic footer is the classic shell's chrome, frozen for S6
+  // and S7 (VODACOM-PLAN §0i: a classic viewer is served what they were), so its else arm is today's PublicFooter with
+  // today's props and the journey arm alone says `journeyShown`. In the footer that answer, false unless it is said, is
+  // the one thing that balances the proposals link: no other FooterLink asks for balance, and the class is written only
+  // when one does. Rendered both ways (FOOTER_RENDERED), the classic link's class is main's string exactly and the
+  // journey's adds text-balance; `qa:classic-shell-parity` holds the classic footer's markup and boxes to main's in a
+  // browser.
+  {
+    const FOOTER_PROPS = "proposalsState={proposalsState} agentDoorVisible={agentDoorVisible} inviteVisible={inviteVisible} supportEmail={SUPPORT_EMAIL()} supportPhone={SUPPORT_PHONE()} supportPhoneTel={SUPPORT_PHONE_TEL()}";
+    const SWAP_FOOTER = `{journeyShown ? <PublicFooter ${FOOTER_PROPS} journeyShown /> : <PublicFooter ${FOOTER_PROPS} />}`;
+    const footerSrc = W.files.get(FOOTER_FILE) ?? "";
+    const tallyFooter = (needle: string) => footerSrc.split(needle).length - 1;
+    const asksBalance = footerSrc.match(/<FooterLink\b[^>]*\bbalance\b[^>]*>/g) ?? [];
+    const footer = {
+      swap: tally(SWAP_FOOTER), mounts: tally("<PublicFooter"),
+      unlessSaid: tallyFooter("journeyShown = false,"),
+      asksBalance,
+      writes: tallyFooter('${balance ? " text-balance" : ""}'),
+      rendered: FOOTER_RENDERED,
+    };
+    ok("10.shell.chrome.footer · the footer's journey look rides the journeyShown arm alone: the else arm is today's PublicFooter with today's props, only the journey's footer balances the proposals link, and rendered, the classic link carries main's class string exactly and the journey's adds text-balance",
+      footer.swap === 1 && footer.mounts === 2 && footer.unlessSaid === 1 && footer.writes === 1
+        && asksBalance.length === 1 && asksBalance[0] === '<FooterLink href="/proposals" balance={journeyShown}>'
+        && FOOTER_RENDERED.classic === FOOTER_PROPOSALS_CLASS && FOOTER_RENDERED.journey === `${FOOTER_PROPOSALS_CLASS} text-balance`,
+      j(footer));
+  }
   const staticJourney = tally('from "@/components/journey/');
   const fromModule = shell.split(";").filter((stmt) => stmt.includes('from "./shell-lazy"')).join(" ");
   const armsImported = ["LazyJourneyTopBar", "LazyJourneyTabs"].filter((b) => fromModule.includes(b)).length;
@@ -868,6 +913,12 @@ const PLANTS: Plant[] = [
     world: (w) => ({ ...w, shell: w.shell.replace("{journeyShown ? <Suspense fallback={null}><LazyJourneyTabs", "{true ? <Suspense fallback={null}><LazyJourneyTabs") }) },
   { name: "the classic rail is dropped (S6 WP6b)", expect: new RegExp("^10[.]shell[.]chrome[.]tabs"),
     world: (w) => ({ ...w, shell: w.shell.replace(" : <BottomNav isAuthed={!!session} proposalsState={proposalsState} inviteVisible={inviteVisible} walletHeld={!!topUser.walletHeld} />}", " : null}") }) },
+  { name: "the classic footer's arm says journeyShown too, so every reader's proposals link is balanced (the visual pass, 2026-10-09)", expect: new RegExp("^10[.]shell[.]chrome[.]footer"),
+    world: (w) => ({ ...w, shell: w.shell.replace("supportPhoneTel={SUPPORT_PHONE_TEL()} />}", "supportPhoneTel={SUPPORT_PHONE_TEL()} journeyShown />}") }) },
+  { name: "the footer balances its proposals link for every reader (the visual pass, 2026-10-09)", expect: new RegExp("^10[.]shell[.]chrome[.]footer"),
+    world: (w) => files(w, "src/components/layout/public-footer.tsx", (s) => s.replace('<FooterLink href="/proposals" balance={journeyShown}>', '<FooterLink href="/proposals" balance>')) },
+  { name: "the footer's journey answer is on unless it is said (the visual pass, 2026-10-09)", expect: new RegExp("^10[.]shell[.]chrome[.]footer"),
+    world: (w) => files(w, "src/components/layout/public-footer.tsx", (s) => s.replace("journeyShown = false,", "journeyShown = true,")) },
   { name: "the journey header renders beside the classic one (S6 WP6b)", expect: new RegExp("^10[.]shell[.]chrome[.]header"),
     world: (w) => ({ ...w, shell: w.shell.replace("<HeaderScrollCast />", "<HeaderScrollCast /><LazyJourneyTopBar user={topUser} onBreak={false} proposalsState={proposalsState} />") }) },
   { name: "the journey header's fallback leaves no box, so a journey page jumps while its code arrives (S6 WP6b)", expect: new RegExp("^10[.]shell[.]chrome[.]header"),

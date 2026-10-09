@@ -66,10 +66,20 @@ export function PublicFooter({
    * dashboard, which is reached from `/agent`, not from a share door.
    */
   inviteVisible,
+  /**
+   * ⭐ THE SHELL'S OWN ANSWER (`journeyShown` in `app-shell.tsx`), passed by the shell's journey arm alone: true only for
+   * a request the resolver shows the new journey to. ⛔ The classic footer is the classic shell's CHROME, frozen for S6
+   * and S7 — a viewer without the journey is served the footer they were served (VODACOM-PLAN §0i), so the shell's else
+   * arm is today's element with today's props, and `qa:classic-shell-parity` holds this footer's markup and every box to
+   * main's. A change to how the footer LOOKS is the journey's alone, behind this prop (`test:simple-journey-flag`
+   * 10.shell.chrome.footer).
+   */
+  journeyShown = false,
 }: {
   proposalsState: ProposalsState;
   agentDoorVisible: boolean;
   inviteVisible: boolean;
+  journeyShown?: boolean;
   supportEmail: string;
   supportPhone: string;
   supportPhoneTel: string;
@@ -237,9 +247,11 @@ export function PublicFooter({
               the current state flag rides the link (gilt / amber / none).
               2026-10-08 (WP12's tiles 299, 307) — where the label and its flag cannot share a line (the 216px column
               at 1024, the 160px one at 768), the line breaks are balanced: "Pendekeza masoko" over "upate pesa
-              INAKUJA", where a greedy break had left the flag alone on the second line. */}
+              INAKUJA", where a greedy break had left the flag alone on the second line.
+              ⛔ For the journey's footer ONLY (2026-10-09): the classic footer is frozen chrome and keeps main's
+              greedy break, so its bytes and boxes stay main's (`journeyShown` above). */}
           {proposalsState !== "DISABLED" && (
-            <FooterLink href="/proposals" balance>
+            <FooterLink href="/proposals" balance={journeyShown}>
               {t.footer.proposeGetPaid}
               <ProposalsStateBadge state={proposalsState} comingSoonLabel={t.proposals.comingSoonTag} maintenanceLabel={t.proposals.maintenanceTag} size="xs" className="ml-1.5" />
             </FooterLink>
@@ -338,7 +350,8 @@ function SocialLink({
   );
 }
 
-/** `balance` evens a label that wraps, so a flag riding its end never takes a line of its own (the proposals link). */
+/** `balance` evens a label that wraps, so a flag riding its end never takes a line of its own (the proposals link, in
+ *  the journey's footer alone — without it the class is not written, and the link is the classic footer's own). */
 function FooterLink({ href, children, balance = false }: { href: string; children: React.ReactNode; balance?: boolean }) {
   return (
     <li>

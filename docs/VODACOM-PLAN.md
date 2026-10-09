@@ -452,7 +452,12 @@ WP6b the swap + census + header-fit → WP7 overlays → WP8 short titles on pos
   `account-robots-noindex` — the robots meta in the bytes `/account` sends becomes the page's own "noindex, nofollow"
   where an unmatched path sends the root layout's "index, follow" and Next's 404 "noindex" (WP5, A2: at HTTP 200 the
   page's metadata replaces the root's, and Next adds no noindex of its own; still noindex for a crawler);
-  WP11's footer class string is to come. Outside the harness's cells (its demo portfolio is empty, and it captures no
+  `positions-empty-state` with `positions-empty-state-layout-en` and `-layout-sw` (the visual pass, 2026-10-09) — the
+  classic `/positions` empty state is a shared page body, fixed for every player: its drawing cropped to its ink
+  (`viewBox="0 14 56 42"`, R3-C's `INK_TOP`) and its title and body kept whole and balanced (G3); measured in all 24
+  signed-in cells, every other box 14px higher and nothing sideways, and the harness's 4.2b holds the layout entries to
+  the markup entry (4.6's twin for the matrix). The pass's footer balance is the journey's alone (the shell's else arm
+  is today's footer), so the classic footer needs no entry; WP11's footer class string is to come. Outside the harness's cells (its demo portfolio is empty, and it captures no
   market page), A8's live half changes what classic holders are served too: each Sell button's props carry `freeUntil`
   in place of `placedAt`, and its free strip follows the poll's frozen grace (§0h point 13). WP0 is done when
   `--prove-red` is green, the baseline is captured at the pre-S6 commit, and a null `--compare` on a fresh server at

@@ -61,6 +61,12 @@
  * cell changes (no Sell cell confirms a sale, and none is refused). A guest's page changes only by the name of the
  * shell's lazy chunk, which this harness normalises. The result it keeps on screen, and a refused sale's toast routed
  * by the registry, are classic changes only the drives and the tiles show (VODACOM-PLAN §0i).
+ * ⭐ THE VISUAL PASS (VODACOM-PLAN, 2026-10-08 and 09) — AND WHAT IT CHANGES FOR A CLASSIC VIEWER. The pass fixes shared
+ * components for every player, so the one page body captured here, the signed-in viewers' empty /positions, changes on
+ * purpose: its EmptyState's markup and the boxes it draws, named and measured (positions-empty-state and its two layout
+ * entries, in EXPECTED_DIFFS), with 4.2b holding each layout to the markup that draws it as 4.6 holds the Sell cells'
+ * (P.5p and P.6p prove both). The footer's proposals link, which the pass balanced, is the journey's alone (AppShell's
+ * footer arms), so the classic footer still compares equal and names nothing.
  *
  *   KP_BASE=http://localhost:3041 npm run qa:classic-shell-parity                  (the control: --prove-red is the default)
  *   KP_BASE=http://localhost:3041 npm run qa:classic-shell-parity -- --baseline <scratchpad>/parity-<sha8>.json
@@ -291,6 +297,122 @@ const EXPECTED_DIFFS = [
     reason: "S6 WP11: the footer's rail reserve names the token --rail-h (88px, globals.css) instead of the literal, so its class string moves in every cell while what it computes does not — footerPaddingBottom and scrollPaddingBottom are their own fields, compared in every cell, and must still be equal (88px below 1024; the footer 0px from 1024).",
   },
 ];
+/**
+ * ⭐ THE VISUAL PASS (VODACOM-PLAN, 2026-10-08 and 09) — AND THE CLASSIC /positions EMPTY STATE, NAMED. Pushed after the
+ * list's literal, as A8f's Sell entries are. The pass fixes the shared EmptyState for every player, so the one page body
+ * this harness captures (the signed-in viewers' /positions, an empty demo portfolio) changes on purpose: its markup in
+ * all 24 of those cells (positions-empty-state) and the boxes it draws, which differ by language in one line only, so each
+ * language has its entry (positions-empty-state-layout-en and -sw). The lines below are MEASURED: the first compare after
+ * the change (the visual-pass branch 90cb52ea against main d9b7a5b6's baseline) recorded each one, its .current.json was
+ * read, and every pair is a line of the baseline and the line that compare drew in its place (A3: named, never
+ * re-baselined). Each layout entry is `alongside` the markup entry, and 4.2b holds that pairing as 4.6 holds the Sell
+ * cells'. The footer's proposals link, which the pass balanced too, is the journey's alone (AppShell's footer arms,
+ * `test:simple-journey-flag` 10.shell.chrome.footer), so the footer fields need no entry: they compare equal.
+ */
+/** The element lines of the /positions body the new frame moves that are the same in both languages, at each width; the
+ *  one that is not, the call to action's link, is in each language's entry. */
+const POSITIONS_EMPTY_LINES = [
+  // 360
+  ["main>div0 0,0,360x504.5 887be6898e5a", "main>div0 0,0,360x490.5 887be6898e5a"],
+  ["main>div0>div0 0,0,360x504.5 c40d393d6ac9", "main>div0>div0 0,0,360x490.5 c40d393d6ac9"],
+  ["main>div0>div0>div1 16,161,328x311.5 53a421008486", "main>div0>div0>div1 16,161,328x297.5 53a421008486"],
+  ["main>div0>div0>div1>div0 152,210,56x56 aab549578a34", "main>div0>div0>div1>div0 152,210,56x42 aab549578a34"],
+  ["main>div0>div0>div1>div0>svg0 152,210,56x56 1fbd13e14b46", "main>div0>div0>div1>div0>svg0 152,210,56x42 1fbd13e14b46"],
+  ["main>div0>div0>div1>div0>svg0>rect0 162,231,36x25 71750688cbd7", "main>div0>div0>div1>div0>svg0>rect0 162,217,36x25 71750688cbd7"],
+  ["main>div0>div0>div1>div0>svg0>path1 174,225,12x6 71750688cbd7", "main>div0>div0>div1>div0>svg0>path1 174,211,12x6 71750688cbd7"],
+  ["main>div0>div0>div1>div0>svg0>line2 162,241,13x0 71750688cbd7", "main>div0>div0>div1>div0>svg0>line2 162,227,13x0 71750688cbd7"],
+  ["main>div0>div0>div1>div0>svg0>line3 185,241,13x0 71750688cbd7", "main>div0>div0>div1>div0>svg0>line3 185,227,13x0 71750688cbd7"],
+  ["main>div0>div0>div1>div0>svg0>rect4 178,239,4x4 f80e4d97fa87", "main>div0>div0>div1>div0>svg0>rect4 178,225,4x4 f80e4d97fa87"],
+  ["main>div0>div0>div1>p1 65,286,230x23.5 970ebca579a8", "main>div0>div0>div1>p1 65,272,230x23.5 970ebca579a8"],
+  ["main>div0>div0>div1>p2 65,321.5,230x42.5 f5620447af06", "main>div0>div0>div1>p2 65,307.5,230x42.5 f5620447af06"],
+  ["main>div0>div0>div1>div3 65,383.5,230x40 d887440a6643", "main>div0>div0>div1>div3 65,369.5,230x40 d887440a6643"],
+  // 768
+  ["main>div0 0,0,768x464 887be6898e5a", "main>div0 0,0,768x450 887be6898e5a"],
+  ["main>div0>div0 0,0,768x464 c40d393d6ac9", "main>div0>div0 0,0,768x450 c40d393d6ac9"],
+  ["main>div0>div0>div1 16,141.5,736x290.5 53a421008486", "main>div0>div0>div1 16,141.5,736x276.5 53a421008486"],
+  ["main>div0>div0>div1>div0 356,190.5,56x56 aab549578a34", "main>div0>div0>div1>div0 356,190.5,56x42 aab549578a34"],
+  ["main>div0>div0>div1>div0>svg0 356,190.5,56x56 1fbd13e14b46", "main>div0>div0>div1>div0>svg0 356,190.5,56x42 1fbd13e14b46"],
+  ["main>div0>div0>div1>div0>svg0>rect0 366,211.5,36x25 71750688cbd7", "main>div0>div0>div1>div0>svg0>rect0 366,197.5,36x25 71750688cbd7"],
+  ["main>div0>div0>div1>div0>svg0>path1 378,205.5,12x6 71750688cbd7", "main>div0>div0>div1>div0>svg0>path1 378,191.5,12x6 71750688cbd7"],
+  ["main>div0>div0>div1>div0>svg0>line2 366,221.5,13x0 71750688cbd7", "main>div0>div0>div1>div0>svg0>line2 366,207.5,13x0 71750688cbd7"],
+  ["main>div0>div0>div1>div0>svg0>line3 389,221.5,13x0 71750688cbd7", "main>div0>div0>div1>div0>svg0>line3 389,207.5,13x0 71750688cbd7"],
+  ["main>div0>div0>div1>div0>svg0>rect4 382,219.5,4x4 f80e4d97fa87", "main>div0>div0>div1>div0>svg0>rect4 382,205.5,4x4 f80e4d97fa87"],
+  ["main>div0>div0>div1>p1 65,266.5,638x23.5 970ebca579a8", "main>div0>div0>div1>p1 65,252.5,638x23.5 970ebca579a8"],
+  ["main>div0>div0>div1>p2 65,302,638x21 f5620447af06", "main>div0>div0>div1>p2 65,288,638x21 f5620447af06"],
+  ["main>div0>div0>div1>div3 65,343,638x40 d887440a6643", "main>div0>div0>div1>div3 65,329,638x40 d887440a6643"],
+  // 1024
+  ["main>div0 0,0,1024x464 887be6898e5a", "main>div0 0,0,1024x450 887be6898e5a"],
+  ["main>div0>div0 0,0,1024x464 a217b37c4aa0", "main>div0>div0 0,0,1024x450 a217b37c4aa0"],
+  ["main>div0>div0>div1 32,141.5,960x290.5 53a421008486", "main>div0>div0>div1 32,141.5,960x276.5 53a421008486"],
+  ["main>div0>div0>div1>div0 484,190.5,56x56 aab549578a34", "main>div0>div0>div1>div0 484,190.5,56x42 aab549578a34"],
+  ["main>div0>div0>div1>div0>svg0 484,190.5,56x56 1fbd13e14b46", "main>div0>div0>div1>div0>svg0 484,190.5,56x42 1fbd13e14b46"],
+  ["main>div0>div0>div1>div0>svg0>rect0 494,211.5,36x25 71750688cbd7", "main>div0>div0>div1>div0>svg0>rect0 494,197.5,36x25 71750688cbd7"],
+  ["main>div0>div0>div1>div0>svg0>path1 506,205.5,12x6 71750688cbd7", "main>div0>div0>div1>div0>svg0>path1 506,191.5,12x6 71750688cbd7"],
+  ["main>div0>div0>div1>div0>svg0>line2 494,221.5,13x0 71750688cbd7", "main>div0>div0>div1>div0>svg0>line2 494,207.5,13x0 71750688cbd7"],
+  ["main>div0>div0>div1>div0>svg0>line3 517,221.5,13x0 71750688cbd7", "main>div0>div0>div1>div0>svg0>line3 517,207.5,13x0 71750688cbd7"],
+  ["main>div0>div0>div1>div0>svg0>rect4 510,219.5,4x4 f80e4d97fa87", "main>div0>div0>div1>div0>svg0>rect4 510,205.5,4x4 f80e4d97fa87"],
+  ["main>div0>div0>div1>p1 81,266.5,862x23.5 970ebca579a8", "main>div0>div0>div1>p1 81,252.5,862x23.5 970ebca579a8"],
+  ["main>div0>div0>div1>p2 81,302,862x21 f5620447af06", "main>div0>div0>div1>p2 81,288,862x21 f5620447af06"],
+  ["main>div0>div0>div1>div3 81,343,862x40 d887440a6643", "main>div0>div0>div1>div3 81,329,862x40 d887440a6643"],
+  // 1280
+  ["main>div0 0,0,1280x464 887be6898e5a", "main>div0 0,0,1280x450 887be6898e5a"],
+  ["main>div0>div0 100,0,1080x464 d6ec7648883b", "main>div0>div0 100,0,1080x450 d6ec7648883b"],
+  ["main>div0>div0>div1 132,141.5,1016x290.5 53a421008486", "main>div0>div0>div1 132,141.5,1016x276.5 53a421008486"],
+  ["main>div0>div0>div1>div0 612,190.5,56x56 aab549578a34", "main>div0>div0>div1>div0 612,190.5,56x42 aab549578a34"],
+  ["main>div0>div0>div1>div0>svg0 612,190.5,56x56 1fbd13e14b46", "main>div0>div0>div1>div0>svg0 612,190.5,56x42 1fbd13e14b46"],
+  ["main>div0>div0>div1>div0>svg0>rect0 622,211.5,36x25 71750688cbd7", "main>div0>div0>div1>div0>svg0>rect0 622,197.5,36x25 71750688cbd7"],
+  ["main>div0>div0>div1>div0>svg0>path1 634,205.5,12x6 71750688cbd7", "main>div0>div0>div1>div0>svg0>path1 634,191.5,12x6 71750688cbd7"],
+  ["main>div0>div0>div1>div0>svg0>line2 622,221.5,13x0 71750688cbd7", "main>div0>div0>div1>div0>svg0>line2 622,207.5,13x0 71750688cbd7"],
+  ["main>div0>div0>div1>div0>svg0>line3 645,221.5,13x0 71750688cbd7", "main>div0>div0>div1>div0>svg0>line3 645,207.5,13x0 71750688cbd7"],
+  ["main>div0>div0>div1>div0>svg0>rect4 638,219.5,4x4 f80e4d97fa87", "main>div0>div0>div1>div0>svg0>rect4 638,205.5,4x4 f80e4d97fa87"],
+  ["main>div0>div0>div1>p1 181,266.5,918x23.5 970ebca579a8", "main>div0>div0>div1>p1 181,252.5,918x23.5 970ebca579a8"],
+  ["main>div0>div0>div1>p2 181,302,918x21 f5620447af06", "main>div0>div0>div1>p2 181,288,918x21 f5620447af06"],
+  ["main>div0>div0>div1>div3 181,343,918x40 d887440a6643", "main>div0>div0>div1>div3 181,329,918x40 d887440a6643"],
+];
+EXPECTED_DIFFS.push(
+  {
+    id: "positions-empty-state",
+    field: "regions.main.html",
+    routes: [BODY_ROUTE],
+    replace: [
+      ["<svg viewBox=\"0 0 56 56\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.5\" stroke-linecap=\"round\" stroke-linejoin=\"round\" width=\"56\" height=\"56\">", "<svg viewBox=\"0 14 56 42\" width=\"56\" height=\"42\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.5\" stroke-linecap=\"round\" stroke-linejoin=\"round\">"],
+      ["<p class=\"font-display text-[15.5px] font-semibold text-balance text-text\">", "<p class=\"font-display text-[15.5px] font-semibold text-balance [word-break:keep-all] [overflow-wrap:break-word] text-text\">"],
+      ["<p class=\"mt-2 text-body-sm leading-relaxed text-text-subtle\">", "<p class=\"mt-2 text-body-sm leading-relaxed text-balance [word-break:keep-all] [overflow-wrap:break-word] text-text-subtle\">"],
+    ],
+    cells: VIEWERS.filter((v) => v.door).length * LOCALES.length * WIDTHS.length,
+    reason: "The visual pass, in the shared EmptyState, for every player — and so in the signed-in viewers' classic /positions body, the one page body this harness captures. Three strings move and no word does: the briefcase drawing's frame starts at its ink (R3-C b8277778, INK_TOP in empty-state.tsx: viewBox 0 14 56 42 at 56x42 where it was 0 0 56 56 at 56x56, one unit to one pixel as before; React now writes the frame's three attributes first), so the ink opens 48px inside the dashed box, as the call to action closes 48px inside it (at 360 the handle's top stroke stood 62.25px under the box's inner top, and stands 48.25px under it now); the title takes G3's whole-word classes ([word-break:keep-all] [overflow-wrap:break-word]: Chinese breaks between words, never inside one); and the body takes them too, balanced (G3 95a8e2a5: text-balance, so a centred body never leaves one word under a full line). In all 24 signed-in /positions cells, en and sw alike. Served but captured by no field: where the body's two lines at 360 break, which balancing may move while its box stays 230x42.5 (measured), and the same frame and classes on every other EmptyState a classic player meets.",
+  },
+  {
+    id: "positions-empty-state-layout-en",
+    field: "regions.main.layout",
+    routes: [BODY_ROUTE],
+    replace: [
+      ...POSITIONS_EMPTY_LINES,
+      ["main>div0>div0>div1>div3>a0 108.5,383.5,142.5x40 f3dead1406b7", "main>div0>div0>div1>div3>a0 108.5,369.5,142.5x40 f3dead1406b7"],
+      ["main>div0>div0>div1>div3>a0 312.5,343,142.5x40 f3dead1406b7", "main>div0>div0>div1>div3>a0 312.5,329,142.5x40 f3dead1406b7"],
+      ["main>div0>div0>div1>div3>a0 440.5,343,142.5x40 f3dead1406b7", "main>div0>div0>div1>div3>a0 440.5,329,142.5x40 f3dead1406b7"],
+      ["main>div0>div0>div1>div3>a0 568.5,343,142.5x40 f3dead1406b7", "main>div0>div0>div1>div3>a0 568.5,329,142.5x40 f3dead1406b7"],
+    ],
+    cells: VIEWERS.filter((v) => v.door).length * WIDTHS.length,
+    alongside: "positions-empty-state",
+    reason: "The boxes the drawing's new frame draws in the 12 English /positions cells (the 3 signed-in viewers at 4 widths), measured (above): the drawing's wrapper and its svg 14px shorter (56x56 to 56x42); the five shapes inside 14px higher, since the frame now starts 14 units down; the title, the body, the call to action's row and its link 14px higher; and the empty state's dashed box, the page container and the wrapper above it 14px shorter (that wrapper, main>div0, 504.5 to 490.5 at 360 and 464 to 450 from 768; <main> itself, which fills the window, keeps its box). No x, no width and no computed style moves — the harness records no text-wrap, word-break or overflow-wrap, so G3's classes draw no signature, and the title and body keep their boxes (one line each from 768; at 360 the body's two). The call to action's link is the one line that differs by language — 142.5px wide here, 143 in Swahili — so Swahili has its own entry.",
+  },
+  {
+    id: "positions-empty-state-layout-sw",
+    field: "regions.main.layout",
+    routes: [BODY_ROUTE],
+    replace: [
+      ...POSITIONS_EMPTY_LINES,
+      ["main>div0>div0>div1>div3>a0 108.5,383.5,143x40 f3dead1406b7", "main>div0>div0>div1>div3>a0 108.5,369.5,143x40 f3dead1406b7"],
+      ["main>div0>div0>div1>div3>a0 312.5,343,143x40 f3dead1406b7", "main>div0>div0>div1>div3>a0 312.5,329,143x40 f3dead1406b7"],
+      ["main>div0>div0>div1>div3>a0 440.5,343,143x40 f3dead1406b7", "main>div0>div0>div1>div3>a0 440.5,329,143x40 f3dead1406b7"],
+      ["main>div0>div0>div1>div3>a0 568.5,343,143x40 f3dead1406b7", "main>div0>div0>div1>div3>a0 568.5,329,143x40 f3dead1406b7"],
+    ],
+    cells: VIEWERS.filter((v) => v.door).length * WIDTHS.length,
+    alongside: "positions-empty-state",
+    reason: "The boxes the drawing's new frame draws in the 12 Swahili /positions cells (the 3 signed-in viewers at 4 widths), measured (above): the same 13 lines at each width as in English — the drawing 14px shorter, its shapes and everything under it 14px higher, the dashed box, the page container and the wrapper above it 14px shorter — and the call to action's link, 143px wide in Swahili (142.5 in English), 14px higher. No x, no width and no computed style moves.",
+  },
+);
 /**
  * ⭐ S6 A8e · THE SELL BUTTON'S FIRST PAINT, NAMED. Not a field of the Sell cells: each cell captures its first paint beside
  * them (`served`: every script held, nothing hydrated, S.4). A compare holds it to the baseline's own first paint when the
@@ -1317,6 +1439,47 @@ async function proveRed() {
   const hits = (n) => new Map([[e0.id, n]]);
   ok(`P.6 a named difference seen in part of its population is reported (§4.2), and in all or none of it is not`,
     partialExpected(hits(e0.cells - 1)).length === 1 && partialExpected(hits(e0.cells)).length === 0 && partialExpected(new Map()).length === 0);
+  // ①p The visual pass · the /positions empty state's three named differences, held as A8f's are (P.5c): the body's
+  // markup (positions-empty-state, its three strings) and the boxes it draws in each language (every width's lines in one
+  // text, so a pair whose result another pair would take again is seen here too). Each passes on /positions as exactly its
+  // own entry; a second change beside any of them, English boxes drawn with the Swahili link, or the same change on
+  // another route stays a failure; and §4.2b reports a layout entry missing beside the markup that draws it. A block of
+  // its own, so its names are its own.
+  {
+    const bodyStore = {};
+    const keep = (text) => { const id = `m${Object.keys(bodyStore).length}`; bodyStore[id] = text; return id; };
+    const bodyCell = (field, text) => ({ ...cell(200, "f1"), landed: BODY_ROUTE,
+      regions: { main: { count: 1, html: field === "html" ? keep(text) : null, layout: field === "layout" ? keep(text) : null } } });
+    const markupEntry = EXPECTED_DIFFS.find((e) => e.id === "positions-empty-state");
+    const boxEntries = ["en", "sw"].map((l) => EXPECTED_DIFFS.find((e) => e.id === `positions-empty-state-layout-${l}`));
+    const markup = (side) => {
+      const p = markupEntry ? markupEntry.replace.map((pair) => pair[side]) : ["", "", ""];
+      return `<main id="main-content"><div><div><div data-empty-state="fill"><div aria-hidden="true">${p[0]}<rect x="10" y="21" width="36" height="25" rx="3"></rect></svg></div>${p[1]}No open positions yet</p>${p[2]}Pick a market and drag the conviction dial to commit your first prediction.</p></div></div></div></main>`;
+    };
+    const boxes = (e, side) => (e ? e.replace.map((pair) => pair[side]).join(NL) : "");
+    const diff = (route, a, b) => diffCells(route, a, b, bodyStore, bodyStore);
+    const namedAs = (d, id) => d.unexpected.length === 0 && d.expected.map((x) => x.id).join() === id;
+    const runs = {
+      markup: diff(BODY_ROUTE, bodyCell("html", markup(0)), bodyCell("html", markup(1))),
+      markupPlus: diff(BODY_ROUTE, bodyCell("html", markup(0)), bodyCell("html", markup(1).replace("No open positions yet", "No open positions"))),
+      markupElsewhere: diff("/wallet", bodyCell("html", markup(0)), bodyCell("html", markup(1))),
+      boxes: boxEntries.map((e) => diff(BODY_ROUTE, bodyCell("layout", boxes(e, 0)), bodyCell("layout", boxes(e, 1)))),
+      boxesPlus: boxEntries.map((e) => diff(BODY_ROUTE, bodyCell("layout", boxes(e, 0)), bodyCell("layout", `${boxes(e, 1)}${NL}main>div9 0,0,1x1 000000000000`))),
+      crossed: diff(BODY_ROUTE, bodyCell("layout", boxes(boxEntries[0], 0)), bodyCell("layout", boxes(boxEntries[1], 1))),
+      boxesElsewhere: boxEntries.map((e) => diff("/wallet", bodyCell("layout", boxes(e, 0)), bodyCell("layout", boxes(e, 1)))),
+    };
+    ok("P.5p the visual pass's three named /positions differences — the empty state's three strings, and the boxes they draw in English and in Swahili at every width — each pass on /positions as exactly their own entry, while a second change beside any, English boxes drawn with the Swahili link, or the same change on another route stays a failure",
+      !!markupEntry && boxEntries.every(Boolean) && namedAs(runs.markup, "positions-empty-state") && runs.boxes.every((d, i) => namedAs(d, boxEntries[i].id))
+        && runs.markupPlus.unexpected.length === 1 && runs.boxesPlus.every((d) => d.unexpected.length === 1) && runs.crossed.unexpected.length === 1
+        && runs.markupElsewhere.unexpected.length === 1 && runs.boxesElsewhere.every((d) => d.unexpected.length === 1),
+      JSON.stringify(runs).slice(0, 400));
+    const along = EXPECTED_DIFFS.filter((e) => e.alongside);
+    const seen = (k) => new Map([...along.map((e) => [e.alongside, 1]), ...along.slice(0, k).map((e) => [e.id, e.cells])]);
+    ok("P.6p a measured /positions layout missing beside the markup that draws it is reported (§4.2b), each one, and neither, or both in all of their cells, is not",
+      along.length === 2 && missingAlongside(seen(0), EXPECTED_DIFFS).length === 2 && missingAlongside(seen(1), EXPECTED_DIFFS).length === 1
+        && missingAlongside(seen(2), EXPECTED_DIFFS).length === 0 && missingAlongside(new Map(), EXPECTED_DIFFS).length === 0,
+      JSON.stringify(along.map((e) => [e.id, e.alongside])));
+  }
   // ①f S6 A8f · the classic confirm's two named differences, held as the Sell button's is (P.5s): its markup (four
   // class strings) and its boxes (the lines the capture records), before A8f and after. Each passes in the classic
   // confirm's place; a second change beside either, or the same change at the other Sell place, stays a failure. A
@@ -1723,6 +1886,11 @@ if (!PROVE_RED) {
     const devCells = curKeys.filter((k) => (cells[k]?.devOnly ?? []).length);
     if (devCells.length) console.log(`  DEV-ONLY, filed and not compared (React's DEV performance track; a production build has none) in ${devCells.length} cell(s): ${devCells.slice(0, 8).join(", ")}${devCells.length > 8 ? " …" : ""}`);
     ok("4.2 each named difference is seen in all of its cells or in none", partialExpected(hits).length === 0, partialExpected(hits).join(" · "));
+    // The visual pass · a measured layout is seen wherever the markup that draws it is (as 4.6 holds the Sell cells'):
+    // the drawing's new frame served with the /positions body's boxes back to the baseline's fails, never passes.
+    const matrixMissing = missingAlongside(hits, EXPECTED_DIFFS);
+    ok("4.2b each measured difference is seen in all of its cells whenever the served change that causes it is seen", matrixMissing.length === 0,
+      matrixMissing.join(" · "));
     for (const e of EXPECTED_DIFFS) console.log(`  EXPECTED ${e.id} — seen in ${hits.get(e.id) ?? 0} of ${e.cells} cell(s). ${e.reason}`);
     // ⭐ WP10 · the Sell cells against the baseline's (A8: a default poll with an hour to run compares equal; any other
     // difference is a named entry in SELL_EXPECTED_DIFFS, never a re-baseline).
