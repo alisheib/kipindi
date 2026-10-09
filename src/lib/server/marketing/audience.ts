@@ -23,7 +23,11 @@
  * ⛔ ERASED ROWS ARE IN NO AUDIENCE (decision C3). `toAudienceWhere` always sets `excludeSourceRef` to
  * `ERASURE_EVIDENCE`: an emptied tombstone is in no list, count, bulk, export or campaign — not even a
  * whole-number search for its own key. Only the duplicate checks (U22's form, U31's importer) still see it,
- * by a point lookup on the number.
+ * by a point lookup on the number. ⚠️ C8a · the tombstone alone is asked here, and that is enough: an audience is made
+ * of book rows and accounts, and an erasure with no book row (the ledger's marker, `erasure-mark.ts`'s ONE rule) has
+ * neither — an erased account's own number is a tombstone in `User` too, so the player arm never walks it — while the
+ * send gate refuses every number on which an erasure stands (its latest ledger row is always a WITHDRAWN). The duplicate
+ * checks, which CREATE rows, ask the ONE rule itself.
  * ⛔ THERE IS NO "REACHABLE" PREDICATE, BY DESIGN. Reachability is the send gate's per-recipient verdict
  * (`mayReceiveMarketingSms`), several reads each; hoisted into a list-build predicate it is the U9 defect —
  * the opted-out number sent to. `consent` and `suppressed` here are the CACHE columns, named as what they are.

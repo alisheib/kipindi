@@ -4091,5 +4091,474 @@ const HOUSE_TS_KEYS = new Set(["dueAt", "staleAt", "deadlineAt", "claimedUntil",
       && !emailMem28(memByEmail.split(".trim().toLowerCase() === norm").join(" === norm")));
 }
 
+/* ═══ §29 · The import's check and commit — snapshotsAmong · firstLinesAmong · failedPage · keptSplit · freezeDecision · commitBatch in both twins (S15, 2026-10-09; decisions X3 · S15-6/7/8) ═══ */
+{
+  // ⭐ WHY THIS SECTION EXISTS. The importer's six DAL members carry the rules that keep a 200,000-row import exact, and
+  // every behavioural suite (`test:contacts-import` sections check and commit) runs them on the MEMORY twin. So a Prisma
+  // twin that lost its half — a commit whose cursor compare-and-set is not its FIRST statement (two tabs would both write a
+  // step), an update whose erasure filter lost its NULL arm (it would update nobody, and every in-book row would read as a
+  // conflict), a first-line read that counted an invalid row (a repeat would be written twice), a snapshot read that left
+  // the erased tombstone out (an erased number would be created again) — would be right in every test and wrong in
+  // production. This section holds the TWO twins to one shape, the migration to the model, and proves every matcher can
+  // fail (29.c1). ⚠️ It reads TEXT, as §27 and §28 do; on Postgres the members are executed by the lead's db probe.
+  // ⛔ No backslash anywhere in this section (§27's rule): line breaks are built with String.fromCharCode, every matcher is
+  // an `includes`, an order or a character class.
+  const NL29 = String.fromCharCode(10);
+  const CR29 = String.fromCharCode(13);
+  const lf29 = (s: string) => s.split(CR29).join("");
+  /** A body with each line trimmed and the lines joined by one space — so a matcher reads code, not its indentation. */
+  const flat29 = (s: string) => lf29(s).split(NL29).map((l) => l.trim()).filter(Boolean).join(" ");
+  const NEXT_MEMBER29 = new RegExp(NL29 + " {4}[A-Za-z0-9_]+ *:");
+  const memberOf29 = (block: string, name: string): string => {
+    const at = block.indexOf(`${NL29}    ${name}: `);
+    if (at < 0) return "";
+    const next = block.slice(at + 1).search(NEXT_MEMBER29);
+    return next < 0 ? block.slice(at) : block.slice(at, at + 1 + next);
+  };
+  const before29 = (body: string, first: string, then: string): boolean => {
+    const a = body.indexOf(first), b = body.indexOf(then);
+    return a >= 0 && b > a;
+  };
+  const priBook = region(dalSrc, `${NL29}  marketingContact: {`);
+  const memBook = region(storeSrc, `${NL29}  marketingContact: {`);
+  const priRun = region(dalSrc, `${NL29}  contactImport: {`);
+  const memRun = region(storeSrc, `${NL29}  contactImport: {`);
+  const priRow = region(dalSrc, `${NL29}  contactImportRow: {`);
+  const memRow = region(storeSrc, `${NL29}  contactImportRow: {`);
+  const NAMES29 = ["snap", "first", "failed", "kept", "freeze", "commit", "open"] as const;
+  type Name29 = (typeof NAMES29)[number];
+  const MEMBER29: Record<Name29, [string, "book" | "run" | "row"]> = {
+    snap: ["snapshotsAmong", "book"], first: ["firstLinesAmong", "row"], failed: ["failedPage", "row"], kept: ["keptSplit", "row"],
+    freeze: ["freezeDecision", "run"], commit: ["commitBatch", "run"], open: ["listOpenByOthers", "run"],
+  };
+  const blockOf = (twin: "pri" | "mem", where: "book" | "run" | "row"): string =>
+    twin === "pri" ? (where === "book" ? priBook : where === "run" ? priRun : priRow) : (where === "book" ? memBook : where === "run" ? memRun : memRow);
+  const pri29 = Object.fromEntries(NAMES29.map((n) => [n, memberOf29(blockOf("pri", MEMBER29[n][1]), MEMBER29[n][0])])) as Record<Name29, string>;
+  const mem29 = Object.fromEntries(NAMES29.map((n) => [n, memberOf29(blockOf("mem", MEMBER29[n][1]), MEMBER29[n][0])])) as Record<Name29, string>;
+
+  // ── 29.0 · THE PARSER ──
+  const SNAP_KEYS29 = ["id", "msisdn", "displayName", "email", "notes", "tags", "sourceRef", "importId", "updatedAt", "userId"];
+  const BATCH_KEYS29 = ["importId", "fromCursor", "toCursor", "at", "by", "creates", "updates", "outcomes", "sentences", "listId", "members"];
+  const FREEZE_KEYS29 = ["importId", "choice", "overrides", "targetListId", "newList", "by", "at"];
+  const OTHERS_KEYS29 = ["excludeCreatedBy", "limit"];
+  ok("29.0 · the parser sees §29's named shapes — MarketingContactSnapshot's ten columns, ContactImportCommitBatch's eleven keys, the freeze's seven, the open-runs query's two — and all seven members resolve in BOTH twins",
+    sameSet(storedKeys("MarketingContactSnapshot"), SNAP_KEYS29) && sameSet(storedKeys("ContactImportCommitBatch"), BATCH_KEYS29)
+      && sameSet(storedKeys("ContactImportFreeze"), FREEZE_KEYS29) && sameSet(storedKeys("ContactImportOthersQuery"), OTHERS_KEYS29)
+      && NAMES29.every((n) => pri29[n].length > 100 && mem29[n].length > 100),
+    `snapshot [${setDiff(SNAP_KEYS29, storedKeys("MarketingContactSnapshot")) || "10"}] · batch [${setDiff(BATCH_KEYS29, storedKeys("ContactImportCommitBatch")) || "11"}] · freeze [${setDiff(FREEZE_KEYS29, storedKeys("ContactImportFreeze")) || "7"}] · regions ${NAMES29.map((n) => `${pri29[n].length}/${mem29[n].length}`).join(" ")}`);
+
+  // ── 29.named ──
+  const SIGS29: Record<Name29, [string, string]> = {
+    snap: ["snapshotsAmong: (msisdns: string[]): MarketingContactSnapshot[] =>", "snapshotsAmong: async (msisdns: string[]): Promise<MarketingContactSnapshot[]> =>"],
+    first: ["firstLinesAmong: (q: ContactImportFirstLinesQuery): ContactImportFirstLine[] =>", "firstLinesAmong: async (q: ContactImportFirstLinesQuery): Promise<ContactImportFirstLine[]> =>"],
+    failed: ["failedPage: (q: ContactImportFailedQuery): ContactImportFailedPage =>", "failedPage: async (q: ContactImportFailedQuery): Promise<ContactImportFailedPage> =>"],
+    kept: ["keptSplit: (importId: string): ContactImportKeptCount[] =>", "keptSplit: async (importId: string): Promise<ContactImportKeptCount[]> =>"],
+    freeze: ["freezeDecision: (f: ContactImportFreeze): StoredContactImport | null =>", "freezeDecision: async (f: ContactImportFreeze): Promise<StoredContactImport | null> =>"],
+    commit: ["commitBatch: (b: ContactImportCommitBatch): ContactImportCommitResult =>", "commitBatch: async (b: ContactImportCommitBatch): Promise<ContactImportCommitResult> =>"],
+    open: ["listOpenByOthers: (q: ContactImportOthersQuery): StoredContactImport[] =>", "listOpenByOthers: async (q: ContactImportOthersQuery): Promise<StoredContactImport[]> =>"],
+  };
+  const TYPES29 = [
+    "MarketingContactSnapshot", "ContactImportFirstLinesQuery", "ContactImportFirstLine", "ContactImportFailedQuery", "ContactImportFailedPage",
+    "ContactImportKeptCount", "ContactImportFreeze", "ContactImportCommitBatch", "ContactImportCommitResult", "ContactImportOthersQuery",
+  ];
+  const typeImport29 = /import type [{][^}]*MarketingContactSnapshot[^}]*[}] from "[.][/]store";/.exec(dalSrc)?.[0] ?? "";
+  const offSigs29 = NAMES29.filter((n) => !mem29[n].includes(SIGS29[n][0]) || !pri29[n].includes(SIGS29[n][1]));
+  ok("29.named · every §29 member names its types in BOTH twins (never an inline literal) — the ten shapes exported by store.ts and imported by prisma-dal.ts",
+    offSigs29.length === 0 && TYPES29.every((t) => storeSrc.includes(`export type ${t} =`) && typeImport29.includes(t)),
+    `signatures off [${offSigs29}] · not imported [${TYPES29.filter((t) => !typeImport29.includes(t))}]`);
+
+  // ── 29.snap · the book rows behind a set of numbers ──
+  const SNAP_SELECT29 = "select: { id: true, msisdn: true, displayName: true, email: true, notes: true, tags: true, sourceRef: true, importId: true, updatedAt: true, userId: true },";
+  const snapPri29 = (b: string): boolean => {
+    const f = flat29(b);
+    return before29(f, 'const keys = bulkKeys(msisdns, "marketingContact.snapshotsAmong");', "if (keys.length === 0) return [];")
+      && before29(f, "if (keys.length === 0) return [];", "pc()") && f.includes("where: { msisdn: { in: keys } },") && f.includes(SNAP_SELECT29)
+      && f.includes("updatedAt: r.updatedAt.toISOString(), userId: r.userId,")
+      && !f.includes("toStoredMarketingContact(") && !f.includes("OR:") && !f.includes("not:") && !/consentState|rawInput/.test(f);
+  };
+  const snapMem29 = (b: string): boolean => {
+    const f = flat29(b);
+    return before29(f, 'const keys = bulkKeys(msisdns, "marketingContact.snapshotsAmong");', "if (keys.length === 0) return [];")
+      && f.includes("const id = store.contactsByMsisdn.get(m);")
+      && f.includes("id: c.id, msisdn: c.msisdn, displayName: c.displayName, email: c.email, notes: c.notes, tags: [...c.tags],")
+      && f.includes("sourceRef: c.sourceRef, importId: c.importId, updatedAt: c.updatedAt, userId: c.userId,")
+      && !f.includes("{ ...c,") && !f.includes("excludeSourceRef") && !/consentState|rawInput/.test(f);
+  };
+  ok("29.snap · ⛔ snapshotsAmong is §25's shape and reads the ten columns decide() needs: through bulkKeys, an empty set answered before any query, ONE findMany on the unique msisdn with a select of exactly those ten — the account link among them (S15-11) — and never the consent cache or the raw input (never toStoredMarketingContact), and NO sourceRef filter — the erased tombstone is in the answer (X22); the memory twin through contactsByMsisdn, the ten named, never the row spread",
+    snapPri29(pri29.snap) && snapMem29(mem29.snap), `${pri29.snap.length}/${mem29.snap.length} chars`);
+
+  // ── 29.first · S15-7 ──
+  const FIRST_WHERE29 = "where: { importId: q.importId, msisdn: { in: keys }, readError: null, problems: { equals: [] } },";
+  const firstPri29 = (b: string): boolean => {
+    const f = flat29(b);
+    return before29(f, 'const keys = bulkKeys(q.msisdns, "contactImportRow.firstLinesAmong");', "if (keys.length === 0) return [];")
+      && before29(f, "if (keys.length === 0) return [];", "pc()") && f.includes('by: ["msisdn"],') && f.includes(FIRST_WHERE29)
+      && f.includes("_min: { line: true },") && !f.includes("findMany");
+  };
+  const FIRST_SKIP29 = "if (row.msisdn === null || !want.has(row.msisdn) || row.readError !== null || row.problems.length !== 0) continue;";
+  const firstMem29 = (b: string): boolean => {
+    const f = flat29(b);
+    return before29(f, 'const keys = bulkKeys(q.msisdns, "contactImportRow.firstLinesAmong");', "if (keys.length === 0) return [];")
+      && f.includes("store.contactImportRows.get(q.importId)") && f.includes(FIRST_SKIP29)
+      && f.includes("if (seen === undefined || row.line < seen) first.set(row.msisdn, row.line);") && !f.includes("store.contactImportRows.values()");
+  };
+  ok("29.first · ⭐ S15-7 · firstLinesAmong reads ONE run's DECIDABLE rows in both twins — Prisma ONE groupBy by msisdn, where importId, msisdn in the keys, readError null and problems the empty JSON array (equals: []), the smallest line; memory bounded by the run's own rows, skipping a null number, a read error and any problem, keeping the smallest line — through bulkKeys, an empty set answered first",
+    firstPri29(pri29.first) && firstMem29(mem29.first), `${pri29.first.length}/${mem29.first.length} chars`);
+
+  // ── 29.failed · 29.kept ──
+  const failedPri29 = (b: string): boolean => {
+    const f = flat29(b);
+    return f.includes('where: { importId: q.importId, outcome: "fail", line: { gt: q.afterLine } },') && f.includes('orderBy: { line: "asc" },')
+      && f.includes("take: Math.max(0, Math.min(q.limit, CONTACT_IMPORT_FAILED_PAGE_MAX)),")
+      && f.includes('const total = await pc().contactImportRow.count({ where: { importId: q.importId, outcome: "fail" } });') && !f.includes("skip:");
+  };
+  const failedMem29 = (b: string): boolean => {
+    const f = flat29(b);
+    return f.includes('const failed = Array.from(runRows.values()).filter((row) => row.outcome === "fail");')
+      && f.includes(".filter((row) => row.line > q.afterLine)") && f.includes(".sort((a, b) => a.line - b.line)")
+      && f.includes(".slice(0, Math.max(0, Math.min(q.limit, CONTACT_IMPORT_FAILED_PAGE_MAX)))") && f.includes("return { rows: page, total: failed.length };");
+  };
+  ok("29.failed · failedPage is a keyset on the line in both twins — outcome fail, line after afterLine, ascending, the page clamped to CONTACT_IMPORT_FAILED_PAGE_MAX (50 in both) and never skip — and the total COUNTED separately (Prisma count, memory every failed row)",
+    failedPri29(pri29.failed) && failedMem29(mem29.failed)
+      && dalSrc.includes("const CONTACT_IMPORT_FAILED_PAGE_MAX = 50;") && storeSrc.includes("export const CONTACT_IMPORT_FAILED_PAGE_MAX = 50;"),
+    `${pri29.failed.length}/${mem29.failed.length} chars`);
+  const keptPri29 = (b: string): boolean => {
+    const f = flat29(b);
+    return f.includes('groupBy({ by: ["outcomeReason"], where: { importId, outcome: "keep" }, _count: { _all: true } })') && !f.includes("findMany");
+  };
+  const keptMem29 = (b: string): boolean =>
+    flat29(b).includes('if (row.outcome === "keep") counts.set(row.outcomeReason, (counts.get(row.outcomeReason) ?? 0) + 1);');
+  ok("29.kept · keptSplit is counted from the rows in both twins — Prisma ONE groupBy on outcomeReason where outcome keep (never findMany); memory every keep row by its reason",
+    keptPri29(pri29.kept) && keptMem29(mem29.kept), `${pri29.kept.length}/${mem29.kept.length} chars`);
+
+  // ── 29.freeze · the start's compare-and-set, and R12's new list born inside it ──
+  const FREEZE_FIELDS29 = ['status: "COMMITTING",', "decisionChoice: f.choice", "decisionOverrides: ", "decisionConfirmedAt: ", "decisionConfirmedBy: f.by,"];
+  const FREEZE_WHERE29 = 'where: { id: f.importId, status: "STAGED" },';
+  const FREEZE_TARGET_PRI29 = "targetListId: newList === null ? f.targetListId : null,";
+  const FREEZE_LOST29 = "if (frozen.count !== 1) return null;";
+  const freezePri29 = (b: string): boolean => {
+    const f = flat29(b);
+    const tx = f.indexOf("pc().$transaction(async (tx) => {");
+    const firstTx = f.indexOf("tx.", tx + 1);
+    return tx >= 0 && firstTx === f.indexOf("tx.contactImport.updateMany({", tx)
+      && f.includes(FREEZE_WHERE29) && FREEZE_FIELDS29.every((n) => f.includes(n)) && f.includes(FREEZE_TARGET_PRI29)
+      && before29(f, FREEZE_WHERE29, FREEZE_LOST29) && before29(f, FREEZE_LOST29, "tx.contactList.create({")
+      && before29(f, "tx.contactList.create({", "data: { targetListId: l.id,")
+      && f.includes("timeout: CONTACT_IMPORT_FREEZE_TX_TIMEOUT_MS, maxWait: 5_000") && (f.match(/updateMany[(]/g) ?? []).length === 1;
+  };
+  const FREEZE_GUARD29 = 'if (!frozenRun || frozenRun.status !== "STAGED") return null;';
+  const FREEZE_UNIQUE29 = '{ code: "P2002" }';
+  const FREEZE_FK29 = "} else if (f.targetListId !== null && !store.contactLists.has(f.targetListId)) {";
+  const freezeMem29 = (b: string): boolean => {
+    const f = flat29(b);
+    const firstSet = f.indexOf(".set(");
+    const fkCode = f.indexOf('{ code: "P2003" }');
+    return f.includes(FREEZE_GUARD29) && before29(f, FREEZE_GUARD29, "store.contactImports.set(") && FREEZE_FIELDS29.every((n) => f.includes(n))
+      && f.includes("targetListId: f.targetListId,") && before29(f, FREEZE_GUARD29, FREEZE_UNIQUE29) && before29(f, FREEZE_GUARD29, FREEZE_FK29)
+      && f.indexOf(FREEZE_UNIQUE29) < firstSet && fkCode > 0 && fkCode < firstSet;
+  };
+  ok("29.freeze · ⭐ the start's freeze is ONE compare-and-set in both twins and a NEW list is born inside it (R12) — Prisma ONE transaction, its timeout set, whose FIRST statement is the updateMany where { id, status STAGED } writing COMMITTING, the choice, the overrides, who and when (an existing list as the target), answering null unless it counted 1, and only THEN the new list inserted and made the target; memory refusing anything but STAGED BEFORE it writes, then the list name's unique index (P2002) and an existing list's foreign key (P2003, R17) emulated before its first write",
+    freezePri29(pri29.freeze) && freezeMem29(mem29.freeze), `${pri29.freeze.length}/${mem29.freeze.length} chars`);
+
+  // ── 29.cas · X3 · the ONE commit write ──
+  const CAS29 = 'where: { id: b.importId, status: "COMMITTING", committedThrough: b.fromCursor },';
+  const casPri29 = (b: string): boolean => {
+    const f = flat29(b);
+    const tx = f.indexOf("pc().$transaction(async (tx) => {");
+    const firstTx = f.indexOf("tx.", tx + 1);
+    const cas = f.indexOf(CAS29);
+    const creates = f.indexOf("tx.marketingContact.createManyAndReturn({");
+    return tx >= 0 && firstTx === f.indexOf("tx.contactImport.updateMany({", tx) && cas > firstTx && creates > cas
+      && f.includes("if (advanced.count !== 1) {") && before29(f, CAS29, 'return { kind: "moved" as const')
+      && f.includes("skipDuplicates: true, select: { msisdn: true },") && f.includes("if (born.length !== creates.length) {")
+      && f.includes("if (refused.length > 0) throw new ContactImportBatchConflict(")
+      && f.includes('if (err instanceof ContactImportBatchConflict) return { kind: "conflict", ordinals: err.ordinals };')
+      && f.includes("timeout: CONTACT_IMPORT_COMMIT_TX_TIMEOUT_MS, maxWait: 5_000") && !f.includes("Promise.all") && !/advisory/i.test(f);
+  };
+  ok("29.cas.prisma · ⭐ X3 · commitBatch is ONE interactive transaction, its timeout and maxWait set, whose FIRST statement is the cursor's compare-and-set — updateMany where { id, status COMMITTING, committedThrough: b.fromCursor } — answered moved unless it counted 1; the creates come after it (ONE createManyAndReturn, skip duplicates, fewer back than asked a refusal); every refusal THROWS inside, so the step rolls back whole and answers conflict; no Promise.all and no advisory lock",
+    casPri29(pri29.commit) && /const CONTACT_IMPORT_COMMIT_TX_TIMEOUT_MS = [0-9_]+;/.test(dalSrc), `${pri29.commit.length} chars`);
+  const CURSOR29 = 'if (!batchRun || batchRun.status !== "COMMITTING" || batchRun.committedThrough !== b.fromCursor) {';
+  const CONFLICT29 = 'if (conflicts.length > 0) return { kind: "conflict", ordinals: [...new Set(conflicts)].sort((x, y) => x - y) };';
+  const casMem29 = (b: string): boolean => {
+    const f = flat29(b);
+    const cursor = f.indexOf(CURSOR29);
+    const conflict = f.indexOf(CONFLICT29);
+    return cursor >= 0 && conflict > cursor && f.indexOf(".set(") > conflict && before29(f, CURSOR29, 'return { kind: "moved", run: batchRun ?? null };')
+      && f.includes("store.contactsByMsisdn.has(c.row.msisdn)");
+  };
+  ok("29.cas.memory · ⭐ the memory commitBatch asks the cursor (COMMITTING, committedThrough exactly b.fromCursor) and checks every create and every guarded update BEFORE its first write — a moved run or a conflict writes nothing",
+    casMem29(mem29.commit), `${mem29.commit.length} chars`);
+
+  // ── 29.guard · the conditional update, null-safe ──
+  const GUARD_PRI29 = "where: { id: u.contactId, updatedAt: new Date(u.guard), OR: [{ sourceRef: null }, { sourceRef: { not: ERASURE_EVIDENCE } }] },";
+  const guardPri29 = (b: string): boolean => {
+    const f = flat29(b);
+    return f.includes(GUARD_PRI29) && f.includes("if (guarded.count !== 1) refused.push(u.ordinal);");
+  };
+  const GUARD_MEM29 = "if (!held || Date.parse(held.updatedAt) !== Date.parse(u.guard) || held.sourceRef === ERASURE_EVIDENCE) conflicts.push(u.ordinal);";
+  ok("29.guard · ⛔ an update is conditional in both twins on the row's updatedAt AND on it not being the erased tombstone — Prisma's where carries the NULL arm ({ sourceRef: null } beside { not: ERASURE_EVIDENCE }: a bare not is NULL for nearly the whole book); memory compares the instants and refuses the mark",
+    guardPri29(pri29.commit) && flat29(mem29.commit).includes(GUARD_MEM29));
+
+  // ── 29.blank · S15-8 ──
+  const BLANK_PRI29 = 'data: { outcome: g.outcome as never, outcomeReason: g.reason, rawPhone: "", displayName: null, email: null, notes: null, tags: [] },';
+  const blankPri29 = (b: string): boolean => {
+    const f = flat29(b);
+    return f.includes(BLANK_PRI29) && f.includes("where: { importId: b.importId, ordinal: { in: g.ordinals }, outcome: null },")
+      && before29(f, 'data: { problems: [{ field: "phone", sentence }]', BLANK_PRI29);
+  };
+  const BLANK_MEM29 = '...row, outcome: o.outcome, outcomeReason: o.reason, rawPhone: "", displayName: null, email: null, notes: null, tags: [],';
+  const blankMem29 = (b: string): boolean => {
+    const f = flat29(b);
+    return f.includes(BLANK_MEM29) && f.includes("if (!row || row.outcome !== null) continue;")
+      && before29(f, 'problems: [{ field: "phone", sentence: s.sentence }]', BLANK_MEM29);
+  };
+  ok("29.blank · ⭐ S15-8 · the settled rows are blanked in the SAME write as their outcome in both twins — raw cell, name, email, notes and tags emptied, only rows not yet settled — and a failure's sentence is written into problems BEFORE",
+    blankPri29(pri29.commit) && blankMem29(mem29.commit));
+
+  // ── 29.members · 29.done ──
+  const MEMBERS_READ29 = "where: { id: { in: members }, OR: [{ sourceRef: null }, { sourceRef: { not: ERASURE_EVIDENCE } }] },";
+  const membersPri29 = (b: string): boolean => {
+    const f = flat29(b);
+    return f.includes(MEMBERS_READ29) && before29(f, MEMBERS_READ29, "tx.contactListMember.createMany({")
+      && f.includes("addedBy: b.by })), skipDuplicates: true, });");
+  };
+  const membersMem29 = (b: string): boolean => {
+    const f = flat29(b);
+    return f.includes("if (!member || member.sourceRef === ERASURE_EVIDENCE) continue;")
+      && f.includes("if (!store.contactListMembers.has(k)) store.contactListMembers.set(k, { listId: b.listId, contactId, addedAt: b.at, addedBy: b.by });");
+  };
+  ok("29.members · the list memberships in both twins: only contacts that exist and are not the erased tombstone, never twice (Prisma reads the live ids null-safely, then createMany skipDuplicates; memory skips a held key) — a member keeps its first addedAt",
+    membersPri29(pri29.commit) && membersMem29(mem29.commit));
+  const DONE_PRI29 = 'where: { id: b.importId, status: "COMMITTING", stagedThrough: b.toCursor }, data: { status: "DONE", finishedAt: new Date(b.at), updatedAt: new Date(b.at) },';
+  const doneMem29 = (b: string): boolean => {
+    const f = flat29(b);
+    return f.includes("const finished = b.toCursor === batchRun.stagedThrough;") && f.includes('status: finished ? "DONE" : batchRun.status,')
+      && f.includes("finishedAt: finished ? b.at : batchRun.finishedAt,");
+  };
+  ok("29.done · DONE in the same write when the cursor reaches stagedThrough, in both twins — Prisma a conditional updateMany where stagedThrough equals b.toCursor; memory b.toCursor === stagedThrough",
+    flat29(pri29.commit).includes(DONE_PRI29) && doneMem29(mem29.commit));
+
+  // ── 29.order · R3 · ONE lock order for every import (the review round, 2026-10-09) ──
+  const ORDER_CREATES29 = "const creates = [...b.creates].sort((x, y) => (x.row.msisdn < y.row.msisdn ? -1 : x.row.msisdn > y.row.msisdn ? 1 : 0));";
+  const ORDER_UPDATES29 = "const updates = [...b.updates].sort((x, y) => (x.contactId < y.contactId ? -1 : x.contactId > y.contactId ? 1 : 0));";
+  const ORDER_MEMBERS29 = "const members = [...b.members].sort();";
+  const BATCH_ORDER_LOOP29 = /for [(]const [a-z]+ of b[.](creates|updates|members)[)]/;
+  const orderPri29 = (b: string): boolean => {
+    const f = flat29(b);
+    return [ORDER_CREATES29, ORDER_UPDATES29, ORDER_MEMBERS29].every((n) => f.includes(n)) && f.includes("data: creates.map(({ row }) => ({")
+      && f.includes("for (const u of updates) {") && f.includes('orderBy: { id: "asc" },') && !f.includes("b.creates.map(") && !BATCH_ORDER_LOOP29.test(f);
+  };
+  const orderMem29 = (b: string): boolean => {
+    const f = flat29(b);
+    return [ORDER_CREATES29, ORDER_UPDATES29, ORDER_MEMBERS29].every((n) => f.includes(n)) && f.includes("for (const c of creates) {")
+      && f.includes("for (const u of updates) {") && f.includes("for (const contactId of members) {") && !BATCH_ORDER_LOOP29.test(f);
+  };
+  ok("29.order · ⭐ R3 · ONE lock order in both twins — the creates sorted by number, the updates and the memberships by contact id (Prisma reads the live members ordered by id too), and every write loops over the sorted lists, never the batch's own order: two imports at once take their row locks in the same order and cannot deadlock",
+    orderPri29(pri29.commit) && orderMem29(mem29.commit));
+
+  // ── 29.gone · R9 · a staged row erasure deleted since the step read it is a conflict, never a create ──
+  const GONE_PRI29 = "if (settledRows.count !== g.ordinals.length) {";
+  const gonePri29 = (b: string): boolean => {
+    const f = flat29(b);
+    return f.includes("const settledRows = await tx.contactImportRow.updateMany({") && f.includes(GONE_PRI29) && before29(f, BLANK_PRI29, GONE_PRI29)
+      && before29(f, GONE_PRI29, "throw new ContactImportBatchConflict((gone.length > 0 ? gone : g.ordinals).sort((x, y) => x - y));");
+  };
+  const GONE_MEM29 = "if (!row || row.outcome !== null) conflicts.push(o.ordinal);";
+  const goneMem29 = (b: string): boolean => {
+    const f = flat29(b);
+    return f.includes(GONE_MEM29) && before29(f, GONE_MEM29, CONFLICT29);
+  };
+  ok("29.gone · ⛔ R9 · every row a step settles must still be there, unsettled — Prisma counts each outcome group's update and THROWS a conflict naming the rows gone when it falls short (the step rolls back whole); memory checks every outcome's row before its first write — so a number erasure took away between the step's read and its write is never created",
+    gonePri29(pri29.commit) && goneMem29(mem29.commit));
+
+  // ── 29.bounds · R17 · the cursor moves forward, within the staged rows, in both twins ──
+  const BOUNDS_PRI29 = "if (bounds === null || b.toCursor < b.fromCursor || b.toCursor > bounds.stagedThrough) {";
+  const BOUNDS_MEM29 = 'if (b.toCursor < b.fromCursor || b.toCursor > batchRun.stagedThrough) throw new Error("commitBatch: the cursor must move forward, within the staged rows");';
+  const boundsPri29 = (b: string): boolean => {
+    const f = flat29(b);
+    return f.includes(BOUNDS_PRI29) && before29(f, CAS29, BOUNDS_PRI29) && before29(f, BOUNDS_PRI29, "tx.marketingContact.createManyAndReturn({")
+      && before29(f, BOUNDS_PRI29, 'throw new Error("commitBatch: the cursor must move forward, within the staged rows");');
+  };
+  const boundsMem29 = (b: string): boolean => {
+    const f = flat29(b);
+    return f.includes(BOUNDS_MEM29) && before29(f, CURSOR29, BOUNDS_MEM29) && f.indexOf(BOUNDS_MEM29) < f.indexOf(".set(");
+  };
+  ok("29.bounds · ⛔ R17 · a step whose cursor would move backwards or past the staged rows is refused by a throw in BOTH twins, nothing written — Prisma after its compare-and-set and before any create (the throw rolls the cursor back), memory after its cursor check and before its first write",
+    boundsPri29(pri29.commit) && boundsMem29(mem29.commit));
+
+  // ── 29.open · S15-12 · an ADMIN's read of other officers' unfinished runs ──
+  const OPEN_STATUSES29 = ["STAGING", "STAGED", "COMMITTING", "PAUSED"];
+  const OPEN_TAKE29 = "take: Math.max(0, Math.min(q.limit, CONTACT_IMPORT_OPEN_RUNS_MAX)),";
+  const OPEN_NOT_MINE29 = "r.createdBy !== q.excludeCreatedBy && ";
+  const openPri29 = (b: string): boolean => {
+    const f = flat29(b);
+    return f.includes('where: { createdBy: { not: q.excludeCreatedBy }, status: { in: ["STAGING", "STAGED", "COMMITTING", "PAUSED"] } },')
+      && f.includes('orderBy: [{ createdAt: "desc" }, { id: "desc" }],') && f.includes(OPEN_TAKE29) && f.includes("rows.map(toStoredContactImport)");
+  };
+  const openMem29 = (b: string): boolean => {
+    const f = flat29(b);
+    return f.includes(OPEN_NOT_MINE29) && OPEN_STATUSES29.every((s) => f.includes(`r.status === "${s}"`))
+      && f.includes("Date.parse(b.createdAt) - Date.parse(a.createdAt)") && f.includes(".slice(0, Math.max(0, Math.min(q.limit, CONTACT_IMPORT_OPEN_RUNS_MAX)))");
+  };
+  ok("29.open · S15-12 · an ADMIN's read of other officers' unfinished runs is the same in both twins — the four OPEN statuses, every creator but the viewer, NEWEST first, at most CONTACT_IMPORT_OPEN_RUNS_MAX (20 in both)",
+    openPri29(pri29.open) && openMem29(mem29.open)
+      && dalSrc.includes("const CONTACT_IMPORT_OPEN_RUNS_MAX = 20;") && storeSrc.includes("export const CONTACT_IMPORT_OPEN_RUNS_MAX = 20;"),
+    `${pri29.open.length}/${mem29.open.length} chars`);
+
+  // ── 29.schema · the column, the relation, the index, the migration (read from ROOT) ──
+  const model29 = schemaModel(prismaSchemaSrc, "ContactImport");
+  const collapsed29 = lf29(model29).split(NL29).map((l) => l.trim().split(" ").filter(Boolean).join(" "));
+  const MIG_DIR29 = join(ROOT, "prisma", "migrations");
+  const migDirs29 = readdirSync(MIG_DIR29).filter((d) => d.endsWith("_contact_import_target_list"));
+  const migSql29 = migDirs29.length === 1 ? lf29(readFileSync(join(MIG_DIR29, migDirs29[0], "migration.sql"), "utf8")) : "";
+  const statements29 = (sql: string): string[] => sql.split(NL29).filter((l) => !l.trim().startsWith("--")).join(NL29)
+    .split(";").map((s) => s.split(NL29).map((l) => l.trim()).filter(Boolean).join(" ").split(" ").filter(Boolean).join(" ")).filter((s) => s.length > 0);
+  const WANT_SQL29 = [
+    'ALTER TABLE "ContactImport" ADD COLUMN "targetListId" TEXT',
+    'CREATE INDEX "ContactImport_targetListId_idx" ON "ContactImport"("targetListId")',
+    'ALTER TABLE "ContactImport" ADD CONSTRAINT "ContactImport_targetListId_fkey" FOREIGN KEY ("targetListId") REFERENCES "ContactList"("id") ON DELETE SET NULL ON UPDATE CASCADE',
+  ];
+  const schemaOk29 = (model: string, sql: string, folders: number): boolean => {
+    const lines = lf29(model).split(NL29).map((l) => l.trim().split(" ").filter(Boolean).join(" "));
+    return lines.includes("targetListId String?")
+      && lines.includes("targetList ContactList? @relation(fields: [targetListId], references: [id], onDelete: SetNull)")
+      && lines.includes("@@index([targetListId])") && folders === 1 && JSON.stringify(statements29(sql)) === JSON.stringify(WANT_SQL29);
+  };
+  ok("29.schema · ContactImport.targetListId is a nullable String with its relation to ContactList ON DELETE SET NULL and its own index, ContactList carries the back-relation, both twins map it (read and create), and exactly one migration folder ends _contact_import_target_list holding exactly its three statements",
+    schemaOk29(model29, migSql29, migDirs29.length) && schemaModel(prismaSchemaSrc, "ContactList").includes("ContactImport[]")
+      && storedKeys("StoredContactImport").includes("targetListId") && readsFrom(region(dalSrc, "function toStoredContactImport("), "targetListId", "r")
+      && writesKey(delegateMethod("contactImport", "create"), "targetListId"),
+    `folders ${migDirs29.length} · statements ${JSON.stringify(statements29(migSql29))} · model lines ${collapsed29.filter((l) => l.startsWith("targetList")).join(" | ")}`);
+
+  // ── CONTROLS — the REAL bodies, ONE defect planted in each, must FAIL their predicate ──
+  const planted29 = (body: string, from: string, to: string): string => body.split(from).join(to);
+  const controls29: Array<[string, boolean]> = [
+    ["snapshotsAmong without its select", snapPri29(pri29.snap) && !snapPri29(planted29(pri29.snap, SNAP_SELECT29, ""))],
+    ["snapshotsAmong that leaves the tombstone out", !snapPri29(planted29(pri29.snap, "where: { msisdn: { in: keys } },", "where: { msisdn: { in: keys }, OR: [{ sourceRef: null }, { sourceRef: { not: ERASURE_EVIDENCE } }] },"))],
+    ["a memory snapshot that spreads the row", snapMem29(mem29.snap) && !snapMem29(planted29(mem29.snap, "out.push({", "out.push({ ...c,"))],
+    ["firstLinesAmong without the problems filter", firstPri29(pri29.first) && !firstPri29(planted29(pri29.first, ", problems: { equals: [] }", ""))],
+    ["a memory firstLinesAmong over every run", firstMem29(mem29.first) && !firstMem29(planted29(mem29.first, "store.contactImportRows.get(q.importId)", "store.contactImportRows.values()"))],
+    ["failedPage with skip", failedPri29(pri29.failed) && !failedPri29(planted29(pri29.failed, 'orderBy: { line: "asc" },', 'orderBy: { line: "asc" }, skip: q.afterLine,'))],
+    ["keptSplit by findMany", keptPri29(pri29.kept) && !keptPri29(`${pri29.kept} findMany`)],
+    ["a freeze without its STAGED status", freezePri29(pri29.freeze) && !freezePri29(planted29(pri29.freeze, ', status: "STAGED" }', " }"))],
+    ["a memory freeze that writes first", freezeMem29(mem29.freeze) && !freezeMem29(planted29(mem29.freeze, FREEZE_GUARD29, "") + FREEZE_GUARD29)],
+    ["a commit CAS without its cursor", casPri29(pri29.commit) && !casPri29(planted29(pri29.commit, ", committedThrough: b.fromCursor }", " }"))],
+    ["a commit whose creates come first", !casPri29(planted29(pri29.commit, "const advanced = await tx.contactImport.updateMany({", "await tx.marketingContact.createManyAndReturn({ data: [] }); const advanced = await tx.contactImport.updateMany({"))],
+    ["a memory commit that writes before its cursor check", casMem29(mem29.commit) && !casMem29(`store.contactImports.set(b.importId, batchRun); ${planted29(mem29.commit, CURSOR29, "if (false) {")}`)],
+    ["an update without the NULL arm", guardPri29(pri29.commit) && !guardPri29(planted29(pri29.commit, "OR: [{ sourceRef: null }, { sourceRef: { not: ERASURE_EVIDENCE } }] },", "sourceRef: { not: ERASURE_EVIDENCE } },"))],
+    ["blanking that keeps the raw cell", blankPri29(pri29.commit) && !blankPri29(planted29(pri29.commit, 'rawPhone: "", ', "")) && blankMem29(mem29.commit) && !blankMem29(planted29(mem29.commit, 'rawPhone: "", ', ""))],
+    ["members without skipDuplicates", membersPri29(pri29.commit) && !membersPri29(planted29(pri29.commit, "addedBy: b.by })),", "addedBy: b.by })), skipDuplicates: false,"))],
+    ["DONE without its stagedThrough", !flat29(planted29(pri29.commit, ", stagedThrough: b.toCursor }", " }")).includes(DONE_PRI29)],
+    ["a schema whose relation cascades", schemaOk29(model29, migSql29, migDirs29.length) && !schemaOk29(planted29(model29, "onDelete: SetNull", "onDelete: Cascade"), migSql29, 1)],
+    // ── the review round's matchers (2026-10-09) ──
+    ["a snapshot that drops the account link", !snapPri29(planted29(pri29.snap, ", userId: true }", " }"))],
+    ["a freeze that inserts the new list before it wins the run", !freezePri29(planted29(pri29.freeze, "const frozen = await tx.contactImport.updateMany({", "await tx.contactList.create({ data: l0 }); const frozen = await tx.contactImport.updateMany({"))],
+    ["a memory freeze without the foreign key", !freezeMem29(planted29(mem29.freeze, FREEZE_FK29, "} else if (false) {"))],
+    ["a memory freeze without the name's unique index", !freezeMem29(planted29(mem29.freeze, FREEZE_UNIQUE29, "{}"))],
+    ["creates written in the batch's own order", orderPri29(pri29.commit) && !orderPri29(planted29(pri29.commit, ORDER_CREATES29, "const creates = [...b.creates];"))],
+    ["a memory commit looping over the batch's own updates", orderMem29(mem29.commit) && !orderMem29(planted29(mem29.commit, "for (const u of updates) {", "for (const u of b.updates) {"))],
+    ["a settlement that never counts its rows", gonePri29(pri29.commit) && !gonePri29(planted29(pri29.commit, GONE_PRI29, "if (false) {"))],
+    ["a memory commit that settles whatever rows are left", goneMem29(mem29.commit) && !goneMem29(planted29(mem29.commit, GONE_MEM29, ""))],
+    ["a Prisma cursor moved past the staged rows", boundsPri29(pri29.commit) && !boundsPri29(planted29(pri29.commit, BOUNDS_PRI29, "if (bounds === null) {"))],
+    ["open runs that include the viewer's own", openMem29(mem29.open) && !openMem29(planted29(mem29.open, OPEN_NOT_MINE29, ""))],
+    ["open runs unbounded on Postgres", openPri29(pri29.open) && !openPri29(planted29(pri29.open, OPEN_TAKE29, "take: q.limit,"))],
+  ];
+  const deaf29 = controls29.filter(([, held]) => !held).map(([name]) => name);
+  ok("29.c1 · CONTROL · every §29 matcher can fail: the REAL bodies pass, and ONE defect planted in each — a snapshot without its select, leaving the tombstone out or dropping the account link, a first-line read without the problems filter or over every run, a failures page by skip, a kept split by findMany, a freeze without its status, writing first, inserting its new list before it wins, or without its unique index or foreign key, a commit without its cursor, creating first, out of lock order, settling rows that are gone or moving its cursor past the staged rows, an update without the NULL arm, blanking that keeps the raw cell, members twice, DONE without its bound, open runs holding the viewer's own or unbounded, a relation that cascades — FAILS its predicate",
+    deaf29.length === 0, deaf29.join(" | ") || `${controls29.length} controls held`);
+}
+
+/* ═══ §30 · The standing erasure — messagingConsent.erasureStandsAmong in both twins (C8a, S15 2026-10-09; S15-15) ═══ */
+{
+  // ⭐ WHY THIS SECTION EXISTS. The importer's facts, the commit's re-decision and the Add form ask the ledger ONE
+  // question: does an erasure stand on this number — `erasure-mark.ts`'s ONE rule, the latest of its GIVEN rows and
+  // erasure markers is a marker (a later opt-out tap never lifts it; a GIVEN does). Every behavioural suite asks it of
+  // the MEMORY twin, so a Prisma twin that read the rows in another order (a same-millisecond "marker, then a yes" read
+  // the wrong way round), filtered them by its own idea of a marker, or kept each number's LATEST row only — C8a's
+  // defect #2, back on Postgres alone — would be green in every test and wrong in production. This section holds the two
+  // twins to ONE shape: §25's bound and empty set, the ledger's own order with the id tiebreak, NO status filter in the
+  // query, both answering through the pure module's erasureStandsAmongRows — which must itself ask erasureStandsOn of
+  // each number's own rows. ⚠️ It reads TEXT, as §27–§29 do; the behaviour on Postgres is
+  // `scripts/live/contacts-import-pg-probe.mts` section 7.
+  // ⛔ No backslash anywhere in this section (§27's rule): line breaks are built with String.fromCharCode, every matcher is
+  // an `includes`, an order or a character class.
+  const NL30 = String.fromCharCode(10);
+  const CR30 = String.fromCharCode(13);
+  const flat30 = (s: string) => s.split(CR30).join("").split(NL30).map((l) => l.trim()).filter(Boolean).join(" ");
+  const NEXT_MEMBER30 = new RegExp(NL30 + " {4}[A-Za-z0-9_]+ *:");
+  const memberOf30 = (block: string, name: string): string => {
+    const at = block.indexOf(`${NL30}    ${name}: `);
+    if (at < 0) return "";
+    const next = block.slice(at + 1).search(NEXT_MEMBER30);
+    return next < 0 ? block.slice(at) : block.slice(at, at + 1 + next);
+  };
+  const before30 = (body: string, first: string, then: string): boolean => {
+    const a = body.indexOf(first), b = body.indexOf(then);
+    return a >= 0 && b > a;
+  };
+  const mem30 = memberOf30(region(storeSrc, `${NL30}  messagingConsent: {`), "erasureStandsAmong");
+  const pri30 = memberOf30(region(dalSrc, `${NL30}  messagingConsent: {`), "erasureStandsAmong");
+  const markSrc30 = decomment(readFileSync(join(SRC, "lib/marketing/erasure-mark.ts"), "utf8"));
+
+  // ── 30.0 · both twins, named ──
+  const SIG_MEM30 = "erasureStandsAmong: (q: MessagingKeyBatch): string[] =>";
+  const SIG_PRI30 = "erasureStandsAmong: async (q: MessagingKeyBatch): Promise<string[]> =>";
+  ok("30.0 · both twins implement messagingConsent.erasureStandsAmong, named — a MessagingKeyBatch answered with the numbers on which an erasure stands (string[]) — and §17's member parity holds the namespace equal in both",
+    mem30.includes(SIG_MEM30) && pri30.includes(SIG_PRI30) && mem30.length > 150 && pri30.length > 150, `${mem30.length}/${pri30.length} chars`);
+
+  // ── 30.bound · §25's bound and empty set ──
+  const KEYS30 = 'const keys = bulkKeys(q.identifiers, "messagingConsent.erasureStandsAmong");';
+  const EMPTY30 = "if (keys.length === 0) return [];";
+  const boundOk30 = (m: string, p: string): boolean => {
+    const fm = flat30(m), fp = flat30(p);
+    return before30(fm, KEYS30, EMPTY30) && before30(fp, KEYS30, EMPTY30) && before30(fp, EMPTY30, "pc()");
+  };
+  ok("30.bound · ⛔ §25's shape in both twins — the keys through bulkKeys (deduplicated, REFUSED above BULK_KEYED_READ_MAX, never cut off), an empty set answered with nothing, and on Postgres before any query",
+    boundOk30(mem30, pri30));
+
+  // ── 30.order · the asked numbers' WHOLE ledger, in the ledger's own order ──
+  const PRI_WHERE30 = "where: { channel: q.channel, category: q.category, identifier: { in: keys } },";
+  const PRI_SELECT30 = "select: { identifier: true, status: true, evidence: true },";
+  const PRI_ORDER30 = 'orderBy: [{ createdAt: "desc" }, { id: "desc" }],';
+  const MEM_FILTER30 = ".filter((r) => r.channel === q.channel && r.category === q.category && want.has(r.identifier));";
+  const MEM_ORDER30 = "rows.sort((a, b) => b.createdAt.localeCompare(a.createdAt) || b.id.localeCompare(a.id));";
+  const orderOk30 = (m: string, p: string): boolean => {
+    const fm = flat30(m), fp = flat30(p);
+    const whereToSelect = fp.slice(Math.max(0, fp.indexOf("where:")), Math.max(0, fp.indexOf("select:")));
+    return fp.includes(PRI_WHERE30) && fp.includes(PRI_SELECT30) && fp.includes(PRI_ORDER30) && (fp.match(/pc[(][)]/g) ?? []).length === 1
+      && !/status|evidence|OR:/.test(whereToSelect) && fm.includes(MEM_FILTER30) && fm.includes(MEM_ORDER30);
+  };
+  ok("30.order · ⭐ ONE read of the asked numbers' WHOLE ledger in the ledger's own order — Prisma ONE findMany where channel, category and the key set, with NO status or evidence filter (the rule alone says which rows decide: no second definition of a marker in SQL), selecting the key, the status and the evidence, ordered createdAt DESC then id DESC; memory filtered to the same set and sorted createdAt DESC then id DESC — the tie broken on the id, as latestFor breaks it",
+    orderOk30(mem30, pri30), `${flat30(pri30).slice(0, 160)} | ${flat30(mem30).slice(0, 160)}`);
+
+  // ── 30.rule · both twins answer through the pure module, and the module asks the ONE rule per number ──
+  const ANSWER30 = "return erasureStandsAmongRows(keys, rows);";
+  const IMPORT30 = 'import { erasureStandsAmongRows } from "@/lib/marketing/erasure-mark";';
+  const ruleOk30 = (m: string, p: string, mark: string): boolean => {
+    const amongRows = flat30(region(mark, "export function erasureStandsAmongRows("));
+    const standsOn = flat30(region(mark, "export function erasureStandsOn("));
+    return flat30(m).includes(ANSWER30) && flat30(p).includes(ANSWER30) && storeSrc.includes(IMPORT30) && dalSrc.includes(IMPORT30)
+      && amongRows.includes(".filter((m) => erasureStandsOn(byNumber.get(m) ?? [])).sort();")
+      && before30(standsOn, 'if (row.status === "GIVEN") return false;', "if (isErasureMarker(row)) return true;")
+      && standsOn.includes("return false; }") && !/latest/i.test(m + p);
+  };
+  ok("30.rule · ⭐ ONE RULE — both twins answer through erasure-mark's erasureStandsAmongRows (imported on its own line in each), which asks erasureStandsOn of each number's own rows and hands the numbers back sorted; erasureStandsOn lets a GIVEN lift the erasure, a marker set it and every other row pass; and neither twin keeps a number's latest row (C8a's defect #2)",
+    ruleOk30(mem30, pri30, markSrc30), `${markSrc30.length} chars of the rule module`);
+
+  // ── CONTROLS — the REAL bodies, ONE defect planted in each, must FAIL their predicate ──
+  const planted30 = (body: string, from: string, to: string): string => body.split(from).join(to);
+  const controls30: Array<[string, boolean]> = [
+    ["a Prisma read without the id tiebreak", orderOk30(mem30, pri30) && !orderOk30(mem30, planted30(pri30, PRI_ORDER30, 'orderBy: { createdAt: "desc" },'))],
+    ["a memory read without the id tiebreak", !orderOk30(planted30(mem30, " || b.id.localeCompare(a.id)", ""), pri30)],
+    ["a Prisma read that filters the marker by itself", !orderOk30(mem30, planted30(pri30, "identifier: { in: keys } },", 'identifier: { in: keys }, OR: [{ status: "GIVEN" }, { status: "WITHDRAWN", evidence: ERASURE_EVIDENCE }] },'))],
+    ["a twin that keeps each number's latest row", ruleOk30(mem30, pri30, markSrc30) && !ruleOk30(planted30(mem30, ANSWER30, "const latest = new Map(); return [...latest.keys()];"), pri30, markSrc30)],
+    ["a module rule that reads the latest row alone", !ruleOk30(mem30, pri30, planted30(markSrc30, 'if (row.status === "GIVEN") return false;', "return isErasureMarker(row);"))],
+    ["a Prisma query on an empty set", boundOk30(mem30, pri30) && !boundOk30(mem30, planted30(pri30, EMPTY30, ""))],
+  ];
+  const deaf30 = controls30.filter(([, held]) => !held).map(([name]) => name);
+  ok("30.c1 · CONTROL · every §30 matcher can fail: the REAL bodies pass, and ONE defect planted in each — either twin's order without the id tiebreak, a Prisma read that filters the marker by itself, a twin that keeps each number's latest row, a rule that reads the latest row alone, a query on an empty set — FAILS its predicate",
+    deaf30.length === 0, deaf30.join(" | ") || `${controls30.length} controls held`);
+}
+
 console.log(`\ndal-parity: ${pass} passed, ${fail} failed`);
 if (fail > 0) process.exit(1);

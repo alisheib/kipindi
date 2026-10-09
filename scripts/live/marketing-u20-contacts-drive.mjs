@@ -344,8 +344,11 @@ for (const vp of VIEWPORTS) {
   // U21 · an empty book has nothing to filter: no rail, exactly as there is no search box.
   ok(`${vp.name} · U21 EMPTY · no filter rail on an empty book`, (await page.locator(RAIL).count()) === 0);
   // U22 · the empty row tells the truth: one contact can be added by hand, and it names the button that does it.
-  ok(`${vp.name} · U22 EMPTY · the empty row names "Add contact" and offers no import`,
-    /Use Add contact/.test(text) && /importing a file is not live yet/.test(text) && (await page.locator('[data-block="contacts-add"]').count()) === 1, text.slice(0, 200));
+  // S15 · the importer is live: the empty row names both page-head buttons, and both are on screen.
+  ok(`${vp.name} · U22 EMPTY · the empty row names "Import contacts" and "Add contact"`,
+    /Use Import contacts/.test(text) && /Add contact/.test(text) && !/not live/.test(text)
+      && (await page.locator('[data-block="contacts-add"]').count()) === 1 && (await page.locator('[data-block="contacts-import"]').count()) === 1,
+    text.slice(0, 200));
   // U34a · nothing to export: an empty book has no export control (the capture below shows it), and its head's height is
   // RECORDED — at 360 it is one row shorter than the ghost, which reserves the export box (loading.tsx says why).
   ok(`${vp.name} · U34a EMPTY · no export control on an empty book`, (await page.locator('[data-block="contacts-export"]').count()) === 0);
@@ -1175,8 +1178,9 @@ for (const [vi, vp] of VIEWPORTS.entries()) {
     JSON.stringify(none.slice(0, 2)));
   ok(`${vp.name} · U23 NONE · no "Select all … matching" and no Clear before a tick, and the bar says why consent can't be recorded here`,
     (await page.locator(`${BAR} [data-bulk-matching]`).count()) === 0 && (await page.locator(`${BAR} [data-bulk-clear]`).count()) === 0
-      && /^Consent can.t be recorded here: a lawful record needs a basis and an 18\+ attestation/.test(await textOf(page, `${BAR} [data-bulk-consent-note]`)));
-  const names = (await page.locator("[data-contact-row] td:nth-child(2)").allInnerTexts()).map((t) => t.replace(/\s+/g, " ").trim());
+      && /^Consent isn.t recorded in bulk\. A contact who isn.t a player is reached through a list/.test(await textOf(page, `${BAR} [data-bulk-consent-note]`)));
+  // C2 · the NAME itself (`data-contact-name`) — below 640px the cell also carries the masked number under it.
+  const names = (await page.locator("[data-contact-row] td:nth-child(2) [data-contact-name]").allInnerTexts()).map((t) => t.replace(/\s+/g, " ").trim());
   const boxes = await rowBoxes(page);
   ok(`${vp.name} · U23 NONE · every row's box is named "Select <its name>" — a nameless row by its MASKED number, never a number — none ticked; the header box names the page`,
     boxes.length === 20 && names.length === 20

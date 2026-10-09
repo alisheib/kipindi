@@ -103,7 +103,16 @@ const REGISTRY: readonly Registered[] = [
   { file: "contacts-import/csv.mts", owner: "U25", covers: "src/lib/contacts/import-parse.ts — the CSV reader" },
   { file: "contacts-import/xlsx.mts", owner: "U27b", covers: "src/lib/server/contacts/{import-xlsx,import-xlsx-run}.ts — the XLSX reader and its officer wrapper" },
   { file: "contacts-import/field-rules.mts", owner: "vb5", covers: "src/lib/contacts/contact-fields.ts — the shared field rules: phone runs, the email rule, the form's problems, the filter's tag reader" },
-  // U32  · contacts-import/commit.mts, contacts-import/preflight.mts
+  // S15 (U30/U31-B/U32 as built) · the check (the pre-flight the decisions file called `preflight.mts`) and the commit,
+  // both driven on the memory twin through `scripts/lib/contacts-import-world.mts`.
+  { file: "contacts-import/check.mts", owner: "S15", covers: "src/lib/server/contacts/import-check.ts — the check's five boxes, the labels, the changes pages, the facts loader" },
+  { file: "contacts-import/commit.mts", owner: "S15", covers: "src/lib/server/contacts/import-commit.ts + import-actions.ts — the start, the commit step, pause · resume · cancel, the failures, the result" },
+  { file: "contacts-import/flow.mts", owner: "S15", covers: "src/lib/contacts/{import-read,import-loop}.ts — the browser's reader and the one loop driver" },
+  // S15 · C3b (2026-10-09) · G3 — the ONE phone-cell rule and its server callers (staging's key, the check's sentence, the commit's raw text).
+  { file: "contacts-import/phone-cell.mts", owner: "S15", covers: "src/lib/contacts/phone-cell.ts — the first Tanzanian mobile of a several-number cell, its sentence, and its three server callers" },
+  // S15 · C3b-fix (2026-10-09) · D6 and D7 — the two pure rules every workbook and CSV reader shares (the server's and C3c's).
+  { file: "contacts-import/sheet-choice.mts", owner: "S15", covers: "src/lib/contacts/sheet-choice.ts — the sheet a workbook is read from, chosen by the mobile numbers its first rows hold, and its note" },
+  { file: "contacts-import/title-rows.mts", owner: "S15", covers: "src/lib/contacts/title-rows.ts — a title above the column names leaves the data, said in a note" },
 ];
 
 /* ══ THE HARNESS ════════════════════════════════════════════════════════════════════════════════ */

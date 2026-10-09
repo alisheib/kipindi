@@ -230,7 +230,7 @@ const L = {
   d3: "D3 · discard: CANCELLED with finishedAt, its unsettled rows deleted and a settled row kept — and a run that has started committing is refused committing, its rows untouched",
   p1: "P1 · ⭐ ERASURE deletes the staged rows holding every number the person is known by — the account's and a linked row's, in every officer's run — keeps the strangers' rows, and reports the count",
   p2: "P2 · the ACCESS export carries the person's staged rows staged since the account's creation — number, name, email, tags, outcome, when — and no notes, no file name, no officer, no row key, nor a previous holder's row",
-  p3: "P3 · ⭐ THE SWEEP (X29): idle 15 days, a STAGING and a STAGED run are CANCELLED with their unsettled rows deleted; a PAUSED and a COMMITTING run idle as long are UNTOUCHED; a fresh run is untouched; a run finished 91 days ago is purged with its rows, one finished 89 days ago kept; a second pass does nothing",
+  p3: "P3 · ⭐ THE SWEEP (X29 · S15-12): idle 15 days, a STAGING and a STAGED run are CANCELLED with their unsettled rows deleted; a PAUSED and a COMMITTING run idle as long are CANCELLED too (the second rule) — the row a commit already settled KEPT, the unsettled ones deleted — and a PAUSED run idle 13 days is untouched; a fresh run is untouched; a run finished 91 days ago is purged with its rows, one finished 89 days ago kept; each cancel one expired row naming its period; a second pass does nothing",
   l1: "L1 · the limits: 2,000 rows and 200 KiB a batch, 5.12 times under Next's 1 MB action body; 200,000 records a run — xlsx-limits' constant itself (X28); 2,000 rows × the 12 columns staging writes, under Postgres' 65,535 bind parameters",
   l2: "L2 · packStageBatches over 150,000 synthetic records: every batch within both caps and filled greedily, the order kept, the concatenation the input itself — and stageBatchBytes measures exactly the UTF-8 that JSON.stringify writes",
   l3: "L3 · stageRowsOf interleaves the rows and the unreadable records by line and skips the header row; only the mapped cells cross the wire; a row too large for any batch is sent as unreadable — never cut",
@@ -653,6 +653,12 @@ async function runAssertions(impl: Impl, tag: string): Promise<void> {
     await seed("run_staged_idle", ago(15), 2, []);
     await seed("run_paused_idle", ago(15), 2, ["COMMITTING", "PAUSED"]);
     await seed("run_committing_idle", ago(15), 2, ["COMMITTING"]);
+    // S15-12 · the commit above had settled its first row before it was left: that row is the record of a contact written.
+    await db.contactImport.commitBatch({
+      importId: "run_committing_idle", fromCursor: 0, toCursor: 1, at: ago(15), by: OFFICER, creates: [], updates: [],
+      outcomes: [{ ordinal: 1, outcome: "keep", reason: "chosen_keep" }], sentences: [], listId: null, members: [],
+    });
+    await seed("run_paused_recent", ago(13), 2, ["COMMITTING", "PAUSED"]);
     await seed("run_fresh", ago(1), 1, []);
     await seed("run_done_old", ago(91), 2, ["COMMITTING", "DONE"]);
     await seed("run_done_recent", ago(89), 2, ["COMMITTING", "DONE"]);
@@ -660,15 +666,18 @@ async function runAssertions(impl: Impl, tag: string): Promise<void> {
     const again = await sweepStaleContactImports(NOW.getTime(), deps);
     const statusOf = async (id: string) => (await db.contactImport.find(id))?.status ?? "GONE";
     const rowsOf = (id: string) => mem().contactImportRows.get(id)?.size ?? -1;
-    const ids = ["run_staging_idle", "run_staged_idle", "run_paused_idle", "run_committing_idle", "run_fresh", "run_done_old", "run_done_recent"];
+    const ids = ["run_staging_idle", "run_staged_idle", "run_paused_idle", "run_committing_idle", "run_paused_recent", "run_fresh", "run_done_old", "run_done_recent"];
     const states: string[] = [];
     for (const id of ids) states.push(`${await statusOf(id)}:${rowsOf(id)}`);
-    const want = ["CANCELLED:0", "CANCELLED:0", "PAUSED:2", "COMMITTING:2", "STAGING:1", "GONE:-1", "DONE:2"];
+    const want = ["CANCELLED:0", "CANCELLED:0", "CANCELLED:0", "CANCELLED:1", "PAUSED:2", "STAGING:1", "GONE:-1", "DONE:2"];
     const expired = captured.filter((x) => x.action === "contacts.import.expired");
-    return [swept.cancelled === 2 && swept.rowsDeleted === 3 && swept.runsPurged === 1 && states.join(",") === want.join(",")
-      && (await db.contactImport.find("run_staged_idle"))?.finishedAt === NOW.toISOString() && expired.length === 2
+    const periods = expired.map((x) => `${(x.payload as Record<string, unknown>).status}:${(x.payload as Record<string, unknown>).idleDays}`).sort();
+    const settledKept = mem().contactImportRows.get("run_committing_idle")?.get(1)?.outcome === "keep";
+    return [swept.cancelled === 4 && swept.rowsDeleted === 6 && swept.runsPurged === 1 && states.join(",") === want.join(",")
+      && (await db.contactImport.find("run_staged_idle"))?.finishedAt === NOW.toISOString() && expired.length === 4 && settledKept
+      && periods.join(",") === "COMMITTING:14,PAUSED:14,STAGED:14,STAGING:14"
       && again.cancelled === 0 && again.rowsDeleted === 0 && again.runsPurged === 0,
-      `${JSON.stringify(swept)} · ${states.join(",")} · again ${JSON.stringify(again)}`];
+      `${JSON.stringify(swept)} · ${states.join(",")} · periods ${periods.join(",")} · settled kept ${settledKept} · again ${JSON.stringify(again)}`];
   });
 
   /* ── THE LIMITS AND THE PACKER ─────────────────────────────────────────────────────────────────────────────── */
@@ -743,7 +752,8 @@ async function runAssertions(impl: Impl, tag: string): Promise<void> {
     const writes = /db\.(?:marketingContact|messagingConsent|suppression|contactList|contactListMember)\.(?:create|update|updateIfUnchanged|add|remove|lift|\w+Where)\s*\(/.exec(svc);
     return [!/^\s*["']use (?:client|server)["']/m.test(svc) && sends.length === 0 && writes === null
       && !/export\s+(?:async\s+)?function\s+\w+Action(?![\w$])/.test(svc) && SRC.serviceRaw.startsWith("/**")
-      && imports.includes("@/lib/server/store") && imports.includes("@/lib/contacts/contact-fields") && imports.includes("@/lib/tz-msisdn"),
+      // C3b · G3 · the key is derived through the ONE phone-cell rule (`firstMobileIn`), which reads tz-msisdn itself.
+      && imports.includes("@/lib/server/store") && imports.includes("@/lib/contacts/contact-fields") && imports.includes("@/lib/contacts/phone-cell"),
       `imports [${imports.join(", ")}]${writes ? ` · writes ${writes[0]}` : ""}`];
   });
 
@@ -911,8 +921,10 @@ if (!PROVE_RED) {
       impl: () => ({ deps: { ...TEST_DEPS, sameFile: () => true } }) },
     { name: "R4 · deleteByMsisdn a no-op — erasure reaches no staged row", expect: L.p1,
       impl: () => REAL, setup: () => swap(db.contactImportRow, "deleteByMsisdn", () => 0) },
-    { name: "R5 · the sweep cancels a PAUSED commit — every idle run that is not finished is swept", expect: L.p3,
-      impl: () => ({ deps: { ...TEST_DEPS, sweepable: ["STAGING", "STAGED", "COMMITTING", "PAUSED"] } }) },
+    { name: "R5 · S15-12's second rule never runs — a commit left paused or writing for 15 days is never ended (the run stuck for good)", expect: L.p3,
+      impl: () => ({ deps: { ...TEST_DEPS, stuck: [] } }) },
+    { name: "R5b · the second rule ignores its period — a commit paused 13 days ago is ended as if idle 14", expect: L.p3,
+      impl: () => ({ deps: { ...TEST_DEPS, stuckDays: 0 } }) },
     /* ── and the rest of the unit, each on its own assertion ── */
     { name: "R6 · the row cap removed — 2,001 rows in one batch", expect: L.t4,
       impl: () => ({ deps: { ...TEST_DEPS, maxBatchRows: Number.MAX_SAFE_INTEGER } }) },

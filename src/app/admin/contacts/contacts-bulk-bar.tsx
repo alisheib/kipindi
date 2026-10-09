@@ -232,7 +232,9 @@ export function ContactsBulkBar({ lists, tags }: { lists: Array<{ id: string; na
     <>
       <div data-block="contacts-bulk-bar" data-bulk-mode={s.mode} data-bulk-count={s.count} className="flex flex-col gap-2 border-b border-border-subtle p-3">
         <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
-          <p className="min-w-0 flex-1 text-body-sm text-text-secondary" aria-live="polite" data-bulk-line>{line}</p>
+          {/* ⭐ C2 · the count line keeps a measure of its own before the buttons may sit beside it — at 360 a bare
+              shrink-to-nothing line broke "20 selected" over two lines beside two buttons; now the buttons wrap below. */}
+          <p className="min-w-0 grow basis-48 text-body-sm text-text-secondary" aria-live="polite" data-bulk-line>{line}</p>
           {(offerMatching || s.count > 0) && (
             <div className="flex shrink-0 flex-wrap items-center gap-2">
               {offerMatching && s.matching !== null && (

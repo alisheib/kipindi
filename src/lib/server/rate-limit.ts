@@ -127,6 +127,18 @@ export const RATE_RULES: Record<string, RateRule> = {
   // what stops a script.
   "contacts.write":  { capacity: 60, refillPerMin: 20 },
   "contacts.lookup": { capacity: 60, refillPerMin: 30 },
+  // S15 · the contacts importer (`admin/contacts/import/import-actions.ts`), each keyed on the OFFICER — the `desk.picker`
+  // convention. ⭐ FOUR BUCKETS, SO A RUN IS NEVER THROTTLED MID-WAY: `contacts.import.step` pays for the batches a file
+  // is staged in and the steps it is committed in — a 200,000-row file is ~100 staging batches and ~400 commit steps, and
+  // every step must be the run's NEXT one (a replay is refused for free), so the bucket is sized far past any real run.
+  // `contacts.import` pays for the acts an officer presses (open, start, pause, resume, cancel, discard); `.check` for
+  // the two expensive reads — the check walks the whole file against the book, an Excel file is parsed on this instance
+  // — so its steady rate is what stops a script holding them; `.read` for the dialog's cheap reads (the run, a changes
+  // page, the lists, a failures page, the result).
+  "contacts.import":       { capacity: 30, refillPerMin: 10 },
+  "contacts.import.step":  { capacity: 600, refillPerMin: 600 },
+  "contacts.import.check": { capacity: 20, refillPerMin: 6 },
+  "contacts.import.read":  { capacity: 300, refillPerMin: 120 },
   // First-party visit counter (/api/pv), per IP. A real visitor sends one beacon per page; 60 burst and 30/min steady
   // covers fast browsing on a shared mobile-carrier IP, and stops one client from inflating the counts.
   "pv.ip":         { capacity: 60, refillPerMin: 30 },

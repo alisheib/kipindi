@@ -2,7 +2,7 @@ import { db } from "@/lib/server/store";
 import type { MessagingKey, StoredMarketingContact } from "@/lib/server/store";
 import { toMsisdn255 } from "@/lib/phone-normalize";
 import { ledgerStamp } from "@/lib/server/marketing/ledger-stamp";
-import { ERASURE_EVIDENCE } from "@/lib/marketing/erasure-mark";
+import { ERASURE_EVIDENCE, isErasureMarker } from "@/lib/marketing/erasure-mark";
 import { mirrorContactCache } from "@/lib/server/marketing/contact-cache";
 
 /**
@@ -18,14 +18,19 @@ import { mirrorContactCache } from "@/lib/server/marketing/contact-cache";
  * ⭐ WHAT IT DOES:
  *   1. THE LEDGER'S LAST WORD — a WITHDRAWN row recorded by the officer. Append-only: the erasure is the person's
  *      last word, not an edit of their history.
- *      · ⭐ THE ERASURE MARKER (U16a, 3a(ii)) — on the account's OWN number WHATEVER came before (a consent, a lapse
- *        or nothing at all), unless its latest row is already WITHDRAWN, so a second pass appends nothing. 🔴 Without
- *        it, an account that never consented and had no book row left no trace once its number was tombstoned: the
- *        gate's contact branch (`consent.ts`, 3) read the number as a stranger's, and a licence basis or a typed
- *        test's attestation could reach the person who asked to be forgotten. It is a LEDGER row, never a stop: a
- *        later GIVEN lifts it, so a recycled number's next holder can still say yes (`test:campaign-privacy` P11).
- *        The importer's ERASED collapse reads it too (`import-decide.ts`: no book row, and the ledger's last word
- *        the erasure's), so an old spreadsheet cannot write the person's name back under that number.
+ *      · ⭐ THE ERASURE MARKER (U16a, 3a(ii)) — on the account's OWN number WHATEVER came before (a consent, an
+ *        opt-out, a lapse or nothing at all), unless its latest row is ALREADY an erasure marker (`isErasureMarker`),
+ *        so a second pass appends nothing. 🔴 Without it, an account that never consented and had no book row left no
+ *        trace once its number was tombstoned: the gate's contact branch (`consent.ts`, 3) read the number as a
+ *        stranger's, and a licence basis or a typed test's attestation could reach the person who asked to be
+ *        forgotten. 🔴 C8a (N2, 2026-10-09): until then the marker was skipped whenever the latest row was ANY
+ *        WITHDRAWN — so a person who had OPTED OUT before asking to be erased carried no erasure mark at all, and the
+ *        importer and the Add form both created them again, name and all. It is a LEDGER row, never a stop: a later
+ *        GIVEN lifts it, so a recycled number's next holder can still say yes (`test:campaign-privacy` P11e) — and
+ *        NOTHING ELSE does: the importer's ERASED collapse and the Add form read the ONE rule (`erasure-mark.ts`,
+ *        `erasureStandsOn`: the latest of the number's GIVEN rows and markers is a marker), so a later opt-out tap on
+ *        an old /s/ link does not lift it, and an old spreadsheet cannot write the person's name back under that
+ *        number (`import-decide.ts` rule 1, `contact-write.ts`).
  *      · on every OTHER number they are known by (each linked book row's; a player who changed number has the old
  *        one in the book) only when its latest row is GIVEN. Nothing is written for a number with no consent to
  *        withdraw: it may be somebody else's by now, and nothing of this person's stands on it.
@@ -83,16 +88,25 @@ import { mirrorContactCache } from "@/lib/server/marketing/contact-cache";
  * ⚠️ Runs only on the FIRST pass of an erasure: a re-run finds the tombstone where the number was and has
  * nothing to key on — except step 4, which keys on the account id and which `erasure.ts` runs again on a re-run
  * through the same helper. Every step is idempotent (`test:erasure` 12.15 runs it twice; `test:campaign-privacy` P7
- * for step 4, P11c for step 1's marker), so a first pass that died part-way is finished by calling it again before the
- * tombstone is written.
+ * for step 4, P11c for step 1's marker, P11f for the marker over an opt-out), so a first pass that died part-way is
+ * finished by calling it again before the tombstone is written.
  * ⚠️ Accounts erased BEFORE this shipped (U18b, 2026-10-01) are not reached — their number is gone from `User`, so
  * neither their ledger nor an unlinked book row found by that number can be. Owned by U16b. (A book row LINKED to such an
  * account cannot exist: the one link writer, `registration-contact.ts`, shipped after U18b — so an erasure re-run has no
  * linked book row left to empty, and none is reached here.)
+ * ⚠️ C8a · PAST ERASURES ARE NOT REPAIRED. An account erased since U18b whose own number's latest row was ALREADY a
+ * WITHDRAWN when it was erased (it had opted out) carries no erasure marker — step 1 skipped it until C8a — and its number
+ * is gone from `User` by design (the tombstone), so this step cannot find it now. Nothing here invents a backfill: such a
+ * number stands erased only where a tombstone holds it (the book row step 2 emptied, which decides alone); with no book
+ * row the importer and the Add form treat it as a number with no erasure. How many such erasures exist was NOT measured
+ * here (a build does not read production) — recorded for the lane, never guessed at.
+ * ⚠️ A RACE THIS STEP DOES NOT CLOSE (C8a's review, recorded for C8): the book rows are read once, BEFORE step 1, and the
+ * staged rows deleted only at step 2b — so an import step whose write lands between the two creates a row step 2 never
+ * sees (the import's R9 covers only a write that lands after 2b). A window of milliseconds; closing it is not this step.
  */
 export type MarketingErasureCounts = {
-  /** WITHDRAWN rows appended to the consent ledger: the account's own number unless it already stood withdrawn (the
-   *  erasure marker), and each other number of theirs whose latest row was GIVEN. */
+  /** WITHDRAWN rows appended to the consent ledger: the account's own number unless its latest row is already the
+   *  erasure marker (the marker itself), and each other number of theirs whose latest row was GIVEN. */
   marketingConsentWithdrawn: number;
   /** Book rows emptied (by link or by number). */
   marketingContactsEmptied: number;
@@ -169,10 +183,11 @@ export async function eraseMarketingFor(input: {
     }
     const latest = await Promise.resolve(db.messagingConsent.latestFor(keyFor(identifier)));
     if (identifier === accountNumber) {
-      // ⭐ THE ERASURE MARKER (U16a, 3a(ii)) — the account's OWN number is marked whatever came before, a consent or
-      // nothing at all, so its tombstoned number never reads as a stranger's at the gate. Only a number that already
-      // stands withdrawn is skipped, which is what makes a second pass append nothing.
-      if (latest?.status === "WITHDRAWN") continue;
+      // ⭐ THE ERASURE MARKER (U16a, 3a(ii)) — the account's OWN number is marked whatever came before, a consent, an
+      // opt-out or nothing at all, so its tombstoned number never reads as a stranger's at the gate and an erasure
+      // stands on it for the importer and the Add form (C8a). ⛔ Only a number whose latest row IS ALREADY the marker is
+      // skipped — that is what makes a second pass append nothing. An opt-out's WITHDRAWN is not the marker (C8a, N2).
+      if (latest !== null && isErasureMarker(latest)) continue;
     } else {
       // Every other number of theirs keeps U18b's rule: only a consent is withdrawn — the number may be somebody
       // else's by now, and nothing of this person's stands on it.

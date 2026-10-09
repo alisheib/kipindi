@@ -200,6 +200,30 @@ const popups = all.filter((f) => IS_POPUP.test(code(f)));
  * (`wholeFigures`, S6 A8f), its detail rows wrap, and the Modal scrolls. `test:sell-grace-truth` §6 measures it from
  * 320 in en, sw and zh. PASSES.
  */
+/*
+ * ── 2026-10-09 · +1: `admin/contacts/import/contacts-import-dialog.tsx`, the contacts importer (S15 · C3–C5) — ONE `Modal`
+ * whose steps are panels in their own files (`import-entrance`, `import-mapping-panel`, `import-check-panel`,
+ * `import-decision-panel`, `import-commit-panel`, `import-adopt-panel`, `import-done-panel`, `import-open-runs`,
+ * `import-parts`). Only the dialog renders the popup primitive, so only it is in the population (the panels' own
+ * confirmations are the kit's `ConfirmModal`), but every panel it renders was opened and judged with it: no `truncate`, no
+ * `line-clamp-*`, no `text-ellipsis`, no `overflow-hidden`, no fixed height on any text.
+ * ⛔ THE REVIEW FOUND THREE WAYS TEXT LEFT ITS BOX, none of them a mechanism this suite bans, and fixed all three in the
+ * same round: (1) the start button carried the import's whole promise ("Import — 0 new · 0 updated · 40 kept as they
+ * are") and the kit button's own one-line rule ran it past BOTH edges at 360 (the lead read it off the drive's
+ * `360-3-check.png`) — the promise is now a sentence of its own above the actions, and the button says "Import 40 rows";
+ * every other label that can outgrow a 360 sheet (a refusal's way on, "Show the contacts this import added", the
+ * columns' Next) sits in `ButtonText`, which lets it wrap inside its button, two lines fitting the control's height;
+ * (2) a list chip held the phrase "Not ready — record its basis on the Lists card" in a one-line span — the span is gone
+ * (the kit Chip wraps and grows, G-7) and the chip reads "Not ready for offers"; (3) the check's five count boxes sat
+ * five to a row from `sm`, where a six-figure count overruns a 105px box — five to a row only from `lg` now, three from
+ * `md`, two below. What stays bounded is bounded WITH a scrolling partner: the changes table (360px), the check's problem
+ * lists (240px) and the failures list (260px) are each a maximum height with `overflow-y-auto` inside `ScrollX`; the
+ * file's own column names and every name and sentence in a table cell wrap (`break-words`). One-line text remains only
+ * on a masked number (`+255••••01`) and a row reference ("Row 12", "Row 9 repeats row 4") in a table that scrolls
+ * sideways — short figures a mid-figure break would damage, the header's own exception. The `h2` carries `pr-8`; every footer is the panels' `ActionsRow` (`flex-col-reverse sm:flex-row`, the
+ * primary on top at 360); `maxWidth` 760 is a MAX; at 360 the Modal is a full-height sheet whose overlay scrolls, so more
+ * lines make it taller and never clip. PASSES — and its live rectangle is the S15 drive's (360 and 1280, every step).
+ */
 const REVIEWED: readonly string[] = [
   "src/app/admin/affiliate/payable-switch.tsx",   // reviewed 2026-09-27
   "src/app/admin/agents/[id]/decision-rail.tsx",   // reviewed 2026-09-21
@@ -213,6 +237,7 @@ const REVIEWED: readonly string[] = [
   "src/app/admin/candidates/candidate-actions.tsx",
   "src/app/admin/contacts/contact-form.tsx",   // reviewed 2026-10-02 (U22, owed since e4f04528)
   "src/app/admin/contacts/contacts-bulk-bar.tsx",   // reviewed 2026-10-02 (U23)
+  "src/app/admin/contacts/import/contacts-import-dialog.tsx",   // reviewed 2026-10-09 (S15 importer, with every panel it renders)
   "src/app/admin/desk/[id]/account-actions.tsx",   // reviewed 2026-09-21
   "src/app/admin/desk/stop-queued.tsx",   // reviewed 2026-09-21
   "src/app/admin/desk/switch-ceremony.tsx",   // reviewed 2026-09-21

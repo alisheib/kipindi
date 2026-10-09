@@ -2,9 +2,11 @@
  * test:contacts-import · section "decide" — U31-A: the ONE import rule (`src/lib/contacts/import-decide.ts`) and the
  * erasure mark it reads (`src/lib/marketing/erasure-mark.ts`, re-exported by `erase.ts`).        (S10, 2026-10-01)
  *
- * ⭐ EXECUTED, NOT READ. Every behaviour runs against the real `decide()`: a matrix of fourteen number states × the
+ * ⭐ EXECUTED, NOT READ. Every behaviour runs against the real `decide()`: a matrix of nineteen number states × the
  * three choices × four override variants (§D0) with a LITERAL expectation per cell, then one assertion per rule —
- * the default, the stop list, the erasure mark, the consent seam (X5), the file-row key, precedence, the two
+ * the default, the stop list, the erasure mark and (C8a, §D3e · §D3f) the ONE rule of whether an erasure STANDS on a
+ * number with no book row — a later opt-out never lifts it, a GIVEN does — the consent seam (X5), the file-row key,
+ * precedence, the two
  * non-KEEP choices, the tags a patch writes (C11), no_change, the tag cap, the first row (OD33 — required across the
  * whole run, and claimed only by a decidable row), the label = request (§D11, against literal counts), the one
  * outcome union (X4), and what may reach a browser (D19, X22). The SOURCE is read only for what only the source can
@@ -28,7 +30,7 @@ import { join } from "node:path";
 import { decomment } from "../lib/decomment.mts";
 import { REPO_ROOT, srcFiles } from "../lib/tracked-files.mts";
 import type { ImportSection, RedPlant, SectionContext } from "../contacts-import.test.mts";
-import { ERASURE_EVIDENCE } from "../../src/lib/marketing/erasure-mark.ts";
+import { ERASURE_EVIDENCE, erasureStandsOn, isErasedNumber, isErasureMarker } from "../../src/lib/marketing/erasure-mark.ts";
 import {
   DECIDE_KEEP_REASONS,
   DEFAULT_IMPORT_CHOICE,
@@ -103,6 +105,10 @@ type Source = { readonly path: string; readonly text: string };
 export type DecideImpl = {
   readonly defaultChoice: ImportChoice;
   readonly decide: typeof decide;
+  /** C8a · the ONE rule over a number's ledger (`erasure-mark.ts`) — does an erasure stand on it? */
+  readonly erasureStands: typeof erasureStandsOn;
+  /** C8a · the ONE reading of "is this number erased?" — decide() and the Add form both ask it. */
+  readonly isErased: typeof isErasedNumber;
   readonly decideRows: typeof decideRows;
   readonly firstLines: typeof firstLines;
   readonly previewFor: typeof previewFor;
@@ -153,6 +159,8 @@ function real(): DecideImpl {
   cached = {
     defaultChoice: DEFAULT_IMPORT_CHOICE,
     decide,
+    erasureStands: erasureStandsOn,
+    isErased: isErasedNumber,
     decideRows,
     firstLines,
     previewFor,
@@ -201,7 +209,7 @@ function cand(line: number, local: string, patch: Partial<ImportCandidate> = {})
   return { line, msisdn: msisdnOf(local), ...FILE_ROW, ...patch };
 }
 function numberFacts(patch: Partial<NumberFacts> = {}): NumberFacts {
-  return { book: null, suppressed: false, ledgerLatest: null, heldByPlayer: false, ...patch };
+  return { book: null, suppressed: false, ledgerLatest: null, erasureStands: false, heldByPlayer: false, ...patch };
 }
 function facts(patch: Partial<DecideFacts> = {}): DecideFacts {
   return { ...numberFacts(), repeatOf: null, ...patch };
@@ -210,8 +218,20 @@ function facts(patch: Partial<DecideFacts> = {}): DecideFacts {
 const GIVEN: LedgerWord = { status: "GIVEN", evidence: null };
 const WITHDRAWN: LedgerWord = { status: "WITHDRAWN", evidence: null };
 const ERASURE_WORD: LedgerWord = { status: "WITHDRAWN", evidence: ERASURE_EVIDENCE };
+/** C8a · a tap on an old /s/ link's Stop: a WITHDRAWN whose evidence is the token reference (`optout-service.ts`). */
+const OPTOUT: LedgerWord = { status: "WITHDRAWN", evidence: "optout:ab**" };
+/** C8a · a lapse as U16b may record it — a WITHDRAWN that is no person's act; it lifts nothing either. */
+const LAPSE: LedgerWord = { status: "WITHDRAWN", evidence: "retention-lapse" };
 
-/* ── §D0's matrix: one row (line 5), fourteen states, a literal verdict per state and choice ─────── */
+/**
+ * ⭐ C8a · the two ledger facts a number's history gives, NEWEST FIRST — the latest word (X5's seam) and whether an
+ * erasure stands on it, by the module's own rule (a fixture builder: §D3f holds the rule itself to literals).
+ */
+function ledgerFacts(newestFirst: readonly LedgerWord[]): Pick<NumberFacts, "ledgerLatest" | "erasureStands"> {
+  return { ledgerLatest: newestFirst[0] ?? null, erasureStands: erasureStandsOn(newestFirst) };
+}
+
+/* ── §D0's matrix: one row (line 5), nineteen states, a literal verdict per state and choice ─────── */
 
 type Verdict = string;
 const verdictOf = (d: ImportDecision): Verdict => (d.kind === "keep" ? `keep:${d.reason}` : d.kind);
@@ -226,7 +246,10 @@ const STATES: readonly State[] = [
   { name: "absent", facts: facts(), expect: allThree("create") },
   { name: "absent · ledger GIVEN", facts: facts({ ledgerLatest: GIVEN }), expect: allThree("create") },
   { name: "absent · ledger WITHDRAWN", facts: facts({ ledgerLatest: WITHDRAWN }), expect: allThree("create") },
-  { name: "absent · erased (ledger)", facts: facts({ ledgerLatest: ERASURE_WORD }), expect: allThree("keep:erased") },
+  { name: "absent · erased (ledger)", facts: facts(ledgerFacts([ERASURE_WORD])), expect: allThree("keep:erased") },
+  // C8a (S15-15) · an opt-out tap AFTER the marker never lifts the erasure; a GIVEN after it does (the next holder).
+  { name: "absent · erased, then an opt-out", facts: facts(ledgerFacts([OPTOUT, ERASURE_WORD])), expect: allThree("keep:erased") },
+  { name: "absent · erased, then a GIVEN", facts: facts(ledgerFacts([GIVEN, ERASURE_WORD])), expect: allThree("create") },
   { name: "absent · on the stop list", facts: facts({ suppressed: true }), expect: allThree("create") },
   { name: "absent · a player's number", facts: facts({ heldByPlayer: true }), expect: allThree("create") },
   { name: "absent · repeat of line 2", facts: facts({ repeatOf: 2 }), expect: allThree("keep:same_run") },
@@ -237,6 +260,18 @@ const STATES: readonly State[] = [
     expect: { KEEP: "keep:chosen_keep", TAKE_FILE: "update", FILL_BLANKS: "update" },
   },
   { name: "in book · erased", facts: facts({ book: bookRow("mc_erased", ERASED) }), expect: allThree("keep:erased") },
+  // C8a · a book row decides ALONE: the tombstone stays erased after a GIVEN, and a row the erasure did not empty is an
+  // ordinary row while an erasure stands on its number.
+  {
+    name: "in book · erased, then a GIVEN",
+    facts: facts({ book: bookRow("mc_erased_given", ERASED), ...ledgerFacts([GIVEN, ERASURE_WORD]) }),
+    expect: allThree("keep:erased"),
+  },
+  {
+    name: "in book · an ordinary row, an erasure standing",
+    facts: facts({ book: bookRow("mc_plain_marked"), ...ledgerFacts([OPTOUT, ERASURE_WORD]) }),
+    expect: { KEEP: "keep:chosen_keep", TAKE_FILE: "update", FILL_BLANKS: "keep:no_change" },
+  },
   { name: "in book · on the stop list", facts: facts({ book: bookRow("mc_stop"), suppressed: true }), expect: allThree("keep:suppressed") },
   {
     name: "in book · created this run",
@@ -249,10 +284,12 @@ const STATES: readonly State[] = [
     expect: { KEEP: "keep:chosen_keep", TAKE_FILE: "update", FILL_BLANKS: "keep:no_change" },
   },
   { name: "in book · repeat of line 2", facts: facts({ book: bookRow("mc_repeat"), repeatOf: 2 }), expect: allThree("keep:same_run") },
+  // S15-11 (2026-10-09) · a row linked to an account is never changed by a file, under any choice or override.
+  { name: "in book · linked to an account", facts: facts({ book: bookRow("mc_account", { userId: "usr_d_player" }) }), expect: allThree("keep:account") },
 ];
 const OVERRIDE_VARIANTS: readonly (ImportChoice | null)[] = [null, "KEEP", "TAKE_FILE", "FILL_BLANKS"];
-/** 14 states × 3 choices × 4 override variants — typed, never computed, so a shrinking matrix is seen. */
-const MATRIX_CELLS = 168;
+/** 19 states × 3 choices × 4 override variants — typed, never computed, so a shrinking matrix is seen. */
+const MATRIX_CELLS = 228;
 
 function state(name: string): State {
   const s = STATES.find((x) => x.name === name);
@@ -311,7 +348,8 @@ const FILE_FACTS: FactsByNumber = new Map<string, NumberFacts>([
   [msisdnOf(N.blanks), numberFacts({ book: bookRow("mc_f4", { email: null, notes: null, tags: [] }) })],
   [msisdnOf(N.erased), numberFacts({ book: bookRow("mc_f5", ERASED) })],
   [msisdnOf(N.stop), numberFacts({ book: bookRow("mc_f6"), suppressed: true })],
-  [msisdnOf(N.erasedLedger), numberFacts({ ledgerLatest: ERASURE_WORD })],
+  // C8a · the ledger-only erasure the defect left open: the marker, and an opt-out tap on an old link above it.
+  [msisdnOf(N.erasedLedger), numberFacts(ledgerFacts([OPTOUT, ERASURE_WORD]))],
   [msisdnOf(N.newStop), numberFacts({ suppressed: true })],
   [msisdnOf(N.thisRun), numberFacts({ book: bookRow("mc_f10", { importId: RUN, sourceRef: RUN }) })],
   [msisdnOf(N.otherRun), numberFacts({ book: bookRow("mc_f11", { importId: OTHER_RUN, sourceRef: OTHER_RUN }) })],
@@ -340,9 +378,9 @@ const DISGUISED_FACTS: FactsByNumber = new Map<string, NumberFacts>([
  * 5, 7 unchanged. FILL_BLANKS updates 4 alone and finds 3, 11, 12 and 5, 7 unchanged.
  */
 const EXPECTED_SHOWN: Readonly<Record<ImportChoice, ShownTally>> = {
-  KEEP: { create: 3, update: 0, keep: 9, overwrites: 0, keepBy: { chosen_keep: 6, suppressed: 1, same_run: 2, no_change: 0 } },
-  TAKE_FILE: { create: 3, update: 3, keep: 6, overwrites: 3, keepBy: { chosen_keep: 0, suppressed: 1, same_run: 2, no_change: 3 } },
-  FILL_BLANKS: { create: 3, update: 1, keep: 8, overwrites: 0, keepBy: { chosen_keep: 0, suppressed: 1, same_run: 2, no_change: 5 } },
+  KEEP: { create: 3, update: 0, keep: 9, overwrites: 0, keepBy: { chosen_keep: 6, suppressed: 1, account: 0, same_run: 2, no_change: 0 } },
+  TAKE_FILE: { create: 3, update: 3, keep: 6, overwrites: 3, keepBy: { chosen_keep: 0, suppressed: 1, account: 0, same_run: 2, no_change: 3 } },
+  FILL_BLANKS: { create: 3, update: 1, keep: 8, overwrites: 0, keepBy: { chosen_keep: 0, suppressed: 1, account: 0, same_run: 2, no_change: 5 } },
 };
 
 /* ══ THE SCANNERS (§D3d, §D10, §D16) — the same functions run over the real sources and every plant ═════ */
@@ -382,12 +420,13 @@ const CONSENT_WORD = /consent|opt.?in|ridhaa|kibali|idhini/i;
 /* ══ THE ASSERTION LABELS — one place, so a plant names exactly the line it must turn red ═══════════ */
 
 export const L = {
-  D0: "D0 · CONTROL · the matrix — 14 number states × 3 choices × 4 override variants, one decision per cell, each the literal verdict",
+  D0: "D0 · CONTROL · the matrix — 19 number states × 3 choices × 4 override variants, one decision per cell, each the literal verdict",
   D1: "D1 · ⭐ KEEP is the default — DEFAULT_IMPORT_CHOICE is KEEP, and a differing in-book row with no override is kept (chosen_keep)",
   D2: "D2 · ⛔ an ACTIVE stop collapses an in-book row to keep under every choice and every override; CONTROL: with no stop, TAKE_FILE and FILL_BLANKS update it",
   D3: "D3 · ⛔ a row marked ERASURE_EVIDENCE collapses to keep under TAKE_FILE, FILL_BLANKS and either override; CONTROL: the same emptied row marked by another run updates",
-  D3d: "D3d · ONE binding — erasure-mark declares ERASURE_EVIDENCE = \"erasure\" and imports nothing; erase.ts imports and re-exports it and declares none; import-decide imports it and spells no \"erasure\" literal",
-  D3e: "D3e · a NEW number whose latest ledger word is the erasure withdrawal is kept, under every choice, naming no contact; CONTROL: a later GIVEN, or a plain WITHDRAWN, creates",
+  D3d: "D3d · ONE binding — erasure-mark declares ERASURE_EVIDENCE = \"erasure\", the marker test, the ONE rule and isErasedNumber, and imports nothing; erase.ts imports the word and the marker test from it, re-exports the word, declares none and asks isErasureMarker; import-decide asks erasure-mark's isErasedNumber with the book row and the standing erasure, and spells no \"erasure\" literal",
+  D3e: "D3e · ⛔ C8a · a NEW number on which an erasure STANDS is kept under every choice, naming no contact — the marker alone, the marker under an opt-out tap, under a lapse, under both — and decide() reads the standing erasure, never the ledger's latest word; CONTROL: the marker under a GIVEN, a plain WITHDRAWN and a GIVEN alone each create",
+  D3f: "D3f · ⭐ C8a · the ONE rule (erasure-mark.ts) — erasureStandsOn: the latest of a number's GIVEN rows and markers decides (a marker stands; an opt-out, a lapse or any non-GIVEN row above it changes nothing; a GIVEN above it lifts it; a marker above a GIVEN stands again; a GIVEN carrying the evidence is a GIVEN; nothing, or a plain WITHDRAWN, is no erasure); isErasedNumber: a book row decides ALONE (the tombstone whatever the ledger, an ordinary row or another run's mark never), with no row the rule decides — and decide() keeps a number erased exactly where isErasedNumber says so, on every combination",
   D4d: "D4d · ⛔ every update patch across the matrix uses only IMPORT_PATCH_KEYS — no consent, stop, link, source, run or raw key",
   D4e: "D4e · ⛔ X5 — consentWritable only for a created number with NO ledger row, no active stop and no player; no existing-row decision carries it; CONTROL: a clean new number is writable",
   D5: "D5 · ⭐ overrides are keyed by FILE ROW, never by array index — rows 2, 3, 6, 7: {6} updates only row 6, {2} only row 2, a dropped row's {4} nobody",
@@ -409,6 +448,7 @@ export const L = {
   D14b: "D14b · ⛔ X22/C3 — erasure is never disclosed: an erased number's preview equals that of an ordinary contact holding the file's values (alone, on the stop list, repeated; in the book or ledger-only), the browser's whole plan and every override label are unchanged when a file's erased numbers are swapped for such contacts, and no preview names a contact; CONTROL: the server truth still says erased, and a contact with other values previews differently",
   D15: "D15 · ⛔ OD10 — a drafted row's writable keys are exactly IMPORT_PATCH_KEYS (plus the phone), and no field key, label or alias is a consent word; CONTROL: the word test matches the not-imported consent column",
   D16: "D16 · ⛔ PURITY — import-decide imports exactly ./contact-fields and ../marketing/erasure-mark, erasure-mark imports nothing, and neither carries a directive or server-only",
+  D17: "D17 · ⛔ S15-11 · a book row LINKED to an account is never changed by a file — kept `account` (shown as itself) under every choice and override, after erased and the stop list and before the same run; its preview is a fixed keep and the label counts it under every choice; CONTROL: the same row with no link (null, absent or empty) updates",
 } as const;
 
 /* ══ THE ASSERTIONS ═════════════════════════════════════════════════════════════════════════════ */
@@ -463,21 +503,72 @@ function run(ctx: SectionContext<DecideImpl>): void {
 
   // ── D3d · one binding ──────────────────────────────────────────────────────────────────────────
   const { decide: decideSrc, mark: markSrc, erase: eraseSrc } = impl.sources;
-  const markOk = /export const ERASURE_EVIDENCE = "erasure"(?: as const)?;/.test(markSrc) && specifiers(markSrc).length === 0 && ERASURE_EVIDENCE === "erasure";
-  const eraseOk = eraseSrc.includes('import { ERASURE_EVIDENCE } from "@/lib/marketing/erasure-mark";')
+  // C8a: the mark module also holds the marker test, the ONE rule and the one reading of "is this number erased?" — and
+  // erase.ts and import-decide ask them rather than comparing against the word themselves.
+  const markOk = /export const ERASURE_EVIDENCE = "erasure"(?: as const)?;/.test(markSrc) && specifiers(markSrc).length === 0 && ERASURE_EVIDENCE === "erasure"
+    && ["isErasureMarker", "erasureStandsOn", "erasureStandsAmongRows", "isErasedNumber"].every((fn) => markSrc.includes(`export function ${fn}(`));
+  const eraseImport = /import \{ ([A-Za-z_, ]+) \} from "@\/lib\/marketing\/erasure-mark";/.exec(eraseSrc)?.[1].split(", ") ?? [];
+  const eraseOk = eraseImport.includes("ERASURE_EVIDENCE") && eraseImport.includes("isErasureMarker") && /\bisErasureMarker\(latest\)/.test(eraseSrc)
     && /export \{ ERASURE_EVIDENCE \};/.test(eraseSrc) && !/\bERASURE_EVIDENCE\s*=(?!=)/.test(eraseSrc) && !QUOTED_ERASURE.test(eraseSrc);
   const decideOk = specifiers(decideSrc).some((s) => s === "../marketing/erasure-mark" || s === "@/lib/marketing/erasure-mark")
-    && /\bERASURE_EVIDENCE\b/.test(decideSrc) && !QUOTED_ERASURE.test(decideSrc);
+    && /import \{ isErasedNumber as markIsErased \} from "[.][.][/]marketing[/]erasure-mark";/.test(decideSrc)
+    && /\bmarkIsErased\(f[.]book, f[.]erasureStands\)/.test(decideSrc) && !QUOTED_ERASURE.test(decideSrc);
   ok(L.D3d, markOk && eraseOk && decideOk, `mark ${markOk} · erase.ts ${eraseOk} · import-decide ${decideOk}`);
 
-  // ── D3e · a new number, erased ─────────────────────────────────────────────────────────────────
-  const newErased = IMPORT_CHOICES.map((ch) => impl.decide(MATRIX_ROW, facts({ ledgerLatest: ERASURE_WORD }), ch, NO_OVERRIDES, RUN));
-  const laterGiven = impl.decide(MATRIX_ROW, facts({ ledgerLatest: GIVEN }), "KEEP", NO_OVERRIDES, RUN);
-  const plainWithdrawn = impl.decide(MATRIX_ROW, facts({ ledgerLatest: WITHDRAWN }), "KEEP", NO_OVERRIDES, RUN);
+  // ── D3e · a new number, erased — C8a: the erasure STANDS until a GIVEN ───────────────────────────
+  const STANDING: ReadonlyArray<readonly [string, readonly LedgerWord[]]> = [
+    ["the marker", [ERASURE_WORD]],
+    ["an opt-out over it", [OPTOUT, ERASURE_WORD]],
+    ["a lapse over it", [LAPSE, ERASURE_WORD]],
+    ["an opt-out and a lapse over it", [OPTOUT, LAPSE, ERASURE_WORD]],
+  ];
+  const stillErased = STANDING.flatMap(([name, rows]) => IMPORT_CHOICES.map((ch) => ({ name, d: impl.decide(MATRIX_ROW, facts(ledgerFacts(rows)), ch, NO_OVERRIDES, RUN) })));
+  const notKept = stillErased.filter((x) => !(x.d.kind === "keep" && x.d.reason === "erased" && x.d.contactId === null)).map((x) => `${x.name} → ${verdictOf(x.d)}`);
+  const liftedByGiven = impl.decide(MATRIX_ROW, facts(ledgerFacts([GIVEN, ERASURE_WORD])), "KEEP", NO_OVERRIDES, RUN);
+  const laterGiven = impl.decide(MATRIX_ROW, facts(ledgerFacts([GIVEN])), "KEEP", NO_OVERRIDES, RUN);
+  const plainWithdrawn = impl.decide(MATRIX_ROW, facts(ledgerFacts([WITHDRAWN])), "KEEP", NO_OVERRIDES, RUN);
   ok(L.D3e,
-    newErased.every((d) => d.kind === "keep" && d.reason === "erased" && d.contactId === null)
-      && laterGiven.kind === "create" && plainWithdrawn.kind === "create",
-    `${newErased.map(verdictOf).join(", ")} · GIVEN → ${verdictOf(laterGiven)} · WITHDRAWN → ${verdictOf(plainWithdrawn)}`);
+    stillErased.length === 12 && notKept.length === 0
+      && liftedByGiven.kind === "create" && laterGiven.kind === "create" && plainWithdrawn.kind === "create",
+    `${notKept.join(", ") || "all twelve kept as erased"} · marker under a GIVEN → ${verdictOf(liftedByGiven)} · GIVEN → ${verdictOf(laterGiven)} · WITHDRAWN → ${verdictOf(plainWithdrawn)}`);
+
+  // ── D3f · the ONE rule and the one reading (C8a) ─────────────────────────────────────────────────
+  {
+    const RULE: ReadonlyArray<readonly [string, readonly LedgerWord[], boolean]> = [
+      ["no row at all", [], false],
+      ["the marker alone", [ERASURE_WORD], true],
+      ["an opt-out over the marker", [OPTOUT, ERASURE_WORD], true],
+      ["a lapse over the marker", [LAPSE, ERASURE_WORD], true],
+      ["a plain WITHDRAWN over the marker", [WITHDRAWN, ERASURE_WORD], true],
+      ["a GIVEN over the marker", [GIVEN, ERASURE_WORD], false],
+      ["an opt-out over a GIVEN over the marker", [OPTOUT, GIVEN, ERASURE_WORD], false],
+      ["the marker over a GIVEN", [ERASURE_WORD, GIVEN], true],
+      ["an opt-out over the marker over a GIVEN", [OPTOUT, ERASURE_WORD, GIVEN], true],
+      ["a GIVEN carrying the evidence", [{ status: "GIVEN", evidence: ERASURE_EVIDENCE }], false],
+      ["a plain WITHDRAWN alone", [WITHDRAWN], false],
+      ["an opt-out alone", [OPTOUT], false],
+    ];
+    const ruleWrong = RULE.filter(([, rows, want]) => impl.erasureStands(rows) !== want).map(([name]) => name);
+    const markerTest = isErasureMarker(ERASURE_WORD) && !isErasureMarker(OPTOUT) && !isErasureMarker({ status: "GIVEN", evidence: ERASURE_EVIDENCE });
+    type Book = { readonly sourceRef: string | null } | null;
+    const READING: ReadonlyArray<readonly [string, Book, boolean, boolean]> = [
+      ["the tombstone, no erasure standing", { sourceRef: ERASURE_EVIDENCE }, false, true],
+      ["the tombstone, an erasure standing", { sourceRef: ERASURE_EVIDENCE }, true, true],
+      ["an ordinary row, an erasure standing", { sourceRef: null }, true, false],
+      ["another run's mark, an erasure standing", { sourceRef: "imp_other" }, true, false],
+      ["an ordinary row, none standing", { sourceRef: null }, false, false],
+      ["no row, an erasure standing", null, true, true],
+      ["no row, none standing", null, false, false],
+    ];
+    const readingWrong = READING.filter(([, book, stands, want]) => impl.isErased(book, stands) !== want).map(([name]) => name);
+    const disagree = READING.filter(([, book, stands]) => {
+      const f = facts(book === null ? { erasureStands: stands } : { book: bookRow("mc_d3f", { sourceRef: book.sourceRef }), erasureStands: stands });
+      const d = impl.decide(MATRIX_ROW, f, "TAKE_FILE", NO_OVERRIDES, RUN);
+      return (d.kind === "keep" && d.reason === "erased") !== impl.isErased(book, stands);
+    }).map(([name]) => name);
+    ok(L.D3f, ruleWrong.length === 0 && markerTest && readingWrong.length === 0 && disagree.length === 0,
+      `rule wrong [${ruleWrong.join(" | ")}] · marker test ${markerTest} · reading wrong [${readingWrong.join(" | ")}] · decide() disagrees [${disagree.join(" | ")}]`);
+  }
 
   // ── D4d · the patch keys ───────────────────────────────────────────────────────────────────────
   const patchKeys = IMPORT_PATCH_KEYS as readonly string[];
@@ -737,9 +828,9 @@ function run(ctx: SectionContext<DecideImpl>): void {
 
   // ── D12 · X4, the one outcome union ────────────────────────────────────────────────────────────
   const OUTCOMES_DECIDED = ["create", "update", "keep", "fail"];
-  const REASONS_DECIDED = ["chosen_keep", "erased", "suppressed", "same_run", "no_change", "write_refused", "changed_during_import", "invalid"];
+  const REASONS_DECIDED = ["chosen_keep", "erased", "suppressed", "account", "same_run", "no_change", "write_refused", "changed_during_import", "invalid"];
   const OUTCOME_OF_DECIDED = {
-    chosen_keep: "keep", erased: "keep", suppressed: "keep", same_run: "keep", no_change: "keep",
+    chosen_keep: "keep", erased: "keep", suppressed: "keep", account: "keep", same_run: "keep", no_change: "keep",
     changed_during_import: "keep", write_refused: "fail", invalid: "fail",
   };
   const badRows = cells.filter((x) => {
@@ -769,8 +860,9 @@ function run(ctx: SectionContext<DecideImpl>): void {
   const BANNED = /consentWritable|heldByPlayer|ledger|player/i;
   const leaking = previews.filter((x) => BANNED.test(JSON.stringify(x.p))).map((x) => x.name);
   const planText = JSON.stringify(plan);
+  // Six states are creates (five absent numbers and, C8a, the erasure a GIVEN lifted).
   ok(L.D14,
-    creates.length === 5 && notBare.length === 0 && leaking.length === 0 && !BANNED.test(planText),
+    creates.length === 6 && notBare.length === 0 && leaking.length === 0 && !BANNED.test(planText),
     `${creates.length} create previews · not bare: ${notBare.join(", ") || "none"} · leaking: ${leaking.join(", ") || "none"}`);
 
   // ── D14b · X22, erasure never disclosed ────────────────────────────────────────────────────────
@@ -782,10 +874,12 @@ function run(ctx: SectionContext<DecideImpl>): void {
   const PREVIEW_PAIRS: ReadonlyArray<readonly [string, DecideFacts, DecideFacts]> = [
     ["in the book", state("in book · erased").facts, twinOf()],
     ["ledger only", state("absent · erased (ledger)").facts, twinOf()],
+    // C8a · the erasure an opt-out tap sits above reads, like any other, as the ordinary contact it is disguised as.
+    ["ledger only, an opt-out over the marker", state("absent · erased, then an opt-out").facts, twinOf()],
     ["in the book, on the stop list", facts({ book: bookRow("mc_e_stop", ERASED), suppressed: true }), twinOf({ suppressed: true })],
-    ["ledger only, on the stop list", facts({ ledgerLatest: ERASURE_WORD, suppressed: true }), twinOf({ suppressed: true })],
+    ["ledger only, on the stop list", facts({ ...ledgerFacts([OPTOUT, ERASURE_WORD]), suppressed: true }), twinOf({ suppressed: true })],
     ["in the book, repeated", facts({ book: bookRow("mc_e_rep", ERASED), repeatOf: 2 }), twinOf({ repeatOf: 2 })],
-    ["ledger only, repeated", facts({ ledgerLatest: ERASURE_WORD, repeatOf: 2 }), twinOf({ repeatOf: 2 })],
+    ["ledger only, repeated", facts({ ...ledgerFacts([ERASURE_WORD]), repeatOf: 2 }), twinOf({ repeatOf: 2 })],
   ];
   const toldApart = PREVIEW_PAIRS
     .filter(([, erased, twin]) => !same(impl.previewFor(MATRIX_ROW, erased, RUN), impl.previewFor(MATRIX_ROW, twin, RUN)))
@@ -833,6 +927,37 @@ function run(ctx: SectionContext<DecideImpl>): void {
     ...[decideSrc, markSrc].filter((s) => DIRECTIVE.test(s) || SERVER_ONLY.test(s)).map(() => "a directive or server-only"),
   ];
   ok(L.D16, impure.length === 0, impure.join(" | ") || `import-decide → ${decideSpecs.join(", ")} · erasure-mark → nothing`);
+
+  // ── D17 · S15-11 · a row linked to an account is never changed ──────────────────────────────────
+  const linkedBook = (patch: Partial<BookSnapshot> = {}): BookSnapshot =>
+    bookRow("mc_d17", { email: null, notes: null, tags: [], userId: "usr_d17", ...patch });
+  const linkedCells = IMPORT_CHOICES.flatMap((bulk) =>
+    OVERRIDE_VARIANTS.map((o) => impl.decide(MATRIX_ROW, facts({ book: linkedBook() }), bulk, o === null ? NO_OVERRIDES : on(o), RUN)));
+  const unlinkedTake = impl.decide(MATRIX_ROW, facts({ book: linkedBook({ userId: null }) }), "TAKE_FILE", NO_OVERRIDES, RUN);
+  const absentLink = impl.decide(MATRIX_ROW, facts({ book: { ...linkedBook(), userId: undefined } }), "FILL_BLANKS", NO_OVERRIDES, RUN);
+  const emptyLink = impl.decide(MATRIX_ROW, facts({ book: linkedBook({ userId: "" }) }), "TAKE_FILE", NO_OVERRIDES, RUN);
+  const accountOrder: Record<string, boolean> = {
+    stopBeatsAccount: verdict(facts({ book: linkedBook(), suppressed: true }), "TAKE_FILE", NO_OVERRIDES) === "keep:suppressed",
+    erasedBeatsAccount: verdict(facts({ book: linkedBook({ ...ERASED, userId: "usr_d17" }) }), "TAKE_FILE", NO_OVERRIDES) === "keep:erased",
+    accountBeatsSameRun: verdict(facts({ book: linkedBook({ importId: RUN }) }), "TAKE_FILE", NO_OVERRIDES) === "keep:account",
+    accountBeatsRepeat: verdict(facts({ book: linkedBook(), repeatOf: 2 }), "FILL_BLANKS", NO_OVERRIDES) === "keep:account",
+  };
+  const linkedPreview = impl.previewFor(MATRIX_ROW, facts({ book: linkedBook() }), RUN);
+  const accountRows = [cand(2, "0786 400 702"), cand(3, "0786 400 703")];
+  const accountFacts: FactsByNumber = new Map<string, NumberFacts>([
+    [accountRows[0].msisdn, numberFacts({ book: linkedBook() })],
+    [accountRows[1].msisdn, numberFacts({ book: bookRow("mc_d17b", { email: null, notes: null, tags: [] }) })],
+  ]);
+  const accountPlan = impl.plan({ runId: RUN, candidates: accountRows, facts: accountFacts, firstLines: firstLines(accountRows) });
+  const orderBroken = Object.entries(accountOrder).filter(([, good]) => !good).map(([k]) => k);
+  ok(L.D17,
+    linkedCells.length === 12
+      && linkedCells.every((d) => d.kind === "keep" && d.reason === "account" && d.shown === "account" && d.contactId === "mc_d17")
+      && unlinkedTake.kind === "update" && absentLink.kind === "update" && emptyLink.kind === "update" && orderBroken.length === 0
+      && same(linkedPreview, { line: MATRIX_LINE, kind: "keep", reason: "account" })
+      && IMPORT_CHOICES.every((ch) => accountPlan.byChoice[ch].keepBy.account === 1)
+      && accountPlan.byChoice.TAKE_FILE.update === 1 && accountPlan.byChoice.FILL_BLANKS.update === 1 && accountPlan.byChoice.KEEP.update === 0,
+    `${linkedCells.map(verdictOf).filter((v) => v !== "keep:account").join(", ") || "all kept as account"} · unlinked → ${verdictOf(unlinkedTake)} / ${verdictOf(absentLink)} / ${verdictOf(emptyLink)} · order broken: ${orderBroken.join(", ") || "none"} · preview ${stable(linkedPreview)}`);
 }
 
 /* ══ RED PLANTS — each a defect built IN MEMORY, and the ONE assertion it must turn red ═══════════ */
@@ -882,18 +1007,43 @@ const PLANTS: readonly RedPlant<DecideImpl>[] = [
       decide(c, f.book && f.book.sourceRef !== "erased" ? { ...f, book: { ...f.book, sourceRef: null } } : f, b, ov, run)),
   },
   {
-    name: "R4b · the new-number erasure check removed — the ledger's erasure withdrawal reads as any withdrawal",
+    name: "R4b · the new-number erasure check removed — a number whose only erasure is the ledger's reads as no erasure at all",
     expect: L.D3e,
-    impl: () => withDecide((c, f, b, ov, run) =>
-      decide(c, f.book === null && f.ledgerLatest?.evidence === ERASURE_EVIDENCE ? { ...f, ledgerLatest: WITHDRAWN } : f, b, ov, run)),
+    impl: () => withDecide((c, f, b, ov, run) => decide(c, f.book === null && f.erasureStands ? { ...f, erasureStands: false } : f, b, ov, run)),
+  },
+  {
+    // ⭐ C8a's defect #2, as it shipped: the erasure stands only while the ledger's LAST row is the marker, so an opt-out
+    // tap on an old /s/ link lifts it and an old spreadsheet creates the erased person again.
+    name: "R4d · C8a · decide() reads the ledger's LATEST word as the erasure — an opt-out tap above the marker lifts it",
+    expect: L.D3e,
+    impl: () => withDecide((c, f, b, ov, run) => {
+      const last = f.ledgerLatest;
+      return decide(c, { ...f, erasureStands: last !== null && last.status === "WITHDRAWN" && last.evidence === ERASURE_EVIDENCE }, b, ov, run);
+    }),
   },
   {
     name: "R4c · import-decide compares against a typed \"erasure\" instead of the one binding",
     expect: L.D3d,
     impl: () => {
       const r = real();
-      return { ...r, sources: { ...r.sources, decide: r.sources.decide.replace("book.sourceRef === ERASURE_EVIDENCE", 'book.sourceRef === "erasure"') } };
+      return { ...r, sources: { ...r.sources, decide: r.sources.decide.replace("return markIsErased(f.book, f.erasureStands);", 'return f.book !== null ? f.book.sourceRef === "erasure" : f.erasureStands;') } };
     },
+  },
+  {
+    // The rule as the importer first read it, now in the shared module: the LAST row alone.
+    name: "R-D3f · C8a · the ONE rule reads the ledger's latest row alone — an opt-out above the marker reads as no erasure",
+    expect: L.D3f,
+    impl: () => ({ ...real(), erasureStands: (rows) => rows.length > 0 && isErasureMarker(rows[0]) }),
+  },
+  {
+    name: "R-D3f2 · C8a · the one reading asks the ledger even when a book row exists — an ordinary row is called erased (the precedence reversed)",
+    expect: L.D3f,
+    impl: () => ({ ...real(), isErased: (book, stands) => stands || isErasedNumber(book, false) }),
+  },
+  {
+    name: "R-D3f3 · C8a · a GIVEN no longer lifts the erasure — the number's next holder can never be imported (the marker read as a stop)",
+    expect: L.D3f,
+    impl: () => ({ ...real(), erasureStands: (rows) => rows.some((r) => isErasureMarker(r)) }),
   },
   {
     name: "R5 · overrides read by array index (overrides[i]) instead of the file row",
@@ -1051,7 +1201,7 @@ const PLANTS: readonly RedPlant<DecideImpl>[] = [
             else if (ch === "KEEP") keep++;
             else update++;
           }
-          return { create, update, keep, overwrites: update, keepBy: { chosen_keep: keep, suppressed: 0, same_run: 0, no_change: 0 } };
+          return { create, update, keep, overwrites: update, keepBy: { chosen_keep: keep, suppressed: 0, account: 0, same_run: 0, no_change: 0 } };
         };
         return { ...shipped, byChoice: { KEEP: bucketed("KEEP"), TAKE_FILE: bucketed("TAKE_FILE"), FILL_BLANKS: bucketed("FILL_BLANKS") } };
       },
@@ -1183,6 +1333,11 @@ const PLANTS: readonly RedPlant<DecideImpl>[] = [
     impl: () => withDecide((c, f, b, ov, run) =>
       decide(c, hasOwn(ov, c.line) && f.suppressed && f.book !== null && f.book.sourceRef !== ERASURE_EVIDENCE ? { ...f, suppressed: false } : f, b, ov, run)),
   },
+  {
+    name: "R-D17 · the account collapse removed (decide is handed the book row without its link) — a player's registration row is overwritten from the file",
+    expect: L.D17,
+    impl: () => withDecide((c, f, b, ov, run) => decide(c, f.book === null ? f : { ...f, book: { ...f.book, userId: null } }, b, ov, run)),
+  },
 ];
 
 export const decideSection: ImportSection<DecideImpl> = {
@@ -1207,8 +1362,9 @@ export const decideSection: ImportSection<DecideImpl> = {
  *    the batch re-decides once (X3); dal-parity §24's members carry the sourceRef null arm (the Prisma `not` trap).
  *
  * ⛔ CONTRACTS THE OTHER UNITS OWE THIS RULE (§D9b, §D9c and §D14b hold the module side only):
- *  · X22 · U30's `msisdnsPresent` counts a LEDGER-erased number (no book row, latest ledger word the erasure
- *    withdrawal) as present, so its "already in the book" bucket matches the plan's in-book preview of that row;
+ *  · X22 · U30's `msisdnsPresent` counts a LEDGER-erased number (no book row, an erasure STANDING on it — C8a's ONE
+ *    rule, `erasure-mark.ts`) as present, so its "already in the book" bucket matches the plan's in-book preview of that
+ *    row (as built, the check counts by decide()'s own preview — `test:contacts-import` §C14);
  *  · X22 · U32's browser-facing row reads (the done state, the run's rows) carry each keep's `shown`, never the stored
  *    `erased` reason — a stored reason folded on its own is the oracle §D14b closes;
  *  · OD33 · U30 and U32 pass `firstLines` over EVERY staged row of the run (it skips invalid and unreadable rows).

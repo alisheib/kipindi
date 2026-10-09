@@ -26,8 +26,11 @@
  * sentence here that sends an officer to CSV also carries the format step, `PHONE_FORMAT_REMEDY` — ONE clause
  * (A1.6), which the Phone column's hint and the shortened-number sentence read too, so the officer is never told
  * two different fixes for one problem. `test:contacts-boundary` §7.3 fails on a CSV sentence without it, and §2.7
- * on the clause spelled out anywhere else in the contacts code. "There is no size limit on CSV" is a PROMISE: the
- * CSV path (U25, U29) must never add one.
+ * on the clause spelled out anywhere else in the contacts code. ⛔ "A CSV has no file-size limit" is a PROMISE, said
+ * PRECISELY (C3b, 2026-10-09): a CSV has no byte cap — the CSV path (U25, U29) must never add one — but one import
+ * takes at most `XLSX_MAX_ROWS` rows (X28: `IMPORT_MAX_ROWS` IS this constant), and the sentence says that number,
+ * formatted from the constant. So a workbook refused for its ROWS is never sent to CSV (a CSV of the same rows is
+ * refused too): it is told to delete the empty rows or split the list.
  *
  * ⛔ PURE AND CLIENT-SAFE, AND IT IMPORTS NOTHING: the dialog shows the same sentence before posting that the
  * server would return after. No sentence ever quotes a cell; a sheet name is echoed only when it carries fewer
@@ -228,7 +231,9 @@ const groupThousands = (n: number): string => String(Math.trunc(n)).replace(/\B(
 export const PHONE_FORMAT_REMEDY = "format the phone column as Number with 0 decimal places";
 
 const SHORTENS = "or Excel will shorten long numbers to 2.55713E+11.";
-const SAVE_AS_CSV = "Save it as CSV instead: there is no size limit on CSV.";
+/** ⭐ The way past the BYTE cap, said precisely: a CSV has no file-size limit, and one import takes at most XLSX_MAX_ROWS
+ *  rows (X28's IMPORT_MAX_ROWS is that constant) — the number formatted from the constant, never typed. */
+const SAVE_AS_CSV = `Save it as CSV instead — a CSV has no file-size limit (up to ${groupThousands(XLSX_MAX_ROWS)} rows in one import).`;
 /** For a refusal whose ONLY way forward is CSV. */
 const KEEP_EVERY_DIGIT = `Before you save, ${PHONE_FORMAT_REMEDY}, ${SHORTENS}`;
 /** For a refusal that offers CSV as one of two ways forward (.xlsx being the other, which keeps every digit). */
@@ -294,7 +299,8 @@ export function xlsxRefusalSentence(r: XlsxRefusal, ctx: XlsxRefusalContext = {}
     case "too_big_inflated":
       return `This spreadsheet holds more data than an Excel file can carry here. ${SAVE_AS_CSV} ${KEEP_EVERY_DIGIT}`;
     case "too_many_rows":
-      return `This spreadsheet has more than ${groupThousands(XLSX_MAX_ROWS)} rows — the most an Excel file can hold here. ${SAVE_AS_CSV} ${KEEP_EVERY_DIGIT}`;
+      // ⛔ C3b · never "save it as CSV": a CSV of the same rows is refused too (X28 — one import's row cap IS this one).
+      return `This spreadsheet has more than ${groupThousands(XLSX_MAX_ROWS)} rows — the most one import can take. Delete any empty rows below the contacts, or split the list into files of at most ${groupThousands(XLSX_MAX_ROWS)} rows, then save it and choose it again.`;
     case "not_base64":
       return "The file didn't arrive in one piece. Choose it again.";
     case "wrong_format":
@@ -322,6 +328,60 @@ export function xlsxRefusalSentence(r: XlsxRefusal, ctx: XlsxRefusalContext = {}
 /** A new refusal added to the union without a sentence fails to compile here; a stray value at runtime reads as unreadable. */
 function unknownRefusal(_r: never): string {
   return xlsxRefusalSentence("unreadable");
+}
+
+/** A sheet a note names: its name as the workbook stores it, and its place among the workbook's VISIBLE sheets (from 1). */
+export type NotedSheet = { readonly name: string; readonly position: number };
+
+/** How many of the sheets left unread a note names before it says how many more. */
+const NOTED_SHEETS_MAX = 3;
+
+/** One sheet as a note words it: “Name” through the ONE sheet-name rule, or its place when the name may not be echoed. */
+const sheetWords = (sheet: NotedSheet): string => {
+  const label = sheetLabel(sheet.name);
+  return label !== null ? `“${label}”` : `sheet ${sheet.position}`;
+};
+
+/** The sheets left unread, as the subject of a sentence: "The sheet “Staff”", "The sheets “Staff” and “Mengine”", or
+ *  "Sheet 3" for a lone sheet whose name may not be echoed. */
+function unreadSheets(sheets: readonly NotedSheet[]): string {
+  const words = sheets.slice(0, NOTED_SHEETS_MAX).map(sheetWords);
+  const more = sheets.length - words.length;
+  if (sheets.length === 1) return sheetLabel(sheets[0].name) !== null ? `The sheet ${words[0]}` : `Sheet ${sheets[0].position}`;
+  const list = more > 0 ? `${words.join(", ")} and ${more} more` : `${words.slice(0, -1).join(", ")} and ${words[words.length - 1]}`;
+  return `The sheets ${list}`;
+}
+
+/**
+ * ⭐ C3b-fix · D6 · THE NOTE for the sheet a workbook is read from — `chooseSheet` (sheet-choice.ts) decides, this words it.
+ * It names the sheet read, through the ONE sheet-name rule (`sheetLabel`: a name carrying seven or more digits is never
+ * echoed, and then only its place is said), and its place counted among the VISIBLE sheets only (a hidden tab is never
+ * read, so it is never counted); then every other VISIBLE sheet whose first rows hold mobile numbers, as NOT read, each
+ * with the way to import it that WORKS: a sheet holding AS MANY mobile numbers as the one read (`tied`) lost only on
+ * its place, so moving it to the first place in Excel reads it — or saving it as its own file; a sheet holding FEWER
+ * (`fewer`) is read only from its own file, so that is the one way said (moving it first would read the same sheet as
+ * now). The workbook's hidden sheets are said last, counted. ⛔ Never a cell, never a name with seven digits.
+ */
+export function xlsxSheetChoiceNote(
+  read: NotedSheet,
+  visible: number,
+  hidden: number,
+  tied: readonly NotedSheet[],
+  fewer: readonly NotedSheet[],
+): string {
+  const label = sheetLabel(read.name);
+  const where = `sheet ${read.position} of ${visible}`;
+  const said = [label !== null ? `Read the sheet “${label}” (${where}).` : `Read ${where}.`];
+  if (tied.length > 0) {
+    const one = tied.length === 1;
+    said.push(`${unreadSheets(tied)} ${one ? "holds" : "hold"} as many mobile numbers and ${one ? "was" : "were"} not read: to import ${one ? "it" : "one"}, move it to the first place in Excel, or save it as its own file.`);
+  }
+  if (fewer.length > 0) {
+    const one = fewer.length === 1;
+    said.push(`${unreadSheets(fewer)} also ${one ? "holds" : "hold"} mobile numbers and ${one ? "was" : "were"} not read: to import ${one ? "it" : "one"}, save it as its own file.`);
+  }
+  if (hidden > 0) said.push(hidden === 1 ? "The workbook's hidden sheet was not read." : `The workbook's ${hidden} hidden sheets were not read.`);
+  return said.join(" ");
 }
 
 // ── EXCEL'S SHORTENED NUMBERS (decision M6) ──────────────────────────────────────────────────────────────────

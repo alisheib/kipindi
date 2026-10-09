@@ -7,8 +7,8 @@
  * added or edited by hand (U22: "Add contact" in the page head, `?edit=<contact id>` for the dialog over the
  * list, opened from each row's "edit" link) — a selection acted on in bulk (U23: the select column and the bar —
  * tag, untag, add to a list, record a withdrawal, suppress, remove) — and every contact the filter matches downloaded
- * as a CSV file (U34a: "Export CSV" in the page head). There is no way to import a file yet (U25–U32) or to record a
- * consent (U33), and this page promises neither.
+ * as a CSV file (U34a: "Export CSV" in the page head) — and, since S15, a file or a paste imported through ONE dialog
+ * ("Import contacts" in the page head, `import/contacts-import-dialog.tsx`). No consent is recorded here (U33, S15-1).
  * ⭐ U34a · THE EXPORT LINK CARRIES THE LIST'S OWN FILTER (`contactsExportHref`: U24's ONE address writer, a relative
  * window already absolute), so the file is exactly what the list matched — never a ticked selection (X27). It is on
  * screen only when that read arrived WITH rows: no control on an empty book, a filter that matches nothing, a refused
@@ -90,6 +90,8 @@ import type { ContactsParams, ContactsView } from "./contacts-loader";
 import { contactRail } from "./contacts-rail";
 import { ContactFilters } from "./contact-filters";
 import { AddContactButton, ContactEditDialog } from "./contact-form";
+// S15 · the importer's button and its one dialog (`import/contacts-import-dialog.tsx`).
+import { ImportContactsButton } from "./import/contacts-import-dialog";
 import { ContactsSelectionProvider } from "./contacts-selection-provider";
 import { ContactRowSelect, ContactPageSelect } from "./contact-row-select";
 import { ContactsBulkBar } from "./contacts-bulk-bar";
@@ -271,6 +273,9 @@ async function AdminContactsContent({ searchParams }: { searchParams: Promise<Co
             {exportable !== null && exportHref !== null && (
               <ContactsExportControl href={exportHref} matched={exportable.result.total} reads={reads} />
             )}
+            {/* ⭐ S15 · "Import contacts" — disabled WITH its reason for a role that cannot act; its dialog opens on an
+                unfinished import when there is one (`import/contacts-import-dialog.tsx`). */}
+            <ImportContactsButton />
             <AddContactButton hrefParams={linkSp} editOpen={editLoad !== null} />
           </>
         )}
@@ -414,9 +419,18 @@ async function AdminContactsContent({ searchParams }: { searchParams: Promise<Co
                         </td>
                         <td className="whitespace-nowrap">
                           {c.displayName
-                            ? <span className="text-text">{c.displayName}</span>
-                            : <span className="text-text-tertiary">No name</span>}
+                            ? <span className="text-text" data-contact-name>{c.displayName}</span>
+                            : <span className="text-text-tertiary" data-contact-name>No name</span>}
                           {reads && c.userId && <Chip size="sm" variant="info" className="ml-2">Player</Chip>}
+                          {/* ⭐ C2 (2026-10-09) · ON A PHONE THE NUMBER RIDES UNDER THE NAME. Below the small breakpoint the
+                              table scrolls sideways inside its card, and the audit's 360 tiles showed a column of names
+                              with nothing to say whose number each was. MASKED FOR EVERY ROLE, from the server's masked
+                              projection — the row's own `masked` (`contactSelectionRow`), never a second read of the number,
+                              so U19's one render holds. A reader's reveal stays the Number column's, one control per row.
+                              Hidden from 640 up, where the Number column is on screen. */}
+                          <span className="mt-0.5 block font-mono text-body-sm text-text-tertiary sm:hidden" data-contact-sub>
+                            {pageRows[i].masked} · {operatorBrand(c.ndc) ?? "—"}
+                          </span>
                         </td>
                         <td className="font-mono whitespace-nowrap"><Sensitive field="contactPhone" subjectId={c.id} value={c.msisdn} copyable /></td>
                         {/* ⛔ U21 · THE ONE TABLE, NEVER THE STORED STRING: the rail filters on the prefix (`ndc`), so the
@@ -455,9 +469,12 @@ async function AdminContactsContent({ searchParams }: { searchParams: Promise<Co
             about. ⛔ Its figures are the DAL's own (`coveredCount`), the same read the gate decides from, so the screen
             cannot promise a reach the gate will not honour. D19 · nothing here is maskable: counts, names and instants. */}
         {listsCard !== null && (
-          <AdminCard title="Lists" sw="Orodha">
-            <ListsCard view={listsCard} />
-          </AdminCard>
+          // S15 · the anchor the import's result scrolls to when a list's new members still need its basis recorded.
+          <div id="contacts-lists" data-block="contacts-lists">
+            <AdminCard title="Lists" sw="Orodha">
+              <ListsCard view={listsCard} />
+            </AdminCard>
+          </div>
         )}
       </AdminBody>
 

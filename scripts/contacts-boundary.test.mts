@@ -877,7 +877,7 @@ if (!PROVE_RED) {
       expect: L.s64,
       impl: () => withContract({
         sentence: (r, sctx) => (r === "too_large"
-          ? `This spreadsheet is ${formatFileSize(sctx?.bytes ?? 0)} — an Excel file can be up to 700 KB here. Save it as CSV instead: there is no size limit on CSV.`
+          ? `This spreadsheet is ${formatFileSize(sctx?.bytes ?? 0)} — an Excel file can be up to 700 KB here. Save it as CSV instead — a CSV has no file-size limit (up to 200,000 rows in one import).`
           : xlsxRefusalSentence(r, sctx)),
       }),
     },

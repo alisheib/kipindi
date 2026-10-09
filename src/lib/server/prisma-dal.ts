@@ -405,6 +405,8 @@ import type {
   ListBasisCoverage,
 } from "./store";
 import { ERASURE_EVIDENCE } from "@/lib/marketing/erasure-mark";
+// C8a · the ONE "does an erasure stand?" both twins' grouped read answer through (its own line: §27.5 pins the one above).
+import { erasureStandsAmongRows } from "@/lib/marketing/erasure-mark";
 import { assertListBasisSeed, assertListBasisRevocation, assertListBasisKeys } from "@/lib/server/marketing/list-basis-model";
 
 /** ContactListBasis row -> StoredContactListBasis (marketing U33a-L). ⛔ No update member and no delete member in either
@@ -529,10 +531,35 @@ import type {
   StoredContactImport, StoredContactImportRow, ContactImportStageBatch, ContactImportStageResult, ContactImportTransition,
   ContactImportTotals, ContactImportIdleQuery, ContactImportFinishedPurge, ContactImportRowWindow,
 } from "./store";
+// §29 · S15 · the import's check and commit types — a third type-only import from the store, beside the code that reads them.
+import type {
+  MarketingContactSnapshot, ContactImportFirstLinesQuery, ContactImportFirstLine, ContactImportFailedQuery,
+  ContactImportFailedPage, ContactImportKeptCount, ContactImportFreeze, ContactImportCommitBatch, ContactImportCommitResult,
+  ContactImportOthersQuery,
+} from "./store";
 
 /** U29 · the most rows one keyset page, and one access-export read for a number, hand back — the memory twin's bounds. */
 const CONTACT_IMPORT_ROW_PAGE_MAX = 2000;
 const CONTACT_IMPORT_ROWS_BY_NUMBER_MAX = 1000;
+/** §29 · the most failures one page hands back — the memory twin's `CONTACT_IMPORT_FAILED_PAGE_MAX`, the same number. */
+const CONTACT_IMPORT_FAILED_PAGE_MAX = 50;
+/** §29 · S15-12 · the most open runs of other officers one read hands back — the memory twin's
+ *  `CONTACT_IMPORT_OPEN_RUNS_MAX`, the same number. */
+const CONTACT_IMPORT_OPEN_RUNS_MAX = 20;
+/** §29 · ONE commit step's transaction: at most 500 rows — one create statement, one conditional update per changed
+ *  contact, a few grouped settlements — measured in tens of milliseconds; the timeout is a ceiling, never a budget. */
+const CONTACT_IMPORT_COMMIT_TX_TIMEOUT_MS = 30_000;
+/** §29 · the start's freeze: one conditional update, and — for a new list — one insert and one update more. */
+const CONTACT_IMPORT_FREEZE_TX_TIMEOUT_MS = 10_000;
+
+/** §29 · thrown INSIDE the commit's transaction when the unique index refused a create, a guard refused an update, or a
+ *  staged row the step settles is gone (R9), so Postgres rolls the whole step back — the cursor included — and the step
+ *  answers `conflict` naming the rows. */
+class ContactImportBatchConflict extends Error {
+  constructor(readonly ordinals: number[]) {
+    super(`contactImport.commitBatch: ${ordinals.length} row(s) changed since they were decided — the step was rolled back`);
+  }
+}
 
 /** ContactImport row -> StoredContactImport (marketing U29). ⚠️ Named `…Record`, not `…Row`: `ContactImportRow` is a
  *  model of its own. The two JSON columns come back as whatever was written: the service validates before it drafts. */
@@ -543,7 +570,7 @@ type ContactImportRecord = {
   consentBasis: string | null; consentWording: string | null; consentProofNote: string | null; adultAttestedAt: Date | null;
   consentBasisSetBy: string | null; consentBasisSetAt: Date | null;
   pausedAt: Date | null; pausedBy: string | null; finishedAt: Date | null;
-  createdAt: Date; createdBy: string; updatedAt: Date;
+  createdAt: Date; createdBy: string; updatedAt: Date; targetListId: string | null;
 };
 function toStoredContactImport(r: ContactImportRecord): StoredContactImport {
   return {
@@ -573,6 +600,7 @@ function toStoredContactImport(r: ContactImportRecord): StoredContactImport {
     createdAt: iso(r.createdAt),
     createdBy: r.createdBy,
     updatedAt: iso(r.updatedAt),
+    targetListId: r.targetListId,
   };
 }
 
@@ -4048,6 +4076,22 @@ export const prismaDb = {
       for (const r of rows) if (!latest.has(r.identifier)) latest.set(r.identifier, toStoredMessagingConsent(r));
       return Array.from(latest.values()).sort((a, b) => (a.identifier < b.identifier ? -1 : a.identifier > b.identifier ? 1 : 0));
     },
+    /** ⛔ C8a · the numbers among these on which an ERASURE STANDS — the ONE rule (`erasure-mark.ts`): ONE query in the
+     *  ledger's own order (`createdAt desc, id desc`, served by the [channel, identifier, category, createdAt] index), the
+     *  two columns the rule reads and the key, handed to `erasureStandsAmongRows` — the function the memory twin answers
+     *  through. ⛔ No status filter in the query: the rule alone says which rows decide (a later opt-out never lifts an
+     *  erasure; a GIVEN does), so Postgres and memory cannot disagree on it. §25's shape: through `bulkKeys`, an empty set
+     *  answered with no query. Executed on Postgres by `scripts/live/contacts-import-pg-probe.mts` section 7. */
+    erasureStandsAmong: async (q: MessagingKeyBatch): Promise<string[]> => {
+      const keys = bulkKeys(q.identifiers, "messagingConsent.erasureStandsAmong");
+      if (keys.length === 0) return [];
+      const rows = await pc().messagingConsent.findMany({
+        where: { channel: q.channel, category: q.category, identifier: { in: keys } },
+        select: { identifier: true, status: true, evidence: true },
+        orderBy: [{ createdAt: "desc" }, { id: "desc" }],
+      });
+      return erasureStandsAmongRows(keys, rows);
+    },
   },
 
   /* ═══ SUPPRESSION (marketing U6, lift U8) ════════════════════════════════════════════
@@ -4249,6 +4293,25 @@ export const prismaDb = {
       return rows
         .filter((r) => typeof r.email === "string" && r.email.trim() !== "")
         .map((r) => ({ msisdn: r.msisdn, email: r.email as string }))
+        .sort((a, b) => (a.msisdn < b.msisdn ? -1 : a.msisdn > b.msisdn ? 1 : 0));
+    },
+    /** §29 · S15 · THE BOOK ROWS BEHIND A SET OF NUMBERS — what the importer's decide() reads: ONE query on the unique
+     *  `msisdn`, a `select` of exactly the ten columns decide() needs (never the consent cache or the raw input) — the
+     *  account link among them (S15-11: a linked row is never changed by a file). ⛔ THE ERASED TOMBSTONE IS INCLUDED
+     *  (X22) — there is deliberately no sourceRef filter here. §25's bound through bulkKeys; an empty set answered before
+     *  any query. Ordered by number. */
+    snapshotsAmong: async (msisdns: string[]): Promise<MarketingContactSnapshot[]> => {
+      const keys = bulkKeys(msisdns, "marketingContact.snapshotsAmong");
+      if (keys.length === 0) return [];
+      const rows = await pc().marketingContact.findMany({
+        where: { msisdn: { in: keys } },
+        select: { id: true, msisdn: true, displayName: true, email: true, notes: true, tags: true, sourceRef: true, importId: true, updatedAt: true, userId: true },
+      });
+      return rows
+        .map((r): MarketingContactSnapshot => ({
+          id: r.id, msisdn: r.msisdn, displayName: r.displayName, email: r.email, notes: r.notes, tags: r.tags,
+          sourceRef: r.sourceRef, importId: r.importId, updatedAt: r.updatedAt.toISOString(), userId: r.userId,
+        }))
         .sort((a, b) => (a.msisdn < b.msisdn ? -1 : a.msisdn > b.msisdn ? 1 : 0));
     },
     /** Every book row LINKED to an account — erasure's reach (U18b). `userId` is indexed. */
@@ -4785,6 +4848,7 @@ export const prismaDb = {
             createdAt: new Date(row.createdAt),
             createdBy: row.createdBy,
             updatedAt: new Date(row.updatedAt),
+            targetListId: row.targetListId ?? null,
           },
         });
         return toStoredContactImport(created);
@@ -4804,6 +4868,17 @@ export const prismaDb = {
         orderBy: [{ createdAt: "asc" }, { id: "asc" }],
       });
       return row ? toStoredContactImport(row) : null;
+    },
+    /** §29 · S15-12 · an ADMIN's read of the runs OTHER officers left unfinished — the same four OPEN statuses as
+     *  `findOpenFor`, every creator but `q.excludeCreatedBy` (a soft key, never null), NEWEST first, at most `q.limit`,
+     *  clamped to `CONTACT_IMPORT_OPEN_RUNS_MAX`. */
+    listOpenByOthers: async (q: ContactImportOthersQuery): Promise<StoredContactImport[]> => {
+      const rows = await pc().contactImport.findMany({
+        where: { createdBy: { not: q.excludeCreatedBy }, status: { in: ["STAGING", "STAGED", "COMMITTING", "PAUSED"] } },
+        orderBy: [{ createdAt: "desc" }, { id: "desc" }],
+        take: Math.max(0, Math.min(q.limit, CONTACT_IMPORT_OPEN_RUNS_MAX)),
+      });
+      return rows.map(toStoredContactImport);
     },
     /** The idle sweep's read (X29): runs in `q.statuses` untouched since `q.idleBefore`, oldest first, at most `q.limit`. */
     listIdle: async (q: ContactImportIdleQuery): Promise<StoredContactImport[]> => {
@@ -4909,6 +4984,171 @@ export const prismaDb = {
         where: { id: { in: ids }, status: { in: ["DONE", "CANCELLED"] }, finishedAt: { lt: new Date(q.finishedBefore) } },
       })).count;
     },
+    /** §29 · ⭐ THE START'S FREEZE (U32, S15) — ONE transaction whose FIRST statement is the conditional update: the run
+     *  moves STAGED → COMMITTING only while it is still STAGED, writing the choice, the overrides, who confirmed them and
+     *  when, and an EXISTING target list in the same statement. Postgres re-checks the where after a racing commit, so of
+     *  two starts ONE freezes the run; the loser counts 0 and is answered null, nothing written. An existing list deleted
+     *  since the start read it is the foreign key refusing the update (P2003). ⭐ R12 · a NEW list is inserted only AFTER
+     *  the run was won, then made the target, in the same transaction: a held name is the unique index refusing the insert
+     *  (P2002), which rolls the freeze back with it — so a start that loses or throws leaves no list behind. */
+    freezeDecision: async (f: ContactImportFreeze): Promise<StoredContactImport | null> => {
+      const newList = f.newList ?? null;
+      if (newList !== null && f.targetListId !== newList.id) throw new Error("freezeDecision: a new list must be the run's target list");
+      return pc().$transaction(async (tx) => {
+        const frozen = await tx.contactImport.updateMany({
+          where: { id: f.importId, status: "STAGED" },
+          data: {
+            status: "COMMITTING",
+            decisionChoice: f.choice as never,
+            decisionOverrides: f.overrides as unknown as Prisma.InputJsonValue,
+            decisionConfirmedAt: new Date(f.at),
+            decisionConfirmedBy: f.by,
+            // A NEW list does not exist yet: it becomes the target below, once inserted, in this same transaction.
+            targetListId: newList === null ? f.targetListId : null,
+            updatedAt: new Date(f.at),
+          },
+        });
+        if (frozen.count !== 1) return null;
+        if (newList !== null) {
+          const l = newList;
+          await tx.contactList.create({
+            data: {
+              id: l.id, name: l.name, description: l.description,
+              createdAt: new Date(l.createdAt), createdBy: l.createdBy, updatedAt: new Date(l.updatedAt), updatedBy: l.updatedBy,
+            },
+          });
+          await tx.contactImport.update({ where: { id: f.importId }, data: { targetListId: l.id, updatedAt: new Date(f.at) } });
+        }
+        const row = await tx.contactImport.findUnique({ where: { id: f.importId } });
+        return row ? toStoredContactImport(row) : null;
+      }, { timeout: CONTACT_IMPORT_FREEZE_TX_TIMEOUT_MS, maxWait: 5_000 });
+    },
+    /** §29 · ⭐ X3 · THE ONE COMMIT WRITE (S15-6) — ONE interactive transaction, its timeout and maxWait set, whose FIRST
+     *  statement is the cursor's compare-and-set (COMMITTING and `committedThrough` exactly `b.fromCursor`): a step another
+     *  tab already took counts 0 and writes nothing (`moved`). Then, in order: the creates (ONE `createManyAndReturn`, skip
+     *  duplicates — fewer back than asked is the unique index refusing a number), each update conditional on its guard AND
+     *  on the row not being the erased tombstone (⛔ the NULL arm is REQUIRED: `sourceRef <> 'erasure'` alone is NULL — so
+     *  false — for nearly the whole book), and on ANY refusal the transaction THROWS, so Postgres rolls the step back,
+     *  cursor included, and the answer names the rows (`conflict`). Then the failure sentences (before the blanking), the
+     *  outcomes grouped by their pair with the blanking (S15-8) — each group counted, so a staged row erasure deleted
+     *  since the step read it rolls the step back as a `conflict` (R9) — the list memberships (live rows only, skip
+     *  duplicates — an existing member keeps its first `addedAt`), and DONE when the cursor reached `stagedThrough`.
+     *  ⭐ R3 · ONE lock order for every import: creates by number, updates and memberships by contact id, so two imports
+     *  at once take their row locks in the same order and cannot deadlock each other. ⛔ R17 · a cursor that would move
+     *  backwards or past the staged rows is refused, nothing written — the memory twin's own refusal. ⛔ No Promise.all
+     *  over the transaction's client, and no advisory lock: the cursor's row lock is the whole serialisation (§5.5). */
+    commitBatch: async (b: ContactImportCommitBatch): Promise<ContactImportCommitResult> => {
+      const creates = [...b.creates].sort((x, y) => (x.row.msisdn < y.row.msisdn ? -1 : x.row.msisdn > y.row.msisdn ? 1 : 0));
+      const updates = [...b.updates].sort((x, y) => (x.contactId < y.contactId ? -1 : x.contactId > y.contactId ? 1 : 0));
+      const members = [...b.members].sort();
+      try {
+        return await pc().$transaction(async (tx) => {
+          const advanced = await tx.contactImport.updateMany({
+            where: { id: b.importId, status: "COMMITTING", committedThrough: b.fromCursor },
+            data: { committedThrough: b.toCursor, updatedAt: new Date(b.at) },
+          });
+          if (advanced.count !== 1) {
+            const now = await tx.contactImport.findUnique({ where: { id: b.importId } });
+            return { kind: "moved" as const, run: now ? toStoredContactImport(now) : null };
+          }
+          const bounds = await tx.contactImport.findUnique({ where: { id: b.importId }, select: { stagedThrough: true } });
+          if (bounds === null || b.toCursor < b.fromCursor || b.toCursor > bounds.stagedThrough) {
+            throw new Error("commitBatch: the cursor must move forward, within the staged rows");
+          }
+          const refused: number[] = [];
+          if (creates.length > 0) {
+            const born = await tx.marketingContact.createManyAndReturn({
+              data: creates.map(({ row }) => ({
+                id: row.id, msisdn: row.msisdn, rawInput: row.rawInput,
+                displayName: row.displayName, email: row.email, ndc: row.ndc,
+                operator: row.operator, source: row.source as never, sourceRef: row.sourceRef,
+                userId: row.userId, consentState: row.consentState as never,
+                suppressedAt: row.suppressedAt ? new Date(row.suppressedAt) : null,
+                tags: row.tags, notes: row.notes, importId: row.importId,
+                createdAt: new Date(row.createdAt), createdBy: row.createdBy,
+                updatedAt: new Date(row.updatedAt), updatedBy: row.updatedBy,
+              })),
+              // ONE line on purpose: §25's red anchor plants the presence read's own `select` line, which must stay unique.
+              skipDuplicates: true, select: { msisdn: true },
+            });
+            if (born.length !== creates.length) {
+              const landed = new Set(born.map((r) => r.msisdn));
+              for (const c of creates) if (!landed.has(c.row.msisdn)) refused.push(c.ordinal);
+            }
+          }
+          for (const u of updates) {
+            const guarded = await tx.marketingContact.updateMany({
+              where: { id: u.contactId, updatedAt: new Date(u.guard), OR: [{ sourceRef: null }, { sourceRef: { not: ERASURE_EVIDENCE } }] },
+              data: {
+                ...(u.patch.displayName !== undefined ? { displayName: u.patch.displayName } : {}),
+                ...(u.patch.email !== undefined ? { email: u.patch.email } : {}),
+                ...(u.patch.notes !== undefined ? { notes: u.patch.notes } : {}),
+                ...(u.patch.tags !== undefined ? { tags: u.patch.tags } : {}),
+                updatedAt: new Date(u.at),
+                updatedBy: u.by,
+              },
+            });
+            if (guarded.count !== 1) refused.push(u.ordinal);
+          }
+          if (refused.length > 0) throw new ContactImportBatchConflict(refused.sort((x, y) => x - y));
+          // S15-8 · a failed row's sentence BEFORE its cells are blanked, grouped by sentence.
+          const bySentence = new Map<string, number[]>();
+          for (const s of b.sentences) bySentence.set(s.sentence, [...(bySentence.get(s.sentence) ?? []), s.ordinal]);
+          for (const [sentence, ordinals] of bySentence) {
+            await tx.contactImportRow.updateMany({
+              where: { importId: b.importId, ordinal: { in: ordinals } },
+              data: { problems: [{ field: "phone", sentence }] as unknown as Prisma.InputJsonValue },
+            });
+          }
+          // X4 · the outcomes, ONE statement per (outcome, reason) pair — and the cells blanked in the same write (S15-8).
+          const byPair = new Map<string, { outcome: string; reason: string | null; ordinals: number[] }>();
+          for (const o of b.outcomes) {
+            const key = `${o.outcome}|${o.reason ?? ""}`;
+            const group = byPair.get(key) ?? { outcome: o.outcome, reason: o.reason, ordinals: [] };
+            group.ordinals.push(o.ordinal);
+            byPair.set(key, group);
+          }
+          for (const g of byPair.values()) {
+            const settledRows = await tx.contactImportRow.updateMany({
+              where: { importId: b.importId, ordinal: { in: g.ordinals }, outcome: null },
+              data: { outcome: g.outcome as never, outcomeReason: g.reason, rawPhone: "", displayName: null, email: null, notes: null, tags: [] },
+            });
+            // ⛔ R9 · every row of the group must still be there, unsettled: erasure deletes a person's staged rows, and a step
+            // decided on a row that is gone would create the very number the erasure took away. The rows gone are named.
+            if (settledRows.count !== g.ordinals.length) {
+              const present = await tx.contactImportRow.findMany({ where: { importId: b.importId, ordinal: { in: g.ordinals } }, select: { ordinal: true } });
+              const held = new Set(present.map((r) => r.ordinal));
+              const gone = g.ordinals.filter((o) => !held.has(o));
+              throw new ContactImportBatchConflict((gone.length > 0 ? gone : g.ordinals).sort((x, y) => x - y));
+            }
+          }
+          if (b.listId !== null && members.length > 0) {
+            const live = await tx.marketingContact.findMany({
+              where: { id: { in: members }, OR: [{ sourceRef: null }, { sourceRef: { not: ERASURE_EVIDENCE } }] },
+              select: { id: true },
+              orderBy: { id: "asc" },
+            });
+            if (live.length > 0) {
+              await tx.contactListMember.createMany({
+                data: live.map((m) => ({ listId: b.listId as string, contactId: m.id, addedAt: new Date(b.at), addedBy: b.by })),
+                skipDuplicates: true,
+              });
+            }
+          }
+          await tx.contactImport.updateMany({
+            where: { id: b.importId, status: "COMMITTING", stagedThrough: b.toCursor },
+            // `updatedAt` named, as the memory twin writes it: left to @updatedAt it would be this statement's clock.
+            data: { status: "DONE", finishedAt: new Date(b.at), updatedAt: new Date(b.at) },
+          });
+          const settled = await tx.contactImport.findUnique({ where: { id: b.importId } });
+          if (!settled) throw new Error("contactImport.commitBatch: the run vanished inside its own transaction");
+          return { kind: "advanced" as const, run: toStoredContactImport(settled) };
+        }, { timeout: CONTACT_IMPORT_COMMIT_TX_TIMEOUT_MS, maxWait: 5_000 });
+      } catch (err) {
+        if (err instanceof ContactImportBatchConflict) return { kind: "conflict", ordinals: err.ordinals };
+        throw err;
+      }
+    },
   },
 
   contactImportRow: {
@@ -4937,6 +5177,41 @@ export const prismaDb = {
         take: CONTACT_IMPORT_ROWS_BY_NUMBER_MAX,
       });
       return rows.map(toStoredContactImportRow);
+    },
+    /** §29 · ⭐ S15-7 · THE FIRST ROW OF EACH NUMBER, IN ONE READ — ONE grouped query over THIS run's DECIDABLE rows (no
+     *  read error, and `problems` the empty JSON array — Prisma's Json `equals: []`, Postgres' jsonb equality), the
+     *  smallest line per asked number. §25's bound through bulkKeys; an empty set answered before any query. */
+    firstLinesAmong: async (q: ContactImportFirstLinesQuery): Promise<ContactImportFirstLine[]> => {
+      const keys = bulkKeys(q.msisdns, "contactImportRow.firstLinesAmong");
+      if (keys.length === 0) return [];
+      const groups = await pc().contactImportRow.groupBy({
+        by: ["msisdn"],
+        where: { importId: q.importId, msisdn: { in: keys }, readError: null, problems: { equals: [] } },
+        _min: { line: true },
+      });
+      const out: ContactImportFirstLine[] = [];
+      for (const g of groups as Array<{ msisdn: string | null; _min: { line: number | null } }>) {
+        if (g.msisdn !== null && g._min.line !== null) out.push({ msisdn: g.msisdn, line: g._min.line });
+      }
+      return out.sort((a, b) => (a.msisdn < b.msisdn ? -1 : a.msisdn > b.msisdn ? 1 : 0));
+    },
+    /** §29 · the run's FAILED rows after `q.afterLine`, ascending by line — a keyset on the line, never `skip` — at most
+     *  `q.limit` (clamped to `CONTACT_IMPORT_FAILED_PAGE_MAX`), and the run's failures COUNTED separately. */
+    failedPage: async (q: ContactImportFailedQuery): Promise<ContactImportFailedPage> => {
+      const rows = await pc().contactImportRow.findMany({
+        where: { importId: q.importId, outcome: "fail", line: { gt: q.afterLine } },
+        orderBy: { line: "asc" },
+        take: Math.max(0, Math.min(q.limit, CONTACT_IMPORT_FAILED_PAGE_MAX)),
+      });
+      const total = await pc().contactImportRow.count({ where: { importId: q.importId, outcome: "fail" } });
+      return { rows: rows.map(toStoredContactImportRow), total };
+    },
+    /** §29 · the run's KEPT rows counted by their stored reason — ONE groupBy, never the rows (OD26). */
+    keptSplit: async (importId: string): Promise<ContactImportKeptCount[]> => {
+      const groups = await pc().contactImportRow.groupBy({ by: ["outcomeReason"], where: { importId, outcome: "keep" }, _count: { _all: true } });
+      return (groups as Array<{ outcomeReason: string | null; _count: { _all: number } }>)
+        .map((g): ContactImportKeptCount => ({ reason: g.outcomeReason, count: g._count._all }))
+        .sort((a, b) => String(a.reason ?? "").localeCompare(String(b.reason ?? "")));
     },
   },
 

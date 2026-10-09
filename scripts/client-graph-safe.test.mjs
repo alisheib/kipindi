@@ -176,6 +176,25 @@ console.log("\n[client-graph-safe] \u00a71 client-reachable modules stay clear o
     // batches with it in the browser and the server measures each batch with it. It imports two constants from
     // xlsx-limits.ts and types from contact-fields.ts and parsed-file.ts, all pinned here.
     "lib/contacts/import-limits.ts",
+    // ⭐ ADDED 2026-10-09 (S15, decision M3). The importer's ONE contract — every request and answer between the import
+    // dialog and its server actions, and the refusal sentences the dialog shows verbatim. Types, constants and pure
+    // helpers only; it imports types alone, from contact-fields.ts, parsed-file.ts and import-decide.ts, all pinned here.
+    "lib/contacts/import-flow.ts",
+    // ⭐ ADDED 2026-10-09 (S15, decision M3). The browser's reader (a file or a paste → the one parsed shape, streamed) and
+    // the ONE loop driver (the upload and the commit, the actions handed in): the "use client" import dialog runs both.
+    // They import only src/lib/contacts modules, tz-msisdn.ts and phone-normalize.ts, all pinned here.
+    "lib/contacts/import-read.ts",
+    "lib/contacts/import-loop.ts",
+    // ⭐ ADDED 2026-10-09 (S15 · C3b, decision M3). The ONE phone-cell rule — the first Tanzanian mobile among the numbers a
+    // cell holds: the browser's reader (the list paste, the first-mobile column) and the server's staging, check and commit
+    // all ask it. It imports only tz-msisdn.ts, pinned here.
+    "lib/contacts/phone-cell.ts",
+    // ⭐ ADDED 2026-10-09 (S15 · C3b-fix, decisions D6 and D7, M3). The ONE choice of a workbook's sheet by what it holds,
+    // and the ONE rule for a title above the column names: the server's workbook reader and the browser's reader for big
+    // workbooks (step C3c) both call them, and the browser's CSV reader and paste call the second. They import only
+    // phone-cell.ts, xlsx-limits.ts, contact-fields.ts and the parsed shape's type, all pinned here.
+    "lib/contacts/sheet-choice.ts",
+    "lib/contacts/title-rows.ts",
     // ⭐ ADDED 2026-10-01 (marketing S10, the pure engines): client-safe src/lib/marketing modules the composer, the
     // estimate and the confirmation will import into client components — each must stay free of the Prisma client.
     "lib/marketing/erasure-mark.ts",
