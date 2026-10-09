@@ -152,7 +152,7 @@ const LOADER = "src/components/ui/page-loader.tsx";
  *  opening band depends on its data (a title by state, a flag by programme state). */
 const GENERIC = walk("src/app").filter((f) => f.endsWith("/loading.tsx") && !f.startsWith("src/app/admin/") && /<PageLoader\b/.test(code(f))).sort();
 const CASES: Record<string, Array<[string, string]>> = {
-  "src/app/profile/kyc/loading.tsx": [['title={kyc?.status === "APPROVED" ? t.profile.verifyTitleApproved : finalRefusal ? t.kycGate.titleRejected : t.profile.verifyIdentity}', "title={t.profile.verifyIdentity}"]],
+  "src/app/profile/kyc/loading.tsx": [['title={kyc?.status === "APPROVED" ? t.profile.verifyTitleApproved : finalRefusal ? t.kycGate.titleRejected : t.profile.verifyIdentity}', "title={<GhostText>{t.profile.verifyIdentity}</GhostText>}"]], // set and not shown since 2026-10-09 (1.4)
 };
 /** The one route whose first band IS its data: the proposal's own head card, its h1 the proposal's title. */
 const DATA_FIRST: Record<string, string> = { "src/app/proposals/[id]/loading.tsx": '<section className="rounded-xl glass-panel p-4"> <div className="mb-2.5 flex flex-wrap items-center gap-2"> <StatusBadge' };
@@ -227,6 +227,22 @@ function ruleCheck(src: Src): string[] {
   ok("1.3 · the rule is written once, in PageLoader: its note says it, `lead` renders first in the container and `rhythm` is the container's own class",
     pl.includes("lead?: ReactNode;") && pl.includes('rhythm?: "space-y-5" | "space-y-6";') && raw(LOADER).includes("EVERY GHOST OPENS ON THE BAND ITS PAGE OPENS ON")
       && marker.indexOf('id="lead-marker"') > 0 && marker.indexOf('id="lead-marker"') < marker.indexOf('role="status"') && /data-measure="reading" class="[^"]*space-y-5/.test(marker));
+}
+
+{
+  // A TITLE THAT STATES THE READER'S STATE IS SET AND NOT SHOWN (2026-10-09, after round 6's C1 and C13): /profile/kyc's h1
+  // is its reader's verification, /profile/invite's title its reader's programme (`invite-name.ts`); the drawing knows
+  // neither, so it keeps the case drawn's width inside a word bar and shows no word a reader in another state would not read.
+  const STATE_TITLES: Array<[string, string, (l: Locale) => string]> = [
+    ["src/app/profile/kyc/loading.tsx", "title={<GhostText>{t.profile.verifyIdentity}</GhostText>}", (l) => dict[l].profile.verifyIdentity],
+    ["src/app/profile/invite/loading.tsx", "<GhostText>{t.profile.inviteFriends}</GhostText>", (l) => dict[l].profile.inviteFriends],
+  ];
+  const shown: string[] = [];
+  for (const [f, , word] of STATE_TITLES) for (const l of LOCALES) if (wordsIn(render(f, l), [word(l)]).length) shown.push(`${f} ${l}: "${word(l)}" shown`);
+  const kycPage = REAL("src/app/profile/kyc/page.tsx"), invitePage = REAL("src/app/profile/invite/page.tsx");
+  ok("1.4 · RUN in sw, en and zh: a title that states the reader's state is set and not shown — /profile/kyc's (unverified, verified, refused) and /profile/invite's (an agent's dashboard, a paid or an unpaid player's name): each drawing keeps the case drawn's width inside a word bar",
+    shown.length === 0 && STATE_TITLES.every(([f, s]) => REAL(f).includes(s)) && kycPage.includes("t.profile.verifyTitleApproved") && invitePage.includes("inviteName(t, { agent: false, paid })"), shown.join(" | "));
+  ok("1.4′ PLANT · the KYC title shown again (the old drawing) is reported", !planted(STATE_TITLES[0][0], STATE_TITLES[0][1], "title={t.profile.verifyIdentity}")(STATE_TITLES[0][0]).includes(STATE_TITLES[0][1]));
 }
 
 /* ══ §2 · THE SAME RULE IN THE PAGE: EVERY IN-PAGE SUSPENSE SKELETON IS ITS ROUTE'S OWN GHOST ═══════════════════════ */
