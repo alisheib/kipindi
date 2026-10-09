@@ -172,7 +172,7 @@ export const SECTIONS = [
         where: "Growth → SMS campaigns → Save draft, then Test send",
         do: [
           "Press Save draft — the line beside it says when, and that nothing was sent.",
-          "Send the test to My own number, or choose Another number: type it and tick the box that the person who uses it is 18 or older. Use a phone whose owner expects the test.",
+          "Send the test to My own number. Admin and Compliance can also choose Another number: type it and tick the box that the person who uses it is 18 or older — use a phone whose owner expects the test.",
           "The test is the saved message exactly as a recipient will get it. It is sent only while marketing SMS are switched on — up to 3 at once, then one every 10 minutes.",
           "Saved drafts are in the list; press a draft's name to open it again.",
         ],
