@@ -8,6 +8,33 @@
 
 ---
 
+## 2026-10-09 · The SMS sender ID is 50pick.tz — the name every SMS shows its receiver, login codes and marketing alike (owner request)
+
+**Ali asked, 2026-10-09** (to marketing S14, OMEGA-COMPILE01), for the sender every SMS from 50pick shows on the
+receiver's phone to be `50pick.tz`. Done the same evening, ~19:32 EAT:
+
+1. **Railway `SMS_SENDER_ID` = `50pick.tz`** — it was `50pick` from 2026-09-16. It is the sender of every SMS: login and
+   withdrawal codes and marketing alike. Railway redeployed: deployment `c7e54ffa`, SUCCESS 19:32 EAT.
+2. **The gateway account lists three registered sender IDs** — `50pick`, `50pick.tz` and `50picktz` (Ali's screenshot of
+   the gateway's portal).
+3. **No code change.** The app only requires the sender to be set and at most 12 characters (`senderIdProblem`,
+   `src/lib/server/sms-blackball.ts`); `50pick.tz` is 9.
+4. **Unchanged:** the identity inside a message — a marketing SMS still begins with "50pick" (`SENDER_IDENTITY`,
+   `src/lib/marketing/footer.ts`; ETA s.32(1)(b)) — and no player-facing text names the SMS company (§ "2026-10-09 ·
+   Privacy v2026-10-09 — a marketing SMS is sent exactly as the officer wrote it: no stop link, no 18+, no helpline, no
+   source line (owner ruling)", item 5).
+
+✅ **Proven live, 19:44 EAT:** a one-message test campaign, "U52a drive D" (`cmp_538431365c37e1eb06cc1181`, a copy of A
+with the owner's teaser), went to the approved test number with the live switch opened for 30 minutes through the ops
+door and closed after (read back OFF). It was delivered 19:44:47 EAT (receipt DELIVRD), and its stored `SmsMessage` row
+carries the sender `50pick.tz` where A's and C's rows carry `50pick`. Every evidence check was clear (SENT AS WRITTEN,
+DRIVE'S MESSAGE, TO THE TEST NUMBER, NO OTHER MARKETING SMS); U52a's ledger stands at 3 of 6.
+
+**Kept by** `senderIdProblem` at boot (`src/lib/server/boot-checks.ts`) and Admin → System's SMS card, which names a
+sender ID that is missing or too long. Records dated before this entry keep the sender they had.
+
+---
+
 ## 2026-10-09 · Privacy v2026-10-09 — a marketing SMS is sent exactly as the officer wrote it: no stop link, no 18+, no helpline, no source line (owner ruling)
 
 **Ali, 2026-10-09 ~10:35 EAT, in the session, choosing the first campaign's words:** "no — we agreed no stop links in SMS and
@@ -70,6 +97,11 @@ about a number); **answered by Ali** to S14 on 2026-10-09 ~10:20 EAT, each with 
    card and the typed-test door change; the R3/A19 residual narrows to two roles that already read numbers.)
 3. **The 54 contacts back-filled on 2026-10-03 are re-dated "Added 3 Oct 2026"** — a production data fix through an
    audited door (§4.7 B8), so the "Added" date never tells a masked officer who is a player.
+   ✅ **APPLIED on production 2026-10-09 ~19:05 EAT, with Ali's approval** (marketing S14, STEP 58): the 54 back-filled
+   contacts re-dated to 2026-10-03, the moment the backfill wrote them, through the audited ops door
+   `ops:contacts-added-redate` (status read 54, then apply --expect 54); COMPLIANCE audit rows
+   `aud_bmv15p9b37cc710_000000001` (applying) and `aud_bmv15p9b37cc710_000000002` (applied); the 178 sign-up rows are
+   left as they are.
 
 And for the two live checks of the day — U52a's live drive (at most 6 real SMS, to the approved test number) and the
 importer's 40-contact check (its contacts removed afterwards): they run with Claude's QA logins, Ali approving each
