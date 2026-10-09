@@ -13,7 +13,7 @@
  */
 import { formatNumber } from "@/lib/utils";
 import type { ImportChoice, ShownKeepReason } from "@/lib/contacts/import-decide";
-import type { PreflightBucket } from "@/lib/contacts/import-flow";
+import { IMPORT_REFUSAL_SENTENCES, type PreflightBucket } from "@/lib/contacts/import-flow";
 import { formatFileSize, PHONE_FORMAT_REMEDY, XLSX_MAX_BYTES } from "@/lib/contacts/xlsx-limits";
 
 /* ══ PARTS — a sentence with figures in it ═══════════════════════════════════════════════════════ */
@@ -40,6 +40,8 @@ export const IMPORT_TITLES = {
   check: "Check before importing",
   importing: "Importing contacts",
   paused: "Import paused",
+  /** A run nothing is driving that was NOT paused (a refusal, a dropped connection, a stall) — never called "paused". */
+  stopped: "Import stopped",
   done: "Import finished",
   cancelled: "Import cancelled",
   problem: "Import contacts",
@@ -63,6 +65,10 @@ export const IMPORT_GONE = "This import no longer exists. Start again from the f
 export const IMPORT_START_AGAIN = "Start again";
 export const IMPORT_STALLED = "The import stopped moving. Nothing is lost — resume it to carry on from where it stopped.";
 export const IMPORT_CONNECTION = "The connection dropped. Nothing is lost — the import stopped where the server last counted. Resume to carry on.";
+/** ⛔ R4 · a loop ended and the run could not be read again: said with NO figures — never the bar where the loop began. */
+export const IMPORT_DROPPED = "The connection dropped. Nothing is lost — the import's progress is kept on the server.";
+export const IMPORT_UNREAD = "We couldn't read how far the import got — reopen this window to see.";
+export const IMPORT_REREADING = "Reading where the import stands…";
 export const IMPORT_OPENING = "Looking for an import that isn't finished…";
 
 /* ══ THE ENTRANCE (step 1) ═══════════════════════════════════════════════════════════════════════ */
@@ -126,6 +132,14 @@ export const ADOPT = {
   cancelRest: "Cancel the rest",
 } as const;
 
+/** ⭐ S15-12 · an ADMIN's way to the imports other officers left unfinished, at the entrance (`importOpenRunsAction`). */
+export const OTHERS = {
+  heading: "Unfinished imports by other officers",
+  lead: "Carry one on from where it stopped, or cancel it. Rows already written stay in the book either way.",
+  resume: "Resume",
+  gone: "That import no longer exists — it was finished or cancelled in the meantime.",
+} as const;
+
 /* ══ THE COLUMNS (step 2) ═════════════════════════════════════════════════════════════════════════ */
 
 export const MAPPING = {
@@ -179,11 +193,13 @@ export const UPLOAD = {
 export const CHECK = {
   heading: "The check",
   checking: "Checking your file against the contact book…",
+  /** ⭐ R14 · the fourth box holds every row whose details cannot be imported as they are written — a number that is not a
+   *  Tanzanian mobile, a bad email, a name holding a number — each listed below with its own sentence. */
   tiles: {
     new: "New to the book",
     inBook: "Already in the book",
     repeated: "Repeated in this file",
-    invalid: "Not a mobile number",
+    invalid: "Can't be imported as written",
     unreadable: "Could not be read",
   } satisfies Record<PreflightBucket, string>,
   sum: (counts: readonly number[], rows: number): Part[] => {
@@ -198,12 +214,13 @@ export const CHECK = {
   nothingWritten: "Nothing has been written to the book yet.",
   firstWins: "When a number appears more than once, the first row is the one imported; the later rows are kept as they are.",
   showing: (shown: number, total: number): Part[] => ["Showing ", fig(shown), " of ", fig(total)],
-  invalidHeading: "Not a mobile number",
+  invalidHeading: "Can't be imported as written",
   unreadableHeading: "Could not be read",
   repeatedHeading: "Repeated in this file",
   row: (line: number): Part[] => ["Row ", fig(line)],
   repeats: (line: number, first: number): Part[] => ["Row ", fig(line), " repeats row ", fig(first)],
   bucketsOff: "The check's numbers don't add up, so they aren't shown. Nothing was written — check again.",
+  /** ⭐ R15 · only the real re-check of the file says "Check again"; every other retry says `IMPORT_TRY_AGAIN`. */
   checkAgain: "Check again",
   discard: "Discard this import",
   discardTitle: "Discard this import?",
@@ -220,14 +237,26 @@ export const CHECK = {
 export const DECIDE = {
   heading: "Numbers already in the book",
   lead: (n: number): Part[] => [fig(n), ` ${plural(n, "number", "numbers")} in your file ${plural(n, "is", "are")} already in the contact book. Choose what happens to them.`],
+  /** ⛔ S15-10 (R1) · a viewer who may not update contacts already in the book: one line and its why — no choices, no list.
+   *  The why is the server's own sentence for the refusal a non-KEEP start would get. */
+  keptOnly: "Numbers already in the book are kept as they are.",
+  keptOnlyWhy: IMPORT_REFUSAL_SENTENCES.update_needs_reader,
   recommended: "Recommended",
   changes: (n: number): Part[] => (n === 0 ? ["No contact changes"] : [fig(n), ` ${plural(n, "contact changes", "contacts change")}`]),
   reassure: "A blank cell never erases anything. Numbers on the stop list and erased people are never changed.",
   listHeading: "What would change",
   listLead: "Each contact below differs from your file. Set one apart from the choice above if it should be treated differently.",
+  /** V2 · no contact in the book differs from the file: one line, never a heading over an empty list. */
+  noChanges: "Nothing already in the book changes with this choice.",
   loading: "Loading the changes…",
   more: "Show more",
+  /** ⭐ R8 · a page can come back empty while the list goes on (each request is bounded by the work behind it). */
+  noneYet: "No differences in the rows read so far — Show more reads further into the file.",
   failed: "The changes couldn't be loaded. The choice above still applies to every row.",
+  /** ⭐ R7 · after a re-check, the rows set apart that no longer differ from the book were let go — said, never silent. */
+  dropped: (n: number): Part[] => [
+    fig(n), ` ${plural(n, "row", "rows")} you had set apart no longer ${plural(n, "differs", "differ")} from the book, so ${plural(n, "it follows", "they follow")} the choice above.`,
+  ],
   name: (from: string, to: string): string => `Name: ${from} → ${to}`,
   nameNew: (to: string): string => `Name: ${to}`,
   emailReplaced: "Email replaced",
@@ -256,6 +285,8 @@ export const KEEP_REASON: Readonly<Record<ShownKeepReason, string>> = {
   chosen_keep: "Stays as it is",
   no_change: "Nothing to change",
   suppressed: "On the stop list — never changed",
+  /** S15-11 · the account is the source of that contact's details. Shown to a reader only (S15-10). */
+  account: "Linked to a 50pick account — never changed by an import",
   same_run: "Repeats an earlier row",
 };
 
@@ -286,9 +317,10 @@ export const LIST = {
   newList: "A new list",
   newListLabel: "Name of the new list",
   members: (n: number): Part[] => [fig(n), ` ${plural(n, "member", "members")}`],
-  /** The list's NEWEST basis recording is in force — for its members today (`owed` says what the import's new ones need). */
+  /** The list's NEWEST basis recording is in force — for its members today (`owed` says what the import's new ones need).
+   *  Both are short chip labels; where the basis is recorded is `lead`'s sentence above the cards. */
   covered: "Ready for offers",
-  notCovered: "Not ready — record its basis on the Lists card",
+  notCovered: "Not ready for offers",
   exists: "A list with this name already exists, so the contacts are added to it.",
   loading: "Loading your lists…",
   failed: "Your lists couldn't be loaded. You can import without a list, or try again.",
@@ -298,9 +330,13 @@ export const LIST = {
 /* ══ THE START ════════════════════════════════════════════════════════════════════════════════════ */
 
 export const APPLY = {
-  label: (create: number, update: number, keep: number): Part[] => [
-    "Import — ", fig(create), " new · ", fig(update), " updated · ", fig(keep), ` kept as ${plural(keep, "it is", "they are")}`,
+  /** ⭐ THE PROMISE, on its own line above the start (V1, 2026-10-09: inside the button it ran past both edges at 360) —
+   *  a sentence that wraps, each figure one unbreakable unit with the spaces outside it. */
+  tally: (create: number, update: number, keep: number): Part[] => [
+    "This import: ", fig(create), " new · ", fig(update), " updated · ", fig(keep), ` kept as ${plural(keep, "it is", "they are")}.`,
   ],
+  /** The start button's own words — short, so they fit the button at any width: every row the import decides. */
+  label: (rows: number): Part[] => ["Import ", fig(rows), ` ${plural(rows, "row", "rows")}`],
   starting: "Starting the import…",
   overwriteTitle: "Replace details already in the book?",
   overwriteBody: (n: number): Part[] => [
@@ -309,6 +345,8 @@ export const APPLY = {
   overwriteConfirm: "Replace and import",
   heldListName: "Name the new list, or choose another option.",
   heldLists: "Wait for your lists to load, or choose not to add the contacts to a list.",
+  /** The list picked is gone from a fresh read of the lists (R12) — the server's own sentence for it. */
+  heldListGone: IMPORT_REFUSAL_SENTENCES.list_gone,
 } as const;
 
 /* ══ IMPORTING (step 4) ═══════════════════════════════════════════════════════════════════════════ */
@@ -317,9 +355,8 @@ export const COMMIT = {
   label: "Importing contacts",
   caption: (done: number, total: number): Part[] => [fig(done), " of ", fig(total), ` ${plural(total, "row", "rows")} done`],
   betsFirst: "Bets always come first — the import waits whenever the platform is busy.",
-  busy: (attempt: number, of: number, sec: number): Part[] => [
-    "The platform is busy right now — bets come first. Trying again in ", fig(sec), ` ${plural(sec, "second", "seconds")} (`, fig(attempt), " of ", fig(of), ").",
-  ],
+  /** ⭐ R6 · under the server's busy sentence (it says the import carries on by itself): Stop stays live through the wait. */
+  busyStop: "You can still stop it here.",
   stop: "Stop",
   stopping: "Stopping after the rows being written now…",
   askTitle: "Stop the import?",
@@ -337,9 +374,11 @@ export const COMMIT = {
   resume: "Resume",
   cancelRest: "Cancel the rest",
   cancelTitle: "Cancel the rest of this import?",
-  cancelBody: (done: number, rest: number): Part[] => [
-    fig(done), ` ${plural(done, "row is", "rows are")} already in the contact book and stay there. The other `, fig(rest),
-    ` ${plural(rest, "row", "rows")} won't be imported.`,
+  /** ⭐ R5 · `written` is the contacts added plus the contacts updated — never the cursor, which also counts the rows kept
+   *  and the rows that failed; `rest` is the rows the import has not reached (staged − settled). */
+  cancelBody: (written: number, rest: number): Part[] => [
+    fig(written), ` ${plural(written, "contact", "contacts")} already written to the book (added or updated) stay there. `,
+    fig(rest), ` ${plural(rest, "row", "rows")} not reached yet won't be imported.`,
   ],
   cancelConfirm: "Cancel the rest",
   cancelKeep: "Keep the import",
@@ -359,22 +398,25 @@ export const OPEN_WAYS = {
 
 export const DONE = {
   tiles: { create: "Added", update: "Updated", keep: "Kept as they were", fail: "Couldn't be imported" },
-  notImported: "Not imported",
-  sum: (parts: readonly number[], rows: number): Part[] => {
+  /** The words of each term of the sum line — the tiles' own, and (a cancelled import) the rows it never reached. */
+  terms: { create: "added", update: "updated", keep: "kept", fail: "couldn't be imported", rest: "not imported" },
+  /** ⭐ R5 · every row of the file counted once, each term named — written only when the terms add up to the file's rows. */
+  sum: (terms: ReadonlyArray<{ readonly n: number; readonly word: string }>, rows: number): Part[] => {
     const out: Part[] = [];
-    parts.forEach((n, i) => {
+    terms.forEach((t, i) => {
       if (i > 0) out.push(" + ");
-      out.push(fig(n));
+      out.push(fig(t.n), ` ${t.word}`);
     });
-    out.push(" = ", fig(rows), ` ${plural(rows, "row", "rows")}.`);
+    out.push(" = ", fig(rows), ` ${plural(rows, "row", "rows")} — every row of your file is counted once.`);
     return out;
   },
   keptSplit: (inBook: number, stop: number, repeated: number, chosen: number): Part[] => [
     "Kept: ", fig(inBook), " already in the book as they are · ", fig(stop), " on the stop list · ", fig(repeated),
     " repeated in the file · ", fig(chosen), " you chose to keep",
   ],
+  /** ⭐ R5 · `written` = added + updated; `rest` = the rows the import never reached (the cancel's own count). */
   cancelled: (written: number, rest: number): Part[] => [
-    "The import was cancelled. ", fig(written), ` ${plural(written, "row was", "rows were")} written before it stopped and stay in the book; `,
+    "The import was cancelled. ", fig(written), ` ${plural(written, "contact was", "contacts were")} written before it stopped (added or updated) and stay in the book; `,
     fig(rest), ` ${plural(rest, "row was", "rows were")} not imported.`,
   ],
   failuresHeading: "Couldn't be imported",

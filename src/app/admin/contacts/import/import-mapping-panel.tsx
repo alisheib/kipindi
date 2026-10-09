@@ -26,7 +26,7 @@ import { CONTACT_FIELDS, fileColumns, validateMapping, type ColumnMapping, type 
 import { columnLetter, columnSamples, mappingFor, type FileMapping } from "@/lib/contacts/import-read";
 import type { ParsedContactsFile } from "@/lib/contacts/parsed-file";
 import { ENTRANCE, MAPPING } from "./import-copy";
-import { ActionsRow, ImportAlert, Parts, SectionHeading, type ImportAlertState } from "./import-parts";
+import { ActionsRow, ButtonText, ImportAlert, Parts, SectionHeading, type ImportAlertState } from "./import-parts";
 
 /** What the officer settled on: the mapping, the header row it was made against, and how many rows are column names. */
 export type MappingChoice = { readonly mapping: ColumnMapping; readonly headers: string[]; readonly headerRows: 0 | 1 };
@@ -171,10 +171,13 @@ export function ImportMappingPanel({
               const isOpen = open === index;
               return [
                 <tr key={`c${index}`} data-import-column={letter} data-read-as={field ?? "none"}>
-                  <td className="whitespace-nowrap align-top">
-                    <span className="font-mono text-micro text-text-subtle">{letter}</span>
-                    <span className="ml-2 text-text">
-                      {reading.synthetic ? header : header.trim() === "" ? MAPPING.unnamed : header}
+                  <td className="align-top">
+                    {/* The column's letter beside its name, which is the FILE's text and wraps (never runs out of its cell). */}
+                    <span className="flex items-baseline gap-2">
+                      <span className="shrink-0 font-mono text-body-sm text-text-subtle">{letter}</span>
+                      <span className="min-w-0 break-words text-text">
+                        {reading.synthetic ? header : header.trim() === "" ? MAPPING.unnamed : header}
+                      </span>
                     </span>
                   </td>
                   <td className="align-top">
@@ -185,7 +188,7 @@ export function ImportMappingPanel({
                   <td className="align-top">
                     <div className="flex flex-wrap items-center gap-2">
                       <Chip size="sm" variant={field !== null ? "info" : "neutral"}>
-                        <span className="whitespace-nowrap">{field !== null ? labelOf(field) : MAPPING.notUsed}</span>
+                        {field !== null ? labelOf(field) : MAPPING.notUsed}
                       </Chip>
                       <Button
                         type="button"
@@ -265,7 +268,7 @@ export function ImportMappingPanel({
           onClick={() => onNext({ mapping, headers: [...reading.headers], headerRows })}
           data-block="import-mapping-next"
         >
-          {total > 0 ? <Parts parts={MAPPING.next(total)} /> : MAPPING.nextPlain}
+          <ButtonText>{total > 0 ? <Parts parts={MAPPING.next(total)} /> : MAPPING.nextPlain}</ButtonText>
         </Button>
       </ActionsRow>
 

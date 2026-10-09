@@ -1,8 +1,9 @@
 "use server";
 
 /**
- * S15 · /admin/contacts — THE IMPORT'S ONE ACTION FILE (decision X17): the dialog's fifteen server actions, from the
- * file's first batch to the result.                                        (S15, 2026-10-09 · docs/CONTACTS-SCREEN-PLAN.md §4)
+ * S15 · /admin/contacts — THE IMPORT'S ONE ACTION FILE (decision X17): the dialog's sixteen server actions, from the
+ * file's first batch to the result, and an ADMIN's view of other officers' unfinished runs (S15-12).
+ *                                                                           (S15, 2026-10-09 · docs/CONTACTS-SCREEN-PLAN.md §4)
  *
  * ⛔ THE GATE IS EACH ACTION'S FIRST STATEMENT (ruling 523: a server action is a POST to whatever URL the browser is on, so
  * no layout or path rule can see it). Every action opens with `softCheckStaff("growth", …)`: the viewer's STORED role,
@@ -16,7 +17,7 @@
  * ⭐ THEN A RATE RULE PER OFFICER (`rate-limit.ts`), FOUR BUCKETS, so a run is never throttled mid-way:
  * `contacts.import.step` (staging batches, commit steps — sized far past a 200,000-row file), `contacts.import` (the
  * acts an officer presses), `contacts.import.check` (the check and the Excel reader — the expensive reads),
- * `contacts.import.read` (the run, a changes page, the lists, a failures page, the result).
+ * `contacts.import.read` (the run, a changes page, the lists, a failures page, the result, an ADMIN's open runs).
  * ⛔ EVERY BODY IS RE-READ ON THE SERVER: each core builds its request NEW from named keys (`import-staging.ts`,
  * `import-check.ts`, `import-commit.ts`), so a posted count, verdict, outcome or officer never reaches a decision.
  * ⛔ NEVER A THROW TO THE BROWSER, NEVER AN ERROR'S TEXT: a failure is answered `server_error` with its one sentence, and
@@ -38,15 +39,15 @@ import { contactImportView, discardContactImport, openContactImport, stageContac
 import { readXlsxForOfficer } from "@/lib/server/contacts/import-xlsx-run";
 import { checkContactImport, contactImportChanges, importRefusalOf, importRunViewOf } from "@/lib/server/contacts/import-check";
 import {
-  cancelContactImport, commitContactImportStep, contactImportFailures, contactImportResult, importListOptions, pauseContactImport,
-  recordImportFailure, resumeContactImport, startContactImport,
+  cancelContactImport, commitContactImportStep, contactImportFailures, contactImportResult, importListOptions, importOpenRuns,
+  pauseContactImport, recordImportFailure, resumeContactImport, startContactImport,
 } from "@/lib/server/contacts/import-commit";
 import { IMPORT_REFUSAL_SENTENCES } from "@/lib/contacts/import-flow";
 import type {
   ChangesInput, ChangesResult, CommitStepInput, CommitStepResult, DiscardImportResult, FailuresInput, FailuresResult,
-  ImportListsResult, ImportRefusal, ImportResultResult, ImportViewResult, OpenImportInput, OpenImportResult, PreflightResult,
-  ReadXlsxInput, ReadXlsxResult, RunActInput, RunActResult, StageImportInput, StageImportResult, StartImportInput,
-  StartImportResult,
+  ImportListsResult, ImportOpenRunsResult, ImportRefusal, ImportResultResult, ImportViewResult, OpenImportInput, OpenImportResult,
+  PreflightResult, ReadXlsxInput, ReadXlsxResult, RunActInput, RunActResult, StageImportInput, StageImportResult,
+  StartImportInput, StartImportResult,
 } from "@/lib/contacts/import-flow";
 
 type Gate = { ok: true; userId: string } | { ok: false; refusal: ImportRefusal };
@@ -294,5 +295,21 @@ export async function importResultAction(runId: string): Promise<ImportResultRes
     return await contactImportResult(g.userId, runId);
   } catch (err) {
     return recordImportFailure(g.userId, "commit", null, "result", err);
+  }
+}
+
+/* ═══ 5 · AN ADMIN'S WAY TO OTHER OFFICERS' UNFINISHED RUNS (S15-12) ════════════════════════════════════════ */
+
+/** The runs other officers left unfinished, newest first, at most 20 — ⛔ an ADMIN by the STORED role only (the core
+ *  refuses anyone else `forbidden`); each is resumed through `importViewAction(runId)` or cancelled. */
+export async function importOpenRunsAction(): Promise<ImportOpenRunsResult> {
+  const g = await gate("contacts.import.open_runs");
+  if (!g.ok) return g.refusal;
+  const rate = await rateCheckAsync(g.userId, "contacts.import.read");
+  if (!rate.allowed) return limited(rate.retryAfterSec);
+  try {
+    return await importOpenRuns(g.userId);
+  } catch (err) {
+    return recordImportFailure(g.userId, "commit", null, "open_runs", err);
   }
 }

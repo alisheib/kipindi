@@ -14,19 +14,22 @@
  * again — the lead says which, and from which row the upload carries on.
  * ⛔ A refusal is the reader's own sentence, with the fix in it, and the entrance stays open below it: choosing another
  * file IS the next step (§F4).
+ * ⭐ S15-12 (R2b) · below it all, for an ADMIN, the imports other officers left unfinished (`others`, the dialog's
+ * `ImportOpenRuns` — nothing at all for anyone else).
  */
-import { useRef, useState, type DragEvent, type RefObject } from "react";
+import { useRef, useState, type DragEvent, type ReactNode, type RefObject } from "react";
 import { Button } from "@/components/ui/button";
 import { Callout } from "@/components/ui/callout";
 import { I } from "@/components/ui/glyphs";
 import { Field } from "@/components/ui/input";
+import { ConfirmModal } from "@/components/ui/modal";
 import { ProgressBar } from "@/components/ui/progress-bar";
 import { Textarea } from "@/components/ui/textarea";
 import { UnsavedChangesGuard } from "@/components/ui/unsaved-changes";
 import { useActDisabledReason, useMayAct } from "@/components/admin/act-gate";
 import type { ImportRunView } from "@/lib/contacts/import-flow";
 import { SampleSheetButton } from "../sample-sheet-button";
-import { ENTRANCE, MAPPING, RESUME_FILE, partsText } from "./import-copy";
+import { CHECK, ENTRANCE, MAPPING, RESUME_FILE, partsText } from "./import-copy";
 import { ImportAlert, Parts, type ImportAlertState } from "./import-parts";
 
 /** What the entrance is doing: waiting for a file, reading one in the browser, or waiting for the server to read one. */
@@ -41,7 +44,7 @@ export type EntranceMode =
 const PICKER_ACCEPT = ".csv,.tsv,.txt,.vcf,.vcard,.xlsx,.xlsm,.xls,.ods,.numbers,text/csv,text/vcard,text/x-vcard";
 
 export function ImportEntrance({
-  mode, resume, alert, onFile, onPaste, onStopReading, focusRef,
+  mode, resume, alert, onFile, onPaste, onStopReading, focusRef, others = null, onDiscardResume,
 }: {
   mode: EntranceMode;
   /** The unfinished upload being carried on — its file must be read again — or null for a new import. */
@@ -51,6 +54,10 @@ export function ImportEntrance({
   onPaste: (text: string) => void;
   onStopReading: () => void;
   focusRef: RefObject<HTMLButtonElement | null>;
+  /** ⭐ S15-12 · an admin's list of other officers' unfinished imports (it renders nothing for anyone else). */
+  others?: ReactNode;
+  /** While carrying on an upload: leave the unfinished import instead (nothing of it is in the book). */
+  onDiscardResume?: () => void;
 }) {
   const mayAct = useMayAct();
   const actReason = useActDisabledReason();
@@ -58,6 +65,7 @@ export function ImportEntrance({
   const [over, setOver] = useState(false);
   const [pasting, setPasting] = useState(resume !== null && resume.format === "paste");
   const [text, setText] = useState("");
+  const [askDiscard, setAskDiscard] = useState(false);
   const busy = mode.kind !== "idle";
   const pasteReady = text.trim() !== "";
 
@@ -72,9 +80,29 @@ export function ImportEntrance({
   return (
     <div className="space-y-4" data-block="import-entrance" data-state={mode.kind}>
       {resume !== null ? (
-        <Callout tone="info" role="status">
-          <Parts parts={RESUME_FILE.lead(resume.format === "paste", resume.fileName, resume.nextFrom ?? resume.stagedThrough + 1)} />
-        </Callout>
+        <div className="space-y-2" data-import-resume-file>
+          <Callout tone="info" role="status">
+            <Parts parts={RESUME_FILE.lead(resume.format === "paste", resume.fileName, resume.nextFrom ?? resume.stagedThrough + 1)} />
+          </Callout>
+          {/* Never a dead end: an officer who no longer has that file (an admin carrying on another's upload) leaves it here. */}
+          {onDiscardResume !== undefined && mode.kind === "idle" && (
+            <Button type="button" size="sm" variant="ghost" disabled={!mayAct} title={actReason} onClick={() => setAskDiscard(true)} data-import-act="discard-resume">
+              {RESUME_FILE.discard}
+            </Button>
+          )}
+          <ConfirmModal
+            open={askDiscard}
+            onClose={() => setAskDiscard(false)}
+            onConfirm={() => {
+              setAskDiscard(false);
+              onDiscardResume?.();
+            }}
+            title={CHECK.discardTitle}
+            body={<span data-import-confirm="discard"><Parts parts={CHECK.discardBody(resume.stagedThrough)} /></span>}
+            confirmLabel={CHECK.discardConfirm}
+            tone="claret"
+          />
+        </div>
       ) : (
         <p className="text-body-sm text-text-secondary">{ENTRANCE.lead}</p>
       )}
@@ -210,6 +238,8 @@ export function ImportEntrance({
         <span>{ENTRANCE.sampleLead}</span>
         <SampleSheetButton />
       </div>
+
+      {others}
 
       <UnsavedChangesGuard dirty={busy || text.trim() !== ""} body={ENTRANCE.guardBody} />
     </div>

@@ -2,7 +2,7 @@
 
 /**
  * CONTACTS → IMPORT CONTACTS — the page head's button (`contacts-import`) and the ONE dialog it opens.
- *                                                (S15 · C3–C5, 2026-10-09 · docs/CONTACTS-SCREEN-PLAN.md §4.2, S15-1…S15-9)
+ *                                       (S15 · C3–C5, 2026-10-09 · docs/CONTACTS-SCREEN-PLAN.md §4.2, S15-1…S15-12)
  *
  * ⭐ ONE DIALOG, ONE STEP AT A TIME, NEVER A DEAD END. Opening asks the server for the officer's unfinished import first
  * (`importViewAction(null)`) and opens ON it when there is one (`import-adopt`); otherwise: choose a file or paste
@@ -12,16 +12,26 @@
  * them (`import-commit`) → the result (`import-done`). Every refusal is said where it happened with its next step as a
  * control; a fault says "nothing was lost" and offers to try again; a deploy says "The platform was updated — reload this
  * page to resume", and the run is resumable because its progress lives on the server, never in this tab.
+ * ⭐ S15-12 (R2b) · AN ADMIN also finds, at the entrance, the imports OTHER officers left unfinished
+ * (`importOpenRunsAction`, asked once per opening; refused for anyone else, and then nothing is shown) — each with Resume
+ * (adopted through `importViewAction(runId)`, then the loop its status needs) and the existing Discard / Cancel the rest.
  * ⭐ THE TWO LOOPS ARE `import-loop.ts`'s — the one driver, pure, with the actions handed in — and their rules are its
- * header's: the server's cursor is the only progress, Stop pauses then stops, only `busy` is waited out, a thrown call
- * is followed by the VIEW (never a blind repeat).
+ * header's: the server's cursor is the only progress, Stop pauses then stops, only `busy` is waited out — and never given
+ * up on while Stop is not pressed (R6: the run stays COMMITTING and the screen says it carries on by itself) — and a
+ * thrown call is followed by the VIEW (never a blind repeat).
+ * ⛔ R4 · A LOOP THAT ENDS ON A REFUSAL OR A FAILURE WITHOUT A VIEW OF ITS OWN NEVER SHOWS WHERE IT BEGAN AS CURRENT: the
+ * run is read again (`importViewAction(runId)`) before anything is drawn, and when that fails too the dialog says "We
+ * couldn't read how far the import got — reopen this window to see" with no figures at all (never "0 of N").
+ * ⭐ R7 · THE OFFICER'S DECISION IS HELD HERE (`DecisionDraft`), so a start refused because the check grew stale or the book
+ * moved is checked again WITHOUT losing the choice, the rows set apart, the list or the new list's name.
  * ⛔ THE ACTIONS ARE CALLED HERE AND NOWHERE ELSE (`ACTIONS` below): the panels are handed functions, so this file is the
  * one acting control `test:admin-act-gate` reads — and it consults the gate: a role that may view the book but not act
  * sees "Import contacts" disabled WITH its reason, never a control that bounces (`useActDisabledReason`).
  * ⛔ A DIALOG THAT IS WORKING CANNOT BE DISMISSED BY A STRAY CLICK OR KEY: while a request is in flight its ✕ is gone;
  * while rows are uploading or importing its ✕ ASKS ("Stop the import?") and the answer pauses, then closes. A closed
  * window cannot ask — the server keeps the run COMMITTING, and the next opening adopts it.
- * ⭐ 360: the dialog is a full-height sheet, its buttons stacked with the primary on top; 1280: a form's width (≤ 960).
+ * ⭐ 360: the dialog is a full-height sheet that scrolls, its buttons stacked with the primary on top; 1280: a form's width
+ * (≤ 960). No sentence leaves its box at any width (`test:popup-fit`): long button words wrap inside their buttons.
  */
 import { useCallback, useEffect, useId, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
@@ -39,6 +49,7 @@ import { isParsedContactsFile, type ParsedContactsFile } from "@/lib/contacts/pa
 import {
   bucketsAdd,
   type ImportRefusal,
+  type ImportRefusalReason,
   type ImportResultView,
   type ImportRunView,
   type PreflightView,
@@ -62,6 +73,7 @@ import {
   importChangesAction,
   importFailuresAction,
   importListsAction,
+  importOpenRunsAction,
   importResultAction,
   importViewAction,
   openImportAction,
@@ -78,18 +90,22 @@ import {
   IMPORT_BUTTON,
   IMPORT_CLOSE,
   IMPORT_CONNECTION,
+  IMPORT_DROPPED,
   IMPORT_EYEBROW,
   IMPORT_FAULT,
   IMPORT_GONE,
   IMPORT_OPENING,
   IMPORT_RELOAD,
+  IMPORT_REREADING,
   IMPORT_SKEW,
   IMPORT_SKEW_DETAIL,
   IMPORT_STALLED,
   IMPORT_START_AGAIN,
   IMPORT_TITLES,
   IMPORT_TRY_AGAIN,
+  IMPORT_UNREAD,
   OPEN_WAYS,
+  OTHERS,
   RESUME_FILE,
   partsText,
   stepLine,
@@ -97,15 +113,16 @@ import {
 import { ImportAdoptPanel } from "./import-adopt-panel";
 import { ImportCheckPanel } from "./import-check-panel";
 import { ImportCommitPanel } from "./import-commit-panel";
-import { ImportDecisionPanel, type DecisionApi } from "./import-decision-panel";
+import { ImportDecisionPanel, draftDirty, freshDraft, type DecisionApi, type DecisionDraft } from "./import-decision-panel";
 import { ImportDonePanel } from "./import-done-panel";
 import { ImportEntrance, type EntranceMode } from "./import-entrance";
 import { ImportMappingPanel, type MappingChoice } from "./import-mapping-panel";
+import { ImportOpenRuns, type OthersState } from "./import-open-runs";
 import { ActionsRow, ImportAlert, Parts, type AlertAction, type ImportAlertState } from "./import-parts";
 
 /* ═══ THE ACTIONS — named once ═══════════════════════════════════════════════════════════════════ */
 
-/** ⭐ The server's fifteen actions (`import-actions.ts`), as the dialog and its loops call them. */
+/** ⭐ The server's sixteen actions (`import-actions.ts`), as the dialog and its loops call them. */
 const ACTIONS = {
   view: importViewAction,
   open: openImportAction,
@@ -122,6 +139,7 @@ const ACTIONS = {
   cancel: cancelImportAction,
   failures: importFailuresAction,
   result: importResultAction,
+  openRuns: importOpenRunsAction,
 };
 
 /** The two reads the decision panel makes itself. */
@@ -159,6 +177,17 @@ function headersCovering(headers: readonly string[], mapping: ColumnMapping): st
   for (const v of Object.values(mapping)) if (typeof v === "number" && v + 1 > width) width = v + 1;
   return Array.from({ length: width }, (_, i) => headers[i] ?? "");
 }
+
+/** How a refusal is painted: a wait or a re-check is not an error; everything else is said as one. */
+const REFUSAL_TONE: Partial<Record<ImportRefusalReason, ImportAlertState["tone"]>> = {
+  busy: "warning",
+  rate_limited: "warning",
+  xlsx_busy: "warning",
+  check_again: "warning",
+  bad_exceptions: "warning",
+  check_stale: "info",
+  update_needs_reader: "info",
+};
 
 /* ═══ THE PAGE HEAD'S BUTTON ═══════════════════════════════════════════════════════════════════════ */
 
@@ -206,6 +235,12 @@ type Ready = {
   readonly extraUnit: "card" | "line";
 };
 
+/** Which loop a stopped run was in — where the officer is told it stopped. */
+type Loop = "upload" | "commit";
+
+/** ⛔ R4 · what to say when a loop's run is read again: `found` beside the run's figures, `unread` when it cannot be read. */
+type StopNotes = { readonly found: ImportAlertState; readonly unread: ImportAlertState };
+
 type Phase =
   | { readonly at: "opening" }
   | { readonly at: "adopt"; readonly view: ImportRunView; readonly busy: boolean }
@@ -215,9 +250,13 @@ type Phase =
   | { readonly at: "checking"; readonly view: ImportRunView }
   | { readonly at: "review"; readonly view: ImportRunView; readonly preflight: PreflightView; readonly starting: boolean }
   | { readonly at: "importing"; readonly view: ImportRunView; readonly busyState: BusyState | null; readonly stopping: boolean }
+  /** A run nothing in this tab drives: PAUSED, or (R6/R4) still COMMITTING after a refusal or a dropped connection. */
   | { readonly at: "paused"; readonly view: ImportRunView; readonly acting: boolean }
+  /** ⛔ R4 · a loop ended and the run is being read again (`reading`), or could not be: no figures are shown. */
+  | { readonly at: "unread"; readonly runId: string; readonly loop: Loop; readonly notes: StopNotes; readonly reading: boolean }
   | { readonly at: "finishing"; readonly view: ImportRunView }
-  | { readonly at: "done"; readonly result: ImportResultView }
+  /** `notImported` (R5): a cancel's own count of the rows it left unimported, when this tab cancelled the run. */
+  | { readonly at: "done"; readonly result: ImportResultView; readonly notImported: number | null }
   | { readonly at: "fault" }
   | { readonly at: "skew" };
 
@@ -230,7 +269,13 @@ function ImportDialog({ open, onClose }: { open: boolean; onClose: () => void })
   const [phase, setPhase] = useState<Phase>({ at: "opening" });
   const [alert, setAlert] = useState<ImportAlertState | null>(null);
   const [askStop, setAskStop] = useState(false);
-  const [decisionDirty, setDecisionDirty] = useState(false);
+  /** ⭐ R7 · the officer's decision for the run under review — kept across a re-check (one run's draft at a time). */
+  const [draft, setDraft] = useState<DecisionDraft | null>(null);
+  /** ⭐ R12 · bumped when a start was refused over its list: the decision panel reads the lists again. */
+  const [listsRound, setListsRound] = useState(0);
+  /** ⭐ S15-12 (R2b) · other officers' unfinished imports, for an admin — and the one a request is in flight for. */
+  const [others, setOthers] = useState<OthersState>({ kind: "loading" });
+  const [othersActing, setOthersActing] = useState<string | null>(null);
   const buttonFocus = useRef<HTMLButtonElement | null>(null);
   const headingFocus = useRef<HTMLHeadingElement | null>(null);
   /** The dialog is mounted (a loop or a reply that outlives it does nothing). */
@@ -249,7 +294,6 @@ function ImportDialog({ open, onClose }: { open: boolean; onClose: () => void })
     if (!alive.current) return;
     setPhase(next);
     setAlert(nextAlert);
-    if (next.at !== "review") setDecisionDirty(false);
   }, []);
 
   useEffect(() => {
@@ -276,7 +320,7 @@ function ImportDialog({ open, onClose }: { open: boolean; onClose: () => void })
 
   /** A refusal said in the phase it happened in: the server's sentence, verbatim, and the ways on. */
   const refused = (refusal: ImportRefusal, actions: readonly AlertAction[] = []): ImportAlertState => ({
-    tone: refusal.reason === "busy" || refusal.reason === "rate_limited" || refusal.reason === "xlsx_busy" ? "warning" : "danger",
+    tone: REFUSAL_TONE[refusal.reason] ?? "danger",
     text: refusal.message,
     actions,
   });
@@ -291,18 +335,23 @@ function ImportDialog({ open, onClose }: { open: boolean; onClose: () => void })
     window.setTimeout(tick, Math.min(200, Math.max(0, ms)));
   });
 
+  /** The run is gone (discarded elsewhere, or swept): said so, with the way to start again. */
+  const goneNow = (): void => {
+    go({ at: "fault" }, { tone: "danger", text: IMPORT_GONE, actions: [{ label: IMPORT_START_AGAIN, run: () => go({ at: "entrance", resume: null, mode: IDLE }), primary: true, act: "start-again" }] });
+  };
+
   /* ── where a run goes, by its status ─────────────────────────────────────────────────────────── */
 
-  const finish = async (view: ImportRunView): Promise<void> => {
+  const finish = async (view: ImportRunView, notImported: number | null = null): Promise<void> => {
     go({ at: "finishing", view });
     const r = await call(() => ACTIONS.result(view.id));
     if (!alive.current) return;
-    if (r.kind === "thrown") return thrown(r.skew, { at: "finishing", view }, () => void finish(view));
+    if (r.kind === "thrown") return thrown(r.skew, { at: "finishing", view }, () => void finish(view, notImported));
     if (!r.answer.ok) {
-      go({ at: "finishing", view }, refused(r.answer, [{ label: IMPORT_TRY_AGAIN, run: () => void finish(view), primary: true, act: "retry" }]));
+      go({ at: "finishing", view }, refused(r.answer, [{ label: IMPORT_TRY_AGAIN, run: () => void finish(view, notImported), primary: true, act: "retry" }]));
       return;
     }
-    go({ at: "done", result: r.answer.result });
+    go({ at: "done", result: r.answer.result, notImported });
     router.refresh();
   };
 
@@ -319,12 +368,62 @@ function ImportDialog({ open, onClose }: { open: boolean; onClose: () => void })
     go({ at: "adopt", view, busy: false }, note);
   };
 
+  /** A loop's run as the server JUST reported it, placed: a stopped upload on its adopt panel, a stopped commit on the
+   *  paused panel (titled "stopped" unless the run really is PAUSED), a finished run on its result. */
+  const placeStopped = (view: ImportRunView, note: ImportAlertState | null): void => {
+    if (view.status === "COMMITTING" || view.status === "PAUSED") {
+      go({ at: "paused", view, acting: false }, note);
+      return;
+    }
+    route(view, note);
+  };
+
+  /**
+   * ⛔ R4 · A LOOP ENDED ON A REFUSAL OR A FAILURE: drawn from the view the server answered with — and when there is none,
+   * from the run READ AGAIN by id. Never from the cursor the loop began at. When the run cannot be read either, the
+   * dialog says so with no figures (`unread`), and Try again reads it again.
+   */
+  const settle = async (known: ImportRunView | null, runId: string, notes: StopNotes, loop: Loop): Promise<void> => {
+    if (known !== null) {
+      placeStopped(known, notes.found);
+      return;
+    }
+    go({ at: "unread", runId, loop, notes, reading: true });
+    const r = await call(() => ACTIONS.view(runId));
+    if (!alive.current) return;
+    if (r.kind === "thrown") {
+      if (r.skew) return go({ at: "skew" });
+      return go({ at: "unread", runId, loop, notes, reading: false }, notes.unread);
+    }
+    if (!r.answer.ok) return go({ at: "unread", runId, loop, notes, reading: false }, notes.unread);
+    if (r.answer.view === null) return goneNow();
+    placeStopped(r.answer.view, notes.found);
+  };
+
   /* ── opening ─────────────────────────────────────────────────────────────────────────────────── */
+
+  /** ⭐ S15-12 (R2b) · an ADMIN's way to other officers' unfinished imports. Refused (anyone but an admin), failed or empty
+   *  — nothing is shown, and nothing is said. */
+  const loadOthers = async (): Promise<void> => {
+    const r = await call(() => ACTIONS.openRuns());
+    if (!alive.current) return;
+    if (r.kind === "thrown" || !r.answer.ok) {
+      setOthers({ kind: "none" });
+      return;
+    }
+    setOthers(r.answer.runs.length === 0 ? { kind: "none" } : { kind: "ready", runs: r.answer.runs });
+  };
+  const othersAsked = useRef(false);
 
   const begin = async (): Promise<void> => {
     go({ at: "opening" });
     const r = await call(() => ACTIONS.view(null));
     if (!alive.current) return;
+    // Asked once per opening, after the officer's own run is known — the entrance never waits for it.
+    if (!othersAsked.current) {
+      othersAsked.current = true;
+      void loadOthers();
+    }
     if (r.kind === "thrown") return thrown(r.skew, { at: "fault" }, () => void begin());
     if (!r.answer.ok) {
       go({ at: "fault" }, refused(r.answer, [{ label: IMPORT_TRY_AGAIN, run: () => void begin(), primary: true, act: "retry" }]));
@@ -511,7 +610,6 @@ function ImportDialog({ open, onClose }: { open: boolean; onClose: () => void })
     const closing = closeAfterStop.current;
     closeAfterStop.current = false;
     if (closing) onClose();
-    const resumeWay = (v: ImportRunView): AlertAction => ({ label: COMMIT.resume, run: () => void upload(v), primary: true, act: "resume" });
     switch (out.kind) {
       case "staged":
         return check(out.view);
@@ -520,18 +618,19 @@ function ImportDialog({ open, onClose }: { open: boolean; onClose: () => void })
       case "elsewhere":
         return route(out.view);
       case "refused": {
-        const v = out.refusal.view ?? start;
-        return go({ at: "adopt", view: v, busy: false }, refused(out.refusal, v.status === "STAGING" ? [resumeWay(v)] : []));
+        const note = refused(out.refusal);
+        return settle(out.refusal.view, start.id, { found: note, unread: note }, "upload");
       }
       case "stalled":
-        return go({ at: "adopt", view: out.view, busy: false }, { tone: "warning", text: IMPORT_STALLED, actions: [resumeWay(out.view)] });
+        return go({ at: "adopt", view: out.view, busy: false }, { tone: "warning", text: IMPORT_STALLED, actions: [] });
       case "gone":
-        return go({ at: "fault" }, { tone: "danger", text: IMPORT_GONE, actions: [{ label: IMPORT_START_AGAIN, run: () => go({ at: "entrance", resume: null, mode: IDLE }), primary: true, act: "start-again" }] });
-      case "failed": {
+        return goneNow();
+      case "failed":
         if (out.skew) return go({ at: "skew" });
-        const v = out.view ?? start;
-        return go({ at: "adopt", view: v, busy: false }, { tone: "warning", text: IMPORT_CONNECTION, actions: [resumeWay(v)] });
-      }
+        return settle(out.view, start.id, {
+          found: { tone: "warning", text: IMPORT_CONNECTION, actions: [] },
+          unread: { tone: "warning", text: IMPORT_DROPPED, actions: [] },
+        }, "upload");
     }
   };
 
@@ -557,6 +656,12 @@ function ImportDialog({ open, onClose }: { open: boolean; onClose: () => void })
     go({ at: "review", view: r.answer.view, preflight: r.answer.preflight, starting: false }, note);
   };
 
+  /** ⭐ R7 · the draft for a run: the one held, when it is that run's — else a fresh one. */
+  const draftOf = (runId: string): DecisionDraft => (draft !== null && draft.runId === runId ? draft : freshDraft(runId));
+  const changeDraft = useCallback((runId: string, change: (d: DecisionDraft) => DecisionDraft) => {
+    setDraft((d) => change(d !== null && d.runId === runId ? d : freshDraft(runId)));
+  }, []);
+
   const start = async (input: StartImportInput): Promise<void> => {
     if (phase.at !== "review") return;
     const { view, preflight } = phase;
@@ -573,10 +678,13 @@ function ImportDialog({ open, onClose }: { open: boolean; onClose: () => void })
     }
     const a = r.answer;
     if (a.ok) return commit(a.view);
-    if (a.reason === "check_again" || a.reason === "bad_exceptions") {
-      // The book moved since the check (or the rows set apart no longer match): the officer sees the new numbers first.
-      return check(a.view ?? view, refused(a));
+    // ⭐ R7 · the check grew stale, the book moved, the rows set apart no longer match, or this viewer may not update the
+    // book: the file is checked again and the officer sees the new numbers first — the decision (the draft) is kept.
+    if (a.reason === "check_stale" || a.reason === "check_again" || a.reason === "bad_exceptions" || a.reason === "update_needs_reader") {
+      return check(a.view !== null && a.view.status === "STAGED" ? a.view : view, refused(a));
     }
+    // ⭐ R12 · refused over its list: the lists are read again, so the list with that name (or another) can be picked.
+    if (a.reason === "list_name_taken" || a.reason === "list_gone") setListsRound((n) => n + 1);
     if (a.view !== null && a.view.status !== "STAGED") return route(a.view, refused(a));
     go({ at: "review", view, preflight, starting: false }, refused(a));
   };
@@ -613,17 +721,19 @@ function ImportDialog({ open, onClose }: { open: boolean; onClose: () => void })
       case "halted":
         return out.view.status === "PAUSED" ? go({ at: "paused", view: out.view, acting: false }) : route(out.view);
       case "refused": {
-        const v = out.refusal.view;
-        if (v !== null && (v.status === "CANCELLED" || v.status === "DONE")) return finish(v);
-        return go({ at: "paused", view: v ?? start, acting: false }, refused(out.refusal));
+        const note = refused(out.refusal);
+        return settle(out.refusal.view, start.id, { found: note, unread: note }, "commit");
       }
       case "stalled":
         return go({ at: "paused", view: out.view, acting: false }, { tone: "warning", text: IMPORT_STALLED, actions: [] });
       case "gone":
-        return go({ at: "fault" }, { tone: "danger", text: IMPORT_GONE, actions: [{ label: IMPORT_START_AGAIN, run: () => go({ at: "entrance", resume: null, mode: IDLE }), primary: true, act: "start-again" }] });
+        return goneNow();
       case "failed":
         if (out.skew) return go({ at: "skew" });
-        return go({ at: "paused", view: out.view ?? start, acting: false }, { tone: "warning", text: IMPORT_CONNECTION, actions: [] });
+        return settle(out.view, start.id, {
+          found: { tone: "warning", text: IMPORT_CONNECTION, actions: [] },
+          unread: { tone: "warning", text: IMPORT_DROPPED, actions: [] },
+        }, "commit");
     }
   };
 
@@ -643,13 +753,15 @@ function ImportDialog({ open, onClose }: { open: boolean; onClose: () => void })
     go({ at: "paused", view: a.view ?? view, acting: false }, refused(a));
   };
 
-  /** Cancel the rest: what is written stays, the rest is left unimported — the result says how many of each. */
+  /** Cancel the rest: what is written stays, the rest is left unimported — the result says how many of each (R5). */
   const cancelRest = async (view: ImportRunView): Promise<void> => {
+    // ⭐ R5 · the rows not reached yet as this tab knew them just before the cancel — the fallback for the cancel's own count.
+    const before = Math.max(0, view.stagedThrough - view.committedThrough);
     go(phase.at === "adopt" ? { at: "adopt", view, busy: true } : { at: "paused", view, acting: true });
     const r = await call(() => ACTIONS.cancel({ runId: view.id }));
     if (!alive.current) return;
     if (r.kind === "thrown") return thrown(r.skew, { at: "paused", view, acting: false }, () => void cancelRest(view));
-    if (r.answer.ok) return finish(r.answer.view);
+    if (r.answer.ok) return finish(r.answer.view, r.answer.notImported ?? before);
     const a = r.answer;
     if (a.view !== null && (a.view.status === "CANCELLED" || a.view.status === "DONE")) return finish(a.view);
     go({ at: "paused", view: a.view ?? view, acting: false }, refused(a));
@@ -674,18 +786,67 @@ function ImportDialog({ open, onClose }: { open: boolean; onClose: () => void })
     else go({ at: "entrance", resume: null, mode: IDLE });
   };
 
+  /** Leaving an upload this tab cannot carry on (the file is not to hand — an admin carrying on another's upload). */
+  const discardWayFor = (run: ImportRunView) => (): void => {
+    void discardRun(run, () => {
+      go({ at: "entrance", resume: null, mode: IDLE });
+      void loadOthers();
+    });
+  };
+
+  /* ── S15-12 (R2b): another officer's unfinished import, from the entrance ────────────────────── */
+
+  /** Resume another officer's run: adopted through its view by id, then the loop its status needs (`resumeRun`). */
+  const resumeOther = async (run: ImportRunView): Promise<void> => {
+    const here: Phase = { at: "entrance", resume: null, mode: IDLE };
+    setOthersActing(run.id);
+    const r = await call(() => ACTIONS.view(run.id));
+    if (!alive.current) return;
+    setOthersActing(null);
+    if (r.kind === "thrown") return thrown(r.skew, here, () => void resumeOther(run));
+    if (!r.answer.ok) {
+      go(here, refused(r.answer));
+      void loadOthers();
+      return;
+    }
+    const view = r.answer.view;
+    if (view === null) {
+      go(here, { tone: "warning", text: OTHERS.gone, actions: [] });
+      void loadOthers();
+      return;
+    }
+    // Adopted: it leaves the list (another opening reads the list afresh).
+    setOthers((o) => (o.kind === "ready" ? { kind: "ready", runs: o.runs.filter((x) => x.id !== view.id) } : o));
+    await resumeRun(view);
+  };
+
+  /** Leave another officer's run: discarded before its start (nothing written), its rest cancelled after it. */
+  const leaveOther = (run: ImportRunView): void => {
+    if (run.status === "COMMITTING" || run.status === "PAUSED") {
+      void cancelRest(run);
+      return;
+    }
+    void discardRun(run, () => {
+      go({ at: "entrance", resume: null, mode: IDLE });
+      void loadOthers();
+    });
+  };
+
   /* ── closing ─────────────────────────────────────────────────────────────────────────────────── */
 
   const running = phase.at === "uploading" || phase.at === "importing";
   const reading = phase.at === "entrance" && phase.mode.kind === "reading";
   const inFlight = phase.at === "opening"
-    || (phase.at === "entrance" && (phase.mode.kind === "xlsx" || phase.mode.kind === "opening"))
+    || (phase.at === "entrance" && (phase.mode.kind === "xlsx" || phase.mode.kind === "opening" || othersActing !== null))
     || (phase.at === "mapping" && phase.busy)
     || phase.at === "checking" && alert === null
     || (phase.at === "review" && phase.starting)
     || (phase.at === "adopt" && phase.busy)
     || (phase.at === "paused" && phase.acting)
+    || (phase.at === "unread" && phase.reading)
     || (phase.at === "finishing" && alert === null);
+  // ⭐ R7 · choices the officer made for the run under review (or being checked again) hold the scrim and Escape.
+  const decisionDirty = (phase.at === "review" || phase.at === "checking") && draft !== null && draft.runId === phase.view.id && draftDirty(draft);
   const closable = !running && !reading && !inFlight && !decisionDirty;
 
   /** ✕ (and Escape / the scrim when allowed): a running loop is ASKED first; a read is stopped; else the dialog closes. */
@@ -725,8 +886,12 @@ function ImportDialog({ open, onClose }: { open: boolean; onClose: () => void })
     title = IMPORT_TITLES.importing;
     step = 3;
   } else if (phase.at === "paused") {
-    title = IMPORT_TITLES.paused;
+    // ⛔ R6 · "paused" only for a run that IS paused; one nothing drives after a refusal or a drop is "stopped".
+    title = phase.view.status === "PAUSED" ? IMPORT_TITLES.paused : IMPORT_TITLES.stopped;
     step = 3;
+  } else if (phase.at === "unread") {
+    title = IMPORT_TITLES.stopped;
+    step = phase.loop === "upload" ? 2 : 3;
   } else if (phase.at === "done") title = phase.result.view.status === "CANCELLED" ? IMPORT_TITLES.cancelled : IMPORT_TITLES.done;
 
   const focusTarget = phase.at === "review" || phase.at === "checking" ? headingFocus : buttonFocus;
@@ -779,6 +944,34 @@ function ImportDialog({ open, onClose }: { open: boolean; onClose: () => void })
             </div>
           )}
 
+          {phase.at === "unread" && (
+            // ⛔ R4 · no bar and no figure here: the run's progress could not be read, so none is shown.
+            <div className="space-y-4" data-import-unread={phase.reading ? "reading" : "unread"}>
+              {phase.reading ? (
+                <p className="text-body-sm text-text-secondary" role="status">{IMPORT_REREADING}</p>
+              ) : (
+                <>
+                  {alert !== null && <ImportAlert alert={alert} />}
+                  <Callout tone="warning" role="status">{IMPORT_UNREAD}</Callout>
+                  <ActionsRow>
+                    <Button
+                      type="button"
+                      size="md"
+                      variant="ghost"
+                      onClick={() => void settle(null, phase.runId, phase.notes, phase.loop)}
+                      data-import-act="reread"
+                    >
+                      {IMPORT_TRY_AGAIN}
+                    </Button>
+                    <Button ref={buttonFocus} type="button" size="md" variant="primary" onClick={onClose} data-import-act="close">
+                      {IMPORT_CLOSE}
+                    </Button>
+                  </ActionsRow>
+                </>
+              )}
+            </div>
+          )}
+
           {phase.at === "adopt" && (
             <ImportAdoptPanel
               view={phase.view}
@@ -801,6 +994,16 @@ function ImportDialog({ open, onClose }: { open: boolean; onClose: () => void })
               onPaste={(text) => void onPaste(text, phase.resume)}
               onStopReading={() => abortRead.current?.abort()}
               focusRef={buttonFocus}
+              onDiscardResume={phase.resume === null ? undefined : discardWayFor(phase.resume)}
+              others={phase.resume === null && phase.mode.kind === "idle" ? (
+                <ImportOpenRuns
+                  state={others}
+                  acting={othersActing}
+                  when={when}
+                  onResume={(run) => void resumeOther(run)}
+                  onLeave={leaveOther}
+                />
+              ) : null}
             />
           )}
 
@@ -836,9 +1039,11 @@ function ImportDialog({ open, onClose }: { open: boolean; onClose: () => void })
                 alert={alert}
                 starting={phase.starting}
                 api={DECISION_API}
+                draft={draftOf(phase.view.id)}
+                onDraft={(change) => changeDraft(phase.view.id, change)}
+                listsRound={listsRound}
                 onApply={(input) => void start(input)}
                 onDiscard={() => void discardRun(phase.view)}
-                onDirty={setDecisionDirty}
               />
             </>
           )}
@@ -875,6 +1080,7 @@ function ImportDialog({ open, onClose }: { open: boolean; onClose: () => void })
           {phase.at === "done" && (
             <ImportDonePanel
               result={phase.result}
+              notImported={phase.notImported}
               extraNumbers={extra.current.runId === phase.result.view.id ? extra.current.count : 0}
               extraUnit={extra.current.unit}
               loadFailures={(runId, afterLine) => ACTIONS.failures({ runId, afterLine })}

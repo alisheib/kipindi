@@ -1277,15 +1277,17 @@ export const CONTACT_IMPORT_ROW_PAGE_MAX = 2000;
 /** The most staged rows the access export reads for one number — a person is in a handful of files, never thousands. */
 const CONTACT_IMPORT_ROWS_BY_NUMBER_MAX = 1000;
 
-/* ═══ §29 · THE IMPORT'S CHECK AND COMMIT (S15, 2026-10-09 · docs/CONTACTS-SCREEN-PLAN.md §4.3, decisions S15-6/7/8 · X3) ═══
- * ⭐ SIX MEMBERS, EACH NAMED: the book rows behind a set of numbers (`marketingContact.snapshotsAmong`), the first
+/* ═══ §29 · THE IMPORT'S CHECK AND COMMIT (S15, 2026-10-09 · docs/CONTACTS-SCREEN-PLAN.md §4.3, decisions S15-6/7/8/11/12 · X3) ═══
+ * ⭐ SEVEN MEMBERS, EACH NAMED: the book rows behind a set of numbers (`marketingContact.snapshotsAmong`), the first
  * decidable line of each number in a run (`contactImportRow.firstLinesAmong`), the failures a page at a time
- * (`failedPage`), the kept rows by reason (`keptSplit`), the start's freeze (`contactImport.freezeDecision`) and the ONE
- * commit write (`contactImport.commitBatch`). Every signature below is NAMED — dal-parity's `region()` would read an inline
- * literal as the body (`SmsDlrResult`'s note) — and `test:dal-parity` §29 holds the two twins to one shape. */
+ * (`failedPage`), the kept rows by reason (`keptSplit`), the start's freeze (`contactImport.freezeDecision`), the ONE
+ * commit write (`contactImport.commitBatch`) and an ADMIN's read of other officers' unfinished runs
+ * (`contactImport.listOpenByOthers`, S15-12). Every signature below is NAMED — dal-parity's `region()` would read an
+ * inline literal as the body (`SmsDlrResult`'s note) — and `test:dal-parity` §29 holds the two twins to one shape. */
 
 /** ONE book row as the importer's `decide()` reads it (`BookSnapshot`, import-decide.ts) — and its number, the key it was
- *  asked by. ⛔ Nothing else of the row: no consent cache, no link, no raw input, no provenance. */
+ *  asked by. ⛔ Nothing else of the row: no consent cache, no raw input, no provenance. The account link is read (S15-11,
+ *  the review round): an import never changes a row linked to an account. */
 export type MarketingContactSnapshot = {
   id: string;
   msisdn: string;
@@ -1296,6 +1298,7 @@ export type MarketingContactSnapshot = {
   sourceRef: string | null;
   importId: string | null;
   updatedAt: string;
+  userId: string | null;
 };
 /** S15-7 · the numbers whose first DECIDABLE line in one run is wanted (no read error, no field problem — X19/X20). */
 export type ContactImportFirstLinesQuery = { importId: string; msisdns: string[] };
@@ -1309,15 +1312,28 @@ export type ContactImportFailedPage = { rows: StoredContactImportRow[]; total: n
  *  never appears here — an erased number reads as the ordinary contact it is disguised as. */
 export type ContactImportKeptCount = { reason: string | null; count: number };
 /** The start's freeze (U32): the decision and the list, written in the SAME compare-and-set that moves the run from
- *  STAGED to COMMITTING — so a run is never committing on a decision nobody froze. */
+ *  STAGED to COMMITTING — so a run is never committing on a decision nobody froze. ⭐ A NEW list the officer named
+ *  (`newList`, its id `targetListId`) is created in that SAME write (the review round's R12): a start that loses the
+ *  compare-and-set, or throws, leaves no list behind, so its name stays free. A held name is the unique index refusing
+ *  it (P2002 in both twins); an EXISTING list deleted since the start read it is the foreign key refusing it (P2003). */
 export type ContactImportFreeze = {
   importId: string;
   choice: ImportChoice;
   overrides: RowOverrides;
   targetListId: string | null;
+  newList: StoredContactList | null;
   by: string;
   at: string;
 };
+/** S15-12 · an ADMIN's way to the runs other officers left unfinished: every run in an OPEN status (STAGING, STAGED,
+ *  COMMITTING, PAUSED) created by anyone but `excludeCreatedBy`, newest first, at most `limit` (clamped to
+ *  `CONTACT_IMPORT_OPEN_RUNS_MAX`). */
+export type ContactImportOthersQuery = {
+  excludeCreatedBy: string;
+  limit: number;
+};
+/** The most open runs of other officers one read hands back. The Prisma twin keeps the same bound. */
+export const CONTACT_IMPORT_OPEN_RUNS_MAX = 20;
 /** One row the batch CREATES — built by the ONE create builder (`newContactRow`, X6), never by the store. */
 export type ContactImportCommitCreate = { ordinal: number; row: StoredMarketingContact };
 /** One row the batch UPDATES — ⛔ conditional on the book row's `updatedAt` (`guard`) and on it not being the erased
@@ -1354,7 +1370,9 @@ export type ContactImportCommitBatch = {
   members: string[];
 };
 /** `advanced`: written · `moved`: the cursor was not `fromCursor` (or the run not COMMITTING) — NOTHING written ·
- *  `conflict`: a create the unique index refused or an update whose guard failed — NOTHING written, the ordinals named. */
+ *  `conflict`: a create the unique index refused, an update whose guard failed, or a staged row the step would settle
+ *  that is gone or already settled (erasure deleted it since the step read it — the review round's R9) — NOTHING
+ *  written, the ordinals named. */
 export type ContactImportCommitResult =
   | { kind: "advanced"; run: StoredContactImport }
   | { kind: "moved"; run: StoredContactImport | null }
@@ -3722,10 +3740,11 @@ const memoryDb = {
       return out.sort((a, b) => (a.msisdn < b.msisdn ? -1 : a.msisdn > b.msisdn ? 1 : 0));
     },
     /** §29 · S15 · THE BOOK ROWS BEHIND A SET OF NUMBERS — what the importer's decide() reads (`loadImportFacts`):
-     *  `findByMsisdn` asked of a set, through the same index, answering the nine columns decide() needs and nothing else
-     *  (no consent cache, no link, no raw input). ⛔ THE ERASED TOMBSTONE IS INCLUDED (X22): an erased number reads as in
-     *  the book, and decide() keeps it. §25's bound: at most `BULK_KEYED_READ_MAX` distinct keys, REFUSED above — never cut
-     *  off — and an empty set answered with nothing. Copies, ordered by number. */
+     *  `findByMsisdn` asked of a set, through the same index, answering the ten columns decide() needs and nothing else
+     *  (no consent cache, no raw input) — the account link among them (S15-11: a linked row is never changed). ⛔ THE
+     *  ERASED TOMBSTONE IS INCLUDED (X22): an erased number reads as in the book, and decide() keeps it. §25's bound: at
+     *  most `BULK_KEYED_READ_MAX` distinct keys, REFUSED above — never cut off — and an empty set answered with nothing.
+     *  Copies, ordered by number. */
     snapshotsAmong: (msisdns: string[]): MarketingContactSnapshot[] => {
       const keys = bulkKeys(msisdns, "marketingContact.snapshotsAmong");
       if (keys.length === 0) return [];
@@ -3736,7 +3755,7 @@ const memoryDb = {
         if (c) {
           out.push({
             id: c.id, msisdn: c.msisdn, displayName: c.displayName, email: c.email, notes: c.notes, tags: [...c.tags],
-            sourceRef: c.sourceRef, importId: c.importId, updatedAt: c.updatedAt,
+            sourceRef: c.sourceRef, importId: c.importId, updatedAt: c.updatedAt, userId: c.userId,
           });
         }
       }
@@ -4118,6 +4137,14 @@ const memoryDb = {
       Array.from(store.contactImports.values())
         .filter((r) => r.createdBy === createdBy && (r.status === "STAGING" || r.status === "STAGED" || r.status === "COMMITTING" || r.status === "PAUSED"))
         .sort((a, b) => Date.parse(a.createdAt) - Date.parse(b.createdAt) || (a.id < b.id ? -1 : a.id > b.id ? 1 : 0))[0] ?? null,
+    /** §29 · S15-12 · an ADMIN's read of the runs OTHER officers left unfinished — the same four OPEN statuses as
+     *  `findOpenFor`, every creator but `q.excludeCreatedBy`, NEWEST first (createdAt desc, id desc), at most `q.limit`,
+     *  clamped to `CONTACT_IMPORT_OPEN_RUNS_MAX`. */
+    listOpenByOthers: (q: ContactImportOthersQuery): StoredContactImport[] =>
+      Array.from(store.contactImports.values())
+        .filter((r) => r.createdBy !== q.excludeCreatedBy && (r.status === "STAGING" || r.status === "STAGED" || r.status === "COMMITTING" || r.status === "PAUSED"))
+        .sort((a, b) => Date.parse(b.createdAt) - Date.parse(a.createdAt) || (a.id < b.id ? 1 : a.id > b.id ? -1 : 0))
+        .slice(0, Math.max(0, Math.min(q.limit, CONTACT_IMPORT_OPEN_RUNS_MAX))),
     /** The idle sweep's read (X29): runs in `q.statuses` untouched since `q.idleBefore`, oldest first, at most `q.limit`. */
     listIdle: (q: ContactImportIdleQuery): StoredContactImport[] =>
       Array.from(store.contactImports.values())
@@ -4202,10 +4229,25 @@ const memoryDb = {
     },
     /** §29 · ⭐ THE START'S FREEZE (U32, S15) — a compare-and-set STAGED → COMMITTING that writes the choice, the
      *  overrides, who confirmed them and when, and the target list in the SAME step, or answers null and writes nothing:
-     *  of two starts racing on one run, ONE freezes it. */
+     *  of two starts racing on one run, ONE freezes it. ⭐ R12 · a NEW list is created in this same step, AFTER the
+     *  status is asked — a start that lost the run creates no list — and a name the store already holds is refused as the
+     *  unique index refuses it (P2002), nothing written. ⛔ R17 · an EXISTING target list that is gone is refused as the
+     *  foreign key refuses it (P2003), nothing written — Postgres's own order: the status first, then the list. */
     freezeDecision: (f: ContactImportFreeze): StoredContactImport | null => {
       const frozenRun = store.contactImports.get(f.importId);
       if (!frozenRun || frozenRun.status !== "STAGED") return null;
+      const newList = f.newList ?? null;
+      if (newList !== null && f.targetListId !== newList.id) throw new Error("freezeDecision: a new list must be the run's target list");
+      if (newList !== null) {
+        for (const held of store.contactLists.values()) {
+          if (held.name === newList.name || held.id === newList.id) {
+            throw Object.assign(new Error("unique: a contact list already holds this name (memory twin of P2002) — nothing was written"), { code: "P2002" });
+          }
+        }
+      } else if (f.targetListId !== null && !store.contactLists.has(f.targetListId)) {
+        throw Object.assign(new Error("foreign key: the run's target list is gone (memory twin of P2003) — nothing was written"), { code: "P2003" });
+      }
+      if (newList !== null) store.contactLists.set(newList.id, { ...newList });
       const next: StoredContactImport = {
         ...frozenRun,
         status: "COMMITTING",
@@ -4221,36 +4263,48 @@ const memoryDb = {
     },
     /** §29 · ⭐ X3 · THE ONE COMMIT WRITE (S15-6) — all or nothing, as the Prisma twin's ONE transaction is. FIRST the
      *  cursor's compare-and-set is ASKED — the run COMMITTING with `committedThrough` exactly `b.fromCursor` — and a run
-     *  that moved answers `moved` with nothing written; then every create (the faked unique index) and every guarded update
-     *  (`updatedAt` equal as INSTANTS, never the tombstone) is CHECKED, and one that would be refused answers `conflict`
-     *  naming its ordinals, nothing written; only then is anything written. JavaScript runs this member to its end before
-     *  any other write, so the checks and the writes are one step. */
+     *  that moved answers `moved` with nothing written; then every create (the faked unique index), every guarded update
+     *  (`updatedAt` equal as INSTANTS, never the tombstone) and every staged row it settles (still there, still unsettled —
+     *  R9) is CHECKED, and one that would be refused answers `conflict` naming its ordinals, nothing written; only then is
+     *  anything written, in the Prisma twin's lock order (R3). JavaScript runs this member to its end before any other
+     *  write, so the checks and the writes are one step. */
     commitBatch: (b: ContactImportCommitBatch): ContactImportCommitResult => {
       const batchRun = store.contactImports.get(b.importId);
       if (!batchRun || batchRun.status !== "COMMITTING" || batchRun.committedThrough !== b.fromCursor) {
         return { kind: "moved", run: batchRun ?? null };
       }
       if (b.toCursor < b.fromCursor || b.toCursor > batchRun.stagedThrough) throw new Error("commitBatch: the cursor must move forward, within the staged rows");
+      // R3 · the Prisma twin's lock order, kept here too: creates by number, updates and members by contact id.
+      const creates = [...b.creates].sort((x, y) => (x.row.msisdn < y.row.msisdn ? -1 : x.row.msisdn > y.row.msisdn ? 1 : 0));
+      const updates = [...b.updates].sort((x, y) => (x.contactId < y.contactId ? -1 : x.contactId > y.contactId ? 1 : 0));
+      const members = [...b.members].sort();
+      const staged: Map<number, StoredContactImportRow> = store.contactImportRows.get(b.importId) ?? new Map<number, StoredContactImportRow>();
       const conflicts: number[] = [];
-      for (const c of b.creates) {
+      for (const c of creates) {
         if (store.contactsByMsisdn.has(c.row.msisdn) || store.marketingContacts.has(c.row.id)) conflicts.push(c.ordinal);
       }
-      for (const u of b.updates) {
+      for (const u of updates) {
         const held = store.marketingContacts.get(u.contactId);
         if (!held || Date.parse(held.updatedAt) !== Date.parse(u.guard) || held.sourceRef === ERASURE_EVIDENCE) conflicts.push(u.ordinal);
       }
-      if (conflicts.length > 0) return { kind: "conflict", ordinals: conflicts.sort((x, y) => x - y) };
+      // ⛔ R9 · every row the step settles must still be there, unsettled: erasure deletes a person's staged rows, and a
+      // step decided on a row that is gone would create the very number the erasure took away.
+      for (const o of b.outcomes) {
+        const row = staged.get(o.ordinal);
+        if (!row || row.outcome !== null) conflicts.push(o.ordinal);
+      }
+      if (conflicts.length > 0) return { kind: "conflict", ordinals: [...new Set(conflicts)].sort((x, y) => x - y) };
       // ⛔ A list that does not exist is refused BEFORE anything is written, as Postgres's foreign key refuses the insert.
-      if (b.listId !== null && b.members.length > 0 && !store.contactLists.has(b.listId)) {
+      if (b.listId !== null && members.length > 0 && !store.contactLists.has(b.listId)) {
         throw new Error("commitBatch: no such contact list (the foreign key) — nothing was written");
       }
       // ── the writes, in the Prisma twin's order ──
-      for (const c of b.creates) {
+      for (const c of creates) {
         const born: StoredMarketingContact = { ...c.row, tags: [...c.row.tags] };
         store.marketingContacts.set(born.id, born);
         store.contactsByMsisdn.set(born.msisdn, born.id);
       }
-      for (const u of b.updates) {
+      for (const u of updates) {
         const held = store.marketingContacts.get(u.contactId);
         if (!held) continue;
         store.marketingContacts.set(u.contactId, {
@@ -4263,7 +4317,6 @@ const memoryDb = {
           updatedBy: u.by,
         });
       }
-      const staged: Map<number, StoredContactImportRow> = store.contactImportRows.get(b.importId) ?? new Map<number, StoredContactImportRow>();
       // S15-8 · a failed row's sentence BEFORE its cells are blanked, so the failures list can still say why.
       for (const s of b.sentences) {
         const row = staged.get(s.ordinal);
@@ -4277,7 +4330,7 @@ const memoryDb = {
         });
       }
       if (b.listId !== null) {
-        for (const contactId of b.members) {
+        for (const contactId of members) {
           const member = store.marketingContacts.get(contactId);
           // ⛔ The erased tombstone is in no list (C3), exactly as U23's bulk add leaves it out of every audience.
           if (!member || member.sourceRef === ERASURE_EVIDENCE) continue;

@@ -22,6 +22,10 @@
  *      `suppressedAt` cache, which no stop or lift maintains) → keep, whatever was asked. A NEW number on the stop
  *      list is still created (owner decision 5): the collapse protects an existing contact, and the send gate
  *      refuses the number either way.
+ *   2b. ⛔ LINKED TO AN ACCOUNT (S15-11, the review round of 2026-10-09) — the book row carries a `userId` → keep
+ *      (`account`), whatever was asked: the account is the source of that contact's details, and "use the file's
+ *      version" would overwrite a player's registration row, email included. Shown to a reader as itself; a viewer who
+ *      may not read numbers imports with KEEP only (S15-10), where every keep folds into one count.
  *   3. SAME RUN (OD33, the FIRST row wins) — this run already created the number (`importId === runId`), or an
  *      earlier line of the same file carries it (`repeatOf`) → keep. 🔴 The importId check alone holds only for
  *      creates: an update never sets `importId` (owner decision 8), so without `repeatOf` an in-book number that
@@ -168,6 +172,8 @@ export type BookSnapshot = {
   readonly sourceRef: string | null;
   readonly importId: string | null;
   readonly updatedAt: string;
+  /** S15-11 · the account the row is linked to (sign-up's fact). Absent, null or empty: not linked. */
+  readonly userId?: string | null;
 };
 
 /** The number's latest consent-ledger row, as decide() reads it. */
@@ -181,6 +187,9 @@ export type NumberFacts = {
   readonly book: BookSnapshot | null;
   readonly suppressed: boolean;
   readonly ledgerLatest: LedgerWord | null;
+  /** ⚠️ The server's loader no longer asks the accounts (S15, 2026-10-09: S15-1 retired the consent seam this fed, X5),
+   *  so it answers false there; decide() still honours it for a caller that sets it. A book row's own link is
+   *  `book.userId` (S15-11), which IS read. */
   readonly heldByPlayer: boolean;
 };
 
@@ -196,7 +205,7 @@ export const IMPORT_OUTCOMES = ["create", "update", "keep", "fail"] as const;
 export type ImportOutcome = (typeof IMPORT_OUTCOMES)[number];
 
 export const IMPORT_OUTCOME_REASONS = [
-  "chosen_keep", "erased", "suppressed", "same_run", "no_change", "write_refused", "changed_during_import", "invalid",
+  "chosen_keep", "erased", "suppressed", "account", "same_run", "no_change", "write_refused", "changed_during_import", "invalid",
 ] as const;
 export type ImportOutcomeReason = (typeof IMPORT_OUTCOME_REASONS)[number];
 
@@ -209,6 +218,7 @@ export const IMPORT_OUTCOME_OF_REASON: Readonly<Record<ImportOutcomeReason, "kee
   chosen_keep: "keep",
   erased: "keep",
   suppressed: "keep",
+  account: "keep",
   same_run: "keep",
   no_change: "keep",
   changed_during_import: "keep",
@@ -217,15 +227,16 @@ export const IMPORT_OUTCOME_OF_REASON: Readonly<Record<ImportOutcomeReason, "kee
 };
 
 /** The keep reasons decide() itself returns (the other three belong to the commit and the read). */
-export const DECIDE_KEEP_REASONS = ["chosen_keep", "erased", "suppressed", "same_run", "no_change"] as const satisfies readonly ImportOutcomeReason[];
+export const DECIDE_KEEP_REASONS = ["chosen_keep", "erased", "suppressed", "account", "same_run", "no_change"] as const satisfies readonly ImportOutcomeReason[];
 export type DecideKeepReason = (typeof DECIDE_KEEP_REASONS)[number];
 
 /**
  * The keep reasons a browser may be told (X22). ⛔ Never `erased`, and never a fold of it into one fixed reason: an
  * erased row reads as the ordinary contact it is disguised as, which depends on the choice, the stop and the run it
  * was decided under — so the decision itself carries its browser face (`shown`), and nothing folds a reason alone.
+ * `account` (S15-11) is shown as itself — only a viewer who may read numbers ever sees a reason split (S15-10).
  */
-export const SHOWN_KEEP_REASONS = ["chosen_keep", "suppressed", "same_run", "no_change"] as const satisfies readonly DecideKeepReason[];
+export const SHOWN_KEEP_REASONS = ["chosen_keep", "suppressed", "account", "same_run", "no_change"] as const satisfies readonly DecideKeepReason[];
 export type ShownKeepReason = (typeof SHOWN_KEEP_REASONS)[number];
 
 /** A stored reason read back (U29's text column), or null. */
@@ -403,16 +414,23 @@ function isErasedNumber(f: NumberFacts): boolean {
   return last !== null && last.status === "WITHDRAWN" && last.evidence === ERASURE_EVIDENCE;
 }
 
-type StandingReason = "suppressed" | "same_run" | "chosen_keep";
+type StandingReason = "suppressed" | "account" | "same_run" | "chosen_keep";
+
+/** S15-11 · is this book row linked to an account? A link is sign-up's fact (`userId`); absent, null or empty is not. */
+function isLinkedRow(book: BookSnapshot): boolean {
+  return typeof book.userId === "string" && book.userId !== "";
+}
 
 /**
- * 2–4 · What holds a row in the book whatever its values: an ACTIVE stop, this run's earlier claim on the number, or
- * the KEEP choice — or null, when the values decide (5). ONE function for an ordinary row and for the contact an
- * erased row is disguised as (X22), so the two cannot drift apart. ⛔ Never for a NEW number: that is created on the
- * stop list (owner decision 5) and under every choice.
+ * 2–4 · What holds a row in the book whatever its values: an ACTIVE stop, an account's link (2b), this run's earlier
+ * claim on the number, or the KEEP choice — or null, when the values decide (5). ONE function for an ordinary row and
+ * for the contact an erased row is disguised as (X22), so the two cannot drift apart — the disguise is an ordinary,
+ * UNLINKED contact, so its caller passes `linked` false. ⛔ Never for a NEW number: that is created on the stop list
+ * (owner decision 5) and under every choice.
  */
-function standingKeep(f: DecideFacts, importId: string | null, asked: ImportChoice, runId: string): StandingReason | null {
+function standingKeep(f: DecideFacts, importId: string | null, linked: boolean, asked: ImportChoice, runId: string): StandingReason | null {
   if (f.suppressed) return "suppressed"; // 2
+  if (linked) return "account"; // 2b · S15-11
   if (importId === runId || f.repeatOf !== null) return "same_run"; // 3
   if (asked === "KEEP") return "chosen_keep"; // 4
   return null;
@@ -437,9 +455,9 @@ export function decide(
     kind: "keep", line: c.line, contactId: book === null ? null : book.id, asked, reason, shown, tagsNotAdded,
   });
 
-  // 1 · ⛔ erased — beats everything, the override included. Its browser face is the ordinary contact holding exactly
-  //     the file's values: 2–4 as for any row, else an empty patch (5) — never a reason of its own (X22).
-  if (isErasedNumber(f)) return keep("erased", standingKeep(f, book === null ? null : book.importId, asked, runId) ?? "no_change");
+  // 1 · ⛔ erased — beats everything, the override included. Its browser face is the ordinary (unlinked) contact holding
+  //     exactly the file's values: 2–4 as for any row, else an empty patch (5) — never a reason of its own (X22).
+  if (isErasedNumber(f)) return keep("erased", standingKeep(f, book === null ? null : book.importId, false, asked, runId) ?? "no_change");
   if (book === null) {
     // 3 · an earlier line of this run carries the number — the first row creates it.
     if (f.repeatOf !== null) return keep("same_run", "same_run");
@@ -447,7 +465,7 @@ export function decide(
     return { kind: "create", line: c.line, consentWritable: f.ledgerLatest === null && !f.suppressed && !f.heldByPlayer };
   }
 
-  const standing = standingKeep(f, book.importId, asked, runId); // 2 · 3 · 4
+  const standing = standingKeep(f, book.importId, isLinkedRow(book), asked, runId); // 2 · 2b · 3 · 4
   if (standing !== null) return keep(standing, standing);
   const change = asked === "TAKE_FILE" ? takeFile(c, book) : fillBlanks(c, book);
   if (Object.keys(change.patch).length === 0) return keep("no_change", "no_change", change.tagsNotAdded); // 5

@@ -10,6 +10,10 @@
  * ⭐ THE REFUSAL BOX SAYS THE REASON AND OFFERS THE NEXT STEP AS A CONTROL (§F4): a sentence with no way on is a dead end.
  * ⭐ THE ACTIONS ROW STACKS ON A PHONE WITH THE PRIMARY ON TOP — the primary comes LAST in the markup, so the reversed
  * column puts it first below `sm` and rightmost from `sm` (the contact form's own idiom).
+ * ⛔ NO WORDS LEAVE THEIR BUTTON (Ali's rule, `test:popup-fit`): the kit's button keeps its label on one line, which is
+ * right for "Stop" and "Resume" and wrong for a label that can outgrow a 360 sheet — the start's promise with its
+ * figures, a long way on from a refusal. Those labels go in `ButtonText`, which lets them wrap inside the button; two
+ * lines fit the control's height at the dialog's narrowest.
  */
 import { Fragment, type ReactNode } from "react";
 import { Button } from "@/components/ui/button";
@@ -27,6 +31,11 @@ export function Parts({ parts }: { parts: readonly Part[] }) {
         : <span key={i} className="amount">{formatNumber(p.n)}</span>))}
     </>
   );
+}
+
+/** A button's words, allowed to wrap inside it (see the header) — centred, set tight so two lines fit the control. */
+export function ButtonText({ children }: { children: ReactNode }) {
+  return <span className="min-w-0 whitespace-normal text-center leading-tight">{children}</span>;
 }
 
 /** One way on from a refusal or a fault: a button, the primary one painted as such. */
@@ -62,7 +71,7 @@ export function ImportAlert({ alert, disabled = false }: { alert: ImportAlertSta
               onClick={a.run}
               data-import-act={a.act}
             >
-              {a.label}
+              <ButtonText>{a.label}</ButtonText>
             </Button>
           ))}
         </div>

@@ -6,10 +6,14 @@
  *
  * ⭐ UPLOADING: the bar counts rows STAGED, as the server reports them (`stagedThrough` of the run's `totalRows` — never a
  * number this tab kept), with "Nothing is in the contact book yet." under it and a Stop that ends the upload between
- * batches (the run stays resumable from the same file).
+ * batches (the run stays resumable from the same file). While the platform is busy the server's own sentence says the
+ * upload waits and carries on by itself (R6), and Stop stays live.
  * ⭐ THE CHECK: five boxes that ADD UP TO THE FILE — new to the book, already in the book, repeated in this file (the
- * first row wins), not a mobile number, could not be read — with the sum written out under them; each problem row listed
- * by its row in the officer's own spreadsheet and one plain sentence, "Showing 100 of 2,431" when the list is capped.
+ * first row wins), can't be imported as written (R14: a number that is not a mobile, a bad email, a name holding a
+ * number — each row with its own sentence), could not be read — with the sum written out under them; each problem row
+ * listed by its row in the officer's own spreadsheet and one plain sentence, "Showing 100 of 2,431" when the list is
+ * capped. ⛔ Five boxes sit in one row only from `lg`, where each is wide enough for a six-figure count; below it they
+ * take two or three columns, so a figure never runs out of its box.
  * ⛔ THE BOXES ARE SHOWN ONLY WHEN THEY ADD UP (`bucketsAdd`) — never a zero or a guess standing in for a count.
  * ⛔ D19 BY SHAPE (S15-2): there is no "has a 50pick account" box for any role — a player's number reads "already in the
  * book" like any other. Every number on this panel came from the server already masked (`+255••••NN`).
@@ -25,6 +29,9 @@ import { useMayAct } from "@/components/admin/act-gate";
 import { PREFLIGHT_BUCKETS, type ImportRunView, type PreflightView } from "@/lib/contacts/import-flow";
 import type { BusyState } from "@/lib/contacts/import-loop";
 import { CHECK, COMMIT, UPLOAD, partsText } from "./import-copy";
+
+/** The five boxes' grid: two columns on a phone, three from `md`, all five in a row only from `lg` (see the header). */
+const TILE_GRID = "grid grid-cols-2 gap-2 md:grid-cols-3 lg:grid-cols-5";
 import { ImportAlert, Parts, SectionHeading, Tile, type ImportAlertState } from "./import-parts";
 
 /** At or past this many rows the check is shown as a skeleton while it runs; below it the upload panel simply stays. */
@@ -64,8 +71,8 @@ export function ImportCheckPanel({
           />
           <p className="text-body-sm text-text-secondary">{UPLOAD.nothingYet}</p>
           {mode.busy !== null && (
-            <p className="text-body-sm text-text-secondary" role="status" data-import-busy>
-              <Parts parts={COMMIT.busy(mode.busy.attempt, mode.busy.of, mode.busy.waitSec)} />
+            <p className="text-body-sm text-text" role="status" data-import-busy={mode.busy.attempt} data-wait-sec={mode.busy.waitSec}>
+              {`${mode.busy.message} ${COMMIT.busyStop}`}
             </p>
           )}
           {mode.stopping ? (
@@ -84,7 +91,7 @@ export function ImportCheckPanel({
         view.totalRows >= SKELETON_FROM_ROWS ? (
           <div className="space-y-2" data-import-checking="skeleton" aria-busy="true">
             <p className="text-body-sm text-text-secondary" role="status">{CHECK.checking}</p>
-            <div className="grid grid-cols-2 gap-2 sm:grid-cols-5">
+            <div className={TILE_GRID}>
               {PREFLIGHT_BUCKETS.map((b) => <SkBar key={b} className="h-[78px] w-full rounded-md" />)}
             </div>
             <SkBar className="h-[18px] w-full max-w-[420px]" />
@@ -118,7 +125,7 @@ function Checked({ preflight }: { preflight: PreflightView }) {
   const counts = PREFLIGHT_BUCKETS.map((b) => preflight.counts[b]);
   return (
     <div className="space-y-4" data-import-checked>
-      <div className="grid grid-cols-2 gap-2 sm:grid-cols-5" data-import-tiles>
+      <div className={TILE_GRID} data-import-tiles>
         {PREFLIGHT_BUCKETS.map((b) => <Tile key={b} name={b} label={CHECK.tiles[b]} value={preflight.counts[b]} />)}
       </div>
       <p className="text-body-sm text-text-secondary" data-import-sum>

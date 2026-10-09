@@ -19,11 +19,17 @@
  *   2. ⭐ STOP IS READ BETWEEN STEPS: the run is PAUSED on the server first, then the loop stops (a closed window that
  *      cannot pause leaves a COMMITTING run that the next opening adopts).
  *   3. ⛔ A REFUSAL ENDS THE LOOP WITH THE SERVER'S SENTENCE, VERBATIM — the refusal itself is returned.
- *   4. ⭐ ONLY `busy` IS RETRIED ON ITS OWN, at most `BUSY_RETRIES` times in a row, each after the `retryAfterSec` the
- *      server asked for: bets come first, and an import waits rather than competes.
+ *   4. ⭐ ONLY `busy` IS WAITED OUT ON ITS OWN — AND NEVER GIVEN UP ON WHILE THE OFFICER HAS NOT PRESSED STOP (R6, the
+ *      review round of 2026-10-09): bets come first, and an import waits rather than competes or quits. The waits back
+ *      off 5 s → 10 s → 20 s → 30 s and stay at 30 (`BUSY_BACKOFF_SEC`), each the server's own `retryAfterSec` instead
+ *      when that is longer (never past `BUSY_WAIT_MAX_SEC`). Stop is read before every ask — the screen's wait ends
+ *      early at Stop — so a busy spell never holds a Stop back, and the run stays COMMITTING throughout.
  *   5. ⛔ A THROWN CALL IS NEVER REPEATED BLIND. After a network failure, an edge timeout or a deploy, the step may or may
  *      not have landed, so the next call is the VIEW; the loop goes on from the cursor the server reports (the step is a
  *      compare-and-set on it, so nothing is written twice), and a deploy — a stale action id — is named as such.
+ *      ⛔ R4 · WHEN THAT VIEW CANNOT BE READ EITHER, THE FAILURE CARRIES NO VIEW: the loop never hands back a cursor it
+ *      held (its starting one, or an older answer's) as if it were where the run stands now — the dialog reads the run
+ *      again, and says it could not when it cannot.
  *   6. ⭐ `moved` (another tab or officer settled those rows) adopts the server's view and counts NOTHING itself.
  *   7. ⭐ A RESUME STARTS FROM THE SERVER'S CURSOR — the view it is given, never a number this tab held.
  *   8. ⭐ THE RESULT'S COUNTS ARE THE SERVER'S: the loop ends with the server's last view; the totals are its rows (OD26).
@@ -46,20 +52,25 @@ import type {
   StageImportResult,
 } from "./import-flow";
 
-/** How many `busy` answers in a row are waited out before the loop stops and says so. */
-export const BUSY_RETRIES = 3;
 /** How many thrown calls in a row are recovered through the view before the loop stops (the run stays resumable). */
 export const THROWN_RECOVERIES = 3;
 /** How many answers in a row may leave the cursor where it was before the loop stops as `stalled`. */
 export const STALL_LIMIT = 3;
-/** The wait when a `busy` answer names none, and the longest wait ever taken. */
-export const BUSY_WAIT_DEFAULT_SEC = 5;
+/** ⭐ R6 · the waits between `busy` answers in a row, in seconds: 5, then 10, then 20, then 30 for as long as the
+ *  platform stays busy. There is no last try — only the officer's Stop ends a busy spell. */
+export const BUSY_BACKOFF_SEC: readonly number[] = [5, 10, 20, 30];
+/** The longest single wait ever taken, whatever a server asks — a figure from a broken answer never parks a tab. */
 export const BUSY_WAIT_MAX_SEC = 60;
 
-/** The seconds to wait out a `busy` answer: the server's own figure, whole, between 1 and the ceiling. */
-export function waitSeconds(asked: number | undefined): number {
-  if (typeof asked !== "number" || !Number.isFinite(asked) || asked <= 0) return BUSY_WAIT_DEFAULT_SEC;
-  return Math.min(BUSY_WAIT_MAX_SEC, Math.max(1, Math.ceil(asked)));
+/**
+ * The seconds to wait out the `attempt`-th `busy` answer in a row (from 1): the backoff's step, or the server's own
+ * `retryAfterSec` when that is longer — whole seconds, and never past `BUSY_WAIT_MAX_SEC`.
+ */
+export function busyWaitSeconds(attempt: number, asked: number | undefined): number {
+  const at = Number.isFinite(attempt) ? Math.min(Math.max(1, Math.floor(attempt)), BUSY_BACKOFF_SEC.length) : 1;
+  const step = BUSY_BACKOFF_SEC[at - 1] ?? BUSY_BACKOFF_SEC[BUSY_BACKOFF_SEC.length - 1] ?? 30;
+  const own = typeof asked === "number" && Number.isFinite(asked) && asked > 0 ? Math.ceil(asked) : 0;
+  return Math.min(BUSY_WAIT_MAX_SEC, Math.max(step, own));
 }
 
 /**
@@ -75,8 +86,9 @@ export function isDeploySkewError(e: unknown): boolean {
   return typeof message === "string" && (/Server Action .{0,200}? was not found/i.test(message) || /Failed to find Server Action/i.test(message));
 }
 
-/** What a busy wait looks like to the screen — or null once the server answers something else. */
-export type BusyState = { readonly attempt: number; readonly of: number; readonly waitSec: number };
+/** A busy wait as the screen says it — which wait in a row, how long it is, and the server's own sentence (verbatim) —
+ *  or null once the server answers something else. */
+export type BusyState = { readonly attempt: number; readonly waitSec: number; readonly message: string };
 
 /* ══ THE VIEW AFTER A THROW ═══════════════════════════════════════════════════════════════════════ */
 
@@ -125,7 +137,8 @@ export type UploadOutcome =
   | { readonly kind: "refused"; readonly refusal: ImportRefusal }
   | { readonly kind: "stalled"; readonly view: ImportRunView }
   | { readonly kind: "gone" }
-  /** Thrown calls the view could not recover from — `skew` when a deploy left this page with stale action ids. */
+  /** Thrown calls the view could not recover from — `skew` when a deploy left this page with stale action ids. `view` is
+   *  a view the server answered JUST NOW, or null (R4: never a cursor this loop held from before). */
   | { readonly kind: "failed"; readonly skew: boolean; readonly view: ImportRunView | null };
 
 /** The batch that starts at `from` (1-based, the run's `nextFrom`): `packStageBatches`' first batch over at most one
@@ -136,10 +149,11 @@ export function batchFrom(rows: readonly StageRowInput[], from: number): StageRo
   return packStageBatches(rows.slice(start, start + STAGE_BATCH_MAX_ROWS))[0] ?? [];
 }
 
-function endUpload(after: Exclude<ViewAfter, { kind: "view" }>, view: ImportRunView): UploadOutcome {
+/** ⛔ R4 · the view could not be read: the failure carries none — the run is read again by the screen, never assumed. */
+function endUpload(after: Exclude<ViewAfter, { kind: "view" }>): UploadOutcome {
   if (after.kind === "gone") return { kind: "gone" };
   if (after.kind === "refused") return { kind: "refused", refusal: after.refusal };
-  return { kind: "failed", skew: after.skew, view };
+  return { kind: "failed", skew: after.skew, view: null };
 }
 
 /**
@@ -174,9 +188,10 @@ export async function runUpload(deps: UploadDeps, rows: readonly StageRowInput[]
     } catch (e) {
       // ⛔ NEVER A BLIND REPEAT: a thrown call may have landed — ask the server where the run stands first.
       const after = await viewAfter(deps.view, view.id, e, deps.isDeploySkew);
-      if (after.kind !== "view") return endUpload(after, view);
+      if (after.kind !== "view") return endUpload(after);
       thrown++;
       adopt(after.view, false);
+      // The view was read just now: it is where the run stands.
       if (thrown >= THROWN_RECOVERIES) return { kind: "failed", skew: false, view };
       continue;
     }
@@ -190,19 +205,19 @@ export async function runUpload(deps: UploadDeps, rows: readonly StageRowInput[]
     if (answer.reason === "already_staged") {
       // ⭐ A RETRIED CALL: the batch landed before. Read where the run stands, and carry on from ITS nextFrom.
       const after = await viewAfter(deps.view, view.id, null, deps.isDeploySkew);
-      if (after.kind !== "view") return endUpload(after, view);
+      if (after.kind !== "view") return endUpload(after);
       if (!adopt(after.view, true)) return { kind: "stalled", view };
       continue;
     }
     if (answer.reason === "busy") {
+      // ⭐ Property 4 (R6) — the same rule as the commit's: waited out, never given up; Stop is read before the next batch.
       busy++;
       if (answer.view !== null) {
         view = answer.view;
         deps.onView(view);
       }
-      if (busy > BUSY_RETRIES) return { kind: "refused", refusal: answer };
-      const sec = waitSeconds(answer.retryAfterSec);
-      deps.onBusy({ attempt: busy, of: BUSY_RETRIES, waitSec: sec });
+      const sec = busyWaitSeconds(busy, answer.retryAfterSec);
+      deps.onBusy({ attempt: busy, waitSec: sec, message: answer.message });
       await deps.wait(sec * 1000);
       continue;
     }
@@ -229,7 +244,7 @@ export type CommitDeps = {
   readonly shouldStop: () => boolean;
   /** ⛔ Property 1 — every view the server answers with, and nothing else: the bar's only source. */
   readonly onView: (view: ImportRunView) => void;
-  /** Property 4 — a busy wait begins (its attempt, of how many, for how long), or ends (null). */
+  /** Property 4 — a busy wait begins (which wait in a row, how long, the server's sentence), or the spell ends (null). */
   readonly onBusy: (state: BusyState | null) => void;
   readonly wait: (ms: number) => Promise<void>;
 };
@@ -245,13 +260,15 @@ export type CommitOutcome =
   | { readonly kind: "refused"; readonly refusal: ImportRefusal }
   | { readonly kind: "stalled"; readonly view: ImportRunView }
   | { readonly kind: "gone" }
-  /** ⛔ Property 5 — thrown calls the view could not recover from; `skew` names a deploy. The run stays resumable. */
+  /** ⛔ Property 5 — thrown calls the view could not recover from; `skew` names a deploy. The run stays resumable.
+   *  `view` is a view the server answered JUST NOW, or null (R4: never a cursor this loop held from before). */
   | { readonly kind: "failed"; readonly skew: boolean; readonly view: ImportRunView | null };
 
-function endCommit(after: Exclude<ViewAfter, { kind: "view" }>, view: ImportRunView): CommitOutcome {
+/** ⛔ R4 · the view could not be read: the failure carries none — the run is read again by the screen, never assumed. */
+function endCommit(after: Exclude<ViewAfter, { kind: "view" }>): CommitOutcome {
   if (after.kind === "gone") return { kind: "gone" };
   if (after.kind === "refused") return { kind: "refused", refusal: after.refusal };
-  return { kind: "failed", skew: after.skew, view };
+  return { kind: "failed", skew: after.skew, view: null };
 }
 
 /** ⭐ Property 2 — pause first, then stop. A pause that throws is checked against the view: PAUSED is stopped; a run
@@ -271,7 +288,7 @@ async function pauseThenStop(deps: CommitDeps, view: ImportRunView): Promise<Com
     return { kind: "refused", refusal: r };
   } catch (e) {
     const after = await viewAfter(deps.view, view.id, e, deps.isDeploySkew);
-    if (after.kind !== "view") return endCommit(after, view);
+    if (after.kind !== "view") return endCommit(after);
     deps.onView(after.view);
     if (after.view.status === "PAUSED") return { kind: "stopped", view: after.view };
     if (after.view.status === "DONE") return { kind: "done", view: after.view, note: null };
@@ -308,9 +325,10 @@ export async function runCommit(deps: CommitDeps, start: ImportRunView): Promise
     } catch (e) {
       // ⛔ Property 5 — never a blind repeat: the VIEW is the next call, and the loop goes on from the cursor it reports.
       const after = await viewAfter(deps.view, view.id, e, deps.isDeploySkew);
-      if (after.kind !== "view") return endCommit(after, view);
+      if (after.kind !== "view") return endCommit(after);
       thrown++;
       adopt(after.view, null);
+      // The view was read just now: it is where the run stands.
       if (thrown >= THROWN_RECOVERIES) return { kind: "failed", skew: false, view };
       continue;
     }
@@ -325,15 +343,15 @@ export async function runCommit(deps: CommitDeps, start: ImportRunView): Promise
       continue;
     }
     if (answer.reason === "busy") {
-      // ⭐ Property 4 — the only refusal waited out, and only BUSY_RETRIES times in a row.
+      // ⭐ Property 4 (R6) — the only refusal waited out, and never given up on: the wait backs off, the screen says why
+      // in the server's sentence, and Stop is read at the top of the next turn (the run is paused, then the loop stops).
       busy++;
       if (answer.view !== null) {
         view = answer.view;
         deps.onView(view);
       }
-      if (busy > BUSY_RETRIES) return { kind: "refused", refusal: answer };
-      const sec = waitSeconds(answer.retryAfterSec);
-      deps.onBusy({ attempt: busy, of: BUSY_RETRIES, waitSec: sec });
+      const sec = busyWaitSeconds(busy, answer.retryAfterSec);
+      deps.onBusy({ attempt: busy, waitSec: sec, message: answer.message });
       await deps.wait(sec * 1000);
       continue;
     }

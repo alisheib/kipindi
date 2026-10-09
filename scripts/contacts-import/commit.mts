@@ -2,11 +2,14 @@
  * test:contacts-import · section "commit" — S15 C4: the import's start and commit (`src/lib/server/contacts/import-commit.ts`)
  * and the action file over them (`src/app/admin/contacts/import/import-actions.ts`).            (S15, 2026-10-09)
  *
- * ⭐ EXECUTED, NOT READ. The REAL start, step, pause, resume, cancel, failures and result run over files staged through
- * the REAL staging service on the memory twin (`scripts/lib/contacts-import-world.mts`): the 40-row file committed in ONE
- * step, the deterministic 5,000-row file committed 500 rows a step — with a pause, a resume, a replayed step and two
- * drivers on one cursor — and again 2,000 a step without a break, the two ending identical. Only what only the source can
- * show is read from it (M19): what the cores import and what the action file exports.
+ * ⭐ EXECUTED, NOT READ. The REAL start, step, pause, resume, cancel, failures, result and open-runs read run over files
+ * staged through the REAL staging service on the memory twin (`scripts/lib/contacts-import-world.mts`): the 40-row file
+ * committed in ONE step by a reader, the deterministic 5,000-row file committed 500 rows a step — with a pause, a resume, a
+ * replayed step and two drivers on one cursor — and again 2,000 a step without a break, the two ending identical. The
+ * review round (2026-10-09) adds: a non-reader's start held to KEEP (S15-10), an ADMIN's view of other officers' runs
+ * (S15-12), an erasure landing between a step's read and its write (R9), a step whose cache mirror and audit rows fail
+ * after it landed (R10), a database deadlock answered `busy` (R11), and a new list that never outlives a lost start (R12).
+ * Only what only the source can show is read from it (M19): what the cores import and what the action file exports.
  *
  * ⛔ IN-PROCESS. Every plant swaps one dependency of the commit (`ImportCommitDeps`) or one text the source assertion
  * reads; this module reads three files and makes no file-changing call. Each run starts from emptied staging, book,
@@ -18,22 +21,24 @@ import { decomment } from "../lib/decomment.mts";
 import { REPO_ROOT } from "../lib/tracked-files.mts";
 import type { ImportSection, RedPlant, SectionContext } from "../contacts-import.test.mts";
 import type { ImportCommitDeps } from "../../src/lib/server/contacts/import-commit.ts";
-import type { ContactImportCommitBatch, StoredContactImportRow, StoredMarketingContact } from "../../src/lib/server/store.ts";
-import type { CommitStepResult, PreflightView, StartImportResult } from "../../src/lib/contacts/import-flow.ts";
+import type { ContactImportCommitBatch, StoredContactImport, StoredContactImportRow, StoredMarketingContact } from "../../src/lib/server/store.ts";
+import type { CommitStepResult, ImportResultResult, PreflightView, RunActResult, StartImportResult } from "../../src/lib/contacts/import-flow.ts";
 import type { ImportChoice, ShownTally } from "../../src/lib/contacts/import-decide.ts";
 import { adjustTally } from "../../src/lib/contacts/import-decide.ts";
 import {
-  ADMIN, B, FIVE_THOUSAND_COUNTS, N, NOW, OFFICER, captureAudit, captured, checkModule, commitModule, db, fiveThousandRows,
-  fortyRows, holdsDigitRun, inFreshStore, keyOf, mem, runOf, seedFiveThousandBook, seedFortyWorld, stageFile, stagedRows,
-  truthCounts,
+  ADMIN, B, DIGEST, FIVE_THOUSAND_COUNTS, MAPPING, N, NOW, OFFICER, READER, captureAudit, captured, checkModule, commitModule, db,
+  fiveThousandRows, fortyRows, holdsDigitRun, inFreshStore, keyOf, mem, runOf, seedAccount, seedFiveThousandBook, seedFortyWorld,
+  stageFile, stagedRows, truthCounts,
 } from "../lib/contacts-import-world.mts";
+import type { StageRow } from "../lib/contacts-import-world.mts";
 import { SAMPLE_ROW_SENTENCE } from "../../src/lib/contacts/sample-sheet.ts";
 import { parseTzNumber } from "../../src/lib/tz-msisdn.ts";
 import { ERASURE_EVIDENCE } from "../../src/lib/marketing/erasure-mark.ts";
 
+const { eraseMarketingFor } = await import("../../src/lib/server/marketing/erase.ts");
 const {
   IMPORT_COMMIT_DEPS, cancelContactImport, commitContactImportStep, contactImportFailures, contactImportResult, failedRowSentence,
-  pauseContactImport, resumeContactImport, startContactImport,
+  importOpenRuns, pauseContactImport, resumeContactImport, startContactImport,
 } = commitModule;
 const { checkContactImport, contactImportChanges } = checkModule;
 
@@ -70,25 +75,30 @@ const withDeps = (patch: Partial<ImportCommitDeps>): CommitImpl => ({ ...real(),
 /* ══ THE LABELS ═══════════════════════════════════════════════════════════════════════════════════════════════ */
 
 export const L = {
-  M1: "M1 · ⭐ the 40-row file commits in ONE step under TAKE_FILE: done, the cursor at 40, the totals COUNTED from the rows (22 created · 2 updated · 7 kept · 9 failed), and the book gains exactly 22 rows — source IMPORT, sourceRef and importId the run (X6), no account link",
+  M1: "M1 · ⭐ the 40-row file commits in ONE step under TAKE_FILE (a reader's start): done, the cursor at 40, the totals COUNTED from the rows (22 created · 2 updated · 7 kept · 9 failed), and the book gains exactly 22 rows — source IMPORT, sourceRef and importId the run (X6), no account link",
   M2: "M2 · ⭐ 5,000 rows committed 500 a step — with a pause, a resume, a replayed step and two drivers on one cursor — end EXACTLY as 2,000 a step without a break: the same book, the same outcome on every line, and the counts built into the file (3,000 · 125 · 875 · 1,000)",
   M3: "M3 · ⛔ OD33 · the first row wins ACROSS steps: an in-book number repeated two thousand rows later keeps its FIRST row's values (no book name is a repeat's), and a new number repeated in a later step is created ONCE",
   M4: "M4 · a replayed step is 'moved' and changes NOTHING — the service answers moved for an old cursor, and the store refuses the same batch replayed by its cursor's compare-and-set: the book, the rows and the cursor are as they were",
   M5: "M5 · two drivers on ONE cursor at once: exactly one advances, the other is told moved — nothing is counted twice",
-  M6: "M6 · ⭐ S15-9 · pause, resume, cancel: a paused run refuses a step (paused) and moves nothing; resume carries on from the cursor; cancel keeps the contacts already written, deletes the unsettled staged rows, and a later step is refused cancelled; before the start, cancel is the discard",
-  M7: "M7 · ⛔ the stopped contact and the erased tombstone are NEVER changed, under TAKE_FILE with the file's values differing — every field and the stamp as they were; the player's row too",
+  M6: "M6 · ⭐ S15-9 · pause, resume, cancel: a paused run refuses a step (paused) and moves nothing; resume carries on from the cursor; cancel keeps the contacts already written, deletes the unsettled staged rows and says how many were left (R5: notImported 20, counted before the delete), and a later step is refused cancelled; before the start, cancel is the discard (notImported 40)",
+  M7: "M7 · ⛔ the stopped contact, the erased tombstone and the player's row LINKED to an account (S15-11 — its file row a different name and an email the book lacks) are NEVER changed under TAKE_FILE — every field and the stamp as they were, the linked row's line kept as `account`",
   M8: "M8 · ⛔ an import writes NO consent and NO stop: the ledger and the stop list hold exactly the rows they held, and no row it touched carries an account link it set",
   M9: "M9 · ⭐ S15-8 · every settled row is BLANKED — name, email, notes, tags and the raw cell emptied; line, number, outcome and reason kept — and a failed row keeps its ONE sentence (the number's, the sample sheet's, a field's, the read error)",
   M10: "M10 · the list: the created and in-book contacts join the chosen new list ONCE each (27) — never the erased tombstone — and importing the same file again into that list adds no duplicate and moves no member's addedAt",
-  M11: "M11 · ⛔ S15-3 · OD54 · the result splits the kept rows by reason ONLY for a viewer who may read numbers (an ADMIN: 3 unchanged · 1 on the stop list · 3 repeated · 0 kept by choice) and gives a GROWTH officer null; the list reads not covered (no basis)",
+  M11: "M11 · ⛔ S15-3 · OD54 · the result splits the kept rows by reason ONLY for a viewer who may read numbers (a COMPLIANCE reader and an ADMIN alike: 3 unchanged · 1 on the stop list · 3 repeated · 0 kept by choice) and gives a GROWTH officer null on their own run; the list reads not covered (no basis)",
   M12: "M12 · ⭐ bets come first: while a bet waits for an admission slot a step is refused busy, retryAfterSec 5, and nothing moves; when the queue clears the step runs",
   M13: "M13 · X3 · a contact edited between the decision and the write is decided ONCE MORE from fresh facts and written from its new state; one that moves again is kept as changed_during_import (E9: never failed)",
-  M14: "M14 · the start's checks: an unknown choice is bad_choice; a malformed exception key, a 5,001st exception or one on a row that does not change is bad_exceptions; a gone list is list_gone, a held name list_name_taken, a name holding a phone number bad_list; an old check or a moved label check_again — none writes anything — and a valid start freezes the choice, the exceptions and the list",
-  M15: "M15 · the freeze is a compare-and-set: of two starts at once exactly one freezes the run, the other is told already_started, and the run is COMMITTING with the winner's decision",
+  M14: "M14 · the start's checks: an unknown choice is bad_choice; a malformed exception key, a 5,001st exception or one on a row that does not change is bad_exceptions; a gone list is list_gone, a held name list_name_taken, a name holding a phone number bad_list; a check 31 minutes old, 3 minutes in the future or unreadable is check_stale (R7) and a moved label check_again; a name taken, or an existing list deleted, between the check and the freeze is list_name_taken (P2002) or list_gone (P2003, R17) — none writes anything — and a valid start freezes the choice, the exceptions and the list",
+  M15: "M15 · the freeze is a compare-and-set: of two starts at once — each naming a NEW list — exactly one freezes the run, the other is told already_started, the run is COMMITTING with the winner's decision, and ONLY the winner's list exists (R12: a lost start leaves no list)",
   M16: "M16 · ⛔ D19 · no answer — the start, the steps, the failures pages, the results — nor any audit row carries a contact id, the word player, an erasure, a consent fact, or a run of seven digits",
   M17: "M17 · the failures pages: by FILE row, ascending, at most 50 a page, the true total on every page, nextAfterLine null only at the end — all 1,000 of the 5,000-row file's",
   M18: "M18 · ⭐ C4 · a created number the ledger or the stop list knows has its cache MIRRORED (N1 said yes → GIVEN; N4 is stopped → suppressedAt the stop's own time); one they do not know stays UNKNOWN with no stop",
-  M19: "M19 · ⛔ what only the source can show: the cores import nothing that sends or writes consent (no sms, dispatch, opt-out, consent-ledger or ledger-stamp module; from the gate's module only userPhoneKeyFor) and call no ledger or stop writer; the action file is \"use server\" and exports EXACTLY the fifteen actions, each async",
+  M19: "M19 · ⛔ what only the source can show: the cores import nothing that sends or writes consent (no sms, dispatch, opt-out, consent-ledger or ledger-stamp module, and — R16 — nothing from the gate's module at all) and call no ledger or stop writer; the action file is \"use server\" and exports EXACTLY the sixteen actions, each async",
+  M20: "M20 · ⛔ S15-10 · a GROWTH officer (identity.contact masked) imports with KEEP alone: the check says mayUpdateInBook false, and a start with TAKE_FILE, FILL_BLANKS or any exception — even a KEEP one — is refused update_needs_reader, audited with counts only and nothing written; the same officer's KEEP start freezes",
+  M21: "M21 · ⭐ S15-12 · an ADMIN sees the runs OTHER officers left open — STAGING, STAGED, COMMITTING, PAUSED, never DONE or CANCELLED, never their own — newest first, at most 20, each named by its starter and carrying no id; a GROWTH officer asking is refused forbidden and shown nothing",
+  M22: "M22 · ⛔ R9 · the erasure race: a person erased between a step's read and its write — their staged row deleted, their number in no book row — is NOT created: the step reads its rows again, the conflict is decided once more, and the run finishes with the other rows imported",
+  M23: "M23 · ⭐ R10 · after a step has LANDED its cache mirror and its audit rows cannot turn it into a refusal: a mirror that throws once and audit rows that throw leave the step done, and the run's end mirrors every created number the truth knows (N1 GIVEN, N4 stopped)",
+  M24: "M24 · ⭐ R11 · a deadlock (P2034) inside a step answers busy, retryAfterSec 5, with the run's view and one audit row naming the error's code — never server_error, never a throw — the cursor unmoved; the next step lands",
 } as const;
 
 /* ══ HELPERS ══════════════════════════════════════════════════════════════════════════════════════════════════ */
@@ -145,16 +155,18 @@ const rowJson = (id: string): string => json(mem().marketingContacts.get(id) ?? 
 const blanked = (r: StoredContactImportRow): boolean =>
   r.displayName === null && r.email === null && r.notes === null && r.tags.length === 0 && r.rawPhone === "" && r.outcome !== null;
 const FORBIDDEN_WORDS = /player|erase|erasure|consent|ledger|contactId/i;
+const LIST_AT = NOW.toISOString();
+const listRow = (id: string, name: string) => ({ id, name, description: null, createdAt: LIST_AT, createdBy: null, updatedAt: LIST_AT, updatedBy: null });
 
 /** Every failures page from the top, until nextAfterLine is null. */
-async function allFailures(runId: string, deps: ImportCommitDeps): Promise<{ lines: number[]; sentences: Map<number, string>; ok: boolean; pages: unknown[] }> {
+async function allFailures(runId: string, deps: ImportCommitDeps, who: string = OFFICER): Promise<{ lines: number[]; sentences: Map<number, string>; ok: boolean; pages: unknown[] }> {
   const lines: number[] = [];
   const sentences = new Map<number, string>();
   const pages: unknown[] = [];
   let after = 0;
   let ok = true;
   for (let i = 0; i < 100; i++) {
-    const r = await contactImportFailures(OFFICER, { runId, afterLine: after }, deps);
+    const r = await contactImportFailures(who, { runId, afterLine: after }, deps);
     pages.push(r);
     if (!r.ok) return { lines, sentences, ok: false, pages };
     if (r.rows.length > 50) ok = false;
@@ -169,6 +181,17 @@ async function allFailures(runId: string, deps: ImportCommitDeps): Promise<{ lin
 }
 const ascending = (xs: readonly number[]): boolean => xs.every((x, i) => i === 0 || xs[i - 1] < x);
 
+/** A run row as staging leaves one, in an OPEN or a finished status — M21's world of other officers' runs. */
+function runRow(id: string, createdBy: string, status: StoredContactImport["status"], createdAt: string): StoredContactImport {
+  return {
+    id, status, format: "csv", fileName: null, fileDigest: DIGEST, mapping: { ...MAPPING }, totalRows: 2, unreadable: 0, stagedThrough: 0,
+    committedThrough: 0, decisionChoice: null, decisionOverrides: {}, decisionConfirmedAt: null, decisionConfirmedBy: null,
+    consentBasis: null, consentWording: null, consentProofNote: null, adultAttestedAt: null, consentBasisSetBy: null,
+    consentBasisSetAt: null, pausedAt: null, pausedBy: null, finishedAt: status === "DONE" || status === "CANCELLED" ? createdAt : null,
+    createdAt, createdBy, updatedAt: createdAt, targetListId: null,
+  } as StoredContactImport;
+}
+
 /* ══ THE RUN ══════════════════════════════════════════════════════════════════════════════════════════════════ */
 
 async function run({ impl, ok, log }: Ctx): Promise<void> {
@@ -181,26 +204,29 @@ async function run({ impl, ok, log }: Ctx): Promise<void> {
     const writes = /db[.](?:messagingConsent[.]create|suppression[.](?:create|lift))\s*[(]/.exec(check + commit);
     const EXPECTED_ACTIONS = [
       "cancelImportAction", "checkImportAction", "commitImportStepAction", "discardImportAction", "importChangesAction",
-      "importFailuresAction", "importListsAction", "importResultAction", "importViewAction", "openImportAction", "pauseImportAction",
-      "readXlsxImportAction", "resumeImportAction", "stageImportRowsAction", "startImportAction",
+      "importFailuresAction", "importListsAction", "importOpenRunsAction", "importResultAction", "importViewAction", "openImportAction",
+      "pauseImportAction", "readXlsxImportAction", "resumeImportAction", "stageImportRowsAction", "startImportAction",
     ];
     const exported = [...actions.matchAll(/^export\s+(async\s+)?function\s+(\w+)/gm)].map((m) => ({ name: m[2], isAsync: Boolean(m[1]) }));
     const otherExports = [...actions.matchAll(/^export\s+(?!async\s+function|type\s|function)/gm)].length;
-    ok(L.M19, sends.length === 0 && gateImports.length === 1 && gateImports[0] === "{ userPhoneKeyFor }" && writes === null
+    ok(L.M19, sends.length === 0 && gateImports.length === 0 && writes === null
       && /^\s*"use server";/.test(actions) && json(exported.map((e) => e.name).sort()) === json(EXPECTED_ACTIONS)
       && exported.every((e) => e.isAsync) && otherExports === 0,
       `sends [${sends}] · gate imports [${gateImports}] · writes ${writes?.[0] ?? "none"} · actions ${exported.length}`);
   }
 
-  // ── the 40-row file under TAKE_FILE, into a NEW list, in ONE step: M1 M7 M8 M9 M10 M11 M16 M18 ──
+  // ── the 40-row file under TAKE_FILE, by a READER, into a NEW list, in ONE step: M1 M7 M8 M9 M10 M16 M18 (+ M11's reader half) ──
   let answers: unknown[] = [];
+  let readerSplit: ImportResultResult | null = null;
+  let adminSplit: ImportResultResult | null = null;
+  let maskedSplit: ImportResultResult | null = null;
   await inFreshStore(async () => {
     await seedFortyWorld();
     const truth0 = truthCounts();
-    const runId = await stageFile(OFFICER, fortyRows());
+    const runId = await stageFile(READER, fortyRows());
     const before = { b3: rowJson("mc_w_b3"), b4: rowJson("mc_w_b4"), b5: rowJson("mc_w_b5") };
-    const { start } = await checkAndStart(runId, impl.deps, "TAKE_FILE", { kind: "new", name: "October file" });
-    const step = await commitContactImportStep(OFFICER, { runId, fromCursor: 0 }, impl.deps);
+    const { start } = await checkAndStart(runId, impl.deps, "TAKE_FILE", { kind: "new", name: "October file" }, {}, READER);
+    const step = await commitContactImportStep(READER, { runId, fromCursor: 0 }, impl.deps);
     const view = step.ok ? step.view : null;
     const created = bookRows().filter((c) => c.importId === runId);
     log(`40-row commit: ${step.ok ? `${step.kind} · ${json(view?.totals)}` : `refused ${step.reason}`}`);
@@ -210,15 +236,15 @@ async function run({ impl, ok, log }: Ctx): Promise<void> {
       && bookRows().length === 6 + 22,
       `start ${start.ok ? "ok" : start.reason} · ${json(view?.totals ?? null)} · created ${created.length}`);
 
+    const rows = await stagedRows(runId);
+    const at = (line: number): StoredContactImportRow | undefined => rows.find((r) => r.line === line);
     ok(L.M7, before.b3 === rowJson("mc_w_b3") && before.b4 === rowJson("mc_w_b4") && before.b5 === rowJson("mc_w_b5")
-      && rowJson("mc_w_b3") !== "null",
-      `B3 ${before.b3 === rowJson("mc_w_b3")} · B4 ${before.b4 === rowJson("mc_w_b4")} · B5 ${before.b5 === rowJson("mc_w_b5")}`);
+      && rowJson("mc_w_b3") !== "null" && rowJson("mc_w_b5") !== "null" && at(15)?.outcome === "keep" && at(15)?.outcomeReason === "account",
+      `B3 ${before.b3 === rowJson("mc_w_b3")} · B4 ${before.b4 === rowJson("mc_w_b4")} · B5 ${before.b5 === rowJson("mc_w_b5")} · line 15 ${at(15)?.outcome}/${at(15)?.outcomeReason}`);
 
     const linked = bookRows().filter((c) => c.userId !== null).map((c) => c.id);
     ok(L.M8, json(truthCounts()) === json(truth0) && json(linked) === json(["mc_w_b5"]), `${json(truth0)} → ${json(truthCounts())} · linked [${linked}]`);
 
-    const rows = await stagedRows(runId);
-    const at = (line: number): StoredContactImportRow | undefined => rows.find((r) => r.line === line);
     const sentence = (line: number): string => failedRowSentence(at(line) ?? ({ readError: null, problems: [], msisdn: null } as never));
     ok(L.M9, rows.length === 40 && rows.every(blanked) && rows.every((r) => r.line >= 2 && r.outcome !== null)
       && at(2)?.msisdn === keyOf(N(1)) && at(17)?.outcomeReason === "same_run" && at(13)?.outcomeReason === "no_change"
@@ -232,26 +258,22 @@ async function run({ impl, ok, log }: Ctx): Promise<void> {
     const onList = members.filter((m) => list !== undefined && m.listId === list.id);
     const expectedMembers = new Set([...created.map((c) => c.id), "mc_w_b1", "mc_w_b2", "mc_w_b3", "mc_w_b5", "mc_w_b6"]);
 
-    const masked = await contactImportResult(OFFICER, runId, impl.deps);
-    const reader = await contactImportResult(ADMIN, runId, impl.deps);
-    ok(L.M11, masked.ok && masked.result.kept === null && reader.ok
-      && json(reader.result.kept) === json({ inBookUnchanged: 3, onStopList: 1, repeated: 3, chosenKeep: 0 })
-      && reader.result.list !== null && reader.result.list.name === "October file" && reader.result.list.covered === false,
-      `masked ${masked.ok ? json(masked.result.kept) : masked.reason} · reader ${reader.ok ? json(reader.result.kept) : reader.reason}`);
+    readerSplit = await contactImportResult(READER, runId, impl.deps);
+    adminSplit = await contactImportResult(ADMIN, runId, impl.deps);
 
     const n = (local: string): StoredMarketingContact | undefined => bookRows().find((c) => c.msisdn === keyOf(local));
     ok(L.M18, n(N(1))?.consentState === "GIVEN" && n(N(4))?.suppressedAt === "2026-09-02T08:00:00.000Z" && n(N(4))?.consentState === "UNKNOWN"
       && n(N(2))?.suppressedAt === null && n(N(5))?.consentState === "UNKNOWN" && n(N(5))?.suppressedAt === null,
       `N1 ${n(N(1))?.consentState} · N4 ${n(N(4))?.suppressedAt} · N2 ${n(N(2))?.suppressedAt}`);
 
-    const failures = await allFailures(runId, impl.deps);
-    answers = [start, step, masked, reader, failures.pages];
+    const failures = await allFailures(runId, impl.deps, READER);
+    answers = [start, step, readerSplit, adminSplit, failures.pages];
 
     // ── the same file AGAIN, into the same list: no duplicate, no addedAt moved ──
     const addedBefore = json(onList.map((m) => [m.contactId, m.addedAt]).sort());
-    const again = await stageFile(OFFICER, fortyRows());
-    const second = await checkAndStart(again, impl.deps, "TAKE_FILE", { kind: "existing", listId: list?.id ?? "cl_none" });
-    const secondRun = await drive(again, impl.deps);
+    const again = await stageFile(READER, fortyRows());
+    const second = await checkAndStart(again, impl.deps, "TAKE_FILE", { kind: "existing", listId: list?.id ?? "cl_none" }, {}, READER);
+    const secondRun = await drive(again, impl.deps, READER);
     const onListAfter = ([...mem().contactListMembers.values()] as Array<{ listId: string; contactId: string; addedAt: string }>)
       .filter((m) => list !== undefined && m.listId === list.id);
     const addedAfter = json(onListAfter.map((m) => [m.contactId, m.addedAt]).sort());
@@ -265,7 +287,7 @@ async function run({ impl, ok, log }: Ctx): Promise<void> {
     && !FORBIDDEN_WORDS.test(json(answers)) && !holdsDigitRun(answerText),
     `contact id ${/mc_[a-z_]/.exec(json(answers))?.[0] ?? "none"} · word ${FORBIDDEN_WORDS.exec(json(answers))?.[0] ?? "none"} · digit run ${holdsDigitRun(answerText)}`);
 
-  // ── M12 · bets come first ──
+  // ── M12 · bets come first (a GROWTH officer's KEEP run — and M11's masked half) ──
   await inFreshStore(async () => {
     await seedFortyWorld();
     const runId = await stageFile(OFFICER, fortyRows());
@@ -284,7 +306,17 @@ async function run({ impl, ok, log }: Ctx): Promise<void> {
     const then = await commitContactImportStep(OFFICER, { runId, fromCursor: 0 }, impl.deps);
     ok(L.M12, !busy.ok && busy.reason === "busy" && busy.retryAfterSec === 5 && cursor === 0 && then.ok && then.kind === "done",
       `${busy.ok ? busy.kind : busy.reason} · cursor ${cursor} · then ${then.ok ? then.kind : then.reason}`);
+    maskedSplit = await contactImportResult(OFFICER, runId, impl.deps);
   });
+  const splitOf = (r: ImportResultResult | null): string => (r === null ? "none" : r.ok ? json(r.result.kept) : r.reason);
+  const reader = readerSplit as ImportResultResult | null;
+  const admin = adminSplit as ImportResultResult | null;
+  const masked = maskedSplit as ImportResultResult | null;
+  const WANT_SPLIT = json({ inBookUnchanged: 3, onStopList: 1, repeated: 3, chosenKeep: 0 });
+  ok(L.M11, reader !== null && reader.ok && json(reader.result.kept) === WANT_SPLIT && admin !== null && admin.ok && json(admin.result.kept) === WANT_SPLIT
+    && reader.result.list !== null && reader.result.list.name === "October file" && reader.result.list.covered === false
+    && masked !== null && masked.ok && masked.result.kept === null && masked.result.list === null,
+    `reader ${splitOf(reader)} · admin ${splitOf(admin)} · growth ${splitOf(masked)}`);
 
   // ── M6 · pause, resume, cancel (ten rows a step) — and cancel before the start ──
   await inFreshStore(async () => {
@@ -298,25 +330,25 @@ async function run({ impl, ok, log }: Ctx): Promise<void> {
     const cursorPaused = (await runOf(runId)).committedThrough;
     const resumed = await resumeContactImport(OFFICER, { runId }, deps10);
     const s3 = await commitContactImportStep(OFFICER, { runId, fromCursor: 10 }, deps10);
-    const cancelled = await cancelContactImport(OFFICER, { runId }, deps10);
+    const cancelled: RunActResult = await cancelContactImport(OFFICER, { runId }, deps10);
     const s4 = await commitContactImportStep(OFFICER, { runId, fromCursor: 20 }, deps10);
     const left = await stagedRows(runId);
     const written = bookRows().filter((c) => c.importId === runId).length;
     const other = await stageFile(OFFICER, fortyRows());
-    const discarded = await cancelContactImport(OFFICER, { runId: other }, deps10);
+    const discarded: RunActResult = await cancelContactImport(OFFICER, { runId: other }, deps10);
     const otherRows = await stagedRows(other);
     ok(L.M6, s1.ok && s1.kind === "advanced" && s1.view.committedThrough === 10
       && paused.ok && paused.view.status === "PAUSED" && paused.view.pausedBy === "you"
       && !s2.ok && s2.reason === "paused" && cursorPaused === 10
       && resumed.ok && resumed.view.status === "COMMITTING" && s3.ok && s3.view.committedThrough === 20
       && cancelled.ok && cancelled.view.status === "CANCELLED" && cancelled.view.totals.pending === 0 && left.length === 20
-      && written === cancelled.view.totals.create && written > 0
+      && cancelled.notImported === 20 && written === cancelled.view.totals.create && written > 0
       && !s4.ok && s4.reason === "cancelled"
-      && discarded.ok && discarded.view.status === "CANCELLED" && otherRows.length === 0,
-      `s1 ${s1.ok ? s1.view.committedThrough : s1.reason} · pause ${paused.ok ? paused.view.status : paused.reason} · s2 ${s2.ok ? s2.kind : s2.reason} · s3 ${s3.ok ? s3.view.committedThrough : s3.reason} · cancel ${cancelled.ok ? json(cancelled.view.totals) : cancelled.reason} · s4 ${s4.ok ? s4.kind : s4.reason} · discard ${discarded.ok ? discarded.view.status : discarded.reason}`);
+      && discarded.ok && discarded.view.status === "CANCELLED" && discarded.notImported === 40 && otherRows.length === 0,
+      `s1 ${s1.ok ? s1.view.committedThrough : s1.reason} · pause ${paused.ok ? paused.view.status : paused.reason} · s2 ${s2.ok ? s2.kind : s2.reason} · s3 ${s3.ok ? s3.view.committedThrough : s3.reason} · cancel ${cancelled.ok ? `${json(cancelled.view.totals)} notImported ${cancelled.notImported}` : cancelled.reason} · s4 ${s4.ok ? s4.kind : s4.reason} · discard ${discarded.ok ? `${discarded.view.status} notImported ${discarded.notImported}` : discarded.reason}`);
   });
 
-  // ── M13 · a conflict, decided once more — and one that moves twice ──
+  // ── M13 · a conflict, decided once more — and one that moves twice (a reader's TAKE_FILE) ──
   await inFreshStore(async () => {
     await seedFortyWorld();
     let touches = 0;
@@ -324,19 +356,19 @@ async function run({ impl, ok, log }: Ctx): Promise<void> {
       touches++;
       await db.marketingContact.update("mc_w_b1", { notes: `touched ${touches}` }, `2026-10-09T08:5${touches}:00.000Z`);
     };
-    const runId = await stageFile(OFFICER, fortyRows());
-    await checkAndStart(runId, impl.deps, "TAKE_FILE", { kind: "none" });
+    const runId = await stageFile(READER, fortyRows());
+    await checkAndStart(runId, impl.deps, "TAKE_FILE", { kind: "none" }, {}, READER);
     let calls = 0;
     const once: ImportCommitDeps = { ...impl.deps, commitBatch: async (b) => { if (calls++ === 0) await touch(); return impl.deps.commitBatch(b); } };
-    const s = await commitContactImportStep(OFFICER, { runId, fromCursor: 0 }, once);
+    const s = await commitContactImportStep(READER, { runId, fromCursor: 0 }, once);
     const b1 = bookRows().find((c) => c.id === "mc_w_b1");
     const line3 = (await stagedRows(runId)).find((r) => r.line === 3);
     const firstCase = s.ok && b1?.displayName === "Asha Mwakalinga" && b1.notes === "touched 1" && line3?.outcome === "update";
 
-    const again = await stageFile(OFFICER, fortyRows().map((r) => ("cells" in r && r.line === 3 ? { line: 3, cells: [B(1), "Asha Twice", "", "", ""] } : r)));
-    await checkAndStart(again, impl.deps, "TAKE_FILE", { kind: "none" });
+    const again = await stageFile(READER, fortyRows().map((r) => ("cells" in r && r.line === 3 ? { line: 3, cells: [B(1), "Asha Twice", "", "", ""] } : r)));
+    await checkAndStart(again, impl.deps, "TAKE_FILE", { kind: "none" }, {}, READER);
     const always: ImportCommitDeps = { ...impl.deps, commitBatch: async (b) => { await touch(); return impl.deps.commitBatch(b); } };
-    const s2 = await commitContactImportStep(OFFICER, { runId: again, fromCursor: 0 }, always);
+    const s2 = await commitContactImportStep(READER, { runId: again, fromCursor: 0 }, always);
     const b1Again = bookRows().find((c) => c.id === "mc_w_b1");
     const line3Again = (await stagedRows(again)).find((r) => r.line === 3);
     ok(L.M13, firstCase && s2.ok && b1Again?.displayName === "Asha Mwakalinga" && line3Again?.outcome === "keep"
@@ -344,21 +376,22 @@ async function run({ impl, ok, log }: Ctx): Promise<void> {
       `first: ${s.ok ? s.kind : s.reason}, B1 "${b1?.displayName}", line 3 ${line3?.outcome} · twice: ${s2.ok ? s2.kind : s2.reason}, line 3 ${line3Again?.outcome}/${line3Again?.outcomeReason}`);
   });
 
-  // ── M14 · the start's checks — M15 · the freeze ──
+  // ── M14 · the start's checks (a reader's TAKE_FILE) ──
   await inFreshStore(async () => {
     await seedFortyWorld();
-    await db.contactList.create({ id: "cl_existing", name: "Existing", description: null, createdAt: NOW.toISOString(), createdBy: null, updatedAt: NOW.toISOString(), updatedBy: null });
-    const runId = await stageFile(OFFICER, fortyRows());
-    const checked = await checkContactImport(OFFICER, runId, impl.deps);
+    await db.contactList.create(listRow("cl_existing", "Existing"));
+    const runId = await stageFile(READER, fortyRows());
+    const checked = await checkContactImport(READER, runId, impl.deps);
     if (!checked.ok) {
       ok(L.M14, false, `the check refused: ${checked.reason}`);
       return;
     }
     const base = labelOf(checked.preflight.byChoice.TAKE_FILE);
     const fresh = checked.preflight.checkedAt;
-    const ask = (o: Record<string, unknown>) => startContactImport(OFFICER, {
+    const body = (o: Record<string, unknown>): Record<string, unknown> => ({
       runId, choice: "TAKE_FILE", exceptions: {}, list: { kind: "none" }, expected: base, checkedAt: fresh, ...o,
-    }, impl.deps);
+    });
+    const ask = (o: Record<string, unknown>, deps: ImportCommitDeps = impl.deps) => startContactImport(READER, body(o), deps);
     const reasons = [
       await ask({ choice: "OVERWRITE" }),
       await ask({ exceptions: { "06": "KEEP" } }),
@@ -368,37 +401,214 @@ async function run({ impl, ok, log }: Ctx): Promise<void> {
       await ask({ list: { kind: "new", name: "EXISTING" } }),
       await ask({ list: { kind: "new", name: "Call 0712 345 678" } }),
       await ask({ checkedAt: new Date(NOW.getTime() - 31 * 60 * 1000).toISOString() }),
+      await ask({ checkedAt: new Date(NOW.getTime() + 3 * 60 * 1000).toISOString() }),
+      await ask({ checkedAt: "not a date" }),
       await ask({ expected: { ...base, create: base.create + 1 } }),
     ].map((r) => (r.ok ? "ok" : r.reason));
-    const WANT = ["bad_choice", "bad_exceptions", "bad_exceptions", "bad_exceptions", "list_gone", "list_name_taken", "bad_list", "check_again", "check_again"];
+    const WANT = [
+      "bad_choice", "bad_exceptions", "bad_exceptions", "bad_exceptions", "list_gone", "list_name_taken", "bad_list",
+      "check_stale", "check_stale", "check_stale", "check_again",
+    ];
     const untouched = (await runOf(runId)).status === "STAGED" && mem().contactLists.size === 1;
+    // R12 · the name taken between the check and the freeze: the unique index refuses the new list inside the freeze.
+    const nameRace = await ask({ list: { kind: "new", name: "Raced Name" } }, {
+      ...impl.deps, freeze: async (f) => { await db.contactList.create(listRow("cl_racer", "Raced Name")); return impl.deps.freeze(f); },
+    });
+    const racedNames = ([...mem().contactLists.values()] as Array<{ name: string }>).filter((l) => l.name === "Raced Name").length;
+    // R17 · an existing list deleted between the check and the freeze: the foreign key refuses the freeze.
+    await db.contactList.create(listRow("cl_doomed", "Doomed"));
+    const goneRace = await ask({ list: { kind: "existing", listId: "cl_doomed" } }, {
+      ...impl.deps, freeze: async (f) => { mem().contactLists.delete("cl_doomed"); return impl.deps.freeze(f); },
+    });
+    const stillStaged = (await runOf(runId)).status === "STAGED";
     // A valid start with ONE exception: row 3 (B1, which TAKE_FILE would change) kept as it is.
     const previews = [];
-    const page = await contactImportChanges(OFFICER, { runId, afterLine: 0 }, impl.deps);
+    const page = await contactImportChanges(READER, { runId, afterLine: 0 }, impl.deps);
     if (page.ok) previews.push(...page.page.rows.map((r) => r.preview));
     const label = labelOf(adjustTally(checked.preflight.byChoice, previews, "TAKE_FILE", { 3: "KEEP" }));
     const valid = await ask({ exceptions: { "3": "KEEP" }, expected: label, list: { kind: "existing", listId: "cl_existing" } });
     const frozen = await runOf(runId);
-    ok(L.M14, json(reasons) === json(WANT) && untouched && valid.ok && frozen.status === "COMMITTING" && frozen.decisionChoice === "TAKE_FILE"
+    ok(L.M14, json(reasons) === json(WANT) && untouched && !nameRace.ok && nameRace.reason === "list_name_taken" && racedNames === 1
+      && !goneRace.ok && goneRace.reason === "list_gone" && stillStaged
+      && valid.ok && frozen.status === "COMMITTING" && frozen.decisionChoice === "TAKE_FILE"
       && json(frozen.decisionOverrides) === json({ 3: "KEEP" }) && frozen.targetListId === "cl_existing" && label.update === 1,
-      `${json(reasons)} · untouched ${untouched} · valid ${valid.ok ? "ok" : valid.reason} · label ${json(label)}`);
+      `${json(reasons)} · untouched ${untouched} · name race ${nameRace.ok ? "ok" : nameRace.reason} (${racedNames} named) · gone race ${goneRace.ok ? "ok" : goneRace.reason} · valid ${valid.ok ? "ok" : valid.reason} · label ${json(label)}`);
   });
+
+  // ── M15 · the freeze, and R12: a lost start leaves no list ──
   await inFreshStore(async () => {
     await seedFortyWorld();
     const runId = await stageFile(OFFICER, fortyRows());
     const checked = await checkContactImport(OFFICER, runId, impl.deps);
     const label = checked.ok ? labelOf(checked.preflight.byChoice.KEEP) : { create: 0, update: 0, keep: 0 };
-    const body = { runId, choice: "KEEP", exceptions: {}, list: { kind: "none" }, expected: label, checkedAt: checked.ok ? checked.preflight.checkedAt : "" };
-    const [a, b] = await Promise.all([startContactImport(OFFICER, body, impl.deps), startContactImport(ADMIN, body, impl.deps)]);
+    const body = (name: string) => ({
+      runId, choice: "KEEP", exceptions: {}, list: { kind: "new", name }, expected: label, checkedAt: checked.ok ? checked.preflight.checkedAt : "",
+    });
+    const [a, b] = await Promise.all([startContactImport(OFFICER, body("Race A"), impl.deps), startContactImport(ADMIN, body("Race B"), impl.deps)]);
     const wins = [a, b].filter((r) => r.ok).length;
     const loser = [a, b].find((r) => !r.ok);
     const frozen = await runOf(runId);
+    const lists = [...mem().contactLists.values()] as Array<{ id: string; name: string }>;
+    const winnerName = a.ok ? "Race A" : "Race B";
     ok(L.M15, wins === 1 && loser !== undefined && !loser.ok && loser.reason === "already_started" && frozen.status === "COMMITTING"
-      && frozen.decisionChoice === "KEEP",
-      `${[a, b].map((r) => (r.ok ? "ok" : r.reason)).join(" · ")} · ${frozen.status}`);
+      && frozen.decisionChoice === "KEEP" && json(lists.map((l) => l.name)) === json([winnerName]) && frozen.targetListId === lists[0]?.id,
+      `${[a, b].map((r) => (r.ok ? "ok" : r.reason)).join(" · ")} · ${frozen.status} · lists [${lists.map((l) => l.name)}]`);
   });
 
-  // ── the 5,000-row file, twice: M2 M3 M4 M5 M17 ──
+  // ── M20 · S15-10 · a GROWTH officer starts with KEEP alone ──
+  await inFreshStore(async () => {
+    await seedFortyWorld();
+    const runId = await stageFile(OFFICER, fortyRows());
+    const checked = await checkContactImport(OFFICER, runId, impl.deps);
+    const label = checked.ok ? labelOf(checked.preflight.byChoice.KEEP) : { create: 0, update: 0, keep: 0 };
+    const fresh = checked.ok ? checked.preflight.checkedAt : "";
+    const ask = (o: Record<string, unknown>) => startContactImport(OFFICER, {
+      runId, choice: "KEEP", exceptions: {}, list: { kind: "none" }, expected: label, checkedAt: fresh, ...o,
+    }, impl.deps);
+    captured.length = 0;
+    const refused = [
+      await ask({ choice: "TAKE_FILE" }),
+      await ask({ choice: "FILL_BLANKS" }),
+      await ask({ exceptions: { "3": "KEEP" } }),
+      await ask({ exceptions: { "3": "TAKE_FILE" } }),
+    ];
+    const rowsOf = captured.filter((x) => x.action === "contacts.import.commit_refused" && (x.payload as { reason?: unknown }).reason === "update_needs_reader");
+    const keysOk = rowsOf.every((x) => Object.keys(x.payload as Record<string, unknown>).sort().join(",") === "exceptions,reason,step");
+    const untouched = (await runOf(runId)).status === "STAGED";
+    const keep = await ask({});
+    const frozen = await runOf(runId);
+    ok(L.M20, checked.ok && checked.preflight.mayUpdateInBook === false
+      && refused.every((r) => !r.ok && r.reason === "update_needs_reader") && rowsOf.length === 4 && keysOk && untouched
+      && keep.ok && frozen.status === "COMMITTING" && frozen.decisionChoice === "KEEP" && !holdsDigitRun(json(rowsOf)),
+      `${refused.map((r) => (r.ok ? "ok" : r.reason)).join(" · ")} · audit rows ${rowsOf.length} (keys ${keysOk}) · keep ${keep.ok ? "ok" : keep.reason}`);
+  });
+
+  // ── M21 · S15-12 · an ADMIN's view of other officers' unfinished runs ──
+  await inFreshStore(async () => {
+    const hourAgo = (h: number): string => new Date(NOW.getTime() - h * 3_600_000).toISOString();
+    const OPEN: StoredContactImport["status"][] = ["STAGING", "STAGED", "COMMITTING", "PAUSED"];
+    for (let k = 0; k < 22; k++) {
+      await db.contactImport.create(runRow(`ci_other${String.fromCharCode(97 + k)}aaaaaaaaaaaaaaaaaaa`.slice(0, 23), `usr_far_${k}`, OPEN[k % 4], hourAgo(30 + k)));
+    }
+    await db.contactImport.create(runRow("ci_newestaaaaaaaaaaaaaaa", OFFICER, "PAUSED", hourAgo(1)));
+    await db.contactImport.create(runRow("ci_adminsownaaaaaaaaaaa", ADMIN, "STAGED", hourAgo(0)));
+    await db.contactImport.create(runRow("ci_finisheddaaaaaaaaaaa", "usr_far_x", "DONE", hourAgo(2)));
+    await db.contactImport.create(runRow("ci_cancelledaaaaaaaaaaa", "usr_far_y", "CANCELLED", hourAgo(3)));
+    captured.length = 0;
+    const seen = await importOpenRuns(ADMIN, impl.deps);
+    const views = seen.ok ? seen.runs : [];
+    const growth = await importOpenRuns(OFFICER, impl.deps);
+    const refusedRows = captured.filter((x) => x.action === "contacts.import.commit_refused" && (x.payload as { reason?: unknown }).reason === "forbidden");
+    const newestFirst = views.every((v, i) => i === 0 || Date.parse(views[i - 1].createdAt) >= Date.parse(v.createdAt));
+    const statuses = new Set(views.map((v) => v.status));
+    ok(L.M21, seen.ok && views.length === 20 && newestFirst && views[0]?.id === "ci_newestaaaaaaaaaaaaaaa" && views[0]?.startedBy === "Amina Officer"
+      && views.every((v) => !v.mine && v.id !== "ci_adminsownaaaaaaaaaaa") && [...statuses].every((s) => OPEN.includes(s))
+      && views.slice(1).every((v) => v.startedBy === "another officer") && !json(views).includes("usr_")
+      && !growth.ok && growth.reason === "forbidden" && growth.view === null && refusedRows.length === 1,
+      `${seen.ok ? `${views.length} run(s), first ${views[0]?.id ?? "none"} by ${views[0]?.startedBy ?? "nobody"}` : seen.reason} · growth ${growth.ok ? "shown runs" : growth.reason}`);
+  });
+
+  // ── M22 · R9 · the erasure race ──
+  await inFreshStore(async () => {
+    const Z = "0757300001";
+    const player = await seedAccount(Z, "usr_r9_player", "Zawadi Mchezaji");
+    const file: StageRow[] = [
+      { line: 2, cells: [N(1), "One", "", "", ""] },
+      { line: 3, cells: [Z, "Zed", "", "", ""] },
+      { line: 4, cells: [N(2), "Two", "", "", ""] },
+    ];
+    const runId = await stageFile(OFFICER, file);
+    await checkAndStart(runId, impl.deps, "KEEP", { kind: "none" });
+    let erased = false;
+    const racing: ImportCommitDeps = {
+      ...impl.deps,
+      commitBatch: async (b) => {
+        if (!erased) {
+          erased = true;
+          await eraseMarketingFor({ userId: player.id, phoneE164: player.phoneE164, officerId: null });
+        }
+        return impl.deps.commitBatch(b);
+      },
+    };
+    let step: CommitStepResult | null = null;
+    let threw = "";
+    try {
+      step = await commitContactImportStep(OFFICER, { runId, fromCursor: 0 }, racing);
+    } catch (e) {
+      threw = e instanceof Error ? e.name : String(e);
+    }
+    const z = keyOf(Z);
+    const zBook = bookRows().filter((c) => c.msisdn === z).length;
+    const created = bookRows().filter((c) => c.importId === runId).map((c) => c.msisdn).sort();
+    const staged = await stagedRows(runId);
+    ok(L.M22, erased && step !== null && step.ok && step.kind === "done" && zBook === 0 && json(created) === json([keyOf(N(1)), keyOf(N(2))].sort())
+      && staged.length === 2 && staged.every((r) => r.msisdn !== z) && step.view.totals.create === 2 && step.view.totals.staged === 2,
+      `${threw ? `threw ${threw}` : step === null ? "no answer" : step.ok ? `${step.kind} · ${json(step.view.totals)}` : `refused ${step.reason}`} · Z in the book ${zBook} · created ${created.length}`);
+  });
+
+  // ── M23 · R10 · a landed step's mirror and audit rows fail — the step stands, the run's end repairs the caches ──
+  await inFreshStore(async () => {
+    await seedFortyWorld();
+    const runId = await stageFile(READER, fortyRows());
+    await checkAndStart(runId, impl.deps, "TAKE_FILE", { kind: "none" }, {}, READER);
+    let mirrorCalls = 0;
+    const flaky: ImportCommitDeps = {
+      ...impl.deps,
+      mirror: async (m, at) => {
+        mirrorCalls++;
+        if (mirrorCalls === 1) throw Object.assign(new Error("the cache is down"), { name: "CacheDown" });
+        return impl.deps.mirror(m, at);
+      },
+      audit: (async (entry: Parameters<typeof captureAudit>[0]) => {
+        if (entry.action === "contacts.import.batch" || entry.action === "contacts.import.finished") throw new Error("the audit chain is down");
+        return impl.deps.audit(entry);
+      }) as typeof captureAudit,
+    };
+    let step: CommitStepResult | null = null;
+    let threw = "";
+    try {
+      step = await commitContactImportStep(READER, { runId, fromCursor: 0 }, flaky);
+    } catch (e) {
+      threw = e instanceof Error ? e.name : String(e);
+    }
+    const n = (local: string): StoredMarketingContact | undefined => bookRows().find((c) => c.msisdn === keyOf(local));
+    ok(L.M23, threw === "" && step !== null && step.ok && step.kind === "done" && (await runOf(runId)).status === "DONE"
+      && n(N(1))?.consentState === "GIVEN" && n(N(4))?.suppressedAt === "2026-09-02T08:00:00.000Z" && mirrorCalls >= 3,
+      `${threw ? `threw ${threw}` : step === null ? "no answer" : step.ok ? step.kind : `refused ${step.reason}`} · N1 ${n(N(1))?.consentState} · N4 ${n(N(4))?.suppressedAt} · mirror calls ${mirrorCalls}`);
+  });
+
+  // ── M24 · R11 · a deadlock is busy, never server_error ──
+  await inFreshStore(async () => {
+    await seedFortyWorld();
+    const runId = await stageFile(OFFICER, fortyRows());
+    await checkAndStart(runId, impl.deps, "KEEP", { kind: "none" });
+    let tries = 0;
+    const deadlocking: ImportCommitDeps = {
+      ...impl.deps,
+      commitBatch: async (b: ContactImportCommitBatch) => {
+        tries++;
+        if (tries === 1) throw Object.assign(new Error("Transaction failed due to a write conflict or a deadlock"), { code: "P2034" });
+        return impl.deps.commitBatch(b);
+      },
+    };
+    captured.length = 0;
+    let first: CommitStepResult | null = null;
+    let threw = "";
+    try {
+      first = await commitContactImportStep(OFFICER, { runId, fromCursor: 0 }, deadlocking);
+    } catch (e) {
+      threw = e instanceof Error ? e.message.slice(0, 40) : String(e);
+    }
+    const cursor = (await runOf(runId)).committedThrough;
+    const busyRows = captured.filter((x) => x.action === "contacts.import.commit_refused" && (x.payload as { reason?: unknown }).reason === "busy");
+    const busyCode = busyRows.length === 1 && String((busyRows[0].payload as { error?: unknown }).error).includes("P2034");
+    const then = await commitContactImportStep(OFFICER, { runId, fromCursor: 0 }, deadlocking);
+    ok(L.M24, threw === "" && first !== null && !first.ok && first.reason === "busy" && first.retryAfterSec === 5 && first.view !== null
+      && cursor === 0 && busyCode && then.ok && then.kind === "done",
+      `${threw ? `threw "${threw}"` : first === null ? "no answer" : first.ok ? first.kind : `${first.reason} after ${first.retryAfterSec}s`} · cursor ${cursor} · audit ${busyRows.length} (code ${busyCode}) · then ${then.ok ? then.kind : then.reason}`);
+  });
+
+  // ── the 5,000-row file, twice, by a reader: M2 M3 M4 M5 M17 ──
   let interrupted = { book: "", outcomes: "", totals: "", ok: false, detail: "" };
   let replayOk = false;
   let replayDetail = "";
@@ -408,17 +618,17 @@ async function run({ impl, ok, log }: Ctx): Promise<void> {
   let firstRowDetail = "";
   await inFreshStore(async () => {
     await seedFiveThousandBook();
-    const runId = await stageFile(OFFICER, fiveThousandRows());
+    const runId = await stageFile(READER, fiveThousandRows());
     let lastBatch: ContactImportCommitBatch | null = null;
     const recording: ImportCommitDeps = { ...impl.deps, commitBatch: async (b) => { lastBatch = b; return impl.deps.commitBatch(b); } };
-    const { start } = await checkAndStart(runId, recording, "TAKE_FILE", { kind: "none" });
-    const step = (from: number, deps: ImportCommitDeps = recording) => commitContactImportStep(OFFICER, { runId, fromCursor: from }, deps);
+    const { start } = await checkAndStart(runId, recording, "TAKE_FILE", { kind: "none" }, {}, READER);
+    const step = (from: number, deps: ImportCommitDeps = recording) => commitContactImportStep(READER, { runId, fromCursor: from }, deps);
     const s1 = await step(0);
     const s2 = await step(500);
     const s3 = await step(1000);
-    await pauseContactImport(OFFICER, { runId }, recording);
+    await pauseContactImport(READER, { runId }, recording);
     const refused = await step(1500);
-    await resumeContactImport(OFFICER, { runId }, recording);
+    await resumeContactImport(READER, { runId }, recording);
     const s4 = await step(1500);
     // M4 · the step replayed — by the service (an old cursor) and by the store (the same batch again)
     const beforeReplay = { book: bookProjection(), rows: await outcomesOf(runId), cursor: (await runOf(runId)).committedThrough };
@@ -435,7 +645,7 @@ async function run({ impl, ok, log }: Ctx): Promise<void> {
     const moved = [d1, d2].filter((r) => r.ok && r.kind === "moved").length;
     driversOk = advanced === 1 && moved === 1 && (await runOf(runId)).committedThrough === cursor + 500;
     driversDetail = `advanced ${advanced} · moved ${moved} · cursor ${cursor} → ${(await runOf(runId)).committedThrough}`;
-    const rest = await drive(runId, recording);
+    const rest = await drive(runId, recording, READER);
     const last = rest.last;
     interrupted = {
       book: bookProjection(), outcomes: await outcomesOf(runId), totals: last?.ok ? json(last.view.totals) : "",
@@ -448,7 +658,7 @@ async function run({ impl, ok, log }: Ctx): Promise<void> {
       && names.filter((n) => n.startsWith("File ")).length === 125;
     firstRowDetail = `repeat names ${names.filter((n) => n.startsWith("Repeat ") || n.startsWith("Again ")).length} · created ${createdCount} · File names ${names.filter((n) => n.startsWith("File ")).length}`;
 
-    const failures = await allFailures(runId, recording);
+    const failures = await allFailures(runId, recording, READER);
     const totals = failures.pages.every((p) => (p as { ok: boolean; total?: number }).ok && (p as { total: number }).total === 1000);
     ok(L.M17, failures.ok && failures.lines.length === 1000 && ascending(failures.lines) && totals,
       `${failures.lines.length} lines over ${failures.pages.length} page(s) · ascending ${ascending(failures.lines)} · totals ${totals}`);
@@ -456,10 +666,10 @@ async function run({ impl, ok, log }: Ctx): Promise<void> {
   let uninterrupted = { book: "", outcomes: "", totals: "" };
   await inFreshStore(async () => {
     await seedFiveThousandBook();
-    const runId = await stageFile(OFFICER, fiveThousandRows());
+    const runId = await stageFile(READER, fiveThousandRows());
     const deps2000: ImportCommitDeps = { ...impl.deps, stepRows: 2000 };
-    await checkAndStart(runId, deps2000, "TAKE_FILE", { kind: "none" });
-    const r = await drive(runId, deps2000);
+    await checkAndStart(runId, deps2000, "TAKE_FILE", { kind: "none" }, {}, READER);
+    const r = await drive(runId, deps2000, READER);
     uninterrupted = { book: bookProjection(), outcomes: await outcomesOf(runId), totals: r.last?.ok ? json(r.last.view.totals) : "" };
   });
   const wantTotals = json({ staged: 5000, unreadable: FIVE_THOUSAND_COUNTS.unreadable, pending: 0, create: 3000, update: 125, keep: 875, fail: 1000 });
@@ -488,8 +698,8 @@ const casLess = (inner: ImportCommitDeps["commitBatch"]): ImportCommitDeps["comm
  * red run, 2026-10-09.) Memory twin only, which is where this suite runs.
  */
 const casIgnored = (inner: ImportCommitDeps["commitBatch"]): ImportCommitDeps["commitBatch"] => async (b) => {
-  const mem = (globalThis as unknown as { __50PICK_STORE?: { contactImports?: Map<string, { committedThrough: number }> } }).__50PICK_STORE;
-  const run = mem?.contactImports?.get(b.importId);
+  const store = (globalThis as unknown as { __50PICK_STORE?: { contactImports?: Map<string, { committedThrough: number }> } }).__50PICK_STORE;
+  const run = store?.contactImports?.get(b.importId);
   if (run && run.committedThrough !== b.fromCursor) run.committedThrough = b.fromCursor;
   return inner(b);
 };
@@ -537,19 +747,33 @@ const plants: readonly RedPlant<CommitImpl>[] = [
     impl: () => withDeps({ transition: async (t) => db.contactImport.find(t.importId) }),
   },
   {
+    name: "P6b · R5 · cancel reads what is left once the unsettled rows are gone — every cancel says nothing was left unimported",
+    expect: L.M6,
+    impl: () => withDeps({ leftUnimported: () => 0 }),
+  },
+  {
     name: "P7 · the facts loader reads no stop — a stopped contact is updated from the file",
     expect: L.M7,
     impl: () => withDeps({ reads: { ...REAL_DEPS.reads, activeStops: async () => [] } }),
+  },
+  {
+    name: "P7b · S15-11 · the book read drops the account link — the player's registration row is overwritten from the file",
+    expect: L.M7,
+    impl: () => withDeps({
+      reads: { ...REAL_DEPS.reads, snapshots: async (m) => (await REAL_DEPS.reads.snapshots(m)).map((r) => ({ ...r, userId: null })) },
+    }),
   },
   {
     name: "P8 · the cache mirror records a consent for the number first — the import writes the ledger",
     expect: L.M8,
     impl: () => withDeps({
       mirror: async (msisdn, at) => {
-        await db.messagingConsent.create({
-          id: `led_planted_${msisdn}`, channel: "SMS", identifier: msisdn, category: "MARKETING", status: "GIVEN", source: "IMPORT",
-          wording: "planted", locale: "EN", evidence: null, recordedBy: null, createdAt: at,
-        });
+        if (!mem().messagingConsents.has(`led_planted_${msisdn}`)) {
+          await db.messagingConsent.create({
+            id: `led_planted_${msisdn}`, channel: "SMS", identifier: msisdn, category: "MARKETING", status: "GIVEN", source: "IMPORT",
+            wording: "planted", locale: "EN", evidence: null, recordedBy: null, createdAt: at,
+          });
+        }
         return REAL_DEPS.mirror(msisdn, at);
       },
     }),
@@ -585,12 +809,27 @@ const plants: readonly RedPlant<CommitImpl>[] = [
     impl: () => withDeps({ changeable: () => true }),
   },
   {
+    name: "P14b · R7 · the check's age is not asked — a start pressed from a screen left open an hour freezes the run",
+    expect: L.M14,
+    impl: () => withDeps({ checkFreshMs: Number.POSITIVE_INFINITY }),
+  },
+  {
     name: "P15 · the freeze puts the run back to STAGED first — two starts both freeze it",
     expect: L.M15,
     impl: () => withDeps({
       freeze: async (f) => {
         await db.contactImport.transition({ importId: f.importId, from: ["COMMITTING"], to: "STAGED", by: null, at: f.at, updatedBefore: null });
         return db.contactImport.freezeDecision(f);
+      },
+    }),
+  },
+  {
+    name: "P15b · R12 · the new list is created BEFORE the freeze, in a write of its own — the start that loses the run leaves its list behind",
+    expect: L.M15,
+    impl: () => withDeps({
+      freeze: async (f) => {
+        if (f.newList !== null) await db.contactList.create(f.newList);
+        return db.contactImport.freezeDecision({ ...f, newList: null });
       },
     }),
   },
@@ -621,6 +860,41 @@ const plants: readonly RedPlant<CommitImpl>[] = [
       const r = real();
       return { ...r, sources: { ...r.sources, commit: `import { appendMarketingConsent } from "@/lib/server/marketing/consent-ledger";${LF}${r.sources.commit}` } };
     },
+  },
+  {
+    name: "P20 · S15-10 · the start never asks the matrix — a GROWTH officer's TAKE_FILE start goes ahead",
+    expect: L.M20,
+    impl: () => withDeps({ readsNumbers: async () => true }),
+  },
+  {
+    name: "P21 · S15-12 · the open-runs read keeps the viewer's own runs",
+    expect: L.M21,
+    impl: () => withDeps({ openRuns: async (q) => db.contactImport.listOpenByOthers({ ...q, excludeCreatedBy: "nobody" }) }),
+  },
+  {
+    name: "P22 · R9 · the store settles whatever staged rows are left and ignores the missing ones — the erased number is created",
+    expect: L.M22,
+    impl: () => withDeps({
+      commitBatch: async (b) => {
+        const live = new Set((await stagedRows(b.importId)).map((r) => r.ordinal));
+        return REAL_DEPS.commitBatch({ ...b, outcomes: b.outcomes.filter((o) => live.has(o.ordinal)), sentences: b.sentences.filter((s) => live.has(s.ordinal)) });
+      },
+    }),
+  },
+  {
+    name: "P23 · R10 · the run's end never mirrors again — a step mirror that failed leaves a created number's cache wrong for good",
+    expect: L.M23,
+    impl: () => withDeps({ finishCaches: async () => 0 }),
+  },
+  {
+    name: "P23b · R10 · the work after a landed step is not guarded — a cache mirror that throws turns the step into a throw",
+    expect: L.M23,
+    impl: () => withDeps({ bestEffort: async (_what, work) => { await work(); return true; } }),
+  },
+  {
+    name: "P24 · R11 · no database fault is retryable — a deadlock inside a step is a throw (server_error to the browser)",
+    expect: L.M24,
+    impl: () => withDeps({ retryable: () => false }),
   },
 ];
 

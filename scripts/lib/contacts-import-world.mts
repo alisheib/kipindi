@@ -37,9 +37,12 @@ export const onMemoryTwin = (): boolean => !prismaModule.hasDatabase();
 
 /* ═══ THE OFFICERS, THE CLOCK, THE AUDIT CAPTURE ═══════════════════════════════════════════════════════════════ */
 
-/** Two GROWTH officers (identity.contact masked) and one ADMIN (read; may drive any run — X18). */
+/** Two GROWTH officers (identity.contact masked — S15-10: they import with KEEP alone), one COMPLIANCE officer (a READER:
+ *  identity.contact read, so they may update contacts already in the book from a file, and drive only their own runs)
+ *  and one ADMIN (read; may drive any run — X18). */
 export const OFFICER = "usr_imp_officer";
 export const OTHER = "usr_imp_other";
+export const READER = "usr_imp_reader";
 export const ADMIN = "usr_imp_admin";
 export const NOW = new Date("2026-10-09T09:00:00.000Z");
 
@@ -79,7 +82,7 @@ function makeUser(id: string, phoneE164: string, role: StoredUser["role"], displ
   } as StoredUser;
 }
 
-/** Runs `fn` on EMPTY staging, book, ledger, stop-list, user and list maps — the three officers seeded — and puts every
+/** Runs `fn` on EMPTY staging, book, ledger, stop-list, user and list maps — the four officers seeded — and puts every
  *  map back afterwards, whatever `fn` did or threw. The audit capture starts empty. */
 export async function inFreshStore<T>(fn: () => Promise<T>): Promise<T> {
   if (!onMemoryTwin()) throw new Error("a database is reachable — the import sections write and run on the memory twin only");
@@ -92,6 +95,7 @@ export async function inFreshStore<T>(fn: () => Promise<T>): Promise<T> {
   try {
     await db.user.create(makeUser(OFFICER, "+255754900101", "GROWTH", "Amina Officer"));
     await db.user.create(makeUser(OTHER, "+255754900102", "GROWTH", "Baraka Officer"));
+    await db.user.create(makeUser(READER, "+255754900104", "COMPLIANCE", "Rehema Reader"));
     await db.user.create(makeUser(ADMIN, "+255754900103", "ADMIN", "Owner"));
     return await fn();
   } finally {
@@ -152,6 +156,13 @@ export async function seedPlayer(local: string, userId: string, contactId: strin
   await seedBook(bookRow(contactId, local, { source: "REGISTRATION", sourceRef: userId, userId, displayName: name }));
 }
 
+/** A PLAYER's account and NO book row — the person an erasure is run for in R9's race (`eraseMarketingFor`). */
+export async function seedAccount(local: string, userId: string, name: string): Promise<StoredUser> {
+  const user = makeUser(userId, `+${keyOf(local)}`, "PLAYER", name);
+  await db.user.create(user);
+  return user;
+}
+
 /* ═══ STAGING A FILE ═══════════════════════════════════════════════════════════════════════════════════════════ */
 
 export const HEADERS = ["Phone", "Name", "Email", "Tags", "Notes"];
@@ -210,7 +221,8 @@ export const UNREADABLE_SENTENCE_2 = "This record could not be read.";
 
 /**
  * Lines 2–41 (line 1 is the header): 22 NEW (one of them — line 40 — on a number whose first row, line 39, is invalid),
- * 6 IN THE BOOK (B1 differs from the file, B2 lacks the file's email, B3 is stopped, B4 is erased, B5 is a player's,
+ * 6 IN THE BOOK (B1 differs from the file, B2 lacks the file's email, B3 is stopped, B4 is erased, B5 is a player's —
+ * linked to the account, its file row a DIFFERENT name and an email the book lacks, so only S15-11 keeps it unchanged —
  * B6 is identical), 3 REPEATED (line 8 repeats 2, line 17 repeats 3, line 28 repeats 16), 7 INVALID (a bad email, too
  * short, the sample sheet's number, a landline, a Kenyan number, no number, a name holding a phone number) and 2
  * UNREADABLE.
@@ -230,7 +242,7 @@ export function fortyRows(): StageRow[] {
     cellsOf(12, N(5), "Daudi"),
     cellsOf(13, B(4), "Eva Peter"),
     cellsOf(14, "0745 100 200", "Sample Row"),
-    cellsOf(15, B(5), "Juma Said"),
+    cellsOf(15, B(5), "Juma Imported", "juma.file@example.com"),
     cellsOf(16, N(6), "Faraja"),
     cellsOf(17, B(1), "Asha Again"),
     cellsOf(18, "022 211 0000", "Office"),

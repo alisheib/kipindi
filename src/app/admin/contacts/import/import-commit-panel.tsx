@@ -7,10 +7,14 @@
  * ⛔ THE BAR IS THE SERVER'S CURSOR (import-loop.ts, property 1): its value is the latest answer's `committedThrough` of
  * the run's `stagedThrough`, "1,847 of 5,912 rows done" — never a timer, never a number this tab moved on its own. It is
  * the ONLY motion of a running import: no spinner beside it, and a phone set to reduce motion sees it jump, not slide.
- * ⭐ BETS COME FIRST: while the betting engine is busy the import waits, and says so under the bar — how long, and which
- * try of how many. Stop is read between steps: the run is paused on the server, then the loop stops.
- * ⭐ PAUSED (by this tab, by another officer, or left by a closed window): who and when, how far, Resume — and Cancel the
- * rest, whose confirmation names both numbers: what is done stays in the book, the rest is not imported (S15-9).
+ * ⭐ BETS COME FIRST (R6): while the betting engine is busy the import waits — for as long as it takes, never giving up —
+ * and says so under the bar in the server's own sentence ("…carries on by itself as soon as it is free"), with Stop live.
+ * The run stays COMMITTING through the wait, so nothing here calls it paused. Stop is read between steps and between
+ * waits: the run is paused on the server, then the loop stops.
+ * ⭐ PAUSED (by this tab, by another officer, or left by a closed window) — or STOPPED, a run nothing is driving that was
+ * never paused (a refusal, a dropped connection): who paused it and when, or that it stopped; how far, in the SERVER's
+ * figures; Resume — and Cancel the rest, whose confirmation names both numbers (R5): the contacts already written (added
+ * plus updated) stay in the book, and the rows not reached yet are not imported (S15-9).
  * ⛔ While rows are being written the dialog cannot be dismissed by a stray click or key, and leaving the page asks first.
  */
 import { useState, type RefObject } from "react";
@@ -48,9 +52,13 @@ export function ImportCommitPanel({
   const caption = COMMIT.caption(done, total);
   const importing = mode.kind === "importing";
   const acting = mode.kind === "paused" && mode.acting;
+  const busy = mode.kind === "importing" ? mode.busy : null;
+  // ⭐ R5 · what a cancel keeps and what it leaves: the contacts written (added + updated), and the rows not reached.
+  const written = view.totals.create + view.totals.update;
+  const unreached = Math.max(0, view.stagedThrough - view.committedThrough);
 
   return (
-    <div className="space-y-4" data-block="import-commit" data-state={mode.kind} data-done={done} data-total={total}>
+    <div className="space-y-4" data-block="import-commit" data-state={mode.kind} data-run-status={view.status} data-done={done} data-total={total}>
       <ProgressBar
         value={done}
         max={total}
@@ -61,10 +69,12 @@ export function ImportCommitPanel({
 
       {importing && (
         <>
-          <p className="text-body-sm text-text-secondary">{COMMIT.betsFirst}</p>
-          {mode.busy !== null && (
-            <p className="text-body-sm text-text" role="status" data-import-busy>
-              <Parts parts={COMMIT.busy(mode.busy.attempt, mode.busy.of, mode.busy.waitSec)} />
+          {busy === null ? (
+            <p className="text-body-sm text-text-secondary">{COMMIT.betsFirst}</p>
+          ) : (
+            // ⭐ R6 · the server's sentence, verbatim: it waits for the platform and carries on by itself; Stop stays live.
+            <p className="text-body-sm text-text" role="status" data-import-busy={busy.attempt} data-wait-sec={busy.waitSec}>
+              {`${busy.message} ${COMMIT.busyStop}`}
             </p>
           )}
           {mode.stopping && <p className="text-body-sm text-text-secondary" role="status">{COMMIT.stopping}</p>}
@@ -134,7 +144,7 @@ export function ImportCommitPanel({
           onCancelRest();
         }}
         title={COMMIT.cancelTitle}
-        body={<span data-import-confirm="cancel-rest"><Parts parts={COMMIT.cancelBody(done, Math.max(0, total - done))} /></span>}
+        body={<span data-import-confirm="cancel-rest"><Parts parts={COMMIT.cancelBody(written, unreached)} /></span>}
         confirmLabel={COMMIT.cancelConfirm}
         cancelLabel={COMMIT.cancelKeep}
         tone="claret"

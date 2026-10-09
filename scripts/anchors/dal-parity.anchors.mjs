@@ -2089,20 +2089,29 @@ export const MUTATIONS = [
   },
   /* ═══ §29 · the import's check and commit (S15, 2026-10-09) — each case reintroduces ONE defect in ONE twin ═══ */
   {
-    // The book read without its select: the whole row — the consent cache, the link, the raw input — leaves Postgres.
-    name: "prisma-dal.ts — snapshotsAmong loses its nine-column select",
+    // The book read without its select: the whole row — the consent cache, the raw input — leaves Postgres.
+    name: "prisma-dal.ts — snapshotsAmong loses its ten-column select",
     file: "src/lib/server/prisma-dal.ts",
-    from: `        select: { id: true, msisdn: true, displayName: true, email: true, notes: true, tags: true, sourceRef: true, importId: true, updatedAt: true },`,
+    from: `        select: { id: true, msisdn: true, displayName: true, email: true, notes: true, tags: true, sourceRef: true, importId: true, updatedAt: true, userId: true },`,
     to: ``,
-    expect: "29.snap · ⛔ snapshotsAmong is §25's shape and reads the nine columns decide() needs: through bulkKeys, an empty set answered before any query, ONE findMany on the unique msisdn with a select of exactly those nine (never the consent cache, the link or the raw input; never toStoredMarketingContact) and NO sourceRef filter — the erased tombstone is in the answer (X22); the memory twin through contactsByMsisdn, the nine named, never the row spread",
+    expect: "29.snap · ⛔ snapshotsAmong is §25's shape and reads the ten columns decide() needs: through bulkKeys, an empty set answered before any query, ONE findMany on the unique msisdn with a select of exactly those ten — the account link among them (S15-11) — and never the consent cache or the raw input (never toStoredMarketingContact), and NO sourceRef filter — the erased tombstone is in the answer (X22); the memory twin through contactsByMsisdn, the ten named, never the row spread",
+  },
+  {
+    // S15-11 broken on Postgres: without the link every player's registration row reads as unlinked, and "use the file's
+    // version" overwrites it.
+    name: "prisma-dal.ts — snapshotsAmong stops reading the account link",
+    file: "src/lib/server/prisma-dal.ts",
+    from: `          sourceRef: r.sourceRef, importId: r.importId, updatedAt: r.updatedAt.toISOString(), userId: r.userId,`,
+    to: `          sourceRef: r.sourceRef, importId: r.importId, updatedAt: r.updatedAt.toISOString(), userId: null,`,
+    expect: "29.snap · ⛔ snapshotsAmong is §25's shape and reads the ten columns decide() needs: through bulkKeys, an empty set answered before any query, ONE findMany on the unique msisdn with a select of exactly those ten — the account link among them (S15-11) — and never the consent cache or the raw input (never toStoredMarketingContact), and NO sourceRef filter — the erased tombstone is in the answer (X22); the memory twin through contactsByMsisdn, the ten named, never the row spread",
   },
   {
     // The memory snapshot carries the consent cache — a second definition of what decide() reads.
     name: "store.ts — the memory snapshotsAmong hands back the consent cache too",
     file: "src/lib/server/store.ts",
-    from: `            sourceRef: c.sourceRef, importId: c.importId, updatedAt: c.updatedAt,`,
-    to: `            sourceRef: c.sourceRef, importId: c.importId, updatedAt: c.updatedAt, consentState: c.consentState,`,
-    expect: "29.snap · ⛔ snapshotsAmong is §25's shape and reads the nine columns decide() needs: through bulkKeys, an empty set answered before any query, ONE findMany on the unique msisdn with a select of exactly those nine (never the consent cache, the link or the raw input; never toStoredMarketingContact) and NO sourceRef filter — the erased tombstone is in the answer (X22); the memory twin through contactsByMsisdn, the nine named, never the row spread",
+    from: `            sourceRef: c.sourceRef, importId: c.importId, updatedAt: c.updatedAt, userId: c.userId,`,
+    to: `            sourceRef: c.sourceRef, importId: c.importId, updatedAt: c.updatedAt, userId: c.userId, consentState: c.consentState,`,
+    expect: "29.snap · ⛔ snapshotsAmong is §25's shape and reads the ten columns decide() needs: through bulkKeys, an empty set answered before any query, ONE findMany on the unique msisdn with a select of exactly those ten — the account link among them (S15-11) — and never the consent cache or the raw input (never toStoredMarketingContact), and NO sourceRef filter — the erased tombstone is in the answer (X22); the memory twin through contactsByMsisdn, the ten named, never the row spread",
   },
   {
     // An invalid first occurrence claims the number on Postgres: every valid repeat of it would be kept as same_run.
@@ -2130,16 +2139,32 @@ export const MUTATIONS = [
     // Two starts both freeze the run on Postgres: the second decision overwrites the first mid-commit.
     name: "prisma-dal.ts — the freeze loses its STAGED status from the where",
     file: "src/lib/server/prisma-dal.ts",
-    from: `        where: { id: f.importId, status: "STAGED" },`,
-    to: `        where: { id: f.importId },`,
-    expect: "29.freeze · ⭐ the start's freeze is ONE compare-and-set in both twins — Prisma ONE updateMany where { id, status STAGED } writing COMMITTING, the choice, the overrides, who and when, and the target list, answering null unless it counted 1; memory refusing anything but STAGED BEFORE it writes the same six",
+    from: `          where: { id: f.importId, status: "STAGED" },`,
+    to: `          where: { id: f.importId },`,
+    expect: "29.freeze · ⭐ the start's freeze is ONE compare-and-set in both twins and a NEW list is born inside it (R12) — Prisma ONE transaction, its timeout set, whose FIRST statement is the updateMany where { id, status STAGED } writing COMMITTING, the choice, the overrides, who and when (an existing list as the target), answering null unless it counted 1, and only THEN the new list inserted and made the target; memory refusing anything but STAGED BEFORE it writes, then the list name's unique index (P2002) and an existing list's foreign key (P2003, R17) emulated before its first write",
+  },
+  {
+    // R12 broken on Postgres: a start that LOST the run still inserts its new list — an orphan list holding the name.
+    name: "prisma-dal.ts — the freeze inserts its new list even when it lost the run",
+    file: "src/lib/server/prisma-dal.ts",
+    from: `        if (frozen.count !== 1) return null;`,
+    to: ``,
+    expect: "29.freeze · ⭐ the start's freeze is ONE compare-and-set in both twins and a NEW list is born inside it (R12) — Prisma ONE transaction, its timeout set, whose FIRST statement is the updateMany where { id, status STAGED } writing COMMITTING, the choice, the overrides, who and when (an existing list as the target), answering null unless it counted 1, and only THEN the new list inserted and made the target; memory refusing anything but STAGED BEFORE it writes, then the list name's unique index (P2002) and an existing list's foreign key (P2003, R17) emulated before its first write",
   },
   {
     name: "store.ts — the memory freeze no longer asks for STAGED",
     file: "src/lib/server/store.ts",
     from: `      if (!frozenRun || frozenRun.status !== "STAGED") return null;`,
     to: `      if (!frozenRun) return null;`,
-    expect: "29.freeze · ⭐ the start's freeze is ONE compare-and-set in both twins — Prisma ONE updateMany where { id, status STAGED } writing COMMITTING, the choice, the overrides, who and when, and the target list, answering null unless it counted 1; memory refusing anything but STAGED BEFORE it writes the same six",
+    expect: "29.freeze · ⭐ the start's freeze is ONE compare-and-set in both twins and a NEW list is born inside it (R12) — Prisma ONE transaction, its timeout set, whose FIRST statement is the updateMany where { id, status STAGED } writing COMMITTING, the choice, the overrides, who and when (an existing list as the target), answering null unless it counted 1, and only THEN the new list inserted and made the target; memory refusing anything but STAGED BEFORE it writes, then the list name's unique index (P2002) and an existing list's foreign key (P2003, R17) emulated before its first write",
+  },
+  {
+    // R17 · the memory twin froze a run onto a list that is gone — Postgres's foreign key refuses exactly that.
+    name: "store.ts — the memory freeze forgets the foreign key on an existing list",
+    file: "src/lib/server/store.ts",
+    from: `      } else if (f.targetListId !== null && !store.contactLists.has(f.targetListId)) {`,
+    to: `      } else if (false) {`,
+    expect: "29.freeze · ⭐ the start's freeze is ONE compare-and-set in both twins and a NEW list is born inside it (R12) — Prisma ONE transaction, its timeout set, whose FIRST statement is the updateMany where { id, status STAGED } writing COMMITTING, the choice, the overrides, who and when (an existing list as the target), answering null unless it counted 1, and only THEN the new list inserted and made the target; memory refusing anything but STAGED BEFORE it writes, then the list name's unique index (P2002) and an existing list's foreign key (P2003, R17) emulated before its first write",
   },
   {
     // ⭐ THE DEFECT X3 EXISTS FOR: without the cursor in the where, two tabs both write the same step on Postgres.
@@ -2204,5 +2229,67 @@ export const MUTATIONS = [
     from: `      const finished = b.toCursor === batchRun.stagedThrough;`,
     to: `      const finished = false;`,
     expect: "29.done · DONE in the same write when the cursor reaches stagedThrough, in both twins — Prisma a conditional updateMany where stagedThrough equals b.toCursor; memory b.toCursor === stagedThrough",
+  },
+  /* ═══ §29 · the review round (2026-10-09) — R3 · R9 · R17 · S15-12 ═══ */
+  {
+    // R3 · two imports at once insert their new contacts in whatever order their files had — and can deadlock each other.
+    name: "prisma-dal.ts — commitBatch writes its creates in the batch's own order",
+    file: "src/lib/server/prisma-dal.ts",
+    from: `      const creates = [...b.creates].sort((x, y) => (x.row.msisdn < y.row.msisdn ? -1 : x.row.msisdn > y.row.msisdn ? 1 : 0));`,
+    to: `      const creates = [...b.creates];`,
+    expect: "29.order · ⭐ R3 · ONE lock order in both twins — the creates sorted by number, the updates and the memberships by contact id (Prisma reads the live members ordered by id too), and every write loops over the sorted lists, never the batch's own order: two imports at once take their row locks in the same order and cannot deadlock",
+  },
+  {
+    name: "prisma-dal.ts — commitBatch updates contacts in the batch's own order",
+    file: "src/lib/server/prisma-dal.ts",
+    from: `      const updates = [...b.updates].sort((x, y) => (x.contactId < y.contactId ? -1 : x.contactId > y.contactId ? 1 : 0));`,
+    to: `      const updates = [...b.updates];`,
+    expect: "29.order · ⭐ R3 · ONE lock order in both twins — the creates sorted by number, the updates and the memberships by contact id (Prisma reads the live members ordered by id too), and every write loops over the sorted lists, never the batch's own order: two imports at once take their row locks in the same order and cannot deadlock",
+  },
+  {
+    name: "store.ts — the memory commitBatch keeps the batch's own update order",
+    file: "src/lib/server/store.ts",
+    from: `      const updates = [...b.updates].sort((x, y) => (x.contactId < y.contactId ? -1 : x.contactId > y.contactId ? 1 : 0));`,
+    to: `      const updates = [...b.updates];`,
+    expect: "29.order · ⭐ R3 · ONE lock order in both twins — the creates sorted by number, the updates and the memberships by contact id (Prisma reads the live members ordered by id too), and every write loops over the sorted lists, never the batch's own order: two imports at once take their row locks in the same order and cannot deadlock",
+  },
+  {
+    // ⭐ R9 · THE ERASURE RACE ON POSTGRES: a staged row deleted after the step read it settles nothing, the step commits
+    // anyway — and the number the erasure took away is created in the book.
+    name: "prisma-dal.ts — the settlement no longer counts the rows it settled",
+    file: "src/lib/server/prisma-dal.ts",
+    from: `            if (settledRows.count !== g.ordinals.length) {`,
+    to: `            if (false) {`,
+    expect: "29.gone · ⛔ R9 · every row a step settles must still be there, unsettled — Prisma counts each outcome group's update and THROWS a conflict naming the rows gone when it falls short (the step rolls back whole); memory checks every outcome's row before its first write — so a number erasure took away between the step's read and its write is never created",
+  },
+  {
+    name: "store.ts — the memory commitBatch settles whatever staged rows are left",
+    file: "src/lib/server/store.ts",
+    from: `        if (!row || row.outcome !== null) conflicts.push(o.ordinal);`,
+    to: ``,
+    expect: "29.gone · ⛔ R9 · every row a step settles must still be there, unsettled — Prisma counts each outcome group's update and THROWS a conflict naming the rows gone when it falls short (the step rolls back whole); memory checks every outcome's row before its first write — so a number erasure took away between the step's read and its write is never created",
+  },
+  {
+    // R17 · the twins disagreed: memory threw on a cursor past the staged rows, Postgres moved it there.
+    name: "prisma-dal.ts — commitBatch lets the cursor run past the staged rows",
+    file: "src/lib/server/prisma-dal.ts",
+    from: `          if (bounds === null || b.toCursor < b.fromCursor || b.toCursor > bounds.stagedThrough) {`,
+    to: `          if (bounds === null) {`,
+    expect: "29.bounds · ⛔ R17 · a step whose cursor would move backwards or past the staged rows is refused by a throw in BOTH twins, nothing written — Prisma after its compare-and-set and before any create (the throw rolls the cursor back), memory after its cursor check and before its first write",
+  },
+  {
+    // S15-12 · an unbounded read of every open run on Postgres — the memory twin's twenty is the contract.
+    name: "prisma-dal.ts — listOpenByOthers takes whatever the caller asks for",
+    file: "src/lib/server/prisma-dal.ts",
+    from: `        take: Math.max(0, Math.min(q.limit, CONTACT_IMPORT_OPEN_RUNS_MAX)),`,
+    to: `        take: Math.max(0, q.limit),`,
+    expect: "29.open · S15-12 · an ADMIN's read of other officers' unfinished runs is the same in both twins — the four OPEN statuses, every creator but the viewer, NEWEST first, at most CONTACT_IMPORT_OPEN_RUNS_MAX (20 in both)",
+  },
+  {
+    name: "store.ts — the memory listOpenByOthers hands the viewer their own runs too",
+    file: "src/lib/server/store.ts",
+    from: `        .filter((r) => r.createdBy !== q.excludeCreatedBy && (r.status === "STAGING" || r.status === "STAGED" || r.status === "COMMITTING" || r.status === "PAUSED"))`,
+    to: `        .filter((r) => (r.status === "STAGING" || r.status === "STAGED" || r.status === "COMMITTING" || r.status === "PAUSED"))`,
+    expect: "29.open · S15-12 · an ADMIN's read of other officers' unfinished runs is the same in both twins — the four OPEN statuses, every creator but the viewer, NEWEST first, at most CONTACT_IMPORT_OPEN_RUNS_MAX (20 in both)",
   },
 ];

@@ -7,7 +7,8 @@
  * (`importViewAction(null)`), and when there is one it opens ON it: who started it and when (X18), how far it got — in the
  * SERVER's figures — and the two ways on. Before the import has written anything (uploading, or uploaded and waiting) the
  * ways are Resume and Discard; once it has (importing, or paused) they are Resume and Cancel the rest.
- * ⛔ Cancelling after the start keeps what was written: the confirmation names both numbers before it is pressed.
+ * ⛔ Cancelling after the start keeps what was written: the confirmation names both numbers before it is pressed — the
+ * contacts written (added plus updated, R5) and the rows not reached yet.
  */
 import { useState, type RefObject } from "react";
 import { Button } from "@/components/ui/button";
@@ -107,7 +108,7 @@ export function ImportAdoptPanel({
           onDiscard();
         }}
         title={CHECK.discardTitle}
-        body={<span data-import-confirm="discard"><Parts parts={CHECK.discardBody(view.totalRows)} /></span>}
+        body={<span data-import-confirm="discard"><Parts parts={CHECK.discardBody(view.stagedThrough)} /></span>}
         confirmLabel={CHECK.discardConfirm}
         tone="claret"
       />
@@ -119,7 +120,7 @@ export function ImportAdoptPanel({
           onCancelRest();
         }}
         title={COMMIT.cancelTitle}
-        body={<span data-import-confirm="cancel-rest"><Parts parts={COMMIT.cancelBody(done, Math.max(0, total - done))} /></span>}
+        body={<span data-import-confirm="cancel-rest"><Parts parts={COMMIT.cancelBody(view.totals.create + view.totals.update, Math.max(0, total - done))} /></span>}
         confirmLabel={COMMIT.cancelConfirm}
         cancelLabel={COMMIT.cancelKeep}
         tone="claret"

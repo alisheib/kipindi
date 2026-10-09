@@ -26,10 +26,17 @@
  * and decide()'s browser-safe previews — never a contact id, a consent fact, a stop per row, a player flag or an erasure.
  *
  * ⭐ THE FACTS ARE THE AUTHORITY'S, NEVER A CACHE (`loadImportFacts`): the book rows behind the numbers, erased
- * tombstones included (`marketingContact.snapshotsAmong`), the stops in force (`suppression.findActiveAmong`), each
- * number's latest ledger word (`messagingConsent.latestAmong`) and the accounts behind them (`user.findByPhones` through
- * the gate's own `userPhoneKeyFor`) — §25's bulk reads, a chunk of `BULK_KEYED_READ_MAX` at a time. Every number asked is
- * answered from those reads; a number nobody asked about has NO facts and decide() throws on it — never a default.
+ * tombstones included and each row's account link (`marketingContact.snapshotsAmong`), the stops in force
+ * (`suppression.findActiveAmong`) and each number's latest ledger word (`messagingConsent.latestAmong`) — §25's bulk
+ * reads, a chunk of `BULK_KEYED_READ_MAX` at a time. ⚠️ No account read: the accounts behind the numbers fed only the
+ * consent seam S15-1 retired (X5), so `heldByPlayer` is false here (the review round's R16 — one query fewer per page);
+ * a book row's own link is what keeps a player's row unchanged (S15-11). Every number asked is answered from those
+ * reads; a number nobody asked about has NO facts and decide() throws on it — never a default.
+ *
+ * ⛔ S15-10 · ONLY A READER UPDATES THE BOOK FROM A FILE. A viewer whose identity.contact cell is not `read` (the matrix,
+ * never a role name) is shown KEEP's label under all three choices, every keep folded into one count (`keepOnlyTally`),
+ * `changing` zero and `mayUpdateInBook` false — and the changes pages refuse them `update_needs_reader`: "0 contacts
+ * change" for a one-line file would otherwise say whether that one number is stopped or erased (OD54 · OD65).
  *
  * ⭐ THE CHANGES PAGES. The in-book rows that would change under ANY of the three choices, in FILE order after a line,
  * `CHANGES_PAGE_ROWS` a page, each with its masked number and its preview under all three choices (D19: no contact id).
@@ -44,19 +51,22 @@
 import { db, BULK_KEYED_READ_MAX, CONTACT_IMPORT_ROW_PAGE_MAX } from "@/lib/server/store";
 import type {
   ContactImportFirstLine, ContactImportFirstLinesQuery, ContactImportRowWindow, ContactImportTotals, MarketingContactSnapshot,
-  StoredContactImport, StoredContactImportRow, StoredMessagingConsent, StoredSuppression, StoredUser,
+  StoredContactImport, StoredContactImportRow, StoredMessagingConsent, StoredSuppression,
 } from "@/lib/server/store";
 import { audit } from "@/lib/server/audit";
-// ⛔ The ONE name taken from the gate's module: the two-format bridge (`+255…` accounts, `255…` marketing keys).
-import { userPhoneKeyFor } from "@/lib/server/marketing/consent";
+import { mayReveal } from "@/lib/server/rbac";
 import { IMPORT_STAGING_DEPS, STAGING_SENTENCES, isImportRunId, mayDriveImport } from "./import-staging";
 import type { ContactImportView, StagingRefusal } from "./import-staging";
 import { parseTzNumber } from "@/lib/tz-msisdn";
 import { maskPhone } from "@/lib/phone-normalize";
 import { SAMPLE_ROW_SENTENCE, isSampleMsisdn } from "@/lib/contacts/sample-sheet";
 import { cleanDisplayName, holdsPhoneRun } from "@/lib/contacts/contact-fields";
-import { IMPORT_CHOICES, addTallies, byEveryChoice, parseImportChoice, planImportRows, previewFor } from "@/lib/contacts/import-decide";
-import type { DecisionPreview, FactsByNumber, ImportCandidate, ImportChoice, ImportPlan, NumberFacts, ShownTally } from "@/lib/contacts/import-decide";
+import {
+  IMPORT_CHOICES, SHOWN_KEEP_REASONS, addTallies, byEveryChoice, parseImportChoice, planImportRows, previewFor,
+} from "@/lib/contacts/import-decide";
+import type {
+  DecisionPreview, FactsByNumber, ImportCandidate, ImportChoice, ImportPlan, NumberFacts, ShownKeepReason, ShownTally,
+} from "@/lib/contacts/import-decide";
 import { CHANGES_PAGE_ROWS, IMPORT_REFUSAL_SENTENCES, PREFLIGHT_LIST_CAP, bucketsAdd } from "@/lib/contacts/import-flow";
 import type {
   ChangesPageRow, ChangesResult, ImportRefusal, ImportRefusalReason, ImportRunDecision, ImportRunView, PreflightBucket,
@@ -78,20 +88,30 @@ export const YOU = "you";
 
 /* ═══ THE DEPENDENCIES — swappable for the suite's in-process red plants; production never passes them ═══════════ */
 
-/** §25's four bulk reads, as `loadImportFacts` asks them — the authority, never the book's caches. */
+/** §25's three bulk reads, as `loadImportFacts` asks them — the authority, never the book's caches. (R16 · the fourth,
+ *  the accounts behind the numbers, is gone: it fed only the consent seam S15-1 retired.) */
 export type ImportFactsReads = {
   snapshots: (msisdns: string[]) => Promise<MarketingContactSnapshot[]>;
   activeStops: (msisdns: string[]) => Promise<StoredSuppression[]>;
   latestWords: (msisdns: string[]) => Promise<StoredMessagingConsent[]>;
-  accounts: (phones: string[]) => Promise<StoredUser[]>;
 };
 
 export const IMPORT_FACTS_READS: ImportFactsReads = {
   snapshots: async (msisdns) => db.marketingContact.snapshotsAmong(msisdns),
   activeStops: async (msisdns) => db.suppression.findActiveAmong({ channel: "SMS", category: "MARKETING", identifiers: msisdns }),
   latestWords: async (msisdns) => db.messagingConsent.latestAmong({ channel: "SMS", category: "MARKETING", identifiers: msisdns }),
-  accounts: async (phones) => db.user.findByPhones(phones),
 };
+
+/**
+ * ⛔ S15-10 · THE NON-READER'S LABEL: a tally with every keep folded into `chosen_keep` — no stop, account, repeat or
+ * no-change split — and no update or overwrite (a non-reader imports with KEEP alone). Built from the reasons list, so a
+ * new keep reason is folded too.
+ */
+export function keepOnlyTally(t: ShownTally): ShownTally {
+  const keepBy = Object.fromEntries(SHOWN_KEEP_REASONS.map((r) => [r, 0])) as Record<ShownKeepReason, number>;
+  keepBy.chosen_keep = t.keep;
+  return { create: t.create, update: 0, keep: t.keep, overwrites: 0, keepBy };
+}
 
 export type ImportCheckDeps = {
   reads: ImportFactsReads;
@@ -101,6 +121,11 @@ export type ImportCheckDeps = {
   totals: (importId: string) => Promise<ContactImportTotals>;
   /** X18 · an ADMIN may drive any run — staging's own reader of the STORED role. */
   isAdmin: (userId: string) => Promise<boolean>;
+  /** S15-3 · S15-10 · OD54 · may this viewer read numbers? The read matrix's identity.contact cell, off the STORED role.
+   *  A reader may update contacts already in the book from a file and is shown the kept rows split by reason. */
+  readsNumbers: (userId: string) => Promise<boolean>;
+  /** S15-10 · the label a non-reader is shown for every choice (`keepOnlyTally`). A red plant leaks the split to prove it. */
+  keepOnly: (t: ShownTally) => ShownTally;
   /** The stored display name of an officer, or null. */
   userName: (userId: string) => Promise<string | null>;
   /** A list's name, or null when it is gone. */
@@ -155,6 +180,11 @@ export const IMPORT_CHECK_DEPS: ImportCheckDeps = {
   firstLines: async (q) => db.contactImportRow.firstLinesAmong(q),
   totals: async (importId) => db.contactImport.totals(importId),
   isAdmin: IMPORT_STAGING_DEPS.isAdmin,
+  readsNumbers: async (userId) => {
+    const role = (await db.user.findById(userId))?.role;
+    return role ? mayReveal(role, "identity.contact") : false;
+  },
+  keepOnly: keepOnlyTally,
   userName: async (userId) => (await db.user.findById(userId))?.displayName ?? null,
   listName: async (listId) => (await db.contactList.find(listId))?.name ?? null,
   plan: planImportRows,
@@ -173,11 +203,12 @@ export const IMPORT_CHECK_DEPS: ImportCheckDeps = {
 /* ═══ THE FACTS — the authority's, per number ════════════════════════════════════════════════════════ */
 
 /**
- * ⭐ THE FACTS LOADER (U31-B). Every distinct number asked is answered from §25's four bulk reads, a chunk of
- * `BULK_KEYED_READ_MAX` at a time, one read after another (bets come first: never four connections at once): its book
- * row — the erased tombstone INCLUDED, so an erased number reads as in the book (X22) — whether a stop is in force,
- * its latest ledger word, and whether an account holds it. ⛔ A number that was not asked about is absent, and decide()
- * throws on it: there is no default.
+ * ⭐ THE FACTS LOADER (U31-B). Every distinct number asked is answered from §25's three bulk reads, a chunk of
+ * `BULK_KEYED_READ_MAX` at a time, one read after another (bets come first: never three connections at once): its book
+ * row — the erased tombstone INCLUDED, so an erased number reads as in the book (X22), and the row's account link
+ * (S15-11) — whether a stop is in force, and its latest ledger word. `heldByPlayer` is false: the account read fed only
+ * the consent seam S15-1 retired (R16). ⛔ A number that was not asked about is absent, and decide() throws on it: there
+ * is no default.
  */
 export async function loadImportFacts(msisdns: readonly string[], reads: ImportFactsReads = IMPORT_FACTS_READS): Promise<FactsByNumber> {
   const keys = Array.from(new Set(msisdns));
@@ -190,19 +221,17 @@ export async function loadImportFacts(msisdns: readonly string[], reads: ImportF
     for (const stop of await reads.activeStops(chunk)) stopped.add(stop.identifier);
     const latest = new Map<string, StoredMessagingConsent>();
     for (const word of await reads.latestWords(chunk)) latest.set(word.identifier, word);
-    const held = new Set<string>();
-    for (const account of await reads.accounts(chunk.map(userPhoneKeyFor))) held.add(account.phoneE164);
     for (const m of chunk) {
       const row = book.get(m);
       const word = latest.get(m);
       out.set(m, {
         book: row === undefined ? null : {
           id: row.id, displayName: row.displayName, email: row.email, notes: row.notes, tags: [...row.tags],
-          sourceRef: row.sourceRef, importId: row.importId, updatedAt: row.updatedAt,
+          sourceRef: row.sourceRef, importId: row.importId, updatedAt: row.updatedAt, userId: row.userId,
         },
         suppressed: stopped.has(m),
         ledgerLatest: word === undefined ? null : { status: word.status, evidence: word.evidence },
-        heldByPlayer: held.has(userPhoneKeyFor(m)),
+        heldByPlayer: false,
       });
     }
   }
@@ -384,7 +413,8 @@ export function importRefusalSentence(reason: ImportRefusalReason): string {
     case "bad_request": return STAGING_SENTENCES.badRequest;
     case "forbidden": case "rate_limited": case "server_error": case "xlsx_busy": case "not_staged": case "too_slow":
     case "bad_choice": case "bad_exceptions": case "bad_list": case "list_name_taken": case "list_gone": case "already_started":
-    case "check_again": case "paused": case "cancelled": case "done": case "moved": case "busy":
+    case "check_again": case "check_stale": case "update_needs_reader": case "paused": case "cancelled": case "done":
+    case "moved": case "busy":
       return IMPORT_REFUSAL_SENTENCES[reason];
     default:
       return IMPORT_REFUSAL_SENTENCES.server_error;
@@ -461,6 +491,8 @@ const push = <T>(l: Listed<T>, row: T): void => {
  * ⭐ THE CHECK (U30) — the five boxes, the three choices' labels and how many in-book rows each would change, over the
  * WHOLE staged run. ⛔ Writes nothing but its audit row; a run that is not STAGED is refused by name; a walk past the
  * deadline is `too_slow`; five counts that do not add up to the rows are `server_error`, never a partial view.
+ * ⛔ S15-10 · `mayUpdateInBook` is the viewer's identity.contact cell; for a non-reader the three labels are KEEP's, every
+ * keep one count, and nothing changes — the same answer whatever the book says about any one number in the file.
  */
 export async function checkContactImport(officerId: string, runId: unknown, deps: ImportCheckDeps = IMPORT_CHECK_DEPS): Promise<PreflightResult> {
   const startedAt = deps.now().getTime();
@@ -473,12 +505,15 @@ export async function checkContactImport(officerId: string, runId: unknown, deps
     return importRefusal(reason, await importRunView(officerId, run, deps));
   }
 
+  // ⛔ S15-10 · asked once, off the matrix: a viewer who may not read numbers is shown KEEP's label alone (below).
+  const mayUpdateInBook = await deps.readsNumbers(officerId);
   const counts: Record<PreflightBucket, number> = { new: 0, inBook: 0, repeated: 0, invalid: 0, unreadable: 0 };
   const invalid = listed<{ line: number; sentence: string }>();
   const unreadable = listed<{ line: number; sentence: string }>();
   const repeated = listed<{ line: number; firstLine: number; masked: string }>();
+  const zeroKeepBy = (): Record<ShownKeepReason, number> => Object.fromEntries(SHOWN_KEEP_REASONS.map((r) => [r, 0])) as Record<ShownKeepReason, number>;
   let byChoice: Record<ImportChoice, ShownTally> = byEveryChoice((): ShownTally => ({
-    create: 0, update: 0, keep: 0, overwrites: 0, keepBy: { chosen_keep: 0, suppressed: 0, same_run: 0, no_change: 0 },
+    create: 0, update: 0, keep: 0, overwrites: 0, keepBy: zeroKeepBy(),
   }));
   const changing: Record<ImportChoice, number> = byEveryChoice(() => 0);
   let rows = 0;
@@ -528,6 +563,8 @@ export async function checkContactImport(officerId: string, runId: unknown, deps
     return importRefusal("server_error", await importRunView(officerId, run, deps));
   }
 
+  // ⛔ S15-10 · a non-reader's label: KEEP's, under every choice, every keep one count — and nothing changing.
+  const keepOnly = deps.keepOnly(byChoice.KEEP);
   const preflight: PreflightView = {
     runId: run.id,
     rows,
@@ -535,9 +572,10 @@ export async function checkContactImport(officerId: string, runId: unknown, deps
     invalid,
     unreadable,
     repeated,
-    byChoice,
-    changing,
+    byChoice: mayUpdateInBook ? byChoice : byEveryChoice(() => ({ ...keepOnly, keepBy: { ...keepOnly.keepBy } })),
+    changing: mayUpdateInBook ? changing : byEveryChoice(() => 0),
     checkedAt: deps.now().toISOString(),
+    mayUpdateInBook,
   };
   await deps.audit({
     category: "ADMIN", action: "contacts.import.checked", actorId: officerId, targetType: "ContactImport", targetId: run.id,
@@ -565,6 +603,12 @@ export async function contactImportChanges(officerId: string, input: unknown, de
   const opened = await openImportRun(officerId, body.runId, deps, CHECK_REFUSED);
   if (!opened.ok) return opened.refusal;
   const run = opened.run;
+  // ⛔ S15-10 · the changes are a reader's: for anyone else every contact in the book is kept, and a page of what WOULD
+  // change is exactly the per-person fact OD54 keeps from them.
+  if (!(await deps.readsNumbers(officerId))) {
+    await auditImportRefusal(deps, CHECK_REFUSED, officerId, run.id, "update_needs_reader");
+    return importRefusal("update_needs_reader", await importRunView(officerId, run, deps));
+  }
   if (run.status !== "STAGED") {
     const reason = notCheckable(run);
     await auditImportRefusal(deps, CHECK_REFUSED, officerId, run.id, reason);

@@ -27,14 +27,15 @@ import { pruneJourneyFunnel, JOURNEY_FUNNEL_RETENTION_DAYS } from "./journey-fun
 import { expireStaleAgentApplications, purgeAgedAgentDocuments, AGENT_REFEREE_DOC_HOLD_DAYS, AGENT_REJECTED_DOC_HOLD_DAYS, AGENT_APPROVED_DOC_HOLD_YEARS } from "./agent-application-service";
 import { houseBotAlertOnceStore } from "./house-bot-dal";
 import { HOUSEBOT_ALERT_ONCE_PURGE_BATCH, HOUSEBOT_ALERT_ONCE_PURGE_MAX_BATCHES, HOUSEBOT_ALERT_ONCE_RETENTION_DAYS } from "@/lib/house-bot/constants";
-import { sweepStaleContactImports, CONTACT_IMPORT_IDLE_DAYS, CONTACT_IMPORT_KEEP_DAYS } from "./contacts/import-staging";
+import { sweepStaleContactImports, CONTACT_IMPORT_IDLE_DAYS, CONTACT_IMPORT_KEEP_DAYS, CONTACT_IMPORT_STUCK_DAYS } from "./contacts/import-staging";
 
 /** House-bot alert throttles are operational only: 30 days from creation (04 P3, A20). One constant, re-exported. */
 export { HOUSEBOT_ALERT_ONCE_RETENTION_DAYS };
 
-/** U29b · contact import staging: a STAGING or STAGED run idle this long is cancelled (never a PAUSED commit — X29), and a
- *  finished run is deleted this long after it finished, its rows with it. One constant each, re-exported. */
-export { CONTACT_IMPORT_IDLE_DAYS, CONTACT_IMPORT_KEEP_DAYS };
+/** U29b · contact import staging: a STAGING or STAGED run idle this long is cancelled (X29); since S15-12 a started commit
+ *  — COMMITTING or PAUSED — idle `CONTACT_IMPORT_STUCK_DAYS` is cancelled too, the contacts it wrote kept; and a finished
+ *  run is deleted this long after it finished, its rows with it. One constant each, re-exported. */
+export { CONTACT_IMPORT_IDLE_DAYS, CONTACT_IMPORT_KEEP_DAYS, CONTACT_IMPORT_STUCK_DAYS };
 
 /**
  * 🔴 NOTIFICATION RETENTION IS COUPLED TO THE UP & DOWN DIGEST. Read this before changing it.
@@ -142,8 +143,9 @@ export type RetentionResult = {
   journeyFunnelRows: number;
   /** 04 P3 · `HouseBotAlertOnce` throttle rows older than HOUSEBOT_ALERT_ONCE_RETENTION_DAYS. Decisions and events are never deleted. */
   houseBotAlertOncePurged: number;
-  /** U29b · contact import staging (X29): STAGING/STAGED runs idle CONTACT_IMPORT_IDLE_DAYS cancelled — never a PAUSED
-   *  commit — their unsettled staged rows deleted, and finished runs purged CONTACT_IMPORT_KEEP_DAYS after they finished. */
+  /** U29b · contact import staging: STAGING/STAGED runs idle CONTACT_IMPORT_IDLE_DAYS cancelled (X29), COMMITTING/PAUSED
+   *  runs idle CONTACT_IMPORT_STUCK_DAYS cancelled with the contacts they wrote kept (S15-12), their unsettled staged rows
+   *  deleted, and finished runs purged CONTACT_IMPORT_KEEP_DAYS after they finished. */
   contactImportsCancelled: number;
   contactImportRowsDeleted: number;
   contactImportsPurged: number;
@@ -240,8 +242,9 @@ export async function runRetentionPass(now = Date.now()): Promise<RetentionResul
     console.error("[retention] house-bot alert throttle purge failed:", (err as Error)?.message ?? err);
   }
 
-  // U29b · contact import staging (X29). Best-effort like the classes above: a STAGING or STAGED run idle 14 days is
-  // cancelled and its unsettled rows deleted — ⛔ never a PAUSED commit — and a finished run goes 90 days after it ended.
+  // U29b · contact import staging. Best-effort like the classes above: a STAGING or STAGED run idle 14 days is cancelled
+  // and its unsettled rows deleted (X29); a COMMITTING or PAUSED run idle 14 days likewise, the contacts it already wrote
+  // kept (S15-12); and a finished run goes 90 days after it ended.
   const staging = await sweepStaleContactImports(now)
     .catch((err) => {
       console.error("[retention] contact import sweep failed:", (err as Error)?.message ?? err);
@@ -272,7 +275,7 @@ export async function runRetentionPass(now = Date.now()): Promise<RetentionResul
         journeyFunnelRows, journeyFunnelRetentionDays: JOURNEY_FUNNEL_RETENTION_DAYS,
         houseBotAlertOncePurged, houseBotAlertOnceRetentionDays: HOUSEBOT_ALERT_ONCE_RETENTION_DAYS,
         contactImportsCancelled: staging.cancelled, contactImportRowsDeleted: staging.rowsDeleted, contactImportsPurged: staging.runsPurged,
-        contactImportIdleDays: CONTACT_IMPORT_IDLE_DAYS, contactImportKeepDays: CONTACT_IMPORT_KEEP_DAYS,
+        contactImportIdleDays: CONTACT_IMPORT_IDLE_DAYS, contactImportStuckDays: CONTACT_IMPORT_STUCK_DAYS, contactImportKeepDays: CONTACT_IMPORT_KEEP_DAYS,
       },
     });
   }

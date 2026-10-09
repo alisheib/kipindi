@@ -8,11 +8,13 @@
  * Excel file over the cap, an empty file, a vCard with two numbers on a card, an aborted read, a file past the run's cap.
  * ⭐ THE LOOPS' PROPERTIES, EACH AGAINST A STUBBED SERVER that keeps its own cursor (the server's builder and the lead hold
  * the commit loop to exactly these): the bar shows only the server's cursor; Stop pauses on the server, then stops; a
- * refusal comes back verbatim; only `busy` is waited out, at most three times, for the seconds asked; a thrown call is
- * followed by the VIEW, never a blind repeat; a deploy is named; `moved` adopts the server's cursor and counts nothing; a
- * resume starts at the server's cursor; the result's counts are the server's; a loop that stops moving stops. The upload
- * resumes from `nextFrom`, treats `already_staged` as "ask the view and go on", takes a STAGED view as success, and sends
- * every batch within the caps, contiguous.
+ * refusal comes back verbatim; only `busy` is waited out — never given up on while Stop is not pressed (R6, the review
+ * round of 2026-10-09), backing off 5 → 10 → 20 → 30 s or the server's longer figure, with Stop still read between
+ * waits; a thrown call is followed by the VIEW, never a blind repeat, and a failure whose view cannot be read carries no
+ * view at all (R4); a deploy is named; `moved` adopts the server's cursor and counts nothing; a resume starts at the
+ * server's cursor; the result's counts are the server's; a loop that stops moving stops. The upload resumes from
+ * `nextFrom`, treats `already_staged` as "ask the view and go on", takes a STAGED view as success, and sends every batch
+ * within the caps, contiguous.
  * ⭐ PROVED BY MUTATION: each plant below is a replacement bundle built in memory — the defect wrapped around the shipped
  * function — and names the ONE label it must turn red.
  * ⛔ IN-PROCESS: this module reads two sources and makes no file-changing call.
@@ -36,11 +38,13 @@ import {
   type ReadOutcome,
 } from "../../src/lib/contacts/import-read.ts";
 import {
-  BUSY_RETRIES,
+  BUSY_BACKOFF_SEC,
+  BUSY_WAIT_MAX_SEC,
   STALL_LIMIT,
   isDeploySkewError,
   runCommit,
   runUpload,
+  type BusyState,
   type CommitDeps,
   type CommitOutcome,
   type UploadDeps,
@@ -51,16 +55,17 @@ import { CONTACT_MASKED_FILE, contactExportHeader, validateMapping } from "../..
 import { STAGE_BATCH_MAX_ROWS, stageRowsOf, type StageRowInput } from "../../src/lib/contacts/import-limits.ts";
 import { EMPTY_FILE_SENTENCE } from "../../src/lib/contacts/import-parse.ts";
 import { XLSX_MAX_BYTES, xlsxRefusalSentence } from "../../src/lib/contacts/xlsx-limits.ts";
-import type {
-  CommitStepInput,
-  CommitStepResult,
-  ImportRefusalReason,
-  ImportRunStatus,
-  ImportRunView,
-  ImportViewResult,
-  RunActResult,
-  StageImportInput,
-  StageImportResult,
+import {
+  IMPORT_REFUSAL_SENTENCES,
+  type CommitStepInput,
+  type CommitStepResult,
+  type ImportRefusalReason,
+  type ImportRunStatus,
+  type ImportRunView,
+  type ImportViewResult,
+  type RunActResult,
+  type StageImportInput,
+  type StageImportResult,
 } from "../../src/lib/contacts/import-flow.ts";
 
 /* ⛔ Control characters are built from their codes: the editing tools decode escape text into raw characters. */
@@ -125,14 +130,17 @@ export const L = {
   C1: "C1 · ⛔ THE BAR IS THE SERVER'S CURSOR — every figure shown is a cursor the server answered with, never past the server's own",
   C2: "C2 · ⭐ STOP IS READ BETWEEN STEPS: the run is paused ON THE SERVER, then the loop stops — no step after the pause",
   C3: "C3 · ⛔ a refusal ends the loop with the server's refusal, verbatim (its reason and its sentence)",
-  C4: "C4 · ⭐ busy is waited out for the seconds asked and retried at most three times in a row; then it is the refusal",
+  C4: "C4 · ⭐ R6 · busy is waited out WITHOUT GIVING UP while Stop is not pressed — 5 s, 10 s, 20 s, then 30 s each time — and the screen is told each wait in the server's sentence, then told the spell is over",
+  C4a: "C4a · ⭐ R6 · a wait is the server's own retryAfterSec when that is longer than the backoff's step — and never past the ceiling",
   C4b: "C4b · ⛔ ONLY busy is retried — rate_limited ends the loop on its first answer",
+  C4c: "C4c · ⭐ R6 · Stop is still read during a busy spell: the run is paused on the server after the wait in progress, never after the spell ends",
   C5: "C5 · ⛔ after a THROWN step the next call is the VIEW — never a blind repeat — and the loop goes on from the cursor the view reports",
   C5b: "C5b · a deploy (a stale action id, thrown by the step and the view alike) is named as such",
   C6: "C6 · ⭐ moved adopts the server's cursor and counts nothing: the next step starts exactly there",
   C7: "C7 · ⭐ a resume starts from the server's cursor (the view it was given), never from 0",
   C8: "C8 · the result's counts are the server's — the last view's totals, untouched",
   C9: "C9 · ⛔ a loop that stops moving stops: STALL_LIMIT answers that leave the cursor where it was end it as stalled",
+  C10: "C10 · ⛔ R4 · a failure whose view could not be read carries NO view — neither loop hands back a cursor it held as where the run stands",
   U1: "U1 · ⭐ the upload resumes from the run's nextFrom — its first batch starts at that record",
   U2: "U2 · already_staged asks the VIEW and carries on from its nextFrom (a retried call, not a failure)",
   U3: "U3 · ⭐ a STAGED view is success even when the last batch's own answer was a refusal",
@@ -144,8 +152,8 @@ export const L = {
 const RUN = "ci_abcdefghijklmnopqrst";
 const DIGEST = "a".repeat(64);
 const SENTENCE = {
-  busy: "The platform is busy right now — bets come first. Trying again shortly.",
-  rate: "You've checked a lot of files in a short time. Wait a moment, then try again.",
+  busy: IMPORT_REFUSAL_SENTENCES.busy,
+  rate: IMPORT_REFUSAL_SENTENCES.rate_limited,
   cancelled: "This import was cancelled. Rows already written stay in the book.",
   already: "These rows are already staged. Carry on from the row the import asks for next.",
 };
@@ -164,7 +172,9 @@ function runView(over: Partial<ImportRunView>): ImportRunView {
 type Act =
   | "ok" | "busy" | "rate" | "throw" | "skew" | "stuck"
   | { readonly refuse: ImportRefusalReason; readonly message: string }
-  | { readonly moveTo: number };
+  | { readonly moveTo: number }
+  /** A busy answer that asks for its own wait. */
+  | { readonly busyFor: number };
 
 const skewError = (): Error => {
   const e = new Error('Server Action "7f3a" was not found on the server.');
@@ -172,8 +182,9 @@ const skewError = (): Error => {
   return e;
 };
 
-/** A commit server with its own cursor: `batch` rows a step, a script of answers by call, and a log of every call. */
-function commitServer(total: number, batch: number, script: readonly Act[] = [], startAt = 0, viewThrows: "skew" | null = null) {
+/** A commit server with its own cursor: `batch` rows a step, a script of answers by call, and a log of every call. Its
+ *  view can throw a deploy's error (`skew`) or a dropped connection's (`fail`). */
+function commitServer(total: number, batch: number, script: readonly Act[] = [], startAt = 0, viewThrows: "skew" | "fail" | null = null) {
   let cursor = startAt;
   let status: ImportRunStatus = cursor >= total ? "DONE" : "COMMITTING";
   let call = 0;
@@ -191,6 +202,7 @@ function commitServer(total: number, batch: number, script: readonly Act[] = [],
     if (act === "busy") return { ok: false, reason: "busy", message: SENTENCE.busy, view: now(), retryAfterSec: 2 };
     if (act === "rate") return { ok: false, reason: "rate_limited", message: SENTENCE.rate, view: null, retryAfterSec: 1 };
     if (act === "stuck") return { ok: true, kind: "advanced", view: now() };
+    if (typeof act === "object" && "busyFor" in act) return { ok: false, reason: "busy", message: SENTENCE.busy, view: now(), retryAfterSec: act.busyFor };
     if (typeof act === "object" && "refuse" in act) return { ok: false, reason: act.refuse, message: act.message, view: now() };
     if (typeof act === "object" && "moveTo" in act) {
       cursor = act.moveTo;
@@ -206,6 +218,7 @@ function commitServer(total: number, batch: number, script: readonly Act[] = [],
   const view = async (): Promise<ImportViewResult> => {
     events.push("view");
     if (viewThrows === "skew") throw skewError();
+    if (viewThrows === "fail") throw new Error("fetch failed");
     return { ok: true, view: now() };
   };
   const pause = async (): Promise<RunActResult> => {
@@ -216,10 +229,10 @@ function commitServer(total: number, batch: number, script: readonly Act[] = [],
   return { step, view, pause, events, answered, state: () => ({ cursor, status }), now };
 }
 
-type Recorded = { shown: number[]; waits: number[]; overrun: boolean; steps: number };
+type Recorded = { shown: number[]; waits: number[]; busy: Array<BusyState | null>; overrun: boolean; steps: number };
 
 function commitDeps(server: ReturnType<typeof commitServer>, stopAfterSteps: number | null = null): { deps: CommitDeps; rec: Recorded } {
-  const rec: Recorded = { shown: [], waits: [], overrun: false, steps: 0 };
+  const rec: Recorded = { shown: [], waits: [], busy: [], overrun: false, steps: 0 };
   const deps: CommitDeps = {
     step: async (input) => {
       rec.steps++;
@@ -233,7 +246,9 @@ function commitDeps(server: ReturnType<typeof commitServer>, stopAfterSteps: num
       rec.shown.push(v.committedThrough);
       if (v.committedThrough > server.state().cursor) rec.overrun = true;
     },
-    onBusy: () => undefined,
+    onBusy: (b) => {
+      rec.busy.push(b);
+    },
     wait: async (ms) => {
       rec.waits.push(ms);
     },
@@ -241,9 +256,10 @@ function commitDeps(server: ReturnType<typeof commitServer>, stopAfterSteps: num
   return { deps, rec };
 }
 
-/** A staging server with its own cursor: the run's records, a script of answers by call, and a log of every batch. */
+/** A staging server with its own cursor: the run's records, a script of answers by call, and a log of every batch. Its
+ *  view can throw a dropped connection's error (`viewFails`). */
 type StageAct = "ok" | "already" | "throw" | "staged-refusal";
-function stageServer(total: number, stagedAt = 0, script: readonly StageAct[] = []) {
+function stageServer(total: number, stagedAt = 0, script: readonly StageAct[] = [], viewFails = false) {
   let staged = stagedAt;
   let status: ImportRunStatus = staged >= total ? "STAGED" : "STAGING";
   let call = 0;
@@ -272,6 +288,7 @@ function stageServer(total: number, stagedAt = 0, script: readonly StageAct[] = 
   };
   const view = async (): Promise<ImportViewResult> => {
     events.push("view");
+    if (viewFails) throw new Error("fetch failed");
     return { ok: true, view: now() };
   };
   return { stage, view, events, batches, now };
@@ -480,21 +497,38 @@ async function run(ctx: SectionContext<FlowImpl>): Promise<void> {
       `${out.kind} · ${out.kind === "refused" ? out.refusal.message : ""} · ${server.events.join(",")}`);
   }
   {
+    // R6 · two busy answers, then the steps: waited out at the backoff's first two steps (the server asked for 2 s, less).
     const s1 = commitServer(874, 437, ["busy", "busy"]);
     const d1 = commitDeps(s1);
     const o1 = await impl.runCommit(d1.deps, s1.now());
-    const s2 = commitServer(874, 437, ["busy", "busy", "busy", "busy", "busy", "busy"]);
+    // …and a long spell: seven busy answers in a row are all waited out — 5, 10, 20, then 30 s — and the import finishes.
+    const LONG = 7;
+    const s2 = commitServer(874, 437, Array.from({ length: LONG }, (): Act => "busy"));
     const d2 = commitDeps(s2);
     const o2 = await impl.runCommit(d2.deps, s2.now());
-    ok(L.C4, o1.kind === "done" && d1.rec.waits.join(",") === "2000,2000" && s1.events.length === 4
-      && o2.kind === "refused" && o2.refusal.reason === "busy" && o2.refusal.message === SENTENCE.busy
-      && s2.events.length === BUSY_RETRIES + 1 && d2.rec.waits.length === BUSY_RETRIES,
-      `waited out [${d1.rec.waits.join(",")}] in ${s1.events.length} calls · always busy: ${s2.events.length} calls, ${d2.rec.waits.length} waits, ${o2.kind}`);
+    const ladder = (n: number): string =>
+      Array.from({ length: n }, (_, i) => (BUSY_BACKOFF_SEC[Math.min(i, BUSY_BACKOFF_SEC.length - 1)] ?? 0) * 1000).join(",");
+    const told = d1.rec.busy;
+    ok(L.C4, o1.kind === "done" && d1.rec.waits.join(",") === ladder(2) && s1.events.length === 4
+      && told.length === 3 && told[0]?.message === SENTENCE.busy && told[0]?.waitSec === BUSY_BACKOFF_SEC[0] && told[1]?.attempt === 2 && told[2] === null
+      && o2.kind === "done" && d2.rec.waits.join(",") === ladder(LONG) && s2.events.length === LONG + 2,
+      `waited out [${d1.rec.waits.join(",")}] in ${s1.events.length} calls, told ${JSON.stringify(told)} · a spell of ${LONG}: ${o2.kind} after ${s2.events.length} calls, waits [${d2.rec.waits.join(",")}]`);
+    // R6 · the server's own figure wins when it is longer than the step — and a figure past the ceiling is cut to it.
+    const s4 = commitServer(874, 437, [{ busyFor: 45 }, { busyFor: 3_600 }]);
+    const d4 = commitDeps(s4);
+    const o4 = await impl.runCommit(d4.deps, s4.now());
+    ok(L.C4a, o4.kind === "done" && d4.rec.waits.join(",") === `45000,${BUSY_WAIT_MAX_SEC * 1000}`, `${o4.kind} · waits [${d4.rec.waits.join(",")}]`);
     const s3 = commitServer(874, 437, ["rate"]);
     const d3 = commitDeps(s3);
     const o3 = await impl.runCommit(d3.deps, s3.now());
     ok(L.C4b, o3.kind === "refused" && o3.refusal.reason === "rate_limited" && s3.events.length === 1 && d3.rec.waits.length === 0,
       `${o3.kind} · ${s3.events.join(",")} · waits ${d3.rec.waits.length}`);
+    // R6 · Stop pressed during a spell (after the third ask): the run is paused at once — not when the platform frees up.
+    const s5 = commitServer(874, 437, Array.from({ length: 8 }, (): Act => "busy"));
+    const d5 = commitDeps(s5, 3);
+    const o5 = await impl.runCommit(d5.deps, s5.now());
+    ok(L.C4c, o5.kind === "stopped" && s5.events.join(",") === "step:0,step:0,step:0,pause" && d5.rec.waits.length === 3 && s5.state().status === "PAUSED",
+      `${o5.kind} · ${s5.events.join(",")} · waits ${d5.rec.waits.length}`);
   }
   {
     const server = commitServer(1_311, 437, ["ok", "throw"]);
@@ -527,6 +561,17 @@ async function run(ctx: SectionContext<FlowImpl>): Promise<void> {
     const { deps } = commitDeps(server);
     const out = await impl.runCommit(deps, server.now());
     ok(L.C9, out.kind === "stalled" && server.events.length === STALL_LIMIT, `${out.kind} · ${server.events.length} calls`);
+  }
+  {
+    // R4 · the call throws and so does the view after it: each loop's failure carries no view — never the cursor it held.
+    const server = commitServer(1_311, 437, ["ok", "throw"], 0, "fail");
+    const { deps } = commitDeps(server);
+    const out = await impl.runCommit(deps, server.now());
+    const stage = stageServer(5_000, 0, ["ok", "throw"], true);
+    const up = await impl.runUpload(uploadDeps(stage), records(5_000), stage.now());
+    const shownOf = (v: ImportRunView | null): string => (v === null ? "none" : `${v.stagedThrough}/${v.committedThrough}`);
+    ok(L.C10, out.kind === "failed" && !out.skew && out.view === null && up.kind === "failed" && !up.skew && up.view === null,
+      `commit ${out.kind}${out.kind === "failed" ? ` (view ${shownOf(out.view)})` : ""} · upload ${up.kind}${up.kind === "failed" ? ` (view ${shownOf(up.view)})` : ""}`);
   }
 
   // ── U · the upload loop ───────────────────────────────────────────────────────────────────────
@@ -566,7 +611,7 @@ async function run(ctx: SectionContext<FlowImpl>): Promise<void> {
     ok(L.U4, out.kind === "staged" && contiguous && lines.length === rows.length && lines.every((l, i) => l === rows[i].line),
       `${out.kind} · batches [${server.batches.map((b) => `${b.from}+${b.rows.length}`).join(", ")}]`);
   }
-  log(`flow: the commit loop retries busy ${BUSY_RETRIES} times and stops after ${STALL_LIMIT} answers that do not move`);
+  log(`flow: busy is waited out at ${BUSY_BACKOFF_SEC.join(" → ")} s without giving up (at most ${BUSY_WAIT_MAX_SEC} s a wait); a loop stops after ${STALL_LIMIT} answers that do not move`);
 }
 
 /* ══ THE RED PLANTS — each defect wrapped around the shipped function, in memory ═════════════════════ */
@@ -692,21 +737,66 @@ const PLANTS: readonly RedPlant<FlowImpl>[] = [
     impl: () => ({ ...real(), runCommit: async (deps, start) => { const out = await runCommit(deps, start); return out.kind === "refused" ? { ...out, refusal: { ...out.refusal, message: "Import failed." } } : out; } }),
   },
   {
-    name: "busy is retried without end (the loop is run again on its refusal)",
+    name: "R6 undone — busy is given up after three answers in a row (the fourth ends the loop)",
     expect: L.C4,
     impl: () => ({
       ...real(),
-      runCommit: async (deps, start) => {
-        let out = await runCommit(deps, start);
-        for (let i = 0; i < 2 && out.kind === "refused" && out.refusal.reason === "busy"; i++) out = await runCommit(deps, out.refusal.view ?? start);
-        return out;
+      runCommit: (deps, start) => {
+        let inRow = 0;
+        return runCommit({
+          ...deps,
+          step: async (input) => {
+            const r = await deps.step(input);
+            inRow = !r.ok && r.reason === "busy" ? inRow + 1 : 0;
+            return inRow > 3 && !r.ok ? { ...r, reason: "server_error" as const } : r;
+          },
+        }, start);
       },
     }),
   },
   {
-    name: "busy is retried at once, ignoring the seconds the server asked for",
+    name: "busy is retried at once, ignoring the backoff",
     expect: L.C4,
     impl: () => ({ ...real(), runCommit: (deps, start) => runCommit({ ...deps, wait: () => deps.wait(0) }, start) }),
+  },
+  {
+    name: "the backoff never grows (5 s every time)",
+    expect: L.C4,
+    impl: () => ({ ...real(), runCommit: (deps, start) => runCommit({ ...deps, wait: (ms) => deps.wait(Math.min(ms, 5_000)) }, start) }),
+  },
+  {
+    name: "the busy spell is waited out in silence (the screen is never told why the bar stands still)",
+    expect: L.C4,
+    impl: () => ({ ...real(), runCommit: (deps, start) => runCommit({ ...deps, onBusy: () => undefined }, start) }),
+  },
+  {
+    name: "the server's longer retryAfterSec is cut to the backoff's step",
+    expect: L.C4a,
+    impl: () => ({ ...real(), runCommit: (deps, start) => runCommit({ ...deps, wait: (ms) => deps.wait(Math.min(ms, 30_000)) }, start) }),
+  },
+  {
+    name: "a server's hour-long retryAfterSec is waited out in full (no ceiling)",
+    expect: L.C4a,
+    impl: () => ({ ...real(), runCommit: (deps, start) => runCommit({ ...deps, wait: (ms) => deps.wait(ms === BUSY_WAIT_MAX_SEC * 1000 ? 3_600_000 : ms) }, start) }),
+  },
+  {
+    name: "Stop is held back until the busy spell ends",
+    expect: L.C4c,
+    impl: () => ({
+      ...real(),
+      runCommit: (deps, start) => {
+        let lastBusy = false;
+        return runCommit({
+          ...deps,
+          step: async (input) => {
+            const r = await deps.step(input);
+            lastBusy = !r.ok && r.reason === "busy";
+            return r;
+          },
+          shouldStop: () => !lastBusy && deps.shouldStop(),
+        }, start);
+      },
+    }),
   },
   {
     name: "rate_limited is retried as if it were busy",
@@ -757,6 +847,16 @@ const PLANTS: readonly RedPlant<FlowImpl>[] = [
     name: "a loop that stops moving is called done",
     expect: L.C9,
     impl: () => ({ ...real(), runCommit: async (deps, start) => { const out = await runCommit(deps, start); return out.kind === "stalled" ? { kind: "done", view: out.view, note: null } : out; } }),
+  },
+  {
+    name: "R4 undone — a commit that failed unread hands back the cursor it started from as where the run stands",
+    expect: L.C10,
+    impl: () => ({ ...real(), runCommit: async (deps, start) => { const out = await runCommit(deps, start); return out.kind === "failed" && out.view === null ? { ...out, view: start } : out; } }),
+  },
+  {
+    name: "R4 undone — an upload that failed unread hands back the cursor it started from as where the run stands",
+    expect: L.C10,
+    impl: () => ({ ...real(), runUpload: async (deps, rows, start) => { const out = await runUpload(deps, rows, start); return out.kind === "failed" && out.view === null ? { ...out, view: start } : out; } }),
   },
   {
     name: "the upload starts again from record 1",

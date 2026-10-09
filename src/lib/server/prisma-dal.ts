@@ -531,6 +531,7 @@ import type {
 import type {
   MarketingContactSnapshot, ContactImportFirstLinesQuery, ContactImportFirstLine, ContactImportFailedQuery,
   ContactImportFailedPage, ContactImportKeptCount, ContactImportFreeze, ContactImportCommitBatch, ContactImportCommitResult,
+  ContactImportOthersQuery,
 } from "./store";
 
 /** U29 · the most rows one keyset page, and one access-export read for a number, hand back — the memory twin's bounds. */
@@ -538,12 +539,18 @@ const CONTACT_IMPORT_ROW_PAGE_MAX = 2000;
 const CONTACT_IMPORT_ROWS_BY_NUMBER_MAX = 1000;
 /** §29 · the most failures one page hands back — the memory twin's `CONTACT_IMPORT_FAILED_PAGE_MAX`, the same number. */
 const CONTACT_IMPORT_FAILED_PAGE_MAX = 50;
+/** §29 · S15-12 · the most open runs of other officers one read hands back — the memory twin's
+ *  `CONTACT_IMPORT_OPEN_RUNS_MAX`, the same number. */
+const CONTACT_IMPORT_OPEN_RUNS_MAX = 20;
 /** §29 · ONE commit step's transaction: at most 500 rows — one create statement, one conditional update per changed
  *  contact, a few grouped settlements — measured in tens of milliseconds; the timeout is a ceiling, never a budget. */
 const CONTACT_IMPORT_COMMIT_TX_TIMEOUT_MS = 30_000;
+/** §29 · the start's freeze: one conditional update, and — for a new list — one insert and one update more. */
+const CONTACT_IMPORT_FREEZE_TX_TIMEOUT_MS = 10_000;
 
-/** §29 · thrown INSIDE the commit's transaction when the unique index refused a create or a guard refused an update, so
- *  Postgres rolls the whole step back — the cursor included — and the step answers `conflict` naming the rows. */
+/** §29 · thrown INSIDE the commit's transaction when the unique index refused a create, a guard refused an update, or a
+ *  staged row the step settles is gone (R9), so Postgres rolls the whole step back — the cursor included — and the step
+ *  answers `conflict` naming the rows. */
 class ContactImportBatchConflict extends Error {
   constructor(readonly ordinals: number[]) {
     super(`contactImport.commitBatch: ${ordinals.length} row(s) changed since they were decided — the step was rolled back`);
@@ -4269,20 +4276,21 @@ export const prismaDb = {
         .sort((a, b) => (a.msisdn < b.msisdn ? -1 : a.msisdn > b.msisdn ? 1 : 0));
     },
     /** §29 · S15 · THE BOOK ROWS BEHIND A SET OF NUMBERS — what the importer's decide() reads: ONE query on the unique
-     *  `msisdn`, a `select` of exactly the nine columns decide() needs (never the consent cache, the link or the raw input).
-     *  ⛔ THE ERASED TOMBSTONE IS INCLUDED (X22) — there is deliberately no sourceRef filter here. §25's bound through
-     *  bulkKeys; an empty set answered before any query. Ordered by number. */
+     *  `msisdn`, a `select` of exactly the ten columns decide() needs (never the consent cache or the raw input) — the
+     *  account link among them (S15-11: a linked row is never changed by a file). ⛔ THE ERASED TOMBSTONE IS INCLUDED
+     *  (X22) — there is deliberately no sourceRef filter here. §25's bound through bulkKeys; an empty set answered before
+     *  any query. Ordered by number. */
     snapshotsAmong: async (msisdns: string[]): Promise<MarketingContactSnapshot[]> => {
       const keys = bulkKeys(msisdns, "marketingContact.snapshotsAmong");
       if (keys.length === 0) return [];
       const rows = await pc().marketingContact.findMany({
         where: { msisdn: { in: keys } },
-        select: { id: true, msisdn: true, displayName: true, email: true, notes: true, tags: true, sourceRef: true, importId: true, updatedAt: true },
+        select: { id: true, msisdn: true, displayName: true, email: true, notes: true, tags: true, sourceRef: true, importId: true, updatedAt: true, userId: true },
       });
       return rows
         .map((r): MarketingContactSnapshot => ({
           id: r.id, msisdn: r.msisdn, displayName: r.displayName, email: r.email, notes: r.notes, tags: r.tags,
-          sourceRef: r.sourceRef, importId: r.importId, updatedAt: r.updatedAt.toISOString(),
+          sourceRef: r.sourceRef, importId: r.importId, updatedAt: r.updatedAt.toISOString(), userId: r.userId,
         }))
         .sort((a, b) => (a.msisdn < b.msisdn ? -1 : a.msisdn > b.msisdn ? 1 : 0));
     },
@@ -4841,6 +4849,17 @@ export const prismaDb = {
       });
       return row ? toStoredContactImport(row) : null;
     },
+    /** §29 · S15-12 · an ADMIN's read of the runs OTHER officers left unfinished — the same four OPEN statuses as
+     *  `findOpenFor`, every creator but `q.excludeCreatedBy` (a soft key, never null), NEWEST first, at most `q.limit`,
+     *  clamped to `CONTACT_IMPORT_OPEN_RUNS_MAX`. */
+    listOpenByOthers: async (q: ContactImportOthersQuery): Promise<StoredContactImport[]> => {
+      const rows = await pc().contactImport.findMany({
+        where: { createdBy: { not: q.excludeCreatedBy }, status: { in: ["STAGING", "STAGED", "COMMITTING", "PAUSED"] } },
+        orderBy: [{ createdAt: "desc" }, { id: "desc" }],
+        take: Math.max(0, Math.min(q.limit, CONTACT_IMPORT_OPEN_RUNS_MAX)),
+      });
+      return rows.map(toStoredContactImport);
+    },
     /** The idle sweep's read (X29): runs in `q.statuses` untouched since `q.idleBefore`, oldest first, at most `q.limit`. */
     listIdle: async (q: ContactImportIdleQuery): Promise<StoredContactImport[]> => {
       const rows = await pc().contactImport.findMany({
@@ -4945,26 +4964,44 @@ export const prismaDb = {
         where: { id: { in: ids }, status: { in: ["DONE", "CANCELLED"] }, finishedAt: { lt: new Date(q.finishedBefore) } },
       })).count;
     },
-    /** §29 · ⭐ THE START'S FREEZE (U32, S15) — ONE conditional update: the run moves STAGED → COMMITTING only while it is
-     *  still STAGED, writing the choice, the overrides, who confirmed them and when, and the target list in the same
-     *  statement. Postgres re-checks the where after a racing commit, so of two starts ONE freezes the run; the loser counts
-     *  0 and is answered null, nothing written. */
+    /** §29 · ⭐ THE START'S FREEZE (U32, S15) — ONE transaction whose FIRST statement is the conditional update: the run
+     *  moves STAGED → COMMITTING only while it is still STAGED, writing the choice, the overrides, who confirmed them and
+     *  when, and an EXISTING target list in the same statement. Postgres re-checks the where after a racing commit, so of
+     *  two starts ONE freezes the run; the loser counts 0 and is answered null, nothing written. An existing list deleted
+     *  since the start read it is the foreign key refusing the update (P2003). ⭐ R12 · a NEW list is inserted only AFTER
+     *  the run was won, then made the target, in the same transaction: a held name is the unique index refusing the insert
+     *  (P2002), which rolls the freeze back with it — so a start that loses or throws leaves no list behind. */
     freezeDecision: async (f: ContactImportFreeze): Promise<StoredContactImport | null> => {
-      const frozen = await pc().contactImport.updateMany({
-        where: { id: f.importId, status: "STAGED" },
-        data: {
-          status: "COMMITTING",
-          decisionChoice: f.choice as never,
-          decisionOverrides: f.overrides as unknown as Prisma.InputJsonValue,
-          decisionConfirmedAt: new Date(f.at),
-          decisionConfirmedBy: f.by,
-          targetListId: f.targetListId,
-          updatedAt: new Date(f.at),
-        },
-      });
-      if (frozen.count !== 1) return null;
-      const row = await pc().contactImport.findUnique({ where: { id: f.importId } });
-      return row ? toStoredContactImport(row) : null;
+      const newList = f.newList ?? null;
+      if (newList !== null && f.targetListId !== newList.id) throw new Error("freezeDecision: a new list must be the run's target list");
+      return pc().$transaction(async (tx) => {
+        const frozen = await tx.contactImport.updateMany({
+          where: { id: f.importId, status: "STAGED" },
+          data: {
+            status: "COMMITTING",
+            decisionChoice: f.choice as never,
+            decisionOverrides: f.overrides as unknown as Prisma.InputJsonValue,
+            decisionConfirmedAt: new Date(f.at),
+            decisionConfirmedBy: f.by,
+            // A NEW list does not exist yet: it becomes the target below, once inserted, in this same transaction.
+            targetListId: newList === null ? f.targetListId : null,
+            updatedAt: new Date(f.at),
+          },
+        });
+        if (frozen.count !== 1) return null;
+        if (newList !== null) {
+          const l = newList;
+          await tx.contactList.create({
+            data: {
+              id: l.id, name: l.name, description: l.description,
+              createdAt: new Date(l.createdAt), createdBy: l.createdBy, updatedAt: new Date(l.updatedAt), updatedBy: l.updatedBy,
+            },
+          });
+          await tx.contactImport.update({ where: { id: f.importId }, data: { targetListId: l.id, updatedAt: new Date(f.at) } });
+        }
+        const row = await tx.contactImport.findUnique({ where: { id: f.importId } });
+        return row ? toStoredContactImport(row) : null;
+      }, { timeout: CONTACT_IMPORT_FREEZE_TX_TIMEOUT_MS, maxWait: 5_000 });
     },
     /** §29 · ⭐ X3 · THE ONE COMMIT WRITE (S15-6) — ONE interactive transaction, its timeout and maxWait set, whose FIRST
      *  statement is the cursor's compare-and-set (COMMITTING and `committedThrough` exactly `b.fromCursor`): a step another
@@ -4973,10 +5010,17 @@ export const prismaDb = {
      *  on the row not being the erased tombstone (⛔ the NULL arm is REQUIRED: `sourceRef <> 'erasure'` alone is NULL — so
      *  false — for nearly the whole book), and on ANY refusal the transaction THROWS, so Postgres rolls the step back,
      *  cursor included, and the answer names the rows (`conflict`). Then the failure sentences (before the blanking), the
-     *  outcomes grouped by their pair with the blanking (S15-8), the list memberships (live rows only, skip duplicates —
-     *  an existing member keeps its first `addedAt`), and DONE when the cursor reached `stagedThrough`. ⛔ No Promise.all
+     *  outcomes grouped by their pair with the blanking (S15-8) — each group counted, so a staged row erasure deleted
+     *  since the step read it rolls the step back as a `conflict` (R9) — the list memberships (live rows only, skip
+     *  duplicates — an existing member keeps its first `addedAt`), and DONE when the cursor reached `stagedThrough`.
+     *  ⭐ R3 · ONE lock order for every import: creates by number, updates and memberships by contact id, so two imports
+     *  at once take their row locks in the same order and cannot deadlock each other. ⛔ R17 · a cursor that would move
+     *  backwards or past the staged rows is refused, nothing written — the memory twin's own refusal. ⛔ No Promise.all
      *  over the transaction's client, and no advisory lock: the cursor's row lock is the whole serialisation (§5.5). */
     commitBatch: async (b: ContactImportCommitBatch): Promise<ContactImportCommitResult> => {
+      const creates = [...b.creates].sort((x, y) => (x.row.msisdn < y.row.msisdn ? -1 : x.row.msisdn > y.row.msisdn ? 1 : 0));
+      const updates = [...b.updates].sort((x, y) => (x.contactId < y.contactId ? -1 : x.contactId > y.contactId ? 1 : 0));
+      const members = [...b.members].sort();
       try {
         return await pc().$transaction(async (tx) => {
           const advanced = await tx.contactImport.updateMany({
@@ -4987,10 +5031,14 @@ export const prismaDb = {
             const now = await tx.contactImport.findUnique({ where: { id: b.importId } });
             return { kind: "moved" as const, run: now ? toStoredContactImport(now) : null };
           }
+          const bounds = await tx.contactImport.findUnique({ where: { id: b.importId }, select: { stagedThrough: true } });
+          if (bounds === null || b.toCursor < b.fromCursor || b.toCursor > bounds.stagedThrough) {
+            throw new Error("commitBatch: the cursor must move forward, within the staged rows");
+          }
           const refused: number[] = [];
-          if (b.creates.length > 0) {
+          if (creates.length > 0) {
             const born = await tx.marketingContact.createManyAndReturn({
-              data: b.creates.map(({ row }) => ({
+              data: creates.map(({ row }) => ({
                 id: row.id, msisdn: row.msisdn, rawInput: row.rawInput,
                 displayName: row.displayName, email: row.email, ndc: row.ndc,
                 operator: row.operator, source: row.source as never, sourceRef: row.sourceRef,
@@ -5003,12 +5051,12 @@ export const prismaDb = {
               // ONE line on purpose: §25's red anchor plants the presence read's own `select` line, which must stay unique.
               skipDuplicates: true, select: { msisdn: true },
             });
-            if (born.length !== b.creates.length) {
+            if (born.length !== creates.length) {
               const landed = new Set(born.map((r) => r.msisdn));
-              for (const c of b.creates) if (!landed.has(c.row.msisdn)) refused.push(c.ordinal);
+              for (const c of creates) if (!landed.has(c.row.msisdn)) refused.push(c.ordinal);
             }
           }
-          for (const u of b.updates) {
+          for (const u of updates) {
             const guarded = await tx.marketingContact.updateMany({
               where: { id: u.contactId, updatedAt: new Date(u.guard), OR: [{ sourceRef: null }, { sourceRef: { not: ERASURE_EVIDENCE } }] },
               data: {
@@ -5041,15 +5089,24 @@ export const prismaDb = {
             byPair.set(key, group);
           }
           for (const g of byPair.values()) {
-            await tx.contactImportRow.updateMany({
+            const settledRows = await tx.contactImportRow.updateMany({
               where: { importId: b.importId, ordinal: { in: g.ordinals }, outcome: null },
               data: { outcome: g.outcome as never, outcomeReason: g.reason, rawPhone: "", displayName: null, email: null, notes: null, tags: [] },
             });
+            // ⛔ R9 · every row of the group must still be there, unsettled: erasure deletes a person's staged rows, and a step
+            // decided on a row that is gone would create the very number the erasure took away. The rows gone are named.
+            if (settledRows.count !== g.ordinals.length) {
+              const present = await tx.contactImportRow.findMany({ where: { importId: b.importId, ordinal: { in: g.ordinals } }, select: { ordinal: true } });
+              const held = new Set(present.map((r) => r.ordinal));
+              const gone = g.ordinals.filter((o) => !held.has(o));
+              throw new ContactImportBatchConflict((gone.length > 0 ? gone : g.ordinals).sort((x, y) => x - y));
+            }
           }
-          if (b.listId !== null && b.members.length > 0) {
+          if (b.listId !== null && members.length > 0) {
             const live = await tx.marketingContact.findMany({
-              where: { id: { in: b.members }, OR: [{ sourceRef: null }, { sourceRef: { not: ERASURE_EVIDENCE } }] },
+              where: { id: { in: members }, OR: [{ sourceRef: null }, { sourceRef: { not: ERASURE_EVIDENCE } }] },
               select: { id: true },
+              orderBy: { id: "asc" },
             });
             if (live.length > 0) {
               await tx.contactListMember.createMany({

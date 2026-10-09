@@ -2,7 +2,7 @@
  * test:contacts-import · section "decide" — U31-A: the ONE import rule (`src/lib/contacts/import-decide.ts`) and the
  * erasure mark it reads (`src/lib/marketing/erasure-mark.ts`, re-exported by `erase.ts`).        (S10, 2026-10-01)
  *
- * ⭐ EXECUTED, NOT READ. Every behaviour runs against the real `decide()`: a matrix of fourteen number states × the
+ * ⭐ EXECUTED, NOT READ. Every behaviour runs against the real `decide()`: a matrix of fifteen number states × the
  * three choices × four override variants (§D0) with a LITERAL expectation per cell, then one assertion per rule —
  * the default, the stop list, the erasure mark, the consent seam (X5), the file-row key, precedence, the two
  * non-KEEP choices, the tags a patch writes (C11), no_change, the tag cap, the first row (OD33 — required across the
@@ -249,10 +249,12 @@ const STATES: readonly State[] = [
     expect: { KEEP: "keep:chosen_keep", TAKE_FILE: "update", FILL_BLANKS: "keep:no_change" },
   },
   { name: "in book · repeat of line 2", facts: facts({ book: bookRow("mc_repeat"), repeatOf: 2 }), expect: allThree("keep:same_run") },
+  // S15-11 (2026-10-09) · a row linked to an account is never changed by a file, under any choice or override.
+  { name: "in book · linked to an account", facts: facts({ book: bookRow("mc_account", { userId: "usr_d_player" }) }), expect: allThree("keep:account") },
 ];
 const OVERRIDE_VARIANTS: readonly (ImportChoice | null)[] = [null, "KEEP", "TAKE_FILE", "FILL_BLANKS"];
-/** 14 states × 3 choices × 4 override variants — typed, never computed, so a shrinking matrix is seen. */
-const MATRIX_CELLS = 168;
+/** 15 states × 3 choices × 4 override variants — typed, never computed, so a shrinking matrix is seen. */
+const MATRIX_CELLS = 180;
 
 function state(name: string): State {
   const s = STATES.find((x) => x.name === name);
@@ -340,9 +342,9 @@ const DISGUISED_FACTS: FactsByNumber = new Map<string, NumberFacts>([
  * 5, 7 unchanged. FILL_BLANKS updates 4 alone and finds 3, 11, 12 and 5, 7 unchanged.
  */
 const EXPECTED_SHOWN: Readonly<Record<ImportChoice, ShownTally>> = {
-  KEEP: { create: 3, update: 0, keep: 9, overwrites: 0, keepBy: { chosen_keep: 6, suppressed: 1, same_run: 2, no_change: 0 } },
-  TAKE_FILE: { create: 3, update: 3, keep: 6, overwrites: 3, keepBy: { chosen_keep: 0, suppressed: 1, same_run: 2, no_change: 3 } },
-  FILL_BLANKS: { create: 3, update: 1, keep: 8, overwrites: 0, keepBy: { chosen_keep: 0, suppressed: 1, same_run: 2, no_change: 5 } },
+  KEEP: { create: 3, update: 0, keep: 9, overwrites: 0, keepBy: { chosen_keep: 6, suppressed: 1, account: 0, same_run: 2, no_change: 0 } },
+  TAKE_FILE: { create: 3, update: 3, keep: 6, overwrites: 3, keepBy: { chosen_keep: 0, suppressed: 1, account: 0, same_run: 2, no_change: 3 } },
+  FILL_BLANKS: { create: 3, update: 1, keep: 8, overwrites: 0, keepBy: { chosen_keep: 0, suppressed: 1, account: 0, same_run: 2, no_change: 5 } },
 };
 
 /* ══ THE SCANNERS (§D3d, §D10, §D16) — the same functions run over the real sources and every plant ═════ */
@@ -382,7 +384,7 @@ const CONSENT_WORD = /consent|opt.?in|ridhaa|kibali|idhini/i;
 /* ══ THE ASSERTION LABELS — one place, so a plant names exactly the line it must turn red ═══════════ */
 
 export const L = {
-  D0: "D0 · CONTROL · the matrix — 14 number states × 3 choices × 4 override variants, one decision per cell, each the literal verdict",
+  D0: "D0 · CONTROL · the matrix — 15 number states × 3 choices × 4 override variants, one decision per cell, each the literal verdict",
   D1: "D1 · ⭐ KEEP is the default — DEFAULT_IMPORT_CHOICE is KEEP, and a differing in-book row with no override is kept (chosen_keep)",
   D2: "D2 · ⛔ an ACTIVE stop collapses an in-book row to keep under every choice and every override; CONTROL: with no stop, TAKE_FILE and FILL_BLANKS update it",
   D3: "D3 · ⛔ a row marked ERASURE_EVIDENCE collapses to keep under TAKE_FILE, FILL_BLANKS and either override; CONTROL: the same emptied row marked by another run updates",
@@ -409,6 +411,7 @@ export const L = {
   D14b: "D14b · ⛔ X22/C3 — erasure is never disclosed: an erased number's preview equals that of an ordinary contact holding the file's values (alone, on the stop list, repeated; in the book or ledger-only), the browser's whole plan and every override label are unchanged when a file's erased numbers are swapped for such contacts, and no preview names a contact; CONTROL: the server truth still says erased, and a contact with other values previews differently",
   D15: "D15 · ⛔ OD10 — a drafted row's writable keys are exactly IMPORT_PATCH_KEYS (plus the phone), and no field key, label or alias is a consent word; CONTROL: the word test matches the not-imported consent column",
   D16: "D16 · ⛔ PURITY — import-decide imports exactly ./contact-fields and ../marketing/erasure-mark, erasure-mark imports nothing, and neither carries a directive or server-only",
+  D17: "D17 · ⛔ S15-11 · a book row LINKED to an account is never changed by a file — kept `account` (shown as itself) under every choice and override, after erased and the stop list and before the same run; its preview is a fixed keep and the label counts it under every choice; CONTROL: the same row with no link (null, absent or empty) updates",
 } as const;
 
 /* ══ THE ASSERTIONS ═════════════════════════════════════════════════════════════════════════════ */
@@ -737,9 +740,9 @@ function run(ctx: SectionContext<DecideImpl>): void {
 
   // ── D12 · X4, the one outcome union ────────────────────────────────────────────────────────────
   const OUTCOMES_DECIDED = ["create", "update", "keep", "fail"];
-  const REASONS_DECIDED = ["chosen_keep", "erased", "suppressed", "same_run", "no_change", "write_refused", "changed_during_import", "invalid"];
+  const REASONS_DECIDED = ["chosen_keep", "erased", "suppressed", "account", "same_run", "no_change", "write_refused", "changed_during_import", "invalid"];
   const OUTCOME_OF_DECIDED = {
-    chosen_keep: "keep", erased: "keep", suppressed: "keep", same_run: "keep", no_change: "keep",
+    chosen_keep: "keep", erased: "keep", suppressed: "keep", account: "keep", same_run: "keep", no_change: "keep",
     changed_during_import: "keep", write_refused: "fail", invalid: "fail",
   };
   const badRows = cells.filter((x) => {
@@ -833,6 +836,37 @@ function run(ctx: SectionContext<DecideImpl>): void {
     ...[decideSrc, markSrc].filter((s) => DIRECTIVE.test(s) || SERVER_ONLY.test(s)).map(() => "a directive or server-only"),
   ];
   ok(L.D16, impure.length === 0, impure.join(" | ") || `import-decide → ${decideSpecs.join(", ")} · erasure-mark → nothing`);
+
+  // ── D17 · S15-11 · a row linked to an account is never changed ──────────────────────────────────
+  const linkedBook = (patch: Partial<BookSnapshot> = {}): BookSnapshot =>
+    bookRow("mc_d17", { email: null, notes: null, tags: [], userId: "usr_d17", ...patch });
+  const linkedCells = IMPORT_CHOICES.flatMap((bulk) =>
+    OVERRIDE_VARIANTS.map((o) => impl.decide(MATRIX_ROW, facts({ book: linkedBook() }), bulk, o === null ? NO_OVERRIDES : on(o), RUN)));
+  const unlinkedTake = impl.decide(MATRIX_ROW, facts({ book: linkedBook({ userId: null }) }), "TAKE_FILE", NO_OVERRIDES, RUN);
+  const absentLink = impl.decide(MATRIX_ROW, facts({ book: { ...linkedBook(), userId: undefined } }), "FILL_BLANKS", NO_OVERRIDES, RUN);
+  const emptyLink = impl.decide(MATRIX_ROW, facts({ book: linkedBook({ userId: "" }) }), "TAKE_FILE", NO_OVERRIDES, RUN);
+  const accountOrder: Record<string, boolean> = {
+    stopBeatsAccount: verdict(facts({ book: linkedBook(), suppressed: true }), "TAKE_FILE", NO_OVERRIDES) === "keep:suppressed",
+    erasedBeatsAccount: verdict(facts({ book: linkedBook({ ...ERASED, userId: "usr_d17" }) }), "TAKE_FILE", NO_OVERRIDES) === "keep:erased",
+    accountBeatsSameRun: verdict(facts({ book: linkedBook({ importId: RUN }) }), "TAKE_FILE", NO_OVERRIDES) === "keep:account",
+    accountBeatsRepeat: verdict(facts({ book: linkedBook(), repeatOf: 2 }), "FILL_BLANKS", NO_OVERRIDES) === "keep:account",
+  };
+  const linkedPreview = impl.previewFor(MATRIX_ROW, facts({ book: linkedBook() }), RUN);
+  const accountRows = [cand(2, "0786 400 702"), cand(3, "0786 400 703")];
+  const accountFacts: FactsByNumber = new Map<string, NumberFacts>([
+    [accountRows[0].msisdn, numberFacts({ book: linkedBook() })],
+    [accountRows[1].msisdn, numberFacts({ book: bookRow("mc_d17b", { email: null, notes: null, tags: [] }) })],
+  ]);
+  const accountPlan = impl.plan({ runId: RUN, candidates: accountRows, facts: accountFacts, firstLines: firstLines(accountRows) });
+  const orderBroken = Object.entries(accountOrder).filter(([, good]) => !good).map(([k]) => k);
+  ok(L.D17,
+    linkedCells.length === 12
+      && linkedCells.every((d) => d.kind === "keep" && d.reason === "account" && d.shown === "account" && d.contactId === "mc_d17")
+      && unlinkedTake.kind === "update" && absentLink.kind === "update" && emptyLink.kind === "update" && orderBroken.length === 0
+      && same(linkedPreview, { line: MATRIX_LINE, kind: "keep", reason: "account" })
+      && IMPORT_CHOICES.every((ch) => accountPlan.byChoice[ch].keepBy.account === 1)
+      && accountPlan.byChoice.TAKE_FILE.update === 1 && accountPlan.byChoice.FILL_BLANKS.update === 1 && accountPlan.byChoice.KEEP.update === 0,
+    `${linkedCells.map(verdictOf).filter((v) => v !== "keep:account").join(", ") || "all kept as account"} · unlinked → ${verdictOf(unlinkedTake)} / ${verdictOf(absentLink)} / ${verdictOf(emptyLink)} · order broken: ${orderBroken.join(", ") || "none"} · preview ${stable(linkedPreview)}`);
 }
 
 /* ══ RED PLANTS — each a defect built IN MEMORY, and the ONE assertion it must turn red ═══════════ */
@@ -1051,7 +1085,7 @@ const PLANTS: readonly RedPlant<DecideImpl>[] = [
             else if (ch === "KEEP") keep++;
             else update++;
           }
-          return { create, update, keep, overwrites: update, keepBy: { chosen_keep: keep, suppressed: 0, same_run: 0, no_change: 0 } };
+          return { create, update, keep, overwrites: update, keepBy: { chosen_keep: keep, suppressed: 0, account: 0, same_run: 0, no_change: 0 } };
         };
         return { ...shipped, byChoice: { KEEP: bucketed("KEEP"), TAKE_FILE: bucketed("TAKE_FILE"), FILL_BLANKS: bucketed("FILL_BLANKS") } };
       },
@@ -1182,6 +1216,11 @@ const PLANTS: readonly RedPlant<DecideImpl>[] = [
     expect: L.D5c,
     impl: () => withDecide((c, f, b, ov, run) =>
       decide(c, hasOwn(ov, c.line) && f.suppressed && f.book !== null && f.book.sourceRef !== ERASURE_EVIDENCE ? { ...f, suppressed: false } : f, b, ov, run)),
+  },
+  {
+    name: "R-D17 · the account collapse removed (decide is handed the book row without its link) — a player's registration row is overwritten from the file",
+    expect: L.D17,
+    impl: () => withDecide((c, f, b, ov, run) => decide(c, f.book === null ? f : { ...f, book: { ...f.book, userId: null } }, b, ov, run)),
   },
 ];
 

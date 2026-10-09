@@ -11,13 +11,22 @@
  *     to its result (four tiles), at 360 a Discard from the check (nothing written);
  *   · THE REFUSALS — an old .xls, an .ods, an empty file, a file that is not a CSV, a renamed file — each said at the
  *     entrance with its fix, never a dead end (a file whose CONTENT is readable is read: content beats the name);
- *   · NUMBERS ALREADY IN THE BOOK (the `?u30=1` world): "Use the file's version", ONE row set apart, the label moving by
- *     exactly that row, the overwrite asked once more, and the result;
+ *   · NUMBERS ALREADY IN THE BOOK (the `?u30=1` world): S15-10 · GROWTH (not a reader) sees no choices and no changes —
+ *     one line, "kept as they are", with its why — and imports with nothing updated; R14 · the fourth box reads "Can't be
+ *     imported as written"; an ADMIN (a reader) gets the three choices, "Use the file's version", ONE row set apart (the
+ *     promise moving by exactly that row) and a new list named — then R7 · the book moves under that check (GROWTH adds
+ *     the one number the ADMIN's file holds as new), the start is refused, the file is checked again WITH the choice, the
+ *     row set apart, the list and its name all kept, and the import ends with the promise's numbers and the split by
+ *     reason (S15-3);
  *   · A RELOAD MID-IMPORT: the second commit step's RESPONSE held (fetched, held, never aborted), the bar photographed in
  *     flight, the page reloaded — the dialog opens ON the unfinished import (`import-adopt`), Resume, done;
- *   · STOP → paused → RESUME → done; and STOP → CANCEL THE REST → a cancelled result that says what stayed;
- *   · S15-3 · the same file's result as GROWTH (no kept split) and as ADMIN (the split by reason);
- *   · no horizontal page overflow at 360, the dialog a full-height sheet there.
+ *   · STOP → paused → RESUME → done; and STOP → CANCEL THE REST → a cancelled result that says what stayed — R5: written
+ *     is added + updated, the rows not imported are the cancel's own count, four tiles, the sum = the file's rows;
+ *   · S15-12 (R2b) · an ADMIN finds another officer's paused import at the entrance, Resumes it, and it ends; a GROWTH
+ *     officer's entrance shows no such list;
+ *   · V1 · at 360 the start button's words stay inside it and nothing sticks out of the dialog sideways (measured on the
+ *     dialog's own panel — a fixed overlay never shows in the page's width); the promise is its own line above a short
+ *     button; no horizontal page overflow at 360, the dialog a full-height sheet there.
  * Every capture is a viewport tile (never full page), with Next's dev overlay hidden. The check's five counts and the
  * result's four tiles of every file land in `.qa-shots/contacts-screen/C3/summary.json`.
  *
@@ -122,6 +131,14 @@ const count = (page, sel) => page.locator(sel).count();
 const textOf = async (page, sel) => ((await count(page, sel)) > 0 ? ((await page.locator(sel).first().innerText()) || "").replace(/\s+/g, " ").trim() : "");
 const heading = (page) => textOf(page, `${DIALOG} h2`);
 const overflowOf = (page) => page.evaluate(() => Math.max(0, document.documentElement.scrollWidth - window.innerWidth));
+/** ⛔ V1 · what sticks out of the dialog's own panel sideways — a fixed overlay never shows in the page's width, so the
+ *  page check above cannot see it (the start button's words ran past both its edges at 360 with that check green). */
+const dialogOverflow = (page) => page.evaluate(() => {
+  const panel = document.querySelector('[role="dialog"][aria-modal="true"] [data-rung="modal"]');
+  return panel ? Math.max(0, panel.scrollWidth - panel.clientWidth) : -1;
+});
+/** What runs out of one element sideways — a button's words wider than the button. -1 when it is not on screen. */
+const boxOverflow = (page, sel) => page.locator(sel).first().evaluate((n) => Math.max(0, n.scrollWidth - n.clientWidth)).catch(() => -1);
 
 async function openContacts(page) {
   await page.goto(`${BASE}/admin/contacts`, { waitUntil: "domcontentloaded" });
@@ -259,7 +276,11 @@ for (const vp of VIEWPORTS) {
       }
       const values = await textOf(page, "[data-import-columns]");
       ok(`${vp.name} · ${name} · no phone number is shown whole in the columns`, !/(?:\+?255|0)[67]\d{8}/.test(values.replace(/[\s().-]/g, "")), values.slice(0, 160));
-      if (vp.name === "360") ok(`${vp.name} · ${name} · no horizontal page overflow on the columns`, (await overflowOf(page)) === 0);
+      if (vp.name === "360") {
+        ok(`${vp.name} · ${name} · no horizontal page overflow on the columns`, (await overflowOf(page)) === 0);
+        ok(`${vp.name} · ${name} · nothing sticks out of the dialog sideways on the columns (V1)`, (await dialogOverflow(page)) === 0,
+          `panel ${await dialogOverflow(page)}px · Next ${await boxOverflow(page, block("import-mapping-next"))}px`);
+      }
       const nextDisabled = await page.locator(block("import-mapping-next")).first().isDisabled();
       if (nextDisabled) {
         record.outcome = "held at the columns";
@@ -292,7 +313,17 @@ for (const vp of VIEWPORTS) {
       if (statedRows !== null) ok(`${vp.name} · ${name} · the check counts every record the generator wrote`, sum === statedRows, `${sum} vs ${statedRows}`);
       await shoot(page, dir, `${vp.name}-3-check`, block("import-preflight"), "Check before importing", block("import-preflight"));
       await shoot(page, dir, `${vp.name}-4-decision`, block("import-apply"), "Check before importing", block("import-decision"));
-      if (vp.name === "360") ok(`${vp.name} · ${name} · no horizontal page overflow on the check`, (await overflowOf(page)) === 0);
+      if (vp.name === "360") {
+        ok(`${vp.name} · ${name} · no horizontal page overflow on the check`, (await overflowOf(page)) === 0);
+        const panelOver = await dialogOverflow(page);
+        const applyOver = await boxOverflow(page, block("import-apply"));
+        ok(`${vp.name} · ${name} · V1 · the start button's words stay inside it, and nothing sticks out of the dialog`, panelOver === 0 && applyOver === 0,
+          `panel ${panelOver}px · start button ${applyOver}px · "${await textOf(page, block("import-apply"))}"`);
+      }
+      ok(`${vp.name} · ${name} · V1 · the promise is its own line above a short start button`,
+        /^This import: [\d,]+ new · [\d,]+ updated · [\d,]+ kept as (it is|they are)\.$/.test(await textOf(page, "[data-import-apply-tally]"))
+          && /^Import [\d,]+ rows?$/.test(await textOf(page, block("import-apply"))),
+        `"${await textOf(page, "[data-import-apply-tally]")}" · "${await textOf(page, block("import-apply"))}"`);
 
       if (!vp.finish) {
         // ── 360: discarded from the check — nothing written ──
@@ -329,7 +360,7 @@ for (const vp of VIEWPORTS) {
   await ctx.close();
 }
 
-/* ═══ 2 · NUMBERS ALREADY IN THE BOOK — "Use the file's version", one row set apart ══════════════════════════ */
+/* ═══ 2 · NUMBERS ALREADY IN THE BOOK — GROWTH keeps them (S15-10); ADMIN chooses, sets one apart, keeps it through a re-check (R7) ═══ */
 
 /** The world `?u30=1` makes: 001 in the book with a name the file replaces, 002 on the stop list, 003 a player's number,
  *  004 erased, 010 and 011 new; a repeat, a row with no number, one too short. */
@@ -346,6 +377,15 @@ const U30_CSV = [
   "0768 000 011,Rehema John,,,",
 ].join(CRLF) + CRLF;
 
+/** ⭐ R7 · a number new on EVERY run of this drive (the in-memory server outlives a run): the one the book gains while the
+ *  ADMIN's check stands, so the ADMIN's start is refused `check_again` and the dialog checks again. */
+const R7_TAIL = String(Date.now() % 1_000_000).padStart(6, "0");
+const R7_NUMBER = `0767 ${R7_TAIL.slice(0, 3)} ${R7_TAIL.slice(3)}`;
+const U30_ADMIN_CSV = U30_CSV + `${R7_NUMBER},Zawadi Ali,,,` + CRLF;
+const R7_CSV = ["Phone,Name", `${R7_NUMBER},Zawadi Ali`].join(CRLF) + CRLF;
+/** The ADMIN's new list — letters only (a list name may not hold a run of digits), new on every run. */
+const LIST_NAME = `Drive October ${[...R7_TAIL].map((d) => String.fromCharCode(97 + Number(d))).join("")}`;
+
 async function importBuffer(page, fileName, text) {
   await page.setInputFiles(`input${block("import-file")}`, { name: fileName, mimeType: "text/csv", buffer: Buffer.from(text, "utf8") });
   await page.waitForSelector(block("import-mapping"), { timeout: 60_000 });
@@ -360,60 +400,114 @@ const applyCounts = async (page) => {
 };
 
 {
-  console.log(LF + "── duplicates · the file's version, one row set apart");
+  console.log(LF + "── duplicates · GROWTH keeps the book as it is (S15-10); ADMIN chooses, sets a row apart, and keeps it all through a re-check (R7)");
   const dir = join(OUT, "duplicates");
   mkdirSync(dir, { recursive: true });
+
+  // ── S15-10 (R1) · GROWTH may not update contacts already in the book: no choices, no changes list — one line and its why ──
   const { ctx, page } = await staffCtx("GROWTH", "+255700003103", { width: 1280, height: 800 });
   await seed(page, "u30=1");
   await openContacts(page);
   await openImport(page);
   await importBuffer(page, "contacts-october.csv", U30_CSV);
-  ok("duplicates · the three choices are offered", (await count(page, "[data-import-choice]")) === 3);
-  await shoot(page, dir, "1-choices", "[data-import-duplicates]", "Check before importing", "[data-import-duplicates]");
-  const keepCounts = await applyCounts(page);
-  await page.locator('[data-import-choice="TAKE_FILE"]').first().click();
-  await wait(300);
-  const takeCounts = await applyCounts(page);
-  ok("duplicates · \"Use the file's version\" moves the label (more updated, fewer kept)", takeCounts.update > keepCounts.update, `${JSON.stringify(keepCounts)} → ${JSON.stringify(takeCounts)}`);
-  await page.waitForSelector("[data-import-change-row]", { timeout: 30_000 });
-  const rowBox = page.locator('[data-import-change-row] label').first();
-  await rowBox.click();
-  await wait(300);
-  const apartCounts = await applyCounts(page);
-  ok("duplicates · one row set apart moves the label by exactly that row", apartCounts.update === takeCounts.update - 1 && apartCounts.keep === takeCounts.keep + 1,
-    `${JSON.stringify(takeCounts)} → ${JSON.stringify(apartCounts)}`);
-  ok("duplicates · the row reads as set apart", (await count(page, '[data-import-change-row][data-apart="yes"]')) === 1);
-  await shoot(page, dir, "2-set-apart", "[data-import-changes]", "Check before importing", "[data-import-changes]");
+  ok("duplicates · GROWTH: no choice cards and no changes list (S15-10)",
+    (await count(page, "[data-import-choice]")) === 0 && (await count(page, "[data-import-change-row]")) === 0
+      && (await page.locator(block("import-decision")).first().getAttribute("data-may-update")) === "no");
+  const keptSection = await textOf(page, '[data-import-duplicates="kept"]');
+  ok("duplicates · GROWTH: one line says the numbers in the book are kept as they are, with the why",
+    /Numbers already in the book are kept as they are[.]/.test(keptSection) && /can see phone numbers/.test(keptSection), keptSection.slice(0, 220));
+  const growthCounts = await applyCounts(page);
+  const growthPromise = await textOf(page, "[data-import-apply-tally]");
+  ok("duplicates · GROWTH: the promise is KEEP's — nothing updated — and the start button says only how many rows",
+    growthCounts.update === 0 && /0 updated/.test(growthPromise) && /^Import [\d,]+ rows?$/.test(await textOf(page, block("import-apply"))),
+    `${JSON.stringify(growthCounts)} · "${growthPromise}"`);
+  ok(`duplicates · R14 · the fourth box reads "Can't be imported as written"`,
+    /can.t be imported as written/i.test(await textOf(page, '[data-import-tile="invalid"]')), await textOf(page, '[data-import-tile="invalid"]'));
+  await shoot(page, dir, "1-growth-kept", "[data-import-duplicates]", "Check before importing", "[data-import-duplicates]");
   await page.locator(block("import-apply")).first().click();
-  if ((await page.waitForSelector(CONFIRM, { timeout: 3_000 }).catch(() => null)) !== null) {
-    ok("duplicates · replacing details asks once more, naming how many", /replace/i.test(await textOf(page, CONFIRM)));
-    await page.screenshot({ path: join(dir, "3-overwrite-confirm.png") });
-    await confirmTop(page);
-  }
+  if ((await page.waitForSelector(CONFIRM, { timeout: 1_500 }).catch(() => null)) !== null) await confirmTop(page);
   await page.waitForSelector(block("import-done"), { timeout: 120_000 });
   await wait(500);
-  const result = await tilesIn(page, block("import-done"));
-  ok("duplicates · the result's updates are the label's (one row set apart)", result.update === apartCounts.update, `${JSON.stringify(result)} vs ${JSON.stringify(apartCounts)}`);
-  ok("duplicates · GROWTH reads ONE kept number — no split by reason (S15-3)", (await count(page, "[data-import-kept-split]")) === 0);
-  await shoot(page, dir, "4-done-growth", block("import-done"), "Import finished");
-  summary.flows.push({ flow: "duplicates", keep: keepCounts, takeFile: takeCounts, setApart: apartCounts, result });
+  const growthResult = await tilesIn(page, block("import-done"));
+  ok("duplicates · GROWTH's import updates nothing in the book, and reads ONE kept number (S15-3)",
+    growthResult.update === 0 && growthResult.create === growthCounts.create && (await count(page, "[data-import-kept-split]")) === 0, JSON.stringify(growthResult));
+  await shoot(page, dir, "2-done-growth", block("import-done"), "Import finished");
+  summary.flows.push({ flow: "duplicates-growth", promise: growthCounts, result: growthResult });
   await closeDialog(page);
-  await ctx.close();
+  // ⚠️ GROWTH's session stays open: it moves the book under the ADMIN's check below (R7).
 
-  // ── S15-3 · the same file as ADMIN: the kept rows split by reason ──
+  // ── ADMIN (a reader): the three choices, "Use the file's version", one row set apart, a new list named ──
   const adm = await staffCtx("ADMIN", "+255700003104", { width: 1280, height: 800 });
   await openContacts(adm.page);
   await openImport(adm.page);
-  await importBuffer(adm.page, "contacts-october.csv", U30_CSV);
+  await importBuffer(adm.page, "contacts-october-admin.csv", U30_ADMIN_CSV);
+  ok("duplicates · ADMIN: the three choices are offered", (await count(adm.page, "[data-import-choice]")) === 3);
+  await shoot(adm.page, dir, "3-admin-choices", "[data-import-duplicates]", "Check before importing", "[data-import-duplicates]");
+  const keepCounts = await applyCounts(adm.page);
+  await adm.page.locator('[data-import-choice="TAKE_FILE"]').first().click();
+  await wait(300);
+  const takeCounts = await applyCounts(adm.page);
+  ok(`duplicates · ADMIN: "Use the file's version" moves the promise (more updated, fewer kept)`, takeCounts.update > keepCounts.update,
+    `${JSON.stringify(keepCounts)} → ${JSON.stringify(takeCounts)}`);
+  await adm.page.waitForSelector("[data-import-change-row]", { timeout: 30_000 });
+  await adm.page.locator("[data-import-change-row] label").first().click();
+  await wait(300);
+  const apartCounts = await applyCounts(adm.page);
+  ok("duplicates · ADMIN: one row set apart moves the promise by exactly that row", apartCounts.update === takeCounts.update - 1 && apartCounts.keep === takeCounts.keep + 1,
+    `${JSON.stringify(takeCounts)} → ${JSON.stringify(apartCounts)}`);
+  ok("duplicates · ADMIN: the row reads as set apart", (await count(adm.page, '[data-import-change-row][data-apart="yes"]')) === 1);
+  const apartLine = await adm.page.locator('[data-import-change-row][data-apart="yes"]').first().getAttribute("data-import-change-row");
+  await adm.page.locator('[data-import-list-option="new"]').first().click();
+  await adm.page.locator('[data-field="listName"] input').first().fill(LIST_NAME);
+  await wait(300);
+  await shoot(adm.page, dir, "4-set-apart", "[data-import-changes]", "Check before importing", "[data-import-changes]");
+
+  // ── R7 · the book moves under the ADMIN's check: GROWTH imports the one number the ADMIN's file holds as new ──
+  await openContacts(page);
+  await openImport(page);
+  await importBuffer(page, "one-more.csv", R7_CSV);
+  await page.locator(block("import-apply")).first().click();
+  await page.waitForSelector(block("import-done"), { timeout: 120_000 });
+  ok("duplicates · R7 · the book moved: GROWTH added the number the ADMIN's file holds as new", (await tilesIn(page, block("import-done"))).create === 1);
+  await closeDialog(page);
+  await ctx.close();
+
+  // ── the ADMIN presses Import: refused (the book changed), checked again — and nothing the ADMIN chose is lost ──
+  const NOTE = `${block("import-decision")} [data-import-alert]:has-text("changed since this file was checked")`;
   await adm.page.locator(block("import-apply")).first().click();
-  if ((await adm.page.waitForSelector(CONFIRM, { timeout: 1_500 }).catch(() => null)) !== null) await confirmTop(adm.page);
+  await adm.page.waitForSelector(NOTE, { timeout: 120_000 }).catch(() => null);
+  await adm.page.waitForSelector('[data-import-change-row][data-apart="yes"]', { timeout: 60_000 }).catch(() => null);
+  await wait(500);
+  const note = await textOf(adm.page, NOTE);
+  const againCounts = await applyCounts(adm.page);
+  const takeStill = await adm.page.locator('[data-import-choice="TAKE_FILE"] input[type="radio"]').first().isChecked().catch(() => false);
+  const apartStill = await adm.page.locator('[data-import-change-row][data-apart="yes"]').first().getAttribute("data-import-change-row").catch(() => null);
+  const listStill = await adm.page.locator('[data-import-list-option="new"] input[type="radio"]').first().isChecked().catch(() => false);
+  const nameStill = await adm.page.locator('[data-field="listName"] input').first().inputValue().catch(() => "");
+  ok("duplicates · R7 · the start was refused because the book changed, and said so", /changed since this file was checked/.test(note), note);
+  ok("duplicates · R7 · checked again WITHOUT losing the decision: the choice, the row set apart, the new list and its name",
+    takeStill && apartStill === apartLine && listStill && nameStill === LIST_NAME,
+    `choice ${takeStill} · apart ${apartStill} (was ${apartLine}) · list ${listStill} · name "${nameStill}"`);
+  ok("duplicates · R7 · the new promise moved by exactly the one number the book gained", againCounts.create === apartCounts.create - 1 && againCounts.update === apartCounts.update,
+    `${JSON.stringify(apartCounts)} → ${JSON.stringify(againCounts)}`);
+  await shoot(adm.page, dir, "5-rechecked", NOTE, "Check before importing", NOTE);
+  await adm.page.locator(block("import-apply")).first().click();
+  if ((await adm.page.waitForSelector(CONFIRM, { timeout: 3_000 }).catch(() => null)) !== null) {
+    ok("duplicates · replacing details asks once more, naming how many", /replace/i.test(await textOf(adm.page, CONFIRM)));
+    await adm.page.screenshot({ path: join(dir, "6-overwrite-confirm.png") });
+    await confirmTop(adm.page);
+  }
   await adm.page.waitForSelector(block("import-done"), { timeout: 120_000 });
   await wait(500);
   const adminResult = await tilesIn(adm.page, block("import-done"));
   const split = await textOf(adm.page, "[data-import-kept-split]");
+  const listSaid = await textOf(adm.page, "[data-import-list-result]");
+  ok("duplicates · ADMIN: the result's updates are the promise's (one row set apart)", adminResult.update === againCounts.update && adminResult.create === againCounts.create,
+    `${JSON.stringify(adminResult)} vs ${JSON.stringify(againCounts)}`);
   ok("duplicates · ADMIN reads the kept rows split by reason (S15-3)", adminResult.keep === 0 || /Kept:/.test(split), split);
-  await shoot(adm.page, dir, "5-done-admin", block("import-done"), "Import finished");
-  summary.flows.push({ flow: "duplicates-admin", result: adminResult, keptSplit: split });
+  ok("duplicates · ADMIN: the contacts went on the new list, and the result says its basis is owed", listSaid.includes(LIST_NAME), listSaid.slice(0, 200));
+  await shoot(adm.page, dir, "7-done-admin", block("import-done"), "Import finished");
+  summary.flows.push({ flow: "duplicates-admin", keep: keepCounts, takeFile: takeCounts, setApart: apartCounts, afterRecheck: againCounts, result: adminResult, keptSplit: split });
   await closeDialog(adm.page);
   await adm.ctx.close();
 }
@@ -524,7 +618,8 @@ for (const end of ["resume", "cancel"]) {
     await page.locator(`${block("import-commit")} [data-import-act="cancel-rest"]`).first().click();
     await page.waitForSelector(CONFIRM, { timeout: 10_000 });
     const ask = await textOf(page, CONFIRM);
-    ok("stop-cancel · the confirmation names both numbers", (ask.match(/\d[\d,]*/g) ?? []).length >= 2, ask.slice(0, 200));
+    ok("stop-cancel · the confirmation names both numbers — the contacts written, and the rows not reached yet (R5)",
+      (ask.match(/\d[\d,]*/g) ?? []).length >= 2 && /written to the book/.test(ask) && /not reached yet/.test(ask), ask.slice(0, 200));
     await page.screenshot({ path: join(dir, "2-cancel-confirm.png") });
     await confirmTop(page);
     await page.waitForSelector(block("import-done"), { timeout: 60_000 });
@@ -532,12 +627,80 @@ for (const end of ["resume", "cancel"]) {
     const status = await page.locator(block("import-done")).first().getAttribute("data-run-status");
     const said = await textOf(page, block("import-done"));
     ok("stop-cancel · the result is the cancelled run, saying what stayed", status === "CANCELLED" && /cancelled/i.test(said) && /stay/.test(said), said.slice(0, 200));
+    // ⭐ R5 · written = added + updated (never the cursor); the rows never reached = the cancel's own count; no tile for the
+    // unsettled rows (a cancel deletes them, so it always read 0); and the sum counts every row of the FILE once.
+    const cancelTiles = await tilesIn(page, block("import-done"));
+    const notImported = Number(await page.locator(block("import-done")).first().getAttribute("data-not-imported"));
+    const sumAttr = await page.locator("[data-import-sum]").first().getAttribute("data-import-sum").catch(() => null);
+    const sumText = await textOf(page, "[data-import-sum]");
+    const writtenSaid = /The import was cancelled[.] ([\d,]+) contacts? (?:was|were) written/.exec(said)?.[1]?.replace(/,/g, "") ?? null;
+    ok("stop-cancel · R5 · four tiles — no tile for the rows a cancel deletes", Object.keys(cancelTiles).sort().join(",") === "create,fail,keep,update", JSON.stringify(cancelTiles));
+    ok(`stop-cancel · R5 · "written" is the contacts added plus updated`, writtenSaid === String(cancelTiles.create + cancelTiles.update), `${writtenSaid} vs ${JSON.stringify(cancelTiles)}`);
+    ok("stop-cancel · R5 · the rows not imported are the ones the pause left, and the sum counts every row of the file once",
+      notImported > 0 && notImported === paused.total - paused.done && sumAttr === "3000" && /not imported/.test(sumText)
+        && cancelTiles.create + cancelTiles.update + cancelTiles.keep + cancelTiles.fail + notImported === 3_000,
+      `${notImported} not imported (paused at ${paused.done} of ${paused.total}) · ${JSON.stringify(cancelTiles)} · "${sumText}"`);
     ok("stop-cancel · no horizontal page overflow at 360", (await overflowOf(page)) === 0);
+    ok("stop-cancel · nothing sticks out of the dialog sideways on the result at 360", (await dialogOverflow(page)) === 0, `${await dialogOverflow(page)}px`);
     await shoot(page, dir, "3-cancelled", block("import-done"), "Import cancelled");
     summary.flows.push({ flow: "stop-cancel", paused, result: await tilesIn(page, block("import-done")) });
   }
   await closeDialog(page);
   await ctx.close();
+}
+
+/* ═══ 4 · S15-12 (R2b) · AN ADMIN CARRIES ON ANOTHER OFFICER'S UNFINISHED IMPORT ═════════════════════════════ */
+
+{
+  console.log(LF + "── an admin resumes another officer's paused import");
+  const dir = join(OUT, "admin-adopt");
+  mkdirSync(dir, { recursive: true });
+  // GROWTH starts the big file and stops it after a step: the run is PAUSED on the server, and the window is closed.
+  const g = await staffCtx("GROWTH", "+255700003108", { width: 1280, height: 800 });
+  await openContacts(g.page);
+  await openImport(g.page);
+  await importBuffer(g.page, "drive-big-adopt.csv", BIG_CSV);
+  const hold = await holdStep(g.page, 2);
+  await g.page.locator(block("import-apply")).first().click();
+  await hold.held;
+  await g.page.locator(`${block("import-commit")} [data-import-act="stop"]`).first().click();
+  await wait(200);
+  hold.release();
+  await hold.stop();
+  await g.page.waitForSelector(`${block("import-commit")}[data-state="paused"]`, { timeout: 60_000 });
+  const paused = await commitState(g.page);
+  await closeDialog(g.page);
+
+  // An ADMIN opens the importer: the entrance lists that run — who started it, when, how far — with Resume.
+  const a = await staffCtx("ADMIN", "+255700003109", { width: 1280, height: 800 });
+  await openContacts(a.page);
+  await openImport(a.page);
+  const OTHER = "[data-import-others] [data-import-other-run]";
+  await a.page.waitForSelector(OTHER, { timeout: 30_000 }).catch(() => null);
+  const item = a.page.locator(OTHER).first();
+  const itemText = (await count(a.page, OTHER)) > 0 ? ((await item.innerText()) || "").replace(/\s+/g, " ").trim() : "";
+  ok("admin-adopt · the entrance lists another officer's unfinished import: who started it, and how far it got (S15-12)",
+    /Started by (?!you)/.test(itemText) && /rows done/.test(itemText) && (await item.getAttribute("data-run-status").catch(() => null)) === "PAUSED",
+    itemText.slice(0, 200));
+  await shoot(a.page, dir, "1-others", "[data-import-others]", "Import contacts", "[data-import-others]");
+  await item.locator('[data-import-act="other-resume"]').click();
+  await a.page.waitForSelector(block("import-done"), { timeout: 300_000 });
+  await wait(500);
+  const result = await tilesIn(a.page, block("import-done"));
+  ok("admin-adopt · resumed by the admin from the server's cursor to the end: every row of the file counted once",
+    result.create + result.update + result.keep + result.fail === 3_000, JSON.stringify(result));
+  await shoot(a.page, dir, "2-done", block("import-done"), "Import finished");
+  summary.flows.push({ flow: "admin-adopt", paused, result });
+  await closeDialog(a.page);
+  await a.ctx.close();
+
+  // ⭐ …and the list is the ADMIN's alone: a GROWTH officer's entrance shows none of it.
+  await openContacts(g.page);
+  await openImport(g.page);
+  await wait(1_500);
+  ok("admin-adopt · a GROWTH officer's entrance shows no other officers' imports", (await count(g.page, "[data-import-others]")) === 0);
+  await closeDialog(g.page);
+  await g.ctx.close();
 }
 
 /* ═══ THE SUMMARY ═══════════════════════════════════════════════════════════════════════════════════════════ */

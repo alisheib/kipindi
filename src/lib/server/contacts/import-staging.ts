@@ -17,8 +17,9 @@
  * ⛔ NO STORED COUNTER (OD26): every total is counted from the rows (`db.contactImport.totals`).
  * ⭐ OWNERSHIP (X18): a run is its creator's, and an ADMIN — read off the STORED role — may adopt any run; the view
  * carries `createdBy` so the screen can name who started it. Anyone else is refused `not_yours` and is shown nothing.
- * ⭐ THE SWEEP (X29): a STAGING or STAGED run idle 14 days is cancelled and its unsettled rows deleted — ⛔ NEVER a PAUSED
- * commit, and never a COMMITTING one — and a finished run goes 90 days after `finishedAt`, its rows with it.
+ * ⭐ THE SWEEP: a STAGING or STAGED run idle 14 days is cancelled and its unsettled rows deleted (X29); since S15-12 (the
+ * review round, 2026-10-09) a COMMITTING or PAUSED run idle 14 days is ended the same way by a SECOND rule — the contacts
+ * it already wrote stay in the book; and a finished run goes 90 days after `finishedAt`, its rows with it.
  * `runRetentionPass` calls it nightly (docs/DATA-RETENTION.md, "Contact import staging").
  * ⛔ AUDIT under `contacts.import.*` (X23), every refusal as `contacts.import.stage_refused` — ids, counts and reasons:
  * never a phone number, a name, a cell or the file's name.
@@ -47,8 +48,14 @@ import { IMPORT_MAX_ROWS, STAGE_BATCH_MAX_BYTES, STAGE_BATCH_MAX_ROWS, stageBatc
 export const CONTACT_IMPORT_IDLE_DAYS = 14;
 /** A finished run (DONE or CANCELLED) is deleted this long after `finishedAt`, its rows with it. */
 export const CONTACT_IMPORT_KEEP_DAYS = 90;
-/** ⛔ X29 · the ONLY statuses the idle sweep may cancel — never PAUSED, never COMMITTING. */
+/** ⛔ X29 · the statuses the FIRST rule of the idle sweep cancels — a run never started (never PAUSED, never COMMITTING). */
 export const SWEEPABLE_IMPORT_STATUSES: readonly ContactImportStatus[] = ["STAGING", "STAGED"];
+/** S15-12 (the review round, 2026-10-09) · a STARTED commit — COMMITTING or PAUSED — untouched this long is ended by the
+ *  sweep's SECOND rule: CANCELLED, its unsettled staged rows deleted, the contacts it already wrote kept. Its own constant:
+ *  X29's period is for a file never imported; this one for an import nobody carried on. */
+export const CONTACT_IMPORT_STUCK_DAYS = 14;
+/** S15-12 · the statuses the sweep's second rule ends — a commit started and left. */
+export const STUCK_IMPORT_STATUSES: readonly ContactImportStatus[] = ["COMMITTING", "PAUSED"];
 
 /** A run id as this module mints them: `ci_` and twenty letters. Anything else is not a run, without asking the store. */
 const IMPORT_ID = /^ci_[a-z]{20}$/;
@@ -240,8 +247,11 @@ export type ImportStagingDeps = {
   measureBatch: (rows: readonly unknown[], cap: number) => number;
   maxBatchRows: number;
   maxBatchBytes: number;
-  /** ⛔ X29 · what the idle sweep may cancel. */
+  /** ⛔ X29 · what the idle sweep's first rule may cancel. */
   sweepable: readonly ContactImportStatus[];
+  /** S15-12 · what the sweep's second rule ends, and after how many idle days. */
+  stuck: readonly ContactImportStatus[];
+  stuckDays: number;
   /** An ADMIN may adopt any run (X18) — read off the STORED role, never a posted one. */
   isAdmin: (userId: string) => Promise<boolean>;
   audit: typeof audit;
@@ -257,6 +267,8 @@ export const IMPORT_STAGING_DEPS: ImportStagingDeps = {
   maxBatchRows: STAGE_BATCH_MAX_ROWS,
   maxBatchBytes: STAGE_BATCH_MAX_BYTES,
   sweepable: SWEEPABLE_IMPORT_STATUSES,
+  stuck: STUCK_IMPORT_STATUSES,
+  stuckDays: CONTACT_IMPORT_STUCK_DAYS,
   isAdmin: async (userId) => (await db.user.findById(userId))?.role === "ADMIN",
   audit,
   now: () => new Date(),
@@ -632,36 +644,46 @@ export async function discardContactImport(
   return { ok: true, rowsDeleted };
 }
 
-/* ═══ THE SWEEP (X29) — called nightly by runRetentionPass ═════════════════════════════════════════════ */
+/* ═══ THE SWEEP (X29 · S15-12) — called nightly by runRetentionPass ═══════════════════════════════════════ */
 
 /**
- * ⛔ ONLY STAGING AND STAGED RUNS IDLE `CONTACT_IMPORT_IDLE_DAYS` ARE CANCELLED — never a PAUSED commit, never a
- * COMMITTING one (X29) — each by a compare-and-set that also requires it to be idle STILL, its unsettled rows deleted,
- * one `contacts.import.expired` audit row each. Then every run finished more than `CONTACT_IMPORT_KEEP_DAYS` ago goes,
- * its rows with it. Bounded per pass; idempotent; a second pass finds nothing.
+ * ⛔ TWO RULES, EACH ITS OWN STATUSES AND PERIOD, EACH A COMPARE-AND-SET THAT ALSO REQUIRES THE RUN TO BE IDLE STILL:
+ *   1 · X29 — a STAGING or STAGED run (never started) idle `CONTACT_IMPORT_IDLE_DAYS` is CANCELLED;
+ *   2 · S15-12 (the review round) — a COMMITTING or PAUSED run (started, and nobody carried it on) idle
+ *       `CONTACT_IMPORT_STUCK_DAYS` is CANCELLED: the contacts it already wrote STAY in the book, only its unsettled
+ *       staged rows go — so no officer's file waits in staging for ever behind an import nobody finished.
+ * Either way the unsettled rows are deleted and ONE `contacts.import.expired` audit row is written (the status, the rows
+ * deleted, the period — counts only). Then every run finished more than `CONTACT_IMPORT_KEEP_DAYS` ago goes, its rows with
+ * it. Bounded per pass; idempotent; a second pass finds nothing.
  */
 export async function sweepStaleContactImports(
   now: number = Date.now(), deps: ImportStagingDeps = IMPORT_STAGING_DEPS,
 ): Promise<ContactImportSweep> {
   const at = new Date(now).toISOString();
-  const idleBefore = new Date(now - CONTACT_IMPORT_IDLE_DAYS * DAY_MS).toISOString();
   const finishedBefore = new Date(now - CONTACT_IMPORT_KEEP_DAYS * DAY_MS).toISOString();
-  const statuses = [...deps.sweepable];
   const out: ContactImportSweep = { cancelled: 0, rowsDeleted: 0, runsPurged: 0 };
-  for (let batch = 0; batch < SWEEP_MAX_BATCHES; batch++) {
-    const idle = await db.contactImport.listIdle({ statuses, idleBefore, limit: SWEEP_BATCH });
-    for (const run of idle) {
-      const moved = await db.contactImport.transition({ importId: run.id, from: statuses, to: "CANCELLED", by: null, at, updatedBefore: idleBefore });
-      if (!moved) continue;
-      const rowsDeleted = await db.contactImportRow.deleteUnsettled(run.id);
-      out.cancelled++;
-      out.rowsDeleted += rowsDeleted;
-      await deps.audit({
-        category: "SYSTEM", action: "contacts.import.expired", actorId: null, targetType: "ContactImport", targetId: run.id,
-        payload: { status: run.status, rowsDeleted, idleDays: CONTACT_IMPORT_IDLE_DAYS },
-      });
+  const rules: ReadonlyArray<{ statuses: ContactImportStatus[]; idleDays: number }> = [
+    { statuses: [...deps.sweepable], idleDays: CONTACT_IMPORT_IDLE_DAYS },
+    { statuses: [...deps.stuck], idleDays: deps.stuckDays },
+  ];
+  for (const rule of rules) {
+    if (rule.statuses.length === 0) continue;
+    const idleBefore = new Date(now - rule.idleDays * DAY_MS).toISOString();
+    for (let batch = 0; batch < SWEEP_MAX_BATCHES; batch++) {
+      const idle = await db.contactImport.listIdle({ statuses: rule.statuses, idleBefore, limit: SWEEP_BATCH });
+      for (const run of idle) {
+        const moved = await db.contactImport.transition({ importId: run.id, from: rule.statuses, to: "CANCELLED", by: null, at, updatedBefore: idleBefore });
+        if (!moved) continue;
+        const rowsDeleted = await db.contactImportRow.deleteUnsettled(run.id);
+        out.cancelled++;
+        out.rowsDeleted += rowsDeleted;
+        await deps.audit({
+          category: "SYSTEM", action: "contacts.import.expired", actorId: null, targetType: "ContactImport", targetId: run.id,
+          payload: { status: run.status, rowsDeleted, idleDays: rule.idleDays },
+        });
+      }
+      if (idle.length < SWEEP_BATCH) break;
     }
-    if (idle.length < SWEEP_BATCH) break;
   }
   for (let batch = 0; batch < SWEEP_MAX_BATCHES; batch++) {
     const purged = await db.contactImport.purgeFinished({ finishedBefore, limit: SWEEP_BATCH });
