@@ -1,7 +1,7 @@
 # CONTACTS SCREEN — the importer and the screen's hardening (lane S15)
 
-**STATUS — 🟢 OPEN · 2026-10-09 · Ali-Blade15 · branch `contacts-import`, pushed `HEAD:main` step by step.**
-⛔ A file import is NOT live yet: the readers and the staging table exist, but no screen reaches them (§2).
+**STATUS — 🟢 OPEN · 2026-10-09 · Ali-Blade15 · each step its own branch, merged and pushed to main step by step.**
+✅ Importing a file IS LIVE on /admin/contacts since `df835bb5` (2026-10-09 04:17 EAT) — §0 says what is live and what is next.
 
 > This file is the plan AND the progress record of the contacts-screen lane. Read §0 first. The rest of the
 > marketing programme (the campaigns) is tracked in [`MARKETING-CAMPAIGN-AND-CONTACTS-SETUP.md`](MARKETING-CAMPAIGN-AND-CONTACTS-SETUP.md).
@@ -82,7 +82,10 @@ then: "the contacts screen"):
 | C6 | Stress: large files at the limits, through the REAL dialog on a local server (`npm run qa:contacts-import-big`, after `qa:contacts-import-files -- --big`): a 150,000-row CSV — check exactly the generator's truth (137,806 new · 9,200 repeated · 2,994 invalid), imported whole (read 0.2 s · upload + check 5.1 s · import 29.9 s); 150,000 vCards imported whole (138,071 added; read 0.9 s · 5.6 s · 31.4 s); a 42 MB vCard with photos read in 0.4 s (streamed; photos never uploaded) and checked; one row past 200,000 REFUSED with the cap named; a 1.4 MB workbook REFUSED with the save-as-CSV remedy. Two runs at once and a crash mid-commit: proven on PostgreSQL by `test:contacts-import-db` (5c, 5d–5i) and in `qa:contacts-import` (reload → adopt → resume) | ✅ `9121d857` (local) |
 | C7 | U34b — an export read back through the importer, row for row (`npm run qa:contacts-import-roundtrip`): a reader's FULL export of 49 contacts (the hard cases among them — a comma and doubled quotes in a name, formula-looking names, a line break in a note) imported back: all 49 "already in the book", nothing new, repeated, invalid or unreadable; under "use the file's version" NOTHING differs (no changes listed; 0 new · 0 updated · 49 kept); the result 0 added · 0 updated · 49 kept · 0 failed. A MASKED export (GROWTH) is refused whole in words ("These numbers are masked…"), no way on | ✅ (local, this commit) |
 
-## §2 — WHAT EXISTS TODAY (read from the code, 2026-10-09)
+## §2 — WHAT EXISTED WHEN THE LANE BEGAN (read from the code, 2026-10-09 ~00:30 EAT)
+
+⚠️ The STARTING POINT, kept as the record — not today's state: the importer is live since `df835bb5`, and the "not live
+yet" empty state is gone. Today's state is §0 and §1.
 
 - **Live on /admin/contacts:** the list, the filters, Add contact and edit, bulk actions, the Lists card, Export CSV.
   The page's own empty state says "importing a file is not live yet".
@@ -183,9 +186,13 @@ And from 2026-09-25: "it's 150k approx contacts, or VCF … it could be small an
 - Browser: `src/app/admin/contacts/import/contacts-import-dialog.tsx` and its step panels, `src/lib/contacts/import-read.ts`
   (file → rows, streamed; paste → rows), `src/lib/contacts/import-loop.ts` (the ONE driver for the upload and the
   commit), the button in the page head.
-- Proof: `scripts/contacts-import/real-world-files.mts` (the files — Ali has none), the suites' new sections, the browser
-  drive over every generated file at 360 and 1280, the stress run (150,000 rows; a 40 MB vCard), and the live check on
-  production with a 40-contact file that is deleted afterwards.
+- Proof: `scripts/lib/real-world-contact-files.mts` (`npm run qa:contacts-import-files [-- --big]`: the files — Ali has
+  none), the suites' new sections, the browser drive over every generated file at 360 and 1280 (`qa:contacts-import`),
+  the stress run (`qa:contacts-import-big`: 150,000 rows; a 42 MB vCard), the export round trip
+  (`qa:contacts-import-roundtrip`), and the live check on production with a 40-contact file that is deleted afterwards
+  (`qa:contacts-import-live`).
+  ⚠️ `test:docs` checks only `scripts/<file>` paths with no folder in them — a `scripts/<folder>/<file>` path in a doc is
+  never checked (this line named a file that never existed until 2026-10-09). Read such a path before you trust it.
 
 ## §3 — LOG (newest first)
 
