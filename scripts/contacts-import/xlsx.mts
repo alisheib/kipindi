@@ -78,6 +78,7 @@ import {
   XLSX_MAX_BASE64_CHARS,
   XLSX_MAX_BYTES,
   XLSX_MAX_INFLATED_BYTES,
+  XLSX_MAX_MERGES,
   XLSX_MAX_ROWS,
   XLSX_REFUSALS,
   excelShortenedSentence,
@@ -106,8 +107,9 @@ const LIMITS_PATH = "src/lib/contacts/xlsx-limits.ts";
 const FILE_NAME = "kitabu-255712345678.xlsx";
 const ACTOR_A = "usr_u27b_officer_a";
 const ACTOR_B = "usr_u27b_officer_b";
-/** Excel's last column, XFD. */
+/** Excel's last column, XFD, and its last row — the grid a merge ref cannot exceed. */
 const LAST_COLUMN = 16384;
+const EXCEL_LAST_ROW = 1048576;
 /** The 40-row fixture: a header and forty contacts. */
 const FORTY_ROWS = 41;
 
@@ -492,6 +494,14 @@ type Fixtures = {
   readonly trailing: string;
   readonly sizeMismatch: string;
   readonly broken: string;
+  /** C3c-merge-guard · the integrator's own example: a few-KB workbook with one vast `<mergeCell ref="A1:XFD1048576"/>`. */
+  readonly mergeBomb: string;
+  /** A single merge of exactly XLSX_MAX_CELL_ELEMENTS covered cells (inspected — the pre-pass passes), and one cell more (read — refused). */
+  readonly mergeAreaAt: Buffer;
+  readonly mergeAreaOver: string;
+  /** Exactly XLSX_MAX_MERGES tiny disjoint merges (inspected — the pre-pass passes), and one more (read — refused). */
+  readonly mergeCountAt: Buffer;
+  readonly mergeCountOver: string;
 };
 
 async function buildFixtures(): Promise<Fixtures> {
@@ -661,6 +671,13 @@ async function buildFixtures(): Promise<Fixtures> {
   const rowsBody = Array.from({ length: XLSX_MAX_ROWS }, (_, i) => `<row r="${i + 1}"/>`).join("");
   /** Styled empty cells with no address — exceljs makes a Cell object for each; deflate shrinks them a thousandfold. */
   const styledCells = (n: number): string => sheetXml(`<row r="1">${'<c s="1"/>'.repeat(n)}</row>`);
+  /** C3c-merge-guard · a worksheet carrying `<mergeCells>` (after `<sheetData>`, where Excel writes it), no data of its own. */
+  const mergeSheet = (refs: readonly string[]): string =>
+    `${XML_HEAD}<worksheet xmlns="${TRANSITIONAL}"><sheetData/><mergeCells count="${refs.length}">`
+    + `${refs.map((ref) => `<mergeCell ref="${ref}"/>`).join("")}</mergeCells></worksheet>`;
+  const mergeBook = (refs: readonly string[]): Buffer => zipOf(workbookParts(partOf("xl/worksheets/sheet1.xml", mergeSheet(refs))));
+  // Tiny disjoint merges (two cells each, three rows apart) — only their COUNT bites, never their area.
+  const tinyMerges = (n: number): string[] => Array.from({ length: n }, (_, i) => `A${3 * i + 1}:A${3 * i + 2}`);
 
   return {
     cells: base64Of(cells),
@@ -704,6 +721,11 @@ async function buildFixtures(): Promise<Fixtures> {
     trailing: base64Of(zipOf(workbookParts(okSheet), { trailing: 3 })),
     sizeMismatch: base64Of(zipOf(workbookParts({ ...okSheet, size: okSheet.size + 5 }))),
     broken: base64Of(zipOf(workbookParts(partOf("xl/worksheets/sheet1.xml", BROKEN_SHEET)))),
+    mergeBomb: base64Of(mergeBook([`A1:XFD${EXCEL_LAST_ROW}`])),
+    mergeAreaAt: mergeBook([`A1:A${XLSX_MAX_CELL_ELEMENTS}`]),
+    mergeAreaOver: base64Of(mergeBook([`A1:A${XLSX_MAX_CELL_ELEMENTS + 1}`])),
+    mergeCountAt: mergeBook(tinyMerges(XLSX_MAX_MERGES)),
+    mergeCountOver: base64Of(mergeBook(tinyMerges(XLSX_MAX_MERGES + 1))),
   };
 }
 
@@ -828,6 +850,7 @@ export const L = {
   X29: "X29 · ⛔ ONE AUDIT ROW PER ASK, COUNTS ONLY — every officer call, busy included, writes exactly one ContactImport row (xlsx_read or xlsx_refused) whose payload is counts and fixed words: no file name, no sheet name, no cell",
   X30: "X30 · ⛔ §5.14 — no note and no refusal holds a run of 7+ digits or any cell's text, though the fixtures are full of phone numbers",
   X31: "X31 · ⛔ A1.6 — every refusal that sends the officer to CSV carries PHONE_FORMAT_REMEDY (too_large, too_big_inflated, unreadable and wrong_format all observed) — and (C3b) too_many_rows sends no one to CSV, whose import takes no more rows: it says to split the list",
+  X35: "X35 · ⛔ C3c-merge-guard · THE MERGE PRE-PASS — a few-KB workbook with one vast merge (A1:XFD1048576) is too_big_inflated (merge_area) and a flood of merge elements too_big_inflated (merges), each before exceljs loads a byte; a merge covering exactly XLSX_MAX_CELL_ELEMENTS cells and exactly XLSX_MAX_MERGES merge elements pass the pre-pass (and one more of each is refused); and an ordinary merge (the cell fixture's B12:C12) is counted — one merge, two cells — and read exactly as before",
 } as const;
 
 /* ══ THE ASSERTIONS ═════════════════════════════════════════════════════════════════════════════ */
@@ -1208,6 +1231,31 @@ async function run(ctx: SectionContext<XlsxImpl>): Promise<void> {
       rowRefusals.length >= 2 ? "" : `${rowRefusals.length} too_many_rows refusal(s) observed`,
     ].filter((x) => x !== "").slice(0, 3).join(" | ")
       || `${csvRefusals.length} refusal(s) sending the officer to CSV, every one with the remedy (${[...observed].join(", ")}) · ${rowRefusals.length} too_many_rows, none sent to CSV`);
+
+  // ── X35 · C3c-merge-guard · THE MERGE PRE-PASS ──────────────────────────────────────────────
+  const x35: string[] = [];
+  // A few-KB workbook whose merge (vast, or a flood of them) would exhaust the load — refused by the pre-pass, unloaded.
+  x35.push(...(await refusedCases([
+    ["one vast merge A1:XFD1048576", fx.mergeBomb, "too_big_inflated", "merge_area", undefined],
+    ["a merge of XLSX_MAX_CELL_ELEMENTS + 1 covered cells", fx.mergeAreaOver, "too_big_inflated", "merge_area", undefined],
+    ["XLSX_MAX_MERGES + 1 merge elements", fx.mergeCountOver, "too_big_inflated", "merges", undefined],
+  ], 0)));
+  // The boundary: exactly the caps pass the pre-pass (never exceljs — the bomb would hang it), one over is refused above.
+  const areaAt = impl.inspect(fx.mergeAreaAt);
+  if (!areaAt.ok || areaAt.mergeCount !== 1 || areaAt.mergedCells !== XLSX_MAX_CELL_ELEMENTS) {
+    x35.push(`exactly XLSX_MAX_CELL_ELEMENTS covered → ${areaAt.ok ? `${areaAt.mergedCells} cells, ${areaAt.mergeCount} merge(s)` : areaAt.detail}`);
+  }
+  const countAt = impl.inspect(fx.mergeCountAt);
+  if (!countAt.ok || countAt.mergeCount !== XLSX_MAX_MERGES) {
+    x35.push(`exactly XLSX_MAX_MERGES → ${countAt.ok ? `${countAt.mergeCount} counted` : countAt.detail}`);
+  }
+  // An ordinary merge (the cell fixture's B12:C12): counted — one merge, two cells — passes, and X20 reads it as before.
+  const ordinary = impl.inspect(Buffer.from(fx.cells, "base64"));
+  if (!ordinary.ok || ordinary.mergeCount !== 1 || ordinary.mergedCells !== 2) {
+    x35.push(`the cell fixture's B12:C12 → ${ordinary.ok ? `${ordinary.mergeCount} merge(s), ${ordinary.mergedCells} cell(s)` : ordinary.detail}`);
+  }
+  ok(L.X35, x35.length === 0, x35.slice(0, 4).join(" | ")
+    || `A1:XFD1048576 and a merge flood refused unloaded · ${XLSX_MAX_CELL_ELEMENTS} covered cells and ${XLSX_MAX_MERGES} merges pass the pre-pass · B12:C12 counted (1 merge, 2 cells)`);
 }
 
 /* ══ THE RED PLANTS — each a defect somebody could plausibly write, built in memory ═════════════════ */
@@ -1242,7 +1290,7 @@ const withInspection = (waved: readonly string[]): XlsxImpl => {
       const r = inspectXlsxZip(bytes, measure);
       if (r.ok || !waved.includes(r.detail)) return r;
       through.add(bytes);
-      return { ok: true, entries: r.entries, inflatedBytes: r.inflatedBytes, rowElements: 0, cellElements: 0 };
+      return { ok: true, entries: r.entries, inflatedBytes: r.inflatedBytes, rowElements: 0, cellElements: 0, mergeCount: 0, mergedCells: 0 };
     },
     load: (bytes) => (through.has(bytes) ? stubbedLoad() : XLSX_READER_RULES.load(bytes)),
   });
@@ -1381,6 +1429,16 @@ const PLANTS: readonly RedPlant<XlsxImpl>[] = [
     name: "zip parity dropped — an unknown method, a duplicate, a renamed local header, an unresolved name, a folder with data, trailing bytes and a size mismatch handed to exceljs",
     expect: L.X11,
     impl: () => withInspection(["method", "duplicate", "name_mismatch", "name", "folder", "layout", "size_mismatch"]),
+  },
+  {
+    name: "C3c-merge-guard · the merge area never counted — a vast merge rectangle handed to exceljs to allocate a Cell for every covered cell",
+    expect: L.X35,
+    impl: () => withInspection(["merge_area"]),
+  },
+  {
+    name: "C3c-merge-guard · the merge count cap lifted — a flood of merge elements handed to exceljs to reconcile O(merges²)",
+    expect: L.X35,
+    impl: () => withInspection(["merges"]),
   },
   {
     name: "the unreadable refusal surfaces exceljs's own message",

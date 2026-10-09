@@ -112,6 +112,21 @@ export const XLSX_MAX_GRID_CELLS = XLSX_MAX_ROWS * 20;
 /** The most zip entries a workbook may carry; a real contact sheet has a few dozen. */
 export const XLSX_MAX_ENTRIES = 1000;
 
+/**
+ * ⚠️ The most `<mergeCell>` ranges a workbook may carry, across every sheet. A merge is NOT free: exceljs materialises a
+ * Cell object for EVERY cell a merge rectangle covers (`getCell` over the whole rectangle, `doc/worksheet.js`
+ * `_mergeCellsInternal`), and reconciles each new merge against every merge already read — O(merges²). So a few-KB
+ * workbook carrying one vast `<mergeCell ref="A1:XFD1048576"/>`, or a flood of tiny merge elements, can exhaust the live
+ * money server (the server reader) or freeze the officer's tab (the browser reader) before a single contact row is read.
+ * ⭐ TWO GUARDS, SHARED BY BOTH READERS. The SUMMED AREA of every merge rectangle is charged against `XLSX_MAX_CELL_ELEMENTS`
+ * (the covered cells exceljs would allocate, a malformed/reversed/unbounded ref charged its worst possible area), and the
+ * COUNT of merges against this cap. 10,000 is far beyond the handful of merged banners a real contact workbook carries,
+ * and small enough that O(merges²) reconciliation (and this reader's own merge handling) stays trivial. Past either, a
+ * workbook is `too_big_inflated` — refused by the server's pre-pass before exceljs loads it, by the browser's reader as
+ * it parses the sheet, never read on. (C3c-merge-guard, 2026-10-09.)
+ */
+export const XLSX_MAX_MERGES = 10_000;
+
 // ── THE SNIFFER ──────────────────────────────────────────────────────────────────────────────────────────────
 
 /** What a file's first bytes say its container is. Content beats the file name. */
