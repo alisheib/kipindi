@@ -3490,7 +3490,9 @@ const HOUSE_TS_KEYS = new Set(["dueAt", "staleAt", "deadlineAt", "claimedUntil",
   const membersOf27 = (block: string): string[] => Array.from(block.matchAll(/^ {4}([A-Za-z0-9_]+) *:/gm)).map((m) => m[1]).sort();
   const priNs = region(dalSrc, `${NL27}  contactListBasis: {`);
   const memNs = region(storeSrc, `${NL27}  contactListBasis: {`);
-  const NAMES27 = ["create", "revoke", "listForList", "standingFor", "standingAmong", "coveredCount"] as const;
+  // ⭐ C8b (B5, 2026-10-09) · `coverageSplit` joins the namespace — a READ (the list's coverage split by the account link, what
+  // each viewer is shown); §31 holds its pair. Still no update and no delete member.
+  const NAMES27 = ["create", "revoke", "listForList", "standingFor", "standingAmong", "coveredCount", "coverageSplit"] as const;
   type Member27 = (typeof NAMES27)[number];
   const pri27 = Object.fromEntries(NAMES27.map((n) => [n, memberOf27(priNs, n)])) as Record<Member27, string>;
   const mem27 = Object.fromEntries(NAMES27.map((n) => [n, memberOf27(memNs, n)])) as Record<Member27, string>;
@@ -3554,7 +3556,7 @@ const HOUSE_TS_KEYS = new Set(["dueAt", "staleAt", "deadlineAt", "claimedUntil",
   // ── 27.3 · ⛔ NO UPDATE MEMBER AND NO DELETE MEMBER, IN EITHER TWIN ──
   const MEMBERS27 = [...NAMES27].sort();
   const forbidden27 = (block: string): string[] => membersOf27(block).filter((m) => /^(update|delete|upsert|remove|set|clear)/i.test(m));
-  ok("27.3 · ⛔ APPEND-ONLY, ASSERTED AS AN ABSENCE (as §17) — both twins expose EXACTLY create, revoke, listForList, standingFor, standingAmong and coveredCount: no update member and no delete member, and neither namespace deletes, clears or upserts a row",
+  ok("27.3 · ⛔ APPEND-ONLY, ASSERTED AS AN ABSENCE (as §17) — both twins expose EXACTLY create, revoke, listForList, standingFor, standingAmong, coveredCount and (C8b) coverageSplit: no update member and no delete member, and neither namespace deletes, clears or upserts a row",
     sameSet(membersOf27(priNs), MEMBERS27) && sameSet(membersOf27(memNs), MEMBERS27) && forbidden27(priNs).length === 0 && forbidden27(memNs).length === 0
       && !/delete|upsert|destroy|[.]clear[(]/i.test(priNs + memNs),
     `prisma=[${membersOf27(priNs)}] memory=[${membersOf27(memNs)}]`);
@@ -4558,6 +4560,142 @@ const HOUSE_TS_KEYS = new Set(["dueAt", "staleAt", "deadlineAt", "claimedUntil",
   const deaf30 = controls30.filter(([, held]) => !held).map(([name]) => name);
   ok("30.c1 · CONTROL · every §30 matcher can fail: the REAL bodies pass, and ONE defect planted in each — either twin's order without the id tiebreak, a Prisma read that filters the marker by itself, a twin that keeps each number's latest row, a rule that reads the latest row alone, a query on an empty set — FAILS its predicate",
     deaf30.length === 0, deaf30.join(" | ") || `${controls30.length} controls held`);
+}
+
+/* ═══ §31 · C8b — what a masked officer may know: the tombstone's revival, the list figures by viewer, "Added" put right (S14 2026-10-09; docs/CONTACTS-SCREEN-PLAN.md §4.7 B1 · B5 · B8) ═══ */
+{
+  // ⭐ WHY THIS SECTION EXISTS. C8b adds three members to both twins, and every behavioural suite drives the MEMORY twin
+  // alone (`test:registration-contact` §3 and §7, `test:contacts-lists`, `test:contacts-import`), so a Prisma twin that
+  // revived a row that is no longer the tombstone, deleted the memberships outside its transaction, wrote over the
+  // number's mirrored caches, re-dated a row its plan never saw, or left the linked members out of the split would be
+  // green in every suite and wrong in production. This section holds the twins to ONE shape, as §30 does; their
+  // behaviour on Postgres is `scripts/live/contacts-import-pg-probe.mts` section 8.
+  //   · reviveTombstone (B1) — a compare-and-set FIRST (this id, this number, the erasure's mark, no link), null when it
+  //     lost, then the tombstone's memberships deleted and every field of the sign-up's row written but the id, the number
+  //     and the two caches — in ONE transaction on Postgres, one synchronous step in memory;
+  //   · coverageSplit (B5) — coveredCount's newest-recording bound and tombstone exclusion, the members split by the link,
+  //     never the link used to drop a member;
+  //   · redateAdded (B8) — the ONE shape rule first, EVERY row compared before any is written, all or nothing, each row's
+  //     createdAt set and its updatedAt the later of its own and the new instant.
+  // ⛔ No backslash anywhere in this section (§27's rule): every matcher is an `includes` or an order.
+  const NL31 = String.fromCharCode(10);
+  const CR31 = String.fromCharCode(13);
+  const flat31 = (s: string) => s.split(CR31).join("").split(NL31).map((l) => l.trim()).filter(Boolean).join(" ");
+  const NEXT_MEMBER31 = new RegExp(NL31 + " {4}[A-Za-z0-9_]+ *:");
+  const memberOf31 = (block: string, name: string): string => {
+    const at = block.indexOf(`${NL31}    ${name}: `);
+    if (at < 0) return "";
+    const next = block.slice(at + 1).search(NEXT_MEMBER31);
+    return next < 0 ? block.slice(at) : block.slice(at, at + 1 + next);
+  };
+  const before31 = (body: string, first: string, then: string): boolean => {
+    const a = body.indexOf(first), b = body.indexOf(then);
+    return a >= 0 && b > a;
+  };
+  const count31 = (body: string, needle: string): number => body.split(needle).length - 1;
+  const memBook31 = region(storeSrc, `${NL31}  marketingContact: {`);
+  const priBook31 = region(dalSrc, `${NL31}  marketingContact: {`);
+  const memBasis31 = region(storeSrc, `${NL31}  contactListBasis: {`);
+  const priBasis31 = region(dalSrc, `${NL31}  contactListBasis: {`);
+  const memRevive = flat31(memberOf31(memBook31, "reviveTombstone"));
+  const priRevive = flat31(memberOf31(priBook31, "reviveTombstone"));
+  const memRedate = flat31(memberOf31(memBook31, "redateAdded"));
+  const priRedate = flat31(memberOf31(priBook31, "redateAdded"));
+  const memSplit = flat31(memberOf31(memBasis31, "coverageSplit"));
+  const priSplit = flat31(memberOf31(priBasis31, "coverageSplit"));
+  const model31 = decomment(readFileSync(join(SRC, "lib/server/contacts/added-redate-model.ts"), "utf8"));
+
+  // ── 31.0 · the three members, named, in both twins ──
+  const SIGS31: Array<[string, string]> = [
+    [memRevive, "reviveTombstone: (revival: ContactTombstoneRevival): ContactTombstoneRevived | null =>"],
+    [priRevive, "reviveTombstone: async (revival: ContactTombstoneRevival): Promise<ContactTombstoneRevived | null> =>"],
+    [memRedate, "redateAdded: (rows: ContactAddedRedate[]): ContactAddedRedateResult =>"],
+    [priRedate, "redateAdded: async (rows: ContactAddedRedate[]): Promise<ContactAddedRedateResult> =>"],
+    [memSplit, "coverageSplit: (listId: string): ListBasisCoverageSplit =>"],
+    [priSplit, "coverageSplit: async (listId: string): Promise<ListBasisCoverageSplit> =>"],
+  ];
+  ok("31.0 · both twins implement marketingContact.reviveTombstone, marketingContact.redateAdded and contactListBasis.coverageSplit, each NAMED (ContactTombstoneRevival → ContactTombstoneRevived | null · ContactAddedRedate[] → ContactAddedRedateResult · a list id → ListBasisCoverageSplit), and §19's and §27's member parity hold the namespaces equal",
+    SIGS31.every(([body, sig]) => body.includes(sig) && body.length > 200), SIGS31.map(([b]) => b.length).join("/"));
+
+  // ── 31.revive · B1 — the compare first, the memberships in the same step, the caches never written ──
+  const REVIVE_FIELDS31 = ["rawInput", "displayName", "email", "ndc", "operator", "source", "sourceRef", "userId", "tags", "notes", "importId", "createdAt", "createdBy", "updatedAt", "updatedBy"];
+  const PRI_WHERE31 = "where: { id: revival.id, msisdn: revival.msisdn, sourceRef: ERASURE_EVIDENCE, userId: null },";
+  const PRI_LOST31 = "if (won.count !== 1) return null;";
+  const PRI_MEMBERS31 = "const membershipsDeleted = (await tx.contactListMember.deleteMany({ where: { contactId: revival.id } })).count;";
+  const MEM_CAS31 = "if (!tomb || tomb.msisdn !== revival.msisdn || tomb.sourceRef !== ERASURE_EVIDENCE || tomb.userId !== null) return null;";
+  const MEM_MEMBERS31 = "if (m.contactId !== tomb.id) continue; store.contactListMembers.delete(k);";
+  const MEM_SET31 = "store.marketingContacts.set(tomb.id, next);";
+  const reviveOk31 = (m: string, p: string): boolean => {
+    const priFields = REVIVE_FIELDS31.every((k) => p.includes(`${k}: r.${k},`) || p.includes(`${k}: r.${k} as never,`) || p.includes(`${k}: new Date(r.${k}),`));
+    const memFields = REVIVE_FIELDS31.every((k) => m.includes(`${k}: r.${k},`) || m.includes(`${k}: [...r.${k}],`));
+    return p.includes("return pc().$transaction(async (tx) => {") && count31(p, "pc()") === 1
+      && before31(p, "const won = await tx.marketingContact.updateMany({", PRI_WHERE31) && before31(p, PRI_WHERE31, PRI_LOST31)
+      && before31(p, PRI_LOST31, PRI_MEMBERS31) && !/consentState|suppressedAt/.test(p) && priFields
+      && before31(m, MEM_CAS31, MEM_MEMBERS31) && before31(m, MEM_MEMBERS31, MEM_SET31)
+      && m.includes("consentState: tomb.consentState,") && m.includes("suppressedAt: tomb.suppressedAt,")
+      && m.includes("id: tomb.id,") && m.includes("msisdn: tomb.msisdn,") && memFields && !m.includes("...r,") && !m.includes("...revival");
+  };
+  ok("31.revive · ⭐ C8b (B1) · THE REVIVAL IS A COMPARE-AND-SET, AND ONE STEP — Prisma ONE transaction (its only pc()) whose FIRST statement is the conditional updateMany where this id, this number, the erasure's mark and NO link, answering null when it lost BEFORE anything else, then the tombstone's memberships deleted on the transaction's own client; memory the same check BEFORE its membership loop and its one set; both write EVERY field of the sign-up's row by name (no spread) but the id, the number and the two caches — the caches stay the tombstone's",
+    reviveOk31(memRevive, priRevive), `${priRevive.slice(0, 120)} | ${memRevive.slice(0, 120)}`);
+
+  // ── 31.split · B5 — coveredCount's bound and exclusion, the members split by the link ──
+  const PRI_BOUND31 = "const splitBound = newestSplit !== null && newestSplit.revokedAt === null ? newestSplit.recordedAt.toISOString() : null;";
+  const PRI_ORDER31 = 'orderBy: [{ recordedAt: "desc" }, { id: "desc" }],';
+  const PRI_LIVE31 = '(count(*) filter (where c."userId" is null))::int as live,';
+  const PRI_COVERED31 = '(count(*) filter (where c."userId" is null and ${splitBound}::timestamptz is not null and m."addedAt" <= ${splitBound}::timestamptz))::int as covered,';
+  const PRI_LINKED31 = '(count(*) filter (where c."userId" is not null))::int as linked_live,';
+  const PRI_LINKED_COVERED31 = '(count(*) filter (where c."userId" is not null and ${splitBound}::timestamptz is not null and m."addedAt" <= ${splitBound}::timestamptz))::int as linked_covered';
+  const PRI_TOMB31 = 'where m."listId" = ${listId} and c."sourceRef" is distinct from ${ERASURE_EVIDENCE}::text';
+  const MEM_TOMB31 = "if (c === undefined || c.sourceRef === ERASURE_EVIDENCE) continue;";
+  const MEM_SIDE31 = "const side = c.userId === null ? out.unlinked : out.linked;";
+  const MEM_BOUND31 = "const splitBound = newestSplit !== undefined && newestSplit.revokedAt === null ? Date.parse(newestSplit.recordedAt) : null;";
+  const splitOk31 = (m: string, p: string): boolean =>
+    p.includes(PRI_BOUND31) && p.includes(PRI_ORDER31) && p.includes(PRI_LIVE31) && p.includes(PRI_COVERED31) && p.includes(PRI_LINKED31)
+      && p.includes(PRI_LINKED_COVERED31) && p.includes(PRI_TOMB31) && !p.includes('and c."userId" is null')
+      && p.includes('assertListBasisKeys("contactListBasis.coverageSplit", [listId]);')
+      && m.includes(MEM_TOMB31) && m.includes(MEM_SIDE31) && m.includes(MEM_BOUND31) && m.includes(".sort(newestBasisFirst)[0];")
+      && m.includes("if (splitBound !== null && Date.parse(m.addedAt) <= splitBound) side.covered++;") && !m.includes("c.userId !== null)")
+      && m.includes('assertListBasisKeys("contactListBasis.coverageSplit", [listId]);');
+  ok("31.split · ⭐ C8b (B5) · THE LIST FIGURES SPLIT BY THE LINK, NEVER DROPPED BY IT — both twins bound by the list's NEWEST recording (none when it is revoked, M1), leave the tombstone out NULL-SAFELY, and count every live member on ONE side of the link — Prisma four filtered counts in ONE statement with no userId filter in its where, memory one pass choosing the side by the link — so a masked viewer's sum is every live member (the composer's count) and a reader's unlinked pair is coveredCount's own",
+    splitOk31(memSplit, priSplit), `${priSplit.slice(0, 120)} | ${memSplit.slice(0, 120)}`);
+
+  // ── 31.redate · B8 — the shape rule first, every row compared before any is written, all or nothing ──
+  const PRI_SET31 = 'set "createdAt" = ${r.createdAt}::timestamptz, "updatedAt" = greatest("updatedAt", ${r.createdAt}::timestamptz)';
+  const PRI_CMP31 = 'where "id" = ${r.id} and "createdAt" = ${r.expectedCreatedAt}::timestamptz';
+  const PRI_THROW31 = "if (n !== 1) throw new ContactAddedRedateChanged(r.id);";
+  const PRI_CATCH31 = 'if (err instanceof ContactAddedRedateChanged) return { ok: false, reason: "changed", id: err.id };';
+  const MEM_CHECK31 = 'if (!c || Date.parse(c.createdAt) !== Date.parse(r.expectedCreatedAt)) return { ok: false, reason: "changed", id: r.id };';
+  const MEM_LATER31 = "const updatedAt = Date.parse(c.updatedAt) >= Date.parse(to) ? c.updatedAt : to;";
+  const MEM_WRITE31 = "store.marketingContacts.set(r.id, { ...c, createdAt: to, updatedAt });";
+  const redateOk31 = (m: string, p: string, model: string): boolean =>
+    before31(p, "assertAddedRedates(rows);", "pc()") && p.includes("return await pc().$transaction(async (tx) => {") && count31(p, "pc()") === 1
+      && p.includes("const n = await tx.$executeRaw") && p.includes(PRI_SET31) && p.includes(PRI_CMP31) && before31(p, PRI_CMP31, PRI_THROW31)
+      && p.includes(PRI_CATCH31) && !p.includes("updatedBy")
+      && before31(m, "assertAddedRedates(rows);", MEM_CHECK31) && before31(m, MEM_CHECK31, MEM_WRITE31) && m.includes(MEM_LATER31)
+      && !m.includes("updatedBy") && store31Imports && dal31Imports
+      && model.includes("if (rows.length > ADDED_REDATE_MAX) refuse(") && model.includes('if (seen.has(row.id)) refuse("one contact is named twice");')
+      && model.includes("if (!Number.isFinite(from) || !Number.isFinite(to)) refuse(") && model.includes("if (to < from) refuse(");
+  const store31Imports = storeSrc.includes('import { assertAddedRedates } from "@/lib/server/contacts/added-redate-model";');
+  const dal31Imports = dalSrc.includes('import { assertAddedRedates } from "@/lib/server/contacts/added-redate-model";');
+  ok("31.redate · ⭐ C8b (B8) · ADDED PUT RIGHT, ALL OR NOTHING — both twins ask the ONE shape rule first (added-redate-model.ts: at most ADDED_REDATE_MAX rows, each id once, every instant readable, never earlier than the one it replaces); Prisma ONE transaction (its only pc()) of conditional raw updates — createdAt set, updatedAt the greatest of its own and the new instant, where the id AND the expected createdAt — a row that counts 0 throwing inside it and answered changed; memory EVERY row compared before the first write, the later stamp kept; neither touches updatedBy",
+    redateOk31(memRedate, priRedate, model31), `${priRedate.slice(0, 120)} | ${memRedate.slice(0, 120)}`);
+
+  // ── CONTROLS — the REAL bodies, ONE defect planted in each, must FAIL their predicate ──
+  const planted31 = (body: string, from: string, to: string): string => body.split(from).join(to);
+  const controls31: Array<[string, boolean]> = [
+    ["a Prisma revival that does not ask the mark", reviveOk31(memRevive, priRevive) && !reviveOk31(memRevive, planted31(priRevive, " sourceRef: ERASURE_EVIDENCE, userId: null },", " },"))],
+    ["a Prisma revival that deletes the memberships outside its transaction", !reviveOk31(memRevive, planted31(priRevive, "(await tx.contactListMember.deleteMany(", "(await pc().contactListMember.deleteMany("))],
+    ["a memory revival that keeps the memberships", !reviveOk31(planted31(memRevive, MEM_MEMBERS31, ""), priRevive)],
+    ["a memory revival that writes the sign-up's caches over the number's", !reviveOk31(planted31(memRevive, "consentState: tomb.consentState,", "consentState: r.consentState,"), priRevive)],
+    ["a Prisma split that drops the linked members", splitOk31(memSplit, priSplit) && !splitOk31(memSplit, planted31(priSplit, PRI_TOMB31, `${PRI_TOMB31} and c."userId" is null`))],
+    ["a memory split that counts the tombstone", !splitOk31(planted31(memSplit, MEM_TOMB31, "if (c === undefined) continue;"), priSplit)],
+    ["a Prisma re-dating without its compare", redateOk31(memRedate, priRedate, model31) && !redateOk31(memRedate, planted31(priRedate, ' and "createdAt" = ${r.expectedCreatedAt}::timestamptz', ""), model31)],
+    ["a memory re-dating that writes before it has checked every row", !redateOk31(planted31(memRedate, MEM_CHECK31, ""), priRedate, model31)],
+    ["a shape rule that lets one contact be named twice", !redateOk31(memRedate, priRedate, planted31(model31, 'if (seen.has(row.id)) refuse("one contact is named twice");', ""))],
+  ];
+  const deaf31 = controls31.filter(([, held]) => !held).map(([name]) => name);
+  ok("31.c1 · CONTROL · every §31 matcher can fail: the REAL bodies pass, and ONE defect planted in each — a revival that does not ask the mark, deletes the memberships outside its transaction, keeps them, or writes the caches; a split that drops the linked members or counts the tombstone; a re-dating without its compare or writing before every row is checked; a shape rule that lets one contact be named twice — FAILS its predicate",
+    deaf31.length === 0, deaf31.join(" | ") || `${controls31.length} controls held`);
 }
 
 console.log(`\ndal-parity: ${pass} passed, ${fail} failed`);

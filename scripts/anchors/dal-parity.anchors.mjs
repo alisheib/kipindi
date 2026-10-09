@@ -1922,7 +1922,7 @@ export const MUTATIONS = [
     from: `  contactListBasis: {`,
     to: `  contactListBasis: {
     updateWording: (id: string, wording: string): null => null,`,
-    expect: "27.3 · ⛔ APPEND-ONLY, ASSERTED AS AN ABSENCE (as §17) — both twins expose EXACTLY create, revoke, listForList, standingFor, standingAmong and coveredCount: no update member and no delete member, and neither namespace deletes, clears or upserts a row",
+    expect: "27.3 · ⛔ APPEND-ONLY, ASSERTED AS AN ABSENCE (as §17) — both twins expose EXACTLY create, revoke, listForList, standingFor, standingAmong, coveredCount and (C8b) coverageSplit: no update member and no delete member, and neither namespace deletes, clears or upserts a row",
   },
   {
     // 🔴 THE NULL TRAP, AGAIN: a bare `<>` is NULL for every row with no mark — so the statement drops nearly the whole list
@@ -2396,5 +2396,84 @@ export const MUTATIONS = [
       if (keys.length === 0) return [];`,
     to: `      const keys = bulkKeys(q.identifiers, "messagingConsent.erasureStandsAmong");`,
     expect: "30.bound · ⛔ §25's shape in both twins — the keys through bulkKeys (deduplicated, REFUSED above BULK_KEYED_READ_MAX, never cut off), an empty set answered with nothing, and on Postgres before any query",
+  },
+  /* ═══ §31 · C8b (S14, 2026-10-09) — the revival, the list figures by viewer, "Added" put right: ONE defect in ONE twin each ═══ */
+  {
+    // ⭐ A revival that no longer asks whether the row IS the tombstone: a sign-up racing another overwrites the first
+    // comer's row — another account's name and link handed over — on Postgres alone.
+    name: "prisma-dal.ts — reviveTombstone forgets the erasure's mark and the link in its compare",
+    file: "src/lib/server/prisma-dal.ts",
+    from: `          where: { id: revival.id, msisdn: revival.msisdn, sourceRef: ERASURE_EVIDENCE, userId: null },`,
+    to: `          where: { id: revival.id, msisdn: revival.msisdn },`,
+    expect: "31.revive · ⭐ C8b (B1) · THE REVIVAL IS A COMPARE-AND-SET, AND ONE STEP — Prisma ONE transaction (its only pc()) whose FIRST statement is the conditional updateMany where this id, this number, the erasure's mark and NO link, answering null when it lost BEFORE anything else, then the tombstone's memberships deleted on the transaction's own client; memory the same check BEFORE its membership loop and its one set; both write EVERY field of the sign-up's row by name (no spread) but the id, the number and the two caches — the caches stay the tombstone's",
+  },
+  {
+    // The memberships deleted on the pooled client, outside the revival's transaction: a revival that rolls back still
+    // takes the row off its lists, and one that commits can race a list add.
+    name: "prisma-dal.ts — reviveTombstone deletes the memberships outside its transaction",
+    file: "src/lib/server/prisma-dal.ts",
+    from: `        const membershipsDeleted = (await tx.contactListMember.deleteMany({ where: { contactId: revival.id } })).count;`,
+    to: `        const membershipsDeleted = (await pc().contactListMember.deleteMany({ where: { contactId: revival.id } })).count;`,
+    expect: "31.revive · ⭐ C8b (B1) · THE REVIVAL IS A COMPARE-AND-SET, AND ONE STEP — Prisma ONE transaction (its only pc()) whose FIRST statement is the conditional updateMany where this id, this number, the erasure's mark and NO link, answering null when it lost BEFORE anything else, then the tombstone's memberships deleted on the transaction's own client; memory the same check BEFORE its membership loop and its one set; both write EVERY field of the sign-up's row by name (no spread) but the id, the number and the two caches — the caches stay the tombstone's",
+  },
+  {
+    // The new client inherits the erased person's lists, and their coverage, in the twin every suite runs on.
+    name: "store.ts — the memory reviveTombstone keeps the tombstone's memberships",
+    file: "src/lib/server/store.ts",
+    from: `        store.contactListMembers.delete(k);
+        membershipsDeleted++;`,
+    to: `        membershipsDeleted++;`,
+    expect: "31.revive · ⭐ C8b (B1) · THE REVIVAL IS A COMPARE-AND-SET, AND ONE STEP — Prisma ONE transaction (its only pc()) whose FIRST statement is the conditional updateMany where this id, this number, the erasure's mark and NO link, answering null when it lost BEFORE anything else, then the tombstone's memberships deleted on the transaction's own client; memory the same check BEFORE its membership loop and its one set; both write EVERY field of the sign-up's row by name (no spread) but the id, the number and the two caches — the caches stay the tombstone's",
+  },
+  {
+    // The sign-up row's empty cache (UNKNOWN) written over the number's mirrored truth (the erasure's WITHDRAWN).
+    name: "store.ts — the memory reviveTombstone writes the sign-up's cache over the number's",
+    file: "src/lib/server/store.ts",
+    from: `        consentState: tomb.consentState,`,
+    to: `        consentState: r.consentState,`,
+    expect: "31.revive · ⭐ C8b (B1) · THE REVIVAL IS A COMPARE-AND-SET, AND ONE STEP — Prisma ONE transaction (its only pc()) whose FIRST statement is the conditional updateMany where this id, this number, the erasure's mark and NO link, answering null when it lost BEFORE anything else, then the tombstone's memberships deleted on the transaction's own client; memory the same check BEFORE its membership loop and its one set; both write EVERY field of the sign-up's row by name (no spread) but the id, the number and the two caches — the caches stay the tombstone's",
+  },
+  {
+    // ⭐ B5's defect back on Postgres alone: the linked members never counted, so a masked viewer's figure leaves the
+    // players out again — the composer's count minus the card's is the number of players on the list.
+    name: "prisma-dal.ts — coverageSplit never counts the linked members",
+    file: "src/lib/server/prisma-dal.ts",
+    from: `               (count(*) filter (where c."userId" is not null))::int as linked_live,`,
+    to: `               0::int as linked_live,`,
+    expect: "31.split · ⭐ C8b (B5) · THE LIST FIGURES SPLIT BY THE LINK, NEVER DROPPED BY IT — both twins bound by the list's NEWEST recording (none when it is revoked, M1), leave the tombstone out NULL-SAFELY, and count every live member on ONE side of the link — Prisma four filtered counts in ONE statement with no userId filter in its where, memory one pass choosing the side by the link — so a masked viewer's sum is every live member (the composer's count) and a reader's unlinked pair is coveredCount's own",
+  },
+  {
+    // The erased tombstone counted as a member — an erasure moves no figure, so the list says nothing of it (X22).
+    name: "store.ts — the memory coverageSplit counts the tombstone",
+    file: "src/lib/server/store.ts",
+    from: `        if (c === undefined || c.sourceRef === ERASURE_EVIDENCE) continue;
+        const side = c.userId === null ? out.unlinked : out.linked;`,
+    to: `        if (c === undefined) continue;
+        const side = c.userId === null ? out.unlinked : out.linked;`,
+    expect: "31.split · ⭐ C8b (B5) · THE LIST FIGURES SPLIT BY THE LINK, NEVER DROPPED BY IT — both twins bound by the list's NEWEST recording (none when it is revoked, M1), leave the tombstone out NULL-SAFELY, and count every live member on ONE side of the link — Prisma four filtered counts in ONE statement with no userId filter in its where, memory one pass choosing the side by the link — so a masked viewer's sum is every live member (the composer's count) and a reader's unlinked pair is coveredCount's own",
+  },
+  {
+    // A row that changed since the plan is skipped in silence and the rest written: the batch is no longer all or nothing.
+    name: "prisma-dal.ts — redateAdded ignores a row that no longer holds its expected Added",
+    file: "src/lib/server/prisma-dal.ts",
+    from: `            if (n !== 1) throw new ContactAddedRedateChanged(r.id);`,
+    to: `            void n;`,
+    expect: "31.redate · ⭐ C8b (B8) · ADDED PUT RIGHT, ALL OR NOTHING — both twins ask the ONE shape rule first (added-redate-model.ts: at most ADDED_REDATE_MAX rows, each id once, every instant readable, never earlier than the one it replaces); Prisma ONE transaction (its only pc()) of conditional raw updates — createdAt set, updatedAt the greatest of its own and the new instant, where the id AND the expected createdAt — a row that counts 0 throwing inside it and answered changed; memory EVERY row compared before the first write, the later stamp kept; neither touches updatedBy",
+  },
+  {
+    // The memory twin writes without its compare: a plan read before an officer's edit re-dates the edited row anyway.
+    name: "store.ts — the memory redateAdded writes before it has compared every row",
+    file: "src/lib/server/store.ts",
+    from: `        if (!c || Date.parse(c.createdAt) !== Date.parse(r.expectedCreatedAt)) return { ok: false, reason: "changed", id: r.id };`,
+    to: `        void c;`,
+    expect: "31.redate · ⭐ C8b (B8) · ADDED PUT RIGHT, ALL OR NOTHING — both twins ask the ONE shape rule first (added-redate-model.ts: at most ADDED_REDATE_MAX rows, each id once, every instant readable, never earlier than the one it replaces); Prisma ONE transaction (its only pc()) of conditional raw updates — createdAt set, updatedAt the greatest of its own and the new instant, where the id AND the expected createdAt — a row that counts 0 throwing inside it and answered changed; memory EVERY row compared before the first write, the later stamp kept; neither touches updatedBy",
+  },
+  {
+    // One contact named twice: the last instant wins in one twin and the first in the other.
+    name: "added-redate-model.ts — the shape rule lets one contact be named twice",
+    file: "src/lib/server/contacts/added-redate-model.ts",
+    from: `    if (seen.has(row.id)) refuse("one contact is named twice");`,
+    to: `    void seen;`,
+    expect: "31.redate · ⭐ C8b (B8) · ADDED PUT RIGHT, ALL OR NOTHING — both twins ask the ONE shape rule first (added-redate-model.ts: at most ADDED_REDATE_MAX rows, each id once, every instant readable, never earlier than the one it replaces); Prisma ONE transaction (its only pc()) of conditional raw updates — createdAt set, updatedAt the greatest of its own and the new instant, where the id AND the expected createdAt — a row that counts 0 throwing inside it and answered changed; memory EVERY row compared before the first write, the later stamp kept; neither touches updatedBy",
   },
 ];

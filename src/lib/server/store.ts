@@ -59,6 +59,9 @@ import { assertListBasisSeed, assertListBasisRevocation, assertListBasisKeys } f
 // U33r · the agent-referee keys' ONE rule set — this twin asks it before every read or write of the table, exactly as the
 // Prisma twin does (`test:dal-parity` §28.model). It takes only TYPES back from this file, so there is no cycle.
 import { assertRefereeKeyRows, assertRefereeKeys } from "@/lib/server/marketing/referee-key-model";
+// C8b (B8) · the re-dating's ONE shape rule — this twin asks it before its compare, exactly as the Prisma twin does
+// (`test:dal-parity` §31). It takes only TYPES back from this file, so there is no cycle.
+import { assertAddedRedates } from "@/lib/server/contacts/added-redate-model";
 
 export type StoredUser = {
   id: string;
@@ -984,6 +987,19 @@ export type ListBasisCoverage = {
   live: number;
   covered: number;
 };
+/**
+ * C8b (B5) · A LIST'S COVERAGE SPLIT BY THE ACCOUNT LINK, in ONE pass over its members (`contactListBasis.coverageSplit`).
+ * `unlinked` is `coveredCount`'s pair EXACTLY (live members linked to no account, and those the newest recording covers);
+ * `linked` the same two counts over the live members linked to an account. The tombstone is in neither. ⭐ WHY SPLIT, AND
+ * WHO SEES WHAT: a viewer who may not read a number is shown the SUM — every live member, linked or not, which is the
+ * campaign composer's count for the list — so no figure of theirs separates players from strangers (D19); a reader is shown
+ * `unlinked` as today plus how many members have an account (`lists-loader.ts`, `import-commit.ts`). ⛔ The gate and the
+ * list-basis audit row keep reading `coveredCount`: a list basis never reaches an account's number.
+ */
+export type ListBasisCoverageSplit = {
+  unlinked: ListBasisCoverage;
+  linked: ListBasisCoverage;
+};
 
 /* ═══ U33r · THE AGENT-REFEREE EXCLUSION — `AgentRefereeKey` (Q8; COMPLIANCE-DECISIONS § "2026-10-07 · Marketing SMS go to
  * anyone with a phone — consent is not a condition (the owner's FINAL rule), and his approvals given in the session") ═══
@@ -1041,6 +1057,31 @@ export type ContactEditGuard = { expectedUpdatedAt: string };
 export type ContactCasResult =
   | { ok: true; row: StoredMarketingContact }
   | { ok: false; reason: "not_found" | "stale" };
+/* ═══ C8b · WHAT A MASKED OFFICER MAY KNOW ABOUT A NUMBER (docs/CONTACTS-SCREEN-PLAN.md §4.7) — two book writes, named ═══
+ * Every DAL signature below is NAMED: dal-parity's `region()` would read an inline literal as the body. */
+/**
+ * C8b (B1) · AN ERASED NUMBER'S EMPTIED ROW, REVIVED AS A NEW CLIENT'S (`marketingContact.reviveTombstone`). `id` and
+ * `msisdn` name the tombstone — BOTH must still be the tombstone's (the erasure's mark, no link) when the write lands —
+ * and `row` is the row a sign-up writes today (`registration-contact.ts`, the ONE caller): every field of it but the id,
+ * the number and the two caches is written. ⛔ The caches (`consentState`, `suppressedAt`) stay the tombstone's — the
+ * number's mirrored truth, which the caller's mirror reads again right after.
+ */
+export type ContactTombstoneRevival = { id: string; msisdn: string; row: StoredMarketingContact };
+/** C8b (B1) · the revival's answer: the row as written, and how many list memberships the tombstone still held — each
+ *  DELETED in the same step, so the revived row inherits no old list and no old list's coverage. */
+export type ContactTombstoneRevived = { row: StoredMarketingContact; membershipsDeleted: number };
+/**
+ * C8b (B8) · ONE ROW'S "ADDED", PUT RIGHT (`marketingContact.redateAdded`) — the ops door `ops:contacts-added-redate`'s ONE
+ * write. `expectedCreatedAt` is the compare (the row must still say it, as an instant), `createdAt` the moment the row
+ * really entered the book. ⛔ `createdAt` is otherwise NOT patchable (`MarketingContactPatch`): this member is the one way
+ * it moves, and only for the back-filled rows the door finds.
+ */
+export type ContactAddedRedate = { id: string; expectedCreatedAt: string; createdAt: string };
+/** C8b (B8) · the batch's answer — EVERY row written, or NOTHING: the first row that was gone or no longer said its
+ *  expected `createdAt` is named, and the whole batch is rolled back. */
+export type ContactAddedRedateResult =
+  | { ok: true; written: number }
+  | { ok: false; reason: "changed"; id: string };
 /**
  * U23 · WHO AND WHEN, FOR A BULK WRITE. Every row a bulk tag, untag or list-add changes is stamped with the caller's
  * `at` — EXPLICITLY, in both twins, as U22's compare-and-set does (decision C25) — and the officer as `by`.
@@ -3841,6 +3882,68 @@ const memoryDb = {
       store.marketingContacts.set(id, next);
       return { ok: true, row: next };
     },
+    /** C8b (B1) · ⭐ THE TOMBSTONE REVIVED AS A NEW CLIENT'S ROW — `registration-contact.ts`'s ONE call (a NEW account's
+     *  sign-up, or the backfill, on a number whose book row erasure emptied). ONE step, as the Prisma twin's ONE
+     *  transaction: the row must still BE the tombstone — this id AND this number, the erasure's mark, no link — or nothing
+     *  is written and the answer is null; then every list membership it still holds is DELETED (a revived row inherits no
+     *  old list, and no old list's coverage); then the row becomes `row`, every field NAMED — never a spread — but the id,
+     *  the number and the two caches, which stay the tombstone's (the number's mirrored truth; the caller mirrors again).
+     *  JavaScript runs this to the end before any other write, so the check and the writes are one step. A copy comes back. */
+    reviveTombstone: (revival: ContactTombstoneRevival): ContactTombstoneRevived | null => {
+      const tomb = store.marketingContacts.get(revival.id);
+      if (!tomb || tomb.msisdn !== revival.msisdn || tomb.sourceRef !== ERASURE_EVIDENCE || tomb.userId !== null) return null;
+      let membershipsDeleted = 0;
+      for (const [k, m] of store.contactListMembers) {
+        if (m.contactId !== tomb.id) continue;
+        store.contactListMembers.delete(k);
+        membershipsDeleted++;
+      }
+      const r = revival.row;
+      const next: StoredMarketingContact = {
+        id: tomb.id,
+        msisdn: tomb.msisdn,
+        rawInput: r.rawInput,
+        displayName: r.displayName,
+        email: r.email,
+        ndc: r.ndc,
+        operator: r.operator,
+        source: r.source,
+        sourceRef: r.sourceRef,
+        userId: r.userId,
+        consentState: tomb.consentState,
+        suppressedAt: tomb.suppressedAt,
+        tags: [...r.tags],
+        notes: r.notes,
+        importId: r.importId,
+        createdAt: r.createdAt,
+        createdBy: r.createdBy,
+        updatedAt: r.updatedAt,
+        updatedBy: r.updatedBy,
+      };
+      store.marketingContacts.set(tomb.id, next);
+      return { row: { ...next, tags: [...next.tags] }, membershipsDeleted };
+    },
+    /** C8b (B8) · ⭐ "ADDED" PUT RIGHT, ALL OR NOTHING — the ops door's ONE write (`added-redate.ts`). At most
+     *  `BULK_KEYED_READ_MAX` rows, each id once, every instant readable — else it THROWS before anything is read, as the
+     *  Prisma twin does. Then EVERY row is checked first — still there, its `createdAt` still the expected one, compared as
+     *  INSTANTS — and the first that is not is named with NOTHING written; then each row's `createdAt` becomes the instant
+     *  it entered the book and its `updatedAt` the later of its own and that instant (a row never reads as changed before
+     *  it was added, and a stamp the backfill copied from the sign-up is gone with it). `updatedBy` is not touched. One
+     *  synchronous pass: the check and the writes are one step, as the Prisma twin's ONE transaction. */
+    redateAdded: (rows: ContactAddedRedate[]): ContactAddedRedateResult => {
+      assertAddedRedates(rows);
+      for (const r of rows) {
+        const c = store.marketingContacts.get(r.id);
+        if (!c || Date.parse(c.createdAt) !== Date.parse(r.expectedCreatedAt)) return { ok: false, reason: "changed", id: r.id };
+      }
+      for (const r of rows) {
+        const c = store.marketingContacts.get(r.id) as StoredMarketingContact;
+        const to = new Date(r.createdAt).toISOString();
+        const updatedAt = Date.parse(c.updatedAt) >= Date.parse(to) ? c.updatedAt : to;
+        store.marketingContacts.set(r.id, { ...c, createdAt: to, updatedAt });
+      }
+      return { ok: true, written: rows.length };
+    },
     /** U20 · ONE PAGE of the book and the size of the whole match. The order breaks every tie on `id`, in
      *  the same direction, and puts a contact with NO name last whichever way names sort — Postgres'
      *  `nulls: "last"` in the Prisma twin, so a page boundary falls in the same place on both.
@@ -4108,6 +4211,29 @@ const memoryDb = {
         if (c === undefined || c.userId !== null || c.sourceRef === ERASURE_EVIDENCE) continue;
         out.live++;
         if (bound !== null && Date.parse(m.addedAt) <= bound) out.covered++;
+      }
+      return out;
+    },
+    /** C8b (B5) · the list's coverage SPLIT by the account link, in ONE pass over its members (`ListBasisCoverageSplit`):
+     *  `unlinked` is `coveredCount`'s pair exactly, `linked` the same two counts over the live members linked to an
+     *  account; the tombstone is in neither. The bound is `coveredCount`'s — the list's NEWEST recording, none when it is
+     *  revoked or there is none (M1). ⛔ Not a second "who is covered": the gate and the basis audit keep `coveredCount`;
+     *  this is what each viewer may be SHOWN (`lists-loader.ts`, `import-commit.ts`). */
+    coverageSplit: (listId: string): ListBasisCoverageSplit => {
+      assertListBasisKeys("contactListBasis.coverageSplit", [listId]);
+      // ⚠️ Its own names, on purpose: `red:dal-parity` anchors coveredCount's lines, which must stay unique.
+      const newestSplit: StoredContactListBasis | undefined = Array.from(store.contactListBases.values())
+        .filter((b) => b.listId === listId)
+        .sort(newestBasisFirst)[0];
+      const splitBound = newestSplit !== undefined && newestSplit.revokedAt === null ? Date.parse(newestSplit.recordedAt) : null;
+      const out: ListBasisCoverageSplit = { unlinked: { live: 0, covered: 0 }, linked: { live: 0, covered: 0 } };
+      for (const m of store.contactListMembers.values()) {
+        if (m.listId !== listId) continue;
+        const c = store.marketingContacts.get(m.contactId);
+        if (c === undefined || c.sourceRef === ERASURE_EVIDENCE) continue;
+        const side = c.userId === null ? out.unlinked : out.linked;
+        side.live++;
+        if (splitBound !== null && Date.parse(m.addedAt) <= splitBound) side.covered++;
       }
       return out;
     },

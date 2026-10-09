@@ -50,6 +50,8 @@ const FILES = [
   "src/lib/server/marketing/referee-key-model.ts",
   // §30 · C8a (S15, 2026-10-09) reads the ONE erasure rule's module through KP_SRC, and one case plants in it.
   "src/lib/marketing/erasure-mark.ts",
+  // §31 · C8b (S14, 2026-10-09) reads the "Added" re-dating's ONE shape rule through KP_SRC, and one case plants in it.
+  "src/lib/server/contacts/added-redate-model.ts",
 ];
 
 const runGate = (srcDir) => {

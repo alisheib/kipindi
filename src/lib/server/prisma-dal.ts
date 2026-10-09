@@ -537,6 +537,11 @@ import type {
   ContactImportFailedPage, ContactImportKeptCount, ContactImportFreeze, ContactImportCommitBatch, ContactImportCommitResult,
   ContactImportOthersQuery,
 } from "./store";
+// C8b · the revival (B1), the list figures by viewer (B5) and the "Added" re-dating (B8) — named, as dal-parity needs.
+import type {
+  ContactTombstoneRevival, ContactTombstoneRevived, ListBasisCoverageSplit, ContactAddedRedate, ContactAddedRedateResult,
+} from "./store";
+import { assertAddedRedates } from "@/lib/server/contacts/added-redate-model";
 
 /** U29 · the most rows one keyset page, and one access-export read for a number, hand back — the memory twin's bounds. */
 const CONTACT_IMPORT_ROW_PAGE_MAX = 2000;
@@ -551,6 +556,19 @@ const CONTACT_IMPORT_OPEN_RUNS_MAX = 20;
 const CONTACT_IMPORT_COMMIT_TX_TIMEOUT_MS = 30_000;
 /** §29 · the start's freeze: one conditional update, and — for a new list — one insert and one update more. */
 const CONTACT_IMPORT_FREEZE_TX_TIMEOUT_MS = 10_000;
+/** C8b (B1) · a tombstone's revival: one conditional update, one delete of its memberships, one read back. */
+const CONTACT_REVIVE_TX_TIMEOUT_MS = 10_000;
+/** C8b (B8) · the "Added" re-dating: one conditional update per row, at most `ADDED_REDATE_MAX` rows (the 54 of 2026-10-03
+ *  take milliseconds); the timeout is a ceiling, never a budget. */
+const CONTACT_REDATE_TX_TIMEOUT_MS = 30_000;
+
+/** C8b (B8) · thrown INSIDE the re-dating's transaction when a row is gone or no longer holds its expected `createdAt`, so
+ *  Postgres rolls every row back and the member answers `changed`, naming it. */
+class ContactAddedRedateChanged extends Error {
+  constructor(readonly id: string) {
+    super("marketingContact.redateAdded: a row changed since the plan — every row was rolled back");
+  }
+}
 
 /** §29 · thrown INSIDE the commit's transaction when the unique index refused a create, a guard refused an update, or a
  *  staged row the step settles is gone (R9), so Postgres rolls the whole step back — the cursor included — and the step
@@ -4391,6 +4409,59 @@ export const prismaDb = {
         return { ok: false, reason: still ? "stale" : "not_found" };
       }
     },
+    /** C8b (B1) · ⭐ THE TOMBSTONE REVIVED AS A NEW CLIENT'S ROW — ONE interactive transaction whose FIRST statement is the
+     *  compare-and-set: ONE conditional update, written only where the row is still the tombstone — this id AND this
+     *  number, the erasure's mark, no link (Postgres re-checks the where after a racing commit, so of two sign-ups one
+     *  revives it and the loser counts 0, answered null with nothing written) — writing every field of the sign-up's row
+     *  but the id, the number and the two caches, which stay the tombstone's. Then its list memberships are DELETED in the
+     *  same transaction (a revived row inherits no old list, and no old list's coverage), and the row is read back inside
+     *  it. ⛔ `updatedAt` is written EXPLICITLY (decision C25), never left to `@updatedAt`. The memory twin mirrors it;
+     *  `test:dal-parity` §31 holds the pair, and `scripts/live/contacts-import-pg-probe.mts` section 8 runs it here. */
+    reviveTombstone: async (revival: ContactTombstoneRevival): Promise<ContactTombstoneRevived | null> => {
+      const r = revival.row;
+      return pc().$transaction(async (tx) => {
+        const won = await tx.marketingContact.updateMany({
+          where: { id: revival.id, msisdn: revival.msisdn, sourceRef: ERASURE_EVIDENCE, userId: null },
+          data: {
+            rawInput: r.rawInput, displayName: r.displayName, email: r.email, ndc: r.ndc, operator: r.operator,
+            source: r.source as never, sourceRef: r.sourceRef, userId: r.userId, tags: r.tags, notes: r.notes,
+            importId: r.importId, createdAt: new Date(r.createdAt), createdBy: r.createdBy,
+            updatedAt: new Date(r.updatedAt), updatedBy: r.updatedBy,
+          },
+        });
+        if (won.count !== 1) return null;
+        const membershipsDeleted = (await tx.contactListMember.deleteMany({ where: { contactId: revival.id } })).count;
+        const row = await tx.marketingContact.findUnique({ where: { id: revival.id } });
+        if (row === null) throw new Error("reviveTombstone: the revived row is not there inside its own transaction");
+        return { row: toStoredMarketingContact(row), membershipsDeleted };
+      }, { timeout: CONTACT_REVIVE_TX_TIMEOUT_MS, maxWait: 5_000 });
+    },
+    /** C8b (B8) · ⭐ "ADDED" PUT RIGHT, ALL OR NOTHING — ONE interactive transaction, the ONE shape rule first
+     *  (`assertAddedRedates`, before any statement). Each row is ONE conditional update: written only where the row still
+     *  holds its expected `createdAt` (compared as the column's own instant), its `createdAt` set to the moment it entered
+     *  the book and its `updatedAt` to the LATER of its own and that moment (`greatest`). ⛔ Raw SQL on purpose: the column
+     *  is `@updatedAt`, and Prisma's update would stamp the clock over the instant this write chooses. A row that counts 0
+     *  throws inside the transaction, so Postgres rolls back every row before it, and the answer names it — `changed`,
+     *  nothing written. The memory twin mirrors it; `test:dal-parity` §31 holds the pair; the pg probe's section 8 runs it. */
+    redateAdded: async (rows: ContactAddedRedate[]): Promise<ContactAddedRedateResult> => {
+      assertAddedRedates(rows);
+      if (rows.length === 0) return { ok: true, written: 0 };
+      try {
+        return await pc().$transaction(async (tx) => {
+          for (const r of rows) {
+            const n = await tx.$executeRaw`
+              update "MarketingContact"
+                 set "createdAt" = ${r.createdAt}::timestamptz, "updatedAt" = greatest("updatedAt", ${r.createdAt}::timestamptz)
+               where "id" = ${r.id} and "createdAt" = ${r.expectedCreatedAt}::timestamptz`;
+            if (n !== 1) throw new ContactAddedRedateChanged(r.id);
+          }
+          return { ok: true as const, written: rows.length };
+        }, { timeout: CONTACT_REDATE_TX_TIMEOUT_MS, maxWait: 5_000 });
+      } catch (err) {
+        if (err instanceof ContactAddedRedateChanged) return { ok: false, reason: "changed", id: err.id };
+        throw err;
+      }
+    },
     /** U20 · ONE PAGE and the whole match's count, in one round trip each. ⛔ The number is matched EXACTLY
      *  (`msisdn` equals); a name goes through the shared grammar's `queryToWhere`, and an unexpressible
      *  query is ZERO rows, never everything. The order mirrors the memory twin: nameless last, ties on id.
@@ -4780,6 +4851,34 @@ export const prismaDb = {
            and c."userId" is null
            and c."sourceRef" is distinct from ${ERASURE_EVIDENCE}::text`;
       return { live: Number(rows[0]?.live ?? 0), covered: Number(rows[0]?.covered ?? 0) };
+    },
+    /** C8b (B5) · the list's coverage SPLIT by the account link, in ONE statement over its members — `coveredCount`'s
+     *  newest-recording bound (M1), then four filtered counts: the live members linked to no account and those of them
+     *  covered (`coveredCount`'s pair exactly), and the same two over the live members linked to an account. The tombstone
+     *  is left out NULL-SAFELY (`is distinct from`, as `coveredCount` does). ⚠️ `::int`, not bigint. ⛔ What a viewer is
+     *  SHOWN, never a second "who is covered" — the gate and the basis audit keep `coveredCount`. */
+    coverageSplit: async (listId: string): Promise<ListBasisCoverageSplit> => {
+      assertListBasisKeys("contactListBasis.coverageSplit", [listId]);
+      // ⚠️ Its own names and line shapes, on purpose: `red:dal-parity` anchors coveredCount's lines, which must stay unique.
+      const newestSplit = await pc().contactListBasis.findFirst({
+        where: { listId },
+        orderBy: [{ recordedAt: "desc" }, { id: "desc" }],
+        select: { revokedAt: true, recordedAt: true },
+      });
+      const splitBound = newestSplit !== null && newestSplit.revokedAt === null ? newestSplit.recordedAt.toISOString() : null;
+      const rows = await pc().$queryRaw<Array<{ live: number; covered: number; linked_live: number; linked_covered: number }>>`
+        select (count(*) filter (where c."userId" is null))::int as live,
+               (count(*) filter (where c."userId" is null and ${splitBound}::timestamptz is not null and m."addedAt" <= ${splitBound}::timestamptz))::int as covered,
+               (count(*) filter (where c."userId" is not null))::int as linked_live,
+               (count(*) filter (where c."userId" is not null and ${splitBound}::timestamptz is not null and m."addedAt" <= ${splitBound}::timestamptz))::int as linked_covered
+          from "ContactListMember" m
+          join "MarketingContact" c on c."id" = m."contactId"
+         where m."listId" = ${listId} and c."sourceRef" is distinct from ${ERASURE_EVIDENCE}::text`;
+      const r = rows[0];
+      return {
+        unlinked: { live: Number(r?.live ?? 0), covered: Number(r?.covered ?? 0) },
+        linked: { live: Number(r?.linked_live ?? 0), covered: Number(r?.linked_covered ?? 0) },
+      };
     },
   },
 
