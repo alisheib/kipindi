@@ -11,7 +11,10 @@
  * Import, one freezes the run and the other is told `already_started`. A check older than 30 minutes (or unreadable, or
  * in the future) is refused `check_stale` and the screen checks again; counts the book has moved since are refused
  * `check_again`, so the officer sees the new numbers first. ⭐ A NEW list is created inside the freeze's own write (the
- * review round's R12), so a start that loses the run, or throws, leaves no list behind and its name stays free.
+ * review round's R12), so a start that loses the run, or throws, leaves no list behind and its name stays free. ⭐ C8c · N3:
+ * a list another officer made meanwhile under the same name IN ANY CASE is refused there by the store's unique index on
+ * `lower("name")` (both twins), the freeze rolled back, and the start says so in its own words
+ * (`LIST_MADE_MEANWHILE_SENTENCE`) — the dialog reads the lists again and offers that list.
  * ⛔ S15-10: a viewer who may not read numbers starts with KEEP alone — another choice, or any exception, is refused
  * `update_needs_reader`. ⭐ S15-1: NO CONSENT STEP — the import writes no consent and asks for no basis; a list's licence
  * basis lives on the Lists card.
@@ -86,7 +89,7 @@ import {
   IMPORT_CHOICES, adjustTally, decideRows, parseImportChoice, parseRowOverrides,
 } from "@/lib/contacts/import-decide";
 import type { DecisionPreview, ImportCandidate, ImportChoice, RowOverrides } from "@/lib/contacts/import-decide";
-import { FAILURES_PAGE_ROWS } from "@/lib/contacts/import-flow";
+import { FAILURES_PAGE_ROWS, LIST_MADE_MEANWHILE_SENTENCE } from "@/lib/contacts/import-flow";
 import type {
   CommitStepResult, FailuresResult, ImportListOption, ImportListsResult, ImportOpenRunsResult, ImportRefusal,
   ImportRefusalReason, ImportResultResult, ImportRunView, KeptSplit, RunActResult, StartImportResult,
@@ -353,7 +356,8 @@ export async function startContactImport(officerId: string, input: unknown, deps
   if (list.kind === "new") {
     const named = parseListName(list.name);
     if (!named.ok) return refuse("bad_list", named.sentence);
-    // ⭐ ONE LIST PER NAME TO A PERSON (the bulk bar's rule): the store's unique index is case-sensitive, so ask here.
+    // ⭐ ONE LIST PER NAME TO A PERSON (the bulk bar's rule, `listNameKey`) — the RULE, asked here first. The store's unique
+    // index on lower(name) is the BACKSTOP for a list made between this read and the freeze below (C8c · N3).
     const key = listNameKey(named.name);
     if ((await deps.lists.all()).some((l) => listNameKey(l.name) === key)) return refuse("list_name_taken");
     newName = named.name;
@@ -408,8 +412,11 @@ export async function startContactImport(officerId: string, input: unknown, deps
     frozen = await deps.freeze({ importId: run.id, choice, overrides, targetListId, newList, by: officerId, at });
   } catch (err) {
     const code = dbCode(err);
-    // The unique index took the name between the check above and the freeze; the foreign key found the list gone.
-    if (code === "P2002" && newList !== null) return refuse("list_name_taken");
+    // ⭐ C8c · N3 · a unique index took the name — in ANY case (the lower(name) index) — between the check above and the
+    // freeze: another officer made that list a moment ago. The freeze rolled back whole (the run is still STAGED, no list
+    // of this start exists), and the start says so in its own words; the dialog reads the lists again and offers that list.
+    if (code === "P2002" && newList !== null) return refuse("list_name_taken", LIST_MADE_MEANWHILE_SENTENCE, { why: "raced" });
+    // The foreign key found the list gone.
     if (code === "P2003" && list.kind === "existing") return refuse("list_gone");
     throw err;
   }

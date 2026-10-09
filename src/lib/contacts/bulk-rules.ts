@@ -99,8 +99,13 @@ export function parseListName(raw: unknown): ListNameVerdict {
   return { ok: true, name };
 }
 
-/** ⭐ Two list names that differ only in case (or width) are ONE list to a person and two audiences to the store, whose
- *  unique index is case-sensitive — so a new name is compared with every list by this key, and a clash is refused. */
+/** ⭐ Two list names that differ only in case (or width) are ONE list to a person — so a new name is compared with every
+ *  list by this key, and a clash is refused. This is the RULE. The store holds a unique index on `lower(name)` as the
+ *  BACKSTOP (migration `20261009180000_contact_list_name_lower_unique`; before it the index was exact-case and two officers
+ *  naming one new list in the same second both succeeded): it refuses the case pair a race slips past this check — the
+ *  bulk bar's create and the importer's start (its freeze) alike. The two keys differ only on exotic letters (a width
+ *  form, a final sigma); where the index refuses what the rule allowed, the officer reads the same refusal — safe, and
+ *  rarer than the race. */
 export function listNameKey(name: string): string {
   return name.normalize("NFKC").toLowerCase();
 }

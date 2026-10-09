@@ -612,6 +612,47 @@ export const MUTATIONS = [
     expect: `19.unique.memory.index · the memory create MAINTAINS the secondary index it refuses on`,
   },
   {
+    // 🔴 THE LIST KEY EXACT-CASE AGAIN (the duplicate audit, probe p6; ported in C8c · N3): "Race list" and "RACE LIST" are
+    // two lists in the memory twin, while Postgres (the lower(name) index) refuses the second - every memory suite green,
+    // production different.
+    name: "store.ts — the memory list create compares names exact-case again",
+    file: "src/lib/server/store.ts",
+    from: `      const key = row.name.toLowerCase();
+      for (const l of store.contactLists.values()) if (l.name.toLowerCase() === key) return null;`,
+    to: `      for (const l of store.contactLists.values()) if (l.name === row.name) return null;`,
+    expect: `19.listci.memory · the memory list create refuses a name already held IN ANY CASE - both names lower-cased before the comparison, which comes BEFORE the write - answers null and does not overwrite`,
+  },
+  {
+    // 🔴 …the Prisma create stops answering the unique violation with null: the second spelling THROWS, and the officer reads
+    // "something went wrong" where the bar has a sentence for exactly this.
+    name: "prisma-dal.ts — the Prisma list create lets the unique violation escape",
+    file: "src/lib/server/prisma-dal.ts",
+    from: `        return toStoredContactList(created);
+      } catch (err) {
+        if ((err as { code?: string })?.code === "P2002") return null;`,
+    to: `        return toStoredContactList(created);
+      } catch (err) {`,
+    expect: `19.listci.prisma · the Prisma list create still turns P2002 into null and does NOT upsert - the lower(name) index raises the very code the exact-case index did`,
+  },
+  {
+    // 🔴 …and the lookup goes back to the exact-case unique key, so "is there a list called this?" disagrees with the index.
+    name: "prisma-dal.ts — the Prisma list lookup by name is exact-case again",
+    file: "src/lib/server/prisma-dal.ts",
+    from: `        where: { name: { equals: name, mode: "insensitive" } },`,
+    to: `        where: { name },`,
+    expect: `19.listci.find · findByName reads a name in ANY CASE in both twins - the memory twin lower-cases both sides, the Prisma twin asks mode: insensitive and never findUnique - so the lookup agrees with the key`,
+  },
+  {
+    // 🔴 C8c · N3 · the importer's freeze compares its new list's name exact-case again: in the memory twin a list another
+    // officer named in another case a moment ago no longer refuses the start's new one - two lists of one name, every
+    // memory suite green, while Postgres's lower(name) index refuses it.
+    name: "store.ts — the memory freeze compares the new list's name exact-case again",
+    file: "src/lib/server/store.ts",
+    from: `          if (held.name.toLowerCase() === nameKey || held.id === newList.id) {`,
+    to: `          if (held.name === newList.name || held.id === newList.id) {`,
+    expect: `19.listci.freeze · ⭐ the importer's freeze refuses its NEW list's name IN ANY CASE in the memory twin too - the name lower-cased once, every held list compared by the same key, BEFORE the freeze writes anything (Postgres: the same lower(name) index refuses the insert inside the freeze's transaction)`,
+  },
+  {
     // 🔴 The silent-production-no-op in its original shape: the column is written but never
     // read back, so one twin answers with a field the other has lost.
     name: "prisma-dal.ts — the contact read mapper drops suppressedAt",

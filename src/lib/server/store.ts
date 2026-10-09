@@ -3987,15 +3987,28 @@ const memoryDb = {
   },
 
   contactList: {
+    /** ⭐ A LIST'S NAME IS UNIQUE WHATEVER ITS CASE (the duplicate audit, probe p6, 2026-10-08; ported in C8c · N3). Postgres
+     *  holds it as a unique index on `lower("name")` (migration `20261009180000_contact_list_name_lower_unique`), so "Arusha
+     *  event" and "ARUSHA EVENT" are one name there — and here: compared by the same lower-cased key, a second spelling is
+     *  refused with null, which the bulk service answers `list_exists`. The pre-check (`listNameKey`) is the rule; this is
+     *  the backstop for two officers naming one new list in the same second. `test:dal-parity` 19.listci.*,
+     *  `test:contacts-bulk` B7b. The importer's start creates its new list inside `contactImport.freezeDecision`, which
+     *  asks the same key (`test:dal-parity` 29.freeze). */
     create: (row: StoredContactList): StoredContactList | null => {
-      for (const l of store.contactLists.values()) if (l.name === row.name) return null;
+      const key = row.name.toLowerCase();
+      for (const l of store.contactLists.values()) if (l.name.toLowerCase() === key) return null;
       store.contactLists.set(row.id, row);
       return row;
     },
     find: (id: string): StoredContactList | null => store.contactLists.get(id) ?? null,
+    /** The list holding this name in ANY case — the unique key's own reading (the oldest, were a legacy pair to exist). */
     findByName: (name: string): StoredContactList | null => {
-      for (const l of store.contactLists.values()) if (l.name === name) return l;
-      return null;
+      const key = name.toLowerCase();
+      let found: StoredContactList | null = null;
+      for (const l of store.contactLists.values()) {
+        if (l.name.toLowerCase() === key && (found === null || l.createdAt < found.createdAt || (l.createdAt === found.createdAt && l.id < found.id))) found = l;
+      }
+      return found;
     },
     listAll: (): StoredContactList[] =>
       Array.from(store.contactLists.values())
@@ -4261,17 +4274,19 @@ const memoryDb = {
     /** §29 · ⭐ THE START'S FREEZE (U32, S15) — a compare-and-set STAGED → COMMITTING that writes the choice, the
      *  overrides, who confirmed them and when, and the target list in the SAME step, or answers null and writes nothing:
      *  of two starts racing on one run, ONE freezes it. ⭐ R12 · a NEW list is created in this same step, AFTER the
-     *  status is asked — a start that lost the run creates no list — and a name the store already holds is refused as the
-     *  unique index refuses it (P2002), nothing written. ⛔ R17 · an EXISTING target list that is gone is refused as the
-     *  foreign key refuses it (P2003), nothing written — Postgres's own order: the status first, then the list. */
+     *  status is asked — a start that lost the run creates no list — and a name the store already holds IN ANY CASE is
+     *  refused as the unique index on `lower("name")` refuses it (P2002, C8c · N3 — the same lower-cased key as
+     *  `contactList.create`), nothing written. ⛔ R17 · an EXISTING target list that is gone is refused as the foreign key
+     *  refuses it (P2003), nothing written — Postgres's own order: the status first, then the list. */
     freezeDecision: (f: ContactImportFreeze): StoredContactImport | null => {
       const frozenRun = store.contactImports.get(f.importId);
       if (!frozenRun || frozenRun.status !== "STAGED") return null;
       const newList = f.newList ?? null;
       if (newList !== null && f.targetListId !== newList.id) throw new Error("freezeDecision: a new list must be the run's target list");
       if (newList !== null) {
+        const nameKey = newList.name.toLowerCase();
         for (const held of store.contactLists.values()) {
-          if (held.name === newList.name || held.id === newList.id) {
+          if (held.name.toLowerCase() === nameKey || held.id === newList.id) {
             throw Object.assign(new Error("unique: a contact list already holds this name (memory twin of P2002) — nothing was written"), { code: "P2002" });
           }
         }

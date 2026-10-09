@@ -272,5 +272,75 @@ if (whole.ok) {
   ok("6.7c · the removed row's number is FREE again: the unique key accepts a new book row for it", again2 !== null, String(again2?.id));
 }
 
+// ── 7 · A LIST'S NAME IS UNIQUE WHATEVER ITS CASE - the duplicate audit's probe p6, on Postgres (ported in C8c · N3) ──────
+// ⭐ WHY HERE. The memory twin refuses "Race list" / "RACE LIST" by comparing lower-cased names (test:contacts-bulk B7b executes
+// the race there). Only Postgres can show that the hand-written migration `20261009180000_contact_list_name_lower_unique`
+// built the index, that its unique violation comes back from the DAL as null (the Prisma create turns P2002 into null, and the
+// bulk service answers list_exists), that findByName reads a name in any case - and that the migration's DO block takes BOTH
+// branches: no index while two lists differ only by case, the index once they do not. Every answer is written HERE by hand.
+// (The importer's start meeting the same index inside its freeze is `scripts/live/contacts-import-pg-probe.mts` section 8.)
+{
+  const { prisma } = await import("../../src/lib/server/prisma.ts");
+  const raw = prisma();
+  if (!raw) throw new Error("§7 needs the Prisma client");
+  const { readdirSync, readFileSync } = await import("node:fs");
+  const { join, dirname } = await import("node:path");
+  const { fileURLToPath } = await import("node:url");
+  const list = (id: string, name: string, h: number) => ({
+    id, name, description: null, createdAt: at(h), createdBy: "probe_officer_1", updatedAt: at(h), updatedBy: "probe_officer_1",
+  });
+
+  const first = await db.contactList.create(list("probe_list_ci_1", "Race list", 20));
+  const upper = await db.contactList.create(list("probe_list_ci_2", "RACE LIST", 21));
+  const mixed = await db.contactList.create(list("probe_list_ci_3", "rAcE lIsT", 22));
+  const exact = await db.contactList.create(list("probe_list_ci_4", "Race list", 23));
+  const other = await db.contactList.create(list("probe_list_ci_5", "Race list 2", 24));
+  ok("7.1 · ⭐ a list named in another case is REFUSED by Postgres: the first spelling lands, an upper-case and a mixed-case spelling come back null from the DAL (the lower(name) index), and the exact spelling too (the old index)",
+    first !== null && upper === null && mixed === null && exact === null,
+    `first ${first?.id} · upper ${upper?.id ?? "null"} · mixed ${mixed?.id ?? "null"} · exact ${exact?.id ?? "null"}`);
+  ok("7.2 · a different name is still accepted - the refusals did not close the door", other !== null && other.name === "Race list 2", String(other?.id));
+  const names = (await db.contactList.listAll()).map((l) => l.name).filter((n) => n.toLowerCase().startsWith("race list")).sort();
+  ok("7.3 · exactly two lists of those names exist - [Race list, Race list 2] - the refused creates wrote no row",
+    names.join("|") === "Race list|Race list 2", names.join("|"));
+  const found = await db.contactList.findByName("rACE lIST");
+  const none = await db.contactList.findByName("Race list 3");
+  ok("7.4 · findByName reads a name in ANY case on Postgres (mode: insensitive) and answers the first officer's list; a name held in no case is null",
+    found?.id === "probe_list_ci_1" && none === null, `${found?.id} · ${none === null ? "null" : none.id}`);
+  const defs = await raw.$queryRawUnsafe<Array<{ indexname: string; indexdef: string }>>(
+    `select indexname, indexdef from pg_indexes where tablename = 'ContactList' and indexname in ('ContactList_name_lower_key', 'ContactList_name_key') order by indexname`);
+  const lowerDef = defs.find((d) => d.indexname === "ContactList_name_lower_key")?.indexdef ?? "";
+  ok("7.5 · the migration built the index: ContactList_name_lower_key is in pg_indexes, UNIQUE, over lower(name) - and the model's own exact-case ContactList_name_key stands beside it",
+    lowerDef.includes("CREATE UNIQUE INDEX") && lowerDef.includes("lower(name)") && defs.some((d) => d.indexname === "ContactList_name_key"),
+    defs.map((d) => d.indexdef).join(" || "));
+
+  // The DO block, on a scratch table: its statements are the migration's own, only the table and the index renamed.
+  const migRoot = join(dirname(fileURLToPath(import.meta.url)), "..", "..", "prisma", "migrations");
+  const folders = readdirSync(migRoot).filter((d) => d.endsWith("_contact_list_name_lower_unique"));
+  const migSql = folders.length === 1 ? readFileSync(join(migRoot, folders[0], "migration.sql"), "utf8") : "";
+  const onScratch = migSql.split('"ContactList_name_lower_key"').join('"probe_dups_lower_key"').split('"ContactList"').join('"probe_dups"');
+  const indexCount = async (): Promise<number> =>
+    Number((await raw.$queryRawUnsafe<Array<{ n: bigint | number }>>(`select count(*) as n from pg_indexes where indexname = 'probe_dups_lower_key'`))[0]?.n ?? -1);
+  let afterPair = -1, afterFix = -1, afterRerun = -1, applyErr = "";
+  try {
+    await raw.$executeRawUnsafe(`drop table if exists "probe_dups"`);
+    await raw.$executeRawUnsafe(`create table "probe_dups" ("name" text not null)`);
+    await raw.$executeRawUnsafe(`insert into "probe_dups" ("name") values ('Alpha'), ('ALPHA')`);
+    await raw.$executeRawUnsafe(onScratch);
+    afterPair = await indexCount();
+    await raw.$executeRawUnsafe(`delete from "probe_dups" where "name" = 'ALPHA'`);
+    await raw.$executeRawUnsafe(onScratch);
+    afterFix = await indexCount();
+    await raw.$executeRawUnsafe(onScratch);
+    afterRerun = await indexCount();
+  } catch (e) {
+    applyErr = String((e as Error).message).slice(0, 240);
+  } finally {
+    await raw.$executeRawUnsafe(`drop table if exists "probe_dups"`);
+  }
+  ok("7.6 · ⛔ THE DO BLOCK TAKES BOTH BRANCHES and can never stop a release: with two names differing only by case it creates NOTHING and does not fail (index count 0); once they do not it creates the unique index (1); applied again it is a no-op (1)",
+    folders.length === 1 && applyErr === "" && afterPair === 0 && afterFix === 1 && afterRerun === 1,
+    applyErr || `folders ${folders.length} · after the pair ${afterPair} · after the fix ${afterFix} · re-applied ${afterRerun}`);
+}
+
 console.log(`\ncontacts-audience-pg-probe: ${pass} passed, ${fail} failed`);
 process.exitCode = fail === 0 ? 0 : 1;

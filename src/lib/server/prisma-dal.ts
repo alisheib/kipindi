@@ -4610,6 +4610,12 @@ export const prismaDb = {
   },
 
   contactList: {
+    /** ⭐ A LIST'S NAME IS UNIQUE WHATEVER ITS CASE (the duplicate audit, probe p6, 2026-10-08; ported in C8c · N3). The
+     *  model's `@unique` is exact-case; the migration `20261009180000_contact_list_name_lower_unique` adds a unique index on
+     *  `lower("name")`, so a second spelling of a name another officer created a moment ago is a P2002 here too — answered
+     *  null, which the bulk service turns into `list_exists`. The importer's freeze meets the same index inside its own
+     *  transaction (P2002 rolls the freeze back; the start says so). The memory twin compares the same lower-cased key
+     *  (`test:dal-parity` 19.listci.*). */
     create: async (row: StoredContactList): Promise<StoredContactList | null> => {
       try {
         const created = await pc().contactList.create({
@@ -4629,8 +4635,12 @@ export const prismaDb = {
       const row = await pc().contactList.findUnique({ where: { id } });
       return row ? toStoredContactList(row) : null;
     },
+    /** The list holding this name in ANY case — the unique key's own reading (the oldest, were a legacy pair to exist). */
     findByName: async (name: string): Promise<StoredContactList | null> => {
-      const row = await pc().contactList.findUnique({ where: { name } });
+      const row = await pc().contactList.findFirst({
+        where: { name: { equals: name, mode: "insensitive" } },
+        orderBy: [{ createdAt: "asc" }, { id: "asc" }],
+      });
       return row ? toStoredContactList(row) : null;
     },
     listAll: async (): Promise<StoredContactList[]> => {
@@ -4989,8 +4999,10 @@ export const prismaDb = {
      *  when, and an EXISTING target list in the same statement. Postgres re-checks the where after a racing commit, so of
      *  two starts ONE freezes the run; the loser counts 0 and is answered null, nothing written. An existing list deleted
      *  since the start read it is the foreign key refusing the update (P2003). ⭐ R12 · a NEW list is inserted only AFTER
-     *  the run was won, then made the target, in the same transaction: a held name is the unique index refusing the insert
-     *  (P2002), which rolls the freeze back with it — so a start that loses or throws leaves no list behind. */
+     *  the run was won, then made the target, in the same transaction: a name held IN ANY CASE is a unique index refusing the
+     *  insert (P2002 — the model's exact-case one, or since C8c · N3 the `lower("name")` one of migration
+     *  `20261009180000_contact_list_name_lower_unique`), which rolls the freeze back with it — so a start that loses or
+     *  throws leaves no list behind, and the run is left STAGED. */
     freezeDecision: async (f: ContactImportFreeze): Promise<StoredContactImport | null> => {
       const newList = f.newList ?? null;
       if (newList !== null && f.targetListId !== newList.id) throw new Error("freezeDecision: a new list must be the run's target list");

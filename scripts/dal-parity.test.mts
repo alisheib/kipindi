@@ -1579,6 +1579,66 @@ const HOUSE_TS_KEYS = new Set(["dueAt", "staleAt", "deadlineAt", "claimedUntil",
     /contactsByMsisdn\.set\(row\.msisdn/.test(cCreateMem),
     "a create that does not set the index makes the next duplicate pass");
 
+  // ── ⭐ A LIST'S NAME IS UNIQUE WHATEVER ITS CASE (the duplicate audit, probe p6, 2026-10-08; ported in C8c · N3) ─────
+  // The model's @unique is exact-case, so "Arusha event" and "ARUSHA EVENT" were two lists the moment two officers named one
+  // new list together: the bulk service's check (listNameKey over listAll) passes for both and both creates landed - and the
+  // importer's start, which inserts its new list inside its freeze, the same. The database now holds a UNIQUE index on
+  // lower("name") - a hand-written migration, because an expression index cannot be declared in schema.prisma, which
+  // therefore does not change. The memory twin refuses by the same lower-cased key in its create AND in the importer's
+  // freeze; the Prisma create turns the index's P2002 into null (the code the exact-case index raised) and the service
+  // answers list_exists. The migration is read from ROOT (the harness mutates src only); `test:contacts-bulk` B7b EXECUTES
+  // the race on the memory twin, `test:contacts-import` commit M26 the importer's start.
+  // ⛔ No backslash anywhere in this block: line breaks are built with String.fromCharCode, every matcher an includes.
+  const NL19 = String.fromCharCode(10);
+  const CR19 = String.fromCharCode(13);
+  const listMem19 = region(storeSrc, `${NL19}  contactList: {`);
+  const listMemCreate19 = region(listMem19, "create: (");
+  const listMemFind19 = region(listMem19, "findByName: (");
+  const listPriFind19 = delegateMethod("contactList", "findByName");
+  const freezeMem19 = region(region(storeSrc, `${NL19}  contactImport: {`), "freezeDecision: (");
+  const listCompare19 = "l.name.toLowerCase() === key";
+  const FREEZE_KEY19 = "const nameKey = newList.name.toLowerCase();";
+  const FREEZE_COMPARE19 = "held.name.toLowerCase() === nameKey";
+  ok("19.listci.memory · the memory list create refuses a name already held IN ANY CASE - both names lower-cased before the comparison, which comes BEFORE the write - answers null and does not overwrite",
+    listMemCreate19.includes("const key = row.name.toLowerCase();") && listMemCreate19.includes(listCompare19 + ") return null")
+      && listMemCreate19.indexOf(listCompare19) >= 0 && listMemCreate19.indexOf(listCompare19) < listMemCreate19.indexOf("store.contactLists.set(row.id, row)"),
+    listMemCreate19.split(NL19).map((l) => l.trim()).join(" ").slice(0, 170));
+  ok("19.listci.prisma · the Prisma list create still turns P2002 into null and does NOT upsert - the lower(name) index raises the very code the exact-case index did",
+    lCreate.includes("P2002") && lCreate.includes("return null") && !mentions(lCreate, "upsert"));
+  ok("19.listci.find · findByName reads a name in ANY CASE in both twins - the memory twin lower-cases both sides, the Prisma twin asks mode: insensitive and never findUnique - so the lookup agrees with the key",
+    listMemFind19.includes("const key = name.toLowerCase();") && listMemFind19.includes(listCompare19)
+      && listPriFind19.includes('equals: name, mode: "insensitive"') && !listPriFind19.includes("findUnique"),
+    listPriFind19.split(NL19).map((l) => l.trim()).join(" ").slice(0, 170));
+  ok("19.listci.freeze · ⭐ the importer's freeze refuses its NEW list's name IN ANY CASE in the memory twin too - the name lower-cased once, every held list compared by the same key, BEFORE the freeze writes anything (Postgres: the same lower(name) index refuses the insert inside the freeze's transaction)",
+    freezeMem19.includes(FREEZE_KEY19) && freezeMem19.includes(FREEZE_COMPARE19)
+      && freezeMem19.indexOf(FREEZE_COMPARE19) < freezeMem19.indexOf("store.contactLists.set(") && !freezeMem19.includes("held.name === newList.name"),
+    `${freezeMem19.length} chars`);
+  const LIST_INDEX_SQL19 = 'CREATE UNIQUE INDEX IF NOT EXISTS "ContactList_name_lower_key" ON "ContactList" (lower("name"));';
+  const LIST_GUARD_SQL19 = 'IF EXISTS (SELECT 1 FROM "ContactList" GROUP BY lower("name") HAVING count(*) > 1) THEN';
+  const listMigDirs19 = readdirSync(join(ROOT, "prisma", "migrations")).filter((d) => d.endsWith("_contact_list_name_lower_unique"));
+  const listMigSql19 = listMigDirs19.length === 1
+    ? readFileSync(join(ROOT, "prisma", "migrations", listMigDirs19[0], "migration.sql"), "utf8").split(CR19).join("") : "";
+  /** A migration's code on one line: comment lines out, every whitespace run one space. */
+  const sqlCode19 = (sql: string): string => sql.split(NL19).filter((l) => !l.trim().startsWith("--")).join(" ").split(" ").filter(Boolean).join(" ");
+  const listMigCode19 = sqlCode19(listMigSql19);
+  const BAD_SQL_WORDS19 = new Set(["DROP", "ALTER", "UPDATE", "DELETE", "INSERT", "TRUNCATE", "CONCURRENTLY"]);
+  const listMigBad19 = (code: string): boolean => code.toUpperCase().split(/[^A-Z]+/).some((w) => BAD_SQL_WORDS19.has(w));
+  /** ⭐ The folder sorts AFTER every other migration (C8c: a port given a timestamp after everything main held). */
+  const allMigDirs19 = readdirSync(join(ROOT, "prisma", "migrations")).filter((d) => /^[0-9]{14}_/.test(d)).sort();
+  ok("19.listci.migration · exactly one migration folder creates the case-insensitive name index - a UNIQUE index on lower(\"name\") of \"ContactList\", IF NOT EXISTS, and only when no two lists already differ by case (a release can never stop on it) - and NOTHING else: no DROP, ALTER, UPDATE, DELETE, INSERT, TRUNCATE or CONCURRENTLY; its timestamp is later than 20261009120000_contact_import_target_list's",
+    listMigDirs19.length === 1 && listMigCode19.includes(LIST_INDEX_SQL19) && listMigCode19.includes(LIST_GUARD_SQL19) && !listMigBad19(listMigCode19)
+      && allMigDirs19.indexOf(listMigDirs19[0]) > allMigDirs19.indexOf("20261009120000_contact_import_target_list"),
+    `folders ${listMigDirs19.length} · ${listMigCode19.slice(0, 140)}`);
+  ok("19.listci.schema · schema.prisma is UNCHANGED for the list name - the model keeps its exact-case @unique (an expression index cannot be declared there, and a generated migration will always list this one as drift: test:migration-ownership stops it being dropped)",
+    schemaModel(prismaSchemaSrc, "ContactList").split(NL19).some((l) => l.trim().split(" ").filter(Boolean).join(" ") === "name String @unique"));
+  ok("19.c8 · CONTROL · the old exact-case comparison, a findUnique lookup, an index on the bare column, a migration that also drops and an exact-case freeze are each reported by 19.listci.*",
+    !"for (const l of store.contactLists.values()) if (l.name === row.name) return null;".includes(listCompare19)
+      && "const row = await pc().contactList.findUnique({ where: { name } });".includes("findUnique")
+      && !sqlCode19('CREATE UNIQUE INDEX IF NOT EXISTS "ContactList_name_lower_key" ON "ContactList" ("name");').includes(LIST_INDEX_SQL19)
+      && listMigBad19(sqlCode19(['DROP INDEX "ContactList_name_key";', LIST_INDEX_SQL19].join(NL19)))
+      && !listMigBad19(sqlCode19(["-- a comment that says DROP and CONCURRENTLY", LIST_INDEX_SQL19].join(NL19)))
+      && !"if (held.name === newList.name || held.id === newList.id) {".includes(FREEZE_COMPARE19));
+
   // ── RE-ADDING A MEMBER KEEPS THE ORIGINAL addedAt ───────────────────────────────────
   // ⭐ When somebody joined a list is EVIDENCE, not a status flag — the rule
   // `Suppression.createdAt` already follows. An upsert here would walk the date forward on
