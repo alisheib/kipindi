@@ -99,7 +99,7 @@ then: "the contacts screen"):
 | C7 | U34b — an export read back through the importer, row for row (`npm run qa:contacts-import-roundtrip`): a reader's FULL export of 49 contacts (the hard cases among them — a comma and doubled quotes in a name, formula-looking names, a line break in a note) imported back: all 49 "already in the book", nothing new, repeated, invalid or unreadable; under "use the file's version" NOTHING differs (no changes listed; 0 new · 0 updated · 49 kept); the result 0 added · 0 updated · 49 kept · 0 failed. A MASKED export (GROWTH) is refused whole in words ("These numbers are masked…"), no way on | ✅ LIVE `e47ef26e` |
 | C3c | A big Excel workbook read in the officer's browser — over 700 KB (about 25,000 rows), refused today with "save it as CSV", a remedy that can turn a 12-digit number into `2.55713E+11` for good. A workbook of 700 KB or less keeps the proven server path; the new reader is held to it by shared cell rules and a differential test (design §4.5, S15-13) | 🔨 building (branch `contacts-c3c`, checkout `C:\kipindi-s15`) |
 | C3e | Several mobile numbers for one person, in EVERY format — a vCard already chooses one TEL (live since U26) and the person's other numbers are never checked: before a row is imported on one number, its other numbers are looked up, and a row whose other number is on the stop list, erased or already in the book is kept as it is (one person, one contact) | ⬜ designed after C3b-fix — until then S15-14 holds (CSV / Excel: exactly one distinct mobile per row, or the row is refused in words) |
-| C8 | The LIVE importer's review round — S14's fifteen findings checked against this build (6 apply in part or whole) + four new finds. **MAJOR:** (#2 + N2) an erased person with NO book row is recognised only while the consent ledger's LATEST word is the erasure marker — a later Stop/Resume tap on an old /s/ link, or an opt-out BEFORE the erasure (erase.ts then writes no marker at all), lets an import or the Add form create them again with their name; (#3) a list's member figure counts only members not linked to an account, so a masked officer who imports one number into a list learns from the figure whether it is a player's (D19); (N1) the Add form answers a tombstoned number "This number can't be added to the book" — an erasure (and a former account) revealed. **MINOR:** (#1) an erased number reads "already in the book" in the check while the search cannot find it; (N3) list names are unique whatever their case only in code, not in the database; (N4) a 200,000-row check reads ~400 pages without yielding to queued bets; (#14) refusal audit rows are never pruned, and a persistent P2028/P2024 is retried forever as "bets come first"; (#13) tags not added (a contact full of tags) are never shown; (#5) the start's new-list branch and `listOpenByOthers` never ran on PostgreSQL; (#12) several dialog paths never driven (✕ during a commit, Stop during an upload or a busy wait, an existing list, an exception under KEEP); (#15) a resume of a STAGED run is untested | ⬜ design first (erasure is permanent; what a masked officer may infer), then build — after C3b-fix |
+| C8 | The LIVE importer's review round — S14's fifteen findings checked against this build (6 apply in part or whole) + four new finds. **MAJOR:** (#2 + N2) an erased person with NO book row is recognised only while the consent ledger's LATEST word is the erasure marker — a later Stop/Resume tap on an old /s/ link, or an opt-out BEFORE the erasure (erase.ts then writes no marker at all), lets an import or the Add form create them again with their name; (#3) a list's member figure counts only members not linked to an account, so a masked officer who imports one number into a list learns from the figure whether it is a player's (D19); (N1) the Add form answers a tombstoned number "This number can't be added to the book" — an erasure (and a former account) revealed. **MINOR:** (#1) an erased number reads "already in the book" in the check while the search cannot find it; (N3) list names are unique whatever their case only in code, not in the database; (N4) a 200,000-row check reads ~400 pages without yielding to queued bets; (#14) refusal audit rows are never pruned, and a persistent P2028/P2024 is retried forever as "bets come first"; (#13) tags not added (a contact full of tags) are never shown; (#5) the start's new-list branch and `listOpenByOthers` never ran on PostgreSQL; (#12) several dialog paths never driven (✕ during a commit, Stop during an upload or a busy wait, an existing list, an exception under KEEP); (#15) a resume of a STAGED run is untested | split in three: **C8a** 🔨 building (branch `contacts-c8a`, checkout `C:\kipindi-c8`, from main, ships alone — S15-15: an erasure stands until a new consent, a later opt-out never lifts it; erase.ts always writes the marker; the Add form asks the same rule) · **C8b** designed (§4.7, S15-16; owner questions 1–3 asked) — built after C8a · **C8c** the robustness items (N3 with the other session's finished `b97fed35`, N4, #14, #13, #5, #12, #15) — after C8a and C3b-fix |
 
 ## §2 — WHAT EXISTED WHEN THE LANE BEGAN (read from the code, 2026-10-09 ~00:30 EAT)
 
@@ -202,6 +202,12 @@ And from 2026-09-25: "it's 150k approx contacts, or VCF … it could be small an
   yet check the other one against the stop list or an erasure — so it imports neither and says why ("keep one"), exactly
   as before C3b. A cell or row with ONE mobile among landlines, foreign numbers or labels yields that mobile. C3e lifts
   this with the look-up, for every format (a vCard already chooses one TEL today).
+- **S15-15 · An erasure stands until a new consent (C8a).** One rule for a number with no book row: the latest of its
+  ledger rows that is a GIVEN or an erasure marker is the marker. A later opt-out never lifts it (only a consent does —
+  numbers are recycled, so the next holder can still say yes), erase.ts writes the marker even when the number had
+  already opted out, and the importer, its commit and the Add form all ask the same rule.
+- **S15-16 · What a masked officer may know (C8b, §4.7).** A typed number shows only whether the book would take it as
+  new; B1, B2, B5, B6, B7 are technical calls taken; B3, B4 and B8 wait for Ali's answers.
 
 ### §4.4 — The build (files; each step committed and pushed when proven)
 - Contract: `src/lib/contacts/import-flow.ts` (pure — the types and sentences both sides share).
@@ -265,6 +271,64 @@ And from 2026-09-25: "it's 150k approx contacts, or VCF … it could be small an
   more, whatever separates them) — "255,757,300,014" and "0712/345/678" were shown whole; the drive's privacy check
   counts digits too.
 - **D10.** The phone-cell suite's never-failing key-shape half replaced.
+
+### §4.7 — C8b: what a MASKED officer may know about a number (the survey of 2026-10-09 ~06:30 EAT, on main `171eb6c8`)
+A masked officer = a role whose `identity.contact` cell is not `read` (roles.ts); of those, only GROWTH reaches
+/admin/contacts and /admin/campaigns. The rules: **D19** (no player facts — setup doc ~1606, A1.1 ~2417, OD54 adds the
+stop list ~1280; ⚠️ "D19" in COMPLIANCE-DECISIONS ~2334 is a house-bot rule of the same name) · **X22** ("a browser never
+learns a number was erased", setup doc ~2862) · the residual Ali ACCEPTED (STEP 23, MARKETING-CAMPAIGN-HISTORY ~643):
+"a whole-number lookup tells an officer a number is probably a client".
+**What the survey found a masked officer can tell today** (O ordinary · P a player's · E erased · S stopped):
+1. Add contact (lookup and Save; 30 a minute, no audit row): O/P/S "already in the book" + an Open link; E with a
+   tombstone "This number can't be added to the book" (erasure revealed); E with only the ledger marker → "free", and
+   Save re-creates the person (C8a).
+2. A whole-number search finds O/P/S, never E; a sign-up row's "Added" is the account's sign-up date, so any "Added"
+   before 2026-10-02 (when the book got its first writer) is certainly a player's — also through the Added sort, the
+   `?to=` window, the edit dialog and the masked export.
+3. The importer's check says "already in the book" for E while the search finds nothing (X22's disguise undone).
+4. Importing onto a list: kept O/P/S rows join it, E never — then `?list=` shows the row or nothing.
+5. A list's figure (`live`, store ~4077 / prisma-dal ~4760) leaves out account-linked rows and tombstones: a one-number
+   list shows 1 for O/S, 0 for P or E; the composer's count includes linked rows, so composer − card = the exact count
+   of player members; a member who signs up later drops out of the figure.
+6. Bulk: a READER can make a tag or list from a filter GROWTH may not use (stopped, players); GROWTH then filters by it.
+7–9. The edit dialog, the KPI tiles, the masked export: only what 2 and 5 already give, and an erasure makes a row vanish
+   (observational, not probeable).
+10. ⚠️ The /admin overview feed, seen by EVERY staff role, lists `contacts.contact.registered|linked` with the contact id —
+   the same id is in each row's edit link: which rows are players, live, free.
+11–14 (the campaign path, S14's lane): the audience count (raw; makes 5's subtraction work); the confirm card; a TEST SMS
+   to a typed number — one sentence for every gate refusal, a real SMS on a pass, tightly rate-limited and audited
+   (already an accepted residual, R3/A19); the dormant live page's tallies.
+**The model:** to a masked officer a typed number shows ONE thing — whether the book would take it as new; "already in
+the book" also covers a number the book must refuse because its holder was erased; no surface takes a masked officer
+from a typed number to a row; no figure separates linked contacts from unlinked ones.
+- **B1** one test, `bookBlocks(n)`: a tombstone, or an erasure marker with no GIVEN after it (C8a builds the ledger half
+  and erase.ts always writing the marker). Lifted only by the holder's own act — a later GIVEN, or a NEW account
+  registering the number (registration then revives the tombstone as the new client's linked row, in one transaction;
+  erasure deletes the tombstone's list memberships so no old coverage is inherited).
+- **B2** Add contact: a blocked number answers "already in the book" at the lookup and at Save; a masked viewer's answer
+  never carries a contact id — the Open link becomes a reader's control.
+- **B3** a masked WHOLE-NUMBER search answers a presence line only ("in the book" / "not in the book"), never rows; the
+  bulk and export routes refuse a masked whole-number `q`. Name search unchanged. *(owner question 1)*
+- **B4** a masked officer's import puts ONLY the contacts the run CREATED on its list (readers unchanged). *(question 1)*
+- **B5** list figures by viewer: masked → all live members, linked included, coverage over the same set (= the
+  composer's count); readers → today's exact figures plus "N with an account". Lists card, importer picker, result.
+- **B6** the overview feed shows `contacts.contact.registered|linked` to COMPLIANCE only.
+- **B7** tag and add-to-list are refused for EVERY viewer when the audience uses consent, stop, source or player.
+- **B8** "Added" = when the row entered the book; the 54 rows back-filled on 2026-10-03 re-dated to that day — a
+  production data fix *(question 3)*.
+Unchanged on purpose: the unique index, the stop list (Add and import never refuse a stopped number — the gate refuses it
+at send), X22's `shown`, S15-10, OD65/OD66. Residuals no change removes: the presence bit (accepted, STEP 23); a row,
+tag or list member vanishing after an erasure (observational — looks like another officer's removal); readers keep their
+views (they run erasures). **Shared with S14's campaign path** (their files or their reads — merge, never overwrite):
+`roleRefusal` / `campaignAudienceRefusal`, erase.ts, registration-contact.ts, admin-overview-feed.ts, consent.ts ~486,
+the test SMS, U47's stop line.
+**⏳ ASKED Ali (2026-10-09 ~06:35 EAT), default (a) recommended:** 1 an erased person's number — (a) stays blocked until
+its holder signs up or opts in again; GROWTH then checks a typed number only as "in the book / not", and GROWTH's
+imports add only new contacts to a list · (b) counts as new the next time anyone adds it (an old spreadsheet can bring the
+name back; B3, B4 dropped). 2 a test SMS to a typed number — (a) Admin and Compliance only, GROWTH tests on its own phone ·
+(b) kept for GROWTH (S14's lane builds it). 3 re-date the 54 back-filled clients to "added 3 Oct" — (a) yes · (b) no.
+**Technical calls taken (S15-16):** B1, B2, B5, B6, B7 are built in C8b after C8a lands; B3, B4 wait for answer 1; B8
+for answer 3.
 
 ## §3 — LOG (newest first)
 
