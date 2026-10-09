@@ -355,7 +355,9 @@ tag or list member vanishing after an erasure (observational — looks like anot
 views (they run erasures). **Shared with S14's campaign path** (their files or their reads — merge, never overwrite):
 `roleRefusal` / `campaignAudienceRefusal`, erase.ts, registration-contact.ts, admin-overview-feed.ts, consent.ts ~486,
 the test SMS, U47's stop line.
-**⏳ ASKED Ali (2026-10-09 ~06:35 EAT), default (a) recommended:** 1 an erased person's number — (a) stays blocked until
+**✅ ANSWERED by Ali (2026-10-09 ~10:20 EAT, to S14, which carries this lane's leftovers since Ali-Blade15 left): (a), (a),
+(a)** — COMPLIANCE-DECISIONS § "2026-10-09 · An erased number stays blocked, a test SMS to a typed number is for Admin
+and Compliance, and the back-filled contacts are re-dated". The questions as asked: 1 an erased person's number — (a) stays blocked until
 its holder signs up or opts in again; GROWTH then checks a typed number only as "in the book / not", and GROWTH's
 imports add only new contacts to a list · (b) counts as new the next time anyone adds it (an old spreadsheet can bring the
 name back; B3, B4 dropped). 2 a test SMS to a typed number — (a) Admin and Compliance only, GROWTH tests on its own phone ·
