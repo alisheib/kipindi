@@ -694,6 +694,21 @@ const PLANTS: readonly RedPlant<PhoneCellImpl>[] = [
     expect: L.H12,
     impl: () => ({ ...real(), firstMobileIndex: (cells) => cells.findIndex((c) => parseTzNumber(c).verdict === "ok") }),
   },
+  {
+    // 🔴 C8c · M1 undone — the cut question as B1 shipped it: asked of the DIGIT-FILTERED parts (`phoneCellParts`), so a
+    // word between two separators vanishes from the "cut" and ", Asha, " joins a row number to the number after the name.
+    name: "C8c · M1 · cutsCell asks the digit-filtered parts again — ', Asha, ' and ' | Asha | ' read as a cut",
+    expect: L.H12,
+    impl: () => ({
+      ...real(),
+      cutsCell: (gap) => {
+        const s = String(gap ?? "");
+        if (s.length === 0 || s.length > CONTACT_LIMITS.phone || /[0-9]/.test(s)) return false;
+        const parts = phoneCellParts(`0${s}0`);
+        return parts.length === 2 && parts[0] === "0" && parts[1] === "0";
+      },
+    }),
+  },
 ];
 
 export const phoneCellSection: ImportSection<PhoneCellImpl> = {
