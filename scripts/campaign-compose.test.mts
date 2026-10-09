@@ -1208,10 +1208,10 @@ function checkComposerScreen(src: ScreenSources, log: (l: string) => void): stri
     // the choice is still while a test is in flight
     still: testCard.includes("disabled={!typedView.allowed || c.testing !== null}") && testCard.includes("disabled={t.ownNumberMasked === null || c.testing !== null}"),
     // a refusal that means "this page is out of date" re-reads the page
-    reread: client.includes('const PAGE_STALE_REASONS = ["attestation_stale", "typed_outreach_closed", "typed_no_attestation_wording", "typed_needs_source_line"];')
+    reread: client.includes('const PAGE_STALE_REASONS = ["attestation_stale", "typed_outreach_closed", "typed_no_attestation_wording"];')
       && sendBlock.includes('r.outcome === "refused" && PAGE_STALE_REASONS.includes(r.reason)) router.refresh();'),
   };
-  ok("§16.20 ⭐ U37c-2 · THE CARD SAYS THE TRUE REASON AND KEEPS IN STEP — a typed test refused up front says so before \"updating\"; a disabled \"Another number\" always has its reason (save first, or updating just after a save); the choice is still while a test is in flight; and a refusal that means the page is out of date (the 18+ words, the record, the line) re-reads it",
+  ok("§16.20 ⭐ U37c-2 · THE CARD SAYS THE TRUE REASON AND KEEPS IN STEP — a typed test refused up front says so before \"updating\"; a disabled \"Another number\" always has its reason (save first, or updating just after a save); the choice is still while a test is in flight; and a refusal that means the page is out of date (the 18+ words, the record) re-reads it — no source line is one of them since 2026-10-09",
     Object.values(inStep).every(Boolean), JSON.stringify(inStep));
 
   /* §16.22 · the owner's ruling of 2026-10-09 — nothing is appended to a test, so the Test card names no stop link. Read on
@@ -2453,7 +2453,7 @@ async function checkTestSend(impl: ComposeImpl, log: (l: string) => void): Promi
       `${reasonOf(r)} · token ${token.length ? "made" : "none"} · shown is the measurement render ${r.ok && shown !== null && shown.ok ? r.text === shown.text : false}`];
   });
 
-  await claim("§18.22 ⭐ U37c · THE TYPED PREVIEW IS THE SAME FOR EVERY NUMBER — the loader's typed view renders the saved draft as a CONTACT-BOOK recipient with the measurement token, takes no number (draft and facts only), labels the tick with the saved adult.test version, and says why a typed test can't be offered in the test send's own order and words: licence outreach closed, then the 18+ wording unsaved, then no source line on the draft (its preview is shown — the line itself is never printed), and a saved text that cannot render for a book recipient is refused in the render's own words, never offered", async () => {
+  await claim("§18.22 ⭐ U37c · THE TYPED PREVIEW IS THE SAME FOR EVERY NUMBER — the loader's typed view renders the saved draft as a CONTACT-BOOK recipient, takes no number (draft and facts only), labels the tick with the saved adult.test version, and says why a typed test can't be offered in the test send's own order and words: licence outreach closed, then the 18+ wording unsaved; a draft with NO source line is offered with its preview (none is needed since the owner's ruling of 2026-10-09); and a saved text that cannot render for a book recipient is refused in the render's own words, never offered", async () => {
     const id = await phrasedDraft();
     const blankId = await u37bDraft();
     const row = await db.smsCampaign.find(id);
@@ -2487,10 +2487,13 @@ async function checkTestSend(impl: ComposeImpl, log: (l: string) => void): Promi
       }
     }
     const takesNoNumber = paramNames.join(",") === "draft,facts" && LOADER.composeTypedView.length === 2;
+    // ⭐ 2026-10-09 · no source line is needed: the blank draft is offered, previewed as a book recipient gets it.
+    const blankExpected = renderForRecipient(u37bTemplate(blank), { variant: "SW", name: null, token: footerMeasurementToken(), origin: "book" });
+    const lineFree = noLine.allowed && noLine.why === null && blankExpected.ok && noLine.preview?.SW === blankExpected.text;
     return [ready.allowed && ready.why === null && expected.ok && ready.preview?.SW === expected.text && ready.attestation?.version === 3
       && !closed.allowed && closed.why === TEST.TEST_TYPED_OUTREACH_CLOSED && !unsaved.allowed && unsaved.why === TEST.TEST_TYPED_NO_ATTESTATION_WORDING
-      && !noLine.allowed && noLine.why === TEST.TEST_TYPED_NEEDS_SOURCE_LINE && noLine.preview !== null && takesNoNumber && refusedInItsWords,
-      JSON.stringify({ ready: { allowed: ready.allowed, why: ready.why, same: ready.preview?.SW === (expected.ok ? expected.text : null) }, closed: closed.why, unsaved: unsaved.why, noLine: noLine.why, takesNoNumber, unrenderable: unrenderable.why })];
+      && lineFree && takesNoNumber && refusedInItsWords,
+      JSON.stringify({ ready: { allowed: ready.allowed, why: ready.why, same: ready.preview?.SW === (expected.ok ? expected.text : null) }, closed: closed.why, unsaved: unsaved.why, noLine: { allowed: noLine.allowed, why: noLine.why, previewed: noLine.preview !== null }, takesNoNumber, unrenderable: unrenderable.why })];
   });
 
   await claim("§18.23 ⛔ U37c · S24 · THE TYPED BUDGETS — five typed tests to one number from three officers pass and the sixth is refused typed_rate_limited with the recipient's sentence, while another number is still allowed and the bucket key holds no digit run of the number; one officer's eleventh typed test to eleven numbers is refused typed_rate_limited with the officer's sentence while their own-number test still passes; and a refusal before the gate spends neither budget", async () => {
@@ -2528,7 +2531,7 @@ async function checkTestSend(impl: ComposeImpl, log: (l: string) => void): Promi
       `${reasonOf(r)}${r.ok ? ` · ${r.target} · ${JSON.stringify(r.text.slice(0, 24))}` : `: ${r.error}`}`];
   });
 
-  await claim("§18.25 ⛔ U37c · TYPED TESTS ARE REFUSED UP FRONT — the same answer for a player's number and a stranger's, with ZERO gate calls: licence outreach closed (typed_outreach_closed), the 18+ wording unsaved (typed_no_attestation_wording), and a draft with no source line (typed_needs_source_line)", async () => {
+  await claim("§18.25 ⛔ U37c · TYPED TESTS ARE REFUSED UP FRONT — the same answer for a player's number and a stranger's, with ZERO gate calls: licence outreach closed (typed_outreach_closed) and the 18+ wording unsaved (typed_no_attestation_wording); and a draft with NO source line is no refusal since the owner's ruling of 2026-10-09 — a typed test on it reaches the gate and is handed over", async () => {
     const id = await phrasedDraft();
     const blankId = await u37bDraft();
     const player = await officer();
@@ -2538,7 +2541,6 @@ async function checkTestSend(impl: ComposeImpl, log: (l: string) => void): Promi
     const cases: { want: string; campaign: string; over: Partial<TestDeps> }[] = [
       { want: "typed_outreach_closed", campaign: id, over: { gateReads: DB_GATE_READS } },
       { want: "typed_no_attestation_wording", campaign: id, over: { adultTestWording: () => null } },
-      { want: "typed_needs_source_line", campaign: blankId, over: {} },
     ];
     const got: string[] = [];
     let same = true;
@@ -2548,7 +2550,13 @@ async function checkTestSend(impl: ComposeImpl, log: (l: string) => void): Promi
       got.push(`${reasonOf(a)} | ${reasonOf(b)}`);
       if (reasonOf(a) !== c.want || reasonOf(b) !== c.want || a.ok || b.ok || a.error !== b.error) same = false;
     }
-    return [same && gates === 0, `${got.join(" · ")} · gate calls ${gates}`];
+    // ⭐ 2026-10-09 · the line is never printed, so a draft without one is tested like any other: up front it is refused
+    // nothing, and the gate decides it.
+    const upFrontGates = gates;
+    const { send: lineSpy } = u37bSpy();
+    const lineFree = await sendTyped(blankId, `+${u37bKey()}`, o.id, { over: { gate: spyGate, send: lineSpy } });
+    return [same && upFrontGates === 0 && lineFree.ok && gates > upFrontGates,
+      `${got.join(" · ")} · gate calls up front ${upFrontGates} · the draft with no line ${reasonOf(lineFree)}`];
   });
 
   await claim("§18.26 ⛔ U37c · A REFUSED TYPED NUMBER GETS NO TOKEN — the pre-check refuses before a stop link is minted: a withdrawn number has no token row after its refused test", async () => {
@@ -3589,8 +3597,10 @@ if (!PROVE_RED) {
     const STILL = "disabled={!typedView.allowed || c.testing !== null}";
     const restless = swapOnce(CLIENT, STILL, "disabled={!typedView.allowed}");
     /** U37c-2 · a rewording refused, and the page left showing the old words. */
-    const STALE_LIST = '["attestation_stale", "typed_outreach_closed", "typed_no_attestation_wording", "typed_needs_source_line"]';
-    const noReread = swapOnce(CLIENT, STALE_LIST, '["typed_outreach_closed", "typed_no_attestation_wording", "typed_needs_source_line"]');
+    const STALE_LIST = '["attestation_stale", "typed_outreach_closed", "typed_no_attestation_wording"]';
+    const noReread = swapOnce(CLIENT, STALE_LIST, '["typed_outreach_closed", "typed_no_attestation_wording"]');
+    /** 2026-10-09 · the source line put back among the reasons the page is out of date — a reason no door can answer now. */
+    const lineReread = swapOnce(CLIENT, STALE_LIST, '["attestation_stale", "typed_outreach_closed", "typed_no_attestation_wording", "typed_needs_source_line"]');
     /** U37c-2 · Send no longer spends the tick. */
     const SPEND = "    const r = recipient();\n    setTickedFor(null);\n    c.sendTest(v, r);";
     const tickNeverSpent = swapOnce(CLIENT, SPEND, "    const r = recipient();\n    c.sendTest(v, r);");
@@ -3733,6 +3743,12 @@ if (!PROVE_RED) {
         expect: /^§16\.20 ⭐/, sources: noReread,
         landed: () => once(CLIENT, STALE_LIST) && !(noReread.files.get(CLIENT) ?? "").includes(STALE_LIST),
         landedAs: "attestation_stale is no longer a page-stale reason",
+      },
+      {
+        name: "2026-10-09 · the source line put back among the page-stale reasons (typed_needs_source_line)",
+        expect: /^§16\.20 ⭐/, sources: lineReread,
+        landed: () => once(CLIENT, STALE_LIST) && (lineReread.files.get(CLIENT) ?? "").includes('"typed_needs_source_line"]'),
+        landedAs: "the client re-reads the page on a refusal the test send no longer makes",
       },
       {
         name: "U37c-2 · the number's problem said twice — under the field and again beside Send",
@@ -4520,8 +4536,25 @@ if (!PROVE_RED) {
     /** U37c-2 · "allowed" without a preview — a text that cannot render for a book recipient offered anyway. */
     const renderIgnored: typeof LOADER.composeTypedView = (draft, facts) => {
       const v = LOADER.composeTypedView(draft, facts);
-      const upFront: Array<string | null> = [TEST.TEST_TYPED_OUTREACH_CLOSED, TEST.TEST_TYPED_NO_ATTESTATION_WORDING, TEST.TEST_TYPED_NEEDS_SOURCE_LINE];
+      const upFront: Array<string | null> = [TEST.TEST_TYPED_OUTREACH_CLOSED, TEST.TEST_TYPED_NO_ATTESTATION_WORDING];
       return draft !== null && !v.allowed && v.why !== null && !upFront.includes(v.why) ? { ...v, allowed: true, why: null } : v;
+    };
+    /** The refusal the owner's ruling of 2026-10-09 took away, in its old words — what the two plants below put back. */
+    const NEEDS_LINE_WAS = "A test to another number needs the campaign's source line, and this draft has none — it is added when the draft is "
+      + "saved after the owner sets it (gate G5). Send yourself a test for now.";
+    /** 2026-10-09 undone · the typed test's source-line gate back at the door — a draft with no line refused up front. */
+    const lineGateBackTest: typeof realTest = async (input, officerId, deps = TEST.CAMPAIGN_TEST_DEPS, options) => {
+      const rec = recipientOf(input);
+      const c = await deps.campaigns.find(String((input as unknown as { campaignId?: unknown })?.campaignId ?? ""));
+      if (rec !== null && rec.kind === "typed" && c !== null && (c.sourcePhrase ?? "").trim() === "") {
+        return { ok: false, outcome: "refused", reason: "typed_needs_source_line" as never, error: NEEDS_LINE_WAS, target: "typed" };
+      }
+      return realTest(input, officerId, deps, options);
+    };
+    /** 2026-10-09 undone · the loader's typed view refusing a draft with no line again. */
+    const lineGateBackView: typeof LOADER.composeTypedView = (draft, facts) => {
+      const v = LOADER.composeTypedView(draft, facts);
+      return draft !== null && v.allowed && (draft.sourcePhrase ?? "").trim() === "" ? { ...v, allowed: false, why: NEEDS_LINE_WAS } : v;
     };
     /** Review · a 41-character number let through — the cap gone, the extra text trimmed off before the re-typing. */
     const uncappedNumber: typeof realTest = (input, officerId, deps, options) => {
@@ -4882,6 +4915,28 @@ if (!PROVE_RED) {
           return !LOADER.composeTypedView(broken, facts).allowed && renderIgnored(broken, facts).allowed;
         },
         landedAs: "the real view refuses the unrenderable text; the plant offers it",
+      },
+      {
+        // The plant refuses before anything about the officer is read, so its landing needs no role that may type a number.
+        name: "2026-10-09 undone · the typed test's source-line gate back at the door — a draft with no line refused up front",
+        expect: [/^§18[.]25 ⛔/], impl: { ...R, test: lineGateBackTest },
+        landed: async () => {
+          const id = await u37bDraft();
+          const planted = await lineGateBackTest(typedInput(id, `+${u37bKey()}`), "usr_u37c_plant", typedLanded({ send: u37bSpy().send }));
+          return !planted.ok && planted.outcome === "refused" && planted.reason === "typed_needs_source_line" && planted.error === NEEDS_LINE_WAS;
+        },
+        landedAs: "a typed test on a draft with no line is refused typed_needs_source_line, in the old words",
+      },
+      {
+        name: "2026-10-09 undone · the typed view refusing a draft with no source line again",
+        expect: [/^§18[.]22 ⭐/], impl: { ...R, typedView: lineGateBackView },
+        landed: async () => {
+          const row = await db.smsCampaign.find(await u37bDraft());
+          if (row === null) return false;
+          const facts = { outreachOpen: true, adult: P_ADULT };
+          return LOADER.composeTypedView(row, facts).allowed && !lineGateBackView(row, facts).allowed;
+        },
+        landedAs: "the real view offers the draft with no line; the plant refuses it, in the old words",
       },
       {
         name: "U37c · the typed preview built for a number",

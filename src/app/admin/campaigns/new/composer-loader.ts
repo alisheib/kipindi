@@ -44,8 +44,7 @@ import { audienceCountView, audienceSplitView } from "./audience-view-model";
 import type { AudienceSplitView } from "./audience-view-model";
 import { wholeNumberAudienceProblem, CAMPAIGN_AUDIENCE_UNREADABLE, savedSourcePhrase } from "@/lib/server/marketing/campaign-draft";
 import {
-  TEST_OWN_NUMBER_UNUSABLE, TEST_TYPED_OUTREACH_CLOSED, TEST_TYPED_NO_ATTESTATION_WORDING, TEST_TYPED_NEEDS_SOURCE_LINE,
-  TEST_TEMPLATE_INVALID,
+  TEST_OWN_NUMBER_UNUSABLE, TEST_TYPED_OUTREACH_CLOSED, TEST_TYPED_NO_ATTESTATION_WORDING, TEST_TEMPLATE_INVALID,
 } from "@/lib/server/marketing/campaign-test-send";
 import { licenceOutreach } from "@/lib/server/marketing/outreach-record";
 import { currentWording } from "@/lib/server/marketing/wordings";
@@ -144,12 +143,13 @@ export type ComposeTestView = {
 
 /** U37c · what the Test card needs to offer a test to a TYPED number — ⛔ the loader takes no number. */
 export type ComposeTypedView = {
-  /** Typed tests may be offered: licence outreach open, `adult.test` saved, and this draft carrying a source line. */
+  /** Typed tests may be offered: licence outreach open and `adult.test` saved (no source line is needed since the owner's
+   *  ruling of 2026-10-09). */
   allowed: boolean;
   /** The first number-independent refusal, in the test send's own words (§3.7 step 6) — null when allowed. */
   why: string | null;
-  /** The SAVED draft as a CONTACT-BOOK recipient gets it — the `{jina}` fallback, its stored source line, the measurement
-   *  token for the stop link — the same for every number. Null while it cannot render (no source line). */
+  /** The SAVED draft as a CONTACT-BOOK recipient gets it — the `{jina}` fallback, nothing appended — the same for every
+   *  number. Null while it cannot render. */
   preview: { SW: string; EN: string | null; revision: number } | null;
   /** The saved `adult.test` confirmation — the tick's label, verbatim — and its version; null while unsaved. */
   attestation: { text: string; version: number } | null;
@@ -214,11 +214,11 @@ function templateOf(c: StoredSmsCampaign): CampaignTemplate {
 
 /**
  * ⭐ U37c · THE TYPED TEST'S VIEW, decided from the same facts the test send checks first (§3.7 step 6), in its
- * order and in its words: licence outreach open, `adult.test` saved, and the draft's STORED source line (the ROW's —
- * U37s: a draft saved before the line existed carries none until it is saved again) — and "allowed" only with a preview,
- * so a saved text that cannot render for a book recipient is refused in the render's words. ⛔ It takes no number: the preview
- * is the book-origin render of the saved draft with the measurement token, the same for every number, and the stop link
- * made for a real number is never shown.
+ * order and in its words: licence outreach open, then `adult.test` saved — and "allowed" only with a preview, so a saved
+ * text that cannot render for a book recipient is refused in the render's words. (A draft with no source line is no
+ * refusal since the owner's ruling of 2026-10-09: nothing is appended, so no line is printed.) ⛔ It takes no number: the
+ * preview is the book-origin render of the saved draft, the same for every number, and no token made for a real number
+ * is ever shown.
  */
 export function composeTypedView(
   draft: StoredSmsCampaign | null,
@@ -229,8 +229,7 @@ export function composeTypedView(
   const template = templateOf(draft);
   const why = !facts.outreachOpen ? TEST_TYPED_OUTREACH_CLOSED
     : attestation === null ? TEST_TYPED_NO_ATTESTATION_WORDING
-      : template.sourcePhrase.trim() === "" ? TEST_TYPED_NEEDS_SOURCE_LINE
-        : null;
+      : null;
   const render = (variant: "SW" | "EN") => renderForRecipient(template, { variant, name: null, token: footerMeasurementToken(), origin: "book" });
   const sw = render("SW");
   const en = template.bodyEn.trim() === "" ? null : render("EN");

@@ -4,9 +4,10 @@
  * ⛔ 404 IN PRODUCTION, before anything else, like every route under `dev-test/` (`test:cert-devroutes`). It is reachable
  * only where `NODE_ENV` is not `production`, which on this platform means a developer's own machine.
  *
- * ⭐ WHY THIS EXISTS. A test to a typed number is offered only once licence outreach is OPEN, `adult.test` is SAVED and the
- * draft carries a source line — three owner acts. A drive cannot reach any of the Test card's typed states without them,
- * and each of the three "disabled, because …" states needs the world one step short of open. ⭐ EVERY STEP GOES THROUGH
+ * ⭐ WHY THIS EXISTS. A test to a typed number is offered only once licence outreach is OPEN and `adult.test` is SAVED — two
+ * owner acts (until the owner's ruling of 2026-10-09 the draft also had to carry a source line). A drive cannot reach any
+ * of the Test card's typed states without them, and each "disabled, because …" state needs the world one step short of
+ * open. ⭐ EVERY STEP GOES THROUGH
  * THE PLATFORM'S OWN WRITER — `savePolicyLines`, `saveMarketingWordings`, `openLicenceOutreach` / `closeLicenceOutreach`,
  * `ensureOptOutToken` + `stopMarketing` — never a hand-built row, so the card reads exactly what an owner's saves leave.
  *
@@ -16,7 +17,8 @@
  *   POST ?adult=1              — save `adult.test` (its suggested wording, approved on purpose)
  *   POST ?adult=2              — save a REWORDING of `adult.test` (a new version) — the drive's "reworded while the
  *                                page was open" state (§18.32)
- *   POST ?source=1             — save the source line G5 chose, "Namba yako ipo orodhani kwetu."
+ *   POST ?source=1             — save the source line G5 chose, "Namba yako ipo orodhani kwetu." (nothing needs it since
+ *                                2026-10-09 — no message prints the line; kept for the drives written before)
  *   POST ?stop=<phone>         — a real stop on that number: its token as the send path gets it (`ensureOptOutToken`,
  *                                the one it already has, else a new one), then the stop itself
  * Each is idempotent: a wording or line already saved with the same text writes nothing new.

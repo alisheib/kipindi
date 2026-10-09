@@ -109,9 +109,10 @@ const FIELD_ORDER: CampaignDraftField[] = ["name", "bodySw", "nameFallbackSw", "
 const ON_PAGE: ReadonlySet<CampaignDraftField> = new Set(["name", "bodySw", "nameFallbackSw", "bodyEn", "nameFallbackEn", "audience"]);
 /** The refusals whose remedy is the officer's own consent switch, on their own profile. */
 const CONSENT_REASONS = ["no_consent", "consent_withdrawn", "suppressed"];
-/** U37c-2 · the typed refusals that mean THIS PAGE is out of date (the words, the record or the line changed since it
- *  loaded): the page re-reads, so the card shows the world the server just answered from. */
-const PAGE_STALE_REASONS = ["attestation_stale", "typed_outreach_closed", "typed_no_attestation_wording", "typed_needs_source_line"];
+/** U37c-2 · the typed refusals that mean THIS PAGE is out of date (the words or the record changed since it loaded): the
+ *  page re-reads, so the card shows the world the server just answered from. (`typed_needs_source_line` is gone since the
+ *  owner's ruling of 2026-10-09: a typed test needs no source line.) */
+const PAGE_STALE_REASONS = ["attestation_stale", "typed_outreach_closed", "typed_no_attestation_wording"];
 
 const trimmed = (f: Fields): Fields => ({
   name: f.name.trim(), bodySw: f.bodySw.trim(), bodyEn: f.bodyEn.trim(), nameFallbackSw: f.nameFallbackSw.trim(), nameFallbackEn: f.nameFallbackEn.trim(),
@@ -411,7 +412,7 @@ export function ComposerProvider({ view, children }: { view: ReadyView; children
       setTesting(null);
       // ⭐ A handed-over test changes nothing the page shows: the preview is the text as sent, and since the owner's ruling
       // of 2026-10-09 nothing is appended to it — no stop link, so no token to re-read (§16.22).
-      // ⛔ §18.32 · the 18+ words (or the record, or the line) changed since this page opened: read again, so the box shows
+      // ⛔ §18.32 · the 18+ words (or the record) changed since this page opened: read again, so the box shows
       // the words a tick confirms and "Another number" is offered only as the server now answers.
       if ("outcome" in r && r.outcome === "refused" && PAGE_STALE_REASONS.includes(r.reason)) router.refresh();
     });
