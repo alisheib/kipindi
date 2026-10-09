@@ -132,8 +132,12 @@ export function PositionCard({ marketId, marketTitle, side, productLine, stake, 
       </div>
       <div className="mb-3.5">
         {/* The market's title, set as every market title is (round 5, R5-E — F1 F4, review 3 H1): balanced, its figures
-            whole — the journey's ticket card (`ticket-card.tsx`) sets the same question the same way. */}
-        <p className="font-display text-[15px] font-semibold leading-tight tracking-[-0.005em] text-text line-clamp-2 text-balance">
+            whole — the journey's ticket card (`ticket-card.tsx`) sets the same question the same way.
+            ⭐ …AND WHOLE (round 6, 2026-10-09, review C17): this held question was still clamped at two lines, so a long one
+            lost its end ("…kesho?") on the one card that holds the player's own money — the defect G3 fixed on the ticket
+            card, whose question is "whole at every width", while the board's two-line clamp (Q6) is for BROWSING cards. The
+            clamp is gone; the card grows with its question, as the ticket card does. */}
+        <p className="font-display text-[15px] font-semibold leading-tight tracking-[-0.005em] text-text text-balance">
           {keepFigures(marketTitle)}
         </p>
         <div className="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-0.5">

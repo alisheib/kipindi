@@ -38,10 +38,12 @@ export const MUTATIONS = [
     // §7 — the FOOTER door (added 2026-09-26). It renders on every page at every width, signed out
     // too, so a footer link that forgot its gate would show a signed-out visitor, a self-excluded
     // player and an agent out of standing a door the page refuses them.
+    // ⚠️ RE-ANCHORED 2026-10-09 (round 6 of the visual pass, review C1): the link's words are the page's own name for its
+    // reader in the journey (`invite-name.ts`), so the line carries that arm. Same mutation, same meaning — the gate dropped.
     name: "public-footer.tsx — the footer links to Invite for everyone",
     file: "src/components/layout/public-footer.tsx",
-    from: `          {inviteVisible && <FooterLink href="/profile/invite">{t.profile.inviteFriends}</FooterLink>}`,
-    to: `          {<FooterLink href="/profile/invite">{t.profile.inviteFriends}</FooterLink>}`,
+    from: `          {inviteVisible && <FooterLink href="/profile/invite">{journeyShown ? inviteName(t, { agent: inviteAgent, paid: invitePaid }) : t.profile.inviteFriends}</FooterLink>}`,
+    to: `          {<FooterLink href="/profile/invite">{journeyShown ? inviteName(t, { agent: inviteAgent, paid: invitePaid }) : t.profile.inviteFriends}</FooterLink>}`,
     expect: "§7",
   },
   {

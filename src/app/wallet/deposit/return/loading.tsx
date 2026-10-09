@@ -25,7 +25,7 @@ import { useT } from "@/lib/i18n";
  * 10 s) carries its reference, not its tree — `components/ui/page-loader.tsx` has the convention.
  * ⭐ THE PAGE'S BANDS (round 5's follow-up, R5-K, 2026-10-09). It drew a centred card (a 48px disc, two bars), a card of
  * four 16px rows and one 44px control; the page is a hero, a panel of six rows, two 48px buttons (stacked on a phone,
- * 10px apart) and a footnote — 128–351px more (S/r5k/m-rest.mts). It now draws the page's parts: the hero (`PageHero`,
+ * 10px apart then, 12px since round 6's `gap-2`) and a footnote — 128–351px more (S/r5k/m-rest.mts). It now draws the page's parts: the hero (`PageHero`,
  * `PageHeader` — its eyebrow, heading and line), the details panel (`receipt-ghost.tsx`, the receipt's own rows), the
  * buttons and the footnote's lines.
  * ⛔ STILL NOTHING ABOUT THE OUTCOME: every line of the head is set and not shown — the heading and its line ARE the
@@ -65,8 +65,9 @@ export function DepositReturnGhost() {
         <RowGhost label={t.wallet.date}><DateGhost text={date} /></RowGhost>
         <RowGhost label={t.wallet.newBalance}><AmountGhost /></RowGhost>
       </DetailsGhost>
-      {/* ⚠️ TOKEN, not `h-10` (80px on the overridden scale): the page's two `btn-lg` pills (--h-control-lg), 10px apart. */}
-      <div className="flex flex-col sm:flex-row gap-[10px]" aria-hidden>
+      {/* ⚠️ TOKEN, not `h-10` (80px on the overridden scale): the page's two `btn-lg` pills (--h-control-lg), 12px apart on
+          the page's `gap-2` (round 6 moved the pair off the stock 10px `gap-2.5`; merged 2026-10-09). */}
+      <div className="flex flex-col sm:flex-row gap-2" aria-hidden>
         <div className="h-[var(--h-control-lg)] w-full rounded-pill bg-bg-overlay kp-shimmer-track" />
         <div className="h-[var(--h-control-lg)] w-full rounded-pill bg-bg-overlay kp-shimmer-track" />
       </div>

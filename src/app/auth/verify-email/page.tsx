@@ -159,8 +159,10 @@ export default async function VerifyEmailPage({ searchParams }: { searchParams?:
               needs — so the door is the wallet, where Withdraw and the balance are, and it no longer invites a deposit
               the confirmation had nothing to do with. Signed out (a link opened in the mail app's own browser), `/wallet`
               asks them to sign in and keeps the destination. A link that did NOT confirm keeps its two doors: the
-              markets, and the account page where a new link is sent. */}
-          <div className="flex flex-col gap-2.5">
+              markets, and the account page where a new link is sent.
+              One gap for a pair of large buttons (round 6, 2026-10-09): 12px, the scale's `gap-2`, as every other pair — the
+              stock `gap-2.5` stood them 10px apart. */}
+          <div className="flex flex-col gap-2">
             {good ? (
               <>
                 {/* Not while ANOTHER account is signed in here: the wallet would be that account's. */}

@@ -54,9 +54,12 @@ export function TicketsGhost({ t }: { t: Dict }) {
       <div className="grid grid-cols-1 gap-3 md:grid-cols-2" aria-hidden>
         {[0, 1, 2, 3].map((i) => (
           <div key={i} className="rounded-xl border border-border bg-bg-elevated p-4 kp-shimmer-track">
+            {/* The card's two pills are 18px (`Chip size="sm"`, the state at the side pill's `metrics="base"`, G1): these drew
+                `h-5`, 24px on this scale, so every ghost card's question bar stood 6px below where the page's question lands
+                (round 6, 2026-10-09, review C18). */}
             <div className="flex items-center justify-between gap-2">
-              <div className="h-5 w-[64px] rounded-pill bg-bg-overlay" />
-              <div className="h-5 w-[96px] rounded-pill bg-bg-overlay" />
+              <div className="h-[18px] w-[64px] rounded-pill bg-bg-overlay" />
+              <div className="h-[18px] w-[96px] rounded-pill bg-bg-overlay" />
             </div>
             <div className="mt-3 h-4 w-3/4 rounded bg-bg-overlay" />
             <div className="mt-3 grid grid-cols-[minmax(max-content,2fr)_minmax(0,3fr)] gap-3">

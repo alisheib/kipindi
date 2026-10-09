@@ -250,10 +250,11 @@ export const NOT_EYEBROW = new Map([
   // Round 5's follow-up (R5-K, 2026-10-09): three of the page lines here, drawn by their pages' loading ghosts in the
   // page's own classes with the words set and not shown (`ghost-text.tsx`) — each the role of the line it stands for.
   ["app/positions/positions-ghost.tsx :: <div className=\"mb-1.5 flex items-center justify-between gap-2 font-mono text-micro uppercase tracking-[0.12em] tabular-nums\"> ↵ <span className=\"font-bold\"><GhostText>{`", "OTHER"],
-  ["app/positions/performance/loading.tsx :: <p className=\"font-mono text-micro uppercase tracking-[0.12em] tabular-nums\"><GhostText>{`${t.performance.longestStreak} 0`}</GhostText></p> ↵ </div>", "OTHER"],
-  ["app/positions/performance/loading.tsx :: <span className=\"font-mono text-micro uppercase tracking-[0.08em]\"><GhostText>{t.performance.cumulativePerSettlement}</GhostText></span> ↵ </div>", "OTHER"],
-  ["app/positions/performance/page.tsx :: <p className=\"font-mono text-micro uppercase tracking-[0.08em] text-text-muted\">{r.statusLabel}</p> ↵ </div>", "STATUS_CHIP"],
+  ["app/positions/performance/performance-ghost.tsx :: <p className=\"font-mono text-micro uppercase tracking-[0.12em] tabular-nums\"><GhostText>{`${t.performance.longestStreak} 0`}</GhostText></p> ↵ </div>", "OTHER"],
+  ["app/positions/performance/performance-ghost.tsx :: <span className=\"font-mono text-micro uppercase tracking-[0.08em]\"><GhostText>{t.performance.cumulativePerSettlement}</GhostText></span> ↵ </div>", "OTHER"],
   ["app/positions/performance/page.tsx :: <p className=\"font-mono text-micro uppercase tracking-[0.12em] text-text-subtle tabular-nums\">{t.performance.longestStreak} {formatNumber(longestStreak)}</p> ↵ </div>", "OTHER"],
+  // Round 6 (review C11): re-signed — the right-aligned status word takes back its trailing 0.08em (`kp-track-end`); same role.
+  ["app/positions/performance/page.tsx :: <p className=\"font-mono text-micro uppercase tracking-[0.08em] text-text-muted kp-track-end kp-track-end--08\">{r.statusLabel}</p> ↵ </div>", "STATUS_CHIP"],
   ["app/positions/performance/page.tsx :: <span className=\"font-mono text-micro uppercase tracking-[0.08em] text-text-subtle\">{t.performance.cumulativePerSettlement}</span> ↵ </div>", "OTHER"],
   ["app/profile/kyc/page.tsx :: <span className=\"font-mono text-micro uppercase tracking-[0.1em] text-text-subtle\">{idLabel}</span> ↵ </div>", "OTHER"],
   ["app/profile/kyc/page.tsx :: <span className=\"inline-flex items-center gap-1 rounded-pill border border-success-border bg-success-bg px-2.5 py-0.5 font-mono text-micro font-bold uppercase tracking-[0", "STATUS_CHIP"],
@@ -286,7 +287,8 @@ export const NOT_EYEBROW = new Map([
   // fails — because a subdirectory file can never be in the top-level set `pii-in-logs` §3
   // scans. Measured, not guessed: 97 → 19,718 the moment a block comment was added here.
   ["app/updown/page.tsx :: \"inline-flex shrink-0 items-center gap-1.5 rounded-pill border border-border bg-bg-elevated px-3 py-2 font-mono text-caption uppercase tracking-[0.10em] text-text-muted h", "CONTROL_LABEL"],
-  ["app/wallet/wallet-client.tsx :: <p className={`mt-0.5 font-mono text-micro uppercase tracking-[0.14em] font-semibold ${statusTone}`}> ↵ {statusLabel[tx.status]}", "STATUS_CHIP"],
+  // Round 6 (review C11): re-signed — the right-aligned status word takes back its trailing 0.14em (`kp-track-end`); same role.
+  ["app/wallet/wallet-client.tsx :: <p className={`mt-0.5 font-mono text-micro uppercase tracking-[0.14em] font-semibold kp-track-end ${statusTone}`}> ↵ {statusLabel[tx.status]}", "STATUS_CHIP"],
   ["app/wallet/wallet-client.tsx :: <span className=\"font-mono text-micro uppercase tracking-[0.1em] text-text-subtle flex items-center gap-1.5\"> ↵ {BONUS_SOURCE_LABEL[g.source] ?? g.source}", "OTHER"],
   ["app/wallet/wallet-client.tsx :: <span className=\"ml-auto inline-flex items-center gap-1 rounded-pill px-2 py-0.5 font-mono text-micro uppercase tracking-[0.12em] font-bold bg-bg-inset text-text-subtle\">", "STATUS_CHIP"],
   ["app/wallet/wallet-client.tsx :: className=\"mt-3 inline-flex items-center gap-1.5 font-mono text-caption uppercase tracking-[0.14em] text-gold-300 hover:text-gold-200 transition-colors\" ↵ >", "CONTROL_LABEL"],

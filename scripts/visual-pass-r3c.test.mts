@@ -406,7 +406,10 @@ section("9 · a line written \"A · B\" breaks only between its parts, and its d
   ok("9.4 · the hub's second lines, the legal header's version line and the invite page's call all draw it",
     /<DotSeq text=\{text\} className="kp-hub__sub" \/>/.test(read("src/components/journey/account/hub-row.tsx"))
       && /<DotSeq text=\{meta\} mono(?: renderPart=\{keepYears\})? \/>/.test(read("src/app/legal/_components.tsx"))
-      && /<DotSeq text=\{paid \? t\.profile\.inviteEarnSub : t\.profile\.inviteFriendsSub\} \/>/.test(read("src/app/profile/invite/page.tsx")));
+      // Round 6 (R6-C, review C1) moved this pin: the call is chosen by `inviteLine` (src/lib/journey/invite-name.ts), the
+      // one name rule the page's title, h1 and doors share — for a player, the same `paid ? inviteEarnSub : inviteFriendsSub`.
+      && /<DotSeq text=\{inviteLine\(t, \{ agent: false, paid \}\)\} \/>/.test(read("src/app/profile/invite/page.tsx"))
+      && /r\.agent \? t\.agent\.dashSubtitle : r\.paid \? t\.profile\.inviteEarnSub : t\.profile\.inviteFriendsSub/.test(read("src/lib/journey/invite-name.ts")));
   const inv = read("src/app/profile/invite/page.tsx");
   ok("9.5 · on a phone the invite's call takes the card's width under the dial and its caption; from sm the row is as it was",
     /grid grid-cols-\[auto_minmax\(0,1fr\)\] items-center gap-x-4 gap-y-3 sm:flex/.test(inv) && /className="contents sm:block sm:min-w-0 sm:flex-1"/.test(inv)

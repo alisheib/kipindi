@@ -332,8 +332,8 @@ const CLIP_DEBT: Record<string, string> = {
     "NOT YET REVIEWED (E-236). Several `truncate` on notification titles in a list inside a panel. "
     + "Arguably legitimate — the full text is on /notifications — but it is player copy in a popup "
     + "and nobody has measured it at 360 in Swahili.",
-  "src/components/markets/win-celebration.tsx":
-    "NOT YET REVIEWED (E-236). `line-clamp-2` on the settle line of the win moment.",
+  // `win-celebration.tsx` LEFT THIS LIST in round 6 (R6-C, 2026-10-09, review C17's sibling): the win's market name is
+  // whole now (balanced, figures kept) — a clamp is for browsing cards, never the player's own money.
   "src/components/layout/avatar-menu.tsx":
     "NOT YET REVIEWED (E-236). A menu, not a warning; the clip is likely on a name.",
   "src/app/admin/ai-polls/poll-actions.tsx":

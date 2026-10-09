@@ -179,7 +179,10 @@ export function useExitPhase(open: boolean, beat: ExitBeat = "--t-quick"): { pre
  * inside the panel's right edge, where Modal pins it. Sora's capitals are centred L/2 − 0.025em below the top of a line
  * of height L (ascent 0.97, descent 0.29, cap 0.73 per em): 0.6em in a 1.25 line, 0.6625em in a 1.375 one. Where the ✕
  * is pinned to the corner, the title comes to it (`.kp-modal-title`, `.kp-jsheet__title`, globals.css); where it stands
- * in a header row, it goes to the title (ConfirmModal below, the bet and sell confirms, the filter sheet).
+ * in a header row, it goes to the title (ConfirmModal below, the bet and sell confirms, the filter sheet, and since round 6
+ * the Needle drawer and the chat panel). THE ONE EXCEPTION (round 6, 2026-10-09, review C9): a dialog that opens on a
+ * centred crest or seal — the operation result, the win celebration — has no title beside its ✕ (the title stands under
+ * the crest), so its ✕ keeps the corner. `test:visual-pass-r6c` §10 holds every player dialog to one of these places.
  * ⭐ ONE RULE WHILE A REQUEST IS IN FLIGHT (round 5, 2026-10-09, F20): the ✕ is there exactly when the dialog's own way
  * out is. While a request the dialog sent is in flight — its Cancel or keep button disabled, the scrim and Esc refused,
  * because closing then reads as cancelled while the server goes ahead — the ✕ is WITHHELD, as twenty dialogs already

@@ -16,8 +16,9 @@ const LANGUAGE_NAME = { en: "English", sw: "Kiswahili", zh: "中文" } as const;
  *  live for a player in good standing, so the shelf has six. Each name is the catalogue's two (`badges/icons.tsx`). */
 const SHELF: readonly AchievementId[] = ["first-prediction", "first-win", "verified", "market-maker", "connector", "sharp"];
 const shelfTitle = (id: AchievementId) => { const a = ACHIEVEMENTS.find((x) => x.id === id); return a ? `${a.name} · ${a.nameSw}` : id; };
-/** The settings rows a player is shown (`profile/page.tsx`, in its order): the invite row (the programme live for them),
- *  the identity row (not yet verified) and the rest. */
+/** The settings rows a player is shown (`profile/page.tsx`, in its order): the invite row (the programme live for them;
+ *  its name while invites pay nothing, as today — `invite-name.ts`), the identity row (not yet verified; named after the
+ *  KYC page's tab and eyebrow since round 6, C13) and the rest. */
 const rows = (t: Dict): ReadonlyArray<readonly [string, string]> => [
   [t.profile.inviteFriends, t.profile.inviteFriendsSub],
   [t.profile.myAccount, t.profile.myAccountSub],
@@ -27,7 +28,7 @@ const rows = (t: Dict): ReadonlyArray<readonly [string, string]> => [
   [t.push.pageTitle, t.push.settingSub],
   [t.profile.responsibleGambling, t.profile.responsibleGamblingSub],
   [t.security.title, t.security.settingSub],
-  [t.profile.verifyIdentity, t.profile.verifyIdSub],
+  [t.profile.kycIdentityVerification, t.profile.verifyIdSub],
   [t.profile.sourceOfFunds, t.profile.sourceOfFundsSub],
   [t.profile.activeSessions, t.profile.activeSessionsSub],
   [t.common.help, t.profile.helpSupportSub],

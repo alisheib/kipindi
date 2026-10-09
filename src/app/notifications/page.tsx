@@ -59,6 +59,7 @@ import {
 } from "@/lib/notification-filters";
 import { NotificationRowActions } from "./row-actions";
 import { NotificationsBulkBar } from "./bulk-bar";
+import { resolveSimpleJourney } from "@/lib/server/journey-preview";
 
 export async function generateMetadata() {
   const { t } = await getServerT();
@@ -170,10 +171,14 @@ export default async function NotificationsPage({
    */
   const inboxEmpty = !q && counts.all === 0 && counts.cleared === 0;
   const empty = inboxEmpty ? EMPTY.all : EMPTY[filter];
+  // ⭐ In the journey the Akaunti hub opens the inbox (Arifa) and lights its tab here: the back link names the hub and falls
+  // back to it (round 6, 2026-10-09, the review's back-link finding — it said "‹ WASIFU", and with no history went to
+  // /profile, a page that holds no door to the inbox).
+  const { journey } = await resolveSimpleJourney();
 
   return (
     <PageContainer tier="reading" className="space-y-5">
-      <BackLink fallbackHref="/profile" label={t.profile.title} />
+      <BackLink fallbackHref={journey ? "/account" : "/profile"} label={journey ? t.journey.tabAccount : t.profile.title} />
       <PageHeader
         tone="info"
         icon={<I.bellRing s={22} />}

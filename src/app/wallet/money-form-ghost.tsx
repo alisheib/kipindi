@@ -122,7 +122,9 @@ export function DepositFormGhost({ t }: { t: Dict }) {
 export function WithdrawBalanceGhost({ t }: { t: Dict }) {
   return (
     <div className="sm:text-right shrink-0" aria-hidden>
-      <p className="font-mono text-micro uppercase eyebrow"><GhostText>{t.wallet.available}</GhostText></p>
+      {/* The page's label takes back its trailing tracking from `sm`, where it is right-aligned (F19, round 6 · C11); the
+          same class here keeps the label's box the page's (merged 2026-10-09). */}
+      <p className="font-mono text-micro uppercase eyebrow kp-track-end"><GhostText>{t.wallet.available}</GhostText></p>
       <div className="h-[22px] w-[132px] rounded-sm bg-bg-overlay sm:ml-auto" />
     </div>
   );

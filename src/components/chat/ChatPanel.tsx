@@ -21,6 +21,7 @@ import { EscalateHandoff } from "./messages/EscalateHandoff";
 import { Sources, renderBlocks, renderPlainText } from "./messages/Primitives";
 import type { Lang, Message } from "./types";
 import { useT } from "@/lib/i18n";
+import { CloseX } from "@/components/ui/modal";
 
 type Props = {
   lang: Lang;
@@ -101,16 +102,16 @@ export function ChatPanel({ lang, messages, pending, onClose, onSend, supportEma
             <span>{i18n.common.helpBotStatus}</span>
           </div>
         </div>
-        <button
-          type="button"
-          className="cm-close"
-          aria-label={i18n.common.close}
-          onClick={onClose}
-        >
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
-            <path d="M6 6 L18 18 M18 6 L6 18" />
-          </svg>
-        </button>
+        {/* ⭐ THE ONE ✕, ON THE NAME'S CAPITALS (round 6, 2026-10-09, review C2 — F20's convention, `CloseX` in modal.tsx).
+            This dialog drew its own 32px ✕ (`.cm-close`, its own path), centred on the header's middle — the 36px mark and
+            the two-line title block — so R5-A's census, which looked for the kit glyph, never saw it, and it stood 9.6px
+            under the name's capitals. Now it is CloseX: the header row is the title block's 41px (the 15px name in its
+            1.5 line, 2px, the 11px status line), whose first line's capitals centre 22.5 / 2 − 0.025 × 15 = 10.875px
+            down it, so the 48px box stands at the row's top (`self-start`) and rises 13.125px (`-mt-[13.125px]`) to centre
+            there. It takes 34.875px of the row's 41, so the header is as tall as it was; the header's own 16px padding
+            already puts its box 16px inside the panel's edge, where Modal pins every ✕. Its ink and hover are the kit ✕'s
+            (`text-text-subtle`, `bg-bg-overlay`), as on every dialog. */}
+        <CloseX onClick={onClose} label={i18n.common.close} className="self-start -mt-[13.125px] shrink-0" />
       </div>
 
       <div

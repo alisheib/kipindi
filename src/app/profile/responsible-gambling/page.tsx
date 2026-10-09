@@ -25,6 +25,7 @@ import { rgPeriodFieldPx } from "@/components/rg/rg-period-width";
 import { getServerT } from "@/lib/i18n-server";
 import { bannerFor } from "@/lib/failure-banner";
 import { PageContainer } from "@/components/layout/page-container";
+import { resolveSimpleJourney } from "@/lib/server/journey-preview";
 
 // Localised tab title (POLISH-BACKLOG §1.7) — was the hard-coded English
 // "Responsible gambling", which a Swahili player saw in their browser tab and history.
@@ -100,9 +101,13 @@ export default async function ResponsibleGamblingPage({ searchParams }: { search
     return keepText(fill(template, { date }), [date]);
   };
 
+  // ⭐ In the journey the Akaunti hub opens this page (Weka mipaka, Pumzika, Jizuie) and lights its tab here: the back link
+  // names the hub and falls back to it (round 6, 2026-10-09, the review's back-link finding — it said "‹ WASIFU", and with
+  // no history went to /profile). Only the link's words and destination; nothing of the page's protection changes.
+  const { journey } = await resolveSimpleJourney();
   return (
     <PageContainer tier="reading" className="space-y-5">
-      <BackLink fallbackHref="/profile" label={t.common.profile} />
+      <BackLink fallbackHref={journey ? "/account" : "/profile"} label={journey ? t.journey.tabAccount : t.common.profile} />
 
       {/* DS-26 — the kit Callout, not a bespoke box, for the outcome of a
           protection-limit change (consequential; `live` announces promptly). */}

@@ -25,6 +25,7 @@ import { SOCIAL_LIVE } from "@/lib/social";
 import { SOCIAL_MARK } from "@/components/ui/social-marks";
 import { useT } from "@/lib/i18n";
 import { keepRegulator } from "@/components/ui/keep-words";
+import { inviteName } from "@/lib/journey/invite-name";
 import type { ProposalsState } from "@/lib/server/proposals-config";
 
 export function PublicFooter({
@@ -68,6 +69,15 @@ export function PublicFooter({
    */
   inviteVisible,
   /**
+   * ⭐ THE INVITE LINK'S WORDS IN THE JOURNEY (round 6 of the visual pass, 2026-10-09, review C1) — the shell's own two
+   * answers, passed by its journey arm alone: whether the reader's invite destination pays (`invitePaid`) and whether it is
+   * an approved agent's dashboard (`inviteAgent`). The journey's link says the page's own name for this reader
+   * (`invite-name.ts`), as its hub, its avatar menu and the page's tab do. ⛔ Both default FALSE — "Alika marafiki", never a
+   * promise — and the classic footer reads neither (frozen chrome: it keeps "Alika marafiki" for everybody).
+   */
+  invitePaid = false,
+  inviteAgent = false,
+  /**
    * ⭐ THE SHELL'S OWN ANSWER (`journeyShown` in `app-shell.tsx`), passed by the shell's journey arm alone: true only for
    * a request the resolver shows the new journey to. ⛔ The classic footer is the classic shell's CHROME, frozen for S6
    * and S7 — a viewer without the journey is served the footer they were served (VODACOM-PLAN §0i), so the shell's else
@@ -80,6 +90,8 @@ export function PublicFooter({
   proposalsState: ProposalsState;
   agentDoorVisible: boolean;
   inviteVisible: boolean;
+  invitePaid?: boolean;
+  inviteAgent?: boolean;
   journeyShown?: boolean;
   supportEmail: string;
   supportPhone: string;
@@ -273,8 +285,9 @@ export function PublicFooter({
               documents, the label finally reaches what it promises. */}
           <FooterLink href="/legal/rules">{t.footer.gameRtp}</FooterLink>
           {/* The unpaid player invite — the page's own name, no reward word, same gate as every
-              other door to it (see the prop's note above). */}
-          {inviteVisible && <FooterLink href="/profile/invite">{t.profile.inviteFriends}</FooterLink>}
+              other door to it (see the prop's note above). Round 6 (review C1): in the journey, the page's own name for
+              THIS reader — an agent's dashboard, the paid page's "Alika na upate zawadi" while invites pay. */}
+          {inviteVisible && <FooterLink href="/profile/invite">{journeyShown ? inviteName(t, { agent: inviteAgent, paid: invitePaid }) : t.profile.inviteFriends}</FooterLink>}
           {/* ⭐ THE AGENT PROGRAMME'S ONE DOOR. Site chrome, visible signed out, a plain directory
               line — no badge, no gilt, no number, no earnings verb. ⛔ Never in the account menu:
               the footer is not the account, and an ordinary player is not solicited. */}
