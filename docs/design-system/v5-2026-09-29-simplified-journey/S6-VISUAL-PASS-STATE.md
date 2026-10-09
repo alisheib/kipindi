@@ -1,84 +1,71 @@
-# S6 visual pass — the state, for resuming on any machine (updated 2026-10-09 ~19:40 EAT)
+# S6 visual pass — the state, for resuming on any machine (updated 2026-10-09 ~20:15 EAT)
 
 **Why this file exists.** Ali, 2026-10-09: *"push live everything you have in case later we proceed on another machine
-… not to keep anything locked on this machine and the next machine repeats it by accident."* Everything the visual
-pass has merged is on GitHub (`origin/vodacom-visual`); this file says what is merged, what was still running on
-OMEGA-COMPILE01 when it was written, what is ready to start, how it goes live, and every question for Ali. The
-session's scratch evidence (round tiles, triage notes, measurement scripts) lives only on OMEGA — the essential text
-of it is copied below.
+… not to keep anything locked on this machine and the next machine repeats it by accident"* and *"anything not done
+here and pushed live is lost"*. Everything the visual pass has merged is on GitHub; this file says what is merged, what
+was still running on OMEGA-COMPILE01 when it was written, what the independent reviews found, how it goes live, and
+every question for Ali. The session's working tools and notes are on `origin/vodacom-visual-tools` (README-TOOLS.md maps
+them; on OMEGA they live in the session scratchpad, written `S` in briefs).
 
-## 1 · The branch
-- **`origin/vodacom-visual`** — the S6 visual pass (journey shell + shared page bodies), NOT live. Rebased on main
-  `118fc75c` (the proxy hotfix); main has moved since (S14's STEP 57 `f33909983`) — rebase again before the final
-  proof. Backups on OMEGA: `vodacom-visual-pre-rebase3` (before the last rebase).
-- Live from this lane today: the two security hotfixes on main — `9cb95938` (immutable cache only for static files)
-  and `118fc75c` (the proxy, so its security headers, runs for every page address); both read back on production.
+## 1 · The branches (all on GitHub)
+- **`origin/vodacom-visual`** at `89893725` — the S6 visual pass (journey shell + shared page bodies), NOT live. Rebased
+  on main `118fc75c`; main has moved since (S14's STEP 57 `f33909983` and docs) — rebase again before the final proof.
+- `origin/vodacom-visual-r5g-wip` (`a32c3317`) — R5-G's work before its port (superseded: R5-G is merged).
+- `origin/vodacom-visual-tools` — the working tools (lock-turn chains, merge checks, briefs, triage notes, owner lists,
+  every round's mutation proof, the reviewers' evidence under `tools/review6/`).
+- Live from this lane today: the security hotfixes `9cb95938` (immutable cache only for static files) and `118fc75c`
+  (the proxy, so its security headers, runs for every page address); both read back on production.
 
-## 2 · Merged on the branch (each commit's message is the full record)
-Rounds 1–4 of the visual pass and the edge read (R3-*, R4-C…K), then round 5:
-- **R5-F** — qa:bar-geometry repaired (painted boxes; an empty book or short page says NOT MEASURED).
-- **R5-D** — loading ghosts and the not-found view out of every document (31 KB → 138 B); a real market never served as
-  "not found"; the service worker caches only images and fonts.
-- **R5-B** — the Wallet's footer, tabs and docked sheets on the column's rhythm; notices dated in the reader's
-  language and cut at a word; one name per money action in the journey; an empty inbox without filters.
-- **R5-C** — the second gold audit: gold only where money was earned, other highlights in the brand family, identity in
-  metal; a census that fails on any new gold use.
-- **R5-E** — every market title balanced with its figures whole; Chinese units and currencies kept with their numbers;
-  no invisible character inserted into any sentence; the keep-words helpers linear and cluster-safe.
-- **R5-A** — the home card on the claim's capitals; one page, one name in the journey; every close ✕ on its title's
-  capitals and withheld while a request is in flight; counts grouped; the regulator's name and legal titles kept whole.
-- **R5-I** — every state in its own ink (the betting YES/NO colours only for a bet's sides); fixable refusals said
-  calmly; grant states in their own tones.
-- Two red twins green again (the colour gate judges the standalone /offline document against its own tokens;
-  implicit-submit's plants).
-- **R5-H** — every loading ghost a client reference instead of a drawn tree in every refresh (/wallet/receipts 16.9 KB
-  → 0.5 KB per refresh), the ghosts' bands fixed, the journey flag and the not-found mark in the first paint they
-  belong to. Committed and pushed `9677a3f5` while its merged-tree proof was still running (181 suites, the red twins,
-  all seven round-5 mutation proofs) — anything it finds is fixed forward.
-Each merge was proved on the merged tree: every suite reading a touched file, the helper's suites, the red twins it
-touches, and every round-5 mutation proof (R5-A 41, R5-C 59, R5-E 27, R5-I 58 planted defects, all caught, all files
-restored byte-identical). Known reds that are not the branch's: `test:orphans` (main's two landing-v3 panels),
-`test:house-bot-disclosure` D19a (the legal-tree pin — green once the branch is main), `test:backup` from a junctioned
-worktree (the shared Prisma client predates main's `targetListId`), `test:house-bot-holder-lifecycle` (main's own;
-S14 fixing).
+## 2 · Merged on `vodacom-visual` (each commit's message is the full record)
+Rounds 1–4 of the visual pass and the edge read, then round 5:
+- **R5-F** qa:bar-geometry repaired · **R5-D** loading ghosts and the not-found view out of every document; a real market
+  never "not found"; the worker caches only images and fonts · **R5-B** the Wallet's footer, tabs and sheets; dated
+  notices; one name per money action · **R5-C** gold only where money was earned · **R5-E** titles balanced with figures
+  whole; no inserted invisible characters · **R5-A** the home card; one page one name; every ✕ on its title and withheld
+  in flight; counts; the regulator's name; legal titles · **R5-I** every state in its own ink; calm refusals; grant tones
+  · two red twins fixed · **R5-H** every loading ghost a client reference (/wallet/receipts 16.9 KB → 0.5 KB per refresh),
+  the ghosts' bands, the journey flag and the not-found mark in the first paint · **R5-G** the journey's money pages take
+  the journey's words, a 97-door census, the regulator's name kept whole on the opt-out footer, /offline and the error page.
+Each merge was proved on the merged tree: every suite reading a touched file, the helper's lists, the red twins, and
+every round-5 mutation proof — after R5-H, all seven green (R5-A 41, R5-B 36, R5-C 59, R5-D 27, R5-E 27, R5-H 41, R5-I
+58 planted defects caught, every file restored byte-identical; five older plants re-aimed at the code R5-H moved).
+Known reds that are not the branch's: `test:orphans` (main's two landing-v3 panels), `test:house-bot-disclosure` D19a
+(the legal-tree pin, green once the branch is main), `test:backup` from a junctioned worktree (the shared Prisma client
+predates main's `targetListId`), `test:house-bot-holder-lifecycle` (main's own; S14 fixing).
 
-## 3 · Running on OMEGA when this was written (redo from the brief if OMEGA is gone)
-- **R5-H's merged-tree proof** (the commit is pushed; see §2).
-- **R5-G** (helper, worktree `F:\kipindi-r5g`): one page, one name for the journey's money pages and every door; the
-  regulator's name everywhere it renders — FINISHED on `eaed15d0` (61 checks, 30/30 plants), now being ported onto
-  `9677a3f5` (R5-H reshaped the loading ghosts it touches). Its finished work is pushed as `origin/vodacom-visual-r5g-wip`
-  (`a32c3317`, the snapshot before the port). Brief: appendix B.
-- **A browser probe** of R5-H's proposed route-entrance patch (a fade that may blink on every journey tab tap and
-  replay at hydration, jumping the page to the top): opacity sampled per frame before and after, in a lock turn.
+## 3 · Running on OMEGA when this was written (start again from the brief if OMEGA is gone)
+- **R6-A** (`F:\kipindi-r6a`): the independent review's RESPONSIBLE-GAMBLING findings (HIGH, pre-existing code, live
+  today) — A1 the break and self-exclusion confirmation emails give the end as a UTC day with no time (a day early for
+  ends 00:00–03:00 EAT; English month in the Swahili line; a permanent exclusion reads "until 2126"); A2 during a break
+  the market page still offers the full bet panel and Up & Down its stakes (the server refuses only at confirm); A3 two
+  empty states (Tiketi zangu's Juu/Chini tab, /positions/performance) invite a first bet during a break. A1 is made one
+  self-contained change to go to main as a hotfix ahead of the pass. Brief: appendix H.
+- **R6-B** (`F:\kipindi-r6b`): B-1 MEDIUM keyboard focus escapes the bet and sell confirms while a request is in flight;
+  B-2 the chart's deadline doesn't make it retry sooner; B-3 three quadratic text helpers; B-4 a name's cut can differ
+  between server and an old browser (hydration); A4 (security, LOW) the proxy still skips the public folders, so a
+  missing file there renders the not-found inside the signed-in shell without security headers — one self-contained
+  change for a main hotfix; A5 ".." mended in every notice; A6 the round page's title in English only; A7 the win
+  notice's title unclipped. Brief: appendix I.
+- **R5-J** (counts and figures), **R5-K / R5-L** (the loading ghosts that still don't match their pages), **reviewer C**
+  (cross-surface consistency) — static work only until the marketing session frees the machine. Briefs: C, D, E.
+- **Queued after "marketing done"**: a browser probe of R5-H's proposed route-entrance patch (a fade that may blink on
+  every journey tab tap and replay at hydration, jumping the page to the top) — `wrt-chain.sh` in the tools.
 
-## 3a · Also pushed
-- `origin/vodacom-visual-tools` — the session's working tools (lock-turn chains, merge checks, briefs, triage notes,
-  owner lists, every round's mutation proof, the probes; no tiles or logs). Its `README-TOOLS.md` maps them.
-
-## 4 · Started on OMEGA at ~19:45 EAT (Ali: "allocate more agents"; static work only until the marketing session
-frees the machine's memory — no dev server, build, tsc, browser or battery). Worktrees `F:\kipindi-r5j`, `-r5k`,
-`-r5l`, and `F:\kipindi-rev` (the reviewers' stable copy at `9677a3f5`). If OMEGA is gone, start each again from its
-brief on the latest `origin/vodacom-visual`:
-- **R5-J** — one way to count, one figure matcher (appendix C).
-- **R5-K / R5-L** — rebuild the ~20 loading ghosts that still don't match their pages box for box (appendix D).
-- **Three independent reviewers** of the whole branch — A server/money/RG/security, B client runtime/hydration/
-  performance, C cross-surface consistency (appendix E).
-Every helper follows the common rules (appendix A).
-
-## 5 · How it goes live
-1. Merge every helper above; rebase on the latest main.
-2. The final proof, in lock turns on OMEGA (scripts in the session scratchpad, `wm16a`–`wm16d`): typecheck + the whole
-   battery with the database suites + every red twin the pass touches; classic-shell parity against a baseline at the
-   new base (named EXPECTED_DIFFS only, never a re-baseline), header fit, the landmark seals, needle-rest,
-   bar-geometry (with main as control), the preview drive, local `qa:live`, round 6's tiles; the edge scenarios with
-   R4-J's verdict; document weight tip vs main; R5-H's lock-turn items (production-build chunks, refresh bytes, frame
-   recordings, the swept ghosts re-tiled).
+## 4 · How it goes live
+1. Merge R6-A, R6-B, R5-J, R5-K, R5-L and reviewer C's fixes; rebase on the latest main. Hotfix A1 and A4 to main first.
+2. The final proof, in lock turns (`wm16a`–`wm16d` in the tools): typecheck + the whole battery with the database
+   suites + every red twin the pass touches; classic-shell parity against a baseline at the new base (named
+   EXPECTED_DIFFS only, never a re-baseline — the sell confirm's free-window box and its ✕ are page-body changes to
+   register); header fit, the landmark seals, needle-rest, bar-geometry (with main as control), the preview drive, local
+   `qa:live`, round 6's tiles; the edge scenarios with R4-J's verdict; document weight tip vs main; R5-H's lock-turn
+   items (production-build chunks, refresh bytes, frame recordings, the swept ghosts re-tiled); the route-entrance probe;
+   `qa:footer-reachable`.
 3. Round 6's read of every tile; anything found is fixed and proved, and the read repeats until it finds nothing.
 4. Tell the other sessions, push to main, watch the deploy, read back production (`qa:live` as QA Mobile 01 with the
    peer notice), close S6 in VODACOM-PLAN §0g/§0h/§0i.
 
-## 6 · Questions for Ali (none blocks the pass; each has a default in place)
-The plain list is appendix F; the full record is appendix G.
+## 5 · Questions for Ali (none blocks the pass; each has a default in place)
+57 so far: the plain list is appendix F; the full record (with the S12 word list and the S8 notes) is appendix G.
 
 ---
 
@@ -142,7 +129,7 @@ re-measured first (CONFIRMED / REFUTED with numbers), every "after" is computed 
 
 ---
 
-## Appendix B · R5-G's brief
+## Appendix B · R5-G's brief (merged)
 
 ### R5-G brief — one page, one name; the regulator's one name (round 5's follow-up, consistency)
 
@@ -435,6 +422,14 @@ C · CROSS-SURFACE CONSISTENCY (visual and verbal, statically). The pass's rule:
 15. The offline page uses the phone's own font (ours would need the font files stored). Keep?
 23. The old bet dial's tiny thumb text is below the reading size (the new bet sheet, S8, replaces it). Drop it now?
 
+#### From the last helpers and reviewers
+52. Sign-up is called "Jisajili" in the header but "Fungua akaunti" on its page. Which one?
+53. Where may the word "earn" appear (invite and agent doors use it in some places, not others)?
+54. The licence line is worded differently on different screens (regulator copy — we didn't change it). Align it?
+55. "Kuwa wakala" vs "Kuwa Wakala wa 50pick" — the same name, or make them identical?
+56. During a break, should the Invite and Propose doors close too?
+57. The old (classic) header's Deposit buttons still show during a break (frozen until launch). Fix at launch?
+
 #### Process
 24. A screen-checking tool was broken on main; it is repaired on the Vodacom branch (ships with it).
 5, 6. Two earlier reports (small-text work order; two unused test files).
@@ -574,6 +569,15 @@ C · CROSS-SURFACE CONSISTENCY (visual and verbal, statically). The pass's rule:
 50. (R5-I) On the old dial, reaching a SESSION LIMIT (an RG limit) now shows its unchanged sentence as a message that
     stays until read, instead of the red ✗ pop-up — as Up & Down already does. Confirm?
 51. (R5-I) The leaderboard's rate of return is now neutral text with its sign (not green/red, not gold). Right?
+52. (R5-G) Sign-up has two names in both shells: the header's "Jisajili / Sign up / 注册" vs the page's eyebrow, tab and
+    submit "Fungua akaunti / Create account / 创建账户". One name — which? (Growing the header pill re-measures S4's fit.)
+53. (R5-G) Where may "earn" stand (D5)? The agent's avatar menu says "Invite & Earn" while the hub and page say "Agent
+    dashboard"; a paid player's page and menu say "Alika na upate zawadi" while the hub and footer say "Alika marafiki".
+54. (R5-G) The licence line's wording differs by surface (regulator copy, not reworded): en email lacks "the"; sw footer
+    "Leseni ya…" vs global-error "Imepewa leseni na…"; zh 获得…许可 vs 由…发照; the auth shell uses "GBT".
+55. (R5-G) "Kuwa wakala" vs "Kuwa Wakala wa 50pick" — R5-A ruled them one name; strict would use `agent.title`.
+56. (Review A) During a break the invite and proposals doors stay open (no break gate) — close them too?
+57. (Review A) The CLASSIC chrome's deposit doors stay during a break (frozen until launch) — fix at launch?
 
 #### S12 (live-word corrections, ship with S12)
 - Swahili "Arifa {n}" reads like one more chip beside "Pesa 3" on the notifications filter row (G1): "{n} arifa".
@@ -596,6 +600,10 @@ C · CROSS-SURFACE CONSISTENCY (visual and verbal, statically). The pass's rule:
 - (R5-C) The factual validation toasts have no next-step line (F4) — new keys.
 - (R5-I) The share button's "Couldn't copy" has no next step and no existing key fits.
 - (R5-I) The agent application's submit pop-up prints the server's English error (apply-client.tsx ~175) — reason keys.
+- (R5-G) "Thibitisha amana" (common.confirmDeposit, the submit and dialog title) on a journey screen named "Weka pesa" —
+  suggest "Thibitisha kuweka pesa" for native review.
+- (R5-G) The push-settings page and the inbox share one name, "Arifa / Notifications / 通知" — the settings page needs its own.
+- (R5-G) auth.licensedByGbt uses the acronym "GBT".
 
 #### S8 (the journey bet sheet)
 - A player on a break (or self-excluded but signed in) can open the old dial, pick a side and a stake, and is refused
@@ -606,3 +614,102 @@ C · CROSS-SURFACE CONSISTENCY (visual and verbal, statically). The pass's rule:
 - The same for a HELD (frozen) wallet (round 4, tiles 088–100): the home's featured card shows live YES/NO; the bet path
   refuses `wallet_frozen` (shortfallPlan's gate 7, the wallet not ACTIVE). The S8 sheet must show the held notice before
   any stake, as the Wallet and the header already withhold their invitations for a held wallet.
+
+---
+
+## Appendix H · R6-A's brief (responsible gambling)
+
+### R6-A brief — responsible gambling: the break's emails, and no bet offered during a break (round 6 review, HIGH)
+
+You are fixer R6-A for 50pick's Vodacom visual pass. Read first, completely: S\briefs\r5-common.md (the rules — where it
+says "1699302a" read the tip below), then reviewer A's report and evidence: S\review6\A\log.txt and the scripts and
+outputs it names (t2-rg-email.mts + t2-out.txt, t4-break-bet.cjs + t4-out.txt, t5-tickets-tabs.cjs + t5-out.txt).
+Worktree: F:\kipindi-r6a (branch vodacom-visual-r6a at vodacom-visual's tip 89893725, rebased on main 118fc75c, with
+every round-5 helper merged). Suite: scripts/visual-pass-r6a.test.mts → test:visual-pass-r6a.
+⚠️ OMEGA's memory is shared and tight: suites strictly one at a time; no dev server, build, tsc, browser or battery.
+⛔ RESPONSIBLE GAMBLING: never reword or remove an RG sentence, notice, helpline or limit control. Every item below
+ADDS protection or corrects a date's formatting; the words are the dictionary's (rg.breakActive, rg.exclusionActive,
+breakSentence, formatBreakEnd and the existing month words). If an item needs a NEW sentence, stop at it and list it
+under S12 — never write one. If a tool refuses an edit on an RG file, stop and report it; never work around it.
+S = C:\Users\asheib\AppData\Local\Temp\claude\C--Users-asheib\0e745525-51fe-4451-ace7-c9987576fc15\scratchpad
+
+A1 (HIGH) · the break and self-exclusion confirmation EMAILS state the end as a UTC calendar day with no time
+    (responsible-gambling.ts ~38-39 `fmtDate` → toLocaleDateString("en-GB"), no timeZone; production runs in UTC), the
+    Swahili line prints the English-month date (email.ts ~1575-1583 selfExclusionHtml) or `untilIso.slice(0,10)`
+    (~1588-1601 coolOffHtml); a permanent exclusion reads "for permanent … until 15 Sept 2126". A break taken 01:30 EAT
+    reads a day early. Fix: pass the instant to the builders; format each language's line on the EAT clock with its
+    own month words (formatBreakEnd with the dictionary's monthsShort, as agentRevokedHtml does since R5-B); when the
+    exclusion is permanent (selfExclusionStandingOf), say permanent with the dictionary's existing word — never a date.
+    Sibling: betPlacedHtml's "Resolves" row (`market.resolutionAt.slice(0,10)`, a UTC day) → email.ts's own
+    fmtDateTime. ⭐ Make A1 ONE self-contained change (only the server email/RG files + its test) — it will be
+    cherry-picked onto main as a hotfix ahead of the pass; say exactly which files and hunks form it.
+A2 (HIGH) · during a break the market page still offers the full bet panel (markets/[id]/page.tsx: `bettingOpen` has
+    no break term, ~334; SidePicker ~741), and Up & Down offers its one-tap stakes (updown-card.tsx ~676/~1006,
+    round-stake-panel.tsx ~57/~109). When a break or exclusion is active (the page's `isLockedOut` read; fail OPEN on a
+    failed read, as today), render the break's notice (the deposit page's neutral Callout pattern, lock glyph,
+    rg.breakActive / rg.exclusionActive with the end, role=status) in the bet column instead of the SidePicker (keep
+    the column's heading), and the same in the Up & Down card and round panel (read the lockout in those pages). Both
+    shells (a page body). Find every other place a stake can be started (the dial, quick bet, home featured card's
+    YES/NO, board rows) and classify each: gated by the page it opens, or needs the same gate.
+A3 (HIGH) · two empty states invite a first bet during a break: Tiketi zangu's Juu/Chini tab (updown/history/page.tsx
+    ~303, ~378-389: "Weka dau kwenye ubao…" + a primary "Juu na Chini" button) and /positions/performance (~202-211:
+    "Weka utabiri wako wa kwanza…" + "Browse markets"). Do as R4-I did for TicketsView (tickets-view.tsx ~88-109):
+    during a break show breakSentence(rg.breakActive | rg.exclusionActive, until, …) and no bet button. Sweep every
+    empty state a signed-in player can see for the same pattern.
+
+Owner notes (not to fix): the invite and proposals doors during a break; classic chrome's deposit doors.
+
+PROOF as r5-common.md says (suite with controls/plants, a mutation proof under S\r6a\, every suite reading a touched
+file — the RG suites among them: rg-doors, rg-policy, kyc-gate, journey-account, feedback-law, red twins). Name exactly
+what a lock turn must check in a browser (a break session on the market page, Up & Down, Tiketi zangu, performance).
+REPORT exactly as r5-common.md says.
+
+---
+
+## Appendix I · R6-B's brief (runtime, security, text)
+
+### R6-B brief — the round-6 review's runtime, security and text findings
+
+You are fixer R6-B for 50pick's Vodacom visual pass. Read first, completely: S\briefs\r5-common.md (the rules — where it
+says "1699302a" read the tip below), then the reviewers' evidence: S\review6\B\ (reviewer B: t2-trap.mts and its shims,
+t3-chart-deadline.mjs, t1-timing.mts, t5-timing-more.mts, t4-namend-unicode.mts — run as its report says: from the
+worktree, node_modules/.bin/tsx --tsconfig tsconfig.json --import file:///S/review6/B/hook-register.mjs <script>) and
+S\review6\A\ (reviewer A: t1-text.mts, t3-proxy.cjs and their outputs).
+Worktree: F:\kipindi-r6b (branch vodacom-visual-r6b at vodacom-visual's tip 89893725). Suite:
+scripts/visual-pass-r6b.test.mts → test:visual-pass-r6b.
+⚠️ OMEGA's memory is shared and tight: suites strictly one at a time; no dev server, build, tsc, browser or battery.
+S = C:\Users\asheib\AppData\Local\Temp\claude\C--Users-asheib\0e745525-51fe-4451-ace7-c9987576fc15\scratchpad
+
+B-1 (MEDIUM) · focus escapes the bet and sell confirms while their request is in flight: every control is disabled
+    (R5-A's in-flight rule withholds the ✕ as `disabled`), the trap's list is empty (modal.tsx ~460-463 returns
+    without preventDefault), so Tab leaves the aria-modal dialog for the page behind the scrim (verified: 0 focusables
+    in flight at the tip, 1 at 118fc75c). Fix in modal.tsx: the panel `tabIndex={-1}`; with no focusables, Tab
+    preventDefaults and focuses the panel (focusIn's existing panel fallback then works). It closes ConfirmModal's
+    older hole too. Prove it by rendering the real panels as the reviewer did; name the browser check (throttle, press
+    Confirm, Tab: document.activeElement inside [role=dialog]).
+B-2 (LOW) · the chart's 12s deadline only flips the pane to "error"; polls stay serial behind a hung request (requests
+    at 0, 30, 160, 290s against a 100s origin stall). Give each load its own AbortController chained to the effect's,
+    aborted by the deadline (or don't await load() in the poll timer — `seq` already discards stale answers). Keep R5-A's
+    guarantees: a late answer still draws; a drawn chart is never replaced; a verified empty answer says "no reads".
+B-3 (LOW) · three text helpers are quadratic: fill-nodes.tsx ~78-80 `moneySentence` (`/\S+\s+\S+\s*$/`), live/
+    pulse-grid.tsx ~166 KeepHyphenated's split, notification-text.ts ~28 endClause (`/[.。]+$/`). Linear scans, exactly
+    equivalent output (prove equivalence over a corpus, as R5-E did — S\r5e has its tools).
+B-4 (LOW) · keepNameEnd's Unicode-property pattern can cut a name differently on the server (Node's ICU) and in an older
+    browser → a hydration mismatch in /profile's name editor. Decide the cut once on the server and pass it down, so
+    the browser never re-derives it (sibling: pulse-grid's \p{Script=Han} — admin titles; classify).
+A5 (LOW) · readableNotificationBody mends ".." in every body, new rows included ("range 1..2" → "range 1.2"): mend only
+    the old template's shape (`\.\.(?=\s|$)`, ".。") .
+A6 (LOW) · /updown/[roundId]'s metadata titles a found round titleEn in every language: return titleSw/titleZh from
+    getRoundDetail and pickLocalized.
+A7 (LOW) · notifyWin's body quotes the whole market title (notification-service ~377-379): clipQuote as its siblings.
+A4 (LOW, security) · the proxy still skips the public folders and an unanchored `favicon.ico|favicon.svg`
+    (src/proxy.ts ~307): a missing file under /icons/, /brand/, /og/… renders the root not-found inside the signed-in
+    shell WITHOUT the security headers (frameable). Fix: anchor the favicons (`favicon\.ico$|favicon\.svg$`), and give
+    every response the static security headers (all but the CSP) from next.config `headers()` for `/:path*`, so a
+    skipped response carries them too; correct proxy.ts's stale comment (~252-260). Extend test:proxy-scope and
+    test:static-cache-scope (controls + plants). ⭐ Make A4 ONE self-contained change (proxy.ts, next.config.ts, the two
+    suites) — it will be cherry-picked onto main as a hotfix; say exactly which files form it, and what a lock turn's
+    dev-server header check must show.
+
+PROOF as r5-common.md says (suite with controls/plants, a mutation proof under S\r6b\, every suite reading a touched
+file). REPORT exactly as r5-common.md says.
