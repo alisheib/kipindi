@@ -8,17 +8,22 @@
  * number belongs to a protected player (the D19 oracle), and a `kyc.rejected · User#…` line whose identity check failed.
  * This suite owns the feed's rule.
  *
+ * 🔴 C8b (B6, 2026-10-09) · and the contact book's sign-up rows — `contacts.contact.registered|linked|revived ·
+ * MarketingContact#…` — which told every staff role, live, which book rows are players (the contact id is the row's edit
+ * link). They are compliance-only rows now, under the same rule.
+ *
  * ⭐ DRIVEN, NOT READ, wherever a script can run it — over the MEMORY twin, in-process:
  *   §1 THE RULE — `overviewFeedRows` on a ring of mixed rows: a reader is shown the newest rows as read, COMPLIANCE and
- *      KYC included; anyone else no COMPLIANCE row, no KYC row and no `kyc.*` row of any category, and the SAME number of
- *      rows — the newest of everything else, in order, so the gap where a hidden row was can never be counted; a short
- *      ring shows what it may; nothing is nothing.
+ *      KYC included; anyone else no COMPLIANCE row, no KYC row, no `kyc.*` row of any category and no contact sign-up
+ *      row, and the SAME number of rows — the newest of everything else, in order (an officer's own contact row among
+ *      them), so the gap where a hidden row was can never be counted; a short ring shows what it may; nothing is nothing.
  *   §2 THE VIEWER — `viewerMayReadCompliance` on real accounts and the real grant matrix: the Owner, COMPLIANCE and
  *      AUDITOR may; GROWTH, FINANCE, MODERATOR and SUPPORT may not; a GROWTH officer the Owner grants the compliance view
  *      may, and stops with the grant; a player, an agent, an unknown id, null and "" may not; a row that cannot be read
- *      may not — it fails closed, and never throws.
+ *      may not — it fails closed, and never throws. 2.4 (B6) composes the two for a GROWTH and a COMPLIANCE officer.
  * Then the SOURCE, for what only the source can show (§3): the page asks the viewer once, reads the whole ring through
- * `houseAuditForConsole` and renders only what `overviewFeedRows` hands it; the scan covers the audit ring. §4 the wiring.
+ * `houseAuditForConsole` and renders only what `overviewFeedRows` hands it; the scan covers the audit ring; the wiring;
+ * and (3.4, B6) the hidden contact actions are exactly the actions the sign-up writer audits.
  *
  * ⛔ IN-PROCESS BY CONSTRUCTION. `--prove-red` plants each defect IN MEMORY — the rule, the viewer's read, a store member
  * for the length of one call, or a COPY of a source string — and requires the MATCHING assertion to fail. This file makes
@@ -40,7 +45,7 @@ import type { AuditCategory, AuditEntry } from "../src/lib/server/audit.ts";
 import { isStaffRole } from "../src/lib/server/roles.ts";
 import { __resetGrantsForTest, canView, setRoleGrant } from "../src/lib/server/rbac.ts";
 import {
-  OVERVIEW_FEED_ROWS, OVERVIEW_FEED_SCAN, overviewFeedRows, viewerMayReadCompliance,
+  COMPLIANCE_ONLY_ACTIONS, OVERVIEW_FEED_ROWS, OVERVIEW_FEED_SCAN, overviewFeedRows, viewerMayReadCompliance,
 } from "../src/lib/server/admin-overview-feed.ts";
 
 const PROVE_RED = process.argv.includes("--prove-red");
@@ -71,12 +76,17 @@ async function check(label: string, fn: () => Promise<[boolean, string?]> | [boo
 /* ═══ FIXTURES ═══════════════════════════════════════════════════════════════════════════════════════════════════ */
 
 /** A ring of `n` rows, newest first, whose kinds cycle so the hidden ones sit among every other kind: COMPLIANCE rows, KYC
- *  rows (the category's own actions), and a `kyc.*` row a SECURITY check wrote — besides money, sign-in and staff rows. */
+ *  rows (the category's own actions), a `kyc.*` row a SECURITY check wrote, and (B6) the contact book's three sign-up rows
+ *  — besides money, sign-in and staff rows, and an officer's OWN contact row (`contacts.contact.added`), which every viewer
+ *  keeps: the rule hides the sign-up writer's actions, never a whole `contacts.` family. */
 const CYCLE: ReadonlyArray<readonly [AuditCategory, string]> = [
   ["COMPLIANCE", "marketing.suppressed.rg"], ["BET", "bet.placed"], ["KYC", "kyc.rejected"], ["WALLET", "wallet.deposit"],
   ["SECURITY", "kyc.id.duplicate_blocked"], ["AUTH", "user.login"], ["COMPLIANCE", "rg.self_excluded"], ["ADMIN", "config.updated"],
   ["KYC", "kyc_doc.viewed"], ["SYSTEM", "contacts.contact.registered"], ["SECURITY", "register.ip_rate_limited"],
+  ["ADMIN", "contacts.contact.added"], ["SYSTEM", "contacts.contact.linked"], ["SYSTEM", "contacts.contact.revived"],
 ];
+/** ⛔ B6 · the sign-up writer's three actions, written HERE apart from the module's list (`COMPLIANCE_ONLY_ACTIONS`). */
+const SIGNUP_ROWS: readonly string[] = ["contacts.contact.registered", "contacts.contact.linked", "contacts.contact.revived"];
 function ring(n: number, prefix: string): AuditEntry[] {
   return Array.from({ length: n }, (_, i) => ({
     id: `${prefix}_${String(i).padStart(4, "0")}`, category: CYCLE[i % CYCLE.length][0], action: CYCLE[i % CYCLE.length][1],
@@ -86,9 +96,10 @@ function ring(n: number, prefix: string): AuditEntry[] {
 const ids = (rows: readonly AuditEntry[]) => rows.map((r) => r.id).join(",");
 /** ⛔ The rows only a compliance reader may see — written HERE, apart from the module's own rule, so a planted rule is
  *  measured against this suite's reading and never against itself. */
-const hidden = (r: AuditEntry) => r.category === "COMPLIANCE" || r.category === "KYC" || r.action.startsWith("kyc.");
+const hidden = (r: AuditEntry) => r.category === "COMPLIANCE" || r.category === "KYC" || r.action.startsWith("kyc.")
+  || SIGNUP_ROWS.includes(r.action);
 const kinds = (rows: readonly AuditEntry[]) =>
-  `${rows.filter((r) => r.category === "COMPLIANCE").length} compliance · ${rows.filter((r) => r.category === "KYC").length} KYC · ${rows.filter((r) => r.category !== "KYC" && r.action.startsWith("kyc.")).length} other kyc.*`;
+  `${rows.filter((r) => r.category === "COMPLIANCE").length} compliance · ${rows.filter((r) => r.category === "KYC").length} KYC · ${rows.filter((r) => r.category !== "KYC" && r.action.startsWith("kyc.")).length} other kyc.* · ${rows.filter((r) => SIGNUP_ROWS.includes(r.action)).length} contact sign-up`;
 
 let RUN = 0;
 /** An account with a number no other run uses: the run in two digits, a three-digit slot. */
@@ -117,32 +128,47 @@ async function withUserMember<T>(name: "findById", planted: unknown, fn: () => P
 
 /* ═══ THE IMPLEMENTATION UNDER TEST — swappable, so a red case can plant one piece ═════════════════════════════════ */
 
-type Sources = { page: string; audit: string; pkg: string };
+type Sources = { page: string; audit: string; pkg: string; writer: string };
 const REAL_SOURCES: Sources = {
   page: read("src/app/admin/page.tsx"),
   audit: read("src/lib/server/audit.ts"),
   pkg: rawRead("package.json"),
+  // B6 · the ONE writer of the contact book's sign-up rows — its audited actions are the list the feed hides.
+  writer: read("src/lib/server/marketing/registration-contact.ts"),
 };
 type Impl = {
   rows: typeof overviewFeedRows;
   mayRead: typeof viewerMayReadCompliance;
   scan: number;
   sources: Sources;
+  /** B6 · the actions the module hides by name (`COMPLIANCE_ONLY_ACTIONS`). */
+  hiddenActions: readonly string[];
 };
-const REAL: Impl = { rows: overviewFeedRows, mayRead: viewerMayReadCompliance, scan: OVERVIEW_FEED_SCAN, sources: REAL_SOURCES };
+const REAL: Impl = {
+  rows: overviewFeedRows, mayRead: viewerMayReadCompliance, scan: OVERVIEW_FEED_SCAN, sources: REAL_SOURCES,
+  hiddenActions: COMPLIANCE_ONLY_ACTIONS,
+};
+
+/** B6 · every `"contacts.contact.<word>"` literal in the sign-up writer's decommented source — the actions it audits (it
+ *  names no other contact action). */
+function writerActions(src: string): string[] {
+  return Array.from(new Set(src.match(/"contacts[.]contact[.][a-z_]+"/g) ?? [])).map((s) => s.slice(1, -1)).sort();
+}
 
 /* ═══ THE LABELS, ONCE — the assertions and the red cases both read them ══════════════════════════════════════════ */
 
 const L = {
   r1: `1.1 · a viewer who may read compliance is shown the newest ${OVERVIEW_FEED_ROWS} rows exactly as read — COMPLIANCE and KYC rows included, in order`,
-  r2: `1.2 · ⛔ OD61 · anyone else is shown NO COMPLIANCE row, NO KYC row and NO kyc.* row whatever its category, and the SAME number of rows — the newest ${OVERVIEW_FEED_ROWS} of everything else, in order, so the gap where a hidden row was can never be counted`,
-  r3: "1.3 · a short ring shows what each may read (all of it to a reader, every row neither compliance nor identity to anyone else), and no rows is no rows",
+  r2: `1.2 · ⛔ OD61 · anyone else is shown NO COMPLIANCE row, NO KYC row, NO kyc.* row whatever its category and (B6) NO contact sign-up row (registered, linked, revived), and the SAME number of rows — the newest ${OVERVIEW_FEED_ROWS} of everything else, in order (an officer's own contacts.contact.added row among them), so the gap where a hidden row was can never be counted`,
+  r3: "1.3 · a short ring shows what each may read (all of it to a reader, every row neither compliance, identity nor a contact sign-up to anyone else), and no rows is no rows",
   v1: "2.1 · ⛔ the STORED role decides: the Owner, COMPLIANCE and AUDITOR may read compliance; GROWTH, FINANCE, MODERATOR and SUPPORT may not; a player, an agent, an unknown id, null and an empty id may not",
   v2: "2.2 · the grant decides, live: a GROWTH officer the Owner grants the compliance view may read compliance, and may not once the grant is taken back",
   v3: "2.3 · ⛔ FAILS CLOSED: a viewer whose row cannot be read may not read compliance — and the answer is false, never a throw",
+  v4: "2.4 · ⛔ C8b (B6) · END TO END, a GROWTH officer's feed (the viewer read, then the rule) carries NO contacts.contact.registered, .linked or .revived row — which rows of the book are players — while a COMPLIANCE officer's carries them; an officer's own contacts.contact.added row stays in both",
   s1: "3.1 · THE PAGE: /admin asks viewerMayReadCompliance(session?.userId ?? null) once, reads the feed ONCE through houseAuditForConsole(session?.userId ?? null, \"/admin\", getAuditPage({ limit: OVERVIEW_FEED_SCAN })), and renders only what overviewFeedRows(…, mayReadCompliance) hands it",
   s2: "3.2 · the scan covers the WHOLE audit ring (OVERVIEW_FEED_SCAN ≥ audit.ts MAX_IN_MEM), so a burst of hidden rows can never shorten anybody's feed",
   s3: "3.3 · the suite is wired: test:admin-overview-feed and red:admin-overview-feed (--prove-red, in-process) exist, and predeploy runs the suite exactly once",
+  s4: "3.4 · ⛔ C8b (B6) · the feed hides EXACTLY the actions the sign-up writer audits (registration-contact.ts's every contacts.contact.* action — registered, linked, revived): a sign-up action the list forgot would be every staff role's player oracle again",
 } as const;
 
 /* ═══ THE RUN ════════════════════════════════════════════════════════════════════════════════════════════════════ */
@@ -162,8 +188,9 @@ async function runAssertions(impl: Impl, tag: string): Promise<void> {
   await check(p(L.r2), () => {
     const got = impl.rows(big, false);
     const want = big.filter((r) => !hidden(r)).slice(0, OVERVIEW_FEED_ROWS);
-    return [got.length === OVERVIEW_FEED_ROWS && !got.some(hidden) && ids(got) === ids(want),
-      `${got.length} row(s) · ${kinds(got)} · ${ids(got) === ids(want) ? "the newest of the rest, in order" : `NOT the newest of the rest: ${ids(got)}`}`];
+    const ownRow = got.some((r) => r.action === "contacts.contact.added");
+    return [got.length === OVERVIEW_FEED_ROWS && !got.some(hidden) && ids(got) === ids(want) && ownRow,
+      `${got.length} row(s) · ${kinds(got)} · an officer's own contact row ${ownRow ? "kept" : "MISSING"} · ${ids(got) === ids(want) ? "the newest of the rest, in order" : `NOT the newest of the rest: ${ids(got)}`}`];
   });
   await check(p(L.r3), () => {
     const short = ring(7, `s${RUN}`);
@@ -219,6 +246,29 @@ async function runAssertions(impl: Impl, tag: string): Promise<void> {
     });
     return [threw === "" && got === false, threw ? `THREW ${threw}` : `answered ${String(got)}`];
   });
+  await check(p(L.v4), async () => {
+    // ⭐ B6 · the page's own composition — the viewer asked, then the rule — for the masked role that reaches the book, over
+    // a ring whose newest rows are the three sign-up rows and an officer's own contact row.
+    const newest: Array<readonly [AuditCategory, string]> = [
+      ["SYSTEM", "contacts.contact.registered"], ["ADMIN", "contacts.contact.added"], ["SYSTEM", "contacts.contact.linked"],
+      ["SYSTEM", "contacts.contact.revived"],
+    ];
+    const mixed: AuditEntry[] = [
+      ...newest.map(([category, action], i) => ({
+        id: `b6${RUN}_${i}`, category, action, actorId: null, targetType: "MarketingContact", targetId: `mc_fixture_${i}`,
+        createdAt: new Date(Date.UTC(2026, 9, 9, 12, 0, 0) - i * 1000).toISOString(),
+      }) as AuditEntry),
+      ...ring(40, `b${RUN}`),
+    ];
+    const feedOf = async (role: "GROWTH" | "COMPLIANCE") => impl.rows(mixed, await impl.mayRead(people.get(role) ?? ""));
+    const growth = await feedOf("GROWTH");
+    const compliance = await feedOf("COMPLIANCE");
+    const signups = (rows: readonly AuditEntry[]) => rows.filter((r) => SIGNUP_ROWS.includes(r.action)).length;
+    const own = (rows: readonly AuditEntry[]) => rows.some((r) => r.action === "contacts.contact.added");
+    const seen = new Set(compliance.filter((r) => SIGNUP_ROWS.includes(r.action)).map((r) => r.action));
+    return [signups(growth) === 0 && SIGNUP_ROWS.every((a) => seen.has(a)) && own(growth) && own(compliance),
+      `GROWTH ${signups(growth)} sign-up row(s) · COMPLIANCE ${signups(compliance)} (${[...seen].sort().join(", ") || "none"}) · own row GROWTH ${own(growth)} · COMPLIANCE ${own(compliance)}`];
+  });
 
   /* ── §3 · THE SOURCE ─────────────────────────────────────────────────────────────────────────────────────── */
   const s = impl.sources;
@@ -246,6 +296,15 @@ async function runAssertions(impl: Impl, tag: string): Promise<void> {
     return [scripts["test:admin-overview-feed"] === "tsx scripts/admin-overview-feed.test.mts"
       && scripts["red:admin-overview-feed"] === "tsx scripts/admin-overview-feed.test.mts --prove-red" && onChain === 1,
       `test ${scripts["test:admin-overview-feed"] ?? "MISSING"} · red ${scripts["red:admin-overview-feed"] ?? "MISSING"} · on predeploy ×${onChain}`];
+  });
+  await check(p(L.s4), () => {
+    const written = writerActions(s.writer);
+    const listed = [...impl.hiddenActions].sort();
+    const want = [...SIGNUP_ROWS].sort();
+    // The module's list must hide every action the writer audits, and the rule must hide each of them in practice.
+    const ruled = written.every((a) => impl.rows([{ id: "x", category: "SYSTEM", action: a } as AuditEntry], false).length === 0);
+    return [written.join(",") === want.join(",") && listed.join(",") === written.join(",") && ruled,
+      `the writer audits ${written.join(", ") || "NOTHING FOUND"} · the feed lists ${listed.join(", ")} · each hidden by the rule ${ruled}`];
   });
 }
 
@@ -300,6 +359,27 @@ if (!PROVE_RED) {
         ...REAL,
         rows: (rows, may) => (may ? (rows ?? []) : (rows ?? []).filter((r) => r.category !== "COMPLIANCE" && r.category !== "KYC")).slice(0, OVERVIEW_FEED_ROWS),
       },
+    },
+    {
+      name: "⛔ C8b · B6 not built — the contact sign-up rows shown to every viewer, as OD61's rule stood (registered · linked · revived name a player's book row)",
+      expect: L.v4,
+      impl: {
+        ...REAL,
+        rows: (rows, may) => (may ? (rows ?? []) : (rows ?? []).filter((r) => r.category !== "COMPLIANCE" && r.category !== "KYC" && !r.action.startsWith("kyc."))).slice(0, OVERVIEW_FEED_ROWS),
+      },
+    },
+    {
+      name: "⛔ C8b · the whole contacts. family hidden — an officer's own contact row taken from the masked viewer's feed too",
+      expect: L.r2,
+      impl: {
+        ...REAL,
+        rows: (rows, may) => (may ? (rows ?? []) : (rows ?? []).filter((r) => !hidden(r as AuditEntry) && !r.action.startsWith("contacts."))).slice(0, OVERVIEW_FEED_ROWS),
+      },
+    },
+    {
+      name: "⛔ C8b · the list forgets an action the sign-up writer audits — the revival of an erased number's row (B1) left in every feed",
+      expect: L.s4,
+      impl: { ...REAL, hiddenActions: ["contacts.contact.registered", "contacts.contact.linked"] },
     },
     {
       name: "the reader's feed filtered too — a compliance officer loses the rows they exist to read",

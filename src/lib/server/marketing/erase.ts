@@ -42,6 +42,12 @@ import { mirrorContactCache } from "@/lib/server/marketing/contact-cache";
  *      may be a previous holder's — emptying another person's row harms nobody, leaving the erased person's
  *      name would breach the request. The export takes the opposite side of the same doubt
  *      (`dsar.ts`: when in doubt, do not disclose).
+ *      ⭐ C8b (B1) · …AND ITS LIST MEMBERSHIPS ARE DELETED. Which lists the person was on is about them; the tombstone
+ *      covers nothing on any list already (a list basis and every audience leave it out), and since C8b a NEW account
+ *      registering the number replaces the tombstone with that client's own FRESH row (`registration-contact.ts`) — which
+ *      must inherit no old list and no old list's coverage. Asked for EVERY row this step reaches, emptied now or already
+ *      empty, so a pass that died part-way is finished by the next. (The revival deletes them too, for a tombstone made
+ *      before C8b — and unlinks the campaign recipient rows step 4 leaves pointing at the emptied row: see step 4.)
  *   2b. DELETE every STAGED import row (U29b, `ContactImportRow`) holding any number the person is known by — in every
  *      officer's run, a number another live account now holds included: a staged row is a transient copy of somebody's
  *      file, never evidence, and ⚖️ when in doubt, erase. A row whose number never parsed carries no key and cannot be
@@ -51,7 +57,9 @@ import { mirrorContactCache } from "@/lib/server/marketing/contact-cache";
  *      the row is the record that we messaged a number (GN 478T reg 51(1)), kept for its own period (DATA-RETENTION);
  *      what erasure removes is which ACCOUNT held that number. ⛔ Nothing is deleted. Found by the LINK alone, never by
  *      the number: a row about the same number that is linked to another account (a previous holder's) is that
- *      account's record and is not touched.
+ *      account's record and is not touched. (Its `contactId` stays: it points at the book row step 2 empties, which holds
+ *      nothing of the person — until a NEW account registers the number, whose revival deletes that emptied row and
+ *      clears the link with it, `registration-contact.ts`; C8b review, MINOR 8.)
  *      ⛔ A row still waiting in a live campaign is NOT rewritten: it stays PENDING, and the ONE gate refuses the number
  *      when the slice reaches it — step 1's WITHDRAWN row, which the account's own number carries whatever came before
  *      (`test:campaign-privacy` P5 runs it for a consent withdrawn, P11 for an account that never consented).
@@ -80,7 +88,8 @@ import { mirrorContactCache } from "@/lib/server/marketing/contact-cache";
  * contact you for marketing" made to whoever was named at that number, for as long as 50pick sends marketing. Like the
  * erasure marker (step 1), it only ever stops marketing (`referee-exclusion.ts`; docs/DATA-RETENTION.md).
  *
- * WHAT IS KEPT: the number, in the ledger rows, in the emptied book row's `msisdn` and in every campaign recipient
+ * WHAT IS KEPT: the number, in the ledger rows, in the emptied book row's `msisdn` (until a new account registers the
+ * number: then that row is deleted and the new client's own fresh row holds the number) and in every campaign recipient
  * row. Nothing written here names the account (the evidence is the bare word `erasure`). ⚠️ Not unlinkable in the
  * strong sense: a row's timestamp — an unlinked recipient row's `updatedAt` included — lines up with the erasure's own
  * audit row, which the 7-year chain keeps by statute.
@@ -110,6 +119,8 @@ export type MarketingErasureCounts = {
   marketingConsentWithdrawn: number;
   /** Book rows emptied (by link or by number). */
   marketingContactsEmptied: number;
+  /** C8b (B1) · list memberships of those rows deleted — the tombstone stays on no list. */
+  marketingListMembershipsDeleted: number;
   /** U29b · staged import rows deleted — by every number the person is known by, in every run. */
   marketingStagedRowsDeleted: number;
   /** U16a · campaign recipient rows that lost the account link — kept, with their number, status and trail. */
@@ -158,7 +169,8 @@ export async function eraseMarketingFor(input: {
   officerId: string | null;
 }): Promise<MarketingErasureCounts> {
   const counts: MarketingErasureCounts = {
-    marketingConsentWithdrawn: 0, marketingContactsEmptied: 0, marketingStagedRowsDeleted: 0, campaignRecipientsUnlinked: 0,
+    marketingConsentWithdrawn: 0, marketingContactsEmptied: 0, marketingListMembershipsDeleted: 0, marketingStagedRowsDeleted: 0,
+    campaignRecipientsUnlinked: 0,
   };
   const at = new Date().toISOString();
   const accountNumber = marketingKeyOf(input.phoneE164);
@@ -209,8 +221,13 @@ export async function eraseMarketingFor(input: {
     counts.marketingConsentWithdrawn++;
   }
 
-  // ── 2 · EMPTY THE ROWS ────────────────────────────────────────────────────────────────
+  // ── 2 · EMPTY THE ROWS — and (C8b · B1) take each off every list ─────────────────────────────
   for (const c of rows.values()) {
+    // ⭐ C8b · the memberships first, for every row reached — an already-emptied row too, so a pass that died part-way is
+    // finished by the next. Through the store's own members, one membership at a time.
+    for (const m of await Promise.resolve(db.contactListMember.listMemberships(c.id))) {
+      if (await Promise.resolve(db.contactListMember.remove({ listId: m.listId, contactId: c.id }))) counts.marketingListMembershipsDeleted++;
+    }
     const emptied = c.userId === null && c.displayName === null && c.email === null && c.notes === null
       && c.tags.length === 0 && c.sourceRef === ERASURE_EVIDENCE && c.importId === null && c.rawInput === c.msisdn;
     if (emptied) continue;

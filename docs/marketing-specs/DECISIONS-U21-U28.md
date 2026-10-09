@@ -16,7 +16,9 @@ THIS FILE WINS.
 - **C3 · Erased rows** (`sourceRef = "erasure"`, `ERASURE_EVIDENCE`) are EXCLUDED from every reader — list,
   KPIs, bulk, export, campaign, and a whole-number search for their own key. The ONLY code that still sees
   them is the duplicate check (U22's form, U31's importer): U22 refuses to add the number with one sentence and
-  opens NOTHING ("This number can't be added to the book."); U31 collapses the row to KEEP.
+  opens NOTHING ("This number can't be added to the book."); U31 collapses the row to KEEP. *(Note, 2026-10-09 — C8b ·
+  B2: that sentence revealed an erasure; the form now answers an erased number "This number is already in the book.",
+  exactly as any duplicate, and still opens nothing.)*
 - **C4 · ONE cache mirror.** `mirrorContactCache(identifier)` (U24 commit 2, in `audience.ts` or a sibling
   module) recomputes `consentState` (= the ledger's latest status, else UNKNOWN) and `suppressedAt` (= the
   active stop's createdAt, else null) for every book row with that msisdn. EVERY writer of the ledger or the stop

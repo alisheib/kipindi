@@ -84,6 +84,10 @@ export type ImportRunView = {
   pausedBy: string | null;
   finishedAt: string | null;
   decision: ImportRunDecision | null;
+  /** ⛔ C8b (B4 · the review's M1) · a list this run adds to gets ONLY the contacts the run creates — its creator or its
+   *  starter (before the start: the viewer about to start it) may not read a number (`listCreatedOnlyFor`). The decision
+   *  panel says so to whoever starts it, an ADMIN taking over a masked officer's run included. */
+  listCreatedOnly: boolean;
 };
 
 /* ══ ONE ANSWER SHAPE FOR EVERY ACTION ══════════════════════════════════════════════════════════ */
@@ -304,12 +308,14 @@ export type StartImportInput = {
 export type StartImportResult = ImportAnswer<{ view: ImportRunView }>;
 
 /**
- * The lists an import can add to (the Lists card's lists), by name, A to Z. `members` is the Lists card's own figure — the
- * members whose book row is live and linked to no account (`ListBasisCoverage.live`). `covered`: the list's NEWEST basis
- * recording on the Lists card is in force (recorded, not revoked). ⚠️ Members an import ADDS join after that recording,
- * so they are covered only once the basis is recorded again — the result's `list.covered` says whether that is owed.
+ * The lists an import can add to (the Lists card's lists), by name, A to Z. `members` is the Lists card's own figure, as
+ * the VIEWER may count it (C8b · B5, `listFiguresFor`): for a viewer who may read numbers, the members whose book row is
+ * live and linked to no account — and `withAccount` how many more are linked to a 50pick account; for anyone else, every
+ * live member, linked or not (the composer's count), and `withAccount` null. `covered`: the list's NEWEST basis recording
+ * on the Lists card is in force (recorded, not revoked). ⚠️ Members an import ADDS join after that recording, so they are
+ * covered only once the basis is recorded again — the result's `list.covered` says whether that is owed.
  */
-export type ImportListOption = { id: string; name: string; members: number; covered: boolean };
+export type ImportListOption = { id: string; name: string; members: number; withAccount: number | null; covered: boolean };
 export type ImportListsResult = ImportAnswer<{ lists: ImportListOption[] }>;
 
 /* ══ 5 · THE COMMIT LOOP ════════════════════════════════════════════════════════════════════════ */
@@ -358,8 +364,12 @@ export type ImportResultView = {
    *  the Lists card). Null when no list was chosen — or when the list has since been deleted.
    *  ⭐ `covered` is true only when EVERY live member of the list is covered by its newest recording (the Lists card's
    *  "covers N of N", N above 0): members the import added joined after any earlier recording, so it reads false until
-   *  the basis is recorded again on the Lists card. */
-  list: { id: string; name: string; covered: boolean } | null;
+   *  the basis is recorded again on the Lists card. ⭐ C8b (B5) · "every live member" as the VIEWER may count them — the
+   *  Lists card's own rule — and `withAccount` a reader's figure alone (null for anyone else): the members linked to a
+   *  50pick account, whom a list basis never reaches. ⭐ C8b review (MINOR 2) · `joined` is how many contacts THIS run put
+   *  on the list (`contactListMember.joinedFromImport`) — the result says when it is none — and `createdOnly` whether the
+   *  run could only add the contacts it created (B4), which is why it may be none. */
+  list: { id: string; name: string; covered: boolean; withAccount: number | null; joined: number; createdOnly: boolean } | null;
   /**
    * ⭐ C8c · #13 · how many rows the import settled WITHOUT all their new tags (the contact reached the most tags a contact
    * can have — `mergeTags` adds what fits, up to the limit, and leaves the rest) — listed a page at a time through the

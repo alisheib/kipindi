@@ -247,6 +247,16 @@ const contactRow = (id: string, msisdn: string, userId: string | null, displayNa
 await db.marketingContact.create(contactRow("mc_erase_now", SUBJECT_KEY, SUBJECT, NAME));
 await db.marketingContact.create(contactRow("mc_erase_old", SUBJECT_OLD, SUBJECT, NAME));
 await db.marketingContact.create(contactRow("mc_erase_bystander", BYSTANDER, null, "Juma Bystander"));
+/* ⭐ C8b (B1) · THE LISTS — today's number on two lists, the earlier one on one, the bystander on the first. Erasure must take
+ * the subject's rows off every list (a tombstone stays on none, so a revived row can inherit none) and keep the bystander
+ * and the lists themselves. */
+const ERASE_LISTS = ["cl_erase_stadium", "cl_erase_vip"];
+for (const id of ERASE_LISTS) {
+  await db.contactList.create({ id, name: `Erasure fixture ${id}`, description: null, createdAt: iso(NOW - 40 * DAY), createdBy: "usr_officer", updatedAt: iso(NOW - 40 * DAY), updatedBy: "usr_officer" });
+  await db.contactListMember.add({ listId: id, contactId: "mc_erase_now", addedAt: iso(NOW - 40 * DAY), addedBy: "usr_officer" });
+}
+await db.contactListMember.add({ listId: ERASE_LISTS[0], contactId: "mc_erase_old", addedAt: iso(NOW - 40 * DAY), addedBy: "usr_officer" });
+await db.contactListMember.add({ listId: ERASE_LISTS[0], contactId: "mc_erase_bystander", addedAt: iso(NOW - 40 * DAY), addedBy: "usr_officer" });
 
 /* ── U29b · AN IMPORT MID-STAGING ─────────────────────────────────────────────────────────────────────────────
  * An officer's unfinished import holds the subject's NAME on two rows — today's number and the earlier one — beside two
@@ -1155,6 +1165,16 @@ section("12 · ⭐ MARKETING — the consent withdrawn, the book emptied (U18b)"
   const by = await db.marketingContact.find("mc_erase_bystander");
   ok("12.7 CONTROL · somebody else's book row is untouched — the rule is 'this person', not 'the book'",
     by?.displayName === "Juma Bystander" && by?.consentState === "GIVEN" && by?.importId === "imp_erase_1");
+  const onLists = {
+    now: (await db.contactListMember.listMemberships("mc_erase_now")).length,
+    old: (await db.contactListMember.listMemberships("mc_erase_old")).length,
+    bystander: (await db.contactListMember.listMemberships("mc_erase_bystander")).length,
+    lists: (await Promise.all(ERASE_LISTS.map((id) => db.contactList.find(id)))).filter((l) => l !== null).length,
+  };
+  ok("12.7b ⭐ C8b (B1) · every emptied row is taken OFF EVERY LIST — today's number off its two, the earlier one off its one (3 memberships counted) — while the bystander keeps its membership and both lists stand: a tombstone stays on no list, so a new client the number is revived for inherits none",
+    result.ok && result.counts.marketingListMembershipsDeleted === 3 && onLists.now === 0 && onLists.old === 0
+      && onLists.bystander === 1 && onLists.lists === 2,
+    `${result.ok ? result.counts.marketingListMembershipsDeleted : "-"} deleted · ${JSON.stringify(onLists)}`);
   ok("12.8 ⛔ nothing written names the account",
     !JSON.stringify([...rows, ...await db.messagingConsent.listFor(keyOf(SUBJECT_OLD))]).includes(SUBJECT));
 
@@ -1315,14 +1335,16 @@ section("12 · ⭐ MARKETING — the consent withdrawn, the book emptied (U18b)"
   }
   await db.marketingContact.create(contactRow("mc_erase_m3", M3_KEY, M3, "Baraka"));
   await db.marketingContact.create(contactRow("mc_erase_m3_old", M3_OLD, M3, "Baraka"));
+  await db.contactListMember.add({ listId: ERASE_LISTS[1], contactId: "mc_erase_m3", addedAt: iso(NOW - 30 * DAY), addedBy: "usr_officer" });
   const m3View = await marketingDsarView({ id: M3, phoneE164: M3_PHONE, createdAt: iso(NOW - 80 * DAY) });
   ok("12.16b ⛔ the export does not hand Baraka the consent record of the LIVE account that now holds his old number",
     m3View.consent.length === 1 && m3View.contacts.length === 2, JSON.stringify(m3View.consent));
   const first = await eraseMarketingFor({ userId: M3, phoneE164: M3_PHONE, officerId: DPO });
   const again = await eraseMarketingFor({ userId: M3, phoneE164: M3_PHONE, officerId: DPO });
-  ok("12.15 ⭐ IDEMPOTENT, EXECUTED · the step called a second time on the same account does nothing and says so",
-    first.marketingConsentWithdrawn === 1 && first.marketingContactsEmptied === 2
-      && again.marketingConsentWithdrawn === 0 && again.marketingContactsEmptied === 0,
+  ok("12.15 ⭐ IDEMPOTENT, EXECUTED · the step called a second time on the same account does nothing and says so — (C8b) its one list membership deleted once, then none",
+    first.marketingConsentWithdrawn === 1 && first.marketingContactsEmptied === 2 && first.marketingListMembershipsDeleted === 1
+      && again.marketingConsentWithdrawn === 0 && again.marketingContactsEmptied === 0 && again.marketingListMembershipsDeleted === 0
+      && (await db.contactListMember.listMemberships("mc_erase_m3")).length === 0,
     `${JSON.stringify(first)} then ${JSON.stringify(again)}`);
   ok("12.16 ⛔ a number another LIVE account now holds keeps that account's consent — only the erased person's row about it is emptied",
     (await db.messagingConsent.latestFor(keyOf(M3_OLD)))?.status === "GIVEN"

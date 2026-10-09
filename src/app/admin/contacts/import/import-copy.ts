@@ -402,7 +402,15 @@ export const LIST = {
   noneBody: "The contacts go into the book only.",
   newList: "A new list",
   newListLabel: "Name of the new list",
-  members: (n: number): Part[] => [fig(n), ` ${plural(n, "member", "members")}`],
+  /** ⭐ C8b (B5) · the list's members as the VIEWER may count them; `withAccount` a reader's figure alone (null for
+   *  anyone else, and then nothing is said): the members linked to a 50pick account, beside the ones a basis can reach. */
+  members: (n: number, withAccount: number | null = null): Part[] => [
+    fig(n), ` ${plural(n, "member", "members")}`,
+    ...(withAccount !== null && withAccount > 0 ? [" · ", fig(withAccount), " more with a 50pick account"] : []),
+  ],
+  /** ⭐ C8b (B4, and the review's M1) · a run whose CREATOR or STARTER may not read numbers puts on the list ONLY the
+   *  contacts it adds — said to whoever starts it, an ADMIN taking over a masked officer's run included. */
+  createdOnly: "Only the contacts this import adds join the list — numbers already in the book stay as they are.",
   /** The list's NEWEST basis recording is in force — for its members today (`owed` says what the import's new ones need).
    *  Both are short chip labels; where the basis is recorded is `lead`'s sentence above the cards. */
   covered: "Ready for offers",
@@ -544,9 +552,23 @@ export const DONE = {
   tagsLoading: "Loading the contacts whose tags were not added…",
   tagsFailed: "The contacts whose tags were not added didn't load. Try again.",
   showAdded: "Show the contacts this import added",
-  listReady: (name: string): string => `Added to the list ${name} — every member is covered for offers.`,
-  listOwed: (name: string): string =>
-    `Added to the list ${name}. The new members aren't covered for offers yet — record the list's basis and 18+ confirmation again on the Lists card.`,
+  /** ⭐ C8b review (MINOR 2 · 4a) · how many contacts THIS import put on the list — never "added" over nobody — and, for a
+   *  reader whose list holds members with a 50pick account, which members the coverage is about. */
+  listReady: (name: string, joined: number, reachOnly: boolean): string =>
+    `${formatNumber(joined)} ${plural(joined, "contact", "contacts")} joined the list ${name} — every member${reachOnly ? " a list basis can reach" : ""} is covered for offers.`,
+  listOwed: (name: string, joined: number): string =>
+    `${formatNumber(joined)} ${plural(joined, "contact", "contacts")} joined the list ${name}. ${joined === 1 ? "The new member isn't" : "The new members aren't"} covered for offers yet — record the list's basis and 18+ confirmation again on the Lists card.`,
+  /** C8b review (MINOR 2) · nobody joined — now usual for a masked officer's import of numbers already in the book (B4).
+   *  ⛔ The re-review's MN-3: `addedNone` (a created-only run that created no contact) says what holds for THIS import —
+   *  only the contacts it adds join, and it added none — never a general rule (a reader's import lists the rows it kept
+   *  too); any other empty join is said plainly. */
+  listNone: (name: string, addedNone: boolean): string => (addedNone
+    ? `No contact joined the list ${name} — only the contacts this import adds join the list, and it added none.`
+    : `No contact joined the list ${name} with this import.`),
+  /** ⭐ C8b (B5) · a READER's line alone: the list's members linked to a 50pick account, beside the ones a basis reaches. */
+  listWithAccount: (n: number): Part[] => [
+    fig(n), ` more ${plural(n, "member has", "members have")} a 50pick account — a list basis never reaches them.`,
+  ],
   imported: "Import finished",
   importedBody: (create: number, update: number): string => `${formatNumber(create)} added · ${formatNumber(update)} updated.`,
 } as const;

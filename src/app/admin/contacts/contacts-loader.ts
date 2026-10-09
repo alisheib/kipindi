@@ -13,6 +13,18 @@
  * ⛔ AN UNREADABLE FILTER IS REFUSED, NEVER DROPPED (decision C2): `?op=NOKIA` is `{ kind: "refused" }` naming the
  * parameter, and the page shows no rows — a silently widened table is exactly what a bulk action or an export
  * would then act on.
+ * 🔴 C8b (B3, Ali's ruling of 2026-10-09) · A MASKED VIEWER'S WHOLE-NUMBER SEARCH IS `{ kind: "presence" }`: whether the
+ * book holds the number — a row, or a number the book blocks because its holder was erased (`bookHoldsNumber`, the Add
+ * form's own answer) — and NO ROWS, whatever else the address holds (`number-search.ts`). Asked before any page is read,
+ * so the row's name, lists, tags, "Added" and edit link never reach that viewer. A reader's whole-number search and
+ * everyone's name search list rows as before. ⛔ C8b review (MINOR 7) · EACH PRESENCE ANSWER SPENDS THE ADD FORM'S OWN
+ * NUMBER-CHECK BUCKET (`contacts.lookup`, 60 at once, 30 a minute — `rate-limit.ts`): the presence bit is the Add form's
+ * answer, so the search box can be no faster an oracle than the form; a spent bucket answers the form's own sentence and
+ * no bit. ⭐ The view carries the whole number ALONE as an audience (`filter`), so a stop or a withdrawal can still be
+ * recorded for it through the bulk bar (B3's one exception, `number-search.ts`). ⭐ C8b re-review (NIT 9) · a READER's
+ * whole number alone that lists no row while the book blocks it (an erasure's tombstone or marker) is marked
+ * `blockedNumber`: the page answers it "in the book" and offers the same selection, so a reader can record a stop given by
+ * phone for it too. That one extra read is asked only for a reader's empty whole-number search, and spends no bucket.
  * ⭐ U21 · THE RAIL'S OPTIONS are read here too, in BOTH answers: every list, and the book's tags most-carried first
  * (`contactTagCounts`, the resolver's own tag reader — U24/M8). Like the KPIs they are WHOLE-BOOK facts, so a masked
  * viewer gets them as well: a count over the book is not a per-number answer (A1.1). The rail itself is built by the
@@ -35,6 +47,8 @@ import {
 } from "@/lib/server/marketing/audience";
 import type { ContactAudienceFilter } from "@/lib/server/marketing/audience";
 import { findEditableContact, CONTACT_MISSING } from "@/lib/server/contacts/contact-write";
+import { bookHoldsNumber, numberAloneOf, wholeNumberOf } from "@/lib/server/contacts/number-search";
+import { rateCheckAsync } from "@/lib/server/rate-limit";
 import { PER_PAGE } from "@/components/admin/admin-pagination";
 import { parseSort } from "@/components/admin/admin-sort";
 import { formatDate } from "@/lib/utils";
@@ -74,6 +88,10 @@ export type ContactsView =
       described: string[];
       /** Does anything but the search box narrow the list? (The "Showing contacts: …" line shows only then.) */
       narrowed: boolean;
+      /** ⭐ C8b re-review (NIT 9) · a READER's search of a whole number ALONE that lists no row while the book holds the
+       *  number — it BLOCKS it (`bookHoldsNumber`: an erasure's tombstone, or a marker with no row). The page answers it
+       *  "in the book" and offers the number alone for a stop or a withdrawal, as a masked viewer's presence does. */
+      blockedNumber: boolean;
     })
   | (ContactsBase & {
       kind: "refused";
@@ -81,14 +99,43 @@ export type ContactsView =
       refusal: "unreadable" | "role";
       param: string;
       reason: string;
+    })
+  | (ContactsBase & {
+      /** 🔴 C8b (B3) · a masked viewer's WHOLE-NUMBER search: one bit about the whole book, and no rows. */
+      kind: "presence";
+      /** The book holds the number — a row, or an erased holder's block — exactly as Add contact would say. Null when the
+       *  number-check bucket was spent (`limitedSec`): no bit is asked. */
+      present: boolean | null;
+      /** C8b review (MINOR 7) · seconds until a number may be checked again — the Add form's bucket was spent; else null. */
+      limitedSec: number | null;
+      /** The whole number ALONE as an audience — what a stop or a withdrawal over it posts (B3's one exception). */
+      filter: ContactAudienceFilter;
     });
+
+/** One spend of a rate bucket, as the limiter answers it. */
+export type NumberCheckSpend = { allowed: boolean; retryAfterSec: number };
 
 export type ContactsDeps = {
   /** D19's read cell — injected by a script, which has no session. The page gets the real one. */
   reads?: () => Promise<boolean>;
   /** The load's ONE clock (epoch ms) — injected by a script so its seven days are a fixed window. The page gets the real one. */
   now?: () => number;
+  /** C8b (B3) · whether the book holds a number (`bookHoldsNumber`) — swapped by a script's red plants only. */
+  presence?: (msisdn: string) => Promise<boolean>;
+  /** C8b review (MINOR 7) · one spend of the Add form's number-check bucket for this viewer (`spendNumberCheck`) —
+   *  injected by a script, which has no session. */
+  spend?: () => Promise<NumberCheckSpend>;
 };
+
+/** ⭐ THE ADD FORM'S OWN BUCKET (`contacts.lookup`), spent by the signed-in viewer — a presence answer costs what a number
+ *  lookup costs. ⛔ Fails closed: no session, or one that cannot be read, spends nothing and answers no bit. */
+export async function spendNumberCheck(): Promise<NumberCheckSpend> {
+  let userId: string | null = null;
+  try { userId = (await currentSession())?.userId ?? null; } catch { userId = null; }
+  if (userId === null) return { allowed: false, retryAfterSec: 60 };
+  const r = await rateCheckAsync(userId, "contacts.lookup");
+  return { allowed: r.allowed, retryAfterSec: r.retryAfterSec };
+}
 
 /**
  * 🔴 D19 · A MEMBERSHIP ORACLE, ROW BY ROW. Some of the gate's answers can only come from its PLAYER branch
@@ -135,8 +182,21 @@ export async function loadContacts(sp: ContactsParams, deps: ContactsDeps = {}):
   // suppressed.
   const role = roleRefusal(parsed.filter, viewerReads);
   if (role !== null) return { ...base, kind: "refused", refusal: "role", param: role.param, reason: role.reason };
+  // 🔴 C8b (B3) · a masked viewer's whole-number search answers whether the book holds the number — before, and instead
+  // of, any page of rows — and (MINOR 7) only after a spend of the Add form's own number-check bucket.
+  const number = viewerReads ? null : wholeNumberOf(parsed.filter);
+  if (number !== null) {
+    const filter: ContactAudienceFilter = { ...WHOLE_BOOK, q: number };
+    const spent = await (deps.spend ?? spendNumberCheck)();
+    if (!spent.allowed) return { ...base, kind: "presence", present: null, limitedSec: Math.max(1, Math.ceil(spent.retryAfterSec)), filter };
+    return { ...base, kind: "presence", present: await (deps.presence ?? bookHoldsNumber)(number), limitedSec: null, filter };
+  }
 
   const result = await contactAudience(parsed.filter).page({ sort, dir, page: firstParam(sp.page), perPage: PER_PAGE });
+  // ⭐ C8b re-review (NIT 9) · a reader's whole number alone that lists NO row: does the book block it? Asked only then —
+  // one read, for a reader (a masked viewer's whole number never reaches this line).
+  const alone = viewerReads && result.total === 0 ? numberAloneOf(parsed.filter) : null;
+  const blockedNumber = alone !== null ? await (deps.presence ?? bookHoldsNumber)(alone) : false;
   return {
     ...base,
     kind: "ok",
@@ -145,6 +205,7 @@ export async function loadContacts(sp: ContactsParams, deps: ContactsDeps = {}):
     filter: parsed.filter,
     described: describeAudience(parsed.filter),
     narrowed: narrowsBeyondSearch(parsed.filter),
+    blockedNumber,
   };
 }
 

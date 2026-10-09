@@ -26,7 +26,7 @@ export const SECTIONS = [
         where: "Growth → Contacts",
         do: [
           "The tiles at the top count the book.",
-          "The filters narrow the list by operator, list or tag. The search box finds a name, or a whole phone number in any spelling.",
+          "The filters narrow the list by operator, list or tag. The search box finds a name, or a whole phone number in any spelling — for a role that can't see phone numbers, a whole number answers only whether it is in the book.",
           "Each row is one contact. Tick rows to act on several at once.",
         ],
         shots: ["03-contacts"],
@@ -44,7 +44,7 @@ export const SECTIONS = [
       {
         title: "A number already in the book",
         where: "Growth → Contacts → Add contact",
-        do: ["The form says so and offers “Open the existing contact →”. Edit that contact — the book never holds a number twice."],
+        do: ["The form says so — the book never holds a number twice. If “Open the existing contact →” is shown, press it and edit that contact; if it isn't, there is no contact you can open for that number — leave it, it can't be added again."],
         shots: ["07-duplicate"],
       },
       {
@@ -67,6 +67,7 @@ export const SECTIONS = [
         where: "Growth → Contacts → the search box and the filters",
         do: [
           "Type part of a name, or a WHOLE number in any spelling (the line under the box says “Whole number — matched exactly”).",
+          "For a role that can't see phone numbers, a whole number shows no rows — only “This number is in the book.” or “This number is not in the book.” To record a stop or a withdrawal for a number in the book, press “Select this number”, then choose Suppress or Record a withdrawal — the only two actions that act on it. A role that can see phone numbers gets the same “Select this number” when the book holds the number but has no contact to show for it.",
           "Press an operator, a list or a tag to show only those contacts; press it again, or Clear, to show everyone.",
         ],
         shots: ["10-search-name", "12-filter"],
@@ -77,11 +78,12 @@ export const SECTIONS = [
         do: [
           "Tick the rows, or “select all matching” to take every contact the filter shows.",
           "Choose Tag, Untag, Add to list, Record a withdrawal, Suppress or Remove.",
+          "Tag and Add to list are refused over a Consent, Suppressed, Source or Player filter, for every role — a tag or a list made from it would show staff who may not use that filter who is in it. Tick those contacts by hand instead.",
           "Up to 50 rows, the confirmation names them; more than that, type the number the server counted. Then press the action's button.",
         ],
         shots: ["13-bulk-bar", "14-bulk-confirm"],
         notes: [
-          "Suppress stops a number from EVER receiving marketing, and it can't be undone — use it when a person asks 50pick to stop.",
+          "Suppress stops a number from EVER receiving marketing, and it can't be undone — use it when a person asks 50pick to stop. A role that can't see phone numbers can still record a stop or a withdrawal for a number it searched: “Select this number”, then Suppress or Record a withdrawal — the confirmation counts it without naming anyone.",
           "Remove deletes contacts from the book; the records of their consent and stops are kept.",
         ],
       },
@@ -376,6 +378,7 @@ export const IMPORT_STEPS = [
       "Only fill in what's missing — only details the book doesn't have yet are filled in.",
       "A blank cell never erases anything, and numbers on the stop list and erased people are never changed. Only a role that can see phone numbers can update contacts already in the book.",
       "To send these people offers, add them to a list here; a list is ready for offers once its basis and 18+ confirmation are recorded on the Lists card.",
+      "If you can't see phone numbers — or you start an import uploaded by someone who can't — only the contacts the import adds join the list; numbers already in the book stay as they are, and the panel says so.",
     ],
     shots: ["i4-decision"],
   },
@@ -402,8 +405,10 @@ export const BALANCE_STATES = [
 
 export const MESSAGES = [
   // ── the contact form
-  { area: "Contacts", message: "This number is already in the book.", meaning: "The number is a contact already.", action: "Press “Open the existing contact →” and edit that one." },
-  { area: "Contacts", message: "This number can't be added to the book.", meaning: "This number was erased from 50pick at the person's request.", action: "Do not add it again." },
+  { area: "Contacts", message: "This number is already in the book.", meaning: "The number is a contact already.", action: "If “Open the existing contact →” is shown, press it and edit that contact; if it isn't, there is no contact you can open for that number — leave it, it can't be added again." },
+  { area: "Contacts", message: "This number is in the book.", meaning: "A whole-number search shows no rows: always for a role that can't see phone numbers, and for one that can when the book holds the number but has no contact you can open for it.", action: "To record a stop or a withdrawal for it, press “Select this number”, then Suppress or Record a withdrawal. Search by name to see contacts." },
+  { area: "Contacts", message: "This number is not in the book.", meaning: "The same answer the other way: the number is not a contact.", action: "Add it with Add contact, or search by name." },
+  { area: "Contacts", message: "Too many checks against the book — wait 30 seconds, then try again.", check: "Too many checks against the book — wait ", meaning: "Each officer has one limit of checks against the book, shared by the search box, the Add form's number check and the bulk bar's count.", action: "Wait as long as it says, then try again." },
   { area: "Contacts", message: "A name can't hold a phone number — remove the number from the name.", meaning: "Names show to every staff role.", action: "Take the digits out of the name." },
   { area: "Contacts", message: "A tag can't hold a phone number.", meaning: "Tags show to every staff role.", action: "Use a word (“vip”, “event-oct”)." },
   { area: "Contacts", message: "This doesn't look like an email address (name@example.com).", meaning: "The email is not a complete address.", action: "Fix it, or leave it empty." },
@@ -412,6 +417,13 @@ export const MESSAGES = [
   { area: "Phone number", message: "A Tanzanian number has nine digits after +255; this one has 8. Check whether some digits were cut off.", check: "Check whether some digits were cut off.", meaning: "A digit or more is missing.", action: "Check the number and type it again." },
   { area: "Phone number", message: "This is an international number outside Tanzania (country code +254…). 50pick sends only to Tanzanian mobile numbers.", check: "50pick sends only to Tanzanian mobile numbers.", meaning: "Only Tanzanian mobiles can be added.", action: "Ask for their Tanzanian mobile number." },
   { area: "Many contacts", message: "The selection changed while it was being read: it now holds … contacts, not …. Nothing was changed; review it again.", check: "The selection changed while it was being read: it now holds ", meaning: "Contacts joined or left the selection meanwhile.", action: "Review it again — the confirmation counts afresh." },
+  { area: "Many contacts", message: "For your role a whole number shows only whether it is in the book, so only Suppress and Record a withdrawal act on it — clear the search, or search by name, to tag, list or remove contacts.", meaning: "Tag, Untag, Add to list and Remove can't act on a whole-number search for a role that can't see phone numbers (the bar disables them for “Select this number”).", action: "Clear the search or search by name. A stop or a withdrawal for the number still works." },
+  { area: "Many contacts", message: "A tag made from the “Consent” filter would let staff who may not use that filter find these contacts through that tag. Tag these by ticking them by hand, or filter by something else.", check: "filter would let staff who may not use that filter find these contacts through that ", meaning: "A tag or a list built from the Consent, Suppressed, Source or Player filter is refused for every role.", action: "Tick the contacts by hand, or filter by something else." },
+  { area: "Export", message: "For your role a whole number shows only whether it is in the book, so nothing was exported. Clear the search, or search by name, then export again.", meaning: "A whole-number search can't be exported by a role that can't see phone numbers.", action: "Clear the search, or search by name, then export." },
+  // ── the import's list
+  { area: "Import", message: "Only the contacts this import adds join the list — numbers already in the book stay as they are.", meaning: "The import was uploaded or started by a role that can't see phone numbers.", action: "Nothing — a contact already in the book can be added to a list from the book." },
+  { area: "Import", message: "No contact joined the list … — only the contacts this import adds join the list, and it added none.", check: " — only the contacts this import adds join the list, and it added none.", meaning: "The import was uploaded or started by a role that can't see phone numbers, so only the contacts it adds join its list — and it added none.", action: "Nothing — add contacts already in the book to the list from the book." },
+  { area: "Import", message: "3 more members have a 50pick account — a list basis never reaches them.", check: " a 50pick account — a list basis never reaches them.", meaning: "Members with a 50pick account are reached only through their own consent, never through the list's basis.", action: "Nothing — they get offers only if they agreed to them." },
   // ── writing a campaign
   { area: "Writing", message: "The Swahili message is required — it is the one every recipient can be sent.", meaning: "The Swahili message is empty.", action: "Write the Swahili message." },
   { area: "Writing", message: "A campaign goes to a group, never to one phone number — take the number out of the audience. To see the message on a phone, use the test send: it goes to your own number.", meaning: "The audience is one phone number.", action: "Choose a group; use the test send for one phone." },

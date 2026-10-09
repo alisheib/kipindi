@@ -19,6 +19,13 @@
  * with the tags left out (the decide() header's promise: listed, never silently dropped); "Show the
  * contacts this import added" opens the book filtered to this import (`?import=<run>`, the ONE href builder); the list
  * the contacts went on says whether its new members are covered for offers, and the way to its card when they are not.
+ * 🔴 C8b (B5) · "every member is covered" is counted as the VIEWER may count members (the Lists card's own rule, on the
+ * server), and a reader — only a reader — is also told how many more members have a 50pick account, whom a list basis
+ * never reaches (`withAccount`); for anyone else that figure does not exist.
+ * ⭐ C8b review (MINOR 2 · 4a) · the list line says how many contacts THIS import put on the list (`joined`), and says NONE
+ * as itself — a masked officer's import of numbers all already in the book now puts nobody on it (B4) — with no coverage
+ * claim and no way to the card over nobody; a reader whose list holds members with an account reads "every member a list
+ * basis can reach is covered".
  */
 import { useEffect, useRef, useState, type RefObject } from "react";
 import Link from "next/link";
@@ -155,9 +162,25 @@ export function ImportDonePanel({
       {extra !== null && <p className="text-body-sm text-text-secondary" data-import-extra>{extra}</p>}
 
       {result.list !== null && (
-        <div className="space-y-2 rounded-md border border-border-subtle p-3" data-import-list-result={result.list.covered ? "covered" : "owed"}>
-          <p className="text-body-sm text-text">{result.list.covered ? DONE.listReady(result.list.name) : DONE.listOwed(result.list.name)}</p>
-          {!result.list.covered && (
+        // ⭐ C8b review (MINOR 2) · how many THIS import put on the list, and NONE said as itself — never "added" over nobody,
+        // never a coverage claim about members nobody added; "it added none" only when the run is created-only AND created
+        // no contact (the re-review's MN-3). (MINOR 4a) A reader whose list holds members with an account is told the
+        // coverage is about the members a list basis can reach.
+        <div
+          className="space-y-2 rounded-md border border-border-subtle p-3"
+          data-import-list-result={result.list.joined === 0 ? "none" : result.list.covered ? "covered" : "owed"}
+        >
+          <p className="text-body-sm text-text">
+            {result.list.joined === 0 ? DONE.listNone(result.list.name, result.list.createdOnly && t.create === 0)
+              : result.list.covered ? DONE.listReady(result.list.name, result.list.joined, (result.list.withAccount ?? 0) > 0)
+                : DONE.listOwed(result.list.name, result.list.joined)}
+          </p>
+          {result.list.joined > 0 && result.list.withAccount !== null && result.list.withAccount > 0 && (
+            <p className="text-body-sm text-text-secondary" data-import-list-with-account>
+              <Parts parts={DONE.listWithAccount(result.list.withAccount)} />
+            </p>
+          )}
+          {result.list.joined > 0 && !result.list.covered && (
             <Button type="button" size="sm" variant="ghost" onClick={onOpenLists} data-import-act="open-lists">
               {LIST.openCard}
             </Button>

@@ -47,6 +47,26 @@ export const CONTACTS_NO_MATCH = {
   numberBody: (reason: string) => `Nothing in the book matches this search. ${reason}`,
 } as const;
 
+/** 🔴 C8b (B3) · a masked viewer's WHOLE-NUMBER search: one answer about the whole book, never a row — the Add form's own
+ *  answer ("already in the book" covers a number the book holds for any reason). */
+export const CONTACTS_NUMBER_PRESENCE = {
+  inBook: "This number is in the book.",
+  notInBook: "This number is not in the book.",
+  /** ⭐ C8b review (MINOR 1) · a stop given by phone is still the officer's to record: the one thing done to a number here. */
+  body: "For your role a whole number shows only whether it is in the book — the other filters don't apply to it — but you can still record a stop or a withdrawal for it: select it, then choose Suppress or Record a withdrawal. Search by name, or filter the list, to see contacts.",
+  /** The way on from "not in the book": the page head's own Add contact. */
+  notInBookBody: "For your role a whole number shows only whether it is in the book. Add it with Add contact, or search by name to see contacts.",
+  /** ⭐ C8b re-review (NIT 9) · a READER's whole number that the book blocks lists no row (the tombstone is in no
+   *  audience): the in-book title, and this body — the same selection, so a stop given by phone can be recorded. */
+  blockedBody: "There is no contact you can open for it — but you can still record a stop or a withdrawal for it: select it, then choose Suppress or Record a withdrawal.",
+  /** The selection control a number in the book offers — the bar's Suppress and Record a withdrawal act on it. */
+  select: "Select this number",
+  /** C8b review (MINOR 7) · the Add form's number-check bucket was spent: the bucket's ONE sentence follows as the body
+   *  (`CONTACT_LOOKUP_RATE_LIMITED`), and no answer. ⛔ The re-review's NIT: the title says what happened, never the body's
+   *  own words again. */
+  limitedTitle: "This number wasn't checked",
+} as const;
+
 /** U24 · filters (not a search) that match nothing. U21 · the rail stays on screen above this row, so the sentence
  *  can point at it: each axis's "Any" removes that one filter, and Clear filters removes them all. */
 export const CONTACTS_NO_MATCH_FILTERED = {
@@ -248,7 +268,10 @@ export function contactRangeDisputedTitle(brand: string): string {
 }
 /** While the book is asked whether the number is already in it. */
 export const CONTACT_CHECKING = "Checking the book…";
-/** The duplicate's way out: opens the row that holds the number (`?edit=<contact id>`, a cuid — never the number). */
+/** The duplicate's way out — 🔴 C8b (B2) a READER's control alone: it opens the row that holds the number
+ *  (`?edit=<contact id>`, a cuid — never the number), and it is drawn only when the answer carries that id. A viewer who
+ *  may not read a number is handed no id, and a number the book BLOCKS (an erasure) has no row to open, so for either the
+ *  duplicate sentence stands alone (`contactLookupReply`, `contactAddReply`). */
 export const CONTACT_OPEN_EXISTING = "Open the existing contact →";
 
 /** A field's one-line hint, from the ONE field list (`contact-fields.ts`) — never retyped here. */
@@ -309,13 +332,16 @@ function waitWords(retryAfterSec: number): string {
   const s = Math.max(1, Math.ceil(Number.isFinite(retryAfterSec) ? retryAfterSec : 60));
   return s < 60 ? `${s} second${s === 1 ? "" : "s"}` : `${Math.ceil(s / 60)} minute${Math.ceil(s / 60) === 1 ? "" : "s"}`;
 }
-/** The per-officer rate rule refused a save or a bulk action (`contacts.write` / `contacts.lookup`). */
+/** The per-officer write bucket refused a save or a bulk run (`contacts.write`). */
 export function CONTACT_RATE_LIMITED(retryAfterSec: number): string {
   return `Too many contacts in a short time. Wait ${waitWords(retryAfterSec)}, then try again.`;
 }
-/** vb7 · the number lookup's own rate refusal (`contacts.lookup`) — it checks numbers, it adds no contact. */
+/** ⭐ THE CHECK BUCKET'S ONE SENTENCE (`contacts.lookup`) — vb7's number lookup, and since C8b the masked search's presence
+ *  answer and the bulk bar's count all spend that one bucket, so they refuse in one sentence (the re-review's NIT): the
+ *  limit an officer meets in one place is the limit they meet in the others, said the same way. It checks the book; it
+ *  adds no contact. */
 export function CONTACT_LOOKUP_RATE_LIMITED(retryAfterSec: number): string {
-  return `Too many number checks — wait ${waitWords(retryAfterSec)}, then try again.`;
+  return `Too many checks against the book — wait ${waitWords(retryAfterSec)}, then try again.`;
 }
 /** vb7 · the actions' failures, each with the next step (`safeError` keeps the error's own text in the server log). */
 export const CONTACT_LOOKUP_FALLBACK = "Checking the number failed — you can still save; the book refuses a duplicate.";
@@ -438,6 +464,10 @@ export const CONTACTS_BULK = {
   busyTitle: "Wait — the last action is still running.",
   selectAllMatching: (n: number) => `Select all ${formatNumber(n)} matching`,
   allMatching: (n: number) => `All ${formatNumber(n)} matching selected`,
+  /** ⭐ C8b re-review (MN-1) · the count line when the selection is a searched whole number alone (`numberOnly`). */
+  numberSelected: "This number is selected — only Suppress and Record a withdrawal act on it.",
+  /** …and the hover line of the four actions that cannot act on it. */
+  numberOnlyTitle: "Only Suppress and Record a withdrawal act on a searched number",
   filterChanged: "The filter changed, so the selection of every matching contact was cleared.",
   tickCap: (max: number) => `A selection holds at most ${formatNumber(max)} ticked contacts — use Select all matching for more.`,
   perRowCap: (max: number) => `A withdrawal or a suppression writes one record per number, so it takes at most ${formatNumber(max)} contacts at a time.`,
@@ -478,10 +508,13 @@ export const CONTACTS_BULK = {
  */
 export function bulkActionState(
   action: ContactBulkAction,
-  s: { mayAct: boolean; actReason: string | undefined; count: number; perRowMax: number; busy: boolean },
+  s: { mayAct: boolean; actReason: string | undefined; count: number; perRowMax: number; busy: boolean; numberOnly?: boolean },
 ): { disabled: boolean; title: string } {
   if (!s.mayAct) return { disabled: true, title: s.actReason ?? CONTACT_ROLE_REFUSAL };
   if (s.count === 0) return { disabled: true, title: CONTACTS_BULK.noneTitle };
+  // ⭐ C8b re-review (MN-1) · a searched whole number alone takes the two actions that act on a number, and no other: the
+  // server refuses the four (`BULK_SENTENCES.numberSearch`), so the bar never offers them.
+  if (s.numberOnly === true && !isPerRowAction(action)) return { disabled: true, title: CONTACTS_BULK.numberOnlyTitle };
   if (isPerRowAction(action) && s.count > s.perRowMax) return { disabled: true, title: CONTACTS_BULK.perRowCap(s.perRowMax) };
   // A disabled button always says why — even for the moment a request is in flight (review nit, 2026-10-02).
   if (s.busy) return { disabled: true, title: CONTACTS_BULK.busyTitle };
@@ -564,6 +597,8 @@ export const CONTACTS_EXPORT_REFUSED = {
   selection: CONTACTS_EXPORT.noSelection,
   unreadable_filter: "A filter in this address can't be read, so nothing was exported. Clear it, then export again.",
   role: "A filter in this address isn't available to your role, so nothing was exported.",
+  // C8b (B3) · a masked viewer's whole-number search — the page says only whether the number is in the book.
+  number_search: "For your role a whole number shows only whether it is in the book, so nothing was exported. Clear the search, or search by name, then export again.",
   too_many: "Too many contacts match for one file, so nothing was exported. Narrow the filter, then export again.",
   unrecorded: CONTACTS_EXPORT.unrecorded,
   read_failed: CONTACTS_EXPORT.readFailed,

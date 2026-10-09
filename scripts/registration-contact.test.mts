@@ -11,12 +11,20 @@
  *      number in it.
  *   §2 THE RULE — `ensureRegistrationContact` on seeded accounts: the row's shape, the cache from the ledger, an officer's
  *      contact LINKED (not duplicated, not overwritten, its stamp kept — OD56), clients only, already-linked a read.
- *   §3 U18b's RECYCLED-NUMBER RULES — an erased tombstone never revived; a row linked to another account never re-pointed.
+ *   §3 THE RECYCLED-NUMBER RULES — ⭐ C8b (B1): an erased tombstone REPLACED by the new client's own FRESH row (the
+ *      sign-up's row under its own new id — never the tombstone's, the review's MINOR 8 — the clock as "Added", the old
+ *      lists deleted, the erased person's campaign records kept and unlinked, in ONE compare-and-set step that never
+ *      overwrites a row that is no longer the tombstone); U18b: a row linked to another account never re-pointed.
  *   §4 THE AUDIT — the masked number, the account, field names; no whole number, name or email.
  *   §5 THE BACKFILL — the dry run writes nothing; every PLAYER on +255 visited once, in pages; counts exactly the world's;
  *      a second run changes nothing; no number or name in its counts or its report.
  * Then the SOURCE, for what only the source can show (§6): the door's one call and its place, the copy, the backfill
  * script's refusals, the wiring.
+ *   §7 ⭐ C8b (B8) · THE "ADDED" DOOR (`contacts/added-redate.ts`, run as `ops:contacts-added-redate`) — driven on the
+ *      memory twin in its own world: status counts the book by the ONE rule and writes nothing; every refusal comes before
+ *      the record; apply re-dates the backfill's rows all at once, records FIRST and reads back; a second apply is nothing
+ *      to do; a race is refused whole; every other ending is recorded; end to end through the REAL audit log's durable
+ *      reader; and the CLI's source (the proxy before the import, the reader handed in, production's own environment).
  *
  * ⛔ IN-PROCESS BY CONSTRUCTION. `--prove-red` plants each defect IN MEMORY — a door, the rule, the wrapper, the backfill,
  * a store member for the length of one call, or a source string — and requires the MATCHING assertion to fail. This file
@@ -37,8 +45,15 @@ import { join, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
 import { decomment } from "./lib/decomment.mts";
 import { db } from "../src/lib/server/store.ts";
-import type { MessagingKey, PlayerWalk, PlayerWalkQuery, StoredMarketingContact, StoredUser } from "../src/lib/server/store.ts";
-import { audit, auditFlush, getAuditPage } from "../src/lib/server/audit.ts";
+import type {
+  ContactAddedRedate, MessagingKey, PlayerWalk, PlayerWalkQuery, StoredMarketingContact, StoredSmsCampaignRecipient, StoredUser,
+} from "../src/lib/server/store.ts";
+import { audit, auditFlush, getAuditForTargetsDurable, getAuditPage } from "../src/lib/server/audit.ts";
+import {
+  ADDED_REDATE_ACTIONS, ADDED_REDATE_TARGET, addedRedateApplyCommand, addedRedateDeps, addedRedateStatus, addedRedateVerdict,
+  applyAddedRedate, planAddedRedate,
+} from "../src/lib/server/contacts/added-redate.ts";
+import type { AddedRedateApplyInput, AddedRedateDeps, AddedRedateOutcome, EntryRecord } from "../src/lib/server/contacts/added-redate.ts";
 import { registerWithPassword } from "../src/lib/server/auth-service.ts";
 import type { PasswordRegisterInput } from "../src/lib/server/auth-service.ts";
 import { appendMarketingConsent } from "../src/lib/server/marketing/consent-ledger.ts";
@@ -65,14 +80,17 @@ const rawRead = (rel: string) => readFileSync(join(ROOT, rel), "utf8").split(CR 
 /* ═══ THE MEMORY TWIN, AND ONLY IT ═══════════════════════════════════════════════════════════════ */
 
 type WorldKey = "users" | "usersByPhone" | "marketingContacts" | "contactsByMsisdn" | "messagingConsents" | "suppressions"
-  | "wallets" | "walletsByUser" | "otps";
+  | "wallets" | "walletsByUser" | "otps" | "contactLists" | "contactListMembers" | "smsCampaignRecipients";
 const memory = (globalThis as unknown as { __50PICK_STORE?: Record<WorldKey, Map<string, unknown>> }).__50PICK_STORE;
 if (!memory || (process.env.DATABASE_URL && process.env.USE_PRISMA_DAL !== "false")) {
   console.error("test:registration-contact runs on the MEMORY twin only — unset DATABASE_URL. Nothing was run.");
   process.exit(2);
 }
 const MEM = memory as Record<WorldKey, Map<string, unknown>>;
-const WORLD: readonly WorldKey[] = ["users", "usersByPhone", "marketingContacts", "contactsByMsisdn", "messagingConsents", "suppressions", "wallets", "walletsByUser", "otps"];
+const WORLD: readonly WorldKey[] = [
+  "users", "usersByPhone", "marketingContacts", "contactsByMsisdn", "messagingConsents", "suppressions", "wallets", "walletsByUser", "otps",
+  "contactLists", "contactListMembers", "smsCampaignRecipients",
+];
 
 /** An EMPTY world for `fn` — the maps a run touches are copied, emptied, and put back afterwards, whatever happened. */
 async function inEmptyWorld(fn: () => Promise<void>): Promise<void> {
@@ -89,11 +107,13 @@ async function inEmptyWorld(fn: () => Promise<void>): Promise<void> {
 }
 
 /** The book, the accounts and the evidence, serialised — a write anywhere in them moves it. */
-const STATE: readonly WorldKey[] = ["users", "marketingContacts", "contactsByMsisdn", "messagingConsents", "suppressions"];
+const STATE: readonly WorldKey[] = [
+  "users", "marketingContacts", "contactsByMsisdn", "messagingConsents", "suppressions", "contactLists", "contactListMembers", "smsCampaignRecipients",
+];
 const snapshot = (): string => STATE.map((k) => `${k}=${JSON.stringify([...MEM[k].entries()])}`).join("|");
 
 /** One member of the book's memory twin swapped for the length of `fn` — in memory, never on disk — and put back. */
-async function withBookMember<T>(name: "create" | "update" | "findByMsisdn", planted: unknown, fn: () => Promise<T>): Promise<T> {
+async function withBookMember<T>(name: "create" | "update" | "findByMsisdn" | "redateAdded", planted: unknown, fn: () => Promise<T>): Promise<T> {
   const target = db.marketingContact as unknown as Record<string, unknown>;
   const real = target[name];
   target[name] = planted;
@@ -197,6 +217,17 @@ function bookRow(id: string, phone: string, o: Partial<StoredMarketingContact> =
   };
 }
 
+/** ⭐ C8b review (MINOR 8) · a campaign recipient row as a send left it — written by hand straight into the memory twin's
+ *  map (this suite runs no campaign; only the revival reads these rows): SENT, linked to a book row, no account. */
+function recipientRow(id: string, msisdn: string, contactId: string, sentAt: string): StoredSmsCampaignRecipient {
+  return {
+    id, campaignId: `cmp_rc_${RUN}`, msisdn, contactId, userId: null, status: "SENT", smsReference: `REF-${id}`, optOutToken: null,
+    locale: "SW", failureClass: null, error: null, skipReason: null, skipDetail: null, claimToken: null, claimedAt: null,
+    attempts: 1, segments: 1, bodyLen: 30, costTzs: null, gateTrail: null, createdAt: sentAt, updatedAt: sentAt, sentAt,
+    deliveredAt: null, failedAt: null,
+  };
+}
+
 let ledgerSeq = 0;
 async function ledger(phone: string, status: "GIVEN" | "WITHDRAWN", createdAt: string): Promise<void> {
   await db.messagingConsent.create({
@@ -206,13 +237,35 @@ async function ledger(phone: string, status: "GIVEN" | "WITHDRAWN", createdAt: s
   });
 }
 
-const REG_ACTIONS = new Set(["contacts.contact.registered", "contacts.contact.linked"]);
+const REG_ACTIONS = new Set(["contacts.contact.registered", "contacts.contact.revived", "contacts.contact.linked"]);
+/** ⭐ C8b (B8) · the rule's clock, injected: the moment a row enters the book in §2.1 and §3.1 — never an account's date. */
+const CLOCK = "2026-10-09T09:30:00.000Z";
+const atClock = (): Date => new Date(CLOCK);
 const registrationAudits = () => getAuditPage({ limit: 10_000, category: "SYSTEM" }).filter((e) => REG_ACTIONS.has(e.action));
 const registrationAuditCount = (): number => registrationAudits().length;
 
 const eqCounts = (a: Record<string, number>, b: Record<string, number>): boolean =>
   Object.keys(a).length === Object.keys(b).length && Object.keys(b).every((k) => a[k] === b[k]);
 const leaksIn = (text: string, secrets: readonly string[]): string[] => secrets.filter((s) => s.length > 0 && text.includes(s));
+
+/** JSON with every plain object's keys sorted — two values compare by content, never by the order a writer spread them. */
+const canon = (v: unknown): string => JSON.stringify(v, (_k, x: unknown) => (x !== null && typeof x === "object" && !Array.isArray(x)
+  ? Object.fromEntries(Object.keys(x as Record<string, unknown>).sort().map((k) => [k, (x as Record<string, unknown>)[k]]))
+  : x));
+
+/** ⭐ C8b (B8) · §7's record reader: the fixture's records, read exactly as the audit log's durable reader reads them —
+ *  the target type, the ids, the actions and the floor honoured, newest first, cut at the limit and SAYING so. */
+const fakeRecords = (list: readonly EntryRecord[]): AddedRedateDeps["records"] => async (q) => {
+  const hit = list
+    .filter((e) => q.targetType === "MarketingContact" && e.targetId !== null && q.targetIds.includes(e.targetId)
+      && q.actions.includes(e.action) && Date.parse(e.createdAt) >= Date.parse(q.sinceIso))
+    .sort((a, b) => Date.parse(b.createdAt) - Date.parse(a.createdAt));
+  return { entries: hit.slice(0, q.limit), truncated: hit.length > q.limit };
+};
+const DOOR_ACTIONS = new Set<string>(Object.values(ADDED_REDATE_ACTIONS));
+/** The "Added" door's own COMPLIANCE rows in the ring, newest first. */
+const doorRows = () => getAuditPage({ limit: 10_000, category: "COMPLIANCE" }).filter((e) => DOOR_ACTIONS.has(e.action));
+const payloadOf = (e: { payload?: Record<string, unknown> } | undefined): Record<string, unknown> => (e?.payload ?? {}) as Record<string, unknown>;
 
 /* ═══ THE DOOR — the real auth-service, as far as a script can drive it ════════════════════════════ */
 
@@ -237,7 +290,11 @@ async function passwordDoor(phone: string, email: string, staleTick: boolean): P
 
 /* ═══ THE IMPLEMENTATION UNDER TEST — swappable, so a red case can plant one piece ═════════════════ */
 
-type Sources = { auth: string; copy: string; exportSrc: string; loader: string; backfill: string; probe: string; pkg: string };
+type Sources = {
+  auth: string; copy: string; exportSrc: string; loader: string; backfill: string; probe: string; pkg: string;
+  /** C8b (B8) · the "Added" door and its CLI. */
+  door: string; doorCli: string;
+};
 const REAL_SOURCES: Sources = {
   auth: read("src/lib/server/auth-service.ts"),
   copy: read("src/app/admin/contacts/contacts-copy.ts"),
@@ -246,7 +303,17 @@ const REAL_SOURCES: Sources = {
   backfill: read("scripts/live/backfill-registration-contacts.mts"),
   probe: read("scripts/live/registration-contact-pg-probe.mts"),
   pkg: rawRead("package.json"),
+  door: read("src/lib/server/contacts/added-redate.ts"),
+  doorCli: read("scripts/ops/contacts-added-redate.mts"),
 };
+
+/** ⭐ C8b (B8) · the "Added" door as §7 drives it — a red case plants one piece. */
+type Door = {
+  status: typeof addedRedateStatus;
+  apply: typeof applyAddedRedate;
+  deps: typeof addedRedateDeps;
+};
+const REAL_DOOR: Door = { status: addedRedateStatus, apply: applyAddedRedate, deps: addedRedateDeps };
 
 type Ensure = (user: RegistrationContactUser, deps?: RegistrationContactDeps) => Promise<RegistrationContactResult>;
 type Impl = {
@@ -261,6 +328,10 @@ type Impl = {
   report: typeof registrationBackfillReport;
   label: string;
   sources: Sources;
+  /** ⭐ C8b (B1) · the store's ONE revival, as §3.3's racing book reaches it — a plant swaps it for a write without a compare. */
+  revive: NonNullable<RegistrationContactDeps["book"]>["revive"];
+  /** ⭐ C8b (B8) · the "Added" door (§7). */
+  door: Door;
 };
 const REAL: Impl = {
   password: passwordDoor,
@@ -273,6 +344,8 @@ const REAL: Impl = {
   report: registrationBackfillReport,
   label: SOURCE_LABEL.REGISTRATION,
   sources: REAL_SOURCES,
+  revive: REGISTRATION_BOOK.revive,
+  door: REAL_DOOR,
 };
 
 /** A function's text: from `export async function <name>(` to the next top-level `export`. */
@@ -292,23 +365,33 @@ const L = {
   d4: "1.4 · ⛔ A THROWING BOOK NEVER FAILS A SIGN-UP: with every book create throwing, the door still creates the account and its wallet (the only throw is the session cookie's, never the book's) and write no row — and the bounded wrapper answers failed, never rejecting",
   d5: "1.5 · ⛔ the failure is logged WITHOUT the number or the email: a book whose error message prints the whole row still yields one [registration-contact] line naming only the stage and the error's name and code — and the cache mirror every sign-up passes through logs its own failure the same way",
   d6: "1.6 · ⛔ A SILENT BOOK NEVER HOLDS A SIGN-UP: the wrapper gives up within its budget (timed_out) when the book never answers, and the real password door, its book read never answering, still finishes and creates the wallet",
-  r1: "2.1 · the row's shape: the bare 255… key and its prefix from the ONE table, the account's number as rawInput, the account's name and email through the ONE field rule (cleaned; an over-long name and a malformed email DROPPED, never cut), no stored operator, no officer, no tags, notes or import, and the account's own createdAt",
+  r1: "2.1 · the row's shape: the bare 255… key and its prefix from the ONE table, the account's number as rawInput, the account's name and email through the ONE field rule (cleaned; an over-long name and a malformed email DROPPED, never cut), no stored operator, no officer, no tags, notes or import, and ⭐ C8b (B8) THE RULE'S CLOCK as createdAt and updatedAt — the moment the row entered the book, never the account's own createdAt",
   r2: "2.2 · ⭐ the cache comes from the LEDGER: an account whose ledger says GIVEN reads GIVEN, one whose last word is WITHDRAWN reads WITHDRAWN, one with no ledger row reads UNKNOWN — and the rule writes NO ledger row of its own",
   r3: "2.3 · ⭐ an OFFICER'S contact is LINKED, not duplicated: one row for the number, the same id, now linked to the account, source OPERATOR kept, every field the officer typed untouched (name, email, notes, tags, sourceRef, createdBy, createdAt), the consent mirrored",
   r4: "2.4 · ⛔ OD56 · a link is not an edit: the linked row's own updatedAt and updatedBy are written back — an officer's open dialog stays valid, a masked viewer sees nothing move",
   r5: "2.5 · ⛔ CLIENTS ONLY: GROWTH, ADMIN and AGENT accounts, a +254 number, a 064 number, a landline, a CLOSED account, an erased account and a bootstrap-admin number are each skipped with their own reason, and the book, the ledger and the audit are untouched",
   r6: "2.6 · already linked to this account is a READ: already_linked with the row's id, no write, no audit row, the store byte-identical",
-  t1: "3.1 · ⛔ U18b · AN ERASED TOMBSTONE IS NEVER REVIVED: a client signing up on an erased number leaves the row exactly as erasure left it (unlinked, nameless, sourceRef erasure), creates no second row, and its answer carries no contact id",
+  t1: "3.1 · ⭐ C8b (B1 · the review's MINOR 8) · AN ERASED TOMBSTONE IS REPLACED BY THE NEW CLIENT'S OWN FRESH ROW — the holder's own act lifts the block: the tombstone is GONE and ONE row holds the number under a NEW id (the builder's, never the tombstone's) — exactly the row a sign-up writes: linked, source REGISTRATION, the account id as sourceRef, the account's name and email, no notes, tags, import or officer, the clock as Added — nothing of the erased person's kept, the cache the number's (the ledger's word), the TWO old list memberships deleted and none on the new row (the lists and another contact's membership kept), the erased person's TWO campaign records KEPT and pointing at nobody (number, status and stamps untouched; the other contact's record still linked), and a second call is a read",
   t2: "3.2 · ⛔ U18b · A ROW LINKED TO ANOTHER ACCOUNT IS NOT THIS PERSON'S: it keeps its link and every field, nothing is created, and the answer carries no contact id",
-  a1: "4.1 · every write is audited like U22's: contacts.contact.registered and contacts.contact.linked with the MASKED number, the account, the field names and where it came from — and no whole number, name or email in any of this run's registration audit rows",
+  t3: "3.3 · ⛔ C8b (B1) · THE REVIVAL IS A COMPARE-AND-SET: a tombstone that stopped being one between the read and the write (another account's sign-up replaced it first) is NOT overwritten — the store refuses, the rule reads the number's row again and keeps it as the other account's, nothing of this account written",
+  a1: "4.1 · every write is audited like U22's: contacts.contact.registered, .revived and .linked with the MASKED number, the account, the field names and where it came from (a revival on the NEW row, with how many list memberships it deleted and how many campaign records it unlinked) — and no whole number, name or email in any of this run's registration audit rows",
   b0: "5.0 · ⭐ the backfill's DRY RUN writes nothing (the store and the audit untouched) and predicts the real run's outcomes",
-  b1: "5.1 · ⭐ THE BACKFILL walks every PLAYER account on a +255 number by id, in pages of two, each exactly ONCE, and its counts by outcome, skip reason and cache are exactly the world's — staff, an agent, an erased account and a foreign number never walked (the census counts them)",
-  b2: "5.2 · ⭐ THE BACKFILL IS IDEMPOTENT: a second run creates and links nothing, repairs no cache, writes no audit row, and leaves the store byte-identical",
+  b1: "5.1 · ⭐ THE BACKFILL walks every PLAYER account on a +255 number by id, in pages of two, each exactly ONCE, and its counts by outcome, skip reason and cache are exactly the world's (C8b: the erased number's tombstone REPLACED by its new client's own fresh row, the tombstone gone) — staff, an agent, an erased account and a foreign number never walked (the census counts them)",
+  b2: "5.2 · ⭐ THE BACKFILL IS IDEMPOTENT: a second run creates, revives and links nothing, repairs no cache, writes no audit row, and leaves the store byte-identical",
   b3: "5.3 · ⛔ the backfill holds no number and no name: its counts and every line of its report carry none of the world's numbers, names or emails",
   s1: "6.1 · THE WIRING: the sign-up door calls registrationContactAtSignup(user) exactly ONCE - after its account row and after its wallet (the money first) - auth-service appends NO consent-ledger row (the SMS-offers box was removed 2026-10-07), creates an account at exactly ONE site, and never calls the unbounded ensureRegistrationContact",
   s2: '6.2 · the copy: SOURCE_LABEL.REGISTRATION reads "Signed up" in the ONE table the column, the rail, the edit dialog and the export read, and "Sign-up" is gone from it',
   s3: "6.3 · the backfill script refuses no DATABASE_URL, the memory twin, a non-loopback URL without --production, and a real-database write run without the app's own audit key — all BEFORE the store loads — runs the ONE walk and prints only the report's lines, naming no number, name or email; and its Postgres probe refuses any non-loopback URL before the store loads",
   s4: "6.4 · the suite is wired: test:registration-contact and red:registration-contact (--prove-red, in-process) exist, and predeploy runs the suite exactly once",
+  k1: "7.1 · ⭐ C8b (B8) · STATUS COUNTS THE BOOK BY THE ONE RULE AND WRITES NOTHING: of the 10 linked sign-up rows, the 3 the backfill dated with their accounts' sign-ups are to re-date, each to its OWN record's instant (by EAT day 2026-10-03 ×2 and 2026-10-04 ×1; today they read 2026-08-01 to 2026-10-02) — the sign-up's own row, the 2 already right, the 2 with no record of their write for their account, the 1 without an account and the 1 not of the writer's shape are LEFT and counted (no instant invented, no record older than the writer read); an officer's linked row and the tombstone are not read; the store and the records untouched; the lines carry no id, number or name and end with the exact apply line (--expect 3)",
+  k2: "7.2 · ⛔ every refusal BEFORE the record writes and records nothing: a phone number in --by, seven numerals split across --by and --reason (bad_ops_text), no database (exit 2), a missing or a non-numeric --expect (bad_expect), --expect 4 over 3 rows (expect_mismatch) — the store and the door's records unchanged",
+  k3: "7.3 · ⭐ APPLY RE-DATES EXACTLY THE 3, ALL AT ONCE: each row's Added is its record's instant and its updatedAt the later of its own and that instant (the never-edited rows move with it; the officer-edited row keeps its edit's stamp and its officer), every other field and every other row byte-identical — DONE, exit 0",
+  k4: "7.4 · ⭐ RECORD FIRST, AND THE ENDING RECORDED: COMPLIANCE contacts.added_redate_applying is on the chain when the store's write is called — on MarketingContact#added-redate, no actor, naming each row's id with its Added before and after, the count, the EAT days, the operator's by and reason and the ruling — and contacts.added_redate_applied follows, naming the applying record and the 3 written; the outcome names both; no number, name or email in either",
+  k5: "7.5 · ⭐ IDEMPOTENT: after the apply, status counts 0 to re-date (the 3 now already right, 5 in all) and a second apply with --expect 0 is NOTHING TO DO, exit 0 — nothing written, nothing recorded, the store byte-identical",
+  k6: "7.6 · ⛔ ALL OR NOTHING: when another run re-dates one of three rows between the plan and the write, the store refuses the whole write as changed — the other two keep their old Added — and the attempt is recorded contacts.added_redate_refused naming that row; exit 1",
+  k7: "7.7 · ⛔ every other ending, honestly: an applying record that does not land writes nothing (record_failed); a write that throws is recorded _failed, its outcome unknown, with the error's name and code and never its message (write_failed); a write that answers done but moved nothing is caught by the fresh read-back (read_back_mismatch, recorded _failed) — the store byte-identical through all three",
+  k8: "7.8 · ⭐ END TO END OVER THE REAL AUDIT LOG: a row in the old writer's shape whose contacts.contact.registered record the REAL audit() wrote with via backfill is found through the audit module's own durable reader (getAuditForTargetsDurable, the one the CLI hands in) and re-dated to exactly that record's instant",
+  k9: "7.9 · THE DOOR'S SOURCE: the CLI rewrites the private database host BEFORE it loads the door (a dynamic import, no static one), refuses with no DATABASE_URL, hands the door the audit module's getAuditForTargetsDurable, answers status before the production checks, runs apply only with production's own environment, an audit key that is not the session's and a synced clock, and writes nothing itself; the door module calls no audit-row reader of its own and records before its one write; ops:contacts-added-redate is wired",
 } as const;
 
 /* ═══ THE RUN ════════════════════════════════════════════════════════════════════════════════════ */
@@ -428,8 +511,9 @@ async function runAssertions(impl: Impl, tag: string): Promise<void> {
     const A1 = account(`rc${RUN}_a1`, num(11), { displayName: "  Asha   Mwakalinga ", email: "Asha.M@Example.TZ", createdAt: "2026-09-20T08:00:00.000Z" });
     const A2 = account(`rc${RUN}_a2`, num(12), { displayName: "x".repeat(121), email: "not-an-address" });
     for (const u of [A1, A2]) { await db.user.create(u); runAccounts.add(u.id); }
-    const rA1 = await impl.ensure(A1);
-    const rA2 = await impl.ensure(A2);
+    // ⭐ C8b (B8) · the rule's clock is the moment the row enters the book — weeks after A1 signed up, as the backfill was.
+    const rA1 = await impl.ensure(A1, { now: atClock });
+    const rA2 = await impl.ensure(A2, { now: atClock });
     await check(p(L.r1), async () => {
       const row = await db.marketingContact.findByMsisdn(keyOf(A1.phoneE164));
       const row2 = await db.marketingContact.findByMsisdn(keyOf(A2.phoneE164));
@@ -437,7 +521,7 @@ async function runAssertions(impl: Impl, tag: string): Promise<void> {
       const shape = row !== null && row.msisdn === q.msisdn && row.msisdn.startsWith("255") && row.msisdn.length === 12 && row.ndc === q.ndc
         && row.operator === null && row.rawInput === A1.phoneE164 && row.displayName === "Asha Mwakalinga" && row.email === "asha.m@example.tz"
         && row.notes === null && row.tags.length === 0 && row.importId === null && row.createdBy === null && row.updatedBy === null
-        && row.createdAt === "2026-09-20T08:00:00.000Z" && row.updatedAt === row.createdAt && row.source === "REGISTRATION"
+        && row.createdAt === CLOCK && row.createdAt !== A1.createdAt && row.updatedAt === row.createdAt && row.source === "REGISTRATION"
         && row.sourceRef === A1.id && row.userId === A1.id && ID_SHAPE.test(row.id)
         && rA1.outcome === "created" && "contactId" in rA1 && rA1.contactId === row.id;
       const dropped = row2 !== null && row2.displayName === null && row2.email === null && rA2.outcome === "created";
@@ -518,23 +602,59 @@ async function runAssertions(impl: Impl, tag: string): Promise<void> {
       `${again.outcome} · store ${snapshot() === before6 ? "unchanged" : "CHANGED"} · audit ${audits6} → ${registrationAuditCount()}`,
     ]);
 
-    /* ── §3 · U18b's RECYCLED-NUMBER RULES ───────────────────────────────────────────────────────── */
+    /* ── §3 · THE RECYCLED-NUMBER RULES ──────────────────────────────────────────────────────────── */
     const T = account(`rc${RUN}_t`, num(41), { displayName: "New Holder", email: "new.holder@example.tz" });
     await db.user.create(T);
     runAccounts.add(T.id);
+    // The erased person's row, as erasure left it before C8b: emptied, marked — and still on two lists.
     const tomb = bookRow(`mc_rc_tomb_${RUN}`, num(41), {
-      source: "IMPORT", sourceRef: ERASURE_EVIDENCE, rawInput: keyOf(num(41)), consentState: "WITHDRAWN", createdBy: null,
+      source: "IMPORT", sourceRef: ERASURE_EVIDENCE, rawInput: keyOf(num(41)), consentState: "WITHDRAWN", createdBy: "usr_officer_old",
       createdAt: "2026-08-01T08:00:00.000Z", updatedAt: "2026-08-20T08:00:00.000Z", updatedBy: "usr_dpo",
     });
     await db.marketingContact.create(tomb);
+    const bystander = bookRow(`mc_rc_by_${RUN}`, num(44), { displayName: "Bystander" });
+    await db.marketingContact.create(bystander);
+    const LISTS = [`cl_rc_a_${RUN}`, `cl_rc_b_${RUN}`];
+    for (const id of LISTS) {
+      await db.contactList.create({ id, name: `List ${id}`, description: null, createdAt: "2026-08-01T08:00:00.000Z", createdBy: "usr_officer_rc", updatedAt: "2026-08-01T08:00:00.000Z", updatedBy: "usr_officer_rc" });
+      await db.contactListMember.add({ listId: id, contactId: tomb.id, addedAt: "2026-08-05T08:00:00.000Z", addedBy: "usr_officer_rc" });
+    }
+    await db.contactListMember.add({ listId: LISTS[0], contactId: bystander.id, addedAt: "2026-08-05T08:00:00.000Z", addedBy: "usr_officer_rc" });
+    // ⭐ C8b review (MINOR 8) · the erased person was messaged twice through their book row, the bystander once — the
+    // records erasure's account unlink leaves pointing at the rows (U16a clears the account, never the book row).
+    const RCP = { t1: `rcp_rc_t1_${RUN}`, t2: `rcp_rc_t2_${RUN}`, by: `rcp_rc_by_${RUN}` };
+    MEM.smsCampaignRecipients.set(RCP.t1, recipientRow(RCP.t1, tomb.msisdn, tomb.id, "2026-08-10T08:00:00.000Z"));
+    MEM.smsCampaignRecipients.set(RCP.t2, recipientRow(RCP.t2, tomb.msisdn, tomb.id, "2026-08-12T08:00:00.000Z"));
+    MEM.smsCampaignRecipients.set(RCP.by, recipientRow(RCP.by, bystander.msisdn, bystander.id, "2026-08-12T08:00:00.000Z"));
     await ledger(T.phoneE164, "GIVEN", "2026-08-02T08:00:00.000Z");
     await ledger(T.phoneE164, "WITHDRAWN", "2026-08-20T08:00:00.000Z");
-    const tombBefore = JSON.stringify(await db.marketingContact.find(tomb.id));
-    const rT = await impl.ensure(T);
+    const rT = await impl.ensure(T, { now: atClock });
+    await auditFlush();
+    const beforeAgain = snapshot();
+    const againT = await impl.ensure(T, { now: atClock });
+    await auditFlush();
     await check(p(L.t1), async () => {
-      const after = JSON.stringify(await db.marketingContact.find(tomb.id));
-      return [rT.outcome === "kept_erased" && !("contactId" in rT) && !JSON.stringify(rT).includes(tomb.id) && after === tombBefore && rowsFor(T.phoneE164) === 1,
-        `${JSON.stringify(rT)} · the tombstone ${after === tombBefore ? "untouched" : `CHANGED to ${after}`}`];
+      const gone = await db.marketingContact.find(tomb.id);
+      const row = await db.marketingContact.findByMsisdn(tomb.msisdn);
+      const memberships = await db.contactListMember.listMemberships(tomb.id);
+      const onFresh = row === null ? -1 : (await db.contactListMember.listMemberships(row.id)).length;
+      const listsKept = (await Promise.all(LISTS.map((id) => db.contactList.find(id)))).every((l) => l !== null);
+      const byKept = (await db.contactListMember.listMemberships(bystander.id)).length === 1;
+      const rec = (id: string) => MEM.smsCampaignRecipients.get(id) as StoredSmsCampaignRecipient | undefined;
+      const unlinked = [RCP.t1, RCP.t2].every((id) => {
+        const r = rec(id);
+        return r !== undefined && r.contactId === null && r.status === "SENT" && r.msisdn === tomb.msisdn && r.userId === null
+          && r.updatedAt === r.createdAt && r.smsReference === `REF-${id}`;
+      });
+      const byLink = rec(RCP.by)?.contactId === bystander.id;
+      const shaped = row !== null && row.id !== tomb.id && ID_SHAPE.test(row.id) && row.msisdn === tomb.msisdn && row.userId === T.id
+        && row.source === "REGISTRATION" && row.sourceRef === T.id && row.displayName === "New Holder" && row.email === "new.holder@example.tz"
+        && row.notes === null && row.tags.length === 0 && row.importId === null && row.createdBy === null && row.updatedBy === null
+        && row.createdAt === CLOCK && row.updatedAt === CLOCK && row.rawInput === T.phoneE164 && row.consentState === "WITHDRAWN";
+      return [rT.outcome === "revived" && "contactId" in rT && row !== null && rT.contactId === row.id && gone === null && shaped
+        && rowsFor(T.phoneE164) === 1 && memberships.length === 0 && onFresh === 0 && listsKept && byKept && unlinked && byLink
+        && againT.outcome === "already_linked" && snapshot() === beforeAgain,
+        `${JSON.stringify(rT)} · the tombstone ${gone === null ? "gone" : "STILL THERE"} · ${row ? `${row.id === tomb.id ? "the TOMBSTONE'S id" : "a fresh id"}, ${row.source} linked ${row.userId === T.id} "${row.displayName}" added ${row.createdAt} by ${row.createdBy}` : "NO ROW"} · memberships ${memberships.length}/${onFresh} · lists kept ${listsKept} · bystander ${byKept} · records ${[RCP.t1, RCP.t2].map((id) => (rec(id) === undefined ? "DELETED" : rec(id)?.contactId === null ? "unlinked" : `linked to ${rec(id)?.contactId === row?.id ? "the NEW row" : "the old row"}`)).join("/")}, the bystander's ${byLink ? "linked" : "CHANGED"} · again ${againT.outcome}, store ${snapshot() === beforeAgain ? "unchanged" : "CHANGED"}`];
     });
 
     const O = account(`rc${RUN}_o`, num(42));
@@ -553,28 +673,68 @@ async function runAssertions(impl: Impl, tag: string): Promise<void> {
         `${JSON.stringify(rO)} · the other account's row ${after === otherBefore ? "untouched" : `CHANGED to ${after}`}`];
     });
 
+    // ⭐ C8b · THE REVIVAL'S COMPARE: between this sign-up's read and its revival, ANOTHER account's sign-up revives the
+    // tombstone first (the backfill racing a sign-up) — the store must refuse the second write.
+    const Q = account(`rc${RUN}_q`, num(45), { displayName: "Second Comer", email: "second.comer@example.tz" });
+    const Q0 = account(`rc${RUN}_q0`, num(46));
+    for (const u of [Q, Q0]) { await db.user.create(u); runAccounts.add(u.id); }
+    const qTomb = bookRow(`mc_rc_qtomb_${RUN}`, num(45), {
+      source: "IMPORT", sourceRef: ERASURE_EVIDENCE, rawInput: keyOf(num(45)), consentState: "UNKNOWN", createdBy: null,
+      createdAt: "2026-08-01T08:00:00.000Z", updatedAt: "2026-08-20T08:00:00.000Z", updatedBy: "usr_dpo",
+    });
+    await db.marketingContact.create(qTomb);
+    const firstComer = { ...bookRow(`mc_rc_qwin_${RUN}`, num(45)), source: "REGISTRATION" as const, sourceRef: Q0.id, userId: Q0.id,
+      displayName: "First Comer", createdBy: null, updatedBy: null, createdAt: CLOCK, updatedAt: CLOCK };
+    const racing: RegistrationContactDeps = {
+      now: atClock,
+      book: {
+        ...REGISTRATION_BOOK,
+        revive: async (tombstone, row) => {
+          // The other sign-up lands first, through the store's own revival (its own fresh row) …
+          await db.marketingContact.reviveTombstone({ id: tombstone.id, msisdn: tombstone.msisdn, row: firstComer });
+          // … and only then this one's — which must find the row no longer the tombstone.
+          return impl.revive(tombstone, row);
+        },
+      },
+    };
+    const rQ = await impl.ensure(Q, racing);
+    await check(p(L.t3), async () => {
+      const row = await db.marketingContact.findByMsisdn(qTomb.msisdn);
+      const gone = await db.marketingContact.find(qTomb.id);
+      return [rQ.outcome === "kept_other_account" && !("contactId" in rQ) && row !== null && row.id === firstComer.id && row.userId === Q0.id
+        && row.displayName === "First Comer" && row.email === null && gone === null && rowsFor(Q.phoneE164) === 1,
+        `${JSON.stringify(rQ)} · the number's row ${row ? `linked to ${row.userId === Q0.id ? "the first comer" : row.userId === Q.id ? "THIS account" : row.userId}, "${row.displayName}"` : "GONE"} · the tombstone ${gone === null ? "gone" : "STILL THERE"}`];
+    });
+
     /* ── §4 · THE AUDIT ──────────────────────────────────────────────────────────────────────────── */
     const SECRETS: string[] = [];
-    for (let s = 1; s <= 43; s++) SECRETS.push(nationalOf(num(s)));
+    for (let s = 1; s <= 46; s++) SECRETS.push(nationalOf(num(s)));
     SECRETS.push(nationalOf(num(35, "64")), nationalOf(num(36, "22")), nationalOf(foreign(34)));
     for (let s = 1; s <= 7; s++) SECRETS.push(mail(s));
     SECRETS.push("Asha", "Mwakalinga", "Account Name", "New Holder", "Previous holder", "asha.m@example.tz", "Asha.M@Example.TZ",
-      "account@example.tz", "typed@example.tz", "new.holder@example.tz", "previous@example.tz", LEAK_MAIL);
+      "account@example.tz", "typed@example.tz", "new.holder@example.tz", "previous@example.tz", LEAK_MAIL,
+      "Second Comer", "second.comer@example.tz", "First Comer", "Bystander");
     await auditFlush();
     await check(p(L.a1), () => {
       const entries = registrationAudits();
       const createdId = "contactId" in rA1 ? rA1.contactId : "";
       const reg = entries.find((e) => e.action === "contacts.contact.registered" && e.targetId === createdId);
       const lnk = entries.find((e) => e.action === "contacts.contact.linked" && e.targetId === X.id);
+      // ⭐ C8b review (MINOR 8) · the revival's row names the NEW row — never the tombstone it replaced.
+      const freshId = rT.outcome === "revived" ? rT.contactId : "";
+      const rev = entries.find((e) => e.action === "contacts.contact.revived" && e.targetId === freshId && freshId !== tomb.id);
       const pr = (reg?.payload ?? {}) as Record<string, unknown>;
       const pl = (lnk?.payload ?? {}) as Record<string, unknown>;
+      const pv = (rev?.payload ?? {}) as Record<string, unknown>;
       const mine = entries.filter((e) => runAccounts.has(String(((e.payload ?? {}) as Record<string, unknown>).account ?? "")));
       const dirty = leaksIn(JSON.stringify(mine), SECRETS);
       return [!!reg && reg.actorId === A1.id && reg.targetType === "MarketingContact" && pr.number === maskPhone(keyOf(A1.phoneE164)) && pr.account === A1.id
         && pr.via === "signup" && JSON.stringify(pr.fields) === JSON.stringify(["displayName", "email"])
         && !!lnk && lnk.actorId === D.id && pl.keptSource === "OPERATOR" && pl.number === maskPhone(keyOf(D.phoneE164)) && pl.account === D.id
-        && mine.length >= 3 && dirty.length === 0,
-        `registered ${JSON.stringify(reg?.payload ?? null)} · linked ${JSON.stringify(lnk?.payload ?? null)} · ${mine.length} row(s) · ${dirty.length ? `CARRY ${dirty.join(",")}` : "clean"}`];
+        && !!rev && rev.actorId === T.id && rev.targetType === "MarketingContact" && pv.number === maskPhone(keyOf(T.phoneE164)) && pv.account === T.id
+        && pv.via === "signup" && JSON.stringify(pv.fields) === JSON.stringify(["displayName", "email"]) && pv.membershipsDeleted === 2
+        && pv.recipientsUnlinked === 2 && mine.length >= 4 && dirty.length === 0,
+        `registered ${JSON.stringify(reg?.payload ?? null)} · linked ${JSON.stringify(lnk?.payload ?? null)} · revived ${JSON.stringify(rev?.payload ?? null)} · ${mine.length} row(s) · ${dirty.length ? `CARRY ${dirty.join(",")}` : "clean"}`];
     });
 
     /* ── §5 · THE BACKFILL — its own empty world ─────────────────────────────────────────────────── */
@@ -604,7 +764,9 @@ async function runAssertions(impl: Impl, tag: string): Promise<void> {
       await db.marketingContact.create(bookRow(`mc_rc_b6_${RUN}`, W.w6.phoneE164, { source: "REGISTRATION", sourceRef: W.w6x.id, userId: W.w6x.id, displayName: "Previous holder", createdBy: null, updatedBy: null }));
       const bootstrapPhones = new Set([W.w9.phoneE164]);
       const WALKED = [W.w1, W.w2, W.w3, W.w4, W.w5, W.w6, W.w6x, W.w7, W.w8, W.w9].map((u) => u.id).sort();
-      const OUTCOMES = { created: 2, linked: 1, already_linked: 1, kept_erased: 1, kept_other_account: 1, skipped: 4, failed: 0 };
+      // ⭐ C8b (B1) · w5's tombstone is REPLACED by w5's own fresh row (until C8b it was kept; until the review it was
+      // rewritten in place).
+      const OUTCOMES = { created: 2, revived: 1, linked: 1, already_linked: 1, kept_other_account: 1, skipped: 4, failed: 0 };
       const SKIPS = { not_a_player: 0, bootstrap_admin: 1, closed: 2, erased: 0, not_tz_mobile: 1 };
       const WORLD_SECRETS = [
         ...[51, 52, 53, 54, 55, 56, 57, 58, 60, 61, 62].map((s) => nationalOf(num(s))), nationalOf(num(59, "64")), nationalOf(foreign(63)),
@@ -629,10 +791,15 @@ async function runAssertions(impl: Impl, tag: string): Promise<void> {
       await check(p(L.b1), async () => {
         const made = [await db.marketingContact.findByMsisdn(keyOf(W.w1.phoneE164)), await db.marketingContact.findByMsisdn(keyOf(W.w2.phoneE164))];
         const linked = await db.marketingContact.find(`mc_rc_b3_${RUN}`);
+        // ⭐ C8b review (MINOR 8) · w5's number is held by a FRESH row; the tombstone is gone.
+        const revived = await db.marketingContact.findByMsisdn(keyOf(W.w5.phoneE164));
+        const tombGone = (await db.marketingContact.find(`mc_rc_b5_${RUN}`)) === null;
         const once = visits.length === WALKED.length && [...visits].sort().join(",") === WALKED.join(",");
         return [first.accounts === 14 && first.walked === 10 && first.missing === 0 && eqCounts(first.outcomes, OUTCOMES) && eqCounts(first.skipped, SKIPS)
           && eqCounts(first.cache, { none: 0, unchanged: 5, updated: 1, failed: 0 }) && once
-          && made[0]?.userId === W.w1.id && made[0]?.consentState === "GIVEN" && made[1]?.userId === W.w2.id && linked?.userId === W.w3.id,
+          && made[0]?.userId === W.w1.id && made[0]?.consentState === "GIVEN" && made[1]?.userId === W.w2.id && linked?.userId === W.w3.id
+          && revived?.userId === W.w5.id && revived.source === "REGISTRATION" && revived.sourceRef === W.w5.id
+          && revived.id !== `mc_rc_b5_${RUN}` && tombGone,
           `accounts ${first.accounts} · walked ${first.walked} (${visits.length} visits) · ${JSON.stringify(first.outcomes)} · ${JSON.stringify(first.skipped)} · cache ${JSON.stringify(first.cache)}`];
       });
 
@@ -643,8 +810,8 @@ async function runAssertions(impl: Impl, tag: string): Promise<void> {
       const second = await impl.backfill({ chunk: 2, contact: { bootstrapPhones } });
       await auditFlush();
       await check(p(L.b2), () => [
-        second.outcomes.created === 0 && second.outcomes.linked === 0 && second.outcomes.already_linked === 4 && second.outcomes.failed === 0
-          && second.cache.updated === 0 && snapshot() === before2 && registrationAuditCount() === audits2,
+        second.outcomes.created === 0 && second.outcomes.revived === 0 && second.outcomes.linked === 0 && second.outcomes.already_linked === 5
+          && second.outcomes.failed === 0 && second.cache.updated === 0 && snapshot() === before2 && registrationAuditCount() === audits2,
         `${JSON.stringify(second.outcomes)} · cache ${JSON.stringify(second.cache)} · store ${snapshot() === before2 ? "unchanged" : "CHANGED"} · audit ${audits2} → ${registrationAuditCount()}`,
       ]);
 
@@ -723,6 +890,297 @@ async function runAssertions(impl: Impl, tag: string): Promise<void> {
       && scripts["red:registration-contact"] === "tsx scripts/registration-contact.test.mts --prove-red" && onChain === 1,
       `test ${scripts["test:registration-contact"] ?? "MISSING"} · red ${scripts["red:registration-contact"] ?? "MISSING"} · on predeploy ×${onChain}`];
   });
+
+  /* ── §7 · ⭐ C8b (B8) · THE "ADDED" DOOR — its own empty world, on the memory twin ─────────────────── */
+  await inEmptyWorld(async () => {
+    // The accounts — each signed up long before its row entered the book, as the backfill's clients had.
+    const K = {
+      k1: account(`rc${RUN}_k01`, num(71), { createdAt: "2026-08-01T08:00:00.000Z" }),
+      k2: account(`rc${RUN}_k02`, num(72), { createdAt: "2026-09-15T10:00:00.000Z" }),
+      k3: account(`rc${RUN}_k03`, num(73), { createdAt: "2026-10-02T20:30:00.000Z" }),
+      s1: account(`rc${RUN}_k04`, num(74), { createdAt: "2026-10-05T07:00:00.000Z" }),
+      r1: account(`rc${RUN}_k05`, num(75), { createdAt: "2026-07-01T08:00:00.000Z" }),
+      c1: account(`rc${RUN}_k06`, num(76), { createdAt: "2026-06-01T08:00:00.000Z" }),
+      n1: account(`rc${RUN}_k07`, num(77), { createdAt: "2026-08-10T08:00:00.000Z" }),
+      x1: account(`rc${RUN}_k08`, num(78), { createdAt: "2026-08-11T08:00:00.000Z" }),
+      o1: account(`rc${RUN}_k10`, num(80), { createdAt: "2026-08-12T08:00:00.000Z" }),
+      sh: account(`rc${RUN}_k11`, num(81), { createdAt: "2026-08-13T08:00:00.000Z" }),
+    };
+    /** An account the store does not hold (its row is linked to it). */
+    const GONE = `rc${RUN}_k09_gone`;
+    for (const u of Object.values(K)) await db.user.create(u);
+    /** A row in the OLD writer's shape: REGISTRATION, the link as provenance, no officer, "Added" the account's sign-up. */
+    const signupRow = (id: string, u: StoredUser, o: Partial<StoredMarketingContact> = {}): StoredMarketingContact => bookRow(id, u.phoneE164, {
+      source: "REGISTRATION", sourceRef: u.id, userId: u.id, rawInput: u.phoneE164, createdBy: null, updatedBy: null,
+      createdAt: u.createdAt, updatedAt: u.createdAt, ...o,
+    });
+    const ROW = {
+      k1: signupRow(`mc_rc_k1_${RUN}`, K.k1),
+      // An officer edited it after the backfill: that edit's stamp and officer stand.
+      k2: signupRow(`mc_rc_k2_${RUN}`, K.k2, { displayName: "Officer Typed", updatedAt: "2026-10-05T09:00:00.000Z", updatedBy: "usr_officer_rc" }),
+      k3: signupRow(`mc_rc_k3_${RUN}`, K.k3),
+      s1: signupRow(`mc_rc_k4_${RUN}`, K.s1),
+      // Re-dated before (its Added IS its record's instant).
+      r1: signupRow(`mc_rc_k5_${RUN}`, K.r1, { createdAt: "2026-10-03T13:06:00.000Z", updatedAt: "2026-10-03T13:06:00.000Z" }),
+      // Written by C8b's clock: its Added is milliseconds before its record, and not its account's sign-up.
+      c1: signupRow(`mc_rc_k6_${RUN}`, K.c1, { createdAt: CLOCK, updatedAt: CLOCK }),
+      n1: signupRow(`mc_rc_k7_${RUN}`, K.n1),
+      x1: signupRow(`mc_rc_k8_${RUN}`, K.x1),
+      a1: bookRow(`mc_rc_k9_${RUN}`, num(79), {
+        source: "REGISTRATION", sourceRef: GONE, userId: GONE, createdBy: null, updatedBy: null,
+        createdAt: "2026-08-14T08:00:00.000Z", updatedAt: "2026-08-14T08:00:00.000Z",
+      }),
+      sh: signupRow(`mc_rc_ka_${RUN}`, K.sh, { sourceRef: `rc${RUN}_someone_else` }),
+      // An officer's row the sign-up LINKED, and the erased tombstone: neither is a linked sign-up row.
+      o1: bookRow(`mc_rc_kb_${RUN}`, K.o1.phoneE164, { userId: K.o1.id }),
+      tomb: bookRow(`mc_rc_kc_${RUN}`, num(82), { source: "REGISTRATION", sourceRef: ERASURE_EVIDENCE, userId: null }),
+    };
+    for (const r of Object.values(ROW)) await db.marketingContact.create(r);
+    let recSeq = 0;
+    /** One of the writer's own records, as `recordWrite` leaves it — the masked number, the account, `via`. */
+    const rec = (row: StoredMarketingContact, accountId: string, via: string, createdAt: string, action = "contacts.contact.registered"): EntryRecord =>
+      ({ id: `aud_rc_${RUN}_${++recSeq}`, action, targetId: row.id, createdAt, payload: { number: maskPhone(row.msisdn), account: accountId, via, fields: [] } });
+    const RECORDS: EntryRecord[] = [
+      rec(ROW.k1, K.k1.id, "backfill", "2026-10-03T13:05:00.000Z"),
+      rec(ROW.k2, K.k2.id, "backfill", "2026-10-03T13:05:00.250Z"),
+      // 21:10 UTC is 00:10 EAT the NEXT day: the days are EAT's.
+      rec(ROW.k3, K.k3.id, "backfill", "2026-10-03T21:10:00.000Z"),
+      rec(ROW.s1, K.s1.id, "signup", "2026-10-05T07:00:00.040Z"),
+      rec(ROW.r1, K.r1.id, "backfill", "2026-10-03T13:06:00.000Z"),
+      rec(ROW.c1, K.c1.id, "backfill", "2026-10-09T09:30:00.004Z"),
+      // x1's only record names ANOTHER account (the number's earlier holder): no record of THIS account's write.
+      rec(ROW.x1, `rc${RUN}_another_account`, "backfill", "2026-10-03T13:07:00.000Z"),
+      rec(ROW.a1, GONE, "backfill", "2026-10-03T13:08:00.000Z"),
+      rec(ROW.sh, K.sh.id, "backfill", "2026-10-03T13:09:00.000Z"),
+      rec(ROW.o1, K.o1.id, "backfill", "2026-10-03T13:10:00.000Z", "contacts.contact.linked"),
+      // ⛔ A record OLDER than the writer — a fixture only (none can exist): the reader's floor leaves it out, so k1 is
+      // never dated by it.
+      rec(ROW.k1, K.k1.id, "backfill", "2026-09-30T08:00:00.000Z"),
+    ];
+    const deps = (): AddedRedateDeps => ({ ...impl.door.deps(fakeRecords(RECORDS)), hasDatabase: () => true });
+    const BY = `Claude for Ali (B8) run ${RUN}`;
+    const WHY = "approved by Ali in the Claude session";
+    const mine = () => doorRows().filter((e) => payloadOf(e).by === BY);
+    const SECRET_7 = [...Object.values(K).map((u) => nationalOf(u.phoneE164)), nationalOf(num(79)), nationalOf(num(82)), "Officer Typed"];
+    const IDS_7 = [...Object.values(ROW).map((r) => r.id), ...Object.values(K).map((u) => u.id), GONE];
+    const fresh = async (id: string) => db.marketingContact.find(id);
+
+    // 7.1 · status
+    await auditFlush();
+    const s71 = snapshot();
+    const n71 = doorRows().length;
+    const st = await impl.door.status(deps());
+    await auditFlush();
+    const plan71 = await planAddedRedate(deps());
+    await check(p(L.k1), () => {
+      const want = { examined: 10, toRedate: 3, atSignup: 1, alreadyRight: 2, withoutRecord: 2, withoutAccount: 1, otherShape: 1 };
+      const wantRows = [
+        { id: ROW.k1.id, expectedCreatedAt: K.k1.createdAt, createdAt: "2026-10-03T13:05:00.000Z" },
+        { id: ROW.k2.id, expectedCreatedAt: K.k2.createdAt, createdAt: "2026-10-03T13:05:00.250Z" },
+        { id: ROW.k3.id, expectedCreatedAt: K.k3.createdAt, createdAt: "2026-10-03T21:10:00.000Z" },
+      ];
+      const text = st.lines.join(LF);
+      const dirty = leaksIn(text, [...IDS_7, ...SECRET_7]);
+      const last = (st.lines[st.lines.length - 1] ?? "").trim();
+      const planned = plan71.ok ? plan71.plan : null;
+      return [planned !== null && canon(planned.counts) === canon(want) && canon(planned.rows) === canon(wantRows)
+        && canon(planned.days) === canon({ "2026-10-03": 2, "2026-10-04": 1 }) && planned.signedFrom === "2026-08-01" && planned.signedTo === "2026-10-02"
+        && st.code === "status" && st.exitCode === 0 && text.includes("to re-date: 3 ") && text.includes("2026-10-03 2 · 2026-10-04 1")
+        && last === addedRedateApplyCommand(3) && snapshot() === s71 && doorRows().length === n71 && dirty.length === 0,
+        `${planned ? `${canon(planned.counts)} · days ${canon(planned.days)} · signed ${planned.signedFrom} → ${planned.signedTo}` : "UNREADABLE"} · ${st.code} · store ${snapshot() === s71 ? "unchanged" : "WRITTEN"} · records ${n71} → ${doorRows().length} · ${dirty.length ? `CARRIES ${dirty.join(",")}` : "clean"}`];
+    });
+
+    // 7.2 · every refusal before the record
+    await auditFlush();
+    const s72 = snapshot();
+    const n72 = doorRows().length;
+    const tries: Array<[AddedRedateApplyInput, AddedRedateDeps]> = [
+      [{ expect: "3", by: `Claude ${nationalOf(K.k1.phoneE164)}`, reason: WHY }, deps()],
+      [{ expect: "3", by: "Claude 1234", reason: "run 567" }, deps()],
+      [{ expect: "3", by: BY, reason: WHY }, { ...deps(), hasDatabase: () => false }],
+      [{ expect: undefined, by: BY, reason: WHY }, deps()],
+      [{ expect: "three", by: BY, reason: WHY }, deps()],
+      [{ expect: "4", by: BY, reason: WHY }, deps()],
+    ];
+    const refusals: AddedRedateOutcome[] = [];
+    for (const [input, d] of tries) refusals.push(await impl.door.apply(input, d));
+    await auditFlush();
+    await check(p(L.k2), () => {
+      const got = refusals.map((o) => `${o.code}/${o.exitCode}`).join(",");
+      return [got === "bad_ops_text/1,bad_ops_text/1,no_database/2,bad_expect/1,bad_expect/1,expect_mismatch/1" && snapshot() === s72 && doorRows().length === n72,
+        `${got} · store ${snapshot() === s72 ? "unchanged" : "WRITTEN"} · records ${n72} → ${doorRows().length}`];
+    });
+
+    // 7.3 / 7.4 · the apply — the store's write watched for the record that must already be on the chain
+    await auditFlush();
+    const canonRows = new Map([...MEM.marketingContacts.entries()].map(([k, v]) => [k, canon(v)] as const));
+    const realRedate = db.marketingContact.redateAdded as unknown as (rows: ContactAddedRedate[]) => unknown;
+    const sawApplying: boolean[] = [];
+    const applied = await withBookMember("redateAdded", (rows: ContactAddedRedate[]) => {
+      sawApplying.push(mine().some((e) => e.action === ADDED_REDATE_ACTIONS.applying));
+      return realRedate(rows);
+    }, () => impl.door.apply({ expect: "3", by: BY, reason: WHY }, deps()));
+    await auditFlush();
+    const TO = { k1: "2026-10-03T13:05:00.000Z", k2: "2026-10-03T13:05:00.250Z", k3: "2026-10-03T21:10:00.000Z" };
+    await check(p(L.k3), async () => {
+      const moved = [...MEM.marketingContacts.entries()].filter(([k, v]) => canonRows.get(k) !== canon(v)).map(([k]) => k).sort();
+      const [g1, g2, g3] = [await fresh(ROW.k1.id), await fresh(ROW.k2.id), await fresh(ROW.k3.id)];
+      const rest = (row: StoredMarketingContact | null, base: StoredMarketingContact) =>
+        row !== null && canon({ ...row, createdAt: null, updatedAt: null }) === canon({ ...base, createdAt: null, updatedAt: null });
+      return [applied.code === "done" && applied.exitCode === 0 && moved.join(",") === [ROW.k1.id, ROW.k2.id, ROW.k3.id].sort().join(",")
+        && g1?.createdAt === TO.k1 && g1.updatedAt === TO.k1 && rest(g1, ROW.k1)
+        && g2?.createdAt === TO.k2 && g2.updatedAt === "2026-10-05T09:00:00.000Z" && g2.updatedBy === "usr_officer_rc" && rest(g2, ROW.k2)
+        && g3?.createdAt === TO.k3 && g3.updatedAt === TO.k3 && rest(g3, ROW.k3),
+        `${applied.code} (exit ${applied.exitCode}) · moved ${moved.length} · k1 ${g1?.createdAt}/${g1?.updatedAt} · k2 ${g2?.createdAt}/${g2?.updatedAt} by ${g2?.updatedBy} · k3 ${g3?.createdAt}/${g3?.updatedAt}`];
+    });
+    await check(p(L.k4), () => {
+      const rows = mine();
+      const applying = rows.find((e) => e.action === ADDED_REDATE_ACTIONS.applying);
+      const done = rows.find((e) => e.action === ADDED_REDATE_ACTIONS.applied);
+      const pa = payloadOf(applying);
+      const pd = payloadOf(done);
+      const wantRows = [
+        { id: ROW.k1.id, from: K.k1.createdAt, to: TO.k1 },
+        { id: ROW.k2.id, from: K.k2.createdAt, to: TO.k2 },
+        { id: ROW.k3.id, from: K.k3.createdAt, to: TO.k3 },
+      ];
+      const dirty = leaksIn(JSON.stringify([applying ?? null, done ?? null]), SECRET_7);
+      const targeted = (e: typeof applying) => !!e && e.category === "COMPLIANCE" && e.targetType === ADDED_REDATE_TARGET.targetType
+        && e.targetId === ADDED_REDATE_TARGET.targetId && e.actorId === null;
+      return [sawApplying.length === 1 && sawApplying[0] === true && targeted(applying) && targeted(done)
+        && canon(pa.rows) === canon(wantRows) && pa.count === 3 && canon(pa.days) === canon({ "2026-10-03": 2, "2026-10-04": 1 })
+        && pa.by === BY && pa.reason === WHY && typeof pa.ruling === "string" && pa.via === "ops"
+        && pd.written === 3 && !!applying && pd.applyingRecord === applying.id
+        && applied.records.applying === applying?.id && !!done && applied.records.ending === done.id && dirty.length === 0,
+        `write saw the record: ${sawApplying.join(",") || "never called"} · applying ${applying ? `${Array.isArray(pa.rows) ? pa.rows.length : "no"} row(s) listed` : "MISSING"} · applied ${done ? canon(pd) : "MISSING"} · ${dirty.length ? `CARRIES ${dirty.join(",")}` : "clean"}`];
+    });
+
+    // 7.5 · idempotent
+    await auditFlush();
+    const s75 = snapshot();
+    const n75 = doorRows().length;
+    const st75 = await impl.door.status(deps());
+    const plan75 = await planAddedRedate(deps());
+    const again75 = await impl.door.apply({ expect: "0", by: BY, reason: WHY }, deps());
+    await auditFlush();
+    await check(p(L.k5), () => {
+      const c = plan75.ok ? plan75.plan.counts : null;
+      return [c !== null && c.toRedate === 0 && c.alreadyRight === 5 && st75.lines.join(LF).includes("to re-date: 0")
+        && again75.code === "nothing_to_do" && again75.exitCode === 0 && snapshot() === s75 && doorRows().length === n75,
+        `${c ? canon(c) : "UNREADABLE"} · second apply ${again75.code} (exit ${again75.exitCode}) · store ${snapshot() === s75 ? "unchanged" : "WRITTEN"} · records ${n75} → ${doorRows().length}`];
+    });
+
+    // 7.6 · all or nothing — three more of the old writer's rows, and another run that re-dates one of them first
+    const M = {
+      m1: account(`rc${RUN}_k21`, num(83), { createdAt: "2026-08-03T08:00:00.000Z" }),
+      m2: account(`rc${RUN}_k22`, num(84), { createdAt: "2026-08-04T08:00:00.000Z" }),
+      m3: account(`rc${RUN}_k23`, num(85), { createdAt: "2026-08-05T08:00:00.000Z" }),
+    };
+    for (const u of Object.values(M)) await db.user.create(u);
+    const MROW = { m1: signupRow(`mc_rc_m1_${RUN}`, M.m1), m2: signupRow(`mc_rc_m2_${RUN}`, M.m2), m3: signupRow(`mc_rc_m3_${RUN}`, M.m3) };
+    for (const r of Object.values(MROW)) await db.marketingContact.create(r);
+    RECORDS.push(
+      rec(MROW.m1, M.m1.id, "backfill", "2026-10-03T14:00:00.000Z"),
+      rec(MROW.m2, M.m2.id, "backfill", "2026-10-03T14:00:01.000Z"),
+      rec(MROW.m3, M.m3.id, "backfill", "2026-10-03T14:00:02.000Z"),
+    );
+    const base76 = deps();
+    const raced = await impl.door.apply({ expect: "3", by: BY, reason: WHY }, {
+      ...base76,
+      write: async (rows) => {
+        // ANOTHER run re-dates m2 first, through the store's own write …
+        await Promise.resolve(db.marketingContact.redateAdded(rows.filter((r) => r.id === MROW.m2.id)));
+        // … and only then this one's whole write.
+        return base76.write(rows);
+      },
+    });
+    await auditFlush();
+    await check(p(L.k6), async () => {
+      const [h1, h2, h3] = [await fresh(MROW.m1.id), await fresh(MROW.m2.id), await fresh(MROW.m3.id)];
+      const ending = mine().find((e) => e.action === ADDED_REDATE_ACTIONS.refused);
+      const pe = payloadOf(ending);
+      return [raced.code === "changed" && raced.exitCode === 1 && h1?.createdAt === M.m1.createdAt && h3?.createdAt === M.m3.createdAt
+        && h2?.createdAt === "2026-10-03T14:00:01.000Z" && !!ending && pe.contact === MROW.m2.id && pe.step === "write" && pe.refusal === "changed"
+        && raced.records.ending === ending.id,
+        `${raced.code} (exit ${raced.exitCode}) · m1 ${h1?.createdAt} · m2 ${h2?.createdAt} · m3 ${h3?.createdAt} · refused ${ending ? canon(pe.contact) : "NOT RECORDED"}`];
+    });
+
+    // 7.7 · every other ending — m1 and m3 are still the old writer's
+    await auditFlush();
+    const s77 = snapshot();
+    const n77 = doorRows().length;
+    const unrecorded = await impl.door.apply({ expect: "2", by: BY, reason: WHY }, { ...deps(), audit: async () => ({ recorded: false }) });
+    await auditFlush();
+    const n77a = doorRows().length;
+    const LOUD = `Invalid invocation for ${MROW.m1.id} at ${nationalOf(M.m1.phoneE164)}`;
+    const threw = await impl.door.apply({ expect: "2", by: BY, reason: WHY }, {
+      ...deps(),
+      write: async () => { throw Object.assign(new Error(LOUD), { code: "P2034" }); },
+    });
+    const hollow = await impl.door.apply({ expect: "2", by: BY, reason: WHY }, {
+      ...deps(),
+      write: async (rows) => ({ ok: true as const, written: rows.length }),
+    });
+    await auditFlush();
+    await check(p(L.k7), () => {
+      const failed7 = mine().filter((e) => e.action === ADDED_REDATE_ACTIONS.failed);
+      const onWrite = failed7.find((e) => payloadOf(e).step === "write");
+      const onRead = failed7.find((e) => payloadOf(e).step === "read_back");
+      const pw = payloadOf(onWrite);
+      return [unrecorded.code === "record_failed" && unrecorded.exitCode === 1 && n77a === n77
+        && threw.code === "write_failed" && !!onWrite && pw.outcome === "unknown" && pw.error === "Error P2034" && !JSON.stringify(onWrite).includes("Invalid")
+        && hollow.code === "read_back_mismatch" && !!onRead && snapshot() === s77,
+        `${unrecorded.code} (records ${n77} → ${n77a}) · ${threw.code} error ${canon(pw.error)} · ${hollow.code} ${onRead ? "recorded" : "NOT RECORDED"} · store ${snapshot() === s77 ? "unchanged" : "WRITTEN"}`];
+    });
+
+    // 7.8 · end to end — the REAL audit() writes the record, the audit module's durable reader finds it
+    const E = account(`rc${RUN}_k30`, num(86), { createdAt: "2026-08-06T08:00:00.000Z" });
+    await db.user.create(E);
+    const eRow = signupRow(`mc_rc_ke_${RUN}`, E);
+    await db.marketingContact.create(eRow);
+    const wrote = await audit({
+      category: "SYSTEM", action: "contacts.contact.registered", actorId: null, targetType: "MarketingContact", targetId: eRow.id,
+      payload: { number: maskPhone(eRow.msisdn), account: E.id, via: "backfill", fields: [] },
+    });
+    await auditFlush();
+    const ringDeps = (): AddedRedateDeps => ({ ...impl.door.deps((q) => getAuditForTargetsDurable(q)), hasDatabase: () => true });
+    const planE = await planAddedRedate(ringDeps());
+    const doneE = await impl.door.apply({ expect: "1", by: BY, reason: WHY }, ringDeps());
+    await auditFlush();
+    await check(p(L.k8), async () => {
+      const back = await fresh(eRow.id);
+      const rowsE = planE.ok ? planE.plan.rows : [];
+      return [wrote.recorded && rowsE.length === 1 && rowsE[0]?.id === eRow.id && rowsE[0]?.createdAt === wrote.createdAt
+        && doneE.code === "done" && back?.createdAt === wrote.createdAt && back.updatedAt === wrote.createdAt,
+        `record ${wrote.recorded ? wrote.createdAt : "NOT RECORDED"} · planned ${rowsE.length} (${rowsE[0]?.createdAt ?? "-"}) · ${doneE.code} · the row reads ${back?.createdAt}`];
+    });
+  });
+
+  // 7.9 · the door's source
+  await check(p(L.k9), () => {
+    const cli = src.doorCli;
+    const door = src.door;
+    const iRewrite = cli.indexOf('process.env.DATABASE_URL = process.env.DATABASE_URL.replace(PRIVATE_DB_HOST, "@turntable.proxy.rlwy.net:40357");');
+    const iNoUrl = cli.indexOf("if (!process.env.DATABASE_URL) {");
+    const iImport = cli.indexOf('const DOOR = await import("../../src/lib/server/contacts/added-redate.ts");');
+    const staticImport = cli.split(LF).some((line) => line.startsWith("import "));
+    const handed = cli.includes("const deps = DOOR.addedRedateDeps((q) => AUDIT.getAuditForTargetsDurable(q));");
+    const iStatus = cli.indexOf('if (command === "status") return say(await DOOR.addedRedateStatus(deps));');
+    const iEnv = cli.indexOf('const viaRailway = process.env.RAILWAY_ENVIRONMENT_NAME === "production" && process.env.RAILWAY_SERVICE_NAME === "50pick";');
+    const iKey = cli.indexOf('if (!viaRailway || auditKey.trim() === "" || auditKey === (process.env.SESSION_SECRET ?? "")) {');
+    const iClock = cli.indexOf("const clockProblem = DOOR.opsClockProblem(dbMs, askedAt, Date.now());");
+    const iApply = cli.indexOf("DOOR.applyAddedRedate(");
+    const cliWrites = /db[.]|writeFile|appendFile|redateAdded|[^.A-Za-z]audit[(]/.test(cli);
+    const doorReads = door.includes("getAudit");
+    const iRecord = door.indexOf("const applying = await recordOf(deps, {");
+    const iWrite = door.indexOf("res = await deps.write(");
+    const writes = door.split("deps.write(").length - 1;
+    const scripts = (JSON.parse(src.pkg) as { scripts: Record<string, string> }).scripts;
+    const wired = scripts["ops:contacts-added-redate"] === "tsx scripts/ops/contacts-added-redate.mts";
+    return [iRewrite >= 0 && iNoUrl > iRewrite && iImport > iNoUrl && !staticImport && handed && iStatus > iImport && iEnv > iStatus
+      && iKey > iEnv && iClock > iKey && iApply > iClock && !cliWrites && !doorReads && iRecord > 0 && iWrite > iRecord && writes === 1 && wired,
+      `cli order ${[iRewrite, iNoUrl, iImport, iStatus, iEnv, iKey, iClock, iApply].join("/")} · static import ${staticImport} · reader handed ${handed} · cli writes ${cliWrites} · door reads the log ${doorReads} · record ${iRecord} before write ${iWrite} (${writes} write call(s)) · wired ${wired}`];
+  });
 }
 
 /* ═══ THE PLANTS — each a piece as somebody would write it wrongly, in memory ══════════════════════ */
@@ -756,7 +1214,8 @@ const leakyLogEnsure: Ensure = (user, deps = {}) => {
   });
 };
 
-/** 🔴 The row shaped by hand: the brand stored as text, the account's name as it came, the wall clock as "added". */
+/** 🔴 The row shaped by hand: the brand stored as text, the account's name as it came — and (the reading C8b retired,
+ *  B8) the ACCOUNT's own createdAt as "Added", so a backfilled client's row says the day they signed up. */
 const handShapedRow: Ensure = (user, deps = {}) => {
   const book = bookOf(deps);
   return ensureRegistrationContact(user, {
@@ -764,10 +1223,19 @@ const handShapedRow: Ensure = (user, deps = {}) => {
     book: {
       ...book,
       create: (row) => {
-        const at = new Date().toISOString();
+        const at = new Date(Date.parse(String(user.createdAt))).toISOString();
         return book.create({ ...row, operator: parseTzNumber(row.msisdn).operator?.brand ?? "Vodacom", displayName: user.displayName, createdAt: at, updatedAt: at });
       },
     },
+  });
+};
+
+/** 🔴 C8b (B8) · only the timestamp planted: the account's own createdAt as "Added" — nothing else of the row moved. */
+const signupDatedRow: Ensure = (user, deps = {}) => {
+  const book = bookOf(deps);
+  return ensureRegistrationContact(user, {
+    ...deps,
+    book: { ...book, create: (row) => book.create({ ...row, createdAt: String(user.createdAt), updatedAt: String(user.createdAt) }) },
   });
 };
 
@@ -811,17 +1279,138 @@ const relinkEveryCall: Ensure = async (user, deps = {}) => {
   return r;
 };
 
-/** 🔴 The erased tombstone revived — linked to the new account and given its name and email: an erasure undone by a writer
- *  that is not erasure. */
-const reviveTombstones: Ensure = async (user, deps = {}) => {
+/** 🔴 C8b · B1 not built — the rule before C8b: the erased tombstone KEPT, the recycled number's new client never a contact
+ *  (and every officer told the number "can't be added", a disclosed erasure). */
+const keepTombstones: Ensure = async (user, deps = {}) => {
   const key = parseTzNumber(user.phoneE164).msisdn;
   const row = key ? await db.marketingContact.findByMsisdn(key) : null;
-  if (row !== null && row.sourceRef === ERASURE_EVIDENCE) {
-    await db.marketingContact.update(row.id, { userId: user.id, email: user.email ?? null, displayName: user.displayName, source: "REGISTRATION", sourceRef: user.id }, row.updatedAt);
-    return { outcome: "linked", contactId: row.id, cache: "none" };
-  }
+  if (row !== null && row.sourceRef === ERASURE_EVIDENCE) return { outcome: "kept_other_account", cache: "none" };
   return ensureRegistrationContact(user, deps);
 };
+
+/** 🔴 C8b · the revival that keeps the tombstone's LISTS — the row written exactly right, and every membership the
+ *  tombstone held put back on the NEW row: the new client inherits the erased person's lists, and those lists' coverage. */
+const reviveKeepingLists: Ensure = (user, deps = {}) => ensureRegistrationContact(user, {
+  ...deps,
+  book: {
+    ...bookOf(deps),
+    revive: async (tombstone, row) => {
+      const held = await db.contactListMember.listMemberships(tombstone.id);
+      const revived = await REGISTRATION_BOOK.revive(tombstone, row);
+      if (revived !== null) for (const m of held) await db.contactListMember.add({ ...m, contactId: revived.row.id });
+      return revived;
+    },
+  },
+});
+
+/** The erased person's campaign records — the rows still linked to the tombstone, read straight off the memory twin. */
+const recordsOf = (contactId: string): StoredSmsCampaignRecipient[] =>
+  [...MEM.smsCampaignRecipients.values()].map((r) => r as StoredSmsCampaignRecipient).filter((r) => r.contactId === contactId);
+
+/** 🔴 C8b review (MINOR 8 · iii) · the revival as it stood BEFORE the review — the tombstone REWRITTEN IN PLACE under its
+ *  own id (its lists deleted, its caches kept): the new client's row is the erased person's old row, so their campaign
+ *  records point at the new client, and the id a masked officer once saw in an edit link is back on a sign-up row. */
+const reviveInPlace: Ensure = (user, deps = {}) => ensureRegistrationContact(user, {
+  ...deps,
+  book: {
+    ...bookOf(deps),
+    revive: async (tombstone, row) => {
+      const tomb = MEM.marketingContacts.get(tombstone.id) as StoredMarketingContact | undefined;
+      if (!tomb || tomb.sourceRef !== ERASURE_EVIDENCE || tomb.userId !== null) return null;
+      let membershipsDeleted = 0;
+      for (const [k, m] of MEM.contactListMembers) {
+        if ((m as { contactId?: string }).contactId !== tomb.id) continue;
+        MEM.contactListMembers.delete(k);
+        membershipsDeleted++;
+      }
+      const next: StoredMarketingContact = { ...row, id: tomb.id, msisdn: tomb.msisdn, consentState: tomb.consentState, suppressedAt: tomb.suppressedAt };
+      MEM.marketingContacts.set(tomb.id, next);
+      return { row: { ...next }, membershipsDeleted, recipientsUnlinked: 0 };
+    },
+  },
+});
+
+/** 🔴 C8b review (MINOR 8) · the revival that DELETES the erased person's campaign records — the record that we messaged the
+ *  number, kept for its own period, gone with the tombstone. */
+const reviveDeletingRecords: Ensure = (user, deps = {}) => ensureRegistrationContact(user, {
+  ...deps,
+  book: {
+    ...bookOf(deps),
+    revive: async (tombstone, row) => {
+      const theirs = recordsOf(tombstone.id).map((r) => r.id);
+      const revived = await REGISTRATION_BOOK.revive(tombstone, row);
+      if (revived !== null) for (const id of theirs) MEM.smsCampaignRecipients.delete(id);
+      return revived;
+    },
+  },
+});
+
+/** 🔴 C8b review (MINOR 8) · the revival that RE-POINTS the erased person's campaign records at the new client's row — a fresh
+ *  id, and the old links handed over anyway. */
+const reviveRepointingRecords: Ensure = (user, deps = {}) => ensureRegistrationContact(user, {
+  ...deps,
+  book: {
+    ...bookOf(deps),
+    revive: async (tombstone, row) => {
+      const theirs = recordsOf(tombstone.id);
+      const revived = await REGISTRATION_BOOK.revive(tombstone, row);
+      if (revived !== null) for (const r of theirs) r.contactId = revived.row.id;
+      return revived;
+    },
+  },
+});
+
+/** 🔴 C8b review (MINOR 8) · the memory twin's SET NULL forgotten — the erased person's records left pointing at the deleted
+ *  tombstone, a row production no longer has. */
+const reviveLeavingRecords: Ensure = (user, deps = {}) => ensureRegistrationContact(user, {
+  ...deps,
+  book: {
+    ...bookOf(deps),
+    revive: async (tombstone, row) => {
+      const theirs = recordsOf(tombstone.id);
+      const revived = await REGISTRATION_BOOK.revive(tombstone, row);
+      if (revived !== null) for (const r of theirs) r.contactId = tombstone.id;
+      return revived;
+    },
+  },
+});
+
+/** 🔴 C8b review (MINOR 8) · the revival's SYSTEM row without its count of the campaign records it unlinked. */
+const revivalAuditWithoutRecords: Ensure = (user, deps = {}) => ensureRegistrationContact(user, {
+  ...deps,
+  audit: (entry) => {
+    if (entry.action !== "contacts.contact.revived") return (deps.audit ?? audit)(entry);
+    const { recipientsUnlinked: _dropped, ...payload } = (entry.payload ?? {}) as Record<string, unknown>;
+    void _dropped;
+    return (deps.audit ?? audit)({ ...entry, payload });
+  },
+});
+
+/** 🔴 C8b · the revival that keeps the erased person's "Added" and provenance — the tombstone's createdAt and createdBy on
+ *  the new client's row. */
+const reviveKeepingAdded: Ensure = (user, deps = {}) => ensureRegistrationContact(user, {
+  ...deps,
+  book: {
+    ...bookOf(deps),
+    revive: async (tombstone, row) => REGISTRATION_BOOK.revive(tombstone, { ...row, createdAt: tombstone.createdAt, createdBy: tombstone.createdBy }),
+  },
+});
+
+/** 🔴 C8b · the revival without its compare — whatever row holds the number now is overwritten, another account's included. */
+const reviveWithoutCompare: NonNullable<RegistrationContactDeps["book"]>["revive"] = async (tombstone, row) => {
+  const now = await db.marketingContact.findByMsisdn(tombstone.msisdn);
+  if (now === null) return null;
+  const written = await db.marketingContact.update(now.id, {
+    userId: row.userId, displayName: row.displayName, email: row.email, source: row.source, sourceRef: row.sourceRef,
+  }, row.updatedAt);
+  return written === null ? null : { row: written, membershipsDeleted: 0, recipientsUnlinked: 0 };
+};
+
+/** 🔴 C8b · the revival unaudited — the one SYSTEM row that says an erased number's row was given to a new client. */
+const silentRevival: Ensure = (user, deps = {}) => ensureRegistrationContact(user, {
+  ...deps,
+  audit: (entry) => (entry.action === "contacts.contact.revived" ? undefined : (deps.audit ?? audit)(entry)),
+});
 
 /** 🔴 Another account's row re-pointed to this one — that person's row (and its name) handed to this account. */
 const repointOthers: Ensure = async (user, deps = {}) => {
@@ -871,6 +1460,132 @@ const listingBackfill: Impl["backfill"] = async (deps = {}) => {
     },
   });
   return { ...counts, created } as RegistrationBackfillCounts;
+};
+
+/* ── C8b (B8) · the "Added" door's plants ── */
+
+/** A door whose deps differ from the shipped ones in ONE member. */
+const doorWith = (over: (d: AddedRedateDeps) => Partial<AddedRedateDeps>): Door => ({
+  ...REAL_DOOR,
+  deps: (records) => { const d = addedRedateDeps(records); return { ...d, ...over(d) }; },
+});
+
+/** 🔴 The rule ignores WHO wrote the row: a sign-up's own row re-dated as if the backfill had written it. */
+const anyWriterDoor = doorWith(() => ({
+  rule: (row, records, acct) => addedRedateVerdict(row, records.map((e) => ({ ...e, payload: { ...(e.payload ?? {}), via: "backfill" } })), acct),
+}));
+
+/** 🔴 An instant INVENTED for a row with no record of its write — the writer's first instant. */
+const inventingDoor = doorWith(() => ({
+  rule: (row, records, acct) => {
+    const v = addedRedateVerdict(row, records, acct);
+    return v.kind === "withoutRecord" ? { kind: "redate", fromMs: Date.parse(row.createdAt), toMs: Date.parse("2026-10-03T12:22:46.000Z") } : v;
+  },
+}));
+
+/** 🔴 The account check dropped — every Added taken for its account's sign-up: C8b's clock rows moved by milliseconds,
+ *  a row without its account re-dated. */
+const accountBlindDoor = doorWith(() => ({
+  rule: (row, records) => addedRedateVerdict(row, records, { id: row.userId ?? "", createdAt: row.createdAt }),
+}));
+
+/** 🔴 The records read without the writer's floor: a record older than the writer taken as when the row entered the book. */
+const floorlessDoor: Door = { ...REAL_DOOR, deps: (records) => addedRedateDeps((q) => records({ ...q, sinceIso: "1970-01-01T00:00:00.000Z" })) };
+
+/** 🔴 The records asked of another target type — every row "without a record", the backfill's rows never re-dated. */
+const wrongTargetDoor: Door = { ...REAL_DOOR, deps: (records) => addedRedateDeps((q) => records({ ...q, targetType: "Contact" })) };
+
+/** 🔴 A status that writes: it applies what it counts. */
+const writingStatusDoor: Door = {
+  ...REAL_DOOR,
+  status: async (d) => {
+    const r = await planAddedRedate(d);
+    if (r.ok) await applyAddedRedate({ expect: String(r.plan.rows.length), by: "planted status", reason: "planted" }, d);
+    return addedRedateStatus(d);
+  },
+};
+
+/** 🔴 Apply without its expected count — the count read at apply time is taken for the one status printed. */
+const unexpectingDoor: Door = {
+  ...REAL_DOOR,
+  apply: async (input, d) => {
+    const r = await planAddedRedate(d);
+    return applyAddedRedate({ ...input, expect: r.ok ? String(r.plan.rows.length) : input.expect }, d);
+  },
+};
+
+/** 🔴 The operator's text screen bypassed — a run whose --by carries a phone number goes ahead. */
+const unscreenedDoor: Door = { ...REAL_DOOR, apply: (input, d) => applyAddedRedate({ ...input, by: "screen bypassed", reason: "screen bypassed" }, d) };
+
+/** 🔴 The write before the record — the rows re-dated before the COMPLIANCE applying record exists. */
+const writeFirstDoor = doorWith((d) => ({
+  audit: async (entry) => {
+    if (entry.action === ADDED_REDATE_ACTIONS.applying) {
+      const listed = (payloadOf(entry).rows ?? []) as Array<{ id: string; from: string; to: string }>;
+      await Promise.resolve(db.marketingContact.redateAdded(listed.map((x) => ({ id: x.id, expectedCreatedAt: x.from, createdAt: x.to }))));
+    }
+    return d.audit(entry);
+  },
+}));
+
+/** 🔴 The new Added stamped over an officer's later edit — updatedAt forced to the new Added on every row. */
+const restampingDoor = doorWith((d) => ({
+  write: async (rows) => {
+    const res = await d.write(rows);
+    for (const r of rows) await Promise.resolve(db.marketingContact.update(r.id, {}, r.createdAt));
+    return res;
+  },
+}));
+
+/** 🔴 Not all or nothing — each row written on its own, a changed row skipped and the rest written. */
+const rowByRowDoor = doorWith(() => ({
+  write: async (rows) => {
+    let written = 0;
+    for (const r of rows) {
+      const one = await Promise.resolve(db.marketingContact.redateAdded([r]));
+      if (one.ok) written += one.written;
+    }
+    return { ok: true as const, written };
+  },
+}));
+
+/** 🔴 The ending never recorded — DONE said with no `_applied` row on the chain. */
+const silentEndingDoor = doorWith((d) => ({
+  audit: async (entry) => (entry.action === ADDED_REDATE_ACTIONS.applied ? { recorded: false } : d.audit(entry)),
+}));
+
+/** 🔴 A second apply that finds nothing to do still records an attempt. */
+const recordingNothingDoor: Door = {
+  ...REAL_DOOR,
+  apply: async (input, d) => {
+    const o = await applyAddedRedate(input, d);
+    if (o.code === "nothing_to_do") {
+      await d.audit({ category: "COMPLIANCE", actorId: null, ...ADDED_REDATE_TARGET, action: ADDED_REDATE_ACTIONS.applying, payload: { by: String(input.by), count: 0 } });
+    }
+    return o;
+  },
+};
+
+/** 🔴 A record that did not land still writes. */
+const unrecordedWriteDoor: Door = {
+  ...REAL_DOOR,
+  apply: async (input, d) => {
+    const o = await applyAddedRedate(input, d);
+    if (o.code === "record_failed") {
+      const r = await planAddedRedate(d);
+      if (r.ok) await d.write([...r.plan.rows]);
+    }
+    return o;
+  },
+};
+
+/** 🔴 The read-back's verdict ignored — a write that changed nothing reported DONE. */
+const blindReadBackDoor: Door = {
+  ...REAL_DOOR,
+  apply: async (input, d) => {
+    const o = await applyAddedRedate(input, d);
+    return o.code === "read_back_mismatch" ? { ...o, code: "done", exitCode: 0 } : o;
+  },
 };
 
 /* ═══ RUN ════════════════════════════════════════════════════════════════════════════════════════ */
@@ -953,9 +1668,14 @@ if (!PROVE_RED) {
       impl: { ...REAL, atSignup: (user, deps = {}) => ensureRegistrationContact(user, deps) },
     },
     {
-      name: "the row shaped by hand — the brand stored, the name uncleaned, the wall clock as createdAt",
+      name: "the row shaped by hand — the brand stored, the name uncleaned, the account's own createdAt as Added",
       expect: L.r1,
       impl: { ...REAL, ensure: handShapedRow },
+    },
+    {
+      name: "⛔ C8b · B8 · the account's sign-up date as Added — a backfilled client's row says when they signed up, a player's tell to a masked officer",
+      expect: L.r1,
+      impl: { ...REAL, ensure: signupDatedRow },
     },
     {
       name: "the cache invented from the account's toggle — a switch never turned on recorded as a withdrawal",
@@ -983,9 +1703,54 @@ if (!PROVE_RED) {
       impl: { ...REAL, ensure: relinkEveryCall },
     },
     {
-      name: "⛔ U18b · the erased tombstone revived — linked to the new account and given its name and email",
+      name: "⛔ C8b · B1 not built — the erased tombstone kept: the recycled number's new client is never a contact",
       expect: L.t1,
-      impl: { ...REAL, ensure: reviveTombstones },
+      impl: { ...REAL, ensure: keepTombstones },
+    },
+    {
+      name: "⛔ C8b · the revival keeps the tombstone's old lists — the new client inherits the erased person's lists and their coverage",
+      expect: L.t1,
+      impl: { ...REAL, ensure: reviveKeepingLists },
+    },
+    {
+      name: "⛔ C8b · the revival keeps the erased person's Added and provenance on the new client's row",
+      expect: L.t1,
+      impl: { ...REAL, ensure: reviveKeepingAdded },
+    },
+    {
+      name: "⛔ C8b review (MINOR 8 · iii) · the revival as it stood before the review — the tombstone rewritten IN PLACE, its id kept, the erased person's campaign records pointing at the new client",
+      expect: L.t1,
+      impl: { ...REAL, ensure: reviveInPlace },
+    },
+    {
+      name: "⛔ C8b review (MINOR 8) · the revival DELETES the erased person's campaign records — the record that we messaged the number gone",
+      expect: L.t1,
+      impl: { ...REAL, ensure: reviveDeletingRecords },
+    },
+    {
+      name: "⛔ C8b review (MINOR 8) · the revival re-points the erased person's campaign records at the new client's fresh row",
+      expect: L.t1,
+      impl: { ...REAL, ensure: reviveRepointingRecords },
+    },
+    {
+      name: "⛔ C8b review (MINOR 8) · the memory twin's SET NULL forgotten — the erased person's records left pointing at the deleted tombstone",
+      expect: L.t1,
+      impl: { ...REAL, ensure: reviveLeavingRecords },
+    },
+    {
+      name: "⛔ C8b review (MINOR 8) · the revival's SYSTEM row without its count of the campaign records it unlinked",
+      expect: L.a1,
+      impl: { ...REAL, ensure: revivalAuditWithoutRecords },
+    },
+    {
+      name: "⛔ C8b · the revival without its compare — the first comer's row overwritten by the second sign-up",
+      expect: L.t3,
+      impl: { ...REAL, revive: reviveWithoutCompare },
+    },
+    {
+      name: "⛔ C8b · the revival unaudited — an erased number's row handed to a new client with no SYSTEM row",
+      expect: L.a1,
+      impl: { ...REAL, ensure: silentRevival },
     },
     {
       name: "⛔ U18b · another account's row re-pointed to this account — that person's row handed to this one",
@@ -1051,6 +1816,102 @@ if (!PROVE_RED) {
       name: "the suite drops out of predeploy — a gate outside the pipeline is not a gate",
       expect: L.s4,
       impl: { ...REAL, sources: { ...REAL_SOURCES, pkg: REAL_SOURCES.pkg.replace("npm run test:registration-contact && ", "") } },
+    },
+    {
+      name: "⛔ C8b · B8 · the rule ignores who wrote the row — a sign-up's own row re-dated as if the backfill had written it",
+      expect: L.k1,
+      impl: { ...REAL, door: anyWriterDoor },
+    },
+    {
+      name: "⛔ C8b · B8 · an instant invented for a row with no record of its write (the writer's first instant)",
+      expect: L.k1,
+      impl: { ...REAL, door: inventingDoor },
+    },
+    {
+      name: "⛔ C8b · B8 · the account check dropped — C8b's clock rows moved by milliseconds, a row without its account re-dated",
+      expect: L.k1,
+      impl: { ...REAL, door: accountBlindDoor },
+    },
+    {
+      name: "⛔ C8b · B8 · the records read without the writer's floor — a record older than the writer taken as the row's entry",
+      expect: L.k1,
+      impl: { ...REAL, door: floorlessDoor },
+    },
+    {
+      name: "⛔ C8b · B8 · a status that writes — it applies what it counts",
+      expect: L.k1,
+      impl: { ...REAL, door: writingStatusDoor },
+    },
+    {
+      name: "⛔ C8b · B8 · apply without its expected count — a book that moved since status is written anyway",
+      expect: L.k2,
+      impl: { ...REAL, door: unexpectingDoor },
+    },
+    {
+      name: "⛔ C8b · B8 · the operator's text screen bypassed — a run whose --by carries a phone number goes ahead",
+      expect: L.k2,
+      impl: { ...REAL, door: unscreenedDoor },
+    },
+    {
+      name: "⛔ C8b · B8 · the new Added stamped over an officer's later edit — updatedAt forced on every row",
+      expect: L.k3,
+      impl: { ...REAL, door: restampingDoor },
+    },
+    {
+      name: "⛔ C8b · B8 · the write before the record — the rows re-dated before the COMPLIANCE applying record exists",
+      expect: L.k4,
+      impl: { ...REAL, door: writeFirstDoor },
+    },
+    {
+      name: "⛔ C8b · B8 · the ending never recorded — DONE said with no applied row on the chain",
+      expect: L.k4,
+      impl: { ...REAL, door: silentEndingDoor },
+    },
+    {
+      name: "⛔ C8b · B8 · a second apply that finds nothing to do still records an attempt",
+      expect: L.k5,
+      impl: { ...REAL, door: recordingNothingDoor },
+    },
+    {
+      name: "⛔ C8b · B8 · not all or nothing — each row written on its own, a changed row skipped and the rest written",
+      expect: L.k6,
+      impl: { ...REAL, door: rowByRowDoor },
+    },
+    {
+      name: "⛔ C8b · B8 · a COMPLIANCE record that did not land still writes",
+      expect: L.k7,
+      impl: { ...REAL, door: unrecordedWriteDoor },
+    },
+    {
+      name: "⛔ C8b · B8 · the read-back's verdict ignored — a write that changed nothing reported DONE",
+      expect: L.k7,
+      impl: { ...REAL, door: blindReadBackDoor },
+    },
+    {
+      name: "⛔ C8b · B8 · the records asked of another target type — the backfill's own rows never found, never re-dated",
+      expect: L.k8,
+      impl: { ...REAL, door: wrongTargetDoor },
+    },
+    {
+      name: "⛔ C8b · B8 · the door loaded by a static import — the database client built on the private host before the rewrite",
+      expect: L.k9,
+      impl: {
+        ...REAL,
+        sources: {
+          ...REAL_SOURCES,
+          doorCli: `import * as DOOR_STATIC from "../../src/lib/server/contacts/added-redate.ts";${LF}${REAL_SOURCES.doorCli.replace('const DOOR = await import("../../src/lib/server/contacts/added-redate.ts");', "const DOOR = DOOR_STATIC;")}`,
+        },
+      },
+    },
+    {
+      name: "⛔ C8b · B8 · the door reads the audit log itself — a new audit-row reader in src the console guard must classify",
+      expect: L.k9,
+      impl: { ...REAL, sources: { ...REAL_SOURCES, door: `${REAL_SOURCES.door}${LF}export const planted = () => getAuditForTargetsDurable;${LF}` } },
+    },
+    {
+      name: "⛔ C8b · B8 · apply without production's own environment — its COMPLIANCE rows signed by a key production never verifies",
+      expect: L.k9,
+      impl: { ...REAL, sources: { ...REAL_SOURCES, doorCli: REAL_SOURCES.doorCli.replace('if (!viaRailway || auditKey.trim() === "" || auditKey === (process.env.SESSION_SECRET ?? "")) {', "if (false) {") } },
     },
   ];
 

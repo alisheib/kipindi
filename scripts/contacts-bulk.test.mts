@@ -67,6 +67,7 @@ import { parseTzNumber } from "../src/lib/tz-msisdn.ts";
 import { maskPhone } from "../src/lib/phone-normalize.ts";
 import { CONTACT_LIMITS, TAG_HAS_PHONE_SENTENCE, splitTags } from "../src/lib/contacts/contact-fields.ts";
 import { ERASURE_EVIDENCE } from "../src/lib/marketing/erasure-mark.ts";
+import { MASKED_NUMBER_SEARCH_REASON } from "../src/lib/server/contacts/number-search.ts";
 
 const PROVE_RED = process.argv.includes("--prove-red");
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..");
@@ -312,12 +313,16 @@ const L = {
   b12: "B12 · ⭐ ONE AUDIT ROW PER RUN, through U24's describer: action contacts.bulk.tag, the officer, the counts; a whole-number search is +255••••78 and the payload holds neither the nine digits nor the 255 key; ticked ids are a COUNT, never listed",
   b13: "B13 · ⛔ the parser builds a NEW request from named keys: a posted count, tier, officer and matched are never read — the request's keys are action, audience, list, tag and typed — and an unknown audience key refuses",
   b14: "B14 · 🔴 D19 / A1.1 · a masked role's POSTed sources, consent or player audience is refused role BEFORE any count — the preview and the run both, the store's count never asked; a reader gets the count",
+  b23: "B23 · ⛔ C8b (B7) · NO SHARED LABEL FROM A PROTECTED FILTER: a READER's tag and add-to-list over a consent, stop, source or player filter are refused protected_label — the preview and the run, BEFORE any count, nothing written, no list made — the sentence naming the axis AS THE RAIL NAMES IT (\"Player\", \"Suppressed\" — never the address's key; the role refusal too, the C8b re-review's NIT) and the way on (tick them by hand, or filter by something else); ⭐ (C8b review) \"protected\" IS THE ONE ROLE RULE'S: over every single-axis audience the label rule refuses exactly what roleRefusal refuses a masked viewer, and its source asks roleRefusal(audience, false) with no axis list of its own; CONTROLS: that reader's untag over the same filter previews, their TICKED rows are tagged and listed, and a tag over a name search previews",
+  b24: "B24 · ⛔ C8b (B3) · A MASKED VIEWER'S WHOLE-NUMBER SEARCH IS NO AUDIENCE — tag, untag, add to a list and remove over it are refused number_search BEFORE any count, the preview and the run, in the bar's own sentence naming the two actions that still act on the number (the re-review's MN-1) — ⭐ BUT FOR A STOP (the integrator's ruling): suppress and record a withdrawal over the whole number ALONE act on that NUMBER — a number a row holds, the erased tombstone's and one with only an erasure marker each preview ONE (typed tier, NO sample) and run to the stop or withdrawal recorded for that number, the masked reply the total alone, the same answers for all three (X22); a number not in the book is empty, and the whole number beside another filter is refused number_search — beside ANY other axis of the audience (every key WHOLE_BOOK carries, executed: the re-review's NIT) it is no number alone; CONTROLS: a masked NAME search previews, and a reader's whole-number search previews its one row",
   b14b: "B14b · 🔴 A1.1 · a withdrawal's split is a consent signal: a masked viewer's reply carries the total only (changed and unchanged null) and the line says the total; a reader's carries the split; a tag's reply is untouched",
-  b14c: "B14c · 🔴 OD54 · a masked role's POSTed suppressed audience — true, false, or beside an operator — is refused role BEFORE any count, the preview and the run both, naming “suppressed”; a reader gets the count of the stopped rows and the audience in words",
+  b14c: "B14c · 🔴 OD54 · a masked role's POSTed suppressed audience — true, false, or beside an operator — is refused role BEFORE any count, the preview and the run both, naming “Suppressed” (the rail's name for it); a reader gets the count of the stopped rows and the audience in words",
   b14d: "B14d · 🔴 OD54 · a suppression's split is a stop signal: a masked officer may still suppress, its preview is the TOTAL (no split key) and its reply carries the total only (changed and unchanged null), the line saying “A stop is on record for N contacts” — never “already suppressed”; a reader's carries the split",
   b15: "B15 · ⭐ the selection row is the SERVER's projection: exactly id, name and masked, the number +255••••NN — and the preview's sample is the same projection, twenty named of thirty, \"and 10 more\"",
   b16: "B16 · \"select all matching\" stores the FILTER: the page's canonical key reads back through U24's JSON parser to the same filter and carries no ids; ticks-only is ids alone, and a filter beside ids is a filter",
-  s1: "S1 · ⛔ THE ACTIONS ARE GATED: the file opens \"use server\", exports exactly the two actions, each opens with softRequireStaff(\"growth\", …) before its rate rule and the parser, reads the body only through parseBulkRequest, never a count from it; only a landed run revalidates, and the reply goes through contactBulkReply",
+  b25: "B25 · ⭐ C8b re-review (NIT 9) · A READER RECORDS A STOP GIVEN BY PHONE FOR A NUMBER THE BOOK BLOCKS: over the whole number ALONE, the erased tombstone's and a marker's number each preview ONE (typed tier, no sample) for suppress and for record a withdrawal, and run to the stop or withdrawal recorded for that number — the reader handed the split (a marker's number, already withdrawn, reads unchanged) — as a number a live row holds does; a reader's TAG over the blocked number is empty (the number path is a stop's alone), and the same stop beside another filter counts the live rows (empty)",
+  b26: "B26 · ⭐ C8b re-review (MN-1) · THE BAR OFFERS A SEARCHED NUMBER ALONE SUPPRESS AND RECORD A WITHDRAWAL ONLY: with the selection numberOnly, tag, untag, add to a list and remove are DISABLED with the reason \"Only Suppress and Record a withdrawal act on a searched number\" while the two stay enabled with their own hints — and without it all six are enabled (EXECUTED); the provider exposes numberOnly from the CHOSEN selection, the bar hands it to bulkActionState and says the number as itself on its count line (never \"All 1 matching selected\"), and the page marks the presence selection and a reader's blocked number numberOnly",
+  s1: "S1 · ⛔ THE ACTIONS ARE GATED: the file opens \"use server\", exports exactly the two actions, each opens with softRequireStaff(\"growth\", …) before its rate rule and the parser, reads the body only through parseBulkRequest, never a count from it; only a landed run revalidates, and the reply goes through contactBulkReply; ⭐ (C8b re-review) each rate rule refuses in its bucket's ONE sentence — the preview the check bucket's (CONTACT_LOOKUP_RATE_LIMITED, which the Add form's lookup and the masked search say too), the run the write bucket's",
   s2: "S2 · the bar is an act control that never hides: useMayAct and useActDisabledReason at the top, every action button's disabled AND title from bulkActionState (EXECUTED: every action, every state, a reason said)",
   s3: "S3 · ⭐ the confirmation is the SERVER's tier: the ConfirmModal spreads tier and typedWord together from p.tier — no typed word built from the selection — and the run posts back the preview's own word",
   s4: "S4 · ⛔ no raw number reaches the client: msisdn and phoneE164 appear in none of the bar, the provider or the row box; the page projects its rows through contactSelectionRow, which masks",
@@ -636,8 +641,173 @@ async function runAssertions(impl: Impl, tag: string): Promise<void> {
       if (pre.ok || pre.reason !== "role" || r.ok || r.reason !== "role") allRole = false;
     }
     const maskedCounts = counted;
-    const reader = await preview({ action: "tag", tag: "probe", audience: { sources: ["REGISTRATION"] }, typed: null }, true, counting);
+    // ⭐ C8b (B7) · the reader's control is an UNTAG — a tag from a protected filter is refused for every viewer now (B23).
+    const reader = await preview({ action: "untag", tag: "probe", audience: { sources: ["REGISTRATION"] }, typed: null }, true, counting);
     return [allRole && maskedCounts === 0 && reader.ok && reader.count === 1, `${answers.join(" · ")} · masked counts asked ${maskedCounts} · reader ${outcome(reader)}`];
+  });
+  await fresh(L.b23, async () => {
+    // ⛔ C8b (B7) · a READER builds no tag and no list from a filter a masked officer may not use.
+    let counted = 0;
+    const counting: ContactBulkDeps = { ...impl.deps, count: async (f) => { counted++; return impl.deps.count(f); } };
+    const axes: Array<[string, Record<string, unknown>]> = [
+      ["consent", { consent: ["GIVEN"] }], ["suppressed", { suppressed: true }], ["source", { sources: ["REGISTRATION"] }], ["player", { player: true }],
+    ];
+    const before = await bookSnapshot();
+    const listsBefore = (await db.contactList.listAll()).length;
+    const refused: string[] = [];
+    let allRefused = true;
+    for (const [param, audience] of axes) {
+      for (const body of [
+        { action: "tag", tag: "probe", audience },
+        { action: "addToList", newListName: `Probe ${param}`, audience },
+      ]) {
+        const pre = await preview({ ...body, typed: null }, true, counting);
+        const r = await run({ ...body, typed: "1" }, true, counting);
+        const sentence = BULK_SENTENCES.protectedLabel(body.action as "tag" | "addToList", param);
+        refused.push(`${body.action}/${param} ${pre.ok ? "PREVIEWED" : pre.reason} ${r.ok ? "RAN" : r.reason}`);
+        if (pre.ok || pre.reason !== "protected_label" || pre.error !== sentence || r.ok || r.reason !== "protected_label") allRefused = false;
+      }
+    }
+    const nothing = counted === 0 && (await bookSnapshot()) === before && (await db.contactList.listAll()).length === listsBefore;
+    // ⭐ C8b re-review (NIT) · the sentence names the filter as the RAIL does ("Player", "Suppressed"), never the address's
+    // key — and so does the role refusal — through the one name map.
+    const words = BULK_SENTENCES.protectedLabel("tag", "consent").includes("ticking them by hand, or filter by something else")
+      && BULK_SENTENCES.protectedLabel("addToList", "player").startsWith("A list made from the “Player” filter")
+      && BULK_SENTENCES.protectedLabel("tag", "suppressed").startsWith("A tag made from the “Suppressed” filter")
+      && BULK_SENTENCES.role("suppressed").startsWith("The “Suppressed” filter isn't available to your role")
+      && impl.sources.service.includes("made from the “${axisName(param)}” filter")
+      && impl.sources.service.includes("role: (param: string) => `The “${axisName(param)}” filter");
+    // CONTROLS: the same reader's untag over a protected filter still previews; their TICKED rows are tagged and listed
+    // (an audited choice); a tag over a filter that uses no protected axis (a name search) previews.
+    const untag = await preview({ action: "untag", tag: "probe", audience: { consent: ["GIVEN"] }, typed: null }, true);
+    const ticked = await run({ action: "tag", tag: "handpicked", audience: { ids: ["mc_b_player", "mc_b_stranger"] }, typed: null }, true);
+    const tickedList = await run({ action: "addToList", newListName: "Handpicked", audience: { ids: ["mc_b_player"] }, typed: null }, true);
+    const byName = await preview({ action: "tag", tag: "probe", audience: { q: "Asha" }, typed: null }, true);
+    // ⭐ C8b review (MINOR 6) · "protected" is the ONE role rule's: over every single-axis audience the label rule refuses
+    // exactly what roleRefusal refuses a masked viewer — so an axis the role rule gains is protected here the same day.
+    const SINGLE_AXES: Array<Record<string, unknown>> = [
+      { q: "Asha" }, { consent: ["GIVEN"] }, { suppressed: true }, { suppressed: false }, { operators: ["VODACOM"] }, { lists: ["cl_x"] },
+      { tags: ["vip"] }, { sources: ["IMPORT"] }, { player: true }, { player: false }, { importId: "imp_x" },
+      { addedFrom: "2026-09-02T21:00:00.000Z" }, { addedBefore: "2026-09-05T21:00:00.000Z" },
+    ];
+    const disagree = SINGLE_AXES.filter((a) => {
+      const f = parsed({ action: "tag", tag: "probe", audience: a }).audience;
+      return (impl.deps.labelRefusal({ action: "tag", audience: f }) === null) !== (roleRefusal(f, false) === null);
+    }).map((a) => Object.keys(a)[0]);
+    const derived = impl.sources.service.includes("const masked = roleRefusal(req.audience, false);")
+      && !impl.sources.service.includes("PROTECTED_LABEL_AXES");
+    return [allRefused && nothing && words && untag.ok && ticked.ok && ticked.changed === 2 && tickedList.ok && tickedList.changed === 1 && byName.ok && byName.count === 3
+      && disagree.length === 0 && derived,
+      `${refused.join(" · ")} · counts asked ${counted} · book ${nothing ? "untouched" : "WRITTEN"} · untag ${outcome(untag)} · ticked ${outcome(ticked)} · listed ${outcome(tickedList)} · by name ${byName.ok ? `previews ${byName.count}` : outcome(byName)} · the role rule's axes ${disagree.length === 0 ? "exactly" : `DIFFER on ${disagree.join(",")}`} · derived ${derived}`];
+  });
+  await fresh(L.b24, async () => {
+    // ⛔ C8b (B3) · a masked viewer's whole-number search is no audience — for every action that is not a stop.
+    let counted = 0;
+    const counting: ContactBulkDeps = { ...impl.deps, count: async (f) => { counted++; return impl.deps.count(f); } };
+    const audience = { q: bare(N.known) };
+    const answers: string[] = [];
+    let allRefused = true;
+    for (const action of ["tag", "untag", "addToList", "remove"]) {
+      const body = { action, tag: "probe", newListName: "Probe", audience };
+      const pre = await preview({ ...body, typed: null }, false, counting);
+      const r = await run({ ...body, typed: "1" }, false, counting);
+      answers.push(`${action} ${pre.ok ? "PREVIEWED" : pre.reason}/${r.ok ? "RAN" : r.reason}`);
+      if (pre.ok || pre.reason !== "number_search" || pre.error !== BULK_SENTENCES.numberSearch || r.ok || r.reason !== "number_search") allRefused = false;
+    }
+    // ⭐ The re-review's MN-1 · the refusal names the two actions that still act on the number — never the export's
+    // general sentence — in both the preview and the run.
+    const sentence = BULK_SENTENCES.numberSearch.includes("only Suppress and Record a withdrawal act on it") && BULK_SENTENCES.numberSearch !== MASKED_NUMBER_SEARCH_REASON
+      && impl.sources.service.split('return refuse("number_search", BULK_SENTENCES.numberSearch);').length - 1 === 2;
+    const maskedCounts = counted;
+    // ⭐ B3's ONE EXCEPTION (the integrator's ruling): a stop given by phone. Suppress and record a withdrawal over the whole
+    // number ALONE act on that NUMBER — a held one, the erased tombstone's, and one with only an erasure marker on the
+    // ledger (no row) — and answer ALIKE: one, typed, no sample, the masked reply the total alone (X22).
+    const MARKER = "0713600002";
+    await db.messagingConsent.create({
+      id: "u23l_marker", channel: "SMS", identifier: bare(MARKER), category: "MARKETING", status: "WITHDRAWN", source: "OPERATOR",
+      wording: "fixture", locale: "EN", evidence: ERASURE_EVIDENCE, recordedBy: null, createdAt: "2026-09-10T08:00:00.000Z",
+    });
+    const stops: string[] = [];
+    let stopsAlike = true;
+    for (const [label, local] of [["held", N.known], ["tombstone", N.erased], ["marker", MARKER]] as const) {
+      for (const action of ["suppress", "withdraw"] as const) {
+        const body = { action, audience: { q: bare(local) } };
+        const pre = await preview({ ...body, typed: null }, false);
+        const r = impl.reply(await run({ ...body, typed: "1" }, false), false);
+        const recorded = action === "suppress"
+          ? (await db.suppression.find(mkey(local)))?.reason === "OPERATOR"
+          : (await db.messagingConsent.latestFor(mkey(local)))?.status === "WITHDRAWN";
+        stops.push(`${label}/${action} ${pre.ok ? `${pre.count}/${pre.tier.kind}/${pre.sample.length}` : pre.reason} ${r.ok ? `ran ${r.matched}/${r.changed}` : r.reason} ${recorded ? "recorded" : "NOT RECORDED"}`);
+        if (!pre.ok || pre.count !== 1 || pre.tier.kind !== "typed" || pre.sample.length !== 0 || !r.ok || r.matched !== 1
+          || r.changed !== null || r.unchanged !== null || !recorded) stopsAlike = false;
+      }
+    }
+    const absent = await preview({ action: "suppress", audience: { q: bare("0713600009") }, typed: null }, false);
+    const beside = await preview({ action: "suppress", audience: { q: bare(N.known), operators: ["VODACOM"] }, typed: null }, false);
+    // ⭐ The re-review's NIT · "alone" is the audience key's own answer: the whole number beside ANY other axis of the
+    // audience — every key WHOLE_BOOK carries, so a new axis is covered the day it is added — is no number alone.
+    const axes = Object.keys(WHOLE_BOOK).filter((k) => k !== "q");
+    const stillAlone = axes.filter((k) =>
+      impl.deps.stopNumber({ action: "suppress", audience: { ...WHOLE_BOOK, q: bare(N.known), [k]: ["x"] } as typeof WHOLE_BOOK }, false) !== null);
+    const aloneOk = impl.deps.stopNumber({ action: "suppress", audience: { ...WHOLE_BOOK, q: bare(N.known) } }, false) === bare(N.known)
+      && axes.length >= 12 && stillAlone.length === 0;
+    // CONTROLS: a masked NAME search previews; a reader's whole-number search previews its row.
+    const byName = await preview({ action: "tag", tag: "probe", audience: { q: "Asha" }, typed: null }, false);
+    const reader = await preview({ action: "tag", tag: "probe", audience, typed: null }, true);
+    return [allRefused && sentence && maskedCounts === 0 && stopsAlike && !absent.ok && absent.reason === "empty" && !beside.ok && beside.reason === "number_search"
+      && aloneOk && byName.ok && reader.ok && reader.count === 1,
+      `${answers.join(" · ")} · the sentence ${sentence ? "names the two" : "WRONG"} · masked counts asked ${maskedCounts} · ${stops.join(" · ")} · not in the book ${outcome(absent)} · beside a filter ${outcome(beside)} · beside every other axis (${axes.length}) ${stillAlone.length === 0 ? "no number alone" : `STILL ALONE on ${stillAlone.join(",")}`} · by name ${byName.ok ? `previews ${byName.count}` : outcome(byName)} · reader ${outcome(reader)}`];
+  });
+  await fresh(L.b25, async () => {
+    // ⭐ C8b re-review (NIT 9) · a READER's whole number that the book blocks lists no row — and a stop given by phone is
+    // recorded for it all the same, on the NUMBER, exactly as for a masked officer (and as for a number a row holds).
+    const MARKER = "0713600003";
+    await db.messagingConsent.create({
+      id: "u23l_marker_r", channel: "SMS", identifier: bare(MARKER), category: "MARKETING", status: "WITHDRAWN", source: "OPERATOR",
+      wording: "fixture", locale: "EN", evidence: ERASURE_EVIDENCE, recordedBy: null, createdAt: "2026-09-10T08:00:00.000Z",
+    });
+    const stops: string[] = [];
+    let readerStops = true;
+    for (const [label, local] of [["tombstone", N.erased], ["marker", MARKER], ["held", N.known]] as const) {
+      for (const action of ["suppress", "withdraw"] as const) {
+        const body = { action, audience: { q: bare(local) } };
+        const pre = await preview({ ...body, typed: null }, true);
+        const r = impl.reply(await run({ ...body, typed: "1" }, true), true);
+        const recorded = action === "suppress"
+          ? (await db.suppression.find(mkey(local)))?.reason === "OPERATOR"
+          : (await db.messagingConsent.latestFor(mkey(local)))?.status === "WITHDRAWN";
+        stops.push(`${label}/${action} ${pre.ok ? `${pre.count}/${pre.tier.kind}/${pre.sample.length}` : pre.reason} ${r.ok ? `ran ${r.matched}/${r.changed}+${r.unchanged}` : r.reason} ${recorded ? "recorded" : "NOT RECORDED"}`);
+        if (!pre.ok || pre.count !== 1 || pre.tier.kind !== "typed" || pre.sample.length !== 0 || !r.ok || r.matched !== 1
+          || r.changed === null || r.unchanged === null || r.changed + r.unchanged !== 1 || !recorded) readerStops = false;
+      }
+    }
+    // The number path is a STOP's alone: a reader's tag over the blocked number counts its live rows (none).
+    const tag = await preview({ action: "tag", tag: "probe", audience: { q: bare(N.erased) }, typed: null }, true);
+    // …and beside another filter it is no number alone: the live rows again (none).
+    const beside = await preview({ action: "suppress", audience: { q: bare(N.erased), operators: ["VODACOM"] }, typed: null }, true);
+    return [readerStops && !tag.ok && tag.reason === "empty" && !beside.ok && beside.reason === "empty",
+      `${stops.join(" · ")} · a tag over it ${outcome(tag)} · beside a filter ${outcome(beside)}`];
+  });
+  await check(p(L.b26), () => {
+    // ⭐ C8b re-review (MN-1) · the selection is the searched number alone: two actions act on it, and four never can.
+    const base = { mayAct: true, actReason: undefined, count: 1, perRowMax: BULK_PER_ROW_MAX, busy: false };
+    const four = ["tag", "untag", "addToList", "remove"] as const;
+    const offNumber = CONTACT_BULK_ACTIONS.map((a) => ({ a, s: impl.actionState(a, { ...base, numberOnly: true }) }));
+    const offNumberOk = offNumber.every(({ a, s }) => (four.includes(a as (typeof four)[number])
+      ? s.disabled && s.title === CONTACTS_BULK.numberOnlyTitle
+      : !s.disabled && s.title === BULK_COPY[a].hint));
+    const plain = CONTACT_BULK_ACTIONS.every((a) => !impl.actionState(a, { ...base, numberOnly: false }).disabled);
+    const bar = impl.sources.bar;
+    const provider = impl.sources.provider;
+    const page = impl.sources.page;
+    const wired = bar.includes("const state = bulkActionState(a, { mayAct, actReason, count: s.count, perRowMax: BULK_PER_ROW_MAX, busy: pending, numberOnly: s.numberOnly });")
+      && bar.includes('s.mode === "matching" ? (s.numberOnly ? CONTACTS_BULK.numberSelected : CONTACTS_BULK.allMatching(s.count))')
+      && provider.includes("const numberOnly = chosen !== null && chosen.numberOnly === true;")
+      && page.split("total: 1, numberOnly: true }").length - 1 === 2;
+    const words = CONTACTS_BULK.numberSelected.includes("only Suppress and Record a withdrawal act on it")
+      && CONTACTS_BULK.numberOnlyTitle === "Only Suppress and Record a withdrawal act on a searched number";
+    return [offNumberOk && plain && wired && words,
+      `${offNumber.map(({ a, s }) => `${a} ${s.disabled ? "off" : "on"}`).join(" · ")} · without it all on ${plain} · wired ${wired} · words ${words}`];
   });
   await fresh(L.b14c, async () => {
     // 🔴 OD54 · the stop axis asked through the bulk door's body — the address's question, refused the same way.
@@ -776,13 +946,18 @@ async function runAssertions(impl: Impl, tag: string): Promise<void> {
     });
     const runBody = actionBody(src.actions, "runContactBulkAction");
     const revalidates = /if \(result\.ok\) \{\s*try \{ revalidatePath\("\/admin\/contacts"\);/.test(runBody) && /return contactBulkReply\(result, reads\);/.test(runBody);
-    return [src.actionsRaw.startsWith("\"use server\";") && exported === [...ACTIONS].sort().join(",") && bad.length === 0 && revalidates,
-      `exported [${exported}] failing [${bad}] revalidates ${revalidates}`];
+    // ⭐ C8b re-review (NIT) · ONE BUCKET, ONE SENTENCE: the preview spends the check bucket the Add form's lookup and the
+    // masked search spend, so it refuses in that bucket's sentence; the run, the write bucket's.
+    const previewBody = actionBody(src.actions, "previewContactBulkAction");
+    const sentences = previewBody.includes("error: CONTACT_LOOKUP_RATE_LIMITED(rate.retryAfterSec)") && !previewBody.includes("CONTACT_RATE_LIMITED(")
+      && runBody.includes("error: CONTACT_RATE_LIMITED(rate.retryAfterSec)");
+    return [src.actionsRaw.startsWith("\"use server\";") && exported === [...ACTIONS].sort().join(",") && bad.length === 0 && revalidates && sentences,
+      `exported [${exported}] failing [${bad}] revalidates ${revalidates} · each bucket's sentence ${sentences}`];
   });
   await check(p(L.s2), () => {
     const bar = src.bar;
     const shape = /\bconst mayAct = useMayAct\(\);/.test(bar) && /\bconst actReason = useActDisabledReason\(\);/.test(bar)
-      && /const state = bulkActionState\(a, \{ mayAct, actReason, count: s\.count, perRowMax: BULK_PER_ROW_MAX, busy: pending \}\);/.test(bar)
+      && /const state = bulkActionState\(a, \{ mayAct, actReason, count: s\.count, perRowMax: BULK_PER_ROW_MAX, busy: pending, numberOnly: s\.numberOnly \}\);/.test(bar)
       && /<Button key=\{a\} type="button" size="sm" variant="ghost" disabled=\{state\.disabled\} title=\{state\.title\}/.test(bar)
       && /from "\.\/contact-bulk-actions"/.test(bar) && src.barRaw.startsWith("\"use client\";");
     const REASON = "Read-only: the AUDITOR role can view Growth & marketing but not change it.";
@@ -1140,6 +1315,133 @@ if (!PROVE_RED) {
       expect: L.b14,
       impl: () => ({ ...REAL, deps: { ...TEST_DEPS, roleRefusal: () => null } }),
     },
+    {
+      name: "R-B23 · ⛔ C8b · B7 not built — a reader tags and lists from a consent, stop, source or player filter, and the masked officer filters by the label",
+      expect: L.b23,
+      impl: () => ({ ...REAL, deps: { ...TEST_DEPS, labelRefusal: () => null } }),
+    },
+    {
+      name: "R-B23b · ⛔ C8b · the label rule refuses ticked rows too — a reader's own audited, hand-picked choice taken away",
+      expect: L.b23,
+      impl: () => ({
+        ...REAL,
+        deps: {
+          ...TEST_DEPS,
+          labelRefusal: (req) => (req.action === "tag" || req.action === "addToList") && (req.audience.ids !== null || req.audience.consent !== null
+            || req.audience.suppressed !== null || req.audience.sources !== null || req.audience.player !== null) ? { param: "consent" } : null,
+        },
+      }),
+    },
+    {
+      name: "R-B23c · ⛔ C8b review · the protected axes hand-copied, and the stop axis forgotten — a reader's tag over ?suppressed= slips through to the masked officer",
+      expect: L.b23,
+      impl: () => ({
+        ...REAL,
+        deps: {
+          ...TEST_DEPS,
+          labelRefusal: (req) => {
+            if ((req.action !== "tag" && req.action !== "addToList") || isTicksOnly(req.audience)) return null;
+            const a = req.audience;
+            return a.player !== null ? { param: "player" } : a.sources !== null ? { param: "source" } : a.consent !== null ? { param: "consent" } : null;
+          },
+        },
+      }),
+    },
+    {
+      name: "R-B23d · ⛔ C8b review · an axis list of the label rule's own back in the bulk module, beside the role rule",
+      expect: L.b23,
+      impl: () => ({ ...REAL, sources: { ...REAL_SOURCES, service: `${REAL_SOURCES.service}${String.fromCharCode(10)}const PROTECTED_LABEL_AXES = ["player", "sources", "consent", "suppressed"];` } }),
+    },
+    {
+      name: "R-B23e · ⛔ C8b re-review (NIT) · the label sentence quotes the address's key (“suppressed”) — a word the rail never shows",
+      expect: L.b23,
+      impl: () => ({ ...REAL, sources: { ...REAL_SOURCES, service: REAL_SOURCES.service.replace("made from the “${axisName(param)}” filter", "made from the “${param}” filter") } }),
+    },
+    {
+      name: "R-B23f · ⛔ C8b re-review (NIT) · the role refusal quotes the address's key — “consent” where the rail says Consent",
+      expect: L.b23,
+      impl: () => ({ ...REAL, sources: { ...REAL_SOURCES, service: REAL_SOURCES.service.replace("role: (param: string) => `The “${axisName(param)}” filter", "role: (param: string) => `The “${param}” filter") } }),
+    },
+    {
+      name: "R-B24 · ⛔ C8b · B3 not built at the bulk door — a masked viewer's forged whole-number audience is previewed and written, the row handed back",
+      expect: L.b24,
+      impl: () => ({ ...REAL, deps: { ...TEST_DEPS, numberSearch: () => null } }),
+    },
+    {
+      name: "R-B24b · ⛔ C8b review · a stop over a number counts the book's live ROWS — the erased person's number answers empty while the page says \"in the book\" (X22 undone)",
+      expect: L.b24,
+      impl: () => ({
+        ...REAL,
+        deps: {
+          ...TEST_DEPS,
+          holdsNumber: async (m: string) => {
+            const c = await db.marketingContact.findByMsisdn(m);
+            return c !== null && c.sourceRef !== ERASURE_EVIDENCE;
+          },
+        },
+      }),
+    },
+    {
+      name: "R-B24c · ⛔ C8b review · the stop's exception not built — a masked officer can no longer record a stop given by phone for a number they searched",
+      expect: L.b24,
+      impl: () => ({ ...REAL, deps: { ...TEST_DEPS, holdsNumber: async () => false } }),
+    },
+    {
+      name: "R-B24d · ⛔ C8b re-review (NIT) · the number read with the OTHER filters ignored — a stop over the whole number beside a filter acts on the number, the filter dropped",
+      expect: L.b24,
+      impl: () => ({
+        ...REAL,
+        deps: {
+          ...TEST_DEPS,
+          stopNumber: (req) => {
+            if (req.action !== "withdraw" && req.action !== "suppress") return null;
+            const q = req.audience.q;
+            const n = q === null ? null : parseTzNumber(q);
+            return n !== null && n.verdict === "ok" ? n.msisdn : null;
+          },
+        },
+      }),
+    },
+    {
+      name: "R-B24e · ⛔ C8b re-review (MN-1) · the refusal back to the export's general sentence — it names none of the actions that still act on the number",
+      expect: L.b24,
+      impl: () => ({
+        ...REAL,
+        sources: {
+          ...REAL_SOURCES,
+          service: REAL_SOURCES.service.split('return refuse("number_search", BULK_SENTENCES.numberSearch);').join('return refuse("number_search", numberSearch.reason);'),
+        },
+      }),
+    },
+    {
+      name: "R-B25 · ⛔ C8b re-review (NIT 9) · the number path asked for a MASKED viewer only — a reader cannot record a stop given by phone for a number the book blocks",
+      expect: L.b25,
+      impl: () => ({ ...REAL, deps: { ...TEST_DEPS, stopNumber: (req, viewerReads) => (viewerReads ? null : CONTACT_BULK_DEPS.stopNumber(req, viewerReads)) } }),
+    },
+    {
+      name: "R-B26 · ⛔ C8b re-review (MN-1) · the bar's action rule blind to the searched number — all six actions offered, four of them refused by the server",
+      expect: L.b26,
+      impl: () => ({
+        ...REAL,
+        actionState: (a, s) => bulkActionState(a, { ...s, numberOnly: false }),
+      }),
+    },
+    {
+      name: "R-B26b · ⛔ C8b re-review (MN-1) · the count line says \"All 1 matching selected\" over a searched number",
+      expect: L.b26,
+      impl: () => ({
+        ...REAL,
+        sources: { ...REAL_SOURCES, bar: REAL_SOURCES.bar.replace("(s.numberOnly ? CONTACTS_BULK.numberSelected : CONTACTS_BULK.allMatching(s.count))", "CONTACTS_BULK.allMatching(s.count)") },
+      }),
+    },
+    {
+      name: "R-B26c · ⛔ C8b re-review (MN-1 · NIT 9) · the page hands the presence selection without numberOnly — the bar treats a searched number as any matching set",
+      expect: L.b26,
+      impl: () => ({
+        ...REAL,
+        sources: { ...REAL_SOURCES, page: REAL_SOURCES.page.split("total: 1, numberOnly: true }").join("total: 1 }") },
+      }),
+    },
 
     /* ── and the rest of the unit, each on its own assertion ── */
     {
@@ -1156,6 +1458,19 @@ if (!PROVE_RED) {
       name: "R10 · the raw number reaches the client — the projection carries the stored number",
       expect: L.b15,
       impl: () => ({ ...REAL, project: (c) => ({ id: c.id, name: c.displayName, masked: c.msisdn }) }),
+    },
+    {
+      name: "R-S1 · ⛔ C8b re-review (NIT) · the preview spends the check bucket but refuses in the write bucket's sentence — one limit, two sentences",
+      expect: L.s1,
+      impl: () => ({
+        ...REAL,
+        sources: {
+          ...REAL_SOURCES,
+          actions: REAL_SOURCES.actions.replace(
+            'if (!rate.allowed) return { ok: false, reason: "rate_limited", error: CONTACT_LOOKUP_RATE_LIMITED(rate.retryAfterSec) };',
+            'if (!rate.allowed) return { ok: false, reason: "rate_limited", error: CONTACT_RATE_LIMITED(rate.retryAfterSec) };'),
+        },
+      }),
     },
     {
       name: "R11 · an ungated bulk action — runContactBulkAction loses its softRequireStaff",

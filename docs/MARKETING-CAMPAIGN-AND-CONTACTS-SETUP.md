@@ -2540,7 +2540,8 @@ number). The create goes through the ONE builder `newContactRow` (`src/lib/serve
 creates it; U31, U32 and U33 reuse it), then `mirrorContactCache` for the new row's caches. It never sets `userId` —
 never linked to a player, even when one holds the number — and a player's duplicate shows the same sentence and the
 same Open link as any other (D19). ⛔ **Erased rows (C3, A1.7).** Adding
-an erased number (`sourceRef = "erasure"`) refuses with "This number can't be added to the book." and opens NOTHING —
+an erased number (`sourceRef = "erasure"`) refuses with "This number can't be added to the book." *(note, 2026-10-09: since
+C8b · B2 it is "This number is already in the book." — the same sentence as any duplicate, so it reveals no erasure)* and opens NOTHING —
 the refusal payload carries NO id. To `?edit=` an erased row is MISSING: the edit loader and `editContact` treat
 `sourceRef = "erasure"` as not found (`CONTACT_MISSING`), so no officer can write a name back onto an erased
 person's number — the U22 spec's case that let an erasure-emptied row be edited (its 15.1) is REVERSED and must

@@ -44,12 +44,15 @@ import type { StageRow } from "../lib/contacts-import-world.mts";
 import { SAMPLE_ROW_SENTENCE } from "../../src/lib/contacts/sample-sheet.ts";
 import { parseTzNumber } from "../../src/lib/tz-msisdn.ts";
 import { ERASURE_EVIDENCE } from "../../src/lib/marketing/erasure-mark.ts";
+import { DONE } from "../../src/app/admin/contacts/import/import-copy.ts";
 
 const { eraseMarketingFor } = await import("../../src/lib/server/marketing/erase.ts");
 const {
   IMPORT_COMMIT_DEPS, RUN_ACTS, cancelContactImport, commitContactImportStep, contactImportFailures, contactImportResult, failedRowSentence,
   importListOptions, importOpenRuns, pauseContactImport, resumeContactImport, startContactImport,
 } = commitModule;
+// C8b (B5) · the campaign composer's own count for a list — what a masked viewer's list figure must equal.
+const { campaignAudienceCount, WHOLE_BOOK } = await import("../../src/lib/server/marketing/audience.ts");
 
 /** ⭐ C8c · N4 · a bet waiting for an admission slot — the real admission queue's own entry, as M12 has always queued one —
  *  and the way it leaves (idempotent). */
@@ -70,7 +73,7 @@ const { checkContactImport, contactImportChanges } = checkModule;
 
 /* ══ THE BUNDLE UNDER TEST ══════════════════════════════════════════════════════════════════════════════════════ */
 
-type Sources = { readonly check: string; readonly commit: string; readonly actions: string };
+type Sources = { readonly check: string; readonly commit: string; readonly actions: string; readonly panel: string; readonly done: string };
 export type CommitImpl = {
   readonly deps: ImportCommitDeps;
   readonly sources: Sources;
@@ -79,12 +82,20 @@ export type CommitImpl = {
   readonly gate: typeof refusalAuditModule.refusalAuditGate;
   /** ⭐ C8c · m3 · the decision panel's reconcile after a re-check (the contract's `exceptionsLetGo`). */
   readonly exceptionsLetGo: typeof exceptionsLetGo;
+  /** C8b review · the ONE created-only rule (`listCreatedOnlyFor`, import-check.ts) — the real one, or a plant that fails open. */
+  readonly createdOnlyFor: typeof checkModule.listCreatedOnlyFor;
+  /** C8b re-review · the result's sentences (`DONE`, import-copy.ts) — the real ones, or a plant's. */
+  readonly copy: typeof DONE;
 };
 
 const PATHS = {
   check: "src/lib/server/contacts/import-check.ts",
   commit: "src/lib/server/contacts/import-commit.ts",
   actions: "src/app/admin/contacts/import/import-actions.ts",
+  // C8b review (M1) · the decision panel draws the run's own created-only flag.
+  panel: "src/app/admin/contacts/import/import-decision-panel.tsx",
+  // C8b review (MINOR 2 · 4a) · the result's list line.
+  done: "src/app/admin/contacts/import/import-done-panel.tsx",
 } as const;
 const CRLF = String.fromCharCode(13, 10);
 const LF = String.fromCharCode(10);
@@ -101,8 +112,13 @@ const REAL_DEPS: ImportCommitDeps = {
 };
 let cachedSources: Sources | null = null;
 function real(): CommitImpl {
-  cachedSources ??= { check: read(PATHS.check), commit: read(PATHS.commit), actions: read(PATHS.actions) };
-  return { deps: REAL_DEPS, sources: cachedSources, gate: refusalAuditModule.refusalAuditGate, exceptionsLetGo };
+  cachedSources ??= {
+    check: read(PATHS.check), commit: read(PATHS.commit), actions: read(PATHS.actions), panel: read(PATHS.panel), done: read(PATHS.done),
+  };
+  return {
+    deps: REAL_DEPS, sources: cachedSources, gate: refusalAuditModule.refusalAuditGate, exceptionsLetGo,
+    createdOnlyFor: checkModule.listCreatedOnlyFor, copy: DONE,
+  };
 }
 const withDeps = (patch: Partial<ImportCommitDeps>): CommitImpl => ({ ...real(), deps: { ...REAL_DEPS, ...patch } });
 
@@ -133,6 +149,10 @@ export const L = {
   M22: "M22 · ⛔ R9 · the erasure race: a person erased between a step's read and its write — their staged row deleted, their number in no book row — is NOT created: the step reads its rows again, the conflict is decided once more, and the run finishes with the other rows imported",
   M23: "M23 · ⭐ R10 · after a step has LANDED its cache mirror and its audit rows cannot turn it into a refusal: a mirror that throws once and audit rows that throw leave the step done, and the run's end mirrors every created number the truth knows (N1 GIVEN, N4 stopped)",
   M24: "M24 · ⭐ R11 · a deadlock (P2034) inside a step answers busy, retryAfterSec 5, with the run's view and one audit row naming the error's code — never server_error, never a throw — the cursor unmoved; the next step lands",
+  M33: "M33 · ⛔ C8b (B4) · A MASKED OFFICER'S IMPORT PUTS ON ITS LIST ONLY THE CONTACTS IT CREATED: a GROWTH officer's 40-row KEEP run into an existing list adds its 22 new contacts and NONE of the file's numbers already in the book (an ordinary contact, a stopped one, a same-name one) — the list's earlier members (an ordinary row, a player's, the tombstone) as they were — even with an ADMIN driving every step (the creator's and the starter's read cells decide, never the driver's); a reader's run still lists its kept rows (M10)",
+  M33b: "M33b · ⛔ C8b review (M1) · AN ADMIN STARTING A MASKED OFFICER'S STAGED RUN STILL ADDS ONLY THE CREATED CONTACTS: a GROWTH officer's 40-row file, checked and STARTED by an ADMIN (the run adopted) into an existing list, puts on it its 22 new contacts and NONE of the file's numbers already in the book — the creator's read cell decides beside the starter's — and the run's view says so (listCreatedOnly) to that ADMIN before the start and after it, which is what the decision panel draws; ⛔ the ONE rule FAILS CLOSED: an officer whose read cell cannot be read counts as one who may not read; CONTROL: a reader's own run's view says nothing of the kind, and two readers whose cells answer are no created-only run",
+  M34: "M34 · ⛔ C8b (B5) · THE IMPORTER'S LIST FIGURES ARE THE VIEWER'S: the masked officer's picker counts EVERY live member of the list, the player's linked row included and the tombstone not — EXACTLY the campaign composer's count for it — with no linked figure (withAccount null), and so does their result; a reader's picker counts the members a basis can reach and, beside them, how many more have an account",
+  M35: "M35 · ⭐ C8b review (MINOR 2 · 4a) · THE RESULT SAYS HOW MANY CONTACTS THIS IMPORT PUT ON ITS LIST: a masked officer's run counts its 22 created contacts (a kept contact another officer added in the run's window is not its own — the run is created-only); a masked run of numbers ALL already in the book counts NONE, which the panel says as itself — \"only the contacts this import adds join the list, and it added none\" only when the run is created-only and created none (the re-review's MN-3: never a general rule), and never \"joined\" or \"covered\" over nobody; one new member owed coverage is said as one; a reader's run counts its kept rows that joined too and not the one already on the list (exactly the list's growth); and a reader whose list holds members with a 50pick account is told \"every member a list basis can reach is covered\"",
   M25: "M25 · ⛔ C8a · the commit reads the check's OWN fact, fresh at its step: an erasure that came to stand on a number with no book row AFTER the check and the start — its marker written since, alone or under an opt-out tap — keeps that row (nothing created; the row kept as the contact it reads as, chosen_keep), while the marker under a GIVEN written since still creates, and the run's other rows import",
   // ── C8c (2026-10-09) · the live importer's robustness round ──
   M26: "M26 · ⭐ C8c · N3 · the start's NEW list meets the case-insensitive refusal in its own words: a list another officer names in ANOTHER CASE between the start's check and its freeze → the start is refused list_name_taken with LIST_MADE_MEANWHILE_SENTENCE (never the pre-check's sentence; n2 · n3 · its words name no officer and never send the officer back to Import — 'Choose it from your lists'; the re-review's NIT · never 'a moment ago', which n2's old list makes untrue, and the other way on in the pre-check's own words, 'type another name'), the run still STAGED with no decision and no target, ONE list of that name (the other officer's) and none of this start's; the lists read again hold it, and a start naming it as an existing list freezes onto it",
@@ -363,6 +383,119 @@ async function run({ impl, ok, log }: Ctx): Promise<void> {
     && reader.result.list !== null && reader.result.list.name === "October file" && reader.result.list.covered === false
     && masked !== null && masked.ok && masked.result.kept === null && masked.result.list === null,
     `reader ${splitOf(reader)} · admin ${splitOf(admin)} · growth ${splitOf(masked)}`);
+
+  // ── M33 · M34 · C8b · a MASKED officer's import into an EXISTING list — what joins it (B4), and the figures (B5) ──
+  await inFreshStore(async () => {
+    await seedFortyWorld();
+    const SHARED = "cl_w_shared";
+    await db.contactList.create(listRow(SHARED, "Shared list"));
+    // The list's earlier members: an ordinary contact, the player's LINKED row and the erased tombstone.
+    for (const contactId of ["mc_w_b1", "mc_w_b5", "mc_w_b4"]) await db.contactListMember.add({ listId: SHARED, contactId, addedAt: LIST_AT, addedBy: null });
+    const runId = await stageFile(OFFICER, fortyRows());
+    const { start } = await checkAndStart(runId, impl.deps, "KEEP", { kind: "existing", listId: SHARED }, {}, OFFICER);
+    // ⭐ An ADMIN drives every step (X18) — the run is still the masked officer's.
+    const driven = await drive(runId, impl.deps, ADMIN);
+    const created = bookRows().filter((c) => c.importId === runId).map((c) => c.id);
+    const members = ([...mem().contactListMembers.values()] as Array<{ listId: string; contactId: string }>)
+      .filter((m) => m.listId === SHARED).map((m) => m.contactId);
+    const kept = ["mc_w_b2", "mc_w_b3", "mc_w_b6"];
+    ok(L.M33, start.ok && driven.last?.ok === true && created.length === 22 && members.length === 25
+      && created.every((id) => members.includes(id)) && kept.every((id) => !members.includes(id))
+      && ["mc_w_b1", "mc_w_b5", "mc_w_b4"].every((id) => members.includes(id)),
+      `start ${start.ok ? "ok" : start.reason} · driven ${driven.last?.ok ? "done" : "refused"} · created ${created.length} · members ${members.length} · kept rows on it ${kept.filter((id) => members.includes(id)).join(",") || "none"}`);
+
+    const optionsOf = async (who: string) => {
+      const r = await importListOptions(who, impl.deps);
+      return r.ok ? r.lists.find((l) => l.id === SHARED) ?? null : null;
+    };
+    const maskedOption = await optionsOf(OFFICER);
+    const readerOption = await optionsOf(READER);
+    const composer = await campaignAudienceCount({ ...WHOLE_BOOK, lists: [SHARED] });
+    const maskedResult = await contactImportResult(OFFICER, runId, impl.deps);
+    const resultList = maskedResult.ok ? maskedResult.result.list : null;
+    ok(L.M34, maskedOption !== null && maskedOption.members === 24 && maskedOption.members === composer && maskedOption.withAccount === null
+      && readerOption !== null && readerOption.members === 23 && readerOption.withAccount === 1
+      && resultList !== null && resultList.withAccount === null && resultList.covered === false
+      && !json([maskedOption, maskedResult.ok ? maskedResult.result.list : null]).includes("withAccount\":1"),
+      `masked picker ${maskedOption ? `${maskedOption.members} (account ${maskedOption.withAccount})` : "none"} · composer ${composer} · reader picker ${readerOption ? `${readerOption.members} + ${readerOption.withAccount}` : "none"} · masked result ${json(resultList)}`);
+  });
+
+  // ── M33b · C8b review (M1) · an ADMIN STARTS a masked officer's staged run (an open run, adopted) into a list ──
+  await inFreshStore(async () => {
+    await seedFortyWorld();
+    const TAKEN = "cl_w_taken";
+    await db.contactList.create(listRow(TAKEN, "Taken over"));
+    const runId = await stageFile(OFFICER, fortyRows());
+    const before = await checkModule.importRunView(ADMIN, await runOf(runId), impl.deps);
+    const { start } = await checkAndStart(runId, impl.deps, "KEEP", { kind: "existing", listId: TAKEN }, {}, ADMIN);
+    const driven = await drive(runId, impl.deps, ADMIN);
+    const created = bookRows().filter((c) => c.importId === runId).map((c) => c.id);
+    const members = ([...mem().contactListMembers.values()] as Array<{ listId: string; contactId: string }>)
+      .filter((m) => m.listId === TAKEN).map((m) => m.contactId);
+    const kept = ["mc_w_b2", "mc_w_b3", "mc_w_b6"];
+    // CONTROL: a READER's own staged run is no created-only run, to its reader.
+    const readerRun = await stageFile(READER, fortyRows());
+    const readerView = await checkModule.importRunView(READER, await runOf(readerRun), impl.deps);
+    const panel = impl.sources.panel.includes('{pick.kind !== "none" && view.listCreatedOnly && <p className="text-body-sm text-text-secondary" data-import-list-created-only>{LIST.createdOnly}</p>}');
+    // ⛔ FAILS CLOSED: the ONE rule asked of a reader whose read cell THROWS answers created-only; CONTROL: two readers whose
+    // cells answer are no created-only run.
+    const unreadable = await impl.createdOnlyFor([READER], { readsNumbers: async () => { throw new Error("the read cell could not be read"); } });
+    const readers = await impl.createdOnlyFor([READER, ADMIN], { readsNumbers: async () => true });
+    ok(L.M33b, before.listCreatedOnly === true && start.ok && start.view.listCreatedOnly === true && driven.last?.ok === true
+      && created.length === 22 && members.length === 22 && created.every((id) => members.includes(id)) && kept.every((id) => !members.includes(id))
+      && readerView.listCreatedOnly === false && panel && unreadable === true && readers === false,
+      `view before ${before.listCreatedOnly} · start ${start.ok ? `ok, view ${start.view.listCreatedOnly}` : start.reason} · driven ${driven.last?.ok ? "done" : "refused"} · created ${created.length} · members ${members.length} · kept rows on it ${kept.filter((id) => members.includes(id)).join(",") || "none"} · a reader's own run ${readerView.listCreatedOnly} · the panel draws the run's flag ${panel} · an unreadable cell ${unreadable ? "created-only" : "READ AS A READER"} · two readers ${readers ? "CREATED-ONLY" : "not created-only"}`);
+  });
+
+  // ── M35 · C8b review (MINOR 2 · 4a) · how many contacts THIS import put on its list — and none said as itself ──
+  await inFreshStore(async () => {
+    await seedFortyWorld();
+    const JOINED = "cl_w_joined";
+    await db.contactList.create(listRow(JOINED, "Joined list"));
+    // (a) a masked officer's run: its 22 new contacts join; a kept contact another officer adds within the run's window is
+    // not the run's (the run is created-only).
+    const masked = await stageFile(OFFICER, fortyRows());
+    await checkAndStart(masked, impl.deps, "KEEP", { kind: "existing", listId: JOINED }, {}, OFFICER);
+    await drive(masked, impl.deps, OFFICER);
+    await db.contactListMember.add({ listId: JOINED, contactId: "mc_w_b2", addedAt: NOW.toISOString(), addedBy: ADMIN });
+    const a = await contactImportResult(OFFICER, masked, impl.deps);
+    // (b) a masked run of numbers ALL already in the book: nobody joins its list.
+    const inBook = await stageFile(OFFICER, fortyRows().filter((r) => [3, 6, 10, 13, 15, 19].includes(r.line)));
+    await checkAndStart(inBook, impl.deps, "KEEP", { kind: "existing", listId: JOINED }, {}, OFFICER);
+    await drive(inBook, impl.deps, OFFICER);
+    const b = await contactImportResult(OFFICER, inBook, impl.deps);
+    // (c) a reader's run into a list one of whose numbers is on it already: its kept rows join, that one does not.
+    const READ_LIST = "cl_w_reader";
+    await db.contactList.create(listRow(READ_LIST, "Reader list"));
+    // On the list a week before the run (the fixture's LIST_AT is the run's own instant).
+    await db.contactListMember.add({ listId: READ_LIST, contactId: "mc_w_b1", addedAt: "2026-10-02T09:00:00.000Z", addedBy: null });
+    const membersOf = (listId: string) => ([...mem().contactListMembers.values()] as Array<{ listId: string }>).filter((m) => m.listId === listId).length;
+    const before = membersOf(READ_LIST);
+    const readerRun = await stageFile(READER, fortyRows());
+    await checkAndStart(readerRun, impl.deps, "KEEP", { kind: "existing", listId: READ_LIST }, {}, READER);
+    await drive(readerRun, impl.deps, READER);
+    const grown = membersOf(READ_LIST) - before;
+    const c = await contactImportResult(READER, readerRun, impl.deps);
+    const la = a.ok ? a.result.list : null;
+    const lb = b.ok ? b.result.list : null;
+    const lc = c.ok ? c.result.list : null;
+    // ⭐ The re-review's MN-3 and NIT: "it added none" is said of THIS import, never as a rule; one new member is one.
+    const C = impl.copy;
+    const words = C.listReady("Joined list", 3, true).includes("joined the list Joined list — every member a list basis can reach is covered for offers.")
+      && C.listReady("Joined list", 3, false).includes("every member is covered for offers.")
+      && C.listNone("Joined list", true) === "No contact joined the list Joined list — only the contacts this import adds join the list, and it added none."
+      && C.listNone("Joined list", false) === "No contact joined the list Joined list with this import."
+      && C.listOwed("Joined list", 1).startsWith("1 contact joined the list Joined list. The new member isn't covered for offers yet")
+      && C.listOwed("Joined list", 2).startsWith("2 contacts joined the list Joined list. The new members aren't covered for offers yet")
+      && ![C.listReady("X", 1, false), C.listOwed("X", 1), C.listNone("X", false)].some((s) => s.startsWith("Added to the list"));
+    const panel = impl.sources.done;
+    const drawn = panel.includes("{result.list.joined === 0 ? DONE.listNone(result.list.name, result.list.createdOnly && t.create === 0)")
+      && panel.includes(": result.list.covered ? DONE.listReady(result.list.name, result.list.joined, (result.list.withAccount ?? 0) > 0)")
+      && panel.includes("{result.list.joined > 0 && !result.list.covered && (");
+    ok(L.M35, la !== null && la.joined === 22 && la.createdOnly && lb !== null && lb.joined === 0 && lb.createdOnly
+      && lc !== null && !lc.createdOnly && grown > 0 && lc.joined === grown && words && drawn,
+      `masked run ${la ? `${la.joined} joined (created-only ${la.createdOnly})` : "no list"} · in-book run ${lb ? `${lb.joined} joined` : "no list"} · reader run ${lc ? `${lc.joined} joined, the list grew ${grown}` : "no list"} · words ${words} · panel ${drawn}`);
+  });
 
   // ── M6 · pause, resume, cancel (ten rows a step) — and cancel before the start ──
   await inFreshStore(async () => {
@@ -1235,6 +1368,106 @@ const plants: readonly RedPlant<CommitImpl>[] = [
     name: "P10 · the commit forgets the list — no contact joins it",
     expect: L.M10,
     impl: () => withDeps({ commitBatch: async (b) => REAL_DEPS.commitBatch({ ...b, members: [] }) }),
+  },
+  {
+    name: "P-B4 · ⛔ C8b · B4 not built — a masked officer's kept rows join the list, so ?list= says which typed numbers are in the book",
+    expect: L.M33,
+    impl: () => withDeps({ createdOnly: async () => false }),
+  },
+  {
+    name: "P-B4b · ⛔ C8b · the rule read off the step's DRIVER — an ADMIN resuming a masked officer's run puts the kept rows on the list",
+    expect: L.M33,
+    impl: () => withDeps({ createdOnly: async (_run, driver, d) => !(await d.readsNumbers(driver)) }),
+  },
+  {
+    name: "P-B4c · ⛔ C8b review (M1) · only the STARTER is asked — an ADMIN who starts a masked officer's staged run puts the kept rows on the list, and the creator reads off it which of their numbers were erased",
+    expect: L.M33b,
+    impl: () => withDeps({ createdOnly: async (run, _driver, d) => !(await d.readsNumbers(run.decisionConfirmedBy ?? run.createdBy).catch(() => false)) }),
+  },
+  {
+    name: "P-B4e · ⛔ C8b review (NIT) · the ONE rule FAILS OPEN — an officer whose read cell cannot be read counts as a reader, so the kept rows join the list",
+    expect: L.M33b,
+    impl: () => ({
+      ...real(),
+      createdOnlyFor: async (officers, deps) => {
+        for (const id of new Set(officers)) {
+          let reads = true;
+          try { reads = await deps.readsNumbers(id); } catch { reads = true; }
+          if (!reads) return true;
+        }
+        return false;
+      },
+    }),
+  },
+  {
+    name: "P-B4d · ⛔ C8b review (M1) · the panel says it only to a viewer who may not read — the ADMIN taking over is never told the list gets only the new contacts",
+    expect: L.M33b,
+    impl: () => {
+      const r = real();
+      return { ...r, sources: { ...r.sources, panel: r.sources.panel.replace("&& view.listCreatedOnly && <p", "&& !mayUpdate && <p") } };
+    },
+  },
+  {
+    name: "P-B5 · ⛔ C8b · the split's linked side dropped (coveredCount's pre-C8b figure) — the masked picker leaves the player out, and composer minus picker counts the players",
+    expect: L.M34,
+    impl: () => withDeps({
+      lists: {
+        ...REAL_DEPS.lists,
+        split: async (id) => ({ ...(await REAL_DEPS.lists.split(id)), linked: { live: 0, covered: 0 } }),
+      },
+    }),
+  },
+  {
+    name: "P-M2a · ⛔ C8b review (MINOR 2) · the run's joined read as the contacts it CREATED — a reader's kept rows that joined the list are never counted",
+    expect: L.M35,
+    impl: () => withDeps({
+      lists: { ...REAL_DEPS.lists, joined: async (q) => bookRows().filter((c) => c.importId === q.importId).length },
+    }),
+  },
+  {
+    name: "P-M2b · ⛔ C8b review (MINOR 2) · created-only ignored by the count — a kept contact someone else added in the window is counted as the masked run's own",
+    expect: L.M35,
+    impl: () => withDeps({ lists: { ...REAL_DEPS.lists, joined: async (q) => REAL_DEPS.lists.joined({ ...q, createdOnly: false }) } }),
+  },
+  {
+    name: "P-M2c · ⛔ C8b review (MINOR 2) · nobody joined and the panel still says the contacts joined the list and are covered",
+    expect: L.M35,
+    impl: () => {
+      const r = real();
+      return { ...r, sources: { ...r.sources, done: r.sources.done.replace("{result.list.joined === 0 ? DONE.listNone(", "{false ? DONE.listNone(") } };
+    },
+  },
+  {
+    name: "P-M3a · ⛔ C8b re-review (MN-3) · the empty join said as a GENERAL rule (\"only the contacts an import adds join its list\") — false for a reader's import, and silent on what this one added",
+    expect: L.M35,
+    impl: () => ({
+      ...real(),
+      copy: { ...DONE, listNone: (name: string, addedNone: boolean) => (addedNone ? `No contact joined the list ${name} — only the contacts an import adds join its list.` : DONE.listNone(name, false)) },
+    }),
+  },
+  {
+    name: "P-M3b · ⛔ C8b re-review (NIT) · one new member owed coverage said as many (\"The new members aren't\")",
+    expect: L.M35,
+    impl: () => ({
+      ...real(),
+      copy: { ...DONE, listOwed: (name: string, joined: number) => DONE.listOwed(name, joined).replace("The new member isn't", "The new members aren't") },
+    }),
+  },
+  {
+    name: "P-M3c · ⛔ C8b re-review (MN-3) · the panel says \"it added none\" of a created-only run that DID create contacts",
+    expect: L.M35,
+    impl: () => {
+      const r = real();
+      return { ...r, sources: { ...r.sources, done: r.sources.done.replace("result.list.createdOnly && t.create === 0)", "result.list.createdOnly)") } };
+    },
+  },
+  {
+    name: "P-M4a · ⛔ C8b review (MINOR 4a) · a reader's coverage claims EVERY member beside the members a list basis never reaches",
+    expect: L.M35,
+    impl: () => {
+      const r = real();
+      return { ...r, sources: { ...r.sources, done: r.sources.done.replace("(result.list.withAccount ?? 0) > 0)", "false)") } };
+    },
   },
   {
     name: "P11 · every viewer reads as one who may read numbers — a GROWTH officer is shown the stop split (OD54)",
