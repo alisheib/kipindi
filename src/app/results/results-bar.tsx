@@ -21,6 +21,7 @@
  * name, which is a real defect the sidebar shipped.
  */
 import { FilterPill, FilterGroupKey } from "@/components/ui/filter-pill";
+import { formatNumber } from "@/lib/utils";
 import { FilterSheet, FilterSheetGroup } from "@/components/markets/filter-sheet";
 import {
   QUERY_BAR_CLASS,
@@ -118,7 +119,7 @@ export function ResultsBar({
   const dir = effectiveDir({ natural: ARCHIVE_NATURAL_DIR }, state);
   const sheetCount = archiveSheetCount(state);
   const resultPhrase =
-    resultCount === 1 ? t.market.oneResult : t.market.nResults.replace("{n}", String(resultCount));
+    resultCount === 1 ? t.market.oneResult : t.market.nResults.replace("{n}", formatNumber(resultCount));
   const lenses = outcomeLensAvailable(state) ? ARCHIVE_LENSES : (["all"] as const);
 
   const clear = (
@@ -200,7 +201,7 @@ export function ResultsBar({
         <FilterSheet
           label={t.market.filtersOpen}
           title={t.results.title}
-          ariaLabel={sheetCount > 0 ? t.market.filtersAriaN.replace("{n}", String(sheetCount)) : t.market.filtersOpen}
+          ariaLabel={sheetCount > 0 ? t.market.filtersAriaN.replace("{n}", formatNumber(sheetCount)) : t.market.filtersOpen}
           closeLabel={t.market.filtersClose}
           applyLabel={t.market.filtersApply.replace("{n}", resultPhrase)}
           count={sheetCount}

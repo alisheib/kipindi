@@ -424,7 +424,7 @@ function BonusWalletCard({
                     six it drew five and said "+3 more". One constant now feeds both, so the two
                     cannot disagree again. */}
                 {grants.length > GRANTS_SHOWN && (
-                  <p className="text-center font-mono text-[10px] text-text-subtle">+{grants.length - GRANTS_SHOWN} {grants.length - GRANTS_SHOWN > 1 ? t.common.moreBonuses : t.common.moreBonus}</p>
+                  <p className="text-center font-mono text-[10px] text-text-subtle">+{formatNumber(grants.length - GRANTS_SHOWN)} {grants.length - GRANTS_SHOWN > 1 ? t.common.moreBonuses : t.common.moreBonus}</p>
                 )}
                 {/* The way into the other five statuses. A `<Link>`, so it is a real address a
                     player can share or come back to. */}

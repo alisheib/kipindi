@@ -14,6 +14,7 @@
  * from the same read as the rows.
  */
 import { FilterPill } from "@/components/ui/filter-pill";
+import { formatNumber } from "@/lib/utils";
 import {
   QUERY_BAR_CLASS,
   QUERY_BAR_ROW1_CLASS,
@@ -76,7 +77,7 @@ export function RecruitsBar({
   const href = (patch: Partial<RecruitState>) => buildRecruitHref(state, patch);
   const dir = effectiveDir({ natural: RECRUIT_NATURAL_DIR }, state);
   const resultPhrase =
-    resultCount === 1 ? t.agent.oneRecruit : t.agent.nRecruits.replace("{n}", String(resultCount));
+    resultCount === 1 ? t.agent.oneRecruit : t.agent.nRecruits.replace("{n}", formatNumber(resultCount));
 
   return (
     <div data-filter-rail className={QUERY_BAR_CLASS}>

@@ -21,12 +21,16 @@ import { getMarket } from "@/lib/server/market-service";
 // an invented "YES 50% · tipping" on one nobody had bet on, in every WhatsApp preview.
 import { sharePreviewPrice, sharePreviewSettled } from "@/lib/markets/share-preview";
 import { resolveWinShareToken } from "@/lib/server/share-token";
+import { formatNumber, formatTzs } from "@/lib/utils";
+import { dict } from "@/lib/i18n-dict";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-/** TZS with thin grouping — Satori has no Intl, so group manually. */
-const tzs = (n: number) => "TZS " + Math.round(n).toString().replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+/** TZS — the platform's one money grammar, `formatTzs` (round 5 of the visual pass, R5-J). The card's words are built here,
+ *  in Node, before Satori lays them out, and Node has Intl: the private grouping regex that stood here ("Satori has no
+ *  Intl, so group manually") was a second writer of the same figure, with a hyphen where `formatTzs` writes the minus. */
+const tzs = formatTzs;
 
 // sRGB equivalents of the brand oklch palette.
 const C = {
@@ -232,7 +236,9 @@ export async function GET(
                 A share card is the first thing many players ever see of this platform and the only
                 money figure on it; printing the unit twice makes the one number on the card look
                 like a rendering fault. Caught 2026-09-24. */}
-            <span>{tzs(m.yesPool + m.noPool)} volume · {m.predictorCount} predictors</span>
+            {/* The count as every count reads (R5-J): grouped by `formatNumber`, its word the card's own English from the
+                dictionary's one/many pair ("1 predictor", "1,204 predictors") — it read "1 predictors". */}
+            <span>{tzs(m.yesPool + m.noPool)} volume · {formatNumber(m.predictorCount)} {m.predictorCount === 1 ? dict.en.market.predictorsCountOne : dict.en.market.predictorsCount}</span>
           </div>
         </div>
       </div>

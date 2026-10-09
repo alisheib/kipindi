@@ -214,6 +214,20 @@ export function formatTzsSigned(value: number): string {
   return `${value >= 0 ? "+" : "−"}${formatTzsAbs(value)}`;
 }
 
+/**
+ * ⭐ THE ONE COUNT GROUPING — every count a player reads goes through this (round 5 of the visual pass, R5-A and R5-J,
+ * 2026-10-09): a count line, a pill's count, a bar's "masoko 12", a pager's range, a stat tile, a toast's "{n}" — "12,479",
+ * never "12479" and never a grouping the runtime picks. A count is followed by the dictionary's lower-case word for what
+ * was counted, its one/many pair where it has one ("1 mtabiri", "2 watabiri") — never a capitalised label lower-cased in code.
+ * ⛔ NOT `toLocaleString()` or `new Intl.NumberFormat()` with no locale: they group by whatever locale the RUNTIME holds —
+ * the server's on a server page, the device's on a client one — so one count printed two ways, and a client component's
+ * first paint disagreed with its hydration ("12,345" → "12.345" on a German phone). Swahili, English and Chinese all group
+ * as "12,479", so this one fixed grouping IS the reader's.
+ * Left bare, each with its reason (`test:visual-pass-r5j` §1 holds the census): a machine attribute (`data-count`,
+ * `data-result-count`), a page button (it names `?page=`), a capped badge ("99+"), an ordinal that names a place (a
+ * carousel's "Show market 3", a step, a citation's number), a duration (the time grammar's minutes and days), a price with
+ * decimals of its own, and the classic bell's count (frozen chrome).
+ */
 export function formatNumber(value: number): string {
   return TZ_NUMBER.format(value);
 }

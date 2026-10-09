@@ -50,8 +50,9 @@ const MUTATIONS = [
   {
     label: "M5 · the Rounds tile goes back to the page count",
     file: PAGE,
-    from: 'tabular-nums text-text">{viewRounds.length}',
-    to: 'tabular-nums text-text">{rounds.length}',
+    // Re-anchored by R5-J (round 5, G-4): the tile's count is grouped (`formatNumber`); the mutation is unchanged.
+    from: 'tabular-nums text-text">{formatNumber(viewRounds.length)}',
+    to: 'tabular-nums text-text">{formatNumber(rounds.length)}',
     expect: ["§3e"],
   },
   {

@@ -61,7 +61,8 @@ export function handSellResult(handOff: Omit<SellResultHandOff, "ack">): boolean
 
 /**
  * The result of a sale, in both looks. The journey's look changes one word, the line under a refusal (a ticket where
- * today's says a position, S6 A7); since S6 A8f the money figures in its title are whole (`wholeFigures`).
+ * today's says a position, S6 A7). Its title's money figures are whole — since round 5 (R5-J) for every result, read by the
+ * modal itself with the one reader (`moneyRuns`), so this caller asks for nothing.
  */
 export function SellResultModal({
   open,
@@ -106,7 +107,6 @@ export function SellResultModal({
       primaryLabel={resultData.variant === "success" ? t.common.doneSawa : t.common.close}
       onClose={onClose}
       stripTone="brand"
-      wholeFigures
     />
   );
 }

@@ -689,7 +689,7 @@ export function MarketCard({
         {comments != null && comments > 0 && (
           <>
             <span className="dot" />
-            <span className="inline-flex items-center gap-1"><I.comment s={10} />{comments}</span>
+            <span className="inline-flex items-center gap-1"><I.comment s={10} />{formatNumber(comments)}</span>
           </>
         )}
         <span className="mcardp-meta-right">

@@ -1634,8 +1634,9 @@ async function g5Fit(W: World) {
  *   · the confirm's figure is `.amount`, one object, and its row wraps: the fee column moves below the figure and grows to
  *     the box's width, its words still at the right edge; beside the figure the fee keeps a clear space before it, so two
  *     figures never run together; the fee and its note were `.amount` already;
- *   · the result sets every money figure in its title as one amount (`wholeFigures`, which the sale's result asks for, from
- *     its own module since S6 A8h), in the
+ *   · the result sets every money figure in its title as one amount — since R5-J (round 5, 2026-10-09) for every result, read
+ *     by the modal with the platform's one reader (`moneyRuns`, fill-nodes.tsx), where the sale's result once asked for it
+ *     (`wholeFigures`, S6 A8f) through a matcher of its own — in the
  *     mono face the model reads — the title's own face, Sora, is not among the repo's fonts; its detail rows already wrap.
  * Over en, sw and zh × 320, 340, 360, 390, 412, 430, 768 and 1280 × §5's stakes to the platform's maximum, free and paid at
  * every whole percent to 30 (`cashOutValue`, the oracle), in both looks (their words differ, never their figures): each
@@ -1645,8 +1646,10 @@ async function g5Fit(W: World) {
  */
 const SELL_MODAL = "src/components/markets/sell-confirm-modal.tsx";
 const RESULT_MODAL = "src/components/markets/operation-result-modal.tsx";
-/** S6 A8h — the result a sale opens, out of the Sell button into its own module (`SellResultModal`): what asks for whole figures. */
+/** S6 A8h — the result a sale opens, out of the Sell button into its own module (`SellResultModal`), drawn by the shared result. */
 const SELL_RESULT = "src/components/markets/sell-result.tsx";
+/** R5-J — the platform's one reader of money in a finished sentence (`moneyRuns`), which the result reads its figures with. */
+const FILL_NODES = "src/lib/fill-nodes.tsx";
 const DIALOG_SHELL = "src/components/ui/modal.tsx";
 /** The panel's edge is its material's (`.mat-modal`, motion.css): read from source, outside the plantable world. */
 const DIALOG_MATERIAL = readRaw("src/app/motion.css");
@@ -1669,10 +1672,19 @@ const RECEIVE_FIGURE = `className="amount font-bold text-[24px] leading-none tex
 const FEE_COLUMN = `className="grow text-right"`;
 const FEE_FIGURE = `className="pl-3 font-bold text-title-sm amount leading-none"`;
 const FEE_NOTE = `className="mt-1 amount text-micro text-text-subtle"`;
-/** The result's figure pattern and helper, pinned whole as the suite squashes them, so nothing can be added to either. */
-const FIGURE_LINE = `const FIGURE = /(${DIALOG_MINUS}?TZS ${DIALOG_MINUS}?[0-9][0-9,]*)/;`;
-const WHOLE_FIGURES = `function withWholeFigures(title: string) {return title.split(FIGURE).map((part, i) => (i % 2 === 1 ? <span key={i} className="amount">{part}</span> : part));}`;
-const WHOLE_TITLE = ">{wholeFigures ? withWholeFigures(title) : title}<";
+/**
+ * The result's figure pattern and helper, pinned whole as the suite squashes them, so nothing can be added to either.
+ * ⭐ MOVED BY R5-J (round 5 of the visual pass, 2026-10-09 — G-6, one figure matcher). The result had a matcher of its own,
+ * `/(−?TZS −?[0-9][0-9,]*)/` split by `withWholeFigures`, asked for by the sale's result alone (`wholeFigures`): it took a
+ * sentence's comma into the figure ("TZS 5,000,000,"), read "TZS 1.2M" as "TZS 1" and ".2M", missed "+TZS 1,234"'s sign and
+ * the dictionary's no-break space. The modal now reads every result's figures with the platform's one reader, `moneyRuns`
+ * (fill-nodes.tsx) — the reader every toast already goes through — so these pins are that reader's pattern and body, the
+ * modal's import of it, and its title drawn through it. What §6 measures is unchanged: the sale's figure as one amount.
+ */
+const FIGURE_LINE = "const MONEY_RUN = /[+\\u2212]?TZS[\\u00a0 ]\\u2212?\\d+(?:,\\d{3})*(?:\\.\\d+)?[KMB]?/g;";
+const WHOLE_FIGURES = `export function moneyRuns(text: string): ReactNode[] {const out: ReactNode[] = [];let last = 0;let i = 0;for (const m of text.matchAll(MONEY_RUN)) {const at = m.index ?? 0;if (at > last) out.push(text.slice(last, at));out.push(<span key={i++} className="amount">{m[0]}</span>);last = at + m[0].length;}if (last < text.length) out.push(text.slice(last));return out;}`;
+const READER_IMPORT = `import { moneyRuns } from "@/lib/fill-nodes";`;
+const WHOLE_TITLE = ">{moneyRuns(title)}<";
 /** The confirm's two buttons as today's markup draws them, each with its label: the gold sell and the ghost keep. */
 const GOLD_BUTTON = `className="btn btn-gold btn-lg w-full"`;
 const GOLD_LABEL = "{pending ? t.dialog.selling : `${t.dialog.sellLabel} · ${formatTzs(value)}`}";
@@ -1812,6 +1824,8 @@ function dialogFacts(W: World): DialogFacts {
   const innerPads = (inner ?? []).filter((c) => c.startsWith("p-"));
   const innerLg = (inner ?? []).filter((c) => c.startsWith("lg:p-"));
   const titleWhole = rq.includes(WHOLE_TITLE);
+  // R5-J · the reader the title goes through is the platform's one (`moneyRuns`, fill-nodes.tsx), imported by the modal.
+  const fq = squash(W.files.get(FILL_NODES) ?? "");
   const label = openBefore(rq, ">{d.label}<", "p");
   const column = label < 0 ? -1 : rq.lastIndexOf("<div", label);
   const result = {
@@ -1819,17 +1833,18 @@ function dialogFacts(W: World): DialogFacts {
     pad: innerPads.length === 1 ? sp(innerPads[0].slice(2)) : Number.NaN,
     padLg: innerLg.length === 1 ? sp(innerLg[0].slice(5)) : Number.NaN,
     title: classesAt(rq, openBefore(rq, titleWhole ? WHOLE_TITLE : ">{title}<", "h2")), titleWhole,
-    figureRe: occurrences(rq, FIGURE_LINE) === 1, helper: occurrences(rq, WHOLE_FIGURES) === 1,
+    figureRe: occurrences(fq, FIGURE_LINE) === 1,
+    helper: occurrences(fq, WHOLE_FIGURES) === 1 && occurrences(rq, READER_IMPORT) === 1,
     label: classesAt(rq, label), value: classesAt(rq, openBefore(rq, ">{d.value}<", "p")),
     detailRow: column > 0 ? classesAt(rq, rq.lastIndexOf("<div", column - 1)) : null,
   };
-  // The sale's one result asks for whole figures: a bare `wholeFigures`, or `={true}`. Since S6 A8h it is drawn from its own
-  // module (`SellResultModal`, which the shell's host and the Sell button's fallback both draw), so that is where it is read.
+  // The sale's one result is the shared result, which reads every title's figures itself since R5-J — so the sale asks for
+  // nothing (S6 A8f's `wholeFigures` is gone, and a stale one would not compile). Since S6 A8h it is drawn from its own module
+  // (`SellResultModal`, which the shell's host and the Sell button's fallback both draw), so that is where it is read.
   const sale = squash(W.files.get(SELL_RESULT) ?? "");
   const resultAt = sale.indexOf("<OperationResultModal");
   const element = resultAt < 0 ? "" : sale.slice(resultAt, sale.indexOf("/>", resultAt) + 2);
-  const asks = occurrences(sale, "<OperationResultModal") === 1 && !element.includes("wholeFigures={false}")
-    && (element.includes("wholeFigures/>") || element.includes("wholeFigures ") || element.includes("wholeFigures={true}"));
+  const asks = occurrences(sale, "<OperationResultModal") === 1 && element.includes("title={") && !element.includes("wholeFigures");
   return {
     sp, lg: dialogNum(screens, `lg: "`),
     micro: dialogNum(dialogFrom(sizes, "micro:"), `["`), microTrack: dialogNum(dialogFrom(sizes, "micro:"), `letterSpacing: "`),
@@ -2053,7 +2068,7 @@ async function g6Dialogs(W: World) {
   const resultBad = resultCells.filter(({ f }) => f.split || f.over || !Number.isFinite(f.room))
     .map(({ loc, vw, p, f }) => `${loc} ${vw} TZS ${p.stake} ${f.row}: ${f.split ? "can split" : `${f.room.toFixed(1)}px`}`);
   const leastResult = (name: string) => Math.min(...resultCells.filter((x) => x.f.row === name && x.vw === 320).map((x) => x.f.room)).toFixed(1);
-  ok(`6.result · the result a sale opens sets every money figure in its title as one amount — the sale's result asks (wholeFigures, in its own module, sell-result.tsx, since S6 A8h), and the pinned helper wraps each figure its pattern finds, a minus before it included — and at every width the title's widest figure, TZS 1,000,000, fits the title's line (least room left at 320: ${leastResult("result.title")}px); each detail row holds its figure whole, its line wrapping before break-all could break it (least room left at 320: ${leastResult("result.returned")} and ${leastResult("result.fee")}px)`,
+  ok(`6.result · the result a sale opens sets every money figure in its title as one amount — the sale's result is the shared result (in its own module, sell-result.tsx, since S6 A8h), which draws every title through the platform's one reader (moneyRuns, fill-nodes.tsx, since R5-J), and the pinned reader wraps each figure its pattern finds, a minus before it included — and at every width the title's widest figure, TZS 1,000,000, fits the title's line (least room left at 320: ${leastResult("result.title")}px); each detail row holds its figure whole, its line wrapping before break-all could break it (least room left at 320: ${leastResult("result.returned")} and ${leastResult("result.fee")}px)`,
     resultCells.length > 0 && resultBad.length === 0, resultBad.slice(0, 3).join(" | "));
   // CONTROL — today's rules (the row not wrapping, the figure no amount, the fee keeping no space) on the ticket the v2 parity
   // baseline sells in its confirm cells, a free TZS 1,500, at 360 and 390.
@@ -2480,14 +2495,18 @@ const PLANTS: Plant[] = [
     world: (w) => withEntry(w, "sw", "dialog", "sellLabel", "Uza tiketi yako yote sasa hivi") },
   { name: "a longer Swahili keep word in the journey's look (its keep button overflows at 320)", expect: ["6.button"],
     world: (w) => withEntry(w, "sw", "journey", "sellKeep", "Baki na tiketi yako hii hadi matokeo yatoke") },
-  { name: "the sale's result stops asking for whole figures (a refusal's 'TZS' can end a line again, and the title's figure is drawn in a face the model cannot read)", expect: ["6.result"],
-    world: (w) => inFile(w, SELL_RESULT, `${NL}      wholeFigures${NL}`, NL) },
+  // R5-J · the four plants below moved with the reader: the sale no longer asks (every result reads its figures), and the
+  // pattern and helper are the platform's one reader in fill-nodes.tsx.
+  { name: "the sale's result is drawn by a dialog of its own, not the shared result (its title's 'TZS' can end a line again, its figure in a face the model cannot read)", expect: ["6.result"],
+    world: (w) => inFile(w, SELL_RESULT, "<OperationResultModal", "<SaleOwnResultModal") },
   { name: "the result draws its title as given (no amount around its figure)", expect: ["6.result"],
-    world: (w) => inFile(w, RESULT_MODAL, "{wholeFigures ? withWholeFigures(title) : title}", "{title}") },
-  { name: "the result's helper sets its figures in the body's face, not as amounts", expect: ["6.result"],
-    world: (w) => inFile(w, RESULT_MODAL, `<span key={i} className="amount">`, `<span key={i} className="font-semibold">`) },
-  { name: "the figure pattern misses a minus written before the currency", expect: ["6.result"],
-    world: (w) => inFile(w, RESULT_MODAL, `/(${DIALOG_MINUS}?TZS `, "/(TZS ") },
+    world: (w) => inFile(w, RESULT_MODAL, "{moneyRuns(title)}", "{title}") },
+  { name: "the result reads its figures with a matcher of its own again (the shared reader's import dropped)", expect: ["6.result"],
+    world: (w) => inFile(w, RESULT_MODAL, READER_IMPORT, "") },
+  { name: "the reader sets its figures in the body's face, not as amounts", expect: ["6.result"],
+    world: (w) => inFile(w, FILL_NODES, `<span key={i++} className="amount">`, `<span key={i++} className="font-semibold">`) },
+  { name: "the reader's pattern misses a minus written before the currency", expect: ["6.result"],
+    world: (w) => inFile(w, FILL_NODES, "/[+\\u2212]?TZS", "/[+]?TZS") },
   { name: "a detail row of the result stops wrapping (a long Swahili label squeezes the figure, and break-all breaks it)", expect: ["6.result"],
     world: (w) => inFile(w, RESULT_MODAL, "px-3 py-2 flex flex-wrap items-baseline", "px-3 py-2 flex items-baseline") },
   { name: "the result's title grows to 34px (its widest figure no longer fits a 320 phone's line)", expect: ["6.result"],

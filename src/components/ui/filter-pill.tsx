@@ -32,7 +32,7 @@
  * failure that is really an instrument break. `data-count` must stay a bare integer.
  */
 import Link from "next/link";
-import { cn } from "@/lib/utils";
+import { cn, formatNumber } from "@/lib/utils";
 import { LinkPending } from "@/components/ui/link-pending";
 
 /**
@@ -251,7 +251,9 @@ export function FilterPill({
             countClassName,
           )}
         >
-          {count}
+          {/* ⭐ Grouped as every count a player reads is (R5-J, round 5): production's /results lens read "Zote 12479" while
+              the page's own tally read "12,479 imetatuliwa". `data-count` above stays the bare integer the probes parse. */}
+          {formatNumber(count)}
         </span>
       )}
       {/* ⭐ A pressed chip whose rows are still on their way says so — `link-pending.tsx`. It renders

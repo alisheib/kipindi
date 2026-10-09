@@ -307,10 +307,11 @@ function SettledRow({ row, t, locale, nowMs }: { row: SettlementRow; t: Dict; lo
         <span className="kp-settled__amt">{formatTzs(row.amountTzs)} {t.home.settledPaid}</span>
       ) : (
         /* 🔴 AN EMPTY CELL, NOT NO CELL — and not an EMPTY span either. Returning null removed the grid
-           item and collapsed the row; an empty span has height 0 and held nothing. A non-breaking
-           space gives the cell one line box at its own line-height, so the silent row keeps its
-           tracks (measured on production 2026-09-24). `aria-hidden`: there is no figure to announce. */
-        <span className="kp-settled__amt" aria-hidden>{"\u00a0"}</span>
+           item and collapsed the row; an empty span has height 0 and held nothing. The cell keeps one
+           line box at its own line-height, so the silent row keeps its tracks (measured on production
+           2026-09-24) — drawn by `kp-keep-line` (globals.css, R5-J), no character in the page; it used
+           to be a typed no-break space. `aria-hidden`: there is no figure to announce. */
+        <span className="kp-settled__amt kp-keep-line" aria-hidden />
       )}
     </li>
   );

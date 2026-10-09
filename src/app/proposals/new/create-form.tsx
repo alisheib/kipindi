@@ -3,6 +3,7 @@
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { I } from "@/components/ui/glyphs";
+import { formatNumber } from "@/lib/utils";
 import { Input, Field } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { FieldLegend } from "@/components/ui/field-legend";
@@ -98,12 +99,12 @@ export function CreateProposalForm({ rateLimit, openCount, platformTz }: { rateL
         </p>
         <p className="mt-2.5 flex items-center gap-1.5 text-body-sm text-text-muted">
           <I.info s={13} />
-          <span className="font-mono">{openCount} / {rateLimit}</span> {t.common.openProposalsUsed}
+          <span className="font-mono">{formatNumber(openCount)} / {formatNumber(rateLimit)}</span> {t.common.openProposalsUsed}
         </p>
       </div>
 
       <Field label={<>{t.common.titleEn} <Req /></>} hint={
-        <span className={titleEn.length > 120 ? "text-danger-fg" : undefined}>{titleEn.length}/120</span>
+        <span className={titleEn.length > 120 ? "text-danger-fg" : undefined}>{formatNumber(titleEn.length)}/120</span>
       }>
         <Input placeholder={t.common.titleEnPlaceholder} value={titleEn} onChange={(e) => setTitleEn(e.target.value)} maxLength={120} />
       </Field>

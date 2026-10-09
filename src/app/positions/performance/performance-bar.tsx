@@ -14,6 +14,7 @@
  * `all` that no control can reach.
  */
 import { FilterPill } from "@/components/ui/filter-pill";
+import { formatNumber } from "@/lib/utils";
 import {
   QUERY_BAR_CLASS,
   QUERY_BAR_ROW1_CLASS,
@@ -51,7 +52,7 @@ export function PerformanceBar({
   t: Dict;
 }) {
   const resultPhrase =
-    resultCount === 1 ? t.positions.oneResult : t.positions.nResults.replace("{n}", String(resultCount));
+    resultCount === 1 ? t.positions.oneResult : t.positions.nResults.replace("{n}", formatNumber(resultCount));
 
   return (
     <div data-filter-rail className={QUERY_BAR_CLASS}>

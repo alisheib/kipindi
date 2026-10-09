@@ -2,6 +2,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { I } from "@/components/ui/glyphs";
 import { BackLink } from "@/components/ui/back-link";
+import { formatNumber } from "@/lib/utils";
 import { PageHeader } from "@/components/ui/page-header";
 import { PushSettings } from "@/components/settings/push-settings";
 import { getSession } from "@/lib/server/session";
@@ -105,7 +106,7 @@ export default async function NotificationSettingsPage({
             </div>
           </div>
           <span className="inline-flex items-center gap-1 shrink-0 font-mono text-body-sm tabular-nums text-accent-400 group-hover:text-text">
-            {watched.length}
+            {formatNumber(watched.length)}
             <I.chevronRight s={12} />
           </span>
         </div>

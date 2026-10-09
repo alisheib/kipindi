@@ -113,8 +113,9 @@ console.log("\n§3 · the page passes the VIEW, not the page");
     "if `rounds` became an alias for the view the pager is gone, and this guard is vacuous");
 
   // The middle tile printed a PAGED count directly over an UNPAGED one — the visible tell.
+  // Re-pinned by R5-J (round 5, G-4): the count is grouped as every count is (`formatNumber`) — still the VIEW's.
   ok("§3e the Rounds tile counts the VIEW, so it agrees with the bets line beneath it",
-    /tabular-nums text-text">\{viewRounds\.length\}/.test(page),
+    /tabular-nums text-text">\{formatNumber\(viewRounds\.length\)\}/.test(page),
     "`{rounds.length}` over `{rows.length} bets` is two scopes in one tile");
   ok("§3f the poller watches the VIEW too, or an off-screen settlement leaves the money stale",
     /const anyLive = viewRounds\.some/.test(page));

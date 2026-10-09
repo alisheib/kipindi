@@ -4,7 +4,7 @@
 // Styling lives in globals.css (.badge / .badge--*), mirroring how .tier-* is
 // driven — so badges automatically track the rest of the chord.
 import * as React from "react";
-import { cn } from "@/lib/utils";
+import { cn, formatNumber } from "@/lib/utils";
 import { DotSeq } from "@/components/ui/dot-seq";
 import { keepLastWords } from "@/components/ui/keep-words";
 import { BADGE_ICONS, type AchievementId } from "./icons";
@@ -54,7 +54,7 @@ export function Badge({
 
       {state === "progress" && progress && !progress.tier && (
         <span className="badge-count" style={{ position: "absolute", bottom: -16 }}>
-          {progress.value}/{progress.max}
+          {formatNumber(progress.value)}/{formatNumber(progress.max)}
         </span>
       )}
       {progress?.tier && <span className="badge-tier-pip">{progress.tier}</span>}

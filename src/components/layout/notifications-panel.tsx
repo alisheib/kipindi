@@ -9,7 +9,7 @@ import { CountBadge } from "@/components/ui/count-badge";
 import { Dot } from "@/components/ui/dot";
 import { IconPlate } from "@/components/ui/icon-plate";
 import { useExitPhase } from "@/components/ui/modal";
-import { cn } from "@/lib/utils";
+import { cn, formatNumber } from "@/lib/utils";
 import { fetchMyNotifications, markNotifReadAction, markAllReadAction, dismissNotifAction, dismissAllAction } from "@/app/_actions/notifications";
 import type { StoredNotification } from "@/lib/server/store";
 import { useT } from "@/lib/i18n";
@@ -83,6 +83,10 @@ export function NotificationsPanel({ journey = false }: { journey?: boolean } = 
   // until the owner rules (frozen chrome): the change for it is these two values with the prop dropped.
   const countTone = journey ? "brand" : "rose";
   const clearAllHover = journey ? "hover:text-danger-fg" : "hover:text-no-300";
+  // ⭐ R5-J (the visual pass's round 5, 2026-10-09) — the journey bell says its unread count as every count reads, grouped
+  // (`formatNumber`: "1,247 unread", as the Arifa page and its row say it). The classic bell keeps its bare count until the
+  // owner rules (frozen chrome): the change for it is this value with the prop dropped. Below 1,000 the two are the same.
+  const countText = (n: number) => (journey ? formatNumber(n) : String(n));
   const router = useRouter();
   const [open, setOpen] = useState(false);
   const [items, setItems] = useState<StoredNotification[]>([]);
@@ -494,7 +498,7 @@ export function NotificationsPanel({ journey = false }: { journey?: boolean } = 
     <div ref={ref} className="relative z-10">
       <button
         type="button"
-        aria-label={`${t.common.notifications}${unread > 0 ? ` (${unread})` : ""}`}
+        aria-label={`${t.common.notifications}${unread > 0 ? ` (${countText(unread)})` : ""}`}
         aria-expanded={open ? "true" : "false"}
         onClick={() => setOpen((v) => !v)}
         data-unread={unread}
@@ -757,7 +761,7 @@ export function NotificationsPanel({ journey = false }: { journey?: boolean } = 
                       COUNT is the message, so the dot is aria-hidden and the text carries it. */}
                   {unread > 0 && <Dot tone={unreadDot} aria-hidden />}
                   <span className="font-mono text-micro font-bold uppercase text-text-subtle truncate">
-                    {unread === 1 ? t.notif.unreadOne : t.notif.unreadN.replace("{n}", String(unread))}
+                    {unread === 1 ? t.notif.unreadOne : t.notif.unreadN.replace("{n}", countText(unread))}
                   </span>
                 </span>
                 <span className="flex items-center gap-1 shrink-0">

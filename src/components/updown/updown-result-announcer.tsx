@@ -46,7 +46,7 @@ import { useEffect, useRef } from "react";
 import { useToast } from "@/components/ui/toast";
 import { dispatchWinCelebration } from "@/components/markets/win-celebration";
 import { useT } from "@/lib/i18n";
-import { formatTzs } from "@/lib/utils";
+import { formatNumber, formatTzs } from "@/lib/utils";
 import { DWELL_RESULT_MS } from "@/lib/feedback-timing";
 import { routeOutcome } from "@/lib/outcome-announcement";
 import { isAttentive, presenceSinceMs, serverNow } from "@/lib/presence-window";
@@ -155,7 +155,7 @@ export function UpDownResultAnnouncer({ rounds }: { rounds: AnnounceableRound[] 
           groupAmount: res.payout,
           groupLabel: (n, total) => ({
             title: t.notif.groupedReturned
-              .replace("{n}", String(n))
+              .replace("{n}", formatNumber(n))
               .replace("{amount}", formatTzs(total)),
           }),
         });
@@ -181,7 +181,7 @@ export function UpDownResultAnnouncer({ rounds }: { rounds: AnnounceableRound[] 
           groupAmount: res.stake,
           groupLabel: (n, total) => ({
             title: t.notif.groupedLost
-              .replace("{n}", String(n))
+              .replace("{n}", formatNumber(n))
               .replace("{amount}", formatTzs(total)),
           }),
         });

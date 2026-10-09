@@ -14,7 +14,7 @@ import { displayInitials } from "@/lib/display-label";
 import { BadgeShelf } from "@/components/badges/Badge";
 import { computeAchievementShelf } from "@/lib/server/achievements";
 import { getServerT } from "@/lib/i18n-server";
-import { formatTzs } from "@/lib/utils";
+import { formatNumber, formatTzs } from "@/lib/utils";
 import { PageContainer } from "@/components/layout/page-container";
 import { inviteIsLiveFor } from "@/lib/feature-state";
 import { isFinalRefusal } from "@/lib/kyc-refusal";
@@ -265,7 +265,7 @@ export default async function ProfilePage() {
             boxed="pad"
             font="mono"
             label={t.profile.openCount}
-            value={String(positions.filter((p) => p.status === "OPEN").length)}
+            value={formatNumber(positions.filter((p) => p.status === "OPEN").length)}
             icon={<I.sparkle s={14} />}
             className="min-w-0 whitespace-nowrap border-border px-5 sm:border-l lg:px-6"
             labelClassName="min-w-0 whitespace-normal break-words"
@@ -276,7 +276,7 @@ export default async function ProfilePage() {
             boxed="pad"
             font="mono"
             label={t.profile.settledCount}
-            value={String(positions.filter((p) => p.status !== "OPEN").length)}
+            value={formatNumber(positions.filter((p) => p.status !== "OPEN").length)}
             icon={<I.check s={14} />}
             className="min-w-0 whitespace-nowrap border-l border-border px-5 lg:px-6"
             labelClassName="min-w-0 whitespace-normal break-words"

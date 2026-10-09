@@ -24,7 +24,7 @@
 import Link from "next/link";
 import { I } from "@/components/ui/glyphs";
 import { categoryLabel } from "@/lib/markets/category-label";
-import { fill, formatTzsCompact } from "@/lib/utils";
+import { fill, formatNumber, formatTzsCompact } from "@/lib/utils";
 import type { MarketCategory } from "@/lib/server/market-service";
 import type { Dict } from "@/lib/i18n-dict";
 import type { TopicAggregate } from "@/lib/markets/landing";
@@ -80,7 +80,7 @@ export function TopicTiles({ topics, t }: { topics: TopicAggregate[]; t: Dict })
           >
             <span className="kp-topic__n">{categoryLabel(t, tp.id as MarketCategory)}</span>
             <span className="kp-topic__m">
-              <span className="kp-topic__live">{fill(t.home.topicLive, { n: tp.count })}</span>
+              <span className="kp-topic__live">{fill(t.home.topicLive, { n: formatNumber(tp.count) })}</span>
               {/* 🔴 A ZERO POOL IS NOT STATED: 3 of the 7 tiles read "TZS 0" on production (2026-09-24),
                   turning the band whose job is to show a live book into an advertisement that it is
                   empty. ⛔ This is not the cold-start rule relaxed — that rule forbids INVENTING a

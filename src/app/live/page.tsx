@@ -11,7 +11,7 @@
  * this page.
  */
 import Link from "next/link";
-import { fill } from "@/lib/utils";
+import { fill, formatNumber } from "@/lib/utils";
 import { timeLeftLabel } from "@/lib/markets/time-left";
 import { listMarkets, isClosedByTime, isSelectionClosed, traderSeedsByMarket } from "@/lib/server/market-service";
 import { PulseRing } from "@/components/brand";
@@ -199,7 +199,7 @@ export default async function LivePage({
                 data-result-count={markets.length}
                 className="font-mono text-[10.5px] text-text-subtle tabular-nums whitespace-nowrap"
               >
-                {markets.length} {t.market.liveCount}{tippingMarkets > 0 ? ` · ${tippingMarkets} ${t.market.tipping}` : ""}
+                {formatNumber(markets.length)} {t.market.liveCount}{tippingMarkets > 0 ? ` · ${formatNumber(tippingMarkets)} ${t.market.tipping}` : ""}
               </p>
             </div>
             <FeaturedContest markets={topContested} eyebrow={t.market.mostContested} openLabel={t.market.openMarket} />

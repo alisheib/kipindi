@@ -14,6 +14,7 @@
  * delivered; keeping the RAIL as well would have been two controls for one axis.
  */
 import { FilterPill, FilterGroupKey } from "@/components/ui/filter-pill";
+import { formatNumber } from "@/lib/utils";
 import { FilterSheet, FilterSheetGroup } from "@/components/markets/filter-sheet";
 import {
   QUERY_BAR_CLASS,
@@ -108,7 +109,7 @@ export function HistoryBar({
   const dir = effectiveDir({ natural: UD_NATURAL_DIR }, state);
   const sheetCount = udSheetCount(state);
   const resultPhrase =
-    resultCount === 1 ? t.market.udOneRound : t.market.udNRounds.replace("{n}", String(resultCount));
+    resultCount === 1 ? t.market.udOneRound : t.market.udNRounds.replace("{n}", formatNumber(resultCount));
 
   const clear = (
     <QueryClear
@@ -160,7 +161,7 @@ export function HistoryBar({
         <FilterSheet
           label={t.market.filtersOpen}
           title={t.market.udHistoryTitle}
-          ariaLabel={sheetCount > 0 ? t.market.filtersAriaN.replace("{n}", String(sheetCount)) : t.market.filtersOpen}
+          ariaLabel={sheetCount > 0 ? t.market.filtersAriaN.replace("{n}", formatNumber(sheetCount)) : t.market.filtersOpen}
           closeLabel={t.market.filtersClose}
           applyLabel={t.market.filtersApply.replace("{n}", resultPhrase)}
           count={sheetCount}

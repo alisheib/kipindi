@@ -771,7 +771,7 @@ const SELL_DIALOGS = [
   '</>',
   ');',
 ].join("");
-/** S6 A8h — the result a sale opens, as its one module draws it (`SellResultModal`, for the shell's host and the button's fallback alike): today's words and figures, moved unchanged out of the button, the journey's word only under the look, and the money figures in its title whole since S6 A8f (`wholeFigures`, `test:sell-grace-truth` §6). Read from its tag up to the tag's close. */
+/** S6 A8h — the result a sale opens, as its one module draws it (`SellResultModal`, for the shell's host and the button's fallback alike): today's words and figures, moved unchanged out of the button, the journey's word only under the look, and the money figures in its title whole since S6 A8f — re-pinned by R5-J (round 5, G-6): the result reads every title's figures itself (`moneyRuns`, `test:sell-grace-truth` §6), so the sale's `wholeFigures` opt-in is gone and the markup ends at `stripTone`. Read from its tag up to the tag's close. */
 const SELL_RESULT_MARKUP = [
   '<OperationResultModal',
   'open={open}',
@@ -801,7 +801,6 @@ const SELL_RESULT_MARKUP = [
   'primaryLabel={resultData.variant === "success" ? t.common.doneSawa : t.common.close}',
   'onClose={onClose}',
   'stripTone="brand"',
-  'wholeFigures',
 ].join("");
 /** The dialogs' three words: the journey's under the look, today's (the dialog's own defaults) without it. */
 const DIALOG_ARMS = ["titleLabel={journey ? t.journey.sellConfirmTitle : undefined}", "keepLabel={journey ? t.journey.sellKeep : undefined}",

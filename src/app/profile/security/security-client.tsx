@@ -3,6 +3,7 @@
 import { useEffect, useState, useTransition } from "react";
 import QRCode from "qrcode";
 import { useRouter } from "next/navigation";
+import { formatNumber } from "@/lib/utils";
 import { I } from "@/components/ui/glyphs";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -219,7 +220,7 @@ export function SecurityClient({ enabled, backupRemaining, hasPassword }: { enab
         <div className="space-y-3 border-t border-border pt-4">
           <div className="flex items-center justify-between gap-3 text-[13px]">
             <span className="text-text-muted">{t.security.backupRemaining}</span>
-            <Chip variant={backupRemaining <= 2 ? "warning" : "neutral"} size="sm">{backupRemaining}</Chip>
+            <Chip variant={backupRemaining <= 2 ? "warning" : "neutral"} size="sm">{formatNumber(backupRemaining)}</Chip>
           </div>
 
           {disarm === null ? (

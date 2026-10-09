@@ -248,7 +248,7 @@ export const NOT_EYEBROW = new Map([
   ["app/notifications/row-actions.tsx :: className=\"-mt-1 shrink-0 inline-flex items-center gap-1 min-h-[44px] px-2 rounded-md font-mono text-micro font-bold uppercase text-accent-400 hover:text-text hover:bg-bg", "CONTROL_LABEL"],
   ["app/positions/page.tsx :: <div className=\"mb-1.5 flex items-center justify-between gap-2 font-mono text-micro uppercase tracking-[0.12em] tabular-nums\"> ↵ <span className=\"font-bold text-yes-300\">", "OTHER"],
   ["app/positions/performance/page.tsx :: <p className=\"font-mono text-micro uppercase tracking-[0.08em] text-text-muted\">{r.statusLabel}</p> ↵ </div>", "STATUS_CHIP"],
-  ["app/positions/performance/page.tsx :: <p className=\"font-mono text-micro uppercase tracking-[0.12em] text-text-subtle tabular-nums\">{t.performance.longestStreak} {longestStreak}</p> ↵ </div>", "OTHER"],
+  ["app/positions/performance/page.tsx :: <p className=\"font-mono text-micro uppercase tracking-[0.12em] text-text-subtle tabular-nums\">{t.performance.longestStreak} {formatNumber(longestStreak)}</p> ↵ </div>", "OTHER"],
   ["app/positions/performance/page.tsx :: <span className=\"font-mono text-micro uppercase tracking-[0.08em] text-text-subtle\">{t.performance.cumulativePerSettlement}</span> ↵ </div>", "OTHER"],
   ["app/profile/kyc/page.tsx :: <span className=\"font-mono text-micro uppercase tracking-[0.1em] text-text-subtle\">{idLabel}</span> ↵ </div>", "OTHER"],
   ["app/profile/kyc/page.tsx :: <span className=\"inline-flex items-center gap-1 rounded-pill border border-success-border bg-success-bg px-2.5 py-0.5 font-mono text-micro font-bold uppercase tracking-[0", "STATUS_CHIP"],
@@ -260,7 +260,7 @@ export const NOT_EYEBROW = new Map([
   ["app/results/page.tsx :: <span className=\"ml-auto inline-flex items-center gap-1.5 font-mono text-micro uppercase tracking-[0.16em] font-bold text-brand-300\"> ↵ <I.crown s={13} /> <span className", "STATUS_CHIP"],
   ["app/updown/[roundId]/page.tsx :: <p className=\"mt-1 flex items-center gap-1.5 font-mono text-micro font-semibold uppercase tracking-[0.10em] text-text-subtle\"> ↵ {isOpen && <span className=\"live-dot\" />}", "STATUS_CHIP"],
   ["app/updown/[roundId]/page.tsx :: className=\"inline-flex items-center gap-0.5 font-mono text-micro font-semibold uppercase tracking-[0.08em]\" ↵ style={{ color: \"var(--brand-300)\" }}>", "CONTROL_LABEL"],
-  ["app/updown/history/page.tsx :: <span className=\"font-mono text-micro uppercase tracking-[0.10em] text-text-faint\"> ↵ {g.bets.length} {t.market.udBets}", "OTHER"],
+  ["app/updown/history/page.tsx :: <span className=\"font-mono text-micro uppercase tracking-[0.10em] text-text-faint\"> ↵ {formatNumber(g.bets.length)} {t.market.udBets}", "OTHER"],
   // Round 5 (R5-A, F19): the note's words sit in a span of their own (`kp-track-end`, its trailing tracking taken back).
   ["app/updown/page.tsx :: <span className=\"ml-auto inline-flex items-center gap-1.5 font-mono text-micro uppercase tracking-[0.10em] text-text-faint\"> ↵ <span className=\"live-dot\" /> <span classNa", "STATUS_CHIP"],
   // ⭐ ONE recipe, TWO pills. The board header carried this string twice — the history link and
@@ -304,7 +304,7 @@ export const NOT_EYEBROW = new Map([
   ["components/layout/avatar-menu.tsx :: <span className={journey ? \"block font-mono text-micro uppercase tracking-[0.14em] text-brand-300/80 leading-tight mt-0.5\" : \"block font-mono text-micro uppercase trackin", "CONTROL_LABEL"],
   ["components/layout/live-ticker.tsx :: <span className=\"font-mono text-micro font-semibold uppercase tracking-[0.1em] text-[var(--live-400)]\"> ↵ {t.common.live}", "STATUS_CHIP"],
   ["components/layout/needle-drawer.tsx :: <span className=\"font-mono text-micro uppercase tracking-[0.12em] text-text-subtle\">{shownLabel}</span> ↵ <svg width=\"14\" height=\"14\" viewBox=\"0 0 24 24\" aria-hidden=\"tru", "OTHER"],
-  ["components/layout/notifications-panel.tsx :: <span className=\"font-mono text-micro font-bold uppercase text-text-subtle truncate\"> ↵ {unread === 1 ? t.notif.unreadOne : t.notif.unreadN.replace(\"{n}\", String(unread))", "STATUS_CHIP"],
+  ["components/layout/notifications-panel.tsx :: <span className=\"font-mono text-micro font-bold uppercase text-text-subtle truncate\"> ↵ {unread === 1 ? t.notif.unreadOne : t.notif.unreadN.replace(\"{n}\", countText(unrea", "STATUS_CHIP"],
   ["components/layout/notifications-panel.tsx :: className={`h-7 px-1.5 rounded-md font-mono text-micro font-bold uppercase tracking-[0.10em] text-text-subtle ${clearAllHover} hover:bg-bg-overlay transition-colors white", "CONTROL_LABEL"], // R5-I (2026-10-09): the journey's "Clear all" hover (danger) — same element, role unchanged
   ["components/layout/notifications-panel.tsx :: className=\"inline-flex items-center gap-0.5 min-h-[44px] px-2 rounded-md font-mono text-micro font-bold uppercase text-accent-400 hover:text-text hover:bg-bg-overlay tran", "CONTROL_LABEL"],
   ["components/layout/notifications-panel.tsx :: className=\"inline-flex items-center min-h-[44px] px-2 rounded-md font-mono text-micro font-bold uppercase text-text-subtle hover:text-text hover:bg-bg-overlay transition-", "CONTROL_LABEL"],
@@ -337,7 +337,7 @@ export const NOT_EYEBROW = new Map([
   ["components/ui/not-found-view.tsx :: <p className=\"font-mono text-micro font-bold uppercase tracking-[0.20em] text-text-subtle\"> ↵ {words.notFoundCode} · {words.notFound}", "CELEBRATION"],
   ["components/ui/not-found-view.tsx :: className=\"mt-6 inline-flex items-center gap-2 font-mono text-caption uppercase tracking-[0.14em] text-brand-300 hover:text-brand-200\" ↵ >", "CONTROL_LABEL"],
   ["components/ui/page-loader.tsx :: <p className=\"font-mono text-caption uppercase tracking-[0.18em] text-text-muted\"> ↵ {t.common.loading}", "STATUS_CHIP"],
-  ["components/ui/pagination.tsx :: <p className=\"font-mono text-micro tracking-[0.14em] uppercase text-text-subtle\"> ↵ {((safePage - 1) * perPage + 1).toLocaleString()}–{Math.min(safePage * perPage, total)", "OTHER"],
+  ["components/ui/pagination.tsx :: <p className=\"font-mono text-micro tracking-[0.14em] uppercase text-text-subtle\"> ↵ {formatNumber((safePage - 1) * perPage + 1)}–{formatNumber(Math.min(safePage * perPage", "OTHER"],
   ["components/ui/password-input.tsx :: <p className={cn(\"mt-1 font-mono text-label sm:text-micro uppercase tracking-[0.14em] font-bold\", fgCls)}> ↵ {label}", "STATUS_CHIP"],
   ["components/ui/progress-bar.tsx :: <p className=\"font-mono text-micro uppercase tracking-widest text-text-tertiary tabular-nums\"> ↵ {value.toLocaleString()} of {safeMax.toLocaleString()} · {pct.toFixed(0)}", "OTHER"],
   ["components/ui/route-error.tsx :: <p className=\"font-mono text-micro font-bold uppercase tracking-[0.20em] text-danger-fg\"> ↵ {eyebrow ?? t.error.somethingWentWrong}", "CELEBRATION"],

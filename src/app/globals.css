@@ -1720,6 +1720,15 @@ html[data-fab-idle] .cm-fab:not(.cm-fab--open):not(:focus-within) {
 .kp-cjk-gap--q { word-spacing: -0.1em; }
 .kp-cjk-gap::after { content: " "; }
 
+/* ⭐ AN EMPTY SLOT KEEPS ITS LINE WITH NO CHARACTER IN THE PAGE (round 5 of the visual pass, R5-J, 2026-10-09 — R5-E's
+   named siblings). Four slots must not change height as their words come and go: the analytics choice before it mounts,
+   the search box's echo row, the time field's preview, a settled row's empty amount cell. Each held its line with a
+   no-break space TYPED into the page, so a copy, a find-in-page and `textContent` carried a character nobody wrote. Now
+   the slot renders nothing and this rule draws the space, as the CJK gap above is drawn: generated content gives the empty
+   element the one line box its own font and line height make — the box the typed space made — and it is not in the
+   page's text. The moment the slot has words, `:empty` stops matching. */
+.kp-keep-line:empty::before { content: "\00a0"; }
+
 /* 🔴 D32 · UNDER REDUCED MOTION THIS STRIP DID NOT SLOW DOWN — IT FROZE, SHOWING 24% OF ONE OF TWELVE EVENTS.
    `animation-play-state: paused` stops the marquee at frame 0, and frame 0 is not a readable state: measured
    on production at 360, the clipping window is 245px against a track of 27,440px, entry 1 alone is 1,045px, and

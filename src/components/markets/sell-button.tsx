@@ -531,7 +531,7 @@ export function SellButton({
   // ⭐ THE TWO DIALOGS ARE ONE PAIR FOR BOTH LOOKS — the confirm and the result, wired to the one `submit` above. The
   // journey's look changes three of their words, each a ticket where today's says a position (S6 A7): the question, the
   // keep button, and the line under a sale that failed. Without the look they are today's words. Since S6 A8f the result
-  // sets each money figure in its title as one amount (`wholeFigures`), and the confirm keeps its own figures whole and
+  // sets each money figure in its title as one amount (`moneyRuns`, R5-J), and the confirm keeps its own figures whole and
   // reflows its receive row (`test:sell-grace-truth` §6). Since S6 A8h the result is `SellResultModal` (`sell-result.tsx`),
   // the one place its words are written: the shell's host draws it, and this button only when no host took the result
   // (`showResult`, above).

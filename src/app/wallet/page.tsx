@@ -1,5 +1,6 @@
 import { redirect } from "next/navigation";
 import { pathWithQuery } from "@/lib/safe-next";
+import { formatNumber } from "@/lib/utils";
 import { WalletPageClient } from "./wallet-client";
 import { WalletBar, type LedgerCounts } from "./wallet-bar";
 import { WalletResultModal } from "./wallet-result-modal";
@@ -440,7 +441,7 @@ export default async function WalletPage({ searchParams }: { searchParams: Promi
         }
         emptyExits={exits.map((e) => ({
           id: e.id,
-          label: `${EXIT_LABEL[e.id] ?? e.id} (${e.count})`,
+          label: `${EXIT_LABEL[e.id] ?? e.id} (${formatNumber(e.count)})`,
           href: buildLedgerHref(state, e.patch),
         }))}
         capped={capped}

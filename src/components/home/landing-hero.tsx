@@ -354,7 +354,7 @@ export function LandingHero({ figures, t, locale, isAuthed, nowMs, cards, mine, 
                   <I.arrowRight s={16} />
                 </Link>
                 <Link href={"/markets" as never} className="btn btn-ghost btn-xl rounded-pill kp-hero__cta">
-                  {fill(t.home.heroBrowseAll, { n: figures.openCount })}
+                  {fill(t.home.heroBrowseAll, { n: formatNumber(figures.openCount) })}
                 </Link>
               </div>
               {/* THE SIGN-OFF — the brand line, which was the h1 until R7(3) (2026-09-27). The mark is
@@ -682,7 +682,7 @@ export function QuestionBoard({ figures, t, locale, nowMs }: {
             {figures.closingToday > 0 && (
               <p className="kp-hero__eyebrow text-balance">
                 <span className="kp-hero__tick" aria-hidden />
-                {fill(t.home.heroBoardCloseToday, { n: figures.closingToday })}
+                {fill(t.home.heroBoardCloseToday, { n: formatNumber(figures.closingToday) })}
               </p>
             )}
             {/* `text-balance` for the reason every `.kp-shead__h` carries it: without it "Chagua
@@ -691,7 +691,7 @@ export function QuestionBoard({ figures, t, locale, nowMs }: {
           </div>
           {/* The board's ordering travels to /markets, so "all of them" arrives sorted as here. */}
           <Link href={`/markets?sort=${figures.lens}` as never} className="kp-shead__link">
-            {fill(t.home.gridSeeAll, { n: figures.openCount })}
+            {fill(t.home.gridSeeAll, { n: formatNumber(figures.openCount) })}
             <I.chevronRight s={14} />
           </Link>
         </div>

@@ -49,6 +49,7 @@ import { Pagination, PLAYER_PER_PAGE } from "@/components/ui/pagination";
 import { getSession } from "@/lib/server/session";
 import { pageForUser } from "@/lib/server/notification-service";
 import { getServerT } from "@/lib/i18n-server";
+import { formatNumber } from "@/lib/utils";
 import { cn } from "@/lib/utils";
 import { iconFor, tintFor } from "@/lib/notification-appearance";
 import { readableNotificationBody } from "@/lib/notification-text";
@@ -229,7 +230,7 @@ export default async function NotificationsPage({
       <NotificationsBulkBar
         unread={counts.unread}
         label={t.common.readAll}
-        countLabel={counts.unread === 1 ? t.notif.unreadOne : t.notif.unreadN.replace("{n}", String(counts.unread))}
+        countLabel={counts.unread === 1 ? t.notif.unreadOne : t.notif.unreadN.replace("{n}", formatNumber(counts.unread))}
       />
 
       {items.length === 0 ? (

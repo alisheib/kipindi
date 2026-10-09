@@ -31,7 +31,7 @@ import Link from "next/link";
 import { I } from "@/components/ui/glyphs";
 import { Chip } from "@/components/ui/chip";
 import { Dot } from "@/components/ui/dot";
-import { cn, formatTzs } from "@/lib/utils";
+import { cn, formatNumber, formatTzs } from "@/lib/utils";
 import { priceState } from "@/lib/markets/price-state";
 import { usd } from "@/lib/usd-price";
 import { fillNodes } from "@/lib/fill-nodes";
@@ -198,18 +198,14 @@ export type UpDownCardProps = {
 // one-home sprint exists to kill. The device-cost story (forty Intl constructions a second
 // on an eight-card board) and the USD-vs-TZS confusability rule moved with it.
 
-/**
- * The player count, in the DEVICE's own locale — exactly what `players.toLocaleString()` gave,
- * built once instead of once per render. ⛔ Not `formatNumber` from `@/lib/utils`: that one is
- * pinned to `en-US`, and swapping the locale under a rendered figure is a copy change wearing a
- * performance label.
- * ⚠️ Lazy, so importing this module does not pay for a formatter a page may never draw.
+/*
+ * ⭐ THE PLAYER COUNT IS GROUPED AS EVERY COUNT IS — `formatNumber` (round 5 of the visual pass, R5-J, 2026-10-09). It had a
+ * formatter of its own in the DEVICE's locale (`new Intl.NumberFormat()`, once `players.toLocaleString()`), and the note
+ * here kept it on purpose: swapping the locale under a rendered figure is a copy change. This is that copy change, made
+ * deliberately — one way to count. The card is a client component the server renders first, so a device whose locale
+ * groups otherwise drew "12,345" in the first paint and "12.345" (de) or "12 345" (fr) after hydration: a mismatch, and a
+ * grouping no other surface writes. The round page beside it, the cards and the bars all write "12,345".
  */
-let COUNT_FORMAT: Intl.NumberFormat | null = null;
-function formatCount(n: number): string {
-  if (COUNT_FORMAT === null) COUNT_FORMAT = new Intl.NumberFormat();
-  return COUNT_FORMAT.format(n);
-}
 
 /**
  * The wall-clock time the lock happened, in the player's own locale, from one formatter.
@@ -644,7 +640,7 @@ export function UpDownCard(props: UpDownCardProps) {
     // has no direction, the three-state rule this card taught the charts.
     move: movePct == null ? null : `${movePct > 0 ? "+" : movePct < 0 ? "−" : ""}${Math.abs(movePct).toFixed(2)}%`,
   }), [livePrice, openPrice, closePrice, upTarget, downTarget, decimals, movePct]);
-  const playersText = useMemo(() => formatCount(players), [players]);
+  const playersText = useMemo(() => formatNumber(players), [players]);
   /* 2026-09-14 — East Africa Time with the zone stated, the same `fmtEAT` the round page and the
      chart use. A private UTC helper printed "quoted 22:54:00" for a 01:54 EAT quote, so a live
      round read as three hours stale to a player in Tanzania. */

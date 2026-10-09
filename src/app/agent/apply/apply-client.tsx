@@ -33,7 +33,7 @@ import { OperationResultModal } from "@/components/markets/operation-result-moda
 import { KycGatePanel } from "@/components/kyc/kyc-gate-panel";
 import type { KycGateState } from "@/lib/kyc-gate-state";
 import { useT } from "@/lib/i18n";
-import { fill, formatTzs } from "@/lib/utils";
+import { fill, formatNumber, formatTzs } from "@/lib/utils";
 import { refusalVariant } from "@/lib/failure-reasons";
 import { fileToDataUrl } from "@/lib/client/kyc-image";
 import { focusFirstInvalid } from "@/lib/client/focus-first-invalid";
@@ -185,7 +185,7 @@ export function ApplyClient({ app, documents, missing, kycGate, fee, lipa, walle
       {/* Title row + the persistent counter */}
       <div className="flex items-center justify-between gap-3">
         <p className="font-display text-title-md font-bold leading-none">{t.agent.applyTitle}</p>
-        <Chip variant={attached === REQUIRED.length ? "success" : "pending"}>{fill(t.agent.attachedCount, { n: String(attached), total: String(REQUIRED.length) })}</Chip>
+        <Chip variant={attached === REQUIRED.length ? "success" : "pending"}>{fill(t.agent.attachedCount, { n: formatNumber(attached), total: formatNumber(REQUIRED.length) })}</Chip>
       </div>
 
       {infoRequired && app.infoRequestNote && (

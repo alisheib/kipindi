@@ -2,6 +2,7 @@ import { Suspense } from "react";
 import { redirect } from "next/navigation";
 import { I } from "@/components/ui/glyphs";
 import { BackLink } from "@/components/ui/back-link";
+import { formatNumber } from "@/lib/utils";
 import { PageHeader } from "@/components/ui/page-header";
 import { PageHero } from "@/components/ui/page-hero";
 import { BrandTopo } from "@/components/brand-topo";
@@ -267,7 +268,7 @@ export default async function AccountPage({ searchParams }: { searchParams?: Pro
           <I.activity s={15} />
           <h2 className="font-display text-[15px] font-semibold text-text">{t.profile.myAccountSub.split("·")[0].trim() /* "Activity" */}</h2>
           <span className="ml-auto font-mono text-[11px] text-text-subtle tabular-nums">
-            {activity.length} {t.common.events}
+            {formatNumber(activity.length)} {t.common.events}
           </span>
         </div>
 
@@ -315,8 +316,8 @@ export default async function AccountPage({ searchParams }: { searchParams?: Pro
         {own.truncated && (
           <p className="text-body-sm text-text-subtle">
             {t.profile.activityCapped
-              .replace("{n}", String(allActivity.length))
-              .replace("{total}", String(own.total))}
+              .replace("{n}", formatNumber(allActivity.length))
+              .replace("{total}", formatNumber(own.total))}
           </p>
         )}
 
