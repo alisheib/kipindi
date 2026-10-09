@@ -1,21 +1,26 @@
 /**
- * test:contacts-import · section "phone-cell" — S15 · C3b · G3: the ONE phone-cell rule (`src/lib/contacts/phone-cell.ts`)
- * and the server's three callers of it — staging's key, the check's sentence, the commit's raw text.   (S15, 2026-10-09)
+ * test:contacts-import · section "phone-cell" — S15 · C3b · G3 and the review round C3b-fix (D1, D3, D4, D10): the ONE
+ * phone-cell rule (`src/lib/contacts/phone-cell.ts`) and the server's three callers of it — staging's key, the check's
+ * sentence, the commit's raw text.                                                                  (S15, 2026-10-09)
  *
  * ⭐ EXECUTED, NOT READ. Every separator a person puts between two numbers in one phone cell is fed to the real rule and
- * must yield the FIRST number as the cell's mobile; a foreign, landline, short or withdrawn number written first must be
- * passed over for the Tanzanian one after it; a cell of only foreign or landline numbers must yield none, with its first
- * number's own sentence (never "keep one"); two numbers kept apart by spaces alone must never be joined into one; and a
- * cell that IS one number — whatever joins its digit groups, Excel's thousands commas included — must stay that number.
- * Then the server: `stagedRowFrom` stages the first mobile's key while `rawPhone` keeps the whole cell, the check's
- * classifier words a no-mobile cell through the rule, and a REAL check, start and commit step on the memory twin
- * (`scripts/lib/contacts-import-world.mts`) creates ONE contact whose raw text is the number it was read from — the
- * other person's number never rides into it.
+ * must cut the cell in two; ⛔ D3 — a cell holding two DISTINCT mobiles yields NONE, its sentence the several-mobiles one,
+ * while a cell holding exactly ONE distinct mobile among other numbers (a Kenyan, a landline, a number cut short, a
+ * withdrawn range, labels, the same mobile again) yields it whichever comes first; a cell of only foreign or landline
+ * numbers yields none, with its first number's own sentence (never "keep one"); two numbers kept apart by spaces alone are
+ * never joined, and every key a cell yields is the key of the whole cell or of one of its parts (D10); a cell that IS one
+ * number — whatever joins its digit groups, Excel's thousands commas included — stays that number; ⛔ D4 — a bare
+ * nine-digit part is never a mobile ("+254, 712 345 678" never becomes a stranger's +255 number) while a WHOLE cell of
+ * bare nine digits keeps its reading. Then the server: `stagedRowFrom` stages a one-mobile cell's key while `rawPhone`
+ * keeps the whole cell, a two-mobile cell stages none, the check's classifier words both through the rule, and a REAL
+ * check, start and commit step on the memory twin (`scripts/lib/contacts-import-world.mts`) creates ONE contact whose raw
+ * text is the number it was read from — nobody else's number rides into it, and a two-mobile row creates nobody.
  * ⛔ C3b-fix · D1 — THE COST: every function is timed on a 200,000-space cell (asked in growing runs, so a quadratic plant
  * is caught at 40,000 instead of holding the run for minutes) and on Excel's longest cell of "a a a …" (H9), and a cell
  * longer than the phone field's limit is never split (H10, at the limit and one character past it).
  * ⭐ PROVED BY MUTATION. Every label is named by a red plant — a replacement bundle built in memory around the shipped
- * function — and the runner requires each plant's OWN label among the reds.
+ * function, or the rule rebuilt from the shipped cut with ONE defect — and the runner requires each plant's OWN label
+ * among the reds.
  * ⛔ IN-PROCESS: this module reads two files and makes no file-changing call; the end-to-end case runs on an emptied memory
  * twin and puts every map back. ⛔ Every control character is built from its code.
  */
@@ -26,9 +31,11 @@ import { REPO_ROOT } from "../lib/tracked-files.mts";
 import type { ImportSection, RedPlant, SectionContext } from "../contacts-import.test.mts";
 import type { ImportCommitDeps } from "../../src/lib/server/contacts/import-commit.ts";
 import type { StoredContactImportRow, StoredMarketingContact } from "../../src/lib/server/store.ts";
-import { firstMobileIn, firstMobileIndex, phoneCellParts, phoneCellRefusal } from "../../src/lib/contacts/phone-cell.ts";
+import {
+  SEVERAL_MOBILES_SENTENCE, firstMobileIn, firstMobileIndex, mobilesIn, phoneCellParts, phoneCellRefusal, type CellMobile,
+} from "../../src/lib/contacts/phone-cell.ts";
 import { CONTACT_LIMITS } from "../../src/lib/contacts/contact-fields.ts";
-import { parseTzNumber } from "../../src/lib/tz-msisdn.ts";
+import { parseTzNumber, readAsciiDigits } from "../../src/lib/tz-msisdn.ts";
 import { adjustTally } from "../../src/lib/contacts/import-decide.ts";
 import { NOW, OFFICER, captureAudit, checkModule, commitModule, inFreshStore, mem, stageFile, staging } from "../lib/contacts-import-world.mts";
 
@@ -46,6 +53,7 @@ const RUN = { id: "ci_abcdefghijklmnopqrst", mapping: { phone: 0, name: 1 } };
 /* ══ THE BUNDLE UNDER TEST ══════════════════════════════════════════════════════════════════════ */
 
 export type PhoneCellImpl = {
+  readonly mobilesIn: typeof mobilesIn;
   readonly firstMobileIn: typeof firstMobileIn;
   readonly phoneCellParts: typeof phoneCellParts;
   readonly firstMobileIndex: typeof firstMobileIndex;
@@ -78,6 +86,7 @@ function real(): PhoneCellImpl {
   if (cached) return cached;
   const raw = readFileSync(join(REPO_ROOT, SOURCE_PATH), "utf8");
   cached = {
+    mobilesIn,
     firstMobileIn,
     phoneCellParts,
     firstMobileIndex,
@@ -94,7 +103,7 @@ function real(): PhoneCellImpl {
 
 /* ══ THE FIXTURES — every number goes through the real parser in the assertions ═════════════════ */
 
-/** H1 · each separator between the SAME two numbers: the first, 0757 300 001, is the cell's mobile. */
+/** H1 · each separator between two DISTINCT mobiles: 0757 300 001 and 0757 300 002 — two people's worth. */
 const SEPARATED: ReadonlyArray<readonly [string, string]> = [
   ["Google's ' ::: '", "+255 757 300 001 ::: +255 757 300 002"],
   ["a solidus", "0757 300 001 / 0757 300 002"],
@@ -110,15 +119,18 @@ const SEPARATED: ReadonlyArray<readonly [string, string]> = [
   ["the Swahili 'na' (and)", "0757 300 001 na 0757 300 002"],
   ["'and'", "0757 300 001 and 0757 300 002"],
 ];
-const FIRST_KEY = "255757300001";
+const TWO_KEYS = ["255757300001", "255757300002"];
 
-/** H2 · a number that is not a Tanzanian mobile, written FIRST, then the mobile: the mobile is the key. */
-const PASSED_OVER: ReadonlyArray<readonly [string, string, string]> = [
+/** H2 · exactly ONE distinct mobile among other numbers — before them or after them — and the SAME mobile written twice. */
+const ONE_AMONG: ReadonlyArray<readonly [string, string, string]> = [
   ["a Kenyan number first", "+254 712 345 678 / 0757 300 003", "255757300003"],
   ["a landline first", "022 211 3456; 0757 300 004", "255757300004"],
   ["a number cut short first", "0757 300 05 / 0757 300 006", "255757300006"],
   ["a withdrawn 064 number first", "0642 123 456 / 0757 300 007", "255757300007"],
   ["labels beside the numbers", "Ofisi: 022 211 3456 / Simu: 0757 300 008", "255757300008"],
+  ["the mobile FIRST, a landline after it", "0757 300 017 / 022 211 3456", "255757300017"],
+  ["the same mobile twice, in two spellings", "0757 300 015 / +255 757 300 015", "255757300015"],
+  ["the same mobile twice and a landline", "0757300016, 022 211 3456, 255757300016", "255757300016"],
 ];
 
 /** H3 · no Tanzanian mobile in any part: no number, and the FIRST number's own sentence. */
@@ -129,6 +141,8 @@ const NO_MOBILE: ReadonlyArray<readonly [string, string, string]> = [
 
 /** H4 · two numbers kept apart by spaces alone — never split, never joined. */
 const SPACES_ONLY = ["0757 300 001 0757 300 002", "0757300001 0757300002"];
+/** H4 · (D10) cells only H4 asks about: a mobile written with an extra digit, then a landline — no key may be cut out of it. */
+const CUT_PROBES = ["0757 300 0012 / 022 211 3456", "+255 757 300 0123 ; 022 211 3457"];
 
 /** H5 · one number, however its groups are joined — and two cells with no number. */
 const ONE_NUMBER: ReadonlyArray<readonly [string, string]> = [
@@ -152,49 +166,73 @@ const A_A_A = Array.from({ length: 16_384 }, () => "a").join(" ");
 const AT_LIMIT = "Ofisi: 022 211 3456 / Simu: 0757 300 008";
 const PAST_LIMIT = "Ofisi: 022 211 3456 / Simu:  0757 300 008";
 
+/** H11 · D4 · a bare nine-digit part after a split: the tail of a Kenyan number — never a stranger's +255 number. */
+const BARE_TAILS: ReadonlyArray<readonly [string, string]> = [
+  ["'+254,' then the rest", "+254, 712 345 678"],
+  ["'254/' then the rest", "254/712345678"],
+  ["'+254 /' then the rest", "+254 / 712 345 678"],
+  ["two bare nine-digit numbers", "712345678 / 754345678"],
+];
+
 /* ══ THE LABELS ═════════════════════════════════════════════════════════════════════════════════ */
 
 export const L = {
-  H1: "H1 · ⭐ every separator between two numbers in one phone cell — Google's ' ::: ', a solidus, a semicolon, a comma, a vertical line, an ampersand, a line break (LF and CRLF), 'or' in any case, the Swahili 'au' and 'na', 'and' — yields the FIRST number as the cell's mobile, its text that part, and the cell holds two parts",
-  H2: "H2 · ⭐ the FIRST TANZANIAN MOBILE is taken: a Kenyan, landline, cut-short or withdrawn number written before it — or a label beside it — is passed over for the mobile after it; firstMobileIndex names the first mobile of a list, or -1",
+  H1: "H1 · ⭐ every separator cuts a phone cell in two — Google's ' ::: ', a solidus, a semicolon, a comma, a vertical line, an ampersand, a line break (LF and CRLF), 'or' in any case, the Swahili 'au' and 'na', 'and' — and ⛔ D3: a cell holding two DISTINCT mobiles yields NONE (mobilesIn names both), its sentence the several-mobiles one, never a number",
+  H2: "H2 · ⭐ D3 · a cell holding exactly ONE distinct mobile yields it — a Kenyan, landline, cut-short or withdrawn number or a label written before it or after it, or the same mobile written again in another spelling, never stops it; firstMobileIndex (the list paste's choice) names the first mobile of a list, or -1",
   H3: "H3 · ⛔ a cell of only foreign or only landline numbers yields NO number, and its sentence is its FIRST number's own (parseTzNumber's) — never 'keep one'; a cell of one such number keeps its whole-cell sentence",
-  H4: "H4 · ⛔ NEVER A JOIN — two numbers kept apart by spaces alone are not split and yield nothing, and every key any cell yields is exactly 255 and nine digits",
+  H4: "H4 · ⛔ NEVER A JOIN — two numbers kept apart by spaces alone are not split and yield nothing; and (D10) every key any cell yields is the key of the WHOLE cell or of one of its parts as written — never digits cut out of a number",
   H5: "H5 · a cell that IS one number is that number — spaced, bracketed, dashed, dotted, the trunk zero, the apostrophe guard, Excel's thousands commas — with the whole trimmed cell as its text; an empty cell and a word yield nothing, with parseTzNumber's own sentence",
-  H6: "H6 · ⭐ ONE RULE ON THE SERVER — stagedRowFrom stages a two-number cell with the FIRST mobile's key while rawPhone keeps the whole cell, and the check's classifier reads it decidable; a cell of two foreign numbers, and one of two landlines (whose whole cell would read 'keep one'), stage no key and are invalid with their first number's sentence",
+  H6: "H6 · ⭐ ONE RULE ON THE SERVER — stagedRowFrom stages a cell of one mobile and a landline with the mobile's key while rawPhone keeps the whole cell (decidable); a cell of two distinct mobiles stages NO key and is invalid with the several-mobiles sentence; a cell of two foreign numbers, and one of two landlines (whose whole cell would read 'keep one'), stage no key and are invalid with their first number's sentence",
   H7: "H7 · ⛔ PURE — phone-cell.ts imports ../tz-msisdn and ./contact-fields alone (the phone field's limit read as CONTACT_LIMITS.phone, never a second literal), carries no directive, no backslash and no raw control character but its line ends, and is pinned in client-graph-safe",
-  H8: "H8 · ⭐ END TO END on the memory twin — a two-number cell and a two-foreign cell are checked (1 new · 1 not a mobile, its sentence the first number's), started with KEEP and committed in one step: ONE contact is created on the first number, its raw text the number it was read from, and no book row holds the second number",
+  H8: "H8 · ⭐ END TO END on the memory twin — a mobile-and-landline cell, a two-foreign cell and a two-mobile cell are checked (1 new · 2 not a mobile, with the first foreign number's and the several-mobiles sentences), started with KEEP and committed in one step: ONE contact is created, on the one mobile, its raw text the number it was read from; no book row holds the landline or either of the two mobiles",
   H9: "H9 · ⛔ C3b-fix · D1 — LINEAR AND BOUNDED: every function of phone-cell.ts returns within 50 ms on a cell of 2,000, 40,000 and 200,000 spaces and on Excel's longest cell (32,767 characters) of \"a a a …\" (the cut reading each run of blanks once)",
   H10: "H10 · ⛔ C3b-fix · D1b — a cell longer than the phone field's limit (CONTACT_LIMITS.phone) is NEVER split: one mobile beside a landline in exactly the limit yields the mobile, one character more yields nothing, its sentence the whole cell's — and staging refuses it for its length",
+  H11: "H11 · ⛔ C3b-fix · D4 — a bare nine-digit part is never a mobile: '+254, 712 345 678', '254/712345678', '+254 / 712 345 678' and two bare numbers yield nothing (their sentence the first complete number's, else the whole cell's), a bare part beside a mobile is not a second one — while a WHOLE cell of bare nine digits keeps its reading (Excel drops a number cell's 0)",
 } as const;
 
 /* ══ THE RUN ════════════════════════════════════════════════════════════════════════════════════ */
 
 type Ctx = SectionContext<PhoneCellImpl>;
 const json = (v: unknown): string => JSON.stringify(v);
-const KEY_SHAPE = /^255[67][0-9]{8}$/;
+
+/** ⭐ D10 · the keys a cell may yield: its WHOLE cell's, or one of its parts' as written — read with the SHIPPED cut and
+ *  the parser, never with the bundle under test. */
+function allowedKeys(cell: string): Set<string> {
+  const out = new Set<string>();
+  for (const text of [cell, ...phoneCellParts(cell)]) {
+    const n = parseTzNumber(text);
+    if (n.verdict === "ok" && n.msisdn !== null) out.add(n.msisdn);
+  }
+  return out;
+}
 
 async function run({ impl, ok, log }: Ctx): Promise<void> {
-  const keys: string[] = [];
+  /** Every (cell, key) a cell yielded — H4's population. */
+  const yielded: Array<readonly [string, string]> = [];
   const keyOf = (cell: string): string | null => {
     const found = impl.firstMobileIn(cell);
     const key = found === null ? null : found.number.msisdn;
-    if (key !== null) keys.push(key);
+    if (key !== null) yielded.push([cell, key]);
     return key;
   };
 
-  // ── H1 · every separator ──
+  // ── H1 · every separator; two distinct mobiles yield none ──
   const h1 = SEPARATED.flatMap(([what, cell]) => {
     const key = keyOf(cell);
-    const text = impl.firstMobileIn(cell)?.text ?? "";
     const parts = impl.phoneCellParts(cell);
-    return key === FIRST_KEY && parseTzNumber(text).msisdn === FIRST_KEY && parts.length === 2 ? [] : [`${what}: ${key} from "${text}", ${parts.length} part(s)`];
+    const both = impl.mobilesIn(cell).map((m) => m.number.msisdn);
+    const said = impl.phoneCellRefusal(cell);
+    return key === null && parts.length === 2 && json(both) === json(TWO_KEYS) && said === SEVERAL_MOBILES_SENTENCE
+      ? [] : [`${what}: ${key ?? "none"} · ${parts.length} part(s) · mobiles ${json(both)} · "${said}"`];
   });
-  ok(L.H1, h1.length === 0, h1.join(" | ") || `${SEPARATED.length} separators, each yields ${FIRST_KEY}`);
+  ok(L.H1, h1.length === 0 && /more than one mobile number/.test(SEVERAL_MOBILES_SENTENCE) && !/[0-9]/.test(SEVERAL_MOBILES_SENTENCE),
+    h1.join(" | ") || `${SEPARATED.length} separators: each cuts the cell in two, and two mobiles yield none`);
 
-  // ── H2 · the first Tanzanian mobile ──
-  const h2 = PASSED_OVER.flatMap(([what, cell, want]) => {
+  // ── H2 · exactly one distinct mobile ──
+  const h2 = ONE_AMONG.flatMap(([what, cell, want]) => {
     const key = keyOf(cell);
-    return key === want ? [] : [`${what}: ${key} (want ${want})`];
+    const text = impl.firstMobileIn(cell)?.text ?? "";
+    return key === want && parseTzNumber(text).msisdn === want ? [] : [`${what}: ${key} from "${text}" (want ${want})`];
   });
   const index = [
     impl.firstMobileIndex(["+254 712 345 678", "022 211 3456", "0757 300 003", "0757 300 004"]),
@@ -213,12 +251,6 @@ async function run({ impl, ok, log }: Ctx): Promise<void> {
   if (impl.phoneCellRefusal(single) !== parseTzNumber(single).reason) h3.push("a cell of ONE foreign number lost its whole-cell sentence");
   ok(L.H3, h3.length === 0, h3.join(" | ") || `${NO_MOBILE.length} cells refused with their first number's sentence`);
 
-  // ── H4 · never a join ──
-  const h4 = SPACES_ONLY.flatMap((cell) => {
-    const key = keyOf(cell);
-    return key === null && impl.phoneCellParts(cell).length === 1 ? [] : [`"${cell}" → ${key}, ${impl.phoneCellParts(cell).length} part(s)`];
-  });
-
   // ── H5 · one number stays one ──
   const h5 = ONE_NUMBER.flatMap(([what, cell], i) => {
     const key = keyOf(cell);
@@ -230,26 +262,47 @@ async function run({ impl, ok, log }: Ctx): Promise<void> {
   }
   ok(L.H5, h5.length === 0, h5.join(" | ") || `${ONE_NUMBER.length} spellings of one number, each whole`);
 
-  // H4's second half: every key any cell above yielded is one number's key, never digits taken across a separator.
-  const badKeys = keys.filter((k) => !KEY_SHAPE.test(k));
-  ok(L.H4, h4.length === 0 && badKeys.length === 0 && keys.length >= 20, [...h4, ...badKeys.map((k) => `key ${k}`)].join(" | ") || `${keys.length} key(s), each 255 and nine digits`);
+  // ── H11 · D4 · a bare part is never a mobile ──
+  const h11 = BARE_TAILS.flatMap(([what, cell]) => {
+    const key = keyOf(cell);
+    const said = impl.phoneCellRefusal(cell);
+    const parts = phoneCellParts(cell);
+    const want = /^[+0]/.test(parts[0] ?? "") ? parseTzNumber(parts[0]).reason : parseTzNumber(cell).reason;
+    return key === null && impl.mobilesIn(cell).length === 0 && said === want ? [] : [`${what}: ${key ?? "none"} · "${said}"`];
+  });
+  const beside = keyOf("0757 300 041 / 754 345 678");
+  const wholeBare = [keyOf("712345678"), keyOf("712 345 678")];
+  ok(L.H11, h11.length === 0 && beside === "255757300041" && json(wholeBare) === json(["255712345678", "255712345678"]),
+    [...h11, `a bare part beside a mobile → ${beside}`, `whole bare cells → ${json(wholeBare)}`].join(" | "));
+
+  // ── H4 · never a join, never a cut ──
+  const h4 = SPACES_ONLY.flatMap((cell) => {
+    const key = keyOf(cell);
+    return key === null && impl.phoneCellParts(cell).length === 1 ? [] : [`"${cell}" → ${key}, ${impl.phoneCellParts(cell).length} part(s)`];
+  });
+  for (const cell of CUT_PROBES) keyOf(cell);
+  const cut = yielded.filter(([cell, key]) => !allowedKeys(cell).has(key));
+  ok(L.H4, h4.length === 0 && cut.length === 0 && yielded.length >= 16,
+    [...h4, ...cut.map(([cell, key]) => `"${cell}" → ${key}, the key of neither the cell nor a part`)].join(" | ")
+      || `${yielded.length} key(s) yielded, each the whole cell's or a part's`);
 
   // ── H6 · the server's two readers ──
-  const two = impl.stagedRowFrom({ line: 2, cells: ["0757 300 001 / 0757 300 002", "Upendo Swai"] }, 1, RUN, AT);
-  const none = impl.stagedRowFrom({ line: 3, cells: ["+254 712 345 678 / +256 772 123 456", "Wanjiru Kamau"] }, 2, RUN, AT);
+  const one = impl.stagedRowFrom({ line: 2, cells: ["0757 300 001 / 022 211 3456", "Upendo Swai"] }, 1, RUN, AT);
+  const two = impl.stagedRowFrom({ line: 3, cells: ["0757 300 001 / 0757 300 002", "Neema Kimaro"] }, 2, RUN, AT);
+  const none = impl.stagedRowFrom({ line: 4, cells: ["+254 712 345 678 / +256 772 123 456", "Wanjiru Kamau"] }, 3, RUN, AT);
   // ⛔ Two landlines: their whole cell is nineteen digits, which parseTzNumber words "Keep one" — so this row, unlike the
   // two foreign numbers (whose whole cell and first number share the "+254…" sentence), tells the rule's sentence apart.
-  const lines = impl.stagedRowFrom({ line: 4, cells: ["022 211 3456 / 022 211 3457", "Ofisi Kuu"] }, 3, RUN, AT);
-  const twoClass = two === null ? null : impl.classify(two, () => false);
-  const noneClass = none === null ? null : impl.classify(none, () => false);
-  const linesClass = lines === null ? null : impl.classify(lines, () => false);
-  const sentenceOf = (c: typeof noneClass): string => (c?.kind === "invalid" ? c.sentence : "");
-  ok(L.H6, two !== null && two.msisdn === FIRST_KEY && two.rawPhone === "0757 300 001 / 0757 300 002" && twoClass?.kind === "decidable"
-    && none !== null && none.msisdn === null && noneClass?.kind === "invalid" && noneClass.sentence === parseTzNumber("+254 712 345 678").reason
-    && lines !== null && lines.msisdn === null && linesClass?.kind === "invalid" && linesClass.sentence === parseTzNumber("022 211 3456").reason
-    && !linesClass.sentence.includes("Keep one"),
-    `two numbers → ${two?.msisdn ?? "no key"} (${twoClass?.kind ?? "-"}) · two foreign → ${none?.msisdn ?? "no key"} (${noneClass?.kind ?? "-"}: ${sentenceOf(noneClass)})`
-    + ` · two landlines → ${lines?.msisdn ?? "no key"} (${linesClass?.kind ?? "-"}: ${sentenceOf(linesClass)})`);
+  const lines = impl.stagedRowFrom({ line: 5, cells: ["022 211 3456 / 022 211 3457", "Ofisi Kuu"] }, 4, RUN, AT);
+  const classOf = (row: StoredContactImportRow | null) => (row === null ? null : impl.classify(row, () => false));
+  const [oneClass, twoClass, noneClass, linesClass] = [one, two, none, lines].map(classOf);
+  const sentenceOf = (c: ReturnType<typeof classOf>): string => (c?.kind === "invalid" ? c.sentence : "");
+  ok(L.H6, one !== null && one.msisdn === "255757300001" && one.rawPhone === "0757 300 001 / 022 211 3456" && oneClass?.kind === "decidable"
+    && two !== null && two.msisdn === null && two.rawPhone === "0757 300 001 / 0757 300 002" && sentenceOf(twoClass) === SEVERAL_MOBILES_SENTENCE
+    && none !== null && none.msisdn === null && sentenceOf(noneClass) === parseTzNumber("+254 712 345 678").reason
+    && lines !== null && lines.msisdn === null && sentenceOf(linesClass) === parseTzNumber("022 211 3456").reason
+    && !sentenceOf(linesClass).includes("Keep one"),
+    `one mobile → ${one?.msisdn ?? "no key"} (${oneClass?.kind ?? "-"}) · two mobiles → ${two?.msisdn ?? "no key"} (${sentenceOf(twoClass)})`
+    + ` · two foreign → ${none?.msisdn ?? "no key"} (${sentenceOf(noneClass)}) · two landlines → ${lines?.msisdn ?? "no key"} (${sentenceOf(linesClass)})`);
 
   // ── H7 · the source ──
   const specs = [...impl.source.matchAll(/^\s*import\b[^;]*?from\s*["']([^"']+)["']/gm)].map((m) => m[1]);
@@ -267,6 +320,7 @@ async function run({ impl, ok, log }: Ctx): Promise<void> {
   // ── H9 · D1 · linear and bounded ──
   const fns: ReadonlyArray<readonly [string, (cell: string) => unknown]> = [
     ["phoneCellParts", (c) => impl.phoneCellParts(c)],
+    ["mobilesIn", (c) => impl.mobilesIn(c)],
     ["firstMobileIn", (c) => impl.firstMobileIn(c)],
     ["phoneCellRefusal", (c) => impl.phoneCellRefusal(c)],
     ["firstMobileIndex", (c) => impl.firstMobileIndex([c])],
@@ -301,19 +355,21 @@ async function run({ impl, ok, log }: Ctx): Promise<void> {
   // ── H10 · D1b · never split past the limit ──
   const atLimit = impl.firstMobileIn(AT_LIMIT);
   const pastLimit = impl.firstMobileIn(PAST_LIMIT);
-  const pastStaged = impl.stagedRowFrom({ line: 5, cells: [PAST_LIMIT, "Ofisi Kuu"] }, 4, RUN, AT);
-  const pastClass = pastStaged === null ? null : impl.classify(pastStaged, () => false);
+  const pastStaged = impl.stagedRowFrom({ line: 6, cells: [PAST_LIMIT, "Ofisi Kuu"] }, 5, RUN, AT);
+  const pastClass = classOf(pastStaged);
   ok(L.H10, AT_LIMIT.length === CONTACT_LIMITS.phone && PAST_LIMIT.length === CONTACT_LIMITS.phone + 1
-    && atLimit?.number.msisdn === "255757300008" && pastLimit === null && impl.phoneCellRefusal(PAST_LIMIT) === parseTzNumber(PAST_LIMIT).reason
+    && atLimit?.number.msisdn === "255757300008" && pastLimit === null && impl.mobilesIn(PAST_LIMIT).length === 0
+    && impl.phoneCellRefusal(PAST_LIMIT) === parseTzNumber(PAST_LIMIT).reason
     && pastStaged !== null && pastStaged.msisdn === null && pastClass?.kind === "invalid" && pastClass.sentence.includes(`longer than ${CONTACT_LIMITS.phone}`),
-    `at the limit → ${atLimit?.number.msisdn ?? "none"} · past it → ${pastLimit?.number.msisdn ?? "none"} · staged ${pastStaged?.msisdn ?? "no key"} (${pastClass?.kind === "invalid" ? pastClass.sentence : pastClass?.kind ?? "-"})`);
+    `at the limit → ${atLimit?.number.msisdn ?? "none"} · past it → ${pastLimit?.number.msisdn ?? "none"} · staged ${pastStaged?.msisdn ?? "no key"} (${sentenceOf(pastClass)})`);
 
   // ── H8 · end to end: check, start, one commit step ──
   await inFreshStore(async () => {
     const deps = impl.commitDeps;
     const runId = await stageFile(OFFICER, [
-      { line: 2, cells: ["0757 300 021 / 0757 300 022", "Upendo Swai", "", "", ""] },
+      { line: 2, cells: ["0757 300 021 / 022 211 3456", "Upendo Swai", "", "", ""] },
       { line: 3, cells: ["+254 712 345 678 / +256 772 123 456", "Wanjiru Kamau", "", "", ""] },
+      { line: 4, cells: ["0757 300 031 / 0757 300 032", "Neema Kimaro", "", "", ""] },
     ]);
     const checked = await checkContactImport(OFFICER, runId, deps);
     if (!checked.ok) {
@@ -330,12 +386,14 @@ async function run({ impl, ok, log }: Ctx): Promise<void> {
     const book = [...mem().marketingContacts.values()] as StoredMarketingContact[];
     const created = book.find((c) => c.msisdn === "255757300021");
     const bookText = json(book);
+    const sentences = p.invalid.rows.map((r) => `${r.line}:${r.sentence}`);
     log(`H8: counts ${json(p.counts)} · start ${start.ok ? "ok" : start.reason} · step ${step === null ? "-" : step.ok ? step.kind : step.reason} · book ${book.length}`);
-    ok(L.H8, json(p.counts) === json({ new: 1, inBook: 0, repeated: 0, invalid: 1, unreadable: 0 })
-      && p.invalid.rows.length === 1 && p.invalid.rows[0].line === 3 && p.invalid.rows[0].sentence === parseTzNumber("+254 712 345 678").reason
+    ok(L.H8, json(p.counts) === json({ new: 1, inBook: 0, repeated: 0, invalid: 2, unreadable: 0 })
+      && json(sentences) === json([`3:${parseTzNumber("+254 712 345 678").reason}`, `4:${SEVERAL_MOBILES_SENTENCE}`])
       && start.ok && step !== null && step.ok && step.kind === "done" && book.length === 1 && created !== undefined
-      && created.rawInput === "0757 300 021" && !book.some((c) => c.msisdn === "255757300022") && !bookText.includes("0757 300 022"),
-      `created ${created ? `${created.msisdn} "${created.rawInput}"` : "none"} · book ${book.map((c) => c.msisdn).join(",")}`);
+      && created.rawInput === "0757 300 021" && !bookText.includes("022 211 3456")
+      && !book.some((c) => c.msisdn === "255757300031" || c.msisdn === "255757300032") && !bookText.includes("0757 300 03"),
+      `created ${created ? `${created.msisdn} "${created.rawInput}"` : "none"} · book ${book.map((c) => c.msisdn).join(",")} · ${json(sentences)}`);
   });
 }
 
@@ -393,35 +451,90 @@ function c3bRescanParts(cell: string): string[] {
   return pieces.map((p) => p.trim()).filter((p) => ANY_DIGIT.test(p));
 }
 
-/** ⛔ D1b's defect, for the red plant: C3b's choice, which splits a cell however long it is. */
-const unguardedFirstMobile: typeof firstMobileIn = (cell) => {
-  const whole = parseTzNumber(cell);
-  if (whole.verdict === "ok") return { number: whole, text: String(cell).trim() };
-  const parts = phoneCellParts(cell);
-  const at = firstMobileIndex(parts);
-  return at < 0 ? null : { number: parseTzNumber(parts[at]), text: parts[at] };
+/** How one plant bends the rule rebuilt below. */
+type RuleTwist = {
+  /** D3 undone: the FIRST of several distinct mobiles is taken (C3b's rule). */
+  readonly firstOfMany?: boolean;
+  /** The same mobile written twice counted as two. */
+  readonly noDedupe?: boolean;
+  /** D4 undone: a bare nine-digit part read as a mobile. */
+  readonly bare?: boolean;
+  /** The cell split BEFORE the whole is asked. */
+  readonly splitFirst?: boolean;
+  /** D1b undone: a cell longer than the phone field's limit split all the same. */
+  readonly noLimit?: boolean;
+  /** A part with an extra digit read by its first ten digits — a number made to fit after a split. */
+  readonly cutToTen?: boolean;
 };
 
-/** The plants' own chooser over a cell's parts: `pick` gets the parsed parts that read as mobiles, in order. */
-const choosing = (pick: (mobiles: ReadonlyArray<{ number: ReturnType<typeof parseTzNumber>; text: string }>) => number): typeof firstMobileIn =>
-  (cell) => {
-    const whole = parseTzNumber(cell);
-    if (whole.verdict === "ok") return { number: whole, text: String(cell).trim() };
-    const mobiles = phoneCellParts(cell).map((text) => ({ number: parseTzNumber(text), text })).filter((m) => m.number.verdict === "ok");
-    const at = mobiles.length === 0 ? -1 : pick(mobiles);
-    return at < 0 ? null : mobiles[at];
+/**
+ * ⭐ The rule rebuilt from the SHIPPED cut (`phoneCellParts`) and parser, with one twist — what each plant below plants.
+ * Untwisted it is the shipped rule: the whole cell first, the limit, the complete parts (D4), the distinct mobiles (D3).
+ */
+function rebuiltRule(t: RuleTwist): Pick<PhoneCellImpl, "mobilesIn" | "firstMobileIn" | "phoneCellRefusal"> {
+  const complete = (part: string): boolean => {
+    const text = readAsciiDigits(part);
+    let digits = "";
+    for (let i = 0; i < text.length && digits.length < 3; i++) {
+      const c = text.charCodeAt(i);
+      if (c >= 48 && c <= 57) digits += text.charAt(i);
+      else if (c === 43 && digits === "") return true;
+    }
+    return digits.charAt(0) === "0" || digits === "255";
   };
+  const tooLong = (text: string): boolean => t.noLimit !== true && Array.from(text.trim()).length > CONTACT_LIMITS.phone;
+  const mobiles = (cell: string): CellMobile[] => {
+    const text = String(cell ?? "");
+    const whole = parseTzNumber(text);
+    if (t.splitFirst !== true && whole.verdict === "ok") return [{ number: whole, text: text.trim() }];
+    if (tooLong(text)) return [];
+    const found: CellMobile[] = [];
+    const parts = phoneCellParts(text);
+    for (const part of parts) {
+      if (t.bare !== true && !complete(part)) continue;
+      let number = parseTzNumber(part);
+      if (t.cutToTen === true && parts.length >= 2 && number.verdict === "too_long") {
+        number = parseTzNumber(readAsciiDigits(part).split("").filter((ch) => ch >= "0" && ch <= "9").join("").slice(0, 10));
+      }
+      if (number.verdict !== "ok" || number.msisdn === null) continue;
+      if (t.noDedupe !== true && found.some((m) => m.number.msisdn === number.msisdn)) continue;
+      found.push({ number, text: part });
+    }
+    return found;
+  };
+  const first = (cell: string): CellMobile | null => {
+    const found = mobiles(cell);
+    if (t.firstOfMany === true) return found[0] ?? null;
+    return found.length === 1 ? found[0] : null;
+  };
+  const refusal = (cell: string): string => {
+    const text = String(cell ?? "");
+    const whole = parseTzNumber(text);
+    if (whole.verdict === "ok" || tooLong(text)) return whole.reason;
+    const found = mobiles(text);
+    if (found.length >= 2) return SEVERAL_MOBILES_SENTENCE;
+    const parts = phoneCellParts(text);
+    if (found.length === 0 && parts.length >= 2 && complete(parts[0])) return parseTzNumber(parts[0]).reason;
+    return whole.reason;
+  };
+  return { mobilesIn: mobiles, firstMobileIn: first, phoneCellRefusal: refusal };
+}
 
 const PLANTS: readonly RedPlant<PhoneCellImpl>[] = [
   {
-    name: "C3b G3 undone — only a WHOLE cell is a number: a two-number cell yields nothing",
+    name: "C3b-fix D3 undone — C3b's rule: the FIRST of two distinct mobiles is taken (another person's number may be the one left out)",
     expect: L.H1,
-    impl: () => ({ ...real(), firstMobileIn: (cell) => { const n = parseTzNumber(cell); return n.verdict === "ok" ? { number: n, text: String(cell).trim() } : null; } }),
+    impl: () => ({ ...real(), ...rebuiltRule({ firstOfMany: true }) }),
   },
   {
-    name: "the LAST mobile of the cell is taken",
+    name: "the separators cut nothing — a two-number cell is one part",
     expect: L.H1,
-    impl: () => ({ ...real(), firstMobileIn: choosing((mobiles) => mobiles.length - 1) }),
+    impl: () => ({ ...real(), phoneCellParts: (cell) => { const t = String(cell).trim(); return t === "" ? [] : [t]; } }),
+  },
+  {
+    name: "two distinct mobiles refused with the whole cell's 'Keep one' — the several-mobiles sentence never said",
+    expect: L.H1,
+    impl: () => ({ ...real(), phoneCellRefusal: (cell) => (mobilesIn(cell).length >= 2 ? parseTzNumber(cell).reason : phoneCellRefusal(cell)) }),
   },
   {
     name: "the first PART is the number, whatever it is — a foreign number written first ends the reading",
@@ -438,9 +551,14 @@ const PLANTS: readonly RedPlant<PhoneCellImpl>[] = [
     }),
   },
   {
+    name: "the same mobile written twice counted as two — the person refused for holding their own number twice",
+    expect: L.H2,
+    impl: () => ({ ...real(), ...rebuiltRule({ noDedupe: true }) }),
+  },
+  {
     name: "the refusal keeps the whole cell's 'keep one' for a cell with no mobile in it",
     expect: L.H3,
-    impl: () => ({ ...real(), phoneCellRefusal: (cell) => parseTzNumber(cell).reason }),
+    impl: () => ({ ...real(), phoneCellRefusal: (cell) => (mobilesIn(cell).length >= 2 ? SEVERAL_MOBILES_SENTENCE : parseTzNumber(cell).reason) }),
   },
   {
     name: "two numbers kept apart by spaces read by their first ten digits — a number made to fit",
@@ -457,19 +575,17 @@ const PLANTS: readonly RedPlant<PhoneCellImpl>[] = [
     }),
   },
   {
-    name: "the cell split BEFORE the whole is asked — Excel's thousands commas cut one number into four",
-    expect: L.H5,
-    impl: () => ({
-      ...real(),
-      firstMobileIn: (cell) => {
-        const parts = phoneCellParts(cell);
-        const at = firstMobileIndex(parts);
-        return at < 0 ? null : { number: parseTzNumber(parts[at]), text: parts[at] };
-      },
-    }),
+    name: "C3b-fix D10 · a part with an extra digit read by its first ten digits — a key cut out of a number after a split",
+    expect: L.H4,
+    impl: () => ({ ...real(), ...rebuiltRule({ cutToTen: true }) }),
   },
   {
-    name: "staging keeps the whole-cell key — a two-number row staged with no key",
+    name: "the cell split BEFORE the whole is asked — Excel's thousands commas cut one number into four",
+    expect: L.H5,
+    impl: () => ({ ...real(), ...rebuiltRule({ splitFirst: true }) }),
+  },
+  {
+    name: "staging keeps the whole-cell key — a cell of one mobile and a landline staged with no key",
     expect: L.H6,
     impl: () => ({
       ...real(),
@@ -482,7 +598,7 @@ const PLANTS: readonly RedPlant<PhoneCellImpl>[] = [
     }),
   },
   {
-    name: "the check words a no-mobile cell by the whole cell — 'keep one' for two landlines",
+    name: "the check words a no-mobile cell by the whole cell — 'keep one' for two mobiles and for two landlines",
     expect: L.H6,
     impl: () => ({
       ...real(),
@@ -498,17 +614,7 @@ const PLANTS: readonly RedPlant<PhoneCellImpl>[] = [
     impl: () => ({ ...real(), source: `import { db } from "@/lib/server/store";${LF}${real().source}` }),
   },
   {
-    name: "C3b-fix D1a undone — C3b's cut restored: the word test rescans a run of blanks from every blank in it",
-    expect: L.H9,
-    impl: () => ({ ...real(), phoneCellParts: c3bRescanParts }),
-  },
-  {
-    name: "C3b-fix D1b undone — a cell longer than the phone field's limit is split all the same",
-    expect: L.H10,
-    impl: () => ({ ...real(), firstMobileIn: unguardedFirstMobile }),
-  },
-  {
-    name: "the new contact keeps the WHOLE staged cell as its raw text — the other person's number rides into it",
+    name: "the new contact keeps the WHOLE staged cell as its raw text — the landline beside the mobile rides into it",
     expect: L.H8,
     impl: () => ({
       ...real(),
@@ -521,6 +627,21 @@ const PLANTS: readonly RedPlant<PhoneCellImpl>[] = [
         },
       },
     }),
+  },
+  {
+    name: "C3b-fix D1a undone — C3b's cut restored: the word test rescans a run of blanks from every blank in it",
+    expect: L.H9,
+    impl: () => ({ ...real(), phoneCellParts: c3bRescanParts }),
+  },
+  {
+    name: "C3b-fix D1b undone — a cell longer than the phone field's limit is split all the same",
+    expect: L.H10,
+    impl: () => ({ ...real(), ...rebuiltRule({ noLimit: true }) }),
+  },
+  {
+    name: "C3b-fix D4 undone — a bare nine-digit part read as a mobile: '+254, 712 345 678' becomes a stranger's +255 number",
+    expect: L.H11,
+    impl: () => ({ ...real(), ...rebuiltRule({ bare: true }) }),
   },
 ];
 

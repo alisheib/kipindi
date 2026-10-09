@@ -29,7 +29,7 @@ import { ENTRANCE, MAPPING } from "./import-copy";
 import { ActionsRow, ButtonText, ImportAlert, Parts, SectionHeading, type ImportAlertState } from "./import-parts";
 
 /** What the officer settled on: the mapping, the header row it was made against, how many rows are column names, and
- *  (C3b · G4) the file AS THE READING STAGES IT — the file itself, or with its one first-mobile column added. */
+ *  (C3b · G4) the file AS THE READING STAGES IT — the file itself, or with its one added phone column. */
 export type MappingChoice = {
   readonly mapping: ColumnMapping;
   readonly headers: string[];
@@ -71,7 +71,7 @@ export function ImportMappingPanel({
   const [mapping, setMapping] = useState<ColumnMapping>(initial.mapping);
   const [open, setOpen] = useState<number | null>(null);
 
-  // ⭐ C3b · G4 · the file AS THIS READING STAGES IT (a first-mobile column may be added): its samples, its counts, and the
+  // ⭐ C3b · G4 · the file AS THIS READING STAGES IT (a phone column may be added): its samples, its counts, and the
   // rows Next stages. A new reading is always made from the file as read (`source.file`), never from this one.
   const file = reading.file;
   const headerRows = reading.headerRows;

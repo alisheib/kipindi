@@ -57,7 +57,6 @@ import {
 } from "@/lib/contacts/import-flow";
 import { isDeploySkewError, runCommit, runUpload, type BusyState } from "@/lib/contacts/import-loop";
 import {
-  extraNumbersOf,
   isListPaste,
   mappingFor,
   parsePastedText,
@@ -228,7 +227,7 @@ export function ImportContactsButton() {
 /* ═══ THE DIALOG ═══════════════════════════════════════════════════════════════════════════════════ */
 
 /** A file read and ready for its columns: the parsed shape, its digest and name, and S15-4's count — the reader's for a
- *  vCard's cards and a list paste's lines; for any other file it is counted from the columns chosen (C3b, `openRun`). */
+ *  vCard's cards and a list paste's lines, and none for any other file (C3b-fix · D3: such a file leaves no mobile out). */
 type Ready = {
   readonly file: ParsedContactsFile;
   readonly digest: string;
@@ -534,7 +533,7 @@ function ImportDialog({ open, onClose }: { open: boolean; onClose: () => void })
       const reading = headerRows === auto.headerRows
         ? auto
         : mappingFor(ready.file, { list: ready.list, firstRow: headerRows === 1 ? "header" : "contact" });
-      // ⭐ C3b · G4 · the rows come from the file AS THE READING STAGES IT — its first-mobile column included, as before.
+      // ⭐ C3b · G4 · the rows come from the file AS THE READING STAGES IT — its added phone column included, as before.
       const rows = stageRowsOf(reading.file, resume.mapping, headerRows);
       const figures = stageFigures(rows);
       if (figures.totalRows !== resume.totalRows || figures.unreadable !== resume.unreadable) continue;
@@ -583,14 +582,9 @@ function ImportDialog({ open, onClose }: { open: boolean; onClose: () => void })
       return;
     }
     staging.current = { digest: ready.digest, rows };
-    // ⭐ S15-4 · C3b · a vCard's cards and a list paste's lines were counted by their readers; any other file's rows are
-    // counted from the columns chosen — a second number in the phone cell (G3), or in another phone column (G4).
-    const counted = ready.list || ready.file.format === "vcard";
-    extra.current = {
-      runId: r.answer.view.id,
-      count: counted ? ready.extraNumbers : extraNumbersOf(choice),
-      unit: counted ? ready.extraUnit : "row",
-    };
+    // ⭐ S15-4 · a vCard's cards and a list paste's lines are counted by their readers. ⛔ C3b-fix · D3: a file's rows are
+    // never counted — a row holding two or more mobiles is refused with its sentence, so no mobile is left out silently.
+    extra.current = { runId: r.answer.view.id, count: ready.extraNumbers, unit: ready.extraUnit };
     await upload(r.answer.view);
   };
 

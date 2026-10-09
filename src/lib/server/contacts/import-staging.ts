@@ -10,9 +10,10 @@
  * The pre-flight (U30) and the commit (U32) read the staged rows; ⛔ this module writes no contact.
  *
  * ⛔ THE SERVER DERIVES, THE BROWSER ONLY POSTS. Every record is drafted HERE, from its cells, by U28's `draftContactRow`
- * with the run's STORED mapping, and its key comes from the drafted phone through `firstMobileIn` (C3b · G3: the whole
- * cell when `parseTzNumber` reads it as one number, else the FIRST Tanzanian mobile among the numbers a cell holds —
- * `src/lib/contacts/phone-cell.ts`, the one rule) — a posted key, verdict or outcome is never read (`stagedRowFrom`
+ * with the run's STORED mapping, and its key comes from the drafted phone through `firstMobileIn` (C3b · G3 and the
+ * review round's D3/D4: the whole cell when `parseTzNumber` reads it as one number, else the ONE distinct Tanzanian
+ * mobile among the complete numbers a cell holds — none when it holds two or more — `src/lib/contacts/phone-cell.ts`,
+ * the one rule) — a posted key, verdict or outcome is never read (`stagedRowFrom`
  * builds a new row from named keys alone). A field over its limit is REPORTED,
  * never clipped (X20): the row's `problems` name the field and U30 counts the row invalid. Each record the reader could
  * not read is staged too, with its one sentence (X19), so a record is never lost between "read" and "shown".
@@ -185,8 +186,9 @@ function cleanReadError(raw: string): string | null {
  * `readError`, exactly one): whatever else a request carries — a key, a verdict, an outcome — is never read. A readable
  * record is drafted by U28's `draftContactRow` with the run's STORED mapping, every field kept whole and every
  * over-limit or malformed one REPORTED in `problems` (X20); its key is set only for a sendable mobile number — the
- * phone cell's, or (C3b · G3) the FIRST Tanzanian mobile among the numbers the cell holds (`firstMobileIn`), while
- * `rawPhone` keeps the whole cell. An unreadable record keeps its sentence, cleaned. Null for a record of neither shape.
+ * phone cell's, or (C3b · G3, D3) the ONE distinct Tanzanian mobile among the numbers the cell holds (`firstMobileIn`:
+ * none when it holds two or more), while `rawPhone` keeps the whole cell — every number it holds reaches the server.
+ * An unreadable record keeps its sentence, cleaned. Null for a record of neither shape.
  */
 /**
  * ⛔ ONE BAD BYTE MUST NEVER WEDGE A RUN (review F2). Postgres text cannot hold NUL (0x00) and refuses the whole batch
@@ -217,7 +219,7 @@ export function stagedRowFrom(raw: unknown, ordinal: number, run: StagingRunCont
   const cells = raw.cells;
   if (!Array.isArray(cells) || cells.length > COLUMNS_MAX || !cells.every((c) => typeof c === "string")) return null;
   const draft = draftContactRow((cells as string[]).map(storableCell), run.mapping);
-  // ⭐ C3b · G3 · ONE number per person: the cell's own, or the first Tanzanian mobile among the numbers it holds.
+  // ⭐ C3b · G3 · D3 · ONE number per person: the cell's own, or its ONE distinct Tanzanian mobile — none for two or more.
   const mobile = firstMobileIn(draft.rawPhone);
   return {
     importId: run.id,
