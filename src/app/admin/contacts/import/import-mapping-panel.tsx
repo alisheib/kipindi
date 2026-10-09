@@ -9,8 +9,9 @@
  * `CONTACT_FIELDS` themselves, so this panel can never offer a field the book does not have, and never Consent (OD10).
  * ⭐ S15-5 · A FILE WITH NO HEADER ROW is said in words ("column B will be read as the phone number") and imported from
  * its first row; the officer can turn that reading over either way with one box, and the columns are read again.
- * ⛔ NO NUMBER IS SHOWN WHOLE: every value passes `previewCell` (`+255••••NN`, other long digit runs bulleted), whichever
- * column it sits in and however the columns are mapped.
+ * ⛔ NO NUMBER IS SHOWN WHOLE: every value passes `previewCell` — since C3b-fix · D9 a cell holding seven or more digits in
+ * total, whatever separates them, is masked whole (`+255••••NN`, or four bullets and its last two) — whichever column it
+ * sits in and however the columns are mapped.
  * ⛔ NEXT IS HELD, WITH ITS REASON ON SCREEN, until U28's own `validateMapping` passes (Phone chosen, one column per field,
  * no column that cannot be read) — the same check the server runs on the open; a masked export is refused outright.
  */

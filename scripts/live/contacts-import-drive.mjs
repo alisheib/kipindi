@@ -162,6 +162,13 @@ function c3bExpectations(truth, main) {
 const listedRows = (page, list) =>
   page.$$eval(`${block("import-preflight")} [data-import-list="${list}"] [data-import-row]`, (els) => els.map((e) => Number(e.getAttribute("data-import-row"))));
 
+/** ⭐ C3b-fix · D9 · every value the columns step shows, one by one — the panel joins a column's first values with " · ". */
+const sampleValues = (page) =>
+  page.$$eval("[data-import-columns] tr[data-import-column] td:nth-child(2)", (tds) =>
+    tds.flatMap((td) => (td.innerText || "").split(" · ").map((v) => v.trim()).filter((v) => v !== "" && v !== "Empty")));
+/** How many digits a text holds, in any script — the separators between them never count. */
+const digitsIn = (text) => Array.from(String(text)).filter((ch) => /^\p{Nd}$/u.test(ch)).length;
+
 /* ═══ SESSIONS AND THE WORLD (copied from the U20 drive) ═══════════════════════════════════════════════════ */
 
 const browser = await chromium.launch();
@@ -334,8 +341,12 @@ for (const vp of VIEWPORTS) {
         ok(`${vp.name} · ${name} · S15-5 · a headerless file is read, and said so`,
           (await page.locator(block("import-mapping")).first().getAttribute("data-headerless")) === "yes" && /starts with a contact/.test(said), said.slice(0, 160));
       }
-      const values = await textOf(page, "[data-import-columns]");
-      ok(`${vp.name} · ${name} · no phone number is shown whole in the columns`, !/(?:\+?255|0)[67]\d{8}/.test(values.replace(/[\s().-]/g, "")), values.slice(0, 160));
+      // ⛔ C3b-fix · D9 · counted by DIGITS, never by punctuation: no value the columns step shows holds seven or more digits
+      // in total, whatever separates them — Excel's "255,757,300,014" and an office's "0712/345/678" included.
+      const shownValues = await sampleValues(page);
+      const whole = shownValues.filter((v) => digitsIn(v) >= 7);
+      ok(`${vp.name} · ${name} · no value on the columns holds seven or more digits (D9: a number is never shown whole, whatever separates its digits)`,
+        whole.length === 0, `${shownValues.length} value(s) · ${whole.length} with 7+ digits`);
       // ⭐ C3b · what the columns now say for the four files whose readers changed.
       if (C3B_FILES.get(name) !== undefined && C3B_FILES.get(name) !== null) {
         const phoneRow = await textOf(page, '[data-import-columns] tr[data-read-as="phone"]');
