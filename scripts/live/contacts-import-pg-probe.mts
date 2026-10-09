@@ -10,7 +10,7 @@
  *   C  a FRESH process on that database, the REAL `db` (USE_PRISMA_DAL=true) on a client whose query census it reads:
  *      1  the migration's column, index and foreign key exist as typed, and deleting a list SETS the run's list to NULL
  *         and keeps the run — ⛔ never cascade: a run is the record of what an import wrote — and the key is enforced;
- *      2  snapshotsAmong reads the nine columns decide() needs and nothing else, the ERASED tombstone INCLUDED (X22 —
+ *      2  snapshotsAmong reads the ten columns decide() needs (the account link since S15-11) and nothing else, the ERASED tombstone INCLUDED (X22 —
  *         without it an erased number would be created again), §25's bound refused and never cut off, duplicates
  *         folded, an empty set answered with no statement;
  *      3  firstLinesAmong (S15-7) answers the smallest line among the run's DECIDABLE rows — a row with a problem or a
@@ -372,11 +372,12 @@ async function phaseC(): Promise<void> {
       for (const c of [live, erased, marked, other]) await K.mustContact(c);
       const snap = (c: StoredMarketingContact): MarketingContactSnapshot => ({
         id: c.id, msisdn: c.msisdn, displayName: c.displayName, email: c.email, notes: c.notes, tags: c.tags,
-        sourceRef: c.sourceRef, importId: c.importId, updatedAt: c.updatedAt,
+        sourceRef: c.sourceRef, importId: c.importId, updatedAt: c.updatedAt, userId: c.userId,
       });
-      const SNAP_KEYS = json(["id", "msisdn", "displayName", "email", "notes", "tags", "sourceRef", "importId", "updatedAt"].sort());
+      // S15-11 (the review round): the account link is the TENTH column — decide() keeps a row linked to an account.
+      const SNAP_KEYS = json(["id", "msisdn", "displayName", "email", "notes", "tags", "sourceRef", "importId", "updatedAt", "userId"].sort());
       const asked = await counted(() => db.marketingContact.snapshotsAmong([N.snapMarked, N.snapLive, N.snapErased, N.snapAbsent, N.snapLive, N.snapMarked]));
-      ok("2.1 · ⭐ snapshotsAmong answers EXACTLY the asked numbers the book holds — three rows for six keys (the absent number left out, the two asked twice answered once), ordered by number, each EXACTLY the nine snapshot columns as written (no raw input, consent cache, link or provenance) — the ERASED tombstone among them with sourceRef 'erasure' (X22) — in ONE statement",
+      ok("2.1 · ⭐ snapshotsAmong answers EXACTLY the asked numbers the book holds — three rows for six keys (the absent number left out, the two asked twice answered once), ordered by number, each EXACTLY the ten snapshot columns as written (the account link among them, S15-11 — never the raw input, the consent cache or the provenance) — the ERASED tombstone among them with sourceRef 'erasure' (X22) — in ONE statement",
         eq(asked.value, [snap(live), snap(erased), snap(marked)]) && asked.value.every((s) => json(Object.keys(s).sort()) === SNAP_KEYS)
           && asked.queries.length === 1,
         `${asked.value.map((s) => `${s.id}:${s.sourceRef ?? "null"}`).join(", ")} · ${asked.queries.length} statement(s)`);

@@ -300,8 +300,10 @@ export async function importResultAction(runId: string): Promise<ImportResultRes
 
 /* ═══ 5 · AN ADMIN'S WAY TO OTHER OFFICERS' UNFINISHED RUNS (S15-12) ════════════════════════════════════════ */
 
-/** The runs other officers left unfinished, newest first, at most 20 — ⛔ an ADMIN by the STORED role only (the core
- *  refuses anyone else `forbidden`); each is resumed through `importViewAction(runId)` or cancelled. */
+/** The runs other officers left unfinished, newest first, at most 20 — each resumed through `importViewAction(runId)` or
+ *  cancelled. ⛔ Listed for an ADMIN by the STORED role only. The dialog cannot know the viewer's role, so it asks once per
+ *  opening for EVERY officer: anyone else is answered `{ ok: true, runs: [] }` — an empty answer, never a refusal, and no
+ *  audit row (a refusal row per opening would flood the chain). The gate and the rate rule still come first. */
 export async function importOpenRunsAction(): Promise<ImportOpenRunsResult> {
   const g = await gate("contacts.import.open_runs");
   if (!g.ok) return g.refusal;

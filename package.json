@@ -320,6 +320,7 @@
     "red:contacts-export": "tsx scripts/contacts-export.test.mts --prove-red",
     "test:contacts-staging": "tsx scripts/contacts-staging.test.mts",
     "red:contacts-staging": "tsx scripts/contacts-staging.test.mts --prove-red",
+    "test:contacts-import-db": "tsx scripts/db-scratch.mts --run npx tsx scripts/live/contacts-import-pg-probe.mts",
     "test:contacts-staging-db": "tsx scripts/db-scratch.mts --run npx tsx scripts/live/contacts-staging-pg-probe.mts",
     "test:contacts-audience": "tsx scripts/contacts-audience.test.mts",
     "red:contacts-audience": "tsx scripts/contacts-audience.test.mts --prove-red",

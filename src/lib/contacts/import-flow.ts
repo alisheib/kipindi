@@ -262,7 +262,8 @@ export type StartImportInput = {
   /**
    * ⭐ S15 (the server builder) · the check this start was pressed from — `PreflightView.checkedAt`, posted back as it
    * came. The check writes nothing on the run (it is advisory), so the start can only know how old the officer's numbers
-   * are from this: older than 30 minutes, unreadable or in the future, and the start is refused `check_again`. The counts
+   * are from this: older than 30 minutes, unreadable or in the future, and the start is refused `check_stale` (the review
+   * round: the old `check_again` there claimed the book had changed when only time had passed). The counts
    * in `expected` are re-decided on the server either way — this only stops a start from a screen left open for hours.
    */
   checkedAt: string;
@@ -297,7 +298,8 @@ export type RunActInput = { runId: string };
 export type RunActResult = ImportAnswer<{ view: ImportRunView; notImported?: number }>;
 
 /** ⭐ S15-9 · an ADMIN's way to the runs other officers left unfinished — STAGING, STAGED, COMMITTING or PAUSED — newest
- *  first, at most 20, each adoptable through `importViewAction(runId)` (resume) or cancellable. Anyone else: forbidden. */
+ *  first, at most 20, each adoptable through `importViewAction(runId)` (resume) or cancellable. Anyone else gets an EMPTY
+ *  list and no audit row — the dialog asks on every opening and cannot know the viewer's role. */
 export type ImportOpenRunsResult = ImportAnswer<{ runs: ImportRunView[] }>;
 
 /** The rows that could not be imported, a page at a time, by file row, with the sentence (never the raw value). */

@@ -95,7 +95,7 @@ export const L = {
   M18: "M18 · ⭐ C4 · a created number the ledger or the stop list knows has its cache MIRRORED (N1 said yes → GIVEN; N4 is stopped → suppressedAt the stop's own time); one they do not know stays UNKNOWN with no stop",
   M19: "M19 · ⛔ what only the source can show: the cores import nothing that sends or writes consent (no sms, dispatch, opt-out, consent-ledger or ledger-stamp module, and — R16 — nothing from the gate's module at all) and call no ledger or stop writer; the action file is \"use server\" and exports EXACTLY the sixteen actions, each async",
   M20: "M20 · ⛔ S15-10 · a GROWTH officer (identity.contact masked) imports with KEEP alone: the check says mayUpdateInBook false, and a start with TAKE_FILE, FILL_BLANKS or any exception — even a KEEP one — is refused update_needs_reader, audited with counts only and nothing written; the same officer's KEEP start freezes",
-  M21: "M21 · ⭐ S15-12 · an ADMIN sees the runs OTHER officers left open — STAGING, STAGED, COMMITTING, PAUSED, never DONE or CANCELLED, never their own — newest first, at most 20, each named by its starter and carrying no id; a GROWTH officer asking is refused forbidden and shown nothing",
+  M21: "M21 · ⭐ S15-12 · an ADMIN sees the runs OTHER officers left open — STAGING, STAGED, COMMITTING, PAUSED, never DONE or CANCELLED, never their own — newest first, at most 20, each named by its starter and carrying no id; a GROWTH officer asking (the dialog asks for everyone) is answered ok with NO runs and ZERO audit rows — never a refusal",
   M22: "M22 · ⛔ R9 · the erasure race: a person erased between a step's read and its write — their staged row deleted, their number in no book row — is NOT created: the step reads its rows again, the conflict is decided once more, and the run finishes with the other rows imported",
   M23: "M23 · ⭐ R10 · after a step has LANDED its cache mirror and its audit rows cannot turn it into a refusal: a mirror that throws once and audit rows that throw leave the step done, and the run's end mirrors every created number the truth knows (N1 GIVEN, N4 stopped)",
   M24: "M24 · ⭐ R11 · a deadlock (P2034) inside a step answers busy, retryAfterSec 5, with the run's view and one audit row naming the error's code — never server_error, never a throw — the cursor unmoved; the next step lands",
@@ -494,18 +494,18 @@ async function run({ impl, ok, log }: Ctx): Promise<void> {
     await db.contactImport.create(runRow("ci_adminsownaaaaaaaaaaa", ADMIN, "STAGED", hourAgo(0)));
     await db.contactImport.create(runRow("ci_finisheddaaaaaaaaaaa", "usr_far_x", "DONE", hourAgo(2)));
     await db.contactImport.create(runRow("ci_cancelledaaaaaaaaaaa", "usr_far_y", "CANCELLED", hourAgo(3)));
-    captured.length = 0;
     const seen = await importOpenRuns(ADMIN, impl.deps);
     const views = seen.ok ? seen.runs : [];
+    captured.length = 0;
     const growth = await importOpenRuns(OFFICER, impl.deps);
-    const refusedRows = captured.filter((x) => x.action === "contacts.import.commit_refused" && (x.payload as { reason?: unknown }).reason === "forbidden");
+    const growthAudit = captured.length;
     const newestFirst = views.every((v, i) => i === 0 || Date.parse(views[i - 1].createdAt) >= Date.parse(v.createdAt));
     const statuses = new Set(views.map((v) => v.status));
     ok(L.M21, seen.ok && views.length === 20 && newestFirst && views[0]?.id === "ci_newestaaaaaaaaaaaaaaa" && views[0]?.startedBy === "Amina Officer"
       && views.every((v) => !v.mine && v.id !== "ci_adminsownaaaaaaaaaaa") && [...statuses].every((s) => OPEN.includes(s))
       && views.slice(1).every((v) => v.startedBy === "another officer") && !json(views).includes("usr_")
-      && !growth.ok && growth.reason === "forbidden" && growth.view === null && refusedRows.length === 1,
-      `${seen.ok ? `${views.length} run(s), first ${views[0]?.id ?? "none"} by ${views[0]?.startedBy ?? "nobody"}` : seen.reason} · growth ${growth.ok ? "shown runs" : growth.reason}`);
+      && growth.ok && growth.runs.length === 0 && growthAudit === 0,
+      `${seen.ok ? `${views.length} run(s), first ${views[0]?.id ?? "none"} by ${views[0]?.startedBy ?? "nobody"}` : seen.reason} · growth ${growth.ok ? `ok, ${growth.runs.length} run(s)` : `refused ${growth.reason}`} · growth audit rows ${growthAudit}`);
   });
 
   // ── M22 · R9 · the erasure race ──
@@ -870,6 +870,11 @@ const plants: readonly RedPlant<CommitImpl>[] = [
     name: "P21 · S15-12 · the open-runs read keeps the viewer's own runs",
     expect: L.M21,
     impl: () => withDeps({ openRuns: async (q) => db.contactImport.listOpenByOthers({ ...q, excludeCreatedBy: "nobody" }) }),
+  },
+  {
+    name: "P21b · S15-12 · every officer reads as an ADMIN — a GROWTH officer is shown other officers' unfinished runs",
+    expect: L.M21,
+    impl: () => withDeps({ isAdmin: async () => true }),
   },
   {
     name: "P22 · R9 · the store settles whatever staged rows are left and ignores the missing ones — the erased number is created",

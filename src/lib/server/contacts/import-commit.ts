@@ -880,14 +880,13 @@ export async function importListOptions(_officerId: string, deps: ImportCommitDe
 /**
  * ⭐ S15-12 · AN ADMIN'S WAY TO THE RUNS OTHER OFFICERS LEFT UNFINISHED (X18 made reachable): every run in an open status
  * — STAGING, STAGED, COMMITTING, PAUSED — that someone else started, newest first, at most `CONTACT_IMPORT_OPEN_RUNS_MAX`,
- * each as the run view the dialog adopts it from (its starter named, never an id). ⛔ An ADMIN by the STORED role only —
- * anyone else is refused `forbidden`, audited (counts only), and shown nothing.
+ * each as the run view the dialog adopts it from (its starter named, never an id). ⛔ Only an ADMIN by the STORED role is
+ * shown any. Anyone else gets an EMPTY answer — `{ ok: true, runs: [] }`, never a refusal and no audit row: the dialog
+ * cannot know the viewer's role, so it asks once per opening for every officer, and a refusal row per GROWTH opening
+ * would flood the chain with nothing anyone did wrong (the lead, 2026-10-09).
  */
 export async function importOpenRuns(officerId: string, deps: ImportCommitDeps = IMPORT_COMMIT_DEPS): Promise<ImportOpenRunsResult> {
-  if (!(await deps.isAdmin(officerId))) {
-    await auditImportRefusal(deps, COMMIT_REFUSED, officerId, null, "forbidden", { step: "open_runs" });
-    return importRefusal("forbidden");
-  }
+  if (!(await deps.isAdmin(officerId))) return { ok: true, runs: [] };
   const runs = await deps.openRuns({ excludeCreatedBy: officerId, limit: CONTACT_IMPORT_OPEN_RUNS_MAX });
   const views: ImportRunView[] = [];
   for (const r of runs) views.push(await importRunView(officerId, r, deps));
