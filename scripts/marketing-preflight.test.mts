@@ -11,7 +11,7 @@
  *       with nothing read and the typed text never echoed;
  *   P1a ⛔ the engine's migrations, by name — one missing, one started and unfinished, one rolled back: NO-GO on that row alone;
  *   P1b ⛔ the live switch (closed expected; open, expired, malformed; and `--expect-switch=open`), the settings record (a record
- *       that cannot be read in full is NO-GO), and the send window (outside it is NO-GO);
+ *       that cannot be read in full is NO-GO), and the send window (outside it is NO-GO); and that no row asks for a saved wording;
  *   P1c ⛔ the webhook secret, the real rail, the credit (low, stale, unknown, the exact edge), the build (`?dpl=`), /api/health
  *       (not ready, not JSON, unreachable, no answer in time);
  *   P1d ⛔ the test number — book row, lists, and the gate's consent-and-basis half NOW and AFTER the stop link's two acts
@@ -42,9 +42,11 @@
  *       private Railway host to the public proxy, the working directory checked) comes first and the shared core by a dynamic import.
  *   The review's fixes (S14, 2026-10-08): P1d the drive list holds the test number ALONE; P7 the SQL's contract, no bare ORDER BY name
  *   equal to an AS alias, every call bound to the right values; P9 run through npm as the sheet prints it (`npm run -s`) a key prints
- *   no banner; P1b the source line and the database's clock; E2 the judgements one by one; P2/P5 the output filter ALONE.
- *   (⟶ 2026-10-09: the source line has no job since the owner's ruling — nothing is appended to a marketing SMS — so P1b's
- *   source half, and the pre-flight's own "source" row it holds, are owed a change in code; the clock half stands.)
+ *   no banner; P1b the source line (its row removed with the owner's approval of 2026-10-09) and the database's clock; E2 the
+ *   judgements one by one; P2/P5 the output filter ALONE.
+ *   (⟶ 2026-10-09: the source line has no job since the owner's ruling — nothing is appended to a marketing SMS — so the
+ *   pre-flight's own "source" row was removed with the owner's approval, and P1b's source half now holds its ABSENCE; the clock
+ *   half stands.)
  *   The second review's fixes and the merge with U33r (the same day): P6d the REFEREE dimension (1,056 more scenarios) and the
  *   agent-referee exclusion said to be NOT judged; P6e the four SystemConfig keys are the app's; P7 every SELECT list exactly, with the
  *   stand-in rows carrying exactly those names; P1b the saved window and its 60-minute margin; P1d a list of two, a hidden name; P1f
@@ -59,7 +61,9 @@
  *   appended again are a violation by themselves (a length cannot show the words); E11 ⭐ DRIVE'S MESSAGE — the campaign's four
  *   stored fields held to DRIVE_MESSAGE by four yes/no computed in SQL, the words bound as values (P7 pins the comparisons and the
  *   bound values; E7 admits a message column in exactly that form and no other); the stand-in world's rows are built at the drive's
- *   own length.
+ *   own length. The pre-flight's `source` row is gone (the owner's approval of 2026-10-09: no message prints the source line, and
+ *   nothing requires it): P0 holds nineteen rows, and P1b that no row asks for a saved wording, in each of the eight worlds the row
+ *   was judged in (R-J21 and R-J22 bring the row back).
  *
  * ⛔ IN-PROCESS BY CONSTRUCTION (§5.11). `--prove-red` FIRST PROVES THE BASELINE GREEN, then plants each defect IN MEMORY (a
  * function of the shared core, the judge, the verdict parts, the transaction helper, a source text, or the TEXT of a tool or of the
@@ -114,9 +118,9 @@ const PW_COLUMN = ["password", "Hash"].join("");
 /* ══ THE LABELS — each once, so a red case names exactly the claims it must turn red ═════════════════════════════════ */
 
 const L = {
-  p0: "P0 · CONTROLS — the good world is GO on all 20 rows in ROW_IDS order (the control row n/a without a control number, GO with an active stop) and exits 0; every usage error (no --test, no --origin, a bad number, the same number twice, a plain-http origin, a value-less or unknown option, a value on --new-ledger, --sends 7, an extra word, ⭐ ANY value flag given twice - a second --test is refused, never silently ignored - a bad --min-window, a bad or too many --drive-campaign) exits 2 with NOTHING read and the typed text never echoed; the masks print as +255••••NN",
+  p0: "P0 · CONTROLS — the good world is GO on all 19 rows in ROW_IDS order (the control row n/a without a control number, GO with an active stop) and exits 0; every usage error (no --test, no --origin, a bad number, the same number twice, a plain-http origin, a value-less or unknown option, a value on --new-ledger, --sends 7, an extra word, ⭐ ANY value flag given twice - a second --test is refused, never silently ignored - a bad --min-window, a bad or too many --drive-campaign) exits 2 with NOTHING read and the typed text never echoed; the masks print as +255••••NN",
   p1a: "P1a · ⛔ THE ENGINE'S MIGRATIONS, BY NAME — one missing, one started and never finished, one rolled back with no good retry are each NO-GO on the migrations row alone (exit 1), naming the migration; a rolled-back row followed by its finished retry is GO",
-  p1b: "P1b · ⛔ THE SWITCH, THE SETTINGS AND THE WINDOW — an open switch is NO-GO on the switch row alone (its closing time printed); absent, expired and malformed rows read closed and GO; --expect-switch=open wants it open with 20+ minutes left; a settings record that cannot be read in full is NO-GO naming what it dropped, a saved one GO with its figures; outside the saved window is NO-GO on the window row alone (the window's end is exclusive: 20:00 sharp is outside, 19:59 inside); ⭐ every time rule reads the DATABASE's clock — a machine clock hours off changes nothing; ⭐ the SOURCE row — GO only while the newest saved source.phrase is not blank, and, while licence outreach is open, adult.test is saved too",
+  p1b: "P1b · ⛔ THE SWITCH, THE SETTINGS AND THE WINDOW — an open switch is NO-GO on the switch row alone (its closing time printed); absent, expired and malformed rows read closed and GO; --expect-switch=open wants it open with 20+ minutes left; a settings record that cannot be read in full is NO-GO naming what it dropped, a saved one GO with its figures; outside the saved window is NO-GO on the window row alone (the window's end is exclusive: 20:00 sharp is outside, 19:59 inside); ⭐ every time rule reads the DATABASE's clock — a machine clock hours off changes nothing; ⛔ NO ROW ASKS FOR A SAVED WORDING (the `source` row was removed with the owner's approval of 2026-10-09: no message prints the source line) — in each of the eight worlds it was judged in (no wordings; a blank, newest-blank or unreadable source line; a source line and no adult.test; licence outreach OPEN with adult.test saved, missing or blank) nothing is NO-GO, no row is named source and no line speaks of a source line or of adult.test, and an open licence record is read open",
   p1c: "P1c · ⛔ THE WEB READS — an unset receipt secret, the console rail, an unconfigured rail, a credit that is low / stale / unknown / one shilling short are each NO-GO on their own row (the exact edge GO); a build other than --expect-dpl, an unreadable home page, a page naming no build are NO-GO on build (an asset's ?dpl= is read); /api/health not ready, not JSON, unreachable or silent past the timeout is NO-GO on health and on every row that needed it — and the tool returns within the timeout; ⭐ every network call is a GET of the home page or of /api/health, and nothing else",
   p1d: "P1d · ⛔ THE TEST NUMBER — no book row, an erased one, no list, a stop, a withdrawal, no consent, an account that is a minor / suspended / switched off / on the day of its 18th birthday, an earlier campaign row in ANY status each NO-GO on their own rows only; ⭐ THE DRIVE LIST HOLDS THE TEST NUMBER ALONE — a list of many members (or of an unknown size) is NO-GO on test-lists, one of exactly one member is GO and NAMED as the list campaign A must use, and a larger list the number is also on is named as never to pick; ⭐ the trap — a contact whose 18+ rested on an attestation row passes NOW and is NO-GO on test-cycle ('Start them again' replaces the newest row), while a covering list basis keeps both GO",
   p1e: "P1e · ⛔ THE CONTROL AND THE LEDGER — a named control with no stop or only a lifted one is NO-GO on control; an active stop is GO; a full ledger, --sends past the room and an untrustworthy ledger file are NO-GO on ledger alone; ⭐ a ledger file that is MISSING is NO-GO unless --new-ledger says the drive has not begun, and --new-ledger over a ledger that exists is NO-GO",
@@ -472,7 +476,7 @@ async function runAssertions(impl: Impl): Promise<void> {
     }
     const typed = await pre(impl, W.goodPreWorld(), { argv: [`--test=0755 000 1`, `--origin=${W.ORIGIN}`] });
     const noEcho = !typed.lines.some((l) => l.includes("0755 000 1") || l.includes("7550001"));
-    return [g.code === 0 && ids.length === 20 && json(ids) === json(PRE.ROW_IDS) && allGo && cGo && masks && refusals.length === 0 && noEcho && g.lines.some((l) => l.startsWith("RESULT: GO")),
+    return [g.code === 0 && ids.length === 19 && json(ids) === json(PRE.ROW_IDS) && allGo && cGo && masks && refusals.length === 0 && noEcho && g.lines.some((l) => l.startsWith("RESULT: GO")),
       `exit ${g.code} · ${ids.length} rows in order ${json(ids) === json(PRE.ROW_IDS)} · all GO ${allGo} · with a control ${cGo} · masks ${masks} · refusals [${refusals.join("; ")}] · typed text not echoed ${noEcho}`];
   });
 
@@ -579,19 +583,31 @@ async function runAssertions(impl: Impl): Promise<void> {
     openOnTheirClock.config[swKey] = W.liveSwitchRow(90);
     const rOpen = await pre(impl, openOnTheirClock, { now: W.NOW + 10 * 3600_000, argv: W.preArgv(["--expect-switch=open"]) });
     if (noGo(rOpen.lines).length !== 0 || !reasonOf(rOpen.lines, "switch").includes("OPEN until")) wrong.push(`an open switch judged on a machine clock ten hours ahead: ${json(noGo(rOpen.lines))}`);
-    // ⭐ THE SOURCE ROW — the campaign's source line, and (licence outreach open) the typed-number test's 18+ sentence
+    // ⛔ NO ROW ASKS FOR A SAVED WORDING — the `source` row was removed with the owner's approval of 2026-10-09 (no message prints the
+    // source line and nothing requires it; the drive's GROWTH login makes no typed-number test). In each of the eight worlds the row was
+    // judged in, nothing is NO-GO, no row is named `source` and no line speaks of a source line or of adult.test; a world with licence
+    // outreach OPEN also proves the record was read open, so its absence is never a closed record's (R-J21 and R-J22 bring the row
+    // back; R-K3 hides the open record)
     const wordKey = LIB.KEY_WORDINGS as string;
     const outreachKey = LIB.KEY_OUTREACH as string;
     const version = (text: string, v = 1) => ({ v, text, savedAt: "2026-10-07T08:00:00.000Z", savedBy: "usr_owner_0001" });
     const sourceOnly = { "source.phrase": W.SAVED_WORDINGS["source.phrase"] };
-    await check("no wordings saved at all", (w) => { delete w.config[wordKey]; }, ["source"], [], ["source", "no source line is saved"]);
-    await check("source.phrase saved blank", (w) => { w.config[wordKey] = { ...W.SAVED_WORDINGS, "source.phrase": [version("")] }; }, ["source"]);
-    await check("source.phrase newest version blank", (w) => { w.config[wordKey] = { ...W.SAVED_WORDINGS, "source.phrase": [version("A first line"), version("", 2)] }; }, ["source"]);
-    await check("source.phrase history unreadable", (w) => { w.config[wordKey] = { ...W.SAVED_WORDINGS, "source.phrase": [{ v: 2, text: "x" }] }; }, ["source"]);
-    await check("source saved, outreach closed, no adult.test", (w) => { w.config[wordKey] = sourceOnly; }, [], [], ["source", "adult.test not needed"]);
-    await check("outreach open, adult.test saved", (w) => { w.config[outreachKey] = W.RECORD_OPEN_OUTREACH; }, [], [], ["source", "adult.test v1"]);
-    await check("outreach open, adult.test missing", (w) => { w.config[outreachKey] = W.RECORD_OPEN_OUTREACH; w.config[wordKey] = sourceOnly; }, ["source"], [], ["source", "adult.test"]);
-    await check("outreach open, adult.test blank", (w) => { w.config[outreachKey] = W.RECORD_OPEN_OUTREACH; w.config[wordKey] = { ...sourceOnly, "adult.test": [version("")] }; }, ["source"]);
+    const noSourceRow = async (name: string, mut: (w: ReturnType<typeof W.goodPreWorld>) => void, outreachOpen = false) => {
+      const w = W.goodPreWorld();
+      mut(w);
+      const r = await pre(impl, w);
+      const said = r.lines.filter((l) => l.includes("source line") || l.includes("adult.test")).length;
+      const readOpen = !outreachOpen || reasonOf(r.lines, "test-consent").includes("licence outreach: open");
+      if (noGo(r.lines).length !== 0 || rowsOf(r.lines).has("source") || said !== 0 || !readOpen) wrong.push(`${name}: NO-GO ${json(noGo(r.lines))} · a source row ${rowsOf(r.lines).has("source")} · ${said} line(s) on a source line or adult.test · the open record read open ${readOpen}`);
+    };
+    await noSourceRow("no wordings saved at all", (w) => { delete w.config[wordKey]; });
+    await noSourceRow("source.phrase saved blank", (w) => { w.config[wordKey] = { ...W.SAVED_WORDINGS, "source.phrase": [version("")] }; });
+    await noSourceRow("source.phrase newest version blank", (w) => { w.config[wordKey] = { ...W.SAVED_WORDINGS, "source.phrase": [version("A first line"), version("", 2)] }; });
+    await noSourceRow("source.phrase history unreadable", (w) => { w.config[wordKey] = { ...W.SAVED_WORDINGS, "source.phrase": [{ v: 2, text: "x" }] }; });
+    await noSourceRow("source saved, outreach closed, no adult.test", (w) => { w.config[wordKey] = sourceOnly; });
+    await noSourceRow("outreach open, adult.test saved", (w) => { w.config[outreachKey] = W.RECORD_OPEN_OUTREACH; }, true);
+    await noSourceRow("outreach open, adult.test missing", (w) => { w.config[outreachKey] = W.RECORD_OPEN_OUTREACH; w.config[wordKey] = sourceOnly; }, true);
+    await noSourceRow("outreach open, adult.test blank", (w) => { w.config[outreachKey] = W.RECORD_OPEN_OUTREACH; w.config[wordKey] = { ...sourceOnly, "adult.test": [version("")] }; }, true);
     return [wrong.length === 0, `wrong [${wrong.join("; ")}]`];
   });
 
@@ -1482,12 +1498,12 @@ async function runAssertions(impl: Impl): Promise<void> {
     // the scratch-PostgreSQL probe is a REQUIRED step before production, not an option
     if (!(sheet.includes("db:probe-marketing-u52a") && sheet.includes("REQUIRED before production") && sheet.includes("Step 0 is not run on production until it is green"))) wrong.push("the run sheet no longer requires the scratch probe before production");
     // ⭐ THE GATE is on the sheet (the cap and "nothing else can send" gate the drive, they are not only read afterwards): the pre-flight with the
-    // campaign about to start named, the ledger's room, the audience look - before step 2, each Start and any retry - and step 0 reads twenty rows
+    // campaign about to start named, the ledger's room, the audience look - before step 2, each Start and any retry - and step 0 reads nineteen rows
     for (const gate of ["ops:marketing-campaign-evidence -- --ledger --sends=1", "--look --expect-audience=1", "--expect-switch=open --drive-campaign=<X>"]) {
       if (!sheet.includes(gate)) wrong.push(`the run sheet no longer carries the gate command «${gate}»`);
     }
     if (!sheet.includes("and before ANY retry run G1, G2 and G3")) wrong.push("the run sheet no longer gates a retry");
-    if (!sheet.includes("RESULT: GO — 19 of 19 rows (1 not applicable)")) wrong.push("the run sheet's step 0 no longer reads 19 of 19 rows");
+    if (!sheet.includes("RESULT: GO — 18 of 18 rows (1 not applicable)")) wrong.push("the run sheet's step 0 no longer reads 18 of 18 rows");
     // ⭐ THE DRIVE'S MESSAGE, QUOTED (the owner's words of 2026-10-09): the sheet holds the ONE constant's four fields character for
     // character, each in code quotes, and names the campaigns as the constant does — the drive never tells them apart by their text
     const tick = String.fromCharCode(96);
@@ -2567,6 +2583,19 @@ if (!PROVE_RED) {
   const withSources = (patch: Partial<Sources>): Partial<Impl> => ({ sources: { ...REAL_SOURCES, ...patch } });
   const L_ = LIB as unknown as Record<string, (...a: unknown[]) => unknown>;
   const PRE_ = PRE as unknown as { judgePreflight: (f: unknown, c: unknown, l: unknown) => unknown };
+  /**
+   * ⛔ THE `source` ROW BROUGHT BACK (R-J21, R-J22) — the row the owner's approval of 2026-10-09 removed, put back before `window`:
+   * GO only while the newest saved `key` of the wordings has words. P0 counts the rows; P1b's eight worlds must each see it.
+   */
+  const withSourceRow = (rows: unknown, f: { config: Record<string, unknown> }, key: string): unknown => {
+    const out = [...(rows as Array<{ id: string; go: boolean | null; reason: string }>)];
+    const saved = (f.config[LIB.KEY_WORDINGS as string] ?? {}) as Record<string, unknown>;
+    const history = Array.isArray(saved[key]) ? (saved[key] as Array<{ text?: unknown }>) : [];
+    const last = history.length > 0 ? history[history.length - 1] : null;
+    const go = last !== null && typeof last.text === "string" && last.text.trim() !== "";
+    out.splice(Math.max(0, out.findIndex((r) => r.id === "window")), 0, { id: "source", go, reason: go ? "the wording it asks for is saved" : "the wording it asks for is not saved" });
+    return out;
+  };
   const EV_ = EV as unknown as { PARTS: Record<string, (...a: unknown[]) => unknown>; judgeExpectation: (...a: unknown[]) => { holds: boolean; why: string; label: string } };
 
   type Plant = { name: string; expect: Label[]; impl: Partial<Impl> | (() => Partial<Impl> | Promise<Partial<Impl>>) };
@@ -2710,10 +2739,10 @@ if (!PROVE_RED) {
       impl: { timeoutMs: 3_600_000 } },
     { name: "R-J20 · the size of a list is not looked at (every list passes as a list of one)", expect: [L.p1d],
       impl: { judge: (f: { test: { lists?: object[] } }, c: unknown, l: unknown) => PRE_.judgePreflight({ ...f, test: { ...f.test, lists: (f.test.lists ?? []).map((x) => ({ ...x, members: 1 })) } }, c, l) } },
-    { name: "R-J21 · the source row never looks at the saved wordings (it is always satisfied)", expect: [L.p1b],
-      impl: { judge: (f: { config: Record<string, unknown> }, c: unknown, l: unknown) => PRE_.judgePreflight({ ...f, config: { ...f.config, [LIB.KEY_WORDINGS as string]: { ...((f.config[LIB.KEY_WORDINGS as string] as object) ?? {}), "source.phrase": W.SAVED_WORDINGS["source.phrase"], "adult.test": W.SAVED_WORDINGS["adult.test"] } } }, c, l) } },
-    { name: "R-J22 · licence outreach being OPEN does not ask for adult.test", expect: [L.p1b],
-      impl: { judge: (f: { config: Record<string, unknown> }, c: unknown, l: unknown) => PRE_.judgePreflight({ ...f, config: { ...f.config, [LIB.KEY_WORDINGS as string]: { ...((f.config[LIB.KEY_WORDINGS as string] as object) ?? {}), "adult.test": W.SAVED_WORDINGS["adult.test"] } } }, c, l) } },
+    { name: "R-J21 · the `source` row comes back — the judge asks again for a saved source line (the row the owner's approval of 2026-10-09 removed)", expect: [L.p0, L.p1b],
+      impl: { judge: (f: { config: Record<string, unknown> }, c: unknown, l: unknown) => withSourceRow(PRE_.judgePreflight(f, c, l), f, "source.phrase") } },
+    { name: "R-J22 · the `source` row comes back while licence outreach is OPEN — the judge asks again for adult.test", expect: [L.p1b],
+      impl: { judge: (f: { config: Record<string, unknown> }, c: unknown, l: unknown) => ((L_.readOutreach(f.config[LIB.KEY_OUTREACH as string]) as { state: string }).state === "open" ? withSourceRow(PRE_.judgePreflight(f, c, l), f, "adult.test") : PRE_.judgePreflight(f, c, l)) } },
     { name: "R-J23 · the time rules read THIS MACHINE's clock, not the database's", expect: [L.p1b],
       impl: withLib({ clockOf: (_dbNow: unknown, machineMs: number) => ({ nowMs: machineMs, source: "machine", skewMs: null }) }) },
     { name: "R-J24 · the send window's END is inclusive — 20:00 sharp is inside (V9 of the review)", expect: [L.p1b],
@@ -2862,7 +2891,7 @@ if (!PROVE_RED) {
     { name: "R-W24 · the run sheet no longer gates the cap before a send (--ledger --sends=1 is gone)", expect: [L.p9],
       impl: () => withSources({ spec: REAL_SOURCES.spec.split("ops:marketing-campaign-evidence -- --ledger --sends=1").join("ops:marketing-campaign-evidence -- --ledger") }) },
     { name: "R-W25 · the run sheet's step 0 reads the old seventeen rows, and its gate no longer covers a retry", expect: [L.p9],
-      impl: () => withSources({ spec: REAL_SOURCES.spec.split("19 of 19 rows").join("17 of 17 rows").split("and before ANY retry run G1, G2 and G3").join("and run G1") }) },
+      impl: () => withSources({ spec: REAL_SOURCES.spec.split("18 of 18 rows").join("17 of 17 rows").split("and before ANY retry run G1, G2 and G3").join("and run G1") }) },
     { name: "R-W26 · the run sheet's pre-flight gate no longer names the campaign about to start (the in-flight row cannot tell it from a stranger)", expect: [L.p9],
       impl: () => withSources({ spec: REAL_SOURCES.spec.split("--expect-switch=open --drive-campaign=<X>").join("--expect-switch=open") }) },
     /* ── before anything is loaded ── */
@@ -2909,7 +2938,7 @@ if (!PROVE_RED) {
       impl: withLib({ KEY_SETTINGS: "marketing.sms.setings" }) },
     { name: "R-K3 · the licence-outreach key is mistyped in the core (an open record reads closed)", expect: [L.p1b, L.p1d, L.p6e],
       impl: withLib({ KEY_OUTREACH: "marketing.outreach.license" }) },
-    { name: "R-K4 · the wordings key is mistyped in the core (nothing saved is ever found, so the `source` row is NO-GO in every world that should be GO)", expect: [L.l2, L.p0, L.p1a, L.p1b, L.p1c, L.p1d, L.p1e, L.p1f, L.p6e],
+    { name: "R-K4 · the wordings key is mistyped in the core (nothing saved is ever found, so an import attestation is never recognised)", expect: [L.p1d, L.p6e],
       impl: withLib({ KEY_WORDINGS: "marketing.wording" }) },
     { name: "R-K5 · the pre-flight's config statement asks for a key spelt wrongly (the stand-in answers anyway)", expect: [L.p6e, L.p7],
       impl: () => withSources({ pre: plantIn(REAL_SOURCES.pre, "'marketing.sms.settings'", "'marketing.sms.settngs'") }) },

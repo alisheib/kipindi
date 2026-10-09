@@ -8,7 +8,7 @@
  *   (from the checkout production runs; `-s` keeps npm from echoing the typed number in its banner)
  *
  * ⭐ WHAT IT ANSWERS, row by row, each with its reason (the exit code is 0 ONLY when every row is GO):
- *   build · health · migrations · switch · settings · source · window · rail · webhook · credit · ledger · in-flight · elsewhere ·
+ *   build · health · migrations · switch · settings · window · rail · webhook · credit · ledger · in-flight · elsewhere ·
  *   test-number · test-book · test-lists · test-consent · test-cycle · test-fresh · control
  *   · the migrations the engine's tables come from are FINISHED (by name, `_prisma_migrations`);
  *   · the live switch is CLOSED, and when it closes (`--expect-switch=open` asks the opposite, for after step 1);
@@ -18,10 +18,6 @@
  *   · ⭐ NOTHING ELSE CAN SEND WHILE THE SWITCH IS OPEN: `in-flight` - no campaign is CONFIRMED, PREPARING, RUNNING or PAUSED other than the
  *     drive's own (`--drive-campaign=<id>`, repeated for each; steps 0 and 1 name none), and `elsewhere` - no MARKETING message created in
  *     the last day went to any number but the test number (counted in SQL, no number selected);
- *   · the SOURCE LINE: the newest saved `source.phrase` is not blank (the composer will not save a campaign without it) and, when
- *     licence outreach is open, the 18+ sentence of the typed-number test (`adult.test`) is saved too; ⟶ 2026-10-09: the reason
- *     in brackets is gone — since the owner's ruling nothing needs the source line (nothing is appended to a marketing SMS), so
- *     this row's source half is owed a change in code (with `test:marketing-preflight` P1b and the U52a probe's 1h);
  *   · the receipt secret is SET (production's `/api/health` → `sms.webhookSecretSet`, a boolean, fetched with a timeout) and
  *     the real rail is configured; the SMS credit covers the cap; the build production serves (`?dpl=`, read from the home
  *     page without signing in) — equal to `--expect-dpl` when given;
@@ -35,6 +31,8 @@
  *   · the ledger (`.qa-shots/marketing-setup/U52a/ledger.json`): `--sends` more chargeable sends (default 1) still fit under 6.
  *     Its ABSOLUTE path and last write are printed every run; a MISSING file is NO-GO unless `--new-ledger` says the drive has not
  *     begun (the flag is for the first runs only, and is refused once a ledger exists).
+ *   No row asks for a saved wording: the `source` row (the source line, and `adult.test` while licence outreach was open) was
+ *   removed with the owner's approval of 2026-10-09 — no message prints the source line, and the drive makes no typed-number test.
  *
  * ⛔ READ ONLY BY CONSTRUCTION. Every database read is a SELECT inside ONE Postgres transaction (REPEATABLE READ: one snapshot)
  * whose first statement is `SET TRANSACTION READ ONLY`, read back (`readOnlyTransaction`). It sends no SMS and writes no row of
@@ -244,7 +242,7 @@ const clip = (s, n = 12) => String(s).slice(0, n);
 
 /** Which row ids exist, in order. A suite holds this list so a row cannot vanish unnoticed. */
 export const ROW_IDS = Object.freeze([
-  "build", "health", "migrations", "switch", "settings", "source", "window", "rail", "webhook", "credit", "ledger", "in-flight", "elsewhere",
+  "build", "health", "migrations", "switch", "settings", "window", "rail", "webhook", "credit", "ledger", "in-flight", "elsewhere",
   "test-number", "test-book", "test-lists", "test-consent", "test-cycle", "test-fresh", "control",
 ]);
 
@@ -300,17 +298,6 @@ export function judgePreflight(facts, ctx, lib = LIB) {
   const figures = `${tzs(s.pricePerSegmentTzs)} per SMS · ${tzs(s.codesReserveTzs)} kept for login and withdrawal codes · at most ${tzs(s.campaignLimitTzs)} per campaign · window ${window}`;
   if (!st.readable) add("settings", false, `the saved record cannot be read in full (dropped: ${st.dropped.join(", ")}) — the engine would pause settings_unreadable; showing ${figures}`);
   else add("settings", true, `${st.stored ? "saved" : "defaults, nothing saved"}: ${figures}`);
-
-  // source · the campaign's source line is saved; with licence outreach open, the typed-number test's 18+ sentence is too
-  // ⟶ 2026-10-09: the source half is stale (the line has no job since the owner's ruling) and its NO-GO sentence below no
-  // longer true — owed a change in code, not made here (the header's SOURCE LINE item).
-  const outreachRecord = lib.readOutreach(facts.config[lib.KEY_OUTREACH]);
-  const sourceLine = lib.newestWording(facts.config[lib.KEY_WORDINGS], "source.phrase");
-  const adultTest = lib.newestWording(facts.config[lib.KEY_WORDINGS], "adult.test");
-  const savedOn = (w) => `v${w.v}${w.savedAt ? ` saved ${lib.fmtEat(w.savedAt).slice(0, 10)}` : ""}`;
-  if (!sourceLine) add("source", false, "no source line is saved (the newest source.phrase is blank, or was never saved) - the composer will not save a campaign without one; save it on Admin > System first");
-  else if (outreachRecord.state === "open" && !adultTest) add("source", false, `source.phrase ${savedOn(sourceLine)}, but licence outreach is OPEN and no adult.test sentence is saved - the composer refuses a typed-number test up front without it`);
-  else add("source", true, `source.phrase ${savedOn(sourceLine)}${outreachRecord.state === "open" ? ` · adult.test ${savedOn(adultTest)} (licence outreach is open)` : " · adult.test not needed (licence outreach is closed)"}`);
 
   // window · now is inside the send window, with room to run the drive (the window's END is exclusive, as the engine's)
   const minuteNow = lib.eatParts(nowMs).minuteOfDay;
