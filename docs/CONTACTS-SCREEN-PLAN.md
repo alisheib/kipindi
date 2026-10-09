@@ -30,14 +30,18 @@ then: "the contacts screen"):
     import-adopt, import-preflight, import-file, import-mapping, import-mapping-next, import-apply, import-commit,
     import-done, and the dev seed POST /api/dev-test/marketing-contacts-seed?u30=1.
 
-▶ NOW (2026-10-09 ~03:20 EAT, Ali-Blade15) — where every piece is, for a session on ANY machine:
+▶ NOW (2026-10-09 ~04:15 EAT, Ali-Blade15) — where every piece is, for a session on ANY machine:
   · C1 LIVE (`28fd214e`) · C2 LIVE (`8adbdd9f`, served since 23:34 UTC 2026-10-08, health ok).
-  · THE IMPORTER (C3–C5) — design §4, contract `src/lib/contacts/import-flow.ts`. Integration branch
-    `contacts-import-int` (origin; in `C:\kipindi-marketing`): both halves + the generator + main incl. C2, first battery
-    fixed (`a0a2d609`: typecheck 0, contacts-import 275/0, red 287/287, dal-parity 2211/0). The REVIEW ROUND (decisions
-    S15-10…12, log below) is being built in `C:\kipindi-s15` on `contacts-import-build` (`3fd8bf74` = the integration
-    branch + the round's contract). Then: merge into `contacts-import-int`, the battery again, the Postgres probe
-    (`scripts/live/contacts-import-pg-probe.mts`, being written), the drive over the 28 files, push to main as C3–C5.
+  · THE IMPORTER (C3–C5) — PUSHED TO MAIN in the commit that carries this line (branch `contacts-import-int`). Design
+    §4 (decisions S15-1…12), contract `src/lib/contacts/import-flow.ts`. PROVEN before the push (battery 3, 2026-10-09
+    ~04:10 EAT, on `87d3e319` + the plant fix `b6faaffb`): prisma generate 0 · typecheck 0 · `next build` 0 ·
+    `test:contacts-import-db` 45/0 on PostgreSQL 18.3 (real concurrency, conflict rollbacks, the NULL-arm trap, the list
+    foreign key, 20,000 rows settled once each in 9.7 s, p95 0.19 s a step) · contacts-import 285/0 + red 308/308 ·
+    dal-parity + red (every case, §29 included) · red-anchors · contacts-staging/-boundary/-form/-page/-bulk/-export/-lists
+    + reds · 61 suites in all · the drive `qa:contacts-import` 761/0 over the 28 generated files at 360 and 1280 ·
+    admin-section-gate 21/0 · admin-action-gate 15/0 · the U20 drive 487/0 · the C2 checks 12/0 · repo clean after.
+    NEXT: the deploy read back (`?dpl=` and /api/health, the migration applied), then C3b (the four reader gaps), C6
+    (the big files through the browser), C7 (the export round trip), and the live check on production (question 4).
   · ⏳ ASKED Ali (2026-10-09 ~01:15 EAT; defaults if unanswered = (a)): 1 who imports (a: Growth + Admin) · 2 several
     numbers per person (a: each its own contact; the build starts with main-number-only, S15-4) · 3 a "pick from this
     phone" button (a: no) · 4 a live check on production with Claude's own temporary login and a 40-row file, deleted
@@ -61,9 +65,9 @@ then: "the contacts screen"):
 |---|---|---|
 | C1 | The lane claimed and this plan written | ✅ LIVE `28fd214e` |
 | C2 | Audit of the LIVE screen — 43 viewport tiles at 360 / 768 / 1280 / 1440 (the console is English-only), GROWTH and ADMIN, the add dialog's states, bulk, the hard-case rows, the error state: no page overflow anywhere. FOUND AND FIXED: **F1** a number TYPED as `+254 712 345 678` read "a landline in Katavi, Mbeya…" (the box drops the "+") → judged as written once its digits leave +255 (`contactNumberVerdict` typedPlus; `test:contacts-form` 1.5c + plant); **F2** at 360 the sideways-scrolling table showed names only → the masked number and operator under the name below 640px, from the server's masked projection (U19's one render kept); **F3** "20 selected" broke over two lines → the count keeps its measure; **F4** the bulk note promised consent recording "which this page doesn't take yet" → true under the final rule (a list reaches a non-player). NOT CHANGED (recorded): the filter rail is long at 360 for ADMIN; the KPI tiles stack one per row at 360 (the platform's band). PROVEN: the four suites + their reds, typecheck, `next build`, the U20 drive 487/0, and 12 browser checks of F1–F4 at 360 and 1280 (C2-verify). LIVE `8adbdd9f` (served 23:34 UTC 2026-10-08). ⚠️ F2 first shipped its line at 11px (`text-micro`), which `test:type-scale` §3 counts as sub-floor reading copy (751 against 750 — a check the C2 push did not run); caught by the importer's second battery and moved to `text-body-sm` (13px) in `d9c9df5f`, §3 back at 750 | ✅ LIVE |
-| C3 | The importer, part 1 — the file, the columns, the check (U30 + U31-B): staging only, nothing written to the book | 🔨 building (`contacts-import-build`) |
-| C4 | The importer, part 2 — the commit loop and its bar (U32): counted by the server, resumable after a closed tab or a crash | 🔨 building |
-| C5 | Duplicate detection, seen and decided: repeats inside a file, numbers already in the book (keep · use the file's · fill blanks), the list step | 🔨 building |
+| C3 | The importer, part 1 — the file, the columns, the check (U30 + U31-B): staging only, nothing written to the book | ✅ pushed (this commit) — proof in §0 |
+| C4 | The importer, part 2 — the commit loop and its bar (U32): counted by the server, resumable after a closed tab or a crash | ✅ pushed (this commit) — proof in §0 |
+| C5 | Duplicate detection, seen and decided: repeats inside a file, numbers already in the book (keep · use the file's · fill blanks — readers only, S15-10), the list step | ✅ pushed (this commit) — proof in §0 |
 | C3b | The readers made forgiving of real files — found by the generator's author reading the shipped readers against the 28 files (2026-10-09): **G1** a CSV with ONE broken quote is refused whole (`messy-real-life.csv`, `unterminated_quote` at its last record) → offer the rows before it, the broken record named; **G2** a workbook whose first visible sheet is a cover page finds no Phone column (`excel-multi-sheet.xlsx`) → read the sheet that holds the phones, and say which; **G3** two numbers in one phone cell (Google's ` ::: `, "0712… / 0754…") are invalid → take the first mobile, say so; **G4** Outlook's number in Business / Home / Primary while Mobile is empty is lost → fall back to the other phone columns. Proven with the generator's files | ⬜ (after C3–C5) |
 | C6 | Stress: large files at the limits, a large book, two imports at once, a crash mid-commit and its resume | ⬜ |
 | C7 | U34b — an export read back through the importer, row for row | ⬜ |
@@ -112,7 +116,7 @@ And from 2026-09-25: "it's 150k approx contacts, or VCF … it could be small an
    Asha Mwakalinga"), a page at a time, each with its own exception. A blank cell never erases anything; numbers on the
    stop list and erased people are never changed.
 8. **The list** (`import-apply` area): add the contacts to an existing list, a new list, or none — and whether that
-   list is ready for offers (its basis and 18+ recorded on the Lists card) or what to do so it is.
+   list is ready for offers (its basis and 18+ recorded on the Lists card) or what to do so it is. The start button reads "Import 40 rows" with the breakdown on its own line above it ("This import: 37 new · 0 updated · 3 kept as they are") — a label never wider than its button at 360. A viewer who may not read numbers sees no choice: numbers already in the book are kept as they are (S15-10).
 9. **Import** (`import-commit`): the bar counts rows DONE as the server reports them — never a timer. Stop / Resume. A
    closed window stops after the current batch; reopening resumes. Bets always come first (the import waits when the
    betting engine is busy).
@@ -175,6 +179,15 @@ And from 2026-09-25: "it's 150k approx contacts, or VCF … it could be small an
 
 ## §3 — LOG (newest first)
 
+- **2026-10-09 ~04:15 EAT · the importer pushed (C3–C5)** — the review round built by both builders (`493e58bd`: S15-10
+  readers alone update in-book contacts, S15-11 an account's row is never changed, S15-12 stuck runs end after 14 idle
+  days and an admin reaches them; the cursor shown only from the server; cancel's true numbers; busy waits without giving
+  up; the decision kept across a re-check; the erasure race closed inside the step; transient Postgres faults retried; a
+  new list made inside the freeze) and the Postgres probe; battery 3 green (§0). Found and fixed on the way: red:dal-parity
+  had crashed on every case at or after §28 since `b514d5e9` (2026-10-07 — the referee-key model missing from its copied
+  files, `e9bece03`); C2's 11px phone line broke type-scale §3 on main (`d9c9df5f`, 13px); the plant P15b crashed its section
+  (`b6faaffb`). Two visual defects read off the drive's shots at 360 and fixed: the start button's label wider than the
+  button, and an empty "what would change" heading.
 - **2026-10-09 ~03:15 EAT · the importer, first run and review** — integrated as `contacts-import-int` (both halves,
   the generator, main incl. C2). First battery: prisma generate 0, dal-parity 2211/0, contacts-staging 36/0,
   contacts-boundary 35/0, red-anchors 4907/0; typecheck 2 errors and contacts-import 274/1 → fixed (`a0a2d609`):
