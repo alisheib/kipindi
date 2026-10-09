@@ -20,12 +20,27 @@
  * cell that yields no number (`classifyStagedRow`), the browser for its first-mobile phone column (G4, `import-read.ts`),
  * and the list paste chooses the first number on a line through `firstMobileIndex`. The drafted `rawPhone` — the staged
  * row's raw cell — keeps the whole cell; the staged key is the first mobile's.
+ * ⛔ C3b-fix · D1 — THE COST IS LINEAR AND BOUNDED, on the live money server (the review, 2026-10-09: a phone cell of
+ * 200,000 spaces cost about 2·10¹⁰ steps, because the word test rescanned a run of blanks from EVERY blank in it):
+ *   (a) `phoneCellParts` reads each run of blanks ONCE — when the separator-word test fails at a blank it would fail at
+ *       every later blank of the same run (the same word follows them all), so the cut jumps past the whole run; and a
+ *       word is read only as long as the longest separator word. The cut is linear in the cell's length, however long;
+ *   (b) a cell longer than the phone field's own limit (`CONTACT_LIMITS.phone` — ONE number, imported, never typed) is
+ *       NEVER SPLIT: such a cell is already invalid ("The Phone cell is longer than N characters", `draftContactRow`), so
+ *       `firstMobileIn` and `phoneCellRefusal` answer it from the whole cell only, as before C3b. The length is counted
+ *       as the field's own check counts it: the trimmed cell, in characters.
+ *   (c) the other loops C3b added were read for the same shape — the browser's G4 scan asks this rule once per cell, and
+ *       the CSV reader's G1 path counts as it reads — and none rescans.
+ * `test:contacts-import` "phone-cell" H9 feeds 200,000 spaces and Excel's longest cell of "a a a …" to every function
+ * here and holds each to 50 ms; its red plant restores the rescan and fails on time.
  *
- * ⛔ PURE AND CLIENT-SAFE: it imports `../tz-msisdn` alone, and is pinned, like it, in `test:client-graph-safe`. No escape
- * text and no control character is typed here: every special character is built from its code.
+ * ⛔ PURE AND CLIENT-SAFE: it imports `../tz-msisdn` and `./contact-fields` (the phone field's limit) alone — both
+ * client-safe — and is pinned in `test:client-graph-safe`. No escape text and no control character is typed here: every
+ * special character is built from its code.
  * Guard: `npm run test:contacts-import` (section "phone-cell") · red: `npm run red:contacts-import`.
  */
 import { parseTzNumber, type TzNumber } from "../tz-msisdn";
+import { CONTACT_LIMITS } from "./contact-fields";
 
 /* ══ CHARACTERS — by code, never typed ═══════════════════════════════════════════════════════════════════ */
 
@@ -46,8 +61,16 @@ const SEPARATOR_CHARS: ReadonlySet<number> = new Set([LF, CR, AMPERSAND, COMMA, 
 const GOOGLE_COLONS = 3;
 /** Words that join two numbers, read whole and with a space on each side: English "or" and "and", Swahili "au" and "na". */
 const SEPARATOR_WORDS: ReadonlySet<string> = new Set(["or", "and", "au", "na"]);
+/** The longest separator word, in letters — a longer word is never asked about (D1a: a word is read no further). */
+const SEPARATOR_WORD_MAX = Math.max(...[...SEPARATOR_WORDS].map((w) => w.length));
 /** A digit in any script — a part with none is a label ("home", "Simu ya ofisi"), never a number. */
 const ANY_DIGIT = new RegExp(`${String.fromCharCode(92)}p{Nd}`, "u");
+
+/**
+ * ⭐ D1b · the longest cell that is ever SPLIT: the phone field's own limit, read from THE ONE LIMITS TABLE — never a
+ * second literal. A longer cell is refused by `draftContactRow` for its length, so splitting it could only cost time.
+ */
+const SPLIT_MAX_CHARS: number = CONTACT_LIMITS.phone;
 
 /** Whitespace between words: spaces, a tab and the no-break spaces (a line break is a separator of its own). */
 function isBlank(c: number): boolean {
@@ -56,17 +79,45 @@ function isBlank(c: number): boolean {
 
 const isAsciiLetter = (c: number): boolean => (c >= 65 && c <= 90) || (c >= 97 && c <= 122);
 
-/** How many characters a separator WORD takes from `i` (a blank), its spaces on both sides included — or 0. */
-function wordSeparatorAt(s: string, i: number): number {
+/** Where the run of blanks that starts at `i` ends: the first character after it that is not a blank. */
+function blankRunEnd(s: string, i: number): number {
   let j = i;
   while (j < s.length && isBlank(s.charCodeAt(j))) j++;
-  let k = j;
-  while (k < s.length && isAsciiLetter(s.charCodeAt(k))) k++;
-  if (k === j || k >= s.length || !isBlank(s.charCodeAt(k))) return 0;
-  if (!SEPARATOR_WORDS.has(s.slice(j, k).toLowerCase())) return 0;
-  let m = k;
-  while (m < s.length && isBlank(s.charCodeAt(m))) m++;
-  return m - i;
+  return j;
+}
+
+/**
+ * How many characters a separator WORD takes from `i` (a blank whose run ends at `runEnd`), its spaces on both sides
+ * included — or 0. ⛔ D1a · the run of blanks is measured ONCE by the caller and handed in, and the word is read no
+ * further than the longest separator word: nothing here walks a run twice.
+ */
+function wordSeparatorAt(s: string, i: number, runEnd: number): number {
+  let k = runEnd;
+  while (k < s.length && k - runEnd <= SEPARATOR_WORD_MAX && isAsciiLetter(s.charCodeAt(k))) k++;
+  const letters = k - runEnd;
+  if (letters === 0 || letters > SEPARATOR_WORD_MAX || k >= s.length || !isBlank(s.charCodeAt(k))) return 0;
+  if (!SEPARATOR_WORDS.has(s.slice(runEnd, k).toLowerCase())) return 0;
+  return blankRunEnd(s, k) - i;
+}
+
+/**
+ * ⭐ D1b · is this cell longer than the phone field's limit, counted as `draftContactRow` counts it — the trimmed cell, in
+ * characters (code points)? Stops counting once past the limit.
+ */
+function longerThanSplitLimit(text: string): boolean {
+  const t = text.trim();
+  if (t.length <= SPLIT_MAX_CHARS) return false;
+  let chars = 0;
+  for (let i = 0; i < t.length; i++) {
+    const c = t.charCodeAt(i);
+    if (c >= 0xd800 && c <= 0xdbff && i + 1 < t.length) {
+      const d = t.charCodeAt(i + 1);
+      if (d >= 0xdc00 && d <= 0xdfff) i++;
+    }
+    chars++;
+    if (chars > SPLIT_MAX_CHARS) return true;
+  }
+  return false;
 }
 
 /* ══ THE PARTS, AND THE ONE CHOICE ═══════════════════════════════════════════════════════════════════════ */
@@ -74,6 +125,9 @@ function wordSeparatorAt(s: string, i: number): number {
 /**
  * The numbers a cell holds as written, in order: the cell cut at every separator (see the header), each piece trimmed,
  * and only the pieces holding a digit kept. One piece for a cell that holds one number — or none.
+ * ⭐ THE CUT ALONE, LINEAR IN THE CELL'S LENGTH WHATEVER ITS LENGTH (D1a): each run of blanks and each run of colons is
+ * read once. ⛔ It decides nothing: the functions below that choose a number never hand it a cell longer than the phone
+ * field's limit (D1b) — they answer such a cell whole.
  */
 export function phoneCellParts(cell: string): string[] {
   const s = String(cell ?? "");
@@ -92,7 +146,15 @@ export function phoneCellParts(cell: string): string[] {
         continue;
       }
       cut = run;
-    } else if (isBlank(c)) cut = wordSeparatorAt(s, i);
+    } else if (isBlank(c)) {
+      const runEnd = blankRunEnd(s, i);
+      cut = wordSeparatorAt(s, i, runEnd);
+      if (cut === 0) {
+        // ⛔ D1a · the word test would fail at every later blank of this run too: the run is passed over whole.
+        i = runEnd;
+        continue;
+      }
+    }
     if (cut === 0) {
       i++;
       continue;
@@ -119,13 +181,15 @@ export function firstMobileIndex(texts: readonly string[]): number {
 export type CellMobile = { readonly number: TzNumber; readonly text: string };
 
 /**
- * ⭐ THE NUMBER A PHONE CELL YIELDS — or null. The whole cell when `parseTzNumber` reads it as a Tanzanian mobile; else
- * the FIRST of its separated parts that is one (`phoneCellParts`, `firstMobileIndex`). Its `number` is always `ok`.
+ * ⭐ THE NUMBER A PHONE CELL YIELDS — or null. The whole cell when `parseTzNumber` reads it as a Tanzanian mobile; else,
+ * for a cell within the phone field's limit (D1b), the FIRST of its separated parts that is one (`phoneCellParts`,
+ * `firstMobileIndex`). A longer cell is answered from the whole cell only. Its `number` is always `ok`.
  */
 export function firstMobileIn(cell: string): CellMobile | null {
   const text = String(cell ?? "");
   const whole = parseTzNumber(text);
   if (whole.verdict === "ok") return { number: whole, text: text.trim() };
+  if (longerThanSplitLimit(text)) return null;
   const parts = phoneCellParts(text);
   const at = firstMobileIndex(parts);
   return at < 0 ? null : { number: parseTzNumber(parts[at]), text: parts[at] };
@@ -134,12 +198,13 @@ export function firstMobileIn(cell: string): CellMobile | null {
 /**
  * ⭐ THE SENTENCE FOR A PHONE CELL THAT YIELDS NO NUMBER — the check's and the commit's, never the cell. A cell of several
  * numbers none of which is a Tanzanian mobile is told about its FIRST number (the one S15-4 would have taken); every other
- * cell gets `parseTzNumber`'s own sentence for the whole cell, exactly as before C3b.
+ * cell — and every cell longer than the phone field's limit (D1b), which is never split — gets `parseTzNumber`'s own
+ * sentence for the whole cell, exactly as before C3b.
  */
 export function phoneCellRefusal(cell: string): string {
   const text = String(cell ?? "");
   const whole = parseTzNumber(text);
-  if (whole.verdict !== "ok") {
+  if (whole.verdict !== "ok" && !longerThanSplitLimit(text)) {
     const parts = phoneCellParts(text);
     if (parts.length >= 2 && firstMobileIndex(parts) < 0) return parseTzNumber(parts[0]).reason;
   }
