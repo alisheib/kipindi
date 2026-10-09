@@ -486,7 +486,7 @@ function ImportDialog({ open, onClose }: { open: boolean; onClose: () => void })
     if (out.kind === "parsed") {
       prepare({
         file: out.file, digest: out.digest, name: file.name || null, list: false, extraNumbers: out.extraNumbers, extraUnit: "card",
-        unclosed: out.unclosed, noMobileSheet: false,
+        unclosed: out.unclosed, noMobileSheet: out.noMobileSheet === true,
       }, resume);
       return;
     }

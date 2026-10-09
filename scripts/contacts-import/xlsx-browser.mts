@@ -678,6 +678,7 @@ const brief = (r: XlsxReadResult | XlsxBrowserResult): string => {
 /** Where the two readers part, or null when they read the same: the same file, or the same refusal in the same words. */
 function parting(server: XlsxReadResult, browser: XlsxBrowserResult): string | null {
   if (server.ok && browser.kind === "read") {
+    if (server.noMobileSheet !== browser.noMobileSheet) return `noMobileSheet: server ${server.noMobileSheet} · browser ${browser.noMobileSheet}`;
     if (same(server.file, browser.file)) return null;
     const s = server.file;
     const b = browser.file;

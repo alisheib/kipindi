@@ -204,6 +204,8 @@ export type ReadOutcome =
       readonly digest: string;
       readonly extraNumbers: number;
       readonly unclosed: CsvUnclosedQuote | null;
+      /** C3c · a big workbook read in the browser: D8's word (no visible sheet holds a mobile) — the server's for a small one. */
+      readonly noMobileSheet?: boolean;
     }
   | { readonly kind: "xlsx"; readonly base64: string; readonly digest: string; readonly fileName: string }
   | { readonly kind: "refused"; readonly sentence: string; readonly cause: ReadRefusalCause }
@@ -280,7 +282,7 @@ export async function readBigWorkbook(file: File, name: string | null, opts: Rea
   if (opts.signal?.aborted) return { kind: "aborted" };
   const digest = await sha256Hex(new Uint8Array(await file.arrayBuffer()));
   // A workbook has no unclosed CSV quote (C3b-fix · D5's `unclosed` is a CSV reader's alone).
-  return { kind: "parsed", file: out.file, digest, extraNumbers: 0, unclosed: null };
+  return { kind: "parsed", file: out.file, digest, extraNumbers: 0, unclosed: null, noMobileSheet: out.noMobileSheet };
 }
 
 /**
