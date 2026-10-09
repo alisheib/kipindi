@@ -401,7 +401,6 @@ export const BALANCE_STATES = [
 export const MESSAGES = [
   // ── the contact form
   { area: "Contacts", message: "This number is already in the book.", meaning: "The number is a contact already.", action: "Press “Open the existing contact →” and edit that one." },
-  { area: "Contacts", message: "This number can't be added to the book.", meaning: "This number was erased from 50pick at the person's request.", action: "Do not add it again." },
   { area: "Contacts", message: "A name can't hold a phone number — remove the number from the name.", meaning: "Names show to every staff role.", action: "Take the digits out of the name." },
   { area: "Contacts", message: "A tag can't hold a phone number.", meaning: "Tags show to every staff role.", action: "Use a word (“vip”, “event-oct”)." },
   { area: "Contacts", message: "This doesn't look like an email address (name@example.com).", meaning: "The email is not a complete address.", action: "Fix it, or leave it empty." },
