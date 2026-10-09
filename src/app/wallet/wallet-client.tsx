@@ -41,12 +41,14 @@ function BalanceSpark({ series, label }: { series: number[]; label: string }) {
 }
 
 function BalanceCard({
-  balance, pending, hold, currency, held = false, canDeposit = true,
+  balance, pending, hold, currency, held = false, canDeposit = true, journey = false,
 }: {
   balance: number; pending: number; hold: number; currency: string; held?: boolean;
   /** Whether this wallet may be invited to deposit — `depositOpen` from the page (wallet ACTIVE, no break). `held`
    *  still names the balance; this only decides the Add funds link. */
   canDeposit?: boolean;
+  /** R5-B · a journey reader's page: the link takes the journey's door word (`WalletPageClient`'s `journey`). */
+  journey?: boolean;
 }) {
   const { t } = useT();
   return (
@@ -102,7 +104,7 @@ function BalanceCard({
             className="mt-3 inline-flex items-center gap-1.5 font-mono text-caption uppercase tracking-[0.14em] text-gold-300 hover:text-gold-200 transition-colors"
           >
             <I.plus s={12} />
-            {t.common.addFunds}
+            {journey ? t.journey.depositAction : t.common.addFunds}
           </Link>
         )}
         {/* ⭐ Stage 9b — the local `SubStat` is DELETED; this is the kit `<Stat>`.
@@ -638,6 +640,7 @@ export function WalletPageClient({
   limits,
   isAuthed,
   kycFirstDepositNotice = null,
+  journey = false,
 }: {
   balance: number; pending: number; hold: number; currency: string;
   /** The wallet is not ACTIVE (an officer's freeze, a final refusal) — decided on the server from the wallet row. */
@@ -683,6 +686,16 @@ export function WalletPageClient({
   /** Whether the first-deposit identity notice is DUE — decided on the server (`wallet/page.tsx`).
    *  The notice itself only remembers a dismissal; it never re-derives who should see it. */
   kycFirstDepositNotice?: FirstDepositNotice | null;
+  /**
+   * ⭐ R5-B (2026-10-09, F11, tiles 171 172) · THE JOURNEY'S DOORS SAY THE JOURNEY'S WORDS. The page's money doors read
+   * "Amana" / "Toa" (`common.deposit` / `common.withdraw`) under a header pill that says "Weka pesa", beside the Wallet
+   * sheet's "Weka pesa" / "Toa pesa" — one action, two names, one screen. For a reader the per-request resolver puts in the
+   * journey (`resolveSimpleJourney`, wallet/page.tsx) every door here takes the journey's pair, `journey.depositAction` /
+   * `journey.withdrawAction` (sw "Weka pesa" / "Toa pesa", en "Deposit" / "Withdraw", zh "充值" / "提现"): the two header
+   * buttons, the balance card's Add funds link and the empty account's Deposit. No new words; omitted, a classic reader's
+   * page keeps today's.
+   */
+  journey?: boolean;
 }) {
   const { t } = useT();
   /** ⛔ THE GRID AND THE CARD MUST AGREE — see `bonusCardHasContent`. Derived once, here, and
@@ -730,12 +743,12 @@ export function WalletPageClient({
             {depositOpen && (
             <Link href="/wallet/deposit" className="btn btn-primary btn-md btn-pill inline-flex">
               <I.arrowDown s={14} />
-              {t.common.deposit}
+              {journey ? t.journey.depositAction : t.common.deposit}
             </Link>
             )}
             <Link href="/wallet/withdraw" className="btn btn-ghost btn-md btn-pill inline-flex">
               <I.arrowUp s={14} />
-              {t.common.withdraw}
+              {journey ? t.journey.withdrawAction : t.common.withdraw}
             </Link>
           </div>
         )}
@@ -751,7 +764,7 @@ export function WalletPageClient({
           one child) and nothing is orphaned. A lonely card in a multi-column grid is its own
           defect class, and `qa:withdrawal-visual` now measures it by name. */}
       <div className={cn("grid grid-cols-1 gap-4 items-stretch", bonusCardVisible && "lg:grid-cols-2")}>
-        <BalanceCard balance={balance} pending={pending} hold={hold} currency={currency} held={walletHeld} canDeposit={depositOpen} />
+        <BalanceCard balance={balance} pending={pending} hold={hold} currency={currency} held={walletHeld} canDeposit={depositOpen} journey={journey} />
         <BonusWalletCard bonusBalance={bonusBalance} activeCount={bonusActiveCount} grants={bonusGrants} currency={currency} featureLive={bonusFeatureLive} showAllGrants={showAllGrants} grantsToggleHref={grantsToggleHref} />
       </div>
       {bonusWagerRemaining > 0 && (
@@ -788,9 +801,13 @@ export function WalletPageClient({
               profile holds the other door. Under the bar and over the list it belongs to — never under the chart, where
               it read as the chart's caption — and OUTSIDE the bar (the bar's geometry and tap census are measured). It
               stays when a filter empties the list (design review): the receipts did not go anywhere. Withheld only when
-              the account has no rows at all. 44px tap floor; brand ink: a way through, not money. */}
+              the account has no rows at all. 44px tap floor; brand ink: a way through, not money.
+              ⭐ IN THE BAR'S RHYTHM (round 5 of the visual pass, R5-B, 2026-10-09, F13, tile 172): its 44px box holds 17px of
+              air above its capitals and below its baseline, and stood on the page's 32px rung on both sides — the words
+              59px under the last chips and 49 over the chart card, where every bar has its rung + 10 (42 here) to what
+              follows. `.kp-wallet-door` (globals.css) lays that air inside the gaps, R4-C's search-band rule: 42 · 42. */}
           {emptyCause !== "no-rows" && (
-            <div className="flex justify-end">
+            <div className="kp-wallet-door flex justify-end">
               <Link
                 href="/wallet/receipts"
                 data-testid="wallet-all-receipts"
@@ -851,7 +868,7 @@ export function WalletPageClient({
                 emptyCause === "no-rows" ? (
                   isAuthed && depositOpen ? (
                     <Link href="/wallet/deposit" className="btn btn-primary btn-md">
-                      {t.common.depositCta}
+                      {journey ? t.journey.depositAction : t.common.depositCta}
                     </Link>
                   ) : undefined
                 ) : emptyExits.length > 0 ? (

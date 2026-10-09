@@ -369,7 +369,9 @@ section("8 · notifications: never \"..\", and no raw position id in a sentence 
     roundTicketHref("/updown/udr_1", "pos_b") === "/updown/udr_1#pos_b" && roundTicketHref("/updown/udr_1", undefined) === "/updown/udr_1");
   const ns = code(read("src/lib/server/notification-service.ts"));
   ok("8.7 · no notice writes a position id into its words any more", !/\$\{ref\}/.test(ns) && !/` · \$\{opts\.positionId\}`/.test(ns));
-  const reasons = [...ns.matchAll(/\$\{(?:endClause\()?opts\.reason[^}]*\}[.。]?/g)].map((m) => m[0]);
+  // R5-B (round 5, 2026-10-09, F10): a reason may be cut first — `endClause(clipQuote(opts.reason, 120), ".")`, a cut at a word
+  // with "…" where `.slice(0, 120)` cut mid-word — and it still ends through `endClause` (which keeps a cut's "…").
+  const reasons = [...ns.matchAll(/\$\{(?:endClause\()?(?:clipQuote\()?opts\.reason[^}]*\}[.。]?/g)].map((m) => m[0]);
   const raw = reasons.filter((r) => !r.startsWith("${endClause(") && /[.。]$/.test(r));
   ok("8.8 · every officer reason that a template ends with a stop goes through endClause (cancelled and declined, three languages each)",
     raw.length === 0 && reasons.filter((r) => r.startsWith("${endClause(")).length >= 6, `raw: ${raw.join(" ")}`);

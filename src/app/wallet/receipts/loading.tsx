@@ -2,7 +2,7 @@ import { getServerT } from "@/lib/i18n-server";
 import { PageContainer } from "@/components/layout/page-container";
 import { PageHeader } from "@/components/ui/page-header";
 import { I } from "@/components/ui/glyphs";
-import { QUERY_BAR_CLASS, QUERY_BAR_ROW1_CLASS, QUERY_BAR_ROW2_CLASS } from "@/components/ui/query-bar";
+import { QUERY_BAR_CLASS, QUERY_BAR_ROW1_WRAP_CLASS, QUERY_BAR_ROW2_CLASS } from "@/components/ui/query-bar";
 
 /**
  * The Receipts page while it loads (2026-10-07). ⭐ THE SAME TIER AND THE SAME SHAPE as the page (B7 rule 3 — the page and
@@ -19,14 +19,16 @@ export default async function ReceiptsLoading() {
       <div className="h-[44px] w-[120px] rounded-control bg-bg-overlay kp-shimmer-track" aria-hidden />
       <PageHeader tone="info" icon={<I.receipt s={22} />} eyebrow={t.wallet.title} title={t.receipts.title} subtitle={t.receipts.subtitle} />
       <div className={QUERY_BAR_CLASS} aria-hidden>
-        {/* Row 1 — the three lenses (their own line below lg), then the result count. */}
-        <div className={`${QUERY_BAR_ROW1_CLASS} flex-wrap justify-end gap-y-1 lg:flex-nowrap`}>
+        {/* Row 1 — the three lenses (their own line below lg), then the result count: the bar's own wrapped row
+            (`QUERY_BAR_ROW1_WRAP_CLASS`, R5-B 2026-10-09 — it was retyped here), and the count as tall as its line
+            (11.5px mono × 1.5 = 17.25px, its bar centred in it), so row 2 lands where the page puts it. */}
+        <div className={QUERY_BAR_ROW1_WRAP_CLASS}>
           <div className="flex basis-full items-center gap-1 lg:flex-1">
             {[56, 92, 112].map((w, i) => (
               <div key={i} className="h-[44px] shrink-0 rounded-pill bg-bg-overlay kp-shimmer-track" style={{ width: w }} />
             ))}
           </div>
-          <div className="h-3 w-[80px] shrink-0 rounded bg-bg-overlay" />
+          <div className="flex h-[17.25px] shrink-0 items-center"><div className="h-3 w-[80px] rounded bg-bg-overlay" /></div>
         </div>
         {/* Row 2 — one Filters button on a phone; the status and date groups along the bar from lg. */}
         <div className={QUERY_BAR_ROW2_CLASS}>

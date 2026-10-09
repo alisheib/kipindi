@@ -21,7 +21,7 @@ import { FilterPill, FilterGroupKey } from "@/components/ui/filter-pill";
 import { FilterSheet, FilterSheetGroup } from "@/components/markets/filter-sheet";
 import {
   QUERY_BAR_CLASS,
-  QUERY_BAR_ROW1_CLASS,
+  QUERY_BAR_ROW1_WRAP_CLASS,
   QUERY_BAR_ROW2_CLASS,
   QUERY_GROUP_CLASS,
   QueryClear,
@@ -30,7 +30,6 @@ import {
   QueryStrip,
 } from "@/components/ui/query-bar";
 import type { Dict } from "@/lib/i18n-dict";
-import { cn } from "@/lib/utils";
 import {
   LEDGER_STATES,
   LEDGER_WHEN_IDS,
@@ -127,7 +126,7 @@ export function WalletBar({
           (its scroll and fade untouched) so the row wraps and the count drops below it.
           lg is the strip's own scroll-to-wrap switch, so from lg up the row is the original
           single line, sized exactly as before (flex-1 restores the strip's basis). */}
-      <div className={cn(QUERY_BAR_ROW1_CLASS, "flex-wrap justify-end gap-y-1 lg:flex-nowrap")}>
+      <div className={QUERY_BAR_ROW1_WRAP_CLASS}>
         <QueryStrip ariaLabel={t.wallet.filterAria} className="basis-full lg:flex-1">
           {lenses.map((l) => (
             <Chip

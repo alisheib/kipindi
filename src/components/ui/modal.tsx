@@ -491,6 +491,10 @@ export function Modal({
       aria-label={labelledBy ? undefined : ariaLabel}
       aria-labelledby={labelledBy}
       aria-describedby={exiting ? undefined : describedBy}
+      /* ⭐ R5-B (2026-10-09, F7) · THE BOX A DOCKED SHEET RUNS PAST THE SCREEN'S LAST ROW IN, and the width below which it is
+         docked: "lg" for a sheet kept to 1023px (the Wallet), "sm" for every other sheet, nothing for a centred dialog. The
+         journey's rule in globals.css (`[data-dock-wrap]`) moves it 1px down, so a docked sheet draws no bottom edge. */
+      data-dock-wrap={tall ? "lg" : sheet ? "sm" : undefined}
       className={`fixed inset-0 flex justify-center overflow-y-auto overscroll-contain ${
         tall ? "items-end lg:items-center px-0 lg:px-3 py-0 lg:py-4"
           : sheet ? "items-end sm:items-center px-0 sm:px-3 py-0 sm:py-4" : "px-3 py-4"
@@ -535,6 +539,10 @@ export function Modal({
            `data-unread` on the bell and `data-stagger` on a cascade are both selected
            by drivers precisely because a `data-` attribute survives restyling. */
         data-rung="modal"
+        /* ⭐ R5-B (2026-10-09, F7) · the sheet itself, docked below the same width: no bottom border there, and its bottom
+           padding takes back the 1px its box runs past the screen (`[data-dock]` in globals.css; `--dock-pb` is the
+           padding it would have had, Modal's 24px unless the panel says otherwise). */
+        data-dock={tall ? "lg" : sheet ? "sm" : undefined}
         /* §M2: modal → `.m-dialog-in` or `.m-sheet-in` on the way in, `.m-out` on
            the way out. The sheet's ≥sm keyframe swap goes with the entrance only —
            `.m-out` is one exit for both variants, which is what the law names. */

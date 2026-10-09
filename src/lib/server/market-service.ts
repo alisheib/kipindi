@@ -57,6 +57,10 @@ import { notifyBetPlaced, notifyWin, notifyLoss, notifyRefund, notifyCashout, no
   notifyVerdictRecorded } from "./notification-service";
 import { sendEmailToUser, betPlacedHtml, winNotificationHtml, lossNotificationHtml, cashOutReceiptHtml, oneSidedRefundHtml, marketResolutionAdminHtml, marketCancelledRefundHtml, marketCancelledAdminHtml, bonusFulfilledHtml, selectionClosedHtml } from "./email";
 import { onRecruitBet, onRecruitSettlement, clawbackMarketCommission } from "./affiliate-service";
+// R5-B (2026-10-09, F10): a market's name quoted in a notice — the bell, its push, an email's subject line — is cut at a word
+// boundary, with "…" (notification-text.ts). The ledger's own descriptions ("… on \"<title>\"") are money records, pinned
+// by `red:updown-void-copy`, and are not touched here.
+import { clipQuote } from "@/lib/notification-text";
 import { postLedgerEntries, stakeEntries, settlementPayoutEntries, refundEntries, cashoutEntries, withMoneyTx } from "./ledger";
 import type { ServiceResult } from "./auth-service";
 import { marketStore, positionStore } from "./market-dal";
@@ -1834,7 +1838,7 @@ async function buyPositionInner(userId: string, opts: BuyOpts, ctx: BetContext):
     // pools freeze, where it is a fact rather than a moving projection.
     sendEmailToUser(userId, (email) => ({
       to: email,
-      subject: `Bet placed · ${opts.side} on "${market.titleEn.slice(0, 40)}"`,
+      subject: `Bet placed · ${opts.side} on "${clipQuote(market.titleEn, 40)}"`,
       html: betPlacedHtml({
         reference: c.positionId, side: opts.side, stake: opts.stake,
         marketTitle: market.titleEn, placedAt: c.placedAt, resolutionDate: market.resolutionAt.slice(0, 10),
@@ -1860,9 +1864,9 @@ async function buyPositionInner(userId: string, opts: BuyOpts, ctx: BetContext):
         titleEn: `Bet placed · ${sideWordIn("en", opts.side, "UPDOWN")} ${formatTzs(opts.stake)}`,
         titleSw: `Dau limewekwa · ${sideWordIn("sw", opts.side, "UPDOWN")} ${formatTzs(opts.stake)}`,
         titleZh: `已下注 · ${sideWordIn("zh", opts.side, "UPDOWN")} ${formatTzs(opts.stake)}`,
-        bodyEn: `${market.titleEn.slice(0, 60)} — you're in this round.`,
-        bodySw: `${market.titleSw.slice(0, 60)} — uko kwenye raundi hii.`,
-        bodyZh: `${(market.titleZh ?? market.titleEn).slice(0, 40)} — 您已参与本回合。`,
+        bodyEn: `${clipQuote(market.titleEn, 60)} — you're in this round.`,
+        bodySw: `${clipQuote(market.titleSw, 60)} — uko kwenye raundi hii.`,
+        bodyZh: `${clipQuote(market.titleZh ?? market.titleEn, 40)} — 您已参与本回合。`,
         url: "/updown",
         // ⭐ BETS COALESCE WITH EACH OTHER; OUTCOMES DO NOT. A stake notice is only
         // interesting until the next one, so every bet shares one tag and the newest
@@ -2135,7 +2139,7 @@ export async function notifySelectionClosedForMarket(marketId: string): Promise<
     if (mine.every((p) => p.houseBotId != null)) continue;
     sendEmailToUser(userId, (email) => ({
       to: email,
-      subject: `Betting closed — if you're right you receive ${formatTzs(Math.max(ifYes, ifNo))} · ${m.titleEn.slice(0, 40)}`,
+      subject: `Betting closed — if you're right you receive ${formatTzs(Math.max(ifYes, ifNo))} · ${clipQuote(m.titleEn, 40)}`,
       html: selectionClosedHtml({
         marketTitle: m.titleEn, closedAt: m.selectionClosedAt ?? m.resolutionAt, resolvesAt: m.resolutionAt, marketId: m.id,
         payoutIfYes: mine.some((p) => p.side === "YES") ? ifYes : null,
@@ -2277,7 +2281,9 @@ export async function notifyVerdictRecordedForMarket(
    * balance — the one thing this notice exists to prevent.
    */
   if (m.settledAt) return { bettors: 0 };
-  const paysFrom = formatDateTime(m.objectionsClosedAt);
+  // ⭐ The INSTANT, not a string: each language's body says it in its own words (R5-B, 2026-10-09 — `formatDateTime` made
+  // one English string, so the Swahili and Chinese bodies read "kuanzia 9 Oct 2026, 11:53").
+  const paysAt = m.objectionsClosedAt;
 
   const everyPosition = await listPositionsForMarket(marketId);
   const open = everyPosition.filter((p) => p.status === "OPEN");
@@ -2289,7 +2295,7 @@ export async function notifyVerdictRecordedForMarket(
       marketTitle: localizedText(m.titleEn, m.titleSw, m.titleZh),
       marketId: m.id,
       outcome,
-      paysFrom,
+      paysAt,
       reversed: opts?.reversed === true,
       // SEAM:verdictStanding — a player whose every position here is house-marked is not invited to object,
       // by the SAME predicate `objectionEligibility` refuses with (all positions, any status). Ruling 145.
@@ -2350,7 +2356,7 @@ async function alertOfficersMarketDue(m: StoredMarket): Promise<void> {
     notifyAdminMarketResolution(o.id, { title: m.titleEn, marketId: m.id }).catch(() => {});
     sendEmailToUser(o.id, (email) => ({
       to: email,
-      subject: `Market awaiting resolution · ${m.titleEn.slice(0, 60)}`,
+      subject: `Market awaiting resolution · ${clipQuote(m.titleEn, 60)}`,
       html: marketResolutionAdminHtml({ title: m.titleEn, closedAt: m.resolutionAt, reviewUrl: "/admin/resolver-queue" }),
       tag: "market-resolve-admin",
       trackLinks: false,
@@ -4785,7 +4791,7 @@ export async function emergencyVoidMarket(opts: { marketId: string; officerId: s
       notifyAdminMarketCancelled(o.id, { title: m.titleEn, reason, refundedCount, refundedTzs }).catch(() => {});
       sendEmailToUser(o.id, (email) => ({
         to: email,
-        subject: `Market cancelled · ${m.titleEn.slice(0, 50)}`,
+        subject: `Market cancelled · ${clipQuote(m.titleEn, 50)}`,
         html: marketCancelledAdminHtml({ title: m.titleEn, reason, refundedCount, refundedTzs }),
         tag: "market-cancelled-admin",
         trackLinks: false,

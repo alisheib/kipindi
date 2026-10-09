@@ -15,7 +15,7 @@ import { FilterPill, FilterGroupKey } from "@/components/ui/filter-pill";
 import { FilterSheet, FilterSheetGroup } from "@/components/markets/filter-sheet";
 import {
   QUERY_BAR_CLASS,
-  QUERY_BAR_ROW1_CLASS,
+  QUERY_BAR_ROW1_WRAP_CLASS,
   QUERY_BAR_ROW2_CLASS,
   QUERY_GROUP_CLASS,
   QueryClear,
@@ -24,7 +24,6 @@ import {
   QueryStrip,
 } from "@/components/ui/query-bar";
 import type { Dict } from "@/lib/i18n-dict";
-import { cn } from "@/lib/utils";
 import type { LedgerState } from "@/lib/wallet/ledger";
 import {
   RECEIPT_DEFAULT_STATE,
@@ -94,7 +93,7 @@ export function ReceiptsBar({
     <div data-filter-rail className={QUERY_BAR_CLASS}>
       {/* The wallet bar's own arrangement: below lg the count takes its own line under the strip, so a clipped pill
           never sits against it; from lg up the row is one line. */}
-      <div className={cn(QUERY_BAR_ROW1_CLASS, "flex-wrap justify-end gap-y-1 lg:flex-nowrap")}>
+      <div className={QUERY_BAR_ROW1_WRAP_CLASS}>
         <QueryStrip ariaLabel={t.receipts.filterAria} className="basis-full lg:flex-1">
           {RECEIPT_LENSES.map((l) => (
             <Chip key={l} href={href({ type: l })} label={receiptLensLabel(t, l)} count={counts.type[l]}

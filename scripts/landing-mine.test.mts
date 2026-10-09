@@ -168,8 +168,10 @@ const { tallyPicks, eatWeekStartMs, paidOutBehind } = await import("../src/lib/s
   ok("3: ⛔ a frozen wallet still SAYS so, and is decided before the empty-balance prompt",
      act.indexOf("{held ? (") > 0 && act.indexOf("{held ? (") < act.indexOf("t.home.emptyBalance")
      && /kycGate\.frozenTitle/.test(act));
+  // R5-B (round 5 of the visual pass, 2026-10-09, tiles 079 083): the same one sentence, its method's name kept whole —
+  // "pesa ya simu" / "mobile money" one run (`keepText`, found by the Wallet's own label for it, `methodRunIn`).
   ok("3: at zero the empty-balance prompt is ONE sentence, and it names a METHOD rather than a location",
-     /emptyWallet \? \(/.test(act) && /<p className="kp-mine__lead">\{t\.home\.emptyBalance\}<\/p>/.test(act));
+     /emptyWallet \? \(/.test(act) && /<p className="kp-mine__lead">\{keepText\(t\.home\.emptyBalance, methodRunIn\(t\.home\.emptyBalance, t\.wallet\.mobileMoneyOnly\)\)\}<\/p>/.test(act));
   ok("3: the money figure obeys the eye (<Cash>) — ONE figure now, the week's payout",
      (act.match(/<Cash>/g) ?? []).length === 1);
   ok("3: the block's two doors are the player's own positions and the RG limits — neither is money",

@@ -218,6 +218,10 @@ export function NeedleControlsDrawer({ variant = "menu-row" }: { variant?: "menu
                is not. */
             aria-modal={exiting ? undefined : "true"}
             aria-label={t("The Needle controls", "Vidhibiti vya Sindano", "指针玩具控制")}
+            /* ⭐ R5-B (2026-10-09, F7): a bottom sheet below `sm`, so in the journey it draws no bottom edge and runs 1px past
+               the screen's last row, its padding (`--dock-pb`, the `pb-` below) taking that 1px back (`[data-dock]`). */
+            data-dock="sm"
+            data-dock-wrap="sm"
             className={cn(
               "fixed z-[71] border border-border-strong bg-bg-elevated/95 backdrop-blur-xl",
               // Bottom sheet on mobile, so the cast goes UP; at sm: it becomes a
@@ -225,7 +229,7 @@ export function NeedleControlsDrawer({ variant = "menu-row" }: { variant?: "menu
               "shadow-overlay-up sm:shadow-modal",
               // mobile: bottom sheet · desktop: small centred panel
               "left-0 right-0 bottom-0 rounded-t-modal px-4 pt-4",
-              "pb-[calc(16px+env(safe-area-inset-bottom))]",
+              "pb-[calc(16px+env(safe-area-inset-bottom))] [--dock-pb:calc(16px+env(safe-area-inset-bottom))]",
               "sm:left-1/2 sm:right-auto sm:bottom-auto sm:top-1/2 sm:w-[360px] sm:max-w-[calc(100vw-24px)]",
               "sm:-translate-x-1/2 sm:-translate-y-1/2 sm:rounded-modal sm:p-5 sm:pb-5",
               exiting ? "needle-sheet-out pointer-events-none" : "needle-sheet",

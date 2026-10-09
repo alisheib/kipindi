@@ -386,8 +386,10 @@ export function FirstVisitPrimer() {
          at 640, so the 789px card still scrolls and stays reachable. Caught by an audit of this
          session’s own commits, measuring both phone sizes rather than the one the fix was aimed at.
          `overflow-x` stays hidden, which is what the previous
-         `overflow-hidden` was really buying: the gilt corners clipped to the rounded edge. */
-      panelClassName="!p-0 max-h-[calc(100dvh-48px)] overflow-y-auto overflow-x-hidden"
+         `overflow-hidden` was really buying: the gilt corners clipped to the rounded edge.
+         ⭐ R5-B (2026-10-09, F7): docked in the journey the sheet draws no bottom edge and runs 1px past the screen's last
+         row (`[data-dock]`, globals.css), its padding taking that 1px back — from the 0 this panel has (`--dock-pb`). */
+      panelClassName="!p-0 [--dock-pb:0px] max-h-[calc(100dvh-48px)] overflow-y-auto overflow-x-hidden"
     >
         {/* Gilt corners — heraldic framing from the brand kit */}
         <div className="pointer-events-none absolute top-0 left-0" aria-hidden>

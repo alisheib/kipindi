@@ -156,6 +156,19 @@ export default async function NotificationsPage({
     account: { title: t.notif.emptyAccount },
     cleared: { title: t.notif.emptyCleared, body: t.notif.clearedHint },
   };
+  /**
+   * ⛔ THE CONTROLS ARE WITHHELD ON A GENUINELY EMPTY INBOX, and only then (round 5 of the visual pass, R5-B, 2026-10-09)
+   * — §A5's rule, which /positions, /wallet, /updown/history, /proposals, /watchlist, /fairness and the performance page
+   * already keep: a search box and five lens pills all reading 0 above "No notifications yet" are six controls that
+   * cannot act, and a brand-new player met them first. Every other empty state keeps the band and the bar, because there
+   * they are the way OUT of the empty state.
+   * "Genuinely empty" is read off the counts with no search folded in: none live (`all`, every live row whatever its
+   * kind) and none cleared — a player who cleared everything still has the Cleared lens, the way back to their receipts.
+   * A `?q=` keeps the band and the bar whatever the counts (they are folded WITH the search, so a miss reads 0 too, and
+   * the search box holds the way out). A lens on an empty inbox reads the inbox's own sentence: there is no lens to name.
+   */
+  const inboxEmpty = !q && counts.all === 0 && counts.cleared === 0;
+  const empty = inboxEmpty ? EMPTY.all : EMPTY[filter];
 
   return (
     <PageContainer tier="reading" className="space-y-5">
@@ -171,15 +184,18 @@ export default async function NotificationsPage({
           this is where a player comes to find ONE receipt among a year of round results.
           ⭐ ONE BAND WITH THE BAR (round 4, 2026-10-09, tiles 193 194): the empty echo row and the page's 24px stood
           between the box and the lens pills — 59–60px, against 34 under the bar. In the band the box sits 34 under the
-          header and the pills 34 under the box (`QUERY_SEARCH_BAND_CLASS`). */}
-      <Suspense>
-        <SearchBox
-          placeholder={t.notif.searchNotifications}
-          ariaLabel={t.notif.searchNotifications}
-          helpFields={fieldNames(NOTIFICATION_SEARCH)}
-          className={QUERY_SEARCH_BAND_CLASS}
-        />
-      </Suspense>
+          header and the pills 34 under the box (`QUERY_SEARCH_BAND_CLASS`). ⛔ Withheld with the bar on a genuinely
+          empty inbox (`inboxEmpty`, §A5). */}
+      {!inboxEmpty && (
+        <Suspense>
+          <SearchBox
+            placeholder={t.notif.searchNotifications}
+            ariaLabel={t.notif.searchNotifications}
+            helpFields={fieldNames(NOTIFICATION_SEARCH)}
+            className={QUERY_SEARCH_BAND_CLASS}
+          />
+        </Suspense>
+      )}
 
       {/* 🔴 THE RAIL CARRIES `data-filter-rail` NOW, AND IT NEVER HAS. §6 of the campaign names
           this page as one of two that render a real `FilterPill` rail while being invisible to
@@ -188,15 +204,18 @@ export default async function NotificationsPage({
           ⭐ THE LENSES ARE UNCHANGED, DELIBERATELY. Their counts were already real and already
           cross-filtered, and the wrap-not-scroll ruling below is preserved by `QueryStrip`, which
           wraps above `lg` and scrolls below it. What moved is the SORT: it was a second rail of
-          pills, identical in shape to the lens rail, ORDERING rather than filtering. */}
-      <NotificationsBar
-        filter={filter}
-        sort={sort}
-        counts={counts}
-        resultCount={total}
-        hrefWith={hrefWith}
-        t={t}
-      />
+          pills, identical in shape to the lens rail, ORDERING rather than filtering.
+          ⛔ Withheld on a genuinely empty inbox (`inboxEmpty`, §A5): five pills reading 0 above "No notifications yet". */}
+      {!inboxEmpty && (
+        <NotificationsBar
+          filter={filter}
+          sort={sort}
+          counts={counts}
+          resultCount={total}
+          hrefWith={hrefWith}
+          t={t}
+        />
+      )}
 
       {/* ⛔ Says out loud that clearing HIDES rather than deletes. Without this sentence a
           player reads "Clear all" as destructive and never taps it — or taps it and believes
@@ -226,8 +245,8 @@ export default async function NotificationsPage({
          * every other setting and drops only `q`.
          */
         <EmptyState
-          title={q ? `${t.results.noResultsMatch} "${q}"` : EMPTY[filter].title}
-          body={q ? t.results.tryDifferentKeywords : EMPTY[filter].body}
+          title={q ? `${t.results.noResultsMatch} "${q}"` : empty.title}
+          body={q ? t.results.tryDifferentKeywords : empty.body}
           illustration={<I.bellRing s={30} />}
           action={
             q ? (

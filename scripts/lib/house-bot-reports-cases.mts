@@ -2046,11 +2046,19 @@ export const PLAYER_NOTIFIER_HASHES: Readonly<Record<string, string>> = {
   // measure): an officer's reason that already ends in "." no longer gets a second one (`endClause`), the " · pos_…"
   // suffix left the words for the link (`ticketHref`, the refunded ticket, falling back to /wallet). No house reader, no
   // house word, the same three sentences otherwise — the four other notifiers' hashes are unchanged.
-  notifyMarketCancelled: "303f06a9fa810c98f8e5864a2977161c8b9f8097f93d77c7ba7e843d3e0539f9",
-  notifyObjectionDecided: "72d9f9fe6b0a919bde881b47fc2f7863b54d55b1f9c38a2239fd23c2e219e6a2",
-  notifyVerdictRecorded: "42c58491831e558eb3e63b2c2bb1a17ad7637cf41a0bcb1c9b342f28a1c0b222",
+  // ⭐ RE-MEASURED AGAIN 2026-10-09, THE CHANGE REVIEWED AS ONE (the visual pass's round 5, R5-B, F9 + F10; the same measure
+  // reproduces the four hashes below it at 1699302a before the change): a quoted title or reason is cut at a word with "…"
+  // (`clipQuote`, notification-text.ts) where `.slice(0, n)` cut it mid-word with no mark — all four bodies; and the
+  // verdict's payout time is the market's own instant (`paysAt`), said in each language's month words on the East Africa
+  // clock (`instantIn` + `formatEatDateTime`), where one English string (`formatDateTime`) stood in all three bodies. No
+  // house reader, no house word, no new sentence; `marketCancelledRefundHtml` is untouched and keeps its hash.
+  //   was · notifyMarketCancelled 303f06a9… · notifyObjectionDecided 72d9f9fe… · notifyVerdictRecorded 42c58491… ·
+  //         notifyVerdictRecordedForMarket e9589970…
+  notifyMarketCancelled: "2a1da0938e5fce9b1cc3636e4f4e69e0fb0bb1a512513b175312375f0d37c1b9",
+  notifyObjectionDecided: "715f4026aa917afa661c735fc0129d51eef99666ce8a843bbe7dec2751f3c9d9",
+  notifyVerdictRecorded: "cb4d94a7fcd3d2743bd46624e338bf872b1dcde0cc113d4008c78a4c3fc69e93",
   marketCancelledRefundHtml: "9459244bfe07cd3e2166c2c9d56efb330290f00b133ac4a052e0d3159c8a1c9b",
-  notifyVerdictRecordedForMarket: "e9589970eac191406dcd3963c0742e795e3374c11d3f1936c8808b3ad63596a8",
+  notifyVerdictRecordedForMarket: "84c86d46f3c30c4c21f122d9db260311b4987032983285a17623b890b5d9e2c2",
 };
 /** One function declaration's own text (the fnBody of seam 6.h1b, cut by the syntax tree at its closing brace), or "". */
 export function functionDeclarationText(file: string, code: string, name: string): string {

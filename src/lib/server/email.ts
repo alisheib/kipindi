@@ -22,7 +22,10 @@ import { LinkTrackingOptions } from "postmark/dist/client/models/message/Support
 import { resolvePhoneEmail } from "./email-map";
 import { isSuppressed } from "./email-suppression";
 import { appUrl } from "@/lib/app-url";
-import { formatTzs, formatDateShort } from "@/lib/utils";
+import { formatTzs } from "@/lib/utils";
+// R5-B (2026-10-09, F9): a day a letter states, in each of its lines' own words (`agentRevokedHtml`) — the notice's rule.
+import { formatEatDate } from "@/lib/eat-day";
+import { dict } from "@/lib/i18n-dict";
 import { AGENT_REJECT_REASON } from "@/lib/admin-status-lexicon";
 // E-101 · an email that quotes a Reference must link to THAT reference, not to a list.
 import { positionPermalinkHref } from "@/lib/position-permalink";
@@ -2180,12 +2183,21 @@ export function agentDeactivatedHtml(): string {
 
 /** The partnership has ENDED. ⛔ No product link — support is the route (NO_PRODUCT_LINK). */
 export function agentRevokedHtml({ reapplyAt }: { reapplyAt: string | null }): string {
-  const when = reapplyAt ? formatDateShort(reapplyAt) : null;
+  /* ⭐ R5-B (2026-10-09, F9) · THE DATE IN EACH LINE'S OWN WORDS. `formatDateShort` made one English date ("06 Dec") and the
+     Swahili line printed it too ("…kuanzia 06 Dec"). It is a DAY, so each line takes `formatEatDate` in its own month words
+     on the East Africa clock — "6 Dec" / "6 Des" (the year added when it is not this one) — exactly as the bell's notice
+     (`notifyAgentRevoked`) says it. A value that does not parse states no date, as a missing one did.
+     ⚠️ Only the month WORDS come from the dictionary (`common.monthsShort`, the one list every date on the platform reads,
+     as `updown-digest.ts` does); the letter's sentences stay its own English and Swahili (the note on `SOCIAL_EMAIL_LABEL`). */
+  const at = reapplyAt ? Date.parse(reapplyAt) : Number.NaN;
+  const now = Date.now();
+  const whenEn = Number.isFinite(at) ? formatEatDate(at, now, dict.en.common.monthsShort, "en") : null;
+  const whenSw = Number.isFinite(at) ? formatEatDate(at, now, dict.sw.common.monthsShort, "sw") : null;
   return wrap(`
     ${eyebrow("Agent programme", "Mpango wa mawakala")}
     ${heading("Your agent partnership has ended")}
-    ${subtitle(`A compliance officer has ended your agent partnership. Your code no longer recruits and no new commission accrues. Commission already paid stays in your wallet.${when ? ` You may apply again from ${when}.` : ""}`)}
-    ${subtitleSw(`Afisa wa uzingatiaji amekomesha ushirikiano wako wa uwakala. Msimbo wako hauandikishi tena na hakuna kamisheni mpya. Kamisheni iliyokwisha lipwa inabaki kwenye pochi yako.${when ? ` Unaweza kuomba tena kuanzia ${when}.` : ""}`)}
+    ${subtitle(`A compliance officer has ended your agent partnership. Your code no longer recruits and no new commission accrues. Commission already paid stays in your wallet.${whenEn ? ` You may apply again from ${whenEn}.` : ""}`)}
+    ${subtitleSw(`Afisa wa uzingatiaji amekomesha ushirikiano wako wa uwakala. Msimbo wako hauandikishi tena na hakuna kamisheni mpya. Kamisheni iliyokwisha lipwa inabaki kwenye pochi yako.${whenSw ? ` Unaweza kuomba tena kuanzia ${whenSw}.` : ""}`)}
     <p style="margin:14px 0 0;font-family:'Inter',Helvetica,Arial,sans-serif;font-size:11px;color:${TEXT_SUBTLE}">Support: <a href="mailto:${REPLY_TO()}" style="color:${BRAND_LINK};text-decoration:none">${REPLY_TO()}</a></p>
   `);
 }

@@ -30,6 +30,8 @@ import { currentSession } from "@/lib/server/auth-service";
 import { db, type StoredTxn } from "@/lib/server/store";
 import { isLockedOut } from "@/lib/server/responsible-gambling";
 import { getServerT } from "@/lib/i18n-server";
+// R5-B (2026-10-09, F11): the empty book's Deposit takes the journey's door word for a journey reader.
+import { resolveSimpleJourney } from "@/lib/server/journey-preview";
 import { pathWithQuery } from "@/lib/safe-next";
 import { formatNumber, formatTzs } from "@/lib/utils";
 import { formatEatDateTime } from "@/lib/eat-day";
@@ -99,6 +101,9 @@ export default async function ReceiptsPage({ searchParams }: { searchParams: Pro
     try { onBreak = (await isLockedOut(session.userId)).locked; } catch { /* fails open — /wallet/deposit still refuses */ }
     depositOpen = !(w && w.status !== "ACTIVE") && !onBreak;
   }
+  /* ⭐ R5-B (2026-10-09, F11) · one action, one name in the journey: its doors say "Weka pesa" (header pill, Wallet sheet,
+     /wallet), so this one does too (`journey.depositAction`); a classic reader keeps `common.depositCta`. */
+  const { journey } = await resolveSimpleJourney();
 
   const EXIT_LABEL: Record<string, string> = { state: t.wallet.exitState, when: t.wallet.exitWhen, type: t.receipts.allReceipts };
   const emptyTitle =
@@ -179,7 +184,7 @@ export default async function ReceiptsPage({ searchParams }: { searchParams: Pro
             cause === "no-rows" ? (
               depositOpen ? (
                 <Link href="/wallet/deposit" className="btn btn-primary btn-md">
-                  {t.common.depositCta}
+                  {journey ? t.journey.depositAction : t.common.depositCta}
                 </Link>
               ) : undefined
             ) : exits.length > 0 ? (

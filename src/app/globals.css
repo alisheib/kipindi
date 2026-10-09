@@ -2542,6 +2542,28 @@ textarea::placeholder { color: var(--text-subtle); }
    `outline-offset: -2px`, i.e. INSIDE the item, so nothing about it depends on this axis. */
 [data-section-rail] { overflow-y: hidden; }
 
+/* ⭐ THE JOURNEY'S SECTION RAILS START ON THE COLUMN'S EDGE (round 5 of the visual pass, 2026-10-09, F6, tiles 165–168
+   171 172). The kit's option is a 20px-padded box with its underline 12px in, so the first option's underline began 12px
+   and its label 20px inside the column — Tiketi zangu's "Maswali" at x28 / x36 (390) and x144 / x152 (1280), /wallet's
+   "Shughuli" the same — while the heading, the rail's rule, the chips and the cards all stand at x16 / x132 (R4-E's one
+   content edge per column). In the journey a section rail now speaks the journey header's own line-tab geometry
+   (`.kp-jnav__link`: 12px a side, the underline exactly under the label) and the rail reaches 12px into the gutter, so:
+     · the first label AND its underline start on the column edge (x16 / x132), every underline is its label's width;
+     · the first option's hover fill and focus ring keep their 12px of air, drawn in the gutter (from x4 at 390 — the
+       gutter is 16 — and x120 at 1280), inside the rail's own box, so its overflow clip never cuts them;
+     · the RULE still starts on the column edge: the rail's border is transparent and the line is its background, 1px
+       on the border row from 12px in (a background is fixed to a scroll box, so it does not travel when the rail
+       scrolls). Its right end is the column's, as before.
+   The option's 44px height, its 4px gap, its pending mark (`--lp-inset: 12px`, the underline's inset) are unchanged.
+   `[data-rail-ghost]` is /wallet's loading rail, drawn to the same geometry so the page lands where its ghost stood.
+   ⚠️ Journey-only: in the classic shell the same rails keep the kit's geometry (one rule per shell). */
+:root:has(#kp-journey-shell) :is([data-section-rail], [data-rail-ghost]) {
+  margin-inline-start: calc(-1 * var(--sp-3));
+  border-bottom-color: transparent;
+  background: linear-gradient(var(--border), var(--border)) var(--sp-3) 100% / calc(100% - var(--sp-3)) 1px no-repeat border-box;
+}
+:root:has(#kp-journey-shell) :is([data-section-rail], [data-rail-ghost]) > * { padding-inline: var(--sp-3); }
+
 /* ===========================================================================
    Motion polish layer — ⚠️ DEPRECATED ALIASES (2026-07-28)
    ---------------------------------------------------------------------------
@@ -3726,6 +3748,16 @@ th .link-pending { --lp-inset: 0px; --lp-bottom: 8px; }
    (/results) the negative margin simply subtracts from the gap. */
 .kp-search-band.kp-search-band:has(+ .kp-discovery-bar) { margin-bottom: -25px; }
 .kp-search-band.kp-search-band:not(:has(+ .kp-discovery-bar)) { margin-bottom: -15px; }
+/* ⭐ R5-B (2026-10-09, F13, tile 172) · …AND A DOOR UNDER A BAR STANDS IN THE BAND'S RHYTHM — /wallet's "Risiti zote"
+   (`wallet-client.tsx`), a 44px link row between the bar and the list. Its 13px words on an 18px line, centred, keep
+   17.27px of the box above their capitals and as much below their baseline (Inter: capitals 1490 of 2048, ascent 1984),
+   and the page's 32px rung stood on both sides, so the words were 10 + 32 + 17.27 = 59px under the last pills and 49 over
+   the chart card (measured 59 · 49 at 1280) — a band twice the bar's own. Every bar has its rung + 10 (the bar's bottom
+   padding) to what follows, 42 on this page, so the box lies 17px into each gap: 15px over it (32 − 17, the words 42.3
+   under the pills) and −7px under it (it collapses with the next block's 32: 25 + 17.27, the baseline 42.3 over the
+   chart, the capped notice or the empty state). The tap box stays 44px; the list moves up 24px.
+   ⛔ DOUBLED and after a bar, as above: (0,3,0) ties `space-y-*`'s own margins and wins on source order. */
+.kp-discovery-bar + .kp-wallet-door.kp-wallet-door { margin-top: 15px; margin-bottom: -7px; }
 
 /* The sort/topic menus are <details>, so they open with no JavaScript. The native marker is
    replaced by the caret glyph inside the summary.
@@ -6298,6 +6330,56 @@ html[lang="zh"] .kp-udrule { word-break: keep-all; }
    13px at en 320 the same way). ⚠️ Journey-only: the classic capsule opens this same sheet (frozen until S15). */
 :root:has(#kp-journey-shell) .kp-wsheet__act { padding-inline: var(--sp-3); }
 :root:has(#kp-journey-shell) .kp-wsheet__act > svg { flex-shrink: 0; }
+/* ⭐ THE HAIRLINE OVER THE WALLET'S BOTTOM ROW STANDS IN THE MIDDLE OF ITS GAP (round 5 of the visual pass, 2026-10-09, F3,
+   tiles 092 132–137 151–154). The sheet's 16px gap put the rule 16px under the content above it (17–18px under the
+   captions' ink) and the row's own 8px padding put the row 8px under the rule — Funga's border 8px off the line, the links'
+   words 25px — so the rule read as a lid on the row rather than a division between two parts. It now keeps the filter
+   sheet's footer rhythm (`.kp-fsheet-foot`: 16 above the rule, 16 below): the content, 16, the rule, 16, the row's 44px
+   boxes, every control centred on that one row. Every state ends 16 above it — the held notice, a break's notice, the
+   doors' captions. Phone sheet and desktop panel alike, the rule → Funga's border goes 8 → 16: at 390 the docked sheet
+   grows 8px upward (the rule y706 → y698, Funga's border stays at y715), at 1280 the popover 8px downward (Funga's
+   border y266 → y274 under the rule at y257).
+   ⭐ ONE CONVENTION FOR A HAIRLINE OVER A SURFACE'S ACTIONS: it stands in the middle of its gap, measured to what the eye
+   sees on each side (a box's edge, else a line's ink). The filter sheet's footer (16 | 16) and the bet confirm's (the
+   last box 20 over the rule, the quote caption's capitals 20.6 under it) already did; a BAND is not this family — the
+   bell's footer tray and the date picker's bars carry their own padding and their rule is their own edge.
+   ⚠️ Journey-only, like the rules above: the classic capsule's Wallet is frozen until S15. */
+:root:has(#kp-journey-shell) .kp-wsheet__foot { padding-top: var(--sp-4); }
+
+/* ⭐ A SHEET DOCKED TO THE SCREEN'S BOTTOM EDGE HAS NO BOTTOM EDGE OF ITS OWN (round 5 of the visual pass, 2026-10-09, F7,
+   tiles 132 134 136 151 152 and the Tiketi zangu guest sheet). Docked, a sheet drew its material's whole frame — the 1px
+   --border-strong and, inside it, the even inner light (`--edge-lit-strong`) — so the screen's last two rows were a line
+   and a fainter line (y779 and y778 of 780) meeting the sides at square corners: a box set down ON the bottom edge, not a
+   sheet rising from under it. A docked sheet now draws no bottom border, and it runs 1px past the screen's last row, so
+   the inner light's bottom row — an inset ring is drawn on all four sides or on none — lies below the screen; its bottom
+   padding takes that 1px back, so the air under its content is exactly its padding, to the screen's edge. The top and the
+   sides keep their border and light: the sides continue the top corners' curve.
+   · EVERY DOCKED SHEET THE JOURNEY CAN OPEN: Modal's sheets — the Wallet and Tiketi zangu's guest sheet ("lg", docked to
+     1023px), the first-visit primer and the reality check ("sm", docked to 639px) — the phone filter sheet
+     (`.kp-fsheet-panel`, docked wherever it shows: `lg:hidden`), the Needle's drawer ("sm") and the help chat's sheet
+     (`.cm-panel-sheet`, to 1023px). A centred dialog is never docked and carries no mark.
+   · `data-dock="lg"|"sm"` marks a sheet and the width below which it is docked; `data-dock-wrap` the box that runs past
+     the screen — Modal's wrapper, or a fixed sheet itself; `--dock-pb` is the sheet's own bottom padding (default: Modal's
+     `p-5`, 24px; the Wallet's 20, the filter sheet's 16, the Needle's 16, the primer's 0 — each with the safe-area inset
+     it already had).
+   · `!important` on the padding, and earned: the first-visit primer's panel is `!p-0`, an important utility, and the dock
+     must still add its 1px there.
+   · The chat panel (`.cm-panel-sheet`) is the one docked sheet whose last child — the composer, with its own opaque fill —
+     already paints over the light's bottom row: it drops the border alone.
+   ⚠️ Journey-only: the classic capsule's Wallet is frozen chrome until S15, so every classic sheet keeps its frame (one
+   rule per shell, never two inside one). */
+.kp-wsheet { --dock-pb: calc(var(--sp-5) + env(safe-area-inset-bottom, 0px)); }
+.kp-fsheet-panel { --dock-pb: calc(env(safe-area-inset-bottom, 0px) + var(--sp-4)); }
+@media (max-width: 1023.98px) {
+  :root:has(#kp-journey-shell) :is([data-dock-wrap="lg"], .kp-fsheet-panel) { bottom: -1px; }
+  :root:has(#kp-journey-shell) :is([data-dock="lg"], .kp-fsheet-panel) { border-bottom-width: 0; padding-bottom: calc(var(--dock-pb, var(--sp-6)) + 1px) !important; }
+  :root:has(#kp-journey-shell) .cm-panel-sheet { border-bottom-width: 0; }
+}
+@media (max-width: 639.98px) {
+  /* density: general — a docked sheet's own bottom edge (R5-B, F7), not the board; both card-spacing settings. */
+  :root:has(#kp-journey-shell) [data-dock-wrap="sm"] { bottom: -1px; }
+  :root:has(#kp-journey-shell) [data-dock="sm"] { border-bottom-width: 0; padding-bottom: calc(var(--dock-pb, var(--sp-6)) + 1px) !important; }
+}
 
 /* ── S6 · THE CAPTIONED BALANCE (SJ-15) — the journey header's wallet door ──────────────────────────────────
    "Salio" over "TZS 2,000": one 44px button that opens the Wallet above. Only the journey header renders it
@@ -6896,8 +6978,13 @@ html[lang="zh"] .kp-udrule { word-break: keep-all; }
    pip rises 1px (−3), which opens a 1px gap between its ring and the dome. It cannot move right: "99+" at the pulse's
    peak already ends 1px from the avatar. In this slot it also drops the glow and keeps the lift's dark drop: the glow is
    there because the classic bar is GLASS, where a flat drop disappears (the lift's own note), and the journey's bar
-   is an opaque panel (7.frame). Classic pips keep both. */
-.kp-jhdr__bell .count-badge { top: -3px !important; right: auto !important; left: 21px !important; box-shadow: 0 2px 4px color-mix(in oklab, var(--royal-950) 40%, transparent); }
+   is an opaque panel (7.frame). Classic pips keep both.
+   ⭐ …AND NO DROP EITHER (round 5, 2026-10-09, F8, tile 225 at 1280). The dark drop the glow left behind (0 2px 4px,
+   --royal-950 at 40%) fell on the dome's right shoulder and darkened it by up to ~16 a channel — (1175,23) summed 426
+   against its mirror (1168,23) at 475 — and shaded the bar under the pip (68–75 against the bar's 86). The pip needs no
+   shadow to stand off this bar: its own 2px ring of the bar's ground (`ring="var(--bg-base)"`) already separates it, and
+   the bar is opaque. So the journey's pip casts nothing; the classic pip keeps its glow and its drop (frozen chrome). */
+.kp-jhdr__bell .count-badge { top: -3px !important; right: auto !important; left: 21px !important; box-shadow: none; }
 @media (min-width: 360px) { .kp-jhdr__plus { display: inline-flex; } }
 @media (min-width: 360px) { .kp-jhdr__pill { padding: 0 12px 0 10px; } }
 @media (min-width: 640px) { .kp-jhdr__row { gap: var(--sp-5); } }

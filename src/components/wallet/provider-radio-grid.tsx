@@ -85,10 +85,14 @@ export function ProviderRadioGrid({
               aria-hidden
               className="pointer-events-none absolute inset-0 rounded-md ring-2 ring-brand-500 opacity-0 scale-95 transition duration-[var(--t-flick)] ease-out motion-reduce:transition-none group-has-[:checked]/tile:opacity-100 group-has-[:checked]/tile:scale-100"
             />
-            {/* Check pip — top-right. */}
+            {/* Check pip — top-right, 4px into the corner (`right-1 top-1`; round 5 of the visual pass, R5-B, 2026-10-09, tile
+                067). At 8px in (`1.5` is 8 on this scale) the 20px pip stood 3px from the 48px logo plate in a 113px tile at
+                sw 320 (pip x125–144, plate to x121) — a mark crowding the logo it marks. 4px in leaves 7px there and more at
+                every wider tile; the pip stays inside the tile's 8px corner curve and over its ring's corner, where it reads
+                as the tile's. Deposit and withdraw share this grid, so both pickers move together. */}
             <span
               aria-hidden
-              className="absolute right-1.5 top-1.5 inline-flex h-4 w-4 items-center justify-center rounded-full bg-brand-500 text-white opacity-0 scale-75 transition duration-[var(--t-flick)] ease-out motion-reduce:transition-none group-has-[:checked]/tile:opacity-100 group-has-[:checked]/tile:scale-100"
+              className="absolute right-1 top-1 inline-flex h-4 w-4 items-center justify-center rounded-full bg-brand-500 text-white opacity-0 scale-75 transition duration-[var(--t-flick)] ease-out motion-reduce:transition-none group-has-[:checked]/tile:opacity-100 group-has-[:checked]/tile:scale-100"
             >
               <I.check s={11} />
             </span>

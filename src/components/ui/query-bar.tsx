@@ -90,6 +90,18 @@ export const QUERY_BAR_ROW1_CLASS = "flex items-center gap-x-3 pt-2.5";
  */
 export const QUERY_BAR_ROW1_ALONE_CLASS = `${QUERY_BAR_ROW1_CLASS} pb-[10px]`;
 /**
+ * Row 1 WHEN THE COUNT TAKES ITS OWN LINE below `lg` — the money books (/wallet, /wallet/receipts), whose strip goes full
+ * width (`basis-full lg:flex-1` on the strip) so a clipped pill never sits against the count; from `lg` it is one line.
+ * ⭐ THE COUNT LINE HAS 12px OF AIR ON BOTH SIDES, THE /markets PHONE BAR'S RHYTHM (round 5 of the visual pass, R5-B,
+ * 2026-10-09, F14, tile 171). `gap-y-1` (4px) set "Miamala 19"'s capitals 8px under the pills (y697 → y706 at sw 390)
+ * where R4-D made /markets' count line 12 (`globals.css`, "THE COUNT LINE HAS AIR ON BOTH SIDES": `--sp-2` each way,
+ * 4.4px of the line's 17.25 above its capitals). The row gap is that 8px now (`gap-y-1.5`: 1.5 is 8px on this scale, not
+ * an inverted key), so the capitals stand 12 under the pills (y706 → y710); and the row reaches 4px into row 2's 12px
+ * top padding (`-mb-1`), so the baseline stands 12 over the next row's control (it was 16.45). From `lg` the row is one
+ * line and nothing moves (`lg:mb-0`).
+ */
+export const QUERY_BAR_ROW1_WRAP_CLASS = `${QUERY_BAR_ROW1_CLASS} flex-wrap justify-end gap-y-1.5 -mb-1 lg:mb-0 lg:flex-nowrap`;
+/**
  * 🔴 PLAYER-FILTERS 2026-09-09 · `gap-x-2` BECAME `gap-2`, BECAUSE THIS ROW WRAPS AND HAD NO
  * ROW GAP AT ALL.
  *

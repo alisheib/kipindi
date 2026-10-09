@@ -93,8 +93,13 @@ export default async function WalletLoading() {
         )}
       </div>
 
-      {/* Tab skeleton */}
-      <nav className="flex items-center gap-1 border-b border-border" aria-hidden>
+      {/* Tab skeleton — ⭐ THE RAIL'S OWN GEOMETRY (round 5 of the visual pass, R5-B, 2026-10-09, F6): the option box,
+          its label and its underline as `Tabs variant="line"` draws them (tabs.tsx: `items-end gap-1`, a 44px box with
+          `px-4`, the label `text-body-sm font-semibold` centred, the underline 2px at the box's foot 12px in), where the
+          skeleton set the words in the display face on the box's first line, 14px in, under a box-wide underline — so the
+          first word moved 6px right and about 10px down (baseline ~16.7 → 26.7 in the box) when the page landed. `data-rail-ghost` lets the journey's rail rule (globals.css,
+          `[data-section-rail]`) draw this ghost exactly as it draws the rail: the first word on the column's edge. */}
+      <nav className="flex items-end gap-1 border-b border-border" data-rail-ghost="" aria-hidden>
         {[t.common.activity, t.common.methods, t.common.limits].map((tab, i) => (
           /* ⚠️ LITERAL, not `h-9` — spacing is overridden (tailwind.config.ts:200-215) so this
              drew 64px for a tab row that renders at 44px (`Tabs variant="line"`, tabs.tsx),
@@ -104,8 +109,9 @@ export default async function WalletLoading() {
              in its own comment: section tabs are NAVIGATION, not earned money (§M3). The
              skeleton was drawing a gold underline that repainted brand a beat later — the
              one place on this page where the ghost disagreed with the page. */
-          <div key={tab} className={`h-[44px] px-3.5 ${i === 0 ? "border-b-2 border-brand-500" : ""}`}>
-            <span className="font-display text-[13px] text-text-subtle">{tab}</span>
+          <div key={tab} className="relative inline-flex h-[44px] items-center whitespace-nowrap px-4 text-body-sm font-semibold text-text-subtle">
+            {tab}
+            {i === 0 && <span className="absolute bottom-0 left-2 right-2 h-[2px] rounded-pill bg-brand-500" />}
           </div>
         ))}
       </nav>

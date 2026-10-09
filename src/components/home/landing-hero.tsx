@@ -375,6 +375,16 @@ export function LandingHero({ figures, t, locale, isAuthed, nowMs, cards, mine, 
 }
 
 /**
+ * The payment method's name as `sentence` spells it — "pesa ya simu", "mobile money" — found by the Wallet's own label for
+ * it (`wallet.mobileMoneyOnly`, in any case), as the one run `keepText` keeps whole; none when the sentence names it
+ * otherwise (R5-B, 2026-10-09). No new words: both strings are the dictionary's.
+ */
+export function methodRunIn(sentence: string, method: string): string[] {
+  const at = sentence.toLowerCase().indexOf(method.toLowerCase());
+  return at < 0 || method.length === 0 ? [] : [sentence.slice(at, at + method.length)];
+}
+
+/**
  * THE SIGNED-IN HERO (landing v3 · WP14 part 2 — the delivery's wallet scenario §4a and §4c).
  *
  * Where a visitor is offered "Create account", a player sees their own POSITION: Your picks (open ·
@@ -466,7 +476,13 @@ function SignedInAct({ t, mine, journey }: { t: Dict; mine: LandingMine | null; 
           <p className="kp-mine__held-b">{keepText(fill(breakEnd.exclusion ? t.rg.exclusionActive : t.rg.breakActive, { date: breakEnd.date }), [breakEnd.date])}</p>
         </div>
       ) : emptyWallet ? (
-        <p className="kp-mine__lead">{t.home.emptyBalance}</p>
+        /* ⭐ THE PAYMENT METHOD'S NAME STAYS WHOLE (round 5 of the visual pass, R5-B, 2026-10-09, tiles 079 083): balanced
+           at 1024–1280 the lead broke inside it — "…kwa pesa ya" / "simu au kadi…", "…by mobile" / "money or card…" — the
+           way the trust line above never breaks a rail's name (`.kp-hero__rail`). It is one run now (`keepText`), found by
+           the Wallet's own label for it (`methodRunIn`); the lines become "…kwa pesa ya simu" / "au kadi…" (382 | 282px)
+           and "…Add funds by" / "mobile money or card…" (295 | 367). At 390 the run cannot end the first line, so the lead
+           takes three lines there, as it already does at 320. Chinese names it 手机钱包, which `keep-all` keeps. */
+        <p className="kp-mine__lead">{keepText(t.home.emptyBalance, methodRunIn(t.home.emptyBalance, t.wallet.mobileMoneyOnly))}</p>
       ) : null}
       {/* The block's two doors, and neither is money: the player's own positions — which is what the
           figures above are ABOUT — and the RG limits, one tap from the first screen (K37). */}

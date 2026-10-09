@@ -123,11 +123,12 @@ const EMITTED: { fn: string; row: StoredNotification | null }[] = [
   { fn: "notifyObjectionDecided",    row: await N.notifyObjectionDecided(U, { upheld: true, marketId: "mkt_10", note: "Result corrected" }) },
   // The seal-time notice (management ruling ①, 2026-09-05). Driven in BOTH shapes it can take:
   // a first verdict and a corrected one, because the two say different words in three languages
-  // and §6's money-copy rules must hold for each. `paysFrom` is a formatted instant, never a
+  // and §6's money-copy rules must hold for each. `paysAt` is the market's own instant, never a
   // number of hours — that is the whole reason this message can be sent about a market sealed
-  // under the old window as well as the new one.
-  { fn: "notifyVerdictRecorded",     row: await N.notifyVerdictRecorded(U, { marketTitle: { en: "Sealed poll", sw: "Kura iliyofungwa", zh: "已封存的投票" }, marketId: "mkt_12", outcome: "YES", paysFrom: "5 Sep 2026, 14:32" }) },
-  { fn: "notifyVerdictRecorded",     row: await N.notifyVerdictRecorded(U, { marketTitle: { en: "Sealed poll", sw: "Kura iliyofungwa", zh: "已封存的投票" }, marketId: "mkt_12", outcome: "NO", paysFrom: "5 Sep 2026, 15:47", reversed: true }) },
+  // under the old window as well as the new one. (R5-B, 2026-10-09: it was a pre-formatted English
+  // string, "5 Sep 2026, 14:32", printed in all three bodies; each body now says the instant itself.)
+  { fn: "notifyVerdictRecorded",     row: await N.notifyVerdictRecorded(U, { marketTitle: { en: "Sealed poll", sw: "Kura iliyofungwa", zh: "已封存的投票" }, marketId: "mkt_12", outcome: "YES", paysAt: "2026-09-05T11:32:00.000Z" }) },
+  { fn: "notifyVerdictRecorded",     row: await N.notifyVerdictRecorded(U, { marketTitle: { en: "Sealed poll", sw: "Kura iliyofungwa", zh: "已封存的投票" }, marketId: "mkt_12", outcome: "NO", paysAt: "2026-09-05T12:47:00.000Z", reversed: true }) },
   { fn: "notifyAdminKycReview",      row: await N.notifyAdminKycReview("c3_officer", { playerLabel: "Asha M.", userId: U }) },
   // ── Agent affiliate programme ─────────────────────────────────────────────
   { fn: "notifyAgentApplicationSubmitted", row: await N.notifyAgentApplicationSubmitted(U, { applicationId: "agp_c3" }) },

@@ -37,6 +37,8 @@ import { KYC_NOTICE_COOKIE } from "@/lib/kyc-notice";
 import { KycNoticeDismissScope } from "@/components/wallet/kyc-first-deposit-notice";
 import { isLockedOut } from "@/lib/server/responsible-gambling";
 import { hasReceipt, presentedStatus } from "@/lib/wallet/receipts";
+// R5-B (2026-10-09, F11): the journey's own words on this page's money doors, from the one per-request resolver.
+import { resolveSimpleJourney } from "@/lib/server/journey-preview";
 
 export async function generateMetadata() {
   const { t } = await getServerT();
@@ -462,6 +464,7 @@ export default async function WalletPage({ searchParams }: { searchParams: Promi
         }}
         isAuthed={true}
         kycFirstDepositNotice={kycFirstDepositNotice}
+        journey={(await resolveSimpleJourney()).journey}
       />
       </KycNoticeDismissScope>
     </>
