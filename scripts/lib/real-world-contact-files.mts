@@ -197,8 +197,9 @@ export type PhoneTruth = {
   readonly source?: string;
   /** XLSX only: how the cell stores it. */
   readonly cell?: "text" | "number" | "formula";
-  /** A cell that holds more than one number (parseTzNumber refuses it whole as too long; since C3b · G3 the importer
-   *  takes the FIRST Tanzanian mobile in it — `phone-cell.ts`): the keys of the numbers inside it, in the order written. */
+  /** A cell that holds more than one number (parseTzNumber refuses it whole as too long; the importer takes a number out
+   *  of it only when it holds exactly ONE distinct mobile — C3b-fix D3, `phone-cell.ts`): the keys of the numbers inside
+   *  it, in the order written. */
   readonly holds?: readonly string[];
   /** `excel_scientific` only: the key Excel shortened away — what the file can no longer say. */
   readonly lost?: string;
@@ -262,6 +263,9 @@ export type FileTruth = {
   readonly aggregate: FileAggregate;
   /** Every record of a small file, in file order. Null for a big file (aggregates only). */
   readonly people: readonly PersonTruth[] | null;
+  /** ⭐ Written only with --big (2026-10-09, the integrator): such a file belongs to `qa:contacts-import-big` alone — the
+   *  28-file drive (`scripts/live/contacts-import-drive.mjs`) skips every entry carrying it. */
+  readonly big: boolean;
 };
 
 export type RealWorldOptions = { readonly big?: boolean };
@@ -521,7 +525,7 @@ function noNumber(word: string): PhoneDraft {
 }
 
 /** Two numbers in one cell, joined as offices join them (" / ") or as Google does (" ::: "): one value, too long for
- *  parseTzNumber — the importer reads its first mobile (C3b · G3), the first of `holds`. */
+ *  parseTzNumber — two DISTINCT mobiles here, so the importer refuses the row (C3b-fix D3), never taking one of them. */
 function twoInOneCell(n1: string, s1: Spelling, n2: string, s2: Spelling, joiner: string): PhoneDraft {
   return { written: spell(n1, s1) + joiner + spell(n2, s2), key: null, kind: "long", holds: [keyOf(n1), keyOf(n2)] };
 }
@@ -740,6 +744,7 @@ function settle(b: Built): FileTruth {
     notes: b.notes,
     aggregate: aggregateOf(b.people),
     people: b.people,
+    big: false,
   };
 }
 
@@ -1419,8 +1424,8 @@ function makeGoogleCsv(): Built {
     header: GOOGLE_HEADER,
     notes: [
       "The mapped columns: First Name + Last Name (no Name column — the name is composed), E-mail 1 - Value, Phone 1 - Value, Notes.",
-      "Phone 2 - Value is no alias of its own: since C3b (G4) the browser reads it through ONE added column, Phone (first mobile of: Phone 1 - Value, Phone 2 - Value), mapped as Phone. Labels is Google's label column — recognised and not read (A1.5).",
-      `Lines ${TWO_IN_ONE.map((i) => i + 1).join(" and ")}: two numbers joined by " ::: " in Phone 1 - Value — one cell, too long for parseTzNumber; holds names both, and since C3b (G3) the first is imported.`,
+      "Phone 2 - Value is no alias of its own: since C3b (G4) the browser reads it through ONE added column, Phone (read from: Phone 1 - Value, Phone 2 - Value), mapped as Phone — only for a row whose Phone 1 yields no mobile (C3b-fix D3). Labels is Google's label column — recognised and not read (A1.5).",
+      `Lines ${TWO_IN_ONE.map((i) => i + 1).join(" and ")}: two DISTINCT mobiles joined by " ::: " in Phone 1 - Value — holds names both; under C3b-fix D3 such a row is refused (one person, one number), never one of them imported.`,
       `Line ${MOBILE_IN_COLUMN_2 + 1}: a landline in Phone 1, the mobile only in Phone 2 (imported since C3b, G4). Line ${NO_PHONE + 1}: no phone at all.`,
       `Line ${REPEAT_AT + 1} repeats line ${REPEAT_OF + 1}'s number in another spelling.`,
     ],
@@ -1533,7 +1538,7 @@ function makeOutlook(): Built {
     delimiter: "comma",
     header: OUTLOOK_HEADER,
     notes: [
-      "Only Mobile Phone is a phone alias: since C3b (G4) the browser adds ONE column, Phone (first mobile of: Mobile Phone, …), mapped as Phone — each row's first Tanzanian mobile among the phone columns, Mobile Phone first.",
+      "Only Mobile Phone is a phone alias: since C3b (G4) the browser adds ONE column, Phone (read from: Mobile Phone, …), mapped as Phone — the Mobile Phone cell when it yields a mobile, else the ONE mobile of the person's own other phone columns (C3b-fix D2, D3; two or more are refused).",
       "Line 2's first name has an e-acute (byte 0xE9) inside the first 4 KB, so the sniff chooses windows-1252.",
       "Line 5: the mobile is only in Business Phone. Line 8: a Home Phone landline beside the mobile. Line 11: only in Primary Phone. " +
         "Line 14: a Kenyan mobile. Line 20: a Car Phone mobile beside a different Mobile Phone one. Lines 3, 9, 15 and 21 add a landline written +255 2… in Business Phone.",
@@ -1726,7 +1731,7 @@ function makeMessy(): Built {
       `Line ${at2.blank} is empty and line ${at2.spaces} holds only spaces: both blank.`,
       `Refused numbers: foreign lines ${at2.kenya}, ${at2.uganda}, ${at2.usa}; landline ${at2.landline}; toll-free ${at2.tollfree}; too short ${at2.short}; ` +
         `too long ${at2.long}; a letter for a digit ${at2.letters}; unallocated ${at2.withdrawn} (${WITHDRAWN_NDCS.length > 0 ? `the withdrawn 0${WITHDRAWN_NDCS[0]}` : "011"}) and ${at2.unplanned} (011); no digits ${at2.none}.`,
-      `Line ${at2.two} holds two numbers in one cell (since C3b, G3, the first is imported). Lines ${at2.hyperlink}–${at2.minus} have formula names (= + @ -). Line ${at2.longName}'s name is ${LONG_NAME.length} characters.`,
+      `Line ${at2.two} holds two DISTINCT mobiles in one cell (under C3b-fix D3 the row is refused, neither imported). Lines ${at2.hyperlink}–${at2.minus} have formula names (= + @ -). Line ${at2.longName}'s name is ${LONG_NAME.length} characters.`,
       `Line ${at2.lineBreak}'s Maelezo cell holds a line break inside quotes: one record, two physical lines. Line ${at2.badEmail}: an email with no dot in its domain. ` +
         `Line ${at2.fortyTags}: ${FORTY_TAGS.length} tags in one cell.`,
       `Line ${at2.repeat} repeats line ${at2.first}'s number; line ${at2.guard}'s number carries the export's leading apostrophe ('+255…); line ${at2.empty} has no number.`,
@@ -1990,8 +1995,8 @@ async function makeExcelMultiSheet(): Promise<Built> {
     header,
     "Wateja",
     [
-      "people describes the SECOND sheet, Wateja. Since C3b (G2) the reader reads the first VISIBLE sheet whose header row has a phone column — " +
-        "Wateja, not the cover page Maelezo — and says so in a note naming it (sheet 2 of 3).",
+      "people describes the SECOND sheet, Wateja. Since C3b-fix (D6) the reader reads the VISIBLE sheet whose first rows hold the most mobiles — " +
+        "Wateja, not the cover page Maelezo — and says so in a note naming it (sheet 2 of 2: the hidden Hesabu is never counted).",
       `Hesabu is hidden. Line ${REPEAT_AT + 1} of Wateja repeats line ${REPEAT_OF + 1}'s number.`,
     ],
     settlePeople(drafts, 2),
@@ -2607,7 +2612,7 @@ type BigSpec = {
 };
 
 function bigTruth(spec: BigSpec, bytes: number, aggregate: FileAggregate, notes: readonly string[]): FileTruth {
-  return { ...spec, bytes, refusal: null, brokenAtByte: null, notes, aggregate, people: null };
+  return { ...spec, bytes, refusal: null, brokenAtByte: null, notes, aggregate, people: null, big: true };
 }
 
 const BIG_HEADER: readonly string[] = [aliasHeader("phone", "Phone"), aliasHeader("name", "Name"), aliasHeader("tags", "Tags")];
