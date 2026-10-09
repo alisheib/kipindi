@@ -4,15 +4,20 @@
  * 🔴 THE DEFECT THIS EXISTS FOR (2026-10-09, found by the visual pass's code review). src/proxy.ts's matcher skipped
  * `.*\.(?:svg|png|jpg|jpeg|gif|webp|ico)$` — any address ending in an image extension, PAGES included. A page at
  * `/markets/x.png` (a real 200 with the signed-in reader's header) then went out with none of `withSecurityHeaders`'
- * headers — X-Frame-Options DENY, the CSP, HSTS, nosniff, Referrer-Policy; the proxy is their only source — and no
+ * headers — X-Frame-Options DENY, the CSP, HSTS, nosniff, Referrer-Policy; the proxy was their only source — and no
  * `x-pathname`, so it could be framed by another site. The same suffix defect next.config's immutable-cache rule had
  * (hotfix 9cb95938, test:static-cache-scope).
+ * 🔴 AND THE FAVICONS WERE A PREFIX (review 6, A4 · 2026-10-09): `favicon.ico|favicon.svg`, an unescaped dot and no end,
+ * so `/favicon.icon`, `/favicon.ico/x`, `/faviconXico` and `/favicon.svgz` — page addresses — skipped the proxy too. They
+ * are `favicon\.ico$` and `favicon\.svg$` now. (Since the same review every response also carries the static security
+ * headers from next.config.ts — all but the CSP — so what the matcher skips is covered: test:static-cache-scope §5.)
  *
  * It reads the matcher from src/proxy.ts and compiles it with NEXT'S OWN `getMiddlewareMatchers` (the build's
  * middleware analysis), so what it proves is what the server does.
- *   §1 every page address runs the proxy — the ones the old rule skipped, and the app's own routes
+ *   §1 every page address runs the proxy — the ones the old rules skipped (an image suffix, a favicon prefix), and the
+ *      app's own routes
  *   §2 public/'s static files, the favicons and Next's build output skip it (they need no page headers)
- *   §3 CONTROL: the old suffix matcher DID skip those pages; a PLANT of it is reported by §1
+ *   §3 CONTROL: the old suffix matcher, and the old favicon prefix, DID skip those pages; a PLANT of each is reported by §1
  */
 import { readFileSync, readdirSync, statSync } from "node:fs";
 import { join } from "node:path";
@@ -51,6 +56,11 @@ const PAGES = [
 ];
 const skipped = PAGES.filter((p) => !proxy(p));
 ok(`1.1 · all ${PAGES.length} page addresses run the proxy`, skipped.length === 0, skipped.join(" · "));
+/** Addresses that only LOOK like a favicon — each a page address (the root not-found, in the signed-in shell). */
+const FAVICON_LOOKALIKES = ["/favicon.icon", "/favicon.ico/x", "/faviconXico", "/favicon.svgz", "/favicon.ico.json", "/faviconxsvg", "/favicon.ico/", "/favicon.svg/a.png"];
+const lookalikesSkipped = FAVICON_LOOKALIKES.filter((p) => !proxy(p));
+ok(`1.2 · the ${FAVICON_LOOKALIKES.length} addresses that only look like a favicon run the proxy — the favicons are skipped by their exact names (review 6, A4)`,
+  lookalikesSkipped.length === 0, lookalikesSkipped.join(" · "));
 
 console.log("§2 · static files skip it");
 const PUBLIC = join(process.cwd(), "public");
@@ -71,6 +81,14 @@ const oldRuns = runs(OLD);
 ok("3.1 CONTROL · the old suffix matcher skipped pages: /markets/x.png, /positions/abc.jpg, /u/federico.svg ran no proxy",
   ["/markets/x.png", "/positions/abc.jpg", "/u/federico.svg"].every((p) => !oldRuns(p)) && oldRuns("/markets"));
 ok("3.2 PLANT · the old suffix matcher put back is reported by §1", PAGES.some((p) => !oldRuns(p)));
+// Round 5's matcher: static folders by name, but the favicons as an unescaped, unanchored prefix.
+const PREFIXED = "/((?!_next/static|_next/image|favicon.ico|favicon.svg|icons/|brand/|pay/|og/|screenshots/|email-signatures/).*)";
+const prefixedRuns = runs(PREFIXED);
+ok("3.3 CONTROL · the favicons as a prefix skipped page addresses: /favicon.icon, /favicon.ico/x, /faviconXico, /favicon.svgz ran no proxy (and the two real favicons skip either way)",
+  ["/favicon.icon", "/favicon.ico/x", "/faviconXico", "/favicon.svgz"].every((p) => !prefixedRuns(p)) && !prefixedRuns("/favicon.ico") && !proxy("/favicon.ico") && !proxy("/favicon.svg"));
+ok("3.4 PLANT · the favicon prefix put back is reported by 1.2", FAVICON_LOOKALIKES.some((p) => !prefixedRuns(p)));
+ok("3.5 · the matcher in src/proxy.ts names the favicons escaped and anchored (`favicon\\.ico$`, `favicon\\.svg$`) — never with a bare dot",
+  MATCHER.includes("favicon\\.ico$|favicon\\.svg$") && !/favicon\.(?:ico|svg)/.test(MATCHER), MATCHER);
 
 console.log(`proxy-scope: ${pass} passed, ${fail} failed`);
 process.exit(fail ? 1 : 0);

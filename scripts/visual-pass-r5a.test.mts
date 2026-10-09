@@ -749,10 +749,13 @@ section("11 · the checks: /markets' 34px, the hub's two glyphs, the chart's dea
   const deadline = Number(/export const HISTORY_DEADLINE_MS = ([0-9_]+);/.exec(tc)?.[1]?.replace(/_/g, ""));
   const vendor = Number(/AbortSignal\.timeout\(([0-9_]+)\)/.exec(read("src/lib/server/updown-terminal-vendor.ts"))?.[1]?.replace(/_/g, ""));
   const loadOf = (src: string) => src.slice(src.indexOf("const load = async () => {"), src.indexOf("rangeRef.current = range;"));
+  // Review 6, B-2 (2026-10-09) moved this pin: the deadline also marks its request overdue (the next poll then replaces a
+  // request that never began to answer — "retrying" is true), and a settled request also leaves the in-flight slot.
+  // `test:visual-pass-r6b` §2 runs the effect itself on a virtual clock.
   const deadlined = (src: string) => {
     const l = loadOf(src);
-    return /const deadline = setTimeout\(\(\) => \{\s*if \(alive && seq === seqRef\.current\) setStatus\(\(s\) => \(s === "loading" \? "error" : s\)\);\s*\}, HISTORY_DEADLINE_MS\);/.test(l)
-      && /finally \{\s*clearTimeout\(deadline\);\s*\}/.test(l);
+    return /const deadline = setTimeout\(\(\) => \{\s*mine\.overdue = true;\s*if \(alive && seq === seqRef\.current\) setStatus\(\(s\) => \(s === "loading" \? "error" : s\)\);\s*\}, HISTORY_DEADLINE_MS\);/.test(l)
+      && /finally \{\s*clearTimeout\(deadline\);[^}]*\}/.test(l);
   };
   ok(`11.3 · the chart says "loading" for ${deadline / 1000}s at most (the route's vendor read aborts at ${vendor / 1000}s), then "${word("sw", "market.udChartError")}" while it keeps retrying`,
     deadlined(tc) && deadline > vendor && vendor === 8000 && tc.includes('{status === "empty" ? labels.empty : status === "error" ? labels.error : labels.loading}')

@@ -75,9 +75,25 @@ export function moneyRuns(text: string): ReactNode[] {
  * Chinese, and a sentence of two words or fewer, take `moneyRuns` alone (`keepLastWords`' own two rules, keep-words.tsx).
  */
 const IDEOGRAPH = /[㐀-䶿一-鿿豈-﫿]/;
-const LAST_TWO = /\S+\s+\S+\s*$/;
+const SPACE = /\s/;
+/**
+ * Where the sentence's last two words start, or −1 when it has fewer than two: exactly what `/\S+\s+\S+\s*$/` finds first
+ * (`text.search`), read back from the end in one pass. ⭐ LINEAR (review 6, B-3 · 2026-10-09): that pattern tried every
+ * start and ran to the sentence's end from each, so one long unbroken word cost the square of its length.
+ */
+export function lastTwoWordsAt(text: string): number {
+  let i = text.length;
+  while (i > 0 && SPACE.test(text[i - 1])) i--; // the spaces after the last word
+  if (i === 0) return -1;
+  while (i > 0 && !SPACE.test(text[i - 1])) i--; // the last word
+  if (i === 0) return -1;
+  while (i > 0 && SPACE.test(text[i - 1])) i--; // the spaces between the two
+  if (i === 0) return -1;
+  while (i > 0 && !SPACE.test(text[i - 1])) i--; // the word before it
+  return i;
+}
 export function moneySentence(text: string): ReactNode[] {
-  let at = IDEOGRAPH.test(text) ? -1 : text.search(LAST_TWO);
+  let at = IDEOGRAPH.test(text) ? -1 : lastTwoWordsAt(text);
   for (const m of text.matchAll(MONEY_RUN)) {
     const start = m.index ?? 0;
     if (start < at && at < start + m[0].length) at = start;

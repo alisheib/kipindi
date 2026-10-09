@@ -137,9 +137,28 @@ export function TerminalChart({
     lastRawRef.current = "";
     setFeed(null);
     setStatus("loading");
+    /* ⭐ A HUNG REQUEST NO LONGER HOLDS THE POLL (review 6, B-2 · 2026-10-09). The deadline below says "Chart unavailable —
+       retrying" at 12s, but the poll waited for the request to settle before it paced the next one, so a stalled
+       connection — Cloudflare answers 524 only after its 100s origin timeout — held every retry: requests went out at 0,
+       30, 160 and 290s, and the pane said "retrying" while nothing was. Now each request has its own abort, chained to the
+       effect's (a new window or a close aborts it), and:
+         · a request that has not begun to answer by its deadline is presumed hung: the next poll that falls due sends a
+           fresh request (0, 30, 60…), and the fresh one aborts it — its answer would only have been discarded (`seq`: a
+           newer request owns the state), so its connection is freed instead of held;
+         · a request whose answer has begun is waited for, as before: a body slow to arrive (a 2G phone) still draws, and a
+           poll never starts a second download beside it;
+         · a late answer still draws (a cold start that answers at 20s), a drawn chart is never replaced (F3), and only a
+           VERIFIED empty answer says "no reads" — the rules below, unchanged.
+       At most one request is in flight. */
+    let inFlight: { abort: AbortController; overdue: boolean; answering: boolean } | null = null;
     const load = async () => {
       if (document.visibilityState === "hidden") return;
       const seq = ++seqRef.current;
+      inFlight?.abort.abort(); // a newer request owns the state: the one before it stands down, its connection freed
+      const mine = { abort: new AbortController(), overdue: false, answering: false };
+      inFlight = mine;
+      const chained = () => mine.abort.abort();
+      ac.signal.addEventListener("abort", chained);
       /* ⭐ "LOADING" HAS A DEADLINE (round 5 of the visual pass, 2026-10-09 — tiles 163 164 200, a card that read "Inapakia…"
          over an empty pane). The request had none, so a window that never came — a stalled connection, a cold route — left
          the pane saying it was loading for as long as the page stayed open. The route answers within its vendor's 8s
@@ -148,6 +167,7 @@ export function TerminalChart({
          retrying, so a late or a later answer still draws. A drawn chart is never replaced (F3); a VERIFIED empty
          answer still says "no reads". */
       const deadline = setTimeout(() => {
+        mine.overdue = true; // unanswered past its deadline: presumed hung, so the next poll replaces it (B-2, above)
         if (alive && seq === seqRef.current) setStatus((s) => (s === "loading" ? "error" : s));
       }, HISTORY_DEADLINE_MS);
       try {
@@ -157,8 +177,9 @@ export function TerminalChart({
           // bandwidth saving the ETag was built for now reaches the phone
           // (re-sign panel, data + graphing lenses).
           cache: "no-cache",
-          signal: ac.signal,
+          signal: mine.abort.signal,
         });
+        mine.answering = true; // its answer has begun: a poll waits for it, so a slow body still draws (B-2, above)
         if (!alive || seq !== seqRef.current) return; // a newer request owns the state
         if (!r.ok) { setStatus((s) => (s === "ok" ? "ok" : "error")); return; } // keep a drawn chart (F3)
         const raw = await r.text();
@@ -177,6 +198,9 @@ export function TerminalChart({
       } finally {
         // The whole answer is in (or failed): the deadline stands down — a body that is slow to arrive is still waited for.
         clearTimeout(deadline);
+        // …and this request leaves the effect's abort and the in-flight slot (B-2): a poll may send the next one.
+        ac.signal.removeEventListener("abort", chained);
+        if (inFlight === mine) inFlight = null;
       }
     };
     rangeRef.current = range;
@@ -190,7 +214,13 @@ export function TerminalChart({
     const paceNext = () => {
       const cadence = cadenceRef.current;
       const wait = Math.min(Math.max(pollMs, cadence != null ? cadence / 2 : 0), 120_000);
-      timer = setTimeout(async () => { await load(); if (alive) paceNext(); }, wait);
+      // ⭐ B-2 · the poll never waits on a request (it awaited each one, so a hung request held every retry): it sends when
+      // none is in flight, or when the one in flight is overdue and has not begun to answer (`load` aborts that one); a
+      // request still inside its deadline, or whose answer is arriving, is left to finish.
+      timer = setTimeout(() => {
+        if (inFlight === null || (inFlight.overdue && !inFlight.answering)) void load();
+        if (alive) paceNext();
+      }, wait);
     };
     paceNext();
     const onReveal = () => { if (document.visibilityState === "visible") load(); };

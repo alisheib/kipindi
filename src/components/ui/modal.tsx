@@ -419,7 +419,14 @@ export function Modal({
       root: () => rootRef.current,
       restoreTo,
       focusIn,
-      safe: () => safeFocusRef.current?.current ?? null,
+      /* ⭐ A WAY OUT THAT CANNOT TAKE FOCUS GIVES IT TO THE PANEL (review 6, B-1 · 2026-10-09). The dialog drawn over this
+         one closing hands focus to its way out (Cancel, "Hifadhi nafasi") — which is disabled while this dialog's request
+         is in flight, so the focus given went nowhere. It now lands on the panel: inside the dialog, never on its money
+         button. A dialog that names no way out is as before. */
+      safe: () => {
+        const way = safeFocusRef.current?.current ?? null;
+        return way === null ? null : way.isConnected && !way.matches(":disabled") ? way : panelRef.current;
+      },
     };
     openLayer(layer);
     openLayerRef.current = layer;
@@ -460,14 +467,19 @@ export function Modal({
       if (e.key !== "Tab") return;
       // Focus trap: keep Tab inside the dialog instead of leaking behind the scrim.
       const f = focusables();
-      if (f.length === 0) return;
-      const first = f[0], last = f[f.length - 1];
       const active = document.activeElement;
       /* ⭐ S6 A8i-2 · focus outside this panel (on the scrim, on the page behind, in a dialog underneath, or nowhere) is
          brought into it, both ways: a plain Tab from there used to walk the page behind the scrim. A surface drawn over
          this dialog (a calendar it opened) keeps its own Tab. */
       if (whereIs(openLayers(), active, isNowhere(active)) === "above") return;
-      if (!panelRef.current?.contains(active)) {
+      /* ⭐ NOTHING HERE CAN TAKE FOCUS (review 6, B-1 · 2026-10-09): a request in flight disables every control and
+         withholds the ✕. This returned without a word, so the browser's own Tab left the dialog. Tab now stays: the
+         panel itself holds focus (`tabIndex={-1}`, below). */
+      if (f.length === 0) { e.preventDefault(); panelRef.current?.focus(); return; }
+      const first = f[0], last = f[f.length - 1];
+      /* …and from the panel itself (where the line above, `focusIn` or `safe` put focus), Tab goes to the first control
+         and Shift+Tab to the last: the browser's own Shift+Tab from the panel would walk out behind the scrim. */
+      if (!panelRef.current?.contains(active) || active === panelRef.current) {
         e.preventDefault(); (e.shiftKey ? last : first).focus();
       } else if (e.shiftKey && active === first) {
         e.preventDefault(); last.focus();
@@ -542,6 +554,14 @@ export function Modal({
           with, and dropping the border here would have cost the dialog its edge. */}
       <div
         ref={panelRef}
+        /* ⭐ THE PANEL HOLDS FOCUS WHEN NOTHING IN IT CAN (review 6, B-1 · 2026-10-09). While a request the dialog sent is
+           in flight, every control in it is disabled and its ✕ withheld (`CloseX`), so the trap's list is empty — and Tab
+           fell through to the browser and left this aria-modal dialog for the page behind the scrim (the bet and Sell
+           confirms, ConfirmModal's medium tier). Focusable from script alone (`-1`: never in the Tab order, never in
+           FOCUSABLE), the panel is where the trap, the opening (`focusIn`) and an uncovering (`safe`) put focus then —
+           inside the dialog, on nothing pressable. `outline-none`, as the repo's other script-only focus targets: a ring
+           round the whole dialog is no control's focus ring (forced colours still draw it: the outline is transparent). */
+        tabIndex={-1}
         /* ⭐ `data-rung` IS THE ADOPTION LEDGER, not a test hook bolted on.
            A surface that picks a rung declares WHICH one, in the markup, so the set of
            rung-adopting surfaces can be ENUMERATED instead of grepped for whichever
@@ -562,7 +582,7 @@ export function Modal({
         /* §M2: modal → `.m-dialog-in` or `.m-sheet-in` on the way in, `.m-out` on
            the way out. The sheet's ≥sm keyframe swap goes with the entrance only —
            `.m-out` is one exit for both variants, which is what the law names. */
-        className={`${exiting ? "m-out" : tall ? "m-sheet-in kp-modal-sheet-lg" : sheet ? "m-sheet-in kp-modal-sheet" : "m-dialog-in"} mat-modal relative w-full p-5 lg:p-6 ${
+        className={`${exiting ? "m-out" : tall ? "m-sheet-in kp-modal-sheet-lg" : sheet ? "m-sheet-in kp-modal-sheet" : "m-dialog-in"} mat-modal relative w-full p-5 lg:p-6 outline-none ${
           tall ? "rounded-t-modal lg:rounded-modal lg:my-auto"
             : sheet ? "rounded-t-modal sm:rounded-modal sm:my-auto" : "my-auto rounded-modal"
         }${anchored ? " kp-modal-anchored" : ""} ${panelClassName}`}
