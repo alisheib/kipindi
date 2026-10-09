@@ -844,11 +844,11 @@ export const MUTATIONS = [
     file: "src/lib/server/marketing/contact-bulk.ts",
     from: `        ...ledgerStamp(),
         channel: "SMS",
-        identifier: c.msisdn,`,
+        identifier: msisdn,`,
     to: `        id: randomUUID(),
         createdAt: new Date().toISOString(),
         channel: "SMS",
-        identifier: c.msisdn,`,
+        identifier: msisdn,`,
     expect: `20.stamp · contact-bulk.ts — every ledger row takes its id AND createdAt from ledgerStamp(), nothing else`,
   },
   {

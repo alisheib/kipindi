@@ -52,9 +52,14 @@ export const CONTACTS_NO_MATCH = {
 export const CONTACTS_NUMBER_PRESENCE = {
   inBook: "This number is in the book.",
   notInBook: "This number is not in the book.",
-  body: "For your role a whole number shows only whether it is in the book — the other filters don't apply to it. Search by name, or filter the list, to see contacts.",
+  /** ⭐ C8b review (MINOR 1) · a stop given by phone is still the officer's to record: the one thing done to a number here. */
+  body: "For your role a whole number shows only whether it is in the book — the other filters don't apply to it — but you can still record a stop or a withdrawal for it: select it, then choose Suppress or Record a withdrawal. Search by name, or filter the list, to see contacts.",
   /** The way on from "not in the book": the page head's own Add contact. */
   notInBookBody: "For your role a whole number shows only whether it is in the book. Add it with Add contact, or search by name to see contacts.",
+  /** The selection control a number in the book offers — the bar's Suppress and Record a withdrawal act on it. */
+  select: "Select this number",
+  /** C8b review (MINOR 7) · the Add form's number-check bucket was spent: its own sentence follows, and no answer. */
+  limitedTitle: "Too many number checks",
 } as const;
 
 /** U24 · filters (not a search) that match nothing. U21 · the rail stays on screen above this row, so the sentence
@@ -258,7 +263,10 @@ export function contactRangeDisputedTitle(brand: string): string {
 }
 /** While the book is asked whether the number is already in it. */
 export const CONTACT_CHECKING = "Checking the book…";
-/** The duplicate's way out: opens the row that holds the number (`?edit=<contact id>`, a cuid — never the number). */
+/** The duplicate's way out — 🔴 C8b (B2) a READER's control alone: it opens the row that holds the number
+ *  (`?edit=<contact id>`, a cuid — never the number), and it is drawn only when the answer carries that id. A viewer who
+ *  may not read a number is handed no id, and a number the book BLOCKS (an erasure) has no row to open, so for either the
+ *  duplicate sentence stands alone (`contactLookupReply`, `contactAddReply`). */
 export const CONTACT_OPEN_EXISTING = "Open the existing contact →";
 
 /** A field's one-line hint, from the ONE field list (`contact-fields.ts`) — never retyped here. */

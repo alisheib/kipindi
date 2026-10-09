@@ -38,8 +38,11 @@
  * opt-out or an officer's, so the one place a row says "Suppressed" — the Will receive cell, the gate's own answer — is a
  * reader's, this page reads no `suppressedAt` cache for any row, and a masked viewer's KPI band carries no stop count.
  * 🔴 C8b (B3) · A MASKED VIEWER'S WHOLE-NUMBER SEARCH LISTS NO ROW: the loader answers it `presence` — "This number is in
- * the book" or "…is not in the book", the Add form's own answer, about the whole book — and the table holds that one line
- * (no rows, so no export link and no "select all"); the bulk bar and the export refuse such an audience too.
+ * the book" or "…is not in the book", the Add form's own answer, about the whole book, each answer spending the Add form's
+ * number-check bucket — and the table holds that one line (no rows, so no export link). The export and the bulk bar
+ * refuse such an audience, but for ONE exception: a number in the book can be SELECTED here (`ContactNumberSelect` — the
+ * whole number alone, counted one), so a stop or a withdrawal given by phone is still recorded through the bar's Suppress
+ * and Record a withdrawal, which act on the number (`contact-bulk.ts`).
  * ⭐ U24 · every read goes through the ONE audience resolver (`contacts-loader.ts` → `contactAudience`). A filter
  * in force is said in words above the table ("Showing contacts: …"), and every link is built by ONE href builder
  * (`contactsHref`) that carries them. ⛔ A filter that cannot be read is REFUSED — no rows, the parameter named, a
@@ -83,7 +86,7 @@ import {
   CONTACTS_EXPORT, contactsExportTooMany, contactsExportRefusalSentence,
   CONTACTS_EMPTY, CONTACTS_NO_MATCH, CONTACTS_NO_MATCH_FILTERED, CONTACTS_FILTERED_LEAD,
   CONTACTS_FILTER_UNREADABLE, CONTACTS_FILTER_NOT_FOR_ROLE, CONSENT_LABEL, SOURCE_LABEL, CONTACTS_BULK, CONTACTS_KPI_RECENT,
-  CONTACTS_NUMBER_PRESENCE,
+  CONTACTS_NUMBER_PRESENCE, CONTACT_LOOKUP_RATE_LIMITED,
 } from "./contacts-copy";
 import { operatorBrand, contactsHref, contactsClearFiltersHref, contactsLinkSp } from "./contacts-query";
 import { loadContacts, loadContactEdit, viewerReadsContacts } from "./contacts-loader";
@@ -97,7 +100,7 @@ import { AddContactButton, ContactEditDialog } from "./contact-form";
 // S15 · the importer's button and its one dialog (`import/contacts-import-dialog.tsx`).
 import { ImportContactsButton } from "./import/contacts-import-dialog";
 import { ContactsSelectionProvider } from "./contacts-selection-provider";
-import { ContactRowSelect, ContactPageSelect } from "./contact-row-select";
+import { ContactRowSelect, ContactPageSelect, ContactNumberSelect } from "./contact-row-select";
 import { ContactsBulkBar } from "./contacts-bulk-bar";
 import { ContactsSearchBox } from "./contacts-search-box";
 import { Button } from "@/components/ui/button";
@@ -226,9 +229,13 @@ async function AdminContactsContent({ searchParams }: { searchParams: Promise<Co
   // ⭐ U23 · "select all N matching" stores the FILTER — its canonical key — and only when the list read arrived.
   // ⚠️ `identity` is the filter AS THE ADDRESS WROTE IT (a preset's name, never the instants it resolves to — those move
   // every minute), and decides "the filter changed"; `key` is what a run posts (review F6).
+  // ⭐ C8b · B3's one exception: a number the book holds is the selection a stop or a withdrawal acts on — the whole number
+  // ALONE, counted one (the presence bit itself); the bar's other actions are refused over it, in words, by the server.
   const matching = listed !== null
     ? { key: contactFilterAudienceKey(listed.filter), identity: contactFilterIdentity(listed.filter, sp), total: listed.result.total }
-    : null;
+    : presence !== null && presence.present === true
+      ? { key: contactFilterAudienceKey(presence.filter), identity: contactFilterIdentity(presence.filter, {}), total: 1 }
+      : null;
   const selectable = !failed && !emptyBook;
   // ⛔ D19: the gate is not even asked for a viewer who may not see its answer.
   const reach = reads ? await Promise.all(rows.map(reachOf)) : [];
@@ -389,12 +396,20 @@ async function AdminContactsContent({ searchParams }: { searchParams: Promise<Co
                 ) : presence ? (
                   // 🔴 C8b (B3) · ONE ANSWER ABOUT THE WHOLE BOOK, never a row: the number's name, lists, tags, "Added" and
                   // edit link stay with the readers. "In the book" is the Add form's own answer — a number the book blocks
-                  // because its holder was erased says it too.
+                  // because its holder was erased says it too. ⭐ For a number in the book, the selection a stop or a
+                  // withdrawal acts on (B3's one exception); ⛔ a spent number-check bucket answers its sentence and no bit.
                   <AdminTableEmpty
                     colSpan={cols}
-                    title={presence.present ? CONTACTS_NUMBER_PRESENCE.inBook : CONTACTS_NUMBER_PRESENCE.notInBook}
-                    body={presence.present ? CONTACTS_NUMBER_PRESENCE.body : CONTACTS_NUMBER_PRESENCE.notInBookBody}
-                    action={<a href={clearSearchHref} className="btn btn-ghost btn-sm">Clear search</a>}
+                    title={presence.present === null ? CONTACTS_NUMBER_PRESENCE.limitedTitle
+                      : presence.present ? CONTACTS_NUMBER_PRESENCE.inBook : CONTACTS_NUMBER_PRESENCE.notInBook}
+                    body={presence.present === null ? CONTACT_LOOKUP_RATE_LIMITED(presence.limitedSec ?? 60)
+                      : presence.present ? CONTACTS_NUMBER_PRESENCE.body : CONTACTS_NUMBER_PRESENCE.notInBookBody}
+                    action={(
+                      <span className="flex flex-wrap justify-center gap-2" data-number-presence={presence.present === null ? "limited" : presence.present ? "in" : "out"}>
+                        {presence.present === true && <ContactNumberSelect />}
+                        <a href={clearSearchHref} className="btn btn-ghost btn-sm">Clear search</a>
+                      </span>
+                    )}
                   />
                 ) : rows.length === 0 ? (
                   <AdminTableEmpty
@@ -483,9 +498,11 @@ async function AdminContactsContent({ searchParams }: { searchParams: Promise<Co
         {result !== null && result.total > PER_PAGE && <AdminPagination total={result.total} page={page} baseHref={baseHref} />}
 
         {/* ⭐ U33b-L · THE LISTS CARD — where a licence basis is recorded on a list, under the list of contacts it is
-            about. ⛔ Its figures are the DAL's own (`coverageSplit`, whose unlinked pair is the gate's `coveredCount`), so
-            the screen cannot promise a reach the gate will not honour. D19 · nothing here is maskable: counts, names and
-            instants — and (C8b · B5) a masked viewer's counts never separate members with an account from the rest. */}
+            about. ⛔ Its figures are the DAL's own (`coverageSplit`, counted by the same newest-recording rule the gate
+            decides each number by, `standingFor`), never recomputed here. A READER's figures are the reach; a MASKED
+            viewer's (C8b · B5) are every live member, the campaign composer's count for the list, never the gate's reach —
+            so they never separate members with an account from the rest. D19 · nothing here is maskable: counts, names
+            and instants. */}
         {listsCard !== null && (
           // S15 · the anchor the import's result scrolls to when a list's new members still need its basis recorded.
           <div id="contacts-lists" data-block="contacts-lists">

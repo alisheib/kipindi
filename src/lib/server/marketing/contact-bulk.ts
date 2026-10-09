@@ -16,6 +16,11 @@
  * 🔴 C8b (B3) · AND A MASKED VIEWER'S WHOLE-NUMBER SEARCH IS NO AUDIENCE: the page answers such a search with whether the
  * book holds the number and nothing else (`number-search.ts`), so a forged post that searches a whole number is refused
  * `number_search` here too, before any count — a write or a preview over it would hand back the row the page withholds.
+ * ⭐ ONE EXCEPTION, A STOP GIVEN BY PHONE (the integrator's ruling, C8b review): SUPPRESS and RECORD A WITHDRAWAL over the
+ * whole number ALONE act on that NUMBER (`stopNumberOf`) — counted 1 when the book holds it, by a row or by an erasure's
+ * block, exactly as the presence answer reads it (`holdsNumber`), else empty — never on a walked row: no sample, no row
+ * read, the masked reply the total alone. So a blocked number answers as a held one does (X22), and the page's "in the
+ * book" and this count can never disagree. Tag, untag, add to a list and remove stay refused.
  * ⛔ C8b (B7) · NO SHARED LABEL FROM A PROTECTED FILTER, FOR ANY VIEWER. A READER may filter by consent, the stop list,
  * the source or the player link, which a masked officer may not (`roleRefusal`). A TAG or a LIST built from such a filter
  * hands that filter to the masked officer: they filter by the tag, or open the list, and read who is a player or under a
@@ -68,7 +73,7 @@ import { ledgerStamp } from "@/lib/server/marketing/ledger-stamp";
 import { mirrorContactCache } from "@/lib/server/marketing/contact-cache";
 import { syncPlayerToggle } from "@/lib/server/marketing/optout-service";
 import { CONTACT_LIMITS } from "@/lib/contacts/contact-fields";
-import { maskedNumberSearchRefusal } from "@/lib/server/contacts/number-search";
+import { bookHoldsNumber, maskedNumberSearchRefusal, numberAloneOf } from "@/lib/server/contacts/number-search";
 import {
   BULK_PER_ROW_MAX, BULK_SAMPLE, LIST_NONE, bulkConfirmTier, isContactBulkAction, isPerRowAction, listNameKey, parseBulkTag,
   parseListName,
@@ -107,28 +112,25 @@ export const BULK_SENTENCES = {
   listExists: (name: string) => `A list called “${name}” already exists — two names that differ only in capitals are one list. Choose it instead.`,
   /** C8b (B7) · a tag or a list from a filter some staff may not use — said for each of the two actions, with the way on. */
   protectedLabel: (action: "tag" | "addToList", param: string) =>
-    `A ${action === "tag" ? "tag" : "list"} made from the “${param}” filter would let staff who may not use that filter find these contacts by it. `
+    `A ${action === "tag" ? "tag" : "list"} made from the “${param}” filter would let staff who may not use that filter find these contacts through that ${action === "tag" ? "tag" : "list"}. `
     + `${action === "tag" ? "Tag these" : "Add these to a list"} by ticking them by hand, or filter by something else.`,
 } as const;
 
 /* ═══ C8b (B7) · NO SHARED LABEL FROM A PROTECTED FILTER ═══════════════════════════════════════════════ */
 
-/** The filter axes only a reader may use (`roleRefusal`'s four), by the parameter names its refusals say. */
-const PROTECTED_LABEL_AXES: ReadonlyArray<readonly [keyof ContactAudienceFilter, string]> = [
-  ["player", "player"], ["sources", "source"], ["consent", "consent"], ["suppressed", "suppressed"],
-];
-
 /**
  * ⛔ C8b (B7) · A TAG OR A LIST BUILT FROM A PROTECTED FILTER, FOR EVERY VIEWER — refused, naming the axis; null when the
- * action builds no shared label (anything but tag and add-to-list) or the audience uses none of the four axes. ⭐ A
- * selection of ticked rows alone is the officer's own audited choice and is never refused by it (`isTicksOnly`); a filter
- * beside ticked rows is a filter (and only a forged post makes one).
+ * action builds no shared label (anything but tag and add-to-list) or the audience uses no protected axis. ⭐ "PROTECTED"
+ * IS ASKED OF THE ONE ROLE RULE, never copied: an axis is protected exactly when `roleRefusal` refuses it to a viewer who
+ * may not read a number (`roleRefusal(audience, false)` — today player, source, consent and suppressed), so a fifth axis
+ * added there is protected here the same day. ⭐ A selection of ticked rows alone is the officer's own audited choice and
+ * is never refused by it (`isTicksOnly`); a filter beside ticked rows is a filter (and only a forged post makes one).
  */
 export function sharedLabelRefusal(req: Pick<ContactBulkRequest, "action" | "audience">): { param: string } | null {
   if (req.action !== "tag" && req.action !== "addToList") return null;
   if (isTicksOnly(req.audience)) return null;
-  for (const [axis, param] of PROTECTED_LABEL_AXES) if (req.audience[axis] !== null) return { param };
-  return null;
+  const masked = roleRefusal(req.audience, false);
+  return masked === null ? null : { param: masked.param };
 }
 
 /* ═══ THE REQUEST — named keys only ═══════════════════════════════════════════════════════════════ */
@@ -244,6 +246,9 @@ export type ContactBulkDeps = {
   roleRefusal: typeof roleRefusal;
   /** C8b (B3) — a masked viewer's whole-number search is no audience (`number-search.ts`). */
   numberSearch: typeof maskedNumberSearchRefusal;
+  /** C8b (B3's one exception) — does the book hold this number, as the page's presence answer reads it
+   *  (`bookHoldsNumber`): the count of a masked officer's stop or withdrawal over the whole number alone. */
+  holdsNumber: (msisdn: string) => Promise<boolean>;
   /** C8b (B7) — no shared label from a protected filter, for any viewer (`sharedLabelRefusal`). */
   labelRefusal: typeof sharedLabelRefusal;
   /** The ONE audit describer (`audience.ts`). */
@@ -268,6 +273,7 @@ export const CONTACT_BULK_DEPS: ContactBulkDeps = {
   tier: bulkConfirmTier,
   roleRefusal,
   numberSearch: maskedNumberSearchRefusal,
+  holdsNumber: bookHoldsNumber,
   labelRefusal: sharedLabelRefusal,
   describe: auditContactAudience,
   suppressionReason: "OPERATOR",
@@ -326,20 +332,24 @@ export async function previewContactBulk(
 ): Promise<BulkPreview | BulkRefusal> {
   const role = deps.roleRefusal(req.audience, viewerReads);
   if (role !== null) return refuse("role", BULK_SENTENCES.role(role.param));
-  // ⛔ C8b · B3 then B7 — both before anything is counted.
+  // ⛔ C8b · B3 then B7 — both before anything is counted. ⭐ B3's one exception: a stop or a withdrawal over the whole
+  // number ALONE acts on that NUMBER, counted as the presence answer reads it (`stopNumberOf`).
   const numberSearch = deps.numberSearch(req.audience, viewerReads);
-  if (numberSearch !== null) return refuse("number_search", numberSearch.reason);
+  const stopNumber = numberSearch !== null ? stopNumberOf(req) : null;
+  if (numberSearch !== null && stopNumber === null) return refuse("number_search", numberSearch.reason);
   const label = deps.labelRefusal(req);
   if (label !== null && (req.action === "tag" || req.action === "addToList")) return refuse("protected_label", BULK_SENTENCES.protectedLabel(req.action, label.param));
   const params = await resolveParams(req);
   if (!params.ok) return params;
-  const count = await deps.count(req.audience);
+  const count = stopNumber !== null ? ((await deps.holdsNumber(stopNumber)) ? 1 : 0) : await deps.count(req.audience);
   if (count === 0) return refuse("empty", BULK_SENTENCES.empty);
   if (isPerRowAction(req.action) && count > deps.perRowMax) {
     return refuse("too_many_for_per_row", BULK_SENTENCES.perRowCap(count, deps.perRowMax), undefined, count);
   }
   const tier = deps.tier(count, isTicksOnly(req.audience));
-  const sample = tier.kind === "enumerate"
+  // ⛔ No sample for a stop over a number: the page withholds that number's row, and so does this (a filter takes the
+  // typed tier anyway).
+  const sample = tier.kind === "enumerate" && stopNumber === null
     ? (await contactAudience(req.audience).page({ sort: "name", dir: "asc", page: "1", perPage: BULK_SAMPLE })).rows.map(contactSelectionRow)
     : [];
   const list = params.p.list;
@@ -388,18 +398,29 @@ async function audienceIds(f: ContactAudienceFilter): Promise<string[]> {
 const keyOf = (identifier: string): MessagingKey => ({ channel: "SMS", identifier, category: "MARKETING" });
 
 /**
+ * ⭐ C8b · B3'S ONE EXCEPTION — the number a masked officer's stop or withdrawal acts on: `withdraw` or `suppress` over the
+ * whole number ALONE (`numberAloneOf`), else null. Such a run acts on the NUMBER, held by a row or blocked by an erasure,
+ * counted by `holdsNumber` exactly as the page's presence answer is — so "in the book" and this count never disagree, and
+ * a blocked number answers 1 as a held one does (X22). The masked reply is the total alone (`contactBulkReply`).
+ */
+function stopNumberOf(req: Pick<ContactBulkRequest, "action" | "audience">): string | null {
+  if (req.action !== "withdraw" && req.action !== "suppress") return null;
+  return numberAloneOf(req.audience);
+}
+
+/**
  * ⭐ RECORD A WITHDRAWAL, PER NUMBER. A number whose latest ledger row already says WITHDRAWN is UNCHANGED (no second row);
  * every other number gets one WITHDRAWN row. Either way the player who holds the number, if any, has their own switch
  * turned OFF through the ONE writer (C5) — a repair when the ledger already said it — and the book's cache is mirrored.
  */
-async function withdrawEach(rows: StoredMarketingContact[], officerId: string, runId: string, at: string, out: ContactBulkCount): Promise<void> {
+async function withdrawEach(msisdns: readonly string[], officerId: string, runId: string, at: string, out: ContactBulkCount): Promise<void> {
   const evidence = BULK_EVIDENCE_PREFIX + runId;
-  for (const c of rows) {
+  for (const msisdn of msisdns) {
     out.matched++;
     // ⛔ THE MIRROR RUNS IN `finally` (review F2, 2026-10-02): a failure after this number's ledger row — the player's
     // switch, say — must not leave its book row reading GIVEN until some other writer happens by.
     try {
-    const latest = await db.messagingConsent.latestFor(keyOf(c.msisdn));
+    const latest = await db.messagingConsent.latestFor(keyOf(msisdn));
     if (latest?.status === "WITHDRAWN") {
       out.unchanged++;
     } else {
@@ -407,7 +428,7 @@ async function withdrawEach(rows: StoredMarketingContact[], officerId: string, r
         // ⛔ The ledger's ONE clock (`ledger-stamp.ts`): a withdrawal must read back after the consent it withdraws.
         ...ledgerStamp(),
         channel: "SMS",
-        identifier: c.msisdn,
+        identifier: msisdn,
         category: "MARKETING",
         status: "WITHDRAWN",
         source: "OPERATOR",
@@ -418,9 +439,9 @@ async function withdrawEach(rows: StoredMarketingContact[], officerId: string, r
       });
       out.changed++;
     }
-    await syncPlayerToggle(c.msisdn, false, { kind: "officer", officerId, runRef: evidence });
+    await syncPlayerToggle(msisdn, false, { kind: "officer", officerId, runRef: evidence });
     } finally {
-      await mirrorContactCache(c.msisdn, at);
+      await mirrorContactCache(msisdn, at);
     }
   }
 }
@@ -432,19 +453,19 @@ async function withdrawEach(rows: StoredMarketingContact[], officerId: string, r
  * store's re-arm rule), and counts as changed. Then the cache: `suppressedAt` becomes the stop's own time.
  */
 async function suppressEach(
-  rows: StoredMarketingContact[], officerId: string, runId: string, at: string, reason: SuppressionReason, out: ContactBulkCount,
+  msisdns: readonly string[], officerId: string, runId: string, at: string, reason: SuppressionReason, out: ContactBulkCount,
 ): Promise<void> {
-  for (const c of rows) {
+  for (const msisdn of msisdns) {
     out.matched++;
     try {
-    const active = await db.suppression.find(keyOf(c.msisdn));
+    const active = await db.suppression.find(keyOf(msisdn));
     if (active !== null && active.reason !== "WITHDRAWN") {
       out.unchanged++;
     } else {
       await db.suppression.create({
         id: randomUUID(),
         channel: "SMS",
-        identifier: c.msisdn,
+        identifier: msisdn,
         category: "MARKETING",
         reason,
         evidence: BULK_EVIDENCE_PREFIX + runId,
@@ -456,7 +477,7 @@ async function suppressEach(
       out.changed++;
     }
     } finally {
-      await mirrorContactCache(c.msisdn, at);
+      await mirrorContactCache(msisdn, at);
     }
   }
 }
@@ -479,15 +500,17 @@ export async function runContactBulk(
 ): Promise<BulkOutcome | BulkRefusal> {
   const role = deps.roleRefusal(req.audience, viewerReads);
   if (role !== null) return refuse("role", BULK_SENTENCES.role(role.param));
-  // ⛔ C8b · B3 (a masked viewer's whole-number search is no audience) then B7 (no shared label from a protected filter).
+  // ⛔ C8b · B3 (a masked viewer's whole-number search is no audience — but for B3's one exception, a stop or a withdrawal
+  // over the whole number alone, which acts on that NUMBER: `stopNumberOf`) then B7 (no shared label from a protected filter).
   const numberSearch = deps.numberSearch(req.audience, viewerReads);
-  if (numberSearch !== null) return refuse("number_search", numberSearch.reason);
+  const stopNumber = numberSearch !== null ? stopNumberOf(req) : null;
+  if (numberSearch !== null && stopNumber === null) return refuse("number_search", numberSearch.reason);
   const label = deps.labelRefusal(req);
   if (label !== null && (req.action === "tag" || req.action === "addToList")) return refuse("protected_label", BULK_SENTENCES.protectedLabel(req.action, label.param));
   const params = await resolveParams(req);
   if (!params.ok) return params;
   // ⭐ THE RECOUNT — never the preview's count, never anything the browser posted.
-  const count = await deps.count(req.audience);
+  const count = stopNumber !== null ? ((await deps.holdsNumber(stopNumber)) ? 1 : 0) : await deps.count(req.audience);
   if (count === 0) return refuse("empty", BULK_SENTENCES.empty);
   if (isPerRowAction(req.action) && count > deps.perRowMax) {
     return refuse("too_many_for_per_row", BULK_SENTENCES.perRowCap(count, deps.perRowMax), undefined, count);
@@ -500,9 +523,11 @@ export async function runContactBulk(
   // ⛔ THE WALK MUST HOLD WHAT WAS COUNTED (review F4, 2026-10-02). The cap and the typed word bind the RECOUNT, and a
   // per-number action walks its rows afterwards: a filter audience can gain rows in between (a new id sorts after the
   // cursor), or lose some. Nobody confirmed THAT set, so it is refused — the rows are walked BEFORE any write.
-  const rows = isPerRowAction(req.action) ? await audienceRows(req.audience) : [];
-  if (isPerRowAction(req.action) && rows.length !== count) {
-    return refuse("confirm_mismatch", BULK_SENTENCES.walkChanged(rows.length, count), undefined, rows.length);
+  // ⭐ C8b · a stop over the whole number alone walks no row: its one number is the number the search names.
+  const numbers: string[] = !isPerRowAction(req.action) ? []
+    : stopNumber !== null ? [stopNumber] : (await audienceRows(req.audience)).map((c) => c.msisdn);
+  if (isPerRowAction(req.action) && numbers.length !== count) {
+    return refuse("confirm_mismatch", BULK_SENTENCES.walkChanged(numbers.length, count), undefined, numbers.length);
   }
   // ⛔ vb7 · …AND A SET-BASED WRITE OVER A FILTER IS BOUND TO THE ROWS THAT WERE CONFIRMED. Tag, untag, add to a list and
   // remove were one statement over the FILTER, after the recount: a contact that started matching in between was written
@@ -585,9 +610,9 @@ export async function runContactBulk(
     // transaction — and over ticked rows ONE statement.
     done = bound !== null ? await deps.writes(req.audience).removeBound(bound) : await deps.writes(req.audience).remove();
   } else if (req.action === "withdraw") {
-    await withdrawEach(rows, officerId, runId, at, out);
+    await withdrawEach(numbers, officerId, runId, at, out);
   } else if (req.action === "suppress") {
-    await suppressEach(rows, officerId, runId, at, deps.suppressionReason, out);
+    await suppressEach(numbers, officerId, runId, at, deps.suppressionReason, out);
   } else {
     return refuse("bad_request", BULK_SENTENCES.badRequest);
   }

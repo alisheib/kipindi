@@ -46,18 +46,19 @@ import { decomment } from "./lib/decomment.mts";
 import { db } from "../src/lib/server/store.ts";
 import type { StoredMarketingContact, ContactBookSummary, ContactTagCount, StoredContactList } from "../src/lib/server/store.ts";
 import {
-  contactsSearch, toAudienceWhere, WHOLE_BOOK, ndcsForOperators, contactAudience, roleRefusal, ROLE_REFUSAL_REASON,
+  contactsSearch, toAudienceWhere, WHOLE_BOOK, ndcsForOperators, contactAudience, contactAudienceKey, roleRefusal, ROLE_REFUSAL_REASON,
 } from "../src/lib/server/marketing/audience.ts";
 import type { ContactAudienceFilter } from "../src/lib/server/marketing/audience.ts";
 import { contactSelectionRow } from "../src/lib/server/marketing/contact-bulk.ts";
 import { operatorBrand, contactsHref, contactsLinkSp, contactsClearFiltersHref } from "../src/app/admin/contacts/contacts-query.ts";
 import { loadContacts, contactEditView } from "../src/app/admin/contacts/contacts-loader.ts";
-import type { ContactsParams, ContactsView } from "../src/app/admin/contacts/contacts-loader.ts";
+import type { ContactsDeps, ContactsParams, ContactsView, NumberCheckSpend } from "../src/app/admin/contacts/contacts-loader.ts";
+import { bookHoldsNumber } from "../src/lib/server/contacts/number-search.ts";
 import { contactRail, TAG_RAIL_CAP } from "../src/app/admin/contacts/contacts-rail.ts";
 import type { ContactRail, RailGroup, RailOption } from "../src/app/admin/contacts/contacts-rail.ts";
 import {
   CONSENT_LABEL, SOURCE_LABEL, RAIL_KEYS, RAIL_ANY, RAIL_UNKNOWN_LIST, RAIL_LABEL_MAX, railOperatorTitle,
-  CONTACTS_KPI_RECENT, CONTACTS_RECENT_DAYS,
+  CONTACTS_KPI_RECENT, CONTACTS_RECENT_DAYS, CONTACTS_NUMBER_PRESENCE,
 } from "../src/app/admin/contacts/contacts-copy.ts";
 import { PER_PAGE } from "../src/components/admin/admin-pagination.tsx";
 import { parseTzNumber, TZ_MOBILE_NDCS, TZ_OPERATORS } from "../src/lib/tz-msisdn.ts";
@@ -74,10 +75,15 @@ const read = (rel: string) => decomment(readFileSync(new URL(`../${rel}`, import
  *  stripper (it tracks strings, not regexes) could misread. §16 reads one array out of it, line-anchored instead. */
 const rawRead = (rel: string) => readFileSync(new URL(`../${rel}`, import.meta.url), "utf8").replace(/\r\n/g, "\n");
 
-type Sources = { page: string; loader: string; rail: string; model: string; copy: string; gate: string; searchBox: string; kitBox: string };
+type Sources = {
+  page: string; loader: string; rail: string; model: string; copy: string; gate: string; searchBox: string; kitBox: string;
+  /** C8b review (MINOR 7) · the Add form's lookup action — whose number-check bucket the presence answer spends too. */
+  formActions: string;
+};
 const REAL_SOURCES: Sources = {
   page: read("src/app/admin/contacts/page.tsx"),
   loader: read("src/app/admin/contacts/contacts-loader.ts"),
+  formActions: read("src/app/admin/contacts/contact-form-actions.ts"),
   // ⭐ U21 · the rail's drawing, its model, the one vocabulary, and the gate that must declare the drawing.
   rail: read("src/app/admin/contacts/contact-filters.tsx"),
   model: read("src/app/admin/contacts/contacts-rail.ts"),
@@ -91,8 +97,9 @@ const REAL_SOURCES: Sources = {
 type Impl = {
   search: typeof contactsSearch;
   /** The page's loader. `reads` is D19's read cell — a script has no session, so it is injected; `now` (OD54) is the
-   *  load's one clock, injected so the masked band's seven days are a fixed window. */
-  load: (sp: ContactsParams, reads?: boolean, now?: number) => Promise<ContactsView>;
+   *  load's one clock, injected so the masked band's seven days are a fixed window; `extra` (C8b review) the spend of the
+   *  number-check bucket and the presence read, when a check counts them. */
+  load: (sp: ContactsParams, reads?: boolean, now?: number, extra?: ContactsDeps) => Promise<ContactsView>;
   href: typeof contactsHref;
   /** U21 · the page's rail builder. */
   rail: typeof contactRail;
@@ -100,8 +107,10 @@ type Impl = {
   role: typeof roleRefusal;
   sources: Sources;
 };
-const realLoad = (sp: ContactsParams, reads = false, now?: number) =>
-  loadContacts(sp, { reads: async () => reads, ...(now === undefined ? {} : { now: () => now }) });
+/** A script has no session: the number-check bucket's spend is injected, and allows — unless a check hands its own. */
+const ALLOW_SPEND = async (): Promise<NumberCheckSpend> => ({ allowed: true, retryAfterSec: 0 });
+const realLoad = (sp: ContactsParams, reads = false, now?: number, extra: ContactsDeps = {}) =>
+  loadContacts(sp, { reads: async () => reads, ...(now === undefined ? {} : { now: () => now }), spend: ALLOW_SPEND, ...extra });
 const REAL: Impl = { search: contactsSearch, load: realLoad, href: contactsHref, rail: contactRail, role: roleRefusal, sources: REAL_SOURCES };
 
 let pass = 0, fail = 0;
@@ -229,6 +238,10 @@ const OD54 = {
 
 /** 🔴 C8b (B3) · the masked viewer's whole-number search — named once, so its red cases expect exactly what the run says. */
 const L1D = "1d · ⛔ C8b (B3) · A MASKED VIEWER'S WHOLE-NUMBER SEARCH IS ONE ANSWER, NEVER ROWS: each spelling of a number the book holds answers presence \"in the book\" — with no page of rows read — a number it does not hold \"not in the book\", a list and a window beside the number change nothing (the answer is the whole book's), an ERASED person's number — its tombstone, and a marker on the ledger with no row — reads \"in the book\" exactly like a held one (the Add form's own answer, bookHoldsNumber), and a masked NAME search lists rows as before";
+/** C8b review (MINOR 7) · the presence answer spends the Add form's own number-check bucket. */
+const L1E = "1e · ⛔ C8b review (MINOR 7) · EACH MASKED PRESENCE ANSWER SPENDS THE ADD FORM'S OWN NUMBER-CHECK BUCKET: one spend per answer and none for a reader's whole number or a name search; a spent bucket answers the form's own wait (no presence, the seconds) with NO bit asked and no row read; and the loader's own spend is the viewer's contacts.lookup — the very bucket the Add form's lookup action spends";
+/** C8b review (MINOR 1) · a number in the book is selectable, so a stop given by phone can still be recorded for it. */
+const L1F = "1f · ⭐ C8b review (MINOR 1) · A NUMBER IN THE BOOK IS SELECTABLE FOR A STOP: the presence view carries the whole number ALONE as its audience (every other key null, even when the address held a list and a window — what a bulk Suppress or Record a withdrawal posts), the page hands the selection exactly that audience counted ONE and draws the number's select control for a number in the book only, and the in-book body says a stop or a withdrawal can still be recorded for it";
 /** U33r · the referee's Will receive word — named once, so its red case expects exactly what the run says. */
 const L9R = "9r · ⛔ U33r · MINOR-5 · a number promised no marketing as an agent applicant's referee reads ONLY 'Not reachable', exactly like every protected reason — never named apart, to a reader or anybody else (the split's ONE protected line, here too)";
 
@@ -282,8 +295,51 @@ async function runAssertions(impl: Impl, tag: string): Promise<void> {
     ok(p(L1D),
       v.held.every((h) => h === "in") && v.out.kind === "presence" && !v.out.present && v.narrowed.kind === "presence" && v.narrowed.present
         && masked.pageCalls === 0 && erased.tomb && erased.marker && !erased.free && nameRows === B.id
-        && /if \(number !== null\) return \{ \.\.\.base, kind: "presence", present: await \(deps\.presence \?\? bookHoldsNumber\)\(number\) \};/.test(impl.sources.loader),
+        && impl.sources.loader.includes('return { ...base, kind: "presence", present: await (deps.presence ?? bookHoldsNumber)(number), limitedSec: null, filter };'),
       `spellings ${v.held.join(",")} · other number ${v.out.kind === "presence" ? (v.out.present ? "in" : "out") : "ROWS"} · beside a list and a window ${v.narrowed.kind === "presence" ? (v.narrowed.present ? "in" : "out") : "ROWS"} · page reads ${masked.pageCalls} · erased: tombstone ${erased.tomb}, marker ${erased.marker}, free ${erased.free} · by name ${nameRows}`);
+  }
+
+  // ── 1e · C8b review (MINOR 7) · each masked presence answer spends the Add form's own number-check bucket ──
+  {
+    let spends = 0;
+    let asked = 0;
+    const counting: ContactsDeps = {
+      spend: async () => { spends++; return { allowed: true, retryAfterSec: 0 }; },
+      presence: async (m) => { asked++; return bookHoldsNumber(m); },
+    };
+    const held = await impl.load({ q: "0712 345 678" }, false, undefined, counting);
+    const onePerAnswer = spends === 1 && asked === 1;
+    await impl.load({ q: "baraka" }, false, undefined, counting);
+    await impl.load({ q: "0712 345 678" }, true, undefined, counting);
+    const noneElse = spends === 1 && asked === 1;
+    let askedWhenSpent = 0;
+    const limited = await readsDuring(() => impl.load({ q: "0712 345 678" }, false, undefined, {
+      spend: async () => ({ allowed: false, retryAfterSec: 42 }),
+      presence: async (m) => { askedWhenSpent++; return bookHoldsNumber(m); },
+    }));
+    const lv = limited.value;
+    const src = impl.sources.loader;
+    const spendAt = src.indexOf("const spent = await (deps.spend ?? spendNumberCheck)();");
+    const askAt = src.indexOf("present: await (deps.presence ?? bookHoldsNumber)(number)");
+    const bucket = src.includes('const r = await rateCheckAsync(userId, "contacts.lookup");')
+      && impl.sources.formActions.includes('const rate = await rateCheckAsync(g.userId, "contacts.lookup");');
+    ok(p(L1E), held.kind === "presence" && held.present === true && onePerAnswer && noneElse
+      && lv.kind === "presence" && lv.present === null && lv.limitedSec === 42 && askedWhenSpent === 0 && limited.pageCalls === 0
+      && spendAt > 0 && askAt > spendAt && bucket,
+      `spends ${spends} · presence asked ${asked} · a spent bucket ${lv.kind === "presence" ? `present ${lv.present}, wait ${lv.limitedSec}s` : lv.kind} · asked when spent ${askedWhenSpent} · page reads ${limited.pageCalls} · order ${spendAt}/${askAt} · the form's bucket ${bucket}`);
+  }
+  // ── 1f · C8b review (MINOR 1) · a number in the book is selectable, so a stop given by phone can still be recorded ──
+  {
+    const narrowed = await impl.load({ q: "0712 345 678", list: "cl_t_dar", from: "2026-09-08" }, false);
+    const alone = narrowed.kind === "presence" ? contactAudienceKey(narrowed.filter) : `NOT PRESENCE (${narrowed.kind})`;
+    const want = contactAudienceKey({ ...WHOLE_BOOK, q: "255712345678" });
+    const page = impl.sources.page;
+    const matchingOne = page.includes(": presence !== null && presence.present === true")
+      && page.includes("? { key: contactFilterAudienceKey(presence.filter), identity: contactFilterIdentity(presence.filter, {}), total: 1 }");
+    const drawnForInBook = page.includes("{presence.present === true && <ContactNumberSelect />}");
+    const says = CONTACTS_NUMBER_PRESENCE.body.includes("you can still record a stop or a withdrawal for it");
+    ok(p(L1F), alone === want && matchingOne && drawnForInBook && says,
+      `audience ${alone} · selection counted one ${matchingOne} · select control for a number in the book ${drawnForInBook} · the body says it ${says}`);
   }
 
   // ── 2 · ⛔ A PART OF A NUMBER IS NEVER A NUMBER SEARCH ─────────────────────────────────────────
@@ -915,8 +971,8 @@ if (!PROVE_RED) {
       expect: L1D,
       impl: {
         ...REAL,
-        load: (sp, reads = false, now) => loadContacts(sp, {
-          reads: async () => reads, ...(now === undefined ? {} : { now: () => now }),
+        load: (sp, reads = false, now, extra = {}) => loadContacts(sp, {
+          reads: async () => reads, ...(now === undefined ? {} : { now: () => now }), spend: ALLOW_SPEND, ...extra,
           presence: async (m) => (await db.marketingContact.findByMsisdn(m)) !== null,
         }),
       },
@@ -926,11 +982,44 @@ if (!PROVE_RED) {
       expect: L1D,
       impl: {
         ...REAL,
-        load: async (sp, reads = false, now) => {
-          const v = await realLoad(sp, reads, now);
+        load: async (sp, reads = false, now, extra = {}) => {
+          const v = await realLoad(sp, reads, now, extra);
           return v.kind === "presence" && (sp.list !== undefined || sp.from !== undefined) ? { ...v, present: false } : v;
         },
       },
+    },
+    {
+      name: "⛔ C8b review · a spent number-check bucket still answers the bit — the search box an oracle faster than the Add form",
+      expect: L1E,
+      impl: {
+        ...REAL,
+        load: async (sp, reads = false, now, extra = {}) => {
+          const v = await realLoad(sp, reads, now, extra);
+          if (v.kind !== "presence" || v.present !== null || v.filter.q === null) return v;
+          return { ...v, present: await bookHoldsNumber(v.filter.q), limitedSec: null };
+        },
+      },
+    },
+    {
+      name: "⛔ C8b review · the loader's spend switched to a bucket of its own — the Add form's number checks no longer bound the search",
+      expect: L1E,
+      impl: { ...REAL, sources: { ...REAL_SOURCES, loader: REAL_SOURCES.loader.replace('rateCheckAsync(userId, "contacts.lookup")', 'rateCheckAsync(userId, "contacts.write")') } },
+    },
+    {
+      name: "⛔ C8b review · the presence keeps the address's other filters as its audience — a stop over \"this number\" posts a list and a window beside it",
+      expect: L1F,
+      impl: {
+        ...REAL,
+        load: async (sp, reads = false, now, extra = {}) => {
+          const v = await realLoad(sp, reads, now, extra);
+          return v.kind === "presence" ? { ...v, filter: { ...v.filter, lists: ["cl_t_dar"] } } : v;
+        },
+      },
+    },
+    {
+      name: "⛔ C8b review · the number's select control drawn for every presence — a number not in the book offered a stop it cannot take",
+      expect: L1F,
+      impl: { ...REAL, sources: { ...REAL_SOURCES, page: REAL_SOURCES.page.replace("{presence.present === true && <ContactNumberSelect />}", "{<ContactNumberSelect />}") } },
     },
 
     /* ── U21 · the plan's RED line, each in memory ─────────────────────────────────────────────── */

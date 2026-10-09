@@ -18,6 +18,12 @@
  * ⛔ AND NO DOOR TAKES THE SEARCH FURTHER: the bulk bar and the export refuse a masked viewer's audience that searches a
  * whole number (`maskedNumberSearchRefusal`), so a forged post cannot turn the refused list into a write or a file. A
  * NAME search is unchanged for everyone, and a READER's whole-number search lists the row as it always did.
+ * ⭐ ONE EXCEPTION, A STOP (the integrator's ruling, C8b review): a masked officer must still honour a stop given by
+ * phone. So over the whole number ALONE (`numberAloneOf` — nothing else in the audience), the bulk bar's SUPPRESS and
+ * RECORD A WITHDRAWAL act on that NUMBER — held by a row or blocked by an erasure, exactly as this presence reads it
+ * (`bookHoldsNumber`), so the two can never disagree and a blocked number answers as a held one does (X22) — and tell
+ * the officer the total alone (A1.1 · OD54): its one or none is the presence bit already accepted. Tag, untag, add to a
+ * list, remove and the export stay refused.
  * ⛔ The search box keeps a whole number as its bare key (`audience.ts`, the filter's `q`), so a whole number is read here
  * by the ONE numbering table (`parseTzNumber`) — exactly the reading the resolver gives the box — never by naming the
  * resolver's own search (`test:contacts-audience` 1.5 keeps that translation in audience.ts alone).
@@ -33,6 +39,20 @@ export function wholeNumberOf(f: Pick<ContactAudienceFilter, "q">): string | nul
   if (f.q === null) return null;
   const n = parseTzNumber(f.q);
   return n.verdict === "ok" && n.msisdn !== null ? n.msisdn : null;
+}
+
+/**
+ * ⭐ The bare key of an audience that is a whole number and NOTHING ELSE — no other filter, no ticked rows, no population —
+ * else null. The one audience a masked officer may record a stop or a withdrawal over (see the header).
+ */
+export function numberAloneOf(f: ContactAudienceFilter): string | null {
+  const number = wholeNumberOf(f);
+  if (number === null) return null;
+  const rest: readonly unknown[] = [
+    f.consent, f.suppressed, f.operators, f.lists, f.tags, f.sources, f.player, f.importId, f.addedFrom, f.addedBefore, f.ids,
+    f.population,
+  ];
+  return rest.every((v) => v === null) ? number : null;
 }
 
 /** ⛔ The one sentence the bulk bar and the export say to a masked viewer's whole-number audience. */
