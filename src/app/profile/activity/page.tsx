@@ -22,6 +22,7 @@ import { formatTzs } from "@/lib/utils";
 import { getServerT, type Dict } from "@/lib/i18n-server";
 import Link from "next/link";
 import { PageContainer } from "@/components/layout/page-container";
+import { breakSentence, breakStateFromTimers } from "@/lib/break-end";
 
 // Localised tab title (POLISH-BACKLOG §1.7) — was the hard-coded English
 // "Your activity", which a Swahili player saw in their browser tab and history.
@@ -37,7 +38,7 @@ function isPeriod(v: string | undefined): v is ActivityPeriod {
 }
 
 export default async function ActivityPage({ searchParams }: { searchParams: Promise<{ period?: string }> }) {
-  const { t } = await getServerT();
+  const { t, locale } = await getServerT();
   const session = await getSession();
   if (!session) redirect("/auth/login?next=/profile/activity");
   const { period: rawPeriod } = await searchParams;
@@ -65,6 +66,16 @@ export default async function ActivityPage({ searchParams }: { searchParams: Pro
     getActivitySummary(session.userId, period),
     getRgUsage(session.userId),
   ]);
+  /* ⭐ R6-A (2026-10-09, the sweep of reviewer A's A3) · DURING A BREAK THE EMPTY STATE DOES NOT SEND THE PLAYER TO BET. The
+     note below already calls it what it was — "shown 'no activity yet' and invited to go and bet" — and the invitation
+     (a primary "Browse markets") stood during a break too. For a reader on a break or a self-exclusion the empty state
+     says the break's own sentence with its end (`breakSentence`) and offers no way to bet; its title stays. No second
+     read: the usage row above already carries both timers, and `breakStateFromTimers` asks them as `isLockedOut` does
+     (an exclusion first, then a break). Both shells (the page's body). */
+  const breakEnd = summary.empty ? breakStateFromTimers(rg.selfExclusionUntil, rg.coolingOffUntil, Date.now()) : null;
+  const breakBody = breakEnd
+    ? breakSentence(breakEnd.exclusion ? t.rg.exclusionActive : t.rg.breakActive, breakEnd.until, Date.now(), t.common.monthsShort, locale)
+    : null;
 
   /**
    * ⭐ PLAYER QUERY, TASK 4.13 — AND THE BOARD NAMED THE WRONG DEFECT.
@@ -143,8 +154,8 @@ export default async function ActivityPage({ searchParams }: { searchParams: Pro
         <EmptyState
           kind="positions"
           title={t.activity.emptyTitle}
-          body={t.activity.emptyBody}
-          action={<Link href={"/markets" as never} className="btn btn-primary btn-sm">{t.activity.browseMarkets}</Link>}
+          body={breakBody ?? t.activity.emptyBody}
+          action={breakBody ? null : <Link href={"/markets" as never} className="btn btn-primary btn-sm">{t.activity.browseMarkets}</Link>}
         />
       )}
       {!summary.empty && (

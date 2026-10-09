@@ -80,8 +80,8 @@ process.on("unhandledRejection", (r) => unhandled.push(r));
     welcomeHtml({ name: "<script>alert(1)</script>" });
     depositConfirmedHtml({ amount: 999_999_999_999, method: "M-Pesa", reference: "x".repeat(400), balance: 0 });
     depositConfirmedHtml({ amount: 0, method: "", reference: "", balance: -5 });
-    betPlacedHtml({ reference: "<b>r</b>", side: "YES", stake: 10_000, marketTitle: 'Will "${x}" win?', resolutionDate: "not-a-date" });
-    betPlacedHtml({ reference: "r", side: "NO", stake: 1, marketTitle: "T", resolutionDate: "2026-12-31" }); // missing optionals
+    betPlacedHtml({ reference: "<b>r</b>", side: "YES", stake: 10_000, marketTitle: 'Will "${x}" win?', resolvesAt: "not-a-date" });
+    betPlacedHtml({ reference: "r", side: "NO", stake: 1, marketTitle: "T", resolvesAt: "2026-12-31T09:00:00.000Z" }); // missing optionals
     winNotificationHtml({ reference: "r", payout: 50_000, stake: 10_000, marketTitle: "T & <em>U</em>", settledAt: "2026-01-01" });
     inviteHtml({ campaignName: "<x>", bonusAmountTzs: 5_000, code: "ABC123", message: "Join 50pick & win!" });
   } catch (e) { threw = (e as Error)?.message ?? String(e); }
