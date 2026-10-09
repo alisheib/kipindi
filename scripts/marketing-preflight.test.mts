@@ -132,7 +132,7 @@ const L = {
   p6f: "P6f · ⭐ THE OFFICER'S-PAUSE PROOF IS THE APP'S — the evidence's rule for `--expect-audit=marketing.campaign_paused` is run on the app's own constants (CAMPAIGN_PAUSED_ACTION and OFFICER_PAUSED of campaign-control.ts): a row of that action with an actor and that reason holds, the same row with another reason, or with no actor, does not (a renamed reason in the app would otherwise make the officer's real Pause fail the proof, or the engine's own pause pass it)",
   p7: "P7 · ⭐ THE SQL, NOT ONLY ITS NAMES — every table and column the tools' SQL names exists in schema.prisma (or is _prisma_migrations's own); every statement in the sources was run by this suite; every statement keeps its CONTRACT (the filters, the equalities, the ORDER BY and its direction: newest first where 'newest' is meant, the table-qualified seq); ⭐ every statement keeps its SELECT LIST exactly (a column dropped is a field the tool reads as undefined in production, and the stand-in cannot see it), and the rows the stand-in answers with carry exactly those output names; no bare ORDER BY name equals an AS alias of its own SELECT (PostgreSQL would read it as the OUTPUT column); and every call was BOUND to the right values (the number with its plus, the campaign asked about, the member lists' ids)",
   p8: "P8 · the migration list is held to the folder — each named migration is a directory of prisma/migrations, and every migration whose SQL names a marketing table is in the list",
-  p9: "P9 · the wiring — ops:marketing-preflight and ops:marketing-campaign-evidence run their scripts through tsx, test:/red:marketing-preflight resolve to this suite, none of the four is on the predeploy chain, both tools exist, neither names a production address to default to, and the ledger lives at .qa-shots/marketing-setup/U52a/ledger.json which .gitignore keeps out; ⭐ run through npm exactly as the sheet prints them (npm run -s) a key prints no banner and no line that names a number; ⭐ every npm command of the spec's run sheet is `npm run -s` (npm's banner echoes the arguments, the typed number with them); ⭐ the run sheet quotes the drive's message (DRIVE_MESSAGE: both bodies and both words, character for character) and its four campaign names, keeps the rule that the owner's number never ends the drive stopped, and offers the GROWTH login its own number alone",
+  p9: "P9 · the wiring — ops:marketing-preflight and ops:marketing-campaign-evidence run their scripts through tsx, test:/red:marketing-preflight resolve to this suite, none of the four is on the predeploy chain, both tools exist, neither names a production address to default to, and the ledger lives at .qa-shots/marketing-setup/U52a/ledger.json which .gitignore keeps out; ⭐ run through npm exactly as the sheet prints them (npm run -s) a key prints no banner and no line that names a number; ⭐ every npm command of the spec's run sheet is `npm run -s` (npm's banner echoes the arguments, the typed number with them); ⭐ the run sheet quotes the drive's message (DRIVE_MESSAGE: both bodies and both words, character for character), its four campaign names and the length windows of driveLengthWindows(), keeps the rule that the owner's number never ends the drive stopped (every campaign not DONE stopped first, the read-back in full), and offers the GROWTH login its own number alone; ⭐ and its counts are the path with NO composer test: the two previews read instead, the ledger column 0,0,0,1,1,1,1,2,2, steps 3/4/7 one send and 5/6 none, no composer-test evidence, --new-ledger on step 3's gate runs and not on its evidence, 2 of 6 at step 8, a spare of four",
   e0: "E0 · CONTROLS — a good campaign A (the composer test + one delivered send) is PROVEN on --expect=delivered:test --expect-sends=2 and exits 0 with the ledger taking 2; a look has no verdict (exit 0, LOOK ONLY); no expectation and no look is exit 2; a campaign that is not there exits 1; a --label that holds a number (a run of five digits, or anything the number wall would change) is a usage error that names no digit; the masks print as +255••••NN",
   e1: "E1 · ⭐ THE DISCRIMINATION VERDICT AND ITS EXIT CODE (the plan's RED) — a good B (skipped suppressed, nothing on the wire) is PROVEN; with the GATE REMOVED (the stopped test number SENT) skipped:test FAILS and the exit is 1; a control SENT fails skipped:control; no row at all is not a refusal; a skip for another reason proves nothing; a refusal with a message on the wire fails; an unconfirmed or undelivered row fails sent / delivered; a wrong --expect-sends fails; the original pair sent:test + skipped:control passes only when both hold",
   e2: "E2 · ⛔ A MESSAGE HANDED TO A NUMBER AFTER ITS STOP WAS IN FORCE is a violation by itself — exit 1 though the asker expected sent, and exit 1 on a --look too (the RESULT line says VIOLATION); a stop made after the message, and one lifted before it, are not; stopInForceAt reads the ledger's newest row at the instant and the Suppression row's interval; an UNCONFIRMED row, or a message on a row that is not SENT, counts as handed over; `stopped` needs an active WITHDRAWN stop from the link made after the campaign's message, `resumed` needs the newest ledger row to be that yes",
@@ -1492,9 +1492,37 @@ async function runAssertions(impl: Impl): Promise<void> {
     const driveWords = impl.lib.DRIVE_MESSAGE as unknown as Record<string, string>;
     for (const [field, words] of Object.entries(driveWords)) if (!sheet.includes(`${tick}${words}${tick}`)) wrong.push(`the run sheet does not quote the drive's ${field} exactly`);
     for (const name of Object.values(impl.lib.DRIVE_CAMPAIGN_NAMES as unknown as Record<string, string>)) if (!sheet.includes(`${tick}${name}${tick}`)) wrong.push(`the run sheet does not name the campaign ${name}`);
-    // ⛔ the owner's number never ends the drive stopped, and the GROWTH login is offered its own number alone
-    if (!(sheet.includes("never ends the drive") && sheet.includes("Anza kupokea tena") && sheet.includes("--expect=resumed:test"))) wrong.push("the run sheet no longer starts the owner's number again before a drive that stops");
-    if (!(sheet.includes("is for ADMIN and COMPLIANCE only") && sheet.includes("My own number"))) wrong.push("the run sheet no longer says the GROWTH login is offered its own number alone");
+    // ⛔ the owner's number never ends the drive stopped — every drive campaign not DONE is stopped first, and the read-back is said in
+    // full — and the GROWTH login is offered its own number alone
+    if (!(sheet.includes("never ends the drive") && sheet.includes("Anza kupokea tena") && sheet.includes("Stop every drive campaign that is not DONE")
+      && sheet.includes("-- <last> --test=+255772619619 --expect=resumed:test --label=<X>"))) wrong.push("the run sheet no longer starts the owner's number again, in order, before a drive that stops");
+    if (!(sheet.includes("is for the Owner and Compliance only") && sheet.includes("My own number"))) wrong.push("the run sheet no longer says the GROWTH login is offered its own number alone");
+    // ⭐ THE WINDOWS IT QUOTES ARE THE CODE'S (driveLengthWindows), never typed by hand
+    const win = (impl.lib.driveLengthWindows as typeof LIB.driveLengthWindows)();
+    if (!sheet.includes(`Swahili ${win.SW.min} to ${win.SW.max} characters, English ${win.EN.min} to ${win.EN.max}`)) wrong.push("the run sheet's length windows are not driveLengthWindows()'s");
+    // ⭐ THE PATH'S COUNTS — no composer test (the GROWTH login's own number is not the test number): the previews are read instead;
+    // the ledger column reads 0,0,0,1,1,1,1,2,2 for steps 0–8; steps 3, 4 and 7 expect ONE send, 5 and 6 none; nothing evidences a
+    // composer test; step 3's gate runs carry --new-ledger and its own evidence does not (the tools refuse the flag over the ledger G3
+    // wrote — the drive would stop at exit 2); step 8 reads 2 of 6; the spare is four
+    if (!(sheet.includes("Swahili, as it will be sent to you") && sheet.includes("English, as it will be sent to you"))) wrong.push("the run sheet no longer reads the Test card's two previews");
+    const stepRows = new Map<number, string[]>();
+    for (const line of sheet.split(NL)) {
+      const m = new RegExp("^[|] ([0-8]) [|] ").exec(line);
+      if (m) stepRows.set(Number(m[1]), line.split("|").slice(1, -1).map((x) => x.trim()));
+    }
+    const ledgerCol = [0, 1, 2, 3, 4, 5, 6, 7, 8].map((i) => stepRows.get(i)?.[6] ?? "?");
+    if (json(ledgerCol) !== json(["0", "0", "0", "1", "1", "1", "1", "2", "2"])) wrong.push(`the run sheet's ledger column reads ${ledgerCol.join(",")}, not 0,0,0,1,1,1,1,2,2`);
+    const sendsOf = (i: number): string | null => new RegExp("--expect-sends=([0-9])").exec(stepRows.get(i)?.[5] ?? "")?.[1] ?? null;
+    const sends = [3, 4, 5, 6, 7].map(sendsOf);
+    if (json(sends) !== json(["1", "1", "0", "0", "1"])) wrong.push(`steps 3-7 expect ${sends.join(",")} sends, not 1,1,0,0,1`);
+    const tableText = [...stepRows.values()].map((r) => r.join(" ")).join(NL);
+    if (tableText.includes("marketing.campaign_test") || tableText.includes("--label=T") || (stepRows.get(2)?.[5] ?? "").includes("ops:marketing-campaign-evidence")) wrong.push("the run sheet evidences a composer test again");
+    const step3 = stepRows.get(3) ?? [];
+    // the evidence COMMAND is the cell's first code span (the note after it may name the flag it does not carry)
+    const step3Command = new RegExp(`${tick}([^${tick}]+)${tick}`).exec(step3[5] ?? "")?.[1] ?? "";
+    if (!((step3[3] ?? "").includes("--new-ledger") && step3Command.startsWith("railway run") && !step3Command.includes("--new-ledger"))) wrong.push("step 3's gate runs do not carry --new-ledger, or its own evidence command does");
+    if (!(stepRows.get(8)?.[5] ?? "").includes("2 of 6")) wrong.push("step 8 no longer reads 2 of 6");
+    if (!sheet.includes("four sends for ONE retry")) wrong.push("the spare is not four sends");
     return [wrong.length === 0, `wrong [${wrong.join("; ")}] · without -s the banner names the number: ${bannerShowsNumber}`];
   });
 
@@ -2969,7 +2997,7 @@ if (!PROVE_RED) {
     /* ══ FIX ROUND 3 · the owner's ruling of 2026-10-09 (a marketing SMS is sent exactly as written) and his words for the drive ══ */
     { name: "R-AW1 · the SENT AS WRITTEN check finds nothing (a footer appended again goes by unseen)", expect: [L.e10],
       impl: { parts: { ...EV.PARTS, standingFindings: (f: unknown, a: unknown, l: unknown) => (EV.PARTS.standingFindings as (x: unknown, y: unknown, z: unknown) => Array<{ kind: string }>)(f, a, l).filter((s) => s.kind !== "as_written") } } },
-    { name: "R-AW2 · the length windows are widened by the old footer's 49 characters (a footered message reads as written)", expect: [L.d1, L.e10],
+    { name: "R-AW2 · the length windows are widened by the old footer's 49 characters (a footered message reads as written, and the windows the run sheet quotes are not the code's)", expect: [L.d1, L.e10, L.p9],
       impl: withLib({ driveLengthWindows: (m?: unknown) => { const w = (LIB.driveLengthWindows as (x?: unknown) => Record<"SW" | "EN", { min: number; max: number; fallback: number }>)(m); return { SW: { ...w.SW, max: w.SW.max + 49 }, EN: { ...w.EN, max: w.EN.max + 49 } }; } }) },
     { name: "R-AW3 · a campaign message is judged in either window, whatever its row's language (a Swahili row may carry the English length)", expect: [L.e10],
       impl: withLib({ isDriveLength: (n: unknown, _locale: unknown, w?: unknown) => (LIB.isDriveLength as (a: unknown, b: unknown, c?: unknown) => boolean)(n, null, w) }) },
@@ -2993,6 +3021,16 @@ if (!PROVE_RED) {
       impl: () => withSources({ spec: plantIn(REAL_SOURCES.spec, (LIB.DRIVE_MESSAGE as unknown as Record<string, string>).bodySw, (LIB.DRIVE_MESSAGE as unknown as Record<string, string>).bodySw.split(" hivi karibuni").join("")) }) },
     { name: "R-W28 · the run sheet drops the rule that the owner's number is started again before a drive that stops", expect: [L.p9],
       impl: () => withSources({ spec: REAL_SOURCES.spec.split("never ends the drive").join("may end the drive") }) },
+    { name: "R-W29 · the run sheet's step 3 evidence expects two sends again (a composer test counted that the drive never makes)", expect: [L.p9],
+      impl: () => withSources({ spec: plantIn(REAL_SOURCES.spec, "--expect=delivered:test --expect-sends=1 --expect-audit=marketing.campaign_confirmed", "--expect=delivered:test --expect-sends=2 --expect-audit=marketing.campaign_confirmed") }) },
+    { name: "R-W30 · the run sheet's ledger column counts a composer test at step 2 again", expect: [L.p9],
+      impl: () => withSources({ spec: plantIn(REAL_SOURCES.spec, "no evidence, and no ledger exists yet) | 0 |", "no evidence, and no ledger exists yet) | 1 |") }) },
+    { name: "R-W31 · the run sheet's length windows are typed by hand, one off", expect: [L.p9],
+      impl: () => withSources({ spec: plantIn(REAL_SOURCES.spec, "Swahili 112 to 123 characters", "Swahili 112 to 124 characters") }) },
+    { name: "R-W32 · step 3's own evidence carries --new-ledger (over the ledger G3 wrote the tools refuse it: exit 2, the drive stops)", expect: [L.p9],
+      impl: () => withSources({ spec: plantIn(REAL_SOURCES.spec, "--label=A --show-stop-link` (no", "--label=A --show-stop-link --new-ledger` (no") }) },
+    { name: "R-W33 · the run sheet starts the owner's number again without first stopping the campaigns not DONE", expect: [L.p9],
+      impl: () => withSources({ spec: REAL_SOURCES.spec.split("Stop every drive campaign that is not DONE").join("Leave the drive's campaigns as they are") }) },
   ];
 
   console.log(`RED CONTROL — each defect planted in memory must fail EXACTLY the claims it names${NL}`);
