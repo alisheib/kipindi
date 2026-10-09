@@ -19,6 +19,7 @@ import type { ImportSection, RedPlant, SectionContext } from "../contacts-import
 import type { ImportCheckDeps, ImportFactsReads } from "../../src/lib/server/contacts/import-check.ts";
 import type { ImportChoice, ShownTally } from "../../src/lib/contacts/import-decide.ts";
 import type { ChangesResult, PreflightResult, PreflightView } from "../../src/lib/contacts/import-flow.ts";
+import { IMPORT_REFUSAL_SENTENCES } from "../../src/lib/contacts/import-flow.ts";
 import {
   ADMIN, FIVE_THOUSAND_CHANGING_LINES, FIVE_THOUSAND_COUNTS, NOW, N, B, OFFICER, OTHER, READER, TEST_REFUSAL_AUDIT, UNREADABLE_SENTENCE,
   UNREADABLE_SENTENCE_2, bookRow, captureAudit, captured, checkModule, db, fiveThousandRows, fortyRows, holdsDigitRun, inFreshStore, isMasked,
@@ -52,11 +53,13 @@ export type CheckImpl = {
   readonly deps: ImportCheckDeps;
   /** The facts loader's reads (C12 asks the loader directly). */
   readonly reads: ImportFactsReads;
+  /** ⭐ C8c · m5 · the check itself, as C15 calls it — so a plant can answer its bets stop in other words. */
+  readonly check: typeof checkContactImport;
 };
 
 const REAL_DEPS: ImportCheckDeps = { ...IMPORT_CHECK_DEPS, audit: captureAudit, refusalAudit: TEST_REFUSAL_AUDIT, now: () => NOW };
 function real(): CheckImpl {
-  return { deps: REAL_DEPS, reads: IMPORT_FACTS_READS };
+  return { deps: REAL_DEPS, reads: IMPORT_FACTS_READS, check: checkContactImport };
 }
 const withDeps = (patch: Partial<ImportCheckDeps>): CheckImpl => ({ ...real(), deps: { ...REAL_DEPS, ...patch } });
 
@@ -99,7 +102,7 @@ export const L = {
   C12: "C12 · ⭐ the facts are the authority's, per number: the erased tombstone IS in the book (X22), each book row carries its account link (S15-11), an active stop is suppressed and a lifted one is not, the ledger's latest word is read, whether an erasure STANDS is read by the ONE rule (C8a: the marker under an opt-out tap stands, the marker under a GIVEN and a plain WITHDRAWN do not), NO account is read — heldByPlayer false for every number (R16) — an unknown number has no book row; and a set past one chunk (2,507 numbers) is answered whole in two chunks of FOUR reads",
   C13: "C13 · ⛔ S15-10 · a GROWTH officer (identity.contact masked) is KEEP-only and told nothing per person: a one-row file whose number is plain, stopped, erased or (C8a) erased with NO book row — the marker under an opt-out tap — answers the check and the changes request BYTE FOR BYTE the same — mayUpdateInBook false, KEEP's label under all three choices with every keep one count, nothing changing, the changes refused update_needs_reader with ONE audit row holding only the reason — and the 40-row file reads KEEP's label (22 · 0 · 9, every keep one count) under every choice; CONTROL: a reader's answers for the plain and the stopped number differ",
   C14: "C14 · ⛔ C8a · an erasure with NO book row, as the check reads it: the marker alone, the marker under an opt-out tap on an old link (defect #2) and an account that OPTED OUT and was then erased through the real step (N2) are each 'already in the book' and kept under every choice — shown as the contact it is disguised as (X22: chosen_keep under KEEP, no_change otherwise, no change listed) — while the marker under a GIVEN and a plain new number are NEW; the facts loader says so number by number, and nothing is written",
-  C15: "C15 · ⭐ C8c · N4 · the check YIELDS TO BETS between its pages: the 5,000-row file walked 2,000 a page, a bet queued after the first page — the walk reads NO page while it waits, waits by its own clock, and once the bet has gone counts exactly C2's boxes; a bet that never leaves ends the check too_slow at its OWN deadline (never a second clock), one page read, nothing written but its refusal row",
+  C15: "C15 · ⭐ C8c · N4 · the check YIELDS TO BETS between its pages: the 5,000-row file walked 2,000 a page, a bet queued after the first page — the walk reads NO page while it waits, waits by its own clock, and once the bet has gone counts exactly C2's boxes; a bet that never leaves ends the check at its OWN deadline (never a second clock) — m5 · in the platform's words, bets_busy 'The platform is busy with bets, so the check stopped. Nothing was written — check again in a minute.', never the slow file's 'split the file in two' — one page read, nothing written but its refusal row",
   C16: "C16 · ⭐ C8c · #13 · tags a full contact cannot take are LISTED for a reader: a contact holding 20 tags whose only difference is two new tags (TAKE_FILE: nothing to change, two tags not added) is on the changes pages beside a full contact that changes its name (an update, its tag not added) — each preview naming its tags left out — and the check's listed is 2 (changing stays 1); a GROWTH officer is listed nothing and refused the pages (S15-10)",
 } as const;
 
@@ -370,7 +373,7 @@ async function run({ impl, ok, log }: Ctx): Promise<void> {
       captured.length = 0;
       let r: PreflightResult | null = null;
       try {
-        r = await checkContactImport(READER, runId, deps);
+        r = await impl.check(READER, runId, deps);
       } finally {
         leave();
       }
@@ -382,7 +385,9 @@ async function run({ impl, ok, log }: Ctx): Promise<void> {
     // The deadline is the check's own: 75 s of waits at the walk's own pace, nothing more.
     const budget = Math.ceil(REAL_DEPS.deadlineMs / REAL_DEPS.betWaitMs);
     ok(L.C15, admitted.readsWhileQueued === 0 && admitted.waits >= 6 && countsEqual(p, FIVE_THOUSAND_COUNTS) && p !== null && p.rows === 5000
-      && never.r !== null && !never.r.ok && never.r.reason === "too_slow" && never.r.view !== null && never.pages === 1 && never.readsWhileQueued === 0
+      && never.r !== null && !never.r.ok && never.r.reason === "bets_busy" && never.r.message === IMPORT_REFUSAL_SENTENCES.bets_busy
+      && never.r.message === "The platform is busy with bets, so the check stopped. Nothing was written — check again in a minute."
+      && never.r.view !== null && never.pages === 1 && never.readsWhileQueued === 0
       && never.waits > 0 && never.waits <= budget + 1 && never.refused === 1 && (await db.contactImport.find(runId))?.status === "STAGED",
       `admitted: waits ${admitted.waits}, pages read while queued ${admitted.readsWhileQueued}, ${p ? json(p.counts) : "refused"} · never: ${never.r === null ? "no answer" : never.r.ok ? "a FULL view" : never.r.reason} after ${never.waits} waits (budget ${budget}), pages ${never.pages}, refusal rows ${never.refused}`);
   });
@@ -587,6 +592,19 @@ const plants: readonly RedPlant<CheckImpl>[] = [
     name: "P15b · C8c · N4 · the wait for bets keeps its own clock — the check's deadline never ends it while a bet waits",
     expect: L.C15,
     impl: () => withDeps({ deadlineMs: Number.POSITIVE_INFINITY }),
+  },
+  {
+    // 🔴 the review's m5 · N4 as it shipped: a check that bets kept waiting ends too_slow — "split the file in two" sends
+    // the officer to cut a file that was never the problem.
+    name: "P15c · C8c · m5 · the bets stop is answered in the slow file's words (too_slow)",
+    expect: L.C15,
+    impl: () => ({
+      ...real(),
+      check: async (officerId, runId, deps) => {
+        const r = await checkContactImport(officerId, runId, deps);
+        return !r.ok && r.reason === "bets_busy" ? { ...r, reason: "too_slow", message: IMPORT_REFUSAL_SENTENCES.too_slow } : r;
+      },
+    }),
   },
   {
     name: "P13 · S15-10 · the non-reader's label LEAKS the keep split — a one-line file reads 'suppressed' exactly when that number is stopped",

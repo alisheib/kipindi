@@ -30,7 +30,8 @@ import type {
   ChangesPageRow, CommitStepResult, ImportResultResult, PreflightView, RunActResult, StartImportResult,
 } from "../../src/lib/contacts/import-flow.ts";
 import {
-  DB_BUSY_SENTENCE, IMPORT_REFUSAL_SENTENCES, LIST_MADE_MEANWHILE_SENTENCE, STEP_CONFLICT_SENTENCE, exceptionsLetGo, tagsNotAddedSentence,
+  DB_BUSY_SENTENCE, IMPORT_REFUSAL_SENTENCES, LIST_MADE_MEANWHILE_SENTENCE, START_BETS_SENTENCE, STEP_CONFLICT_SENTENCE, exceptionsLetGo,
+  tagsNotAddedSentence,
 } from "../../src/lib/contacts/import-flow.ts";
 import type { ImportChoice, ShownTally } from "../../src/lib/contacts/import-decide.ts";
 import { adjustTally } from "../../src/lib/contacts/import-decide.ts";
@@ -139,7 +140,7 @@ export const L = {
   M28: "M28 · ⛔ C8c · #15 · a resume of a STAGED run is REFUSED check_again — its view STAGED, the run still STAGED with no frozen decision and no pause stamp, and a step on it refused check_again with nothing settled — while a PAUSED run's resume still carries on (COMMITTING)",
   M29: "M29 · ⭐ C8c · #14b · a persistent database fault ENDS, it does not loop: a P2028 on every step is answered busy in the DATABASE's own sentence (never the bet queue's 'bets come first'), retryAfterSec 5, four times over 35 s; the fifth, 65 s after the first, PAUSES the run (paused by NOBODY — m2: no 'Paused by you' above the database's sentence, the run's and the view's pausedBy null; one contacts.import.paused row, its actor the officer, why database, faults 5) and answers db_paused 'The database is busy — the import has paused. Resume it in a few minutes.'; five quick faults within a minute on another run do NOT pause it; a step that lands ends a streak (four faults, a landed step, a fault 70 s after the first: busy, not paused); resumed, the paused run imports to done",
   M29b: "M29b · ⭐ C8c · #14b · a step whose rows keep moving ends as server_error in words the officer can act on — STEP_CONFLICT_SENTENCE, never 'something went wrong' — nothing settled and the cursor unmoved, the run still COMMITTING, and the next step decides afresh and lands (the source answers the conflict branch with that sentence)",
-  M30: "M30 · ⭐ C8c · N4 · the START's re-decision walk yields to bets too: with a bet queued it reads NO staged page and waits — its own clock, inside its deadline — and once the bet has gone the start freezes the run with the label's counts",
+  M30: "M30 · ⭐ C8c · N4 · the START's re-decision walk yields to bets too: with a bet queued it reads NO staged page and waits — its own clock, inside its deadline — and once the bet has gone the start freezes the run with the label's counts; ⭐ m5 · a bet that never leaves ends the start at its own deadline in the platform's words about pressing Import — bets_busy 'The platform is busy with bets, so the import did not start. Nothing was written — press Import again in a minute.' — nothing frozen, the run STAGED (the source answers the walk's bets stop so)",
   M32: "M32 · ⛔ C8c · m3 · a row on the changes pages ONLY for its tags not added (a full contact whose only difference is new tags — no choice updates it, no Set-apart box) can never trap the officer: the start refuses it set apart (bad_exceptions), so the re-check's reconcile lets it go (exceptionsLetGo: row 2 let go, row 3 — TAKE_FILE renames it — kept, and row 9, past the lines the pages were read through, kept for the server to judge), and row 3 set apart is accepted",
   M31: "M31 · ⭐ C8c · #13 · the RESULT lists the tags a full contact could not take, for a reader: a TAKE_FILE import of a contact holding 20 tags whose only difference is two new tags (kept, no_change) and of one renamed with a tag that does not fit (updated) — each settled row keeps exactly its tags left out (every other row blanked, the book never past 20 tags), the result's tagsNotAdded is 2, and the failures action's tags_not_added list pages both rows in the one sentence (the failures list unchanged); a GROWTH officer's result says null and the list is refused update_needs_reader",
 } as const;
@@ -911,8 +912,37 @@ async function run({ impl, ok, log }: Ctx): Promise<void> {
       bet.leave();
     }
     const frozen = await runOf(runId);
-    ok(L.M30, start !== null && start.ok && pauses >= 3 && readsWhileQueued === 0 && frozen.status === "COMMITTING" && frozen.decisionChoice === "KEEP",
-      `start ${start === null ? "none" : start.ok ? "froze" : start.reason} · waits ${pauses} · pages read while the bet waited ${readsWhileQueued} · run ${frozen.status}`);
+    // ⭐ m5 · a bet that never leaves: the start ends at its OWN deadline, in the platform's words about pressing Import —
+    // nothing frozen, the run still STAGED.
+    const neverRun = await stageFile(OTHER, fortyRows());
+    const neverChecked = await checkContactImport(OTHER, neverRun, impl.deps);
+    const neverLabel = neverChecked.ok ? labelOf(neverChecked.preflight.byChoice.KEEP) : { create: 0, update: 0, keep: 0 };
+    const stuckBet = queueBet();
+    let neverPauses = 0;
+    let never: StartImportResult | null = null;
+    try {
+      never = await startContactImport(OTHER, {
+        runId: neverRun, choice: "KEEP", exceptions: {}, list: { kind: "none" }, expected: neverLabel,
+        checkedAt: neverChecked.ok ? neverChecked.preflight.checkedAt : "",
+      }, {
+        ...impl.deps,
+        now: () => new Date(clock.ms),
+        pause: async (ms) => {
+          neverPauses++;
+          clock.ms += ms;
+          if (neverPauses >= 2000) stuckBet.leave();
+        },
+      });
+    } finally {
+      stuckBet.leave();
+    }
+    const neverStatus = (await runOf(neverRun)).status;
+    const startSays = impl.sources.commit.includes('if (walked === "bets") return refuse("bets_busy", START_BETS_SENTENCE);');
+    ok(L.M30, start !== null && start.ok && pauses >= 3 && readsWhileQueued === 0 && frozen.status === "COMMITTING" && frozen.decisionChoice === "KEEP"
+      && never !== null && !never.ok && never.reason === "bets_busy" && never.message === START_BETS_SENTENCE
+      && never.message === "The platform is busy with bets, so the import did not start. Nothing was written — press Import again in a minute."
+      && neverStatus === "STAGED" && neverPauses < 2000 && startSays,
+      `start ${start === null ? "none" : start.ok ? "froze" : start.reason} · waits ${pauses} · pages read while the bet waited ${readsWhileQueued} · run ${frozen.status} · a bet that never leaves: ${never === null ? "no answer" : never.ok ? "FROZE" : `${never.reason} "${never.message.slice(0, 40)}"`} after ${neverPauses} waits, run ${neverStatus} · the source ${startSays ? "answers it so" : "DOES NOT"}`);
   });
 
   // ── M31 · C8c · #13 · the result lists the tags a full contact could not take ──
@@ -1341,6 +1371,21 @@ const plants: readonly RedPlant<CommitImpl>[] = [
     impl: () => {
       const inner = commitModule.dbFaultStreaks();
       return withDeps({ dbFaults: { record: inner.record, clear: () => undefined } });
+    },
+  },
+  {
+    // 🔴 the review's m5 · the start's bets stop answered as the slow file's (too_slow: "…or split the file in two").
+    name: "P30b · C8c · m5 · the start's walk stopped by bets is answered too_slow (the source's own branch)",
+    expect: L.M30,
+    impl: () => {
+      const r = real();
+      return {
+        ...r,
+        sources: {
+          ...r.sources,
+          commit: r.sources.commit.split('if (walked === "bets") return refuse("bets_busy", START_BETS_SENTENCE);').join('if (walked === "bets") return refuse("too_slow");'),
+        },
+      };
     },
   },
   {

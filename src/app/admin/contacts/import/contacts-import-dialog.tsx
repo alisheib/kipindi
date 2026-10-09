@@ -187,6 +187,8 @@ const REFUSAL_TONE: Partial<Record<ImportRefusalReason, ImportAlertState["tone"]
   busy: "warning",
   // C8c · #14b · the database refused every step for over a minute and the run paused itself: a wait, not a fault.
   db_paused: "warning",
+  // C8c · m5 · bets kept the check (or the start) waiting past its deadline: a wait, not a fault of the file.
+  bets_busy: "warning",
   rate_limited: "warning",
   xlsx_busy: "warning",
   check_again: "warning",

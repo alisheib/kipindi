@@ -97,7 +97,7 @@ import {
 } from "@/lib/contacts/import-decide";
 import type { DecisionPreview, ImportCandidate, ImportChoice, RowOverrides } from "@/lib/contacts/import-decide";
 import {
-  DB_BUSY_SENTENCE, FAILURES_PAGE_ROWS, LIST_MADE_MEANWHILE_SENTENCE, STEP_CONFLICT_SENTENCE, tagsNotAddedSentence,
+  DB_BUSY_SENTENCE, FAILURES_PAGE_ROWS, LIST_MADE_MEANWHILE_SENTENCE, START_BETS_SENTENCE, STEP_CONFLICT_SENTENCE, tagsNotAddedSentence,
 } from "@/lib/contacts/import-flow";
 import type {
   CommitStepResult, FailuresResult, ImportListOption, ImportListsResult, ImportOpenRunsResult, ImportRefusal,
@@ -463,6 +463,8 @@ export async function startContactImport(officerId: string, input: unknown, deps
     for (const p of page.plan.previews) if (deps.changeable(p)) changeable.add(p.line);
   });
   if (walked === "too_slow") return refuse("too_slow");
+  // ⭐ C8c · m5 · bets kept the walk waiting past its deadline: said in the platform's words, about pressing Import.
+  if (walked === "bets") return refuse("bets_busy", START_BETS_SENTENCE);
   // ⛔ An exception may name only an in-book row that a choice would change — never a row outside the file, a new
   // number, a repeat, or a row the book no longer differs from.
   const overrides: RowOverrides | null = parseRowOverrides(body.exceptions, changeable);

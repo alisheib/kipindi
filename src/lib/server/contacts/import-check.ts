@@ -325,9 +325,10 @@ export type RunWalkPage = {
  * page reads, each with four bulk fact reads — never asked, so a big check competed with bets for the database. Now,
  * before every page, it asks THE SAME QUEUE THE SAME WAY (`queueDepth`, admission's own count) and, while a bet waits,
  * WAITS (`betWaitMs` at a time) and asks again. ⛔ NEVER A SECOND CLOCK: the wait is measured by the walk's own `now`
- * against its own deadline, so a check that bets keep waiting past its deadline answers `too_slow` exactly as a slow one
- * does (nothing written either way — the officer checks again). True when the queue is clear; false when the deadline
- * passed while bets waited.
+ * against its own deadline, so a check that bets keep waiting past its deadline ends there, nothing written — and (the
+ * review's m5) it says so in its OWN words (`bets_busy`: "The platform is busy with bets…"), never the slow file's ("…or
+ * split the file in two", which would send the officer to cut a file that was never the problem). True when the queue
+ * is clear; false when the deadline passed while bets waited.
  */
 export async function yieldToBets(
   deps: Pick<ImportCheckDeps, "queueDepth" | "pause" | "now" | "betWaitMs">, deadline: number,
@@ -344,17 +345,18 @@ export async function yieldToBets(
  * each number's first DECIDABLE line, updated BEFORE the page is decided (the first row of a number on this page maps
  * to itself, so decide() calls it first); the facts of the page's numbers; decide() under all three choices. A deadline
  * passed between pages answers "too_slow" — nothing is ever written, so stopping is free. ⭐ C8c · N4 · before every page
- * the walk yields to queued bets (`yieldToBets`), inside the same deadline.
+ * the walk yields to queued bets (`yieldToBets`), inside the same deadline — and a deadline passed WHILE BETS WAITED
+ * answers "bets" (m5), so the caller says why in the platform's words, not the file's.
  */
 export async function walkStagedRun(
   run: StoredContactImport, deps: ImportCheckDeps, deadline: number, visit: (page: RunWalkPage) => void,
-): Promise<"done" | "too_slow"> {
+): Promise<"done" | "too_slow" | "bets"> {
   const running = new Map<string, number>();
   const pageRows = keysetPageRows(deps.windowRows);
   let after = 0;
   for (;;) {
     if (deps.now().getTime() > deadline) return "too_slow";
-    if (!(await yieldToBets(deps, deadline))) return "too_slow";
+    if (!(await yieldToBets(deps, deadline))) return "bets";
     const rows = await deps.rowsAfter({ importId: run.id, afterOrdinal: after, limit: pageRows });
     if (rows.length === 0) return "done";
     const first = deps.firstLinesAcrossPages ? running : new Map<string, number>();
@@ -474,7 +476,7 @@ export function importRefusalSentence(reason: ImportRefusalReason): string {
     case "not_found": return STAGING_SENTENCES.notFound;
     case "not_yours": return STAGING_SENTENCES.notYours;
     case "bad_request": return STAGING_SENTENCES.badRequest;
-    case "forbidden": case "rate_limited": case "server_error": case "xlsx_busy": case "not_staged": case "too_slow":
+    case "forbidden": case "rate_limited": case "server_error": case "xlsx_busy": case "not_staged": case "too_slow": case "bets_busy":
     case "bad_choice": case "bad_exceptions": case "bad_list": case "list_name_taken": case "list_gone": case "already_started":
     case "check_again": case "check_stale": case "update_needs_reader": case "paused": case "cancelled": case "done":
     case "moved": case "busy": case "db_paused":
@@ -628,9 +630,11 @@ export async function checkContactImport(officerId: string, runId: unknown, deps
     byChoice = byEveryChoice((ch) => addTallies(byChoice[ch], page.plan.byChoice[ch]) as ShownTally);
   });
 
-  if (walked === "too_slow") {
-    await auditImportRefusal(deps, CHECK_REFUSED, officerId, run.id, "too_slow", { rows, ms: deps.now().getTime() - startedAt });
-    return importRefusal("too_slow", await importRunView(officerId, run, deps));
+  if (walked === "too_slow" || walked === "bets") {
+    // ⭐ m5 · a walk that bets kept waiting says so in the platform's words, never the slow file's.
+    const reason = walked === "bets" ? "bets_busy" : "too_slow";
+    await auditImportRefusal(deps, CHECK_REFUSED, officerId, run.id, reason, { rows, ms: deps.now().getTime() - startedAt });
+    return importRefusal(reason, await importRunView(officerId, run, deps));
   }
   if (broken || !bucketsAdd({ rows, counts })) {
     // ⛔ Never a partial view: five boxes that do not add up to the file are not shown at all.

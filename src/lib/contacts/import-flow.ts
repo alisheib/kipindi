@@ -90,8 +90,11 @@ export type ImportRunView = {
 
 /**
  * Every refusal the import can give. Staging's own (U29b `StagingRefusalReason`) are passed through by name; the rest
- * are the check's, the start's and the commit's. Each has ONE sentence in `IMPORT_REFUSAL_SENTENCES` (the server
- * sends it; the dialog shows it verbatim, never a code).
+ * are the check's, the start's and the commit's. Each has its OWN sentence in `IMPORT_REFUSAL_SENTENCES` (the server
+ * sends it; the dialog shows it verbatim, never a code) — and four cases of their own carry a second, each defined
+ * beside the table with its why (C8c, the review's n7): `busy` from the database (`DB_BUSY_SENTENCE` — never the bet
+ * queue's), `list_name_taken` from the freeze (`LIST_MADE_MEANWHILE_SENTENCE`), `server_error` from a step whose rows kept
+ * moving (`STEP_CONFLICT_SENTENCE`) and `bets_busy` at the start (`START_BETS_SENTENCE`).
  */
 export type ImportRefusalReason =
   // staging (U29b, verbatim)
@@ -103,8 +106,8 @@ export type ImportRefusalReason =
   | "forbidden" | "rate_limited" | "server_error"
   // the Excel reader (U27b's refusals arrive as their own sentence)
   | "xlsx_refused" | "xlsx_busy"
-  // the check and the changes list
-  | "not_staged" | "too_slow"
+  // the check and the changes list — and (C8c · m5) the check's or the start's walk that waited for BETS past its deadline
+  | "not_staged" | "too_slow" | "bets_busy"
   // the start
   | "bad_choice" | "bad_exceptions" | "bad_list" | "list_name_taken" | "list_gone" | "already_started" | "check_again"
   // S15 review round (2026-10-09): the check grew stale by TIME alone (not a book change) · a non-reader asked to
@@ -378,9 +381,9 @@ export function tagsNotAddedSentence(tags: readonly string[]): string {
 /* ══ THE SENTENCES — every refusal, one whole sentence with the next step ═════════════════════════ */
 
 /**
- * ⭐ ONE SENTENCE PER REFUSAL — complete by construction (a new reason without one fails to compile). Staging's own
+ * ⭐ A SENTENCE FOR EVERY REFUSAL — complete by construction (a new reason without one fails to compile). Staging's own
  * sentences live in `STAGING_SENTENCES` (import-staging.ts) and are passed through by the server; the ones here are the
- * rest. ⛔ None quotes a cell, a number, a name or a file name.
+ * rest, and the four second sentences follow the table. ⛔ None quotes a cell, a number, a name or a file name.
  */
 export const IMPORT_REFUSAL_SENTENCES: Readonly<Record<Exclude<ImportRefusalReason,
   | "bad_request" | "bad_format" | "bad_digest" | "bad_counts" | "bad_mapping" | "no_phone_column" | "empty_file"
@@ -393,6 +396,8 @@ export const IMPORT_REFUSAL_SENTENCES: Readonly<Record<Exclude<ImportRefusalReas
   xlsx_busy: "Another Excel file is being read right now. Try again in a few seconds.",
   not_staged: "This file hasn't finished uploading yet. Let it finish, then check it.",
   too_slow: "Checking this file took too long. Nothing was written — try again, or split the file in two.",
+  // ⭐ C8c · m5 · the walk waited for queued BETS until its deadline: the file was never too slow — the platform was busy.
+  bets_busy: "The platform is busy with bets, so the check stopped. Nothing was written — check again in a minute.",
   bad_choice: "Choose what to do with numbers already in the book.",
   bad_exceptions: "Some row choices don't match this file any more. Check the file again.",
   bad_list: "Choose a list, or choose not to add these contacts to one.",
@@ -409,6 +414,14 @@ export const IMPORT_REFUSAL_SENTENCES: Readonly<Record<Exclude<ImportRefusalReas
   busy: "The platform is busy right now — bets come first. The import carries on by itself as soon as it is free.",
   db_paused: "The database is busy — the import has paused. Resume it in a few minutes.",
 };
+
+/**
+ * ⭐ C8c · m5 · THE START'S WALK WAITED FOR BETS UNTIL ITS DEADLINE. The start decides the whole run again before it
+ * freezes it, and that walk yields to queued bets like the check's (N4); when bets kept it waiting past its deadline, the
+ * start refuses `bets_busy` — nothing frozen, nothing written — in words about pressing Import, not about the check.
+ */
+export const START_BETS_SENTENCE =
+  "The platform is busy with bets, so the import did not start. Nothing was written — press Import again in a minute.";
 
 /**
  * ⭐ C8c · #14b · THE DATABASE'S OWN "NOT NOW", IN ITS OWN WORDS. A step the database turned away (a deadlock, no free
