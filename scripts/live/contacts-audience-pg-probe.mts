@@ -278,7 +278,7 @@ if (whole.ok) {
 // built the index, that its unique violation comes back from the DAL as null (the Prisma create turns P2002 into null, and the
 // bulk service answers list_exists), that findByName reads a name in any case - and that the migration's DO block takes BOTH
 // branches: no index while two lists differ only by case, the index once they do not. Every answer is written HERE by hand.
-// (The importer's start meeting the same index inside its freeze is `scripts/live/contacts-import-pg-probe.mts` section 8.)
+// (The importer's start meeting the same index inside its freeze is `scripts/live/contacts-import-pg-probe.mts` section 9.)
 {
   const { prisma } = await import("../../src/lib/server/prisma.ts");
   const raw = prisma();
