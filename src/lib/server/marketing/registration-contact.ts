@@ -22,23 +22,39 @@
  *   · NO ROW HOLDS THE NUMBER → one row, shaped by U22's ONE builder (`newContactRow`, X6): source REGISTRATION,
  *     sourceRef the account id, the account's name and email through the ONE field rule (both nullable — at sign-up the
  *     name is always empty), the prefix from the ONE table, no stored operator (the brand is derived from `ndc` at
- *     render, U21), the account's own `createdAt` as the moment the number came with it — and THE LINK, set on the
- *     builder's row: sign-up's own fact (`contact-write.ts`: "a link is a fact only sign-up records"). Then U24's mirror.
+ *     render, U21), THE CLOCK as the moment the row entered the book — and THE LINK, set on the builder's row: sign-up's
+ *     own fact (`contact-write.ts`: "a link is a fact only sign-up records"). Then U24's mirror.
+ *     🔴 C8b (B8, Ali's ruling of 2026-10-09: "Added" is when the row entered the book). Until C8b the row took the
+ *     ACCOUNT's `createdAt`, so the backfill of 2026-10-03 wrote each existing client's SIGN-UP date as "Added" — and any
+ *     "Added" before the book had a writer was certainly a player's, read by a masked officer off the Added column, its
+ *     sort, the `?to=` window, the edit dialog and the masked export. At sign-up the two instants are milliseconds apart;
+ *     for a backfilled row they are weeks apart. Those rows are put right by the audited door `ops:contacts-added-redate`
+ *     (`src/lib/server/contacts/added-redate.ts`), from the `contacts.contact.registered` record each one's write left.
  *   · AN UNLINKED ROW HOLDS IT (an officer or an import added the person first — "not every contact is a client" until
  *     they sign up) → LINKED: `userId` alone. Nothing an officer typed is overwritten, the source stays, and the row's
  *     own `updatedAt` is written back (OD56: a link is not an edit — an officer's open dialog stays valid, and a masked
  *     viewer, who is handed that stamp, sees nothing move). Then the mirror.
  *   · ALREADY LINKED TO THIS ACCOUNT → nothing (the mirror is asked, and writes only when the cache is wrong).
- *   · ⛔ AN ERASED TOMBSTONE (`sourceRef = erasure`) → KEPT, never revived. U18b's rules: no writer but erasure writes
- *     onto an erased person's number (C3 / A1.7), an erased row counts as present (X22), and a number outlives its holder
- *     — the next owner is a NEW person, reached as a PLAYER by the campaign's player arm (U38a walks the account; its
- *     book arm leaves the tombstone out). "Not a contact" never means "unreachable".
+ *   · ⭐ AN ERASED TOMBSTONE (`sourceRef = erasure`) → REVIVED AS THIS CLIENT'S ROW (C8b · B1, Ali's ruling of 2026-10-09:
+ *     "an erased person's number stays blocked until its holder signs up or agrees to offers again"). The book BLOCKS an
+ *     erased number — the importer and the Add form answer it "already in the book" and write nothing — and the block is
+ *     lifted only by the holder's own act: a later GIVEN, or a NEW ACCOUNT registering the number, which is this. So the
+ *     emptied row becomes exactly the row a sign-up writes today (the builder's row: the link, the account's name and
+ *     email, source REGISTRATION, the clock as "Added", no officer, no tags, no notes, no import) in ONE step of the store
+ *     (`marketingContact.reviveTombstone` — one transaction on Postgres): the write lands only while the row is still the
+ *     tombstone, and every list membership the tombstone still held is DELETED in the same step, so the new client
+ *     inherits no old list and no old list's coverage (erasure deletes them itself since C8b; a tombstone made before C8b
+ *     may still hold some). ⛔ Nothing of the erased person comes back: the row carries only the NEW account's own
+ *     details. The ledger is not touched — an erasure marker standing on the number still refuses it at the gate until a
+ *     GIVEN lifts it — and the caches stay the tombstone's until the mirror runs, right after. Audited
+ *     `contacts.contact.revived`. 🔴 Until C8b the tombstone was KEPT (`kept_erased`), so a recycled number's new client
+ *     was never a contact and the number answered "can't be added" to every officer — a disclosed erasure.
  *     ⚠️ C8a · the TOMBSTONE alone is asked here, on purpose: with NO book row, a sign-up writes the new account's own
  *     row even where an erasure stands on the number (the ledger's marker, `erasure-mark.ts`'s ONE rule). A sign-up is
  *     the account holder's own act, and its row — at sign-up or by the backfill — carries only that ACCOUNT's own
  *     details, never the erased person's name, email, notes or tags, so nothing erased comes back; and the marker still
  *     refuses the number at the gate until a GIVEN lifts it. The writers that would bring OLD data back — the importer
- *     and the Add form — ask the ONE rule.
+ *     and the Add form — ask the ONE rule (`bookBlocks`, `contact-write.ts`).
  *   · ⛔ A ROW LINKED TO ANOTHER ACCOUNT → KEPT (U18b, `erase.ts`: "a row found by number that is linked to a different
  *     account is not this person's and is not touched"). Re-pointing it would hand that person's row — their name, their
  *     email — to this account's own data export (`dsar.ts` lists every LINKED row).
@@ -51,12 +67,16 @@
  * ⛔ THE AUDIT NAMES THE MASKED NUMBER, THE ACCOUNT AND FIELD NAMES — never the digits, the name or the email (U22's
  * convention), and it is never awaited (a sign-up does not queue behind the audit chain). A failure is logged with the
  * error's NAME and CODE only: a database error's message can print the whole row it refused, the number included.
+ * ⛔ C8b (B6) · each of these SYSTEM rows names the book row a CLIENT holds (`MarketingContact#…`, the id every row's edit
+ * link carries), so the /admin overview feed shows them only to a viewer who may read compliance
+ * (`admin-overview-feed.ts`, `COMPLIANCE_ONLY_ACTIONS` — `test:admin-overview-feed` 3.4 holds that list to the actions
+ * named in this file). A new action written here must join that list.
  *
  * Guard: `test:registration-contact` (in predeploy; in-process `--prove-red`). On Postgres:
  * `scripts/live/registration-contact-pg-probe.mts` (db-scratch, kept off predeploy).
  */
 import { db } from "@/lib/server/store";
-import type { PlayerWalk, PlayerWalkQuery, StoredMarketingContact, StoredUser } from "@/lib/server/store";
+import type { ContactTombstoneRevived, PlayerWalk, PlayerWalkQuery, StoredMarketingContact, StoredUser } from "@/lib/server/store";
 import { audit } from "@/lib/server/audit";
 import { runOutsideLock } from "@/lib/server/locks";
 import { mirrorContactCache } from "@/lib/server/marketing/contact-cache";
@@ -78,14 +98,14 @@ export type RegistrationContactUser = Pick<
 export type RegistrationContactSkip = "not_a_player" | "bootstrap_admin" | "closed" | "erased" | "not_tz_mobile";
 
 /** Where a failed attempt stopped — `signup` is the wrapper's own belt. */
-export type RegistrationContactStage = "read" | "create" | "link" | "mirror" | "signup";
+export type RegistrationContactStage = "read" | "create" | "revive" | "link" | "mirror" | "signup";
 
 export type RegistrationContactResult =
   | { outcome: "created"; contactId: string; cache: ContactCacheOutcome }
+  /** C8b (B1) · an erased number's emptied row, now this client's own row — the id is theirs now. */
+  | { outcome: "revived"; contactId: string; cache: ContactCacheOutcome }
   | { outcome: "linked"; contactId: string; cache: ContactCacheOutcome }
   | { outcome: "already_linked"; contactId: string; cache: ContactCacheOutcome }
-  /** ⛔ No id: an erased row is opened by nobody (A1.7). */
-  | { outcome: "kept_erased"; cache: ContactCacheOutcome }
   /** ⛔ No id: the row is another account's. */
   | { outcome: "kept_other_account"; cache: ContactCacheOutcome }
   | { outcome: "skipped"; reason: RegistrationContactSkip }
@@ -94,10 +114,12 @@ export type RegistrationContactResult =
    *  finds it either way. */
   | { outcome: "timed_out" };
 
-/** The book's three moves, named so a red case can plant one. */
+/** The book's four moves, named so a red case can plant one. */
 export type RegistrationBook = {
   findByMsisdn: (msisdn: string) => Promise<StoredMarketingContact | null>;
   create: (row: StoredMarketingContact) => Promise<StoredMarketingContact | null>;
+  /** C8b (B1) · the tombstone becomes `row` (the sign-up's own row) in ONE step — null when it was no longer the tombstone. */
+  revive: (tombstone: StoredMarketingContact, row: StoredMarketingContact) => Promise<ContactTombstoneRevived | null>;
   link: (row: StoredMarketingContact, userId: string) => Promise<StoredMarketingContact | null>;
 };
 
@@ -114,7 +136,7 @@ export type RegistrationContactDeps = {
   via?: "signup" | "backfill";
   /** The sign-up wrapper's patience, in milliseconds. */
   budgetMs?: number;
-  /** The clock, for a row whose account carries no readable `createdAt`. */
+  /** The clock — the moment a row enters the book (C8b · B8: "Added" is that moment, never the account's sign-up). */
   now?: () => Date;
 };
 
@@ -123,6 +145,10 @@ export type RegistrationContactDeps = {
 export const REGISTRATION_BOOK: Readonly<RegistrationBook> = Object.freeze({
   findByMsisdn: async (msisdn: string) => Promise.resolve(db.marketingContact.findByMsisdn(msisdn)),
   create: async (row: StoredMarketingContact) => Promise.resolve(db.marketingContact.create(row)),
+  /** ⭐ C8b (B1) · THE ONE REVIVAL: the tombstone, named by its id AND its number, becomes the sign-up's row in ONE step,
+   *  its list memberships deleted with it (`marketingContact.reviveTombstone`). */
+  revive: async (tombstone: StoredMarketingContact, row: StoredMarketingContact) =>
+    Promise.resolve(db.marketingContact.reviveTombstone({ id: tombstone.id, msisdn: tombstone.msisdn, row })),
   /** ⭐ THE ONE LINK WRITE: `userId` and nothing else, with the row's own `updatedAt` written back (OD56). */
   link: async (row: StoredMarketingContact, userId: string) =>
     Promise.resolve(db.marketingContact.update(row.id, { userId }, row.updatedAt)),
@@ -176,11 +202,14 @@ function accountEmail(raw: string | null | undefined): string | null {
   return v.ok ? v.value.email : null;
 }
 
-/** When the number came with the account: the account's own `createdAt` (for a backfilled client, the day they signed
- *  up, so "Added" and the recent-additions count tell the truth); the clock only when that cannot be read. */
-function registrationInstant(user: RegistrationContactUser, now: () => Date): string {
-  const t = Date.parse(String(user.createdAt ?? ""));
-  return Number.isFinite(t) ? new Date(t).toISOString() : now().toISOString();
+/**
+ * ⭐ C8b (B8) · WHEN THE ROW ENTERS THE BOOK — the clock, at the write: "Added" is that moment (Ali's ruling of 2026-10-09).
+ * ⛔ Never the account's `createdAt`: for a client the backfill reaches weeks after they signed up, the sign-up date as
+ * "Added" told a masked officer the row is a player's (any "Added" before the book had a writer is one). At sign-up the
+ * two are milliseconds apart, so the door's rows read as they always did.
+ */
+function registrationInstant(now: () => Date): string {
+  return now().toISOString();
 }
 
 function registrationRow(user: RegistrationContactUser, number: TzNumber, deps: RegistrationContactDeps): StoredMarketingContact {
@@ -195,7 +224,7 @@ function registrationRow(user: RegistrationContactUser, number: TzNumber, deps: 
     sourceRef: user.id,
     importId: null,
     officerId: null,
-    at: registrationInstant(user, deps.now ?? (() => new Date())),
+    at: registrationInstant(deps.now ?? (() => new Date())),
   });
   // ⭐ THE LINK — sign-up's fact, on the row the ONE builder shaped. Nothing else of the builder's row changes.
   return { ...row, userId: user.id };
@@ -209,7 +238,7 @@ const filledFields = (row: StoredMarketingContact): string[] =>
 function recordWrite(
   deps: RegistrationContactDeps,
   user: RegistrationContactUser,
-  action: "contacts.contact.registered" | "contacts.contact.linked",
+  action: "contacts.contact.registered" | "contacts.contact.revived" | "contacts.contact.linked",
   row: StoredMarketingContact,
   extra: Record<string, unknown>,
 ): void {
@@ -280,8 +309,23 @@ export async function ensureRegistrationContact(
       if (row === null) throw new Error("the book refused the row but holds none for its number");
     }
     if (isErasedContact(row)) {
-      stage = "mirror";
-      return { outcome: "kept_erased", cache: await mirror(msisdn) };
+      // ⭐ C8b (B1) · the holder's own act lifts the block: the tombstone becomes this client's row, in ONE step.
+      stage = "revive";
+      const revived = await book.revive(row, registrationRow(user, gate.number, deps));
+      if (revived !== null) {
+        // Recorded before the cache is asked, so a mirror fault cannot lose its audit row.
+        recordWrite(deps, user, "contacts.contact.revived", revived.row, {
+          fields: filledFields(revived.row), membershipsDeleted: revived.membershipsDeleted,
+        });
+        stage = "mirror";
+        return { outcome: "revived", contactId: revived.row.id, cache: await mirror(msisdn) };
+      }
+      // The compare lost: the row stopped being the tombstone between the read and the write — a sign-up racing the
+      // backfill, or a retry. Decide on the row that won, exactly as a lost create does.
+      stage = "read";
+      row = await book.findByMsisdn(msisdn);
+      if (row === null) throw new Error("the tombstone left the book before it could be revived");
+      if (isErasedContact(row)) throw new Error("the tombstone could not be revived");
     }
     if (row.userId === user.id) {
       stage = "mirror";
@@ -352,9 +396,10 @@ export type RegistrationBackfillCounts = {
   missing: number;
   outcomes: {
     created: number;
+    /** C8b (B1) · an erased number's emptied row, now this client's. */
+    revived: number;
     linked: number;
     already_linked: number;
-    kept_erased: number;
     kept_other_account: number;
     skipped: number;
     failed: number;
@@ -386,9 +431,9 @@ function emptyBackfillCounts(): RegistrationBackfillCounts {
     accounts: 0,
     walked: 0,
     missing: 0,
-    outcomes: { created: 0, linked: 0, already_linked: 0, kept_erased: 0, kept_other_account: 0, skipped: 0, failed: 0 },
+    outcomes: { created: 0, revived: 0, linked: 0, already_linked: 0, kept_other_account: 0, skipped: 0, failed: 0 },
     skipped: { not_a_player: 0, bootstrap_admin: 0, closed: 0, erased: 0, not_tz_mobile: 0 },
-    failed: { read: 0, create: 0, link: 0, mirror: 0, signup: 0 },
+    failed: { read: 0, create: 0, revive: 0, link: 0, mirror: 0, signup: 0 },
     cache: { none: 0, unchanged: 0, updated: 0, failed: 0 },
   };
 }
@@ -396,9 +441,9 @@ function emptyBackfillCounts(): RegistrationBackfillCounts {
 function tally(c: RegistrationBackfillCounts, r: RegistrationContactResult): void {
   switch (r.outcome) {
     case "created":
+    case "revived":
     case "linked":
     case "already_linked":
-    case "kept_erased":
     case "kept_other_account":
       c.outcomes[r.outcome]++;
       c.cache[r.cache]++;
@@ -422,7 +467,10 @@ function tally(c: RegistrationBackfillCounts, r: RegistrationContactResult): voi
  * ⭐ EVERY CLIENT, THROUGH THE ONE RULE. Walks PLAYER accounts on a +255 number by id, a page at a time (a keyset —
  * an account created during the walk can make no other account be visited twice), reads each page's accounts in one
  * call, and asks the rule once per account. ⭐ IDEMPOTENT BY CONSTRUCTION: the rule's second answer for a client is
- * `already_linked` or a `kept_*`, which write nothing (the mirror writes only a cache that is wrong).
+ * `already_linked` or `kept_other_account`, which write nothing (the mirror writes only a cache that is wrong) — a row
+ * the first run created or revived is linked to the client by then.
+ * ⭐ C8b (B8) · every row it creates or revives says "Added" at the moment of the run (the rule's clock), never the
+ * client's sign-up date.
  * ⛔ IT HOLDS NO NUMBER AND NO NAME: the answer is counts, and the per-account result it reads carries none.
  */
 export async function backfillRegistrationContacts(deps: RegistrationBackfillDeps = {}): Promise<RegistrationBackfillCounts> {
@@ -464,6 +512,12 @@ export function registrationDryRunDeps(): RegistrationContactDeps {
     book: {
       findByMsisdn: REGISTRATION_BOOK.findByMsisdn,
       create: async (row) => row,
+      // C8b (B1) · a revival answers as if it had landed — the tombstone's id and number, the sign-up's fields, no
+      // membership deleted (nothing is).
+      revive: async (tombstone, row) => ({
+        row: { ...row, id: tombstone.id, msisdn: tombstone.msisdn, consentState: tombstone.consentState, suppressedAt: tombstone.suppressedAt },
+        membershipsDeleted: 0,
+      }),
       link: async (row, userId) => ({ ...row, userId }),
     },
     mirror: async (): Promise<ContactCacheOutcome> => "none",
@@ -482,6 +536,7 @@ const SKIP_WORDS: Record<RegistrationContactSkip, string> = {
 const STAGE_WORDS: Record<RegistrationContactStage, string> = {
   read: "reading the book",
   create: "creating the row",
+  revive: "reviving an erased number's row",
   link: "linking the row",
   mirror: "mirroring the consent",
   signup: "at sign-up",
@@ -503,9 +558,9 @@ export function registrationBackfillReport(c: RegistrationBackfillCounts, o: { p
     `walked (player accounts on a +255 number, by id): ${c.walked}`,
     `not walked (staff, agents, erased accounts, numbers outside +255): ${Math.max(0, c.accounts - c.walked)}`,
     `created: ${c.outcomes.created}`,
+    `revived (an erased number's emptied row, now this client's — its old lists dropped): ${c.outcomes.revived}`,
     `linked (an officer's or an import's contact, now this client's): ${c.outcomes.linked}`,
     `already linked: ${c.outcomes.already_linked}`,
-    `kept — an erased number's row, never revived: ${c.outcomes.kept_erased}`,
     `kept — the number's row is linked to another account: ${c.outcomes.kept_other_account}`,
     `skipped: ${c.outcomes.skipped} (${list(c.skipped, SKIP_WORDS)})`,
     `failed: ${c.outcomes.failed} (${list(c.failed, STAGE_WORDS)})`,

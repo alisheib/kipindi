@@ -11,7 +11,9 @@
  *      number in it.
  *   §2 THE RULE — `ensureRegistrationContact` on seeded accounts: the row's shape, the cache from the ledger, an officer's
  *      contact LINKED (not duplicated, not overwritten, its stamp kept — OD56), clients only, already-linked a read.
- *   §3 U18b's RECYCLED-NUMBER RULES — an erased tombstone never revived; a row linked to another account never re-pointed.
+ *   §3 THE RECYCLED-NUMBER RULES — ⭐ C8b (B1): an erased tombstone REVIVED as the new client's own row (the sign-up's
+ *      row, the clock as "Added", its old lists deleted, in ONE compare-and-set step that never overwrites a row that is
+ *      no longer the tombstone); U18b: a row linked to another account never re-pointed.
  *   §4 THE AUDIT — the masked number, the account, field names; no whole number, name or email.
  *   §5 THE BACKFILL — the dry run writes nothing; every PLAYER on +255 visited once, in pages; counts exactly the world's;
  *      a second run changes nothing; no number or name in its counts or its report.
@@ -65,14 +67,17 @@ const rawRead = (rel: string) => readFileSync(join(ROOT, rel), "utf8").split(CR 
 /* ═══ THE MEMORY TWIN, AND ONLY IT ═══════════════════════════════════════════════════════════════ */
 
 type WorldKey = "users" | "usersByPhone" | "marketingContacts" | "contactsByMsisdn" | "messagingConsents" | "suppressions"
-  | "wallets" | "walletsByUser" | "otps";
+  | "wallets" | "walletsByUser" | "otps" | "contactLists" | "contactListMembers";
 const memory = (globalThis as unknown as { __50PICK_STORE?: Record<WorldKey, Map<string, unknown>> }).__50PICK_STORE;
 if (!memory || (process.env.DATABASE_URL && process.env.USE_PRISMA_DAL !== "false")) {
   console.error("test:registration-contact runs on the MEMORY twin only — unset DATABASE_URL. Nothing was run.");
   process.exit(2);
 }
 const MEM = memory as Record<WorldKey, Map<string, unknown>>;
-const WORLD: readonly WorldKey[] = ["users", "usersByPhone", "marketingContacts", "contactsByMsisdn", "messagingConsents", "suppressions", "wallets", "walletsByUser", "otps"];
+const WORLD: readonly WorldKey[] = [
+  "users", "usersByPhone", "marketingContacts", "contactsByMsisdn", "messagingConsents", "suppressions", "wallets", "walletsByUser", "otps",
+  "contactLists", "contactListMembers",
+];
 
 /** An EMPTY world for `fn` — the maps a run touches are copied, emptied, and put back afterwards, whatever happened. */
 async function inEmptyWorld(fn: () => Promise<void>): Promise<void> {
@@ -89,7 +94,7 @@ async function inEmptyWorld(fn: () => Promise<void>): Promise<void> {
 }
 
 /** The book, the accounts and the evidence, serialised — a write anywhere in them moves it. */
-const STATE: readonly WorldKey[] = ["users", "marketingContacts", "contactsByMsisdn", "messagingConsents", "suppressions"];
+const STATE: readonly WorldKey[] = ["users", "marketingContacts", "contactsByMsisdn", "messagingConsents", "suppressions", "contactLists", "contactListMembers"];
 const snapshot = (): string => STATE.map((k) => `${k}=${JSON.stringify([...MEM[k].entries()])}`).join("|");
 
 /** One member of the book's memory twin swapped for the length of `fn` — in memory, never on disk — and put back. */
@@ -206,7 +211,10 @@ async function ledger(phone: string, status: "GIVEN" | "WITHDRAWN", createdAt: s
   });
 }
 
-const REG_ACTIONS = new Set(["contacts.contact.registered", "contacts.contact.linked"]);
+const REG_ACTIONS = new Set(["contacts.contact.registered", "contacts.contact.revived", "contacts.contact.linked"]);
+/** ⭐ C8b (B8) · the rule's clock, injected: the moment a row enters the book in §2.1 and §3.1 — never an account's date. */
+const CLOCK = "2026-10-09T09:30:00.000Z";
+const atClock = (): Date => new Date(CLOCK);
 const registrationAudits = () => getAuditPage({ limit: 10_000, category: "SYSTEM" }).filter((e) => REG_ACTIONS.has(e.action));
 const registrationAuditCount = (): number => registrationAudits().length;
 
@@ -261,6 +269,8 @@ type Impl = {
   report: typeof registrationBackfillReport;
   label: string;
   sources: Sources;
+  /** ⭐ C8b (B1) · the store's ONE revival, as §3.3's racing book reaches it — a plant swaps it for a write without a compare. */
+  revive: NonNullable<RegistrationContactDeps["book"]>["revive"];
 };
 const REAL: Impl = {
   password: passwordDoor,
@@ -273,6 +283,7 @@ const REAL: Impl = {
   report: registrationBackfillReport,
   label: SOURCE_LABEL.REGISTRATION,
   sources: REAL_SOURCES,
+  revive: REGISTRATION_BOOK.revive,
 };
 
 /** A function's text: from `export async function <name>(` to the next top-level `export`. */
@@ -292,18 +303,19 @@ const L = {
   d4: "1.4 · ⛔ A THROWING BOOK NEVER FAILS A SIGN-UP: with every book create throwing, the door still creates the account and its wallet (the only throw is the session cookie's, never the book's) and write no row — and the bounded wrapper answers failed, never rejecting",
   d5: "1.5 · ⛔ the failure is logged WITHOUT the number or the email: a book whose error message prints the whole row still yields one [registration-contact] line naming only the stage and the error's name and code — and the cache mirror every sign-up passes through logs its own failure the same way",
   d6: "1.6 · ⛔ A SILENT BOOK NEVER HOLDS A SIGN-UP: the wrapper gives up within its budget (timed_out) when the book never answers, and the real password door, its book read never answering, still finishes and creates the wallet",
-  r1: "2.1 · the row's shape: the bare 255… key and its prefix from the ONE table, the account's number as rawInput, the account's name and email through the ONE field rule (cleaned; an over-long name and a malformed email DROPPED, never cut), no stored operator, no officer, no tags, notes or import, and the account's own createdAt",
+  r1: "2.1 · the row's shape: the bare 255… key and its prefix from the ONE table, the account's number as rawInput, the account's name and email through the ONE field rule (cleaned; an over-long name and a malformed email DROPPED, never cut), no stored operator, no officer, no tags, notes or import, and ⭐ C8b (B8) THE RULE'S CLOCK as createdAt and updatedAt — the moment the row entered the book, never the account's own createdAt",
   r2: "2.2 · ⭐ the cache comes from the LEDGER: an account whose ledger says GIVEN reads GIVEN, one whose last word is WITHDRAWN reads WITHDRAWN, one with no ledger row reads UNKNOWN — and the rule writes NO ledger row of its own",
   r3: "2.3 · ⭐ an OFFICER'S contact is LINKED, not duplicated: one row for the number, the same id, now linked to the account, source OPERATOR kept, every field the officer typed untouched (name, email, notes, tags, sourceRef, createdBy, createdAt), the consent mirrored",
   r4: "2.4 · ⛔ OD56 · a link is not an edit: the linked row's own updatedAt and updatedBy are written back — an officer's open dialog stays valid, a masked viewer sees nothing move",
   r5: "2.5 · ⛔ CLIENTS ONLY: GROWTH, ADMIN and AGENT accounts, a +254 number, a 064 number, a landline, a CLOSED account, an erased account and a bootstrap-admin number are each skipped with their own reason, and the book, the ledger and the audit are untouched",
   r6: "2.6 · already linked to this account is a READ: already_linked with the row's id, no write, no audit row, the store byte-identical",
-  t1: "3.1 · ⛔ U18b · AN ERASED TOMBSTONE IS NEVER REVIVED: a client signing up on an erased number leaves the row exactly as erasure left it (unlinked, nameless, sourceRef erasure), creates no second row, and its answer carries no contact id",
+  t1: "3.1 · ⭐ C8b (B1) · AN ERASED TOMBSTONE IS REVIVED AS THE NEW CLIENT'S OWN ROW — the holder's own act lifts the block: the SAME row (one row for the number, its id kept) becomes exactly the row a sign-up writes — linked, source REGISTRATION, the account id as sourceRef, the account's name and email, no notes, tags, import or officer, the clock as Added — nothing of the erased person's kept, the cache mirrored from the ledger, its TWO old list memberships deleted (the lists and another contact's membership kept), and a second call is a read",
   t2: "3.2 · ⛔ U18b · A ROW LINKED TO ANOTHER ACCOUNT IS NOT THIS PERSON'S: it keeps its link and every field, nothing is created, and the answer carries no contact id",
-  a1: "4.1 · every write is audited like U22's: contacts.contact.registered and contacts.contact.linked with the MASKED number, the account, the field names and where it came from — and no whole number, name or email in any of this run's registration audit rows",
+  t3: "3.3 · ⛔ C8b (B1) · THE REVIVAL IS A COMPARE-AND-SET: a tombstone that stopped being one between the read and the write (another account's sign-up linked it first) is NOT overwritten — the store refuses, the rule reads the row again and keeps it as the other account's, nothing of this account written",
+  a1: "4.1 · every write is audited like U22's: contacts.contact.registered, .revived and .linked with the MASKED number, the account, the field names and where it came from (a revival with how many list memberships it deleted) — and no whole number, name or email in any of this run's registration audit rows",
   b0: "5.0 · ⭐ the backfill's DRY RUN writes nothing (the store and the audit untouched) and predicts the real run's outcomes",
-  b1: "5.1 · ⭐ THE BACKFILL walks every PLAYER account on a +255 number by id, in pages of two, each exactly ONCE, and its counts by outcome, skip reason and cache are exactly the world's — staff, an agent, an erased account and a foreign number never walked (the census counts them)",
-  b2: "5.2 · ⭐ THE BACKFILL IS IDEMPOTENT: a second run creates and links nothing, repairs no cache, writes no audit row, and leaves the store byte-identical",
+  b1: "5.1 · ⭐ THE BACKFILL walks every PLAYER account on a +255 number by id, in pages of two, each exactly ONCE, and its counts by outcome, skip reason and cache are exactly the world's (C8b: the erased number's tombstone REVIVED as its new client's row) — staff, an agent, an erased account and a foreign number never walked (the census counts them)",
+  b2: "5.2 · ⭐ THE BACKFILL IS IDEMPOTENT: a second run creates, revives and links nothing, repairs no cache, writes no audit row, and leaves the store byte-identical",
   b3: "5.3 · ⛔ the backfill holds no number and no name: its counts and every line of its report carry none of the world's numbers, names or emails",
   s1: "6.1 · THE WIRING: the sign-up door calls registrationContactAtSignup(user) exactly ONCE - after its account row and after its wallet (the money first) - auth-service appends NO consent-ledger row (the SMS-offers box was removed 2026-10-07), creates an account at exactly ONE site, and never calls the unbounded ensureRegistrationContact",
   s2: '6.2 · the copy: SOURCE_LABEL.REGISTRATION reads "Signed up" in the ONE table the column, the rail, the edit dialog and the export read, and "Sign-up" is gone from it',
@@ -428,8 +440,9 @@ async function runAssertions(impl: Impl, tag: string): Promise<void> {
     const A1 = account(`rc${RUN}_a1`, num(11), { displayName: "  Asha   Mwakalinga ", email: "Asha.M@Example.TZ", createdAt: "2026-09-20T08:00:00.000Z" });
     const A2 = account(`rc${RUN}_a2`, num(12), { displayName: "x".repeat(121), email: "not-an-address" });
     for (const u of [A1, A2]) { await db.user.create(u); runAccounts.add(u.id); }
-    const rA1 = await impl.ensure(A1);
-    const rA2 = await impl.ensure(A2);
+    // ⭐ C8b (B8) · the rule's clock is the moment the row enters the book — weeks after A1 signed up, as the backfill was.
+    const rA1 = await impl.ensure(A1, { now: atClock });
+    const rA2 = await impl.ensure(A2, { now: atClock });
     await check(p(L.r1), async () => {
       const row = await db.marketingContact.findByMsisdn(keyOf(A1.phoneE164));
       const row2 = await db.marketingContact.findByMsisdn(keyOf(A2.phoneE164));
@@ -437,7 +450,7 @@ async function runAssertions(impl: Impl, tag: string): Promise<void> {
       const shape = row !== null && row.msisdn === q.msisdn && row.msisdn.startsWith("255") && row.msisdn.length === 12 && row.ndc === q.ndc
         && row.operator === null && row.rawInput === A1.phoneE164 && row.displayName === "Asha Mwakalinga" && row.email === "asha.m@example.tz"
         && row.notes === null && row.tags.length === 0 && row.importId === null && row.createdBy === null && row.updatedBy === null
-        && row.createdAt === "2026-09-20T08:00:00.000Z" && row.updatedAt === row.createdAt && row.source === "REGISTRATION"
+        && row.createdAt === CLOCK && row.createdAt !== A1.createdAt && row.updatedAt === row.createdAt && row.source === "REGISTRATION"
         && row.sourceRef === A1.id && row.userId === A1.id && ID_SHAPE.test(row.id)
         && rA1.outcome === "created" && "contactId" in rA1 && rA1.contactId === row.id;
       const dropped = row2 !== null && row2.displayName === null && row2.email === null && rA2.outcome === "created";
@@ -518,23 +531,43 @@ async function runAssertions(impl: Impl, tag: string): Promise<void> {
       `${again.outcome} · store ${snapshot() === before6 ? "unchanged" : "CHANGED"} · audit ${audits6} → ${registrationAuditCount()}`,
     ]);
 
-    /* ── §3 · U18b's RECYCLED-NUMBER RULES ───────────────────────────────────────────────────────── */
+    /* ── §3 · THE RECYCLED-NUMBER RULES ──────────────────────────────────────────────────────────── */
     const T = account(`rc${RUN}_t`, num(41), { displayName: "New Holder", email: "new.holder@example.tz" });
     await db.user.create(T);
     runAccounts.add(T.id);
+    // The erased person's row, as erasure left it before C8b: emptied, marked — and still on two lists.
     const tomb = bookRow(`mc_rc_tomb_${RUN}`, num(41), {
-      source: "IMPORT", sourceRef: ERASURE_EVIDENCE, rawInput: keyOf(num(41)), consentState: "WITHDRAWN", createdBy: null,
+      source: "IMPORT", sourceRef: ERASURE_EVIDENCE, rawInput: keyOf(num(41)), consentState: "WITHDRAWN", createdBy: "usr_officer_old",
       createdAt: "2026-08-01T08:00:00.000Z", updatedAt: "2026-08-20T08:00:00.000Z", updatedBy: "usr_dpo",
     });
     await db.marketingContact.create(tomb);
+    const bystander = bookRow(`mc_rc_by_${RUN}`, num(44), { displayName: "Bystander" });
+    await db.marketingContact.create(bystander);
+    const LISTS = [`cl_rc_a_${RUN}`, `cl_rc_b_${RUN}`];
+    for (const id of LISTS) {
+      await db.contactList.create({ id, name: `List ${id}`, description: null, createdAt: "2026-08-01T08:00:00.000Z", createdBy: "usr_officer_rc", updatedAt: "2026-08-01T08:00:00.000Z", updatedBy: "usr_officer_rc" });
+      await db.contactListMember.add({ listId: id, contactId: tomb.id, addedAt: "2026-08-05T08:00:00.000Z", addedBy: "usr_officer_rc" });
+    }
+    await db.contactListMember.add({ listId: LISTS[0], contactId: bystander.id, addedAt: "2026-08-05T08:00:00.000Z", addedBy: "usr_officer_rc" });
     await ledger(T.phoneE164, "GIVEN", "2026-08-02T08:00:00.000Z");
     await ledger(T.phoneE164, "WITHDRAWN", "2026-08-20T08:00:00.000Z");
-    const tombBefore = JSON.stringify(await db.marketingContact.find(tomb.id));
-    const rT = await impl.ensure(T);
+    const rT = await impl.ensure(T, { now: atClock });
+    await auditFlush();
+    const beforeAgain = snapshot();
+    const againT = await impl.ensure(T, { now: atClock });
+    await auditFlush();
     await check(p(L.t1), async () => {
-      const after = JSON.stringify(await db.marketingContact.find(tomb.id));
-      return [rT.outcome === "kept_erased" && !("contactId" in rT) && !JSON.stringify(rT).includes(tomb.id) && after === tombBefore && rowsFor(T.phoneE164) === 1,
-        `${JSON.stringify(rT)} · the tombstone ${after === tombBefore ? "untouched" : `CHANGED to ${after}`}`];
+      const row = await db.marketingContact.find(tomb.id);
+      const memberships = await db.contactListMember.listMemberships(tomb.id);
+      const listsKept = (await Promise.all(LISTS.map((id) => db.contactList.find(id)))).every((l) => l !== null);
+      const byKept = (await db.contactListMember.listMemberships(bystander.id)).length === 1;
+      const shaped = row !== null && row.id === tomb.id && row.msisdn === tomb.msisdn && row.userId === T.id && row.source === "REGISTRATION"
+        && row.sourceRef === T.id && row.displayName === "New Holder" && row.email === "new.holder@example.tz" && row.notes === null
+        && row.tags.length === 0 && row.importId === null && row.createdBy === null && row.updatedBy === null
+        && row.createdAt === CLOCK && row.updatedAt === CLOCK && row.rawInput === T.phoneE164 && row.consentState === "WITHDRAWN";
+      return [rT.outcome === "revived" && "contactId" in rT && rT.contactId === tomb.id && shaped && rowsFor(T.phoneE164) === 1
+        && memberships.length === 0 && listsKept && byKept && againT.outcome === "already_linked" && snapshot() === beforeAgain,
+        `${JSON.stringify(rT)} · ${row ? `${row.source} linked ${row.userId === T.id} "${row.displayName}" added ${row.createdAt} by ${row.createdBy}` : "NO ROW"} · memberships ${memberships.length} · lists kept ${listsKept} · bystander ${byKept} · again ${againT.outcome}, store ${snapshot() === beforeAgain ? "unchanged" : "CHANGED"}`];
     });
 
     const O = account(`rc${RUN}_o`, num(42));
@@ -553,28 +586,65 @@ async function runAssertions(impl: Impl, tag: string): Promise<void> {
         `${JSON.stringify(rO)} · the other account's row ${after === otherBefore ? "untouched" : `CHANGED to ${after}`}`];
     });
 
+    // ⭐ C8b · THE REVIVAL'S COMPARE: between this sign-up's read and its revival, ANOTHER account's sign-up revives the
+    // tombstone first (the backfill racing a sign-up) — the store must refuse the second write.
+    const Q = account(`rc${RUN}_q`, num(45), { displayName: "Second Comer", email: "second.comer@example.tz" });
+    const Q0 = account(`rc${RUN}_q0`, num(46));
+    for (const u of [Q, Q0]) { await db.user.create(u); runAccounts.add(u.id); }
+    const qTomb = bookRow(`mc_rc_qtomb_${RUN}`, num(45), {
+      source: "IMPORT", sourceRef: ERASURE_EVIDENCE, rawInput: keyOf(num(45)), consentState: "UNKNOWN", createdBy: null,
+      createdAt: "2026-08-01T08:00:00.000Z", updatedAt: "2026-08-20T08:00:00.000Z", updatedBy: "usr_dpo",
+    });
+    await db.marketingContact.create(qTomb);
+    const firstComer = { ...bookRow(`mc_rc_qwin_${RUN}`, num(45)), source: "REGISTRATION" as const, sourceRef: Q0.id, userId: Q0.id,
+      displayName: "First Comer", createdBy: null, updatedBy: null, createdAt: CLOCK, updatedAt: CLOCK };
+    const racing: RegistrationContactDeps = {
+      now: atClock,
+      book: {
+        ...REGISTRATION_BOOK,
+        revive: async (tombstone, row) => {
+          // The other sign-up lands first, through the store's own revival …
+          await db.marketingContact.reviveTombstone({ id: tombstone.id, msisdn: tombstone.msisdn, row: { ...firstComer, id: tombstone.id } });
+          // … and only then this one's — which must find the row no longer the tombstone.
+          return impl.revive(tombstone, row);
+        },
+      },
+    };
+    const rQ = await impl.ensure(Q, racing);
+    await check(p(L.t3), async () => {
+      const row = await db.marketingContact.find(qTomb.id);
+      return [rQ.outcome === "kept_other_account" && !("contactId" in rQ) && row !== null && row.userId === Q0.id
+        && row.displayName === "First Comer" && row.email === null && rowsFor(Q.phoneE164) === 1,
+        `${JSON.stringify(rQ)} · the row ${row ? `linked to ${row.userId === Q0.id ? "the first comer" : row.userId === Q.id ? "THIS account" : row.userId}, "${row.displayName}"` : "GONE"}`];
+    });
+
     /* ── §4 · THE AUDIT ──────────────────────────────────────────────────────────────────────────── */
     const SECRETS: string[] = [];
-    for (let s = 1; s <= 43; s++) SECRETS.push(nationalOf(num(s)));
+    for (let s = 1; s <= 46; s++) SECRETS.push(nationalOf(num(s)));
     SECRETS.push(nationalOf(num(35, "64")), nationalOf(num(36, "22")), nationalOf(foreign(34)));
     for (let s = 1; s <= 7; s++) SECRETS.push(mail(s));
     SECRETS.push("Asha", "Mwakalinga", "Account Name", "New Holder", "Previous holder", "asha.m@example.tz", "Asha.M@Example.TZ",
-      "account@example.tz", "typed@example.tz", "new.holder@example.tz", "previous@example.tz", LEAK_MAIL);
+      "account@example.tz", "typed@example.tz", "new.holder@example.tz", "previous@example.tz", LEAK_MAIL,
+      "Second Comer", "second.comer@example.tz", "First Comer", "Bystander");
     await auditFlush();
     await check(p(L.a1), () => {
       const entries = registrationAudits();
       const createdId = "contactId" in rA1 ? rA1.contactId : "";
       const reg = entries.find((e) => e.action === "contacts.contact.registered" && e.targetId === createdId);
       const lnk = entries.find((e) => e.action === "contacts.contact.linked" && e.targetId === X.id);
+      const rev = entries.find((e) => e.action === "contacts.contact.revived" && e.targetId === tomb.id);
       const pr = (reg?.payload ?? {}) as Record<string, unknown>;
       const pl = (lnk?.payload ?? {}) as Record<string, unknown>;
+      const pv = (rev?.payload ?? {}) as Record<string, unknown>;
       const mine = entries.filter((e) => runAccounts.has(String(((e.payload ?? {}) as Record<string, unknown>).account ?? "")));
       const dirty = leaksIn(JSON.stringify(mine), SECRETS);
       return [!!reg && reg.actorId === A1.id && reg.targetType === "MarketingContact" && pr.number === maskPhone(keyOf(A1.phoneE164)) && pr.account === A1.id
         && pr.via === "signup" && JSON.stringify(pr.fields) === JSON.stringify(["displayName", "email"])
         && !!lnk && lnk.actorId === D.id && pl.keptSource === "OPERATOR" && pl.number === maskPhone(keyOf(D.phoneE164)) && pl.account === D.id
-        && mine.length >= 3 && dirty.length === 0,
-        `registered ${JSON.stringify(reg?.payload ?? null)} · linked ${JSON.stringify(lnk?.payload ?? null)} · ${mine.length} row(s) · ${dirty.length ? `CARRY ${dirty.join(",")}` : "clean"}`];
+        && !!rev && rev.actorId === T.id && rev.targetType === "MarketingContact" && pv.number === maskPhone(keyOf(T.phoneE164)) && pv.account === T.id
+        && pv.via === "signup" && JSON.stringify(pv.fields) === JSON.stringify(["displayName", "email"]) && pv.membershipsDeleted === 2
+        && mine.length >= 4 && dirty.length === 0,
+        `registered ${JSON.stringify(reg?.payload ?? null)} · linked ${JSON.stringify(lnk?.payload ?? null)} · revived ${JSON.stringify(rev?.payload ?? null)} · ${mine.length} row(s) · ${dirty.length ? `CARRY ${dirty.join(",")}` : "clean"}`];
     });
 
     /* ── §5 · THE BACKFILL — its own empty world ─────────────────────────────────────────────────── */
@@ -604,7 +674,8 @@ async function runAssertions(impl: Impl, tag: string): Promise<void> {
       await db.marketingContact.create(bookRow(`mc_rc_b6_${RUN}`, W.w6.phoneE164, { source: "REGISTRATION", sourceRef: W.w6x.id, userId: W.w6x.id, displayName: "Previous holder", createdBy: null, updatedBy: null }));
       const bootstrapPhones = new Set([W.w9.phoneE164]);
       const WALKED = [W.w1, W.w2, W.w3, W.w4, W.w5, W.w6, W.w6x, W.w7, W.w8, W.w9].map((u) => u.id).sort();
-      const OUTCOMES = { created: 2, linked: 1, already_linked: 1, kept_erased: 1, kept_other_account: 1, skipped: 4, failed: 0 };
+      // ⭐ C8b (B1) · w5's tombstone is REVIVED as w5's own row (until C8b it was kept).
+      const OUTCOMES = { created: 2, revived: 1, linked: 1, already_linked: 1, kept_other_account: 1, skipped: 4, failed: 0 };
       const SKIPS = { not_a_player: 0, bootstrap_admin: 1, closed: 2, erased: 0, not_tz_mobile: 1 };
       const WORLD_SECRETS = [
         ...[51, 52, 53, 54, 55, 56, 57, 58, 60, 61, 62].map((s) => nationalOf(num(s))), nationalOf(num(59, "64")), nationalOf(foreign(63)),
@@ -629,10 +700,12 @@ async function runAssertions(impl: Impl, tag: string): Promise<void> {
       await check(p(L.b1), async () => {
         const made = [await db.marketingContact.findByMsisdn(keyOf(W.w1.phoneE164)), await db.marketingContact.findByMsisdn(keyOf(W.w2.phoneE164))];
         const linked = await db.marketingContact.find(`mc_rc_b3_${RUN}`);
+        const revived = await db.marketingContact.find(`mc_rc_b5_${RUN}`);
         const once = visits.length === WALKED.length && [...visits].sort().join(",") === WALKED.join(",");
         return [first.accounts === 14 && first.walked === 10 && first.missing === 0 && eqCounts(first.outcomes, OUTCOMES) && eqCounts(first.skipped, SKIPS)
           && eqCounts(first.cache, { none: 0, unchanged: 5, updated: 1, failed: 0 }) && once
-          && made[0]?.userId === W.w1.id && made[0]?.consentState === "GIVEN" && made[1]?.userId === W.w2.id && linked?.userId === W.w3.id,
+          && made[0]?.userId === W.w1.id && made[0]?.consentState === "GIVEN" && made[1]?.userId === W.w2.id && linked?.userId === W.w3.id
+          && revived?.userId === W.w5.id && revived.source === "REGISTRATION" && revived.sourceRef === W.w5.id,
           `accounts ${first.accounts} · walked ${first.walked} (${visits.length} visits) · ${JSON.stringify(first.outcomes)} · ${JSON.stringify(first.skipped)} · cache ${JSON.stringify(first.cache)}`];
       });
 
@@ -643,8 +716,8 @@ async function runAssertions(impl: Impl, tag: string): Promise<void> {
       const second = await impl.backfill({ chunk: 2, contact: { bootstrapPhones } });
       await auditFlush();
       await check(p(L.b2), () => [
-        second.outcomes.created === 0 && second.outcomes.linked === 0 && second.outcomes.already_linked === 4 && second.outcomes.failed === 0
-          && second.cache.updated === 0 && snapshot() === before2 && registrationAuditCount() === audits2,
+        second.outcomes.created === 0 && second.outcomes.revived === 0 && second.outcomes.linked === 0 && second.outcomes.already_linked === 5
+          && second.outcomes.failed === 0 && second.cache.updated === 0 && snapshot() === before2 && registrationAuditCount() === audits2,
         `${JSON.stringify(second.outcomes)} · cache ${JSON.stringify(second.cache)} · store ${snapshot() === before2 ? "unchanged" : "CHANGED"} · audit ${audits2} → ${registrationAuditCount()}`,
       ]);
 
@@ -756,7 +829,8 @@ const leakyLogEnsure: Ensure = (user, deps = {}) => {
   });
 };
 
-/** 🔴 The row shaped by hand: the brand stored as text, the account's name as it came, the wall clock as "added". */
+/** 🔴 The row shaped by hand: the brand stored as text, the account's name as it came — and (the reading C8b retired,
+ *  B8) the ACCOUNT's own createdAt as "Added", so a backfilled client's row says the day they signed up. */
 const handShapedRow: Ensure = (user, deps = {}) => {
   const book = bookOf(deps);
   return ensureRegistrationContact(user, {
@@ -764,10 +838,19 @@ const handShapedRow: Ensure = (user, deps = {}) => {
     book: {
       ...book,
       create: (row) => {
-        const at = new Date().toISOString();
+        const at = new Date(Date.parse(String(user.createdAt))).toISOString();
         return book.create({ ...row, operator: parseTzNumber(row.msisdn).operator?.brand ?? "Vodacom", displayName: user.displayName, createdAt: at, updatedAt: at });
       },
     },
+  });
+};
+
+/** 🔴 C8b (B8) · only the timestamp planted: the account's own createdAt as "Added" — nothing else of the row moved. */
+const signupDatedRow: Ensure = (user, deps = {}) => {
+  const book = bookOf(deps);
+  return ensureRegistrationContact(user, {
+    ...deps,
+    book: { ...book, create: (row) => book.create({ ...row, createdAt: String(user.createdAt), updatedAt: String(user.createdAt) }) },
   });
 };
 
@@ -811,17 +894,55 @@ const relinkEveryCall: Ensure = async (user, deps = {}) => {
   return r;
 };
 
-/** 🔴 The erased tombstone revived — linked to the new account and given its name and email: an erasure undone by a writer
- *  that is not erasure. */
-const reviveTombstones: Ensure = async (user, deps = {}) => {
+/** 🔴 C8b · B1 not built — the rule before C8b: the erased tombstone KEPT, the recycled number's new client never a contact
+ *  (and every officer told the number "can't be added", a disclosed erasure). */
+const keepTombstones: Ensure = async (user, deps = {}) => {
   const key = parseTzNumber(user.phoneE164).msisdn;
   const row = key ? await db.marketingContact.findByMsisdn(key) : null;
-  if (row !== null && row.sourceRef === ERASURE_EVIDENCE) {
-    await db.marketingContact.update(row.id, { userId: user.id, email: user.email ?? null, displayName: user.displayName, source: "REGISTRATION", sourceRef: user.id }, row.updatedAt);
-    return { outcome: "linked", contactId: row.id, cache: "none" };
-  }
+  if (row !== null && row.sourceRef === ERASURE_EVIDENCE) return { outcome: "kept_other_account", cache: "none" };
   return ensureRegistrationContact(user, deps);
 };
+
+/** 🔴 C8b · the revival that keeps the tombstone's LISTS — the row written exactly right, and every membership it held put
+ *  back: the new client inherits the erased person's lists, and those lists' coverage. */
+const reviveKeepingLists: Ensure = (user, deps = {}) => ensureRegistrationContact(user, {
+  ...deps,
+  book: {
+    ...bookOf(deps),
+    revive: async (tombstone, row) => {
+      const held = await db.contactListMember.listMemberships(tombstone.id);
+      const revived = await REGISTRATION_BOOK.revive(tombstone, row);
+      for (const m of held) await db.contactListMember.add(m);
+      return revived;
+    },
+  },
+});
+
+/** 🔴 C8b · the revival that keeps the erased person's "Added" and provenance — the tombstone's createdAt and createdBy on
+ *  the new client's row. */
+const reviveKeepingAdded: Ensure = (user, deps = {}) => ensureRegistrationContact(user, {
+  ...deps,
+  book: {
+    ...bookOf(deps),
+    revive: async (tombstone, row) => REGISTRATION_BOOK.revive(tombstone, { ...row, createdAt: tombstone.createdAt, createdBy: tombstone.createdBy }),
+  },
+});
+
+/** 🔴 C8b · the revival without its compare — whatever row the id names now is overwritten, another account's included. */
+const reviveWithoutCompare: NonNullable<RegistrationContactDeps["book"]>["revive"] = async (tombstone, row) => {
+  const now = await db.marketingContact.find(tombstone.id);
+  if (now === null) return null;
+  const written = await db.marketingContact.update(now.id, {
+    userId: row.userId, displayName: row.displayName, email: row.email, source: row.source, sourceRef: row.sourceRef,
+  }, row.updatedAt);
+  return written === null ? null : { row: written, membershipsDeleted: 0 };
+};
+
+/** 🔴 C8b · the revival unaudited — the one SYSTEM row that says an erased number's row was given to a new client. */
+const silentRevival: Ensure = (user, deps = {}) => ensureRegistrationContact(user, {
+  ...deps,
+  audit: (entry) => (entry.action === "contacts.contact.revived" ? undefined : (deps.audit ?? audit)(entry)),
+});
 
 /** 🔴 Another account's row re-pointed to this one — that person's row (and its name) handed to this account. */
 const repointOthers: Ensure = async (user, deps = {}) => {
@@ -953,9 +1074,14 @@ if (!PROVE_RED) {
       impl: { ...REAL, atSignup: (user, deps = {}) => ensureRegistrationContact(user, deps) },
     },
     {
-      name: "the row shaped by hand — the brand stored, the name uncleaned, the wall clock as createdAt",
+      name: "the row shaped by hand — the brand stored, the name uncleaned, the account's own createdAt as Added",
       expect: L.r1,
       impl: { ...REAL, ensure: handShapedRow },
+    },
+    {
+      name: "⛔ C8b · B8 · the account's sign-up date as Added — a backfilled client's row says when they signed up, a player's tell to a masked officer",
+      expect: L.r1,
+      impl: { ...REAL, ensure: signupDatedRow },
     },
     {
       name: "the cache invented from the account's toggle — a switch never turned on recorded as a withdrawal",
@@ -983,9 +1109,29 @@ if (!PROVE_RED) {
       impl: { ...REAL, ensure: relinkEveryCall },
     },
     {
-      name: "⛔ U18b · the erased tombstone revived — linked to the new account and given its name and email",
+      name: "⛔ C8b · B1 not built — the erased tombstone kept: the recycled number's new client is never a contact",
       expect: L.t1,
-      impl: { ...REAL, ensure: reviveTombstones },
+      impl: { ...REAL, ensure: keepTombstones },
+    },
+    {
+      name: "⛔ C8b · the revival keeps the tombstone's old lists — the new client inherits the erased person's lists and their coverage",
+      expect: L.t1,
+      impl: { ...REAL, ensure: reviveKeepingLists },
+    },
+    {
+      name: "⛔ C8b · the revival keeps the erased person's Added and provenance on the new client's row",
+      expect: L.t1,
+      impl: { ...REAL, ensure: reviveKeepingAdded },
+    },
+    {
+      name: "⛔ C8b · the revival without its compare — the first comer's row overwritten by the second sign-up",
+      expect: L.t3,
+      impl: { ...REAL, revive: reviveWithoutCompare },
+    },
+    {
+      name: "⛔ C8b · the revival unaudited — an erased number's row handed to a new client with no SYSTEM row",
+      expect: L.a1,
+      impl: { ...REAL, ensure: silentRevival },
     },
     {
       name: "⛔ U18b · another account's row re-pointed to this account — that person's row handed to this one",

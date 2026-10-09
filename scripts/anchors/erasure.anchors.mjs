@@ -326,6 +326,15 @@ export const MUTATIONS = [
     to: `      sourceRef: null,`,
   },
   {
+    // ⭐ C8b (B1) · the emptied row keeps its lists: the tombstone stays a member, and a NEW client the number is revived
+    // for at sign-up would inherit the erased person's lists and their coverage — test:erasure 12.7b and 12.15 catch it.
+    name: "erasure-keeps-the-tombstone-on-its-lists (an erased person's list memberships survive the erasure)",
+    file: MKT_ERASE,
+    suite: "erasure",
+    from: `      if (await Promise.resolve(db.contactListMember.remove({ listId: m.listId, contactId: c.id }))) counts.marketingListMembershipsDeleted++;`,
+    to: `      void m;`,
+  },
+  {
     // The export reads an unlinked by-number row whatever its age or link — a previous holder's book row.
     name: "dsar-by-number-row-unbounded (a previous holder's book row reaches the new owner's file)",
     file: MKT_DSAR,

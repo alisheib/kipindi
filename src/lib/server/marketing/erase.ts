@@ -42,6 +42,12 @@ import { mirrorContactCache } from "@/lib/server/marketing/contact-cache";
  *      may be a previous holder's — emptying another person's row harms nobody, leaving the erased person's
  *      name would breach the request. The export takes the opposite side of the same doubt
  *      (`dsar.ts`: when in doubt, do not disclose).
+ *      ⭐ C8b (B1) · …AND ITS LIST MEMBERSHIPS ARE DELETED. Which lists the person was on is about them; the tombstone
+ *      covers nothing on any list already (a list basis and every audience leave it out), and since C8b a NEW account
+ *      registering the number revives the tombstone as that client's own row (`registration-contact.ts`) — which must
+ *      inherit no old list and no old list's coverage. Asked for EVERY row this step reaches, emptied now or already
+ *      empty, so a pass that died part-way is finished by the next. (The revival deletes them too, for a tombstone made
+ *      before C8b.)
  *   2b. DELETE every STAGED import row (U29b, `ContactImportRow`) holding any number the person is known by — in every
  *      officer's run, a number another live account now holds included: a staged row is a transient copy of somebody's
  *      file, never evidence, and ⚖️ when in doubt, erase. A row whose number never parsed carries no key and cannot be
@@ -110,6 +116,8 @@ export type MarketingErasureCounts = {
   marketingConsentWithdrawn: number;
   /** Book rows emptied (by link or by number). */
   marketingContactsEmptied: number;
+  /** C8b (B1) · list memberships of those rows deleted — the tombstone stays on no list. */
+  marketingListMembershipsDeleted: number;
   /** U29b · staged import rows deleted — by every number the person is known by, in every run. */
   marketingStagedRowsDeleted: number;
   /** U16a · campaign recipient rows that lost the account link — kept, with their number, status and trail. */
@@ -158,7 +166,8 @@ export async function eraseMarketingFor(input: {
   officerId: string | null;
 }): Promise<MarketingErasureCounts> {
   const counts: MarketingErasureCounts = {
-    marketingConsentWithdrawn: 0, marketingContactsEmptied: 0, marketingStagedRowsDeleted: 0, campaignRecipientsUnlinked: 0,
+    marketingConsentWithdrawn: 0, marketingContactsEmptied: 0, marketingListMembershipsDeleted: 0, marketingStagedRowsDeleted: 0,
+    campaignRecipientsUnlinked: 0,
   };
   const at = new Date().toISOString();
   const accountNumber = marketingKeyOf(input.phoneE164);
@@ -209,8 +218,13 @@ export async function eraseMarketingFor(input: {
     counts.marketingConsentWithdrawn++;
   }
 
-  // ── 2 · EMPTY THE ROWS ────────────────────────────────────────────────────────────────
+  // ── 2 · EMPTY THE ROWS — and (C8b · B1) take each off every list ─────────────────────────────
   for (const c of rows.values()) {
+    // ⭐ C8b · the memberships first, for every row reached — an already-emptied row too, so a pass that died part-way is
+    // finished by the next. Through the store's own members, one membership at a time.
+    for (const m of await Promise.resolve(db.contactListMember.listMemberships(c.id))) {
+      if (await Promise.resolve(db.contactListMember.remove({ listId: m.listId, contactId: c.id }))) counts.marketingListMembershipsDeleted++;
+    }
     const emptied = c.userId === null && c.displayName === null && c.email === null && c.notes === null
       && c.tags.length === 0 && c.sourceRef === ERASURE_EVIDENCE && c.importId === null && c.rawInput === c.msisdn;
     if (emptied) continue;
