@@ -98,7 +98,7 @@ const WORDING_COPY: Readonly<Record<WordingKey, { label: string; hint: string }>
   },
   "source.phrase": {
     label: "Source line",
-    hint: "Says where the number came from, in every message to a number that is not a player's own account. Blank means those numbers can't be sent a campaign. A draft takes the line when it is next saved; a confirmed campaign keeps the line it was confirmed with.",
+    hint: "Printed in no message — nothing is added to a marketing SMS. While it is blank, a campaign that can reach the contact book can't be confirmed or started. A draft takes the line when it is next saved; a confirmed campaign keeps the line it was confirmed with.",
   },
 };
 
