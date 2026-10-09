@@ -159,8 +159,9 @@ const R = {
   main: "ci_probe_main", race: "ci_probe_race", d: "ci_probe_conflict_create", e: "ci_probe_conflict_guard", f: "ci_probe_null_arm",
   i: "ci_probe_list_gone", fails: "ci_probe_fails", failsOther: "ci_probe_fails_other", failsNone: "ci_probe_fails_none",
   scale: "ci_probe_scale",
-  // C8c · #5 · #13
-  newOk: "ci_probe_new_list", newTaken: "ci_probe_new_list_taken", newCase: "ci_probe_new_list_case", startRace: "ci_probe_start_race",
+  // C8c · #5 · #13 — `startRace` goes through the REAL check and start, which refuse an id not shaped as one is minted
+  // (`isImportRunId`: ci_ and twenty letters) as not_found before asking the store; the others reach the store directly.
+  newOk: "ci_probe_new_list", newTaken: "ci_probe_new_list_taken", newCase: "ci_probe_new_list_case", startRace: "ci_probestartraceabcdef",
   tags: "ci_probe_tags_left",
 } as const;
 const L = {
