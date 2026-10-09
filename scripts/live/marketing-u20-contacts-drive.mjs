@@ -178,6 +178,8 @@ const overflowOf = (page) => page.evaluate(() => Math.max(0, document.documentEl
 async function openContacts(page, query = "") {
   await page.goto(`${BASE}/admin/contacts${query}`, { waitUntil: "domcontentloaded" });
   await page.waitForSelector('[data-block="contacts-card"]', { timeout: 30000 });
+  // The page's scripts loaded before the first click: on a fresh dev server a click before hydration is lost (2026-10-09).
+  await page.waitForLoadState("load", { timeout: SLOW });
   await wait(700);
 }
 

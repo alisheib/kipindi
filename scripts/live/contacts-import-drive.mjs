@@ -367,6 +367,8 @@ const boxOverflow = (page, sel) => page.locator(sel).first().evaluate((n) => Mat
 async function openContacts(page) {
   await page.goto(`${BASE}/admin/contacts`, { waitUntil: "domcontentloaded" });
   await page.waitForSelector(block("contacts-import"), { timeout: 30_000 });
+  // The page's scripts loaded before the first click: on a fresh dev server a click before hydration is lost (2026-10-09).
+  await page.waitForLoadState("load", { timeout: 180_000 });
   await page.addStyleTag({ content: HIDE_OVERLAY });
   await wait(700);
 }

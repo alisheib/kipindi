@@ -60,6 +60,8 @@ if (!signed.ok()) throw new Error(`seed-admin failed: ${signed.status()}`);
 async function openDialog() {
   await page.goto(`${BASE}/admin/contacts`, { waitUntil: "domcontentloaded" });
   await page.waitForSelector(block("contacts-card"), { timeout: 180_000 });
+  // The page's scripts loaded before the first click: on a fresh dev server a click before hydration is lost (2026-10-09).
+  await page.waitForLoadState("load", { timeout: 180_000 });
   await page.addStyleTag({ content: "nextjs-portal{display:none !important}" }).catch(() => {});
   await page.locator(block("contacts-import")).first().click();
   await page.waitForSelector(`${block("import-entrance")}, ${block("import-adopt")}`, { timeout: 60_000 });
