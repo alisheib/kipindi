@@ -1,8 +1,8 @@
 "use client";
 
-import { BrandSpinner } from "@/components/brand";
 import { useT } from "@/lib/i18n";
 import { PageContainer } from "@/components/layout/page-container";
+import { WithdrawBalanceGhost, WithdrawFormGhost } from "@/app/wallet/money-form-ghost";
 import { PageHeader } from "@/components/ui/page-header";
 import { BackLinkGhost } from "@/components/ui/back-link";
 import { PageHero } from "@/components/ui/page-hero";
@@ -32,24 +32,28 @@ export function WithdrawGhost({ journey }: { journey: boolean }) {
           tracking-[-0.02em]` `PageHeader` carries. It now renders the page's own components
           with the page's own props — BackLink ghost, `PageHero` with the page's
           `contentClassName`, `PageHeader` (plain since 2026-10-07, §M3a D1 / §B2a).
-          ⚠️ The page's hero also holds an "Available" balance block on the right, which a
-          skeleton must NOT draw: it would be a number a player could read as their balance
-          before one has been fetched (§C — the interface never states a money fact it does not
-          have). The hero renders one child here and two there; that asymmetry is deliberate. */}
+          ⚠️ The page's hero also holds an "Available" balance block, whose NUMBER a skeleton must not
+          draw: it would be a number a player could read as their balance before one has been
+          fetched (§C — the interface never states a money fact it does not have).
+          ⭐ ITS BOX IS DRAWN (round 5's follow-up, R5-K, 2026-10-09): on a phone the block stacks under
+          the head (the page's `flex-col gap-2`), so a hero drawn without it was 48px short and the
+          form landed that much lower — the hero takes the page's own `contentClassName` and the
+          block's shape (`WithdrawBalanceGhost`: its label set and not shown, a bar on its figure's
+          22px line). And the form is drawn, not a spinner panel (`WithdrawFormGhost`). */}
       {/* The back link: the BackLink's own 44px box (`BackLinkGhost`, R5-H · G-2b) — a 20px bar stood here, 24px short. */}
       <BackLinkGhost />
 
-      <PageHero contentClassName="relative z-10 p-5 lg:p-6 flex items-end justify-between gap-4">
+      <PageHero contentClassName="relative z-10 p-5 lg:p-6 flex flex-col items-start gap-2 sm:flex-row sm:items-end sm:justify-between sm:gap-4">
         <PageHeader
           icon={<I.arrowUpFromLine s={14} className="text-text-subtle" />}
           eyebrow={names.eyebrow}
           title={names.heading}
           subtitle={t.wallet.mobileMoneyOnly}
         />
+        <WithdrawBalanceGhost t={t} />
       </PageHero>
-      <div className="grid place-items-center py-10 rounded-lg border border-border bg-bg-elevated/40">
-        <BrandSpinner size={56} />
-      </div>
+      {/* The form a verified player is shown (`money-form-ghost.tsx` says what a KYC-gated reader sees instead). */}
+      <WithdrawFormGhost t={t} />
     </PageContainer>
   );
 }

@@ -247,6 +247,11 @@ export const NOT_EYEBROW = new Map([
   ["app/notifications/bulk-bar.tsx :: <span className=\"font-mono text-micro font-bold uppercase text-text-subtle truncate\"> ↵ {countLabel}", "STATUS_CHIP"],
   ["app/notifications/row-actions.tsx :: className=\"-mt-1 shrink-0 inline-flex items-center gap-1 min-h-[44px] px-2 rounded-md font-mono text-micro font-bold uppercase text-accent-400 hover:text-text hover:bg-bg", "CONTROL_LABEL"],
   ["app/positions/page.tsx :: <div className=\"mb-1.5 flex items-center justify-between gap-2 font-mono text-micro uppercase tracking-[0.12em] tabular-nums\"> ↵ <span className=\"font-bold text-yes-300\">", "OTHER"],
+  // Round 5's follow-up (R5-K, 2026-10-09): three of the page lines here, drawn by their pages' loading ghosts in the
+  // page's own classes with the words set and not shown (`ghost-text.tsx`) — each the role of the line it stands for.
+  ["app/positions/positions-ghost.tsx :: <div className=\"mb-1.5 flex items-center justify-between gap-2 font-mono text-micro uppercase tracking-[0.12em] tabular-nums\"> ↵ <span className=\"font-bold\"><GhostText>{`", "OTHER"],
+  ["app/positions/performance/loading.tsx :: <p className=\"font-mono text-micro uppercase tracking-[0.12em] tabular-nums\"><GhostText>{`${t.performance.longestStreak} 0`}</GhostText></p> ↵ </div>", "OTHER"],
+  ["app/positions/performance/loading.tsx :: <span className=\"font-mono text-micro uppercase tracking-[0.08em]\"><GhostText>{t.performance.cumulativePerSettlement}</GhostText></span> ↵ </div>", "OTHER"],
   ["app/positions/performance/page.tsx :: <p className=\"font-mono text-micro uppercase tracking-[0.08em] text-text-muted\">{r.statusLabel}</p> ↵ </div>", "STATUS_CHIP"],
   ["app/positions/performance/page.tsx :: <p className=\"font-mono text-micro uppercase tracking-[0.12em] text-text-subtle tabular-nums\">{t.performance.longestStreak} {longestStreak}</p> ↵ </div>", "OTHER"],
   ["app/positions/performance/page.tsx :: <span className=\"font-mono text-micro uppercase tracking-[0.08em] text-text-subtle\">{t.performance.cumulativePerSettlement}</span> ↵ </div>", "OTHER"],
@@ -316,7 +321,9 @@ export const NOT_EYEBROW = new Map([
   ["components/markets/win-celebration.tsx :: className=\"g-settle font-mono text-micro uppercase tracking-[0.2em] font-bold text-gold-300\" ↵ style={{ \"--i\": 0 } as CSSProperties}", "CELEBRATION"],
   ["components/onboarding/first-visit-primer.tsx :: <div className=\"flex items-center justify-between px-2 font-mono text-micro tracking-[0.12em] uppercase text-text-subtle\"> ↵ <span>{minLabel}</span>", "OTHER"],
   ["components/onboarding/first-visit-primer.tsx :: <span className=\"font-mono text-micro uppercase tracking-[0.14em]\" style={{ color: \"var(--brand-300)\" }}>{share}</span> ↵ <span className=\"inline-block h-[2px] w-5 rounde", "OTHER"],
-  ["components/positions/pnl-summary-strip.tsx :: <span className=\"inline-flex items-center gap-1.5 font-mono text-micro uppercase tracking-[0.08em] text-text-subtle\"> ↵ <span", "STATUS_CHIP"],
+  // RE-KEYED (R5-K, 2026-10-09): the strip's live key moved into `PNL_STRIP.live`, the class the strip and its loading ghost
+  // both read — the same element in the same role; its class string now stands on the constant's line.
+  ["components/positions/pnl-summary-strip.tsx :: live: \"inline-flex items-center gap-1.5 font-mono text-micro uppercase tracking-[0.08em] text-text-subtle\", ↵ cell: \"pl-3.5 pt-0.5\",", "STATUS_CHIP"],
   ["components/profile/email-editor.tsx :: <span className=\"inline-flex items-center gap-1 rounded-pill border border-border bg-bg-inset px-2 py-0.5 font-mono text-micro font-bold uppercase tracking-[0.1em] text-t", "STATUS_CHIP"],
   ["components/profile/email-editor.tsx :: <span className=\"inline-flex items-center gap-1 rounded-pill border border-success-border bg-success-bg px-2 py-0.5 font-mono text-micro font-bold uppercase tracking-[0.1", "STATUS_CHIP"],
   ["components/settings/push-settings.tsx :: <span className=\"shrink-0 font-mono text-micro uppercase tracking-[0.12em] text-text-faint\"> ↵ {state === \"loading\" ? \"…\" : t.push.na}", "STATUS_CHIP"],

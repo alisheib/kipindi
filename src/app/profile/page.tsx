@@ -21,6 +21,8 @@ import { isFinalRefusal } from "@/lib/kyc-refusal";
 // ⭐ THE SHARED MASK (`+255••••21`), so this page and the opt-out page show one person's number the
 // same way (D6). The local star copy here was one of the hand-written masks `phone-normalize.ts` retired.
 import { maskPhone } from "@/lib/phone-normalize";
+// The faces the page's loading ghost draws its lines in too (`profile-faces.ts`, round 5's follow-up, R5-K).
+import { PROFILE_PHONE_LINE, PROFILE_ROW_TITLE, PROFILE_SIGN_OUT_TITLE } from "@/components/profile/profile-faces";
 
 export async function generateMetadata() {
   const { t } = await getServerT();
@@ -178,7 +180,7 @@ export default async function ProfilePage() {
               currentName={user.displayName}
               fallbackPlaceholder={displayName}
             />
-            <p className="mt-1.5 font-mono text-[12px] text-text-muted tabular-nums">
+            <p className={PROFILE_PHONE_LINE}>
               {maskPhone(user.phoneE164)} · {user.region ?? t.profile.tanzania}
             </p>
 
@@ -397,7 +399,7 @@ export default async function ProfilePage() {
               <I.logOut s={16} />
             </span>
             <span className="text-left">
-              <p className="font-display text-[14px] font-semibold text-text leading-tight">{t.common.signOut}</p>
+              <p className={PROFILE_SIGN_OUT_TITLE}>{t.common.signOut}</p>
               <p className="mt-0.5 text-body-sm text-text-subtle">{t.profile.seeYouSoon}</p>
             </span>
           </span>
@@ -450,7 +452,7 @@ function SettingRow({ icon: Icon, title, subtitle, href, accent, badge }: { icon
         <Icon s={17} />
       </span>
       <div className="flex-1 min-w-0">
-        <p className="font-display text-[13.5px] font-semibold text-text leading-tight flex items-center gap-2">
+        <p className={PROFILE_ROW_TITLE}>
           {title}
           {badge && (
             <span className="inline-flex items-center rounded-pill border border-brand-600/50 bg-brand-500/15 px-1.5 py-0.5 font-mono text-micro font-bold uppercase tracking-[0.08em] text-brand-300">

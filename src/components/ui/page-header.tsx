@@ -35,8 +35,10 @@ export function PageHeader({
    * The small line over the heading, with `icon` inside it. ⭐ Optional since the Vodacom plan S6 (WP9): Tiketi zangu's
    * head is the name alone — the canvas draws no line over it, and the classic one says "Nafasi" — so the line is drawn
    * only when it is given. Every other call site passes one, and for them the line is the element it always was.
+   * A node, as `title` is (round 5's follow-up, R5-K, 2026-10-09): so a loading ghost can set the line's words and not
+   * show them (`ghost-text.tsx`) where the page's eyebrow is not a word the ghost may state — the provider's return.
    */
-  eyebrow?: string;
+  eyebrow?: ReactNode;
   /** A node, so a loading skeleton can render the SAME heading with its text as a placeholder bar. */
   title: ReactNode;
   subtitle?: ReactNode;

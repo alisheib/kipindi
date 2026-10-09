@@ -1,7 +1,7 @@
 {
   "_note": "UI-consistency baseline: known drift counts per rule::file. Regenerate after a remediation phase with `npm run test:ui-consistency -- --update-baseline`. DONE when this is empty. See docs/UI-CONSISTENCY-AUDIT.md.",
   "_generated": "run with --update-baseline",
-  "_total": 136,
+  "_total": 134,
   "counts": {
     "adhoc-portal::src/components/ui/unsaved-changes.tsx": 1,
     "bare-text-button::src/components/auth/resend-otp-button.tsx": 1,
@@ -29,7 +29,6 @@
     "numeric-size-utility::src/app/auth/admin/page.tsx": 1,
     "numeric-size-utility::src/app/help/page.tsx": 2,
     "numeric-size-utility::src/app/markets/[id]/loading.tsx": 1,
-    "numeric-size-utility::src/app/positions/performance/loading.tsx": 2,
     "numeric-size-utility::src/app/profile/kyc/page.tsx": 6,
     "numeric-size-utility::src/app/results/loading.tsx": 1,
     "numeric-size-utility::src/app/updown/history/history-ghost.tsx": 1,

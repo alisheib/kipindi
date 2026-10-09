@@ -2,6 +2,11 @@
 
 import { PageContainer } from "@/components/layout/page-container";
 import { BackLinkGhost } from "@/components/ui/back-link";
+import { PageHero } from "@/components/ui/page-hero";
+import { PageHeader } from "@/components/ui/page-header";
+import { ChipGhost, GhostText, AMOUNT_SHAPE } from "@/components/ui/ghost-text";
+import { I } from "@/components/ui/glyphs";
+import { AmountGhost, DateGhost, DetailsGhost, IdGhost, RowGhost, WordGhost, TXN_ID_SHAPE, DEPOSIT_REF_SHAPE, dateShape } from "@/app/wallet/receipt-ghost";
 import { useT } from "@/lib/i18n";
 
 /**
@@ -17,36 +22,55 @@ import { useT } from "@/lib/i18n";
  * ⭐ CLIENT CODE, ITS WORDS ITS OWN (round 5's follow-up, R5-H · G-2): the words are the client dictionary's (`useT`), so
  * a refresh of this page carries the drawing's reference, not its tree, and the server's HTML is what it was —
  * `components/ui/page-loader.tsx` has the convention.
+ * ⭐ THE PAGE'S BANDS, BAND FOR BAND (round 5's follow-up, R5-K, 2026-10-09). It drew a card the page no longer has —
+ * a title bar, a rule and five 16px rows, 20px apart — under a bare eyebrow, and no footnote: the page's buttons landed
+ * 251–341px below the ghost's (S/r5k/m-receipt.mts). It now draws the page's own parts: the back link's box; the hero
+ * (`PageHero` and `PageHeader`, the same props — the eyebrow is the page's name and is shown, the amount and the
+ * "type · method" line are shapes); the status chip's band (the kit `Chip`, `md`); the details panel, one row per row
+ * (`receipt-ghost.tsx`: the 51px pitch, an id wrapping where a real one does); the two buttons; the footnote's lines.
+ * ⭐ THE CASE DRAWN: a completed M-Pesa deposit — the receipt a player opens most (every deposit lands on one): its chip
+ * says "completed" (21px, the base row), and its eight rows are type, amount, method, the transaction id, the gateway's
+ * reference (the deposit's own order id), the date, completed, balance after. A withdrawal adds a fee row (+51px), and
+ * a payment still moving drops the last two rows and draws its notice (an 18px-line sentence in a 1px-bordered box).
  */
 export default function ReceiptLoading() {
-  const { t } = useT();
+  const { t, locale } = useT();
+  const date = dateShape(t, locale);
   return (
     <PageContainer tier="receipt" className="space-y-5">
-      {/* The back link the page opens on (R5-H · G-2b: this ghost drew none, so the receipt landed 68px lower than it
-          promised — the link's 44px and the rhythm's 24). */}
+      {/* The back link the page opens on (R5-H · G-2b): the link's own 44px box. */}
       <BackLinkGhost />
-      <p className="font-mono text-caption uppercase eyebrow font-bold text-text-subtle">
-        {t.wallet.receiptEyebrow}
-      </p>
-      <div className="rounded-card border border-border bg-bg-elevated p-5 space-y-4 kp-shimmer-track">
-        <div className="h-3 w-[96px] rounded bg-bg-overlay" />
-        {/* ⚠️ LITERAL, not `h-9` — spacing is overridden (tailwind.config.ts:200-215) so this
-            "title" bar drew 64px on a receipt whose rows are text lines. */}
-        <div className="h-[28px] w-40 rounded bg-bg-overlay" />
-        <div className="h-px w-full bg-border" />
-        {Array.from({ length: 5 }).map((_, i) => (
-          <div key={i} className="flex items-center justify-between gap-4">
-            <div className="h-3 w-[96px] rounded bg-bg-overlay" />
-            <div className="h-3 w-28 rounded bg-bg-overlay" />
-          </div>
-        ))}
+      <div aria-hidden>
+        <PageHero>
+          <PageHeader
+            tone="subtle"
+            icon={<I.receipt s={14} className="text-text-muted" />}
+            eyebrow={t.wallet.receiptEyebrow}
+            title={<GhostText className="amount">{AMOUNT_SHAPE}</GhostText>}
+            subtitle={<GhostText>{`${t.wallet.receiptTypeDeposit} · M-Pesa`}</GhostText>}
+          />
+        </PageHero>
       </div>
+      <div className="flex justify-center" aria-hidden>
+        <ChipGhost glyph={12} nowrap>{t.wallet.txnStatusConfirmed}</ChipGhost>
+      </div>
+      <DetailsGhost>
+        <RowGhost label={t.wallet.receiptType}><WordGhost text={t.wallet.receiptTypeDeposit} /></RowGhost>
+        <RowGhost label={t.wallet.amount}><AmountGhost /></RowGhost>
+        <RowGhost label={t.wallet.method}><WordGhost text="M-Pesa" /></RowGhost>
+        <RowGhost label={t.wallet.transactionId}><IdGhost shape={TXN_ID_SHAPE} /></RowGhost>
+        <RowGhost label={t.wallet.gatewayReference}><IdGhost shape={DEPOSIT_REF_SHAPE} /></RowGhost>
+        <RowGhost label={t.wallet.date}><DateGhost text={date} /></RowGhost>
+        <RowGhost label={t.wallet.receiptCompletedAt}><DateGhost text={date} /></RowGhost>
+        <RowGhost label={t.wallet.balanceAfter}><AmountGhost /></RowGhost>
+      </DetailsGhost>
       {/* ⚠️ TOKEN, not `h-10` (80px on the overridden scale). The page's TWO pill buttons since 2026-10-07 ("All
           receipts" · "Back to wallet", `btn-lg` = --h-control-lg) — stacked on a phone, side by side from `sm`. */}
       <div className="flex flex-col sm:flex-row gap-2" aria-hidden>
         <div className="h-[var(--h-control-lg)] w-full rounded-pill bg-bg-overlay kp-shimmer-track" />
         <div className="h-[var(--h-control-lg)] w-full rounded-pill bg-bg-overlay kp-shimmer-track" />
       </div>
+      <p className="text-body-sm leading-relaxed" aria-hidden><GhostText>{t.wallet.receiptFootnote}</GhostText></p>
     </PageContainer>
   );
 }
