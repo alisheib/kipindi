@@ -136,7 +136,8 @@ export const L = {
   P1: "P1 · ⭐ a LIST paste: each line's first number is the Phone cell and the rest of the line the Name (a chat's stamp, an enumeration and separators dropped), lines numbered as pasted, a blank line counted",
   P1b: "P1b · a pasted line with no number is listed as unreadable with its row and the reader's sentence — never dropped",
   P1c: "P1c · ⭐ S15-4 · a line with a second number keeps the FIRST, and the paste's note names that row; a foreign number yields to a Tanzanian one on its line",
-  P1d: "P1d · ⛔ C8c · D4 IN THE LIST PASTE — a pasted line's number is read in the CELL it was written in, by the ONE rule: 'Asha +254, 712 345 678' (the line the fix builder found), '254/712345678 Juma', 'Baraka 00254; 712345678' and 'Neema +254 or 712 345 678' stage their whole cell — the server's own rule reads NO mobile in it and never the stranger's 255712345678, its sentence the Kenyan or the too-long one — each name without the code; CONTROLS: 'Asha 712 345 678' and '712345678' (a whole cell of nine digits, Excel's dropped 0) still read 255712345678, and '12. 0712 345 678 Asha', '255, 0712 345 678 Asha' and '0712 345 678 / 0754 111 222 Asha' their first mobile, as before; ⭐ M1 · a word between two separators is no cut — '1, Asha, 0712 345 678' and '1, Asha, 712345678' read 255712345678 with the name '1, Asha', and '1,Asha,0712345678,Arusha' keeps both names",
+  P1d: "P1d · ⛔ C8c · D4 IN THE LIST PASTE — a pasted line's number is read in the CELL it was written in, by the ONE rule: 'Asha +254, 712 345 678' (the line the fix builder found), '254/712345678 Juma', 'Baraka 00254; 712345678' and 'Neema +254 or 712 345 678' stage their whole cell — the server's own rule reads NO mobile in it and never the stranger's 255712345678, its sentence the Kenyan or the too-long one — each name without the code; CONTROLS: 'Asha 712 345 678' and '712345678' (a whole cell of nine digits, Excel's dropped 0) still read 255712345678, and '12. 0712 345 678 Asha', '255, 0712 345 678 Asha' and '0712 345 678 / 0754 111 222 Asha' their first mobile, as before; ⭐ M1 · a word between two separators is no cut — '1, Asha, 0712 345 678' reads 255712345678 with the name '1, Asha', and '1,Asha,0712345678,Arusha' keeps both names",
+  P1e: "P1e · ⛔ C8c · m1 · D4 FOR A NUMBER STANDING ALONE — a bare nine digits after ANY digit run on its line is judged a PART, never a whole cell: 'Asha +254 (Kenya) 712 345 678', '+254: 712345678', 'Tel +254 / Mob 712 345 678' and '1, Asha, 712345678' stage the stretch from that run, which the server's one rule refuses in its own words (the Kenyan number's, or one too long) — never the stranger's 255712345678 — each name the line less the number's own cell ('1, Asha' survives); CONTROLS: 'Asha 712 345 678' (no digit before it), a chat stamp's and an enumeration's digits ('[12/03/2026, 10:15] Juma: …', '12. Asha …'), a Tanzanian code before it ('+255 (TZ) 712 345 678') and a complete number ('1, Asha, 0712 345 678') read 255712345678 as before",
   P2: "P2 · a TAB paste is an Excel copy: cells split on the tab with Excel's quoting, a blank line counted, its first row header-matched (Phone, Name; one header row)",
   P2b: "P2b · ⭐ C3b · a TAB paste whose quotation mark never closes is split by hand — every line kept, its quotation marks as typed, nothing unreadable — never cut by the CSV reader's one unreadable record (G1)",
   P3: "P3 · a list paste maps Phone and Name with no header row, named as the field list names them — never \"Column A…\", never read as a headerless file — and U28's validateMapping passes it",
@@ -571,9 +572,8 @@ async function run(ctx: SectionContext<FlowImpl>): Promise<void> {
     ["255, 0712 345 678 Asha", STRANGER, "Asha"],
     ["0712 345 678 / 0754 111 222 Asha", STRANGER, "Asha"],
     // ⭐ C8c · M1 · a row number and a name before the number, between commas: never one "cell" (", Asha, " is no cut) —
-    // the number read as before B1, and the name whole.
+    // the number read as before B1, and the name whole. (Its bare-nine-digit twin "1, Asha, 712345678" is m1's: P1e.)
     ["1, Asha, 0712 345 678", STRANGER, "1, Asha"],
-    ["1, Asha, 712345678", STRANGER, "1, Asha"],
   ];
   const controlBad: string[] = [];
   for (const [line, key, name] of CONTROLS) {
@@ -592,6 +592,44 @@ async function run(ctx: SectionContext<FlowImpl>): Promise<void> {
   }
   ok(L.P1d, holeBad.length === 0 && controlBad.length === 0,
     [...holeBad, ...controlBad].join(" | ") || `${HOLES.length} lines staged whole and refused · ${CONTROLS.length} controls read as before`);
+
+  // ── P1e · C8c · m1 · D4 for a number standing ALONE after other digits on its line ──
+  const ALONE: ReadonlyArray<readonly [string, string, string, string]> = [
+    // the line · the stretch staged · the name · the text whose sentence the server gives
+    ["Asha +254 (Kenya) 712 345 678", "+254 (Kenya) 712 345 678", "Asha +254 (Kenya)", "+254 (Kenya) 712 345 678"],
+    ["+254: 712345678", "+254: 712345678", "+254", "+254: 712345678"],
+    ["Tel +254 / Mob 712 345 678", "+254 / Mob 712 345 678", "Tel +254 / Mob", "+254 / Mob 712 345 678"],
+    // M1's bare twin: the "1" is a digit run before the tail, so the tail is judged a part — refused, its name kept.
+    ["1, Asha, 712345678", "1, Asha, 712345678", "1, Asha", "1, Asha, 712345678"],
+  ];
+  const aloneBad: string[] = [];
+  for (const [line, cell, name, sentenceOf] of ALONE) {
+    const f = impl.parsePaste(line);
+    const staged = f.rows[0]?.cells[0] ?? "";
+    const holdsStranger = mobilesIn(staged).some((m) => m.number.msisdn === STRANGER);
+    if (f.rows.length !== 1 || staged !== cell || f.rows[0]?.cells[1] !== name || firstMobileIn(staged) !== null || holdsStranger
+      || phoneCellRefusal(staged) !== parseTzNumber(sentenceOf).reason) {
+      aloneBad.push(`${json(line)} → ${json(f.rows[0]?.cells ?? null)}${holdsStranger ? " (THE STRANGER)" : ""}`);
+    }
+  }
+  const ALONE_CONTROLS: ReadonlyArray<readonly [string, string, string]> = [
+    // no digit run before it: Excel's dropped 0, as D4 keeps it
+    ["Asha 712 345 678", STRANGER, "Asha"],
+    // the digits of a chat stamp or an enumeration are the stamp's, never a number's
+    ["[12/03/2026, 10:15] Juma: 712345678", STRANGER, "Juma"],
+    ["12. Asha 712345678", STRANGER, "Asha"],
+    // a Tanzanian code before it spells the very number the bare reading gives
+    ["+255 (TZ) 712 345 678", STRANGER, "+255 (TZ)"],
+    // a complete number is never judged a part
+    ["1, Asha, 0712 345 678", STRANGER, "1, Asha"],
+  ];
+  for (const [line, key, name] of ALONE_CONTROLS) {
+    const f = impl.parsePaste(line);
+    const staged = f.rows[0]?.cells[0] ?? "";
+    if (f.rows.length !== 1 || firstMobileIn(staged)?.number.msisdn !== key || f.rows[0]?.cells[1] !== name) aloneBad.push(`${json(line)} → ${json(f.rows[0]?.cells ?? null)}`);
+  }
+  ok(L.P1e, aloneBad.length === 0,
+    aloneBad.join(" | ") || `${ALONE.length} lines judged a part and refused · ${ALONE_CONTROLS.length} controls read as before`);
 
   const table = impl.parsePaste(TAB_PASTE);
   const tableMap = impl.mappingFor(table, { list: isListPaste(TAB_PASTE) });
@@ -1016,6 +1054,20 @@ const PLANTS: readonly RedPlant<FlowImpl>[] = [
         const f = parsePastedText(t);
         const runsOverName = new RegExp("^[0-9]+ ?, ?[A-Za-z]+ ?, ?");
         return { ...f, rows: f.rows.map((r) => (runsOverName.test(t) ? { ...r, cells: [r.cells[0], ""] } : r)) };
+      },
+    }),
+  },
+  {
+    // 🔴 C8c · m1 undone: the bare tail standing alone is staged WHOLE again — a word, a bracket or one colon after a
+    // country code, and the stranger's +255 number is imported.
+    name: "C8c · m1 · a bare nine digits after another digit run is staged whole — '+254: 712345678' imports a stranger",
+    expect: L.P1e,
+    impl: () => ({
+      ...real(),
+      parsePaste: (t) => {
+        const f = parsePastedText(t);
+        const tail = new RegExp("[0-9]{3} ?[0-9]{3} ?[0-9]{3}$");
+        return { ...f, rows: f.rows.map((r) => ({ ...r, cells: [tail.exec(r.cells[0])?.[0] ?? r.cells[0], ...r.cells.slice(1)] })) };
       },
     }),
   },

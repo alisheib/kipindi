@@ -32,8 +32,9 @@
  * for the sheet a workbook is read from (`sheet-choice.ts`), and the list paste chooses the first mobile on a line
  * through `firstMobileIndex` — ⭐ C8c · over the line's CELLS, each its number with the digit runs this rule's own cut
  * joins to it (`cutsCell`), so D4 holds in the paste too ("Asha +254, 712 345 678" is a Kenyan number, never a stranger's
- * +255 712 345 678). The drafted `rawPhone` — the staged row's raw cell — keeps the whole cell; the staged key
- * is its one mobile's.
+ * +255 712 345 678) — and (m1) a bare nine digits standing alone after any other digit run on its line is judged a PART
+ * there (`completePart`, "+254: 712345678"). The drafted `rawPhone` — the staged row's raw cell — keeps the whole cell;
+ * the staged key is its one mobile's.
  * ⛔ C3b-fix · D1 — THE COST IS LINEAR AND BOUNDED, on the live money server (the review, 2026-10-09: a phone cell of
  * 200,000 spaces cost about 2·10¹⁰ steps, because the word test rescanned a run of blanks from EVERY blank in it):
  *   (a) `phoneCellParts` reads each run of blanks ONCE — when the separator-word test fails at a blank it would fail at
@@ -238,8 +239,9 @@ export const SEVERAL_MOBILES_SENTENCE =
 /**
  * ⛔ D4 · is this part a COMPLETE number? Its digits begin with 0 (the trunk zero, or 00) or 255, or a "+" stands before
  * them — read the parser's way (`readAsciiDigits`), at most three digits looked at. A bare nine-digit part is not.
+ * ⭐ C8c · m1 · exported for the list paste, which asks it of a number standing alone after other digits on its line.
  */
-function completePart(part: string): boolean {
+export function completePart(part: string): boolean {
   const text = readAsciiDigits(part);
   let digits = "";
   for (let i = 0; i < text.length && digits.length < 3; i++) {

@@ -26,7 +26,9 @@
  * the first Tanzanian mobile number on the line, chosen by the ONE phone-cell rule (`firstMobileIndex`,
  * `phone-cell.ts` — the staging's and the check's rule too): one person, one number. ⛔ C8c · D4 holds in the paste: each
  * number is read in the CELL it was written in (`cellOf` — with the digit runs the phone-cell rule's own cut joins to it),
- * so "Asha +254, 712 345 678" is a Kenyan number, never a stranger's +255 712 345 678.
+ * so "Asha +254, 712 345 678" is a Kenyan number, never a stranger's +255 712 345 678; and (m1) a bare nine digits
+ * standing alone after ANY other digit run on its line is judged a PART of the stretch from that run (`partOf`), so a
+ * word, a bracket or one colon after a country code ("+254: 712345678") never lets the tail through either.
  * ⭐ C3b · G4 · SEVERAL PHONE COLUMNS — as the review round decided them (C3b-fix · D2, D3, 2026-10-09). Only the
  * person's OWN phone columns are read: a strong phone heading U28 knows, Outlook's Business / Home / Other / Primary /
  * Car Phone, Google's "Phone N - Value", the Swahili "second phone" — ⛔ never Assistant's Phone, Company Main Phone,
@@ -67,7 +69,7 @@ import {
   type AutoMapResult, type ColumnMapping, type ImportFieldKey, type MappedColumn,
 } from "./contact-fields";
 import { IMPORT_MAX_ROWS } from "./import-limits";
-import { cutsCell, firstMobileIn, firstMobileIndex, mobilesIn, type CellMobile } from "./phone-cell";
+import { completePart, cutsCell, firstMobileIn, firstMobileIndex, mobilesIn, type CellMobile } from "./phone-cell";
 import { TZ_COUNTRY_CODE, isSendableTzNumber, readAsciiDigits } from "../tz-msisdn";
 import { maskPhone } from "../phone-normalize";
 
@@ -501,6 +503,27 @@ function cellOf(line: string, runs: readonly Run[], found: Found): Cell {
   return { start, end: found.end, text: line.slice(start, found.end).trim() };
 }
 
+/**
+ * ⛔ C8c · m1 · D4 FOR A NUMBER STANDING ALONE (the review, 2026-10-09: "Asha +254 (Kenya) 712 345 678", "+254:
+ * 712345678" and "Tel +254 / Mob 712 345 678" staged a stranger's +255 712 345 678 — a word, a bracket or one colon
+ * between a country code and its tail is no cut, so the tail stood alone as a whole cell of nine digits). The safe rule:
+ * a number that is a Tanzanian mobile only when read WHOLE as a bare nine digits (no 0, 255, + or 00 before them —
+ * `completePart`), standing alone in its cell, after ANY digit run on its line, is judged as a PART, never a whole cell:
+ * the stretch from the nearest digit run before it to its end is staged, and the server's one rule reads that stretch as
+ * written — refused in its own words (the Kenyan number's, or a number too long), or, only when the run before it is a
+ * Tanzanian prefix (0, 255, +255), the very number the bare reading gives. Never a guess, never a stranger. The digits of
+ * the line's chat stamp or enumeration (`prefixLength`) are the stamp's, never a number's, so they are not "before" it —
+ * "[12/03/2026, 10:15] Juma: 712345678" and "12. Asha 712345678" read as before. ⭐ The NAME is still the line less the
+ * number's own cell (`cellSpans` of the cells, never of this stretch), so "1, Asha" survives beside a refused tail.
+ */
+function partOf(line: string, runs: readonly Run[], found: Found, cell: Cell, from: number): Cell {
+  if (cell.start !== found.start || completePart(found.text) || mobilesIn(found.text).length === 0) return cell;
+  let before: Run | null = null;
+  for (const run of runs) if (run.end <= found.start && run.start >= from) before = run;
+  if (before === null) return cell;
+  return { start: before.start, end: cell.end, text: line.slice(before.start, cell.end).trim() };
+}
+
 /** The cells' stretches of the line, overlapping ones merged — what the name loses (a separator between two numbers of
  *  one cell is the cell's, never the name's). */
 function cellSpans(cells: readonly Cell[]): Array<{ readonly start: number; readonly end: number }> {
@@ -629,12 +652,16 @@ export function parsePastedText(text: string): ParsedContactsFile {
       unreadable.push({ line: lineNo, reason: PASTE_LINE_NO_NUMBER });
       return;
     }
-    // ⭐ C8c · D4 · each number read in the CELL it was written in (`cellOf`), and — S15-4 — the ONE choice
-    // (`firstMobileIndex`, phone-cell.ts) over those cells: the first holding a Tanzanian mobile gives that mobile as it
-    // is written; when none does, the first cell is staged whole and the server's same rule says why.
+    // ⭐ C8c · D4 · each number read in the CELL it was written in (`cellOf`) — and (m1) a bare nine digits standing alone
+    // after other digits on the line as a PART of the stretch from them (`partOf`) — and, S15-4, the ONE choice
+    // (`firstMobileIndex`, phone-cell.ts) over those: the first holding a Tanzanian mobile gives that mobile as it is
+    // written; when none does, the first is staged whole and the server's same rule says why. The name is the line less
+    // the cells (never the stretches m1 judges).
     const cells = numbers.map((n) => cellOf(line, runs, n));
-    const at = firstMobileIndex(cells.map((c) => c.text));
-    const phone = at >= 0 ? (mobilesIn(cells[at].text)[0]?.text ?? cells[at].text) : cells[0].text;
+    const from = prefixLength(line);
+    const judged = cells.map((c, k) => partOf(line, runs, numbers[k], c, from));
+    const at = firstMobileIndex(judged.map((c) => c.text));
+    const phone = at >= 0 ? (mobilesIn(judged[at].text)[0]?.text ?? judged[at].text) : judged[0].text;
     if (numbers.length > 1) multi.push(lineNo);
     rows.push({ line: lineNo, cells: [phone, nameOf(line, cellSpans(cells))] });
   });
