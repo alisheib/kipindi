@@ -290,8 +290,11 @@ export default async function UpDownPage({
             <EmptyState title={t.market.udNoRounds} body={t.market.udNoRoundsBody} />
           )
         ) : (
+          /* ⭐ A TRACK NEVER WIDER THAN THE COLUMN (round 6, 2026-10-09, review C8 — `.market-grid`'s own guard, globals.css):
+             the 300px floor made the one track 300px inside a 288px column at 320, so every round card ran 12px past it
+             (4px from the screen's edge) until 332px. `min(300px, 100%)` keeps the floor wherever it fits. */
           <div className="grid items-stretch gap-4"
-               style={{ gridTemplateColumns: "repeat(auto-fill, minmax(300px, 1fr))" }}>
+               style={{ gridTemplateColumns: "repeat(auto-fill, minmax(min(300px, 100%), 1fr))" }}>
             {rounds.map((r) => (
               <UpDownCard
                 key={r.roundId}

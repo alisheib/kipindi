@@ -51,6 +51,7 @@ import { FunnelUtm } from "@/components/analytics/funnel-utm";
 import { isStaffRole } from "@/lib/server/roles";
 import { displayLabel, displayInitials } from "@/lib/display-label";
 import { maskPhone } from "@/lib/phone-normalize";
+import { kycDoorOffered } from "@/lib/kyc-refusal";
 import { getServerT } from "@/lib/i18n-server";
 import { getPlatformConfig, maintenanceMessage } from "@/lib/server/platform-config";
 import { getProposalsConfig } from "@/lib/server/proposals-config";
@@ -174,6 +175,8 @@ export async function AppShell({ children }: { children: React.ReactNode }) {
   let inviteViewer: InviteViewer = NO_VIEWER;
   /** The journey funnel's view of this reader (S3b): a signed-in account whose read failed is NOT counted. */
   let funnelViewer: "guest" | "player" | "staff" | "unknown" = "guest";
+  /** Round 6 (review C13): the journey's account menu offers its door to /profile/kyc only on this answer (see the batch). */
+  let journeyKycOffered = false;
   if (session) {
     // Batch the four queries in parallel — eliminates the sequential
     // waterfall. Promise.allSettled so one failing query can't crash
@@ -183,7 +186,13 @@ export async function AppShell({ children }: { children: React.ReactNode }) {
     // on the whole platform, which is the same rule the ticker note below states.
     // ⭐ THE KYC READ LEFT THIS BATCH ON 2026-09-13, with the app-wide identity bar that was its
     // only consumer (see the note at the email bar below) — one fewer query on every page render.
-    const [uResult, walletResult, rgResult, affResult] = await Promise.allSettled([
+    // ⭐ …AND RETURNS FOR THE JOURNEY'S ACCOUNT MENU ALONE (round 6 of the visual pass, 2026-10-09, review C13). The menu
+    // offered "Thibitisha kitambulisho / Verify your identity" to EVERY reader, a verified one too, while /profile and the
+    // Akaunti hub offer that door only when `kycDoorOffered` says so (not approved, not a final refusal). It is read only
+    // for a reader the journey is shown — chained on the shell's own journey answer, already in flight — so a classic page
+    // makes no query (its menu is frozen chrome) and a journey page no extra round trip. A failed read offers no door.
+    // ⛔ Still no bar (below): this feeds one menu row.
+    const [uResult, walletResult, rgResult, affResult, kycResult] = await Promise.allSettled([
       db.user.findById(session.userId),
       db.wallet.findByUserId(session.userId),
       getRgSettings(session.userId),
@@ -191,7 +200,9 @@ export async function AppShell({ children }: { children: React.ReactNode }) {
       // agent's STANDING (approved + active + account status), never by the role alone, and
       // a separate sequential round trip on every page is the latency tax the note above forbids.
       db.affiliate.findByUserId(session.userId),
+      journeyRead.then((j) => (j.journey ? db.kyc.findByUserId(session.userId) : null)),
     ]);
+    journeyKycOffered = kycResult.status === "fulfilled" && kycDoorOffered(kycResult.value?.status, kycResult.value?.rejectReason);
     const u = uResult.status === "fulfilled" ? uResult.value : null;
     const aff = affResult.status === "fulfilled" ? affResult.value : null;
     /**
@@ -424,8 +435,11 @@ export async function AppShell({ children }: { children: React.ReactNode }) {
           Neither part throws today: each draws from the props computed above and reads nothing of its own on the server.
           Kept that way on purpose — a boundary to contain it would outline the part behind the shell again (E36). The
           root loading file's journey ghost stands in the shell the same way (`components/journey/route-ghost.tsx`).
-          Classic visitors are untouched: these two arms are the journey's. */}
-      {journeyShown ? <LazyJourneyTopBar user={journeyUser} onBreak={promoSuppressed} breakEnd={journeyBreak} proposalsState={proposalsState} inviteVisible={inviteVisible} invitePaid={invitePaid} /> : <TopAppBar user={topUser} proposalsState={proposalsState} inviteVisible={inviteVisible} invitePaid={invitePaid} />}
+          Classic visitors are untouched: these two arms are the journey's.
+          Round 6 (2026-10-09, reviews C1 and C13): the journey bar's account menu is handed two more door answers, the
+          agent's standing (its invite row says the page's own name) and `journeyKycOffered` (its KYC row only where the hub
+          and /profile offer that door); the classic arm's props are today's. */}
+      {journeyShown ? <LazyJourneyTopBar user={journeyUser} onBreak={promoSuppressed} breakEnd={journeyBreak} proposalsState={proposalsState} inviteVisible={inviteVisible} inviteAgent={inviteViewer.agentInGoodStanding} kycOffered={journeyKycOffered} invitePaid={invitePaid} /> : <TopAppBar user={topUser} proposalsState={proposalsState} inviteVisible={inviteVisible} invitePaid={invitePaid} />}
       {/* ⭐ THE PREVIEW MARKER — first under the bar, so whoever holds this browser knows at once that they are
           looking at pages players do not see yet, and has the way out on the same line. */}
       {journeyPreview && <PreviewMarker label={t.journey.previewMarker} exit={t.journey.previewExit} />}
@@ -522,8 +536,9 @@ export async function AppShell({ children }: { children: React.ReactNode }) {
       {/* ⭐ THE FOOTER'S TWO ARMS (2026-10-09, the visual pass), as the header's and the rail's: the else arm is today's
           element with today's props, so a request the resolver does not show the journey to is served main's footer —
           its markup and boxes (`qa:classic-shell-parity`) and its props in the page's RSC data. The journey arm alone
-          says `journeyShown`, which balances the proposals link (`test:simple-journey-flag` 10.shell.chrome.footer). */}
-      {journeyShown ? <PublicFooter proposalsState={proposalsState} agentDoorVisible={agentDoorVisible} inviteVisible={inviteVisible} supportEmail={SUPPORT_EMAIL()} supportPhone={SUPPORT_PHONE()} supportPhoneTel={SUPPORT_PHONE_TEL()} journeyShown /> : <PublicFooter proposalsState={proposalsState} agentDoorVisible={agentDoorVisible} inviteVisible={inviteVisible} supportEmail={SUPPORT_EMAIL()} supportPhone={SUPPORT_PHONE()} supportPhoneTel={SUPPORT_PHONE_TEL()} />}
+          says `journeyShown`, which balances the proposals link (`test:simple-journey-flag` 10.shell.chrome.footer), and since
+          round 6 (review C1) the two invite answers, so its invite link says the page's own name for this reader. */}
+      {journeyShown ? <PublicFooter proposalsState={proposalsState} agentDoorVisible={agentDoorVisible} inviteVisible={inviteVisible} supportEmail={SUPPORT_EMAIL()} supportPhone={SUPPORT_PHONE()} supportPhoneTel={SUPPORT_PHONE_TEL()} invitePaid={invitePaid} inviteAgent={inviteViewer.agentInGoodStanding} journeyShown /> : <PublicFooter proposalsState={proposalsState} agentDoorVisible={agentDoorVisible} inviteVisible={inviteVisible} supportEmail={SUPPORT_EMAIL()} supportPhone={SUPPORT_PHONE()} supportPhoneTel={SUPPORT_PHONE_TEL()} />}
       {/* DG-P-11 — the rail's `More` needs the feature state for the same two reasons the bar
           and the footer already take it: DISABLED hides every proposals entry point, and the
           state flag (coming-soon / maintenance) must read the same on a phone as on a laptop. */}

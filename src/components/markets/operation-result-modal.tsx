@@ -409,6 +409,14 @@ export function OperationResultModal({
     ? (stripTone === "gold" ? "btn-gold" : stripTone === "yes" ? "btn-yes" : stripTone === "no" ? "btn-no" : "btn-primary")
     : tone.primaryBtn;
 
+  /* ⭐ THE ✕ OF A DIALOG THAT OPENS ON A CREST STAYS IN MODAL'S CORNER — the one ruled exception to F20 (round 6, 2026-10-09,
+     review C9; `test:visual-pass-r6c` holds every player dialog's ✕ to its place). F20 puts a ✕ on its title's first-line
+     capitals because a title stands beside it in the panel's first band; here the first band is the 64px crest, centred,
+     and the title is centred UNDER it (about 130px down on a phone), never beside the ✕. Brought to the crest's centre
+     (64px down, 72 from 1024) the ✕ would claim the crest's line as a title's; brought to the title, it would stand
+     halfway down the panel's edge. So it keeps the place Modal gives every ✕ — its 48px box 16px inside the panel's top
+     and right edges — as WinCelebration's does over its seal. ConfirmModal is no precedent either way: its medallion
+     stands beside its title, so its ✕ went to the title (R5-A). */
   return (
     <Modal
       open={open}

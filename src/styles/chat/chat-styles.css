@@ -205,27 +205,8 @@
 @media (prefers-reduced-motion: reduce) {
   .cm-status-dot { animation: none; }
 }
-.cm-close {
-  width: 32px;
-  height: 32px;
-  border-radius: 8px;
-  border: 1px solid transparent;
-  background: transparent;
-  color: var(--chat-text-muted);
-  display: grid;
-  place-items: center;
-  cursor: pointer;
-  transition: background var(--cm-dur-glide) var(--cm-ease-glide), color var(--cm-dur-glide) var(--cm-ease-glide), border-color var(--cm-dur-glide) var(--cm-ease-glide);
-}
-.cm-close:hover {
-  background: var(--chat-overlay);
-  color: var(--chat-text);
-  border-color: var(--chat-border);
-}
-.cm-close:focus-visible {
-  outline: 2px solid var(--pearl);
-  outline-offset: 2px;
-}
+/* (`.cm-close` is gone — round 6, 2026-10-09, review C2: the panel's ✕ is the kit's one `CloseX`, on the name's capitals;
+   `ChatPanel.tsx` has the geometry.) */
 
 /* ---------- Bot avatar mark ------------------------------------------- */
 

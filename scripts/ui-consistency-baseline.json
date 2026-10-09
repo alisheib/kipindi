@@ -29,7 +29,7 @@
     "numeric-size-utility::src/app/auth/admin/page.tsx": 1,
     "numeric-size-utility::src/app/help/page.tsx": 2,
     "numeric-size-utility::src/app/markets/[id]/loading.tsx": 1,
-    "numeric-size-utility::src/app/positions/performance/loading.tsx": 2,
+    "numeric-size-utility::src/app/positions/performance/performance-ghost.tsx": 2,
     "numeric-size-utility::src/app/profile/kyc/page.tsx": 6,
     "numeric-size-utility::src/app/results/loading.tsx": 1,
     "numeric-size-utility::src/app/updown/history/history-ghost.tsx": 1,

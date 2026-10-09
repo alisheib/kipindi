@@ -457,7 +457,9 @@ export default async function UpDownHistoryPage({ searchParams }: {
           )}
 
           {/* ── Rounds — one card per round; EVERY bet on it rendered as its own chip. ── */}
-          <div className="mt-4 grid gap-3" style={{ gridTemplateColumns: "repeat(auto-fill, minmax(320px, 1fr))" }}>
+          {/* Round 6 (review C8): the 320px floor was one 320px track in a 288px column at 320 — the card's right border, its
+              padding and the NET figure's end cut at the screen until 352px. `min(320px, 100%)`, `.market-grid`'s guard. */}
+          <div className="mt-4 grid gap-3" style={{ gridTemplateColumns: "repeat(auto-fill, minmax(min(320px, 100%), 1fr))" }}>
             {rounds.map((g) => {
               const r = g.row;
               const name = pickLocalized(locale, r.assetNameEn, r.assetNameSw, r.assetNameZh);
@@ -545,7 +547,8 @@ export default async function UpDownHistoryPage({ searchParams }: {
                       <div className="mt-0.5 text-[10px] text-text-faint">{usd(r.openPrice, r.decimals)} → {usd(r.closePrice, r.decimals)}</div>
                     </div>
                     <div className="text-right">
-                      <div className="font-mono text-micro uppercase eyebrow text-text-faint">{t.market.udNetReturn}</div>
+                      {/* Ends on its figure's edge, its trailing tracking taken back (F19, round 6 · C11). */}
+                      <div className="font-mono text-micro uppercase eyebrow text-text-faint kp-track-end">{t.market.udNetReturn}</div>
                       <div className="font-mono text-[15px] font-bold tabular-nums"
                            style={{ color: g.anyOpen ? "var(--text-subtle)" : net > 0 ? "var(--gilt)" : net < 0 ? "var(--no-300)" : "var(--text)" }}>
                         {g.anyOpen ? "—" : net === 0 ? formatTzs(0) : formatTzsSigned(net)}

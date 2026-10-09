@@ -6,7 +6,8 @@
  * s4-8-akaunti and s4-8-akaunti-guest) and in its order — with A17's change: the play-safe card sits above invite and
  * rewards, and "Pumzika / Jizuie" is two rows, each landing on its own section of the limits page.
  *
- * ⭐ PURE — nothing imported but erased types, and no directive — because `hubRowsFor` is one of the roots of S6's
+ * ⭐ PURE — nothing imported but erased types and one pure name rule (`invite-name.ts`, itself import-free but for an erased
+ * type), and no directive — because `hubRowsFor` is one of the roots of S6's
  * route-entrance census (A9, WP6b): the census asks it, for each kind of reader, which routes the hub reaches. So a
  * door is here or nowhere. The page renders exactly these rows and adds only the two controls that must not be data:
  *   · the staff console — ONE plain document link written in the page itself (E-70: a row renders as a soft link, and
@@ -20,6 +21,7 @@
 import type { ViewerDoors } from "@/lib/journey/viewer-doors";
 import type { ProposalsState } from "@/lib/server/proposals-config";
 import type { BreakState } from "@/lib/break-end";
+import { inviteNameKey } from "@/lib/journey/invite-name";
 
 /** A signed-in reader, as `loadHubViewer` (`src/lib/server/hub-viewer.ts`) composes one. */
 export type HubMember = {
@@ -55,8 +57,8 @@ export const HUB_WORDS = [
   "common.wallet", "common.balanceFrozen", "journey.withdrawAction",
   "common.results", "common.live", "leaderboard.title",
   "footer.setLimits", "journey.hubLimitsSub", "footer.takeABreak", "footer.selfExclude",
-  "profile.inviteFriends", "agent.dashTitle", "proposals.title",
-  "common.profile", "profile.verifyIdentity", "profile.verifyIdSub", "footer.resolutionAttestation",
+  "profile.inviteFriends", "profile.inviteEarn", "agent.dashTitle", "proposals.title",
+  "common.profile", "profile.kycIdentityVerification", "profile.verifyIdSub", "footer.resolutionAttestation",
   "common.help", "journey.hubHelpSub", "common.notifications", "common.search", "agent.footerLink",
   "common.consentMore", "footer.amlKyc", "footer.terms", "footer.gameRtp",
 ] as const;
@@ -66,8 +68,11 @@ export const HUB_WORDS = [
  * names its page as the page names itself). Each row was held to the name its page gives itself — its title, the
  * eyebrow that names it, its h1 — and four said something else; each now takes the page's own words, from keys the
  * dictionary already has:
- *   · Thibitisha kitambulisho / Verify your identity / 验证您的身份 — the KYC page's h1 (`profile.verifyIdentity`); the row
- *     said "Thibitisha ID" / "Verify ID" (tile 331);
+ *   · Uthibitisho wa kitambulisho / Identity verification / 身份验证 — the KYC page's tab and eyebrow
+ *     (`profile.kycIdentityVerification`); the row said "Thibitisha ID" / "Verify ID" (tile 331), and round 5 named it
+ *     after the page's h1 ("Thibitisha kitambulisho"), a headline that changes with the reader's state. ⭐ Round 6
+ *     (2026-10-09, review C13): the name every state of the page carries, as the leaderboard, /help and /fairness rows
+ *     carry their pages' tabs and eyebrows (the h1 below each is a headline);
  *   · Bingwa / Leaderboard / 排行榜 — the leaderboard's own title, its eyebrow and its <title> (`leaderboard.title`); the
  *     row said "Jedwali la Washindi" in Swahili;
  *   · Mapendekezo ya Masoko / Market Proposals / 市场提议 — the proposals page's own title (`proposals.title`, its eyebrow
@@ -78,7 +83,9 @@ export const HUB_WORDS = [
  * The journey's other doors to these pages say the same since this round: its footer (`public-footer.tsx`, the journey
  * arm), its avatar menu (`avatar-menu.tsx`, the journey's menu) and the profile page's KYC row.
  * The rest match their page already: Matokeo, Mubashara (the live page's title and h1), Uthibitisho wa utatuzi, Msaada,
- * Pochi, Arifa, Wasifu, Alika marafiki, Masharti ya huduma, Kuwa wakala — and Toa pesa, the journey's own word for its
+ * Pochi, Arifa, Wasifu, Masharti ya huduma, Kuwa wakala — Alika in the page's own name for its reader since round 6
+ * (`invite-name.ts`, review C1: an agent's dashboard, "Alika na upate zawadi" while invites pay, else "Alika marafiki"; it
+ * said "Alika marafiki" to a paid player whose page says "Alika na upate zawadi") — and Toa pesa, the journey's own word for its
  * money doors (its Wallet sheet's button says the same), which the withdraw page names itself for a journey reader since
  * R5-G (G-1: its tab and h1, `money-names.ts`; it said "Toa" over "Toa fedha"). They differ by design where a row names
  * an ACT on its page rather than the page — Weka mipaka, Pumzika, Jizuie (owner-approved RG doors, each landing on its
@@ -194,7 +201,8 @@ function memberGroups(v: HubMember): HubGroup[] {
   if (v.doors.inviteVisible) {
     share.push({
       id: "invite", kind: "link", href: "/profile/invite", glyph: "users",
-      label: v.agentInStanding ? "agent.dashTitle" : "profile.inviteFriends",
+      // The page's own name for this reader — the one rule every door to it asks (`invite-name.ts`; round 6, review C1).
+      label: inviteNameKey({ agent: v.agentInStanding, paid: v.doors.invitePaid }),
     });
   }
   if (v.doors.proposalsVisible) {
@@ -202,7 +210,7 @@ function memberGroups(v: HubMember): HubGroup[] {
   }
 
   const profile: HubRow[] = [{ id: "profile", kind: "link", href: "/profile", label: "common.profile", glyph: "user" }];
-  if (v.kycOffered) profile.push({ id: "kyc", kind: "link", href: "/profile/kyc", label: "profile.verifyIdentity", sub: "profile.verifyIdSub", glyph: "idCard" });
+  if (v.kycOffered) profile.push({ id: "kyc", kind: "link", href: "/profile/kyc", label: "profile.kycIdentityVerification", sub: "profile.verifyIdSub", glyph: "idCard" });
   profile.push(FAIRNESS);
 
   // Kuwa wakala under the footer's own rule: the programme open, or the reader already inside it (§0h point 9).

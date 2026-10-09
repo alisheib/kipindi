@@ -47,10 +47,13 @@ import type { AgentDashboard as AgentDashboardModel } from "@/lib/server/affilia
 export async function AgentDashboard({
   dash,
   sp,
+  journey = false,
 }: {
   dash: AgentDashboardModel;
   /** ⛔ The raw params, narrowed HERE by the contract — never read directly below. */
   sp: Record<string, string | string[] | undefined>;
+  /** The page's journey answer (`page.tsx` asks it): in the journey the back link names the Akaunti hub (round 6). */
+  journey?: boolean;
 }) {
   const { t, locale } = await getServerT();
 
@@ -97,7 +100,8 @@ export async function AgentDashboard({
 
   return (
     <PageContainer tier="form" className="space-y-5">
-      <BackLink fallbackHref="/profile" label={t.common.profile} />
+      {/* In the journey, back to the hub that opens this page ("‹ AKAUNTI", round 6 — `page.tsx` says why). */}
+      <BackLink fallbackHref={journey ? "/account" : "/profile"} label={journey ? t.journey.tabAccount : t.common.profile} />
       <h1 className="sr-only">{t.agent.dashTitle}</h1>
 
       <div className="flex items-center justify-between gap-3">

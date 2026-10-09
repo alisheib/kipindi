@@ -16,6 +16,7 @@ import { pickLocalized } from "@/lib/localized";
 import { keepFigures } from "@/components/ui/keep-words";
 import { sideWord } from "@/lib/side-label";
 import { PageContainer } from "@/components/layout/page-container";
+import { resolveSimpleJourney } from "@/lib/server/journey-preview";
 import { PerformanceBar } from "./performance-bar";
 import {
   parsePerfParams,
@@ -171,10 +172,17 @@ export default async function PerformancePage({
     };
   });
 
+  /* ⭐ THE JOURNEY CALLS ITS TICKETS TICKETS HERE TOO (round 6, 2026-10-09, review C14; §0h point 34 overruled for this
+     page). A journey reader arrives from Tiketi zangu's Utendaji link, and this page called that page "Nafasi" in its back
+     link and its eyebrow, and said "Hakuna nafasi zilizomalizika bado" when nothing had settled: the journey's own words now
+     — the tab's name ("Tiketi zangu / My tickets / 我的注单") and its settled lens's empty sentence. Everybody else reads
+     today's words. The loading drawing takes the same answer (`performance-ghost.tsx`). */
+  const { journey } = await resolveSimpleJourney();
+  const section = journey ? t.journey.tabTickets : t.common.positions;
   return (
     <PageContainer tier="reading" className="space-y-6">
-      <BackLink fallbackHref="/positions" label={t.common.positions} />
-      <PageHeader eyebrow={t.common.positions} title={t.performance.title} />
+      <BackLink fallbackHref="/positions" label={section} />
+      <PageHeader eyebrow={section} title={t.performance.title} />
 
       {/* ⛔ THE RAIL IS WITHHELD WHEN THE PLAYER HAS SETTLED NOTHING AT ALL, and only then — a
           strip of pills all reading 0 above "no settled positions yet" is a row of controls that
@@ -206,7 +214,7 @@ export default async function PerformancePage({
         <EmptyState
           fill
           kind="positions"
-          title={t.performance.noPerformance}
+          title={journey ? t.journey.ticketsEmptySettled : t.performance.noPerformance}
           body={t.performance.noPerformanceBody}
           action={<Link href={"/markets" as never} className="btn btn-primary btn-sm">{t.positions.browseMarkets}</Link>}
         />
@@ -393,7 +401,8 @@ export default async function PerformancePage({
                     </div>
                     <div className="shrink-0 text-right">
                       <p className={`text-body-sm font-bold amount ${r.pnl > 0 ? "text-[var(--gilt)]" : r.pnl < 0 ? "text-no-300" : "text-text"}`}>{formatTzsSigned(r.pnl)}</p>
-                      <p className="font-mono text-micro uppercase tracking-[0.08em] text-text-muted">{r.statusLabel}</p>
+                      {/* Ends on its figure's edge, its trailing 0.08em taken back (F19, round 6 · C11). */}
+                      <p className="font-mono text-micro uppercase tracking-[0.08em] text-text-muted kp-track-end kp-track-end--08">{r.statusLabel}</p>
                     </div>
                   </Link>
                 ))}

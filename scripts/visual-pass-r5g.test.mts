@@ -263,8 +263,12 @@ const PAGES: Record<string, Page> = {
   "/notifications": { title: "notif.title", h1: "notif.title", proof: [["src/app/notifications/page.tsx", "return { title: t.notif.title };"]] },
   "/profile": { title: "profile.title", h1: "profile.title", proof: [["src/app/profile/page.tsx", "return { title: t.profile.title };"]] },
   "/profile/kyc": { title: "profile.kycIdentityVerification", h1: "profile.verifyIdentity", proof: [["src/app/profile/kyc/page.tsx", "return { title: t.profile.kycIdentityVerification };"], ["src/app/profile/kyc/page.tsx", ": t.profile.verifyIdentity}"]] },
-  "/profile/invite": { title: "profile.inviteFriends", h1: "profile.inviteFriends", proof: [["src/app/profile/invite/page.tsx", "return { title: payable ? t.profile.inviteEarn : t.profile.inviteFriends };"]] },
-  "/profile/invite (an agent)": { title: "agent.dashTitle", h1: "agent.dashTitle", proof: [["src/app/profile/invite/page.tsx", "if (dashboard) return { title: t.agent.dashTitle };"], ["src/app/profile/invite/agent-dashboard.tsx", '<h1 className="sr-only">{t.agent.dashTitle}</h1>']] },
+  // Round 6 (2026-10-09, review C1): the page is named for its reader by ONE rule (`invite-name.ts`) — its tab, its h1 and
+  // every door ask it — so its three readers are three pages here: a player while invites pay nothing, a player while they
+  // pay, an approved agent.
+  "/profile/invite": { title: "profile.inviteFriends", h1: "profile.inviteFriends", proof: [["src/app/profile/invite/page.tsx", "return { title: inviteName(t, { agent: dashboard, paid: payable }) };"], ["src/app/profile/invite/page.tsx", "const name = inviteName(t, { agent: false, paid });"]] },
+  "/profile/invite (paid)": { title: "profile.inviteEarn", h1: "profile.inviteEarn", proof: [["src/app/profile/invite/page.tsx", "return { title: inviteName(t, { agent: dashboard, paid: payable }) };"], ["src/lib/journey/invite-name.ts", 'return r.agent ? "agent.dashTitle" : r.paid ? "profile.inviteEarn" : "profile.inviteFriends";']] },
+  "/profile/invite (an agent)": { title: "agent.dashTitle", h1: "agent.dashTitle", proof: [["src/app/profile/invite/page.tsx", "return { title: inviteName(t, { agent: dashboard, paid: payable }) };"], ["src/app/profile/invite/agent-dashboard.tsx", '<h1 className="sr-only">{t.agent.dashTitle}</h1>']] },
   "/proposals": { title: "proposals.title", h1: "proposals.voteForMarkets", proof: [["src/app/proposals/page.tsx", "const title = t.proposals.title;"], ["src/app/proposals/page.tsx", "eyebrow={t.proposals.title} title={t.proposals.voteForMarkets}"]] },
   "/agent": { title: "agent.title", h1: "agent.title", proof: [["src/app/agent/page.tsx", "return { title: t.agent.title };"]] },
   "/markets": { title: "market.title", h1: "market.title", proof: [["src/app/markets/page.tsx", "return { title: t.market.title };"]] },
@@ -380,18 +384,22 @@ for (const [viewer, rows] of [["guest", hubRowsFor({ signedIn: false })], ["memb
     const m = new RegExp(`\\{ href: "${esc(href)}",\\s*icon: I\\.\\w+,\\s*en: "([^"]*)",\\s*sw: "([^"]*)",\\s*zh: "([^"]*)"`).exec(menu);
     return m ? { en: m[1], sw: m[2], zh: m[3] } : { en: "‹absent›", sw: "‹absent›", zh: "‹absent›" };
   };
-  const proof: [string, string] = [FILES.menu, 'const journeyName: Partial<Record<string, string>> = journey ? { "/profile/kyc": t.profile.verifyIdentity, "/leaderboard": t.leaderboard.title, "/proposals": t.proposals.title } : {};'];
+  // Round 6 (2026-10-09, reviews C1 and C13): the journey's overrides are one map, a key per line — each row's proof is its
+  // own key's line. The invite row says the page's own name for its reader (`invite-name.ts`), so its "owner" entry (an
+  // agent's row said "Invite & Earn" over the dashboard) is three named doors now; the KYC row says the page's tab.
+  const proof: [string, string] = [FILES.menu, "const journeyName: Partial<Record<string, string>> = journey"];
+  const invite: [string, string] = [FILES.menu, '"/profile/invite": inviteName(t, { agent: inviteAgent, paid: invitePaid }),'];
   DOORS.push(
     { at: "avatar menu · Wasifu", proof, words: lit("/profile"), to: "/profile", verdict: "name" },
     { at: "avatar menu · Pochi", proof, words: lit("/wallet"), to: "/wallet", verdict: "name" },
     { at: "avatar menu · Matokeo", proof, words: lit("/results"), to: "/results", verdict: "name" },
-    { at: "avatar menu · invite (unpaid)", proof: [FILES.menu, "{ ...r, en: t.profile.inviteFriends, sw: t.profile.inviteFriends, zh: t.profile.inviteFriends, accent: false }"], words: "profile.inviteFriends", to: "/profile/invite", verdict: "name" },
-    { at: "avatar menu · invite (paid — a paid player or an agent)", proof: [FILES.menu, "r.invite && !invitePaid"], words: lit("/profile/invite"), to: "/profile/invite (an agent)", verdict: "owner",
-      why: "\"Alika na upate zawadi / Invite & Earn\" where an agent's page is \"Dashibodi ya wakala\" and the hub says so; for a paid PLAYER the page and this row say \"Alika na upate zawadi\" while the hub and the footer keep \"Alika marafiki\" — where the \"earn\" promise may stand is the owner's (D5), so neither is changed here" },
+    { at: "avatar menu · invite (journey: a player, unpaid)", proof: invite, words: "profile.inviteFriends", to: "/profile/invite", verdict: "name" },
+    { at: "avatar menu · invite (journey: a player, paid)", proof: invite, words: "profile.inviteEarn", to: "/profile/invite (paid)", verdict: "name" },
+    { at: "avatar menu · invite (journey: an agent)", proof: invite, words: "agent.dashTitle", to: "/profile/invite (an agent)", verdict: "name" },
     { at: "avatar menu · Tiketi zangu (journey)", proof: [FILES.menu, "{ ...r, icon: I.ticket, en: t.journey.tabTickets, sw: t.journey.tabTickets, zh: t.journey.tabTickets }"], words: "journey.tabTickets", to: "/positions", verdict: "name" },
-    { at: "avatar menu · Bingwa (journey)", proof, words: "leaderboard.title", to: "/leaderboard", verdict: "name" },
-    { at: "avatar menu · Mapendekezo (journey)", proof, words: "proposals.title", to: "/proposals", verdict: "name" },
-    { at: "avatar menu · KYC (journey)", proof, words: "profile.verifyIdentity", to: "/profile/kyc", verdict: "name" },
+    { at: "avatar menu · Bingwa (journey)", proof: [FILES.menu, '"/leaderboard": t.leaderboard.title,'], words: "leaderboard.title", to: "/leaderboard", verdict: "name" },
+    { at: "avatar menu · Mapendekezo (journey)", proof: [FILES.menu, '"/proposals": t.proposals.title,'], words: "proposals.title", to: "/proposals", verdict: "name" },
+    { at: "avatar menu · KYC (journey)", proof: [FILES.menu, '"/profile/kyc": t.profile.kycIdentityVerification,'], words: "profile.kycIdentityVerification", to: "/profile/kyc", verdict: "name" },
   );
 }
 {
@@ -404,6 +412,13 @@ for (const [viewer, rows] of [["guest", hubRowsFor({ signedIn: false })], ["memb
     const [verdict, why] = PROFILE_VERDICT[key] ?? ["name"];
     DOORS.push({ at: `/profile · ${key}`, proof: ["src/app/profile/page.tsx", `title={t.${key}}`], words: key, to, verdict, why });
   }
+  // A player's invite row says the page's own name for that player (round 6, review C1) — written through the one rule, so
+  // the parser above does not read it: its two readers, here by hand.
+  const playerRow: [string, string] = ["src/app/profile/page.tsx", "title={inviteName(t, { agent: false, paid: invitePayable })}"];
+  DOORS.push(
+    { at: "/profile · invite (a player, unpaid)", proof: playerRow, words: "profile.inviteFriends", to: "/profile/invite", verdict: "name" },
+    { at: "/profile · invite (a player, paid)", proof: playerRow, words: "profile.inviteEarn", to: "/profile/invite (paid)", verdict: "name" },
+  );
 }
 {
   // The journey footer, RENDERED in each language; every link it draws is a door counted here.
@@ -546,6 +561,8 @@ section("3 · G-1's sweep fixes · the history page's tab and its pill, /profile
     invitePaysPlayersNow: async () => o.payable,
     db: { affiliate: { findByUserId: async () => { if (o.approved === "throws") throw new Error("read failed"); return o.approved ? { approvedAt: "2026-09-01T00:00:00Z" } : null; } } },
     isApprovedAgent: (a: { approvedAt?: string | null } | null) => !!a?.approvedAt,
+    // Round 6 (review C1): the tab asks the one name rule every door asks — the real function, from its own module.
+    inviteName: (req("../src/lib/journey/invite-name.ts") as { inviteName: unknown }).inviteName,
   });
   const cases = [
     { name: "an approved agent", o: { session: true, payable: false, approved: true as const }, want: "agent.dashTitle" },
@@ -742,7 +759,8 @@ section("5 · classic readers keep their words: the money pages, their ghosts, t
   const classic = renderToStaticMarkup(h(PublicFooter as never, { proposalsState: "OPEN", agentDoorVisible: true, inviteVisible: true, supportEmail: "d@x.t", supportPhone: "0", supportPhoneTel: "+0" } as never));
   ok("5.2 · the classic footer keeps main's licence line: no keep span, no size container (frozen chrome)", !classic.includes("kp-gbt") && text(classic).includes(word("sw", "footer.licensedByGbt")));
   ok("5.3 · the two shared-body changes classic readers see too: /profile's help row (\"Help\" / \"帮助\"; Swahili unchanged) and an approved agent's invite tab (\"Dashibodi ya wakala\")",
-    has("src/app/profile/page.tsx", "title={t.common.help}") && has("src/app/profile/invite/page.tsx", "if (dashboard) return { title: t.agent.dashTitle };"));
+    // Round 6 (review C1): the agent's tab is asked of the one name rule (`invite-name.ts`; 3.5 RUNs it for every reader).
+    has("src/app/profile/page.tsx", "title={t.common.help}") && has("src/app/profile/invite/page.tsx", "return { title: inviteName(t, { agent: dashboard, paid: payable }) };"));
 }
 
 console.log(`\nvisual-pass-r5g: ${pass} passed, ${fails.length} failed`);

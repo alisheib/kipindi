@@ -464,7 +464,7 @@ export function MarketCard({
             G-7 defect; every word this chip can hold is a single short one in all three
             locales, so nothing wraps today and a longer one would now wrap instead of
             drawing outside the column. */}
-        <Chip size="xs" variant={TONE_CHIP[STATUS_TONE[statusWord].player]} dot={live}>
+        <Chip size="xs" metrics="status" variant={TONE_CHIP[STATUS_TONE[statusWord].player]} dot={live}>
           {statusLabel}
         </Chip>
         {/* PV-13c (2026-09-03) — was a raw `<span className="chip chip-strong chip-*">`. The
@@ -472,8 +472,16 @@ export function MarketCard({
             no equivalent; the four signal tones map straight across (`chip-signal` is the one
             NON-status tone here — no height override in the raw CSS either, so both land on
             the same 21px base box). */}
+        {/* ⭐ ONE PILL SIZE IN THE ROW (round 6, 2026-10-09, review C16 — G1's rule: a row whose pills must match states
+            it). The status pill beside it is `xs` (9px type, 0 6px, the 23px status box) and this one took the default `md`:
+            11px type in 23px for MOTO/HOT, KARIBU/SOON and MPYA/NEW, 10.5px in 21px for INASOGEA/TIPPING — two type sizes in one row,
+            and a height that followed the signal's colour. Both now say the row's size and box (`xs`, `metrics="status"`):
+            9px type, 23px, whatever the colour. Every board surface draws this card (/markets, /live, /watchlist, home,
+            similar questions), in both shells. */}
         {signal && (
           <Chip
+            size="xs"
+            metrics="status"
             aria-label={signal.label}
             variant={signal.kind === "hot" ? "hot" : signal.kind === "soon" ? "pending" : signal.kind === "tipping" ? "signal" : "new"}
           >

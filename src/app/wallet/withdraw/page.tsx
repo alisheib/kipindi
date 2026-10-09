@@ -180,7 +180,9 @@ export default async function WithdrawPage({ searchParams }: { searchParams: Pro
             subtitle={t.wallet.mobileMoneyOnly}
           />
           <div className="sm:text-right shrink-0">
-            <p className="font-mono text-micro uppercase eyebrow text-text-subtle">{walletHeld ? t.common.balanceFrozen : t.wallet.available}</p>
+            {/* From `sm`, right-aligned over the balance, it ends on the figure's edge (F19, round 6 · C11); below `sm` the
+                column is left-aligned, where the take-back moves nothing. */}
+            <p className="font-mono text-micro uppercase eyebrow text-text-subtle kp-track-end">{walletHeld ? t.common.balanceFrozen : t.wallet.available}</p>
             {/* §M4 — an amount is `.amount` (mono, tabular, untracked): this one was the display face, the only amount
                 on a player page set that way (WP12's tiles, 2026-10-08). */}
             <Cash className="amount font-bold text-[22px] text-text leading-none block">

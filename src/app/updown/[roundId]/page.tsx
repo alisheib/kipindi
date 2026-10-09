@@ -47,6 +47,7 @@ import { AssetMark } from "@/components/updown/updown-card";
 import { SOURCE_CLASS_KEY, fmtEAT } from "@/lib/updown-source-label";
 // E-101 · one rule for "where does this ticket live", shared with the wallet and the emails.
 import { positionListHref } from "@/lib/position-permalink";
+import { resolveSimpleJourney } from "@/lib/server/journey-preview";
 // E-102 · how often this page re-asks the server, and when it stops.
 import { RefreshPoller } from "@/components/ui/refresh-poller";
 import { UpDownResultAnnouncer } from "@/components/updown/updown-result-announcer";
@@ -324,6 +325,8 @@ export default async function UpDownRoundPage({
   const outcomeInk = round.outcome === "UP" ? "var(--yes-300)" : round.outcome === "DOWN" ? "var(--no-300)" : "var(--text-muted)";
   const outcomeArrow = round.outcome === "UP" ? "M5 15l7-7 7 7" : round.outcome === "DOWN" ? "M5 9l7 7 7-7" : null;
   const evidence = proof?.closeEvidence ?? proof?.openEvidence ?? null;
+  // The shell's own cached answer: a journey reader's door to the round's tickets names the journey's page (round 6, C14).
+  const { journey } = await resolveSimpleJourney();
 
   // B7 — was max-w-[1232px] with an inline padding, while this route's own
   // loading.tsx said 1080: a 152px layout jump on EVERY load, which no test
@@ -598,7 +601,8 @@ export default async function UpDownRoundPage({
                     <p className={`mt-1 m-0 text-title-md font-bold leading-none amount${payoutStruck ? " gilt-ink" : " text-text"}`}>{formatTzs(myPosition.payout ?? 0)}</p>
                   </div>
                   <div className="text-right">
-                    <p className="m-0 font-mono text-micro uppercase eyebrow text-text-faint">{t.market.udYourPick} · {t.market.udStake}</p>
+                    {/* Ends on its figure's edge, its trailing tracking taken back (F19, round 6 · C11). */}
+                    <p className="m-0 font-mono text-micro uppercase eyebrow text-text-faint kp-track-end">{t.market.udYourPick} · {t.market.udStake}</p>
                     {/* ⛔ A HEDGED HOLDER IS NOT QUOTED ONE SIDE. `myPositionFor` derives its
                         single `side` with `up >= down`, which is a tie-break, not a fact about
                         the bet — so a player who backed BOTH ways was shown the larger leg as
@@ -680,8 +684,11 @@ export default async function UpDownRoundPage({
                     scrolled to this very ticket.
                     ⚠️ The LIST href, not the permalink route — the permalink resolves back to
                     this page, and a button that reloads the page you are already standing on is
-                    the same dead end wearing a correct-looking URL. */}
-                <Link href={positionListHref("UPDOWN", myPosition.ids[0] ?? "")} className="btn btn-ghost btn-sm mt-3.5 w-full justify-center">{t.market.udOpenInPositions}</Link>
+                    the same dead end wearing a correct-looking URL.
+                    ⭐ In the journey that list IS Tiketi zangu (its Juu/Chini kind), so the door says the page's name —
+                    "Tiketi zangu / My tickets / 我的注单" — where it said "Fungua kwenye Nafasi / Open in Positions" (round 6,
+                    2026-10-09, review C14). Everybody else reads today's words. */}
+                <Link href={positionListHref("UPDOWN", myPosition.ids[0] ?? "")} className="btn btn-ghost btn-sm mt-3.5 w-full justify-center">{journey ? t.journey.tabTickets : t.market.udOpenInPositions}</Link>
               </section>
             ) : round.state === "confirming" ? (
               <section style={{ ...inset, padding: 16 }}>
@@ -736,7 +743,8 @@ export default async function UpDownRoundPage({
                     <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="var(--text-muted)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><circle cx="12" cy="8" r="3.4" /><path d="M5.5 20c0-3.6 2.9-6 6.5-6s6.5 2.4 6.5 6" /></svg>
                     {round.players.toLocaleString()}
                   </p>
-                  <p className="mt-1 font-mono text-micro uppercase eyebrow text-text-faint">{t.market.udPlayers}</p>
+                  {/* Under its right-aligned count it ends on the count's edge (F19, round 6 · C11). */}
+                  <p className="mt-1 font-mono text-micro uppercase eyebrow text-text-faint kp-track-end">{t.market.udPlayers}</p>
                 </div>
               </div>
               {/* 🔴 PV-06 · THE THIRD HAND-ROLLED SPLIT BAR, and the third different drawing of

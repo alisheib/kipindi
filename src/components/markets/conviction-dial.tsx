@@ -20,6 +20,7 @@ import { InfoHint, InfoHintPanel } from "@/components/ui/info-hint";
 import { I } from "@/components/ui/glyphs";
 import { useDeferredToast } from "@/components/ui/toast";
 import { useT } from "@/lib/i18n";
+import { useJourneyOn } from "@/lib/journey/journey-on";
 import { sideWord } from "@/lib/side-label";
 import { buyPositionAction } from "@/app/markets/actions";
 import { funnelBetFields, sendFunnel } from "@/lib/journey/funnel-beacon";
@@ -273,6 +274,13 @@ export function ConvictionDial({ marketId, yesPool, noPool, baseStake = 1_000, m
   // has committed), the admin idiom; error toasts stay immediate.
   const { toast, deferToast } = useDeferredToast(pending);
   const { t, locale } = useT();
+  /* ⭐ THE JOURNEY'S WORD FOR WHERE A BET GOES (round 6, 2026-10-09, review C14). After every bet the result's second door
+     said "Tazama nafasi / View positions / 查看持仓" to a journey reader whose tab, header link and page call /positions
+     "Tiketi zangu / My tickets / 我的注单". The dial is drawn inside the shared market page with no journey prop, so it reads
+     the shell's own answer (`useJourneyOn`, as `positions/error.tsx` does): the result opens only after a bet, in the
+     browser, so the server's HTML and the hydration never carry the label and nothing can mismatch. Everybody else reads
+     today's words. */
+  const journeyOn = useJourneyOn();
 
   const distFromCenter = Math.abs(pos - 0.5) * 2;
   const conviction = distFromCenter * distFromCenter; // ease-in
@@ -1872,7 +1880,7 @@ export function ConvictionDial({ marketId, yesPool, noPool, baseStake = 1_000, m
               : undefined
           }
           secondaryLabel={
-            resultData.variant === "success" ? t.common.viewPositions
+            resultData.variant === "success" ? (journeyOn ? t.journey.tabTickets : t.common.viewPositions)
               : resultData.retryable ? t.common.close
               : undefined
           }

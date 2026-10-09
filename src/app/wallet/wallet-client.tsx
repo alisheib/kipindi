@@ -554,7 +554,8 @@ function TxnRow({ tx }: { tx: Transaction }) {
           <p className={`font-mono text-[14px] font-bold tabular-nums ${movedNothing ? "text-text-muted" : "text-text"}`}>
             <Cash>{`${isCredit && !movedNothing ? "+" : ""}${formatTzs(Math.abs(tx.amount))}`}</Cash>
           </p>
-          <p className={`mt-0.5 font-mono text-micro uppercase tracking-[0.14em] font-semibold ${statusTone}`}>
+          {/* Under its right-aligned amount it ends on the amount's edge, its trailing 0.14em taken back (F19, round 6 · C11). */}
+          <p className={`mt-0.5 font-mono text-micro uppercase tracking-[0.14em] font-semibold kp-track-end ${statusTone}`}>
             {statusLabel[tx.status]}
           </p>
         </div>

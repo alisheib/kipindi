@@ -2863,6 +2863,11 @@ ${s}`);
     const switchUnpinned = withFile(WORLD, TICKET_SWITCH, (s) => s.split(`"/updown/history"`).join(`"/updown"`));
     const utendajiUnpinned = withFile(WORLD, TICKETS_VIEW, (s) => s.split(`"/positions/performance"`).join(`"/positions"`));
     const noAkaunti = TAB.JOURNEY_TABS.filter((t) => t.key !== "account");
+    // Round 6 (2026-10-09, the review's back-link finding): the pages the hub opens fall back to it in the journey
+    // ("‹ AKAUNTI" → /account with no history) — real doors the census counts — so the hub is orphaned only when those go too.
+    const HUB_BACKS = ["src/app/notifications/page.tsx", "src/app/profile/invite/page.tsx", "src/app/profile/invite/agent-dashboard.tsx",
+      "src/app/profile/kyc/page.tsx", "src/app/profile/responsible-gambling/page.tsx"];
+    const hubBacksGone = HUB_BACKS.reduce((w, f) => withFile(w, f, (s) => s.split(`"/account"`).join(`"/profile"`)), WORLD);
     const withoutRow = (id: string): Impl["hubRows"] => (v) => HUB.hubRowsFor(v).map((g) => ({ ...g, rows: g.rows.filter((r) => r.id !== id) }));
     const noArifa = withoutRow("notifications");
     const noLanguage = withoutRow("language");
@@ -3279,8 +3284,9 @@ ${s}`);
         landedAs: "an applicant can no longer read what they accept" },
       { name: "a page joins the population that nothing links", expect: at("9.entrance./zz-lonely ·"),
         world: lonely, landed: lonely.routes.includes("/zz-lonely"), landedAs: "a route with no entrance" },
-      { name: "the Akaunti tab is removed", expect: at("9.entrance./account ·"),
-        impl: { tabs: noAkaunti }, landed: noAkaunti.length === TAB.JOURNEY_TABS.length - 1,
+      { name: "the Akaunti tab is removed, and the journey back links' way to the hub with it", expect: at("9.entrance./account ·"),
+        impl: { tabs: noAkaunti }, world: hubBacksGone,
+        landed: noAkaunti.length === TAB.JOURNEY_TABS.length - 1 && HUB_BACKS.every((f) => changed(hubBacksGone, f)),
         landedAs: "the hub, and every door only it holds, out of reach on a phone" },
       { name: "the hub loses its Arifa row", expect: at("9.subset.player ·"),
         impl: { hubRows: noArifa }, landed: hasRow(HUB.hubRowsFor(playerHub), "notifications") && !hasRow(noArifa(playerHub), "notifications"),

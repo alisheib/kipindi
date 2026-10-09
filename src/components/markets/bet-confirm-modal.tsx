@@ -297,8 +297,18 @@ export function BetConfirmModal({
         </div>
 
         {/* Side + stake summary */}
+        {/* ⭐ THE STAKE IS ONE AMOUNT AND NEVER SPLITS (round 6, 2026-10-09, review C12 — the sell confirm's S6 A8f shape). The
+            stake was mono but not `.amount`, in a row that could not wrap, so the two columns shrank and "TZS" / "1,000"
+            broke onto two lines: at 320 every Swahili HAPANA stake and every English one, at 360 from 10,000, at 390 a
+            1,000,000 — 28 of the 64 phone cases (en/sw × NDIO/HAPANA × 1,000–1,000,000 at 320–412). Now the stake is
+            `.amount` (whole, tabular) and the row wraps: when the side and the stake cannot share their line, the stake's
+            column moves under the side and takes the box's width, its words still on the right edge. The clear 16px sits
+            on the side word (`pr-3`), the one value the stake meets on its line — on the stake itself (A8f's literal place)
+            the left column's eyebrow ("YOU ARE PICKING", wider than "YES") would count against it too and wrap six English
+            rows at 360–412 whose values stood 16px apart or more; here a row wraps exactly when the side and the stake
+            would come closer than 16px. Where they fit, nothing moves. */}
         <div className="rounded-lg border p-4" style={{ borderColor: sideTone.brd, background: sideTone.bg }}>
-          <div className="flex items-baseline justify-between">
+          <div className="flex flex-wrap items-baseline justify-between gap-y-2">
             <div>
               <p className="font-mono text-micro uppercase eyebrow text-text-subtle mb-1">{t.common.youArePicking}</p>
               {/* ⛔ THIS USED TO PRINT THE STORED ENUM. On the Chinese money-commit dialog the
@@ -306,13 +316,15 @@ export function BetConfirmModal({
                   "是" — one fact, two answers, one screen. Both now come out of §L's one map,
                   so they cannot disagree again. This modal is poll-only (its sole caller is
                   `conviction-dial.tsx`; Up & Down confirms through `UpDownBetReceiptModal`). */}
-              <p className="font-display font-bold text-[26px] leading-none" style={{ color: sideTone.fg, letterSpacing: "-0.025em" }}>
+              <p className="pr-3 font-display font-bold text-[26px] leading-none" style={{ color: sideTone.fg, letterSpacing: "-0.025em" }}>
                 {sideWord(t, side, "MARKET")}
               </p>
             </div>
-            <div className="text-right">
-              <p className="font-mono text-micro uppercase eyebrow text-text-subtle mb-1">{t.dialog.stakeLabel}</p>
-              <p className="font-mono font-bold text-[22px] tabular-nums leading-none text-text">TZS {formatNumber(stake)}</p>
+            <div className="grow text-right">
+              {/* Right-aligned and tracked: its trailing tracking taken back, so "DAU" ends on the stake's edge (F19,
+                  `kp-track-end` — round 6, review C11). */}
+              <p className="font-mono text-micro uppercase eyebrow text-text-subtle mb-1 kp-track-end">{t.dialog.stakeLabel}</p>
+              <p className="amount font-bold text-[22px] leading-none text-text">TZS {formatNumber(stake)}</p>
               <p className="mt-1 font-mono text-[10px] text-text-subtle">{multiplier.toFixed(2)}× {t.dialog.conviction}</p>
             </div>
           </div>

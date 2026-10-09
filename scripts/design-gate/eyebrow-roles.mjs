@@ -247,7 +247,8 @@ export const NOT_EYEBROW = new Map([
   ["app/notifications/bulk-bar.tsx :: <span className=\"font-mono text-micro font-bold uppercase text-text-subtle truncate\"> ↵ {countLabel}", "STATUS_CHIP"],
   ["app/notifications/row-actions.tsx :: className=\"-mt-1 shrink-0 inline-flex items-center gap-1 min-h-[44px] px-2 rounded-md font-mono text-micro font-bold uppercase text-accent-400 hover:text-text hover:bg-bg", "CONTROL_LABEL"],
   ["app/positions/page.tsx :: <div className=\"mb-1.5 flex items-center justify-between gap-2 font-mono text-micro uppercase tracking-[0.12em] tabular-nums\"> ↵ <span className=\"font-bold text-yes-300\">", "OTHER"],
-  ["app/positions/performance/page.tsx :: <p className=\"font-mono text-micro uppercase tracking-[0.08em] text-text-muted\">{r.statusLabel}</p> ↵ </div>", "STATUS_CHIP"],
+  // Round 6 (review C11): re-signed — the right-aligned status word takes back its trailing 0.08em (`kp-track-end`); same role.
+  ["app/positions/performance/page.tsx :: <p className=\"font-mono text-micro uppercase tracking-[0.08em] text-text-muted kp-track-end kp-track-end--08\">{r.statusLabel}</p> ↵ </div>", "STATUS_CHIP"],
   ["app/positions/performance/page.tsx :: <p className=\"font-mono text-micro uppercase tracking-[0.12em] text-text-subtle tabular-nums\">{t.performance.longestStreak} {longestStreak}</p> ↵ </div>", "OTHER"],
   ["app/positions/performance/page.tsx :: <span className=\"font-mono text-micro uppercase tracking-[0.08em] text-text-subtle\">{t.performance.cumulativePerSettlement}</span> ↵ </div>", "OTHER"],
   ["app/profile/kyc/page.tsx :: <span className=\"font-mono text-micro uppercase tracking-[0.1em] text-text-subtle\">{idLabel}</span> ↵ </div>", "OTHER"],
@@ -278,7 +279,8 @@ export const NOT_EYEBROW = new Map([
   // fails — because a subdirectory file can never be in the top-level set `pii-in-logs` §3
   // scans. Measured, not guessed: 97 → 19,718 the moment a block comment was added here.
   ["app/updown/page.tsx :: \"inline-flex shrink-0 items-center gap-1.5 rounded-pill border border-border bg-bg-elevated px-3 py-2 font-mono text-caption uppercase tracking-[0.10em] text-text-muted h", "CONTROL_LABEL"],
-  ["app/wallet/wallet-client.tsx :: <p className={`mt-0.5 font-mono text-micro uppercase tracking-[0.14em] font-semibold ${statusTone}`}> ↵ {statusLabel[tx.status]}", "STATUS_CHIP"],
+  // Round 6 (review C11): re-signed — the right-aligned status word takes back its trailing 0.14em (`kp-track-end`); same role.
+  ["app/wallet/wallet-client.tsx :: <p className={`mt-0.5 font-mono text-micro uppercase tracking-[0.14em] font-semibold kp-track-end ${statusTone}`}> ↵ {statusLabel[tx.status]}", "STATUS_CHIP"],
   ["app/wallet/wallet-client.tsx :: <span className=\"font-mono text-micro uppercase tracking-[0.1em] text-text-subtle flex items-center gap-1.5\"> ↵ {BONUS_SOURCE_LABEL[g.source] ?? g.source}", "OTHER"],
   ["app/wallet/wallet-client.tsx :: <span className=\"ml-auto inline-flex items-center gap-1 rounded-pill px-2 py-0.5 font-mono text-micro uppercase tracking-[0.12em] font-bold bg-bg-inset text-text-subtle\">", "STATUS_CHIP"],
   ["app/wallet/wallet-client.tsx :: className=\"mt-3 inline-flex items-center gap-1.5 font-mono text-caption uppercase tracking-[0.14em] text-gold-300 hover:text-gold-200 transition-colors\" ↵ >", "CONTROL_LABEL"],

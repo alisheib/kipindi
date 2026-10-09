@@ -27,7 +27,7 @@ import { NO_VIEWER, type InviteViewer } from "@/lib/feature-state";
 import { viewerDoorsFor } from "@/lib/journey/viewer-doors";
 import { displayInitials, displayLabel } from "@/lib/display-label";
 import { maskPhone } from "@/lib/phone-normalize";
-import { isFinalRefusal } from "@/lib/kyc-refusal";
+import { kycDoorOffered } from "@/lib/kyc-refusal";
 import { isLockedOut } from "@/lib/server/responsible-gambling";
 import { breakStateOf } from "@/lib/break-end";
 import type { HubViewer } from "@/components/journey/account/hub-rows";
@@ -85,9 +85,9 @@ export async function loadHubViewer(userId: string | null, deps: HubViewerDeps =
   let proposalsState: ProposalsState = "DISABLED";
   try { agentEnabled = deps.agentEnabled() === true; } catch { /* closed: no agent door */ }
   try { proposalsState = deps.proposalsState(); } catch { /* closed: no proposals door */ }
-  // `/profile`'s own predicate. ⛔ Only a row that was READ can offer it: a failed read is not "not started".
-  const kyc = k.status === "fulfilled" ? { level: k.value?.status ?? "NOT_STARTED", reason: k.value?.rejectReason ?? null } : null;
-  const kycOffered = kyc !== null && kyc.level !== "APPROVED" && !(kyc.level === "REJECTED" && isFinalRefusal(kyc.reason));
+  // `/profile`'s own predicate, the one function every KYC door asks (`kycDoorOffered`; round 6, review C13). ⛔ Only a row
+  // that was READ can offer it: a failed read is not "not started".
+  const kycOffered = k.status === "fulfilled" && kycDoorOffered(k.value?.status, k.value?.rejectReason);
   const who = user ?? { id: userId, displayName: null };
   return {
     signedIn: true,

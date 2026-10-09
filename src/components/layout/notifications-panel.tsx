@@ -18,6 +18,8 @@ import { useModalLock } from "@/lib/use-modal-lock";
 // would let a win be gold in the bell and grey on the page, and nothing would say so.
 import { iconFor, tintFor } from "@/lib/notification-appearance";
 import { readableNotificationBody } from "@/lib/notification-text";
+import { DotSeq } from "@/components/ui/dot-seq";
+import { moneyRuns, moneySentence } from "@/lib/fill-nodes";
 
 /** The SAME list `<Modal>` (ui/modal.tsx) and `<FilterSheet>` (markets/filter-sheet.tsx)
  *  trap against — copied verbatim so the product's three focus traps cannot drift apart. */
@@ -663,7 +665,14 @@ export function NotificationsPanel({ journey = false }: { journey?: boolean } = 
                         <Icon s={16} />
                       </IconPlate>
                       <div className="flex-1 min-w-0">
-                        <div className="flex items-center justify-between gap-2">
+                        {/* ⭐ IN THE JOURNEY A NOTICE READS AS IT DOES ON /notifications (round 6, 2026-10-09, review C10): its
+                            title whole, broken between its clauses (`DotSeq`) with its money in mono and never split
+                            (`moneyRuns`), and its body's figures whole with its last two words together (`moneySentence`) —
+                            the page's own renderers (R4-C). The journey's bell (from 1024) cut the title to one line and set
+                            "TZS 4,200" in the sentence face, so one notice read two ways. A wrapping title keeps its dot on
+                            its first line (`items-start`; the dot's 4px is that line's centre). Classic chrome is frozen: its
+                            bell keeps today's one-line title and plain body. */}
+                        <div className={journey ? "flex items-start justify-between gap-2" : "flex items-center justify-between gap-2"}>
                           {/* §A4 — colour is never the only signal. Unread was a gold wash plus
                               the gold dot below, and the dot is (correctly) `aria-hidden`, so a
                               screen-reader user could not tell a settled-money notification they
@@ -671,16 +680,16 @@ export function NotificationsPanel({ journey = false }: { journey?: boolean } = 
                               state arrives with the headline, not after it. `sr-only` is
                               absolutely positioned, so it adds nothing to this flex row. */}
                           {isUnread && <span className="sr-only">{t.notif.unread}</span>}
-                          <p className="font-display text-body-sm font-semibold text-text truncate leading-tight">
-                            {pickTitle(n, locale)}
+                          <p className={journey ? "font-display text-body-sm font-semibold text-text leading-tight" : "font-display text-body-sm font-semibold text-text truncate leading-tight"}>
+                            {journey ? <DotSeq text={pickTitle(n, locale)} renderPart={moneyRuns} /> : pickTitle(n, locale)}
                           </p>
                           {/* Stage 9b — kit <Dot>. `h-1.5 w-1.5` is 8px on this project's
                               OVERRIDDEN spacing scale, not 6px, so the size is stated in
                               pixels here where it cannot be misread. */}
                           {isUnread && <Dot tone={unreadDot} size={8} className="mt-1" />}
                         </div>
-                        <p className="mt-0.5 text-label text-text-muted leading-snug">
-                          {pickBody(n, locale)}
+                        <p className={journey ? "mt-0.5 text-label text-text-muted leading-snug break-words" : "mt-0.5 text-label text-text-muted leading-snug"}>
+                          {journey ? moneySentence(pickBody(n, locale)) : pickBody(n, locale)}
                         </p>
                         <div className="mt-1 flex items-center justify-end">
                           <span className="font-mono text-[10.5px] tabular-nums text-text-subtle">

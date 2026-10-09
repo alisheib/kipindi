@@ -289,7 +289,10 @@ section("5 · F17 · one page, one name — the hub's rows and the journey's doo
     doors: { inviteVisible: true, proposalsVisible: true, agentDoorVisible: true, staffConsole: false } };
   const rows = [...hubRowsFor({ signedIn: false }), ...hubRowsFor(member as never)].flatMap((g: HubGroup) => g.rows).filter((r): r is Extract<HubRow, { kind: "link" }> => r.kind === "link");
   const labelOf = (id: string) => rows.find((r) => r.id === id)?.label ?? null;
-  const NOW = { kyc: "profile.verifyIdentity", leaderboard: "leaderboard.title", proposals: "proposals.title", privacy: "common.consentMore" } as const;
+  // Round 6 (2026-10-09, review C13): the KYC row says the page's tab and eyebrow ("Uthibitisho wa kitambulisho"), the name
+  // every state of the page carries — its h1 is a headline that changes with the reader's state, as /help's and the
+  // leaderboard's are (and those rows say the tab too). R5-A had named it after the h1 ("Thibitisha kitambulisho").
+  const NOW = { kyc: "profile.kycIdentityVerification", leaderboard: "leaderboard.title", proposals: "proposals.title", privacy: "common.consentMore" } as const;
   const OLD = ["common.verifyId", "common.leaderboard", "common.proposeEarn", "footer.privacyNotice"];
   ok("5.1 · the four rows take their pages' words: KYC, the leaderboard, the proposals page, the privacy policy",
     Object.entries(NOW).every(([id, k]) => labelOf(id) === k) && Object.values(NOW).every((k) => (HUB_WORDS as readonly string[]).includes(k))
@@ -297,16 +300,18 @@ section("5 · F17 · one page, one name — the hub's rows and the journey's doo
   // …and those words ARE the pages' own: their h1, their eyebrow, their <title>.
   const kyc = read("src/app/profile/kyc/page.tsx"), lb = read("src/app/leaderboard/page.tsx"), props = read("src/app/proposals/page.tsx");
   const privacyTitle = Object.fromEntries([...(/const TITLE: Record<Locale, string> = \{([\s\S]*?)\};/.exec(raw("src/app/legal/privacy/page.tsx"))?.[1] ?? "").matchAll(/\b(en|sw|zh):\s*"([^"]*)"/g)].map((m) => [m[1], m[2]]));
-  ok("5.2 · …and they are the pages' own names: the KYC h1, the leaderboard's eyebrow and <title>, the proposals' eyebrow and h1, the privacy page's title (in every language)",
-    kyc.includes(": t.profile.verifyIdentity}") && lb.includes("const title = t.leaderboard.title;") && lb.includes("<PageHeader eyebrow={t.leaderboard.title}")
+  ok("5.2 · …and they are the pages' own names: the KYC page's <title> and eyebrow, the leaderboard's eyebrow and <title>, the proposals' eyebrow and h1, the privacy page's title (in every language)",
+    kyc.includes("return { title: t.profile.kycIdentityVerification };") && kyc.includes("eyebrow={t.profile.kycIdentityVerification}")
+      && lb.includes("const title = t.leaderboard.title;") && lb.includes("<PageHeader eyebrow={t.leaderboard.title}")
       && props.includes('<h1 className="sr-only">{t.proposals.title}</h1>') && props.includes("eyebrow={t.proposals.title}")
       && LOCALES.every((l) => privacyTitle[l]?.toLowerCase() === word(l, "common.consentMore").toLowerCase()), show(privacyTitle));
-  ok("5.2′ CONTROL · the words did differ: \"Thibitisha ID\" against \"Thibitisha kitambulisho\", \"Jedwali la Washindi\" against \"Bingwa\", \"Propose & earn\" against \"Market Proposals\", \"Privacy notice\" against \"Privacy policy\"",
-    word("sw", "common.verifyId") !== word("sw", "profile.verifyIdentity") && word("sw", "common.leaderboard") !== word("sw", "leaderboard.title")
+  ok("5.2′ CONTROL · the words did differ: \"Thibitisha ID\" against \"Uthibitisho wa kitambulisho\", \"Jedwali la Washindi\" against \"Bingwa\", \"Propose & earn\" against \"Market Proposals\", \"Privacy notice\" against \"Privacy policy\"",
+    word("sw", "common.verifyId") !== word("sw", "profile.kycIdentityVerification") && word("sw", "common.leaderboard") !== word("sw", "leaderboard.title")
       && word("en", "common.proposeEarn") !== word("en", "proposals.title") && word("en", "footer.privacyNotice") !== word("en", "common.consentMore"));
   const menu = squash(read("src/components/layout/avatar-menu.tsx"));
+  // Round 6 (reviews C1, C13): the map gained the invite row's one name and the KYC row the page's tab.
   ok("5.3 · the journey's avatar menu names the three pages the same way (classic rows keep their words)",
-    menu.includes('const journeyName: Partial<Record<string, string>> = journey ? { "/profile/kyc": t.profile.verifyIdentity, "/leaderboard": t.leaderboard.title, "/proposals": t.proposals.title } : {};'));
+    menu.includes('const journeyName: Partial<Record<string, string>> = journey ? { "/profile/kyc": t.profile.kycIdentityVerification, "/leaderboard": t.leaderboard.title, "/proposals": t.proposals.title, "/profile/invite": inviteName(t, { agent: inviteAgent, paid: invitePaid }), } : {};'));
   const props0 = { proposalsState: "COMING_SOON" as const, agentDoorVisible: true, inviteVisible: true, supportEmail: "desk@example.test", supportPhone: "0700000000", supportPhoneTel: "+255700000000" };
   const classic = text(html(h(PublicFooter, props0))), journey = text(html(h(PublicFooter, { ...props0, journeyShown: true })));
   const W = (p: string) => word(DEFAULT_LOCALE as Loc, p);
@@ -317,13 +322,13 @@ section("5 · F17 · one page, one name — the hub's rows and the journey's doo
   ok("5.4′ CONTROL · the classic footer keeps its words (frozen chrome)",
     classic.includes(W("footer.proposeGetPaid")) && classic.includes(W("footer.privacyNotice")) && classic.includes(W("footer.helpSupport")) && !classic.includes(W("proposals.title")));
   ok("5.5 · the profile page's KYC row and /live's eyebrow (page and ghost) use the page's own word",
-    read("src/app/profile/page.tsx").includes("title={t.profile.verifyIdentity}") && !read("src/app/profile/page.tsx").includes("t.common.verifyId")
+    read("src/app/profile/page.tsx").includes("title={t.profile.kycIdentityVerification}") && !read("src/app/profile/page.tsx").includes("t.common.verifyId")
       && ["src/app/live/page.tsx", "src/app/live/loading.tsx"].every((f) => read(f).includes('eyebrow font-bold text-text">{t.common.live}</p>') && !read(f).includes("t.home.liveSection")));
   ok("5.5′ CONTROL · /live named itself \"Mubashara\" in its <title> and h1 and \"Hai\" in its eyebrow",
     read("src/app/live/page.tsx").includes("return { title: t.common.live };") && word("sw", "common.live") === "Mubashara" && word("sw", "home.liveSection") === "Hai");
   const harness = raw("scripts/qa-journey-shell.mjs");
   ok("5.6 · the capture harness holds the KYC row to the page's words",
-    LOCALES.every((l) => harness.includes(`${l}: '${word(l, "profile.verifyIdentity")}'`)) && harness.includes("verifyId: { sw: 'Thibitisha kitambulisho'"));
+    LOCALES.every((l) => harness.includes(`${l}: '${word(l, "profile.kycIdentityVerification")}'`)) && harness.includes("verifyId: { sw: 'Uthibitisho wa kitambulisho'"));
   // What cannot be fixed by composition: no key holds the rules page's name — an S12 item. This control flips if one is added.
   const allValues = new Set<string>();
   const collect = (o: unknown) => { if (typeof o === "string") allValues.add(o); else if (o && typeof o === "object") Object.values(o).forEach(collect); };
@@ -518,9 +523,12 @@ section("8 · F20 · every close ✕ of a panel, a sheet or a dialog: on its tit
     "src/components/social/channels-panel.tsx": [C("hand ✕", "a non-modal card's close, no scrim: its 44px box sets the card's row; on its title's capitals (8.7)")],
     "src/components/pwa/install-invite.tsx": [C("hand ✕", "a non-modal card's close, the channels card's twin: 44px; on its title's capitals (8.8)")],
     "src/components/onboarding/first-visit-primer.tsx": [C("hand ✕", "the primer's SKIP, a 40px box in its step-dots row — no title beside it to stand on")],
-    "src/components/layout/notifications-panel.tsx": [C("hand ✕", "the bell panel's close — R5-B's lane (the bell, notifications); named, not changed"), C("row ✕", "a notification row's dismiss")],
+    // Round 6 (2026-10-09, review C2) classified the bell's ✕ by its geometry, where R5-A had only named it ("not changed").
+    "src/components/layout/notifications-panel.tsx": [C("hand ✕", "the bell panel's close: centred on its title's line and 16px inside the panel — F20's place — in a 40px box with a 13px glyph, CloseX's own proportion (16/48), because it stands in the panel's 44px toolbar beside Read all | Clear all (40px controls), where CloseX's 48px box would outgrow the bar; classic chrome (frozen), and the journey mounts the same panel from 1024"), C("row ✕", "a notification row's dismiss")],
     "src/components/admin/admin-mobile-nav.tsx": [C("hand ✕", "the admin drawer's close — admin chrome, a 44px box")],
     "src/app/notifications/row-actions.tsx": [C("row ✕", "a notification row's delete")],
+    // Round 6 (review C2): seen once the census read the ✕ in any spelling — two <line>s inside a circle.
+    "src/components/ui/empty-state.tsx": [C("glyph", "`ErrorMark`, an error state's circled ✕ illustration — it closes nothing")],
     "src/components/ui/search-box.tsx": [C("row ✕", "clears the field")],
     "src/components/ui/query-bar.tsx": [C("row ✕", "a link that clears the query, worded beside its ✕")],
     "src/components/ui/date-select.tsx": [C("row ✕", "back to the calendar")],
@@ -536,9 +544,50 @@ section("8 · F20 · every close ✕ of a panel, a sheet or a dialog: on its tit
     "src/app/admin/payments/stuck-payout-controls.tsx": [C("glyph", "Return to player")],
     "src/app/admin/players/[id]/page.tsx": [C("glyph", "a missing document"), C("glyph", "a missing requested document")],
   };
+  /**
+   * ⭐ THE ✕ IN ANY SPELLING (round 6, 2026-10-09, review C2). The census looked only for the kit glyph (`<I.x`), so two
+   * dialogs that drew their ✕ as an <svg> of their own — the Needle drawer (`M6 6l12 12M18 6L6 18`) and the chat panel
+   * (`M6 6 L18 18 M18 6 L6 18`) — were invisible to it, and so to its rule that a dialog closes with CloseX. An <svg> whose
+   * strokes are exactly one square's two diagonals is a ✕ however it is written: one path or two, absolute or relative,
+   * spaced or not, or two <line>s (lucide's and feather's spellings). The glyph's own definition (`glyphs.tsx`) is no site.
+   */
+  const segmentsOf = (svg: string): number[][] => {
+    const segs: number[][] = [];
+    for (const m of svg.matchAll(/<path\b[^>]*?\sd=(?:"([^"]*)"|\{"([^"]*)"\})/g)) {
+      const toks = (m[1] ?? m[2] ?? "").match(/[MmLlZz]|-?\d*\.?\d+/g) ?? [];
+      let cmd = "M", x = 0, y = 0, sx = 0, sy = 0;
+      for (let i = 0; i < toks.length;) {
+        if (/[A-Za-z]/.test(toks[i])) {
+          cmd = toks[i++];
+          if (cmd === "Z" || cmd === "z") { segs.push([x, y, sx, sy]); x = sx; y = sy; }
+          continue;
+        }
+        const a = Number(toks[i++]), b = Number(toks[i++]);
+        if (cmd === "M" || cmd === "m") { x = cmd === "m" ? x + a : a; y = cmd === "m" ? y + b : b; sx = x; sy = y; cmd = cmd === "m" ? "l" : "L"; }
+        else { const nx = cmd === "l" ? x + a : a, ny = cmd === "l" ? y + b : b; segs.push([x, y, nx, ny]); x = nx; y = ny; }
+      }
+    }
+    for (const m of svg.matchAll(/<line\b([^>]*)>/g)) {
+      const at = (k: string) => Number(new RegExp(`\\b${k}=(?:"|\\{)([-\\d.]+)`).exec(m[1])?.[1]);
+      segs.push([at("x1"), at("y1"), at("x2"), at("y2")]);
+    }
+    return segs;
+  };
+  /** Exactly a square's two diagonals: one falling, one rising, over the same span. */
+  const isCross = (segs: number[][]) => {
+    if (segs.length !== 2 || segs.flat().some((n) => !Number.isFinite(n))) return false;
+    const [p, q] = segs.map(([a, b, c, d]) => (a <= c ? [a, b, c, d] : [c, d, a, b]));
+    const diag = (s: number[]) => s[2] !== s[0] && Math.abs(s[2] - s[0]) === Math.abs(s[3] - s[1]);
+    return diag(p) && diag(q) && p[0] === q[0] && p[2] === q[2] && p[1] === q[3] && p[3] === q[1];
+  };
+  /** Where a source draws the ✕: every `<I.x`, and every <svg> that is a ✕ in another spelling. */
+  const crossesIn = (src: string) => [
+    ...[...src.matchAll(/<I\.x\b/g)].map((m) => m.index ?? 0),
+    ...[...src.matchAll(/<svg\b[\s\S]*?<\/svg>/g)].filter((m) => isCross(segmentsOf(m[0]))).map((m) => m.index ?? 0),
+  ].sort((a, b) => a - b);
   /** Each ✕ site of a source: what holds it (an open button or link, a Button's `leading`, or neither) and what names the
    *  holder (its aria-label; a link with no label is named by its own words, as the query bar's "clear" is). */
-  const xSites = (src: string) => [...src.matchAll(/<I\.x\b/g)].map((m) => {
+  const xSites = (src: string) => crossesIn(src).map((index) => ({ index })).map((m) => {
     const before = src.slice(0, m.index);
     if (/leading=\{\s*$/.test(before)) return { holder: "leading", label: "" };
     const open = Math.max(...["<button", "<Button", "<Link", "<a "].map((t) => before.lastIndexOf(t)));
@@ -588,6 +637,18 @@ section("8 · F20 · every close ✕ of a panel, a sheet or a dialog: on its tit
     show({ bet: census(plantBet).problems, toast: census(plantToast).problems }));
   const misfiled = (() => { const keep = CENSUS["src/components/ui/toast.tsx"]; CENSUS["src/components/ui/toast.tsx"] = [C("glyph", "planted")]; const p = census(SRC).problems; CENSUS["src/components/ui/toast.tsx"] = keep; return p; })();
   ok("8.10″ PLANT · a toast's dismiss filed as a mere glyph is reported", misfiled.some((p) => p.includes("filed as a glyph")), misfiled.join(" | "));
+  // Round 6 (review C2): the census reads the ✕ in any spelling — controls first, then the two dialogs' old ✕s planted back.
+  const spelt = (d: string) => isCross(segmentsOf(`<svg viewBox="0 0 24 24">${d}</svg>`));
+  ok("8.10‴ CONTROL · the ✕ is read in every spelling — the kit's path, the chat panel's spaced one, lucide's two paths, feather's two lines — and a plus, a chevron, a check and a single stroke are not ✕s",
+    spelt('<path d="M6 6l12 12M18 6L6 18" />') && spelt('<path d="M6 6 L18 18 M18 6 L6 18" />') && spelt('<path d="M18 6 6 18" /><path d="m6 6 12 12" />')
+      && spelt('<line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" />')
+      && !spelt('<path d="M12 5v14M5 12h14" />') && !spelt('<path d="M9 6l6 6-6 6" />') && !spelt('<path d="M5 12l5 5L20 7" />') && !spelt('<path d="M6 6l12 12" />'));
+  const plantNeedle = swapIn("layout/needle-drawer.tsx", /<CloseX onClick=\{\(\) => setOpen\(false\)\}[^\n]*\/>/, '<button type="button" onClick={() => setOpen(false)} aria-label="Funga" className="shrink-0 grid h-[40px] w-[40px] place-items-center rounded-lg"><svg width="16" height="16" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" /></svg></button>');
+  const plantChat = swapIn("chat/ChatPanel.tsx", /<CloseX onClick=\{onClose\}[^\n]*\/>/, '<button type="button" className="cm-close" aria-label={i18n.common.close} onClick={onClose}><svg width="16" height="16" viewBox="0 0 24 24"><path d="M18 6 6 18" /><path d="m6 6 12 12" /></svg></button>');
+  ok("8.10⁗ PLANT · round 5's two invisible ✕s back — the Needle drawer's own <svg> and the chat panel's (here in lucide's spelling) — are each seen and refused as a dialog's ✕ drawn by hand (round 6, C2)",
+    census(plantNeedle).problems.some((p) => p.includes("needle-drawer.tsx")) && census(plantChat).problems.some((p) => p.includes("ChatPanel.tsx"))
+      && !cz.problems.some((p) => /needle-drawer|ChatPanel/.test(p)),
+    show({ needle: census(plantNeedle).problems, chat: census(plantChat).problems }));
   // ⭐ ONE RULE WHILE A REQUEST IS IN FLIGHT (the integrator's review): the ✕ is there exactly when the dialog's own way out
   // is. While a request the dialog sent is in flight (its close guarded on the flag), the ✕ is withheld: a corner ✕ is not
   // drawn (`showClose={!flag}`); a header-row ✕ is `CloseX withheld` — not drawn, not pressable, its box kept, so nothing

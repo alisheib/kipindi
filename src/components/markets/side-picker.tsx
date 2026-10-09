@@ -139,7 +139,9 @@ export function SidePicker({
           old `impliedYesPct`), and until C1 a ONE-SIDED pool read "@ 100%" / "@ 0%" here while
           every card on the board said "One side only". ⛔ Both were visible ON THIS PAGE beside
           the "Similar markets" rail, which already stated the truth. RULES law 5. */}
-      <div className="grid grid-cols-2 gap-2.5">
+      {/* ONE GAP FOR A PAIR OF LARGE BUTTONS (round 6, 2026-10-09): 12px, the override scale's `gap-2`, as Up & Down's UP and
+          DOWN stand and every other pair of `btn-lg` buttons — these two sides stood 10px apart on the stock `gap-2.5`. */}
+      <div className="grid grid-cols-2 gap-2">
         <button
           type="button"
           onClick={() => setSide("YES")}
