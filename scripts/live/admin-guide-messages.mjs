@@ -42,8 +42,7 @@ export const SECTIONS = [
       {
         where: "Growth → Contacts",
         do: [
-          "The tiles at the top count the book.",
-          "The filters narrow the list — by consent, operator, source, list or tag. The search box finds a name, or a whole phone number.",
+          "The tiles at the top count the book; the filters and the search box narrow the list.",
           "Each row is one contact. Tick rows to act on several at once.",
         ],
         shots: ["03-contacts"],
