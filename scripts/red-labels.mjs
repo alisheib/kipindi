@@ -60,8 +60,10 @@ const MUTATIONS = [
     // reads `opts.marketTitle.zh` — a Chinese sentence around a Chinese question rather than an
     // English one (§7.2c). The MUTATION is unchanged: put the stored enum back in place of the
     // dictionary word, and the scanner must see it.
-    from: `    bodyZh: \`\${opts.marketTitle.zh.slice(0, 50)} · 结果：\${outcomeWordIn("zh", opts.outcome, "MARKET")}。\`,`,
-    to: `    bodyZh: \`\${opts.marketTitle.zh.slice(0, 50)} · 结果：\${opts.outcome}。\`,`,
+    // ⚠️ RE-ANCHORED 2026-10-09 (review 6): R5-B's sweep cut every quoted title with `clipQuote`, where this anchor still
+    // read `.slice(0, 50)` — the mutation could not be made. Same mutation, on the line as it now reads.
+    from: `    bodyZh: \`\${clipQuote(opts.marketTitle.zh, 50)} · 结果：\${outcomeWordIn("zh", opts.outcome, "MARKET")}。\`,`,
+    to: `    bodyZh: \`\${clipQuote(opts.marketTitle.zh, 50)} · 结果：\${opts.outcome}。\`,`,
   },
   {
     name: "§3 · 🔴 ALI'S BUG — the Up & Down push speaks the poll's vocabulary again",

@@ -25,7 +25,11 @@ import { positionAnchorId, positionPermalinkHref } from "@/lib/position-permalin
 export function endClause(text: string, stop: "." | "。"): string {
   const t = text.trimEnd();
   if (/[!?！？…]$/.test(t)) return t;
-  return `${t.replace(/[.。]+$/, "")}${stop}`;
+  // Its own closing stops dropped, read back from the end — exactly the cut `/[.。]+$/` made. ⭐ LINEAR (review 6, B-3 ·
+  // 2026-10-09): that pattern tried every stop of a run as a start and ran to the run's end from each.
+  let end = t.length;
+  while (end > 0 && (t[end - 1] === "." || t[end - 1] === "。")) end--;
+  return `${t.slice(0, end)}${stop}`;
 }
 
 /**
@@ -87,10 +91,16 @@ export function roundTicketHref(roundHref: string, positionId: string | undefine
  * and mend the doubled full stop the old template made (".." → ".", ".。" → "。"). A sentence written today has neither,
  * so it passes through unchanged. ⚠️ Only those two shapes: an ellipsis ("...") is not touched, and an id the reader
  * should see is never written this way — a receipt states its "Reference" in words.
+ * ⭐ ONLY WHERE THE OLD TEMPLATE PUT IT (review 6, A5 · 2026-10-09): ".." was mended anywhere in any body, new rows
+ * included, so free text a notice quotes lost a dot — "range 1..2" read "range 1.2". The old template doubled the stop
+ * only where a reason ENDED, before the next sentence's space or at the body's end: "…settlement.. Dau lako…",
+ * "…reason: Source withdrawn..". So ".." is mended there alone (`\.\.(?=\s|$)`); ".。" (a reason's "." before the Chinese
+ * template's "。") as before. "。。" is left as it is, as it always was: Chinese puts no space after a stop, so the old
+ * shape cannot be told from free text there, and "。。。" is an ellipsis.
  */
 export function readableNotificationBody(body: string): string {
   return body
     .replace(/ · pos_[A-Za-z0-9_]+(?=$|[\s.,;:!?。，])/g, "")
-    .replace(/(^|[^.])\.\.(?!\.)/g, "$1.")
+    .replace(/(^|[^.])\.\.(?=\s|$)/g, "$1.")
     .replace(/\.。/g, "。");
 }
