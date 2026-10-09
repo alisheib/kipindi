@@ -27,7 +27,9 @@
  *   2 · reads each decidable number's FIRST decidable line in the whole run in ONE grouped read (S15-7,
  *       `contactImportRow.firstLinesAmong`) — ⛔ a number without one is never guessed: the range is read once more,
  *       then the step refuses;
- *   3 · loads the facts from the authority (`loadImportFacts`) and decides with the FROZEN decision (`decideRows`);
+ *   3 · loads the facts from the authority (`loadImportFacts`) and decides with the FROZEN decision (`decideRows`) — the
+ *       check's own loader and facts, read FRESH at every step: ⛔ C8a · an erasure that came to stand on a number after
+ *       the check (its marker written since, an opt-out tap over it or not) keeps the row, exactly as the check would;
  *   4 · writes: creates through THE ONE CREATE BUILDER (`newContactRow`, X6 — source IMPORT, `sourceRef` and `importId`
  *       the run), updates conditional on the book row's `updatedAt` and on it not being the erased tombstone, keeps with
  *       decide()'s SHOWN reason (⛔ X22: the word `erased` never lands in a stored row), the blanking, the list memberships;

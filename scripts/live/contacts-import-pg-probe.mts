@@ -27,6 +27,10 @@
  *         h  a membership already held is never doubled and keeps its addedAt; i  a step naming a list deleted since
  *         the start throws, nothing written;
  *      6  failedPage is a keyset on the FILE LINE, 50 a page, with a separate true total; keptSplit counts by reason;
+ *      7  C8a · messagingConsent.erasureStandsAmong — does an erasure STAND on a number (erasure-mark.ts's ONE rule: a
+ *         later opt-out tap or lapse never lifts it, a GIVEN does, a marker after a GIVEN stands again, a tie inside one
+ *         millisecond breaks on the id) — eleven hand-written histories, each number equal to the rule over its own single
+ *         read, §25's bound, and the importer's facts loader and the Add form's lookup reading it from this Postgres;
  *   S  a second FRESH process stages 20,000 rows and settles them in 500-row steps — p50/p95 per call printed, every
  *      row settled exactly once asserted.
  * Every expectation is written HERE BY HAND — an oracle independent of either twin.
@@ -51,7 +55,7 @@ import type {
   ContactImportCommitUpdate, ContactImportFailSentence, MarketingContactSnapshot, StoredContactImport,
   StoredContactImportRow, StoredContactList, StoredMarketingContact,
 } from "../../src/lib/server/store.ts";
-import { ERASURE_EVIDENCE } from "../../src/lib/marketing/erasure-mark.ts";
+import { ERASURE_EVIDENCE, erasureStandsOn } from "../../src/lib/marketing/erasure-mark.ts";
 
 process.exitCode = 1;
 const PHASE = process.env.CONTACTS_IMPORT_PROBE_PHASE ?? "";
@@ -845,6 +849,75 @@ async function phaseC(): Promise<void> {
         ]) && eq(otherSplit, [{ reason: "chosen_keep", count: 1 }]) && eq(noneSplit, []),
         `${json(split)} · ${json(otherSplit)} · ${json(noneSplit)}`);
     });
+
+    /* ── 7 · C8a · erasureStandsAmong — does an erasure STAND on a number? The ONE rule, on Postgres ── */
+    await section("7", async () => {
+      // Every history written here by hand, NEWEST LAST, and every answer below decided by hand from erasure-mark.ts's rule:
+      // the latest of a number's GIVEN rows and erasure markers decides — a marker stands, a GIVEN lifts it, any other row
+      // (an opt-out tap, a lapse) is passed over. Ids in each history share one prefix and differ in their last letter, so
+      // a tie inside one millisecond breaks on the id the same way in Postgres and in the memory twin.
+      const E = {
+        mark: num("553", 1), tap: num("553", 2), lapse: num("553", 3), lifted: num("553", 4), reErased: num("553", 5),
+        tieLifted: num("553", 6), tieStands: num("553", 7), none: num("553", 8), tapOnly: num("553", 9), givenMark: num("553", 10),
+        tapLiftedTap: num("553", 11),
+      };
+      type Word = { status: "GIVEN" | "WITHDRAWN"; evidence: string | null; minute: number };
+      const MARKER = (minute: number): Word => ({ status: "WITHDRAWN", evidence: ERASURE_EVIDENCE, minute });
+      const TAP = (minute: number): Word => ({ status: "WITHDRAWN", evidence: "optout:ab******", minute });
+      const LAPSE = (minute: number): Word => ({ status: "WITHDRAWN", evidence: "retention-lapse", minute });
+      const YES = (minute: number, evidence: string | null = "optout:cd******"): Word => ({ status: "GIVEN", evidence, minute });
+      const HISTORIES: Array<[string, Word[]]> = [
+        [E.mark, [MARKER(100)]],
+        [E.tap, [YES(90, "profile"), MARKER(100), TAP(110)]],
+        [E.lapse, [MARKER(100), LAPSE(110)]],
+        [E.lifted, [MARKER(100), YES(110)]],
+        [E.reErased, [MARKER(100), YES(110), MARKER(120)]],
+        [E.tieLifted, [MARKER(100), YES(100)]],
+        [E.tieStands, [YES(100), MARKER(100)]],
+        [E.tapOnly, [YES(90, "profile"), TAP(110)]],
+        [E.givenMark, [YES(100, ERASURE_EVIDENCE)]],
+        [E.tapLiftedTap, [MARKER(100), YES(110), TAP(120)]],
+      ];
+      for (const [identifier, words] of HISTORIES) {
+        for (const [i, w] of words.entries()) {
+          await db.messagingConsent.create({
+            id: `ledger_probe_c8a_${identifier}_${String.fromCharCode(97 + i)}`, channel: "SMS", identifier, category: "MARKETING",
+            status: w.status, source: w.evidence === ERASURE_EVIDENCE ? "OPERATOR" : "OPT_OUT_PAGE", wording: "probe wording",
+            locale: "EN", evidence: w.evidence, recordedBy: null, createdAt: at(w.minute),
+          });
+        }
+      }
+      const ALL = Object.values(E);
+      const WANT = [E.mark, E.tap, E.lapse, E.reErased, E.tieStands].sort();
+      const asked = await counted(() => db.messagingConsent.erasureStandsAmong({ channel: "SMS", category: "MARKETING", identifiers: [...ALL, E.tap] }));
+      ok("7.1 · ⭐ C8a · erasureStandsAmong answers on Postgres EXACTLY the numbers on which an erasure stands, decided here by hand — the marker alone; the marker under an opt-out tap (defect #2) and under a lapse; the marker again after a GIVEN; a marker and a GIVEN in ONE millisecond with the marker's id the later — and NOT the marker under a GIVEN, the GIVEN with the marker's id the later, an opt-out alone, a GIVEN carrying the mark's evidence, a tap after a GIVEN lifted it, or a number with no row — each once (one asked twice), ordered, in ONE statement",
+        eq(asked.value, WANT) && asked.queries.length === 1, `${json(asked.value)} · ${asked.queries.length} statement(s)`);
+      const offRule: string[] = [];
+      for (const identifier of ALL) {
+        const history = await db.messagingConsent.listFor({ channel: "SMS", identifier, category: "MARKETING" });
+        if (erasureStandsOn(history) !== asked.value.includes(identifier)) offRule.push(identifier.slice(-2));
+      }
+      ok("7.2 · the grouped read answers, number by number, exactly what the ONE rule says of that number's whole history as the single read (listFor, the ledger's own order) hands it back — the twins cannot drift from the pure module",
+        offRule.length === 0 && ALL.length === 11, offRule.length === 0 ? `${ALL.length} numbers agree` : `disagree on ${offRule.join(", ")}`);
+      const none = await counted(() => db.messagingConsent.erasureStandsAmong({ channel: "SMS", category: "MARKETING", identifiers: [] }));
+      const at2000 = await db.messagingConsent.erasureStandsAmong({ channel: "SMS", category: "MARKETING", identifiers: [...many(1999), E.mark] });
+      const over = await counted(() => thrown(() => db.messagingConsent.erasureStandsAmong({ channel: "SMS", category: "MARKETING", identifiers: many(2001) })));
+      ok("7.3 · §25's bound and shape on erasureStandsAmong — an empty set answered [] with NO statement; 2,000 distinct keys answered (only the one an erasure stands on comes back); 2,001 distinct REFUSED by a throw naming the read, before any statement",
+        json(none.value) === "[]" && none.queries.length === 0 && eq(at2000, [E.mark]) && over.value.threw
+          && over.value.message.includes("messagingConsent.erasureStandsAmong") && over.queries.length === 0,
+        `${json(none.value)}/${none.queries.length} · 2,000 → ${json(at2000)} · 2,001 → ${over.value.threw ? over.value.message.slice(0, 80) : "ANSWERED"}`);
+      // The importer's facts loader and the Add form's lookup, on this same Postgres — the wiring the memory suites prove.
+      const { loadImportFacts } = await import("../../src/lib/server/contacts/import-check.ts");
+      const { lookupContactNumber, CONTACT_ERASED } = await import("../../src/lib/server/contacts/contact-write.ts");
+      const facts = await loadImportFacts(ALL);
+      const factsOff = ALL.filter((m) => (facts.get(m)?.erasureStands ?? null) !== WANT.includes(m)).map((m) => m.slice(-2));
+      const tapLookup = await lookupContactNumber(`0${E.tap.slice(3)}`);
+      const liftedLookup = await lookupContactNumber(`0${E.lifted.slice(3)}`);
+      ok("7.4 · ⭐ the importer's facts loader (loadImportFacts) carries the standing erasure of every number from this Postgres, and the Add form's lookup refuses the marker under an opt-out tap with the erased sentence and no id while the marker under a GIVEN is free",
+        factsOff.length === 0 && tapLookup.state === "refused" && tapLookup.sentence === CONTACT_ERASED && tapLookup.existingId === null
+          && liftedLookup.state === "free",
+        `facts off on [${factsOff.join(", ")}] · tap ${tapLookup.state} · lifted ${liftedLookup.state}`);
+    });
   } catch (e) {
     ok("C · the phase ran to its end", false, errText(e));
   } finally {
@@ -1068,7 +1141,7 @@ async function parent(): Promise<void> {
       return { code: r.status ?? 1, tally };
     };
     const c = child("C");
-    ok("C · a FRESH process on the probe database checked the six members on Postgres through the REAL db, and every check passed",
+    ok("C · a FRESH process on the probe database checked the six members (and C8a's standing erasure) on Postgres through the REAL db, and every check passed",
       c.code === 0 && c.tally !== null && c.tally.pass > 0 && c.tally.fail === 0, `exit ${c.code} · ${json(c.tally)}`);
     const s = child("S");
     ok("S · a FRESH process staged 20,000 rows and settled them in 500-row steps on Postgres — every row once — and every check passed",
