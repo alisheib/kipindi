@@ -48,6 +48,7 @@ import {
   type ReadOutcome,
 } from "../../src/lib/contacts/import-read.ts";
 import { SEVERAL_MOBILES_SENTENCE, firstMobileIn, mobilesIn, phoneCellRefusal } from "../../src/lib/contacts/phone-cell.ts";
+import { CHECK, DONE, partsText, sumCutOf } from "../../src/app/admin/contacts/import/import-copy.ts";
 import { parseTzNumber } from "../../src/lib/tz-msisdn.ts";
 import {
   BUSY_BACKOFF_SEC,
@@ -100,6 +101,8 @@ export type FlowImpl = {
   readonly isSkew: typeof isDeploySkewError;
   /** The reader, the loop and (C3b-fix · D3) the dialog that opens a run with S15-4's count — decommented. */
   readonly sources: { readonly read: string; readonly loop: string; readonly dialog: string };
+  /** C3b-fix · D5d · the check's and the result's sum lines, and the ONE rule for how they end. */
+  readonly sums: { readonly check: typeof CHECK.sum; readonly done: typeof DONE.sum; readonly cutOf: typeof sumCutOf };
 };
 
 const read = (rel: string): string => decomment(readFileSync(join(REPO_ROOT, rel), "utf8")).split(CRLF).join(LF);
@@ -120,6 +123,7 @@ function real(): FlowImpl {
       loop: read("src/lib/contacts/import-loop.ts"),
       dialog: read("src/app/admin/contacts/import/contacts-import-dialog.tsx"),
     },
+    sums: { check: CHECK.sum, done: DONE.sum, cutOf: sumCutOf },
   };
   return cached;
 }
@@ -150,7 +154,8 @@ export const L = {
   R5: "R5 · ⭐ S15-4 · a vCard card with two numbers yields one row, the count of such cards, and the note that says it",
   R6: "R6 · an aborted read comes back aborted — nothing kept",
   R7: "R7 · ⛔ CRASH CONTROL · a file past the run's cap stops being read and says how to split it",
-  R8: "R8 · ⭐ C3b · G1 — a CSV File whose LAST record opens a quotation mark never closed is READ, not refused: its rows kept, that record listed unreadable on its own line with the reader's sentence, and both staged",
+  R8: "R8 · ⭐ C3b · G1 — a CSV File whose LAST record opens a quotation mark never closed is READ, not refused: its rows kept, that record listed unreadable on its own line with the reader's sentence, and both staged — ⭐ C3b-fix · D5: the outcome carries the row and the ONE line the quote swallowed, and the file's note says it",
+  R9: "R9 · ⭐ C3b-fix · D5d — the check's and the result's sum lines never claim \"every row of your file is counted once\" when a quote never closed swallowed lines: they count every row UP TO that row and say how many lines after it were not read; a run this tab did not read whose CSV holds an unreadable record claims only the rows read; a quote that swallowed nothing, and every other run, keep the whole-file claim",
   C1: "C1 · ⛔ THE BAR IS THE SERVER'S CURSOR — every figure shown is a cursor the server answered with, never past the server's own",
   C2: "C2 · ⭐ STOP IS READ BETWEEN STEPS: the run is paused ON THE SERVER, then the loop stops — no step after the pause",
   C3: "C3 · ⛔ a refusal ends the loop with the server's refusal, verbatim (its reason and its sentence)",
@@ -664,10 +669,42 @@ async function run(ctx: SectionContext<FlowImpl>): Promise<void> {
     const r8 = await readOne(impl, new File([bytesOf(brokenText)], "broken.csv", { type: "text/csv" }));
     const r8File = r8.out.kind === "parsed" ? r8.out.file : null;
     const r8Staged = r8File === null ? [] : stageRowsOf(r8File, { phone: 0, name: 1 }, 1);
+    const r8Unclosed = r8.out.kind === "parsed" ? r8.out.unclosed : null;
     ok(L.R8, r8File !== null && r8File.rows.length === 2 && r8File.unreadable.length === 1 && r8File.unreadable[0].line === 3
-      && r8File.unreadable[0].reason.startsWith("Row 3 opens a quote (") && r8Staged.length === 2 && "readError" in (r8Staged[1] ?? {}),
-      r8.out.kind === "parsed" ? `${r8.out.file.rows.length} rows · unreadable ${JSON.stringify(r8.out.file.unreadable)}` : JSON.stringify(r8.out).slice(0, 160));
+      && r8File.unreadable[0].reason.startsWith("Row 3 opens a quote (") && r8File.unreadable[0].reason.includes("it and the line after it could not be read")
+      && r8Staged.length === 2 && "readError" in (r8Staged[1] ?? {})
+      && json(r8Unclosed) === json({ line: 3, lines: 1 }) && r8File.notes.some((n) => n.startsWith("Row 3 opens a quote (") && n.endsWith("it and the line after it were not read.")),
+      r8.out.kind === "parsed" ? `${r8.out.file.rows.length} rows · unreadable ${JSON.stringify(r8.out.file.unreadable)} · unclosed ${json(r8Unclosed)} · notes ${json(r8.out.file.notes)}` : JSON.stringify(r8.out).slice(0, 160));
   }
+
+  // ── R9 · D5d · the sum lines ──────────────────────────────────────────────────────────────────
+  const counts5 = [1, 0, 0, 1, 1];
+  const terms = [{ n: 1, word: "added" }, { n: 0, word: "updated" }, { n: 0, word: "kept" }, { n: 2, word: "couldn't be imported" }];
+  const cutTail = " — every row of your file up to row 3 is counted once; the 1 line after it was not read, because a quote in that row is never closed.";
+  const wholeTail = " — every row of your file is counted once.";
+  const readTail = " — every row read from your file is counted once.";
+  const sums = {
+    checkCut: partsText(impl.sums.check(counts5, 3, { line: 3, lines: 1 })),
+    checkNone: partsText(impl.sums.check(counts5, 3, null)),
+    checkUnknown: partsText(impl.sums.check(counts5, 3, "unknown")),
+    checkNothingSwallowed: partsText(impl.sums.check(counts5, 3, { line: 3, lines: 0 })),
+    doneCut: partsText(impl.sums.done(terms, 3, { line: 3, lines: 12 })),
+    doneUnknown: partsText(impl.sums.done(terms, 3, "unknown")),
+  };
+  const view = (id: string, format: string, unreadable: number) => ({ id, format, unreadable });
+  const cuts = [
+    impl.sums.cutOf(view("ci_a", "csv", 1), { runId: "ci_a", unclosed: { line: 7, lines: 4 } }),
+    impl.sums.cutOf(view("ci_a", "csv", 0), { runId: "ci_a", unclosed: null }),
+    impl.sums.cutOf(view("ci_b", "csv", 1), { runId: "ci_a", unclosed: { line: 7, lines: 4 } }),
+    impl.sums.cutOf(view("ci_b", "csv", 0), { runId: null, unclosed: null }),
+    impl.sums.cutOf(view("ci_c", "vcard", 2), { runId: null, unclosed: null }),
+  ];
+  ok(L.R9, sums.checkCut === `1 + 0 + 0 + 1 + 1 = 3 rows${cutTail}` && sums.checkNone.endsWith(wholeTail) && sums.checkUnknown.endsWith(readTail)
+    && sums.checkNothingSwallowed.endsWith(wholeTail) && !sums.checkUnknown.includes(wholeTail.slice(3))
+    && sums.doneCut.endsWith(" — every row of your file up to row 3 is counted once; the 12 lines after it were not read, because a quote in that row is never closed.")
+    && sums.doneUnknown.endsWith(readTail) && !sums.doneCut.includes(wholeTail.slice(3))
+    && json(cuts) === json([{ line: 7, lines: 4 }, null, "unknown", null, null]),
+    `${json(sums)} · cuts ${json(cuts)}`);
 
   // ── C · the commit loop ───────────────────────────────────────────────────────────────────────
   {
@@ -1071,6 +1108,21 @@ const PLANTS: readonly RedPlant<FlowImpl>[] = [
           : out;
       },
     }),
+  },
+  {
+    name: "C3b-fix D5 undone at the door — the lines a quote swallowed never reach the dialog",
+    expect: L.R8,
+    impl: () => ({ ...real(), readFile: async (f, o) => { const out = await readContactsFile(f, o); return out.kind === "parsed" ? { ...out, unclosed: null } : out; } }),
+  },
+  {
+    name: "C3b-fix D5d undone — the check's sum says every row of the file was counted, whatever a quote swallowed",
+    expect: L.R9,
+    impl: () => ({ ...real(), sums: { ...real().sums, check: (counts, rows) => CHECK.sum(counts, rows, null) } }),
+  },
+  {
+    name: "a run read in another tab claims every row of its file — the lines a quote may have swallowed unsaid",
+    expect: L.R9,
+    impl: () => ({ ...real(), sums: { ...real().sums, cutOf: (v, here) => (here.runId === v.id ? here.unclosed : null) } }),
   },
   {
     name: "a file past the cap is read whole and handed on",

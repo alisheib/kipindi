@@ -9,6 +9,8 @@
  * (`notImported`, counted before those rows were deleted), else the run's unsettled span. There is no "not imported"
  * tile: a cancel deletes the unsettled rows, so a count of them read afterwards is always 0. The sum line names every
  * term and is written only when the terms add up to the file's rows; otherwise it is not written at all (never a guess).
+ * ⛔ C3b-fix · D5d · it never claims "every row of your file is counted once" when a quotation mark never closed
+ * swallowed lines — it says how many lines after that row were not read (`SumCut`, the dialog's).
  * ⛔ S15-3 · THE KEPT ROWS ARE SPLIT BY REASON ONLY FOR A VIEWER WHO MAY READ NUMBERS: the server sends the split for that
  * viewer alone (`KeptSplit`, OD54 — a stop per row is a player signal); everyone else reads one "kept as they were".
  * ⭐ S15-4 · HOW MANY PEOPLE HAD ANOTHER NUMBER that was not imported is said, when this tab read the file.
@@ -24,7 +26,7 @@ import { ScrollX } from "@/components/ui/scroll-x";
 import { extraNumbersNote, type ExtraNumbersUnit } from "@/lib/contacts/import-read";
 import type { FailuresResult, ImportResultView } from "@/lib/contacts/import-flow";
 import { contactsHref } from "../contacts-query";
-import { CHECK, DONE, IMPORT_CLOSE, IMPORT_TRY_AGAIN, LIST } from "./import-copy";
+import { CHECK, DONE, IMPORT_CLOSE, IMPORT_TRY_AGAIN, LIST, type SumCut } from "./import-copy";
 import { ActionsRow, ButtonText, ImportAlert, Parts, SectionHeading, Tile } from "./import-parts";
 
 type Failures = {
@@ -36,9 +38,11 @@ type Failures = {
 };
 
 export function ImportDonePanel({
-  result, notImported, extraNumbers, extraUnit, loadFailures, onClose, onOpenLists, focusRef,
+  result, notImported, extraNumbers, extraUnit, cut, loadFailures, onClose, onOpenLists, focusRef,
 }: {
   result: ImportResultView;
+  /** ⭐ C3b-fix · D5d · how the sum line ends — a quotation mark never closed swallowed lines, or may have (`SumCut`). */
+  cut: SumCut;
   /** ⭐ R5 · a cancel's own count of the rows it left unimported (`RunActResult.notImported`, or the run's unsettled span
    *  just before this tab cancelled it) — null when this tab did not cancel it. */
   notImported: number | null;
@@ -122,9 +126,9 @@ export function ImportDonePanel({
       <div className="grid grid-cols-2 gap-2 sm:grid-cols-4" data-import-tiles>
         {tiles.map((x) => <Tile key={x.name} name={x.name} label={x.label} value={x.value} />)}
       </div>
-      {/* ⭐ R5 · every row of the FILE counted once, or no sum at all. */}
+      {/* ⭐ R5 · every row of the FILE counted once, or no sum at all — and (D5d) never that claim when lines were swallowed. */}
       {sum === fileRows && fileRows > 0 && (
-        <p className="text-body-sm text-text-secondary" data-import-sum={fileRows}><Parts parts={DONE.sum(terms, fileRows)} /></p>
+        <p className="text-body-sm text-text-secondary" data-import-sum={fileRows}><Parts parts={DONE.sum(terms, fileRows, cut)} /></p>
       )}
       {kept !== null && t.keep > 0 && (
         <p className="text-body-sm text-text-secondary" data-import-kept-split>

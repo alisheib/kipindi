@@ -12,7 +12,8 @@
  * first row wins), can't be imported as written (R14: a number that is not a mobile, a bad email, a name holding a
  * number — each row with its own sentence), could not be read — with the sum written out under them; each problem row
  * listed by its row in the officer's own spreadsheet and one plain sentence, "Showing 100 of 2,431" when the list is
- * capped. ⛔ Five boxes sit in one row only from `lg`, where each is wide enough for a six-figure count; below it they
+ * capped. ⛔ C3b-fix · D5d · the sum never says "every row of your file is counted once" when a quotation mark never
+ * closed swallowed lines: it says how many lines after that row were not read (`SumCut`, the dialog's). ⛔ Five boxes sit in one row only from `lg`, where each is wide enough for a six-figure count; below it they
  * take two or three columns, so a figure never runs out of its box.
  * ⛔ THE BOXES ARE SHOWN ONLY WHEN THEY ADD UP (`bucketsAdd`) — never a zero or a guess standing in for a count.
  * ⛔ D19 BY SHAPE (S15-2): there is no "has a 50pick account" box for any role — a player's number reads "already in the
@@ -28,7 +29,7 @@ import { SkBar } from "@/components/admin/admin-skeletons";
 import { useMayAct } from "@/components/admin/act-gate";
 import { PREFLIGHT_BUCKETS, type ImportRunView, type PreflightView } from "@/lib/contacts/import-flow";
 import type { BusyState } from "@/lib/contacts/import-loop";
-import { CHECK, COMMIT, UPLOAD, partsText } from "./import-copy";
+import { CHECK, COMMIT, UPLOAD, partsText, type SumCut } from "./import-copy";
 
 /** The five boxes' grid: two columns on a phone, three from `md`, all five in a row only from `lg` (see the header). */
 const TILE_GRID = "grid grid-cols-2 gap-2 md:grid-cols-3 lg:grid-cols-5";
@@ -43,9 +44,12 @@ export type CheckMode =
   | { readonly kind: "checked"; readonly view: ImportRunView; readonly preflight: PreflightView };
 
 export function ImportCheckPanel({
-  mode, alert, onStopUpload, focusRef,
+  mode, cut, alert, onStopUpload, focusRef,
 }: {
   mode: CheckMode;
+  /** ⭐ C3b-fix · D5d · how the sum line ends: a quotation mark never closed swallowed lines (this tab read them), or the
+   *  run's file was read elsewhere and may have — the dialog decides (`cutFor`). */
+  cut: SumCut;
   alert: ImportAlertState | null;
   onStopUpload: () => void;
   focusRef: RefObject<HTMLHeadingElement | null>;
@@ -111,7 +115,7 @@ export function ImportCheckPanel({
         )
       )}
 
-      {mode.kind === "checked" && <Checked preflight={mode.preflight} />}
+      {mode.kind === "checked" && <Checked preflight={mode.preflight} cut={cut} />}
 
       {alert !== null && <ImportAlert alert={alert} />}
 
@@ -121,15 +125,15 @@ export function ImportCheckPanel({
 }
 
 /** The five boxes, their sum, and the three lists — drawn only from a check whose counts add up. */
-function Checked({ preflight }: { preflight: PreflightView }) {
+function Checked({ preflight, cut }: { preflight: PreflightView; cut: SumCut }) {
   const counts = PREFLIGHT_BUCKETS.map((b) => preflight.counts[b]);
   return (
     <div className="space-y-4" data-import-checked>
       <div className={TILE_GRID} data-import-tiles>
         {PREFLIGHT_BUCKETS.map((b) => <Tile key={b} name={b} label={CHECK.tiles[b]} value={preflight.counts[b]} />)}
       </div>
-      <p className="text-body-sm text-text-secondary" data-import-sum>
-        <Parts parts={CHECK.sum(counts, preflight.rows)} />
+      <p className="text-body-sm text-text-secondary" data-import-sum data-import-sum-cut={cut === null ? "none" : cut === "unknown" ? "unknown" : cut.lines}>
+        <Parts parts={CHECK.sum(counts, preflight.rows, cut)} />
       </p>
       <p className="text-body-sm font-semibold text-text" data-import-nothing-written>{CHECK.nothingWritten}</p>
       {preflight.counts.repeated > 0 && <p className="text-body-sm text-text-secondary">{CHECK.firstWins}</p>}

@@ -49,7 +49,9 @@
  * Guard: `scripts/contacts-import/flow.mts` (section "flow").
  */
 import { formatRowList, type ParsedContactsFile, type ParsedRow, type UnreadableRecord } from "./parsed-file";
-import { DECODE_OPTIONS, createCsvReader, detectFormat, parseCsv, stripBom, type TextEncodingLabel } from "./import-parse";
+import {
+  DECODE_OPTIONS, createCsvReader, detectFormat, parseCsv, stripBom, type CsvUnclosedQuote, type TextEncodingLabel,
+} from "./import-parse";
 import { createVcardReader } from "./vcard";
 import { XLSX_MAX_BYTES, spreadsheetHeadKind, xlsxRefusalSentence } from "./xlsx-limits";
 import {
@@ -182,7 +184,15 @@ export type ReadOptions = { readonly onProgress: ReadProgress; readonly signal?:
 export type ReadRefusalCause = "format" | "csv" | "size";
 
 export type ReadOutcome =
-  | { readonly kind: "parsed"; readonly file: ParsedContactsFile; readonly digest: string; readonly extraNumbers: number }
+  /** `unclosed` (C3b-fix · D5): the CSV record a quotation mark never closed was read as one unreadable record from, and
+   *  the lines it swallowed — the check's and the result's sum lines say them; null for every other file. */
+  | {
+      readonly kind: "parsed";
+      readonly file: ParsedContactsFile;
+      readonly digest: string;
+      readonly extraNumbers: number;
+      readonly unclosed: CsvUnclosedQuote | null;
+    }
   | { readonly kind: "xlsx"; readonly base64: string; readonly digest: string; readonly fileName: string }
   | { readonly kind: "refused"; readonly sentence: string; readonly cause: ReadRefusalCause }
   /** The caller's signal stopped the read (the officer pressed Stop, or closed the dialog). Nothing is kept. */
@@ -331,6 +341,7 @@ export async function readContactsFile(file: File, opts: ReadOptions): Promise<R
 
   let parsed: ParsedContactsFile;
   let extraNumbers = 0;
+  let unclosed: CsvUnclosedQuote | null = null;
   if (cardReader !== null) {
     const card = cardReader.end();
     extraNumbers = cardReader.stats().extraPhones;
@@ -340,6 +351,8 @@ export async function readContactsFile(file: File, opts: ReadOptions): Promise<R
     const result = csvReader.end();
     if (!result.ok) return refused(result.sentence, "csv");
     parsed = result.file;
+    // ⭐ C3b-fix · D5 · a quotation mark never closed: its row and the lines it swallowed travel with the file.
+    unclosed = csvReader.stats().unclosed;
   } else {
     return refused(xlsxRefusalSentence("wrong_format", { kind: "other" }));
   }
@@ -349,7 +362,7 @@ export async function readContactsFile(file: File, opts: ReadOptions): Promise<R
   // incremental digest, and a second read of the same File is the same bytes.
   if (signal?.aborted) return { kind: "aborted" };
   const digest = await sha256Hex(new Uint8Array(await file.arrayBuffer()));
-  return { kind: "parsed", file: parsed, digest, extraNumbers };
+  return { kind: "parsed", file: parsed, digest, extraNumbers, unclosed };
 }
 
 /* ══ parsePastedText — the paste box ══════════════════════════════════════════════════════════════ */
