@@ -75,7 +75,7 @@ const SCHEDULE: Row[] = [
   // `test:campaign-privacy` P6 reads both. The glosses are COPIED (plan §5.13): "Kampeni" is /admin/campaigns' own,
   // and the link's is the stop page's own button (i18n-dict.ts, sw optout.stopButton).
   { category: "SMS campaigns and their recipients", swahili: "Kampeni", retentionYears: 7, legalBasis: "GN 478T reg 51(1)", trigger: "From the campaign's finish (for one that never finished: its last send or receipt)", storage: "Postgres (policy — no purge before 2033)" },
-  { category: "Marketing opt-out links", swahili: "Acha ofa na habari kwa SMS", retentionYears: 7, legalBasis: "GN 478T reg 51(1); PDPA 2022 §15", trigger: "From the last message that carried the link", storage: "Postgres (policy — no purge before 2033)" },
+  { category: "Marketing opt-out links", swahili: "Acha ofa na habari kwa SMS", retentionYears: 7, legalBasis: "GN 478T reg 51(1); PDPA 2022 §15", trigger: "From the last message sent to the number", storage: "Postgres (policy — no purge before 2033)" },
   { category: "OTP code hashes", swahili: "Misimbo ya OTP", retentionYears: "30 days", legalBasis: "Operational only", trigger: "From issue", storage: "Postgres (purged nightly)" },
   { category: "Session cookies", swahili: "Vidakuzi vya kikao", retentionYears: "7 days max TTL", legalBasis: "Operational only", trigger: "Per cookie expiry", storage: "Browser only (HMAC-signed)" },
   // ⚠️ MARKED N/A 2026-08-21 (Ali's decision, audit F-01). This published a 3-year retention
