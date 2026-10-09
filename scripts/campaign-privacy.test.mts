@@ -163,6 +163,7 @@ const L = {
   p11c: "P11c · a second pass appends nothing: a re-run of the erasure counts 0 and leaves the one row, and eraseMarketingFor called twice on a never-consented account writes 1 then 0",
   p11d: "P11d · an account whose latest row is GIVEN still gets exactly ONE WITHDRAWN — the erasure's, above the consent it withdraws",
   p11e: "P11e · the marker is a LEDGER row, never a stop: no stop-list row is written for the erased number, and once its next holder says yes the gate answers on that consent (U18's ruling — no unliftable stop on erasure)",
+  p11f: "P11f · ⭐ C8a (N2) · an account that OPTED OUT before it was erased — its own number's latest row the opt-out's WITHDRAWN — still gets the erasure marker: ONE, above the opt-out, which stays beneath it untouched; erased again it appends nothing, and the step itself called twice on another such account writes 1 then 0; and an erasure now STANDS on the number (messagingConsent.erasureStandsAmong), which a later opt-out tap does not lift",
   s1: "S1 · ⛔ smsCampaignRecipient.unlinkUser is named in src only where it must be — the two twins' members, the rule set's refusal and ONE caller, marketing/erase.ts (erasure's helper) — in ANY spelling: a dotted call, a bracket call or a destructured name",
   s2: "S2 · ⛔ the DAL refuses a missing or empty account id, an unreadable stamp, a number that is not the bare key and a bound in another spelling BEFORE it reads or writes — Prisma's NO-CONDITION trap — and nothing changes",
   w1: "W1 · the suite's own wiring: test:campaign-privacy and red:campaign-privacy run this file (the red with --prove-red), db:probe-campaign-privacy and qa:marketing-retention run the probe and the drive and stay OFF predeploy, and predeploy runs test:campaign-privacy exactly ONCE, straight after test:erasure",
@@ -192,6 +193,8 @@ type World = {
   view: typeof marketingDsarView;
   /** The erasure the run drives: the real one, or a planted wrapper. */
   erase: typeof anonymizeClosedAccount;
+  /** C8a · erasure's marketing step called on its own (P11f's twice-called account): the real one, or a planted wrapper. */
+  eraseStep: typeof eraseMarketingFor;
   /** The refusal words P8 holds to U38a's partition. */
   words: Readonly<Record<MarketingSkipReason, string>>;
   /** What a fixture hands the REAL settle door for a row's trail, detail and error — what U43b will hand it — so P10
@@ -217,6 +220,7 @@ const REAL: World = {
   consentCreate: null,
   view: marketingDsarView,
   erase: anonymizeClosedAccount,
+  eraseStep: eraseMarketingFor,
   words: NOT_SENT_REASON,
   marks: () => ({ trail: TRAIL.map((g) => ({ ...g })), skipDetail: "fixture detail", error: "provider: rejected" }),
   page: read("src/app/admin/retention/page.tsx"),
@@ -789,6 +793,50 @@ async function run(w: World, tag: string): Promise<void> {
     await check(p(L.p11e), () => [
       lifted.ok && lifted.basis === "CONSENT" && stop === null,
       `after a new yes: ${verdictText(lifted)} · a stop-list row for the number: ${stop ? stop.reason : "none"}`]);
+
+    // ── P11f · C8a (N2) · an account that OPTED OUT before it was erased still gets the marker ─────────────────────
+    // Until C8a the marker was skipped whenever the latest row was ANY WITHDRAWN, so this person's number carried no
+    // erasure at all — and the importer and the Add form created them again. Two accounts: one erased whole (twice), one
+    // whose marketing step is called twice before any tombstone (P11c's shape).
+    const OO = `usr_${K}_OO`, OO2 = `usr_${K}_OO2`;
+    const NOO = keyOf(n, 16), NOO2 = keyOf(n, 17);
+    const TAP = "optout:ab******";
+    const optedOut = async (identifier: string): Promise<void> => {
+      await db.messagingConsent.create({
+        ...ledgerStamp(), channel: "SMS", identifier, category: "MARKETING", status: "GIVEN", source: "PROFILE",
+        wording: PINNED_SW, locale: "SW", evidence: "fixture", recordedBy: null,
+      });
+      await db.messagingConsent.create({
+        ...ledgerStamp(), channel: "SMS", identifier, category: "MARKETING", status: "WITHDRAWN", source: "OPT_OUT_PAGE",
+        wording: "fixture stop", locale: "SW", evidence: TAP, recordedBy: null,
+      });
+    };
+    await db.user.create(makeUser(OO, `+${NOO}`, { status: "CLOSED", closedAt: iso(T0 - 3 * DAY), createdAt: iso(T0 - 100 * DAY) }));
+    await db.user.create(makeUser(OO2, `+${NOO2}`, { status: "CLOSED", closedAt: iso(T0 - 3 * DAY), createdAt: iso(T0 - 100 * DAY) }));
+    await optedOut(NOO);
+    await optedOut(NOO2);
+    const f1 = await w.erase(OO, { officerId: OFFICER });
+    const f2 = await w.erase(OO, { officerId: OFFICER });
+    const s1 = await w.eraseStep({ userId: OO2, phoneE164: `+${NOO2}`, officerId: OFFICER });
+    const s2 = await w.eraseStep({ userId: OO2, phoneE164: `+${NOO2}`, officerId: OFFICER });
+    const rowsOO = await db.messagingConsent.listFor(ledgerKey(NOO));
+    const rowsOO2 = await db.messagingConsent.listFor(ledgerKey(NOO2));
+    const standsOf = async (identifier: string): Promise<string[]> =>
+      db.messagingConsent.erasureStandsAmong({ channel: "SMS", category: "MARKETING", identifiers: [identifier] });
+    const standing = await standsOf(NOO);
+    // An old link's Stop, tapped after the erasure: a WITHDRAWN above the marker — it must not lift it.
+    await db.messagingConsent.create({
+      ...ledgerStamp(), channel: "SMS", identifier: NOO, category: "MARKETING", status: "WITHDRAWN", source: "OPT_OUT_PAGE",
+      wording: "fixture stop", locale: "SW", evidence: TAP, recordedBy: null,
+    });
+    const underTap = await standsOf(NOO);
+    const shape = (rows: StoredMessagingConsent[]): string => rows.map((r) => (isErasureRow(r) ? "MARKER" : `${r.status}/${r.evidence}`)).join(" > ");
+    await check(p(L.p11f), () => [
+      f1.ok && !f1.alreadyErased && f1.counts.marketingConsentWithdrawn === 1 && f2.ok && f2.alreadyErased && f2.counts.marketingConsentWithdrawn === 0
+        && rowsOO.length === 3 && isErasureRow(rowsOO[0]) && rowsOO[1]?.status === "WITHDRAWN" && rowsOO[1]?.evidence === TAP && rowsOO[2]?.status === "GIVEN"
+        && s1.marketingConsentWithdrawn === 1 && s2.marketingConsentWithdrawn === 0 && rowsOO2.length === 3 && isErasureRow(rowsOO2[0])
+        && JSON.stringify(standing) === JSON.stringify([NOO]) && JSON.stringify(underTap) === JSON.stringify([NOO]),
+      `erased ${f1.ok ? f1.counts.marketingConsentWithdrawn : "refused"} then ${f2.ok ? f2.counts.marketingConsentWithdrawn : "refused"} · ledger ${shape(rowsOO)} · the step twice ${s1.marketingConsentWithdrawn} then ${s2.marketingConsentWithdrawn} (${shape(rowsOO2)}) · an erasure stands: ${standing.includes(NOO) ? "yes" : "NO"}, under a later tap: ${underTap.includes(NOO) ? "yes" : "NO"}`]);
 
     // ── P10 · the strict sweep: after the erasures above, no row anywhere names an erased person ──────────────────
     await check(p(L.p10), () => {
@@ -1483,6 +1531,38 @@ const CASES: Array<{ name: string; expect: string; also?: string[]; build: () =>
           if (latest?.status !== "GIVEN") return row;
         }
         return REAL_CONSENT_CREATE(row);
+      },
+    }),
+  },
+  {
+    // ⭐ C8a's N2, as it shipped: the marker skipped whenever the account's number already stood WITHDRAWN — so a person
+    // who had opted out before asking to be erased carried no erasure mark at all.
+    name: "R-P11f · C8a · the erasure marker skipped whenever the latest row is ANY WITHDRAWN (erase.ts before C8a) — an opted-out person's number carries no erasure",
+    expect: L.p11f,
+    build: () => ({
+      ...REAL,
+      consentCreate: async (row) => {
+        if (row.status === "WITHDRAWN" && row.evidence === ERASURE_EVIDENCE) {
+          const latest = await db.messagingConsent.latestFor({ channel: row.channel, identifier: row.identifier, category: row.category });
+          if (latest?.status === "WITHDRAWN") return row;
+        }
+        return REAL_CONSENT_CREATE(row);
+      },
+    }),
+  },
+  {
+    name: "R-P11f2 · C8a · the skip dropped altogether — the step called twice appends a SECOND marker (a re-run no longer appends nothing)",
+    expect: L.p11f,
+    build: () => ({
+      ...REAL,
+      eraseStep: async (input) => {
+        const out = await eraseMarketingFor(input);
+        if (out.marketingConsentWithdrawn > 0) return out;
+        await REAL_CONSENT_CREATE({
+          ...ledgerStamp(), channel: "SMS", identifier: input.phoneE164.slice(1), category: "MARKETING", status: "WITHDRAWN",
+          source: "OPERATOR", wording: ERASURE_LEDGER_WORDING, locale: "EN", evidence: ERASURE_EVIDENCE, recordedBy: input.officerId,
+        });
+        return { ...out, marketingConsentWithdrawn: 1 };
       },
     }),
   },
