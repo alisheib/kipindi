@@ -16,8 +16,10 @@ Wired: 2026-09-16. Code: `src/lib/server/sms-blackball.ts` (transport), `src/lib
 > [`MARKETING-CAMPAIGN-AND-CONTACTS-SETUP.md`](MARKETING-CAMPAIGN-AND-CONTACTS-SETUP.md) — the contacts
 > book and the campaign engine. Where it stands lives only in its §0 and §1, so no count is restated
 > here. No Gaming Board approval is needed (Ali, 2026-09-26 — the Board says marketing SMS is not part of
-> its approval); what gates a marketing send is the consent, suppression, opt-out, responsible-gambling and
-> age check Phase A built, asked per recipient before anything goes out.
+> its approval); what gates a marketing send is the one gate Phase A built — the stop list, the
+> responsible-gambling and the age checks — asked per recipient before anything goes out. Consent is no
+> condition since the owner's final rule of 2026-10-07, and since 2026-10-09 nothing is added to a marketing
+> SMS: the rules in force are [`MARKETING-RULES.md`](MARKETING-RULES.md).
 >
 > **Left with the vendor, none of it blocking:** the three whitelisted sender-ID strings with TCRA
 > confirmation, the interval between their 5 retries, and the `CODE` values that accompany failure
@@ -757,9 +759,10 @@ callback was enabled and claimed "no callback POST ever reached us" two days aft
 5. The **exact strings of the three whitelisted sender IDs**, confirmation they are **TCRA-registered**, and
    whether they are case-sensitive.
 6. The **interval** between the 5 callback retries.
-7. **Where Blackball stores and processes message data** (numbers and texts). Privacy v2026-09-26 §4 names
-   Blackball as "our SMS gateway in Tanzania"; if they store or process it elsewhere, the notice needs a new
-   version (`COMPLIANCE-DECISIONS.md` § "2026-09-26 · Privacy v2026-09-26").
+7. **Where Blackball stores and processes message data** (numbers and texts). Privacy §4 calls the gateway
+   "our SMS gateway in Tanzania" — by its role alone since 2026-10-09: no public text names the company
+   (`COMPLIANCE-DECISIONS.md` § "2026-10-09 · Privacy v2026-10-09", item 5); if they store or process it
+   elsewhere, the notice needs a new version (§ "2026-09-26 · Privacy v2026-09-26").
 8. Whether the account has an **inbound number** for replies, and its payload — until one exists, a reply of
    STOP / ACHA to any SMS reaches nothing (marketing plan §4a OQ8, U46).
 
