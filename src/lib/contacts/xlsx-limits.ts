@@ -134,6 +134,11 @@ export const XLSX_MAX_MERGES = 10_000;
 /** The covered-cell budget for merges — the Cell objects exceljs allocates; the same magnitude as the `<c>`-element cap. */
 export const XLSX_MAX_MERGED_CELLS = XLSX_MAX_ROWS * 5;
 
+/** ⭐ Excel's own limit on a number-format string (MAJOR 6 / 9a). A `formatCode` longer than this is forged: both
+ *  readers refuse it, so the date-format test (which scans the whole code) never runs on an 8 MiB string over a million
+ *  styles. 255 is the documented Excel maximum; a real custom format is a few dozen characters. */
+export const XLSX_MAX_FORMAT_CODE = 255;
+
 /** Excel's own grid: columns A..XFD (16,384) by 1..1,048,576 rows — the most any cell address or merge corner can name. */
 export const EXCEL_MAX_COLUMN = 16384;
 export const EXCEL_MAX_ROW = 1048576;

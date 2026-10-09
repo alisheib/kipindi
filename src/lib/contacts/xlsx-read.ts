@@ -96,6 +96,7 @@ import type { ParsedContactsFile, ParsedRow } from "./parsed-file";
 import {
   ODS_MIMETYPE,
   XLSX_MAX_ENTRIES,
+  XLSX_MAX_FORMAT_CODE,
   XLSX_MAX_GRID_CELLS,
   XLSX_MAX_MERGED_CELLS,
   XLSX_MAX_MERGES,
@@ -163,6 +164,13 @@ export const XLSX_BROWSER_INFLATE_BUDGET = 1024 * 1024 * 1024;
 export const XLSX_BROWSER_MAX_STORED_CELLS = 2 * XLSX_MAX_GRID_CELLS;
 /** One text value, or one XML token, at most this many characters: 256 times Excel's 32,767-character cell. */
 export const XLSX_BROWSER_MAX_TEXT = 8 * 1024 * 1024;
+/** ⭐ MAJOR 5 · the most attributes one element may carry — far beyond any OOXML element (a `<col>` has ~6) — so a forged
+ *  `<workbook a0="" a1="" …>` of a million attributes is `unreadable` after 256, never an O(attributes²) scan or a
+ *  re-parsed unfinished tag that grows to the token limit. */
+export const XLSX_BROWSER_MAX_ATTRS = 256;
+/** ⭐ MAJOR 7 · the deepest element nesting — OOXML nests about eight deep — so `<a><a><a>…` cannot grow the scanner's
+ *  stack without bound; past it the workbook is `unreadable`. */
+export const XLSX_BROWSER_MAX_DEPTH = 256;
 /** A central directory larger than this is no workbook's: refused before it is read. */
 const DIRECTORY_MAX_BYTES = 64 * 1024 * 1024;
 /** How often (ms) the bar is told; the last report always arrives. */
@@ -404,6 +412,12 @@ export type XlsxBrowserRules = {
   readonly maxMerges: number;
   readonly maxMergedCells: number;
   readonly maxStoredCells: number;
+  /** ⭐ MAJOR 5/6/7 · the per-element attribute cap, the element-nesting depth cap, and Excel's number-format length —
+   *  each a seam the suite plants to prove the guard that keeps a forged workbook from a quadratic scan, an unbounded
+   *  stack, or an 8 MiB format code run over a million styles. */
+  readonly maxAttrs: number;
+  readonly maxDepth: number;
+  readonly maxFormatCode: number;
   readonly inflateBudget: number;
   readonly maxText: number;
   /** One yield to the event loop. */
@@ -448,6 +462,9 @@ export const XLSX_BROWSER_RULES: XlsxBrowserRules = {
   maxMerges: XLSX_MAX_MERGES,
   maxMergedCells: XLSX_MAX_MERGED_CELLS,
   maxStoredCells: XLSX_BROWSER_MAX_STORED_CELLS,
+  maxAttrs: XLSX_BROWSER_MAX_ATTRS,
+  maxDepth: XLSX_BROWSER_MAX_DEPTH,
+  maxFormatCode: XLSX_MAX_FORMAT_CODE,
   inflateBudget: XLSX_BROWSER_INFLATE_BUDGET,
   maxText: XLSX_BROWSER_MAX_TEXT,
   yieldNow: () => new Promise((resolve) => setTimeout(resolve, 0)),
@@ -547,11 +564,14 @@ class XmlScanner {
   private readonly stack: string[] = [];
   private seenRoot = false;
   private readonly attrs: string[] = [];
+  private readonly seenAttrs = new Set<string>();
 
   constructor(
     private readonly handler: XmlHandler,
     private readonly localName: (qualified: string) => string,
     private readonly maxToken: number,
+    private readonly maxAttrs: number,
+    private readonly maxDepth: number,
   ) {}
 
   feed(chunk: string): void {
@@ -671,6 +691,11 @@ class XmlScanner {
     const attrs = this.attrs;
     let count = 0;
     let selfClosing = false;
+    // ⭐ MAJOR 5 · a Set for the duplicate check (O(1), never the old O(attributes²)), and a hard cap on how many an
+    // element may carry — so a `<workbook>` of a million attributes is refused after 256, whether it arrives whole or
+    // is re-parsed chunk by chunk (each re-parse reads at most the cap before it throws).
+    const seen = this.seenAttrs;
+    seen.clear();
     for (;;) {
       while (i < len && isSpace(buf.charCodeAt(i))) i++;
       if (i >= len) return -1;
@@ -686,6 +711,7 @@ class XmlScanner {
         selfClosing = true;
         break;
       }
+      if (count >= this.maxAttrs) throw refuseWith("unreadable", "attributes");
       const nameStart = i;
       while (i < len) {
         const n = buf.charCodeAt(i);
@@ -707,7 +733,8 @@ class XmlScanner {
       if (close < 0) return -1;
       const raw = buf.slice(i + 1, close);
       if (raw.indexOf("<") >= 0) throw xmlFault("attribute");
-      for (let k = 0; k < count; k++) if (attrs[2 * k] === name) throw xmlFault("duplicate_attribute");
+      if (seen.has(name)) throw xmlFault("duplicate_attribute");
+      seen.add(name);
       attrs[2 * count] = name;
       attrs[2 * count + 1] = attributeValue(raw);
       count++;
@@ -724,7 +751,10 @@ class XmlScanner {
     const local = this.localName(qualified);
     this.handler.open(local, attrs, count);
     if (selfClosing) this.handler.close(local);
-    else this.stack.push(qualified);
+    else {
+      this.stack.push(qualified);
+      if (this.stack.length > this.maxDepth) throw refuseWith("unreadable", "depth"); // ⭐ MAJOR 7
+    }
     return i;
   }
 }
@@ -925,6 +955,9 @@ type Run = {
   mergeCount: number;
   mergedCells: number;
   mergedRows: number;
+  /** ⭐ MAJOR 6 · is a number format a DATE format, cached by numFmtId ACROSS every sheet — so the date test runs once
+   *  per distinct format, never once per styled cell (a million cells at style 1 cost one test, not a million). */
+  readonly dateByNumFmt: Map<number, boolean>;
   lastReport: number;
   lastYield: number;
 };
@@ -939,6 +972,15 @@ function report(run: Run, force: boolean): void {
 
 function checkStop(run: Run): void {
   if (run.signal?.aborted) throw new ReadStop("aborted");
+}
+
+/** ⭐ MAJOR 7 · count `n` kept objects (a cell, a shared string, a style, a number format, a relationship, a hyperlink)
+ *  against the ONE memory guard — `storedCells` vs `maxStoredCells` — so the officer's tab is bounded by the WORK and
+ *  memory a read holds, not only by the 1 GiB inflate budget (a budget of bytes, under which millions of tiny objects
+ *  still fit). Past it the read is `too_big_inflated`. */
+function keep(run: Run, n: number): void {
+  run.storedCells += n;
+  if (run.storedCells > run.rules.maxStoredCells) throw refuseWith("too_big_inflated", "cells");
 }
 
 /** Normalises line ends as XML does (CRLF and a lone CR become LF), a CR at a chunk's end carried to the next. */
@@ -1062,7 +1104,7 @@ async function partBytes(run: Run, entry: ZipEntry): Promise<Uint8Array> {
 
 /** A part read through the scanner, its reader handed every element and text run. */
 async function scanPart(run: Run, entry: ZipEntry, handler: XmlHandler): Promise<boolean> {
-  const scanner = new XmlScanner(handler, run.rules.localName, run.rules.maxText);
+  const scanner = new XmlScanner(handler, run.rules.localName, run.rules.maxText, run.rules.maxAttrs, run.rules.maxDepth);
   const whole = await streamPart(run, entry, (text) => scanner.feed(text));
   if (whole) scanner.end();
   return whole;
@@ -1116,10 +1158,14 @@ class WorkbookPart implements XmlHandler {
 class RelsPart implements XmlHandler {
   private depth = 0;
   readonly rels = new Map<string, { readonly target: string; readonly type: string }>();
+  constructor(private readonly run: Run) {}
   open(local: string, attrs: readonly string[], count: number): void {
     if (this.depth === 1 && local === "Relationship") {
       const id = attr(attrs, count, "Id");
-      if (id !== undefined) this.rels.set(id, { target: attr(attrs, count, "Target") ?? "", type: attr(attrs, count, "Type") ?? "" });
+      if (id !== undefined) {
+        this.rels.set(id, { target: attr(attrs, count, "Target") ?? "", type: attr(attrs, count, "Type") ?? "" });
+        keep(this.run, 1); // ⭐ MAJOR 7 · each relationship counts against the memory guard
+      }
     }
     this.depth++;
   }
@@ -1147,7 +1193,7 @@ class SharedStringsPart implements XmlHandler {
   private runs: string[] | null = null;
   private runText: string | null = null;
   private buffer = "";
-  constructor(private readonly rules: XlsxBrowserRules) {}
+  constructor(private readonly rules: XlsxBrowserRules, private readonly run: Run) {}
   open(local: string): void {
     const depth = this.at.length;
     const parent = depth === 0 ? -1 : this.at[depth - 1];
@@ -1181,6 +1227,7 @@ class SharedStringsPart implements XmlHandler {
       (this.runs ??= []).push(this.runText ?? "");
     } else if (here === SST_SI) {
       this.strings.push(this.plain ?? (this.runs === null ? "" : this.runs.join("")));
+      keep(this.run, 1); // ⭐ MAJOR 7 · every shared string counts against the memory guard
     }
   }
   text(text: string): void {
@@ -1199,6 +1246,7 @@ class StylesPart implements XmlHandler {
   private readonly at: number[] = [];
   formats = new Map<number, string>();
   cellXfs: number[] = [];
+  constructor(private readonly run: Run) {}
   open(local: string, attrs: readonly string[], count: number): void {
     const depth = this.at.length;
     const parent = depth === 0 ? -1 : this.at[depth - 1];
@@ -1212,9 +1260,16 @@ class StylesPart implements XmlHandler {
       this.cellXfs = [];
     } else if (parent === ST_NUMFMTS && local === "numFmt") {
       const code = attr(attrs, count, "formatCode");
-      if (code !== undefined) this.formats.set(parseInt(attr(attrs, count, "numFmtId") ?? "", 10), unescapeFormatCode(code));
+      if (code !== undefined) {
+        // ⭐ MAJOR 6 · a format code past Excel's own 255-character limit is refused — never scanned by the date test
+        // (a forged 8 MiB format code, over many style ids, would be an O(format × styles) hang otherwise).
+        if (code.length > this.run.rules.maxFormatCode) throw refuseWith("unreadable", "format");
+        this.formats.set(parseInt(attr(attrs, count, "numFmtId") ?? "", 10), unescapeFormatCode(code));
+        keep(this.run, 1);
+      }
     } else if (parent === ST_CELLXFS && local === "xf") {
       this.cellXfs.push(parseInt(attr(attrs, count, "numFmtId") ?? "", 10));
+      keep(this.run, 1); // ⭐ MAJOR 7 · each cell style counts against the memory guard
     }
     this.at.push(here);
   }
@@ -1299,7 +1354,6 @@ class SheetPart implements XmlHandler {
   private previousColumn = 0;
   private row: RowRecord | null = null;
   private readonly cell: CellDraft = { r: undefined, t: undefined, s: undefined, formula: false, formulaType: undefined, value: undefined, runs: null, runText: null, buffer: "" };
-  private readonly dateStyles = new Map<number, boolean>();
   rooted = false;
 
   constructor(
@@ -1374,7 +1428,10 @@ class SheetPart implements XmlHandler {
       case WS_LINKS:
         if (local === "hyperlink") {
           const ref = attr(attrs, count, "ref");
-          if (ref !== undefined && relationshipId(attrs, count)) this.sheet.hyperlinks.add(ref);
+          if (ref !== undefined && relationshipId(attrs, count)) {
+            this.sheet.hyperlinks.add(ref);
+            keep(this.run, 1); // ⭐ MAJOR 7 · each hyperlink counts against the memory guard
+          }
         }
         break;
       default:
@@ -1391,6 +1448,11 @@ class SheetPart implements XmlHandler {
       // exceljs makes a rich value of a value that is already text: its strict-mode class throws on it.
       if (this.cell.value !== undefined) throw refuseWith("unreadable", "inline_mixed");
       (this.cell.runs ??= []).push(this.cell.runText ?? "");
+    } else if (here === WS_ROW && this.row !== null) {
+      // ⭐ MAJOR 7 · a row that closed with no cells of its own holds no data and is DROPPED, so a flood of empty
+      // `<row/>` across many sheets cannot fill memory — the gap in the line numbers still counts it as a blank row.
+      if (this.row.cols.length === 0 && this.previousRow >= 1) this.sheet.rows.delete(this.previousRow);
+      this.row = null;
     }
   }
 
@@ -1465,15 +1527,15 @@ class SheetPart implements XmlHandler {
   }
 
   private isDateStyle(styleId: number): boolean {
-    const known = this.dateStyles.get(styleId);
-    if (known !== undefined) return known;
     const styles = this.facts.styles;
-    let dated = false;
-    if (styles !== null && styleId < styles.cellXfs.length) {
-      const numFmtId = styles.cellXfs[styleId];
-      if (numFmtId) dated = this.run.rules.isDateFormat(styles.formats.get(numFmtId) || BUILT_IN_FORMATS.get(numFmtId));
-    }
-    this.dateStyles.set(styleId, dated);
+    if (styles === null || styleId >= styles.cellXfs.length) return false;
+    const numFmtId = styles.cellXfs[styleId];
+    if (!numFmtId) return false;
+    // ⭐ MAJOR 6 · cache by numFmtId on the RUN (across all sheets), so the date test scans a format once, never per cell.
+    const known = this.run.dateByNumFmt.get(numFmtId);
+    if (known !== undefined) return known;
+    const dated = this.run.rules.isDateFormat(styles.formats.get(numFmtId) || BUILT_IN_FORMATS.get(numFmtId));
+    this.run.dateByNumFmt.set(numFmtId, dated);
     return dated;
   }
 
@@ -1560,8 +1622,7 @@ class SheetPart implements XmlHandler {
       row.flags.push(flag);
     }
     if (flag === FLAG_FORMULA && c.r !== undefined) (row.formulaAt ??= new Map()).set(index, c.r);
-    this.run.storedCells++;
-    if (this.run.storedCells > rules.maxStoredCells) throw refuseWith("too_big_inflated", "cells");
+    keep(this.run, 1); // ⭐ MAJOR 7 · each stored cell counts against the one memory guard, with every other kept object
   }
 }
 
@@ -1752,7 +1813,7 @@ export function buildXlsxBrowserReader(rules: XlsxBrowserRules): (file: Blob, op
     const run: Run = {
       file, rules, signal: opts.signal, onProgress: opts.onProgress,
       inflated: 0, total: null, rowElements: 0, storedCells: 0,
-      mergeCount: 0, mergedCells: 0, mergedRows: 0, lastReport: 0, lastYield: started,
+      mergeCount: 0, mergedCells: 0, mergedRows: 0, dateByNumFmt: new Map(), lastReport: 0, lastYield: started,
     };
     const stats = (): XlsxBrowserStats => ({ bytes: file.size, inflatedBytes: run.inflated, ...tally, ms: rules.now() - started });
     const refused = (refusal: XlsxRefusal, detail: string, ctx: XlsxRefusalContext = {}): XlsxBrowserResult => ({
@@ -1791,7 +1852,7 @@ export function buildXlsxBrowserReader(rules: XlsxBrowserRules): (file: Blob, op
       // 3 · the workbook: Strict refused off its text (the server's test), then its sheets and date1904
       const workbook = new WorkbookPart();
       let workbookText = "";
-      const workbookScanner = new XmlScanner(workbook, rules.localName, rules.maxText);
+      const workbookScanner = new XmlScanner(workbook, rules.localName, rules.maxText, rules.maxAttrs, rules.maxDepth);
       await streamPart(run, workbookEntry, (text) => {
         workbookText += text;
         if (workbookText.length > rules.maxText) throw refuseWith("too_big_inflated", "token");
@@ -1802,7 +1863,7 @@ export function buildXlsxBrowserReader(rules: XlsxBrowserRules): (file: Blob, op
       if (!workbook.rooted) return refused("unreadable", "workbook");
 
       // 4 · its relationships, and the sheets exceljs would list: those whose relationship reaches a worksheet part
-      const rels = new RelsPart();
+      const rels = new RelsPart(run);
       const relsEntry = byKey.get(WORKBOOK_RELS);
       if (relsEntry !== undefined) await scanPart(run, relsEntry, rels);
       const resolved = new Map<string, ResolvedSheet>();
@@ -1833,12 +1894,12 @@ export function buildXlsxBrowserReader(rules: XlsxBrowserRules): (file: Blob, op
       // 6 · the styles and the shared strings, when the workbook has them (exceljs finds both by these names)
       let styles: StylesPart | null = null;
       if (stylesEntry !== null) {
-        styles = new StylesPart();
+        styles = new StylesPart(run);
         await scanPart(run, stylesEntry, styles);
       }
       let strings: string[] | null = null;
       if (stringsEntry !== null) {
-        const part = new SharedStringsPart(rules);
+        const part = new SharedStringsPart(rules, run);
         await scanPart(run, stringsEntry, part);
         strings = part.strings;
       }
