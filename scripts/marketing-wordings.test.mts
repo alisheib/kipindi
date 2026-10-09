@@ -59,7 +59,7 @@ import type {
 } from "../src/lib/marketing/marketing-wordings.ts";
 import { CONSENT_BASES, consentBasisFor, importConsentWording, checkConsentBasisInput } from "../src/lib/marketing/consent-basis.ts";
 import { holdsPhoneRun } from "../src/lib/contacts/contact-fields.ts";
-import { validateCampaignTemplate } from "../src/lib/marketing/campaign-template.ts";
+import { validateCampaignTemplate, sourcePhraseProblems } from "../src/lib/marketing/campaign-template.ts";
 import { __wordingsStoreForTest, MARKETING_WORDINGS_AUDIT, WORDINGS_REFUSAL_SENTENCE } from "../src/lib/server/marketing/wordings.ts";
 import type { WordingsStore } from "../src/lib/server/marketing/wordings.ts";
 import { REAL_BASIS, controlVerdict, defaultReachOf, sourceOf } from "./marketing-consent/consent-basis.mts";
@@ -82,7 +82,7 @@ const L = {
   w1c: "W1c · ⚠️ CONTROL — the detector on a fixed population finds every shape it claims to see (CONSENT_BASES[..].defaultWording, WORDING_DEFAULTS, a barrel, a helper, chained, a variable, the door's answer, a non-null assertion, raw SQL; pc() receivers, createManyAndReturn, upsert) and lets the card's prefill, the pin, the catalogue, a writer taking the catalogue's labels and a writer reading currentWording through",
   w2: "W2 · a save appends only on change — earlier versions byte-identical, v increments, the server stamps savedBy and savedAt, an unchanged text writes nothing and audits nothing, and every other wording keeps its history, in the cache and in the row",
   w3: "W3 · ⛔ a POST that rewrites or drops a past version is refused — a posted history, a version object, the whole record, an unknown field, a non-string, a malformed approval or count is not understood; a rebuilt history that rewrites, drops, renumbers or doubles a version is refused; nothing is written and no audit row is made",
-  w4: "W4 · each rule refuses its own case with its own sentence, every problem is listed at once (one wording and several), every suggestion passes its own rules, the source line is judged by the renderer's own verdict, the normaliser is idempotent (a saved wording reads back as saved), a number written with solidi or commas is a number (m6), and a valid save is stored normalised and audited { before, after, changes }",
+  w4: "W4 · each rule refuses its own case with its own sentence, every problem is listed at once (one wording and several), every suggestion passes its own rules, the source line is judged by its own rule (never by the template's verdict, which no longer judges it — 2026-10-09), the normaliser is idempotent (a saved wording reads back as saved), a number written with solidi or commas is a number (m6), and a valid save is stored normalised and audited { before, after, changes }",
   w5: "W5 · ⛔ basis.LICENCE_OUTREACH can never be saved claiming consent — without 'has not agreed' (or 'never agreed' / 'did not agree') it is refused, so is a denial beside an agreement, an opt-in, permission, acceptance, a sign-up, a request or a subscription (m3), and the store writes nothing; the bought-list basis is held to the same plain denial in its own words",
   w6: "W6 · isImportAttestationSaved is true for every SAVED pair of a first-party basis version and an adult.consent version — and false for an unsaved default, a near copy, the adult sentence alone, THIRD_PARTY or LICENCE with it glued on, recordedBy null, a source other than IMPORT; a new row composes the newest pair",
   w7: "W7 · a process that never loaded the row refuses the save — nothing written, no audit row — and its readers answer null and recognise nothing (it fails closed)",
@@ -438,14 +438,17 @@ async function runAssertions(impl: Impl, tag: string): Promise<void> {
       const got = impl.problems(c.key, c.text);
       return codesOf(got) !== c.codes || (c.sentence !== undefined && got[0]?.sentence !== c.sentence);
     }).map((c) => `${c.name}: ${codesOf(impl.problems(c.key, c.text)) || "none"}`);
-    // The source line is judged by the RENDERER's own verdict — the one every campaign save and every send re-runs.
+    // The source line is judged by its OWN rule (`sourcePhraseProblems`) — since the owner's ruling of 2026-10-09 the
+    // renderer neither prints nor judges it, so the template's verdict says nothing of it (held here too).
     const probe = { name: "Probe", bodySw: "50pick", bodyEn: "", nameFallbackSw: "", nameFallbackEn: "" };
-    const renderer = (t: string): string[] => validateCampaignTemplate(probe, normalizeWording(t)).problems.sourcePhrase ?? [];
+    const own = (t: string): string[] => sourcePhraseProblems(normalizeWording(t));
+    const templateSays = (t: string): number => (validateCampaignTemplate(probe, normalizeWording(t)).problems.sourcePhrase ?? []).length;
     const sourceTexts = ["a".repeat(31), `Orodha ya 50pick${RIGHT_QUOTE}s`, "Orodha {jina}"];
     const sourceWrong = sourceTexts.filter((t) => {
       const got = impl.problems("source.phrase", t);
-      const want = renderer(t);
-      return want.length === 0 || codesOf(got) !== want.map(() => "source_line").join(",") || JSON.stringify(got.map((x) => x.sentence)) !== JSON.stringify(want);
+      const want = own(t);
+      return want.length === 0 || codesOf(got) !== want.map(() => "source_line").join(",") || JSON.stringify(got.map((x) => x.sentence)) !== JSON.stringify(want)
+        || templateSays(t) > 0;
     });
     // Every problem at once — in one wording, and across two in one save.
     const allAtOnce = codesOf(impl.problems("basis.LICENCE_OUTREACH", "hello there")) === "too_short,brand_missing,licence_missing,not_agreed_missing,stop_missing"
@@ -987,6 +990,12 @@ function cases(problems: string[]): Array<{ name: string; expect: string; impl: 
       name: "every problem NOT listed at once — the rules stop at the first",
       expect: L.w4,
       impl: withProblems((k, t) => wordingProblems(k, t).slice(0, 1)),
+    },
+    {
+      // The base of 2026-10-09 shipped exactly this: the renderer stopped judging the line and the wording lost its rule.
+      name: "the source line's own rule dropped — a line over 30 septets, a brace or a Unicode character saved for the G5 door",
+      expect: L.w4,
+      impl: withProblems((k, t) => wordingProblems(k, t).filter((x) => x.code !== "source_line")),
     },
     {
       name: "a consent basis saved without saying the person agreed — the consent rule removed",

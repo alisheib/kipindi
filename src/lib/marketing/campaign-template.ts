@@ -72,11 +72,9 @@ export const JINA_MAX_CHARS = 12;
 export const CAMPAIGN_NAME_MAX_CHARS = 80;
 
 /**
- * The longest source phrase (M5 · OQ3), in septets as printed — refused beyond it on its OWN field (never surfacing
- * as a negative room blamed on the officer's body), and the room the counter keeps while the wording is still blank
- * (owner gate G5). ⭐ Delegated call (U37a review, 2026-10-01): 30 keeps every campaign's room at 80 or more — the
- * floor `test:campaign-compose` §10 sets for a realistic phrase (its fixture is 26). ⛔ One constant for the rule and
- * the reserve: raising it shrinks every blank-phrase campaign's room by the same amount.
+ * The longest source phrase (M5 · OQ3), in septets — the `source.phrase` wording's own limit (`sourcePhraseProblems`, the
+ * G5 door's rule). ⭐ Delegated call (U37a review, 2026-10-01): 30. ⛔ Since the owner's ruling of 2026-10-09 the line is
+ * never printed, so the counter keeps NO room for it and no campaign's room depends on this figure.
  */
 export const SOURCE_PHRASE_MAX_CHARS = 30;
 
@@ -238,6 +236,33 @@ function templateChecks(body: string, fallback: string): { body: string[]; fallb
   return { body: bodyProblems, fallback: fallbackProblems };
 }
 
+const LINE_BREAKS = [String.fromCharCode(10), String.fromCharCode(13)];
+
+/**
+ * ⭐ THE SOURCE LINE'S OWN SHAPE RULE — what the `source.phrase` wording may be saved as (the Marketing wordings record,
+ * written by the G5 door). ⛔ Nothing in the renderer calls it since the owner's ruling of 2026-10-09: the line is neither
+ * printed, priced nor required, and it no longer judges the template. It is kept so G5 works as it always has — a saved
+ * line keeps the shape it always had: no placeholder or brace, one line, at most `SOURCE_PHRASE_MAX_CHARS` septets
+ * (measured trimmed; an extension character costs two), and the GSM alphabet only. Read AS STORED (untrimmed), so a
+ * trailing line break is refused. Blank is no line, and no problem.
+ * Guard: `test:marketing-wordings` W4 · `test:marketing-owner-save` O8.
+ */
+export function sourcePhraseProblems(phrase: string): string[] {
+  const p = phrase ?? "";
+  if (p.trim().length === 0) return [];
+  const out: string[] = [];
+  if (p.includes("{") || p.includes("}")) out.push("The source line cannot carry a placeholder or a brace.");
+  if (LINE_BREAKS.some((b) => p.includes(b))) out.push("The source line must be one line.");
+  const septets = unitsIn(p.trim(), "GSM7");
+  if (septets > SOURCE_PHRASE_MAX_CHARS) {
+    out.push(`The source line is ${septets} characters — the limit is ${SOURCE_PHRASE_MAX_CHARS}.`);
+  }
+  if (encodingFor(p) === "UCS2") {
+    // ⛔ It names what to replace and nothing it no longer does: no message carries the line since 2026-10-09.
+    out.push(`The source line has a character outside the GSM alphabet (${describeOffenders(p).map((o) => o.label).join(", ")}) — use plain characters.`);
+  }
+  return out;
+}
 
 /* ══ WHICH CHARACTER COST THE MONEY ══════════════════════════════════════════ */
 

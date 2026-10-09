@@ -50,7 +50,7 @@ import {
   type ConsentBasisKey, type SavedBasisWordings,
 } from "./consent-basis";
 import { charCount, holdsPhoneRun } from "../contacts/contact-fields";
-import { validateCampaignTemplate } from "./campaign-template";
+import { sourcePhraseProblems } from "./campaign-template";
 
 /* ══ THE KEYS ═══════════════════════════════════════════════════════════════════════════════════════════════════ */
 
@@ -149,10 +149,11 @@ type Need = "brand" | "sms" | "agreed" | "notAgreed" | "licence" | "stop" | "eig
 
 export type WordingRule = {
   /** Characters of the saved form (code points); `null` where another rule measures it — the source line's own rule
-   *  counts septets as printed. */
+   *  counts septets. */
   readonly min: number | null;
   readonly max: number | null;
-  /** May be saved blank. Only the source line: blank means "no source line", so book recipients are refused. */
+  /** May be saved blank. Only the source line: blank means "no source line" — and since the owner's ruling of 2026-10-09
+   *  no message prints the line, so a blank one refuses nobody. */
   readonly clearable: boolean;
   /** ⛔ An EVIDENCE wording (a basis, an 18+ sentence) is held to the Latin alphabet: a look-alike letter from another
    *  alphabet (a Cyrillic letter drawn like "a", inside "agreed") reads as the word to an officer while no check can
@@ -178,8 +179,8 @@ const RULES: Record<WordingKey, WordingRule> = {
   "adult.list": { ...ADULT_LENGTH, clearable: false, latinOnly: true, needs: ["eighteen", "list"] },
   "adult.test": { ...ADULT_LENGTH, clearable: false, latinOnly: true, needs: ["eighteen"] },
   "notice.thirdParty": { min: 20, max: 400, clearable: false, latinOnly: false, needs: [] },
-  // ⭐ The renderer's OWN source-line rules (`campaign-template.ts`), so the card can never save a line every campaign
-  // would then refuse: at most 30 septets as printed, GSM-7 only, one line, no braces.
+  // ⭐ The source line's OWN shape rule (`sourcePhraseProblems`, `campaign-template.ts`): at most 30 septets, GSM-7 only,
+  // one line, no braces. Kept for the G5 door although no message prints the line since the owner's ruling of 2026-10-09.
   "source.phrase": { min: null, max: null, clearable: true, latinOnly: false, needs: ["sourceLine"] },
 };
 
@@ -291,13 +292,11 @@ const MARKUP = /[<>{}]/;
 /** The source line's own rules refuse a brace in the renderer's words; this keeps only the angle brackets for it. */
 const ANGLES = /[<>]/;
 
-/** A template that passes its own checks, so the renderer's verdict on it speaks only about the source line. */
-const SOURCE_LINE_PROBE = Object.freeze({ name: "Source line check", bodySw: "50pick", bodyEn: "", nameFallbackSw: "", nameFallbackEn: "" });
-
-/** ⭐ The renderer's OWN source-line sentences — `validateCampaignTemplate`'s verdict on the source phrase, the verdict
- *  every campaign save and every send re-runs — so the card can never save a line a campaign would then refuse. */
+/** ⭐ The source line's OWN sentences (`sourcePhraseProblems`). ⛔ Until the owner's ruling of 2026-10-09 they were the
+ *  renderer's verdict on the phrase, re-run by every campaign save and send; the renderer no longer prints or judges the
+ *  line, so the rule lives with the wording alone (G5 keeps working as it did). */
 function sourceLineProblems(text: string): string[] {
-  return [...(validateCampaignTemplate(SOURCE_LINE_PROBE, text).problems.sourcePhrase ?? [])];
+  return sourcePhraseProblems(text);
 }
 
 /**
