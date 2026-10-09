@@ -5,10 +5,12 @@
  * (`qa:contacts-import`) proves every SHAPE of file at a few dozen rows; the Postgres probe proves 20,000 rows through the
  * store. This drives the BIG files the generator writes with `--big` through the browser on a local server: a 150,000-row
  * CSV, a 150,000-card phone book, a 42 MB vCard full of photos (the file that rules out a direct upload), a file one row
- * past the 200,000-row cap (refused, never half-read), and a 50,000-row workbook (read, or refused with the save-as-CSV
- * remedy when it passes the Excel size limit). Each run is TIMED by phase (read, upload, check, import) and the counts are
- * asserted: the FIRST big file on an empty book must match the generator's ground truth exactly; every later one must ADD
- * UP to its own file (its numbers may already be in the book from an earlier file).
+ * past the 200,000-row cap (refused, never half-read), and two workbooks past the 700 KB upload cap — 50,000 and 150,000
+ * rows — which since C3c (2026-10-09) are READ IN THE BROWSER (`src/lib/contacts/xlsx-read.ts`): a refusal of either is
+ * a FAIL, each is checked to add up to its records, and the 150,000-row one is imported to DONE. Each run is TIMED by
+ * phase (read, upload, check, import) and the counts are asserted: the FIRST big file on an empty book must match the
+ * generator's ground truth exactly; every later one must ADD UP to its own file (its numbers may already be in the book
+ * from an earlier file).
  *
  *   npm run qa:contacts-import-files -- --big        # once: writes the big files (git-ignored)
  *   BASE=http://localhost:3101 npm run qa:contacts-import-big
@@ -140,12 +142,15 @@ try {
   const cap = await bigRun("big-row-cap.csv", { importIt: false, exact: false });
   ok("big-row-cap.csv · one row past 200,000 is REFUSED with the cap named — never half-read",
     typeof cap?.refused === "string" && /200,000/.test(cap.refused), cap?.refused ?? JSON.stringify(cap ?? null));
-  // 5 · a 50,000-row workbook: read when it fits the Excel limit, else refused with the save-as-CSV remedy.
-  const xl = await bigRun("big-50k.xlsx", { importIt: false, exact: false });
-  if (typeof xl?.refused === "string") {
-    ok("big-50k.xlsx · over the Excel size limit, refused with the way on — save it as CSV", /CSV/i.test(xl.refused), xl.refused);
-  } else {
-    ok("big-50k.xlsx · read by the server and checked", xl !== undefined && xl.check !== undefined, JSON.stringify(xl?.check ?? null));
+  // 5 · ⭐ C3c · two workbooks past the 700 KB upload cap, READ IN THE BROWSER — a refusal of either is a FAIL (it is the
+  // old answer, "save it as CSV", whose remedy loses the last digits of every 12-digit General number). The 50,000-row
+  // one is checked and discarded; the 150,000-row one — Ali's own figure — is imported to DONE.
+  for (const [name, importIt] of [["big-50k.xlsx", false], ["big-150k.xlsx", true]]) {
+    const bytes = existsSync(join(FILES, name)) ? statSync(join(FILES, name)).size : 0;
+    ok(`${name} · past the 700 KB upload cap (${bytes} bytes) — the case C3c reads in the browser`, bytes > 700 * 1024, `${bytes} bytes`);
+    const xl = await bigRun(name, { importIt, exact: false });
+    ok(`${name} · READ in the browser and checked — never refused`, xl !== undefined && typeof xl.refused !== "string" && xl.check !== undefined,
+      typeof xl?.refused === "string" ? `REFUSED: ${xl.refused}` : JSON.stringify(xl?.check ?? null));
   }
 } catch (e) {
   fails++;
