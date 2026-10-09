@@ -55,8 +55,9 @@
  *     mirrored consent and stop, copied from the tombstone and written again by the mirror right after — and nothing
  *     else. Beside it, keyed by the number and not touched here: the consent ledger's rows (the erasure marker among
  *     them, which still refuses the number at the gate until the new holder's own GIVEN lifts it), any stop that stood
- *     (erasure never lifts one), the opt-out links, and the campaign recipient rows (the record that we messaged the
- *     number, kept for its own period — linked to no account since the erasure and, since this, to no book row). And the
+ *     (erasure never lifts one), the opt-out links, the campaign recipient rows (the record that we messaged the
+ *     number, kept for its own period — linked to no account since the erasure and, since this, to no book row), and the
+ *     SMS gateway's log rows (SmsMessage: the number, purpose and instants — retention and erasure owed to U16b). And the
  *     audit chain's rows about the OLD row's id (the masked number and field names, never a name). Audited
  *     `contacts.contact.revived` on the new row, with the memberships deleted and the recipient rows unlinked as counts.
  *     🔴 Until C8b the tombstone was KEPT (`kept_erased`), so a recycled number's new client was never a contact and the
