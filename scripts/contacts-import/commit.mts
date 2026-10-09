@@ -828,7 +828,13 @@ const plants: readonly RedPlant<CommitImpl>[] = [
     expect: L.M15,
     impl: () => withDeps({
       freeze: async (f) => {
-        if (f.newList !== null) await db.contactList.create(f.newList);
+        if (f.newList === null) return db.contactImport.freezeDecision(f);
+        // The defect: the list is written in its OWN write, before (and whatever happens to) the freeze. A name already
+        // held is still the unique index's refusal (P2002), as the real write answers it — the lead's battery 3 saw this
+        // plant CRASH the section on M14's taken-name case (it froze onto a list its create had refused), so it now fails
+        // ONLY where a lost start leaves its list behind (M15).
+        const made = await db.contactList.create(f.newList);
+        if (made === null) throw Object.assign(new Error("unique: a contact list already holds this name (P2002)"), { code: "P2002" });
         return db.contactImport.freezeDecision({ ...f, newList: null });
       },
     }),
