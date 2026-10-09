@@ -66,7 +66,7 @@ import {
 import { isParsedContactsFile, type ParsedContactsFile } from "../../src/lib/contacts/parsed-file.ts";
 import { CONTACT_MASKED_FILE, autoMapHeaders, contactExportHeader, validateMapping } from "../../src/lib/contacts/contact-fields.ts";
 import { STAGE_BATCH_MAX_ROWS, stageRowsOf, type StageRowInput } from "../../src/lib/contacts/import-limits.ts";
-import { EMPTY_FILE_SENTENCE, parseCsv } from "../../src/lib/contacts/import-parse.ts";
+import { EMPTY_FILE_SENTENCE, csvRefusalSentence, parseCsv, stripBom } from "../../src/lib/contacts/import-parse.ts";
 import { XLSX_MAX_BYTES, xlsxRefusalSentence } from "../../src/lib/contacts/xlsx-limits.ts";
 import {
   IMPORT_REFUSAL_SENTENCES,
@@ -138,6 +138,7 @@ export const L = {
   P2: "P2 · a TAB paste is an Excel copy: cells split on the tab with Excel's quoting, a blank line counted, its first row header-matched (Phone, Name; one header row)",
   P2b: "P2b · ⭐ C3b · a TAB paste whose quotation mark never closes is split by hand — every line kept, its quotation marks as typed, nothing unreadable — never cut by the CSV reader's one unreadable record (G1)",
   P3: "P3 · a list paste maps Phone and Name with no header row, named as the field list names them — never \"Column A…\", never read as a headerless file — and U28's validateMapping passes it",
+  P4: "P4 · ⭐ C3b-fix · D7 — a TAB paste copied with two title rows above its column names: the titles leave the data (lines 3–5 kept as pasted), ONE note names rows 1–2 and never their words, and the column names map Phone and Name with one header row",
   M1: "M1 · ⭐ S15-5 · a file whose first row is a contact is READ: \"Column A…\" headers, the phone, email and name columns found from the cells, no header row — row 1 staged too",
   M2: "M2 · the officer's word on the first row turns the reading over both ways (\"header\" reads it as names again)",
   M3: "M3 · ⛔ a masked export stays refused in U28's words — even when the officer says its first row is a contact",
@@ -156,6 +157,7 @@ export const L = {
   R7: "R7 · ⛔ CRASH CONTROL · a file past the run's cap stops being read and says how to split it",
   R8: "R8 · ⭐ C3b · G1 — a CSV File whose LAST record opens a quotation mark never closed is READ, not refused: its rows kept, that record listed unreadable on its own line with the reader's sentence, and both staged — ⭐ C3b-fix · D5: the outcome carries the row and the ONE line the quote swallowed, and the file's note says it",
   R9: "R9 · ⭐ C3b-fix · D5d — the check's and the result's sum lines never claim \"every row of your file is counted once\" when a quote never closed swallowed lines: they count every row UP TO that row and say how many lines after it were not read; a run this tab did not read whose CSV holds an unreadable record claims only the rows read; a quote that swallowed nothing, and every other run, keep the whole-file claim",
+  R10: "R10 · ⭐ C3b-fix · D7 at the CSV door — a CSV File whose first row is a title reads from its column names (row 2 the header, row 3 its contact, ONE note naming row 1), and ⛔ D5e after the title leaves: a title, the column names and a broken quote with no data row before it is refused whole, in the reader's own sentence, never read as a file of no contacts",
   C1: "C1 · ⛔ THE BAR IS THE SERVER'S CURSOR — every figure shown is a cursor the server answered with, never past the server's own",
   C2: "C2 · ⭐ STOP IS READ BETWEEN STEPS: the run is paused ON THE SERVER, then the loop stops — no step after the pause",
   C3: "C3 · ⛔ a refusal ends the loop with the server's refusal, verbatim (its reason and its sentence)",
@@ -375,6 +377,13 @@ const NARROW_HEADER: ParsedContactsFile = {
 
 /** C3b · G1 at the paste: a TAB paste whose third line opens a quotation mark that never closes. */
 const TAB_BROKEN = [`Phone${TAB}Name`, `0712 345 678${TAB}Asha`, `0754 123 456${TAB}"Mama, Neema`, `0688 111 222${TAB}Juma`].join(CRLF);
+/** C3b-fix · D7 at the paste: two title rows copied with the table, the column names on the third line. */
+const TAB_TITLED = [
+  "Orodha ya wateja", `Imeandaliwa na ofisi${TAB}Oktoba`, `Jina${TAB}Simu`, `Asha${TAB}0712 345 678`, `Baraka${TAB}0754 123 456`,
+].join(CRLF);
+/** The title note for rows 1–2 — a LITERAL (the en dash from its code). */
+const TITLE_NOTE_1_2 = `Rows 1${String.fromCharCode(0x2013)}2, above the column names, were not read — a title.`;
+const TITLE_NOTE_1 = "Row 1, above the column names, was not read — a title.";
 
 /* ── C3b · G4 under C3b-fix · D2 and D3 · several phone columns ── */
 const OUTLOOK_HEADER = [
@@ -497,8 +506,8 @@ async function run(ctx: SectionContext<FlowImpl>): Promise<void> {
   // ── W0 · the two modules are pure ─────────────────────────────────────────────────────────────
   const specs = (src: string): string[] => [...src.matchAll(/^\s*import\b[^;]*?from\s*["']([^"']+)["']/gm)].map((m) => m[1]);
   const readAllowed = new Set([
-    "./parsed-file", "./import-parse", "./vcard", "./xlsx-limits", "./contact-fields", "./import-limits", "./phone-cell", "../tz-msisdn",
-    "../phone-normalize",
+    "./parsed-file", "./import-parse", "./title-rows", "./vcard", "./xlsx-limits", "./contact-fields", "./import-limits", "./phone-cell",
+    "../tz-msisdn", "../phone-normalize",
   ]);
   const loopAllowed = new Set(["./import-limits", "./import-flow"]);
   const readSpecs = specs(impl.sources.read);
@@ -542,6 +551,13 @@ async function run(ctx: SectionContext<FlowImpl>): Promise<void> {
   ok(L.P2b, !isListPaste(TAB_BROKEN) && tabBroken.format === "paste" && isParsedContactsFile(tabBroken) && tabBroken.unreadable.length === 0
     && rowsOf(tabBroken) === `1:Phone|Name ; 2:0712 345 678|Asha ; 3:0754 123 456|"Mama, Neema ; 4:0688 111 222|Juma`,
     `${rowsOf(tabBroken)} · unreadable ${JSON.stringify(tabBroken.unreadable)}`);
+
+  // ── P4 · C3b-fix · D7 · a title copied above the column names ──
+  const titled = impl.parsePaste(TAB_TITLED);
+  const titledMap = impl.mappingFor(titled);
+  ok(L.P4, rowsOf(titled) === `3:Jina|Simu ; 4:Asha|0712 345 678 ; 5:Baraka|0754 123 456` && json(titled.notes) === json([TITLE_NOTE_1_2])
+    && isParsedContactsFile(titled) && titledMap.headerRows === 1 && titledMap.mapping.phone === 1 && titledMap.mapping.name === 0,
+    `${rowsOf(titled)} · notes ${json(titled.notes)} · ${json(titledMap.mapping)}`);
 
   const listMap = impl.mappingFor(list, { list: true });
   ok(L.P3, listMap.headerRows === 0 && listMap.mapping.phone === 0 && listMap.mapping.name === 1 && listMap.refusal === null
@@ -675,6 +691,20 @@ async function run(ctx: SectionContext<FlowImpl>): Promise<void> {
       && r8Staged.length === 2 && "readError" in (r8Staged[1] ?? {})
       && json(r8Unclosed) === json({ line: 3, lines: 1 }) && r8File.notes.some((n) => n.startsWith("Row 3 opens a quote (") && n.endsWith("it and the line after it were not read.")),
       r8.out.kind === "parsed" ? `${r8.out.file.rows.length} rows · unreadable ${JSON.stringify(r8.out.file.unreadable)} · unclosed ${json(r8Unclosed)} · notes ${json(r8.out.file.notes)}` : JSON.stringify(r8.out).slice(0, 160));
+
+    // C3b-fix · D7 at the door: a title above the column names — padded with the separator, as Excel and Sheets write
+    // every row of a sheet to CSV — then a title, the names and a broken quote (D5e).
+    const titledCsv = `Orodha ya wateja,${CRLF}Jina,Simu${CRLF}Asha,0712 345 678${CRLF}`;
+    const r10 = await readOne(impl, new File([bytesOf(titledCsv)], "orodha.csv", { type: "text/csv" }));
+    const r10File = r10.out.kind === "parsed" ? r10.out.file : null;
+    const r10Map = r10File === null ? null : impl.mappingFor(r10File);
+    const brokenTitled = `Orodha ya wateja,${CRLF}Jina,Simu${CRLF}${String.fromCharCode(34)}Asha,0712 345 678${CRLF}Baraka,0754 123 456${CRLF}`;
+    const r10b = await readOne(impl, new File([bytesOf(brokenTitled)], "orodha-broken.csv", { type: "text/csv" }));
+    ok(L.R10, r10File !== null && json(r10File.rows.map((r) => r.line)) === json([2, 3]) && json(r10File.notes) === json([TITLE_NOTE_1])
+      && r10Map !== null && r10Map.headerRows === 1 && r10Map.mapping.phone === 1
+      && r10b.out.kind === "refused" && r10b.out.cause === "csv" && r10b.out.sentence === csvRefusalSentence("unterminated_quote", 3),
+      `${r10File === null ? JSON.stringify(r10.out).slice(0, 120) : `lines ${json(r10File.rows.map((r) => r.line))} · notes ${json(r10File.notes)}`}`
+      + ` · broken after a title: ${r10b.out.kind === "refused" ? r10b.out.sentence.slice(0, 80) : r10b.out.kind}`);
   }
 
   // ── R9 · D5d · the sum lines ──────────────────────────────────────────────────────────────────
@@ -899,6 +929,18 @@ const PLANTS: readonly RedPlant<FlowImpl>[] = [
     }),
   },
   {
+    name: "C3b-fix D7 undone at the paste — a title copied above the column names read as them",
+    expect: L.P4,
+    impl: () => ({
+      ...real(),
+      parsePaste: (t) => {
+        if (isListPaste(t)) return parsePastedText(t);
+        const read = parseCsv(t, { delimiter: "tab" });
+        return read.ok && read.file.unreadable.length === 0 ? { ...read.file, format: "paste", fileName: null } : parsePastedText(t);
+      },
+    }),
+  },
+  {
     name: "a list paste is header-matched like a file (no Phone column)",
     expect: L.P3,
     impl: () => ({ ...real(), mappingFor: (f, o) => mappingFor(f, { ...(o ?? {}), list: false }) }),
@@ -1106,6 +1148,35 @@ const PLANTS: readonly RedPlant<FlowImpl>[] = [
         return out.kind === "parsed" && out.file.unreadable.length > 0 && out.file.format === "csv"
           ? { kind: "refused", sentence: "Row 3 opens a quotation mark that is never closed.", cause: "csv" }
           : out;
+      },
+    }),
+  },
+  {
+    name: "C3b-fix D7 undone at the CSV door — a title read as the column names",
+    expect: L.R10,
+    impl: () => ({
+      ...real(),
+      readFile: async (f, o) => {
+        const out = await readContactsFile(f, o);
+        if (out.kind !== "parsed" || out.file.format !== "csv") return out;
+        const asRead = parseCsv(stripBom(await f.text()).text, { fileName: f.name });
+        return asRead.ok ? { ...out, file: asRead.file } : out;
+      },
+    }),
+  },
+  {
+    name: "C3b-fix D5e undone after a title leaves — the column names and one unreadable record read as a file of no contacts",
+    expect: L.R10,
+    impl: () => ({
+      ...real(),
+      readFile: async (f, o) => {
+        const out = await readContactsFile(f, o);
+        if (out.kind !== "refused" || out.cause !== "csv" || !out.sentence.startsWith("Row 3 opens a quotation mark")) return out;
+        const file: ParsedContactsFile = {
+          format: "csv", fileName: f.name, width: 2, blankRows: 0, notes: [TITLE_NOTE_1],
+          rows: [{ line: 2, cells: ["Jina", "Simu"] }], unreadable: [{ line: 3, reason: "Row 3 opens a quote." }],
+        };
+        return { kind: "parsed", file, digest: DIGEST, extraNumbers: 0, unclosed: { line: 3, lines: 1 } };
       },
     }),
   },

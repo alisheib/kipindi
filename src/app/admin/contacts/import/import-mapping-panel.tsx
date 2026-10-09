@@ -37,8 +37,14 @@ export type MappingChoice = {
   readonly file: ParsedContactsFile;
 };
 
-/** The file the panel reads: its parsed shape, its name (null for a paste), and whether it is a list paste. */
-export type MappingSource = { readonly file: ParsedContactsFile; readonly name: string | null; readonly list: boolean };
+/** The file the panel reads: its parsed shape, its name (null for a paste), whether it is a list paste, and (C3b-fix · D8)
+ *  the server reader's word that no visible sheet of the workbook holds a mobile. */
+export type MappingSource = {
+  readonly file: ParsedContactsFile;
+  readonly name: string | null;
+  readonly list: boolean;
+  readonly noMobileSheet: boolean;
+};
 
 /** The fields read only when no Name column is (U28): the name parts, derived from the list — never spelled. */
 const NAME_PARTS: ReadonlySet<ImportFieldKey> = new Set(
@@ -129,11 +135,12 @@ export function ImportMappingPanel({
         </Callout>
       )}
       {file.format === "vcard" && <p className="text-body-sm text-text-secondary">{MAPPING.vcard}</p>}
-      {/* ⭐ C3b · G2 · a workbook none of whose visible sheets has a phone column: the reader read its first visible sheet
-          (a cover page before the contacts is passed over when a later sheet has one), and the officer is told so and
-          how to name the phone column. */}
-      {file.format === "xlsx" && noPhone && !reading.headerless && reading.refusal === null && (
-        <Callout tone="warning" role="status">{MAPPING.sheetHint}</Callout>
+      {/* ⭐ C3b-fix · D8 · the READER said no visible sheet holds a Tanzanian mobile (`noMobileSheet`), so it read the first
+          visible one: said here on that word alone — never on the column the officer has chosen as Phone. */}
+      {source.noMobileSheet && file.format === "xlsx" && reading.refusal === null && (
+        <div data-import-sheet-hint>
+          <Callout tone="warning" role="status">{MAPPING.sheetHint}</Callout>
+        </div>
       )}
 
       {canTurnFirstRow && (

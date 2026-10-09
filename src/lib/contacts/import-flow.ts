@@ -161,7 +161,9 @@ export type DiscardImportResult = ImportAnswer<{ rowsDeleted: number }>;
 
 /** An Excel file, read on the server (U27b): base64 of at most `XLSX_MAX_BYTES` raw bytes. */
 export type ReadXlsxInput = { base64: string; fileName: string };
-export type ReadXlsxResult = ImportAnswer<{ file: ParsedContactsFile }>;
+/** ⭐ C3b-fix · D8 · `noMobileSheet`: the READER's word that no visible sheet's first rows hold a Tanzanian mobile, so the
+ *  first visible sheet was read — the columns step's sheet hint is shown on it alone, never on a column choice. */
+export type ReadXlsxResult = ImportAnswer<{ file: ParsedContactsFile; noMobileSheet: boolean }>;
 
 /* ══ 2 · THE CHECK (pre-flight) — writes nothing ═════════════════════════════════════════════════ */
 

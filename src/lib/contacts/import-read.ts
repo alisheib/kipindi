@@ -35,6 +35,10 @@
  * one person, one number; another person's number is never taken). A row whose main cell yields a mobile, or whose other
  * columns hold none, reads exactly as before. The original columns stay on the panel as "Not used", each saying why; the
  * server stays unchanged — the new column is one more cell (`mappingFor`).
+ * ⭐ C3b-fix · D7 (G5) · A TITLE ABOVE THE COLUMN NAMES leaves the data before any column is matched: a CSV's rows and a
+ * TAB paste's go through `dropTitleRows` (`title-rows.ts` — the ONE rule the server's workbook reader and the browser's
+ * reader for big workbooks call too), its note naming the rows, never their text. And (D5e) a CSV whose broken quote
+ * then has no DATA row before it is refused whole, in the reader's own words.
  * ⭐ S15-5 · A FILE WITH NO HEADER ROW IS READ, NOT REFUSED. When the first row reads as a contact (`headerless`),
  * `mappingFor` names the columns "Column A", "Column B"… (the letters the officer's spreadsheet shows them by), finds the
  * phone column — the one whose cells most often parse as a Tanzanian mobile number — and the name and email columns by
@@ -50,8 +54,9 @@
  */
 import { formatRowList, type ParsedContactsFile, type ParsedRow, type UnreadableRecord } from "./parsed-file";
 import {
-  DECODE_OPTIONS, createCsvReader, detectFormat, parseCsv, stripBom, type CsvUnclosedQuote, type TextEncodingLabel,
+  DECODE_OPTIONS, createCsvReader, csvRefusalSentence, detectFormat, parseCsv, stripBom, type CsvUnclosedQuote, type TextEncodingLabel,
 } from "./import-parse";
+import { dropTitleRows } from "./title-rows";
 import { createVcardReader } from "./vcard";
 import { XLSX_MAX_BYTES, spreadsheetHeadKind, xlsxRefusalSentence } from "./xlsx-limits";
 import {
@@ -350,9 +355,12 @@ export async function readContactsFile(file: File, opts: ReadOptions): Promise<R
   } else if (csvReader !== null) {
     const result = csvReader.end();
     if (!result.ok) return refused(result.sentence, "csv");
-    parsed = result.file;
-    // ⭐ C3b-fix · D5 · a quotation mark never closed: its row and the lines it swallowed travel with the file.
+    // ⭐ C3b-fix · D7 · a title above the column names leaves the data (the ONE rule, `dropTitleRows`), said in a note.
+    parsed = dropTitleRows(result.file);
+    // ⭐ C3b-fix · D5 · a quotation mark never closed: its row and the lines it swallowed travel with the file — and
+    // (D5e) once a title has left, a file whose broken quote no DATA row came before is refused whole, in today's words.
     unclosed = csvReader.stats().unclosed;
+    if (unclosed !== null && parsed.rows.length < 2) return refused(csvRefusalSentence("unterminated_quote", unclosed.line), "csv");
   } else {
     return refused(xlsxRefusalSentence("wrong_format", { kind: "other" }));
   }
@@ -559,8 +567,9 @@ export function parsePastedText(text: string): ParsedContactsFile {
     const read = parseCsv(source, { delimiter: "tab" });
     // A quotation mark that never closes — refused, or (C3b · G1) read as one unreadable record that swallowed the rest:
     // a paste is never cut, so its lines are split by hand, every one kept, its quotation marks as typed.
-    if (!read.ok || read.file.unreadable.length > 0) return plainTable(source);
-    return { ...read.file, format: "paste", fileName: null };
+    // ⭐ C3b-fix · D7 · either way a title copied above the column names leaves the data, said in a note.
+    if (!read.ok || read.file.unreadable.length > 0) return dropTitleRows(plainTable(source));
+    return dropTitleRows({ ...read.file, format: "paste", fileName: null });
   }
   const rows: ParsedRow[] = [];
   const unreadable: UnreadableRecord[] = [];
