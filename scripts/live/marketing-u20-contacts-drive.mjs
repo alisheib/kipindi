@@ -314,7 +314,16 @@ async function holdNextAction(page, mode = "hold") {
     if (caught || req.method() !== "POST" || !req.headers()["next-action"]) { await route.continue().catch(() => {}); return; }
     caught = true;
     if (mode === "fail") { await route.fulfill({ status: 500, contentType: "text/plain", body: "planted failure (u22 drive)" }).catch(() => {}); return; }
-    const response = await route.fetch();
+    // A dev server can reset the connection under the fetch ("read ECONNRESET", 2026-10-09): that is the drive's own
+    // failure, said as ONE failed check with the action's url — never an unhandled rejection that ends the whole drive.
+    let response;
+    try {
+      response = await route.fetch();
+    } catch (e) {
+      ok(`the held server action reached the server (${req.url().replace(BASE, "")})`, false, String(e?.message ?? e).split("\n")[0]);
+      await route.abort().catch(() => {});
+      return;
+    }
     await gate;
     await route.fulfill({ response }).catch(() => {});
   };
