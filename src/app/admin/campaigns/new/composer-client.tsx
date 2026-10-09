@@ -410,7 +410,7 @@ export function ComposerProvider({ view, children }: { view: ReadyView; children
       setTest(testStateOf(r));
       setTesting(null);
       // ⭐ A handed-over test changes nothing the page shows: the preview is the text as sent, and since the owner's ruling
-      // of 2026-10-09 nothing is appended to it — no stop link, so no token to re-read (§16.21).
+      // of 2026-10-09 nothing is appended to it — no stop link, so no token to re-read (§16.22).
       // ⛔ §18.32 · the 18+ words (or the record, or the line) changed since this page opened: read again, so the box shows
       // the words a tick confirms and "Another number" is offered only as the server now answers.
       if ("outcome" in r && r.outcome === "refused" && PAGE_STALE_REASONS.includes(r.reason)) router.refresh();

@@ -150,7 +150,7 @@ export const TEST_OWN_NUMBER_UNUSABLE =
   "An account's number can't be changed — ask the owner, who manages staff access in Staff & roles (/admin/staff).";
 export const TEST_RAIL_DEAD = "No SMS can leave this server right now — the sender line above says why.";
 /** Step 10's opt-out token (kept for the stop page) could not be made. ⛔ It names no stop link: nothing is appended to a
- *  test since the owner's ruling of 2026-10-09 (`test:campaign-compose` §16.21). */
+ *  test since the owner's ruling of 2026-10-09 (`test:campaign-compose` §16.22). */
 export const TEST_TOKEN_UNAVAILABLE = "Your test couldn't be prepared, so nothing was sent — try again.";
 /** U37c · the same, for a typed number — about that number, never "yours". */
 export const TEST_TYPED_TOKEN_UNAVAILABLE = "The test for this number couldn't be prepared, so nothing was sent — try again.";

@@ -216,7 +216,7 @@ export const COMPOSE_TEST_TYPED_PREVIEW = {
   EN: "English, as it will be sent to that number",
 } as const;
 /** Under the typed preview: the greeting is the officer's `{jina}` word. ⛔ It names no stop link — nothing is appended to
- *  a test or a campaign since the owner's ruling of 2026-10-09 (`test:campaign-compose` §16.21). */
+ *  a test or a campaign since the owner's ruling of 2026-10-09 (`test:campaign-compose` §16.22). */
 export const COMPOSE_TEST_TYPED_NOTE = `The name is your word for ${JINA}, never the person's own.`;
 /** Send's reason while no whole number has been typed. */
 export const COMPOSE_TEST_NEED_NUMBER = "Type the number to test on.";
@@ -279,7 +279,7 @@ export function composeConfirmReadRateLimited(retryAfterSec: number): string {
   const seconds = Math.max(1, Math.ceil(retryAfterSec));
   return `That is a lot of counts in a row — nothing was counted. Try again in ${seconds} s.`;
 }
-/** A blocked answer can be asked for again (the owner has set the source line, the audience has changed): the same read. */
+/** A blocked answer can be asked for again (the audience has changed, the owner has raised the limit): the same read. */
 export const COMPOSE_CONFIRM_CHECK_AGAIN = "Check again";
 /** The draft was saved elsewhere after this form was loaded: what a confirmation would freeze is not the text on screen. */
 export const COMPOSE_CONFIRM_STALE = "This draft was saved elsewhere after this page loaded — reload the page to see it, then confirm.";
